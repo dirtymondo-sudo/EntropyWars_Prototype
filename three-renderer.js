@@ -41141,6 +41141,11 @@ const ThreeRenderer = (function () {
             });
         };
         var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), planted = 0;
+        /* THE STAGE (OPEN WORLD Phase 4): a staged neighbour's ground is its own — no tree of this ring stands in its box
+           (the woods' parts meet edge to edge; the neighbour's own thicket and treeline dress its side) */
+        var nbRects = [];
+        try { if (!_hqStageOff() && typeof hqStageNeighbours === 'function' && _hq && _hq.opts && _hq.opts.room) nbRects = hqStageNeighbours(_hq.opts.room).map(function (n) { return n.rect; }); } catch (e) { nbRects = []; }
+        var inNb = function (px, pz) { for (var k = 0; k < nbRects.length; k++) { var r = nbRects[k]; if (px > r.x0 - 0.8 && px < r.x1 + 0.8 && pz > r.z0 - 0.8 && pz < r.z1 + 0.8) return true; } return false; };
         for (var ro = r0; ro <= depth; ro += rStep) {
             var hx = halfX + ro, hz = halfZ + ro, per = 4 * hx + 4 * hz;
             var count = Math.max(8, Math.round(per / sp));
@@ -41154,6 +41159,7 @@ const ThreeRenderer = (function () {
                 px += (rng() - 0.5) * rStep * 0.9; pz += (rng() - 0.5) * rStep * 0.9;
                 if (Math.abs(px) < halfX + 0.6 && Math.abs(pz) < halfZ + 0.6) continue;   // never inside the room
                 if (inLane(px, pz, ro)) continue;
+                if (nbRects.length && inNb(px, pz)) continue;
                 var fk = kinds[(rng() * kinds.length) | 0];
                 var fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : (fk === 'tree_5' || fk === 'tree_6') ? 2.0 + rng() * 0.6 : 2.3 + rng() * 1.1;
                 var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
@@ -47697,7 +47703,7 @@ const ThreeRenderer = (function () {
        the neighbour; only its gantry stands (data.js hqStageJoinedDoor) */
     function _hqStageJoined(room, door) {
         var id = (_hq && _hq.opts && _hq.opts.room) || null;
-        if (!id || !door || !door.link || _hqStageOff() || typeof hqStageJoinedDoor !== 'function') return false;
+        if (!id || !door || _hqStageOff() || typeof hqStageJoinedDoor !== 'function') return false;   // Phase 4: a room's own door too (the woods' trail mouths), not only a link's
         try { return hqStageJoinedDoor(id, door.id); } catch (e) { return false; }
     }
     function _hqBuildWay(room, door, level, y0, Rw, inward) {
@@ -47740,6 +47746,30 @@ const ThreeRenderer = (function () {
         _hq.doors.push(rec);
         _hqLampApply(rec, _hqDoorState(door));
     }
+    /* THE TRAIL POST (OPEN WORLD Phase 4): a waymark where a trail join replaced a door — a weathered post at the lane's
+       right-hand side, 0.6 m inside the edge, with a sign board pointing out along the lane and the far place's name on a
+       small plate (the gantry's road rule, cut down to a footpath) */
+    function _hqBuildTrailPost(room, door, y0) {
+        var U = _hqUnits(), G = _hq.doorGroup, box = _hqBoxWall(room, door.wall, door);
+        if (!box || !G) return;
+        var wood = _hqMat(null, 1, 1, { color: 0x5b4632, shininess: 4 }), board = _hqMat(null, 1, 1, { color: 0x7a6044, shininess: 6 });
+        var grp = new THREE.Group();
+        /* the lane's right as you walk out: along the wall, 2.4 m from the door's centre (clear of the 3.4 m pad's walk) */
+        var ax = -box.nz, az = box.nx;
+        grp.position.set((box.wx + box.nx * 0.6 + ax * 2.4) * U, y0 * U, (box.wz + box.nz * 0.6 + az * 2.4) * U);
+        grp.rotation.y = box.yaw;
+        var post = new THREE.Mesh(new THREE.BoxGeometry(0.13 * U, 1.7 * U, 0.13 * U), wood); post.position.y = 0.85 * U; grp.add(post);
+        var sign = new THREE.Mesh(new THREE.BoxGeometry(0.78 * U, 0.2 * U, 0.04 * U), board); sign.position.set(-0.3 * U, 1.42 * U, 0.08 * U); grp.add(sign);
+        var tip = new THREE.Mesh(new THREE.ConeGeometry(0.14 * U, 0.2 * U, 3), board); tip.rotation.z = Math.PI / 2; tip.position.set(-0.78 * U, 1.42 * U, 0.08 * U); grp.add(tip);
+        grp.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        grp._ew_hqJoined = door.id;
+        G.add(grp);
+        if (typeof THREE.CSS2DObject === 'function' && door.label) {
+            var el = document.createElement('div'); el.className = 'hq-plate hq-plate-way';
+            el.textContent = door.label; el.style.fontSize = '10px'; el.style.opacity = '0.85';
+            var pl = new THREE.CSS2DObject(el); pl.position.set(-0.3 * U, 1.72 * U, 0.1 * U); grp.add(pl);
+        }
+    }
     function _hqBuildDoors(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
         var wallMat = _hqMat(S.wall || 'stone', 1.2, 1.4);
@@ -47756,6 +47786,9 @@ const ThreeRenderer = (function () {
             var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
             var Rw = _hqWallR(room, level, door.side);
             var y0 = level ? _hqLevelY(S, level) : _hqDoorFloorY(room, door);   // THE THIRD RING (2026-09-16): level 2 = the gallery. THE CAVE (rev 11): a door stands at its lane's level — a door on a ledge is a door you climb to
+            /* THE TRAIL JOIN (OPEN WORLD Phase 4): a door a staged trail join replaces is no door — the lane runs on into the
+               next part and a marker post beside it names where it goes (no leaf, no plate, no record: nothing to press) */
+            if (!door.way && _hqStageJoined(room, door)) { try { _hqBuildTrailPost(room, door, y0); } catch (e) { console.warn('[HQ] trail post failed', door.id, e); } return; }
             /* a SEAM THAT IS NOT A DOOR (plan 9.3 `way`): the entryway object instead of the frame + leaf */
             if (door.way) { try { _hqBuildWay(room, door, level, y0, Rw, inward); } catch (e) { console.warn('[HQ] way failed', door.id, e); } return; }
             /* the office door is the rank (HQ plan 3.4 / MASTER C-1): a

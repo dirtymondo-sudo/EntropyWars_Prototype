@@ -5,9 +5,10 @@
 // hqTerrainReach), every door at its pad's sill, the wells on their tiers.
 // The ASCII grid (rev 11) is retired from every chamber.
 //
-// Every well in the world drops into ONE cave: the SECOND complex
-// (site_prebuilt_hollow_earth_*, Hollow Earth's, wild by construction) —
-// THE WELL ROOM with one head per well, THE CAVERN, four EXIT chambers
+// OPEN WORLD Phase 4 (2026-09-27): every well comes out UNDER ITS OWN PLACE,
+// no two in one room and none in a room whose only job is wells — THE WELL
+// ROOM is gone. The cave is the SECOND complex (site_prebuilt_hollow_earth_*,
+// Hollow Earth's, wild by construction): THE CAVERN, four EXIT chambers
 // (Hell · D.U.M.B. · Agartha · Hollow Earth's own board room) and THE
 // OUBLIETTE, whose back wall is Room 24601's (the eighth secret door).
 // Guards: the sheet (site + part, no number, the register lists 180 once),
@@ -29,9 +30,8 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TERRAIN_RULES = vm.runInContext('TERRAIN_RULES', D);
 const SITE = 'prebuilt_hollow_earth';
 const BOARD = 'site_' + SITE;
-const PARTS = ['shaft', 'gallery', 'vent', 'blast', 'adit', 'mouth', 'oubliette'];
+const PARTS = ['gallery', 'vent', 'blast', 'adit', 'mouth', 'oubliette'];   // OPEN WORLD Phase 4: the well room ('shaft') is deleted
 const PART_IDS = PARTS.map(p => BOARD + '_' + p);
-const SHAFT = BOARD + '_shaft';
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const at = (room, id) => (HQ.rooms[room].doors || []).find(d => d.id === id);
 const WELLS = HQ.links.filter(l => l.way === 'well');
@@ -91,44 +91,60 @@ test('the sheet: the cave is Hollow Earth’s complex — seven parts, each site
     assert.ok(!reg.some(r => PART_IDS.includes(r.id) || PART_IDS.includes(r.room)), 'no part is a register entry');
 });
 
-test('THE WELLS: six of them, every one a live `way: well` link into the well room, one head each, no two heads within 1.6 m, an end’s own plate line and CLIMB UP; the heads stand on their tiers', () => {
-    assert.deepStrictEqual(WELLS.map(l => l.id).sort().join(','), 'well_camelot,well_cellar,well_garden,well_gobekli,well_skinwalker', 'the garden, the cellar, Camelot, the ranch, Nuketown, Göbekli');
-    const heads = [];
+/* OPEN WORLD Phase 4 (§8.3, the user: "some should lead to the sewers, some to the cavern, in DIFFERENT parts, not all in the same room") */
+const WELL_BOTTOMS = {
+    well_cellar:     BOARD + '_gallery',                  // the haunted house stands over the cave: the cavern's west end
+    well_skinwalker: BOARD + '_mouth',                    // the estate over the cave's west: its mouth
+    well_garden:     'site_prebuilt_downtown_tunnels',    // HQ's cistern drains to the city's drains: the running tunnels' cistern
+    well_camelot:    'site_prebuilt_camelot_dungeon',     // the kingdom's own underground: Merlin's undercroft
+    well_gobekli:    'site_prebuilt_gobekli_leylines',    // the tell's flank: the cistern station on its ley line
+};
+test('THE WELLS: five of them, every one a live `way: well` link that comes out in a DIFFERENT room under its own place — none in a room whose only job is wells; an end’s own plate line and CLIMB UP; every head lands clear', () => {
+    assert.deepStrictEqual(WELLS.map(l => l.id).sort().join(','), 'well_camelot,well_cellar,well_garden,well_gobekli,well_skinwalker', 'the garden, the cellar, Camelot, the ranch, Göbekli');
+    assert.ok(!HQ.rooms[BOARD + '_shaft'], 'THE WELL ROOM is deleted');
+    assert.ok(!Object.keys(HQ.rooms).some(id => { const r = HQ.rooms[id]; const ds = r.doors || []; return ds.length && ds.every(d => d.way === 'well'); }), 'no room whose only doors are wells');
+    const bottoms = new Set();
     for (const l of WELLS) {
         assert.ok(D.hqLinkLive(l), l.id + ' is held back');
         assert.strictEqual(l.route, 'undercroft', l.id + ' rides THE UNDERCROFT');
         assert.ok(l.why && l.why.length > 20 && l.note && l.draft === true, l.id + ': a why, a note, a draft flag (A15)');
-        const far = l.b;
-        assert.ok(far.part === 'shaft' && far.wall === 'free' && Number.isFinite(far.face), l.id + ': the far end is a free head in the well room');
+        const far = l.b, bottom = D.hqLinkRoom(far);
+        assert.strictEqual(bottom, WELL_BOTTOMS[l.id], l.id + ' comes out where §8.3 says');
+        assert.ok(!bottoms.has(bottom), l.id + ': two wells in one room'); bottoms.add(bottom);
+        assert.ok(far.wall === 'free' && Number.isFinite(far.face), l.id + ': the far end is a free head');
         assert.ok(far.sub && /CLIMB UP/.test(far.sub) && far.verb === 'CLIMB UP', l.id + ': the head’s plate says which well it is the bottom of, and reads CLIMB UP');
-        heads.push(far);
-        for (const [rid, end] of [[D.hqLinkRoom(l.a), l.a], [SHAFT, l.b]]) {
+        const room = HQ.rooms[bottom];
+        assert.ok(room.doors.some(d => d.way !== 'well'), bottom + ' has a way on that is not a well');
+        for (const [rid, end] of [[D.hqLinkRoom(l.a), l.a], [bottom, l.b]]) {
             const door = at(rid, 'link_' + l.id);
             assert.ok(door && door.way === 'well' && door.leaf === null, rid + ' wears the well');
             const back = at(door.action.room, door.action.at);
             assert.ok(back && back.action.room === rid && back.action.at === door.id && back.way === 'well', l.id + ': the same object at the far end');
             assert.strictEqual(D.doorSiteState(door, {}), 'open', l.id + ': a seam is never sector-gated (C-12)');
-            if (end.wall !== 'free') assert.ok(end.wall === 'n' && end.x <= -0.2, l.id + ': a site-room end hangs in a lane on the north wall');   // the ranch well is FREE in the corn fields since the woods split (2026-09-18)
+            if (end.wall !== 'free') assert.ok(end.wall === 'n' && end.x <= -0.2, l.id + ': a site-room end hangs in a lane on the north wall');
         }
+        /* the head at the bottom: a pad on the floor, the landing inside the walls, level, clear of props and natives and every other door */
+        const head = at(bottom, 'link_' + l.id), h = landing(room, head), p = h.player, S = room.shell;
+        assert.ok(Math.abs(p.x) < S.w / 2 - 0.4 && Math.abs(p.z) < S.d / 2 - 0.4, l.id + ': the landing is inside ' + bottom);
+        assert.equal(p.y, sill(room, head), l.id + ': lands at the head’s sill');
+        const info = D.hqTerrainInfo(bottom), feet = D.hqTerrainFeet(info, p.x, p.z, null);
+        assert.ok(feet != null && Math.abs(feet - p.y) < 0.12, l.id + ': the pad under the landing is level');
+        for (const q of [...room.props, ...room.npcSpots]) assert.ok(!propBlocks(room, q, p.x, p.z, 0.35), l.id + ': ' + (q.key || q.race) + ' blocks the landing');
+        for (const o of room.doors) if (o !== head) { const lo = D.hqTerrainDoorLanding(room, o); assert.ok(Math.hypot(lo.x - p.x, lo.z - p.z) > 3.0, l.id + ': the landing crowds ' + o.id); }
     }
-    const shaft = HQ.rooms[SHAFT], wells = shaft.doors.filter(d => d.way === 'well');
-    assert.strictEqual(wells.length, WELLS.length, 'one head per well row and no more');
-    for (const a of heads) for (const b of heads) if (a !== b) assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= 1.6, 'two heads stand within 1.6 m');
-    /* THE TIERS (2026-09-17): the cellar and garden wells on THE NORTH SHELF, the castle well and the cistern on THE CRAG, the other two on the floor */
-    const tier = id => sill(shaft, at(SHAFT, 'link_' + id));
-    assert.ok(Math.abs(tier('well_cellar') - 1.75) < 0.01 && Math.abs(tier('well_garden') - 1.75) < 0.01, 'the north shelf');
-    assert.ok(Math.abs(tier('well_camelot') - 3.5) < 0.01 && Math.abs(tier('well_gobekli') - 3.5) < 0.01, 'the crag');
-    assert.ok(tier('well_skinwalker') < 0.6, 'the floor (Nuketown\'s wishing well retired with the site, 2026-09-18)');
     assert.ok(!HQ.links.some(l => l.id === 'haunted_hollow'), 'the old cellar ⇄ Hollow Earth pipe is gone');
     const cellarWell = at('site_prebuilt_haunted_cellar', 'link_well_cellar');
     assert.ok(cellarWell && cellarWell.wall === 'free', 'the cellar keeps its well, where it stood');
-    assert.strictEqual(cellarWell.action.room, SHAFT, 'and it drops into the well room now');
+    assert.strictEqual(cellarWell.action.room, BOARD + '_gallery', 'and it drops into the cavern now');
     const gw = at('garden', 'link_well_garden');
     assert.ok(gw && gw.way === 'well' && gw.wall === 'free', 'the garden’s well stands free on the gravel ring');
-    assert.strictEqual(D.hqRoomSite('garden'), null, 'the garden is facility (safe); the cave it drops into is wild');
+    assert.strictEqual(D.hqRoomSite('garden'), null, 'the garden is facility (safe); the tunnels it drops into are wild');
     const g = landing(HQ.rooms.garden, gw), gp = g.player;
     for (const q of [...HQ.rooms.garden.props, ...HQ.rooms.garden.npcSpots, ...HQ.rooms.garden.onlineSpots, ...HQ.rooms.garden.agents]) assert.ok(!propBlocks(HQ.rooms.garden, q, gp.x, gp.z, 0.4), (q.key || q.label || 'person') + ' blocks the garden well’s landing');
     assert.ok(Math.hypot(gp.x, gp.z) > 2.4, 'the landing is clear of the fountain');
+    /* the new chambers the heads stand in (the generator's authored rooms) */
+    assert.ok(HQ.rooms.site_prebuilt_downtown_tunnels.terrain.gen.rooms.some(r => r.id === 'cistern'), 'THE CISTERN off the running tunnels');
+    assert.ok(HQ.rooms.site_prebuilt_gobekli_leylines.terrain.gen.chambers.some(r => r.id === 'cistern'), 'THE CISTERN STATION on the tell’s line');
 });
 
 test('THE FOUR EXITS: a live pair each into Hell (the pit’s east wall since 2026-09-18), D.U.M.B., Agartha and Hollow Earth’s own board room, every far end a legal lane; the fissure’s, LEVEL −6’s and the mouth’s doors stand on their tiers', () => {
@@ -181,17 +197,19 @@ test('the cave is one piece: from the mouth every chamber is walked, every insid
     }
     assert.deepStrictEqual(Array.from(seen).sort().join(','), PART_IDS.slice().sort().join(','), 'every chamber is reachable from the mouth');
     const g = HQ.rooms[BOARD + '_gallery'];
-    for (const id of ['shaft', 'vent', 'blast', 'adit', 'mouth', 'oubliette']) assert.ok(at(BOARD + '_gallery', id), 'the gallery has the ' + id + ' door');
-    assert.strictEqual(g.doors.filter(d => !d.link).length, 6, 'six ways off the gallery');
+    for (const id of ['vent', 'blast', 'adit', 'mouth', 'oubliette']) assert.ok(at(BOARD + '_gallery', id), 'the gallery has the ' + id + ' door');
+    assert.strictEqual(g.doors.filter(d => !d.link).length, 5, 'five ways off the gallery (OPEN WORLD Phase 4: the well room’s door went with it; the cellar well comes down at the west end)');
     assert.strictEqual(at(BOARD + '_gallery', 'blast').y, 5.25, 'LEVEL −6’s bulkhead stands on THE HIGH TIER');
     assert.strictEqual(at(BOARD + '_gallery', 'vent').y, 3.5, 'THE FISSURE’s arch stands on THE HOT SHELF');
 });
 
-test('THE UNDERCROFT: a dashed line whose every leg is a well or an exit, all converging on HOLLOW EARTH, and the world graph carries both halves', () => {
+test('THE UNDERCROFT: a dashed line whose every leg is a well or an exit; the exits converge on HOLLOW EARTH, the wells come out under their own places; the world graph carries both halves', () => {
     const R = D.hqWorldRoutes('garden').find(r => r.id === 'undercroft');
     assert.ok(R && R.dashed && R.label && R.sub, 'the route is catalogued and dashed');
     assert.strictEqual(R.legs.length, WELLS.length + EXITS.length + DRAUGHTS.length, 'ten legs, plus the cave’s two draughts (AREA CONTENT D4)');
-    assert.ok(R.legs.every(l => l.from === BOARD || l.to === BOARD), 'every leg touches HOLLOW EARTH — the wells and the exits are one hub');
+    const wellLeg = l => WELLS.some(w => w.id === l.link || w.id === l.id);
+    assert.ok(R.legs.filter(l => !wellLeg(l)).every(l => l.from === BOARD || l.to === BOARD), 'every exit touches HOLLOW EARTH');
+    assert.ok(R.legs.filter(wellLeg).length === WELLS.length, 'every well is a leg (OPEN WORLD Phase 4: under its own place)');
     assert.ok(R.stations.some(s => s.no === '180'), 'the hub is a station');
     assert.ok(R.stations.find(s => s.room === 'garden').here, 'the viewer in the garden is filled');
     for (const s of R.stations) assert.ok(!/undefined|NaN/.test(s.label + s.no), 'a station reads');
@@ -255,8 +273,9 @@ test('THE FIELD: every chamber is solvable from every door; the cavern climbs to
     assert.ok(Math.abs(D.hqTerrainHeight(gal, -15, -17.5) - 5.25) < 0.05, 'THE HIGH TIER');
     const needle = D.DOOR_HQ.finds.find(f => f.room === BOARD + '_gallery' && f.kind === 'tape');
     assert.ok(needle && needle.hard && needle.y > 5.5, 'the cavern’s tape stands on the needle, out of reach');
-    const pin = D.DOOR_HQ.finds.find(f => f.room === SHAFT && f.kind === 'tape');
-    assert.ok(pin && pin.hard && pin.y > 4.0, 'the well room’s tape stands on the pinnacle');
+    const ropes = D.DOOR_HQ.finds.filter(f => f.room === BOARD + '_innersun' && f.kind === 'tape');
+    assert.strictEqual(ropes.length, 2, 'SIX ROPES came down with the well room: the inner sun (Hollow Earth’s entry part) carries it beside its own (OPEN WORLD Phase 4)');
+    assert.strictEqual(D.hqFindLegacyId('tape:' + BOARD + '_shaft#0'), 'tape:' + BOARD + '_innersun#1', 'a save that took SIX ROPES in the well room still counts it');
     /* the rift */
     const vent = D.hqTerrainInfo(BOARD + '_vent');
     assert.equal(D.hqTerrainFeet(vent, -3, -0.7, 0), null, 'lava is never entered');

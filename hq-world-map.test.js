@@ -69,10 +69,14 @@ test('the two transforms round-trip for every part, and a quarter turn carries n
         const n = D.hqWorldToZone('hq_grounds', 0, -1);   // a step north in the room
         assert.ok(Math.abs(n.x + 1) < 1e-9 && Math.abs(n.z) < 1e-9, 'rot 1: north lands west (three.js rotation.y = +π/2)');
     });
-    /* an absorbed room lands at its spot in its field */
-    const f = D.hqWorldFrame('site_prebuilt_fairy_forest_trail'), field = D.hqWorldFrame('woods_field');
-    assert.equal(f.absorbedBy, 'woods_field');
-    assert.equal(f.x, field.x + W.zones.woods.parts.woods_field.absorbs.site_prebuilt_fairy_forest_trail.x);
+    /* an absorbed room lands at its spot in its field (the cave field); OPEN WORLD Phase 4: the woods' rooms are parts of their own,
+       and the ritual ground stands beside the clearing (absorbed by it: unstaged, behind its draught) */
+    const f = D.hqWorldFrame('site_prebuilt_hollow_earth_vent'), field = D.hqWorldFrame('under_field');
+    assert.equal(f.absorbedBy, 'under_field');
+    assert.equal(f.x, field.x + W.zones.under.parts.under_field.absorbs.site_prebuilt_hollow_earth_vent.x);
+    assert.equal(D.hqWorldFrame('site_prebuilt_fairy_forest_trail').absorbedBy, null, 'the trail is a part of the woods');
+    assert.equal(D.hqWorldFrame('site_prebuilt_fairy_forest_ritual').absorbedBy, 'site_prebuilt_fairy_forest_clearing', 'the ritual ground beside the clearing');
+    assert.equal(D.hqStagePart('site_prebuilt_fairy_forest_ritual'), null, 'and never staged');
 });
 
 test('every edge join resolves onto both parts\' opposite sides; borders cross zones on one ground; the ring grows by hops', () => {
@@ -124,7 +128,7 @@ test('THE LAND SHEET: the fog draws the room you stand in and names its neighbou
     assert.ok(!S.parts.some(p => p.st === 'seen' && p.id !== here), 'nothing else is charted on a fresh profile');
     const A = D.hqWorldSheet({}, here, { all: true });
     assert.ok(A.parts.some(p => p.planned), 'EW_HQ_MAP_ALL draws the parts not built yet');
-    assert.ok(A.parts.some(p => p.absorbedBy === 'woods_field'), 'the woods field\'s rooms at their spots');
+    assert.ok(A.parts.some(p => p.absorbedBy === 'site_prebuilt_fairy_forest_clearing'), 'the ritual ground at its spot beside the clearing (OPEN WORLD Phase 4)');
     assert.ok(A.joins.length >= 20 && A.doors.length > 0, 'joins and the doors that are still doors');
     assert.ok(A.grounds.length >= 3, 'the grounds are tabs');
     for (const j of A.joins) assert.ok(isFinite(j.x0 != null ? j.x0 : j.x), 'a join has a place');

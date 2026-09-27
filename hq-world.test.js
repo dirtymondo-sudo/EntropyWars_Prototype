@@ -195,7 +195,7 @@ test('THE SEAMS THAT ARE NOT DOORS: the wardrobe into Camelot and the well into 
  assert.ok(cel.props.filter(p=>p.key==='railing_1m').length>=3,'the guard rail round the well stays (the park rule)');
  /* the far ends: Camelot's curtain wall is a walled room; the cellar's well comes out in the cave's well room (rev 10), not against Hollow Earth's wall */
  assert.equal(HQ.rooms.site_prebuilt_camelot.shell.edge,'open','Camelot stands in the open (2026-09-16: no outdoor battle room wears facility walls) — the wardrobe stands alone on the north line like a lone door panel');
- assert.equal(well.action.room,'site_prebuilt_hollow_earth_shaft','the well in the cellar drops into THE WELL ROOM');
+ assert.equal(well.action.room,'site_prebuilt_hollow_earth_gallery','the well in the cellar drops into the cavern\'s west end (OPEN WORLD Phase 4: THE WELL ROOM is gone, every well comes out under its own place)');
  /* the production landing on the free-standing well: 2.4 m east of the ring, facing east (away from it), inside the cellar, on nothing */
  const h=landing(cel,well), p=h.player;
  assert.ok(Math.abs(p.x-(-0.2))<1e-9 && Math.abs(p.z-1.6)<1e-9,'the landing is 2.4 m in front of the opening');
@@ -274,7 +274,7 @@ test('world graph reflects real directed doors and repeated reads do not change 
  assert.ok(seen.has(saturn));assert.ok(seen.size>=5,'the Moon reaches Saturn and on down the line (rev 7: the lunar route joins the world)');
  const house='site_prebuilt_haunted_upstairs', seen2=new Set([house]), todo2=[house];while(todo2.length){const at=todo2.pop();for(const e of edges.filter(e=>e.from===at))if(!seen2.has(e.to)){seen2.add(e.to);todo2.push(e.to);}}
  assert.ok(seen2.has('site_prebuilt_camelot_ward'),'the wardrobe is an edge of the world graph (CAMELOT CASTLE, 2026-09-18: it opens in THE OUTER WARD’s trees — the board room is bypassed)');
- assert.ok(graph.edges.some(e=>e.from==='site_prebuilt_hollow_earth_shaft' && e.to==='site_prebuilt_haunted_cellar' && e.link==='well_cellar'),'and so is the well, both ways (rev 10: into the cave\u2019s well room)');
+ assert.ok(graph.edges.some(e=>e.from==='site_prebuilt_hollow_earth_gallery' && e.to==='site_prebuilt_haunted_cellar' && e.link==='well_cellar'),'and so is the well, both ways (OPEN WORLD Phase 4: into the cavern\u2019s west end)');
  assert.deepEqual(plain(D.hqWorldGraph()),plain(graph));assert.equal(JSON.stringify(HQ.rooms),before);
 });
 test('the way builders run on a stub scene: each returns a group, a way rig whose tick moves it, and an opening the catalogue agrees with',()=>{
@@ -368,7 +368,7 @@ test('the whole world is one piece: from the foyer every board room and every co
  /* along the LINKS alone (no bays): the lunar line reaches the deep line only through the hall — the lines are not one line */
  const linkAdj={};g.edges.filter(e=>e.link).forEach(e=>{(linkAdj[e.from]=linkAdj[e.from]||[]).push(e.to);});
  const reach=(from)=>{const s=new Set([from]),t=[from];while(t.length){const a=t.pop();for(const b of linkAdj[a]||[])if(!s.has(b)){s.add(b);t.push(b);}}return s;};
- assert.ok(reach('site_prebuilt_haunted_grounds').has('site_prebuilt_fairy_forest_clearing'),'the woods (THE AREAS, 2026-09-18: from the grounds, through the ranch, into the clearing)');
+ assert.ok(reach('site_prebuilt_haunted_grounds').has('site_prebuilt_fairy_forest_redwoods'),'the woods (THE AREAS, 2026-09-18: from the grounds, through the ranch and the grove, into the redwoods — OPEN WORLD Phase 4: the links no longer run through one well room)');
  /* THE DEEP (2026-09-18): the line's two halves meet in ATLANTIS — the hold's hatch comes out in THE ABYSS, the abyss's vault door (a room door, not a link) opens on THE TEMPLE, and the temple's two dry seams go on to the inner sun and the pole */
  assert.ok(reach('site_prebuilt_revenge_hold').has('site_prebuilt_atlantis_abyss'),'the deep, from the hold: the hatch comes out on the sea floor');
  assert.ok(reach('site_prebuilt_revenge_hold').has('site_prebuilt_bermuda_sea'),'… and the upwelling comes up in the Triangle');

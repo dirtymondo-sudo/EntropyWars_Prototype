@@ -15243,19 +15243,6 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_flightline = function () {
 
 /* ── THE CAVE (Room 180's chambers) ────────────────────────────────────── */
 
-/* THE WELL ROOM — six well heads over the tiers, the pools, the crag. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_shaft = function () {
-    const M = _mfAreaDelta({ name: 'THE CAVE · THE WELL ROOM', base: 'cave_floor', seed: 8561,
-        tints: { cave_floor: '#7a6a80', rock_wall_1: '#5a4a60', water: '#4ac8c0', rocks_dark_fantasy: '#6a5a70' },
-        desc: 'THE WELL ROOM — six well heads over the tiers, the pools, the crag' });
-    M.rect(3, 1, 4, 2, 'rocks_dark_fantasy');
-    M.lake(0, 1, 'water', 1); M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 2);   // the pools
-    M.step(5, 2, 'cave_floor'); M.step(6, 2, 'cave_floor'); M.block(6, 3, 'rock_wall_1'); M.block(7, 3, 'rock_wall_1', 3);   // the tiers up the crag
-    M.obj(7, 0, 'torch', { leaf: 'floor' });
-    M.symAll();
-    M.pillarSym('greytube', 1, 3, 2); M.pillarSym('greytube', 0, 3, 2);   // the well heads
-    return M.finishDelta();
-};
 
 /* THE CAVERN — the deep river with the ford and the plank, the terrace, the
    high tier, THE NEEDLE, the lava lake under its obsidian deck. */
@@ -24299,7 +24286,7 @@ const DOOR_HQ = {
         highway:    { label: 'THE HIGHWAY',      sub: 'ONE ROAD, A CENTURY LONG', color: '#ff9e6b' },
         wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
         seams:      { label: 'THE SEAMS',        sub: 'THE DOORS THAT ARE NOT DOORS', color: '#f0e6c8', dashed: true },
-        undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT IN THE SAME CAVE', color: '#c8a2e0', dashed: true },
+        undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT UNDER ITS OWN PLACE', color: '#c8a2e0', dashed: true },
         subway:     { label: 'THE SUBWAY',       sub: 'ALL LINES · THE TUNNEL IS ONE TUNNEL', color: '#f2d21a' },
         sewers:     { label: 'THE SEWERS',       sub: 'EVERY GUTTER DRAINS INTO THE SAME CULVERT', color: '#7fb8a0', dashed: true },   // DISASTER CITY (2026-09-17): the tunnels' first seam (candidate #3)
         dungeons:   { label: 'THE DUNGEONS',     sub: 'EVERY CELL JOINS UP · THE FOURTH WALL IS A DOOR', color: '#a88fb8', dashed: true },   // THE UNDERWORLD (2026-09-18): the cells ⇄ Room 24601, the workings ⇄ the oubliette — never THE UNDERCROFT's (hq-cave: every undercroft leg touches Hollow Earth)
@@ -24601,28 +24588,31 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'w', z: 28, sub: 'THE SNOW · BACK THROUGH THE COATS' },   // CAMELOT CASTLE (2026-09-18): the coats open in the trees OUTSIDE the moat, the lamp beside them (THE OUTER WARD's west wall)
           why: 'the wardrobe in the second bedroom is colder than the room; there is snow on the floor in front of it and a lamp post\'s light at the back',
           note: 'push through the coats', draft: true },
-        /* THE WELLS (9.3, 2026-09-15 rev 10): every well in the world drops
-           into ONE cave — the well room (site_prebuilt_hollow_earth_shaft)
-           has one head per row, standing free on its TIERS (rev 11: the
-           cellar's and the garden's on the north shelf, the wishing well and
-           the ranch's on the floor, the castle's and the cistern on the crag
-           — hqCaveDoorY stands each head at its tier), and climbing OUT of
-           the wrong one is how you learn the map. An end may override the
-           kind's plate line and its verb (`sub` / `verb`): down there you
-           CLIMB UP. The cellar's well (rev 6) is the same row, re-pointed. */
+        /* THE WELLS (9.3, 2026-09-15 rev 10; OPEN WORLD Phase 4, 2026-09-27 —
+           the user: "it doesn't even make sense for all the wells to lead to
+           the same place. Some should lead to the sewers, some to the cavern,
+           in DIFFERENT parts"): every well comes out UNDER the place it stands
+           in, and no two in the same room. The haunted cellar's drops into the
+           cavern's west end, the estate's into the cave's mouth (the house and
+           the estate stand over the cave), the HQ garden's into THE CISTERN off
+           the running tunnels (the building drains to the city's drains),
+           Camelot's into Merlin's undercroft by his cistern, Göbekli's into the
+           cistern station on the tell's ley line. THE WELL ROOM is gone. An end
+           may override the kind's plate line and its verb (`sub` / `verb`):
+           down there you CLIMB UP. */
         { id: 'well_cellar', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_haunted', part: 'cellar', wall: 'free', x: -2.6, z: 1.6, face: 90 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -7.875, z: -6.125, face: 180, sub: 'THE CELLAR WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'gallery', wall: 'free', x: -24.5, z: 10.5, face: 90, sub: 'THE CELLAR WELL · CLIMB UP', verb: 'CLIMB UP' },   // OPEN WORLD Phase 4: the cavern's west end, where the well room's door was (the house stands over the cave)
           why: 'the well in the cellar goes down further than the house is tall; the bucket comes up dry and warm',
           note: 'the rope holds', draft: true },
         { id: 'well_garden', route: 'undercroft', way: 'well',
           a: { room: 'garden', wall: 'free', x: -6.0, z: 2.0, face: 90 },
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: -2.625, z: -6.125, face: 180, sub: 'THE GARDEN WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_downtown', part: 'tunnels', wall: 'free', x: -59, z: 5, face: 90, sub: 'THE GARDEN WELL · CLIMB UP', verb: 'CLIMB UP' },   // OPEN WORLD Phase 4: THE CISTERN off the running tunnels' west leg (the building's cistern drains to the city's drains)
           why: 'the well on the gravel ring is older than the building and the building was laid out round it; the gardener draws from it and will not say for what',
           note: 'the only way down that is not the elevator', draft: true },
         { id: 'well_camelot', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: 8, z: -18, face: 180, sub: 'THE CASTLE WELL · DOWN THE ROPE' },   // CAMELOT CASTLE (2026-09-18): free-standing in THE BAILEY, the courtyard it always stood in
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: -7.875, face: 180, sub: 'THE CASTLE WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_camelot', part: 'dungeon', wall: 'free', x: 12, z: 8, face: 270, sub: 'THE CASTLE WELL · CLIMB UP', verb: 'CLIMB UP' },   // OPEN WORLD Phase 4: Merlin's undercroft, the well's alcove by the cistern (the kingdom's own underground)
           why: 'the castle well in the courtyard; a siege needs water and this one never ran dry, which the besiegers should have found suspicious',
           note: 'it never ran dry', draft: true },
         /* THE SKY BRIDGE (CAMELOT CASTLE, 2026-09-18): the castle in the sky and the stairway to heaven hang in the same sky — a plain frame on the
@@ -24634,12 +24624,12 @@ const DOOR_HQ = {
           note: 'the same sky', draft: true },
         { id: 'well_skinwalker', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'free', x: -9.4, z: 11.6, face: 90, sub: 'THE ESTATE WELL · DOWN THE ROPE' },   // 2026-09-18: off the bypassed board, into the farmyard
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 7.875, z: 6.125, face: 270, sub: 'THE ESTATE WELL · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'free', x: -3.5, z: -6.0, face: 180, sub: 'THE ESTATE WELL · CLIMB UP', verb: 'CLIMB UP' },   // OPEN WORLD Phase 4: the cave's MOUTH (the estate stands over the cave's west)
           why: 'the well in the yard, boarded over in 1994 by men who did not come back for their tools; the boards are the way',
           note: 'the boards lift', draft: true },
         { id: 'well_gobekli', route: 'undercroft', way: 'well',
           a: { site: 'prebuilt_gobekli', part: 'tell', wall: 'free', x: 30, z: 30, face: 270, sub: 'THE CISTERN · DOWN THE ROPE' },   // THE LEY LINES (2026-09-18): off the bypassed board, free-standing on the tell's east flank
-          b: { site: 'prebuilt_hollow_earth', part: 'shaft', wall: 'free', x: 9.625, z: -6.125, face: 270, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_gobekli', part: 'leylines', wall: 'free', x: -35, z: 18, face: 270, sub: 'THE CISTERN · CLIMB UP', verb: 'CLIMB UP' },   // OPEN WORLD Phase 4: the cistern station off THE TELL'S LINE (a second way down from the flank)
           why: 'the cistern cut into the bedrock under the first temple; the oldest well there is, and the shaft is dressed stone all the way down',
           note: 'the oldest of them', draft: true },
         /* THE SUBWAY (9.3 `train`, 2026-09-15): the building's own platform
@@ -32550,83 +32540,6 @@ const DOOR_HQ = {
            D.U.M.B., Agartha, Hollow Earth's board room) and THE OUBLIETTE
            (the dead end, sunken cells, the back wall that is Room 24601's).
            ══════════════════════════════════════════════════════════════════ */
-        /* ── THE WELL ROOM — the bottom of every well in the world ── */
-        site_prebuilt_hollow_earth_shaft: {
-            label: 'THE CAVE · THE WELL ROOM',
-            sub: 'THE BOTTOM OF EVERY WELL · THREE TIERS · THE GALLERY',
-            kind: 'box', site: 'prebuilt_hollow_earth', part: 'shaft',
-            shell: {
-                w: 24.5, d: 21, h: 8.0,
-                wallH: 8.0, dadoH: 1.1,
-                floor: 'cave_floor', wall: 'cave_wall', dado: 'rocks_dark_fantasy', trim: 'rock_wall_1', ceiling: 'cave_wall',
-                floorColor: 0x6a6258, wallColor: 0x6e675e, dadoColor: 0x5a544c, ceilColor: 0x3e3934,
-                pipes: false,
-                strips: false,
-                lights: [],
-                mood: { light: 0xffc890, ambient: 0.4 },
-                plate: { x: 0, z: -9.5, y: 4.2 },
-                fog: { color: 0x14100b, density: 0.022 },   /* the cave's own haze (2026-09-17): a warm dark past the torchlight */
-                look: HQ_ROOM_LOOKS.cave,
-            },
-            /* THE FIELD (2026-09-17, the terrain rooms): THE NORTH SHELF (a 1.75 m tier
-               under the cellar and garden wells, its ramp at the west end), THE SUMP
-               (a pool waded round its deep heart; the wishing and ranch wells on the
-               floor), THE SOUTH-EAST CRAG (a 3.5 m tier under the castle well and the
-               cistern; the long ramp up its west face) and THE PINNACLE in the
-               south-west corner — a 4.2 m stack the walker cannot climb: the tape on
-               top of it is the door gun's (aim at its lip). The gallery on the east
-               wall at the floor. */
-            terrain: {
-                floor: 'cave_floor', cliff: 'rock_wall_1', path: 'rocks_dark_fantasy',
-                noise: { amp: 0.14, scale: 4.5 }, crag: { depth: 1.7, h: 2.4 },
-                gen: { kind: 'cave', fill: 0.44, seed: 1 },                       // THE FLOOR PLAN (2026-09-17): cellular automata — the rock everywhere between the tiers, not just round the rim
-                features: [
-                    { k: 'hill', x: -6.5, z: 7.5, r: 4.5, h: 0.55 },
-                    { k: 'hill', x: 8.5, z: 3.0, r: 3.5, h: 0.4 },
-                    { k: 'plateau', x: -3.5, z: -6.9, w: 15.0, d: 7.2, h: 1.75 },                 // THE NORTH SHELF
-                    { k: 'ramp', x0: -9.5, z0: 1.0, x1: -9.5, z1: -3.6, w: 2.6, h0: 0, h1: 1.75 },  // its ramp, at the west end
-                    { k: 'plateau', x: 8.9, z: -6.6, w: 6.7, d: 7.4, h: 3.5 },                    // THE CRAG
-                    { k: 'ramp', x0: 5.0, z0: 2.6, x1: 7.4, z1: -3.2, w: 2.4, h0: 0, h1: 3.5 },    // the long ramp up to its south face (a ramp ENDS at a tier's edge, never deep inside it)
-                    { k: 'plateau', x: -9.6, z: 8.1, r: 1.35, h: 4.2, edge: 0.3 },                // THE PINNACLE (the tape's — the door gun reaches it)
-                    { k: 'pool', x: -0.6, z: 3.4, r: 1.25, y: -0.3, depth: 1.9, key: 'deep_water' }, // the sump's heart (never entered)
-                    { k: 'pool', x: -0.6, z: 3.4, r: 3.2, y: -0.3, depth: 0.7 },                   // THE SUMP, waded round it
-                    { k: 'rail', x0: -6.5, z0: -3.45, x1: -1.0, z1: -3.45 },                      // the shelf's rim rail (the park rule's grind)
-                    { k: 'rail', x0: 5.75, z0: -4.2, x1: 5.75, z1: -9.6 },                        // the crag's rail over the floor
-                    { k: 'path', pts: [[-10.0, 0.5], [-4.0, 0.2], [3.5, 2.0], [8.0, 6.0]], w: 1.6 },
-                    { k: 'scatter', key: 'cave_stone', n: 5, seed: 1 },
-                ],
-            },
-            doors: [
-                { id: 'gallery', wall: 'e', z: -0.875, leaf: null,
-                  label: 'THE CAVERN', sub: 'ON INTO THE CAVE',
-                  action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'shaft' },
-                  desc: 'The way on. The floor tilts down and the sound of the wells goes with you further than it should.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'cave_torch',     x: -9.625, z: -7.875 },                            // the torches: one per tier, and the floor's two
-                { key: 'cave_torch',     x: 9.625, z: -8.6 },
-                { key: 'cave_torch',     x: -9.625, z: 4.5 },
-                { key: 'cave_torch',     x: 10.0, z: 8.0 },
-                { key: 'candle_ring',    x: -1.5, z: 7.6, y: 0.0 },                        // somebody's, by the sump, and recent
-                { key: 'concrete_pillar', x: 4.2, z: 7.5 },                                 // the column the water left
-                { key: 'metal_shelving', x: -6.0, z: -1.2, face: 0 },                       // somebody keeps rope down here, and rope keeps
-                { key: 'cardboard_boxes', x: 4.375, z: 8.6, face: 25 },
-                { key: 'floor_stain',    x: -5.6, z: 0.9 },
-                { key: 'paper_sheet',    x: -7.0, z: 1.6, y: 0.01, face: 130 },            // a form, wet through: WELL — WHICH
-            ],
-
-            agents: [],
-            npcSpots: [{ x: -9.625, z: 2.625, face: 90, race: 'reptilian' }],
-            onlineSpots: [],
-            lines: [
-                '“Which one did you come down?” “That one.” “That one is the ranch. You came down the garden.” “How do you know?” “Your shoes.”',
-                '“Six wells.” “Six?” “Six that are dug. There are others.”',
-                '“Does anything come UP?” “Buckets.” “Anything else?” “Buckets, mostly.”',
-                '“The castle’s comes out on top.” “Of course it does.”',
-            ],
-            spawn: { x: 7.875, z: 2.625, face: 270 },
-        },
         /* ── THE CAVERN — the big one: the terrace, the pool and the fall,
              the stream, the river, the shelves, the tier, the lava lake ── */
         site_prebuilt_hollow_earth_gallery: {
@@ -32647,7 +32560,7 @@ const DOOR_HQ = {
                 look: HQ_ROOM_LOOKS.cave,
             },
             /* THE FIELD (2026-09-17, the terrain rooms — 52.5 × 42 m). SW: the floor,
-               the shaft's door on the west wall and the portcullis on the south; THE
+               the cellar well's head at the west end (OPEN WORLD Phase 4) and the portcullis on the south; THE
                TERRACE (1.75 m) with the pool on it and two ramps up; THE STREAM off
                the terrace's foot to the south wall. NW: THE WEST SHELF (3.5 m) up a
                causeway ramp from the terrace, THE HIGH TIER (5.25 m) up one more —
@@ -32702,10 +32615,11 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'shaft', wall: 'w', z: 9.625, leaf: null,
-                  label: 'THE WELL ROOM', sub: 'BACK TO THE WELLS',
-                  action: { room: 'site_prebuilt_hollow_earth_shaft', at: 'gallery' },
-                  desc: 'Back the way the rope let you down. The wells are that way, all six of them, and one of them is yours.' },
+                /* OPEN WORLD Phase 4: the mouth's door FIRST — the floor plan's guarantee carves from the first door to every door the walker cannot reach (it was the well room's, on the floor; from a door on a tier the hot shelf's could be dropped off and never climbed to) */
+                { id: 'mouth', wall: 'e', z: 11.375, leaf: null,
+                  label: 'THE CAVE MOUTH', sub: 'OUT · ROOM 180',
+                  action: { room: 'site_prebuilt_hollow_earth_mouth', at: 'gallery' },
+                  desc: 'Over the plank bridge, on the east bank where the river goes under the wall: daylight, of a kind — the inner sun, which never sets and never quite rises either.' },
                 { id: 'vent', wall: 'n', x: 18.375, y: 3.5, leaf: 'leaf_hell_arch',
                   label: 'THE FISSURE', sub: 'THE HOT SIDE · ROOM 666',
                   action: { room: 'site_prebuilt_hollow_earth_vent', at: 'gallery' },
@@ -32718,10 +32632,6 @@ const DOOR_HQ = {
                   label: 'THE CRYSTAL ADIT', sub: 'THE WARM LIGHT · ROOM 88',
                   action: { room: 'site_prebuilt_hollow_earth_adit', at: 'gallery' },
                   desc: 'Across the stream, on the far floor: a worked adit, squared and swept, with a light at the far end that is not a torch.' },
-                { id: 'mouth', wall: 'e', z: 11.375, leaf: null,
-                  label: 'THE CAVE MOUTH', sub: 'OUT · ROOM 180',
-                  action: { room: 'site_prebuilt_hollow_earth_mouth', at: 'gallery' },
-                  desc: 'Over the plank bridge, on the east bank where the river goes under the wall: daylight, of a kind — the inner sun, which never sets and never quite rises either.' },
                 { id: 'oubliette', wall: 's', x: -21.875, leaf: 'leaf_portcullis', wide: true,
                   label: 'THE OUBLIETTE', sub: 'THE DEAD END · HOLDING',
                   action: { room: 'site_prebuilt_hollow_earth_oubliette', at: 'gallery' },
@@ -32729,7 +32639,8 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'cave_torch',     x: -16.625, z: 11.375 },                           // the floor's torches: by the shaft, by the portcullis, by the adit
+                { key: 'cave_torch',     x: -16.625, z: 11.375 },
+                { key: 'paper_sheet',    x: -20.2, z: 13.4, y: 0.01, face: 130 },          // the well room's form, come down with the cellar well: WELL — WHICH                           // the floor's torches: by the shaft, by the portcullis, by the adit
                 { key: 'cave_torch',     x: -12.25, z: 16.6 },
                 { key: 'cave_torch',     x: 17.5, z: 17.5 },
                 { key: 'cave_torch',     x: -16.625, z: 0.875 },                            // the terrace
@@ -34272,7 +34183,7 @@ const DOOR_HQ = {
                     { k: 'tree', x: 18.0, z: 11.2, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
                     { k: 'tree', x: 5.0, z: 12.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.1, z: -8.0, kind: 'tree', h: 7.0, r: 0.8 },
                     { k: 'rail', x0: 9.0, z0: -16.5, x1: 4.0, z1: -16.5 },                                    // a fence rail by the crag (the park rule's grind)
-                    { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-8, -8], [-7.9, -17]], w: 1.8 },        // the path in, over the knoll to the trail
+                    { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-8, -8], [-14, -17]], w: 1.8 },        // the path in, over the knoll to the trail
                     { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
                     { k: 'path', pts: [[-4, 0], [-14, -2], [-22, -4.4]], w: 1.6 },                            // to the pasture
                     { k: 'path', pts: [[-1, 8], [-10, 10], [-22, 9.6]], w: 1.6 },                             // to the ritual ground
@@ -34288,7 +34199,7 @@ const DOOR_HQ = {
                   label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
                   action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
                   desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
-                { id: 'trail', wall: 'n', x: -7.875, leaf: null,
+                { id: 'trail', wall: 'n', x: -14, leaf: null,   // OPEN WORLD Phase 4: −7.875 → −14, so the trail and the stair stand side by side north of the clearing on one ground
                   label: 'THE MOUNTAIN TRAIL', sub: 'UP · TOWARD THE MOUNTAIN',
                   action: { room: 'site_prebuilt_fairy_forest_trail', at: 'clearing' },
                   desc: 'The trail climbs. The mountain is the white thing over the trees to the north-west, and it has been there the whole time.' },
@@ -36721,7 +36632,7 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'dungeon', cliff: 'bricks_2', path: 'dungeon_2',
                 noise: { amp: 0.1, scale: 4 }, crag: false,
-                gen: { kind: 'cave', fill: 0.44, seed: 333, wallH: 6 },                                                     // THE FLOOR PLAN: brick masses between the ways, to the ceiling
+                gen: { kind: 'cave', fill: 0.44, seed: 333, wallH: 6, open: [{ x: 11, z: 8, r: 3.5 }] },   // (OPEN WORLD Phase 4: the castle well's alcove by the cistern)                                                     // THE FLOOR PLAN: brick masses between the ways, to the ceiling
                 features: [
                     { k: 'pool', x: 0, z: 6, r: 4, y: -0.3, depth: 0.9 },                                                     // THE CISTERN (waded)
                     { k: 'wall', x0: -4.5, z0: 1, x1: 4.5, z1: 1, h: 0.45, t: 0.4, key: 'bricks_2' },                        // its kerb (the grind)
@@ -37812,7 +37723,8 @@ const DOOR_HQ = {
                                { id: 'tell', pts: [[-60, -73], [-30, 73]], w: 2.4 },             // THE TELL'S LINE: Göbekli Tepe → Giza
                                { id: 'babel', pts: [[50, -73], [-30, 73]], w: 2.4 },             // BABEL'S LINE: the tower → Giza
                                { id: 'short', pts: [[-98, 30], [20, -73]], w: 2.0 }],            // THE SHORT LINE: from the west, into the rock
-                       chambers: [{ id: 'nexus', x: -50, z: -25, r: 8.5 }, { id: 'hall', x: 13, z: -6, r: 7 }] },
+                       chambers: [{ id: 'nexus', x: -50, z: -25, r: 8.5 }, { id: 'hall', x: 13, z: -6, r: 7 },
+                                  { id: 'cistern', x: -36, z: 18, r: 5 }] },   // OPEN WORLD Phase 4: THE CISTERN STATION on the tell's line — Göbekli's well comes down here
                 features: [
                     { k: 'dip', x: -50, z: -25, r: 8.5, h: 0.7, open: true },                                                  // THE NEXUS, sunk (the bowl)
                     { k: 'hill', x: 50, z: -50, r: 16, h: 0.9, open: true },                                                   // the line climbs toward Babel
@@ -38358,7 +38270,8 @@ const DOOR_HQ = {
                                { id: 'spur_works', pts: [[-52, -16], [-60, -16]], w: 5 },                                                                       // the track on to the Works' platform (links.tunnels_works)
                                { id: 'spur_platform', pts: [[52, -14], [60, -14]], w: 5 },                                                                      // … and to Downtown's platform (links.tunnels_platform)
                                { id: 'spur_hatch', pts: [[24, -30], [24, -46]], w: 4 }],                                                                        // the maintenance stair up to the sewers
-                       rooms: [{ id: 'depot', x: 0, z: -38, w: 32, d: 14 }, { id: 'station', x: 0, z: 32, w: 26, d: 12 }, { id: 'crossing', x: 0, z: 0, w: 12, d: 12 }] },
+                       rooms: [{ id: 'depot', x: 0, z: -38, w: 32, d: 14 }, { id: 'station', x: 0, z: 32, w: 26, d: 12 }, { id: 'crossing', x: 0, z: 0, w: 12, d: 12 },
+                               { id: 'cistern', x: -57.5, z: 6, w: 6, d: 11 }] },   // OPEN WORLD Phase 4: THE CISTERN off the west leg — the HQ garden's well comes down here
                 features: [
                     /* THE RAILS: low walls the walker steps over and the rider grinds — the four straights of the loop and the crossover's two legs */
                     { k: 'wall', x0: -44, z0: -30.75, x1: 44, z1: -30.75, h: 0.14, t: 0.12, key: 'metal' }, { k: 'wall', x0: -44, z0: -29.25, x1: 44, z1: -29.25, h: 0.14, t: 0.12, key: 'metal' },
@@ -41604,7 +41517,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city', 'medwing'], buildDelayMs: 600, lampPickMs: 500,
+    zones: ['city', 'medwing', 'woods', 'basement'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4 (2026-09-27): THE WOODS (trail joins) + THE BASEMENT (door joins)
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -41851,31 +41764,52 @@ const HQ_WORLD = {
                 { a: 'olympus_foothills', b: 'olympus_switchbacks', side: 'n', span: [-5, 5], y: 25, kind: 'trail' },
                 { a: 'olympus_switchbacks', b: 'site_prebuilt_olympus_summit', side: 'n', span: [-5, 5], y: 60, kind: 'trail' },
             ] },
-        /* Z5 — THE WOODS (west): the haunted grounds off the forecourt's trail (the house on them), THE WOODS as ONE
-           field of clearings (planned, §8.5: it absorbs the six open woods rooms; Dead Man's cave stays a door, down),
-           Shasta's slopes at the old trail's top (fork 7), the Grove at the redwoods' west, the estate south of the
-           pasture with the lodge off its west side. */
-        woods: { label: 'THE WOODS', ground: 'surface', hub: 'woods_field', sky: 'site_prebuilt_fairy_forest_clearing', clock: true,
+        /* Z5 — THE WOODS (west). OPEN WORLD Phase 4 (2026-09-27): ON THE STAGE, as JOINED PARTS — the clearing, the
+           trail, the stair, the redwoods, the pasture, the Grove, the estate's fields and Shasta's slopes stand where their
+           own doors meet (each join is a TRAIL: a lane through the treeline, the door that stood in it gone, the two
+           grounds stitched to the door's sill), so the woods are one walk with no card between the clearings. The
+           deviation from §8.5 (one compiled field of 160 × 140 with the six rooms as aliases): the rooms stay whole — their
+           ids, finds, tapes, natives, ledgers and saves don't move — as the medical wing did in Phase 2. The frames come
+           from the doors (the clearing a quarter turn, so its north runs west): the trail and the stair west of it (Shasta
+           beyond the trail, its old frame-only door the trailhead), the redwoods north with the Grove past them, the
+           estate's corn off the Grove's north gate, the pasture south. The ritual ground stays behind its draught (a
+           secret door is never a join: the protractor finds it) — it stands in the thicket off the clearing's south-west
+           corner and rides the zone's clock. Dead Man's cave (down), the lodge and the house stay doors. `y` lifts a part
+           so its door's sill meets the lane (the Grove's gate is on a 2.2 m bank; Shasta's trailhead 0.9 m above the
+           trail's top). */
+        woods: { label: 'THE WOODS', ground: 'surface', hub: 'site_prebuilt_fairy_forest_clearing', sky: 'site_prebuilt_fairy_forest_clearing', clock: true,
             parts: {
-                site_prebuilt_haunted_grounds:       { x: -81, z: 0, y: 0, rot: 0 },
-                site_prebuilt_haunted_hall:          { x: -81, z: -8, y: 0, rot: 0, interior: true, on: 'site_prebuilt_haunted_grounds' },
-                /* the six rooms' clearings at the old rooms' bearings from the clearing (§8.5), in the field's own metres */
-                woods_field:                         { x: -192, z: 0, y: 0, rot: 0, planned: { w: 160, d: 140, h: 9, family: "A'", label: 'THE WOODS' },
-                                                       absorbs: { site_prebuilt_fairy_forest_clearing: { x: 0, z: 0 }, site_prebuilt_fairy_forest_trail: { x: -45, z: -45 },
-                                                                  site_prebuilt_fairy_forest_redwoods: { x: -62, z: 0 }, site_prebuilt_fairy_forest_pasture: { x: -35, z: 45 },
-                                                                  site_prebuilt_fairy_forest_stair: { x: 50, z: 5 }, site_prebuilt_fairy_forest_ritual: { x: 45, z: -45 } } },
-                site_prebuilt_shasta_slopes:         { x: -230, z: -100, y: 0, rot: 0 },
-                site_prebuilt_bohemian_grove_grove:  { x: -305, z: 0, y: 0, rot: 0 },
-                site_prebuilt_skinwalker_fields:     { x: -230, z: 93, y: 0, rot: 0 },
-                site_prebuilt_lodge_halls:           { x: -287, z: 93, y: 0, rot: 0, interior: true },
+                site_prebuilt_fairy_forest_clearing:  { x: -192, z: 0, y: 0, rot: 1,
+                                                        absorbs: { site_prebuilt_fairy_forest_ritual: { x: -35, z: 30 } } },   // not a field: the ritual stands BESIDE the clearing, behind its draught, unstaged
+                site_prebuilt_fairy_forest_trail:     { x: -227, z: 13.125, y: 0.05, rot: 1, rise: 3.5 },
+                site_prebuilt_fairy_forest_stair:     { x: -221.75, z: -10.5, y: 0.05, rot: 1, rise: 3.5 },
+                site_prebuilt_fairy_forest_redwoods:  { x: -199, z: -38.5, y: -0.05, rot: 1 },
+                site_prebuilt_fairy_forest_pasture:   { x: -195.5, z: 38.5, y: 0.05, rot: 1 },
+                site_prebuilt_bohemian_grove_grove:   { x: -199.875, z: -85.5, y: -2.2, rot: 1, rise: 2.5 },
+                site_prebuilt_skinwalker_fields:      { x: -251.875, z: -88.5, y: -2.2, rot: 3 },
+                site_prebuilt_shasta_slopes:          { x: -272.75, z: 24, y: -0.75, rot: 3, rise: 5 },
             },
             joins: [
-                { a: 'site_prebuilt_haunted_grounds', b: 'woods_field', side: 'w', span: [-6, 6], kind: 'trail' },
+                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_trail',    side: 'n', span: [-17, -11],       y: 0.075, kind: 'trail' },
+                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_stair',    side: 'n', span: [6.625, 12.625], y: 0.05,  kind: 'trail', stitchM: 3 },
+                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_redwoods', side: 'e', span: [-10.875, -4.875], y: -0.125, kind: 'trail' },
+                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_pasture',  side: 'w', span: [-7.375, -1.375], y: 0.05,  kind: 'trail' },
+                { a: 'site_prebuilt_fairy_forest_redwoods', b: 'site_prebuilt_bohemian_grove_grove',  side: 'e', span: [-3.875, 2.125],  y: -0.05,  kind: 'trail' },
+                { a: 'site_prebuilt_fairy_forest_trail',    b: 'site_prebuilt_shasta_slopes',         side: 'n', span: [-3.875, 2.125],  y: 3.6,   kind: 'trail' },
+                { a: 'site_prebuilt_bohemian_grove_grove',  b: 'site_prebuilt_skinwalker_fields',     side: 'n', span: [-8, -2],         y: -2.25, kind: 'trail' },
+            ] },
+        /* Z5a — THE HAUNTED GROUNDS (Phase 4: its own zone, off the stage for now): the house on its lawn (a door join), the
+           forecourt's trail in from the east and the old path west through the trees to the clearing (planned: 60 m of
+           woods between the gate and the clearing's back — the walk the forecourt's phase builds). */
+        haunted: { label: 'THE HAUNTED GROUNDS', ground: 'surface', hub: 'site_prebuilt_haunted_grounds', sky: 'site_prebuilt_haunted_grounds', clock: true,
+            parts: {
+                site_prebuilt_haunted_grounds: { x: -81, z: 0, y: 0, rot: 0 },
+                site_prebuilt_haunted_hall:    { x: -81, z: -8, y: 0, rot: 0, interior: true, on: 'site_prebuilt_haunted_grounds' },
+                woods_trailhead:               { x: -142.375, z: 0, y: 0, rot: 0, planned: { w: 60.75, d: 14, h: 9, family: "A'", label: 'THE WOODS · THE OLD PATH' } },
+            },
+            joins: [
                 { a: 'site_prebuilt_haunted_grounds', b: 'site_prebuilt_haunted_hall', kind: 'door' },
-                { a: 'woods_field', b: 'site_prebuilt_shasta_slopes', side: 'n', span: [-45, -35], kind: 'trail' },
-                { a: 'woods_field', b: 'site_prebuilt_bohemian_grove_grove', side: 'w', span: [-6, 6], kind: 'trail' },
-                { a: 'woods_field', b: 'site_prebuilt_skinwalker_fields', side: 's', span: [-40, -30], kind: 'trail' },
-                { a: 'site_prebuilt_skinwalker_fields', b: 'site_prebuilt_lodge_halls', kind: 'door' },
+                { a: 'site_prebuilt_haunted_grounds', b: 'woods_trailhead', side: 'w', span: [-6, 6], kind: 'trail' },
             ] },
         /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
            Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
@@ -41964,19 +41898,53 @@ const HQ_WORLD = {
                 { a: 'medwing', b: 'interrogation', kind: 'door', door: 'interrogation', bDoor: 'egress' },
                 { a: 'medical', b: 'padded',        kind: 'door', door: 'padded',        bDoor: 'egress' },
             ] },
+        /* Z11 — THE BASEMENT (Phase 4, 2026-09-27, §8.4's basement merge built as the medical wing was: DOOR JOINS, the
+           rooms kept whole). The service lobby at the foot of the lift, the kitchen and its cold room north, the laundry and
+           the loading dock east, and west the long corridors — the boiler room off A, the server room off B, the room at the
+           end past B — stand where their doors meet, back to back through one wall: every leaf swings as you come and you
+           walk on, no card. It lies 4 m under the ground floor (the wing's rooms stand over its west end). What stays a
+           door: the lift and the stairs up, the kitchen's hatch to the cafeteria, the dock's ramp to the garage, the server
+           room's stair to IT, and every SECRET door (the cold room's back wall into B, the room at the end's two draughts):
+           a draught is the protractor's to find, never a join (and the cold room ⇄ B pair would close a loop the frames
+           cannot). The crawlspace is under the third floor, not here. */
+        basement: { label: 'THE BASEMENT', ground: 'hq', hub: 'services', sky: null, clock: false,
+            parts: {
+                services:   { x: 0,     z: 0,    y: -4, rot: 0 },
+                kitchen:    { x: -2.2,  z: -6.2, y: -4, rot: 0 },
+                coldroom:   { x: 5.0,   z: -7.7, y: -4, rot: 0 },
+                laundry:    { x: 8.7,   z: 0,    y: -4, rot: 0 },
+                dock:       { x: 15.9,  z: 0,    y: -4, rot: 1 },
+                corridor_a: { x: -15.7, z: 1.2,  y: -4, rot: 1 },
+                boiler:     { x: -13.7, z: -3.9, y: -4, rot: 1 },
+                corridor_b: { x: -41.9, z: 1.2,  y: -4, rot: 1 },
+                server:     { x: -47.9, z: -4.9, y: -4, rot: 1 },
+                deadend:    { x: -58.6, z: 1.2,  y: -4, rot: 1 },
+            },
+            joins: [
+                { a: 'services',   b: 'kitchen',    kind: 'door', door: 'kitchen',    bDoor: 'lobby' },
+                { a: 'services',   b: 'laundry',    kind: 'door', door: 'laundry',    bDoor: 'lobby' },
+                { a: 'laundry',    b: 'dock',       kind: 'door', door: 'dock',       bDoor: 'laundry' },
+                { a: 'kitchen',    b: 'coldroom',   kind: 'door', door: 'coldroom',   bDoor: 'kitchen' },
+                { a: 'services',   b: 'corridor_a', kind: 'door', door: 'corridor',   bDoor: 'lobby' },
+                { a: 'corridor_a', b: 'boiler',     kind: 'door', door: 'boiler',     bDoor: 'corridor' },
+                { a: 'corridor_a', b: 'corridor_b', kind: 'door', door: 'corridor_b', bDoor: 'corridor_a' },
+                { a: 'corridor_b', b: 'server',     kind: 'door', door: 'server',     bDoor: 'corridor' },
+                { a: 'corridor_b', b: 'deadend',    kind: 'door', door: 'deadend',    bDoor: 'corridor' },
+            ] },
     },
     /* THE BORDERS — joins between two zones of one ground (the forecourt's three roads, the docks' quay, the highway's
        two ends, the kingdom's gate, the mountain's trailhead). */
     borders: [
         { a: 'hq_grounds', b: 'site_prebuilt_downtown_streets', side: 'e', span: [2, 14], kind: 'road' },
         { a: 'hq_grounds', b: 'site_prebuilt_haunted_grounds', side: 'w', span: [-6, 6], kind: 'trail' },
+        { a: 'woods_trailhead', b: 'site_prebuilt_fairy_forest_clearing', side: 'w', span: [-6, 6], kind: 'trail' },   // Phase 4: the old path's west end at the clearing's back (its east side)
         { a: 'hq_grounds', b: 'crown_road', side: 'n', span: [-6, 6], kind: 'road' },
         { a: 'site_prebuilt_downtown_streets', b: 'harbour_sea', side: 's', span: [-100, 100], kind: 'shore' },
         { a: 'site_prebuilt_strip_streets', b: 'highway_north', side: 's', span: [-8, 8], kind: 'road' },
         { a: 'highway_south', b: 'area51_gate', side: 's', span: [-8, 8], kind: 'road' },
         { a: 'site_prebuilt_camelot_ward', b: 'olympus_foothills', side: 'n', span: [-6, 6], kind: 'trail' },
     ],
-    retires: ['site_prebuilt_hollow_earth_shaft'],   // THE WELL ROOM (§8.3): deleted when the wells are re-pointed (Phase 4)
+    retires: [],   // THE WELL ROOM (site_prebuilt_hollow_earth_shaft, §8.3) was DELETED in Phase 4 (2026-09-27): the five wells land in five different rooms
 };
 DOOR_HQ.world = HQ_WORLD;
 
@@ -42173,14 +42141,16 @@ function hqStageNeighbours(roomId) {
         if (mine.door) { sp.door = mine.door; sp.pad = mine.pad; sp.depth = mine.depth; }
         nb.spans.push(sp);
     });
-    /* the link doors a span replaces: a link between these two rooms whose door on THIS room stands on the joined side
-       inside the span (Downtown's cross street west ⇄ the Strip's boulevard; the avenue north ⇄ the players' tunnel) */
+    /* the doors a span replaces: a door between these two rooms — a link's (Downtown's cross street west ⇄ the Strip's
+       boulevard; the avenue north ⇄ the players' tunnel) or, since Phase 4, a room's own (the clearing's trail mouth ⇄ the
+       trail's) — whose end on THIS room stands on the joined side inside the span. A secret door (a draught the protractor
+       finds), a hidden one or a portal is never replaced: it stays the door it is. */
     out.forEach(nb => {
         (R.doors || []).forEach(d => {
-            if (!d || !d.link || !d.action || d.action.room !== nb.id) return;
+            if (!d || !d.action || d.action.room !== nb.id || d.secret || d.hidden || d.portal) return;
             const t = (d.wall === 'n' || d.wall === 's') ? (d.x || 0) : (d.wall === 'e' || d.wall === 'w') ? (d.z || 0) : null;
             if (t == null) return;
-            if (nb.spans.some(sp => sp.side === d.wall && t >= sp.t0 - 0.01 && t <= sp.t1 + 0.01)) nb.links.push(d.id);
+            if (nb.spans.some(sp => !sp.door && sp.side === d.wall && t >= sp.t0 - 0.01 && t <= sp.t1 + 0.01)) nb.links.push(d.id);   // a door join's doorway (sp.door) keeps its door: it swings
         });
     });
     return out;
@@ -43945,7 +43915,7 @@ DOOR_HQ.lightShafts = {
     garage: [ { x: 0, z: 0, top: 12.2, h: 12.4, w: 4.4, tilt: 0, dir: 0, color: 0xfff0d0, intensity: 0.3 } ],   // the skylight over THE CORE
     observatorium: [ { x: 0, z: -1.6, top: 5.5, h: 5.6, w: 1.6, tilt: 22, dir: 180, color: 0xbfd8ff, intensity: 0.32 } ],   // the dome slit
     dreamlab: [ { x: 0, z: 0, top: 3.1, h: 3.2, w: 2.0, tilt: 8, dir: 0, color: 0xd0c0ff, intensity: 0.28 } ],
-    site_prebuilt_hollow_earth_shaft: [ { x: 0, z: -3, top: 7.9, h: 8, w: 3.0, tilt: 5, dir: 0, color: 0xc8e0ff, intensity: 0.32 } ],   // the daylight down the well shaft
+    site_prebuilt_hollow_earth_gallery: [ { x: -24.5, z: 10.5, top: 10.9, h: 11, w: 1.6, tilt: 3, dir: 90, color: 0xc8e0ff, intensity: 0.26 } ],   // the daylight down the cellar well (OPEN WORLD Phase 4: the well room's beam, moved with the well)
     site_prebuilt_downtown_mall: [   // the atrium's skylights
         { x: 0, z: 0, top: 11.8, h: 12, w: 5.0, tilt: 6, dir: 0, color: 0xf4f0e8, intensity: 0.3 }, { x: -22, z: 0, top: 11.8, h: 12, w: 4.0, tilt: 6, dir: 0, color: 0xf4f0e8, intensity: 0.26 }, { x: 22, z: 0, top: 11.8, h: 12, w: 4.0, tilt: 6, dir: 0, color: 0xf4f0e8, intensity: 0.26 },
     ],
@@ -44991,7 +44961,12 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     }
     /* the hand rows and the forced set */
     /* forced wins inside the shell (a door's lane runs to the wall); past the wall everything is solid; a 0.6 m rim band is solid unless forced */
-    each((k, px, pz) => { if (!inShell(px, pz, 0)) mask[k] = 0; else if (forced[k]) mask[k] = 1; else if (!inShell(px, pz, 0.6) || inSolid(px, pz)) mask[k] = 0; });
+    /* THE STITCHED MOUTH (OPEN WORLD Phase 4): past the wall is open only in a joined span's mouth (hqTerrainCompile passes
+       `gen.mouths`: the band the next part's ground continues from) */
+    const mouths = Array.isArray(gen.mouths) ? gen.mouths : [];
+    const inMouth = (px, pz) => mouths.some(m => { const dx = m.x1 - m.x0, dz = m.z1 - m.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
+        const a = (px - m.x0) * ux + (pz - m.z0) * uz, c = -(px - m.x0) * uz + (pz - m.z0) * ux; return a >= 0 && a <= L && Math.abs(c) <= m.w / 2; });
+    each((k, px, pz) => { if (!inShell(px, pz, 0)) mask[k] = (mouths.length && inMouth(px, pz)) ? 1 : 0; else if (forced[k]) mask[k] = 1; else if (!inShell(px, pz, 0.6) || inSolid(px, pz)) mask[k] = 0; });
     /* ── THE GUARANTEE: carve a corridor to every door the walker cannot reach ── */
     const node = (px, pz) => [Math.round((px - x0) / res), Math.round((pz - z0) / res)];
     const padNodes = doorPads.map(p => node(p.x, p.z));
@@ -45737,7 +45712,7 @@ function hqTerrainStitchRows(roomId) {
                              return lerp((j.side === 'n' || j.side === 's') ? a.x : a.z) - py; };
             }
         } else { const y = J.y - py; yAt = () => y; }
-        out.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], m, yAt, other: j.a === roomId ? j.b : j.a });
+        out.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], m: (j.stitchM > 0) ? j.stitchM : m, yAt, other: j.a === roomId ? j.b : j.a });   // a join's own `stitchM` (Phase 4: the stair's flight starts 4.5 m in)
     });
     return out;
 }
@@ -45913,7 +45888,18 @@ function hqTerrainCompile(room, roomId) {
     info.shops = Array.isArray(T.shops) ? T.shops.map(r => Object.assign({}, r)) : [];   // THE SHOPFRONTS (THE MALL, THE THIRD PASS, 2026-09-17): drawn by three-renderer.js _hqBuildShopfronts
     info.climbs = hqTerrainClimbs(info, climbRows);   // THE CLIMB (2026-09-19): the edges exist BEFORE the plan's guarantee runs (a ladder out of a pit is the return; no rescue ramp is cut for it)
     info.bridges = hqTerrainBridges(info, bridges);   // THE BRIDGE LAYER: the plan's guarantee walks the bridges too
-    if (T.gen) { try { _hqTGenerate(info, room, roomId, T.gen, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
+    /* THE STITCHED MOUTH (OPEN WORLD Phase 4): a floor plan's rim is solid past the shell (the thicket's bank, 1.4–1.8 m in the
+       woods); along a joined span the plan is told the edge is a corridor mouth — open from 4 m inside to past the field's end
+       — so the two parts' grounds meet level at the line (the stitch's target), never over a bank */
+    let genUse = T.gen;
+    if (T.gen && T.gen.kind !== 'city' && stitch.length) {   // a city plan's streets already run out through its road joins (Phase 1's stitch)
+        const hw = S.w / 2, hd = S.d / 2, inD = 4, outD = roam + 2;
+        const extra = stitch.map(st => { const tc = (st.t0 + st.t1) / 2, w = Math.max(2, st.t1 - st.t0);
+            return st.side === 'n' ? { x0: tc, z0: -hd + inD, x1: tc, z1: -hd - outD, w } : st.side === 's' ? { x0: tc, z0: hd - inD, x1: tc, z1: hd + outD, w }
+                 : st.side === 'e' ? { x0: hw - inD, z0: tc, x1: hw + outD, z1: tc, w } : { x0: -hw + inD, z0: tc, x1: -hw - outD, z1: tc, w }; });
+        genUse = Object.assign({}, T.gen, { open: (T.gen.open || []).concat(extra), mouths: extra });
+    }
+    if (T.gen) { try { _hqTGenerate(info, room, roomId, genUse, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     else {
         /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps */
         try { const pn = doorPads.map(p => [Math.round((p.x - x0) / res), Math.round((p.z - z0) / res)]); info.rescues = _hqTReturnGuarantee(info, pn, null, null, Math.ceil(HQ_TERRAIN_GEN.corridorW / 2 / res), null).rescues; }
@@ -46258,7 +46244,13 @@ function hqTerrainCam(info, x, z, y) {
 function hqTerrainDoorY(room, door) {
     if (!room || !room.terrain || !door) return 0;
     let info = room._terrainInfo;
-    if (!info) { info = hqTerrainCompile(room, room.id || null); Object.defineProperty(room, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true }); }
+    if (!info) {
+        /* OPEN WORLD Phase 4: the room's own id, so the compile is the same one hqTerrainInfo makes (its seed, its stitch rows) —
+           a room row carries no `id`, and a compile keyed on its label stitched nothing and seeded another floor plan */
+        let rid = room.id || null;
+        if (!rid) { const RR = DOOR_HQ.rooms || {}; for (const k in RR) if (RR[k] === room) { rid = k; break; } }
+        info = hqTerrainCompile(room, rid); Object.defineProperty(room, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true });
+    }
     const p = info.pads.find(q => q.door === door || (q.door.id === door.id && q.door.wall === door.wall));
     if (p) {
         /* THE DEEP (2026-09-18): a way / a door whose pad lies under an OPEN sea deeper than a wade has its sill where the
@@ -46393,7 +46385,7 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_mars_cydonia: [['ROVER FEED 07', 'The rover turns to look at something behind it. The something waves.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
 
 
-    site_prebuilt_hollow_earth_innersun: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence']],   // THE UNDERWORLD (2026-09-18): THE WELL went to the old workings   // THE AREAS (2026-09-18): off the bypassed board
+    site_prebuilt_hollow_earth_innersun: [['THE INNER SUN', 'A light under the ground. It has a horizon.', 'evidence'], ['SIX ROPES', 'Six wells, six ropes, six different holes. One rope is climbing.', 'evidence']],   // OPEN WORLD Phase 4: SIX ROPES came down with the well room (its old id is a legacy id, hqFindLegacyId)   // THE UNDERWORLD (2026-09-18): THE WELL went to the old workings   // THE AREAS (2026-09-18): off the bypassed board
 
     site_prebuilt_moon_mare: [['THE LANDER', 'A footprint beside the lander that was not there in the previous frame.', 'evidence']],   // D.U.M.B. (2026-09-17): its second tape went under the base   // THE AREAS (2026-09-18): off the bypassed board
 
@@ -46416,7 +46408,6 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_haunted_attic:    [['THE TRUNK', 'A trunk of photographs. Every face has been replaced with yours.', 'parents']],
     site_prebuilt_haunted_nursery:  [['THE FIFTH BEDROOM', 'A cot, filmed from above, for six hours. The tag on the rail is your employee number. At 03:33 the blanket rises and falls at your pace.', 'parents']],   // THE THREE ROOMS (2026-09-21): the Strip's THE CHAPEL, re-homed
     site_prebuilt_haunted_cellar:   [['THE WELL, FROM BELOW', 'The camera lowered on the rope. Something at the bottom takes it.', 'evidence']],
-    site_prebuilt_hollow_earth_shaft:     [['SIX ROPES', 'Six wells, six ropes. One rope is climbing.', 'evidence']],
     site_prebuilt_hollow_earth_gallery:   [['THE FALL', 'The waterfall at the ford. The water falls upward at 0:05.', 'evidence']],
     site_prebuilt_hollow_earth_vent:      [['THE HEAT', 'Lava through a fissure. A hand-print cooling on the obsidian.', 'evidence']],
     site_prebuilt_hollow_earth_blast:     [['LEVEL −6', 'A stencil on the door: LEVEL −6. The building has no level −6.', 'facility']],
@@ -46528,7 +46519,10 @@ function hqTapeLegacyId(id) {
     const t = DOOR_TAPES[parseInt(m[1], 10) - 1];
     return t ? t.id : id;
 }
+/* a find that MOVED with its room (OPEN WORLD Phase 4: the well room was deleted; its tape is innersun's second) */
+const HQ_FIND_MOVED = { 'tape:site_prebuilt_hollow_earth_shaft#0': 'tape:site_prebuilt_hollow_earth_innersun#1' };
 function hqFindLegacyId(id) {
+    if (HQ_FIND_MOVED[id]) return HQ_FIND_MOVED[id];
     const m = /^tape:(T\d{3})$/.exec(String(id || ''));
     return m ? 'tape:' + hqTapeLegacyId(m[1]) : id;
 }
@@ -46842,7 +46836,6 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_downtown_subway: { tape: { x: 3.2, z: -13.2 }, pay: { x: 0.6, z: -13.4 } },
     /* THE TERRAIN ROOMS (2026-09-17, the user: "difficult to get to / hard to see areas for the VHS tapes"): the tapes on the
        pinnacles no walk reaches — the door gun's (hqTerrainFindSpot reads the ground and marks them `hard`) */
-    site_prebuilt_hollow_earth_shaft:   { tape: { x: -9.6, z: 8.1 } },      // THE PINNACLE in the well room's south-west corner
     site_prebuilt_hollow_earth_gallery: { tape: { x: 4.0, z: -3.0 } },      // THE NEEDLE mid-cavern
     site_prebuilt_hollow_earth_adit:    { pay: { x: -5.3, z: 7.0 } },       // the envelope on THE CRYSTAL LEDGE
     site_prebuilt_hollow_earth_mouth:   { tape: { x: -6.5, z: 6.5 } },      // THE SHELF in the mouth's south corner

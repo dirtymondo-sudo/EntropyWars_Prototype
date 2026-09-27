@@ -855,7 +855,9 @@ Nothing here is a service worker; nothing changes what the player sees except fe
 | Göbekli's east flank | THE WELL ROOM | the LEY TUNNEL's cistern station (a new chamber off the tell's line) | the tell already opens on the ley; a second way in from the flank |
 | the Vatican's | the catacombs | unchanged | already right |
 
-THE WELL ROOM is deleted (its ten props go to the gallery's west end; its register number retires).
+**DONE in Phase 4 (§12):** as the table says, with the details: Camelot's bottom is an open alcove in the
+dungeon under the bailey, the estate's well is the skinwalker estate's, Göbekli's cistern is a ley-line
+chamber, the garden's a cistern room on the tunnels. THE WELL ROOM is deleted (its ten props go to the gallery's west end; its register number retires).
 hq-cave.test.js's "every well drops into ONE cave" pin becomes "every well drops into a DIFFERENT
 chamber, none into a room whose only job is wells"; hq-world.test.js's well seams re-pin to the table.
 
@@ -877,7 +879,13 @@ chamber, none into a room whose only job is wells"; hq-world.test.js's well seam
 | the cavern's vent / adit / mouth | absorbed into THE UNDER field as chambers (§4.5); their doors out stay doors |
 | the ley tunnel, the running tunnels | KEPT: corridors are their families' point; the tunnels gain the garden's well bottom |
 
+**Phase 4 (§12):** THE WELL ROOM deleted; the basement JOINED by doors on the stage (zone `basement`), not
+merged; the woods' stair and the cavern chambers stay parts; the 38 board rooms KEPT (a player never walks
+them; §12 says why).
+
 ### 8.5 THE WOODS as one field
+
+**Phase 4 built this as JOINED PARTS instead** (zone `woods`, §12): the same walk with no card, every id kept.
 
 Six open rooms (the clearing 49 × 38.5, the trail, the redwoods, the pasture, the stair, the ritual;
 Dead Man's cave stays a door: down) become ONE `rooms` plan 160 × 140: `gen.rooms` authored clearings at
@@ -957,7 +965,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 1 | **THE STAGE on THE CITY**: one scene per zone, parts as groups with frames, `_hqSurface` by part, the crossing swap, the ring (built / warm / far), the sliced build, the terrain tiles, the far shells, the far plane and the dome, the lamp budget, the disposal, the stash of the stage for a fight — proven on Downtown ⇄ the stadium ⇄ the Strip with `road` joins replacing the three gantry loads; THE FORECOURT part built (family E) with its road join to Downtown so the city is reached on foot from the front door (fork 1) | three-renderer.js, map.js, data.js | `hq-stage.test.js` (vm: two parts, the transforms, the crossing, the ring, the lamp budget, the tiles' count); `stadium-garage.test.js` keeps its pins; the offline HQ probe's screenshots from the join looking both ways |
 | 2 | **THE JOINS + THE MERGE**: `hqShellSideOpen`, the stitch profile in the compiler, the door join (`inner`), `hqRoomResolve` aliases; THE MEDICAL WING merged; the mall's street doors as a door join (the mall's rebuild §8.1 may land before or after — the join works on the old mall); the road/trail/shore/wall join dresses | data.js, three-renderer.js, map.js | `hq-joins.test.js` (the stitch: two parts compiled to one profile agree within `joinTol`; a swinging door blocks nothing open, everything closed; aliases resolve every ledger key); `hq-suites.test.js` re-pinned for the wing — **DONE 2026-09-26 with deviations (§12): the wing is DOOR JOINS on the stage, not a merge (no aliases needed); the mall's join waits for its lot; the join dresses beyond the road are the later zones'. Plus THE FILE TRACKER (fork 5)** |
 | 3 | **THE SKY + THE CLOCK**: the zone sky, `hqWorldSun`, the dome's `sunDir` uniform, the lamps' dusk, `sky.lock`, the clock's hold in pause/battle, the variants on the world hour, the fight at the room's hour; the `tower`/`gate`/`mountain` landmark kinds | data.js, three-renderer.js, map.js | `hq-clock.test.js` (the hour's continuity across a save, the sun at noon/midnight, a locked part's lamps); `day-sky.test.js` re-pinned — **DONE 2026-09-26, §12** (day-sky unchanged: its pins still hold) |
-| 4 | **THE WEST: THE WOODS as one field + the haunted grounds + the estate + the Grove joined; THE WELLS re-pointed; THE WELL ROOM and the board rooms deleted; the basement merge** | data.js, three-renderer.js | `hq-woods.test.js` rewritten (one field, six aliases, every old find/tape/native present); `hq-cave.test.js` / `hq-world.test.js` re-pinned to §8.3; `hq-floors.test.js` for the basement |
+| 4 | **THE WEST: THE WOODS as one field + the haunted grounds + the estate + the Grove joined; THE WELLS re-pointed; THE WELL ROOM and the board rooms deleted; the basement merge** | data.js, three-renderer.js | `hq-woods.test.js` rewritten (one field, six aliases, every old find/tape/native present); `hq-cave.test.js` / `hq-world.test.js` re-pinned to §8.3; `hq-floors.test.js` for the basement — **DONE 2026-09-27 with deviations (§12): the woods are JOINED PARTS (ids kept), the basement DOOR JOINS, the board rooms kept; test `hq-west.test.js`** |
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
 | 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) |
 | 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness |
@@ -1224,3 +1232,52 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     (the sun, the save, the rooms, the bearings, the variants, the lit values on real three r128 in a vm, the
     wiring). Not walked by a person.
 
+- 2026-09-27 — **PHASE 4 SHIPPED: THE WEST + THE WELLS** (thread "Open world Phase 4"; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_4.zip`, token `20260927-open-world-05-cors`; data.js to R2 AND Render,
+  three-renderer.js to R2, index.html to Render, tests + docs to the repo). Deviations from the row are named.
+  - **THE WELLS** (§8.3, mondo: "it makes no sense for all wells to lead to the same room"): each link's `b`
+    end is a free end under its own place. The cellar's → the cavern GALLERY's west end (x −24.5, z 10.5, the
+    old well room's light shaft and a paper sheet moved there); the garden's → a new CISTERN room at the
+    running tunnels' west end (`gen.rooms` row); Camelot's → an open alcove in the dungeon under the bailey
+    (`gen.open`), the plan's "Merlin's undercroft"; the skinwalker estate's → the cavern MOUTH; Göbekli's → a
+    new cistern chamber on the ley line. THE WELL ROOM (`site_prebuilt_hollow_earth_shaft`) is deleted with
+    its door, its Δ builder, its find row; its tape SIX ROPES is innersun's second tape, and a save that took
+    it under the old id still counts it (`HQ_FIND_MOVED` in `hqFindLegacyId`). The gallery's `mouth` door
+    went first in its list (the floor plan carves from the first door; the vent's tier door first left the
+    vent unreachable). Tests: hq-cave.test.js (a different bottom per well, none a wells-only room, landings
+    level and clear, the chambers), hq-world.test.js re-pinned.
+  - **THE WOODS — DEVIATION: JOINED PARTS, not one 160 × 140 field** (§8.5). The Phase 2 precedent: the
+    clearing, the trail, the stair, the redwoods, the pasture, the Grove, the skinwalker fields and Shasta's
+    slopes are parts of zone `woods` in their own frames, their doors replaced by `trail` joins (seven), the
+    ritual absorbed by the clearing (it stays behind its draught). Every id, find, tape, native and save key
+    stays as it was, so no aliases are needed and no find moved; the compile stays per part. The clearing's
+    trail door moved west (x −7.875 → −14) so the trail and the stair frames do not overlap. THE HAUNTED
+    GROUNDS are their own zone (`haunted`: the grounds, the hall as a door join, and a planned 60 m trailhead
+    to the clearing — a border, the frame for a later part); the lodge and Dead Man's cave stay doors (their
+    doors are secret or down). The estate is Phase 5's (the skinwalker FIELDS are joined; the estate house
+    keeps its door).
+  - **THE STITCH, grown**: `hqStageNeighbours` now replaces a room's own plain doors to a staged neighbour (not
+    only links; never a secret, hidden or portal door, never a door-join's span); a join's own `stitchM` (the
+    stair's flight keeps its steps with 3 m); `hqTerrainCompile` opens a MOUTH through the bank at every stitched (not in a city plan, whose streets already run out)
+    span (`gen.mouths`: `_hqTGenerate` forced everything past the wall solid, which left a 1.4 m bank at each
+    seam); `hqTerrainDoorY` finds the room's id on a cache miss (it had compiled under the label: no stitch,
+    another seed). three-renderer.js: a joined door with no way draws a TRAIL POST (a post, an arrow board, the
+    door's label) in place of the door (`_hqBuildTrailPost`), and `_hqPlantTreeline` keeps its trees off a
+    staged neighbour's ground.
+  - **THE BASEMENT — DEVIATION: DOOR JOINS, not one 40 × 30 room** (§8.4; the medwing precedent): zone
+    `basement` (ground `hq`, y −4): the services hall, the kitchen, the cold room, the laundry, the dock,
+    corridors A and B, the boiler, the server room, the room at the end — nine door joins. The secret doors
+    (the cold room's, the end room's to the dungeon and H-Wing), the draughts and the ways up stay doors. The
+    crawlspace stays a crawl.
+  - **NOT DONE — THE BOARD ROOMS** (§8.4's 38): kept. `hqSiteEntry` already sends every walker past them, so a
+    player sees no change from deleting them, while the delete churns every find, tape, Δ builder and save key
+    on 38 ids. The row's `hq-woods.test.js` rewrite is likewise moot (the woods kept their ids); `hq-floors`
+    keeps its pins (no room merged).
+  - **THE NIGHT LOCK at a seam**: the Grove and the skinwalker fields are locked night places (Phase 3) and now
+    border day parts on the stage; the crossing blends the sky over 2 s. mondo's ruling on the lock list still
+    stands open.
+  - Test: `hq-west.test.js` (the world valid and staged; the trail doors coincide on the ground with sills at
+    the join's y; the trail post; the mouths and the stair's `stitchM`; `heavy`: the grounds meet level within
+    0.35 m across ±3 m of every seam and every door of each woods part is reachable; the basement's joins).
+    `hq-stage.test.js` (four zones), `hq-world-map.test.js` (the ritual absorbed) re-pinned. Not walked by a
+    person.

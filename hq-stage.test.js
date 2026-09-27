@@ -28,8 +28,8 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 /* three.js's rotation.y about the origin (the renderer places a neighbour's root this way) */
 const rotY = (th, x, z) => ({ x: x * Math.cos(th) + z * Math.sin(th), z: -x * Math.sin(th) + z * Math.cos(th) });
 
-test('the stage stands on the city and the medical wing, and its parts are the real box rooms of its frames', () => {
- assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing']);
+test('the stage stands on the city, the medical wing, the woods and the basement, and its parts are the real box rooms of its frames', () => {
+ assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'woods', 'basement']);   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
  for (const id of [DT, STRIP, BOWL]) assert.ok(D.hqStagePart(id), id + ' is a staged part');
  assert.equal(D.hqStagePart('central_egress'), null, 'the building is not staged');
  assert.equal(D.hqStageNeighbours('central_egress').length, 0);
