@@ -25,7 +25,10 @@ function between(src, a, b) {
 }
 
 const RACE = 'door agent';
-const TREE_IDS = ['raceSwingDoor', 'raceDoorDash', 'raceBreakingEntering', 'raceAirMail', 'raceTrapdoor', 'raceDropIn'];   // the door wheel (DOOR_GUN_PLAN §2.4, 2026-09-25)
+const TREE_IDS = ['raceSwingDoor', 'raceDoorDash', 'raceBreakingEntering', 'raceAirMail', 'raceUnderdogSpirit', 'raceDropIn'];   // the door wheel (DOOR_GUN_PLAN §2.4, 2026-09-25)
+/* 2026-09-27: the user's family export moved Trapdoor to Trap Making and gave the door agent [door, doors, humangrit], so rung III is
+   Underdog Spirit (Human Grit), borrowed by id. Trapdoor stays authored here (six gun rows) and still plays for anyone carrying Trap Making. */
+const GUN_IDS = ['raceSwingDoor', 'raceDoorDash', 'raceBreakingEntering', 'raceAirMail', 'raceTrapdoor', 'raceDropIn'];
 const RETIRED = ['raceKnockKnock', 'raceSpecialDelivery', 'raceSlam', 'raceExit', 'raceLongWayRound', 'raceDoorToTheFace'];
 
 test('door agent: every race table, both sides, the passive, the statuses the engine keeps', () => {
@@ -47,14 +50,16 @@ test('door agent: every race table, both sides, the passive, the statuses the en
     for (const id of ['exited', 'castFromDoors']) assert.ok(D.STATUS_DEFS[id], 'STATUS_DEFS.' + id + ' (the engine keeps the door object)');
 });
 
-test('door agent (the door wheel): six rows on the tree, every one a shot from the gun, no placed door anywhere', () => {
+test('door agent (the door wheel): six gun rows authored, five door shots + Underdog Spirit on the tree, no placed door anywhere', () => {
     const tree = D.RACE_TREE[RACE];
     assert.equal(tree.length, 4);
     assert.ok(Array.isArray(tree[0]) && Array.isArray(tree[1]) && !Array.isArray(tree[2]) && !Array.isArray(tree[3]), 'twin · twin · single · capstone');
     assert.equal(tree.flat().join(','), TREE_IDS.join(','));
-    const rows = D.RACE_ABILITIES[RACE];
+    const all = D.RACE_ABILITIES[RACE];
+    const rows = all.filter(r => GUN_IDS.includes(r.id));
     assert.equal(rows.length, 6);
-    const byId = Object.fromEntries(rows.map(r => [r.id, r]));
+    assert.equal(all.filter(r => !GUN_IDS.includes(r.id)).map(r => r.id).join(','), 'raceUnderdogSpirit', 'the only other row is the borrowed rung');
+    const byId = Object.fromEntries(all.map(r => [r.id, r]));
     for (const id of TREE_IDS) assert.ok(byId[id], id);
     for (const id of RETIRED) assert.ok(!byId[id] && !D.SPELL_BY_ID[id], id + ' is gone');
     for (const r of rows) {

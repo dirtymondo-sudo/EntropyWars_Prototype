@@ -58,6 +58,42 @@ test('every archetype names 3 or 4 live families and has a unique name', () => {
     }
 });
 
+test('no archetype is a race already in the game (the user, 2026-09-27: "some you came up with are already in the game like mothman")', () => {
+    // a name, a label or its plural/singular: Mothman = mothman, Machine Elf = machine elves, Robin Hood = robinhood. Variants that only
+    // share a noun (Ghost Pirate, Frost Giant) stay; the near-copies (Alien Grey, Giant Ape, Snow Queen, Door Knocker) were cut by hand.
+    const norm = (s) => String(s).toLowerCase().replace(/[^a-z]/g, '').replace(/ves$/, 'f').replace(/s$/, '');
+    const races = new Set();
+    for (const r of D.AVAILABLE_RACES) {
+        races.add(norm(r));
+        const lab = D.RACE_PROFILES[r] && D.RACE_PROFILES[r].label;
+        if (lab) races.add(norm(lab));
+    }
+    const clash = [];
+    for (const [name] of ARCH) {
+        const n = norm(name);
+        if (races.has(n)) clash.push(name);
+    }
+    assert.deepStrictEqual(clash, []);
+    for (const gone of ['Mothman', 'Djinn', 'Kraken', 'Yeti', 'Siren', 'Succubus', 'Valkyrie', 'Void Weaver', 'Machine Elf', 'Alien Grey', 'Giant Ape', 'Snow Queen', 'Door Knocker', 'Dracula']) {
+        assert.ok(!ARCH.some(([n]) => n === gone), gone + ' is a race, not an archetype');
+    }
+});
+
+test('the families the user added on 2026-09-27 each have a kit and at least two written archetypes', () => {
+    const added = ['culinaryarts', 'ropework', 'gambling', 'animalhandling', 'mirrormagic', 'trapmaking', 'marksmanship', 'horsebackriding',
+        'jellyfish', 'desertacclimation', 'archaeology', 'agriculture', 'meditation', 'musictheory', 'actingchops', 'astronautcamp', 'stoneage',
+        'tentacleappendages', 'apeintelligence', 'internetaddiction', 'persuasion', 'thievery'];
+    for (const f of added) {
+        assert.ok(KITS[f], f + ' has a kit');
+        assert.ok(ARCH.filter(([, list]) => list.split(/\s+/).includes(f)).length >= 2, f + ' is in two or more archetypes');
+    }
+    // the remaps: the new families fit these better than their old combos did
+    const fam = (n) => (ARCH.find(([x]) => x === n) || [])[1] || '';
+    assert.ok(fam('Headless Horseman').includes('horsebackriding'));
+    assert.ok(fam('Mummy').includes('desertacclimation'));
+    assert.ok(fam('Caveman').includes('stoneage'));
+});
+
 test("the user's seven examples come back as written matches for their families", () => {
     const cases = {
         Krampus: ['christmasspirit', 'horns', 'blood'],

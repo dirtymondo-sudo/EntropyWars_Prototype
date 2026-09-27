@@ -1069,3 +1069,29 @@ change under `WEATHER_REGISTRY`).
   four until the user rules. The Phase 6 thread's suggested family merges / renames / splits are untouched. Tests:
   `spell-families.test.js` (+5 Phase 7 tests); hq-intake / hq-party / party-builder / spell-tree-ux pins brought to the family
   pool and fold. Probe: `playtest_builder.js p7` (the forge's TECHNIQUES tab folds by family, no page errors).
+
+- **2026-09-27 · The user's second family export baked** (thread "Spell library bake + new characters",
+  `spell-library/ENTROPY_WARS_SPELL_LIBRARY_10.zip`, token `20260927-spell-library-10-cors`).
+  1. **The bake** (`node bake-spell-mods.js entropy-wars-spell-mods-2026-09-27.json`): 35 rows re-familied, Drift renamed Ocean
+     Current, Flashbang Mine deleted, 30 family rows (23 new: Culinary Arts, Ropework, Gambling, Animal Handling, Mirror Magic,
+     Trap Making, Marksmanship, Horseback Riding, Jellyfish, Desert Acclimation, Archaeology, Agriculture, Meditation, Music Theory,
+     Acting Chops, Astronaut Camp, Stone Age, Tentacle Appendages, Monkey Brains, Mothman, Internet Addiction, Persuasion, Thievery;
+     renames: Dream Predation, Drug Use, Giant Abilities, Occult Knowledge, Deep Sea Anatomy) and 52 RACE_FAMILIES rows.
+     The family `desc` fields the user left blank and the "Beast Abilties" spelling were kept as exported.
+  2. **Placeholders:** 9 new families have no members yet (Culinary Arts, Gambling, Animal Handling, Mirror Magic, Archaeology,
+     Music Theory, Acting Chops, Internet Addiction, Persuasion). Marksmanship (the Sniper's three shots) and Agriculture (the
+     Harvester's three seeds) are on NO race: only the job carries them. spell-families.test.js now allows a family on no race
+     only when it is empty or job-only — removing jobs needs those two on races first.
+  3. **The trees:** 27 RACE_TREE rows named a rung that left the race's families; each rung took a row of its families (same
+     tier where one exists, the race borrows it by id in the movepool share table). Flashbang Mine's gnome rung → Fissure.
+     Notable: the door agent's rung III is Underdog Spirit (Trapdoor is Trap Making now); homosapien's capstone is Indomitable
+     Will alone (Really Good Punch is Martial Arts); Summon Sandstorm twins Low Gravity on the martian's ring II; Awakening
+     twins the cult leader's capstone. Test pins brought along: content-schema, champ-rework (`LEFT_TREE_0927`), door-race,
+     beam-3d-line, capstone-vfx, new-races, spell-families.
+  4. **The identity generator:** a kit for each new family, kit words moved with their spells (Deep Sea, Kaiju, Cryptid, Nature,
+     Alien Weapons, Heavenly Duties, Cowboy, Knighthood, Symbiosis, Gun Training, Occult Knowledge, Drug Use); 48 archetypes that
+     ARE races already cut (Mothman, Kraken, Yeti, Siren, Djinn, Anubis, Machine Elf, Void Weaver, Alien Grey, Giant Ape, Snow
+     Queen, Door Knocker, Dracula …); 47 remapped onto the new families (Headless Horseman → Horseback Riding, Mummy → Desert
+     Acclimation, Caveman → Stone Age, Cat Burglar → Thievery …); 68 new characters written from the new families (260 total).
+     spell-identity.test.js: no archetype name equals a race name / label; every new family has a kit and two archetypes.
+  5. **Jobs:** the removal is mapped (`/mnt/project-files/spell-library/JOBS_REMOVAL_MAP.md`), not done. Next pass.

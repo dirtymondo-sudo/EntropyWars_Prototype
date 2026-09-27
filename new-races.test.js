@@ -18,7 +18,7 @@ const RACES = ['police officer', 'jellyfish', 'cult leader'];
 const TREES = {
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],
     'jellyfish': ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],
-    'cult leader': ['raceCultSermon', ['raceCultKoolAid', 'raceCultTithe'], 'raceCultIndoctrinate', 'raceCultGathering'],
+    'cult leader': ['raceJudgmentBeam', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // 2026-09-27: Sermon + Tithe are Bible Study, off the cult leader's families
 };
 
 test('the three races sit in every data.js table, both sides of the parity line, and the sprite tables', () => {
@@ -56,8 +56,10 @@ test('the three races sit in every data.js table, both sides of the parity line,
 test('the kits: four-node trees on the twin rule, five rows each, plain kinds, a status a cast, the finisher rows designed (typed until built)', () => {
     for (const [r, tree] of Object.entries(TREES)) {
         assert.strictEqual(D.RACE_TREE[r].flat().join(','), tree.flat().join(','), r + ' tree');
-        assert.ok(Array.isArray(D.RACE_TREE[r][1]) && D.RACE_TREE[r][1].length === 2, r + ': r2 is the twin');
-        const rows = D.RACE_ABILITIES[r];
+        /* 2026-09-27: the user's family export took Bible Study off the cult leader (Sermon, Tithe), so its tree borrows Judgment Beam
+           (Temporal) and twins the capstone with Awakening (Meditation); the five authored rows are unchanged */
+        if (r !== 'cult leader') assert.ok(Array.isArray(D.RACE_TREE[r][1]) && D.RACE_TREE[r][1].length === 2, r + ': r2 is the twin');
+        const rows = D.RACE_ABILITIES[r].filter(x => !(r === 'cult leader' && ['raceJudgmentBeam', 'raceAwakening'].includes(x.id)));
         assert.strictEqual(rows.length, 5, r + ': five rows');
         for (const row of rows) {
             assert.ok(D.SPELL_BY_ID[row.id], row.id + ' in SPELL_BY_ID');
@@ -67,10 +69,11 @@ test('the kits: four-node trees on the twin rule, five rows each, plain kinds, a
             assert.ok(sts.length <= 1, row.id + ': one named status per cast (§2.1)');
             for (const st of sts) assert.ok(D.STATUS_DEFS[st.id], row.id + ': status ' + st.id);
         }
-        const cap = rows.find(x => x.id === tree[3]);
+        const capId = Array.isArray(tree[3]) ? tree[3][0] : tree[3];
+        const cap = rows.find(x => x.id === capId);
         assert.strictEqual(cap.tier, 4, r + ': the capstone is tier 4');          // Phase 0 (SPELL_LIBRARY_PLAN.md): numeric tiers, stamped from the rung
         assert.strictEqual(rows.find(x => x.id === tree[2]).tier, 3, r + ': r3 is tier 3');
-        assert.ok(D.isCapstoneSpellId(tree[3]), tree[3] + ' is a capstone');
+        assert.ok(D.isCapstoneSpellId(capId), capId + ' is a capstone');
         const f = D.FINISHERS[r];
         assert.ok(f && typeof f.sig === 'string' && f.built === true, r + ': the finisher is BUILT (delivery 17 — a director + a signature + a stage script; finishers.test.js pins the three)');
         assert.ok(D.RACE_PROFILES[r].types.includes(f.type), r + ': the finisher is typed by the race');
@@ -85,7 +88,10 @@ test('the kits: four-node trees on the twin rule, five rows each, plain kinds, a
     assert.ok(g.kind === 'summonUnit' && g.summonDef && g.summonDef.key === 'cultist' && g.maxActivePerCaster === 2, 'The Gathering is a walking summon');
     assert.ok(TR.includes("if (turret.summon === 'cultist') {"), 'three-renderer.js _buildSummon3D has the cult member look');
     /* every row has a VFX alias, each capstone its own */
-    for (const tree of Object.values(TREES)) for (const id of tree.flat()) assert.ok(VFX.includes("SPELL_MAP['" + id + "']"), id + ' in SPELL_MAP');
+    for (const tree of Object.values(TREES)) for (const id of tree.flat()) {
+        if (id === 'raceJudgmentBeam' || id === 'raceAwakening') continue;   // borrowed rows (2026-09-27) keep their home race's VFX
+        assert.ok(VFX.includes("SPELL_MAP['" + id + "']"), id + ' in SPELL_MAP');
+    }
 });
 
 test('the jellyfish flies (both sky lists) and its passives fit the slot the wing takes', () => {

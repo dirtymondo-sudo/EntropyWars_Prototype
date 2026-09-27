@@ -398,6 +398,16 @@ const WAVE_A_STATUS = {
 };
 const raceSpell = (race, id) => (D.RACE_ABILITIES[race] || []).find(s => s && s.id === id);
 const treeHas = (race, id) => (D.RACE_TREE[race] || []).some(n => (Array.isArray(n) ? n : [n]).includes(id));
+/* 2026-09-27: the user's family export (SPELL LIBRARY) moved these rows to families their race no longer carries, so the rung left the
+   race's tree (the def stays authored on the race; RACE_TREE rungs must sit in the race's families — spell-families.test.js). */
+const LEFT_TREE_0927 = new Set(['marksman:sharedSmokeScreen', 'skinwalker:sharedSmokeScreen', 'shaman:raceSacrifice', 'shaman:raceVoodoo',
+    'atlantean:racePoseidonsWrath', 'bigfoot:raceTremorStomp', 'seraphim:raceDivineJudgment', 'orb of light:racePhotonScatter',
+    'skeleton:sharedPoisonSwamp', 'skeleton:sharedFissure', 'ghost:sharedFlashFreeze', 'djinn:raceDustDevil', 'djinn:sharedSummonSandstorm',
+    'anubis:sharedFissure', 'mantid:raceAmbushLunge', 'cyborg:raceEMPGrenade', 'dreameater:raceLucidTrap', 'nephilim:raceSmite',
+    'nephilim:raceHolyBulwark', 'voidweaver:sharedBlackHole', 'droid:raceTaserBolt', 'antihero:raceGrimResolve', 'chosen one:raceAwakening',
+    'barbarella:raceSpaceDisco', 'king kong:raceBoulderHurl', 'symbiote:raceWebLaunch', 'door agent:raceTrapdoor', 'cult leader:raceCultSermon',
+    'cult leader:raceCultTithe', 'homosapien:reallyGoodPunch', 'wizard:raceHocusPocus']);
+const onTree = (race, id) => LEFT_TREE_0927.has(race + ':' + id) || treeHas(race, id);
 
 test('Phase 5 wave A: every §6 spell exists on its race with its kind, numbers, status and tree node', () => {
     for (const [id, [race, kind, fields]] of Object.entries(WAVE_A)) {
@@ -406,8 +416,8 @@ test('Phase 5 wave A: every §6 spell exists on its race with its kind, numbers,
         assert.strictEqual(sp.kind, kind, `${id} kind`);
         for (const [k, v] of Object.entries(fields)) same(sp[k], v, `${id}.${k}`);
         assert.ok(sp.desc && sp.desc.length > 20, `${id} has a desc`);
-        assert.ok(treeHas(race, id), `${id} sits on ${race}'s RACE_TREE`);
-        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        assert.ok(onTree(race, id), `${id} sits on ${race}'s RACE_TREE`);
+        assert.ok(LEFT_TREE_0927.has(race + ':' + id) || D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
         if (WAVE_A_STATUS[id]) {
             const fx = sp.statusEffects || (sp.collisionStatus ? [sp.collisionStatus] : []);
             assert.strictEqual(fx.length, 1, `${id} applies exactly one status`);
@@ -422,7 +432,7 @@ test('Phase 5 wave A: every §6 spell exists on its race with its kind, numbers,
     const pairs = {
         quarterback: ['raceBlitz', 'raceQBSneak'], 'honda civic': ['raceTransform', 'raceExhaustCloud'],
         'santa clause': ['raceNaughtyList', 'raceWhiteChristmas'], yeti: ['raceFrozenPunch', 'raceIceShard'],
-        marksman: ['sharedSmokeScreen', 'raceIncendiaryRounds'], skeleton: ['raceBoneToss', 'raceGraveChill'],
+        skeleton: ['raceBoneToss', 'raceGraveChill'],
         dinosaur: ['sharedFissure', 'raceApexRoar'], bigfoot: ['raceRealityShift', 'raceTreelineRetreat'],
         gargoyle: ['raceStoneform', 'raceGothicRampart'], robinhood: ['raceSplittingArrow', 'racePiercingArrow'],
         superhero: ['raceShockwaveClap', 'raceSkyTackle'], cyborg: ['overclock', 'racePlasmaCannon'],
@@ -539,8 +549,8 @@ test('Phase 5 wave B: every §6 spell exists on its race with its kind, numbers,
         assert.strictEqual(sp.kind, kind, `${id} kind`);
         for (const [k, v] of Object.entries(fields)) same(sp[k], v, `${id}.${k}`);
         assert.ok(sp.desc && sp.desc.length > 20, `${id} has a desc`);
-        assert.ok(treeHas(race, id), `${id} sits on ${race}'s RACE_TREE`);
-        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        assert.ok(onTree(race, id), `${id} sits on ${race}'s RACE_TREE`);
+        assert.ok(LEFT_TREE_0927.has(race + ':' + id) || D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
         const want = WAVE_B_STATUS[id];
         if (want) {
             const fx = sp.statusEffects || [];
@@ -563,8 +573,8 @@ test('Phase 5 wave B: every §6 spell exists on its race with its kind, numbers,
     same(raceSpell('succubus', 'raceEnthrall').bonusVsStatus, { status: 'charm', mult: 2 });
     // Twins: every wave-B pair is a 2-array on its node.
     const pairs = {
-        ghost: ['raceColdSpot', 'sharedFlashFreeze'], zombie: ['raceZombieRush', 'raceCannibalize'],
-        demon: ['raceInfernalHurl', 'raceSoulBind'], shaman: ['raceSpiritWalk', 'raceSacrifice'],
+        ghost: ['raceColdSpot', 'raceFear'], zombie: ['raceZombieRush', 'raceCannibalize'],
+        demon: ['raceInfernalHurl', 'raceSoulBind'],
         vampire: ['raceBatSwarm', 'raceThrallBite'], succubus: ['raceSleepParalysis', 'raceEnthrall'],
     };
     for (const [race, pair] of Object.entries(pairs)) {
@@ -573,8 +583,7 @@ test('Phase 5 wave B: every §6 spell exists on its race with its kind, numbers,
     }
     assert.ok(JSON.stringify(D.getRaceTreeAlts('zombie')).includes('"raceOutbreak","raceInfect"'), 'zombie r3 twin Outbreak ⇄ Infect');
     assert.ok(JSON.stringify(D.getRaceTreeAlts('demon')).includes('"raceHellmouth","raceShadowRealm"'), 'demon capstone twin Hellmouth★ ⇄ Shadow Realm★');
-    assert.ok(JSON.stringify(D.getRaceTreeAlts('shaman')).includes('"raceAyahuascaRetreat","raceVoodoo"'), 'shaman r3 twin Ayahuasca ⇄ Voodoo');
-    // Ghost pillar order: Haunt → Cold Spot ⇄ Flash Freeze → Possession → Boo★.
+    // Ghost pillar order: Haunt → Cold Spot ⇄ Fear (2026-09-27: Flash Freeze is Ice, off the ghost's families) → Possession → Boo★.
     same(D.getRaceTreeSpells('ghost'), ['raceHaunt', 'raceColdSpot', 'racePossession', 'raceBoo']);
 });
 
@@ -688,8 +697,8 @@ test('Phase 5 wave C: every §6 spell exists on its race with its kind, numbers,
         assert.strictEqual(sp.kind, kind, `${id} kind`);
         for (const [k, v] of Object.entries(fields)) same(sp[k], v, `${id}.${k}`);
         assert.ok(sp.desc && sp.desc.length > 20, `${id} has a desc`);
-        assert.ok(treeHas(race, id), `${id} sits on ${race}'s RACE_TREE`);
-        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        assert.ok(onTree(race, id), `${id} sits on ${race}'s RACE_TREE`);
+        assert.ok(LEFT_TREE_0927.has(race + ':' + id) || D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
         const want = WAVE_C_STATUS[id];
         const fx = sp.kind === 'warCry' ? (sp.teamStatusEffects || []) : (sp.statusEffects || []);
         if (want) {
@@ -720,7 +729,7 @@ test('Phase 5 wave C: every §6 spell exists on its race with its kind, numbers,
         'black goo': [['raceGooShot', 'raceCorrosiveSplash'], ['raceIckySurprise', 'raceAbsorb'], ['raceSplash', 'raceToxicNova']],
         fairy: [['raceGlitterburst', 'raceSparkle'], ['racePixieDust', 'raceFairyDust'], ['raceTrickRoom', 'raceGlitterBomb']],
         ghoul: [['raceGhoulishBite', 'raceFrenzy'], ['raceCorpseCrawl', 'raceFear'], ['sharedPoisonSwamp', 'raceCarrionFeast']],
-        atlantean: [['racePoseidonsWrath', 'raceTsunami']],
+        atlantean: [['raceTsunami', 'raceCallOfTheDeep']],   // 2026-09-27: Poseidon's Wrath moved to Deep Sea Anatomy, off the atlantean's families
         dragon: [['raceDragonBreath', 'raceWingGust']],
     };
     for (const [race, want] of Object.entries(pairs)) {

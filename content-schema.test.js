@@ -331,10 +331,12 @@ test('Freelancer borrows: race + job pools, any tier, same SP / slot budget', ()
     for (const id of ['improvise', 'jackOfAll', 'reallyGoodPunch']) {
         assert.ok(D.RACE_ABILITIES.homosapien.some(sp => sp.id === id), id + ' is a homosapien ability');
         assert.ok(!D.SPELL_LIBRARY.some(sp => sp.id === id), id + ' left the job library');
-        assert.ok(D.getRaceTreeAllIds('homosapien', 'Freelancer').includes(id), id + ' sits on the homosapien tree');
     }
-    assert.strictEqual(D.RACE_TREE.homosapien.filter(Array.isArray).length, 3, 'three homosapien twin nodes');
-    assert.ok(fl(['improvise', 'jackOfAll', 'raceUnderdogSpirit', 'reallyGoodPunch']), 'the homosapien race row');
+    // 2026-09-27: the user's family export left Really Good Punch in Martial Arts, off the homosapien families → off its tree
+    for (const id of ['improvise', 'jackOfAll']) assert.ok(D.getRaceTreeAllIds('homosapien', 'Freelancer').includes(id), id + ' sits on the homosapien tree');
+    assert.ok(!D.getRaceTreeAllIds('homosapien', 'Freelancer').includes('reallyGoodPunch'));
+    assert.strictEqual(D.RACE_TREE.homosapien.filter(Array.isArray).length, 2, 'two homosapien twin nodes');
+    assert.ok(fl(['improvise', 'jackOfAll', 'raceUnderdogSpirit', 'raceIndomitableWill']), 'the homosapien race row');
     assert.ok(fl(['improvise', 'raceElbowGrease']), 'both alternates of a homosapien twin legal');
     // the JOB pool
     const pool = D.flWildcardPool('homosapien');
@@ -348,7 +350,7 @@ test('Freelancer borrows: race + job pools, any tier, same SP / slot budget', ()
     assert.ok(rp.every(sp => !own.has(sp.id)), 'own race row is not in the race pool');
     const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
     assert.ok(rp.every(sp => !jobIds.has(sp.id)), 'no job-tree id in the race pool');
-    assert.ok(D.flRacePool('knight').some(sp => sp.id === 'reallyGoodPunch'), 'a knight Freelancer may borrow the homosapien capstone');
+    assert.ok(D.flRacePool('knight').some(sp => sp.id === 'raceIndomitableWill'), 'a knight Freelancer may borrow the homosapien capstone');
     // the unit pool is own row + both borrow pools
     const parts = D.unitSpellPoolParts('homosapien', 'Freelancer');
     // SPELL LIBRARY Phase 6: the unit's own part now carries its families' members, so the borrow part skips those

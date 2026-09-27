@@ -4718,7 +4718,7 @@ const SPELL_LIBRARY = [
         kind: 'damage',
         damageType: 'physical',
         tier: 1,
-        families: ['knight'],
+        families: ['horsebackriding'],
         school: 'Warrior',
         classRestriction: 'Warrior',
         jobPreference: ['Warrior'],
@@ -5015,6 +5015,7 @@ const SPELL_LIBRARY = [
         range: 3,
         kind: 'seedHeal',
         tier: 1,
+        families: ['agriculture'],
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
@@ -5033,7 +5034,7 @@ const SPELL_LIBRARY = [
         range: 3,
         kind: 'seedPoison',
         tier: 2,
-        families: ['nature'],
+        families: ['agriculture'],
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
@@ -5108,6 +5109,7 @@ const SPELL_LIBRARY = [
         kind: 'leechSeed',
         /* Harvester capstone (ring 4 = tier III). */
         tier: 4,
+        families: ['agriculture'],
         school: 'Harvester',
         classRestriction: 'Harvester',
         desc: 'Plants a seed on a Single Enemy: drains HP each turn and heals the caster.'
@@ -5474,7 +5476,7 @@ const SPELL_LIBRARY = [
         projectileOverride: 'proj-bullet',
         actedTargetBonus: 32,
         tier: 3,
-        families: ['weaponstraining'],
+        families: ['marksmanship'],
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
@@ -5499,7 +5501,7 @@ const SPELL_LIBRARY = [
         markDelayRounds: 1,
         requireVision: true,
         tier: 4,
-        families: ['weaponstraining'],
+        families: ['marksmanship'],
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
@@ -5784,6 +5786,7 @@ const SPELL_LIBRARY = [
         range: 3,
         kind: 'cleanse',
         tier: 2,
+        families: ['meditation'],
         school: 'White Mage',
         classRestriction: 'White Mage',
         desc: 'Removes harmful status effects from a Single Ally.'
@@ -5807,7 +5810,7 @@ const SPELL_LIBRARY = [
         damageType: 'physical',
         projectileOverride: 'proj-bullet',
         tier: 1,
-        families: ['weaponstraining'],
+        families: ['marksmanship'],
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
@@ -6161,7 +6164,7 @@ const SHARED_SUMMON_BLIZZARD = {
 };
 
 const SHARED_SUMMON_SANDSTORM = {
-    id: 'sharedSummonSandstorm', tier: 2, spellType: 'alien', element: 'wind', name: 'Summon Sandstorm',
+    id: 'sharedSummonSandstorm', tier: 2, families: ['desertacclimation'], spellType: 'alien', element: 'wind', name: 'Summon Sandstorm',
     type: 'utility', cost: 30, range: 4, apCost: 1,
     kind: 'summonWeather',
     weatherType: 'sandstorm',
@@ -6299,7 +6302,7 @@ const _STAGGER_1 = [{ id: 'stagger', duration: 1 }];
 const RACE_ABILITIES = {
 
     'seraphim': [
-        { id: 'raceDivineJudgment', tier: 3, families: ['angelic'], spellType: 'divine', name: 'Divine Judgment',
+        { id: 'raceDivineJudgment', tier: 3, families: ['holydefense'], spellType: 'divine', name: 'Divine Judgment',
           type: 'damage', cost: 40, dmg: 135, range: 4, apCost: 2,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 2 }],
@@ -6597,12 +6600,12 @@ const RACE_ABILITIES = {
            zone with fire trails, streakers across the sky, a crater burst on
            every landing) under the descent grammar's sky-watch camera. */
         { id: 'raceProphecyOfDisaster', spellType: 'anomaly', name: 'Prophecy of Disaster',
-          type: 'damage', tier: 4, families: ['cryptid'], cost: 50, dmg: 140, range: 5, apCost: 2,
+          type: 'damage', tier: 4, families: ['mothman'], cost: 50, dmg: 140, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 1,
           groundsFlyers: true,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
           desc: 'The mothman foretells the disaster: marks a 5×5 zone. At the end of the round a METEOR STORM falls on it — HEAVY magic damage to everything inside, flyers knocked from the sky. Deals bonus damage to targets with Discord.' },
-        { id: 'raceRedEyes', tier: 1, families: ['cryptid'], spellType: 'unholy', name: 'Red Eyes',
+        { id: 'raceRedEyes', tier: 1, families: ['mothman'], spellType: 'unholy', name: 'Red Eyes',
           type: 'debuff', cost: 20, range: 4, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 30 }],
@@ -7035,7 +7038,7 @@ const RACE_ABILITIES = {
           groundsFlyers: true,
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Rooted.' },
-        { id: 'raceGrapple', tier: 1, families: ['piracy'], spellType: 'human', element: 'metal', name: 'Grapple',
+        { id: 'raceGrapple', tier: 1, families: ['ropework'], spellType: 'human', element: 'metal', name: 'Grapple',
           type: 'utility', cost: 20, apCost: 1, range: 3,
           kind: 'utility',
           desc: 'Fire a grappling hook. Pull target enemy 2 tiles toward you and reel them in for a hit, or pull yourself toward a wall.' },
@@ -7196,7 +7199,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           projectileOverride: 'proj-bullet',
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE.' },
-        { id: 'raceLasso', tier: 1, families: ['cowboyskills'], spellType: 'human', element: 'metal', name: 'Lasso',
+        { id: 'raceLasso', tier: 1, families: ['ropework'], spellType: 'human', element: 'metal', name: 'Lasso',
           type: 'utility', cost: 15, apCost: 1, range: 3,
           kind: 'pull', pullDistance: 2,
           groundsFlyers: true,
@@ -7390,26 +7393,26 @@ const RACE_ABILITIES = {
           desc: 'Nobody in, nobody out. The block is cordoned: MEDIUM physical damage to every enemy in a 3×3 within 3 tiles, and every one of them is Slowed for 2 rounds.' },
     ],
     'jellyfish': [
-        { id: 'raceJellySting', tier: 1, families: ['deepsea'], spellType: 'anomaly', element: 'water', name: 'Sting',
+        { id: 'raceJellySting', tier: 1, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Sting',
           type: 'damage', cost: 20, dmg: 80, range: 2, apCost: 1,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'A tentacle brushes past. Deals WEAK magic damage to a Single Enemy within 2 tiles and Poisons them for 2 rounds.' },
-        { id: 'raceJellyBloom', tier: 2, families: ['deepsea'], spellType: 'anomaly', element: 'water', name: 'Bloom',
+        { id: 'raceJellyBloom', tier: 2, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Bloom',
           type: 'damage', cost: 30, dmg: 70, range: 3, aoeRadius: 1, apCost: 1,
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
           desc: 'A thousand of them at once. Deals WEAK magic damage to every enemy in a 3×3 within 3 tiles and leaves them Wet for 2 rounds.' },
-        _mkBlink('short', { id: 'raceJellyDrift', tier: 2, families: ['deepsea'], spellType: 'anomaly', element: 'water', name: 'Drift',
+        _mkBlink('short', { id: 'raceJellyDrift', tier: 2, families: ['deepsea'], spellType: 'anomaly', element: 'water', name: 'Ocean Current',
           desc: 'Go where the current goes. Drift to any tile within 3 — the bell folds, the water carries it, it opens again.' }),
         { id: 'raceJellyNet', spellType: 'anomaly', element: 'water', name: 'Nematocyst Net',
           type: 'damage', cost: 40, dmg: 95, range: 3, apCost: 1, tier: 3,
-          families: ['deepsea'],
+          families: ['jellyfish'],
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'The skirt of tentacles closes. Deals MEDIUM magic damage to a Single Enemy within 3 tiles and Roots them for 2 rounds.' },
         { id: 'raceJellyRebirth', spellType: 'anomaly', element: 'water', name: 'Immortal Cycle',
-          type: 'heal', cost: 60, range: 0, apCost: 1, tier: 4, families: ['deepsea'], cooldownRounds: 4,
+          type: 'heal', cost: 60, range: 0, apCost: 1, tier: 4, families: ['jellyfish'], cooldownRounds: 4,
           kind: 'selfHeal', selfHealPct: 0.50, cleanse: 2,
           desc: 'Turritopsis. The bell collapses back into a polyp and grows again: restores 50% of max HP and cleanses 2 debuffs. Once every 4 rounds.' },
     ],
@@ -7512,7 +7515,7 @@ const RACE_ABILITIES = {
           desc: 'Return to sender. Shoot a door at an enemy within 4 tiles: they go in, and a door opens three storeys over their head for them to fall out of. MEDIUM physical damage from the landing, flyers are grounded, the target is Staggered.' },
         { id: 'raceTrapdoor', spellType: 'anomaly', element: 'psychic', name: 'Trapdoor',
           type: 'utility', cost: 35, dmg: 60, range: 4, apCost: 1, tier: 3,
-          families: ['door'],
+          families: ['trapmaking'],
           kind: 'placeTrap', trapType: 'trapdoor', trapSize: 2, maxActivePerCaster: 1, damageType: 'physical', doorGun: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Do not stand in corners. Shoot a hidden 2×2 trapdoor onto four empty tiles within 4. The enemy cannot see it. The first enemy to step onto it drops: the four tiles sink two levels under them for WEAK physical damage plus the fall, and they are Staggered. One trapdoor per agent.' },
@@ -7662,7 +7665,7 @@ const RACE_ABILITIES = {
           pushDistance: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in a diamond-shaped AOE. Applies Slow.' },
-        { id: 'raceStasisBeam', tier: 3, families: ['alientechnology'], spellType: 'alien', element: 'light', name: 'Stasis Beam',
+        { id: 'raceStasisBeam', tier: 3, families: ['galacticfederation'], spellType: 'alien', element: 'light', name: 'Stasis Beam',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'debuff',
           groundsFlyers: true,
@@ -7740,7 +7743,7 @@ const RACE_ABILITIES = {
         SHARED_POISON_SWAMP,
     ],
     'djinn': [
-        { id: 'raceDustDevil', tier: 1, families: ['wind'], spellType: 'alien', name: 'Dust Devil',
+        { id: 'raceDustDevil', tier: 1, families: ['desertacclimation'], spellType: 'alien', name: 'Dust Devil',
           type: 'damage', cost: 35, dmg: 80, range: 4,
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -7799,7 +7802,7 @@ const RACE_ABILITIES = {
           dashDamage: 56,
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Enemies along the path also take damage. Applies Stun.' },
-        { id: 'raceStoneThrow', tier: 1, element: 'earth', spellType: 'alien', name: 'Stone Throw',
+        { id: 'raceStoneThrow', tier: 1, families: ['stoneage'], element: 'earth', spellType: 'alien', name: 'Stone Throw',
           type: 'damage', cost: 25, dmg: 100, range: 5,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -7906,7 +7909,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 125, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1, aoeOriginSelf: true,
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE.' },
-        { id: 'raceLucidTrap', tier: 2, families: ['astral'], spellType: 'alien', name: 'Lucid Trap',
+        { id: 'raceLucidTrap', tier: 2, families: ['trapmaking'], spellType: 'alien', name: 'Lucid Trap',
           type: 'utility', cost: 25, range: 3, apCost: 1,
           kind: 'deployObject', objectHp: 1, blocksMovement: false,
           detonateOnStep: true, blastRadius: 0, blastDmg: 0,
@@ -8244,7 +8247,7 @@ const RACE_ABILITIES = {
           desc: 'Overclocks the caster: raises ATK by 1 stage and MOV by 1 (tech units also gain +1 RNG).' },
         { id: 'raceAwakening', spellType: 'divine', element: 'light', name: 'Awakening',
           type: 'buff', cost: 50, apCost: 2, range: 0, tier: 4,
-          families: ['psychic'],
+          families: ['meditation'],
           kind: 'buff', cooldownRounds: 3,
           selfHealPct: 0.30, cleanse: 99,
           statStageBoost: { atk: 2, spd: 2 },
@@ -8298,7 +8301,7 @@ const RACE_ABILITIES = {
            every enemy standing in water/deep water or the wet spread-flow at
            a pool's edge (battle.js _isWetTile), anywhere on the map. */
         { id: 'racePoseidonsWrath', spellType: 'anomaly', element: 'water', name: 'Poseidon\'s Wrath',
-          type: 'damage', tier: 4, families: ['water'], cost: 55, dmg: 170, range: 0, apCost: 2,
+          type: 'damage', tier: 4, families: ['deepsea'], cost: 55, dmg: 170, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'magic', aoeOriginSelf: true, aoeRadius: 99,
           hitsWetOnly: true, ignoresLineOfSight: true,
           desc: 'The sea rises in judgment. Deals HEAVY magic damage to ALL Enemies standing in water, anywhere on the battlefield. The deep remembers what it is owed.' },
@@ -8408,13 +8411,8 @@ const RACE_ABILITIES = {
           kind: 'deployTurret', turretDmg: 65, turretRange: 3, turretHp: 80,
           maxActivePerCaster: 1,
           desc: 'Deploy a clockwork turret. Auto-fires at nearest enemy each round. 65 damage, 3 range.' },
-        { id: 'raceFlashbangMine', tier: 1, families: ['engineering'], spellType: 'anomaly', name: 'Flashbang Mine',
-          type: 'damage', cost: 25, dmg: 90, range: 3, apCost: 1,
-          kind: 'deployObject', objectHp: 10, blastRadius: 1, blastDmg: 90,
-          detonateOnStep: true, maxActivePerCaster: 2,
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deploys an object on an empty tile. Applies Stun.' },
-        { id: 'raceTinkersContraption', tier: 2, families: ['engineering'], spellType: 'anomaly', name: 'Tinker\'s Contraption',
+
+        { id: 'raceTinkersContraption', tier: 2, families: ['trapmaking'], spellType: 'anomaly', name: 'Tinker\'s Contraption',
           type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 100,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
@@ -8455,7 +8453,7 @@ const RACE_ABILITIES = {
            anti-fire monster, not the nuke platform.) */
     ],
     'kraken': [
-        { id: 'raceTentacleLash', tier: 1, families: ['deepsea'], spellType: 'anomaly', name: 'Tentacle Lash',
+        { id: 'raceTentacleLash', tier: 1, families: ['tentacleappendages'], spellType: 'anomaly', name: 'Tentacle Lash',
           type: 'damage', cost: 25, dmg: 80, range: 3,
           kind: 'pull', damageType: 'physical', pullDistance: 2, lineOfSight: true,
           desc: 'Deals WEAK physical damage to a Single Enemy and pulls it toward you.' },
@@ -8464,7 +8462,7 @@ const RACE_ABILITIES = {
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Spray blinding ink over a 3×3 area for 2 turns. Enemies inside are disoriented — ATK lowered by 2 stages and DEF by 1 stage for 2 turns.' },
-        { id: 'raceDepthCharge', tier: 3, element: 'water', spellType: 'anomaly', name: 'Depth Charge',
+        { id: 'raceDepthCharge', tier: 3, families: ['deepsea'], element: 'water', spellType: 'anomaly', name: 'Depth Charge',
           type: 'damage', cost: 35, dmg: 125, range: 4,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
@@ -8553,7 +8551,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'discord', duration: 1 }],
           bonusVsStatus: { status: 'stun', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to All Enemies around the caster (AOE) and lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Stunned targets.' },
-        _mkBlink('short', { id: 'raceGravityBoots', tier: 2, families: ['alientechnology'], spellType: 'tech', name: 'Gravity Boots',
+        _mkBlink('short', { id: 'raceGravityBoots', tier: 2, families: ['astronautcamp'], spellType: 'tech', name: 'Gravity Boots',
           desc: 'Activate anti-gravity boots to reposition up to 3 tiles. Far out.' }),
         { id: 'racePlasmaWhip', tier: 3, families: ['alientechnology'], element: 'fire', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 125, range: 2,
@@ -8765,7 +8763,7 @@ const RACE_ABILITIES = {
     ],
 
     'king kong': [
-        { id: 'raceChestPound', tier: 1, families: ['kaiju'], spellType: 'anomaly', name: 'Chest Pound',
+        { id: 'raceChestPound', tier: 1, families: ['apeintelligence'], spellType: 'anomaly', name: 'Chest Pound',
           type: 'debuff', cost: 20, range: 0, apCost: 1,
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
           statStageBoost: { def: -1 },
@@ -8773,12 +8771,12 @@ const RACE_ABILITIES = {
         /* 2026-08-12: capstone renamed Primal Smash → Ape Fury (id kept for
            VFX/saves); the old Ape Fury buff below is Monkey Business now. */
         { id: 'racePrimalSmash', spellType: 'anomaly', name: 'Ape Fury',
-          type: 'damage', tier: 4, families: ['kaiju'], cost: 45, dmg: 180, range: 1,
+          type: 'damage', tier: 4, families: ['apeintelligence'], cost: 45, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical',
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'Deals HEAVY physical damage to a Single Enemy. Reshapes the ground on impact. Deals bonus damage to Slowed targets.' },
-        { id: 'raceApeFury', tier: 3, families: ['kaiju'], spellType: 'anomaly', name: 'Monkey Business',
+        { id: 'raceApeFury', tier: 3, families: ['apeintelligence'], spellType: 'anomaly', name: 'Monkey Business',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 1 },
@@ -8935,7 +8933,7 @@ const RACE_ABILITIES = {
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
           collisionBonus: 60, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
           desc: 'A bodkin that carries its victim with it. Deals MEDIUM physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
-        { id: 'raceStealFromRich', tier: 2, families: ['trickery'], spellType: 'human', name: 'Steal from the Rich',
+        { id: 'raceStealFromRich', tier: 2, families: ['thievery'], spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 20, range: 3, apCost: 1,
           kind: 'debuff',
           statStageBoost: { atk: -1 },
@@ -9050,7 +9048,7 @@ const RACE_ABILITIES = {
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
-        { id: 'raceWebLaunch', tier: 1, families: ['symbiosis'], spellType: 'unholy', name: 'Web Shoot',
+        { id: 'raceWebLaunch', tier: 1, families: ['arachnid'], spellType: 'unholy', name: 'Web Shoot',
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'root', duration: 1 }],
@@ -9261,6 +9259,29 @@ for (const sp of GEAR_PASSIVES) {
    (library spells stay job spells; giant/golem keep Boulder Hurl) — the
    same wiring the EWSpellMods layer uses for exported movepool edits. */
 for (const [race, ids] of [
+    /* SPELL LIBRARY (2026-09-27, the user's family export): tree rungs that left the race's families were swapped for rows of its families; the race borrows each by id */
+    ['wizard',         ['raceAbsoluteZero']],
+    ['bigfoot',        ['raceDreadAura']],
+    ['seraphim',       ['raceSanctuary']],
+    ['orb of light',   ['raceAuroraRay']],
+    ['skeleton',       ['raceBoneBarrage']],
+    ['ghost',          ['raceFear']],
+    ['skinwalker',     ['raceShedSkin']],
+    ['djinn',          ['raceSacredGeometry', 'raceSpellsteal']],
+    ['anubis',         ['raceDustDevil']],
+    ['nephilim',       ['raceFallenGrace', 'raceAbyssalWings']],
+    ['voidweaver',     ['raceFractalNeedle']],
+    ['droid',          ['raceCrashLoop']],
+    ['antihero',       ['raceInvulnerable']],
+    ['chosen one',     ['raceMindCrush']],
+    ['atlantean',      ['raceCallOfTheDeep']],
+    ['barbarella',     ['raceDrainingEmbrace']],
+    ['king kong',      ['raceSeismicLeap']],
+    ['symbiote',       ['raceGooShot']],
+    ['door agent',     ['raceUnderdogSpirit']],
+    ['cult leader',    ['raceJudgmentBeam', 'raceAwakening']],
+    ['dreameater',     ['raceCorpseCrawl']],
+    ['gnome',          ['sharedFissure']],
     /* SPELL LIBRARY Phase 6 (2026-09-26): the three tree rungs that named a spell the user deleted take a row of the race's families */
     ['chosen one',        ['racePlotArmor']],
     ['reptilian',         ['raceTruthBomb']],
@@ -17694,39 +17715,39 @@ const RACE_TREE = {
        authored final-4s — no race falls back to "first 4 abilities" anymore.
        Phase 2 twins (2026-09-07) are the CHAMP_REWORK_PLAN §6 pairs whose
        two spells both exist today; a pair with a NEW spell lands with it. */
-    'homosapien':    [['raceElbowGrease', 'improvise'], ['raceAdrenalineRush', 'jackOfAll'], 'raceUnderdogSpirit', ['raceIndomitableWill', 'reallyGoodPunch']],   // 2026-09-14: the Freelancer's spells merged in as twins
+    'homosapien':    [['raceElbowGrease', 'improvise'], ['raceAdrenalineRush', 'jackOfAll'], 'raceUnderdogSpirit', 'raceIndomitableWill'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
     'cowboy':        ['raceLasso', ['raceFanTheHammer', 'raceDynamite'], ['raceQuickDraw', 'raceWhistle'], 'raceHighNoon'],   // §6.15 (wave C)
-    'marksman':      ['raceSuppressiveFire', ['sharedSmokeScreen', 'raceIncendiaryRounds'], 'raceRangefinder', 'raceFireForEffect'],   // §6.11
-    'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceHocusPocus'],
+    'marksman':      ['raceSuppressiveFire', 'raceIncendiaryRounds', 'raceRangefinder', 'raceFireForEffect'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceAbsoluteZero'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceColossalCrush'],
     'fairy':         [['raceGlitterburst', 'raceSparkle'], ['racePixieDust', 'raceFairyDust'], ['raceTrickRoom', 'raceGlitterBomb'], 'raceFaeRing'],  // §6.21 (wave C); Fae Ring is a ring-shaped damage capstone since 2026-08-12
-    'bigfoot':       [['raceBigKick', 'raceTremorStomp'], ['raceRealityShift', 'raceTreelineRetreat'], 'trunkThrow', 'raceSasquatchSmash'],   // §6.16 (Trunk Throw is tier II → r3)
+    'bigfoot':       [['raceBigKick', 'raceDreadAura'], ['raceRealityShift', 'raceTreelineRetreat'], 'trunkThrow', 'raceSasquatchSmash'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
-    'orb of light':  ['racePhotonScatter', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],
-    'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', ['sharedPoisonSwamp', 'sharedFissure'], 'raceMarrowstorm'],   // §6.13
+    'orb of light':  ['raceAuroraRay', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', 'raceBoneBarrage', 'raceMarrowstorm'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'zombie':        ['raceInfectiousBite', ['raceZombieRush', 'raceCannibalize'], ['raceOutbreak', 'raceInfect'], 'raceShamblingHorde'],   // §6.18 (wave B)
-    'dreameater':    ['raceDreamSiphon', 'raceLucidTrap', 'raceNightmarePulse', 'raceEternalSlumber'],
+    'dreameater':    ['raceDreamSiphon', 'raceCorpseCrawl', 'raceNightmarePulse', 'raceEternalSlumber'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'goatman':       ['raceGoreCharge', 'raceCliffCharge', 'raceBloodRitual', 'raceBaphometsRite'],
-    'antihero':      ['raceDarkJustice', 'raceGrimResolve', 'raceCosmicSlam', 'raceNoMercy'],
-    'chosen one':    ['raceDarkFeather', 'racePlotArmor', 'raceProphecyFulfilled', 'raceAwakening'],   // Phase 6 (2026-09-26): Phantom Double deleted in the user's library export → Plot Armor (Main Character Energy)
-    'gnome':         ['raceFlashbangMine', 'raceTinkersContraption', 'raceClockworkTurret', 'raceOvertinker'],
+    'antihero':      ['raceDarkJustice', 'raceInvulnerable', 'raceCosmicSlam', 'raceNoMercy'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'chosen one':    ['raceDarkFeather', 'racePlotArmor', 'raceProphecyFulfilled', 'raceMindCrush'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'gnome':         ['sharedFissure', 'raceTinkersContraption', 'raceClockworkTurret', 'raceOvertinker'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
     'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
-    'shaman':        ['raceHerbalRemedy', ['raceSpiritWalk', 'raceSacrifice'], ['raceAyahuascaRetreat', 'raceVoodoo'], ['raceBadTrip', 'sharedEgoDeath']],   // §6.9 (wave B) + the §4.5 capstone twin (both tier III)
+    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceAyahuascaRetreat', ['raceBadTrip', 'sharedEgoDeath']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'mad scientist': ['raceTeslaTrap', ['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum'], 'racePlandemic'],   // §6.26 (wave C)
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
     'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
     'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
-    'door agent':    [['raceSwingDoor', 'raceDoorDash'], ['raceBreakingEntering', 'raceAirMail'], 'raceTrapdoor', 'raceDropIn'],   // DOOR_GUN_PLAN §2.4 (2026-09-25): the door wheel's starters on rung I, B&E joins Air Mail on II; the seven destinations are the WHEEL pool (unitSpellPoolParts.wheel)
+    'door agent':    [['raceSwingDoor', 'raceDoorDash'], ['raceBreakingEntering', 'raceAirMail'], 'raceUnderdogSpirit', 'raceDropIn'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
-    'cult leader':   ['raceCultSermon', ['raceCultKoolAid', 'raceCultTithe'], 'raceCultIndoctrinate', 'raceCultGathering'],       // 2026-09-21
+    'cult leader':   ['raceJudgmentBeam', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
-    'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
+    'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceWarOfTheWorlds'],   // 2026-09-27: Summon Sandstorm (Desert Acclimation) keeps a ring-II seat
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
     'grey':          ['raceProbe', 'raceImplant', 'raceAbductionBeam', 'raceCropCircle'],
     'shadow entity': ['raceShadowBind', 'sharedSmokeScreen', 'racePhaseShift', 'voidRush'],
@@ -17734,19 +17755,19 @@ const RACE_TREE = {
     'robot':         ['raceRocketFist', 'overclock', 'raceHydraulicCrush', 'raceChassisSlam'],
     'android':       ['raceSyntheticBlade', 'raceSelfRepairProtocol', 'raceNeuralHack', 'empBurst'],
     'angel':         ['radiantBolt', 'raceWingsOfMercy', 'raceSanctuary', 'raceDivineSmite'],
-    'seraphim':      ['raceRapture', 'raceAbsolution', 'raceDivineJudgment', 'raceMerkaba'],
+    'seraphim':      ['raceRapture', 'raceAbsolution', 'raceSanctuary', 'raceMerkaba'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'demon':         ['raceContract', ['raceInfernalHurl', 'raceSoulBind'], 'raceVoidContract', ['raceHellmouth', 'raceShadowRealm']],   // §6.8 (wave B)
     'succubus':      ['raceSoulSuck', 'raceCharm', ['raceSleepParalysis', 'raceEnthrall'], 'raceDrainingEmbrace'],   // §6.29 (wave B)
     'mech':          ['raceMortarSalvo', 'raceSiegeMode', 'raceEject', 'sharedNuke'],
-    'ghost':         ['raceHaunt', ['raceColdSpot', 'sharedFlashFreeze'], 'racePossession', 'raceBoo'],   // §6.6 (wave B)
+    'ghost':         ['raceHaunt', ['raceColdSpot', 'raceFear'], 'racePossession', 'raceBoo'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
-    'skinwalker':    ['raceBorrowedClaw', 'sharedSmokeScreen', 'raceSkinSwap', 'raceMimicry'],
+    'skinwalker':    ['raceBorrowedClaw', 'raceShedSkin', 'raceSkinSwap', 'raceMimicry'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
     'gargoyle':      [['raceWingGust', 'raceStonefall'], ['raceStoneform', 'raceGothicRampart'], 'raceCalcify', 'raceStoneDrop'],   // §6.17 — Perch Form retired; Stoneform twins Rampart
-    'djinn':         ['raceDustDevil', 'sharedSummonSandstorm', 'raceWishGranted', 'raceAncientMagic'],
-    'anubis':        ['sharedFissure', 'raceRigormortis', 'sharedSummonSandstorm', 'raceWeighTheHeart'],   // Phase 6: Grave Passage deleted → Rigormortis (Necromancy)
+    'djinn':         ['raceSacredGeometry', 'raceSpellsteal', 'raceWishGranted', 'raceAncientMagic'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'anubis':        ['raceDustDevil', 'raceRigormortis', 'sharedSummonSandstorm', 'raceWeighTheHeart'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
-    'mantid':        ['raceMandibleStrike', 'raceChitinArmor', ['raceAmbushLunge', 'raceFractalStitch'], 'raceFractalNeedle'],   // Fractal Stitch twin 2026-09-25
+    'mantid':        ['raceMandibleStrike', 'raceChitinArmor', 'raceFractalStitch', 'raceFractalNeedle'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'antperson':     ['raceFormicAcid', 'sharedPoisonSwamp', 'raceTunnelNetwork', 'raceSwarmSignal'],
     'mothman':       [['raceRedEyes', 'raceDreadAura'], 'thunderstorm', 'raceCryptidVanish', 'raceProphecyOfDisaster'],   // Phase 6: Abduction deleted → Cryptid Vanish (Cryptid Abilities); Dread Aura twins Red Eyes
     'siren':         ['raceSonicBoomerang', 'raceRiptide', 'raceDeafeningWail', 'raceCallOfTheDeep'],
@@ -17754,7 +17775,7 @@ const RACE_TREE = {
     'glitch':        ['raceCrashLoop', 'raceMemoryLeak', 'raceBlueScreen', 'raceTimeRewind'],
     'machine elves': ['racePrismMirror', 'racePulseLattice', 'raceTuneFrequency', 'sharedEgoDeath'],
     'cyclops':       ['raceStoneThrow', 'raceBalefulGaze', 'raceTitanDrop', 'raceGiantSmash'],
-    'cyborg':        ['raceHydraulicPunch', ['raceEMPGrenade', 'raceClusterRockets'], ['overclock', 'racePlasmaCannon'], 'raceRocketToss'],   // §6.27
+    'cyborg':        ['raceHydraulicPunch', 'raceClusterRockets', ['overclock', 'racePlasmaCannon'], 'raceRocketToss'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'sharedScorchedEarth', 'raceDarkDominion'],
     /* 2026-08-16 balance (stats18): demon princess ran +16.6 residual — Kiss
        of Decay (top-10 dmg/MP at 25 MP) moves to ring 3 (75 MP, tier II);
@@ -17764,17 +17785,17 @@ const RACE_TREE = {
     'fallen angel':  ['raceFallenGrace', 'raceAbyssalWings', 'raceSanctuary', 'raceDescendingWrath'],
     'halfdemon':     ['raceInnerDemon', 'sharedSmokeScreen', 'raceShadowStep', 'raceDemonicClaw'],
     'mermaid':       ['raceSirenSong', 'raceTidalBlessing', 'raceRiptide', 'raceFlood'],
-    'nephilim':      ['raceSmite', 'raceHolyBulwark', 'sharedFissure', 'raceWrathOfTheWatchers'],
+    'nephilim':      ['raceFallenGrace', 'raceAbyssalWings', 'sharedFissure', 'raceWrathOfTheWatchers'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'vampire':       ['raceBite', 'raceMistForm', ['raceBatSwarm', 'raceThrallBite'], 'racePredatorDrop'],   // §6.29 (wave B)
-    'voidweaver':    ['raceVenomFang', 'raceWebSnare', 'raceDimensionalWeb', 'sharedBlackHole'],
+    'voidweaver':    ['raceVenomFang', 'raceWebSnare', 'raceDimensionalWeb', 'raceFractalNeedle'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'cosmic wraith': ['raceEntropicBeam', 'racePhaseWalk', 'sharedNebula', 'raceHeatDeath'],
     'superhero':     ['raceHeroicLeap', ['raceInvulnerable', 'raceFreezeBreath'], ['raceShockwaveClap', 'raceSkyTackle'], 'raceLaserBeam'],   // §6.25 (Heat Vision = raceLaserBeam)
     'general':       ['raceRallyCommand', 'raceIronBulwark', 'raceArtilleryStrike', 'sharedNuke'],
-    'droid':         ['raceTaserBolt', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],
+    'droid':         ['raceCrashLoop', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
-    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['racePoseidonsWrath', 'raceTsunami']],   // §6.12 (wave C) — Tsunami★ takes Great Flood's r4 seat (Flood is tier III, illegal at r3; §10 #15)
+    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceCallOfTheDeep']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'dinosaur':      [['racePrimalRoar', 'raceDinoTailWhip'], 'raceApexCharge', ['sharedFissure', 'raceApexRoar'], 'raceJurassicJaw'],   // §6.14 (Stampede = raceApexCharge)
     'dragon':        [['raceDragonBreath', 'raceWingGust'], 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],   // §6.7 (wave C)
     'ghoul':         [['raceGhoulishBite', 'raceFrenzy'], ['raceCorpseCrawl', 'raceFear'], ['sharedPoisonSwamp', 'raceCarrionFeast'], 'raceTerrorPounce'],   // §6.23 (wave C)
@@ -17782,7 +17803,7 @@ const RACE_TREE = {
     'kraken':        ['raceTentacleLash', 'raceInkCloud', 'raceDepthCharge', 'sharedVortexSlam'],
     'loch ness monster': ['raceRiptide', 'raceDeepDive', 'raceCryptidVanish', 'raceTidalSlam'],
     'yeti':          [['raceFrozenPunch', 'raceIceShard'], 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],   // §6.5
-    'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceSpaceDisco'],
+    'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceDrainingEmbrace'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'black goo':     [['raceGooShot', 'raceCorrosiveSplash'], ['raceIckySurprise', 'raceAbsorb'], ['raceSplash', 'raceToxicNova'], 'raceMitosisSplit'],   // §6.22 (wave C)
     'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'sharedFissure', 'raceQuake'],
     'honda civic':   ['raceRamCharge', ['raceTransform', 'raceExhaustCloud'], ['raceRoboPunch', 'raceNitroBoost'], 'raceMissileBarrage'],   // §6.2
@@ -17790,7 +17811,7 @@ const RACE_TREE = {
     'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'raceUnstoppableCharge'],
     'ki fighter':    [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // §6.10
     'king arthur':   ['raceRoyalDecree', 'raceShieldWall', 'raceKnightsOfRound', 'raceExcaliburStrike'],
-    'king kong':     ['raceChestPound', 'raceBoulderHurl', 'raceApeFury', 'racePrimalSmash'],
+    'king kong':     ['raceChestPound', 'raceSeismicLeap', 'raceApeFury', 'racePrimalSmash'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'minotaur':      ['raceHornToss', 'raceLabyrinthRoar', 'raceGoreCharge', 'raceBullRush'],
     'necromancer':   ['raceSoulDrain', 'racePlaguefield', 'raceBoneBarrage', 'raceRaiseDead'],
     'occulus':       ['racePsychicBeam', 'raceOmniVision', 'raceHypnoticPulse', 'raceDeathGaze'],
@@ -17798,7 +17819,7 @@ const RACE_TREE = {
     'robinhood':     [['raceFireArrow', 'racePoisonArrow'], ['raceStealFromRich', 'raceBombArrow'], ['raceSplittingArrow', 'racePiercingArrow'], 'raceArrowRain'],   // §6.24 (Arrow Volley = raceArrowRain)
     'santa clause':  [['raceLumpOfCoal', 'raceSnowballVolley'], 'raceSleighDash', ['raceNaughtyList', 'raceWhiteChristmas'], 'raceBlizzardPresent'],   // §6.3
     'super sentai':  ['sentaiRedSlash', 'sentaiPinkHeal', 'sentaiTeamStrike', 'sentaiMegazordBlast'],
-    'symbiote':      ['raceWebLaunch', 'raceSymbioteArmor', 'raceSymbioticDrain', 'raceTendrilStrike'],
+    'symbiote':      ['raceGooShot', 'raceSymbioteArmor', 'raceSymbioticDrain', 'raceTendrilStrike'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'valkraye':      ['raceValkyrieSpear', 'raceShieldMaiden', 'raceDivineSwoop', 'raceChooserOfSlain'],
     'watcher':       ['raceJudgmentBeam', 'raceCosmicSight', 'raceTemporalShift', 'raceRealityPulse'],
 };
@@ -18964,7 +18985,7 @@ const SPELL_FAMILIES = {
     beastabilities: {
         id: 'beastabilities',
         name: 'Beast Abilties',
-        glyph: '🐺',
+        glyph: '🦏',
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
@@ -19107,7 +19128,7 @@ const SPELL_FAMILIES = {
     },
     computerhacking: {
         id: 'computerhacking',
-        name: 'Computer Hacking',
+        name: 'Computer Hacking Skills',
         glyph: '💻',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19134,8 +19155,8 @@ const SPELL_FAMILIES = {
     },
     titan: {
         id: 'titan',
-        name: 'Titan Abilities',
-        glyph: '🦑',
+        name: 'Giant Abilities',
+        glyph: '🪜',
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
@@ -19179,7 +19200,7 @@ const SPELL_FAMILIES = {
     },
     ancientknowledge: {
         id: 'ancientknowledge',
-        name: 'Ancient Knowledge',
+        name: 'Occult Knowledge',
         glyph: '🚫',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19234,7 +19255,7 @@ const SPELL_FAMILIES = {
     },
     astral: {
         id: 'astral',
-        name: 'Dream Harvesting',
+        name: 'Dream Predation',
         glyph: '🛌',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19297,7 +19318,7 @@ const SPELL_FAMILIES = {
     },
     psychadelic: {
         id: 'psychadelic',
-        name: 'Psychadelic Use',
+        name: 'Drug Use',
         glyph: '😵‍💫',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19631,7 +19652,7 @@ const SPELL_FAMILIES = {
     deepsea: {
         id: 'deepsea',
         name: 'Deep Sea Anatomy',
-        glyph: '🪼',
+        glyph: '🌊',
         color: '#a08cc8',
         kind: 'discipline',
         desc: 'Stings, ink, tentacles and dives from the bottom of the sea.',
@@ -19716,6 +19737,213 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: 'A living suit: tendrils, drains, webbing and armor.',
+        unique: null
+    },
+    culinaryarts: {
+        id: 'culinaryarts',
+        name: 'Culinary Arts',
+        glyph: '🧑🏻‍🍳',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    ropework: {
+        id: 'ropework',
+        name: 'Ropework',
+        glyph: '🪢',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    gambling: {
+        id: 'gambling',
+        name: 'Gambling',
+        glyph: '🎰',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    animalhandling: {
+        id: 'animalhandling',
+        name: 'Animal Handling',
+        glyph: '🦮',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    mirrormagic: {
+        id: 'mirrormagic',
+        name: 'Mirror Magic',
+        glyph: '🪞',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    trapmaking: {
+        id: 'trapmaking',
+        name: 'Trap Making',
+        glyph: '🪤',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    marksmanship: {
+        id: 'marksmanship',
+        name: 'Marksmanship',
+        glyph: '🎯',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    horsebackriding: {
+        id: 'horsebackriding',
+        name: 'Horseback Riding',
+        glyph: '🏇',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    jellyfish: {
+        id: 'jellyfish',
+        name: 'Jellyfish',
+        glyph: '🪼',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    desertacclimation: {
+        id: 'desertacclimation',
+        name: 'Desert Acclimation',
+        glyph: '🐫',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    archaeology: {
+        id: 'archaeology',
+        name: 'Archaeology',
+        glyph: '🛕',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    agriculture: {
+        id: 'agriculture',
+        name: 'Agriculture',
+        glyph: '🌾',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    meditation: {
+        id: 'meditation',
+        name: 'Meditation',
+        glyph: '🧘',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    musictheory: {
+        id: 'musictheory',
+        name: 'Music Theory',
+        glyph: '🎼',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    actingchops: {
+        id: 'actingchops',
+        name: 'Acting Chops',
+        glyph: '🎭',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    astronautcamp: {
+        id: 'astronautcamp',
+        name: 'Astronaut Camp',
+        glyph: '👨‍🚀',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    stoneage: {
+        id: 'stoneage',
+        name: 'Stone Age',
+        glyph: '🗿',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    tentacleappendages: {
+        id: 'tentacleappendages',
+        name: 'Tentacle Appendages',
+        glyph: '🦑',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    apeintelligence: {
+        id: 'apeintelligence',
+        name: 'Monkey Brains',
+        glyph: '🙉',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    mothman: {
+        id: 'mothman',
+        name: 'Mothman',
+        glyph: '🦟',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    internetaddiction: {
+        id: 'internetaddiction',
+        name: 'Internet Addiction',
+        glyph: '🛜',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    persuasion: {
+        id: 'persuasion',
+        name: 'Persuasion',
+        glyph: '🗣️',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: null
+    },
+    thievery: {
+        id: 'thievery',
+        name: 'Thievery',
+        glyph: '💰',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
         unique: null
     },
 };
@@ -20038,107 +20266,107 @@ function spellUpgradeLabel(upId) {
    Phase 6 filled it from the catalogue. A race's pool is its RACE_TREE row plus every member of these families (unitSpellPoolParts);
    the library's POOLS tab edits it. Every spell sits in exactly ONE family (spell-families.test.js). */
 const RACE_FAMILIES = {
-    ai: ['artificialintelligence', 'computerhacking', 'advancedtechnology'],
+    ai: ['artificialintelligence', 'computerhacking', 'internetaddiction'],
     android: ['robot', 'computerhacking', 'cyberpunkweapons'],
     angel: ['angelic', 'light', 'wind', 'healingmagic'],
     annunaki: ['cosmic', 'ancientknowledge', 'earth'],
-    antihero: ['dirtyfighting', 'cosmic', 'shadow'],
-    antperson: ['insectoid', 'poison', 'earth'],
-    anubis: ['ancientknowledge', 'necromancy', 'earth', 'wind'],
-    atlantean: ['water', 'ice', 'ancientknowledge'],
-    barbarella: ['alientechnology', 'seduction', 'stagepresence'],
-    bigfoot: ['sasquatch', 'nature', 'earth', 'cryptid'],
+    antihero: ['dirtyfighting', 'cosmic', 'superheropowers'],
+    antperson: ['insectoid', 'poison', 'teamwork'],
+    anubis: ['ancientknowledge', 'necromancy', 'desertacclimation'],
+    atlantean: ['water', 'ice', 'arcane'],
+    barbarella: ['alientechnology', 'seduction', 'astronautcamp'],
+    bigfoot: ['sasquatch', 'nature', 'cryptid'],
     'black goo': ['ooze', 'poison', 'alientechnology'],
     catgirl: ['feline', 'athleticism', 'seduction'],
     'chosen one': ['maincharacter', 'psychic', 'light'],
-    'conspiracy theorist': ['conspiracyknowledge', 'deepstate', 'ufo'],
-    'cosmic wraith': ['cosmic', 'shadow', 'ice'],
-    cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining'],
-    'cult leader': ['cult', 'biblestudy', 'psychic'],
-    cyborg: ['cyberpunkweapons', 'robot', 'spygear'],
-    cyclops: ['titan', 'eyesight', 'earth'],
-    demon: ['demonicabilities', 'shadow', 'fire', 'blood', 'wind'],
+    'conspiracy theorist': ['conspiracyknowledge', 'internetaddiction', 'advancedtechnology'],
+    'cosmic wraith': ['cosmic', 'shadow', 'temporal'],
+    cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining', 'horsebackriding', 'ropework'],
+    'cult leader': ['cult', 'temporal', 'persuasion', 'healingmagic', 'meditation'],
+    cyborg: ['cyberpunkweapons', 'robot', 'humangrit'],
+    cyclops: ['titan', 'eyesight', 'earth', 'stoneage'],
+    demon: ['demonicabilities', 'shadow', 'fire', 'blood'],
     'demon prince': ['infernalcourt', 'demonicabilities', 'fire', 'blood'],
     'demon princess': ['infernalcourt', 'witchcraft', 'poison', 'blood'],
     dinosaur: ['apexpredator', 'beastabilities', 'earth'],
-    djinn: ['arcane', 'ancientknowledge', 'wind'],
-    'door agent': ['door', 'doors', 'spygear'],
-    dragon: ['dragonabilities', 'fire', 'wind', 'earth'],
-    dreameater: ['astral', 'psychic', 'astralprojection'],
-    droid: ['computerhacking', 'robot', 'cyberpunkweapons'],
+    djinn: ['arcane', 'ancientknowledge', 'trickery'],
+    'door agent': ['door', 'doors', 'humangrit'],
+    dragon: ['dragonabilities', 'fire', 'wind'],
+    dreameater: ['astral', 'psychic', 'ghoulish'],
+    droid: ['computerhacking', 'robot', 'engineering'],
     fairy: ['fae', 'trickery', 'nature'],
-    'fallen angel': ['fallenangel', 'angelic', 'shadow', 'wind'],
+    'fallen angel': ['fallenangel', 'angelic', 'demonicabilities'],
     'fortune teller': ['fortunetelling', 'witchcraft', 'astrology'],
     gangster: ['streetsmarts', 'dirtyfighting', 'weaponstraining'],
     gargoyle: ['livingstone', 'earth', 'wind'],
-    general: ['militarysupport', 'weaponstraining', 'earth'],
-    ghost: ['haunted', 'ice', 'shadow'],
+    general: ['militarysupport', 'weaponstraining', 'teamwork'],
+    ghost: ['haunted', 'shadow', 'trickery'],
     ghoul: ['ghoulish', 'poison', 'shadow'],
     giant: ['titan', 'earth', 'dirtyfighting'],
     glitch: ['computerhacking', 'temporal', 'artificialintelligence'],
-    gnome: ['engineering', 'machinery', 'earth'],
+    gnome: ['engineering', 'earth', 'trapmaking'],
     goatman: ['horns', 'blood', 'blackmagic'],
-    golem: ['livingstone', 'earth', 'ancientknowledge'],
-    grey: ['ufo', 'alientechnology', 'cosmic'],
+    golem: ['livingstone', 'earth', 'desertacclimation'],
+    grey: ['ufo', 'psychic', 'cryptid'],
     halfdemon: ['demonicabilities', 'shadow', 'spygear'],
-    homosapien: ['humangrit', 'teamwork', 'martialarts'],
+    homosapien: ['humangrit', 'teamwork', 'athleticism'],
     'honda civic': ['drivingskills', 'robot', 'machinery'],
-    'ice queen': ['ice', 'winter', 'royalty'],
-    jellyfish: ['deepsea', 'water', 'poison'],
+    'ice queen': ['ice', 'winter', 'healingmagic'],
+    jellyfish: ['deepsea', 'water', 'poison', 'jellyfish'],
     juggernaut: ['athleticism', 'dirtyfighting', 'titan'],
-    kaiju: ['kaiju', 'earth', 'water'],
+    kaiju: ['kaiju', 'earth', 'deepsea'],
     'ki fighter': ['ki', 'martialarts', 'athleticism'],
     'king arthur': ['royalty', 'knight', 'swordsmanship'],
-    'king kong': ['kaiju', 'beastabilities', 'earth'],
-    knight: ['knight', 'royalty', 'swordsmanship'],
-    kraken: ['deepsea', 'water', 'wind'],
+    'king kong': ['kaiju', 'beastabilities', 'apeintelligence'],
+    knight: ['knight', 'royalty', 'swordsmanship', 'horsebackriding'],
+    kraken: ['deepsea', 'water', 'wind', 'tentacleappendages'],
     'loch ness monster': ['deepsea', 'water', 'cryptid', 'ice'],
-    'machine elves': ['prismlattice', 'fractal', 'psychadelic'],
+    'machine elves': ['prismlattice', 'fractal', 'psychadelic', 'trickery'],
     'mad scientist': ['unethicalscience', 'advancedtechnology', 'chemistry'],
-    mantid: ['insectoid', 'fractal', 'beastabilities', 'poison'],
-    marksman: ['militarysupport', 'weaponstraining', 'spygear'],
-    martian: ['alientechnology', 'ufo', 'fire', 'wind'],
-    mech: ['mecha', 'militarysupport', 'fire'],
-    'men in black': ['spygear', 'advancedtechnology', 'alientechnology'],
+    mantid: ['insectoid', 'fractal', 'psychic'],
+    marksman: ['militarysupport', 'weaponstraining', 'huntingskills'],
+    martian: ['alientechnology', 'ufo', 'fire', 'desertacclimation'],
+    mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
+    'men in black': ['spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
     mermaid: ['water', 'sonic', 'deepsea'],
     minotaur: ['horns', 'beastabilities', 'dirtyfighting'],
-    mothman: ['cryptid', 'lightning', 'wind'],
+    mothman: ['cryptid', 'lightning', 'wind', 'mothman'],
     necromancer: ['necromancy', 'bonedensity', 'blackmagic'],
-    nephilim: ['holydefense', 'fallenangel', 'light', 'earth'],
+    nephilim: ['fallenangel', 'earth', 'titan'],
     nordic: ['galacticfederation', 'light', 'alientechnology'],
     nun: ['biblestudy', 'light', 'angelic'],
     occulus: ['eyesight', 'psychic', 'ancientknowledge'],
-    'orb of light': ['light', 'alientechnology', 'cosmic'],
-    overlord: ['infernalcourt', 'militarysupport', 'fire'],
-    pirate: ['piracy', 'swordsmanship', 'water'],
+    'orb of light': ['light', 'cosmic', 'healingmagic'],
+    overlord: ['infernalcourt', 'fire', 'dirtyfighting'],
+    pirate: ['piracy', 'swordsmanship', 'ropework'],
     'police officer': ['policetraining', 'weaponstraining', 'drivingskills'],
     politician: ['politics', 'deepstate', 'militarysupport'],
-    popstar: ['stagepresence', 'sonic', 'seduction'],
+    popstar: ['stagepresence', 'sonic', 'seduction', 'musictheory'],
     priest: ['biblestudy', 'light', 'angelic', 'healingmagic'],
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['conspiracyknowledge', 'trickery', 'poison', 'spygear'],
-    robinhood: ['archery', 'trickery', 'huntingskills'],
+    robinhood: ['archery', 'huntingskills', 'thievery'],
     robot: ['robot', 'machinery', 'cyberpunkweapons'],
     'santa clause': ['christmasspirit', 'winter', 'ice'],
     scarecrow: ['scarecrow', 'witchcraft', 'nature'],
     seraphim: ['angelic', 'biblestudy', 'light'],
     'shadow entity': ['shadow', 'haunted', 'spygear'],
-    shaman: ['nature', 'psychadelic', 'blackmagic', 'astralprojection', 'witchcraft'],
+    shaman: ['nature', 'psychadelic', 'astralprojection'],
     siren: ['sonic', 'water', 'seduction'],
-    skeleton: ['bonedensity', 'haunted', 'earth', 'poison'],
-    skinwalker: ['trickery', 'beastabilities', 'blackmagic', 'spygear'],
+    skeleton: ['bonedensity', 'haunted', 'swordsmanship'],
+    skinwalker: ['trickery', 'beastabilities', 'blackmagic', 'cryptid'],
     succubus: ['seduction', 'astral', 'demonicabilities'],
     'super sentai': ['sentai', 'teamwork', 'martialarts'],
     superhero: ['superheropowers', 'cosmic', 'wind'],
-    swordfighter: ['maincharacter', 'swordsmanship', 'martialarts'],
-    symbiote: ['symbiosis', 'beastabilities', 'arachnid'],
+    swordfighter: ['maincharacter', 'swordsmanship', 'athleticism'],
+    symbiote: ['symbiosis', 'ooze', 'poison'],
     telepath: ['psychic', 'deepstate', 'astralprojection'],
     valkraye: ['holydefense', 'angelic', 'wind'],
     vampire: ['vampiricabilties', 'beastabilities', 'blood'],
-    voidweaver: ['arachnid', 'insectoid', 'cosmic', 'fractal'],
+    voidweaver: ['arachnid', 'insectoid', 'fractal'],
     watcher: ['temporal', 'cosmic', 'astralprojection'],
     werewolf: ['werewolf', 'beastabilities', 'huntingskills'],
-    wizard: ['arcane', 'witchcraft', 'lightning'],
+    wizard: ['arcane', 'lightning', 'fire', 'ice'],
     yeti: ['ice', 'winter', 'cryptid'],
     zombie: ['zombie', 'poison', 'necromancy'],
 };
@@ -24817,23 +25045,16 @@ const DOOR_HQ = {
           note: 'the inner sun', draft: true },
     ],
     siteRooms: {
-        /* BACK DOORS (H-WING, 2026-09-14 rev 4): a second door on a site room,
-           appended by hqSiteRoom after the way in. The Backrooms is what lies
-           beyond the H-Wing door (MASTER C-12): its room gets an EXIT on the
-           south wall beside the way in that opens into the wing's west leg —
-           a way back that does not go through the sealed Quarantined bay.
-           The renderer keeps the door's lane clear of the setting
-           (_hqBuildSetting zones). One row per map id, the box-room door shape. */
         /* THE ENTRY (2026-09-17 — the user: "we are abandoning the rooms based off the delta map; if I walk into a door or entry
            labeled Cyberpunk City it needs to take me to the grid; same with the Strip"): a site named here has its BOARD ROOM
            bypassed — every door, threshold, GO and return that would land in `site_<mapId>` lands in `room` instead (map.js
            _hqEnter → hqSiteEntry; an `at` the part has is kept, anything else lands at the entry door), and the part wears the
            board room's own egress as `door` (id / wall / x — the leaf, the label and the bay action are the board room's:
-           hqApplySiteEntries at load, after the board rooms are generated). The board room still exists (the console, the
-           marker, the register's number, the map's node) — nobody walks it. */
+           hqApplySiteEntries at load). The board rooms themselves were DELETED 2026-09-27 (mondo: dead code): `site_<mapId>` is
+           only an alias now, the marker and the register's number live on the entry part. */
         entry: {
             prebuilt_cyberpunk: { room: 'site_prebuilt_cyberpunk_streets', door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_strip:     { room: 'site_prebuilt_strip_streets',     door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_strip:     { room: 'site_prebuilt_strip_streets',     door: { id: 'bay', wall: 's', x: -22 } },   // Phase 5: x 0 is the highway's join
             prebuilt_downtown:  { room: 'site_prebuilt_downtown_streets',  door: { id: 'bay', wall: 's', x: -30 } },
             /* THE BASES (2026-09-18 — the user: "we don't need the board maps if the place already has an area, like CERN has a
                ring now"): the three bases stand on their own parts — the freight lift lands you in THE MOTOR POOL, the blast
@@ -24896,131 +25117,6 @@ const DOOR_HQ = {
             prebuilt_revenge:             { room: 'site_prebuilt_revenge_deck',               door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_clearing', door: { id: 'forest', wall: 's', x: -0.875, way: 'hollowtree', leaf: null } },   // the clearing's hollow tree, worn as the bay door
         },
-        backDoors: {
-            /* THE WOODS (9.3 stage 3, 2026-09-16): the forest is the board room
-               of the woods complex; THE PATH on its north wall's west lane (the
-               owl's gate moved to the redwood trail) walks into THE CLEARING */
-            prebuilt_fairy_forest: { id: 'woods', wall: 'n', x: -10, way: 'hollowtree',   // 2026-09-17: THE HOLLOW TREE (the user's GLB) is the door to the woods
-                label: 'THE WOODS', sub: 'THE HOLLOW TREE · INTO THE WOODS',
-                action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'forest' },
-                desc: 'A path between two trees that lean in to hear you go. The woods are bigger than the board allows, which Continuity has a form for, and the mountain is over them.' },
-            /* CYBERPUNK CITY (THE SECOND PASS, 2026-09-17): the tenement's back gate on the board room's north wall (the lane the
-               subway train stood on until the grid had a station) walks into THE GRID — the city at night round the board */
-            prebuilt_cyberpunk: { id: 'street', wall: 'n', x: -10, leaf: 'leaf_holographic',
-                label: 'THE GRID', sub: 'THE BACK GATE · INTO THE CITY',
-                action: { room: 'site_prebuilt_cyberpunk_streets', at: 'bay' },   // 2026-09-17: the grid's tenement door is gone; the entry's bay door stands where it stood
-                desc: 'The tenement\'s back gate. The city is bigger than the board allows, which Continuity has a form for, and it is raining on all of it.' },
-            prebuilt_backrooms: { id: 'hwing', wall: 's', x: 6.0, leaf: 'leaf_exit',
-                label: 'H-WING', sub: 'EXIT · THIS ONE IS',
-                action: { room: 'hwing_w', at: 'exit' },
-                desc: 'An EXIT door. In here they are lies; this one opens onto a beige corridor with right angles, which is worse, and is the way you came in.' },
-            /* THE HAUNTED HOUSE COMPLEX (plan 9.2 stage 1, 2026-09-15): the
-               board room is the ground floor cut open; THE FRONT DOOR on its
-               north wall (west of the console, clear of the signboard at x 5
-               and the lamp mast in the corner) walks into the house's own
-               rooms — the hall, upstairs, the attic, the cellar. */
-            /* THE SPACESHIP COMPLEX (plan 9.2 stage 2, 2026-09-15 rev 18): the
-               board room is the DORSAL DECK; THE AIRLOCK on its north wall
-               (the lane the Moon collar hung on until the airlock existed)
-               cycles into the ship's own compartments — the airlock, the
-               cargo hold, the bridge. The Lunar route's collars hang in the
-               airlock now (DOOR_HQ.links moon_derelict / derelict_saturn). */
-            prebuilt_derelict: [
-                { id: 'airlock', wall: 'n', x: -6, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE AIRLOCK', sub: 'THE INNER HATCH · INTO THE SHIP',
-                  action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
-                  desc: 'The airlock off the dorsal deck. It cycles whether or not there is air; the collars to the Moon and to Saturn are on the other side of it, and so is the rest of the ship — the half that is here.' },
-            ],
-            /* THE FLYING DUTCHMAN COMPLEX (plan 9.2 stage 3, 2026-09-15 rev 19): the
-               board room is THE MAIN DECK on its quay; THE COMPANIONWAY on its
-               north wall (the lane the Atlantis hatch hung on until the hold
-               existed) goes below decks — the gun deck, the captain's cabin,
-               the hold. The DEEP route's hatch to Atlantis is in the hold now
-               (DOOR_HQ.links revenge_atlantis), below the waterline. */
-            prebuilt_revenge: [
-                { id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood',
-                  label: 'THE FLYING DUTCHMAN', sub: 'THE COMPANIONWAY · BELOW DECKS',
-                  action: { room: 'site_prebuilt_revenge_gundeck', at: 'deck' },
-                  desc: 'The companionway down from the main deck. Below is the gun deck, aft of that the captain\'s cabin, below that the hold, and below the hold the sea — which on this ship is a door.' },
-            ],
-            /* THE URBAN BLOCK (plan 9.2 stage 4, 2026-09-16): two complexes in
-               one delivery — "the urban maps could be a lot bigger". THE STRIP's
-               boulevard keeps the console; its one free north lane (x -0.2 —
-               the highway's two doors hold -5 and -10) is THE CHAPEL's motel
-               door, and the casino floor is behind the chapel. DOWNTOWN's north
-               wall carries three link doors already (the most a lane rule
-               allows), so THE TOWER's lobby door hangs on its EAST wall — the
-               collapsed tower stands across the intersection — and the subway
-               platform is down the stair off the lobby (the subway route's
-               third station; DOOR_HQ.links subway_downtown). */
-            prebuilt_strip: [
-                { id: 'chapel', wall: 'n', x: -0.2, leaf: 'leaf_motel',
-                  label: 'THE CHAPEL', sub: 'THE MOTEL DOOR · INTO THE CHAPEL',
-                  action: { room: 'site_prebuilt_strip_chapel', at: 'street' },
-                  desc: 'A motel door with a DO NOT DISTURB sign that is a lie, on a chapel that is a business. Eleven chapels on the Strip; this is the one the Department expenses.' },
-            ],
-            prebuilt_downtown: [
-                { id: 'tower', wall: 'e', z: 0, leaf: 'leaf_entrance',
-                  label: 'THE TOWER', sub: 'THE LOBBY DOOR · INTO THE TOWER',
-                  action: { room: 'site_prebuilt_downtown_lobby', at: 'street' },
-                  desc: 'The lobby door of the tower that came down in 1954 and has come down every year since. The glass is taped. The lobby is, against the plate\'s advice, there.' },
-            ],
-            /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): three sites, one complex.
-               THE VATICAN's crypt stair on its north wall at x −10 (the lane the
-               crypt link to Hell held until the catacombs existed) goes down into
-               THE CATACOMBS; HELL's mouth at x −10 (the same freed lane) goes down
-               into THE PIT; HEAVEN's one free north lane (x −0.2) is THE GATE from
-               the board side, out onto THE CLOUD FIELDS. The stairway hangs off the
-               catacombs (links.catacombs_stair) and climbs to the fields. */
-            prebuilt_vatican: [
-                /* expanded 2026-09-17: the white door opens on THE BASILICA now; the crypt stair is behind its altar */
-                { id: 'basilica', wall: 'n', x: -10, leaf: 'leaf_white_wood',
-                  label: 'THE BASILICA', sub: 'THE WHITE DOOR · INTO THE BASILICA',
-                  action: { room: 'site_prebuilt_vatican_basilica', at: 'bay' },   // 2026-09-18: the basilica's south door IS the bay's (siteRooms.entry — the board room is bypassed)
-                  desc: 'A white door in the colonnade, painted by decree. Behind it the nave, the archive, the cortile, the crypt under all of it and the dome over all of it. Immunity claimed, three times.' },
-            ],
-            prebuilt_hell: [
-                { id: 'pit', wall: 'n', x: -10, leaf: 'leaf_hell_arch',
-                  label: 'THE PIT', sub: 'THE MOUTH · DOWN',
-                  action: { room: 'site_prebuilt_hell_pit', at: 'bay' },   // 2026-09-18: the rim's south door IS the bay's (siteRooms.entry — the board room is bypassed)
-                  desc: 'The arch again, smaller, at the back of the causeway. Everything here goes down; this is the door that admits it.' },
-            ],
-            prebuilt_heaven: [
-                { id: 'gate', wall: 'n', x: -0.2, leaf: 'leaf_hotel',
-                  label: 'THE CLOUD FIELDS', sub: 'THE GATE · OUT',
-                  action: { room: 'site_prebuilt_heaven_gate', at: 'bay' },   // 2026-09-18: the gate ON THE DAIS IS the bay's (siteRooms.entry — the board room is bypassed)
-                  desc: 'The gate from the inside: a hotel room door with no handle on this side, which is the hotel’s policy. It opens onto the fields, the rift and the top of the stair.' },
-            ],
-            /* D.U.M.B. (9.3 stage 8 — THE COMPLEX CANDIDATES #5, 2026-09-17): the two lanes the
-               tunnel links gave up when they moved onto the motor pool — Room 555's freight lift
-               (n x −5) goes DOWN into the complex; Room 999's blast door (n x −5) opens on THE RING. */
-            prebuilt_dumb: [
-                { id: 'lift', wall: 'n', x: -5, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE MOTOR POOL', sub: 'THE FREIGHT LIFT · DOWN',
-                  action: { room: 'site_prebuilt_dumb_motorpool', at: 'bay' },   // 2026-09-18: the motor pool's south door IS the bay's (siteRooms.entry)
-                  desc: 'The freight lift behind the blast door. SUB-LEVEL 1 is the only button that works; SUB-LEVEL 7 is the only one that is worn.' },
-            ],
-            prebuilt_cern: [
-                { id: 'ring', wall: 'n', x: -5, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE RING', sub: 'THE COLLIDER TUNNEL · BEAM ON',
-                  action: { room: 'site_prebuilt_cern_ring', at: 'bay' },   // 2026-09-18: the ring's south door IS the bay's (siteRooms.entry)
-                  desc: 'The blast door at the back of the hall they let you see. Behind it the tunnel curves, which is the point of it, and hums, which is the problem with it.' },
-            ],
-            /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the lane the Lodge's door gave up when it moved into the great hall — Room i's
-               gatehouse arch on the board room's north wall walks into THE OUTER WARD (whose bay door IS the board's egress: siteRooms.entry) */
-            prebuilt_camelot: [
-                { id: 'gatehouse', wall: 'n', x: -10, leaf: 'leaf_portcullis', wide: true,
-                  label: 'THE OUTER WARD', sub: 'THE GATEHOUSE ARCH · INTO THE CASTLE',
-                  action: { room: 'site_prebuilt_camelot_ward', at: 'bay' },
-                  desc: 'The second portcullis, behind the first. The castle is bigger than the board allows, which Continuity has a form for, and the moat goes all the way round it.' },
-            ],
-            prebuilt_haunted: [
-                { id: 'house', wall: 'n', x: -7.5, leaf: 'leaf_wooden',
-                  label: 'THE HAUNTED HOUSE', sub: 'THE FRONT DOOR · INTO THE HOUSE',
-                  action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
-                  desc: 'The front door of the house. The plate says 13; the door says 237; the hall says come in. The house is bigger inside than the board allows, which Continuity has a form for.' },
-            ],
-        },
         built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_stadium',
                 'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica',
                 /* stage 6 (2026-09-08 rev 4): the rest of the register — every launch map is a room */
@@ -25033,1196 +25129,6 @@ const DOOR_HQ = {
                 'prebuilt_haunted', 'prebuilt_lodge', 'prebuilt_singularity', 'prebuilt_saturn', 'prebuilt_strip', 'prebuilt_downtown',
                 /* 7.7 WAVE 2 (2026-09-16): the right triangle */
                 'prebuilt_bermuda'],
-        shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
-            /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
-               lamps in the corners (lens + glow), `strip` = the wall strips,
-               `light` = the fluorescents' point lights and the ceiling
-               fixtures, `signN` / `signS` = the palettes of the two signs.
-               D.U.M.B. is the default: red lamps, white strips. */
-            mood: { lamp: 0xff4a4a, glow: 0xff3a3a, strip: 0xf2f7ff, light: 0xe6eeff, signN: { bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, signS: { bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' } } },
-        /* ── THE SETTING IN THE ROOM (plan 7.2 stage 5, 2026-09-08) ────
-           A built site whose EW_MAP_META row names a `near` builder (the
-           MAP SETTINGS kit, three-renderer.js _NR_BUILDERS) gets that
-           setting built INSIDE its room at 1:1 — the servers, the beamline,
-           the partitions, the picket fence and the houses, the stands, the
-           curtain wall, the colonnade, the spires — so the room looks like
-           the map it is. The room grows to the setting's apron: `pad` =
-           `w` × one tile (+ the moat's gap), which is exactly the kit's
-           X0..X1, so the setting's own enclosure lands on the room's walls
-           (the renderer skips the kit's apron / moat / room / signs — the
-           shell IS those — and keeps everything else, culled clear of the
-           way in and the console, every piece a blocker).
-             w       the builder's apron width in tiles — MUST equal the
-                     `w` the builder hands _nrKit (doorhq.test.js reads the
-                     renderer source and fails on drift)
-             h       (indoor) the builder's room height in tiles → the
-                     room's `h`, so the kit's pipes and lamps fit under it
-             stands  the setting fills the w/e strips (tiers) — the natives,
-                     the boxes and the chair move to the n/s strips
-           Opt out per room with `shells[id].setting: false`; the console
-           moves off a filled wall with `shells[id].console = { wall, at }`.
-           Flavour props keep their distance to the wall when the room
-           grows (`fitted: true` on the flavour entry = already placed).
-           ── THE EDGE (2026-09-11) ──────────────────────────────────────
-           The doorway is a doorway to the ACTUAL place, so an outdoor site
-           does not stand inside four facility walls unless the place itself
-           is walled. `shells[id].edge` names what stands at the room's
-           bound (hqSiteRoom → shell.edge; the renderer's box shell reads it):
-             'open'   (the default for an `open` room) NOTHING — the ground
-                      runs out past the walkway under the map's sky; the way
-                      in is the threshold's own 3.3 m panel standing alone
-                      (the lone door of the crossing / the main menu), the
-                      signs are freestanding signboards, the console desk
-                      stands free, and you may ROAM `shell.roam` metres out
-                      onto the apron (the walker's bound moves with it).
-                      Wall-MOUNTED props (a clipboard, an extinguisher, a
-                      clock — `mount` > 0 or no footprint) are dropped, since
-                      there is nothing to hang them on; a piece that STANDS
-                      (lockers, shelving, the cooler, the tanker desk — a
-                      `foot`) keeps its place at the old wall line.
-             'low'    a knee-high field wall in the shell's `wall` texture
-                      (a dry-stone wall on the downs, the earth lip of the
-                      plane) with a gap at the way in; no roaming past it;
-                      props as 'open'.
-             'walls'  the full box (every INDOOR room — hqSiteRoom forces
-                      it — and the outdoor places whose enclosure IS a
-                      building or a cavern: the stadium's bowl, the castle's
-                      curtain wall, the tenements, the tower's court, the
-                      two caverns). The setting's own perimeter pieces are
-                      culled against these walls as before; on an 'open' /
-                      'low' room the renderer KEEPS them — the picket fence,
-                      the perimeter fence and the tree lines are the natural
-                      walls now (natural walls are fine; facility walls are
-                      not). */
-        near: {
-            dumb: { w: 3.0, h: 3.4 }, cern: { w: 3.2, h: 3.6 }, backrooms: { w: 4.0 },
-            stadium: { w: 4.5, stands: true },
-            camelot: { w: 4.0 }, atlantis: { w: 4.0 }, hell: { w: 4.0 }, technoticlan: { w: 4.0, stands: true }, agartha: { w: 4.5 }, antarctica: { w: 4.5 },
-            /* stage 6: the rest (Flat Lands has no row — its builder's apron is 14 tiles; the room opts out) */
-            shasta: { w: 4.5 }, stonehenge: { w: 4.5 }, giza: { w: 4.5 }, heaven: { w: 4.5 }, cyberpunk: { w: 3.2 }, babel: { w: 4.5, stands: true },
-            olympus: { w: 4.0 }, mars: { w: 5.0 }, area51: { w: 4.5 }, skinwalker: { w: 5.0 }, hollow_earth: { w: 4.5 }, fairy_forest: { w: 4.5 },
-            moon: { w: 5.0 }, vatican: { w: 4.5 }, bohemian_grove: { w: 5.0 }, gobekli: { w: 5.0 }, northpole: { w: 4.5 },
-            /* MOVING MAPS (2026-09-12): the deck rim, the torn plating, the slab's marble rim */
-            revenge: { w: 1.6 }, derelict: { w: 2.2 }, lookingglass: { w: 1.2 },
-            /* 7.6 WAVE 1 (2026-09-13) */
-            haunted: { w: 4.5 }, lodge: { w: 3.4, h: 3.6 }, singularity: { w: 4.0 }, saturn: { w: 5.0 }, strip: { w: 4.0 }, downtown: { w: 3.6 },
-            /* 7.7 WAVE 2 (2026-09-16): the shoal's rim */
-            bermuda: { w: 1.6 },
-        },
-        shells: {
-            prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
-            /* 999 · the collider hall: speckled stone and teal trim under
-               blue light — the beam is on, the lamps say so */
-            prebuilt_cern: { floor: 'concrete', wall: 'stone', dado: 'teal', trim: 'teal', ceiling: 'ceiling', h: 4.6, console: { wall: 'n', at: 0 },
-                mood: { lamp: 0x6ac8ff, glow: 0x4ab0ff, strip: 0xbfe6ff, light: 0xd0e6ff, signN: { bg: '#10202c', border: '#8fd8ff', color: '#dff4ff' }, signS: { bg: '#2a1010', border: '#ff8080', color: '#ffe0e0' } } },
-            /* 90 · level 0 goes on: office carpet, beige drywall, acoustic
-               tile, a low ceiling, no conduits (nothing runs through here),
-               the hum of the yellow light; the way in is an EXIT door */
-            prebuilt_backrooms: { floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'drywall', ceiling: 'ceiling', h: 4.3, dadoH: 0.7, pipes: false,
-                mood: { lamp: 0xfff0a0, glow: 0xffe070, strip: 0xfff2b0, light: 0xfff0c0, signN: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' }, signS: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' },
-                    signLines: { n: ['BACKROOMS', 'ROOM 90', 'LEVEL 0 · NO EXIT'], s: ['NON-CANON', 'THE EXIT SIGN IS A LIE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 50 · FOOTBALL STADIUM — the bowl at night: the inner concrete
-               wall round the field, turf underfoot, floodlight masts, the
-               city's roster and its stars overhead; the turnstile lets you in */
-            prebuilt_stadium: { open: true, edge: 'walls', floor: 'grass_2', wall: 'concrete_floor', dado: 'concrete_floor', trim: 'concrete', ceiling: null, h: 4.2, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 7 },
-                apron: 'concrete_floor', skirt: 'concrete_floor', apronColor: 0x9a9a96, floorColor: 0x5ec46a,
-                mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f2ff, night: 1,
-                    signN: { bg: '#10203a', border: '#ffd34a', color: '#ffffff' }, signS: { bg: '#1a1a1a', border: '#f4f4f4', color: '#f4f4f4' },
-                    signLines: { n: ['FOOTBALL STADIUM', 'ROOM 50', 'HOME 0 · AWAY 0 · Q1'], s: ['ACTIVE CROSSING', 'NO RE-ENTRY WITHOUT A STAMP', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* ── THE MOAT ROOMS (plan 7.2 stage 4, 2026-09-08) ──────────────
-               An outdoor room whose walkway is a QUAY: `moat` sinks the ring
-               between the board (the island) and the quay one level and
-               fills it with the map's own liquid — the near kit's moat, in
-               the room. `pad` grows to quay + gap (the quay keeps the 2.4 m
-               the props, the natives, the console and the masts stand on).
-                 key       the liquid (a battle terrain key; water / deep_water
-                           / lava) — the Δ's terrainTints tint it, TERRAIN_RULES
-                           + HQ_SITE_HAZARDS decide whether it is waded
-                 gap       the moat's width (m) from the board edge to the quay
-                 bank      the quay's face + coping and the island's face
-                 bed       the bottom (seen when the sheet is translucent)
-                 deck      the causeway across it (`causeways`: the sides that
-                           get one — the way in is always the south)
-               A board-edge lake cell of the same liquid opens into the moat
-               (the renderer drops its pit wall). hqSiteRoom fills in walk /
-               tint / quay from the board. */
-            /* i · CAMELOT — the bailey lawn for a quay, the curtain wall
-               round it, the drawbridge down over the moat; torchlight */
-            prebuilt_camelot: { open: true, edge: 'walls', pad: 5.0, floor: 'grass_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
-                apron: 'grass_2', skirt: 'rock_wall_1', apronColor: 0xa8b890, floorColor: 0xa8b890,
-                moat: { key: 'water', gap: 2.6, bank: 'rock_wall_1', bankColor: 0xb8b0a0, bed: 'dirt_3', deck: 'wood_planks', deckColor: 0xa88458, causeways: ['s', 'n'] },
-                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, night: 1,
-                    signN: { bg: '#3a2a18', border: '#d8b070', color: '#f4e4c0' }, signS: { bg: '#5a1a1a', border: '#e0b060', color: '#f8e8d0' },
-                    signLines: { n: ['CAMELOT', 'ROOM i', 'THE IMAGINARY KINGDOM'], s: ['DRAWBRIDGE DOWN', 'NO PRIVILEGED SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* H-20 · ATLANTIS — the sunken hall: marble underfoot, the ruined
-               wall, the canals opening into the moat, teal light from below */
-            prebuilt_atlantis: { open: true, pad: 5.0, floor: 'marble_light', wall: 'marble_light', dado: 'ruins', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.1, pipes: false,
-                apron: 'marble_light', skirt: 'ruins', apronColor: 0xc8ecf2, floorColor: 0xc8ecf2,
-                moat: { key: 'water', gap: 2.6, bank: 'ruins', bankColor: 0x9ab8b8, bed: 'ruins', deck: 'marble_light', deckColor: 0xd0e8ec, causeways: ['s', 'n'] },
-                mood: { lamp: 0x49e0f0, glow: 0x2ac0e0, strip: 0xbff4ff, light: 0xc8f0ff, night: 1,
-                    signN: { bg: '#0c2a34', border: '#7fe0ea', color: '#dffaff' }, signS: { bg: '#10303a', border: '#ffe9a0', color: '#f4f4e0' },
-                    signLines: { n: ['ATLANTIS', 'ROOM H-20', 'ORICHALCUM RESEARCH'], s: ['SUBMERGED', 'IT DRIPS ON THIS SIDE TOO', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 666 · HELL — scorched ground for a quay, an obsidian wall, a
-               lava moat you do not wade, basalt causeways; the red light */
-            prebuilt_hell: { open: true, pad: 5.0, floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: null, h: 4.6, dadoH: 1.05, pipes: false,
-                apron: 'scorched', skirt: 'obsidian', apronColor: 0xe08060, floorColor: 0xe08060,
-                moat: { key: 'lava', gap: 2.6, bank: 'obsidian', bankColor: 0x8a6a70, bed: 'obsidian', deck: 'obsidian', deckColor: 0x8a6a70, causeways: ['s', 'n'] },
-                mood: { lamp: 0xff5a2a, glow: 0xff3a10, strip: 0xffb080, light: 0xff9060, night: 1,
-                    signN: { bg: '#2a0a08', border: '#ff7a40', color: '#ffd8c0' }, signS: { bg: '#1a0808', border: '#ff4040', color: '#ffe0e0' },
-                    signLines: { n: ['HELL', 'ROOM 666', 'THE NUMBER IS THE ADDRESS'], s: ['IMMUNITY CLAIMED', 'THE KEYPAD IS WARM', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 2012 · TECHNOTICLAN — the temple precinct: cobbles, the glyph
-               wall, the canal moat in the calendar's cyan, torches */
-            prebuilt_technoticlan: { open: true, pad: 5.0, floor: 'cobblestone', wall: 'bricks_3', dado: 'bricks_3', trim: 'gold', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false, console: { wall: 'n', at: -6 },
-                apron: 'cobblestone', skirt: 'bricks_3', apronColor: 0x8fb0b8, floorColor: 0x8fb0b8,
-                moat: { key: 'water', gap: 2.6, bank: 'bricks_3', bankColor: 0x7aa0a8, bed: 'bricks_3', deck: 'bricks_3', deckColor: 0x8ab0b8, causeways: ['s', 'n'] },
-                mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0x3fe0d8, light: 0xffc890, night: 1,
-                    signN: { bg: '#0e2a2c', border: '#3fe0d8', color: '#dffcf8' }, signS: { bg: '#2a1a0c', border: '#ffa040', color: '#ffe8c8' },
-                    signLines: { n: ['TECHNOTICLAN', 'ROOM 2012', 'THE CALENDAR · STILL RUNNING'], s: ['TEMPLE GATE', 'IRON OVER OBSIDIAN', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 88 · AGARTHA — the cavern wall (a cavern: the walls stay),
-               marble underfoot, the inner sea round the island, crystal
-               light; day, by the inner sun */
-            prebuilt_agartha: { open: true, edge: 'walls', pad: 5.0, floor: 'marble_light', wall: 'rocks_dark_fantasy', dado: 'rocks_dark_fantasy', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
-                apron: 'marble_light', skirt: 'rocks_dark_fantasy', apronColor: 0xbfe8c8, floorColor: 0xbfe8c8,
-                moat: { key: 'water', gap: 2.6, bank: 'rocks_dark_fantasy', bankColor: 0x8a9a88, bed: 'rocks_dark_fantasy', deck: 'marble_light', deckColor: 0xbfe8c8, causeways: ['s', 'n'] },
-                mood: { lamp: 0x9affe4, glow: 0x6af0d0, strip: 0xd0fff0, light: 0xe0fff4, night: 0,
-                    signN: { bg: '#0f2a22', border: '#9affe4', color: '#e8fff8' }, signS: { bg: '#1a2a1a', border: '#bfe8c8', color: '#f0fff0' },
-                    signLines: { n: ['AGARTHA', 'ROOM 88', 'THE WORLD INSIDE THE WORLD'], s: ['INNER GATE', 'THE QUEUE IS ON THE FAR SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 90S · ANTARCTICA — the ice wall, snow for a quay, deep water
-               round the island (never waded), an ice bridge; polar day */
-            prebuilt_antarctica: { open: true, pad: 5.0, floor: 'marble_light', wall: 'ice_1', dado: 'ice_1', trim: 'igloo', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'marble_light', skirt: 'ice_1', apronColor: 0xe4f2fc, floorColor: 0xe4f2fc,
-                moat: { key: 'deep_water', gap: 2.6, bank: 'ice_1', bankColor: 0xbfe0ff, bed: 'rocks_dark_fantasy', bedColor: 0x6a7a88, deck: 'igloo', deckColor: 0xdcecf8, causeways: ['s', 'n'] },
-                mood: { lamp: 0xeaf6ff, glow: 0xcfe8ff, strip: 0xffffff, light: 0xf0f8ff, night: 0,
-                    signN: { bg: '#14243a', border: '#bfe0ff', color: '#f4faff' }, signS: { bg: '#1a2a3a', border: '#ff8080', color: '#ffe8e8' },
-                    signLines: { n: ['ANTARCTICA', 'ROOM 90S', 'THE ICE REMEMBERS'], s: ['ICE-WALL HATCH', 'COLD ON BOTH FACES', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* ── THE REST OF THE REGISTER (plan 7.2 stage 6, 2026-09-08 rev 4) ──
-               Every remaining launch map is a walkable room: eighteen OUTDOOR
-               rooms (none of these boards holds lava, void or a moat's worth
-               of water — the map's near setting runs inside each at 1:1,
-               its sky overhead, its ground running out past the walls). The
-               console leaves the west wall where the setting fills it
-               (`console`); a setting that tiers the flanks says `stands`
-               in `near`. Flat Lands is the one room WITHOUT its setting
-               (`setting: false`): the builder's apron is fourteen tiles —
-               a 63 m room for one dead tree — so it keeps a plain 7 m
-               walkway and the emptiness is the point. */
-            /* 14179 · MOUNT SHASTA — the timberline meadow: a cliff face for
-               a wall, granite dado, the pines in the room, the peaks over it;
-               alpine day */
-            prebuilt_shasta: { open: true, floor: 'grass_2', wall: 'cliff', dado: 'rocks_1', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'grass_2', skirt: 'cliff', apronColor: 0xa8c890,
-                mood: { lamp: 0xdfe8ff, glow: 0xbfd8ff, strip: 0xffffff, light: 0xf0f6ff, night: 0,
-                    signN: { bg: '#1e3a2a', border: '#dfe8d0', color: '#f4fff0' }, signS: { bg: '#2a2a3a', border: '#bfd8ff', color: '#eef4ff' },
-                    signLines: { n: ['MOUNT SHASTA', 'ROOM 14179', 'SUMMIT · 14,179 FT'], s: ['LEMURIAN GATE', 'CONTACT IS IMMINENT · STILL', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 56 · STONEHENGE — the down at night: the sarsen ring stands in
-               the room, a dry-stone wall round it, the ditch under the wall;
-               violet light off the ley-lines */
-            prebuilt_stonehenge: { open: true, edge: 'low', floor: 'grass_2', wall: 'rock_wall_1', dado: 'dirt', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
-                apron: 'grass_2', skirt: 'dirt', apronColor: 0x9ab080,
-                mood: { lamp: 0xb8a0ff, glow: 0x9a7aff, strip: 0xd8ccff, light: 0xd0c8ff, night: 1,
-                    signN: { bg: '#241b3e', border: '#b8a0ff', color: '#efe8ff' }, signS: { bg: '#2a2418', border: '#d8c8a0', color: '#f4ecd8' },
-                    signLines: { n: ['STONEHENGE', 'ROOM 56', 'FIFTY-SIX HOLES · ONE FRAME'], s: ['LEY-LINE CROSSING', 'THE COUNT IS CLASSIFIED', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 444 · PYRAMIDS OF GIZA — the necropolis: casing-stone walls,
-               sand underfoot, the obelisks at the corners, the pyramids over
-               the wall; desert noon */
-            prebuilt_giza: { open: true, floor: 'dirt_2', wall: 'bricks_1', dado: 'desert', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c,
-                mood: { lamp: 0xffe0a0, glow: 0xffc870, strip: 0xfff0d0, light: 0xfff4e0, night: 0,
-                    signN: { bg: '#3a2a10', border: '#ffe0a0', color: '#fff4dc' }, signS: { bg: '#2a1c0c', border: '#d8b070', color: '#f4e8c8' },
-                    signLines: { n: ['PYRAMIDS OF GIZA', 'ROOM 444', 'FOUR FACES · THREE TIMES'], s: ['SEALED BY TREATY', 'THE TOMB WAS EMPTY. IT IS NOT NOW', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 777 · HEAVEN — the gate plaza: cloud underfoot, a marble wall
-               with gold at its foot, the north Gate in the room (the south one
-               is the hotel door you came through); gold light, no night */
-            prebuilt_heaven: { open: true, floor: 'cloud_2', wall: 'marble_light', dado: 'gold', trim: 'gold', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
-                apron: 'cloud_2', skirt: 'cloud_thick', apronColor: 0xf4f0ff, floorColor: 0xeef2ff,
-                mood: { lamp: 0xfff3c8, glow: 0xffe8a0, strip: 0xffffff, light: 0xfff8e8, night: 0,
-                    signN: { bg: '#f4efe0', border: '#d8b860', color: '#5a4a20' }, signS: { bg: '#3a3020', border: '#ffe9a0', color: '#fff4d8' },
-                    signLines: { n: ['HEAVEN', 'ROOM 777', 'IMMUNITY CLAIMED'], s: ['CHECKOUT · NEVER', 'THE GATES ARE FROSTED FOR MODESTY', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 2047 · CYBERPUNK CITY — the intersection: asphalt, the tenement
-               walls with the towers right behind them, neon strips, rain
-               that is not falling in here; night */
-            prebuilt_cyberpunk: { open: true, edge: 'walls', floor: 'urban_street', wall: 'urban_wall', dado: 'metal_3', trim: 'metal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'urban_street', skirt: 'urban_wall', apronColor: 0x9a96a8, floorColor: 0x8a86a0,
-                mood: { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, night: 1,
-                    signN: { bg: '#1a0f33', border: '#ff3ad8', color: '#ffe0f8' }, signS: { bg: '#0f1a2a', border: '#35e0ff', color: '#dffaff' },
-                    signLines: { n: ['CYBERPUNK CITY', 'ROOM 2047', 'THE YEAR ON THE LEASE'], s: ['TENEMENT ENTRANCE', 'COMPLAINTS FILED IN ADVANCE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 11 · TOWER OF BABEL — the lowest court: brick every way, the
-               terraces up the flanks (`stands`), the console on the north
-               wall under the plate (the north terraces make way for it);
-               torchlight under a dust sky */
-            prebuilt_babel: { open: true, edge: 'walls', floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 0 },
-                apron: 'bricks_1', skirt: 'dirt_2', apronColor: 0xd8a878, floorColor: 0xd8a878,
-                mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0xffd8a0, light: 0xffe0b0, night: 0,
-                    signN: { bg: '#3a2410', border: '#ffc070', color: '#fff0d8' }, signS: { bg: '#2a1a0c', border: '#d8a060', color: '#f4e4c8' },
-                    signLines: { n: ['TOWER OF BABEL', 'ROOM 11', 'GENESIS 11 · UNFINISHED'], s: ['ELEVEN ALPHABETS', 'THE SIGN SAYS THE SAME IN NONE OF THEM', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 12 · MOUNT OLYMPUS — the acropolis: marble, gold at the foot of
-               the wall, the colonnades in the room, the cloud sea past it;
-               lightning-blue lamps, day */
-            prebuilt_olympus: { open: true, floor: 'marble_light', wall: 'marble_light', dado: 'gold', trim: 'gold', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
-                apron: 'marble_light', skirt: 'cloud_thick', apronColor: 0xf8f8f2, floorColor: 0xf8f8f2,
-                mood: { lamp: 0x9fd0ff, glow: 0x7ab8ff, strip: 0xffffff, light: 0xf0f6ff, night: 0,
-                    signN: { bg: '#f4f4ee', border: '#ffe27a', color: '#3a3a5a' }, signS: { bg: '#2a3048', border: '#9fd0ff', color: '#eef4ff' },
-                    signLines: { n: ['MOUNT OLYMPUS', 'ROOM 12', 'THE TWELVE · IN SESSION'], s: ['THE LINTEL IS A TREATY', 'DO NOT LOOK DOWN. THE CLOUDS OBJECT', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 4 · MARS — the regolith flat: no wall (the airlock stands in
-               the open), the mesas and the rover in the room, the biodome
-               by the way in; red day */
-            /* THE PLANET IN THE ROOM (2026-09-16): floor + apron = the board's
-               own sheet in the Δ's tint (the battle's one surface); the
-               planet mesh is laid by the renderer over the flat ground */
-            prebuilt_mars: { open: true, floor: 'moon_2', wall: 'mars_2', dado: 'mars_2', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
-                apron: 'moon_2', skirt: 'mars_2', apronColor: 0xc88a5a, floorColor: 0xc88a5a,
-                mood: { lamp: 0xff9a60, glow: 0xff7a40, strip: 0xffd0b0, light: 0xffe0c8, night: 0,
-                    signN: { bg: '#3a1408', border: '#ff9a60', color: '#ffe4d0' }, signS: { bg: '#2a2a30', border: '#cfd8e0', color: '#eef2f8' },
-                    signLines: { n: ['MARS', 'ROOM 4', 'THE FOURTH PLANET'], s: ['AIRLOCK CYCLED', 'RED DUST IN THE SEAL · EVERY CROSSING', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 51 · AREA 51 — the base: a metal wall, hardstanding, the fence
-               and the towers inside, the hangars on the flanks, the saucer on
-               its rig; floodlit night. The console is on the north wall
-               (the hangar fills the west) */
-            prebuilt_area51: { open: true, floor: 'dirt_4', wall: 'metal', dado: 'metal_2', trim: 'metal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 5 },
-                apron: 'dirt_4', skirt: 'wasteland', apronColor: 0xc8b088, floorColor: 0xc8b088,
-                mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f0ff, night: 1,
-                    signN: { bg: '#f4f0e0', border: '#b81818', color: '#b81818' }, signS: { bg: '#1a1c24', border: '#f4f0e0', color: '#f4f0e0' },
-                    signLines: { n: ['AREA 51', 'ROOM 51', 'EST. 1947'], s: ['RESTRICTED AREA', 'USE OF DEADLY PAPERWORK AUTHORIZED', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 512 · SKINWALKER RANCH — the pasture: a timber wall, the rail
-               fence and the barn inside it, the windpump, the mesas over the
-               wall, something in the sky; night */
-            prebuilt_skinwalker: { open: true, floor: 'grass_2', wall: 'wood', dado: 'dirt', trim: 'wood', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
-                apron: 'grass_2', skirt: 'dirt', apronColor: 0xb8b878, floorColor: 0xb8b878,
-                mood: { lamp: 0xffc890, glow: 0xff9a60, strip: 0xd8c8ff, light: 0xe8d8ff, night: 1,
-                    signN: { bg: '#2a1638', border: '#d8c8ff', color: '#f0e8ff' }, signS: { bg: '#3a2a18', border: '#ffc890', color: '#fff0dc' },
-                    signLines: { n: ['SKINWALKER RANCH', 'ROOM 512', '512 ACRES · ALL OF THEM WATCHED'], s: ['GATE OPEN', 'IT IS NOT OPEN FOR YOU', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 180 · HOLLOW EARTH — the cavern floor: cave walls, crystal
-               trim, the stalagmites and the fungus in the room, the inner
-               sun overhead; the far side's ceiling is this side's floor */
-            prebuilt_hollow_earth: { open: true, edge: 'walls', floor: 'cave_floor', wall: 'cave_wall', dado: 'cave_wall', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
-                apron: 'cave_floor', skirt: 'cave_wall', apronColor: 0x8a7a9c, floorColor: 0x8a7a9c,
-                mood: { lamp: 0x9affe4, glow: 0x6af0d0, strip: 0xd0fff0, light: 0xc8e8ff, night: 1,
-                    signN: { bg: '#1c1428', border: '#9affe4', color: '#e8fff8' }, signS: { bg: '#2a2038', border: '#c8b0e8', color: '#f0e8ff' },
-                    signLines: { n: ['HOLLOW EARTH', 'ROOM 180', 'THE FAR SIDE IS THE CEILING'], s: ['INNER GATE · LOWER', 'MIND THE CEILING. IT IS THE FLOOR', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 420 · FAIRY FOREST — the glade: a wall of leaves, the trees and
-               the toadstools in the room, the spring on the west; wisp-light,
-               night. The console is on the east wall (the spring has the west) */
-            prebuilt_fairy_forest: { open: true, floor: 'grass_2', wall: 'leaves_3', dado: 'wood', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'e', at: 8 },
-                apron: 'grass_2', skirt: 'dirt', apronColor: 0x9fd48a, floorColor: 0x9fd48a,
-                mood: { lamp: 0x9affd0, glow: 0xffd0f2, strip: 0xcfe0ff, light: 0xd8ffe8, night: 1,
-                    signN: { bg: '#0e2a1a', border: '#9affd0', color: '#e8fff0' }, signS: { bg: '#2a1a2a', border: '#ffd0f2', color: '#ffeefa' },
-                    signLines: { n: ['FAIRY FOREST', 'ROOM 420', 'THE MUSHROOMS ARE NOT THAT KIND'], s: ['COMPLAINT LODGED', 'THE DOOR IS A TREE. THE TREE OBJECTED', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 1969 · MOON — Tranquility: regolith, NO wall (the door stands
-               without one, as the footage shows; the berm Records built is
-               gone again — 2026-09-11), the lander and the monolith in the
-               room, the Earth in the sky; night */
-            prebuilt_moon: { open: true, floor: 'moon', wall: 'moon_3', dado: 'moon_3', trim: 'aluminium', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
-                apron: 'moon', skirt: 'moon_3', apronColor: 0xc8ccd8, floorColor: 0xc8ccd8,
-                mood: { lamp: 0xeaf0ff, glow: 0xcfd8ff, strip: 0xffffff, light: 0xe8ecff, night: 1,
-                    signN: { bg: '#05060d', border: '#cfd8ff', color: '#f4f6ff' }, signS: { bg: '#1a1a20', border: '#d8b050', color: '#fff0c8' },
-                    signLines: { n: ['MOON', 'ROOM 1969', 'THE FOOTAGE'], s: ['SOUNDSTAGE B', 'THE FOOTPRINTS LEAD IN. NONE LEAD OUT', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* ── MOVING MAPS (2026-09-12) ─────────────────────────────── */
-            /* 1717 · QUEEN ANNE'S REVENGE — the deck on a quay in a dark dock:
-               planks for a walkway, the hull for a bank, the sea one level
-               down (a moat room), lantern light; the ship's own hull, masts
-               and sails stand round the board (the setting at 1:1) */
-            prebuilt_revenge: { open: true, pad: 5.0, floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'wood_planks', skirt: 'wood', apronColor: 0xb9885a, floorColor: 0xb9885a,
-                moat: { key: 'deep_water', gap: 2.6, bank: 'wood', bankColor: 0x7a5636, bed: 'rocks_dark_fantasy', bedColor: 0x3a4a58, deck: 'wood_planks', deckColor: 0xb9885a, causeways: ['s', 'n'] },
-                mood: { lamp: 0xffb060, glow: 0xff9040, strip: 0xffd8a0, light: 0xffe0c0, night: 1,
-                    signN: { bg: '#1a1410', border: '#d8a860', color: '#f4e4c8' }, signS: { bg: '#101820', border: '#7fb0d0', color: '#dff0ff' },
-                    signLines: { n: ['THE FLYING DUTCHMAN', 'ROOM 1717', 'THE SEA DOES NOT HOLD STILL'], s: ['GANGWAY', 'MIND THE SWELL · IT IS ON THE FORM', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 426 · SPACESHIP (was THE DERELICT) — brushed aluminium for a
-               floor, gunmetal for a bank, the stars overhead, the reactor's
-               cold light and the warning strobe */
-            prebuilt_derelict: { open: true, floor: 'aluminium', wall: 'gunmetal', dado: 'gunmetal', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
-                apron: 'aluminium', skirt: 'gunmetal', apronColor: 0x8e98a2, floorColor: 0x8e98a2,
-                mood: { lamp: 0xff6a3a, glow: 0xff4a20, strip: 0x9fd8ff, light: 0xb8d8ff, night: 1,
-                    signN: { bg: '#0a0c14', border: '#9fd8ff', color: '#e0f4ff' }, signS: { bg: '#1a0c08', border: '#ff6a3a', color: '#ffe0d0' },
-                    signLines: { n: ['SPACESHIP', 'ROOM 426', 'THE SIGNAL WAS A WARNING'], s: ['AIRLOCK', 'PRESSURE NOT GUARANTEED ON EITHER SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* E4 · THE LOOKING-GLASS — a checkered floor, marble for a rim,
-               violet light, the void of shapes overhead */
-            prebuilt_lookingglass: { open: true, floor: 'checkerboard', wall: 'marble_light', dado: 'marble', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.1, pipes: false,
-                apron: 'marble_light', skirt: 'marble', apronColor: 0xf2eee6, floorColor: 0xe8e4dc,
-                mood: { lamp: 0xd8a0ff, glow: 0xb070ff, strip: 0xf0e0ff, light: 0xe8d8ff, night: 1,
-                    signN: { bg: '#f4f0ea', border: '#8a5ac8', color: '#3a2458' }, signS: { bg: '#1c1030', border: '#d8a0ff', color: '#f0e0ff' },
-                    signLines: { n: ['THE LOOKING-GLASS', 'ROOM E4', 'THE FIRST MOVE'], s: ['MIRROR FRAME · NO GLASS', 'DO NOT AGREE TO A GAME', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 13 · THE HAUNTED HOUSE (7.6 wave 1, 2026-09-13) — the graveyard
-               under the house's own night: no facility walls (the iron fence
-               and the dead trees are the perimeter), the console off the north
-               wall (the wings stand west and east), candle-amber lamps */
-            prebuilt_haunted: { open: true, floor: 'grass_dark_fantasy', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
-                apron: 'dirt_2', skirt: 'rock_wall_1', apronColor: 0x6a6058, floorColor: 0x5a6650, console: { wall: 'n', at: 0 },
-                mood: { lamp: 0xffa040, glow: 0xff8030, strip: 0xffe0b0, light: 0xffd0a0, night: 1,
-                    signN: { bg: '#1a1216', border: '#8a7a60', color: '#e8dcc0' }, signS: { bg: '#2a1a1e', border: '#c89060', color: '#f0e0c0' },
-                    signLines: { n: ['THE HAUNTED HOUSE', 'ROOM 13', 'THE FLOOR HOTELS LEAVE OUT'], s: ['ROOM 237 IS NOT ON THIS FLOOR', 'DO NOT KNOCK', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 33 · THE LODGE (7.6 wave 1) — indoors: damask over an oak dado, the mosaic under foot, candle light */
-            prebuilt_lodge: { floor: 'checkerboard', wall: 'damask', dado: 'wood', trim: 'gold', ceiling: 'ceiling', pipes: false, h: 3.6, dadoH: 1.0, floorColor: 0xd8ccb0,
-                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0,
-                    signN: { bg: '#2a1018', border: '#d8b050', color: '#f4e4c0' }, signS: { bg: '#1a1216', border: '#c89060', color: '#f0e0c0' },
-                    signLines: { n: ['THE LODGE', 'ROOM 33', 'BY INVITATION'], s: ['THE TOMB IS DOWNSTAIRS', 'DO NOT SHAKE HANDS', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 0 · THE SINGULARITY (7.6 wave 1) — a slab of rock over nothing under the deep sky; violet light */
-            prebuilt_singularity: { open: true, floor: 'moon_3', wall: 'obsidian', dado: 'obsidian', trim: 'crystal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'moon_3', skirt: 'obsidian', apronColor: 0x5a4a78, floorColor: 0x5a4a78,
-                mood: { lamp: 0xb08cff, glow: 0x9060ff, strip: 0xe0d0ff, light: 0xc8b0ff, night: 1,
-                    signN: { bg: '#100818', border: '#b08cff', color: '#e8dcff' }, signS: { bg: '#1c1428', border: '#d0b8ff', color: '#f0e8ff' },
-                    signLines: { n: ['THE SINGULARITY', 'ROOM 0', 'NO RETURN'], s: ['THERE IS NO OTHER SIDE', 'DO NOT LEAN OUT', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 6 · SATURN (7.6 wave 1) — the plateau in the storm; ochre light under the ring plane */
-            prebuilt_saturn: { open: true, floor: 'cloud_thick', wall: 'cloud_thick', dado: 'cloud_thick', trim: 'gunmetal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'cloud_thick', skirt: 'cloud_thick', apronColor: 0xc8a870, floorColor: 0xc8a870,   // THE PLANET IN THE ROOM (2026-09-16): the cloud deck's own sheet + tint
-                mood: { lamp: 0xffd080, glow: 0xffb050, strip: 0xfff0c0, light: 0xffe8b0, night: 1,
-                    signN: { bg: '#2a2010', border: '#d8b060', color: '#f8ecc8' }, signS: { bg: '#1a1a20', border: '#a0a0b0', color: '#e8e8f0' },
-                    signLines: { n: ['SATURN', 'ROOM 6', 'THE HEXAGON'], s: ['SMALLER CUBES · DO NOT STACK', 'THE RINGS ARE A TREATY', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 21 · THE STRIP (7.6 wave 1) — the boulevard at night; the storefronts are the walls, neon light */
-            prebuilt_strip: { open: true, edge: 'walls', floor: 'concrete_floor', wall: 'urban_wall', dado: 'urban_wall', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'urban_street', skirt: 'urban_wall', apronColor: 0x4a4a56, floorColor: 0x8a8a94,
-                mood: { lamp: 0xff3ad8, glow: 0xff60e0, strip: 0x35e0ff, light: 0xffd0f0, night: 1,
-                    signN: { bg: '#1a0820', border: '#ff3ad8', color: '#ffe0f8' }, signS: { bg: '#081820', border: '#35e0ff', color: '#e0f8ff' },
-                    signLines: { n: ['THE STRIP', 'ROOM 21', 'OPEN 24 H'], s: ['WHAT HAPPENS HERE IS FILED HERE', 'NO CREDIT', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 1954 · DOWNTOWN (7.6 wave 1) — the intersection in daylight; the blocks are the walls */
-            prebuilt_downtown: { open: true, edge: 'walls', floor: 'urban_street', wall: 'concrete_floor', dado: 'urban_wall', trim: 'gunmetal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'concrete_floor', skirt: 'urban_wall', apronColor: 0xb0aeaa, floorColor: 0x5a5a5e,
-                mood: { lamp: 0xf4f7ff, glow: 0xe0e8ff, strip: 0xffffff, light: 0xf8f8ff, night: 0,
-                    signN: { bg: '#e8e4d8', border: '#3a3a3c', color: '#1a1a1c' }, signS: { bg: '#c82020', border: '#f8e8e8', color: '#ffffff' },
-                    signLines: { n: ['DOWNTOWN', 'ROOM 1954', 'EVACUATED'], s: ['THE MONSTER WAS HERE FIRST', 'MIND THE TOWER', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 345 · THE BERMUDA TRIANGLE (7.7 wave 2, 2026-09-16) — the shoal
-               on a quay of sand, the open sea round it (the Dutchman's moat
-               recipe in daylight), the lighthouse at the 90° corner */
-            prebuilt_bermuda: { open: true, pad: 5.0, floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8,
-                moat: { key: 'deep_water', gap: 2.6, bank: 'rocks_1', bankColor: 0x8a8478, bed: 'rocks_dark_fantasy', bedColor: 0x1c3e52, deck: 'desert', deckColor: 0xe8d8a8, causeways: ['s', 'n'] },
-                mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, night: 0,
-                    signN: { bg: '#0c2a34', border: '#7fe0ea', color: '#dffaff' }, signS: { bg: '#f4f0e0', border: '#c83a3a', color: '#1a2a34' },
-                    signLines: { n: ['THE BERMUDA TRIANGLE', 'ROOM 345', '∠ 90° · NO FIXED POSITION'], s: ['X MARKS THE SPOT · DIGGING IS NOT ON THE FORM', 'THE COMPASS POINTS AT THE LIGHTHOUSE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 888 · VATICAN CITY — the piazza: cobbles, a marble wall, the
-               colonnade arms in the room, the basilica front across the
-               north, the dome over the wall; day */
-            prebuilt_vatican: { open: true, floor: 'cobblestone', wall: 'marble_light', dado: 'marble_light', trim: 'gold', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
-                apron: 'cobblestone', skirt: 'marble_light', apronColor: 0xc8beab, floorColor: 0xc8beab,
-                mood: { lamp: 0xffe0a0, glow: 0xffd080, strip: 0xfff4e0, light: 0xfff8f0, night: 0,
-                    signN: { bg: '#f6f3ea', border: '#d8b860', color: '#4a3a1a' }, signS: { bg: '#3a2a18', border: '#ffe0a0', color: '#fff4dc' },
-                    signLines: { n: ['VATICAN CITY', 'ROOM 888', 'IMMUNITY CLAIMED · THREE TIMES'], s: ['SERVICE ENTRANCE', 'PAINTED WHITE BY DECREE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 23 · BOHEMIAN GROVE — the clearing: redwood bark for a wall,
-               the big trees in the room, the Owl on the north strip, the
-               lantern trail; night */
-            prebuilt_bohemian_grove: { open: true, floor: 'grass_2', wall: 'wood', dado: 'wood', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
-                apron: 'grass_2', skirt: 'dirt', apronColor: 0x6a9458, floorColor: 0x6a9458,
-                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, night: 1,
-                    signN: { bg: '#0d1810', border: '#ffb060', color: '#fff0d8' }, signS: { bg: '#2a1a0c', border: '#d8a860', color: '#f4e8c8' },
-                    signLines: { n: ['BOHEMIAN GROVE', 'ROOM 23', 'THE ENIGMA · MEMBERS ONLY'], s: ['SALOON DOOR', 'DO NOT KNOCK IN RHYTHM', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 9600 · GÖBEKLI TEPE — the tell: a dry-stone wall, the ring
-               walls and the T-pillars in the room, the digs, the hills over
-               the wall; day */
-            prebuilt_gobekli: { open: true, edge: 'low', floor: 'grass_2', wall: 'rock_wall_1', dado: 'rock_wall_1', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
-                apron: 'grass_2', skirt: 'dirt_3', apronColor: 0xa8b070, floorColor: 0xa8b070,
-                mood: { lamp: 0xffd8a0, glow: 0xffc070, strip: 0xfff0d8, light: 0xfff4e4, night: 0,
-                    signN: { bg: '#3a2c18', border: '#d8c098', color: '#f8f0dc' }, signS: { bg: '#2a2418', border: '#c0a888', color: '#f0e8d8' },
-                    signLines: { n: ['GÖBEKLI TEPE', 'ROOM 9600', '9600 BC · THE FIRST TEMPLE'], s: ['NO LEAF WAS EVER MADE', 'THE FRAME IS THE PAPERWORK', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 1225 · NORTH POLE — the compound: snow underfoot, the workshop's
-               red planks for a wall, the workshop itself on the west, the
-               sleigh and the presents in the room, the aurora over it. The
-               console is on the north wall (the workshop has the west) */
-            prebuilt_northpole: { open: true, floor: 'marble_light', wall: 'wood_planks', dado: 'wood_planks', trim: 'marble_light', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 0 },
-                apron: 'marble_light', skirt: 'ice_1', apronColor: 0xe8f4ff, floorColor: 0xe8f4ff,
-                mood: { lamp: 0xfff2c0, glow: 0xffd070, strip: 0x5dffb0, light: 0xe8f4ff, night: 1,
-                    signN: { bg: '#c84a40', border: '#ffffff', color: '#fff8f0' }, signS: { bg: '#0d1424', border: '#5dffb0', color: '#eafff4' },
-                    signLines: { n: ['NORTH POLE', 'ROOM 1225', 'THE WORKSHOP · DEC 25'], s: ['SLEIGH BELLS REMOVED', 'BY RECORDS. RECORDS IS NOT SORRY', 'THE CROSSING IS AT THE CONSOLE'] } } },
-            /* 2D · FLAT LANDS — the plane, with edges: a low earth wall, grass,
-               nothing in the room but the board and the paperwork (no
-               setting: the plane's apron is fourteen tiles; see above);
-               pale day, nothing overhead but the eyes */
-            prebuilt_flatlands: { open: true, edge: 'low', setting: false, pad: 7.0, floor: 'grass_2', wall: 'dirt_2', dado: 'dirt_2', trim: 'dirt_2', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
-                apron: 'grass_2', skirt: 'dirt_2', apronColor: 0xc0c8b8, floorColor: 0xc0c8b8,
-                mood: { lamp: 0xe8ece0, glow: 0xd0d8c8, strip: 0xf4f4f0, light: 0xf0f0ea, night: 0,
-                    signN: { bg: '#d0d8c8', border: '#8a8a80', color: '#3a3a38' }, signS: { bg: '#3a3a38', border: '#d0d8c8', color: '#f0f0ea' },
-                    signLines: { n: ['FLAT LANDS', 'ROOM 2D', 'TWO DIMENSIONS · NO DEPTH'], s: ['HOLLOW ALL THE WAY THROUGH', 'YOU ARE BEING WATCHED. SIGN HERE', 'THE CROSSING IS AT THE CONSOLE'] } } },
-        },
-        flavour: {
-            /* ── MOVING MAPS (2026-09-12) — placeholders in the house voice; the user may rewrite any line (A15) ── */
-            prebuilt_revenge: {
-                agent: '“Room 1717. The deck is on a quay. The quay is not moving. The deck is. Do not look at the horizon for long; it will start to agree with the deck.”',
-                lines: [
-                    'The ship was last logged in 1717, making for a port. She did not reach it. She has not reached anywhere since. She is still going.',
-                    'The hold is flooding. Records says the water is on a schedule.',
-                    'The captain has not been seen. The torches on the rail are lit every dusk. Nobody lights them.',
-                    'The storm is not on the map. The storm is on the form. It arrives faster every round.',
-                    'The sea on this side is one level down and holds still. Do not trust the sea on the other side.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 10.8,  z: -10.4, face: 30 },
-                    { key: 'folding_chair',  x: 11.2,  z: 8.6,   face: 200 },
-                    { key: 'tube_tv',        x: 10.4,  z: 10.9,  y: 0, face: 235 },
-                    { key: 'paper_sheet',    x: -10.6, z: 10.8,  y: 0.01, face: 40 },
-                ],
-            },
-            prebuilt_derelict: {
-                agent: '“Room 426. The airlock cycles whether or not there is air. The ship on the other side is half a ship. The half that is missing is the half with the lifeboats.”',
-                lines: [
-                    'The signal was catalogued as a distress call for eleven years. It was a warning. Records has apologised to nobody.',
-                    'The reactor is warm. Do not stand on the blue tiles for long. Do not stand on the black ones at all.',
-                    'Every crossing it is closer to the sun. Every crossing it is going faster. Records has the numbers; the numbers are going up.',
-                    'Something walks the deck between the stars and the sun. It has not filed anything. It has excellent footing.',
-                    'Salvage law says the first to board may claim it. Nobody has claimed it twice.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 9.4,   z: -9.2,  face: 15 },
-                    { key: 'folding_chair',  x: 9.8,   z: 8.4,   face: 210 },
-                    { key: 'paper_sheet',    x: -9.6,  z: 9.4,   y: 0.01, face: 40 },
-                ],
-            },
-            /* 33 · THE LODGE (7.6 wave 1) */
-            prebuilt_lodge: {
-                agent: '“Room 33. You were not invited. Nobody is invited; that is the invitation. Sign the book and do not look at the ceiling. It looks back.”',
-                lines: [
-                    'The eye on the ceiling is decorative. The members insist. The eye has not commented.',
-                    'The Tomb is downstairs. The class of 1832 keeps a skull there. Records has asked whose. Records has been asked to leave.',
-                    'Thirty-three degrees. Continuity checked: it is a temperature, an angle and a rank, and the Lodge means all three.',
-                    'The handshake is real. The conspiracy is a dinner. The dinner is catered by the Cafeterium.',
-                    'The two pillars hold up nothing. They are named. That is the whole job.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 11.6,  z: -11.4, face: 30 },
-                    { key: 'paper_sheet',    x: -11.4, z: 11.6,  y: 0.01, face: 300 },
-                    { key: 'table_lamp',     x: -11.6, z: -11.4, y: 0.0 },
-                ],
-            },
-            /* 0 · THE SINGULARITY (7.6 wave 1) */
-            prebuilt_singularity: {
-                agent: '“Room 0. The frame has no other side. Anything you drop here you have already dropped, from the far side\'s point of view. Do not drop the form.”',
-                lines: [
-                    'Zero volume. Infinite density. Facilities has asked how to clean it.',
-                    'The shards are a world that got too close. They are still arriving. They arrived already.',
-                    'Nothing filed here comes back. Records files a copy. The copy does not come back either.',
-                    'The point is the centre. Everything is the centre from the inside. Do not stand in the middle.',
-                    'Room 0 is the only room with no number. It has a number. It is 0. Continuity is not finished.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'lesson_sign',    x: 12.4,  z: -2.0,  face: 270 , lesson: 'lip' },                 // D8 (6): the combination — the hard tape on the +2 rim, reached by aiming at the LIP
-                    { key: 'cardboard_box',  x: 13.0,  z: -12.8, face: 30 },
-                    { key: 'paper_sheet',    x: -12.8, z: 13.0,  y: 0.01, face: 300 },
-                ],
-            },
-            /* 6 · SATURN (7.6 wave 1) */
-            prebuilt_saturn: {
-                agent: '“Room 6. The plateau is a cloud that thinks it is a floor. Mind the corners; the storm has six and none of them is the way out. The cubes are smaller here. Do not stack them.”',
-                lines: [
-                    'The hexagon has been turning since 1981. Records has the footage. The footage has corners.',
-                    'The rings are younger than the dinosaurs. The Department is older than the rings. Nobody likes this.',
-                    'The black cube in the egress came from here. It has never said so. The plaque says so.',
-                    'A day here is nine hours. The shift is eight. Facilities calls that a win.',
-                    'The lakes are not water. Do not drink from them. Do not light them.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 14.6,  z: -14.4, face: 30 },
-                    { key: 'paper_sheet',    x: -14.4, z: 14.6,  y: 0.01, face: 300 },
-                ],
-            },
-            /* 21 · THE STRIP (7.6 wave 1) */
-            prebuilt_strip: {
-                agent: '“Room 21. Everything here is shaped like somewhere else. The pyramid is a hotel, the chapel is a business and the fountain is on a timer. Keep your receipts. Records will not.”',
-                lines: [
-                    'The Department loses at every table and expenses it as fieldwork. Finance has approved the fieldwork.',
-                    'Eleven chapels. One will marry you to the honda civic. Do not let it.',
-                    'The pyramid has a beam on top that you can see from space. Records has a form for the beam. The beam has not filed it.',
-                    'Twenty-one. Blackjack. The dealer is a politician now. The politician was always a dealer.',
-                    'What happens here is filed here. The filing is the thing that happens.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 13.0,  z: -12.8, face: 30 },
-                    { key: 'paper_sheet',    x: -12.8, z: 13.0,  y: 0.01, face: 300 },
-                    { key: 'trash_bin',      x: 12.6,  z: 12.8 },
-                ],
-            },
-            /* 1954 · DOWNTOWN (7.6 wave 1) */
-            prebuilt_downtown: {
-                agent: '“Room 1954. The evacuation order is in force. You are the evacuation. Mind the tower across the intersection; it is load-bearing for the plot.”',
-                lines: [
-                    'The army is useless. The scientist is right too late. The monster was here first. That is the treaty.',
-                    'The tower came down in 1954 and has come down every year since. Facilities has stopped rebuilding it.',
-                    'The department store is open. Nothing in it is for sale. Everything in it is stepped on.',
-                    'Superheroes file here. The antiheroes file next door and say it is not filing.',
-                    'The traffic lights still work. Nobody is driving. The lights have not been told.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 12.4,  z: -12.2, face: 30 },
-                    { key: 'paper_sheet',    x: -12.2, z: 12.4,  y: 0.01, face: 300 },
-                    { key: 'trash_bin',      x: 12.0,  z: 12.2 },
-                ],
-            },
-            /* 345 · THE BERMUDA TRIANGLE (7.7 wave 2, 2026-09-16) */
-            prebuilt_bermuda: {
-                agent: '“Room 345. The quay is sand. The sea is on a schedule. If the compass turns, do not follow it — it is pointing at the lighthouse, and the lighthouse is not on the chart.”',
-                lines: [
-                    'It is a right triangle. Records measured it. The angle is at the buoy; the buoy is not where it was yesterday.',
-                    'Five aircraft flew into it in 1945 in formation. The Department filed them as a crossing. They have not filed back.',
-                    'One island, one chest, one X. The chest is on the form as “item, one”. The island is on no form at all.',
-                    'The storm is on the form. It comes on from round three. Do not be on the deep side of it when it does.',
-                    'The yacht was found with breakfast on the table and nobody to eat it. The door on the bay is its cabin door. The breakfast is in Records.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 10.8,  z: -10.4, face: 30 },
-                    { key: 'folding_chair',  x: 11.2,  z: 8.6,   face: 200 },
-                    { key: 'wet_floor_sign', x: -10.6, z: 10.6,  face: 40 },
-                    { key: 'paper_sheet',    x: -10.4, z: -10.8, y: 0.01, face: 120 },
-                ],
-            },
-            /* 13 · THE HAUNTED HOUSE (7.6 wave 1) — the officer at the gate */
-            prebuilt_haunted: {
-                agent: '“Room 13. The plate says 13; the door says 237. Both are correct and neither is the room number of the house. Sign the release. The house has already signed.”',
-                lines: [
-                    'The house is for sale. The house has always been for sale. Records lists the price as "the price".',
-                    'Nobody pays the light bill. The lights stay on. Facilities has stopped asking.',
-                    'Room 237 is on the second floor. The house has one floor. Continuity has a form for this and it is in the hall.',
-                    'The graveyard is out back. Both backs. Do not ask which side is the front.',
-                    'The coven meets on the thirty-first. Every month has a thirty-first here.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 13.6,  z: -13.4, face: 30 },
-                    { key: 'paper_sheet',    x: -13.4, z: 13.6,  y: 0.01, face: 300 },
-                    { key: 'table_lamp',     x: -13.6, z: -13.4, y: 0.0 },
-                ],
-            },
-            prebuilt_lookingglass: {
-                agent: '“Room E4. The frame has no glass. The board on the other side is in play and has been since 1871. You are a pawn until proven otherwise. Do not agree to a game.”',
-                lines: [
-                    'The Queen claims immunity. The Queen claims everything. Diplomatic filed it under D and moved on.',
-                    'The board flies. The pieces do not move themselves. Records has a form for both and they disagree.',
-                    'The moon comes round faster each time. It is smiling. It is always smiling.',
-                    'A pawn that reaches the eighth rank is crowned. Nobody in this building has reached the eighth rank.',
-                    'The shapes outside were never finished. Do not finish them.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'office_chair',   x: 8.2,   z: -8.0,  face: 40 },
-                    { key: 'paper_sheet',    x: -8.3,  z: 8.2,   y: 0.01, face: 300 },
-                    { key: 'potted_plant',   x: 8.3,   z: 8.1 },
-                ],
-            },
-            prebuilt_dumb: {
-                agent: '“Level 7. There is no Level 4. If you find one, you were never here, and neither was it.”',
-                lines: [
-                    'The red light is not an emergency. It is the default.',
-                    'The tram runs on the hour. Nobody has seen the tram.',
-                    'Do not open the cell. Do not close the cell. The cell is a cell.',
-                    'Every badge here works. That is the problem.',
-                ],
-                /* the base's own dressing on the walkway (room frame, metres) */
-                props: [
-                    { key: 'round_cabinet',  x: 8.9,  z: -8.6, face: 225 },
-                    { key: 'cardboard_box',  x: 8.2,  z: -7.6, face: 20 },
-                    { key: 'pipe_run',       x: -6.0, z: -9.9, y: 3.9, face: 0 },
-                    { key: 'pipe_run',       x: 6.0,  z: -9.9, y: 3.9, face: 0 },
-                ],
-            },
-            /* 999 · CERN — the control bank in the north-east corner, spares
-               on the east wall, the cable trays along the far wall */
-            prebuilt_cern: {
-                agent: '“Beam on. Do not say portal. Do not think portal near the terminals; they log it.”',
-                lines: [
-                    'The ring is twenty-seven kilometres round. This room is the part they let us see.',
-                    'CERN wrote the press release. The Department wrote the door.',
-                    'The hum is the magnets. Probably the magnets.',
-                    '99.9999991% of the speed of light. The last digit was a compromise.',
-                    'The Web was invented here by accident. So was the rest of it.',
-                ],
-                props: [
-                    { key: 'round_cabinet',  x: 9.6,  z: -8.8, face: 225 },
-                    { key: 'crt_terminal',   x: 9.6,  z: -8.8, y: 0.76, face: 225 },
-                    { key: 'round_cabinet',  x: 9.6,  z: -7.5, face: 250 },
-                    { key: 'crt_terminal',   x: 9.6,  z: -7.5, y: 0.76, face: 250 },
-                    { key: 'office_chair',   x: 8.5,  z: -8.1, face: 60 },
-                    { key: 'metal_shelving', wall: 'e', z: 7.4 },
-                    { key: 'vent_grille',    wall: 'n', x: 7.0 },
-                    { key: 'vent_grille',    wall: 'n', x: -7.5 },
-                    { key: 'pipe_run',       x: -6.0, z: -9.9, y: 4.1, face: 0 },
-                    { key: 'pipe_run',       x: 6.0,  z: -9.9, y: 4.1, face: 0 },
-                    { key: 'cardboard_box',  x: -9.3, z: -8.9, face: 15 },
-                ],
-            },
-            /* 90 · BACKROOMS — a chair facing the corner, EXIT signs over
-               walls with no door in them, loose paper on the carpet, more
-               fluorescents than the room needs, a fan that is on */
-            prebuilt_backrooms: {
-                agent: '“Sign in. There is no sign-out sheet. There has never been a sign-out sheet.”',
-                lines: [
-                    'The hum is not the lights. The lights are the hum.',
-                    'Level 0 has no exits. It has an EXIT door. Those are different things.',
-                    'The carpet is damp because it is always damp.',
-                    'Continuity ruled it non-canon. It has been fully booked since.',
-                    'If the wallpaper looks familiar, keep walking. If it does not, keep walking.',
-                ],
-                props: [
-                    { key: 'office_chair',   x: 9.4,  z: -9.4, face: 45 },
-                    { key: 'water_cooler',   wall: 'e', z: 3.0 },
-                    { key: 'exit_sign',      wall: 'n', x: 8.4 },
-                    { key: 'exit_sign',      wall: 'w', z: 6.4 },
-                    { key: 'exit_sign',      wall: 'e', z: -8.2 },
-                    { key: 'office_plant',   x: -9.5, z: -9.5 },
-                    { key: 'filing_cabinet', wall: 'e', z: -3.0 },
-                    { key: 'paper_sheet',    x: 7.8,  z: 6.6, y: 0.01, face: 130 },
-                    { key: 'paper_sheet',    x: -8.4, z: -2.2, y: 0.01, face: 20 },
-                    { key: 'paper_sheet',    x: 3.2,  z: 9.6, y: 0.01, face: 260 },
-                    { key: 'desk_fan',       x: -9.9, z: 8.8, face: 120 },
-                    { key: 'fluorescent',    x: -8.6, z: 0,   ceil: true, face: 0 },
-                    { key: 'fluorescent',    x: 8.6,  z: 0,   ceil: true, face: 0 },
-                    { key: 'fluorescent',    x: 0,    z: -8.6, ceil: true, face: 90 },
-                    { key: 'fluorescent',    x: 0,    z: 8.6,  ceil: true, face: 90 },
-                ],
-            },
-            /* 50 · THE STADIUM — the home bench along the east wall (three
-               folding chairs, the cooler), the ground crew's bucket by the
-               turnstile, the crate of game balls, a plant nobody ordered */
-            prebuilt_stadium: {
-                agent: '“Tickets. Not a badge, a ticket. On game day the league is the jurisdiction and the Department is the halftime show.”',
-                lines: [
-                    'The 50-yard line is a threshold. Both teams cross it. Nobody has filed the paperwork.',
-                    'The bowl seats ninety thousand. The void seats more.',
-                    'The floodlights come on at night. There is no other time here.',
-                    'The quarterback has crossed more times than any officer in the building. He calls it a season.',
-                    'The turnstile counts in. It does not count out.',
-                ],
-                /* stage 5: the stands fill the w/e strips — the bench sits on
-                   the south strip by the turnstile, the cooler on the wall behind it */
-                fitted: true,
-                props: [
-                    { key: 'folding_chair',  x: -7.4, z: 13.5, face: 0 },
-                    { key: 'folding_chair',  x: -8.5, z: 13.5, face: 0 },
-                    { key: 'folding_chair',  x: -9.6, z: 13.5, face: 0 },
-                    { key: 'water_cooler',   wall: 's', x: -11.0 },
-                    { key: 'cardboard_boxes', x: 11.8, z: 13.4, face: 20 },
-                    { key: 'mop_bucket',     x: -5.2, z: 13.6, face: 200 },
-                    { key: 'potted_plant',   x: -12.2, z: -13.5 },
-                ],
-            },
-            /* ── the moat rooms (stage 4): everything stands on the QUAY, the
-               2.4 m strip along the walls (the room is 24 m across; the quay
-               runs from 9.6 m to 12 m out) ── */
-            /* i · CAMELOT — the armoury cabinet in the north-east corner, the
-               cloak rail, a broom by the wall the drawbridge chain runs up */
-            prebuilt_camelot: {
-                agent: '“The portcullis is HINGE technology. Both sides are the outside. Sign here, and here, and on the drawbridge.”',
-                lines: [
-                    'The moat is the record. The drawbridge is the amendment.',
-                    'The round table was round so nobody sat at the head. Continuity sits at the head.',
-                    'The banners are heraldic. The heraldry is classified.',
-                    'i is a real number here. That is the whole trouble with the place.',
-                    'Do not lean on the merlons. The merlons lean back.',
-                ],
-                props: [
-                    { key: 'round_cabinet',  x: 10.9,  z: -9.3, face: 225 },
-                    { key: 'cardboard_box',  x: 10.2,  z: -8.3, face: 15 },
-                    { key: 'hook_rail',      wall: 'e', z: 6.0 },
-                    { key: 'broom',          x: 11.5,  z: 7.8, face: 200 },
-                    { key: 'potted_plant',   x: -11.2, z: -11.1 },
-                ],
-            },
-            /* H-20 · ATLANTIS — the specimen shelves, a cooler of bottled
-               water eleven thousand feet under the sea, a chair for the diver */
-            prebuilt_atlantis: {
-                agent: '“Orichalcum research. Do not pocket the orichalcum. It knows.”',
-                lines: [
-                    'The canals were streets. The streets were canals. Records filed both.',
-                    'The bulkhead drips. The drip is on a schedule.',
-                    'Nobody sank Atlantis. It clocked out.',
-                    'H-20 is the formula and the room. The formula was here first.',
-                    'The columns hold up nothing. That is the research.',
-                ],
-                props: [
-                    { key: 'metal_shelving', wall: 'e', z: 7.0 },
-                    { key: 'water_cooler',   wall: 'e', z: -6.4 },
-                    { key: 'office_chair',   x: 10.6,  z: -9.4, face: 40 },
-                    { key: 'cardboard_box',  x: 10.3,  z: -8.5, face: 20 },
-                    { key: 'wall_shelf',     wall: 'w', z: 6.4 },
-                    { key: 'potted_plant',   x: -11.2, z: -11.1 },
-                ],
-            },
-            /* 666 · HELL — an extinguisher on the wall (compliance), the
-               waiting-room TV with the queue number, the drain, a fan on the
-               desk that does nothing */
-            prebuilt_hell: {
-                agent: '“Immunity claimed. The lava is not the hazard. The paperwork is the hazard; the lava is the deterrent.”',
-                lines: [
-                    'The keypad is warm. It is the friendliest thing about it.',
-                    'Take a number. The number is 666. Every number is 666.',
-                    'The causeways are basalt. The basalt was something else first.',
-                    'Nobody has ever used the extinguisher. It is inspected monthly.',
-                    'The drain goes down. Everything here goes down.',
-                ],
-                props: [
-                    /* (2026-09-11: Hell stands in the open — hqSitePropStands drops
-                       this with the wall it hung on; compliance is noted) */
-                    { key: 'fire_extinguisher', wall: 'e', z: -6.0 },
-                    { key: 'tube_tv',        x: 10.9,  z: -7.0, y: 0, face: 250 },
-                    { key: 'folding_chair',  x: 9.9,   z: -6.2, face: 60 },
-                    { key: 'floor_drain',    x: -7.6,  z: 10.9 },
-                    { key: 'mop_bucket',     x: -11.0, z: 8.4, face: 40 },
-                    { key: 'desk_fan',       x: -11.5, z: -1.1, y: 0.76, face: 100 },
-                ],
-            },
-            /* 2012 · TECHNOTICLAN — the calendar terminal on its cabinet in
-               the north-east corner, a chair for the priest, the cloak rail */
-            prebuilt_technoticlan: {
-                agent: '“Iron over obsidian. The gate is older than the iron and the iron is older than you. Badge, please.”',
-                lines: [
-                    'The calendar did not end. It rolled over. Records was not consulted.',
-                    'The pyramid is a projection. The projection is load-bearing.',
-                    'The torches are lit at dusk. It is always dusk.',
-                    'The canals run to the moat. The moat runs to the canals. Nobody has found the pump.',
-                    '2012 was a Tuesday. The site file says so twice.',
-                ],
-                /* stage 5: the temple's tiers fill the w/e strips — the calendar
-                   terminal stands on the north strip's east end, the rail beside it */
-                fitted: true,
-                props: [
-                    { key: 'round_cabinet',  x: 11.4,  z: -15.3, face: 200 },
-                    { key: 'crt_terminal',   x: 11.4,  z: -15.3, y: 0.76, face: 200 },
-                    { key: 'office_chair',   x: 10.2,  z: -14.4, face: 30 },
-                    { key: 'hook_rail',      wall: 'n', x: 8.0 },
-                    { key: 'cardboard_box',  x: -13.0, z: -15.2, face: 10 },
-                    { key: 'mop_bucket',     x: 12.6,  z: 15.2, face: 30 },
-                ],
-            },
-            /* 88 · AGARTHA — things grow here: plants in every corner, the
-               queue tickets on the quay, a lamp on the desk under the inner sun */
-            prebuilt_agartha: {
-                agent: '“The inner gate. The queue on the far side is centuries long; on this side it is you. Sign in.”',
-                lines: [
-                    'The inner sun does not set. It is on a rota.',
-                    '88 is infinity stacked on infinity. The plate was cheaper than the concept.',
-                    'The mushrooms are not that kind either. Different room, same policy.',
-                    'The crystals hum in the key of the building. The building denies having a key.',
-                    'Water in, water out. The moat is the same water. Records is looking into it.',
-                ],
-                props: [
-                    { key: 'potted_plant',   x: -11.2, z: -11.1 },
-                    { key: 'office_plant',   x: 11.2,  z: -11.0 },
-                    { key: 'office_plant',   x: -11.2, z: 8.0 },
-                    { key: 'desk_lamp',      x: -11.5, z: -1.1, y: 0.76, face: 200 },
-                    { key: 'folding_chair',  x: 10.7,  z: -6.4, face: 250 },
-                    { key: 'paper_sheet',    x: 8.9,   z: 9.8, y: 0.01, face: 130 },
-                    { key: 'paper_sheet',    x: -10.2, z: -8.2, y: 0.01, face: 20 },
-                ],
-            },
-            /* 90S · ANTARCTICA — the frozen cooler, a cot for the overwinter
-               shift, the shelves of core samples, a fan they were sent
-               instead of a heater */
-            prebuilt_antarctica: {
-                agent: '“Ninety south. Everything is north of here, including the exit. Cold on both faces; do not lick the hatch.”',
-                lines: [
-                    'The first Black Cube was destroyed here. The ice remembers. The ice is under review.',
-                    'The moat is deep water. The site file says do not enter. The site file is laminated.',
-                    'The cot is for the overwinter shift. The shift is one person. The person is you.',
-                    'The fan was a clerical error. It stays on so the error is consistent.',
-                    'The bridge is ice. The ice is the bridge. That is the whole engineering report.',
-                ],
-                props: [
-                    { key: 'water_cooler',   wall: 'e', z: -5.0 },
-                    { key: 'cot',            x: 11.0,  z: -8.6, face: 0 },
-                    { key: 'metal_shelving', wall: 'e', z: 6.8 },
-                    { key: 'mop_bucket',     x: -10.9, z: 8.6, face: 40 },
-                    { key: 'desk_fan',       x: -11.5, z: -1.1, y: 0.76, face: 100 },
-                    { key: 'paper_sheet',    x: 7.6,   z: 10.4, y: 0.01, face: 110 },
-                ],
-            },
-            /* ── the rest of the register (stage 6): eighteen outdoor rooms.
-               Every prop below is placed for its room (`fitted: true`): the
-               walkway runs from 7 m out to the wall — 14.9 m for a 4.5-tile
-               setting, 14 m for 4.0, 15.75 m for 5.0, 12.6 m for Cyberpunk's
-               3.2 — and the props keep clear of the way in (x ±2.2 on the
-               south), the console's run and the guard's post ── */
-            /* 14179 · MOUNT SHASTA — the ranger's cot in the north-east
-               corner, a cooler of meltwater, the trail register on the rail */
-            prebuilt_shasta: {
-                agent: '“Fourteen thousand one hundred and seventy-nine feet. The cabin door is at the bottom. Everything else is a rumour.”',
-                lines: [
-                    'The Lemurians are about to make contact. They have been about to since 1931.',
-                    'The lakes are cold because the mountain is cold. The mountain is cold because it is a mountain. Records accepted this.',
-                    'The pines were counted. One of them moved.',
-                    'The lenticular cloud is a cloud. That is the official position and the cloud agrees.',
-                    'Do not hike the switchbacks in dress shoes. The last officer who did is a trail sign now.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cot',            x: 12.2,  z: -13.2, face: 0 },
-                    { key: 'cardboard_box',  x: 13.4,  z: -12.0, face: 15 },
-                    { key: 'water_cooler',   wall: 'e', z: -7.6 },
-                    { key: 'hook_rail',      wall: 'w', z: 7.4 },
-                    { key: 'paper_sheet',    x: -9.4,  z: 10.6, y: 0.01, face: 40 },
-                    { key: 'mop_bucket',     x: -13.2, z: 12.6, face: 40 },
-                ],
-            },
-            /* 56 · STONEHENGE — the night watch: a chair and a TV that gets
-               the solstice feed, the survey's boxes, the count on a clipboard */
-            prebuilt_stonehenge: {
-                agent: '“Fifty-six holes, twenty-two stones, one frame. The frame is ours. Do not touch the stones; they have a lawyer.”',
-                lines: [
-                    'The stones align with the solstice. The solstice was moved to fit.',
-                    'The armillary over the altar is not part of the monument. It is part of the Department.',
-                    'Nobody built Stonehenge. It was filed.',
-                    'The ley-lines cross here. So does the A303. Only one of them is classified.',
-                    'If a stone is warm, do not lean on it. If a stone is cold, do not lean on it either.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'folding_chair',  x: 13.2,  z: -9.6,  face: 240 },
-                    { key: 'tube_tv',        x: 13.6,  z: -11.0, y: 0, face: 250 },
-                    { key: 'cardboard_boxes', x: -13.2, z: -12.8, face: 20 },
-                    { key: 'clipboard',      wall: 'e', z: 8.0 },
-                    { key: 'paper_sheet',    x: 8.8,   z: 12.4, y: 0.01, face: 300 },
-                ],
-            },
-            /* 444 · PYRAMIDS OF GIZA — the dig's shelving, the crates of
-               finds, a fan on the desk that moves sand from one side to the
-               other, a broom for the rest of it */
-            prebuilt_giza: {
-                agent: '“Four faces, three times. The fourth pyramid is not missing. It is filed under something else.”',
-                lines: [
-                    'The tomb was opened by treaty. The treaty was written inside the tomb.',
-                    'Sand gets into everything. Records has a form for it. The form is full of sand.',
-                    'The obelisks are the originals. The ones in Rome and London are on loan and overdue.',
-                    'The Sphinx is not here. The Sphinx does not come to us.',
-                    'Three pyramids on the diagonal. The diagonal was here first.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'metal_shelving', wall: 'e', z: -9.0 },
-                    { key: 'cardboard_box',  x: 13.4,  z: -11.4, face: 25 },
-                    { key: 'cardboard_box',  x: 12.6,  z: -12.4, face: 60 },
-                    { key: 'desk_fan',       x: -14.45, z: -1.2, y: 0.76, face: 100 },
-                    { key: 'broom',          x: -13.4, z: 11.8, face: 200 },
-                    /* 2026-09-10: two date palms on the walkway. The originals
-                       are on loan and overdue. */
-                    { key: 'palm_tree',      x: 13.9,  z: 6.2,  face: 0 },
-                    { key: 'palm_tree',      x: -13.9, z: -6.4, face: 0, rot: 60 },
-                ],
-            },
-            /* 777 · HEAVEN — a waiting chair by the east wall, the guest book
-               on the cloud beside it, plants that never needed watering, a
-               shelf for the immunity paperwork */
-            prebuilt_heaven: {
-                agent: '“Immunity claimed. Checkout is never. Sign the book; the book already knows.”',
-                lines: [
-                    'The gates are frosted for modesty. Theirs.',
-                    'The healing pools are for the injured. The injured are on the other side.',
-                    'Nobody has been refused entry. Several have been asked to wait. Some are still waiting.',
-                    'The pillars of light are structural. The structure is faith. The faith is load-bearing.',
-                    'Room 777 has no door on the inside. That is the hotel’s policy and not ours.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'potted_plant',   x: -13.4, z: -13.4 },
-                    { key: 'potted_plant',   x: 13.4,  z: -13.4 },
-                    { key: 'teal_chair',     x: 13.2,  z: 9.8, face: 250 },
-                    { key: 'notebook_paper', x: 12.9,  z: 11.2, y: 0.01, face: 30 },
-                    { key: 'wall_shelf',     wall: 'e', z: -8.4 },
-                ],
-            },
-            /* 2047 · CYBERPUNK CITY — a vending machine on the east kerb that
-               takes a currency Records has not approved, an EXIT sign the
-               tenants added, the wet paperwork */
-            prebuilt_cyberpunk: {
-                agent: '“The lease says 2047. The tenants say otherwise. Badge, retina, and do not look at the billboard; it looks back.”',
-                lines: [
-                    'The hologram over the door was added by the tenants. So were the tenants.',
-                    'It rains here on a lease. The lease is up.',
-                    'Every window is lit. Nobody is home. That is the whole city.',
-                    'Complaints are filed in advance. This one was filed about you.',
-                    'The vending machine takes crypto, cash, and a form of ID that does not exist yet.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'vending_machine', x: 11.5, z: 8.6, face: 270 },
-                    { key: 'cardboard_boxes', x: 11.2, z: -10.8, face: 30 },
-                    { key: 'exit_sign',      wall: 'n', x: 9.0 },
-                    { key: 'paper_sheet',    x: -9.6,  z: 9.4, y: 0.01, face: 200 },
-                    { key: 'mop_bucket',     x: -11.3, z: 11.0, face: 30 },
-                ],
-            },
-            /* 11 · TOWER OF BABEL — everything on the south strip below the
-               one low terrace: the crates of bricks, the plans, the rail the
-               masons hang their aprons on */
-            prebuilt_babel: {
-                agent: '“Eleven alphabets on the sign. It says the same thing in none of them. That is the sign working.”',
-                lines: [
-                    'The tower is unfinished. That is the finished state.',
-                    'The cranes were built by people who could not talk to each other. So was the Department.',
-                    'Every brick is the same brick. The mortar is the argument.',
-                    'The plans are in eleven languages. The mistake is in all of them.',
-                    'Genesis 11. The chapter number is a coincidence. Records does not believe in those but wrote it down.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: -11.4, z: 13.4, face: 15 },
-                    { key: 'cardboard_box',  x: -12.5, z: 13.6, face: 50 },
-                    { key: 'notebook_paper', x: -8.9,  z: 13.0, y: 0.01, face: 320 },
-                    { key: 'clipboard',      wall: 's', x: 6.4 },
-                    { key: 'hook_rail',      wall: 's', x: -6.6 },
-                ],
-            },
-            /* 12 · MOUNT OLYMPUS — a chair for the thirteenth, the treaty on
-               the marble, laurels in pots, a shelf for the ambrosia */
-            prebuilt_olympus: {
-                agent: '“The Twelve are in session. You are not one of them. The lintel is a treaty; read it on the way in and again on the way out.”',
-                lines: [
-                    'There are twelve seats. There is a thirteenth chair. Nobody sits in it. It is for us.',
-                    'The cloud sea is below. The floor is above. The treaty covers both and the gap.',
-                    'Lightning is a courtesy here. It arrives before the paperwork.',
-                    'The temples are on the wings so the gods can watch. They are watching.',
-                    'The golden stair goes down. Do not take it. It goes down.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'teal_chair',     x: 12.6,  z: -9.8, face: 240 },
-                    { key: 'potted_plant',   x: -12.6, z: -12.6 },
-                    { key: 'potted_plant',   x: 12.6,  z: -12.6 },
-                    { key: 'papers_b',       x: -13.2, z: 8.2, y: 0.01, face: 60 },
-                    { key: 'wall_shelf',     wall: 'e', z: 8.6 },
-                ],
-            },
-            /* 4 · MARS — the airlock side: suit lockers on the north wall, a
-               cot for the long shift, the spares shelf, an extinguisher for a
-               planet with no air */
-            prebuilt_mars: {
-                agent: '“Fourth planet. Red dust in the seal, every crossing. We have written to them. They have written back in dust.”',
-                lines: [
-                    'The rovers are dead. They send a postcard every sol.',
-                    'The biodome grows one tomato a year. Records has the tomato.',
-                    'The dust is in the seal, the paperwork, the coffee. The coffee is the paperwork.',
-                    'Nobody lives on Mars. Several people work here. The difference is the badge.',
-                    'The mesas are natural. The faces on them are a matter of lighting.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'locker',         wall: 'n', x: 13.8 },
-                    { key: 'locker',         wall: 'n', x: 12.9 },
-                    { key: 'metal_shelving', wall: 'e', z: -8.8 },
-                    { key: 'cot',            x: 13.9,  z: -11.6, face: 0 },
-                    { key: 'fire_extinguisher', wall: 'e', z: 9.0 },
-                    { key: 'cardboard_box',  x: -14.2, z: 12.4, face: 20 },
-                    /* 2026-09-11: the rover is no longer parked here as a
-                       room prop — the SITE's own rover (the mars setting,
-                       three-renderer.js _NR_BUILDERS.mars) is the user's
-                       real model now, and it stands where the map puts it,
-                       in the battle and in the room alike. */
-                ],
-            },
-            /* 51 · AREA 51 — the guard shack's terminal in the north-east
-               corner, a chair, the base's own filing cabinet on the wall the
-               console shares, crates of things that are not weather balloons */
-            prebuilt_area51: {
-                agent: '“Est. 1947. The keypad is a rival account. Your badge works here. That is not a compliment.”',
-                lines: [
-                    'The saucer is under a tarp. The tarp is the classified part.',
-                    'Photography prohibited. Memory discouraged. Drawing is a grey area.',
-                    'Runway 33 runs into the desert. The desert has its own customs. We do not recognise it. It does not recognise us.',
-                    'The weather balloon story is true. The balloon was the weather.',
-                    'Deadly force is authorized. Deadly paperwork is preferred; it has a longer range.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'round_cabinet',  x: 13.4,  z: -12.8, face: 220 },
-                    { key: 'crt_terminal',   x: 13.4,  z: -12.8, y: 0.76, face: 220 },
-                    { key: 'office_chair',   x: 12.3,  z: -11.8, face: 45 },
-                    { key: 'filing_cabinet', wall: 'n', x: -10.4 },
-                    { key: 'cardboard_boxes', x: -13.2, z: 12.6, face: 20 },
-                ],
-            },
-            /* 512 · SKINWALKER RANCH — the observation post by the west wall
-               (a TV that gets the barn cameras, a chair), the tack rail, the
-                boxes the sensors came in, a broom for the feathers */
-            prebuilt_skinwalker: {
-                agent: '“Five hundred and twelve acres. All of them watched. The gate is open. It is not open for you.”',
-                lines: [
-                    'The cameras cover the whole ranch. The ranch does not appear on them.',
-                    'The cattle were counted twice. The numbers differ by one. It is not the cattle that changed.',
-                    'The crop circle is not a message. It is a signature. We are checking it against the register.',
-                    'Something is in the sky. It is on the site file as “something.” The site file is correct.',
-                    'The stable door is in two halves. The top half stays shut. Ask the top half why.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'tube_tv',        x: -14.5, z: -10.0, y: 0, face: 110 },
-                    { key: 'folding_chair',  x: -13.3, z: -8.6, face: 100 },
-                    { key: 'cardboard_boxes', x: 14.2, z: -13.6, face: 30 },
-                    { key: 'hook_rail',      wall: 'w', z: 9.4 },
-                    { key: 'broom',          x: -14.3, z: 12.4, face: 200 },
-                ],
-            },
-            /* 180 · HOLLOW EARTH — fungus in pots that came with the room, a
-               cooler the reptilians will not touch, a lamp on the desk for the
-               officer who does not trust the sun */
-            prebuilt_hollow_earth: {
-                agent: '“Room 180. The floor on the far side is the ceiling. Do not jump; you would land on your own head, and the form for that is long.”',
-                lines: [
-                    'The inner sun does not set. It is not allowed to. Continuity has it in writing.',
-                    'Up is a matter of which side you signed in on.',
-                    'The gates are two. One is a way in. The other is the same way in from underneath.',
-                    'The mushrooms glow because they are happy. Nobody has asked what about.',
-                    'Agartha is the capital. This is the countryside. The countryside is upside down.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'office_plant',   x: 13.4,  z: -13.2 },
-                    { key: 'office_plant',   x: -13.4, z: -13.2 },
-                    { key: 'water_cooler',   wall: 'e', z: -8.2 },
-                    { key: 'paper_sheet',    x: 10.2,  z: 12.2, y: 0.01, face: 70 },
-                    { key: 'desk_lamp',      x: -14.45, z: -1.2, y: 0.76, face: 200 },
-                ],
-            },
-            /* 420 · FAIRY FOREST — the complaint on the grass, a chair the
-               fairies let us keep, plants in pots for the irony, a shelf on
-               the west wall by the spring */
-            prebuilt_fairy_forest: {
-                agent: '“The mushrooms are not that kind. The door is a tree. The tree objected. Sign here, and apologise to the door.”',
-                lines: [
-                    'The Forest lodged a complaint about the door. The door lodged one about the Forest. Both are pending.',
-                    'The rings eat arrows. They have been asked to stop. They have not.',
-                    'Wisps are not lights. They are opinions.',
-                    'The spring is drinkable. The water remembers who drank it.',
-                    'Room 420: the number was the Forest’s idea. We do not make the jokes; we file them.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'potted_plant',   x: -13.4, z: -13.4 },
-                    { key: 'office_plant',   x: 13.4,  z: -13.4 },
-                    { key: 'paper_sheet',    x: -12.2, z: 9.6, y: 0.01, face: 140 },
-                    { key: 'folding_chair',  x: -13.6, z: -7.8, face: 80 },
-                    { key: 'wall_shelf',     wall: 'w', z: -10.4 },
-                ],
-            },
-            /* 1969 · MOON — the soundstage side of it: the director's chair,
-               the monitor, the props crate, the shot list on the berm */
-            prebuilt_moon: {
-                agent: '“Room 1969. The door stands without a wall. Records built one once; the footage disagreed. The footprints lead in. Do not follow them out.”',
-                lines: [
-                    'The footage is real. The Moon is the reconstruction.',
-                    'One small step. The form is longer.',
-                    'The monolith is not ours. It was here when we filed the frame. It has been very patient.',
-                    'The flag does not move because there is no wind. The wind is in the paperwork.',
-                    'Low gravity is not an excuse. It is a condition. Both are on the site file.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 14.2,  z: -13.4, face: 25 },
-                    { key: 'folding_chair',  x: 13.6,  z: -12.2, face: 230 },
-                    { key: 'tube_tv',        x: 14.4,  z: -10.9, y: 0, face: 250 },
-                    { key: 'clipboard',      wall: 'w', z: 8.8 },
-                    { key: 'paper_sheet',    x: -12.4, z: 11.8, y: 0.01, face: 210 },
-                    /* 2026-09-11: the lander is no longer a room prop in the
-                       corner — the SITE's own lander (the moon setting,
-                       three-renderer.js _NR_BUILDERS.moon) is the user's real
-                       model now, with its flag beside it, in the battle and
-                       in the room alike. The footprints lead in. Nobody has
-                       filed where they lead out. */
-                ],
-            },
-            /* 888 · VATICAN CITY — a chair by the east arm of the colonnade,
-               the decree on the cobbles, the plants the archive sent, a shelf
-               for the white paint */
-            prebuilt_vatican: {
-                agent: '“Immunity claimed, three times. The door was painted white by decree. The decree is also white. Badge, please, and cover your head.”',
-                lines: [
-                    'The colonnade has two arms. They are open. That is the message and the trap.',
-                    'The obelisk was Egyptian. Then it was Roman. Now it is a hazard on the south lane.',
-                    'The fountains run on consecrated water. The pump is not consecrated. Nobody asks.',
-                    'The dome is over the wall. The wall is over the paperwork. The paperwork is over everything.',
-                    'Eight eight eight. The plate was approved on the third try.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'potted_plant',   x: -13.4, z: 9.6 },
-                    { key: 'potted_plant',   x: 13.4,  z: 9.6 },
-                    { key: 'teal_chair',     x: 13.3,  z: -9.4, face: 250 },
-                    { key: 'notebook_paper', x: 12.6,  z: -8.4, y: 0.01, face: 40 },
-                    { key: 'wall_shelf',     wall: 'w', z: -9.2 },
-                ],
-            },
-            /* 23 · BOHEMIAN GROVE — the robe rail on the east wall, the
-               members' crates, a chair for the non-member, the programme on
-               the grass, a broom for the ash */
-            prebuilt_bohemian_grove: {
-                agent: '“Room 23. Members only; you are staff, which is worse. Do not knock in rhythm. Do not look at the Owl. The Owl has already looked at you.”',
-                lines: [
-                    'The Owl is a statue. The statue is on the payroll.',
-                    'The altar fire is lit once a year. It is always that day here.',
-                    'Twenty-three: the enigma. Records has a folder. The folder has twenty-three pages. Nobody planned that.',
-                    'The redwoods are older than the Department. They have seniority and they use it.',
-                    'The creek runs out of the room. Nothing runs into it. Continuity is aware.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'hook_rail',      wall: 'e', z: 9.2 },
-                    { key: 'cardboard_boxes', x: 14.2, z: -13.8, face: 30 },
-                    { key: 'folding_chair',  x: -14.3, z: -9.0, face: 90 },
-                    { key: 'paper_sheet',    x: -9.8,  z: 13.2, y: 0.01, face: 40 },
-                    { key: 'broom',          x: 14.3,  z: 11.6, face: 160 },
-                ],
-            },
-            /* 9600 · GÖBEKLI TEPE — the dig's crates in the north-east, the
-               find sheets on the grass, the trench log on the wall, a broom
-               for eleven thousand years of dust */
-            prebuilt_gobekli: {
-                agent: '“Ninety-six hundred BC. No leaf was ever made for this doorway; we filed the frame. The frame is the paperwork.”',
-                lines: [
-                    'The temple came before the town. The paperwork came before the temple.',
-                    'The T-pillars are people. That is not a metaphor here.',
-                    'It was buried on purpose. Records would like to know whose.',
-                    'The digs go down. Everything they find was already filed. By whom is the question.',
-                    'The oldest door on file. Nobody knows what it kept out. It is still keeping it out.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: 14.2,  z: -13.6, face: 20 },
-                    { key: 'cardboard_box',  x: 13.2,  z: -14.2, face: 70 },
-                    { key: 'clipboard',      wall: 'e', z: 8.6 },
-                    { key: 'paper_sheet',    x: 9.6,   z: 13.0, y: 0.01, face: 300 },
-                    { key: 'broom',          x: -14.3, z: 12.6, face: 200 },
-                ],
-            },
-            /* 1225 · NORTH POLE — two presents that were never wrapped, the
-               overwinter cot, a cooler that froze, the coat rail, a lamp on
-               the desk under the aurora */
-            prebuilt_northpole: {
-                agent: '“December twenty-fifth, every day, by decree. The sleigh bells were removed by Records. Records is not sorry.”',
-                lines: [
-                    'The workshop makes one thing. Nobody has seen it. Everybody has received it.',
-                    'The aurora is a notice board. It is written in a colour we do not have clearance for.',
-                    'The slide-pond is frozen. It was frozen in July. It was frozen before July existed.',
-                    'The elves are contractors. The contract is long and mostly about cookies.',
-                    'The candy canes are load-bearing. That was a surprise to everyone including the candy canes.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'cardboard_box',  x: -13.4, z: 12.2, face: 15 },
-                    { key: 'cardboard_box',  x: -12.4, z: 13.2, face: 55 },
-                    { key: 'cot',            x: 12.9,  z: -11.6, face: 0 },
-                    { key: 'water_cooler',   wall: 'e', z: -8.4 },
-                    { key: 'hook_rail',      wall: 'w', z: -8.6 },
-                    { key: 'desk_lamp',      x: 1.3,   z: -14.45, y: 0.76, face: 200 },
-                ],
-            },
-            /* 2D · FLAT LANDS — one chair. One sheet of paper. Nothing else;
-               the room is the joke and the joke is the room */
-            prebuilt_flatlands: {
-                agent: '“Room 2D. Two dimensions, no depth, and a frame with no door in it. Sign here. You are being watched, and so is the pen.”',
-                lines: [
-                    'Flat all the way through. Records checked with a ruler.',
-                    'There is one tree. It is dead. It was dead when we filed it. It is the liveliest thing here.',
-                    'The circle you can barely see is a circle. That is all the site file says. It is enough.',
-                    'The eyes in the sky are not ours. Ours are on the other side of the frame.',
-                    'It pairs with 4D. 4D is on hold. 2D is not on hold; it is on the floor.',
-                ],
-                fitted: true,
-                props: [
-                    { key: 'folding_chair',  x: 13.2,  z: -9.6, face: 250 },
-                    { key: 'paper_sheet',    x: -10.4, z: 9.2, y: 0.01, face: 20 },
-                ],
-            },
-        },
     },
     /* per-bay flavour: the guard's line, overheard lines, extra dressing (local polar) */
     bays: {
@@ -32201,7 +31107,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'front', wall: 's', x: 0, leaf: 'leaf_wooden',
                   label: 'THE FRONT DOOR', sub: 'OUT TO THE GRAVEYARD · THE BOARD',
-                  action: { room: 'site_prebuilt_haunted', at: 'house' },
+                  action: { room: 'site_prebuilt_haunted_grounds', at: 'house' },
                   desc: 'The front door from inside. The plate on the other side says 13; this side says 237. Outside is the graveyard — both of them — and the crossing console.' },
                 { id: 'stairs', wall: 'n', x: 1.0, leaf: null,
                   label: 'THE LANDING', sub: 'UP THE STAIRS · THE BEDROOMS',
@@ -33036,7 +31942,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'deck', wall: 's', x: 0, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE DORSAL DECK', sub: 'AFT · OUT ONTO THE BOARD',
-                  action: { room: 'site_prebuilt_derelict', at: 'airlock' },
+                  action: { room: 'site_prebuilt_derelict_deck', at: 'airlock' },
                   desc: 'The inner hatch. Aft is the dorsal deck — the board, the console, the crossing. The hatch cycles whether or not there is air on either side.' },
                 { id: 'hold', wall: 'n', x: 0, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE CARGO HOLD', sub: 'FORWARD · INTO THE SHIP',
@@ -33278,7 +32184,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'deck', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
                   label: 'THE MAIN DECK', sub: 'UP THE COMPANIONWAY · TO THE BOARD',
-                  action: { room: 'site_prebuilt_revenge', at: 'companionway' },
+                  action: { room: 'site_prebuilt_revenge_deck', at: 'companionway' },
                   desc: 'The companionway up to the main deck — the board, the console, the crossing, the sea going past. The steps are wet on the way up and dry on the way down.' },
                 { id: 'cabin', wall: 'w', z: -3.5, leaf: 'leaf_shabby_wood',
                   label: 'THE CAPTAIN’S CABIN', sub: 'AFT · THE GREAT CABIN',
@@ -33532,6 +32438,7 @@ const DOOR_HQ = {
                            { pts: [[-36, -20], [36, -20], [36, 20], [-36, 20], [-36, -20]], w: 8, loop: true },                                   // THE BACK LANE (the circuit)
                            { pts: [[-22, -32], [-22, 32]], w: 7 },                                                                                // the west cross street
                            { pts: [[22, -32], [22, 32]], w: 7 },                                                                                  // the east cross street
+                           { pts: [[0, 20], [0, 32]], w: 12 },                                                                                    // THE HIGHWAY SOUTH (Phase 5: the road out of the south edge, joined to the highway)
                        ],
                        open: [{ x: 0, z: 0, r: 11 }] },                                                                                            // THE FOUNTAIN PLAZA
                 features: [
@@ -33542,7 +32449,7 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -30, z: 11.5, w: 7, d: 5, h: 4.5, edge: 0.3 },                                                              // THE MARQUEE ROOF (the tape's; the door gun's) — flush with the back lane's south sidewalk
                     { k: 'path', pts: [[0, -6], [0, 6]], w: 21 },                                                                                  // THE PLAZA is pavement
                     { k: 'path', pts: [[-10, -32], [-10, -20]], w: 6 },                                                                            // THE CHAPEL's forecourt (the north wall, x −10)
-                    { k: 'path', pts: [[0, 20], [0, 32]], w: 6 },                                                                                  // the bay door's street (the south wall, x 0)
+                    { k: 'path', pts: [[-22, 20], [-22, 32]], w: 6 },                                                                              // the bay door's street (the south wall, x −22 — Phase 5 gave x 0 to the highway)
                     /* THE BACK-LOT ROOFTOPS (AREA CONTENT D2, 2026-09-19): two low roofs in the outer blocks behind the back lane, each up ONE fire escape off the lane's sidewalk, a rail along its edge */
                     { k: 'plateau', x: -28, z: -29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                             // THE MOTEL ROOF (north)
                     { k: 'climb', x: -28, z: -27.5, face: 0, look: 'fireescape' },                                                                     // its fire escape off the north lane's sidewalk
@@ -33836,7 +32743,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'street', wall: 'w', z: 0, leaf: 'leaf_entrance',
                   label: 'DOWNTOWN', sub: 'THE LOBBY DOOR · BACK TO THE INTERSECTION',
-                  action: { room: 'site_prebuilt_downtown', at: 'tower' },
+                  action: { room: 'site_prebuilt_downtown_streets', at: 'tower' },
                   desc: 'The lobby door, from the inside. The intersection is behind it, the console is across the intersection, and the monster was here first.' },
                 { id: 'subway', wall: 'n', x: 3.5, leaf: null, secret: true,
                   label: 'A DRAUGHT', sub: 'THE STAIR DOWN · THE SUBWAY',   // AREA CONTENT D4 (2026-09-20): a draught (was THE PLATFORM)
@@ -37005,9 +35912,10 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'dirt_4', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',                                 // the asphalt is the city's own sheet
                 noise: { amp: 0.12, scale: 7 },
-                gen: { kind: 'rooms', seed: 33, loops: 3, thicket: false, wallH: 1.6, rMin: 7, rMax: 12 },              // the aprons joined by taxiways; the solid = the blast berms
+                gen: { kind: 'rooms', seed: 33, loops: 3, thicket: false, wallH: 1.6, rMin: 7, rMax: 12, open: [{ x: 0, z: -26, r: 7 }, { x: 0, z: -14, r: 7 }, { x: 0, z: -2, r: 7 }] },   // Phase 5: the gate road runs clear of the berms              // the aprons joined by taxiways; the solid = the blast berms
                 features: [
                     { k: 'path', pts: [[-46, 10], [46, 10]], w: 9 },                                                     // RUNWAY 33
+                    { k: 'path', pts: [[0, -32], [0, 10]], w: 10 },                                                      // THE GATE ROAD (Phase 5: in from the gate, the north edge x 0)
                     { k: 'path', pts: [[18, 31], [18, 10]], w: 5 },                                                      // the taxiway from the hangar's big door
                     { k: 'path', pts: [[-30, 31], [-30, 10]], w: 4 },                                                    // the yard gate's lane
                     { k: 'plateau', x: -10, z: -16, r: 3.2, h: 4.5, edge: 0.35 },                                        // THE TOWER
@@ -37072,6 +35980,248 @@ const DOOR_HQ = {
                 '“The crater is not on the plan.” “What made it?” “The plan.”',
             ],
             spawn: { x: 18, z: 24, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
+           THE HIGHWAY + THE GATE (OPEN_WORLD_PLAN Phase 5, 2026-09-27 — THE SOUTH,
+           family E · BUILT on flat desert): the Strip's boulevard runs out of its
+           south edge onto two 210 m parts of two-lane road (80 m wide: the road,
+           its shoulders, the scrub, a bank of dunes either side), then through
+           AREA 51's gate onto the flight line — one walk from the Strip to the
+           runway, no card. The north half is the Strip's (the diner, the rest
+           stop), the south half Area 51's (the gas station, the crash nobody
+           reported). Joins only: no door of their own. Lines are Claude's DRAFT.
+           ═══════════════════════════════════════════════════════════════════ */
+        site_prebuilt_strip_highway: {
+            label: 'DISASTER CITY · THE HIGHWAY',
+            sub: 'THE LAST DINER · THE REST STOP · AREA 51, SOUTH',
+            kind: 'box', site: 'prebuilt_strip', part: 'highway',
+            shell: hqAirbaseShell({ w: 80, d: 210, plate: { x: 0, z: -100, y: 4.4 } }),
+            parti: 'One road south out of the neon, and the last lit thing on it.',
+            typology: 'corridor',
+            terrain: {
+                floor: 'desert', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',                      // the asphalt is the city's own sheet
+                noise: { amp: 0.03, scale: 9 },
+                features: [
+                    { k: 'path', pts: [[0, -105], [0, 105]], w: 12 },                                              // THE ROAD (two lanes, the shoulders)
+                    { k: 'ridge', pts: [[-35, -96], [-35, 96]], w: 12, h: 2.4 },                                   // the dunes either side (the bank)
+                    { k: 'ridge', pts: [[35, -96], [35, 60]], w: 12, h: 2.4 },
+                    /* THE LAST DINER (east of the road): four walls, the door on the road, a roof slab, the loading dock behind */
+                    { k: 'path', pts: [[6, -50], [15, -50]], w: 3.0 },                                             // the lot's walk to the door
+                    { k: 'path', pts: [[9, -60], [9, -38]], w: 6.0 },                                              // the parking lot
+                    { k: 'wall', x0: 15, z0: -54.5, x1: 29, z1: -54.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: 15, z0: -45.5, x1: 29, z1: -45.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: 29, z0: -54.5, x1: 29, z1: -45.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: 15, z0: -54.5, x1: 15, z1: -51.3, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: 15, z0: -48.7, x1: 15, z1: -45.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'bridge', x0: 15.3, z0: -50, x1: 28.7, z1: -50, w: 8.6, drawW: 9.8, y: 3.6, thick: 0.3, plain: true, rails: false, key: 'metal', id: 'diner_roof' },
+                    { k: 'wall', x0: 30.5, z0: -53, x1: 30.5, z1: -47, y: 1.1, t: 2.4, key: 'concrete' },          // THE LOADING DOCK (a tier: jumped, 1.1 m)
+                    /* THE REST STOP (west of the road): the pad, the kickers, the grind rail */
+                    { k: 'path', pts: [[-12, 20], [-30, 20]], w: 12 },
+                    { k: 'ramp', x0: -26, z0: 16, x1: -23.4, z1: 16, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },
+                    { k: 'ramp', x0: -16, z0: 24, x1: -18.6, z1: 24, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },
+                    { k: 'rail', x0: -26, z0: 23, x1: -19, z1: 23 },
+                    /* THE GUARD RAILS along the shoulders (the grind) */
+                    { k: 'rail', x0: -7.2, z0: -96, x1: -7.2, z1: -62 }, { k: 'rail', x0: 7.2, z0: 62, x1: 7.2, z1: 98 },
+                    { k: 'scatter', key: 'cinder_block', n: 5, seed: 51 },
+                    { k: 'scatter', key: 'dead_snag', n: 6, seed: 52 },
+                    { k: 'scatter', key: 'stump', n: 4, seed: 53 },
+                ],
+                /* THE PAINT: the double yellow down the middle, the white edge lines, the words on the southbound lane */
+                marks: [
+                    { k: 'line', x0: -0.18, z0: -105, x1: -0.18, z1: 105, w: 0.12, color: 0xe8b830 },
+                    { k: 'line', x0: 0.18, z0: -105, x1: 0.18, z1: 105, w: 0.12, color: 0xe8b830 },
+                    { k: 'line', x0: -5.6, z0: -105, x1: -5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
+                    { k: 'line', x0: 5.6, z0: -105, x1: 5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
+                    { k: 'text', x: 2.9, z: -80, text: 'AREA 51', size: 1.4, rot: 180, color: 0xf0f0e8 },
+                    { k: 'text', x: -2.9, z: 80, text: 'STRIP', size: 1.4, rot: 0, color: 0xf0f0e8 },
+                ],
+                traffic: [
+                    { pts: [[2.6, -105], [2.6, 105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['truck', 'suv'] },
+                    { pts: [[-2.6, 105], [-2.6, -105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['cadillac', 'suv'] },
+                ],
+            },
+            doors: [],
+            counters: [],
+            props: [
+                /* the diner inside: the counter, the booths, the register, the radio */
+                { key: 'serving_line',    x: 27.4, z: -50, face: 270 },
+                { key: 'cash_register',   x: 25.6, z: -53.2, face: 270 },
+                { key: 'coffee_maker',    x: 27.6, z: -46.6, face: 270 },
+                { key: 'round_table',     x: 19, z: -52.3 }, { key: 'cafeteria_chair', x: 17.8, z: -52.3, face: 90 }, { key: 'cafeteria_chair', x: 20.2, z: -52.3, face: 270 },
+                { key: 'round_table',     x: 19, z: -47.7 }, { key: 'cafeteria_chair', x: 17.8, z: -47.7, face: 90 }, { key: 'cafeteria_chair', x: 20.2, z: -47.7, face: 270 },
+                { key: 'retro_radio',     x: 23, z: -54, face: 0 },
+                { key: 'trash_bin',       x: 16.2, z: -45.6 + 0.9 },
+                /* the lot */
+                { key: 'car_truck',       x: 9, z: -56, face: 0 }, { key: 'car_cadillac', x: 9, z: -42, face: 180 },
+                { key: 'signpost',        x: 13.6, z: -57 },
+                { key: 'flood_mast',      x: 12.5, z: -60 },
+                /* the rest stop */
+                { key: 'bus_shelter',     x: -14, z: 25.5, face: 180 },
+                { key: 'park_bench',      x: -20, z: 13.6, face: 0 }, { key: 'park_bench', x: -28, z: 13.6, face: 0 },
+                { key: 'vending_machine', x: -30, z: 25.5, face: 180 },
+                { key: 'trash_bin',       x: -12.6, z: 14.2 },
+                { key: 'quarter_pipe',    x: -32, z: 20, face: 90 },
+                /* the road's lamps (night lamps: the clock lights them) */
+                { key: 'flood_mast',      x: -8, z: -84 }, { key: 'flood_mast', x: 8, z: 0 }, { key: 'flood_mast', x: -8, z: 84 },
+                { key: 'traffic_barrel',  x: 7.4, z: 40 }, { key: 'traffic_barrel', x: 7.6, z: 43 }, { key: 'traffic_cone', x: 6.8, z: 46 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 23.5, z: -50, face: 90, race: 'cowboy', say: ['“Pie’s fresh.” “Since when?” “Since the Strip closed.” “The Strip never closes.” “Then it’s very fresh.”'] },
+                { x: -18, z: 18, face: 0, race: 'conspiracy theorist', say: ['“Every car that goes south comes back north.” “So?” “Not the same car.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“How far to Area 51?” “There is no Area 51.” “How far to where it isn’t?” “Four hundred metres.”',
+                '“The diner never closes.” “Who runs it?” “The pie.”',
+                '“Last gas for a hundred miles.” “The sign says four hundred metres.” “The sign is optimistic.”',
+            ],
+            spawn: { x: -3.0, z: -92, face: 180 },
+        },
+        site_prebuilt_area51_highway: {
+            label: 'THE HIGHWAY · THE DESERT MILES',
+            sub: 'LAST GAS · THE CRASH NOBODY REPORTED · THE GATE, SOUTH',
+            kind: 'box', site: 'prebuilt_area51', part: 'highway',
+            shell: hqAirbaseShell({ w: 80, d: 210, plate: { x: 0, z: -100, y: 4.4 } }),
+            parti: 'The road runs straight at the fence; the only shade is the canopy.',
+            typology: 'corridor',
+            terrain: {
+                floor: 'desert', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',
+                noise: { amp: 0.03, scale: 9 },
+                features: [
+                    { k: 'path', pts: [[0, -105], [0, 105]], w: 12 },                                              // THE ROAD
+                    { k: 'ridge', pts: [[-35, -96], [-35, -30]], w: 12, h: 2.4 }, { k: 'ridge', pts: [[-35, 30], [-35, 96]], w: 12, h: 2.4 },
+                    { k: 'ridge', pts: [[35, -96], [35, 96]], w: 12, h: 2.4 },
+                    /* LAST GAS (west of the road): the canopy on four columns, the pumps under it, the kiosk behind */
+                    { k: 'path', pts: [[-6, 10], [-26, 10]], w: 14 },                                              // the forecourt
+                    { k: 'wall', x0: -24.25, z0: 6, x1: -23.75, z1: 6, y: 5.0, t: 0.5, key: 'concrete' },
+                    { k: 'wall', x0: -12.25, z0: 6, x1: -11.75, z1: 6, y: 5.0, t: 0.5, key: 'concrete' },
+                    { k: 'wall', x0: -24.25, z0: 14, x1: -23.75, z1: 14, y: 5.0, t: 0.5, key: 'concrete' },
+                    { k: 'wall', x0: -12.25, z0: 14, x1: -11.75, z1: 14, y: 5.0, t: 0.5, key: 'concrete' },
+                    { k: 'bridge', x0: -24.8, z0: 10, x1: -11.2, z1: 10, w: 9.6, drawW: 10.4, y: 5.0, thick: 0.6, plain: true, rails: false, key: 'metal', id: 'canopy' },
+                    { k: 'wall', x0: -34, z0: 6.5, x1: -27, z1: 6.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },   // THE KIOSK
+                    { k: 'wall', x0: -34, z0: 13.5, x1: -27, z1: 13.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: -34, z0: 6.5, x1: -34, z1: 13.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: -27, z0: 6.5, x1: -27, z1: 8.8, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'wall', x0: -27, z0: 11.2, x1: -27, z1: 13.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
+                    { k: 'bridge', x0: -33.7, z0: 10, x1: -27.3, z1: 10, w: 6.7, drawW: 7.6, y: 3.4, thick: 0.3, plain: true, rails: false, key: 'metal', id: 'kiosk_roof' },
+                    { k: 'wall', x0: -30.5, z0: 15.5, x1: -30.5, z1: 19.5, y: 1.2, t: 3.0, key: 'concrete' },     // the propane cage's plinth (a tier: jumped)
+                    /* THE CRASH (east of the road, fenced off): the crater, the tape, the thing in it */
+                    { k: 'dip', x: 22, z: 60, r: 7, h: 1.6 },
+                    { k: 'wall', x0: 12, z0: 50, x1: 12, z1: 70, h: 0.45, t: 0.3, key: 'urban:ConcreteStriped2a' },   // the kerb they poured round it (the grind)
+                    { k: 'rail', x0: 7.2, z0: -96, x1: 7.2, z1: -40 }, { k: 'rail', x0: -7.2, z0: 40, x1: -7.2, z1: 96 },
+                    { k: 'scatter', key: 'cinder_block', n: 5, seed: 61 },
+                    { k: 'scatter', key: 'dead_snag', n: 7, seed: 62 },
+                ],
+                marks: [
+                    { k: 'line', x0: -0.18, z0: -105, x1: -0.18, z1: 105, w: 0.12, color: 0xe8b830 },
+                    { k: 'line', x0: 0.18, z0: -105, x1: 0.18, z1: 105, w: 0.12, color: 0xe8b830 },
+                    { k: 'line', x0: -5.6, z0: -105, x1: -5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
+                    { k: 'line', x0: 5.6, z0: -105, x1: 5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
+                    { k: 'text', x: 2.9, z: 70, text: 'SLOW', size: 1.6, rot: 180, color: 0xf0f0e8 },
+                    { k: 'text', x: 2.9, z: 88, text: 'STOP AHEAD', size: 1.2, rot: 180, color: 0xf0f0e8 },
+                ],
+                traffic: [
+                    { pts: [[2.6, -105], [2.6, 105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['suv', 'truck'] },
+                    { pts: [[-2.6, 105], [-2.6, -105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['truck', 'copcar'] },
+                ],
+            },
+            doors: [],
+            counters: [],
+            props: [
+                /* LAST GAS: the pumps, the car at them, the kiosk's shelves and till */
+                { key: 'utility_box',     x: -18, z: 8.2, face: 90 }, { key: 'utility_box', x: -18, z: 11.8, face: 90 },
+                { key: 'car_suv',         x: -14.5, z: 10, face: 0 },
+                { key: 'steel_table',     x: -28.2, z: 10, face: 90 }, { key: 'cash_register', x: -28.2, z: 10, y: 0.76, face: 90 },
+                { key: 'metal_shelving',  x: -33.2, z: 8.2, face: 90 }, { key: 'round_fridge', x: -33.2, z: 11.8, face: 90 },
+                { key: 'coffee_maker',    x: -30.5, z: 12.9, face: 180 },
+                { key: 'flood_mast',      x: -9, z: 3 },
+                { key: 'signpost',        x: -8.2, z: 18 },
+                /* THE CRASH: the rig in the crater, the tape, the truck that found it */
+                { key: 'saucer_rig',      x: 22, z: 60, face: 30 },
+                { key: 'warning_tape',    x: 13, z: 56, face: 90 }, { key: 'warning_tape', x: 13, z: 64, face: 90 },
+                { key: 'radiation_sign',  x: 13.2, z: 52 },
+                { key: 'car_cop',         x: 9.6, z: 74, face: 0 },
+                /* the road's lamps */
+                { key: 'flood_mast',      x: 8, z: -84 }, { key: 'flood_mast', x: -8, z: -40 }, { key: 'flood_mast', x: 8, z: 90 },
+                { key: 'crashed_car',     x: -16, z: -70, face: 60 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -20, z: 13, face: 90, race: 'cowboy', say: ['“Fill her up?” “I’m on foot.” “Then fill you up.”'] },
+                { x: 11, z: 66, face: 270, race: 'men in black', say: ['“Nothing to see.” “There is a saucer.” “There is a weather balloon shaped like nothing to see.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Last gas.” “Before what?” “Before the part of the map they drew in pencil.”',
+                '“The crash was in 1947.” “The tape is new.” “The crash keeps happening.”',
+                '“The fence is ahead.” “What is behind it?” “Runway thirty-three, which does not exist, lit.”',
+            ],
+            spawn: { x: 3.0, z: -92, face: 180 },
+        },
+        /* ── AREA 51 · THE GATE — the fence, the guard post, the barrier, the tower (Phase 5) ── */
+        site_prebuilt_area51_gate: {
+            label: 'AREA 51 · THE GATE',
+            sub: 'THE FENCE · THE GUARD POST · USE OF DEADLY FORCE AUTHORIZED',
+            kind: 'box', site: 'prebuilt_area51', part: 'gate',
+            shell: hqAirbaseShell({ w: 60, d: 40, plate: { x: 0, z: -18, y: 4.4 } }),
+            parti: 'A fence across the desert with one gap in it, and the gap is the road.',
+            typology: 'corridor',
+            terrain: {
+                floor: 'dirt_4', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',
+                noise: { amp: 0.03, scale: 7 },
+                features: [
+                    { k: 'path', pts: [[0, -20], [0, 20]], w: 12 },                                                // THE ROAD through the gate
+                    /* THE FENCE: two runs either side of the gap, the guard post at its east end */
+                    { k: 'wall', x0: -30, z0: 4, x1: -8, z1: 4, h: 2.6, t: 0.2, key: 'urban:MetalCorrugatedPainted1a' },
+                    { k: 'wall', x0: 13.4, z0: 4, x1: 30, z1: 4, h: 2.6, t: 0.2, key: 'urban:MetalCorrugatedPainted1a' },
+                    /* THE GUARD POST (east of the road, in the gap): four walls, a window slot on the road, a roof */
+                    { k: 'wall', x0: 9, z0: 1, x1: 13, z1: 1, h: 2.8, t: 0.25, key: 'concrete' },
+                    { k: 'wall', x0: 9, z0: 5, x1: 13, z1: 5, h: 2.8, t: 0.25, key: 'concrete' },
+                    { k: 'wall', x0: 13, z0: 1, x1: 13, z1: 5, h: 2.8, t: 0.25, key: 'concrete' },
+                    { k: 'wall', x0: 9, z0: 1, x1: 9, z1: 2.4, h: 2.8, t: 0.25, key: 'concrete' },
+                    { k: 'wall', x0: 9, z0: 3.6, x1: 9, z1: 5, h: 2.8, t: 0.25, key: 'concrete' },
+                    { k: 'bridge', x0: 9.15, z0: 3, x1: 12.85, z1: 3, w: 3.7, drawW: 4.6, y: 3.0, thick: 0.25, plain: true, rails: false, key: 'metal', id: 'post_roof' },
+                    { k: 'wall', x0: -7, z0: 3.9, x1: -7, z1: 4.1, y: 1.2, t: 0.3, key: 'concrete' },               // the barrier's post (the arm is the tape)
+                    /* THE WATCHTOWER (west): a concrete block you climb by its stair, the rail round its top */
+                    { k: 'wall', x0: -22, z0: 8, x1: -18, z1: 8, y: 4.5, t: 4.0, key: 'concrete' },
+                    { k: 'ramp', x0: -20, z0: 19.9, x1: -20, z1: 9.9, w: 2.2, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },   // from the inside (L 10 ≥ 2.2 × 4.5; ends at the top's edge — a wall block's top is flat to its face)
+                    { k: 'rail', x0: -21.8, z0: 6.2, x1: -18.2, z1: 6.2 },
+                    { k: 'wall', x0: -6.6, z0: -12, x1: -6.6, z1: -2, h: 0.45, t: 0.3, key: 'urban:ConcreteStriped2a' },   // the kerb of the turn-back lane (the grind)
+                    { k: 'scatter', key: 'traffic_cone', n: 5, seed: 71 },
+                ],
+                marks: [
+                    { k: 'line', x0: -0.18, z0: -20, x1: -0.18, z1: 20, w: 0.12, color: 0xe8b830 },
+                    { k: 'line', x0: 0.18, z0: -20, x1: 0.18, z1: 20, w: 0.12, color: 0xe8b830 },
+                    { k: 'line', x0: -6, z0: 1.6, x1: 6, z1: 1.6, w: 0.5, color: 0xf0f0e8 },                      // THE STOP LINE
+                    { k: 'text', x: 2.9, z: -6, text: 'STOP', size: 1.8, rot: 180, color: 0xf0f0e8 },
+                    { k: 'text', x: -2.9, z: -12, text: 'TURN BACK', size: 1.1, rot: 180, color: 0xe8b830 },
+                ],
+            },
+            doors: [],
+            counters: [],
+            props: [
+                { key: 'warning_tape',    x: -3.5, z: 4, face: 90 },                                              // THE BARRIER's arm
+                { key: 'radiation_sign',  x: -12, z: 3.6, face: 180 }, { key: 'radiation_sign', x: 20, z: 3.6, face: 180 },
+                { key: 'security_camera', x: 12.6, z: 1.3, face: 200, mount: 2.4 },
+                { key: 'steel_table',     x: 11, z: 4.2, face: 270 }, { key: 'crt_terminal', x: 11, z: 4.2, y: 0.76, face: 270 },
+                { key: 'folding_chair',   x: 11.6, z: 3, face: 270 },
+                { key: 'flood_mast',      x: -9, z: 8 }, { key: 'flood_mast', x: 16, z: 8 },
+                { key: 'railing_1m',      x: -20, z: 6.4, face: 0 },
+                { key: 'car_suv',         x: 18, z: 12, face: 90 }, { key: 'car_cop', x: 22, z: 12, face: 90 },
+                { key: 'traffic_barrel',  x: -6, z: -3 }, { key: 'traffic_barrel', x: -6.4, z: -8 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 10.6, z: 2.4, face: 270, race: 'marksman', say: ['“Turn back.” “I have a pass.” “Everybody has a pass. Nobody has a reason.”'] },
+                { x: -14, z: 12, face: 180, race: 'men in black', say: ['“You are not here.” “I walked here.” “Then you walked nowhere. Carry on.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Use of deadly force authorized.” “Against whom?” “The authorization does not say.”',
+                '“The gate is open.” “The gate is always open.” “Then what is the guard for?” “The guard is for the gate.”',
+            ],
+            spawn: { x: -3.0, z: -16, face: 180 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            D.U.M.B. — THE BASE UNDER THE BASE (HQ plan 9.3 stage 8 — THE COMPLEX
@@ -37338,12 +36488,12 @@ const DOOR_HQ = {
                     /* AREA CONTENT D4 (2026-09-20): THE SCREEN'S DAIS — the ward's screen stands 1.2 m up at its corridor's end, seen from the ward floor before it is reached (R5) */
                     { k: 'plateau', x: -10, z: -14, w: 5, d: 3, h: 1.2, edge: 0.3 },
                     { k: 'ramp', x0: -10, z0: -9.5, x1: -10, z1: -13.2, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
-                    { k: 'path', pts: [[22, 0], [12, 0], [12, -4]], w: 1.8 },                                           // the rubber lane door → range
+                    { k: 'path', pts: [[22, 2], [12, 2], [12, -4]], w: 1.8 },                                           // the rubber lane door → range
                     { k: 'path', pts: [[12, 0], [-10, 0]], w: 1.8 },
                 ],
             },
             doors: [
-                { id: 'seven', wall: 'e', z: 0, leaf: 'leaf_hospital',
+                { id: 'seven', wall: 'e', z: 2, leaf: 'leaf_hospital',
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'dream' },
                   desc: 'The hospital door from the quiet side. The porthole looks out on the hub. Someone has taped a drawing of an eye over it, from the inside.' },
@@ -37409,12 +36559,12 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -18, z0: -6.9, x1: 2, z1: -6.9 },
                     { k: 'plateau', x: 2, z: 6, r: 1.5, h: 4.4, edge: 0.3 },                                            // THE VAT STACK (the tape — the door gun's)
                     { k: 'wall', x0: 12, z0: 2.6, x1: 24, z1: 2.6, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' },   // the disposal bay's kerb (a grind)
-                    { k: 'path', pts: [[26, 0], [12, 0], [-8, 0]], w: 1.8 },
+                    { k: 'path', pts: [[26, -2], [12, -2], [12, 0], [-8, 0]], w: 1.8 },
                     { k: 'path', pts: [[18, 2], [18, 12]], w: 1.8 },
                 ],
             },
             doors: [
-                { id: 'seven', wall: 'e', z: 0, leaf: 'leaf_frosted', wide: true,
+                { id: 'seven', wall: 'e', z: -2, leaf: 'leaf_frosted', wide: true,
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'clone' },
                   desc: 'The frosted door from the warm side. The glass is fogged from in here, which means someone breathed on it, which the log says nobody did.' },
@@ -37481,7 +36631,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'seven', wall: 'w', z: 0, leaf: 'leaf_vault', wide: true,
+                { id: 'seven', wall: 'w', z: 2, leaf: 'leaf_vault', wide: true,
                   label: 'SUB-LEVEL 7', sub: 'BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'war' },
                   desc: 'The vault door from inside. Two locks, both open. The keypad on this side has no sticky note; on this side everyone knows the code.' },
@@ -37551,12 +36701,12 @@ const DOOR_HQ = {
                     { k: 'pool', x: 14, z: -9, r: 5.5, rz: 3.2, y: 0, depth: 0.9 },                                     // THE POOL (waded, warm)
                     { k: 'plateau', x: 20, z: 9, r: 1.4, h: 3.8, edge: 0.3 },                                           // THE SAFE STACK in the cellar (the tape — the door gun's)
                     { k: 'wall', x0: 8, z0: 4.5, x1: 22, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' },         // the cellar's step (a grind)
-                    { k: 'path', pts: [[-28, 0], [-13, 0], [4, 0], [14, 0], [14, -4]], w: 2.0 },                        // the marble runner from the lift
+                    { k: 'path', pts: [[-28, -2], [-13, -2], [-13, 0], [4, 0], [14, 0], [14, -4]], w: 2.0 },                        // the marble runner from the lift
                     { k: 'path', pts: [[14, 0], [14, 6]], w: 2.0 },
                 ],
             },
             doors: [
-                { id: 'seven', wall: 'w', z: 0, leaf: 'leaf_hotel',
+                { id: 'seven', wall: 'w', z: -2, leaf: 'leaf_hotel',
                   label: 'SUB-LEVEL 7', sub: 'THE PRIVATE LIFT · BACK TO THE HUB',
                   action: { room: 'site_prebuilt_dumb_sublevel7', at: 'bunker' },
                   desc: 'The private lift, from the carpeted side. The button says LOBBY. There is no lobby. It goes to the hub, which he has never been told.' },
@@ -39329,7 +38479,7 @@ const DOOR_HQ = {
                   desc: 'An office door. The plate beside it is blank. Behind it is the office.' },
                 { id: 'exit', wall: 'n', x: 0, leaf: 'leaf_exit',
                   label: 'EXIT', sub: 'ROOM 90 · THE BACKROOMS',
-                  action: { room: 'site_prebuilt_backrooms', at: 'hwing' },
+                  action: { room: 'site_prebuilt_backrooms_levels', at: 'hwing' },
                   desc: 'The EXIT at the end of the corridor. Continuity ruled the place behind it non-canon; the corridor did not get the memo. It is the Backrooms crossing — the one door to Room 90 that does not go through Bay 6.' },
             ],
             counters: [],
@@ -40290,27 +39440,8 @@ if (hqCorridorOn()) [0, 1].forEach(l => { const r = hqRingRoom(l); if (r) DOOR_H
    wears the same id in its own room — doors and rooms are separate
    namespaces, and hqRoomNo resolves both to the site's number).
    hqSiteBoard(mapId) → the finished Δ board (PREBUILT_MAPS) or null.
-   hqSiteBoardInfo(mapId) → what a room needs to draw and walk the board:
-     { w, h, base, cells[y][x]: { key, lvl, walk, fluid, tint }, walls: [{ x, y,
-       side: 'N'|'W', z0, h, tex }], mons: [{ kind, x, y, foot, maxH, seed,
-       rot }], objs: [{ x, y, kind }], nexus: { x, y } | null }
-     lvl = levels above the Δ baseline (a step +1, a block +2, a lake −1);
-     walk = TERRAIN_RULES passable and not a hazard (HQ_SITE_HAZARDS);
-     fluid = wears a water / lava sheet.
-   hqSiteRoom(mapId) → the box room: the board in the middle, the way in on
-   the south wall (P1's lane — you stand where your team spawns), the
-   CROSSING console on the west wall, the natives on the walkway. A shell
-   with `moat` (stage 4) makes the walkway a QUAY: shell.moat = { key,
-   depth, gap, deckW, causeways, bank, bed, deck, walk, tint, quay } —
-   the ring between the board and the quay is the map's liquid, one level
-   down; the causeways bridge it (the south one is the way in). */
+   (The generated board rooms — hqSiteRoom — were deleted 2026-09-27: `site_<id>` is an alias for the site's entry part.) */
 const HQ_SITE_HAZARDS = ['deep_water', 'lava', 'poison', 'poison_bog', 'purple_bog', 'chasm', 'void', 'cloud_gap', 'oil', 'swamp', 'fog_wall', 'barrier', 'storm'];
-const HQ_SITE_FLUIDS = ['water', 'deep_water', 'lava', 'oil', 'swamp', 'poison_bog', 'purple_bog', 'healing_spring'];
-let _hqTidKeys = null;
-function hqSiteTerrainKey(tid) {
-    if (!_hqTidKeys) { _hqTidKeys = {}; for (const k in MF_TID) _hqTidKeys[MF_TID[k]] = k; }
-    return _hqTidKeys[tid] || 'grass_2';
-}
 function hqSiteRoomId(mapId) { return 'site_' + hqSiteId(mapId); }
 /* THE ENTRY (2026-09-17): a landing in a bypassed board room → the part that stands for the site. `at` a door the part has is kept
    (the lobby's street door lands at the streets' `tower`), a free spot passes through, anything else (`egress`, `crossing`,
@@ -40327,13 +39458,28 @@ function hqSiteEntry(roomId, at) {
     return { room: ent.room, at: landing, site: mapId, from: roomId };
 }
 function hqSiteEntryOf(mapId) { const E = (DOOR_HQ.siteRooms || {}).entry || {}; return E[hqSiteId(mapId)] || null; }
-/* the entry door: the part takes the board room's egress (its leaf, its label, its bay action) at the sheet's wall / x — once, never accumulating */
+/* the site's way back to its bay: the threshold leaf from the other side, landing at the bay's own threshold door (what the
+   board room's `egress` was; the board rooms are gone, 2026-09-27) */
+function hqSiteEgressDoor(mapId) {
+    const id = hqSiteId(mapId), sector = hqSectorOfMap(id);
+    if (!sector) return null;
+    const T = (DOOR_HQ.thresholds || {})[id] || {};
+    const egress = DOOR_HQ.rooms.central_egress;
+    const bayDoor = ((egress && egress.doors) || []).find(d => d.action && d.action.sector === sector) || {};
+    const sec = DOOR_HQ.sectors[sector] || {};
+    const leaf = T.leaf || 'leaf_closet_alt';
+    return { id: 'egress', leaf: leaf, wide: !!((DOOR_HQ.catalogue[leaf] || {}).wide),
+             label: bayDoor.label || ('BAY · ' + (sec.label || sector).toUpperCase()), sub: 'BACK TO THE BAY',
+             action: { room: hqBayId(sector), at: 'site_' + id }, note: T.note || '',
+             desc: 'The same door from the other side. ' + (T.note ? T.note.charAt(0).toUpperCase() + T.note.slice(1) + '. ' : '') + 'The bay is behind it.' };
+}
+/* the entry door: the part wears the site's egress (its leaf, its label, its bay action) at the sheet's wall / x — once, never accumulating */
 function hqApplySiteEntries() {
     const E = (DOOR_HQ.siteRooms || {}).entry || {};
     Object.keys(E).forEach(mapId => {
-        const ent = E[mapId], board = DOOR_HQ.rooms[hqSiteRoomId(mapId)], part = DOOR_HQ.rooms[ent.room];
-        if (!board || !part || !ent.door) return;
-        const eg = (board.doors || []).find(d => d.id === 'egress'); if (!eg) return;
+        const ent = E[mapId], part = DOOR_HQ.rooms[ent.room];
+        if (!part || !ent.door) return;
+        const eg = hqSiteEgressDoor(mapId); if (!eg) return;
         part.doors = (part.doors || []).filter(d => d.id !== ent.door.id);
         part.doors.push(Object.assign({ leaf: eg.leaf, wide: eg.wide, label: eg.label, sub: eg.sub, desc: eg.desc, note: eg.note }, ent.door, { action: Object.assign({}, eg.action), entry: mapId, site: mapId }));   // `site` = the plate reads the site's number (hqDoorNo)
     });
@@ -40344,255 +39490,6 @@ function hqSiteBoard(mapId) {
     const b = P[id + '_delta'] || P[id];   // a site's Δ; a facility board is the Δ under its own id
     return (b && b.isDelta && b.heightMap && b.grid) ? b : null;
 }
-function hqSiteBoardInfo(mapId) {
-    const b = hqSiteBoard(mapId);
-    if (!b) return null;
-    const B = (typeof MF_DELTA_BASE_H !== 'undefined') ? MF_DELTA_BASE_H : 5;
-    const tints = b.terrainTints || {};
-    const cells = [];
-    for (let y = 0; y < b.h; y++) {
-        const row = [];
-        for (let x = 0; x < b.w; x++) {
-            const key = hqSiteTerrainKey(b.grid[y][x]);
-            const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[key] : null;
-            row.push({ key: key, lvl: (b.heightMap[y][x] | 0) - B,
-                       walk: !(rule && rule.passable === false) && HQ_SITE_HAZARDS.indexOf(key) < 0,
-                       fluid: HQ_SITE_FLUIDS.indexOf(key) >= 0, tint: tints[key] || null });
-        }
-        cells.push(row);
-    }
-    const walls = [];
-    for (const k in (b.edgeWalls || {})) {
-        const p = k.split(','), w = b.edgeWalls[k];
-        walls.push({ x: +p[0], y: +p[1], side: p[2], z0: (w.z0 | 0) - B, h: w.h || 2, tex: w.tex || 'bricks_2', texIn: w.texIn || null, low: !!w.low, see: !!w.see });
-    }
-    const mons = (b.monuments || []).map(m => ({ kind: m.kind, x: m.x, y: m.y, foot: m.foot || 1, maxH: m.maxH || 2, seed: m.seed || 1, rot: m.rot || 0, solid: m.solid !== false }));
-    const objs = [];
-    let nexus = null;
-    let oidKeys = null;
-    (b.objects || []).forEach((row, y) => row.forEach((list, x) => (list || []).forEach(o => {
-        if (!oidKeys) { oidKeys = {}; for (const k in MF_OID) oidKeys[MF_OID[k]] = k; }
-        const kind = oidKeys[o.oid] || String(o.oid);
-        if (kind === 'nexus') { if (!nexus) nexus = { x: x, y: y }; return; }
-        objs.push({ x: x, y: y, kind: kind, leaf: o.leaf || null });
-    })));
-    return { w: b.w, h: b.h, base: B, cells: cells, walls: walls, mons: mons, objs: objs, nexus: nexus, name: b.name || '' };
-}
-/* THE EDGE (2026-09-11): does this prop still stand when the room has no
-   wall? A floor / ceiling-free prop always does; a `wall` prop only if its
-   catalogue entry STANDS on the floor (a footprint and no mount) — the
-   renderer places it at the old wall line either way. */
-function hqSitePropStands(p) {
-    if (!p || typeof p.wall !== 'string') return true;
-    const cat = (DOOR_HQ.catalogue || {})[p.key];
-    if (!cat) return false;
-    const mount = (p.mount != null) ? p.mount : (cat.mount || 0);
-    return !!(cat.foot > 0) && !(mount > 0);
-}
-function hqSiteRoom(mapId) {
-    const id = hqSiteId(mapId);
-    const SR = DOOR_HQ.siteRooms || {};
-    const T = (DOOR_HQ.thresholds || {})[id] || {};
-    const sector = hqSectorOfMap(id);
-    if (!sector) return null;
-    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
-    const meta = META.find(m => m.id === id) || {};
-    const board = hqSiteBoard(id);
-    const cells = board ? board.w : ((typeof MF_DELTA_S !== 'undefined') ? MF_DELTA_S : 8);
-    const cell = 128 / DOOR_HQ.units;                       // one battle tile in metres (1.75)
-    const shell = Object.assign({}, SR.shell || {}, (SR.shells || {})[id] || {});
-    const basePad = (shell.pad != null) ? shell.pad : 4;
-    /* THE SETTING (stage 5): the map's near builder inside the room — the
-       room grows to the builder's apron (`w` tiles past the board, plus
-       the moat's gap) so the kit's X0..X1 is the room's walls */
-    const moatGapM = shell.moat ? ((shell.moat.gap != null) ? shell.moat.gap : 2.6) : 0;
-    const NR = (shell.setting !== false && meta.near && (SR.near || {})[meta.near]) ? (SR.near || {})[meta.near] : null;
-    const pad = NR ? Math.round((NR.w * cell + moatGapM) * 100) / 100 : basePad;
-    const near = NR ? { key: meta.near, w: NR.w, gap: Math.round(moatGapM / cell * 1e4) / 1e4, stands: !!NR.stands } : null;
-    const roomH = (NR && NR.h) ? Math.round(NR.h * cell * 100) / 100 : (shell.h || 4.4);
-    const size = Math.round((cells * cell + pad * 2) * 100) / 100;
-    const half = size / 2;
-    const egress = DOOR_HQ.rooms.central_egress;
-    const bayDoor = ((egress && egress.doors) || []).find(d => d.action && d.action.sector === sector) || {};
-    const sec = DOOR_HQ.sectors[sector] || {};
-    const leaf = T.leaf || 'leaf_closet_alt';
-    const FL = (SR.flavour || {})[id] || {};
-    const label = ((meta.label) || id).toUpperCase();
-    /* an OUTDOOR room (stage 3): no ceiling, the map's sky and far roster
-       overhead, the lights are masts on the walkway corners */
-    const open = !!shell.open;
-    /* THE EDGE (2026-09-11): what stands at the room's bound — an indoor
-       room is always the full box; an outdoor room is OPEN unless its shell
-       says the place is fenced knee-high ('low'). 2026-09-16 (the user's
-       rule: "battle rooms that are areas outside should not have walls"):
-       an OPEN room never wears facility walls — a shell that still says
-       `edge: 'walls'` (the Stadium, Camelot, the city blocks) is read as
-       'open'; the place's own perimeter (the setting's stands, curtain wall,
-       storefronts) is the wall now. */
-    const edge = !open ? 'walls' : (shell.edge === 'low') ? 'low' : 'open';
-    const roam = (edge === 'open') ? ((shell.roam != null) ? shell.roam : 5.0) : 0;
-    /* THE PLANET IN THE ROOM (2026-09-16): a map whose WORLD is a planet
-       (`env.world.kind === 'planet'` — Mars, the Moon, Saturn) gets the same
-       ground in its room: three-renderer.js _hqBuildSetting lays THE WORLD's
-       planet mesh (the board's own sheet, the craters carved, the horizon
-       curving off, Saturn's bands + hexagon + rings) in place of the flat
-       apron + skirt — the room looks like the battle map, not a sand box
-       with a Mars-coloured floor. Needs the setting (the builder registers
-       the craters); the box shell draws the flat ground when it is off. */
-    const planet = !!(open && NR && meta.env && meta.env.world && meta.env.world.kind === 'planet');
-    const mood = Object.assign({}, ((SR.shell || {}).mood) || {}, (shell.mood) || {});
-    const lightsAt = open
-        ? [{ x: -(half - 1.3), z: -(half - 1.3) }, { x: half - 1.3, z: -(half - 1.3) }, { x: -(half - 1.3), z: half - 1.3 }, { x: half - 1.3, z: half - 1.3 }]
-        : [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }];
-    const sky = open ? Object.assign({ night: mood.night ? 1 : 0 }, meta.env || {}) : null;
-    const world = planet ? Object.assign({}, meta.env.world) : null;
-    /* THE MOAT (stage 4): the ring between the island and the quay, one
-       level down, full of the map's liquid — walk / tint / quay filled in
-       from the board and the terrain rules (the renderer reads only this) */
-    let moat = null;
-    if (shell.moat) {
-        moat = Object.assign({ key: 'water', depth: 1, gap: 2.6, deckW: 2.4, causeways: ['s', 'n'] }, shell.moat);
-        const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[moat.key] : null;
-        moat.walk = !(rule && rule.passable === false) && HQ_SITE_HAZARDS.indexOf(moat.key) < 0;
-        const tints = (board && board.terrainTints) || {};
-        const waterK = (k) => k === 'water' || k === 'deep_water';
-        moat.tint = tints[moat.key] || (waterK(moat.key) ? (tints.water || tints.deep_water) : null) || moat.tint || null;
-        moat.quay = Math.round((pad - moat.gap) * 100) / 100;
-        if (moat.causeways.indexOf('s') < 0) moat.causeways = ['s'].concat(moat.causeways);   // the way in always has a bridge
-    }
-    const doors = [{
-        /* the way back: the threshold leaf from the other side, centred on
-           the south wall (P1's spawn lane is the south row), landing at the
-           bay's own threshold door with it at your back */
-        id: 'egress', wall: 's', x: 0, leaf: leaf, wide: !!((DOOR_HQ.catalogue[leaf] || {}).wide),
-        label: bayDoor.label || ('BAY · ' + (sec.label || sector).toUpperCase()), sub: 'BACK TO THE BAY',
-        action: { room: hqBayId(sector), at: 'site_' + id }, note: T.note || '',
-        desc: 'The same door from the other side. ' + (T.note ? T.note.charAt(0).toUpperCase() + T.note.slice(1) + '. ' : '') + 'The bay is behind it; the paperwork is in front of you.',
-    }];
-    /* a BACK DOOR (H-WING, 2026-09-14 rev 4): the site's second way out, from the sheet */
-    const BD = (SR.backDoors || {})[id];
-    (Array.isArray(BD) ? BD : BD ? [BD] : []).forEach(d => {
-        if (d && d.id && d.wall && d.action) doors.push(Object.assign({}, d, { action: Object.assign({}, d.action) }));
-    });
-    doors.push(...hqLinkDoors(hqSiteRoomId(id)));
-    /* the CROSSING console's wall: the west wall at the tanker desk by
-       default (the Training Room's RANGE console pattern); a shell whose
-       setting fills a wall names another with `console: { wall, at }` —
-       `at` runs along the wall. The desk layout is the west one turned:
-       W(along, depth) is the point `along` metres along the wall (west's
-       +z) and `depth` in from it; faces turn with it. */
-    const CW = (shell.console && shell.console.wall && shell.console.wall !== 's') ? shell.console.wall : 'w';
-    const CAT_ = (shell.console && shell.console.at) || 0;
-    const ROT = { w: 0, n: 90, e: 180 }[CW];
-    const W = (along, depth) => CW === 'w' ? { x: -(half - depth), z: CAT_ + along }
-                            : CW === 'n' ? { x: -(CAT_ + along), z: -(half - depth) }
-                                         : { x: half - depth, z: -(CAT_ + along) };
-    const WA = (along) => CW === 'w' ? { wall: 'w', z: CAT_ + along } : CW === 'n' ? { wall: 'n', x: -(CAT_ + along) } : { wall: 'e', z: -(CAT_ + along) };
-    const F = (f) => (f + ROT) % 360;
-    const rc = (v) => Math.round(v * 100) / 100 + 0;   // (+ 0: never a -0)
-    const at = (o, extra) => Object.assign({ x: rc(o.x), z: rc(o.z) }, extra);
-    const counters = [Object.assign(at(W(0, 1.1)), {
-        /* the CROSSING console: the site file, CROSS ▸ Δ / DEEP, at the tanker desk */
-        id: 'crossing', face: F(90), plateY: 1.9, radius: 2.4, verb: 'CROSS', site: id,
-        label: 'CROSSING CONSOLE', sub: 'BATTLE SETUP', action: { overlay: 'crossing' },
-    }),
-    /* THE BATTLE MARKER (2026-09-12): a glowing beacon at the board's
-       centre, plated ROOM <no> · BATTLE · <site>. Walk up, E = the same
-       crossing terminal the console opens (map.js _hqConsoleTerminal;
-       no CRT within reach, so no camera push), and post-match you stand
-       back at the marker (doorId → _hqLastDoor). three-renderer.js
-       _hqBuildCounters draws the `proc: 'battle_marker'` beacon on the
-       centre cell's own top. */
-    { id: 'battle', x: 0, z: 0, face: 180, plateY: 2.35, radius: 2.3, verb: 'BATTLE', site: id, proc: 'battle_marker',
-      label: 'BATTLE', sub: label, action: { overlay: 'crossing' } }];
-    const stands = !!(near && near.stands);
-    const props = [
-        Object.assign({ key: 'tanker_desk' }, WA(0)),
-        at(W(-0.35, 0.4), { key: 'crt_terminal', y: 0.76, face: F(90) }),
-        at(W(0.42, 0.38), { key: 'rotary_phone', y: 0.76, face: F(70) }),
-        at(W(0.05, 0.5), { key: 'papers_a', y: 0.76, face: F(100) }),
-        Object.assign({ key: 'clipboard' }, WA(-1.6)),
-        /* the south wall: the way in at x 0 (a 3.3 m panel), the extinguisher
-           and the breaker either side of it, the wet-floor sign on the sill
-           (on an open edge the panel stands alone: the two fixtures go — see
-           the wall-prop filter below — the sign on the sill stays) */
-        { key: 'fire_extinguisher', wall: 's', x: 3.4 },
-        { key: 'breaker_panel', wall: 's', x: -3.4 },
-        { key: 'wet_floor_sign', x: 2.6, z: half - 1.4, face: 150 },
-        /* the east walkway: file boxes for the site file, a chair for the
-           guard (on the south strip when the setting's stands fill the east) */
-        stands ? { key: 'cardboard_boxes', x: 9.2, z: rc(half - 1.3), face: 30 } : { key: 'cardboard_boxes', x: half - 1.3, z: half - 1.6, face: 30 },
-        stands ? { key: 'folding_chair', x: 6.0, z: rc(half - 1.3), face: 0 } : { key: 'folding_chair', x: half - 1.3, z: 2.2, face: 250 },
-    ];
-    if (!open) props.push(
-        /* the north wall: the plate over the board, a clock, lockers in the corner */
-        { key: 'wall_clock',    wall: 'n', x: -3.0 },
-        { key: 'locker',        wall: 'n', x: half - 1.2 },
-        { key: 'locker',        wall: 'n', x: half - 2.1 },
-        /* ceiling fixtures: one over each quarter of the board */
-        { key: 'fluorescent', x: -3.5, z: -3.5, ceil: true, face: 90 },
-        { key: 'fluorescent', x: 3.5,  z: -3.5, ceil: true, face: 90 },
-        { key: 'fluorescent', x: -3.5, z: 3.5,  ceil: true, face: 90 },
-        { key: 'fluorescent', x: 3.5,  z: 3.5,  ceil: true, face: 90 });
-    /* the flavour props were placed against the walls of the room before
-       its setting grew it: a coordinate past the old dry edge keeps its
-       distance to the wall (`fitted: true` = placed for this room already) */
-    const grow = Math.round((pad - basePad) * 100) / 100;
-    const dry0 = cells * cell / 2 + moatGapM - 0.05;
-    const fit = (v) => (grow > 0 && v != null && Math.abs(v) >= dry0) ? rc(Math.sign(v) * (Math.abs(v) + grow)) : v;
-    (FL.props || []).forEach(p => props.push(Object.assign({}, p, (FL.fitted || p.wall) ? {} : { x: fit(p.x), z: fit(p.z) })));
-    /* THE EDGE: with no wall to hang on, a wall-MOUNTED prop goes (a
-       clipboard, an extinguisher, a breaker, a clock, a shelf, a rail —
-       `mount` > 0 or no footprint); a piece that STANDS at the wall line
-       (lockers, shelving, the cooler, the tanker desk) keeps its place */
-    const keptProps = (edge === 'walls') ? props : props.filter(p => hqSitePropStands(p));
-    /* the natives on the walkway (hqMissionPool: natives first) — a race hint
-       per spot; a race with no rigged model falls back to the roster draw;
-       on the n/s strips when the setting's stands fill the sides */
-    const pool = hqMissionPool(id, 3);
-    const nat = pool.natives || 0;
-    const spotXZ = stands
-        ? [{ x: 7.2, z: rc(half - 1.4), face: 0 }, { x: -7.8, z: rc(half - 1.4), face: 0 }, { x: 9.6, z: -rc(half - 1.4), face: 180 }]
-        : [{ x: half - 1.4, z: -4.2, face: 270 }, { x: half - 1.4, z: 4.6, face: 290 }, { x: -(half - 1.4), z: 5.6, face: 80 }];
-    const npcSpots = spotXZ.map((sp, i) => Object.assign({}, sp, (i < nat && pool[i]) ? { race: pool[i] } : {}));
-    return {
-        label: label, sub: T.sub || ('BATTLE SITE · BAY ' + (hqBayNo(sector) != null ? hqBayNo(sector) : '?')),
-        kind: 'box', fx: 'site', site: id, sector: sector, why: T.why || '',
-        shell: {
-            w: size, d: size, h: roomH, wallH: roomH, dadoH: shell.dadoH || 1.05,
-            /* the setting (stage 5): the map's near builder, run in the room by the renderer */
-            near: near,
-            floor: shell.floor, wall: shell.wall, dado: shell.dado, trim: shell.trim, ceiling: open ? null : shell.ceiling,
-            pipes: !open && shell.pipes !== false,
-            /* an outdoor room (stage 3): the sky it stands under, the ground past its walls */
-            open: open, sky: sky,
-            /* THE EDGE (2026-09-11): 'walls' | 'open' | 'low' — what stands at
-               the bound; `roam` = how far past it the walker may go (open only) */
-            edge: edge, roam: roam,
-            /* THE PLANET IN THE ROOM (2026-09-16): the map's env.world row for the renderer's planet ground */
-            planet: planet, world: world,
-            /* the moat room (stage 4): the quay's inner edge, the causeways, the liquid */
-            moat: moat,
-            apron: open ? (shell.apron || shell.floor || 'grass_2') : null, skirt: open ? (shell.skirt || 'dirt') : null,
-            apronColor: (open && shell.apronColor != null) ? shell.apronColor : null, floorColor: (shell.floorColor != null) ? shell.floorColor : null,
-            /* the light (7.2 stage 2): the defaults under the site's overrides */
-            mood: mood,
-            light: { x: 0, z: 0 },
-            lights: lightsAt,
-            /* the room plate (CSS2D): wall height indoors; over the signboards
-               outdoors (2026-09-11 walkthrough: at wall height it floated in
-               the sky above Mars) */
-            plate: { x: 0, z: -(half - 0.4), y: open ? Math.min(roomH - 0.45, 3.15) : roomH - 0.45 },
-            grid: { cells: cells, cell: cell },
-        },
-        doors: doors, counters: counters, props: keptProps,
-        /* the site guard: just inside the way in, facing across the board */
-        agents: [{ x: -4.4, z: half - 1.5, face: 20, line: FL.agent || '“Sign the book. Then sign it again on the way out; they compare the signatures.”' }],
-        npcSpots: npcSpots,
-        lines: FL.lines || ['The board is the board. The room is a formality.'],
-        spawn: { x: 0, z: half - 1.6, face: 0 },
-    };
-}
 /* Resolve explicit room endpoints or generated board rooms without
    manufacturing a destination for an unbuilt complex part. */
 function hqLinkRoom(end) {
@@ -40600,8 +39497,8 @@ function hqLinkRoom(end) {
     if (end.room) return DOOR_HQ.rooms[end.room] ? end.room : null;
     if (!end.site) return null;
     if (end.part) { const pid = hqComplexRoomId(end.site, end.part); return (DOOR_HQ.rooms[pid] && DOOR_HQ.rooms[pid].part === end.part) ? pid : null; }   // 9.2: a part resolves only to a room that is authored (never manufactured)
-    const id = hqSiteId(end.site);
-    return ((DOOR_HQ.siteRooms || {}).built || []).includes(id) && hqSectorOfMap(id) ? hqSiteRoomId(id) : null;
+    const ent = hqSiteEntryOf(end.site);   // a bare site end = the site's entry part (the board rooms are gone)
+    return (ent && DOOR_HQ.rooms[ent.room]) ? ent.room : null;
 }
 /* one end of a link: a wall door (`wall` n/s/e/w + the along coordinate) or
    a FREE-STANDING seam (`wall: 'free'`, x, z, face) — null = malformed */
@@ -40773,7 +39670,8 @@ function hqWorldGraph() {
         let to = act.room, at = act.at || null;
         if (act.sector) { to = hqBayId(act.sector); at = act.at || hqBayEntry(act.sector); }
         if (act.mission && ((DOOR_HQ.siteRooms || {}).built || []).includes(hqSiteId(act.mission))) {
-            to = hqSiteRoomId(act.mission); at = 'egress';
+            const ent = hqSiteEntryOf(act.mission);
+            if (ent) { to = ent.room; at = ent.door ? ent.door.id : null; }
         }
         /* THE SHIP'S ONE DOOR: the collar is every destination's edge (one per docked link) */
         if (act.ship) {
@@ -40789,6 +39687,13 @@ function hqWorldGraph() {
             /* THE EARNED DOORS (2026-09-20): a bay threshold names its site — the map hides the edge until the site is earned */
             mission: act.mission ? hqSiteId(act.mission) : null });
     }));
+    /* OPEN WORLD Phase 5 (2026-09-27): a staged EDGE join (a road, a trail, a hall, a border) is walked like a door —
+       the highway parts have no doors at all, only the road on to the next part. `door: null`, `join` = the join's kind. */
+    if (typeof hqWorldJoins === 'function' && typeof hqStagePart === 'function') hqWorldJoins().forEach(j => {
+        if (j.kind === 'door' || !rooms[j.a] || !rooms[j.b] || !hqStagePart(j.a) || !hqStagePart(j.b)) return;
+        edges.push({ from: j.a, door: null, to: j.b, at: null, link: null, minClearance: 0, requiresKeys: 0, mission: null, join: j.kind });
+        edges.push({ from: j.b, door: null, to: j.a, at: null, link: null, minClearance: 0, requiresKeys: 0, mission: null, join: j.kind });
+    });
     return { nodes: nodes, edges: edges };
 }
 /* THE ROUTES (9.3 expansion, 2026-09-15 rev 7): the live links of
@@ -40811,7 +39716,7 @@ function hqWorldRoutes(curRoom, opts) {
     const live = (DOOR_HQ.links || []).map(l => ({ link: l, live: hqLinkLive(l) })).filter(x => x.live);
     /* a STATION is a site (its board room): a seam that leaves a complex's
        part (the wardrobe upstairs) is the house's — Room 13 is one station */
-    const stationRoom = (rid) => { const room = rooms[rid] || {}; return (room.part && room.site) ? hqSiteRoomId(room.site) : rid; };
+    const stationRoom = (rid) => { const room = rooms[rid] || {}; const ent = (room.part && room.site) ? hqSiteEntryOf(room.site) : null; return (ent && rooms[ent.room]) ? ent.room : rid; };
     const linesOf = {};
     live.forEach(x => { [x.live.a, x.live.b].forEach(rid => { const sr = stationRoom(rid); (linesOf[sr] = linesOf[sr] || []); if (linesOf[sr].indexOf(x.link.route) < 0) linesOf[sr].push(x.link.route); }); });
     const station = (rid) => {
@@ -41065,7 +39970,8 @@ function hqMapGraph() {
             way = d.way || (L && L.way) || null;
             route = (L && L.route) || null;
             color = (route && DOOR_HQ.routes && DOOR_HQ.routes[route] && DOOR_HQ.routes[route].color) || null;
-        } else if (d.secret) kind = 'secret';
+        } else if (e.join) { kind = 'way'; way = e.join; }   // a staged edge join (the road runs on)
+        else if (d.secret) kind = 'secret';
         else if (d.proc === 'elevator' || e.to === 'car' || e.from === 'car') kind = 'lift';
         add(e.from, e.to, { kind, link: e.link || null, route, color, way, gate, door: e.door, threshold: e.mission || null });
     });
@@ -41517,7 +40423,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city', 'medwing', 'woods', 'basement'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4 (2026-09-27): THE WOODS (trail joins) + THE BASEMENT (door joins)
+    zones: ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE WOODS + THE BASEMENT; Phase 5 (2026-09-27): THE HIGHWAY, AREA 51, THE D.U.M.B. (door joins)
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -41552,6 +40458,10 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                          dayLook: {
                              site_prebuilt_camelot_ward: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },
                              site_prebuilt_area51_flightline: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
+                             /* THE SOUTH (Phase 5): the highway's two parts and the gate wear the flight line's desert day */
+                             site_prebuilt_strip_highway: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
+                             site_prebuilt_area51_highway: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
+                             site_prebuilt_area51_gate: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
                              /* the woods' six clearings (one shell): a sunlit green haze under the canopy */
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_trail: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
@@ -41559,9 +40469,13 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_fairy_forest_pasture: { fog: 0xa6bca2, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_stair: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             /* the Grove (old redwoods, a deeper green) and the ranch's corn fields (a dry, dusty haze) by day */
+                             site_prebuilt_bohemian_grove_grove: { fog: 0x8aa088, tint: 0x9cbede, clouds: 0.3 },
+                             site_prebuilt_skinwalker_fields: { fog: 0xc4bc9e, tint: 0xa6c4e4, clouds: 0.25 },
                          },
-                         lock: { site_prebuilt_strip_streets: 23.0, site_prebuilt_revenge_deck: 2.0, site_prebuilt_bohemian_grove_grove: 23.5,
-                                 site_prebuilt_haunted_grounds: 0.5, site_prebuilt_skinwalker_fields: 1.5, site_prebuilt_vatican_observatory: 22.0 },
+                         /* 2026-09-27 (mondo: "Grove and skinwalker dont need to have fixed night"): the Grove and the skinwalker fields ride the clock with the woods */
+                         lock: { site_prebuilt_strip_streets: 23.0, site_prebuilt_revenge_deck: 2.0,
+                                 site_prebuilt_haunted_grounds: 0.5, site_prebuilt_vatican_observatory: 22.0 },
                          saveMs: 30000, variants: 'world' };
 /* THE CLOCK'S READERS (pure: the renderer and map.js call them; nothing here holds the live hour) */
 function hqClockRate() { return 24 / (Math.max(1, HQ_WORLD_CLOCK.dayMin) * 60); }   // world hours per real second
@@ -41648,9 +40562,14 @@ function hqWorldBearing(roomId, targetId) {
 const HQ_WORLD_WEENIES = {
     site_prebuilt_downtown_streets: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
     site_prebuilt_stadium_bowl: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_strip_streets: [{ kind: 'gate', toward: 'area51_gate', s: 0.8, dist: 0.86, label: 'AREA 51 · THE GATE' },
+    site_prebuilt_strip_streets: [{ kind: 'gate', toward: 'site_prebuilt_area51_gate', s: 0.8, dist: 0.86, label: 'AREA 51 · THE GATE' },
                                   { kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.5, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
     site_prebuilt_area51_flightline: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.8, dist: 0.9, label: 'DISASTER CITY' }],
+    /* THE SOUTH (Phase 5): the gate ahead down the road, the city behind */
+    site_prebuilt_strip_highway: [{ kind: 'gate', toward: 'site_prebuilt_area51_gate', s: 0.8, dist: 0.86, label: 'AREA 51 · THE GATE' },
+                                  { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.9, label: 'DISASTER CITY' }],
+    site_prebuilt_area51_highway: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, label: 'DISASTER CITY' }],
+    site_prebuilt_area51_gate: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, label: 'DISASTER CITY' }],
     site_prebuilt_camelot_ward: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.8, dist: 0.88, temple: true, label: 'MOUNT OLYMPUS' },
                                  { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.6, dist: 0.93, label: 'DISASTER CITY' }],
     site_prebuilt_olympus_summit: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, y: -0.08, label: 'DISASTER CITY' }],
@@ -41715,27 +40634,31 @@ const HQ_WORLD = {
                 { a: 'harbour_sea', b: 'site_prebuilt_revenge_deck', kind: 'island' },
             ] },
         /* Z2 — THE HIGHWAY (south from the Strip, two parts of 210 m: 420 m of road, ~90 s on foot, ~60 on the board) */
-        highway: { label: 'THE HIGHWAY', ground: 'surface', hub: 'highway_north', sky: null, clock: true,
+        /* Phase 5 (2026-09-27): BUILT — two real parts, the Strip's (the diner, the rest stop) and Area 51's (the gas station, the crash) */
+        highway: { label: 'THE HIGHWAY', ground: 'surface', hub: 'site_prebuilt_strip_highway', sky: 'site_prebuilt_strip_highway', clock: true,
             parts: {
-                highway_north: { x: 0, z: 209, y: 0, rot: 0, planned: { w: 80, d: 210, h: 9, family: 'E', label: 'THE HIGHWAY · THE STRIP END' } },
-                highway_south: { x: 0, z: 419, y: 0, rot: 0, planned: { w: 80, d: 210, h: 9, family: 'E', label: 'THE HIGHWAY · THE DESERT MILES' } },
+                site_prebuilt_strip_highway:  { x: 0, z: 209, y: 0, rot: 0 },
+                site_prebuilt_area51_highway: { x: 0, z: 419, y: 0, rot: 0 },
             },
             joins: [
-                { a: 'highway_north', b: 'highway_south', side: 's', span: [-8, 8], kind: 'road' },
+                { a: 'site_prebuilt_strip_highway', b: 'site_prebuilt_area51_highway', side: 's', span: [-8, 8], kind: 'road' },
             ] },
         /* Z2b — THE DESERT: Area 51's gate (planned), the flight line, Hangar 18 off its east edge, the white rooms
            behind the hangar. The D.U.M.B. below is its own zone (down is a load). */
+        /* Phase 5 (2026-09-27): the gate is a real part; Hangar 18 stands off the flight line's SOUTH apron (its big door is
+           the flight line's `hangar` door, 0.2 m apart), the white rooms off the hangar's west wall. The yard gate and the storm
+           drain stay doors. */
         desert: { label: 'AREA 51', ground: 'surface', hub: 'site_prebuilt_area51_flightline', sky: 'site_prebuilt_area51_flightline', clock: true,
             parts: {
-                area51_gate:                      { x: 0, z: 544, y: 0, rot: 0, planned: { w: 60, d: 40, h: 9, family: 'E', label: 'AREA 51 · THE GATE' } },
+                site_prebuilt_area51_gate:        { x: 0, z: 544, y: 0, rot: 0 },
                 site_prebuilt_area51_flightline:  { x: 0, z: 596, y: 0, rot: 0 },
-                site_prebuilt_area51_hangar:      { x: 84, z: 596, y: 0, rot: 0, interior: true },
-                site_prebuilt_area51_ward:        { x: 84, z: 635, y: 0, rot: 0, interior: true },
+                site_prebuilt_area51_hangar:      { x: 0, z: 652.2, y: 0, rot: 0 },
+                site_prebuilt_area51_ward:        { x: -58.2, z: 652.2, y: 0, rot: 0 },
             },
             joins: [
-                { a: 'area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road' },
-                { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door' },
-                { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door' },
+                { a: 'site_prebuilt_area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road' },
+                { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
+                { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door', door: 'white', bDoor: 'hangar' },
             ] },
         /* Z4 — THE KINGDOM (north): the crown's road (planned, stone) from the forecourt to the ward's south gate; the
            great hall and the keep stand in the ward (door joins); Merlin's undercroft (down) and the castle in the sky
@@ -41814,20 +40737,23 @@ const HQ_WORLD = {
         /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
            Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
         dumb: { label: 'THE D.U.M.B.', ground: 'under', hub: 'site_prebuilt_dumb_motorpool', sky: null, clock: false,
+            /* Phase 5 (2026-09-27): DOOR JOINS at the doors the six parts already had (the medwing / basement recipe): the
+               frames put each pair of doors 0.2 m apart and facing. The war room stands 3 m up and the bunker 2.4 m up: their
+               doors open off Sub-Level 7's gantry and observation deck. The two secret service stairs stay doors. */
             parts: {
-                site_prebuilt_dumb_motorpool:  { x: 84, z: 596, y: -20, rot: 0 },
+                site_prebuilt_dumb_motorpool:  { x: 84, z: 596.2, y: -20, rot: 0 },
                 site_prebuilt_dumb_sublevel7:  { x: 84, z: 540, y: -20, rot: 0 },
-                site_prebuilt_dumb_dreamlab:   { x: 12, z: 540, y: -20, rot: 0 },
-                site_prebuilt_dumb_clonevats:  { x: 160, z: 540, y: -20, rot: 0 },
-                site_prebuilt_dumb_warroom:    { x: 84, z: 488, y: -20, rot: 0 },
-                site_prebuilt_dumb_bunker:     { x: 84, z: 452, y: -20, rot: 0 },
+                site_prebuilt_dumb_dreamlab:   { x: 11.8, z: 520, y: -20, rot: 0 },
+                site_prebuilt_dumb_clonevats:  { x: 7.8, z: 560, y: -20, rot: 0 },
+                site_prebuilt_dumb_warroom:    { x: 154.2, z: 520, y: -17, rot: 0 },
+                site_prebuilt_dumb_bunker:     { x: 162.2, z: 560, y: -17.6, rot: 0 },
             },
             joins: [
-                { a: 'site_prebuilt_dumb_motorpool', b: 'site_prebuilt_dumb_sublevel7', side: 'n', span: [-6, 6], kind: 'hall' },
-                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_dreamlab', side: 'w', span: [-3, 3], kind: 'hall' },
-                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_clonevats', side: 'e', span: [-3, 3], kind: 'hall' },
-                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_warroom', side: 'n', span: [-3, 3], kind: 'hall' },
-                { a: 'site_prebuilt_dumb_warroom', b: 'site_prebuilt_dumb_bunker', side: 'n', span: [-3, 3], kind: 'hall' },
+                { a: 'site_prebuilt_dumb_motorpool', b: 'site_prebuilt_dumb_sublevel7', kind: 'door', door: 'seven', bDoor: 'motorpool' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_dreamlab', kind: 'door', door: 'dream', bDoor: 'seven' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_clonevats', kind: 'door', door: 'clone', bDoor: 'seven' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_warroom', kind: 'door', door: 'war', bDoor: 'seven' },
+                { a: 'site_prebuilt_dumb_sublevel7', b: 'site_prebuilt_dumb_bunker', kind: 'door', door: 'bunker', bDoor: 'seven' },
             ] },
         /* Z6 — THE UNDER (under the woods and the estate, no sky): the cavern's six chambers as ONE cave field (planned);
            THE WELL ROOM retires (§8.3: the wells land in DIFFERENT places, Phase 4). Its doors out stay doors. */
@@ -41940,8 +40866,8 @@ const HQ_WORLD = {
         { a: 'woods_trailhead', b: 'site_prebuilt_fairy_forest_clearing', side: 'w', span: [-6, 6], kind: 'trail' },   // Phase 4: the old path's west end at the clearing's back (its east side)
         { a: 'hq_grounds', b: 'crown_road', side: 'n', span: [-6, 6], kind: 'road' },
         { a: 'site_prebuilt_downtown_streets', b: 'harbour_sea', side: 's', span: [-100, 100], kind: 'shore' },
-        { a: 'site_prebuilt_strip_streets', b: 'highway_north', side: 's', span: [-8, 8], kind: 'road' },
-        { a: 'highway_south', b: 'area51_gate', side: 's', span: [-8, 8], kind: 'road' },
+        { a: 'site_prebuilt_strip_streets', b: 'site_prebuilt_strip_highway', side: 's', span: [-8, 8], kind: 'road' },
+        { a: 'site_prebuilt_area51_highway', b: 'site_prebuilt_area51_gate', side: 's', span: [-8, 8], kind: 'road' },
         { a: 'site_prebuilt_camelot_ward', b: 'olympus_foothills', side: 'n', span: [-6, 6], kind: 'trail' },
     ],
     retires: [],   // THE WELL ROOM (site_prebuilt_hollow_earth_shaft, §8.3) was DELETED in Phase 4 (2026-09-27): the five wells land in five different rooms
@@ -43812,7 +42738,8 @@ const HQ_AREA_SPECS = {
         lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
 };
 
-((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
+/* THE BOARD ROOMS are gone (2026-09-27, mondo: "those are dead code, please delete"): `site_<mapId>` is only an ALIAS now —
+   hqSiteEntry sends every landing there to the site's entry part, which wears the bay door (hqApplySiteEntries). */
 /* ── THE HEALING ZONES (2026-09-20, the user: "add a healing zone at each major hub — it restores health and mana and
    revives fallen allies") ─────────────────────────────────────────────────────
    ONE counter `healzone` (proc `heal_zone`, three-renderer.js _hqBuildHealZone — a green ring + a floating cross the
@@ -46486,8 +45413,8 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_lookingglass_nightmare: [['NIGHT TERROR, 03:33', 'A bed at the bottom of a bowl. Someone is in it. The camera is under it.', 'evidence']],
     site_prebuilt_lookingglass_library: [['THE CARD CATALOGUE', 'A drawer of index cards in your mother’s hand. Every card is an idea she never had. The last card is you.', 'parents']],
 };
-/* the room a sheet key names: a site key → its generated board room */
-function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['site_' + key] ? 'site_' + key : null); }
+/* the room a sheet key names: a site key → its entry part */
+function hqTapeRoomId(key) { if (DOOR_HQ.rooms[key]) return key; const e = hqSiteEntryOf(key); return (e && DOOR_HQ.rooms[e.room]) ? e.room : null; }
 /* DOOR_TAPES: numbered T001… in sheet order — the built sites first (in
    siteRooms.built order), then the parts, then the floors.
    THE STABLE ID (PHASE9_QUALITY_PLAN §4 B1, 2026-09-16): a tape's `id` is
@@ -46495,8 +45422,7 @@ function hqTapeRoomId(key) { return DOOR_HQ.rooms[key] ? key : (DOOR_HQ.rooms['s
    files (`taken['tape:<id>']`, `tapes[]`) never moves when a site is added
    to `built` or a tape re-homed; `num` ('T077') and `no` are the DISPLAY
    number, recomputed per build (the shelf prints them, nothing files them).
-   A claim filed before this (a `Tnnn` id) is read as the tape at that
-   position today — hqFindsRecord migrates it on every read. */
+   (Old `Tnnn` claims are not migrated: old saves are not kept, 2026-09-27.) */
 const DOOR_TAPES = (function () {
     const out = [];
     const built = ((DOOR_HQ.siteRooms || {}).built || []);
@@ -46512,20 +45438,6 @@ const DOOR_TAPES = (function () {
     return out;
 })();
 function hqTapeById(id) { return DOOR_TAPES.find(t => t.id === id || t.num === id) || null; }
-/* a legacy positional tape id ('T077') → today's stable id at that position; anything else passes through */
-function hqTapeLegacyId(id) {
-    const m = /^T(\d{3})$/.exec(String(id || ''));
-    if (!m) return id;
-    const t = DOOR_TAPES[parseInt(m[1], 10) - 1];
-    return t ? t.id : id;
-}
-/* a find that MOVED with its room (OPEN WORLD Phase 4: the well room was deleted; its tape is innersun's second) */
-const HQ_FIND_MOVED = { 'tape:site_prebuilt_hollow_earth_shaft#0': 'tape:site_prebuilt_hollow_earth_innersun#1' };
-function hqFindLegacyId(id) {
-    if (HQ_FIND_MOVED[id]) return HQ_FIND_MOVED[id];
-    const m = /^tape:(T\d{3})$/.exec(String(id || ''));
-    return m ? 'tape:' + hqTapeLegacyId(m[1]) : id;
-}
 /* a tape's clip URL — null until the file is on R2 (never a made-up path) */
 function hqTapeClipUrl(tape) {
     if (!tape || !tape.clip) return null;
@@ -46571,10 +45483,6 @@ function hqFindRoomInfo(roomId) {
     if (info.cave && info.doors.length) {
         const c0 = hqCaveDoorCell(room, info.doors[0]);
         if (c0) info.reach = hqCaveReach(info.cave, c0.x, c0.y);
-    }
-    if (room.fx === 'site' && room.site) {
-        const b = hqSiteBoardInfo(room.site);
-        if (b) { const cell = 128 / DOOR_HQ.units; info.board = { info: b, cell, half: b.w * cell / 2, gap: S.moat ? (S.moat.gap || 0) : 0 }; }
     }
     Object.defineProperty(info, '_doors', { value: room.doors, enumerable: false });
     Object.defineProperty(info, '_doorsN', { value: (room.doors || []).length, enumerable: false });
@@ -46654,25 +45562,6 @@ function hqFindSpot(roomId, salt, avoid) {
     }
     return null;
 }
-/* the board spot of a site room: a WALL cell (two levels up — `hard`, the
-   door gun's), else the highest climbed cell, else a plain cell far from
-   the way in; never a fluid, a monument's footprint or the battle marker */
-function hqFindBoardSpot(roomId) {
-    const ri = hqFindRoomInfo(roomId); if (!ri || !ri.board) return null;
-    const B = ri.board, b = B.info, C = B.cell, half = B.half;
-    const monAt = (x, y) => b.mons.some(m => x >= m.x && x < m.x + m.foot && y >= m.y && y < m.y + m.foot);
-    const objAt = (x, y) => b.objs.some(o => o.x === x && o.y === y) || (b.nexus && b.nexus.x === x && b.nexus.y === y);
-    let best = null, bestS = -1;
-    for (let y = 0; y < b.h; y++) for (let x = 0; x < b.w; x++) {
-        const c = b.cells[y][x];
-        if (!c.walk || c.fluid || c.lvl < 0 || monAt(x, y) || objAt(x, y)) continue;
-        const px = Math.round(((x + 0.5) * C - half) * 100) / 100, pz = Math.round(((y + 0.5) * C - half) * 100) / 100;
-        if (Math.hypot(px, pz) < 3.0) continue;                       // the battle marker
-        const sc = Math.min(c.lvl, 2) * 100 + Math.hypot(px, pz - half) + (hqHash(roomId + '|board|' + x + ',' + y) % 1000) / 1000;
-        if (sc > bestS) { bestS = sc; best = { x: px, z: pz, cell: [x, y], lvl: c.lvl, y: Math.round(c.lvl * C * 100) / 100, hard: c.lvl >= 2 }; }
-    }
-    return best;
-}
 /* THE TERRAIN ROOM (2026-09-17): a find's spot on the field — its ground (or the pin's own `y` on a ledge / a prop),
    `hard: true` when the walker's reach from the first door never gets there (a pinnacle: the door gun's) */
 function hqTerrainFindSpot(roomId, sp) {
@@ -46734,13 +45623,12 @@ function hqBuildFinds(only) {
         const pin = pins[roomId] || {};
         const placed = [];
         byRoom[roomId].forEach((t, i) => {
-            const onBoard = room.fx === 'site' && i === 1;
             const pinT = (i === 0) ? pin.tape : pin['tape' + (i + 1)];   // THE AREAS (2026-09-18): a part that stands for a bypassed board holds the board's tape too — `tape2` pins the second off the board as well
-            let sp = onBoard ? (pin.tape2 || hqFindBoardSpot(roomId)) : (pinT || hqFindSpot(roomId, 'tape' + i, placed));
+            let sp = pinT || hqFindSpot(roomId, 'tape' + i, placed);
             if (sp && room.terrain) sp = hqTerrainFindSpot(roomId, sp);   // THE TERRAIN ROOM (2026-09-17): the ground under a pin, `hard` when the walker cannot reach it
             if (!sp) return;
             placed.push(sp);
-            rows.push(Object.assign({ id: 'tape:' + t.id, room: roomId, kind: 'tape', tape: t.id, x: sp.x, z: sp.z, relax: sp.relax || 0, why: onBoard ? (sp.hard ? 'on a wall of the board — the door gun reaches it' : 'on the board, up a level') : 'in the far corner, in plain sight of anyone who looks' },
+            rows.push(Object.assign({ id: 'tape:' + t.id, room: roomId, kind: 'tape', tape: t.id, x: sp.x, z: sp.z, relax: sp.relax || 0, why: 'in the far corner, in plain sight of anyone who looks' },
                 sp.y != null ? { y: sp.y } : {}, sp.cell ? { cell: sp.cell } : {}, sp.hard ? { hard: true } : {}));
         });
         /* D7 (2026-09-16): a `quiet: true` room keeps its tape and goes without the envelope */
@@ -47093,13 +45981,13 @@ function hqFindById(id) {
    pay tally) and `progress.hq.finds.taken` (the SYNCED progress blob —
    mergeProgressBlobs carries it, the server pays each new `pay:` claim once,
    a second device reads the same tapes). A `true` beats a date; two dates
-   keep the later. Legacy positional ids are migrated on the read. */
+   keep the later. (No legacy-id migration: old saves are not kept, 2026-09-27.) */
 function hqFindsTakenUnion(a, b) {
     const out = {};
     [a, b].forEach(src => {
         if (!src || typeof src !== 'object') return;
         Object.keys(src).forEach(k0 => {
-            const k = hqFindLegacyId(k0), v = src[k0];
+            const k = k0, v = src[k0];
             if (!v) return;
             const cur = out[k];
             if (cur === true) return;
@@ -47116,7 +46004,7 @@ function hqFindsRecord(profile) {
     try { const h = profile && profile.progress && profile.progress.hq && profile.progress.hq.finds; if (h && typeof h === 'object' && h.taken && typeof h.taken === 'object') synced = h.taken; } catch (e) {}
     const taken = hqFindsTakenUnion(local && local.taken, synced);
     const tapes = [];
-    (local && Array.isArray(local.tapes) ? local.tapes : []).forEach(id => { const t = hqTapeLegacyId(id); if (tapes.indexOf(t) < 0) tapes.push(t); });
+    (local && Array.isArray(local.tapes) ? local.tapes : []).forEach(t => { if (tapes.indexOf(t) < 0) tapes.push(t); });
     Object.keys(taken).forEach(k => { if (k.indexOf('tape:') === 0) { const t = k.slice(5); if (tapes.indexOf(t) < 0) tapes.push(t); } });
     return { taken, tapes, pay: local ? (local.pay | 0) : 0 };
 }
@@ -47149,7 +46037,7 @@ function hqFindsInRoom(roomId, profile, now) {
    title, label } — or { ok: false, reason }. Reserved kinds are refused. */
 function hqCollectFind(profile, id, now, opts) {
     opts = opts || {};
-    const row = hqFindById(hqFindLegacyId(id));
+    const row = hqFindById(id);
     if (!row) return { ok: false, reason: 'unknown' };
     if (!profile) return { ok: false, reason: 'noprofile' };
     const itemKind = (row.kind === 'potion' || row.kind === 'item') && row.item && typeof ITEM_RULES !== 'undefined' && ITEM_RULES[row.item];   // THE BAG (2026-09-20): a find that IS an item goes into the bag
@@ -51242,7 +50130,7 @@ function hqRoomRegister() {
         const bay = sector ? DOOR_HQ.rooms[hqBayId(sector)] : null;
         out.push({ no: hqRoomNoStr(T[id].roomNo), label: ((meta && meta.label) || id).toUpperCase(), sub: T[id].sub || 'BATTLE SITE',
                    kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: sector ? hqBayNo(sector) : null, why: T[id].why || '',
-                   siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null });
+                   siteRoom: hqAreaRoomOf(id) && DOOR_HQ.rooms[hqAreaRoomOf(id)] ? hqAreaRoomOf(id) : null });
     }
     const F = DOOR_HQ.facility || {};
     for (const id in F) {
@@ -51342,7 +50230,7 @@ function hqStarChart(profile) {
             const star = { id, no: hqRoomNo(id), label: ((meta && meta.label) || id).toUpperCase(), sector: k, bayNo: bay.bayNo, i: si,
                            x: Math.cos(ang) * r, z: Math.sin(ang) * r, r, ang, st, earned, seen: seenSite, chart: earned ? 'earned' : (seenSite ? 'charted' : 'uncharted'),
                            done: sm ? sm.done : 0, total: sm ? sm.total : (DOOR_HQ.masteryConditions || []).length,
-                           siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null };
+                           siteRoom: hqAreaRoomOf(id) && DOOR_HQ.rooms[hqAreaRoomOf(id)] ? hqAreaRoomOf(id) : null };
             bay.stars.push(star); stars.push(star);
         });
         bays.push(bay);
@@ -52945,10 +51833,7 @@ if (typeof window !== 'undefined') {
     window.hqRingSectorAt = hqRingSectorAt;
     window.hqRingSpot = hqRingSpot;
     window.hqSiteRoomId = hqSiteRoomId;
-    window.hqSiteRoom = hqSiteRoom;
-    window.hqSitePropStands = hqSitePropStands;
     window.hqSiteBoard = hqSiteBoard;
-    window.hqSiteBoardInfo = hqSiteBoardInfo;
     window.hqRoomNo = hqRoomNo;
     window.hqDoorNo = hqDoorNo;
     window.hqRoomNoCompare = hqRoomNoCompare;
@@ -52969,7 +51854,7 @@ if (typeof window !== 'undefined') {
     /* THE FINDS + THE TAPES (HQ plan 9.1, 2026-09-15 rev 12) */
     window.HQ_GUN_LESSONS = HQ_GUN_LESSONS; window.hqGunLessons = hqGunLessons; window.hqFindHardReach = hqFindHardReach; window.HQ_HARD_REACH = HQ_HARD_REACH;
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind; window.hqFindsBuildAll = hqFindsBuildAll;
-    window.hqFindsSyncPay = hqFindsSyncPay; window.hqTapeLegacyId = hqTapeLegacyId; window.hqFindLegacyId = hqFindLegacyId; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
+    window.hqFindsSyncPay = hqFindsSyncPay; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
     window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */

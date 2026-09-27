@@ -122,9 +122,10 @@ test('the cast, the VFX, the relay and the Laser Door follow the line', () => {
     assert.match(read('ai.js'), /_castZ = aim\.z;/);
 });
 
-test('Fractal Stitch sits on the mantid tree as the Ambush Lunge twin (rung III)', () => {
+test('Fractal Stitch sits on the mantid tree at rung III', () => {
+    // 2026-09-27: the user's family export took Beast Abilities off the mantid, so Ambush Lunge left the twin
     const row = vm.runInContext('RACE_TREE', data).mantid;
-    assert.deepEqual(ids(row[2]), ['raceAmbushLunge', 'raceFractalStitch']);
+    assert.deepEqual(ids(row[2]), 'raceFractalStitch');
 });
 
 test('seed rows are never offered against an airborne enemy', () => {

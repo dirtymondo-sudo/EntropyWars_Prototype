@@ -41,7 +41,14 @@ test('every spell sits in exactly one family, and every family is on some race',
         const fams = D.spellFamiliesOf(sp);
         if (fams.length !== 1) problems.push(`${sp.id}: ${fams.length} families`);
     }
-    for (const f of Object.keys(D.SPELL_FAMILIES)) if (!D.SPELL_FAMILIES[f].universal && !used.has(f)) problems.push(`family ${f} is on no race`);
+    /* 2026-09-27 (the user's export): new families may wait for their races. One on no race must be empty (a placeholder the
+       user is still filling) or hold only job rows (the job still carries them) — a race row there would be unreachable. */
+    const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
+    for (const f of Object.keys(D.SPELL_FAMILIES)) {
+        if (D.SPELL_FAMILIES[f].universal || used.has(f)) continue;
+        const stray = D.familyMemberIds(f).filter(id => !jobIds.has(id));
+        if (stray.length) problems.push(`family ${f} is on no race but holds ${stray.join(', ')}`);
+    }
     assert.deepStrictEqual(problems, []);
     // the user's own families survived the bake: a few of theirs, by id and name
     assert.strictEqual(D.SPELL_FAMILIES.christmasspirit.name, 'Christmas Spirit');
