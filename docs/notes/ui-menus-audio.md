@@ -730,3 +730,22 @@ ui.js SLB IDENTITY block: kits for the 23 families of the user's 2026-09-27 expo
 (spell-identity.test.js compares every archetype name with AVAILABLE_RACES and RACE_PROFILES labels, plural-folded) — keep new
 archetypes off race names; 68 new characters from the new families; the list of candidates for new races is in
 /mnt/project-files/spell-library/NEW_CHARACTERS.md.
+
+## ✦ THE FAMILY TABS (the jobs removal, 2026-09-27, token 20260927-spell-library-12-cors)
+mondo: "Easy to read spell slots organized by family, maybe tabs for the families, with one section that shows the spell
+info for whichever one you have selected/hovered on." The forge TECHNIQUES rack (party-builder.js SpellTierPanel) is now:
+- **Head:** the loadout as seven slot cards 4 × 2 (`.pb-ls` with `--fam` = the family colour: disc, name on two lines,
+  family label, tier numeral, ⚙ upgrades) plus the ALWAYS READY cell (`.pb-ls-ready`: the ☠ finisher `.pb-ls-fin` over the
+  ⚔ basic attack `.pb-ls-root`, no slot, no SP); under it the tab bar
+  (`.pb-famtabs` / `.pb-famtab`: glyph · name · n on, lit when the family holds an equipped spell). Tab order: the race's
+  families, ✦ TRAINING, ◈ GEAR, ＋ BORROW (locked card with an OPEN TRAINING button until Adaptable is equipped).
+- **Body** (the only scroller, `.pb-rack-body`): the open family's head (`.pb-famhead`: glyph, name, desc, count) then its
+  cards tier I → IV two to a row with `.pb-famrule` tier dividers.
+- **No foot strip** (the finisher strip / ALWAYS READY foot of the tier rack is gone; it lives in the loadout's 8th cell).
+- **Info:** the TechniquePanel below (unchanged position) follows hover, else the selection; its kicker leads with the
+  family glyph + name. Keys: `,` / `.` cycle the tabs; the grid keys walk the open tab (pbTierGrid).
+- The rack state is `rackTab` (reset per unit); `pbTierCtx(race, cls, equipped, upsWish, tabWish)` returns `tabs` /
+  `tab` / `sourceOf` / `famOf` / `borrows`. The old BY FAMILY / BY TIER toggle (ew_rack_group) is gone.
+- Job pickers are gone from the builder, the roster wall (no job pill), the MD delver page, the campaign creator
+  (`#cccJobSelect`), the shop, the HQ pause menu, the dungeon picker and the secondary-job dialog. Role labels in the
+  builder read the race's role (pbRoleLabel = CODEX_CLASS_LABELS[RACE_CLASS[race]]).

@@ -1037,3 +1037,39 @@ share table ("SPELL LIBRARY (2026-09-27 …)" block). A rung's ring must equal i
 borrowed lower-tier row on a higher ring needs a ring-matching seat elsewhere (Summon Sandstorm → the martian's ring II twin,
 Fissure → the gnome's ring I). Families on no race must be empty or job-only (Marksmanship, Agriculture today). Full log:
 SPELL_LIBRARY_PLAN.md §11.
+
+## ✦ THE JOBS REMOVAL (2026-09-27, token 20260927-spell-library-12-cors, zip spell-library/ENTROPY_WARS_SPELL_LIBRARY_12.zip)
+mondo: "get rid of the job system. All job spells are already assigned to a family ... The job passives can be added to
+the optional passives for 1 SP." What changed:
+- **No jobs.** `unit.cls` is the neutral `UNIT_CLASS = 'Vessel'` everywhere (one CLASS_TEMPLATES row); it is only a
+  sprite key now. Deleted: JOB_ARCHETYPES (→ DEFAULT_IDENTITY), RACE_DEFAULT_JOBS (→ RACE_KITS / raceKit: the old Sniper
+  races reach 4, Gunslinger/Psychic races 2, Agent races 2 + inspect 2), JOB_KITS, JOB_MODIFIERS, computeSecJobBonuses,
+  JOB_PASSIVES, CLASS_PASSIVES, getJobPassive, JOB_DISPLAY_NAMES, CLASS_TREE, getClassTreeSpells, the Freelancer
+  (flOwnedJobs / flWildcardPool / SECONDARY_JOB_LEVEL), every `classRestriction`, applySecondaryJob, learnSpellForUnit
+  (level-ups no longer grant job spells). CLASS_SPELL_LEARN_ORDER stays as MP-ring / capstone PRICING data only.
+- **The pool** = the race's families + the universal families (GEAR, TRAINING) + the door wheel; `unitSpellPoolParts`
+  keeps the `job` / `borrowJob` keys as empty arrays for old callers.
+- **Marksmanship + Agriculture** had no race (their spells were job spells): marksmanship now sits on the 5 old Sniper
+  races, agriculture on the old Harvester races (bigfoot, antperson, scarecrow, shaman, king kong).
+- **✦ TRAINING** (new universal family, `TRAINING_PASSIVES`, tier I = 1 SP, `kind: 'passive'`, count against the 2
+  passive rows): Deadeye (+10 SPD, crit ×2.0) · Warpath (basic ×1.15, counter 30%, +5 armor) · Bulwark (soak 8, counter
+  30%, +5 armor) · Arcane Surge (+8 spell power) · Grace (heal range +2, +24 heal) · Field Operative (2 scanners, +1
+  inspect) · Third Eye (+1 debuff turn, teleport −1 MP) · Green Thumb (life sap ×1.2, felled trees) · Tinker (turret
+  range +1, repair ×1.2) · Crescendo (+1 buff turn, lullaby range +1) · **Adaptable** (opens the borrow window) · Brute
+  Force (basic ×1.2, swims) · Riposte (counter 35%, counter hits for 60%).
+- **Hooks stack** through data.js `unitPassiveSum` / `unitPassiveMult` / `unitPassiveMax` (sum for flat bonuses,
+  product for multipliers, max for chances / caps). Every new key is in PASSIVE_HOOK_KEYS (the lint flags unknown keys).
+  createUnit folds armor / spellPower / healBonus / inspectBonus into the unit; battle.js reads the rest live
+  (counter, crit, soak, basic mult, durations, ranges, turrets, repair, sap, teleport, scanner cap via
+  `getItemCapForClass(unit, key)`).
+- **Adaptable = the old Freelancer.** `loadoutBorrows(ids)`: only a loadout holding `passiveAdaptable` (ADAPTABLE_ROW_ID)
+  gets `borrowRace` (every other race's families). Unequip it and treeLegalSubset drops the borrowed spells. The story
+  officer starts with it (`hqOfficerKit` = `raceDefaultKit(race, [ADAPTABLE_ROW_ID])`), which keeps the rule "the
+  officer learns the spells of the vessels you own". The AI never picks it (buildTreeLegalLoadout excludes it).
+- **Default kits** = `raceDefaultKit(race, lead)`: lead + race tree rungs + family members by tier, trimmed legal. map.js
+  createUnit gives it to any unit whose kit holds no active spell (a seat never opened in the builder, a native): the
+  job's level-up learnset used to fill those, and without the fallback they entered battle with no spells.
+- **Basic-attack look** is keyed by race now (battle.js BASIC_ATTACK_RACE_FIRST / BASIC_ATTACK_RACE_CASTERS, generated
+  from the old default jobs), so every race keeps its old shot.
+- Profile CHAMPIONS / OVERVIEW stats key by race. Dropped: homosapien-Psychic flight, the job nametag mode (a stale
+  'job' setting draws the race), the balance lab's job tabs.
