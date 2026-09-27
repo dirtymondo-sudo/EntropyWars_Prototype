@@ -15262,6 +15262,52 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_flightline = function () {
     return M.finishDelta();
 };
 
+/* ── THE HIGHWAY + THE GATE (OPEN WORLD Phase 5, 2026-09-27) ──────────── */
+
+/* THE STRIP END — the road and its double yellow, the last diner, the
+   loading dock, the rest stop's kickers, the parked truck. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_strip_highway = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE HIGHWAY', base: 'dirt_4', seed: 8571,
+        tints: { dirt_4: '#c8b08a', road: '#5a5a58', holo: '#ffd040', drywall: '#e8d8c0', wood: '#8a6a4a', gunmetal: '#5a6068' },
+        desc: 'THE HIGHWAY — the road and its double yellow, the last diner, the loading dock, the rest stop, the parked truck' });
+    M.rect(3, 1, 4, 2, 'road');                              // the road
+    M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'drywall' });       // the diner's front
+    M.block(7, 3, 'drywall', 2);                             // the loading dock
+    M.step(0, 2, 'wood'); M.step(1, 3, 'wood');              // the rest stop's kickers
+    M.step(1, 1, 'gunmetal');                                // the parked truck
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE DESERT MILES — the road, LAST GAS's canopy and pumps, the kiosk, the
+   plinth, the crash dip. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_highway = function () {
+    const M = _mfAreaDelta({ name: 'AREA 51 · THE DESERT MILES', base: 'dirt_4', seed: 8572,
+        tints: { dirt_4: '#c4ac84', road: '#5e5c58', aluminium: '#d0d8e0', metal_2: '#c83a30', wasteland: '#a09078' },
+        desc: 'THE DESERT MILES — the road, the gas canopy and its pumps, the kiosk, the plinth, the crash dip' });
+    M.rect(3, 1, 4, 2, 'road');                              // the road
+    M.block(1, 2, 'metal_2'); M.block(1, 3, 'metal_2');      // the pumps
+    M.block(0, 1, 'aluminium', 2);                           // the kiosk
+    M.block(6, 3, 'wasteland', 2);                           // the plinth
+    M.lake(7, 1, 'dirt_4', 1);                               // the crash dip
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE GATE — the fence, the guard post, the barrier, THE WATCHTOWER. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_gate = function () {
+    const M = _mfAreaDelta({ name: 'AREA 51 · THE GATE', base: 'dirt_4', seed: 8573,
+        tints: { dirt_4: '#b8a488', road: '#6a6a68', gunmetal: '#5a6068', drywall: '#d8d0c0', metal_2: '#c8b040' },
+        desc: 'THE GATE — the fence, the guard post, the barrier, THE WATCHTOWER' });
+    M.rect(3, 1, 4, 2, 'road');                              // the gate road
+    M.wrun(0, 2, 2, 2, 'N', { h: 2, tex: 'gunmetal' });      // the fence
+    M.block(5, 2, 'drywall');                                // the guard post
+    M.step(6, 2, 'metal_2');                                 // the barrier
+    M.block(7, 1, 'gunmetal', 3);                            // THE WATCHTOWER
+    M.symAll();
+    return M.finishDelta();
+};
+
 /* ── THE CAVE (Room 180's chambers) ────────────────────────────────────── */
 
 
@@ -36130,7 +36176,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* LAST GAS: the pumps, the car at them, the kiosk's shelves and till */
-                { key: 'utility_box',     x: -18, z: 8.2, face: 90 }, { key: 'utility_box', x: -18, z: 11.8, face: 90 },
+                { key: 'vending_machine', x: -18, z: 8.2, face: 90 }, { key: 'vending_machine', x: -18, z: 11.8, face: 90 },   // the pumps (a utility box is a board / horizon piece, never a room's)
                 { key: 'car_suv',         x: -14.5, z: 10, face: 0 },
                 { key: 'steel_table',     x: -28.2, z: 10, face: 90 }, { key: 'cash_register', x: -28.2, z: 10, y: 0.76, face: 90 },
                 { key: 'metal_shelving',  x: -33.2, z: 8.2, face: 90 }, { key: 'round_fridge', x: -33.2, z: 11.8, face: 90 },
