@@ -16,7 +16,8 @@
 //     reaches players on the next deploy (the edge caches by the full URL; R2 ignores the query), and a stored
 //     copy whose sha no longer matches is fetched again;
 //   - the store's size accounting reads `bytes` when the CDN sends no content-length;
-//   - DOWNLOAD THIS PLACE (the pause menu's settings) says how big a place is before it fetches it.
+//   - DOWNLOAD THIS PLACE (the pause menu's settings) says how big a place is before it fetches it;
+//   - a prop whose `<name>.lod1.glb` (and `.lod2.glb`) is listed draws those levels far off (Phase 10, THE LOD LEVELS).
 //
 // Repo-only tooling, zero dependencies.
 
@@ -72,16 +73,17 @@ function build(files, prev, prefix, merge) {
 /* the numbers the tool prints (and the test reads): how many files, how many GLBs have an optimized sibling */
 function summary(man) {
     const keys = Object.keys(man.files || {});
-    let bytes = 0, glb = 0, opt = 0, saved = 0;
+    let bytes = 0, glb = 0, opt = 0, saved = 0, lod = 0;
     for (const k of keys) {
         bytes += man.files[k][0];
+        if (/\.lod\d\.glb$/i.test(k)) { lod++; continue; }   // THE LOD LEVELS (Phase 10): optimize-assets.js --lod
         if (/\.glb$/i.test(k) && !/\.opt\.glb$/i.test(k)) {
             glb++;
             const o = man.files[k.replace(/\.glb$/i, '.opt.glb')];
             if (o) { opt++; saved += man.files[k][0] - o[0]; }
         }
     }
-    return { files: keys.length, bytes, glb, opt, saved };
+    return { files: keys.length, bytes, glb, opt, saved, lod };
 }
 
 function main() {
@@ -98,7 +100,7 @@ function main() {
     const man = build(files, prev, prefix, merge);
     fs.writeFileSync(outFile, JSON.stringify(man) + '\n');
     const s = summary(man);
-    console.log(`manifest: ${outFile} · ${s.files} files, ${(s.bytes / 1073741824).toFixed(2)} GB · ${s.opt} of ${s.glb} GLB have a .opt.glb (saves ${(s.saved / 1048576).toFixed(0)} MB)`);
+    console.log(`manifest: ${outFile} · ${s.files} files, ${(s.bytes / 1073741824).toFixed(2)} GB · ${s.opt} of ${s.glb} GLB have a .opt.glb (saves ${(s.saved / 1048576).toFixed(0)} MB) · ${s.lod} LOD level file(s)`);
     console.log('next: `npm run deploy` (ASSET_MANIFEST.json rides the ?v= token like the scripts) and redeploy index.html on Render');
 }
 

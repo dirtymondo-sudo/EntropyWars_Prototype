@@ -97,6 +97,7 @@ diffs. The deliverable is always the full edited file, produced in chat.
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
   of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
+  Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off; test hq-lod.test.js.
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

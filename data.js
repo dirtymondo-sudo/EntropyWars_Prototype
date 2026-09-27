@@ -40945,6 +40945,15 @@ const HQ_WORLD_RULES = {
     crossHys: 1.0,     // m — the crossing's hysteresis (§5.3; Phase 1)
     warmDoorM: 20,     // m — a door to another zone warms its arrival when the walker is this close (§5.4)
     farRes: 4,         // m — the far shell's ground sampling (§5.4)
+    /* THE FAR SHELLS (§5.4, Phase 10, 2026-09-27): the places on this ground that are not drawn (neither current nor a drawn
+       neighbour) stand as ONE cheap mesh each — the compiled ground every `farRes` m, the blocks as columns to their roofs,
+       the tall walls, the sea — vertex-coloured, no sheets. They take `farHaze` of the room's fog density (so they read as
+       haze at 200–500 m instead of vanishing at 150 m), never more than `farHazeMax` of the fog colour; a shell stands down
+       while the walker is within `farMinM` of its box (the outer ground is the ground there). At most `farMax` shells, the
+       nearest first, and `farTris` triangles in all (a shell over `farTrisPart` drops its smallest walls). The ground sits
+       `farSink` m under the real one, so a part attaching over its shell never fights it; its edge is a SKIRT down to the
+       ground's floor and `farSkirt` m past it (a raised part reads as a mountainside, never a floating plate). */
+    farHaze: 0.3, farHazeMax: 0.9, farMinM: 24, farMax: 12, farTris: 90000, farTrisPart: 20000, farSink: 0.3, farWallH: 1.5, farSkirt: 4,
     wallM: 0.2,        // m — the wall between two rooms joined by a door (Phase 2): the two shells stand this far apart, the doorway's sleeve lines the gap
     islandSink: { inM: 1.5, rampM: 3, m: 10 },   // Phase 7: a sea's floor sinks `m` under an island standing on it, from `inM` inside the island's edge over `rampM`
 };
@@ -40957,6 +40966,12 @@ const HQ_STAGE_RULES = {
        them) and the instance follows its placement every frame it moves. Measured on Downtown (every file landed):
        32 m / 4 → 2,299 to 2,041 calls; 64 m / 2 → 1,931 (+17 % triangles drawn); 128 m / 2 → 1,832 (+35 %). */
     instanceMin: 2, instanceCell: 64,
+    /* THE LOD LEVELS (§5.9, Phase 10, 2026-09-27): a prop whose `<name>.lod1.glb` / `.lod2.glb` the manifest lists draws level 1
+       once its bounding sphere covers less than `lodScreen[0]` of the viewport's height, level 2 under `lodScreen[1]`
+       (`lodHys` of a band either side of a line so nothing flickers); a prop under `cullM` stops drawing under `lodCull`
+       (about 2 px on a 1080 p screen). Re-picked every `lodTickMs`. THE NEAR FIRST: the model queue re-reads each queued
+       file's distance to the walker every `mqDistMs`. */
+    lodScreen: [0.12, 0.04], lodHys: 0.12, lodCull: 0.002, lodTickMs: 200, mqDistMs: 250,
     /* THE STAGE (§5.1–5.3, Phase 1, 2026-09-26): the zones whose parts stand on ONE stage — the joined neighbours are
        built into the same scene, drawn and walked, and the feet crossing a join SWAP the current part (no card, no
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
@@ -41132,6 +41147,133 @@ function hqRoomLandmarks(roomId) {
         out.push(Object.assign({}, w, { deg: Math.round(b.deg * 10) / 10, far: Math.round(b.dist) }));
     });
     return out;
+}
+/* ══ THE FAR SHELLS (OPEN_WORLD_PLAN.md §5.4, Phase 10, 2026-09-27) ══════════════════════════════════════════════════
+   The readers the renderer's far shells stand on. hqFarParts: the open-sky parts on this room's ground a far shell may
+   stand for (staged, not an interior, not this room), each with its frame seen from here, its box in this room's metres
+   and its gap to this room's box, the nearest first, within HQ_WORLD_RULES.far and at most farMax. hqFarShell: ONE mesh
+   for a part, in its own metres, from its COMPILED floor plan (never compiled here: a part the survey has not compiled
+   yet has no shell until it has) — the ground sampled every farRes m (the floor's colour, the cliff's on a slope), the
+   solid blocks as columns to their roofs (info.solidTop), the walls (info.walls) at least farWallH tall, the sea's
+   surface. No sheet anywhere (the black-texture rule has nothing to wait for). */
+const HQ_FAR_COLORS = [
+    [/water|sea|ocean|lagoon/, 0x2d5b6e], [/snow|ice|cloud/, 0xdfe6ee], [/marble|gold|white/, 0xd6cfbf], [/sand|desert|dune/, 0xc2a676],
+    [/grass|forest|meadow|lawn|moss/, 0x4d6a36], [/dirt|mud|earth|wasteland|soil/, 0x7a6248], [/wood|plank/, 0x6e5238],
+    [/cobble|brick|castle/, 0x8a7d6c], [/asphalt|road|street/, 0x3e4046], [/concrete|plaster|tile|urban|stone|pavement/, 0x8e8e88],
+    [/rock|cliff|mountain|crag/, 0x6d665e],
+];
+function hqFarColor(key) {
+    const k = String(key || '').toLowerCase();
+    for (const [re, c] of HQ_FAR_COLORS) if (re.test(k)) return c;
+    return 0x6f6a60;
+}
+const _hqFarPartsCache = {};
+function hqFarParts(roomId) {
+    const W = DOOR_HQ.world; if (!W || !roomId) return [];
+    const hit = _hqFarPartsCache[roomId]; if (hit && hit.W === W) return hit.out;
+    const A = hqWorldFrame(roomId), RA = (DOOR_HQ.rooms || {})[roomId], out = [];
+    if (A && !A.absorbedBy && RA && RA.shell && RA.shell.w > 0 && RA.shell.open && RA.shell.sky) {
+        const hwA = RA.shell.w / 2, hdA = RA.shell.d / 2, far = HQ_WORLD_RULES.far || 900;
+        Object.keys(_hqWorldIndex().part).forEach(id => {
+            if (id === roomId || !hqStagePart(id)) return;
+            const B = hqWorldFrame(id); if (!B || B.ground !== A.ground || B.interior) return;
+            const R = DOOR_HQ.rooms[id], S = R && R.shell; if (!S || !(S.open && S.sky)) return;
+            const rel = hqStageRel(roomId, id); if (!rel) return;
+            const hw = S.w / 2, hd = S.d / 2;
+            const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+            const rect = { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) };
+            const gx = Math.max(rect.x0 - hwA, -hwA - rect.x1, 0), gz = Math.max(rect.z0 - hdA, -hdA - rect.z1, 0), gap = Math.hypot(gx, gz);
+            if (gap > far) return;
+            out.push({ id, rel, rect, gap: Math.round(gap * 10) / 10 });
+        });
+        out.sort((p, q) => p.gap - q.gap || (p.id < q.id ? -1 : 1));
+        out.splice(HQ_WORLD_RULES.farMax || 12);
+    }
+    _hqFarPartsCache[roomId] = { W, out };
+    return out;
+}
+/* metres from (x, z) of the current room to a far part's box there (0 inside) */
+function hqFarGap(fp, x, z) {
+    const r = fp.rect, dx = Math.max(r.x0 - x, x - r.x1, 0), dz = Math.max(r.z0 - z, z - r.z1, 0);
+    return Math.hypot(dx, dz);
+}
+/* the part's far mesh: { pos (m, the part's own frame), col (0..1), idx, tris, cols, walls, sea } | null (not compiled yet) */
+function hqFarShell(roomId, info) {
+    const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell; if (!S || !(S.w > 0)) return null;
+    if (R.terrain && !info) info = R._terrainInfo || null;
+    if (R.terrain && !info) return null;
+    const res = HQ_WORLD_RULES.farRes || 4, sink = HQ_WORLD_RULES.farSink || 0, capT = HQ_WORLD_RULES.farTrisPart || 20000;
+    const hw = S.w / 2, hd = S.d / 2, pos = [], col = [], idx = [];
+    const rgb = hex => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+    const cFloor = rgb(hqFarColor(info ? info.floor : S.floor)), cCliff = rgb(hqFarColor(info ? info.cliff : S.wall)), cMass = rgb(0x7d7a74), cRoof = rgb(0x5f5e5c);
+    const hAt = (x, z) => info ? hqTerrainHeight(info, x, z) : 0;
+    const vert = (x, y, z, c) => { pos.push(x, y, z); col.push(c[0], c[1], c[2]); return pos.length / 3 - 1; };
+    const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+    /* THE GROUND: a grid over the box (the edges exactly on it), the floor's colour, the cliff's where it is steep */
+    const nx = Math.max(2, Math.ceil(S.w / res) + 1), nz = Math.max(2, Math.ceil(S.d / res) + 1), g0 = pos.length / 3;
+    const cliffFrom = (info && info.rules && info.rules.cliffFrom) || 0.6, cliffTo = (info && info.rules && info.rules.cliffTo) || 1.2;
+    const H = new Float32Array(nx * nz);
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hAt(-hw + i * S.w / (nx - 1), -hd + j * S.d / (nz - 1));
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        const x = -hw + i * S.w / (nx - 1), z = -hd + j * S.d / (nz - 1), h = H[j * nx + i];
+        const hx = (H[j * nx + Math.min(nx - 1, i + 1)] - H[j * nx + Math.max(0, i - 1)]) / (2 * S.w / (nx - 1));
+        const hz = (H[Math.min(nz - 1, j + 1) * nx + i] - H[Math.max(0, j - 1) * nx + i]) / (2 * S.d / (nz - 1));
+        let t = (Math.hypot(hx, hz) - cliffFrom) / ((cliffTo - cliffFrom) || 1); t = t < 0 ? 0 : t > 1 ? 1 : t;
+        vert(x, h - sink, z, [cFloor[0] + (cCliff[0] - cFloor[0]) * t, cFloor[1] + (cCliff[1] - cFloor[1]) * t, cFloor[2] + (cCliff[2] - cFloor[2]) * t]);
+    }
+    for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = g0 + j * nx + i; quad(a, a + nx, a + nx + 1, a + 1); }
+    /* THE SKIRT: the box's edge carried down to the ground's floor (the zone's y 0, a part raised on the mountain) and farSkirt m
+       further, in the cliff's colour — a raised part's shell is a mountainside, never a plate floating over the fog */
+    const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
+    let lo = Infinity; for (let k = 0; k < H.length; k++) if (H[k] < lo) lo = H[k];
+    const skirtY = Math.min(lo, -((F && F.y) || 0)) - (HQ_WORLD_RULES.farSkirt || 4) - sink;
+    const edge = [];
+    for (let i = 0; i < nx; i++) edge.push(i);                                  // north, west → east
+    for (let j = 1; j < nz; j++) edge.push(j * nx + nx - 1);                    // east, north → south
+    for (let i = nx - 2; i >= 0; i--) edge.push((nz - 1) * nx + i);             // south, east → west
+    for (let j = nz - 2; j >= 0; j--) edge.push(j * nx);                        // west, south → north
+    for (let e = 0; e < edge.length - 1; e++) {
+        const t0 = g0 + edge[e], t1 = g0 + edge[e + 1];
+        const b0 = vert(pos[t0 * 3], skirtY, pos[t0 * 3 + 2], cCliff), b1 = vert(pos[t1 * 3], skirtY, pos[t1 * 3 + 2], cCliff);
+        quad(t0, t1, b1, b0);
+    }
+    /* THE SEA: its surface over the box */
+    let sea = false;
+    if (info && info.sea && typeof info.sea.y === 'number') {
+        const c = rgb(hqFarColor('sea')), y = info.sea.y - sink * 0.5;
+        const a = vert(-hw, y, -hd, c), b = vert(-hw, y, hd, c), d = vert(hw, y, hd, c), e = vert(hw, y, -hd, c);
+        quad(a, b, d, e); sea = true;
+    }
+    /* a box from (x0..x1, z0..z1) along its own axes: centre (cx, cz), half sizes (a, b), yaw, base..top (the bottom never drawn) */
+    const box = (cx, cz, a, b, yaw, base, top, cs, ct) => {
+        const c = Math.cos(yaw), s = Math.sin(yaw), P = [[-a, -b], [a, -b], [a, b], [-a, b]].map(p => [cx + p[0] * c + p[1] * s, cz - p[0] * s + p[1] * c]);
+        const lo = P.map(p => vert(p[0], base - sink, p[1], cs)), hi = P.map(p => vert(p[0], top - sink, p[1], ct || cs));
+        quad(hi[0], hi[3], hi[2], hi[1]);
+        for (let k = 0; k < 4; k++) { const k2 = (k + 1) % 4; quad(lo[k], lo[k2], hi[k2], hi[k]); }
+    };
+    /* THE BLOCKS: a column per far cell whose solid top stands over the ground (a city's lots and yards, a hall's mass) */
+    let cols = 0;
+    const gn = info && info.gen;
+    if (gn && gn.solidMass && info.solidTop) {
+        const cx = Math.max(1, Math.round(S.w / res)), cz = Math.max(1, Math.round(S.d / res)), sx = S.w / cx, sz = S.d / cz;
+        for (let j = 0; j < cz; j++) for (let i = 0; i < cx; i++) {
+            const x = -hw + (i + 0.5) * sx, z = -hd + (j + 0.5) * sz;
+            const top = hqTerrainSolidTop(info, x, z); if (!(top > 0)) continue;
+            const g = hAt(x, z); if (top < g + 0.5) continue;
+            box(x, z, sx / 2, sz / 2, 0, g, top, cMass, cRoof); cols++;
+        }
+    }
+    /* THE WALLS: the tall ones, the biggest first, until the part's triangle cap */
+    let walls = 0;
+    const wl = ((info && info.walls) || []).filter(w => !w.ghost && (w.top - w.base) >= (HQ_WORLD_RULES.farWallH || 1.5))
+        .map(w => ({ w, k: (w.top - w.base) * Math.hypot(w.x1 - w.x0, w.z1 - w.z0) })).sort((p, q) => q.k - p.k);
+    for (const { w } of wl) {
+        if (idx.length / 3 + 10 > capT) break;
+        const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0);
+        box((w.x0 + w.x1) / 2, (w.z0 + w.z1) / 2, (w.t || 0.3) / 2, (L + (w.t || 0.3)) / 2, yaw, w.base, w.top, w.key ? rgb(hqFarColor(w.key)) : cCliff);
+        walls++;
+    }
+    return { pos: new Float32Array(pos), col: new Float32Array(col), idx: new Uint32Array(idx), tris: idx.length / 3, cols, walls, sea, nx, nz };
 }
 const HQ_WORLD = {
     grounds: {

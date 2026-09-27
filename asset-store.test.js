@@ -316,14 +316,16 @@ test('the tools: manifest-assets builds, merges and counts the siblings; optimiz
     const merged = M.build(files, prev, 'Assets/', true);
     assert.deepEqual(Object.keys(merged.files), ['Assets/misc/Big Chair.glb', 'Assets/misc/Big Chair.opt.glb', 'Sounds/a.mp3'], 'a merge replaces the scanned prefix and keeps the rest');
     assert.equal(merged.base, CDN);
-    assert.deepEqual(M.summary(merged), { files: 3, bytes: 1207, glb: 1, opt: 1, saved: 800 });
+    assert.deepEqual(M.summary(merged), { files: 3, bytes: 1207, glb: 1, opt: 1, saved: 800, lod: 0 });
     fs.rmSync(d, { recursive: true, force: true });
     assert.equal(O.optName('a/B C.glb'), 'a/B C.opt.glb');
     assert.equal(O.isSource('x.opt.glb'), false); assert.equal(O.isSource('x.GLB'), true);
     assert.equal(O.targetFor('/in/misc/a.glb', '/in', '/out'), path.join('/out', 'misc', 'a.opt.glb'));
     assert.equal(O.parseArgs(['d']).size, 2048, 'every Meshy sheet keeps its size unless asked');
     const src = fs.readFileSync(__dirname + '/optimize-assets.js', 'utf8');
-    assert.ok(!/fn\.quantize\(|fn\.meshopt\(|fn\.instance\(|fn\.simplify\(|fn\.join\(|fn\.flatten\(/.test(src), 'no quantize (three r128 reads it raw on the CPU), no instancing, no simplify, no join/flatten');
+    assert.ok(!/fn\.quantize\(|fn\.meshopt\(|fn\.instance\(|fn\.join\(|fn\.flatten\(/.test(src), 'no quantize (three r128 reads it raw on the CPU), no instancing, no join/flatten');
+    assert.equal((src.match(/fn\.simplify\(/g) || []).length, 1, 'simplify only in the LOD levels (Phase 10, hq-lod.test.js), never on the file the game draws up close');
+    assert.ok(src.indexOf('fn.simplify(') > src.indexOf('async function lodOne('), 'inside lodOne');
     const pkg = JSON.parse(fs.readFileSync(__dirname + '/package.json', 'utf8'));
     assert.equal(pkg.scripts.optimize, 'node optimize-assets.js'); assert.equal(pkg.scripts.manifest, 'node manifest-assets.js');
     assert.ok(!pkg.dependencies['@gltf-transform/core'] && !pkg.dependencies.sharp, 'the tools\' deps stay out of the server\'s install');

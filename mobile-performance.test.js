@@ -41,7 +41,7 @@ test('low mode renders directly without allocating a composer or bloom targets',
 test('model loads serialize on phones and failures release the queue exactly once', () => {
     const tasks = [], started = [], finishes = [];
     const c = vm.createContext({ window: { EW_PERF_LOW: true }, setTimeout: f => tasks.push(f) });
-    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false;' + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads'), c);
+    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false; var _mqSeq = 0; var _hq = null, _mqSpots = {}, _mqDistAt = 0; ' + fn(renderer, '_mqNearOff') + fn(renderer, '_mqDistances') + fn(renderer, '_mqCmp') + '' + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads'), c);
     for (let i = 0; i < 3; i++) c._scheduleModelLoad(done => { started.push(i); finishes.push(done); });
     assert.deepEqual(started, [0]);
     finishes[0](); finishes[0]();
@@ -148,7 +148,7 @@ test('every replacement MP3 referenced by audio.js is included in the delivery',
 test('desktop model queue: the rig first, the scene four at a time, the warm last, promotion, the safety timer', () => {
     const timers = [], started = [];
     const c = vm.createContext({ window: {}, console: { warn() {} }, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; }, clearTimeout() {} });
-    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;'
+    vm.runInContext('var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0; var _hq = null, _mqSpots = {}, _mqDistAt = 0; ' + fn(renderer, '_mqNearOff') + fn(renderer, '_mqDistances') + fn(renderer, '_mqCmp') + ''
         + fn(renderer, '_rigLaneMark') + fn(renderer, '_mqPriority') + fn(renderer, '_mqStart') + fn(renderer, '_mqPump') + fn(renderer, '_scheduleModelLoad') + fn(renderer, '_pumpModelLoads')
         + fn(renderer, '_rigLaneCount') + fn(renderer, '_bgPromote'), c);
     const pump = () => { timers.filter(t => t.ms === 0).forEach(t => t.f()); const keep = timers.filter(t => t.ms !== 0); timers.length = 0; timers.push(...keep); };
@@ -238,6 +238,7 @@ function ledgerContext() {
     vm.runInContext('var _ewAssetFailures = []; var _retry = null; function _ewRetryUrl() { return _retry; } function _ewAssetFailed() {}\n'
         + 'function _asAvailable() { return false; }\n'   // THE ASSET STORE (2026-09-20): off in this harness — the direct <img> path is what it measures
         + 'var _mobileModelJobs = [], _mobileModelBusy = false; var _rigLaneUrls = {}, _rigLaneLive = {}; var _bgLoadDepth = 0; var MODEL_MAX_INFLIGHT = 4, MODEL_JOB_TIMEOUT_MS = 90000; var _mqJobs = [], _mqLive = 0, _mqSeq = 0;\n'
+        + 'var _hq = null, _mqSpots = {}, _mqDistAt = 0; ' + fn(renderer, '_mqNearOff') + fn(renderer, '_mqDistances') + fn(renderer, '_mqCmp') + '\n'
         + 'var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500; var _mqTexTimer = null;\n'
         + 'var AL_SETTLE_MS = 300, AL_STALL_MS = 60000; var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;\n'
         + 'var _alOwner = null; function _alOwns(G) { return !G.own || G === _alOwner; }\n'   // THE FILE TRACKER (Phase 2): an owned gate records its own build only

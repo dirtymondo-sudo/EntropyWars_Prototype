@@ -979,7 +979,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness — **DONE 2026-09-27** (`hq-coast.test.js`; §12) |
 | 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) — **SKIPPED 2026-09-27 (mondo: "let's skip phase 8")**: the field stays 8 × 8; §5.6 and fork 9 stand as the design if it is ever wanted |
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged — **DONE 2026-09-27 with deviations (§12)**: the swap is by the manifest, not by renamed URLs; textures keep their size (2048 cap); no quantization; KTX2 not wired (r128 ships no KTX2Loader in examples/js) |
-| 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) |
+| 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) — **DONE 2026-09-27 with deviations (§12)**: levels by screen size, the small-prop cull in place of impostors, the far shells across the whole ground |
 | 11 | **THE SMOOTH ATTACH** (§5.9): `renderer.compile` before a part attaches, the ms-budget build slice (`buildMs`), `ImageBitmapLoader` textures, static batching of the shell per tile | three-renderer.js | `hq-stage.test.js` grows the slice (no step over budget on the vm clock) and the merge count pins |
 | 12 | **PORTALS + THE MEMORY BUDGET** (§5.9): a door join is a portal (a neighbour through a shut door is not drawn), LRU eviction of parsed models under a VRAM estimate, the MEM line on the readout | three-renderer.js | `hq-joins.test.js` grows the portal rule; `asset-store.test.js` the eviction |
 | 13 | **SOUND IN SPACE** (§5.9): positional room tone / props on the stage (`PannerNode`), faded by the ring | audio.js, three-renderer.js | `audio-space.test.js` |
@@ -1468,3 +1468,39 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
   - Tests: `asset-store.test.js` (the resolve, the hash and the re-fetch, the fallback, the loader wrap, the cap,
     DOWNLOAD THIS PLACE in a vm, the tools); `mobile-performance.test.js` unchanged and green. Checked in Chromium:
     a meshopt + WebP door and rig load through the wrapped r128 loader.
+- 2026-09-27 — **PHASE 10 SHIPPED: THE LOD LEVELS, THE NEAR FIRST, THE FAR SHELLS** (same thread; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_13.zip`, token `20260927-open-world-13-cors`, a delta over zip 12).
+  - **THE LOD LEVELS** (`optimize-assets.js --lod`): every static GLB (no skin, no clips, no morphs) of ≥ 3000 tris
+    also writes `<name>.lod1.glb` (~25 %) and `<name>.lod2.glb` (~6 %) with meshoptimizer's `simplify` (weld first,
+    textures dropped: a level is geometry only and draws with the full file's materials, so it costs no texture
+    memory). A level that isn't 30 % smaller than the one before is skipped; `--check` compares mesh names, order and
+    attributes with the original. Measured: a Meshy door frame 6592 → 1690 → 636 tris. `manifest-assets.js` counts
+    them apart (`lod`). In the game (three-renderer.js THE LOD LEVELS): a prop whose levels the manifest lists loads
+    them on the background lane after the full file, pairs meshes by order + name + attributes, and swaps the
+    geometry by **screen size** (`HQ_STAGE_RULES.lodScreen [0.12, 0.04]`, hysteresis `lodHys`), never coarser than
+    the levels that have landed. An instanced batch takes the level of its nearest copy. `hq.lod()` reports it;
+    `window.EW_NO_LOD` turns it off.
+  - **Deviations**: (1) **no impostors**: the fogs close at ~150 m and LOD2 at 6 % already carries a far prop, so a
+    prop smaller than `lodCull` (0.2 % of the screen) is simply culled (layer 0 off) instead of drawn as a card;
+    (2) levels switch by screen size, not by fixed metres, so a big prop keeps its detail further out.
+  - **THE NEAR FIRST** (the model queue): a queued file remembers where the scene will stand it (`_mqSpots`, the
+    groups `_miscModelInstance` placed), and inside a lane the queue starts the file nearest the walker first
+    (re-read every `mqDistMs` 250 ms; the neighbour parts are read through their `rel`). Priority lanes still win
+    (the rig, then the scene, then the warm). Phones' one-at-a-time queue sorts the same way. `EW_NO_NEAR_FIRST` off.
+  - **THE FAR SHELLS** (§5.4; data.js `hqFarParts` / `hqFarShell`, renderer `_hqFarTick`): every open-sky part of the
+    same ground within `HQ_WORLD_RULES.far` of the walker's part that is NOT drawn gets one low mesh built from its
+    compiled terrain (a ground grid coloured floor/cliff by slope, a skirt down past its lowest point, the sea, the
+    solid tops, and walls ≥ 1.5 m under a 20k-tri per-part cap, 90k in all, 12 parts at most). A part not compiled
+    yet is asked from the survey worker (`farWarm`). The shells draw in a thinner fog (`farHaze` 0.3 of the density,
+    capped at `farHazeMax`), so the next ridge reads through the haze; a shell hides when its part is drawn or the
+    walker is within `farMinM` 24 m of it, and the camera's far plane grows to reach the furthest shell.
+    **Deviations**: (3) shells cover the whole ground within `far`, not only the zone; (4) the weenies (the sky
+    landmarks) stay, since they are the Phase 3 look mondo approved. `EW_HQ_NO_FAR` off; `hq.far()` reports.
+  - Measured in Chromium from the foothills: 12 of 12 parts built, 11 shown, 32,782 tris, the far plane at 622 m; the
+    switchbacks' ridges read through the haze.
+  - **mondo's steps to switch the levels on**: `npm run optimize -- <bucket mirror folder> --lod --check`, upload
+    the new `.lodN.glb` files beside their originals, `npm run manifest -- <bucket mirror>`, then `npm run deploy`.
+    Until the manifest lists levels, props draw as before (the far shells and the near first need nothing).
+  - Tests: `hq-lod.test.js` (new: the rules, the shells, the far tick in a vm with real three, the level pick and
+    pairing, the near-first order, the tool); `asset-store.test.js` (simplify now lives only in `lodOne`);
+    `mobile-performance.test.js` (its queue harness gains the near-first helpers).

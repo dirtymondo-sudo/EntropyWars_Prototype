@@ -11240,6 +11240,7 @@ const ThreeRenderer = (function () {
         }
         timer = setTimeout(function () { if (!settled) { console.warn('[ThreeRenderer] model load did not settle in ' + (MODEL_JOB_TIMEOUT_MS / 1000) + ' s — freeing its slot: ' + job.url); done(); } }, MODEL_JOB_TIMEOUT_MS);
         if (job.url && _rigLaneUrls[job.url]) _rigLaneLive[job.url] = 1;
+        if (job.url) delete _mqSpots[job.url];   // THE NEAR FIRST: the file is on its way; its spots are no longer read
         try { job.start(done); } catch (e) { done(); throw e; }
     }
     var _mqTexTimer = null;
@@ -11253,9 +11254,66 @@ const ThreeRenderer = (function () {
         if (!_mqTexTimer) _mqTexTimer = setTimeout(function () { _mqTexTimer = null; _mqPump(); }, 150);
         return true;
     }
+    /* ══ THE NEAR FIRST (OPEN_WORLD_PLAN.md §5.9 / Phase 10, 2026-09-27) ══
+       The queue ran a priority lane in request order, so a room's props arrived in the order its rows were written: a crate
+       across the avenue could land before the bench at the walker's feet. Now every misc-model instance names its SPOT (the
+       group it will fill, _miscModelInstance) and, inside a lane, the files are started NEAREST THE WALKER FIRST: a file's
+       distance is its nearest spot's, in the current part's metres (a stage neighbour still building is read through its
+       frame). A file with no spot (a rig, a door gun, a battle's model) keeps the old order at the head of its lane; a spot
+       not placed yet is read again at the next pump. Distances are re-read every HQ_STAGE_RULES.mqDistMs as the walker
+       moves. Outside the building (a battle) nothing changes. Off: window.EW_NO_NEAR_FIRST. */
+    var _mqSpots = {}, _mqDistAt = 0, _mqDV = null, _mqDM = null;
+    function _mqSpotAdd(url, g) {
+        if (!url || !g || _hq == null) return;
+        (_mqSpots[url] || (_mqSpots[url] = [])).push(g);
+    }
+    function _mqNearOff() { return typeof window !== 'undefined' && !!window.EW_NO_NEAR_FIRST; }
+    /* metres from the walker to spot g (the current part's metres), or -1 when g stands nowhere readable yet */
+    function _mqSpotDist(g, px, pz, U) {
+        var top = g; while (top.parent) top = top.parent;
+        var rel = null;
+        if (!top.isScene) {
+            var m = /^hq_part:(.+)$/.exec(top.name || ''), st = _hq && _hq.stage, E = (m && st) ? st.parts[m[1]] : null;
+            if (!E || !E.rel) return -1;
+            rel = E.rel;
+        }
+        var v = _mqDV || (_mqDV = new THREE.Vector3()), M = _mqDM || (_mqDM = new THREE.Matrix4());
+        g.updateWorldMatrix(true, false);
+        v.setFromMatrixPosition(g.matrixWorld);
+        if (rel) { v.applyMatrix4(M.copy(top.matrixWorld).invert()); var q = hqStageToRoom(rel, v.x / U, v.z / U); return Math.hypot(q.x - px, q.z - pz); }
+        return Math.hypot(v.x / U - px, v.z / U - pz);
+    }
+    /* job.d: -1 = no spot (the head of its lane), else the nearest spot's metres (Infinity = spots, none placed yet) */
+    function _mqJobDist(job, px, pz, U) {
+        var list = job.url ? _mqSpots[job.url] : null;
+        if (!list || !list.length) return -1;
+        var best = Infinity;
+        for (var i = 0; i < list.length; i++) { var d = _mqSpotDist(list[i], px, pz, U); if (d >= 0 && d < best) best = d; }
+        return best;
+    }
+    function _mqDistances(jobs, force) {
+        var H = _hq, pl = H && H.player;
+        if (!pl || _mqNearOff() || typeof hqStageToRoom !== 'function') { for (var z = 0; z < jobs.length; z++) jobs[z].d = -1; return; }
+        var now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        var all = force || now - _mqDistAt >= ((typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.mqDistMs) || 250);
+        if (all) _mqDistAt = now;
+        var U = _hqUnits();
+        for (var i = 0; i < jobs.length; i++) {
+            var j = jobs[i];
+            if (j.started) continue;
+            if (all || j.d == null || j.d === Infinity) j.d = _mqJobDist(j, pl.x, pl.z, U);
+        }
+    }
+    function _mqCmp(a, b) {
+        if (a.pri !== b.pri) return a.pri - b.pri;
+        var da = a.d == null ? -1 : a.d, db = b.d == null ? -1 : b.d;
+        if (da !== db) return da - db;
+        return a.seq - b.seq;
+    }
     function _mqPump() {
+        if (_mqJobs.length > 1) _mqDistances(_mqJobs);
         while (_mqJobs.length) {
-            _mqJobs.sort(function (a, b) { return a.pri - b.pri || a.seq - b.seq; });
+            _mqJobs.sort(_mqCmp);
             if (_mqJobs[0].pri > 0 && _mqLive >= MODEL_MAX_INFLIGHT) break;   // the rig lane (≤ 3 files) never waits for a slot
             if (_mqJobs[0].pri > 0 && typeof _mqTexHold === 'function' && _mqTexHold()) break;   // the sheets first
             _mqStart(_mqJobs.shift());
@@ -11268,7 +11326,7 @@ const ThreeRenderer = (function () {
             _mqPump();
             return;
         }
-        _mobileModelJobs.push(start);
+        _mobileModelJobs.push({ start: start, url: url || null, pri: 1, seq: _mqSeq++, started: false });
         _pumpModelLoads();
     }
     /* THE ASSET LEDGER (2026-09-20): leaving a room DROPS its queued-but-unstarted BACKGROUND jobs (the
@@ -11279,7 +11337,7 @@ const ThreeRenderer = (function () {
         var keep = [], n = 0;
         for (var i = 0; i < _mqJobs.length; i++) {
             var job = _mqJobs[i];
-            if (!job.started && job.pri >= (minPri == null ? 2 : minPri) && job.drop) { n++; try { job.drop(); } catch (e) {} }
+            if (!job.started && job.pri >= (minPri == null ? 2 : minPri) && job.drop) { n++; if (job.url) delete _mqSpots[job.url]; try { job.drop(); } catch (e) {} }
             else keep.push(job);
         }
         _mqJobs = keep;
@@ -11296,7 +11354,10 @@ const ThreeRenderer = (function () {
     function _pumpModelLoads() {
         if (_mobileModelBusy || !_mobileModelJobs.length) return;
         _mobileModelBusy = true;
-        var start = _mobileModelJobs.shift(), settled = false;
+        /* THE NEAR FIRST on a phone too: the one-at-a-time queue takes the nearest file next */
+        if (_mobileModelJobs.length > 1) { _mqDistances(_mobileModelJobs); _mobileModelJobs.sort(_mqCmp); }
+        var job = _mobileModelJobs.shift(), start = job.start, settled = false;
+        if (job.url) delete _mqSpots[job.url];
         function done() {
             if (settled) return;
             settled = true; _mobileModelBusy = false;
@@ -23951,6 +24012,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
+            if (isGLB) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
@@ -24043,6 +24105,7 @@ const ThreeRenderer = (function () {
         opts = opts || {};
         var g = new THREE.Group();
         g._ew_mm = url;   // THE FILE TRACKER: which file this instance waits on (a stage part tells its near props from its far ones by it)
+        var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd(url, g);   // THE NEAR FIRST: where the file is wanted
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             var bb = root._ew_bbox;
@@ -55363,6 +55426,8 @@ const ThreeRenderer = (function () {
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
         if (!H.ready) _hqGateTick(H, now);
         if (H.ready) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
+        if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
+        if (H.ready) { try { _hqFarTick(H, now); } catch (e) { if (!H._farWarned) { H._farWarned = true; console.warn('[HQ] the far shells failed', e); } } }   // THE FAR SHELLS (Phase 10)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
@@ -55404,7 +55469,7 @@ const ThreeRenderer = (function () {
             mk += m.uuid + ',';
         }
         for (var q = o.parent; q; q = q.parent) if (q._ew_noInstance || q.isBone) return null;
-        return g.uuid + '|' + mk + '|' + (o.castShadow ? 1 : 0) + (o.receiveShadow ? 1 : 0) + (o.frustumCulled ? 1 : 0) + (o._ew_pixelate ? 1 : 0) + '|' + (o.renderOrder || 0) + '|' + (o.customDepthMaterial ? o.customDepthMaterial.uuid : '') + (o.customDistanceMaterial ? o.customDistanceMaterial.uuid : '');
+        return (g._ew_lodBase || g).uuid + '|' + mk + '|' + (o.castShadow ? 1 : 0) + (o.receiveShadow ? 1 : 0) + (o.frustumCulled ? 1 : 0) + (o._ew_pixelate ? 1 : 0) + '|' + (o.renderOrder || 0) + '|' + (o.customDepthMaterial ? o.customDepthMaterial.uuid : '') + (o.customDistanceMaterial ? o.customDistanceMaterial.uuid : '');
     }
     function _hqInstScan(H) {
         var byKey = {}, n = 0;
@@ -55472,7 +55537,7 @@ const ThreeRenderer = (function () {
             Object.keys(cells).forEach(function (ck) {
                 var list = cells[ck];
                 if (list.length < 2) { I.left += list.length; return; }
-                var m0 = list[0], geo = m0.geometry;
+                var m0 = list[0], geo = m0.geometry._ew_lodBase || m0.geometry;   // THE LOD LEVELS: a batch is built on the full geometry (the LOD tick picks its level)
                 if (!geo.boundingSphere) geo.computeBoundingSphere();
                 var im = new THREE.InstancedMesh(geo, m0.material, list.length);
                 im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -55484,7 +55549,7 @@ const ThreeRenderer = (function () {
                 var rec = { im: im, copies: list, mat: m0.material, geoC: geo.boundingSphere.center.clone(), geoR: Math.max(geo.boundingSphere.radius || 0, 1e-3),
                             inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float32Array(list.length * 16), rel: new Uint8Array(list.length) };
                 _hqInstFit(rec);
-                list.forEach(function (o) { o.visible = false; o._ew_instHidden = true; });
+                list.forEach(function (o) { o.visible = false; o._ew_instHidden = true; if (o.geometry._ew_lodBase) { o.geometry = o.geometry._ew_lodBase; o._ew_lodL = 0; } });   // a hidden original keeps its full mesh (the seat ray, the gun)
                 I.group.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
                 I.per[key] = (I.per[key] || 0) + list.length;
             });
@@ -55538,6 +55603,283 @@ const ThreeRenderer = (function () {
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;
         return { batches: I.batches, copies: I.copies, left: I.left, adds: I.adds };
+    }
+    /* ══ THE LOD LEVELS (OPEN_WORLD_PLAN.md §5.9 / Phase 10, 2026-09-27) ══
+       Every prop drew its full Meshy mesh to the fog. Now optimize-assets.js --lod bakes `<name>.lod1.glb` (~25 % of the
+       triangles) and `<name>.lod2.glb` (~6 %) beside a prop GLB: GEOMETRY ONLY (no textures), the meshes named and ordered
+       as the full file's. When ASSET_MANIFEST.json lists them, the full file's load queues its levels on the background
+       lane; each level mesh is paired with the full one by order + name (a file that differs is refused) and hung on the
+       full geometry as `_ew_lods` — drawn with the full mesh's OWN material, so a level costs no second texture. Every
+       HQ_STAGE_RULES.lodTickMs the walk picks a level per mesh by its SCREEN SIZE (the bounding sphere's diameter over the
+       viewport height: below lodScreen[0] level 1, below lodScreen[1] level 2, a band of lodHys either side so nothing
+       flickers at a boundary). A batch of the instance pass takes the level of its NEAREST copy. A small prop (under cullM)
+       whose screen size falls under lodCull stops drawing (its layer 0 off; `visible` stays its owner's). The geometry
+       swapped keeps the full one's bounding sphere and box (culling and the batch frames stay right); a level never gets
+       coarser than asked (a missing level 1 means the full mesh until it lands). Nothing leaves the walk on a level: the
+       hand-over, the swap and the leave put every mesh back on its full geometry. Off: window.EW_NO_LOD (then re-enter). */
+    var _lodV = null, _lodS = null;
+    function _lodOff() { return typeof window !== 'undefined' && !!window.EW_NO_LOD; }
+    function _lodRules() {
+        var R = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES) ? HQ_STAGE_RULES : {};
+        return { screen: (R.lodScreen && R.lodScreen.length) ? R.lodScreen : [0.12, 0.04], hys: (R.lodHys != null) ? R.lodHys : 0.12,
+                 cull: (R.lodCull != null) ? R.lodCull : 0.002, cullM: R.cullM || 1.2, tickMs: R.lodTickMs || 200, rescanMs: 2000 };
+    }
+    /* the levels ASSET_MANIFEST.json lists for a GLB (consecutive from 1), as urls beside it; [] = none (or the switch, or no decoder) */
+    function _lodUrls(url) {
+        if (_lodOff() || !_asMan || !/\.glb([?#]|$)/i.test(url) || /\.(opt|lod\d)\.glb([?#]|$)/i.test(url) || !_asMeshoptOk()) return [];
+        var k = _asKey(url); if (k == null) return [];
+        var out = [];
+        for (var L = 1; L <= 2; L++) {
+            if (!_asMan.files[k.replace(/\.glb$/i, '.lod' + L + '.glb')]) break;
+            out.push(String(url).replace(/\.glb([?#]|$)/i, '.lod' + L + '.glb$1'));
+        }
+        return out;
+    }
+    /* the level a mesh wants for its screen size `f` (diameter / viewport height), from level `cur` — hysteresis on the two
+       boundaries next to `cur` only (leaving it takes a clear step past the line; the others are where they are) */
+    function _lodPick(f, cur, T, hys) {
+        var L = 0;
+        for (var i = 0; i < T.length; i++) {
+            var t = T[i];
+            if (i === cur) t *= (1 - hys);
+            else if (i === cur - 1) t *= (1 + hys);
+            if (f < t) L = i + 1;
+        }
+        return L;
+    }
+    /* the geometry to draw for level L: the nearest level at or FINER than L that has landed (never coarser than asked) */
+    function _lodGeo(base, L) {
+        var lv = base._ew_lods;
+        for (var l = L; l >= 1; l--) if (lv && lv[l - 1]) return lv[l - 1];
+        return base;
+    }
+    /* pair a level file's meshes with the full root's (order + name + every attribute the full one draws with) → [geo | null] */
+    function _lodPair(meshes, scene) {
+        if (!scene) return null;
+        var lm = []; scene.traverse(function (n) { if (n.isMesh) lm.push(n); });
+        if (lm.length !== meshes.length) return null;
+        for (var i = 0; i < lm.length; i++) if ((lm[i].name || '') !== (meshes[i].name || '')) return null;
+        return meshes.map(function (m, j) {
+            var b = m.geometry, g = lm[j].geometry;
+            if (!b || !g || !g.attributes.position || (b.groups && b.groups.length) || (g.groups && g.groups.length)) return null;
+            for (var k in b.attributes) { var ga = g.attributes[k]; if (!ga || ga.itemSize !== b.attributes[k].itemSize) return null; }
+            if (!b.boundingSphere) b.computeBoundingSphere();
+            if (!b.boundingBox) b.computeBoundingBox();
+            g.boundingSphere = b.boundingSphere.clone(); g.boundingBox = b.boundingBox.clone();
+            g._ew_shared = true; g._ew_lodBase = b;
+            return g;
+        });
+    }
+    /* a full model landed: queue its levels behind the scene (the background lane; never gated) */
+    function _lodAttach(url, root) {
+        var urls = _lodUrls(url); if (!urls.length || !root) return 0;
+        var meshes = [], rigged = false;
+        root.traverse(function (n) { if (!n.isMesh) return; meshes.push(n); if (n.isSkinnedMesh || (n.morphTargetInfluences && n.morphTargetInfluences.length)) rigged = true; });
+        if (!meshes.length || rigged) return 0;
+        root._ew_lodUrls = urls;
+        urls.forEach(function (u, i) {
+            _scheduleModelLoad(function (done) {
+                var fin = false; function end() { if (!fin) { fin = true; done(); } }
+                try {
+                    _asGltf(u, function (gltf) {
+                        var geos = null;
+                        try { geos = _lodPair(meshes, gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]))); } catch (e) { geos = null; }
+                        if (!geos) { try { console.warn('[ThreeRenderer] LOD level refused (its meshes differ from the full file): ' + u); } catch (e) {} }
+                        else geos.forEach(function (g, j) {
+                            if (!g) return;
+                            var b = meshes[j].geometry, lv = b._ew_lods || (b._ew_lods = []);
+                            g._ew_lodLevel = i + 1; lv[i] = g;
+                        });
+                        end();
+                    }, function () { end(); }, {});
+                } catch (e) { end(); }
+            }, u, true, null);
+        });
+        return urls.length;
+    }
+    /* the walk's LOD list: every mesh on the stage whose full geometry carries levels (the current part + the drawn neighbours) */
+    function _hqLodScan(H, L) {
+        var list = [], roots = [H.partRoot];
+        if (H.stage) for (var id in H.stage.parts) { var E = H.stage.parts[id]; if (E.attached) roots.push(E.P.partRoot); }
+        roots.forEach(function (R) {
+            if (!R) return;
+            R.traverse(function (o) {
+                if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
+                var b = o.geometry._ew_lodBase || o.geometry;
+                if (b._ew_lods || o._ew_lodCull) list.push(o);
+            });
+        });
+        L.list = list; L.scanAt = performance.now();
+    }
+    /* a mesh's screen size: its full geometry's sphere through its world matrix, from the camera */
+    function _lodScreen(o, base, cam, k) {
+        var v = _lodV || (_lodV = new THREE.Vector3());
+        if (!base.boundingSphere) base.computeBoundingSphere();
+        var sp = base.boundingSphere;
+        v.copy(sp.center).applyMatrix4(o.matrixWorld);
+        var r = sp.radius * o.matrixWorld.getMaxScaleOnAxis(), d = v.distanceTo(cam) - r;
+        return { f: d <= 1e-3 ? Infinity : (2 * r / d) * k, r: r };
+    }
+    function _hqLodTick(H, now) {
+        if (_lodOff()) { if (H.lod) _hqLodReset(H); return; }
+        var RU = _lodRules();
+        if (!H.camera || now - (H._lodAt || 0) < RU.tickMs) return;
+        H._lodAt = now;
+        var L = H.lod || (H.lod = { list: [], scanAt: 0, swaps: 0, culled: 0, lv: [0, 0, 0] });
+        if (now - L.scanAt > RU.rescanMs) _hqLodScan(H, L);
+        var cam = H.camera, cp = _lodS || (_lodS = new THREE.Vector3());
+        cam.updateMatrixWorld(); cp.setFromMatrixPosition(cam.matrixWorld);
+        /* k: the screen fraction per unit of (diameter / distance) — the vertical field of view */
+        var k = 1 / (2 * Math.tan((cam.fov || 52) * Math.PI / 360)), U = _hqUnits(), cullU = RU.cullM * U, T = RU.screen;
+        var lv = [0, 0, 0], culled = 0;
+        for (var i = 0; i < L.list.length; i++) {
+            var o = L.list[i];
+            if (o._ew_instHidden) continue;   // a batched copy: its batch picks (below)
+            var base = o.geometry._ew_lodBase || o.geometry, sc = _lodScreen(o, base, cp, k);
+            var cur = o._ew_lodL | 0, want = base._ew_lods ? _lodPick(sc.f, cur, T, RU.hys) : 0;
+            if (want !== cur) { o._ew_lodL = want; L.swaps++; }
+            var geo = _lodGeo(base, want);
+            if (o.geometry !== geo) o.geometry = geo;
+            lv[geo === base ? 0 : (geo._ew_lodLevel || want)]++;
+            /* THE SMALL-PROP CULL: layer 0 off (the owner's `visible` is never touched) */
+            var cut = sc.r * 2 < cullU && sc.f < RU.cull;
+            if (cut !== !!o._ew_lodCull) { o._ew_lodCull = cut; if (cut) o.layers.disable(0); else o.layers.enable(0); }
+            if (cut) culled++;
+        }
+        /* the instance pass's batches: the level of the nearest copy */
+        var I = H.inst;
+        if (I) for (var r = 0; r < I.recs.length; r++) {
+            var rec = I.recs[r], im = rec.im, b = im.geometry._ew_lodBase || im.geometry;
+            if (!b._ew_lods) continue;
+            var best = 0, v = _lodV || (_lodV = new THREE.Vector3());
+            if (!b.boundingSphere) b.computeBoundingSphere();
+            for (var c = 0; c < rec.copies.length; c++) {
+                if (rec.rel[c]) continue;
+                var cc = rec.copies[c];
+                v.copy(b.boundingSphere.center).applyMatrix4(cc.matrixWorld);
+                var rr = b.boundingSphere.radius * cc.matrixWorld.getMaxScaleOnAxis(), dd = v.distanceTo(cp) - rr;
+                var ff = dd <= 1e-3 ? Infinity : (2 * rr / dd) * k;
+                if (ff > best) best = ff;
+            }
+            var bc = im._ew_lodL | 0, bw = _lodPick(best, bc, T, RU.hys);
+            if (bw !== bc) { im._ew_lodL = bw; L.swaps++; }
+            var bg = _lodGeo(b, bw);
+            if (im.geometry !== bg) im.geometry = bg;
+            lv[bg === b ? 0 : (bg._ew_lodLevel || bw)]++;
+        }
+        L.lv = lv; L.culled = culled;
+    }
+    /* every mesh back on its full geometry and its layer (the hand-over, the swap, the leave, the switch) */
+    function _hqLodReset(H) {
+        var L = H && H.lod; if (!L) return;
+        H.lod = null;
+        L.list.forEach(function (o) {
+            if (o.geometry && o.geometry._ew_lodBase) o.geometry = o.geometry._ew_lodBase;
+            o._ew_lodL = 0;
+            if (o._ew_lodCull) { o._ew_lodCull = false; o.layers.enable(0); }
+        });
+        var I = H.inst;
+        if (I) I.recs.forEach(function (rec) { var im = rec.im; if (im.geometry && im.geometry._ew_lodBase) im.geometry = im.geometry._ew_lodBase; im._ew_lodL = 0; });
+    }
+    /* ══ THE FAR SHELLS (OPEN_WORLD_PLAN.md §5.4, Phase 10, 2026-09-27) ══
+       Past the drawn neighbours nothing stood: the next place over was the outer ground's flat apron and the fog. Now every
+       open-sky part on this ground within HQ_WORLD_RULES.far (data.js hqFarParts, the nearest farMax) that is not drawn
+       stands as ONE mesh (data.js hqFarShell: its compiled ground every farRes m, its blocks as columns to their roofs, its
+       tall walls, its sea) — flat-shaded vertex colours, no sheet, one draw each, no shadow. Its own fog is `farHaze` of the
+       room's (the same colour, never past farHazeMax), so the switchbacks and the summit read as haze from the foothills
+       where the room's fog would have closed at 150 m. A shell is built one per half second, only from a floor plan the
+       SURVEY compiled (a part not compiled yet is asked for once, behind everything, through opts.farWarm), stands down while
+       its part is drawn or while the walker is within farMinM of its box, and follows the current part through a crossing
+       (re-placed by the new frame the same frame). The camera's far plane reaches the farthest shown shell (never past
+       `far`). Off: window.EW_HQ_NO_FAR. */
+    var HQ_FAR_TICK_MS = 500;
+    function _hqFarOff() { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_FAR) || typeof hqFarParts !== 'function' || typeof hqFarShell !== 'function'; }
+    function _hqFarMat(F) {
+        if (F.mat) return F.mat;
+        var WR = HQ_WORLD_RULES || {};
+        var m = new THREE.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 0, specular: 0x000000, side: THREE.DoubleSide });
+        var U = { uFarK: { value: WR.farHaze != null ? WR.farHaze : 0.3 }, uFarMax: { value: WR.farHazeMax != null ? WR.farHazeMax : 0.9 } };
+        m.onBeforeCompile = function (sh) {
+            sh.uniforms.uFarK = U.uFarK; sh.uniforms.uFarMax = U.uFarMax;
+            sh.fragmentShader = 'uniform float uFarK;\nuniform float uFarMax;\n' + sh.fragmentShader.replace('#include <fog_fragment>',
+                '#ifdef USE_FOG\n#ifdef FOG_EXP2\nfloat farD = fogDensity * uFarK;\nfloat fogFactor = min( uFarMax, 1.0 - exp( - farD * farD * fogDepth * fogDepth ) );\n#else\nfloat fogFactor = min( uFarMax, smoothstep( fogNear, fogFar, fogDepth ) );\n#endif\ngl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );\n#endif');
+        };
+        m.customProgramCacheKey = function () { return 'ew_far_shell'; };
+        m._ew_farU = U;
+        F.mat = m;
+        return m;
+    }
+    function _hqFarMesh(F, d) {
+        var g = new THREE.BufferGeometry(), U = _hqUnits(), P = d.pos, n = P.length, pu = new Float32Array(n);
+        for (var i = 0; i < n; i++) pu[i] = P[i] * U;
+        g.setAttribute('position', new THREE.BufferAttribute(pu, 3));
+        g.setAttribute('color', new THREE.BufferAttribute(d.col, 3));
+        g.setIndex(new THREE.BufferAttribute(d.idx, 1));
+        g.computeVertexNormals(); g.computeBoundingSphere(); g.computeBoundingBox();
+        var mesh = new THREE.Mesh(g, _hqFarMat(F));
+        mesh.castShadow = false; mesh.receiveShadow = false; mesh.matrixAutoUpdate = false;
+        mesh.raycast = _hqInstNoop;   // never the camera's boom, the seat ray, the gun: a far shell is scenery only
+        mesh._ew_occSkip = true; mesh._ew_farShell = true;
+        return mesh;
+    }
+    function _hqFarPlace(mesh, rel) {
+        var U = _hqUnits();
+        mesh.position.set(rel.x * U, (rel.y || 0) * U, rel.z * U); mesh.rotation.set(0, rel.rot * Math.PI / 2, 0);
+        mesh.updateMatrix(); mesh.matrixWorldNeedsUpdate = true;
+    }
+    function _hqFarDrawn(H, id) {
+        var st = H.stage; return !!(st && st.parts[id] && st.parts[id].attached);
+    }
+    function _hqFarTick(H, now) {
+        var id = H.opts && H.opts.room, S = H.room && H.room.shell, F = H.far;
+        var on = !_hqFarOff() && id && S && S.open && S.sky && H.player && H.scene && H.camera;
+        if (!on) {
+            if (F) { for (var k in F.shells) F.shells[k].mesh.visible = false; if (H.camera && H.camera.far > 20000) { H.camera.far = 20000; H.camera.updateProjectionMatrix(); } F.farU = 20000; }
+            return;
+        }
+        if (!F) { F = H.far = { group: new THREE.Group(), shells: {}, list: [], for: null, tris: 0, asked: {}, farU: 0 }; F.group.name = 'hq_far_shells'; }
+        if (!F.group.parent) H.scene.add(F.group);
+        var moved = F.for !== id;
+        if (!moved && now - (F.at || 0) < HQ_FAR_TICK_MS) return;
+        F.at = now;
+        if (moved) { F.for = id; try { F.list = hqFarParts(id) || []; } catch (e) { F.list = []; } }
+        var WR = HQ_WORLD_RULES || {}, pl = H.player, U = _hqUnits(), want = {}, built = false, reach = 0;
+        for (var i = 0; i < F.list.length; i++) {
+            var fp = F.list[i], sh = F.shells[fp.id];
+            want[fp.id] = 1;
+            if (!sh) {
+                if (built) continue;
+                var room = _hqData().rooms[fp.id]; if (!room) continue;
+                if (room.terrain && !room._terrainInfo) {
+                    if (!F.asked[fp.id] && H.opts.farWarm) { F.asked[fp.id] = 1; try { H.opts.farWarm(fp.id); } catch (e) {} }
+                    continue;
+                }
+                var d = null; try { d = hqFarShell(fp.id); } catch (e) { d = null; if (!F.asked['!' + fp.id]) { F.asked['!' + fp.id] = 1; console.warn('[HQ far] ' + fp.id, e); } }
+                if (!d || !d.tris || F.tris + d.tris > (WR.farTris || 90000)) continue;
+                sh = F.shells[fp.id] = { mesh: _hqFarMesh(F, d), tris: d.tris };
+                sh.mesh.name = 'hq_far:' + fp.id;
+                F.group.add(sh.mesh); F.tris += d.tris; built = true;
+            }
+            if (moved || !sh.placed) { _hqFarPlace(sh.mesh, fp.rel); sh.placed = true; }
+            var gap = hqFarGap(fp, pl.x, pl.z);
+            var show = !_hqFarDrawn(H, fp.id) && gap >= (WR.farMinM || 24);
+            sh.mesh.visible = show;
+            if (show) { var r = fp.rect, dx = Math.max(Math.abs(r.x0 - pl.x), Math.abs(r.x1 - pl.x)), dz = Math.max(Math.abs(r.z0 - pl.z), Math.abs(r.z1 - pl.z)); reach = Math.max(reach, Math.hypot(dx, dz)); }
+        }
+        for (var sid in F.shells) if (!want[sid]) F.shells[sid].mesh.visible = false;   // a part this room does not see (after a crossing)
+        /* the far plane: the farthest shown shell's far corner (+ its height), never under the building's own 274 m */
+        var cam = H.camera, farU = Math.max(20000, Math.min((WR.far || 900), reach + 80) * U);
+        if (Math.abs(farU - cam.far) > 200) { cam.far = farU; cam.updateProjectionMatrix(); }
+        F.farU = cam.far;
+    }
+    function _hqFarStats(H) {
+        var F = H && H.far; if (!F) return null;
+        var shown = 0, list = []; for (var k in F.shells) { if (F.shells[k].mesh.visible) shown++; list.push(k); }
+        return { parts: F.list.length, built: list.length, shown: shown, tris: F.tris, far: +(F.farU / _hqUnits()).toFixed(0), waiting: F.list.filter(function (p) { return !F.shells[p.id]; }).map(function (p) { return p.id; }) };
+    }
+    function _hqLodStats(H) {
+        var L = H && H.lod; if (!L) return null;
+        return { meshes: L.list.length, full: L.lv[0], lod1: L.lv[1], lod2: L.lv[2], culled: L.culled, swaps: L.swaps };
     }
     /* THE GATE (2026-09-20): the room is READY — the load card may fade — when the walker's rig has attached
        (or the walker has no rig to wait for: 3D units off, a model that failed) AND the room's gate is idle:
@@ -56288,7 +56630,8 @@ const ThreeRenderer = (function () {
     ['opts', 'host', 'profile', 'snap', 'scene', 'camera', 'player', 'sky', 'portal', 'gun', 'ride', 'vehicle', 'shadows', 'atmos', 'heightFog', 'ao',
      'keyLight', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
      'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
-     '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's
+     '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
+     'far', 'lod', '_lodAt', '_lodWarned', '_farWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'far' / 'lod': THE FAR SHELLS / THE LOD LEVELS (Phase 10)
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
     function _hqStageArm(H) {
@@ -56764,6 +57107,7 @@ const ThreeRenderer = (function () {
     function _hqStageSwap(H, to) {
         var st = H.stage, E = st.parts[to], rel = E.rel, U = _hqUnits(), t0 = performance.now();
         var fromId = st.id, fromRoom = H.room;
+        try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: re-picked on the new part's list
         try { _hqInstDrop(H); } catch (e) {} H._instTried = false;
         /* the part you leave: its people stand down (the walker stays), its record becomes a neighbour's */
         var Q = { id: fromId, P: {}, extra: null, opts: Object.assign({}, H.opts, { room: fromId }), gate: null, step: _HQ_STAGE_STEPS.length, built: true, attached: true, t0: t0, rel: null };
@@ -57491,10 +57835,12 @@ const ThreeRenderer = (function () {
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
         _hqUnbindInput();
         _hq = null;
+        try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: every mesh on its full geometry before the hand-over (the battle's camera is close)
         try { _hqInstDrop(H); } catch (e) {}   // THE INSTANCE PASS: the originals draw again before the hand-over / the disposal
         _hqFrameInfo = null; if (_fpsEl && !active) _fpsEl.style.display = 'none';   // the walk's readout leaves with the walk (the battle's activate shows its own)
         try { if (H.gate) H.gate.close(); } catch (e) {}
         try { _mqDropQueued(2); } catch (e) {}   // THE ASSET LEDGER: this room's unstarted background jobs (its population, a warm) are forgotten with it
+        _mqSpots = {};   // THE NEAR FIRST: the room's spots leave with it (the battle's files keep their request order)
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased
         if (H.sky) _horizonFogDirty = true;   // an outdoor room drove the shared sky uniforms: the battle re-applies its fog
@@ -57657,6 +58003,10 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
+        /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and
+           { meshes, full, lod1, lod2, culled, swaps } — null outside the walk (or before the first tick) */
+        far: function () { return _hq ? _hqFarStats(_hq) : null; },
+        lod: function () { return _hq ? _hqLodStats(_hq) : null; },
         /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the room's place on the clock — { hour, room, locked, day, dusk, lamp, sunAz,
            sunEl, moonEl, key: { x, y, z, i } } | null (an unclocked room). The hour itself is map.js's (window.hqClockSet(h) moves it) */
         clock: function () {
