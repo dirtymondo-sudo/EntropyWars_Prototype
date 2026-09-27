@@ -93,6 +93,10 @@ diffs. The deliverable is always the full edited file, produced in chat.
   the look): tests aoe-mask.test.js + spell-anim-pick.test.js; notes in ui-menus-audio.md + spells-vfx.md.
   Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): spell-riders, family-passives, spell-upgrades, spell-families
   .test.js; notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
+- `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
+  `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
+  <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
+  of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on
@@ -128,9 +132,9 @@ changed ⇒ ship a fresh index.html too.
 - `index.html` is served by Render (NOT R2); the user redeploys it to Render.
   It must stay revalidated (short/no cache), so the new token is seen immediately.
 - Asset URLs *inside* the JS (sprites/textures/audio/GLB in sprites.js `_S`,
-  audio.js `_R2_BASE`, inline data.js/three-renderer.js URLs) are NOT yet
-  `?v=`-tagged. If you change an asset in place, either rename its file (new path
-  = auto cache-bust) or tell the user, since the token bump won't cover it.
+  audio.js `_R2_BASE`, inline data.js/three-renderer.js URLs) are NOT `?v=`-tagged.
+  Since 2026-09-27 a file changed in place reaches players once ASSET_MANIFEST.json
+  lists its new sha (`npm run manifest`, then deploy); else rename it or tell the user.
 
 ## RULE #2 — ONLINE PVP PARITY (every gameplay/visual change MUST work online)
 Online is host-authoritative: the HOST runs the entire engine (blitz turns, AI

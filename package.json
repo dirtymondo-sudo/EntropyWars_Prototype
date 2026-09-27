@@ -13,6 +13,8 @@
     "test:parity": "node check-data-parity.js",
     "grades": "node check-grades.js",
     "deploy": "node deploy.js",
+    "optimize": "node optimize-assets.js",
+    "manifest": "node manifest-assets.js",
     "steam:schema": "node steam-schema.js",
     "bots": "node bots.js",
     "bots:register": "node bot_register.js"

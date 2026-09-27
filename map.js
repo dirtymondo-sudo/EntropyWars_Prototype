@@ -7975,6 +7975,58 @@
                 </div>`;
         };
 
+        /* THE WORLD ON DISK (OPEN_WORLD_PLAN §6.3/§6.4, Phase 9, 2026-09-27): the asset store's size against its cap, whether
+           the browser made it persistent, CLEAR, and — in the walk — DOWNLOAD THIS PLACE (ThreeRenderer.hq.warmZone: every
+           room of the zone you stand in onto the disk, two files at a time on the background lane). The line under the
+           button counts while the sheet is open. */
+        function _ewDiskSize(b) {
+            b = +b || 0;
+            if (b >= 1073741824) return (b / 1073741824).toFixed(b >= 10737418240 ? 0 : 1) + ' GB';
+            return Math.max(0, Math.round(b / 1048576)) + ' MB';
+        }
+        function _ewDiskPlaceLine(z) {
+            if (!z) return '';
+            const have = (z.onDisk || 0) + (z.done || 0), size = z.bytes ? ' · ' + _ewDiskSize(z.bytes) : '';
+            if (!z.total) return 'Nothing to download here yet.';
+            if (z.idle) return `${have} of ${z.total} files on disk${size} · ${z.rooms} room${z.rooms === 1 ? '' : 's'}`;
+            if (have + (z.failed || 0) >= z.total) return `On disk: ${have} of ${z.total} files${z.failed ? ` · ${z.failed} failed (they load when you walk in)` : ''}${size}`;
+            return `Downloading: ${have} of ${z.total} files${z.bytes ? ` · ${_ewDiskSize((z.diskBytes || 0) + (z.doneBytes || 0))} of ${_ewDiskSize(z.bytes)}` : ''}`;
+        }
+        window._buildWorldDiskHTML = function (reopen) {
+            const S = window._ewAssetStore;
+            if (!S || typeof S.stats !== 'function') return '';
+            const st = S.stats();
+            const H = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ? ThreeRenderer.hq : null;
+            const room = H && typeof H.room === 'function' ? H.room() : null;
+            const z = (room && typeof H.zoneState === 'function') ? H.zoneState() : null;
+            const note = st.available
+                ? `Every model, sheet and sound you walk past is kept on this device, so a place downloads once. ${st.persisted ? 'The browser keeps it for good (persistent storage).' : 'The browser may clear it when the disk runs short (it has not granted persistent storage).'}`
+                : `This browser can't keep the world on disk (a private window, or a page without HTTPS), so every place downloads again each visit.`;
+            const line = st.available ? `WORLD ON DISK: ${_ewDiskSize(st.bytes)} of ${_ewDiskSize(st.capBytes)} · ${st.persisted ? 'persistent' : 'may be cleared'}` : 'WORLD ON DISK: unavailable';
+            let place = '';
+            if (st.available && z) {
+                place = `<div class="pm-set-row" style="margin:8px 0 4px;align-items:center;gap:8px;flex-wrap:wrap">
+                    <button class="pm-set-btn" onclick="try{ThreeRenderer.hq.warmZone();}catch(e){}${reopen}">Download this place: ${String(z.label || z.zone).replace(/</g, '&lt;')}</button>
+                </div>
+                <div id="ewDiskPlace" data-zone="${z.zone}" style="font-size:10px;color:var(--muted);line-height:1.4">${_ewDiskPlaceLine(z)}</div>`;
+                if (!window._ewDiskTick) window._ewDiskTick = setInterval(() => {
+                    const el = document.getElementById('ewDiskPlace');
+                    if (!el) { clearInterval(window._ewDiskTick); window._ewDiskTick = null; return; }
+                    try { el.textContent = _ewDiskPlaceLine(ThreeRenderer.hq.zoneState(el.getAttribute('data-zone'))); } catch (e) {}
+                    try { const t = document.getElementById('ewDiskLine'), s2 = window._ewAssetStore.stats(); if (t && s2.available) t.textContent = `WORLD ON DISK: ${_ewDiskSize(s2.bytes)} of ${_ewDiskSize(s2.capBytes)} · ${s2.persisted ? 'persistent' : 'may be cleared'}`; } catch (e) {}
+                }, 1000);
+            }
+            return `<div class="pm-set-group">
+                <div class="pm-set-group-title">The World on Disk</div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">${note}</div>
+                <div id="ewDiskLine" style="font-size:11px;letter-spacing:0.06em;margin-bottom:6px">${line}</div>
+                ${st.available ? `<div class="pm-set-row" style="margin-bottom:6px">
+                    <button class="pm-set-btn" onclick="if(confirm('Clear the world from this device? Every place downloads again the next time you walk into it.')){Promise.resolve(window._ewAssetStore.clear()).then(()=>{${reopen}});}">Clear the world from disk</button>
+                </div>` : ''}
+                ${place}
+            </div>`;
+        };
+
         function _renderMainMenuSettings() {
             /* THE PAUSE MENU (2026-09-15): the HQ's SETTINGS command renders the same body inside its overlay */
             const body = window._hqPauseSettingsBody || document.getElementById('mmSettingsBody');
@@ -8042,6 +8094,7 @@
                         </div>
                     </div>`;
                     })() : ''}
+                    ${typeof window._buildWorldDiskHTML === 'function' ? window._buildWorldDiskHTML('window._openMainMenuSettings();') : ''}
                     ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu) ? (() => {
                         const on = (typeof window._menuSceneEnabled === 'function') && window._menuSceneEnabled();
                         let biome = 'random'; try { biome = localStorage.getItem('ew_menu_biome') || 'random'; } catch (e) {}

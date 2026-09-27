@@ -977,8 +977,8 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
 | 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) — **DONE 2026-09-27** (0 → 65 m on foot; §12) |
 | 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness — **DONE 2026-09-27** (`hq-coast.test.js`; §12) |
-| 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) |
-| 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged |
+| 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) — **SKIPPED 2026-09-27 (mondo: "let's skip phase 8")**: the field stays 8 × 8; §5.6 and fork 9 stand as the design if it is ever wanted |
+| 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged — **DONE 2026-09-27 with deviations (§12)**: the swap is by the manifest, not by renamed URLs; textures keep their size (2048 cap); no quantization; KTX2 not wired (r128 ships no KTX2Loader in examples/js) |
 | 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) |
 | 11 | **THE SMOOTH ATTACH** (§5.9): `renderer.compile` before a part attaches, the ms-budget build slice (`buildMs`), `ImageBitmapLoader` textures, static batching of the shell per tile | three-renderer.js | `hq-stage.test.js` grows the slice (no step over budget on the vm clock) and the merge count pins |
 | 12 | **PORTALS + THE MEMORY BUDGET** (§5.9): a door join is a portal (a neighbour through a shut door is not drawn), LRU eviction of parsed models under a VRAM estimate, the MEM line on the readout | three-renderer.js | `hq-joins.test.js` grows the portal rule; `asset-store.test.js` the eviction |
@@ -1426,3 +1426,45 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     lines); re-pinned hq-deep (the free bay door; the entries test no longer reads the deleted board rooms), hq-city (the
     mall door), hq-urban (the harbour part), hq-stage (the zones). check-terrain: the harbour, the cay, the Dutchman and
     Downtown, every door reached, no traps. Not walked by a person.
+- 2026-09-27 — **PHASE 8 SKIPPED** (mondo, thread "skip Phase 8": "let's skip phase 8 of the open world plan. continue"). The
+  encounter field stays 8 × 8 everywhere; §5.6 and fork 9 are kept as the design, not scheduled.
+- 2026-09-27 — **PHASE 9 SHIPPED: THE ASSETS** (same thread; zip `open-world/ENTROPY_WARS_OPEN_WORLD_12.zip`, token
+  `20260927-open-world-12-cors`, a delta over zip 11).
+  - **`optimize-assets.js`** (`npm run optimize -- <dir>`, repo-only; its deps are installed `--no-save`, never in
+    package.json): per GLB, dedup + prune + resample, textures to WebP (EXT_texture_webp) capped at `--size` (default
+    **2048**, so every Meshy sheet keeps its size: the look doesn't change), `reorder` + EXT_meshopt_compression on the
+    FLOAT attributes. Writes `<name>.opt.glb` beside the original (or under `--out`), skips one that isn't 5 % smaller.
+    `--check` parses every result with three r128's own GLTFLoader + MeshoptDecoder and compares meshes, skins, bones,
+    clips, tracks and the CPU-skinned bounds with the original. Measured on four repo files: a Meshy vault door 5.0 →
+    0.52 MB, the coffee door 1.6 → 0.27, MAL2 (clips only) 0.85 → 0.22, the male base rig 0.47 → 0.26 (7.9 → 1.3 MB).
+    **Deviations**: NO quantization (three r128's `BufferAttribute.getX` / `fromBufferAttribute` read a normalized-int
+    attribute raw, so a quantized POSITION or skin weight breaks raycasts, `computeBoundingBox` and the CPU-skinned
+    bounds the renderer scales rigs by: `gltf-transform optimize` and its `meshopt()` both quantize, so the tool builds
+    its own pipeline); no instancing (r128 has no EXT_mesh_gpu_instancing), no simplify (Phase 10's LOD), no
+    join/flatten (the retarget finds bones by name). KTX2 is not wired: r128 ships its KTX2Loader only as a module.
+  - **`manifest-assets.js`** (`npm run manifest -- <bucket mirror> [--prefix Assets/] [--merge]`): writes
+    `ASSET_MANIFEST.json` = `{ v, made, base, files: { "<bucket path>": [bytes, sha12] } }`. **Deviation**: no `kind`
+    and no `rooms` in it; the game reads a room's files from data.js's rows + THE FILE BOOK, as THE WARM does.
+  - **THE SWAP BY MANIFEST** (three-renderer.js, THE ASSET STORE): **deviation from §6.1**, no URL in sprites.js /
+    data.js / the renderer is renamed. `_asResolve` loads `<name>.opt.glb` wherever the manifest lists it, the
+    decoder is on the page and `window.EW_NO_OPT_ASSETS` is off; a sibling that fails falls back to the original,
+    and three failures in a page turn siblings off. `_asWireMeshopt` wraps `THREE.GLTFLoader` so every loader (the
+    VFX file's and anim-sheets' too) gets `MeshoptDecoder`; index.html loads r128's own `meshopt_decoder.js` after
+    GLTFLoader.js and preloads the manifest with the `?v=` token (deploy.js ships it like a script).
+  - **THE HASH**: a file listed in the manifest is fetched as `<url>?h=<sha>` (R2 ignores the query; the edge caches
+    by it), and a store row remembers the sha it was stored under, so a model or sheet replaced IN PLACE on R2
+    reaches the player on the next manifest + deploy (the old "rename it to cache-bust" rule, CLAUDE.md RULE #1b).
+    The manifest's bytes stand in for a missing content-length (the 0-byte gap).
+  - **THE CAP BY QUOTA**: `persist()` at open, then `persisted()` + `estimate()`: a persistent store may hold
+    min(4 GB, 60 % of the quota), a best-effort one keeps 1.5 GB. `_ewAssetStore.stats()` reports persisted /
+    quota / usage / manifest / optLoads / optFalls / meshopt.
+  - **DOWNLOAD THIS PLACE** (`hq.warmZone(zoneId)`, `hq.zoneState`, `hq.zoneFiles`): every room of the zone you stand
+    in (its parts and the rooms they absorb): the rows' models, the book's files, the shell sheets, onto the disk,
+    two at a time on the background lane, a phone too (the player asked). The settings sheet (main menu and pause)
+    grows **THE WORLD ON DISK**: "WORLD ON DISK: 1.9 GB of 4 GB · persistent", CLEAR, and in the walk the
+    button with a live "N of M files" line. `_hqWarmRoom` now reads the same `_hqRoomFiles` list.
+  - **Not in Phase 9**: the load card's exact "N of M" from the manifest (the gate still counts what the build asks
+    for); the `rooms` table in the manifest. mondo's steps to switch the compression on are in the zip 12 reply.
+  - Tests: `asset-store.test.js` (the resolve, the hash and the re-fetch, the fallback, the loader wrap, the cap,
+    DOWNLOAD THIS PLACE in a vm, the tools); `mobile-performance.test.js` unchanged and green. Checked in Chromium:
+    a meshopt + WebP door and rig load through the wrapped r128 loader.

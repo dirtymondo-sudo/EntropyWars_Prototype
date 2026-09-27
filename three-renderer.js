@@ -1473,6 +1473,105 @@ const ThreeRenderer = (function () {
        loaders take their old direct paths, byte for byte. window._ewAssetStore = { stats(), clear() }. */
     var AS_NAME = 'ew-assets-v1', AS_CAP_BYTES = 1536 * 1024 * 1024, AS_INDEX_KEY = 'ew_asset_index', AS_INDEX_MAX = 4000;
     var _asCache = null, _asOpening = null, _asDead = false, _asIndex = null, _asBytes = 0, _asSaveTimer = null, _asHits = 0, _asMisses = 0, _asPuts = 0, _asEvicting = false;
+    /* THE ASSETS (OPEN_WORLD_PLAN §6, Phase 9, 2026-09-27):
+       - THE CAP BY QUOTA: a store the browser has made PERSISTENT (navigator.storage.persist, asked at open) may hold
+         min(4 GB, 60 % of the origin's quota); a best-effort one keeps 1.5 GB (the browser may clear it under pressure).
+       - THE MANIFEST (ASSET_MANIFEST.json on R2, made by manifest-assets.js, preloaded by index.html with the ?v= token):
+         { files: { "<bucket path>": [bytes, sha] } }. A GLB whose `.opt.glb` sibling is listed loads the sibling
+         (optimize-assets.js: meshopt + WebP; the MeshoptDecoder script is wired into every GLTFLoader below); a file
+         is fetched as `<url>?h=<sha>` so one replaced in place on R2 reaches the player on the next deploy, and a
+         stored copy whose sha differs is fetched again; `bytes` stands in for a missing content-length. No manifest
+         (not uploaded yet, a 404, window.EW_NO_ASSET_MANIFEST) = every file exactly as before.
+         window.EW_NO_OPT_ASSETS = the originals even where a sibling is listed. */
+    var AS_CAP_BEST = 1536 * 1024 * 1024, AS_CAP_MAX = 4096 * 1024 * 1024, AS_CAP_SHARE = 0.6;
+    var AS_BASE = 'https://cdn.entropywars.net/', AS_MANIFEST_URL = AS_BASE + 'ASSET_MANIFEST.json', AS_MANIFEST_WAIT_MS = 2500;
+    var _asQuota = { persisted: false, quota: 0, usage: 0, asked: false }, _asMan = null, _asManP = null, _asManDone = false, _asOptLoads = 0, _asOptFalls = 0;
+    /* the cap from the quota: persistent → min(4 GB, 60 % of the quota); else the best-effort 1.5 GB */
+    function _asCapFor(q) {
+        if (q && q.persisted && q.quota > 0) return Math.min(AS_CAP_MAX, Math.floor(q.quota * AS_CAP_SHARE));
+        return AS_CAP_BEST;
+    }
+    function _asQuotaRead(granted) {
+        try {
+            var S = typeof navigator !== 'undefined' ? navigator.storage : null;
+            if (!S) return Promise.resolve(_asQuota);
+            var per = granted === true ? Promise.resolve(true) : (S.persisted ? S.persisted().catch(function () { return false; }) : Promise.resolve(false));
+            return per.then(function (p) {
+                _asQuota.persisted = !!p;
+                return S.estimate ? S.estimate().catch(function () { return null; }) : null;
+            }).then(function (est) {
+                if (est) { _asQuota.quota = +est.quota || 0; _asQuota.usage = +est.usage || 0; }
+                _asQuota.asked = true;
+                AS_CAP_BYTES = _asCapFor(_asQuota);
+                return _asQuota;
+            });
+        } catch (e) { return Promise.resolve(_asQuota); }
+    }
+    /* the bucket path of a CDN url (decoded, no query), or null for a url off the bucket */
+    function _asKey(url) {
+        url = String(url || '');
+        var base = (_asMan && _asMan.base) || AS_BASE;
+        if (url.indexOf(base) !== 0) return null;
+        var k = url.slice(base.length), q = k.search(/[?#]/);
+        if (q >= 0) k = k.slice(0, q);
+        try { k = decodeURIComponent(k); } catch (e) {}
+        return k;
+    }
+    function _asManAdopt(j) {
+        if (!j || typeof j !== 'object' || !j.files || typeof j.files !== 'object') { _asMan = null; return null; }
+        var n = 0, opt = 0;
+        for (var k in j.files) { n++; if (/\.opt\.glb$/i.test(k)) opt++; }
+        _asMan = { base: typeof j.base === 'string' && j.base ? j.base : AS_BASE, files: j.files, made: j.made || null, n: n, opt: opt };
+        return _asMan;
+    }
+    /* the manifest, once per page: the preload index.html starts (its href carries the ?v= token) or the bare url */
+    function _asManLoad() {
+        if (_asManP) return _asManP;
+        var off = false; try { off = typeof window === 'undefined' || typeof document === 'undefined' || !!window.EW_NO_ASSET_MANIFEST || typeof fetch !== 'function'; } catch (e) { off = true; }
+        if (off) { _asManDone = true; _asManP = Promise.resolve(null); return _asManP; }
+        var href = AS_MANIFEST_URL;
+        try { var el = document.getElementById('ew-asset-manifest'); if (el && el.href) href = el.href; } catch (e) {}
+        _asManP = fetch(href, { mode: 'cors', credentials: 'same-origin' }).then(function (r) {
+            return r && r.ok ? r.json() : null;
+        }).then(function (j) { _asManDone = true; return _asManAdopt(j); }, function () { _asManDone = true; return null; });
+        return _asManP;
+    }
+    /* wait for the manifest, never longer than AS_MANIFEST_WAIT_MS (a slow manifest never holds a room) */
+    function _asManReady() {
+        if (_asManDone) return Promise.resolve(_asMan);
+        var p = _asManLoad();
+        return Promise.race([p, new Promise(function (ok) { setTimeout(function () { ok(_asMan); }, AS_MANIFEST_WAIT_MS); })]);
+    }
+    function _asManEntry(url) { if (!_asMan) return null; var k = _asKey(url); return k != null ? (_asMan.files[k] || null) : null; }
+    function _asMeshoptOk() {
+        try { return typeof MeshoptDecoder !== 'undefined' && !!MeshoptDecoder && typeof WebAssembly !== 'undefined' && !(typeof window !== 'undefined' && window.EW_NO_OPT_ASSETS); } catch (e) { return false; }
+    }
+    /* a GLB → its optimized sibling when the manifest lists one and the decoder is here; anything else unchanged */
+    function _asResolve(url) {
+        if (!_asMan || !/\.glb([?#]|$)/i.test(url) || /\.opt\.glb([?#]|$)/i.test(url) || !_asMeshoptOk()) return url;
+        var k = _asKey(url); if (k == null) return url;
+        if (!_asMan.files[k.replace(/\.glb$/i, '.opt.glb')]) return url;
+        return String(url).replace(/\.glb([?#]|$)/i, '.opt.glb$1');
+    }
+    /* the url the network is asked for: the manifest's sha rides as ?h= (the edge's cache key; R2 ignores it) */
+    function _asNetUrl(url) {
+        var e = _asManEntry(url); if (!e || !e[1]) return url;
+        return url + (String(url).indexOf('?') >= 0 ? '&' : '?') + 'h=' + e[1];
+    }
+    /* every GLTFLoader decodes EXT_meshopt_compression (the MeshoptDecoder script index.html loads after GLTFLoader.js) */
+    function _asWireMeshopt() {
+        try {
+            if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || THREE.GLTFLoader._ewMeshopt) return false;
+            if (typeof MeshoptDecoder === 'undefined' || !MeshoptDecoder) return false;
+            var G = THREE.GLTFLoader;
+            var W = function (manager) { var l = new G(manager); try { if (l.setMeshoptDecoder) l.setMeshoptDecoder(MeshoptDecoder); } catch (e) {} return l; };
+            W.prototype = G.prototype; W._ewMeshopt = true; W._ewInner = G;
+            THREE.GLTFLoader = W;
+            return true;
+        } catch (e) { return false; }
+    }
+    _asWireMeshopt();
+    try { if (typeof window !== 'undefined' && typeof document !== 'undefined') _asManLoad(); } catch (e) {}
     function _asAvailable() {
         try {
             if (typeof window === 'undefined' || window.EW_NO_ASSET_STORE || _asDead) return false;
@@ -1486,7 +1585,7 @@ const ThreeRenderer = (function () {
         _asIndex = {}; _asBytes = 0;
         try {
             var raw = localStorage.getItem(AS_INDEX_KEY), obj = raw ? JSON.parse(raw) : null;
-            if (obj && typeof obj === 'object') { for (var k in obj) { var v = obj[k]; if (v && v.length === 2) { _asIndex[k] = [+v[0] || 0, +v[1] || 0]; _asBytes += +v[1] || 0; } } }
+            if (obj && typeof obj === 'object') { for (var k in obj) { var v = obj[k]; if (v && v.length >= 2) { _asIndex[k] = v[2] ? [+v[0] || 0, +v[1] || 0, String(v[2])] : [+v[0] || 0, +v[1] || 0]; _asBytes += +v[1] || 0; } } }
         } catch (e) { _asIndex = {}; _asBytes = 0; }
         return _asIndex;
     }
@@ -1497,12 +1596,20 @@ const ThreeRenderer = (function () {
             try { localStorage.setItem(AS_INDEX_KEY, JSON.stringify(_asIndex || {})); } catch (e) {}
         }, 800);
     }
-    function _asTouch(url, size) {
-        var ix = _asIndexLoad(), prev = ix[url];
+    /* a row is [last use, bytes, sha?]: the sha is the manifest's when the file was stored (THE ASSETS, Phase 9) */
+    function _asTouch(url, size, sha) {
+        var ix = _asIndexLoad(), prev = ix[url], e = _asManEntry(url);
         if (prev) _asBytes -= prev[1];
-        ix[url] = [Date.now(), size || (prev ? prev[1] : 0)];
-        _asBytes += ix[url][1];
+        var b = size || (prev ? prev[1] : 0) || (e ? +e[0] || 0 : 0), h = sha || (prev && prev[2]) || (e && e[1]) || '';
+        ix[url] = h ? [Date.now(), b, h] : [Date.now(), b];
+        _asBytes += b;
         _asIndexSave();
+    }
+    /* a stored copy is stale when the manifest names a different sha than the one it was stored under */
+    function _asStale(url) {
+        var e = _asManEntry(url); if (!e || !e[1]) return false;
+        var row = _asIndexLoad()[url];
+        return !!(row && row[2] && row[2] !== e[1]);
     }
     function _asForget(url) { var ix = _asIndexLoad(); if (ix[url]) { _asBytes -= ix[url][1]; delete ix[url]; _asIndexSave(); } }
     /* evict the least recently used until the store is under the cap (or the index is under its row cap) */
@@ -1525,7 +1632,10 @@ const ThreeRenderer = (function () {
         if (!_asAvailable()) return Promise.resolve(null);
         _asOpening = caches.open(AS_NAME).then(function (c) {
             _asCache = c; _asIndexLoad();
-            try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
+            try {
+                if (navigator.storage && navigator.storage.persist) navigator.storage.persist().then(function (g) { return _asQuotaRead(g); }, function () { return _asQuotaRead(); });
+                else _asQuotaRead();
+            } catch (e) {}
             return c;
         }).catch(function (e) { _asDead = true; _asOpening = null; try { console.warn('[ThreeRenderer] the asset store could not open — the loaders take the direct path', e); } catch (e2) {} return null; });
         return _asOpening;
@@ -1535,19 +1645,21 @@ const ThreeRenderer = (function () {
        o.priority = the fetch priority hint (a sheet is 'high'). */
     function _asFetch(url, o) {
         o = o || {};
-        return _asOpen().then(function (c) {
+        return Promise.all([_asOpen(), _asManReady()]).then(function (r) {
+            var c = r[0];
             var hit = c ? c.match(url).catch(function () { return null; }) : Promise.resolve(null);
             return hit.then(function (res) {
-                if (res && res.ok) { _asHits++; if (o.rec) o.rec.cached = true; _asTouch(url); return res; }
+                if (res && res.ok && !_asStale(url)) { _asHits++; if (o.rec) o.rec.cached = true; _asTouch(url); return res; }
                 _asMisses++;
                 var init = { mode: 'cors', credentials: 'omit' };
                 if (o.priority) init.priority = o.priority;
-                return fetch(url, init).then(function (net) {
+                return fetch(_asNetUrl(url), init).then(function (net) {
                     if (!net || !net.ok) throw new Error('HTTP ' + (net ? net.status : 0) + ' ' + url);
                     if (c && net.type !== 'opaque') {
-                        var size = +(net.headers && net.headers.get && net.headers.get('content-length')) || 0;
+                        var me = _asManEntry(url);
+                        var size = +(net.headers && net.headers.get && net.headers.get('content-length')) || (me ? +me[0] || 0 : 0);
                         try {
-                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, size); _asEvict(c); }, function (err) {
+                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, size, me && me[1]); _asEvict(c); }, function (err) {
                                 /* the quota (or a cache that refuses the response): make room and carry on — the file still lands from `net` */
                                 try { _asEvict(c); } catch (e) {}
                             });
@@ -1562,10 +1674,24 @@ const ThreeRenderer = (function () {
     /* a GLB through the store → GLTFLoader.parse; else the loader's own network path */
     function _asGltf(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') { if (onError) onError(new Error('no GLTFLoader')); return; }
-        if (!_asAvailable()) { new THREE.GLTFLoader().load(url, onLoad, undefined, onError); return; }
-        _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
-            try { new THREE.GLTFLoader().parse(buf, _asBasePath(url), onLoad, onError); } catch (e) { if (onError) onError(e); }
-        }).catch(function (e) { if (onError) onError(e); });
+        o = o || {};
+        /* THE ASSETS (Phase 9): the manifest's optimized sibling when there is one; a sibling that fails (a missing
+           upload, a decoder that won't start) falls back to the original once, and the page stops asking for siblings */
+        _asManReady().then(function () {
+            var u = o.noOpt ? url : _asResolve(url), opt = u !== url;
+            var fail = function (e) {
+                if (!opt) { if (onError) onError(e); return; }
+                _asOptFalls++;
+                try { console.warn('[ThreeRenderer] the optimized ' + u + ' did not load — the original instead', e); } catch (e2) {}
+                if (_asOptFalls >= 3) { try { window.EW_NO_OPT_ASSETS = true; } catch (e3) {} }
+                _asGltf(url, onLoad, onError, Object.assign({}, o, { noOpt: true }));
+            };
+            var done = function (g) { if (opt) _asOptLoads++; onLoad(g); };
+            if (!_asAvailable()) { new THREE.GLTFLoader().load(_asNetUrl(u), done, undefined, fail); return; }
+            _asFetch(u, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
+                try { new THREE.GLTFLoader().parse(buf, _asBasePath(url), done, fail); } catch (e) { fail(e); }
+            }).catch(fail);
+        });
     }
     /* an OBJ through the store → OBJLoader.parse; else the loader's own network path */
     function _asObj(url, onLoad, onError, o) {
@@ -1577,14 +1703,22 @@ const ThreeRenderer = (function () {
             onLoad(root);
         }).catch(function (e) { if (onError) onError(e); });
     }
-    function _asStats() { var ix = _asIndexLoad(), n = 0; for (var k in ix) n++; return { available: _asAvailable(), files: n, bytes: _asBytes, capBytes: AS_CAP_BYTES, hits: _asHits, misses: _asMisses, puts: _asPuts }; }
+    function _asStats() {
+        var ix = _asIndexLoad(), n = 0; for (var k in ix) n++;
+        return { available: _asAvailable(), files: n, bytes: _asBytes, capBytes: AS_CAP_BYTES, hits: _asHits, misses: _asMisses, puts: _asPuts,
+            persisted: _asQuota.persisted, quota: _asQuota.quota, usage: _asQuota.usage,
+            manifest: _asMan ? { files: _asMan.n, opt: _asMan.opt, made: _asMan.made } : null, optLoads: _asOptLoads, optFalls: _asOptFalls, meshopt: _asMeshoptOk() };
+    }
+    /* the bytes of a url by the manifest (0 when it isn't listed) — DOWNLOAD THIS PLACE sizes a place with it */
+    function _asBytesOf(url) { var e = _asManEntry(_asResolve(url)) || _asManEntry(url); return e ? +e[0] || 0 : 0; }
+    function _asHas(url) { var ix = _asIndexLoad(); return !!ix[_asResolve(url)] && !_asStale(_asResolve(url)); }
     function _asClear() {
         _asIndex = {}; _asBytes = 0; try { localStorage.removeItem(AS_INDEX_KEY); } catch (e) {}
         if (!_asAvailable()) return Promise.resolve(false);
         _asCache = null; _asOpening = null;
         return caches.delete(AS_NAME).then(function (ok) { return ok; }, function () { return false; });
     }
-    if (typeof window !== 'undefined') { window._ewAssetStore = { stats: _asStats, clear: _asClear }; }
+    if (typeof window !== 'undefined') { window._ewAssetStore = { stats: _asStats, clear: _asClear, quota: function () { return _asQuotaRead(); }, manifest: function () { return _asManLoad(); } }; }
     function _texLanded() {
         _texInflight = Math.max(0, _texInflight - 1);
         if (_texInflight === 0 && typeof _mqPump === 'function') { try { setTimeout(_mqPump, 0); } catch (e) {} }
@@ -56438,18 +56572,49 @@ const ThreeRenderer = (function () {
     }
     /* THE DISK WARM: bytes onto the asset store, two at a time, lowest priority — a file already on disk is skipped */
     var _asPreQ = [], _asPreN = 0, _asPreSeen = {};
-    function _asPrefetch(url) {
+    /* o.force = the player asked (DOWNLOAD THIS PLACE: a phone too); o.job = the zone download it counts toward */
+    function _asPrefetch(url, o) {
+        o = o || {};
         if (!url || _asPreSeen[url] || !_asAvailable()) return false;
-        if (typeof window !== 'undefined' && window.EW_PERF_LOW) return false;
-        var ix = _asIndexLoad(); if (ix[url]) return false;
-        _asPreSeen[url] = 1; _asPreQ.push(url); _asPrePump();
+        if (!o.force && typeof window !== 'undefined' && window.EW_PERF_LOW) return false;
+        if (_asHas(url)) return false;
+        _asPreSeen[url] = 1; _asPreQ.push({ url: url, job: o.job || null }); _asPrePump();
         return true;
     }
     function _asPrePump() {
         while (_asPreN < 2 && _asPreQ.length) {
-            var u = _asPreQ.shift(); _asPreN++;
-            _asFetch(u, { priority: 'low' }).then(function (res) { return res.blob(); }).then(function () {}, function () {}).then(function () { _asPreN--; _asPrePump(); });
+            var q = _asPreQ.shift(); _asPreN++;
+            (function (q) {
+                var ok = false;
+                _asManReady().then(function () { return _asFetch(_asResolve(q.url), { priority: 'low' }); })
+                    .then(function (res) { return res.blob(); }).then(function () { ok = true; }, function () {})
+                    .then(function () {
+                        _asPreN--; delete _asPreSeen[q.url];
+                        if (q.job) { if (ok) { q.job.done++; q.job.doneBytes += _asBytesOf(q.url); } else q.job.failed++; }
+                        _asPrePump();
+                    });
+            })(q);
         }
+    }
+    /* a room's files: the rows' own guesses (the doors' leaves, the props, the door gun) + THE FILE BOOK's record of its
+       last build. o.sheets adds the shell's sheets. Each { url, lane }: m = a misc model, r / f / t = bytes only. */
+    function _hqRoomFiles(roomId, o) {
+        o = o || {};
+        var D = _hqData(), room = D && D.rooms ? D.rooms[roomId] : null, out = [], seen = {};
+        if (!room || !D.catalogue) return out;
+        function add(url, lane) { if (url && !seen[url]) { seen[url] = 1; out.push({ url: url, lane: lane }); } }
+        function cat(c) { if (c && c.file) add(_hqModelUrl(c), 'm'); }
+        (room.doors || []).forEach(function (d) { if (d && d.leaf) cat(D.catalogue[d.leaf]); });
+        (room.props || []).forEach(function (p) { if (p && p.key) cat(D.catalogue[p.key]); });
+        cat(D.catalogue.door_gun);
+        _hqBookRead(roomId).forEach(function (f) { add(f.url, f.lane); });
+        if (o.sheets) {
+            var S = room.shell || {};
+            [S.floor || 'terrazzo', S.wall || 'stone', S.dado || 'oxblood', S.ceiling || 'ceiling', S.trim || 'teal'].forEach(function (k) {
+                var f = D.textures && D.textures[k]; if (f && D.assets && D.assets.textures) add(D.assets.textures + f, 't');
+            });
+        }
+        return out;
     }
     /* warm a room: o.disk = bytes only (a part two joins away); else the models parsed on the background lane (a door's
        room, the menu's arrival). The book's files + the rows' own guesses (the doors' leaves, the props, the shell's sheets). */
@@ -56458,26 +56623,61 @@ const ThreeRenderer = (function () {
         var D = _hqData(), room = D && D.rooms ? D.rooms[roomId] : null;
         if (!room || !D.catalogue) return 0;
         if (typeof window !== 'undefined' && window.EW_PERF_LOW) return 0;   // a phone streams the room on entry, one model at a time (the mobile pass)
-        var n = 0, seen = {};
-        function model(url) {
-            if (!url || seen[url]) return; seen[url] = 1;
-            if (o.disk) { if (_asPrefetch(url)) n++; return; }
+        var n = 0;
+        _hqRoomFiles(roomId).forEach(function (f) {
+            var url = f.url;
+            if (o.disk || f.lane !== 'm') { if (_asPrefetch(url)) n++; return; }   // a rig, a sheet, a foliage file: onto the disk
             var e = _miscModelCache[url]; if (e && (e.root || e.loading || e.failed)) return;
             n++; try { _loadMiscModel(url, !/\.obj($|\?)/i.test(url), function () {}, { bg: true }); } catch (err) {}   // the background lane (2026-09-20)
-        }
-        function warmCat(cat) { if (cat && cat.file) model(_hqModelUrl(cat)); }
-        (room.doors || []).forEach(function (d) { if (d && d.leaf) warmCat(D.catalogue[d.leaf]); });
-        (room.props || []).forEach(function (p) { if (p && p.key) warmCat(D.catalogue[p.key]); });
-        warmCat(D.catalogue.door_gun);
-        _hqBookRead(roomId).forEach(function (f) {
-            if (f.lane === 'm') model(f.url);
-            else if (!seen[f.url]) { seen[f.url] = 1; if (_asPrefetch(f.url)) n++; }   // a rig, a sheet, a foliage file: onto the disk
         });
         if (!o.disk) {
             var S = room.shell || {};
             [S.floor || 'terrazzo', S.wall || 'stone', S.dado || 'oxblood', S.ceiling || 'ceiling', S.trim || 'teal'].forEach(function (k) { try { _hqTex(k, 1, 1); } catch (e) {} });
         }
         return n;
+    }
+    /* DOWNLOAD THIS PLACE (OPEN_WORLD_PLAN §6.4, Phase 9): every room of a zone (its parts and the rooms they absorb)
+       onto the disk store, on the background lane, two files at a time — the player's "download once" as a button
+       (the pause menu's settings). Not automatic: the ring does the automatic part. A phone too, since the player
+       asked. Returns the job: { zone, label, rooms, total, onDisk, done, failed, bytes, doneBytes, diskBytes }. */
+    var _hqZoneJob = null;
+    function _hqZoneRooms(zoneId) {
+        var W = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.world) || null, Z = W && W.zones ? W.zones[zoneId] : null, out = [];
+        if (!Z) return out;
+        Object.keys(Z.parts || {}).forEach(function (pid) {
+            if (out.indexOf(pid) < 0) out.push(pid);
+            Object.keys((Z.parts[pid] && Z.parts[pid].absorbs) || {}).forEach(function (r) { if (out.indexOf(r) < 0) out.push(r); });
+        });
+        return out;
+    }
+    function _hqZoneFiles(zoneId) {
+        var seen = {}, list = [];
+        _hqZoneRooms(zoneId).forEach(function (rid) {
+            _hqRoomFiles(rid, { sheets: true }).forEach(function (f) { if (!seen[f.url]) { seen[f.url] = 1; list.push(f.url); } });
+        });
+        return list;
+    }
+    function _hqWarmZone(zoneId) {
+        var W = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.world) || null, Z = W && W.zones ? W.zones[zoneId] : null;
+        if (!Z) return null;
+        var files = _hqZoneFiles(zoneId);
+        var job = { zone: zoneId, label: Z.label || zoneId, rooms: _hqZoneRooms(zoneId).length, total: files.length, onDisk: 0, done: 0, failed: 0, bytes: 0, doneBytes: 0, diskBytes: 0, t: Date.now() };
+        files.forEach(function (u) {
+            var b = _asBytesOf(u); job.bytes += b;
+            if (_asHas(u)) { job.onDisk++; job.diskBytes += b; return; }
+            if (!_asPrefetch(u, { force: true, job: job })) job.onDisk++;   // already queued by the ring: it lands on its own
+        });
+        _hqZoneJob = job;
+        return job;
+    }
+    /* how much of a zone is on the disk right now (the settings row before the player presses the button) */
+    function _hqZoneState(zoneId) {
+        if (_hqZoneJob && _hqZoneJob.zone === zoneId) return _hqZoneJob;
+        var W = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.world) || null, Z = W && W.zones ? W.zones[zoneId] : null;
+        if (!Z) return null;
+        var files = _hqZoneFiles(zoneId), st = { zone: zoneId, label: Z.label || zoneId, rooms: _hqZoneRooms(zoneId).length, total: files.length, onDisk: 0, done: 0, failed: 0, bytes: 0, doneBytes: 0, diskBytes: 0, idle: true };
+        files.forEach(function (u) { var b = _asBytesOf(u); st.bytes += b; if (_asHas(u)) { st.onDisk++; st.diskBytes += b; } });
+        return st;
     }
     /* every half second in the walk: the doors near the walker warm their rooms; on a stage, the parts two joins away warm
        onto the disk (once per visit each) */
@@ -57489,6 +57689,10 @@ const ThreeRenderer = (function () {
            them landed or in flight instead of starting 40 requests behind the walker's rig */
         warmRoom: function (roomId, o) { return _hqWarmRoom(roomId, o); },   // THE FILE BOOK (2026-09-26): the book's files + the rows' guesses
         fileBook: function (roomId) { return roomId ? _hqBookRead(roomId) : Object.keys(_hqBookLoad()); },
+        /* DOWNLOAD THIS PLACE (Phase 9): a zone's every room onto the disk; zoneState = how much is there (no download) */
+        warmZone: function (zoneId) { return _hqWarmZone(zoneId || (typeof hqWorldZoneOf === 'function' && _hq ? hqWorldZoneOf(_hq.opts.room) : null)); },
+        zoneState: function (zoneId) { return _hqZoneState(zoneId || (typeof hqWorldZoneOf === 'function' && _hq ? hqWorldZoneOf(_hq.opts.room) : null)); },
+        zoneFiles: function (zoneId) { return _hqZoneFiles(zoneId); },
         /* the walker's own rig + the shared animation libraries (the load card waits for exactly this model:
            H.ready is set when the player's model attaches) — resolved the way _hqSpawnCharacter resolves it */
         warmAvatar: function (av) {

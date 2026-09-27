@@ -8,6 +8,8 @@
 //     npm run deploy -- battle.js     # deploy specific file(s)
 //     npm run deploy -- --all         # deploy every R2-hosted file
 //     npm run deploy -- --dry-run     # show the plan, change nothing
+//     npm run deploy -- --assets <dir> --prefix Assets/   # upload every .opt.glb under <dir> (optimize-assets.js)
+//                                     # to <prefix><its path under dir> — beside its original on R2
 //
 // What it does, in order:
 //   1. Works out which R2-hosted files to ship (args, --all, or git status).
@@ -92,8 +94,48 @@ function gitModified() {
         .filter(Boolean);
 }
 
+// ── THE ASSETS (OPEN_WORLD_PLAN Phase 9, 2026-09-27): the optimized models beside their originals ──────────
+function walkOpt(dir, rel, out) {
+    for (const n of fs.readdirSync(dir).sort()) {
+        if (n.startsWith('.') || n === 'node_modules') continue;
+        const p = path.join(dir, n), r = rel ? rel + '/' + n : n;
+        if (fs.statSync(p).isDirectory()) walkOpt(p, r, out);
+        else if (/\.opt\.glb$/i.test(n)) out.push({ p, r });
+    }
+    return out;
+}
+function deployAssets(dir, prefix, bucket, dryRun) {
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) fail('--assets: not a folder: ' + dir);
+    prefix = String(prefix || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    if (prefix && !prefix.endsWith('/')) prefix += '/';
+    const list = walkOpt(dir, '', []);
+    if (!list.length) fail('--assets: no .opt.glb files under ' + dir + ' (run `npm run optimize -- ' + dir + '` first)');
+    console.log(`Assets: ${list.length} .opt.glb → ${bucket || '(no bucket)'}/${prefix}…`);
+    if (dryRun || !bucket) {
+        for (const f of list) console.log('  [ ] upload ' + f.p + '  as  ' + prefix + f.r);
+        if (!bucket) console.log('\n(no bucket configured — set EW_R2_BUCKET or pass --bucket, or upload the list above by hand)');
+    } else {
+        let bad = 0;
+        for (const f of list) {
+            const r = spawnSync('npx', ['wrangler', 'r2', 'object', 'put', `${bucket}/${prefix}${f.r}`, '--file', f.p,
+                '--content-type', 'model/gltf-binary', '--remote', '--cache-control', CACHE_CONTROL],
+                { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+            if (r.status === 0) console.log('✓ ' + prefix + f.r);
+            else { bad++; console.error('✗ ' + prefix + f.r + ':\n' + (r.stderr || r.stdout || '').trim().split('\n').slice(-3).join('\n')); }
+        }
+        if (bad) { console.error(bad + ' upload(s) failed'); process.exit(1); }
+    }
+    console.log('\nNEXT: `npm run manifest -- <bucket mirror>` (so the game knows the .opt.glb files exist), then `npm run deploy`.');
+}
+
 function main() {
     const args = process.argv.slice(2);
+    const aIdx = args.indexOf('--assets');
+    if (aIdx !== -1) {
+        const pIdx = args.indexOf('--prefix'), bI = args.indexOf('--bucket');
+        deployAssets(args[aIdx + 1], pIdx !== -1 ? args[pIdx + 1] : '', bI !== -1 ? args[bI + 1] : process.env.EW_R2_BUCKET, args.includes('--dry-run'));
+        return;
+    }
     const dryRun = args.includes('--dry-run');
     const all = args.includes('--all');
     const noUpload = args.includes('--no-upload');
@@ -177,8 +219,8 @@ function main() {
     console.log('  [ ] redeploy index.html to Render (it is NOT served from R2)');
     console.log('  [ ] commit + push the repo so future sessions match what is live');
     if (ship.some(f => !f.endsWith('.js') && !f.endsWith('.css'))) {
-        console.log('  [ ] NOTE: asset URLs inside JS (sprites/audio/GLB) are not ?v=-tagged —');
-        console.log('      renamed-in-place assets need a new filename to cache-bust');
+        console.log('  [ ] NOTE: asset URLs inside JS (sprites/audio/GLB) are not ?v=-tagged — a file replaced in place');
+        console.log('      reaches players once ASSET_MANIFEST.json lists its new hash (npm run manifest), or under a new name');
     }
     process.exit(failedUploads.length ? 1 : 0);
 }
