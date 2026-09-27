@@ -222,3 +222,16 @@ Append new notes for this system at the end of this file.
 
   The plan's §5.9 lists the engine gaps (LOD, compression, workers, shader warm-up, batching, portals,
   memory budget, 3D audio, cascades) as Phases 10-14. Test: hq-joins.test.js.
+- Phase 3 shipped 2026-09-26 (the plan's §12, token 20260926-open-world-04-cors): THE WORLD CLOCK.
+  data.js: `HQ_WORLD_CLOCK` grew `sun.rise/set`, `keyMinEl`, `day` / `night` / `dayLook` / `duskLook`
+  looks, `lock` (rooms keeping their hour), `saveMs`, `variants`; readers `hqClockRead/Write/Rate/Norm`,
+  `hqWorldSun(h)`, `hqWorldDir`, `hqRoomClock(id)`, `hqWorldBearing`, `HQ_WORLD_WEENIES` +
+  `hqRoomLandmarks(id)`; `hqVariantRoll` reads the world hour (`opts.hour`, else window._hqClockHour, else
+  the profile's; a pinned `opts.now` keeps the real clock); `flood_mast` / `lighthouse` lights `night: true`.
+  three-renderer.js: uniforms `uSunDir/uMoonDir/uSunClock/uDusk` in the dome (the battle writes 0);
+  `_hqClockVals/Arm/Apply/Tick/Lamps` (a part's `clockLamps`, the zone key `clock`); `_hqStageSkyVals(room, id)`
+  blends to the hour's values (`_hqStageSkyValsRaw` = authored); the fight's rig in `_fieldGroundDress`;
+  landmark kinds `mountain` / `tower` / `gate`; `hq.clock()`, `hq.clockSnap()`. map.js: the live hour
+  (`_hqClockHour/Advance/Hold`, `hqClockSet(h)` in the console), `door.hq.clock = { h, at, run }`, the
+  hour on the room sub-line (`#hqClockTag`), `_hqEncounterRun.night` → `getCurrentCyclePhase` round 1.
+  Test: hq-clock.test.js.
