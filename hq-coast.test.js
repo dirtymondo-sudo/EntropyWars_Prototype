@@ -106,7 +106,7 @@ function sandbox() {
     vm.createContext(c);
     const fns = ['_hqSeaRules', '_hqSea', '_hqSeaEmit', '_hqStageOwner', '_hqSeaGroundAt', '_hqStageEdgeOpen', '_hqSeaDepthAt', '_hqSwimFree', '_hqSwimFreeAt',
         '_hqSwimStart', '_hqSwimStop', '_hqSwimCheck', '_hqTickSwim', '_hqSeaWayCheck', '_hqVehicleRegister', '_hqVehicleFind', '_hqBoard', '_hqDisembark',
-        '_hqHullFree', '_hqTickVehicle', '_hqStageT', '_hqStageAsk', '_hqStageIslandAt', '_hqStageCross'];
+        '_hqHullFree', '_hqTickVehicle', '_hqStageT', '_hqStageTZone', '_hqStageAsk', '_hqStageIslandAt', '_hqStageCross'];
     vm.runInContext(zoneKeys() + '\n' + fns.map(extract).join('\n')
         + '\nfunction _hqSurface(x, z) { var st = _hq.stage; if (st) { var i = _hqStageIslandAt(st, x, z); if (i) { var y = hqTerrainFeet(i.E.P.terrain, i.q.x, i.q.z, null); return y == null ? null : y + i.ry; } } return hqTerrainFeet(_hq.terrain, x, z, null); }', c);
     return c;

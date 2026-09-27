@@ -98,6 +98,8 @@ diffs. The deliverable is always the full edited file, produced in chat.
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
   of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
   Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off; test hq-lod.test.js.
+  Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): test hq-attach.test.js; notes in
+  rendering-loading-perf.md "THE SMOOTH ATTACH".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

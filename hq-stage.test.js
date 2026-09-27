@@ -125,7 +125,7 @@ function stageCtx(extra) {
   hqStageWhere: D.hqStageWhere, hqStageSpanAt: D.hqStageSpanAt, hqStageFromRoom: D.hqStageFromRoom, hqStageToRoom: D.hqStageToRoom,
   hqStageRel: D.hqStageRel, _hqUnits: () => 73, _hqNormDeg: d => ((d % 360) + 360) % 360, _hq: null }, extra || {});
  vm.createContext(c);
- vm.runInContext(zoneKeys() + '\nvar HQ_STAGE_PAD = 1.5, _hqStageV = null;\n' + ['_hqStageT', '_hqStageAsk', '_hqStageCross', '_hqStageLoad', '_hqStageIslandAt', '_hqStageSurface', '_hqStageLamps'].map(extract).join('\n'), c);
+ vm.runInContext(zoneKeys() + '\nvar HQ_STAGE_PAD = 1.5, _hqStageV = null;\n' + ['_hqStageT', '_hqStageTZone', '_hqStageAsk', '_hqStageCross', '_hqStageLoad', '_hqStageIslandAt', '_hqStageSurface', '_hqStageLamps', '_hqStagePick'].map(extract).join('\n'), c);
  return c;
 }
 test('the crossing swaps into a drawn neighbour, else loads it at the same spot looking the same way', () => {

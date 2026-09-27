@@ -1723,6 +1723,22 @@ const ThreeRenderer = (function () {
         _texInflight = Math.max(0, _texInflight - 1);
         if (_texInflight === 0 && typeof _mqPump === 'function') { try { setTimeout(_mqPump, 0); } catch (e) {} }
     }
+    /* THE BITMAPS (OPEN_WORLD_PLAN §5.9 / Phase 11, 2026-09-27): a sheet of the building (the walk's builders asked for it) is
+       decoded OFF the main thread — createImageBitmap on the blob the store hands back — so the upload is a copy, not a
+       decode on the frame a part first draws (an <img>'s pixels are decoded synchronously inside texImage2D). WebGL ignores
+       UNPACK_FLIP_Y for a bitmap, so the flip is done at the decode, by the texture's own flipY when it lands. Chromium only
+       (navigator.userAgentData): Firefox honours the flip twice and Safari's bitmap options came late; everywhere else, and on
+       any failure, the <img> path as before. The bitmap wears the <img> fields the game reads (complete, naturalWidth). */
+    function _texBmpOk() {
+        return typeof createImageBitmap === 'function' && typeof navigator !== 'undefined' && !!navigator.userAgentData && !(typeof window !== 'undefined' && window.EW_NO_BITMAPS);
+    }
+    function _texBmpFrom(blob, tex, src) {
+        var flip = !tex || tex.flipY !== false;
+        return createImageBitmap(blob, { imageOrientation: flip ? 'flipY' : 'from-image', premultiplyAlpha: (tex && tex.premultiplyAlpha) ? 'premultiply' : 'none', colorSpaceConversion: 'none' }).then(function (bmp) {
+            try { bmp.complete = true; bmp.naturalWidth = bmp.width; bmp.naturalHeight = bmp.height; bmp.src = src; } catch (e) {}
+            return bmp;
+        });
+    }
     function _texFetch(src, onOk, onFail, o) {
         var img;
         /* THE ASSET STORE (2026-09-20): a sheet is fetched through the store (a hit reads the disk, a miss
@@ -1733,13 +1749,19 @@ const ThreeRenderer = (function () {
             _texHoldUntil = Math.max(_texHoldUntil, now0 + TEX_HOLD_MS);
             var done0 = false;
             _asFetch(src, { priority: 'high', rec: o && o.rec }).then(function (res) { return res.blob(); }).then(function (blob) {
+                if (o && o.bitmap && _texBmpOk()) {
+                    return _texBmpFrom(blob, o.bitmap, src).then(function (bmp) { if (done0) return; done0 = true; _texLanded(); o.bitmap._ew_bmp = true; onOk(bmp); }, function () { return decodeImg(blob); });
+                }
+                return decodeImg(blob);
+            }).catch(function (err) { if (done0) return; done0 = true; _texLanded(); onFail(err); });
+            function decodeImg(blob) {
                 var objUrl = URL.createObjectURL(blob), im;
                 try { im = document.createElementNS('http://www.w3.org/1999/xhtml', 'img'); } catch (e) { im = new Image(); }
                 try { im.decoding = 'async'; } catch (e) {}
                 im.onload = function () { if (done0) return; done0 = true; try { URL.revokeObjectURL(objUrl); } catch (e) {} _texLanded(); onOk(im); };
                 im.onerror = function (err) { if (done0) return; done0 = true; try { URL.revokeObjectURL(objUrl); } catch (e) {} _asForget(src); _texLanded(); onFail(err); };
                 im.src = objUrl;
-            }).catch(function (err) { if (done0) return; done0 = true; _texLanded(); onFail(err); });
+            }
             return null;
         }
         try { img = document.createElementNS('http://www.w3.org/1999/xhtml', 'img'); } catch (e) { img = new Image(); }
@@ -1767,14 +1789,15 @@ const ThreeRenderer = (function () {
             if (onLoad) { try { onLoad(tex); } catch (e) { console.warn('[ThreeRenderer] texture onLoad threw', e); } }
             rec.settle(true);
         }
+        var bmp = _hq ? tex : null;   // THE BITMAPS (Phase 11): the walk's sheets decode off the main thread
         _texFetch(u, landed, function (err) {
             var again = _ewRetryUrl(u);
             if (!again) { _ewAssetFailed('texture', u, false); rec.settle(false); if (onError) onError(err); return; }
             _ewAssetFailed('texture', u, true);
             try {
-                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); rec.settle(false); if (onError) onError(err2); }, { rec: rec });
+                _texFetch(again, landed, function (err2) { _ewAssetFailed('texture', again, false); rec.settle(false); if (onError) onError(err2); }, { rec: rec, bitmap: bmp });
             } catch (e) { rec.settle(false); if (onError) onError(err); }
-        }, { rec: rec });
+        }, { rec: rec, bitmap: bmp });
         return tex;
     };
     var textureCache = new Map();
@@ -41207,6 +41230,9 @@ const ThreeRenderer = (function () {
     }
     var HQ_OUTER_M = 54;     /* THE OUTER GROUND: how far past an open field the ground runs before the fog has it (m) */
     function _hqBuildOuterGround(room, info, G, mat, TM, rng) {
+        /* THE SMOOTH ATTACH (Phase 11): sliced like the field — asked by _hqSliceAsk, it hands back its iterator */
+        var sliced = _hqSliceAsk; _hqSliceAsk = false;
+        var it = (function* () {
         var U = _hqUnits(), S = room.shell, hx = info.halfW - 0.5, hz = info.halfD - 0.5;
         var ext = (room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M, cs = 2.0, seed = (info.nx * 131 + info.nz * 7) | 0;
         var nse = function (x, z, sc, sd) { return (typeof _hqTNoise === 'function') ? _hqTNoise(x, z, sc, sd) : 0; };
@@ -41228,7 +41254,7 @@ const ThreeRenderer = (function () {
         _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
         var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = []; var aoO = new Float32Array(nx * nz); for (var ai = 0; ai < aoO.length; ai++) aoO[ai] = 1;
-        for (var j = 0; j < nz; j++) for (var i = 0; i < nx; i++) {
+        for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = X0 + i * cs, pz = Z0 + j * cs, h = yAt(px, pz);
             pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
@@ -41236,7 +41262,7 @@ const ThreeRenderer = (function () {
             var rk = (sl - 0.55) / 0.75; rk = rk < 0 ? 0 : rk > 1 ? 1 : rk;
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
-        }
+        } if ((j & 7) === 7 && _hqSliceDue()) yield; }
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the outer ground lying inside a staged neighbour's frame is cut into its OWN mesh
            per neighbour (`_hq.outerSides[id]`) — drawn while that neighbour is not on the stage (the ground runs on as today),
            hidden while it is (its own field is the ground there) */
@@ -41246,7 +41272,7 @@ const ThreeRenderer = (function () {
            rolling apron (the swell +2.4 m at 22 m) ran on through the other's field — the long strip of grass in the air
            over the paths, gone when the walker crossed (the other part left the stage) and back in the part just left */
         var ownId = (_hq.opts && _hq.opts.room) || room.id, stNear = _hqStageOff() ? [] : _hqStageNearbyOf(ownId), sideIdx = {}, sideIds0 = {};
-        for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
+        for (var j2 = 0; j2 + 1 < nz; j2++) { for (var i2 = 0; i2 + 1 < nx; i2++) {
             /* a quad wholly inside the field's bound is the field's own */
             var qx0 = X0 + i2 * cs, qz0 = Z0 + j2 * cs, qx1 = qx0 + cs, qz1 = qz0 + cs;
             if (qx0 > -hx && qx1 < hx && qz0 > -hz && qz1 < hz) continue;
@@ -41256,7 +41282,8 @@ const ThreeRenderer = (function () {
                 if (sk) { if (!sideIdx[sk]) { sideIdx[sk] = []; sideIds0[sk] = sk.split('|'); } into = sideIdx[sk]; }
             }
             into.push(a, c, b, b, c, d);
-        }
+        } if ((j2 & 7) === 7 && _hqSliceDue()) yield; }
+        if (_hqSliceDue()) yield;
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
@@ -41264,6 +41291,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('aAO', new THREE.BufferAttribute(aoO, 1));   // the same material as the field: the attribute must exist (a missing one reads 0 = black)
         var allIdx = idx.slice(); Object.keys(sideIdx).forEach(function (id) { Array.prototype.push.apply(allIdx, sideIdx[id]); });
         geo.setIndex(allIdx); geo.computeVertexNormals();   // the normals of the WHOLE ground (no seam where a side is cut out)
+        if (_hqSliceDue()) yield;
         var mkOuter = function (ix) {
             var g = geo;
             if (ix) { g = new THREE.BufferGeometry(); ['position', 'uv', 'aBlend', 'aAO', 'normal'].forEach(function (k) { g.setAttribute(k, geo.attributes[k].clone()); }); g.setIndex(ix); g.computeBoundingSphere(); }
@@ -41278,6 +41306,9 @@ const ThreeRenderer = (function () {
             geo.setIndex(idx); geo.computeBoundingSphere();
         }
         mkOuter(null);
+        })();
+        if (sliced) return it;
+        while (!it.next().done) {}
     }
     /* the treeline of an open room (THE WOODS): rings of the foliage models on the apron past the shell, the door lanes kept clear */
     function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng) {
@@ -41833,7 +41864,16 @@ const ThreeRenderer = (function () {
         if (!roomId || _hqStageOff() || typeof hqStageNearbyParts !== 'function' || typeof hqStageNearerKey !== 'function') return [];
         try { return hqStageNearbyParts(roomId) || []; } catch (e) { return []; }
     }
+    /* THE SLICE (Phase 11): the running slice's deadline (0 = none: run to the end) and the ask a stage step sets just before
+       it calls a sliced builder (_hqBuildTerrain, _hqPlaceProps) so the builder hands back its iterator */
+    var _hqSliceEnd = 0, _hqSliceAsk = false;
+    function _hqSliceDue() { return _hqSliceEnd > 0 && _alNow() >= _hqSliceEnd; }
     function _hqBuildTerrain(room) {
+        /* THE SLICE (OPEN_WORLD_PLAN §5.9 / Phase 11, 2026-09-27): the build is a generator — a room's own build (the card up)
+           runs it to the end here; a stage neighbour (asked with _hqSliceAsk) gets the iterator and _hqStageBuildSlice resumes
+           it a few ms a frame (it yields at the checks below once HQ_STAGE_RULES.buildMs of the frame is spent — _hqSliceDue) */
+        var sliced = _hqSliceAsk; _hqSliceAsk = false;
+        var it = (function* () {
         if (typeof hqTerrainInfo !== 'function') return;
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
         var roomId = (_hq.opts && _hq.opts.room) || room.id || null;
@@ -41852,7 +41892,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
             return Math.max(0, Math.min(1, w));
         };
-        for (var j = 0; j < nz; j++) for (var i = 0; i < nx; i++) {
+        for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
             pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
@@ -41868,7 +41908,7 @@ const ThreeRenderer = (function () {
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
-        }
+        } if (_hqSliceDue()) yield; }
         var idx = [], escalators = (room.terrain.features || []).filter(function (f) { return f.escalator; });
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
            cloud sheet, the pool carved into it, the path painted on it) and loses its FLANK — the ring of triangles round its edge
@@ -41897,7 +41937,7 @@ const ThreeRenderer = (function () {
             for (var ni = 0; ni < stNbs.length; ni++) { var nr = stNbs[ni].rect; if (mx > nr.x0 && mx < nr.x1 && mz > nr.z0 && mz < nr.z1) return true; }
             return false;
         };
-        for (var j2 = 0; j2 + 1 < nz; j2++) for (var i2 = 0; i2 + 1 < nx; i2++) {
+        for (var j2 = 0; j2 + 1 < nz; j2++) { for (var i2 = 0; i2 + 1 < nx; i2++) {
             var a = j2 * nx + i2, b = a + 1, c = a + nx, d = c + 1;
             var mx = info.x0 + (i2 + 0.5) * res, mz = info.z0 + (j2 + 0.5) * res;
             var underEscalator = escalators.some(function (f) {
@@ -41906,13 +41946,14 @@ const ThreeRenderer = (function () {
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
             if (!underEscalator && !(floats.length && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
-        }
+        } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
         geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));   // THE LIGHT PASS 2.3
         geo.setIndex(idx); geo.computeVertexNormals();
+        if (_hqSliceDue()) yield;
         info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
         var fieldMat = _hqTerrainMat(info, S), field = null;
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_STAGE_RULES.tileM squares — one mesh each, the
@@ -41925,11 +41966,14 @@ const ThreeRenderer = (function () {
             G.add(fm); if (!field) field = fm;
         });
         if (tiles) geo.dispose();
+        if (_hqSliceDue()) yield;
         /* THE OUTER GROUND (2026-09-17): an open field no longer ends at a square edge over a flat apron — the ground
            runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
-        if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
+        if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
+        else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
+        if (_hqSliceDue()) yield;
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
         var fluidMats = {}, fluidKeys = [];
         var fluidMatFor = function (key) {
@@ -41989,6 +42033,7 @@ const ThreeRenderer = (function () {
         }
         if (fluidKeys.length) _hq.moatTick = { key: fluidKeys[0], keys: fluidKeys, tile: TM };
         if (lavaN && _hq.propLights < HQ_PROP_LIGHT_MAX) { var ll = new THREE.PointLight(0xff6a2a, 1.1, 22 * U, 2); ll.position.set((lavaCx / lavaN) * U, (lavaY + 1.6) * U, (lavaCz / lavaN) * U); G.add(ll); _hq.propLights++; }
+        if (_hqSliceDue()) yield;
         /* ── THE DECKS: planks on posts at their height (a rail either side to grind) ── */
         var plankMat = new THREE.MeshPhongMaterial({ map: _hzTex('wood_planks') || null, color: 0xffffff, shininess: 10 }); plankMat.emissive = new THREE.Color(0x111111);
         var ropeMat = new THREE.MeshPhongMaterial({ color: 0x5a4a34, shininess: 6 });
@@ -42013,6 +42058,7 @@ const ThreeRenderer = (function () {
         if (info.bridges && info.bridges.length) { try { _hqBuildBridges(room, info, G, TM, U); } catch (e) { console.warn('[HQ] the bridges failed', e); } }
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
         if (floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
+        if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
         if (S.wallColor != null) wallMat.color.multiply(new THREE.Color(S.wallColor));
@@ -42033,14 +42079,16 @@ const ThreeRenderer = (function () {
         };
         /* THE STANDS (2026-09-26): the tier rows (data.js hqStandBowl) are merged into one mesh per sheet, their seats instanced */
         var tierWalls = info.walls.filter(function (w) { return w.tier && !w.ghost; });
-        info.walls.forEach(function (w) { if (!w.tier && !w.ghost) drawWall(w); });   // a `ghost` wall is the walker's only (the stands' tunnel lining)
+        for (var wi = 0; wi < info.walls.length; wi++) { var w0 = info.walls[wi]; if (!w0.tier && !w0.ghost) drawWall(w0); if ((wi & 15) === 15 && _hqSliceDue()) yield; }   // a `ghost` wall is the walker's only (the stands' tunnel lining)
+        if (_hqSliceDue()) yield;
         if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k) { return k ? keyedMat(k) : wallMat; }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
         try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
-        (info.planWalls || []).forEach(drawWall);
+        for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
         if (info.genPlan && info.gen && info.gen.kind === 'ley') { try { _hqBuildLeyVeins(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the ley veins failed', e); } }   // THE LEY LINES (2026-09-18): the walls light themselves
+        if (_hqSliceDue()) yield;
         /* ── THE RAILS: posts and a bar along the ground ── */
         info.rails.filter(function (r) { return r.rail; }).forEach(function (r) {
             var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), yaw = Math.atan2(r.x1 - r.x0, r.z1 - r.z0);
@@ -42059,6 +42107,7 @@ const ThreeRenderer = (function () {
             /* _hqRampLocal: the low end at local +Z — a ramp rising from (x0,z0) toward (x1,z1) has its low end at the start, so face the frame the other way */
             _hq.ramps.push({ x: (f.x0 + f.x1) / 2, z: (f.z0 + f.z1) / 2, yaw: yaw + Math.PI, hw: f.w / 2, hd: L / 2, y0: Math.min(f.h0, f.h1), y1: Math.max(f.h0, f.h1), prof: null, terrain: true });
         });
+        if (_hqSliceDue()) yield;
         /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
         var TK = null;
         if ((info.trees.length || (S.forest && S.open) || (info.lots && info.lots.length)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
@@ -42074,31 +42123,42 @@ const ThreeRenderer = (function () {
             if (tg.parent !== G) G.add(tg);
             return tg;
         };
-        info.trees.forEach(function (t) {
+        var treeOne = function (t) {
             var tall = t.kind === 'tree_4', dead = (t.kind === 'tree_5' || t.kind === 'tree_6');
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
             plantTree(t.kind, h, t.x, t.z, t.y * U);
             var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
             _hq.blockers.push({ obj: blk, y: t.y, top: null, rad: t.r || 0.38, tree: true });
-        });
+        };
+        for (var ti = 0; ti < info.trees.length; ti++) { treeOne(info.trees[ti]); if ((ti & 7) === 7 && _hqSliceDue()) yield; }
         /* THE THICKET (2026-09-17): the forest growing on the plan's solid — every tree a blocker (the bank is jumped onto; the trees hold the walker off the interior) */
-        (info.thicket || []).forEach(function (t) {
+        var thicketOne = function (t) {
             plantTree(t.kind, t.h, t.x, t.z, t.y * U);
             var tb = new THREE.Object3D(); tb.position.set(t.x * U, t.y * U, t.z * U); G.add(tb);
             _hq.blockers.push({ obj: tb, y: t.y, top: null, rad: t.r || 0.42, thicket: true });
-        });
+        };
+        for (var tki = 0, tks = info.thicket || []; tki < tks.length; tki++) { thicketOne(tks[tki]); if ((tki & 7) === 7 && _hqSliceDue()) yield; }
+        if (_hqSliceDue()) yield;
         if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
+        if (_hqSliceDue()) yield;
         /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
         _hqBuildCityEntrances(room, info, G, TK);
+        if (_hqSliceDue()) yield;
         _hqBuildEscalators(room, info, G, TM);
+        if (_hqSliceDue()) yield;
         if (info.shops && info.shops.length) { try { _hqBuildShopfronts(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the shopfronts failed', e); } }   // THE MALL, THE THIRD PASS (2026-09-17)
+        if (_hqSliceDue()) yield;
         if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
+        if (_hqSliceDue()) yield;
         if (info.gen && info.gen.kind === 'city' && S.open) { try { _hqBuildCityBackdrop(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city backdrop failed', e); } }   // THE BACKDROP (2026-09-21): the skyline past the room's edge
+        if (_hqSliceDue()) yield;
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
+        if (_hqSliceDue()) yield;
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
+        if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
         _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
@@ -42117,6 +42177,9 @@ const ThreeRenderer = (function () {
             }
         }
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] terrain', roomId, nx + '×' + nz, 'trees', info.trees.length, 'scatter', info.scatter.length, 'fluids', info.fluids.length);
+        })();
+        if (sliced) return it;
+        while (!it.next().done) {}
     }
     /* ═══════════════════════════════════════════════════════════════════════
        DISASTER CITY (HQ plan 9.3 stage 7 — THE COMPLEX CANDIDATES #1, 2026-09-17)
@@ -47752,11 +47815,14 @@ const ThreeRenderer = (function () {
         _hqSeatTimer = setTimeout(function () { _hqSeatTimer = 0; try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); } }, 120);
     }
     function _hqPlaceProps(room) {
-        if (typeof window !== 'undefined' && window.EW_HQ_NO_PROPS) return;
+        var sliced = _hqSliceAsk; _hqSliceAsk = false;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_PROPS) return null;
+        /* THE SLICE (Phase 11): a generator like _hqBuildTerrain's — a stage neighbour's props go down a few ms a frame */
+        var it = (function* () {
         var U = _hqUnits(), S = room.shell, G = _hq.propGroup, D = _hqData();
         var isBox = room.kind === 'box';
         _hq.tabletops = [];
-        (room.props || []).concat(_hq.terrainScatter || []).forEach(function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
+        var placeOne = function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
             var cat = D.catalogue[p.key];
             if (!cat || (!cat.file && !cat.proc)) return;
             var level = p.level || 0, y0 = _hqLevelY(S, level);
@@ -47896,8 +47962,14 @@ const ThreeRenderer = (function () {
             G.add(grp);
             _hq.props.push({ key: p.key, grp: grp });
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
-        });
+        };
+        var rows = (room.props || []).concat(_hq.terrainScatter || []);
+        for (var ri = 0; ri < rows.length; ri++) { placeOne(rows[ri]); if ((ri & 3) === 3 && _hqSliceDue()) yield; }
         try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
+        })();
+        if (sliced) return it;
+        while (!it.next().done) {}
+        return null;
     }
 
     /* A ring of wedge props (plan 2.2): `cat.wedge` describes one annular
@@ -55428,6 +55500,7 @@ const ThreeRenderer = (function () {
         if (H.ready) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
         if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         if (H.ready) { try { _hqFarTick(H, now); } catch (e) { if (!H._farWarned) { H._farWarned = true; console.warn('[HQ] the far shells failed', e); } } }   // THE FAR SHELLS (Phase 10)
+        if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
@@ -56632,6 +56705,7 @@ const ThreeRenderer = (function () {
      'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'far', 'lod', '_lodAt', '_lodWarned', '_farWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'far' / 'lod': THE FAR SHELLS / THE LOD LEVELS (Phase 10)
+    _HQ_ZONE_KEYS._batchWarned = 1;   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
     function _hqStageArm(H) {
@@ -56656,8 +56730,11 @@ const ThreeRenderer = (function () {
     /* the record a builder / a ticker of neighbour E sees as _hq: the zone's keys + the part's, the player absent */
     function _hqStageT(H, E) {
         var T = {};
-        for (var k in H) if (_hqZoneKey(k)) T[k] = H[k];
         for (var k2 in E.P) T[k2] = E.P[k2];
+        return _hqStageTZone(H, E, T);
+    }
+    function _hqStageTZone(H, E, T) {   // the zone's keys (fresh each frame: a builder resumed across frames reads today's camera, clock…)
+        for (var k in H) if (_hqZoneKey(k)) T[k] = H[k];
         T.opts = E.opts; T.scene = E.extra; T.player = null; T.stage = null; T.gate = E.gate || H.gate; T.shadows = null; T.focus = null;
         return T;
     }
@@ -56665,8 +56742,10 @@ const ThreeRenderer = (function () {
         var keep = _hq; _hq = _hqStageT(H, E);
         try { fn(_hq); } finally { _hq = keep; }
     }
-    function _hqStageRun(H, E, fn) {
-        var T = _hqStageT(H, E), keep = _hq, ok = true, own = _alOwner;
+    function _hqStageRun(H, E, fn, keepT) {
+        /* keepT (THE SLICE, Phase 11): a builder that runs over several frames keeps ONE record for its life (E.iterT) — what it
+           wrote on _hq in one slice it reads in the next */
+        var T = keepT ? (E.iterT ? _hqStageTZone(H, E, E.iterT) : (E.iterT = _hqStageT(H, E))) : _hqStageT(H, E), keep = _hq, ok = true, own = _alOwner;
         _hq = T; _alOwner = E.gate || null;   // THE FILE TRACKER: what this part's builders ask for is this part's
         try { fn(T); } catch (e) { ok = false; console.warn('[HQ stage] ' + E.id + ':', e); }
         finally { _hq = keep; _alOwner = own; }
@@ -56677,10 +56756,10 @@ const ThreeRenderer = (function () {
     var _HQ_STAGE_STEPS = [
         function (room) { _hq.gallery = _hqGalleryFrame(room); _hqBuildBoxShell(room); },
         function (room) { if (_hq.gallery) _hqBuildGallery(room); if (room.cave) _hqBuildCave(room); },
-        function (room) { if (room.terrain) _hqBuildTerrain(room); },
+        function (room) { if (room.terrain) { _hqSliceAsk = true; return _hqBuildTerrain(room); } },   // THE SLICE (Phase 11): a generator, resumed a few ms a frame
         function (room) { _hqBuildStairs(room); _hqBuildDesk(room); },
         function (room) { _hqBuildDoors(room); _hqBuildCounters(room); },
-        function (room) { _hqPlaceProps(room); },
+        function (room) { _hqSliceAsk = true; return _hqPlaceProps(room); },
         function (room) { _hqBuildClimbs(room); _hqPlaceFinds(room); },
         function (room) { try { _hqPlaceLightShafts(room); } catch (e) {} try { _hqBuildDecals(room); } catch (e) {} try { _hqShadowFlags(room); } catch (e) {} },
         /* Phase 2 (THE DOOR JOIN): a closed room's own lamps, and — HQ_STAGE_RULES.nbPeople 'interior' — its cast, so the ward is
@@ -56728,6 +56807,7 @@ const ThreeRenderer = (function () {
         recs.forEach(function (R) { var sides = R.outerSides; if (!sides) return; for (var sid in sides) { var sm = sides[sid]; if (sm) sm.visible = !(sm._ew_hqOuterSideIds || [sid]).some(function (i) { return on[i]; }); } });
     }
     function _hqStageDispose(H, E) {
+        try { _hqBatchDrop(E.P); } catch (e) {}
         _hqStageAttach(H, E, false);
         try { if (E.gate) E.gate.close(); } catch (e) {}
         try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); } catch (e) {}
@@ -56762,11 +56842,18 @@ const ThreeRenderer = (function () {
             var nb = st.nbs[i], E = st.parts[nb.id];
             if (E && E.built) {
                 if (!E.attached && E.rel && _hqStageReady(H, E, now)) {
+                    /* THE WARM-UP (Phase 11): the part's shaders are compiled and its sheets uploaded BEFORE it is drawn, a few ms a
+                       frame, for the lights the frame after the attach will have — the first frame that shows it compiles nothing */
+                    if (!E.warm) E.warm = _hqWarmNew(H, E);
+                    if (!_hqWarmRun(H, E.warm)) return;   // this frame's compile budget is spent: the attach (and the build) wait a frame
                     try { _hqBookWrite(E.id, E.gate); } catch (e) {}
                     try { if (E.gate) E.gate.close(); } catch (e) {}
                     _hqStageAttach(H, E, true);
-                    var late = E.trk ? E.trk.farPending : 0;
-                    console.log('[HQ stage] ' + nb.id + ' stands beside ' + st.id + ' (' + Math.round(now - E.t0) + ' ms' + (late ? ', ' + late + ' far file(s) still landing under the fog' : '') + ')');
+                    _hqStageLamps(H);   // the lamp budget the warm-up compiled for, on the frame the part first draws
+                    var late = E.trk ? E.trk.farPending : 0, W = E.warm;
+                    console.log('[HQ stage] ' + nb.id + ' stands beside ' + st.id + ' (' + Math.round(now - E.t0) + ' ms' + (late ? ', ' + late + ' far file(s) still landing under the fog' : '')
+                        + '; built in ' + E.slice.frames + ' frame(s), the longest ' + E.slice.frameMax.toFixed(1) + ' ms; warmed ' + W.mats + ' material(s) + ' + W.texN + ' sheet(s) in ' + W.frames + ' frame(s)' + (W.full ? ', the lights changed: the whole scene' : '') + ')');
+                    return;   // the first frame that draws it does nothing else
                 }
                 continue;
             }
@@ -56777,12 +56864,35 @@ const ThreeRenderer = (function () {
                 continue;
             }
             if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id, { own: true }); }
-            var fn = _HQ_STAGE_STEPS[E.step++];
-            var p3 = _hq3DOn();
-            try { _hqStageRun(H, E, function () { fn(room); }); } finally { _hq3DOff(p3); }
-            if (E.step >= _HQ_STAGE_STEPS.length) { E.built = true; _hqStageCssShow(E.P.partRoot, false); }
-            return;   // one step a frame, whoever it was for
+            _hqStageBuildSlice(H, E, room);
+            return;   // one part a frame, whoever it is
         }
+    }
+    /* THE SLICE (OPEN_WORLD_PLAN §5.9 / Phase 11, 2026-09-27): a part's builders run under HQ_STAGE_RULES.buildMs a frame. The
+       steps run in order; the two heavy ones (the terrain, the props) are GENERATORS that yield at their checks once the
+       frame's slice is spent (_hqSliceDue), and are resumed next frame on the same record. A frame always makes progress (one
+       unit at least), so a check the builder never reaches is the only way over the budget; E.slice keeps the record. */
+    function _hqStageBuildSlice(H, E, room) {
+        var t0 = _alNow(), end = t0 + (HQ_STAGE_RULES.buildMs || 6), p3 = _hq3DOn(), S = E.slice || (E.slice = { frames: 0, units: 0, unitMax: 0, frameMax: 0, over: 0 });
+        _hqSliceEnd = end;
+        try {
+            while (true) {
+                var u0 = _alNow();
+                if (E.iter) {
+                    var it = E.iter, res = null;
+                    var ok = _hqStageRun(H, E, function () { res = it.next(); }, true);
+                    if (!ok || !res || res.done) { E.iter = null; E.iterT = null; }
+                } else {
+                    var fn = _HQ_STAGE_STEPS[E.step++], ret = null;
+                    _hqStageRun(H, E, function () { ret = fn(room); }, true);
+                    if (ret && typeof ret.next === 'function') E.iter = ret; else E.iterT = null;
+                }
+                var u1 = _alNow(); S.units++; if (u1 - u0 > S.unitMax) S.unitMax = u1 - u0;
+                if (E.step >= _HQ_STAGE_STEPS.length && !E.iter) { E.built = true; _hqStageCssShow(E.P.partRoot, false); break; }
+                if (u1 >= end) break;
+            }
+        } finally { _hqSliceEnd = 0; _hq3DOff(p3); }
+        var fm = _alNow() - t0; S.frames++; if (fm > S.frameMax) S.frameMax = fm; if (fm > (HQ_STAGE_RULES.buildMs || 6) * 1.5) S.over++;
     }
     /* a closed box room's light (the hemisphere, the key, the fill): `mood.ambient` scales them, never below the floor */
     function _hqBoxLightVals(room) {
@@ -56863,7 +56973,7 @@ const ThreeRenderer = (function () {
     /* may built part E stand beside the current part now? (fork 5) */
     function _hqStageReady(H, E, now) {
         if (!E.gate || E.gate.closed) return true;
-        if (now - E.t0 > HQ_GATE_CAP_MS) { try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
+        if (now - E.t0 > HQ_GATE_CAP_MS) { if (E.capWarned) return true; E.capWarned = true; try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
         if (HQ_STAGE_RULES.propsGate === 'whole') return E.gate.idle();
         if (!E.trk || now - (E.trkAt || 0) >= (HQ_STAGE_RULES.trkMs || 250)) { E.trkAt = now; E.trk = _hqTrkScan(H, E); }
         return E.gate.idleExcept(E.trk.farOnly);
@@ -57065,8 +57175,16 @@ const ThreeRenderer = (function () {
     }
     /* THE LAMPS (§5.2): every point light on the stage, the nearest N lit — N = max(lampsLive, the current part's own) */
     function _hqStageLamps(H) {
+        var pk = _hqStagePick(H, null), all = pk.all, N = pk.N;
+        for (var i = 0; i < all.length; i++) all[i].o.visible = i < N;
+        H.stage.lampN = N;
+    }
+    /* the pick itself: every lamp of the drawn parts (+ `extra`, a part about to be drawn — THE WARM-UP asks what the lamps will
+       be the frame after its attach), the nearest first, and N */
+    function _hqStagePick(H, extra) {
         var st = H.stage, cam = H.camera.position, all = [], own = 0, v = _hqStageV || (_hqStageV = new THREE.Vector3());
         var roots = [H.partRoot]; for (var id in st.parts) if (st.parts[id].attached) roots.push(st.parts[id].P.partRoot);
+        if (extra) roots.push(extra);
         roots.forEach(function (R, ri) {
             R.traverse(function (o) {
                 if (!o.isPointLight) return;
@@ -57077,8 +57195,365 @@ const ThreeRenderer = (function () {
         });
         var N = Math.min(all.length, Math.max(HQ_STAGE_RULES.lampsLive || 12, own));
         all.sort(function (a, b) { return a.d - b.d; });
-        for (var i = 0; i < all.length; i++) all[i].o.visible = i < N;
-        st.lampN = N;
+        return { all: all, N: N };
+    }
+    /* ══ THE WARM-UP (OPEN_WORLD_PLAN.md §5.9 / Phase 11, 2026-09-27) ══════════════════════════════════════════════════════
+       three r128 compiles a material's shader program the first frame it is DRAWN, and uploads a sheet the first frame a
+       material that samples it is drawn — so the frame a built neighbour attached paid for every new program and every new
+       sheet of that part at once (the attach hitch). Worse, when the attach changed the NUMBER of lit lamps (the lamp budget
+       N = min(every lamp, lampsLive): a part that brings lamps to a stage with fewer than 12), every material in the scene was
+       keyed on the old count and recompiled that frame. Now, before the attach, the part's objects are compiled with
+       renderer.compile against a stand-in scene that carries the real fog and exactly the lights the frame after the attach
+       will have (the zone's lights + the lamps _hqStagePick will light with the part drawn); when that light set differs
+       from today's, the whole scene is compiled for it too. One object at a time under HQ_STAGE_RULES.compileMs a frame
+       (default 8; one object at least), then the sheets (renderer.initTexture, same budget). The program three builds is the
+       one the draw looks up by key, so the draw finds it cached. E.warm keeps the counts (ThreeRenderer.hq.stage()). */
+    var HQ_WARM_MS = 8;
+    var _hqWarmMatDef = null;
+    function _hqLightSig(list) {
+        var c = { a: 0, d: 0, p: 0, s: 0, h: 0, r: 0, sd: 0, sp: 0, ss: 0 };
+        list.forEach(function (L) {
+            if (L.isAmbientLight || L.isLightProbe) c.a++; else if (L.isDirectionalLight) { c.d++; if (L.castShadow) c.sd++; } else if (L.isPointLight) { c.p++; if (L.castShadow) c.sp++; }
+            else if (L.isSpotLight) { c.s++; if (L.castShadow) c.ss++; } else if (L.isHemisphereLight) c.h++; else if (L.isRectAreaLight) c.r++;
+        });
+        return [c.d, c.p, c.s, c.h, c.r, c.sd, c.sp, c.ss].join(',');
+    }
+    function _hqUnderRoot(o, roots) { for (var q = o.parent; q; q = q.parent) if (roots.indexOf(q) >= 0) return true; return false; }
+    function _hqWarmNew(H, E) {
+        var W = { objs: [], i: 0, texs: [], ti: 0, seen: {}, tseen: {}, mats: 0, texN: 0, ms: 0, frames: 0, full: false, done: false, lights: [], fake: null };
+        if (!renderer || typeof renderer.compile !== 'function' || !H.scene || !H.camera) { W.done = true; return W; }
+        _hqStageRootPlace(H, E);
+        var st = H.stage, R = E.P.partRoot, now = [], lampRoots = [H.partRoot];
+        for (var id in st.parts) if (st.parts[id].attached) lampRoots.push(st.parts[id].P.partRoot);
+        H.scene.traverseVisible(function (o) { if (o.isLight) now.push(o); });
+        /* the frame after the attach: the zone's lights (a part's lamps are the pick's), the part's own non-lamp lights, the pick's N */
+        var next = now.filter(function (L) { return !(L.isPointLight && _hqUnderRoot(L, lampRoots)); });
+        R.traverseVisible(function (o) { if (o.isLight && !o.isPointLight) next.push(o); });
+        var pk = _hqStagePick(H, R); for (var i = 0; i < pk.N; i++) next.push(pk.all[i].o);
+        W.lights = next;
+        W.full = _hqLightSig(now) !== _hqLightSig(next);
+        var add = function (o) { if (o.material) W.objs.push(o); };
+        R.traverse(add);
+        if (W.full) H.scene.traverse(add);   // every material in the scene is keyed on the light count: warm them all for the new one
+        var sc = H.scene;
+        W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
+                   _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
+        return W;
+    }
+    /* the sheets a material samples (the maps; a shader's texture uniforms) */
+    function _hqWarmTexOf(m, out) {
+        ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'roughnessMap', 'metalnessMap', 'displacementMap'].forEach(function (k) { var t = m[k]; if (t && t.isTexture) out.push(t); });
+        if (m.uniforms) for (var u in m.uniforms) { var v = m.uniforms[u] && m.uniforms[u].value; if (v && v.isTexture) out.push(v); }
+    }
+    /* one frame of the warm-up; true = done */
+    function _hqWarmRun(H, W) {
+        if (W.done) return true;
+        var t0 = _alNow(), end = t0 + ((HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;
+        W.frames++;
+        try {
+            while (W.i < W.objs.length) {
+                var o = W.objs[W.i++], ms = Array.isArray(o.material) ? o.material : [o.material];
+                var tag = (o.isInstancedMesh ? 'i' : '') + (o.isSkinnedMesh ? 's' : '') + (o.morphTargetInfluences ? 'm' : '') + (o.isPoints ? 'p' : o.isLine ? 'l' : o.isSprite ? 'S' : '') + (o.receiveShadow ? 'r' : '');
+                var fresh = false;
+                for (var k = 0; k < ms.length; k++) { var m = ms[k]; if (!m) continue; var key = m.uuid + tag; if (W.seen[key]) continue; W.seen[key] = 1; fresh = true; W.mats++; var tl = []; _hqWarmTexOf(m, tl); tl.forEach(function (t) { if (!W.tseen[t.uuid]) { W.tseen[t.uuid] = 1; W.texs.push(t); } }); }
+                if (!fresh) continue;
+                W.fake._list = [o];
+                renderer.compile(W.fake, H.camera);
+                n++;
+                if (_alNow() >= end) break;
+            }
+            if (W.i >= W.objs.length && (n === 0 || _alNow() < end)) {
+                var P = renderer.properties;
+                while (W.ti < W.texs.length) {
+                    var t = W.texs[W.ti++];
+                    if (!t.image || !(t.version > 0) || t.isCubeTexture || t.isVideoTexture || t.isDataTexture3D || t.isDataTexture2DArray || t.image.complete === false) continue;
+                    if (P && P.get(t).__version === t.version) continue;   // on the card already
+                    renderer.initTexture(t); W.texN++; n++;
+                    if (_alNow() >= end) break;
+                }
+            }
+        } catch (e) { console.warn('[HQ stage] the warm-up failed — the part draws cold', e); W.i = W.objs.length; W.ti = W.texs.length; }
+        W.ms += _alNow() - t0;
+        if (W.i >= W.objs.length && W.ti >= W.texs.length) { W.done = true; W.fake._list = []; W.objs = []; W.texs = []; }
+        return W.done;
+    }
+    /* ══ THE STATIC BATCH (OPEN_WORLD_PLAN.md §5.9 / Phase 11, 2026-09-27) ══════════════════════════════════════════════════
+       Downtown drew ~1,750 calls, most of them the shell: every wall slab, lot podium, backdrop prism, kerb and trim its own
+       draw, and nearly every one with its own material object (2,926 materials for 3,979 meshes) though a few dozen LOOKS.
+       The pass merges the unmoving pieces of a part's shell into one mesh per (look, HQ_STAGE_RULES.tileM square): the look
+       is the material's CONTENT (type, colours, sheet image and its tiling, blending, the shader hook), so two pieces that
+       draw the same share a batch; the square keeps the frustum dropping what is behind the camera. Measured on Downtown's
+       unflagged shell, lots and backdrop: 739 → 356, 777 → 381, 466 → 282 draws.
+       SAFE BY CONSTRUCTION: the ORIGINAL pieces stay where they were, with their flags, parents and positions — every
+       reader (the raycasts, the battle's hand-over, the ledgers) sees exactly what it saw. A merged piece only reads
+       hidden TO THE RENDERER (its `visible` becomes an accessor: false inside a renderer.render, the game's own value
+       everywhere else), and the batch never raycasts. Whatever the game does to a merged piece breaks its batch at once
+       and hands the pieces back: a write to its `visible` or an ancestor's (a kit's stand-in hidden when the kit lands);
+       and every HQ_BATCH.checkMs: a piece moved, re-parented, re-materialled, its material or geometry changed. A piece is
+       only taken after it has sat still for HQ_BATCH.waitMs of the walk (tickers ran), with its sheets landed. Never
+       taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
+       pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
+       sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
+    var HQ_BATCH = { waitMs: 1500, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2 };
+    var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
+    var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_farShell: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1 };
+    var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
+    var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
+    function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
+    function _hqBatchId(obj) {   // a stable small id for an object (an image, a function) — the look's key
+        if (!obj) return 0;
+        if (!_hqBatchIds) _hqBatchIds = new WeakMap();
+        var id = _hqBatchIds.get(obj); if (!id) { id = ++_hqBatchIdN; _hqBatchIds.set(obj, id); }
+        return id;
+    }
+    function _hqBatchTexKey(t) {
+        if (!t) return '';
+        return [_hqBatchId(t.image), t.repeat.x, t.repeat.y, t.offset.x, t.offset.y, t.center.x, t.center.y, t.rotation, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, t.encoding, t.flipY, t.format, t.type, t.premultiplyAlpha, t.generateMipmaps, t.matrixAutoUpdate].join(',');
+    }
+    /* the look: two materials with one key draw the same */
+    function _hqBatchMatKey(m) {
+        var a = [m.type, _hqBatchId(m.onBeforeCompile), m.customProgramCacheKey ? m.customProgramCacheKey() : '', m.color ? m.color.getHex() : '', m.emissive ? m.emissive.getHex() : '', m.emissiveIntensity,
+                 m.specular ? m.specular.getHex() : '', m.shininess, m.roughness, m.metalness, m.opacity, m.transparent, m.alphaTest, m.side, m.shadowSide, m.depthWrite, m.depthTest, m.depthFunc, m.blending,
+                 m.fog, m.vertexColors, m.flatShading, m.toneMapped, m.dithering, m.polygonOffset, m.polygonOffsetFactor, m.polygonOffsetUnits, m.colorWrite, m.premultipliedAlpha, m.reflectivity, m.combine,
+                 m.lightMapIntensity, m.aoMapIntensity, m.normalScale ? m.normalScale.x + '/' + m.normalScale.y : '', m.bumpScale, m.skinning, m.morphTargets];
+        for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) a.push(_hqBatchTexKey(m[_HQ_BATCH_MAPS[i]]));
+        for (var k in m) if (k.indexOf('_ew_') === 0) { var v = m[k]; a.push(k + '=' + ((v !== null && typeof v === 'object') ? _hqBatchId(v) : v)); }
+        if (m.defines) for (var d in m.defines) a.push('#' + d + '=' + m.defines[d]);
+        return a.join('|');
+    }
+    /* what the watchdog compares (cheap: numbers and object ids) */
+    function _hqBatchMatSnap(m) {
+        var s = m.version + '|' + m.opacity + '|' + m.visible + '|' + m.transparent + '|' + (m.color ? m.color.getHex() : '') + '|' + (m.emissive ? m.emissive.getHex() : '') + '|' + m.emissiveIntensity;
+        for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t) s += '|' + _hqBatchId(t) + ':' + t.version + ':' + t.offset.x + ':' + t.offset.y + ':' + t.repeat.x + ':' + t.repeat.y + ':' + t.rotation; }
+        return s;
+    }
+    /* the attribute layout (every piece of a batch has the same) */
+    function _hqBatchGeoSig(g) {
+        if (!g || !g.isBufferGeometry || !g.attributes.position || g.attributes.position.itemSize !== 3) return null;
+        if (g.morphAttributes && Object.keys(g.morphAttributes).length) return null;
+        if (g.drawRange && (g.drawRange.start !== 0 || g.drawRange.count !== Infinity)) return null;
+        var names = Object.keys(g.attributes).sort(), out = [];
+        for (var i = 0; i < names.length; i++) {
+            var at = g.attributes[names[i]];
+            if (!at || at.isInterleavedBufferAttribute || !at.array || names[i] === 'tangent') return null;
+            out.push(names[i] + ':' + at.itemSize + ':' + at.array.constructor.name + ':' + !!at.normalized);
+        }
+        return out.join(',');
+    }
+    /* may this piece be merged? (its own rules; its ancestors' flags and visibility are walked by the caller) */
+    function _hqBatchPieceOk(o) {
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.morphTargetInfluences || o.children.length || o.frustumCulled === false) return false;
+        if (o._ew_bRec || o._ew_bAnc) return false;
+        var m = o.material; if (!m || Array.isArray(m) || m.isShaderMaterial || m.isRawShaderMaterial || !m.visible || m.wireframe) return false;
+        if (o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
+        if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return false;   // a patched shader may read the object's own space
+        if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false)) return false;   // a see-through piece is sorted by its own centre: only a cut-out merges
+        for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture)) return false; }   // its sheets landed
+        for (var k in o) if (_HQ_BATCH_FLAG_OFF[k]) return false;
+        return true;
+    }
+    function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
+    function _hqBatchSame(a, b) { var x = a.elements, y = b.elements; for (var i = 0; i < 16; i++) if (Math.abs(x[i] - y[i]) > 1e-4 * (1 + Math.abs(y[i]))) return false; return true; }
+    /* the scan (a generator, sliced): every piece of the record's shell that may merge, with what it looks like now */
+    function* _hqBatchScan(R, B) {
+        var root = R.shellGroup; if (!root) return;
+        var skip = {}; (R.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { skip[t.id] = 1; }); });
+        root.updateMatrixWorld(true);
+        var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), list = [], n = 0;
+        /* the pieces with their chain: an ancestor that is hidden or flagged off keeps everything under it out */
+        (function walk(g, ok) {
+            for (var i = 0; i < g.children.length; i++) {
+                var c = g.children[i], cok = ok && c.visible !== false && !skip[c.id];
+                if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
+                if (c.children.length) walk(c, cok);
+                else if (cok && c.isMesh) list.push(c);
+            }
+        })(root, true);
+        for (var j = 0; j < list.length; j++) {
+            var o = list[j];
+            if (_hqBatchPieceOk(o)) {
+                var sig = _hqBatchGeoSig(o.geometry);
+                if (sig) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: sig, parent: o.parent });
+            }
+            if ((++n & 63) === 0 && _hqSliceDue()) yield;
+        }
+    }
+    /* is a scanned piece as it was? (the watch, and the watchdog) */
+    function _hqBatchStill(c, root, inv, tmp) {
+        var o = c.o;
+        if (o.material !== c.m || o.geometry !== c.g || o.parent !== c.parent || c.g.attributes.position.version !== c.gv) return false;
+        for (var q = o; q && q !== root; q = q.parent) { if (q.visible === false && !(q === o && o._ew_bRec)) return false; if (!q.parent) return false; }
+        if (_hqBatchMatSnap(c.m) !== c.snap) return false;
+        return _hqBatchSame(_hqBatchRel(o, inv, tmp), c.M);
+    }
+    /* the merge: one geometry in the shell group's space, positions and normals through each piece's matrix, the winding
+       turned for a mirrored piece; always indexed */
+    function _hqBatchMerge(cs) {
+        var g0 = cs[0].g, names = Object.keys(g0.attributes), nV = 0, nI = 0;
+        cs.forEach(function (c) { var n = c.g.attributes.position.count; nV += n; nI += c.g.index ? c.g.index.count : n; });
+        var geo = new THREE.BufferGeometry(), arrs = {};
+        names.forEach(function (nm) { var a = g0.attributes[nm]; arrs[nm] = new a.array.constructor(nV * a.itemSize); });
+        var idx = nV > 65535 ? new Uint32Array(nI) : new Uint16Array(nI);
+        var N3 = _hqBatchN3 || (_hqBatchN3 = new THREE.Matrix3()), v = _hqBatchV || (_hqBatchV = new THREE.Vector3());
+        var vo = 0, io = 0;
+        cs.forEach(function (c) {
+            var g = c.g, n = g.attributes.position.count, M = c.M, flip = M.determinant() < 0;
+            N3.getNormalMatrix(M);
+            names.forEach(function (nm) {
+                var a = g.attributes[nm], src = a.array, dst = arrs[nm], sz = a.itemSize, base = vo * sz;
+                if (nm === 'position') { for (var i = 0; i < n; i++) { v.fromBufferAttribute(a, i).applyMatrix4(M); dst[base + i * 3] = v.x; dst[base + i * 3 + 1] = v.y; dst[base + i * 3 + 2] = v.z; } }
+                else if (nm === 'normal') { for (var i2 = 0; i2 < n; i2++) { v.fromBufferAttribute(a, i2).applyMatrix3(N3).normalize(); dst[base + i2 * 3] = v.x; dst[base + i2 * 3 + 1] = v.y; dst[base + i2 * 3 + 2] = v.z; } }
+                else if (src.length === n * sz) dst.set(src, base);
+                else for (var i3 = 0; i3 < n * sz; i3++) dst[base + i3] = src[i3];
+            });
+            if (g.index) {
+                var ia = g.index.array, ic = g.index.count;
+                for (var t = 0; t + 2 < ic; t += 3) { idx[io++] = ia[t] + vo; if (flip) { idx[io++] = ia[t + 2] + vo; idx[io++] = ia[t + 1] + vo; } else { idx[io++] = ia[t + 1] + vo; idx[io++] = ia[t + 2] + vo; } }
+            } else {
+                for (var t2 = 0; t2 + 2 < n; t2 += 3) { idx[io++] = t2 + vo; if (flip) { idx[io++] = t2 + 2 + vo; idx[io++] = t2 + 1 + vo; } else { idx[io++] = t2 + 1 + vo; idx[io++] = t2 + 2 + vo; } }
+            }
+            vo += n;
+        });
+        names.forEach(function (nm) { var a = g0.attributes[nm]; geo.setAttribute(nm, new THREE.BufferAttribute(arrs[nm], a.itemSize, a.normalized)); });
+        geo.setIndex(new THREE.BufferAttribute(io < idx.length ? idx.subarray(0, io) : idx, 1));
+        geo.computeBoundingSphere(); geo.computeBoundingBox();
+        return geo;
+    }
+    /* the render wrap: a merged piece reads hidden only while a renderer draws (the shadow pass included) */
+    function _hqBatchWrap() {
+        if (!renderer || renderer._ew_bWrap) return;
+        var r0 = renderer.render;
+        renderer.render = function () { _hqBatchDraw++; try { return r0.apply(this, arguments); } finally { _hqBatchDraw--; } };
+        renderer._ew_bWrap = true;
+    }
+    function _hqBatchVisGet() { return _hqBatchDraw > 0 ? false : this._ew_bv; }
+    function _hqBatchVisSet(v) { if (v === this._ew_bv) return; this._ew_bv = v; if (this._ew_bRec) _hqBatchBreak(this._ew_bRec, 'visible'); }
+    function _hqBatchAncGet() { return this._ew_bv; }
+    function _hqBatchAncSet(v) { if (v === this._ew_bv) return; this._ew_bv = v; var L = (this._ew_bAnc || []).slice(); for (var i = 0; i < L.length; i++) _hqBatchBreak(L[i], 'visible'); }
+    function _hqBatchInstall(root, cs, B) {
+        var c0 = cs[0], o0 = c0.o, geo = _hqBatchMerge(cs);
+        var mesh = new THREE.Mesh(geo, c0.m);
+        mesh.name = 'hq_batch'; mesh._ew_hqBatch = true; mesh._ew_occSkip = true; mesh._ew_shadowFlagged = true;
+        mesh.castShadow = o0.castShadow; mesh.receiveShadow = o0.receiveShadow; mesh.renderOrder = o0.renderOrder; mesh.layers.mask = o0.layers.mask;
+        mesh.raycast = function () {};   // the pieces answer the rays, as they always did
+        var rec = { mesh: mesh, cs: cs, root: root, B: B, anc: [], live: true };
+        _hqBatchWrap();
+        root.add(mesh);
+        cs.forEach(function (c) {
+            var o = c.o;
+            o._ew_bv = o.visible; o._ew_bRec = rec;
+            Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get: _hqBatchVisGet, set: _hqBatchVisSet });
+            for (var q = o.parent; q && q !== root; q = q.parent) {
+                if (!q._ew_bAnc) { q._ew_bv = q.visible; q._ew_bAnc = []; Object.defineProperty(q, 'visible', { configurable: true, enumerable: true, get: _hqBatchAncGet, set: _hqBatchAncSet }); }
+                if (q._ew_bAnc.indexOf(rec) < 0) { q._ew_bAnc.push(rec); rec.anc.push(q); }
+            }
+        });
+        B.batches.push(rec); B.stats.batches++; B.stats.pieces += cs.length; B.stats.verts += geo.attributes.position.count;
+        return rec;
+    }
+    /* hand a batch's pieces back (their own `visible` again) and drop the merged mesh */
+    function _hqBatchBreak(rec, why) {
+        if (!rec || !rec.live) return;
+        rec.live = false;
+        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; });
+        rec.anc.forEach(function (q) {
+            var L = q._ew_bAnc; if (!L) return; var i = L.indexOf(rec); if (i >= 0) L.splice(i, 1);
+            if (!L.length) { var v = q._ew_bv; delete q.visible; q.visible = v; q._ew_bAnc = null; }
+        });
+        if (rec.mesh.parent) rec.mesh.parent.remove(rec.mesh);
+        try { rec.mesh.geometry.dispose(); } catch (e) {}
+        var B = rec.B, i2 = B.batches.indexOf(rec); if (i2 >= 0) B.batches.splice(i2, 1);
+        B.stats.batches--; B.stats.pieces -= rec.cs.length; B.stats.verts -= rec.mesh.geometry.attributes.position.count; B.stats.broken++;
+        if (why && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] a batch of ' + rec.cs.length + ' handed back (' + why + ')');
+    }
+    /* the build (a generator, sliced): the pieces still as they were at the scan, grouped by look + square, merged */
+    function* _hqBatchBuild(R, B) {
+        var root = R.shellGroup; if (!root || !root.parent) return;
+        root.updateMatrixWorld(true);
+        var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
+        var U = _hqUnits(), T = ((HQ_STAGE_RULES && HQ_STAGE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
+        for (var i = 0; i < B.cands.length; i++) {
+            var c = B.cands[i];
+            if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
+                if (!c.g.boundingSphere) c.g.computeBoundingSphere();
+                sph.copy(c.g.boundingSphere.center).applyMatrix4(c.M);
+                var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m));
+                var key = mkey + '#' + c.sig + '#' + c.o.castShadow + c.o.receiveShadow + '#' + c.o.renderOrder + '#' + c.o.layers.mask + '#' + Math.floor(sph.x / T) + ':' + Math.floor(sph.z / T);
+                if (!groups[key]) { groups[key] = []; keys.push(key); }
+                groups[key].push(c);
+            }
+            if ((++n & 63) === 0 && _hqSliceDue()) yield;
+        }
+        B.cands = [];
+        for (var k = 0; k < keys.length; k++) {
+            var cs = groups[keys[k]]; if (cs.length < HQ_BATCH.minN) continue;
+            /* a group past maxVerts goes as several batches */
+            var run = [], verts = 0;
+            for (var j = 0; j <= cs.length; j++) {
+                var cc = cs[j], nv = cc ? cc.g.attributes.position.count : 0;
+                if (!cc || (run.length && verts + nv > HQ_BATCH.maxVerts)) {
+                    if (run.length >= HQ_BATCH.minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) _hqBatchInstall(root, run, B); }
+                    run = []; verts = 0;
+                    if (_hqSliceDue()) yield;
+                }
+                if (cc) { run.push(cc); verts += nv; }
+            }
+        }
+    }
+    /* the watchdog: every piece of every live batch as it was */
+    function _hqBatchCheck(R, B) {
+        var root = R.shellGroup; if (!root) return;
+        root.updateMatrixWorld(true);
+        var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
+        inv.copy(root.matrixWorld).invert();
+        B.batches.slice().forEach(function (rec) {
+            if (rec.mesh.parent !== root) { _hqBatchBreak(rec, 'lost'); return; }
+            for (var i = 0; i < rec.cs.length; i++) if (!_hqBatchStill(rec.cs[i], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); return; }
+        });
+    }
+    /* every frame of the walk (after the room is ready): the current part and the drawn neighbours, HQ_BATCH.sliceMs in all */
+    function _hqBatchTick(H, now) {
+        if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
+        var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
+        var end = _alNow() + HQ_BATCH.sliceMs;
+        for (var r = 0; r < recs.length; r++) {
+            var R = recs[r], B = R.batch;
+            if (!B) { R.batch = { phase: 'wait', at: now, cands: [], batches: [], it: null, checkAt: 0, stats: { batches: 0, pieces: 0, verts: 0, broken: 0, scanned: 0 } }; continue; }
+            if (B.phase === 'off') continue;
+            if (B.phase === 'live') { if (now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); } } continue; }
+            if (B.phase === 'wait') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (_alNow() >= end) return;
+            _hqSliceEnd = end;
+            var res = null;
+            try { res = B.it.next(); } catch (e) { console.warn('[HQ batch] the pass failed — every piece handed back', e); _hqBatchDrop(R); res = { done: true }; B.phase = 'off'; }
+            finally { _hqSliceEnd = 0; }
+            if (res && res.done && B.phase !== 'off') {
+                B.it = null;
+                if (B.phase === 'scan') { B.phase = 'watch'; B.at = now; B.stats.scanned = B.cands.length; }
+                else if (B.phase === 'build') { B.phase = 'live'; B.checkAt = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
+            }
+            if (_alNow() >= end) return;
+        }
+    }
+    function _hqBatchDrop(R) {
+        var B = R && R.batch; if (!B) return;
+        B.batches.slice().forEach(function (rec) { _hqBatchBreak(rec, null); });
+        B.phase = 'off'; B.it = null; B.cands = [];
+    }
+    /* the hand-over, the leave: every piece of every part handed back */
+    function _hqBatchDropAll(H) {
+        if (!H) return;
+        _hqBatchDrop(H);
+        if (H.stage) for (var id in H.stage.parts) _hqBatchDrop(H.stage.parts[id].P);
+    }
+    function _hqBatchStats(H) {
+        H = H || _hq; if (!H) return null;
+        var out = {}, add = function (id, R) { var B = R && R.batch; if (B) out[id] = { phase: B.phase, batches: B.stats.batches, pieces: B.stats.pieces, verts: B.stats.verts, broken: B.stats.broken, scanned: B.stats.scanned }; };
+        add((H.opts && H.opts.room) || 'room', H);
+        if (H.stage) for (var id in H.stage.parts) add(id, H.stage.parts[id].P);
+        return out;
     }
     /* THE CROSSING (§5.3) */
     function _hqStageCross(H, now) {
@@ -57459,7 +57934,7 @@ const ThreeRenderer = (function () {
     }
     function _hqStageStatus() {
         var H = _hq, st = H && H.stage; if (!st) return null;
-        var parts = {}; for (var id in st.parts) { var E = st.parts[id]; parts[id] = { built: E.built, step: E.step, attached: E.attached, rel: E.rel, trk: E.trk ? { near: E.trk.near, far: E.trk.far, nearPending: E.trk.nearPending, farPending: E.trk.farPending } : null, waitMs: E.attached ? null : Math.round(performance.now() - (E.t0 || 0)) }; }
+        var parts = {}; for (var id in st.parts) { var E = st.parts[id]; parts[id] = { built: E.built, step: E.step, attached: E.attached, rel: E.rel, slice: E.slice || null, warm: E.warm ? { mats: E.warm.mats, texN: E.warm.texN, frames: E.warm.frames, ms: +E.warm.ms.toFixed(1), full: E.warm.full, done: E.warm.done } : null, trk: E.trk ? { near: E.trk.near, far: E.trk.far, nearPending: E.trk.nearPending, farPending: E.trk.farPending } : null, waitMs: E.attached ? null : Math.round(performance.now() - (E.t0 || 0)) }; }
         return { id: st.id, nbs: st.nbs.map(function (n) { return n.id; }), parts: parts, crossed: st.crossed, lampN: st.lampN, skyYaw: st.skyYaw, blending: !!st.blend };
     }
 
@@ -57477,6 +57952,7 @@ const ThreeRenderer = (function () {
             rails: [], ramps: [],   /* SKATEBOARDING (9.8, 2026-09-15): THE PARK RULE's registers (every builder pushes its rails / ramps) */
             climbs: [], climbNear: null,   /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the room's ladders / ropes / vines (_hqBuildClimbs) and the one within reach */
             boats: [], seaFx: null, seaWayLatch: null,   /* THE DEEP (2026-09-18): the moored vehicles (the prop placer registers a catalogue `vehicle`), the water's effects, the whirlpool latch */
+            batch: null,   /* THE STATIC BATCH (Phase 11): the part's merged shell pieces (_hqBatchTick) — it travels with the part */
             finds: [], findLights: 0,   /* THE FINDS (9.1, 2026-09-15): the takeable objects standing in the room (_hqPlaceFinds) and the count of their point lights */
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             kicks: [], seats: [], sways: [], shafts: 0, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props */
@@ -57816,6 +58292,7 @@ const ThreeRenderer = (function () {
     }
     function _hqHandoverStash(H, opts) {
         _hqHandoverDrop();
+        try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): the fight takes the pieces themselves (its keep radius, its wall fade)
         if (!opts || !opts.handover || !_hqHandoverRules().handover || !H || !H.scene) return false;
         try { (H.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { if (t._ew_reflectOld) { try { t.material.dispose && t.material.dispose(); } catch (e) {} t.material = t._ew_reflectOld; t._ew_reflectOld = null; } }); }); } catch (e) {}
         try { _hqStageFlatten(H); } catch (e) { console.warn('[HQ stage] the hand-over flatten failed', e); }   // THE STAGE: the drawn neighbours join the fight's room, baked through their roots
@@ -57828,6 +58305,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
         try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}   // 5.4: the mirrored targets
@@ -58003,6 +58481,7 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
+        batch: function () { return _hqBatchStats(_hq); },   // THE STATIC BATCH (Phase 11): per part { phase, batches, pieces, verts, broken, scanned }
         /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and
            { meshes, full, lod1, lod2, culled, swaps } — null outside the walk (or before the first tick) */
         far: function () { return _hq ? _hqFarStats(_hq) : null; },

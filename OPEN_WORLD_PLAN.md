@@ -980,7 +980,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) — **SKIPPED 2026-09-27 (mondo: "let's skip phase 8")**: the field stays 8 × 8; §5.6 and fork 9 stand as the design if it is ever wanted |
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged — **DONE 2026-09-27 with deviations (§12)**: the swap is by the manifest, not by renamed URLs; textures keep their size (2048 cap); no quantization; KTX2 not wired (r128 ships no KTX2Loader in examples/js) |
 | 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) — **DONE 2026-09-27 with deviations (§12)**: levels by screen size, the small-prop cull in place of impostors, the far shells across the whole ground |
-| 11 | **THE SMOOTH ATTACH** (§5.9): `renderer.compile` before a part attaches, the ms-budget build slice (`buildMs`), `ImageBitmapLoader` textures, static batching of the shell per tile | three-renderer.js | `hq-stage.test.js` grows the slice (no step over budget on the vm clock) and the merge count pins |
+| 11 | **THE SMOOTH ATTACH** (§5.9): `renderer.compile` before a part attaches, the ms-budget build slice (`buildMs`), `ImageBitmapLoader` textures, static batching of the shell per tile | three-renderer.js | `hq-stage.test.js` grows the slice (no step over budget on the vm clock) and the merge count pins — **DONE 2026-09-27** (zip 14; `hq-attach.test.js`) |
 | 12 | **PORTALS + THE MEMORY BUDGET** (§5.9): a door join is a portal (a neighbour through a shut door is not drawn), LRU eviction of parsed models under a VRAM estimate, the MEM line on the readout | three-renderer.js | `hq-joins.test.js` grows the portal rule; `asset-store.test.js` the eviction |
 | 13 | **SOUND IN SPACE** (§5.9): positional room tone / props on the stage (`PannerNode`), faded by the ring | audio.js, three-renderer.js | `audio-space.test.js` |
 | 14 | **THE LIGHT** (§5.9, optional): shadow cascades on the open ground, light probes per interior part | three-renderer.js | screenshots + `day-sky.test.js` |
@@ -1504,3 +1504,40 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
   - Tests: `hq-lod.test.js` (new: the rules, the shells, the far tick in a vm with real three, the level pick and
     pairing, the near-first order, the tool); `asset-store.test.js` (simplify now lives only in `lodOne`);
     `mobile-performance.test.js` (its queue harness gains the near-first helpers).
+- 2026-09-27 — **PHASE 11 SHIPPED: THE SMOOTH ATTACH** (same thread; zip `open-world/ENTROPY_WARS_OPEN_WORLD_14.zip`,
+  token `20260927-open-world-14-cors`, a delta over zip 13; three-renderer.js only on R2).
+  - **THE SLICE** (`buildMs`, already 6 in `HQ_STAGE_RULES`): `_hqBuildTerrain`, `_hqBuildOuterGround` and
+    `_hqPlaceProps` are generators inside. The global `_hqSliceAsk` asks a builder for its iterator; otherwise it
+    drains itself, so every other caller (the entry, the tests) is unchanged. They yield at `_hqSliceDue()` checks:
+    every field row, between sections, in the wall / plan-wall / tree / thicket / prop loops and before each city
+    builder. `_hqStageBuildSlice` runs units until the frame's budget is spent and keeps `E.slice` (frames, units,
+    the longest unit, the longest frame, frames over 1.5 × budget); `hq.stage()` shows it per part.
+  - **THE WARM-UP** (`renderer.compile` before attach): a built part waits in `_hqWarmRun` while its materials
+    compile under the lights it will be drawn with (a stand-in scene: the scene's lamp pick `_hqStagePick` + the
+    part), one object at a time under `HQ_STAGE_RULES.compileMs` (default 8 ms), and its sheets upload through
+    `renderer.initTexture`. If attaching changes the lamp count, every material in the scene would recompile, so
+    the warm-up then compiles the WHOLE scene under the new lights first ("the lights changed").
+  - **THE STATIC BATCH** (§5.5): 1.5 s after a part attaches and stops moving, its static shell meshes (no skin,
+    no morphs, not instanced, not transparent-sorted) merge per material CONTENT (Downtown's materials are almost all
+    unique objects of a few looks) and per 32 m tile, sliced at 3 ms a frame. The originals stay in the graph: their
+    `visible` reads false only inside `renderer.render` (`_hqBatchDraw`), so raycasts, the walker and every script see
+    them as before. A write to an ancestor's `visible`, a moved piece, a changed material or geometry, or a
+    re-parent (a 500 ms watchdog) breaks the batch it is in. The batch drops on hand-over, leave and dispose.
+    `hq.batch()` reports; `window.EW_HQ_NO_BATCH` off.
+  - **THE BITMAPS** (`ImageBitmapLoader`-style): in Chromium, the walk's sheets decode through
+    `createImageBitmap(blob, {imageOrientation, premultiplyAlpha, colorSpaceConversion: 'none'})` off the main
+    thread, then fall back to `<img>` on any failure. `window.EW_NO_BITMAPS` off.
+  - **Deviations**: (1) the test is a new `hq-attach.test.js` rather than growing `hq-stage.test.js`; (2) a few
+    single units are still longer than the budget (the field's normals and tiles, the stands' merge, the tabletop
+    pass after the props), because each is one three call or one merge; they now land spread over the build instead
+    of in one frame.
+  - Measured headless on Downtown (1-pixel stand-in sheets, swiftshader, so times are inflated):
+    Downtown's draw calls 1785 → 1229 with the batch
+    (457 batches of 1559 pieces, none broken). The three neighbours: the strip built in 35 frames (longest 18.9 ms)
+    and warmed 597 materials in 4 frames; the harbour in 99 frames (longest 53 ms, was 104 before the outer ground
+    was sliced) and warmed 82; the stadium in 56 frames (longest ~50 ms, the stands' merge) and, because it changed
+    the lamp count, warmed the whole scene: 2878 materials + 73 sheets over 39 frames. Before this phase a part's
+    whole terrain was one step in one frame, and so were all its props.
+  - Tests: `hq-attach.test.js` (new: the slice on a fake clock, the builders' pins, the warm-up on real three with a
+    fake renderer, the merge and its draw/raycast rules, the hand-backs, the bitmaps); `hq-stage.test.js` /
+    `hq-coast.test.js` extract the new helpers; `hq-clock.test.js` fixed (two older pins).

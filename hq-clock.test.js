@@ -117,7 +117,9 @@ test('the renderer lights a room by the hour (real three r128 in a vm): the sun 
     const ctx = vm.createContext({ THREE, Math, Object, Array, WeakMap, performance: { now: () => 0 }, console: { log() {}, warn() {} },
         window: { _hqClockHour: () => hour }, HQ_WORLD_CLOCK: CK, hqRoomClock: G('hqRoomClock'), hqWorldSun: G('hqWorldSun'), hqWorldDir: G('hqWorldDir'),
         _hqData: () => G('DOOR_HQ'), _hqLightRules: () => LR, _hqUnits: () => 1, _gradeHorizonScenery: () => {} });
-    vm.runInContext(TR.slice(a, b) + TR.slice(c, d) + '\nthis.vals = _hqClockVals; this.arm = _hqClockArm; this.tick = _hqClockTick; this.lamps = _hqClockLamps; this.sv = _hqStageSkyVals;', ctx);
+    const e = TR.indexOf('    function _hqDryFog('), f = TR.indexOf('\n', e);   // the sea's dry fog (THE DEEP): the clock's fog reads it
+    assert.ok(e > 0, '_hqDryFog');
+    vm.runInContext(TR.slice(a, b) + TR.slice(c, d) + TR.slice(e, f) + '\nthis.vals = _hqClockVals; this.arm = _hqClockArm; this.tick = _hqClockTick; this.lamps = _hqClockLamps; this.sv = _hqStageSkyVals;', ctx);
     const R = G('DOOR_HQ').rooms, LRo = LR.open;
     const dt = R.site_prebuilt_downtown_streets;
     const noon = ctx.vals(dt, 'site_prebuilt_downtown_streets', 12.5);
@@ -160,7 +162,7 @@ test('the wiring: the dome\'s uniforms, the arm at the entry and the crossing, t
     const enter = TR.slice(TR.indexOf('    function _hqEnter('), TR.indexOf('    var HQ_DISSOLVE_MS'));
     assert.ok(enter.indexOf('_hqClockArm(_hq)') > enter.indexOf('_hqLightArm(room)'), '_hqEnter arms the clock after the light rig');
     assert.match(TR, /_hqStageBlendStart\(H, fromRoom, H\.room, fromId, to\);\s*try \{ _hqClockArm\(H\); \}/, 'the crossing re-arms it for the part you enter');
-    assert.match(TR, /'strikeAt', 'clock'\]\.forEach/, 'the clock is the visit\'s (a zone key)');
+    assert.match(TR, /'strikeAt', 'clock'[,\]][^;]*\]\.forEach\(function \(k\) \{ _HQ_ZONE_KEYS\[k\] = 1; \}\)/, 'the clock is the visit\'s (a zone key)');
     assert.match(TR.slice(TR.indexOf('    function _hqPartFields('), TR.indexOf('    function _hqEnter(')), /clockLamps: \[\]/, 'a part carries its night lamps');
     assert.match(TR, /if \(!H\.paused && H\.ready && _hqClockMsLast && typeof window !== 'undefined' && typeof window\._hqClockAdvance === 'function'\)/, 'the frame runs the day: never paused, never under the card');
     assert.match(TR, /if \(cat\.light\.night\) \{ ppl\._ew_lampI = ppl\.intensity; _hq\.clockLamps\.push\(ppl\); \}/, 'a catalogue night light is a clock lamp');
