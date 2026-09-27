@@ -235,3 +235,13 @@ Append new notes for this system at the end of this file.
   (`_hqClockHour/Advance/Hold`, `hqClockSet(h)` in the console), `door.hq.clock = { h, at, run }`, the
   hour on the room sub-line (`#hqClockTag`), `_hqEncounterRun.night` → `getCurrentCyclePhase` round 1.
   Test: hq-clock.test.js.
+- Phase 4 shipped 2026-09-27 (the plan's §12, token 20260927-open-world-05-cors): THE WEST + THE WELLS.
+  data.js: the five wells' `b` ends are free ends under their own places (the gallery, a tunnels cistern
+  room, Camelot's dungeon alcove, the cavern mouth, a ley cistern chamber); THE WELL ROOM
+  (`site_prebuilt_hollow_earth_shaft`) deleted, SIX ROPES is innersun's 2nd tape (`HQ_FIND_MOVED` in
+  `hqFindLegacyId` keeps old saves); zones `woods` (8 parts, 7 `trail` joins, ritual absorbed), `haunted`
+  (grounds + hall + a planned trailhead border) and `basement` (9 door joins) staged in
+  `HQ_STAGE_RULES.zones`; `hqStageNeighbours` replaces a room's own plain doors too; per-join `stitchM`;
+  `gen.mouths` opens the bank at a stitched span; `hqTerrainDoorY` finds the room id on a cache miss.
+  three-renderer.js: `_hqBuildTrailPost` (a joined door with no way), `_hqPlantTreeline` keeps off a
+  neighbour. The 38 board rooms are KEPT. Test: hq-west.test.js (+ hq-cave re-pinned for the wells).
