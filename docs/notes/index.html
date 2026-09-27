@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- ── Mobile: allow launching full-screen from the Home Screen (no browser tab bar) ── -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Entropy Wars" />
+    <meta name="theme-color" content="#06050a" />
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Entropy%20Wars%22%2C%22short_name%22%3A%22EntropyWars%22%2C%22start_url%22%3A%22.%22%2C%22scope%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22display_override%22%3A%5B%22fullscreen%22%2C%22standalone%22%5D%2C%22orientation%22%3A%22landscape%22%2C%22background_color%22%3A%22%2306050a%22%2C%22theme_color%22%3A%22%2306050a%22%7D" />
+    <title>Entropy Wars v207 — Rectangular Maps & Tower Defense</title>
+    <style>/* pre-CSS frame: keep the page dark while external styles download */html,body{background:#06050a}</style>
+    <script>
+    /* ── Boot telemetry (must be the FIRST script) ──
+       Tracks real script/CSS download progress for the title loading bar and
+       records failures so a dead CDN/R2 file surfaces as an error overlay
+       instead of a silent soft-lock at "· LOADING ·".
+       - Failures: resource 'error' events don't bubble but DO pass through
+         window during capture ('load' events do NOT — Chromium quirk — so
+         progress comes from the Performance API instead). */
+    (function () {
+        var boot = window._ewBoot = { failed: [], t0: Date.now() };
+        try { performance.setResourceTimingBufferSize(1000); } catch (e) {}
+        boot.loadedCount = function () {
+            try {
+                return performance.getEntriesByType('resource').filter(function (r) {
+                    return r.initiatorType === 'script' || r.initiatorType === 'link';
+                }).length;
+            } catch (e) { return 0; }
+        };
+        window.addEventListener('error', function (e) {
+            var t = e.target;
+            if (t && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) {
+                var url = t.src || t.href || '';
+                if (url) boot.failed.push(url);
+            }
+        }, true);
+    })();
+
+    /* ── Cross-browser safety net ──
+       structuredClone shipped in Safari 15.4 / Chrome 98; older browsers get a
+       JSON round-trip fallback. The engine only clones plain build/state
+       objects (no Maps/Dates/cycles), so the fallback is faithful. Without
+       this, ONE missing built-in throws inside battle.js/state.js and takes
+       the whole match setup down on older Safari. */
+    if (typeof window.structuredClone !== 'function') {
+        window.structuredClone = function (v) {
+            return v === undefined ? v : JSON.parse(JSON.stringify(v));
+        };
+    }
+
+    /* ── Renderer / compatibility diagnostics (?ewdiag=1 or EW_SHOW_DIAG()) ──
+       "Terrain is black in Safari" class bugs are near-impossible to fix from
+       a bug report with no data. This collector records, in ES5-only syntax so
+       it can never be the thing that breaks:
+       - uncaught JS errors with file:line — a single unsupported syntax
+         feature aborts that ENTIRE script file, silently deleting every
+         global it defines (the #1 cause of "works in Chrome, broken there");
+       - THREE.js console errors (shader compile failures, texture errors);
+       - failed CDN downloads (from the boot collector above);
+       - a GPU capability probe (WebGL1/2, renderer string, texture limits,
+         fragment highp support — Apple GPUs are the usual precision outlier).
+       Open the game with ?ewdiag=1 to get an overlay + copy button ~5s after
+       load, or run EW_SHOW_DIAG() in the console any time. Players on a
+       broken browser just screenshot / paste the report. */
+    (function () {
+        var diag = window._ewDiag = { jsErrors: [], three: [] };
+        var CAP = 100;
+        function shortUrl(u) {
+            return String(u || '').replace(/[#?].*$/, '').split('/').pop() || String(u || '');
+        }
+        window.addEventListener('error', function (e) {
+            if (!e || (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK'))) return;
+            if (diag.jsErrors.length >= CAP) return;
+            diag.jsErrors.push(shortUrl(e.filename) + ':' + (e.lineno || 0) + ':' + (e.colno || 0) +
+                ' — ' + (e.message || '?'));
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+            if (diag.jsErrors.length >= CAP) return;
+            var r = e && e.reason;
+            diag.jsErrors.push('unhandled rejection — ' +
+                String((r && (r.message || r)) || '?').slice(0, 300));
+        });
+        var origErr = console.error;
+        console.error = function () {
+            try {
+                var s = Array.prototype.map.call(arguments, function (a) {
+                    return (a && a.message) ? a.message : String(a);
+                }).join(' ');
+                if (/THREE/.test(s) && diag.three.length < CAP) diag.three.push(s.slice(0, 800));
+            } catch (x) {}
+            return origErr.apply(console, arguments);
+        };
+        diag.gpuProbe = function () {
+            var out = [];
+            out.push('ua: ' + navigator.userAgent);
+            out.push('dpr: ' + (window.devicePixelRatio || 1) +
+                '  screen: ' + screen.width + 'x' + screen.height);
+            try {
+                var cv = document.createElement('canvas');
+                var gl = cv.getContext('webgl2');
+                var kind = gl ? 'webgl2' : '';
+                if (!gl) {
+                    gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
+                    kind = gl ? 'webgl1' : 'NONE — game cannot render';
+                }
+                out.push('context: ' + kind);
+                if (gl) {
+                    var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (dbg) {
+                        out.push('gpu: ' + gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) +
+                            ' / ' + gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL));
+                    }
+                    out.push('maxTexture: ' + gl.getParameter(gl.MAX_TEXTURE_SIZE));
+                    var hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+                    out.push('fragment highp bits: ' + (hp ? hp.precision : '?') +
+                        ((hp && hp.precision > 0) ? '' : '  << mediump-only GPU (fp16 hazards!)'));
+                }
+            } catch (e) { out.push('gpu probe failed: ' + e.message); }
+            return out;
+        };
+        window.EW_SHOW_DIAG = function () {
+            var boot = window._ewBoot || { failed: [] };
+            var lines = ['ENTROPY WARS DIAGNOSTIC — ' + new Date().toISOString(),
+                'build: ' + (window._EW_BUILD_TOKEN || '?')];
+            lines = lines.concat(diag.gpuProbe());
+            function section(title, arr) {
+                lines.push('');
+                lines.push(title + ' (' + arr.length + '):');
+                if (!arr.length) { lines.push('  none'); return; }
+                for (var i = 0; i < arr.length; i++) lines.push('  ' + arr[i]);
+            }
+            section('FAILED DOWNLOADS', boot.failed || []);
+            section('JS ERRORS', diag.jsErrors);
+            section('THREE / RENDERER ERRORS', diag.three);
+            var report = lines.join('\n');
+            var old = document.getElementById('ew-diag-overlay');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            var d = document.createElement('div');
+            d.id = 'ew-diag-overlay';
+            d.style.cssText = 'position:fixed;z-index:2147483647;left:2vw;top:2vh;width:92vw;' +
+                'height:88vh;background:#0a0a14;color:#cfe8e0;border:1px solid #4a8;' +
+                'font:11px/1.5 monospace;padding:10px;overflow:auto;box-sizing:border-box;';
+            function btn(label, fn) {
+                var b = document.createElement('button');
+                b.textContent = label;
+                b.style.cssText = 'margin:0 8px 8px 0;padding:4px 12px;background:#123;' +
+                    'color:#cfe8e0;border:1px solid #4a8;font:11px monospace;cursor:pointer;';
+                b.onclick = fn;
+                return b;
+            }
+            var pre = document.createElement('div');
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.textContent = report;
+            var copyBtn = btn('COPY REPORT', function () {
+                function done() { copyBtn.textContent = 'COPIED ✓'; }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(report).then(done, function () { fallback(); });
+                } else { fallback(); }
+                function fallback() {
+                    var ta = document.createElement('textarea');
+                    ta.value = report;
+                    d.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch (e) {}
+                    d.removeChild(ta);
+                }
+            });
+            d.appendChild(copyBtn);
+            d.appendChild(btn('CLOSE', function () { d.parentNode.removeChild(d); }));
+            d.appendChild(pre);
+            (document.body || document.documentElement).appendChild(d);
+            return report;
+        };
+        if (/[?&#]ewdiag/.test(location.search + location.hash)) {
+            window.addEventListener('load', function () {
+                setTimeout(function () { window.EW_SHOW_DIAG(); }, 5000);
+            });
+        }
+    })();
+    </script>
+
+    <script>
+    /* ── Mobile detection + performance mode (must run BEFORE every game
+       module — three-post.js / three-renderer.js / three-vfx.js read the
+       flags at parse time to pick their defaults) ──
+       Phones were tab-crashing (OOM) at match start: rigged GLB unit models
+       ship uncompressed 2K textures, three shared animation libraries are
+       preloaded and re-baked on the main thread, and the renderer + post
+       chain allocate at devicePixelRatio 2. window.EW_PERF_LOW gates all of
+       that down to the sprite pipeline at 1x. Persisted knobs:
+       - ew_perfMode: 'auto' (default; low on mobile, high on desktop),
+         'low', 'high' — set via the Performance buttons in Settings.
+       - ew_units3d: '1'/'0' explicit 3D-unit-model override; wins over the
+         mode-derived default either way. */
+    (function () {
+        var touch = (navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window);
+        var coarse = false;
+        try { coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch (e) {}
+        var uaMobile = /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(navigator.userAgent || '') ||
+            !!(navigator.userAgentData && navigator.userAgentData.mobile);
+        // iPad Safari masquerades as desktop Mac — touch + coarse pointer is the giveaway
+        window.EW_MOBILE = !!(touch && (coarse || uaMobile));
+        var mode = 'auto';
+        try { mode = localStorage.getItem('ew_perfMode') || 'auto'; } catch (e) {}
+        if (mode !== 'low' && mode !== 'high') mode = 'auto';
+        window.EW_PERF_MODE = mode;
+        window.EW_PERF_LOW = (mode === 'low') || (mode === 'auto' && window.EW_MOBILE);
+        var m3d = null;
+        try { m3d = localStorage.getItem('ew_units3d'); } catch (e) {}
+        if (m3d === '0' || (window.EW_PERF_LOW && m3d !== '1')) {
+            window.EW_DISABLE_3D_UNITS = true;
+        }
+        try {
+            document.documentElement.classList.add(window.EW_MOBILE ? 'ew-mobile' : 'ew-desktop');
+            if (window.EW_PERF_LOW) document.documentElement.classList.add('ew-perf-low');
+        } catch (e) {}
+        /* THE CDN CORS PROBE (2026-09-20): every WebGL texture and every GLB is a crossOrigin fetch of
+           cdn.entropywars.net, and the bucket's CORS policy answers only for the origins it names — from any
+           other host the browser blocks them all and the whole building renders BLACK with nothing in the
+           console but per-file lines. One tiny cors fetch at boot names the problem on screen instead. */
+        (function () {
+            try {
+                if (!window.fetch || location.protocol === 'file:') return;
+                var probeUrl = 'https://cdn.entropywars.net/Assets/Sprites/terrain/scorched.png?ewcors=1&ewprobe=' + Date.now();
+                fetch(probeUrl, { mode: 'cors', cache: 'no-store' }).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    window._ewCdnCorsBlocked = false;
+                }).catch(function (err) {
+                    window._ewCdnCorsBlocked = true;
+                    var msg = 'CDN BLOCKED: cdn.entropywars.net does not allow cross-origin loads from ' + location.origin +
+                        ' — textures and models will render black. Add this origin to the R2 bucket\'s CORS policy (AllowedOrigins) or play from the allowed host. (' + (err && err.message) + ')';
+                    try { console.error('[EntropyWars] ' + msg); } catch (e) {}
+                    try {
+                        var d = document.createElement('div');
+                        d.id = 'ewCdnCorsBanner';
+                        d.setAttribute('style', 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:10px 14px;background:#7a0f1a;color:#fff;font:13px/1.4 monospace;text-align:center;cursor:pointer');
+                        d.textContent = msg + '  [click to dismiss]';
+                        d.onclick = function () { d.remove(); };
+                        (document.body || document.documentElement).appendChild(d);
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        })();
+    })();
+    </script>
+    <link rel="preconnect" href="https://cdn.entropywars.net">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.socket.io">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@500;700&family=Cinzel:wght@700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+SC:wght@500;600;700&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260927-open-world-06-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260927-open-world-06-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260927-open-world-06-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260927-open-world-06-cors">
+
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260927-open-world-06-cors">
+    <!-- Three.js r128 for game board renderer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+    <!-- THE POST PASS 7.5 (2026-09-21): SMAA beside FXAA (ThreePost.setAA) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SMAAShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <!-- SMAAPass extends THREE.Pass (EffectComposer.js) — it must load AFTER the composer, or it throws at load and SMAA is never available (2026-09-22) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SMAAPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+    <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260927-open-world-06-cors"></script>
+    <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
+         AND rigged 3D unit models (sprites.js RACE_MODELS_3D) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- THREE.SkeletonUtils — clones skinned GLB unit models so each unit on the
+         board gets its own skeleton (a plain .clone() would share bones) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+
+    <!-- Three.js import map for shader background -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        #shaderBgCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            pointer-events: none;
+        }
+        #menuBgCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            pointer-events: none;
+        }
+        /* Hide the old CSS sky layers when shader is active */
+        .sky-backdrop.shader-active {
+            background: transparent !important;
+        }
+        .sky-backdrop.shader-active::before,
+        .sky-backdrop.shader-active::after,
+        .sky-backdrop.shader-active .nebula-overlay,
+        .sky-backdrop.shader-active .sky-layer,
+        .sky-backdrop.shader-active .sunset-overlay {
+            display: none !important;
+        }
+        /* lil-gui shader settings panel — hidden */
+        .lil-gui.root {
+            display: none !important;
+        }
+        /* ── Online player counter ── */
+        .mm-online-count {
+            text-align: center;
+            font-family: 'DotGothic16', monospace;
+            font-size: 13px;
+            color: rgba(200, 210, 230, 0.7);
+            letter-spacing: 0.05em;
+            margin-top: 6px;
+        }
+        .mm-online-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #32aa50;
+            box-shadow: 0 0 6px #32aa50;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        /* ── Ranked Queue Styles (void-menu language: flat, sharp, lavender) ── */
+        .lobby-ranked-btn {
+            background: rgba(201,165,255,0.08) !important;
+            border-color: rgba(201,165,255,0.45) !important;
+            color: #e6ddfa !important;
+            font-size: 1.1rem !important;
+            letter-spacing: 0.05em;
+        }
+        .lobby-ranked-btn:hover {
+            filter: brightness(1.15);
+        }
+        .lobby-ranked-sizes {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 18px 0 14px;
+            flex-wrap: wrap;
+        }
+        .ranked-size-btn {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(150,130,190,0.2);
+            color: #8f88a8;
+            font-family: 'DotGothic16', monospace;
+            font-size: 1rem;
+            letter-spacing: 0.08em;
+            padding: 10px 18px;
+            border-radius: 0;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+            min-width: 56px;
+        }
+        .ranked-size-btn:hover {
+            border-color: rgba(201,165,255,0.5);
+            background: rgba(201,165,255,0.06);
+            color: #fff;
+        }
+        .ranked-size-btn.active {
+            border-color: #c9a5ff;
+            background: rgba(201,165,255,0.12);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(201,165,255,0.25);
+        }
+        .lobby-ranked-info {
+            text-align: center;
+            margin: 10px 0 18px;
+        }
+        .lobby-ranked-elo {
+            font-family: 'DotGothic16', monospace;
+            font-size: 1.05rem;
+            color: var(--gold);
+            letter-spacing: 0.08em;
+        }
+        .lobby-queue-timer {
+            font-family: 'DotGothic16', monospace;
+            font-size: 2rem;
+            color: #c9a5ff;
+            text-align: center;
+            margin: 12px 0;
+            letter-spacing: 0.15em;
+        }
+        #lobbyQueueSearching {
+            text-align: center;
+        }
+        #lobbyQueueSearching .secondary-lobby {
+            margin-top: 10px;
+        }
+        .lobby-status.connected {
+            color: var(--green, #55d38a);
+        }
+        /* THE HIT READ (SPELL_DIRECTOR_PLAN §5 Phase 2) — 2D-board fallback
+           for battle.js _hitReadDressDom. The 3D renderer's canvas pops get
+           the same read painted in (battle.js _hitReadDress3D). Vars:
+           --hr-color (type colour, absent on untyped hits), --hr-glow,
+           --hr-scale (the swell, 1 → EW_HIT_READ.maxScale). */
+        .dio-float-text.hr {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.15em;
+            color: var(--hr-color, inherit);
+            transform-origin: 50% 60%;
+            animation: hrPunch 0.28s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+            scale: var(--hr-scale, 1);
+        }
+        .dio-float-text.hr .hr-glyph {
+            font-size: 0.8em;
+            filter: drop-shadow(0 0 4px var(--hr-glow, #fff));
+        }
+        .dio-float-text.hr .hr-crit {
+            font-size: 0.5em;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            color: #1c0c00;
+            background: #ffc21a;
+            border: 2px solid #3a1a00;
+            border-radius: 3px;
+            padding: 0 0.3em;
+            transform: rotate(-14deg) translateY(-0.7em);
+            box-shadow: 0 0 0 3px rgba(255, 248, 214, 0.85), 0 0 10px rgba(255, 210, 60, 0.8);
+        }
+        .dio-float-text.hr.hr-resist {
+            filter: saturate(0.35) brightness(0.78);
+        }
+        .dio-float-text.hr.hr-kill {
+            text-shadow: 0 0 10px var(--hr-glow, #ff5a3a), 0 0 22px var(--hr-glow, #ff5a3a);
+        }
+        @keyframes hrPunch {
+            0%   { transform: scale(0.4); }
+            55%  { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-viewport">
+    <div id="spellTooltip"></div>
+    <div class="app">
+        <section class="panel" id="setupPanel">
+            <div id="builder"></div>
+            <div class="status setup-summary" id="phaseBox"></div>
+        </section>
+
+        <section class="panel" id="sidebarPanel">
+            <div class="compact-head">
+                <h2 style="margin:0">Player 1</h2>
+                <div class="mini-hourglass"></div>
+            </div>
+            <div class="small-team-score p1">
+                <div class="team-name">Party</div>
+                <div class="team-count" id="sideP1Held">0</div>
+                <div class="small">held</div>
+            </div>
+            <div id="teams"></div>
+        </section>
+
+        <section id="scorePanel">
+            <div class="setup-toolbar builder-toolbar" id="setupToolbar">
+                <button id="backToLobbyBtn" class="bt-secondary" style="font-size:12px" title="Back to mode select">← Back</button>
+                <button id="startBattle" class="bt-start">✅ Ready Up</button>
+                <div class="bt-sep"></div>
+                <select id="gameModeSelectSetup" style="padding:6px 10px;border-radius:8px;background:rgba(200,180,150,0.06);color:var(--text);border:1px solid rgba(200,180,150,0.12);font-size:12px;font-weight:600;cursor:pointer">
+                </select>
+                <div class="bt-sep"></div>
+                <button id="randomizeAllTeams" class="bt-secondary">🎲 Randomize</button>
+                <button id="autoFillTeams" class="bt-secondary">✨ Auto Fill</button>
+                <div class="bt-sep"></div>
+                <button id="saveTeamsBtn" class="bt-secondary">💾 Save Team</button>
+                <button id="loadTeamsBtn" class="bt-secondary">📂 Load Team</button>
+                <div class="bt-spacer"></div>
+                <div class="bt-more-wrap" id="btMoreWrapStatic">
+                    <button class="bt-secondary" onclick="document.getElementById('btMoreWrapStatic').classList.toggle('open')">⋯ More</button>
+                    <div class="bt-more-menu">
+                        <button class="bt-more-item" id="randomizeOptimizeTeams">🔄 Reset Defaults</button>
+                        <button class="bt-more-item" id="togglePlayer2Builder">✏️ Edit P2</button>
+                        <button class="bt-more-item" id="devAutoSimBtn">🤖 Dev Sim: Off</button>
+                        <div style="border-top:1px solid rgba(200,180,150,0.08);margin:2px 0"></div>
+                        <button class="bt-more-item warn" id="restart">🗑 Reset All</button>
+                    </div>
+                </div>
+            </div>
+            <div class="battle-topbar">
+                <div class="battle-pills">
+                    <span class="pill" id="turnLabel">Setup</span>
+                    <span class="pill" id="roundLabel">Round 0</span>
+                    <span class="pill" id="objectiveLabel">Hourglass Score: 0 - 0</span>
+                    <span class="pill" id="cycleLabel">Day</span>
+                    <span class="pill" id="terrainLabel">Terrain: Grassland</span>
+                    <button class="zoom-toggle-btn" id="zoomToggleBtn" title="Toggle map zoom level">🔍 Full Map</button>
+                    <button class="zoom-toggle-btn" id="nametagToggleBtn" title="Cycle nametag display: Name / Race / Job / Level only" onclick="const modes=['name','race','job','none']; const icons={name:'👤 Names',race:'🧬 Race',job:'⚔ Jobs',none:'🔢 Level'}; let i=(modes.indexOf(state.nametagMode)+1)%modes.length; state.nametagMode=modes[i]; this.textContent=icons[modes[i]]; markDirty('board'); renderIfDirty();">🧬 Race</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid-wrap panel" id="battlePanel">
+            <div id="builderOverlay"></div>
+            <div id="profileOverlay"></div>
+            <div id="creatorOverlay"></div><!-- Occam's mirror: party-builder.js _mountReactCreator (rev 8) -->
+
+            <aside class="battle-top-scoreboard">
+                <div class="scoreboard scoreboard-horizontal" id="scoreboard"></div>
+            </aside>
+            <div class="map-row" id="mapRow" style="display:none">
+                <div class="sky-backdrop" aria-hidden="true">
+                    <canvas id="shaderBgCanvas"></canvas>
+                    <div class="nebula-overlay"></div>
+                    <div id="sunsetOverlay" class="sunset-overlay"></div>
+                    <div class="sky-layer">
+                        <div class="starfield"></div>
+                    </div>
+                </div>
+                <div class="celestial-orbit">
+                    <div class="celestial-body sun-disc"></div>
+                    <div class="celestial-body moon-disc"></div>
+                </div>
+                <div id="announcementBanner" class="announcement-banner"></div>
+                <div id="turnBannerOverlay" class="turn-banner-overlay"></div>
+                <div id="playerTurnAnnounce" class="pt-announce" aria-hidden="true"></div>
+                <div id="vsSplashOverlay" class="vs-splash-overlay"></div>
+                <div class="map-center">
+                    <div id="boardStage" class="board-stage" data-zoomed="false">
+                        <div id="board"></div><svg id="weatherOutlineSvg" class="weather-outline-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+                        <div id="tornadoAnimLayer" class="tornado-anim-layer"></div>
+                        <div id="rainAnimLayer" class="rain-anim-layer"></div>
+                        <div id="projectileLayer" class="projectile-layer"></div>
+                        <div id="unitHoverHud" class="unit-hover-hud"></div>
+                    </div>
+                    <canvas id="ambientParticleCanvas" class="ambient-particle-canvas"></canvas>
+                    <div class="battle-vignette"></div>
+                </div>
+            </div>
+            <div id="battleInfoPanel" class="battle-info-panel"></div>
+        </section>
+
+        <section class="panel" id="unitActionPanelWrap">
+            <div class="unit-action-shell">
+                <div id="selectedUnitPanel" class="selected-unit-panel"></div>
+            </div>
+        </section>
+
+        <section class="panel" id="controlPanel">
+            <div class="compact-head">
+                <h2 style="margin:0">Player 2</h2>
+                <div class="mini-hourglass"></div>
+            </div>
+            <div class="small-team-score p2">
+                <div class="team-name">Party</div>
+                <div class="team-count" id="sideP2Held">0</div>
+                <div class="small">held</div>
+            </div>
+            <div class="control-stack">
+                <div class="ctrl-section-label">⚔ Enemy Roster</div>
+                <div class="ctrl-roster-wrap" id="ctrlTabRoster">
+                    <div id="enemyRosterPanel" class="enemy-roster-panel">
+                        <h3>Enemy Intel</h3>
+                        <div id="enemyRosterList"></div>
+                    </div>
+                </div>
+                <div class="ctrl-section-label">◆ Echoes</div>
+                <div class="ctrl-log-wrap" id="ctrlTabLog">
+                    <div class="status chat-log-panel full-log-panel">
+                        <div class="chat-log" id="log"></div>
+                    </div>
+                </div>
+                <div class="buttons ctrl-buttons">
+                    <div class="ctrl-btn-row">
+                        <button id="autoBtn">Auto: Off</button>
+                        <button id="forfeitBtn" class="danger-btn">Forfeit</button>
+                    </div>
+                    <div class="ctrl-btn-row">
+                        <button id="devSimBattleBtn" class="dev-btn" style="grid-column:1/-1">Dev Sim: Off · x1</button>
+                    </div>
+                    <div class="dev-speed-row">
+                        <button id="devSimBattleSpeed1Btn" class="dev-speed-btn active">x1</button>
+                        <button id="devSimBattleSpeed2Btn" class="dev-speed-btn">x2</button>
+                        <button id="devSimBattleSpeed4Btn" class="dev-speed-btn">x4</button>
+                        <button id="devSimBattleSpeed16Btn" class="dev-speed-btn" title="turbo — max sim throughput">x16</button>
+                        <label class="dev-toggle-label"><input type="checkbox" id="cameraToggleBattle" checked /> Camera</label>
+                    </div>
+                    <div class="dev-speed-row">
+                        <label class="dev-toggle-label"><input type="checkbox" id="cinematicToggle" onchange="state.cinematicMode = this.checked;" /> Cin</label>
+                        <label class="dev-toggle-label"><input type="checkbox" id="visionToggleBattle" checked onchange="toggleTeamVision(this.checked)" /> Vis</label>
+                        <label class="dev-toggle-label"><input type="checkbox" id="animToggleBattle" checked /> Anim</label>
+                        <label class="dev-toggle-label"><input type="checkbox" id="fogToggleBattle" /> Fog</label>
+                    </div>
+                </div>
+                <div class="panel audio-panel" id="audioControlsPanel">
+                    <div class="small"><strong>Audio</strong></div>
+                    <label class="audio-row" for="musicVolumeSlider">
+                        <span>Music</span>
+                        <input id="musicVolumeSlider" type="range" min="0" max="100" step="1" value="68" />
+                        <span id="musicVolumeValue">68%</span>
+                    </label>
+                    <label class="audio-row" for="sfxVolumeSlider">
+                        <span>SFX</span>
+                        <input id="sfxVolumeSlider" type="range" min="0" max="100" step="1" value="90" />
+                        <span id="sfxVolumeValue">90%</span>
+                    </label>
+                    <label class="audio-row" for="ambienceVolumeSlider">
+                        <span>Ambience</span>
+                        <input id="ambienceVolumeSlider" type="range" min="0" max="100" step="1" value="80" />
+                        <span id="ambienceVolumeValue">80%</span>
+                    </label>
+                    <div class="buttons" style="grid-template-columns:1fr">
+                        <button id="skipTrackBtn">Skip Track</button>
+                    </div>
+                    <div class="small" style="margin-top:8px">Available during battle at any time.</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ── AI TRAINING DASHBOARD PANEL ── -->
+    <div id="trainingPanel" class="training-panel" style="display:none"></div>
+
+
+    <!-- ── UNIFIED TITLE / MODE SELECT / LOBBY ── -->
+    <div id="startOverlay" class="title-overlay">
+        <canvas id="menuBgCanvas" style="display:none"></canvas>
+        <!-- PAGE 1: Title Screen with artwork -->
+        <div id="titlePage" class="title-page active pre-ident">
+            <!-- D.O.O.R. ident (DOOR_DESIGN §3.4, build step 2): the studio card
+                 before the feature. CSS-animated seal (styles-cinematic.css
+                 .door-ident*), driven by doorIdentPlay() in ui.js once the game
+                 JS is ready; click / Enter / Esc skips. .pre-ident on the page
+                 keeps the title art hidden until it has played (the inline
+                 boot script below clears it as a fallback). -->
+            <div id="doorIdent" class="door-ident" aria-hidden="true">
+                <div class="ls-grain"></div>
+                <div class="door-ident-crt"></div>
+                <div class="door-ident-stage">
+                    <div class="door-ident-seal">
+                        <img class="di-r" src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                        <img class="di-b" src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                        <img class="di-main" src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                    </div>
+                    <div class="door-ident-text">
+                        <div class="di-l1">DEPARTMENT OF ORTHOGONAL REALITIES</div>
+                        <div class="di-l2">PRESENTS</div>
+                    </div>
+                </div>
+                <div class="door-ident-tracking"></div>
+                <div class="door-ident-osd">&#9654; PLAY&nbsp;&nbsp;&nbsp;SP</div>
+                <div class="door-ident-skip">CLICK TO SKIP</div>
+            </div>
+            <div class="title-art-wrap">
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260927-open-world-06-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+            </div>
+            <div class="title-characters">
+                <div class="title-sprite sprite-steve"></div>
+                <div class="title-sprite sprite-death"></div>
+                <div class="title-sprite sprite-king"></div>
+            </div>
+            <div class="title-loading-wrap">
+                <div class="title-loading-fill"></div>
+            </div>
+            <button id="enterGameBtn" class="title-enter-btn">› ENTER ‹</button>
+            <!-- D.O.O.R. seal (DOOR_DESIGN §3.4) — white-text variant, dark bg only -->
+            <div class="door-title-seal" aria-hidden="true">
+                <img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                <span>A DEPARTMENT OF ORTHOGONAL REALITIES PRODUCTION<br>EVERY CROSSING IS INSPECTED · EVERY ENTITY IS FILED</span>
+            </div>
+            <div class="title-version-line" style="position:absolute;right:18px;bottom:12px;z-index:3;font-family:'DotGothic16',monospace;font-size:10px;letter-spacing:0.18em;color:rgba(255,255,255,0.32);pointer-events:none">ENTROPY WARS · BUILD v207 · © 2026 DIRTYMONDO</div>
+        </div>
+        <!-- PAGE 2: Main Menu — black void styled after the battle loading
+             screen: scanline grain + rising entropy motes (classes reused
+             from styles-cinematic.css) + bare left-aligned serif text.
+             Layout rules live in styles-base.css under .void-menu.
+             Since 2026-09-08 the void is a PLACE: #menuStage hosts the
+             shared 3D canvas (three-renderer.js ThreeRenderer.menu — a lone
+             crossing door in the desert / on the ice, the Sedan off to the
+             side; map.js _menuSceneEnter) under the grain, the motes and
+             the text; PLAY walks through it (map.js _goToPlayHub →
+             _menuScenePlayBeat). ?nomenu3d / Settings →
+             Main Menu Scene keep the plain void. -->
+        <div id="mainMenuPage" class="title-page void-menu">
+            <div id="menuStage" class="menu-stage"></div>
+            <div class="ls-grain"></div>
+            <div class="ls-motes">
+                <div class="ls-mote" style="left:3vw;width:3px;height:3px;--dx:4vw;animation-duration:11.5s;animation-delay:-2.2s"></div>
+                <div class="ls-mote ls-mote-green" style="left:9vw;width:2px;height:2px;--dx:-3vw;animation-duration:14s;animation-delay:-7s"></div>
+                <div class="ls-mote" style="left:15vw;width:4px;height:4px;--dx:2vw;animation-duration:9.5s;animation-delay:-4.4s"></div>
+                <div class="ls-mote" style="left:22vw;width:2.5px;height:2.5px;--dx:-5vw;animation-duration:13s;animation-delay:-10s"></div>
+                <div class="ls-mote" style="left:28vw;width:5px;height:5px;--dx:3vw;animation-duration:8s;animation-delay:-1.5s"></div>
+                <div class="ls-mote ls-mote-green" style="left:34vw;width:3px;height:3px;--dx:5vw;animation-duration:12.5s;animation-delay:-8.8s"></div>
+                <div class="ls-mote" style="left:41vw;width:2px;height:2px;--dx:-2vw;animation-duration:15s;animation-delay:-3.1s"></div>
+                <div class="ls-mote" style="left:47vw;width:4px;height:4px;--dx:-4vw;animation-duration:10s;animation-delay:-6.2s"></div>
+                <div class="ls-mote" style="left:53vw;width:3px;height:3px;--dx:6vw;animation-duration:12s;animation-delay:-11.5s"></div>
+                <div class="ls-mote ls-mote-green" style="left:59vw;width:2px;height:2px;--dx:2vw;animation-duration:14.5s;animation-delay:-0.8s"></div>
+                <div class="ls-mote" style="left:64vw;width:5px;height:5px;--dx:-3vw;animation-duration:8.5s;animation-delay:-5.5s"></div>
+                <div class="ls-mote" style="left:70vw;width:3px;height:3px;--dx:4vw;animation-duration:11s;animation-delay:-9.4s"></div>
+                <div class="ls-mote" style="left:75vw;width:2.5px;height:2.5px;--dx:-6vw;animation-duration:13.5s;animation-delay:-2.9s"></div>
+                <div class="ls-mote ls-mote-green" style="left:81vw;width:4px;height:4px;--dx:3vw;animation-duration:9s;animation-delay:-7.7s"></div>
+                <div class="ls-mote" style="left:86vw;width:2px;height:2px;--dx:-2vw;animation-duration:15.5s;animation-delay:-12.3s"></div>
+                <div class="ls-mote" style="left:91vw;width:3.5px;height:3.5px;--dx:5vw;animation-duration:10.5s;animation-delay:-4.9s"></div>
+                <div class="ls-mote" style="left:96vw;width:3px;height:3px;--dx:-4vw;animation-duration:12s;animation-delay:-8.1s"></div>
+                <div class="ls-mote ls-mote-green" style="left:44vw;width:2px;height:2px;--dx:-3vw;animation-duration:16s;animation-delay:-13.6s"></div>
+                <div class="ls-mote" style="left:12vw;width:2px;height:2px;--dx:3vw;animation-duration:14s;animation-delay:-11.1s"></div>
+                <div class="ls-mote" style="left:67vw;width:2px;height:2px;--dx:2vw;animation-duration:13s;animation-delay:-6.8s"></div>
+            </div>
+            <div class="mm-stack">
+                <div class="mm-logo">ENTROPY WARS</div>
+                <div class="mm-sub">As above, so below</div>
+                <div class="mm-rule"></div>
+                <div class="mm-buttons">
+                    <!-- THE THREE DOORS (2026-09-21, the user's rule): PLAY = STORY MODE (the building — the roster you have unlocked),
+                         ONLINE = PvP over the wire (the whole roster), PRACTICE = VS CPU on Arena + Team Deathmatch (the whole roster).
+                         map.js _goToPlayHub / _goToOnline / _goToPractice. -->
+                    <button class="mm-btn mm-btn-multiplayer" onclick="window._goToPlayHub()"><span class="mm-label">Play</span><span class="mm-desc-text">Story mode — report to D.O.O.R. headquarters with the vessels you have unlocked</span></button>
+                    <button class="mm-btn mm-btn-online" onclick="window._goToOnline()"><span class="mm-label">Online</span><span class="mm-desc-text">PvP — ranked Quick Play or a Friendly Match, every vessel unlocked</span></button>
+                    <button class="mm-btn mm-btn-practice" onclick="window._goToPractice()"><span class="mm-label">Practice</span><span class="mm-desc-text">VS CPU — Arena or Team Deathmatch, every vessel unlocked</span></button>
+                    <button class="mm-btn mm-btn-teambuilder" onclick="window._goToTeamBuilder()"><span class="mm-label">Party Builder</span><span class="mm-desc-text">Forge &amp; archive squads before the war</span></button>
+                    <button class="mm-btn mm-btn-tutorial" onclick="window._goToTutorial()"><span class="mm-label">Tutorial</span><span class="mm-desc-text">Orientation, Day 1 — the tape, then Room 64</span></button>
+                    <button class="mm-btn mm-btn-campaign" onclick="window._goToCampaign()"><span class="mm-label">Challenge</span><span class="mm-desc-text">How many battles can you survive?</span></button>
+                    <button class="mm-btn mm-btn-dungeon" onclick="window._goToMysteryDungeon()"><span class="mm-label">Mystery Dungeon</span><span class="mm-desc-text">Descend 10 floors — find the stairs, survive</span></button>
+                    <button class="mm-btn mm-btn-profile" onclick="if(typeof window._mountReactProfile==='function') window._mountReactProfile();"><span class="mm-label">Profile</span><span class="mm-desc-text">Stats, history &amp; achievements</span></button>
+                    <button class="mm-btn mm-btn-replay" onclick="if(typeof window._ewReplayLastMatch==='function') window._ewReplayLastMatch();"><span class="mm-label">🎬 Replay</span><span class="mm-desc-text">Rewatch your last match cinematically</span></button>
+                    <button class="mm-btn mm-btn-codex" onclick="window._goToCodex()"><span class="mm-label">Codex</span><span class="mm-desc-text">Classified subject dossiers</span></button>
+                    <button class="mm-btn mm-btn-shop" onclick="window._goToShop()"><span class="mm-label">Shop&nbsp;<span id="mmShopBadge" class="mm-shop-badge" style="display:none;background:#ffd86a;color:#221a08;border-radius:50%;width:16px;height:16px;font-size:11px;font-weight:700;align-items:center;justify-content:center;vertical-align:middle">!</span></span><span class="mm-desc-text">Declassify &amp; unlock new vessels</span></button>
+                    <button class="mm-btn mm-btn-editor" onclick="window._goToMapEditor()"><span class="mm-label">Map Editor</span><span class="mm-desc-text">Create &amp; test custom maps</span></button>
+                    <button class="mm-btn mm-btn-leaderboard" onclick="if(typeof window._mountLeaderboard==='function') window._mountLeaderboard();"><span class="mm-label">Leaderboard</span><span class="mm-desc-text">Top ranked players worldwide</span></button>
+                    <button class="mm-btn mm-btn-community" onclick="if(typeof window._mountCommunityMaps==='function') window._mountCommunityMaps();"><span class="mm-label">Community Maps</span><span class="mm-desc-text">Browse, play &amp; share custom maps</span></button>
+                    <button class="mm-btn mm-btn-settings" onclick="window._openMainMenuSettings()"><span class="mm-label">Settings</span><span class="mm-desc-text">Audio, display, controls</span></button>
+                </div>
+            </div>
+            <div class="door-menu-seal" aria-hidden="true">
+                <img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                <span>DEPT. OF ORTHOGONAL REALITIES</span>
+            </div>
+            <div class="mm-elo-display">
+                <span class="mm-elo-tag" id="mmEloTag"></span>
+                <span id="mmWallet" class="ew-wallet" style="margin-left:14px;display:inline-block"></span>
+            </div>
+            <div class="mm-online-count" id="mmOnlineCount" style="display:none;">
+                <span class="mm-online-dot"></span>
+                <span id="mmOnlineNum">0</span> online
+            </div>
+            <!-- D.O.O.R. HQ dev pill — hidden unless ?hqdev / localStorage ew_hqdev (map.js _hqDevPillRefresh) -->
+            <button id="hqDevPill" class="hq-dev-pill" style="display:none" onclick="window._hqEnter()">🚪 D.O.O.R. HQ · DEV BUILD</button>
+        </div>
+
+        <!-- PAGE: CODEX (Classified Dossier) -->
+        <div id="codexPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._codexBack()">← Back</button>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">CLASSIFIED DOSSIER INDEX<span class="door-hdr-sub">D.O.O.R. RECORDS · ENTITY REGISTRY</span></span></div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="codex-body" id="codexBody"></div>
+            </div>
+        </div>
+
+        <!-- PAGE: SPELL LIBRARY (dev tool — Settings → Developer). Body is
+             rendered by ui.js _renderSpellLibrary; same shell as the codex. -->
+        <div id="spellLibraryPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._spellLibraryBack()">← Back</button>
+                    <div class="ms-title-text">SPELL LIBRARY — ARCANE ENGINEERING DIVISION</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="codex-body" id="spellLibraryBody"></div>
+            </div>
+        </div>
+
+        <!-- PAGE: STANDALONE PARTY BUILDER (Team Archive / Forge) — React
+             party-builder.js mounts here in standalone mode (saved teams
+             locker + full forge, no match attached). -->
+        <div id="teamBuilderPage" class="title-page">
+            <div id="teamBuilderBody" style="position:absolute;inset:0;overflow:hidden"></div>
+        </div>
+
+        <!-- PAGE: SHOP (Requisitions / Declassification) -->
+        <div id="shopPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._shopBack()">← Back</button>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">D.O.O.R. · SHOP<span class="door-hdr-sub">CUSTOMS &amp; ADMISSIONS · DECLASSIFICATION</span></span></div>
+                    <div id="shopWallet" class="ew-wallet" style="min-width:80px;text-align:right"></div>
+                </div>
+                <div class="codex-body" id="shopBody"></div>
+            </div>
+        </div>
+
+        <!-- PAGE 2a: Settings -->
+        <div id="settingsPage" class="title-page">
+            <div class="ms-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._settingsBack()">← Back</button>
+                    <div class="ms-title-text">Settings</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="mm-settings-body" id="mmSettingsBody"></div>
+            </div>
+        </div>
+
+        <!-- PAGE: PLAY HUB — Choose your path (void-menu: same look as the main menu) -->
+        <div id="playHubPage" class="title-page void-menu">
+            <div class="ls-grain"></div>
+            <div class="ls-motes">
+                <div class="ls-mote" style="left:6vw;width:3px;height:3px;--dx:3vw;animation-duration:12s;animation-delay:-3.5s"></div>
+                <div class="ls-mote ls-mote-green" style="left:18vw;width:2px;height:2px;--dx:-4vw;animation-duration:14.5s;animation-delay:-8.2s"></div>
+                <div class="ls-mote" style="left:31vw;width:4px;height:4px;--dx:2vw;animation-duration:9s;animation-delay:-1.8s"></div>
+                <div class="ls-mote" style="left:45vw;width:2.5px;height:2.5px;--dx:-5vw;animation-duration:13.5s;animation-delay:-6.4s"></div>
+                <div class="ls-mote ls-mote-green" style="left:58vw;width:3px;height:3px;--dx:4vw;animation-duration:11s;animation-delay:-9.7s"></div>
+                <div class="ls-mote" style="left:69vw;width:2px;height:2px;--dx:-2vw;animation-duration:15s;animation-delay:-4.1s"></div>
+                <div class="ls-mote" style="left:80vw;width:4px;height:4px;--dx:3vw;animation-duration:10s;animation-delay:-7.3s"></div>
+                <div class="ls-mote" style="left:92vw;width:3px;height:3px;--dx:-3vw;animation-duration:12.5s;animation-delay:-2.6s"></div>
+            </div>
+            <div class="mm-stack">
+                <!-- THE ONLINE HUB (2026-09-21): the main menu's ONLINE button lands here (map.js _goToOnline). The classic
+                     VS CPU row shows only on the ?nohq / ew_hq='off' route, where Play still falls back to this page. -->
+                <div class="mm-logo" id="playHubLogo">ONLINE</div>
+                <div class="mm-sub" id="playHubSub">PvP over the wire — every vessel unlocked</div>
+                <div class="mm-rule"></div>
+                <div class="mm-buttons">
+                    <button class="mm-btn mm-btn-quickplay" onclick="window._goToQuickPlay()"><span class="mm-label">Quick Play</span><span class="mm-desc-text">Ranked online — find an opponent fast</span></button>
+                    <button class="mm-btn mm-btn-friendly" onclick="window._goToFriendlyMatch()"><span class="mm-label">Friendly Match</span><span class="mm-desc-text">Play a friend with a room code</span></button>
+                    <button class="mm-btn mm-btn-vscpu" id="playHubVsCpu" style="display:none" onclick="window._goToVsCpu()"><span class="mm-label">VS CPU</span><span class="mm-desc-text">Battle the computer offline — every mode</span></button>
+                    <button class="mm-btn mm-btn-return" onclick="window._playHubBack()"><span class="mm-label">Back</span><span class="mm-desc-text">Return to the main menu</span></button>
+                </div>
+            </div>
+            <div class="mm-elo-display">
+                <span class="mm-elo-tag" id="playHubEloTag"></span>
+            </div>
+        </div>
+
+        <!-- PAGE: D.O.O.R. HEADQUARTERS — the walkable facility (DOOR_HQ_BUILD_PLAN.md).
+             Since Phase 1.3 the main menu's Play button enters it (map.js
+             _goToPlayHub → _hqEnter); ?nohq / localStorage ew_hq='off' / the
+             Settings toggle keep the classic Play hub. Dev entries: ?hq in the URL, window._hqEnter() in the
+             console, or the main-menu dev pill (?hqdev). The shared 3D canvas +
+             CSS2D overlay are re-parented into #hqStage by ThreeRenderer.hq.enter
+             (map.js _hqEnter) and handed back on leave. -->
+        <div id="hqPage" class="title-page hq-page">
+            <div id="hqStage" class="hq-stage"></div>
+            <div id="hqStrip" class="hq-strip">
+                <div class="hq-strip-l">
+                    <img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                    <!-- THE HQ HUD PASS (2026-09-16): the room you stand in IS the title (map.js _hqFillStrip); the building's name + the room number ride under it -->
+                    <div><b id="hqRoomTitle">THE MAIN HALL</b><span id="hqRoomName">D.O.O.R. HEADQUARTERS · OPERATIONS RING</span></div>
+                </div>
+                <div class="hq-strip-r">
+                    <span id="hqOfficer" class="door-officer"></span>
+                    <span id="hqMastery" class="hq-strip-stat"></span>
+                    <span id="hqKeys" class="hq-strip-stat hq-strip-keys"></span>
+                    <span id="hqForm365" class="hq-strip-stat hq-strip-form" style="display:none" onclick="window._hqOpenForm365()"></span>
+                    <span id="hqTapes" class="hq-strip-stat hq-strip-tapes" style="display:none" onclick="window._hqOpenTapes()"></span>
+                    <!-- THE DOOR GUN (HQ plan 9.5): the portable threshold — the issue and the placed pair; click = draw / holster (map.js _hqPortalDraw) -->
+                    <span id="hqPortal" class="hq-strip-stat hq-strip-portal" style="display:none" onclick="window._hqPortalDraw()"></span>
+                    <!-- SKATEBOARDING (HQ plan 9.8): the board on the strip — the issue and the best line; click = B (map.js _hqSkateToggle) -->
+                    <span id="hqSkate" class="hq-strip-stat hq-strip-skate" style="display:none" onclick="window._hqSkateToggle()"></span>
+                    <span id="hqCodeRed" class="hq-strip-alert" style="display:none" onclick="window._hqOpenCodeRed()"></span>
+                    <span id="hqWallet" class="ew-wallet"></span>
+                    <!-- THE HQ HUD PASS: no buttons on the strip — M is the map, ESC / P the menu (EXIT lives there) -->
+                </div>
+            </div>
+            <div id="hqWheel" class="hq-wheel" style="display:none" aria-hidden="true"></div>
+            <div id="hqHints" class="hq-hints"><span>WASD / ARROWS walk</span><span>SHIFT run</span><span>SPACE jump</span><span>walk through open doors · E for the rest</span><span>V first person</span><span>MOUSE look · WHEEL zoom</span><span>Q dispatch</span><span>M map</span><span>CLICK attack = ENGAGE a native</span><span class="hq-hint-portal">F door gun · L-CLICK = A ● · R-CLICK = B ■ · any surface · Q holster · HOLD F recall · C or W W = door dash</span><span class="hq-hint-portal">HOLD MIDDLE CLICK = the door wheel · a standing door: L-CLICK stands it · R-CLICK turns its lane</span><span class="hq-hint-skate">B board · WASD ride where the keys point (like walking) · a key against the roll brakes · SPACE jump (hold = bigger) · air: WASD steer · HOLD MOUSE + FLICK = tricks (L flips · R spins/grabs) · rails grind</span><span class="hq-hint-swim">SWIMMING · WASD where you look · SHIFT fast · C dive / down · SPACE up</span><span class="hq-hint-helm">AT THE HELM · W/S throttle · A/D steer · SPACE up · C down · E off</span><span class="hq-hint-climbnear">W CLIMB</span><span class="hq-hint-climb">CLIMBING · W up · S down · SPACE lets go</span><span>ESC / P menu</span></div>
+            <div id="hqPrompt" class="hq-prompt" style="display:none" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.hq)ThreeRenderer.hq.interact()"></div>
+            <!-- THE FINDS (HQ plan 9.1): the pickup toast — TAPE n / 100 · title, +n HAZARD PAY (map.js _hqToast) -->
+            <div id="hqToast" class="hq-toast" style="display:none"></div>
+            <!-- THE ARRIVAL CARD (PREMIUM_POLISH_PLAN §6.3, 2026-09-21): the letterbox + the room's name on a first arrival (map.js _hqArrivalFire) -->
+            <div id="hqArrival" class="hq-arrival" aria-hidden="true"></div>
+            <!-- SKATEBOARDING (HQ plan 9.8): THE TRICK LINE — the combo as it grows, LANDED with the score, BAIL (map.js _hqTrickLine) -->
+            <div id="hqTrick" class="hq-trick" style="display:none"></div>
+            <!-- SKATEBOARDING rev 4 (2026-09-19): THE OLLIE METER — the crouch's charge (map.js _hqOllieMeter); MAX = release now, PERFECT POP on the beat -->
+            <div id="hqOllie" class="hq-ollie" style="display:none"><i></i><b>CROUCH</b></div>
+            <div id="hqDebug" class="hq-debug" style="display:none"></div>
+            <div id="hqPanel" class="hq-panel" style="display:none">
+                <div class="hq-panel-card">
+                    <button class="hq-panel-x" onclick="window._hqClosePanel()" aria-label="Close">✕</button>
+                    <div id="hqPanelBody"></div>
+                </div>
+            </div>
+            <!-- THE TERMINAL (2026-09-08): a console's CRT, full screen. The camera
+                 pushes onto the desk's monitor and match-select.js mounts its
+                 diegetic screen here (map.js _hqOpenTerminal) — the SITE variant
+                 at a walkable site's CROSSING console (the map is the room you
+                 stand in, so only the mode / board / config are asked), the FULL
+                 variant (every site) at the Training Room's RANGE console and at
+                 DISPATCH. The building waits underneath, paused. -->
+            <div id="hqTerminal" class="hq-terminal" style="display:none"></div>
+            <!-- THE PAUSE MENU (2026-09-15): ESC / P over the paused building — a JRPG
+                 command column (RESUME · PARTY · OFFICER · SETTINGS · DIRECTORY ·
+                 EXIT) beside the sheet (map.js _hqOpenPause). PARTY is the last
+                 roster you crossed with; SETTINGS renders the main menu's settings
+                 body in here. An overlay inside this page, never a page swap. -->
+            <div id="hqPause" class="hq-pause" style="display:none" role="dialog" aria-modal="true" aria-label="Pause menu" aria-hidden="true">
+                <div class="hq-pause-scrim"></div>
+                <div class="hq-pause-frame">
+                    <div id="hqPauseHead" class="hq-pause-head"></div>
+                    <div class="hq-pause-main">
+                        <nav id="hqPauseNav" class="hq-pause-nav" role="menu"></nav>
+                        <section id="hqPauseBody" class="hq-pause-body"></section>
+                    </div>
+                    <div id="hqPauseFoot" class="hq-pause-foot"></div>
+                </div>
+            </div>
+            <div id="hqLoad" class="hq-load">
+                <div class="ls-grain"></div>
+                <div class="hq-load-card">
+                    <img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                    <b>D.O.O.R. HEADQUARTERS</b>
+                    <span>CLEARANCE CHECK · PLEASE HOLD</span>
+                    <i id="hqLoadNote">verifying your corners…</i>
+                    <div class="hq-load-bar" style="opacity:0"><div id="hqLoadFill" class="hq-load-fill"></div></div>
+                    <em id="hqLoadMotto" class="hq-load-motto"></em>
+                </div>
+                <!-- THE FIELD NOTES (2026-09-20): the battle card's rotating FIELD MANUAL / INTEL FRAGMENT / SITE FILE lines, filled by map.js _hqLoadProgressStart -->
+                <div id="hqLoadHint" class="ls-hint hq-load-hint"><div class="ls-hint-tag"></div><div class="ls-hint-text"></div><div class="ls-hint-src"></div></div>
+            </div>
+        </div>
+
+        <!-- PAGE: THE TUTORIAL SHELF (HQ plan 4.3) — rendered by map.js _renderTutorialPage;
+             the same shell as the codex. -->
+        <div id="tutorialPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._tutorialBack()">← Back</button>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">ORIENTATION · DAY 1<span class="door-hdr-sub">D.O.O.R. TRAINING FACILITY · ROOM 64 · THE TAPES</span></span></div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="codex-body tut-shelf" id="tutorialBody"></div>
+            </div>
+        </div>
+
+        <!-- PAGE 2b: Mode & Map Selector -->
+        <!-- modePage: React mount point for Match Select screen -->
+        <div id="modePage" class="title-page"></div>
+
+        <!-- PAGE: MYSTERY DUNGEON — character select (rendered by _mdRenderCharSelect in map.js) -->
+        <div id="mdCharPage" class="title-page">
+            <div class="ms-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._mdCharBack()">← Back</button>
+                    <div class="ms-title-text">MYSTERY DUNGEON — ASSEMBLE YOUR PARTY</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div id="mdCharBody" class="md-char-body"></div>
+            </div>
+        </div>
+
+        <!-- PAGE 3: Online Lobby (Quick Play + Friendly) -->
+        <div id="lobbyPage" class="title-page">
+            <div class="mode-card lobby-inner">
+                <!-- Quick Play: ranked queue with mode picker -->
+                <div id="lobbyQuickPlay" style="display:none">
+                    <div class="lobby-player-badge p1">RANKED MATCHMAKING</div>
+                    <div class="lobby-kicker">Quick Play</div>
+                    <div class="lobby-subtitle" style="margin-bottom:14px;">Pick a mode and team size — server picks the map.</div>
+
+                    <div class="lobby-config-section">
+                        <div class="lobby-config-label">GAME MODE</div>
+                        <div class="lobby-ranked-sizes" id="lobbyQueueModes">
+                            <button class="ranked-size-btn active" data-mode="arena" onclick="lobbySetQueueMode('arena')">🏰 Arena</button>
+                            <button class="ranked-size-btn" data-mode="tdm" onclick="lobbySetQueueMode('tdm')">💀 TDM</button>
+                            <button class="ranked-size-btn" data-mode="clash" onclick="lobbySetQueueMode('clash')">🎴 Clash</button>
+                        </div>
+                    </div>
+
+                    <div class="lobby-config-section">
+                        <div class="lobby-config-label">TEAM SIZE</div>
+                        <div class="lobby-ranked-sizes" id="lobbyRankedSizes">
+                            <button class="ranked-size-btn" data-size="1" onclick="lobbySetQueueSize(1)">1v1</button>
+                            <button class="ranked-size-btn" data-size="2" onclick="lobbySetQueueSize(2)">2v2</button>
+                            <button class="ranked-size-btn active" data-size="4" onclick="lobbySetQueueSize(4)">4v4</button>
+                            <button class="ranked-size-btn" data-size="6" onclick="lobbySetQueueSize(6)">6v6</button>
+                            <button class="ranked-size-btn" data-size="8" onclick="lobbySetQueueSize(8)">8v8</button>
+                        </div>
+                    </div>
+
+                    <div class="lobby-ranked-info">
+                        <div class="lobby-ranked-elo" id="lobbyQueueElo">ELO: 1200</div>
+                    </div>
+                    <button class="primary-lobby lobby-queue-start" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">⚔️ Search for Opponent</button>
+                    <div id="lobbyQueueSearching" style="display:none">
+                        <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
+                        <div class="lobby-queue-timer" id="lobbyQueueTimer">0:00</div>
+                        <button class="secondary-lobby" onclick="lobbyLeaveQueue()">Cancel</button>
+                    </div>
+                    <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToPlayHub()">← Back</button>
+                </div>
+
+                <!-- Friendly: Create / Join -->
+                <div id="lobbyFriendlyMain" style="display:none">
+                    <div class="lobby-kicker">Friendly Match</div>
+                    <div class="lobby-title">Room Code</div>
+                    <div class="lobby-subtitle">One player creates a room, the other joins with a code.</div>
+                    <div class="lobby-actions">
+                        <button class="primary-lobby" onclick="lobbyCreateRoom()">Create Room</button>
+                        <div class="lobby-or">— or —</div>
+                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join Room</button>
+                    </div>
+                    <button class="lobby-back" onclick="lobbyBackToPlayHub()">← Back</button>
+                </div>
+
+                <!-- Friendly: Hosting (waiting for guest) -->
+                <div id="lobbyHosting" style="display:none">
+                    <div class="lobby-player-badge p1">YOU ARE PLAYER 1 (BLUE)</div>
+                    <div class="lobby-kicker">Room Created</div>
+                    <div class="lobby-title">Share This Code</div>
+                    <div class="lobby-subtitle">Send this code to your friend.</div>
+                    <div class="lobby-code-display" id="lobbyRoomCode">-----</div>
+
+                    <!-- Host Config Panel -->
+                    <div id="friendlyConfigPanel" style="margin:16px 0 8px;">
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">GAME MODE</div>
+                            <div class="lobby-ranked-sizes" id="friendlyModeChips">
+                                <button class="ranked-size-btn active" data-mode="arena" onclick="friendlySetMode('arena')">🏰 Arena</button>
+                                <button class="ranked-size-btn" data-mode="tdm" onclick="friendlySetMode('tdm')">💀 TDM</button>
+                                <button class="ranked-size-btn" data-mode="clash" onclick="friendlySetMode('clash')">🎴 Clash</button>
+                            </div>
+                        </div>
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">TEAM SIZE</div>
+                            <div class="lobby-ranked-sizes" id="friendlySizeChips">
+                                <button class="ranked-size-btn" data-size="1" onclick="friendlySetSize(1)">1v1</button>
+                                <button class="ranked-size-btn" data-size="2" onclick="friendlySetSize(2)">2v2</button>
+                                <button class="ranked-size-btn active" data-size="4" onclick="friendlySetSize(4)">4v4</button>
+                                <button class="ranked-size-btn" data-size="6" onclick="friendlySetSize(6)">6v6</button>
+                                <button class="ranked-size-btn" data-size="8" onclick="friendlySetSize(8)">8v8</button>
+                            </div>
+                        </div>
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">MAP</div>
+                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(150,130,190,0.2);color:#b7b0ca;font-family:'DotGothic16',monospace;font-size:0.9rem;padding:8px 14px;border-radius:0;width:100%;max-width:280px;cursor:pointer;">
+                                <!-- Populated dynamically by friendlyRefreshMaps() -->
+                            </select>
+                        </div>
+                        <div class="lobby-config-section">
+                            <div class="lobby-config-label">ROUNDS</div>
+                            <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
+                                <button class="ranked-size-btn" onclick="friendlyStepRounds(-5)" style="min-width:36px;padding:8px 10px;">−</button>
+                                <span id="friendlyRoundDisplay" style="font-family:'DotGothic16',monospace;font-size:1.1rem;color:#fff;min-width:40px;text-align:center;">15</span>
+                                <button class="ranked-size-btn" onclick="friendlyStepRounds(5)" style="min-width:36px;padding:8px 10px;">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lobby-status waiting" id="lobbyHostStatus">Waiting for Player 2…</div>
+                    <div class="lobby-small">Keep this page open. The game starts once your friend connects.</div>
+                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Cancel</button>
+                </div>
+
+                <!-- Friendly: Joining -->
+                <div id="lobbyJoining" style="display:none">
+                    <div class="lobby-player-badge p2">YOU WILL BE PLAYER 2 (RED)</div>
+                    <div class="lobby-kicker">Join Room</div>
+                    <div class="lobby-title">Enter Code</div>
+                    <div class="lobby-subtitle">Type the 5-letter code your friend shared.</div>
+                    <div class="lobby-join-row">
+                        <input id="lobbyJoinInput" type="text" maxlength="5" placeholder="ABCDE" autocomplete="off" spellcheck="false">
+                        <button class="primary-lobby" style="width:auto" onclick="lobbyJoinRoom()">Join</button>
+                    </div>
+                    <div class="lobby-status" id="lobbyJoinStatus"></div>
+                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Back</button>
+                </div>
+
+                <!-- Connected (shared by both Quick Play and Friendly) -->
+                <div id="lobbyConnected" style="display:none">
+                    <div class="lobby-kicker">Connected!</div>
+                    <div class="lobby-title">Both Players Joined</div>
+                    <div class="lobby-subtitle"><span id="lobbyYouAre"></span><br>Entering the party builder…</div>
+                    <div id="lobbyConfigSummary" style="display:none;margin:10px 0;padding:10px 16px;background:rgba(0,0,0,0.3);border:1px solid rgba(150,130,190,0.2);border-radius:0;font-family:'DotGothic16',monospace;font-size:0.85rem;color:#aaa;text-align:center;letter-spacing:0.03em;"></div>
+                    <div class="lobby-status" style="color:var(--green)">✓ Connection established</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Challenge Mode Picker -->
+        <div id="challengePickPage" class="title-page">
+            <div class="ccc-container">
+                <div class="ccc-top-bar">
+                    <button class="ms-back-btn" onclick="window._challengePickBack()">← Back</button>
+                    <div class="ccc-title-text">Challenge Mode</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="chpick-body">
+                    <div class="chpick-card" onclick="window._challengePickMode('gauntlet')">
+                        <div class="chpick-icon">🏆</div>
+                        <div class="chpick-info">
+                            <div class="chpick-name">Gauntlet</div>
+                            <div class="chpick-desc">100 battles · Save progress · Retry on loss · Speedrun</div>
+                        </div>
+                        <div class="chpick-arrow">→</div>
+                    </div>
+                    <div class="chpick-card" onclick="window._challengePickMode('survival')">
+                        <div class="chpick-icon">💀</div>
+                        <div class="chpick-info">
+                            <div class="chpick-name">Survival</div>
+                            <div class="chpick-desc">Endless battles · Permadeath · How far can you go?</div>
+                        </div>
+                        <div class="chpick-arrow">→</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Campaign Character Creation -->
+        <div id="campaignCharCreatePage" class="title-page">
+            <div class="ccc-container">
+                <div class="ccc-top-bar">
+                    <button class="ms-back-btn" onclick="window._campaignCharCreateBack()">← Back</button>
+                    <div class="ccc-title-text">Choose Your Vessel</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="ccc-body">
+                    <div class="ccc-sprite-preview" id="cccSpritePreview"></div>
+                    <div class="ccc-form">
+                        <label class="ccc-label">Race</label>
+                        <div class="ccc-race-grid" id="cccRaceGrid"></div>
+                        <label class="ccc-label">Name</label>
+                        <input type="text" class="ccc-input" id="cccNameInput" maxlength="20" placeholder="Enter name…" autocomplete="off" spellcheck="false" />
+                        <label class="ccc-label">Gender</label>
+                        <div class="ccc-toggle-row" id="cccGenderRow">
+                            <button class="ccc-toggle active" data-val="male" onclick="window._cccSetGender('male')">♂ Male</button>
+                            <button class="ccc-toggle" data-val="female" onclick="window._cccSetGender('female')">♀ Female</button>
+                        </div>
+                        <label class="ccc-label">Job</label>
+                        <select class="ccc-select" id="cccJobSelect" onchange="window._cccOnJobChange()"></select>
+                    </div>
+                </div>
+                <div class="ccc-bottom-bar">
+                    <button class="ccc-confirm-btn" onclick="window._cccConfirm()">Begin Challenge →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Campaign World Map -->
+        <div id="campaignMapPage" class="title-page">
+            <div class="cmap-container">
+                <div class="cmap-top-bar">
+                    <button class="ms-back-btn" onclick="window._campaignMapBack()">← Main Menu</button>
+                    <div class="cmap-title-text">Challenge Run</div>
+                    <div class="cmap-top-right">
+                        <button class="cmap-newgame-btn" onclick="window._campaignNewGame()">🔄 New Run</button>
+                        <button class="cmap-shop-btn" onclick="window._cmapOpenShop()">🛒 Shop</button>
+                        <div class="cmap-gold-display" id="cmapGoldDisplay">💰 0</div>
+                    </div>
+                </div>
+                <div class="cmap-body" id="cmapBody">
+                    <div class="cmap-scroll-area" id="cmapScrollArea">
+                        <div class="cmap-node-grid" id="cmapNodeGrid"></div>
+                    </div>
+                </div>
+                <!-- Level detail slide-in panel -->
+                <div class="cmap-detail-panel" id="cmapDetailPanel">
+                    <div class="cmap-detail-inner" id="cmapDetailInner"></div>
+                </div>
+                <!-- Campaign Shop overlay -->
+                <div class="cshop-overlay" id="cshopOverlay" style="display:none">
+                    <div class="cshop-container">
+                        <div class="cshop-top-bar">
+                            <button class="ms-back-btn" onclick="window._cshopClose()">← Back</button>
+                            <div class="cshop-tabs">
+                                <button class="cshop-tab cshop-tab-active" id="cshopTabServices" onclick="window._cshopSwitchTab('services')">Services</button>
+                                <button class="cshop-tab" id="cshopTabRaces" onclick="window._cshopSwitchTab('races')">Races</button>
+                                <button class="cshop-tab" id="cshopTabSpells" onclick="window._cshopSwitchTab('spells')">Spells</button>
+                            </div>
+                            <div class="cshop-gold-display" id="cshopGoldDisplay">💰 0</div>
+                        </div>
+                        <div class="cshop-body" id="cshopBody"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Map Editor -->
+        <div id="mapEditorPage" class="title-page">
+            <div class="me-container">
+                <div class="me-top-bar">
+                    <button class="ms-back-btn" onclick="window._meBack()">← Back</button>
+                    <div class="me-title-text">Map Editor</div>
+                    <div class="me-top-actions">
+                        <button class="me-btn me-btn-sm" onclick="window._meClear()">Clear</button>
+                        <button class="me-btn me-btn-sm" onclick="window._meFill()">Fill</button>
+                        <div style="display:inline-flex;align-items:center;gap:2px;background:rgba(124,77,255,0.15);border-radius:6px;padding:2px 4px">
+                            <button class="me-btn me-btn-sm" style="background:#7c4dff;color:#fff" onclick="window._meRandomize()">🎲 Randomize</button>
+                            <span style="font-size:10px;color:#bbb;margin:0 2px">Biomes:</span>
+                            <button class="me-biome-btn active" data-n="1" onclick="window._meSetBiomeCount(1)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#7c4dff;color:#fff;cursor:pointer">1</button>
+                            <button class="me-biome-btn" data-n="2" onclick="window._meSetBiomeCount(2)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer">2</button>
+                            <button class="me-biome-btn" data-n="3" onclick="window._meSetBiomeCount(3)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer">3</button>
+                            <button class="me-biome-btn" data-n="4" onclick="window._meSetBiomeCount(4)" style="width:22px;height:22px;padding:0;font-size:11px;border-radius:4px;border:1px solid #555;background:#333;color:#ccc;cursor:pointer">4</button>
+                        </div>
+                        <button class="me-btn me-btn-sm" onclick="window._meExport()">Export</button>
+                        <button class="me-btn me-btn-sm" onclick="window._meImport()">Import</button>
+                        <button class="me-btn me-btn-sm me-3d-btn" id="me3DToggle" onclick="window._meToggle3D()">🎲 3D Preview</button>
+                    </div>
+                </div>
+                <div class="me-layout">
+                    <div class="me-sidebar">
+                        <div class="me-size-controls">
+                            <label class="me-label">Width</label>
+                            <div class="me-stepper">
+                                <button onclick="window._meResizeW(-1)">−</button>
+                                <span id="meWidthVal">12</span>
+                                <button onclick="window._meResizeW(1)">+</button>
+                            </div>
+                            <label class="me-label">Height</label>
+                            <div class="me-stepper">
+                                <button onclick="window._meResizeH(-1)">−</button>
+                                <span id="meHeightVal">12</span>
+                                <button onclick="window._meResizeH(1)">+</button>
+                            </div>
+                        </div>
+                        <div class="me-tool-row">
+                            <button class="me-tool active" id="meTool-paint" onclick="window._meSetTool('paint')">🖌️ Paint</button>
+                            <button class="me-tool" id="meTool-object" onclick="window._meSetTool('object')">🏠 Object</button>
+                            <button class="me-tool" id="meTool-erase" onclick="window._meSetTool('erase')">🧹 Erase All</button>
+                            <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')">✖ Erase Top Obj</button>
+                            <button class="me-tool" id="meTool-spawn1" onclick="window._meSetTool('spawn1')">🔵 P1</button>
+                            <button class="me-tool" id="meTool-spawn2" onclick="window._meSetTool('spawn2')">🔴 P2</button>
+                            <button class="me-tool" id="meTool-sanct1" onclick="window._meSetTool('sanct1')">🔵 Sanct P1</button>
+                            <button class="me-tool" id="meTool-sanct2" onclick="window._meSetTool('sanct2')">🔴 Sanct P2</button>
+                        </div>
+                        <div class="me-tool-row me-elev-row">
+                            <button class="me-tool" id="meTool-elevUp" onclick="window._meSetTool('elevUp')">⬆ Raise</button>
+                            <button class="me-tool" id="meTool-elevDown" onclick="window._meSetTool('elevDown')">⬇ Lower</button>
+                            <button class="me-tool" id="meTool-elevSet" onclick="window._meSetTool('elevSet')">📐 Set Height</button>
+                        </div>
+                        <div class="me-elev-picker-wrap">
+                            <span class="me-elev-label">Height:</span>
+                            <div class="me-elev-picker">
+                                <button class="me-hbtn me-hbtn-zero" id="meHBtn-0" onclick="window._meSetHeight(0)">0</button>
+                                <button class="me-hbtn active" id="meHBtn-1" onclick="window._meSetHeight(1)">1</button>
+                                <button class="me-hbtn" id="meHBtn-2" onclick="window._meSetHeight(2)">2</button>
+                                <button class="me-hbtn" id="meHBtn-3" onclick="window._meSetHeight(3)">3</button>
+                                <button class="me-hbtn" id="meHBtn-4" onclick="window._meSetHeight(4)">4</button>
+                                <button class="me-hbtn" id="meHBtn-5" onclick="window._meSetHeight(5)">5</button>
+                                <button class="me-hbtn" id="meHBtn-6" onclick="window._meSetHeight(6)">6</button>
+                                <button class="me-hbtn" id="meHBtn-7" onclick="window._meSetHeight(7)">7</button>
+                                <button class="me-hbtn" id="meHBtn-8" onclick="window._meSetHeight(8)">8</button>
+                                <button class="me-hbtn" id="meHBtn-9" onclick="window._meSetHeight(9)">9</button>
+                                <button class="me-hbtn" id="meHBtn-10" onclick="window._meSetHeight(10)">10</button>
+                                <button class="me-hbtn" id="meHBtn-11" onclick="window._meSetHeight(11)">11</button>
+                                <button class="me-hbtn" id="meHBtn-12" onclick="window._meSetHeight(12)">12</button>
+                                <button class="me-hbtn" id="meHBtn-13" onclick="window._meSetHeight(13)">13</button>
+                                <button class="me-hbtn" id="meHBtn-14" onclick="window._meSetHeight(14)">14</button>
+                                <button class="me-hbtn" id="meHBtn-15" onclick="window._meSetHeight(15)">15</button>
+                                <button class="me-hbtn" id="meHBtn-16" onclick="window._meSetHeight(16)">16</button>
+                                <button class="me-hbtn" id="meHBtn-17" onclick="window._meSetHeight(17)">17</button>
+                                <button class="me-hbtn" id="meHBtn-18" onclick="window._meSetHeight(18)">18</button>
+                                <button class="me-hbtn" id="meHBtn-19" onclick="window._meSetHeight(19)">19</button>
+                                <button class="me-hbtn" id="meHBtn-20" onclick="window._meSetHeight(20)">20</button>
+                            </div>
+                        </div>
+                        <input type="text" class="me-search" id="meSearch" placeholder="Search tiles…" oninput="window._meOnSearch()" />
+                        <div class="me-tab-row">
+                            <button class="me-tab active" id="meTab-terrain" onclick="window._meSetTab('terrain')">Terrain</button>
+                            <button class="me-tab" id="meTab-objects" onclick="window._meSetTab('objects')">Objects</button>
+                        </div>
+                        <div class="me-palette" id="mePalette"></div>
+                    </div>
+                    <div class="me-inspector" id="meInspector" style="display:none"></div>
+                    <div class="me-canvas-wrap">
+                        <div class="me-grid" id="meGrid"></div>
+                    </div>
+                </div>
+                <div class="me-bottom-bar">
+                    <div class="me-save-row">
+                        <input type="text" class="me-name-input" id="meMapName" placeholder="Map name…" value="Custom Map" />
+                        <button class="me-btn" onclick="window._meSave()">💾 Save</button>
+                        <select class="me-load-select" id="meLoadSelect" onchange="window._meLoadSelected()">
+                            <option value="">— Load saved —</option>
+                        </select>
+                        <button class="me-btn me-btn-danger" onclick="window._meDeleteSaved()">🗑️</button>
+                    </div>
+                    <button class="me-btn me-btn-play" onclick="window._mePlayTest()">▶ Play Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- THE ORIENTATION TAPE (HQ plan 4.3): the VHS on the RANGE console's tube TV, full
+             screen over any page. Filled and driven by ui.js doorTapePlay(); CSS
+             styles-cinematic.css "THE ORIENTATION TAPE" (the ident kit reused). -->
+        <div id="doorTape" class="door-tape" aria-hidden="true"></div>
+    </div>
+    <!-- lobbyOverlay kept as alias for networking script compatibility -->
+    <div id="lobbyOverlay" class="hidden" style="display:none"></div>
+
+    <!-- THE DEBRIEF (2026-09-21) — the result screen. The 3D stage is the live board under a
+         transparent overlay (.vic-3d); the painted sky / ground / sprite lineup is the fallback.
+         THE HEAD (kicker · title · facts) sits over the stage's left two thirds, THE PLATES at
+         its foot, THE DEBRIEF panel (REWARDS · HONOURS · PERFORMANCE) on the right, the command
+         bar along the bottom. The ids are shared with the campaign / dungeon result cards
+         (battle.js writes the same elements) — keep them. -->
+    <div id="resultOverlay" class="result-overlay hidden">
+        <div class="vic-sky" id="vicSky"></div>
+        <div class="vic-rays"></div>
+        <div class="vic-particles" id="vicParticles"></div>
+        <div class="vic-ground-wrap">
+            <div class="vic-ground" id="vicGround"></div>
+        </div>
+        <div class="vic-party" id="vicParty"></div>
+        <div class="vic-vignette"></div>
+        <div class="vic-scanlines"></div>
+        <div class="vic-stage" id="vicStage">
+            <div class="vic-title-wrap">
+                <div class="vic-kicker" id="vicKicker"></div>
+                <div id="vicTitle" class="vic-title" data-text="Victory">Victory</div>
+                <div class="vic-glyphs" aria-hidden="true">☉ &nbsp;☿ &nbsp;♀ &nbsp;⊕ &nbsp;♂ &nbsp;♃ &nbsp;♄ &nbsp;☽</div>
+                <div id="vicSubtitle" class="vic-subtitle"></div>
+                <div id="vicMatchInfo" class="vic-match-info"></div>
+                <div id="vicFieldReport" class="vic-field-report"></div>
+            </div>
+            <div class="vic-stage-foot">
+                <div id="vicMvpTag" class="vic-mvp-tag" style="display:none"></div>
+                <!-- D.O.O.R. case stamp (DOOR_DESIGN §3.5): thunks down at the stage's foot.
+                     Local on both clients — no relay. -->
+                <div id="vicDoorStamp" class="door-result-stamp" aria-hidden="true">
+                    <div class="drs-box">
+                        <div class="drs-seal"></div>
+                        <div class="drs-word" id="vicDoorStampWord">CASE CLOSED</div>
+                        <div class="drs-meta" id="vicDoorStampMeta"></div>
+                    </div>
+                    <div class="drs-tab"><span>NEW DIRECTIVE</span></div>
+                </div>
+            </div>
+        </div>
+        <aside class="vic-debrief" id="vicDebrief" aria-label="Debrief">
+            <div class="vic-debrief-head">
+                <span class="vic-debrief-title">DEBRIEF</span>
+                <nav class="vic-tabs" id="vicTabs" role="tablist"></nav>
+            </div>
+            <div class="vic-sheets" id="vicSheets">
+                <section class="vic-sheet" data-sheet="rewards" role="tabpanel">
+                    <div id="vicExperience" class="vic-experience"></div>
+                    <div id="vicDrops" class="vic-drops"></div>
+                    <div id="vicCaptures" class="vic-captures"></div>
+                    <div id="vicGoldBreakdown" class="vic-gold-breakdown"></div>
+                    <div id="vicEloBadge" class="vic-elo-wrap"></div>
+                    <div id="vicAwards" class="vic-awards"></div>
+                </section>
+                <section class="vic-sheet" data-sheet="honours" role="tabpanel">
+                    <div id="vicHonours" class="vic-honours"></div>
+                </section>
+                <section class="vic-sheet" data-sheet="performance" role="tabpanel">
+                    <div class="vic-card vic-dmg-card">
+                        <div id="vicTeamDmgBar" class="vic-team-dmg-bar"></div>
+                        <div id="vicTeamDmgLabels" class="vic-team-dmg-labels"></div>
+                    </div>
+                    <div id="vicModeTally" class="vic-mode-tally"></div>
+                    <div id="vicStatsTableWrap" class="vic-stats-table-wrap"></div>
+                </section>
+            </div>
+            <div class="vic-debrief-hint">◂ ▸ &nbsp;SHEETS</div>
+        </aside>
+        <div class="vic-bottom" id="vicBottom">
+            <button id="nextMatchBtn" class="primary">Find Next Match</button>
+            <button id="exportLastMatchBtn">Export Last Match</button>
+            <button id="exportMatchHistoryBtn">Export Match History</button>
+            <button id="startOverBtn" class="warn">Back to Party Builder</button>
+            <button id="mainMenuBtn">Main Menu</button>
+        </div>
+    </div>
+
+    <!-- D.O.O.R. worn-ink filter for rubber stamps (referenced by CSS filter:url(#doorInk)) -->
+    <svg width="0" height="0" style="position:absolute;width:0;height:0" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="doorInk" x="-6%" y="-10%" width="112%" height="120%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.9 0.7" numOctaves="2" seed="7" result="noise"/>
+                <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.1 0.32" result="grain"/>
+                <feComposite in="SourceGraphic" in2="grain" operator="in" result="worn"/>
+                <feDisplacementMap in="worn" in2="noise" scale="1.1" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+        </defs>
+    </svg>
+
+    <div id="uiDialogOverlay" class="ui-dialog-overlay hidden" aria-hidden="true">
+        <div id="uiDialogCard" class="ui-dialog-card"></div>
+    </div>
+
+
+    <!-- External dependencies -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260927-open-world-06-cors"></script>
+    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260803h-cors';</script>
+    <script>
+    // NOTE: crossorigin="anonymous" removed from display <img> tags.
+    // Only _getCachedImg (canvas compositing) uses CORS mode.
+    </script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260927-open-world-06-cors"></script>
+    <script>
+      // Fallback: if local data.js didn't load, try CDN
+      if (typeof SPELL_LIBRARY === 'undefined') {
+        var _djs = document.createElement('script');
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260927-open-world-06-cors';
+        document.head.appendChild(_djs);
+      }
+    </script>
+    <!-- Audio loaded directly from R2 CDN bucket folders (no assets.js needed) -->
+    <script>window._assetsJsLoaded=true;document.dispatchEvent(new Event('assets-ready'));</script>
+
+    <script>
+    // ── REFERENCE RESOLUTION VIEWPORT SCALER ──
+    // Viewport is now responsive (100vw × 100vh) — no scaling needed
+    (function() {
+      window._viewportScale = 1;
+    })();
+    </script>
+
+    <script>
+    // ── Immediate enter button handler — works before main game JS loads ──
+    (function() {
+      var btn = document.getElementById('enterGameBtn');
+      var fill = document.querySelector('.title-loading-fill');
+      var _clicked = false;
+
+      // Real script-loading progress: _ewBoot.loadedCount() counts finished
+      // script/css downloads (Performance API); the denominator is the live
+      // count of such tags (grows as the parser reaches them, so the bar is
+      // clamped monotonic). Reaches 100% only when _gameReady flips.
+      var _maxPct = 0;
+      function _realPct() {
+        var boot = window._ewBoot;
+        if (!boot) return 0;
+        var tags = document.querySelectorAll('script[src], link[rel="stylesheet"]').length;
+        if (!tags) return 0;
+        var pct = Math.round((boot.loadedCount() / tags) * 100);
+        // never show "done" until the game is actually interactive
+        if (!window._gameReady) pct = Math.min(pct, 95);
+        _maxPct = Math.max(_maxPct, Math.min(100, pct));
+        return _maxPct;
+      }
+      function updateLoadBar() {
+        var pct = window._gameReady ? 100 : _realPct();
+        if (fill) {
+          fill.style.animation = 'none';
+          fill.style.transition = 'width 0.3s ease';
+          fill.style.width = pct + '%';
+        }
+      }
+
+      // ── Failure surfacing: dead R2/CDN file used to soft-lock the title
+      // screen at "· LOADING ·" with zero feedback. Show a retry overlay
+      // instead. Only ever visible when boot is actually broken. ──
+      var CORE_RE = /(sprites|data|state|map|battle|three-renderer|three-camera|three-post|ui|hud|ai|online|party-builder|match-select|profile|audio|three\.min|socket\.io)[^\/]*\.js|styles-[^\/]*\.css/;
+      var _errShown = false;
+      function showBootError(failedList, soft) {
+        if (_errShown) return;
+        _errShown = true;
+        var box = document.createElement('div');
+        box.id = 'bootErrorOverlay';
+        box.style.cssText = 'position:fixed;left:50%;bottom:8%;transform:translateX(-50%);z-index:99999;' +
+          'max-width:min(560px,90vw);background:rgba(10,8,16,0.96);border:1px solid #8a2be2;border-radius:10px;' +
+          'padding:14px 18px;color:#e8e2f4;font:13px/1.5 "JetBrains Mono",monospace;box-shadow:0 8px 40px rgba(0,0,0,0.7);text-align:left;';
+        var msg = soft
+          ? 'Still loading after ' + Math.round((Date.now() - window._ewBoot.t0) / 1000) + 's — slow connection or a blocked host.'
+          : 'Some game files failed to load — the game cannot start.';
+        var files = (failedList || []).slice(0, 6).map(function (u) {
+          return '<div style="color:#ff7a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✗ ' + u.split('/').pop().split('?')[0] + '</div>';
+        }).join('');
+        box.innerHTML = '<div style="font-weight:700;margin-bottom:6px;color:#c9a7ff">⚠ CONNECTION PROBLEM</div>' +
+          '<div style="margin-bottom:8px">' + msg + '</div>' + files +
+          '<button id="bootRetryBtn" style="margin-top:10px;padding:8px 22px;background:#8a2be2;color:#fff;border:0;border-radius:6px;font:inherit;font-weight:700;cursor:pointer">RELOAD</button>';
+        document.body.appendChild(box);
+        var rb = document.getElementById('bootRetryBtn');
+        if (rb) rb.addEventListener('click', function () { location.reload(); });
+      }
+      // Watch for core-module failures + a no-progress watchdog
+      var _watch = setInterval(function () {
+        var boot = window._ewBoot;
+        updateLoadBar();
+        if (window._gameReady) { clearInterval(_watch); return; }
+        if (boot && boot.failed.some(function (u) { return CORE_RE.test(u); })) {
+          showBootError(boot.failed, false);
+          clearInterval(_watch);
+        } else if (boot && Date.now() - boot.t0 > 45000) {
+          showBootError(boot.failed, true);
+          clearInterval(_watch);
+        }
+      }, 500);
+
+      // Dim button until main game JS is ready
+      if (btn) {
+        btn.style.opacity = '0.35';
+        btn.style.pointerEvents = 'none';
+        btn.style.animation = 'none';
+      }
+
+      // Poll for when main game JS finishes parsing
+      var _readyCheck = setInterval(function() {
+        if (window._gameReady) {
+          clearInterval(_readyCheck);
+          updateLoadBar();
+          if (btn) {
+            btn.style.opacity = '';
+            btn.style.pointerEvents = '';
+            btn.style.animation = '';
+          }
+          // If user clicked early, fire now
+          if (window.__queuedEnterGame && typeof window.enterGameFromTitle === 'function') {
+            window.__queuedEnterGame = false;
+            window.enterGameFromTitle();
+          }
+        }
+      }, 50);
+
+      // D.O.O.R. ident hold: the title art is hidden until the ident has
+      // played (ui.js clears .pre-ident). If the game JS never arrives, or
+      // takes too long, show the title anyway rather than a black screen.
+      setTimeout(function() {
+        var tp = document.getElementById('titlePage');
+        if (tp) tp.classList.remove('pre-ident');
+      }, 20000);
+      // async assets.js load counts as bonus step
+      document.addEventListener('assets-ready', function() { updateLoadBar(); });
+      // Don't wait forever for assets.js
+      setTimeout(function() { if (!window._assetsJsLoaded) updateLoadBar(); }, 5000);
+
+      // Early click: queue if game not ready, fire immediately if ready
+      if (btn) {
+        btn.addEventListener('click', function(e) {
+          if (_clicked) return;
+          if (window._gameReady && typeof window.enterGameFromTitle === 'function') {
+            _clicked = true;
+            window.enterGameFromTitle(e);
+          } else {
+            btn.textContent = '· LOADING ·';
+            window.__queuedEnterGame = true;
+          }
+        });
+      }
+    })();
+    </script>
+
+    <script>
+        // ════════════════════════════════════════════════════════════
+        // FALLBACKS: if sprites.js didn't load, provide
+        // empty globals so the game runs without detailed art/labels.
+        // Uses window-property assignment to avoid const redeclaration
+        // conflicts in Firefox when sprites.js IS present.
+        // ════════════════════════════════════════════════════════════
+        if (typeof RACE_SPRITES === 'undefined') window.RACE_SPRITES = {};
+        if (typeof EQUIP_SPRITES === 'undefined') window.EQUIP_SPRITES = {};
+        if (typeof RACE_HAND_GROUP === 'undefined') window.RACE_HAND_GROUP = {};
+        if (typeof RACE_WEAPON_ANCHORS === 'undefined') window.RACE_WEAPON_ANCHORS = {};
+        // Equipment system removed — EQUIP_RACE_COMPAT no longer needed
+    </script>
+
+    <!-- Hero unit system (loads after data.js, before battle.js) -->
+
+
+    <!-- React (for Party Builder UI) -->
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260927-open-world-06-cors"></script>
+
+    <!-- Game modules -->
+    <script src="https://cdn.entropywars.net/state.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260927-open-world-06-cors"></script>
+    <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260927-open-world-06-cors"></script>
+    <script>
+    // First-launch: if no profile exists after migration, open profile creation on ENTER click
+    (function() {
+        if (!window.ProfileSystem) return;
+        if (window.ProfileSystem.getActiveProfileIndex() === null) {
+            // No profile — intercept the ENTER button to show create profile first
+            var _origEnter = null;
+            var enterBtn = document.getElementById('enterGameBtn');
+            if (enterBtn) {
+                var origClick = enterBtn.onclick;
+                enterBtn.addEventListener('click', function _firstProfileCheck(e) {
+                    if (window.ProfileSystem.getActiveProfileIndex() === null) {
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                        window._mountReactProfile();
+                    }
+                    // Once profile exists, remove this listener
+                    if (window.ProfileSystem.getActiveProfileIndex() !== null) {
+                        enterBtn.removeEventListener('click', _firstProfileCheck);
+                    }
+                }, true); // capture phase to fire before existing handlers
+            }
+        }
+        // If migration set the rename flag, prompt on profile open
+        if (window._profileNeedsRename) {
+            // Will be handled by ProfilePage component showing editingName state
+        }
+    })();
+    </script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260927-open-world-06-cors"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260927-open-world-06-cors"></script>
+    <!-- AI v4 (2026-08-15): ONE unified brain — the ainew.js overlay was
+         merged into ai.js and deleted. Do not re-add an ainew.js tag. -->
+    <script src="https://cdn.entropywars.net/ai.js?v=20260927-open-world-06-cors"></script>
+    <!-- React HUD overlay (Codex visual system) -->
+    <script src="https://cdn.entropywars.net/hud.js?v=20260927-open-world-06-cors"></script>
+
+    <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
+    <script type="module">
+        import * as THREE from 'three';
+        // lil-gui removed — shader params available on window._shaderBgParams for console use
+
+        const canvas = document.getElementById('shaderBgCanvas');
+        const skyBackdrop = canvas?.closest('.sky-backdrop');
+        if (!canvas || !skyBackdrop) {
+            console.warn('Shader background: canvas or sky-backdrop not found');
+        } else {
+            // Mark sky-backdrop so CSS hides old gradient/nebula/starfield layers
+            skyBackdrop.classList.add('shader-active');
+
+            // Hide the legacy DOM celestial discs — the shader now renders its own sun/moon
+            const _celestialOrbit = document.querySelector('.celestial-orbit');
+            if (_celestialOrbit) _celestialOrbit.style.display = 'none';
+
+            const params = {
+                discRadius: 26.0,   // flat-earth disc / ice-wall radius (world units)
+                tileScale: 1.0,     // checkerboard square size
+                focal: 1.3,         // camera focal length (FOV)
+                pitch: 0.15,        // base downward pitch toward the horizon
+                occult: 0.5         // strength of masonic/occult sigils
+            };
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+            camera.position.z = 1;
+
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+
+            const vertexShader = `
+                void main() {
+                    gl_Position = vec4(position, 1.0);
+                }
+            `;
+
+            // ── Flat-Earth Firmament background ──────────────────────────────
+            // A masonic checkerboard plane receding to a circular ice-wall
+            // horizon under a firmament dome. Reacts to the day/night cycle,
+            // sky events, the active zodiac and the weather (uniforms fed from
+            // game state in animate() below). Single analytic pass: ray-plane
+            // for the ground, ray-cylinder for the ice wall, dome for the sky.
+            const fragmentShader = `
+                uniform float iTime;
+                uniform vec2  iResolution;
+                uniform float uCamYaw;
+                uniform float uPitch;
+                uniform float uFocal;
+                uniform float uDiscRadius;
+                uniform float uTileScale;
+                uniform float uDayNight;   // 0 day .. 1 night
+                uniform float uSkyEvent;   // 0 none, 1 bloodMoon, 2 blackSun, 3 lunarEclipse
+                uniform float uSkyAmt;     // 0..1
+                uniform float uZodiac;     // 0..11 active sign
+                uniform vec4  uWeather;    // storm, snow, sand, blood
+                uniform float uBass;
+                uniform float uOccult;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a){ float s=sin(a), c=cos(a); return mat2(c,-s,s,c); }
+
+                float hash11(float p){ p=fract(p*0.1031); p*=p+33.33; p*=p+p; return fract(p); }
+                float hash21(vec2 p){ vec3 p3=fract(vec3(p.xyx)*0.1031); p3+=dot(p3,p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
+                vec2  hash22(vec2 p){ vec3 p3=fract(vec3(p.xyx)*vec3(0.1031,0.1030,0.0973)); p3+=dot(p3,p3.yzx+33.33); return fract((p3.xx+p3.yz)*p3.zy); }
+
+                float vnoise(vec2 p){
+                    vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+                    float a=hash21(i), b=hash21(i+vec2(1,0)), c=hash21(i+vec2(0,1)), d=hash21(i+vec2(1,1));
+                    return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+                }
+                float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*vnoise(p); p*=2.02; a*=0.5; } return v; }
+
+                // Twinkling star field over a 2D (azimuth, elevation) sky chart.
+                float starField(vec2 uvp){
+                    vec2 g=floor(uvp); vec2 f=fract(uvp);
+                    float h=hash21(g); if(h<0.86) return 0.0;
+                    vec2 c=hash22(g+3.1);
+                    float d=length(f-c);
+                    float core=smoothstep(0.09,0.0,d);
+                    float tw=0.55+0.45*sin(iTime*(1.2+hash21(g+7.7)*3.0)+h*40.0);
+                    return core*tw;
+                }
+
+                // ── Procedural horizon skyline (shared aesthetic with the in-game
+                //    firmament wall): layered distant snow mountains, a ruined occult
+                //    city (ziggurats / towers with lit windows / domed temples with
+                //    glowing sigils / obelisks) and a forest fringe. All crest
+                //    profiles are in rd.y (view-elevation) units. ──
+                float ridge(float a){ float n=fbm(vec2(a,1.7)); return 1.0-abs(2.0*n-1.0); }
+                float mtnCrest(float a){
+                    // mountains only rise in a few arcs (no continuous ring) so the
+                    // ground-meets-sky horizon stays open between them
+                    float pch=smoothstep(0.48,0.62, fbm(vec2(a*1.7, 19.0)));
+                    return pch*(0.03 + ridge(a*1.3+2.0)*0.11 + ridge(a*2.9+9.0)*0.05 + fbm(vec2(a*6.0,3.0))*0.02);
+                }
+                float forestCrest(float a){
+                    float m=smoothstep(0.42,0.55, fbm(vec2(a*3.0,5.0)));
+                    float n=fbm(vec2(a*34.0,4.0)); float n2=fbm(vec2(a*82.0,9.0));
+                    return m*(0.018+n*n*0.045+n2*0.012);
+                }
+                float cityCrest(float a, out float fc, out float kind){
+                    float cells=30.0; float ac=a*(1.0/TAU)+0.5; float idx=floor(ac*cells); fc=fract(ac*cells);
+                    float seed=hash11(idx*1.37+0.2); kind=floor(hash11(idx*2.7+0.5)*4.0);
+                    if(seed<0.5){ kind=-1.0; return 0.0; }
+                    float d=abs(fc-0.5); float bw=0.20+hash11(idx*4.4)*0.15; float bh=0.065+hash11(idx*3.1)*0.085; float h=0.0;
+                    if(kind<0.5){ float st=clamp((0.5-d)/max(bw,1e-3),0.0,1.0); h=step(d,bw)*bh*(0.4+0.6*floor(st*3.0)/3.0); }      // ziggurat
+                    else if(kind<1.5){ float tw=bw*0.5; h=step(d,tw)*(bh*1.4+0.045); }                                            // tower
+                    else if(kind<2.5){ float body=step(d,bw)*bh*0.6; float dm=step(d,bw*0.6)*sqrt(max(0.0,1.0-pow(d/(bw*0.6+1e-3),2.0)))*0.055; h=body+dm; } // domed temple
+                    else { h=step(d,0.055)*(bh*0.7+0.10); }                                                                       // obelisk
+                    return h;
+                }
+                float glyph(vec2 p){
+                    float ring=smoothstep(0.045,0.0, abs(length(p-vec2(0.0,0.16))-0.11));
+                    float stem=smoothstep(0.03,0.0, abs(p.x))*step(-0.20,p.y)*step(p.y,0.16);
+                    float bar =smoothstep(0.03,0.0, abs(p.y))*step(-0.14,p.x)*step(p.x,0.14);
+                    return clamp(ring+stem+bar,0.0,1.0);
+                }
+                vec3 shadeMtn(float a,float ev,float cr,float laz,vec3 lc,vec3 sk,float night){
+                    float up=clamp(ev/max(cr,1e-3),0.0,1.0);
+                    vec3 rock=mix(vec3(0.11,0.13,0.19), vec3(0.03,0.05,0.11), night); rock*=0.7+0.55*fbm(vec2(a*55.0,ev*120.0));
+                    float face=0.5+0.5*cos(a-laz); float snow=smoothstep(0.55-0.12*face,0.82,up);
+                    vec3 snowC=mix(vec3(0.80,0.88,1.0), vec3(0.26,0.40,0.64), night)+lc*face*0.30;
+                    vec3 c=mix(rock,snowC,snow); c+=lc*face*0.07*(0.4+0.6*up);
+                    c=mix(sk*0.9,c,clamp(up*1.7,0.12,1.0)); return c;
+                }
+                vec3 shadeFor(float a,float ev,float cr,vec3 sk,float night){
+                    float up=clamp(ev/max(cr,1e-3),0.0,1.0);
+                    vec3 canopy=mix(vec3(0.06,0.13,0.09), vec3(0.015,0.04,0.05), night); canopy*=0.55+0.85*fbm(vec2(a*110.0,ev*180.0));
+                    float biolum=step(0.93, hash21(floor(vec2(a*220.0,ev*900.0))))*(0.4+0.6*night);
+                    vec3 c=canopy+biolum*vec3(0.25,0.7,0.55)*0.5; c=mix(sk*0.85,c,clamp(up*1.9,0.18,1.0)); return c;
+                }
+                vec3 shadeCity(float a,float ev,float cr,float fc,float kind,float laz,vec3 lc,vec3 sk,float night,float t){
+                    float up=clamp(ev/max(cr,1e-3),0.0,1.0);
+                    vec3 stone=mix(vec3(0.16,0.15,0.20), vec3(0.04,0.045,0.09), night); stone*=0.85+0.22*(0.5+0.5*sin(fc*70.0));
+                    float face=0.5+0.5*cos(a-laz); stone+=lc*face*0.10; vec3 c=stone;
+                    if(kind<1.5){
+                        float gx=floor(fc*16.0),gy=floor(up*11.0); vec2 wf=fract(vec2(fc*16.0,up*11.0))-0.5;
+                        float lit=step(0.45, hash21(vec2(gx,gy)+floor(a*5.0)));
+                        float win=smoothstep(0.34,0.16, max(abs(wf.x),abs(wf.y)));
+                        float flick=0.7+0.3*sin(t*3.0 + hash21(vec2(gx,gy))*30.0);
+                        c+=win*lit*flick*vec3(1.0,0.72,0.34)*(0.3+1.0*night)*step(0.06,up)*step(up,0.95);
+                    } else {
+                        vec3 gc=mix(vec3(0.55,0.45,0.85), vec3(0.55,0.75,1.0), night);
+                        float g=glyph(vec2(fc-0.5,up-0.5)*vec2(3.2,2.2))*(0.6+0.4*sin(t*1.5+a*3.0)); c+=g*gc*(0.5+0.8*night);
+                    }
+                    c+=sk*smoothstep(0.72,1.0,up)*0.32; c=mix(sk*0.85,c,clamp(up*1.7,0.16,1.0)); return c;
+                }
+
+                void main(){
+                    vec2 frag=gl_FragCoord.xy;
+                    vec2 uv=(2.0*frag-iResolution.xy)/iResolution.y;
+
+                    // ---- camera (pinhole above a flat plane, pitched toward the horizon) ----
+                    float pitch=uPitch;
+                    float sp=sin(pitch), cp=cos(pitch);
+                    vec3 fwd=vec3(0.0,-sp,-cp);
+                    vec3 rgt=vec3(1.0,0.0,0.0);
+                    vec3 up =vec3(0.0,cp,-sp);
+                    vec3 ro =vec3(0.0,1.0,0.0);
+                    vec3 rd =normalize(uv.x*rgt + uv.y*up + uFocal*fwd);
+                    rd.xz   = rot(uCamYaw)*rd.xz;   // spin the whole world with diorama yaw
+
+                    float night=uDayNight;
+                    float R=uDiscRadius;
+                    float t=iTime;
+
+                    float wStorm=uWeather.x, wSnow=uWeather.y, wSand=uWeather.z, wBlood=uWeather.w;
+                    float flash = step(0.4,wStorm) * wStorm * pow(hash11(floor(t*3.3)+0.5),24.0);
+
+                    // sky-event flags
+                    float bloodM =step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt; // blood moon
+                    float blackSun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt; // black sun
+                    float lunE   =step(2.5,uSkyEvent)*uSkyAmt;                      // lunar eclipse
+
+                    // celestial directions (world space → spin with yaw via rd),
+                    // kept low + off-centre so the discs frame beside the board
+                    vec3 sunDir =normalize(vec3( 0.52, 0.33 + 0.02*sin(t*0.10),     -0.82));
+                    vec3 moonDir=normalize(vec3(-0.50, 0.37 + 0.02*sin(t*0.08+1.0), -0.80));
+
+                    vec3 col=vec3(0.0);
+                    bool ground=false;
+
+                    // ================= FLAT GROUND DISC =================
+                    if(rd.y < -0.0008){
+                        float tg=-ro.y/rd.y;
+                        vec3 p=ro+rd*tg;
+                        float rr=length(p.xz);
+                        if(rr < R){
+                            ground=true;
+                            float th=atan(p.z,p.x);
+
+                            // masonic checkerboard
+                            vec2 cell=floor(p.xz/uTileScale);
+                            float chk=mod(cell.x+cell.y,2.0);
+                            vec3 darkSq=mix(vec3(0.05,0.05,0.07), vec3(0.012,0.012,0.022), night);
+                            vec3 liteSq=mix(vec3(0.80,0.80,0.84), vec3(0.10,0.12,0.18), night);
+                            col=mix(darkSq, liteSq, chk);
+                            vec2 gln=abs(fract(p.xz/uTileScale)-0.5);
+                            float line=smoothstep(0.46,0.5,max(gln.x,gln.y));
+                            col+=line*mix(vec3(0.05),vec3(0.03,0.05,0.10),night)*0.6;
+
+                            // occult sigils — concentric rings, 12 spokes, rosette (subtle, stronger far out)
+                            vec3 sigCol=mix(vec3(0.55,0.45,0.85), vec3(0.45,0.65,1.0), night);
+                            float rings=smoothstep(0.95,1.0, abs(sin(rr*0.9 - t*0.08)));
+                            float spokes=smoothstep(0.93,1.0, abs(cos(th*6.0)));
+                            float rosette=smoothstep(0.86,1.0, abs(sin(th*6.0 + rr*0.5)));
+                            float sig=rings*0.6 + spokes*0.22 + rosette*0.30;
+                            col+=sig*sigCol*uOccult*smoothstep(2.0,9.0,rr)*0.45;
+
+                            // etched zodiac ring
+                            float zr=R*0.6;
+                            float zband=smoothstep(0.7,0.0, abs(rr-zr));
+                            float znode=smoothstep(0.85,1.0, abs(cos(th*6.0)));
+                            col+=zband*znode*sigCol*uOccult*0.35;
+
+                            // distance haze toward the rim
+                            float fog=smoothstep(R*0.32, R, rr);
+                            vec3 haze=mix(vec3(0.62,0.74,0.86), vec3(0.03,0.05,0.11), night);
+                            col=mix(col, haze, fog*0.93);
+
+                            // icy rim glow near disc edge
+                            float rim=smoothstep(R*0.88, R, rr);
+                            col+=rim*mix(vec3(0.5,0.75,0.95), vec3(0.18,0.38,0.66), night)*0.6;
+                        }
+                    }
+
+                    // ================= HORIZON SKYLINE + FIRMAMENT =================
+                    if(!ground){
+                        {
+                            // ---- SKY / FIRMAMENT DOME ----
+                            float el=clamp(rd.y,0.0,1.0);
+                            vec3 horiz=mix(vec3(0.66,0.78,0.90), vec3(0.04,0.06,0.13), night);
+                            vec3 zen  =mix(vec3(0.16,0.40,0.78), vec3(0.006,0.012,0.04), night);
+                            col=mix(horiz, zen, pow(el,0.7));
+
+                            // event mood on the firmament
+                            col=mix(col, col*vec3(1.5,0.42,0.38)+vec3(0.06,0.0,0.0), bloodM*0.6);
+                            col=mix(col, col*vec3(0.40,0.40,0.52), blackSun*0.6);
+                            col=mix(col, col*vec3(0.5,0.5,0.62), lunE*0.45);
+
+                            float az=atan(rd.x,-rd.z);
+                            vec2 sph=vec2(az/PI, el);
+
+                            // faint firmament weave
+                            float dome=fbm(sph*8.0 + vec2(t*0.01,0.0));
+                            col+=(dome-0.5)*0.03*mix(vec3(1.0), vec3(0.6,0.7,1.0), night);
+
+                            // stars (mostly at night)
+                            float stf=starField(sph*vec2(46.0,30.0));
+                            col+=stf*(0.35+0.65*night)*vec3(0.9,0.95,1.0);
+
+                            // ---- zodiac wheel: dim 12-node belt ringing the dome ----
+                            for(int i=0;i<12;i++){
+                                float fi=float(i);
+                                float a=fi/12.0*TAU;
+                                vec3 zd=normalize(vec3(sin(a)*0.85, 0.42, -cos(a)*0.85));
+                                float dz=acos(clamp(dot(rd,zd),-1.0,1.0));
+                                float zAct=step(abs(mod(uZodiac-fi+6.0,12.0)-6.0), 0.5);
+                                float node=smoothstep(0.035,0.0,dz);
+                                float glo =exp(-dz*10.0);
+                                vec3 zc=mix(vec3(0.50,0.55,0.82), vec3(1.0,0.84,0.42), zAct);
+                                col+=(node*(0.5+1.0*zAct) + glo*0.16*(0.3+zAct))*zc*(0.4+0.6*night);
+                            }
+                            // ---- active constellation, framed high & visible above the board ----
+                            vec3 cDir=normalize(vec3(0.16, 0.54, -0.82));
+                            for(int k=0;k<6;k++){
+                                float fk=float(k);
+                                vec2 off=(hash22(vec2(uZodiac*13.0+fk*1.7, fk*5.0))-0.5)*0.32;
+                                vec3 cn=normalize(cDir + rgt*off.x + up*off.y);
+                                float dcc=acos(clamp(dot(rd,cn),-1.0,1.0));
+                                float br=0.6+0.6*hash11(uZodiac*3.0+fk);
+                                col+=smoothstep(0.013,0.0,dcc)*vec3(1.0,0.92,0.66)*br*(0.55+0.45*night);
+                                col+=exp(-dcc*42.0)*vec3(0.8,0.85,1.0)*0.12*(0.4+0.6*night);
+                            }
+
+                            // ---- SUN ----
+                            float sa=acos(clamp(dot(rd,sunDir),-1.0,1.0));
+                            float sunVis=1.0-night;
+                            float sunR=0.045;
+                            float disc=smoothstep(sunR,sunR*0.8,sa);
+                            float corona=exp(-sa*5.0)*0.8 + exp(-sa*1.3)*0.18;
+                            vec3 sunWarm=mix(vec3(1.0,0.92,0.70), vec3(1.0,0.66,0.32), wSand);
+                            vec3 sunC=disc*sunWarm*3.0 + corona*sunWarm*1.2;
+                            vec3 blackSunC = -disc*vec3(2.5)
+                                           + smoothstep(sunR*1.7,sunR*1.05, abs(sa-sunR*1.25))*vec3(1.0,0.9,0.7)*2.8
+                                           + corona*vec3(0.9,0.7,0.95)*0.5;
+                            col+=mix(sunC*sunVis, blackSunC, blackSun);
+
+                            // ---- MOON ----
+                            float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0));
+                            float moonVis=night;
+                            float moonR=mix(0.055, 0.090, bloodM);          // blood moon swells
+                            float mdisc=smoothstep(moonR,moonR*0.85,ma);
+                            float craters=fbm((rd.xy-moonDir.xy)*42.0);
+                            vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters);
+                            float mGlow=exp(-ma*7.0)*0.4;
+                            vec3 moonC=mdisc*moonGrey*1.6 + mGlow*moonGrey*0.6;
+                            vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);
+                            vec3 moonEv=mdisc*moonRed*2.0 + exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;
+                            col+=mix(moonC*moonVis, moonEv, max(bloodM,lunE));
+
+                            // subtle radiant zenith (occult)
+                            float zenGlow=smoothstep(0.85,1.0,el);
+                            col+=zenGlow*mix(vec3(0.0), vec3(0.30,0.25,0.45), night)*0.14*uOccult;
+
+                            // storm overcast — rolling cloud cover that dims the sun
+                            if(wStorm>0.01){
+                                float cl=fbm(vec2(az*2.2 + t*0.05, el*3.0 - t*0.02));
+                                float cover=smoothstep(0.7,0.0,el);                 // thickest near horizon
+                                vec3 cloud=mix(vec3(0.30,0.32,0.36), vec3(0.03,0.04,0.06), night);
+                                col=mix(col, cloud, cover*smoothstep(0.35,0.7,cl)*wStorm*0.9);
+                            }
+                        }
+
+                        // ---- HORIZON SKYLINE (mountains / occult city / forest fringe) ----
+                        {
+                            float az2=atan(rd.x,-rd.z);
+                            float ev=rd.y;                                 // true view elevation
+                            // light direction (sun by day, moon by night) for facing-light
+                            float laz=mix(atan(sunDir.x,-sunDir.z), atan(moonDir.x,-moonDir.z), night);
+                            vec3  lcol=mix(vec3(1.0,0.85,0.55), vec3(0.55,0.68,0.95), night);
+                            lcol=mix(lcol, vec3(0.95,0.25,0.15), bloodM);
+                            vec3  skT=mix(vec3(0.62,0.74,0.86), vec3(0.06,0.10,0.20), night);
+
+                            float fc,kind;
+                            float cc=cityCrest(az2,fc,kind);
+                            float mc=mtnCrest(az2);
+                            float fcr=forestCrest(az2);
+                            float top=max(max(cc,mc),fcr);
+                            // soft AA on the silhouette crest + fade below the horizon line
+                            float edge=0.004;
+                            float band=smoothstep(-edge,edge, top-ev)*smoothstep(-0.07,-0.02, ev);
+                            if(band>0.001){
+                                vec3 sil;
+                                if(fcr>0.004 && ev<=fcr)            sil=shadeFor(az2,ev,fcr,skT,night);
+                                else if(kind>=0.0 && ev<=cc)        sil=shadeCity(az2,ev,cc,fc,kind,laz,lcol,skT,night,t);
+                                else                                sil=shadeMtn(az2,ev,mc,laz,lcol,skT,night);
+                                // event grading on the skyline
+                                sil=mix(sil, sil*vec3(1.4,0.5,0.45), bloodM*0.5);
+                                sil=mix(sil, sil*vec3(0.55,0.55,0.65), (blackSun+lunE)*0.4);
+                                col=mix(col, sil, band);
+                            }
+                        }
+                    }
+
+                    // ================= GLOBAL WEATHER GRADE =================
+                    float lum=dot(col,vec3(0.299,0.587,0.114));
+                    col=mix(col, vec3(lum), wStorm*0.35);
+                    col*=mix(1.0,0.62,wStorm*0.6);
+                    col=mix(col, col*vec3(0.85,0.95,1.15)+vec3(0.05,0.07,0.10), wSnow*0.6);
+                    col=mix(col, col*vec3(1.20,1.00,0.70)+vec3(0.10,0.06,0.00), wSand*0.5);
+                    col=mix(col, col*vec3(1.30,0.50,0.45)+vec3(0.08,0.00,0.00), wBlood*0.55);
+
+                    col+=flash*vec3(0.8,0.85,1.0);
+                    col*=1.0+uBass*0.12;
+
+                    // falling snow flecks (screen space)
+                    if(wSnow>0.01){
+                        vec2 s2=uv*vec2(iResolution.x/iResolution.y,1.0);
+                        float fall=0.0;
+                        for(int i=0;i<2;i++){
+                            float fl=float(i);
+                            vec2 q=s2*(10.0+fl*6.0); q.y+=t*(1.5+fl);
+                            vec2 id=floor(q); vec2 fr=fract(q)-0.5;
+                            fall+=smoothstep(0.09,0.0,length(fr))*step(0.92,hash21(id+fl*7.0));
+                        }
+                        col+=fall*wSnow*vec3(0.9,0.95,1.0)*0.8;
+                    }
+
+                    // edge vignette keeps the board area calm/readable
+                    float vig=smoothstep(1.7,0.4,length(uv));
+                    col*=mix(0.70,1.0,vig);
+
+                    // tonemap + dither
+                    col=col/(col+vec3(0.6));
+                    col=pow(max(col,0.0), vec3(0.95));
+                    col+=(hash21(frag+fract(t))-0.5)*0.015;
+
+                    gl_FragColor=vec4(col,1.0);
+                }
+            `;
+
+            const dpr = renderer.getPixelRatio();
+            const material = new THREE.ShaderMaterial({
+                vertexShader,
+                fragmentShader,
+                uniforms: {
+                    iTime: { value: 0 },
+                    iResolution: { value: new THREE.Vector2(1, 1) },
+                    uCamYaw: { value: 0.0 },
+                    uPitch: { value: params.pitch },
+                    uFocal: { value: params.focal },
+                    uDiscRadius: { value: params.discRadius },
+                    uTileScale: { value: params.tileScale },
+                    uDayNight: { value: 0.0 },
+                    uSkyEvent: { value: 0.0 },
+                    uSkyAmt: { value: 0.0 },
+                    uZodiac: { value: 0.0 },
+                    uWeather: { value: new THREE.Vector4(0, 0, 0, 0) },
+                    uBass: { value: 0.0 },
+                    uOccult: { value: params.occult }
+                }
+            });
+
+            const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+            scene.add(quad);
+
+            // Expose for runtime tweaking from game code (console only, no GUI)
+            window._shaderBgParams = params;
+            window._shaderBgMaterial = material;
+
+            // ═══════════════════════════════════════════
+            // ── Audio-Reactive System (Web Audio API) ──
+            // ═══════════════════════════════════════════
+            const audioReact = {
+                enabled: true,
+                bassGain: 1.0,      // overall bass sensitivity
+                terrainPulse: 0.6,  // how much bass lifts terrain height
+                fogPulse: 0.4,      // how much bass thickens fog
+                noisePulse: 0.2,    // how much bass modulates noise amp
+                colorPulse: 0.3,    // how much bass shifts color phase
+                smoothing: 0.82     // exponential smoothing (0 = instant, 0.99 = glacial)
+            };
+            window._shaderAudioReact = audioReact;
+
+            // Web Audio plumbing
+            let _reactCtx = null;
+            let _analyser = null;
+            let _freqData = null;
+            const _connectedEls = new Set(); // track which Audio els are wired
+            let _smoothBass = 0;
+            let _smoothMid = 0;
+
+            function ensureAnalyser() {
+                if (_analyser) return true;
+                try {
+                    _reactCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    _analyser = _reactCtx.createAnalyser();
+                    _analyser.fftSize = 512;
+                    _analyser.smoothingTimeConstant = 0.6;
+                    _freqData = new Uint8Array(_analyser.frequencyBinCount);
+                    // Connect analyser to output so audio still plays
+                    _analyser.connect(_reactCtx.destination);
+                    return true;
+                } catch (e) {
+                    console.warn('Audio reactivity: Web Audio not available', e);
+                    return false;
+                }
+            }
+
+            function connectTrack(audioEl) {
+                if (!audioEl || _connectedEls.has(audioEl)) return;
+                if (!ensureAnalyser()) return;
+                try {
+                    // Enable CORS so frequency data isn't zeroed
+                    if (!audioEl.crossOrigin) {
+                        audioEl.crossOrigin = 'anonymous';
+                    }
+                    const src = _reactCtx.createMediaElementSource(audioEl);
+                    src.connect(_analyser);
+                    _connectedEls.add(audioEl);
+                } catch (e) {
+                    // MediaElementSource already created, or CORS issue
+                    console.warn('Audio reactivity: could not connect track', e);
+                }
+            }
+
+            // Patch all existing audioTracks for CORS before they load
+            function patchAudioTracks() {
+                if (typeof audioTracks === 'undefined') return;
+                for (const key in audioTracks) {
+                    const t = audioTracks[key];
+                    if (t && !t.crossOrigin) {
+                        t.crossOrigin = 'anonymous';
+                    }
+                }
+            }
+            // Patch now (preload='none' means no fetch has happened yet)
+            patchAudioTracks();
+
+            // Returns [bass, mid] each in 0..1 range
+            function readAudioEnergy() {
+                if (!_analyser || !_freqData) return [0, 0];
+
+                // Auto-connect the currently playing track
+                if (typeof state !== 'undefined' && typeof audioTracks !== 'undefined' && state.currentMusic) {
+                    const el = audioTracks[state.currentMusic];
+                    if (el && !_connectedEls.has(el)) connectTrack(el);
+                }
+
+                // Resume context if suspended (browser autoplay policy)
+                if (_reactCtx && _reactCtx.state === 'suspended') {
+                    _reactCtx.resume().catch(() => {});
+                }
+
+                _analyser.getByteFrequencyData(_freqData);
+                const binCount = _analyser.frequencyBinCount; // 256 bins for fftSize 512
+
+                // Bass: bins 1-8  (~43-344 Hz at 44.1kHz) — kick drums, bass lines
+                let bassSum = 0;
+                const bassEnd = Math.min(8, binCount);
+                for (let i = 1; i < bassEnd; i++) bassSum += _freqData[i];
+                const bass = bassSum / ((bassEnd - 1) * 255);
+
+                // Mids: bins 8-32 (~344-1378 Hz) — snares, melody
+                let midSum = 0;
+                const midEnd = Math.min(32, binCount);
+                for (let i = 8; i < midEnd; i++) midSum += _freqData[i];
+                const mid = midSum / ((midEnd - 8) * 255);
+
+                return [bass, mid];
+            }
+
+            let lastW = 0, lastH = 0, isVisible = false;
+
+            function syncSize() {
+                const rect = skyBackdrop.getBoundingClientRect();
+                const w = Math.round(rect.width);
+                const h = Math.round(rect.height);
+                if (w < 1 || h < 1) { isVisible = false; return; }
+                isVisible = true;
+                if (w !== lastW || h !== lastH) {
+                    lastW = w; lastH = h;
+                    renderer.setSize(w, h);
+                    const d = renderer.getPixelRatio();
+                    material.uniforms.iResolution.value.set(w * d, h * d);
+                }
+            }
+
+            // Track size changes via ResizeObserver on the map-row
+            const mapRow = skyBackdrop.closest('.map-row');
+            if (mapRow) {
+                new ResizeObserver(syncSize).observe(mapRow);
+            }
+
+            const DEG2RAD = Math.PI / 180;
+
+            // ── Read the live game state that drives the firmament ──
+            // (day/night cycle, sky events, active zodiac, weather)
+            const SKY_EVENT_INDEX = { bloodMoon: 1, solarEclipse: 2, lunarEclipse: 3 };
+            function readGameSky() {
+                const S = window.state || (typeof state !== 'undefined' ? state : null);
+
+                // day/night — prefer the body dataset the HUD already maintains
+                let isNight = false;
+                const ds = document.body && document.body.dataset;
+                if (ds && (ds.cycle === 'night' || ds.cycle === 'day')) isNight = ds.cycle === 'night';
+                else if (S && S.phase === 'battle' && S.round) isNight = (S.round % 2) === 0;
+
+                // sky event
+                let ev = 0;
+                if (S && S.skyEvent && S.skyEvent.type) ev = SKY_EVENT_INDEX[S.skyEvent.type] || 0;
+
+                // active zodiac → index 0..11
+                let zi = 0;
+                const ZL = window.AVAILABLE_ZODIACS;
+                if (S && S.activeZodiac && ZL) { const k = ZL.indexOf(S.activeZodiac); if (k >= 0) zi = k; }
+
+                // weather → buckets (storm, snow, sand, blood)
+                const w = { storm: 0, snow: 0, sand: 0, blood: 0 };
+                const aw = (S && S.activeWeather) || [];
+                for (let i = 0; i < aw.length; i++) {
+                    switch (aw[i] && aw[i].type) {
+                        case 'tornado': case 'hurricane': case 'thunderstorm':
+                        case 'earthquake': case 'tesseractStorm': w.storm = 1; break;
+                        case 'blizzard': w.snow = 1; break;
+                        case 'sandstorm': case 'drought': case 'solarFlare': w.sand = 1; break;
+                        case 'bloodRain': w.blood = 1; break;
+                    }
+                }
+                return { isNight, ev, zi, w };
+            }
+
+            // smoothed background state (eased toward targets each frame)
+            let _bgNight = 0, _bgSkyAmt = 0, _bgSkyEvent = 0, _bgZodiac = 0;
+            const _bgW = { storm: 0, snow: 0, sand: 0, blood: 0 };
+
+            const clock = new THREE.Clock();
+            function animate() {
+                requestAnimationFrame(animate);
+                syncSize();
+                if (!isVisible) return;
+
+                const U = material.uniforms;
+
+                // ── Camera: spin world with diorama yaw; horizon pitch tracks tilt gently ──
+                const s = window.state || (typeof state !== 'undefined' ? state : null);
+                let yaw = 0, tiltDeg = 50;
+                if (s && s.dioramaMode) { yaw = (s.dioramaYawDeg ?? 0) * DEG2RAD; tiltDeg = (s.dioramaTiltDeg ?? 50); }
+                U.uCamYaw.value = yaw;
+                U.uPitch.value = params.pitch + (50 - tiltDeg) * 0.001;
+
+                // ── Drive sky uniforms from game state (eased) ──
+                const g = readGameSky();
+                const k = 0.045;
+                _bgNight  += ((g.isNight ? 1 : 0) - _bgNight) * k;
+                _bgSkyAmt += ((g.ev > 0 ? 1 : 0) - _bgSkyAmt) * k;
+                if (g.ev > 0) _bgSkyEvent = g.ev;            // hold last event type while it fades out
+                _bgZodiac += (g.zi - _bgZodiac) * 0.08;
+                _bgW.storm += (g.w.storm - _bgW.storm) * k;
+                _bgW.snow  += (g.w.snow  - _bgW.snow ) * k;
+                _bgW.sand  += (g.w.sand  - _bgW.sand ) * k;
+                _bgW.blood += (g.w.blood - _bgW.blood) * k;
+
+                U.uDayNight.value = _bgNight;
+                U.uSkyEvent.value = _bgSkyEvent;
+                U.uSkyAmt.value   = _bgSkyAmt;
+                U.uZodiac.value   = _bgZodiac;
+                U.uWeather.value.set(_bgW.storm, _bgW.snow, _bgW.sand, _bgW.blood);
+
+                // ── Audio-reactive bass pulse (subtle) ──
+                let bass = 0;
+                if (audioReact.enabled) {
+                    const [rawBass] = readAudioEnergy();
+                    const sm = audioReact.smoothing;
+                    _smoothBass = _smoothBass * sm + (rawBass * audioReact.bassGain) * (1 - sm);
+                    bass = _smoothBass;
+                }
+                U.uBass.value = bass;
+
+                U.iTime.value = clock.getElapsedTime();
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+    </script>
+
+    <!-- ── Menu Background: Rising Motes (canvas 2D) ──
+         Same mood as the battle loading screen: black, drifting embers rising.
+         Keeps the #menuBgCanvas id and window._menuBgSetActive API the rest of
+         the code (map.js _showTitlePage) already talks to. -->
+    <script>
+    (function () {
+        const canvas = document.getElementById('menuBgCanvas');
+        const overlay = document.getElementById('startOverlay');
+        if (!canvas || !overlay) { console.warn('Menu BG: canvas or overlay not found'); return; }
+        const ctx = canvas.getContext('2d');
+        const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+        // Loading-screen palette: violet + green motes, plus warm candle-white.
+        const COLORS = [
+            { rgb: '185,138,255', w: 0.26 },
+            { rgb: '127,255,178', w: 0.14 },
+            { rgb: '255,251,230', w: 0.60 }
+        ];
+        function pickColor() {
+            let r = Math.random();
+            for (const k of COLORS) { r -= k.w; if (r <= 0) return k.rgb; }
+            return COLORS[0].rgb;
+        }
+
+        let W = 0, H = 0, motes = [], vignette = null;
+        function spawn(m, anywhere) {
+            m.x = Math.random() * W;
+            m.y = anywhere ? Math.random() * H : H + 8;
+            m.r = 0.7 + Math.random() * 2.1;
+            m.vy = 9 + Math.random() * 24;          // px/s upward
+            m.sway = 8 + Math.random() * 18;        // horizontal wander amplitude
+            m.phase = Math.random() * Math.PI * 2;
+            m.freq = 0.15 + Math.random() * 0.45;
+            m.alpha = 0.10 + Math.random() * 0.42;
+            m.rgb = pickColor();
+        }
+        function resize() {
+            const w = overlay.offsetWidth, h = overlay.offsetHeight;
+            if (w < 1 || h < 1) return;
+            W = w; H = h;
+            canvas.width = Math.round(w * DPR);
+            canvas.height = Math.round(h * DPR);
+            const target = Math.round(Math.min(90, Math.max(36, (w * h) / 20000)));
+            while (motes.length < target) { const m = {}; spawn(m, true); motes.push(m); }
+            motes.length = target;
+            vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.72);
+            vignette.addColorStop(0, 'rgba(0,0,0,0)');
+            vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        let running = true, last = performance.now();
+        window._menuBgSetActive = function (active) {
+            running = active;
+            if (active) last = performance.now(); // no time jump on resume
+        };
+
+        function frame(now) {
+            requestAnimationFrame(frame);
+            if (!running) return;
+            if (overlay.classList.contains('hidden') || overlay.style.display === 'none') return;
+            let dt = (now - last) / 1000; last = now;
+            if (dt > 0.1) dt = 0.1;
+            const t = now * 0.001;
+
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, W, H);
+
+            for (const m of motes) {
+                m.y -= m.vy * dt;
+                if (m.y < -10) spawn(m, false);
+                const x = m.x + Math.sin(t * m.freq * 2 + m.phase) * m.sway;
+                const a = m.alpha * (0.6 + 0.4 * Math.sin(t * 1.2 + m.phase));
+                // soft halo + core, no shadowBlur (cheap on weak GPUs)
+                ctx.fillStyle = 'rgba(' + m.rgb + ',' + (a * 0.22).toFixed(3) + ')';
+                ctx.beginPath(); ctx.arc(x, m.y, m.r * 3.2, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(' + m.rgb + ',' + a.toFixed(3) + ')';
+                ctx.beginPath(); ctx.arc(x, m.y, m.r, 0, Math.PI * 2); ctx.fill();
+            }
+
+            if (vignette) { ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H); }
+        }
+        requestAnimationFrame(frame);
+    })();
+    </script>
+
+    </div><!-- #game-viewport -->
+</body>
+
+</html>
+
+
+
+

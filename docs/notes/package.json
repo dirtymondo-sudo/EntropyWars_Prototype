@@ -1,0 +1,26 @@
+{
+  "name": "entropy-wars",
+  "version": "1.0.0",
+  "description": "Entropy Wars multiplayer server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test *.test.js",
+    "test:full": "EW_FULL_TESTS=1 node --test *.test.js",
+    "test:quick": "node check-syntax.js && node check-data-parity.js && node --test content-schema.test.js",
+    "test:end": "node test-end.js",
+    "test:syntax": "node check-syntax.js",
+    "test:parity": "node check-data-parity.js",
+    "grades": "node check-grades.js",
+    "deploy": "node deploy.js",
+    "steam:schema": "node steam-schema.js",
+    "bots": "node bots.js",
+    "bots:register": "node bot_register.js"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "express": "^4.21.0",
+    "playwright": "^1.60.0",
+    "socket.io": "^4.7.5"
+  }
+}
