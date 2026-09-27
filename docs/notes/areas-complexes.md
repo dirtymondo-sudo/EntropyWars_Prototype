@@ -1534,3 +1534,21 @@ stairs or bridges … that sit on top of the floor but the player can still walk
   OVERRIDES walls in `hqTerrainFeet` — keep a bridge's footprint off any wall you mean to stop the walker.
 - check-terrain: every door reached, nothing traps (663 walls, 25 bridges). `stadium-garage.test.js` (the bowl's
   walker proof is `heavy`). hq-areas accepts a BUILT area (no gen + tier rows) for the plan / weenie / park rules.
+
+## THE NORTH — CAMELOT REBUILT + THE MOUNTAIN (OPEN WORLD Phase 6, 2026-09-27)
+Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-camelot re-pinned).
+- **THE CROWN'S ROAD** (`site_prebuilt_camelot_road`) is Camelot's entry part (the portcullis at its south end);
+  a road join walks into the ward. The ward has no bay door now.
+- **THE WARD is BUILT** (no gen, noise 0). Castle helpers in data.js after `hqCastleShell`: `hqRoundBlock`
+  (solid drum), `hqCastleTower` (hollow drum + doorway + spiral round a newel + a deck flush where the curtain
+  joins; `door`/`joins` arcs in degrees, the deck's stairwell hole is [a0 + 0.603·span, a0 + span] and must miss
+  the join arcs), `hqCastleCrown`, `hqCurtainWall` (a 6 m wall-walk block, battlements on the `out` face, the
+  capsule pulled back `pull0`/`pull1` at towers). `hqCastleTower` hardcodes bridgeThick 0.28 / headroom 1.95:
+  HQ_TERRAIN_RULES is in its TDZ where the room table is built.
+- A deep stream leaves a dry strip of bed just outside the water: at a box edge that strip is a trap. The road's
+  river is wadeable (depth 1.0) and runs past both edges (x ±44).
+- **THE MOUNTAIN**: foothills (slope ramp 0 → 25), switchbacks (five plateaus 7 m apart + five ramps, each
+  ramp's centreline 0.9 m past the cliff line, or its edge blend notches against the next ledge), summit at 60 m.
+  `terrain.outer.keep` / `outer.lift` shape the land past the shell (three-renderer.js `_hqBuildOuterGround`).
+- A closed staged part is roofed (three-renderer.js, `_ew_hqRoof`); the parts beside (`beside: true` on
+  `hqStageNeighbours`) draw the hall and the keep from the road and the hills.
