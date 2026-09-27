@@ -240,3 +240,16 @@ now, not only a map that needed the sRGB flip; `_cvClearModel` disposes them). `
 export as authored. The misc / door-kit / prop paths were already Lambert (`_hzMiscKit` picks, `_hqPropMatPick`). Unseen
 live (RULE #1c): the stage's tone against the old — `CV_BAKE_EMISSIVE` is the edit if a bake reads too dark (raise) or flat
 (lower); the creator base's own shells set their roughness after this and are untouched.
+
+## THE ASSETS — compressed models, the manifest, the cap by quota, DOWNLOAD THIS PLACE (2026-09-27, OPEN_WORLD_PLAN Phase 9, zip open-world 12)
+Full log: OPEN_WORLD_PLAN.md §12 "PHASE 9". The short of it:
+- **To compress**: `npm i --no-save @gltf-transform/core@4 @gltf-transform/extensions@4 @gltf-transform/functions@4 meshoptimizer sharp`
+  (add `three@0.128.0` for `--check`), then `npm run optimize -- <folder> --check`. Output `<name>.opt.glb` beside each
+  GLB. Textures → WebP at their own size (cap `--size`, default 2048); geometry lossless (reorder + EXT_meshopt_compression).
+  NEVER quantize for this game: three r128 reads normalized-int attributes raw on the CPU (raycasts, bounds, CPU skinning).
+- **To switch it on**: upload the .opt.glb files beside their originals (`npm run deploy -- --assets <folder> --prefix
+  <bucket folder>/` or by hand), `npm run manifest -- <bucket mirror>` (or `<folder> --prefix … --merge`), `npm run deploy`.
+- **The game** (three-renderer.js THE ASSET STORE): `_asResolve` (manifest-listed sibling → loaded instead; falls back to the
+  original on a failure; `window.EW_NO_OPT_ASSETS` = originals), `_asNetUrl` (`?h=<sha>`), `_asStale` (a stored copy under an
+  old sha is refetched), `_asWireMeshopt` (every GLTFLoader gets MeshoptDecoder), `_asCapFor` / `_asQuotaRead`,
+  `hq.warmZone` / `hq.zoneState`, the settings group "The World on Disk" (map.js `_buildWorldDiskHTML`). Test: asset-store.test.js.
