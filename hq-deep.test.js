@@ -164,13 +164,15 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: from the first
     for (const r of out) { assert.equal(r.unreached.length, 0, r.id + ': ' + r.unreached.join(',')); assert.equal(r.traps.length, 0, r.id + ' traps'); }
 });
 
-test('THE ENTRIES: the yacht\'s cabin door lands on the cay (bay s x 0), Atlantis\'s wet bulkhead lands DRY in the temple (bay e z 0); the parts wear the boards\' egress; THE DEEP is a hub anchored on the abyss', heavy, () => {
+test('THE ENTRIES: the yacht\'s cabin door lands on the cay (bay, a FREE door on the cay since the coast — Phase 7: the cay is an island in the harbour, its south side is open water), Atlantis\'s wet bulkhead lands DRY in the temple (bay e z 0); the parts wear the boards\' egress; THE DEEP is a hub anchored on the abyss', heavy, () => {
     const E = HQ.siteRooms.entry;
-    assert.deepEqual([E.prebuilt_bermuda.room, E.prebuilt_bermuda.door.wall, E.prebuilt_bermuda.door.x], [SEA, 's', 0]);
+    assert.deepEqual([E.prebuilt_bermuda.room, E.prebuilt_bermuda.door.wall, E.prebuilt_bermuda.door.x], [SEA, 'free', 0]);
+    const bayL = D.hqTerrainDoorLanding(D.hqTerrainInfo(SEA), at(SEA, 'bay'));
+    assert.ok(D.hqTerrainHeight(D.hqTerrainInfo(SEA), bayL.x, bayL.z) > HQ.rooms[SEA].terrain.sea.y, 'the free bay door stands on the cay\'s dry ground');
     assert.deepEqual([E.prebuilt_atlantis.room, E.prebuilt_atlantis.door.wall, E.prebuilt_atlantis.door.z], [TEMPLE, 'e', 0]);
     for (const [site, part] of [['prebuilt_bermuda', SEA], ['prebuilt_atlantis', TEMPLE]]) {
-        const eg = at('site_' + site, 'egress'), bay = at(part, 'bay');
-        assert.ok(bay && bay.entry === site && bay.leaf === eg.leaf && bay.action.room === eg.action.room, part + ': the bay door is the board room\'s egress');
+        const bay = at(part, 'bay');   // (the board rooms were deleted 2026-09-27: the bay door IS the site's egress now)
+        assert.ok(bay && bay.entry === site && bay.leaf && bay.action.room && HQ.rooms[bay.action.room] && bay.action.at === 'site_' + site, part + ': the bay door is the site\'s egress (back to its bay)');
         assert.equal(D.hqSiteEntry('site_' + site, 'egress').room, part, site + ' is bypassed');
         assert.ok(!HQ.rooms[part].doors.some(d => d.action && d.action.room === 'site_' + site), part + ': no door back to the board');
     }
@@ -245,7 +247,7 @@ test('THE VEHICLES + THE PARK RULE + THE WEENIES + THE LIGHT: the skiff (a `vehi
 test('THE SWIMMER in a vm sandbox (the renderer\'s own functions on a real compiled field): a walker over deep water becomes the swimmer afloat at the draft; W swims along the camera; C dives and the body sinks, SPACE brings it back to the surface; an idle diver drifts up; the shallows hand the walker back; a drowned room swims from the first frame with no surface to reach', () => {
     const room = { shell: { w: 60, d: 60, open: true, edge: 'open' }, terrain: { base: -4, sea: { y: 0 }, features: [{ k: 'hill', x: 22, z: 0, r: 12, h: 5.2 }] }, doors: [] };
     const info = D.hqTerrainCompile(room, null);
-    const fns = ['_hqSeaRules', '_hqSea', '_hqSeaFxOff', '_hqSeaEmit', '_hqSeaDepthAt', '_hqSwimFree', '_hqSwimStart', '_hqSwimStop', '_hqSwimCheck', '_hqTickSwim', '_hqSeaWayCheck'];
+    const fns = ['_hqSeaRules', '_hqSea', '_hqSeaFxOff', '_hqSeaEmit', '_hqSeaDepthAt', '_hqSwimFree', '_hqSwimFreeAt', '_hqStageOwner', '_hqSeaGroundAt', '_hqStageEdgeOpen', '_hqSwimStart', '_hqSwimStop', '_hqSwimCheck', '_hqTickSwim', '_hqSeaWayCheck'];
     const mk = (rm, inf) => {
         const events = [];
         const pl = { x: 0, z: 0, y: -4, visY: -4, yaw: 0, targetYaw: 0, air: false, vy: 0, jumpT: -1, moving: false, running: false, entry: { group: { position: { set() {} } } } };
@@ -307,7 +309,7 @@ test('THE SWIMMER in a vm sandbox (the renderer\'s own functions on a real compi
 test('THE HELM in a vm sandbox: E boards the moored skiff (the walker in the seat, the boom out), W drives it along its heading, D turns it and the camera keeps the mouse\'s offset, the hull refuses water shallower than its draft, E again steps off into the water and the swimmer takes over; the bathyscaphe drives the column and SPACE / C change its depth between the floor and the surface', () => {
     const room = { shell: { w: 80, d: 80, open: true, edge: 'open' }, terrain: { base: -4, sea: { y: 0 }, features: [{ k: 'hill', x: 30, z: 0, r: 12, h: 5.2 }] }, doors: [] };
     const info = D.hqTerrainCompile(room, null);
-    const fns = ['_hqSeaRules', '_hqSea', '_hqSeaEmit', '_hqSeaDepthAt', '_hqSwimFree', '_hqSwimStart', '_hqSwimStop', '_hqSwimCheck', '_hqTickSwim', '_hqSeaWayCheck', '_hqVehicleRegister', '_hqVehicleFind', '_hqBoard', '_hqDisembark', '_hqHullFree', '_hqTickVehicle'];
+    const fns = ['_hqSeaRules', '_hqSea', '_hqSeaEmit', '_hqSeaDepthAt', '_hqSwimFree', '_hqSwimFreeAt', '_hqStageOwner', '_hqSeaGroundAt', '_hqStageEdgeOpen', '_hqSwimStart', '_hqSwimStop', '_hqSwimCheck', '_hqTickSwim', '_hqSeaWayCheck', '_hqVehicleRegister', '_hqVehicleFind', '_hqBoard', '_hqDisembark', '_hqHullFree', '_hqTickVehicle'];
     const mk = (rm, inf, kind, at) => {
         const events = [];
         const grp = { position: { x: at.x * HQ.units, y: at.y * HQ.units, z: at.z * HQ.units, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }, rotation: { x: 0, y: 0, z: 0, order: 'XYZ', set(x, y, z) { this.x = x; this.y = y; this.z = z; } } };

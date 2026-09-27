@@ -976,7 +976,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 4 | **THE WEST: THE WOODS as one field + the haunted grounds + the estate + the Grove joined; THE WELLS re-pointed; THE WELL ROOM and the board rooms deleted; the basement merge** | data.js, three-renderer.js | `hq-woods.test.js` rewritten (one field, six aliases, every old find/tape/native present); `hq-cave.test.js` / `hq-world.test.js` re-pinned to §8.3; `hq-floors.test.js` for the basement — **DONE 2026-09-27 with deviations (§12): the woods are JOINED PARTS (ids kept), the basement DOOR JOINS, the board rooms kept; test `hq-west.test.js`** |
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
 | 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) — **DONE 2026-09-27** (0 → 65 m on foot; §12) |
-| 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness |
+| 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness — **DONE 2026-09-27** (`hq-coast.test.js`; §12) |
 | 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) |
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged |
 | 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) |
@@ -1390,3 +1390,39 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     at its frame's bearing, NNE of the Strip), hq-joins (the ward is stitched now), hq-ranch (the portcullis plate reads
     the road), hq-stage (the zones), hq-world-map. check-terrain: all seven north rooms, every door reached, no traps.
     Not walked by a person.
+- 2026-09-27 — **PHASE 7 SHIPPED: THE COAST** (thread "Open world plan, Phase 7 coast"; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_11.zip`, token `20260927-open-world-11-cors`; only the files changed since zip 10: data.js +
+  three-renderer.js to R2, data.js + index.html to Render, tests + the plan to the repo root, areas-complexes.md to docs/notes).
+  - **THE HARBOUR** (`site_prebuilt_downtown_harbour`, Downtown's part `harbour`, zone `coast`, 300 × 300 at res 1.0, the
+    sea at −0.4 over a −6 floor): the planned `harbour_sea` built. A `shore` border joins Downtown's south side
+    (stitchM 2: the quay stands as a wall over the water). The avenue runs on as THE LONG PIER (Downtown x 0 = harbour
+    x −38) to a T-head; THE WATER STEPS are the way out of the water; the slipway; THE BREAKWATER (a ridge) and its
+    lighthouse on the mole's head; four channel buoys; the harbour's own skiff moored at the T-head; two people. Its Δ board.
+    Downtown's bay door moved to its east wall (z 64) and the mall's main entrance to its west wall (z 30); the quay's
+    open rect runs the south edge.
+  - **THE ISLAND JOIN** (`kind: 'island'`, data.js): a part whose frame stands `on` a sea part, INSIDE its rectangle.
+    `hqStageNeighbours`: from the sea the island is `inside` (no span); from the island the sea is the `host` on four full
+    sides (spans of kind `island`). `hqStageWhere` crosses INTO an island when the feet are `crossHys` inside its box, and
+    out past any edge onto the host. The host's floor sinks under an island (`hqTerrainIslandSinks`,
+    `HQ_WORLD_RULES.islandSink`); a join with `y` stitches the island's four edges to the host's floor (the cay: −6).
+    `hqWorldValidate`: the host has an open sea, the island its own sea at the host's height (±0.05). The compile's
+    `info.seaExits` (the deep cells at an island's box edge) seed the return search, so a hull is never given rescue ramps.
+  - **THE CAY** (the open sea, 150 × 160 now, frame y −0.4) and **THE DUTCHMAN** (`site_prebuilt_revenge_deck`, frame
+    y 2.2, her own sea −2.6 over a −8.2 floor, the hull a plateau over her box) stand on it. The cay's bay door (the yacht's
+    cabin door) is a FREE door on its beach. The Dutchman is boarded from the skiff only (step off alongside); a swimmer
+    cannot climb her side. No island stands beside another (the sea's fog closes first).
+  - **ENGINE (three-renderer.js)**: `_hqStageOwner` / `_hqSeaGroundAt` — the swimmer's, the hull's and the sub's ground is
+    the part that owns the point (an island in this sea, or past the edge the drawn neighbour); `_hqSwimFree` and
+    `_hqHullFree` ask that part in its own metres and pass the room's edge wherever a joined span opens it. The feet, the
+    air and the boom over an island ask the island (`_hqStageIslandAt`). THE CROSSING lets the swimmer and the helm
+    through (aboard, it waits for the part to be drawn); THE SWAP carries the vehicle (its record to the new part's
+    moorings, its hull into the new part's props, re-anchored), the swimmer's way on, and the sea's look (`_hqSeaDisarm`:
+    the dry fog and the sky back, the rays / snow / bubbles down; `_hqSeaArm` for the new part); the blend and the clock
+    ease the DRY fog while the camera is under (`_hqDryFog`). An island's sea sheet is an outer side keyed on its host
+    (hidden while the host is drawn: one sheet, no z-fight).
+  - Tests: `hq-coast.test.js` (new: the rows, the island neighbours and the crossing rule, the ground, the quay, and in a
+    vm the SKIFF sailing harbour → cay → harbour across both edges, alongside the Dutchman (no sailing into her hull, no
+    climbing it, stepping off onto her deck and crossing aboard), the swimmer off the cay onto the harbour, the source
+    lines); re-pinned hq-deep (the free bay door; the entries test no longer reads the deleted board rooms), hq-city (the
+    mall door), hq-urban (the harbour part), hq-stage (the zones). check-terrain: the harbour, the cay, the Dutchman and
+    Downtown, every door reached, no traps. Not walked by a person.

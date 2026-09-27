@@ -163,7 +163,7 @@ test('THE PLAN (`city`): the streets are the corridors (the ring road a loop, th
     assert.ok(D.hqTerrainHeight(D.hqTerrainInfo(MALL), 0, 6) < 0.05, 'the atrium is open floor');
 });
 
-test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock moved) ⇄ the streets’ west wall at z −8; THE METRO stair on the platform’s north wall (the departures board moved over the track) ⇄ the streets’ north wall at x 12; THE MALL’s main entrance on the streets’ south wall ⇄ the mall’s; every pair the same leaf, never gated', () => {
+test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock moved) ⇄ the streets’ west wall at z −8; THE METRO stair on the platform’s north wall (the departures board moved over the track) ⇄ the streets’ north wall at x 12; THE MALL’s main entrance on the streets’ west wall at z 30 (OPEN WORLD Phase 7, 2026-09-27: the south wall is the quay) ⇄ the mall’s; every pair the same leaf, never gated', () => {
     const av = at(LOBBY, 'avenue'), tw = at(STREETS, 'tower');
     assert.ok(av && av.wall === 'e' && av.z === 0 && av.leaf === 'leaf_entrance' && av.action.room === STREETS && av.action.at === 'tower', 'the avenue doors');
     assert.ok(tw && tw.wall === 'w' && tw.z === -8 && tw.leaf === 'leaf_entrance' && tw.action.room === LOBBY && tw.action.at === 'avenue', 'the streets’ tower door');
@@ -173,7 +173,7 @@ test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock mo
     assert.ok(me && me.wall === 'n' && me.x === 12 && me.leaf === 'leaf_frame_only' && me.action.room === PLAT && me.action.at === 'street', 'the metro stair');
     assert.ok(HQ.rooms[PLAT].props.find(p => p.key === 'departures_board').x < -1.5, 'the departures board hangs over the track');
     const ml = at(STREETS, 'mall'), ms = at(MALL, 'street');
-    assert.ok(ml && ml.wall === 's' && ml.x === 0 && ml.leaf === 'leaf_glass' && ml.action.room === MALL && ml.action.at === 'street' && ms && ms.wall === 's' && ms.x === 0 && ms.leaf === 'leaf_glass' && ms.action.room === STREETS && ms.action.at === 'mall', 'the mall’s doors');
+    assert.ok(ml && ml.wall === 'w' && ml.z === 30 && ml.leaf === 'leaf_glass' && ml.action.room === MALL && ml.action.at === 'street' && ms && ms.wall === 's' && ms.x === 0 && ms.leaf === 'leaf_glass' && ms.action.room === STREETS && ms.action.at === 'mall', 'the mall’s doors');
     for (const d of [av, tw, st, me, ml, ms]) assert.ok(!d.rankDoor && !d.minClearance && D.doorSiteState(d, null) === 'open', d.id + ': never gated');
 });
 

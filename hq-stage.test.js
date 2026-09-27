@@ -29,7 +29,7 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 const rotY = (th, x, z) => ({ x: x * Math.cos(th) + z * Math.sin(th), z: -x * Math.sin(th) + z * Math.cos(th) });
 
 test('the stage stands on the city, the medical wing, the woods and the basement, and its parts are the real box rooms of its frames', () => {
- assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain']);   // + OPEN WORLD Phase 6 (2026-09-27): the north (hq-mountain.test.js)   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
+ assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain', 'coast']);   // + OPEN WORLD Phase 7 (2026-09-27): the coast (hq-coast.test.js)   // + OPEN WORLD Phase 6 (2026-09-27): the north (hq-mountain.test.js)   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
  for (const id of [DT, STRIP, BOWL]) assert.ok(D.hqStagePart(id), id + ' is a staged part');
  assert.equal(D.hqStagePart('central_egress'), null, 'the building is not staged');
  assert.equal(D.hqStageNeighbours('central_egress').length, 0);
@@ -125,7 +125,7 @@ function stageCtx(extra) {
   hqStageWhere: D.hqStageWhere, hqStageSpanAt: D.hqStageSpanAt, hqStageFromRoom: D.hqStageFromRoom, hqStageToRoom: D.hqStageToRoom,
   hqStageRel: D.hqStageRel, _hqUnits: () => 73, _hqNormDeg: d => ((d % 360) + 360) % 360, _hq: null }, extra || {});
  vm.createContext(c);
- vm.runInContext(zoneKeys() + '\nvar HQ_STAGE_PAD = 1.5, _hqStageV = null;\n' + ['_hqStageT', '_hqStageAsk', '_hqStageCross', '_hqStageLoad', '_hqStageSurface', '_hqStageLamps'].map(extract).join('\n'), c);
+ vm.runInContext(zoneKeys() + '\nvar HQ_STAGE_PAD = 1.5, _hqStageV = null;\n' + ['_hqStageT', '_hqStageAsk', '_hqStageCross', '_hqStageLoad', '_hqStageIslandAt', '_hqStageSurface', '_hqStageLamps'].map(extract).join('\n'), c);
  return c;
 }
 test('the crossing swaps into a drawn neighbour, else loads it at the same spot looking the same way', () => {

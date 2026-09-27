@@ -16060,6 +16060,23 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_workings = function () {
     return M.finishDelta();
 };
 
+/* THE HARBOUR (OPEN WORLD Phase 7, 2026-09-27) — the quay under the avenue,
+   THE LONG PIER and its T-head, THE WATER STEPS, the slipway, THE
+   BREAKWATER and its lighthouse, the open water between. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_downtown_harbour = function () {
+    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE HARBOUR', base: 'concrete_floor', seed: 8659,
+        tints: { concrete_floor: '#a09c94', water: '#4a8ab0', deep_water: '#1a4a6a', bridge: '#8a6a48', rocks_1: '#6a6660', holo: '#ffe08a' },
+        desc: 'THE HARBOUR — the quay under the avenue, THE LONG PIER and its T-head, THE WATER STEPS, the slipway, THE BREAKWATER and its lighthouse, the open water' });
+    M.lake(0, 2, 'deep_water', 2); M.lake(1, 2, 'deep_water', 2); M.lake(0, 3, 'water', 1);   // the open water off the quay
+    M.t(2, 2, 'bridge'); M.t(3, 2, 'bridge');                // THE LONG PIER
+    M.lake(1, 3, 'water', 1);                                // THE WATER STEPS
+    M.block(7, 2, 'rocks_1', 2);                             // THE BREAKWATER's head
+    M.t(7, 3, 'holo');                                       // the lighthouse's lamp
+    M.step(6, 1, 'rocks_1');                                 // a bollard row
+    M.symAll();
+    return M.finishDelta();
+};
+
 /* ── THE REGISTRATION ──────────────────────────────────────────────────── */
 /* the env a part's Δ plays under: the site's own Δ env (the sky, the fog, the
    tint, the far roster) — a CLOSED part indoors (no near setting round a
@@ -25280,7 +25297,7 @@ const DOOR_HQ = {
         entry: {
             prebuilt_cyberpunk: { room: 'site_prebuilt_cyberpunk_streets', door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_strip:     { room: 'site_prebuilt_strip_streets',     door: { id: 'bay', wall: 's', x: -22 } },   // Phase 5: x 0 is the highway's join
-            prebuilt_downtown:  { room: 'site_prebuilt_downtown_streets',  door: { id: 'bay', wall: 's', x: -30 } },
+            prebuilt_downtown:  { room: 'site_prebuilt_downtown_streets',  door: { id: 'bay', wall: 'e', z: 64 } },   // Phase 7: the south edge is THE QUAY now (the harbour) — the bay door stands at the waterfront's east end
             /* THE BASES (2026-09-18 — the user: "we don't need the board maps if the place already has an area, like CERN has a
                ring now"): the three bases stand on their own parts — the freight lift lands you in THE MOTOR POOL, the blast
                door in THE RING, the hangar man-door in HANGAR 18. The tunnel / cave / backrooms links that stood on these
@@ -25308,7 +25325,7 @@ const DOOR_HQ = {
                air pocket under the dome — the vault door on its south wall is the way out into THE ABYSS. The hold's hatch and the two
                dry seams that stood on Atlantis's board moved onto the parts the same day (a link door in a bypassed room would land at
                the bay door). */
-            prebuilt_bermuda:   { room: 'site_prebuilt_bermuda_sea',           door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_bermuda:   { room: 'site_prebuilt_bermuda_sea',           door: { id: 'bay', wall: 'free', x: 0, z: 60.5, face: 0 } },   // Phase 7: the cay is an island — the yacht's cabin door stands on its beach
             prebuilt_atlantis:  { room: 'site_prebuilt_atlantis_temple',       door: { id: 'bay', wall: 'e', z: 0 } },
             /* THE LEY LINES (2026-09-18 — complex candidate #9, "make better areas for the ancient sites"): the frame with nothing in it lands
                you on Salisbury Plain, the oldest doorway on THE TELL, the sealed tomb door on THE PLATEAU, the barn door at THE TOWER's foot;
@@ -25339,7 +25356,7 @@ const DOOR_HQ = {
             prebuilt_haunted:             { room: 'site_prebuilt_haunted_grounds',            door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_hollow_earth:        { room: 'site_prebuilt_hollow_earth_innersun',      door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_derelict:            { room: 'site_prebuilt_derelict_deck',              door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_revenge:             { room: 'site_prebuilt_revenge_deck',               door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_revenge:             { room: 'site_prebuilt_revenge_deck',               door: { id: 'bay', wall: 'free', x: -5, z: 22, face: 0 } },   // Phase 7: she is an island — the cabin door stands on her deck by the gangway
             prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_clearing', door: { id: 'forest', wall: 's', x: -0.875, way: 'hollowtree', leaf: null } },   // the clearing's hollow tree, worn as the bay door
         },
         built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_stadium',
@@ -33863,7 +33880,7 @@ const DOOR_HQ = {
                        open: [{ x: 0, z: 0, r: 12 },                                                                                                              // THE PLAZA
                               { x: -40, z: -64, r: 13 },                                                                                                          // MARKET SQUARE (D2)
                               { x: 48, z: -64, r: 11 }, { x: 48, z: -79, r: 9 },                                                                                  // CHURCH SQUARE + THE CHURCHYARD (the church stands in it)
-                              { x0: -100, z0: 78, x1: 100, z1: 78, w: 16 }] },                                                                                    // THE QUAY (the open apron south of the waterfront: the cranes, the siding, the basin, the flooded quay)
+                              { x0: -100, z0: 79, x1: 100, z1: 79, w: 22 }] },   /* Phase 7: to past the edge — the quay meets the harbour */                                                                                    // THE QUAY (the open apron south of the waterfront: the cranes, the siding, the basin, the flooded quay)
                 features: [
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
@@ -33882,8 +33899,8 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3 },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
                     { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the walker crosses it
                     { k: 'path', pts: [[-76, -8], [-92, -8], [-92, -17], [-106, -17], [-106, -8], [-114, -8]], w: 6 },              // the tower's side street: a DOGLEG off the tower's street (R3 — the AVENUE doors on the west wall, z −8, are not seen from the ring)
-                    { k: 'path', pts: [[0, 29], [0, 45]], w: 6 },                                                                    // THE MALL's forecourt (the avenue's south run; the mall door on the south wall, x 0)
-                    { k: 'path', pts: [[-30, 64], [-30, 88]], w: 6 },                                                                // the bay door's street off the waterfront (the south wall, x −30 — siteRooms.entry, 2026-09-17)
+                    { k: 'path', pts: [[-40, 30], [-114, 30]], w: 6 },                                                               // THE MALL's street (Phase 7: west off the ring's south-west corner to the mall door on the west wall, z 30 — the south edge is the quay)
+                    { k: 'path', pts: [[100, 64], [114, 64]], w: 6 },                                                                // the bay door's street: the waterfront's east end (the east wall, z 64 — siteRooms.entry; Phase 7 moved it off the quay)
                     { k: 'path', pts: [[12, -64], [12, -71], [24, -71], [24, -80], [12, -80], [12, -88]], w: 5 },                    // THE METRO's mouth: a DOGLEG off the high street to the stair on the north wall, x 12 (R3)
                     { k: 'path', pts: [[-114, 18], [-40, 18]], w: 6 },                                                               // THE STRIP's road (the west wall, z 18 — a highway leaves straight)
                     { k: 'path', pts: [[40, 14], [80, 14]], w: 5 },                                                                  // the gutter's alley (the east kerb — THE ALLEY BEHIND THE HOARDINGS, a dead end with the storm drain's grate)
@@ -33956,7 +33973,7 @@ const DOOR_HQ = {
                   label: 'THE TOWER', sub: 'THE AVENUE DOORS · INTO THE LOBBY',
                   action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },
                   desc: 'The tower\'s other doors, onto the avenue. The lobby is behind them, the intersection is behind the lobby, and the tower is above all of it for the rest of the year.' },
-                { id: 'mall', wall: 's', x: 0, leaf: 'leaf_glass',
+                { id: 'mall', wall: 'w', z: 30, leaf: 'leaf_glass',   // Phase 7: off the south edge (THE QUAY) to the west wall
                   label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL',
                   action: { room: 'site_prebuilt_downtown_mall', at: 'street' },
                   desc: 'The mall\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },
@@ -38148,7 +38165,7 @@ const DOOR_HQ = {
             label: 'THE BERMUDA TRIANGLE · THE OPEN SEA',
             sub: 'THE CAY · THE JETTY · THE SKIFF · THE MAELSTROM · NO FIXED POSITION',
             kind: 'box', site: 'prebuilt_bermuda', part: 'sea',
-            shell: hqSeaShell({ w: 150, d: 120 }),
+            shell: hqSeaShell({ w: 150, d: 160 }),   // Phase 7: 120 → 160 m, so the cay's south beach runs out into water before the box's edge (an island on THE HARBOUR)
             /* THE FIELD (150 × 120 m): the SEA FLOOR at −3.5 under a surface at 0 (`sea`) — dunes of sand; THE CAY against the south
                wall (a plateau at +0.5 with an 8 m beach blend: slope 0.75, walked), the dune on it, THE LIGHTHOUSE ROCK (3.4, a cliff —
                the tape, the door gun's), THE LOOKOUT (2.6, up a stair, the rail: the park rule), THE JETTY (a deck from the beach 16 m
@@ -38185,7 +38202,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry): the yacht's cabin door lands you on the cay */
+                /* THE BAY DOOR (siteRooms.entry) stands free on the cay's beach (Phase 7: the cay is an island on THE HARBOUR): the yacht's cabin door lands you on the sand */
             ],
             counters: [],
             props: [
@@ -38217,6 +38234,67 @@ const DOOR_HQ = {
                 '“The skiff comes back on its own.” “From where?” “From wherever you left it. The tide has a form too.”',
             ],
             spawn: { x: 0, z: 56, face: 0 },
+        },
+        /* ══ THE HARBOUR (OPEN WORLD Phase 7, 2026-09-27 — OPEN_WORLD_PLAN §4.5 THE COAST) ══
+           THE COAST's hub: the open sea off Disaster City's docks, one 300 × 300 part at res 1.0 (the sea floor is cheap) under
+           `terrain.sea` at −0.4. Its north edge IS Downtown's quay (a SHORE border, x −138…62 here = Downtown's −100…100): the
+           harbour's floor rises to the quay's 0 in the last 2 m, so the quay stands as a wall over the water. THE LONG PIER runs
+           the avenue straight out to a T-head where THE SKIFF is moored (sail from the quay: the helm crosses onto the islands);
+           THE WATER STEPS beside it are the way out of the water; THE SLIPWAY further east runs down into it; THE BREAKWATER, a
+           rubble mole off the quay's west end, carries THE HARBOUR LIGHT; four red buoys mark the channel. Standing ON the
+           harbour as islands (DOOR_HQ.world.zones.coast): THE DUTCHMAN at anchor (x 38…102, z −76…−24) and THE TRIANGLE (x −145…5,
+           z −20…140: the cay, the lighthouse, the maelstrom). Nothing is authored inside the islands' boxes (the floor sinks
+           there: hqTerrainIslandSinks). Every line is Claude's DRAFT. */
+        site_prebuilt_downtown_harbour: {
+            label: 'DISASTER CITY · THE HARBOUR',
+            sub: 'THE LONG PIER · THE SKIFF · THE BREAKWATER · THE DUTCHMAN AT ANCHOR · THE TRIANGLE',
+            kind: 'box', site: 'prebuilt_downtown', part: 'harbour',
+            shell: hqSeaShell({ w: 300, d: 300, plate: { x: -38, z: -147.5, y: 3.6 } }),
+            terrain: {
+                floor: 'desert', cliff: 'urban:ConcreteStriped2a', path: 'wood_planks',
+                base: -6, res: 1.0, noise: { amp: 0.3, scale: 20 }, crag: false,
+                sea: { y: -0.4, key: 'water' },
+                outer: { m: 60 },
+                features: [
+                    { k: 'deck', x0: -38, z0: -149.6, x1: -38, z1: -118, w: 4, y: 0 },                                          // THE LONG PIER (the avenue, run on out over the water)
+                    { k: 'deck', x0: -50, z0: -116, x1: -26, z1: -116, w: 4, y: 0 },                                            // its T-HEAD
+                    { k: 'rail', x0: -40.3, z0: -148, x1: -40.3, z1: -119 },                                                     // the pier's rail (the grind)
+                    { k: 'ramp', x0: -45, z0: -138.4, x1: -45, z1: -149.3, w: 3, h0: -1.6, h1: 0, stairs: true, edge: 0.2 },    // THE WATER STEPS (the way out of the water, beside the pier)
+                    { k: 'ramp', x0: 42, z0: -149.5, x1: 42, z1: -122, w: 8, h0: 0, h1: -2.6, edge: 0.3 },                      // THE SLIPWAY (down into the water)
+                    { k: 'ridge', pts: [[-134, -148], [-130, -112], [-114, -86], [-92, -74]], w: 9, h: 7.4 },                 // THE BREAKWATER (a rubble mole: its crest a metre over the water)
+                    { k: 'plateau', x: -90, z: -73, r: 4.2, h: 1.4, edge: 0.4 },                                               // its head (THE HARBOUR LIGHT stands on it)
+                    { k: 'scatter', key: 'cave_stone', n: 16, x: -118, z: -104, r: 22, seed: 31 },                             // the mole's boulders
+                    { k: 'scatter', key: 'kelp', n: 22, x: -112, z: -96, r: 20, seed: 32, sea: true },                         // the kelp in the mole's lee
+                    { k: 'scatter', key: 'coral_fan', n: 10, x: 34, z: -100, r: 14, seed: 33, sea: true },                     // the slip's reef
+                    { k: 'scatter', key: 'coral_brain', n: 6, x: 30, z: -96, r: 12, seed: 34, sea: true },
+                    { k: 'scatter', key: 'fish_school', n: 4, x: 0, z: -80, r: 50, seed: 35, sea: true },
+                    { k: 'scatter', key: 'kelp', n: 14, x: 60, z: 60, r: 40, seed: 36, sea: true },                            // the open water south of the anchorage
+                ],
+            },
+            doors: [],   // the ways in are the joins: the quay (Downtown's south edge) and the two islands
+            counters: [],
+            props: [
+                { key: 'skiff',       x: -23.2, z: -113.6, y: 0.32, face: 90 },                                             // THE SKIFF at the T-head's east end (afloat — `float`)
+                { key: 'lighthouse',  x: -90, z: -73, face: 0 },                                                             // THE HARBOUR LIGHT on the mole's head (the beam turns; lit at dusk)
+                { key: 'sea_buoy',    x: -52, z: -96, y: 0.32 }, { key: 'sea_buoy', x: -22, z: -96, y: 0.32 },                // THE CHANNEL: two pairs of red buoys
+                { key: 'sea_buoy',    x: -56, z: -64, y: 0.32 }, { key: 'sea_buoy', x: -18, z: -64, y: 0.32 },
+                { key: 'sea_chest',   x: -29, z: -116.4, face: 40 },                                                         // on the T-head: what came off the freight
+                { key: 'ship_anchor', x: 44, z: -147, face: 110 },                                                           // at the slipway's head: the Dutchman's spare, never raised
+                { key: 'cardboard_boxes', x: -37.2, z: -124, y: 0 },                                                         // the pier's freight
+                { key: 'folding_chair', x: -46, z: -117.6, y: 0, face: 200 },                                                // the angler's chair
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -32.5, z: -116, y: 0, face: 150, race: 'homosapien', say: ['“The skiff is the harbour’s.” “Who do I sign for it?” “The harbour does not have a desk. It has a skiff.”', '“The ship out there dropped anchor in the flood.” “Which flood?” “She has not said.”'] },
+                { x: -92.2, z: -73, y: 1.4, face: 270, race: 'pirate', say: ['“The light is for her.” “For the ship?” “She keeps coming in. She never arrives.”', '“Past the buoys the sea stops being the city’s.” “Whose is it?” “Room 345’s.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“The quay floods.” “Every year.” “And the harbour?” “The harbour is what the quay floods from.”',
+                '“That ship has been at anchor since the evacuation.” “Whose is she?” “The Admiralty says no nation’s. Customs says they are welcome to her.”',
+                '“Sail past the buoys and the chart goes blank.” “Blank?” “Triangular.”',
+            ],
+            spawn: { x: -38, z: -146, face: 180 },
         },
         site_prebuilt_atlantis_abyss: {
             label: 'ATLANTIS · THE ABYSS',
@@ -40868,6 +40946,7 @@ const HQ_WORLD_RULES = {
     warmDoorM: 20,     // m — a door to another zone warms its arrival when the walker is this close (§5.4)
     farRes: 4,         // m — the far shell's ground sampling (§5.4)
     wallM: 0.2,        // m — the wall between two rooms joined by a door (Phase 2): the two shells stand this far apart, the doorway's sleeve lines the gap
+    islandSink: { inM: 1.5, rampM: 3, m: 10 },   // Phase 7: a sea's floor sinks `m` under an island standing on it, from `inM` inside the island's edge over `rampM`
 };
 const HQ_STAGE_RULES = {
     partsBuilt: 3, lampsLive: 12, lampR: 60, buildMs: 6, heapMB: 700, cacheIdleMs: 120000,   // §5.1–5.2 (Phase 1)
@@ -40883,7 +40962,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE WOODS + THE BASEMENT; Phase 5 (2026-09-27): THE HIGHWAY, AREA 51, THE D.U.M.B. (door joins); Phase 6: THE KINGDOM, THE MOUNTAIN
+    zones: ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain', 'coast'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE WOODS + THE BASEMENT; Phase 5 (2026-09-27): THE HIGHWAY, AREA 51, THE D.U.M.B. (door joins); Phase 6: THE KINGDOM, THE MOUNTAIN; Phase 7: THE COAST
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -41087,17 +41166,21 @@ const HQ_WORLD = {
                 { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_strip_streets', side: 'w', span: [-7, 7], kind: 'road' },
                 { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_mall', kind: 'door' },
             ] },
-        /* Z1b — THE COAST (fork 2: its own zone, joined at the docks' quay). The sea is a planned part; Bermuda's sea
-           (the cay) and the Dutchman's main deck stand ON it as islands — 120 m and 200 m out from the quay. */
-        coast: { label: 'THE COAST', ground: 'surface', hub: 'harbour_sea', sky: 'site_prebuilt_bermuda_sea', clock: true,
+        /* Z1b — THE COAST (fork 2: its own zone, joined at the docks' quay). OPEN WORLD Phase 7 (2026-09-27): BUILT — THE HARBOUR
+           (a 300 × 300 sea part, its surface at −0.4 under the quay's 0) meets Downtown's quay by a SHORE border; THE DUTCHMAN (her
+           main deck on a hull, 2.2 m over the water) rides at anchor 75 m off the docks and THE TRIANGLE (Bermuda's sea: the cay,
+           the lighthouse, the maelstrom) lies 130 m out — both ISLANDS standing ON the harbour (`on`): the crossing takes you onto
+           one when the feet stand inside its box and off it past its edge, swimming, sailing or walking. The Triangle's edges ease
+           to the harbour's floor (`y` −6); the Dutchman keeps her hull. */
+        coast: { label: 'THE COAST', ground: 'surface', hub: 'site_prebuilt_downtown_harbour', sky: 'site_prebuilt_downtown_harbour', clock: true,
             parts: {
-                harbour_sea:                  { x: 200, z: 310, y: 0, rot: 0, planned: { w: 300, d: 300, h: 8, family: 'sea', label: 'THE COAST · THE OPEN SEA' } },
-                site_prebuilt_bermuda_sea:    { x: 140, z: 280, y: 0, rot: 0, on: 'harbour_sea' },
-                site_prebuilt_revenge_deck:   { x: 290, z: 360, y: 0, rot: 0, on: 'harbour_sea' },
+                site_prebuilt_downtown_harbour: { x: 200, z: 310, y: 0, rot: 0 },
+                site_prebuilt_bermuda_sea:      { x: 130, z: 370, y: -0.4, rot: 0, on: 'site_prebuilt_downtown_harbour' },
+                site_prebuilt_revenge_deck:     { x: 270, z: 260, y: 2.2, rot: 0, on: 'site_prebuilt_downtown_harbour' },
             },
             joins: [
-                { a: 'harbour_sea', b: 'site_prebuilt_bermuda_sea', kind: 'island' },
-                { a: 'harbour_sea', b: 'site_prebuilt_revenge_deck', kind: 'island' },
+                { a: 'site_prebuilt_downtown_harbour', b: 'site_prebuilt_bermuda_sea', kind: 'island', y: -6 },
+                { a: 'site_prebuilt_downtown_harbour', b: 'site_prebuilt_revenge_deck', kind: 'island' },
             ] },
         /* Z2 — THE HIGHWAY (south from the Strip, two parts of 210 m: 420 m of road, ~90 s on foot, ~60 on the board) */
         /* Phase 5 (2026-09-27): BUILT — two real parts, the Strip's (the diner, the rest stop) and Area 51's (the gas station, the crash) */
@@ -41336,7 +41419,7 @@ const HQ_WORLD = {
         { a: 'hq_grounds', b: 'site_prebuilt_haunted_grounds', side: 'w', span: [-6, 6], kind: 'trail' },
         { a: 'woods_trailhead', b: 'site_prebuilt_fairy_forest_clearing', side: 'w', span: [-6, 6], kind: 'trail' },   // Phase 4: the old path's west end at the clearing's back (its east side)
         { a: 'hq_grounds', b: 'site_prebuilt_camelot_road', side: 'n', span: [-6, 6], kind: 'road' },
-        { a: 'site_prebuilt_downtown_streets', b: 'harbour_sea', side: 's', span: [-100, 100], kind: 'shore' },
+        { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_harbour', side: 's', span: [-100, 100], kind: 'shore', stitchM: 2 },   // Phase 7: THE QUAY (the harbour's floor rises to the quay's 0 in 2 m: the quay wall)
         { a: 'site_prebuilt_strip_streets', b: 'site_prebuilt_strip_highway', side: 's', span: [-8, 8], kind: 'road' },
         { a: 'site_prebuilt_area51_highway', b: 'site_prebuilt_area51_gate', side: 's', span: [-8, 8], kind: 'road' },
         { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_olympus_foothills', side: 'n', span: [25, 33], kind: 'trail' },   // Phase 6: THE POSTERN in the ward's north wall
@@ -41520,8 +41603,16 @@ function hqStageNeighbours(roomId) {
             const D = hqWorldDoorJoinResolve(j); if (!D) return;
             const me = j.a === roomId ? D.a : D.b, half = D.ow / 2;
             mine = { side: me.wall, span: [me.t - half, me.t + half], door: me.door, pad: 0.3, depth: D.gap + 0.5 };
+        } else if (j.kind === 'island') {
+            /* THE ISLAND (Phase 7, 2026-09-27): a part standing ON a sea part (`on`), inside its rectangle. From the island the
+               sea lies past every edge — four spans, the whole side each; from the sea the island is `inside` (no span: the
+               crossing takes you in when the feet stand inside its box, hqStageWhere) */
+            if (j.b === roomId) {
+                const S0 = R.shell, hw0 = S0.w / 2, hd0 = S0.d / 2;
+                mine = { sides: [['n', -hw0, hw0], ['s', -hw0, hw0], ['e', -hd0, hd0], ['w', -hd0, hd0]] };
+            } else mine = { inside: true };
         } else {
-            if (!j.side || !Array.isArray(j.span)) return;   // an island join is a later phase's
+            if (!j.side || !Array.isArray(j.span)) return;
             const J = hqWorldJoinResolve(j);
             if (!J || !J.b) return;
             mine = j.a === roomId ? J.a : J.b;
@@ -41534,6 +41625,8 @@ function hqStageNeighbours(roomId) {
             nb = { id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [] };
             out.push(nb);
         }
+        if (mine.inside) { nb.inside = true; return; }                                                                   // an island on this sea
+        if (mine.sides) { nb.host = true; mine.sides.forEach(s => nb.spans.push({ side: s[0], t0: s[1], t1: s[2], kind: 'island' })); return; }   // this island's sea
         const sp = { side: mine.side, t0: mine.span[0], t1: mine.span[1], kind: j.kind };
         if (mine.door) { sp.door = mine.door; sp.pad = mine.pad; sp.depth = mine.depth; }
         nb.spans.push(sp);
@@ -41558,7 +41651,7 @@ function hqStageNeighbours(roomId) {
     const edgeNbs = out.filter(nb => nb.spans.some(sp => !sp.door));
     edgeNbs.forEach(nb => {
         hqWorldJoins(nb.id).forEach(j => {
-            if (j.kind !== 'door') return;
+            if (j.kind !== 'door') return;   // (Phase 7: an island's sea brings no other island beside — the sea's fog closes at ~120 m)
             const other = j.a === nb.id ? j.b : j.a;
             if (other === roomId || out.some(n => n.id === other) || !hqStagePart(other)) return;
             const rel = hqStageRel(roomId, other); if (!rel) return;
@@ -41625,8 +41718,14 @@ function hqStageJoinedDoor(roomId, doorId) {
    the feet (x, z) in its metres, the neighbour the feet stand in — the feet must be `hys` metres past the current
    part's edge AND inside the neighbour's box (the band belongs to whoever you came from: no flip-flop). null = stay. */
 function hqStageWhere(hw, hd, nbs, x, z, hys) {
+    const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
+    /* THE ISLAND (Phase 7): an island inside this sea is crossed into when the feet stand `hys` inside its box */
+    for (let i = 0; i < nbs.length; i++) {
+        if (!nbs[i].inside) continue;
+        const r = nbs[i].rect; if (x > r.x0 + hy && x < r.x1 - hy && z > r.z0 + hy && z < r.z1 - hy) return nbs[i].id;
+    }
     const over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
-    if (!(over > (hys == null ? HQ_WORLD_RULES.crossHys : hys))) return null;
+    if (!(over > hy)) return null;
     for (let i = 0; i < nbs.length; i++) {
         if (!(nbs[i].spans && nbs[i].spans.length)) continue;   // a part beside (no span): drawn, never crossed into
         const r = nbs[i].rect; if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return nbs[i].id;
@@ -41778,6 +41877,14 @@ function hqWorldValidate() {
                 }
             }
             if (j.kind === 'island' && I.part[j.b].P.on !== j.a) err(tag + ': an island stands on its sea');
+            if (j.kind === 'island' && R[j.a] && R[j.b]) {
+                /* Phase 7: the sea is a sea, and an island's own water (the part's field alone, before its sea is drawn) lies at
+                   the sea's surface on the ground */
+                const sa = R[j.a].terrain && R[j.a].terrain.sea, sb = R[j.b].terrain && R[j.b].terrain.sea;
+                if (!sa || sa.under) err(tag + ': an island\'s host has no open sea');
+                else if (!sb) err(tag + ': an island carries its own sea (its water before the host is drawn)');
+                else if (Math.abs(((sb.y || 0) + (I.part[j.b].P.y || 0)) - ((sa.y || 0) + (I.part[j.a].P.y || 0))) > 0.05) err(tag + ': the island\'s sea stands off the host\'s surface');
+            }
             return;
         }
         const J = hqWorldJoinResolve(j);
@@ -42236,7 +42343,7 @@ function hqAreaRoom(mapId, A) {
     ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
     const gen = A.gen ? Object.assign({}, A.gen) : null;
     if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
-    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, { features: features });
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, { features: features });
     const label = String(meta.label || id).toUpperCase();
     const room = {
         label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
@@ -43206,12 +43313,18 @@ const HQ_AREA_SPECS = {
        chain), THE BOAT DECK off the starboard bulwark (a rope) joined to the forecastle by THE GANGWAY (a level span), THE CROSSTREES up the
        mainmast's ratlines (a rope, a chain) under THE MAINTOP (the tape — the door gun's), the bulwarks (the grind) with the gangways cut for the
        companionway and the way in, THE CHAINS outside them where the sea's growth has come aboard */
+    /* OPEN WORLD Phase 7 (2026-09-27): she rides at anchor off Disaster City's docks — an ISLAND on THE HARBOUR (DOOR_HQ.world.zones.coast,
+       her deck 2.2 m over the water): THE HULL (a plateau at the deck's 0, 0.5 m inside her box) over the sea floor at −8.2, her own water at
+       −2.6 (the harbour's −0.4 on the ground). Boarded from the skiff (step off onto her deck); a swimmer cannot climb her side. */
     prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE POOP · THE MAINTOP', w: 64, d: 52, night: 1, look: 'sea', fogD: 0.026,
+        base: -8.2, sea: { y: -2.6, key: 'water' },
         parti: 'A ghost ship\'s weather deck is one corridor from the poop to the forecastle, and everything worth having is UP — the maintop over the waist, the poop over the quarterdeck, the boat deck off the fore chains — because the sea past the bulwarks is not a floor.', typology: 'corridor',
         floor: 'wood_planks', cliff: 'wood', path: 'wood', floorColor: 0xb9885a, cliffColor: 0x7a5636,
         gen: { kind: 'rooms', seed: 1717, loops: 2, rMin: 8, rMax: 14, wallH: 1.4, thicket: false, open: [{ x: -26, z: 18, r: 3 }, { x: 26, z: 18, r: 3 }, { x: -26, z: -18, r: 3 }, { x: 26, z: -18, r: 3 }] }, noise: { amp: 0.06, scale: 9 },   // the open circles: the strips between the tiers' ends and the bulwarks, round to the chains
         plaza: { x: 0, z: 4 },
         features: [
+            /* THE HULL (Phase 7): the deck over the sea — everything after it stands on it */
+            { k: 'plateau', x: 0, z: 0, w: 63, d: 51, h: 0, edge: 0.4 },
             /* THE QUARTERDECK (2.4, the stern west): the stair up from the waist, a rope on its north face, a ladder on its south */
             { k: 'plateau', x: -22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },
             { k: 'climb', x: -22, z: -16.7, face: 180, look: 'rope' }, { k: 'climb', x: -22, z: 16.7, face: 0, look: 'ladder' },
@@ -43943,7 +44056,7 @@ function _hqTReturnJump(info, forward, pads, mask, climb) {
 function _hqTTraps(info, padNodes, mask) {
     const climb = _hqTClimbLim(info, (info.rules.jump != null) ? info.rules.jump : info.rules.climb);
     const forward = _hqTReachJump(info, padNodes, mask, climb);
-    const ret = _hqTReturnJump(info, forward, padNodes, mask, climb);
+    const ret = _hqTReturnJump(info, forward, (info.seaExits && info.seaExits.length) ? padNodes.concat(info.seaExits) : padNodes, mask, climb);   // Phase 7: an island's water at its edge swims on into its sea
     const nx = info.nx, NN = nx * info.nz, trapped = new Set();
     for (const k of forward.keys()) if (!ret.has(k)) trapped.add(k % NN);   // THE BRIDGE LAYER: a trapped node names its CELL (the rescue lays ground; a bridge node that traps is its tier's)
     const comps = [], seen = new Set();
@@ -45155,6 +45268,13 @@ function hqTerrainStitchRows(roomId) {
     const F = hqWorldFrame(roomId); if (!F || F.absorbedBy) return [];
     const m = HQ_WORLD_RULES.stitchM || 6, out = [];
     hqWorldJoins(roomId).forEach(j => {
+        /* THE ISLAND (Phase 7): an island's four edges ease to its sea's floor (`y`, zone metres) — the sea floor runs on under
+           the water with no step where the two parts meet. An island with no `y` (the Dutchman's hull) keeps its own edge. */
+        if (j.kind === 'island' && j.b === roomId && j.y != null && hqStagePart(j.a) && hqStagePart(j.b)) {
+            const Si = hqWorldPartSize(roomId), yi = j.y - (F.y || 0), mi = (j.stitchM > 0) ? j.stitchM : m;
+            [['n', Si.w], ['s', Si.w], ['e', Si.d], ['w', Si.d]].forEach(s => out.push({ side: s[0], t0: -s[1] / 2, t1: s[1] / 2, m: mi, yAt: () => yi, other: j.a }));
+            return;
+        }
         if (j.kind === 'door' || j.kind === 'island') return;
         if (!hqStagePart(j.a) || !hqStagePart(j.b)) return;   // stitched where the stage walks it (HQ_STAGE_RULES.zones); a planned zone stitches when it is staged
         const J = hqWorldJoinResolve(j); if (!J || !J.b) return;
@@ -45173,6 +45293,21 @@ function hqTerrainStitchRows(roomId) {
             }
         } else { const y = J.y - py; yAt = () => y; }
         out.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], m: (j.stitchM > 0) ? j.stitchM : m, yAt, other: j.a === roomId ? j.b : j.a });   // a join's own `stitchM` (Phase 4: the stair's flight starts 4.5 m in)
+    });
+    return out;
+}
+/* THE SEA UNDER AN ISLAND (Phase 7): the rectangles of the islands standing on a sea part, in the sea's own metres. The
+   sea's floor sinks `sinkM` under them from `sinkIn` inside their edge, so the island's own floor (drawn over its whole box)
+   is the only floor there — two fields at one height would fight. [] = no island on this part. */
+function hqTerrainIslandSinks(roomId) {
+    if (!roomId || typeof hqWorldJoins !== 'function' || !DOOR_HQ.world) return [];
+    const F = hqWorldFrame(roomId); if (!F || F.absorbedBy) return [];
+    const out = [];
+    hqWorldJoins(roomId).forEach(j => {
+        if (j.kind !== 'island' || j.a !== roomId || !hqStagePart(j.a) || !hqStagePart(j.b)) return;
+        const Si = hqWorldPartSize(j.b), Fi = hqWorldFrame(j.b); if (!Si || !Fi) return;
+        const hw = (Fi.rot % 2 ? Si.d : Si.w) / 2, hd = (Fi.rot % 2 ? Si.w : Si.d) / 2, c = hqZoneToRoom(roomId, Fi.x, Fi.z);
+        out.push({ id: j.b, x0: c.x - hw, x1: c.x + hw, z0: c.z - hd, z1: c.z + hd });
     });
     return out;
 }
@@ -45323,9 +45458,18 @@ function hqTerrainCompile(room, roomId) {
         }
         return h;
     };
+    const sinks = hqTerrainIslandSinks(roomId), SINK = HQ_WORLD_RULES.islandSink || { inM: 1.5, rampM: 3, m: 10 };
+    const hSink = (px, pz, h) => {
+        for (const s of sinks) {
+            const din = Math.min(px - s.x0, s.x1 - px, pz - s.z0, s.z1 - pz) - SINK.inM;
+            if (din > 0) h -= SINK.m * _hqTSmooth(Math.min(1, din / SINK.rampM));
+        }
+        return h;
+    };
     const hFinal = (px, pz) => {
         let h = hPads(px, pz, hBefore(px, pz));
         if (stitch.length) h = hStitch(px, pz, h);
+        if (sinks.length) h = hSink(px, pz, h);
         if (closed) { const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz)); if (din < R.rim && h < base) h = base; }
         return h;
     };
@@ -45344,6 +45488,20 @@ function hqTerrainCompile(room, roomId) {
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
+    /* THE ISLAND's WAY OFF (Phase 7): an island part's open water at its box's edge runs on into its sea part — a body that falls
+       in there swims away (the crossing), so those cells RETURN (the return guarantee cuts no rescue ramp up the Dutchman's hull) */
+    if (sea && !sea.under && roomId && typeof hqWorldFrame === 'function' && DOOR_HQ.world) {
+        const Fi = hqWorldFrame(roomId);
+        if (Fi && Fi.on && !Fi.absorbedBy && hqStagePart(roomId)) {
+            const ex = [], hwI = S.w / 2 - res * 1.01, hdI = S.d / 2 - res * 1.01, wadeI = R.wadeMax || 0.6;
+            for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+                const px = x0 + i * res, pz = z0 + j * res;
+                if (Math.abs(px) > S.w / 2 || Math.abs(pz) > S.d / 2 || (Math.abs(px) < hwI && Math.abs(pz) < hdI)) continue;
+                if (H[j * nx + i] < sea.y - wadeI) ex.push([i, j]);
+            }
+            info.seaExits = ex;
+        }
+    }
     /* THE GENERATED FLOOR PLAN (2026-09-17): the mask, the rise on the solid, the thicket — before the walls / trees / scatter read the field */
     info.shops = Array.isArray(T.shops) ? T.shops.map(r => Object.assign({}, r)) : [];   // THE SHOPFRONTS (THE MALL, THE THIRD PASS, 2026-09-17): drawn by three-renderer.js _hqBuildShopfronts
     info.climbs = hqTerrainClimbs(info, climbRows);   // THE CLIMB (2026-09-19): the edges exist BEFORE the plan's guarantee runs (a ladder out of a pit is the return; no rescue ramp is cut for it)

@@ -41784,6 +41784,11 @@ const ThreeRenderer = (function () {
             var seaMesh = new THREE.Mesh(seaGeo, seaMat); if (isPlane) seaMesh.rotation.x = -Math.PI / 2; seaMesh.position.y = info.sea.y * U + 0.4; seaMesh.renderOrder = 2; seaMesh.frustumCulled = false; seaMesh._ew_hqSea = true;
             G.add(seaMesh);
             _hq.seaFx = _hq.seaFx || {}; _hq.seaFx.sheet = seaMesh;
+            /* THE COAST (OPEN_WORLD_PLAN Phase 7, 2026-09-27): an ISLAND's sea (the cay, the Dutchman) is its host's surface at one
+               height (data.js hqWorldValidate), so the island's own sheet stands down while the host is on the stage (the host's
+               sheet is the water there — two sheets at one height z-fight); it is an outer side keyed on the host */
+            var seaHosts = _hqStageNbsOf(roomId).filter(function (n) { return n.host; }).map(function (n) { return n.id; });
+            if (seaHosts.length) { _hq.outerSides = _hq.outerSides || {}; seaMesh._ew_hqOuterSideIds = seaHosts; _hq.outerSides['~sea'] = seaMesh; }
         }
         if (fluidKeys.length) _hq.moatTick = { key: fluidKeys[0], keys: fluidKeys, tile: TM };
         if (lavaN && _hq.propLights < HQ_PROP_LIGHT_MAX) { var ll = new THREE.PointLight(0xff6a2a, 1.1, 22 * U, 2); ll.position.set((lavaCx / lavaN) * U, (lavaY + 1.6) * U, (lavaCz / lavaN) * U); G.add(ll); _hq.propLights++; }
@@ -50420,6 +50425,7 @@ const ThreeRenderer = (function () {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
         if (room.kind === 'box') {
+            if (_hq.stage) { var isA = _hqStageIslandAt(_hq.stage, x, z); if (isA) { var okA = false; _hqStageAsk(_hq, isA.E, function () { okA = _hqAirOK(isA.q.x, isA.q.z, y - isA.ry); }); return okA; } }   // THE COAST: the air over an island is the island's
             if (_hq.stage) { var stA = _hqStageSurface(x, z, null, true); if (stA !== undefined) return stA !== null && y >= stA - 0.05; }   // THE STAGE: the air past the edge is the road's / the neighbour's
             if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return false;
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return false;   // THE RETRO-FUTURIST KIT: the filleted corner is wall in the air too
@@ -52427,14 +52433,51 @@ const ThreeRenderer = (function () {
         return o;
     }
     function _hqSea() { return (_hq && _hq.terrain && _hq.terrain.sea) || null; }
+    /* THE COAST (OPEN_WORLD_PLAN Phase 7, 2026-09-27): the part on the stage that owns the ground at (x, z) of the current
+       part's metres — an island drawn inside this sea (the cay, the Dutchman: its box is its own ground, the host's floor is
+       sunk under it), or past this part's edge the drawn neighbour whose box holds the point (the harbour round an island,
+       the avenue over the quay). null = the current part's own ground. → { E, nb, q (the point in its metres), ry } */
+    function _hqStageOwner(x, z) {
+        var H = _hq, st = H && H.stage; if (!st || !H.room || !H.room.shell) return null;
+        var S = H.room.shell, out = Math.abs(x) > S.w / 2 || Math.abs(z) > S.d / 2;
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i];
+            if (!nb.inside && !(out && nb.spans && nb.spans.length)) continue;
+            var r = nb.rect; if (!(x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+            var E = st.parts[nb.id]; if (!E || !E.attached || !E.P || !E.P.terrain) continue;
+            return { E: E, nb: nb, q: hqStageFromRoom(nb.rel, x, z), ry: nb.rel.y || 0 };
+        }
+        return null;
+    }
+    /* the ground under the water at (x, z): the owning part's field (the sea's floor and its islands), in the current metres */
+    function _hqSeaGroundAt(x, z) {
+        var o = _hqStageOwner(x, z);
+        if (o) return hqTerrainHeight(o.E.P.terrain, o.q.x, o.q.z) + o.ry;
+        return (_hq && _hq.terrain) ? hqTerrainHeight(_hq.terrain, x, z) : 0;
+    }
+    /* may the body stand past this part's edge here? the strip along a joined span (the island's four sides, the shore) */
+    function _hqStageEdgeOpen(x, z, pad) {
+        var H = _hq, st = H && H.stage; if (!st || typeof hqStageSpanAt !== 'function') return false;
+        var S = H.room.shell;
+        return !!hqStageSpanAt(S.w / 2, S.d / 2, st.nbs, x, z, pad);
+    }
     function _hqSeaFxOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_SEA_FX; }
     function _hqSeaEmit(ev) { var H = _hq; if (!H || !H.opts || !H.opts.onSea) return; try { H.opts.onSea(ev); } catch (e) {} }
     /* the water column over the ground at (x, z), metres (≤ 0 = land) */
-    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !_hq.terrain) return 0; return s.y - hqTerrainHeight(_hq.terrain, x, z); }
+    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !_hq.terrain) return 0; return s.y - _hqSeaGroundAt(x, z); }   // THE COAST: the ground of whichever part owns the point
     /* may the swimming body (its bottom at y) be at (x, z)? inside the room, above the ground, out of a wall / a block, clear of furniture */
     function _hqSwimFree(x, z, y) {
         var H = _hq, S = H.room.shell;
-        if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return false;
+        /* THE COAST (Phase 7): over an island drawn in this sea, or past the edge over a drawn neighbour, the part that owns the
+           point answers in its own metres (its ground, its walls, its blockers); the room's edge stops the body only where no
+           joined span opens it (the island's four sides open onto the harbour; the harbour's open sea ends at its box) */
+        var o = _hqStageOwner(x, z);
+        if (o) { var ok = false; _hqStageAsk(H, o.E, function () { ok = _hqSwimFreeAt(o.q.x, o.q.z, y - o.ry); }); return ok; }
+        if ((Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) && !_hqStageEdgeOpen(x, z, HQ_BODY_R + 0.1)) return false;
+        return _hqSwimFreeAt(x, z, y);
+    }
+    function _hqSwimFreeAt(x, z, y) {
+        var H = _hq;
         var ti = H.terrain; if (!ti) return true;
         /* a FLOATING body rides over the shallows up to the exit depth (the walker takes it there); a diver never swims into the floor */
         var sea = _hqSea(), gLim = y;
@@ -52451,7 +52494,7 @@ const ThreeRenderer = (function () {
         var plunge = !sea.under && (pl.vy || 0) < -5;   // a body that fell in from a height PLUNGES (a dive at once), the rest bob up to the surface
         pl.swim = true; pl.dive = !!sea.under || plunge; pl.air = false; pl.jumpT = -1;
         pl.svx = pl.velX || 0; pl.svz = pl.velZ || 0; pl.svy = plunge ? Math.max(-R.diveV * 1.5, pl.vy * 0.5) : 0; pl.mvx = 0; pl.mvz = 0; pl.vy = 0;
-        if (!sea.under) pl.y = plunge ? Math.max(hqTerrainHeight(_hq.terrain, pl.x, pl.z) + 0.3, sea.y - R.surfaceDraft - 1.2) : sea.y - R.surfaceDraft;
+        if (!sea.under) pl.y = plunge ? Math.max(_hqSeaGroundAt(pl.x, pl.z) + 0.3, sea.y - R.surfaceDraft - 1.2) : sea.y - R.surfaceDraft;
         pl.visY = pl.y;
         if (plunge) { try { _hqRippleSplash(pl.x, sea.y, pl.z); } catch (e) {} }   // THE RIPPLES (5.3): a plunge is a splash
         _hqSeaEmit({ kind: 'swim', on: true, why: why || 'water', under: !!sea.under });
@@ -52501,7 +52544,7 @@ const ThreeRenderer = (function () {
         if (_hqSwimFree(nx, pl.z, pl.y)) pl.x = nx; else pl.svx = 0;
         if (_hqSwimFree(pl.x, nz, pl.y)) pl.z = nz; else pl.svz = 0;
         if (ny > cap) { ny = cap; if (pl.svy > 0) pl.svy = 0; if (pl.dive && !sea.under) { pl.dive = false; _hqSeaEmit({ kind: 'surface' }); } }
-        var g = hqTerrainHeight(H.terrain, pl.x, pl.z) + 0.25;
+        var g = _hqSeaGroundAt(pl.x, pl.z) + 0.25;
         if (ny < g) { ny = g; if (pl.svy < 0) pl.svy = 0; }
         if (_hqSwimFree(pl.x, pl.z, ny)) pl.y = ny; else pl.svy = 0;
         if (!pl.dive) pl.y = Math.min(pl.y, cap);
@@ -52581,16 +52624,24 @@ const ThreeRenderer = (function () {
         var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
         for (var i = 0; i < probes.length; i++) {
             var px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
-            if (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) return false;
-            var g = hqTerrainHeight(ti, px, pz);
-            if (V.kind === 'boat') { if (sea.y - g < (R.draft || 0.55)) return false; if (!_hqAirClearOfBlockers(px, pz, sea.y + 0.3)) return false; }
-            else {
+            /* THE COAST (Phase 7): a probe over an island drawn in this sea (or past the edge, over the part it sails into) reads
+               THAT part's floor, walls and blockers — the skiff sails from the harbour to the cay and alongside the Dutchman */
+            var o = _hqStageOwner(px, pz), ry = o ? o.ry : 0;
+            if (!o && (Math.abs(px) > S.w / 2 - 0.6 || Math.abs(pz) > S.d / 2 - 0.6) && !_hqStageEdgeOpen(px, pz, 0.6)) return false;
+            var ok = true;
+            var probe = function (qx, qz, T) {
+                var tq = T.terrain; if (!tq) { ok = false; return; }
+                var g = hqTerrainHeight(tq, qx, qz) + ry;
+                if (V.kind === 'boat') { if (sea.y - g < (R.draft || 0.55)) ok = false; else if (!_hqAirClearOfBlockers(qx, qz, sea.y + 0.3 - ry)) ok = false; return; }
                 var yb = y - (R.r || 1.6);
-                if (yb < g + 0.15) return false;
-                var w = hqTerrainWallAt(ti, px, pz, 0.3); if (w && yb < w.top) return false;
-                if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, px, pz, 0) && yb < hqTerrainSolidTop(ti, px, pz)) return false;
-                if (!_hqAirClearOfBlockers(px, pz, yb)) return false;
-            }
+                if (yb < g + 0.15) { ok = false; return; }
+                var w = hqTerrainWallAt(tq, qx, qz, 0.3); if (w && yb - ry < w.top) { ok = false; return; }
+                if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(tq, qx, qz, 0) && yb - ry < hqTerrainSolidTop(tq, qx, qz)) { ok = false; return; }
+                if (!_hqAirClearOfBlockers(qx, qz, yb - ry)) ok = false;
+            };
+            if (o) _hqStageAsk(H, o.E, function (T) { probe(o.q.x, o.q.z, T); });
+            else probe(px, pz, H);
+            if (!ok) return false;
         }
         return true;
     }
@@ -52618,7 +52669,7 @@ const ThreeRenderer = (function () {
         if (V.kind === 'sub') {
             var vt = vert * (R.vertV || 2.4);
             V.vy += (vt - V.vy) * (1 - Math.exp(-dt * 2.2));
-            var ny = V.y + V.vy * dt, g0 = hqTerrainHeight(H.terrain, V.x, V.z);
+            var ny = V.y + V.vy * dt, g0 = _hqSeaGroundAt(V.x, V.z);
             var lo = g0 + (R.r || 1.6) + 0.25, hi = sea ? sea.y - (sea.under ? 2.0 : 0.9) : ny;
             if (ny < lo) { ny = lo; if (V.vy < 0) V.vy = 0; }
             if (ny > hi) { ny = hi; if (V.vy > 0) V.vy = 0; }
@@ -52750,6 +52801,22 @@ const ThreeRenderer = (function () {
         /* the bubble pool */
         var bg = new THREE.Group(); bg.name = 'hq_bubbles'; sc.add(bg); fx.bubbleGroup = bg;
         for (var b = 0; b < 30; b++) { var sp = _hzGlowSprite(0.1 * U, 0xdfffff, 0.0, 0, 0, 0); sp.visible = false; bg.add(sp); fx.bubbles.push({ sp: sp, life: 0, vy: 0, ox: 0 }); }
+    }
+    /* the fog the air wears (the scene's, or the dry one the sea keeps while the camera is under) */
+    function _hqDryFog(H) { var fx = H && H.seaFx; return (fx && fx.dryFog !== undefined && fx.wetFog) ? fx.dryFog : (H && H.scene ? H.scene.fog : null); }
+    /* THE COAST (Phase 7): the sea's look taken down — at a crossing (the next part arms its own) */
+    function _hqSeaDisarm(H) {
+        var fx = H && H.seaFx; if (!fx || !fx.wetFog) return;
+        var sc = H.scene;
+        if (fx.under && sc) {
+            sc.fog = fx.dryFog; sc.background = fx.dryBg;
+            if (H.sky && H.sky.dome) H.sky.dome.visible = true;
+            if (H.sky && H.sky.group) H.sky.group.visible = true;
+            if (H.sky && H.sky.landmarks) H.sky.landmarks.visible = true;
+            _hqSeaEmit({ kind: 'under', on: false });
+        }
+        ['rays', 'snow', 'bubbleGroup'].forEach(function (k) { var o = fx[k]; if (!o) return; if (o.parent) o.parent.remove(o); try { o.traverse(function (c) { _disposeR(c); }); } catch (e) {} fx[k] = null; });
+        fx.bubbles = []; fx.under = null; fx.wetFog = null; fx.dryFog = undefined; fx.dryBg = undefined;
     }
     function _hqBubbleAt(x, y, z, big) {
         var fx = _hq && _hq.seaFx; if (!fx || !fx.bubbles) return;
@@ -56472,11 +56539,14 @@ const ThreeRenderer = (function () {
     }
     /* THE CROSSING (§5.3) */
     function _hqStageCross(H, now) {
-        var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || pl.sit || pl.swim || (H.ride && H.ride.on) || (H.vehicle && H.vehicle.on)) return;
+        /* THE COAST (Phase 7): a swimmer and the helm cross too (the harbour's water into the cay's, the skiff under way) */
+        var V = H.vehicle && H.vehicle.on ? H.vehicle : null;
+        var st = H.stage, pl = H.player; if (!pl || H.snap || pl.dash || pl.climb || (pl.sit && !V) || (H.ride && H.ride.on)) return;
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2;
-        var to = hqStageWhere(hw, hd, st.nbs, pl.x, pl.z, HQ_WORLD_RULES.crossHys);
+        var to = hqStageWhere(hw, hd, st.nbs, V ? V.x : pl.x, V ? V.z : pl.z, HQ_WORLD_RULES.crossHys);
         if (!to) return;
         var E = st.parts[to];
+        if (V && !(E && E.attached)) return;   // aboard, the crossing waits for the part to be drawn (no load under a hull)
         var placed = (H.portal && H.portal.placed && Object.keys(H.portal.placed).length) || (H.gun && H.gun.doors && H.gun.doors.length);
         if (E && E.attached && !placed) { _hqStageSwap(H, to); return; }
         _hqStageLoad(H, to, now);
@@ -56517,6 +56587,12 @@ const ThreeRenderer = (function () {
         }
         Q.extra = new THREE.Group(); Q.extra.name = 'hq_part_scene'; Q.P.partRoot.add(Q.extra);
         Q.P.heroLit = Q.P.heroLit || { _stage: true };
+        /* THE COAST (Phase 7): the sea's look is the current part's — the dry fog / sky back if the camera was under, the
+           rays, the snow and the bubbles of the part you leave taken down (the new part's sea arms them again below) */
+        try { _hqSeaDisarm(H); } catch (e) { console.warn('[HQ stage] the sea look', e); }
+        /* the vehicle you steer crosses WITH you: its record leaves the old part's moorings for the new part's */
+        var Vx = (H.vehicle && H.vehicle.on) ? H.vehicle : null;
+        if (Vx && Q.P.boats) Q.P.boats = Q.P.boats.filter(function (b) { return b !== Vx.rec; });
         /* the new current part: its keys onto the visit's record */
         for (var k2 in Q.P) delete H[k2];
         for (var k3 in E.P) H[k3] = E.P[k3];
@@ -56542,8 +56618,14 @@ const ThreeRenderer = (function () {
         var mp = function (x, z) { return hqStageFromRoom(rel, x, z); };
         var p = mp(pl.x, pl.z); pl.x = p.x; pl.z = p.z; pl.y -= (rel.y || 0); pl.visY -= (rel.y || 0);
         var rv = function (o, kx, kz) { if (o[kx] == null || o[kz] == null) return; var c = Math.cos(th), s = Math.sin(th), x = o[kx], z = o[kz]; o[kx] = x * c + z * s; o[kz] = -x * s + z * c; };
-        rv(pl, 'mvx', 'mvz'); rv(pl, 'velX', 'velZ'); rv(pl, 'pushX', 'pushZ');
+        rv(pl, 'mvx', 'mvz'); rv(pl, 'velX', 'velZ'); rv(pl, 'pushX', 'pushZ'); rv(pl, 'svx', 'svz');   // THE COAST: a swimmer's way on
         pl.yaw += th; if (pl.targetYaw != null) pl.targetYaw += th;
+        if (Vx) {
+            var vp = mp(Vx.x, Vx.z); Vx.x = vp.x; Vx.z = vp.z; Vx.y -= (rel.y || 0); Vx.yaw += th;
+            var vr = Vx.rec; vr.x = Vx.x; vr.z = Vx.z; vr.y = Vx.y; vr.yaw = Vx.yaw;
+            H.boats = (H.boats || []).filter(function (b) { return b !== vr; }); H.boats.push(vr);
+            if (vr.grp) { (H.propGroup || H.partRoot).add(vr.grp); vr.grp.position.set(Vx.x * U, Vx.y * U, Vx.z * U); vr.grp.rotation.y = Vx.yaw; }
+        }
         if (pl.entry && pl.entry.group) { H.charGroup.add(pl.entry.group); pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U); }
         var peopled = !!H._stagePeopled;   // the new part's cast already stands (built with it as a neighbour, or kept when you left it)
         H.chars = [pl].concat(peopled ? (H.chars || []).filter(function (ch) { return ch !== pl; }) : []);
@@ -56564,6 +56646,7 @@ const ThreeRenderer = (function () {
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
+        try { if (H.terrain && H.terrain.sea) _hqSeaArm(H.room); } catch (e) { console.warn('[HQ stage] the sea', e); }   // THE COAST: this part's water
         _hqStageBlendStart(H, fromRoom, H.room, fromId, to);
         try { _hqClockArm(H); } catch (e) { console.warn('[HQ stage] the clock', e); }   // THE WORLD CLOCK (Phase 3): the part you stand in decides
         H.targetKey = '';
@@ -56623,7 +56706,8 @@ const ThreeRenderer = (function () {
                     env: { tint: (ea.tint != null || eb.tint != null) ? 1 : null, tintAmt: L(ea.tintAmt, eb.tintAmt), stars: L(ea.stars, eb.stars), nebula: L(ea.nebula, eb.nebula), day: L(ea.day, eb.day), clouds: L(ea.clouds, eb.clouds),
                            fog: { amount: L(ea.fog.amount, eb.fog.amount), top: L(ea.fog.top, eb.fog.top), band: L(ea.fog.band, eb.fog.band) } }, look: k < 0.5 ? a.look : b.look, label: k < 0.5 ? a.label : b.label };
         B.cur = cur;
-        if (H.scene.fog) { H.scene.fog.color.copy(cur.fogC); if (H.scene.fog.density != null) H.scene.fog.density = cur.fogD; }
+        var bFog = _hqDryFog(H);   // THE COAST: under the water the scene wears the wet fog — the blend eases the dry one it gives back
+        if (bFog) { bFog.color.copy(cur.fogC); if (bFog.density != null) bFog.density = cur.fogD; }
         if (H.hemiLight) { H.hemiLight.color.copy(cur.hemiC); H.hemiLight.intensity = cur.hemiI; }
         if (H.keyLight) { H.keyLight.color.copy(cur.keyC); H.keyLight.intensity = cur.keyI; }
         if (H.sky) { H.sky.tint.copy(cur.tint); H.sky.fogC.copy(cur.fogC); H.sky.night = cur.night; }
@@ -56707,7 +56791,7 @@ const ThreeRenderer = (function () {
     /* the hour's values onto the lights, the fog and the sky (never while a crossing's blend owns them) */
     function _hqClockApply(H, V, snap) {
         if (!V || V.locked) return;
-        if (H.scene && H.scene.fog) H.scene.fog.color.copy(V.fogC);
+        var cFog = _hqDryFog(H); if (cFog) cFog.color.copy(V.fogC);   // (the dry fog: under the water the wet one stays)
         if (H.hemiLight) { H.hemiLight.color.copy(V.hemiC); H.hemiLight.intensity = V.hemiI; }
         if (H.keyLight) { H.keyLight.color.copy(V.keyC); H.keyLight.intensity = V.keyI; }
         if (H.sky) { H.sky.tint.copy(V.tint); H.sky.fogC.copy(V.fogC); H.sky.night = V.night; }
@@ -56757,8 +56841,21 @@ const ThreeRenderer = (function () {
     /* THE FEET past the edge (_hqSurface's box branch asks first): undefined = not the stage's business (the room's own
        rules), null = no floor, else the height. The strip along a joined span is the road through the edge; beyond
        it, a drawn neighbour's own surface (its field, its blockers, its step rule), read in its frame. */
+    /* THE COAST (Phase 7): the drawn island (a part `inside` this sea) whose box holds (x, z) → { E, nb, q, ry } | null */
+    function _hqStageIslandAt(st, x, z) {
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i]; if (!nb.inside) continue;
+            var r = nb.rect; if (!(x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+            var E = st.parts[nb.id]; if (!E || !E.attached) return null;
+            return { E: E, nb: nb, q: hqStageFromRoom(nb.rel, x, z), ry: nb.rel.y || 0 };
+        }
+        return null;
+    }
     function _hqStageSurface(x, z, curY, ignoreBlockers) {
         var H = _hq, st = H.stage; if (!st) return undefined;
+        /* an island's box is the island's ground (the host's floor is sunk under it): its own surface, read in its frame */
+        var isl = _hqStageIslandAt(st, x, z);
+        if (isl) { var yi = null; _hqStageAsk(H, isl.E, function () { yi = _hqSurface(isl.q.x, isl.q.z, curY == null ? null : curY - isl.ry, ignoreBlockers); }); return (yi == null) ? null : yi + isl.ry; }
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
         if (over < -HQ_STAGE_PAD) return undefined;
         var sp = hqStageSpanAt(hw, hd, st.nbs, x, z, HQ_STAGE_PAD);
@@ -56782,6 +56879,8 @@ const ThreeRenderer = (function () {
     /* the boom past the edge: through a span it clears the road; over a drawn neighbour it asks the neighbour */
     function _hqStageCam(px, pz, py) {
         var H = _hq, st = H.stage; if (!st) return undefined;
+        var isl = _hqStageIslandAt(st, px, pz);
+        if (isl) { var bi = true; _hqStageAsk(H, isl.E, function () { bi = _hqCamBlocked(isl.q.x, isl.q.z, py - isl.ry); }); return bi; }   // THE COAST: over an island, the island's
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(px) - hw, Math.abs(pz) - hd);
         if (over < -HQ_STAGE_PAD) return undefined;
         var sp = hqStageSpanAt(hw, hd, st.nbs, px, pz, HQ_STAGE_PAD * 0.5);
