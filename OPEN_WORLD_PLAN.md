@@ -975,7 +975,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 3 | **THE SKY + THE CLOCK**: the zone sky, `hqWorldSun`, the dome's `sunDir` uniform, the lamps' dusk, `sky.lock`, the clock's hold in pause/battle, the variants on the world hour, the fight at the room's hour; the `tower`/`gate`/`mountain` landmark kinds | data.js, three-renderer.js, map.js | `hq-clock.test.js` (the hour's continuity across a save, the sun at noon/midnight, a locked part's lamps); `day-sky.test.js` re-pinned — **DONE 2026-09-26, §12** (day-sky unchanged: its pins still hold) |
 | 4 | **THE WEST: THE WOODS as one field + the haunted grounds + the estate + the Grove joined; THE WELLS re-pointed; THE WELL ROOM and the board rooms deleted; the basement merge** | data.js, three-renderer.js | `hq-woods.test.js` rewritten (one field, six aliases, every old find/tape/native present); `hq-cave.test.js` / `hq-world.test.js` re-pinned to §8.3; `hq-floors.test.js` for the basement — **DONE 2026-09-27 with deviations (§12): the woods are JOINED PARTS (ids kept), the basement DOOR JOINS, the board rooms kept; test `hq-west.test.js`** |
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
-| 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) |
+| 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) — **DONE 2026-09-27** (0 → 65 m on foot; §12) |
 | 7 | **THE COAST: the sea part, the shore join at the docks, the cay and the Dutchman as parts on it, the helm across the join** | data.js, three-renderer.js | `hq-deep.test.js` re-pinned; the skiff's crossing in the vm harness |
 | 8 | **THE FIELD BEYOND 8 × 8** (the encounter's AREA, not its team size — the user's correction): `sizes` [8, 12, 16], `hqFieldSizeFor` by the ground round the strike, the coarse window in the worker, the same seats spread over the bigger window, the prompt's size line. Needs no zone: it can be pulled forward and run in parallel with any phase on the user's word | data.js, map.js, battle.js (`board.N` reads), hud.js | `seamless-field.test.js` grows the 12 and 16 proofs (open grounds get 12/16, a cramped room stays 8, the party and the group seated as today, reach ≥ the window's share) |
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged |
@@ -1351,3 +1351,42 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
   - **THE RED CI**: main had the spell library 11 data.js (built on 5B) but the FIXES zip's files had gone into
     docs/notes/ and zips 5 / 5B's tests and scripts never reached the root, so 73 old tests ran against the new data.js.
     This zip carries every root file those zips changed; `npm test` on the rebuilt tree: 0 fails.
+- 2026-09-27 — **PHASE 6 SHIPPED: THE NORTH** (thread "Woods grass, CI, then Phase 6"; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_10.zip`, token `20260927-open-world-10-cors`; only the files changed since zip 9: data.js +
+  three-renderer.js to R2, data.js + index.html to Render, tests + docs to the repo root, areas-complexes.md to docs/notes).
+  - **THE CROWN'S ROAD** (`site_prebuilt_camelot_road`, 60 × 160, zone `kingdom`): Camelot's ENTRY part now (the
+    portcullis = the bay door at its south end; `siteRooms` and HQ_AREA_MARKERS moved to it). A stone road north through
+    an avenue, a wadeable river under a stone bridge, the wayside shrine on its plinth, the knights' camp. A border joins
+    the grounds' north edge; a road join (x −10…10) walks into the ward.
+  - **THE WARD REBUILT BUILT** (BUILT_ARCHITECTURE_PLAN §5 item 4; 140 × 120, no `gen`, noise 0). New data.js helpers:
+    `hqRoundBlock` (a solid drum of mitred wedges), `hqCastleTower` (a HOLLOW round tower: a drum with a doorway, a
+    spiral stair round a newel to a deck flush with the wall-walk where the curtain meets it, the merlons),
+    `hqCastleCrown` (a crenellated ring), `hqCurtainWall` (a wall-walk block with battlements on its outer face, trimmed
+    clear of the towers). The moat (deep water, a U), the drawbridge (a bridge 0.3 m over it), the curtain walked all
+    round at 6 m (up two rampart stairs and three towers' stairs), the gatehouse (two solid drums, the passage roofed by
+    its deck), the postern walk over the north gap, the lists with their stand and tilt, the knoll, the well, the
+    orchard, the track outside the moat. The hall's and the keep's doors are DOOR JOINS on its north wall (the keep's
+    hall door moved z 6 → 2 so the three doors face); the bay door left the ward.
+  - **THE MOUNTAIN** (zone `mountain`, hub the foothills): `site_prebuilt_olympus_foothills` (140 × 120, a slope 0 → 25 m,
+    the meadow bench and its tarn, the trail) and `site_prebuilt_olympus_switchbacks` (100 × 120, five ledges 7 m apart
+    up the face to 35 m, a leg of the trail up each, five ropes on the east as the short way), then the summit at 60 m
+    (its bay moved to x 20, off the trail join). Trail joins x −5…5 at 25 m and 60 m; a border from the ward's postern
+    (ward x 25…33) onto the foothills. `hqMountainShell` + the `mountain` look (MOUNT OLYMPUS, a day sky).
+  - **ENGINE**: (1) THE PARTS BESIDE — `hqStageNeighbours` adds the parts DOOR-joined to an EDGE-joined neighbour
+    (`spans: []`, `beside: true`, `via`), so the hall and the keep stand whole behind the ward's wall seen from the road
+    and the foothills (and the hangar from Area 51's gate); `hqStageWhere` never crosses into a part with no span.
+    (2) THE ROOF — a closed box room that is a staged part gets an up-facing roof slab over its walls (`shell.roof` /
+    `roofColor`, tagged `ceil` so a battle's look from above drops it): the hall and the keep stood open to the sky from
+    the wall-walk. (3) THE OUTER SLOPE — `terrain.outer.keep` (how much of the edge height the land past the field keeps,
+    default 0.35) and `outer.lift` (metres it rises or falls over the first 30 m), so a mountainside runs on past its
+    shell and the summit's shoulders fall away.
+  - Δ boards for the road, the ward (now a non-entry part), the foothills and the switchbacks.
+  - **The walk is 0 → 65 m, not the row's 70 m**: the summit's terrace tops out at 5 m over its 60 m frame; its 6.6 m
+    spire is the door gun's tape (THE SPIRE), kept. The proof (`hq-mountain.test.js`, `heavy`): the crown road's south
+    end → the ward → the postern → the foothills → the switchbacks by the TRAIL ALONE (the ropes removed) → the summit,
+    each part solved and chained at its join.
+  - Tests: `hq-mountain.test.js` (new); re-pinned hq-camelot (six parts, the road the entry, the ward BUILT: the
+    wall-walk, the towers' decks, the drawbridge, the lists; light cap: two bailey torches came out), hq-clock (Olympus
+    at its frame's bearing, NNE of the Strip), hq-joins (the ward is stitched now), hq-ranch (the portcullis plate reads
+    the road), hq-stage (the zones), hq-world-map. check-terrain: all seven north rooms, every door reached, no traps.
+    Not walked by a person.

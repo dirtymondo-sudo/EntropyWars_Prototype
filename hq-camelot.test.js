@@ -17,6 +17,12 @@
 // part, the plans, THE SOLVER + THE RETURN GUARANTEE + the production landing,
 // the rooms (tiers climbed, tapes not), THE PARK RULE + the lights + the five
 // hard tapes, the shell helper, the landmark, the four procs and the source sites.
+// OPEN WORLD Phase 6 (2026-09-27): SIX parts — THE CROWN'S ROAD is the entry (the
+// portcullis at its south end, a road join into the ward); the ward is REBUILT
+// BUILT (no plan: the moat, the drawbridge, the curtain wall walked all round at
+// 6 m, three hollow towers climbed inside, the gatehouse, the lists); the hall and
+// the keep stand in its north wall by DOOR JOINS (hq-mountain.test.js has the
+// stage and the walk to the mountain).
 'use strict';
 const test = require('node:test');
 const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
@@ -26,8 +32,8 @@ const vm = require('node:vm');
 const { loadGameData } = require('./load-data');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const SITE = 'prebuilt_camelot', BOARD = 'site_prebuilt_camelot';
-const WARD = BOARD + '_ward', HALL = BOARD + '_hall', KEEP = BOARD + '_keep', DUNGEON = BOARD + '_dungeon', SKY = BOARD + '_sky';
-const PARTS = { [WARD]: 'ward', [HALL]: 'hall', [KEEP]: 'keep', [DUNGEON]: 'dungeon', [SKY]: 'sky' };
+const ROAD = BOARD + '_road', WARD = BOARD + '_ward', HALL = BOARD + '_hall', KEEP = BOARD + '_keep', DUNGEON = BOARD + '_dungeon', SKY = BOARD + '_sky';
+const PARTS = { [ROAD]: 'road', [WARD]: 'ward', [HALL]: 'hall', [KEEP]: 'keep', [DUNGEON]: 'dungeon', [SKY]: 'sky' };
 const IDS = Object.keys(PARTS);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const data = fs.readFileSync(__dirname + '/data.js', 'utf8');
@@ -65,7 +71,7 @@ function propBlocks(room, p, x, z, margin) {
 const reachFrom = (id, doorId) => { const room = HQ.rooms[id], info = D.hqTerrainInfo(id), L = D.hqTerrainDoorLanding(room, at(id, doorId)); return [info, D.hqTerrainReach(info, L.x, L.z)]; };
 const key = (info, x, z) => D.hqTerrainNodeKey(info, x, z);
 
-test('the sheet: five parts on Room i — site + part, none numbered, every one a terrain room; the ward and the sky OPEN under their own skies (hqCastleShell), the hall / the keep / the undercroft closed and lit by their own fire; three families (rooms · none · halls · cave · rooms); the looks; the register lists the site once and its complex is six rooms', heavy, () => {
+test('the sheet: six parts on Room i — site + part, none numbered, every one a terrain room; the ward and the sky OPEN under their own skies (hqCastleShell), the hall / the keep / the undercroft closed and lit by their own fire; three families (rooms · none · halls · cave · rooms); the looks; the register lists the site once and its complex is six rooms', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === PARTS[id], id + ': a box room wearing site + part');
@@ -77,9 +83,10 @@ test('the sheet: five parts on Room i — site + part, none numbered, every one 
         assert.ok(r.terrain && !r.cave && D.hqTerrainInfo(id), id + ': a terrain room');
         assert.ok(r.shell.look && r.shell.look.name && r.shell.strips === false && r.shell.mood && Array.isArray(r.shell.lights) && r.shell.lights.length === 0, id + ': a look, no strips, no fluorescents, its own mood');
         assert.ok(!r.doors.some(d => (HQ.catalogue[d.leaf] || {}).rank), id + ': no rank leaf');
-        assert.ok(r.doors.length >= 2, id + ': two ways out (the cycle rule at the complex’s scale)');
+        const joins = D.hqStageNeighbours(id).filter(n => n.spans.some(sp => !sp.door)).length;
+        assert.ok(r.doors.length + joins >= 2, id + ': two ways out (the cycle rule at the complex’s scale; a road join is a way)');
     }
-    assert.equal(HQ.rooms[WARD].terrain.gen.kind, 'rooms'); assert.equal(HQ.rooms[HALL].terrain.gen, undefined, 'the hall is prefab — no plan');
+    assert.equal(HQ.rooms[ROAD].terrain.gen, undefined, 'the road: no plan'); assert.equal(HQ.rooms[WARD].terrain.gen, undefined, 'the ward is BUILT — no plan'); assert.equal(HQ.rooms[HALL].terrain.gen, undefined, 'the hall is prefab — no plan');
     assert.equal(HQ.rooms[KEEP].terrain.gen.kind, 'halls'); assert.equal(HQ.rooms[DUNGEON].terrain.gen.kind, 'cave'); assert.equal(HQ.rooms[SKY].terrain.gen.kind, 'rooms');
     assert.equal(HQ.rooms[SKY].terrain.gen.thicket, false, 'no trees in the sky');
     for (const id of [HALL, KEEP, DUNGEON]) { const S = HQ.rooms[id].shell; assert.ok(!S.open && S.fog && S.fog.density > 0 && S.ceilTile === 1.75, id + ': closed, a haze'); }
@@ -94,26 +101,27 @@ test('the sheet: five parts on Room i — site + part, none numbered, every one 
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === SITE).length, 1, 'the register lists the site once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex(SITE).length, 5, 'five parts');
+    assert.equal(D.hqSiteComplex(SITE).length, 6, 'six parts');
 });
 
-test('THE WEENIES: THE CASTLE IN THE SKY hangs on the ward’s sky over the north-north-east, a third of the way up (a `skycastle` landmark the renderer builds off the castle); Camelot itself stands on the sky castle’s horizon below, facing back; THE KEEP TOWER stands beside the hall door at the end of the avenue; THE ORB is the one lit thing in the undercroft', () => {
+test('THE WEENIES: THE CASTLE IN THE SKY hangs on the ward’s sky over the north-north-east, a third of the way up (a `skycastle` landmark the renderer builds off the castle); Camelot itself stands on the sky castle’s horizon below, facing back; the gatehouse is lit; THE ORB is the one lit thing in the undercroft', () => {
     const W = HQ.rooms[WARD].shell.sky.landmarks, K = HQ.rooms[SKY].shell.sky.landmarks;
     assert.ok(W.length === 1 && W[0].kind === 'skycastle' && W[0].id === SITE && W[0].deg > 0 && W[0].deg < 60 && W[0].y >= 0.25, 'the sky castle over the ward');
     assert.ok(K.length === 1 && K[0].kind === 'castle' && K[0].id === SITE && K[0].deg === 180 && K[0].y < 0, 'Camelot below the sky castle');
     assert.ok(/        skycastle: function \(U, o, rng\) \{[\s\S]*?_hqLandmarkBuilders\.castle\(U, o, rng\)[\s\S]*?SphereGeometry/.test(renderer), 'three-renderer.js builds the sky castle off the castle builder, on a cloud');
-    const tower = HQ.rooms[WARD].terrain.features.find(f => f.k === 'plateau' && f.r && f.h === 9), hall = at(WARD, 'hall');
-    assert.ok(tower && Math.hypot(tower.x - hall.x, tower.z - (-HQ.rooms[WARD].shell.d / 2)) < 16, 'the keep tower beside the hall door');
-    assert.ok(HQ.rooms[WARD].props.filter(p => p.key === 'brazier' && Math.hypot(p.x - tower.x, p.z - tower.z) < 5).length >= 2, 'lit');
+    const gate = HQ.rooms[WARD].terrain.features.find(f => f.k === 'bridge' && f.id === 'gatehouse');
+    assert.ok(gate && gate.y === 6, 'the gatehouse deck over the gate');
+    assert.ok(HQ.rooms[WARD].props.filter(p => p.key === 'brazier' && Math.hypot(p.x, p.z - 24) < 8).length >= 2, 'the gate is lit');
     assert.ok(HQ.rooms[DUNGEON].props.some(p => p.key === 'floating_orb'), 'the orb');
 });
 
-test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcullis lands you in THE OUTER WARD (the bay door on its south wall is the site’s egress); the spring’s pool surfaces on the moat’s bank, the wardrobe’s snow is in the trees outside the moat, the well stands free in the bailey, the Lodge opens off the great hall, THE SKY BRIDGE joins the castle in the sky to the stairway to heaven', () => {
-    const eg = D.hqSiteEgressDoor(SITE), bay = at(WARD, 'bay');
-    assert.ok(D.hqSiteEntryOf(SITE) && D.hqSiteEntryOf(SITE).room === WARD);
+test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcullis lands you on THE CROWN’S ROAD (the bay door on its south wall is the site’s egress); the spring’s pool surfaces on the moat’s bank, the wardrobe’s snow is in the trees outside the moat, the well stands free in the bailey, the Lodge opens off the great hall, THE SKY BRIDGE joins the castle in the sky to the stairway to heaven', () => {
+    const eg = D.hqSiteEgressDoor(SITE), bay = at(ROAD, 'bay');
+    assert.ok(D.hqSiteEntryOf(SITE) && D.hqSiteEntryOf(SITE).room === ROAD);
+    assert.ok(!at(WARD, 'bay'), 'the ward has no bay door: the road walks into it');
     assert.ok(bay && bay.entry === SITE && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at, 'the bay door is the site’s egress');
-    assert.equal(HQ.rooms[WARD].doors.filter(d => d.id === 'bay').length, 1, 'once');
-    assert.equal(D.hqSiteEntry(BOARD, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(BOARD, 'crossing').at, 'bay'); assert.equal(D.hqSiteEntry(BOARD, 'hall').at, 'hall', 'an `at` the part has is kept');
+    assert.equal(HQ.rooms[ROAD].doors.filter(d => d.id === 'bay').length, 1, 'once');
+    assert.equal(D.hqSiteEntry(BOARD, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(BOARD, 'crossing').at, 'bay');
     assert.ok(!HQ.rooms[BOARD], 'no board room (2026-09-27)');
     const ends = {
         fairy_camelot:   ['b', WARD, 'free', null, 'pool'],
@@ -142,10 +150,11 @@ test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcul
     assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'kingdom').stations.some(s => s.site === SITE), 'CAMELOT KINGDOM calls at Camelot (the North Pole)');
 });
 
-test('ONE PIECE: from the bay door every part is walked; every inside door is a pair with the same leaf; nothing leaves the site but a links row or the bay; the complex is a cycle (ward → hall → keep → ward; keep ⇄ undercroft ⇄ ward; keep ⇄ sky)', () => {
-    const seen = new Set(), queue = [WARD];
+test('ONE PIECE: from the bay door every part is walked (the road walks into the ward by its road join); every inside door is a pair with the same leaf; nothing leaves the site but a links row or the bay; the complex is a cycle (ward → hall → keep → ward; keep ⇄ undercroft ⇄ ward; keep ⇄ sky)', () => {
+    const seen = new Set(), queue = [ROAD];
     while (queue.length) {
         const id = queue.shift(); if (seen.has(id)) continue; seen.add(id);
+        for (const nb of D.hqStageNeighbours(id)) if (IDS.includes(nb.id) && nb.spans.some(sp => !sp.door)) queue.push(nb.id);   // an edge join inside the site
         for (const d of HQ.rooms[id].doors) {
             const a = d.action || {};
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
@@ -165,12 +174,11 @@ test('ONE PIECE: from the bay door every part is walked; every inside door is a 
     for (const id of IDS) for (const d of HQ.rooms[id].doors) for (const o of HQ.rooms[id].doors) if (o !== d && o.wall === d.wall && d.wall !== 'free') assert.ok(Math.abs((d.x != null ? d.x : d.z) - (o.x != null ? o.x : o.z)) >= 4.4, id + ': ' + d.id + ' and ' + o.id + ' share a lane');
 });
 
-test('THE PLANS: the ward’s bailey and the sky’s deck are clearings with their authored pieces kept open (the moat, the drawbridge, the walls, the paths); the keep’s two chambers kept open, BSP rooms round them, THE CYCLE RULE, the mass to the ceiling, traced walls; the undercroft a brick cave', () => {
+test('THE PLANS: the ward BUILT (no plan: the moat, the curtain wall’s runs); the sky’s deck a clearing with its authored pieces kept open; the keep’s two chambers kept open, BSP rooms round them, THE CYCLE RULE, the mass to the ceiling, traced walls; the undercroft a brick cave', () => {
     const wi = D.hqTerrainInfo(WARD);
-    assert.equal(wi.gen.kind, 'rooms'); assert.ok((wi.thicket || []).length >= 40, 'the orchard and the forest: the thicket (' + (wi.thicket || []).length + ')');
-    for (const pt of [[0, 30], [0, 14], [0, 0], [0, -30], [-22, -30], [-14, -14], [-44, 0], [-28, -12], [28, -12]]) assert.ok(D.hqTerrainMaskAt(wi, pt[0], pt[1]) > 0.3, 'the ward open at ' + pt.join(','));
+    assert.ok(!wi.gen, 'the ward: no plan (BUILT)');
     assert.ok(wi.fluids.length === 1 && wi.fluids[0].key === 'deep_water', 'the moat is deep water');
-    assert.equal(wi.walls.filter(w => w.h === 5.5).length, 4, 'the curtain wall’s four runs');
+    assert.ok(wi.walls.filter(w => w.t >= 3 && w.top === 6).length >= 6, 'the curtain wall’s runs, walkable at 6 m');
     const ki = D.hqTerrainInfo(KEEP), P = ki.genPlan, gen = HQ.rooms[KEEP].terrain.gen;
     for (const r of gen.rooms) for (const [dx, dz] of [[0, 0], [0.4, 0.4], [-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4]]) assert.ok(D.hqTerrainMaskAt(ki, r.x + dx * r.w, r.z + dz * r.d) > 0.25, KEEP + ': ' + r.id + ' is open to its corners');
     assert.ok(P.rooms.filter(r => !r.authored).length >= 3, 'BSP rooms round the chambers (' + P.rooms.filter(r => !r.authored).length + ')');
@@ -221,15 +229,19 @@ test('THE SOLVER + THE RETURN GUARANTEE + THE PRODUCTION LANDING: every door rea
     }
 });
 
-test('THE ROOMS: the parapet walk — the wall’s top is a floor once the terraces reach it, both long walls walked; the drawbridge is the way in and the moat is never entered; the towers, the loft, the tower top, the ossuary and the spire are the door gun’s; the gallery, the dais, the solar, the battlements, the ledge, the workshop and the three floating tiers are climbed; the cistern is waded', () => {
-    const [wi, wR] = reachFrom(WARD, 'bay');
-    for (const [x, z] of [[-28, -12], [28, -12]]) assert.ok(wR.has(key(wi, x, z)) && Math.abs(wR.get(key(wi, x, z)) - 5.5) < 0.2, 'the terrace at ' + x + ' is climbed');
-    for (const [x, z] of [[-31, -25], [-31, -2], [-31, -38], [31, -30], [31, -2], [-20, 8], [20, 8], [10, 8]]) assert.ok(wR.has(key(wi, x, z)) && wR.get(key(wi, x, z)) > 5.0 && wR.get(key(wi, x, z)) < 6.5, 'THE PARAPET WALK at ' + x + ',' + z + ' (' + (wR.get(key(wi, x, z)) || 'NO') + ')');
-    assert.ok(!wR.has(key(wi, -5.6, 8)) && !wR.has(key(wi, 5.6, 8)), 'the gatehouse towers are never climbed');
-    assert.ok(wR.has(key(wi, 0, 14)) && Math.abs(wR.get(key(wi, 0, 14)) - 0.3) < 0.15, 'the drawbridge is walked');
-    assert.equal(D.hqTerrainFeet(wi, 20, 14, null), null, 'the moat is never entered');
-    assert.ok(!wR.has(key(wi, 12, -33)) && D.hqTerrainHeight(wi, 12, -33) > 8.5, 'THE KEEP TOWER is the door gun’s');
-    assert.ok(wR.has(key(wi, -14, -14)) && wR.has(key(wi, 8, -18)) && wR.has(key(wi, -44, -10)) && wR.has(key(wi, -44, 28)) && wR.has(key(wi, -44, -30)), 'the sword’s knoll, the well, the bank, the snow, the sally port');
+test('THE ROOMS: the wall-walk — the curtain walked all round at 6 m, up the rampart stairs and the three towers’ stairs; the drawbridge is the way in and the moat is never entered; the loft, the tower top, the ossuary and the spire are the door gun’s; the gallery, the dais, the solar, the battlements, the ledge, the workshop and the three floating tiers are climbed; the cistern is waded', () => {
+    const [wi, wR] = reachFrom(WARD, 'hall');
+    const k6 = (x, z, y) => D.hqTerrainNodeKey(wi, x, z, y);
+    for (const [x, z] of [[-25, 24], [25, 24], [-46, -20], [46, -10], [20, -55], [36, -55], [0, 24], [29, -55]]) assert.ok(wR.has(k6(x, z, 6)), 'THE WALL-WALK at ' + x + ',' + z);
+    for (const [cx, cz] of [[-46, 24], [46, 24], [46, -55]]) {
+        let deck = 0;
+        for (let a = 0; a < 360; a += 10) for (const r of [2, 3, 3.8]) if (wR.has(k6(cx + r * Math.cos(a * Math.PI / 180), cz + r * Math.sin(a * Math.PI / 180), 6))) deck++;
+        assert.ok(deck >= 40, 'the tower at ' + cx + ',' + cz + ': its stair tops out on its deck (' + deck + ')');
+    }
+    assert.ok(wR.has(k6(0, 36, 0.3)) && wR.has(k6(0, 31, 0.3)), 'the drawbridge is walked');
+    assert.equal(D.hqTerrainFeet(wi, -58, 0, null), null, 'the moat is never entered');
+    assert.ok(wR.has(k6(-27, -9.9, 1.26)), 'the lists’ stand is climbed');
+    assert.ok(wR.has(key(wi, -18, -24)) && wR.has(key(wi, 8, -18)) && wR.has(key(wi, -66, 0)) && wR.has(key(wi, -66, 28)) && wR.has(key(wi, 66, 0)), 'the sword’s knoll, the well, the track round the moat, the snow, the sleigh road');
     const [hi, hR] = reachFrom(HALL, 'ward');
     assert.ok(hR.has(key(hi, 10.5, 2)) && Math.abs(hR.get(key(hi, 10.5, 2)) - 3.5) < 0.2, 'THE MINSTRELS’ GALLERY is climbed');
     assert.ok(hR.has(key(hi, 0, -22)) && Math.abs(hR.get(key(hi, 0, -22)) - 0.9) < 0.2, 'THE DAIS is climbed');
@@ -259,14 +271,14 @@ test('THE PARK RULE + THE LIGHT: a rail and a stair and a tier in every part; ev
     const cap = vm.runInContext('typeof HQ_PROP_LIGHT_MAX !== "undefined" ? HQ_PROP_LIGHT_MAX : 10', D);
     for (const id of IDS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), F = room.terrain.features;
-        assert.ok(info.rails.length >= 1 && room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
-        assert.ok(F.some(f => f.k === 'ramp' && f.stairs) && F.some(f => f.k === 'plateau'), id + ': a stair and a tier');
+        assert.ok(info.rails.length >= 1 || room.props.some(p => p.key === 'railing_1m'), id + ': a rail to grind');
+        assert.ok(F.some(f => f.k === 'ramp' && f.stairs) && F.some(f => f.k === 'plateau' || (f.k === 'wall' && f.y > 0.3 && f.t >= 1)), id + ': a stair and a tier (a plateau, or a BUILT block)');
         const lit = room.props.filter(p => (HQ.catalogue[p.key] || {}).light).length;
         assert.ok(lit >= 4 && lit <= cap, id + ': ' + lit + ' lights');
     }
 });
 
-test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all five', heavy, () => {
+test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all six', heavy, () => {
     const S = D.hqCastleShell({ w: 10, d: 12 }), K = D.hqCastleShell({ sky: true, w: 10, d: 12 });
     assert.ok(S.open && S.edge === 'open' && S.w === 10 && S.d === 12 && S.sky.night === 1 && S.sky.landmarks[0].kind === 'skycastle' && S.forest && S.lights.length === 0 && S.look === D.HQ_ROOM_LOOKS.camelot && S.mood.night === 1, 'hqCastleShell (the ward)');
     assert.ok(K.open && K.sky.night === 0 && K.sky.landmarks[0].kind === 'castle' && !K.forest && K.floor === 'cloud_2' && K.look === D.HQ_ROOM_LOOKS.skycastle && K.sky === undefined || K.sky.scenery === 'islands', 'hqCastleShell({ sky: true })');
@@ -280,6 +292,6 @@ test('the shell helper, the looks, the four procs, the landmark and the source s
     const r = spawnSync(process.execPath, ['check-terrain.js', '--json', ...IDS], { cwd: __dirname, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     const rows = JSON.parse(r.stdout);
-    assert.equal(rows.length, 5);
+    assert.equal(rows.length, 6);
     for (const row of rows) { assert.equal(row.unreached.length, 0, row.id + ': every door reached'); assert.equal(row.traps.length, 0, row.id + ': nothing traps'); if (row.plan && row.plan.kind === 'halls') assert.equal(row.plan.deadEnds, 0, row.id + ': no dead ends'); }
 });

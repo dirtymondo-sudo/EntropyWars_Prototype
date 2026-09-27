@@ -82,7 +82,9 @@ test('the directions: a bearing seen from a turned room; the weenies stand at th
     const strip = LM('site_prebuilt_strip_streets');
     const gate = strip.find(l => l.kind === 'gate'), mtn = strip.find(l => l.kind === 'mountain');
     assert.ok(gate && Math.abs(gate.deg - 180) < 1, 'Area 51\'s gate is due south down the Strip');
-    assert.ok(mtn && (mtn.deg < 1 || mtn.deg > 359), 'Olympus due north');
+    const Fs = D.hqWorldFrame('site_prebuilt_strip_streets'), Fo = D.hqWorldFrame('site_prebuilt_olympus_summit');
+    const trueDeg = (Math.atan2(Fo.x - Fs.x, -(Fo.z - Fs.z)) * 180 / Math.PI + 360) % 360;
+    assert.ok(mtn && Math.abs(((mtn.deg - trueDeg + 540) % 360) - 180) < 1 && (mtn.deg < 15 || mtn.deg > 345), 'Olympus north, at its frame\'s bearing (OPEN WORLD Phase 6: the summit stands north-north-east, above the ward\'s postern)');
     const a51 = LM('site_prebuilt_area51_flightline');
     assert.ok(a51.find(l => l.kind === 'peak') && a51.find(l => l.kind === 'tower'), 'the flightline keeps THE RANGE and gains the city\'s towers');
     const bowl = LM('site_prebuilt_stadium_bowl').find(l => l.kind === 'mountain');

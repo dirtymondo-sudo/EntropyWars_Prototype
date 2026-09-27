@@ -39982,6 +39982,18 @@ const ThreeRenderer = (function () {
             ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
             ce._ew_hqPart = 'ceil';   // THE ROOM ROUND THE FIELD: the battle looks in from above — the ceiling is dropped there (a true-ground field keeps it and fades it as the eye rises: _fieldGroundTick)
             G.add(ce);
+            /* THE ROOF (OPEN_WORLD_PLAN Phase 6, 2026-09-27): a closed room that is a STAGED part is seen from outside (Camelot's
+               great hall and keep from the ward's wall-walk and from the foothills), and the ceiling faces down: from above
+               the room stood open. It gets a roof: one up-facing slab over the walls (`shell.roof` names its texture, the wall's
+               by default, painted down), tagged like the ceiling so a battle's look from above drops it with the ceiling. */
+            var roofId = (_hq.opts && _hq.opts.room) || room.id;
+            if (roofId && typeof hqStagePart === 'function' && hqStagePart(roofId)) {
+                var rw = W + 0.3, rd = Dp + 0.3, TRr = 2.4;
+                var rf = new THREE.Mesh(new THREE.PlaneGeometry(rw * U, rd * U), _hqMat(S.roof || texWall, rw / TRr, rd / TRr, { shininess: 3, color: (S.roofColor != null) ? S.roofColor : 0x8c8478 }));
+                rf.rotation.x = -Math.PI / 2; rf.position.y = (H + 0.06) * U;
+                rf._ew_hqPart = 'ceil'; rf._ew_hqRoof = true;
+                G.add(rf);
+            }
         } else if (room.terrain && room.terrain.outer !== false) {
             /* THE TERRAIN ROOM (2026-09-17): the field's own outer ground runs to the fog (_hqBuildOuterGround) — no flat apron, no skirt */
         } else {
@@ -41002,6 +41014,10 @@ const ThreeRenderer = (function () {
         var ext = (room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M, cs = 2.0, seed = (info.nx * 131 + info.nz * 7) | 0;
         var nse = function (x, z, sc, sd) { return (typeof _hqTNoise === 'function') ? _hqTNoise(x, z, sc, sd) : 0; };
         var sm = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+        /* THE MOUNTAIN (OPEN_WORLD_PLAN Phase 6): `outer.keep` = how much of the field's edge height the land past it keeps
+           (0.35 by default: it settles toward the valley floor; 1 on a slope, so a mountainside runs on as a mountainside),
+           `outer.lift` = metres it rises (or, < 0, falls) over the first 30 m past the edge (the peak's shoulders fall away) */
+        var OO = room.terrain.outer || {}, oKeep = (OO.keep != null) ? +OO.keep : 0.35, oLift = +OO.lift || 0;
         /* the height past the field: the field's edge for the first 2.5 m, then the roll, the swell and the fall */
         var yAt = function (x, z) {
             var ex = Math.max(0, Math.abs(x) - hx), ez = Math.max(0, Math.abs(z) - hz), e = Math.hypot(ex, ez);
@@ -41010,7 +41026,7 @@ const ThreeRenderer = (function () {
             var roll = 1.1 * nse(x, z, 9, seed + 3) + 0.35 * nse(x, z, 3.2, seed + 5);
             var swell = 2.4 * sm(e / 22) - 7.0 * sm((e - 24) / 26);
             var k = sm(e / 2.5);
-            return edgeH * (1 - k) + (edgeH * 0.35 + roll + swell) * k;
+            return edgeH * (1 - k) + (edgeH * oKeep + roll + swell + oLift * sm(e / 30)) * k;
         };
         _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
         var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;

@@ -15308,6 +15308,73 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_gate = function () {
     return M.finishDelta();
 };
 
+/* ── THE NORTH (OPEN WORLD Phase 6, 2026-09-27) ────────────────────────── */
+
+/* THE CROWN ROAD — the road north, the river and its stone bridge, the
+   avenue trees, the wayside shrine, the camp. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_road = function () {
+    const M = _mfAreaDelta({ name: 'CAMELOT · THE CROWN ROAD', base: 'grass_2', seed: 8581,
+        tints: { grass_2: '#8fc47a', dirt_2: '#b09470', water: '#6ac0e0', castle_wall: '#b8b0a0', wood: '#8a6a4a' },
+        desc: 'THE CROWN ROAD — the road north, the river and its stone bridge, the avenue trees, the shrine, the camp' });
+    M.rect(3, 0, 2, 4, 'dirt_2');                            // the road
+    M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 1); M.lake(2, 2, 'water', 1);   // the river
+    M.lake(5, 2, 'water', 1); M.lake(6, 2, 'water', 1); M.lake(7, 2, 'water', 1);
+    M.t(3, 2, 'castle_wall'); M.t(4, 2, 'castle_wall');      // the bridge
+    M.block(1, 3, 'castle_wall', 2);                         // the shrine
+    M.step(6, 3, 'wood');                                    // the camp's log
+    M.treeL(2, 1, 'tree_2'); M.treeL(5, 1, 'tree_2'); M.treeL(0, 0, 'tree_5');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE WARD — the curtain wall and its walk, a round tower, the gatehouse,
+   the lists and their stand, the moat along the west. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_ward = function () {
+    const M = _mfAreaDelta({ name: 'CAMELOT · THE WARD', base: 'grass_2', seed: 8584,
+        tints: { grass_2: '#8fbc72', dirt_2: '#b8a07c', castle_wall: '#b8b0a0', sand: '#d8c49a', deep_water: '#2a5a78', wood: '#8a6a4a' },
+        desc: 'THE WARD — the curtain wall and its walk, a round tower, the gatehouse, the lists and their stand, the moat' });
+    M.rect(3, 1, 2, 3, 'dirt_2');                            // the ward's road to the hall
+    M.lake(0, 1, 'deep_water', 2); M.lake(0, 2, 'deep_water', 2);   // the moat
+    M.block(1, 2, 'castle_wall', 2); M.block(1, 3, 'castle_wall', 3);   // the curtain wall and a tower
+    M.step(1, 1, 'castle_wall');                             // the rampart stair
+    M.rect(5, 2, 2, 1, 'sand');                              // the lists
+    M.step(5, 3, 'wood'); M.step(6, 3, 'wood');              // the stand
+    M.treeL(7, 1, 'tree_2');                                 // the orchard
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE FOOTHILLS — the meadow bench and its tarn, the trail up the slope,
+   the lookout's rocks, the pines. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_olympus_foothills = function () {
+    const M = _mfAreaDelta({ name: 'MOUNT OLYMPUS · THE FOOTHILLS', base: 'grass_2', seed: 8582,
+        tints: { grass_2: '#9cc47e', dirt_2: '#a88c68', rock_wall_1: '#9a968a', water: '#7ad0f0' },
+        desc: 'THE FOOTHILLS — the meadow bench and its tarn, the trail up the slope, the lookout\'s rocks, the pines' });
+    M.rect(2, 1, 1, 3, 'dirt_2'); M.rect(3, 1, 2, 1, 'dirt_2');   // the trail
+    M.step(5, 2, 'grass_2'); M.step(6, 2, 'grass_2'); M.step(6, 3, 'grass_2');   // the meadow bench
+    M.lake(7, 3, 'water', 1);                                // the tarn
+    M.block(0, 1, 'rock_wall_1', 2); M.step(0, 2, 'rock_wall_1');   // the lookout's rocks
+    M.treeL(1, 3, 'tree_5'); M.treeL(5, 0, 'tree_5'); M.treeL(7, 1, 'tree_2');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* THE SWITCHBACKS — the ledges stepping up the face, the trail's legs, the
+   ropes on the east, the lookout. */
+_MF_AREA_DELTA_BUILDERS.site_prebuilt_olympus_switchbacks = function () {
+    const M = _mfAreaDelta({ name: 'MOUNT OLYMPUS · THE SWITCHBACKS', base: 'grass_2', seed: 8583,
+        tints: { grass_2: '#a8c48e', dirt_2: '#a8906c', rock_wall_1: '#a09a90', wood: '#8a6a4a' },
+        desc: 'THE SWITCHBACKS — the ledges stepping up the face, the trail\'s legs, the ropes, the lookout' });
+    M.step(0, 1, 'rock_wall_1'); M.step(1, 1, 'rock_wall_1');   // the first ledge
+    M.block(0, 2, 'rock_wall_1'); M.block(1, 2, 'rock_wall_1');   // the second
+    M.block(0, 3, 'rock_wall_1', 2);                         // the high ledge
+    M.rect(2, 1, 1, 3, 'dirt_2');                            // the trail's leg
+    M.block(6, 2, 'rock_wall_1'); M.step(7, 2, 'wood');      // the lookout and its rope stand
+    M.treeL(5, 3, 'tree_5'); M.treeL(4, 1, 'tree_5');
+    M.symAll();
+    return M.finishDelta();
+};
+
 /* ── THE CAVE (Room 180's chambers) ────────────────────────────────────── */
 
 
@@ -16072,6 +16139,7 @@ const HQ_ROOM_LOOKS = {
     drain: { name: 'THE STORM DRAIN', retro: { enabled: true, preset: 'green', pixelSize: 1, ditherStrength: 0.5, grain: 0.035, tintAmount: 0.55, levels: 20 }, cin: { vignette: true, vigAmount: 0.55, vigSize: 0.44 }, nightMood: 0.65, bloom: 0.16 },
     /* THE DIVINE STAIR (2026-09-17): the clouds bright, bloomed, barely vignetted; the crypt teal-dark under candles */
     heaven: { name: 'HEAVEN', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.02, tintAmount: 0.35, levels: 30 }, cin: { vignette: true, vigAmount: 0.25, vigSize: 0.6 }, nightMood: 0.0, bloom: 0.5 },
+    mountain: { name: 'MOUNT OLYMPUS', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.34, grain: 0.022, tintAmount: 0.32, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.3, bloom: 0.34 },   // OPEN WORLD Phase 6 (2026-09-27): the foothills and the switchbacks — a clear day's air, the summit's light over them
     /* THE VATICAN (2026-09-17): the nave gold under incense, the archive dark amber, the dome teal-dark under the stars */
     basilica: { name: 'THE BASILICA', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.32, grain: 0.022, tintAmount: 0.28, levels: 28 }, cin: { vignette: true, vigAmount: 0.32, vigSize: 0.56 }, nightMood: 0.12, bloom: 0.42 },
     /* second pass (2026-09-18 — the user: "the library area is too dark to see anything"): the archive's night mood and vignette off, the levels up, the bloom on the lamps */
@@ -23370,6 +23438,117 @@ function hqCastleShell(o) {
     Object.keys(o).forEach(k => { S[k] = o[k]; });
     return S;
 }
+/* ── THE ROUND TOWER + THE ROUND BLOCK (OPEN WORLD Phase 6, 2026-09-27 — BUILT_ARCHITECTURE_PLAN §5 item 4: "towers as round
+   hqRingWalls drums instead of plateau tiers") ── terrain feature rows at (x, z), in hqRingPts' frame (θ clockwise from north).
+   hqRoundBlock({ x, z, r, y, n, key, id }) → a SOLID round block (a gatehouse drum, a well head, a newel): n mitred wedges
+     (hqRingQuad with the inner radius at the centre) whose tops are a walkable floor at y.
+   hqCastleTower({ x, z, r, t, top, crown, n, key, floor, door: [a, b], joins: [[a, b] …], a0, span, newel, id })
+     → a HOLLOW DRUM you climb inside: the wall (n chords, r the outer radius, t thick) stands `crown` over the ROOF DECK (y top)
+       with every other chord a merlon (+0.7); the chords in a `joins` arc stand flush with the deck (a curtain wall's walk comes in
+       over them); the `door` arc is open at the foot under a lintel slab; inside, THE STAIR — one `spiral` from the floor at a0
+       round `span` degrees (< 360) up to the deck, about a solid NEWEL — and the deck (an arc bridge) over everything the stair
+       leaves headroom under, open over the stair's last turn (the stairwell). The spiral's outer edge runs 0.1 m into the wall
+       and its inner edge into the newel: no gap either side. */
+function _hqShiftRow(w, x, z) {
+    const r = Object.assign({}, w);
+    if (typeof r.x0 === 'number') { r.x0 = Math.round((r.x0 + x) * 1000) / 1000; r.z0 = Math.round((r.z0 + z) * 1000) / 1000; r.x1 = Math.round((r.x1 + x) * 1000) / 1000; r.z1 = Math.round((r.z1 + z) * 1000) / 1000; }
+    if (r.quad) r.quad = r.quad.map(q => [Math.round((q[0] + x) * 1000) / 1000, Math.round((q[1] + z) * 1000) / 1000]);
+    return r;
+}
+function hqRoundBlock(o) {
+    const r = o.r, n = o.n || 16;
+    return hqRingWalls({ id: o.id || 'block', r: r / 2, h: o.y, t: r, n, key: o.key || null })
+        .map(w => _hqShiftRow(Object.assign(w, { y: o.y, tier: true, rail: false, parapet: false, quad: hqRingQuad(w, r / 2, r) }), o.x || 0, o.z || 0));
+}
+function hqCastleTower(o) {
+    const x = o.x || 0, z = o.z || 0, r = o.r, t = o.t || 0.8, top = o.top, crown = (o.crown != null) ? o.crown : 1.2, n = o.n || 32, key = o.key || null, id = o.id || 'tower';
+    const rc = r - t / 2, ri = r - t, newel = o.newel || 1.1, a0 = o.a0 || 0, span = Math.min(o.span || 300, 350), R = { bridgeThick: 0.28, headroom: 1.95 };   // HQ_TERRAIN_RULES' two numbers (the rooms are built before the rules are declared)
+    const inArc = (d, arcs) => _hqArcSkipped(d, d, arcs);
+    const out = [];
+    /* THE DRUM: the chords, the merlons, the joins flush with the deck, the door left open */
+    hqRingWalls({ id, r: rc, h: top + crown, t, n, key, skip: o.door ? [o.door] : [] }).forEach((w, i) => {
+        const p0 = Math.atan2(w.x0, -w.z0) * 180 / Math.PI, p1 = Math.atan2(w.x1, -w.z1) * 180 / Math.PI, mid = (p0 + ((p1 - p0 + 540) % 360 - 180) / 2 + 360) % 360;
+        const flush = inArc(mid, o.joins || []);
+        const k = Math.round(mid / (360 / n));
+        const y = flush ? top : top + crown + ((k % 2) ? 0.7 : 0);
+        out.push(_hqShiftRow(Object.assign(w, { y, tier: true, rail: false, parapet: !flush, quad: hqRingQuad(w, rc, t) }), x, z));
+    });
+    /* the lintel over the door: a plain slab through the wall's thickness, from the door's head to the crown */
+    if (o.door) {
+        const dm = (o.door[0] + o.door[1]) / 2, dw = 2 * rc * Math.sin((o.door[1] - o.door[0]) * Math.PI / 360) + 0.3, head = o.doorH || 3.0;
+        const pi = _hqRingPt(ri - 0.05, dm), po = _hqRingPt(r + 0.05, dm);
+        out.push({ k: 'bridge', x0: pi[0] + x, z0: pi[1] + z, x1: po[0] + x, z1: po[1] + z, w: dw, y: top + crown, thick: top + crown - head, plain: true, rails: false, key, id: id + '_lintel' });
+    }
+    /* THE NEWEL + THE STAIR */
+    out.push(...hqRoundBlock({ id: id + '_newel', x, z, r: newel, y: top, n: 12, key }));
+    out.push({ k: 'spiral', x, z, r0: newel - 0.1, r1: ri + 0.1, a0, a1: a0 + span, h0: 0, h1: top, edge: 0.01, id: id + '_stair' });
+    /* THE DECK: from the stair's head round to where the stair passes under the slab with headroom to spare */
+    const hs = top - R.bridgeThick - R.headroom - 0.15, lim = a0 + span * Math.max(0, hs) / top;
+    out.push({ k: 'bridge', arc: { x, z, r0: newel - 0.05, r1: ri - 0.05, a0: a0 + span, a1: lim + 360 }, drawR0: newel - 0.1, drawR1: ri + 0.05, y: top, thick: R.bridgeThick, rails: false, key: o.floor || key, id: id + '_deck' });
+    return out;
+}
+/* hqCastleCrown({ x, z, r, top, crown, n, skip, key, id }) → the battlement round a SOLID round block (a gate tower): a ring of
+   chords 0.5 thick whose outer face stands 3 cm proud of the block's (r), `crown` over its top and every other chord a merlon; the
+   `skip` arcs left open where a wall-walk or a deck comes onto the top. */
+function hqCastleCrown(o) {
+    const r = o.r - 0.22, crown = (o.crown != null) ? o.crown : 1.1, out = [];
+    hqRingWalls({ id: o.id || 'crown', r, h: o.top + crown, t: 0.5, n: o.n || 24, key: o.key || null, skip: o.skip || [] }).forEach(w => {
+        const mid = (Math.atan2((w.x0 + w.x1) / 2, -(w.z0 + w.z1) / 2) * 180 / Math.PI + 360) % 360, k = Math.round(mid / (360 / (o.n || 24)) - 0.5);
+        out.push(_hqShiftRow(Object.assign(w, { y: o.top + crown + ((k % 2) ? 0 : 0.7), tier: true, rail: false, quad: hqRingQuad(w, r, 0.5) }), o.x || 0, o.z || 0));
+    });
+    return out;
+}
+/* hqCurtainWall({ x0, z0, x1, z1, t, top, crown, out, pull0, pull1, towers, key, id }) → a CURTAIN WALL run: one block (drawn exactly
+   on its footprint, x0/z0 → x1/z1 its DRAWN ends, `t` thick, its top THE WALL-WALK at `top`) and THE BATTLEMENT on its outer face
+   (`out` = +1 / −1: the side of the run's left normal (−uz, ux) that faces out): a parapet 0.5 thick standing `crown` over the walk,
+   every other piece a merlon (+0.7), trimmed clear of every tower in `towers` ([{ x, z, r }]). The block's collision capsule is the
+   run pulled back `pull0` / `pull1` from the drawn ends (default t/2: its round ends reach the drawn ends on the axis; less where a
+   hollow tower's drum takes the end — the cap must stop at the drum's inner face or it stands in the stair). */
+function hqCurtainWall(o) {
+    const t = o.t || 3.2, top = o.top, crown = (o.crown != null) ? o.crown : 1.1, key = o.key || null, out = [];
+    const dx = o.x1 - o.x0, dz = o.z1 - o.z0, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, nx = -uz, nz = ux, R3 = v => Math.round(v * 1000) / 1000;
+    const p0 = (o.pull0 != null) ? o.pull0 : t / 2, p1 = (o.pull1 != null) ? o.pull1 : t / 2, h = t / 2;
+    const quad = (s0, s1, off, hw) => [[R3(o.x0 + ux * s0 + nx * (off - hw)), R3(o.z0 + uz * s0 + nz * (off - hw))], [R3(o.x0 + ux * s1 + nx * (off - hw)), R3(o.z0 + uz * s1 + nz * (off - hw))],
+                                       [R3(o.x0 + ux * s1 + nx * (off + hw)), R3(o.z0 + uz * s1 + nz * (off + hw))], [R3(o.x0 + ux * s0 + nx * (off + hw)), R3(o.z0 + uz * s0 + nz * (off + hw))]];
+    out.push({ k: 'wall', x0: R3(o.x0 + ux * p0), z0: R3(o.z0 + uz * p0), x1: R3(o.x1 - ux * p1), z1: R3(o.z1 - uz * p1), y: top, t, key, tier: true, rail: false, quad: quad(0, L, 0, h), curtain: o.id || 'curtain' });
+    if (o.battlement === false) return out;
+    const ct = 0.5, off = (o.out || 1) * (h - ct / 2 + 0.03), bx = s => o.x0 + ux * s + nx * off, bz = s => o.z0 + uz * s + nz * off;
+    const clear = s => (o.towers || []).every(T => Math.hypot(bx(s) - T.x, bz(s) - T.z) > T.r + 0.05);
+    let sA = 0, sB = L;
+    while (sA < L && !clear(sA)) sA += 0.05;
+    while (sB > sA && !clear(sB)) sB -= 0.05;
+    const merlon = o.merlon || 1.1, crenel = o.crenel || 0.9;
+    let s = sA, k = 0;
+    while (s < sB - 0.2) {
+        const len = Math.min((k % 2) ? crenel : merlon, sB - s), e = s + len, y = top + crown + ((k % 2) ? 0 : 0.7);
+        const c0 = s + Math.min(ct / 2, len / 2 - 0.01), c1 = e - Math.min(ct / 2, len / 2 - 0.01);
+        out.push({ k: 'wall', x0: R3(bx(c0)), z0: R3(bz(c0)), x1: R3(bx(c1)), z1: R3(bz(c1)), y, t: ct, key, tier: true, rail: false, quad: quad(s, e, off, ct / 2), parapet: true, curtain: o.id || 'curtain' });
+        s = e; k++;
+    }
+    return out;
+}
+/* THE MOUNTAIN'S SHELL (OPEN WORLD Phase 6, 2026-09-27): Olympus's foothills and switchbacks — OPEN under Olympus's own day (the map
+   row's pale gold tint, the clouds), a thinner haze per metre than the woods (the summit is meant to be seen), pines past the field,
+   rock for the cliffs; `o` overrides a field. */
+function hqMountainShell(o) {
+    o = o || {};
+    const sky = { night: 0, tint: 0xcfe0f8, tintAmt: 0.3, stars: 0.2, nebula: 0.3, day: 1, clouds: 0.5, fog: { color: 0xdfe6f0, amount: 0.55, top: 0.03, band: 0.4, density: 0.011 }, scenery: 'divine', density: 0.5 };
+    const S = {
+        w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
+        open: true, edge: 'open',
+        floor: 'grass_2', wall: 'mountain', dado: 'rock_wall_1', trim: 'wood', ceiling: 'mountain',
+        apron: 'grass_2', skirt: 'rock_wall_1', apronColor: 0x7e9460,
+        floorColor: 0x86a066, wallColor: 0x9a948c, dadoColor: 0x807a70,
+        pipes: false, strips: false, lights: [],
+        mood: { lamp: 0xffb060, glow: 0xff9a40, light: 0xfff4e0, ambient: 0.5 },
+        sky: sky,
+        forest: { depth: 12, spacing: 3.2, rows: 2.8, start: 1.6, kinds: ['pine', 'pine', 'tree_3', 'pine', 'tree_2'] },
+        plate: { x: 0, z: -9.8, y: 4.4 },
+        look: HQ_ROOM_LOOKS.mountain,
+    };
+    Object.keys(o).forEach(k => { S[k] = o[k]; });
+    return S;
+}
 /* ── THE UNDERWORLD'S SHELL (2026-09-18 — THE COMPLEX CANDIDATES #3, THE TUNNELS / THE DUNGEONS) ──
    A CLOSED brick-and-concrete room under the city: the storm drain's brick up
    every wall, a concrete floor, the corrugated dado, the grill overhead tiled
@@ -24776,7 +24955,7 @@ const DOOR_HQ = {
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
         { id: 'fairy_camelot', route: 'woods', way: 'pool',
           a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 4, z: 11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },   // THE AREAS (2026-09-18): the spring is IN THE CLEARING, by the stream (the board is bypassed)
-          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: -43, z: -10, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },   // CAMELOT CASTLE (2026-09-18): on the moat's west bank in THE OUTER WARD (the board room is bypassed)
+          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: -67.6, z: -13, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },   // CAMELOT CASTLE (2026-09-18): on the moat's west bank in THE OUTER WARD; OPEN WORLD Phase 6: the rebuilt ward's track, outside the west arm
           why: 'the spring in the fairy forest and the castle moat share their water; dive in the woods and surface under the battlements, which the besiegers should have found suspicious', note: 'the same water', draft: true },
         /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
         { id: 'deadtree_lookingglass', route: 'seams', way: 'deadtree',
@@ -25120,7 +25299,7 @@ const DOOR_HQ = {
             /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
-            prebuilt_camelot:   { room: 'site_prebuilt_camelot_ward',        door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_camelot:   { room: 'site_prebuilt_camelot_road',        door: { id: 'bay', wall: 's', x: 0 } },   // OPEN WORLD Phase 6 (2026-09-27): the portcullis stands at the crown's road's south end — the castle is walked to
             /* THE RANCH (2026-09-18 — the woods split): the stable door lands you in THE CORN FIELDS, the ranch's hub; the well and the woods'
                gate that stood on the board moved onto the fields the same day (a link door in a bypassed room would land at the bay door). */
             prebuilt_skinwalker: { room: 'site_prebuilt_skinwalker_fields',   door: { id: 'bay', wall: 's', x: 0 } },
@@ -25147,7 +25326,7 @@ const DOOR_HQ = {
             prebuilt_agartha:             { room: 'site_prebuilt_agartha_crystalcity',        door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_antarctica:          { room: 'site_prebuilt_antarctica_station',         door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_shasta:              { room: 'site_prebuilt_shasta_slopes',              door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_olympus:             { room: 'site_prebuilt_olympus_summit',             door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_olympus:             { room: 'site_prebuilt_olympus_summit',             door: { id: 'bay', wall: 's', x: 20 } },   // OPEN WORLD Phase 6: off the switchbacks' trail join (the south edge's middle)
             prebuilt_mars:                { room: 'site_prebuilt_mars_cydonia',               door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_moon:                { room: 'site_prebuilt_moon_mare',                  door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_bohemian_grove:      { room: 'site_prebuilt_bohemian_grove_grove',       door: { id: 'bay', wall: 's', x: 0 } },
@@ -35218,6 +35397,11 @@ const DOOR_HQ = {
            THE WOODS blueprint (EXPLORABLE_AREAS_GUIDE) — three families in one
            complex, the hand-offs at doors. The board room is BYPASSED
            (siteRooms.entry): the portcullis lands you in THE OUTER WARD.
+           OPEN WORLD Phase 6 (2026-09-27) — SIX parts: THE CROWN'S ROAD (the entry:
+           the portcullis at its south end, a road join into the ward) and the ward
+           REBUILT BUILT (its own comment below; the ward's lines here are its
+           2026-09-18 plan, kept as history). The hall and the keep stand in the
+           ward's north wall by DOOR JOINS; the postern track joins THE MOUNTAIN.
              site_prebuilt_camelot_ward — THE OUTER WARD (family A', open under
                Camelot's own night, hqCastleShell): the approach, THE MOAT (a U of
                deep water round the bailey — never entered), THE DRAWBRIDGE (the
@@ -35261,68 +35445,170 @@ const DOOR_HQ = {
            ≤ HQ_PROP_LIGHT_MAX, never a rank leaf, a plan room hangs nothing on
            the shell, THE PARK RULE in every part. Lines are Claude's DRAFT (A15).
            ═══════════════════════════════════════════════════════════════════ */
+        /* ── THE CROWN'S ROAD (OPEN WORLD Phase 6, 2026-09-27) — the kingdom's road north from the portcullis to the ward's gate ──
+           60 × 160 m of the surface (the kingdom zone; family A': open country, the banks rising either side into the trees):
+           THE PORTCULLIS (the bay door, the site's entry) at its south end — the forecourt's border when the forecourt is built;
+           THE ROAD (stone, 7 m) straight to the castle, an avenue of trees along it; THE RIVER across it (waded; the stone
+           BRIDGE over it); THE WAYSIDE SHRINE; THE KNIGHTS' CAMP; its north end runs on into the ward's approach
+           (a road join, no card). */
+        site_prebuilt_camelot_road: {
+            label: 'CAMELOT · THE CROWN’S ROAD',
+            sub: 'THE PORTCULLIS · THE AVENUE · THE RIVER · THE ROAD TO THE GATE',
+            kind: 'box', site: 'prebuilt_camelot', part: 'road',
+            shell: hqCastleShell({ w: 60, d: 160, plate: { x: 0, z: -79.4, y: 4.4 } }),
+            parti: 'A straight stone road from the gate you came through to the gate you are going to, with a river in the way and a bridge over it for anyone who minds wet boots.',
+            typology: 'corridor',
+            terrain: {
+                floor: 'grass_2', cliff: 'rock_wall_1', path: 'cobblestone',
+                noise: { amp: 0.14, scale: 9 },
+                features: [
+                    { k: 'ridge', pts: [[-27, 82], [-27, -82]], w: 10, h: 1.8 },                                             // THE BANKS (into the treeline)
+                    { k: 'ridge', pts: [[27, 82], [27, -82]], w: 10, h: 1.8 },
+                    { k: 'stream', pts: [[-44, 9], [-14, 16], [0, 18], [14, 20], [44, 15]], w: 7, y: -0.4, depth: 1.0, key: 'water', bank: 1.2 },   // THE RIVER (waded — the bridge keeps your boots dry)
+                    { k: 'bridge', x0: 0, z0: 25.2, x1: 0, z1: 10.8, w: 7.4, y: 0.4, thick: 0.4, key: 'castle_wall', id: 'river_bridge' },           // THE BRIDGE — the way over
+                    { k: 'path', pts: [[0, 82], [0, -82]], w: 7 },                                                          // THE ROAD
+                    { k: 'path', pts: [[0, -30], [-4.6, -30]], w: 1.6 },                                                    // to the shrine
+                    { k: 'plateau', x: -12, z: -31, w: 8, d: 7, h: 0.9, edge: 0.3 },                                         // THE SHRINE's plinth (a tier)
+                    { k: 'ramp', x0: -5.0, z0: -30, x1: -8.9, z1: -30, w: 2.4, h0: 0, h1: 0.9, edge: 0.2, stairs: true },    // its steps up from the road
+                    { k: 'rail', x0: 9.5, z0: -46.5, x1: 15.5, z1: -46.5 },                                                  // THE CAMP's hitching rail (a grind)
+                    { k: 'path', pts: [[0, -40], [12, -38]], w: 1.6 },                                                      // to the camp
+                    /* THE AVENUE: a tree every 12 m either side of the road (none at the river) */
+                    { k: 'tree', x: -6.5, z: 72, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: 72, kind: 'tree_3', h: 5.6, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: 60, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: 60, kind: 'tree_2', h: 6.2, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: 48, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: 48, kind: 'tree_3', h: 5.6, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: 36, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: 36, kind: 'tree_2', h: 6.2, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: 0, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: 0, kind: 'tree_3', h: 5.6, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: -12, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: -12, kind: 'tree_2', h: 6.2, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: -24, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: -24, kind: 'tree_3', h: 5.6, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: -48, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: -48, kind: 'tree_2', h: 6.2, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: -60, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: -60, kind: 'tree_3', h: 5.6, r: 0.6 },
+                    { k: 'tree', x: -6.5, z: -72, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: -72, kind: 'tree_2', h: 6.2, r: 0.6 },
+                    { k: 'grove', x: -18, z: 50, r: 7, n: 6, kinds: ['tree_3', 'tree_2'] }, { k: 'grove', x: 19, z: -62, r: 7, n: 6, kinds: ['tree_2', 'tree_3'] }, { k: 'grove', x: 18, z: 44, r: 6, n: 4, kinds: ['tree_3'] },
+                    { k: 'scatter', key: 'fern', n: 10, seed: 21 }, { k: 'scatter', key: 'stump', n: 4, seed: 22 }, { k: 'scatter', key: 'cave_stone', n: 6, seed: 23 },
+                ],
+            },
+            doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry — the portcullis); the north end is the road join into the ward
+            counters: [],
+            props: [
+                { key: 'signpost',     x: 5, z: 68 }, { key: 'signpost', x: -5, z: 30 },
+                /* THE WAYSIDE SHRINE */
+                { key: 'stone_altar',  x: -12, z: -30, face: 90 }, { key: 'candle_ring', x: -12, z: -30 }, { key: 'menhir', x: -15, z: -35 },
+                /* THE KNIGHTS' CAMP */
+                { key: 'camping_tent', x: 16, z: -42, face: 270 }, { key: 'camping_tent', x: 20, z: -35, face: 250 }, { key: 'campfire', x: 13.4, z: -36 },
+                { key: 'armour_stand', x: 18, z: -30, face: 200 },
+                { key: 'cave_torch',   x: 4.6, z: 26.6 }, { key: 'cave_torch', x: -4.6, z: 9.4 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: 4.6, z: 64, face: 200, race: 'knight', say: ['“The road goes to the castle.” “And from the castle?” “To the mountain. Nobody asks where the mountain goes.”', '“Keep to the stones. The grass belongs to the Crown and the Crown is particular.”'] },
+                { x: -9.6, z: -28.4, face: 90, race: 'priest', say: ['“A candle for the road.” “Which road?” “All of them lead here eventually. I light one each.”'] },
+                { x: 15.6, z: -32.4, face: 220, race: 'swordfighter', say: ['“We are camping.” “Outside a castle?” “The castle is full. It is always full. That is what a castle is for.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“How far to the gate?” “Straight on. It is a crown’s road; it does not know how to bend.”',
+                '“The bridge is older than the castle.” “Then what did it cross to?” “The castle it expected.”',
+                '“Why is there a mountain behind the castle?” “Every castle needs something taller to be afraid of.”',
+            ],
+            spawn: { x: 0, z: 74, face: 0 },
+        },
         /* ── THE OUTER WARD — the moat, the drawbridge, the gatehouse, the curtain wall, the bailey, the keep tower ── */
         site_prebuilt_camelot_ward: {
             label: 'CAMELOT · THE OUTER WARD',
-            sub: 'THE DRAWBRIDGE · THE GATEHOUSE · THE BAILEY · THE PARAPET WALK · NO PRIVILEGED SIDE',
+            sub: 'THE DRAWBRIDGE · THE GATEHOUSE · THE BAILEY · THE WALL-WALK · NO PRIVILEGED SIDE',
             kind: 'box', site: 'prebuilt_camelot', part: 'ward',
-            shell: hqCastleShell({ w: 96, d: 80, plate: { x: 0, z: -38.6, y: 6.4 } }),
-            /* THE FIELD (96 × 80 m): the portcullis (the bay door, the board room bypassed) on the
-               south wall; THE APPROACH north to THE DRAWBRIDGE over THE MOAT (deep water — the
-               one way in is the planks); THE GATEHOUSE's two towers on the gap in THE CURTAIN
-               WALL (5.5 m on three sides; the north side is the hall's and the keep's own
-               faces); two RAMPART STAIRS up to the wall-top terraces at the south corners —
-               the wall's top is a floor once the feet reach it: THE PARAPET WALK, and the
-               rider's grind; THE BAILEY beyond: the sword's knoll, the well, the orchard the
-               plan grows; THE KEEP TOWER (9 m, the tape) beside the hall's door at the end of
-               the avenue. Outside the moat: the wardrobe's snow in the west trees, the sally
-               port from the undercroft, the spring's pool on the moat's bank. */
+            shell: hqCastleShell({ w: 140, d: 120, plate: { x: 0, z: -59.4, y: 6.4 } }),
+            parti: 'A walled court on a moat with one way over the water, one gate through the wall and the hall and the keep standing in the wall itself.',
+            typology: 'hub',
+            /* OPEN WORLD Phase 6 (2026-09-27) — REBUILT BUILT (BUILT_ARCHITECTURE_PLAN §5 item 4) at 140 × 120 in its frame on
+               the surface (the kingdom zone): the crown's road comes in at the south edge; THE MOAT (deep water, a U open to
+               the north) with THE DRAWBRIDGE over it (a bridge: the one way over); THE CURTAIN WALL — a 6 m wall-walk you
+               walk the whole round of, 3.2 m wide, THE BATTLEMENT on its outer face; THE TOWERS — three hollow round drums
+               at the corners, each climbed by THE STAIR inside it (a spiral round a newel) to its deck on the wall-walk, and
+               THE GATEHOUSE: two solid drums on the gate with the passage roofed by the gatehouse deck; THE POSTERN in the
+               north wall onto the mountain trail (the wall-walk runs over it); the north side of the court IS the great
+               hall's and the keep's own front (door joins: they stand beside the ward, walked into); THE BAILEY: the lists
+               with their stand and the tilt, the sword's knoll, the well, the orchard, the gardens by the hall. Outside the
+               moat: the track round it, the wardrobe's snow, the sally port, the spring's pool, the sleigh road's gate. No
+               plan, no noise: the architecture stands on a flat court. */
             terrain: {
                 floor: 'grass_2', cliff: 'castle_wall', path: 'cobblestone',
-                noise: { amp: 0.22, scale: 8 },
-                gen: { kind: 'rooms', seed: 8108, loops: 3, rMin: 7, rMax: 14, wallH: 1.7 },                             // THE FLOOR PLAN: the gardens are clearings, the hedges the thicket, the orchard outside the moat
+                noise: { amp: 0, scale: 8 },
                 features: [
-                    { k: 'hill', x: -14, z: -14, r: 7, h: 0.7 },                                                             // THE SWORD'S KNOLL
-                    { k: 'hill', x: 24, z: -20, r: 6, h: 0.5 },
-                    { k: 'dip', x: -20, z: 30, r: 5, h: 0.6 },                                                               // the hollow outside the moat
-                    { k: 'stream', pts: [[-36, -39], [-36, 14], [36, 14], [36, -39]], w: 6, y: -0.3, depth: 1.8, key: 'deep_water', bank: 1.2 },   // THE MOAT (never entered)
-                    { k: 'deck', x0: 0, z0: 18.6, x1: 0, z1: 9.4, w: 4.2, y: 0.3 },                                          // THE DRAWBRIDGE — both banks
-                    { k: 'wall', x0: -31, z0: 8, x1: -8.4, z1: 8, h: 5.5, t: 1.6, key: 'castle_wall' },                      // THE CURTAIN WALL, south, west of the gate — 2 m in from the moat's bank and ENDING AT THE TOWER'S OUTER EDGE: a wall's top is the highest ground under it + h, so a wall run through a tower's footprint stands the tower's height too tall
-                    { k: 'wall', x0: 8.4, z0: 8, x1: 31, z1: 8, h: 5.5, t: 1.6, key: 'castle_wall' },                          // … east of the gate
-                    { k: 'wall', x0: -31, z0: 8, x1: -31, z1: -39, h: 5.5, t: 1.6, key: 'castle_wall' },                     // the west wall
-                    { k: 'wall', x0: 31, z0: 8, x1: 31, z1: -39, h: 5.5, t: 1.6, key: 'castle_wall' },                       // the east wall
-                    { k: 'plateau', x: -5.6, z: 8, r: 2.2, h: 8.0, edge: 0.3 },                                              // THE GATEHOUSE's towers (never climbed) — they fill the wall's gap; the gate is the 6 m between them
-                    { k: 'plateau', x: 5.6, z: 8, r: 2.2, h: 8.0, edge: 0.3 },
-                    { k: 'plateau', x: -28, z: -12, w: 6, d: 6, h: 5.5, edge: 0.3 },                                         // THE WEST TERRACE (the parapet walk begins here)
-                    { k: 'ramp', x0: -28, z0: 4.5, x1: -28, z1: -9.7, w: 2.4, h0: 0, h1: 5.5, stairs: true, edge: 0.2 },     // its rampart stair (L ≥ 2.2 × h; ends 0.7 m inside the terrace — THE RAMP RULE)
-                    { k: 'plateau', x: 28, z: -12, w: 6, d: 6, h: 5.5, edge: 0.3 },                                          // THE EAST TERRACE
-                    { k: 'ramp', x0: 28, z0: 4.5, x1: 28, z1: -9.7, w: 2.4, h0: 0, h1: 5.5, stairs: true, edge: 0.2 },
-                    { k: 'plateau', x: 12, z: -33, r: 2.4, h: 9.0, edge: 0.3 },                                              // THE KEEP TOWER (the near weenie — the tape on it is the door gun's)
-                    { k: 'rail', x0: -25.2, z0: -14.6, x1: -25.2, z1: -9.4 },                                                // the terraces' inner rails (the grind)
-                    { k: 'rail', x0: 25.2, z0: -14.6, x1: 25.2, z1: -9.4 },
-                    { k: 'path', pts: [[0, 39], [0, 18.6]], w: 2.6 },                                                        // THE APPROACH
-                    { k: 'path', pts: [[0, 9.4], [0, -38]], w: 2.6 },                                                        // THE AVENUE to the hall
-                    { k: 'path', pts: [[0, -10], [-22, -10], [-22, -38]], w: 2.2 },                                          // to the keep
-                    { k: 'path', pts: [[0, 0], [-14, -14]], w: 1.6 },                                                        // to the sword
-                    { k: 'path', pts: [[0, -10], [8, -18], [12, -28]], w: 1.6 },                                             // to the tower's foot
-                    { k: 'path', pts: [[-28, 4.5], [-22, 0], [0, 0]], w: 1.6 },                                              // to the west stair
-                    { k: 'path', pts: [[28, 4.5], [22, 0], [0, 0]], w: 1.6 },                                                // to the east stair
-                    { k: 'path', pts: [[0, 30], [-44, 28], [-44, -30]], w: 2.0 },                                            // the track outside the moat: the wardrobe, the sally port
-                    { k: 'path', pts: [[-44, -10], [-40.5, -10]], w: 1.6 },                                                  // to the spring's pool on the bank
+                    { k: 'hill', x: -18, z: -24, r: 7, h: 0.8 },                                                             // THE SWORD'S KNOLL
+                    { k: 'stream', pts: [[-58, -59.5], [-58, 36], [58, 36], [58, -59.5]], w: 8, y: -0.3, depth: 2.0, key: 'deep_water', bank: 1.2 },   // THE MOAT (never entered)
+                    /* THE CURTAIN WALL: six runs (the wall-walk at 6 m) and the stub that closes it on the hall's east corner */
+                    ...hqCurtainWall({ id: 'south_w', x0: -41.4, z0: 24, x1: -9.5, z1: 24, top: 6, out: 1, pull0: 1.2, towers: [{ x: -46, z: 24, r: 5 }, { x: -6.5, z: 24, r: 4 }], key: 'castle_wall' }),
+                    ...hqCurtainWall({ id: 'south_e', x0: 9.5, z0: 24, x1: 41.4, z1: 24, top: 6, out: 1, pull1: 1.2, towers: [{ x: 6.5, z: 24, r: 4 }, { x: 46, z: 24, r: 5 }], key: 'castle_wall' }),
+                    ...hqCurtainWall({ id: 'west', x0: -46, z0: 19.4, x1: -46, z1: -60, top: 6, out: -1, pull0: 1.2, towers: [{ x: -46, z: 24, r: 5 }], key: 'castle_wall' }),
+                    ...hqCurtainWall({ id: 'east', x0: 46, z0: 19.4, x1: 46, z1: -50.4, top: 6, out: 1, pull0: 1.2, pull1: 1.2, towers: [{ x: 46, z: 24, r: 5 }, { x: 46, z: -55, r: 5 }], key: 'castle_wall' }),
+                    ...hqCurtainWall({ id: 'north_w', x0: 13, z0: -55, x1: 26, z1: -55, top: 6, out: -1, key: 'castle_wall' }),
+                    ...hqCurtainWall({ id: 'north_e', x0: 32, z0: -55, x1: 41.4, z1: -55, top: 6, out: -1, pull1: 1.2, towers: [{ x: 46, z: -55, r: 5 }], key: 'castle_wall' }),
+                    { k: 'wall', x0: 14.6, z0: -58.5, x1: 14.6, z1: -58.1, y: 6, t: 3.2, key: 'castle_wall', tier: true, rail: false, quad: [[13, -60], [16.2, -60], [16.2, -56.6], [13, -56.6]], curtain: 'stub' },
+                    /* THE TOWERS: the three hollow drums (the stair inside, the deck on the walk), the gatehouse's two solid drums */
+                    ...hqCastleTower({ id: 'tower_sw', x: -46, z: 24, r: 5, top: 6, door: [30, 66], joins: [[69, 111], [339, 381]], a0: 75, span: 250, key: 'castle_wall', floor: 'wood_planks' }),
+                    ...hqCastleTower({ id: 'tower_se', x: 46, z: 24, r: 5, top: 6, door: [300, 334], joins: [[249, 291], [339, 381]], a0: 346, span: 250, key: 'castle_wall', floor: 'wood_planks' }),
+                    ...hqCastleTower({ id: 'tower_ne', x: 46, z: -55, r: 5, top: 6, door: [210, 244], joins: [[159, 201], [249, 291]], a0: 256, span: 250, key: 'castle_wall', floor: 'wood_planks' }),
+                    ...hqRoundBlock({ id: 'gate_w', x: -6.5, z: 24, r: 4, y: 6, key: 'castle_wall' }),
+                    ...hqRoundBlock({ id: 'gate_e', x: 6.5, z: 24, r: 4, y: 6, key: 'castle_wall' }),
+                    ...hqCastleCrown({ id: 'gate_w_crown', x: -6.5, z: 24, r: 4, top: 6, skip: [[245, 295], [49, 131]], key: 'castle_wall' }),
+                    ...hqCastleCrown({ id: 'gate_e_crown', x: 6.5, z: 24, r: 4, top: 6, skip: [[65, 115], [229, 311]], key: 'castle_wall' }),
+                    /* THE GATEHOUSE: the deck over the passage (the walk crosses the gate on it), its parapets front and back; THE POSTERN's the same in the north wall */
+                    { k: 'bridge', x0: -3.6, z0: 24, x1: 3.6, z1: 24, w: 5, y: 6, thick: 2.2, plain: true, rails: false, key: 'castle_wall', id: 'gatehouse' },
+                    { k: 'bridge', x0: -2.9, z0: 26.3, x1: 2.9, z1: 26.3, w: 0.5, y: 7.8, thick: 4.0, plain: true, rails: false, key: 'castle_wall', id: 'gatehouse_front' },
+                    { k: 'bridge', x0: -2.9, z0: 21.7, x1: 2.9, z1: 21.7, w: 0.5, y: 7.1, thick: 3.3, plain: true, rails: false, key: 'castle_wall', id: 'gatehouse_back' },
+                    { k: 'bridge', x0: 25, z0: -55, x1: 33, z1: -55, w: 3.2, y: 6, thick: 2.4, plain: true, rails: false, key: 'castle_wall', id: 'postern_walk' },
+                    { k: 'bridge', x0: 25.4, z0: -56.35, x1: 32.6, z1: -56.35, w: 0.5, y: 7.8, thick: 4.2, plain: true, rails: false, key: 'castle_wall', id: 'postern_front' },
+                    /* THE DRAWBRIDGE — the one way over the moat (a slab: the water runs under it) */
+                    { k: 'bridge', x0: 0, z0: 42.6, x1: 0, z1: 29.4, w: 4.4, y: 0.3, thick: 0.3, key: 'wood', id: 'drawbridge' },
+                    /* THE RAMPART STAIRS: straight flights up to the walk on the west and east walls (the towers are the other ways up) */
+                    { k: 'ramp', x0: -30, z0: -16, x1: -44.5, z1: -16, w: 2.4, h0: 0, h1: 6, stairs: true, edge: 0.2 },
+                    { k: 'ramp', x0: 30, z0: 4, x1: 44.5, z1: 4, w: 2.4, h0: 0, h1: 6, stairs: true, edge: 0.2 },
+                    /* THE LISTS: the stand (three rows, high to low) and THE TILT down the middle (the grind) */
+                    { k: 'wall', x0: -36, z0: -9.9, x1: -18, z1: -9.9, y: 1.26, t: 0.85, key: 'wood', tier: true, seat: 0xa83030, front: [0, 1], rail: false },
+                    { k: 'wall', x0: -36, z0: -9.05, x1: -18, z1: -9.05, y: 0.84, t: 0.85, key: 'wood', tier: true, seat: 0xa83030, front: [0, 1], rail: false },
+                    { k: 'wall', x0: -36, z0: -8.2, x1: -18, z1: -8.2, y: 0.42, t: 0.85, key: 'wood', tier: true, seat: 0x3048a8, front: [0, 1], rail: false },
+                    { k: 'wall', x0: -37, z0: 0, x1: -17, z1: 0, h: 1.2, t: 0.25, key: 'wood' },
+                    /* the paths: the approach, the gate, THE AVENUE to the hall, the keep's, the postern's, the towers', the stairs', the track outside the moat */
+                    { k: 'path', pts: [[0, 60], [0, 42.6]], w: 6 },
+                    { k: 'path', pts: [[0, 29.4], [0, 20]], w: 4 },
+                    { k: 'path', pts: [[0, 20], [0, -57]], w: 3.2 },
+                    { k: 'path', pts: [[0, -30], [-35.2, -30], [-35.2, -57]], w: 2.6 },
+                    { k: 'path', pts: [[0, -40], [29, -40], [29, -60]], w: 2.4 },
+                    { k: 'path', pts: [[0, 12], [-38, 12], [-41.6, 18.8]], w: 1.8 },
+                    { k: 'path', pts: [[0, 12], [38, 12], [42.3, 18.6]], w: 1.8 },
+                    { k: 'path', pts: [[29, -44], [38, -47], [41.4, -50.8]], w: 1.8 },
+                    { k: 'path', pts: [[-12, 12], [-22, -16], [-30, -16]], w: 1.6 },
+                    { k: 'path', pts: [[12, 12], [22, 4], [30, 4]], w: 1.6 },
+                    { k: 'path', pts: [[-66, -56], [-66, 48], [66, 48], [66, -56]], w: 2.4 },
+                    /* THE ORCHARD (the east court) */
+                    { k: 'tree', x: 18, z: -36, kind: 'tree_2', h: 4.8, r: 0.5 }, { k: 'tree', x: 24.6, z: -35.2, kind: 'tree_4', h: 5.2, r: 0.5 }, { k: 'tree', x: 35.6, z: -36.4, kind: 'tree_2', h: 4.6, r: 0.5 }, { k: 'tree', x: 41, z: -35, kind: 'tree_4', h: 5.0, r: 0.5 },
+                    { k: 'tree', x: 17.4, z: -29.6, kind: 'tree_4', h: 5.0, r: 0.5 }, { k: 'tree', x: 23.8, z: -30.4, kind: 'tree_2', h: 4.4, r: 0.5 }, { k: 'tree', x: 36.2, z: -29.8, kind: 'tree_4', h: 5.4, r: 0.5 }, { k: 'tree', x: 41.4, z: -30.6, kind: 'tree_2', h: 4.8, r: 0.5 },
+                    { k: 'tree', x: 18.4, z: -23.8, kind: 'tree_2', h: 5.2, r: 0.5 }, { k: 'tree', x: 24.2, z: -24.4, kind: 'tree_4', h: 4.6, r: 0.5 }, { k: 'tree', x: 30, z: -23.6, kind: 'tree_2', h: 5.0, r: 0.5 }, { k: 'tree', x: 35.8, z: -24.2, kind: 'tree_4', h: 4.8, r: 0.5 }, { k: 'tree', x: 41, z: -23.8, kind: 'tree_2', h: 5.2, r: 0.5 },
+                    { k: 'tree', x: 17.6, z: -17.6, kind: 'tree_4', h: 4.6, r: 0.5 }, { k: 'tree', x: 24.4, z: -18.2, kind: 'tree_2', h: 5.0, r: 0.5 }, { k: 'tree', x: 30.2, z: -17.4, kind: 'tree_4', h: 5.4, r: 0.5 }, { k: 'tree', x: 36, z: -18, kind: 'tree_2', h: 4.6, r: 0.5 }, { k: 'tree', x: 41.2, z: -17.6, kind: 'tree_4', h: 5.0, r: 0.5 },
+                    { k: 'tree', x: 18.2, z: -11.4, kind: 'tree_2', h: 5.0, r: 0.5 }, { k: 'tree', x: 23.8, z: -12, kind: 'tree_4', h: 4.8, r: 0.5 }, { k: 'tree', x: 36.4, z: -11.6, kind: 'tree_4', h: 5.2, r: 0.5 }, { k: 'tree', x: 41, z: -12.2, kind: 'tree_2', h: 4.6, r: 0.5 },
+                    /* the yews along the track outside the moat (never in a door's lane) */
+                    { k: 'tree', x: -68.4, z: -50, kind: 'tree_3', h: 6.0, r: 0.7 }, { k: 'tree', x: -68.4, z: -40, kind: 'tree_3', h: 5.5, r: 0.7 }, { k: 'tree', x: -68.4, z: -21, kind: 'tree_2', h: 5.5, r: 0.7 },
+                    { k: 'tree', x: -68.4, z: -3, kind: 'tree_3', h: 6.2, r: 0.7 }, { k: 'tree', x: -68.4, z: 10, kind: 'tree_3', h: 5.6, r: 0.7 }, { k: 'tree', x: -68.4, z: 40, kind: 'tree_2', h: 5.8, r: 0.7 },
+                    { k: 'tree', x: 68.4, z: -50, kind: 'tree_3', h: 5.8, r: 0.7 }, { k: 'tree', x: 68.4, z: -38, kind: 'tree_2', h: 5.5, r: 0.7 }, { k: 'tree', x: 68.4, z: -26, kind: 'tree_3', h: 6.0, r: 0.7 },
+                    { k: 'tree', x: 68.4, z: -14, kind: 'tree_3', h: 5.6, r: 0.7 }, { k: 'tree', x: 68.4, z: -2, kind: 'tree_2', h: 5.8, r: 0.7 }, { k: 'tree', x: 68.4, z: 10, kind: 'tree_3', h: 6.0, r: 0.7 }, { k: 'tree', x: 68.4, z: 40, kind: 'tree_3', h: 5.5, r: 0.7 },
                     { k: 'scatter', key: 'fern', n: 10, seed: 5 },
-                    { k: 'scatter', key: 'stump', n: 3, seed: 6 },
                     { k: 'scatter', key: 'cave_stone', n: 4, seed: 7 },
-                    /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: the yews along the track outside the moat — the postern sees the wardrobe and the spring’s pool no more (R3) */
-                    { k: 'tree', x: -46.2, z: -8, kind: 'tree_3', h: 6.0, r: 0.7 }, { k: 'tree', x: -42.6, z: -20, kind: 'tree_3', h: 5.5, r: 0.7 }, { k: 'tree', x: -46.4, z: 8, kind: 'tree_2', h: 5.5, r: 0.7 },
+                ],
+                marks: [
+                    /* THE LISTS: the sanded ground, the chalk round it */
+                    { k: 'rect', x: -27, z: 0, w: 26, d: 12, color: 0xc8b088, a: 0.85 },
+                    { k: 'line', x0: -40, z0: -6, x1: -14, z1: -6, w: 0.14, color: 0xf0ece0 }, { k: 'line', x0: -40, z0: 6, x1: -14, z1: 6, w: 0.14, color: 0xf0ece0 },
+                    { k: 'line', x0: -40, z0: -6, x1: -40, z1: 6, w: 0.14, color: 0xf0ece0 }, { k: 'line', x0: -14, z0: -6, x1: -14, z1: 6, w: 0.14, color: 0xf0ece0 },
                 ],
             },
             doors: [
-                /* the south wall at x 0 is THE BAY DOOR (siteRooms.entry): the board room is bypassed — the portcullis lands you here */
+                /* THE NORTH SIDE of the court is the hall's and the keep's own front: both doors are DOOR JOINS (the rooms stand beside the ward) */
                 { id: 'hall', wall: 'n', x: 0, leaf: 'leaf_shabby_wood',
                   label: 'THE GREAT HALL', sub: 'THE HALL DOOR · THE ROUND TABLE',
                   action: { room: 'site_prebuilt_camelot_hall', at: 'ward' },
-                  desc: 'The hall door at the end of the avenue, under the tower. Oak, iron, a knocker shaped like a hand. The hand is warm.' },
-                { id: 'keep', wall: 'n', x: -22, leaf: 'leaf_shabby_wood',
+                  desc: 'The hall door at the end of the avenue. Oak, iron, a knocker shaped like a hand. The hand is warm.' },
+                { id: 'keep', wall: 'n', x: -35.2, leaf: 'leaf_shabby_wood',
                   label: 'THE KEEP', sub: 'THE KEEP DOOR · THE GREAT STAIR',
                   action: { room: 'site_prebuilt_camelot_keep', at: 'ward' },
                   desc: 'The keep’s own door, smaller than the hall’s and thicker. The stair behind it goes up to the battlements and does not stop there.' },
@@ -35333,24 +35619,31 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* THE GATEHOUSE: the braziers on the gap, the stocks inside the gate, the sign on the approach */
-                { key: 'brazier',        x: -4.6, z: 5.0 }, { key: 'brazier', x: 4.6, z: 5.0 },
-                { key: 'stocks',         x: -10, z: 4, face: 90 },
-                { key: 'signpost',       x: -4, z: 22 },
-                /* THE BAILEY: the sword in the stone on its knoll, the terraces' rails, the tower's braziers */
-                { key: 'sword_stone',    x: -14, z: -14, face: 150 },
-                { key: 'railing_1m',     x: -25.4, z: -12, face: 90 }, { key: 'railing_1m', x: 25.4, z: -12, face: 270 },
-                { key: 'brazier',        x: 12, z: -29.4 }, { key: 'brazier', x: 8.4, z: -33 },
-                { key: 'sea_chest',      x: 24, z: -20, face: 200 },
-                /* OUTSIDE THE MOAT: the lamp by the wardrobe's snow, the fire by the sally port */
-                { key: 'cave_torch',     x: -45, z: 25.4 },
-                { key: 'campfire',       x: -42, z: -26 },
+                /* THE GATEHOUSE: the braziers inside the gate, the stocks, the sign on the approach */
+                { key: 'brazier',        x: -4, z: 17.6 }, { key: 'brazier', x: 4, z: 17.6 },
+                { key: 'stocks',         x: -9, z: 15.4, face: 90 },
+                { key: 'signpost',       x: -5, z: 50 },
+                /* THE BAILEY: the sword in the stone on its knoll, the lists' pavilions, the gardens by the hall, the braziers at the doors */
+                { key: 'sword_stone',    x: -18, z: -24, face: 150 },
+                { key: 'camping_tent',   x: -43, z: -2, face: 90 }, { key: 'camping_tent', x: -11, z: -2, face: 270 },
+                { key: 'armour_stand',   x: -38, z: -12.4, face: 180 }, { key: 'armour_stand', x: -16, z: -12.4, face: 180 },
+                { key: 'fountain',       x: -16, z: -46 },
+                { key: 'park_bench',     x: -16, z: -41, face: 0 }, { key: 'park_bench', x: -22, z: -46, face: 90 },
+                { key: 'planter',        x: 9, z: -50 }, { key: 'planter', x: -9, z: -50 }, { key: 'planter', x: 9, z: -34 }, { key: 'planter', x: -9, z: -34 },
+                { key: 'brazier',        x: 3.6, z: -55.6 }, { key: 'brazier', x: -3.6, z: -55.6 },
+                { key: 'brazier',        x: -31.6, z: -55.6 }, { key: 'brazier', x: -38.8, z: -55.6 },
+                { key: 'sea_chest',      x: 38, z: -6, face: 200 },
+                /* OUTSIDE THE MOAT: the lamp by the wardrobe's snow, the fire by the sally port, the sleigh road's post */
+                { key: 'cave_torch',     x: -64.4, z: 24.6 },
+                { key: 'campfire',       x: -63, z: -38 },
+                { key: 'signpost',       x: 64, z: 20 },
             ],
             agents: [],
             npcSpots: [
-                { x: 2.8, z: 3.2, face: 180, race: 'knight', say: ['“Halt.” “I have a form.” “Everyone has a form. Halt anyway; it is the custom.”', '“The drawbridge is down.” “Is that safe?” “It is down for you. It is not down for everyone.”'] },
-                { x: -11.4, z: -11.8, face: 240, race: 'swordfighter', say: ['“Go on. Pull it.” “What happens?” “Nothing has happened yet. That is the interesting part.”', '“Whoso pulleth out this sword — the rest is worn off. We assume it ends well.”'] },
-                { x: 20, z: -12, face: 300, race: 'robinhood', say: ['“The orchard is the Crown’s.” “Whose Crown?” “Lapsed. Help yourself.”', '“I can see the sky castle from the east wall. Nobody else can see it from anywhere. Continuity has a form for that too.”'] },
+                { x: 3.4, z: 16.4, face: 180, race: 'knight', say: ['“Halt.” “I have a form.” “Everyone has a form. Halt anyway; it is the custom.”', '“The drawbridge is down.” “Is that safe?” “It is down for you. It is not down for everyone.”'] },
+                { x: -15.6, z: -22, face: 240, race: 'swordfighter', say: ['“Go on. Pull it.” “What happens?” “Nothing has happened yet. That is the interesting part.”', '“Whoso pulleth out this sword — the rest is worn off. We assume it ends well.”'] },
+                { x: 27, z: -20.8, face: 300, race: 'robinhood', say: ['“The orchard is the Crown’s.” “Whose Crown?” “Lapsed. Help yourself.”', '“I can see the sky castle from the east wall. Nobody else can see it from anywhere. Continuity has a form for that too.”'] },
+                { x: -27, z: -4.2, face: 0, race: 'king arthur', say: ['“The lists are open.” “Who is jousting?” “Whoever arrives. The tilt keeps the rest honest.”', '“The mountain is ours to the snowline.” “And past it?” “Past it the landlords are older.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -35358,9 +35651,130 @@ const DOOR_HQ = {
                 '“Which side of the portcullis is inside?” “Both. HINGE technology. No privileged side.”',
                 '“The castle in the sky.” “Where?” “North-north-east, over the wall, a third of the way up.” “I don’t see it.” “Then you are not on the wall.”',
                 '“The sword is still in the stone.” “Who does it belong to?” “The stone, at present.”',
-                '“The well never ran dry.” “Where does it go?” “Down. Everything here that is honest goes down.”',
+                '“The postern goes to the mountain.” “Which mountain?” “The one that is always behind the keep.”',
             ],
-            spawn: { x: 0, z: 34, face: 0 },
+            spawn: { x: 0, z: 50, face: 0 },
+        },
+        /* ═══════════════════════════════════════════════════════════════════
+           THE MOUNTAIN (OPEN WORLD Phase 6, 2026-09-27 — OPEN_WORLD_PLAN §4.5 Z4b): Mount Olympus climbed on foot from the
+           kingdom's postern — THE FOOTHILLS (0 → 25 m) and THE SWITCHBACKS (25 → 60 m) to THE SUMMIT (lifted to 60 m;
+           its own terraces take it to ~70). Two new parts on Room 12, stitched by trail joins (no card between them), the
+           ward's postern the trailhead. Heaven's gate on the summit's terrace stays the door it is.
+             site_prebuilt_olympus_foothills — THE FOOTHILLS (140 × 120, family A' — rolling ground rising north the whole
+               way, 25 m over 120): THE TRAILHEAD SHRINE at the postern, THE TRAIL winding up through the pines, THE TARN
+               on its meadow bench, THE LOOKOUT back over the castle; the trail tops out at the switchbacks' foot.
+             site_prebuilt_olympus_switchbacks — THE SWITCHBACKS (100 × 120, the `switchback` typology): five ledges
+               7 m apart up a rock face between two ridges, each leg of the trail a ramp along the foot of the next cliff,
+               the turns on the ledges (the trail walks W, E, W, E, W); THE SCRAMBLE — a rope up every cliff on the east
+               side, the fast way for whoever wants it; THE LOOKOUT on the third ledge; the summit's court at the top.
+           RULES kept: every join reached from every other (hq-mountain.test.js solves the climb end to end, the ward's
+           postern to the summit's court), nothing traps, no puzzle. Lines are Claude's DRAFT (A15). */
+        site_prebuilt_olympus_foothills: {
+            label: 'MOUNT OLYMPUS · THE FOOTHILLS',
+            sub: 'THE TRAILHEAD · THE PINES · THE TARN · THE LOOKOUT',
+            kind: 'box', site: 'prebuilt_olympus', part: 'foothills',
+            shell: hqMountainShell({ w: 140, d: 120, plate: { x: 0, z: 59.4, y: 4.4 } }),
+            parti: 'The ground starts climbing at the castle wall and does not stop, and the trail is the easy way up it.',
+            typology: 'pearls',
+            terrain: {
+                floor: 'grass_2', cliff: 'mountain', path: 'dirt_2',
+                noise: { amp: 0.35, scale: 11 },
+                outer: { keep: 1 },   // the ground past the field carries the slope on sideways (no lift: a rim would stand as a bank beside the castle)
+                features: [
+                    { k: 'ramp', x0: 0, z0: 60, x1: 0, z1: -60, w: 160, h0: 0, h1: 25, edge: 0.5 },                         // THE SLOPE: 25 m over 120, the whole field
+                    { k: 'hill', x: 30, z: 32, r: 16, h: 4 }, { k: 'hill', x: 52, z: -8, r: 14, h: 5 }, { k: 'hill', x: -52, z: 12, r: 14, h: 4.5 },
+                    { k: 'hill', x: -42, z: -34, r: 12, h: 3.5 }, { k: 'hill', x: 22, z: -40, r: 10, h: 3 }, { k: 'hill', x: 56, z: 44, r: 10, h: 3 }, { k: 'hill', x: -8, z: 22, r: 9, h: 1.6 },
+                    { k: 'plateau', x: 38, z: 14, w: 22, d: 16, h: 10, edge: 2.0, blend: 'ground' },                         // THE MEADOW BENCH
+                    { k: 'pool', x: 38, z: 14, r: 6.5, rz: 5, y: 10, depth: 0.6, key: 'water', bank: 1.2 },                   // THE TARN
+                    { k: 'path', pts: [[-55, 60], [-50, 50], [-36, 42], [-18, 44], [0, 38], [16, 30], [24, 20], [18, 6], [0, 0], [-18, -6], [-30, -18], [-24, -32], [-8, -38], [6, -46], [2, -54], [0, -60]], w: 2.6 },   // THE TRAIL
+                    { k: 'path', pts: [[24, 20], [30, 22]], w: 1.6 },                                                        // to the tarn
+                    { k: 'path', pts: [[6, -46], [22, -40], [36, -32]], w: 1.6 },                                            // to the lookout
+                    { k: 'grove', x: -30, z: 20, r: 10, n: 8, kinds: ['pine', 'pine', 'tree_3'] }, { k: 'grove', x: 46, z: 42, r: 9, n: 6, kinds: ['pine', 'tree_3'] },
+                    { k: 'grove', x: -50, z: -18, r: 10, n: 8, kinds: ['pine'] }, { k: 'grove', x: 28, z: -12, r: 8, n: 6, kinds: ['pine', 'tree_2'] },
+                    { k: 'grove', x: 52, z: -44, r: 8, n: 6, kinds: ['pine'] }, { k: 'grove', x: -32, z: -50, r: 8, n: 6, kinds: ['pine'] }, { k: 'grove', x: 8, z: 50, r: 7, n: 4, kinds: ['tree_2', 'pine'] },
+                    { k: 'scatter', key: 'cave_stone', n: 14, seed: 31 }, { k: 'scatter', key: 'fern', n: 12, seed: 32 }, { k: 'scatter', key: 'stump', n: 5, seed: 33 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 34 },
+                ],
+            },
+            doors: [],   // the ways in are the joins: the ward's postern (the south edge, west end), the switchbacks (the north edge)
+            counters: [],
+            props: [
+                /* THE TRAILHEAD SHRINE */
+                { key: 'menhir',       x: -44, z: 54 }, { key: 'stone_altar', x: -46.5, z: 49, face: 90 }, { key: 'signpost', x: -51, z: 53 },
+                /* THE LOOKOUT (back over the castle) */
+                { key: 'park_bench',   x: 38, z: -30, face: 180 }, { key: 'brass_telescope', x: 41.4, z: -31, face: 200 },
+                { key: 'railing_1m',   x: 37, z: -27.4, face: 0 }, { key: 'railing_1m', x: 40, z: -27.4, face: 0 },
+                { key: 'signpost',     x: 3, z: -52 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -42, z: 47, face: 30, race: 'goatman', say: ['“Up?” “Up.” “Everyone says up like it is a direction. Up here it is a toll.”', '“The shrine is to the mountain.” “Which god?” “The mountain. It was here first; the gods rent.”'] },
+                { x: 30, z: 17.6, face: 90, race: 'gnome', say: ['“The tarn has no bottom.” “I can see the bottom.” “Then it has one for you.”'] },
+                { x: 35, z: -29.6, face: 160, race: 'cyclops', say: ['“You can see the whole castle from here.” “And the sky castle?” “Only with the other eye.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“How much further?” “All of it. The foothills are the part where you still think it is a hill.”',
+                '“The pines are the gods’ fence.” “What are they keeping in?” “The ones who stopped here.”',
+            ],
+            spawn: { x: -55, z: 56, face: 0 },
+        },
+        site_prebuilt_olympus_switchbacks: {
+            label: 'MOUNT OLYMPUS · THE SWITCHBACKS',
+            sub: 'FIVE LEDGES · THE SCRAMBLE · THE LOOKOUT',
+            kind: 'box', site: 'prebuilt_olympus', part: 'switchbacks',
+            shell: hqMountainShell({ w: 100, d: 120, plate: { x: 0, z: 59.4, y: 4.4 } }),
+            parti: 'A rock face between two ridges that the trail climbs back and forth, a ledge at every turn, a rope for anyone who will not wait.',
+            typology: 'switchback',
+            terrain: {
+                floor: 'grass_2', cliff: 'mountain', path: 'dirt_2',
+                noise: { amp: 0.25, scale: 9 },
+                outer: { keep: 1, lift: 22 },   // the ridges run on past the field and rise
+                features: [
+                    /* THE LEDGES: 7 m apart, each a floor from its cliff back to the north edge */
+                    { k: 'plateau', x: 0, z: -9, w: 104, d: 106, h: 7, edge: 0.6 },
+                    { k: 'plateau', x: 0, z: -18, w: 104, d: 88, h: 14, edge: 0.6 },
+                    { k: 'plateau', x: 0, z: -27, w: 104, d: 70, h: 21, edge: 0.6 },
+                    { k: 'plateau', x: 0, z: -36, w: 104, d: 52, h: 28, edge: 0.6 },
+                    { k: 'plateau', x: 0, z: -45, w: 104, d: 34, h: 35, edge: 0.6 },
+                    /* THE LEGS: each a ramp along the foot of the next cliff (24 m for 7: 0.29) — W, E, W, E, W */
+                    { k: 'ramp', x0: -4, z0: 44.9, x1: -28, z1: 44.9, w: 3.6, h0: 0, h1: 7, edge: 0.3 },
+                    { k: 'ramp', x0: -32, z0: 26.9, x1: -8, z1: 26.9, w: 3.6, h0: 7, h1: 14, edge: 0.3 },
+                    { k: 'ramp', x0: -4, z0: 8.9, x1: -28, z1: 8.9, w: 3.6, h0: 14, h1: 21, edge: 0.3 },
+                    { k: 'ramp', x0: -32, z0: -9.1, x1: -8, z1: -9.1, w: 3.6, h0: 21, h1: 28, edge: 0.3 },
+                    { k: 'ramp', x0: -4, z0: -27.1, x1: -28, z1: -27.1, w: 3.6, h0: 28, h1: 35, edge: 0.3 },
+                    /* THE RIDGES either side (the valley walls — never climbed) */
+                    { k: 'ridge', pts: [[-50, 64], [-50, -64]], w: 20, h: 14 },
+                    { k: 'ridge', pts: [[50, 64], [50, -64]], w: 20, h: 14 },
+                    /* THE SCRAMBLE: a rope up every cliff on the east side */
+                    { k: 'climb', x: 22, z: 44.2, face: 0, look: 'rope' }, { k: 'climb', x: 24, z: 26.2, face: 0, look: 'rope' }, { k: 'climb', x: 20, z: 8.2, face: 0, look: 'rope' },
+                    { k: 'climb', x: 24, z: -9.8, face: 0, look: 'rope' }, { k: 'climb', x: 22, z: -27.8, face: 0, look: 'rope' },
+                    { k: 'path', pts: [[0, 60], [0, 50], [-4, 45.4], [-28, 45.4], [-30, 36], [-32, 27.6], [-8, 27.6], [-6, 18], [-4, 9.6], [-28, 9.6], [-30, 0], [-32, -8.4], [-8, -8.4], [-6, -18], [-4, -26.4], [-28, -26.4], [-24, -40], [-8, -50], [0, -60]], w: 2.4 },   // THE TRAIL
+                    { k: 'path', pts: [[-6, 18], [18, 14], [30, 3]], w: 1.6 },                                               // to the lookout
+                    { k: 'grove', x: 26, z: 36, r: 7, n: 5, kinds: ['pine'] }, { k: 'grove', x: 12, z: 16, r: 6, n: 4, kinds: ['pine', 'tree_3'] }, { k: 'grove', x: 22, z: -20, r: 7, n: 5, kinds: ['pine'] },
+                    { k: 'grove', x: 20, z: -44, r: 7, n: 4, kinds: ['pine'] }, { k: 'grove', x: -30, z: 52, r: 6, n: 4, kinds: ['pine', 'tree_3'] },
+                    { k: 'scatter', key: 'cave_stone', n: 16, seed: 41 }, { k: 'scatter', key: 'dead_snag', n: 4, seed: 42 }, { k: 'scatter', key: 'fern', n: 6, seed: 43 },
+                ],
+            },
+            doors: [],   // the ways in are the joins: the foothills (the south edge), the summit (the north edge)
+            counters: [],
+            props: [
+                /* THE LOOKOUT (the third ledge, east) */
+                { key: 'park_bench',   x: 32, z: 2, face: 180 }, { key: 'brass_telescope', x: 35.4, z: 1.6, face: 190 },
+                { key: 'railing_1m',   x: 31, z: 6.6, face: 0 }, { key: 'railing_1m', x: 34, z: 6.6, face: 0 },
+                { key: 'signpost',     x: 3, z: 52 }, { key: 'signpost', x: -24, z: -36 },
+            ],
+            agents: [],
+            npcSpots: [
+                { x: -34, z: 18, face: 90, race: 'goatman', say: ['“The trail goes back and forth.” “Why?” “So the mountain can look at you from both sides.”'] },
+                { x: 29.4, z: 1.2, face: 200, race: 'valkraye', say: ['“From here the castle is a toy.” “And from the summit?” “From the summit the castle is a rumour.”'] },
+                { x: -20, z: -42, face: 150, race: 'yeti', say: ['“The rope is faster.” “Is it safe?” “It is faster.”', '“The summit is just there.” “It has been just there for an hour.” “That is how summits work.”'] },
+            ],
+            onlineSpots: [],
+            lines: [
+                '“Five ledges.” “Who counted?” “Everyone, on the way down.”',
+                '“The ropes are for the impatient.” “And the trail?” “For the ones who want to arrive the same person.”',
+            ],
+            spawn: { x: 0, z: 56, face: 0 },
         },
         /* ── THE GREAT HALL — the round table, the dais and the throne, the minstrels' gallery, the loft ── */
         site_prebuilt_camelot_hall: {
@@ -35493,7 +35907,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 6.4, z0: -10.4, x1: 13.6, z1: -10.4 },                                                  // the battlements' rail
                     { k: 'wall', x0: -6, z0: 17, x1: 6, z1: 17, h: 0.5, t: 0.5, key: 'wood' },                               // the guardroom's bench (the rider's ledge)
                     { k: 'path', pts: [[0, 21], [0, 12], [0, 6], [-10, 2], [-10, 0.6]], w: 2.2 },                            // in, and to the stair's foot
-                    { k: 'path', pts: [[21, 6], [10, 6], [6, 8]], w: 2.0 },                                                  // the hall's door
+                    { k: 'path', pts: [[21, 2], [10, 2], [6, 6]], w: 2.0 },                                                  // the hall's door (z 2 since OPEN WORLD Phase 6: back to back with the hall's keep door, the door join)
                     { k: 'path', pts: [[-21, -4], [-14, -2], [-10, 0.6]], w: 2.0 },                                          // the dungeon stair's door
                     { k: 'path', pts: [[10, -21], [10, -14]], w: 2.0 },                                                      // across the battlements to the sky's door
                 ],
@@ -35503,7 +35917,7 @@ const DOOR_HQ = {
                   label: 'THE OUTER WARD', sub: 'THE KEEP DOOR · BACK TO THE BAILEY',
                   action: { room: 'site_prebuilt_camelot_ward', at: 'keep' },
                   desc: 'The keep door from the guardroom side, with the bar across it and the bar’s bracket empty.' },
-                { id: 'hall', wall: 'e', z: 6, leaf: 'leaf_stable',
+                { id: 'hall', wall: 'e', z: 2, leaf: 'leaf_stable',
                   label: 'THE GREAT HALL', sub: 'THE STABLE DOOR · THROUGH TO THE HALL',
                   action: { room: 'site_prebuilt_camelot_hall', at: 'keep' },
                   desc: 'The stable door from the keep side. Through the open top half: the round table, and the light off the rose window on it.' },
@@ -40469,7 +40883,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE WOODS + THE BASEMENT; Phase 5 (2026-09-27): THE HIGHWAY, AREA 51, THE D.U.M.B. (door joins)
+    zones: ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE WOODS + THE BASEMENT; Phase 5 (2026-09-27): THE HIGHWAY, AREA 51, THE D.U.M.B. (door joins); Phase 6: THE KINGDOM, THE MOUNTAIN
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -40503,6 +40917,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                          duskLook: { color: 0xff9860, fog: 0.32, key: 0xffb27a },
                          dayLook: {
                              site_prebuilt_camelot_ward: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },
+                             site_prebuilt_camelot_road: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },   // Phase 6: the crown's road wears the ward's day
                              site_prebuilt_area51_flightline: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
                              /* THE SOUTH (Phase 5): the highway's two parts and the gate wear the flight line's desert day */
                              site_prebuilt_strip_highway: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
@@ -40619,6 +41034,11 @@ const HQ_WORLD_WEENIES = {
     site_prebuilt_camelot_ward: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.8, dist: 0.88, temple: true, label: 'MOUNT OLYMPUS' },
                                  { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.6, dist: 0.93, label: 'DISASTER CITY' }],
     site_prebuilt_olympus_summit: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, y: -0.08, label: 'DISASTER CITY' }],
+    /* THE NORTH (Phase 6): the mountain ahead up the crown's road and from the foothills; the city behind from the switchbacks (the summit is on their stage) */
+    site_prebuilt_camelot_road: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.8, dist: 0.88, temple: true, label: 'MOUNT OLYMPUS' }],
+    site_prebuilt_olympus_foothills: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.9, dist: 0.85, temple: true, label: 'MOUNT OLYMPUS' },
+                                      { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.6, dist: 0.93, label: 'DISASTER CITY' }],
+    site_prebuilt_olympus_switchbacks: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.65, dist: 0.93, y: -0.05, label: 'DISASTER CITY' }],
     site_prebuilt_bermuda_sea: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.85, dist: 0.86, label: 'DISASTER CITY' }],
     site_prebuilt_shasta_slopes: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
     site_prebuilt_haunted_grounds: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.5, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
@@ -40706,32 +41126,37 @@ const HQ_WORLD = {
                 { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
                 { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door', door: 'white', bDoor: 'hangar' },
             ] },
-        /* Z4 — THE KINGDOM (north): the crown's road (planned, stone) from the forecourt to the ward's south gate; the
-           great hall and the keep stand in the ward (door joins); Merlin's undercroft (down) and the castle in the sky
-           (up) stay doors. The ward is rebuilt BUILT at 140 × 120 in Phase 6, in this frame. */
+        /* Z4 — THE KINGDOM (north). OPEN WORLD Phase 6 (2026-09-27): BUILT — the crown's road (the portcullis at its south
+           end, the site's entry; the forecourt's border when the forecourt is built) runs into the ward's approach (a road
+           join); the ward rebuilt BUILT at 140 × 120 in this frame; the great hall and the keep stand BESIDE it, their fronts
+           the north side of the court — door joins (the hall door and the keep door 0.2 m apart back to back, the hall's and
+           the keep's stable doors the same), no longer interiors. Merlin's undercroft (down) and the castle in the sky (up)
+           stay doors. */
         kingdom: { label: 'CAMELOT', ground: 'surface', hub: 'site_prebuilt_camelot_ward', sky: 'site_prebuilt_camelot_ward', clock: true,
             parts: {
-                crown_road:                  { x: 0, z: -120, y: 0, rot: 0, planned: { w: 60, d: 160, h: 9, family: "A'", label: 'THE CROWN\'S ROAD' } },
-                site_prebuilt_camelot_ward:  { x: 0, z: -240, y: 0, rot: 0 },
-                site_prebuilt_camelot_hall:  { x: -30, z: -250, y: 0, rot: 0, interior: true, on: 'site_prebuilt_camelot_ward' },
-                site_prebuilt_camelot_keep:  { x: 22, z: -252, y: 0, rot: 0, interior: true, on: 'site_prebuilt_camelot_ward' },
+                site_prebuilt_camelot_road:  { x: 0, z: -120, y: 0, rot: 0 },
+                site_prebuilt_camelot_ward:  { x: 0, z: -260, y: 0, rot: 0 },
+                site_prebuilt_camelot_hall:  { x: 0, z: -346.2, y: 0, rot: 0 },
+                site_prebuilt_camelot_keep:  { x: -35.2, z: -342.2, y: 0, rot: 0 },
             },
             joins: [
-                { a: 'crown_road', b: 'site_prebuilt_camelot_ward', side: 'n', span: [-6, 6], kind: 'wall' },
-                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_hall', kind: 'door' },
-                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_keep', kind: 'door' },
+                { a: 'site_prebuilt_camelot_road', b: 'site_prebuilt_camelot_ward', side: 'n', span: [-10, 10], kind: 'road' },
+                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_hall', kind: 'door', door: 'hall', bDoor: 'ward' },
+                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'ward' },
+                { a: 'site_prebuilt_camelot_hall', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'hall' },
             ] },
-        /* Z4b — THE MOUNTAIN (north of the kingdom): the foothills 0 → 25 m, the switchbacks 25 → 60 m, the summit lifted
+        /* Z4b — THE MOUNTAIN (north-east of the kingdom, behind the hall). OPEN WORLD Phase 6 (2026-09-27): BUILT — the
+           foothills 0 → 25 m (the ward's postern is the trailhead: a border), the switchbacks 25 → 60 m, the summit lifted
            to 60 m (its own terraces take it to ~70). Heaven's gate on the high terrace stays the door it is. */
-        mountain: { label: 'MOUNT OLYMPUS', ground: 'surface', hub: 'olympus_foothills', sky: 'site_prebuilt_olympus_summit', clock: true,
+        mountain: { label: 'MOUNT OLYMPUS', ground: 'surface', hub: 'site_prebuilt_olympus_foothills', sky: 'site_prebuilt_olympus_summit', clock: true,
             parts: {
-                olympus_foothills:             { x: 0, z: -340, y: 0, rot: 0, rise: 25, planned: { w: 140, d: 120, h: 9, family: "A'", label: 'MOUNT OLYMPUS · THE FOOTHILLS' } },
-                olympus_switchbacks:           { x: 0, z: -460, y: 25, rot: 0, rise: 35, planned: { w: 100, d: 120, h: 9, family: "A'", label: 'MOUNT OLYMPUS · THE SWITCHBACKS' } },
-                site_prebuilt_olympus_summit:  { x: 0, z: -546, y: 60, rot: 0, rise: 9 },
+                site_prebuilt_olympus_foothills:   { x: 84, z: -380, y: 0, rot: 0, rise: 25 },
+                site_prebuilt_olympus_switchbacks: { x: 84, z: -500, y: 25, rot: 0, rise: 35 },
+                site_prebuilt_olympus_summit:      { x: 84, z: -586, y: 60, rot: 0, rise: 9 },
             },
             joins: [
-                { a: 'olympus_foothills', b: 'olympus_switchbacks', side: 'n', span: [-5, 5], y: 25, kind: 'trail' },
-                { a: 'olympus_switchbacks', b: 'site_prebuilt_olympus_summit', side: 'n', span: [-5, 5], y: 60, kind: 'trail' },
+                { a: 'site_prebuilt_olympus_foothills', b: 'site_prebuilt_olympus_switchbacks', side: 'n', span: [-5, 5], y: 25, kind: 'trail' },
+                { a: 'site_prebuilt_olympus_switchbacks', b: 'site_prebuilt_olympus_summit', side: 'n', span: [-5, 5], y: 60, kind: 'trail' },
             ] },
         /* Z5 — THE WOODS (west). OPEN WORLD Phase 4 (2026-09-27): ON THE STAGE, as JOINED PARTS — the clearing, the
            trail, the stair, the redwoods, the pasture, the Grove, the estate's fields and Shasta's slopes stand where their
@@ -40910,11 +41335,11 @@ const HQ_WORLD = {
         { a: 'hq_grounds', b: 'site_prebuilt_downtown_streets', side: 'e', span: [2, 14], kind: 'road' },
         { a: 'hq_grounds', b: 'site_prebuilt_haunted_grounds', side: 'w', span: [-6, 6], kind: 'trail' },
         { a: 'woods_trailhead', b: 'site_prebuilt_fairy_forest_clearing', side: 'w', span: [-6, 6], kind: 'trail' },   // Phase 4: the old path's west end at the clearing's back (its east side)
-        { a: 'hq_grounds', b: 'crown_road', side: 'n', span: [-6, 6], kind: 'road' },
+        { a: 'hq_grounds', b: 'site_prebuilt_camelot_road', side: 'n', span: [-6, 6], kind: 'road' },
         { a: 'site_prebuilt_downtown_streets', b: 'harbour_sea', side: 's', span: [-100, 100], kind: 'shore' },
         { a: 'site_prebuilt_strip_streets', b: 'site_prebuilt_strip_highway', side: 's', span: [-8, 8], kind: 'road' },
         { a: 'site_prebuilt_area51_highway', b: 'site_prebuilt_area51_gate', side: 's', span: [-8, 8], kind: 'road' },
-        { a: 'site_prebuilt_camelot_ward', b: 'olympus_foothills', side: 'n', span: [-6, 6], kind: 'trail' },
+        { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_olympus_foothills', side: 'n', span: [25, 33], kind: 'trail' },   // Phase 6: THE POSTERN in the ward's north wall
     ],
     retires: [],   // THE WELL ROOM (site_prebuilt_hollow_earth_shaft, §8.3) was DELETED in Phase 4 (2026-09-27): the five wells land in five different rooms
 };
@@ -41125,6 +41550,23 @@ function hqStageNeighbours(roomId) {
             if (nb.spans.some(sp => !sp.door && sp.side === d.wall && t >= sp.t0 - 0.01 && t <= sp.t1 + 0.01)) nb.links.push(d.id);   // a door join's doorway (sp.door) keeps its door: it swings
         });
     });
+    /* THE PARTS BESIDE (Phase 6, 2026-09-27): a part DOOR-joined to an edge-joined neighbour stands on that neighbour's
+       ground as one building with it (Camelot's great hall and keep behind the ward's north wall), so it is drawn too —
+       seen from the foothills, the castle stands whole, not a ward with a hole where its hall should be. It has no span
+       on this part (`spans: []`, `beside: true`, `via` = the neighbour it hangs on): the stage builds and places it, the
+       crossing never leads into it (hqStageWhere skips a part with no span; you reach it through `via`'s door). */
+    const edgeNbs = out.filter(nb => nb.spans.some(sp => !sp.door));
+    edgeNbs.forEach(nb => {
+        hqWorldJoins(nb.id).forEach(j => {
+            if (j.kind !== 'door') return;
+            const other = j.a === nb.id ? j.b : j.a;
+            if (other === roomId || out.some(n => n.id === other) || !hqStagePart(other)) return;
+            const rel = hqStageRel(roomId, other); if (!rel) return;
+            const S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
+            const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+            out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via: nb.id });
+        });
+    });
     return out;
 }
 /* THE NEARBY PARTS (2026-09-27, the woods' floating grass): every OTHER staged part that can stand on ONE stage with this
@@ -41185,7 +41627,10 @@ function hqStageJoinedDoor(roomId, doorId) {
 function hqStageWhere(hw, hd, nbs, x, z, hys) {
     const over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
     if (!(over > (hys == null ? HQ_WORLD_RULES.crossHys : hys))) return null;
-    for (let i = 0; i < nbs.length; i++) { const r = nbs[i].rect; if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return nbs[i].id; }
+    for (let i = 0; i < nbs.length; i++) {
+        if (!(nbs[i].spans && nbs[i].spans.length)) continue;   // a part beside (no span): drawn, never crossed into
+        const r = nbs[i].rect; if (x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1) return nbs[i].id;
+    }
     return null;
 }
 /* the joined span the point stands in front of: the point lies within `pad` of (or past) the current part's edge on a
@@ -41743,7 +42188,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
     site_prebuilt_hell_pit: { x: -0.5, z: 0 },   // THE PIT: the bowl floor
     site_prebuilt_heaven_gate: { x: -1.5, z: 1 },   // THE CLOUD FIELDS: under the dais
-    site_prebuilt_camelot_ward: { x: 0, z: -4 },   // THE OUTER WARD: the bailey
+    site_prebuilt_camelot_road: { x: 10, z: 60 },   // THE CROWN'S ROAD: on the verge by the portcullis (OPEN WORLD Phase 6: the road is Camelot's entry)
     site_prebuilt_skinwalker_fields: { x: -4, z: 6 },   // THE CORN FIELDS: by the circle
     site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
     site_prebuilt_atlantis_temple: { x: 0, z: 0 },   // THE TEMPLE: the dais
@@ -41791,7 +42236,7 @@ function hqAreaRoom(mapId, A) {
     ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
     const gen = A.gen ? Object.assign({}, A.gen) : null;
     if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
-    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, { features: features });
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, { features: features });
     const label = String(meta.label || id).toUpperCase();
     const room = {
         label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
@@ -42112,6 +42557,7 @@ const HQ_AREA_SPECS = {
        standing ON it — a door you climb to —, THE LIGHTNING SPIRE's tape seen from the terrace (the door gun's), THE FORGE's lava under THE ANVIL
        TERRACE with THE LOFT up a chain, the stepping clouds off the court, the Lodge's painting on the north wall */
     prebuilt_olympus: { part: 'summit', label: 'THE SUMMIT', sub: 'THE COURT · THE THRONE · THE FORGE · THE SPIRE', w: 62, d: 52, look: 'heaven', fogD: 0.022,
+        outer: { keep: 1, lift: -26 },   // OPEN WORLD Phase 6 (2026-09-27): the summit stands 60 m up — the ground past its field falls away (the switchbacks' face below it is on the stage)
         parti: 'A marble court on a cloud where every stair goes up to a throne nobody sits in, and the lightning comes from below.', typology: 'hub',
         floor: 'marble_light', cliff: 'cloud_thick', path: 'gold', floorColor: 0xf8f8f2, cliffColor: 0xf0eee8,
         gen: { kind: 'rooms', seed: 12, loops: 3, rMin: 7, rMax: 13, wallH: 2.2, thicket: false, open: [{ x: 18, z: 2, r: 7.5 }] }, noise: { amp: 0.06, scale: 9 },   // the forge's bank stays clear of the cloud banks (a dry pocket between lava and a bank was a trap the compiler had to cut a ramp out of)
@@ -45833,7 +46279,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_dumb_motorpool: { tape: { x: -8.0, z: 6.0 } },
     site_prebuilt_dumb_sublevel7: { tape: { x: 0.0, z: 0.0 } },
     /* CAMELOT CASTLE (2026-09-18): the keep tower, the loft over the gallery, the tower top, the ossuary shelf, the spire — the door gun's five */
-    site_prebuilt_camelot_ward:    { tape: { x: 12.0, z: -33.0 } },
+    site_prebuilt_camelot_ward:    { tape: { x: 12.0, z: -33.0 } },   // OPEN WORLD Phase 6: the keep tower is gone (the ward rebuilt BUILT) — the tape lies in the gardens before the hall
     /* THE LEY LINES (2026-09-18): THE OMPHALOS in the nexus (2.3 m under a 3.2 m ceiling — the shot is from the sunken floor), THE GREAT TRILITHON's lintel, THE SENTINEL in enclosure D, THE SPHINX's head, THE LOAD on the crane's hook */
     site_prebuilt_gobekli_leylines: { tape: { x: -50, z: -25 } },
     site_prebuilt_stonehenge_henge: { tape: { x: 0, z: 5.6 } },

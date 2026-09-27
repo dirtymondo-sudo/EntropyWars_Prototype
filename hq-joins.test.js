@@ -78,7 +78,8 @@ test('the city\'s edge joins are open sides too, and each side of a join stitche
   assert.equal(ra.m, HQ_WORLD_RULES.stitchM);
  }
  assert.deepEqual(plain(D.hqTerrainStitchRows('medwing')), [], 'a door join never stitches a field');
- assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_camelot_ward')), [], 'a zone the stage does not walk is not stitched yet');
+ assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_heaven_stair')), [], 'a zone the stage does not walk is not stitched yet');
+ assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_camelot_ward').map(r => r.other)).sort(), ['site_prebuilt_camelot_road', 'site_prebuilt_olympus_foothills'], 'the ward (OPEN WORLD Phase 6) stitches to the road and the foothills');
 });
 
 test('the stitch: Downtown and the Strip compile alone to fields that meet along their join', heavy, () => {
