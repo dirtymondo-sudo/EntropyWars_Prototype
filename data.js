@@ -23496,7 +23496,7 @@ const DOOR_HQ = {
            prop rides the sea's surface wherever it stands (the placer reads terrain.sea); `hover` = it hangs that far over the floor. ── */
         skiff:          { proc: 'skiff',          span: 4.8, foot: 0, block: true, vehicle: 'boat', float: true },   // THE SKIFF: the rowboat hull (the misc GLB when it lands) under a mast and a sail
         submarine:      { proc: 'submarine',      span: 6.5, foot: 0, block: true, vehicle: 'sub', hover: 1.2, light: { color: 0xcfefff, intensity: 0.8, dist: 14, y: 1.0 } },   // THE BATHYSCAPHE: a brass hull, a tower, two lamps
-        lighthouse:     { proc: 'lighthouse',     h: 11, foot: 1.6, block: true, glow: { y: 10.2, size: 5.0, color: 0xfff1c8 }, light: { color: 0xfff1c8, intensity: 1.2, dist: 30, y: 10.2 } },   // the beam turns (a ticker)
+        lighthouse:     { proc: 'lighthouse',     h: 11, foot: 1.6, block: true, glow: { y: 10.2, size: 5.0, color: 0xfff1c8 }, light: { color: 0xfff1c8, intensity: 1.2, dist: 30, y: 10.2, night: true } },   // the beam turns (a ticker); `night`: THE WORLD CLOCK lights it at dusk (Phase 3)
         sea_buoy:       { proc: 'sea_buoy',       h: 2.2, foot: 0, float: true, glow: { y: 2.0, size: 1.6, color: 0xff5a4a }, light: { color: 0xff6a5a, intensity: 0.55, dist: 9, y: 2.0 } },   // the maelstrom's ring of red lamps
         ship_wreck:     { file: 'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',                 base: 'misc', span: 16, foot: 0 },   // the misc `wreck` file standing on the floor (the same-thing rule — MODEL_INDEX §9)
         kelp:           { proc: 'kelp',           h: 4.5, foot: 0 },                                                                        // a sway in the vertex shader (_hqKelpMat)
@@ -23783,7 +23783,7 @@ const DOOR_HQ = {
         iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
         evac_button:     { proc: 'evac_button',     h: 0.3,  foot: 0,    wall: true, mount: 1.2, depth: 0.1, glow: { y: 0.15, size: 0.8, color: 0xff3020 }, light: { color: 0xff3020, intensity: 0.5, dist: 3, y: 0.15 } },   // Room 4B: the red button under its cover
         scoreboard:      { proc: 'scoreboard',      h: 8.8,  foot: 0.5,  rect: { hw: 5.5, hd: 0.35 }, block: true, glow: { y: 6.3, size: 9.0, color: 0x86e8ff } },   // THE BOWL (2026-09-26): over the north concourse
-        flood_mast:      { proc: 'flood_mast',      h: 7.0,  foot: 0.35, block: true, glow: { y: 6.6, size: 5.0, color: 0xeaf4ff }, light: { color: 0xeaf4ff, intensity: 1.2, dist: 26, y: 6.6 } },   // THE FLIGHT LINE (2026-09-18): a floodlight mast — the outdoor room's own light
+        flood_mast:      { proc: 'flood_mast',      h: 7.0,  foot: 0.35, block: true, glow: { y: 6.6, size: 5.0, color: 0xeaf4ff }, light: { color: 0xeaf4ff, intensity: 1.2, dist: 26, y: 6.6, night: true } },   // (`night`: on at dusk, THE WORLD CLOCK) THE FLIGHT LINE (2026-09-18): a floodlight mast — the outdoor room's own light
         saucer_rig:      { proc: 'saucer_rig',      h: 4.6,  foot: 3.2,  block: true, glow: { y: 2.9, size: 7.0, color: 0xbfe0ff }, light: { color: 0xdfefff, intensity: 1.5, dist: 22, y: 3.4 } },   // HANGAR 18 (2026-09-18): the saucer on its test rig under a tarp, the floodlights on it — the near weenie
         warning_tape:    { proc: 'warning_tape',    h: 0.01, foot: 0 },                                                       // Room 4B: the striped line on the floor you do not cross
         lone_gun:        { proc: 'lone_gun',        h: 0.14, foot: 0 },                                                       // Room II: the gun on the table (tabletop: y = the table top)
@@ -41616,9 +41616,146 @@ const HQ_STAGE_RULES = {
        file first, Phase 1's rule). `trkMs` = how often the tracker re-walks a waiting part. */
     nearPropM: 60, propsGate: 'near', trkMs: 250,
 };
-/* THE EXPLORATION DAY (§4.4; Phase 3 builds it — the table lives here so the phases share one set of numbers). */
-const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 20.0], lampsOn: 18.0, lampsOff: 6.5,
-                         sun: { noonEl: 62, riseAz: 100, setAz: 260 }, moon: { el: 35 } };
+/* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every zone with `clock: true`: a day of `dayMin` real
+   minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
+   a battle runs or a card loads). The hour is the PROFILE's (`door.hq.clock = { h, at, run }`): a player who closes the game
+   mid-walk finds the world ran on by the minutes since (`run`); one who left from a pause, a fight or the menu finds the
+   hour they left. `start` = a new profile's hour. The sun rises at `sun.rise` on `riseAz` (deg from the north, clockwise),
+   stands `noonEl` at the middle of the day and sets at `sun.set` on `setAz`; the moon crosses the night sky the same way
+   to `moon.el`. `dawn` / `dusk` = the hours the sky eases day ⇄ night over (and the horizon glows warm); `lampsOn` /
+   `lampsOff` = the hours a night lamp (catalogue `light.night`, the flood masts, the lit windows of a far skyline) fades in
+   and out over `lampFadeH`. `keyMinEl` = the key light never stands lower than this (a sun on the horizon would cast
+   shadows longer than the shadow map). `day` / `night` = the look a room authored for the OTHER half wears (a day room's
+   night fog is its own × `night.fogK` over `night.fog`; a night room's day is `day`), `dayLook` = a night room's own day
+   look by room id; `duskLook` = the warm horizon's colour, its share of the fog at the peak, the low sun's key colour. `lock` = the rooms that keep their hour (fork 4's default + the places whose night IS the place: the
+   ghost ship, the grove's rite, the haunted grounds, the skinwalker's corn, the observatory's telescope) — the value is the
+   hour their dome's sun and moon stand at; their lights, fog and lamps stay as authored (a shell's own `sky.lock` too).
+   `variants` = 'world' (fork 11's default): the room variants' `when.hours` read this hour, not the real clock. */
+const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 20.0], lampsOn: 18.0, lampsOff: 6.5, lampFadeH: 0.5,
+                         sun: { noonEl: 62, riseAz: 100, setAz: 260, rise: 6.0, set: 19.0 }, moon: { el: 35 }, keyMinEl: 18,
+                         day: { fog: 0xb4c6d8, tint: 0x9fc4e8, clouds: 0.3 },
+                         night: { fog: 0x0a1020, fogK: 0.2, tint: 0x1a2236 },
+                         duskLook: { color: 0xff9860, fog: 0.32, key: 0xffb27a },
+                         dayLook: {
+                             site_prebuilt_camelot_ward: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },
+                             site_prebuilt_area51_flightline: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
+                             /* the woods' six clearings (one shell): a sunlit green haze under the canopy */
+                             site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_trail: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_pasture: { fog: 0xa6bca2, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_stair: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                         },
+                         lock: { site_prebuilt_strip_streets: 23.0, site_prebuilt_revenge_deck: 2.0, site_prebuilt_bohemian_grove_grove: 23.5,
+                                 site_prebuilt_haunted_grounds: 0.5, site_prebuilt_skinwalker_fields: 1.5, site_prebuilt_vatican_observatory: 22.0 },
+                         saveMs: 30000, variants: 'world' };
+/* THE CLOCK'S READERS (pure: the renderer and map.js call them; nothing here holds the live hour) */
+function hqClockRate() { return 24 / (Math.max(1, HQ_WORLD_CLOCK.dayMin) * 60); }   // world hours per real second
+function hqClockNorm(h) { h = +h; if (!isFinite(h)) h = HQ_WORLD_CLOCK.start; h %= 24; return h < 0 ? h + 24 : h; }
+/* the profile's hour at `nowMs` (Date.now()): the saved hour, plus the minutes since when it was saved mid-walk */
+function hqClockRead(profile, nowMs) {
+    const rec = profile && profile.door && profile.door.hq && profile.door.hq.clock;
+    if (!rec || !isFinite(+rec.h)) return hqClockNorm(HQ_WORLD_CLOCK.start);
+    let h = +rec.h;
+    if (rec.run && isFinite(+rec.at) && isFinite(+nowMs) && nowMs > rec.at) h += ((nowMs - rec.at) / 1000) * hqClockRate();
+    return hqClockNorm(h);
+}
+function hqClockWrite(profile, h, nowMs, run) {
+    if (!profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    profile.door.hq.clock = { h: Math.round(hqClockNorm(h) * 10000) / 10000, at: Math.round(+nowMs || 0), run: !!run };
+    return profile.door.hq.clock;
+}
+function _hqClkSmooth(a, b, x) { if (b === a) return x >= b ? 1 : 0; const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+/* is `h` inside [a, b) on a 24-hour dial (wrapping past midnight) */
+function _hqClkIn(h, a, b) { return (a <= b) ? (h >= a && h < b) : (h >= a || h < b); }
+/* the sky at hour `h`: the sun's and the moon's azimuth / elevation (deg), `day` 0..1 (eased through dawn and dusk),
+   `dusk` 0..1 (the warm horizon: peaks at the middle of dawn and of dusk), `lamp` 0..1 (the night lamps), `isDay` */
+function hqWorldSun(h) {
+    const C = HQ_WORLD_CLOCK, S = C.sun, M = C.moon;
+    h = hqClockNorm(h);
+    const rise = S.rise, set = S.set, dayLen = set - rise, nightLen = 24 - dayLen;
+    let sunAz, sunEl, moonAz, moonEl;
+    if (h >= rise && h <= set) {
+        const t = (h - rise) / dayLen;
+        sunAz = S.riseAz + (S.setAz - S.riseAz) * t; sunEl = S.noonEl * Math.sin(Math.PI * t);
+        moonAz = S.setAz + (360 - (S.setAz - S.riseAz)) * t; moonEl = -M.el * Math.sin(Math.PI * t);   // the moon under the far side of the world (the sun's night path)
+    } else {
+        const t = ((h - set + 24) % 24) / nightLen;
+        sunAz = S.setAz + (360 - (S.setAz - S.riseAz)) * t; sunEl = -S.noonEl * 0.6 * Math.sin(Math.PI * t);
+        moonAz = S.riseAz + (S.setAz - S.riseAz) * t; moonEl = M.el * Math.sin(Math.PI * t);
+    }
+    const up = _hqClkSmooth(C.dawn[0], C.dawn[1], h), down = 1 - _hqClkSmooth(C.dusk[0], C.dusk[1], h);
+    const day = Math.max(0, Math.min(1, Math.min(up, down)));
+    const tri = (a, b) => { if (h < a || h > b) return 0; const m = (a + b) / 2, hw = (b - a) / 2 + 0.35; return Math.max(0, 1 - Math.abs(h - m) / hw); };
+    const dusk = Math.max(tri(C.dawn[0] - 0.35, C.dawn[1] + 0.35), tri(C.dusk[0] - 0.35, C.dusk[1] + 0.35));
+    const f = C.lampFadeH || 0.5;
+    let lamp;
+    if (_hqClkIn(h, C.lampsOn + f, C.lampsOff)) lamp = 1;
+    else if (_hqClkIn(h, C.lampsOn, C.lampsOn + f)) lamp = (hqClockNorm(h - C.lampsOn)) / f;
+    else if (_hqClkIn(h, C.lampsOff, C.lampsOff + f)) lamp = 1 - hqClockNorm(h - C.lampsOff) / f;
+    else lamp = 0;
+    return { h, sunAz: ((sunAz % 360) + 360) % 360, sunEl, moonAz: ((moonAz % 360) + 360) % 360, moonEl, day, dusk: Math.min(1, dusk), lamp: Math.max(0, Math.min(1, lamp)), isDay: sunEl > 0 };
+}
+/* a bearing (deg from the north, clockwise) + an elevation (deg) → a unit vector in a room's metres (north = −z) turned by
+   the room's frame (`rot` quarter turns: a ground direction seen from the room) */
+function hqWorldDir(az, el, rot) {
+    const a = (az + ((rot || 0) % 4) * 90) * Math.PI / 180, e = el * Math.PI / 180;
+    return { x: Math.sin(a) * Math.cos(e), y: Math.sin(e), z: -Math.cos(a) * Math.cos(e) };
+}
+/* the room's place on the clock: null = no clock (an interior, a zone without one, a room in no zone, a room without a sky);
+   else { zone, rot, locked, hour (the locked hour), dayLook } */
+function hqRoomClock(roomId) {
+    const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell;
+    if (!S || !S.open || !S.sky) return null;
+    const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
+    if (!F || F.interior) return null;
+    const Z = HQ_WORLD.zones[F.zone];
+    if (!Z || !Z.clock) return null;
+    const L = HQ_WORLD_CLOCK.lock || {};
+    const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
+    return { zone: F.zone, rot: F.rot || 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
+}
+/* a far target's bearing from a room, in the room's own compass (a ground weenie: THE WEENIES' `toward`) — null when the two
+   do not stand on one ground */
+function hqWorldBearing(roomId, targetId) {
+    const A = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null, B = (typeof hqWorldFrame === 'function') ? hqWorldFrame(targetId) : null;
+    if (!A || !B || A.ground !== B.ground) return null;
+    const dx = B.x - A.x, dz = B.z - A.z;
+    if (Math.hypot(dx, dz) < 1) return null;
+    const deg = Math.atan2(dx, -dz) * 180 / Math.PI + (A.rot || 0) * 90;
+    return { deg: ((deg % 360) + 360) % 360, dist: Math.hypot(dx, dz) };
+}
+/* THE WEENIES ON THE GROUND (Phase 3: the landmark kinds `mountain`, `tower`, `gate`): far places that stand on this ground,
+   hung on a room's horizon at their true bearing from the frames (`toward` = the place's room or part). The shell's own
+   `sky.landmarks` (the sky castle, the stairway, the waterspout) stay; a room's rows here are added to them. When a later
+   phase draws the place itself (the far shells, Phase 10) its row here goes. */
+const HQ_WORLD_WEENIES = {
+    site_prebuilt_downtown_streets: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
+    site_prebuilt_stadium_bowl: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
+    site_prebuilt_strip_streets: [{ kind: 'gate', toward: 'area51_gate', s: 0.8, dist: 0.86, label: 'AREA 51 · THE GATE' },
+                                  { kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.5, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
+    site_prebuilt_area51_flightline: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.8, dist: 0.9, label: 'DISASTER CITY' }],
+    site_prebuilt_camelot_ward: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.8, dist: 0.88, temple: true, label: 'MOUNT OLYMPUS' },
+                                 { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.6, dist: 0.93, label: 'DISASTER CITY' }],
+    site_prebuilt_olympus_summit: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, y: -0.08, label: 'DISASTER CITY' }],
+    site_prebuilt_bermuda_sea: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.85, dist: 0.86, label: 'DISASTER CITY' }],
+    site_prebuilt_shasta_slopes: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
+    site_prebuilt_haunted_grounds: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.5, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
+};
+/* a room's horizon: its shell's landmarks + its ground weenies at their bearings (the renderer's _hqBuildSky reads this) */
+function hqRoomLandmarks(roomId) {
+    const R = (DOOR_HQ.rooms || {})[roomId], sky = R && R.shell && R.shell.sky;
+    const out = (sky && Array.isArray(sky.landmarks)) ? sky.landmarks.slice() : [];
+    (HQ_WORLD_WEENIES[roomId] || []).forEach(w => {
+        const b = hqWorldBearing(roomId, w.toward);
+        if (!b) return;
+        out.push(Object.assign({}, w, { deg: Math.round(b.deg * 10) / 10, far: Math.round(b.dist) }));
+    });
+    return out;
+}
 const HQ_WORLD = {
     grounds: {
         surface: { label: 'THE SURFACE', note: 'the forecourt at the origin; the kingdom and the mountain north, the city east, the coast off the docks, the highway south to Area 51, the woods west' },
@@ -52578,10 +52715,16 @@ function hqVariantRoll(roomId, profile, opts) {
     const visits = hq.visits || 0;
     const now = (opts.now != null) ? new Date(opts.now) : new Date();
     const day = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3, fork 11's default): `when.hours` reads the WORLD's hour — `opts.hour` (map.js
+       names one; map.js's live hour, window._hqClockHour, when it runs), else the profile's saved hour; `opts.now` (a test's pinned Date) and HQ_WORLD_CLOCK.variants
+       'real' keep the real clock */
+    const hour = (opts.hour != null && isFinite(+opts.hour)) ? Math.floor(hqClockNorm(opts.hour))
+               : (opts.now == null && HQ_WORLD_CLOCK.variants === 'world') ? Math.floor((typeof window !== 'undefined' && typeof window._hqClockHour === 'function') ? hqClockNorm(window._hqClockHour()) : hqClockRead(profile, Date.now()))
+               : now.getHours();
     for (const vid of ids) {
         const w = (base.variants[vid] && base.variants[vid].when) || {};
         if (w.each) continue;   // Phase 8 stage 2: rolled on EVERY entry by hqVariantRollEach (the Mandela room), never here
-        if (w.hours && hqVariantHours(now.getHours(), w.hours)) return vid;
+        if (w.hours && hqVariantHours(hour, w.hours)) return vid;
         const p = (typeof w.p === 'number') ? w.p : 0;
         if (p > 0 && (hqHash(roomId + '|' + vid + '|' + seed + '|' + day + '|' + visits) % 10000) / 10000 < p) return vid;
     }
@@ -52635,7 +52778,7 @@ function hqRollRoomVariants(profile, opts) {
     const ids = Object.keys(DOOR_HQ.rooms).filter(id => hqRoomVariantIds(id).some(v => { const w = hqRoomBase(id).variants[v] && hqRoomBase(id).variants[v].when; return !(w && w.each); }));   // Phase 8 stage 2: a room whose variants are all per-entry (the Mandela room) is rolled on entry, not per visit
     for (const id of ids) {
         const f = force ? force[id] : (typeof opts.force === 'string' ? opts.force : undefined);
-        const vid = hqVariantRoll(id, profile, { force: (f === undefined) ? undefined : (f == null ? '' : f), now: opts.now });
+        const vid = hqVariantRoll(id, profile, { force: (f === undefined) ? undefined : (f == null ? '' : f), now: opts.now, hour: opts.hour });
         hqApplyRoomVariant(id, vid);
         out[id] = vid;
     }
@@ -52932,6 +53075,7 @@ if (typeof window !== 'undefined') {
     window.hqRoomBase = hqRoomBase;
     window.hqRoomVariantIds = hqRoomVariantIds;
     window.hqVariantRoll = hqVariantRoll;
+    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqWorldBearing = hqWorldBearing; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
     window.hqApplyRoomVariant = hqApplyRoomVariant;
     window.hqRollRoomVariants = hqRollRoomVariants;
     window.hqVariantRollEach = hqVariantRollEach;

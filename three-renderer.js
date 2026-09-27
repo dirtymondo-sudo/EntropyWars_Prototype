@@ -22093,6 +22093,9 @@ const ThreeRenderer = (function () {
         'uniform float uSkyFlow; uniform float uSunNear; uniform float uMoonNear; uniform float uSkyYaw; uniform float uSkyLift;',
         // THE DAY SKY (2026-09-21): env.day (0..1) = a real daylight atmosphere over the cosmic backdrop; env.clouds (0..1) = the cover
         'uniform float uSkyDay; uniform float uSkyClouds;',
+        // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3, 2026-09-26): the HQ's sun and moon where the exploration day puts them (uSunClock 1;
+        // the battle and the menu keep the fixed pair, 0), and the warm horizon of dawn and dusk (uDusk 0..1)
+        'uniform vec3 uSunDir; uniform vec3 uMoonDir; uniform float uSunClock; uniform float uDusk;',
         '#define PI 3.14159265359',
         '#define TAU 6.28318530718',
         'float hash11(float p){p=fract(p*0.1031);p*=p+33.33;p*=p+p;return fract(p);}',
@@ -22246,8 +22249,8 @@ const ThreeRenderer = (function () {
         '  float bloodM=step(0.5,uSkyEvent)*step(uSkyEvent,1.5)*uSkyAmt;\n' +
         '  float bsun=step(1.5,uSkyEvent)*step(uSkyEvent,2.5)*uSkyAmt;\n' +
         '  float lun=step(2.5,uSkyEvent)*uSkyAmt;\n' +
-        '  vec3 sunDir=normalize(vec3(0.50+0.03*sin(t*0.05),0.40,-0.58));\n' +
-        '  vec3 moonDir=normalize(vec3(-0.50,0.40,0.56+0.03*sin(t*0.04)));\n' +
+        '  vec3 sunDir=normalize(mix(vec3(0.50+0.03*sin(t*0.05),0.40,-0.58),uSunDir,uSunClock));\n' +
+        '  vec3 moonDir=normalize(mix(vec3(-0.50,0.40,0.56+0.03*sin(t*0.04)),uMoonDir,uSunClock));\n' +
         '  float el=rd.y; float az=atan(rd.x,rd.z); float lat=asin(clamp(el,-1.0,1.0))/(PI*0.5);\n' +
         '  vec2 sph=vec2(az/PI, lat);\n' +
         '  vec2 nd=vec2(az/PI, el);\n' +
@@ -22346,6 +22349,9 @@ const ThreeRenderer = (function () {
         '    dsky=mix(dsky,cloudC,cover*0.92);\n' +
         '    float dlum=dot(dsky,vec3(0.299,0.587,0.114)); dsky=mix(dsky,vec3(dlum)*vec3(0.92,0.95,1.02),dcl*0.45); dsky*=1.0-0.30*wStorm;\n' +
         '    col=mix(col,dsky,dayK); }\n' +
+        // ── THE WORLD CLOCK's dawn and dusk (Phase 3): the band over the horizon goes warm, most toward the low sun ──
+        '  if(uDusk>0.001){ float lowB=1.0-smoothstep(-0.06,0.42,el); float toSun=0.45+0.55*pow(max(dot(normalize(vec3(rd.x,0.0,rd.z)+1e-4),normalize(vec3(sunDir.x,0.0,sunDir.z)+1e-4)),0.0),2.0);\n' +
+        '    col=mix(col,col*vec3(1.25,0.82,0.62)+vec3(0.30,0.12,0.05)*toSun,clamp(uDusk*lowB*0.85,0.0,1.0)); }\n' +
         // ── per-map sky wash (state.mapEnv.tint): pull the dome toward the
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
         '  if(uMapTintAmt>0.001){ float ml=dot(col,vec3(0.299,0.587,0.114));\n' +
@@ -22399,7 +22405,12 @@ const ThreeRenderer = (function () {
                 uSkyLift: { value: 0.0 },   // rev 2: a `rise` map lifts the clouds
                 // THE DAY SKY (2026-09-21): env.day / env.clouds — 0 on every row that never said otherwise (the cosmic dome as before)
                 uSkyDay: { value: 0.0 },
-                uSkyClouds: { value: 0.0 }
+                uSkyClouds: { value: 0.0 },
+                // THE WORLD CLOCK (Phase 3): written by _hqTickSky in a clocked room; 0 everywhere else (the fixed sun and moon)
+                uSunDir: { value: new THREE.Vector3(0.50, 0.40, -0.58) },
+                uMoonDir: { value: new THREE.Vector3(-0.50, 0.40, 0.56) },
+                uSunClock: { value: 0.0 },
+                uDusk: { value: 0.0 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -22627,6 +22638,7 @@ const ThreeRenderer = (function () {
         _envUni.uMapStars.value = S.mapStars * (1 - 0.7 * _motion.sunNear);   // stars drown beside the sun (MOVING MAPS)
         _envUni.uMapNebula.value = S.mapNebula;
         _envUni.uSkyDay.value = S.mapDay; _envUni.uSkyClouds.value = S.mapClouds;
+        _envUni.uSunClock.value = 0; _envUni.uDusk.value = 0;   // THE WORLD CLOCK (Phase 3) is the building's: the battle keeps its fixed sun
         // map fog feeds the same uFog* pipeline as the retro-fog filter (which
         // wins while enabled); scenery haze shares those uniforms and follows
         var fogKey = (me && me.fog) ? (me.fog.color + ',' + me.fog.amount + ',' + me.fog.top + ',' + me.fog.band) : '';
@@ -43596,6 +43608,82 @@ const ThreeRenderer = (function () {
        `castle` = a curtain wall, four corner towers and the keep with its lit windows (Camelot).
        Adding a kind = one builder here; the woods' rooms name theirs in data.js HQ_WOODS_LANDMARKS. */
     var _hqLandmarkBuilders = {
+        /* THE WEENIES ON THE GROUND (OPEN_WORLD_PLAN Phase 3, fork 14's default kinds; data.js HQ_WORLD_WEENIES hangs them at the
+           true bearing of the place they stand for). MOUNTAIN: a broad massif — a tall snow-capped summit over two shoulders
+           and a ridge of lower peaks, the lenticular over the top; `temple` = a marble colonnade glinting on the summit
+           (Olympus). `s` scales the whole. */
+        mountain: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
+            var rock = _hqMat('mountain', 6, 4, { color: 0x7f8798, shininess: 2, specular: 0x080808 });
+            var rockD = _hqMat('mountain', 5, 3, { color: 0x69707f, shininess: 2, specular: 0x060606 });
+            var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
+            var H0 = 64 * s, R0 = 46 * s;
+            var cone = function (r, h, x, z, mat, seg) { var c = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, seg || 10), mat); c.position.set(x * U, h * U / 2, z * U); c.rotation.y = R() * Math.PI; g.add(c); return c; };
+            cone(R0, H0, 0, 0, rock, 12);
+            cone(R0 * 0.9, H0 * 0.66, R0 * 0.75, R0 * 0.15, rockD, 10);
+            cone(R0 * 0.85, H0 * 0.6, -R0 * 0.8, R0 * 0.1, rockD, 10);
+            [[1.55, 0.42, 0.62], [-1.6, 0.36, 0.58], [2.2, 0.28, 0.5], [-2.25, 0.25, 0.46]].forEach(function (q) { cone(R0 * q[2], H0 * q[1], R0 * q[0], R0 * (0.25 + R() * 0.3), rock, 8); });
+            var capH = H0 * 0.34; var cap = new THREE.Mesh(new THREE.ConeGeometry(R0 * 0.36 * U + 0.4 * U, capH * U, 12), snow); cap.position.y = (H0 - capH / 2) * U + 0.3 * U; g.add(cap);
+            var cap2 = new THREE.Mesh(new THREE.ConeGeometry(R0 * 0.3 * U, H0 * 0.2 * U, 10), snow); cap2.position.set(R0 * 0.75 * U, (H0 * 0.66 - H0 * 0.1) * U + 0.2 * U, R0 * 0.15 * U); g.add(cap2);
+            if (o.temple) {
+                /* the gods' house: a stylobate, eight columns, a pediment — small at this distance, it reads as a white glint on the top */
+                var marble = _hqMat('marble_light', 2, 1, { color: 0xfff8ea, shininess: 10 });
+                var ty = H0 * U - 0.4 * U, tw = 7 * s, td = 4.5 * s;
+                var base = _hqBox(tw, 0.8 * s, td, marble); base.position.set(0, ty + 0.4 * s * U, 0); g.add(base);
+                for (var i = 0; i < 8; i++) { var cx = (-tw / 2 + 0.5 * s + (i % 4) * (tw - 1 * s) / 3), cz = (i < 4 ? -1 : 1) * (td / 2 - 0.5 * s); var col = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * s * U, 0.3 * s * U, 3.4 * s * U, 8), marble); col.position.set(cx * U, ty + (0.8 + 1.7) * s * U, cz * U); g.add(col); }
+                var roof = _hqBox(tw + 0.4 * s, 0.7 * s, td + 0.4 * s, marble); roof.position.set(0, ty + 4.55 * s * U, 0); g.add(roof);
+                var glint = _hzGlowSprite(9 * s * U, 0xfff2d0, 0.45, 0.08, 0.04, 0.5); glint.position.set(0, ty + 3 * s * U, 0); g.add(glint);
+            }
+            try { var len = _hzLenticular(R); if (len) { len.position.set(0, (H0 + 10 * s) * U, 0); g.add(len); } } catch (e) {}
+            return g;
+        },
+        /* TOWER: a far city's skyline — a cluster of towers of mixed height round one tall spire, their windows a grid of
+           warm glows that are NIGHT LAMPS (`_ew_night`: the clock lights them at dusk), a red beacon blinking on the spire */
+        tower: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
+            var glassA = _hqMat(null, 1, 1, { color: 0x5a6878, shininess: 60, specular: 0x445566 });
+            var glassB = _hqMat(null, 1, 1, { color: 0x6c7482, shininess: 40, specular: 0x333b44 });
+            var stone = _hqMat(null, 1, 1, { color: 0x8a8580, shininess: 6 });
+            var n = 9, spire = null;
+            for (var i = 0; i < n; i++) {
+                var tall = (i === 0), h = (tall ? 78 : 26 + R() * 40) * s, w = (tall ? 12 : 8 + R() * 8) * s, d = (tall ? 12 : 8 + R() * 7) * s;
+                var x = tall ? 0 : (R() - 0.5) * 70 * s, z = tall ? 0 : (R() - 0.5) * 22 * s;
+                var b = _hqBox(w, h, d, [glassA, glassB, stone][i % 3]); b.position.set(x * U, h / 2 * U, z * U); g.add(b);
+                /* a few lit windows on the face toward the room (+z), not a sheet: night lamps */
+                var rows = Math.max(2, Math.floor(h / (9 * s))), lit = 0;
+                for (var r = 1; r < rows && lit < 5; r++) {
+                    if (R() < 0.5) continue;
+                    var wg = _hzGlowSprite(2.6 * s * U, 0xffc878, 0.5, 0.0, 0.0, 0.0); wg.position.set((x + (R() - 0.5) * w * 0.6) * U, (r * h / rows) * U, (z + d / 2 + 0.4) * U); wg._ew_night = true; g.add(wg); lit++;
+                }
+                if (tall) spire = { x: x, z: z, h: h };
+            }
+            if (spire) {
+                var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s * U, 0.6 * s * U, 18 * s * U, 6), stone); mast.position.set(spire.x * U, (spire.h + 9 * s) * U, spire.z * U); g.add(mast);
+                var beacon = _hzGlowSprite(4.5 * s * U, 0xff3a2a, 0.7, 0.55, 0.0, 1.4); beacon.position.set(spire.x * U, (spire.h + 18.5 * s) * U, spire.z * U); g.add(beacon);
+            }
+            return g;
+        },
+        /* GATE: a guarded gateway far down the road — two concrete pylons, a lintel carrying the sign board, the fence running
+           off both ways on posts, a guard tower, and the floods over the gate (night lamps). Area 51's from the Strip. */
+        gate: function (U, o, rng) {
+            var g = new THREE.Group(), s = o.s || 1;
+            var conc = _hqMat('concrete', 3, 2, { color: 0xb0aaa0, shininess: 3 });
+            var steel = _hqMat(null, 1, 1, { color: 0x5b6068, shininess: 30, specular: 0x333333 });
+            var sign = _hqMat(null, 1, 1, { color: 0xe8e2d0, shininess: 8 });
+            var red = _hqMat(null, 1, 1, { color: 0xb02a22, shininess: 8 });
+            var W = 26 * s, Hp = 16 * s;
+            [-1, 1].forEach(function (k) { var p = _hqBox(3.5 * s, Hp, 3.5 * s, conc); p.position.set(k * W / 2 * U, Hp / 2 * U, 0); g.add(p); });
+            var lintel = _hqBox(W + 3.5 * s, 3.2 * s, 2.6 * s, conc); lintel.position.set(0, (Hp + 1.6 * s) * U, 0); g.add(lintel);
+            var board = _hqBox(W * 0.72, 4.2 * s, 0.4 * s, sign); board.position.set(0, (Hp + 5.4 * s) * U, 0.4 * s * U); g.add(board);
+            var stripe = _hqBox(W * 0.72, 0.8 * s, 0.45 * s, red); stripe.position.set(0, (Hp + 3.7 * s) * U, 0.42 * s * U); g.add(stripe);
+            var boom = _hqBox(W * 0.9, 0.5 * s, 0.5 * s, red); boom.position.set(0, 1.4 * s * U, 1.2 * s * U); g.add(boom);
+            for (var i = 1; i <= 9; i++) { [-1, 1].forEach(function (k) { var fx = k * (W / 2 + i * 7 * s); var post = _hqBox(0.4 * s, 5 * s, 0.4 * s, steel); post.position.set(fx * U, 2.5 * s * U, 0); g.add(post); var rail = _hqBox(7 * s, 0.2 * s, 0.2 * s, steel); rail.position.set((fx - k * 3.5 * s) * U, 4.6 * s * U, 0); g.add(rail); }); }
+            var tx = W / 2 + 12 * s, tw = _hqBox(5 * s, 13 * s, 5 * s, conc); tw.position.set(tx * U, 6.5 * s * U, -3 * s * U); g.add(tw);
+            var cab = _hqBox(7 * s, 3.5 * s, 7 * s, steel); cab.position.set(tx * U, 14.75 * s * U, -3 * s * U); g.add(cab);
+            [-1, 1].forEach(function (k) { var fl = _hzGlowSprite(8 * s * U, 0xeaf4ff, 0.6, 0.0, 0.0, 0.0); fl.position.set(k * W / 2 * U, (Hp + 1 * s) * U, 2 * s * U); fl._ew_night = true; g.add(fl); });
+            var cabL = _hzGlowSprite(5 * s * U, 0xffd9a0, 0.5, 0.0, 0.0, 0.0); cabL.position.set(tx * U, 14.75 * s * U, (0.8 * s) * U); cabL._ew_night = true; g.add(cabL);
+            return g;
+        },
         /* THE DOME (2026-09-17): the user's Vatican dome GLB hung over the cortile's parapet (hqVaticanShell landmarks — the basilica the courtyard stands beside); the marble builder is the stand-in */
         dome: function (U, o, rng) {
             var g = new THREE.Group(), s = o.s || 1, prevTs = _hzKitTs; _hzKitTs = HQ_TILE_M * U;
@@ -43713,6 +43801,7 @@ const ThreeRenderer = (function () {
             m._ew_landmark = l.kind; m._ew_landmarkId = l.id || null;
             _stampHorizonHaze(m, rad, y, discR);
             group.add(m);
+            if (H.sky && H.sky.clockLamps) m.traverse(function (o) { if (o._ew_night && o.material && o.material.color) { o._ew_glowC = o.material.color.clone(); H.sky.clockLamps.push(o); } });   // THE WORLD CLOCK: its lit windows are night lamps
         });
         H.scene.add(group);
         H.sky.landmarks = group;
@@ -43728,13 +43817,20 @@ const ThreeRenderer = (function () {
         var dome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), domeMat);
         dome.renderOrder = -1000; dome.frustumCulled = false; dome.scale.setScalar(_ENV_DOME_R);
         H.scene.add(dome);
-        H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: (typeof sky.night === 'number') ? sky.night : (sky.night ? 1 : 0) };
+        H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: (typeof sky.night === 'number') ? sky.night : (sky.night ? 1 : 0),
+                  clockLamps: [] };   // THE WORLD CLOCK (Phase 3): the horizon's night glows (a far skyline's windows, a gate's floods)
         var theme = sky.scenery || 'cosmic';
         /* THE WEENIES (HQ plan 9.3 stage 3, 2026-09-16): `sky.landmarks` — fixed bodies on the
            horizon (a mountain, a castle) that never drift: something tall in the distance to
            walk toward (Disney's rule). Built before the roster so a `scenery: 'none'` sky can
            still wear one. */
-        if (Array.isArray(sky.landmarks) && sky.landmarks.length) { try { _hqBuildLandmarks(H, sky.landmarks, 6000); } catch (e) { console.warn('[HQ] landmarks failed', e); } }
+        /* THE WEENIES ON THE GROUND (OPEN_WORLD_PLAN Phase 3): data.js hqRoomLandmarks adds the far places of this ground at
+           their true bearings from the frames (Olympus over the city, the city's towers from the desert, Area 51's gate
+           down the Strip) to the shell's own */
+        var lms = null, rid = H.opts && H.opts.room;
+        if (rid && typeof hqRoomLandmarks === 'function') { try { lms = hqRoomLandmarks(rid); } catch (e) { lms = null; } }
+        if (Array.isArray(lms) && lms.length) { try { _hqBuildLandmarks(H, lms, 6000); } catch (e) { console.warn('[HQ] landmarks failed', e); } }
+        else if (Array.isArray(sky.landmarks) && sky.landmarks.length) { try { _hqBuildLandmarks(H, sky.landmarks, 6000); } catch (e) { console.warn('[HQ] landmarks failed', e); } }
         if (theme === 'none') return;
         var roster = _hzThemeRoster(theme) || _hzCosmicRoster();
         var dens = (sky.density != null) ? sky.density : 1;
@@ -43787,7 +43883,7 @@ const ThreeRenderer = (function () {
         console.log('[HQ] sky:', theme, '—', group.children.length, 'bodies');
     }
     function _hqTickSky(now, Hx) {
-        var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || H.room.shell.sky);   // THE STAGE: a crossing's blend
+        var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || (H.clock && H.clock.vals && !H.clock.vals.locked && H.clock.vals.env) || H.room.shell.sky);   // THE STAGE: a crossing's blend; THE WORLD CLOCK: the hour's
         if (!sk || !env || !_envUni) return;
         sk.dome.position.copy(H.camera.position);
         var u = _envUni, t = now / 1000;
@@ -43801,6 +43897,15 @@ const ThreeRenderer = (function () {
         u.uMapStars.value = (env.stars != null) ? env.stars : 1;
         u.uMapNebula.value = (env.nebula != null) ? env.nebula : 1;
         u.uSkyDay.value = env.day || 0; u.uSkyClouds.value = env.clouds || 0;   // THE DAY SKY (2026-09-21): a room's own daylight
+        /* THE WORLD CLOCK (Phase 3): the sun and the moon where the hour puts them, carried into the dome's own frame (the dome
+           turns its rays by uSkyYaw, so the bodies are turned the same way to stand still over the ground) */
+        var CKs = H.clock;
+        if (CKs && CKs.sunCur) {
+            var yw = u.uSkyYaw.value, cy = Math.cos(yw), sy = Math.sin(yw), sd = CKs.sunCur, md = CKs.moonCur;
+            u.uSunDir.value.set(sd.x * cy - sd.z * sy, sd.y, sd.x * sy + sd.z * cy);
+            u.uMoonDir.value.set(md.x * cy - md.z * sy, md.y, md.x * sy + md.z * cy);
+            u.uSunClock.value = 1; u.uDusk.value = CKs.duskCur || 0;
+        } else { u.uSunClock.value = 0; u.uDusk.value = 0; }
         var fg = env.fog;
         if (fg) { u.uFogColor.value.set(sk.fogC.r, sk.fogC.g, sk.fogC.b); u.uFogAmount.value = fg.amount || 0; u.uFogTop.value = fg.top || 0; u.uFogBand.value = (fg.band != null) ? fg.band : 0.5; }
         else u.uFogAmount.value = 0;
@@ -48154,11 +48259,12 @@ const ThreeRenderer = (function () {
                 if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
                 if (flip) grp.position.y = y * U;
                 grp.add(pg);
-                if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
+                if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
                 if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX) {
                     var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, cat.light.intensity != null ? cat.light.intensity : 0.6, (cat.light.dist || 6) * U, 2);
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
+                    if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
                     /* THE LIGHT PASS 2.2 — THE HERO LIGHT (2026-09-21): the first warm prop light of the room casts a cube shadow map (six
                        faces, ONE per room); HQ_LIGHT_RULES.shadows.hero names the keys; the room's mood may refuse (mood.hero: false) */
                     try { _hqHeroShadow(ppl, p.key, room); } catch (e) {}
@@ -54706,6 +54812,7 @@ const ThreeRenderer = (function () {
         if (H.cube) { H.cube.rotation.y += dt * 0.035; H.cube.position.y = (H.room.shell.cube.y + Math.sin(now * 0.0004) * 0.05) * _hqUnits(); }
         /* an outdoor room's sky: the dome rides the camera, the uniforms are
            the room's, the far roster drifts (HQ plan 7.2 stage 3) */
+        if (H.clock) { try { _hqClockTick(H, dt, now); } catch (e) { if (!H._clockWarned) { H._clockWarned = true; console.warn('[HQ] the world clock', e); } } }   // THE WORLD CLOCK (Phase 3): before the sky reads it
         if (H.sky) _hqTickSky(now);
         /* a moat room's water (plan 7.2 stage 4): the battle's fluid shader
            reads shared time / drift uniforms that only the battle loop
@@ -55671,10 +55778,16 @@ const ThreeRenderer = (function () {
             try { renderer.render(H.scene, H.camera); } catch (e5) {}
         }
     }
+    var _hqClockMsLast = 0;   // THE WORLD CLOCK: the real time since the last frame that ran it
     function _hqFrame() {
         var H = _hq; if (!H || !renderer) return;
         var now = performance.now();
         var dt = H.lastMs ? Math.min(0.05, (now - H.lastMs) / 1000) : 0.016;
+        /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the exploration day runs while you walk — any room of the building or the
+           world, never paused (the pause menu, a panel), never before the room is ready (the card), never in a fight (no HQ
+           frame runs); real seconds, capped at 1 s a frame (a background tab stops the frames and so the day) */
+        if (!H.paused && H.ready && _hqClockMsLast && typeof window !== 'undefined' && typeof window._hqClockAdvance === 'function') { try { window._hqClockAdvance(Math.min(1, (now - _hqClockMsLast) / 1000)); } catch (e) {} }
+        _hqClockMsLast = now;
         H.lastMs = now;
         /* resize to the host */
         var host = H.host;
@@ -56147,6 +56260,15 @@ const ThreeRenderer = (function () {
                 var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = LR.open || {};
                 field.hemi = { sky: skyC.clone().lerp(new THREE.Color(0xffffff), nightO ? 0.22 : 0.45).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
                 field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
+                /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight starts at the hour the room was at — a clocked room's rig is the
+                   held hour's (the sun or the moon as the key, the hemisphere between the day and night rows); a locked room keeps its own */
+                var CV = null; try { CV = _hqClockVals(room, R.roomId, _hqClockHourNow()); } catch (e) { CV = null; }
+                if (CV && !CV.locked) {
+                    var kd = CV.keyDir.clone().transformDirection(M);
+                    field.hemi = { sky: CV.hemiC.getHex(), ground: 0x2a2620, intensity: CV.hemiI };
+                    field.sun = { color: CV.keyC.getHex(), intensity: CV.keyI, dir: [kd.x, kd.y, kd.z] };
+                    nightO = CV.night > 0.5 ? 1 : 0;
+                }
                 var ofill = new THREE.DirectionalLight(LR.fillColor, LR.fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(ofill);
                 var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
                 (S.lights || []).slice(0, lampMax).forEach(function (Lt) {
@@ -56175,7 +56297,8 @@ const ThreeRenderer = (function () {
         /* THE FOG: the room's own on the battle scene (the same colour, the density per battle px) + the height fog in the battle's frame */
         var fogC = 0x0d0e12, fogD = 0.00017 * U / s;
         try {
-            if (open) { fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / s : 0.00005 * U / s; if (S.sky.fog && S.sky.fog.color != null) fogC = S.sky.fog.color; }
+            if (open) { fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / s : 0.00005 * U / s; if (S.sky.fog && S.sky.fog.color != null) fogC = S.sky.fog.color;
+                try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {} }   // THE WORLD CLOCK: the hour's fog
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
             if (typeof scene !== 'undefined' && scene) scene.fog = new THREE.FogExp2(fogC, fogD);
         } catch (e) {}
@@ -56631,7 +56754,7 @@ const ThreeRenderer = (function () {
     ['opts', 'host', 'profile', 'snap', 'scene', 'camera', 'player', 'sky', 'portal', 'gun', 'ride', 'vehicle', 'shadows', 'atmos', 'heightFog', 'ao',
      'keyLight', 'keyDir', 'hemiLight', 'fillLight', 'focus', 'stage', 'keys', 'drag', 'lastDragAt', 'fp', 'paused', 'ready', 't0', 'lastMs', 'lastDebug',
      'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
-     '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });
+     '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
     function _hqStageArm(H) {
@@ -57108,7 +57231,8 @@ const ThreeRenderer = (function () {
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
-        _hqStageBlendStart(H, fromRoom, H.room);
+        _hqStageBlendStart(H, fromRoom, H.room, fromId, to);
+        try { _hqClockArm(H); } catch (e) { console.warn('[HQ stage] the clock', e); }   // THE WORLD CLOCK (Phase 3): the part you stand in decides
         H.targetKey = '';
         console.log('[HQ stage] crossed ' + fromId + ' → ' + to + ' in ' + Math.round(performance.now() - t0) + ' ms (no load)');
         if (H.opts.onCross) { try { H.opts.onCross(to, fromId); } catch (e) { console.warn('[HQ stage] onCross', e); } }
@@ -57116,7 +57240,12 @@ const ThreeRenderer = (function () {
     }
     /* THE BLEND: the fog, the hemisphere, the key, the dome's values ease from the part you left to this one's; the
        look (the retro grade, the bloom) turns at the half-way beat */
-    function _hqStageSkyVals(room) {
+    /* THE WORLD CLOCK (Phase 3): a clocked part blends to (and from) the HOUR's values; a locked or unclocked one to its own */
+    function _hqStageSkyVals(room, id) {
+        var V = _hqClockVals(room, _hqRoomIdOf(room, id), _hqClockHourNow());
+        return (V && !V.locked) ? V : _hqStageSkyValsRaw(room);
+    }
+    function _hqStageSkyValsRaw(room) {
         var S = room.shell || {}, sky = S.sky || {}, U = _hqUnits(), LRo = _hqLightRules().open, night = sky.night ? 1 : 0;
         var rig = Object.assign({}, (_hqLightRules().key && _hqLightRules().key.open) || {}, S.rig || {});
         var skyC = new THREE.Color((sky.tint != null) ? sky.tint : 0x8090b0);
@@ -57130,7 +57259,7 @@ const ThreeRenderer = (function () {
             look: S.look, label: room.label,
         };
     }
-    function _hqStageBlendStart(H, fromRoom, toRoom) {
+    function _hqStageBlendStart(H, fromRoom, toRoom, fromId, toId) {
         var st = H.stage;
         /* THE DOOR JOIN (Phase 2): room to room indoors — the hemisphere, the key and the fill ease to the new room's mood */
         if (!H.sky && _hqStageClosedBox(fromRoom) && _hqStageClosedBox(toRoom)) {
@@ -57139,8 +57268,8 @@ const ThreeRenderer = (function () {
             return;
         }
         if (!H.sky || !toRoom.shell || !toRoom.shell.sky) { try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(toRoom.shell.look, toRoom.label)); } catch (e) {} return; }
-        var a = st.blend ? st.blend.cur : _hqStageSkyVals(fromRoom);
-        st.blend = { a: a, b: _hqStageSkyVals(toRoom), t0: performance.now(), looked: false, cur: null };
+        var a = st.blend ? st.blend.cur : _hqStageSkyVals(fromRoom, fromId);
+        st.blend = { a: a, b: _hqStageSkyVals(toRoom, toId), t0: performance.now(), looked: false, cur: null };
         _hqStageBlendTick(H, st.blend.t0);
     }
     function _hqStageBlendTick(H, now) {
@@ -57170,6 +57299,128 @@ const ThreeRenderer = (function () {
     }
     /* the sky's values while a blend runs (_hqTickSky reads these before the room's own) */
     function _hqStageSkyEnv(H) { var B = H && H.stage && H.stage.blend; return (B && B.cur) ? B.cur.env : null; }
+    /* ══ THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3, 2026-09-26) ══
+       The exploration day (data.js HQ_WORLD_CLOCK; the live hour is map.js's — window._hqClockHour — run by the walk and held
+       by a pause, a panel, a card and every fight). A room in a zone with `clock: true` and a sky (data.js hqRoomClock) is lit
+       by the hour: the sun (or, below the horizon, the moon) is the key and casts the shadow, the hemisphere and the key
+       ease between HQ_LIGHT_RULES.open's day and night rows, the fog and the sky's tint between the room's day and night
+       looks (the half it did not author is HQ_WORLD_CLOCK.day / night / dayLook), the dome's sun and moon stand where the
+       hour puts them (uSunDir / uMoonDir, uSunClock 1) and the horizon warms at dawn and dusk (uDusk). A LOCKED room (the
+       Strip's neon, the ghost ship, the grove's rite …) keeps its authored light, fog and lamps; its dome's bodies stand at
+       its own hour. The night lamps (`clockLamps`: the flood masts, the lighthouse, the lamp masts, a far skyline's windows)
+       fade in from `lampsOn` and out at `lampsOff`. On THE STAGE each part reads its own row: a crossing blends from the part
+       you left to the hour's values of the part you enter (_hqStageSkyVals), and the clock takes over when the blend ends.
+       Nothing on `state`, nothing relayed (RULE #2): story mode's building only. The fight keeps the hour: the hand-over's
+       rig is the hour's (_fieldGroundDress) and round 1 is night when the sun is down (map.js getCurrentCyclePhase). */
+    var _hqRoomIdCache = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
+    function _hqRoomIdOf(room, hint) {
+        if (!room) return null;
+        var D = _hqData(), R = D && D.rooms;
+        if (hint && R && R[hint] === room) return hint;
+        if (_hqRoomIdCache && _hqRoomIdCache.has(room)) { var c = _hqRoomIdCache.get(room); if (R && R[c] === room) return c; }
+        if (R) for (var k in R) if (R[k] === room) { if (_hqRoomIdCache) _hqRoomIdCache.set(room, k); return k; }
+        return hint || null;
+    }
+    function _hqClockHourNow() {
+        var W = (typeof window !== 'undefined') ? window : {};
+        try { if (typeof W._hqClockHour === 'function') { var h = +W._hqClockHour(); if (isFinite(h)) return h; } } catch (e) {}
+        return (typeof HQ_WORLD_CLOCK !== 'undefined') ? HQ_WORLD_CLOCK.start : 12;
+    }
+    function _hqClkS(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+    function _hqClkV(d) { return new THREE.Vector3(d.x, d.y, d.z); }
+    /* the room's lit values at `hour`: null = no clock; { locked, sunDome, moonDome, dusk, lamp } for a locked room; else the
+       stage blend's shape (fogC, fogD, hemiC, hemiI, keyC, keyI, tint, night, env, look, label) + keyDir, sunDome, moonDome,
+       dusk, lamp, sun — every direction in the ROOM's metres */
+    function _hqClockVals(room, id, hour) {
+        if (typeof hqRoomClock !== 'function' || typeof hqWorldSun !== 'function' || !room || !room.shell || !room.shell.sky) return null;
+        var C = null; try { C = hqRoomClock(id); } catch (e) { C = null; }
+        if (!C) return null;
+        var CK = HQ_WORLD_CLOCK, sky = room.shell.sky, sun = hqWorldSun(C.locked ? C.hour : hour);
+        var out = { locked: C.locked, sun: sun, sunDome: _hqClkV(hqWorldDir(sun.sunAz, sun.sunEl, C.rot)), moonDome: _hqClkV(hqWorldDir(sun.moonAz, sun.moonEl, C.rot)),
+                    dusk: C.locked ? 0 : sun.dusk, lamp: C.locked ? 1 : sun.lamp };
+        if (C.locked) return out;
+        var base = _hqStageSkyValsRaw(room), LRo = _hqLightRules().open, DL = C.dayLook || {};
+        var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12;
+        var dayFog = new THREE.Color(authNight ? ((DL.fog != null) ? DL.fog : CK.day.fog) : fogA);
+        var nightFog = authNight ? new THREE.Color(fogA) : new THREE.Color(fogA).multiplyScalar(CK.night.fogK).add(new THREE.Color(CK.night.fog));
+        var dayTint = new THREE.Color(authNight ? ((DL.tint != null) ? DL.tint : CK.day.tint) : ((sky.tint != null) ? sky.tint : CK.day.tint));
+        var nightTint = new THREE.Color(authNight ? ((sky.tint != null) ? sky.tint : CK.night.tint) : CK.night.tint);
+        var d = sun.day, dk = sun.dusk, DU = CK.duskLook || {};
+        var fogC = nightFog.clone().lerp(dayFog, d);
+        if (dk > 0 && DU.color != null) fogC.lerp(new THREE.Color(DU.color).multiplyScalar(0.3 + 0.7 * d), dk * (DU.fog || 0));
+        var tint = nightTint.clone().lerp(dayTint, d);
+        var sunK = _hqClkS(-3, 10, sun.sunEl), moonK = _hqClkS(-3, 10, sun.moonEl) * (1 - sunK);
+        var useSun = sunK >= moonK, kAz = useSun ? sun.sunAz : sun.moonAz, kEl = Math.max(useSun ? sun.sunEl : sun.moonEl, CK.keyMinEl || 18);
+        var keyC = useSun ? new THREE.Color(0xfff1d6).lerp(new THREE.Color((DU.key != null) ? DU.key : 0xffb27a), Math.min(1, dk * 1.2)) : new THREE.Color(0xaabfe0);
+        var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
+        return Object.assign(out, {
+            fogC: fogC, fogD: base.fogD, hemiC: tint.clone().lerp(new THREE.Color(0xffffff), 0.22 + 0.23 * d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
+            keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
+            env: { tint: sky.tint, tintAmt: base.env.tintAmt, stars: base.env.stars, nebula: base.env.nebula, day: d, clouds: (sky.clouds || 0) + (dayClouds - (sky.clouds || 0)) * d, fog: base.env.fog },
+            look: base.look, label: base.label, keyDir: _hqClkV(hqWorldDir(kAz, kEl, C.rot)).normalize(),
+        });
+    }
+    /* the visit's clock record — at the end of _hqEnter and after every crossing (the part you stand in decides) */
+    function _hqClockArm(H) {
+        if (!H || !H.room) return;
+        var id = (H.opts && H.opts.room) || null, V = _hqClockVals(H.room, id, _hqClockHourNow());
+        if (!V) { H.clock = null; return; }
+        var old = H.clock;
+        H.clock = { id: id, vals: V, at: performance.now(), lampAt: 0, night: -1,
+                    sunCur: old && old.sunCur ? old.sunCur : V.sunDome.clone(), moonCur: old && old.moonCur ? old.moonCur : V.moonDome.clone(), duskCur: old ? (old.duskCur || 0) : V.dusk };
+        if (!old && !V.locked) { _hqClockApply(H, V, true); }
+        _hqClockLamps(H, true);
+    }
+    /* the hour's values onto the lights, the fog and the sky (never while a crossing's blend owns them) */
+    function _hqClockApply(H, V, snap) {
+        if (!V || V.locked) return;
+        if (H.scene && H.scene.fog) H.scene.fog.color.copy(V.fogC);
+        if (H.hemiLight) { H.hemiLight.color.copy(V.hemiC); H.hemiLight.intensity = V.hemiI; }
+        if (H.keyLight) { H.keyLight.color.copy(V.keyC); H.keyLight.intensity = V.keyI; }
+        if (H.sky) { H.sky.tint.copy(V.tint); H.sky.fogC.copy(V.fogC); H.sky.night = V.night; }
+        if (V.keyDir && (snap || !H.keyDir)) { H.keyDir = V.keyDir.clone(); if (H.keyLight) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000); if (H.shadows) H.shadows.dirty = true; }
+        /* the far roster's grade follows the night (a regrade walks the sky's bodies — only when the night has moved) */
+        if (H.sky && H.clock && Math.abs(V.night - H.clock.night) > 0.04) { H.clock.night = V.night; try { _gradeHorizonScenery(V.night, 0, 0); } catch (e) {} }
+    }
+    function _hqClockTick(H, dt, now) {
+        var K = H.clock; if (!K) return;
+        if (now - K.at > 200) {   // the hour moves ~0.003 h in 200 ms: the values are re-read five times a second, eased every frame
+            K.at = now;
+            var V = _hqClockVals(H.room, K.id, _hqClockHourNow());
+            if (V) K.vals = V;
+            if (V && !V.locked && !(H.stage && H.stage.blend)) _hqClockApply(H, V, false);
+        }
+        var V2 = K.vals; if (!V2) return;
+        var e = Math.min(1, dt * 1.6);
+        K.sunCur.lerp(V2.sunDome, e).normalize(); K.moonCur.lerp(V2.moonDome, e).normalize(); K.duskCur += (V2.dusk - K.duskCur) * e;
+        if (!V2.locked && V2.keyDir && H.keyDir) {
+            H.keyDir.lerp(V2.keyDir, Math.min(1, dt * 2)).normalize();
+            if (H.keyLight && !H.shadows) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000);
+        }
+        if (now - K.lampAt > 500) { K.lampAt = now; _hqClockLamps(H, false); }
+    }
+    /* the night lamps: the current part's and every drawn neighbour's, each by its own room's clock (a locked part keeps them lit) */
+    function _hqClockLamps(H, force) {
+        if (typeof hqRoomClock !== 'function') return;
+        var sunL = null;
+        var run = function (P, id) {
+            var L = P && P.clockLamps; if (!L || !L.length) return;
+            var C = null; try { C = hqRoomClock(id); } catch (e) {}
+            if (!C) return;
+            if (!C.locked && !sunL) sunL = hqWorldSun(_hqClockHourNow());
+            var f = C.locked ? 1 : sunL.lamp;
+            if (!force && P._clkLampF === f) return;
+            P._clkLampF = f;
+            for (var i = 0; i < L.length; i++) {
+                var o = L[i];
+                if (o.isPointLight && o._ew_lampI != null) o.intensity = o._ew_lampI * f;
+                else if (o._ew_glowC && o.material && o.material.color) o.material.color.copy(o._ew_glowC).multiplyScalar(f);
+            }
+        };
+        run(H, H.opts && H.opts.room);
+        if (H.stage) for (var id in H.stage.parts) { var E = H.stage.parts[id]; if (E && E.P) run(E.P, id); }
+        if (H.sky) run(H.sky, H.opts && H.opts.room);   // the horizon's lit windows (THE WEENIES: a far skyline's)
+    }
     /* THE FEET past the edge (_hqSurface's box branch asks first): undefined = not the stage's business (the room's own
        rules), null = no floor, else the height. The strip along a joined span is the road through the edge; beyond
        it, a drawn neighbour's own surface (its field, its blockers, its step rule), read in its frame. */
@@ -57254,6 +57505,7 @@ const ThreeRenderer = (function () {
             tickers: [], propLights: 0,   /* Phase 8 (2026-09-14): per-frame callbacks registered by procs (the orb, the torches, the shaft); the count of catalogue `light`s placed */
             kicks: [], seats: [], sways: [], shafts: 0, decals: 0, heroLit: null,   /* THE PREMIUM POLISH (2026-09-21): the kickable bodies, the seats, the swaying props */
             props: [],   /* props: { key, grp } per placed catalogue prop (the terminal's camera finds the CRT by key) */
+            clockLamps: [],   /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the part's night lamps (a point light's `_ew_lampI`, a glow's `_ew_glowC`) the dusk fades */
         };
         F.partRoot.name = 'hq_part';
         F.partRoot.add(F.shellGroup, F.doorGroup, F.propGroup, F.charGroup);
@@ -57331,6 +57583,7 @@ const ThreeRenderer = (function () {
             var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
             (S.lights || []).forEach(function (Lt) {
                 var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
+                ml._ew_lampI = LRo.nightLamp; _hq.clockLamps.push(ml);   // THE WORLD CLOCK (Phase 3): a lamp mast is a night lamp
             });
             /* THE FOG (2026-09-17): sky.fog.density = per METRE (the woods 0.03 → the treeline at 12 m is a third gone,
                the outer ground's far edge at 54 m is under it); a row without one keeps the thin default */
@@ -57441,6 +57694,7 @@ const ThreeRenderer = (function () {
         try { _hqBuildAtmos(room); } catch (e) { console.warn('[HQ] the atmosphere failed', e); }
         try { _hqBuildDecals(room); } catch (e) { console.warn('[HQ] the decals failed', e); }   // THE PROP PASS 5.5
         try { _hqBuildReflectors(room); } catch (e) { console.warn('[HQ] the reflectors failed', e); }   // THE THIRD PASS 5.4: the puddles, the barbershop mirror
+        try { _hqClockArm(_hq); } catch (e) { console.warn('[HQ] the world clock failed', e); }   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): after the light rig — the hour owns a clocked room's sun
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
         _hq.cam.yaw = _hqRad(sp.face || 0);
@@ -57775,6 +58029,17 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
+        /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the room's place on the clock — { hour, room, locked, day, dusk, lamp, sunAz,
+           sunEl, moonEl, key: { x, y, z, i } } | null (an unclocked room). The hour itself is map.js's (window.hqClockSet(h) moves it) */
+        clock: function () {
+            var H = _hq; if (!H || !H.clock || !H.clock.vals) return null;
+            var V = H.clock.vals, S = V.sun || {}, k = H.keyDir;
+            return { hour: +(_hqClockHourNow().toFixed(3)), room: H.clock.id, locked: !!V.locked, day: +((S.day || 0).toFixed(3)), dusk: +((V.dusk || 0).toFixed(3)), lamp: +((V.lamp || 0).toFixed(3)),
+                     sunAz: Math.round(S.sunAz || 0), sunEl: +((S.sunEl || 0).toFixed(1)), moonEl: +((S.moonEl || 0).toFixed(1)), lamps: (H.clockLamps || []).length,
+                     key: k ? { x: +k.x.toFixed(3), y: +k.y.toFixed(3), z: +k.z.toFixed(3), i: H.keyLight ? +H.keyLight.intensity.toFixed(3) : null } : null };
+        },
+        /* the clock re-read NOW (map.js calls it when the hour is set by hand, so the room does not ease across half a day) */
+        clockSnap: function () { var H = _hq; if (!H || !H.clock) return false; H.clock.at = 0; var V = _hqClockVals(H.room, H.clock.id, _hqClockHourNow()); if (!V) return false; H.clock.vals = V; H.clock.sunCur.copy(V.sunDome); H.clock.moonCur.copy(V.moonDome); H.clock.duskCur = V.dusk; if (!V.locked && !(H.stage && H.stage.blend)) _hqClockApply(H, V, true); _hqClockLamps(H, true); return true; },
         setPaused: function (on) {
             if (!_hq) return;
             _hq.paused = !!on;

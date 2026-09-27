@@ -638,6 +638,81 @@
         };
         function _hqEl(id) { return document.getElementById(id); }
         function _hqProfile() { try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) || null; } catch (e) { return null; } }
+        /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3, 2026-09-26): the exploration day's live hour. data.js holds the rules and
+           the pure reads (HQ_WORLD_CLOCK, hqClockRead / hqClockWrite, hqWorldSun); the renderer's frame advances it while the
+           walk runs (three-renderer.js _hqFrame → _hqClockAdvance: never paused, never under a card, never in a fight) and
+           lights a clocked room by it. The hour is the profile's (`door.hq.clock`): written every HQ_WORLD_CLOCK.saveMs of
+           walking with `run` (a game closed mid-walk finds the world ran on), and on every hold (a pause, the building left
+           for a fight or the menu, the tab hidden) without it. Nothing on `state`, nothing relayed: the building is story mode. */
+        let _hqClock = null;   // { h, idx, savedAt, tagAt }
+        function _hqClockLoad() {
+            const PS = window.ProfileSystem;
+            const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+            if (_hqClock && _hqClock.idx === idx) return _hqClock;
+            let h = (window.HQ_WORLD_CLOCK && window.HQ_WORLD_CLOCK.start) || 9;
+            try { if (typeof window.hqClockRead === 'function') h = window.hqClockRead(_hqProfile(), Date.now()); } catch (e) {}
+            _hqClock = { h, idx, savedAt: performance.now(), tagAt: 0 };
+            return _hqClock;
+        }
+        function _hqClockSave(run) {
+            if (!_hqClock || typeof window.hqClockWrite !== 'function') return;
+            try {
+                const PS = window.ProfileSystem;
+                const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                if (idx === null || idx === undefined || idx !== _hqClock.idx) return;
+                const p = PS.loadProfile(idx);
+                if (!p) return;
+                window.hqClockWrite(p, _hqClock.h, Date.now(), !!run);
+                PS.saveProfile(idx, p);
+                _hqClock.savedAt = performance.now();
+            } catch (e) {}
+        }
+        window._hqClockHour = function () { return _hqClockLoad().h; };
+        window._hqClockAdvance = function (sec) {
+            const C = _hqClockLoad();
+            if (!(sec > 0) || typeof window.hqClockRate !== 'function') return C.h;
+            C.h = window.hqClockNorm(C.h + sec * window.hqClockRate());
+            const now = performance.now(), CK = window.HQ_WORLD_CLOCK || {};
+            if (now - C.savedAt > (CK.saveMs || 30000)) _hqClockSave(true);
+            if (now - C.tagAt > 2000) { C.tagAt = now; _hqClockTag(); }
+            return C.h;
+        };
+        /* the hold (the renderer stops advancing on its own; this writes the hour down without `run`) */
+        window._hqClockHold = function () { if (_hqClock) _hqClockSave(false); };
+        /* a dev's hand on the dial (the console: hqClockSet(21.5) = half past nine at night); the room re-lights at once */
+        window.hqClockSet = function (h) {
+            const C = _hqClockLoad();
+            if (!isFinite(+h)) return C.h;
+            C.h = window.hqClockNorm ? window.hqClockNorm(+h) : ((+h % 24) + 24) % 24;
+            _hqClockSave(false);
+            try { if (ThreeRenderer.hq && ThreeRenderer.hq.clockSnap) ThreeRenderer.hq.clockSnap(); } catch (e) {}
+            _hqClockTag();
+            return C.h;
+        };
+        /* is the sun down in `roomId` at the live hour (a clocked room; a locked room by its own hour) — the fight's first round */
+        function _hqClockNightIn(roomId) {
+            try {
+                const C = (typeof window.hqRoomClock === 'function') ? window.hqRoomClock(roomId) : null;
+                if (!C) return false;
+                return !window.hqWorldSun(C.locked ? C.hour : _hqClockLoad().h).isDay;
+            } catch (e) { return false; }
+        }
+        /* the hour on the room's sub-line (THE HQ HUD PASS: no new box — the line under the room's title), in a clocked room only */
+        function _hqClockTag() {
+            try {
+                const el = _hqEl('hqClockTag');
+                if (!el) return;
+                const C = (typeof window.hqRoomClock === 'function') ? window.hqRoomClock(_hqCurRoom) : null;
+                if (!C || C.locked || state.gameState !== GS.HQ) { el.textContent = ''; return; }
+                const h = _hqClockLoad().h, S = window.hqWorldSun(h), hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+                const part = S.dusk > 0.5 ? (h < 12 ? 'DAWN' : 'DUSK') : (S.isDay ? 'DAY' : 'NIGHT');
+                el.textContent = ' · ' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ' ' + part;
+            } catch (e) {}
+        }
+        try {
+            document.addEventListener('visibilitychange', () => { if (document.hidden && _hqClock) _hqClockSave(state.gameState === GS.HQ && !_hqSuspended); });
+            window.addEventListener('pagehide', () => { if (_hqClock) _hqClockSave(state.gameState === GS.HQ && !_hqSuspended); });
+        } catch (e) {}
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
         function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
         function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
@@ -860,7 +935,7 @@
                 const rt = _hqEl('hqRoomTitle');
                 if (rt && room) rt.textContent = String(room.label || _hqCurRoom || '').toUpperCase();
                 const rn = _hqEl('hqRoomName');
-                if (rn && room) rn.textContent = 'D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase();
+                if (rn && room) { rn.innerHTML = _hqEsc('D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase()) + '<span id="hqClockTag"></span>'; _hqClockTag(); }   // THE WORLD CLOCK (Phase 3): the hour rides the sub-line in a clocked room
                 const ms = _hqEl('hqMastery');
                 if (ms) {
                     const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
@@ -1002,7 +1077,7 @@
                walk between rooms keep the roll. `?hqvariant=<id>` /
                `window.EW_HQ_VARIANT` force one ('none' = the sheet). */
             if (!returning && !walking && typeof window.hqRollRoomVariants === 'function') {
-                try { window.hqRollRoomVariants(_hqProfile(), { force: _hqVariantForce() }); } catch (e) { console.warn('[HQ] variant roll failed', e); }
+                try { window.hqRollRoomVariants(_hqProfile(), { force: _hqVariantForce() }); } catch (e) { console.warn('[HQ] variant roll failed', e); }   // THE WORLD CLOCK (fork 11): data.js reads the live hour (window._hqClockHour) for the variants' hours
             }
             /* THE MANDELA ROOM (Phase 8 stage 2, 2026-09-15): a room whose variants say
                `when: { each: true }` is a DIFFERENT ROOM ON EVERY ENTRY — rolled here,
@@ -1346,6 +1421,7 @@
             } catch (e) { console.warn('[DOOR] promote failed', e); return false; }
         };
         window._hqLeave = function (opts) {
+            if (typeof window._hqClockHold === 'function') window._hqClockHold();   // THE WORLD CLOCK (Phase 3): a fight, the menu — the hour waits where it was
             _hqCancelLoadCard();
             _hqTermDrop();   // a console screen left up goes down with the building
             _hqPauseDrop();  // and the pause menu (2026-09-15)
@@ -1389,6 +1465,7 @@
         function _hqSuspend() {
             _hqSuspended = true;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.setPaused(true); } catch (e) {}
+            if (typeof window._hqClockHold === 'function') window._hqClockHold();   // THE WORLD CLOCK (Phase 3): the hour is held, and written down
             _hqSetPrompt(null);
             try { if (typeof stopDoorRoomTone === 'function') stopDoorRoomTone(); } catch (e) {}
         }
@@ -3775,6 +3852,7 @@
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
                                        swarm: L.swarm || null };   // THE SWARM: battle.js keeps every native on the board
+            window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
                THE OPENING (battle.js encounterOpening). The record's hits come home at the commit (hqGunDoorsAfterFight). */
@@ -12457,7 +12535,13 @@
                 return 'day';
             }
             if (!state.round || state.phase !== 'battle') return 'day';
-            return state.round % 2 === 1 ? 'day' : 'night';
+            /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight started in a room of the exploration day begins at that room's
+               hour — the sun down there makes round 1 the night, and the rounds flip from it as ever. The marker is the
+               encounter's own (map.js _hqEncounterStart; battle.js spends `armed` at the start and clears it at the end), so a
+               later match never inherits it. Story mode only (the encounter is VS CPU). */
+            const er = window._hqEncounterRun;
+            const nightFirst = !!(er && er.night && er.armed === false);
+            return (state.round % 2 === 1) !== nightFirst ? 'day' : 'night';
         }
 
         function getTerrainHealMultiplier(x, y, unit) {

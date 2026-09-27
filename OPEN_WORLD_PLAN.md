@@ -956,7 +956,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 0 | **THE TABLE + THE READOUT**: `DOOR_HQ.world` with EVERY zone of §4.5 as frames and joins (data only: nothing moves, nothing is drawn differently), `hqWorldValidate` + the readers, `HQ_WORLD_RULES` / `HQ_STAGE_RULES` / `HQ_WORLD_CLOCK` tables, THE MAP drawn from the frames (§7) beside the old WORLD tab (a toggle) so the user can argue with the geography before anything is built, the HUD readout (`hq.perf()` behind `ew_fpsCounter`, ticking in the walk), THE INSTANCE PASS (§5.5: it needs no zone and pays at once) | data.js (R2 + Render), map.js, three-renderer.js, styles-base.css (the map's CSS lives there, not in styles-hud.css) | `hq-world-map.test.js` (the validator's pins and its negative cases, the transforms, the sheet's fog, the instance pass on real three r128 in a vm harness); `hq-world.test.js` untouched (it pins the links, which Phase 0 does not move) — **DONE 2026-09-26, §12** |
 | 1 | **THE STAGE on THE CITY**: one scene per zone, parts as groups with frames, `_hqSurface` by part, the crossing swap, the ring (built / warm / far), the sliced build, the terrain tiles, the far shells, the far plane and the dome, the lamp budget, the disposal, the stash of the stage for a fight — proven on Downtown ⇄ the stadium ⇄ the Strip with `road` joins replacing the three gantry loads; THE FORECOURT part built (family E) with its road join to Downtown so the city is reached on foot from the front door (fork 1) | three-renderer.js, map.js, data.js | `hq-stage.test.js` (vm: two parts, the transforms, the crossing, the ring, the lamp budget, the tiles' count); `stadium-garage.test.js` keeps its pins; the offline HQ probe's screenshots from the join looking both ways |
 | 2 | **THE JOINS + THE MERGE**: `hqShellSideOpen`, the stitch profile in the compiler, the door join (`inner`), `hqRoomResolve` aliases; THE MEDICAL WING merged; the mall's street doors as a door join (the mall's rebuild §8.1 may land before or after — the join works on the old mall); the road/trail/shore/wall join dresses | data.js, three-renderer.js, map.js | `hq-joins.test.js` (the stitch: two parts compiled to one profile agree within `joinTol`; a swinging door blocks nothing open, everything closed; aliases resolve every ledger key); `hq-suites.test.js` re-pinned for the wing — **DONE 2026-09-26 with deviations (§12): the wing is DOOR JOINS on the stage, not a merge (no aliases needed); the mall's join waits for its lot; the join dresses beyond the road are the later zones'. Plus THE FILE TRACKER (fork 5)** |
-| 3 | **THE SKY + THE CLOCK**: the zone sky, `hqWorldSun`, the dome's `sunDir` uniform, the lamps' dusk, `sky.lock`, the clock's hold in pause/battle, the variants on the world hour, the fight at the room's hour; the `tower`/`gate`/`mountain` landmark kinds | data.js, three-renderer.js, map.js | `hq-clock.test.js` (the hour's continuity across a save, the sun at noon/midnight, a locked part's lamps); `day-sky.test.js` re-pinned |
+| 3 | **THE SKY + THE CLOCK**: the zone sky, `hqWorldSun`, the dome's `sunDir` uniform, the lamps' dusk, `sky.lock`, the clock's hold in pause/battle, the variants on the world hour, the fight at the room's hour; the `tower`/`gate`/`mountain` landmark kinds | data.js, three-renderer.js, map.js | `hq-clock.test.js` (the hour's continuity across a save, the sun at noon/midnight, a locked part's lamps); `day-sky.test.js` re-pinned — **DONE 2026-09-26, §12** (day-sky unchanged: its pins still hold) |
 | 4 | **THE WEST: THE WOODS as one field + the haunted grounds + the estate + the Grove joined; THE WELLS re-pointed; THE WELL ROOM and the board rooms deleted; the basement merge** | data.js, three-renderer.js | `hq-woods.test.js` rewritten (one field, six aliases, every old find/tape/native present); `hq-cave.test.js` / `hq-world.test.js` re-pinned to §8.3; `hq-floors.test.js` for the basement |
 | 5 | **THE SOUTH: THE HIGHWAY parts, the gate part, Area 51 joined (the hangar and the white rooms as door joins), THE D.U.M.B. as an underground zone of corridor joins, THE BUNKER rebuilt** | data.js, three-renderer.js | `hq-area51.test.js` / `hq-dumb.test.js` re-pinned; the highway's `marks` and its two parts' stitch |
 | 6 | **THE NORTH: the crown road, CAMELOT rebuilt in its frame, THE MOUNTAIN's three parts** | data.js, three-renderer.js | `hq-camelot.test.js` re-pinned; `hq-mountain.test.js` (the climb solved end to end by the walker proof, 0 → 70 m, `heavy`) |
@@ -1182,3 +1182,45 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
     door in 6 ms, with no load. `test:full` ends with the same 25 heavy reds as before this phase (checked
     against HEAD, test by test).
   - Tests: `hq-joins.test.js` (new, one `heavy` proof); `hq-stage.test.js` re-pinned (the zones).
+- 2026-09-26 — **PHASE 3 SHIPPED: THE SKY + THE CLOCK** (thread "Open world Phase 3"; zip
+  `open-world/ENTROPY_WARS_OPEN_WORLD_3.zip`, token `20260926-open-world-04-cors`).
+  - **THE HOUR** (map.js): a 24-minute day (fork 6's default) run by the HQ frame in every room — never
+    paused, never under a card, never in a fight. It lives on the profile (`door.hq.clock = { h, at, run }`):
+    written every 30 s of walking with `run` (a game closed mid-walk finds the world ran on), and on every hold
+    (pause/suspend, leaving the building, the tab hidden) without it. The hour shows on the room's sub-line in
+    a clocked room (`· 19:12 DUSK`). Console: `hqClockSet(21.5)`; `ThreeRenderer.hq.clock()` reads the state.
+  - **THE SUN** (data.js `hqWorldSun`): rises 06:00 on az 100, noon 62° due south, sets 19:00 on az 260; the
+    moon takes the same arc through the night to 35°. `day` eases over dawn [5.5, 7] and dusk [18.5, 20]; the
+    warm horizon (`dusk`) peaks in both; the night lamps are on 18:00 → 06:30 over half an hour.
+  - **WHO RIDES IT** (`hqRoomClock`): an open room with a sky in a zone with `clock: true`. Its directions are
+    in its own frame (the half-turned bowl sees the noon sun behind its north). The half the room did not
+    author comes from `HQ_WORLD_CLOCK.day` / `night`, or `dayLook` by room (Camelot's ward, the flightline,
+    the woods' six clearings were authored at night and now have a day). **LOCKED** (`lock`, their lights,
+    fog and lamps as authored, the dome's bodies at their own hour): the Strip (fork 4), plus the places whose
+    night is the place — the Dutchman's deck, the Grove, the haunted grounds, the skinwalker fields, the
+    observatory. Those five are this phase's call, not fork 4's list; one line in `lock` flips each.
+  - **THE RENDERER**: the dome's sun and moon read `uSunDir` / `uMoonDir` when `uSunClock` is 1 (the building
+    only; the battle and the menu write 0), `uDusk` warms the horizon toward the low sun. The key is the sun,
+    or below the horizon the moon, never lower than `keyMinEl` 18° (the shadow map's reach); the hemisphere
+    and the key ease between `HQ_LIGHT_RULES.open`'s day and night rows; the fog, the tint, `uSkyDay` and the
+    clouds follow `day`. The values are re-read 5× a second and the directions eased every frame. Night lamps
+    (`clockLamps`: catalogue `light.night` — the flood masts and the lighthouse — the lamp masts, the far
+    skyline's windows) fade by intensity, never `visible`, so the stage's lamp budget count never changes. On
+    THE STAGE each part reads its own row; the crossing blends to the hour's values of the part you enter,
+    then the clock takes over (Phase 1's blend kept; fork 4 now via `lock`). The zone's `sky` row is not used
+    yet: each part still wears its own sky row.
+  - **THE FIGHT**: the hand-over's rig (`_fieldGroundDress`) is the held hour's (key, hemisphere, fog), and a
+    fight started with the sun down begins at night (`_hqEncounterRun.night` → `getCurrentCyclePhase`; the
+    marker is the encounter's own, so a later match never inherits it). The battle's own dome is unchanged.
+  - **THE VARIANTS** (fork 11's default): `when.hours` reads the world hour; a test's pinned `opts.now` keeps
+    the real clock.
+  - **THE WEENIES ON THE GROUND** (fork 14's kinds): `mountain` (a massif, `temple` = Olympus's colonnade),
+    `tower` (a far skyline, lit windows as night lamps, a red beacon), `gate` (Area 51's gate: pylons, sign,
+    fence, guard tower, floods). `HQ_WORLD_WEENIES` hangs them at the TRUE bearing from the frames
+    (`hqWorldBearing`): Olympus over Downtown, the bowl, the Strip, Camelot, Shasta and the haunted grounds;
+    the city's towers from the flightline, Camelot, the summit and the sea; Area 51's gate due south down the
+    Strip. They go when Phase 10's far shells draw the places themselves.
+  - Checked: the dome/ground/wall shaders compile on real three r128 in headless Chromium; `hq-clock.test.js`
+    (the sun, the save, the rooms, the bearings, the variants, the lit values on real three r128 in a vm, the
+    wiring). Not walked by a person.
+
