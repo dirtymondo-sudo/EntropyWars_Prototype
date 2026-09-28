@@ -1569,3 +1569,27 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   The Dutchman: board from the skiff (step off alongside); a swimmer cannot climb her.
 - Test: `hq-coast.test.js` (the skiff's crossing in a vm harness). Plan log: OPEN_WORLD_PLAN.md §12.
 
+
+## THE LAND — the bake and the atlas (WORLD_GEOGRAPHY_PLAN G0, 2026-09-28)
+- The world recipe is data.js `HQ_LAND` (was the sketch's recipe.js in the project folder open-world/geography/sketch/,
+  now retired): coast, plateaus, bumps, ranges, peaks, the Rim, the glen, lakes, canyons, rivers, roads, places (each
+  with `region`, weenie `top`, `peak` / `lookout`), `sight` (THE SIGHT RULE's constants + mondo's `never` pairs) and
+  `baked` (the bake id the game's urls carry). Readers: `hqLandPlace`, `hqLandRegionLabel`, `hqLandBaked`, `hqLandUrl`,
+  `hqLandSightOk` (R2 as one pure rule), `hqLandNever`.
+- `bake-land.js` = the sketch hardened: every step in metres (erosion life / brush / drops per km², thermal passes),
+  ridged noise with gradient damping on the ranges and peaks, trails benched to 0.9 with `steps` spans, river surfaces
+  monotone, a `cliff` material (code 21) wherever the slope passes 0.8, carves indexed by arc length. `checkRules` is
+  the one check (R2 + never pairs, R7 rivers / lakes, R5 grades / the ring / every place on a route, R3 cliffs): the CLI
+  exits 1 and does not stamp on a breach; land-bake.test.js runs it at 8 m (~14 s) and at 2 m (`heavy`).
+- A one-cell erosion brush digs runaway pits (heights of ±50 km at 8 m): the brush is never under 2 cells.
+- Two routes were added so every place is on one: THE LIGHTHOUSE PATH (mall → the bay's head) and THE HAUNTED DRIVE
+  (estate → the haunted house). The reachability rule counts Disaster City's streets (G7) as joining every road that
+  enters the city ellipse; sea, edge, arctic and underground places are reached by sea or through a mouth.
+- Outputs (Assets/Land/ on R2): land.json (~110 KB), land-map.png (1400², 4 m a pixel, contours every 25 m, ~1.7 MB),
+  tiles/t_<i>_<j>.bin (379 at 2 m, ~100 KB each raw; `EWLT` v1 header, height u16 cm from −200 m, material u8, forest
+  u8, water u16) and sea.bin (8 m). The tiles are for G2; only land.json + land-map.png are read in G0.
+- THE ATLAS (map.js `_hqAtlas*`, styles-base.css `.hq-atlas-*`): mode 'atlas'; fetches land.json once, draws the relief
+  image in metres (one map unit = 1 m) with the roads, rivers, the drain, bridges, regions and places over it; `--az`
+  (view width / fit width, 0.12..1) keeps labels and markers one screen size. A place's card: region, height, pad,
+  SEES (ground / tops from the sight lists), FIRST SEEN (the reveals, nearest first) and the routes it is ON. Picking a
+  place brings the view to it. No fog of war yet (G9).
