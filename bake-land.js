@@ -18,6 +18,7 @@
 //   node bake-land.js                       bake at 2 m into Assets/Land/ and stamp data.js HQ_LAND.baked.id
 //   node bake-land.js --cell 8 --no-tiles   a quick look (8 m, ~15 s)
 //   options: --cell <m>  --out <dir>  --no-tiles  --no-map  --no-stamp  --quiet
+//   G2: also stamps HQ_LAND.baked.hubY (HQ's pad). The ground wears the bucket's own terrain / urban sheets (HQ_LAND_RULES.tex).
 //
 // Writes (under --out, default Assets/Land/ — upload to R2 at the same path):
 //   land.json        the overlay: places (baked heights), roads (graded, per-sample y), bridges, rivers, lakes,
@@ -703,12 +704,15 @@ function writeOutputs(B, outDir, opts) {
     return { id, files };
 }
 // stamps data.js HQ_LAND.baked.id with the bake's id (the game's urls carry it)
-function stampData(id, dataFile) {
+// (and, G2, `hubY` = HQ's baked pad height — left as it is when not given)
+function stampData(id, dataFile, more) {
     const file = dataFile || path.join(REPO_ROOT, 'data.js');
-    const src = fs.readFileSync(file, 'utf8');
+    let src = fs.readFileSync(file, 'utf8');
     const re = /(R\.baked = \{ id: ')[0-9a-f]*(')/;
     if (!re.test(src)) throw new Error('data.js: HQ_LAND R.baked line not found');
-    fs.writeFileSync(file, src.replace(re, `$1${id}$2`));
+    if (id) src = src.replace(re, `$1${id}$2`);
+    if (more && isFinite(more.hubY)) src = src.replace(/(R\.baked = \{[^\n]*?hubY: )-?[0-9.]+/, `$1${(+more.hubY).toFixed(2).replace(/\.?0+$/, '')}`);
+    fs.writeFileSync(file, src);
 }
 
 // ════════ CLI ══════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -721,7 +725,8 @@ if (require.main === module) {
     breaches.forEach(b => console.log(`BREACH ${b.rule}: ${b.msg}`));
     const { id, files } = writeOutputs(B, out, { tiles: !flag('--no-tiles'), map: !flag('--no-map') });
     console.log(`wrote ${out}: land.json ${(files.json / 1024).toFixed(0)} KB, land-map.png ${(files.png / 1024).toFixed(0)} KB, ${files.tiles} tiles · bake id ${id}`);
-    if (!flag('--no-stamp') && !breaches.length) { stampData(id); console.log(`stamped data.js HQ_LAND.baked.id = '${id}' (ship data.js with the ?v= bump; upload ${path.relative(REPO_ROOT, out) || out}/ to R2 Assets/Land/)`); }
+    const hub = (B.overlay.places || []).find(p => p.id === 'hq'), hubY = hub && isFinite(+hub.y) ? +hub.y : undefined;
+    if (!flag('--no-stamp') && !breaches.length) { stampData(id, null, { hubY }); console.log(`stamped data.js HQ_LAND.baked.id = '${id}', hubY ${hubY} (ship data.js with the ?v= bump; upload ${path.relative(REPO_ROOT, out) || out}/ to R2 Assets/Land/)`); }
     console.log(breaches.length ? `${breaches.length} breach(es): not stamped` : 'THE RULES HOLD: R2 from every pad, the named separations, rivers downhill, lakes level, road grades, the ring, every place on a route, cliffs drawn');
     process.exit(breaches.length ? 1 : 0);
 }

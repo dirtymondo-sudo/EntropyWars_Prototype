@@ -1593,3 +1593,26 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   (view width / fit width, 0.12..1) keeps labels and markers one screen size. A place's card: region, height, pad,
   SEES (ground / tops from the sight lists), FIRST SEEN (the reveals, nearest first) and the routes it is ON. Picking a
   place brings the view to it. No fog of war yet (G9).
+
+## THE LAND UNDERFOOT (WORLD_GEOGRAPHY_PLAN G2, 2026-09-28)
+- The way out: foyer door `street` → room `land` (`land: true`, an open box with no shell) at door `hq` (`wall: 'free'`,
+  `y` = `HQ_LAND.baked.hubY`, re-applied after HQ_LAND loads). The room is story mode only; nothing online reads it.
+- data.js, after the recipe: `HQ_LAND_RULES` (chunk 64 m, `lods`, `camFar` 460, `far` lens, `tiles` cap/reach/inFlight,
+  `detail`, `walk.maxSlope` 1.0, `cliff` 0.72→0.97, `sea`, `ao`, `tex.layers` (15 sheets, mondo's picks: id, `src`, mean colour, metres per
+  repeat), `mats` (bake material → [sheet, tint, detail amplitude]), `hq` (the drum)) and `HQ_LAND_STORE` + the sampler
+  (`hqLandIndex`, `hqLandWorldRead`, `hqLandTileRead`, `hqLandPut` / `hqLandTouch` / `hqLandWant`, `hqLandBase`,
+  `hqLandDetail`, `hqLandHeight`, `hqLandFeet`, `hqLandSlope`, `hqLandCliff(W)`, `hqLandGrid`, `hqLandIds`,
+  `hqLandWorldGrid`, `hqLandPadY`, `hqLandHQSolid`, `hqLandStats`). Pure; nothing fetches. land-stream.test.js holds them.
+- three-renderer.js `_hqLand*` (before `_hqSea`): `_hqLandArm` (from `_hqEnter` after the sky), `_hqLandTick` (after the
+  camera in `_hqFrame`), `_hqLandBuildChunk`, `_hqLandSheets` (the texture array, cached across visits), the splat hook
+  `_hqLandSplatHook` (one program: `customProgramCacheKey 'ewland-splat-1'`, per-chunk uniforms `uIds` / `uIdO`),
+  `_hqLandBuildFar` + `_hqLandFarHook` (renderOrder −900 / −899, the depth-clear node −850), `_hqLandBuildSea`,
+  `_hqLandBuildHQ`, the reads `_hqLandFeetAt` / `_hqLandAirOK` / `_hqLandCamBlocked`, `_hqLandDisarm` (from `_hqLeave`).
+  Probe read: `ThreeRenderer.hq.dev.land()`. The gate waits on `H.land.readyNear` (every chunk within lods[1].to built).
+- The splat needs WebGL2 (texelFetch, sampler2DArray); WebGL1 / `window.EW_NO_LAND_SPLAT` = vertex colours.
+- The sheets are the bucket's own (mondo 2026-09-28): `tex.layers[].src` = a TERRAIN_SPRITES key or `urban:<Name>`,
+  resolved by `_hqLandSheetUrl` (+ `_ewCorsBust`), drawn to 256 px, times `tint` (else TERRAIN_BASE_TINT[src]). Each loaded
+  sheet's measured mean goes on its layer (`mean`) and `_hqLandRetone` re-reads the tables + recolours the far land. Nothing
+  is generated; zip 4's `Assets/Land/tex/` is dead.
+- Probe (offline, scratch copy of playtest_hq_offline.js): serve `/Assets/Land/*` from the repo's bake output, wait for
+  the game's own first room before `_hqEnter({ room: 'land' })` (else the boot's hall entry replaces it).

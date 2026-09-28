@@ -451,7 +451,7 @@ test('box-room doors hang on a named wall with a panel that fits, one action eac
             ids.add(d.id);
             /* a FREE-STANDING seam (HQ plan 9.3 `way`, 2026-09-15): the well in the cellar's floor — x / z inside the room, a heading */
             if (d.wall === 'free') {
-                if (!d.way) problems.push(k + ': door ' + d.id + ' stands free but is no way');
+                if (!d.way && !room.land) problems.push(k + ': door ' + d.id + ' stands free but is no way');   // G2: THE LAND's door stands on the building's own face
                 if (!(Math.abs(d.x || 0) + 1.0 < S.w / 2 && Math.abs(d.z || 0) + 1.0 < S.d / 2) || !Number.isFinite(d.face)) problems.push(k + ': free seam ' + d.id + ' stands in a wall or faces nowhere');
             } else if (!WALLS.includes(d.wall)) { problems.push(k + ': door ' + d.id + ' names no wall'); continue; }
             const a = d.wall === 'free' ? { v: 0, half: 99 } : alongOf(S, d.wall, d);
@@ -504,7 +504,7 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
         for (const a of room.agents || []) if (!(typeof a.x === 'number' && typeof a.z === 'number')) problems.push(k + ': agent needs x/z');
         /* an OUTDOOR room (plan 7.2 stage 3) has no ceiling to hang a fluorescent from: its lights are masts */
         /* THE WOODS (9.3 stage 3): an open CAVE-GRID room lights itself with its torches (the dungeon rule: no facility strips, no masts) */
-        if (S.open) assert.ok(Array.isArray(S.lights) && ((room.cave || room.terrain) ? S.lights.length === 0 : S.lights.length >= 4) && !room.props.some(p => p.ceil), k + ': an outdoor room is lit by masts (a cave grid / a terrain room by its own torches), nothing hangs from a ceiling');
+        if (S.open) assert.ok(Array.isArray(S.lights) && ((room.cave || room.terrain || room.land) ? S.lights.length === 0 : S.lights.length >= 4) && !room.props.some(p => p.ceil), k + ': an outdoor room is lit by masts (a cave grid / a terrain room by its own torches, THE LAND by the sun), nothing hangs from a ceiling');
         else assert.ok(room.props.some(p => (p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)) || /^(flicker_tube|bare_bulb|wall_torch|candle_ring|floating_orb|cave_torch|crystal_cluster|grow_lamp|monitor_stack|festoon|door_furnace|eeg_rack|iso_tank|ship_lantern|slot_machine|thoughtform|dream_eye|nightmare_bloom|lava_lamp|lava_lamp_floor|sputnik_lamp|saucer_pendant|disc_cluster|mushroom_lamp|retro_console)$/.test(p.key)), k + ': lit by a fluorescent (or, since Phase 8, a tube that flickers, a bulb, a torch, the candles, the object; since the cave, a stake torch or a crystal; since the Dutchman, a ship’s lantern; since the urban block, the machines; since the astral realm, a thought-form, an eye, a bloom; since the retro-futurist pass, a lava lamp, a sputnik, a saucer, the discs, a mushroom, a console)');
     }
     assert.deepStrictEqual(problems, []);
@@ -634,7 +634,7 @@ test('THE FOURIER FOYER: a box room behind the revolving door at 195° — the w
     const way = F.doors.find(d => d.id === 'egress');
     assert.ok(way && way.wall === 'n' && way.x === 0 && way.leaf === eg.leaf && !!way.wide === !!eg.wide && way.action.room === 'central_egress' && way.action.at === 'foyer', 'the way out is the same revolving door and lands at the hall door');
     const street = F.doors.find(d => d.id === 'street');
-    assert.ok(street && street.wall === 's' && street.action.fn === '_hqExitToMenu' && street.leaf === 'leaf_entrance' && HQ.catalogue[street.leaf], 'the front door on the south wall is the strip’s EXIT as a door (the street is the main menu)');
+    assert.ok(street && street.wall === 's' && street.action.room === 'land' && street.action.at === 'hq' && street.leaf === 'leaf_entrance' && HQ.catalogue[street.leaf], 'the front door on the south wall opens onto THE LAND (WORLD_GEOGRAPHY_PLAN G2; the main menu is the pause menu\'s EXIT)');
     assert.ok(!D.DOOR_TEXT.CLEARANCE.some(r => r.door === eg.leaf || r.door === street.leaf), 'neither leaf is a rank leaf');
     const insp = F.counters.find(c => c.id === 'inspection');
     assert.ok(insp && insp.action && !insp.action.fn && !insp.action.overlay && !insp.action.room && insp.desc, 'CORNER INSPECTION is a by-id panel with a desc');

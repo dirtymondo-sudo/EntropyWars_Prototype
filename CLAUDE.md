@@ -105,6 +105,8 @@ diffs. The deliverable is always the full edited file, produced in chat.
 - `bake-land.js` (2026-09-28, WORLD_GEOGRAPHY_PLAN G0): `npm run bake-land` bakes data.js HQ_LAND (the world recipe) into
   Assets/Land/ (land.json, land-map.png, tiles, sea.bin; ~2.5 min at 2 m) and stamps HQ_LAND.baked.id (the `?b=` on the
   game's urls). A recipe edit = re-bake + upload. The map's ATLAS tab draws it. Test land-bake.test.js; notes areas-complexes.md "THE LAND".
+  G2 (the land underfoot: foyer front door → room `land`): the bake stamps hubY; the ground wears the bucket's terrain / urban sheets
+  (HQ_LAND_RULES.tex src). Upload Assets/Land/. Test land-stream.test.js; notes areas-complexes.md "THE LAND UNDERFOOT".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

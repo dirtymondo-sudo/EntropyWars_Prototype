@@ -24243,7 +24243,8 @@ const ThreeRenderer = (function () {
     /* the readout's line: MEM <misc + rigs> / <budget> MB */
     function _mmLine() {
         var R = _mmLast; if (!R) return '';
-        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB';
+        var land = (_hq && _hq.land && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
+        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.land.n + ' chunks' : '');
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -40293,6 +40294,7 @@ const ThreeRenderer = (function () {
        (so the room is lit without the kit), the room plate. Doors / props
        come from the side-aware builders below via _hqBoxWall. */
     function _hqBuildBoxShell(room) {
+        if (room.land) return;   // G2: THE LAND has no shell — its ground is the baked world (_hqLandArm), its edge the ice wall
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
         var W = S.w, Dp = S.d, H = S.h;
         var texFloor = S.floor || 'terrazzo', texWall = S.wall || 'stone', texDado = S.dado || 'oxblood', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'concrete';
@@ -41033,13 +41035,14 @@ const ThreeRenderer = (function () {
     }
     /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
     function _hqCaveTop(x, z) {
+        if (_hq && _hq.land) return hqLandHeight(x, z);   // G2: THE LAND — the ground under (x, z) (null before its tile is in)
         /* THE TERRAIN ROOM (2026-09-17): the ground under (x, z) — the walker's feet there, else the raw height (a prop in a hazard still stands on its bed) */
         if (_hq && _hq.terrain && typeof hqTerrainFeet === 'function') { var tf = hqTerrainFeet(_hq.terrain, x, z, null); return (tf == null) ? hqTerrainHeight(_hq.terrain, x, z) : tf; }
         var st = _hq && _hq.site; if (!st || !st.cave || typeof hqCaveTopAt !== 'function') return null;
         return hqCaveTopAt(st.info, x, z);
     }
     /* a room whose floor has a HEIGHT under every point (a cave grid, a terrain field) */
-    function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain)); }
+    function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain || _hq.land)); }
     /* the walker's FEET on a board cell (site or cave) — the ONE read */
     function _hqSiteFloorY(sc, x, z) {
         var st = _hq && _hq.site; if (!st || !sc) return 0;
@@ -50645,6 +50648,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return null;
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return null;   // THE RETRO-FUTURIST KIT: the filleted corner is wall
             y = 0;
+            if (_hq.land) { var lf = _hqLandFeetAt(x, z); if (lf === null) return null; y = lf; }   // G2: THE LAND — the sampler's feet (a face too steep is a drawn cliff), the building's drum, a tile not yet in
             /* THE TERRAIN ROOM (2026-09-17): the field's own feet — the slope rule, the wade, the walls (data.js hqTerrainFeet) */
             if (_hq.terrain) { var tt = hqTerrainFeet(_hq.terrain, x, z, curY); if (tt === null) return null; y = tt; }
             /* the site board (plan 7.2): a cell's own top — a pit for a lake,
@@ -50827,6 +50831,7 @@ const ThreeRenderer = (function () {
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return false;   // THE RETRO-FUTURIST KIT: the filleted corner is wall in the air too
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
             if (_hq.terrain && !hqTerrainAir(_hq.terrain, x, z, y)) return false;   // THE TERRAIN ROOM: never inside the ground, a wall or over a hazard
+            if (_hq.land && !_hqLandAirOK(x, z, y)) return false;   // G2: never inside the land or the building
             if (_hq.site) { var sc = _hqSiteCellAt(x, z); if (sc) { if (!sc.walk) return false; if (_hq.site.cave ? (y < _hqSiteFloorY(sc, x, z) - 0.05) : (sc.top < 0 && y < sc.top - 0.05)) return false; } }   // a cave's ledge is solid in the air (rev 11)
             if (_hq.gallery && !_hqGalleryAir(x, z, y)) return false;   // THE GALLERY (9.2 stage 2): the slab, the flight's mass and the railing are solid in the air
             if (_hq.ramps && _hq.ramps.length) { var rpa = _hqRampSurfaceAt(x, z); if (rpa !== undefined && y < rpa - 0.05) return false; }   // SKATEBOARDING (9.8): the quarter pipe's mass
@@ -50891,6 +50896,7 @@ const ThreeRenderer = (function () {
             if (!S.open && py > S.h - 0.3) return true;   // an outdoor room has no ceiling
             if (S.cove > 0 && !S.open && py > S.h - S.cove && _hqInCove(px, pz, py, S, 0.2)) return true;   // ...nor the cove
             if (_hq.gallery && _hqGalleryCam(px, pz, py)) return true;   // THE GALLERY (9.2 stage 2): the boom never enters the slab or the flight
+            if (_hq.land) return _hqLandCamBlocked(px, pz, py);   // G2: the boom stays over the land and out of the building
             if (_hq.terrain) return hqTerrainCam(_hq.terrain, px, pz, py);   // THE TERRAIN ROOM: the boom stays over the field, out of its walls, above its sheets
             if (_hq.site) {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */
@@ -52828,7 +52834,532 @@ const ThreeRenderer = (function () {
         o.labels = Object.assign({}, DEF.labels || {}, R.labels || {});
         return o;
     }
-    function _hqSea() { return (_hq && _hq.terrain && _hq.terrain.sea) || null; }
+    /* ══ THE LAND UNDERFOOT (WORLD_GEOGRAPHY_PLAN.md §5.2 — G2, 2026-09-28) ══════════════════════════════════════════════════
+       The land room (data.js DOOR_HQ.rooms.land, `land: true`) stands the walker on the baked world. data.js holds the rules
+       (HQ_LAND_RULES) and THE SAMPLER (hqLandHeight / hqLandFeet / hqLandGrid …); this is the drawing and the streaming:
+         THE STREAM   land.json (the index) + sea.bin (the whole world at 8 m) first, then the 256 m tiles nearest first
+                      (hqLandWant), a few at a time, through the asset store (_asFetch: the Cache Storage keeps them); the
+                      room's card waits for the index, the world, the sheets and the tiles round the door (the gate's ledger)
+         THE CHUNKS   64 m squares round the walker, 1 m / 2 m / 4 m / 8 m apart by distance (HQ_LAND_RULES.lods), built
+                      nearest first a few ms a frame; a curtain (the skirt) under every edge hides the seams between levels;
+                      normals from the grid; `aLand` = the cliff sheet's weight (the walker's own slope rule) + the hollows' AO
+         THE GROUND   one texture array of the ground's sheets (HQ_LAND_RULES.tex) and a per-chunk sheet of the 2 m
+                      materials: every pixel blends its four samples' sheets (the splat), a second rotated read breaks the
+                      repeat, a cliff face is drawn side-on (triplanar) wherever the walker would be refused (R3). Without
+                      WebGL2 (or before the sheets land) the ground wears its materials' colours.
+         THE FAR PASS the whole world at 16 m (the 8 m world grid), drawn FIRST with its own lens (HQ_LAND_RULES.far: 30 m →
+                      7.2 km) inside the one scene render: after the sky (renderOrder −1000) the far land and the far sea
+                      (−900 / −899), then a node that clears the depth (−850), then the near scene with the building's
+                      camera. Inside `uCut` (the ring the chunks already cover) the far land is not drawn.
+         D.O.O.R. HQ  a concrete drum on its pad with the front door in its south face — solid to the walker and the camera.
+       NOT a floating origin (the plan's §5.2): at 2.8 km a float32 metre is ~0.2 mm, so every chunk is built in its own
+       frame and placed; nothing re-centres. Kill-switch window.EW_NO_LAND_SPLAT (the colours only). */
+    var _hqLandCache = { farKey: '', far: null, tex: null, texKey: '', texLoading: null };
+    function _hqLandR() { return (typeof HQ_LAND_RULES !== 'undefined') ? HQ_LAND_RULES : null; }
+    function _hqLandOk() { return typeof hqLandIndex === 'function' && typeof hqLandBaked === 'function' && hqLandBaked() && !!_hqLandR(); }
+    function _hqLandGL2() { try { return !!(renderer && renderer.capabilities && renderer.capabilities.isWebGL2) && !(typeof window !== 'undefined' && window.EW_NO_LAND_SPLAT); } catch (e) { return false; } }
+    /* one file through the store (or the network), filed on the ledger — resolves an ArrayBuffer, rejects on a failure */
+    function _hqLandFetch(kind, url) {
+        var rec = _alTrack(kind, url);
+        var p = _asAvailable() ? _asFetch(url, { rec: rec }) : fetch(url, { mode: 'cors', credentials: 'omit' }).then(function (r) { if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : 0) + ' ' + url); return r; });
+        return p.then(function (res) { return res.arrayBuffer(); }).then(function (b) { rec.settle(true); return b; }, function (e) { rec.settle(false); throw e; });
+    }
+    function _hqLandArm(room) {
+        var H = _hq; H.land = null;
+        if (!room || !room.land || !_hqLandOk()) return;
+        var R = _hqLandR(), U = _hqUnits();
+        var L = H.land = { room: room, group: new THREE.Group(), chunks: {}, n: 0, want: [], inflight: {}, nFlight: 0, failed: {}, idx: false, world: false,
+                           sea: { y: (R.sea && R.sea.y) || 0, key: 'land', under: false }, lastX: 1e9, lastZ: 1e9, lastWantAt: 0, cut: 0, readyNear: false,
+                           gl2: _hqLandGL2(), mats: null, far: null, hqY: (typeof hqLandPadY === 'function' ? hqLandPadY('hq') : 0) || 0, t0: performance.now(), dead: false, stats: { built: 0, ms: 0 } };
+        L.group.name = 'hq_land'; H.scene.add(L.group);
+        /* the near camera reaches past the building's 274 m (the chunks run to 400 m; the far pass beyond) */
+        if (H.camera && R.camFar) { H.camera.far = R.camFar * U; H.camera.updateProjectionMatrix(); }
+        try { _hqLandBuildHQ(L); } catch (e) { console.warn('[HQ land] the building failed', e); }
+        try { _hqLandBuildSea(L); } catch (e) { console.warn('[HQ land] the sea failed', e); }
+        /* the index + the world (a second visit reads them from HQ_LAND_STORE at once) */
+        var St = HQ_LAND_STORE;
+        if (St.index && St.id === HQ_LAND.baked.id && St.world) { L.idx = true; L.world = true; _hqLandWorldReady(L); }
+        else {
+            Promise.all([_hqLandFetch('land', hqLandUrl('land.json')), _hqLandFetch('land', hqLandUrl('sea.bin'))]).then(function (b) {
+                if (L.dead) return;
+                var ov = JSON.parse(new TextDecoder().decode(new Uint8Array(b[0])));
+                hqLandIndex(ov); L.idx = true;
+                hqLandWorldRead(b[1]); L.world = true;
+                _hqLandWorldReady(L);
+            }).catch(function (e) { L.failedIndex = true; console.warn('[HQ land] the land did not load — the walker waits on the pad', e); });
+        }
+        if (L.gl2) _hqLandSheets(L);
+    }
+    /* the index is in: the far pass, and the first ring of tiles asked for while the room's card is still up */
+    function _hqLandWorldReady(L) {
+        var H = _hq; if (!H || H.land !== L) return;
+        try { _hqLandBuildFar(L); } catch (e) { console.warn('[HQ land] the far pass failed', e); }
+        var pl = H.player; _hqLandStream(L, pl ? pl.x : 0, pl ? pl.z : 0, true);
+    }
+    /* ── THE STREAM ── */
+    function _hqLandStream(L, x, z, force) {
+        var R = _hqLandR(), T = R.tiles, now = performance.now();
+        if (!L.idx || !L.world) return;
+        if (!force && now - L.lastWantAt < 250) return;
+        L.lastWantAt = now;
+        hqLandTouch(x, z, T.reach);
+        var want = hqLandWant(x, z, T.reach);
+        for (var i = 0; i < want.length && L.nFlight < T.inFlight; i++) {
+            var w = want[i], key = w.ti + '_' + w.tj;
+            if (L.inflight[key] || (L.failed[key] || 0) > 2) continue;
+            L.inflight[key] = 1; L.nFlight++;
+            (function (w, key) {
+                _hqLandFetch('land', hqLandUrl(w.name)).then(function (buf) {
+                    L.inflight[key] = 0; L.nFlight--;
+                    if (L.dead) return;
+                    var rec = hqLandTileRead(buf);
+                    hqLandPut(rec);
+                    _hqLandTileLanded(L, rec.ti, rec.tj);
+                    _hqLandStream(L, _hq && _hq.player ? _hq.player.x : x, _hq && _hq.player ? _hq.player.z : z, true);
+                }).catch(function (e) {
+                    L.inflight[key] = 0; L.nFlight--; L.failed[key] = (L.failed[key] || 0) + 1;
+                    if (L.failed[key] === 1) console.warn('[HQ land] tile ' + w.name + ' did not land', e);
+                });
+            })(w, key);
+        }
+    }
+    /* a tile landed: every chunk that was drawn from the 8 m world where it lies is drawn again from the tile */
+    function _hqLandTileLanded(L, ti, tj) {
+        var St = HQ_LAND_STORE, x0 = -St.ext + ti * St.tile, z0 = -St.ext + tj * St.tile, x1 = x0 + St.tile, z1 = z0 + St.tile;
+        for (var k in L.chunks) { var c = L.chunks[k]; if (c.coarse && c.x0 < x1 + 16 && c.x0 + c.size > x0 - 16 && c.z0 < z1 + 16 && c.z0 + c.size > z0 - 16) c.stale = true; }
+        L.lastX = 1e9;   // the chunk set is re-read next frame (a chunk that waited for this tile builds now)
+    }
+    /* is every tile under this rect (plus the grid's margin) in? (a tile the bake dropped — the open Deep — counts as in) */
+    function _hqLandRectReady(xa, za, xb, zb) {
+        return hqLandReadyAt(xa, za) && hqLandReadyAt(xb, za) && hqLandReadyAt(xa, zb) && hqLandReadyAt(xb, zb);
+    }
+    /* ── THE CHUNKS ── */
+    function _hqLandLevelFor(R, d, cur) {
+        var lv = R.lods, hy = 6;
+        for (var i = 0; i < lv.length; i++) {
+            var lim = lv[i].to + ((cur != null && cur <= i) ? hy : (cur != null ? -hy : 0));   // a chunk keeps its level a few metres past the line (no flicker at the edge)
+            if (d <= lim) return i;
+        }
+        return -1;
+    }
+    function _hqLandTick(H, dt, now) {
+        var L = H.land; if (!L || L.dead) return;
+        var R = _hqLandR(), U = _hqUnits(), pl = H.player, C = R.chunk;
+        var px = pl ? pl.x : 0, pz = pl ? pl.z : 0;
+        _hqLandStream(L, px, pz, false);
+        if (L.far) _hqLandFarFrame(L, H);
+        if (L.nearSea) { var cx0 = H.camera.position.x, cz0 = H.camera.position.z, sn = 64 * U; L.nearSea.position.set(Math.round(cx0 / sn) * sn, L.sea.y * U, Math.round(cz0 / sn) * sn); }
+        if (!L.idx || !L.world) return;
+        /* the walker's own ground: off a face too steep to stand on (a landing on a cliff) it slides down the fall line */
+        if (pl && !pl.air && !pl.swim && !pl.climb && !(H.vehicle && H.vehicle.on) && H.ready && hqLandReadyAt(px, pz) && hqLandFeet(px, pz) === null && !hqLandHQSolid(px, pz, 0)) {
+            var e = 0.5, gx = hqLandBase(px + e, pz) - hqLandBase(px - e, pz), gz = hqLandBase(px, pz + e) - hqLandBase(px, pz - e), gl = Math.hypot(gx, gz) || 1;
+            var nx = px - gx / gl * 3.2 * dt, nz = pz - gz / gl * 3.2 * dt, ny = hqLandHeight(nx, nz);
+            if (ny != null && ny < pl.y + 0.01) { pl.x = nx; pl.z = nz; pl.y = ny; }
+        }
+        /* the chunk set: re-read when the walker has moved reLodM (or a chunk is waiting) */
+        var moved = Math.hypot(px - L.lastX, pz - L.lastZ) > R.reLodM;
+        if (moved || L.pending) {
+            if (moved) { L.lastX = px; L.lastZ = pz; }
+            var maxD = R.lods[R.lods.length - 1].to + 8, span = Math.ceil(maxD / C) + 1, ci = Math.floor(px / C), cj = Math.floor(pz / C), seen = {}, list = [];
+            for (var j = cj - span; j <= cj + span; j++) for (var i = ci - span; i <= ci + span; i++) {
+                var cx = (i + 0.5) * C, cz = (j + 0.5) * C, d = Math.hypot(cx - px, cz - pz);
+                if (Math.abs(cx) > HQ_LAND.baked.ext || Math.abs(cz) > HQ_LAND.baked.ext) continue;
+                var key = i + '_' + j, c = L.chunks[key];
+                var lv = _hqLandLevelFor(R, d, c ? c.lv : null);
+                if (lv < 0) continue;
+                seen[key] = 1;
+                if (!c || c.lv !== lv || c.stale) list.push({ key: key, i: i, j: j, lv: lv, d: d });
+            }
+            for (var k in L.chunks) if (!seen[k]) _hqLandDropChunk(L, k);
+            list.sort(function (a, b) { return a.d - b.d; });
+            L.want = list; L.pending = list.length > 0;
+        }
+        /* build, nearest first, inside the frame's budget (more of it while the card is up) */
+        var budget = H.ready ? R.buildMs : 40, t0 = performance.now(), built = 0;
+        while (L.want.length && performance.now() - t0 < budget) {
+            var w = L.want[0];
+            var x0 = w.i * C, z0 = w.j * C, st = R.lods[w.lv].step, mg = Math.max(2, Math.ceil(R.ao.r / st)) * st + 2;
+            var ready = _hqLandRectReady(x0 - mg, z0 - mg, x0 + C + mg, z0 + C + mg);
+            var cur = L.chunks[w.key];
+            if (!ready && ((cur && !cur.stale) || w.d < R.lods[1].to)) { L.want.shift(); continue; }   // the old level stands until the tile is in; a near chunk waits for it (the 8 m world stands in only far off)
+            L.want.shift();
+            try { _hqLandBuildChunk(L, w.key, w.i, w.j, w.lv, !ready); built++; } catch (err) { if (!L.warned) { L.warned = true; console.warn('[HQ land] a chunk failed', err); } }
+        }
+        if (built) { L.stats.built += built; L.stats.ms += performance.now() - t0; }
+        L.pending = L.want.length > 0;
+        /* the far pass's cut: the ring every chunk already covers (from the camera), inside the near camera's reach */
+        var cam = H.camera, ccx = cam.position.x / U, ccz = cam.position.z / U, cut = R.camFar * 0.94;
+        for (var q = 0; q < L.want.length; q++) { var ww = L.want[q]; if (L.chunks[ww.key]) continue; var dx = Math.max(ww.i * C - ccx, 0, ccx - (ww.i + 1) * C), dz = Math.max(ww.j * C - ccz, 0, ccz - (ww.j + 1) * C); cut = Math.min(cut, Math.hypot(dx, dz)); }
+        cut = Math.min(cut, R.lods[R.lods.length - 1].to - C * 0.75);
+        L.cut = Math.max(0, cut);
+        if (!L.readyNear) {
+            var need = R.lods[1].to, okN = true;
+            for (var q2 = 0; q2 < L.want.length && okN; q2++) if (L.want[q2].d <= need && !L.chunks[L.want[q2].key]) okN = false;
+            if (okN && L.n > 0 && L.far && (!L.gl2 || L.mats || L.texFailed)) {
+                L.readyNear = true; L.readyMs = Math.round(performance.now() - L.t0);
+                if (pl && !pl.air && !pl.swim) { var fy = hqLandHeight(pl.x, pl.z); if (fy != null) { pl.y = fy; pl.visY = fy; } }   // the walker stands on the ground it could not read before (a spawn with no door under it)
+            }
+        }
+    }
+    function _hqLandDropChunk(L, key) {
+        var c = L.chunks[key]; if (!c) return;
+        if (c.mesh) { L.group.remove(c.mesh); try { c.mesh.geometry.dispose(); } catch (e) {} try { if (c.mesh.material && c.mesh.material !== L.plainMat) c.mesh.material.dispose(); } catch (e) {} }
+        if (c.ids) { try { c.ids.dispose(); } catch (e) {} }
+        delete L.chunks[key]; L.n--;
+    }
+    function _hqLandBuildChunk(L, key, i, j, lv, coarse) {
+        var R = _hqLandR(), U = _hqUnits(), C = R.chunk, st = R.lods[lv].step, n = Math.round(C / st);
+        var x0 = i * C, z0 = j * C;
+        var M = Math.max(1, Math.round(R.ao.r / st)), NX = n + 1 + 2 * M;
+        var G = hqLandGrid(x0 - M * st, z0 - M * st, st, NX, NX); if (!G) return;
+        var nv = (n + 1) * (n + 1), ns = 4 * (n + 1);
+        var pos = new Float32Array((nv + ns) * 3), nor = new Float32Array((nv + ns) * 3), col = new Float32Array((nv + ns) * 3), land = new Float32Array((nv + ns) * 2);
+        var AO = R.ao, CL = R.tex.layers, cliffCol = null;
+        for (var li = 0; li < CL.length; li++) if (CL[li].id === 'cliff') cliffCol = new THREE.Color(CL[li].col);
+        var tmp = [0, 0, 0];
+        for (var b = 0; b <= n; b++) for (var a = 0; a <= n; a++) {
+            var v = b * (n + 1) + a, g = (b + M) * NX + (a + M);
+            var h = G.h[g];
+            var hx = (G.h[g + 1] - G.h[g - 1]) / (2 * st), hz = (G.h[g + NX] - G.h[g - NX]) / (2 * st);
+            var nl = Math.sqrt(hx * hx + 1 + hz * hz);
+            pos[v * 3] = a * st * U; pos[v * 3 + 1] = h * U; pos[v * 3 + 2] = b * st * U;
+            nor[v * 3] = -hx / nl; nor[v * 3 + 1] = 1 / nl; nor[v * 3 + 2] = -hz / nl;
+            var bx = (G.base[g + 1] - G.base[g - 1]) / (2 * st), bz = (G.base[g + NX] - G.base[g - NX]) / (2 * st);
+            var cw = hqLandCliffW(Math.sqrt(bx * bx + bz * bz));
+            var mean = (G.base[g + M] + G.base[g - M] + G.base[g + M * NX] + G.base[g - M * NX]) * 0.25;
+            var ao = Math.max(AO.min, 1 - AO.k * Math.max(0, mean - G.base[g]));
+            land[v * 2] = cw; land[v * 2 + 1] = ao;
+            hqLandColor(G.mat[g], tmp, 0);
+            if (cliffCol && cw > 0) { tmp[0] += (cliffCol.r - tmp[0]) * cw; tmp[1] += (cliffCol.g - tmp[1]) * cw; tmp[2] += (cliffCol.b - tmp[2]) * cw; }
+            col[v * 3] = tmp[0] * ao; col[v * 3 + 1] = tmp[1] * ao; col[v * 3 + 2] = tmp[2] * ao;
+        }
+        /* the skirt: every edge vertex again, dropped under the ground */
+        var drop = (R.skirt + st * 3) * U, edge = [], s = nv;   // deep enough for a cliff's edge between two levels
+        for (var e1 = 0; e1 <= n; e1++) edge.push(e1);                       // north (b = 0)
+        for (var e2 = 0; e2 <= n; e2++) edge.push(n * (n + 1) + e2);         // south
+        for (var e3 = 0; e3 <= n; e3++) edge.push(e3 * (n + 1));             // west
+        for (var e4 = 0; e4 <= n; e4++) edge.push(e4 * (n + 1) + n);         // east
+        for (var q = 0; q < edge.length; q++) {
+            var src = edge[q], dv = s + q;
+            pos[dv * 3] = pos[src * 3]; pos[dv * 3 + 1] = pos[src * 3 + 1] - drop; pos[dv * 3 + 2] = pos[src * 3 + 2];
+            nor[dv * 3] = nor[src * 3]; nor[dv * 3 + 1] = nor[src * 3 + 1]; nor[dv * 3 + 2] = nor[src * 3 + 2];
+            col[dv * 3] = col[src * 3]; col[dv * 3 + 1] = col[src * 3 + 1]; col[dv * 3 + 2] = col[src * 3 + 2];
+            land[dv * 2] = land[src * 2]; land[dv * 2 + 1] = land[src * 2 + 1];
+        }
+        var idx = new Uint16Array(n * n * 6 + 4 * n * 6), t = 0;
+        for (var bb = 0; bb < n; bb++) for (var aa = 0; aa < n; aa++) {
+            var p0 = bb * (n + 1) + aa, p1 = p0 + 1, p2 = p0 + (n + 1), p3 = p2 + 1;
+            idx[t++] = p0; idx[t++] = p2; idx[t++] = p1; idx[t++] = p1; idx[t++] = p2; idx[t++] = p3;
+        }
+        /* the curtains (each side wound to face outward; drawn double-sided costs nothing a culled back face would) */
+        [[0, false], [1, true], [2, true], [3, false]].forEach(function (sd) {
+            var o = sd[0] * (n + 1);
+            for (var k = 0; k < n; k++) {
+                var tA = edge[o + k], tB = edge[o + k + 1], dA = s + o + k, dB = s + o + k + 1;
+                if (sd[1]) { idx[t++] = tA; idx[t++] = tB; idx[t++] = dA; idx[t++] = tB; idx[t++] = dB; idx[t++] = dA; }
+                else { idx[t++] = tA; idx[t++] = dA; idx[t++] = tB; idx[t++] = tB; idx[t++] = dA; idx[t++] = dB; }
+            }
+        });
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        geo.setAttribute('aLand', new THREE.BufferAttribute(land, 2));
+        geo.setIndex(new THREE.BufferAttribute(idx, 1));
+        geo.computeBoundingSphere();
+        /* the splat's sheet of materials: the 2 m samples over the chunk, one past each edge */
+        var St = HQ_LAND_STORE, GX0 = Math.round((x0 + St.ext) / St.step) - 1, GZ0 = Math.round((z0 + St.ext) / St.step) - 1, w = Math.round(C / St.step) + 3;
+        var old = L.chunks[key];
+        if (old) _hqLandDropChunk(L, key);
+        var c = { key: key, i: i, j: j, lv: lv, x0: x0, z0: z0, size: C, coarse: !!coarse, stale: false, mesh: null, ids: null, idO: new THREE.Vector4(-St.ext + GX0 * St.step, -St.ext + GZ0 * St.step, 1 / St.step, w) };
+        if (L.gl2) {
+            var ids = hqLandIds(GX0, GZ0, w);
+            var tx = new THREE.DataTexture(ids, w, w, THREE.RedFormat, THREE.UnsignedByteType);
+            tx.minFilter = THREE.NearestFilter; tx.magFilter = THREE.NearestFilter; tx.generateMipmaps = false; tx.unpackAlignment = 1; tx.flipY = false; tx.needsUpdate = true;
+            c.ids = tx;
+        }
+        var mesh = new THREE.Mesh(geo, _hqLandChunkMat(L, c));
+        mesh.position.set(x0 * U, 0, z0 * U);
+        mesh.receiveShadow = st <= 2; mesh.castShadow = false;
+        mesh._ew_occSkip = true; mesh._ew_hqPart = 'land'; mesh.matrixAutoUpdate = false; mesh.updateMatrix();
+        c.mesh = mesh;
+        L.group.add(mesh);
+        L.chunks[key] = c; L.n++;
+    }
+    /* a chunk's material: the splat (its own uniforms over the one program) once the sheets are in, else the colours */
+    function _hqLandChunkMat(L, c) {
+        if (!L.mats || !c.ids) {
+            if (!L.plainMat) { L.plainMat = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 3, specular: 0x0a0a0a }); L.plainMat._ew_shared = true; }
+            return L.plainMat;
+        }
+        var m = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 4, specular: 0x101010 });
+        m.userData.uIds = { value: c.ids }; m.userData.uIdO = { value: c.idO };
+        m.onBeforeCompile = _hqLandSplatHook;
+        m.customProgramCacheKey = function () { return 'ewland-splat-1'; };
+        return m;
+    }
+    /* ── THE GROUND'S SHEETS ── the bucket's own terrain / urban sheets (HQ_LAND_RULES.tex `src`: a TERRAIN_SPRITES key or
+       `urban:<Name>`), each drawn to `size` px, tinted, one layer of the texture array */
+    function _hqLandSheetUrl(src) {
+        var url = null;
+        if (typeof src === 'string' && src.indexOf('urban:') === 0) url = (typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES[src.slice(6)]) || null;
+        else url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[src]) ? TERRAIN_SPRITES[src][0] : null;
+        return url ? ((typeof _ewCorsBust === 'function') ? _ewCorsBust(url) : url) : null;
+    }
+    /* the sheets' measured means reach the material tables and the far land once (the gate is still shut: nobody sees the swap) */
+    function _hqLandRetone(L) {
+        if (!_hqLandCache.toneKey || L.tone === _hqLandCache.toneKey) return;
+        L.tone = _hqLandCache.toneKey;
+        var St = HQ_LAND_STORE; if (typeof _hqLandTables === 'function') _hqLandTables(St.index && St.index.materials);
+        var land = L.far && L.far.meshes[0]; if (!land) return;
+        var A = _hqLandFarArrays(_hqLandR()); if (!A) return;
+        land.geometry.setAttribute('color', new THREE.BufferAttribute(A.col, 3));
+    }
+    function _hqLandSheets(L) {
+        var R = _hqLandR(), T = R.tex, key = JSON.stringify(T.layers.map(function (ly) { return [ly.src, ly.tint || 0]; }));
+        var done = function (arr) { if (L.dead || !_hq || _hq.land !== L) return; if (!arr) { L.texFailed = true; return; } _hqLandRetone(L); L.mats = _hqLandSplatShared(arr); for (var k in L.chunks) { var c = L.chunks[k]; if (c.mesh && c.ids && c.mesh.material === L.plainMat) c.mesh.material = _hqLandChunkMat(L, c); } };
+        if (_hqLandCache.tex && _hqLandCache.texKey === key) { done(_hqLandCache.tex); return; }
+        if (!_hqLandCache.texLoading || _hqLandCache.texLoadKey !== key) {
+            _hqLandCache.texLoadKey = key;
+            var N = T.size || 256, layers = T.layers, data = new Uint8Array(N * N * 4 * layers.length), byUrl = {}, ok = [];
+            _hqLandCache.texLoading = Promise.all(layers.map(function (ly, k) {
+                var url = _hqLandSheetUrl(ly.src);
+                if (!url) return Promise.reject(new Error('no sheet named ' + ly.src));
+                /* one fetch per file (sand and desert share the desert sheet) */
+                var got = byUrl[url] || (byUrl[url] = _hqLandFetch('land', url).then(function (buf) { return createImageBitmap(new Blob([buf], { type: 'image/png' })); }));
+                var tint = new THREE.Color(ly.tint != null ? ly.tint : ((typeof TERRAIN_BASE_TINT !== 'undefined' && TERRAIN_BASE_TINT[ly.src]) || 0xffffff));
+                return got.then(function (bmp) {
+                    var cv = document.createElement('canvas'); cv.width = N; cv.height = N;
+                    var cx = cv.getContext('2d'); cx.imageSmoothingEnabled = true; cx.drawImage(bmp, 0, 0, N, N);
+                    var px = cx.getImageData(0, 0, N, N).data, o = k * N * N * 4;
+                    for (var p = 0; p < N * N * 4; p += 4) { data[o + p] = px[p] * tint.r; data[o + p + 1] = px[p + 1] * tint.g; data[o + p + 2] = px[p + 2] * tint.b; data[o + p + 3] = 255; }
+                    ok[k] = true;
+                }).catch(function (e) {
+                    /* a sheet that never lands wears its colour */
+                    var c = new THREE.Color(ly.col), o = k * N * N * 4;
+                    for (var p = 0; p < N * N; p++) { data[o + p * 4] = c.r * 255; data[o + p * 4 + 1] = c.g * 255; data[o + p * 4 + 2] = c.b * 255; data[o + p * 4 + 3] = 255; }
+                    console.warn('[HQ land] the ground sheet ' + ly.id + ' (' + ly.src + ') did not land — its colour stands in', e);
+                });
+            })).then(function () {
+                /* each sheet's mean colour (after its tint) is the far land's and the plain fallback's colour for it: the land
+                   past 400 m wears what the near ground wears */
+                layers.forEach(function (ly, k) {
+                    if (!ok[k]) return;
+                    var o = k * N * N * 4, r = 0, g = 0, b = 0, n = 0;
+                    for (var p = 0; p < N * N * 4; p += 16) { r += data[o + p]; g += data[o + p + 1]; b += data[o + p + 2]; n++; }
+                    ly.mean = (Math.round(r / n) << 16) | (Math.round(g / n) << 8) | Math.round(b / n);
+                });
+                _hqLandCache.toneKey = key;
+                var arr = new THREE.DataTexture2DArray(data, N, N, layers.length);
+                arr.format = THREE.RGBAFormat; arr.type = THREE.UnsignedByteType;
+                arr.wrapS = arr.wrapT = THREE.RepeatWrapping; arr.magFilter = THREE.LinearFilter; arr.minFilter = THREE.LinearMipmapLinearFilter; arr.generateMipmaps = true;
+                try { arr.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); } catch (e) {}
+                arr.needsUpdate = true;
+                _hqLandCache.tex = arr; _hqLandCache.texKey = key;
+                return arr;
+            }).catch(function (e) { console.warn('[HQ land] the ground sheets failed — the land wears its colours', e); return null; });
+        }
+        _hqLandCache.texLoading.then(done);
+    }
+    /* the uniforms every chunk shares: the array, the layer / tint / scale of every material, the cliff's layer */
+    function _hqLandSplatShared(arr) {
+        var R = _hqLandR(), St = HQ_LAND_STORE, names = (St.index && St.index.materials) || Object.keys(R.mats), T = R.tex.layers;
+        var lay = [], tint = [], rep = [], cliff = 0;
+        for (var k = 0; k < 24; k++) {
+            var row = R.mats[names[k]] || null, li = 0;
+            if (row) { for (var q = 0; q < T.length; q++) if (T[q].id === row[0]) li = q; }
+            lay.push(li); tint.push(new THREE.Color(row ? row[1] : 0xffffff));
+        }
+        for (var q2 = 0; q2 < 16; q2++) rep.push(T[q2] ? 1 / (T[q2].m || 4) : 0.25);
+        for (var q3 = 0; q3 < T.length; q3++) if (T[q3].id === 'cliff') cliff = q3;
+        return { uLayers: { value: arr }, uLay: { value: lay }, uTint: { value: tint }, uRep: { value: rep }, uCliffL: { value: cliff }, uLandU: { value: 1 / _hqUnits() } };
+    }
+    var _HQ_LAND_SPLAT_VS_HEAD = [
+        'attribute vec2 aLand;', 'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;', 'uniform float uLandU;',
+    ].join('\n');
+    var _HQ_LAND_SPLAT_FS_HEAD = [
+        'precision highp sampler2DArray;',
+        'uniform sampler2DArray uLayers;', 'uniform sampler2D uIds;', 'uniform vec4 uIdO;',
+        'uniform float uLay[24];', 'uniform vec3 uTint[24];', 'uniform float uRep[16];', 'uniform float uCliffL;',
+        'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;',
+        'float ewLH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+        'float ewLN(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f); return mix(mix(ewLH(i), ewLH(i + vec2(1.0, 0.0)), u.x), mix(ewLH(i + vec2(0.0, 1.0)), ewLH(i + vec2(1.0, 1.0)), u.x), u.y); }',
+        /* one material's colour at this pixel: its sheet, twice (the second read turned and scaled: no visible repeat) */
+        'vec3 ewLMat(int id, vec2 w, float mixB) {',
+        '  float L = uLay[id]; float r = uRep[int(L)];',
+        '  vec3 a = texture(uLayers, vec3(w * r, L)).rgb;',
+        '  vec2 w2 = mat2(0.8, -0.6, 0.6, 0.8) * w * r * 0.43 + vec2(0.37, 0.71);',
+        '  vec3 b = texture(uLayers, vec3(w2, L)).rgb;',
+        '  return mix(a, b, mixB) * uTint[id];',
+        '}',
+    ].join('\n');
+    var _HQ_LAND_SPLAT_FS_BODY = [
+        'vec3 ewLand = vec3(1.0);',
+        '{',
+        /* the sixteen samples round the pixel, weighted by a cubic B-spline (a road's edge is a curve, not the 2 m grid's
+           staircase), gathered into at most four materials; the weights are then sharpened so two materials meet in a
+           line (ragged on the soft ground, clean on a road), never a smear */
+        '  vec2 g = (vLandW.xz - uIdO.xy) * uIdO.z; vec2 gi = floor(g); vec2 t = g - gi; ivec2 c = ivec2(gi);',
+        '  vec2 t2 = t * t, t3 = t2 * t;',
+        '  vec4 wx = vec4((1.0 - t.x) * (1.0 - t.x) * (1.0 - t.x), 3.0 * t3.x - 6.0 * t2.x + 4.0, -3.0 * t3.x + 3.0 * t2.x + 3.0 * t.x + 1.0, t3.x) / 6.0;',
+        '  vec4 wz = vec4((1.0 - t.y) * (1.0 - t.y) * (1.0 - t.y), 3.0 * t3.y - 6.0 * t2.y + 4.0, -3.0 * t3.y + 3.0 * t2.y + 3.0 * t.y + 1.0, t3.y) / 6.0;',
+        '  int id0 = -1, id1 = -1, id2 = -1, id3 = -1; vec4 ws = vec4(0.0);',
+        '  for (int j = 0; j < 4; j++) for (int i = 0; i < 4; i++) {',
+        '    ivec2 q = clamp(c + ivec2(i - 1, j - 1), ivec2(0), ivec2(int(uIdO.w) - 1));',
+        '    int m = int(texelFetch(uIds, q, 0).r * 255.0 + 0.5); float w = wx[i] * wz[j];',
+        '    if (m == id0) ws.x += w; else if (m == id1) ws.y += w; else if (m == id2) ws.z += w; else if (m == id3) ws.w += w;',
+        '    else if (id0 < 0) { id0 = m; ws.x = w; } else if (id1 < 0) { id1 = m; ws.y = w; } else if (id2 < 0) { id2 = m; ws.z = w; } else if (id3 < 0) { id3 = m; ws.w = w; }',
+        '  }',
+        '  float mixB = smoothstep(0.3, 0.7, ewLN(vLandW.xz / 23.0));',
+        '  float jag = (ewLN(vLandW.xz * 0.7) - 0.5) * 0.18;',
+        '  vec4 sw = ws + vec4(id0 >= 0 ? jag : 0.0, id1 >= 0 ? -jag : 0.0, 0.0, 0.0);',
+        '  sw = max(sw, 0.0); sw = sw * sw * sw * sw; sw /= max(1e-5, sw.x + sw.y + sw.z + sw.w);',
+        '  vec3 col = ewLMat(id0, vLandW.xz, mixB) * sw.x;',
+        '  if (sw.y > 0.004) col += ewLMat(id1, vLandW.xz, mixB) * sw.y;',
+        '  if (sw.z > 0.004) col += ewLMat(id2, vLandW.xz, mixB) * sw.z;',
+        '  if (sw.w > 0.004) col += ewLMat(id3, vLandW.xz, mixB) * sw.w;',
+        /* the cliff: side-on reads of the cliff sheet where the walker would be refused */
+        '  if (vLand.x > 0.01) {',
+        '    vec3 an = abs(normalize(vLandN)); float cr = uRep[int(uCliffL)];',
+        '    vec3 cx = texture(uLayers, vec3(vLandW.zy * cr, uCliffL)).rgb, cz = texture(uLayers, vec3(vLandW.xy * cr, uCliffL)).rgb, cy = texture(uLayers, vec3(vLandW.xz * cr, uCliffL)).rgb;',
+        '    vec3 tri = (cx * an.x + cz * an.z + cy * an.y) / max(0.001, an.x + an.y + an.z);',
+        '    col = mix(col, tri, vLand.x);',
+        '  }',
+        /* a broad variation (a field is never one flat green) and the hollows' AO */
+        '  col *= 0.9 + 0.2 * ewLN(vLandW.xz / 61.0);',
+        '  ewLand = col * vLand.y;',
+        '}',
+        'diffuseColor.rgb *= ewLand;',
+    ].join('\n');
+    function _hqLandSplatHook(shader) {
+        var L = _hq && _hq.land, S = (L && L.mats) || null; if (!S) return;
+        for (var k in S) shader.uniforms[k] = S[k];
+        shader.uniforms.uIds = this.userData.uIds; shader.uniforms.uIdO = this.userData.uIdO;
+        shader.vertexShader = _HQ_LAND_SPLAT_VS_HEAD + '\n' + shader.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vLand = aLand; vLandW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU; vLandN = objectNormal;');
+        shader.fragmentShader = _HQ_LAND_SPLAT_FS_HEAD + '\n' + shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + _HQ_LAND_SPLAT_FS_BODY);
+    }
+    /* ── THE FAR PASS ── */
+    function _hqLandFarHook(shader) {
+        var F = _hq && _hq.land && _hq.land.far; if (!F) return;
+        shader.uniforms.uFarProj = F.uProj; shader.uniforms.uFarCut = F.uCut; shader.uniforms.uFarCam = F.uCam;
+        shader.vertexShader = 'uniform mat4 uFarProj;\nvarying vec3 vFarW;\n' + shader.vertexShader
+            .replace('#include <project_vertex>', 'vec4 mvPosition = vec4(transformed, 1.0);\nmvPosition = modelViewMatrix * mvPosition;\ngl_Position = uFarProj * mvPosition;')
+            .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvFarW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        shader.fragmentShader = 'uniform float uFarCut;\nuniform vec3 uFarCam;\nvarying vec3 vFarW;\n' + shader.fragmentShader
+            .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (length(vFarW.xz - uFarCam.xz) < uFarCut) discard;');
+    }
+    /* the far land's arrays (the whole world at 16 m) — built once per bake, kept across visits */
+    function _hqLandFarArrays(R) {
+        var key = HQ_LAND.baked.id + ':' + R.far.fine + ':' + (_hqLandCache.toneKey || '');   // the tone: the sheets' measured means, once they land
+        if (_hqLandCache.far && _hqLandCache.farKey === key) return _hqLandCache.far;
+        var W = hqLandWorldGrid(Math.max(1, Math.round(R.far.fine / HQ_LAND_STORE.world.cell))); if (!W) return null;
+        var U = _hqUnits(), n = W.n, N = n * n, pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), tmp = [0, 0, 0];
+        var cliffCol = new THREE.Color(0x6e665c); (R.tex.layers || []).forEach(function (l) { if (l.id === 'cliff') cliffCol = new THREE.Color(l.mean != null ? l.mean : l.col); });
+        var sea = new THREE.Color(R.sea.far || 0x3a6f88);
+        for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
+            var o = j * n + i, h = W.h[o];
+            var hL = W.h[j * n + Math.max(0, i - 1)], hR = W.h[j * n + Math.min(n - 1, i + 1)], hU = W.h[Math.max(0, j - 1) * n + i], hD = W.h[Math.min(n - 1, j + 1) * n + i];
+            var hx = (hR - hL) / (2 * W.cell), hz = (hD - hU) / (2 * W.cell), nl = Math.sqrt(hx * hx + 1 + hz * hz);
+            pos[o * 3] = (W.x0 + i * W.cell) * U; pos[o * 3 + 1] = h * U; pos[o * 3 + 2] = (W.x0 + j * W.cell) * U;
+            nor[o * 3] = -hx / nl; nor[o * 3 + 1] = 1 / nl; nor[o * 3 + 2] = -hz / nl;
+            hqLandColor(W.mat[o], tmp, 0);
+            var cw = hqLandCliffW(Math.sqrt(hx * hx + hz * hz) * 1.3);   // a 16 m grid rounds a cliff off: lean it steeper
+            tmp[0] += (cliffCol.r - tmp[0]) * cw; tmp[1] += (cliffCol.g - tmp[1]) * cw; tmp[2] += (cliffCol.b - tmp[2]) * cw;
+            if (h < -0.5) { var dk = Math.min(1, -h / 12); tmp[0] += (sea.r - tmp[0]) * dk; tmp[1] += (sea.g - tmp[1]) * dk; tmp[2] += (sea.b - tmp[2]) * dk; }
+            col[o * 3] = tmp[0]; col[o * 3 + 1] = tmp[1]; col[o * 3 + 2] = tmp[2];
+        }
+        var idx = new Uint32Array((n - 1) * (n - 1) * 6), t = 0;
+        for (var b = 0; b < n - 1; b++) for (var a = 0; a < n - 1; a++) { var p0 = b * n + a, p1 = p0 + 1, p2 = p0 + n, p3 = p2 + 1; idx[t++] = p0; idx[t++] = p2; idx[t++] = p1; idx[t++] = p1; idx[t++] = p2; idx[t++] = p3; }
+        _hqLandCache.far = { pos: pos, nor: nor, col: col, idx: idx }; _hqLandCache.farKey = key;
+        return _hqLandCache.far;
+    }
+    function _hqLandBuildFar(L) {
+        var R = _hqLandR(), U = _hqUnits(), H = _hq;
+        var A = _hqLandFarArrays(R); if (!A) return;
+        var F = L.far = { uProj: { value: new THREE.Matrix4() }, uCut: { value: 0 }, uCam: { value: new THREE.Vector3() }, cam: new THREE.PerspectiveCamera(52, 1, R.far.near * U, R.far.far * U), meshes: [] };
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(A.pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(A.nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(A.col, 3));
+        geo.setIndex(new THREE.BufferAttribute(A.idx, 1));
+        var mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+        mat.onBeforeCompile = _hqLandFarHook; mat.customProgramCacheKey = function () { return 'ewland-far-1'; };
+        var land = new THREE.Mesh(geo, mat); land.name = 'hq_land_far'; land.renderOrder = -900; land.frustumCulled = false; land._ew_occSkip = true; land.raycast = function () {};
+        L.group.add(land); F.meshes.push(land);
+        /* the far sea: one sheet at the sea's level past the world's edge (the near sea draws over it inside the cut) */
+        var sg = new THREE.PlaneGeometry(9000 * U, 9000 * U, 1, 1); sg.rotateX(-Math.PI / 2);
+        var sm = new THREE.MeshPhongMaterial({ color: (R.sea.far != null) ? R.sea.far : 0x3a6f88, shininess: 40, specular: 0x333333 });
+        sm.onBeforeCompile = _hqLandFarHook; sm.customProgramCacheKey = function () { return 'ewland-far-sea-1'; };
+        var sea = new THREE.Mesh(sg, sm); sea.name = 'hq_land_far_sea'; sea.position.y = L.sea.y * U; sea.renderOrder = -899; sea.frustumCulled = false; sea._ew_occSkip = true; sea.raycast = function () {};
+        L.group.add(sea); F.meshes.push(sea);
+        /* the node that clears the depth: after it the near scene draws with the building's camera over the far one */
+        var cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+        var cm = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false });
+        var clr = new THREE.Mesh(cg, cm); clr.name = 'hq_land_depth_clear'; clr.renderOrder = -850; clr.frustumCulled = false; clr.raycast = function () {};
+        clr.onBeforeRender = function (r) { try { r.clearDepth(); } catch (e) {} };
+        L.group.add(clr); F.meshes.push(clr);
+    }
+    function _hqLandFarFrame(L, H) {
+        var F = L.far, cam = H.camera, fc = F.cam, U = _hqUnits();
+        if (fc.fov !== cam.fov || fc.aspect !== cam.aspect || fc.zoom !== cam.zoom) { fc.fov = cam.fov; fc.aspect = cam.aspect; fc.zoom = cam.zoom; fc.updateProjectionMatrix(); }
+        F.uProj.value.copy(fc.projectionMatrix);
+        F.uCut.value = L.cut * U; F.uCam.value.copy(cam.position);
+    }
+    /* ── THE SEA (near): a sheet at the sea's level round the camera; the swimmer's water (_hqSea) ── */
+    function _hqLandBuildSea(L) {
+        var R = _hqLandR(), U = _hqUnits(), size = (R.camFar || 460) * 2.2;
+        var g = new THREE.PlaneGeometry(size * U, size * U, 1, 1); g.rotateX(-Math.PI / 2);
+        var m = new THREE.MeshPhongMaterial({ color: (R.sea.color != null) ? R.sea.color : 0x2e627c, shininess: 60, specular: 0x4a5a66, transparent: true, opacity: 0.86, depthWrite: false });
+        var sea = new THREE.Mesh(g, m); sea.name = 'hq_land_sea'; sea.renderOrder = 1; sea.frustumCulled = false; sea._ew_occSkip = true; sea.raycast = function () {};
+        sea.position.y = L.sea.y * U;
+        L.group.add(sea); L.nearSea = sea;
+    }
+    /* ── D.O.O.R. HQ from outside: the drum on its pad, the front door in its south face ── */
+    function _hqLandBuildHQ(L) {
+        var R = _hqLandR(), Q = R.hq, U = _hqUnits(), y0 = L.hqY, g = new THREE.Group(); g.name = 'hq_land_building';
+        var circ = 2 * Math.PI * Q.r;
+        var wall = _hqMat('concrete', circ / 3.2, (Q.h + 3) / 3.2, { shininess: 6 });
+        var drum = new THREE.Mesh(new THREE.CylinderGeometry(Q.r * U, Q.r * U, (Q.h + 3) * U, 72, 1, true), wall);
+        drum.position.y = (y0 - 3 + (Q.h + 3) / 2) * U; g.add(drum);
+        var band = new THREE.Mesh(new THREE.CylinderGeometry((Q.r + 0.12) * U, (Q.r + 0.12) * U, (Q.band[1] - Q.band[0]) * U, 72, 1, true), new THREE.MeshPhongMaterial({ color: 0x28323a, shininess: 70, specular: 0x6a7a88, emissive: 0x0a1418 }));
+        band.position.y = (y0 + (Q.band[0] + Q.band[1]) / 2) * U; g.add(band);
+        var lip = new THREE.Mesh(new THREE.CylinderGeometry((Q.r + 0.45) * U, (Q.r + 0.45) * U, 0.6 * U, 72, 1, false), _hqMat('concrete', circ / 3, 0.2, { shininess: 6 }));
+        lip.position.y = (y0 + Q.h - 0.3) * U; g.add(lip);
+        var dome = new THREE.Mesh(new THREE.SphereGeometry(Q.r * U, 72, 14, 0, Math.PI * 2, 0, Math.PI / 2), _hqMat('concrete', circ / 4, Q.r / 4, { shininess: 10 }));
+        dome.scale.y = Q.dome / Q.r; dome.position.y = (y0 + Q.h + 0.3) * U; g.add(dome);   // on the lip, not through it
+        /* the canopy over the front door, on two posts */
+        var can = new THREE.Mesh(new THREE.BoxGeometry(7.2 * U, 0.35 * U, 3.4 * U), _hqMat('concrete', 2, 1, { shininess: 6 }));
+        can.position.set(0, (y0 + 4.1) * U, (Q.r + 1.5) * U); g.add(can);
+        [-3.2, 3.2].forEach(function (x) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * U, 0.14 * U, 4.1 * U, 12), new THREE.MeshPhongMaterial({ color: 0x3a3d42, shininess: 50 })); post.position.set(x * U, (y0 + 2.05) * U, (Q.r + 3.0) * U); g.add(post); });
+        g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o._ew_hqPart = 'land_hq'; } });
+        L.group.add(g); L.hqGroup = g;
+    }
+    /* ── the reads the walker, the air, the camera and the sea use ── */
+    /* the walker's feet at (x, z) on the land: null = not yet landed, the building's drum, or a face too steep to climb */
+    function _hqLandFeetAt(x, z) {
+        var L = _hq && _hq.land; if (!L || !L.idx || !L.world) return null;
+        if (!hqLandReadyAt(x, z)) return null;
+        var Q = _hqLandR().hq;
+        if (hqLandHQSolid(x, z, HQ_BODY_R + 0.08)) return null;
+        return hqLandFeet(x, z);
+    }
+    function _hqLandAirOK(x, z, y) {
+        var L = _hq.land, Q = _hqLandR().hq;
+        if (hqLandHQSolid(x, z, HQ_BODY_R + 0.08) && y < L.hqY + Q.h + Q.dome) return false;
+        var g = (L.idx && L.world) ? hqLandHeight(x, z) : null;
+        return !(g != null && y < g - 0.05);
+    }
+    function _hqLandCamBlocked(px, pz, py) {
+        var L = _hq.land, Q = _hqLandR().hq;
+        if (hqLandHQSolid(px, pz, 0.28) && py < L.hqY + Q.h + Q.dome * Math.max(0, 1 - Math.pow(Math.hypot(px, pz) / (Q.r + 0.28), 2)) + 0.3) return true;
+        var g = (L.idx && L.world) ? hqLandHeight(px, pz) : null;
+        return g != null && py < g + 0.25;
+    }
+    function _hqLandDisarm(H) {
+        var L = H && H.land; if (!L) return;
+        L.dead = true;
+        for (var k in L.chunks) { var c = L.chunks[k]; if (c.ids) { try { c.ids.dispose(); } catch (e) {} } }
+        if (L.plainMat) { try { L.plainMat.dispose(); } catch (e) {} }
+    }
+    function _hqSea() { return (_hq && ((_hq.terrain && _hq.terrain.sea) || (_hq.land && _hq.land.sea))) || null; }   // G2: the land's sea
     /* THE COAST (OPEN_WORLD_PLAN Phase 7, 2026-09-27): the part on the stage that owns the ground at (x, z) of the current
        part's metres — an island drawn inside this sea (the cay, the Dutchman: its box is its own ground, the host's floor is
        sunk under it), or past this part's edge the drawn neighbour whose box holds the point (the harbour round an island,
@@ -52849,6 +53380,7 @@ const ThreeRenderer = (function () {
     function _hqSeaGroundAt(x, z) {
         var o = _hqStageOwner(x, z);
         if (o) return hqTerrainHeight(o.E.P.terrain, o.q.x, o.q.z) + o.ry;
+        if (_hq && _hq.land) { var lg = hqLandHeight(x, z); return lg == null ? 0 : lg; }   // G2: the land's own ground under its sea
         return (_hq && _hq.terrain) ? hqTerrainHeight(_hq.terrain, x, z) : 0;
     }
     /* may the body stand past this part's edge here? the strip along a joined span (the island's four sides, the shore) */
@@ -52860,7 +53392,7 @@ const ThreeRenderer = (function () {
     function _hqSeaFxOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_SEA_FX; }
     function _hqSeaEmit(ev) { var H = _hq; if (!H || !H.opts || !H.opts.onSea) return; try { H.opts.onSea(ev); } catch (e) {} }
     /* the water column over the ground at (x, z), metres (≤ 0 = land) */
-    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !_hq.terrain) return 0; return s.y - _hqSeaGroundAt(x, z); }   // THE COAST: the ground of whichever part owns the point
+    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !(_hq.terrain || _hq.land)) return 0; return s.y - _hqSeaGroundAt(x, z); }   // THE COAST: the ground of whichever part owns the point
     /* may the swimming body (its bottom at y) be at (x, z)? inside the room, above the ground, out of a wall / a block, clear of furniture */
     function _hqSwimFree(x, z, y) {
         var H = _hq, S = H.room.shell;
@@ -52874,6 +53406,13 @@ const ThreeRenderer = (function () {
     }
     function _hqSwimFreeAt(x, z, y) {
         var H = _hq;
+        if (H.land) {   // G2: the land's sea — over its ground, out of the building's drum
+            var seaL = _hqSea(), gl = y, RL = _hqSeaRules();
+            if (seaL && !seaL.under && y >= seaL.y - RL.surfaceDraft - 0.01) gl = seaL.y - (RL.exitDepth - 0.25) + 0.2;
+            var lgr = hqLandHeight(x, z); if (lgr == null || gl < lgr + 0.2) return false;
+            if (hqLandHQSolid(x, z, HQ_BODY_R)) return false;
+            return _hqAirClearOfBlockers(x, z, y);
+        }
         var ti = H.terrain; if (!ti) return true;
         /* a FLOATING body rides over the shallows up to the exit depth (the walker takes it there); a diver never swims into the floor */
         var sea = _hqSea(), gLim = y;
@@ -54346,7 +54885,7 @@ const ThreeRenderer = (function () {
             var ny = pl.y + pl.vy * dt;
             if (pl.vy < 0) {
                 var land = _hqSurface(pl.x, pl.z, null, true);
-                if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) : (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }   // over a band edge: the ground breaks the fall (a site pit: its floor; a cave cell: its feet)
+                if (land === null || land > pl.y + 0.01) { var lc = _hq.site ? _hqSiteCellAt(pl.x, pl.z) : null; land = _hq.land ? (function () { var lh = hqLandHeight(pl.x, pl.z); return lh == null ? pl.y : lh; })() : _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) : (_hq.site && _hq.site.cave) ? (lc ? _hqSiteFloorY(lc, pl.x, pl.z) : 0) : ((lc && lc.top < 0) ? lc.top : 0); }   // over a band edge: the ground breaks the fall (a site pit: its floor; a cave cell: its feet)
                 /* a furniture top under the feet is a floor too (2026-09-05) */
                 var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
                 if (bf !== null && bf > land) land = bf;
@@ -54987,6 +55526,7 @@ const ThreeRenderer = (function () {
         if (room.kind === 'box') { hx = (S.w || 10) / 2; hz = (S.d || 10) / 2; top = S.open ? Math.max(S.h || 9, 10) : (S.h || 3.4); }
         else if (room.kind === 'bay') { hx = hz = (S.rOut || 30) + 2; top = S.wallH || 6; }
         else { hx = hz = ((S.ring3 && S.ring3.outer) || S.rOut || 26) + 2; top = (S.wallH || 6) + (S.upperWallH || 6) + (S.domeH || 0); }
+        if (H.land) top = 40;   // G2: the frustum rides the walker's height (_hqShadowTick) — 40 m over them is enough
         if (H.terrain && H.terrain.H && H.terrain.H.length) { var mx = -1e9; for (var i = 0; i < H.terrain.H.length; i++) if (H.terrain.H[i] > mx) mx = H.terrain.H[i]; if (isFinite(mx)) top = Math.max(top, mx + 4); }
         var pad = (SH.pad != null) ? SH.pad : 4;
         var Rroom = Math.hypot(hx + pad, hz + pad) * U;
@@ -55042,7 +55582,7 @@ const ThreeRenderer = (function () {
         var right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
         if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
         var up2 = new THREE.Vector3().crossVectors(right, dir).normalize();
-        var c = new THREE.Vector3(cx, 0, cz), t = SH.texel || 1;
+        var c = new THREE.Vector3(cx, (H.land && pl) ? pl.y * U : 0, cz), t = SH.texel || 1;   // G2: on the land the frustum stands at the walker's height
         var pr = Math.round(c.dot(right) / t) * t, pu = Math.round(c.dot(up2) / t) * t;
         var snapped = right.multiplyScalar(pr).add(up2.multiplyScalar(pu));
         L.target.position.copy(snapped);
@@ -55058,7 +55598,7 @@ const ThreeRenderer = (function () {
         var H = _hq, LR = _hqLightRules(), AO = LR.ao || {}, U = _hqUnits(), S = room.shell || {};
         var W = (typeof window !== 'undefined') ? window : {};
         var k = _polishOff('ao', 'EW_HQ_NO_AO') ? 0 : ((AO.corner != null) ? AO.corner : 0.34);
-        if (H.terrain || (H.site && H.site.cave)) k = 0;
+        if (H.terrain || H.land || (H.site && H.site.cave)) k = 0;
         var box = room.kind === 'box' && !S.open;
         _HQ_AO.x = box ? ((S.w || 10) / 2) * U : 1e6;
         _HQ_AO.y = box ? ((S.d || 10) / 2) * U : 1e6;
@@ -55617,6 +56157,7 @@ const ThreeRenderer = (function () {
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _hqTickChars(wdt);
         _hqTickCamera(dt);
+        if (H.land) { try { _hqLandTick(H, dt, now); } catch (e) { if (!H._landWarned) { H._landWarned = true; console.warn('[HQ land] tick', e); } } }   // G2: THE LAND — the stream, the chunks, the far pass's lens
         _hqTickWorld(dt, now);
         if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
         if (H.stage) { try { _hqCullTick(H, now); } catch (e) { if (!H.stage.warnedCull) { H.stage.warnedCull = true; console.warn('[HQ portals] tick', e); } try { _hqCullReset(H); } catch (e2) {} } }   // THE PORTALS (G1): a room behind shut doors is not drawn
@@ -56093,7 +56634,7 @@ const ThreeRenderer = (function () {
     function _hqGateTick(H, now) {
         var G = H.gate, pd = H.player ? H.player.def : null;
         var playerOk = H.playerAttached || !pd || !pd.model || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);   // (2026-09-22: the walker is a rig whatever the board's 3D-unit preference — the card waits for it)
-        var gateOk = !G || G.idle() || G.closed;
+        var gateOk = (!G || G.idle() || G.closed) && (!H.land || H.land.readyNear || H.land.failedIndex);   // G2: the land's ground round the door is built
         var capped = now - H.t0 > HQ_GATE_CAP_MS;
         if (!((playerOk && gateOk) || capped)) return;
         H.ready = true;
@@ -58402,6 +58943,7 @@ const ThreeRenderer = (function () {
         if (room.terrain) { try { _hqBuildTerrain(room); } catch (e) { console.error('[HQ] terrain failed', e); } }
         /* an outdoor room (HQ plan 7.2 stage 3): the map's sky and far roster */
         if (S.open) { try { _hqBuildSky(room); } catch (e) { console.error('[HQ] sky failed', e); } }
+        if (room.land) { try { _hqLandArm(room); } catch (e) { console.error('[HQ] the land failed', e); } }   // G2: THE LAND (before the sea, the light rig and the shadows read it)
         try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }
         try { _hqBuildDesk(room); } catch (e) { console.error('[HQ] desk failed', e); }
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
@@ -58599,6 +59141,7 @@ const ThreeRenderer = (function () {
         try { (H.reflectors || []).forEach(function (r) { if (r.rt) r.rt.dispose(); }); } catch (e) {}   // 5.4: the mirrored targets
         try { if (H.gun && H.gun.wheel) { H.gun.wheel = null; var wEl = document.getElementById('hqWheel'); if (wEl) { wEl.classList.remove('open'); wEl.style.display = 'none'; wEl.innerHTML = ''; } } } catch (e) {}   // THE DOOR WHEEL: never left open over the next screen
         if (opts && opts.dissolve) { try { _hqDissolveStart(H, (typeof opts.dissolve === 'object') ? opts.dissolve : null); } catch (e) { console.warn('[HQ] the dissolve did not start', e); } }
+        try { _hqLandDisarm(H); } catch (e) {}   // G2: the land's chunk sheets (the ground's texture array and the far arrays stay for the next visit)
         _hqUnbindInput();
         _hq = null;
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: every mesh on its full geometry before the hand-over (the battle's camera is close)
@@ -58958,6 +59501,8 @@ const ThreeRenderer = (function () {
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqInst: function () { return _hqInstStats(_hq); },
+            /* G2: THE LAND's state (a probe's read: the card, the chunks, the build cost, the far pass's cut, the store) */
+            land: function () { var L = _hq && _hq.land; if (!L) return null; return { ready: !!_hq.ready, readyNear: L.readyNear, readyMs: L.readyMs || null, playerAttached: !!_hq.playerAttached, gatePending: _hq.gate && !_hq.gate.closed ? _hq.gate.pending() : 0, idx: L.idx, world: L.world, chunks: L.n, waiting: L.want.length, built: L.stats.built, msPer: L.stats.built ? +(L.stats.ms / L.stats.built).toFixed(2) : 0, cut: +L.cut.toFixed(1), splat: !!L.mats, gl2: L.gl2, store: (typeof hqLandStats === 'function') ? hqLandStats() : null }; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
@@ -58966,6 +59511,7 @@ const ThreeRenderer = (function () {
                 var p = (o.deg != null) ? _hqPolarW(o.deg, o.r || 0, 0) : new THREE.Vector3((o.x || 0) * U, 0, (o.z || 0) * U);
                 pl.x = p.x / U; pl.z = p.z / U;
                 pl.y = _hqLevelY(S, o.level || 0) + (o.y || 0); pl.visY = pl.y;
+                if (_hq.land && o.y == null && typeof hqLandHeight === 'function') { var lgy = hqLandHeight(pl.x, pl.z); if (lgy != null) { pl.y = lgy; pl.visY = lgy; } }   // G2: on the land the ground's height
                 pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
                 if (o.face != null) { pl.yaw = pl.targetYaw = _hqHeadingYaw(o.face); _hq.cam.yaw = _hqRad(o.face); }
                 if (o.pitch != null) _hq.cam.pitch = o.pitch;

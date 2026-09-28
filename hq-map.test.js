@@ -104,11 +104,11 @@ test('THE LAYOUT: deterministic, every node placed, no two nodes within the mini
 
 test('THE MODEL: a stranger in the foyer sees the foyer and a ? for the hall and nothing else; a seen room shows its number; a secret door shows only once both rooms are seen; a seam is charted by hqLinkSee; the box fits what is drawn and grows with discovery', () => {
   const cold = D.hqMapModel({ door: {} }, 'foyer');
-  assert.equal(cold.nodes.map(n => n.id + ':' + n.st).sort().join(','), 'central_egress:q,foyer:here');
+  assert.equal(cold.nodes.map(n => n.id + ':' + n.st).sort().join(','), 'central_egress:q,foyer:here,land:q');   // G2: the front door opens onto THE LAND
   assert.equal(cold.nodes.find(n => n.st === 'q').no, '', 'a question mark wears no number');
   assert.equal(cold.nodes.find(n => n.st === 'q').label, 'UNCHARTED');
-  assert.equal(cold.edges.length, 1); assert.equal(cold.edges[0].st, 'q');
-  assert.equal(cold.seen, 1); assert.equal(cold.q, 1); assert.ok(cold.total >= 120);
+  assert.equal(cold.edges.length, 2); assert.ok(cold.edges.every(e => e.st === 'q'));
+  assert.equal(cold.seen, 1); assert.equal(cold.q, 2); assert.ok(cold.total >= 120);
   /* walk into the hall: the hall is numbered, its doors' rooms are questions, the rings too */
   const p = { door: {} };
   D.hqRoomSee(p, 'foyer'); D.hqRoomSee(p, 'central_egress');
@@ -212,13 +212,13 @@ test('THE REVEAL: the first open pops everything with no zoom; a second open aft
   c1.after(b1);
   const cls = el => el.classList.toString();
   const nodes1 = b1.querySelectorAll('g[data-mapnode]');
-  assert.ok(nodes1.length === 2);
+  assert.ok(nodes1.length === 3);   // the foyer, the hall's ?, THE LAND's ? (G2)
   assert.ok(nodes1.every(g => /reveal/.test(cls(g))), 'first open: every node reveals');
   assert.ok(nodes1.some(g => /\bpop\b/.test(cls(g))) && nodes1.some(g => /\bqin\b/.test(cls(g))));
   assert.equal(b1.svg.attrs.viewBox, b1.svg.attrs['data-fit'], 'no zoom on the first open');
   const shown = c1.shown();
-  assert.deepEqual(J(shown.n), { foyer: 'n', central_egress: 'q' });
-  assert.equal(Object.keys(shown.e).length, 1); assert.equal(shown.box.length, 4);
+  assert.deepEqual(J(shown.n), { foyer: 'n', central_egress: 'q', land: 'q' });
+  assert.equal(Object.keys(shown.e).length, 2); assert.equal(shown.box.length, 4);
   /* the discovery: into the hall, into reception */
   D.hqRoomSee(p, 'central_egress'); D.hqRoomSee(p, 'reception');
   const c2 = renderDirectory(p, 'reception');

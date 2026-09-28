@@ -27,7 +27,8 @@ test('THE UNDISCOVERED DOOR: a door to a room never stood in reads ? with no num
     P = g('hqDoorPlateFor')(caf, p);
     assert.equal(P.known, true); assert.equal(P.label, 'THE CAFETERIA'); assert.equal(P.no, '86');
     const street = D.DOOR_HQ.rooms.foyer.doors.find(d => d.id === 'street');
-    assert.ok(g('hqDoorPlateFor')(street, profile()).known, 'a page door (the street) is always its own plate');
+    assert.equal(g('hqDoorPlateFor')(street, profile()).label, '?', 'the front door (G2: onto THE LAND) is ? until the land has been stood in');
+    const sp = profile(); g('hqRoomSee')(sp, 'land'); assert.equal(g('hqDoorPlateFor')(street, sp).label, 'THE LAND', 'stood in, the plate names the land');
     /* the elevator's lobbies: the car's door on a lobby is ? until the car is stood in */
     const lift = D.DOOR_HQ.rooms.services.doors.find(d => d.action && d.action.room === 'car');
     assert.equal(g('hqDoorPlateFor')(lift, profile()).label, '?');

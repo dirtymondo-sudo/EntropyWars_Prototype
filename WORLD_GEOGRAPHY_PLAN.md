@@ -700,7 +700,7 @@ Shadow cascades matter far more on open land.
 |---|---|---|---|
 | G0 | **THE BAKE + THE MAP**: `bake-land.js` (the sketch hardened, §5.1), the `HQ_LAND` recipe and `hqLand*` readers, tiles to `Assets/Land/`, the map tab drawn from the bake, so mondo can argue with the geography in the game before anything else changes | bake-land.js (repo tool), data.js, map.js, package.json (`npm run bake-land`) | `land-bake.test.js`, which bakes at 8 m in the fast suite and checks: R2 from every pad, rivers monotone, lakes level, road grades, the ring a loop, every place reachable, cliffs drawn wherever slope > 1.0. Full resolution is `heavy` — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_3; §12) |
 | G1 | **PHASE 12** of OPEN_WORLD_PLAN (portals + the memory budget), as written | three-renderer.js | `hq-joins.test.js` portal rule; `asset-store.test.js` eviction — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_1; §12) |
-| G2 | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
+| G2 ✓ (2026-09-28, zip 4) | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
 | G3 | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
 | G4 | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
 | G5 | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
@@ -732,7 +732,7 @@ bump, and to Render only if the server reads something new (it doesn't in this p
 | 5 | **The Flat Lands** | **Seen, not reached yet**: on top of the wall, visible from the south coast and the station | A stair cut in the wall near the station (a later place) |
 | 6 | **The big viaducts** | **Keep the Glen Viaduct and the Loch Head Viaduct as landmarks** (Glenfinnan-style); regrade the rest (§11) | Regrade all of them (longer detours, no bridges) |
 | 7 | **A drivable car on Route 1** | **Not in this plan**: the skateboard and traffic are the ring's speed | A car as its own later plan (the helm's vehicle code already drives a hull) |
-| 8 | **The textures** | **CC0 Poly Haven sets** (8–12), picked and zipped by Claude, uploaded by mondo to R2 | Procedural colour only (ProceduralTerrains' default look: cheaper, flatter) |
+| 8 | **The textures** | **RULED 2026-09-28 (mondo): the bucket's own terrain and urban sheets** (sprites.js TERRAIN_SPRITES / URBAN_TEXTURES), nothing new | Procedural colour only (ProceduralTerrains' default look: cheaper, flatter) |
 | 9 | **The map's fog of war** | **On**: regions clear on first sight | The whole map drawn from the start |
 | 10 | **The day and the weather** | **The existing 24-minute clock**; each region's weather sets its sight distance | A fixed clear day |
 | 11 | **The storm drain's middle** (sketch 2) | **One long skateable trunk drain** with a stream in its channel; chambers at the two ends | A maintenance rail cart through the middle; or a shorter drain with a second mouth half-way (a grate near HQ) |
@@ -745,7 +745,7 @@ bump, and to Render only if the server reads something new (it doesn't in this p
 |---|---|
 | Now | A look at the map and the eight views, and a word on any fork (silence means the defaults). If the layout is wrong (a place in the wrong region, a reveal he doesn't want), say so now; G0 is cheap to re-bake |
 | G0 | Upload the zip as usual, plus the `Assets/Land/` tiles (about 10 MB) to R2 with `npm run deploy` |
-| G2 | Upload the texture zip Claude prepares (fork 8) to R2 |
+| G2 | Nothing: the ground wears the terrain and urban sheets already in the bucket (fork 8) |
 | G4 | Nothing required: the existing trees come first. Better later: 3–4 new tree models (a fir for the north, a redwood, a birch, a palm for the coast) from Meshy or CC0 |
 | G8 / G10 | Optional Meshy models: a cave mouth, a storm outfall, the station's outbuildings, a lighthouse |
 
@@ -845,3 +845,45 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     it is on. There is no fog of war yet (G9, fork 9's default). The LAND tab stays until G2 retires the stitched zones.
   - **What mondo uploads**: `land.json` and `land-map.png` to R2 `Assets/Land/`. The tiles and sea.bin are not read until G2 and
     are re-baked then. Test: `land-bake.test.js` (8 m in the fast suite, 2 m `heavy`). Next: G2 (the land underfoot).
+- 2026-09-28 — **G2 DONE** (the land underfoot; zip `ENTROPY_WARS_WORLD_GEOGRAPHY_4.zip`, token `20260928-geography-04-cors`).
+  - **The way out**: the foyer's front door (`street`) opens onto THE LAND (a new room `land`, `land: true`), landing in front of
+    D.O.O.R. HQ's own front door on its pad (84.9 m, `HQ_LAND.baked.hubY`, re-stamped by every bake). HQ from outside is a
+    concrete drum (22 m, 13 m tall, a shallow dome, a canopy), solid to the walker and the camera; G6 dresses it. The main menu
+    is the pause menu's EXIT. The plate reads ? until the land has been stood in. The sites keep their old doors (G6 moves them).
+  - **THE SAMPLER** (data.js, after the recipe): `HQ_LAND_RULES` (the numbers), `HQ_LAND_STORE` (the index, the 8 m world from
+    sea.bin, the 2 m tiles in an LRU of 72), `hqLandBase` (Catmull-Rom over the 2 m samples, the 8 m world where a tile is not in),
+    `hqLandDetail` (value noise at 9.5 m + 3.4 m; the amplitude per material, none on a road, a street or a river bed, faded to
+    nothing on a pad), `hqLandHeight`, `hqLandFeet` (null where the base slope passes 1.0), `hqLandCliff` (the drawn cliff: full at
+    0.97, so every refused face is cliff, R3), `hqLandGrid` (a chunk's read in one pass: exactly the point read at 1 m),
+    `hqLandWant` (the tiles to fetch, nearest first), `hqLandPut` / `hqLandTouch` (the LRU never drops the walker's tiles).
+  - **THE CHUNKS** (three-renderer.js `_hqLand*`): 64 m chunks at 1 / 2 / 4 / 8 m out to 80 / 176 / 272 / 400 m (centre
+    distance, 6 m hysteresis), nearest first, 6 ms a frame (40 while the card is up; a chunk costs ~0.6 ms in Chrome). Skirts
+    three steps deep hide the seams; normals and a hollows' AO come from the grid. The near camera reaches 460 m on the land.
+  - **THE FAR PASS** as planned but inside the one scene render: after the sky, the whole world at 16 m (one mesh from the 8 m
+    world, built once per bake) and a far sea at 0 m are drawn with their own lens (30 m to 7.2 km), a node clears the depth,
+    then the near scene draws with the building's camera. Inside the ring the chunks already cover the far land is discarded.
+  - **THE GROUND** (fork 8): a WebGL2 splat. One texture array of 14 ground sheets and a per-chunk sheet of the 2 m materials;
+    each pixel gathers the 16 samples round it with B-spline weights into up to four materials (sharpened, so a road's edge is a
+    curve, not the 2 m staircase), reads each sheet twice (turned and scaled, no visible repeat) and draws a cliff side-on
+    (triplanar) by the walker's own slope rule. Without WebGL2 the ground wears its materials' colours
+    (`window.EW_NO_LAND_SPLAT` forces that).
+  - **THE SHEETS** (zip 5, mondo: "we already have a bunch of terrain textures in the r2 bucket, and the urban textures as
+    well. why are you making new ones?"): each of the 15 layers names a sheet the game already ships (`HQ_LAND_RULES.tex.layers[].src`,
+    a TERRAIN_SPRITES key or `urban:<Name>`), mondo's picks: grass_2 the lawns, healing_spring the meadows,
+    grass_dark_fantasy the forest floor, rocks_1 the rock, rocks_5 the cliffs, desert (the sand paler), ice the snow and the ice,
+    mars the red rock, dirt_2 the dry lakebed, dirt the dirt, dirt paler the trails (a 15th layer), urban:ConcreteStriped2a the
+    asphalt, urban:ConcreteStriped1b the pavement. The
+    renderer measures each loaded sheet's mean colour and gives it to the far land, so past 400 m the land wears what the near
+    ground wears. The generated sheets (zip 4's `tex/`) are gone; bake-land.js makes none.
+  - **The walker**: `_hqSurface` / `_hqAirOK` / `_hqCamBlocked` read the land; a landing on a face too steep slides down the fall
+    line; the sea at 0 m is the swimmer's (`_hqSea`), so wading in off a beach swims. The card waits for the ground within 176 m
+    of the door (5 s in the probe). The shadow frustum rides the walker's height. The readout's MEM line adds LAND MB and tiles.
+  - **Deviations from §5.2** (all for speed or because the piece was not needed yet): no floating origin (a float32 metre is
+    ~0.2 mm at 2.8 km, so chunks are built in their own frame and placed); chunks built on the main thread time-sliced, not in a
+    worker (0.6 ms a chunk); levels 1 / 2 / 4 / 8 m to 400 m, not 0.5 m to 64 m (the far pass covers the rest at 16 m); a pad
+    reads the land, not its site's field (the sites stay behind their doors until G6).
+  - **Not yet** (their phases): rivers and lakes are dry beds (G3 brings the water layer); no trees (G4); roads are a material,
+    not graded geometry (G5); the ice wall is the baked heights (no ice shader).
+  - **What mondo uploads**: the whole `Assets/Land/` folder to R2 `Assets/Land/` (379 tiles in `tiles/`,
+    sea.bin, land.json, land-map.png; 43 MB). Test: `land-stream.test.js` (a 16 m bake: the stream order, the LRU, the surface
+    continuous across tiles, the grid is the point read, R3, HQ's pad flat, the wiring). Next: G3 (the water).

@@ -64,7 +64,7 @@ test('THE ROOMS: none of the 26 is bare any more — every facility box has a co
     const tapeRooms = new Set(Object.keys(D.hqFindsTapesByRoom()));
     const bare = [];
     for (const [id, r] of Object.entries(HQ.rooms)) {
-        if (r.site || r.terrain || r.cave || /^(bay_|ring_|site_)/.test(id)) continue;
+        if (r.site || r.terrain || r.cave || r.land || /^(bay_|ring_|site_)/.test(id)) continue;   // G2: THE LAND is the world, not a facility box (its places come with G6)
         const has = (r.counters || []).length || tapeRooms.has(id) || id === 'locker' || HQ.stashes[id] || (r.npcSpots || []).some(s => s.say) || castRooms.has(id);
         if (!has) bare.push(id);
     }

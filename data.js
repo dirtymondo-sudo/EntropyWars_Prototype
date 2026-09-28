@@ -25272,11 +25272,12 @@ const DOOR_HQ = {
                   label: 'THE MAIN HALL', sub: 'INTO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'foyer' },
                   desc: 'The revolving door. It turns one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of it.' },
-                /* the front door: the street side is the main menu (the strip's EXIT, as a door) */
+                /* the front door: THE LAND (WORLD_GEOGRAPHY_PLAN G2, 2026-09-28) — it opens onto HQ's pad on the moor, where every
+                   road starts. The main menu is the pause menu's MAIN MENU · LEAVE THE BUILDING (it was this door's until G2). */
                 { id: 'street', wall: 's', x: 0, leaf: 'leaf_entrance',
-                  label: 'THE FRONT DOOR', sub: 'LEAVE THE BUILDING · MAIN MENU',
-                  action: { fn: '_hqExitToMenu' },
-                  desc: 'The front door. Outside is the street, and the street is the main menu; the building will be here when you come back, and so will your corners.' },
+                  label: 'THE FRONT DOOR', sub: 'OUTSIDE · THE LAND',
+                  action: { room: 'land', at: 'hq' },
+                  desc: 'The front door. Outside is the moor, and every road in the world starts on it; the building will be here when you come back, and so will your corners.' },
             ],
             counters: [
                 /* CORNER INSPECTION → the by-id panel (map.js): your corners, counted and verified */
@@ -25339,6 +25340,43 @@ const DOOR_HQ = {
                 '“You went round twice.” “How can you tell?” “You came in facing the street.”',
             ],
             spawn: { x: 0, z: 1.9, face: 0 },     // just inside the front door, facing the revolving door and the hall
+        },
+
+        /* ── THE LAND (WORLD_GEOGRAPHY_PLAN.md §5.2, G2 — 2026-09-28): the one outdoors. Not a box you are in: the room is the
+           baked world (HQ_LAND, `npm run bake-land`) in its own metres — x east, z SOUTH, y above sea level, D.O.O.R. HQ at the
+           origin on its pad. The renderer streams the 2 m tiles round the walker (data.js hqLand* is the sampler), draws near
+           chunks at three levels of detail and the rest of the world in THE FAR PASS, and the walker stands on the land
+           (hqLandFeet: a face steeper than HQ_LAND_RULES.walk.maxSlope refuses, and every such face is drawn as cliff). The sea
+           is at 0 m (swum). The sites are still reached by their old doors (G6 puts them on their pads): G2 is the bare land.
+           `shell.w / d` are the world's (the ice wall's disc and the sea to the baked edge); nothing is drawn at them. */
+        land: {
+            label: 'THE LAND',
+            sub: 'THE CENTRAL HIGHLANDS · D.O.O.R. HQ',
+            kind: 'box', land: true,
+            shell: {
+                w: 5600, d: 5600, h: 600, wallH: 600, dadoH: 1.0,
+                open: true, edge: 'open',
+                floor: 'grass', wall: 'concrete', dado: 'concrete', trim: 'metal', ceiling: 'concrete',
+                pipes: false, strips: false, lights: [],
+                heightFog: false,   // the land's haze is the distance fog (THE FAR PASS reads it too); a floor at 0 m would fog the coast only
+                sky: { night: 0, tint: 0x9fc4e8, tintAmt: 0.3, stars: 0.3, nebula: 0.2, day: 1, clouds: 0.3,
+                       fog: { color: 0xb4c6d8, amount: 0.45, top: 0.04, band: 0.5, density: 0.00032 }, scenery: 'none', density: 0 },
+            },
+            doors: [
+                /* HQ's front door on the land: the drum's south face (HQ_LAND_RULES.hq), standing on the pad — `y` is the baked pad's
+                   height (hqLandPadY, re-read below the recipe once HQ_LAND is defined) */
+                { id: 'hq', wall: 'free', x: 0, z: 22.35, face: 180, y: 84.9, pad: 'hq', leaf: 'leaf_entrance',
+                  label: 'D.O.O.R. HQ', sub: 'THE FRONT DOOR · THE FOYER',
+                  action: { room: 'foyer', at: 'street' },
+                  desc: 'The front door of the Department of Orthogonal Realities, from the outside. The drum has no windows at eye level; it has never needed them. The foyer is on the other side.' },
+            ],
+            counters: [],
+            props: [],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 26, face: 180 },   // on the pad in front of the door, facing the moor (the door row's `at` is the usual way in)
         },
 
         /* ── YOUR OFFICE: the janitor's closet (HQ plan 2.7, ref
@@ -40572,6 +40610,7 @@ function hqWorldDir(az, el, rot) {
 function hqRoomClock(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell;
     if (!S || !S.open || !S.sky) return null;
+    if (R.land) return { zone: 'land', rot: 0, locked: false, hour: null, dayLook: (HQ_WORLD_CLOCK.dayLook || {}).land || null };   // G2: the land runs on the one clock
     const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
     if (!F || F.interior) return null;
     const Z = HQ_WORLD.zones[F.zone];
@@ -42018,7 +42057,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: '0b57d9ab50', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/' };
+    R.baked = { id: '0b57d9ab50', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -42042,6 +42081,327 @@ function hqLandNever(a) {
     HQ_LAND.sight.never.forEach(([x, y, both]) => { if (x === a) out.push(y); else if (both && y === a) out.push(x); });
     return out;
 }
+/* ══ THE LAND UNDERFOOT (WORLD_GEOGRAPHY_PLAN.md §5.2, G2 — 2026-09-28) ═══════════════════════════════════════════════════════
+   The walker stands on the baked land. HQ_LAND_RULES are the numbers; HQ_LAND_STORE holds what has landed (the index read from
+   land.json, the 2 m tiles in an LRU, the whole world at 8 m from sea.bin); the hqLand* readers below are THE SAMPLER — one set
+   of pure functions the renderer's walker, its camera, its chunk builder and the tests all read, so what you stand on is what is
+   drawn:
+     hqLandBase(x, z)     the baked ground: Catmull-Rom over the 2 m samples (a tile not landed yet reads the 8 m world grid)
+     hqLandDetail(x, z)   deterministic value noise near the walker (±0.3 m on grass, ±1.2 m on rock; nothing on a road, a
+                          street or a river bed — they are stamped at their exact height by the bake)
+     hqLandHeight(x, z)   the two added: the drawn ground
+     hqLandSlope / hqLandCliff   the baked ground's steepness and the cliff sheet's weight there (the chunk's `aLand.x`)
+     hqLandFeet(x, z)     the walker's ground, or null where the face is steeper than walk.maxSlope — and every such face is
+                          drawn as cliff (cliff.to < maxSlope), so the walker is never refused by nothing (R3)
+     hqLandMaterial / hqLandWater / hqLandForest   the tile's layers (nearest sample)
+   Tiles are fetched by the renderer in the order hqLandWant returns (nearest first) and filed with hqLandPut, which drops the
+   least recently touched past tiles.cap (hqLandTouch marks the walker's neighbourhood). Nothing here fetches. */
+const HQ_LAND_RULES = {
+    chunk: 64,                                                           // m: a near chunk's side
+    lods: [ { step: 1, to: 80 }, { step: 2, to: 176 }, { step: 4, to: 272 }, { step: 8, to: 400 } ],   // m: a chunk's vertex spacing by its distance from the walker (centre to centre)
+    camFar: 460,                                                         // m: the near camera's reach on the land (the building's rooms keep 274)
+    skirt: 0.8,                                                          // m (+ three steps): the curtain under a chunk's edge that hides the seams between levels
+    buildMs: 6,                                                          // ms a frame the chunk builder may spend
+    reLodM: 6,                                                           // m the walker moves before the chunk set is re-read
+    /* THE FAR PASS: the world past the near chunks from the 8 m grid, drawn first with its own lens (near → far, m), then the
+       depth is cleared and the near scene drawn with the building's camera (274 m). `fine` spacing inside fineTo, else `coarse` */
+    far: { near: 30, far: 7200, block: 256, fine: 16, coarse: 32, fineTo: 1300, rebuildM: 128 },
+    tiles: { cap: 72, reach: 420, inFlight: 4 },                         // the LRU (tiles), how far ahead to fetch (m), fetches at once
+    detail: { wl: 9.5, wl2: 3.4, mix2: 0.3 },                            // m: the detail noise's two wavelengths, the second's share
+    walk: { maxSlope: 1.0, probe: 0.5 },                                 // the steepest face a walker climbs; the slope's probe (m)
+    cliff: { from: 0.72, to: 0.97 },                                     // the drawn cliff: slope 0.72 starts it, 0.97 is all cliff
+    sea: { y: 0, color: 0x2e627c, far: 0x3a6f88 },                       // the sea (G3 brings the water layer, the rivers and the lakes)
+    ao: { r: 5, k: 0.08, min: 0.58 },                                    // the ground's own AO: a hollow `r` m across darkens by k a metre
+    /* THE GROUND'S SHEETS (fork 8; 2026-09-28 mondo: "we already have a bunch of terrain textures in the r2 bucket, and the urban
+       textures as well"): every layer wears a sheet the game already ships. `src` is a TERRAIN_SPRITES key or `urban:<Name>`
+       (sprites.js URBAN_TEXTURES) — the same names a room's floor / cliff / path uses, picked by mondo. `tint` multiplies the sheet (a
+       TERRAIN_BASE_TINT key's own tint when none is given), `m` its repeat in metres, `col` its mean colour: the far pass and the
+       fallback without WebGL2 paint with it. The renderer draws each to `size` px, one layer of the texture array. */
+    tex: { size: 256, layers: [   // mondo's picks (2026-09-28)
+        { id: 'grass', src: 'grass_2', col: 0x5d7b38, m: 3.5 }, { id: 'meadow', src: 'healing_spring', col: 0x8d8a4e, m: 3.5 },
+        { id: 'forest', src: 'grass_dark_fantasy', col: 0x4d4631, m: 3.5 }, { id: 'rock', src: 'rocks_1', col: 0x7d7870, m: 7 },
+        { id: 'cliff', src: 'rocks_5', col: 0x6e665c, m: 7 }, { id: 'sand', src: 'desert', tint: 0xfff6e4, col: 0xd3c298, m: 3.5 },
+        { id: 'snow', src: 'ice', col: 0xe4eaf0, m: 5 }, { id: 'desert', src: 'desert', col: 0xcca26c, m: 5 },
+        { id: 'redrock', src: 'mars', col: 0xa85c3c, m: 7 }, { id: 'playa', src: 'dirt_2', col: 0xd4ccba, m: 7 },
+        { id: 'asphalt', src: 'urban:ConcreteStriped2a', col: 0x44454a, m: 3.5 }, { id: 'dirt', src: 'dirt', col: 0x86694b, m: 3.5 },
+        { id: 'pavement', src: 'urban:ConcreteStriped1b', col: 0x9d9a95, m: 3.5 }, { id: 'ice', src: 'ice', col: 0xc4dce8, m: 7 },
+        { id: 'trail', src: 'dirt', tint: 0xfff4e6, col: 0x9a7c5c, m: 3.5 },
+    ] },
+    /* the bake's materials (HQ_LAND's table, land.json `materials`) → [the sheet, a tint over it, the detail noise's amplitude m] */
+    mats: {
+        deep: ['sand', 0x76878a, 0.2], shallow: ['sand', 0xb6b29c, 0.15], sand: ['sand', 0xffffff, 0.12], grass: ['grass', 0xffffff, 0.3],
+        meadow: ['meadow', 0xffffff, 0.25], forest: ['forest', 0xffffff, 0.35], rock: ['rock', 0xffffff, 1.0], snow: ['snow', 0xffffff, 0.35],
+        desert: ['desert', 0xffffff, 0.15], redrock: ['redrock', 0xffffff, 0.9], playa: ['playa', 0xffffff, 0.03], farm: ['meadow', 0xc2d494, 0.08],
+        urban: ['pavement', 0xffffff, 0], road: ['asphalt', 0xffffff, 0], trail: ['trail', 0xffffff, 0.05], river: ['sand', 0x9a9482, 0],
+        lake: ['dirt', 0x8c8672, 0], ice: ['ice', 0xffffff, 0.2], pack: ['ice', 0xe6eef2, 0.3], tundra: ['meadow', 0xa9b19b, 0.3],
+        clay: ['dirt', 0xc99c7a, 0.3], cliff: ['cliff', 0xffffff, 1.2],
+    },
+    /* D.O.O.R. HQ from outside (G2 draws the building on its pad; G6 dresses the pads): a concrete drum with a shallow dome, the
+       front door in its south face (the land room's door row `hq`). The drum is solid to the walker and the camera — drawn walls */
+    hq: { r: 22, h: 13, dome: 5.5, band: [8.2, 9.6] },
+};
+const HQ_LAND_STORE = { id: '', index: null, pads: null, per: 0, S: 0, step: 2, tile: 256, ext: 2800, base: -200, hstep: 0.01, baked: null, grid: null, n: 0, bytes: 0, clock: 0, world: null, amp: null, col: null, layer: null, cliffId: -1 };
+/* land.json read: the tile index (which tiles the bake kept) and the format; a new bake id drops what the old bake filed */
+function hqLandIndex(ov) {
+    const St = HQ_LAND_STORE, tf = ov && ov.tileFormat, bk = (ov && ov.bake) || {};
+    if (!tf) return null;
+    const id = String(bk.id || '');
+    if (St.index && St.id === id) { St.index = ov; return St; }
+    St.id = id; St.index = ov; St.tile = tf.tile; St.S = tf.samples; St.step = tf.tile / (tf.samples - 1);
+    St.base = tf.heightBase; St.hstep = tf.heightStep; St.ext = bk.ext || HQ_LAND.baked.ext;
+    St.per = Math.ceil(2 * St.ext / St.tile);
+    St.baked = new Uint8Array(St.per * St.per);
+    (ov.tiles || []).forEach(t => { if (t[0] >= 0 && t[1] >= 0 && t[0] < St.per && t[1] < St.per) St.baked[t[1] * St.per + t[0]] = 1; });
+    St.grid = new Array(St.per * St.per).fill(null); St.n = 0; St.bytes = 0; St.world = null;
+    St.pads = (ov.places || []).filter(p => p.pad > 0 && p.at).map(p => [p.at[0], p.at[1], p.pad]);
+    _hqLandTables(ov.materials);
+    return St;
+}
+/* the per-material tables (amplitude, mean colour, the sheet's layer), in the bake's material order */
+function _hqLandTables(names) {
+    const St = HQ_LAND_STORE, R = HQ_LAND_RULES, L = R.tex.layers, list = names || Object.keys(R.mats);
+    St.amp = new Float32Array(32); St.col = new Float32Array(96); St.layer = new Uint8Array(32); St.tint = new Float32Array(96); St.cliffId = list.indexOf('cliff');
+    list.forEach((m, k) => {
+        const row = R.mats[m] || ['grass', 0xffffff, 0.2];
+        let li = L.findIndex(l => l.id === row[0]); if (li < 0) li = 0;
+        const c = (L[li].mean != null) ? L[li].mean : L[li].col, t = row[1];   // `mean` = the loaded sheet's measured mean (the renderer writes it)
+        St.amp[k] = row[2]; St.layer[k] = li;
+        St.tint[k * 3] = ((t >> 16) & 255) / 255; St.tint[k * 3 + 1] = ((t >> 8) & 255) / 255; St.tint[k * 3 + 2] = (t & 255) / 255;
+        St.col[k * 3] = ((c >> 16) & 255) / 255 * St.tint[k * 3]; St.col[k * 3 + 1] = ((c >> 8) & 255) / 255 * St.tint[k * 3 + 1]; St.col[k * 3 + 2] = (c & 255) / 255 * St.tint[k * 3 + 2];
+    });
+    return St;
+}
+/* a tile file ('EWLT' v1, bake-land.js writeOutputs) → { ti, tj, S, x0, z0, h, mat, forest, water } in metres */
+function hqLandTileRead(buf) {
+    const St = HQ_LAND_STORE;
+    const dv = (buf instanceof ArrayBuffer) ? new DataView(buf) : new DataView(buf.buffer, buf.byteOffset || 0, buf.byteLength);
+    if (dv.byteLength < 16 || String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== 'EWLT') throw new Error('not a land tile');
+    const S = dv.getUint16(6, true), x0 = dv.getFloat32(8, true), z0 = dv.getFloat32(12, true), S2 = S * S;
+    if (dv.byteLength < 16 + S2 * 6) throw new Error('a short land tile');
+    const h = new Float32Array(S2), mat = new Uint8Array(S2), forest = new Uint8Array(S2);
+    let water = null;
+    for (let o = 0; o < S2; o++) {
+        h[o] = dv.getUint16(16 + o * 2, true) * St.hstep + St.base;
+        mat[o] = dv.getUint8(16 + S2 * 2 + o); forest[o] = dv.getUint8(16 + S2 * 3 + o);
+        const w = dv.getUint16(16 + S2 * 4 + o * 2, true);
+        if (w !== 0xffff) { if (!water) water = new Float32Array(S2).fill(NaN); water[o] = w * St.hstep + St.base; }
+    }
+    return { ti: Math.round((x0 + St.ext) / St.tile), tj: Math.round((z0 + St.ext) / St.tile), S, x0, z0, h, mat, forest, water, used: 0, bytes: S2 * 6 + (water ? S2 * 4 : 0) };
+}
+/* sea.bin ('EWLS' v1): the whole world at 8 m, sample centres → { n, x0, cell, h, mat } */
+function hqLandWorldRead(buf) {
+    const St = HQ_LAND_STORE;
+    const dv = (buf instanceof ArrayBuffer) ? new DataView(buf) : new DataView(buf.buffer, buf.byteOffset || 0, buf.byteLength);
+    if (dv.byteLength < 16 || String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== 'EWLS') throw new Error('not the land\'s sea');
+    const n = dv.getUint16(6, true), x0 = dv.getFloat32(8, true), cell = dv.getFloat32(12, true), N2 = n * n;
+    const h = new Float32Array(N2), mat = new Uint8Array(N2);
+    for (let o = 0; o < N2; o++) { h[o] = dv.getUint16(16 + o * 2, true) * St.hstep + St.base; mat[o] = dv.getUint8(16 + N2 * 2 + o); }
+    St.world = { n, x0, cell, h, mat, bytes: N2 * 5 };
+    return St.world;
+}
+function hqLandTileName(ti, tj) { return 'tiles/t_' + ti + '_' + tj + '.bin'; }
+function hqLandTileOf(x, z) { const St = HQ_LAND_STORE; return [Math.floor((x + St.ext) / St.tile), Math.floor((z + St.ext) / St.tile)]; }
+function hqLandHas(ti, tj) { const St = HQ_LAND_STORE; return !!(St.grid && ti >= 0 && tj >= 0 && ti < St.per && tj < St.per && St.grid[tj * St.per + ti]); }
+/* file a decoded tile; past tiles.cap the least recently touched go (never one touched this call) → the dropped [ti, tj] */
+function hqLandPut(rec) {
+    const St = HQ_LAND_STORE; if (!St.grid || !rec) return [];
+    const k = rec.tj * St.per + rec.ti; if (rec.ti < 0 || rec.tj < 0 || rec.ti >= St.per || rec.tj >= St.per) return [];
+    if (St.grid[k]) { St.bytes -= St.grid[k].bytes; St.n--; }
+    St.grid[k] = rec; St.n++; St.bytes += rec.bytes; rec.used = ++St.clock;
+    const out = [], cap = HQ_LAND_RULES.tiles.cap;
+    while (St.n > cap) {
+        let lo = -1, loU = Infinity;
+        for (let i = 0; i < St.grid.length; i++) { const t = St.grid[i]; if (t && t !== rec && t.used < loU) { loU = t.used; lo = i; } }
+        if (lo < 0) break;
+        const t = St.grid[lo]; St.grid[lo] = null; St.n--; St.bytes -= t.bytes; out.push([t.ti, t.tj]);
+    }
+    return out;
+}
+/* the walker's neighbourhood is in use: every filed tile within r m of (x, z) is marked most recent */
+function hqLandTouch(x, z, r) {
+    const St = HQ_LAND_STORE; if (!St.grid) return 0;
+    const c = ++St.clock; let n = 0;
+    for (let i = 0; i < St.grid.length; i++) { const t = St.grid[i]; if (t && _hqLandRectD(t.ti, t.tj, x, z) <= r) { t.used = c; n++; } }
+    return n;
+}
+function _hqLandRectD(ti, tj, x, z) {
+    const St = HQ_LAND_STORE, x0 = -St.ext + ti * St.tile, z0 = -St.ext + tj * St.tile;
+    const dx = Math.max(x0 - x, 0, x - (x0 + St.tile)), dz = Math.max(z0 - z, 0, z - (z0 + St.tile));
+    return Math.hypot(dx, dz);
+}
+/* the baked tiles within r m of (x, z) that have not landed, nearest first → [{ ti, tj, d, name }] */
+function hqLandWant(x, z, r) {
+    const St = HQ_LAND_STORE; if (!St.baked) return [];
+    const out = [], [ci, cj] = hqLandTileOf(x, z), span = Math.ceil(r / St.tile) + 1;
+    for (let tj = cj - span; tj <= cj + span; tj++) for (let ti = ci - span; ti <= ci + span; ti++) {
+        if (ti < 0 || tj < 0 || ti >= St.per || tj >= St.per || !St.baked[tj * St.per + ti] || St.grid[tj * St.per + ti]) continue;
+        const d = _hqLandRectD(ti, tj, x, z); if (d <= r) out.push({ ti, tj, d, name: hqLandTileName(ti, tj) });
+    }
+    return out.sort((a, b) => a.d - b.d || a.tj - b.tj || a.ti - b.ti);
+}
+/* is the ground under (x, z) the real 2 m land? (a tile the bake dropped — the open Deep — is the 8 m world's) */
+function hqLandReadyAt(x, z) {
+    const St = HQ_LAND_STORE; if (!St.baked || !St.world) return false;
+    const [ti, tj] = hqLandTileOf(x, z);
+    if (ti < 0 || tj < 0 || ti >= St.per || tj >= St.per || !St.baked[tj * St.per + ti]) return true;
+    return !!St.grid[tj * St.per + ti];
+}
+/* one sample of the global 2 m lattice (a tile's edge row is shared with its neighbour's) — NaN when nothing has landed */
+function _hqLandS(GX, GZ, layer) {
+    const St = HQ_LAND_STORE, n = St.S - 1, per = St.per, g = St.grid;
+    let ti = Math.floor(GX / n), tj = Math.floor(GZ / n), q = GX - ti * n, k = GZ - tj * n;
+    let t = (ti >= 0 && tj >= 0 && ti < per && tj < per) ? g[tj * per + ti] : null;
+    if (!t && q === 0 && ti > 0 && tj >= 0 && tj < per) { const t2 = g[tj * per + ti - 1]; if (t2) { t = t2; q = n; } }
+    if (!t && k === 0 && tj > 0 && ti >= 0 && ti < per) { const t2 = g[(tj - 1) * per + ti]; if (t2) { t = t2; k = n; } }
+    if (t) return layer ? t.mat[k * St.S + q] : t.h[k * St.S + q];
+    const x = -St.ext + GX * St.step, z = -St.ext + GZ * St.step;
+    return layer ? _hqLandWorldM(x, z) : _hqLandWorldH(x, z);
+}
+function _hqLandWorldH(x, z) {
+    const W = HQ_LAND_STORE.world; if (!W) return NaN;
+    const gx = Math.max(0, Math.min(W.n - 1.001, (x - W.x0) / W.cell - 0.5)), gz = Math.max(0, Math.min(W.n - 1.001, (z - W.x0) / W.cell - 0.5));
+    const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, o = j * W.n + i, H = W.h;
+    return (H[o] * (1 - fx) + H[o + 1] * fx) * (1 - fz) + (H[o + W.n] * (1 - fx) + H[o + W.n + 1] * fx) * fz;
+}
+function _hqLandWorldM(x, z) {
+    const W = HQ_LAND_STORE.world; if (!W) return 0;
+    const i = Math.max(0, Math.min(W.n - 1, Math.floor((x - W.x0) / W.cell))), j = Math.max(0, Math.min(W.n - 1, Math.floor((z - W.x0) / W.cell)));
+    return W.mat[j * W.n + i];
+}
+function _hqLandCR(p0, p1, p2, p3, t) { return p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0))); }
+/* the baked ground at (x, z) (metres): Catmull-Rom over the 16 samples round it — null before anything has landed */
+function hqLandBase(x, z) {
+    const St = HQ_LAND_STORE; if (!St.grid) return null;
+    const gx = (x + St.ext) / St.step, gz = (z + St.ext) / St.step, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+    const r = [0, 0, 0, 0];
+    for (let j = 0; j < 4; j++) { const Z = iz - 1 + j; r[j] = _hqLandCR(_hqLandS(ix - 1, Z), _hqLandS(ix, Z), _hqLandS(ix + 1, Z), _hqLandS(ix + 2, Z), fx); }
+    const y = _hqLandCR(r[0], r[1], r[2], r[3], fz);
+    return isFinite(y) ? y : null;
+}
+function _hqLandHash(i, j) { let h = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
+function _hqLandVN(x, z) {
+    const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+    const a = _hqLandHash(i, j), b = _hqLandHash(i + 1, j), c = _hqLandHash(i, j + 1), d = _hqLandHash(i + 1, j + 1);
+    return (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * 2 - 1;
+}
+/* the detail noise (m): the four nearest samples' materials set its amplitude (bilinear, so it fades out onto a road) */
+function hqLandDetail(x, z) {
+    const St = HQ_LAND_STORE; if (!St.grid || !St.amp) return 0;
+    const gx = (x + St.ext) / St.step, gz = (z + St.ext) / St.step, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+    const A = St.amp;
+    const amp = (A[_hqLandS(ix, iz, 1)] * (1 - fx) + A[_hqLandS(ix + 1, iz, 1)] * fx) * (1 - fz) + (A[_hqLandS(ix, iz + 1, 1)] * (1 - fx) + A[_hqLandS(ix + 1, iz + 1, 1)] * fx) * fz;
+    const k = _hqLandPadK(_hqLandPadsNear(x, z, x, z), x, z);
+    if (!(amp * k > 1e-4)) return 0;
+    const D = HQ_LAND_RULES.detail;
+    return amp * k * ((1 - D.mix2) * _hqLandVN(x / D.wl, z / D.wl) + D.mix2 * _hqLandVN(x / D.wl2 + 17.3, z / D.wl2 - 9.1));
+}
+/* a place's pad is flat (the bake levelled it; the door and the building stand on it): the detail fades out over its rim */
+function _hqLandPadsNear(xa, za, xb, zb) {
+    const P = HQ_LAND_STORE.pads; if (!P || !P.length) return [];
+    const out = [];
+    for (let i = 0; i < P.length; i++) { const p = P[i]; if (p[0] + p[2] > xa && p[0] - p[2] < xb && p[1] + p[2] > za && p[1] - p[2] < zb) out.push(p); }
+    return out;
+}
+function _hqLandPadK(pads, x, z) {
+    let k = 1;
+    for (let i = 0; i < pads.length; i++) { const p = pads[i], d = Math.hypot(x - p[0], z - p[1]); if (d < p[2]) { const t = Math.max(0, (d - p[2] * 0.55) / (p[2] * 0.45)); k = Math.min(k, t * t * (3 - 2 * t)); } }
+    return k;
+}
+/* the drawn ground (the chunk's vertex, the walker's feet): the base + the detail — null before anything has landed */
+function hqLandHeight(x, z) { const b = hqLandBase(x, z); return b == null ? null : b + hqLandDetail(x, z); }
+/* the baked ground's steepness at (x, z) (rise over run, the probe's central difference) */
+function hqLandSlope(x, z) {
+    const e = HQ_LAND_RULES.walk.probe, a = hqLandBase(x - e, z), b = hqLandBase(x + e, z), c = hqLandBase(x, z - e), d = hqLandBase(x, z + e);
+    if (a == null || b == null || c == null || d == null) return 0;
+    return Math.hypot(b - a, d - c) / (2 * e);
+}
+/* the cliff sheet's weight at a slope (0 … 1): what the chunk writes and the shader draws */
+function hqLandCliffW(slope) { const C = HQ_LAND_RULES.cliff, t = Math.max(0, Math.min(1, (slope - C.from) / (C.to - C.from))); return t * t * (3 - 2 * t); }
+function hqLandCliff(x, z) { return hqLandCliffW(hqLandSlope(x, z)); }
+/* THE WALKER'S GROUND: the drawn height, or null where the face is too steep to climb (always a drawn cliff: hqLandCliff is 1 there) */
+function hqLandFeet(x, z) {
+    const y = hqLandHeight(x, z); if (y == null) return null;
+    return hqLandSlope(x, z) > HQ_LAND_RULES.walk.maxSlope ? null : y;
+}
+function hqLandMaterial(x, z) { const St = HQ_LAND_STORE; if (!St.grid) return 0; return _hqLandS(Math.round((x + St.ext) / St.step), Math.round((z + St.ext) / St.step), 1); }
+function hqLandMaterialName(x, z) { const St = HQ_LAND_STORE, m = (St.index && St.index.materials) || []; return m[hqLandMaterial(x, z)] || null; }
+function _hqLandTileAtS(x, z) {
+    const St = HQ_LAND_STORE; if (!St.grid) return null;
+    const GX = Math.round((x + St.ext) / St.step), GZ = Math.round((z + St.ext) / St.step), n = St.S - 1;
+    const ti = Math.min(St.per - 1, Math.floor(GX / n)), tj = Math.min(St.per - 1, Math.floor(GZ / n));
+    const t = (ti >= 0 && tj >= 0) ? St.grid[tj * St.per + ti] : null;
+    return t ? { t, o: (GZ - tj * n) * St.S + (GX - ti * n) } : null;
+}
+/* the water surface over (x, z) (a river, a lake, the sea) — null where there is none, or the tile has not landed */
+function hqLandWater(x, z) { const a = _hqLandTileAtS(x, z); if (!a || !a.t.water) return null; const w = a.t.water[a.o]; return isFinite(w) ? w : null; }
+function hqLandForest(x, z) { const a = _hqLandTileAtS(x, z); return a ? a.t.forest[a.o] / 255 : 0; }
+/* a place's pad height: the baked hub for HQ (data.js carries it), else land.json's once it has landed */
+function hqLandPadY(id) {
+    if (id === 'hq' && HQ_LAND.baked && isFinite(+HQ_LAND.baked.hubY)) return +HQ_LAND.baked.hubY;
+    const ov = HQ_LAND_STORE.index, p = ov && (ov.places || []).find(q => q.id === id);
+    return p && isFinite(+p.y) ? +p.y : null;
+}
+/* D.O.O.R. HQ's drum on its pad (hqLandPadY('hq')): solid to a body of radius `pad` */
+function hqLandHQSolid(x, z, pad) { return Math.hypot(x, z) < HQ_LAND_RULES.hq.r + (pad || 0); }
+/* the mean colour of a material (0 … 1 rgb, into out at o): the far pass and the fallback paint with it */
+function hqLandColor(mat, out, o) { const C = HQ_LAND_STORE.col || _hqLandTables(null).col; out[o] = C[mat * 3]; out[o + 1] = C[mat * 3 + 1]; out[o + 2] = C[mat * 3 + 2]; return out; }
+function hqLandStats() { const St = HQ_LAND_STORE; return { tiles: St.n, cap: HQ_LAND_RULES.tiles.cap, mb: +((St.bytes + (St.world ? St.world.bytes : 0)) / 1048576).toFixed(1), world: !!St.world, id: St.id }; }
+/* THE CHUNK'S READ: the baked ground and the drawn ground on a regular grid in one pass — the same arithmetic as hqLandBase +
+   hqLandDetail, from a local copy of the samples (a chunk's 5 000 reads cost what 300 point reads do) → { base, h, mat, nx, nz }
+   row-major from (x0, z0) every `step` m; `mat` = each point's nearest sample's material. A 1 m grid is hqLandHeight exactly;
+   a 2 m grid carries the detail's first octave, a coarser one none (the far chunks — nobody stands there). null before
+   anything has landed. */
+function hqLandGrid(x0, z0, step, nx, nz) {
+    const St = HQ_LAND_STORE; if (!St.grid) return null;
+    const s = St.step, ext = St.ext, D = HQ_LAND_RULES.detail, A = St.amp;
+    const GX0 = Math.floor((x0 + ext) / s) - 1, GZ0 = Math.floor((z0 + ext) / s) - 1;
+    const bw = Math.floor((x0 + (nx - 1) * step + ext) / s) + 3 - GX0, bh = Math.floor((z0 + (nz - 1) * step + ext) / s) + 3 - GZ0;
+    const B = new Float32Array(bw * bh), M = new Uint8Array(bw * bh);
+    for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) { B[j * bw + i] = _hqLandS(GX0 + i, GZ0 + j); M[j * bw + i] = _hqLandS(GX0 + i, GZ0 + j, 1); }
+    const N = nx * nz, base = new Float32Array(N), h = new Float32Array(N), mat = new Uint8Array(N);
+    /* local copies of the readers (a hot loop: no global lookups) — the arithmetic is hqLandBase's / _hqLandVN's */
+    const CR = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
+    const HS = (i, j) => { let v = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967295; };
+    const VN = (x, z) => { const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+        const a = HS(i, j), b = HS(i + 1, j), c = HS(i, j + 1), d = HS(i + 1, j + 1); return (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * 2 - 1; };
+    const oct = step <= 1.01 ? 2 : step <= 2.01 ? 1 : 0;   // the detail a grid this coarse can carry (a 4 m grid would alias 3.4 m noise): the walker's chunks (1 m) carry all of it
+    const wl = D.wl, wl2 = D.wl2, m2 = D.mix2, pads = _hqLandPadsNear(x0, z0, x0 + (nx - 1) * step, z0 + (nz - 1) * step);
+    for (let b = 0; b < nz; b++) {
+        const z = z0 + b * step, gz = (z + ext) / s, iz = Math.floor(gz), fz = gz - iz, rz = iz - GZ0;
+        for (let a = 0; a < nx; a++) {
+            const x = x0 + a * step, gx = (x + ext) / s, ix = Math.floor(gx), fx = gx - ix, rx = ix - GX0, o = b * nx + a;
+            let r0 = (rz - 1) * bw + rx - 1;
+            const c0 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx); r0 += bw;
+            const c1 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx); r0 += bw;
+            const c2 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx); r0 += bw;
+            const c3 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx);
+            const y = CR(c0, c1, c2, c3, fz);
+            const q = rz * bw + rx;
+            const amp = (A[M[q]] * (1 - fx) + A[M[q + 1]] * fx) * (1 - fz) + (A[M[q + bw]] * (1 - fx) + A[M[q + bw + 1]] * fx) * fz;
+            base[o] = y;
+            const k = pads.length ? _hqLandPadK(pads, x, z) : 1;
+            h[o] = (oct && amp * k > 1e-4) ? y + amp * k * ((1 - m2) * VN(x / wl, z / wl) + (oct > 1 ? m2 * VN(x / wl2 + 17.3, z / wl2 - 9.1) : 0)) : y;
+            mat[o] = M[(fx < 0.5 ? q : q + 1) + (fz < 0.5 ? 0 : bw)];
+        }
+    }
+    return { base, h, mat, nx, nz };
+}
+/* a chunk's materials: the 2 m samples from (GX0, GZ0) on the global lattice, w × w (the splat's id sheet) */
+function hqLandIds(GX0, GZ0, w, out) {
+    const o = out || new Uint8Array(w * w);
+    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) o[j * w + i] = _hqLandS(GX0 + i, GZ0 + j, 1);
+    return o;
+}
+/* the whole world on a coarse grid (the far pass): every `k`-th sample of the 8 m world, heights + materials → { n, x0, cell, h, mat } */
+function hqLandWorldGrid(k) {
+    const W = HQ_LAND_STORE.world; if (!W) return null;
+    k = Math.max(1, k | 0);
+    const n = Math.floor((W.n - 1) / k) + 1, h = new Float32Array(n * n), mat = new Uint8Array(n * n);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const o = (j * k) * W.n + i * k; h[j * n + i] = W.h[o]; mat[j * n + i] = W.mat[o]; }
+    return { n, x0: W.x0 + W.cell * 0.5, cell: W.cell * k, h, mat };
+}
+/* the land room's doors stand on their pads (the bake moves a pad's height: the row's `y` is re-read here) */
+(function () { const L = DOOR_HQ.rooms && DOOR_HQ.rooms.land; if (!L) return; (L.doors || []).forEach(d => { if (d.pad) { const y = hqLandPadY(d.pad); if (y != null) d.y = y; } }); })();
 /* ── THE UNDISCOVERED DOOR (2026-09-21, the user: "don't show the names of undiscovered
    locations on doors — just a question mark or nothing at all; get rid of the descriptors,
    we just need the location") ─────────────────────────────────────────────────────────
