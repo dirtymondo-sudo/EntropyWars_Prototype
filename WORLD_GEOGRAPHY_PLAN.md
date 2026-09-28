@@ -1,0 +1,733 @@
+# WORLD GEOGRAPHY PLAN: THE LAND
+
+Written 2026-09-28 for mondo's request of 2026-09-27 (quoted in full in §1). This is a plan: nothing in it is
+built yet. It replaces the geography of OPEN_WORLD_PLAN.md (§4.5 and the outdoor zones) and keeps that
+plan's engine (§6 here says exactly what stays and what goes). Phases append to §12.
+
+The map to argue with: `WORLD_GEOGRAPHY_MAP.jpg` (repo root, beside this file). The full-size map, eight 3D
+views and the generator that made them are in the project folder `open-world/geography/`.
+
+---
+
+## 0. THE VERDICT
+
+The world feels stitched together because it is. Today every outdoor place is a rectangle, 21 to 300 m
+on a side, with edges joined to its neighbours. The relief inside a rectangle is under 9 m, and a
+rectangle's edge is a wall you can't see. There is no ground between places, so there can be no hill to
+hide the next place and no valley to cross on the way to it. Rearranging the same rectangles would give
+the same world.
+
+The fix is **ONE LAND**: a single heightmap for the whole world, baked offline from a recipe, streamed in
+tiles and drawn at several levels of detail. Everything outside is one continuous ground, like
+ZyFou/ProceduralTerrains. The places that exist today sit on it as sites on flattened **pads**. Roads,
+lanes and trails join them; rivers run from the mountains to the sea; forests and ridges hide one region
+from the next. The sea surrounds the land, and an ice wall surrounds the sea.
+
+A working sketch of this land already exists (§11). It is a 4 m heightmap with erosion, rivers, a loch,
+graded roads and switchbacks, forests, and a sight test that checks what can be seen from where. It
+proves that the layout in §4 works:
+- From HQ you see only the tops of Olympus and the Downtown towers.
+- Camelot appears only when you crest the Crown's Rise.
+- Area 51 appears only from Tikaboo Lookout.
+- Loch Ness and the estate open up when the trees part on the north shore path.
+- Nine places see no other place at all from their own ground.
+
+**Size.** The land is 6.55 km² inside a 5.6 km disc: about 3 km east to west and 2.4 km north to south.
+Heights run from 356 m on Olympus down to −133 m in the Deep.
+- On foot (running) a kilometre takes about 3.5 minutes. On the skateboard it takes about 1.5.
+- Route 1, the ring road, is 5.8 km: 21 minutes running, about 8 on the board.
+
+---
+
+## 1. WHAT MONDO ASKED FOR, AND WHERE THIS PLAN ANSWERS IT
+
+> "regarding the open plan, so far the world just kinda feels disconnected and i dont like the layout of the map. It feels stitched together and not an actual map. There need to be trails or routes in in between places. There is not enough difference in height elevation between places. There should be cliffs and valleys. Rolling hills. Areas should be separated by sight, like the fist time I discover a place in the open world needs to be a huge moment like getting to the top of a hill or a clearing and seeing there's a whole other area ahead of me. Right now it's like I get into the woods and everything is within view and I can see where the other areas are immediately. There's no big elevation changes or a deep ditch or a hill to block the next area or anything like that. Same with the urban areas, there is one street in the cyberpunk city that goes down like a ramp, and thats it. The rest of the urban area is completely flat. We need more streets like that. And in the forest and the woods there are a lot of invisible walls. I hate that. There are buildings placed that look like they form alleys but they wont let me walk through them. Change that. The player needs to have a constant sense of discovery. Right now there is no reason to explore because you walk into an area and immediately see the entrance to another area in clear view, so you can just walk straight to it. Design the city better. Design the world better. Design the woods better. Design anything else you worked on better. Design the map better. The deep should be an ocean all the way around the map, or at least a big part of it. Antarctica needs to be at the bottom of the map. The north pole at the top. Maybe Antarctica can be like the flat earth ice wall and go all the way around the map and that can be the world borders. But id be okay with the map surrounded by ocean or mountains too. Add a lake at the estate with woods surrounding it (Loch Ness). Add some rivers on the map connecting to the deep, maybe coming down some mountains. You know, like actual geography like i originally requested. Like why is the highway just one long straight road straight to area 51 and nothing else? It needs to actually go around the city and the map to different places. The sewer and the cavern and the leylines etc can to be like their own dungeons like in skyrim. But same rules as above apply to them. [...] https://github.com/ZyFou/ProceduralTerrains [...] https://github.com/jeromeetienne/threex.grass/tree/master"
+
+| Ask | Answer | Where |
+|---|---|---|
+| Not stitched; an actual map | One land, one heightmap; sites on pads; no rectangle edges outdoors | §3 R1, §5.1–5.2, §5.7 |
+| Trails and routes between places | Route 1 (the ring), 6 roads, 6 lanes, 11 trails; every place on a route | §4.4 |
+| Height differences, cliffs, valleys, rolling hills | 356 m of relief; the Rim cliff (60 m); the Great Glen; the Dry Wash canyon; the Downs; erosion | §4.2, §4.6 |
+| Discovery as a "huge moment" | THE SIGHT RULE and six reveal points, checked by a test on every bake | §3 R2, §4.7, §5.11 |
+| Can't see the next area's entrance | Nine places see no other ground; others see only summits, lookouts and places across the sea | §4.7 |
+| Sloped city streets | Disaster City on a hill falling 58 m to the harbour; streets carry height; terraced lots; stair streets | §5.8 |
+| No invisible walls | Nothing outside stops you unless you can see it at that spot; audited by a test | §3 R3, §5.9 |
+| Alleys that block | Every gap between buildings is either walkable or closed by a drawn wall | §5.8 |
+| Constant discovery | Something every 150–250 m of route; the map fills in as you see places | §3 R6, phase G9 |
+| The Deep all round | The ocean surrounds the land; the Bermuda triangle is in the south-east | §4.1 |
+| Antarctica at the bottom, the North Pole at the top, an ice wall border | The ice wall rings the world; the Antarctic shelf lies inside it to the south; the frozen Arctic and the Pole to the north | §4.1, fork 1 |
+| Loch Ness at the estate, with woods | Loch Ness fills the Great Glen: 0.7 km long, 30 m deep. The estate is on its south-east shore and the woods come down its north side | §4.5 |
+| Rivers from the mountains to the Deep | The Great River (Olympus to the east coast), Redwood Creek (Shasta to the loch, with falls), the River Ness (loch to the sea, with falls), the Nile (desert to the south coast) | §4.5 |
+| The highway goes round the map | Route 1 loops 5.8 km through the kingdom, the woods, the glen, the badlands, the desert and the city | §4.4 |
+| Dungeons like Skyrim, same rules | The sewers, the Cavern, Dead Man's Cave, the ley lines and the D.U.M.B. as dungeon zones with mouths on the land. No puzzles | §5.13, phase G10 |
+| ProceduralTerrains | Its ideas are reimplemented, not copied (licence note in §5.1): noise stack, erosion, spline carving, water, props, fog | §5 |
+| threex.grass | Its crossed-quad tuft idea, rewritten for three r128 with instancing and wind | §5.5 |
+
+---
+
+## 2. WHY TODAY'S WORLD FEELS STITCHED (read from the code, 2026-09-28)
+
+D = data.js, R = three-renderer.js. The "measured" numbers come from headless compiles through load-data.js.
+
+### 2.1 The invisible walls
+| # | What you see | What stops you | Where |
+|---|---|---|---|
+| a | Grass running on to a treeline | The part's edge. `_hqSurface` returns null at `S.w/2 − HQ_BODY_R − 0.08`. The treeline starts 1.4 m further out and adds no blockers; the city skyline outside the shell is "pure scenery". `roam` widens only the compiled grid and `_hqSurface` never reads it | R:50517, D:22497, R:41314-60, R:42556-59, D:44938 |
+| b | An open trail between two woods parts | The join. Only `span − 2 × HQ_STAGE_PAD (1.5 m)` is walkable, about 3 m of a 6 m trail, but the thicket mouth is cut 6 m wide. Outside a span the shared edge is a wall. Parts that touch without a join (the trail and the stair) are a wall along their whole edge | D:41359-71, R:56700, D:40892-99, D:45136-39, D:40883-84, R:57886 |
+| c | A grassy hump at the edge of a woods room | The `wallH` bank (1.7–1.9 m) keeps the grass sheet. The walker is refused by `maxSlope` 1.0 and the 0.62 m step. Thicket trees grow on a 2.1 m lattice; 27–56 % of bank samples have no tree within 1.6 m, so bare grass blocks | D:43498, D:44248-54, D:44264, D:45456, R:50605, D:44668 |
+| d | An alley between two buildings | The city mask is solid over the whole block, and buildings add no blockers. Slits the alley pass can't close stay solid (`closedFail`): 21 in Cyberpunk and 23 in Downtown. Of the mask-edge cells, 16.4 % in Cyberpunk (846 of 5,174) and 13.5 % in Downtown (681 of 5,046) have no building, wall or cliff in front of them | D:44107-10, D:43521, R:42243, D:44374-78, D:44452-75, D:44597-632 |
+| e | A log, a tent, a tree | Authored footprints, not measured ones. A 3.6 m fallen log blocks as a 0.5 m disc; a measured blocker uses `max(ex, ez) × 0.45`; trees have no top | R:47908, R:48006, R:42163, R:42131-38 |
+
+### 2.2 Flat
+- **The city is flat.** `podium:false`, street noise amp 0.05, kerb 0.12 m (D:44245-46, D:33339). All the
+  relief there is comes from authored plateaus. Cyberpunk's one sloped street is an authored `ramp` from 0
+  to −4 m into a sunk plateau (D:33878-79).
+- **The generator can't do slopes.** Street points carry no height, each lot's base is sampled once, and
+  the alley march refuses more than 0.4 m of change (D:44412).
+- **The woods are flat.** Measured ranges: the clearing −0.8 to 5.1 m, the Grove −1.0 to 6.4, Shasta −0.9
+  to 8.7. Noise is ±0.2 m, and the zone offsets between parts are −2.2 to +0.05 m (D:40881-89).
+
+### 2.3 Everything in view
+- Fog closes most rooms at 60–150 m (densities 0.011–0.03/m), but far shells draw neighbouring parts at
+  0.3 × the fog (D:40436). The next place's ground shows through the fog, and nothing stands between
+  because there is no land between.
+- Weenies are scale models hung about 75 m out at true bearings (R:43398), not things on a map.
+
+### 2.4 The shape
+- The highway is two 80 × 210 m parts running straight south to Area 51.
+- The woods are seven parts packed within 100 m of each other.
+- The whole surface fits in about 750 × 700 m.
+- The rectangle is built in everywhere: `hqTerrainFeet`, `_hqCamBlocked`, `_hqNavBounds`, the shadow fit,
+  and the outer ground (D:45434, R:50761, R:51311, R:54860).
+
+---
+
+## 3. THE RULES (every phase, every test)
+
+**R1. ONE LAND.**
+- Everything outdoors is one heightmap baked from one recipe.
+- A site is a pad on the land: a flattened patch at a set height, blended into the land around it.
+- Interiors stay rooms behind door joins. Dungeons are their own zones behind a mouth.
+- No outdoor place is a rectangle with an edge.
+
+**R2. THE SIGHT RULE.** Discovery is built into the ground.
+- From any place's pad, you may see:
+  - another place's ground only if that place is a **summit** (Olympus, Shasta, Tikaboo), a **lookout** (the Rim, the Crown's Rise), in the **same region**, or across **open sea**;
+  - the **tops** of weenies (Olympus, the Downtown towers, Babel, the haunted house's gable).
+- The first sight of a region's ground happens at a **reveal point**: a crest, a pass, the edge of the
+  trees, or a bend in a canyon. The road or trail climbs to it and the view opens.
+- The bake's sight test checks this from every pad and along every route every 8 m, with forest canopy
+  counted as 20 m and city blocks as 28 m. A bake that breaks it fails its test.
+
+**R3. NO INVISIBLE WALLS.** The walker is stopped only by something drawn at that spot, at least body high:
+- a cliff face (slope over 1.0, always drawn with the cliff material);
+- a building wall, fence or rail;
+- a tree trunk (its measured radius) or a rock (its measured hull);
+- the ice wall.
+
+Water deeper than wading depth means you swim; it never stops you. Bushes, ferns, grass and crops never
+block. The wall audit test samples every refused step and fails if nothing is drawn within 0.45 m.
+
+**R4. THE EDGE OF THE WORLD IS A THING YOU CAN SEE.** The Deep surrounds the land and the ice wall
+surrounds the Deep. You can swim or sail to the wall and touch it. Nothing ends in fog or a void.
+
+**R5. ROUTES.**
+- Every place is on a route, and every route leads somewhere.
+- Route 1 loops.
+- Grades: roads climb at most 10 % (highway 7.5 %, lanes 12–14 %); trails stay walkable (at most 1.0 locally, with benches and steps).
+- Long climbs switch back.
+- A road leaves the ground on a bridge only over water or where it is more than 7 m above the ground.
+- No route runs straight for more than 400 m.
+
+**R6. DISCOVERY DENSITY.** Along every route there is something every 150–250 m: a landmark, a view, a
+ruin, a camp, a wreck, a waterfall pool, a dungeon mouth, a fork in the road. **No puzzles** (the standing
+rule). These are places to find, not tapes or finds to pin in tests.
+
+**R7. WATER RUNS DOWNHILL.**
+- Rivers fall steadily from source to sea or loch.
+- A lake has one level and an outlet.
+- A drop is a waterfall, drawn as one.
+- The sea is at 0 m.
+
+**R8. SLOPED CITIES.**
+- A city sits on the land's slope; its streets carry height.
+- Every district has at least one street steeper than 6 %, and at least one stair street or ramp.
+- No district is flat.
+
+**R9. DUNGEONS OBEY R2, R3 AND R7 UNDERGROUND** (§5.13).
+
+**R10. THE STANDING RULES.**
+- No dev shortcuts that change what the player sees or decides.
+- No work spent preserving tapes, finds or old saves.
+- Missing engine infrastructure gets built (mondo, 2026-09-26: an "AAA game engine").
+- Online PvP is untouched: the land is story-mode exploration. Battles on it use the same field window as today.
+
+---
+
+## 4. THE GEOGRAPHY (the sketch; x east, z south, y above sea level, all in metres)
+
+See `WORLD_GEOGRAPHY_MAP.jpg`. Coordinates are the sketch's and will move a little when G0 re-bakes at
+finer resolution; the relations (what hides what) are what the test pins.
+
+### 4.1 The shape of the world
+- **The disc.** 5.6 km across, with the land slightly north of centre.
+- **The ice wall.** A ring of radius 2,600 m, 92 m high and 150 m thick, pulled 250 m south so the
+  Antarctic shelf has room inside it.
+- **ANTARCTICA.** The shelf along the south inside the wall: ice 11 m above the sea with a ragged front.
+  The research station (`antarctica_station`) stands on it at (110, 2190).
+- **THE FLAT LANDS** (`flatlands_plain`) are on top of the wall at (110, 2440). Fork 5 decides whether you can
+  climb there.
+- **THE ARCTIC.** Frozen sea north of the Northern Range, from about z −1,700 to the wall. The North Pole
+  village (`northpole_village`) stands on the ice at (0, −2150). The only way north is the North Pass.
+- **THE DEEP.** Ocean all round the land, to −133 m.
+  - Offshore islands lie west and east.
+  - The Bermuda triangle is in the south-east, with the cay (1560, 880), the Flying Dutchman (1720, 1010)
+    and the whirlpool (1650, 1080). Today's door to Atlantis and the other deep places can stay on the
+    whirlpool.
+
+### 4.2 The regions
+| Region | Ground | What it is | What hides it | First seen from |
+|---|---|---|---|---|
+| THE CENTRAL HIGHLANDS | 70–110 m | Rolling moor in the middle; D.O.O.R. HQ at 85 m; every road starts here | Its own edges: the Rim cliff south, the Great Glen's rim west, the Crown's brow north, the East Ridge | You start here |
+| THE KINGDOM | valley 25–60 m | Camelot on a knoll in the Great River's loop under Olympus | The Crown's brow (111 m) | 3 · THE CROWN'S RISE |
+| THE NORTHERN RANGE | 150–356 m | Olympus (356 m, snow above 245 m), peaks to the north-west and north-east, the North Pass | Nothing: it is the weenie | Its tops, from nearly everywhere |
+| THE DOWNS | 40–110 m | Chalk downs east of the kingdom; Stonehenge in a hollow; Vatican City on a hill over the Great River | The downs' ridge (a 106 m plateau) | 5 · THE DROVE ROAD (the stones); the last bend of the Via (the Vatican) |
+| THE WOODS | 60–140 m; Shasta 270 | Dense forest on the west: the Fairy Clearing, the Redwoods, Bohemian Grove, the Staircase, the Ritual Ground, Dead Man's Cave, the Cavern, Mt Shasta | The canopy | Only from inside the trees |
+| THE GREAT GLEN | floor 18–30 m; rims 60–100 m | Loch Ness, the estate on its shore bench, the haunted house above, Urquhart Ruin, the River Ness falls, the Glen Viaduct | The glen's walls and the woods | 4 · THE NORTH SHORE PATH (and the West Lane's end) |
+| THE BADLANDS | 40–90 m | Red-rock mesas, the Dry Wash canyon, Göbekli Tepe's tell | Mesas and the canyon | Route 1 rounding the glen's foot |
+| THE DESERT | 10–60 m | The Nile valley; Giza's plateau; Babel by the south coast; the Groom range (124 m) ringing Area 51 and Groom Lake's playa; Rachel's diner; Tikaboo | The Rim (96 m falling to 36 m) and the Groom range | 2 · THE RIM (the desert); 1 · TIKABOO LOOKOUT (Area 51) |
+| DISASTER CITY | −4 to 60 m | A hill city: Downtown on the crown, the Bowl to the north, the Strip to the south, the harbour and lighthouse to the east | The East Ridge (78 m) and its own towers | The East Road's crest (only the skyline is seen from HQ) |
+| THE DEEP | to −133 m | The ocean; the Bermuda triangle | Nothing | Every coast |
+| THE ARCTIC | ice | Pack ice, the Pole | The Northern Range | 6 · THE NORTH PASS |
+| ANTARCTICA and THE ICE WALL | shelf 11 m; wall 92 m | The shelf, the station; the wall around everything; the Flat Lands on top | Distance and the sea | The south coast |
+
+### 4.3 The places
+Ground heights are from the sketch bake. "Today" is the room or zone the place already has; G6, G7 and
+G10 move them.
+
+| Place | x, z | y | Region | Today | Reached by |
+|---|---|---|---|---|---|
+| D.O.O.R. HQ | 0, 0 | 85 | Highlands | the building, `hq_grounds` | every road |
+| The Crown's Rise (lookout) | −32, −368 | 111 | Highlands' brow | new | the Crown's Road |
+| The Rim (lookout) | 45, 262 | 97 | Highlands' south cliff | new | the Rim Road |
+| Downtown | 900, 210 | 54 | Disaster City | `downtown_streets` (+ mall, lobby, showroom, subway) | the East Road, Route 1 |
+| The Bowl | 990, −70 | 22 | Disaster City | `stadium_bowl` | the stadium road |
+| The Strip | 705, 560 | 24 | Disaster City | `strip_streets` (+ chapel, casino) | the Rim Road, Route 1 |
+| The Harbour | 1120, 320 | −4 to 3 | Disaster City | `downtown_harbour` | the city's streets |
+| The Lighthouse | 1262, 452 | 2 | the east coast | new landmark | the harbour mole |
+| The Sewers (mouth) | 960, 330 | — | under the city | the `underworld` zone | a storm outfall at the harbour, a grate in Downtown |
+| Vatican City | 812, −445 | 45 | Downs | the `divine` zone (Rome ground) | the Via della Conciliazione (fork 4) |
+| Stonehenge | 455, −500 | 55 | Downs | `stonehenge_henge` | the Drove Road |
+| Camelot | −40, −640 | 44 | Kingdom | `camelot_*` (the road part retires into the land) | the Crown's Road |
+| Mt Olympus (summit) | 60, −1000 | 356 | Northern Range | `olympus_summit`; the foothills and switchbacks retire into the land | the Pilgrims' Way |
+| Mt Shasta | −960, −760 | 270 | Woods | `shasta_slopes`; Agartha stays a door inside | the Shasta Trail |
+| The Fairy Clearing | −470, −330 | 82 | Woods | `fairy_forest_clearing` | the Fairy Trail |
+| The Redwoods | −695, −400 | 66 | Woods | `fairy_forest_redwoods` | the Redwood Trail |
+| Bohemian Grove | −640, −225 | 72 | Woods | `bohemian_grove_grove` | Route 1, the Fairy Trail |
+| The Staircase | −800, −560 | 94 | Woods | `fairy_forest_stair` | the stair trail (a 114 m flight up the slope) |
+| The Ritual Ground | −560, −615 | 104 | Woods | `fairy_forest_ritual` | the ritual trail |
+| Dead Man's Cave | −820, −430 | 78 | Woods | `fairy_forest_deadmans` | Redwood Creek |
+| The Cavern (mouth) | −870, −690 | 139 | Shasta's foot | the `hollow_earth_*` rooms (the Cavern hub) and the `under` zone | the Shasta Trail |
+| The Estate | −778, 188 | 26 | Great Glen | `skinwalker_fields` (the corn fields) and the estate's rooms | the Estate Lane along the loch shore |
+| The Haunted House | −690, 118 | 54 | Great Glen | `haunted_*` | the north shore path |
+| Urquhart Ruin | −965, 140 | 33 | Great Glen | new landmark | the north shore path |
+| Göbekli Tepe | −780, 650 | 53 | Badlands | `gobekli_tell` | a lane off Route 1 |
+| The Ley Lines (mouth) | −560, 820 | — | under the badlands | `gobekli_leylines` | a shaft in the tell |
+| Giza | −330, 725 | 24 | Desert | `giza_plateau` | the Plateau Road |
+| Babel | −360, 1040 | 11 | Desert (south coast) | `babel_tower` | the Nile path |
+| Area 51 | 330, 840 | 40 | Desert | `area51_*` (the highway parts retire) | the Groom Lake Road |
+| The D.U.M.B. (mouth) | 360, 935 | — | under Groom Lake | the `dumb` zone | a vent or lift at Area 51 |
+| Rachel (the diner) | 445, 612 | 62 | Desert | new | Route 1 |
+| Tikaboo Lookout | 662, 742 | 228 | Desert | new | the Tikaboo Trail |
+| The Cay / The Dutchman | 1560, 880 / 1720, 1010 | 4 / sea | the Deep | `bermuda_sea`, `revenge_*` | the skiff |
+| Antarctica · The Station | 110, 2190 | 10 | the shelf | `antarctica_station` | the skiff, then on foot |
+| The North Pole | 0, −2150 | ice | the Arctic | `northpole_village` | the North Pass, then on foot across the ice |
+
+These stay **doors** to other worlds, as today: Heaven and Hell, the moon, Mars, Saturn, the derelict,
+the singularity, the backrooms, the looking-glass, Atlantis (from the whirlpool), CERN (from the D.U.M.B.),
+the lodge and the Technoticlan. Hollow Earth is the Cavern (§5.13).
+
+### 4.4 The routes (sketch lengths and maximum grades)
+**ROUTE 1, THE RING** (a 12 m highway, 5,822 m, 7.5 % max). Starting at Downtown and heading north:
+1. Past the Bowl, then north-west over the Downs past the Vatican turn and Stonehenge's drove road.
+2. West through the kingdom, between the Crown's Rise and Camelot's river loop, and into the woods over Redwood Creek.
+3. South past Bohemian Grove, over the Loch Head Viaduct, and down the Great Glen's east rim on the Glen Viaduct.
+4. Round the glen's foot, then east across the badlands past Göbekli Tepe, over the Nile Bridge and past Giza.
+5. East below the Rim, past Rachel and the Groom Lake turn, and back into the city at the Strip.
+
+**Roads** (7–8 m wide, 10 % max):
+| Road | Length | Route |
+|---|---|---|
+| The Crown's Road | 1,265 m | HQ north over the Crown's Rise, then hairpins down to Camelot |
+| The East Road | 759 m | HQ over the East Ridge to Downtown |
+| The Rim Road | 1,012 m | HQ south along the Rim's ledge, down to the Strip |
+| The stadium road | 197 m | to the Bowl |
+
+**Lanes** (4–5 m wide, 12–14 % max):
+| Lane | Length | Route |
+|---|---|---|
+| The West Lane | 616 m | HQ to the Great Glen's rim |
+| Groom Lake Road | 419 m | enters Area 51 from the east through the only gap in the range |
+| Via della Conciliazione | 182 m | to the Vatican |
+| The Drove Road | 103 m | to Stonehenge |
+| The Estate Lane | 518 m | leaves Route 1 south of the loch and runs up its south-east shore |
+| The Plateau Road | 83 m | to Giza |
+| The Göbekli lane | 117 m | to Göbekli Tepe |
+
+**Trails** (dirt, 1.6–2.4 m wide, hugging the ground; 11 in all):
+- The Pilgrims' Way up Olympus (569 m)
+- The Shasta Trail
+- The Fairy Trail
+- The Redwood Trail
+- The stair trail
+- The ritual trail
+- The North Shore Path (527 m)
+- The Tikaboo Trail (487 m, switchbacking up the dome)
+- The North Pass (590 m)
+- The Nile path
+- The Cliff Path along the west coast
+
+**Travel times.**
+- HQ to Camelot: 1.3 km, about 4.5 minutes running.
+- HQ to Area 51 by the Rim Road, Route 1 and the Groom road: about 2 km, 7 minutes running or 3 on the board.
+
+### 4.5 Water
+| Water | Course | Features |
+|---|---|---|
+| THE GREAT RIVER | From the snowfields under Olympus's west shoulder, down through the kingdom (looping round Camelot's knoll), east along the Downs past the Vatican, to the east coast north of the city | 4 m wide at the source, 16 m at the estuary; the Crown's Road crosses it into Camelot |
+| REDWOOD CREEK | From Shasta's flank through the woods, past Dead Man's Cave, over a waterfall into the head of Loch Ness | Crossed by Route 1, the woods' trails and the north shore path |
+| LOCH NESS | Fills the Great Glen from (−628, −78) to (−1122, 420): 0.7 km long, up to 104 m wide | Level 18 m, 30 m deep; forest down the north-west side; the estate's bench on the south-east shore; Urquhart Ruin on a point |
+| THE RIVER NESS | From the loch's south-west end, over a falls, to the sea | The Cliff Path's Ness Bridge |
+| THE NILE | Down the desert from the Rim's foot, past Giza, to the south coast by Babel | Route 1's Nile Bridge |
+| The Olympus brook | Feeds the Great River | — |
+
+### 4.6 The relief
+| Place | Height |
+|---|---|
+| Olympus | 356 m |
+| Shasta | 270 m (crater) |
+| Tikaboo | 228 m |
+| The Northern Range ridge | about 205 m |
+| The Groom range | 124 m |
+| The Rim | 97 m, over a 60 m cliff to the desert |
+| The Crown's Rise | 111 m |
+| HQ | 85 m |
+| The Downs | 106 m |
+| The haunted house | 54 m |
+| Downtown | 54 m |
+| Camelot | 44 m |
+| The estate | 26 m |
+| The loch | 18 m |
+| The harbour | −4 m |
+
+The bake runs thermal erosion (talus relaxation) and a droplet pass that cuts gullies (reduced on high
+ground). Mesas sit on the badlands. The Dry Wash is a canyon 16 m wide with 7 m walls. Dunes lie along
+the south desert, and Groom Lake is a playa.
+
+### 4.7 The reveals (the sketch's sight test)
+The six marked reveal points:
+
+| # | Where | What opens up |
+|---|---|---|
+| 1 | TIKABOO LOOKOUT (the summit after a 487 m switchback climb) | The only place Area 51 can be seen from. Its ground comes into view at 470 m up the trail, 334 m away. The Groom Lake Road shows only the hangar tops from 323 m until you reach the gate |
+| 2 | THE RIM | The highlands end in a cliff; the desert, the Nile, Giza and Babel lie below. Their ground first shows 237 m along the Rim Road. Area 51 stays behind the Groom range |
+| 3 | THE CROWN'S RISE | Camelot's ground first shows 329 m along the Crown's Road, 275 m away, in its valley under Olympus |
+| 4 | THE NORTH SHORE PATH | Out of the trees: the haunted house at 95 m, the estate at 175 m (306 m away), Urquhart at 500 m. On the Estate Lane the estate comes round the shore at 405 m of 518 |
+| 5 | THE DROVE ROAD | Stonehenge is hidden from HQ and the Vatican; it appears when Route 1 reaches the drove road's mouth, 104 m away |
+| 6 | THE NORTH PASS | The Arctic and the Pole open at 436 m, 1.16 km across the ice |
+
+**What each place sees from its own pad** (ground, or ^top only):
+
+| Place | What it sees |
+|---|---|
+| HQ | ^Downtown, ^Olympus, Tikaboo, the Rim |
+| Downtown, the Bowl, the Strip, the Redwoods, the Grove, the Staircase, the Ritual Ground, Dead Man's Cave, Area 51 | **nothing** |
+| Camelot | the Crown's Rise |
+| Stonehenge | ^Olympus |
+| The Vatican | ^Downtown, ^the Bowl, ^the Strip, ^Olympus, Tikaboo |
+| The estate | Olympus, ^the haunted house, Urquhart |
+| Giza | ^Downtown, ^Olympus, ^Babel, the Flat Lands (on the wall, across the sea) |
+| Tikaboo | 20 places: the reward for the climb |
+
+Every place passes R2.
+
+---
+
+## 5. THE ENGINE (what to build; all of it works on three r128, no upgrade needed)
+
+### 5.1 THE BAKE (`bake-land.js`, a repo-only tool, and the `HQ_LAND` recipe in data.js)
+The sketch hardened. It reads the recipe through `load-data.js` and writes:
+- **The tiles.** 256 m land tiles at 2 m: 129² samples each. Layers:
+  - height (uint16, 1 cm steps from −150 m);
+  - material (u8: grass, meadow, forest floor, rock, cliff, sand, snow, desert, red rock, playa, asphalt, dirt, pavement, ice);
+  - forest density (u8);
+  - water surface (uint16; none where there is no water).
+- **The sea and the ice** in 8 m tiles.
+- **Overlay JSON**: roads with per-sample height, bridges, rivers, lakes, places, pads, reveal points.
+- **A map image.**
+- **Size**: about 150 land tiles at roughly 70 KB before brotli, so about 10 MB in all, fetched by distance.
+  Files go under `Assets/Land/` on R2 through the manifest (`?h=<sha>`, Phase 9 of the old plan).
+
+The bake's steps, in the sketch's order:
+1. coast and islands;
+2. plateaus, bumps, ranges and peaks;
+3. thermal erosion;
+4. the Rim cliff and the glen;
+5. dunes and the playa;
+6. droplet erosion;
+7. mesas and canyons;
+8. rivers (monotone beds) and lakes (level auto-found, shore raised at most 6 m);
+9. the sea floor, the wall, the shelf and the pack ice;
+10. **pads**;
+11. **roads** (per-sample graded height, cut slope 2.0, fill slope 0.7, ends pinned to the ground, bridges where the deck is more than 7 m up; trails hug the ground within −1.2 / +0.6 m and are benched to at most 0.9 slope with steps where steeper);
+12. materials (a cliff wherever the slope is over 0.8);
+13. forest;
+14. urban;
+15. the sight test;
+16. output.
+
+Improvements over the sketch:
+- ProceduralTerrains' **analytic-gradient erosion damping** (`damp = 1/(1 + erosion·4·|∇|²)`) in the ridged noise, for gullies without rounded domes.
+- A stronger droplet pass on the slopes.
+- Finer switchbacks for the roads that still take viaducts (§11).
+
+**Licence.** ProceduralTerrains' root licence is MIT with "and/or sell" missing, and its Blender part is
+GPL. So nothing is copied: the ideas are reimplemented, and the terrain textures come from CC0 Poly
+Haven. threex.grass is MIT and credited if any of it is used.
+
+### 5.2 THE LAND UNDERFOOT (the runtime)
+**The sampler.**
+- `hqLandHeight(x, z)`, `hqLandFeet`, `hqLandMaterial` and `hqLandWater` are one global sampler, shared by
+  the main thread and the terrain worker.
+- It reads the 2 m tiles with bicubic filtering and adds deterministic detail noise near the walker
+  (±0.3 m on grass, ±1.2 m on rock). Roads and paths are stamped at their exact height.
+- A pad returns its site's compiled field (0.5 m, today's compiler) inside the pad, and the land outside it.
+
+**The mesh.** Chunks are built in the worker as transferable arrays: positions, normals, two splat weights
+and AO. Levels of detail:
+
+| Level | Spacing | Out to |
+|---|---|---|
+| L0 | 0.5 m | 32 m |
+| L1 | 1 m | 96 m |
+| L2 | 4 m | 400 m |
+| L3 | 16 m | 1.6 km |
+| L4 | 64 m | the wall |
+
+- Seams are hidden by skirts, as ProceduralTerrains does.
+- About 250k triangles before culling and about 120k in view.
+- Chunks attach through today's machinery: the sliced build, the warm-up and the file tracker.
+
+**The floating origin.** Crossing a 256 m tile re-anchors every root. This is `_hqStageSwap` with no
+rotation: the stage's swap, reused.
+
+**THE FAR PASS.** The land beyond 250 m, far tree cards and far weenies are drawn first with a far camera
+(near 200 m, far 6 km). Then depth is cleared and the near scene is drawn with today's camera (far 274 m).
+This gives no z-fighting across 5.6 km and changes no existing shader. It replaces the far shells
+outdoors.
+
+**The material.** Two strongest splat materials per vertex, as ProceduralTerrains does. The textures use
+triplanar sampling only where the slope is high (cliffs) and flat UVs elsewhere, with the tiling broken
+by offset sampling. There are 8–12 CC0 texture sets, and the snow line and altitude tint are done in the
+shader.
+
+**The walker.**
+- `_hqSurface` asks the land when outside a site's field. The box clamp is gone outdoors.
+- `maxSlope` 1.0 and the 0.62 m step stay. Because of the bake's material rule, whatever refuses you looks
+  like a cliff.
+- Camera collision samples the land.
+
+### 5.3 SIGHT AND FOG
+- Fog stops doing the hiding; the land does it.
+- Each region's weather sets its distance: clear days see 2–3 km with aerial perspective (far land tinted
+  toward the sky). The woods keep a close, damp fog under the canopy. The Arctic and Antarctica get snow
+  haze.
+- Weenies become the real things at their true distance: Olympus is a 356 m mountain, not a 75 m scale
+  model. `HQ_WORLD_WEENIES` retires outdoors.
+
+### 5.4 THE WATER
+- **The sea.** One plane at 0 m following the camera. Its shader takes depth from the land's height
+  texture: shallow-to-deep colour, a foam band at the shore, fresnel sky, two scrolling ripple normals, and
+  a sun glint (ProceduralTerrains' legacy water, reimplemented).
+- **Rivers.** Ribbons along the river spline with per-sample height, falling steadily. The normals scroll
+  in the downstream direction, and white water shows where the slope is over 3 %.
+- **Waterfalls.** A vertical ribbon, mist particles and sound.
+- **Lakes.** A level plane, clipped by depth.
+- **Underwater.** A fog pass when the camera is under the water layer.
+- **Swimming and the skiff.** You swim anywhere deeper than wading depth. The skiff works on any water
+  deep enough: the Deep, the loch and the Great River's lower reach. `_hqTickVehicle` pins to the water
+  layer instead of `sea.y`, so "one sea per part" goes away.
+
+### 5.5 THE TREES AND THE GRASS
+**Trees.**
+- Placed from the forest layer with ProceduralTerrains' method: a jittered grid, a hash-local-maximum
+  spacing test, and slope, height and shore windows.
+- About 25k trees in the forests and 10k scattered elsewhere, deterministic per tile.
+- One `InstancedMesh` per model and LOD per tile. The tree materials become shared: one bark and one leaf
+  material per model, with the wind patch driven by uniforms, so `_hqInstKey` stops rejecting them.
+- Levels: the full model within 80 m, the Phase 10 simplified level out to 250 m, and a baked crossed-card
+  impostor out to 1.5 km, drawn in the far pass. The canopy really blocks sight.
+- **Every trunk is a blocker** at its measured radius. **The forest is walkable between trunks.** There
+  are no thickets, banks or treeline rings.
+
+**Undergrowth.** Ferns and bushes are instanced and never block. Rocks block by their measured hull.
+
+**Grass.**
+- threex.grass's crossed quads with normals forced up, rewritten as an `InstancedMesh` of 3-quad tufts.
+- Placed by a deterministic hash on grass materials only, faded out between 30 and 60 m, with a wind
+  vertex shader whose phase comes from world XZ so whole fields sway together.
+- The battle board's grass tufts share the art.
+- Budget: about 8k tufts and 50k triangles, in a few draw calls.
+
+### 5.6 THE ROADS
+- Road meshes are ribbons following the baked per-sample height: asphalt with painted lines for the
+  highway, packed dirt for lanes, and trails painted into the land's path weight.
+- **Bridges and viaducts** are walkable decks (today's bridge layer), with piers down to the ground, rails
+  and lamp posts. Named bridges get their own look: the Glen Viaduct is an arched railway-style viaduct,
+  the Nile Bridge a truss.
+- Guard rails are drawn wherever the road edge drops more than 2 m, so the rail is the blocker, not the edge.
+- Signs at junctions name the next place, not what is visible.
+- NPC traffic runs on Route 1 (today's traffic routes).
+- The skateboard rides every road.
+
+### 5.7 THE SITES ON PADS
+- Each outdoor site becomes a pad: the bake flattens a disc (or rectangle) at `padY` and blends it into the
+  land over its edge band.
+- The site's compiled field (today's compiler, families A–E, 0.5 m) fills the pad.
+- Its shell edge stops refusing the walker: past the field, `_hqSurface` asks the land.
+- Interiors stay door joins (Phase 2 of the old plan).
+- The site compiles in the worker while you approach. Until it attaches, the pad shows the land's flat
+  ground and the site's LOD models: the black-texture rule and the file tracker, as today.
+- **The woods' seven parts retire.** The forest is land. The clearing, the redwoods, the grove, the
+  staircase and the ritual ground become small pads with their props, joined by the trails.
+- The highway's two parts retire into Route 1. The mountain's foothills and switchbacks retire into
+  Olympus's real slope.
+
+### 5.8 THE CITY ON THE HILL
+Disaster City is rebuilt on the land's slope, falling from Downtown's crown (about 60 m) to the harbour
+(0 m). The generator (family D) changes:
+- **Streets carry height.** Each street point samples the land and is graded to at most 12 % (stair streets steeper, drawn as steps and ramps under 1.0).
+- **Lots are terraced.** A lot's base is the street height at its front. The downhill side stands on a drawn plinth or retaining wall, and the uphill side cuts into the slope behind a drawn wall.
+- **Solid is what's drawn.** The walker's mask becomes the union of building footprints, drawn walls and plinths. This inverts today's "the block is solid".
+  - An alley at least 1.6 m wide is walkable, either through to the far side or ending at a drawn wall.
+  - A gap under 1.6 m gets a drawn fence or wall, and the audit proves every one.
+- **Districts on levels.** The Bowl sits in a hollow north of Downtown. The Strip runs down the south
+  slope to Route 1. The harbour is on the waterfront. Switchback streets, a funicular-style stair and a
+  viaduct link the levels.
+- The East Road arrives over the East Ridge. From its crest the city's streets appear for the first time;
+  from HQ only the skyline shows.
+
+### 5.9 NO INVISIBLE WALLS (the audit)
+**The wall audit test.** Walk the walker's refusal function over every site field and a sample of land
+tiles. For every refused step, something drawn must stand within 0.45 m: a cliff material, a building
+footprint, a wall, a trunk or a rock hull.
+
+**The fixes it forces:**
+- Measured footprints from GLB bounds, as oriented rectangles, for every catalogue prop (replacing the
+  authored `foot` and `rect` values).
+- Tree tops at their real height.
+- No `wallH` banks outdoors.
+- No shell-edge refusal outdoors.
+- No stage pad (`HQ_STAGE_PAD`) outdoors.
+
+### 5.10 THE ENCOUNTER ON THE LAND
+- `hqFieldLattice` stops rasterising the whole part. It rasterises a 32 × 32 m window round the strike
+  from the land sampler (and the pad's field inside a site).
+- The 8 × 8 window and its rules are unchanged (Phase 8 of the old plan stays skipped).
+- Window ids become `field:land:<tile>:ox,oz`.
+
+### 5.11 THE MAP AND DISCOVERY
+- The map tab draws the baked land: shaded relief, contours, rivers, roads by kind, places and reveal
+  points, drawn like `WORLD_GEOGRAPHY_MAP.jpg`.
+- Regions start under a light fog of war. A region clears when you first see its ground (from a reveal
+  point, or by entering it). A place's name appears when you first see it.
+- A region's first sight also shows its title card, the "whole other area ahead" moment.
+- A new save key holds what you have seen; there is no migration (R10).
+
+### 5.12 MEMORY AND PERFORMANCE
+One VRAM estimate covers everything under a single budget, with LRU eviction: land tiles, chunk meshes,
+instance buffers and parsed models. This is Phase 12's memory half (§6).
+
+Rough numbers:
+| Item | Size |
+|---|---|
+| Land tiles in memory | 25 near tiles ≈ 2 MB |
+| Tree instances | 35k × 64 B ≈ 2 MB |
+| Grass | 8k tufts |
+| Draw calls | land ~40, trees ~60, grass ~10, on top of the sites |
+
+`EW_PERF_LOW` halves tree and grass density and pulls L2–L4 in.
+
+### 5.13 THE DUNGEONS (the dungeon kit)
+**The rules:**
+
+| # | Rule |
+|---|---|
+| D1 | A **mouth on the land**, visible from a route: a cave mouth, the harbour's storm outfall, a grate, a shaft in the tell, a vent at Groom Lake. It is a door join into the dungeon's zone on the `under` ground |
+| D2 | **400–900 m of path**, 3–5 set-piece chambers, and **at least 40 m of vertical**: shafts, ramps, chasms with bridges, an underground river and a waterfall. It is built with the cave and halls families |
+| D3 | **R3 underground**: every wall is drawn rock or brick at the mask edge (the cave family's cliff sheet on every solid; the halls get drawn walls). No bare banks |
+| D4 | **R2 underground**: chambers separated by bends, drops and narrows, so each chamber opens as a reveal. A lookout ledge over the biggest one |
+| D5 | **A way back**: the deepest chamber opens a short route to the mouth or to a second mouth on the land. A barred door lifted from the far side, a rope or a lift, **never a puzzle** |
+| D6 | **No puzzles**: fights, traversal, loot, a boss, discoveries |
+
+**The dungeons:**
+
+| Dungeon | Rooms | Where it runs |
+|---|---|---|
+| THE SEWERS | `underworld`: sewers, running tunnels, holding cells, old workings | Under Disaster City; the second mouth is the harbour outfall |
+| THE CAVERN | `hollow_earth_*`: mouth, adit, gallery, vent, blast, oubliette, inner sun; the `under` zone | Under Shasta's foot, down to the inner sun |
+| DEAD MAN'S CAVE | the storm drain, `fairy_forest_deadmans` | Under Redwood Creek; comes out at the loch head |
+| THE LEY LINES | `gobekli_leylines` | Under the badlands from Göbekli's tell, with a second mouth in the Dry Wash |
+| THE D.U.M.B. | `dumb_*` | Under Groom Lake; CERN stays a door from it |
+
+### 5.14 WHAT IS NEW ENGINE WORK (built, per mondo's "build what's missing" rule)
+The bake tool, tile streaming, chunk LOD, the far pass, the land sampler, splat terrain, the water shaders,
+instanced forests with impostors, grass, road meshes and bridges, sloped city generation, the wall
+audit, the windowed field raster, and the map's fog of war. None of it needs a three.js upgrade.
+
+---
+
+## 6. HOW THIS RELATES TO OPEN_WORLD_PLAN.md
+
+**KEPT** (the engine it built is what the land runs on):
+
+| Kept | Why it matters here |
+|---|---|
+| THE STAGE's floating-origin swap (`_hqStageSwap`), the sliced build, the warm-up, the static batch, ImageBitmap textures (Phases 1 and 11) | Every chunk and pad attaches through them |
+| The asset store, the manifest, meshopt, the LOD levels, the near-first queue (Phases 9 and 10) | The land tiles and tree levels go through the same tools |
+| THE CLOCK and the sky (Phase 3) | The land rides `HQ_WORLD_CLOCK`; `sky.lock` still serves Cyberpunk and the other worlds |
+| Door joins (Phase 2) | All interiors: the mall, the hall and keep, the hangar and white rooms, the medical wing, the basement |
+| The file tracker and file book | Unchanged |
+| The terrain compiler (families A–E) | Compiles each site's pad field and each dungeon |
+| The content track (§8.1: the mall, the basilica, the bunker, the D.U.M.B. catwalks) | Continues in parallel |
+
+**REPLACED:**
+- **§4.5 THE GEOGRAPHY** (the forecourt at the origin, the city at 162 m east, the woods at −192 m, Area 51
+  at 544–652 m south) is replaced by §4 here.
+- **The outdoor zones of rectangular parts and their edge joins** become the land: `forecourt`, `city`,
+  `coast`, `highway`, `desert`, `kingdom`, `mountain`, `woods`, `haunted`. The underground zones stay and
+  become dungeons: `dumb`, `under`, `underworld`, `ley`.
+- **The far shells** outdoors are replaced by the far pass.
+- **The scale-model weenies** outdoors are replaced by the real things.
+- **The LAND map tab drawn from frames** is replaced by the map drawn from the bake.
+- **The old forks** are answered:
+  - fork 2 (one surface zone): yes, one land;
+  - fork 7 (Shasta): Shasta is a mountain in the woods;
+  - fork 3 (Cyberpunk) and fork 8 (the car) carry over as forks 3 and 7 here.
+
+**PHASE 12 (portals + the memory budget) is kept as written and runs FIRST, as G1.**
+- It needs no geography.
+- Its portal half serves the interiors behind door joins, which stay.
+- Its memory half (LRU eviction under a VRAM estimate, the MEM line) is the budget the land needs (§5.12).
+  G2 extends that budget to land tiles and instance buffers.
+
+**Phases 13 (sound in space) and 14 (the light)** are kept and move after the land as G11 and G12.
+Shadow cascades matter far more on open land.
+
+---
+
+## 7. THE ORDER (each phase a delivery with its own test; `npm run test:end` at the end of each)
+
+| # | Delivery | Files | Test |
+|---|---|---|---|
+| G0 | **THE BAKE + THE MAP**: `bake-land.js` (the sketch hardened, §5.1), the `HQ_LAND` recipe and `hqLand*` readers, tiles to `Assets/Land/`, the map tab drawn from the bake, so mondo can argue with the geography in the game before anything else changes | bake-land.js (repo tool), data.js, map.js, package.json (`npm run bake-land`) | `land-bake.test.js`, which bakes at 8 m in the fast suite and checks: R2 from every pad, rivers monotone, lakes level, road grades, the ring a loop, every place reachable, cliffs drawn wherever slope > 1.0. Full resolution is `heavy` |
+| G1 | **PHASE 12** of OPEN_WORLD_PLAN (portals + the memory budget), as written | three-renderer.js | `hq-joins.test.js` portal rule; `asset-store.test.js` eviction |
+| G2 | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
+| G3 | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
+| G4 | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
+| G5 | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
+| G6 | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
+| G7 | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the Strip, the harbour, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
+| G8 | **THE EDGE OF THE WORLD**: the Deep to the wall, the ice wall, the shelf and the station, the pack ice and the Pole, the islands, the Bermuda triangle with the cay, the Dutchman and the whirlpool; the Flat Lands per fork 5 | data.js, three-renderer.js | `land-edge.test.js` (the wall is the only border; the skiff reaches it everywhere) |
+| G9 | **THE DISCOVERY PASS** (R6, §5.11): landmarks every 150–250 m of route, the reveal points dressed (a cairn, a bench, a broken fence), the region title cards, the map's fog of war | data.js, map.js, three-renderer.js | the bake's R6 spacing check; no finds or tapes pinned |
+| G10 | **THE DUNGEONS** (§5.13): the kit first, then one dungeon per thread (the sewers, the Cavern, Dead Man's Cave, the ley lines, the D.U.M.B.) | data.js, three-renderer.js | `dungeon-kit.test.js` (D1–D5: mouth reachable, vertical ≥ 40 m, a way back, the wall audit underground) |
+| G11 | **SOUND IN SPACE** (old Phase 13): positional rivers, falls, surf, wind in the trees, the city | audio.js, three-renderer.js | `audio-space.test.js` |
+| G12 | **THE LIGHT** (old Phase 14): shadow cascades on the land, light probes for interiors | three-renderer.js | screenshots plus `day-sky.test.js` |
+| ∥ | The interiors of OPEN_WORLD_PLAN §8.1 continue, one thread each, at any time | | |
+
+**What first:** G0 (the bake and the in-game map) and G1 (Phase 12) can run at the same time. G2 is the
+first phase that changes what you walk on.
+
+No phase ships a dev shortcut. Each phase's deliverable is a delta zip. data.js goes to R2 with the token
+bump, and to Render only if the server reads something new (it doesn't in this plan).
+
+---
+
+## 8. THE FORKS (the plan builds each default unless mondo says otherwise)
+
+| # | Fork | Default | Alternatives |
+|---|---|---|---|
+| 1 | **The world's border** | **The ice wall ring** (the sketch): ocean all round, the wall beyond it, Antarctica's shelf inside it to the south, the frozen Arctic to the north | (b) Ocean only, fading into sea haze, with no visible edge (breaks R4); (c) a mountain ring (hides the sea he asked for) |
+| 2 | **The scale** | **As sketched**: 6.55 km² of land, Route 1 at 5.8 km, a km in about 3.5 minutes running | (b) 0.7 × (3.2 km², faster to cross, lower hills, weaker reveals); (c) 1.4 × (13 km², would need a car) |
+| 3 | **Cyberpunk** | **Stays a door** (2047, another time) | A district on the city's hill with `sky.lock` night |
+| 4 | **Vatican City** | **On the land** on its hill over the Great River in the Downs, the painting kept as a second way in | Stays its own "Rome" ground behind the painting |
+| 5 | **The Flat Lands** | **Seen, not reached yet**: on top of the wall, visible from the south coast and the station | A stair cut in the wall near the station (a later place) |
+| 6 | **The big viaducts** | **Keep the Glen Viaduct and the Loch Head Viaduct as landmarks** (Glenfinnan-style); regrade the rest (§11) | Regrade all of them (longer detours, no bridges) |
+| 7 | **A drivable car on Route 1** | **Not in this plan**: the skateboard and traffic are the ring's speed | A car as its own later plan (the helm's vehicle code already drives a hull) |
+| 8 | **The textures** | **CC0 Poly Haven sets** (8–12), picked and zipped by Claude, uploaded by mondo to R2 | Procedural colour only (ProceduralTerrains' default look: cheaper, flatter) |
+| 9 | **The map's fog of war** | **On**: regions clear on first sight | The whole map drawn from the start |
+| 10 | **The day and the weather** | **The existing 24-minute clock**; each region's weather sets its sight distance | A fixed clear day |
+
+---
+
+## 9. WHAT'S NEEDED FROM MONDO
+
+| When | What |
+|---|---|
+| Now | A look at the map and the eight views, and a word on any fork (silence means the defaults). If the layout is wrong (a place in the wrong region, a reveal he doesn't want), say so now; G0 is cheap to re-bake |
+| G0 | Upload the zip as usual, plus the `Assets/Land/` tiles (about 10 MB) to R2 with `npm run deploy` |
+| G2 | Upload the texture zip Claude prepares (fork 8) to R2 |
+| G4 | Nothing required: the existing trees come first. Better later: 3–4 new tree models (a fir for the north, a redwood, a birch, a palm for the coast) from Meshy or CC0 |
+| G8 / G10 | Optional Meshy models: a cave mouth, a storm outfall, the station's outbuildings, a lighthouse |
+
+---
+
+## 10. RISKS
+
+| Risk | Mitigation |
+|---|---|
+| **Performance** on mondo's machine | Budgets in §5.12, `EW_PERF_LOW` halves density, the readout's MEM and TRIS lines, and each phase measured with the Playwright probe before shipping |
+| **Site compile time** (3–31 s today) | Compiles happen in the worker while you walk toward a site; the pad is walkable land meanwhile. The woods retire as fields, so the woods cost nothing to compile |
+| **Sight results depend on resolution** (the sketch lost Tikaboo's view of Area 51 at 2.7 m cells) | The test runs at the bake's own resolution, reveal points are placed with a brink rule (stand where the ground starts falling), and ridges that hide keep a minimum width |
+| **Scope** | This is the largest plan so far. G0–G2 give a walkable land; each later phase ships a visible improvement on its own |
+
+---
+
+## 11. THE SKETCH (what exists, and its known limits)
+
+**Files** (project folder `open-world/geography/sketch/`; they become `bake-land.js` in G0):
+
+| File | What it is |
+|---|---|
+| `recipe.js` | The world recipe: coast, peaks, ranges, rivers, loch, roads, places, regions |
+| `land-sketch.js` | The generator (4 m cells, `N` 1400, about 47 s) |
+| `reveals.js` | Walks every route every 8 m and logs first sights |
+| `probe.js` / `dbg.js` | A height profile / why a sight line is blocked |
+| `map.html` + `render-map.js` | The labelled map |
+| `view.html` + `views.js` + `render-views.js` | The eight 3D views (three r128, headless Chromium with SwiftShader) |
+
+Run with `node land-sketch.js && node reveals.js && node render-map.js map.html 3000 out/map.png && node render-views.js`
+(needs `playwright` installed in that folder and Chromium at `/opt/pw-browsers/chromium`).
+
+**Known limits:**
+1. **4 m cells.** Sight results shift with resolution (see §10).
+2. **Viaducts where the sketch's road solver gave up:**
+   - the Crown's Road hairpins (208 m of deck);
+   - the Rim Road's descent to the Strip (193 m);
+   - Groom Lake Road (155 m);
+   - the East Road into the city (287 m: could stay as the city's grand bridge);
+   - Route 1 past Giza (353 m, 25 m over the plateau the pad flattened).
+
+   The Glen (177 + 102 m), the Loch Head (208 m) and the river bridges are meant to be there. G5 regrades the rest with longer switchbacks or cuttings.
+3. **Trail grades.** Trails hug the ground and reach local slopes of 1.4–3.1 on the steepest pitches. G0 benches them and adds steps.
+4. **Rounded hills.** Thermal erosion rounds hills into domes, and Groom Lake's basin reads as a crater from above. G0 adds ridged noise with gradient damping.
+5. **The East Road** glimpses the Vatican's ground from 687 m away. G0 raises the ridge or moves the road.
+6. **Stand-ins.** The city is a grey block with its streets drawn only on the map, and the models in the views are boxes and cones.
+
+---
+
+## 12. THE LOG (each phase appends here)
+
+- 2026-09-28: plan written; sketch baked at 4 m; map and eight views rendered. The Estate Lane was
+  re-routed along the loch's south-east shore (the first sketch dropped it onto the estate from a 52 m
+  viaduct).
