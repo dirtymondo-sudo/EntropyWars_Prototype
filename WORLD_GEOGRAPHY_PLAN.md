@@ -703,7 +703,7 @@ Shadow cascades matter far more on open land.
 | G2 ✓ (2026-09-28, zip 4) | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
 | G3 ✓ (2026-09-28, zip G3) | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
 | G4 ✓ (2026-09-28, zip G4) | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
-| G5 | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
+| G5 ✓ (2026-09-28, zip G5) | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
 | G6 | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
 | G7 | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the harbour, the bay's beach, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
 | G8 | **THE EDGE OF THE WORLD**: the Deep to the wall, the ice wall, the shelf and the station, the pack ice and the Pole, the islands, the Bermuda triangle with the cay, the Dutchman and the whirlpool; the Flat Lands per fork 5 | data.js, three-renderer.js | `land-edge.test.js` (the wall is the only border; the skiff reaches it everywhere) |
@@ -957,3 +957,52 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     bake: placement pure and seam-safe, spacing, a blocker under every trunk and none wider, the stands, grass only on grass, the
     models are existing assets; heavy: the 2 m count).
     Next: G5 (the roads).
+- **G4b — THE GRASS BLADES (2026-09-28, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G4B.zip, token
+  20260928-geography-09-cors, delta on G4)** — mondo: "I do want you to try grass blades".
+  - The tufts are gone: the grass is a field of single blades drawn on the GPU, about 36 a square metre within 22 m, thinning to
+    58 m and shrinking away past 42 m. Each 8 m patch is one instance of a shared blade layout (turned and mirrored per patch, so
+    it never repeats on an 8 m grid).
+  - Every blade stands on the drawn ground (a 160 m float window of the land's height, density and material that follows the
+    walker, 1 m a texel; it computes only the strips it gains, a couple of ms a frame). None on roads, rock, sand, snow, slopes
+    over 0.8, water or HQ's drum.
+  - The blades wear the ground's own colour under them (the material's mean, the far land's colour), dark at the root and
+    bright at the tip, streaked by the board's grass_2. They lean, sway in a travelling gust on the wind clock and bend away
+    from the walker.
+  - Needs vertex textures and float textures (every WebGL2 browser); without them there is no grass. EW_PERF_LOW draws half
+    the near blades.
+  - Probe (swiftshader, stand-in textures): about 65,000 blades drawn in the meadow by Eastwood and in the fairy forest. Not
+    measured on a real GPU.
+  - What mondo uploads: R2 data.js, three-renderer.js; index.html to Render; the repo land-forest.test.js, this plan,
+    docs/notes/areas-complexes.md. Test: land-forest.test.js (the field: only on grass materials, on the drawn ground, the
+    same whether it comes at once or in strips).
+
+
+- **G5 — THE ROADS (2026-09-28, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G5.zip, token
+  20260928-geography-10-cors, delta on G4B; new bake 35b9269ad8)**
+  - **The giveaway viaducts are gone** (§11 limit 2). The bake now caps how high a road may stand over dry ground (6.5 m): a
+    long dry span is regraded into the slope as a cutting instead. The Crown's Road, the East Road, the Rim Road and the West
+    Lane were re-laid with switchbacks; Route 1 passes Giza through a gap in the mesas. A road leaves the ground only over water
+    or inside the two named viaducts. Every grade holds (R5).
+  - **Fork 6, default**: the Glen Viaduct and the Loch Head Viaduct stay as landmarks, drawn as arched stone-grey viaducts with
+    spandrel walls. The Nile Bridge is a steel truss. The Crown's Road crosses the Great River on THE KING'S BRIDGE; Route 1
+    crosses Shasta Creek on a short bridge (the old line ran 10 m under the perched creek, so the crossing moved north onto the
+    plain). Trails cross water on footbridges with steel rails.
+  - **The roads drawn**: within 300 m each road wears its own sheet from the bucket (urban asphalt, the Vatican's paving, packed
+    dirt for the lanes, fork §5.6) on the drawn ground, with edge lines and a centre line (yellow on Route 1). Trails stay
+    painted into the ground.
+  - **Decks are walkable**: a walker steps onto a deck from the road, the parapets stop you (R3), you can walk under a high
+    deck, and jumps land on it. Piers, girders, lamps along the long decks (the game's street lamp) and name plates at each end.
+  - **Guard rails** wherever a road's edge drops more than 2 m (the bake finds them: 4.7 km of rail). The rail is the blocker;
+    skaters grind it and the grind runs on from piece to piece.
+  - **Signs** at every junction name the next place each way (ROUTE 1 · ◄ THE ESTATE · URQUHART RUIN ►), never what is in sight;
+    Route 1 carries signs for each joining road's first place.
+  - **Traffic**: nine cars each way on Route 1 (the city's cars), riding the graded line and pitching with it.
+  - **Forks**: fork 6 default (keep the Glen and the Loch Head, regrade the rest); fork 7 default (no car to drive); §5.6 lanes
+    are packed dirt; the Vatican's lane paved. The 2 m bake (rules hold) has 38 decks: the two viaducts, the
+    river bridges, the footbridges and short gully bridges (none dry over 64 m). The deepest cuttings are where the recipe's
+    own lines cross ridges (Route 1 west of HQ 48 m, the Pilgrims' Way 53 m, the Redwood road 34 m, the Vatican's lane 31 m):
+    left as cuttings with cliff banks; moving those lines is a recipe edit if mondo wants them shallower.
+  - **What mondo uploads**: R2 data.js, three-renderer.js and `Assets/Land/` (land.json, land-map.png, sea.bin and 73 changed tiles); index.html to Render; the repo
+    bake-land.js, land-roads.test.js, land-stream.test.js, this plan, docs/notes/areas-complexes.md, CLAUDE.md. Test:
+    land-roads.test.js. Not measured on a real GPU. Kill-switch `window.EW_NO_LAND_ROADS`.
+    Next: G6 (the sites on pads).

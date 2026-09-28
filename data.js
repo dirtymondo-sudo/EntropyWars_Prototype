@@ -41884,7 +41884,8 @@ const HQ_LAND = (function () {
 
     // ── MESAS in the desert and the badlands (noise-picked, terraced) and THE DUNES.
     R.mesas = { box: [-700, 420, 980, 1720], avoid: [[395, 890, 190], [-330, 840, 200], [690, 760, 130], [-150, 700, 90], [-110, 500, 110], [425, 1455, 170], [770, 1400, 160],
-      [560, 1250, 80], [470, 1215, 70], [430, 1090, 80], [500, 1160, 70], [425, 700, 70], [560, 650, 70]], thr: 0.30, h: 34 };
+      [560, 1250, 80], [470, 1215, 70], [430, 1090, 80], [500, 1160, 70], [425, 700, 70], [560, 650, 70],
+      [-600, 722, 80]], thr: 0.30, h: 34 };   // G5: Route 1's gap between the badlands' mesas (it cut 44 m through one)
     R.dunes = { at: [-360, 860], r: 230, h: 9, dir: [0.93, 0.36], wave: 34 };
     // ── BASINS: flat floors inside the rings. THE VALLEY (the Strip's floor) and GROOM LAKE (the playa at Area 51).
     R.basins = [
@@ -41940,22 +41941,23 @@ const HQ_LAND = (function () {
     R.roads = [
       { id: 'ring', label: 'ROUTE 1 · THE RING', type: 'highway', w: 12, grade: 0.075, loop: true, pts: [
         [770, 330], [775, 150], [800, -20], [790, -170], [720, -290], [620, -400], [540, -520], [420, -570], [260, -580],
-        [110, -545], [-20, -510], [-160, -505], [-300, -470], [-430, -445], [-540, -480], [-640, -520], [-730, -470],
-        [-770, -370], [-745, -270], [-700, -185], [-650, -110], [-585, -40], [-560, 80], [-600, 200], [-660, 315],
+        [110, -545], [-20, -510], [-160, -505], [-300, -470], [-430, -445], [-520, -420], [-600, -385], [-690, -375],
+        [-750, -330], [-745, -270], [-700, -185], [-650, -110], [-585, -40], [-560, 80], [-600, 200], [-660, 315],
         [-760, 420], [-880, 500], [-990, 565], [-1050, 630], [-1070, 690], [-940, 745], [-800, 765],
         [-660, 745], [-520, 700], [-410, 650], [-290, 640], [-165, 690], [-20, 640], [140, 600], [300, 585],
         [440, 600], [580, 600], [700, 580], [760, 470]] },
-      { id: 'crown', label: 'THE CROWN’S ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, -40], [-10, -160], [-30, -300], [-32, -368], [-150, -390], [40, -420], [-140, -450], [30, -478], [-90, -500], [-40, -530], [-40, -600]] },
-      { id: 'east', label: 'THE EAST ROAD', type: 'road', w: 7, grade: 0.1, pts: [[40, 0], [200, 40], [350, 80], [470, 115], [600, 160], [775, 150]] },
-      { id: 'west', label: 'THE WEST LANE', type: 'lane', w: 5, grade: 0.12, pts: [[-40, 0], [-190, 25], [-350, 55], [-500, 70], [-560, 30], [-585, -40]] },
-      { id: 'south', label: 'THE RIM ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, 40], [20, 160], [50, 250], [100, 284], [200, 298], [300, 312], [420, 331], [540, 357], [600, 385], [615, 450], [605, 520], [585, 598]] },
+      // G5: re-laid (switchbacks down the Rise's north face, not a 204 m viaduct)
+      { id: 'crown', label: 'THE CROWN’S ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, -40], [14, -60], [27, -83], [30, -107], [30, -131], [36, -154], [45, -179], [48, -203], [55, -226], [68, -247], [68, -269], [57, -292], [48, -315], [35, -337], [30, -345], [10, -358], [-11, -372], [-35, -377], [-58, -370], [-82, -362], [-106, -354], [-128, -341], [-150, -329], [-172, -318], [-187, -298], [-207, -283], [-229, -291], [-241, -313], [-241, -337], [-222, -355], [-200, -366], [-177, -372], [-153, -379], [-132, -396], [-120, -416], [-107, -437], [-84, -447], [-60, -455], [-36, -456], [-11, -450], [11, -441], [31, -427], [48, -410], [65, -393], [87, -378], [111, -369], [134, -372], [146, -393], [138, -416], [117, -429], [94, -440], [72, -451], [49, -462], [27, -474], [4, -485], [-19, -495], [-30, -500], [-40, -530], [-40, -600]] },
+      { id: 'east', label: 'THE EAST ROAD', type: 'road', w: 7, grade: 0.1, pts: [[40, 0], [200, 40], [350, 80], [346, 104], [348, 128], [360, 150], [377, 166], [402, 169], [426, 159], [445, 145], [454, 123], [448, 99], [439, 74], [430, 52], [412, 34], [395, 17], [388, -6], [401, -26], [421, -39], [445, -43], [467, -31], [483, -12], [497, 8], [508, 30], [517, 53], [529, 75], [539, 98], [547, 122], [556, 146], [569, 166], [592, 176], [616, 178], [640, 182], [665, 190], [688, 196], [712, 196], [736, 190], [754, 172], [771, 155], [775, 150]] },   // G5: winds down the East Ridge (was a 287 m viaduct)
+      { id: 'west', label: 'THE WEST LANE', type: 'lane', w: 5, grade: 0.12, pts: [[-40, 0], [-190, 25], [-350, 55], [-500, 70], [-560, 82]] },   // G5: meets Route 1 in its cutting over the ridge (was an 86 m drop onto stilts to the shore)
+      { id: 'south', label: 'THE RIM ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, 40], [20, 160], [50, 250], [100, 281], [150, 291], [200, 301], [250, 309], [300, 319], [350, 329], [400, 340], [450, 351], [490, 359], [515, 385], [500, 440], [482, 500], [468, 560], [440, 600]] },   // G5: a shelf down the Rim's face to the desert highway's turn (was a 189 m viaduct)
       // THE DESERT HIGHWAY: leaves Route 1 below the Rim, rounds the Sheep hill, enters the valley by its east gap, runs the
       // Strip, leaves by the south gap and crosses the deep desert to Rachel. Groom Lake Road goes on from Rachel to Area 51.
       { id: 'desert_hwy', label: 'THE DESERT HIGHWAY', type: 'highway', w: 10, grade: 0.075, pts: [[440, 600], [432, 680], [418, 760], [408, 830], [398, 900],
         [390, 970], [398, 1040], [445, 1105], [505, 1165], [545, 1215], [560, 1250]] },
       { id: 'groom', label: 'GROOM LAKE ROAD', type: 'lane', w: 5, grade: 0.12, pts: [[560, 1250], [612, 1290], [656, 1358], [668, 1428], [642, 1478], [572, 1480], [500, 1468]] },
       { id: 'bay', label: 'THE BAY ROAD', type: 'road', w: 7, grade: 0.1, pts: [[955, 305], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
-      { id: 'vatican', label: 'VIA DELLA CONCILIAZIONE', type: 'lane', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [812, -445]] },
+      { id: 'vatican', label: 'VIA DELLA CONCILIAZIONE', type: 'lane', surface: 'paved', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [812, -445]] },
       { id: 'henge', label: 'THE DROVE ROAD', type: 'lane', w: 4, grade: 0.14, pts: [[380, -570], [420, -540], [455, -500]] },
       { id: 'estate', label: 'THE ESTATE LANE', type: 'lane', w: 4, grade: 0.14, pts: [[-990, 565], [-1040, 512], [-1058, 470], [-1020, 420], [-972, 369], [-920, 318], [-870, 268], [-820, 226], [-778, 190]] },
       { id: 'giza', label: 'THE PLATEAU ROAD', type: 'lane', w: 5, grade: 0.12, pts: [[-290, 640], [-300, 690], [-320, 715]] },
@@ -41963,7 +41965,7 @@ const HQ_LAND = (function () {
       { id: 'gobekli', label: '', type: 'lane', w: 4, grade: 0.14, pts: [[-800, 765], [-790, 700], [-780, 650]] },
       // trails (dirt): they follow the ground
       { id: 'olympus_trail', label: 'THE PILGRIMS’ WAY', type: 'trail', w: 2.4, grade: 0.3, pts: [[-40, -640], [-10, -700], [30, -760], [80, -800], [20, -840], [90, -880], [30, -915], [85, -950], [50, -975], [60, -995]] },
-      { id: 'shasta_trail', label: 'THE SHASTA TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-730, -470], [-800, -492], [-860, -525], [-900, -560], [-945, -525], [-985, -485], [-1015, -458], [-1036, -442]] },
+      { id: 'shasta_trail', label: 'THE SHASTA TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-716, -371], [-726, -420], [-730, -470], [-800, -492], [-860, -525], [-900, -560], [-945, -525], [-985, -485], [-1015, -458], [-1036, -442]] },
       // THE FAIRY FOREST (nearest Camelot): the Fairy Trail leaves Camelot's west gate, crosses the Great River on a footbridge
       { id: 'woods_trail', label: 'THE FAIRY TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-40, -640], [-95, -652], [-150, -660], [-215, -648], [-285, -632], [-360, -625]] },
       { id: 'cave_trail', label: 'THE CAVE TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-430, -445], [-455, -490], [-470, -530], [-440, -580], [-400, -610], [-360, -625]] },
@@ -41984,7 +41986,20 @@ const HQ_LAND = (function () {
     ];
 
     // ── BRIDGES the sketch draws where a road crosses water (the baker finds them; these just name them).
-    R.bridgeNames = { great: 'THE ESTUARY BRIDGE', ness: 'THE NESS BRIDGE', nile: 'THE NILE BRIDGE', creek: 'THE FOOTBRIDGE' };
+    R.bridgeNames = { great: 'THE ESTUARY BRIDGE', ness: 'THE NESS BRIDGE', nile: 'THE NILE BRIDGE', creek: 'THE SHASTA CREEK BRIDGE', foot: 'THE FOOTBRIDGE' };
+    // ── G5 THE ROADS (2026-09-28): how the bake grades them. `fill` = the most a road may stand over the ground (a trail `trailFill`)
+    //    before it must cut into the slope instead — so a road leaves the ground only over water (± `approach` m, its deck `clear` m
+    //    over the water) or on a NAMED VIADUCT below. `railDrop`: a guard rail wherever the edge drops more than this (m), `railOff` m
+    //    past the edge, the drop read `railProbe` m past the shoulder; runs shorter than `railMinRun` m are dropped. `looks`: a river's
+    //    bridge (the Nile's is a truss); every other span over water is a girder deck, a trail's a timber footbridge.
+    R.roadRules = { fill: 6.5, trailFill: 2.4, approach: { highway: 36, road: 24, lane: 16, trail: 8 }, clear: { highway: 9, road: 5, lane: 5, trail: 2 }, smallRiver: 8, clearSmall: 3,
+        railDrop: 2, railOff: 1.0, railProbe: [1.5, 3.5], railMinRun: 8, looks: { nile: 'truss' }, names: { crown: 'THE KING’S BRIDGE' } };
+    // ── THE NAMED VIADUCTS (fork 6's default: keep the Glen and the Loch Head as landmarks, Glenfinnan-style — arched concrete).
+    //    Inside a zone ([x, z, r]) the road keeps its own graded line however high it stands; everywhere else it is regraded.
+    R.viaducts = [
+      { id: 'lochhead', road: 'ring', label: 'THE LOCH HEAD VIADUCT', look: 'arch', zones: [[-632, -88, 118]] },
+      { id: 'glen', road: 'ring', label: 'THE GLEN VIADUCT', look: 'arch', zones: [[-873, 494, 106], [-680, 338, 56], [-776, 432, 24]] },
+    ];
 
     // ── PLACES: where each existing place stands on THE LAND (the site pads) and its label on the map.
     //    pad = flattened disc (r) at the land's height there (or at y). kind: site | poi | dungeon | door
@@ -42062,7 +42077,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: '5e65e17571', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
+    R.baked = { id: '35b9269ad8', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -42182,10 +42197,15 @@ const HQ_LAND_RULES = {
         rocks: { cell: 10, minSp: 7, jit: 0.85, span: [0.9, 2.6], hK: 0.6, rK: 0.36, sink: 0.2, slope: 0.95,
                  p: { rock: 0.3, redrock: 0.28, clay: 0.08, desert: 0.04, tundra: 0.08, snow: 0.05, forest: 0.07, meadow: 0.04, grass: 0.025, farm: 0.01 },
                  kinds: [{ id: 'boulder', src: 'door:asteroid_a' }, { id: 'crag', src: 'door:asteroid_b' }] },
-        /* the grass: the battle board's tuft (grass_2 blades) on a `cell` m hash grid within `reach` m, shrinking away between fade[0] and
-           fade[1] m; `mats` = the density per ground material (nothing grows on a road, rock, sand or snow) */
-        grass: { cell: 1.3, block: 8, reach: 58, fade: [30, 56], blades: [5, 8], h: [0.22, 0.55], w: 0.028, spread: 0.55, variants: 4,
-                 mats: { grass: 0.95, meadow: 0.9, farm: 0.7, tundra: 0.4, forest: 0.3, clay: 0.06 } },
+        /* THE GRASS BLADES (mondo 2026-09-28: "I do want you to try grass blades"): a field of single blades drawn on the GPU in
+           `patch` m squares round the walker — `blades[0]` a patch within `near` m, `blades[1]` past it. Each blade stands on the land
+           (a `win` m window of the ground's height, density and material every `step` m that follows the walker: once they are
+           `recentre` m off its middle it gains the strips ahead, `texels` a call). `dens` = [distance m, the share of the near patch's blades kept]; they shrink away over
+           `fade`; `mats` = the density per ground material (none on a road, rock, sand or snow), none steeper than `slope`. The
+           blades wear the ground's own colour under them (the material's tint) streaked by grass_2, dark at the root. */
+        grass: { win: 160, step: 1, texels: 1600, recentre: 12, patch: 8, blades: [2304, 384], near: 22, reach: 58, fade: [42, 58],
+                 dens: [[8, 1], [22, 0.17], [58, 0.05]], h: [0.24, 0.62], w: 0.03, lean: 0.3, push: 1.1, slope: 0.8, low: 0.5,
+                 mats: { grass: 0.95, meadow: 1, farm: 0.7, tundra: 0.4, forest: 0.35, clay: 0.06 } },
         /* the drawing: whole models within near.r m (nearest first, while the triangles fit near.tris — near.low with EW_PERF_LOW),
            crossed cards of each model past them to the far pass's cut, and the far pass's cards from the 8 m world past that */
         near: { r: 90, tris: 900000, low: 360000, every: 4, underR: 48, rockR: 180 },
@@ -42216,6 +42236,31 @@ const HQ_LAND_RULES = {
         urban: ['pavement', 0xffffff, 0], road: ['asphalt', 0xffffff, 0], trail: ['trail', 0xffffff, 0.05], river: ['sand', 0x9a9482, 0],
         lake: ['dirt', 0x8c8672, 0], ice: ['ice', 0xffffff, 0.2], pack: ['ice', 0xe6eef2, 0.3], tundra: ['meadow', 0xa9b19b, 0.3],
         clay: ['dirt', 0xc99c7a, 0.3], cliff: ['cliff', 0xffffff, 1.2],
+        lane: ['dirt', 0xe8dccb, 0.06], paved: ['pavement', 0xffffff, 0],   // G5: a dirt lane is packed dirt (§5.6), the Vatican's lane is paved
+    },
+    /* THE ROADS (G5, §5.6; the bake grades them: bake-land.js §6, land.json `roads` / `bridges` / `junctions`). The ground under a road
+       is already its surface (the bake stamps it flat and paints its material); the renderer adds, within `near` m of the walker, the
+       road's own RIBBON (a crisp edge over the ground's 2 m samples, `lift` m over it) and its PAINT, THE DECKS of every bridge and
+       viaduct (walkable: hqLandDeckFeet — the terrain rooms' bridge layer, graded), their piers, parapets and lamps, THE GUARD RAILS
+       the bake put wherever a road's edge drops more than 2 m (the rail is the blocker, R3; a skater grinds it), THE SIGNS at the
+       junctions (the next place each way, never what is in sight) and Route 1's traffic. Every look is a sheet or a model the game
+       already has: the bucket's urban asphalt / pavement / dirt, the terrain rooms' concrete, the street lamp OBJ, the city's cars. */
+    roads: {
+        near: 300, piece: 64, lift: 0.035,
+        sheets: { asphalt: 'urban:ConcreteStriped2a', paved: 'urban:ConcreteStriped1b', dirt: 'dirt', trail: 'dirt' },
+        /* the paint (m): edge lines `edgeIn` in from the edge, a centre line; dashes [on, off] */
+        paint: { w: 0.16, edgeIn: 0.45, dash: [3, 6], edge: 0xe8e6da, centre: { highway: 0xe0b440, road: 0xe8e6da } },
+        /* a deck: its slab `thick` m (a footbridge's `footThick`), the parapets (a road's concrete wall, a footbridge's steel rail),
+           `edge` m of the deck the walker cannot stand on at the rail, the piers every `pier` m of a span (an arch's every `arch` m)
+           where the deck stands more than `pierMin` m over the ground, `r` their radius, the walker's `headroom` under a slab */
+        deck: { thick: 1.1, footThick: 0.35, girder: 1.4, parapet: 1.05, parapetW: 0.3, footRail: 1.1, edge: 0.66, pier: 26, arch: 22, pierMin: 2.2, r: 0.9, footR: 0.18, headroom: 1.95, climb: 0.45, lift: 0.02 },
+        /* the guard rails: a steel beam at `h` m on posts every `post` m, `off` m past the road's edge (the bake's railOff) */
+        rail: { h: 0.78, post: 2.0, off: 1.0, band: 0.2 },
+        lamps: { every: 34, min: 60 },                                   // a deck longer than `min` m carries lamps every `every` m
+        sign: { back: 16, h: 3.4, w: 3.6, board: 1.35 },                 // a junction's sign `back` m up the joining road
+        near2: { blockR: 36, every: 1.5 },                               // the rails' and piers' blockers round the walker, re-read every `every` m
+        /* Route 1's traffic (the city's cars): `n` a direction, both lanes `lane` m off the crown line */
+        traffic: { road: 'ring', n: 9, speed: 15, lane: 3.1, kinds: ['suv', 'taxi', 'cadillac', 'truck', 'copcar', 'schoolbus', 'suv', 'cadillac', 'taxi'] },
     },
     /* D.O.O.R. HQ from outside (G2 draws the building on its pad; G6 dresses the pads): a concrete drum with a shallow dome, the
        front door in its south face (the land room's door row `hq`). The drum is solid to the walker and the camera — drawn walls */
@@ -42236,6 +42281,7 @@ function hqLandIndex(ov) {
     St.grid = new Array(St.per * St.per).fill(null); St.n = 0; St.bytes = 0; St.world = null;
     St.pads = (ov.places || []).filter(p => p.pad > 0 && p.at).map(p => [p.at[0], p.at[1], p.pad]);
     _hqLandTables(ov.materials);
+    try { hqLandRoadsIndex(ov); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ land] the roads did not read', e); }   // G5: THE ROADS (the trees keep off the decks)
     return St;
 }
 /* the per-material tables (amplitude, mean colour, the sheet's layer), in the bake's material order */
@@ -42603,7 +42649,7 @@ function _hqFloraTab() {
     const St = HQ_LAND_STORE, names = (St.index && St.index.materials) || Object.keys(HQ_LAND_RULES.mats), key = names.join(',');
     if (_HQ_FLORA_TAB && _HQ_FLORA_TAB.key === key) return _HQ_FLORA_TAB;
     const F = HQ_LAND_RULES.flora, lone = { grass: 1, meadow: 1, farm: 0.6, tundra: 0.5, clay: 0.35 };
-    const clear = { road: 1, trail: 1, urban: 1, river: 1, lake: 1, deep: 1, shallow: 1 };
+    const clear = { road: 1, trail: 1, lane: 1, paved: 1, urban: 1, river: 1, lake: 1, deep: 1, shallow: 1 };
     const T = { key, n: names.length, forest: new Uint8Array(32), lone: new Float32Array(32), clear: new Uint8Array(32), rock: new Float32Array(32), grass: new Float32Array(32), under: new Uint8Array(32) };
     names.forEach((m, k) => {
         T.forest[k] = m === 'forest' ? 1 : 0; T.lone[k] = lone[m] || 0; T.clear[k] = clear[m] ? 1 : 0;
@@ -42709,7 +42755,7 @@ function _hqFloraJob(t) {
         if (low) p *= 0.5;   // EW_PERF_LOW halves the density (§5.12)
         if (!(r < p)) return;
         const y = hy(x, z);
-        if (slope(x, z) > T.slope || wet(x, z, y, T.shore) || !clearOf(x, z, T.road) || onPad(x, z, T.pad)) return;
+        if (slope(x, z) > T.slope || wet(x, z, y, T.shore) || !clearOf(x, z, T.road) || onPad(x, z, T.pad) || hqLandDeckNear(x, z, T.road)) return;   // G5: never through a deck
         const kind = hqLandFloraKind(_hqFloraPick(hqLandFloraMix(x, z, y, lone), _hqFloraH(I, J, 15))), K = F.kinds[kind];
         const h = K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(I, J, 16);
         cells.set(I * 65536 + J, trees.length / 6);
@@ -42732,7 +42778,7 @@ function _hqFloraJob(t) {
         const m = t.mat[near(x, z)], p = tab.rock[m];
         if (!(p > 0) || !(_hqFloraH(I, J, 34) < p)) return;
         const y = hy(x, z);
-        if (slope(x, z) > Rk.slope || wet(x, z, y, 0.4) || !clearOf(x, z, 2.5) || onPad(x, z, 3)) return;
+        if (slope(x, z) > Rk.slope || wet(x, z, y, 0.4) || !clearOf(x, z, 2.5) || onPad(x, z, 3) || hqLandDeckNear(x, z, 2)) return;
         /* a rock never stands in a tree: the trees were placed first */
         const span = Rk.span[0] + (Rk.span[1] - Rk.span[0]) * Math.pow(_hqFloraH(I, J, 35), 1.6);
         const cI = Math.floor((x + St.ext) / T.cell), cJ = Math.floor((z + St.ext) / T.cell);
@@ -42775,22 +42821,29 @@ function hqLandFloraHit(x, z, pad) {
 }
 /* THE GRASS in one `block` m square (its corner on the block lattice): the tufts a deterministic hash plants on the grass
    materials → Float32Array [x, z, y, variant, scale, yaw, material] × n (tufts past a tile that has not landed are left out) */
-function hqLandGrassBlock(bi, bj) {
-    const St = HQ_LAND_STORE, G = HQ_LAND_RULES.flora.grass, tab = _hqFloraTab(), B = G.block, c = G.cell, out = [];
-    if (!St.grid) return new Float32Array(0);
-    const x0 = bi * B, z0 = bj * B, n = Math.round(B / c), low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
-    if (!hqLandReadyAt(x0, z0) || !hqLandReadyAt(x0 + B, z0 + B) || !hqLandReadyAt(x0 + B, z0) || !hqLandReadyAt(x0, z0 + B)) return null;
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-        const I = bi * n + i, J = bj * n + j;
-        const x = x0 + (i + 0.5 + (_hqFloraH(I, J, 41) - 0.5) * 0.9) * c, z = z0 + (j + 0.5 + (_hqFloraH(I, J, 42) - 0.5) * 0.9) * c;
-        const m = hqLandMaterial(x, z), p = tab.grass[m] * (low ? 0.5 : 1);
-        if (!(p > 0) || !(_hqFloraH(I, J, 43) < p)) continue;
-        if (hqLandHQSolid(x, z, 0.5) || hqLandSlope(x, z) > 0.8) continue;
-        const y = hqLandHeight(x, z); if (y == null) continue;
-        const w = hqLandFresh(x, z); if ((w != null && w > y - 0.05) || y < HQ_LAND_RULES.sea.y + 0.25) continue;
-        out.push(x, z, y, Math.floor(_hqFloraH(I, J, 44) * G.variants) % G.variants, 0.7 + 0.6 * _hqFloraH(I, J, 45), _hqFloraH(I, J, 46) * Math.PI * 2, m);
+/* THE GRASS FIELD: the blades' ground on the world's G.step m lattice, texel (ix, iz) at x = ix × step, z = iz × step. Fills the
+   w × h block from (ix0, iz0) into F = { h: Float32Array (the drawn ground), d: Uint8Array (0 … 255 density), m: Uint8Array
+   (material) } of n × n, WRAPPED (texel (ix, iz) at ((iz mod n) × n + ix mod n)): a window that follows the walker computes only
+   the strips it gains. Pure: a texel reads the same whatever block it came in. Density 0 on a slope over G.slope, under fresh
+   water, below the sea's edge and on D.O.O.R. HQ's drum; false (nothing written) while a tile under the block has not landed. */
+function hqLandGrassField(F, n, ix0, iz0, w, h) {
+    const G = HQ_LAND_RULES.flora.grass, st = G.step, tab = _hqFloraTab(), seaY = HQ_LAND_RULES.sea.y + 0.25;
+    const xa = (ix0 - 1) * st, za = (iz0 - 1) * st, xb = (ix0 + w) * st, zb = (iz0 + h) * st;
+    if (!hqLandReadyAt(xa, za) || !hqLandReadyAt(xb, za) || !hqLandReadyAt(xa, zb) || !hqLandReadyAt(xb, zb)) return false;
+    const W = w + 2, g = hqLandGrid(xa, za, st, W, h + 2); if (!g) return false;
+    const sl = G.slope * 2 * st, md = (v) => ((v % n) + n) % n;
+    for (let b = 0; b < h; b++) {
+        const row = md(iz0 + b) * n, z = (iz0 + b) * st;
+        for (let a = 0; a < w; a++) {
+            const q = (b + 1) * W + a + 1, o = row + md(ix0 + a), y = g.h[q], m = g.mat[q], x = (ix0 + a) * st;
+            F.h[o] = y; F.m[o] = m;
+            let p = tab.grass[m];
+            if (p > 0 && (Math.hypot(g.h[q + 1] - g.h[q - 1], g.h[q + W] - g.h[q - W]) > sl || y < seaY || hqLandHQSolid(x, z, 0.5))) p = 0;
+            if (p > 0) { const wy = hqLandFresh(x, z); if (wy != null && wy > y - 0.05) p = 0; }
+            F.d[o] = Math.round(p * 255);
+        }
     }
-    return new Float32Array(out);
+    return true;
 }
 /* THE FAR FOREST: the 8 m world's forest cells as far cards (the far pass, past the tiles) → Float32Array [x, z, y, kind, h] × n.
    Built once per bake; the near trees own everything inside the far pass's cut. */
@@ -42808,6 +42861,184 @@ function hqLandFarForest() {
     return new Float32Array(out);
 }
 /* a place's pad height: the baked hub for HQ (data.js carries it), else land.json's once it has landed */
+/* ══ THE ROADS (WORLD_GEOGRAPHY_PLAN.md §5.6 — G5, 2026-09-28) ══════════════════════════════════════════════════════════════
+   The bake grades every road (bake-land.js §6): it writes each road's line with its height every 8 m (land.json `roads`), every
+   span where the road leaves the ground — a bridge over water, a named viaduct — as a DECK with its own line every 4 m, its two
+   abutment samples on the ground at either end (`bridges`), the guard rails as runs along a road's side (`rails`: [s0, s1, side],
+   side +1 = the left of travel), and the junctions with the places each way (`junctions`). This is the one reader of all of it:
+     THE DECKS     a second surface over the ground (the terrain rooms' bridge layer, graded): hqLandDeckFeet stands a walker whose
+                   feet arrive within a climb of a deck ON it, the parapet band at its edges is solid (R3: the parapet is drawn),
+                   the ground under a low deck is a wall while the slab leaves no headroom, the slab is solid to the air and the boom.
+     THE RAILS     the guard rails as short runs (a piece per road sample), each a blocker to the walker (hqLandRailHit) and a rail a
+                   skater grinds from one piece into the next (`next` / `prev`).
+     THE SIGNS     a board at each junction for a traveller on the joining road (the main road's places left and right) and one
+                   each way on the main road (the joining road's first place) — the next place, never what is in sight.
+   Built once per bake id from land.json by hqLandIndex (so the trees know where the decks are before a tile's flora is placed). */
+const HQ_LAND_ROADS = { id: null, roads: [], byId: {}, decks: [], rails: [], signs: [], junctions: [], cell: 32, grid: new Map(), railGrid: new Map() };
+function _hqRoadCum(P) { const L = [0]; for (let k = 1; k < P.length; k++) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1])); return L; }
+function _hqRoadFile(G, cell, x0, z0, x1, z1, item) {
+    const i0 = Math.floor(Math.min(x0, x1) / cell), i1 = Math.floor(Math.max(x0, x1) / cell), j0 = Math.floor(Math.min(z0, z1) / cell), j1 = Math.floor(Math.max(z0, z1) / cell);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const k = i * 100003 + j; let a = G.get(k); if (!a) G.set(k, a = []); a.push(item); }
+}
+function _hqRoadCell(G, cell, x, z) { return G.get(Math.floor(x / cell) * 100003 + Math.floor(z / cell)) || null; }
+/* a road's pose at s (m along it): the point, the height, the unit heading */
+function hqLandRoadPose(road, s) {
+    const P = road.P, L = road.L, tot = L[L.length - 1];
+    if (road.loop) s = ((s % tot) + tot) % tot; else s = Math.max(0, Math.min(tot, s));
+    let lo = 0, hi = L.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= s) lo = m; else hi = m; }
+    const a = P[lo], b = P[hi], sl = Math.max(1e-6, L[hi] - L[lo]), t = Math.max(0, Math.min(1, (s - L[lo]) / sl));
+    const dx = (b[0] - a[0]) / sl, dz = (b[1] - a[1]) / sl;
+    return { x: a[0] + (b[0] - a[0]) * t, z: a[1] + (b[1] - a[1]) * t, y: a[2] + (b[2] - a[2]) * t, dx, dz, k: lo };
+}
+/* a road's name on a sign: Route 1's number ('ROUTE 1 · THE RING' → 'ROUTE 1'), else the name */
+function _hqRoadSignName(label) { const s = String(label || ''); return s.indexOf('·') > 0 ? s.split('·')[0].trim() : s; }
+function hqLandPlaceLabel(id) { const p = (typeof HQ_LAND !== 'undefined' && HQ_LAND.places || []).find(q => q.id === id); return p ? String(p.label).replace(/\s*\(.*\)\s*$/, '') : String(id || '').toUpperCase(); }
+function hqLandRoadsIndex(ov) {
+    const W = HQ_LAND_ROADS, id = String(((ov && ov.bake) || {}).id || '');
+    if (W.id === id && W.id) return W;
+    const RR = HQ_LAND_RULES.roads, D = RR.deck, C = W.cell;
+    W.id = id; W.roads = []; W.byId = {}; W.decks = []; W.rails = []; W.signs = []; W.junctions = (ov && ov.junctions) || []; W.grid = new Map(); W.railGrid = new Map();
+    for (const r of (ov && ov.roads) || []) {
+        if (!r || !r.pts || r.pts.length < 2) continue;
+        const P = r.pts.map(q => [q[0], q[1], q[2] != null ? q[2] : 0]);
+        if (r.loop) P.push(P[0].slice());
+        const road = { id: r.id, label: r.label, type: r.type, surface: r.surface || (r.type === 'trail' ? 'trail' : 'asphalt'), w: r.w, loop: !!r.loop, P, L: _hqRoadCum(P), rails: r.rails || [], decks: [] };
+        W.roads.push(road); W.byId[road.id] = road;
+    }
+    for (const b of (ov && ov.bridges) || []) {
+        if (!b || !b.pts || b.pts.length < 2) continue;
+        const P = b.pts.map(q => [q[0], q[1], q[2]]), L = _hqRoadCum(P), foot = b.type === 'trail' || b.look === 'foot';
+        const d = { i: W.decks.length, id: b.id, road: b.road, type: b.type, w: b.w + (foot ? 0.6 : 1.2), look: b.look || 'girder', label: b.label || '', wet: !!b.wet, viaduct: b.viaduct || null, hMax: b.hMax || 0,
+                    P, L, len: L[L.length - 1], thick: foot ? D.footThick : D.thick, foot, s0: b.deck ? b.deck[0] : 0, s1: b.deck ? b.deck[1] : 0 };
+        W.decks.push(d);
+        const rd = W.byId[b.road]; if (rd) rd.decks.push([d.s0, d.s1, d.i]);
+        for (let k = 0; k + 1 < P.length; k++) { const m = d.w / 2 + 1; _hqRoadFile(W.grid, C, Math.min(P[k][0], P[k + 1][0]) - m, Math.min(P[k][1], P[k + 1][1]) - m, Math.max(P[k][0], P[k + 1][0]) + m, Math.max(P[k][1], P[k + 1][1]) + m, [d.i, k]); }
+    }
+    /* THE GUARD RAILS: each run → pieces from sample to sample, `off` m past the road's edge, linked end to end */
+    for (const road of W.roads) {
+        const P = road.P, L = road.L, n = P.length, hw = road.w / 2;
+        for (const run of road.rails) {
+            const [s0, s1, side] = run, pts = [];
+            const at = s => { const p = hqLandRoadPose(road, s), nx = -p.dz * side, nz = p.dx * side; return [p.x + nx * (hw + RR.rail.off), p.z + nz * (hw + RR.rail.off), p.y]; };
+            pts.push(at(s0)); for (let k = 0; k < n; k++) if (L[k] > s0 + 0.5 && L[k] < s1 - 0.5) pts.push(at(L[k])); pts.push(at(s1));
+            const ss = [s0]; for (let k = 0; k < n; k++) if (L[k] > s0 + 0.5 && L[k] < s1 - 0.5) ss.push(L[k]); ss.push(s1);
+            let prev = null;
+            for (let k = 0; k + 1 < pts.length; k++) {
+                const a = pts[k], b = pts[k + 1]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.05) continue;
+                const pc = { i: W.rails.length, road: road.id, side, sa: ss[k], sb: ss[k + 1], x0: a[0], z0: a[1], y0: a[2], x1: b[0], z1: b[1], y1: b[2], prev, next: null };
+                if (prev) prev.next = pc; prev = pc; W.rails.push(pc);
+                _hqRoadFile(W.railGrid, C, a[0] - 1, a[1] - 1, b[0] + 1, b[1] + 1, pc);
+            }
+        }
+    }
+    /* THE SIGNS (§5.6: the next place, not what is visible) */
+    const S = RR.sign;
+    for (const j of W.junctions) {
+        const b = W.byId[j.branch], m = W.byId[j.main]; if (!b || !m) continue;
+        const bl = b.L[b.L.length - 1], sb = j.end ? bl - S.back : S.back;
+        if (bl < S.back + 6) continue;
+        const pb = hqLandRoadPose(b, sb), hx = j.end ? pb.dx : -pb.dx, hz = j.end ? pb.dz : -pb.dz;   // the traveller's heading, toward the main road
+        const pm = hqLandRoadPose(m, j.sM), rgt = (pm.dx * -hz + pm.dz * hx) > 0;                   // is the main road's +s to the traveller's right?
+        const L = j.ahead ? hqLandPlaceLabel(j.ahead) : null, Bk = j.back ? hqLandPlaceLabel(j.back) : null;
+        const left = rgt ? Bk : L, right = rgt ? L : Bk;
+        const lines = [_hqRoadSignName(m.label)]; if (left) lines.push('◄ ' + left); if (right) lines.push(right + ' ►');
+        const off = b.w / 2 + 1.6, x = pb.x + -hz * off, z = pb.z + hx * off;   // on the traveller's right shoulder
+        if (lines.length > 1) W.signs.push({ id: j.branch + ':' + j.end, x, z, y: pb.y, yaw: Math.atan2(-hx, -hz), lines, road: b.id, s: sb });
+        /* on the main road, each way: the joining road's first place, left or right of that traveller */
+        if (!j.to) continue;
+        for (const dir of [1, -1]) {
+            const ml = m.L[m.L.length - 1]; let s = j.sM - dir * S.back * 1.5; if (!m.loop && (s < 4 || s > ml - 4)) continue;
+            const q = hqLandRoadPose(m, s), tx = q.dx * dir, tz = q.dz * dir;
+            const toB = (j.end ? -1 : 1), bx = pb.dx * toB, bz = pb.dz * toB;   // the joining road's heading away from the main road
+            const bRight = (bx * -tz + bz * tx) > 0, lab = hqLandPlaceLabel(j.to);
+            const o2 = m.w / 2 + 1.6, sx = q.x + -tz * o2, sz = q.z + tx * o2;
+            W.signs.push({ id: j.branch + ':' + j.end + ':' + dir, x: sx, z: sz, y: q.y, yaw: Math.atan2(-tx, -tz), lines: [_hqRoadSignName(b.label), bRight ? lab + ' ►' : '◄ ' + lab], road: m.id, s: ((s % ml) + ml) % ml });
+        }
+    }
+    return W;
+}
+/* the deck under (x, z): the nearest point of each deck's line whose slab (grown by pad) covers it → [{ d, s, t (across, m), y }] */
+function hqLandDecksAt(x, z, pad, out) {
+    const W = HQ_LAND_ROADS, o = out || []; o.length = 0;
+    const a = W.decks.length ? _hqRoadCell(W.grid, W.cell, x, z) : null; if (!a) return o;
+    for (let q = 0; q < a.length; q++) {
+        const d = W.decks[a[q][0]], k = a[q][1], A = d.P[k], B = d.P[k + 1];
+        const ex = B[0] - A[0], ez = B[1] - A[1], l2 = ex * ex + ez * ez || 1e-9, u = ((x - A[0]) * ex + (z - A[1]) * ez) / l2;
+        if ((u < 0 && k > 0) || (u > 1 && k < d.P.length - 2) || u < -0.02 || u > 1.02) continue;
+        const uc = Math.max(0, Math.min(1, u)), l = Math.sqrt(l2), t = ((x - A[0]) * -ez + (z - A[1]) * ex) / l;
+        if (Math.abs(t) > d.w / 2 + (pad || 0)) continue;
+        const prevHit = o.find(h => h.d === d); const y = A[2] + (B[2] - A[2]) * uc;
+        if (prevHit) { if (Math.abs(t) < Math.abs(prevHit.t)) { prevHit.t = t; prevHit.y = y; prevHit.s = d.L[k] + uc * l; } continue; }
+        o.push({ d, s: d.L[k] + uc * l, t, y });
+    }
+    return o;
+}
+const _HQ_DECK_HITS = [];
+/* THE WALKER on the decks: undefined = no deck has a say here (the ground's feet stand); null = a parapet, or the ground under a
+   slab with no headroom; else the deck's top the walker stands on. `curY` = the feet now (null: a free query — the ground's), `g`
+   = the ground's feet at (x, z) (the headroom test) */
+function hqLandDeckFeet(x, z, curY, g) {
+    if (curY == null || !HQ_LAND_ROADS.decks.length) return undefined;
+    const D = HQ_LAND_RULES.roads.deck, hits = hqLandDecksAt(x, z, 0.4, _HQ_DECK_HITS);
+    if (!hits.length) return undefined;
+    let best = null;
+    for (const h of hits) if (Math.abs(h.t) <= h.d.w / 2 && h.y <= curY + D.climb && h.y >= curY - 1.2 && (!best || h.y > best.y)) best = h;
+    if (best) return Math.abs(best.t) > best.d.w / 2 - D.edge ? null : best.y;
+    if (g != null) for (const h of hits) if (h.y - g > D.climb + 0.05 && h.y - h.d.thick - g < D.headroom) return null;
+    return undefined;
+}
+/* the highest deck top at or under y at (x, z) — a landing, the door gun's ray */
+function hqLandDeckBelow(x, z, y) {
+    if (!HQ_LAND_ROADS.decks.length) return null;
+    const E = HQ_LAND_RULES.roads.deck.edge; let best = null;
+    for (const h of hqLandDecksAt(x, z, 0, _HQ_DECK_HITS)) if (Math.abs(h.t) <= h.d.w / 2 - E && h.y <= y + 0.05 && (!best || h.y > best.y)) best = h;
+    return best ? best.y : null;
+}
+/* is (x, z, y) inside a deck's slab or its parapet (the airborne body, the boom — pad grows it)? → the deck, else null */
+function hqLandInDeck(x, z, y, pad) {
+    if (!HQ_LAND_ROADS.decks.length) return null;
+    const D = HQ_LAND_RULES.roads.deck, p = pad || 0;
+    for (const h of hqLandDecksAt(x, z, p, _HQ_DECK_HITS)) {
+        if (y > h.y - h.d.thick - p && y < h.y - 0.02 + p) return h.d;
+        const rail = h.d.foot ? D.footRail : D.parapet;
+        if (Math.abs(h.t) > h.d.w / 2 - D.edge - p && y >= h.y - 0.05 && y < h.y + rail + p) return h.d;
+    }
+    return null;
+}
+/* is (x, z) within `pad` m of a deck's slab in plan, at any height (the trees keep off the decks) */
+function hqLandDeckNear(x, z, pad) { return hqLandDecksAt(x, z, pad || 0, _HQ_DECK_HITS).length > 0; }
+/* THE PIERS of a deck: [{ s, x, z, y (the slab's underside), dx, dz }] — every `pier` m (an arch's every `arch` m, a truss's
+   only past 60 m, a footbridge's every 12 m), the renderer drops each to the ground (and skips one the deck stands low over) */
+function hqLandDeckPiers(d) {
+    if (d.piers) return d.piers;
+    const D = HQ_LAND_RULES.roads.deck, sp = d.look === 'arch' ? D.arch : d.look === 'truss' ? 60 : d.foot ? 12 : D.pier;
+    const a = d.L[Math.min(2, d.L.length - 1)], b = d.L[Math.max(0, d.L.length - 3)], span = b - a, n = Math.floor(span / sp);
+    const out = [];
+    if (n >= 1) for (let k = 1; k <= n; k++) {
+        const s = a + span * k / (n + 1), pose = hqLandRoadPose({ P: d.P, L: d.L, loop: false }, s);
+        out.push({ s, x: pose.x, z: pose.z, y: pose.y - d.thick, dx: pose.dx, dz: pose.dz });
+    }
+    return (d.piers = out);
+}
+/* THE GUARD RAILS round (x, z) within r m → the pieces */
+function hqLandRailsNear(x, z, r, out) {
+    const W = HQ_LAND_ROADS, o = out || [], seen = new Set(); o.length = 0; if (!W.rails.length) return o;
+    const C = W.cell, i0 = Math.floor((x - r) / C), i1 = Math.floor((x + r) / C), j0 = Math.floor((z - r) / C), j1 = Math.floor((z + r) / C);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const a = W.railGrid.get(i * 100003 + j); if (!a) continue; for (const pc of a) if (!seen.has(pc.i)) { seen.add(pc.i); o.push(pc); } }
+    return o;
+}
+/* the guard rail within `pad` m of (x, z) whose beam stands over the feet at y (null y: any) → the piece, else null */
+function hqLandRailHit(x, z, pad, y) {
+    const W = HQ_LAND_ROADS; if (!W.rails.length) return null;
+    const a = _hqRoadCell(W.railGrid, W.cell, x, z); if (!a) return null;
+    const h = HQ_LAND_RULES.roads.rail.h;
+    for (const pc of a) {
+        const ex = pc.x1 - pc.x0, ez = pc.z1 - pc.z0, l2 = ex * ex + ez * ez || 1e-9, u = Math.max(0, Math.min(1, ((x - pc.x0) * ex + (z - pc.z0) * ez) / l2));
+        if (Math.hypot(x - pc.x0 - ex * u, z - pc.z0 - ez * u) > pad) continue;
+        if (y == null || y < pc.y0 + (pc.y1 - pc.y0) * u + h - 0.05) return pc;
+    }
+    return null;
+}
 function hqLandPadY(id) {
     if (id === 'hq' && HQ_LAND.baked && isFinite(+HQ_LAND.baked.hubY)) return +HQ_LAND.baked.hubY;
     const ov = HQ_LAND_STORE.index, p = ov && (ov.places || []).find(q => q.id === id);

@@ -41,7 +41,7 @@ const { loadGameData, REPO_ROOT } = require('./load-data.js');
 
 // ───────── the materials (u8 codes in the tiles; land.json carries this table)
 const MATS = ['deep', 'shallow', 'sand', 'grass', 'meadow', 'forest', 'rock', 'snow', 'desert', 'redrock', 'playa', 'farm',
-    'urban', 'road', 'trail', 'river', 'lake', 'ice', 'pack', 'tundra', 'clay', 'cliff'];
+    'urban', 'road', 'trail', 'river', 'lake', 'ice', 'pack', 'tundra', 'clay', 'cliff', 'lane', 'paved'];   // G5: a lane's packed dirt, a paved lane
 const M = Object.fromEntries(MATS.map((m, k) => [m, k]));
 const WET = new Set([M.deep, M.shallow, M.river, M.lake]);
 const CLIFF_SLOPE = 0.8;       // a cliff is drawn wherever the ground is steeper than this (R3; the audit's line is 1.0)
@@ -439,36 +439,155 @@ function bake(opts) {
             const c = j * N + i; const t = Math.hypot(X(i) - px, Z(j) - pz) / r; if (t > 1.6) continue; const w = 1 - ss(0.8, 1.6, t); if (WATER[c] > -9000 && WATER[c] > y) continue; H[c] = lerp(H[c], y, w); } }
 
     // ───────── 6. ROADS (graded corridors) and TRAILS (benched)
+    // G5 (THE ROADS, 2026-09-28): THE FILL CAP. The sketch's grader smoothed a road and clamped its grade, so wherever the ground fell
+    // faster than the road could, the road floated off it on a "bridge" (the sketch's giveaway viaducts, §11 limit 2). Now a road may
+    // stand at most `fill` m over the ground (a trail `trailFill`): the most grade-feasible profile under that cap (the lower envelope
+    // of grade cones) is taken, so the road cuts into the slope instead (a cutting, its banks drawn as cliff) and leaves the ground only
+    // over water (plus `approach` m either side) or inside a NAMED VIADUCT (HQ_LAND.viaducts: fork 6, the Glen and the Loch Head).
     log('roads');
-    const ROAD = new Uint8Array(NN);   // 1 highway 2 road 3 lane 4 trail
-    const typeK = { highway: 1, road: 2, lane: 3, trail: 4 };
-    for (const rd of R.roads) { const P = resample(rd.pts, 4, !!rd.loop); const L = cumLen(P);
+    const RR = R.roadRules || {};
+    const ROAD = new Uint8Array(NN);   // the surface: 1 highway 2 road 3 paved lane 4 dirt lane 5 trail (the lower wins where two meet)
+    const surfK = rd => rd.type === 'highway' ? 1 : rd.type === 'road' ? 2 : rd.type === 'trail' ? 5 : (rd.surface === 'paved' ? 3 : 4);
+    const VIA = (R.viaducts || []);
+    const inVia = (rd, x, z) => { for (const v of VIA) if (v.road === rd.id) for (const zn of v.zones) if (Math.hypot(x - zn[0], z - zn[1]) < zn[2]) return v; return null; };
+    const baked = [];
+    // one road's graded line over the ground as it stands: the smoothing, the water's lift, the grade clamp and THE FILL CAP
+    function gradeLine(rd, pts) {
+        const P = resample(pts, 4, !!rd.loop), L = cumLen(P);
         let y = P.map(p => sampleG(H, p[0], p[1]));
         const onWater = P.map(p => sampleG(WATER, p[0], p[1]) > -9000 || sampleG(D, p[0], p[1]) < 2);
         const isTrail = rd.type === 'trail';
-        const win = isTrail ? 3 : 10; for (let pass = 0; pass < (isTrail ? 1 : 4); pass++) { const y2 = y.slice(); for (let k = 0; k < y.length; k++) { let s = 0, n = 0; for (let q = -win; q <= win; q++) { const kk = rd.loop ? (k + q + y.length) % y.length : clamp(k + q, 0, y.length - 1); s += y[kk]; n++; } y2[k] = s / n; } y = y2; }
+        const SM = RR.smooth || { win: 10, passes: 4 }, win = isTrail ? 3 : SM.win; for (let pass = 0; pass < (isTrail ? 1 : SM.passes); pass++) { const y2 = y.slice(); for (let k = 0; k < y.length; k++) { let s = 0, n = 0; for (let q = -win; q <= win; q++) { const kk = rd.loop ? (k + q + y.length) % y.length : clamp(k + q, 0, y.length - 1); s += y[kk]; n++; } y2[k] = s / n; } y = y2; }
         if (!rd.loop) { const g0 = P.map(p => sampleG(H, p[0], p[1])); const m = Math.min(14, Math.floor(y.length / 3)); for (let q = 0; q < m; q++) { const t = ss(0, 1, q / m); y[q] = lerp(g0[q], y[q], t); const e = y.length - 1 - q; y[e] = lerp(g0[e], y[e], t); } }
-        for (let k = 0; k < y.length; k++) if (onWater[k]) { const w = Math.max(sampleG(WATER, P[k][0], P[k][1]), 0); y[k] = Math.max(y[k], w + (rd.type === 'highway' ? 9 : isTrail ? 2 : 5)); }
+        const clr = (RR.clear || {})[rd.type] != null ? RR.clear[rd.type] : (rd.type === 'highway' ? 9 : isTrail ? 2 : 5);
+        // the water's surface under a sample: the highest real water cell around it (a bilinear read at a river's edge mixes in the -9999
+        // of the dry cells); over NARROW water (a wet run shorter than `smallWet` m: a creek) the road needs only `clearSmall` m (a culvert span)
+        const wAt = (x, z) => { const i = clamp(Math.floor(toI(x)), 0, N - 2), j = clamp(Math.floor(toI(z)), 0, N - 2), c = j * N + i; return Math.max(WATER[c], WATER[c + 1], WATER[c + N], WATER[c + N + 1]); };
+        const clrK = P.map(() => clr); { const smallW = RR.smallRiver || 8, clrS = Math.min(clr, RR.clearSmall != null ? RR.clearSmall : 3); let a = -1;
+          const narrow = (x, z) => { let best = 1e9, w = 99; for (const rv of R.rivers) for (const q of rv.pts) { const dd = Math.hypot(q[0] - x, q[1] - z); if (dd < best) { best = dd; w = Math.max(rv.w0, rv.w1); } } return best < 160 && w <= smallW; };
+          for (let k = 0; k <= P.length; k++) { const w = k < P.length && onWater[k]; if (w && a < 0) a = k; if (!w && a >= 0) { const m = (a + k - 1) >> 1; if (narrow(P[m][0], P[m][1])) for (let q = a; q < k; q++) clrK[q] = clrS; a = -1; } } }
+        const lb = P.map((p, k) => onWater[k] ? Math.max(wAt(p[0], p[1]), 0) + clrK[k] : -Infinity);
+        for (let k = 0; k < y.length; k++) y[k] = Math.max(y[k], lb[k]);
         const grade = isTrail ? TRAIL_MAX : rd.grade;
         const ground = P.map(p => sampleG(H, p[0], p[1]));
         if (isTrail) for (let k = 0; k < y.length; k++) if (!onWater[k]) y[k] = clamp(y[k], ground[k] - 1.2, ground[k] + 0.6);   // a trail hugs the ground ...
-        for (let it = 0; it < 4; it++) { for (let k = 1; k < y.length; k++) { const dl = L[k] - L[k - 1]; y[k] = clamp(y[k], y[k - 1] - grade * dl, y[k - 1] + grade * dl); } for (let k = y.length - 2; k >= 0; k--) { const dl = L[k + 1] - L[k]; y[k] = clamp(y[k], y[k + 1] - grade * dl, y[k + 1] + grade * dl); } }
+        const gradeClamp = () => { for (let it = 0; it < 4; it++) { for (let k = 1; k < y.length; k++) { const dl = L[k] - L[k - 1]; y[k] = clamp(y[k], y[k - 1] - grade * dl, y[k - 1] + grade * dl); } for (let k = y.length - 2; k >= 0; k--) { const dl = L[k + 1] - L[k]; y[k] = clamp(y[k], y[k + 1] - grade * dl, y[k + 1] + grade * dl); } } };
+        gradeClamp();
         // ... and where the ground is steeper than a trail may be, the grade clamp above BENCHES it into the slope; steps mark the steep bits
+        // THE FILL CAP (G5): a DRY span longer than `maxDry` m (the sketch's giveaway viaducts) is regraded so the road stands at most
+        // `fill` m over the ground there (± `capPad` m): it cuts into the slope instead. Over water (± `approach` m) and inside a named
+        // viaduct the road keeps its line; a short span over a gully stays a bridge (R5: > 7 m over the ground).
+        const appr = (RR.approach || {})[rd.type] != null ? RR.approach[rd.type] : 20, fill = isTrail ? (RR.trailFill || 2.4) : (RR.fill || 6.5);
+        const maxDry = isTrail ? (RR.trailMaxDry || 0) : (RR.maxDry != null ? RR.maxDry : 60), capPad = RR.capPad || 40, bridgeH = isTrail ? 3 : 7;
+        const free = new Uint8Array(P.length), via = P.map(p => inVia(rd, p[0], p[1])), cap = new Uint8Array(P.length);
+        { let last = -1e9; for (let k = 0; k < P.length; k++) { if (onWater[k]) last = L[k]; if (L[k] - last <= appr) free[k] = 1; }
+          last = 1e9; for (let k = P.length - 1; k >= 0; k--) { if (onWater[k]) last = L[k]; if (last - L[k] <= appr) free[k] = 1; }
+          for (let k = 0; k < P.length; k++) if (via[k]) free[k] = 1; }
+        if (RR.fill !== 0) for (let round = 0; round < 3; round++) {
+            let open = -1, grew = false;
+            for (let k = 0; k <= P.length; k++) { const dry = k < P.length && !free[k] && y[k] - ground[k] > bridgeH;
+                if (dry && open < 0) open = k;
+                if (!dry && open >= 0) { if (L[k - 1] - L[open] >= maxDry) for (let q = 0; q < P.length; q++) if (L[q] >= L[open] - capPad && L[q] <= L[k - 1] + capPad && !free[q] && !cap[q]) { cap[q] = 1; grew = true; } open = -1; } }
+            if (!grew) break;
+            const E = P.map((p, k) => cap[k] ? ground[k] + fill : Infinity);
+            for (let lap = 0; lap < (rd.loop ? 2 : 1); lap++) {
+                for (let k = 1; k < E.length; k++) E[k] = Math.min(E[k], E[k - 1] + grade * (L[k] - L[k - 1]));
+                if (rd.loop) E[0] = Math.min(E[0], E[E.length - 1]);
+                for (let k = E.length - 2; k >= 0; k--) E[k] = Math.min(E[k], E[k + 1] + grade * (L[k + 1] - L[k]));
+                if (rd.loop) E[E.length - 1] = Math.min(E[E.length - 1], E[0]);
+            }
+            for (let k = 0; k < y.length; k++) y[k] = Math.max(Math.min(y[k], E[k]), lb[k]);
+            gradeClamp();
+        }
+        // the water's lift is HARD: a road never passes under a river (the sketch ran Route 1 ten metres under Shasta Creek) — the
+        // lower bound's cones raise the road's approaches to clear the water, whatever the smoothing and the cap did
+        { const LB = lb.slice(); for (let lap = 0; lap < (rd.loop ? 2 : 1); lap++) {
+            for (let k = 1; k < LB.length; k++) LB[k] = Math.max(LB[k], LB[k - 1] - grade * (L[k] - L[k - 1]));
+            if (rd.loop) LB[0] = Math.max(LB[0], LB[LB.length - 1]);
+            for (let k = LB.length - 2; k >= 0; k--) LB[k] = Math.max(LB[k], LB[k + 1] - grade * (L[k + 1] - L[k]));
+            if (rd.loop) LB[LB.length - 1] = Math.max(LB[LB.length - 1], LB[0]); }
+          for (let k = 0; k < y.length; k++) y[k] = Math.max(y[k], LB[k]); }
+        return { P, L, y, onWater, ground, lb, free, via, clr, clrK, grade, isTrail, cap };
+    }
+    for (const rd of R.roads) { const G = gradeLine(rd, rd.pts);
+        const { P, L, y, onWater, ground, lb, free, via, clr, clrK, grade, isTrail } = G;
         const bridges = []; let open = -1;
         for (let k = 0; k < P.length; k++) { const isB = onWater[k] || (y[k] - ground[k] > (isTrail ? 3 : 7)); if (isB && open < 0) open = k; if ((!isB || k === P.length - 1) && open >= 0) { if (L[k] - L[open] > 8) bridges.push([open, k]); open = -1; } }
         const inBridge = new Uint8Array(P.length); for (const [a, b] of bridges) for (let k = Math.max(0, a - 2); k <= Math.min(P.length - 1, b + 2); k++) inBridge[k] = 1;
         const hw = rd.w / 2, shoulder = isTrail ? 0.6 : 2.0, bankW = isTrail ? 12 : 110;
         const F = polyField(P, hw + shoulder + bankW, false);
-        for (let c = 0; c < NN; c++) { const d = F.d[c]; if (d > hw + shoulder + bankW) continue; const k = idxAt(L, F.s[c]); if (inBridge[k]) { if (d < hw) ROAD[c] = ROAD[c] || typeK[rd.type]; continue; }
-            const ry = y[k]; const cur = H[c];
-            if (d <= hw + shoulder) { H[c] = ry; if (d <= hw) ROAD[c] = Math.min(ROAD[c] || 9, typeK[rd.type]); }
+        // under a span the ground keeps its own shape and its own material (G5: no road painted on a glen's floor under the viaduct)
+        // (G5: the height between two samples is read off the line between them — the nearest sample's stepped the road 0.3 m every 4 m)
+        const yS = sv => { let lo = 0, hi = L.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= sv) lo = m; else hi = m; } const t = clamp((sv - L[lo]) / Math.max(1e-6, L[hi] - L[lo]), 0, 1); return y[lo] + (y[hi] - y[lo]) * t; };
+        for (let c = 0; c < NN; c++) { const d = F.d[c]; if (d > hw + shoulder + bankW) continue; const k = idxAt(L, F.s[c]); if (inBridge[k]) continue;
+            const ry = yS(F.s[c]); const cur = H[c];
+            if (d <= hw + shoulder) { H[c] = ry; if (d <= hw) ROAD[c] = Math.min(ROAD[c] || 9, surfK(rd)); }
             else { const e = d - hw - shoulder; const lim = e * (isTrail ? 1.4 : (cur > ry ? 2.0 : 0.7)); H[c] = clamp(cur, ry - lim, ry + lim); } }
         const steps = []; if (isTrail) { let s0 = -1; for (let k = 1; k < P.length; k++) { const g = Math.abs(y[k] - y[k - 1]) / Math.max(1e-6, L[k] - L[k - 1]); if (g > TRAIL_STEPS && s0 < 0) s0 = k - 1; if ((g <= TRAIL_STEPS || k === P.length - 1) && s0 >= 0) { steps.push([Math.round(L[s0]), Math.round(L[k])]); s0 = -1; } } }
+        let cut = 0, cutAt = null; for (let k = 0; k < P.length; k++) if (!inBridge[k] && ground[k] - y[k] > cut) { cut = ground[k] - y[k]; cutAt = [Math.round(P[k][0]), Math.round(P[k][1]), Math.round(L[k])]; }
         const pts3 = P.map((p, k) => [+p[0].toFixed(1), +p[1].toFixed(1), +y[k].toFixed(2)]).filter((p, k) => k % 2 === 0 || k === P.length - 1);
-        overlay.roads.push({ id: rd.id, label: rd.label, type: rd.type, w: rd.w, grade, loop: !!rd.loop, length: Math.round(L[L.length - 1]), pts: pts3,
-            maxGrade: +(Math.max(...y.slice(1).map((v, k) => Math.abs(v - y[k]) / Math.max(1e-6, L[k + 1] - L[k])))).toFixed(3), steps });
-        for (const [a, b] of bridges) overlay.bridges.push({ road: rd.id, type: rd.type, len: Math.round(L[b] - L[a]), pts: P.slice(a, b + 1).map((p, k) => [+p[0].toFixed(1), +p[1].toFixed(1), +y[a + k].toFixed(2)]).filter((p, k, arr) => k % 2 === 0 || k === arr.length - 1) });
+        const orow = { id: rd.id, label: rd.label, type: rd.type, surface: ({ 1: 'asphalt', 2: 'asphalt', 3: 'paved', 4: 'dirt', 5: 'trail' })[surfK(rd)], w: rd.w, grade, loop: !!rd.loop, length: Math.round(L[L.length - 1]), pts: pts3,
+            maxGrade: +(Math.max(...y.slice(1).map((v, k) => Math.abs(v - y[k]) / Math.max(1e-6, L[k + 1] - L[k])))).toFixed(3), steps, maxCut: +cut.toFixed(1), cutAt, rails: [] };
+        overlay.roads.push(orow);
+        for (const [a, b] of bridges) {
+            const a2 = Math.max(0, a - 2), b2 = Math.min(P.length - 1, b + 2), mid = (a + b) >> 1, v = via.slice(a, b + 1).find(q => q) || null;
+            const wet = onWater.slice(a, b + 1).some(q => q); let hMax = 0; for (let k = a; k <= b; k++) hMax = Math.max(hMax, y[k] - Math.max(ground[k], lb[k] > -Infinity ? lb[k] - clrK[k] : -Infinity));
+            // over which river (the nearest centreline at the span's middle) — its bridge's name (HQ_LAND.bridgeNames)
+            let river = null; if (wet) { let best = 1e9; for (const rv of overlay.rivers) for (const q of rv.pts) { const dd = Math.hypot(q[0] - P[mid][0], q[1] - P[mid][1]); if (dd < best) { best = dd; river = rv.id; } } if (best > 160) river = null; }
+            const look = v ? v.look : isTrail ? 'foot' : (river && (RR.looks || {})[river]) || 'girder';
+            // its name: a named viaduct's, else the road's own (HQ_LAND.roadRules.names), else the river's; a trail's is a footbridge
+            const BN = R.bridgeNames || {}, own = (RR.names || {})[rd.id];
+            const label = v ? v.label : isTrail ? (wet ? BN.foot || '' : '') : own && wet && !overlay.bridges.some(q => q.label === own) ? own : (river && BN[river]) || '';
+            overlay.bridges.push({ id: rd.id + ':' + overlay.bridges.filter(q => q.road === rd.id).length, road: rd.id, type: rd.type, w: rd.w, len: Math.round(L[b] - L[a]), wet, river, viaduct: v ? v.id : null, look, label,
+                span: [+L[a].toFixed(1), +L[b].toFixed(1)], deck: [+L[a2].toFixed(1), +L[b2].toFixed(1)], hMax: +hMax.toFixed(1),
+                pts: P.slice(a2, b2 + 1).map((p, k) => [+p[0].toFixed(1), +p[1].toFixed(1), +y[a2 + k].toFixed(2)]) });
+        }
+        baked.push({ rd, P, L, y, inBridge, hw, shoulder, isTrail, row: orow });
     }
+    // THE RAILS (G5, §5.6): a guard rail wherever the road's edge drops more than `railDrop` m (the rail is the blocker, not the edge —
+    // R3), read off the finished ground (every road stamped). Never across another road, a trail or a pad (a gap where they meet), never
+    // on a trail (the decks carry their own rails, both sides, all along).
+    log('rails');
+    { const railDrop = RR.railDrop || 2, railOff = RR.railOff || 1.0, probe = RR.railProbe || [1.5, 3.5], minRun = RR.railMinRun || 8;
+      const others = baked.map(b => ({ id: b.rd.id, P: b.P, hw: b.hw, box: b.P.reduce((a, p) => [Math.min(a[0], p[0]), Math.min(a[1], p[1]), Math.max(a[2], p[0]), Math.max(a[3], p[1])], [1e9, 1e9, -1e9, -1e9]) }));
+      const nearRoad = (self, x, z) => { for (const o of others) { if (o.id === self) continue; const r = o.hw + 2.5; if (x < o.box[0] - r || x > o.box[2] + r || z < o.box[1] - r || z > o.box[3] + r) continue; for (let k = 0; k < o.P.length - 1; k++) { const a = o.P[k], b = o.P[k + 1], ex = b[0] - a[0], ez = b[1] - a[1], l2 = ex * ex + ez * ez || 1e-9; let t = ((x - a[0]) * ex + (z - a[1]) * ez) / l2; t = clamp(t, 0, 1); if (Math.hypot(x - a[0] - ex * t, z - a[1] - ez * t) < r) return true; } } return false; };
+      const onPad = (x, z) => R.places.some(p => p.pad && Math.hypot(x - p.at[0], z - p.at[1]) < p.pad + 4);
+      for (const b of baked) { if (b.isTrail) continue; const { P, L, y, inBridge, hw, rd } = b, n = P.length;
+        for (const side of [-1, 1]) { let s0 = -1, last = -1;
+            const flush = () => { if (s0 >= 0 && L[last] - L[s0] >= minRun) b.row.rails.push([+L[s0].toFixed(1), +L[last].toFixed(1), side]); s0 = -1; };
+            for (let k = 0; k < n; k++) {
+                const kn = Math.min(k + 1, n - 1), kp = Math.max(k - 1, 0), tx = P[kn][0] - P[kp][0], tz = P[kn][1] - P[kp][1], tl = Math.hypot(tx, tz) || 1, nx = -tz / tl * side, nz = tx / tl * side;   // side +1 = the left of travel
+                let want = false;
+                if (!inBridge[k] && L[k] > 6 && L[n - 1] - L[k] > 6) {
+                    const rx = P[k][0] + nx * (hw + railOff), rz = P[k][1] + nz * (hw + railOff);
+                    const g = Math.min(sampleG(H, P[k][0] + nx * (hw + b.shoulder + probe[0]), P[k][1] + nz * (hw + b.shoulder + probe[0])), sampleG(H, P[k][0] + nx * (hw + b.shoulder + probe[1]), P[k][1] + nz * (hw + b.shoulder + probe[1])));
+                    want = y[k] - g > railDrop && !nearRoad(rd.id, rx, rz) && !onPad(rx, rz);
+                }
+                if (want) { if (s0 < 0) s0 = k; last = k; } else flush();
+            }
+            flush(); } } }
+    // THE JUNCTIONS (G5: the signs name the next place along each way): a road's end on another road, the places each way
+    const UNDER = new Set((R.sight && R.sight.underground) || []);
+    // (a road that runs through the city's ellipse serves Downtown, whose own pad is far off in the middle of the streets)
+    { const serve = baked.map(b => { const out = []; for (const p of R.places) { if (UNDER.has(p.id) || p.kind === 'sea' || p.kind === 'door') continue; const r = (p.pad || 40) + 40 + b.hw, city = R.city && Math.hypot(p.at[0] - R.city.at[0], p.at[1] - R.city.at[1]) < 60; let best = -1, bd = 1e9; for (let k = 0; k < b.P.length; k++) { const x = b.P[k][0], z = b.P[k][1], d = Math.hypot(x - p.at[0], z - p.at[1]); if ((d < r || (city && ((x - R.city.at[0]) / R.city.rx) ** 2 + ((z - R.city.at[1]) / R.city.rz) ** 2 < 1)) && d < bd) { bd = d; best = k; } } if (best >= 0) out.push({ id: p.id, s: b.L[best] }); } return out.sort((a, c) => a.s - c.s); });
+      overlay.junctions = [];
+      // first where each road's ends meet another road; an end on another road's END is a road changing its name (no sign)
+      const J = [];
+      baked.forEach((b, bi) => { if (b.rd.loop) return;
+        for (const end of [0, 1]) { const k0 = end ? b.P.length - 1 : 0, q = b.P[k0]; let hit = null;
+            baked.forEach((m, mi) => { if (mi === bi) return; const r = b.hw + m.hw + 8; for (let k = 0; k < m.P.length; k++) { const d = Math.hypot(m.P[k][0] - q[0], m.P[k][1] - q[1]); if (d < r && (!hit || d < hit.d)) hit = { mi, k, d }; } });
+            if (!hit) continue; const m = baked[hit.mi];
+            if (!m.rd.loop && (m.L[hit.k] < 12 || m.L[m.L.length - 1] - m.L[hit.k] < 12)) continue;
+            const inC = R.city && ((q[0] - R.city.at[0]) / R.city.rx) ** 2 + ((q[1] - R.city.at[1]) / R.city.rz) ** 2 < 1, here = p => !(inC && Math.hypot(R.places.find(pl => pl.id === p.id).at[0] - R.city.at[0], R.places.find(pl => pl.id === p.id).at[1] - R.city.at[1]) < 60);
+            const sB = end ? b.L[b.L.length - 1] : 0, bl = serve[bi].filter(p => Math.abs(p.s - sB) > 25 && here(p)).sort((a, c) => Math.abs(a.s - sB) - Math.abs(c.s - sB));
+            J.push({ bi, end, k0, mi: hit.mi, sM: m.L[hit.k], sB, to: bl.length ? bl[0].id : null, here }); } });
+      // what each road leads to: the places on it, and at each junction the first place up the joining road
+      const reach = serve.map(l => l.slice()); for (const j of J) if (j.to) reach[j.mi].push({ id: j.to, s: j.sM, via: j.bi });
+      for (const j of J) { const b = baked[j.bi], m = baked[j.mi], Lm = m.L[m.L.length - 1];
+        const along = (dir, not) => { let best = null, bd = 1e9; for (const p of reach[j.mi]) { if (p.id === j.to || p.id === not || p.via === j.bi || !j.here(p)) continue; let d = dir > 0 ? p.s - j.sM : j.sM - p.s; if (m.rd.loop) d = ((d % Lm) + Lm) % Lm; if (d > 25 && d < bd) { bd = d; best = p.id; } } return best; };
+        const q = b.P[j.k0];
+        overlay.junctions.push({ at: [+q[0].toFixed(1), +q[1].toFixed(1)], y: +b.y[j.k0].toFixed(2), branch: b.rd.id, end: j.end, sB: +j.sB.toFixed(1), main: m.rd.id, sM: +j.sM.toFixed(1),
+            ahead: along(1), back: along(-1, along(1)), to: j.to, kind: b.rd.type, mainKind: m.rd.type }); } }
 
     // ───────── 7. MATERIALS, FOREST, CITY
     log('materials');
@@ -488,7 +607,7 @@ function bake(opts) {
         if (ICE[c] === 1) m = M.ice; else if (ICE[c] === 2) m = M.pack;
         else if (WATER[c] > -9000 && WATER[c] > h + 0.05) m = RIVERD[c] < 40 ? M.river : M.lake;
         else if (h < 0.3 && d < 8) m = h < -14 ? M.deep : M.shallow;
-        else if (ROAD[c]) m = ROAD[c] <= 3 ? M.road : M.trail;
+        else if (ROAD[c]) m = ROAD[c] <= 2 ? M.road : ROAD[c] === 3 ? M.paved : ROAD[c] === 4 ? M.lane : M.trail;
         else if (URB[c]) m = M.urban;
         else {
             const snowLine = 250 + 20 * nB(x / 150, z / 150); const des = W.desert[c] + W.deepdesert[c], bad = W.badlands[c];
@@ -522,7 +641,7 @@ function bake(opts) {
         }
         // R3: a face steeper than CLIFF_SLOPE is drawn as a cliff, whatever grew or was built on it (the ice wall is its own face;
         // a trail's steps and the roads are drawn by their own meshes). The forest density stays: the sight test's canopy.
-        if (sl > CLIFF_SLOPE && !WET.has(m) && m !== M.ice && m !== M.pack && m !== M.road && m !== M.trail) m = M.cliff;
+        if (sl > CLIFF_SLOPE && !WET.has(m) && m !== M.ice && m !== M.pack && m !== M.road && m !== M.trail && m !== M.lane && m !== M.paved) m = M.cliff;
         MAT[c] = m; }
 
     // ───────── 8. PLACES: heights, and THE SIGHT LINES (the viewshed the rule is checked on)
@@ -610,7 +729,7 @@ function checkRules(B) {
     for (const r of reachability(B)) bad('R5', r);
     // R3 cliffs drawn: every cell steeper than 1.0 on open ground is cliff (or water, ice, a road or a trail, drawn by their own)
     let undrawn = 0, first = null;
-    for (let c = 0; c < NN; c++) if (SLOPE[c] > 1.0) { const m = MAT[c]; if (m === Mt.cliff || m === Mt.ice || m === Mt.pack || m === Mt.road || m === Mt.trail || WET.has(m)) continue; undrawn++; if (!first) first = [B.X(c % N), B.Z((c / N) | 0)]; }
+    for (let c = 0; c < NN; c++) if (SLOPE[c] > 1.0) { const m = MAT[c]; if (m === Mt.cliff || m === Mt.ice || m === Mt.pack || m === Mt.road || m === Mt.trail || m === Mt.lane || m === Mt.paved || WET.has(m)) continue; undrawn++; if (!first) first = [B.X(c % N), B.Z((c / N) | 0)]; }
     if (undrawn) bad('R3', `${undrawn} cells steeper than 1.0 are not drawn as cliffs (first at ${first.map(v => v.toFixed(0)).join(', ')})`);
     return out;
 }
@@ -687,7 +806,7 @@ function writeOutputs(B, outDir, opts) {
     if (opts.map !== false) {
         const PX = 4, W = Math.round(2 * EXT / PX), rgb = Buffer.alloc(W * W * 3);
         const COL = { 0: [22, 58, 96], 1: [58, 118, 160], 2: [222, 204, 158], 3: [122, 158, 86], 4: [150, 180, 100], 5: [56, 98, 52], 6: [132, 124, 114], 7: [240, 243, 247], 8: [218, 182, 124],
-            9: [180, 108, 72], 10: [230, 224, 208], 11: [176, 184, 104], 12: [150, 150, 154], 13: [70, 70, 74], 14: [150, 116, 78], 15: [70, 138, 186], 16: [52, 110, 160], 17: [226, 238, 246], 18: [212, 228, 238], 19: [150, 162, 138], 20: [186, 142, 102], 21: [112, 100, 92] };
+            9: [180, 108, 72], 10: [230, 224, 208], 11: [176, 184, 104], 12: [150, 150, 154], 13: [70, 70, 74], 14: [150, 116, 78], 15: [70, 138, 186], 16: [52, 110, 160], 17: [226, 238, 246], 18: [212, 228, 238], 19: [150, 162, 138], 20: [186, 142, 102], 21: [112, 100, 92], 22: [128, 100, 70], 23: [168, 164, 156] };
         const sun = [-0.55, 0.62, -0.56]; const sl = Math.hypot(...sun); sun[0] /= sl; sun[1] /= sl; sun[2] /= sl;
         const hAt = new Float32Array(W * W); for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) hAt[j * W + i] = sampleG(H, -EXT + (i + 0.5) * PX, -EXT + (j + 0.5) * PX);
         for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {

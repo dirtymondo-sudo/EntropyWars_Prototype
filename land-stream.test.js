@@ -126,7 +126,7 @@ test('the wiring: the front door opens onto the land; the land room stands on th
 test('the renderer: the land arms, the walker / air / camera / sea read it, the far pass is layered', () => {
     const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
     assert.match(tr, /if \(room\.land\) \{ try \{ _hqLandArm\(room\); \}/, '_hqEnter arms the land');
-    assert.match(tr, /if \(_hq\.land\) \{ var lf = _hqLandFeetAt\(x, z\); if \(lf === null\) return null; y = lf; \}/, 'the walker\'s surface');
+    assert.match(tr, /if \(_hq\.land\) \{ var lf = _hqLandFeetAt\(x, z, curY\); if \(lf === null\) return null; y = lf; \}/, 'the walker\'s surface');
     assert.match(tr, /if \(_hq\.land && !_hqLandAirOK\(x, z, y\)\) return false;/, 'the air');
     assert.match(tr, /if \(_hq\.land\) return _hqLandCamBlocked\(px, pz, py\);/, 'the camera boom');
     assert.match(tr, /_hq\.land && _hq\.land\.sea/, 'the land\'s sea is the swimmer\'s');

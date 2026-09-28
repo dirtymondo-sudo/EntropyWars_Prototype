@@ -1654,4 +1654,47 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   three's back-face Lambert for the front (r128 lights a DoubleSide back face with the normal flipped: black blades).
 - MEM line gains TREES / GRASS. Probe read `ThreeRenderer.hq.dev.flora(x, z)`. Kill-switch `window.EW_NO_LAND_FLORA`.
 - Test land-forest.test.js (heavy = the 2 m count).
+- G4b THE GRASS BLADES (token 20260928-geography-09-cors): data.js `hqLandGrassField(F, n, ix0, iz0, w, h)` (the blades' ground
+  on the world's 1 m lattice, WRAPPED into an n × n window; rules `HQ_LAND_RULES.flora.grass` win/step/texels/recentre/patch/
+  blades/near/reach/fade/dens/h/w/lean/push/slope/low/mats). hqLandGrassBlock and the tuft code are gone.
+- three-renderer.js "THE GRASS BLADES": `_HQ_GRASS_VS_HEAD` / `_HQ_GRASS_VS_BODY` (the blade in the vertex shader),
+  `_hqFloraGrassGeo(k)` (0 = the dense patch, 7 verts a blade; 1 = the thin one, a triangle), `_hqFloraGrassMat`,
+  `_hqFloraGrassArm` (the float DataTexture window `L.flora.gs`, two Meshes on InstancedBufferGeometry with `aPatch`),
+  `_hqFloraGrassShift` (the strips gained; their density zeroed at once), `_hqFloraGrassFill` (time-sliced), `_hqFloraGrassTick`
+  (window, colours from `hqLandColor` once `L.tone` changes, the patches in the camera's frustum). `_hqFloraGrassOk` = vertex
+  textures + float textures. MEM line's GRASS = blades in the drawn patches.
 
+
+## THE ROADS (WORLD_GEOGRAPHY_PLAN G5, 2026-09-28, token 20260928-geography-10-cors, bake 35b9269ad8)
+- bake-land.js §6 `gradeLine(rd, pts)`: smoothing (roadRules.smooth), the water's lift (`clear` by type; a river no wider than
+  `smallRiver` m, i.e. Shasta Creek, only `clearSmall`: a culvert span), the grade clamp, then THE FILL CAP: a dry span standing
+  more than 7 m over the ground for `maxDry` (60) m is regraded to at most `fill` (6.5) m over the ground ± `capPad` m (the lower
+  envelope of grade cones: it cuts into the slope), except within `approach` m of water and inside a NAMED VIADUCT
+  (`HQ_LAND.viaducts`: the Glen, the Loch Head — fork 6's default). Last, the water's lift is made HARD (its cones): a road
+  never passes under a river. The stamp reads the height between two samples off the line (the nearest sample stepped it).
+  Overlay rows: roads gain `surface` (asphalt / paved / dirt / trail), `maxCut`, `cutAt`, `rails` ([s0, s1, side], side +1 = left
+  of travel); `bridges` rows {id, road, type, w, len, wet, river, viaduct, look, label, span, deck, hMax, pts (4 m, ±2
+  abutment samples)}; `junctions` {at, y, branch, end, sB, main, sM, ahead, back, to, kind, mainKind} (an end on another road's
+  end is a road changing its name: no junction). Names: a viaduct's own, `roadRules.names[road]` (crown = THE KING'S BRIDGE),
+  else `bridgeNames[river]`, a trail's = `bridgeNames.foot`. Looks: viaduct 'arch', `roadRules.looks[river]` (nile = truss),
+  trail 'foot', else 'girder'. Materials `lane` (packed dirt) and `paved` (the Vatican's lane) joined MATS (24 now: the grass
+  shader's uGCol[24] and the splat's uLay[24] are full).
+- Recipe changes (data.js HQ_LAND): the Crown's Road, the East Road, the Rim Road (south), the West Lane re-laid (switchbacks, no
+  viaducts); Route 1 crosses Shasta Creek on the plain north of the old line (the old line ran 10 m under the perched creek;
+  holding it over the creek made a 718 m ramp); the Shasta Trail starts on the new line; a mesa gap by Giza (`mesas.avoid`).
+- data.js "THE ROADS" before `hqLandPadY`: `HQ_LAND_RULES.roads` (near, piece, lift, sheets, paint, deck, rail, lamps, sign,
+  near2, traffic), `HQ_LAND_ROADS` (built by `hqLandRoadsIndex(ov)` from inside `hqLandIndex`, once per bake id), readers
+  `hqLandRoadPose(road, s)`, `hqLandDecksAt`, `hqLandDeckFeet(x, z, curY, g)` (undefined = no say, null = parapet / no headroom,
+  else the top), `hqLandDeckBelow`, `hqLandInDeck`, `hqLandDeckNear` (the trees and rocks keep off), `hqLandDeckPiers`,
+  `hqLandRailsNear`, `hqLandRailHit(x, z, pad, y)`, `hqLandPlaceLabel`. Signs worded at index time (`W.signs`).
+- three-renderer.js "THE ROADS" before the walker reads: `_hqRoadsArm` (from `_hqLandArm`), `_hqRoadsTick` (from `_hqLandTick`:
+  pieces within `near` m, decks within camFar, a few ms a frame), `_hqRoadsBuildPiece` (ribbon on the drawn ground's heights,
+  paint, guard rails, signs), `_hqRoadsBuildDeck` (slab, parapets / foot rail, girder, piers, arches with spandrels, truss,
+  lamps = the street lamp OBJ, name plates), `_hqRoadsBlockers` (piers as turned rects, posts; tags `landRoad: true`; the guard
+  pieces near the walker join `_hq.rails` as sloped grind rails linked `next` / `prev` — the grind runs on piece to piece),
+  `_hqRoadsTraffic` (Route 1, both directions; `_hqTickTraffic` reads `car.yAt` and pitches the car), `_hqRoadsDisarm`.
+  Walker: `_hqLandFeetAt(x, z, curY)` asks the decks then the rails; `_hqLandAirOK` / `_hqLandCamBlocked` the slab, parapet and
+  beam; `_hqBlockerFloor` lands on a deck; the steep-face slide skips a walker on a deck. Kill-switch `window.EW_NO_LAND_ROADS`.
+- Test land-roads.test.js (a 16 m bake: grades, no giveaway viaduct, wet decks clear their water, rails at the drops, the
+  junctions' places, the deck and rail readers, the wiring and the assets). Offline analysis: an 8 m bake's roads / bridges
+  report is the fast way to check a recipe edit (`bake({ cell: 8 })`, 12 s).
