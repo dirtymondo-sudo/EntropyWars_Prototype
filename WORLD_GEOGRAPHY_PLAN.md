@@ -698,7 +698,7 @@ Shadow cascades matter far more on open land.
 
 | # | Delivery | Files | Test |
 |---|---|---|---|
-| G0 | **THE BAKE + THE MAP**: `bake-land.js` (the sketch hardened, §5.1), the `HQ_LAND` recipe and `hqLand*` readers, tiles to `Assets/Land/`, the map tab drawn from the bake, so mondo can argue with the geography in the game before anything else changes | bake-land.js (repo tool), data.js, map.js, package.json (`npm run bake-land`) | `land-bake.test.js`, which bakes at 8 m in the fast suite and checks: R2 from every pad, rivers monotone, lakes level, road grades, the ring a loop, every place reachable, cliffs drawn wherever slope > 1.0. Full resolution is `heavy` |
+| G0 | **THE BAKE + THE MAP**: `bake-land.js` (the sketch hardened, §5.1), the `HQ_LAND` recipe and `hqLand*` readers, tiles to `Assets/Land/`, the map tab drawn from the bake, so mondo can argue with the geography in the game before anything else changes | bake-land.js (repo tool), data.js, map.js, package.json (`npm run bake-land`) | `land-bake.test.js`, which bakes at 8 m in the fast suite and checks: R2 from every pad, rivers monotone, lakes level, road grades, the ring a loop, every place reachable, cliffs drawn wherever slope > 1.0. Full resolution is `heavy` — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_3; §12) |
 | G1 | **PHASE 12** of OPEN_WORLD_PLAN (portals + the memory budget), as written | three-renderer.js | `hq-joins.test.js` portal rule; `asset-store.test.js` eviction — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_1; §12) |
 | G2 | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
 | G3 | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
@@ -764,7 +764,7 @@ bump, and to Render only if the server reads something new (it doesn't in this p
 
 ## 11. THE SKETCH (what exists, and its known limits)
 
-**Files** (project folder `open-world/geography/sketch/`; they become `bake-land.js` in G0):
+**Files** (project folder `open-world/geography/sketch/`; RETIRED 2026-09-28: G0 made them the repo's `bake-land.js`, with the recipe in data.js `HQ_LAND`):
 
 | File | What it is |
 |---|---|
@@ -823,3 +823,25 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
   Spring Mountains, the Sheep Hill, the Groom Range and the pass hills (the sketch's `dry` forests). Redwood Creek
   renamed Shasta Creek; the Redwood Trail became the Cave Trail. r2check.js now checks the desert separations both
   ways and counts the ice shelf as open sea. R2 holds; the named separations hold. Map and views re-rendered.
+- 2026-09-28 — **G0 DONE** (the bake + the map; zip `ENTROPY_WARS_WORLD_GEOGRAPHY_3.zip`, token `20260928-geography-03-cors`).
+  - **The recipe** is data.js `HQ_LAND` (the sketch's recipe.js moved in whole, plus each place's region, weenie top, peak and
+    lookout, the sight constants, mondo's named separations and the bake id). The sketch folder is retired.
+  - **`bake-land.js`** (`npm run bake-land`, ~2.5 min at 2 m) is the sketch hardened: every step in metres (the erosion's drop
+    life, brush and drops per km²; the thermal passes), ridged noise with gradient damping on the ranges and peaks (§11 limit 4),
+    trails benched to 0.9 with their step spans marked (§11 limit 3), river surfaces that fall monotonically, a cliff material
+    wherever the slope passes 0.8, and one `checkRules` for the CLI and the test. It writes land.json, land-map.png, 379 land
+    tiles (256 m at 2 m) and sea.bin under `Assets/Land/`, and stamps `HQ_LAND.baked.id` (bake `0b57d9ab50`).
+  - **The rules hold at 2 m and at 8 m**: R2 from every pad and the named separations; rivers downhill; the loch level with an
+    outlet; every road within its grade; Route 1 a closed loop; every place on a route from HQ; every face over 1.0 drawn as
+    cliff. HQ sees the ground of Olympus and Tikaboo only; the Strip sees no other place.
+  - **Two routes added** so every place is on one (R5): THE LIGHTHOUSE PATH (the mall to the bay's head) and THE HAUNTED DRIVE
+    (the estate to the haunted house).
+  - **The numbers** (2 m): 7.08 km² of land; heights −176.7 to 354.4 m; forest 14.5 % (the sketch said 16 %: the damped ridges
+    and the cliff rule thin the desert pines a little); 18.3 km of routes. Bridges over 100 m are the sketch's known ones
+    (§11 limit 2: the ring's 208, 185, 353 and 103 m, the Crown's Road 204 m, the East Road 287 m, the Rim Road 189 m); G5
+    regrades them.
+  - **THE ATLAS**: a new tab on the map (map.js `_hqAtlas*`) draws the baked relief with the roads by kind, rivers, the storm
+    drain, bridges, regions and places. A place's card shows what its pad sees, where each route first shows it, and the routes
+    it is on. There is no fog of war yet (G9, fork 9's default). The LAND tab stays until G2 retires the stitched zones.
+  - **What mondo uploads**: `land.json` and `land-map.png` to R2 `Assets/Land/`. The tiles and sea.bin are not read until G2 and
+    are re-baked then. Test: `land-bake.test.js` (8 m in the fast suite, 2 m `heavy`). Next: G2 (the land underfoot).

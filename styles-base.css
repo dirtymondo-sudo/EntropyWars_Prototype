@@ -6480,6 +6480,51 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-land-scale text { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.12em; fill: #f0e6c8; }
 #hqPage .hq-map-bar .hq-land-tab { font-size: 10px; }
 
+/* ══ THE ATLAS (WORLD_GEOGRAPHY_PLAN.md §5.11, G0 — 2026-09-28): the baked land under its vectors. One map unit is a
+   metre; --az (map.js _hqAtlasZoom: the view's width over the fit's, 0.12..1) keeps labels and markers at one screen
+   size as you zoom. Roads and rivers keep their true width in metres; the trails, bridges and the drain are hairlines. */
+.hq-atlas { --az: 1; background: #0c2238; }
+.hq-atlas-sea { fill: #0f2c48; }
+.hq-atlas-relief { image-rendering: auto; }
+.hq-atlas-river { fill: none; stroke: #4a90c4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; pointer-events: stroke; }
+.hq-atlas-tunnel { fill: none; stroke: #c9a0ff; stroke-width: 1.6; stroke-dasharray: 2 5; opacity: 0.85; pointer-events: stroke; }
+.hq-atlas-case { fill: none; stroke: #1a1410; stroke-linecap: round; stroke-linejoin: round; opacity: 0.8; }
+.hq-atlas-road { fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; }
+.hq-atlas-road.k-highway { stroke: #f0c85a; }
+.hq-atlas-road.k-road { stroke: #f0e6c8; }
+.hq-atlas-road.k-lane { stroke: #d8cfb6; }
+.hq-atlas-road.k-trail { stroke: #6a3e1a; stroke-width: 1.5; stroke-dasharray: 5 3; }
+.hq-atlas-road:hover { stroke: #39ff6a; }
+.hq-atlas-bridge { fill: none; stroke: #ffffff; stroke-width: 1.2; stroke-dasharray: 1 2; pointer-events: stroke; }
+.hq-atlas-region { font-family: 'IBM Plex Mono', monospace; font-style: italic; font-weight: 700; letter-spacing: 0.22em; font-size: calc(var(--az) * 76px);
+    fill: rgba(250,244,226,0.62); stroke: rgba(20,16,10,0.55); stroke-width: calc(var(--az) * 6px); paint-order: stroke; pointer-events: none; }
+.hq-atlas-region.small { font-size: calc(var(--az) * 44px); fill: rgba(250,244,226,0.5); }
+.hq-atlas-place { cursor: pointer; }
+.hq-atlas-mark { transform: scale(calc(var(--az) * 14)); fill: #f0e6c8; stroke: #1a1410; stroke-width: 0.25; }
+.hq-atlas-place.k-hub .hq-atlas-mark { fill: #39ff6a; }
+.hq-atlas-place.k-poi .hq-atlas-mark { fill: #e0b050; }
+.hq-atlas-place.k-dungeon .hq-atlas-mark { fill: #c9a0ff; }
+.hq-atlas-place.peak .hq-atlas-mark { fill: #ffffff; }
+.hq-atlas-mark.ring { fill: none; stroke: #4fc3d8; stroke-width: 0.35; }
+.hq-atlas-lbl { font-family: 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 0.08em; font-size: calc(var(--az) * 50px); fill: #f8f2e2;
+    stroke: rgba(14,12,8,0.85); stroke-width: calc(var(--az) * 8px); paint-order: stroke; transform: translate(calc(var(--az) * 22px), calc(var(--az) * 13px)); pointer-events: none; }
+.hq-atlas-place.sel .hq-atlas-mark, .hq-atlas-place:hover .hq-atlas-mark, .hq-atlas-place:focus .hq-atlas-mark { fill: #39ff6a; }
+.hq-atlas-place.sel .hq-atlas-lbl, .hq-atlas-place:hover .hq-atlas-lbl { fill: #39ff6a; }
+.hq-atlas-scale line { stroke: #f0e6c8; stroke-width: 2; }
+.hq-atlas-scale text { font-family: 'IBM Plex Mono', monospace; font-size: calc(var(--az) * 40px); letter-spacing: 0.12em; fill: #f0e6c8; stroke: rgba(14,12,8,0.85); stroke-width: calc(var(--az) * 6px); paint-order: stroke; }
+.hq-atlas-key { stroke-width: 3; }
+.hq-atlas-key.k-highway { stroke: #f0c85a; stroke-width: 5; }
+.hq-atlas-key.k-road { stroke: #f0e6c8; stroke-width: 4; }
+.hq-atlas-key.k-lane { stroke: #d8cfb6; }
+.hq-atlas-key.k-trail { stroke: #b8864e; stroke-width: 2; stroke-dasharray: 5 3; }
+.hq-atlas-key.k-river { stroke: #4a90c4; stroke-width: 4; }
+.hq-atlas-key.k-tunnel { stroke: #c9a0ff; stroke-width: 2; stroke-dasharray: 2 4; }
+.hq-atlas-key-mark { fill: #ffffff; stroke: #1a1410; }
+.hq-atlas-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.18em; color: #c9c2ae; }
+.hq-atlas-wait b { color: #f0e6c8; font-size: 15px; }
+.hq-atlas-wait span { font-size: 11px; }
+
 /* ══ THE FAMILY TABS (THE JOBS REMOVAL, the user 2026-09-27: "Easy to read spell slots organized by family, maybe tabs
    for the families, with one section that shows the spell info for whichever one you have selected/hovered on") ══
    The rack is a fixed head (the loadout 4 × 2 — seven slot cards + the ALWAYS READY cell, the finisher over the basic

@@ -12,6 +12,7 @@
     "test:syntax": "node check-syntax.js",
     "test:parity": "node check-data-parity.js",
     "grades": "node check-grades.js",
+    "bake-land": "node bake-land.js",
     "deploy": "node deploy.js",
     "optimize": "node optimize-assets.js",
     "manifest": "node manifest-assets.js",

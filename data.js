@@ -41737,6 +41737,311 @@ function hqReplateDoors() {
     }));
     return n;
 }
+/* ══ THE LAND (WORLD_GEOGRAPHY_PLAN.md §5.1, G0 — 2026-09-28) ═══════════════════════════════════════════════════════════
+   HQ_LAND is THE WORLD RECIPE: the one land every outdoor place will stand on (the plan's §4). Metres; x = east, z = SOUTH
+   (the game's frame: north is −z); D.O.O.R. HQ stands at the origin; y above sea level. It is the sketch's recipe.js
+   moved in whole (open-world/geography/sketch/), plus each place's REGION / weenie TOP / peak / lookout (the sight rule's
+   inputs, were r2check.js's tables) and the few constants the sketch hard-coded (region hill amplitude, the city's
+   ellipse, the farms). `bake-land.js` (repo tool, `npm run bake-land`) reads it through load-data.js and bakes the land:
+   the 2 m tiles, the 8 m sea, land.json (roads, rivers, lakes, places with their baked heights, the sight lists, the
+   reveals) and land-map.png, all under Assets/Land/ on R2 — and stamps `R.baked.id` below with the bake's hash, which
+   is what the game's URLs carry (`?b=<id>`), so a re-bake reaches players without the manifest.
+   Nothing walks on it yet: G0 draws it as the map's ATLAS tab (map.js); G2 puts the walker on the tiles.
+   Edit the recipe, then `npm run bake-land` (a ~4 minute bake at 2 m) — land-bake.test.js re-bakes it at 8 m and holds
+   the rules (R2 sight from every pad, rivers downhill, lakes level, road grades, the ring a loop, every place on a route,
+   cliffs drawn). */
+const HQ_LAND = (function () {
+    const R = {};
+
+    R.seed = 1977;
+    R.sea = 0;
+
+    // ── THE DISC: the ice wall rings the world (Antarctica). Its inner face is at wallR(θ) — pulled in at the
+    //    south (the bottom of the map) where the Antarctic ice shelf is widest.
+    R.wall = { r: 2600, southPull: 250, southSpread: 0.95, h: 92, thick: 150, shelf: { z0: 2040, h: 11 } };
+    // ── THE ARCTIC: the sea north of this line is frozen over (pack ice you walk on); the North Pole stands on it.
+    R.arctic = { z: -1700, bow: 0.00007, pole: [0, -2150] };
+
+    // ── THE CONTINENT: the coastline (clockwise from the north-west). Smoothed + roughened by the generator.
+    R.coast = [
+      [-1380, -900], [-1300, -1020], [-1210, -1150], [-1090, -1200], [-980, -1170], [-900, -1250], [-780, -1330],
+      [-640, -1300], [-560, -1210], [-500, -1230], [-440, -1330], [-410, -1235], [-385, -1190], [-352, -1228],
+      [-320, -1340], [-200, -1380], [-40, -1350], [120, -1400], [300, -1390], [460, -1330], [560, -1380], [720, -1450],
+      [880, -1430], [1020, -1340], [1100, -1220], [1060, -1100], [980, -985], [1050, -880], [1200, -820], [1310, -700],
+      [1360, -560], [1340, -400], [1300, -260], [1290, -190], [1250, -150], [1300, -100], [1360, -40], [1335, 60],
+      [1255, 120], [1150, 160], [1070, 215], [1030, 300], [1045, 385], [1110, 440], [1210, 470], [1320, 480], [1410, 455],
+      [1475, 400], [1525, 345], [1580, 380], [1600, 470], [1575, 580], [1510, 670], [1420, 740], [1330, 800],
+      [1240, 880], [1120, 990], [1000, 1060],
+      // THE DEEP DESERT: the land runs on south past the valley (the Strip) to Area 51's range
+      [930, 1120], [975, 1240], [990, 1380], [950, 1510], [870, 1620], [750, 1700], [600, 1740], [450, 1740],
+      [310, 1700], [200, 1620], [120, 1520], [60, 1420], [20, 1340], [-20, 1300], [-100, 1335], [-190, 1300], [-260, 1220], [-380, 1180], [-520, 1170], [-660, 1130], [-780, 1150],
+      [-900, 1200], [-1040, 1290], [-1150, 1280], [-1180, 1180], [-1170, 1060], [-1230, 900], [-1300, 760],
+      [-1340, 640], [-1375, 580], [-1400, 520], [-1450, 420], [-1440, 300], [-1500, 200], [-1470, 60], [-1420, -60],
+      [-1460, -200], [-1500, -340], [-1560, -480], [-1540, -600], [-1460, -700], [-1420, -800],
+    ];
+    // ── ISLANDS off the coasts: [x, z, r, h]
+    R.islands = [ [-1760, -300, 95, 34], [-1700, 170, 60, 22], [-1850, -70, 40, 18], [1560, -470, 55, 16], [1200, -1560, 70, 20] ];
+
+    // ── REGIONS: soft plateaus of base height (applied in order; each one pulls the land toward h).
+    //    r = full-strength radius, edge = the blend band.
+    R.plateaus = [
+      { id: 'central',  at: [-20, -20],   r: 360, edge: 280, h: 92 },     // THE CENTRAL HIGHLANDS (HQ's hills)
+      { id: 'woods',    at: [-700, -430], r: 330, edge: 260, h: 88 },     // THE WOODS' hill country
+      { id: 'west',     at: [-960, 140],  r: 380, edge: 220, h: 104 },    // THE WESTERN HIGHLANDS (the glen cuts them)
+      { id: 'badlands', at: [-820, 690],  r: 260, edge: 220, h: 58 },     // THE BADLANDS (Göbekli's hills)
+      { id: 'desert',   at: [200, 800],   r: 430, edge: 130, h: 34 },     // THE DESERT basin (tilted south, below)
+      { id: 'deepdesert', at: [480, 1400], r: 400, edge: 160, h: 30 },  // THE DEEP DESERT (Area 51's range, Rachel, Tikaboo)
+      { id: 'downs',    at: [330, -330],  r: 170, edge: 150, h: 106 },    // THE DOWNS (Stonehenge's chalk; the stones sit on the far, northern slope)
+      { id: 'kingdom',  at: [-20, -690],  r: 210, edge: 200, h: 32 },     // THE KINGDOM's valley floor
+      { id: 'city',     at: [930, 210],   r: 250, edge: 180, h: 26 },     // DISASTER CITY's ground
+      { id: 'north',    at: [0, -1140],   r: 420, edge: 200, h: 14 },     // the north coast's tundra plain
+    ];
+
+    // ── BUMPS: single hills (added). The city's hill, the Vatican's hill, the knolls.
+    R.bumps = [
+      { id: 'cityhill',  at: [850, 190],  r: 230, h: 42, p: 1.6 },   // downtown climbs this hill from the bay
+      { id: 'vatican',   at: [760, -380], r: 150, h: 60, p: 1.4 },   // the Vatican's hill, over the river
+      { id: 'camelot',   at: [-40, -640], r: 95,  h: 22, p: 1.2 },   // Camelot's knoll inside the river's loop
+      { id: 'sheep',     at: [690, 760],  r: 150, h: 110, p: 1.5 },  // THE SHEEP HILL: hides the Strip from the city
+      { id: 'tikaboo',   at: [770, 1400], r: 170, h: 235, p: 1.6 },  // TIKABOO PEAK: the lookout over Area 51
+      { id: 'passhills', at: [640, 1150], r: 120, h: 70, p: 1.5 },   // THE PASS's east shoulder (the highway runs between it and the Groom Range)
+      { id: 'redwoodhills', at: [1060, -560], r: 220, h: 55, p: 1.4 }, // THE REDWOOD COAST's hills, across the Great River
+      { id: 'eastridge', at: [470, 110],  r: 220, h: 40, p: 1.5 },   // the ridge between HQ and the city
+      { id: 'crownrise', at: [-30, -300], r: 190, h: 34, p: 1.6 },   // THE CROWN'S RISE: the crest before the kingdom
+    ];
+
+    // ── RANGES: ridged mountain chains along polylines (added; w = half-width).
+    R.ranges = [
+      { id: 'northrange', h: 205, w: 175, pts: [[-1180, -960], [-880, -1010], [-560, -1050], [-250, -1010], [60, -1000], [360, -985], [680, -1010], [960, -900]] },
+      // sketch 3 (mondo: no rings round the Strip or Area 51): open desert ranges, each one straight-ish chain, pines on top.
+      // THE SPRING MOUNTAINS: well west of the Strip, a backdrop across the open valley floor (the pines of Mt Charleston on its crest)
+      { id: 'springs',     h: 150, w: 95, vary: 0.5, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]] },
+      // THE GROOM RANGE: one chain on the north-west and north of Groom Lake (Area 51 sees the lake, the range, Tikaboo and the sea)
+      { id: 'groomrange',  h: 125, w: 80, vary: 0.5, pts: [[130, 1560], [180, 1440], [260, 1340], [350, 1290], [450, 1280], [515, 1300]] },
+      { id: 'westcliffs', h: 55,  w: 90,  pts: [[-1290, -600], [-1300, -300], [-1290, -60]] },
+    ];
+
+    // ── PEAKS: explicit mountains.
+    R.peaks = [
+      { id: 'olympus', at: [60, -1000],  h: 410, r: 300, p: 1.55, snow: 245 },
+      { id: 'shasta',  at: [-1040, -440], h: 330, r: 330, p: 2.1, crater: { r: 34, d: 22 }, snow: 230 },   // moved south, clear of the Northern Range
+      { id: 'peak_ne', at: [640, -1040], h: 270, r: 220, p: 1.6 },
+      { id: 'peak_nw', at: [-560, -1060], h: 260, r: 230, p: 1.6 },
+    ];
+
+    // ── THE RIM: the escarpment south of HQ. North of the line the highlands stand; south of it the land
+    //    drops to the desert as a cliff band. (A polyline; south side = the low side.)
+    R.rim = { top: 96, band: 24, pts: [[-560, 330], [-330, 290], [-100, 270], [150, 290], [420, 330], [700, 390]] };
+
+    // ── THE GLEN: the long straight fault valley of Loch Ness (NE → SW).
+    R.glen = { a: [-600, -105], b: [-1160, 450], floor: 20, flat: 58, slope: 1.1 };
+    // ── LAKES (water level, polygon given as an ellipse along an axis).
+    R.lakes = [
+      { id: 'lochness', label: 'LOCH NESS', a: [-628, -78], b: [-1122, 420], half: 52, level: 18, depth: 30 },
+    ];
+
+    // ── THE CANYON (the Dry Wash): a cut with near-vertical walls through the badlands to the Nile.
+    R.canyons = [ { id: 'drywash', label: 'THE DRY WASH', w: 16, wall: 7, pts: [[-930, 470], [-760, 510], [-600, 560], [-430, 580], [-300, 610], [-175, 640]] } ];
+
+    // ── MESAS in the desert and the badlands (noise-picked, terraced) and THE DUNES.
+    R.mesas = { box: [-700, 420, 980, 1720], avoid: [[395, 890, 190], [-330, 840, 200], [690, 760, 130], [-150, 700, 90], [-110, 500, 110], [425, 1455, 170], [770, 1400, 160],
+      [560, 1250, 80], [470, 1215, 70], [430, 1090, 80], [500, 1160, 70], [425, 700, 70], [560, 650, 70]], thr: 0.30, h: 34 };
+    R.dunes = { at: [-360, 860], r: 230, h: 9, dir: [0.93, 0.36], wave: 34 };
+    // ── BASINS: flat floors inside the rings. THE VALLEY (the Strip's floor) and GROOM LAKE (the playa at Area 51).
+    R.basins = [
+      { id: 'valley', at: [395, 890], rx: 130, rz: 175, h: 38 },
+      { id: 'playa',  at: [420, 1455], rx: 140, rz: 100, h: 34, playa: true },
+    ];
+    // ── BEACHES: a sand strip graded gently down to the water. THE BAY's beach, under the Bayside Mall.
+    R.beaches = [ { id: 'baybeach', w: 40, pts: [[1052, 372], [1112, 428], [1210, 458], [1320, 468], [1405, 444]] } ];
+    // ── FOREST boosts (added to the forest weight): a disc (`at`, r) or a band along `pts` (r = its half-width).
+    //    `dry`: a forest that grows in the desert too (the pines of a desert sky island), only above `minH`.
+    //    sketch 3 (mondo: more forest, the woods' places spread out, sight broken up):
+    R.forests = [
+      { id: 'fairy', label: 'THE FAIRY FOREST', at: [-400, -640], r: 230, add: 0.55 },                  // the woods nearest Camelot
+      { id: 'redwood', label: 'THE REDWOOD COAST', at: [1060, -560], r: 260, add: 0.8 },                 // the Redwoods moved here (NE, across the river)
+      { id: 'pines', label: 'THE PINE BARRENS', at: [920, 900], r: 250, add: 0.8 },                      // the Staircase moved here (SE, below the Sheep hill)
+      { id: 'eastwood', label: 'THE EAST WOOD', pts: [[330, 30], [470, 90], [600, 120]], r: 95, add: 0.55 },   // on the ridge between HQ and the city
+      { id: 'charleston', label: 'THE CHARLESTON PINES', dry: true, minH: 70, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]], r: 120, add: 1.1 },
+      { id: 'sheeppines', dry: true, minH: 75, at: [690, 760], r: 160, add: 1.1 },   // the Sheep hill's crown of pines
+      { id: 'groompines', dry: true, minH: 65, pts: [[130, 1560], [180, 1440], [260, 1340], [350, 1290], [450, 1280], [515, 1300]], r: 100, add: 1.1 },
+      { id: 'passpines', dry: true, minH: 55, at: [640, 1150], r: 130, add: 1.1 },   // the Pass's east shoulder
+    ];
+    // ── URBAN beyond the downtown ellipse: THE STRIP down the desert highway through the valley.
+    R.urban = [ { id: 'strip', w: 55, pts: [[412, 790], [403, 860], [393, 940], [388, 1000]] } ];   // one straight boulevard, north to south, like the real one
+    // ── THE BERMUDA TRIANGLE: far out in the south-east Deep, behind the land from the bay (a trench under it, the cay on a shoal).
+    R.bermuda = { at: [1400, 1520], trench: 360 };
+    // ── TUNNELS (underground; the map draws them dotted): THE STORM DRAIN from Dead Man's Cave in the woods, under
+    //    the highlands, to the sewers under Downtown and out at the harbour. It falls the whole way (R7).
+    R.tunnels = [ { id: 'drain', label: 'THE STORM DRAIN', pts: [[-470, -530], [-330, -420], [-160, -300], [40, -160], [250, -20], [480, 80], [700, 180], [880, 280], [960, 330], [1035, 238]] } ];
+
+    // ── RIVERS: source → mouth. The generator carves each monotone downhill. w = channel half-width (grows downstream).
+    R.rivers = [
+      { id: 'great', label: 'THE GREAT RIVER', w0: 4, w1: 16, valley: 90,
+        pts: [[-330, -925], [-290, -820], [-230, -730], [-150, -690], [-110, -610], [-40, -565], [40, -600], [70, -680],
+              [170, -730], [330, -760], [520, -740], [680, -650], [800, -560], [880, -470], [940, -350], [1010, -250],
+              [1110, -175], [1210, -150], [1330, -140]] },
+      { id: 'creek', label: 'SHASTA CREEK', w0: 2.5, w1: 6, valley: 50, falls: [[-633, -150]],
+        pts: [[-880, -585], [-800, -605], [-720, -612], [-640, -600], [-578, -570], [-560, -500], [-575, -420], [-600, -330], [-620, -240], [-635, -160], [-622, -88]] },
+      { id: 'ness', label: 'THE RIVER NESS', w0: 7, w1: 11, valley: 45, falls: [[-1235, 505]],
+        pts: [[-1128, 430], [-1180, 470], [-1240, 510], [-1300, 540], [-1370, 560]] },
+      { id: 'nile', label: 'THE NILE', w0: 4, w1: 14, valley: 70,
+        pts: [[-150, 330], [-175, 440], [-160, 560], [-165, 650], [-140, 760], [-120, 880], [-110, 1000], [-105, 1120], [-100, 1230]] },
+      { id: 'olympus_brook', label: '', w0: 1.5, w1: 3, valley: 25,
+        pts: [[110, -900], [120, -820], [100, -760], [60, -700]] },
+    ];
+
+    // ── ROADS: the highway ring (ROUTE 1), its spurs, the country roads and the trails.
+    //    type: highway | road | lane | trail. grade = max rise per metre the baker allows (trails follow the ground).
+    R.roads = [
+      { id: 'ring', label: 'ROUTE 1 · THE RING', type: 'highway', w: 12, grade: 0.075, loop: true, pts: [
+        [770, 330], [775, 150], [800, -20], [790, -170], [720, -290], [620, -400], [540, -520], [420, -570], [260, -580],
+        [110, -545], [-20, -510], [-160, -505], [-300, -470], [-430, -445], [-540, -480], [-640, -520], [-730, -470],
+        [-770, -370], [-745, -270], [-700, -185], [-650, -110], [-585, -40], [-560, 80], [-600, 200], [-660, 315],
+        [-760, 420], [-880, 500], [-990, 565], [-1050, 630], [-1070, 690], [-940, 745], [-800, 765],
+        [-660, 745], [-520, 700], [-410, 650], [-290, 640], [-165, 690], [-20, 640], [140, 600], [300, 585],
+        [440, 600], [580, 600], [700, 580], [760, 470]] },
+      { id: 'crown', label: 'THE CROWN’S ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, -40], [-10, -160], [-30, -300], [-32, -368], [-150, -390], [40, -420], [-140, -450], [30, -478], [-90, -500], [-40, -530], [-40, -600]] },
+      { id: 'east', label: 'THE EAST ROAD', type: 'road', w: 7, grade: 0.1, pts: [[40, 0], [200, 40], [350, 80], [470, 115], [600, 160], [775, 150]] },
+      { id: 'west', label: 'THE WEST LANE', type: 'lane', w: 5, grade: 0.12, pts: [[-40, 0], [-190, 25], [-350, 55], [-500, 70], [-560, 30], [-585, -40]] },
+      { id: 'south', label: 'THE RIM ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, 40], [20, 160], [50, 250], [100, 284], [200, 298], [300, 312], [420, 331], [540, 357], [600, 385], [615, 450], [605, 520], [585, 598]] },
+      // THE DESERT HIGHWAY: leaves Route 1 below the Rim, rounds the Sheep hill, enters the valley by its east gap, runs the
+      // Strip, leaves by the south gap and crosses the deep desert to Rachel. Groom Lake Road goes on from Rachel to Area 51.
+      { id: 'desert_hwy', label: 'THE DESERT HIGHWAY', type: 'highway', w: 10, grade: 0.075, pts: [[440, 600], [432, 680], [418, 760], [408, 830], [398, 900],
+        [390, 970], [398, 1040], [445, 1105], [505, 1165], [545, 1215], [560, 1250]] },
+      { id: 'groom', label: 'GROOM LAKE ROAD', type: 'lane', w: 5, grade: 0.12, pts: [[560, 1250], [612, 1290], [656, 1358], [668, 1428], [642, 1478], [572, 1480], [500, 1468]] },
+      { id: 'bay', label: 'THE BAY ROAD', type: 'road', w: 7, grade: 0.1, pts: [[955, 305], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
+      { id: 'vatican', label: 'VIA DELLA CONCILIAZIONE', type: 'lane', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [812, -445]] },
+      { id: 'henge', label: 'THE DROVE ROAD', type: 'lane', w: 4, grade: 0.14, pts: [[380, -570], [420, -540], [455, -500]] },
+      { id: 'estate', label: 'THE ESTATE LANE', type: 'lane', w: 4, grade: 0.14, pts: [[-990, 565], [-1040, 512], [-1058, 470], [-1020, 420], [-972, 369], [-920, 318], [-870, 268], [-820, 226], [-778, 190]] },
+      { id: 'giza', label: 'THE PLATEAU ROAD', type: 'lane', w: 5, grade: 0.12, pts: [[-290, 640], [-300, 690], [-320, 715]] },
+      { id: 'stadium', label: '', type: 'road', w: 8, grade: 0.1, pts: [[800, -20], [900, -50], [990, -70]] },
+      { id: 'gobekli', label: '', type: 'lane', w: 4, grade: 0.14, pts: [[-800, 765], [-790, 700], [-780, 650]] },
+      // trails (dirt): they follow the ground
+      { id: 'olympus_trail', label: 'THE PILGRIMS’ WAY', type: 'trail', w: 2.4, grade: 0.3, pts: [[-40, -640], [-10, -700], [30, -760], [80, -800], [20, -840], [90, -880], [30, -915], [85, -950], [50, -975], [60, -995]] },
+      { id: 'shasta_trail', label: 'THE SHASTA TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-730, -470], [-800, -492], [-860, -525], [-900, -560], [-945, -525], [-985, -485], [-1015, -458], [-1036, -442]] },
+      // THE FAIRY FOREST (nearest Camelot): the Fairy Trail leaves Camelot's west gate, crosses the Great River on a footbridge
+      { id: 'woods_trail', label: 'THE FAIRY TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-40, -640], [-95, -652], [-150, -660], [-215, -648], [-285, -632], [-360, -625]] },
+      { id: 'cave_trail', label: 'THE CAVE TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-430, -445], [-455, -490], [-470, -530], [-440, -580], [-400, -610], [-360, -625]] },
+      // THE REDWOOD HIGHWAY: from the Bowl up the coast, over the Great River's mouth, into the Redwood Coast
+      { id: 'redwood', label: 'THE REDWOOD HIGHWAY', type: 'lane', w: 5, grade: 0.12, pts: [[990, -70], [1050, -120], [1090, -200], [1100, -290], [1090, -380], [1070, -470], [1050, -545]] },
+      // THE PINE BARRENS: a trail off the Bay Road's end, south into the pines, to the Staircase
+      { id: 'stair_trail', label: 'THE BARRENS TRAIL', type: 'trail', w: 1.8, grade: 0.3, pts: [[1170, 520], [1110, 600], [1050, 690], [990, 780], [950, 860], [935, 925]] },
+      // THE RITUAL WOODS (on the loch's north-west shore, across the water from the estate): a loop off the north shore path
+      { id: 'grove_trail', label: 'THE GROVE TRAIL', type: 'trail', w: 2, grade: 0.3, pts: [[-780, -30], [-792, -100], [-800, -172], [-860, -140], [-905, -100], [-928, -70], [-905, 0], [-870, 60]] },
+      { id: 'loch_path', label: 'THE NORTH SHORE PATH', type: 'trail', w: 2, grade: 0.3, pts: [[-585, -40], [-610, -120], [-690, -110], [-780, -30], [-870, 60], [-950, 135]] },
+      { id: 'tikaboo_trail', label: 'THE TIKABOO TRAIL', type: 'trail', w: 1.8, grade: 0.35, pts: [[656, 1358], [712, 1330], [690, 1356], [748, 1344], [716, 1372], [770, 1366], [742, 1388], [766, 1398]] },
+      { id: 'north_pass', label: 'THE NORTH PASS', type: 'trail', w: 2.2, grade: 0.3, pts: [[-250, -700], [-330, -800], [-390, -880], [-430, -960], [-440, -1040], [-420, -1130], [-380, -1220]] },
+      { id: 'nile_path', label: '', type: 'trail', w: 2, grade: 0.3, pts: [[-150, 700], [-100, 820], [-90, 950], [-200, 1020], [-330, 1040]] },
+      { id: 'coast_path', label: 'THE CLIFF PATH', type: 'trail', w: 1.8, grade: 0.3, pts: [[-1150, 500], [-1250, 380], [-1290, 200], [-1300, 0], [-1280, -200]] },
+      // G0 (2026-09-28): every place on a route (R5) — the lighthouse on the bay's head, the haunted house by the estate
+      { id: 'lighthouse_path', label: 'THE LIGHTHOUSE PATH', type: 'trail', w: 1.8, grade: 0.3, pts: [[1205, 545], [1290, 530], [1380, 505], [1450, 460], [1490, 405], [1505, 365]] },
+      { id: 'haunted_drive', label: 'THE HAUNTED DRIVE', type: 'lane', w: 4, grade: 0.14, pts: [[-778, 190], [-735, 152], [-690, 118]] },
+    ];
+
+    // ── BRIDGES the sketch draws where a road crosses water (the baker finds them; these just name them).
+    R.bridgeNames = { great: 'THE ESTUARY BRIDGE', ness: 'THE NESS BRIDGE', nile: 'THE NILE BRIDGE', creek: 'THE FOOTBRIDGE' };
+
+    // ── PLACES: where each existing place stands on THE LAND (the site pads) and its label on the map.
+    //    pad = flattened disc (r) at the land's height there (or at y). kind: site | poi | dungeon | door
+    R.places = [
+      { id: 'hq',        label: 'D.O.O.R. HQ',         at: [0, 0],        pad: 64, kind: 'hub', region: 'highlands', top: 26 },
+      { id: 'downtown',  label: 'DOWNTOWN',            at: [900, 210],    kind: 'site', city: true, region: 'city', top: 120 },
+      { id: 'harbour',   label: 'THE HARBOUR',         at: [1030, 228],   kind: 'site', region: 'city', top: 20 },
+      { id: 'mall',      label: 'THE BAYSIDE MALL',    at: [1205, 548],   pad: 45, padY: 5, kind: 'site', region: 'city', top: 14 },
+      { id: 'lighthouse',label: 'THE LIGHTHOUSE',      at: [1505, 365],   kind: 'poi', region: 'city', top: 28 },
+      { id: 'stadium',   label: 'THE BOWL',            at: [990, -70],    pad: 85, kind: 'site', region: 'city', top: 34 },
+      { id: 'strip',     label: 'THE STRIP',           at: [398, 890],    pad: 70, kind: 'site', region: 'desert', top: 70 },
+      { id: 'vatican',   label: 'VATICAN CITY',        at: [812, -445],   pad: 70, kind: 'site', region: 'downs', top: 48 },
+      { id: 'henge',     label: 'STONEHENGE',          at: [455, -500],   pad: 45, kind: 'site', region: 'downs', top: 7 },
+      { id: 'camelot',   label: 'CAMELOT',             at: [-40, -640],   pad: 70, kind: 'site', region: 'kingdom', top: 34 },
+      { id: 'olympus',   label: 'MT OLYMPUS',          at: [60, -1000],   pad: 30, kind: 'site', region: 'north', top: 12, peak: true },
+      { id: 'shasta',    label: 'MT SHASTA',           at: [-1040, -440], kind: 'site', region: 'woods', top: 8, peak: true },
+      { id: 'clearing',  label: 'THE FAIRY CLEARING',  at: [-360, -625],  pad: 30, kind: 'site', region: 'woods', top: 3 },
+      { id: 'redwoods',  label: 'THE REDWOODS',        at: [1050, -560],  kind: 'site', region: 'redwoodcoast', top: 60 },
+      { id: 'grove',     label: 'BOHEMIAN GROVE',      at: [-800, -175],  pad: 30, kind: 'site', region: 'woods', top: 12 },
+      { id: 'stair',     label: 'THE STAIRCASE',       at: [935, 930],    pad: 12, kind: 'poi', region: 'barrens', top: 6 },
+      { id: 'ritual',    label: 'THE RITUAL GROUND',   at: [-930, -70],   pad: 14, kind: 'poi', region: 'woods', top: 3 },
+      { id: 'deadmans',  label: 'DEAD MAN’S CAVE',     at: [-470, -530],  kind: 'dungeon', region: 'woods', top: 3 },
+      { id: 'estate',    label: 'THE ESTATE',          at: [-778, 188],   pad: 70, padY: 26, kind: 'site', region: 'glen', top: 10 },
+      { id: 'haunted',   label: 'THE HAUNTED HOUSE',   at: [-690, 118],   pad: 26, kind: 'site', region: 'glen', top: 16 },
+      { id: 'urquhart',  label: 'URQUHART RUIN',       at: [-965, 140],   pad: 24, kind: 'poi', region: 'glen', top: 14 },
+      { id: 'gobekli',   label: 'GÖBEKLI TEPE',        at: [-780, 650],   pad: 45, kind: 'site', region: 'badlands', top: 6 },
+      { id: 'giza',      label: 'GIZA',                at: [-330, 725],   pad: 95, kind: 'site', region: 'desert', top: 70 },
+      { id: 'babel',     label: 'BABEL',               at: [-360, 1040],  pad: 60, kind: 'site', region: 'desert', top: 150 },
+      { id: 'area51',    label: 'AREA 51',             at: [425, 1455],   kind: 'site', region: 'deepdesert', top: 22 },
+      { id: 'rachel',    label: 'RACHEL (THE DINER)',  at: [566, 1244],   pad: 22, kind: 'poi', region: 'deepdesert', top: 8 },
+      { id: 'tikaboo',   label: 'TIKABOO LOOKOUT',     at: [768, 1400],   kind: 'poi', topSearch: 24, region: 'deepdesert', top: 3, peak: true, lookout: true },
+      { id: 'rim',       label: 'THE RIM',             at: [45, 262],     kind: 'poi', region: 'highlands', top: 2, lookout: true },
+      { id: 'crownrise', label: 'THE CROWN’S RISE',    at: [-32, -368],   kind: 'poi', region: 'highlands', top: 2, lookout: true },
+      { id: 'bermuda',   label: 'THE BERMUDA TRIANGLE',at: [1400, 1520],  kind: 'sea', region: 'sea', top: 2 },
+      { id: 'cay',       label: 'THE CAY',             at: [1320, 1440],  kind: 'site', region: 'sea', top: 6 },
+      { id: 'dutchman',  label: 'THE FLYING DUTCHMAN', at: [1500, 1580],  kind: 'site', region: 'sea', top: 30 },
+      { id: 'whirlpool', label: 'THE WHIRLPOOL',       at: [1410, 1625],  kind: 'door', region: 'sea', top: 2 },
+      { id: 'station',   label: 'ANTARCTICA · THE STATION', at: [110, 2190], kind: 'site', region: 'edge', top: 14 },
+      { id: 'flatlands', label: 'THE FLAT LANDS (on the wall)', at: [110, 2440], kind: 'site', region: 'edge', top: 3 },
+      { id: 'pole',      label: 'THE NORTH POLE',      at: [0, -2150],    kind: 'site', region: 'arctic', top: 18 },
+      { id: 'sewers',    label: 'THE SEWERS',          at: [960, 330],    kind: 'dungeon', region: 'city', top: 2 },
+      { id: 'cavern',    label: 'THE CAVERN',          at: [-895, -585],  kind: 'dungeon', region: 'woods', top: 3 },
+      { id: 'ley',       label: 'THE LEY LINES',       at: [-560, 820],   kind: 'dungeon', region: 'badlands', top: 2 },
+      { id: 'dumb',      label: 'THE D.U.M.B.',        at: [440, 1545],   kind: 'dungeon', region: 'deepdesert', top: 2 },
+    ];
+
+    // Regions' labels for the map (big italic names).
+    R.regions = [
+      { label: 'THE CENTRAL HIGHLANDS', at: [290, 200] }, { label: 'THE KINGDOM', at: [200, -680] },
+      { label: 'THE NORTHERN RANGE', at: [-330, -1000] }, { label: 'THE WOODS', at: [-820, -830] },
+      { label: 'THE FAIRY FOREST', at: [-360, -790], small: true }, { label: 'THE REDWOOD COAST', at: [1100, -720], small: true },
+      { label: 'THE PINE BARRENS', at: [1000, 1010], small: true }, { label: 'THE SPRING MOUNTAINS', at: [150, 790], small: true }, { label: 'THE RITUAL WOODS', at: [-1130, -330], small: true },
+      { label: 'THE GREAT GLEN', at: [-930, 330] }, { label: 'THE BADLANDS', at: [-900, 560] },
+      { label: 'THE DESERT', at: [-130, 890] }, { label: 'THE DEEP DESERT', at: [470, 1680] },
+      { label: 'DISASTER CITY', at: [860, 450] }, { label: 'THE BAY', at: [1250, 330], small: true }, { label: 'THE DOWNS', at: [360, -250] },
+      { label: 'THE DEEP', at: [-2000, 300] }, { label: 'THE DEEP', at: [1950, -300] }, { label: 'THE DEEP', at: [1520, 1230] }, { label: 'THE ARCTIC', at: [-400, -1950] },
+      { label: 'THE ICE WALL', at: [-1150, 2230] }, { label: 'ANTARCTICA', at: [560, 2240] },
+    ];
+
+
+    // ── G0 (2026-09-28): what the sketch hard-coded, now in the recipe
+    R.regionAmp = { central: 30, woods: 34, west: 30, badlands: 22, desert: 5, deepdesert: 6, downs: 7, kingdom: 7, city: 9, north: 9 };   // the hills' amplitude per plateau
+    R.city = { at: [900, 190], rx: 250, rz: 312 };                // DISASTER CITY's blocks (an ellipse, roughened)
+    R.farms = [ { at: [-765, 235], r: 110 } ];                    // the estate's fields (the kingdom's are its valley floor)
+    R.hubMinY = 70;                                               // HQ's pad never sinks below this
+    // the region names the map prints (a place's `region` above)
+    R.regionNames = { highlands: 'THE CENTRAL HIGHLANDS', city: 'DISASTER CITY', desert: 'THE DESERT', deepdesert: 'THE DEEP DESERT',
+        badlands: 'THE BADLANDS', downs: 'THE DOWNS', kingdom: 'THE KINGDOM', north: 'THE NORTHERN RANGE', woods: 'THE WOODS',
+        redwoodcoast: 'THE REDWOOD COAST', barrens: 'THE PINE BARRENS', glen: 'THE GREAT GLEN', sea: 'THE DEEP', edge: 'ANTARCTICA', arctic: 'THE ARCTIC' };
+    // THE SIGHT RULE (R2): a place's pad may see another place's GROUND only when that place is a peak or a lookout, is in
+    // the same region, or lies across open sea (≥ `sea` of the line over water or ice). Peaks and lookouts are the reward
+    // and are not checked from. `never`: mondo's named separations (2026-09-28), not even the tops; `both` = checked both ways.
+    R.sight = { eye: 1.7, target: 3, maxD: 2600, forest: 110, canopyForest: 20, canopyCity: 28, clear: 30, sea: 0.35, lookoutReach: 40, lookoutDrop: 14,
+        underground: ['bermuda', 'whirlpool', 'sewers', 'cavern', 'ley', 'dumb'],
+        never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
+            ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
+    // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
+    R.baked = { id: '0b57d9ab50', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/' };
+    return R;
+})();
+/* the recipe's readers (the map, the bake and the tests read the land through these) */
+function hqLandPlace(id) { return HQ_LAND.places.find(p => p.id === id) || null; }
+function hqLandRegionLabel(region) { return HQ_LAND.regionNames[region] || String(region || '').toUpperCase(); }
+function hqLandBaked() { return !!(HQ_LAND.baked && HQ_LAND.baked.id); }
+/* a baked file's url ('land.json', 'land-map.png', 'tiles/…'): the bake id rides as ?b= so a re-bake is a new url; null before the first bake */
+function hqLandUrl(name) { return hqLandBaked() ? HQ_LAND.baked.base + name + '?b=' + HQ_LAND.baked.id : null; }
+/* R2 as one pure rule (the bake's sight test and the tests share it): may place `a`'s pad see place `b`'s GROUND?
+   `seaShare` = the fraction of the line a→b over water or ice. true for an exempt viewer (a peak or a lookout). */
+function hqLandSightOk(a, b, seaShare) {
+    const A = hqLandPlace(a), B = hqLandPlace(b);
+    if (!A || !B) return true;
+    if (A.peak || A.lookout) return true;
+    if (B.peak || B.lookout || A.region === B.region) return true;
+    return (seaShare || 0) >= HQ_LAND.sight.sea;
+}
+/* mondo's named separations: the pairs `a` must not see at all (the ground or the top); returns the ids */
+function hqLandNever(a) {
+    const out = [];
+    HQ_LAND.sight.never.forEach(([x, y, both]) => { if (x === a) out.push(y); else if (both && y === a) out.push(x); });
+    return out;
+}
 /* ── THE UNDISCOVERED DOOR (2026-09-21, the user: "don't show the names of undiscovered
    locations on doors — just a question mark or nothing at all; get rid of the descriptors,
    we just need the location") ─────────────────────────────────────────────────────────
