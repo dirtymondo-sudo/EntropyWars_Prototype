@@ -498,3 +498,22 @@ Full entry: OPEN_WORLD_PLAN.md §12 "PHASE 11 SHIPPED". What a later thread need
 - **The bitmaps** (`_texBmpOk` / `_texFetch` `o.bitmap`): Chromium only, walk sheets only; `EW_NO_BITMAPS` off.
 - Test: `hq-attach.test.js`. A vm test that extracts `_hqStageRun` must also extract `_hqStageTZone` (and
   `_hqStageLamps` needs `_hqStagePick`).
+
+## THE PORTALS + THE MEMORY BUDGET (2026-09-28, WORLD_GEOGRAPHY_PLAN G1 = OPEN_WORLD_PLAN Phase 12, zip WORLD_GEOGRAPHY_1)
+- **The portals** (`_hqCull*` in three-renderer.js, beside the stage ring; ticked right after `_hqStageTick`). A
+  neighbour joined ONLY by door spans (`_hqCullCand`) is hidden with `partRoot.visible = false` (kept built, attached,
+  ticked) while every door toward it is shut (`_hqCullShut`: leaf landed under `rec.leafG`, `openT` 0, not see-through,
+  walker beyond swing + 0.75 m) or its doorway box is off screen (`_hqCullSees`). `_hqCullWant` is the pure rule (the
+  tests' truth table). Off unless the current part is a closed box with the eye inside, every other staged part is a
+  closed box, and the room has no mirror. A part with a spot / sun / shadow-casting lamp is never hidden.
+- **The light count.** Hiding a root drops its lamps from three's point-light count and would recompile every program.
+  `_hqStagePick` counts a hidden root's lamps anyway and returns `pad`; `_hqStageLamps` lights that many dark pads
+  (`hq_cull_pads` group in the scene, intensity 0, `_ew_cullPad`); `_hqWarmNew` drops pads from "now" and adds them to
+  "next". Resets: `_hqStageSwap` (top), the `_hqStageAttach` detach branch, `_hqLeave`, the switch.
+- **The memory budget** (`_mm*`, before `_miscModelInstance`). `_miscModelCache` entries carry `at` (Date.now: the vm
+  tests have no `performance`) and `bytes` (`_mmBytes`). `_mmTick` every 4 s in the walk; over budget it gathers live
+  geometry uuids (`_mmLive`: the walk scene, every stage part, the battle scene, the menu, the hand-over) and drops via
+  `_mmPick` / `_mmEvict`. A file the spells took through `_oneFileGltf` is marked `_ewOneFile` and never dropped. A
+  dropped file a stray clone still draws re-uploads from its arrays (three re-creates buffers), so a missed holder
+  costs a hitch, not a black mesh. `_mmRead` = `hq.mem()` / `perf().mem`; `_mmLine` = the readout's MEM part.
+- Switches: `window.EW_NO_PORTALS`, `window.EW_NO_MEM_BUDGET`, `window.EW_MEM_MB`. Tests: hq-joins, asset-store.
