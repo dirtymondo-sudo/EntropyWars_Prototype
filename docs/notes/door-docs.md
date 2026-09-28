@@ -187,6 +187,16 @@ Append new notes for this system at the end of this file.
   supersedes DOOR_RACE_DESIGN.md:23's "one door object" rule and rev 3's "never re-add a
   door-placing row".
 
+## THE WORLD GEOGRAPHY plan (2026-09-28) — READ THIS BEFORE THE OPEN WORLD PLAN'S §4.5
+- `WORLD_GEOGRAPHY_PLAN.md` + `WORLD_GEOGRAPHY_MAP.jpg` (repo root; the full map, eight 3D views and the
+  sketch generator in the project folder `open-world/geography/`) — mondo's 2026-09-27 ask ("it feels
+  stitched together and not an actual map"): ONE LAND (one baked heightmap, sites on pads, no rectangle
+  edges outdoors), THE SIGHT RULE (a region's ground is first seen from a reveal point; tested on every
+  bake), NO INVISIBLE WALLS (the wall audit), Route 1 as a 5.8 km ring, rivers, Loch Ness, the Deep all
+  round and the ice wall border, the city on a hill with sloped streets, dungeons with the same rules (no
+  puzzles). It REPLACES OPEN_WORLD_PLAN §4.5 and the outdoor zones and KEEPS that plan's engine; Phase 12
+  runs first as G1. Phases G0–G12 in its §7, forks in §8; append to its §12 per phase.
+
 ## THE OPEN WORLD plan (2026-09-26)
 - `OPEN_WORLD_PLAN.md` (repo root; copy in the project folder `open-world/`) — the explored world as
   ZONES of stitched PARTS on one ground: `DOOR_HQ.world` frames + joins (§4), the STAGE that draws the
