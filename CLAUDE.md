@@ -100,6 +100,8 @@ diffs. The deliverable is always the full edited file, produced in chat.
   Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off; test hq-lod.test.js.
   Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): test hq-attach.test.js; notes in
   rendering-loading-perf.md "THE SMOOTH ATTACH".
+  Phase 12 = WORLD_GEOGRAPHY_PLAN G1 (portals `_hqCull*`, memory budget `_mm*`, the MEM line): tests hq-joins +
+  asset-store; notes rendering-loading-perf.md "THE PORTALS + THE MEMORY BUDGET".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

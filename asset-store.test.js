@@ -330,3 +330,68 @@ test('the tools: manifest-assets builds, merges and counts the siblings; optimiz
     assert.equal(pkg.scripts.optimize, 'node optimize-assets.js'); assert.equal(pkg.scripts.manifest, 'node manifest-assets.js');
     assert.ok(!pkg.dependencies['@gltf-transform/core'] && !pkg.dependencies.sharp, 'the tools\' deps stay out of the server\'s install');
 });
+
+/* ══ THE MEMORY BUDGET (WORLD_GEOGRAPHY_PLAN.md G1 = OPEN_WORLD_PLAN.md Phase 12, 2026-09-28): the parsed models an estimate
+   of their GPU bytes, the idle ones nothing draws dropped oldest first past the budget, the MEM line on the readout */
+function mmCtx(extra) {
+    const ctx = Object.assign({ Math, Date, console, window: {}, HQ_STAGE_RULES: { heapMB: 700, cacheIdleMs: 120000 }, _miscModelCache: {}, _unitGlbCache: {},
+        _hqPropMatCache: new Map(), _cutoutDepthMats: new Map(), scene: null, _menu: null, _hqRoomHandover: null, _objectsDirty: false }, extra || {});
+    vm.createContext(ctx);
+    vm.runInContext(['_mmOff', '_mmBudgetMB', '_mmGeoBytes', '_mmTexBytes', '_mmBytes', '_mmPick', '_mmLive', '_mmEvict', '_mmRead', '_mmLine'].map(n => fn(renderer, n)).join('\n')
+        + '\nvar _mmEvicted = 0, _mmFreed = 0, _mmLast = null;', ctx);
+    return ctx;
+}
+let _uid = 0;
+const disp = [];
+const mkGeo = (n, o) => Object.assign({ uuid: 'g' + (++_uid), attributes: { position: { array: new Float32Array(n * 3) }, normal: { array: new Float32Array(n * 3) } }, index: { array: new Uint16Array(n) }, dispose() { disp.push(this.uuid); } }, o || {});
+const mkTex = (w, h, mip) => ({ uuid: 't' + (++_uid), isTexture: true, image: { width: w, height: h }, generateMipmaps: mip !== false, dispose() { disp.push(this.uuid); } });
+const mkMat = map => ({ uuid: 'm' + (++_uid), map, dispose() { disp.push(this.uuid); } });
+const mkRoot = meshes => ({ traverse(f) { meshes.forEach(f); } });
+test('THE MEMORY BUDGET: the estimate counts vertices, index, LOD levels and sheets (× 4/3 with mipmaps), a shared thing once', () => {
+    const c = mmCtx();
+    const lod = mkGeo(10), g = mkGeo(100, { _ew_lods: [lod] }), t = mkTex(256, 256), t2 = mkTex(64, 64, false);
+    const m = mkMat(t), m2 = mkMat(t);
+    m2.emissiveMap = t2;
+    const vb = n => n * 3 * 4 * 2 + n * 2;
+    assert.strictEqual(c._mmBytes(mkRoot([{ geometry: g, material: m }]), {}), Math.round(vb(100) + vb(10) + 256 * 256 * 4 * 4 / 3));
+    assert.strictEqual(c._mmBytes(mkRoot([{ geometry: g, material: m }, { geometry: g, material: [m, m2] }]), {}), Math.round(vb(100) + vb(10) + 256 * 256 * 4 * 4 / 3 + 64 * 64 * 4),
+        'the second mesh shares the geometry and the sheet: only the unmipped glow counts');
+    assert.strictEqual(c._mmBytes(mkRoot([{ geometry: Object.assign(mkGeo(5), { _ew_lodBase: g }) }]), {}), vb(100) + vb(10), 'a mesh drawing a level counts its full mesh');
+});
+test('THE MEMORY BUDGET: the pick drops the oldest idle entries nothing draws, never a loading, failed, shared or live one', () => {
+    const c = mmCtx(), now = 1e9, idle = 120000;
+    const r = (url, at, o) => Object.assign({ url, at: now - at, bytes: 10, loading: false, failed: false, one: false, x: false, live: false }, o || {});
+    const list = [r('young', 1000), r('old', 900000), r('older', 990000), r('live', 999000, { live: true }), r('spell', 999000, { one: true }),
+                  r('loading', 999000, { loading: true }), r('failed', 999000, { failed: true }), r('waiting', 999000, { x: true }), r('mid', 500000)];
+    assert.deepStrictEqual(Array.from(c._mmPick(list, now, idle, 1e9, 6)), ['older', 'old', 'mid'], 'oldest first; the young one is still in use');
+    assert.deepStrictEqual(Array.from(c._mmPick(list, now, idle, 15, 6)), ['older', 'old'], 'stops once enough is freed');
+    assert.deepStrictEqual(Array.from(c._mmPick(list, now, idle, 1e9, 1)), ['older'], 'at most `max` a sweep');
+});
+test('THE MEMORY BUDGET: the drop disposes the file\'s meshes, levels, materials, sheets, its converted materials and depth materials', () => {
+    const c = mmCtx();
+    disp.length = 0;
+    const lod = mkGeo(4), g = mkGeo(8, { _ew_lods: [lod] }), t = mkTex(32, 32), m = mkMat(t), conv = mkMat(t), dm = mkMat(null);
+    c._hqPropMatCache.set(m.uuid, conv); c._cutoutDepthMats.set(t, dm);
+    c._miscModelCache.u = { root: mkRoot([{ geometry: g, material: m }]), bytes: 1234 };
+    assert.strictEqual(c._mmEvict('u'), 1234);
+    assert.ok(!('u' in c._miscModelCache), 'forgotten: the next request loads it again');
+    for (const x of [g, lod, t, m, conv, dm]) assert.ok(disp.includes(x.uuid), x.uuid + ' disposed');
+    assert.strictEqual(c._hqPropMatCache.size, 0); assert.strictEqual(c._cutoutDepthMats.size, 0);
+    assert.strictEqual(c._mmEvict('u'), 0, 'twice: nothing');
+    assert.match(c._mmLine(), /^$/, 'no line before the first sweep');
+    c._mmLast = c._mmRead(); assert.match(c._mmLine(), / · MEM \d+\/700 MB$/);
+    c.window.EW_PERF_LOW = true; assert.strictEqual(c._mmBudgetMB(), 320, 'a phone');
+    c.window.EW_MEM_MB = 256; assert.strictEqual(c._mmBudgetMB(), 256, 'the override');
+});
+test('THE MEMORY BUDGET is wired: the last use stamped, the walk sweeps, the spells\' files kept, the readout, the API, the switch', () => {
+    assert.match(fn(renderer, '_loadMiscModel'), /if \(e\.root\) \{ e\.at = Date\.now\(\); cb\(e\.root\); return; \}/);
+    assert.match(fn(renderer, '_loadMiscModel'), /e\.root = obj; e\.loading = false; e\.at = Date\.now\(\);/);
+    assert.match(fn(renderer, '_oneFileGltf'), /me\._ewOneFile = true; me\.at = Date\.now\(\);/, 'a misc file the spells take is theirs too: never dropped');
+    assert.match(renderer, /if \(H\.ready\) \{ try \{ _mmTick\(H, now\); \}/);
+    assert.match(fn(renderer, '_mmTick'), /_mmPick\(list, t, idle, tot - cap \* MM_FLOOR, MM_MAX\)/);
+    assert.match(fn(renderer, '_mmLive'), /_menu\.scene/); assert.match(fn(renderer, '_mmLive'), /H\.stage\.parts/);
+    assert.match(fn(renderer, '_tickFpsCounter'), /' TRIS' \+ _mmLine\(\)/);
+    assert.match(fn(renderer, '_perfRead'), /mem: \(typeof _mmRead === 'function'\) \? _mmRead\(\) : null,/);
+    assert.match(renderer, /mem: function \(\) \{ return _mmRead\(\); \},/);
+    assert.match(fn(renderer, '_mmOff'), /window\.EW_NO_MEM_BUDGET/);
+});

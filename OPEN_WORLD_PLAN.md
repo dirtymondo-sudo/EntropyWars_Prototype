@@ -981,7 +981,7 @@ becomes the west zone's sky; Shasta's cone stays a landmark until Shasta is a pa
 | 9 | **THE ASSETS**: `optimize-assets.js`, `manifest-assets.js`, `MeshoptDecoder` in the loader, the manifest in the store's accounting and the warm, the cap by quota, the settings row, `hq.warmZone` | three-renderer.js, index.html, deploy.js (the manifest upload), sprites.js / data.js (the renamed URLs, in the user's upload delivery) | `asset-store.test.js` grows the manifest and cap pins; `load-diet.test.js` unchanged — **DONE 2026-09-27 with deviations (§12)**: the swap is by the manifest, not by renamed URLs; textures keep their size (2048 cap); no quantization; KTX2 not wired (r128 ships no KTX2Loader in examples/js) |
 | 10 | **THE FAR, SMARTER** (§5.9): LOD levels + impostors for the Meshy props (baked by Phase 9's tool), the model queue sorted by distance to the walker, the far shells (§5.4) | three-renderer.js, the Phase 9 tool | `hq-lod.test.js` (a prop's levels switch at their distances; the queue orders near first) — **DONE 2026-09-27 with deviations (§12)**: levels by screen size, the small-prop cull in place of impostors, the far shells across the whole ground |
 | 11 | **THE SMOOTH ATTACH** (§5.9): `renderer.compile` before a part attaches, the ms-budget build slice (`buildMs`), `ImageBitmapLoader` textures, static batching of the shell per tile | three-renderer.js | `hq-stage.test.js` grows the slice (no step over budget on the vm clock) and the merge count pins — **DONE 2026-09-27** (zip 14; `hq-attach.test.js`) |
-| 12 | **PORTALS + THE MEMORY BUDGET** (§5.9): a door join is a portal (a neighbour through a shut door is not drawn), LRU eviction of parsed models under a VRAM estimate, the MEM line on the readout | three-renderer.js | `hq-joins.test.js` grows the portal rule; `asset-store.test.js` the eviction |
+| 12 | **PORTALS + THE MEMORY BUDGET** (§5.9): a door join is a portal (a neighbour through a shut door is not drawn), LRU eviction of parsed models under a VRAM estimate, the MEM line on the readout | three-renderer.js | `hq-joins.test.js` grows the portal rule; `asset-store.test.js` the eviction — **DONE 2026-09-28 as WORLD_GEOGRAPHY_PLAN G1** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_1; §12, deviation: rigs counted, never dropped) |
 | 13 | **SOUND IN SPACE** (§5.9): positional room tone / props on the stage (`PannerNode`), faded by the ring | audio.js, three-renderer.js | `audio-space.test.js` |
 | 14 | **THE LIGHT** (§5.9, optional): shadow cascades on the open ground, light probes per interior part | three-renderer.js | screenshots + `day-sky.test.js` |
 | ∥ | **THE INTERIORS** (§8.1: the mall, the basilica, the bunker, the D.U.M.B. catwalks, then the remaining wing merges): any time from Phase 0, one thread each | data.js, three-renderer.js | one pinning test each, the BUILT checklist, screenshots |
@@ -1541,3 +1541,28 @@ Line numbers are the 2026-09-26 clone's (token `20260926-bugfix-03-cors`); grep 
   - Tests: `hq-attach.test.js` (new: the slice on a fake clock, the builders' pins, the warm-up on real three with a
     fake renderer, the merge and its draw/raycast rules, the hand-backs, the bitmaps); `hq-stage.test.js` /
     `hq-coast.test.js` extract the new helpers; `hq-clock.test.js` fixed (two older pins).
+- 2026-09-28 — **Phase 12 DONE as WORLD_GEOGRAPHY_PLAN.md G1** (thread "World geography", zip
+  `open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_1.zip`, token `20260928-geography-01-cors`, built on spell
+  library zip 12's three-renderer.js / index.html).
+  - THE PORTALS (`_hqCull*`; "portal" was taken by THE DOOR GUN's `_hqPortal*`): a neighbour whose every span is a door
+    span (not an island, a host, a room beside) is hidden (`partRoot.visible = false`, still built, attached, ticked) while
+    every door toward it is shut or off screen. A door is shut when its leaf has landed (a mesh under `rec.leafG`), rests
+    at 0, is no see-through leaf (portcullis, bars, grille, glass …) and the walker is beyond its swing + 0.75 m. "Off
+    screen" = the doorway box (the recess through the wall) wholly behind one frustum plane. Shown rooms pass the test on
+    through their own doors (a chain). The rule is off (all drawn) unless the current part is a closed box with the eye
+    inside it, every other part on the stage is a closed box, and there is no mirror; a part with a non-point or a
+    shadow-casting light is never hidden. THE LIGHT COUNT: three keys programs on the point-light count, so
+    `_hqStagePick` still counts a hidden part's lamps and returns `pad`; `_hqStageLamps` lights that many dark pad lamps
+    (`hq_cull_pads`, intensity 0) and the warm-up compiles with them — a flip never recompiles. Resets: the swap, the
+    detach, the leave, the switch `window.EW_NO_PORTALS`. `ThreeRenderer.hq.cull()`.
+  - THE MEMORY BUDGET (`_mm*`): each `_miscModelCache` entry carries `at` (load, every hit) and a GPU estimate
+    (attributes + index + LOD levels + sheets × 4/3 with mips). Every 4 s in the walk: over `HQ_STAGE_RULES.heapMB`
+    (700; 320 on EW_PERF_LOW; `window.EW_MEM_MB` overrides) the idle (`cacheIdleMs` 120 s) entries nothing draws are
+    dropped oldest first to 85 %, 6 a sweep, disposing geometries, levels, materials, `_hqPropMatCache` conversions and
+    cut-out depth materials. Never dropped: loading, failed, and the spells' shared files (`_ewOneFile`). DEVIATION: the
+    unit rigs (`_unitGlbCache`) are counted, never dropped (their clips are retargeted per rig). Not built: §5.2's "ring
+    shrinks to one hop over heapMB" (the eviction covers the growth). Switch `window.EW_NO_MEM_BUDGET`; `hq.mem()`,
+    `perf().mem`, and the readout's `· MEM <used>/<budget> MB`.
+  - Tests: `hq-joins.test.js` (the candidate rule on the medical wing / Downtown / the harbour, the frustum test, the rule's
+    truth table, the shut door, the pads keep the count, the wiring); `asset-store.test.js` (the estimate, the pick, the
+    drop, the budget line, the wiring). Not measured in a browser (no playtest asked).

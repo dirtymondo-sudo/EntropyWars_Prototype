@@ -24016,7 +24016,7 @@ const ThreeRenderer = (function () {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
         var e = _miscModelCache[url];
         if (e) {
-            if (e.root) { cb(e.root); return; }
+            if (e.root) { e.at = Date.now(); cb(e.root); return; }   // THE MEMORY BUDGET (G1): the last use
             if (e.failed) return;
             e.cbs.push(cb);
             _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
@@ -24031,7 +24031,7 @@ const ThreeRenderer = (function () {
             _compactMobileModelTextures(obj);
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
-            e.root = obj; e.loading = false;
+            e.root = obj; e.loading = false; e.at = Date.now();
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
@@ -24084,8 +24084,9 @@ const ThreeRenderer = (function () {
     }
     function _oneFileGltf(url, onLoad, onError, o) {
         var me = _miscModelCache[url];
-        if (me && me.root) { onLoad({ scene: me.root, scenes: [me.root], _ewOneFile: true }); return; }
+        if (me && me.root) { onLoad({ scene: me.root, scenes: [me.root], _ewOneFile: true }); me._ewOneFile = true; me.at = Date.now(); return; }   // THE MEMORY BUDGET (G1): the spells hold it now — never dropped
         if (me && me.loading) {
+            me._ewOneFile = true;
             me.cbs.push(function (root) { onLoad({ scene: root, scenes: [root], _ewOneFile: true }); });
             (me.xcbs || (me.xcbs = [])).push(function (dropped) {
                 if (dropped) _oneFileGltf(url, onLoad, onError, o);
@@ -24103,7 +24104,7 @@ const ThreeRenderer = (function () {
                     _compactMobileModelTextures(root);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                     root._ew_bbox = new THREE.Box3().setFromObject(root);
-                    e.root = root; e.loading = false;
+                    e.root = root; e.loading = false; e.at = Date.now();
                     var cbs = e.cbs.splice(0);
                     for (var i = 0; i < cbs.length; i++) { try { cbs[i](root); } catch (_e) {} }
                     e.xcbs.length = 0;
@@ -24118,6 +24119,131 @@ const ThreeRenderer = (function () {
             e.loading = false; e.cbs.length = 0; _oneFileNotify(e, true);
             if (onError) onError(err);
         }, o);
+    }
+
+    /* ══ THE MEMORY BUDGET (WORLD_GEOGRAPHY_PLAN.md G1 = OPEN_WORLD_PLAN.md Phase 12, 2026-09-28) ══════════════════════════
+       The parsed-model cache (_miscModelCache) was never freed: a long walk only grew. Now each entry carries its last use
+       (`at`: the load, every cache hit) and an estimate of what it holds on the GPU (_mmBytes: every vertex attribute + index
+       of its meshes and their LOD levels, every sheet w × h × 4, × 4/3 with mipmaps; a thing shared is counted once). Every
+       ~4 s in the walk the sum is read against the budget (HQ_STAGE_RULES.heapMB MB, 320 on a phone — window.EW_MEM_MB
+       overrides); over it, the entries nothing draws (no mesh of the walk's scene, of any built part, of the battle, the menu
+       or the hand-over carries their geometry) and unused for HQ_STAGE_RULES.cacheIdleMs (120 s) are dropped, the oldest first,
+       down to 85 % of the budget, 6 a sweep at most: geometries, LOD levels, materials, the room's converted materials
+       (_hqPropMatCache) and the cut-out depth materials of their sheets are disposed and the entry forgotten (a later request
+       loads the file again, from the disk store). Never dropped: a file still loading or failed, and one the spells share
+       (`_ewOneFile`: the weapon cache holds its root). The unit rigs (_unitGlbCache) are counted on the readout, never dropped
+       (their clips are retargeted per rig). Switch: window.EW_NO_MEM_BUDGET = true. ThreeRenderer.hq.mem() → _mmRead(). */
+    var MM_EVERY_MS = 4000, MM_FLOOR = 0.85, MM_MAX = 6, _mmAt = 0, _mmWarned = false, _mmEvicted = 0, _mmFreed = 0, _mmLast = null;
+    function _mmOff() { return typeof window !== 'undefined' && !!window.EW_NO_MEM_BUDGET; }
+    function _mmBudgetMB() {
+        var W = (typeof window !== 'undefined') ? window : {};
+        if (W.EW_MEM_MB > 0) return +W.EW_MEM_MB;
+        if (W.EW_PERF_LOW) return 320;
+        return (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.heapMB > 0) ? HQ_STAGE_RULES.heapMB : 700;
+    }
+    function _mmGeoBytes(g, seen) {
+        if (!g || seen[g.uuid]) return 0;
+        seen[g.uuid] = 1;
+        var b = 0, A = g.attributes || {}, M = g.morphAttributes || {};
+        var one = function (a) {
+            if (!a) return;
+            var arr = a.isInterleavedBufferAttribute ? (a.data && a.data.array) : a.array, key = a.isInterleavedBufferAttribute ? (a.data && a.data.uuid) : null;
+            if (key) { if (seen[key]) return; seen[key] = 1; }
+            if (arr && arr.byteLength) b += arr.byteLength;
+        };
+        for (var k in A) one(A[k]);
+        for (var m in M) (M[m] || []).forEach(one);
+        if (g.index && g.index.array) b += g.index.array.byteLength;
+        (g._ew_lods || []).forEach(function (l) { b += _mmGeoBytes(l, seen); });
+        return b;
+    }
+    function _mmTexBytes(t, seen) {
+        if (!t || !t.isTexture || seen[t.uuid]) return 0;
+        seen[t.uuid] = 1;
+        var im = t.image, w = (im && im.width) || 0, h = (im && im.height) || 0;
+        if (!w || !h) return 0;
+        return w * h * 4 * (t.generateMipmaps !== false ? 4 / 3 : 1);
+    }
+    /* the GPU estimate of one root (seen: uuid → 1, shared across the call's roots so nothing counts twice) */
+    function _mmBytes(root, seen) {
+        seen = seen || {};
+        var b = 0;
+        root.traverse(function (o) {
+            if (o.geometry) b += _mmGeoBytes(o.geometry._ew_lodBase || o.geometry, seen);
+            var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            ms.forEach(function (m) { if (!m || seen[m.uuid]) return; seen[m.uuid] = 1; for (var k in m) { var t = m[k]; if (t && t.isTexture) b += _mmTexBytes(t, seen); } });
+        });
+        return Math.round(b);
+    }
+    /* which entries go: [{ url, at, bytes, loading, failed, one, x, live }] → the urls, the oldest idle first, until `need`
+       bytes are freed or `max` are picked */
+    function _mmPick(list, now, idleMs, need, max) {
+        var c = list.filter(function (r) { return !r.loading && !r.failed && !r.one && !r.x && !r.live && r.bytes > 0 && now - (r.at || 0) >= idleMs; });
+        c.sort(function (a, b) { return (a.at || 0) - (b.at || 0); });
+        var out = [], got = 0;
+        for (var i = 0; i < c.length && got < need && out.length < max; i++) { out.push(c[i].url); got += c[i].bytes; }
+        return out;
+    }
+    /* the geometries every drawn thing holds (a LOD level counts as its full mesh) */
+    function _mmLive(H) {
+        var live = {}, roots = [];
+        if (H && H.scene) roots.push(H.scene);
+        if (H && H.stage) for (var id in H.stage.parts) { var P = H.stage.parts[id].P; if (P && P.partRoot) roots.push(P.partRoot); }
+        if (scene) roots.push(scene);
+        if (_menu && _menu.scene) roots.push(_menu.scene);
+        var ho = _hqRoomHandover; if (ho) [ho.shellGroup, ho.doorGroup, ho.propGroup, ho.sky && ho.sky.group, ho.sky && ho.sky.landmarks].forEach(function (g) { if (g) roots.push(g); });
+        roots.forEach(function (R) { R.traverse(function (o) { var g = o.geometry; if (g) live[(g._ew_lodBase || g).uuid] = 1; }); });
+        return live;
+    }
+    function _mmEvict(url) {
+        var e = _miscModelCache[url]; if (!e || !e.root) return 0;
+        var geos = [], mats = [], texs = [];
+        e.root.traverse(function (o) {
+            if (o.geometry && geos.indexOf(o.geometry) < 0) geos.push(o.geometry);
+            var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            ms.forEach(function (m) { if (m && mats.indexOf(m) < 0) mats.push(m); });
+        });
+        geos.slice().forEach(function (g) { (g._ew_lods || []).forEach(function (l) { if (l && geos.indexOf(l) < 0) geos.push(l); }); });
+        mats.slice().forEach(function (m) {
+            var pm = _hqPropMatCache.get(m.uuid); if (pm) { _hqPropMatCache.delete(m.uuid); if (mats.indexOf(pm) < 0) mats.push(pm); }
+        });
+        mats.forEach(function (m) { for (var k in m) { var t = m[k]; if (t && t.isTexture && texs.indexOf(t) < 0) texs.push(t); } });
+        texs.forEach(function (t) { var dm = _cutoutDepthMats.get(t); if (dm) { _cutoutDepthMats.delete(t); try { dm.dispose(); } catch (x) {} } try { t.dispose(); } catch (x) {} });
+        geos.forEach(function (g) { try { g.dispose(); } catch (x) {} });
+        mats.forEach(function (m) { try { m.dispose(); } catch (x) {} });
+        delete _miscModelCache[url];
+        _mmEvicted++; _mmFreed += e.bytes || 0;
+        return e.bytes || 0;
+    }
+    /* the sums: { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
+    function _mmRead() {
+        var seen = {}, mb = 0, n = 0, rb = 0, rn = 0;
+        for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
+        for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
+        return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
+                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff() };
+    }
+    function _mmTick(H, now) {
+        if (now - _mmAt < MM_EVERY_MS) return;
+        _mmAt = now;
+        var R = _mmLast = _mmRead();
+        if (_mmOff()) return;
+        var cap = R.budget * 1048576, tot = (R.misc.mb + R.rigs.mb) * 1048576;
+        if (tot <= cap) return;
+        var live = _mmLive(H), list = [], t = Date.now(), idle = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.cacheIdleMs > 0) ? HQ_STAGE_RULES.cacheIdleMs : 120000;
+        for (var u in _miscModelCache) {
+            var e = _miscModelCache[u], isLive = false;
+            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
+        }
+        var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, MM_MAX);
+        go.forEach(_mmEvict);
+        if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
+    }
+    /* the readout's line: MEM <misc + rigs> / <budget> MB */
+    function _mmLine() {
+        var R = _mmLast; if (!R) return '';
+        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB';
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -33360,7 +33486,7 @@ const ThreeRenderer = (function () {
         var el = _ensureFpsEl();
         /* THE WALK'S READOUT (OPEN_WORLD_PLAN.md Phase 0): in the building the counter also reads the whole frame's draw
            calls and triangles (every pass of it: the scene, the shadow map, the post chain — _hqFrameGuarded sums them) */
-        el.textContent = fps + ' FPS' + (frame ? ' · ' + frame.calls + ' CALLS · ' + (frame.tris >= 1e6 ? (frame.tris / 1e6).toFixed(2) + 'M' : Math.round(frame.tris / 1000) + 'K') + ' TRIS' : '');
+        el.textContent = fps + ' FPS' + (frame ? ' · ' + frame.calls + ' CALLS · ' + (frame.tris >= 1e6 ? (frame.tris / 1e6).toFixed(2) + 'M' : Math.round(frame.tris / 1000) + 'K') + ' TRIS' + _mmLine() : '');   // + THE MEMORY BUDGET's MEM line (G1)
         el.style.color = fps >= 50 ? '#7dff9a' : (fps >= 28 ? '#ffd866' : '#ff6b6b');
     }
 
@@ -33383,6 +33509,8 @@ const ThreeRenderer = (function () {
                  field: _fieldGroundLive(), hq: !!_hq, room: _fieldRoomStats,
                  /* the walk's last WHOLE frame (every pass summed) while the counter is on — OPEN_WORLD_PLAN.md Phase 0 */
                  frame: _hqFrameInfo,
+                 /* THE MEMORY BUDGET (G1): the model caches' GPU estimate against the budget, the drops so far */
+                 mem: (typeof _mmRead === 'function') ? _mmRead() : null,
                  /* THE BLOCKER SET (step 5): the fade's list, and the LAST recompute's rays / candidate roots / a rolling ms */
                  occ: (typeof _occField !== 'undefined' && _occField) ? { roots: _occField.roots.length, merged: _occField.skipped, rays: _occField.rays, tests: _occField.tests, ms: +_occField.ms.toFixed(2) } : null };
     }
@@ -47580,7 +47708,7 @@ const ThreeRenderer = (function () {
             G.add(grp);
             var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
             var dj = box ? _hqDoorJoinOf(door) : null;
-            if (dj) { rec.join = dj; rec.joinBack = back; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2)
+            if (dj) { rec.join = dj; rec.joinBack = back; rec.leafG = leafGroup; rec.oh = oh; rec.pd = pd; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2); the leaf + the recess for THE PORTALS (G1)
             if (motion && motion.clips) {
                 /* clip planes live in world space: each pocket's jamb edge,
                    keeping the side of the opening AWAY from that pocket
@@ -55491,6 +55619,7 @@ const ThreeRenderer = (function () {
         _hqTickCamera(dt);
         _hqTickWorld(dt, now);
         if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
+        if (H.stage) { try { _hqCullTick(H, now); } catch (e) { if (!H.stage.warnedCull) { H.stage.warnedCull = true; console.warn('[HQ portals] tick', e); } try { _hqCullReset(H); } catch (e2) {} } }   // THE PORTALS (G1): a room behind shut doors is not drawn
         try { _hqWarmTick(H, now); } catch (e) {}   // THE WARM (2026-09-26): the rooms behind the doors near you, the parts two joins away   // THE STAGE (OPEN_WORLD_PLAN Phase 1): the neighbours build, tick, light — and the crossing
         _hqTickRipples(dt);   // THE RIPPLES (5.3): the wader's / the swimmer's / the skiff's rings
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
@@ -55500,6 +55629,7 @@ const ThreeRenderer = (function () {
         if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         if (H.ready) { try { _hqFarTick(H, now); } catch (e) { if (!H._farWarned) { H._farWarned = true; console.warn('[HQ] the far shells failed', e); } } }   // THE FAR SHELLS (Phase 10)
         if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
@@ -56704,7 +56834,8 @@ const ThreeRenderer = (function () {
      'cam', 'targetKey', 'w', 'h', 'dirty', 'gate', 'playerAttached', 'arrive', 'ripples', 'inst', '_instTried', 'roomDef', '_dashReadyAt', '_dashTapAt',
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'far', 'lod', '_lodAt', '_lodWarned', '_farWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'far' / 'lod': THE FAR SHELLS / THE LOD LEVELS (Phase 10)
-    _HQ_ZONE_KEYS._batchWarned = 1;   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
+    _HQ_ZONE_KEYS._batchWarned = 1;
+    _HQ_ZONE_KEYS.cull = 1;   // THE PORTALS (G1): the cull record is the visit's (the swap resets it)   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
     function _hqStageArm(H) {
@@ -56794,7 +56925,7 @@ const ThreeRenderer = (function () {
         if (!!E.attached === !!on) return;
         E.attached = !!on;
         if (on) { _hqStageRootPlace(H, E); H.scene.add(E.P.partRoot); }
-        else { if (E.P.partRoot.parent) E.P.partRoot.parent.remove(E.P.partRoot); _hqStageCssShow(E.P.partRoot, false); }
+        else { if (E.P.partRoot.parent) E.P.partRoot.parent.remove(E.P.partRoot); _hqStageCssShow(E.P.partRoot, false); E.P.partRoot.visible = true; }   // THE PORTALS: a part leaves the stage drawn
         _hqStageOuterSides(H);
         H.stage.lampN = -1;   // the budget re-counts
     }
@@ -56824,6 +56955,157 @@ const ThreeRenderer = (function () {
         var ids = Object.keys(st.parts), cap = Math.max(1, (HQ_STAGE_RULES.partsBuilt || 3) - 1);
         if (ids.length > cap) ids.filter(function (i) { return !want[i]; }).slice(0, ids.length - cap).forEach(function (i) { _hqStageDispose(H, st.parts[i]); });
         _hqStageOuterSides(H);
+    }
+    /* ══ THE PORTALS (WORLD_GEOGRAPHY_PLAN.md G1 = OPEN_WORLD_PLAN.md Phase 12, 2026-09-28) ══════════════════════════════════
+       A door join is a portal: a neighbour the stage drew only because a DOOR joins it (every span a door span; not an island,
+       not a room beside another) is not drawn while every door toward it is shut, or open but off screen. The rule holds only
+       where nothing else can show that room: the current part is a closed box with the eye inside it, every other part on the
+       stage is a closed box too, and the room has no mirror. A hidden neighbour keeps its place, its build, its warm programs
+       and its door ticks (partRoot.visible = false, nothing detached), so the swing that opens its door shows it that frame.
+       A door counts as shut only when its leaf has landed (a mesh under the leaf group), rests at 0, is not a see-through leaf
+       (HQ_CULL_SEE) and the walker is not within its swing (+0.75 m: the leaf starts to move the frame after). THE LIGHT COUNT:
+       three keys every program on the number of point lights, so a hidden room's lamps would recompile the scene on every flip —
+       _hqStagePick still COUNTS a hidden root's lamps and the count it cannot light goes to dark pad lamps (intensity 0,
+       `hq_cull_pads` in the scene). A part with any other light (a spot, a sun, a shadow-casting lamp) is never hidden. Switch:
+       window.EW_NO_PORTALS = true. ThreeRenderer.hq.cull() → { on, hidden: [ids], flips, pads }. */
+    var HQ_CULL_SEE = /portcullis|bars|grille|glass|screen|curtain|bead/i;
+    function _hqCullOff() { return typeof window !== 'undefined' && !!window.EW_NO_PORTALS; }
+    function _hqCullCand(nb) {
+        if (!nb || nb.inside || nb.host || nb.beside || !nb.spans || !nb.spans.length) return false;
+        for (var i = 0; i < nb.spans.length; i++) if (nb.spans[i].kind !== 'door') return false;
+        return true;
+    }
+    /* is any of `pts` inside every plane? (false = the box is wholly behind one plane: off screen) */
+    function _hqCullSees(planes, pts) {
+        for (var i = 0; i < planes.length; i++) {
+            var n = planes[i].normal, c = planes[i].constant, out = true;
+            for (var j = 0; j < pts.length; j++) if (n.x * pts[j].x + n.y * pts[j].y + n.z * pts[j].z + c >= 0) { out = false; break; }
+            if (out) return false;
+        }
+        return true;
+    }
+    /* the rule, on plain facts: ctx = { cur, closed, parts: [{ id, cand, closed, camIn, via }], doors: [{ a, b, open }] }
+       (`open` = not shut AND on screen) → { on, hide: { id: true } } */
+    function _hqCullWant(ctx) {
+        var none = { on: false, hide: {} }, shown = {}, byId = {}, i, p;
+        if (!ctx || !ctx.closed) return none;
+        shown[ctx.cur] = true;
+        for (i = 0; i < ctx.parts.length; i++) {
+            p = ctx.parts[i]; byId[p.id] = p;
+            if (p.via) continue;
+            if (!p.cand) { if (!p.closed) return none; shown[p.id] = true; }
+            else if (p.camIn) shown[p.id] = true;
+        }
+        for (var pass = 0, grew = true; grew && pass <= ctx.parts.length + 1; pass++) {
+            grew = false;
+            for (i = 0; i < ctx.doors.length; i++) {
+                var d = ctx.doors[i]; if (!d.open) continue;
+                if (shown[d.a] && !shown[d.b] && byId[d.b]) { shown[d.b] = true; grew = true; }
+                else if (shown[d.b] && !shown[d.a] && byId[d.a]) { shown[d.a] = true; grew = true; }
+            }
+        }
+        var hide = {}, n = 0;
+        for (i = 0; i < ctx.parts.length; i++) {
+            p = ctx.parts[i];
+            if (p.via) { if (!shown[p.via]) { hide[p.id] = true; n++; } continue; }
+            if (!shown[p.id]) { hide[p.id] = true; n++; }
+            else if (p.cand && !p.closed) return none;   // an open-air room shown: what stands past it can show over its walls
+        }
+        return { on: true, hide: hide, n: n };
+    }
+    /* a door record: shut for the portal rule? (px, pz = the walker in the door's own room's metres) */
+    function _hqCullShut(d, px, pz) {
+        if (!d || !d.motion || !d.leafG || HQ_CULL_SEE.test(d.leaf || '')) return false;
+        if (!d._ew_leafOk) { var m = false; d.leafG.traverse(function (o) { if (o.isMesh) m = true; }); if (!m) return false; d._ew_leafOk = true; }
+        if (d.openT !== 0 || d.openApplied === -1) return false;
+        if (d.box && px != null && Math.hypot(px - d.box.wx, pz - d.box.wz) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 1.1) / 2 + 0.75) return false;
+        return true;
+    }
+    /* the doorway's box in the world (the leaf's recess through the wall to the far face), for the frustum test */
+    function _hqCullDoorPts(d, U) {
+        var C = d._ew_cullPts; if (!C) { C = d._ew_cullPts = []; for (var k = 0; k < 8; k++) C.push(new THREE.Vector3()); }
+        var hw = ((d.ow || 1.1) / 2 + 0.05) * U, h = ((d.oh || 2.2) + 0.05) * U, pd = d.pd || 0.55, gap = (d.join && d.join.gap) || 0;
+        var z0 = -(pd / 2 + gap + 0.1) * U, z1 = (pd / 2 + 0.1) * U;
+        for (var i = 0; i < 8; i++) C[i].set(i & 1 ? hw : -hw, i & 2 ? h : 0, i & 4 ? z1 : z0).applyMatrix4(d.group.matrixWorld);
+        return C;
+    }
+    /* a part with a light the pads cannot stand in for (not a point light, or one that casts a shadow) is never hidden */
+    function _hqCullLightsBad(E, now) {
+        var L = E._ew_cullLx;
+        if (L && now - L.at < 3000) return L.bad;
+        var bad = false; E.P.partRoot.traverse(function (o) { if (o.isLight && !o._ew_cullPad && (!o.isPointLight || o.castShadow)) bad = true; });
+        E._ew_cullLx = { at: now, bad: bad };
+        return bad;
+    }
+    function _hqCullTick(H, now) {
+        var st = H.stage; if (!st || !H.ready || !H.camera) return;
+        if (_hqCullOff()) { if (H.cull) _hqCullReset(H); return; }
+        var C = H.cull || (H.cull = { on: false, hidden: [], flips: 0, fr: null, pm: null });
+        var U = _hqUnits(), cam = H.camera.position, cx = cam.x / U, cz = cam.z / U, room = H.room, S = room && room.shell;
+        var ctx = { cur: st.id, closed: !!S && _hqStageClosedBox(room) && !(H.reflectors && H.reflectors.length) && Math.abs(cx) <= S.w / 2 + 0.3 && Math.abs(cz) <= S.d / 2 + 0.3, parts: [], doors: [] };
+        var on = {}; on[st.id] = 1;
+        if (ctx.closed) {
+            st.nbs.forEach(function (nb) {
+                var E = st.parts[nb.id]; if (!E || !E.attached || !E.P || !E.P.partRoot) return;
+                on[nb.id] = 1;
+                var r = nb.rect, cand = _hqCullCand(nb) && !!E.built && !_hqCullLightsBad(E, now);
+                ctx.parts.push({ id: nb.id, cand: cand, closed: _hqStageClosedBox(E.P.room), via: (nb.beside && nb.via) || null,
+                                 camIn: !!r && cx >= r.x0 - 0.3 && cx <= r.x1 + 0.3 && cz >= r.z0 - 0.3 && cz <= r.z1 + 0.3 });
+            });
+            for (var id0 in st.parts) if (st.parts[id0].attached && !on[id0]) return _hqCullApply(H, C, { on: false, hide: {} });   // a part the ring holds that is not a neighbour: draw it all
+            if (ctx.parts.some(function (p) { return p.cand; })) {
+                H.camera.updateMatrixWorld();
+                var fr = C.fr || (C.fr = new THREE.Frustum()), pm = C.pm || (C.pm = new THREE.Matrix4());
+                fr.setFromProjectionMatrix(pm.multiplyMatrices(H.camera.projectionMatrix, H.camera.matrixWorldInverse));
+                var pl = H.player, add = function (from, doors, q) {
+                    for (var i = 0; i < doors.length; i++) {
+                        var d = doors[i]; if (!d.join || !on[d.join.nb] || !d.group) continue;
+                        var open = !_hqCullShut(d, q ? q.x : null, q ? q.z : null) && _hqCullSees(fr.planes, _hqCullDoorPts(d, U));
+                        ctx.doors.push({ a: from, b: d.join.nb, open: open });
+                    }
+                };
+                add(st.id, H.doors || [], pl ? { x: pl.x, z: pl.z } : null);
+                ctx.parts.forEach(function (p) { var E = st.parts[p.id]; add(p.id, E.P.doors || [], (pl && E.rel) ? hqStageFromRoom(E.rel, pl.x, pl.z) : null); });
+            }
+        }
+        _hqCullApply(H, C, _hqCullWant(ctx));
+    }
+    function _hqCullApply(H, C, W) {
+        var st = H.stage, flip = false, hid = [];
+        for (var id in st.parts) {
+            var E = st.parts[id], R = E.P && E.P.partRoot; if (!R) continue;
+            var want = !(W.on && W.hide[id] && E.attached);
+            if (R.visible !== want) { R.visible = want; flip = true; }
+            if (!want) hid.push(id);
+        }
+        C.on = !!W.on; C.hidden = hid;
+        if (flip) { C.flips++; H.dirty = true; _hqStageLamps(H); }
+    }
+    /* every part drawn again (the swap, the leave, the switch) */
+    function _hqCullReset(H) {
+        var st = H && H.stage, flip = false;
+        if (H) H.cull = null;
+        if (!st) return;
+        for (var id in st.parts) { var R = st.parts[id].P && st.parts[id].P.partRoot; if (R && R.visible === false) { R.visible = true; flip = true; } }
+        if (flip && H.scene && H.camera) { try { _hqStageLamps(H); } catch (e) {} }
+    }
+    /* the dark pad lamps: k of them lit (visible, intensity 0), the rest off */
+    function _hqCullPads(H, k) {
+        var sc = H.scene, P = sc.userData.ewCullPads;
+        if (!P) { var g = new THREE.Group(); g.name = 'hq_cull_pads'; sc.add(g); P = sc.userData.ewCullPads = { group: g, list: [] }; }
+        while (P.list.length < k) { var L = new THREE.PointLight(0x000000, 0, 1, 2); L.name = 'hq_cull_pad'; L._ew_cullPad = true; L.visible = false; P.group.add(L); P.list.push(L); }
+        return P.list.slice(0, k);
+    }
+    function _hqCullPadsSet(H, k) {
+        var P = H.scene.userData.ewCullPads; if (!P && !k) return 0;
+        var on = _hqCullPads(H, k);
+        P = H.scene.userData.ewCullPads;
+        for (var i = 0; i < P.list.length; i++) P.list[i].visible = i < k;
+        return on.length;
+    }
+    function _hqCullStats(H) {
+        var C = H && H.cull, P = H && H.scene && H.scene.userData.ewCullPads;
+        return { on: !!(C && C.on), hidden: C ? C.hidden.slice() : [], flips: C ? C.flips : 0, pads: P ? P.list.filter(function (L) { return L.visible; }).length : 0, off: _hqCullOff() };
     }
     /* one frame of the stage: the build step, the attach, the neighbours' tick, the lamps, the blend, the crossing */
     function _hqStageTick(H, dt, now) {
@@ -57176,7 +57458,8 @@ const ThreeRenderer = (function () {
     function _hqStageLamps(H) {
         var pk = _hqStagePick(H, null), all = pk.all, N = pk.N;
         for (var i = 0; i < all.length; i++) all[i].o.visible = i < N;
-        H.stage.lampN = N;
+        if (pk.pad || (H.scene && H.scene.userData && H.scene.userData.ewCullPads)) _hqCullPadsSet(H, pk.pad || 0);   // THE PORTALS: a hidden room's share of the count, dark
+        H.stage.lampN = N + (pk.pad || 0);
     }
     /* the pick itself: every lamp of the drawn parts (+ `extra`, a part about to be drawn — THE WARM-UP asks what the lamps will
        be the frame after its attach), the nearest first, and N */
@@ -57184,17 +57467,21 @@ const ThreeRenderer = (function () {
         var st = H.stage, cam = H.camera.position, all = [], own = 0, v = _hqStageV || (_hqStageV = new THREE.Vector3());
         var roots = [H.partRoot]; for (var id in st.parts) if (st.parts[id].attached) roots.push(st.parts[id].P.partRoot);
         if (extra) roots.push(extra);
+        var cnt = 0;
         roots.forEach(function (R, ri) {
+            var shown = R.visible !== false;   // THE PORTALS: a hidden part's lamps still count (the pads light its share, dark)
             R.traverse(function (o) {
                 if (!o.isPointLight) return;
                 if (o._ew_stageOn == null) o._ew_stageOn = o.visible;   // a light its owner switched off stays off
                 if (!o._ew_stageOn) return;
-                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam) }); if (ri === 0) own++;
+                cnt++; if (ri === 0) own++;
+                if (!shown) return;
+                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam) });
             });
         });
-        var N = Math.min(all.length, Math.max(HQ_STAGE_RULES.lampsLive || 12, own));
+        var T = Math.min(cnt, Math.max(HQ_STAGE_RULES.lampsLive || 12, own)), N = Math.min(all.length, T);
         all.sort(function (a, b) { return a.d - b.d; });
-        return { all: all, N: N };
+        return { all: all, N: N, pad: T - N };
     }
     /* ══ THE WARM-UP (OPEN_WORLD_PLAN.md §5.9 / Phase 11, 2026-09-27) ══════════════════════════════════════════════════════
        three r128 compiles a material's shader program the first frame it is DRAWN, and uploads a sheet the first frame a
@@ -57226,9 +57513,10 @@ const ThreeRenderer = (function () {
         for (var id in st.parts) if (st.parts[id].attached) lampRoots.push(st.parts[id].P.partRoot);
         H.scene.traverseVisible(function (o) { if (o.isLight) now.push(o); });
         /* the frame after the attach: the zone's lights (a part's lamps are the pick's), the part's own non-lamp lights, the pick's N */
-        var next = now.filter(function (L) { return !(L.isPointLight && _hqUnderRoot(L, lampRoots)); });
+        var next = now.filter(function (L) { return !L._ew_cullPad && !(L.isPointLight && _hqUnderRoot(L, lampRoots)); });
         R.traverseVisible(function (o) { if (o.isLight && !o.isPointLight) next.push(o); });
         var pk = _hqStagePick(H, R); for (var i = 0; i < pk.N; i++) next.push(pk.all[i].o);
+        if (pk.pad) _hqCullPads(H, pk.pad).forEach(function (L) { next.push(L); });   // THE PORTALS: the dark pads keep the count
         W.lights = next;
         W.full = _hqLightSig(now) !== _hqLightSig(next);
         var add = function (o) { if (o.material) W.objs.push(o); };
@@ -57581,6 +57869,7 @@ const ThreeRenderer = (function () {
     function _hqStageSwap(H, to) {
         var st = H.stage, E = st.parts[to], rel = E.rel, U = _hqUnits(), t0 = performance.now();
         var fromId = st.id, fromRoom = H.room;
+        try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn before the records change hands (the next tick re-picks)
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: re-picked on the new part's list
         try { _hqInstDrop(H); } catch (e) {} H._instTried = false;
         /* the part you leave: its people stand down (the walker stays), its record becomes a neighbour's */
@@ -58314,6 +58603,7 @@ const ThreeRenderer = (function () {
         _hq = null;
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: every mesh on its full geometry before the hand-over (the battle's camera is close)
         try { _hqInstDrop(H); } catch (e) {}   // THE INSTANCE PASS: the originals draw again before the hand-over / the disposal
+        try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn again before the hand-over / the disposal
         _hqFrameInfo = null; if (_fpsEl && !active) _fpsEl.style.display = 'none';   // the walk's readout leaves with the walk (the battle's activate shows its own)
         try { if (H.gate) H.gate.close(); } catch (e) {}
         try { _mqDropQueued(2); } catch (e) {}   // THE ASSET LEDGER: this room's unstarted background jobs (its population, a warm) are forgotten with it
@@ -58485,6 +58775,10 @@ const ThreeRenderer = (function () {
            { meshes, full, lod1, lod2, culled, swaps } — null outside the walk (or before the first tick) */
         far: function () { return _hq ? _hqFarStats(_hq) : null; },
         lod: function () { return _hq ? _hqLodStats(_hq) : null; },
+        /* THE PORTALS / THE MEMORY BUDGET (G1 = Phase 12): { on, hidden: [ids], flips, pads, off } | null and
+           { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
+        cull: function () { return _hq ? _hqCullStats(_hq) : null; },
+        mem: function () { return _mmRead(); },
         /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the room's place on the clock — { hour, room, locked, day, dusk, lamp, sunAz,
            sunEl, moonEl, key: { x, y, z, i } } | null (an unclocked room). The hour itself is map.js's (window.hqClockSet(h) moves it) */
         clock: function () {

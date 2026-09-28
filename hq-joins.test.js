@@ -142,3 +142,94 @@ test('THE FILE TRACKER: near and far measured from the joined spans; fork 5 is t
  assert.match(renderer, /warmRoom: function[^\n]*_hqWarmRoom|warmRoom: _hqWarmRoom|warmRoom\(roomId, o\)[^\n]*_hqWarmRoom/);
  assert.match(renderer, /_hqWarmTick\(/);
 });
+
+/* ══ THE PORTALS (WORLD_GEOGRAPHY_PLAN.md G1 = OPEN_WORLD_PLAN.md Phase 12, 2026-09-28): a door join is a portal — a
+   neighbour behind shut doors (or open ones off screen) is not drawn; the lamp count never moves (the dark pads) */
+function cullCtx(extra) {
+ const c = Object.assign({ HQ_STAGE_RULES, HQ_WORLD_RULES, console, Math, Object, window: {} }, extra || {});
+ vm.createContext(c);
+ vm.runInContext('var _hqStageV = null;\n' + ['_hqCullOff', '_hqCullCand', '_hqCullSees', '_hqCullWant', '_hqCullShut', '_hqStagePick', '_hqStageLamps', '_hqCullPads', '_hqCullPadsSet'].map(extract).join('\n')
+  + '\nvar HQ_CULL_SEE = ' + renderer.match(/var HQ_CULL_SEE = (\/[^\n]*\/i);/)[1] + ';', c);
+ return c;
+}
+test('THE PORTALS: a neighbour joined only by doors is a candidate (the medical wing), an open edge / an island never', () => {
+ const c = cullCtx();
+ for (const id of ['medwing', 'medical']) {
+  const nbs = D.hqStageNeighbours(id);
+  assert.ok(nbs.length && nbs.every(nb => c._hqCullCand(nb)), id + ': every neighbour through a door');
+ }
+ assert.ok(D.hqStageNeighbours(DT).every(nb => !c._hqCullCand(nb)), 'Downtown\'s roads and shore: always drawn');
+ const sea = D.hqStageNeighbours('site_prebuilt_downtown_harbour').filter(nb => nb.inside || nb.host);
+ assert.ok(sea.length && sea.every(nb => !c._hqCullCand(nb)), 'an island / its sea: always drawn');
+ assert.equal(c._hqCullCand({ id: 'x', spans: [{ kind: 'door' }], beside: true, via: 'y' }), false, 'a room beside hangs on its host');
+ assert.equal(c._hqCullCand({ id: 'x', spans: [{ kind: 'door' }, { kind: 'road' }] }), false, 'a door AND an open edge');
+});
+test('THE PORTALS: the doorway box is on screen unless it lies wholly behind one frustum plane', () => {
+ const c = cullCtx();
+ const planes = [{ normal: { x: 0, y: 0, z: -1 }, constant: 0 }, { normal: { x: 1, y: 0, z: 0 }, constant: 5 }];   // in front: z < 0; x > -5
+ const box = (x, z) => [[x - 1, 0, z - 1], [x + 1, 0, z - 1], [x - 1, 2, z + 1], [x + 1, 2, z + 1]].map(([x, y, z]) => ({ x, y, z }));
+ assert.equal(c._hqCullSees(planes, box(0, -10)), true, 'ahead');
+ assert.equal(c._hqCullSees(planes, box(0, 10)), false, 'behind the eye');
+ assert.equal(c._hqCullSees(planes, box(-20, -10)), false, 'off the left edge');
+ assert.equal(c._hqCullSees(planes, box(0, 0.5)), true, 'straddling the eye: drawn');
+});
+test('THE PORTALS: the rule — hidden behind shut doors, shown through an open one in view, through a chain, never outside a closed box', () => {
+ const c = cullCtx(), W = x => JSON.parse(JSON.stringify(c._hqCullWant(x)));
+ const P = (id, o) => Object.assign({ id, cand: true, closed: true, camIn: false, via: null }, o || {});
+ const base = () => ({ cur: 'hub', closed: true, parts: [P('a'), P('b'), P('c')], doors: [{ a: 'hub', b: 'a', open: false }, { a: 'hub', b: 'b', open: false }, { a: 'b', b: 'c', open: false }] });
+ assert.deepEqual(W(base()).hide, { a: true, b: true, c: true }, 'every door shut: nothing past them drawn');
+ let x = base(); x.doors[1].open = true;
+ assert.deepEqual(W(x).hide, { a: true, c: true }, 'the open door in view shows its room only');
+ x.doors[2].open = true; assert.deepEqual(W(x).hide, { a: true }, 'and through it the next room, when that door is open and in view too');
+ x = base(); x.doors[2].open = true; assert.deepEqual(W(x).hide, { a: true, b: true, c: true }, 'an open door in a hidden room shows nothing');
+ x = base(); x.parts[0].camIn = true; assert.deepEqual(W(x).hide, { b: true, c: true }, 'the eye stands in a room: it is drawn');
+ x = base(); x.closed = false; assert.deepEqual(W(x), { on: false, hide: {} }, 'the eye outside a closed box: all drawn');
+ x = base(); x.parts.push(P('road', { cand: false, closed: false })); assert.equal(W(x).on, false, 'an open-air neighbour on an edge: all drawn');
+ x = base(); x.parts.push(P('hall', { cand: false, closed: true })); x.doors.push({ a: 'hall', b: 'c', open: true });
+ assert.deepEqual(W(x).hide, { a: true, b: true }, 'a closed room on an open edge is drawn, and its open door shows what is past it');
+ x = base(); x.parts[1].closed = false; x.doors[1].open = true; assert.equal(W(x).on, false, 'an open-air room shown through a door: all drawn');
+ x = base(); x.parts.push(P('closet', { via: 'b' })); assert.equal(W(x).hide.closet, true, 'a room beside follows its host');
+ x.doors[1].open = true; assert.equal(W(x).hide.closet, undefined);
+});
+test('THE PORTALS: a door is shut only with its leaf landed, at rest, solid, and the walker out of its swing', () => {
+ const c = cullCtx();
+ const leaf = has => ({ traverse(f) { if (has) f({ isMesh: true }); } });
+ const door = o => Object.assign({ motion: {}, leafG: leaf(true), openT: 0, openApplied: 0, leaf: 'leaf_ward', ow: 1.1, box: { wx: 0, wz: 0 } }, o);
+ assert.equal(c._hqCullShut(door(), 10, 10), true);
+ assert.equal(c._hqCullShut(door({ leafG: leaf(false) }), 10, 10), false, 'the leaf still streaming: a hole in the wall');
+ assert.equal(c._hqCullShut(door({ openT: 0.2 }), 10, 10), false, 'swinging');
+ assert.equal(c._hqCullShut(door({ openApplied: -1 }), 10, 10), false, 'closing');
+ assert.equal(c._hqCullShut(door({ leaf: 'leaf_portcullis' }), 10, 10), false, 'a portcullis is see-through');
+ assert.equal(c._hqCullShut(door({ motion: null }), 10, 10), false, 'no leaf that moves: an open doorway');
+ assert.equal(c._hqCullShut(door(), 1.5, 0), false, 'the walker within the swing: it opens the next frame');
+});
+test('THE PORTALS: a hidden room\'s lamps still count; the dark pads stand in, so the light count (the programs\' key) never moves', () => {
+ class V3 { constructor() { this.x = 0; this.y = 0; this.z = 0; } distanceToSquared(p) { return (this.x - p.x) ** 2 + (this.y - p.y) ** 2 + (this.z - p.z) ** 2; } }
+ class Group { constructor() { this.children = []; } add(o) { this.children.push(o); o.parent = this; } }
+ class PointLight { constructor() { this.isPointLight = true; this.visible = true; this.intensity = 0; } }
+ const c = cullCtx({ THREE: { Vector3: V3, Group, PointLight } });
+ const mk = x => ({ isPointLight: true, visible: true, x, getWorldPosition(v) { v.x = this.x; v.y = 0; v.z = 0; return v; } });
+ const root = ls => ({ traverse(fn) { ls.forEach(fn); } });
+ const own = [mk(0), mk(5)], nb = Array.from({ length: 6 }, (_, i) => mk(10 + i)), nbRoot = root(nb);
+ const scene = new Group(); scene.userData = {};
+ const H = { scene, camera: { position: { x: 0, y: 0, z: 0 } }, partRoot: root(own), stage: { parts: { a: { attached: true, P: { partRoot: nbRoot } } } } };
+ const lit = () => [...own, ...(nbRoot.visible === false ? [] : nb)].filter(l => l.visible).length + (scene.userData.ewCullPads ? scene.userData.ewCullPads.list.filter(p => p.visible).length : 0);
+ c._hqStageLamps(H); assert.equal(H.stage.lampN, 8); assert.equal(lit(), 8);
+ nbRoot.visible = false; c._hqStageLamps(H);
+ assert.equal(H.stage.lampN, 8, 'the count kept'); assert.equal(lit(), 8, 'two lamps of our own + six dark pads');
+ assert.ok(scene.userData.ewCullPads.list.every(p => p._ew_cullPad && p.intensity === 0));
+ nbRoot.visible = true; c._hqStageLamps(H); assert.equal(lit(), 8, 'shown again: the pads rest');
+ assert.ok(scene.userData.ewCullPads.list.every(p => !p.visible));
+});
+test('THE PORTALS are wired: the frame, the door record, the swap / the detach / the leave, the warm-up, the switch, the API', () => {
+ assert.match(renderer, /_hqStageTick\(H, dt, now\);[^\n]*\n\s+if \(H\.stage\) \{ try \{ _hqCullTick\(H, now\); \}/, 'right after the stage tick');
+ assert.match(renderer, /rec\.join = dj; rec\.joinBack = back; rec\.leafG = leafGroup; rec\.oh = oh; rec\.pd = pd;/);
+ assert.match(extract('_hqStageSwap'), /_hqCullReset\(H\);[^\n]*\n\s+try \{ _hqLodReset\(H\); \}/);
+ assert.match(extract('_hqStageAttach'), /_hqStageCssShow\(E\.P\.partRoot, false\); E\.P\.partRoot\.visible = true; \}/);
+ assert.match(extract('_hqLeave'), /_hqCullReset\(H\)/);
+ assert.match(extract('_hqWarmNew'), /!L\._ew_cullPad &&/); assert.match(extract('_hqWarmNew'), /if \(pk\.pad\) _hqCullPads\(H, pk\.pad\)/);
+ assert.match(renderer, /_HQ_ZONE_KEYS\.cull = 1;/);
+ assert.match(extract('_hqCullOff'), /window\.EW_NO_PORTALS/);
+ assert.match(renderer, /cull: function \(\) \{ return _hq \? _hqCullStats\(_hq\) : null; \},/);
+ assert.match(extract('_hqCullLightsBad'), /!o\.isPointLight \|\| o\.castShadow/, 'a part with a spot / a sun / a shadow lamp is never hidden');
+});
