@@ -41915,6 +41915,11 @@ const HQ_LAND = (function () {
     R.tunnels = [ { id: 'drain', label: 'THE STORM DRAIN', pts: [[-470, -530], [-330, -420], [-160, -300], [40, -160], [250, -20], [480, 80], [700, 180], [880, 280], [960, 330], [1035, 238]] } ];
 
     // ── RIVERS: source → mouth. The generator carves each monotone downhill. w = channel half-width (grows downstream).
+    //    THE MOUTH (G3, R7): a river that reaches the coast (its line within `coast` m of it) meets the sea at the sea's level
+    //    (+ lift): its run-out — up to `run` m, never past the foot of a falls (a stretch steeper than `falls`) — falls to it in
+    //    one even grade (at least `grade`), the channel deepening with it; never a step of water standing over the sea (the
+    //    Great River stood 4.8 m over it at the coast, the Ness 4 m).
+    R.riverMouth = { coast: 16, lift: 0.05, grade: 0.02, run: 400, falls: 0.35 };
     R.rivers = [
       { id: 'great', label: 'THE GREAT RIVER', w0: 4, w1: 16, valley: 90,
         pts: [[-330, -925], [-290, -820], [-230, -730], [-150, -690], [-110, -610], [-40, -565], [40, -600], [70, -680],
@@ -42057,7 +42062,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: '0b57d9ab50', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
+    R.baked = { id: '5e65e17571', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -42110,7 +42115,29 @@ const HQ_LAND_RULES = {
     detail: { wl: 9.5, wl2: 3.4, mix2: 0.3 },                            // m: the detail noise's two wavelengths, the second's share
     walk: { maxSlope: 1.0, probe: 0.5 },                                 // the steepest face a walker climbs; the slope's probe (m)
     cliff: { from: 0.72, to: 0.97 },                                     // the drawn cliff: slope 0.72 starts it, 0.97 is all cliff
-    sea: { y: 0, color: 0x2e627c, far: 0x3a6f88 },                       // the sea (G3 brings the water layer, the rivers and the lakes)
+    sea: { y: 0, color: 0x2e627c, far: 0x3a6f88 },                       // the sea's level; its near / far colours (G3: the water shader's own, below)
+    /* THE WATER (G3, §5.4): the sea stands at sea.y wherever its ground is below it; the rivers and the lakes are the bake's water
+       layer (each tile's surface: a river's falling one, a lake's one level). A river sample within `nearSea` m of the sea over ground
+       below it is the sea's (a mouth is one surface, never two sheets). `hull`: the most a hull's five probes may differ in water
+       level (one body of water — no sailing up or over a falls). `current`: a river carries a swimmer and a skiff downhill at k × its
+       grade m/s (capped; the grade read over `base` m either side). `falls`: a stretch steeper than `grade` that falls at least `drop` m
+       is drawn as a waterfall (R7); white water past `rapids`. `look`: the colours by depth (shallow → deep over deepM m), the fresh
+       water's tint, the foam band (m), the ripple's scale (m), the bucket's own water sheets (TERRAIN_SPRITES keys, fork 8's rule).
+       `depthTex`: the near sea's depth window (n samples every step m, re-centred when the camera has moved reM m). `moor`: where the
+       skiffs lie — the spot nearest `at` within r m where the hull floats and dry ground is in the step-off's reach (hqLandMooring). */
+    water: {
+        nearSea: 0.6, hull: 0.6,
+        current: { k: 45, max: 1.5, min: 0.0015, base: 6 },
+        falls: { grade: 0.35, drop: 2.0 }, rapids: 0.03,
+        look: { shallow: 0x3e9c96, mid: 0x2c6780, deep: 0x0d2a40, fresh: 0x2f5c52, foam: 0xeef6f4, deepM: 22, foamM: 1.4, ripple: 5.5, sheet: 'water', waves: 'waves_1' },
+        depthTex: { n: 256, step: 2, reM: 96 },
+        moor: [
+            { id: 'loch', at: [-814, 126], r: 40 },          // Loch Ness below the estate (the south-east shore)
+            { id: 'bay', at: [1210, 484], r: 40 },           // the bay's beach under the Bayside Mall
+            { id: 'harbour', at: [1026, 244], r: 40 },       // the harbour's quay
+            { id: 'river', at: [1064, -186], r: 40 },        // the Great River's lower reach, under the Stadium
+        ],
+    },
     ao: { r: 5, k: 0.08, min: 0.58 },                                    // the ground's own AO: a hollow `r` m across darkens by k a metre
     /* THE GROUND'S SHEETS (fork 8; 2026-09-28 mondo: "we already have a bunch of terrain textures in the r2 bucket, and the urban
        textures as well"): every layer wears a sheet the game already ships. `src` is a TERRAIN_SPRITES key or `urban:<Name>`
@@ -42335,6 +42362,174 @@ function _hqLandTileAtS(x, z) {
 /* the water surface over (x, z) (a river, a lake, the sea) — null where there is none, or the tile has not landed */
 function hqLandWater(x, z) { const a = _hqLandTileAtS(x, z); if (!a || !a.t.water) return null; const w = a.t.water[a.o]; return isFinite(w) ? w : null; }
 function hqLandForest(x, z) { const a = _hqLandTileAtS(x, z); return a ? a.t.forest[a.o] / 255 : 0; }
+/* ══ THE WATER LAYER (WORLD_GEOGRAPHY_PLAN.md §5.4 — G3, 2026-09-28) ══════════════════════════════════════════════════════
+   ONE READ of the water for everything that meets it: the swimmer, the skiff, the underwater look and the sheets the renderer draws
+   all ask these, so the surface you see is the surface that floats you. The sea stands at HQ_LAND_RULES.sea.y; the rivers and the
+   lakes are the tiles' baked water surface (hqLandFresh: bilinear over the 2 m samples that carry water); a river sample within
+   water.nearSea of the sea over ground below it is the sea's. */
+function _hqLandW(GX, GZ) {   // one sample of the 2 m lattice's fresh water (NaN: none, the sea's, or its tile has not landed)
+    const St = HQ_LAND_STORE, n = St.S - 1, per = St.per, g = St.grid;
+    let ti = Math.floor(GX / n), tj = Math.floor(GZ / n), q = GX - ti * n, k = GZ - tj * n;
+    let t = (ti >= 0 && tj >= 0 && ti < per && tj < per) ? g[tj * per + ti] : null;
+    if (!t && q === 0 && ti > 0 && tj >= 0 && tj < per) { const t2 = g[tj * per + ti - 1]; if (t2) { t = t2; q = n; } }
+    if (!t && k === 0 && tj > 0 && ti >= 0 && ti < per) { const t2 = g[(tj - 1) * per + ti]; if (t2) { t = t2; k = n; } }
+    if (!t || !t.water) return NaN;
+    const o = k * St.S + q, w = t.water[o];
+    if (w !== w) return NaN;
+    const sea = HQ_LAND_RULES.sea.y;
+    return (w - sea < HQ_LAND_RULES.water.nearSea && t.h[o] < sea) ? NaN : w;
+}
+/* the river / lake surface over (x, z) — null where there is none (dry land, the open sea) or its tile has not landed */
+function hqLandFresh(x, z) {
+    const St = HQ_LAND_STORE; if (!St.grid) return null;
+    const gx = (x + St.ext) / St.step, gz = (z + St.ext) / St.step, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+    let ws = 0, ys = 0;
+    for (let b = 0; b < 2; b++) for (let a = 0; a < 2; a++) {
+        const w = _hqLandW(ix + a, iz + b); if (w !== w) continue;
+        const k = (a ? fx : 1 - fx) * (b ? fz : 1 - fz) + 1e-3; ws += k; ys += w * k;
+    }
+    return ws ? ys / ws : null;
+}
+/* THE WATER'S SURFACE at (x, z): the river or the lake there, else the sea's level (the depth below says whether it is wet) */
+function hqLandWaterY(x, z) { const f = hqLandFresh(x, z); return f == null ? HQ_LAND_RULES.sea.y : f; }
+/* the water over the drawn ground at (x, z), m (≤ 0 = dry) — null before the ground has landed */
+function hqLandWaterDepth(x, z) { const g = hqLandHeight(x, z); return g == null ? null : hqLandWaterY(x, z) - g; }
+/* is the water at (x, z) a river or a lake (the underwater look's colour) */
+function hqLandWaterFresh(x, z) { return hqLandFresh(x, z) != null; }
+/* THE CURRENT at (x, z): a river's surface falls, and the water runs down it → [vx, vz, grade] (m/s, m/s, rise over run);
+   a lake and the sea hold still */
+function hqLandFlow(x, z) {
+    const C = HQ_LAND_RULES.water.current, c = hqLandFresh(x, z); if (c == null) return [0, 0, 0];
+    const b = C.base, xp = hqLandFresh(x + b, z), xm = hqLandFresh(x - b, z), zp = hqLandFresh(x, z + b), zm = hqLandFresh(x, z - b);
+    const gx = (xp != null && xm != null) ? (xp - xm) / (2 * b) : xp != null ? (xp - c) / b : xm != null ? (c - xm) / b : 0;
+    const gz = (zp != null && zm != null) ? (zp - zm) / (2 * b) : zp != null ? (zp - c) / b : zm != null ? (c - zm) / b : 0;
+    const g = Math.hypot(gx, gz); if (g < C.min) return [0, 0, g];
+    const v = Math.min(C.max, C.k * g) / g;
+    return [-gx * v, -gz * v, g];
+}
+/* THE HULL on the land's water: the five probes (the helm's layout: the middle, bow, stern, both beams) each over water at least
+   `draft` deep, all on one surface (within water.hull m of the middle's — no sailing up or over a falls), off D.O.O.R. HQ's drum */
+function hqLandHullFloats(x, z, yaw, len, beam, draft) {
+    const L = len / 2, B = beam / 2, fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw), W = HQ_LAND_RULES.water;
+    const w0 = hqLandWaterY(x, z), probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
+    for (let i = 0; i < probes.length; i++) {
+        const px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
+        if (!hqLandReadyAt(px, pz) || hqLandHQSolid(px, pz, 0)) return false;
+        const g = hqLandHeight(px, pz), w = hqLandWaterY(px, pz);
+        if (g == null || w - g < draft || Math.abs(w - w0) > W.hull) return false;
+    }
+    return true;
+}
+/* THE FALLS (R7: a drop is a waterfall, drawn as one): every stretch of a river's baked surface (land.json rivers[].pts) steeper
+   than water.falls.grade that falls at least water.falls.drop m → [{ id, river, pts (x, z, y), drop, w (half-width), top, foot }] */
+function hqLandFalls() {
+    const St = HQ_LAND_STORE, ov = St.index; if (!ov) return [];
+    if (St.falls && St.falls.id === St.id && St.falls.ov === ov) return St.falls.list;
+    const F = HQ_LAND_RULES.water.falls, list = [];
+    (ov.rivers || []).forEach(rv => {
+        const p = rv.pts || []; if (p.length < 2) return;
+        const L = [0]; for (let k = 1; k < p.length; k++) L.push(L[k - 1] + Math.hypot(p[k][0] - p[k - 1][0], p[k][1] - p[k - 1][1]));
+        const Lt = L[L.length - 1] || 1; let k0 = -1, n = 0;
+        const close = k1 => {
+            const drop = p[k0][2] - p[k1][2], s = (L[k0] + L[k1]) / 2;
+            if (drop >= F.drop) list.push({ id: rv.id + ':' + (n++), river: rv.id, pts: p.slice(k0, k1 + 1).map(q => q.slice()), drop: +drop.toFixed(2), w: rv.w0 + (rv.w1 - rv.w0) * s / Lt, top: p[k0].slice(), foot: p[k1].slice(), len: +(L[k1] - L[k0]).toFixed(1) });
+            k0 = -1;
+        };
+        for (let k = 1; k < p.length; k++) {
+            const g = (p[k - 1][2] - p[k][2]) / Math.max(1e-6, L[k] - L[k - 1]);
+            if (g >= F.grade) { if (k0 < 0) k0 = k - 1; } else if (k0 >= 0) close(k - 1);
+        }
+        if (k0 >= 0) close(p.length - 1);
+    });
+    St.falls = { id: St.id, ov, list };
+    return list;
+}
+/* THE SHEET of one landed tile's rivers and lakes (the renderer's mesh, in metres from the tile's corner): every 2 m cell with a
+   wet corner; a wet vertex stands on the water layer, a dry one (the rim, under the bank) on its wet neighbours' mean with `edge` 0
+   (the shader fades it out) → { x0, z0, n, pos (x, y, z), wat (depth, edge, flow x, flow z), grade, idx } or null (no water) */
+function hqLandWaterSheet(t) {
+    const St = HQ_LAND_STORE; if (!t || !t.water) return null;
+    const S = t.S, st = St.step, n = St.S - 1, GX0 = t.ti * n, GZ0 = t.tj * n, W = new Float32Array(S * S);
+    const sea = HQ_LAND_RULES.sea.y, near = HQ_LAND_RULES.water.nearSea, TW = t.water, TH = t.h;
+    let any = false;
+    for (let o = 0; o < S * S; o++) { const w = TW[o]; if (w === w && !(w - sea < near && TH[o] < sea)) { W[o] = w; any = true; } else W[o] = NaN; }   // _hqLandW's rule, read in place
+    if (!any) return null;
+    const vi = new Int32Array(S * S).fill(-1), cells = [];
+    for (let k = 0; k < S - 1; k++) for (let q = 0; q < S - 1; q++) {
+        const o = k * S + q;
+        if (W[o] === W[o] || W[o + 1] === W[o + 1] || W[o + S] === W[o + S] || W[o + S + 1] === W[o + S + 1]) { cells.push(o); vi[o] = vi[o + 1] = vi[o + S] = vi[o + S + 1] = 0; }
+    }
+    let nv = 0; for (let o = 0; o < S * S; o++) if (vi[o] === 0) vi[o] = nv++;
+    const pos = new Float32Array(nv * 3), wat = new Float32Array(nv * 4), grade = new Float32Array(nv), C = HQ_LAND_RULES.water.current, b = Math.max(1, Math.round(C.base / st));
+    const wAt = (q, k) => (q >= 0 && k >= 0 && q < S && k < S) ? W[k * S + q] : _hqLandW(GX0 + q, GZ0 + k);
+    for (let k = 0; k < S; k++) for (let q = 0; q < S; q++) {
+        const o = k * S + q, v = vi[o]; if (v < 0) continue;
+        let y = W[o], edge = 1;
+        if (y !== y) { edge = 0; let s = 0, c = 0; for (let dk = -1; dk <= 1; dk++) for (let dq = -1; dq <= 1; dq++) { const w = wAt(q + dq, k + dk); if (w === w) { s += w; c++; } } y = c ? s / c : HQ_LAND_RULES.sea.y; }
+        /* the current: the surface's fall over ±base (one-sided at a bank) */
+        const xp = wAt(q + b, k), xm = wAt(q - b, k), zp = wAt(q, k + b), zm = wAt(q, k - b), d = b * st;
+        const gx = (xp === xp && xm === xm) ? (xp - xm) / (2 * d) : xp === xp ? (xp - y) / d : xm === xm ? (y - xm) / d : 0;
+        const gz = (zp === zp && zm === zm) ? (zp - zm) / (2 * d) : zp === zp ? (zp - y) / d : zm === zm ? (y - zm) / d : 0;
+        const g = Math.hypot(gx, gz), sp = g < C.min ? 0 : Math.min(C.max, C.k * g) / g;
+        pos[v * 3] = q * st; pos[v * 3 + 1] = y; pos[v * 3 + 2] = k * st;
+        wat[v * 4] = y - t.h[o]; wat[v * 4 + 1] = edge; wat[v * 4 + 2] = -gx * sp; wat[v * 4 + 3] = -gz * sp;
+        grade[v] = g;
+    }
+    const idx = new Uint32Array(cells.length * 6);
+    for (let c = 0; c < cells.length; c++) { const o = cells[c], a = vi[o], b1 = vi[o + 1], c2 = vi[o + S], d3 = vi[o + S + 1]; idx.set([a, c2, b1, b1, c2, d3], c * 6); }
+    return { x0: t.x0, z0: t.z0, n: nv, pos, wat, grade, idx };
+}
+/* THE SEA'S DEPTH for the water shader: a byte a sample, (depth + 8) × 4 (−8 … 55.75 m, 255 = deeper), row-major from (x0, z0)
+   every `step` m (a multiple of the lattice's), nx × nz — the near window round the camera (built a slice of rows at a time) */
+function hqLandSeaDepth(x0, z0, nx, nz, step, out) {
+    const St = HQ_LAND_STORE, sea = HQ_LAND_RULES.sea.y, o = out || new Uint8Array(nx * nz);
+    if (!St.grid) { o.fill(255); return o; }
+    const k = Math.max(1, Math.round(step / St.step)), GX0 = Math.round((x0 + St.ext) / St.step), GZ0 = Math.round((z0 + St.ext) / St.step);
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const h = _hqLandS(GX0 + i * k, GZ0 + j * k); const v = (sea - h + 8) * 4; o[j * nx + i] = v === v ? (v < 0 ? 0 : v > 255 ? 255 : v) : 255; }
+    return o;
+}
+/* …and the whole world's, from the 8 m world (the far sea, and the near sea past its window) → { n, x0, cell, d } */
+function hqLandSeaDepthWorld() {
+    const W = HQ_LAND_STORE.world; if (!W) return null;
+    const sea = HQ_LAND_RULES.sea.y, d = new Uint8Array(W.n * W.n);
+    for (let o = 0; o < d.length; o++) { const v = (sea - W.h[o] + 8) * 4; d[o] = v < 0 ? 0 : v > 255 ? 255 : v; }
+    return { n: W.n, x0: W.x0 + W.cell * 0.5, cell: W.cell, d };
+}
+/* THE MOORINGS (HQ_LAND_RULES.water.moor): where a skiff lies — the spot nearest `at` (within r m) where the hull floats with a
+   hand's breadth to spare (bow out, or alongside) and the walker can stand within the board's reach (dry ground or a wade) → { id, x,
+   z, yaw, y, shore: [x, z, y] }, { id, none: true } when there is no such spot, or null while the tiles round it have not landed */
+function hqLandMooring(m) {
+    const SR = (typeof HQ_SEA_RULES !== 'undefined' && HQ_SEA_RULES.boat) || {}, len = SR.len || 4.6, beam = SR.beam || 1.7, draft = (SR.draft || 0.55) + 0.15;
+    const reach = (SR.boardReach || 3.6) - 0.5, wade = ((typeof HQ_SEA_RULES !== 'undefined' && HQ_SEA_RULES.exitDepth) || 0.95) - 0.2, r = m.r || 60, ax = m.at[0], az = m.at[1];
+    for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]]) if (!hqLandReadyAt(ax + c[0] * r, az + c[1] * r)) return null;
+    /* outward from `at`, 1 m apart, nearest first (the offsets sorted once per radius): the first spot that serves is the one */
+    const K = _hqLandMoorRing(r);
+    for (let i = 0, tried = 0; i < K.length && tried < 600; i++) {
+        const x = ax + K[i][0], z = az + K[i][1], g0 = hqLandBase(x, z);
+        if (g0 == null || hqLandWaterY(x, z) - g0 < draft + 0.2) continue;
+        tried++;
+        const wy = hqLandWaterY(x, z);
+        let shore = null;
+        for (let a = 0; a < 16 && !shore; a++) {
+            const ang = a * Math.PI / 8;
+            for (let s = beam / 2 + 0.9; s <= reach; s += 0.4) {
+                const sx = x + Math.sin(ang) * s, sz = z + Math.cos(ang) * s, f = hqLandFeet(sx, sz);
+                if (f == null || hqLandWaterY(sx, sz) - f > wade || Math.abs(f - wy) > 3) continue;
+                shore = { ang, x: sx, z: sz, y: f }; break;
+            }
+        }
+        if (!shore) continue;
+        for (const yaw of [shore.ang + Math.PI, shore.ang + Math.PI / 2, shore.ang - Math.PI / 2]) if (hqLandHullFloats(x, z, yaw, len, beam, draft)) return { id: m.id, x, z, yaw, y: wy, shore: [shore.x, shore.z, shore.y] };
+    }
+    return { id: m.id, none: true };
+}
+const _HQ_LAND_MOOR_RINGS = {};
+function _hqLandMoorRing(r) {
+    if (_HQ_LAND_MOOR_RINGS[r]) return _HQ_LAND_MOOR_RINGS[r];
+    const K = []; for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dz * dz <= r * r) K.push([dx, dz]);
+    K.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]) || a[1] - b[1] || a[0] - b[0]);
+    return (_HQ_LAND_MOOR_RINGS[r] = K);
+}
 /* a place's pad height: the baked hub for HQ (data.js carries it), else land.json's once it has landed */
 function hqLandPadY(id) {
     if (id === 'hq' && HQ_LAND.baked && isFinite(+HQ_LAND.baked.hubY)) return +HQ_LAND.baked.hubY;

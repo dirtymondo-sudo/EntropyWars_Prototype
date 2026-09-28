@@ -701,7 +701,7 @@ Shadow cascades matter far more on open land.
 | G0 | **THE BAKE + THE MAP**: `bake-land.js` (the sketch hardened, §5.1), the `HQ_LAND` recipe and `hqLand*` readers, tiles to `Assets/Land/`, the map tab drawn from the bake, so mondo can argue with the geography in the game before anything else changes | bake-land.js (repo tool), data.js, map.js, package.json (`npm run bake-land`) | `land-bake.test.js`, which bakes at 8 m in the fast suite and checks: R2 from every pad, rivers monotone, lakes level, road grades, the ring a loop, every place reachable, cliffs drawn wherever slope > 1.0. Full resolution is `heavy` — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_3; §12) |
 | G1 | **PHASE 12** of OPEN_WORLD_PLAN (portals + the memory budget), as written | three-renderer.js | `hq-joins.test.js` portal rule; `asset-store.test.js` eviction — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_1; §12) |
 | G2 ✓ (2026-09-28, zip 4) | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
-| G3 | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
+| G3 ✓ (2026-09-28, zip G3) | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
 | G4 | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
 | G5 | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
 | G6 | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
@@ -887,3 +887,45 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
   - **What mondo uploads**: the whole `Assets/Land/` folder to R2 `Assets/Land/` (379 tiles in `tiles/`,
     sea.bin, land.json, land-map.png; 43 MB). Test: `land-stream.test.js` (a 16 m bake: the stream order, the LRU, the surface
     continuous across tiles, the grid is the point read, R3, HQ's pad flat, the wiring). Next: G3 (the water).
+
+- **G3 THE WATER — DONE 2026-09-28** (zip `ENTROPY_WARS_WORLD_GEOGRAPHY_G3.zip`, token 20260928-geography-07-cors, bake id
+  5e65e17571, on G2_ALL):
+  - **THE MOUTH (a bake fix, R7):** the Great River stood 4.8 m over the sea at the coast and the Ness 4 m. The recipe's new
+    `R.riverMouth` gives a river that reaches the coast one even run-out (up to 400 m, never past a falls' foot) down to the sea's
+    level + 0.05 m, the channel deepening with it; land.json's rivers carry `mouth`, and the bake's R7 check refuses a mouth
+    standing over the sea. It moved 8 tiles (t_14_8/9/10, t_15_8/9/10, t_16_10, t_5_13) plus land.json, land-map.png, sea.bin.
+  - **THE WATER LAYER** (data.js, after `hqLandForest`): ONE read of the water for everyone who meets it. `hqLandWaterY` (a river
+    or a lake: the tiles' baked water, bilinear; else the sea at 0), `hqLandWaterDepth`, `hqLandWaterFresh`, `hqLandFlow` (the
+    current: the surface's fall × 45, capped at 1.5 m/s; a lake and the sea hold still), `hqLandHullFloats` (the helm's five probes,
+    all over water deeper than the draft and on one surface within 0.6 m: no sailing up or down a falls), `hqLandFalls` (every
+    stretch of a river steeper than 0.35 that drops ≥ 2 m: 8 on this bake, the Olympus brook's 155 m the tallest, the creek's 42 m
+    into the loch), `hqLandWaterSheet` (a tile's river and lake mesh), `hqLandSeaDepth` / `hqLandSeaDepthWorld` (the shader's depth
+    bytes), `hqLandMooring`. A river sample within 0.6 m of the sea over ground below it is the sea's (the Nile's lagoon). Rules in
+    `HQ_LAND_RULES.water`.
+  - **THE SEA** (three-renderer.js): one Phong sheet round the camera whose shader reads the sea's depth from two byte textures
+    (a 512 m window at 2 m re-centred on the camera, the world at 8 m past it): shallow → mid → deep colour, a foam band lapping at
+    the shore, travelling ripples as normals (four waves over a noise warp), the sun's glint, the sky at a grazing angle, the
+    bucket's own `water.png` and the battle's `waves_1.png` breaking it up. It discards itself where the ground stands over the sea.
+    The far sea wears the same shader (opaque, in the far pass); the far land stands the loch at its level and tints the rivers.
+  - **THE RIVERS AND LAKES**: every landed tile's water is one mesh on the baked surface (a river falls, the loch is level): the
+    ripples carried downstream by the current in two phases (a flow map), white water past 3 %, faded out under the bank. One sheet
+    a frame, nearest first; a tile the store drops takes its sheet with it.
+  - **THE FALLS** (R7's "a drop is a waterfall"): a curtain of white streaks pouring down each one, a churned foam pool at its
+    foot, mist rising within 320 m. Unlit, tinted by the day's light (a lit two-sided transparent sheet draws its back pass black
+    in r128). **No falls sound yet**: the game's audio is one-shot synths, positional sound is G11.
+  - **SWIMMING**: `_hqWaterYAt` (the land's layer, else the sea's level) under the swimmer, the diver, the plunge, the shallows'
+    hand-back, the wader's ripples, the helm and the look under the surface. A surface swimmer keeps to one surface (rides a
+    river's slope, never up a falls), drifts with the current, and over a falls' lip the water lets go: the body drops and plunges
+    in at the foot. Under the loch or a river the fog turns green and thicker.
+  - **THE SKIFF**: four moorings (`water.moor`: the loch, the bay, the harbour, the Great River's mouth) found at run time once
+    their tiles are in (a spot the hull floats with a hand to spare, alongside a shore the walker can board from): the sea's skiff,
+    registered as a vehicle, with a mooring pile on the shore. The helm reads `hqLandHullFloats`, rides the water under the hull and
+    drifts downstream on a river.
+  - **Probe** (offline, swiftshader): the loch, the bay and the harbour moor their skiffs; the Great River, the loch, the creek
+    falls and the bay drawn; the shaders compile on WebGL1 and WebGL2. Not measured on a real GPU.
+  - **Forks**: none of §8 touches the water; nothing ruled.
+  - **What mondo uploads**: R2 data.js, three-renderer.js, `Assets/Land/` land.json, land-map.png, sea.bin and the 8 tiles;
+    index.html to Render; the repo bake-land.js, land-water.test.js, this plan, docs/notes/areas-complexes.md. Test:
+    `land-water.test.js` (a 16 m bake: the layer is the tiles' water, the loch at 18, the open sea at 0, every mouth at the sea's
+    level, the current downstream, the falls, the loch's skiff floats and never on a falls' face; heavy: all four moorings at 2 m).
+    Next: G4 (the trees and the grass).

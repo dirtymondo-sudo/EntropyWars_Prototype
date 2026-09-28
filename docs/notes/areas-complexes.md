@@ -1616,3 +1616,25 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   is generated; zip 4's `Assets/Land/tex/` is dead.
 - Probe (offline, scratch copy of playtest_hq_offline.js): serve `/Assets/Land/*` from the repo's bake output, wait for
   the game's own first room before `_hqEnter({ room: 'land' })` (else the boot's hall entry replaces it).
+
+## THE WATER (WORLD_GEOGRAPHY_PLAN G3, 2026-09-28, token 20260928-geography-07-cors, bake 5e65e17571)
+- One read of the water: data.js "THE WATER LAYER" after `hqLandForest` — `_hqLandW` (a lattice sample; NaN = none / the sea's),
+  `hqLandFresh`, `hqLandWaterY`, `hqLandWaterDepth`, `hqLandWaterFresh`, `hqLandFlow`, `hqLandHullFloats`, `hqLandFalls` (cached in
+  `HQ_LAND_STORE.falls`), `hqLandWaterSheet`, `hqLandSeaDepth` / `hqLandSeaDepthWorld` (bytes (depth + 8) × 4), `hqLandMooring`
+  (+ `_hqLandMoorRing`). Rules: `HQ_LAND_RULES.water` (nearSea, hull, current, falls, rapids, look, depthTex, moor).
+- The bake: `HQ_LAND.riverMouth` = the run-out to the sea's level; land.json `rivers[].mouth`; checkRules R7 refuses a high mouth.
+  A recipe edit is still `npm run bake-land` + ship the changed tiles (the bake is deterministic: compare with the last upload).
+- three-renderer.js "THE WATER" block replaced `_hqLandBuildSea`: `_hqLandWaterUniforms` (L.wu, one clock `uWT`), the GLSL
+  `_HQ_WATER_FS_*`, `_hqLandWaterHook(kind)` / `_hqLandWaterMat(L, 'sea' | 'far' | 'fresh')` (shared mats, `_hqLandDisarm`
+  disposes them; the far one is opaque so it stays in the opaque list before the depth clear), `_hqLandWaterSheets` (water.png +
+  waves_1.png through `_hqLandFetch`), `_hqLandWaterFar` / `_hqLandWaterDepthTick` (the depth textures), `_hqLandWaterTile` /
+  `_hqLandWaterDrop` (a tile's sheet: queued by `_hqLandTileLanded`, dropped with `hqLandPut`'s evictions), `_hqLandBuildFalls` /
+  `_hqLandFallsTick`, `_hqLandMoorTick` / `_hqLandMoorSkiff`, `_hqLandWaterTick` (from `_hqLandTick`). `_hqLandFarArrays` raises the
+  lakes' cells and tints the rivers.
+- Swimmer / helm / underwater read `_hqWaterYAt(x, z)`; `_hqHullFree` has a land branch; the swim tick's `sameW` keeps a surface
+  swimmer on one surface and a falls' lip drops the body (`_hqSeaEmit({ kind: 'falls' })`). `_hqWetSheetAt` has a land branch.
+- Probe read: `ThreeRenderer.hq.dev.water(x, z)`. Kill-switch `window.EW_NO_LAND_WATER_FX` (colours only).
+- r128 gotcha: a transparent DoubleSide lit material renders a back pass first; for a sheet seen from its front that pass can
+  read black (the falls' pool did) — the falls are unlit (MeshBasic × `uWLit`).
+- Probe: the G2 offline probe plus `_hqEnter({ from: 'play', room: 'land' })`; mooring then `hqLandMooring(m)` in the page gives the
+  shore to stand on. Test: land-water.test.js.

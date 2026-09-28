@@ -52913,7 +52913,8 @@ const ThreeRenderer = (function () {
                     L.inflight[key] = 0; L.nFlight--;
                     if (L.dead) return;
                     var rec = hqLandTileRead(buf);
-                    hqLandPut(rec);
+                    var gone = hqLandPut(rec);
+                    for (var g = 0; g < gone.length; g++) _hqLandWaterDrop(L, gone[g][0] + '_' + gone[g][1]);   // G3: its rivers and lakes go with it
                     _hqLandTileLanded(L, rec.ti, rec.tj);
                     _hqLandStream(L, _hq && _hq.player ? _hq.player.x : x, _hq && _hq.player ? _hq.player.z : z, true);
                 }).catch(function (e) {
@@ -52928,6 +52929,16 @@ const ThreeRenderer = (function () {
         var St = HQ_LAND_STORE, x0 = -St.ext + ti * St.tile, z0 = -St.ext + tj * St.tile, x1 = x0 + St.tile, z1 = z0 + St.tile;
         for (var k in L.chunks) { var c = L.chunks[k]; if (c.coarse && c.x0 < x1 + 16 && c.x0 + c.size > x0 - 16 && c.z0 < z1 + 16 && c.z0 + c.size > z0 - 16) c.stale = true; }
         L.lastX = 1e9;   // the chunk set is re-read next frame (a chunk that waited for this tile builds now)
+        /* G3: THE WATER — its sheet (and a neighbour's already drawn: its rim read this tile's water as missing), the depth window */
+        if (L.waterQ) {
+            var q = [[ti, tj], [ti - 1, tj], [ti + 1, tj], [ti, tj - 1], [ti, tj + 1]];
+            for (var n = 0; n < q.length; n++) {
+                var k2 = q[n][0] + '_' + q[n][1];
+                if (n && !L.waters[k2]) continue;
+                if (!L.waterQ.some(function (w) { return w[0] === q[n][0] && w[1] === q[n][1]; })) L.waterQ.push(q[n]);
+            }
+        }
+        var D = L.wdepth; if (D && D.n && !D.dead) { var span = D.n * D.step; if (x0 < D.cx + span && x1 > D.cx - span && z0 < D.cz + span && z1 > D.cz - span) D.dirtyAt = D.dirtyAt || performance.now(); }
     }
     /* is every tile under this rect (plus the grid's margin) in? (a tile the bake dropped — the open Deep — counts as in) */
     function _hqLandRectReady(xa, za, xb, zb) {
@@ -52949,6 +52960,7 @@ const ThreeRenderer = (function () {
         _hqLandStream(L, px, pz, false);
         if (L.far) _hqLandFarFrame(L, H);
         if (L.nearSea) { var cx0 = H.camera.position.x, cz0 = H.camera.position.z, sn = 64 * U; L.nearSea.position.set(Math.round(cx0 / sn) * sn, L.sea.y * U, Math.round(cz0 / sn) * sn); }
+        try { _hqLandWaterTick(L, H, dt, now); } catch (e) { if (!L.waterTickWarned) { L.waterTickWarned = true; console.warn('[HQ land] the water', e); } }   // G3: THE WATER
         if (!L.idx || !L.world) return;
         /* the walker's own ground: off a face too steep to stand on (a landing on a cliff) it slides down the fall line */
         if (pl && !pl.air && !pl.swim && !pl.climb && !(H.vehicle && H.vehicle.on) && H.ready && hqLandReadyAt(px, pz) && hqLandFeet(px, pz) === null && !hqLandHQSolid(px, pz, 0)) {
@@ -53256,8 +53268,31 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), n = W.n, N = n * n, pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), tmp = [0, 0, 0];
         var cliffCol = new THREE.Color(0x6e665c); (R.tex.layers || []).forEach(function (l) { if (l.id === 'cliff') cliffCol = new THREE.Color(l.mean != null ? l.mean : l.col); });
         var sea = new THREE.Color(R.sea.far || 0x3a6f88);
+        /* G3: THE WATER far off — a lake's cells stand at its level in its colour; a river's wear its colour */
+        var WR = R.water, fresh = new THREE.Color(WR ? WR.look.fresh : 0x2f5c52), wet = new Float32Array(N), lvl = new Float32Array(N).fill(NaN), ov = HQ_LAND_STORE.index || {};
+        (ov.lakes || []).forEach(function (lk) {
+            var ax = lk.a[0], az = lk.a[1], bx = lk.b[0], bz = lk.b[1], dx = bx - ax, dz = bz - az, ll = dx * dx + dz * dz || 1, rr = lk.half + W.cell;
+            var i0 = Math.max(0, Math.floor((Math.min(ax, bx) - rr - W.x0) / W.cell)), i1 = Math.min(n - 1, Math.ceil((Math.max(ax, bx) + rr - W.x0) / W.cell));
+            var j0 = Math.max(0, Math.floor((Math.min(az, bz) - rr - W.x0) / W.cell)), j1 = Math.min(n - 1, Math.ceil((Math.max(az, bz) + rr - W.x0) / W.cell));
+            for (var jj = j0; jj <= j1; jj++) for (var ii = i0; ii <= i1; ii++) {
+                var px = W.x0 + ii * W.cell, pz = W.x0 + jj * W.cell, t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / ll));
+                var d = Math.hypot(px - ax - dx * t, pz - az - dz * t), oo = jj * n + ii;
+                if (d < lk.half && W.h[oo] < lk.level) { lvl[oo] = lk.level; wet[oo] = Math.min(1, (lk.level - W.h[oo]) / 3); }
+            }
+        });
+        (ov.rivers || []).forEach(function (rv) {
+            var p = rv.pts || [], np = p.length;
+            for (var k = 0; k < np; k++) {
+                var w = (rv.w0 + (rv.w1 - rv.w0) * k / Math.max(1, np - 1)), ci = Math.round((p[k][0] - W.x0) / W.cell), cj = Math.round((p[k][1] - W.x0) / W.cell), rc = Math.ceil(w / W.cell);
+                for (var jj = cj - rc; jj <= cj + rc; jj++) for (var ii = ci - rc; ii <= ci + rc; ii++) {
+                    if (ii < 0 || jj < 0 || ii >= n || jj >= n) continue;
+                    var dd = Math.hypot(W.x0 + ii * W.cell - p[k][0], W.x0 + jj * W.cell - p[k][1]); if (dd > w + W.cell * 0.5) continue;
+                    var oo = jj * n + ii; wet[oo] = Math.max(wet[oo], Math.min(1, (w + W.cell * 0.5 - dd) / W.cell) * 0.85);
+                }
+            }
+        });
         for (var j = 0; j < n; j++) for (var i = 0; i < n; i++) {
-            var o = j * n + i, h = W.h[o];
+            var o = j * n + i, h = lvl[o] === lvl[o] ? lvl[o] : W.h[o];
             var hL = W.h[j * n + Math.max(0, i - 1)], hR = W.h[j * n + Math.min(n - 1, i + 1)], hU = W.h[Math.max(0, j - 1) * n + i], hD = W.h[Math.min(n - 1, j + 1) * n + i];
             var hx = (hR - hL) / (2 * W.cell), hz = (hD - hU) / (2 * W.cell), nl = Math.sqrt(hx * hx + 1 + hz * hz);
             pos[o * 3] = (W.x0 + i * W.cell) * U; pos[o * 3 + 1] = h * U; pos[o * 3 + 2] = (W.x0 + j * W.cell) * U;
@@ -53266,6 +53301,7 @@ const ThreeRenderer = (function () {
             var cw = hqLandCliffW(Math.sqrt(hx * hx + hz * hz) * 1.3);   // a 16 m grid rounds a cliff off: lean it steeper
             tmp[0] += (cliffCol.r - tmp[0]) * cw; tmp[1] += (cliffCol.g - tmp[1]) * cw; tmp[2] += (cliffCol.b - tmp[2]) * cw;
             if (h < -0.5) { var dk = Math.min(1, -h / 12); tmp[0] += (sea.r - tmp[0]) * dk; tmp[1] += (sea.g - tmp[1]) * dk; tmp[2] += (sea.b - tmp[2]) * dk; }
+            if (wet[o] > 0) { var wk = wet[o]; tmp[0] += (fresh.r - tmp[0]) * wk; tmp[1] += (fresh.g - tmp[1]) * wk; tmp[2] += (fresh.b - tmp[2]) * wk; }
             col[o * 3] = tmp[0]; col[o * 3 + 1] = tmp[1]; col[o * 3 + 2] = tmp[2];
         }
         var idx = new Uint32Array((n - 1) * (n - 1) * 6), t = 0;
@@ -53286,8 +53322,8 @@ const ThreeRenderer = (function () {
         L.group.add(land); F.meshes.push(land);
         /* the far sea: one sheet at the sea's level past the world's edge (the near sea draws over it inside the cut) */
         var sg = new THREE.PlaneGeometry(9000 * U, 9000 * U, 1, 1); sg.rotateX(-Math.PI / 2);
-        var sm = new THREE.MeshPhongMaterial({ color: (R.sea.far != null) ? R.sea.far : 0x3a6f88, shininess: 40, specular: 0x333333 });
-        sm.onBeforeCompile = _hqLandFarHook; sm.customProgramCacheKey = function () { return 'ewland-far-sea-1'; };
+        var sm = _hqLandWR() ? _hqLandWaterMat(L, 'far') : null;   // G3: the near sea's colours by depth (the world's 8 m), opaque in the far pass
+        if (!sm) { sm = new THREE.MeshPhongMaterial({ color: (R.sea.far != null) ? R.sea.far : 0x3a6f88, shininess: 40, specular: 0x333333 }); sm.onBeforeCompile = _hqLandFarHook; sm.customProgramCacheKey = function () { return 'ewland-far-sea-1'; }; }
         var sea = new THREE.Mesh(sg, sm); sea.name = 'hq_land_far_sea'; sea.position.y = L.sea.y * U; sea.renderOrder = -899; sea.frustumCulled = false; sea._ew_occSkip = true; sea.raycast = function () {};
         L.group.add(sea); F.meshes.push(sea);
         /* the node that clears the depth: after it the near scene draws with the building's camera over the far one */
@@ -53303,15 +53339,392 @@ const ThreeRenderer = (function () {
         F.uProj.value.copy(fc.projectionMatrix);
         F.uCut.value = L.cut * U; F.uCam.value.copy(cam.position);
     }
+    /* ══ THE WATER (WORLD_GEOGRAPHY_PLAN.md §5.4 — G3, 2026-09-28) ══════════════════════════════════════════════════════════
+       data.js's WATER LAYER (hqLandWaterY / hqLandFresh / hqLandFlow / hqLandFalls / hqLandWaterSheet …) is the one read of the
+       water; this draws it:
+         THE SEA      one sheet at the sea's level round the camera. Its shader reads the sea's depth from two byte textures (a 2 m
+                      window round the camera, re-centred as it moves, and the whole world at 8 m past it): shallow → deep colour,
+                      a foam band lapping at the shore, travelling ripples (the normals), the sun's glint (the Phong highlight on
+                      them), the sky at a grazing angle (fresnel). The far sea wears the same colours at 8 m in the far pass.
+         THE SHEETS   every landed tile's rivers and lakes: a 2 m mesh on the baked surface (a river falls, a lake is level), its
+                      ripples carried downstream by the current (two phases of a flow map), white water where the surface falls
+                      faster than water.rapids, faded out under the bank. The loch's far water: the far land raised to its level.
+         THE FALLS    every stretch of a river steeper than water.falls (R7): a white curtain of streaks pouring down it, a foam
+                      pool at its foot, mist rising (a Points cloud, drawn within 320 m).
+         THE LOOK     the bucket's own water sheets (TERRAIN_SPRITES water, the battle's waves_1 layer) tint and break up the colour;
+                      without them the colours alone.
+         THE SKIFFS   moored where water.moor says (hqLandMooring, once the tiles round a mooring are in): the sea's skiff (the
+                      proc) registered as a vehicle — the helm reads the land's water through hqLandHullFloats.
+       Kill-switch window.EW_NO_LAND_WATER_FX (the colours only: no ripples, no textures, no mist). */
+    var _hqLandWaterCache = { sheets: null, loading: null, far: null, farKey: '', mistTex: null, foamTex: null };
+    function _hqLandWR() { var R = _hqLandR(); return (R && R.water) || null; }
+    function _hqLandWaterFxOff() { return typeof window !== 'undefined' && !!window.EW_NO_LAND_WATER_FX; }
+    /* the uniforms every water material shares (one clock, one set of colours, the sheets once they land) */
+    function _hqLandWaterUniforms(L) {
+        if (L.wu) return L.wu;
+        var W = _hqLandWR(), K = W.look, U = _hqUnits();
+        var white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat); white.needsUpdate = true;
+        L.wu = {
+            uWT: { value: 0 }, uLandU: { value: 1 / U }, uWFx: { value: _hqLandWaterFxOff() ? 0 : 1 },
+            uWShallow: { value: new THREE.Color(K.shallow) }, uWMid: { value: new THREE.Color(K.mid) }, uWDeep: { value: new THREE.Color(K.deep) },
+            uWFresh: { value: new THREE.Color(K.fresh) }, uWFoam: { value: new THREE.Color(K.foam) }, uWSky: { value: new THREE.Color(0x9fb8c8) },
+            uWLook: { value: new THREE.Vector4(K.deepM, K.foamM, 1 / K.ripple, W.rapids) }, uWLit: { value: 1 },
+            uWTex: { value: white }, uWWaves: { value: white }, uWHave: { value: new THREE.Vector2(0, 0) },
+            uWNear: { value: white }, uWNearO: { value: new THREE.Vector4(0, 0, 1, 0) },
+            uWFar: { value: white }, uWFarO: { value: new THREE.Vector4(0, 0, 1, 1) },
+        };
+        L.wWhite = white;
+        return L.wu;
+    }
+    var _HQ_WATER_FS_HEAD = [
+        'uniform float uWT; uniform float uLandU; uniform float uWFx;',
+        'uniform vec3 uWShallow, uWMid, uWDeep, uWFresh, uWFoam, uWSky;',
+        'uniform vec4 uWLook;',   // deepM, foamM, 1 / ripple scale, the rapids' grade
+        'uniform sampler2D uWTex; uniform sampler2D uWWaves; uniform vec2 uWHave;',
+        'varying vec3 vWatW;',
+        '#ifdef EW_WSEA',
+        'uniform sampler2D uWNear; uniform vec4 uWNearO; uniform sampler2D uWFar; uniform vec4 uWFarO;',
+        '#else',
+        'varying vec4 vWat; varying float vWatG;',
+        '#endif',
+        'float ewWH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+        'float ewWN(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f); return mix(mix(ewWH(i), ewWH(i + vec2(1.0, 0.0)), u.x), mix(ewWH(i + vec2(0.0, 1.0)), ewWH(i + vec2(1.0, 1.0)), u.x), u.y); }',
+        /* the ripples' slope at p (m): four travelling waves over a noise warp (never a visible grid) */
+        'vec2 ewWave(vec2 p, vec2 d, float k, float s, float w, float t) { return d * s * cos(dot(d, p) * k - t * w); }',
+        'vec2 ewWGrad(vec2 p, float t) {',
+        '  vec2 q = p * uWLook.z; q += 1.3 * vec2(ewWN(q * 0.37 + 3.1), ewWN(q * 0.37 - 7.7));',
+        '  vec2 g = ewWave(q, vec2(0.82, 0.57), 1.0, 0.11, 1.2, t) + ewWave(q, vec2(-0.45, 0.89), 1.63, 0.08, 1.7, t)',
+        '         + ewWave(q, vec2(0.97, -0.24), 2.71, 0.06, 2.4, t) + ewWave(q, vec2(-0.71, -0.70), 4.13, 0.045, 3.3, t);',
+        '  return g;',
+        '}',
+    ].join('\n');
+    /* the colour, the ripples' normal and the alpha, per pixel (the sea reads its depth from the textures; a sheet from its vertices) */
+    var _HQ_WATER_FS_COLOR = [
+        'vec2 ewWP = vWatW.xz; float ewD; vec2 ewFl = vec2(0.0); float ewEdge = 1.0; float ewGr = 0.0;',
+        '#ifdef EW_WSEA',
+        '{ vec2 un = ((ewWP - uWNearO.xy) * uWNearO.z + 0.5) / max(1.0, uWNearO.w);',
+        '  float dn = texture2D(uWNear, un).r, df = texture2D(uWFar, ((ewWP - uWFarO.xy) * uWFarO.z + 0.5) / uWFarO.w).r;',
+        '  vec2 bd = min(un, 1.0 - un); float inN = (uWNearO.w > 1.5) ? smoothstep(0.0, 0.04, min(bd.x, bd.y)) : 0.0;',
+        '  ewD = mix(df, dn, inN) * 63.75 - 8.0; ewFl = vec2(0.35, 0.12); }',
+        '#else',
+        'ewD = vWat.x; ewEdge = vWat.y; ewFl = vWat.zw; ewGr = vWatG;',
+        '#endif',
+        '#ifdef EW_WSEA',
+        'if (ewD < -0.6) discard;',   // the ground stands over the sea here (the sheet runs past the chunks: never water on a far hill)
+        '#endif',
+        'float ewDD = max(ewD, 0.0);',
+        /* the ripples: the sea's travel on their own; a river's are carried by its current in two phases (a flow map) */
+        'vec2 ewG;',
+        '#ifdef EW_WSEA',
+        'ewG = ewWGrad(ewWP - ewFl * uWT, uWT);',
+        '#else',
+        'float ph0 = fract(uWT * 0.3), ph1 = fract(uWT * 0.3 + 0.5), wB = abs(ph0 * 2.0 - 1.0);',
+        'ewG = mix(ewWGrad(ewWP - ewFl * ph0 * 3.3, uWT * 0.6), ewWGrad(ewWP - ewFl * ph1 * 3.3 + vec2(3.7, 1.3), uWT * 0.6), wB);',
+        'ewG *= 1.0 + 1.5 * smoothstep(uWLook.w, uWLook.w * 5.0, ewGr);',
+        '#endif',
+        'ewG *= uWFx;',
+        /* the colour by depth, the bucket's sheet breaking it up, the waves' crests */
+        'vec3 ewC;',
+        '#ifdef EW_WSEA',
+        'ewC = mix(uWShallow, uWMid, smoothstep(0.4, 6.0, ewDD)); ewC = mix(ewC, uWDeep, smoothstep(6.0, uWLook.x, ewDD));',
+        'float ewA = mix(0.3, 0.93, smoothstep(0.0, 7.0, ewDD));',
+        '#else',
+        'ewC = mix(uWFresh * 1.35, uWFresh * 0.55, smoothstep(0.3, 9.0, ewDD));',
+        'float ewA = mix(0.4, 0.9, smoothstep(0.0, 3.5, ewDD));',
+        '#endif',
+        'vec2 ewTP = ewWP - ewFl * 1.6 * fract(uWT * 0.05) * 20.0;',
+        'if (uWHave.x > 0.5 && uWFx > 0.5) { vec3 tx = texture2D(uWTex, ewTP / 7.0).rgb; ewC *= 0.8 + 0.45 * dot(tx, vec3(0.333)); }',
+        'if (uWHave.y > 0.5 && uWFx > 0.5) { float wv = texture2D(uWWaves, (ewWP + vec2(uWT * 0.21, -uWT * 0.13)) / 11.0).r; ewC += vec3(0.1) * wv * (0.4 + 0.6 * smoothstep(1.0, 6.0, ewDD)); }',
+        /* the foam: the band lapping at the shore (and under the bank), white water where a river falls fast */
+        'float ewBrk = ewWN(ewWP * 0.45 + vec2(uWT * 0.2, 0.0)) * 0.6 + ewWN(ewWP * 1.3 - vec2(0.0, uWT * 0.3)) * 0.4;',
+        'float ewFoam = (1.0 - smoothstep(0.02, uWLook.y, ewD)) * smoothstep(0.25, 0.75, ewBrk + 0.35 * sin(ewD * 5.0 - uWT * 1.9));',
+        '#ifndef EW_WSEA',
+        'ewFoam = max(ewFoam, smoothstep(uWLook.w, uWLook.w * 3.0, ewGr) * smoothstep(0.3, 0.7, ewBrk + 0.2 * sin(dot(ewWP, normalize(ewFl + 1e-4)) * 1.7 - uWT * 5.0)));',
+        'ewA *= smoothstep(0.0, 0.7, ewEdge);',
+        '#endif',
+        'ewFoam *= uWFx;',
+        'diffuseColor.rgb = mix(ewC, uWFoam, ewFoam);',
+        'diffuseColor.a = max(ewA, ewFoam * 0.92);',
+    ].join('\n');
+    var _HQ_WATER_FS_NORMAL = [
+        'normal = normalize(normal + (viewMatrix * vec4(-ewG.x, 0.0, -ewG.y, 0.0)).xyz * (gl_FrontFacing ? 1.0 : -1.0));',
+        'specularStrength = 1.0 - ewFoam;',
+    ].join('\n');
+    var _HQ_WATER_FS_OUT = [
+        '{ float ewFr = pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 4.0);',
+        '  gl_FragColor.rgb = mix(gl_FragColor.rgb, uWSky, ewFr * 0.55 * (1.0 - ewFoam));',
+        '  gl_FragColor.a = max(gl_FragColor.a, ewFr * 0.7); }',
+    ].join('\n');
+    function _hqLandWaterHook(kind) {
+        return function (shader) {
+            var L = _hq && _hq.land, S = L && L.wu; if (!S) return;
+            for (var k in S) shader.uniforms[k] = S[k];
+            var sea = kind !== 'fresh';
+            if (sea) shader.defines = Object.assign(shader.defines || {}, { EW_WSEA: '' });
+            shader.vertexShader = (sea ? '' : 'attribute vec4 aWat; attribute float aWatG; varying vec4 vWat; varying float vWatG;\n') + 'uniform float uLandU; varying vec3 vWatW;\n' + shader.vertexShader
+                .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vWatW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU;' + (sea ? '' : ' vWat = aWat; vWatG = aWatG;'));
+            shader.fragmentShader = _HQ_WATER_FS_HEAD + '\n' + shader.fragmentShader
+                .replace('#include <color_fragment>', '#include <color_fragment>\n' + _HQ_WATER_FS_COLOR)
+                .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + _HQ_WATER_FS_NORMAL)
+                .replace('#include <tonemapping_fragment>', _HQ_WATER_FS_OUT + '\n#include <tonemapping_fragment>');
+            if (kind === 'far') _hqLandFarHook(shader);
+        };
+    }
+    function _hqLandWaterMat(L, kind) {
+        _hqLandWaterUniforms(L);
+        /* the far sea is opaque: it draws in the opaque list at −899, before the depth clear (a transparent one would draw after the near scene) */
+        var far = kind === 'far';
+        var m = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: kind === 'fresh' ? 70 : 90, specular: 0x8c969c, transparent: !far, depthWrite: far, side: far ? THREE.FrontSide : THREE.DoubleSide });
+        m.onBeforeCompile = _hqLandWaterHook(kind);
+        m.customProgramCacheKey = function () { return 'ewland-water-' + kind + '-1'; };
+        m._ew_shared = true;   // the room's scene sweep leaves it; _hqLandDisarm lets it go
+        return m;
+    }
+    /* the bucket's water sheets, once (the land's fetch through the asset store): the battle's own water and its waves layer */
+    function _hqLandWaterSheets(L) {
+        var W = _hqLandWR(); if (!W || _hqLandWaterFxOff()) return;
+        var bind = function (S) { if (L.dead || !L.wu || !S) return; if (S.tex) { L.wu.uWTex.value = S.tex; L.wu.uWHave.value.x = 1; } if (S.waves) { L.wu.uWWaves.value = S.waves; L.wu.uWHave.value.y = 1; } };
+        if (_hqLandWaterCache.sheets) { bind(_hqLandWaterCache.sheets); return; }
+        if (!_hqLandWaterCache.loading) {
+            var base = _hqLandSheetUrl(W.look.sheet), waves = base ? base.replace(/\/[^\/?]+\.png/, '/' + W.look.waves + '.png') : null;
+            var one = function (url) {
+                if (!url) return Promise.resolve(null);
+                return _hqLandFetch('land', url).then(function (buf) { return createImageBitmap(new Blob([buf], { type: 'image/png' })); }).then(function (bmp) {
+                    var cv = document.createElement('canvas'); cv.width = cv.height = 256;
+                    var cx = cv.getContext('2d'); cx.imageSmoothingEnabled = true; cx.drawImage(bmp, 0, 0, 256, 256);
+                    var tx = new THREE.CanvasTexture(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.minFilter = THREE.LinearMipmapLinearFilter; tx.magFilter = THREE.LinearFilter;
+                    try { tx.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); } catch (e) {}
+                    return tx;
+                }).catch(function (e) { console.warn('[HQ land] the water sheet ' + url + ' did not land — the water wears its colours', e); return null; });
+            };
+            _hqLandWaterCache.loading = Promise.all([one(base), one(waves)]).then(function (r) { _hqLandWaterCache.sheets = { tex: r[0], waves: r[1] }; return _hqLandWaterCache.sheets; });
+        }
+        _hqLandWaterCache.loading.then(bind);
+    }
+    /* a byte texture (the sea's depth): red in WebGL2, luminance in WebGL1 */
+    function _hqLandByteTex(data, n, L) {
+        var tx = new THREE.DataTexture(data, n, n, (L && L.gl2) ? THREE.RedFormat : THREE.LuminanceFormat, THREE.UnsignedByteType);
+        tx.minFilter = THREE.LinearFilter; tx.magFilter = THREE.LinearFilter; tx.generateMipmaps = false; tx.unpackAlignment = 1; tx.flipY = false;
+        tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping; tx.needsUpdate = true;
+        return tx;
+    }
     /* ── THE SEA (near): a sheet at the sea's level round the camera; the swimmer's water (_hqSea) ── */
     function _hqLandBuildSea(L) {
         var R = _hqLandR(), U = _hqUnits(), size = (R.camFar || 460) * 2.2;
         var g = new THREE.PlaneGeometry(size * U, size * U, 1, 1); g.rotateX(-Math.PI / 2);
-        var m = new THREE.MeshPhongMaterial({ color: (R.sea.color != null) ? R.sea.color : 0x2e627c, shininess: 60, specular: 0x4a5a66, transparent: true, opacity: 0.86, depthWrite: false });
+        var m = _hqLandWaterMat(L, 'sea');
         var sea = new THREE.Mesh(g, m); sea.name = 'hq_land_sea'; sea.renderOrder = 1; sea.frustumCulled = false; sea._ew_occSkip = true; sea.raycast = function () {};
+        sea.receiveShadow = true;
         sea.position.y = L.sea.y * U;
         L.group.add(sea); L.nearSea = sea;
+        L.waters = {}; L.waterQ = []; L.falls = []; L.moors = {}; L.wdepth = null;
+        _hqLandWaterSheets(L);
     }
+    /* the whole world's sea depth (8 m) → the far texture (kept across visits, per bake) */
+    function _hqLandWaterFar(L) {
+        var key = HQ_LAND.baked.id;
+        if (!_hqLandWaterCache.far || _hqLandWaterCache.farKey !== key) {
+            var D = hqLandSeaDepthWorld(); if (!D) return;
+            if (_hqLandWaterCache.far && _hqLandWaterCache.far.tex) { try { _hqLandWaterCache.far.tex.dispose(); } catch (e) {} }
+            _hqLandWaterCache.far = { D: D, tex: _hqLandByteTex(D.d, D.n, L) }; _hqLandWaterCache.farKey = key;
+        }
+        var F = _hqLandWaterCache.far, wu = _hqLandWaterUniforms(L);
+        wu.uWFar.value = F.tex; wu.uWFarO.value.set(F.D.x0, F.D.x0, 1 / F.D.cell, F.D.n);
+        /* the near window starts on the world's 8 m until its first pass lands */
+        L.wdepth = { n: _hqLandWR().depthTex.n, step: _hqLandWR().depthTex.step, cx: 1e9, cz: 1e9, job: null, tex: null, dirtyAt: 0 };
+    }
+    /* THE NEAR DEPTH WINDOW: re-centred on the camera past depthTex.reM, rebuilt a slice of rows a frame into a spare buffer, then
+       swapped in whole (a tile landing inside the window marks it dirty: the 2 m ground replaces the 8 m world's) */
+    function _hqLandWaterDepthTick(L, cam) {
+        var D = L.wdepth; if (!D) return;
+        var U = _hqUnits(), cx = cam.position.x / U, cz = cam.position.z / U, T = _hqLandWR().depthTex, half = D.n * D.step / 2;
+        if (!D.job) {
+            var far = Math.hypot(cx - D.cx, cz - D.cz) > T.reM, dirty = D.dirtyAt && performance.now() - D.dirtyAt > 1500;
+            if (!far && !dirty) return;
+            var St = HQ_LAND_STORE, sx = Math.round((cx - half + St.ext) / St.step) * St.step - St.ext, sz = Math.round((cz - half + St.ext) / St.step) * St.step - St.ext;
+            D.job = { x0: sx, z0: sz, row: 0, buf: new Uint8Array(D.n * D.n), cx: cx, cz: cz };
+            D.dirtyAt = 0;
+        }
+        var J = D.job, nr = Math.min(48, D.n - J.row);
+        hqLandSeaDepth(J.x0, J.z0 + J.row * D.step, D.n, nr, D.step, J.buf.subarray(J.row * D.n, (J.row + nr) * D.n));
+        J.row += nr;
+        if (J.row < D.n) return;
+        if (!D.tex) D.tex = _hqLandByteTex(J.buf, D.n, L); else { D.tex.image.data = J.buf; D.tex.needsUpdate = true; }
+        L.wu.uWNear.value = D.tex; L.wu.uWNearO.value.set(J.x0, J.z0, 1 / D.step, D.n);
+        D.cx = J.cx; D.cz = J.cz; D.job = null;
+    }
+    /* ── THE SHEETS: a landed tile's rivers and lakes (hqLandWaterSheet), one mesh a tile, nearest first a frame at a time ── */
+    function _hqLandWaterDrop(L, key) {
+        var m = L.waters && L.waters[key]; if (!m) return;
+        L.group.remove(m); try { m.geometry.dispose(); } catch (e) {}
+        delete L.waters[key];
+    }
+    function _hqLandWaterTile(L, ti, tj) {
+        var St = HQ_LAND_STORE, key = ti + '_' + tj, t = St.grid && St.grid[tj * St.per + ti];
+        _hqLandWaterDrop(L, key);
+        if (!t || !t.water) return;
+        var S = hqLandWaterSheet(t); if (!S) return;
+        var U = _hqUnits(), pos = S.pos;
+        if (U !== 1) { pos = new Float32Array(S.pos.length); for (var i = 0; i < pos.length; i++) pos[i] = S.pos[i] * U; }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('aWat', new THREE.BufferAttribute(S.wat, 4));
+        geo.setAttribute('aWatG', new THREE.BufferAttribute(S.grade, 1));
+        geo.setIndex(new THREE.BufferAttribute(S.idx, 1));
+        geo.computeVertexNormals(); geo.computeBoundingSphere();
+        if (!L.freshMat) L.freshMat = _hqLandWaterMat(L, 'fresh');
+        var mesh = new THREE.Mesh(geo, L.freshMat);
+        mesh.name = 'hq_land_water_' + key; mesh.position.set(S.x0 * U, 0, S.z0 * U); mesh.renderOrder = 1; mesh.receiveShadow = true;
+        mesh._ew_occSkip = true; mesh.raycast = function () {}; mesh.matrixAutoUpdate = false; mesh.updateMatrix();
+        L.group.add(mesh); L.waters[key] = mesh;
+    }
+    /* ── THE FALLS: a curtain of white streaks down every steep stretch (hqLandFalls), a foam pool at the foot, mist ── */
+    var _HQ_FALLS_FS_HEAD = [
+        'uniform float uWT; uniform float uWLit; varying vec2 vFall;',
+        'float ewWH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
+        'float ewWN(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f); return mix(mix(ewWH(i), ewWH(i + vec2(1.0, 0.0)), u.x), mix(ewWH(i + vec2(0.0, 1.0)), ewWH(i + vec2(1.0, 1.0)), u.x), u.y); }',
+    ].join('\n');
+    function _hqLandFallMat(L, kind) {
+        var W = _hqLandWR(), wu = _hqLandWaterUniforms(L);
+        /* unlit (a transparent two-sided lit sheet draws its back pass dark in r128: the pool read black); the day's light is uWLit */
+        var m = new THREE.MeshBasicMaterial({ color: W.look.foam, transparent: true, depthWrite: false, side: kind === 'pool' ? THREE.FrontSide : THREE.DoubleSide });
+        var body = kind === 'pool'
+            /* the pool: aFall = (0 centre … 1 rim, the angle): churned foam thinning to the rim */
+            ? '{ float r = vFall.x; float s = ewWN(vec2(vFall.y * 5.0 + uWT * 0.4, r * 6.0 - uWT * 1.3)) * 0.6 + ewWN(vec2(vFall.y * 13.0 - uWT * 0.7, r * 15.0 - uWT * 2.2)) * 0.4;'
+              + ' diffuseColor.a *= (1.0 - smoothstep(0.45, 1.0, r)) * (0.35 + 0.65 * smoothstep(0.3, 0.7, s)); diffuseColor.rgb *= uWLit; }'
+            /* the curtain: aFall = (across 0 … 1, metres down the fall): streaks pouring downhill, thinning at the sides */
+            : '{ float u = vFall.x, v = vFall.y; float s = ewWN(vec2(u * 7.0, v * 0.3 - uWT * 2.6)) * 0.65 + ewWN(vec2(u * 15.0 + 5.0, v * 0.7 - uWT * 4.1)) * 0.35;'
+              + ' float edge = smoothstep(0.0, 0.14, u) * smoothstep(1.0, 0.86, u); diffuseColor.a *= edge * (0.3 + 0.7 * smoothstep(0.35, 0.72, s)); diffuseColor.rgb *= (0.84 + 0.16 * s) * uWLit; }';
+        m.onBeforeCompile = function (sh) {
+            sh.uniforms.uWT = wu.uWT; sh.uniforms.uWLit = wu.uWLit;
+            sh.vertexShader = 'attribute vec2 aFall; varying vec2 vFall;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vFall = aFall;');
+            sh.fragmentShader = _HQ_FALLS_FS_HEAD + '\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n' + body);
+        };
+        m.customProgramCacheKey = function () { return 'ewland-falls-' + kind + '-1'; };
+        m._ew_shared = true;
+        return m;
+    }
+    function _hqLandMistTex() {
+        if (_hqLandWaterCache.mistTex) return _hqLandWaterCache.mistTex;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = c.height = 64;
+        var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+        g.addColorStop(0, 'rgba(255,255,255,0.85)'); g.addColorStop(0.45, 'rgba(255,255,255,0.35)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+        x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+        return (_hqLandWaterCache.mistTex = new THREE.CanvasTexture(c));
+    }
+    function _hqLandBuildFalls(L) {
+        var list = (typeof hqLandFalls === 'function') ? hqLandFalls() : []; if (!list.length) return;
+        var U = _hqUnits(), W = _hqLandWR(), fx = !_hqLandWaterFxOff();
+        if (!L.fallMat) { L.fallMat = _hqLandFallMat(L, 'curtain'); L.poolMat = _hqLandFallMat(L, 'pool'); }
+        var rng = _mulberry32(0xfa11);
+        list.forEach(function (f) {
+            /* the stretch every ~2 m (in 3D), a little past its lip and its foot */
+            var P = f.pts, pts = [];
+            for (var k = 0; k < P.length - 1; k++) {
+                var a = P[k], b = P[k + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), n = Math.max(1, Math.ceil(l / 2));
+                for (var s = 0; s < n; s++) { var t = s / n; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]); }
+            }
+            pts.push(P[P.length - 1].slice());
+            var hw = f.w + 0.6, nv = pts.length * 2, pos = new Float32Array(nv * 3), fa = new Float32Array(nv * 2), idx = [], along = 0;
+            var dx = f.foot[0] - f.top[0], dz = f.foot[1] - f.top[1], dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;   // one across line for the whole fall (the river line's jitter twisted it)
+            for (var i = 0; i < pts.length; i++) {
+                if (i) along += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]);
+                var nx = -dz * hw, nz = dx * hw, y = pts[i][2] + 0.14;
+                pos.set([(pts[i][0] + nx) * U, y * U, (pts[i][1] + nz) * U, (pts[i][0] - nx) * U, y * U, (pts[i][1] - nz) * U], i * 6);
+                fa.set([0, along, 1, along], i * 4);
+                if (i) { var b0 = (i - 1) * 2; idx.push(b0, b0 + 2, b0 + 1, b0 + 1, b0 + 2, b0 + 3); }
+            }
+            var cg = new THREE.BufferGeometry();
+            cg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); cg.setAttribute('aFall', new THREE.BufferAttribute(fa, 2)); cg.setIndex(idx); cg.computeVertexNormals(); cg.computeBoundingSphere();
+            var curtain = new THREE.Mesh(cg, L.fallMat); curtain.name = 'hq_land_falls_' + f.id; curtain.renderOrder = 2; curtain._ew_occSkip = true; curtain.raycast = function () {};
+            L.group.add(curtain);
+            /* the pool at the foot: rings × spokes, aFall = (radius 0 … 1, the angle) */
+            var ft = f.foot, pr = hw * 1.7 + 1.5, RN = 5, SN = 28, pp = new Float32Array((RN * SN + 1) * 3), pa = new Float32Array((RN * SN + 1) * 2), pi = [], py = (typeof hqLandWaterY === 'function' ? hqLandWaterY(ft[0], ft[1]) : ft[2]);
+            if (!(py > ft[2] - 3 && py < ft[2] + 3)) py = ft[2];   // the tile has not landed: the baked foot
+            pp.set([ft[0] * U, (py + 0.09) * U, ft[1] * U], 0); pa.set([0, 0], 0);
+            for (var r = 1; r <= RN; r++) for (var sg = 0; sg < SN; sg++) {
+                var ang = sg / SN * Math.PI * 2, rr = pr * r / RN, v = 1 + (r - 1) * SN + sg;
+                pp.set([(ft[0] + Math.cos(ang) * rr) * U, (py + 0.09) * U, (ft[1] + Math.sin(ang) * rr) * U], v * 3); pa.set([r / RN, sg / SN], v * 2);
+                var nxt = 1 + (r - 1) * SN + (sg + 1) % SN;
+                if (r === 1) pi.push(0, nxt, v);
+                else { var iv = 1 + (r - 2) * SN + sg, in2 = 1 + (r - 2) * SN + (sg + 1) % SN; pi.push(iv, in2, v, in2, nxt, v); }
+            }
+            var pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pp, 3)); pg.setAttribute('aFall', new THREE.BufferAttribute(pa, 2)); pg.setIndex(pi); pg.computeVertexNormals(); pg.computeBoundingSphere();
+            var pool = new THREE.Mesh(pg, L.poolMat); pool.name = 'hq_land_falls_pool_' + f.id; pool.renderOrder = 2; pool._ew_occSkip = true; pool.raycast = function () {};
+            L.group.add(pool);
+            /* the mist: a cloud of soft points rising off the pool, drawn near */
+            var mist = null, parts = [];
+            if (fx) {
+                var N = 30, mp = new Float32Array(N * 3), spread = Math.min(10, 2 + f.drop * 0.12);
+                for (var q = 0; q < N; q++) { parts.push({ a: rng() * Math.PI * 2, r: rng() * pr * 0.9, life: rng(), sp: 0.35 + rng() * 0.5, up: spread }); }
+                var mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3));
+                mist = new THREE.Points(mg, new THREE.PointsMaterial({ map: _hqLandMistTex(), color: 0xf2f8fa, size: (2.2 + Math.min(5, f.drop * 0.06)) * U, sizeAttenuation: true, transparent: true, opacity: 0.3, depthWrite: false, fog: true }));
+                mist.name = 'hq_land_falls_mist_' + f.id; mist.renderOrder = 3; mist.frustumCulled = false; mist.visible = false; mist.raycast = function () {};
+                L.group.add(mist);
+            }
+            L.falls.push({ f: f, curtain: curtain, pool: pool, mist: mist, parts: parts, x: ft[0], z: ft[1], y: py });
+        });
+    }
+    function _hqLandFallsTick(L, cam, dt) {
+        var U = _hqUnits(), cx = cam.position.x / U, cz = cam.position.z / U;
+        for (var i = 0; i < L.falls.length; i++) {
+            var F = L.falls[i], m = F.mist; if (!m) continue;
+            var near = Math.hypot(cx - F.x, cz - F.z) < 320; m.visible = near; if (!near) continue;
+            var a = m.geometry.attributes.position, P = a.array;
+            for (var q = 0; q < F.parts.length; q++) {
+                var p = F.parts[q]; p.life += dt * p.sp * 0.25; if (p.life > 1) { p.life -= 1; p.a += 1.7; }
+                var rr = p.r * (0.6 + 0.8 * p.life);
+                P[q * 3] = (F.x + Math.cos(p.a) * rr) * U; P[q * 3 + 1] = (F.y + 0.3 + p.life * p.up) * U; P[q * 3 + 2] = (F.z + Math.sin(p.a) * rr) * U;
+            }
+            a.needsUpdate = true;
+        }
+    }
+    /* ── THE SKIFFS: one moored at each of water.moor (hqLandMooring), a mooring a frame once its tiles are in and the walker near ── */
+    function _hqLandMoorTick(L, px, pz) {
+        var list = (_hqLandWR() && _hqLandWR().moor) || [];
+        for (var i = 0; i < list.length; i++) {
+            var m = list[i]; if (L.moors[m.id]) continue;
+            if (Math.hypot(px - m.at[0], pz - m.at[1]) > 380) continue;
+            var r = hqLandMooring(m); if (!r) continue;   // the tiles round it have not landed
+            L.moors[m.id] = r;
+            if (r.none) { console.warn('[HQ land] the mooring ' + m.id + ' found no water to float a skiff'); return; }
+            try { _hqLandMoorSkiff(L, r); } catch (e) { console.warn('[HQ land] the skiff at ' + m.id + ' failed', e); }
+            return;
+        }
+    }
+    function _hqLandMoorSkiff(L, r) {
+        var U = _hqUnits(), g = _hqProcBuilders.skiff(U);
+        g.name = 'hq_land_skiff_' + r.id; g.position.set(r.x * U, r.y * U, r.z * U); g.rotation.order = 'YXZ'; g.rotation.y = r.yaw;
+        g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        L.group.add(g);
+        _hqVehicleRegister({ key: 'skiff_' + r.id }, { vehicle: 'boat' }, g, r.y);
+        /* the mooring pile on the shore (the painter's line goes to it) */
+        var post = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.15 * U, 1.6 * U, 8), _hqMat(null, 1, 1, { color: 0x5b4632, shininess: 6 }));
+        post.position.set(r.shore[0] * U, (r.shore[2] + 0.5) * U, r.shore[1] * U); post.castShadow = true; post.name = 'hq_land_mooring_' + r.id;
+        L.group.add(post);
+    }
+    /* ── per frame: the clock, the sky the water mirrors, the depth window, the sheets, the falls, the skiffs ── */
+    function _hqLandWaterTick(L, H, dt, now) {
+        if (!L.wu) return;
+        L.wu.uWT.value = (now * 0.001) % 1800;
+        var fog = H.scene && H.scene.fog, fx = H.seaFx;
+        if (fog && fog.color && !(fx && fx.under)) { L.wu.uWSky.value.copy(fog.color); var c = fog.color; L.wu.uWLit.value = Math.max(0.3, Math.min(1, 0.25 + (0.3 * c.r + 0.59 * c.g + 0.11 * c.b) * 1.1)); }
+        if (!L.idx || !L.world) return;
+        if (!L.wdepth) { try { _hqLandWaterFar(L); } catch (e) { L.wdepth = { n: 0, dead: true }; console.warn('[HQ land] the sea\'s depth failed', e); } }
+        if (L.wdepth && !L.wdepth.dead) _hqLandWaterDepthTick(L, H.camera);
+        if (!L.fallsBuilt) { L.fallsBuilt = true; try { _hqLandBuildFalls(L); } catch (e) { console.warn('[HQ land] the falls failed', e); } }
+        var pl = H.player, px = pl ? pl.x : 0, pz = pl ? pl.z : 0;
+        if (L.waterQ.length) {
+            var St = HQ_LAND_STORE;
+            L.waterQ.sort(function (a, b) { return _hqLandTileD(a, px, pz) - _hqLandTileD(b, px, pz); });
+            var n = H.ready ? 1 : 3;
+            while (n-- > 0 && L.waterQ.length) { var w = L.waterQ.shift(); try { _hqLandWaterTile(L, w[0], w[1]); } catch (e) { if (!L.waterWarned) { L.waterWarned = true; console.warn('[HQ land] a water sheet failed', e); } } }
+        }
+        if (L.falls.length) _hqLandFallsTick(L, H.camera, dt);
+        _hqLandMoorTick(L, px, pz);
+    }
+    function _hqLandTileD(w, x, z) { var St = HQ_LAND_STORE, x0 = -St.ext + w[0] * St.tile, z0 = -St.ext + w[1] * St.tile; return Math.hypot(Math.max(x0 - x, 0, x - x0 - St.tile), Math.max(z0 - z, 0, z - z0 - St.tile)); }
     /* ── D.O.O.R. HQ from outside: the drum on its pad, the front door in its south face ── */
     function _hqLandBuildHQ(L) {
         var R = _hqLandR(), Q = R.hq, U = _hqUnits(), y0 = L.hqY, g = new THREE.Group(); g.name = 'hq_land_building';
@@ -53358,6 +53771,14 @@ const ThreeRenderer = (function () {
         L.dead = true;
         for (var k in L.chunks) { var c = L.chunks[k]; if (c.ids) { try { c.ids.dispose(); } catch (e) {} } }
         if (L.plainMat) { try { L.plainMat.dispose(); } catch (e) {} }
+        /* G3: the water's own materials (shared: the room's sweep leaves them) and the near depth window */
+        var wm = [L.freshMat, L.fallMat, L.poolMat, L.nearSea && L.nearSea.material];
+        if (L.far) L.far.meshes.forEach(function (m) { if (m.material && m.material._ew_shared) wm.push(m.material); });
+        wm.forEach(function (m) { if (m) { try { m.dispose(); } catch (e) {} } });
+        if (L.wdepth && L.wdepth.tex) { try { L.wdepth.tex.dispose(); } catch (e) {} }
+        if (L.wWhite) { try { L.wWhite.dispose(); } catch (e) {} }
+        for (var wk in (L.waters || {})) { try { L.waters[wk].geometry.dispose(); } catch (e) {} }
+        (L.falls || []).forEach(function (F) { [F.curtain, F.pool, F.mist].forEach(function (m) { if (m) { try { m.geometry.dispose(); } catch (e) {} } }); if (F.mist) { try { F.mist.material.dispose(); } catch (e) {} } });
     }
     function _hqSea() { return (_hq && ((_hq.terrain && _hq.terrain.sea) || (_hq.land && _hq.land.sea))) || null; }   // G2: the land's sea
     /* THE COAST (OPEN_WORLD_PLAN Phase 7, 2026-09-27): the part on the stage that owns the ground at (x, z) of the current
@@ -53392,7 +53813,13 @@ const ThreeRenderer = (function () {
     function _hqSeaFxOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_SEA_FX; }
     function _hqSeaEmit(ev) { var H = _hq; if (!H || !H.opts || !H.opts.onSea) return; try { H.opts.onSea(ev); } catch (e) {} }
     /* the water column over the ground at (x, z), metres (≤ 0 = land) */
-    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !(_hq.terrain || _hq.land)) return 0; return s.y - _hqSeaGroundAt(x, z); }   // THE COAST: the ground of whichever part owns the point
+    function _hqSeaDepthAt(x, z) { var s = _hqSea(); if (!s || !(_hq.terrain || _hq.land)) return 0; return _hqWaterYAt(x, z) - _hqSeaGroundAt(x, z); }   // THE COAST: the ground of whichever part owns the point
+    /* G3: THE WATER'S SURFACE at (x, z) — on the land, its water layer (a river, the loch, else the sea: hqLandWaterY); elsewhere the sea's level */
+    function _hqWaterYAt(x, z) {
+        var H = _hq, s = _hqSea(); if (!s) return 0;
+        if (H && H.land && !H.terrain && !s.under && typeof hqLandWaterY === 'function') { var y = hqLandWaterY(x, z); return isFinite(y) ? y : s.y; }
+        return s.y;
+    }
     /* may the swimming body (its bottom at y) be at (x, z)? inside the room, above the ground, out of a wall / a block, clear of furniture */
     function _hqSwimFree(x, z, y) {
         var H = _hq, S = H.room.shell;
@@ -53407,8 +53834,8 @@ const ThreeRenderer = (function () {
     function _hqSwimFreeAt(x, z, y) {
         var H = _hq;
         if (H.land) {   // G2: the land's sea — over its ground, out of the building's drum
-            var seaL = _hqSea(), gl = y, RL = _hqSeaRules();
-            if (seaL && !seaL.under && y >= seaL.y - RL.surfaceDraft - 0.01) gl = seaL.y - (RL.exitDepth - 0.25) + 0.2;
+            var seaL = _hqSea(), gl = y, RL = _hqSeaRules(), wyL = _hqWaterYAt(x, z);
+            if (seaL && !seaL.under && y >= wyL - RL.surfaceDraft - 0.01) gl = wyL - (RL.exitDepth - 0.25) + 0.2;
             var lgr = hqLandHeight(x, z); if (lgr == null || gl < lgr + 0.2) return false;
             if (hqLandHQSolid(x, z, HQ_BODY_R)) return false;
             return _hqAirClearOfBlockers(x, z, y);
@@ -53427,11 +53854,12 @@ const ThreeRenderer = (function () {
         var sea = _hqSea(); if (!sea || pl.swim) return;
         var R = _hqSeaRules();
         var plunge = !sea.under && (pl.vy || 0) < -5;   // a body that fell in from a height PLUNGES (a dive at once), the rest bob up to the surface
+        var wy = _hqWaterYAt(pl.x, pl.z);   // G3: the river's, the loch's or the sea's
         pl.swim = true; pl.dive = !!sea.under || plunge; pl.air = false; pl.jumpT = -1;
         pl.svx = pl.velX || 0; pl.svz = pl.velZ || 0; pl.svy = plunge ? Math.max(-R.diveV * 1.5, pl.vy * 0.5) : 0; pl.mvx = 0; pl.mvz = 0; pl.vy = 0;
-        if (!sea.under) pl.y = plunge ? Math.max(_hqSeaGroundAt(pl.x, pl.z) + 0.3, sea.y - R.surfaceDraft - 1.2) : sea.y - R.surfaceDraft;
+        if (!sea.under) pl.y = plunge ? Math.max(_hqSeaGroundAt(pl.x, pl.z) + 0.3, wy - R.surfaceDraft - 1.2) : wy - R.surfaceDraft;
         pl.visY = pl.y;
-        if (plunge) { try { _hqRippleSplash(pl.x, sea.y, pl.z); } catch (e) {} }   // THE RIPPLES (5.3): a plunge is a splash
+        if (plunge) { try { _hqRippleSplash(pl.x, wy, pl.z); } catch (e) {} }   // THE RIPPLES (5.3): a plunge is a splash
         _hqSeaEmit({ kind: 'swim', on: true, why: why || 'water', under: !!sea.under });
     }
     function _hqSwimStop(pl, y) {
@@ -53446,10 +53874,14 @@ const ThreeRenderer = (function () {
         var H = _hq, sea = _hqSea(); if (!sea || pl.swim || (H.vehicle && H.vehicle.on)) return;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_SWIM) return;
         if (sea.under) { _hqSwimStart(pl, 'drowned'); return; }
-        if (pl.air) return;
         var R = _hqSeaRules();
+        if (pl.air) {
+            /* G3: a body falling into the land's water (off a falls, a bank, a cliff) goes in as it passes the surface — a plunge */
+            if (H.land && !H.terrain && (pl.vy || 0) < -2) { var dA = _hqSeaDepthAt(pl.x, pl.z); if (dA > R.exitDepth && pl.y < _hqWaterYAt(pl.x, pl.z) - 0.3) _hqSwimStart(pl, 'water'); }
+            return;
+        }
         var depth = _hqSeaDepthAt(pl.x, pl.z);
-        if (depth > R.exitDepth && pl.y < sea.y - 0.3) _hqSwimStart(pl, 'water');
+        if (depth > R.exitDepth && pl.y < _hqWaterYAt(pl.x, pl.z) - 0.3) _hqSwimStart(pl, 'water');
     }
     /* THE SWIM, per frame — in place of _hqTickWalker's movement */
     function _hqTickSwim(dt) {
@@ -53474,15 +53906,26 @@ const ThreeRenderer = (function () {
             pl.svx += (tx - pl.svx) * a; pl.svy += (ty - pl.svy) * a; pl.svz += (tz - pl.svz) * a;
             if (pl.dive && !sea.under && !up && !down && !moving) pl.svy += R.buoyancy * dt;   // an idle diver drifts up in the open sea; the abyss is neutral
         } else { pl.svx *= 0.9; pl.svy *= 0.9; pl.svz *= 0.9; }
-        var cap = sea.under ? sea.y - R.underCap : sea.y - R.surfaceDraft;
         var nx = pl.x + pl.svx * dt, nz = pl.z + pl.svz * dt, ny = pl.y + pl.svy * dt;
-        if (_hqSwimFree(nx, pl.z, pl.y)) pl.x = nx; else pl.svx = 0;
-        if (_hqSwimFree(pl.x, nz, pl.y)) pl.z = nz; else pl.svz = 0;
+        /* G3: on the land's water a surface swimmer keeps to ONE surface (a river's slope, never up a falls), rides the current,
+           and over a falls' lip the water lets go: the body drops (the plunge at the foot takes it back) */
+        var LW = H.land && !H.terrain && !sea.under ? _hqLandR().water : null, wy0 = LW ? _hqWaterYAt(pl.x, pl.z) : 0;
+        if (LW && !pl.dive) { var fl = hqLandFlow(pl.x, pl.z); nx += fl[0] * dt * 0.85; nz += fl[1] * dt * 0.85; }
+        var sameW = function (x, z) { return !LW || pl.dive || Math.abs(_hqWaterYAt(x, z) - wy0) <= LW.hull; };
+        if (_hqSwimFree(nx, pl.z, pl.y) && sameW(nx, pl.z)) pl.x = nx; else pl.svx = 0;
+        if (_hqSwimFree(pl.x, nz, pl.y) && sameW(pl.x, nz)) pl.z = nz; else pl.svz = 0;
+        if (LW && !pl.dive && hqLandFlow(pl.x, pl.z)[2] >= LW.falls.grade) {
+            _hqSwimStop(pl, pl.y); pl.air = true; pl.vy = -1; pl.jumpT = -1;
+            _hqSeaEmit({ kind: 'falls' });
+            return;
+        }
+        var wyS = _hqWaterYAt(pl.x, pl.z);
+        var cap = sea.under ? sea.y - R.underCap : wyS - R.surfaceDraft;
         if (ny > cap) { ny = cap; if (pl.svy > 0) pl.svy = 0; if (pl.dive && !sea.under) { pl.dive = false; _hqSeaEmit({ kind: 'surface' }); } }
         var g = _hqSeaGroundAt(pl.x, pl.z) + 0.25;
         if (ny < g) { ny = g; if (pl.svy < 0) pl.svy = 0; }
         if (_hqSwimFree(pl.x, pl.z, ny)) pl.y = ny; else pl.svy = 0;
-        if (!pl.dive) pl.y = Math.min(pl.y, cap);
+        if (!pl.dive) pl.y = (LW && cap > pl.y && _hqSwimFree(pl.x, pl.z, cap)) ? cap : Math.min(pl.y, cap);   // G3: a surface swimmer rides a river's rising surface too
         /* the shallows: the feet find the ground → the walker again */
         if (!sea.under) {
             var depth = _hqSeaDepthAt(pl.x, pl.z);
@@ -53543,7 +53986,7 @@ const ThreeRenderer = (function () {
             if (!best || score > best.score) best = { x: px, z: pz, y: fy, score: score };
         });
         if (best) { pl.x = best.x; pl.z = best.z; pl.y = best.y; }
-        else { pl.x = V.x + rxv * 1.9; pl.z = V.z + rzv * 1.9; pl.y = (V.kind === 'sub') ? V.y : (sea ? sea.y - R.surfaceDraft : V.y); }
+        else { pl.x = V.x + rxv * 1.9; pl.z = V.z + rzv * 1.9; pl.y = (V.kind === 'sub') ? V.y : (sea ? _hqWaterYAt(pl.x, pl.z) - R.surfaceDraft : V.y); }
         pl.visY = pl.y; pl.air = false; pl.vy = 0;
         H.vehicle = null;
         _hqSeaEmit({ kind: 'disembark', vehicle: V.kind });
@@ -53554,7 +53997,15 @@ const ThreeRenderer = (function () {
     }
     /* the hull's probes clear? the skiff: water deeper than its draft; the sub: the column round it */
     function _hqHullFree(V, R, x, z, y) {
-        var H = _hq, S = H.room.shell, ti = H.terrain, sea = _hqSea(); if (!ti || !sea) return false;
+        var H = _hq, S = H.room.shell, ti = H.terrain, sea = _hqSea();
+        /* G3: the land's water — the five probes on one surface deep enough (hqLandHullFloats: the loch, a river, the sea; never up or
+           down a falls), the hull's gunwale clear of anything standing in the water */
+        if (!ti && H.land && sea) {
+            if (V.kind !== 'boat' || typeof hqLandHullFloats !== 'function') return false;
+            if (!hqLandHullFloats(x, z, V.yaw, R.len || 4.6, R.beam || 1.7, R.draft || 0.55)) return false;
+            return _hqAirClearOfBlockers(x, z, _hqWaterYAt(x, z) + 0.3);
+        }
+        if (!ti || !sea) return false;
         var L = (R.len || 4.6) / 2, B = (R.beam || 1.7) / 2, fx = Math.sin(V.yaw), fz = Math.cos(V.yaw), rx = Math.cos(V.yaw), rz = -Math.sin(V.yaw);
         var probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
         for (var i = 0; i < probes.length; i++) {
@@ -53601,6 +54052,7 @@ const ThreeRenderer = (function () {
         if (dl) { V.yaw += dl; H.cam.yaw -= dl; }
         var fx = Math.sin(V.yaw), fz = Math.cos(V.yaw);
         var nx = V.x + fx * V.v * dt, nz = V.z + fz * V.v * dt;
+        if (H.land && !H.terrain && V.kind !== 'sub' && typeof hqLandFlow === 'function') { var fl = hqLandFlow(V.x, V.z); nx += fl[0] * dt; nz += fl[1] * dt; }   // G3: a river carries the skiff downstream
         if (V.kind === 'sub') {
             var vt = vert * (R.vertV || 2.4);
             V.vy += (vt - V.vy) * (1 - Math.exp(-dt * 2.2));
@@ -53620,7 +54072,7 @@ const ThreeRenderer = (function () {
             else if (_hqHullFree(V, R, nx, V.z, V.y)) { V.x = nx; V.v *= 0.5; }
             else if (_hqHullFree(V, R, V.x, nz, V.y)) { V.z = nz; V.v *= 0.5; }
             else { V.v *= 0.15; if (Math.abs(V.v) < 0.2) V.v = 0; }
-            V.y = (sea ? sea.y : V.y) + (R.bob || 0.08) * Math.sin(V.t * 1.3) + 0.02;
+            V.y = (sea ? _hqWaterYAt(V.x, V.z) : V.y) + (R.bob || 0.08) * Math.sin(V.t * 1.3) + 0.02;   // G3: the water under the hull (a river's slope, the loch)
             V.pitch += ((0.035 * Math.sin(V.t * 1.7) - 0.02 * Math.min(1, Math.abs(V.v) / R.v)) - V.pitch) * Math.min(1, dt * 3);
             V.roll += ((0.05 * Math.sin(V.t * 0.9) - turn * 0.1 * Math.min(1, Math.abs(V.v) / R.v)) - V.roll) * Math.min(1, dt * 3);
         }
@@ -53768,7 +54220,14 @@ const ThreeRenderer = (function () {
     function _hqTickSea(dt, now) {
         var H = _hq, sea = _hqSea(), fx = H && H.seaFx; if (!sea || !fx) return;
         var U = _hqUnits(), cam = H.camera, sc = H.scene, camY = cam.position.y / U;
-        var under = !!sea.under || camY < sea.y;
+        /* G3: on the land the camera is under the water over its own spot (a river, the loch, the sea) and above the ground there */
+        var ccx = cam.position.x / U, ccz = cam.position.z / U, wyC = _hqWaterYAt(ccx, ccz), landW = !!(H.land && !H.terrain && !sea.under);
+        var under = !!sea.under || camY < wyC;
+        if (landW && under) { var gC = hqLandHeight(ccx, ccz); if (gC == null || camY < gC - 0.2) under = false; }
+        if (landW && under && fx.wetFog) {
+            var frW = typeof hqLandWaterFresh === 'function' && hqLandWaterFresh(ccx, ccz);
+            if (frW !== fx.wetFresh) { fx.wetFresh = frW; fx.wetFog.color.setHex(frW ? 0x163a30 : 0x0b3a4c); if (fx.wetBg) fx.wetBg.setHex(frW ? 0x0f2a22 : 0x06283a); fx.wetFog.density = (frW ? 0.07 : 0.045) / U; }
+        }
         if (under !== fx.under) {
             fx.under = under;
             if (!sea.under) {
@@ -53782,7 +54241,7 @@ const ThreeRenderer = (function () {
         }
         if (under && fx.rays) {
             var q = 12 * U, cx = Math.round(cam.position.x / q) * q, cz = Math.round(cam.position.z / q) * q;
-            fx.rays.position.set(cx, (sea.y - fx.rayH / 2 + 0.2) * U, cz);
+            fx.rays.position.set(cx, (wyC - fx.rayH / 2 + 0.2) * U, cz);
             var t = now * 0.001;
             for (var i = 0; i < fx.rays.children.length; i++) { var r = fx.rays.children[i]; r.rotation.y += dt * 0.04 * ((i % 2) ? 1 : -1); r.material.opacity = 0.08 + 0.05 * Math.sin(t * r.userData.sp * 4 + r.userData.ph); }
             if (fx.snow) { fx.snow.position.set(cx, Math.round(cam.position.y / q) * q, cz); fx.snow.rotation.y += dt * 0.01; }
@@ -53799,7 +54258,7 @@ const ThreeRenderer = (function () {
             var bb = fx.bubbles[bi]; if (bb.life <= 0) continue;
             bb.life -= dt; bb.sp.position.y += bb.vy * dt * U; bb.sp.position.x += Math.sin(now * 0.004 + bi) * bb.ox * dt * U;
             bb.sp.material.opacity = Math.min(0.55, bb.life * 0.6);
-            if (bb.life <= 0 || bb.sp.position.y / U > sea.y - 0.1) { bb.life = 0; bb.sp.visible = false; }
+            if (bb.life <= 0 || bb.sp.position.y / U > (landW ? _hqWaterYAt(bb.sp.position.x / U, bb.sp.position.z / U) : sea.y) - 0.1) { bb.life = 0; bb.sp.visible = false; }
         }
     }
     /* ── THE PROCS: the sea's kit (metres × U, front +Z, origin on the floor) ── */
@@ -55802,6 +56261,7 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H) return null;
         if (H.terrain && typeof hqTerrainFluidAt === 'function') { var f = null; try { f = hqTerrainFluidAt(H.terrain, x, z); } catch (e) { f = null; } if (!f || /lava/.test(String(f.key || ''))) return null; return (f.y != null) ? f.y : null; }
         if (H.site) { var sc = null; try { sc = _hqSiteCellAt(x, z); } catch (e) { sc = null; } if (sc && sc.fluid && !/lava/.test(String(sc.key || ''))) return (sc.sheet != null) ? sc.sheet : -0.3; }
+        if (H.land && !H.terrain && typeof hqLandWaterDepth === 'function') { var wd = hqLandWaterDepth(x, z); return (wd != null && wd > 0.02) ? hqLandWaterY(x, z) : null; }   // G3: the wader in a river's shallows, the loch's edge, the surf
         return null;
     }
     function _hqRippleEmit(x, y, z, r, opts) {
@@ -55833,8 +56293,8 @@ const ThreeRenderer = (function () {
         var P = H.ripples, R = _hqLightRules().ripples;
         if (_hqRipplesOn() && !H.paused) {
             var pl = H.player, V = H.vehicle, sheet = null, sx = 0, sz = 0, big = 0, moving = false;
-            if (V && V.on && V.kind !== 'sub' && Math.abs(V.v || 0) > 0.4) { var sea = _hqSea(); if (sea) { sheet = sea.y; sx = V.x - Math.sin(V.yaw) * 1.2; sz = V.z - Math.cos(V.yaw) * 1.2; big = R.wakeR || 1.8; moving = true; } }
-            else if (pl && pl.swim && !pl.dive) { var sea2 = _hqSea(); if (sea2 && Math.hypot(pl.svx || 0, pl.svz || 0) > 0.35) { sheet = sea2.y; sx = pl.x; sz = pl.z; moving = true; } }
+            if (V && V.on && V.kind !== 'sub' && Math.abs(V.v || 0) > 0.4) { var sea = _hqSea(); if (sea) { sheet = _hqWaterYAt(V.x - Math.sin(V.yaw) * 1.2, V.z - Math.cos(V.yaw) * 1.2); sx = V.x - Math.sin(V.yaw) * 1.2; sz = V.z - Math.cos(V.yaw) * 1.2; big = R.wakeR || 1.8; moving = true; } }
+            else if (pl && pl.swim && !pl.dive) { var sea2 = _hqSea(); if (sea2 && Math.hypot(pl.svx || 0, pl.svz || 0) > 0.35) { sheet = _hqWaterYAt(pl.x, pl.z); sx = pl.x; sz = pl.z; moving = true; } }
             else if (pl && !pl.swim && !pl.air && (pl.moving || Math.hypot(pl.velX || 0, pl.velZ || 0) > 0.3)) {
                 var sh = _hqWetSheetAt(pl.x, pl.z);
                 if (sh != null && pl.y < sh - 0.04) { sheet = sh; sx = pl.x; sz = pl.z; moving = true; }
@@ -59503,6 +59963,8 @@ const ThreeRenderer = (function () {
             hqInst: function () { return _hqInstStats(_hq); },
             /* G2: THE LAND's state (a probe's read: the card, the chunks, the build cost, the far pass's cut, the store) */
             land: function () { var L = _hq && _hq.land; if (!L) return null; return { ready: !!_hq.ready, readyNear: L.readyNear, readyMs: L.readyMs || null, playerAttached: !!_hq.playerAttached, gatePending: _hq.gate && !_hq.gate.closed ? _hq.gate.pending() : 0, idx: L.idx, world: L.world, chunks: L.n, waiting: L.want.length, built: L.stats.built, msPer: L.stats.built ? +(L.stats.ms / L.stats.built).toFixed(2) : 0, cut: +L.cut.toFixed(1), splat: !!L.mats, gl2: L.gl2, store: (typeof hqLandStats === 'function') ? hqLandStats() : null }; },
+            /* G3: THE WATER at (x, z) (the walker's spot by default): the surface, the depth, the current; the sheets drawn, the falls, the moorings, the depth window, the sheets' look */
+            water: function (x, z) { var L = _hq && _hq.land; if (!L || typeof hqLandWaterY !== 'function') return null; var pl = _hq.player; if (x == null && pl) { x = pl.x; z = pl.z; } var W = L.wdepth; return { y: hqLandWaterY(x, z), depth: hqLandWaterDepth(x, z), fresh: hqLandWaterFresh(x, z), flow: hqLandFlow(x, z), sheets: Object.keys(L.waters || {}).length, queued: (L.waterQ || []).length, falls: (L.falls || []).length, moors: L.moors || {}, near: W ? { n: W.n, cx: W.cx, cz: W.cz, built: !!W.tex } : null, look: L.wu ? { sheet: !!L.wu.uWHave.value.x, waves: !!L.wu.uWHave.value.y } : null }; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;

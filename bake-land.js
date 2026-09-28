@@ -11,7 +11,8 @@
 //   - ridged noise with ProceduralTerrains' gradient damping (damp = 1/(1 + k·|∇|²), reimplemented, not copied)
 //     so the ranges carry gullies instead of rounded domes;
 //   - trails are BENCHED: graded to at most 0.9 and cut into the slope, with steps marked where they pass 0.35;
-//   - a river's water surface falls monotonically from source to mouth (R7), a lake has one level;
+//   - a river's water surface falls monotonically from source to mouth (R7), a lake has one level; G3: a river that
+//     reaches the coast meets the sea at the sea's level (HQ_LAND.riverMouth: its last stretch falls to it, the bed with it);
 //   - a CLIFF material wherever the slope passes 0.8 (R3: a steep face is always drawn);
 //   - the rules are checked in one place (checkRules) that the CLI and land-bake.test.js share.
 //
@@ -357,6 +358,20 @@ function bake(opts) {
         for (let k = 0; k < P.length; k++) { const raw = bed[k] + lerp(1.4, 3.0, Ls[k] / Lt) - 0.35; surf[k] = k ? Math.min(raw, surf[k - 1]) : raw; }
         for (const lk of R.lakes) for (let k = 0; k < P.length; k++) if (inLake(lk, P[k][0], P[k][1]) < 1) surf[k] = Math.min(surf[k], lk.level);   // in the loch the river IS the loch
         for (let k = 1; k < P.length; k++) surf[k] = Math.min(surf[k], surf[k - 1]);
+        // R7 THE MOUTH (G3): at the coast the river is the sea's level. THE RUN-OUT — from the coast up to RM.run m, or up to the
+        // foot of the nearest falls — falls to it in one even grade (never flatter than RM.grade) that meets the river's own
+        // surface at its top; the bed goes down with the surface so the channel keeps its depth (a lowered surface on its own
+        // bed would be a ford). Upstream of the run-out nothing changes.
+        const RM = R.riverMouth || { coast: 16, lift: 0.05, grade: 0.02, run: 400, falls: 0.35 };
+        let kc = -1; for (let k = 0; k < P.length; k++) if (sampleG(D, P[k][0], P[k][1]) < RM.coast) { kc = k; break; }
+        if (kc >= 0) {
+            let ke = kc;
+            while (ke > 0 && Ls[kc] - Ls[ke - 1] <= RM.run && (surf[ke - 1] - surf[ke]) / Math.max(1e-6, Ls[ke] - Ls[ke - 1]) < RM.falls) ke--;
+            const g = Math.max(RM.grade, (surf[ke] - R.sea - RM.lift) / Math.max(1, Ls[kc] - Ls[ke]));
+            for (let k = ke; k < P.length; k++) { const cap = R.sea + RM.lift + Math.max(0, Ls[kc] - Ls[k]) * g; if (surf[k] > cap) surf[k] = cap; }
+            for (let k = ke; k < P.length; k++) { const want = surf[k] + 0.35 - lerp(1.4, 3.0, Ls[k] / Lt); if (bed[k] > want) bed[k] = want; }
+            for (let k = 1; k < P.length; k++) bed[k] = Math.min(bed[k], bed[k - 1]);
+        }
         const vW = rv.valley; const F = polyField(P, vW * 2.2, false);
         for (let c = 0; c < NN; c++) { const d = F.d[c]; if (d > vW * 2.2) continue; const k = idxAt(Ls, F.s[c]); const fr = F.s[c] / Lt;
             const x = X(c % N), z = Z((c / N) | 0);
@@ -370,7 +385,7 @@ function bake(opts) {
             if (d < w + 1.5 && D[c] > -5) WATER[c] = Math.max(WATER[c], surf[k]);
             if (d < RIVERD[c]) RIVERD[c] = d; }
         const pts3 = P.map((p, k) => [+p[0].toFixed(1), +p[1].toFixed(1), +surf[k].toFixed(2)]).filter((p, k) => k % 3 === 0 || k === P.length - 1);
-        overlay.rivers.push({ id: rv.id, label: rv.label, w0: rv.w0, w1: rv.w1, pts: pts3, falls: rv.falls || [] }); }
+        overlay.rivers.push({ id: rv.id, label: rv.label, w0: rv.w0, w1: rv.w1, pts: pts3, falls: rv.falls || [], mouth: kc >= 0 ? [+P[kc][0].toFixed(1), +P[kc][1].toFixed(1), +surf[kc].toFixed(2)] : null }); }
     log('lakes');
     for (const lk of R.lakes) {
         overlay.lakes.push({ id: lk.id, label: lk.label, level: lk.level, a: lk.a, b: lk.b, half: lk.half });
@@ -573,6 +588,9 @@ function checkRules(B) {
     }
     // R7 rivers run downhill: every river's surface falls from source to mouth
     for (const rv of ov.rivers) for (let k = 1; k < rv.pts.length; k++) if (rv.pts[k][2] > rv.pts[k - 1][2] + 1e-6) { bad('R7', `${rv.id} rises ${(rv.pts[k][2] - rv.pts[k - 1][2]).toFixed(2)} m at (${rv.pts[k][0]}, ${rv.pts[k][1]})`); break; }
+    // R7 THE MOUTH (G3): a river that reaches the coast meets the sea at its level (no water standing over the sea)
+    const RM = R.riverMouth || { lift: 0.05 };
+    for (const rv of ov.rivers) if (rv.mouth && rv.mouth[2] > R.sea + RM.lift + 0.01) bad('R7', `${rv.id} meets the sea ${(rv.mouth[2] - R.sea).toFixed(2)} m above it at (${rv.mouth[0]}, ${rv.mouth[1]})`);
     // R7 a lake has one level (every water cell inside it at that level) and an outlet (a river that leaves it lower)
     for (const lk of ov.lakes) {
         const cx = (lk.a[0] + lk.b[0]) / 2, cz = (lk.a[1] + lk.b[1]) / 2;
@@ -727,7 +745,7 @@ if (require.main === module) {
     console.log(`wrote ${out}: land.json ${(files.json / 1024).toFixed(0)} KB, land-map.png ${(files.png / 1024).toFixed(0)} KB, ${files.tiles} tiles · bake id ${id}`);
     const hub = (B.overlay.places || []).find(p => p.id === 'hq'), hubY = hub && isFinite(+hub.y) ? +hub.y : undefined;
     if (!flag('--no-stamp') && !breaches.length) { stampData(id, null, { hubY }); console.log(`stamped data.js HQ_LAND.baked.id = '${id}', hubY ${hubY} (ship data.js with the ?v= bump; upload ${path.relative(REPO_ROOT, out) || out}/ to R2 Assets/Land/)`); }
-    console.log(breaches.length ? `${breaches.length} breach(es): not stamped` : 'THE RULES HOLD: R2 from every pad, the named separations, rivers downhill, lakes level, road grades, the ring, every place on a route, cliffs drawn');
+    console.log(breaches.length ? `${breaches.length} breach(es): not stamped` : 'THE RULES HOLD: R2 from every pad, the named separations, rivers downhill and meeting the sea at its level, lakes level, road grades, the ring, every place on a route, cliffs drawn');
     process.exit(breaches.length ? 1 : 0);
 }
 
