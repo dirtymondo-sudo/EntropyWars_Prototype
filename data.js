@@ -42139,6 +42139,60 @@ const HQ_LAND_RULES = {
         ],
     },
     ao: { r: 5, k: 0.08, min: 0.58 },                                    // the ground's own AO: a hollow `r` m across darkens by k a metre
+    /* THE TREES AND THE GRASS (G4, §5.5; mondo 2026-09-28: "use only the trees, grass, plants and props the game already has").
+       Every model is one the game already draws: the board's foliage OBJs (Assets/foilage/OBJ Tree_1 / 3 / 6 / 9, DeadTree_2 / 5,
+       wearing the bucket's wood.png + leaves.png), the woods batch's Meshy pine, dead snag and fern (Assets/misc), the D.O.O.R.
+       kit's two asteroid rocks, and the battle board's grass tuft (grass_2.png blades). `src` = 'foliage:<OBJ name>' |
+       'misc:<_MISC_GLB key>' | 'door:<catalogue key>'. Placement is a pure function of the baked tile (hqLandFlora): a jittered
+       grid, a hash-local-maximum spacing test (no two trunks nearer than minSp), and the slope / water / road / pad windows.
+       `r` = a trunk's blocker radius (m, the most it may be: the renderer measures each model's trunk and writes `rM`, a share of
+       the tree's height, and the blocker is the smaller — never wider than the bark drawn, R3). The forest stays walkable
+       between the trunks: minSp − 2 r leaves more than a body's width. */
+    flora: {
+        trees: { cell: 3.6, minSp: 3.2, jit: 0.9, from: 0.4, to: 0.9, max: 0.82, lone: 0.035, slope: 0.62, road: 3.5, pad: 5, shore: 0.6, hq: 8 },
+        kinds: [
+            { id: 'oak',   src: 'foliage:Tree_1',     h: [8, 12.5],  r: 0.3 },
+            { id: 'ash',   src: 'foliage:Tree_3',     h: [8.5, 13],  r: 0.3 },
+            { id: 'elm',   src: 'foliage:Tree_6',     h: [7, 11],    r: 0.3 },
+            { id: 'tall',  src: 'foliage:Tree_9',     h: [12, 18],   r: 0.36 },
+            { id: 'dead',  src: 'foliage:DeadTree_2', h: [6, 9],     r: 0.26 },
+            { id: 'dead2', src: 'foliage:DeadTree_5', h: [6, 9],     r: 0.26 },
+            { id: 'pine',  src: 'misc:pine',          h: [10, 17],   r: 0.32 },
+            { id: 'snag',  src: 'misc:dead_snag',     h: [5, 8],     r: 0.28 },
+        ],
+        /* the kinds a stand grows ([kind, weight]); a named forest of the recipe (HQ_LAND.forests) picks its own, a `dry` one the
+           desert pines; `north` above northH m or north of northZ; `zones` = a mix round a spot (the ritual woods by the loch) */
+        mixes: {
+            broad: [['oak', 3], ['ash', 3], ['elm', 2], ['tall', 1], ['dead', 0.25], ['dead2', 0.25], ['snag', 0.15]],
+            fairy: [['oak', 3], ['elm', 3], ['ash', 2], ['tall', 1.5]],
+            redwood: [['tall', 5], ['pine', 3], ['snag', 0.3]],
+            pine: [['pine', 6], ['tall', 1], ['snag', 0.4]],
+            dry: [['pine', 8], ['snag', 1.2]],
+            north: [['pine', 5], ['tall', 1], ['dead', 0.3]],
+            haunt: [['dead', 3], ['dead2', 3], ['snag', 2], ['elm', 1.5], ['oak', 1]],
+            lone: [['oak', 3], ['ash', 2], ['elm', 2], ['dead', 0.5], ['snag', 0.4]],
+        },
+        forestMix: { fairy: 'fairy', redwood: 'redwood', pines: 'pine', eastwood: 'broad' },
+        northH: 150, northZ: -950,
+        zones: [ { at: [-1130, -330], r: 240, mix: 'haunt' } ],          // THE RITUAL WOODS
+        /* the undergrowth: the woods batch's fern, never a blocker */
+        under: { cell: 2.3, minSp: 1.7, jit: 0.9, p: 0.5, edge: 0.06, slope: 0.8, kinds: [{ id: 'fern', src: 'misc:fern', h: [0.7, 1.3] }] },
+        /* the rocks: the D.O.O.R. kit's asteroids, fitted to `span` m across and span × hK m tall, sunk `sink` of that; a rock is a
+           blocker of radius span × rK with its top on the rock (a walker jumps onto it, as onto furniture). p = the chance per cell */
+        rocks: { cell: 10, minSp: 7, jit: 0.85, span: [0.9, 2.6], hK: 0.6, rK: 0.36, sink: 0.2, slope: 0.95,
+                 p: { rock: 0.3, redrock: 0.28, clay: 0.08, desert: 0.04, tundra: 0.08, snow: 0.05, forest: 0.07, meadow: 0.04, grass: 0.025, farm: 0.01 },
+                 kinds: [{ id: 'boulder', src: 'door:asteroid_a' }, { id: 'crag', src: 'door:asteroid_b' }] },
+        /* the grass: the battle board's tuft (grass_2 blades) on a `cell` m hash grid within `reach` m, shrinking away between fade[0] and
+           fade[1] m; `mats` = the density per ground material (nothing grows on a road, rock, sand or snow) */
+        grass: { cell: 1.3, block: 8, reach: 58, fade: [30, 56], blades: [5, 8], h: [0.22, 0.55], w: 0.028, spread: 0.55, variants: 4,
+                 mats: { grass: 0.95, meadow: 0.9, farm: 0.7, tundra: 0.4, forest: 0.3, clay: 0.06 } },
+        /* the drawing: whole models within near.r m (nearest first, while the triangles fit near.tris — near.low with EW_PERF_LOW),
+           crossed cards of each model past them to the far pass's cut, and the far pass's cards from the 8 m world past that */
+        near: { r: 90, tris: 900000, low: 360000, every: 4, underR: 48, rockR: 180 },
+        far: { p: 0.8, jit: 0.8, hK: 1.1 },
+        blockers: { r: 10, every: 1.5 },
+        buildMs: 3,                                                      // ms a frame the tiles' flora may take once the card is down (48 steps a tile)
+    },
     /* THE GROUND'S SHEETS (fork 8; 2026-09-28 mondo: "we already have a bunch of terrain textures in the r2 bucket, and the urban
        textures as well"): every layer wears a sheet the game already ships. `src` is a TERRAIN_SPRITES key or `urban:<Name>`
        (sprites.js URBAN_TEXTURES) — the same names a room's floor / cliff / path uses, picked by mondo. `tint` multiplies the sheet (a
@@ -42529,6 +42583,229 @@ function _hqLandMoorRing(r) {
     const K = []; for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dz * dz <= r * r) K.push([dx, dz]);
     K.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]) || a[1] - b[1] || a[0] - b[0]);
     return (_HQ_LAND_MOOR_RINGS[r] = K);
+}
+/* ══ THE TREES AND THE GRASS (WORLD_GEOGRAPHY_PLAN.md §5.5 — G4, 2026-09-28) ══════════════════════════════════════════════
+   ONE placement for everyone: the renderer draws what hqLandFlora lists, and the walker is stopped by the same list
+   (hqLandFloraNear → the room's blockers), so every trunk that stops you is a trunk that is drawn (R3), and nothing else is.
+   A tile's flora is a pure function of the tile file (its own samples only — never a neighbour's, so the same trees stand
+   whatever landed first) and the recipe; it is kept on the tile record and goes when the store drops the tile.
+     THE GRID      a candidate per `cell` m of the world's lattice (the cell's hash jitters it), kept only if no neighbour within
+                   minSp outranks it (the hash-local-maximum test): a Poisson-like spacing without a pass over the neighbours'
+                   tiles. The candidate belongs to the tile its point falls in.
+     THE WINDOWS   a tree grows on the forest material (the denser the bake's forest byte, the likelier) or, rarely, alone on grass
+                   / meadow / farm / tundra / clay; never on a slope past trees.slope, in water or within `shore` m over it, within
+                   `road` m of a road, trail, street or river, on a pad (+ `pad` m) or at HQ's drum.
+     THE KINDS     the stand's mix (flora.mixes): a named forest's own, the desert pines, the north's firs, a zone's (the ritual
+                   woods), else the broadleaf mix. */
+let _HQ_FLORA_TAB = null;
+/* the per-material table (the bake's material order): forest / lone / clear (no tree near it) / rock chance / grass density */
+function _hqFloraTab() {
+    const St = HQ_LAND_STORE, names = (St.index && St.index.materials) || Object.keys(HQ_LAND_RULES.mats), key = names.join(',');
+    if (_HQ_FLORA_TAB && _HQ_FLORA_TAB.key === key) return _HQ_FLORA_TAB;
+    const F = HQ_LAND_RULES.flora, lone = { grass: 1, meadow: 1, farm: 0.6, tundra: 0.5, clay: 0.35 };
+    const clear = { road: 1, trail: 1, urban: 1, river: 1, lake: 1, deep: 1, shallow: 1 };
+    const T = { key, n: names.length, forest: new Uint8Array(32), lone: new Float32Array(32), clear: new Uint8Array(32), rock: new Float32Array(32), grass: new Float32Array(32), under: new Uint8Array(32) };
+    names.forEach((m, k) => {
+        T.forest[k] = m === 'forest' ? 1 : 0; T.lone[k] = lone[m] || 0; T.clear[k] = clear[m] ? 1 : 0;
+        T.rock[k] = (F.rocks.p[m] || 0); T.grass[k] = (F.grass.mats[m] || 0); T.under[k] = (m === 'forest' || m === 'meadow' || m === 'grass') ? 1 : 0;
+    });
+    return (_HQ_FLORA_TAB = T);
+}
+function _hqFloraH(i, j, k) { return _hqLandHash(Math.imul(i, 3) + k * 7919 + 101, Math.imul(j, 7) - k * 104729 - 57); }
+/* a layer's candidate for cell (I, J): its point and its rank */
+function _hqFloraPt(I, J, cell, jit, salt, out) {
+    const ext = HQ_LAND_STORE.ext;
+    out[0] = (I + 0.5 + (_hqFloraH(I, J, salt) - 0.5) * jit) * cell - ext;
+    out[1] = (J + 0.5 + (_hqFloraH(I, J, salt + 1) - 0.5) * jit) * cell - ext;
+    out[2] = _hqFloraH(I, J, salt + 2);
+    return out;
+}
+/* every kept candidate of a layer whose point falls in [x0, x1) × [z0, z1): fn(I, J, x, z). Each cell's point is hashed once into
+   a local window (the neighbours' test reads the window, not the hash again): a tile's 5 000 cells cost a few ms */
+function _hqFloraGrid(L, salt, x0, z0, x1, z1, fn) {
+    const ext = HQ_LAND_STORE.ext, c = L.cell, jit = L.jit, sp2 = L.minSp * L.minSp;
+    const I0 = Math.floor((x0 + ext) / c) - 2, I1 = Math.floor((x1 + ext) / c) + 2, J0 = Math.floor((z0 + ext) / c) - 2, J1 = Math.floor((z1 + ext) / c) + 2;
+    const nw = I1 - I0 + 1, nh = J1 - J0 + 1, PX = new Float64Array(nw * nh), PZ = new Float64Array(nw * nh), PR = new Float64Array(nw * nh);
+    const HS = (i, j) => { let v = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967295; };
+    const H = (i, j, k) => HS(Math.imul(i, 3) + k * 7919 + 101, Math.imul(j, 7) - k * 104729 - 57);   // = _hqFloraH
+    for (let J = J0; J <= J1; J++) for (let I = I0; I <= I1; I++) {
+        const o = (J - J0) * nw + (I - I0);
+        PX[o] = (I + 0.5 + (H(I, J, salt) - 0.5) * jit) * c - ext; PZ[o] = (J + 0.5 + (H(I, J, salt + 1) - 0.5) * jit) * c - ext; PR[o] = H(I, J, salt + 2);
+    }
+    for (let J = J0 + 1; J < J1; J++) for (let I = I0 + 1; I < I1; I++) {
+        const o = (J - J0) * nw + (I - I0), px = PX[o], pz = PZ[o], pr = PR[o];
+        if (px < x0 || px >= x1 || pz < z0 || pz >= z1) continue;
+        let keep = true;
+        for (let dj = -1; dj <= 1 && keep; dj++) for (let di = -1; di <= 1; di++) {
+            if (!di && !dj) continue;
+            const q = o + dj * nw + di, dx = PX[q] - px, dz = PZ[q] - pz;
+            if (dx * dx + dz * dz < sp2 && (PR[q] > pr || (PR[q] === pr && (dj > 0 || (dj === 0 && di > 0))))) { keep = false; break; }
+        }
+        if (keep) fn(I, J, px, pz);
+    }
+}
+/* the stand's mix at (x, z): a zone's, a named forest's (the one whose band holds the point best), the north's, else the broadleaf */
+function hqLandFloraMix(x, z, h, lone) {
+    const F = HQ_LAND_RULES.flora;
+    for (const zn of F.zones || []) if (Math.hypot(x - zn.at[0], z - zn.at[1]) < zn.r) return zn.mix;
+    let best = null, bw = 0.25;
+    for (const fb of HQ_LAND.forests || []) {
+        let d;
+        if (fb.pts) { d = Infinity; for (let k = 1; k < fb.pts.length; k++) { const a = fb.pts[k - 1], b = fb.pts[k], dx = b[0] - a[0], dz = b[1] - a[1], ll = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / ll)); d = Math.min(d, Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t)); } }
+        else d = Math.hypot(x - fb.at[0], z - fb.at[1]);
+        const w = 1 - d / fb.r;
+        if (w > bw && (!fb.minH || h > fb.minH - 12)) { bw = w; best = fb; }
+    }
+    if (best) return best.dry ? 'dry' : (F.forestMix[best.id] || 'broad');
+    if (h > F.northH || z < F.northZ) return 'north';
+    return lone ? 'lone' : 'broad';
+}
+function _hqFloraPick(mix, r) {
+    const F = HQ_LAND_RULES.flora, M = F.mixes[mix] || F.mixes.broad;
+    let tot = 0; for (const e of M) tot += e[1];
+    let a = r * tot;
+    for (const e of M) { a -= e[1]; if (a <= 0) return e[0]; }
+    return M[M.length - 1][0];
+}
+function hqLandFloraKind(id) { const K = HQ_LAND_RULES.flora.kinds; for (let k = 0; k < K.length; k++) if (K[k].id === id) return k; return 0; }
+/* a trunk's blocker radius (m): the rule's, or the measured bark's share of the height when that is smaller (R3) */
+function hqLandTrunkR(kind, h) { const K = HQ_LAND_RULES.flora.kinds[kind] || {}; const r = K.r || 0.3; return (K.rM > 0) ? Math.min(r, Math.max(0.12, K.rM * h)) : r; }
+/* A TILE'S FLORA → { trees: Float32Array [x, z, y, kind, h, yaw] × nT, under: [x, z, y, kind, h, yaw] × nU, rocks: [x, z, y, kind, span, yaw] × nR, cells } */
+function hqLandFlora(t) { if (!t) return null; if (!t.flora) hqLandFloraStep(t); return t.flora; }
+/* the tile's flora a few steps at a time (a step = one layer over a 64 m square; 48 steps a tile) → true once it is done.
+   The steps run in one fixed order (the trees, the ferns, then the rocks), so the result is the one hqLandFlora gives. */
+function hqLandFloraStep(t, steps) {
+    if (!t) return true;
+    if (t.flora) return true;
+    const Jb = t.floraJob || (t.floraJob = _hqFloraJob(t));
+    let n = steps == null ? Infinity : steps;
+    while (n-- > 0 && Jb.k < Jb.steps.length) Jb.steps[Jb.k++]();
+    if (Jb.k < Jb.steps.length) return false;
+    t.flora = Jb.finish(); t.floraJob = null;
+    return true;
+}
+function _hqFloraJob(t) {
+    const St = HQ_LAND_STORE, F = HQ_LAND_RULES.flora, T = F.trees, tab = _hqFloraTab(), S = t.S, st = St.step, x0 = t.x0, z0 = t.z0, x1 = x0 + St.tile, z1 = z0 + St.tile;
+    const sea = HQ_LAND_RULES.sea.y, pads = St.pads || [];
+    /* the tile's own samples: nearest (materials, forest, water) and bilinear (heights), clamped to the tile */
+    const cl = (v, n) => v < 0 ? 0 : v > n ? n : v;
+    const near = (x, z) => cl(Math.round((z - z0) / st), S - 1) * S + cl(Math.round((x - x0) / st), S - 1);
+    const hy = (x, z) => { const gx = cl((x - x0) / st, S - 1.0001), gz = cl((z - z0) / st, S - 1.0001), i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, o = j * S + i, H = t.h;
+        return (H[o] * (1 - fx) + H[o + 1] * fx) * (1 - fz) + (H[o + S] * (1 - fx) + H[o + S + 1] * fx) * fz; };
+    const e = Math.max(st, 1), slope = (x, z) => Math.hypot(hy(x + e, z) - hy(x - e, z), hy(x, z + e) - hy(x, z - e)) / (2 * e);
+    const wet = (x, z, y, m) => { const w = t.water ? t.water[near(x, z)] : NaN; return (w === w && w > y - m) || y < sea + m + 0.4; };
+    const clearOf = (x, z, d) => !(tab.clear[t.mat[near(x + d, z)]] || tab.clear[t.mat[near(x - d, z)]] || tab.clear[t.mat[near(x, z + d)]] || tab.clear[t.mat[near(x, z - d)]] || tab.clear[t.mat[near(x, z)]]);
+    const hqR = HQ_LAND_RULES.hq.r + T.hq, nearHQ = x0 < hqR && x1 > -hqR && z0 < hqR && z1 > -hqR;
+    const tp = pads.filter(q => q[0] + q[2] + 12 > x0 && q[0] - q[2] - 12 < x1 && q[1] + q[2] + 12 > z0 && q[1] - q[2] - 12 < z1);   // the pads near this tile
+    const onPad = (x, z, m) => { if (nearHQ && x * x + z * z < hqR * hqR) return true; for (let i = 0; i < tp.length; i++) { const dx = x - tp[i][0], dz = z - tp[i][1], rr = tp[i][2] + m; if (dx * dx + dz * dz < rr * rr) return true; } return false; };
+    const low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
+    const trees = [], cells = new Map(), steps = [], SUB = 4, sw = St.tile / SUB;
+    const layer = (L, salt, fn) => { for (let b = 0; b < SUB * SUB; b++) { const sx = x0 + (b % SUB) * sw, sz = z0 + Math.floor(b / SUB) * sw; steps.push(() => _hqFloraGrid(L, salt, sx, sz, b % SUB === SUB - 1 ? x1 : sx + sw, b >= SUB * (SUB - 1) ? z1 : sz + sw, fn)); } };
+    layer(T, 11, (I, J, x, z) => {
+        const o = near(x, z), m = t.mat[o], f = t.forest[o] / 255, r = _hqFloraH(I, J, 14);
+        let p = 0, lone = false;
+        if (tab.forest[m]) p = T.max * Math.max(0, Math.min(1, (f - T.from) / (T.to - T.from)));
+        else if (tab.lone[m]) { p = T.lone * tab.lone[m] * (0.4 + 3 * f); lone = true; }
+        if (low) p *= 0.5;   // EW_PERF_LOW halves the density (§5.12)
+        if (!(r < p)) return;
+        const y = hy(x, z);
+        if (slope(x, z) > T.slope || wet(x, z, y, T.shore) || !clearOf(x, z, T.road) || onPad(x, z, T.pad)) return;
+        const kind = hqLandFloraKind(_hqFloraPick(hqLandFloraMix(x, z, y, lone), _hqFloraH(I, J, 15))), K = F.kinds[kind];
+        const h = K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(I, J, 16);
+        cells.set(I * 65536 + J, trees.length / 6);
+        trees.push(x, z, y, kind, h, _hqFloraH(I, J, 17) * Math.PI * 2);
+    });
+    const Uu = F.under, under = [];
+    layer(Uu, 21, (I, J, x, z) => {
+        const o = near(x, z), m = t.mat[o], f = t.forest[o] / 255;
+        if (!tab.under[m]) return;
+        let p = tab.forest[m] ? Uu.p * Math.max(0.25, f) : (f > 0.12 ? Uu.edge : 0);
+        if (low) p *= 0.5;
+        if (!(_hqFloraH(I, J, 24) < p)) return;
+        const y = hy(x, z);
+        if (slope(x, z) > Uu.slope || wet(x, z, y, 0.3) || !clearOf(x, z, 1.5) || onPad(x, z, 1)) return;
+        const K = Uu.kinds[0];
+        under.push(x, z, y, 0, K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(I, J, 25), _hqFloraH(I, J, 26) * Math.PI * 2);
+    });
+    const Rk = F.rocks, rocks = [], rcells = new Map();
+    layer(Rk, 31, (I, J, x, z) => {
+        const m = t.mat[near(x, z)], p = tab.rock[m];
+        if (!(p > 0) || !(_hqFloraH(I, J, 34) < p)) return;
+        const y = hy(x, z);
+        if (slope(x, z) > Rk.slope || wet(x, z, y, 0.4) || !clearOf(x, z, 2.5) || onPad(x, z, 3)) return;
+        /* a rock never stands in a tree: the trees were placed first */
+        const span = Rk.span[0] + (Rk.span[1] - Rk.span[0]) * Math.pow(_hqFloraH(I, J, 35), 1.6);
+        const cI = Math.floor((x + St.ext) / T.cell), cJ = Math.floor((z + St.ext) / T.cell);
+        for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const q = cells.get((cI + di) * 65536 + cJ + dj); if (q != null && Math.hypot(trees[q * 6] - x, trees[q * 6 + 1] - z) < span * 0.6 + 1.2) return; }
+        rcells.set(I * 65536 + J, rocks.length / 6);
+        rocks.push(x, z, y, _hqFloraH(I, J, 36) < 0.5 ? 0 : 1, span, _hqFloraH(I, J, 37) * Math.PI * 2);
+    });
+    const finish = () => ({ trees: new Float32Array(trees), nT: trees.length / 6, under: new Float32Array(under), nU: under.length / 6, rocks: new Float32Array(rocks), nR: rocks.length / 6, cells, rcells });
+    return { k: 0, steps, finish };
+}
+/* the tile a point's flora lives in (it must have landed) */
+function _hqFloraTileAt(x, z) { const St = HQ_LAND_STORE; if (!St.grid) return null; const [ti, tj] = hqLandTileOf(x, z); return (ti >= 0 && tj >= 0 && ti < St.per && tj < St.per) ? St.grid[tj * St.per + ti] : null; }
+/* THE BLOCKERS round (x, z) within r m: every trunk and every rock there → [{ kind: 'tree' | 'rock', x, z, y, rad, top, h }].
+   The renderer files these as the room's blockers (a trunk to its crown, a rock with its top: jumped onto like furniture). */
+function hqLandFloraNear(x, z, r, out) {
+    const St = HQ_LAND_STORE, F = HQ_LAND_RULES.flora, o = out || [];
+    if (!St.grid) return o;
+    const [a0, b0] = hqLandTileOf(x - r, z - r), [a1, b1] = hqLandTileOf(x + r, z + r);
+    for (let tj = b0; tj <= b1; tj++) for (let ti = a0; ti <= a1; ti++) {
+        if (ti < 0 || tj < 0 || ti >= St.per || tj >= St.per) continue;
+        const t = St.grid[tj * St.per + ti]; if (!t) continue;
+        const Fl = hqLandFlora(t), A = Fl.trees, B = Fl.rocks;
+        for (let k = 0; k < A.length; k += 6) {
+            const dx = A[k] - x, dz = A[k + 1] - z; if (dx * dx + dz * dz > r * r) continue;
+            o.push({ kind: 'tree', x: A[k], z: A[k + 1], y: A[k + 2], rad: hqLandTrunkR(A[k + 3], A[k + 4]), top: null, h: A[k + 4], k: A[k + 3] });
+        }
+        for (let k = 0; k < B.length; k += 6) {
+            const dx = B[k] - x, dz = B[k + 1] - z; if (dx * dx + dz * dz > r * r) continue;
+            const span = B[k + 4], hh = span * F.rocks.hK;
+            o.push({ kind: 'rock', x: B[k], z: B[k + 1], y: B[k + 2], rad: span * F.rocks.rK, top: B[k + 2] + hh * (1 - F.rocks.sink), h: hh, k: B[k + 3] });
+        }
+    }
+    return o;
+}
+/* the first trunk or rock whose footprint (grown by pad) holds (x, z) — null where the way is open */
+function hqLandFloraHit(x, z, pad) {
+    const L = hqLandFloraNear(x, z, 4 + (pad || 0));
+    for (const b of L) if (Math.hypot(b.x - x, b.z - z) < b.rad + (pad || 0)) return b;
+    return null;
+}
+/* THE GRASS in one `block` m square (its corner on the block lattice): the tufts a deterministic hash plants on the grass
+   materials → Float32Array [x, z, y, variant, scale, yaw, material] × n (tufts past a tile that has not landed are left out) */
+function hqLandGrassBlock(bi, bj) {
+    const St = HQ_LAND_STORE, G = HQ_LAND_RULES.flora.grass, tab = _hqFloraTab(), B = G.block, c = G.cell, out = [];
+    if (!St.grid) return new Float32Array(0);
+    const x0 = bi * B, z0 = bj * B, n = Math.round(B / c), low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
+    if (!hqLandReadyAt(x0, z0) || !hqLandReadyAt(x0 + B, z0 + B) || !hqLandReadyAt(x0 + B, z0) || !hqLandReadyAt(x0, z0 + B)) return null;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const I = bi * n + i, J = bj * n + j;
+        const x = x0 + (i + 0.5 + (_hqFloraH(I, J, 41) - 0.5) * 0.9) * c, z = z0 + (j + 0.5 + (_hqFloraH(I, J, 42) - 0.5) * 0.9) * c;
+        const m = hqLandMaterial(x, z), p = tab.grass[m] * (low ? 0.5 : 1);
+        if (!(p > 0) || !(_hqFloraH(I, J, 43) < p)) continue;
+        if (hqLandHQSolid(x, z, 0.5) || hqLandSlope(x, z) > 0.8) continue;
+        const y = hqLandHeight(x, z); if (y == null) continue;
+        const w = hqLandFresh(x, z); if ((w != null && w > y - 0.05) || y < HQ_LAND_RULES.sea.y + 0.25) continue;
+        out.push(x, z, y, Math.floor(_hqFloraH(I, J, 44) * G.variants) % G.variants, 0.7 + 0.6 * _hqFloraH(I, J, 45), _hqFloraH(I, J, 46) * Math.PI * 2, m);
+    }
+    return new Float32Array(out);
+}
+/* THE FAR FOREST: the 8 m world's forest cells as far cards (the far pass, past the tiles) → Float32Array [x, z, y, kind, h] × n.
+   Built once per bake; the near trees own everything inside the far pass's cut. */
+function hqLandFarForest() {
+    const W = HQ_LAND_STORE.world, F = HQ_LAND_RULES.flora, tab = _hqFloraTab(); if (!W) return new Float32Array(0);
+    const out = [], n = W.n, low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const o = j * n + i; if (!tab.forest[W.mat[o]]) continue;
+        if (_hqFloraH(i, j, 51) > F.far.p * (low ? 0.5 : 1)) continue;
+        const x = W.x0 + (i + 0.5 + (_hqFloraH(i, j, 52) - 0.5) * F.far.jit) * W.cell, z = W.x0 + (j + 0.5 + (_hqFloraH(i, j, 53) - 0.5) * F.far.jit) * W.cell, y = _hqLandWorldH(x, z);
+        if (!(y > HQ_LAND_RULES.sea.y + 0.5)) continue;
+        const kind = hqLandFloraKind(_hqFloraPick(hqLandFloraMix(x, z, y, false), _hqFloraH(i, j, 54))), K = F.kinds[kind];
+        out.push(x, z, y, kind, (K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(i, j, 55)) * F.far.hK);
+    }
+    return new Float32Array(out);
 }
 /* a place's pad height: the baked hub for HQ (data.js carries it), else land.json's once it has landed */
 function hqLandPadY(id) {

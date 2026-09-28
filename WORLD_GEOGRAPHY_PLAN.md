@@ -702,7 +702,7 @@ Shadow cascades matter far more on open land.
 | G1 | **PHASE 12** of OPEN_WORLD_PLAN (portals + the memory budget), as written | three-renderer.js | `hq-joins.test.js` portal rule; `asset-store.test.js` eviction — **DONE 2026-09-28** (zip ENTROPY_WARS_WORLD_GEOGRAPHY_1; §12) |
 | G2 ✓ (2026-09-28, zip 4) | **THE LAND UNDERFOOT**: the sampler, the tiles, chunk LOD, the far pass, the splat material, the walker and camera on the land, HQ's front door onto the land at its pad. The sites are still reached by their old doors, so this ships a walkable bare world | data.js, three-renderer.js, map.js, index.html | `land-stream.test.js` (vm: fetch order, LRU, sampler continuity across tiles, feet on slopes, refusal only at cliff material) |
 | G3 ✓ (2026-09-28, zip G3) | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
-| G4 | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
+| G4 ✓ (2026-09-28, zip G4) | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
 | G5 | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
 | G6 | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
 | G7 | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the harbour, the bay's beach, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
@@ -929,3 +929,31 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     `land-water.test.js` (a 16 m bake: the layer is the tiles' water, the loch at 18, the open sea at 0, every mouth at the sea's
     level, the current downstream, the falls, the loch's skiff floats and never on a falls' face; heavy: all four moorings at 2 m).
     Next: G4 (the trees and the grass).
+
+- **G4 — THE TREES + THE GRASS (2026-09-28, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G4.zip, token
+  20260928-geography-08-cors, on zip G3; the bake is unchanged, id 5e65e17571)**
+  - **Only the game's own models** (R-textures ruling, mondo 2026-09-28): the broadleaf trees are the battle maps' foliage OBJs
+    (Tree_1/3/6/9, DeadTree_2/5 in wood.png + leaves.png); the pine, the dead snag and the fern are the Meshy misc GLBs the maps
+    already load; the rocks are the HQ catalogue's asteroid_a / asteroid_b; the grass is the board's GRASS blades in grass_2.png.
+    Nothing generated, nothing downloaded. Until a model has loaded a plain stand-in of its size holds the spot.
+  - **THE PLACEMENT** (data.js `HQ_LAND_RULES.flora` + `hqLandFlora`): a pure function of each baked tile (a jittered grid kept
+    only at hash peaks, so neighbouring tiles agree at the seam): the forest byte sets the density, lone trees dot the meadows,
+    none on slopes, roads, pads, shores, water or within 8 m of HQ; trees keep 3.2 m apart so there is always a way through. The
+    stands differ: the fairy forest broadleaf, the redwood grove tall, the pines pine, the ritual woods dead and snags, the north
+    past z −950 or above 150 m pine, dry ground dead trees. Ferns under the trees, rocks where the ground is rock. About 30,000
+    trees over the land. A tile's flora is built a few ms a frame (48 steps a tile), never in one hitch.
+  - **THE DRAWING**: within 90 m every tree, rock and fern is a real instanced model (a triangle budget, 900k, 360k on
+    EW_PERF_LOW); past that each tile's trees are one merged mesh of cards baked from the models themselves (an ortho render per
+    model), and the far pass carries cards out to the horizon. The crowns sway in the game's own wind clock. The grass is drawn
+    within 58 m on grass, meadow and forest-floor ground, fading at the edge. Cards and blades are lit from above on both faces.
+  - **R3, THE TRUNKS**: every drawn trunk has a blocker no wider than its bark (the rule's radius, narrowed to the model's own
+    measured trunk); rocks are blockers you can climb onto. Filed around the walker every 1.5 m and twice a second.
+  - **Probe** (offline, swiftshader, stand-in textures): Eastwood 267 near trees and 12,788 far cards, the fairy forest 427 near;
+    walking into a trunk is refused, a step past its bark is ground. Not measured on a real GPU. Kill-switch `window.EW_NO_LAND_FLORA`.
+  - **Forks**: none of §8 touches the trees; nothing ruled. §9 asked nothing for G4 and nothing new is needed: the existing trees
+    fill every stand.
+  - **What mondo uploads**: R2 data.js, three-renderer.js; index.html to Render; the repo land-forest.test.js, this plan,
+    docs/notes/areas-complexes.md, CLAUDE.md. No Assets/Land upload (the bake did not change). Test: `land-forest.test.js` (a 16 m
+    bake: placement pure and seam-safe, spacing, a blocker under every trunk and none wider, the stands, grass only on grass, the
+    models are existing assets; heavy: the 2 m count).
+    Next: G5 (the roads).

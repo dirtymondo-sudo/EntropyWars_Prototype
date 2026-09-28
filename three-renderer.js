@@ -24244,7 +24244,7 @@ const ThreeRenderer = (function () {
     function _mmLine() {
         var R = _mmLast; if (!R) return '';
         var land = (_hq && _hq.land && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
-        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.land.n + ' chunks' : '');
+        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.land.n + ' chunks' + (_hq.land.flora ? ' · TREES ' + _hq.land.flora.stats.trees + ' + ' + _hq.land.flora.stats.cards + ' cards · GRASS ' + _hq.land.flora.stats.grass : '') : '');
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -52889,6 +52889,7 @@ const ThreeRenderer = (function () {
             }).catch(function (e) { L.failedIndex = true; console.warn('[HQ land] the land did not load — the walker waits on the pad', e); });
         }
         if (L.gl2) _hqLandSheets(L);
+        try { _hqFloraArm(L); } catch (e) { L.flora = null; console.warn('[HQ land] the trees and the grass failed', e); }   // G4: THE TREES AND THE GRASS
     }
     /* the index is in: the far pass, and the first ring of tiles asked for while the room's card is still up */
     function _hqLandWorldReady(L) {
@@ -52914,7 +52915,7 @@ const ThreeRenderer = (function () {
                     if (L.dead) return;
                     var rec = hqLandTileRead(buf);
                     var gone = hqLandPut(rec);
-                    for (var g = 0; g < gone.length; g++) _hqLandWaterDrop(L, gone[g][0] + '_' + gone[g][1]);   // G3: its rivers and lakes go with it
+                    for (var g = 0; g < gone.length; g++) { _hqLandWaterDrop(L, gone[g][0] + '_' + gone[g][1]); if (L.flora) _hqFloraDropTile(L, gone[g][0] + '_' + gone[g][1]); }   // G3: its rivers and lakes go with it; G4: its trees
                     _hqLandTileLanded(L, rec.ti, rec.tj);
                     _hqLandStream(L, _hq && _hq.player ? _hq.player.x : x, _hq && _hq.player ? _hq.player.z : z, true);
                 }).catch(function (e) {
@@ -53012,6 +53013,7 @@ const ThreeRenderer = (function () {
                 if (pl && !pl.air && !pl.swim) { var fy = hqLandHeight(pl.x, pl.z); if (fy != null) { pl.y = fy; pl.visY = fy; } }   // the walker stands on the ground it could not read before (a spawn with no door under it)
             }
         }
+        if (L.flora) { try { _hqLandFloraTick(L, H, now); } catch (e2) { if (!L.floraWarned) { L.floraWarned = true; console.warn('[HQ land] the trees and the grass', e2); } } }   // G4: THE TREES AND THE GRASS
     }
     function _hqLandDropChunk(L, key) {
         var c = L.chunks[key]; if (!c) return;
@@ -53725,6 +53727,566 @@ const ThreeRenderer = (function () {
         _hqLandMoorTick(L, px, pz);
     }
     function _hqLandTileD(w, x, z) { var St = HQ_LAND_STORE, x0 = -St.ext + w[0] * St.tile, z0 = -St.ext + w[1] * St.tile; return Math.hypot(Math.max(x0 - x, 0, x - x0 - St.tile), Math.max(z0 - z, 0, z - z0 - St.tile)); }
+    /* ══ THE TREES AND THE GRASS (WORLD_GEOGRAPHY_PLAN.md §5.5 — G4, 2026-09-28) ══════════════════════════════════════════════
+       data.js places everything (hqLandFlora: a tile's trees, ferns and rocks; hqLandGrassBlock; hqLandFarForest) and the walker is
+       stopped by the same list (hqLandFloraNear → the room's blockers, a trunk to its crown, a rock with its top); this draws it,
+       with the models the game already has (mondo, 2026-09-28: no new art) — the board's foliage OBJs, the woods batch's pine,
+       snag and fern, the D.O.O.R. kit's rocks, the board's grass tuft:
+         THE MODELS   each is loaded once, its meshes baked into one frame (standing on its trunk's foot, one unit tall; a rock
+                      one unit across), its trunk measured (flora.kinds[].rM: the blocker is never wider than the bark, R3) and
+                      its triangles counted. Until the file lands (or if it never does) a plain trunk and crown stand in, so a
+                      trunk that blocks is always drawn.
+         THE NEAR     whole models, one InstancedMesh per model part, nearest first while their triangles fit flora.near.tris,
+                      the leaves and the bark swaying on the room's wind clock (the phase from each tree's own spot).
+         THE CARDS    each model drawn once into a 256² picture (a render target, re-drawn when the real model lands); every
+                      tree past the near models is two crossed cards of it (one mesh per landed tile), and the far pass draws
+                      the 8 m world's forest the same way past the cut — so the forest reaches the horizon.
+         THE FERNS    crossed cards of the fern within flora.near.underR, shrinking away (never blockers).
+         THE ROCKS    the asteroids within flora.near.rockR, tinted like the ground they sit on.
+         THE GRASS    the board's tuft (grass_2 blades, root dark, tip bright) instanced on hqLandGrassBlock's spots within
+                      flora.grass.reach, shrinking away over flora.grass.fade, swaying with the same wind.
+       Kill-switch window.EW_NO_LAND_FLORA (nothing drawn — and nothing blocks). EW_PERF_LOW halves the density and the
+       triangle budget. */
+    var _hqFloraCache = { models: {}, grass: null, far: null, farKey: '', bake: null };
+    function _hqFloraR() { var R = _hqLandR(); return (R && R.flora) || null; }
+    function _hqFloraOff() { return typeof window !== 'undefined' && !!window.EW_NO_LAND_FLORA; }
+    function _hqFloraLow() { return typeof window !== 'undefined' && !!window.EW_PERF_LOW; }
+    /* the wind on an instanced part: the crown sways most (the part is one unit tall), the phase from the instance's own spot */
+    function _hqFloraWind(mat, amp) {
+        mat.onBeforeCompile = function (sh) {
+            sh.uniforms.uEwWind = _EW_WIND; sh.uniforms.uEwFloraAmp = { value: amp };
+            sh.vertexShader = 'uniform float uEwWind; uniform float uEwFloraAmp;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+                '#include <begin_vertex>\n float ewk = clamp(position.y, 0.0, 1.0); ewk *= ewk;\n' +
+                '#ifdef USE_INSTANCING\n vec4 ewo = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);\n#else\n vec4 ewo = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);\n#endif\n' +
+                ' float ewph = uEwWind + ewo.x * 0.07 + ewo.z * 0.05;\n transformed.x += (sin(ewph) * 0.7 + sin(ewph * 2.3 + 1.1) * 0.3) * ewk * uEwFloraAmp;\n transformed.z += cos(ewph * 0.8 + 0.6) * ewk * uEwFloraAmp * 0.6;');
+        };
+        mat.customProgramCacheKey = function () { return 'ewFloraWind'; };
+        mat._ew_wind = true;
+        return mat;
+    }
+    /* a card or a blade is lit from above on both faces (its normal is up): three's two-sided Lambert would light the back face
+       with the normal turned down — black grass, black card backs */
+    function _hqFloraBothLit(sh) {
+        sh.fragmentShader = sh.fragmentShader.replace(/\( gl_FrontFacing \) \? vLightFront : vLightBack/g, 'vLightFront').replace(/\( gl_FrontFacing \) \? vIndirectFront : vIndirectBack/g, 'vIndirectFront');
+    }
+    /* ── THE MODELS ── */
+    function _hqFloraModel(src, role) {
+        var C = _hqFloraCache.models, M = C[src]; if (M) return M;
+        M = C[src] = { src: src, role: role, parts: null, bake: null, tris: 0, rM: 0, real: false, failed: false, ver: 0, rt: null, baked: -1, poll: null };
+        _hqFloraSetParts(M, _hqFloraProc(role, src), false);
+        var sp = src.split(':'), kind = sp[0], name = sp[1];
+        try {
+            if (kind === 'foliage' && typeof _loadFoliageModel === 'function') M.poll = name;
+            else if (kind === 'misc' && typeof _MISC_GLB !== 'undefined' && _MISC_GLB[name] && typeof THREE.GLTFLoader === 'function') _loadMiscModel(_R2_MISC + _MISC_GLB[name], true, function (root) { _hqFloraAdopt(M, root); });
+            else if (kind === 'door' && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.catalogue && DOOR_HQ.catalogue[name] && DOOR_HQ.catalogue[name].file && typeof THREE.GLTFLoader === 'function') _loadMiscModel(_hqModelUrl(DOOR_HQ.catalogue[name]), true, function (root) { _hqFloraAdopt(M, root); });
+            else M.failed = true;
+        } catch (e) { M.failed = true; }
+        return M;
+    }
+    /* the stand-in until the file lands: a trunk and a crown (a cone for a pine, a ball for a broadleaf, bare branches for a dead
+       tree), a low fan for the fern, a jostled stone for a rock — in the bucket's own wood / leaves / rock sheets */
+    function _hqFloraProc(role, src) {
+        var bark = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT), leaf = _getFoliagePixelTex('leaves.png', _FOLIAGE_LEAF_REPEAT), parts = [];
+        var mk = function (geo, map, side) { return { geo: geo, map: map, leaf: map === leaf, side: side || THREE.FrontSide }; };
+        if (role === 'rock') {
+            var g = new THREE.DodecahedronGeometry(0.5, 1), p = g.getAttribute('position');
+            for (var i = 0; i < p.count; i++) { var k = 0.8 + 0.4 * Math.abs(Math.sin(p.getX(i) * 12.9 + p.getY(i) * 78.2 + p.getZ(i) * 37.7)); p.setXYZ(i, p.getX(i) * k, p.getY(i) * k, p.getZ(i) * k); }
+            g.computeVertexNormals();
+            parts.push(mk(g, _getFoliagePixelTex('rocks_1.png', 1)));
+            return parts;
+        }
+        if (role === 'under') { var fg = new THREE.ConeGeometry(0.5, 1, 7, 1, true); fg.translate(0, 0.5, 0); parts.push(mk(fg, leaf, THREE.DoubleSide)); return parts; }
+        var dead = /Dead|snag/i.test(src), pine = /pine/i.test(src);
+        var trunk = new THREE.CylinderGeometry(0.022, 0.034, dead ? 1 : 0.62, 7, 1); trunk.translate(0, dead ? 0.5 : 0.31, 0); parts.push(mk(trunk, bark));
+        if (dead) {
+            for (var b = 0; b < 3; b++) { var br = new THREE.CylinderGeometry(0.008, 0.014, 0.35, 5, 1); br.translate(0, 0.175, 0); br.rotateZ(0.7); br.rotateY(b * 2.1); br.translate(0, 0.62 + b * 0.1, 0); parts.push(mk(br, bark)); }
+        } else if (pine) { var cn = new THREE.ConeGeometry(0.26, 0.82, 8, 1); cn.translate(0, 0.59, 0); parts.push(mk(cn, leaf)); }
+        else { var cr = new THREE.IcosahedronGeometry(0.3, 1); cr.scale(1, 0.8, 1); cr.translate(0, 0.66, 0); parts.push(mk(cr, leaf)); }
+        return parts;
+    }
+    /* a loaded root → the model's parts in one frame: its meshes baked together, standing on the trunk's foot (a tree), one unit
+       tall (a rock also one unit across), only position / normal / uv kept */
+    function _hqFloraAdopt(M, root) {
+        if (!root || M.real) return;
+        try {
+            root.updateMatrixWorld(true);
+            var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), raw = [], m4 = new THREE.Matrix4();
+            root.traverse(function (n) {
+                if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+                var g = new THREE.BufferGeometry(), sg = n.geometry;
+                g.setAttribute('position', sg.attributes.position.clone());
+                if (sg.attributes.normal) g.setAttribute('normal', sg.attributes.normal.clone());
+                if (sg.attributes.uv) g.setAttribute('uv', sg.attributes.uv.clone());
+                if (sg.index) g.setIndex(sg.index.clone());
+                (sg.groups || []).forEach(function (gr) { g.addGroup(gr.start, gr.count, gr.materialIndex); });
+                g.applyMatrix4(m4.multiplyMatrices(inv, n.matrixWorld));
+                if (!g.attributes.normal) g.computeVertexNormals();
+                raw.push({ geo: g, mat: n.material });
+            });
+            if (!raw.length) { M.failed = true; return; }
+            var box = new THREE.Box3(); raw.forEach(function (r) { r.geo.computeBoundingBox(); box.union(r.geo.boundingBox); });
+            var H = (box.max.y - box.min.y) || 1, cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2, sx = 1 / H, sz = 1 / H;
+            if (M.role === 'tree') {
+                /* the trunk's foot: the mean of the points in the lowest 5 % (the crown's lean never moves the blocker off the bark) */
+                var n0 = 0, ax = 0, az = 0;
+                raw.forEach(function (r) { var p = r.geo.attributes.position; for (var i = 0; i < p.count; i++) if (p.getY(i) < box.min.y + H * 0.05) { ax += p.getX(i); az += p.getZ(i); n0++; } });
+                if (n0 > 3) { cx = ax / n0; cz = az / n0; }
+            } else if (M.role === 'rock') { var span = Math.max(box.max.x - box.min.x, box.max.z - box.min.z) || 1; sx = sz = 1 / span; }
+            var nm = new THREE.Matrix4().makeScale(sx, 1 / H, sz).multiply(new THREE.Matrix4().makeTranslation(-cx, -box.min.y, -cz));
+            var parts = [], leafTex = _getFoliagePixelTex('leaves.png', _FOLIAGE_LEAF_REPEAT), barkTex = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT), foliage = M.src.indexOf('foliage:') === 0;
+            raw.forEach(function (r) {
+                r.geo.applyMatrix4(nm); r.geo.computeBoundingSphere();
+                var ms = Array.isArray(r.mat) ? r.mat : [r.mat];
+                var pick = function (sm) {
+                    var name = (sm && sm.name) || '';
+                    if (foliage) return name === 'Tree_Leaves' ? { map: leafTex, leaf: true, side: THREE.DoubleSide } : { map: barkTex, leaf: false, side: THREE.FrontSide };
+                    return { map: (sm && sm.map) || null, leaf: M.role !== 'rock', side: M.role === 'rock' ? THREE.FrontSide : THREE.DoubleSide };
+                };
+                if (ms.length > 1 && r.geo.groups.length) parts.push({ geo: r.geo, multi: ms.map(pick) });
+                else { var pk = pick(ms[0]); parts.push({ geo: r.geo, map: pk.map, leaf: pk.leaf, side: pk.side }); }
+            });
+            _hqFloraSetParts(M, parts, true);
+        } catch (e) { console.warn('[HQ land] a flora model would not bake — its stand-in stays', M.src, e); M.failed = true; }
+    }
+    function _hqFloraMat(pk, role, wind) {
+        var m = new THREE.MeshLambertMaterial({ map: pk.map || null, side: pk.side || THREE.FrontSide });
+        if (role === 'tree' && wind && !_polishOff('wind', 'EW_HQ_NO_WIND')) _hqFloraWind(m, pk.leaf ? 0.012 : 0.004);
+        m._ew_flora = true; m._ew_shared = true;   // the model outlives the visit (the room's sweep leaves it)
+        return m;
+    }
+    function _hqFloraSetParts(M, parts, real) {
+        var tris = 0, low = [], rs = [];
+        parts.forEach(function (p) {
+            p.geo._ew_shared = true;
+            var mk = function (pk, wind) { return _hqFloraMat(pk, M.role, wind); };
+            p.mats = p.multi ? p.multi.map(function (pk) { return mk(pk, true); }) : mk(p, true);
+            p.bakeMats = p.multi ? p.multi.map(function (pk) { return mk(pk, false); }) : mk(p, false);
+            var g = p.geo, pos = g.attributes.position;
+            tris += g.index ? g.index.count / 3 : pos.count / 3;
+            if (M.role === 'tree') for (var i = 0; i < pos.count; i++) { var y = pos.getY(i); if (y > 0.01 && y < 0.1) low.push(Math.hypot(pos.getX(i), pos.getZ(i))); }
+            for (var j = 0; j < pos.count; j += 3) rs.push(Math.hypot(pos.getX(j), pos.getZ(j)));
+        });
+        if (M.parts) M.parts.forEach(function (p) { (Array.isArray(p.mats) ? p.mats : [p.mats]).concat(Array.isArray(p.bakeMats) ? p.bakeMats : [p.bakeMats]).forEach(function (m) { try { m.dispose(); } catch (e) {} }); if (!M.real) { try { p.geo.dispose(); } catch (e) {} } });
+        low.sort(function (a, b) { return a - b; }); rs.sort(function (a, b) { return a - b; });
+        M.parts = parts; M.tris = Math.max(1, Math.round(tris)); M.real = !!real; M.ver++;
+        M.rM = low.length ? low[Math.floor(low.length * 0.5)] : (M.role === 'tree' ? 0.028 : 0);
+        M.W = rs.length ? Math.max(0.2, rs[Math.floor(rs.length * 0.95)]) : 0.5;
+        /* the measured bark → the blocker's radius (data.js hqLandTrunkR takes the smaller of this and the rule's) */
+        var F = _hqFloraR();
+        if (F && M.role === 'tree') F.kinds.forEach(function (k) { if (k.src === M.src) k.rM = M.rM; });
+    }
+    /* ── THE CARDS' PICTURES ── the model drawn side-on into a 256² picture: [-0.6, 0.6] across, [-0.1, 1.1] up (a card is 1.2 of
+       the tree's height square, its foot 0.1 under the ground) */
+    var _HQ_FLORA_CARD = { half: 0.6, lo: -0.1, hi: 1.1 };
+    function _hqFloraBake(M) {
+        if (typeof renderer === 'undefined' || !renderer || M.baked === M.ver) return;
+        var B = _hqFloraCache.bake;
+        if (!B) {
+            B = _hqFloraCache.bake = { scene: new THREE.Scene() };
+            B.scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+            var dl = new THREE.DirectionalLight(0xffffff, 0.7); dl.position.set(0.5, 1, 0.9); B.scene.add(dl);
+            B.cam = new THREE.OrthographicCamera(-_HQ_FLORA_CARD.half, _HQ_FLORA_CARD.half, _HQ_FLORA_CARD.hi, _HQ_FLORA_CARD.lo, -5, 5);
+        }
+        var sz = M.role === 'under' ? 128 : 256;
+        if (!M.rt) {
+            M.rt = new THREE.WebGLRenderTarget(sz, sz, { format: THREE.RGBAFormat, depthBuffer: true, stencilBuffer: false });
+            M.rt.texture.generateMipmaps = true; M.rt.texture.minFilter = THREE.LinearMipmapLinearFilter; M.rt.texture.magFilter = THREE.LinearFilter;
+        }
+        var grp = new THREE.Group();
+        M.parts.forEach(function (p) { grp.add(new THREE.Mesh(p.geo, p.bakeMats)); });
+        B.scene.add(grp);
+        var prevT = renderer.getRenderTarget(), prevAuto = renderer.autoClear, prevC = new THREE.Color(), prevA = renderer.getClearAlpha(), prevShadow = renderer.shadowMap ? renderer.shadowMap.needsUpdate : false;
+        renderer.getClearColor(prevC);
+        try {
+            if (renderer.shadowMap) renderer.shadowMap.needsUpdate = false;
+            renderer.setRenderTarget(M.rt); renderer.setClearColor(0x000000, 0); renderer.autoClear = false; renderer.clear(true, true, false);
+            renderer.render(B.scene, B.cam);
+            M.baked = M.ver;
+        } catch (e) { console.warn('[HQ land] a card picture failed', M.src, e); M.baked = M.ver; }
+        finally {
+            renderer.setRenderTarget(prevT); renderer.setClearColor(prevC, prevA); renderer.autoClear = prevAuto;
+            if (renderer.shadowMap) renderer.shadowMap.needsUpdate = prevShadow;
+            B.scene.remove(grp);
+        }
+    }
+    /* a card's material: the picture, cut at its alpha, lit as the ground is lit (its normal is up), hidden for a tree the near
+       models draw and past the far pass's cut (the near pass) — or drawn only past the cut (the far pass) */
+    function _hqFloraCardMat(L, M, far) {
+        var m = new THREE.MeshLambertMaterial({ map: M.rt ? M.rt.texture : null, alphaTest: 0.5, side: THREE.DoubleSide });
+        var U = L.floraU;
+        m.onBeforeCompile = function (sh) {
+            if (far) _hqLandFarHook(sh);
+            else {
+                sh.uniforms.uFloraC = U.c; sh.uniforms.uFloraNear = U.near; sh.uniforms.uFloraCut = U.cut; sh.uniforms.uFloraCam = U.cam;
+                sh.vertexShader = 'attribute vec2 aTree;\nuniform vec3 uFloraC; uniform float uFloraNear; uniform float uFloraCut; uniform vec3 uFloraCam;\n' + sh.vertexShader
+                    .replace('#include <project_vertex>', '#include <project_vertex>\n if (distance(aTree, uFloraC.xz) < uFloraNear || distance(aTree, uFloraCam.xz) > uFloraCut) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);');
+            }
+            sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
+            _hqFloraBothLit(sh);
+        };
+        m.customProgramCacheKey = function () { return far ? 'ewland-far-flora-1' : 'ewland-flora-card-1'; };
+        m._ew_flora = true;
+        return m;
+    }
+    /* the crossed cards of a list of trees → one geometry (a group per kind): [x, z, y, kind, h] every `stride` floats from `o` */
+    function _hqFloraCardGeo(A, stride, n, kinds, hIdx) {
+        var U = _hqUnits(), K = _HQ_FLORA_CARD, byKind = [];
+        for (var i = 0; i < n; i++) { var k = A[i * stride + 3] | 0; (byKind[k] || (byKind[k] = [])).push(i); }
+        var pos = new Float32Array(n * 8 * 3), uv = new Float32Array(n * 8 * 2), at = new Float32Array(n * 8 * 2), big = n * 8 > 65535;
+        var idx = big ? new Uint32Array(n * 12) : new Uint16Array(n * 12), v = 0, t = 0, geo = new THREE.BufferGeometry();
+        for (var kk = 0; kk < byKind.length; kk++) {
+            var list = byKind[kk]; if (!list || !list.length) continue;
+            var t0 = t;
+            for (var q = 0; q < list.length; q++) {
+                var o = list[q] * stride, x = A[o], z = A[o + 1], y = A[o + 2], h = A[o + hIdx], yaw = (stride >= 6 && hIdx === 4) ? A[o + 5] : (x * 0.37 + z * 0.61);
+                var hw = K.half * h, y0 = y + K.lo * h, y1 = y + K.hi * h;
+                for (var c = 0; c < 2; c++) {
+                    var a = yaw + c * Math.PI / 2, dx = Math.cos(a) * hw, dz = Math.sin(a) * hw, b = v;
+                    var P = [[x - dx, y0, z - dz, 0, 0], [x + dx, y0, z + dz, 1, 0], [x + dx, y1, z + dz, 1, 1], [x - dx, y1, z - dz, 0, 1]];
+                    for (var p = 0; p < 4; p++) {
+                        pos[v * 3] = P[p][0] * U; pos[v * 3 + 1] = P[p][1] * U; pos[v * 3 + 2] = P[p][2] * U;
+                        uv[v * 2] = P[p][3]; uv[v * 2 + 1] = P[p][4]; at[v * 2] = x * U; at[v * 2 + 1] = z * U; v++;
+                    }
+                    idx[t++] = b; idx[t++] = b + 1; idx[t++] = b + 2; idx[t++] = b; idx[t++] = b + 2; idx[t++] = b + 3;
+                }
+            }
+            geo.addGroup(t0, t - t0, kk);
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('aTree', new THREE.BufferAttribute(at, 2));
+        geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.computeBoundingSphere();
+        return geo;
+    }
+    /* ── ARMING ── */
+    function _hqFloraArm(L) {
+        var F = _hqFloraR(); if (!F || _hqFloraOff()) return;
+        var U = _hqUnits();
+        L.floraU = { c: { value: new THREE.Vector3(1e9, 0, 1e9) }, near: { value: 0 }, cut: { value: 0 }, cam: { value: new THREE.Vector3() }, gc: { value: new THREE.Vector3(1e9, 0, 1e9) }, gf: { value: new THREE.Vector2(F.grass.fade[0] * U, F.grass.fade[1] * U) } };
+        L.flora = { tiles: {}, q: [], models: [], rocks: [], under: null, near: {}, nearAt: [1e9, 1e9], nearR: 0, nearN: 0, blkAt: [1e9, 1e9], grass: {}, grassAt: [1e9, 1e9], grassIm: [], dirty: true, cards: 0, far: null, stats: { trees: 0, cards: 0, grass: 0, rocks: 0, ferns: 0 } };
+        L.flora.models = F.kinds.map(function (k) { return _hqFloraModel(k.src, 'tree'); });
+        L.flora.rocks = F.rocks.kinds.map(function (k) { return _hqFloraModel(k.src, 'rock'); });
+        L.flora.under = _hqFloraModel(F.under.kinds[0].src, 'under');
+        L.flora.cardMats = L.flora.models.map(function (M) { return _hqFloraCardMat(L, M, false); });
+        L.flora.farMats = L.flora.models.map(function (M) { return _hqFloraCardMat(L, M, true); });
+    }
+    /* ── THE TICK ── */
+    function _hqLandFloraTick(L, H, now) {
+        var FL = L.flora; if (!FL || !L.idx || !L.world) return;
+        var F = _hqFloraR(), U = _hqUnits(), pl = H.player, px = pl ? pl.x : 0, pz = pl ? pl.z : 0, St = HQ_LAND_STORE;
+        /* the models: a foliage OBJ is polled (its loader hands back the root once it is in); a new model → its picture again */
+        var all = FL.models.concat(FL.rocks, [FL.under]);
+        for (var i = 0; i < all.length; i++) {
+            var M = all[i];
+            if (M.poll) { var obj = _loadFoliageModel(M.poll), ce = _foliageModelCache[M.poll]; if (obj) { M.poll = null; _hqFloraAdopt(M, obj); } else if (ce && ce.failed) { M.poll = null; M.failed = true; } }
+            if (M.role !== 'rock' && M.baked !== M.ver) { _hqFloraBake(M); _hqFloraRemat(L, M); FL.dirty = true; }
+            if (M.imVer != null && M.imVer !== M.ver) FL.dirty = true;
+        }
+        FL.rocks.forEach(function (M) { if (M.imVer != null && M.imVer !== M.ver) FL.dirty = true; });
+        /* the tiles' flora, a few steps a frame, nearest first; then each tile's cards */
+        var todo = [];
+        for (var k = 0; k < St.grid.length; k++) {
+            var t = St.grid[k]; if (!t) continue;
+            var key = t.ti + '_' + t.tj, d = _hqLandTileD([t.ti, t.tj], px, pz), reach = (_hqLandR().camFar || 460) + 64;
+            var T = FL.tiles[key];
+            if (d > reach) { if (T) _hqFloraDropTile(L, key); continue; }
+            if (!T || T.t !== t) { if (T) _hqFloraDropTile(L, key); T = FL.tiles[key] = { t: t, mesh: null }; }
+            if (!T.done) todo.push({ T: T, key: key, d: d });
+        }
+        todo.sort(function (a, b) { return a.d - b.d; });
+        var tb = performance.now() + (H.ready ? F.buildMs : 30);   // a step is one layer over a 64 m square (a few ms)
+        for (var q = 0; q < todo.length && performance.now() < tb; q++) {
+            var w = todo[q], tt = w.T.t;
+            while (!tt.flora && performance.now() < tb) hqLandFloraStep(tt, 1);
+            if (tt.flora) { _hqFloraTileCards(L, w.key, w.T); FL.dirty = true; }
+        }
+        /* the far forest (the 8 m world, once per bake) */
+        if (!FL.far && L.far) { try { _hqFloraBuildFar(L); } catch (e) { FL.far = { dead: true }; console.warn('[HQ land] the far forest failed', e); } }
+        /* the shared uniforms: the cut and the camera (the near cards give way to the far pass there) */
+        L.floraU.cut.value = (L.cut > 0 ? L.cut : (_hqLandR().camFar || 460) * 0.9) * U; L.floraU.cam.value.copy(H.camera.position);
+        /* THE NEAR: whole models, nearest first, re-read every near.every m */
+        if (FL.dirty || Math.hypot(px - FL.nearAt[0], pz - FL.nearAt[1]) > F.near.every) { _hqFloraNear(L, px, pz); FL.nearAt = [px, pz]; FL.dirty = false; FL.blkAt = [1e9, 1e9]; }
+        /* THE BLOCKERS: the trunks and rocks round the walker, as the room's blockers (drawn: the near models hold them) */
+        if (Math.hypot(px - FL.blkAt[0], pz - FL.blkAt[1]) > F.blockers.every || now - (FL.blkT || 0) > 500) { _hqFloraBlockers(L, px, pz); FL.blkAt = [px, pz]; FL.blkT = now; }   // (and twice a second: a tile that just landed brings its trunks)
+        /* THE GRASS */
+        _hqFloraGrassTick(L, H, px, pz);
+    }
+    /* a model changed (the real file landed): the cards' materials pick up the new picture (the same render target — no rebuild) */
+    function _hqFloraRemat(L, M) {
+        var FL = L.flora, k = FL.models.indexOf(M); if (k < 0) return;
+        [FL.cardMats, FL.farMats].forEach(function (list) { if (list[k] && M.rt && list[k].map !== M.rt.texture) { list[k].map = M.rt.texture; list[k].needsUpdate = true; } });
+    }
+    function _hqFloraTileCards(L, key, T) {
+        var f = T.t.flora; if (!f) return;
+        if (T.mesh) { L.group.remove(T.mesh); try { T.mesh.geometry.dispose(); } catch (e) {} T.mesh = null; }
+        T.done = true;
+        if (!f.nT) return;
+        var geo = _hqFloraCardGeo(f.trees, 6, f.nT, null, 4);
+        var mesh = new THREE.Mesh(geo, L.flora.cardMats);
+        mesh.name = 'hq_land_cards_' + key; mesh.frustumCulled = true; mesh._ew_occSkip = true; mesh._ew_hqPart = 'land_flora'; mesh.raycast = function () {};
+        mesh.matrixAutoUpdate = false;
+        L.group.add(mesh); T.mesh = mesh; L.flora.stats.cards += f.nT;
+    }
+    function _hqFloraDropTile(L, key) {
+        var FL = L.flora, T = FL && FL.tiles[key]; if (!T) return;
+        if (T.mesh) { L.group.remove(T.mesh); try { T.mesh.geometry.dispose(); } catch (e) {} FL.stats.cards -= (T.t.flora ? T.t.flora.nT : 0); }
+        delete FL.tiles[key]; FL.dirty = true;
+    }
+    function _hqFloraBuildFar(L) {
+        var FL = L.flora, key = HQ_LAND.baked.id + (_hqFloraLow() ? ':low' : '');
+        var A = (_hqFloraCache.far && _hqFloraCache.farKey === key) ? _hqFloraCache.far : null;
+        if (!A) { A = _hqFloraCache.far = hqLandFarForest(); _hqFloraCache.farKey = key; }
+        var n = A.length / 5; if (!n) { FL.far = { dead: true }; return; }
+        var geo = _hqFloraCardGeo(A, 5, n, null, 4);
+        var mesh = new THREE.Mesh(geo, FL.farMats);
+        mesh.name = 'hq_land_far_forest'; mesh.renderOrder = -898; mesh.frustumCulled = false; mesh._ew_occSkip = true; mesh.raycast = function () {};
+        L.group.add(mesh); L.far.meshes.push(mesh);
+        FL.far = { mesh: mesh, n: n };
+    }
+    /* THE NEAR MODELS: every tree within near.r, nearest first, while the triangles fit; the cards give way inside the radius the
+       models reached. The rocks the same within near.rockR (their own share of the budget); the ferns as cards within underR. */
+    function _hqFloraNear(L, px, pz) {
+        var FL = L.flora, F = _hqFloraR(), U = _hqUnits(), St = HQ_LAND_STORE, R = F.near.r, budget = _hqFloraLow() ? F.near.low : F.near.tris;
+        var cand = [], rk = [], un = [], RR = F.near.rockR, UR = F.near.underR;
+        var reach = Math.max(R, RR, UR);
+        for (var key in FL.tiles) {
+            var T = FL.tiles[key], f = T.t.flora; if (!f) continue;
+            if (_hqLandTileD([T.t.ti, T.t.tj], px, pz) > reach) continue;
+            for (var i = 0; i < f.nT; i++) { var o = i * 6, d = Math.hypot(f.trees[o] - px, f.trees[o + 1] - pz); if (d < R) cand.push([d, f.trees, o]); }
+            for (var j = 0; j < f.nR; j++) { var o2 = j * 6, d2 = Math.hypot(f.rocks[o2] - px, f.rocks[o2 + 1] - pz); if (d2 < RR) rk.push([d2, f.rocks, o2]); }
+            for (var u = 0; u < f.nU; u++) { var o3 = u * 6, d3 = Math.hypot(f.under[o3] - px, f.under[o3 + 1] - pz); if (d3 < UR) un.push([d3, f.under, o3]); }
+        }
+        cand.sort(function (a, b) { return a[0] - b[0]; }); rk.sort(function (a, b) { return a[0] - b[0]; });
+        var lists = FL.models.map(function () { return []; }), used = 0, nearR = R, tb = budget * 0.75;
+        for (var c = 0; c < cand.length; c++) {
+            var e = cand[c], kd = e[1][e[2] + 3] | 0, M = FL.models[kd];
+            if (used + M.tris > tb) { nearR = e[0]; break; }
+            used += M.tris; lists[kd].push(e);
+        }
+        var rlists = FL.rocks.map(function () { return []; }), rused = 0, rb = budget * 0.25;
+        FL.rockR = Infinity;
+        for (var r = 0; r < rk.length; r++) { var er = rk[r], rkd = er[1][er[2] + 3] | 0, RM = FL.rocks[rkd]; if (rused + RM.tris > rb) { FL.rockR = er[0]; break; } rused += RM.tris; rlists[rkd].push(er); }
+        FL.nearR = nearR; FL.nearN = 0; FL.rockN = 0;
+        L.floraU.c.value.set(px * U, 0, pz * U); L.floraU.near.value = nearR * U;
+        var m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+        FL.models.forEach(function (M, kd) {
+            var ims = _hqFloraIms(L, M, 'tree', kd, lists[kd].length);
+            lists[kd].forEach(function (e, n) {
+                var A = e[1], o = e[2], x = A[o], z = A[o + 1], h = A[o + 4], gy = _hqFloraY(A, o);
+                ps.set(x * U, (gy - 0.12) * U, z * U); qt.setFromAxisAngle(up, A[o + 5]); sc.set(h * U, h * U, h * U);
+                m4.compose(ps, qt, sc); ims.forEach(function (im) { im.setMatrixAt(n, m4); });
+            });
+            ims.forEach(function (im) { im.count = lists[kd].length; im.instanceMatrix.needsUpdate = true; });
+            FL.nearN += lists[kd].length;
+        });
+        var hK = F.rocks.hK, sink = F.rocks.sink;
+        FL.rocks.forEach(function (M, kd) {
+            var ims = _hqFloraIms(L, M, 'rock', kd, rlists[kd].length);
+            rlists[kd].forEach(function (e, n) {
+                var A = e[1], o = e[2], x = A[o], z = A[o + 1], span = A[o + 4], hh = span * hK, gy = _hqFloraY(A, o);
+                ps.set(x * U, (gy - hh * sink) * U, z * U); qt.setFromAxisAngle(up, A[o + 5]); sc.set(span * U, hh * U, span * U);
+                m4.compose(ps, qt, sc);
+                var mat = hqLandMaterial(x, z); hqLandColor(mat, _hqFloraTmp, 0);
+                col.setRGB(0.55 + _hqFloraTmp[0] * 0.6, 0.55 + _hqFloraTmp[1] * 0.6, 0.55 + _hqFloraTmp[2] * 0.6);
+                ims.forEach(function (im) { im.setMatrixAt(n, m4); im.setColorAt(n, col); });
+            });
+            ims.forEach(function (im) { im.count = rlists[kd].length; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; });
+            FL.rockN += rlists[kd].length;
+        });
+        /* the ferns: crossed cards of the fern's picture, shrinking away past half of underR */
+        var UIm = _hqFloraUnderIm(L, Math.min(un.length, 4000));
+        if (UIm) {
+            for (var w = 0; w < un.length && w < UIm.capacity; w++) {
+                var A2 = un[w][1], o4 = un[w][2], x2 = A2[o4], z2 = A2[o4 + 1], h2 = A2[o4 + 4], gy2 = _hqFloraY(A2, o4);
+                ps.set(x2 * U, (gy2 - 0.05) * U, z2 * U); qt.setFromAxisAngle(up, A2[o4 + 5]); sc.set(h2 * U, h2 * U, h2 * U);
+                m4.compose(ps, qt, sc); UIm.im.setMatrixAt(w, m4);
+            }
+            UIm.im.count = Math.min(un.length, UIm.capacity); UIm.im.instanceMatrix.needsUpdate = true;
+            FL.fernN = UIm.im.count;
+        }
+        FL.stats.trees = FL.nearN; FL.stats.rocks = FL.rockN; FL.stats.ferns = FL.fernN || 0;
+    }
+    var _hqFloraTmp = [0, 0, 0];
+    /* a placed thing's foot on the drawn ground (the tile's list carries the bilinear height; the first near look reads the walker's
+       own ground — the detail noise included — and keeps it, so the model, its blocker and the walker agree) */
+    function _hqFloraY(A, o) {
+        var i = (o / 6) | 0; if (!A.ex) A.ex = new Uint8Array((A.length / 6) | 0);
+        if (!A.ex[i]) { var g = hqLandHeight(A[o], A[o + 1]); if (g != null) A[o + 2] = g; A.ex[i] = 1; }
+        return A[o + 2];
+    }
+    /* a model's InstancedMeshes in this visit (one per part), rebuilt when the model changes or the list outgrows them */
+    function _hqFloraIms(L, M, role, kd, need) {
+        var FL = L.flora, key = role + kd, rec = FL.near[key];
+        var cap = Math.max(16, Math.ceil(((_hqFloraLow() ? _hqFloraR().near.low : _hqFloraR().near.tris) / Math.max(1, M.tris)) * 1.05) + 8);
+        cap = Math.min(cap, 6000);
+        if (rec && (rec.ver !== M.ver || rec.cap < need)) { rec.ims.forEach(function (im) { L.group.remove(im); if (im.dispose) { try { im.dispose(); } catch (e) {} } }); rec = null; }
+        if (!rec) {
+            cap = Math.max(cap, need);
+            rec = FL.near[key] = { ver: M.ver, cap: cap, ims: [] };
+            M.parts.forEach(function (p, pi) {
+                var im = new THREE.InstancedMesh(p.geo, p.mats, cap);
+                im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                if (role === 'rock') im.setColorAt(0, new THREE.Color(1, 1, 1));   // the tint's attribute exists from the first draw
+                im.count = 0; im.frustumCulled = false; im.castShadow = role === 'tree'; im.receiveShadow = true;
+                im.name = 'hq_land_' + role + '_' + kd + '_' + pi; im._ew_occSkip = true; im._ew_hqPart = 'land_flora'; im._ew_noInstance = true; im.raycast = function () {};
+                L.group.add(im); rec.ims.push(im);
+            });
+            M.imVer = M.ver;
+        }
+        return rec.ims;
+    }
+    /* the ferns' cards: three crossed quads of the fern's picture, one InstancedMesh */
+    function _hqFloraUnderIm(L, need) {
+        var FL = L.flora, M = FL.under; if (!M || !M.rt) return null;
+        if (FL.underIm && FL.underIm.capacity >= need) return FL.underIm;
+        if (FL.underIm) { L.group.remove(FL.underIm.im); if (FL.underIm.im.dispose) { try { FL.underIm.im.dispose(); } catch (e) {} } }
+        var geo = _hqFloraCache.fernGeo;
+        if (!geo) {
+            var K = _HQ_FLORA_CARD, pos = [], uv = [], nor = [], idx = [];
+            for (var c = 0; c < 3; c++) {
+                var a = c * Math.PI / 3, dx = Math.cos(a) * K.half, dz = Math.sin(a) * K.half, b = pos.length / 3;
+                pos.push(-dx, K.lo, -dz, dx, K.lo, dz, dx, K.hi, dz, -dx, K.hi, -dz); uv.push(0, 0, 1, 0, 1, 1, 0, 1); nor.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
+                idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+            }
+            geo = _hqFloraCache.fernGeo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+            geo.setIndex(idx); geo._ew_shared = true;
+        }
+        var mat = FL.underMat;
+        if (!mat) {
+            mat = FL.underMat = new THREE.MeshLambertMaterial({ map: M.rt.texture, alphaTest: 0.5, side: THREE.DoubleSide });
+            var GU = L.floraU, R2 = _hqFloraR().near.underR * _hqUnits();
+            mat.onBeforeCompile = function (sh) {
+                sh.uniforms.uGC = GU.c; sh.uniforms.uEwWind = _EW_WIND; sh.uniforms.uUR = { value: R2 };
+                sh.vertexShader = 'uniform vec3 uGC; uniform float uUR; uniform float uEwWind;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+                    '#include <begin_vertex>\n vec4 ewo = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);\n float ewf = 1.0 - smoothstep(uUR * 0.55, uUR, distance(ewo.xz, uGC.xz));\n' +
+                    ' float ewph = uEwWind * 1.3 + ewo.x * 0.11 + ewo.z * 0.07;\n transformed.x += sin(ewph) * 0.04 * position.y;\n transformed *= ewf;');
+                _hqFloraBothLit(sh);
+            };
+            mat.customProgramCacheKey = function () { return 'ewland-fern-1'; };
+        }
+        var cap = Math.max(need, 600);
+        var im = new THREE.InstancedMesh(geo, mat, cap);
+        im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.count = 0; im.frustumCulled = false; im.receiveShadow = true;
+        im.name = 'hq_land_ferns'; im._ew_occSkip = true; im._ew_noInstance = true; im.raycast = function () {};
+        L.group.add(im);
+        FL.underIm = { im: im, capacity: cap };
+        return FL.underIm;
+    }
+    /* THE BLOCKERS: the land's trunks and rocks round the walker join the room's blockers (they replace the last set) */
+    function _hqFloraBlockers(L, px, pz) {
+        var H = _hq, F = _hqFloraR(), U = _hqUnits(); if (!H.blockers) H.blockers = [];
+        H.blockers = H.blockers.filter(function (b) { return !b.landFlora; });
+        var list = hqLandFloraNear(px, pz, F.blockers.r), FL = L.flora, nc = FL.nearAt;
+        for (var i = 0; i < list.length; i++) {
+            var b = list[i];
+            if (b.kind === 'rock' && !(Math.hypot(b.x - nc[0], b.z - nc[1]) < FL.rockR)) continue;   // a rock the budget did not draw never blocks (R3)
+            var o = new THREE.Object3D(); o.position.set(b.x * U, b.y * U, b.z * U);
+            H.blockers.push(b.kind === 'tree' ? { obj: o, y: b.y, top: null, rad: b.rad, tree: true, landFlora: true } : { obj: o, y: b.y, top: b.top, rad: b.rad, rock: true, landFlora: true });
+        }
+        if (H.nav) H.nav.staticKey = -1;   // the navigator's copy of the statics is read again
+        L.flora.blk = list.length;
+    }
+    /* ── THE GRASS ── the board's tuft (_buildGrassTuft3D's blades: grass_2.png, dark roots, bright tips, a hue drift), rebuilt in
+       metres with fewer blades, one InstancedMesh per variant; each tuft shrinks away over the fade and sways with the wind */
+    function _hqFloraGrassGeo(v) {
+        var G = _hqFloraR().grass, C = _hqFloraCache.grass || (_hqFloraCache.grass = []);
+        if (C[v]) return C[v];
+        var seed = 9173 + v * 7919, sr = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
+        var tile = 1.75, verts = [], cols = [], uvs = [], bend = [], nor = [];
+        var n = G.blades[0] + Math.floor(sr() * (G.blades[1] - G.blades[0] + 1)), rootS = GRASS.rootShade, tipS = GRASS.tipShade, midS = rootS + (tipS - rootS) * 0.62;
+        for (var bi = 0; bi < n; bi++) {
+            var h = G.h[0] + Math.pow(sr(), 1.5) * (G.h[1] - G.h[0]), hw = G.w * (0.75 + sr() * 0.5);
+            var ox = (sr() - 0.5) * G.spread, oz = (sr() - 0.5) * G.spread, yaw = sr() * Math.PI * 2, cy = Math.cos(yaw), sy = Math.sin(yaw);
+            var bAz = sr() * Math.PI * 2, bMag = h * (0.08 + sr() * 0.34), bx = Math.cos(bAz) * bMag, bz = Math.sin(bAz) * bMag;
+            var j = 0.85 + sr() * 0.3, tt = sr(), tR = 0.92 + 0.24 * tt, tB = 0.90 + 0.20 * (1 - tt);
+            var midW = hw * 0.55, tipW = hw * 0.12, midH = h * 0.55;
+            var uSpan = Math.min(0.95, (2 * hw) / tile), vSpan = Math.min(0.95, h / tile), uMin = sr() * (1 - uSpan), vMin = sr() * (1 - vSpan), uC = uMin + uSpan / 2;
+            var vB = vMin, vM = vMin + vSpan * 0.55, vT = vMin + vSpan, wTip = h * (GRASS.windAmp || 0.16), wMid = wTip * 0.38;
+            var push = function (lx, ly, bf, s, u, vv, w) { verts.push(ox + lx * cy + bx * bf, ly, oz + lx * sy + bz * bf); var b = s * j; cols.push(b * tR, b, b * tB); uvs.push(u, vv); bend.push(w); nor.push(0, 1, 0); };
+            push(-hw, 0, 0, rootS, uC - hw / tile, vB, 0); push(hw, 0, 0, rootS, uC + hw / tile, vB, 0); push(midW, midH, 0.4, midS, uC + midW / tile, vM, wMid);
+            push(-hw, 0, 0, rootS, uC - hw / tile, vB, 0); push(midW, midH, 0.4, midS, uC + midW / tile, vM, wMid); push(-midW, midH, 0.4, midS, uC - midW / tile, vM, wMid);
+            push(-midW, midH, 0.4, midS, uC - midW / tile, vM, wMid); push(midW, midH, 0.4, midS, uC + midW / tile, vM, wMid); push(tipW, h, 1, tipS, uC + tipW / tile, vT, wTip);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geo.setAttribute('aBend', new THREE.Float32BufferAttribute(bend, 1));
+        geo.computeBoundingSphere(); geo._ew_shared = true;
+        return (C[v] = geo);
+    }
+    function _hqFloraGrassMat(L) {
+        if (L.flora.grassMat) return L.flora.grassMat;
+        var m = new THREE.MeshLambertMaterial({ map: _getFoliagePixelTex(GRASS.texture, 1), vertexColors: true, side: THREE.DoubleSide });
+        var GU = L.floraU;
+        m.onBeforeCompile = function (sh) {
+            sh.uniforms.uEwWind = _EW_WIND; sh.uniforms.uGC = GU.gc; sh.uniforms.uGF = GU.gf;
+            sh.vertexShader = 'uniform float uEwWind; uniform vec3 uGC; uniform vec2 uGF;\nattribute float aBend;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+                '#include <begin_vertex>\n vec4 ewo = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);\n' +
+                ' float ewPh = ewo.x * 0.013 + ewo.z * 0.021;\n float ewSw = sin(uEwWind * 1.6 + ewPh) * 0.65 + sin(uEwWind * 3.3 + ewPh * 2.7 + 1.57) * 0.35;\n' +
+                ' transformed.x += ewSw * aBend;\n transformed.z += (sin(uEwWind * 1.1 + ewPh * 1.7 + 0.8) * 0.6 + sin(uEwWind * 2.6 + ewPh) * 0.4) * 0.6 * aBend;\n' +
+                ' transformed *= 1.0 - smoothstep(uGF.x, uGF.y, distance(ewo.xz, uGC.xz));');
+            _hqFloraBothLit(sh);
+        };
+        m.customProgramCacheKey = function () { return 'ewland-grass-1'; };
+        return (L.flora.grassMat = m);
+    }
+    function _hqFloraGrassTick(L, H, px, pz) {
+        var FL = L.flora, G = _hqFloraR().grass, U = _hqUnits(), B = G.block, R = G.reach;
+        var moved = Math.hypot(px - FL.grassAt[0], pz - FL.grassAt[1]) > 3;
+        /* the blocks round the walker: the missing ones a few a frame (nearest first), the far ones dropped */
+        var bi0 = Math.floor((px - R) / B), bi1 = Math.floor((px + R) / B), bj0 = Math.floor((pz - R) / B), bj1 = Math.floor((pz + R) / B), want = [], seen = {};
+        for (var bj = bj0; bj <= bj1; bj++) for (var bi = bi0; bi <= bi1; bi++) {
+            var cx = (bi + 0.5) * B, cz = (bj + 0.5) * B, d = Math.hypot(cx - px, cz - pz); if (d > R + B * 0.75) continue;
+            var key = bi + '_' + bj; seen[key] = 1;
+            if (!FL.grass[key]) want.push([d, bi, bj, key]);
+        }
+        for (var k in FL.grass) if (!seen[k]) { delete FL.grass[k]; moved = true; }
+        want.sort(function (a, b) { return a[0] - b[0]; });
+        var n = H.ready ? 6 : 60, added = false;
+        for (var w = 0; w < want.length && n > 0; w++, n--) { var g = hqLandGrassBlock(want[w][1], want[w][2]); if (g) { FL.grass[want[w][3]] = g; added = true; } }
+        if (!moved && !added) return;
+        FL.grassAt = [px, pz];
+        L.floraU.gc.value.set(px * U, 0, pz * U);
+        /* the instances: every tuft in reach, by variant */
+        var V = G.variants, per = [], mat = _hqFloraGrassMat(L), m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+        var capAll = Math.round((_hqFloraLow() ? 0.5 : 1) * 9000), tot = 0, St = HQ_LAND_STORE;
+        for (var v = 0; v < V; v++) per.push([]);
+        for (var key2 in FL.grass) {
+            var A = FL.grass[key2];
+            for (var o = 0; o < A.length; o += 7) { var dd = Math.hypot(A[o] - px, A[o + 1] - pz); if (dd < R) per[A[o + 3] | 0].push(o, key2, dd); }
+        }
+        for (var vi = 0; vi < V; vi++) {
+            var list = per[vi], cnt = list.length / 3, cap = Math.ceil(capAll / V);
+            var rec = FL.grassIm[vi];
+            if (!rec) {
+                var im = new THREE.InstancedMesh(_hqFloraGrassGeo(vi), mat, cap);
+                im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.setColorAt(0, col.setRGB(1, 1, 1));
+                im.frustumCulled = false; im.receiveShadow = true; im.castShadow = false; im.name = 'hq_land_grass_' + vi; im._ew_occSkip = true; im._ew_noInstance = true; im.raycast = function () {};
+                L.group.add(im); rec = FL.grassIm[vi] = { im: im, cap: cap };
+            }
+            var m = 0;
+            for (var q = 0; q < list.length && m < rec.cap; q += 3) {
+                var A2 = FL.grass[list[q + 1]], o2 = list[q], s = A2[o2 + 4];
+                ps.set(A2[o2] * U, (A2[o2 + 2] - 0.02) * U, A2[o2 + 1] * U); qt.setFromAxisAngle(up, A2[o2 + 5]); sc.set(s * U, s * U, s * U);
+                m4.compose(ps, qt, sc); rec.im.setMatrixAt(m, m4);
+                var mt = A2[o2 + 6] | 0, T = St.tint;
+                col.setRGB(T ? 0.35 + 0.65 * T[mt * 3] : 1, T ? 0.35 + 0.65 * T[mt * 3 + 1] : 1, T ? 0.35 + 0.65 * T[mt * 3 + 2] : 1);
+                rec.im.setColorAt(m, col); m++;
+            }
+            rec.im.count = m; rec.im.instanceMatrix.needsUpdate = true; if (rec.im.instanceColor) rec.im.instanceColor.needsUpdate = true;
+            tot += m;
+        }
+        FL.stats.grass = tot;
+    }
+    function _hqFloraDisarm(L) {
+        var FL = L && L.flora; if (!FL) return;
+        if (_hq && _hq.blockers) _hq.blockers = _hq.blockers.filter(function (b) { return !b.landFlora; });
+        for (var key in FL.tiles) { var T = FL.tiles[key]; if (T.mesh) { try { T.mesh.geometry.dispose(); } catch (e) {} } }
+        for (var nk in FL.near) FL.near[nk].ims.forEach(function (im) { if (im.dispose) { try { im.dispose(); } catch (e) {} } });
+        FL.grassIm.forEach(function (r) { if (r && r.im.dispose) { try { r.im.dispose(); } catch (e) {} } });
+        if (FL.underIm && FL.underIm.im.dispose) { try { FL.underIm.im.dispose(); } catch (e) {} }
+        if (FL.far && FL.far.mesh) { try { FL.far.mesh.geometry.dispose(); } catch (e) {} }
+        (FL.cardMats || []).concat(FL.farMats || [], [FL.grassMat, FL.underMat]).forEach(function (m) { if (m) { try { m.dispose(); } catch (e) {} } });
+        L.flora = null;
+    }
     /* ── D.O.O.R. HQ from outside: the drum on its pad, the front door in its south face ── */
     function _hqLandBuildHQ(L) {
         var R = _hqLandR(), Q = R.hq, U = _hqUnits(), y0 = L.hqY, g = new THREE.Group(); g.name = 'hq_land_building';
@@ -53769,6 +54331,7 @@ const ThreeRenderer = (function () {
     function _hqLandDisarm(H) {
         var L = H && H.land; if (!L) return;
         L.dead = true;
+        try { _hqFloraDisarm(L); } catch (e) {}   // G4: the visit's instances and cards (the models and their pictures stay for the next visit)
         for (var k in L.chunks) { var c = L.chunks[k]; if (c.ids) { try { c.ids.dispose(); } catch (e) {} } }
         if (L.plainMat) { try { L.plainMat.dispose(); } catch (e) {} }
         /* G3: the water's own materials (shared: the room's sweep leaves them) and the near depth window */
@@ -59965,6 +60528,11 @@ const ThreeRenderer = (function () {
             land: function () { var L = _hq && _hq.land; if (!L) return null; return { ready: !!_hq.ready, readyNear: L.readyNear, readyMs: L.readyMs || null, playerAttached: !!_hq.playerAttached, gatePending: _hq.gate && !_hq.gate.closed ? _hq.gate.pending() : 0, idx: L.idx, world: L.world, chunks: L.n, waiting: L.want.length, built: L.stats.built, msPer: L.stats.built ? +(L.stats.ms / L.stats.built).toFixed(2) : 0, cut: +L.cut.toFixed(1), splat: !!L.mats, gl2: L.gl2, store: (typeof hqLandStats === 'function') ? hqLandStats() : null }; },
             /* G3: THE WATER at (x, z) (the walker's spot by default): the surface, the depth, the current; the sheets drawn, the falls, the moorings, the depth window, the sheets' look */
             water: function (x, z) { var L = _hq && _hq.land; if (!L || typeof hqLandWaterY !== 'function') return null; var pl = _hq.player; if (x == null && pl) { x = pl.x; z = pl.z; } var W = L.wdepth; return { y: hqLandWaterY(x, z), depth: hqLandWaterDepth(x, z), fresh: hqLandWaterFresh(x, z), flow: hqLandFlow(x, z), sheets: Object.keys(L.waters || {}).length, queued: (L.waterQ || []).length, falls: (L.falls || []).length, moors: L.moors || {}, near: W ? { n: W.n, cx: W.cx, cz: W.cz, built: !!W.tex } : null, look: L.wu ? { sheet: !!L.wu.uWHave.value.x, waves: !!L.wu.uWHave.value.y } : null }; },
+            /* G4: THE TREES AND THE GRASS (a probe's read): what is drawn, the models' state, the blockers filed, and the walker's ground at (x, z) */
+            flora: function (x, z) { var L = _hq && _hq.land, FL = L && L.flora; if (!FL) return null; var ms = FL.models.concat(FL.rocks, [FL.under]).map(function (M) { return { src: M.src, real: M.real, failed: M.failed, tris: M.tris, rM: +M.rM.toFixed(3), baked: M.baked === M.ver }; });
+                var tiles = 0, done = 0; for (var k in FL.tiles) { tiles++; if (FL.tiles[k].done) done++; }
+                return { stats: FL.stats, nearR: FL.nearR, rockR: FL.rockR, blk: FL.blk || 0, blockers: (_hq.blockers || []).filter(function (b) { return b.landFlora; }).length, tiles: tiles, done: done, far: FL.far ? (FL.far.n || 0) : null, models: ms,
+                         surface: (x != null) ? _hqSurface(x, z, null, false) : undefined }; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;

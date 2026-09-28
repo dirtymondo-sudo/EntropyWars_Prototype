@@ -1638,3 +1638,20 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   read black (the falls' pool did) — the falls are unlit (MeshBasic × `uWLit`).
 - Probe: the G2 offline probe plus `_hqEnter({ from: 'play', room: 'land' })`; mooring then `hqLandMooring(m)` in the page gives the
   shore to stand on. Test: land-water.test.js.
+
+## THE TREES AND THE GRASS (WORLD_GEOGRAPHY_PLAN G4, 2026-09-28, token 20260928-geography-08-cors, bake 5e65e17571)
+- data.js "THE FLORA" after `_hqLandMoorRing`: rules `HQ_LAND_RULES.flora` (trees, kinds with their `src`, mixes, forestMix,
+  zones, under, rocks, grass, near, far, blockers, buildMs). `_hqFloraGrid` (the hash-peak jittered grid, windowed), `hqLandFloraMix`,
+  `hqLandFloraKind`, `hqLandTrunkR(kind, h)` (min of the rule's r and the measured `rM * h`), `hqLandFlora(t)` /
+  `hqLandFloraStep(t, n)` (48 steps: 3 layers × 16 squares of 64 m; result on `t.flora` = trees/under/rocks Float32Arrays of
+  [x, z, y, kind, h|span, yaw]), `hqLandFloraNear(x, z, r)` (the blockers), `hqLandFloraHit`, `hqLandGrassBlock(bi, bj)`,
+  `hqLandFarForest()`.
+- three-renderer.js "THE TREES AND THE GRASS" block before the HQ-from-outside block: `_hqFloraModel(src, role)` (foliage: /
+  misc: / door: sources; `_hqFloraProc` stand-ins; `_hqFloraSetParts` marks everything `_ew_shared` so `_mmEvict` and `_disposeR`
+  skip it), `_hqFloraBake` (the card RT), `_hqFloraCardMat` (near cards collapse inside `uNear`, far ones use `_hqLandFarHook`),
+  `_hqFloraArm` / `_hqLandFloraTick` (from `_hqLandTick`) / `_hqFloraDropTile` / `_hqFloraDisarm`, `_hqFloraNear` (instanced,
+  tri budget), `_hqFloraBlockers` (tags `landFlora: true`, `H.nav.staticKey = -1`), `_hqFloraGrassTick`. `_hqFloraBothLit` swaps
+  three's back-face Lambert for the front (r128 lights a DoubleSide back face with the normal flipped: black blades).
+- MEM line gains TREES / GRASS. Probe read `ThreeRenderer.hq.dev.flora(x, z)`. Kill-switch `window.EW_NO_LAND_FLORA`.
+- Test land-forest.test.js (heavy = the 2 m count).
+

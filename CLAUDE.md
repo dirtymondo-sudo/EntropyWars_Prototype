@@ -108,6 +108,7 @@ diffs. The deliverable is always the full edited file, produced in chat.
   G2 (the land underfoot: foyer front door → room `land`): the bake stamps hubY; the ground wears the bucket's terrain / urban sheets
   (HQ_LAND_RULES.tex src). Upload Assets/Land/. Test land-stream.test.js; notes areas-complexes.md "THE LAND UNDERFOOT".
   G3 (the water: `hqLandWater*` layer, sheets, falls, moored skiffs): test land-water.test.js; notes areas-complexes.md "THE WATER".
+  G4 (trees, ferns, rocks, grass from the game's own models; trunk blockers): test land-forest.test.js; notes "THE TREES AND THE GRASS".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on
