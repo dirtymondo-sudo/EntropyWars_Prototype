@@ -47039,6 +47039,49 @@ const ThreeRenderer = (function () {
             for (var bx = -9; bx <= (ctx.free ? 15.4 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: 3.2 });
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 1.2, blockers: blockers };
         },
+        /* THE TAXI (ZONES_PLAN Z1, 2026-09-29): DOOR HQ's rank in the garage ⇄ Disaster City's kerb. The traffic's taxi GLB
+           (_VEHICLE_KIT.taxi) parked ALONG the plane, nose to −X, its kerb-side flank on the plane and the body behind it
+           (−Z), the rear door at x 0. As you come up the dome light spills out of the rear door and the roof light comes
+           on; getting in is the fade. Parked at both ends (it drove you; it waits). Discs keep the walker out of the body. */
+        taxi: function (U, ctx) {
+            var g = new THREE.Group();
+            var W = 1.0, H = 1.4, M = 4.8, CW = 1.9, zc = -(CW / 2 + 0.05), xc = -0.5;
+            var yel = _hqMat(null, 1, 1, { color: 0xf2c11a, shininess: 60 });
+            var dark = _hqMat(null, 1, 1, { color: 0x202226, shininess: 40 });
+            var rub = _hqMat(null, 1, 1, { color: 0x141414, shininess: 4 });
+            function procCab() {
+                var c = new THREE.Group();
+                var body = _hqBox(M, 0.8, CW, yel); body.position.set(0, 0.75 * U, 0); c.add(body);
+                var top = _hqBox(M * 0.5, 0.55, CW * 0.92, dark); top.position.set(0.15 * U, 1.42 * U, 0); c.add(top);
+                [[-1.55, 1], [-1.55, -1], [1.55, 1], [1.55, -1]].forEach(function (q) {
+                    var w = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * U, 0.34 * U, 0.24 * U, 12), rub);
+                    w.rotation.x = Math.PI / 2; w.position.set(q[0] * U, 0.34 * U, q[1] * (CW / 2 - 0.1) * U); c.add(w);
+                });
+                return c;
+            }
+            /* the kit fits in board tiles: one 1.75 m tile in the building's units, so the cab is its 4.8 m (the city lots' rule) */
+            var prevTs = _hzKitTs, cab;
+            _hzKitTs = 1.75 * U;
+            try { cab = (typeof _hzVehicle === 'function') ? _hzVehicle('taxi', { yaw: -Math.PI / 2, beacon: false, fallback: procCab }) : procCab(); }
+            finally { _hzKitTs = prevTs; }
+            cab.position.set(xc * U, 0, zc * U); g.add(cab);
+            /* the roof light's glow (faint until you come up; the cab's own sign is on the model) and the headlights (low, always on) */
+            var roofGlow = _hzGlowSprite(0.9 * U, 0xffd84a, 0.1, 0.0, 0.0, 0.0); roofGlow.position.set(xc * U, 1.55 * U, zc * U); g.add(roofGlow);
+            [-0.6, 0.6].forEach(function (dz) {
+                var hl = _hzGlowSprite(0.7 * U, 0xfff4d0, 0.35, 0.0, 0.0, 0.0); hl.position.set((xc - M / 2 - 0.1) * U, 0.72 * U, (zc + dz) * U); g.add(hl);
+            });
+            /* the rear door's opening: the dome light spilling out of the back seat */
+            var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, 1.0 * U), _hqBasic(0xffe8b0, { transparent: true, opacity: 0.0, depthWrite: false }));
+            glow.position.set(0, 1.05 * U, 0.03 * U); g.add(glow);
+            var spill = _hzGlowSprite(1.4 * U, 0xffe0a0, 0.0, 0.0, 0.0, 0.0); spill.position.set(0, 1.0 * U, 0.35 * U); g.add(spill);
+            var motion = { mode: 'way', ow: W, tick: function (k) {
+                glow.material.opacity = 0.45 * k; spill.material.opacity = 0.5 * k;
+                roofGlow.material.opacity = 0.1 + 0.6 * k;
+            } };
+            var blockers = [];
+            for (var bx = xc - M / 2 + 0.6; bx <= xc + M / 2 - 0.5; bx += 1.1) blockers.push({ x: bx, z: zc, r: CW / 2, top: 1.7 });
+            return { g: g, motion: motion, ow: W, oh: H, plateY: 1.9, blockers: blockers };
+        },
         /* ── THE SECOND BATCH (2026-09-15 rev 22): six more entryways ──────
            Same contract as the three above: the door's local frame (+Z into
            the room, the origin on the wall plane at the floor — a FREE end

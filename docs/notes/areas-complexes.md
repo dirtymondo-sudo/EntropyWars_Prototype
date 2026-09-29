@@ -1783,3 +1783,12 @@ Dutchman's and the Triangle's island holes).
   the ice sheet side-on there (`uIceL`), blued low on the face; the far land and the no-WebGL2 colours skip the rock cliff for ice.
 - Test: land-edge.test.js (8 m bake: R4, the bearings by kind, the fast ice and the landing, the sites' banks and water, the
   whirlpool on the maelstrom, the renderer pins).
+
+## THE TWO EXITS (ZONES_PLAN Z1, 2026-09-29)
+- Only two ways out of DOOR HQ at the start: the garage TAXI (link `garage_taxi`, way `taxi`) to Downtown's east kerb, and
+  the woods stair (`woods_stair`). data.js `HQ_EXIT_RULES.open` lists them; `hqApplyShutExits` hides every other link door
+  in a facility room until the room on its far side has been seen (map.js `_hqEnter` runs it each entry). Named secrets
+  (`secret: true`): garage_motorpool, woods_sewer, woods_ritual, garage.tunnel, stairwell.tunnel.
+- Adding a new HQ exit: it is shut by default; add its link id to `HQ_EXIT_RULES.open` only if mondo says it is open.
+- `_hqWayBuilders.taxi` sets `_hzKitTs = 1.75 * U` round `_hzVehicle` so the GLB is real size; any new way builder that
+  uses the vehicle kit must do the same.

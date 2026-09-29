@@ -1111,6 +1111,8 @@
                (data.js hqApplyEarnedDoors → `hidden` on the row; the renderer builds nothing for it). Re-read on EVERY
                entry, so a return from the crossing that filed the last win finds the door Otto built. */
             try { if (typeof window.hqApplyEarnedDoors === 'function') window.hqApplyEarnedDoors(_hqProfile()); } catch (e) { console.warn('[HQ] earned doors failed', e); }
+            /* THE TWO EXITS (ZONES_PLAN Z1): every way out of DOOR HQ but the taxi and the woods stair stands nowhere until its far room is seen */
+            try { if (typeof window.hqApplyShutExits === 'function') window.hqApplyShutExits(_hqProfile()); } catch (e) { console.warn('[HQ] shut exits failed', e); }
             window._ewRosterScope = 'owned';   // THE ROSTER LOCK (2026-09-20): in the building you field what you own (data.js unitRosterScope)
             const roomDef = DOOR_HQ.rooms[roomId];
             try { playSfx('uiButtonConfirm'); } catch (e) {}
