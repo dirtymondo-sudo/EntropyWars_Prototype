@@ -41366,6 +41366,7 @@ const ThreeRenderer = (function () {
             var edgeH = hqTerrainHeight(info, cx, cz);
             var roll = 1.1 * nse(x, z, 9, seed + 3) + 0.35 * nse(x, z, 3.2, seed + 5);
             var swell = 2.4 * sm(e / 22) - 7.0 * sm((e - 24) / 26);
+            if (OO.flat) return edgeH;   // THE EDITOR (E0, 2026-09-29): `outer.flat` = the plain runs on flat to the fog (mondo's flat empty world: no roll, no rises)
             var k = sm(e / 2.5);
             return edgeH * (1 - k) + (edgeH * oKeep + roll + swell + oLift * sm(e / 30)) * k;
         };
@@ -48007,6 +48008,7 @@ const ThreeRenderer = (function () {
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
+            grp.userData.ewRow = p;   // THE EDITOR (EDITOR_PLAN E0): the row this prop was placed from (selection, the live drag)
             if (box && typeof p.wall === 'string') grp._ew_hqWall = p.wall;   // THE ROOM ROUND THE FIELD: a wall prop fades with its wall
             if (!onWall && !onCeil && !flip) grp._ew_hqProp = { key: p.key, foot: cat.foot || 0 };   // THE SINK (delivery 9): a floor prop the field's deform may carry down with a dug cell
             /* the spot: a wall point pushed in by `depth` (known now for proc props, on load for GLBs), else the free spot */
@@ -51169,7 +51171,7 @@ const ThreeRenderer = (function () {
     function _hqBindInput() {
         var H = _hq;
         H.onKeyDown = function (e) {
-            if (!_hq) return;
+            if (!_hq || _hqEditing(H)) return;   // THE EDITOR: its own keys
             var t = e.target;
             if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
             var k = _hqKeyName(e);
@@ -51212,12 +51214,12 @@ const ThreeRenderer = (function () {
             if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
         };
         H.onKeyUp = function (e) {
-            if (!_hq) return; var k = _hqKeyName(e); if (k) H.keys[k] = false;
+            if (!_hq || _hqEditing(H)) return; var k = _hqKeyName(e); if (k) H.keys[k] = false;
             if (k === 'f' && H.portal && H.portal.fAt) { var fired = H.portal.fFired; H.portal.fAt = 0; H.portal.fFired = false; if (!fired && !H.paused) _hqPortalDraw(!(H.portal && H.portal.drawn)); }
         };
         H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; _hqRideStickUp(); if (H.gun) { H.gun.mDown = false; if (H.gun.wheel) _hqGunWheelClose(false); } } };
         H.onMouseDown = function (e) {
-            if (!_hq || H.paused) return;
+            if (!_hq || H.paused || _hqEditing(H)) return;
             /* THE DOOR WHEEL (DOOR_GUN_PLAN Phase 3): the MIDDLE button held opens the wheel (the tick opens it after holdMs) */
             if (e.button === 1) { e.preventDefault(); if (H.gun) { H.gun.mDown = true; H.gun.mAt = performance.now(); } return; }
             if (H.gun && H.gun.wheel) { e.preventDefault(); return; }
@@ -51249,7 +51251,7 @@ const ThreeRenderer = (function () {
             e.preventDefault();
         };
         H.onMouseMove = function (e) {
-            if (!_hq || H.paused) return;
+            if (!_hq || H.paused || _hqEditing(H)) return;
             var gainL = 0.0032;
             if (H.gun && H.gun.wheel) { if (document.pointerLockElement === canvas) _hqGunWheelMove(e.movementX || 0, e.movementY || 0); else _hqGunWheelMove(0, 0, { x: e.clientX, y: e.clientY }); return; }   // THE DOOR WHEEL owns the mouse while it is open
             if (H.ride && H.ride.on && H.ride.stick && _hqRideStickMove(e.movementX || 0, e.movementY || 0)) { H.lastDragAt = performance.now(); return; }   // THE STICK owns the mouse in the air
@@ -51282,7 +51284,7 @@ const ThreeRenderer = (function () {
             }
         };
         H.onMouseUp = function (e) {
-            if (!_hq) return;
+            if (!_hq || _hqEditing(H)) return;
             if (e.button === 1 && H.gun) { H.gun.mDown = false; if (H.gun.wheel) _hqGunWheelClose(true); e.preventDefault(); return; }   // THE DOOR WHEEL: the release takes the wedge
             var d = H.drag; H.drag = null;
             _hqRideStickUp();
@@ -51290,7 +51292,7 @@ const ThreeRenderer = (function () {
             if (d && d.strike && !d.moved && !H.paused && document.pointerLockElement !== canvas && !(H.portal && H.portal.drawn)) _hqStrikeClick();
         };
         H.onWheel = function (e) {
-            if (!_hq || H.paused || H.fp) return;
+            if (!_hq || H.paused || H.fp || _hqEditing(H)) return;
             H.cam.dist = Math.max(1.5, Math.min(7.5, H.cam.dist + Math.sign(e.deltaY) * 0.35));
             e.preventDefault();
         };
@@ -51313,8 +51315,13 @@ const ThreeRenderer = (function () {
         canvas.addEventListener('contextmenu', H.onContext);
         /* entering rode a click (Play, a door): that activation usually lets
            us capture the pointer immediately — mouse-look with zero clicks */
-        _hqTryLock();
+        if (!_hqEditing(H)) _hqTryLock();
     }
+    /* THE EDITOR (EDITOR_PLAN.md E0, 2026-09-29): a room entered with `opts.edit` = { tick(dt, H), play } is the editor's
+       viewport — the same builders, lights, sky and post the player gets (R2, R7), but the walker stands still, the room's
+       keys and mouse are the editor's (editor.js binds its own) and its fly camera is the eye. `edit.play = true` is PLAY
+       HERE: the game's own input and walker take over until the editor clears it. The player's game never sets `edit`. */
+    function _hqEditing(H) { var ed = H && H.opts && H.opts.edit; return !!(ed && !ed.play && typeof ed.tick === 'function'); }
     /* request the lock without console noise: newer Chrome returns a promise
        that REJECTS when there is no fresh gesture or the pointer is already
        held — an unhandled rejection per keypress otherwise */
@@ -51368,6 +51375,7 @@ const ThreeRenderer = (function () {
                    consumed it: treat it as ESC (the settings). A blur / alt-tab
                    lands here too, which is a pause as well. */
                 var esc = _hqHadLock && !!_hq && !_hq.paused && (performance.now() - _hqLockStaleAt > 2500);
+                if (esc && _hqEditing(_hq)) esc = false;   // THE EDITOR (E0): its viewport never takes a lost lock for the walker's ESC
                 /* the swap between two rooms (2026-09-14 rev 4): the shared canvas is
                    re-parented / the old scene torn down and the browser may release
                    the lock on its own — that is the door, not the walker's ESC.
@@ -52967,6 +52975,7 @@ const ThreeRenderer = (function () {
         if (L.gl2) _hqLandSheets(L);
         try { _hqFloraArm(L); } catch (e) { L.flora = null; console.warn('[HQ land] the trees and the grass failed', e); }   // G4: THE TREES AND THE GRASS
         try { _hqRoadsArm(L); } catch (e) { L.roads = null; console.warn('[HQ land] the roads failed', e); }   // G5: THE ROADS
+        try { _hqDiscArm(L); } catch (e) { L.disc = null; console.warn('[HQ land] the discovery failed', e); }   // G9: THE DISCOVERY
     }
     /* the index is in: the far pass, and the first ring of tiles asked for while the room's card is still up */
     function _hqLandWorldReady(L) {
@@ -53094,6 +53103,7 @@ const ThreeRenderer = (function () {
         }
         if (L.flora) { try { _hqLandFloraTick(L, H, now); } catch (e2) { if (!L.floraWarned) { L.floraWarned = true; console.warn('[HQ land] the trees and the grass', e2); } } }   // G4: THE TREES AND THE GRASS
         if (L.roads) { try { _hqRoadsTick(L, H); } catch (e3) { if (!L.roadsWarned) { L.roadsWarned = true; console.warn('[HQ land] the roads', e3); } } }   // G5: THE ROADS
+        if (L.disc) { try { _hqDiscTick(L, H, dt); } catch (e4) { if (!L.discWarned) { L.discWarned = true; console.warn('[HQ land] the discovery', e4); } } }   // G9: THE DISCOVERY
     }
     function _hqLandDropChunk(L, key) {
         var c = L.chunks[key]; if (!c) return;
@@ -54054,7 +54064,7 @@ const ThreeRenderer = (function () {
     function _hqFloraArm(L) {
         var F = _hqFloraR(); if (!F || _hqFloraOff()) return;
         var U = _hqUnits();
-        L.floraU = { c: { value: new THREE.Vector3(1e9, 0, 1e9) }, near: { value: 0 }, cut: { value: 0 }, cam: { value: new THREE.Vector3() }, gc: { value: new THREE.Vector3(1e9, 0, 1e9) }, gf: { value: new THREE.Vector2(F.grass.fade[0] * U, F.grass.fade[1] * U) } };
+        L.floraU = { c: { value: new THREE.Vector3(1e9, 0, 1e9) }, near: { value: 0 }, cut: { value: 0 }, cam: { value: new THREE.Vector3() }, gc: { value: new THREE.Vector3(1e9, 0, 1e9) }, gf: { value: new THREE.Vector2(0, 0) } };
         L.flora = { tiles: {}, q: [], models: [], rocks: [], under: null, near: {}, nearAt: [1e9, 1e9], nearR: 0, nearN: 0, blkAt: [1e9, 1e9], gs: null, dirty: true, cards: 0, far: null, stats: { trees: 0, cards: 0, grass: 0, rocks: 0, ferns: 0 } };
         L.flora.models = F.kinds.map(function (k) { return _hqFloraModel(k.src, 'tree'); });
         L.flora.rocks = F.rocks.kinds.map(function (k) { return _hqFloraModel(k.src, 'rock'); });
@@ -54688,6 +54698,90 @@ const ThreeRenderer = (function () {
         var M = RD.M; for (var m in M) { try { M[m].dispose(); } catch (e) {} }
         L.roads = null;
     }
+    /* ══ THE DISCOVERY (WORLD_GEOGRAPHY_PLAN §5.11 + R6 — G9, 2026-09-29) ═══════════════════════════════════════════════════════
+       data.js HQ_LAND_DISC (land.json's stops and reveal points, read by hqLandDiscIndex) says where; this dresses them near the walker
+       with the game's own catalogue models (_hqCatGlb: the camp's tent and fire, the standing stones, the ruin's arch, the old well, the
+       wrecks, the reveal points' cairn / bench / broken fence), files their blockers (R3: the catalogue row's rect or foot, turned with
+       the prop, never wider than it) and reads what the walker has seen (hqLandDiscoverAt) every discovery.see s, handing it to map.js
+       (opts.onLand), which files it on the profile and shows a region's title card. Story mode only (the land is never online).
+       Kill-switch: window.EW_NO_LAND_DISC (the dressing; the reading stays). */
+    function _hqDiscR() { var R = _hqLandR(); return (R && R.discovery) || null; }
+    function _hqDiscArm(L) { if (!_hqDiscR() || typeof hqLandDiscNear !== 'function') return; L.disc = { built: {}, want: [], lastX: 1e9, lastZ: 1e9, blkX: 1e9, blkZ: 1e9, t: 0, last: '', id: '', stats: { built: 0, blk: 0 } }; }
+    function _hqDiscBuild(L, st) {
+        var DR = _hqDiscR(), K = DR.kinds[st.kind], U = _hqUnits(), D = _hqData(), out = { g: null, blk: [] }; if (!K) return out;
+        var g = new THREE.Group(); g.name = 'hq_land_disc_' + st.id;
+        var fr = _hqRad(st.face || 0), cf = Math.cos(fr), sf = Math.sin(fr);
+        K.props.forEach(function (row) {
+            var key = row[0], cat = D && D.catalogue ? D.catalogue[key] : null; if (!cat) return;
+            /* the stop's frame (+z toward the road) → the land: a yaw θ carries local +z to (sin θ, cos θ) and +x to (cos θ, −sin θ) */
+            var lx = row[1] || 0, lz = row[2] || 0, x = st.at[0] + lx * cf + lz * sf, z = st.at[1] - lx * sf + lz * cf;
+            var gy = hqLandHeight(x, z); if (gy == null) gy = st.y;
+            var inst = _hqCatGlb(key, U, { turn: (st.face || 0) + (row[3] || 0), h: row[4] != null ? row[4] : undefined }); if (!inst) return;
+            var lift = row[5] || 0, tilt = row[6] || 0;
+            inst.position.set(x * U, (gy + lift) * U, z * U);
+            if (tilt) { inst.rotation.order = 'YXZ'; inst.rotation.x = tilt; }
+            g.add(inst);
+            if (!cat.block || tilt) return;   // a row that does not block in a room does not block here (a fallen piece lies low)
+            var base = (cat.h != null) ? cat.h : (cat.span || 1), k = row[4] != null ? row[4] / base : 1, tall = (cat.h != null ? cat.h : (cat.span || 1) * 0.6) * k;
+            var b = { x: x, z: z, y: gy + lift, top: gy + lift + tall, yaw: inst.rotation.y };
+            if (cat.rect) { b.rect = { hw: cat.rect.hw * k, hd: cat.rect.hd * k }; b.rad = Math.max(b.rect.hw, b.rect.hd); }
+            else b.rad = (cat.foot || 0.3) * k;
+            out.blk.push(b);
+        });
+        L.group.add(g); out.g = g;
+        return out;
+    }
+    function _hqDiscDrop(L, key) { var DS = L.disc, B = DS && DS.built[key]; if (!B) return; if (B.g) L.group.remove(B.g); delete DS.built[key]; }
+    function _hqDiscBlockers(L, H, px, pz) {
+        var DS = L.disc, DR = _hqDiscR(), U = _hqUnits(); if (!H.blockers) H.blockers = [];
+        H.blockers = H.blockers.filter(function (b) { return !b.landDisc; });
+        var oy = (L.v && L.v.o && L.v.o.y) || 0, oyaw = ((((L.v && L.v.o && L.v.o.rot) || 0) & 3) * Math.PI / 2), n = 0;
+        for (var k in DS.built) (DS.built[k].blk || []).forEach(function (b) {
+            if (Math.hypot(b.x - px, b.z - pz) > DR.blockR + b.rad) return;
+            var q = _hqLandToScene(L, b.x, b.z), o = new THREE.Object3D(); o.position.set(q.x * U, (b.y + oy) * U, q.z * U);
+            var row = { obj: o, y: b.y + oy, top: b.top + oy, rad: b.rad, landDisc: true };
+            if (b.rect) { row.rect = b.rect; row.yaw = b.yaw + oyaw; }
+            H.blockers.push(row); n++;
+        });
+        if (H.nav) H.nav.staticKey = -1;
+        DS.stats.blk = n;
+    }
+    function _hqDiscTick(L, H, dt) {
+        var DS = L.disc, DR = _hqDiscR(); if (!DS || !DR || !L.idx || typeof HQ_LAND_DISC === 'undefined' || !HQ_LAND_DISC.places) return;
+        var px = L.v.px, pz = L.v.pz;
+        if (DS.id !== HQ_LAND_DISC.id) { for (var k0 in DS.built) _hqDiscDrop(L, k0); DS.id = HQ_LAND_DISC.id; DS.lastX = 1e9; DS.last = ''; }
+        if (!(typeof window !== 'undefined' && window.EW_NO_LAND_DISC)) {
+            /* the set: re-read every 12 m (or while one waits for its tile) */
+            if (Math.hypot(px - DS.lastX, pz - DS.lastZ) > 12) {
+                DS.lastX = px; DS.lastZ = pz;
+                var keep = {}, want = [];
+                hqLandDiscNear(px, pz, DR.drop).forEach(function (st) { var d = Math.hypot(st.at[0] - px, st.at[1] - pz); if (DS.built[st.id]) { keep[st.id] = 1; return; } if (d < DR.near) { keep[st.id] = 1; want.push({ st: st, d: d }); } });
+                for (var k in DS.built) if (!keep[k]) _hqDiscDrop(L, k);
+                want.sort(function (a, b) { return a.d - b.d; }); DS.want = want;
+            }
+            /* one a frame, nearest first, once the ground under it has landed */
+            if (DS.want.length) {
+                var w = DS.want[0];
+                if (hqLandReadyAt(w.st.at[0], w.st.at[1])) { DS.want.shift(); try { DS.built[w.st.id] = _hqDiscBuild(L, w.st); DS.stats.built++; DS.blkX = 1e9; } catch (e) { DS.built[w.st.id] = { g: null, blk: [] }; if (!DS.warned) { DS.warned = true; console.warn('[HQ land] a stop failed', w.st.id, e); } } }
+                else { DS.want.push(DS.want.shift()); }
+            }
+            if (L.v.own && Math.hypot(px - DS.blkX, pz - DS.blkZ) > DR.every) { DS.blkX = px; DS.blkZ = pz; _hqDiscBlockers(L, H, px, pz); }
+            else if (!L.v.own) DS.blkX = 1e9;
+        }
+        /* what the walker has seen (map.js files it and shows the title card) — once the ground round the walker is drawn */
+        DS.t += dt || 0; if (DS.t < DR.see) return; DS.t = 0;
+        if (!H.ready || !L.readyNear || !H.opts || typeof H.opts.onLand !== 'function') return;
+        var sw = hqLandDiscoverAt(px, pz), key = sw.entered.join(',') + '|' + sw.sighted.join(',') + '|' + sw.places.join(',');
+        if (key === DS.last) return; DS.last = key;
+        if (!sw.entered.length && !sw.sighted.length && !sw.places.length) return;
+        try { H.opts.onLand({ kind: 'see', entered: sw.entered, sighted: sw.sighted, places: sw.places }); } catch (e) {}
+    }
+    function _hqDiscDisarm(L) {
+        var DS = L && L.disc; if (!DS) return;
+        if (_hq && _hq.blockers) _hq.blockers = _hq.blockers.filter(function (b) { return !b.landDisc; });
+        for (var k in DS.built) _hqDiscDrop(L, k);
+        L.disc = null;
+    }
     /* ── the reads the walker, the air, the camera and the sea use ── */
     /* the walker's feet at (x, z) on the land: null = not yet landed, the building's drum, or a face too steep to climb */
     function _hqLandFeetAt(x, z, curY) {
@@ -54723,6 +54817,7 @@ const ThreeRenderer = (function () {
         L.dead = true; H.landZ = null;
         try { _hqFloraDisarm(L); } catch (e) {}   // G4: the visit's instances and cards (the models and their pictures stay for the next visit)
         try { _hqRoadsDisarm(L); } catch (e) {}   // G5: the roads' pieces, decks, blockers and grind rails
+        try { _hqDiscDisarm(L); } catch (e) {}   // G9: the stops' dressing and blockers
         for (var k in L.chunks) { var c = L.chunks[k]; if (c.ids) { try { c.ids.dispose(); } catch (e) {} } }
         if (L.plainMat) { try { L.plainMat.dispose(); } catch (e) {} }
         /* G3: the water's own materials (shared: the room's sweep leaves them) and the near depth window */
@@ -57560,17 +57655,19 @@ const ThreeRenderer = (function () {
         }
         /* THE DOOR WHEEL (Phase 3): the room runs slowed while the wheel is open (never paused — the world keeps breathing) */
         var wdt = (H.gun && H.gun.wheel) ? dt * _hqGunWheelRules().slow : dt;
-        _hqTickWalker(wdt);
+        var editing = _hqEditing(H);   // THE EDITOR (EDITOR_PLAN E0): the walker stands still, the editor's fly camera is the eye
+        if (!editing) _hqTickWalker(wdt);
         /* THE FIELD stage B (2026-09-16, measured): THE SLIDE's callback runs inside the walker's tick and LEAVES the
            building (_hqEncounterStart → _hqLeave) — the frame must not tick a disposed room's characters; the same
            guard covers a portal step that re-enters another room from the crossing tick below */
         if (_hq !== H) return;
-        _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
+        if (!editing) _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _hqTickChars(wdt);
-        _hqTickCamera(dt);
+        if (!editing) _hqTickCamera(dt);
+        else { try { H.opts.edit.tick(dt, H); } catch (e) { if (!H._editWarned) { H._editWarned = true; console.warn('[HQ] the editor tick', e); } } }
         if (H.landZ) { try { _hqLandTick(H, dt, now); } catch (e) { if (!H._landWarned) { H._landWarned = true; console.warn('[HQ land] tick', e); } } }   // G2: THE LAND — the stream, the chunks, the far pass's lens
         _hqTickWorld(dt, now);
         if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
@@ -60776,6 +60873,19 @@ const ThreeRenderer = (function () {
     var _hqApi = {
         enter: _hqEnter,
         leave: _hqLeave,
+        /* THE EDITOR (EDITOR_PLAN E0): the hook on / off in place (PLAY HERE flips `play`), and what the editor reads of the
+           built room — the scene, the eye, the units, the canvas, the placed props / doors with their rows, the floor under a
+           spot (metres). Nothing here runs in the player's game. */
+        edit: function (hook) { if (!_hq) return false; _hq.opts.edit = hook || null; _hq.keys = {}; _hq.drag = null; if (hook && !hook.play) { try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} } else { _hq.cam.init = false; _hqTryLock(); } return true; },
+        editView: function () {
+            var H = _hq; if (!H) return null;
+            return { scene: H.scene, camera: H.camera, units: _hqUnits(), canvas: canvas, room: H.room, roomId: H.opts.room, ready: !!H.ready, info: H.terrain || null,
+                     props: (H.props || []).map(function (p) { return { key: p.key, grp: p.grp, row: (p.grp && p.grp.userData) ? p.grp.userData.ewRow || null : null }; }),
+                     doors: (H.doors || []).map(function (d) { return { door: d.door, group: d.group }; }),
+                     player: H.player ? { x: H.player.x, y: H.player.y, z: H.player.z, group: H.player.entry ? H.player.entry.group : null } : null };
+        },
+        surface: function (x, z, y) { if (!_hq) return null; try { return _hqSurface(x, z, (y == null) ? null : y, true); } catch (e) { return null; } },
+        lock: function () { _hqTryLock(); },
         active: function () { return !!_hq; },
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
@@ -60977,6 +61087,9 @@ const ThreeRenderer = (function () {
                 var tiles = 0, done = 0; for (var k in FL.tiles) { tiles++; if (FL.tiles[k].done) done++; }
                 return { stats: FL.stats, nearR: FL.nearR, rockR: FL.rockR, blk: FL.blk || 0, blockers: (_hq.blockers || []).filter(function (b) { return b.landFlora; }).length, tiles: tiles, done: done, far: FL.far ? (FL.far.n || 0) : null, models: ms,
                          surface: (x != null) ? _hqSurface(x, z, null, false) : undefined }; },
+            /* G9: THE DISCOVERY (a probe's read): the stops dressed, their blockers filed, what waits, what the walker last read */
+            disc: function () { var L = _hq && _hq.landZ, DS = L && L.disc; if (!DS) return null; var names = []; for (var k in DS.built) names.push(k);
+                return { built: names, stats: DS.stats, want: DS.want.length, blockers: (_hq.blockers || []).filter(function (b) { return b.landDisc; }).length, last: DS.last, id: DS.id }; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;

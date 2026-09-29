@@ -73,6 +73,7 @@
                 try { if (typeof window._ensureDevPanel === 'function') window._ensureDevPanel(); } catch {}
                 try { if (typeof window._maybeShowOnboarding === 'function') window._maybeShowOnboarding(); } catch {}
                 try { if (typeof window._hqDevPillRefresh === 'function') window._hqDevPillRefresh(); } catch {}
+                try { if (typeof window._edBootParam === 'function') window._edBootParam(); } catch {}   // THE EDITOR (E0): ?edit[=<room>] opens it once
             }
 
             if (pageId === 'modePage') {
@@ -1034,6 +1035,8 @@
         }
         window._hqEnter = function (opts) {
             opts = opts || {};
+            /* THE WORLD FILE (EDITOR_PLAN §4.1, E0): a published world named by index.html is laid over data.js before any room builds */
+            try { const WD = window.HQ_WORLD_DOC_STATE; if (WD && WD.ready && !WD.settled) { WD.ready.then(() => window._hqEnter(opts), () => window._hqEnter(opts)); return true; } } catch (e) {}
             const loadGeneration = _hqCancelLoadCard();
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') {
                 console.warn('[HQ] ThreeRenderer.hq or DOOR_HQ missing');
@@ -1185,6 +1188,8 @@
                     onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
                     /* THE DEEP (2026-09-18): the swimmer's and the helm's beats (the hints, the toasts, the water's sounds) */
                     onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
+                    /* THE DISCOVERY (WORLD_GEOGRAPHY_PLAN G9, 2026-09-29): what the walker has seen on the land (the save, the region's title card) */
+                    onLand: (typeof _hqLandEvent === 'function') ? _hqLandEvent : null,
                     /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the ladder's beats (the W CLIMB hint at a foot, the first-time toast, a creak) */
                     onClimb: (typeof _hqClimbEvent === 'function') ? _hqClimbEvent : null,
                     /* THE PREMIUM POLISH (2026-09-21): a kicked prop (the cue is the sound pass's — a hook for it), a seat taken / left */
@@ -1464,6 +1469,60 @@
             _showTitlePage('mainMenuPage');
             try { syncMusicToState().catch(() => {}); } catch (e) {}
         };
+        /* ══ THE EDITOR (EDITOR_PLAN.md E0, 2026-09-29) — the glue ══════════════════════════════════════════════════════════
+           editor.js (its own R2 file, fork 1) is loaded by a script tag the first time the editor opens — the player's game
+           never downloads it. Its viewport is the room the renderer builds for the walk (ThreeRenderer.hq.enter with `edit`:
+           the same builders, lights, sky and post), entered here without the load card, the arrival card or the building's
+           beats. PLAY HERE goes through the game's own _hqEnter (every system live) and ESC comes back (_hqOpenPause).
+           Nothing on `state`, nothing relayed (RULE #2): the editor is mondo's tool, offline. */
+        let _edLoading = null;
+        window._goToEditor = function (opts) {
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            const open = () => { try { window.EWEditor.open(opts || {}); } catch (e) { console.error('[editor] open failed', e); } };
+            if (window.EWEditor) { open(); return true; }
+            if (_edLoading) { _edLoading.then(open); return true; }
+            _edLoading = new Promise((res, rej) => {
+                const s = document.createElement('script');
+                s.src = window.EW_EDITOR_URL || 'editor.js';
+                s.onload = () => res(); s.onerror = () => { _edLoading = null; rej(new Error('editor.js did not load')); };
+                document.head.appendChild(s);
+            });
+            _edLoading.then(open, (e) => { console.error('[editor]', e); try { alert('The editor (editor.js) did not load. Is it uploaded to the bucket?'); } catch (e2) {} });
+            return true;
+        };
+        /* ?edit (or ?edit=<room>) in the url: straight into the editor, once per page */
+        let _edBootDone = false;
+        window._edBootParam = function () {
+            if (_edBootDone) return; _edBootDone = true;
+            try { const m = /[?&]edit(?:=([^&#]*))?(?:[&#]|$)/.exec(location.search); if (m) setTimeout(() => window._goToEditor({ room: m[1] ? decodeURIComponent(m[1]) : null }), 0); } catch (e) {}
+        };
+        /* the editor's viewport: `o` = { room, edit: { tick(dt, H), play }, onReady, onEscape } */
+        window._hqEditEnter = function (o) {
+            o = o || {};
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') return false;
+            const host = _hqEl('hqStage');
+            if (!host || !o.room || !_hqRoomExists(o.room)) return false;
+            _hqCancelLoadCard(); _hqTermDrop(); _hqPauseDrop(); window._hqClosePanel(); _hqSetPrompt(null);
+            _hqHome = false; _hqSuspended = false; _hqCurRoom = o.room;
+            state.gameState = GS.HQ; state.titleScreenVisible = true;
+            _showTitlePage('hqPage');
+            try { if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate(); } catch (e) {}
+            const profile = _hqProfile();
+            let ok = false;
+            try { ok = ThreeRenderer.hq.enter({ host, room: o.room, profile, avatar: _hqAvatar(profile), edit: o.edit || null,
+                onPrompt: () => {}, onInteract: () => {}, onEnterDoor: () => {}, onEscape: o.onEscape || null, onReady: o.onReady || null,
+                onFrameError: (msg) => { try { console.warn('[editor] the frame threw', msg); } catch (e) {} } }); }
+            catch (e) { console.error('[editor] the room did not build', e); }
+            return !!ok;
+        };
+        /* out of the editor: the viewport goes, the main menu comes back */
+        window._hqEditLeave = function () {
+            try { if (ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.warn('[editor] leave', e); }
+            _hqSuspended = false; _hqHome = false;
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('mainMenuPage');
+            try { syncMusicToState().catch(() => {}); } catch (e) {}
+        };
         /* keep the scene, stop the walk: a modal or the settings page sits on
            top; _hqResume brings it back where it stood */
         function _hqSuspend() {
@@ -1594,6 +1653,7 @@
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
+            { id: 'edit',      label: 'EDIT',      sub: 'THIS ROOM IN THE EDITOR' },   // THE EDITOR (EDITOR_PLAN §5.1, E0)
             { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
         ];
         const _HQ_TYPE_COLORS = { human: '#a0a0c3', alien: '#32aa50', divine: '#dcaa1e', unholy: '#9632b4', tech: '#28a0be', anomaly: '#dc3c82' };
@@ -1601,6 +1661,8 @@
         window._hqPauseIsOpen = function () { return !!_hqPause; };
         window._hqOpenPause = function (cmd) {
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active()) return false;
+            /* THE EDITOR (E0): ESC / P in PLAY HERE goes back to the editor, not the pause menu */
+            if (window.EWEditor && window.EWEditor.playing && window.EWEditor.playing()) { window.EWEditor.backFromPlay(); return true; }
             if (_hqTerm) return false;
             const el = _hqEl('hqPause');
             if (!el) return false;
@@ -2428,6 +2490,12 @@
             const P = _hqPause; if (!P) return;
             if (id === 'resume') { window._hqClosePause(); return; }
             if (id === 'exit') { _hqPauseDrop(); window._hqExitToMenu(); return; }
+            if (id === 'edit') {   /* THE EDITOR (E0): this room, from where the walker stands (a built-in room opens in the LIBRARY) */
+                let at = null; try { const ps = ThreeRenderer.hq.pos(); if (ps) at = { x: ps.x, z: ps.z, y: ps.y }; } catch (e) {}
+                _hqPauseDrop(); _hqSuspended = false;
+                window._goToEditor({ room: _hqCurRoom, at });
+                return;
+            }
             if (id === 'directory') {
                 /* the directory is a PANEL over the paused walk (ESC closes it and resumes) */
                 _hqPauseDrop();
@@ -3628,6 +3696,43 @@
                 _hqSkateSfx('skatePush', 0.22);
                 if (!_hqClimbToasted) { _hqClimbToasted = true; _hqToast('<b>ON THE ' + String(ev.look || 'ladder').toUpperCase() + '</b><span>W UP · S DOWN · SPACE LETS GO · THE TOP HANDS YOU ONTO THE LEDGE</span>', 3200); }
             } else if (ev.why === 'top') _hqSkateSfx('skateOllie', 0.2);
+        }
+        /* ══ THE DISCOVERY (WORLD_GEOGRAPHY_PLAN §5.11, G9 — 2026-09-29) ══
+           three-renderer.js THE DISCOVERY reads what the walker has seen on the land (opts.onLand: the region stood in, what a reveal
+           point shows, a place's pad and what that pad sees); data.js hqLandSee files what is new on the profile (the new save key
+           door.hq.land), a region's first sight gets its TITLE CARD (the arrival card's letterbox: FIRST SIGHT or A NEW AREA over the
+           region's name, one at a time), a place's first sight a line on the strip. The atlas clears its fog from the same record. */
+        const _hqLandCards = [];
+        function _hqLandEvent(ev) {
+            if (!ev || ev.kind !== 'see' || typeof window.hqLandSee !== 'function') return;
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
+                const idx = PS.getActiveProfileIndex(); if (idx === null || idx === undefined) return;
+                const p = PS.loadProfile(idx); if (!p) return;
+                const r = window.hqLandSee(p, ev);
+                if (!r || !r.ok || (!r.regions.length && !r.places.length)) return;
+                PS.saveProfile(idx, p);
+                if (_hqMap.atlas) _hqMap.atlas.fog = null;   // the atlas's fog is drawn again from the record
+                r.regions.forEach(g => _hqLandCards.push(g));
+                _hqLandCardNext();
+                const names = r.places.map(id => (typeof window.hqLandPlaceLabel === 'function') ? window.hqLandPlaceLabel(id) : String(id).toUpperCase());
+                if (names.length) _hqToast(`<b>ON THE MAP</b> · ${_hqEsc(names.slice(0, 3).join(' · '))}${names.length > 3 ? ' · +' + (names.length - 3) : ''}<span>THE ATLAS REDRAWS</span>`, 2600);
+            } catch (e) {}
+        }
+        function _hqLandCardNext() {
+            if (_hqLandCardNext.busy || !_hqLandCards.length) return;
+            const g = _hqLandCards.shift(), el = _hqEl('hqArrival');
+            const C = (typeof HQ_LAND_RULES !== 'undefined' && HQ_LAND_RULES.discovery && HQ_LAND_RULES.discovery.card) || { sight: 'FIRST SIGHT', enter: 'A NEW AREA' };
+            const how = g.how === 'enter' ? C.enter : C.sight;
+            const name = (typeof window.hqLandRegionLabel === 'function') ? window.hqLandRegionLabel(g.id) : String(g.id).toUpperCase();
+            let off = false; try { off = typeof window.hqPolishGet === 'function' && window.hqPolishGet('arrival') === false; } catch (e) {}   // THE POLISH SETTINGS: the Arrival Cards row
+            if (!el || off) { _hqToast(`<b>${_hqEsc(name)}</b><span>${_hqEsc(how)}</span>`, 2600); _hqLandCardNext(); return; }
+            _hqLandCardNext.busy = true;
+            el.innerHTML = `<div class="hq-arrival-bar top"></div><div class="hq-arrival-bar bot"></div><div class="hq-arrival-title"><em>${_hqEsc(how)}</em><b>${_hqEsc(name)}</b><span>ON THE MAP</span></div>`;
+            el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
+            let ms = 2900; try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ms = 1300; } catch (e) {}
+            setTimeout(() => { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); setTimeout(() => { _hqLandCardNext.busy = false; _hqLandCardNext(); }, 700); }, ms);
         }
         let _hqSeaToasted = { swim: false, dive: false, boat: false, sub: false };
         function _hqSeaEvent(ev) {
@@ -4889,8 +4994,8 @@
            the rivers, the storm drain, every place on its pad and the regions' names. A place's card says where it stands,
            what its pad sees (THE SIGHT RULE's lists) and where each route first shows it (the reveals). Both files come
            from R2 Assets/Land/ with the bake id (?b=), fetched the first time the tab opens. North is up; one map unit is a
-           metre. Labels and markers keep their screen size as you zoom (--az). The map's fog of war is G9: the atlas is
-           drawn whole. */
+           metre. Labels and markers keep their screen size as you zoom (--az). G9 (2026-09-29): the fog of war
+           (THE FOG OF WAR below) hides what the profile has not seen yet. */
         const HQ_ATLAS_KIND = { highway: 'THE HIGHWAY', road: 'A ROAD', lane: 'A LANE', trail: 'A TRAIL' };
         function _hqAtlasState() {
             if (!_hqMap.atlas) _hqMap.atlas = { st: 'idle', data: null };
@@ -4925,8 +5030,38 @@
             svg.style.setProperty('--az', az.toFixed(3));
         }
         function _hqAtlasLine(pts) { return pts.map(p => _hqMapF(p[0]) + ',' + _hqMapF(p[1])).join(' '); }
+        /* THE FOG OF WAR (WORLD_GEOGRAPHY_PLAN §5.11, G9 — fork 9's default: on). The profile's record (data.js hqLandSeenRecord,
+           door.hq.land) says what has been seen: a region clears on its first sight (or when you walk into it), a place's name and
+           mark appear when you first see it, a reveal point's mark once its region is clear. The fog is one small image of the bake's
+           region grid (a cell a pixel, scaled up soft), drawn over the relief, the rivers and the roads; redrawn when the record grows. */
+        function _hqAtlasSeen(d) {
+            if (!d || !d.regionGrid) return null;
+            try { return (typeof window.hqLandSeenRecord === 'function') ? window.hqLandSeenRecord(_hqProfile()) : null; } catch (e) { return null; }
+        }
+        function _hqAtlasRegionAt(d, x, z) {
+            const g = d.regionGrid; if (!g) return null;
+            const i = Math.floor((x - g.x0) / g.cell), j = Math.floor((z - g.z0) / g.cell);
+            if (i < 0 || j < 0 || i >= g.n || j >= g.n) return null;
+            return g.ids[g.rows[j].charCodeAt(i) - 97] || null;
+        }
+        function _hqAtlasShown(d, seen, p) { return !seen || !!seen.p[p.id]; }
+        function _hqAtlasFog(d, seen) {
+            const g = d.regionGrid; if (!g || !seen || typeof document === 'undefined') return null;
+            const A = _hqAtlasState(), sig = Object.keys(seen.r).sort().join(','), id = (d.bake && d.bake.id) || '';
+            if (A.fog && A.fog.sig === sig && A.fog.id === id) return A.fog.url;
+            const cv = document.createElement('canvas'); cv.width = g.n; cv.height = g.n;
+            const cx = cv.getContext && cv.getContext('2d'); if (!cx) return null;
+            const img = cx.createImageData(g.n, g.n);
+            for (let j = 0; j < g.n; j++) { const row = g.rows[j]; for (let i = 0; i < g.n; i++) {
+                const rg = g.ids[row.charCodeAt(i) - 97], o = (j * g.n + i) * 4; if (rg && seen.r[rg]) continue;
+                img.data[o] = 20; img.data[o + 1] = 25; img.data[o + 2] = 32; img.data[o + 3] = 236; } }
+            cx.putImageData(img, 0, 0);
+            A.fog = { sig, id, url: cv.toDataURL('image/png') };
+            return A.fog.url;
+        }
         function _hqAtlasSvg(d) {
             const F = _hqMapF, fit = _hqAtlasFit(d), view = _hqMap.view || fit, sel = _hqMap.asel;
+            const seen = _hqAtlasSeen(d);
             const az = Math.max(0.12, Math.min(1, view[2] / fit[2]));
             let svg = `<svg class="hq-map-svg hq-atlas" data-mode="atlas" viewBox="${view.map(F).join(' ')}" preserveAspectRatio="xMidYMid meet" data-fit="${fit.map(F).join(' ')}" style="--az:${az.toFixed(3)}" role="group" aria-label="The atlas of the land. Click a place for its card.">`;
             const m = d.map, url = (typeof window.hqLandUrl === 'function') ? window.hqLandUrl(m.file) : '';
@@ -4946,10 +5081,20 @@
                 else svg += `<polyline class="hq-atlas-case k-${_hqEsc(r.type)}" points="${pts}" style="stroke-width:${F(r.w + 4)}px"/><polyline class="hq-atlas-road k-${_hqEsc(r.type)}" points="${pts}" style="stroke-width:${F(r.w)}px"><title>${t}</title></polyline>`;
             });
             (d.bridges || []).forEach(b => { if (b.len >= 20) svg += `<polyline class="hq-atlas-bridge" points="${_hqAtlasLine(b.pts)}" vector-effect="non-scaling-stroke"><title>A BRIDGE · ${b.len} M</title></polyline>`; });
-            /* the regions' names */
-            (d.regions || []).forEach(r => { svg += `<text class="hq-atlas-region${r.small ? ' small' : ''}" x="${F(r.at[0])}" y="${F(r.at[1])}" text-anchor="middle">${_hqEsc(r.label)}</text>`; });
-            /* the places */
+            /* THE FOG OF WAR (G9): over the ground, the water and the roads; the names and the marks go on top */
+            const fog = seen ? _hqAtlasFog(d, seen) : null;
+            if (fog) { const g = d.regionGrid; svg += `<image class="hq-atlas-fog" href="${fog}" x="${F(g.x0)}" y="${F(g.z0)}" width="${F(g.n * g.cell)}" height="${F(g.n * g.cell)}" preserveAspectRatio="none" style="image-rendering:auto;pointer-events:none"/>`; }
+            /* the regions' names (under the fog: only a region seen) */
+            (d.regions || []).forEach(r => { if (seen) { const rg = _hqAtlasRegionAt(d, r.at[0], r.at[1]); if (!rg || !seen.r[rg]) return; } svg += `<text class="hq-atlas-region${r.small ? ' small' : ''}" x="${F(r.at[0])}" y="${F(r.at[1])}" text-anchor="middle">${_hqEsc(r.label)}</text>`; });
+            /* the reveal points (G9): where a route first shows a region, once the ground it stands on is seen */
+            if (seen) (d.revealPts || []).forEach(v => {
+                const rg = _hqAtlasRegionAt(d, v.at[0], v.at[1]); if (!rg || !seen.r[rg]) return;
+                const shows = (v.regions || []).filter(x => seen.r[x]).map(x => (d.regionNames && d.regionNames[x]) || String(x).toUpperCase());
+                svg += `<g transform="translate(${F(v.at[0])} ${F(v.at[1])})"><title>${_hqEsc('A VIEW' + (shows.length ? ' · ' + shows.join(' · ') : ''))}</title><path class="hq-atlas-mark" style="fill:#7fd6ff" d="M 0 -0.7 L 0.7 0 L 0 0.7 L -0.7 0 Z"/></g>`;
+            });
+            /* the places (under the fog: only a place seen) */
             (d.places || []).forEach(p => {
+                if (!_hqAtlasShown(d, seen, p)) return;
                 const under = p.kind === 'dungeon', sea = p.kind === 'sea' || p.kind === 'door';
                 const cls = `hq-atlas-place k-${_hqEsc(p.kind)}${p.lookout ? ' lookout' : ''}${p.peak ? ' peak' : ''}${sel === p.id ? ' sel' : ''}`;
                 const title = `${p.label} · ${(d.regionNames && d.regionNames[p.region]) || String(p.region || '').toUpperCase()} · ${p.y >= 0 ? '+' : ''}${Math.round(p.y)} M`;
@@ -4968,6 +5113,7 @@
         function _hqAtlasPick(id) {
             const A = _hqMap.atlas; if (!A || !A.data) return;
             const p = A.data.places.find(x => x.id === id); if (!p) return;
+            if (!_hqAtlasShown(A.data, _hqAtlasSeen(A.data), p)) return;   // G9: a place not seen yet is under the fog
             _hqMap.asel = id;
             /* the view comes to the place (no nearer than it was; at most 1.6 km across when picked from the whole land) */
             const v = _hqMap.view || _hqAtlasFit(A.data), w = Math.min(v[2], 1600), h = v[3] * (w / v[2]);
@@ -4975,9 +5121,10 @@
             try { playSfx('uiButtonHover'); } catch (e) {}
             _hqMapRerender();
         }
-        function _hqAtlasName(d, id) { const p = d.places.find(x => x.id === id); return p ? p.label : String(id).toUpperCase(); }
+        function _hqAtlasName(d, id) { const p = d.places.find(x => x.id === id); if (p && !_hqAtlasShown(d, _hqAtlasSeen(d), p)) return '?'; return p ? p.label : String(id).toUpperCase(); }   // G9: a place not seen yet is a question mark
         function _hqAtlasCardHtml(d) {
-            const id = (_hqMap.asel && d.places.some(p => p.id === _hqMap.asel)) ? _hqMap.asel : 'hq';
+            const seenC = _hqAtlasSeen(d);
+            const id = (_hqMap.asel && d.places.some(p => p.id === _hqMap.asel && _hqAtlasShown(d, seenC, p))) ? _hqMap.asel : 'hq';
             const p = d.places.find(x => x.id === id);
             let html = '';
             if (p) {
@@ -5004,15 +5151,18 @@
                 html += '</div>';
             }
             const s = d.stats || {};
-            return html + `<p class="hq-panel-note">THE LAND AS SURVEYED · ${_hqEsc(String(s.landKm2 || '?'))} KM² · ROUTES ${_hqEsc(String(s.routeKm || '?'))} KM · CLICK A PLACE FOR WHAT IT SEES</p>`;
+            const areas = seenC ? Object.keys(d.regionNames || {}).filter(k => seenC.r[k]).length + ' OF ' + Object.keys(d.regionNames || {}).length + ' AREAS SEEN · ' : '';   // G9: the fog of war
+            return html + `<p class="hq-panel-note">${_hqEsc(areas)}THE LAND AS SURVEYED · ${_hqEsc(String(s.landKm2 || '?'))} KM² · ROUTES ${_hqEsc(String(s.routeKm || '?'))} KM · CLICK A PLACE FOR WHAT IT SEES</p>`;
         }
         function _hqAtlasLocsHtml(d) {
             let html = `<nav class="hq-map-locs" aria-label="Places"><div class="hq-map-locs-hd"><b>THE ATLAS</b><span>THE LAND</span></div>`;
             const regions = [];
-            d.places.forEach(p => { if (!regions.includes(p.region)) regions.push(p.region); });
+            const seen = _hqAtlasSeen(d), shown = d.places.filter(p => _hqAtlasShown(d, seen, p));   // G9: only what has been seen
+            shown.forEach(p => { if (!regions.includes(p.region)) regions.push(p.region); });
+            if (!shown.length) html += '<div class="hq-map-locs-sub">NOTHING SEEN YET · WALK OUT OF THE FRONT DOOR</div>';
             regions.forEach(rg => {
                 html += `<div class="hq-map-locs-sub">${_hqEsc((d.regionNames && d.regionNames[rg]) || String(rg).toUpperCase())}</div>`;
-                d.places.filter(p => p.region === rg).forEach(p => {
+                shown.filter(p => p.region === rg).forEach(p => {
                     html += `<button class="hq-loc${_hqMap.asel === p.id ? ' sel' : ''}" data-mapnode="a:${_hqEsc(p.id)}"><i class="hq-loc-ring"></i><b>${_hqEsc(p.label)}</b><span>${(p.y >= 0 ? '+' : '') + Math.round(p.y)}</span></button>`;
                 });
             });
@@ -21913,7 +22063,9 @@
             if (typeof syncMusicToState === 'function') syncMusicToState().catch(() => {});
         };
 
-        window._goToMapEditor = function() {
+        window._goToMapEditor = function() { return window._goToEditor(); };   // THE EDITOR (EDITOR_PLAN E0): the menu's EDITOR button, the lift row
+        /* the old 8×8 voxel editor (retired with the arenas in E7): the new editor's FILE menu opens it until then */
+        window._goToVoxelEditor = function() {
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
             _meInit();
             _meEnterDioramaEditor();

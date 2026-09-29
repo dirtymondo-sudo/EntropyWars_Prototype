@@ -10,6 +10,8 @@
 //     npm run deploy -- --dry-run     # show the plan, change nothing
 //     npm run deploy -- --assets <dir> --prefix Assets/   # upload every .opt.glb under <dir> (optimize-assets.js)
 //                                     # to <prefix><its path under dir> — beside its original on R2
+//     npm run deploy -- --world <dir>  # THE WORLD FILE (EDITOR_PLAN E0): upload the editor's export (<dir> = the unzipped
+//                                     # Assets/World folder) to Assets/World/ and write its id into index.html (_EW_WORLD_ID)
 //
 // What it does, in order:
 //   1. Works out which R2-hosted files to ship (args, --all, or git status).
@@ -128,8 +130,59 @@ function deployAssets(dir, prefix, bucket, dryRun) {
     console.log('\nNEXT: `npm run manifest -- <bucket mirror>` (so the game knows the .opt.glb files exist), then `npm run deploy`.');
 }
 
+// ── THE WORLD FILE (EDITOR_PLAN.md E0, 2026-09-29): the editor's export → Assets/World/ + index.html's _EW_WORLD_ID ──
+// The id is the first 10 hex of world.json's SHA-256 (the editor's EXPORT prints the same); the game fetches
+// world.json?w=<id> and each room as rooms/<id>.json?h=<sha>, so a new export reaches players without a rename.
+function worldId(buf) { return require('crypto').createHash('sha256').update(buf).digest('hex').slice(0, 10); }
+function walkWorld(dir, rel, out) {
+    for (const n of fs.readdirSync(dir).sort()) {
+        if (n.startsWith('.')) continue;
+        const p = path.join(dir, n), r = rel ? rel + '/' + n : n;
+        if (fs.statSync(p).isDirectory()) walkWorld(p, r, out);
+        else if (/\.json$/i.test(n)) out.push({ p, r });
+    }
+    return out;
+}
+function deployWorld(dir, bucket, dryRun) {
+    if (!dir || !fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) fail('--world: not a folder: ' + dir);
+    if (fs.existsSync(path.join(dir, 'Assets', 'World', 'world.json'))) dir = path.join(dir, 'Assets', 'World');   // the unzipped export's root
+    const wj = path.join(dir, 'world.json');
+    if (!fs.existsSync(wj)) fail('--world: no world.json in ' + dir + ' (unzip the editor\'s export and pass its Assets/World folder)');
+    const buf = fs.readFileSync(wj);
+    let index; try { index = JSON.parse(buf.toString('utf8')); } catch (e) { fail('--world: world.json is not JSON: ' + e.message); }
+    const id = worldId(buf), list = walkWorld(dir, '', []);
+    const missing = Object.keys(index.rooms || {}).filter(r => !fs.existsSync(path.join(dir, 'rooms', r + '.json')));
+    console.log(`World ${id}: ${list.length} file(s) → ${bucket || '(no bucket)'}/Assets/World/`);
+    if (missing.length) console.log('  (rooms listed but not in this folder — they must already be on R2: ' + missing.join(', ') + ')');
+    if (dryRun) { for (const f of list) console.log('  [ ] upload ' + f.p + '  as  Assets/World/' + f.r); console.log('\n--dry-run: no changes made.'); return; }
+    if (bucket) {
+        let bad = 0;
+        for (const f of list) {
+            const r = spawnSync('npx', ['wrangler', 'r2', 'object', 'put', `${bucket}/Assets/World/${f.r}`, '--file', f.p,
+                '--content-type', 'application/json', '--remote', '--cache-control', CACHE_CONTROL],
+                { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+            if (r.status === 0) console.log('✓ Assets/World/' + f.r);
+            else { bad++; console.error('✗ Assets/World/' + f.r + ':\n' + (r.stderr || r.stdout || '').trim().split('\n').slice(-3).join('\n')); }
+        }
+        if (bad) fail(bad + ' upload(s) failed — index.html NOT changed');
+    } else {
+        console.log('\nMANUAL UPLOAD CHECKLIST (no bucket configured — set EW_R2_BUCKET or pass --bucket):');
+        for (const f of list) console.log('  [ ] upload ' + f.p + '  as  Assets/World/' + f.r);
+    }
+    const html = fs.readFileSync(INDEX_HTML, 'utf8'), re = /window\._EW_WORLD_ID = '[^']*';/;
+    if (!re.test(html)) fail("index.html has no `window._EW_WORLD_ID = '…';` line");
+    fs.writeFileSync(INDEX_HTML, html.replace(re, `window._EW_WORLD_ID = '${id}';`));
+    console.log(`\n✓ index.html names world ${id} (window._EW_WORLD_ID) — redeploy index.html to Render.`);
+}
+
 function main() {
     const args = process.argv.slice(2);
+    const wIdx = args.indexOf('--world');
+    if (wIdx !== -1) {
+        const bI = args.indexOf('--bucket');
+        deployWorld(args[wIdx + 1], bI !== -1 ? args[bI + 1] : process.env.EW_R2_BUCKET, args.includes('--dry-run'));
+        return;
+    }
     const aIdx = args.indexOf('--assets');
     if (aIdx !== -1) {
         const pIdx = args.indexOf('--prefix'), bI = args.indexOf('--bucket');

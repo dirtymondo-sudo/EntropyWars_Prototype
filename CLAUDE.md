@@ -25,6 +25,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/models-assets.md` | Model batches, kits, model queue, asset store, matte bake. | Adding models/assets. |
 | `docs/notes/maps-terrain-battle.md` | Battle maps, moving maps, horizon, planets, sky. | Battle map work. |
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
+| `docs/notes/editor.md` | The in-game editor (EDITOR_PLAN.md): editor.js, world file, E0+. | Editor work. |
 | `docs/notes/rendering-loading-perf.md` | Polish passes, bloom, textures, loading/lanes, freezes, crashes. | Render / load / perf work. |
 
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
@@ -111,6 +112,7 @@ diffs. The deliverable is always the full edited file, produced in chat.
   G4 (trees, ferns, rocks, grass from the game's own models; trunk blockers): test land-forest.test.js; notes "THE TREES AND THE GRASS".
   G5 (roads: graded lines, walkable decks, guard rails + grind, junction signs, Route 1 traffic): test land-roads.test.js; notes "THE ROADS".
   G8 (edge: ice wall R4, pack + fast ice, shelf landing, sea sites on banks): test land-edge.test.js; notes "THE EDGE OF THE WORLD".
+  G9 (discovery: region grid, reveal points, R6 stops, title cards, atlas fog of war, save door.hq.land): test land-discovery.test.js; notes "THE DISCOVERY".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

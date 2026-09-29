@@ -41363,7 +41363,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: '5aa5d61879', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
+    R.baked = { id: 'e6f6667c8a', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -41540,6 +41540,54 @@ const HQ_LAND_RULES = {
         /* Route 1's traffic (the city's cars): `n` a direction, both lanes `lane` m off the crown line */
         traffic: { road: 'ring', n: 9, speed: 15, lane: 3.1, kinds: ['suv', 'taxi', 'cadillac', 'truck', 'copcar', 'schoolbus', 'suv', 'cadillac', 'taxi'] },
     },
+    /* G9 THE DISCOVERY PASS (WORLD_GEOGRAPHY_PLAN §5.11 + R6, 2026-09-29). bake-land.js §9 reads these (through load-data.js) and writes
+       land.json `regionGrid` (every `grid` m: the region there), `revealPts` (where a route first shows a region's ground, each dressed with
+       a cairn, a bench or a broken fence) and `stops` (a something along every route: no stretch of route runs more than `gap` m without
+       one; a gap is filled every `aim` m). The renderer dresses them with the game's own catalogue models (THE DISCOVERY); the map's
+       fog of war clears from them (map.js THE ATLAS). Places to find, never tapes or finds. No puzzles.
+         kinds   a stop's set: `props` rows [catalogue key, x across, z toward the road, face deg, size m (the row's fit), lift m, tilt rad]
+                 in the stop's frame (+z faces the road), `r` its footprint (m, the bake keeps it off roads, water, pads and sites; the
+                 trees keep off it), `label` (plain words, no names) */
+    discovery: {
+        gap: 250, aim: 200,                                 // R6: the most route between two somethings (m); the spacing a gap is filled at
+        side: 4, sideMax: 16, slope: 0.55, rise: 4,         // m past the road's edge a stop stands (tried out to sideMax); the steepest ground under it; the most
+                                                            // it stands above or below the road (reached from it: no cliff on the way either; the bake's
+                                                            // last passes, for a gap nothing else fills, go 1.5 × as far and as high)
+        grid: 40,                                           // m: the region grid's cell
+        reveal: { merge: 70, r: 26, place: 12 },            // reveal points within `merge` m are one; the walker within `r` m sees what it shows; a place is
+                                                            // seen standing within its pad + `place` m (a pad-less place: 30 m)
+        near: 260, drop: 320, blockR: 30, every: 1.5,       // the dressing is drawn within `near` m (dropped past `drop`); blockers within blockR, re-filed every m
+        see: 0.25,                                          // s between the walker's discovery reads
+        quiet: ['flatlands'],                               // places whose ground never clears their region by sight (the wall's top shows from every south shore)
+        kinds: {
+            camp:    { label: 'A CAMP',          r: 5.5, props: [['camping_tent', -0.6, -2.2, 195], ['campfire', 1.9, 0.6, 0], ['fallen_log', 3.4, -0.8, 75], ['stump', 0.4, 1.9, 0]] },
+            stones:  { label: 'STANDING STONES', r: 5,   props: [['menhir', -1.8, -1.2, 20], ['sarsen', 1.2, -2.0, 70], ['cave_stone', 0.2, 0.6, 140], ['cave_stone', 2.7, 0.4, 300, 0.7]] },
+            arch:    { label: 'A RUIN',          r: 5,   props: [['brick_arch', 0, -1.6, 0], ['greek_column', 2.6, -0.6, 0, 2.4], ['cave_stone', -2.2, 0.2, 60], ['cave_stone', 1.0, 1.2, 200, 0.6]] },
+            well:    { label: 'AN OLD WELL',     r: 4,   props: [['ancient_well', 0, -0.8, 0], ['wooden_bucket', 1.1, 0.3, 30], ['stump', -1.6, 0.6, 0]] },
+            wreck:   { label: 'A WRECK',         r: 5,   props: [['crashed_car', 0, -1.4, 28], ['traffic_barrel', 2.6, 0.9, 0], ['cinder_block', -2.2, 1.0, 40]] },
+            wreck2:  { label: 'A WRECK',         r: 5,   props: [['crashed_car_2', 0, -1.4, -22], ['traffic_cone', 2.2, 1.2, 0], ['traffic_barrel', -2.4, 0.6, 0]] },
+            tank:    { label: 'A WRECK',         r: 6.5, props: [['military_tank', 0, -2.6, 35], ['traffic_barrel', 3.6, 1.2, 0], ['cinder_block', -3.2, 1.4, 20]] },
+            deadtree:{ label: 'A DEAD TREE',     r: 4,   props: [['hollow_dead_tree', 0, -1.2, 40], ['skull_pile', 1.4, 0.4, 200], ['stump', -1.7, 0.5, 0]] },
+            anchor:  { label: 'A WRECK',         r: 4,   props: [['ship_anchor', 0, -1.0, 30], ['sea_chest', 1.5, 0.4, 200], ['cave_stone', -1.6, 0.2, 90, 0.7]] },
+            shelter: { label: 'A BUS STOP',      r: 3.5, props: [['bus_shelter', 0, -1.0, 0], ['city_bin', 2.4, -0.4, 0]] },
+            /* the reveal points' dressing (the plan's "a cairn, a bench, a broken fence"): +z faces the road, the view is behind */
+            cairn:   { label: 'A CAIRN',         r: 2.5, props: [['menhir', 0, -0.6, 10, 1.5], ['cave_stone', 0.9, -0.2, 120, 0.7], ['cave_stone', -0.8, 0.1, 250, 0.6]] },
+            bench:   { label: 'A BENCH',         r: 2.5, props: [['city_bench', 0, -0.6, 180]] },
+            fence:   { label: 'A BROKEN FENCE',  r: 3,   props: [['railing_1m', -1.4, -0.8, 0], ['railing_1m', 0.9, -0.8, 0], ['railing_1m', 2.4, -0.4, 35, null, 0, 0.5]] },
+            /* a trail's marker: a knee-high cairn on the verge of a path benched into a slope (the bake's last word for R6 there) */
+            marker:  { label: 'A TRAIL MARKER',  r: 1.3, props: [['menhir', 0, 0, 15, 1.0], ['cave_stone', 0.6, 0.35, 140, 0.5]] },
+        },
+        /* the stops a spot may take (by the ground under it, then its region); the bake takes the list's kth, so neighbours differ */
+        byGround: { urban: ['shelter'], sand: ['anchor', 'wreck'], desert: ['wreck', 'deadtree', 'wreck2', 'stones'], redrock: ['deadtree', 'wreck2', 'stones'],
+            playa: ['wreck', 'wreck2', 'deadtree'], clay: ['deadtree', 'stones', 'wreck'], forest: ['camp', 'stones', 'deadtree'], snow: ['stones', 'camp'],
+            tundra: ['stones', 'camp'], rock: ['stones', 'arch'], grass: ['arch', 'camp', 'well', 'stones'], meadow: ['well', 'stones', 'camp', 'arch'],
+            farm: ['well', 'arch', 'wreck'], trail: ['stones', 'camp'], lane: ['well', 'stones'] },
+        byRegion: { deepdesert: ['tank', 'wreck', 'wreck2', 'deadtree'], downs: ['stones', 'arch', 'well', 'camp'], kingdom: ['arch', 'well', 'camp', 'stones'] },
+        dressFor: { rock: 'cairn', snow: 'cairn', tundra: 'cairn', cliff: 'cairn', redrock: 'cairn', grass: 'bench', meadow: 'bench', farm: 'bench', sand: 'bench',
+            urban: 'bench', lane: 'bench' },   // any other ground: a broken fence
+        /* the region title card (map.js, the arrival card's letterbox) */
+        card: { sight: 'FIRST SIGHT', enter: 'A NEW AREA' },
+    },
     /* D.O.O.R. HQ from outside (G2 draws the building on its pad; G6 dresses the pads): a concrete drum with a shallow dome, the
        front door in its south face (the land room's door row `hq`). The drum is solid to the walker and the camera — drawn walls */
     hq: { r: 22, h: 13, dome: 5.5, band: [8.2, 9.6] },
@@ -41560,7 +41608,96 @@ function hqLandIndex(ov) {
     St.pads = (ov.places || []).filter(p => p.pad > 0 && p.at).map(p => [p.at[0], p.at[1], p.pad]);
     _hqLandTables(ov.materials);
     try { hqLandRoadsIndex(ov); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ land] the roads did not read', e); }   // G5: THE ROADS (the trees keep off the decks)
+    try { hqLandDiscIndex(ov); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ land] the discovery did not read', e); }   // G9: THE DISCOVERY (the trees keep off the stops)
     return St;
+}
+/* ══ THE DISCOVERY (WORLD_GEOGRAPHY_PLAN §5.11 + R6, G9 — 2026-09-29) ═════════════════════════════════════════════════════════
+   land.json's `regionGrid` / `revealPts` / `stops` (bake-land.js §9) read once per bake id into HQ_LAND_DISC. Pure readers:
+     hqLandRegionAt(x, z)              the region standing there (a HQ_LAND.regionNames key), null off the grid
+     hqLandStopKind(ground, region, k) the bake's pick of a stop's kind (by the ground under it, then its region; the kth of the list)
+     hqLandDressKind(ground)           a reveal point's dressing (a cairn, a bench, a broken fence)
+     hqLandDiscNear(x, z, r)           the stops and the reveal points' dressing within r m (the renderer draws them)
+     hqLandDiscoverAt(x, z)            what the walker standing there has seen: { entered, sighted, places } — the region stood in, what
+                                       a reveal point within reveal.r shows, a place's own pad and what that pad sees (R2's lists)
+     hqLandSeenRecord / hqLandSee      THE NEW SAVE KEY (profile.door.hq.land: { r: { region: date }, p: { place: date } }); no migration
+   A region's ground is shown by a place of it that is not a peak or a lookout (those are seen from afar by design, R2: Mt Olympus
+   from HQ) nor in discovery.quiet; a region with nothing else (Area 2 is Mt Olympus's) clears when you walk into it. A peak's NAME
+   still appears on the map when you first see it. */
+const HQ_LAND_DISC = { id: '', grid: null, reveals: [], stops: [], places: null, sight: null, qual: null };
+function hqLandDiscIndex(ov) {
+    const Q = HQ_LAND_DISC, id = String((ov && ov.bake && ov.bake.id) || '');
+    if (!ov) return Q;
+    if (Q.id === id && Q.places) return Q;
+    const K = HQ_LAND_RULES.discovery.kinds;
+    Q.id = id; Q.reveals = ov.revealPts || []; Q.stops = ov.stops || []; Q.sight = ov.sight || {};
+    const g = ov.regionGrid; Q.grid = g ? { n: g.n, cell: g.cell, x0: g.x0, z0: g.z0, ids: g.ids, s: (g.rows || []).join('') } : null;
+    Q.places = {}; (ov.places || []).forEach(p => { Q.places[p.id] = p; });
+    Q.qual = hqLandRegionShowers(ov.places || []);
+    /* the trees keep off what is dressed (data.js _hqFloraJob reads these with the pads) */
+    HQ_LAND_STORE.disc = Q.stops.map(s => [s.at[0], s.at[1], (K[s.kind] || {}).r || 4])
+        .concat(Q.reveals.filter(v => v.dress).map(v => [v.dress.at[0], v.dress.at[1], (K[v.dress.kind] || {}).r || 2.5]));
+    return Q;
+}
+/* the places whose ground shows their region (a place id → 1) */
+function hqLandRegionShowers(places) {
+    const under = HQ_LAND.sight.underground, by = {};
+    (places || []).forEach(p => { if (!p || under.includes(p.id)) return; (by[p.region] = by[p.region] || []).push(p); });
+    const out = {};
+    const quiet = HQ_LAND_RULES.discovery.quiet || [];
+    Object.keys(by).forEach(r => { by[r].forEach(p => { if (!p.peak && !p.lookout && !quiet.includes(p.id)) out[p.id] = 1; }); });
+    return out;
+}
+function hqLandRegionAt(x, z) {
+    const g = HQ_LAND_DISC.grid; if (!g || !g.s) return null;
+    const i = Math.floor((x - g.x0) / g.cell), j = Math.floor((z - g.z0) / g.cell);
+    if (i < 0 || j < 0 || i >= g.n || j >= g.n) return null;
+    const k = g.s.charCodeAt(j * g.n + i) - 97;
+    return (k >= 0 && k < g.ids.length) ? g.ids[k] : null;
+}
+function hqLandStopKind(ground, region, k) {
+    const D = HQ_LAND_RULES.discovery, own = ['urban', 'sand', 'forest', 'snow', 'tundra'];
+    const list = (!own.includes(ground) && D.byRegion[region]) || D.byGround[ground] || ['stones'];
+    const n = list.length; return list[(((k | 0) % n) + n) % n];
+}
+function hqLandDressKind(ground) { return HQ_LAND_RULES.discovery.dressFor[ground] || 'fence'; }
+function hqLandDiscNear(x, z, r) {
+    const Q = HQ_LAND_DISC, out = [];
+    Q.stops.forEach(s => { if (Math.hypot(s.at[0] - x, s.at[1] - z) < r) out.push(s); });
+    Q.reveals.forEach(v => { const d = v.dress; if (d && Math.hypot(d.at[0] - x, d.at[1] - z) < r) out.push({ id: v.id, kind: d.kind, at: d.at, y: d.y, face: d.face, reveal: true }); });
+    return out;
+}
+function hqLandDiscoverAt(x, z) {
+    const Q = HQ_LAND_DISC, D = HQ_LAND_RULES.discovery, entered = [], sighted = [], places = [];
+    const add = (a, v) => { if (v && a.indexOf(v) < 0) a.push(v); };
+    if (!Q.places) return { entered, sighted, places };
+    add(entered, hqLandRegionAt(x, z));
+    Q.reveals.forEach(v => { if (Math.hypot(v.at[0] - x, v.at[1] - z) >= D.reveal.r) return; (v.regions || []).forEach(r => add(sighted, r)); (v.places || []).forEach(p => add(places, p)); });
+    const under = HQ_LAND.sight.underground;
+    Object.keys(Q.places).forEach(id => {
+        const p = Q.places[id]; if (!p.at || under.includes(id)) return;
+        const rr = p.pad > 0 ? p.pad + D.reveal.place : 30;
+        if (Math.hypot(p.at[0] - x, p.at[1] - z) >= rr) return;
+        add(places, id); add(entered, p.region);
+        (Q.sight[id] || []).forEach(e => { if (e[0] === '^') return; add(places, e); if (Q.qual[e] && Q.places[e]) add(sighted, Q.places[e].region); });
+    });
+    return { entered, sighted: sighted.filter(r => entered.indexOf(r) < 0), places };
+}
+function hqLandSeenRecord(profile) {
+    let L = null; try { L = profile && profile.door && profile.door.hq && profile.door.hq.land; } catch (e) {}
+    return { r: (L && L.r && typeof L.r === 'object') ? L.r : {}, p: (L && L.p && typeof L.p === 'object') ? L.p : {} };
+}
+/* the ONE write: files what was seen on the profile OBJECT handed in (the caller saves once) → { ok, regions: [{ id, how }], places } (the new) */
+function hqLandSee(profile, what, now) {
+    if (!profile || !what) return { ok: false, regions: [], places: [] };
+    const rec = hqLandSeenRecord(profile), date = hqToday(now ? new Date(now) : undefined), out = { ok: true, regions: [], places: [] };
+    const r = Object.assign({}, rec.r), p = Object.assign({}, rec.p), ent = what.entered || [];
+    ent.concat(what.sighted || []).forEach(id => { if (id && !r[id] && HQ_LAND.regionNames[id]) { r[id] = date; out.regions.push({ id, how: ent.includes(id) ? 'enter' : 'sight' }); } });
+    (what.places || []).forEach(id => { if (id && !p[id] && hqLandPlace(id)) { p[id] = date; out.places.push(id); } });
+    if (!out.regions.length && !out.places.length) return out;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    profile.door.hq.land = { r, p };
+    return out;
 }
 /* the per-material tables (amplitude, mean colour, the sheet's layer), in the bake's material order */
 function _hqLandTables(names) {
@@ -42016,7 +42153,7 @@ function hqLandFloraStep(t, steps) {
 }
 function _hqFloraJob(t) {
     const St = HQ_LAND_STORE, F = HQ_LAND_RULES.flora, T = F.trees, tab = _hqFloraTab(), S = t.S, st = St.step, x0 = t.x0, z0 = t.z0, x1 = x0 + St.tile, z1 = z0 + St.tile;
-    const sea = HQ_LAND_RULES.sea.y, pads = St.pads || [];
+    const sea = HQ_LAND_RULES.sea.y, pads = (St.pads || []).concat(St.disc || []);   // G9: the trees keep off the stops and the reveal points' dressing too
     /* the tile's own samples: nearest (materials, forest, water) and bilinear (heights), clamped to the tile */
     const cl = (v, n) => v < 0 ? 0 : v > n ? n : v;
     const near = (x, z) => cl(Math.round((z - z0) / st), S - 1) * S + cl(Math.round((x - x0) / st), S - 1);
@@ -43764,6 +43901,217 @@ hqApplySiteEntries();   // THE ENTRY (2026-09-17): the bypassed board rooms' egr
 hqRefreshComplexLinks();
 hqReplateDoors();       // THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) — after the entries and the links
 hqBuildHealZones();     // THE HEALING ZONES (2026-09-20): one per hub anchor, beside the marker — after the areas (the markers) and the entries
+/* ══ THE WORLD FILE (EDITOR_PLAN.md §4.1, E0 — 2026-09-29) ═════════════════════════════════════════════════════════════
+   mondo's world is built by hand in the editor (editor.js) and starts FLAT AND EMPTY (the plan's §1 THE RULING: "I literally
+   just wanna start from a flat empty world and hand carve and place and design everything myself"). What the editor writes is
+   what the game reads (R1): a ROOM DOC is one DOOR_HQ.rooms object (the same keys, plus an `id` on every row and one
+   editor-only `edit` key the runtime never reads); the WORLD DOC is the table round them. His rooms carry `w_` ids, so they ADD
+   to DOOR_HQ.rooms and never replace a built-in one; data.js stays the library the editor copies from.
+     in memory:  { v: 1, rooms: { w_room1: <room>, … }, prefabs: {}, retire: [], zones: {}, links: [], dungeons: {},
+                   start: { room, at: { x, z, face } }, live: false }
+     on R2:      Assets/World/world.json (the same, with `rooms` / `prefabs` = { id: [bytes, sha] }) + rooms/<id>.json
+   `hqWorldDocApply(doc)` lays a doc over DOOR_HQ (retire → rooms → zones → links) and `hqWorldDocRebuild(ids)` re-runs the
+   load-time derivations that read rooms (HQ_WORLD_DOC_DERIVATIONS — world-doc.test.js pins the list). The game loads a
+   PUBLISHED world only when index.html names it (`window._EW_WORLD_ID`, written by `deploy.js --world`); until THE SWAP (E8,
+   `live: true`) nothing in the player's game leads into it — the editor's PLAY HERE is how mondo walks it. Nothing on `state`,
+   nothing relayed (RULE #2): both clients read the same published file by its id (R8). */
+const HQ_WORLD_DOC_RULES = {
+    v: 1,
+    base: 'https://cdn.entropywars.net/Assets/World/',
+    idPrefix: 'w_',                 // his rooms / prefabs: never a data.js id
+    roomPrefix: 'w_room',           // w_room1, w_room2 … (labels Room 1, Room 2 … until he types one — plain labels, R5)
+    /* NEW WORLD's first room = a FLAT EMPTY ground: one open terrain room, no features, no props, no doors, no treeline, a plain
+       day sky with no scenery roster (the sheets are the bucket's own: lawn grass_2, cliff rocks_5, path dirt — mondo's ruling) */
+    room: { w: 128, d: 128, h: 9, floor: 'grass_2', cliff: 'rocks_5', path: 'dirt' },
+    maxRoomM: 512,                  // a room's side (the compile is per room; the land is E4's)
+    editKey: 'edit',                // the ONE key the runtime ignores (R1)
+    rowLists: ['terrain.features', 'terrain.marks', 'props', 'doors', 'counters', 'agents', 'npcSpots', 'onlineSpots', 'climbs', 'stairs'],
+    copyDrop: ['site', 'part', 'variants', 'area', 'land'],   // a library copy is his room: no site, no part of a zone, no variants
+};
+/* the load-time derivations a doc re-runs, in order (each reads DOOR_HQ.rooms; world-doc.test.js pins the list) */
+const HQ_WORLD_DOC_DERIVATIONS = ['terrainInfo', 'hqRefreshComplexLinks', 'hqReplateDoors'];
+function hqWorldDocIsOwn(id) { return typeof id === 'string' && id.indexOf(HQ_WORLD_DOC_RULES.idPrefix) === 0; }
+/* the next free `w_roomN` in a doc (and in DOOR_HQ, so a copy never lands on a live id) */
+function hqWorldDocNextRoomId(doc) {
+    const taken = Object.assign({}, (doc && doc.rooms) || {}, DOOR_HQ.rooms || {});
+    let n = 1; while (taken[HQ_WORLD_DOC_RULES.roomPrefix + n]) n++;
+    return HQ_WORLD_DOC_RULES.roomPrefix + n;
+}
+function hqWorldDocRoomNo(id) { const m = /^w_room(\d+)$/.exec(String(id || '')); return m ? +m[1] : null; }
+/* THE FLAT EMPTY ROOM: `o` = { w, d, label, floor } overrides */
+function hqWorldDocNewRoom(id, o) {
+    o = o || {};
+    const R = HQ_WORLD_DOC_RULES.room, n = hqWorldDocRoomNo(id);
+    const w = Math.max(8, Math.min(HQ_WORLD_DOC_RULES.maxRoomM, +o.w || R.w)), d = Math.max(8, Math.min(HQ_WORLD_DOC_RULES.maxRoomM, +o.d || R.d));
+    const floor = o.floor || R.floor;
+    return {
+        label: o.label || (n ? 'Room ' + n : 'Room'), sub: '', kind: 'box',
+        shell: {
+            w, d, h: R.h, wallH: R.h, dadoH: 1.0, open: true, edge: 'open',
+            floor, wall: floor, dado: R.path, trim: 'wood', ceiling: floor, apron: floor, skirt: R.path,
+            floorColor: 0x86a066, wallColor: 0x86a066, dadoColor: 0x807060, apronColor: 0x7e9460,
+            pipes: false, strips: false, lights: [],
+            mood: { light: 0xfff4e0, ambient: 0.5 },
+            sky: { night: 0, day: 1, tint: 0xcfe0f8, tintAmt: 0.3, stars: 0, nebula: 0, clouds: 0.4, fog: { color: 0xdfe6f0, amount: 0.5, top: 0.03, band: 0.4, density: 0.004 }, scenery: 'none', density: 0 },
+        },
+        terrain: { floor, cliff: R.cliff, path: R.path, base: 0, outer: { flat: true, m: 150 }, features: [], marks: [] },
+        doors: [], props: [], counters: [], npcSpots: [], agents: [],
+        spawn: { x: 0, z: 0, face: 0, level: 0 },
+        edit: { grid: 1, snapDeg: 15, layers: {}, hidden: [], cam: null, notes: '' },
+    };
+}
+/* NEW WORLD: one flat empty Room 1 and nothing else (the ruling) */
+function hqWorldDocNew() {
+    const id = HQ_WORLD_DOC_RULES.roomPrefix + '1';
+    const rooms = {}; rooms[id] = hqWorldDocNewRoom(id);
+    return { v: HQ_WORLD_DOC_RULES.v, rooms, prefabs: {}, retire: [], zones: {}, links: [], dungeons: {}, start: { room: id, at: { x: 0, z: 0, face: 0 } }, live: false };
+}
+/* a room doc the runtime can take, or the reason it cannot (never throws) */
+function hqWorldDocRoomOk(room) {
+    if (!room || typeof room !== 'object' || Array.isArray(room)) return 'not an object';
+    if (!/^(box|bay|rotunda)$/.test(room.kind || 'rotunda')) return 'kind ' + room.kind;
+    const S = room.shell; if (!S || typeof S !== 'object') return 'no shell';
+    if (room.kind === 'box' && !(S.w > 0 && S.d > 0)) return 'shell w / d';
+    if (room.terrain) {
+        if (typeof room.terrain !== 'object') return 'terrain';
+        if (room.terrain.features != null && !Array.isArray(room.terrain.features)) return 'terrain.features';
+        for (const f of room.terrain.features || []) if (!f || typeof f.k !== 'string') return 'a feature row with no k';
+    }
+    for (const k of ['doors', 'props', 'counters', 'npcSpots', 'agents']) if (room[k] != null && !Array.isArray(room[k])) return k;
+    for (const d of room.doors || []) if (!d || !d.id) return 'a door with no id';
+    return null;
+}
+/* the list at a rowLists path ('terrain.features' → room.terrain.features), or null */
+function hqWorldDocList(room, path) {
+    let v = room; for (const k of String(path).split('.')) { v = v ? v[k] : null; } return Array.isArray(v) ? v : null;
+}
+/* R1's `id` on every row: stable, never re-used within the room (a door keeps its own — `at` and links name it) */
+function hqWorldDocRowIds(room) {
+    if (!room) return 0;
+    const used = new Set(); let n = 0, max = 0;
+    HQ_WORLD_DOC_RULES.rowLists.forEach(p => (hqWorldDocList(room, p) || []).forEach(r => { if (r && r.id != null) { used.add(String(r.id)); const m = /^r(\d+)$/.exec(String(r.id)); if (m) max = Math.max(max, +m[1]); } }));
+    HQ_WORLD_DOC_RULES.rowLists.forEach(p => (hqWorldDocList(room, p) || []).forEach(r => {
+        if (!r || typeof r !== 'object' || r.id != null) return;
+        let id; do { id = 'r' + (++max); } while (used.has(id));
+        r.id = id; used.add(id); n++;
+    }));
+    return n;
+}
+/* the plain copy of a room (no functions, no cycles, no non-enumerable caches) */
+function hqWorldDocPlain(room) { return room ? JSON.parse(JSON.stringify(_hqPlainCopy(room))) : null; }
+/* COPY INTO WORLD (§5.8): a built-in room as a new room of his. Doors whose far side is not in `keep` (his rooms) are dropped;
+   the copy keeps its source's generator seed (`terrain.seedOf`) so a generated plan comes out the same. → { room, dropped } */
+function hqWorldDocCopyRoom(srcId, newId, keep) {
+    const src = (DOOR_HQ.rooms || {})[srcId]; if (!src) return null;
+    const room = hqWorldDocPlain(src);
+    HQ_WORLD_DOC_RULES.copyDrop.forEach(k => { delete room[k]; });
+    let dropped = 0;
+    room.doors = (room.doors || []).filter(d => {
+        const to = d && d.action && d.action.room;
+        const ok = !!(to && keep && keep[to]);
+        if (!ok) dropped++;
+        return ok;
+    });
+    if (room.terrain && typeof room.terrain === 'object' && !room.terrain.seedOf) room.terrain.seedOf = srcId;
+    const n = hqWorldDocRoomNo(newId);
+    room.label = n ? 'Room ' + n : (room.label || 'Room');
+    room.edit = { grid: 1, snapDeg: 15, layers: {}, hidden: [], cam: null, notes: 'copied from ' + srcId, from: srcId };
+    hqWorldDocRowIds(room);
+    return { room, dropped };
+}
+/* the world's state in this page: the published doc once loaded, and what was applied */
+const HQ_WORLD_DOC_STATE = { id: '', doc: null, applied: [], ready: null, settled: false, error: null };
+/* lay a doc over DOOR_HQ (§4.1): retire → rooms → zones → links, then the derivations. `doc.rooms` holds room OBJECTS (the
+   editor's in-memory doc, or the published one after hqWorldDocLoad fetched them). → { added, replaced, retired, bad } */
+function hqWorldDocApply(doc) {
+    const out = { added: [], replaced: [], retired: [], bad: [] };
+    if (!doc || typeof doc !== 'object') return out;
+    const R = DOOR_HQ.rooms || (DOOR_HQ.rooms = {});
+    (Array.isArray(doc.retire) ? doc.retire : []).forEach(id => {
+        if (!R[id]) return;
+        delete R[id]; out.retired.push(id);
+        if (Array.isArray(DOOR_HQ.links)) DOOR_HQ.links = DOOR_HQ.links.filter(l => !(l && ((l.a && l.a.room === id) || (l.b && l.b.room === id))));
+    });
+    Object.keys(doc.rooms || {}).forEach(id => {
+        const room = doc.rooms[id];
+        const why = hqWorldDocRoomOk(room);
+        if (why) { out.bad.push({ id, why }); return; }
+        (R[id] ? out.replaced : out.added).push(id);
+        R[id] = room;
+    });
+    if (doc.zones && typeof doc.zones === 'object' && typeof HQ_WORLD !== 'undefined' && HQ_WORLD && HQ_WORLD.zones) Object.keys(doc.zones).forEach(z => { HQ_WORLD.zones[z] = doc.zones[z]; });
+    if (Array.isArray(doc.links) && doc.links.length) {
+        const L = DOOR_HQ.links || (DOOR_HQ.links = []);
+        doc.links.forEach(l => { if (!l || !l.id) return; const i = L.findIndex(q => q && q.id === l.id); if (i >= 0) L[i] = l; else L.push(l); });
+    }
+    hqWorldDocRebuild(out.added.concat(out.replaced, out.retired));
+    HQ_WORLD_DOC_STATE.applied = Array.from(new Set(HQ_WORLD_DOC_STATE.applied.concat(out.added, out.replaced)));
+    return out;
+}
+/* the editor deletes one of his rooms (and every door of his that led into it) */
+function hqWorldDocRemoveRoom(id) {
+    const R = DOOR_HQ.rooms || {};
+    if (!hqWorldDocIsOwn(id) || !R[id]) return false;
+    delete R[id];
+    Object.keys(R).forEach(k => { const r = R[k]; if (r && hqWorldDocIsOwn(k) && Array.isArray(r.doors)) r.doors = r.doors.filter(d => !(d && d.action && d.action.room === id)); });
+    hqWorldDocRebuild([id]);
+    return true;
+}
+/* the load-time derivations again, for the rooms a doc touched (HQ_WORLD_DOC_DERIVATIONS; each guarded — a derivation that throws
+   is named, never fatal). → the names that ran */
+function hqWorldDocRebuild(ids) {
+    const ran = [];
+    (ids || []).forEach(id => { const r = (DOOR_HQ.rooms || {})[id]; if (r && r._terrainInfo) delete r._terrainInfo; });   // a changed room compiles again on entry
+    ran.push('terrainInfo');
+    try { hqRefreshComplexLinks(); ran.push('hqRefreshComplexLinks'); } catch (e) { console.warn('[world doc] hqRefreshComplexLinks', e); }
+    try { hqReplateDoors(); ran.push('hqReplateDoors'); } catch (e) { console.warn('[world doc] hqReplateDoors', e); }
+    return ran;
+}
+/* the published index → the rooms' urls (immutable: the sha rides as ?h=) */
+function hqWorldDocUrl(name, q) { return HQ_WORLD_DOC_RULES.base + name + (q ? '?' + q : ''); }
+function hqWorldDocIndexRooms(index) { const r = (index && index.rooms) || {}; return Object.keys(r).map(id => ({ id, bytes: +(r[id] && r[id][0]) || 0, sha: String((r[id] && r[id][1]) || '') })); }
+/* fetch a published world (world.json + every room) → the in-memory doc. `fresh` = revalidate world.json (the editor's IMPORT
+   FROM R2); the game passes the id index.html names, so its url is immutable */
+function hqWorldDocFetch(id, fresh) {
+    if (typeof fetch !== 'function') return Promise.reject(new Error('no fetch'));
+    const q = id ? 'w=' + encodeURIComponent(id) : ('t=' + Date.now());
+    return fetch(hqWorldDocUrl('world.json', q), { mode: 'cors', credentials: 'omit', cache: (fresh || !id) ? 'no-cache' : 'default' })
+        .then(r => { if (!r || !r.ok) throw new Error('world.json HTTP ' + (r ? r.status : 0)); return r.json(); })
+        .then(index => {
+            const doc = Object.assign({}, index, { rooms: {}, prefabs: {} });
+            const rooms = hqWorldDocIndexRooms(index);
+            return Promise.all(rooms.map(e => fetch(hqWorldDocUrl('rooms/' + e.id + '.json', 'h=' + encodeURIComponent(e.sha)), { mode: 'cors', credentials: 'omit' })
+                .then(r => { if (!r || !r.ok) throw new Error('room ' + e.id + ' HTTP ' + (r ? r.status : 0)); return r.json(); })
+                .then(room => { doc.rooms[e.id] = room; })))
+                .then(() => doc);
+        });
+}
+/* THE GAME'S LOAD (boot): only when index.html names a published world. The HQ entry waits on HQ_WORLD_DOC_STATE.ready. */
+function hqWorldDocLoad(id) {
+    id = (id != null) ? id : ((typeof window !== 'undefined' && window._EW_WORLD_ID) || '');
+    if (!id) { HQ_WORLD_DOC_STATE.ready = null; return null; }
+    HQ_WORLD_DOC_STATE.id = id;
+    HQ_WORLD_DOC_STATE.settled = false;
+    HQ_WORLD_DOC_STATE.ready = hqWorldDocFetch(id, false).then(doc => {
+        HQ_WORLD_DOC_STATE.doc = doc; HQ_WORLD_DOC_STATE.settled = true;
+        const res = hqWorldDocApply(doc);
+        if (res.bad.length) console.warn('[world doc] rooms refused', res.bad);
+        return doc;
+    }).catch(e => { HQ_WORLD_DOC_STATE.settled = true; HQ_WORLD_DOC_STATE.error = String((e && e.message) || e); console.warn('[world doc] the published world did not load — the game runs on data.js alone', e); return null; });
+    return HQ_WORLD_DOC_STATE.ready;
+}
+/* THE SWAP's reader (E8): the room Play enters when mondo's world is live, else null */
+function hqWorldDocStart() {
+    const d = HQ_WORLD_DOC_STATE.doc;
+    if (!d || !d.live || !d.start || !d.start.room || !(DOOR_HQ.rooms || {})[d.start.room]) return null;
+    return { room: d.start.room, at: d.start.at || null };
+}
+if (typeof window !== 'undefined') {
+    Object.assign(window, { HQ_WORLD_DOC_RULES, HQ_WORLD_DOC_DERIVATIONS, HQ_WORLD_DOC_STATE, hqWorldDocIsOwn, hqWorldDocNextRoomId, hqWorldDocRoomNo, hqWorldDocNewRoom, hqWorldDocNew,
+        hqWorldDocRoomOk, hqWorldDocList, hqWorldDocRowIds, hqWorldDocPlain, hqWorldDocCopyRoom, hqWorldDocApply, hqWorldDocRemoveRoom, hqWorldDocRebuild, hqWorldDocUrl,
+        hqWorldDocIndexRooms, hqWorldDocFetch, hqWorldDocLoad, hqWorldDocStart });
+    if (window._EW_WORLD_ID && !window.importScripts) { try { hqWorldDocLoad(); } catch (e) { console.warn('[world doc] load', e); } }   // never inside the survey worker (it is handed each room)
+}
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -44507,7 +44855,7 @@ function _hqTReturnGuarantee(info, padNodes, mask, forced, cR, applyRise) {
 }
 function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     const G = HQ_TERRAIN_GEN, K = G[gen.kind] || G.cave, S = info.S, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
-    const seed = (typeof hqHash === 'function') ? hqHash((roomId || room.label || 'gen') + '|gen|' + (gen.seed || 0)) : 1234 + (gen.seed || 0);
+    const seed = (typeof hqHash === 'function') ? hqHash(((room.terrain && room.terrain.seedOf) || roomId || room.label || 'gen') + '|gen|' + (gen.seed || 0)) : 1234 + (gen.seed || 0);   // THE EDITOR (E0): a copied room keeps its source's seed (`terrain.seedOf`), so the copy is the same plan
     const rnd = _hqTRng(seed);
     const mask = new Uint8Array(nx * nz), forced = new Uint8Array(nx * nz);
     const halfW = S.w / 2, halfD = S.d / 2, rim = (gen.rim != null) ? gen.rim : G.rim;
@@ -45688,7 +46036,7 @@ function hqTerrainCompile(room, roomId) {
     const res = T.res || (Math.max(S.w, S.d) <= R.fineBelow ? R.resFine : R.res);
     const nx = Math.ceil(2 * halfW / res) + 1, nz = Math.ceil(2 * halfD / res) + 1;
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
-    const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(roomId || room.label || 'terrain')) : 7;
+    const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(T.seedOf || roomId || room.label || 'terrain')) : 7;   // THE EDITOR (E0): `seedOf` = a copy's source id (the same noise)
     const F = slopeB ? _hqTSlopeFeatures(T.features || [], slopeB) : (T.features || []);
     const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [];
     F.forEach(f => {

@@ -57,7 +57,7 @@ art is made.
 
 | Ask | Answer | Where |
 |---|---|---|
-| A world map like the one in the game | The land editor: the same heightmap, tiles and map tab, sculpted by hand; start from the current bake or from flat | §5.6, E4 |
+| A world map like the one in the game | The land editor: the same heightmap, tiles and map tab, sculpted by hand from a flat disc (the ruling above) | §5.6, E4 |
 | Edit where doors are and to where | The door tool: click a spot, pick the target room and entry from the world outliner; both ends written; plates on the door at eye level | §5.5, E2 |
 | Individual areas and dungeons | A room is the unit; a dungeon is a group of rooms as levels with stair, shaft and ladder links | §4.2, §5.7, E5 |
 | Custom buildings and shapes with the urban pack | The shape tools write `wall`, `bridge`, `spiral` and `rail` rows with a texture key per face; openings, floors, stairs, roofs; a group saves as a prefab | §5.3, E1 |
@@ -67,6 +67,19 @@ art is made.
 | The buildings already made | Parameterised kits (Bowl, ring, towers, curtain wall, round block) get forms; hard-coded rooms duplicate as room docs; any generated room can be frozen into rows and edited | §5.3, §5.8 |
 | Elevation, the sky, floating platforms | Terrain brushes in rooms and on the land; the sky picker over every existing sky option and the clock; a platform is a `bridge` deck at any height, and a whole room can float as a part with a height | §5.4, §5.9, E3, E6 |
 | Build everything from scratch, an engine tailored to the game | One editor over the game's own data: what it writes is what the runtime reads, so nothing is authored twice | §4, §6 |
+
+**THE RULING (mondo, 2026-09-29, when E0 started):**
+
+> "I don't even want to start with the current world map, I literally just wanna start from a flat empty world and
+> hand carve and place and design everything myself."
+
+So the editor's world starts **flat and empty**: no room, no building, no tree, no road, no river and no place from
+data.js or from the baked land. NEW WORLD is one flat open ground (Room 1) under a plain day sky, and the land (E4) starts
+as a flat disc. Everything in mondo's world is something he placed. data.js's rooms and kits stay a **library**: he can open
+one to look at it and COPY it INTO his world as a new room (§5.8), but nothing of the old world is in his world unless he
+copies it. His rooms carry their own ids (`w_room1`, `w_room2` …), so they never override or collide with a data.js
+room; the player's game is unchanged until THE SWAP (E8) makes his world the one the game enters. This replaces fork 4's
+old default ("import the current bake") everywhere below.
 
 The rules mondo has set elsewhere apply to every phase: no invented names (rooms, routes and areas are
 labelled Room 1, Route 1, Area 4 until he names them); no sound work; only assets already in the bucket;
@@ -189,7 +202,9 @@ Assets/Land/…                        the land, unchanged in format (§4.5)
   places:  [ …HQ_LAND.places rows… ],          // the land's sites and pads
   land:    { id, cell, ext, tile, heightBase, hubY, base },   // = HQ_LAND.baked
   dungeons:{ '<dungeonId>': { label, levels: [{ room, y }], mouths: [{ room, door }] } },
-  clock:   { lock: {…}, dayLook: {…} } }       // HQ_WORLD_CLOCK overrides, optional
+  clock:   { lock: {…}, dayLook: {…} },        // HQ_WORLD_CLOCK overrides, optional
+  start:   { room: 'w_room1', at: {x, z, face} },// where the game enters mondo's world (read only after THE SWAP, E8)
+  live:    false }                             // THE SWAP's switch: true = the game's Play enters `start` (E8)
 ```
 **Loading.** `index.html` carries `window._EW_WORLD_ID` (deploy.js writes it from world.json's `id`
 when it bumps the `?v=` token; without a world file it is empty and the game is data.js alone).
@@ -205,8 +220,11 @@ At boot, after data.js, `hqWorldDocLoad()` fetches `Assets/World/world.json?w=<i
    they are listed in §12 as they are found.)
 The HQ entry (map.js `_hqEnter`) waits on the doc with the load card. The main menu does not.
 data.js stays the library: every built-in room still loads unless retired, and the editor opens any of
-them. When mondo has replaced the generated world, `retire` empties data.js's outdoor rooms without a
-data.js edit; deleting them from data.js is a repo cleanup for E8.
+them to look at or to COPY INTO the world (the ruling: mondo's world starts empty, §1). His rooms carry
+`w_` ids, so they add to `DOOR_HQ.rooms` and never replace a built-in one; until THE SWAP (E8) nothing in
+the player's game leads to them, and the editor's PLAY HERE is how he walks them. When mondo's world
+stands, `live: true` sends Play to `start` and `retire` empties data.js's outdoor rooms without a data.js
+edit; deleting them from data.js is a repo cleanup for E8.
 
 ### 4.2 THE ROOM DOC (= one `DOOR_HQ.rooms` object, R1)
 The keys are today's, unchanged (§2.2): `label`, `sub`, `kind`, `shell`, `terrain`, `doors`, `props`,
@@ -390,9 +408,9 @@ which the water layer already draws as sea, river or lake, with falls where the 
   the status line, never blocking.
 
 ### 5.6 The land (E4)
-- **Start.** IMPORT FROM R2 loads the published tiles, sea.bin and land.json into memory (§4.5), so
-  mondo edits the land that exists; NEW LAND gives a flat disc at sea level with the ice wall at
-  `wall.r`. The land is edited in two views: the map (top-down, land-map + contours + the vector
+- **Start.** NEW LAND gives a flat disc at sea level with the ice wall at `wall.r`: the ruling (§1) is
+  that mondo's land starts flat and empty. The current bake is never imported into his world; IMPORT
+  FROM R2 re-loads only the land HIS world published before (another browser, a lost IndexedDB). The land is edited in two views: the map (top-down, land-map + contours + the vector
   layers, the same drawing as the ATLAS) and the 3D view (fly over the streamed land, fed from memory
   instead of R2 through the tile source hook, §6).
 - **Brushes.** RAISE, LOWER, SMOOTH, FLATTEN, TERRACE, SET, CLIFF, ROUGHEN (a hand stroke of noise,
@@ -437,13 +455,17 @@ which the water layer already draws as sea, river or lake, with falls where the 
 - **Water and light below.** `stream` and `pool` rows, `climb` rows on the falls, prop lights under the
   cap, `mood` and `fog` in the shell.
 
-### 5.8 Existing content (E0 onward)
-- Every data.js room opens in the editor. SAVE writes it as a room doc that overrides the built-in.
+### 5.8 Existing content (E0 onward) — a library, never the starting point
+- mondo's world starts empty (§1). Every data.js room opens in the editor's LIBRARY to look at (fly round
+  it, read its rows); nothing in it is saved.
+- COPY INTO WORLD makes a new room of his (`w_roomN`, Room N) from a built-in one: its rows, props and
+  sky, with every door that leads outside his world dropped (the status line says how many). That is how
+  "the buildings you've already made" reach his world.
 - FREEZE turns a generated room (`terrain.gen`: cave, rooms, halls, city, ley) into rows and a mask
   (`hqTerrainFreeze`, §6: the compiler's walls, mask and lots dumped into the doc) so it can be edited;
   the `gen` key is removed from the frozen doc. Until frozen, a generated room stays as it is (R4).
-- DUPLICATE copies a room under a new id; ROOM AS PREFAB copies its rows into a prefab.
-- IMPORT FROM R2 (§5.6) makes the current land the starting land.
+- DUPLICATE copies one of his rooms under a new id; ROOM AS PREFAB copies its rows into a prefab.
+- The baked land is not imported (§5.6).
 
 ### 5.9 Sky and light (E6)
 - The SKY tab edits `shell.sky` on an open room: `night`/`day`, `tint`, `stars`, `nebula`, `clouds`,
@@ -531,7 +553,7 @@ examples folder already on jsdelivr.
 
 | Replaced | By |
 |---|---|
-| WORLD_GEOGRAPHY_PLAN §4 (the sketched geography), §5.1 THE BAKE, the `HQ_LAND` recipe (coast, plateaus, bumps, ranges, peaks, rim, glen, canyons, mesas, dunes, basins, beaches, forests, rivers, roads as recipe rows), `bake-land.js`, `checkRules` (R2 sight, R5, R7, R3-cliff, R4), `land-bake.test.js`, the reveal list | The land sculpted and painted by hand (§5.6); the bake's stamps kept as pure functions the editor calls; the sight test as a tool, not a gate; `land.json` and the tiles written by the editor. The current bake is the starting land, not thrown away |
+| WORLD_GEOGRAPHY_PLAN §4 (the sketched geography), §5.1 THE BAKE, the `HQ_LAND` recipe (coast, plateaus, bumps, ranges, peaks, rim, glen, canyons, mesas, dunes, basins, beaches, forests, rivers, roads as recipe rows), `bake-land.js`, `checkRules` (R2 sight, R5, R7, R3-cliff, R4), `land-bake.test.js`, the reveal list | The land sculpted and painted by hand (§5.6) from a flat disc (the ruling, §1: the current bake is NOT the starting land); the bake's stamps kept as pure functions the editor calls; the sight test as a tool, not a gate; `land.json` and the tiles written by the editor |
 | G9 THE DISCOVERY PASS (landmarks every 150–250 m, dressed reveal points, region title cards, the fog of war) | Regions, reveal markers and landmarks are things mondo places (§5.6). The fog-of-map by region and the title card stay as a small runtime piece if he wants them (fork 9 of that plan carries over as fork 8 here) |
 | G10 THE DUNGEONS (the kit D1–D6, one dungeon per thread) | The carve tools and the dungeons table (§5.7). D1–D5 become things he builds; D6 (no puzzles) stays a rule |
 | OPEN_WORLD_PLAN §8 THE CONTENT TRACK (rebuilds as threads: the mall, the basilica, the bunker, the catwalks) | Rooms he builds or freezes and edits |
@@ -549,7 +571,7 @@ the routes and the dungeons are drawn by mondo in the editor. The plan gives the
 
 | # | Delivery | Files | Test |
 |---|---|---|---|
-| E0 | **THE DOCUMENT + THE SHELL**: the world file and its loader (§4.1), `deploy.js --assets`, row ids and pick proxies, reload in place, `editor.js` with the fly camera, PLAY HERE, the outliner, the inspector for every field of every row, select / move / rotate any row, prop, door or light with the gizmo, undo, IndexedDB save, export zip, import from R2, SAVE any data.js room as a doc. Usable on day one: open any room, move what is in it, fix a door target, export, upload, live | editor.js (new), data.js, three-renderer.js, map.js, index.html, styles-editor.css, deploy.js, package.json | `world-doc.test.js` (apply + rebuild: a doc overrides a room by id, retire removes it, the derivations list is complete for the rooms it names; the exported room compiles identically) |
+| E0 | **THE DOCUMENT + THE SHELL** (on a flat empty world, the ruling §1): the world file and its loader (§4.1), `deploy.js --assets`, row ids and pick proxies, reload in place, `editor.js` with the fly camera, PLAY HERE, the outliner, the inspector for every field of every row, select / move / rotate any row, prop, door or light with the gizmo, undo, IndexedDB save, export zip, import from R2 and from a zip; NEW WORLD (one flat empty Room 1), NEW ROOM, a plain ADD list (every row kind, every catalogue prop by key, a door to any of his rooms) so the empty world can be filled from day one (E1 and E2 turn the list into the real tools), the LIBRARY (open any data.js room to look at, COPY INTO WORLD). Usable on day one: start flat, add rows and props, move them, join two rooms by a door, walk it with PLAY HERE, export, upload | editor.js (new), data.js, three-renderer.js, map.js, index.html, styles-editor.css, deploy.js, package.json | `world-doc.test.js` (apply + rebuild: a doc overrides a room by id, retire removes it, the derivations list is complete for the rooms it names; the exported room compiles identically) |
 | E1 | **THE SHAPES**: every row kind as a tool (§5.3), openings, `keyIn`, snap, array, mirror, textures on faces from the three registries, prefabs and kits with forms, `texbuilding` | editor.js, data.js, three-renderer.js, styles-editor.css | `editor-shapes.test.js` (opening expansion, prefab expand rotates/translates and nests, kit rows call only allow-listed builders, a frozen bowl equals `hqStandBowl`'s rows) |
 | E2 | **THE PALETTE**: models, people, trees, doors, lights, markers (§5.2, §5.5), thumbnails, the catalogue rows for the misc keys and the foliage OBJs, the door tool with the return door and links | editor.js, data.js, three-renderer.js, sprites.js | `editor-palette.test.js` (every registry key resolves to a placeable row; every placed door has a live target; no palette entry names a file not in the bucket's known folders) |
 | E3 | **THE GROUND**: `hmap` brushes, `paint`, water rows, the level band, float parts and platforms, the audits in the viewport, the fight window preview | editor.js, data.js, three-renderer.js, check-terrain.js | `editor-ground.test.js` (hmap adds after features; paint indexes the palette; a float part has no pad; `hqTerrainReach` equals check-terrain's answer on a pinned room) |
@@ -557,7 +579,7 @@ the routes and the dungeons are drawn by mondo in the editor. The plan gives the
 | E5 | **THE DUNGEONS**: `mask`, carve / fill / floor / ceiling / tunnel, freeze, the dungeons table and the stacked map, stair joins, mouths (§5.7) | editor.js, data.js, three-renderer.js, map.js | `editor-dungeon.test.js` (a mask compiles to solid mass; every cut face is drawn; a frozen cave equals its generated field; levels stack by y) |
 | E6 | **THE SKY AND THE LIGHT**: the sky picker over every key, the clock scrubber, lights, region weather (§5.9) | editor.js, data.js, three-renderer.js | `editor-sky.test.js` (every picker option is a key the dome shader or a builder reads; the region's fog applies inside its polygon) |
 | E7 | **THE ARENAS + THE OLD EDITOR GOES**: arena markers, `N × M` rasters, match select rows, online by id + sha, migration 005, deletion of `_me*`, `#mapEditorPage`, `.me-*`, `_custom_editor`, `_mePlayTest`, the voxel community page (§5.10, R10) | editor.js, data.js, map.js, match-select.js, online.js, server.js, migrations/005_arenas.sql, index.html, styles-editor.css, profile.js | `editor-arena.test.js` (a marker rasterises at its size with its seats; the guest resolves the same doc sha; no `_me` symbol remains) |
-| E8 | **THE SWAP**: when mondo says his world stands, `retire` the generated outdoor rooms, delete the `HQ_LAND` recipe, `bake-land.js`, `checkRules`, `land-bake.test.js`, the retired rooms from data.js, and close WORLD_GEOGRAPHY_PLAN with a note in §12 there. Runs only on his word | data.js, package.json, tests, docs | the fast suite green with the recipe gone |
+| E8 | **THE SWAP**: when mondo says his world stands, `live: true` (the game's Play enters his `start` room; what of the HQ building and the story he keeps is his call then), `retire` the generated outdoor rooms, delete the `HQ_LAND` recipe, `bake-land.js`, `checkRules`, `land-bake.test.js`, the retired rooms from data.js, and close WORLD_GEOGRAPHY_PLAN with a note in §12 there. Runs only on his word | data.js, package.json, tests, docs | the fast suite green with the recipe gone |
 
 **What first:** E0. It is the only phase every other depends on, and it is already useful (a room's props,
 doors and lights edited in place and shipped). E1 (buildings) and E4 (the land) are what mondo asked for
@@ -578,7 +600,7 @@ Notes go to `docs/notes/editor.md` (new notes file, listed in CLAUDE.md's index)
 | 1 | **Where the editor's code lives** | **RULED 2026-09-29 (mondo: "okay sure do an editor js"): one new R2 file `editor.js`**, loaded by a script tag only when the editor opens, added once to index.html and to the upload set. This is the one exception to "never a new game .js file": the editor is 10–20 k lines that the player's game never runs, and map.js is 1.4 MB already | (b) Inside map.js (no new file; every session's map.js edits get slower; the player downloads the editor); (c) a separate `editor.html` page on Render (the game's scripts loaded twice; the pause-menu entry impossible) |
 | 2 | **Where the docs live** | **`Assets/World/` on R2**, loaded over data.js by id (§4.1); data.js stays the library | (b) The editor writes data.js source (a 4 MB regex edit per save, the repo as the store, no in-browser save); (c) the server's D1 (a 500 KB row cap, a Render deploy per change, no delta zips) |
 | 3 | **The land's representation** | **The heightmap and the `EWLT` tiles stay**; the editor sculpts them and writes them itself | (b) No heightmap: the world is placed terrain rooms only (loses the streamed continuous ground, the far pass, the water layer, the roads; every outdoor place a rectangle again) |
-| 4 | **The starting land** | **Import the current bake** (`5aa5d61879`) and edit it | (b) A flat disc at sea level with the ice wall |
+| 4 | **The starting land** | **RULED 2026-09-29 (mondo: "start from a flat empty world"): a flat disc at sea level with the ice wall**, and the world's first room a flat empty ground; nothing of the current world is imported (§1) | (was the default) import the current bake (`5aa5d61879`) and edit it |
 | 5 | **Openings in walls** | **An `opening` row expanded into two wall pieces and a lintel** (no new geometry code) | (b) Real holes cut through the wall mesh (a boolean pass; slower compiles; the walker's wall rule would need a hole test) |
 | 6 | **Unpublished docs online** | **Offline only**: a match uses published docs by id + sha (R8) | (b) The host relays the room doc over the socket (docs can be 100 KB+; a guest could be handed anything; the mirror gets a new path) |
 | 7 | **When the old editor goes** | **E7**, with the arenas that replace its one job | (b) E0 (nothing to make battle maps with until E7); (c) never (two editors, R10 broken) |
@@ -596,9 +618,9 @@ Notes go to `docs/notes/editor.md` (new notes file, listed in CLAUDE.md's index)
 |---|---|
 | Now | Fork 1 is ruled (a new `editor.js`). A word on fork 2 (docs on R2 under `Assets/World/`), which also changes the upload set once. Silence means the defaults. Any other fork, or "land before buildings" (§8) |
 | E0 | Upload the zip as usual (editor.js and styles-editor.css are R2 files; index.html to Render). From then on, every export from the editor is uploaded the same way, with `npm run deploy -- --assets Assets/World` or by hand, and index.html redeployed |
-| E4 | Nothing: the starting land is the published bake, fetched by the editor from the bucket |
+| E4 | Nothing: the land starts as a flat disc (the ruling, §1) |
 | Any phase | Which room he wants to try first; the phase's reply names how to open it |
-| E8 | His word that the world stands and the generated one can go |
+| E8 | His word that the world stands: then `live: true` (Play enters his `start` room) and the generated one goes |
 
 Nothing else: no art, no models, no textures, no names. Names are his to type in the label fields.
 
@@ -616,7 +638,7 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
 | **Scope**: this is bigger than the geography plan | E0 alone ships a working editor over the real data; each later phase is one tool set with one test; nothing waits on the last phase |
 | **Two editors of the same room** (a data.js room mondo also saved as a doc) | The doc wins by id (§4.1); the inspector shows OVERRIDES data.js; RETIRE and DUPLICATE are explicit |
 | **The land's pad rule and the sites** at export | The export runs the same `hqLandPadStamp` the bake ran, from the same `places` and part rectangles, so a site keeps its levelled ground; `float` parts opt out |
-| **Losing work** | Autosave on every change; projects listed by name; export any time; import from R2 restores the published state |
+| **Losing work** | Autosave on every change; projects listed by name; export any time; import from R2 (or from the exported zip) restores the published state |
 
 ---
 
@@ -640,6 +662,7 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
 | Player-placed precedent | data.js `hqGunDoorPlace` 50938, `HQ_GUN_RULES` 50881; map.js `_hqGunDoorPlaced` 3300 |
 | Delivery tooling | deploy.js (`--assets`), manifest-assets.js, optimize-assets.js, `_asFetch` / `_asNetUrl` three-renderer.js 1550–1690, `hqLandUrl` data.js 41374 |
 | Sky and clock | data.js `HQ_WORLD_CLOCK` 39883, `hqRoomClock` 39962, `HQ_ROOM_LOOKS` 15539, `HQ_LIGHT_RULES` 50462; three-renderer.js `_hzThemeRoster` 29720, `_hqLandmarkBuilders` 43358, `_WD_RIM` 30261, `_hqTickSky` 43633, `_hqClockApply` 60094 |
+| The editor (E0) | editor.js (`EWEditorCore` = the pure core: zip, command stack, `rowTransform`, `rowShape`, `KINDS`; `EWEditor` = the tool); data.js THE WORLD FILE block after `hqBuildHealZones()` (`HQ_WORLD_DOC_RULES`, `hqWorldDoc*`, `HQ_WORLD_DOC_STATE`); map.js `_goToEditor` / `_hqEditEnter` / `_hqEditLeave` / `_edBootParam` (after `_hqExitToMenu`), pause `edit`; three-renderer.js `_hqEditing`, `hq.edit` / `editView` / `surface`, `terrain.outer.flat`; deploy.js `--world`; tests world-doc.test.js, probe playtest_editor.js |
 | three.js | r128 from cdnjs; examples from jsdelivr (index.html 264–293); `TransformControls` at `three@0.128.0/examples/js/controls/TransformControls.js` |
 
 ---
@@ -648,3 +671,17 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
 
 - 2026-09-29: plan written. Nothing built.
 - 2026-09-29: fork 1 ruled by mondo: the editor is a new R2 file `editor.js`.
+- 2026-09-29: fork 4 ruled by mondo when E0 started: the world starts flat and empty, nothing of the current world map
+  is imported (§1 THE RULING); data.js rooms are a library to copy from (§5.8); his rooms carry `w_` ids; E0 gained NEW
+  WORLD / NEW ROOM / the ADD list / the LIBRARY; E4 starts from a flat disc; E8 gained `live` + `start`.
+- 2026-09-29: **E0 BUILT** (zip editor/ENTROPY_WARS_EDITOR_E0.zip, token 20260929-editor-01-cors, delta on G9). What shipped:
+  editor.js (new R2 file, loaded by map.js only when the editor opens); main menu EDITOR, pause EDIT (this room), `?edit[=room]`.
+  NEW WORLD = one flat empty Room 1 (128 x 128 m, grass_2, the plain runs on flat to the fog: new `terrain.outer.flat`);
+  fly camera, pick (props / doors / spawn by their own meshes, shapes by invisible proxy boxes built from the rows — not
+  builder tags, simpler and exact enough for E0), TransformControls gizmo (move / turn / size, snaps), outliner, inspector
+  (every field, raw JSON), ADD (19 row kinds, every catalogue prop, a door with its return door), rooms (new, duplicate,
+  delete, world starts here), LIBRARY + COPY INTO WORLD, undo/redo 200, autosave to IndexedDB `ew_editor`, EXPORT (STORE zip
+  at Assets/World/, only changed rooms, README names deletions), IMPORT (zip, or R2), PLAY HERE (the game's own `_hqEnter`,
+  ESC back). An edit re-enters the room (debounced 220 ms) instead of rebuilding one piece; a prop moved flat on the ground
+  moves live with no rebuild. deploy.js `--world <dir>` uploads the export and writes `_EW_WORLD_ID`. Not in E0 (per §8):
+  the real shape tools (E1), the palette panel (E2), stroke tools and audits (E3), the land (E4) onward.
