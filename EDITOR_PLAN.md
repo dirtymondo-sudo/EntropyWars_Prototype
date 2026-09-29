@@ -666,6 +666,7 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
 | The editor (E2) | data.js THE PALETTE (E2) block after `hqPrefabFromRows` (`HQ_TREE_KINDS`, `HQ_CATALOGUE_MISC`, `HQ_CATALOGUE_WEAPONS`, `HQ_PALETTE_RULES`, `hqPalette`, `hqPaletteRow`, `hqDoorPair`, `hqWorldDocDoorCheck`, `hqDoorPartners`); editor.js `PAL_TABS` / `palette` / `palPick` / `palDrop`, `doorClick` / `doorModal` / `doorWrite`, `paintAt`, `markerObj`, `TH` thumbnails; three-renderer.js `hq.propPreview` / `hq.treePreview`, `editView().chars`, the cast spot in `_hqSpawnPopulation`; probe `node playtest_editor.js e2` |
 | The editor (E3) | data.js THE GROUND GRIDS before `hqTerrainCompile` (`HQ_GROUND_RULES`, `hqGridDecode` / `hqGridHeightAt` / `hqGridPaintAt` / `hqGridEncode`), THE AUDITS before `hqTerrainNodeKey` (`hqTerrainWallAudit`, `hqTerrainPockets`), `hqWorldFrame().float`; three-renderer.js `_hqTerrainMat` paint layers, `_hqPaintAttrs`, `_hqFieldFloats` / `_hqBuildUnderside`, `editView()` groups; editor.js THE GROUND (`strokeStart` / `strokeDab` / `meshLive` / `strokeEnd`, `poolAt`, `streamOf`, `sheetAdd`), THE LEVEL BAND (`bandClip`), THE AUDITS (`auditRun`, `fightShow`) |
 | The editor (E4) | data.js THE LAND IN THE EDITOR block before THE SHAPES (`HQ_LAND_EDIT_RULES`, `hqLandEd*`, `HQ_LAND_MAP_COL`), gates on `HQ_LAND.baked.noHQ / own / edit` (`hqLandHQSolid`, `hqLandSites`, `hqLandFloraMix`, the flora's nearHQ), `hqWorldDocApply` `land` (live only); three-renderer.js `hq.landEdited`, the `HQ_LAND_STORE.src` branch of `_hqLandStream`; editor.js THE LAND section before OPEN / CLOSE; deploy.js `walkWorld` (.bin, .png) |
+| The editor (E5) | data.js HQ_TERRAIN_GEN.plan + `hqPlanShapes` / `hqPlanIn` / `hqPlanFreeze` / `hqPlanReport` (after HQ_TERRAIN_GEN), the `hand` / `look` branches in `_hqTGenerate`, `_hqTPlanFinish` (before THE PLAN WALLS), the auto plan in `hqTerrainCompile` (`planGen`); three-renderer.js the tree kit for a thicket; editor.js THE LAYOUT section before THE BUILD PALETTE (`layoutAdd`, `layoutSet`, `layoutFreeze`, `dungeon*`, `layoutHtml`) |
 | three.js | r128 from cdnjs; examples from jsdelivr (index.html 264–293); `TransformControls` at `three@0.128.0/examples/js/controls/TransformControls.js` |
 
 ---
@@ -744,3 +745,18 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   §4.5 / §5.6: files go to Assets/World/land/ (not Assets/Land/, which the live game still reads); tiles are held on demand,
   not one 2801² array; bake-land.js is untouched (the editor grades roads itself); his rooms stand on the land in the game
   only once the world is live (E8). Details: docs/notes/editor.md "E4".
+- 2026-09-29: **E5 BUILT** (zip editor/ENTROPY_WARS_EDITOR_E5.zip, token 20260929-editor-06-cors, delta on E4: editor.js, data.js,
+  three-renderer.js). Built to mondo's ask (it overrides §5.7 where they differ): "rooms of different sizes connected with hallways"
+  for dungeons and building interiors, and a forest whose walls are the trees (clearings = rooms, dirt paths = hallways, the
+  walker never enters the trees). A LAYOUT tab: ROOM (drag), ROUND ROOM (drag), HALLWAY (click points, ENTER; width option).
+  They write `space` / `hall` rows; the room's `terrain.gen = { kind: 'plan', look }` makes everything not drawn SOLID:
+  WALLS (a mass to the ceiling, its edge traced into wall pieces, square corners), TREES (a mass the walker never enters, dressed
+  with the game's own trees: a trunk line on every edge and a band behind it; paths in the room's path sheet, dirt; the boom stops
+  at the treetops) or ROCK (a cave bank in the cliff sheet). Nothing is rolled: no corridor is added, no room filled in; a door no
+  room reaches still gets a way cut (the door guarantee), and the tab names pieces no walk from the spawn or a door reaches.
+  DUNGEONS (world.json `dungeons` = { label, look, levels: [{ room, y }] }): NEW DUNGEON (a Level 1 room dressed for its look,
+  one room round the spawn), + LEVEL (the next room, 6 m lower on the list; joined with the DOOR tool). FREEZE: a copied room's
+  generated `rooms` / `halls` plan becomes layout rows (`keep: true` keeps its features' open ground), so the old forest rooms can
+  be re-done with tree walls. Differs from §5.7: no `terrain.mask` grids, CARVE / FILL / FLOOR / CEILING brushes or TUNNEL (the
+  layout pieces replace them); caves are the ROCK look; levels are not drawn stacked on the map yet; mouths are E4's place kind
+  `dungeon`. Details: docs/notes/editor.md "E5".

@@ -127,7 +127,7 @@
             });
             PT_LISTS.forEach(function (k) { if (Array.isArray(r[k])) r[k] = r[k].map(function (q) { return Array.isArray(q) ? mv(+q[0] || 0, +q[1] || 0).concat(q.slice(2)) : q; }); });
             DIRS.forEach(function (k) { if (Array.isArray(r[k]) && rot) { var x = +r[k][0] || 0, z = +r[k][1] || 0; r[k] = [R4(x * c - z * s), R4(x * s + z * c)]; } });
-            if (rot && !t.axis) YAWS.forEach(function (k) { if (isFinite(r[k]) || (k === 'face' && (r.k === 'climb' || r.key || r.wall === 'free')) || (k === 'yaw' && (r.k === 'prefab' || r.k === 'kit')) || (k === 'rot' && r.k === 'texbuilding')) { var v = ((+r[k] || 0) + t.rot) % 360; if (v < 0) v += 360; r[k] = R4(v); } });
+            if (rot && !t.axis) YAWS.forEach(function (k) { if (isFinite(r[k]) || (k === 'face' && (r.k === 'climb' || r.key || r.wall === 'free')) || (k === 'yaw' && (r.k === 'prefab' || r.k === 'kit')) || (k === 'rot' && (r.k === 'texbuilding' || r.k === 'space'))) { var v = ((+r[k] || 0) + t.rot) % 360; if (v < 0) v += 360; r[k] = R4(v); } });
             if (rot && !t.axis && r.arc && typeof r.arc === 'object') { var ac = mv(+r.arc.x || 0, +r.arc.z || 0); r.arc.x = ac[0]; r.arc.z = ac[1]; r.arc.a0 = R4((+r.arc.a0 || 0) + t.rot); r.arc.a1 = R4((+r.arc.a1 || 0) + t.rot); }
             else if (!t.axis && r.arc && typeof r.arc === 'object' && (t.dx || t.dz)) { r.arc.x = R4((+r.arc.x || 0) + (t.dx || 0)); r.arc.z = R4((+r.arc.z || 0) + (t.dz || 0)); }
             if (t.dy) YS.forEach(function (k) { if (isFinite(r[k])) r[k] = R4(+r[k] + t.dy); });
@@ -182,6 +182,7 @@
             }
             if (!isFinite(row.x) || !isFinite(row.z)) return out;   // a room-wide grove / scatter: the outliner picks it
             var x = +row.x, z = +row.z, g0 = g(x, z);
+            if (k === 'space') { out.push(rectBox(x, z, num(row.w, 6), num(row.d, num(row.w, 6)), row.rot, g0 - 0.05, g0 + 0.25)); return out; }   // E5: a layout room / clearing, picked by its floor
             if (k === 'plateau') { if (row.r) out.push(rectBox(x, z, 2 * row.r, 2 * (row.rz || row.r), row.rot, g0 - 0.1, num(row.h, 1))); else out.push(rectBox(x, z, num(row.w, 4), num(row.d, 4), row.rot, Math.min(g0 - 0.1, num(row.h, 1) - 0.3), num(row.h, 1))); }
             else if (k === 'hill') out.push(rectBox(x, z, 2 * num(row.r, 4), 2 * num(row.rz, num(row.r, 4)), row.rot, g0 - 0.1, g0 + Math.max(0.3, num(row.h, 1) * 0.5)));
             else if (k === 'dip') out.push(rectBox(x, z, 2 * num(row.r, 4), 2 * num(row.rz, num(row.r, 4)), row.rot, g0 - 0.2, g0 + 0.2));
@@ -218,6 +219,9 @@
             { id: 'slab', label: 'Floor slab (walk on it, walk under it)', row: function (x, z) { return { k: 'bridge', x0: x - 3, z0: z, x1: x + 3, z1: z, w: 6, y: 3, thick: 0.28, plain: true, rails: false }; } },
             { id: 'texbuilding', label: 'Building (textured block)', row: function (x, z) { return { k: 'texbuilding', x: x, z: z, w: 10, d: 8, rot: 0, storeys: 3 }; } },
             { id: 'pillar', label: 'Pillar (round)', row: function (x, z) { return { k: 'kit', fn: 'hqRoundBlock', args: { r: 0.6, y: 4, n: 16, key: 'urban:ConcreteStriped2c' }, x: x, z: z, yaw: 0 }; } },
+            /* E5: THE LAYOUT (the LAYOUT tab draws these; the room's look says walls, trees or rock round them) */
+            { id: 'space', label: 'Layout room / clearing', row: function (x, z) { return { k: 'space', x: x, z: z, w: 10, d: 8 }; } },
+            { id: 'hall', label: 'Layout hallway / path', row: function (x, z) { return { k: 'hall', pts: [[x - 6, z], [x + 6, z]], w: 2.6 }; } },
             { id: 'fence', label: 'Fence (a low wall)', row: function (x, z) { return { k: 'wall', x0: x - 3, z0: z, x1: x + 3, z1: z, h: 1.1, t: 0.12, key: 'wood' }; } },
         ];
         function kindRow(id, x, z) { for (var i = 0; i < KINDS.length; i++) if (KINDS[i].id === id) return KINDS[i].row(Math.round(x * 4) / 4, Math.round(z * 4) / 4); return null; }
@@ -231,6 +235,8 @@
             if (row.k === 'opening') return 'opening · ' + (row.glaze ? 'window' : (row.sill > 0.05 ? 'window gap' : 'door gap')) + ' in ' + (row.wall || '?');
             if (row.k === 'texbuilding') return 'building · ' + (row.storeys || 2) + ' storeys' + (row.style ? ' · ' + row.style : '');
             if (row.k === 'bridge' && row.plain) return 'floor slab · y ' + row.y;
+            if (row.k === 'space') return (row.label ? row.label + ' · ' : '') + (row.round ? 'round room' : 'room') + ' · ' + (+row.w || 6) + ' × ' + (+row.d || +row.w || 6) + ' m';   // E5: the layout
+            if (row.k === 'hall') return (row.label ? row.label + ' · ' : '') + 'hallway · ' + (+row.w || 2.6) + ' m wide';
             if (row.k) return row.k + (row.kicker ? ' (kicker)' : row.stairs ? ' (stairs)' : '') + (row.key ? ' · ' + row.key : '') + (row.kind ? ' · ' + row.kind : '') + (row.look ? ' · ' + row.look : '');
             return list;
         }
@@ -260,7 +266,9 @@
         draw: null, pfId: null,
         opts: { wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3, tab: 'build', doorLeaf: 'leaf_office',
                 /* E3: the ground brushes, the paint, the water */
-                brushR: 4, brushS: 0.5, brushFall: 'smooth', terraceH: 1, cliffH: 3, setH: 0, paintKey: '', paintErase: false, waterKey: 'water', waterDepth: 0.8, streamW: 2.4 },
+                brushR: 4, brushS: 0.5, brushFall: 'smooth', terraceH: 1, cliffH: 3, setH: 0, paintKey: '', paintErase: false, waterKey: 'water', waterDepth: 0.8, streamW: 2.4,
+                /* E5: the layout */
+                planLook: 'walls', hallW: 2.6 },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
         audit: { walls: false, pockets: false, fight: false }, auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
@@ -791,6 +799,11 @@
         set:      { label: 'SET', how: 'brush', tab: 'ground', tip: 'Hold the left mouse: the ground goes to HEIGHT (absolute).' },
         gpaint:   { label: 'PAINT', how: 'brush', tab: 'ground', tip: 'Pick a sheet below, then hold the left mouse: it goes on the ground under the brush (up to 8 sheets a room). ERASE takes it off.' },
         pool:     { label: 'POOL', how: 'disc', tab: 'ground', tip: 'Drag from the middle to the rim: a pond, its surface just under the lowest ground round it.' },
+        /* E5 (EDITOR_PLAN §5.7 + mondo's ask): THE LAYOUT — rooms and the hallways between them; the room's LOOK makes the rest solid
+           (walls to the ceiling, a forest of trees, or rock) */
+        lroom:    { label: 'ROOM', how: 'rect', tab: 'layout', tip: 'Drag a rectangle: a room (in a forest, a clearing). Everything you have not drawn is solid.' },
+        lround:   { label: 'ROUND ROOM', how: 'rect', tab: 'layout', tip: 'Drag a rectangle: a round room or clearing that fills it.' },
+        lhall:    { label: 'HALLWAY', how: 'course', tab: 'layout', tip: 'Click along it, from room to room; ENTER ends it (ESC drops it, BACKSPACE takes a point back). In a forest it is a dirt path.' },
         stream:   { label: 'STREAM', how: 'course', tab: 'ground', tip: 'Click along its course; ENTER ends it (ESC drops it): a stream, its level just under the lowest ground along it.' },
     };
     function drawSet(tool) {
@@ -838,9 +851,11 @@
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
         if (a && how === 'chain') out.push(segPv(a, p, O.wallT, g, g + O.wallH));
         if (a && how === 'line') out.push(segPv(a, p, 2, g, g + Math.max(0.3, O.height)));
-        if (how === 'course' && D.pts && D.pts.length) { for (var ci = 0; ci + 1 < D.pts.length; ci++) out.push(segPv(D.pts[ci], D.pts[ci + 1], O.streamW, ground(D.pts[ci].x, D.pts[ci].z) - 0.1, ground(D.pts[ci].x, D.pts[ci].z) + 0.1)); out.push(segPv(D.pts[D.pts.length - 1], p, O.streamW, g - 0.1, g + 0.1)); }
+        var cw = D.tool === 'lhall' ? O.hallW : O.streamW;
+        if (how === 'course' && D.pts && D.pts.length) { for (var ci = 0; ci + 1 < D.pts.length; ci++) out.push(segPv(D.pts[ci], D.pts[ci + 1], cw, ground(D.pts[ci].x, D.pts[ci].z) - 0.1, ground(D.pts[ci].x, D.pts[ci].z) + 0.1)); out.push(segPv(D.pts[D.pts.length - 1], p, cw, g - 0.1, g + 0.1)); }
         if (a && how === 'rect') {
             var R = rectOf(a, p), top = (D.tool === 'slab' || D.tool === 'platform' || D.tool === 'deck') ? O.height : D.tool === 'building' ? g + O.storeys * 3.5 : g + O.wallH, bot = D.tool === 'slab' ? O.height - 0.28 : D.tool === 'platform' ? O.height - 0.8 : D.tool === 'deck' ? O.height - 0.3 : g;
+            if (D.tool === 'lroom' || D.tool === 'lround') { top = g + 0.35; bot = g - 0.05; }   // E5: a floor footprint
             if (D.tool === 'room') { var c = [{ x: R.x0, z: R.z0 }, { x: R.x1, z: R.z0 }, { x: R.x1, z: R.z1 }, { x: R.x0, z: R.z1 }]; for (var i = 0; i < 4; i++) out.push(segPv(c[i], c[(i + 1) % 4], O.wallT, bot, top)); }
             else out.push({ cx: (R.x0 + R.x1) / 2, cz: (R.z0 + R.z1) / 2, w: R.x1 - R.x0, L: R.z1 - R.z0, y0: bot, y1: top });
         }
@@ -869,7 +884,7 @@
         if (how === 'doorway') { doorClick(e); return; }
         if (D.tool === 'paint') { paintAt(e); return; }
         if (how === 'brush') { strokeEnd(e); return; }
-        if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); drawShow(p); } return; }
+        if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); if (D.tool === 'lhall') D.a = p; drawShow(p); } return; }   // (a hallway's SHIFT keeps 45° from its last point)
         if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); return; }
         if (how === 'click') {   // a shape from the ADD list, dropped where clicked
             var c = rayGround(e.clientX, e.clientY); if (!c) return;
@@ -901,7 +916,10 @@
         }
         var R = rectOf(a, p), w = R.x1 - R.x0, d = R.z1 - R.z0; if (w < 0.5 || d < 0.5) return;
         var cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
-        if (D.tool === 'room') {
+        if (D.tool === 'lroom' || D.tool === 'lround') {
+            var sp = { k: 'space', x: Core.snap(cx, 0.01), z: Core.snap(cz, 0.01), w: Core.snap(w, 0.01), d: Core.snap(d, 0.01) }; if (D.tool === 'lround') sp.round = true;
+            layoutAdd([sp], D.tool === 'lround' ? 'round room' : 'room');
+        } else if (D.tool === 'room') {
             var c4 = [{ x: R.x0, z: R.z0 }, { x: R.x1, z: R.z0 }, { x: R.x1, z: R.z1 }, { x: R.x0, z: R.z1 }];   // clockwise: the inside on each wall's right
             drawRows([0, 1, 2, 3].map(function (i) { return wallRow(c4[i], c4[(i + 1) % 4]); }), 'room walls');
         } else if (D.tool === 'slab') {
@@ -923,6 +941,10 @@
     function drawKey(k) {   // → true when the draw tool took the key
         var D = ED.draw; if (!D) return false;
         if (D.tool === 'stream' && (k === 'enter' || k === 'escape') && D.pts && D.pts.length) { var pts = D.pts; D.pts = null; drawPreview(null); if (k === 'enter') streamOf(pts); return true; }
+        if (D.tool === 'lhall' && D.pts && D.pts.length) {   // E5: a hallway ends on ENTER (two points at least), goes on ESC, loses its last point on BACKSPACE
+            if (k === 'backspace') { D.pts.pop(); D.a = D.pts[D.pts.length - 1] || null; drawShow(ED.cursor ? { x: ED.cursor.x, z: ED.cursor.z } : D.a); return true; }
+            if (k === 'enter' || k === 'escape') { var hp = D.pts; D.pts = null; D.a = null; drawPreview(null); if (k === 'enter') { if (hp.length > 1) layoutAdd([{ k: 'hall', pts: hp.map(function (q) { return [Core.snap(q.x, 0.01), Core.snap(q.z, 0.01)]; }), w: Math.max(0.6, ED.opts.hallW) }], 'hallway'); else toast('A HALLWAY NEEDS TWO POINTS AT LEAST'); } return true; }
+        }
         if (DRAWS[D.tool] && DRAWS[D.tool].how === 'brush' && (k === '[' || k === ']')) { ED.opts.brushR = Math.max(0.5, Math.min(60, Math.round(ED.opts.brushR * (k === ']' ? 1.25 : 0.8) * 4) / 4)); saveOpts(); toast('BRUSH ' + ED.opts.brushR + ' m', 900); panels(); return true; }
         if (k === 'escape' || k === 'enter') { if (D.a) { D.a = null; D.chain0 = null; drawPreview(null); } else drawSet(null); return true; }
         return false;
@@ -1796,6 +1818,192 @@
         $('edSearch').oninput = draw; $('edCancel').onclick = modalClose; $('edTexNone').onclick = function () { modalClose(); onPick(''); }; draw(); setTimeout(function () { $('edSearch').focus(); }, 0);
     }
 
+    /* ══ THE LAYOUT (E5, EDITOR_PLAN §5.7 + mondo's ask 2026-09-29: "rooms of different sizes and connect them with hallways … for a
+       forest 'dungeon' the walls are the trees … a dirt pathway while you're surrounded by trees; clearings the rooms, paths the
+       hallways"). A room with a layout (terrain.gen { kind: 'plan', look }) is SOLID except the `space` rows (rooms, clearings) and the
+       `hall` rows (hallways, paths) drawn on the LAYOUT tab; data.js _hqTGenerate makes the solid WALLS to the ceiling, TREES the
+       walker never walks into (the game's own trees, a trunk line on every edge), or ROCK. DUNGEONS groups rooms as levels
+       (world.json `dungeons`); FREEZE turns a copied room's generated plan into these rows ═════════════════════════════════════ */
+    var LOOKS = [['walls', 'WALLS', 'Rooms and hallways inside walls that reach the ceiling: a dungeon, a building\'s floor.'],
+                 ['trees', 'TREES', 'Clearings joined by dirt paths; everything else is forest the walker cannot enter.'],
+                 ['rock', 'ROCK', 'Caves: the solid is a rock bank too high to climb.']];
+    var DUNGEON_LOOKS = {
+        walls: { floor: 'dungeon', wall: 'bricks_3', path: 'cobblestone', open: false, h: 4, mood: { light: 0xffe2b8, ambient: 0.38 } },
+        trees: { floor: 'grass_dark_fantasy', wall: 'rocks_1', path: 'dirt', open: true, h: 8, forest: true, mood: { light: 0xfff0d8, ambient: 0.45 } },
+        rock:  { floor: 'cave_floor', wall: 'rock_wall_1', path: 'dirt_2', open: false, h: 6, mood: { light: 0xd8e0ff, ambient: 0.32 } },
+    };
+    function planOf(r) { var g = r && r.terrain && r.terrain.gen; return (g && g.kind === 'plan') ? g : null; }
+    function layoutGenNew(look) { var g = { kind: 'plan', look: look || ED.opts.planLook || 'walls' }; if (g.look === 'walls' && ED.opts.wallKey) g.wallKey = ED.opts.wallKey; return g; }
+    /* drawn layout pieces → rows, as ONE undo step (the room's first piece also gives it its layout; a generated plan is replaced) */
+    function layoutAdd(rows, label) {
+        if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return; }
+        var r = room(), step = [];
+        if (ED.mode !== 'prefab') {
+            if (!r.terrain) { toast('THIS ROOM HAS NO GROUND TO LAY OUT'); return; }
+            var g = r.terrain.gen;
+            if (!g || g.kind !== 'plan') {
+                step.push({ path: basePath().concat(['terrain', 'gen']), before: Core.clone(g), after: layoutGenNew() });
+                if (g) toast('THE GENERATED FLOOR PLAN (' + String(g.kind || '').toUpperCase() + ') IS REPLACED BY YOUR LAYOUT · UNDO brings it back · FREEZE keeps its rooms', 6000);
+                else toast('THIS ROOM IS NOW A LAYOUT (' + String(ED.opts.planLook || 'walls').toUpperCase() + '): everything you have not drawn is solid', 4000);
+            }
+        }
+        var n = ensureList('terrain.features', step), max = +nextId(r).slice(1) - 1;
+        rows.forEach(function (row, i) { row.id = 'r' + (++max); step.push({ path: rowPath('terrain.features', n + i), before: undefined, after: row }); });
+        commit(step, label);
+    }
+    /* the room's layout settings: one field → one undo step (path under terrain) */
+    function layoutSet(key, val, label) {
+        if (!editable() || ED.mode === 'prefab') return;
+        var r = room(), g = planOf(r), step = [];
+        if (key === 'look') {
+            var ng = g ? Core.clone(g) : layoutGenNew(val); ng.look = val;
+            step.push({ path: basePath().concat(['terrain', 'gen']), before: Core.clone(r.terrain.gen), after: ng });
+            /* a forest wants the forest's ground (mondo's ruling: forest floor grass_dark_fantasy, trails dirt) — only over the untouched defaults */
+            if (val === 'trees' && (!r.terrain.floor || r.terrain.floor === 'grass_2')) {
+                step.push({ path: basePath().concat(['terrain', 'floor']), before: r.terrain.floor, after: 'grass_dark_fantasy' });
+                if (r.terrain.path !== 'dirt') step.push({ path: basePath().concat(['terrain', 'path']), before: r.terrain.path, after: 'dirt' });
+                toast('THE FOREST FLOOR IS grass_dark_fantasy, ITS PATHS dirt (the room\'s floor and path sheets)', 4000);
+            }
+            ED.opts.planLook = val; saveOpts();
+            commit(step, 'layout look ' + val); return;
+        }
+        if (key === 'floor' || key === 'path') { if (r.terrain[key] === val) return; commit([{ path: basePath().concat(['terrain', key]), before: r.terrain[key], after: val }], label || key); return; }
+        if (!g) return;
+        var cur = g[key];
+        if (val === '' || val == null) { if (cur === undefined) return; commit([{ path: basePath().concat(['terrain', 'gen', key]), before: Core.clone(cur), after: undefined }], label || key); return; }
+        if (JSON.stringify(cur) === JSON.stringify(val)) return;
+        commit([{ path: basePath().concat(['terrain', 'gen', key]), before: Core.clone(cur), after: val }], label || key);
+    }
+    /* REMOVE LAYOUT: the plan and every room / hallway row go (one step) */
+    function layoutRemove() {
+        if (!editable() || ED.mode === 'prefab') return;
+        var r = room(), F = listOf(r, 'terrain.features') || [], step = [];
+        for (var i = F.length - 1; i >= 0; i--) if (F[i] && (F[i].k === 'space' || F[i].k === 'hall')) step.push({ path: rowPath('terrain.features', i), before: Core.clone(F[i]), after: undefined });
+        if (planOf(r)) step.push({ path: basePath().concat(['terrain', 'gen']), before: Core.clone(r.terrain.gen), after: undefined });
+        if (!step.length) return;
+        if (!confirm('Remove the layout (its rooms and hallways) from ' + (r.label || ED.roomId) + '? UNDO brings it back.')) return;
+        commit(step, 'remove layout');
+    }
+    /* FREEZE (§5.8): a generated plan (clearings + paths, rooms + corridors) → layout rows */
+    function layoutFreeze() {
+        if (!editable() || ED.mode === 'prefab') return;
+        var r = room(), g = r.terrain && r.terrain.gen, info = termInfo(), fz = null;
+        try { fz = W.hqPlanFreeze ? W.hqPlanFreeze(info, g) : null; } catch (e) { fz = null; }
+        if (!fz) { toast('ONLY A ROOMS OR HALLS PLAN FREEZES (a cave, a city and the ley lines have no rooms to hand over)', 5000); return; }
+        var step = [{ path: basePath().concat(['terrain', 'gen']), before: Core.clone(g), after: fz.gen }];
+        var n = ensureList('terrain.features', step), max = +nextId(r).slice(1) - 1;
+        fz.rows.forEach(function (row, i) { row.id = 'r' + (++max); step.push({ path: rowPath('terrain.features', n + i), before: undefined, after: row }); });
+        commit(step, 'freeze the plan');
+        toast('FROZEN · ' + fz.rows.length + ' rooms and hallways, look ' + fz.gen.look.toUpperCase(), 4000);
+    }
+    /* THE READOUT (the compiled room): pieces, trees, cold pieces (no walk from the spawn or a door reaches them), cut door paths */
+    function layoutReport() { var info = termInfo(); try { return (info && W.hqPlanReport) ? W.hqPlanReport(info) : null; } catch (e) { return null; } }
+    /* DUNGEONS (world.json `dungeons` = { label, look, levels: [{ room, y }] }): a new dungeon is its Level 1 room, dressed for its look,
+       with one room drawn round the spawn; + LEVEL adds the next one (join them with the DOOR tool) */
+    function dungeonRoom(id, look, label, n) {
+        var L = DUNGEON_LOOKS[look] || DUNGEON_LOOKS.walls, r = W.hqWorldDocNewRoom(id, { w: 96, d: 96, floor: L.floor, label: label });
+        var S = r.shell; S.open = L.open; if (L.open) S.edge = 'open'; else delete S.edge; S.h = L.h; S.wallH = L.h; S.wall = L.wall; S.ceiling = L.wall; S.skirt = L.path; S.dado = L.path; S.mood = Core.clone(L.mood);
+        if (L.forest) S.forest = true;
+        r.terrain.floor = L.floor; r.terrain.cliff = L.wall; r.terrain.path = L.path;
+        r.terrain.gen = { kind: 'plan', look: look };
+        if (look === 'walls') r.terrain.gen.wallKey = L.wall;
+        r.terrain.features = [{ id: 'r1', k: 'space', x: 0, z: 0, w: 14, d: 12 }];
+        return r;
+    }
+    function dungeonNew() {
+        if (ED.mode !== 'world' && ED.mode !== 'land') { toast('DUNGEONS LIVE IN YOUR WORLD'); return; }
+        ask('NEW DUNGEON', [{ name: 'look', label: 'Look', type: 'select', value: ED.opts.planLook || 'walls', options: LOOKS.map(function (l) { return [l[0], l[1] + ' · ' + l[2]]; }) }], function (v) {
+            var n = 1; while (ED.doc.dungeons['w_dg' + n]) n++;
+            var did = 'w_dg' + n, id = W.hqWorldDocNextRoomId(ED.doc), look = v.look || 'walls', r = dungeonRoom(id, look, 'Dungeon ' + n + ' Level 1');
+            commit([{ path: ['rooms', id], before: undefined, after: r }, { path: ['dungeons', did], before: undefined, after: { label: 'Dungeon ' + n, look: look, levels: [{ room: id, y: 0 }] } }], 'new dungeon');
+            ED.opts.planLook = look; ED.opts.tab = 'layout'; saveOpts();
+            enterRoom(id, 'world');
+            toast('DUNGEON ' + n + ' · LEVEL 1 · draw its rooms and hallways on the LAYOUT tab', 5000);
+        });
+    }
+    function dungeonLevel(did) {
+        var D = ED.doc.dungeons[did]; if (!D) return;
+        var lv = (D.levels || []).filter(function (l) { return l && ED.doc.rooms[l.room]; }), m = lv.length + 1, y = lv.length ? Math.min.apply(null, lv.map(function (l) { return +l.y || 0; })) - 6 : 0;
+        var id = W.hqWorldDocNextRoomId(ED.doc), r = dungeonRoom(id, D.look || 'walls', D.label + ' Level ' + m);
+        var levels = Core.clone(D.levels || []); levels.push({ room: id, y: y });
+        commit([{ path: ['rooms', id], before: undefined, after: r }, { path: ['dungeons', did, 'levels'], before: Core.clone(D.levels), after: levels }], 'add a level');
+        enterRoom(id, 'world');
+        toast(String(r.label).toUpperCase() + ' · join it to the level above with the DOOR tool (DOORS tab)', 5000);
+    }
+    function dungeonDel(did) {
+        var D = ED.doc.dungeons[did]; if (!D) return;
+        if (!confirm('Take ' + D.label + ' off the dungeon list? Its rooms stay in your world. (UNDO brings it back)')) return;
+        commit([{ path: ['dungeons', did], before: Core.clone(D), after: undefined }], 'drop ' + D.label);
+    }
+    function dungeonsHtml() {
+        if (!ED.doc) return '';
+        var ids = Object.keys(ED.doc.dungeons || {}), h = '<div class="ed-sub">DUNGEONS · ' + ids.length + '</div>';
+        ids.forEach(function (did) {
+            var D = ED.doc.dungeons[did];
+            h += '<div class="ed-rowx"><span class="ed-note" style="flex:1">' + esc(D.label || did) + ' · ' + esc(String(D.look || 'walls').toUpperCase()) + '</span><button class="ed-btn" data-dglv="' + esc(did) + '" title="A new room under the last level">+ LEVEL</button><button class="ed-btn ed-x" data-dgdel="' + esc(did) + '" title="Take it off the list (its rooms stay)">✕</button></div>';
+            (D.levels || []).forEach(function (l, i) { var rr = ED.doc.rooms[l.room]; if (!rr) return; h += '<button class="ed-row' + (ED.roomId === l.room ? ' on' : '') + '" data-dgroom="' + esc(l.room) + '">Level ' + (i + 1) + '<span>' + esc(rr.label || l.room) + ' · y ' + (+l.y || 0) + '</span></button>'; });
+        });
+        return h + '<button class="ed-row ed-add" data-lact="dgnew">+ NEW DUNGEON</button>';
+    }
+    function layoutHtml() {
+        var r = room(), g = planOf(r), T = (r && r.terrain) || {}, look = g ? (g.look || 'walls') : (ED.opts.planLook || 'walls'), h = '';
+        var pf = ED.mode === 'prefab';
+        h += '<div class="ed-sub">LOOK' + (g ? '' : ' · for the first piece you draw') + '</div><div class="ed-palb">';
+        LOOKS.forEach(function (l) { h += '<button class="ed-btn' + (look === l[0] ? ' on' : '') + '" data-llook="' + l[0] + '" title="' + esc(l[2]) + '"' + (pf ? ' disabled' : '') + '>' + l[1] + '</button>'; });
+        h += '</div><div class="ed-note">' + esc((LOOKS.filter(function (l) { return l[0] === look; })[0] || LOOKS[0])[2]) + '</div>';
+        if (pf) h += '<div class="ed-note">In a prefab the rooms and hallways are pieces: the room you place it in takes its own look.</div>';
+        if (T.gen && !g && !pf) h += '<div class="ed-note">This room\'s floor plan is GENERATED (' + esc(T.gen.kind || '') + '). FREEZE turns its rooms and paths into layout pieces you can move; drawing a piece replaces it.</div><div class="ed-acts"><button class="ed-btn" data-lact="freeze">FREEZE</button></div>';
+        var fld = function (key, label, val, kind, ph) {
+            if (kind === 'tex') return '<label class="ed-f"><span>' + esc(label) + '</span><input type="text" data-lk="' + key + '" value="' + esc(val || '') + '" list="edDlTex" placeholder="' + esc(ph || '') + '"><button class="ed-btn ed-texb" data-ltex="' + key + '" title="Pick a texture"' + texSwatchStyle(val) + '>…</button></label>';
+            return '<label class="ed-f"><span>' + esc(label) + '</span><input type="' + (kind === 'text' ? 'text' : 'number') + '" step="any" data-lk="' + key + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"></label>';
+        };
+        if (g) {
+            var K = (W.HQ_TERRAIN_GEN && W.HQ_TERRAIN_GEN.plan) || {};
+            h += '<div class="ed-form" data-scope="layout">';
+            if (look === 'walls') { h += fld('wallH', 'Wall height (m)', g.wallH, 'num', (r.shell && r.shell.open) ? String(K.wallH || 4) : 'to the ceiling'); h += fld('wallKey', 'Wall sheet', g.wallKey, 'tex', 'the room\'s wall'); h += fld('wallT', 'Wall thickness (m)', g.wallT, 'num', String(K.wallT || 0.5)); }
+            if (look === 'trees') {
+                h += fld('kinds', 'Trees (TREES tab kinds, commas)', (g.kinds || []).join(', '), 'text', (K.kinds || []).join(', '));
+                h += fld('treeGap', 'Trunks along the edge (m apart)', g.treeGap, 'num', String(K.treeGap));
+                h += fld('depth', 'Forest depth behind the edge (m)', g.depth, 'num', String(K.depth));
+                h += fld('maxTrees', 'Most trees', g.maxTrees, 'num', String(K.maxTrees));
+                h += fld('treeH', 'Tree height min, max (m)', (g.treeH || []).join(', '), 'text', (K.treeH || []).join(', '));
+            }
+            if (look === 'rock') h += fld('wallH', 'Rock height (m)', g.wallH, 'num', String(K.rockH || 3.2));
+            h += fld('floor', 'Floor sheet (the room\'s)', T.floor, 'tex');
+            if (look !== 'walls') h += fld('path', 'Path sheet (the hallways' + (look === 'trees' ? '; a clearing with dirt on' : '') + ')', T.path, 'tex');
+            h += '</div>';
+            var rep = layoutReport();
+            if (rep) {
+                h += '<div class="ed-note">' + rep.spaces + ' room' + (rep.spaces === 1 ? '' : 's') + ' · ' + rep.halls + ' hallway' + (rep.halls === 1 ? '' : 's') + (look === 'trees' ? ' · ' + rep.trees + ' trees' : look === 'walls' ? ' · ' + rep.walls + ' wall pieces' : '') + '</div>';
+                if (rep.cold.length) h += '<div class="ed-note ed-warn">NOT JOINED to the spawn or a door: ' + rep.cold.map(function (id) { return '<button class="ed-btn" data-lsel="' + esc(id) + '">' + esc(id) + '</button>'; }).join(' ') + '</div>';
+                if (rep.cut) h += '<div class="ed-note ed-warn">' + rep.cut + ' door(s) no room reached: a way was cut to ' + (rep.cut > 1 ? 'them' : 'it') + ' (draw a hallway to it to choose the way)</div>';
+            }
+            h += '<div class="ed-acts"><button class="ed-btn ed-danger" data-lact="remove">REMOVE LAYOUT</button></div>';
+        }
+        if (!pf) h += dungeonsHtml();
+        return h;
+    }
+    function layoutWire(L) {
+        L.querySelectorAll('[data-llook]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-llook'); if (planOf(room())) layoutSet('look', v); else { ED.opts.planLook = v; saveOpts(); panels(); } }; });
+        L.querySelectorAll('[data-lk]').forEach(function (el) {
+            el.onchange = function () {
+                var k = el.getAttribute('data-lk'), raw = el.value.trim(), v;
+                if (k === 'kinds') v = raw ? raw.split(/[\s,]+/).filter(Boolean) : '';
+                else if (k === 'treeH') { var a = raw.split(/[\s,]+/).map(parseFloat).filter(isFinite); v = a.length === 2 ? [Math.min(a[0], a[1]), Math.max(a[0], a[1])] : ''; }
+                else if (el.type === 'number') v = raw === '' ? '' : (isFinite(parseFloat(raw)) ? parseFloat(raw) : null);
+                else v = raw;
+                if (v === null) return;
+                layoutSet(k, v, 'layout ' + k);
+            };
+        });
+        L.querySelectorAll('[data-ltex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-ltex'), r = room(), cur = (k === 'floor' || k === 'path') ? r.terrain[k] : (planOf(r) || {})[k]; texPick(cur, function (v) { layoutSet(k, v, 'layout ' + k); }); }; });
+        L.querySelectorAll('[data-lsel]').forEach(function (b) { b.onclick = function () { select('terrain.features', b.getAttribute('data-lsel')); frameSel(); }; });
+        L.querySelectorAll('[data-lact]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-lact'); if (a === 'remove') layoutRemove(); else if (a === 'freeze') layoutFreeze(); else if (a === 'dgnew') dungeonNew(); }; });
+        L.querySelectorAll('[data-dglv]').forEach(function (b) { b.onclick = function () { dungeonLevel(b.getAttribute('data-dglv')); }; });
+        L.querySelectorAll('[data-dgdel]').forEach(function (b) { b.onclick = function () { dungeonDel(b.getAttribute('data-dgdel')); }; });
+        L.querySelectorAll('[data-dgroom]').forEach(function (b) { b.onclick = function () { saveCam(); enterRoom(b.getAttribute('data-dgroom'), 'world'); }; });
+    }
+
     /* ══ THE BUILD PALETTE (the left panel's top): SELECT + the draw tools, the tool's options under them ══════════════════ */
     var OPT_FIELDS = {
         wall: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
@@ -1819,6 +2027,8 @@
         gpaint: [['brushR', 'Brush radius (m) · [ ]']],
         pool: [['waterKey', 'Liquid', 'liquid'], ['waterDepth', 'Depth (m)']],
         stream: [['streamW', 'Width (m)'], ['waterDepth', 'Depth (m)'], ['waterKey', 'Liquid', 'liquid']],
+        /* E5 */
+        lhall: [['hallW', 'Hallway width (m)']],
     };
     function buildHtml(tab) {
         var D = ED.draw, h = '<div class="ed-palb">';
@@ -1838,6 +2048,7 @@
             }).join('') + '</div>';
         }
         if (tab === 'ground') h += groundHtml();
+        if (tab === 'layout') h += layoutHtml();   // E5
         return h;
     }
     function texSwatchStyle(key) { var u = key && texUrl(key); return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
@@ -1846,6 +2057,7 @@
         L.querySelectorAll('[data-o]').forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-o'); ED.opts[k] = el.type === 'number' ? (isFinite(parseFloat(el.value)) ? parseFloat(el.value) : ED.opts[k]) : el.value.trim(); saveOpts(); }; });
         L.querySelectorAll('[data-otex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-otex'); texPick(ED.opts[k], function (v) { ED.opts[k] = v; saveOpts(); panels(); }); }; });
         groundWire(L);
+        layoutWire(L);   // E5
     }
     function saveOpts() { try { localStorage.setItem('ew_editor_opts', JSON.stringify(ED.opts)); } catch (e) {} }
     function loadOpts() { try { var o = JSON.parse(localStorage.getItem('ew_editor_opts') || 'null'); if (o && typeof o === 'object') Object.keys(ED.opts).forEach(function (k) { if (o[k] != null && typeof o[k] === typeof ED.opts[k]) ED.opts[k] = o[k]; }); } catch (e) {} }
@@ -1866,7 +2078,7 @@
        DOORS (the leaves and the ways: the door tool, both ends at once), LIGHTS, MARKERS (the spawn, a sign, a roster spot, an
        online spot), TEXTURES (paint a sheet onto a face) and KITS (the game's builders and his prefabs). A tile arms the tool:
        click on the ground to place (again and again; ESC or V stops). Thumbnails are live renders cached in IndexedDB ═══════ */
-    var PAL_TABS = [['build', 'BUILD'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS']];
+    var PAL_TABS = [['build', 'BUILD'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS']];
     var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
     ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
     function palData() {
@@ -1896,15 +2108,15 @@
         if (!editable()) { B.innerHTML = ''; return; }
         var tab = ED.opts.tab || 'build';
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
-        if (tab === 'build' || tab === 'ground') h += buildHtml(tab);
+        if (tab === 'build' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
         else h += '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
         h += '</div>';
         /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
            room reloads is not lost to a rebuilt button */
-        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground') { paletteWire(B); return; } palBody(); return; }
+        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } palBody(); return; }
         B._h = h; B.innerHTML = h;
         B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
-        if (tab === 'build' || tab === 'ground') { paletteWire(B); return; }
+        if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
         $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
         $('edPalQ').onkeydown = function (e) { if (e.key === 'Escape') { this.value = ''; ED.palQ[tab] = ''; this.blur(); palBody(); } };
         palBody();
@@ -2302,7 +2514,7 @@
                 list.slice(0, 400).forEach(function (row) { if (!row) return; if (ED.band.on && g[0] === 'terrain.features' && !rowInBand(row)) return; h += '<button class="ed-row' + (isSel(g[0], row.id) ? ' on' : '') + '" data-list="' + g[0] + '" data-id="' + esc(row.id) + '">' + esc(Core.rowLabel(g[0], row)) + '<span>' + esc(row.id || '') + '</span></button>'; });
                 if (list.length > 400) h += '<div class="ed-note">… ' + (list.length - 400) + ' more</div>';
             });
-            if (r.terrain && r.terrain.gen) h += '<div class="ed-note">This room\'s floor plan is GENERATED (terrain.gen · ' + esc(r.terrain.gen.kind || '') + '): its walls come from the generator, not from rows (FREEZE comes in E5).</div>';
+            if (r.terrain && r.terrain.gen && r.terrain.gen.kind !== 'plan') h += '<div class="ed-note">This room\'s floor plan is GENERATED (terrain.gen · ' + esc(r.terrain.gen.kind || '') + '): its walls come from the generator, not from rows. The LAYOUT tab\'s FREEZE turns a rooms or halls plan into pieces you can move.</div>';
             h += '</div>';
         }
         var sc = L.scrollTop; L.innerHTML = h; L.scrollTop = sc;
@@ -2506,6 +2718,7 @@
             'lights ' + lights + (cap ? ' / ' + cap : ''),
             perf && perf.fps ? Math.round(perf.fps) + ' fps' : '',
             (ED.doorBad && ED.doorBad.length) ? '<b class="ed-warn" title="' + esc(ED.doorBad.map(function (b) { return b.room + ' ' + b.door + ': ' + b.why; }).join(' · ')) + '">' + ED.doorBad.length + ' DOOR' + (ED.doorBad.length > 1 ? 'S LEAD' : ' LEADS') + ' NOWHERE</b>' : '',
+            (function () { var lr = (ED.mode === 'world' || ED.mode === 'prefab') && planOf(r) ? layoutReport() : null; if (!lr) return ''; return 'layout ' + lr.spaces + ' / ' + lr.halls + (lr.cold.length ? ' · <b class="ed-warn">' + lr.cold.length + ' NOT JOINED</b>' : ''); })(),   // E5
             ED.band.on ? '<b>LEVEL ' + ED.band.y0 + ' → ' + ED.band.y1 + ' m</b>' : '',
             ED.audit.walls ? (ED.auditRes.none ? 'walls: no ground here' : ED.auditRes.walls == null ? 'walls …' : (ED.auditRes.walls ? '<b class="ed-warn">' + ED.auditRes.walls + ' INVISIBLE WALL' + (ED.auditRes.walls > 1 ? 'S' : '') + '</b>' : 'no invisible walls')) : '',
             ED.audit.pockets ? (ED.auditRes.none ? '' : ED.auditRes.pockets == null ? 'pockets …' : (ED.auditRes.pockets ? '<b class="ed-warn">POCKETS ' + ED.auditRes.pocketM + ' m² nobody reaches</b>' : 'no pockets')) : '',
@@ -3225,6 +3438,7 @@
         w2s: function (x, y, z) { if (!ED.view) return null; var u = U(), v = new THREE.Vector3(x * u, y * u, z * u).project(ED.view.camera), rc = ED.view.canvas.getBoundingClientRect(); return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height, vis: v.z < 1 }; },
         draw: function () { return ED.draw ? { tool: ED.draw.tool, a: ED.draw.a, info: ED._drawInfo } : null; },
         act: { addShape: addShape, addRow: addRow, select: select, undo: undo, redo: redo, deleteSel: deleteSel, duplicateSel: duplicateSel, turnSel: turnSel, exportZip: exportZip, newRoom: function (w, d) { var id = W.hqWorldDocNextRoomId(ED.doc), r = W.hqWorldDocNewRoom(id, { w: w, d: d }); commit([{ path: ['rooms', id], before: undefined, after: r }], 'new room'); enterRoom(id, 'world'); return id; },
+               layoutAdd: layoutAdd, layoutSet: layoutSet, layoutFreeze: layoutFreeze, layoutRemove: layoutRemove, layoutReport: layoutReport, dungeonNew: dungeonNew, dungeonLevel: dungeonLevel,   // E5
                drawSet: drawSet, drawUp: drawUp, drawDown: drawDown, enterPrefab: enterPrefab, leavePrefab: leavePrefab, newPrefab: newPrefab, selToPrefab: selToPrefab, roomToPrefab: roomToPrefab, bakeSel: bakeSel, mirrorSel: mirrorSel, placeRow: placeRow, texPick: texPick, arrayRows: function (n, dx, dz, dyaw) { var ask0 = ask; ask = function (t, f, ok) { ok({ n: n, dx: dx, dz: dz, dyaw: dyaw }); }; try { arraySel(); } finally { ask = ask0; } },
                palPick: palPick, palEntries: palEntries, palData: palData, doorWrite: doorWrite, doorFollow: doorFollow, thumbs: function () { return { have: Object.keys(TH.mem).filter(function (k) { return !!TH.mem[k]; }).length, none: Object.keys(TH.mem).filter(function (k) { return TH.mem[k] === null; }).length, want: TH.want.length, off: TH.off }; },
                land: { open: landOpen, view: landView, tool: function (t) { ED.opts.landTool = t; panels(); }, click: landClick, finish: landFinish, pts: function (p) { ED.land.pts = p; }, strokeStart: landStrokeStart, dab: landDab, strokeEnd: landStrokeEnd, doc: landDoc, get: function () { return ED.land; }, export: landExport },
