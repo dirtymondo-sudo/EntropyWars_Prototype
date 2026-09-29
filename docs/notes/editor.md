@@ -100,3 +100,44 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
 - **Probe (no test file; the repo's tests were removed 2026-09-29):** `node playtest_editor.js e2` runs the palette sweep with real
   clicks. It serves a stand-in GLB and OBJ, and takes around 10 minutes under swiftshader, so don't wrap it in a short
   `timeout`. `NOTHUMB=1` turns the thumbnails off; `ONLY='[[list,row],…]'` just adds rows.
+
+## E3 — ground, water, levels and audits (2026-09-29, token 20260929-editor-04-cors)
+- **The grids** (data.js "THE GROUND GRIDS", before `hqTerrainCompile`): `terrain.hmap = { t: 'i16', res, x0, z0, nx, nz, d }`
+  is a height delta in cm (base64 little-endian), added in `hBefore` AFTER the feature rows and BEFORE the door pads, so a
+  door's landing still meets its sill. `terrain.paint = { pal: [≤ 8 sheets], t: 'u8', … }` is a sheet per node (0 = none).
+  `hqGridDecode` caches on a NON-enumerable `_dec` (the export and the survey's plain copy never see it); `hqGridEncode`
+  crops to the non-zero box + 1 node and returns null when all zero. `_hqB64Enc/Dec` fall back to a hand coder when
+  atob/btoa are missing (the load-data.js vm sandbox). The compile writes `info.paint = { pal, P, n }` on its own lattice.
+- **The paint on the mesh** (three-renderer.js `_hqTerrainMat`, `_hqPaintAttrs`): one-hot vec3 attributes aPaintA/B/C
+  (sheets 1-3, 4-6, 7-8) per vertex, samplers tPaint0..n, blended after the floor/path and before the cliff, so a steep
+  face still wears the cliff sheet. The cache key carries the sheet count (`hqTerrainTriP3`). `_hqTerrainTiles` copies the
+  attributes. DIFFERS from §5.4: not the land's `_hqLandSplatHook` (the field has its own material; this is simpler).
+- **The brushes** (editor.js THE GROUND, GROUND tab): RAISE / LOWER (SHIFT flips; 4 m/s × strength), SMOOTH (3 × 3 mean),
+  FLATTEN (to the height where the stroke began), TERRACE (to the nearest STEP), RAMP (drag foot → head: an even incline
+  between the two grounds, brush-wide, a metre's ease; the status line shows run, rise, grade and TOO STEEP past the
+  walker's `maxSlope`), CLIFF (a hard raise of CLIFF m over the start height: the face is as sheer as the lattice), SET
+  (absolute), PAINT (+ SHEET picks a texture and adds it to the room at once so the stroke shows live; ERASE; ✕ SHEET
+  removes one and renumbers the grid). `[ ]` size the brush; the yellow ring follows the ground. A stroke works on the
+  compiled lattice (`strokeStart` reads the stored delta per node, `strokeDab` edits a copy, `meshLive` moves the tile
+  meshes' vertices / paint attributes), and the release commits ONE step (`terrain.hmap` or `terrain.paint`), then the room
+  rebuilds from the grids. CLEAR HEIGHTS / CLEAR PAINT (the tab and the room inspector).
+- **Water:** POOL (drag middle → rim) and STREAM (click the course, ENTER) write `pool` / `stream` rows whose level sits just
+  under the lowest ground round them (0.1 / 0.15 m); liquid water / deep_water / lava; depth. The room inspector has `sea`
+  (seaY, seaKey, seaUnder) = `terrain.sea`.
+- **Floating:** PLATFORM (BUILD, drag) = `plateau { float: true }` at HEIGHT; DECK = a railed `bridge` at HEIGHT. A whole room
+  floats with the inspector's `floating` (`terrain.float = { depth }`): no outer ground, and `_hqBuildUnderside` hangs a rock
+  underside (7 rings narrowing to `depth` m below the rim, the cliff sheet). A zone part with `float: true` also works in
+  data.js (`hqWorldFrame().float`: no land pad, no island ease, no sea sink) for E4's map.
+- **The level band** (top bar LEVEL, bottom, top, ▼ ▲; L, Shift L; saved in localStorage `ew_editor_band`): only rows,
+  props, doors and markers whose height overlaps it pick (and list in the outliner); everything above its top is cut by a
+  clipping plane on the room's materials (`bandClip`; the late-loading models are caught once a second; PLAY HERE and
+  close put the materials back).
+- **The audits** (top bar AUDIT; `ew_editor_audit`): WALLS = data.js `hqTerrainWallAudit(info)` (R3: a refused 0.5 m step
+  with nothing drawn within 0.45 m → red posts; 1 m steps on rooms over ~4000 m² half-area); POCKETS =
+  `hqTerrainPockets(info, from)` (walkable nodes `hqTerrainReach` never gets to from the spawn and the doors' landings →
+  yellow squares, m² in the status line); FIGHT = `hqFieldWindow(room, cursor, cursor)` drawn as 64 quads (green = a tile,
+  lighter = higher tier, red = rock, blue = water/lava). They re-run after each rebuild; none gates a save. The old
+  check-terrain.js / wall-audit.test.js logic lives in data.js now (both files were deleted 2026-09-29).
+- **Quick check:** a scratch Playwright script (not in the repo) opened the editor, raised the ground (hmap 19 × 18, +0.78 m at
+  the centre), painted dirt twice (live the second time), added a float platform + a pool, turned on all three audits and
+  the band, and floated the room: no shader or editor errors.

@@ -41329,9 +41329,25 @@ const ThreeRenderer = (function () {
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
+        /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
+           three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
+        var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
+            var pv = '', pf = '', pb = '';
+            if (palTex.length) {
+                palTex.forEach(function (t, i) { sh.uniforms['tPaint' + i] = { value: t }; pf += 'uniform sampler2D tPaint' + i + ';\n'; });
+                pv = 'attribute vec3 aPaintA;\nattribute vec3 aPaintB;\nattribute vec3 aPaintC;\nvarying vec3 vPaintA;\nvarying vec3 vPaintB;\nvarying vec3 vPaintC;\n';
+                pf += 'varying vec3 vPaintA;\nvarying vec3 vPaintB;\nvarying vec3 vPaintC;\n';
+                var W = ['vPaintA.x', 'vPaintA.y', 'vPaintA.z', 'vPaintB.x', 'vPaintB.y', 'vPaintB.z', 'vPaintC.x', 'vPaintC.y'];
+                pb = ' float pW = 0.0; vec4 pCol = vec4(0.0);\n';
+                palTex.forEach(function (t, i) { pb += ' pCol += texture2D( tPaint' + i + ', triUy ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
+                pb += ' if ( pW > 0.001 ) texelColor = mix( texelColor, pCol / pW, clamp( pW, 0.0, 1.0 ) );\n';
+            }
+            sh.vertexShader = pv + sh.vertexShader;
+            if (pv) sh.vertexShader = sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\nvPaintA = aPaintA; vPaintB = aPaintB; vPaintC = aPaintC;');
+            sh.fragmentShader = pf + sh.fragmentShader;
             /* THE TRIPLANAR CLIFF (2026-09-19): the field's UVs are planar (x, z), so every steep face — a plateau's flank, a
                city block's mass, a plan's rock wall — stretched its sheet the whole way down. Each sheet is sampled on the
                three world axes and blended by the face's normal (sharpened ^4): a flat face reads exactly as before, a
@@ -41340,10 +41356,10 @@ const ThreeRenderer = (function () {
                 .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
             sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri'; };
+        m.customProgramCacheKey = function () { return 'hqTerrainTri' + (palTex.length ? 'P' + palTex.length : ''); };
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -41620,6 +41636,44 @@ const ThreeRenderer = (function () {
                 }
             }
         });
+    }
+    /* THE FLOATING GROUND (EDITOR_PLAN §4.4 + §5.4, E3 — 2026-09-29): a room whose `terrain.float` is set ({ depth } or true), or a zone
+       part wearing `float: true` (data.js hqWorldFrame), is an island hung in the sky: no outer ground runs on past its edge; under
+       it hangs a rock underside in the cliff sheet — rings from the field's own rim (seamless) narrowing down `depth` m (14 by
+       default) below its lowest ground, and a cap. The walker keeps to the field (hqTerrainFeet ends at the rim). */
+    function _hqFieldFloats(roomId, room) {
+        var T = room && room.terrain;
+        if (T && T.float) return (typeof T.float === 'object') ? T.float : {};
+        var F = null; try { F = (roomId && typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null; } catch (e) { F = null; }
+        return (F && F.float) ? {} : null;
+    }
+    function _hqBuildUnderside(room, info, G, TM, rng, fl) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
+        var depth = Math.max(2, +fl.depth || 14), K = 7, st = Math.max(1, Math.round(1.5 / res)), rim = [];
+        var at = function (i, j) { rim.push([x0 + i * res, z0 + j * res, H[j * nx + i]]); };
+        var i, j;
+        for (i = 0; i < nx - 1; i += st) at(i, 0);
+        for (j = 0; j < nz - 1; j += st) at(nx - 1, j);
+        for (i = nx - 1; i > 0; i -= st) at(i, nz - 1);
+        for (j = nz - 1; j > 0; j -= st) at(0, j);
+        var lo = Infinity; for (var q = 0; q < H.length; q++) if (H[q] < lo) lo = H[q];
+        var bot = lo - depth, n = rim.length, pos = [], uv = [], idx = [];
+        for (var k = 0; k <= K; k++) {
+            var t = k / K, sc = 1 - 0.78 * Math.pow(t, 1.35);
+            for (var m = 0; m < n; m++) {
+                var p = rim[m], jit = (k > 0) ? (rng() - 0.5) * 1.6 * Math.sin(t * Math.PI) : 0;
+                var x = p[0] * sc + jit, z = p[1] * sc + jit * 0.7, y = (k === 0) ? p[2] : p[2] + (bot - p[2]) * Math.pow(t, 0.85) + (rng() - 0.5) * 0.9 * Math.sin(t * Math.PI);
+                pos.push(x * U, y * U, z * U); uv.push((x + z) * U / TM, y * U / TM);
+            }
+        }
+        for (k = 0; k < K; k++) for (m = 0; m < n; m++) { var a = k * n + m, b = k * n + (m + 1) % n, c = a + n, d = b + n; idx.push(a, c, b, b, c, d); }
+        var ci = pos.length / 3; pos.push(0, (bot - depth * 0.12) * U, 0); uv.push(0, (bot - depth * 0.12) * U / TM);
+        for (m = 0; m < n; m++) idx.push(K * n + m, ci, K * n + (m + 1) % n);
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+        var mat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || _hzTex('rocks_5') || null, color: 0xd8d2c8, shininess: 4, side: THREE.DoubleSide }); mat.emissive = new THREE.Color(0x121212);
+        var mesh = new THREE.Mesh(geo, mat); mesh.position.y = 0.3; mesh.renderOrder = 1; mesh.receiveShadow = true; mesh._ew_hqPart = 'underside';
+        G.add(mesh);
     }
     /* THE BRIDGE LAYER (2026-09-19): the slabs over the field — see the call site in _hqBuildTerrain */
     function _hqBuildBridges(room, info, G, TM, U) {
@@ -41940,12 +41994,20 @@ const ThreeRenderer = (function () {
        geometry (its block of the grid's vertices, the whole field's normals copied in, its own bounding sphere), so a
        tile behind the camera is never drawn, and a dig in the battle moves each tile's own vertices. null = one tile
        (a small room) or the switch (window.EW_HQ_NO_TILES). */
+    /* THE GROUND GRIDS (EDITOR_PLAN E3): a painted index per vertex (0 = none, n = palette sheet n) → the three vec3 weights
+       _hqTerrainMat reads (sheets 1–3 in A, 4–6 in B, 7–8 in C). The editor rewrites them live under a paint stroke. */
+    function _hqPaintAttrs(geo, P, n) {
+        var A = new Float32Array(n * 3), B = new Float32Array(n * 3), C = new Float32Array(n * 3);
+        for (var k = 0; k < n; k++) { var v = P ? P[k] : 0; if (v > 0 && v <= 8) { var q = v - 1, arr = q < 3 ? A : q < 6 ? B : C; arr[k * 3 + (q % 3)] = 1; } }
+        geo.setAttribute('aPaintA', new THREE.BufferAttribute(A, 3)); geo.setAttribute('aPaintB', new THREE.BufferAttribute(B, 3)); geo.setAttribute('aPaintC', new THREE.BufferAttribute(C, 3));
+    }
     function _hqTerrainTiles(geo, idx, nx, nz, res) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_TILES) return null;
         var tileM = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.tileM > 0) ? HQ_STAGE_RULES.tileM : 32;
         var nT = Math.max(4, Math.round(tileM / res)), tx = Math.ceil((nx - 1) / nT), tz = Math.ceil((nz - 1) / nT);
         if (tx * tz <= 1) return null;
         var A = geo.attributes, P = A.position.array, N = A.normal.array, UV = A.uv.array, B = A.aBlend.array, O = A.aAO.array;
+        var PA = A.aPaintA ? [A.aPaintA.array, A.aPaintB.array, A.aPaintC.array] : null;   // E3: the painted sheets ride along
         var byTile = {};
         for (var q = 0; q < idx.length; q += 6) {   // a quad's six indices: a, c, b, b, c, d (a = its low corner)
             var a = idx[q], ai = a % nx, aj = (a - ai) / nx, key = Math.floor(aj / nT) * tx + Math.floor(ai / nT);
@@ -41956,12 +42018,14 @@ const ThreeRenderer = (function () {
             var k = +key, ti = k % tx, tj = (k - ti) / tx, i0 = ti * nT, j0 = tj * nT, i1 = Math.min(nx - 1, i0 + nT), j1 = Math.min(nz - 1, j0 + nT);
             var bw = i1 - i0 + 1, bh = j1 - j0 + 1, n = bw * bh;
             var pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), bl = new Float32Array(n * 2), ao = new Float32Array(n);
+            var pa = PA ? [new Float32Array(n * 3), new Float32Array(n * 3), new Float32Array(n * 3)] : null;
             var y0 = Infinity, y1 = -Infinity;
             for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
                 var src = j * nx + i, dst = (j - j0) * bw + (i - i0);
                 pos[dst * 3] = P[src * 3]; pos[dst * 3 + 1] = P[src * 3 + 1]; pos[dst * 3 + 2] = P[src * 3 + 2];
                 nor[dst * 3] = N[src * 3]; nor[dst * 3 + 1] = N[src * 3 + 1]; nor[dst * 3 + 2] = N[src * 3 + 2];
                 uv[dst * 2] = UV[src * 2]; uv[dst * 2 + 1] = UV[src * 2 + 1]; bl[dst * 2] = B[src * 2]; bl[dst * 2 + 1] = B[src * 2 + 1]; ao[dst] = O[src];
+                if (pa) for (var pq = 0; pq < 3; pq++) { pa[pq][dst * 3] = PA[pq][src * 3]; pa[pq][dst * 3 + 1] = PA[pq][src * 3 + 1]; pa[pq][dst * 3 + 2] = PA[pq][src * 3 + 2]; }
                 var py = P[src * 3 + 1]; if (py < y0) y0 = py; if (py > y1) y1 = py;
             }
             var li = [], qs = byTile[key];
@@ -41970,6 +42034,7 @@ const ThreeRenderer = (function () {
             var tg = new THREE.BufferGeometry();
             tg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); tg.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
             tg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); tg.setAttribute('aBlend', new THREE.BufferAttribute(bl, 2)); tg.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));
+            if (pa) { tg.setAttribute('aPaintA', new THREE.BufferAttribute(pa[0], 3)); tg.setAttribute('aPaintB', new THREE.BufferAttribute(pa[1], 3)); tg.setAttribute('aPaintC', new THREE.BufferAttribute(pa[2], 3)); }
             tg.setIndex(li);
             tg.computeBoundingBox(); tg.computeBoundingSphere();
             tg._ew_hqTile = [ti, tj];
@@ -42083,6 +42148,7 @@ const ThreeRenderer = (function () {
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 2));
         geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));   // THE LIGHT PASS 2.3
+        if (info.paint && info.paint.pal && info.paint.pal.length) _hqPaintAttrs(geo, info.paint.P, nx * nz);   // THE GROUND GRIDS (E3): the painted sheets, one-hot per vertex
         geo.setIndex(idx); geo.computeVertexNormals();
         if (_hqSliceDue()) yield;
         info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
@@ -42103,7 +42169,9 @@ const ThreeRenderer = (function () {
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var onLandG = _hqPartOnLand();   // G6: a part on the land stands in the land's own ground — no outer ground, no treeline, no skyline of its own
-        if (onLandG) { /* the land runs on past the edge */ }
+        var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
+        if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
+        else if (onLandG) { /* the land runs on past the edge */ }
         else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
         else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
         if (_hqSliceDue()) yield;
@@ -60922,6 +60990,8 @@ const ThreeRenderer = (function () {
         editView: function () {
             var H = _hq; if (!H) return null;
             return { scene: H.scene, camera: H.camera, units: _hqUnits(), canvas: canvas, room: H.room, roomId: H.opts.room, ready: !!H.ready, info: H.terrain || null,
+                     /* E3: the groups the room is built in (the level band's cut, the brushes' live field) and the renderer */
+                     shellGroup: H.shellGroup || null, propGroup: H.propGroup || null, doorGroup: H.doorGroup || null, charGroup: H.charGroup || null, renderer: renderer,
                      props: (H.props || []).map(function (p) { return { key: p.key, grp: p.grp, row: (p.grp && p.grp.userData) ? p.grp.userData.ewRow || null : null }; }),
                      doors: (H.doors || []).map(function (d) { return { door: d.door, group: d.group }; }),
                      player: H.player ? { x: H.player.x, y: H.player.y, z: H.player.z, group: H.player.entry ? H.player.entry.group : null } : null,

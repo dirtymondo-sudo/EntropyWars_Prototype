@@ -40384,7 +40384,8 @@ function hqWorldFrame(roomId) {
         x += at.x * c + at.z * s; z += -at.x * s + at.z * c;
     }
     return { part: id, zone: p.zone, ground: p.ground, x, z, y: p.P.y || 0, rot,
-             absorbedBy: id !== roomId ? id : null, planned: !!p.P.planned && id === roomId, interior: !!p.P.interior, on: p.P.on || null };
+             absorbedBy: id !== roomId ? id : null, planned: !!p.P.planned && id === roomId, interior: !!p.P.interior, on: p.P.on || null,
+             float: !!p.P.float && id === roomId };   // THE EDITOR (E3, §4.4): a FLOATING part — no pad, no island ease, the land not levelled under it
 }
 /* the part's rectangle on its ground: { x0, z0, x1, z1, y0, y1 } (y1 = its floor + its rise + its headroom) */
 function hqWorldPartRect(partId) {
@@ -42526,7 +42527,7 @@ function hqLandSites() {
     if (_hqLandSitesCache && _hqLandSitesCache.W === HQ_WORLD) return _hqLandSitesCache.out;
     const Z = HQ_WORLD.zones && HQ_WORLD.zones.land, by = {}, out = [];
     if (Z) Object.keys(Z.parts).forEach(id => {
-        const P = Z.parts[id]; if (!P.place) return;
+        const P = Z.parts[id]; if (!P.place || P.float) return;   // E3: a floating part hangs over its place — no pad, the land runs on under it
         const r = hqWorldPartRect(id); if (!r) return;
         const pl = (HQ_LAND.places || []).find(q => q.id === P.place);
         const S = by[P.place] || (by[P.place] = { place: P.place, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, y: pl ? +pl.padY || 0 : 0, parts: [] });
@@ -46346,6 +46347,7 @@ function hqTerrainStitchRows(roomId) {
     hqWorldJoins(roomId).forEach(j => {
         /* THE ISLAND (Phase 7): an island's four edges ease to its sea's floor (`y`, zone metres) — the sea floor runs on under
            the water with no step where the two parts meet. An island with no `y` (the Dutchman's hull) keeps its own edge. */
+        if (j.kind === 'island' && j.b === roomId && F.float) return;   // E3: a floating part keeps its own edge (nothing to ease down to)
         if (j.kind === 'island' && j.b === roomId && j.y != null && hqStagePart(j.a) && hqStagePart(j.b)) {
             const Si = hqWorldPartSize(roomId), yi = j.y - (F.y || 0), mi = (j.stitchM > 0) ? j.stitchM : m;
             /* G7: a sloped site's edges ease to its slope there (the bake levels the land round it to the same profile: hqLandSiteY) */
@@ -46396,7 +46398,7 @@ function hqTerrainIslandSinks(roomId) {
     const out = [];
     hqWorldJoins(roomId).forEach(j => {
         if (j.kind !== 'island' || j.a !== roomId || !hqStagePart(j.a) || !hqStagePart(j.b)) return;
-        const Si = hqWorldPartSize(j.b), Fi = hqWorldFrame(j.b); if (!Si || !Fi) return;
+        const Si = hqWorldPartSize(j.b), Fi = hqWorldFrame(j.b); if (!Si || !Fi || Fi.float) return;   // E3: the sea floor runs on under a floating part
         const hw = (Fi.rot % 2 ? Si.d : Si.w) / 2, hd = (Fi.rot % 2 ? Si.w : Si.d) / 2, c = hqZoneToRoom(roomId, Fi.x, Fi.z);
         out.push({ id: j.b, x0: c.x - hw, x1: c.x + hw, z0: c.z - hd, z1: c.z + hd });
     });
@@ -46435,6 +46437,75 @@ function _hqTSlopeFeatures(F, B) {
             default: return f;
         }
     });
+}
+/* ══ THE GROUND GRIDS (EDITOR_PLAN §5.4 + §6 row 9, E3 — 2026-09-29) ═══════════════════════════════════════════════════
+   The editor's brushes write two grids into a room's terrain, both in room metres on a lattice of their own (`res`, first node
+   at `x0, z0`, `nx × nz` nodes), cropped to what was touched, the samples in base64 (`d`, little-endian):
+     terrain.hmap  = { t: 'i16', res, x0, z0, nx, nz, d }   a HEIGHT DELTA in centimetres, sampled bilinearly and ADDED after
+                     the feature rows (before the door pads, so a door's landing still meets its sill); outside the grid 0
+     terrain.paint = { pal: [sheet …≤ 8], t: 'u8', res, x0, z0, nx, nz, d }   a PAINTED SHEET per node: 0 = none (the room's
+                     floor / path / cliff as before), n = pal[n − 1]; the field mesh blends it per vertex (three-renderer.js
+                     _hqTerrainMat), the cliff still takes a steep face
+   hqTerrainCompile reads both (the survey worker too: the grids travel as strings in the room). Nothing on `state`. */
+const HQ_GROUND_RULES = { cm: 100, paintMax: 8, i16Max: 32767 };
+const _HQ_B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+function _hqB64Dec(s) {
+    if (typeof s !== 'string' || !s) return new Uint8Array(0);
+    if (typeof atob === 'function') { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+    const t = s.replace(/[^A-Za-z0-9+/]/g, ''), u = new Uint8Array(Math.floor(t.length * 3 / 4));   // (no atob: the headless tools)
+    let o = 0, acc = 0, bits = 0;
+    for (let i = 0; i < t.length; i++) { acc = (acc << 6) | _HQ_B64.indexOf(t[i]); bits += 6; if (bits >= 8) { bits -= 8; u[o++] = (acc >> bits) & 255; } }
+    return u.subarray(0, o);
+}
+function _hqB64Enc(u8) {
+    if (typeof btoa === 'function') { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+    let s = '';
+    for (let i = 0; i < u8.length; i += 3) {
+        const a = u8[i], b = (i + 1 < u8.length) ? u8[i + 1] : 0, c = (i + 2 < u8.length) ? u8[i + 2] : 0, n = (a << 16) | (b << 8) | c;
+        s += _HQ_B64[(n >> 18) & 63] + _HQ_B64[(n >> 12) & 63] + (i + 1 < u8.length ? _HQ_B64[(n >> 6) & 63] : '=') + (i + 2 < u8.length ? _HQ_B64[n & 63] : '=');
+    }
+    return s;
+}
+/* a grid's samples (cached on the grid object, never enumerable: the export and the survey's copy never see it) */
+function hqGridDecode(g) {
+    if (!g || typeof g !== 'object' || !(g.nx > 0) || !(g.nz > 0) || !(g.res > 0) || typeof g.d !== 'string') return null;
+    if (g._dec && g._dec.src === g.d) return g._dec;
+    const u = _hqB64Dec(g.d), n = g.nx * g.nz, i16 = g.t === 'i16';
+    let a;
+    if (i16) { a = new Int16Array(n); const dv = new DataView(u.buffer, u.byteOffset, u.byteLength); for (let k = 0; k < n && 2 * k + 1 < u.length; k++) a[k] = dv.getInt16(2 * k, true); }
+    else { a = new Uint8Array(n); a.set(u.subarray(0, n)); }
+    const dec = { src: g.d, a, nx: g.nx, nz: g.nz, res: +g.res, x0: +g.x0 || 0, z0: +g.z0 || 0, i16 };
+    try { Object.defineProperty(g, '_dec', { value: dec, enumerable: false, configurable: true, writable: true }); } catch (e) {}
+    return dec;
+}
+/* the height delta (m) at (x, z): bilinear over the i16 grid; 0 outside it */
+function hqGridHeightAt(dec, x, z) {
+    if (!dec) return 0;
+    const fx = (x - dec.x0) / dec.res, fz = (z - dec.z0) / dec.res;
+    if (fx < -1 || fz < -1 || fx > dec.nx || fz > dec.nz) return 0;
+    const i = Math.floor(fx), j = Math.floor(fz), tx = fx - i, tz = fz - j, a = dec.a, nx = dec.nx;
+    const v = (ii, jj) => (ii < 0 || jj < 0 || ii >= nx || jj >= dec.nz) ? 0 : a[jj * nx + ii];
+    return ((v(i, j) * (1 - tx) + v(i + 1, j) * tx) * (1 - tz) + (v(i, j + 1) * (1 - tx) + v(i + 1, j + 1) * tx) * tz) / HQ_GROUND_RULES.cm;
+}
+/* the painted index at (x, z): the nearest node; 0 outside */
+function hqGridPaintAt(dec, x, z) {
+    if (!dec) return 0;
+    const i = Math.round((x - dec.x0) / dec.res), j = Math.round((z - dec.z0) / dec.res);
+    return (i < 0 || j < 0 || i >= dec.nx || j >= dec.nz) ? 0 : dec.a[j * dec.nx + i];
+}
+/* a grid from full-lattice samples (`vals`: a typed array nx × nz from x0, z0 at res; heights in metres for 'i16', indices for
+   'u8'), cropped to the nodes that are not 0 (plus one node of margin) — null when nothing is left */
+function hqGridEncode(t, vals, nx, nz, x0, z0, res) {
+    const i16 = t === 'i16', cm = HQ_GROUND_RULES.cm, M = HQ_GROUND_RULES.i16Max;
+    const q = k => i16 ? Math.max(-M, Math.min(M, Math.round(vals[k] * cm))) : (vals[k] | 0);
+    let i0 = nx, i1 = -1, j0 = nz, j1 = -1;
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) if (q(j * nx + i) !== 0) { if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
+    if (i1 < 0) return null;
+    i0 = Math.max(0, i0 - 1); j0 = Math.max(0, j0 - 1); i1 = Math.min(nx - 1, i1 + 1); j1 = Math.min(nz - 1, j1 + 1);
+    const w = i1 - i0 + 1, h = j1 - j0 + 1, u = new Uint8Array(w * h * (i16 ? 2 : 1)), dv = new DataView(u.buffer);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const v = q((j + j0) * nx + i + i0), o = j * w + i; if (i16) dv.setInt16(2 * o, v, true); else u[o] = v; }
+    const r4 = v => Math.round(v * 10000) / 10000;
+    return { t: i16 ? 'i16' : 'u8', res: r4(res), x0: r4(x0 + i0 * res), z0: r4(z0 + j0 * res), nx: w, nz: h, d: _hqB64Enc(u) };
 }
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
@@ -46506,6 +46577,7 @@ function hqTerrainCompile(room, roomId) {
         return h;
     };
     const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|spiral|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
+    const hmap = T.hmap ? hqGridDecode(T.hmap) : null;   // THE GROUND GRIDS (E3): the brushes' height delta, added after the rows
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
         for (const f of ordered) {
@@ -46555,6 +46627,7 @@ function hqTerrainCompile(room, roomId) {
                 h = h * (1 - t) + Math.min(h, bed) * t;
             }
         }
+        if (hmap) h += hqGridHeightAt(hmap, px, pz);
         return h;
     };
     /* the pads: their heights (the sill = the door's y, else the ground at the lane) */
@@ -46625,6 +46698,13 @@ function hqTerrainCompile(room, roomId) {
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
+    /* THE GROUND GRIDS (E3): the painted sheet per sample (0 = none) over the room's palette — the renderer blends it per vertex */
+    if (T.paint && Array.isArray(T.paint.pal) && T.paint.pal.length) {
+        const pd = hqGridDecode(T.paint), pal = T.paint.pal.slice(0, HQ_GROUND_RULES.paintMax).map(String), P = new Uint8Array(nx * nz);
+        let any = 0;
+        if (pd) for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const v = hqGridPaintAt(pd, x0 + i * res, z0 + j * res); if (v > 0 && v <= pal.length) { P[j * nx + i] = v; any++; } }
+        info.paint = { pal, P, n: any };
+    }
     /* THE ISLAND's WAY OFF (Phase 7): an island part's open water at its box's edge runs on into its sea part — a body that falls
        in there swims away (the crossing), so those cells RETURN (the return guarantee cuts no rescue ramp up the Dutchman's hull) */
     if (sea && !sea.under && roomId && typeof hqWorldFrame === 'function' && DOOR_HQ.world) {
@@ -47070,6 +47150,59 @@ function hqTerrainTraps(info) {
     const pads = (info.pads || []).map(p => [Math.round((p.x - info.x0) / info.res), Math.round((p.z - info.z0) / info.res)]);
     if (!pads.length) return [];
     return _hqTTraps(info, pads, null).map(c => { const k = c[0], i = k % info.nx, j = (k - i) / info.nx; return { cells: c.length, x: +(info.x0 + i * info.res).toFixed(2), z: +(info.z0 + j * info.res).toFixed(2), y: +hqTerrainHeight(info, info.x0 + i * info.res, info.z0 + j * info.res).toFixed(2) }; });
+}
+/* ══ THE AUDITS (EDITOR_PLAN §5.4, E3 — 2026-09-29): what the editor marks in the viewport; none of them gates a save ══════
+   WALL AUDIT (R3, the rule the retired wall-audit test held): from every node the walker stands on, a step of `step` m to a
+   neighbour that the walker's own rule refuses must have something DRAWN within `near` m — a wall that is not a ghost, a city
+   block's mass, water or lava, a face steeper than the walker climbs (the cliff sheet draws it), a bridge's slab. Anything else
+   is an INVISIBLE WALL: → [{ x, z, y }] (the refused spot, `max` at most). The field's outer band (`edge` m) is left out. */
+function hqTerrainWallAudit(info, o) {
+    o = o || {};
+    const STEP = o.step || 0.5, NEAR = (o.near != null) ? o.near : 0.45, EDGE = (o.edge != null) ? o.edge : 1.0, MAX = o.max || 4000, R = info.rules;
+    const hw = info.halfW - EDGE, hd = info.halfD - EDGE, out = [], seen = new Set();
+    const drawn = (x, z) => {
+        if (hqTerrainSolidAt(info, x, z, NEAR)) return true;
+        const w = hqTerrainWallAt(info, x, z, R.bodyR + NEAR); if (w && !w.ghost) return true;
+        for (const d of [[0, 0], [NEAR, 0], [-NEAR, 0], [0, NEAR], [0, -NEAR]]) {
+            if (hqTerrainFluidAt(info, x + d[0], z + d[1])) return true;
+            if (hqTerrainSlope(info, x + d[0], z + d[1]) > R.maxSlope * 0.95) return true;
+        }
+        if (info.bridges && info.bridges.length && hqTerrainBridgesAt(info, x, z, R.bodyR + NEAR).length) return true;
+        return false;
+    };
+    for (let z = -hd; z <= hd && out.length < MAX; z += STEP) for (let x = -hw; x <= hw && out.length < MAX; x += STEP) {
+        const y = hqTerrainFeet(info, x, z, null); if (y == null) continue;
+        for (const d of [[STEP, 0], [0, STEP], [-STEP, 0], [0, -STEP]]) {
+            const nx = x + d[0], nz = z + d[1];
+            if (Math.abs(nx) > hw || Math.abs(nz) > hd) continue;
+            if (hqTerrainFeet(info, nx, nz, y) != null) continue;
+            const k = Math.round(nx / STEP) + ',' + Math.round(nz / STEP); if (seen.has(k)) continue; seen.add(k);
+            if (!drawn(nx, nz)) out.push({ x: +nx.toFixed(2), z: +nz.toFixed(2), y: +hqTerrainHeight(info, nx, nz).toFixed(2) });
+        }
+    }
+    return out;
+}
+/* POCKETS: the ground the walker stands on (a node with feet, not a face steeper than it climbs) that it can never reach from
+   `from` ([{ x, z }]: the spawn and the doors' landings) under its own rule (hqTerrainReach, the jump and the climbs included).
+   → { walk, lost, pts: [{ x, z, y }] } — `pts` sampled every `every` nodes (the editor draws a mark per point) */
+function hqTerrainPockets(info, from, o) {
+    o = o || {};
+    const every = Math.max(1, o.every || Math.max(1, Math.round(1 / info.res))), MAX = o.max || 20000, R = info.rules;
+    const got = new Set();
+    (from || []).forEach(p => { if (!p || !isFinite(p.x) || !isFinite(p.z)) return; hqTerrainReach(info, p.x, p.z).forEach((y, k) => { const q = k.split(','); got.add(q[0] + ',' + q[1]); }); });
+    let walk = 0, lost = 0; const pts = [];
+    const hw = info.halfW - 0.5, hd = info.halfD - 0.5;
+    for (let j = 0; j < info.nz; j++) for (let i = 0; i < info.nx; i++) {
+        const x = info.x0 + i * info.res, z = info.z0 + j * info.res;
+        if (Math.abs(x) > hw || Math.abs(z) > hd) continue;
+        const y = hqTerrainFeet(info, x, z, null); if (y == null) continue;
+        if (hqTerrainSlope(info, x, z) > R.maxSlope && !hqTerrainWallAt(info, x, z, R.bodyR)) continue;   // a face, not ground
+        walk++;
+        if (got.has(i + ',' + j)) continue;
+        lost++;
+        if (i % every === 0 && j % every === 0 && pts.length < MAX) pts.push({ x: +x.toFixed(2), z: +z.toFixed(2), y: +y.toFixed(2) });
+    }
+    return { walk, lost, pts, cell: info.res * info.res };
 }
 function hqTerrainNodeKey(info, x, z, y) { const k = Math.round((x - info.x0) / info.res) + ',' + Math.round((z - info.z0) / info.res); const L = (y != null) ? hqTerrainLayerAt(info, x, z, y) : 0; return L ? k + ',' + L : k; }   // THE BRIDGE LAYER: a y on a bridge names its layer
 /* the landing of a door in a terrain room (2.4 m inside its wall / in front of a free way), with its feet */
