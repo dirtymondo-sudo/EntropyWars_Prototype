@@ -1189,8 +1189,6 @@
                     onSkate: (typeof _hqSkateEvent === 'function') ? _hqSkateEvent : null,
                     /* THE DEEP (2026-09-18): the swimmer's and the helm's beats (the hints, the toasts, the water's sounds) */
                     onSea: (typeof _hqSeaEvent === 'function') ? _hqSeaEvent : null,
-                    /* THE DISCOVERY (WORLD_GEOGRAPHY_PLAN G9, 2026-09-29): what the walker has seen on the land (the save, the region's title card) */
-                    onLand: (typeof _hqLandEvent === 'function') ? _hqLandEvent : null,
                     /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the ladder's beats (the W CLIMB hint at a foot, the first-time toast, a creak) */
                     onClimb: (typeof _hqClimbEvent === 'function') ? _hqClimbEvent : null,
                     /* THE PREMIUM POLISH (2026-09-21): a kicked prop (the cue is the sound pass's — a hook for it), a seat taken / left */
@@ -3698,43 +3696,6 @@
                 if (!_hqClimbToasted) { _hqClimbToasted = true; _hqToast('<b>ON THE ' + String(ev.look || 'ladder').toUpperCase() + '</b><span>W UP · S DOWN · SPACE LETS GO · THE TOP HANDS YOU ONTO THE LEDGE</span>', 3200); }
             } else if (ev.why === 'top') _hqSkateSfx('skateOllie', 0.2);
         }
-        /* ══ THE DISCOVERY (WORLD_GEOGRAPHY_PLAN §5.11, G9 — 2026-09-29) ══
-           three-renderer.js THE DISCOVERY reads what the walker has seen on the land (opts.onLand: the region stood in, what a reveal
-           point shows, a place's pad and what that pad sees); data.js hqLandSee files what is new on the profile (the new save key
-           door.hq.land), a region's first sight gets its TITLE CARD (the arrival card's letterbox: FIRST SIGHT or A NEW AREA over the
-           region's name, one at a time), a place's first sight a line on the strip. The atlas clears its fog from the same record. */
-        const _hqLandCards = [];
-        function _hqLandEvent(ev) {
-            if (!ev || ev.kind !== 'see' || typeof window.hqLandSee !== 'function') return;
-            try {
-                const PS = window.ProfileSystem;
-                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
-                const idx = PS.getActiveProfileIndex(); if (idx === null || idx === undefined) return;
-                const p = PS.loadProfile(idx); if (!p) return;
-                const r = window.hqLandSee(p, ev);
-                if (!r || !r.ok || (!r.regions.length && !r.places.length)) return;
-                PS.saveProfile(idx, p);
-                if (_hqMap.atlas) _hqMap.atlas.fog = null;   // the atlas's fog is drawn again from the record
-                r.regions.forEach(g => _hqLandCards.push(g));
-                _hqLandCardNext();
-                const names = r.places.map(id => (typeof window.hqLandPlaceLabel === 'function') ? window.hqLandPlaceLabel(id) : String(id).toUpperCase());
-                if (names.length) _hqToast(`<b>ON THE MAP</b> · ${_hqEsc(names.slice(0, 3).join(' · '))}${names.length > 3 ? ' · +' + (names.length - 3) : ''}<span>THE ATLAS REDRAWS</span>`, 2600);
-            } catch (e) {}
-        }
-        function _hqLandCardNext() {
-            if (_hqLandCardNext.busy || !_hqLandCards.length) return;
-            const g = _hqLandCards.shift(), el = _hqEl('hqArrival');
-            const C = (typeof HQ_LAND_RULES !== 'undefined' && HQ_LAND_RULES.discovery && HQ_LAND_RULES.discovery.card) || { sight: 'FIRST SIGHT', enter: 'A NEW AREA' };
-            const how = g.how === 'enter' ? C.enter : C.sight;
-            const name = (typeof window.hqLandRegionLabel === 'function') ? window.hqLandRegionLabel(g.id) : String(g.id).toUpperCase();
-            let off = false; try { off = typeof window.hqPolishGet === 'function' && window.hqPolishGet('arrival') === false; } catch (e) {}   // THE POLISH SETTINGS: the Arrival Cards row
-            if (!el || off) { _hqToast(`<b>${_hqEsc(name)}</b><span>${_hqEsc(how)}</span>`, 2600); _hqLandCardNext(); return; }
-            _hqLandCardNext.busy = true;
-            el.innerHTML = `<div class="hq-arrival-bar top"></div><div class="hq-arrival-bar bot"></div><div class="hq-arrival-title"><em>${_hqEsc(how)}</em><b>${_hqEsc(name)}</b><span>ON THE MAP</span></div>`;
-            el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
-            let ms = 2900; try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ms = 1300; } catch (e) {}
-            setTimeout(() => { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); setTimeout(() => { _hqLandCardNext.busy = false; _hqLandCardNext(); }, 700); }, ms);
-        }
         let _hqSeaToasted = { swim: false, dive: false, boat: false, sub: false };
         function _hqSeaEvent(ev) {
             if (!ev) return;
@@ -4522,7 +4483,7 @@
         const HQ_MAP_PAD = 0.5;        // units of margin round the fitted box
         const HQ_MAP_ZOOM_MS = 950;    // the zoom-out
         const HQ_MAP_POP_AT = 260;     // the first reveal, ms after the zoom starts
-        let _hqMap = { sel: null, view: null, model: null, fit: null, anim: 0, dragged: false, seenN: -1, mem: null, ptr: null, mode: 'world', area: null, wsel: null, world: null, drawn: null, land: null, lsel: null, ground: null, atlas: null, asel: null };   // THE ATLAS (geography G0): mode 'atlas', the survey's state + data, its pick   // THE LAND (open world Phase 0): mode 'land', the sheet, its pick, its ground   // THE WORLD OVERVIEW (2026-09-19): mode 'world' | 'area', the area's place id, the world pick, the world model, the sheet drawn
+        let _hqMap = { sel: null, view: null, model: null, fit: null, anim: 0, dragged: false, seenN: -1, mem: null, ptr: null, mode: 'world', area: null, wsel: null, world: null, drawn: null };   // THE WORLD OVERVIEW (2026-09-19): mode 'world' | 'area', the area's place id, the world pick, the world model, the sheet drawn
         const _hqMapEnabled = () => (typeof window.hqMapModel === 'function');
         function _hqMapShown() {
             /* what the map last drew — the profile's record, else the session's */
@@ -4610,8 +4571,6 @@
         }
         function _hqMapTravel(id) {
             if (/^w:/.test(id)) { _hqWorldPick(id.slice(2)); return; }   // THE WORLD OVERVIEW: a place picked / travelled
-            if (/^l:/.test(id)) { _hqLandPick(id.slice(2)); return; }    // THE LAND: a part picked / travelled
-            if (/^a:/.test(id)) { _hqAtlasPick(id.slice(2)); return; }   // THE ATLAS: a place picked (its card)
             const n = _hqMap.model && _hqMap.model.nodes.find(n => n.id === id);
             if (!n) return;
             _hqMap.sel = id;
@@ -4661,7 +4620,7 @@
         }
         function _hqMapDetail(svg, focus) {
             const M = _hqMap.drawn || _hqMap.model; if (!M) return;
-            if (svg.getAttribute('data-mode') === 'world' || svg.getAttribute('data-mode') === 'land' || svg.getAttribute('data-mode') === 'atlas') return;   // THE WORLD OVERVIEW / THE LAND / THE ATLAS: every name is on, nothing to plan
+            if (svg.getAttribute('data-mode') === 'world') return;   // THE WORLD OVERVIEW: every name is on, nothing to plan
             const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number), rect = svg.getBoundingClientRect();
             if (!rect.width || !rect.height) return;
             const plan = _hqMapLabelPlan(M, v, rect.width, rect.height, focus || _hqMap.sel);
@@ -4868,322 +4827,6 @@
             svg += '</svg>';
             return svg;
         }
-        /* ══ THE LAND SHEET (OPEN_WORLD_PLAN.md §7, Phase 0 — 2026-09-26) ══════════════════════════════════════════════
-           The map drawn from the FRAMES (data.js HQ_WORLD / hqWorldSheet): every place a rectangle at its real size where
-           the world table stands it, metres as metres (a scale bar, north up), the joins as open edges in their kind's
-           ink (road · trail · shore · wall · hall · stair), a door that will swing as a door glyph between its two parts,
-           the doors that are still doors as ticks on the wall they stand in, you as a dot. The WORLD sheet (the lines)
-           and the AREA sheet stay as they were: LAND is a third tab. Fog of war is the directory's (a room you have
-           stood in is drawn and named, one a seen door names is a blank outline, the rest is not on the sheet). */
-        const HQ_LAND_M = 50;           // metres per map unit (HQ_MAP_U px) — the surface's ~700 m fits like the world sheet
-        const HQ_LAND_S = HQ_MAP_U / HQ_LAND_M;   // px per metre
-        const HQ_LAND_KINDS = { road: 'ROAD', trail: 'TRAIL', shore: 'SHORE', wall: 'GATE', hall: 'CORRIDOR', stair: 'STAIR', door: 'DOOR', island: 'ISLAND' };
-        function _hqLandModel(profile) {
-            if (typeof window.hqWorldSheet !== 'function') return null;
-            let feet = null; try { feet = (window.ThreeRenderer && ThreeRenderer.hq && ThreeRenderer.hq.pos) ? ThreeRenderer.hq.pos() : null; } catch (e) { feet = null; }
-            let L = null; try { L = window.hqWorldSheet(profile, _hqCurRoom, { all: !!window.EW_HQ_MAP_ALL, ground: _hqMap.ground, feet }); } catch (e) { L = null; }
-            return (L && L.grounds.length) ? L : null;
-        }
-        function _hqLandSvg(L) {
-            const F = _hqMapF, S = HQ_LAND_S;
-            const fit = _hqMapFitBox({ x: L.box.x / HQ_LAND_M, y: L.box.y / HQ_LAND_M, w: L.box.w / HQ_LAND_M, h: L.box.h / HQ_LAND_M });
-            const view = _hqMap.view || fit, sel = _hqMap.lsel;
-            let svg = `<svg class="hq-map-svg hq-map-land" data-mode="land" viewBox="${view.map(F).join(' ')}" preserveAspectRatio="xMidYMid meet" data-fit="${fit.map(F).join(' ')}" role="group" aria-label="The land. Click a place once for its card, twice to travel.">`;
-            /* a 50 m grid, a 250 m grid */
-            svg += `<defs><pattern id="hqLandGrid" width="${F(50 * S)}" height="${F(50 * S)}" patternUnits="userSpaceOnUse"><path d="M ${F(50 * S)} 0 L 0 0 0 ${F(50 * S)}" class="hq-land-grid"/></pattern><pattern id="hqLandGridL" width="${F(250 * S)}" height="${F(250 * S)}" patternUnits="userSpaceOnUse"><path d="M ${F(250 * S)} 0 L 0 0 0 ${F(250 * S)}" class="hq-land-gridl"/></pattern></defs>`;
-            svg += `<rect class="hq-map-bg" x="${F(fit[0] - 4000)}" y="${F(fit[1] - 4000)}" width="${F(fit[2] + 8000)}" height="${F(fit[3] + 8000)}" fill="url(#hqLandGrid)"/>`;
-            svg += `<rect class="hq-map-bg" x="${F(fit[0] - 4000)}" y="${F(fit[1] - 4000)}" width="${F(fit[2] + 8000)}" height="${F(fit[3] + 8000)}" fill="url(#hqLandGridL)"/>`;
-            /* the zones' names, faint, over their parts */
-            L.zones.forEach(z => { svg += `<text class="hq-land-zone" x="${F((z.lx != null ? z.lx : z.x0) * S)}" y="${F((z.lz != null ? z.lz : z.z0) * S - 6)}">${_hqEsc(z.label)}</text>`; });
-            /* the parts: the big ones first (a part standing on a host is drawn over it) */
-            const parts = L.parts.slice().sort((a, b) => (!!a.on - !!b.on) || ((b.x1 - b.x0) * (b.z1 - b.z0) - (a.x1 - a.x0) * (a.z1 - a.z0)));
-            parts.forEach(p => {
-                const x = p.x0 * S, y = p.z0 * S, w = (p.x1 - p.x0) * S, h = (p.z1 - p.z0) * S;
-                const cls = `hq-map-n hq-land-part st-${p.st}${p.planned ? ' planned' : ''}${p.interior ? ' interior' : ''}${p.absorbedBy ? ' absorbed' : ''}${sel === p.id ? ' sel' : ''}`;
-                const size = p.size ? Math.round(p.size.w) + ' × ' + Math.round(p.size.d) + ' M' : '';
-                const title = p.st === 'q' ? 'UNCHARTED · A DOOR YOU HAVE SEEN LEADS HERE' : `${p.label} · ${size}${p.y ? ' · ' + (p.y > 0 ? '+' : '') + p.y + ' M' : ''}${p.planned ? ' · NOT BUILT YET' : ''}${p.st === 'here' ? ' · YOU ARE HERE' : ''}`;
-                svg += `<g class="${cls}" data-mapnode="l:${_hqEsc(p.id)}" tabindex="0" role="button" aria-label="${_hqEsc(title)}"><title>${_hqEsc(title)}</title>`;
-                svg += `<rect class="hq-land-rect" x="${F(x)}" y="${F(y)}" width="${F(w)}" height="${F(h)}"/>`;
-                if (p.st === 'q') svg += `<text class="hq-map-q" x="${F(x + w / 2)}" y="${F(y + h / 2 + 5)}" text-anchor="middle">?</text>`;
-                else {
-                    const fs = Math.max(5, Math.min(13, w / Math.max(6, p.label.length * 0.62)));
-                    svg += `<text class="hq-land-lbl" x="${F(x + w / 2)}" y="${F(y + h / 2 + fs * 0.35)}" text-anchor="middle" style="font-size:${F(fs)}px">${_hqEsc(p.label.replace(/^.*·\s*/, ''))}</text>`;
-                }
-                svg += '</g>';
-            });
-            /* the joins: an edge join is an open stretch of both walls in its kind's ink; a door join is a door glyph */
-            L.joins.forEach(j => {
-                const t = _hqEsc((HQ_LAND_KINDS[j.kind] || String(j.kind).toUpperCase()) + (j.border ? ' · A BORDER' : ''));
-                if (j.x0 != null) svg += `<line class="hq-land-join k-${_hqEsc(j.kind)}" x1="${F(j.x0 * S)}" y1="${F(j.z0 * S)}" x2="${F(j.x1 * S)}" y2="${F(j.z1 * S)}"><title>${t}</title></line>`;
-                else svg += `<g class="hq-land-dj k-${_hqEsc(j.kind)}" transform="translate(${F(j.x * S)} ${F(j.z * S)})"><title>${t}</title><rect x="-2.6" y="-3.6" width="5.2" height="7.2" rx="0.8"/></g>`;
-            });
-            /* the doors that are still doors */
-            L.doors.forEach(d => {
-                const t = _hqEsc((d.way ? d.way.toUpperCase() + ' · ' : 'DOOR · ') + 'TO ' + d.toLabel + (d.toGround && d.toGround !== L.ground ? ' (ANOTHER GROUND)' : ''));
-                svg += `<circle class="hq-land-door${d.way ? ' way' : ''}${d.secret ? ' secret' : ''}" cx="${F(d.x * S)}" cy="${F(d.z * S)}" r="1.9"><title>${t}</title></circle>`;
-            });
-            if (L.here) svg += `<g class="hq-land-you" transform="translate(${F(L.here.x * S)} ${F(L.here.z * S)})"><circle class="ring" r="7"/><circle r="3.2"/><title>YOU ARE HERE</title></g>`;
-            /* the scale bar: 100 m at the sheet's bottom-left */
-            const bx = fit[0] + 16, by = fit[1] + fit[3] - 14;
-            svg += `<g class="hq-land-scale"><line x1="${F(bx)}" y1="${F(by)}" x2="${F(bx + 100 * S)}" y2="${F(by)}"/><line x1="${F(bx)}" y1="${F(by - 4)}" x2="${F(bx)}" y2="${F(by + 4)}"/><line x1="${F(bx + 100 * S)}" y1="${F(by - 4)}" x2="${F(bx + 100 * S)}" y2="${F(by + 4)}"/><text x="${F(bx + 50 * S)}" y="${F(by - 6)}" text-anchor="middle">100 M</text></g>`;
-            return svg + '</svg>';
-        }
-        function _hqLandPick(id) {
-            const L = _hqMap.land; if (!L) return;
-            const p = L.parts.find(x => x.id === id); if (!p) return;
-            if (_hqMap.lsel === id && p.st !== 'q' && !p.planned && id !== _hqCurRoom && _hqRoomExists(id)) {
-                _hqMap.anim++;
-                try { playSfx('uiButtonConfirm'); } catch (e) {}
-                window._hqDoAction({ room: id, at: _hqMapAt(id) }, null);
-                return;
-            }
-            _hqMap.lsel = id;
-            try { playSfx('uiButtonHover'); } catch (e) {}
-            _hqMapRerender();
-        }
-        function _hqLandCardHtml(L) {
-            const id = (_hqMap.lsel && L.parts.some(p => p.id === _hqMap.lsel)) ? _hqMap.lsel : (L.here ? L.here.room : null);
-            const p = id ? L.parts.find(x => x.id === id) : null;
-            let html = '';
-            if (p) {
-                html += `<div class="hq-map-card hq-land-card st-${p.st}">`;
-                if (p.st === 'q') html += `<div class="hq-map-card-hd"><b>UNCHARTED</b><span>A PLACE A DOOR YOU HAVE SEEN LEADS TO · WALK THROUGH IT TO PUT IT ON THE MAP</span></div>`;
-                else {
-                    const zone = L.zones.find(z => z.id === p.zone);
-                    const kv = [zone ? zone.label : '', p.size ? Math.round(p.size.w) + ' × ' + Math.round(p.size.d) + ' M' : '', p.y ? 'FLOOR ' + (p.y > 0 ? '+' : '') + p.y + ' M' : '', p.interior ? 'INDOORS' : '', p.planned ? 'NOT BUILT YET' : '', p.st === 'here' ? 'YOU ARE HERE' : ''].filter(Boolean);
-                    html += `<div class="hq-map-card-hd"><b>${_hqEsc(p.label)}</b><span>${_hqEsc(kv.join(' · '))}</span></div>`;
-                    const rows = [];
-                    L.joins.forEach(j => { if (j.a !== p.id && j.b !== p.id) return; const o = L.parts.find(x => x.id === (j.a === p.id ? j.b : j.a)); rows.push(`<div class="hq-row"><b>${_hqEsc(HQ_LAND_KINDS[j.kind] || j.kind)}</b><span>${_hqEsc(o ? (o.st === 'q' ? 'UNCHARTED' : o.label) : '?')}${j.border ? ' · A BORDER' : ''}</span></div>`); });
-                    L.doors.forEach(d => { if (d.room !== p.id) return; rows.push(`<div class="hq-row hq-land-load"><b>${_hqEsc(d.way ? d.way.toUpperCase() : 'DOOR')} · A LOAD</b><span>${_hqEsc(d.toLabel)}</span></div>`); });   // a link that is still a door (a load screen) — the joins above are walked
-                    if (rows.length) html += '<div class="hq-rows hq-rows-scroll">' + rows.join('') + '</div>';
-                    html += '<div class="hq-panel-actions">';
-                    if (!p.planned && p.id !== _hqCurRoom && _hqRoomExists(p.id)) html += `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(p.id)}" data-at="${_hqEsc(_hqMapAt(p.id))}">GO ▸ ${_hqEsc(p.label)}</button>`;
-                    html += '</div>';
-                }
-                html += '</div>';
-            }
-            if (L.beyond.length) {
-                html += `<div class="hq-map-card hq-land-beyond"><div class="hq-map-card-hd"><b>BEYOND</b><span>PLACES ON NO GROUND · THROUGH THEIR DOORS</span></div><div class="hq-rows hq-rows-scroll">`;
-                L.beyond.forEach(b => { html += `<div class="hq-row${b.here ? ' here' : ''}"><b>${_hqEsc(b.site === 'hq' ? 'D.O.O.R. HQ' : ((l => (l && l.indexOf('site:') !== 0) ? l : (b.label || b.site))(_hqWorldLabelOf('site:' + b.site))))}</b><span>${b.rooms} ROOM${b.rooms === 1 ? '' : 'S'}${b.here ? ' · YOU ARE HERE' : ''}</span></div>`; });
-                html += '</div></div>';
-            }
-            return html + `<p class="hq-panel-note">THE LAND IS DRAWN FROM WHERE EVERY PLACE STANDS · CLICK A PLACE FOR ITS CARD, TWICE TO TRAVEL</p>`;
-        }
-        function _hqLandLocsHtml(L) {
-            let html = `<nav class="hq-map-locs" aria-label="Places"><div class="hq-map-locs-hd"><b>THE LAND</b><span>${_hqEsc((L.grounds.find(g => g.id === L.ground) || {}).label || '')}</span></div>`;
-            L.zones.forEach(z => {
-                html += `<div class="hq-map-locs-sub">${_hqEsc(z.label)}</div>`;
-                L.parts.filter(p => p.zone === z.id && p.st !== 'q').forEach(p => {
-                    html += `<button class="hq-loc st-${p.st}${_hqMap.lsel === p.id ? ' sel' : ''}" data-mapnode="l:${_hqEsc(p.id)}"><i class="hq-loc-ring"></i><b>${_hqEsc(p.label.replace(/^.*·\s*/, ''))}</b><span>${p.st === 'here' ? 'HERE' : p.planned ? 'PLANNED' : ''}</span></button>`;
-                });
-            });
-            return html + '</nav>';
-        }
-        function _hqLandKeyHtml() {
-            let html = '<div class="hq-map-key"><b>KEY</b>';
-            [['road', 'ROAD'], ['trail', 'TRAIL'], ['shore', 'SHORE'], ['wall', 'GATE IN A WALL'], ['hall', 'CORRIDOR'], ['stair', 'STAIR']].forEach(([k, t]) => {
-                html += `<i><svg viewBox="0 0 40 10" width="40" height="10"><line class="hq-land-join k-${k}" x1="2" y1="5" x2="38" y2="5"/></svg>${t}</i>`;
-            });
-            html += '<i><svg viewBox="0 0 20 20" width="14" height="14"><rect class="hq-land-dj-key" x="6" y="4" width="8" height="12" rx="1"/></svg>A DOOR THAT WILL SWING</i>';
-            html += '<i><svg viewBox="0 0 20 20" width="14" height="14"><circle class="hq-land-door" cx="10" cy="10" r="4"/></svg>A DOOR (A LOAD)</i>';
-            html += '<i><span class="lg-q">?</span>UNCHARTED</i>';
-            return html + '<em>DRAG TO PAN · WHEEL TO ZOOM · METRES ARE METRES · NORTH IS UP</em></div>';
-        }
-        /* ══ THE ATLAS (WORLD_GEOGRAPHY_PLAN.md §5.11, G0 — 2026-09-28) ═══════════════════════════════════════════════════
-           THE LAND as bake-land.js baked it from data.js HQ_LAND: the shaded relief with its contours (land-map.png), and
-           over it in vectors the roads by kind (Route 1, the roads, the lanes, the trails with their steps), the bridges,
-           the rivers, the storm drain, every place on its pad and the regions' names. A place's card says where it stands,
-           what its pad sees (THE SIGHT RULE's lists) and where each route first shows it (the reveals). Both files come
-           from R2 Assets/Land/ with the bake id (?b=), fetched the first time the tab opens. North is up; one map unit is a
-           metre. Labels and markers keep their screen size as you zoom (--az). G9 (2026-09-29): the fog of war
-           (THE FOG OF WAR below) hides what the profile has not seen yet. */
-        const HQ_ATLAS_KIND = { highway: 'THE HIGHWAY', road: 'A ROAD', lane: 'A LANE', trail: 'A TRAIL' };
-        function _hqAtlasState() {
-            if (!_hqMap.atlas) _hqMap.atlas = { st: 'idle', data: null };
-            return _hqMap.atlas;
-        }
-        function _hqAtlasLoad() {
-            const A = _hqAtlasState();
-            if (A.st === 'loading' || A.st === 'ready') return A;
-            const url = (typeof window.hqLandUrl === 'function') ? window.hqLandUrl('land.json') : null;
-            if (!url) { A.st = 'unbaked'; return A; }
-            A.st = 'loading';
-            fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => {
-                if (!d || !Array.isArray(d.places) || !d.map) throw new Error('not a land.json');
-                A.data = d; A.st = 'ready';
-            }).catch(err => { A.st = 'failed'; try { console.warn('[Atlas] land.json failed', err); } catch (e) {} }).then(() => {
-                if (_hqMap.mode === 'atlas') { _hqMap.view = null; _hqMapRerender(); }
-            });
-            return A;
-        }
-        /* the atlas box (metres): the land and its near sea, not the whole disc to the wall */
-        function _hqAtlasBox(d) {
-            let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
-            (d.coast || []).forEach(p => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); });
-            if (!isFinite(x0)) { x0 = z0 = -1800; x1 = z1 = 1800; }
-            return { x: x0 - 120, y: z0 - 120, w: x1 - x0 + 240, h: z1 - z0 + 240 };
-        }
-        /* the atlas draws in metres; the map's fit box works in HQ_MAP_U units, so its box is metres / HQ_MAP_U */
-        function _hqAtlasFit(d) { const b = _hqAtlasBox(d); return _hqMapFitBox({ x: b.x / HQ_MAP_U, y: b.y / HQ_MAP_U, w: b.w / HQ_MAP_U, h: b.h / HQ_MAP_U }); }
-        function _hqAtlasZoom(svg, v) {
-            const fit = (svg.getAttribute('data-fit') || '').split(/\s+/).map(Number);
-            const az = fit[2] ? Math.max(0.12, Math.min(1, v[2] / fit[2])) : 1;
-            svg.style.setProperty('--az', az.toFixed(3));
-        }
-        function _hqAtlasLine(pts) { return pts.map(p => _hqMapF(p[0]) + ',' + _hqMapF(p[1])).join(' '); }
-        /* THE FOG OF WAR (WORLD_GEOGRAPHY_PLAN §5.11, G9 — fork 9's default: on). The profile's record (data.js hqLandSeenRecord,
-           door.hq.land) says what has been seen: a region clears on its first sight (or when you walk into it), a place's name and
-           mark appear when you first see it, a reveal point's mark once its region is clear. The fog is one small image of the bake's
-           region grid (a cell a pixel, scaled up soft), drawn over the relief, the rivers and the roads; redrawn when the record grows. */
-        function _hqAtlasSeen(d) {
-            if (!d || !d.regionGrid) return null;
-            try { return (typeof window.hqLandSeenRecord === 'function') ? window.hqLandSeenRecord(_hqProfile()) : null; } catch (e) { return null; }
-        }
-        function _hqAtlasRegionAt(d, x, z) {
-            const g = d.regionGrid; if (!g) return null;
-            const i = Math.floor((x - g.x0) / g.cell), j = Math.floor((z - g.z0) / g.cell);
-            if (i < 0 || j < 0 || i >= g.n || j >= g.n) return null;
-            return g.ids[g.rows[j].charCodeAt(i) - 97] || null;
-        }
-        function _hqAtlasShown(d, seen, p) { return !seen || !!seen.p[p.id]; }
-        function _hqAtlasFog(d, seen) {
-            const g = d.regionGrid; if (!g || !seen || typeof document === 'undefined') return null;
-            const A = _hqAtlasState(), sig = Object.keys(seen.r).sort().join(','), id = (d.bake && d.bake.id) || '';
-            if (A.fog && A.fog.sig === sig && A.fog.id === id) return A.fog.url;
-            const cv = document.createElement('canvas'); cv.width = g.n; cv.height = g.n;
-            const cx = cv.getContext && cv.getContext('2d'); if (!cx) return null;
-            const img = cx.createImageData(g.n, g.n);
-            for (let j = 0; j < g.n; j++) { const row = g.rows[j]; for (let i = 0; i < g.n; i++) {
-                const rg = g.ids[row.charCodeAt(i) - 97], o = (j * g.n + i) * 4; if (rg && seen.r[rg]) continue;
-                img.data[o] = 20; img.data[o + 1] = 25; img.data[o + 2] = 32; img.data[o + 3] = 236; } }
-            cx.putImageData(img, 0, 0);
-            A.fog = { sig, id, url: cv.toDataURL('image/png') };
-            return A.fog.url;
-        }
-        function _hqAtlasSvg(d) {
-            const F = _hqMapF, fit = _hqAtlasFit(d), view = _hqMap.view || fit, sel = _hqMap.asel;
-            const seen = _hqAtlasSeen(d);
-            const az = Math.max(0.12, Math.min(1, view[2] / fit[2]));
-            let svg = `<svg class="hq-map-svg hq-atlas" data-mode="atlas" viewBox="${view.map(F).join(' ')}" preserveAspectRatio="xMidYMid meet" data-fit="${fit.map(F).join(' ')}" style="--az:${az.toFixed(3)}" role="group" aria-label="The atlas of the land. Click a place for its card.">`;
-            const m = d.map, url = (typeof window.hqLandUrl === 'function') ? window.hqLandUrl(m.file) : '';
-            svg += `<rect class="hq-atlas-sea" x="${F(fit[0] - 6000)}" y="${F(fit[1] - 6000)}" width="${F(fit[2] + 12000)}" height="${F(fit[3] + 12000)}"/>`;
-            if (url) svg += `<image class="hq-atlas-relief" href="${_hqEsc(url)}" x="${F(m.x0)}" y="${F(m.z0)}" width="${F(m.px * m.size)}" height="${F(m.px * m.size)}" preserveAspectRatio="none"/>`;
-            /* the storm drain (underground, dotted) */
-            (d.tunnels || []).forEach(t => { svg += `<polyline class="hq-atlas-tunnel" points="${_hqAtlasLine(t.pts)}" vector-effect="non-scaling-stroke"><title>${_hqEsc(t.label || '')} · UNDERGROUND</title></polyline>`; });
-            /* the rivers, at their width */
-            (d.rivers || []).forEach(r => { svg += `<polyline class="hq-atlas-river" points="${_hqAtlasLine(r.pts)}" style="stroke-width:${F(Math.max(3, (r.w0 + r.w1)))}px"><title>${_hqEsc(r.label || 'A BROOK')}</title></polyline>`; });
-            /* the roads by kind: a casing, then the road; the trails dashed */
-            const order = { trail: 0, lane: 1, road: 2, highway: 3 };
-            const roads = (d.roads || []).slice().sort((a, b) => (order[a.type] || 0) - (order[b.type] || 0));
-            roads.forEach(r => {
-                const t = _hqEsc((r.label || HQ_ATLAS_KIND[r.type] || '').replace(/^.*·\s*/, '') + ' · ' + (r.length >= 1000 ? (r.length / 1000).toFixed(1) + ' KM' : r.length + ' M') + (r.loop ? ' · A LOOP' : ''));
-                const pts = _hqAtlasLine(r.pts);
-                if (r.type === 'trail') svg += `<polyline class="hq-atlas-road k-trail" points="${pts}" vector-effect="non-scaling-stroke"><title>${t}</title></polyline>`;
-                else svg += `<polyline class="hq-atlas-case k-${_hqEsc(r.type)}" points="${pts}" style="stroke-width:${F(r.w + 4)}px"/><polyline class="hq-atlas-road k-${_hqEsc(r.type)}" points="${pts}" style="stroke-width:${F(r.w)}px"><title>${t}</title></polyline>`;
-            });
-            (d.bridges || []).forEach(b => { if (b.len >= 20) svg += `<polyline class="hq-atlas-bridge" points="${_hqAtlasLine(b.pts)}" vector-effect="non-scaling-stroke"><title>A BRIDGE · ${b.len} M</title></polyline>`; });
-            /* THE FOG OF WAR (G9): over the ground, the water and the roads; the names and the marks go on top */
-            const fog = seen ? _hqAtlasFog(d, seen) : null;
-            if (fog) { const g = d.regionGrid; svg += `<image class="hq-atlas-fog" href="${fog}" x="${F(g.x0)}" y="${F(g.z0)}" width="${F(g.n * g.cell)}" height="${F(g.n * g.cell)}" preserveAspectRatio="none" style="image-rendering:auto;pointer-events:none"/>`; }
-            /* the regions' names (under the fog: only a region seen) */
-            (d.regions || []).forEach(r => { if (seen) { const rg = _hqAtlasRegionAt(d, r.at[0], r.at[1]); if (!rg || !seen.r[rg]) return; } svg += `<text class="hq-atlas-region${r.small ? ' small' : ''}" x="${F(r.at[0])}" y="${F(r.at[1])}" text-anchor="middle">${_hqEsc(r.label)}</text>`; });
-            /* the reveal points (G9): where a route first shows a region, once the ground it stands on is seen */
-            if (seen) (d.revealPts || []).forEach(v => {
-                const rg = _hqAtlasRegionAt(d, v.at[0], v.at[1]); if (!rg || !seen.r[rg]) return;
-                const shows = (v.regions || []).filter(x => seen.r[x]).map(x => (d.regionNames && d.regionNames[x]) || String(x).toUpperCase());
-                svg += `<g transform="translate(${F(v.at[0])} ${F(v.at[1])})"><title>${_hqEsc('A VIEW' + (shows.length ? ' · ' + shows.join(' · ') : ''))}</title><path class="hq-atlas-mark" style="fill:#7fd6ff" d="M 0 -0.7 L 0.7 0 L 0 0.7 L -0.7 0 Z"/></g>`;
-            });
-            /* the places (under the fog: only a place seen) */
-            (d.places || []).forEach(p => {
-                if (!_hqAtlasShown(d, seen, p)) return;
-                const under = p.kind === 'dungeon', sea = p.kind === 'sea' || p.kind === 'door';
-                const cls = `hq-atlas-place k-${_hqEsc(p.kind)}${p.lookout ? ' lookout' : ''}${p.peak ? ' peak' : ''}${sel === p.id ? ' sel' : ''}`;
-                const title = `${p.label} · ${(d.regionNames && d.regionNames[p.region]) || String(p.region || '').toUpperCase()} · ${p.y >= 0 ? '+' : ''}${Math.round(p.y)} M`;
-                svg += `<g class="${cls}" data-mapnode="a:${_hqEsc(p.id)}" transform="translate(${F(p.at[0])} ${F(p.at[1])})" tabindex="0" role="button" aria-label="${_hqEsc(title)}"><title>${_hqEsc(title)}</title>`;
-                if (under) svg += '<path class="hq-atlas-mark" d="M 0 -1.2 L 1.1 0.8 L -1.1 0.8 Z"/>';
-                else if (p.peak) svg += '<path class="hq-atlas-mark" d="M 0 -1.3 L 1.2 0.9 L -1.2 0.9 Z"/>';
-                else if (sea) svg += '<circle class="hq-atlas-mark ring" r="1"/>';
-                else svg += `<circle class="hq-atlas-mark" r="${p.kind === 'hub' ? 1.3 : p.kind === 'poi' ? 0.8 : 1}"/>`;
-                svg += `<text class="hq-atlas-lbl" x="0" y="0">${_hqEsc(p.label)}</text></g>`;
-            });
-            /* the scale: 1 km at the bottom-left */
-            const bx = fit[0] + 60, by = fit[1] + fit[3] - 50;
-            svg += `<g class="hq-atlas-scale"><line x1="${F(bx)}" y1="${F(by)}" x2="${F(bx + 1000)}" y2="${F(by)}" vector-effect="non-scaling-stroke"/><line x1="${F(bx)}" y1="${F(by - 16)}" x2="${F(bx)}" y2="${F(by + 16)}" vector-effect="non-scaling-stroke"/><line x1="${F(bx + 1000)}" y1="${F(by - 16)}" x2="${F(bx + 1000)}" y2="${F(by + 16)}" vector-effect="non-scaling-stroke"/><text x="${F(bx + 500)}" y="${F(by - 20)}" text-anchor="middle">1 KM</text></g>`;
-            return svg + '</svg>';
-        }
-        function _hqAtlasPick(id) {
-            const A = _hqMap.atlas; if (!A || !A.data) return;
-            const p = A.data.places.find(x => x.id === id); if (!p) return;
-            if (!_hqAtlasShown(A.data, _hqAtlasSeen(A.data), p)) return;   // G9: a place not seen yet is under the fog
-            _hqMap.asel = id;
-            /* the view comes to the place (no nearer than it was; at most 1.6 km across when picked from the whole land) */
-            const v = _hqMap.view || _hqAtlasFit(A.data), w = Math.min(v[2], 1600), h = v[3] * (w / v[2]);
-            _hqMap.view = [p.at[0] - w / 2, p.at[1] - h / 2, w, h];
-            try { playSfx('uiButtonHover'); } catch (e) {}
-            _hqMapRerender();
-        }
-        function _hqAtlasName(d, id) { const p = d.places.find(x => x.id === id); if (p && !_hqAtlasShown(d, _hqAtlasSeen(d), p)) return '?'; return p ? p.label : String(id).toUpperCase(); }   // G9: a place not seen yet is a question mark
-        function _hqAtlasCardHtml(d) {
-            const seenC = _hqAtlasSeen(d);
-            const id = (_hqMap.asel && d.places.some(p => p.id === _hqMap.asel && _hqAtlasShown(d, seenC, p))) ? _hqMap.asel : 'hq';
-            const p = d.places.find(x => x.id === id);
-            let html = '';
-            if (p) {
-                const kv = [(d.regionNames && d.regionNames[p.region]) || '', (p.y >= 0 ? '+' : '') + Math.round(p.y) + ' M', p.peak ? 'A SUMMIT' : '', p.lookout ? 'A LOOKOUT' : '', p.kind === 'dungeon' ? 'A DUNGEON MOUTH' : '', p.pad ? 'A ' + Math.round(p.pad * 2) + ' M PAD' : ''].filter(Boolean);
-                html += `<div class="hq-map-card hq-atlas-card"><div class="hq-map-card-hd"><b>${_hqEsc(p.label)}</b><span>${_hqEsc(kv.join(' · '))}</span></div>`;
-                const rows = [];
-                const sees = (d.sight && d.sight[p.id]) || [];
-                const ground = sees.filter(e => e[0] !== '^').map(e => _hqAtlasName(d, e)), tops = sees.filter(e => e[0] === '^').map(e => _hqAtlasName(d, e.slice(1)));
-                if (d.sight && d.sight[p.id]) {
-                    rows.push(`<div class="hq-row"><b>SEES</b><span>${_hqEsc(ground.length ? ground.join(' · ') : 'NO OTHER PLACE')}</span></div>`);
-                    if (tops.length) rows.push(`<div class="hq-row"><b>THE TOPS OF</b><span>${_hqEsc(tops.join(' · '))}</span></div>`);
-                }
-                /* where each route first shows it (the reveals) */
-                const firsts = [];
-                Object.keys(d.reveals || {}).forEach(rid => { const s = d.reveals[rid][p.id]; if (s && s.ground !== undefined && s.ground > 0) firsts.push({ rid, at: s.ground, dist: s.gDist }); });   // 0 m in = the route starts there
-                firsts.sort((a, b) => a.dist - b.dist).slice(0, 4).forEach(f => {
-                    const r = (d.roads || []).find(x => x.id === f.rid);
-                    rows.push(`<div class="hq-row"><b>FIRST SEEN</b><span>${_hqEsc(((r && r.label) || HQ_ATLAS_KIND[r && r.type] || 'A ROUTE').replace(/^.*·\s*/, ''))} · ${f.at >= 1000 ? (f.at / 1000).toFixed(1) + ' KM' : f.at + ' M'} IN · ${f.dist} M AWAY</span></div>`);
-                });
-                /* the routes that serve it */
-                const r0 = (p.pad || 40) + 40, serve = (d.roads || []).filter(r => r.pts.some(q => Math.hypot(q[0] - p.at[0], q[1] - p.at[1]) < r0 + r.w / 2));
-                if (serve.length) rows.push(`<div class="hq-row"><b>ON</b><span>${_hqEsc(serve.map(r => (r.label || HQ_ATLAS_KIND[r.type]).replace(/^.*·\s*/, '')).join(' · '))}</span></div>`);
-                if (rows.length) html += '<div class="hq-rows hq-rows-scroll">' + rows.join('') + '</div>';
-                html += '</div>';
-            }
-            const s = d.stats || {};
-            const areas = seenC ? Object.keys(d.regionNames || {}).filter(k => seenC.r[k]).length + ' OF ' + Object.keys(d.regionNames || {}).length + ' AREAS SEEN · ' : '';   // G9: the fog of war
-            return html + `<p class="hq-panel-note">${_hqEsc(areas)}THE LAND AS SURVEYED · ${_hqEsc(String(s.landKm2 || '?'))} KM² · ROUTES ${_hqEsc(String(s.routeKm || '?'))} KM · CLICK A PLACE FOR WHAT IT SEES</p>`;
-        }
-        function _hqAtlasLocsHtml(d) {
-            let html = `<nav class="hq-map-locs" aria-label="Places"><div class="hq-map-locs-hd"><b>THE ATLAS</b><span>THE LAND</span></div>`;
-            const regions = [];
-            const seen = _hqAtlasSeen(d), shown = d.places.filter(p => _hqAtlasShown(d, seen, p));   // G9: only what has been seen
-            shown.forEach(p => { if (!regions.includes(p.region)) regions.push(p.region); });
-            if (!shown.length) html += '<div class="hq-map-locs-sub">NOTHING SEEN YET · WALK OUT OF THE FRONT DOOR</div>';
-            regions.forEach(rg => {
-                html += `<div class="hq-map-locs-sub">${_hqEsc((d.regionNames && d.regionNames[rg]) || String(rg).toUpperCase())}</div>`;
-                shown.filter(p => p.region === rg).forEach(p => {
-                    html += `<button class="hq-loc${_hqMap.asel === p.id ? ' sel' : ''}" data-mapnode="a:${_hqEsc(p.id)}"><i class="hq-loc-ring"></i><b>${_hqEsc(p.label)}</b><span>${(p.y >= 0 ? '+' : '') + Math.round(p.y)}</span></button>`;
-                });
-            });
-            return html + '</nav>';
-        }
-        function _hqAtlasKeyHtml() {
-            let html = '<div class="hq-map-key"><b>KEY</b>';
-            [['highway', 'THE HIGHWAY'], ['road', 'ROAD'], ['lane', 'LANE'], ['trail', 'TRAIL']].forEach(([k, t]) => {
-                html += `<i><svg viewBox="0 0 40 10" width="40" height="10"><line class="hq-atlas-key k-${k}" x1="2" y1="5" x2="38" y2="5"/></svg>${t}</i>`;
-            });
-            html += '<i><svg viewBox="0 0 40 10" width="40" height="10"><line class="hq-atlas-key k-river" x1="2" y1="5" x2="38" y2="5"/></svg>RIVER</i>';
-            html += '<i><svg viewBox="0 0 40 10" width="40" height="10"><line class="hq-atlas-key k-tunnel" x1="2" y1="5" x2="38" y2="5"/></svg>UNDERGROUND</i>';
-            html += '<i><svg viewBox="0 0 20 20" width="14" height="14"><path class="hq-atlas-key-mark" d="M10 3 L17 16 L3 16 Z"/></svg>SUMMIT · DUNGEON</i>';
-            return html + '<em>DRAG TO PAN · WHEEL TO ZOOM · CONTOURS EVERY 25 M · NORTH IS UP</em></div>';
-        }
-        /* the stage while the survey loads, or when it can't */
-        function _hqAtlasWaitHtml(A) {
-            const msg = A.st === 'loading' ? 'UNROLLING THE SURVEY…' : A.st === 'failed' ? 'THE SURVEY DID NOT ARRIVE · OPEN THE ATLAS AGAIN TO RETRY' : 'THE LAND HAS NOT BEEN SURVEYED YET';
-            return `<div class="hq-atlas-wait"><b>THE ATLAS</b><span>${_hqEsc(msg)}</span></div>`;
-        }
         /* THE AREA sheet: the room map filtered to one place (+ the question marks its doors lead to) */
         function _hqAreaModel(M, areaId) {
             if (!M || !_hqWorldEnabled() || !areaId) return M;
@@ -5328,7 +4971,7 @@
         }
         /* a zoom that crosses a sheet's threshold changes the sheet; returns true when it did (the caller skips its own view write) */
         function _hqMapZoomSwitch(v, p) {
-            const fit = _hqMap.fit; if (!fit || !_hqWorldEnabled() || _hqMap.mode === 'land' || _hqMap.mode === 'atlas') return false;
+            const fit = _hqMap.fit; if (!fit || !_hqWorldEnabled()) return false;
             if (_hqMap.mode === 'world') {
                 if (v[2] > fit[2] * HQ_MAP_AREA_IN) return false;
                 const id = _hqMapWorldPlaceAt(p || { x: v[0] + v[2] / 2, y: v[1] + v[3] / 2 });
@@ -5409,14 +5052,6 @@
             return html + '</nav>';
         }
         function _hqMapCrumbHtml(Wm) {
-            if (_hqMap.mode === 'atlas') {
-                const A = _hqMap.atlas, d = A && A.data, s = (d && d.stats) || {};
-                return `<div class="hq-map-crumb"><b>MAP</b><span class="hq-map-crumb-sep">|</span><span class="on">ATLAS</span><span class="hq-map-crumb-sep">▸</span><span>THE LAND AS SURVEYED</span></div><div class="hq-map-status">${d ? `${d.places.length} PLACES &nbsp;|&nbsp; ${_hqEsc(String(s.landKm2))} KM² OF LAND &nbsp;|&nbsp; ${_hqEsc(String(s.routeKm))} KM OF ROUTES &nbsp;|&nbsp; ${Math.round(s.hmax || 0)} M AT THE TOP &nbsp;|&nbsp; CLICK A PLACE FOR WHAT IT SEES` : 'THE SURVEY'}</div>`;
-            }
-            if (_hqMap.mode === 'land' && _hqMap.land) {
-                const L = _hqMap.land, g = L.grounds.find(x => x.id === L.ground);
-                return `<div class="hq-map-crumb"><b>MAP</b><span class="hq-map-crumb-sep">|</span><span class="on">LAND</span><span class="hq-map-crumb-sep">▸</span><span>${_hqEsc(g ? g.label : '')}</span></div><div class="hq-map-status">PLACES CHARTED: ${L.parts.filter(p => p.st === 'seen' || p.st === 'here').length} &nbsp;|&nbsp; ${L.parts.filter(p => p.st === 'q').length} IN QUESTION &nbsp;|&nbsp; CLICK A PLACE FOR ITS CARD, TWICE TO TRAVEL</div>`;
-            }
             const world = _hqMap.mode === 'world';
             const areaLabel = world ? '' : _hqWorldLabelOf(_hqMap.area);
             let html = `<div class="hq-map-crumb"><b>MAP</b><span class="hq-map-crumb-sep">|</span>`;
@@ -5430,8 +5065,6 @@
             return html + `<div class="hq-map-status">${line}</div>`;
         }
         function _hqMapKeyHtml() {
-            if (_hqMap.mode === 'land') return _hqLandKeyHtml();
-            if (_hqMap.mode === 'atlas') return _hqAtlasKeyHtml();
             const world = _hqMap.mode === 'world';
             let html = '<div class="hq-map-key"><b>KEY</b>';
             if (world) {
@@ -5457,32 +5090,21 @@
             const M = window.hqMapModel(profile, _hqCurRoom, { all: !!window.EW_HQ_MAP_ALL });
             const Wm = _hqWorldEnabled() ? window.hqWorldOverview(profile, _hqCurRoom, { all: !!window.EW_HQ_MAP_ALL }) : null;
             if (!Wm && _hqMap.mode === 'world') _hqMap.mode = 'area';
-            const L = _hqLandModel(profile);
-            _hqMap.land = L;
-            if (!L && _hqMap.mode === 'land') _hqMap.mode = Wm ? 'world' : 'area';
-            const hasAtlas = typeof window.hqLandUrl === 'function';   // data.js with THE LAND
-            if (!hasAtlas && _hqMap.mode === 'atlas') _hqMap.mode = Wm ? 'world' : 'area';
-            const atlas = _hqMap.mode === 'atlas', A = atlas ? _hqAtlasLoad() : null, AD = (A && A.st === 'ready') ? A.data : null;
             if (_hqMap.mode === 'area' && !_hqMap.area) _hqMap.area = _hqWorldHere();
             /* a discovery since the last render drops the officer's own pan / zoom: the frame refits (and the zoom-out plays) */
             const stamp = M.seen + M.q * 1000 + (Wm ? Wm.seen * 1e6 : 0);
             if (_hqMap.seenN !== stamp) { _hqMap.view = null; _hqMap.seenN = stamp; }
             _hqMap.model = M; _hqMap.world = Wm;
-            const world = _hqMap.mode === 'world', land = _hqMap.mode === 'land';
-            const drawn = atlas ? { nodes: [], edges: [], box: AD ? (b => ({ x: b.x / HQ_MAP_U, y: b.y / HQ_MAP_U, w: b.w / HQ_MAP_U, h: b.h / HQ_MAP_U }))(_hqAtlasBox(AD)) : { x: -18, y: -18, w: 36, h: 36 }, land: true, atlas: true }
-                : land ? { nodes: L.parts.map(p => ({ id: p.id, st: p.st })), edges: [], box: { x: L.box.x / HQ_LAND_M, y: L.box.y / HQ_LAND_M, w: L.box.w / HQ_LAND_M, h: L.box.h / HQ_LAND_M }, land: true }
-                : world ? Wm : (_hqWorldEnabled() ? _hqAreaModel(M, _hqMap.area) : M);
+            const world = _hqMap.mode === 'world';
+                const drawn = world ? Wm : (_hqWorldEnabled() ? _hqAreaModel(M, _hqMap.area) : M);
             _hqMap.drawn = drawn; _hqMap.fit = _hqMapFitBox(drawn.box);
             const charted = (typeof window.hqWorldCharted === 'function') ? window.hqWorldCharted(profile) : null;
             const hereId = _hqWorldHere();
             let html = '<div class="hq-map">' + _hqMapCrumbHtml(Wm);
-            html += `<div class="hq-map-bar"><span>${atlas ? (AD ? 'THE WHOLE LAND · ONE MAP UNIT IS A METRE · THE SCALE BAR IS 1 KM' : 'THE ATLAS') : land ? ((n => n + (n === 1 ? ' PLACE' : ' PLACES'))(L.parts.filter(p => p.st !== 'q' && !p.planned).length) + ' CHARTED ON ' + String((L.grounds.find(g => g.id === L.ground) || {}).label || 'THE LAND').toUpperCase() + ' · A SQUARE IS 50 M') : world ? (M.seen + ' OF ' + M.total + ' ROOMS CHARTED') : (drawn.nodes.filter(n => n.st !== 'q').length + ' OF ' + M.nodes.filter(n => n.st !== 'q' && (!_hqWorldEnabled() || window.hqWorldNodeOf(n.id) === _hqMap.area)).length + ' ROOMS OF THIS AREA CHARTED')}${(charted && !land && !atlas) ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i>`;
-            if (Wm) html += `<button class="hq-btn hq-btn-sm hq-map-tab${world ? ' on' : ''}" data-mapmode="world" title="every place">WORLD</button><button class="hq-btn hq-btn-sm hq-map-tab${(!world && !land && !atlas) ? ' on' : ''}" data-mapmode="area" data-maparea="${_hqEsc((world || land || atlas) ? hereId : _hqMap.area)}" title="the rooms of one place">${(world || land || atlas) ? 'THIS AREA' : 'AREA'}</button>`;
-            if (L) html += `<button class="hq-btn hq-btn-sm hq-map-tab${land ? ' on' : ''}" data-mapmode="land" title="where every place stands, in metres">LAND</button>`;
-            if (hasAtlas) html += `<button class="hq-btn hq-btn-sm hq-map-tab${atlas ? ' on' : ''}" data-mapmode="atlas" title="the whole land as surveyed: relief, rivers, routes and what each place sees">ATLAS</button>`;
-            if (land && L.grounds.length > 1) L.grounds.forEach(g => { html += `<button class="hq-btn hq-btn-sm hq-map-tab hq-land-tab${g.id === L.ground ? ' on' : ''}" data-mapground="${_hqEsc(g.id)}">${_hqEsc(g.label)}</button>`; });
+            html += `<div class="hq-map-bar"><span>${world ? (M.seen + ' OF ' + M.total + ' ROOMS CHARTED') : (drawn.nodes.filter(n => n.st !== 'q').length + ' OF ' + M.nodes.filter(n => n.st !== 'q' && (!_hqWorldEnabled() || window.hqWorldNodeOf(n.id) === _hqMap.area)).length + ' ROOMS OF THIS AREA CHARTED')}${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i>`;
+            if (Wm) html += `<button class="hq-btn hq-btn-sm hq-map-tab${world ? ' on' : ''}" data-mapmode="world" title="every place">WORLD</button><button class="hq-btn hq-btn-sm hq-map-tab${!world ? ' on' : ''}" data-mapmode="area" data-maparea="${_hqEsc(world ? hereId : _hqMap.area)}" title="the rooms of one place">${world ? 'THIS AREA' : 'AREA'}</button>`;
             html += `<button class="hq-btn hq-btn-sm" data-mapzoom="in" title="zoom in">+</button><button class="hq-btn hq-btn-sm" data-mapzoom="out" title="zoom out">−</button><button class="hq-btn hq-btn-sm" data-mapfit="1" title="fit the charted map">FIT</button></i></div>`;
-            html += `<div class="hq-map-stage">${atlas ? (AD ? _hqAtlasSvg(AD) : _hqAtlasWaitHtml(A)) : land ? _hqLandSvg(L) : world ? _hqWorldSvg(Wm) : _hqMapSvg(drawn)}${_HQ_MAP_COMPASS}</div>`;
+            html += `<div class="hq-map-stage">${world ? _hqWorldSvg(Wm) : _hqMapSvg(drawn)}${_HQ_MAP_COMPASS}</div>`;
             html += _hqMapKeyHtml();
             return html + '</div>';
         }
@@ -5493,7 +5115,6 @@
             if (!svg || !M) return;
             const reduced = (() => { try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
             const world = _hqMap.mode === 'world', D = _hqMap.drawn || M;
-            if (D.land) { _hqMapBind(svg); return; }   // THE LAND: no reveal, no memory — the sheet is drawn whole
             /* THE WORLD OVERVIEW: each sheet keeps its own memory — the world's under w / we / wbox, the area sheet's under n / e / box (+ the area it drew); switching sheets never replays a reveal */
             const prevRec = _hqMapShown();
             const prev = !prevRec ? null : world ? (prevRec.w ? { n: prevRec.w, e: prevRec.we || {}, box: prevRec.wbox } : null) : ((prevRec.area || 'hq') === (D.area || 'hq') ? prevRec : (prevRec.n ? { n: {}, e: {}, box: null, fresh: true } : null));
@@ -5548,7 +5169,7 @@
             if (_hqMap.resize) _hqMap.resize.disconnect();
             if (typeof ResizeObserver !== 'undefined') { _hqMap.resize = new ResizeObserver(() => _hqMapDetail(svg)); _hqMap.resize.observe(svg); }
         }
-        function _hqMapSetView(svg, v) { _hqMap.view = v.slice(); svg.setAttribute('viewBox', v.map(_hqMapF).join(' ')); if (svg.getAttribute('data-mode') === 'atlas') _hqAtlasZoom(svg, v); _hqMapDetail(svg); }
+        function _hqMapSetView(svg, v) { _hqMap.view = v.slice(); svg.setAttribute('viewBox', v.map(_hqMapF).join(' ')); _hqMapDetail(svg); }
         function _hqMapTweenView(svg, from, to, ms) {
             const token = ++_hqMap.anim, t0 = performance.now();
             const ease = t => (t < 0.5) ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -5620,17 +5241,14 @@
         window._hqMapDev = function () { return { model: _hqMap.model, shown: _hqMapShown(), view: _hqMap.view, fit: _hqMap.fit }; };
         function _hqDirectoryHtml() {
             const room = _hqRoom(), profile = _hqProfile();
-            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>${_hqMap.mode === 'atlas' ? 'THE ATLAS · THE LAND AS SURVEYED' : _hqMap.mode === 'land' ? 'THE LAND · WHERE EVERY PLACE STANDS' : _hqMap.mode === 'world' ? 'THE WORLD · EVERY PLACE THE DOORS REACH' : 'BUILDING DIRECTORY'} · ${_hqEsc(room.label || 'THE MAIN HALL')} · YOU ARE HERE · M CLOSES</span></div>`;
+            let html = `<div class="hq-panel-hd"><b>THE MAP</b><span>${_hqMap.mode === 'world' ? 'THE WORLD · EVERY PLACE THE DOORS REACH' : 'BUILDING DIRECTORY'} · ${_hqEsc(room.label || 'THE MAIN HALL')} · YOU ARE HERE · M CLOSES</span></div>`;
             const mapHtml = _hqMapHtml();
             /* THE WORLD OVERVIEW (2026-09-19): the LOCATIONS column on the left, the stage in the middle, the card on the right */
-            const atlasData = (_hqMap.mode === 'atlas' && _hqMap.atlas && _hqMap.atlas.st === 'ready') ? _hqMap.atlas.data : null;
-            if (mapHtml && atlasData) html += _hqAtlasLocsHtml(atlasData);
-            else if (mapHtml && _hqMap.mode === 'land' && _hqMap.land) html += _hqLandLocsHtml(_hqMap.land);
-            else if (mapHtml && _hqMap.world) html += _hqMapLocsHtml(_hqMap.world);
+            if (mapHtml && _hqMap.world) html += _hqMapLocsHtml(_hqMap.world);
             html += mapHtml;
             /* THE SIDE COLUMN (full screen): the picked node's card, then the
                register and the lines under it — the stage keeps the whole frame */
-            if (mapHtml) html += '<aside class="hq-map-side">' + _hqMapSearchHtml(_hqMap.model) + (atlasData ? _hqAtlasCardHtml(atlasData) : (_hqMap.mode === 'atlas') ? '' : (_hqMap.mode === 'land' && _hqMap.land) ? _hqLandCardHtml(_hqMap.land) : (_hqMap.mode === 'world' && _hqMap.world) ? _hqWorldCardHtml(_hqMap.world) : _hqMapCardHtml(_hqMap.model));
+            if (mapHtml) html += '<aside class="hq-map-side">' + _hqMapSearchHtml(_hqMap.model) + ((_hqMap.mode === 'world' && _hqMap.world) ? _hqWorldCardHtml(_hqMap.world) : _hqMapCardHtml(_hqMap.model));
             const seen = (typeof window.hqRoomsSeenRecord === 'function') ? window.hqRoomsSeenRecord(profile) : {};
             const known = id => !!(id && (seen[id] || id === _hqCurRoom || window.EW_HQ_MAP_ALL));
             if (!mapHtml) {
@@ -6687,11 +6305,7 @@
             const mapNode = e.target.closest('[data-mapnode]');
             if (mapNode) { _hqMapTravel(mapNode.getAttribute('data-mapnode')); return; }
             /* THE WORLD OVERVIEW: the sheets — WORLD / AREA (a place's rooms) */
-            const mapGround = e.target.closest('[data-mapground]');
-            if (mapGround) { _hqMap.ground = mapGround.getAttribute('data-mapground'); _hqMap.lsel = null; _hqMap.view = null; _hqMap.anim++; try { playSfx('uiButtonHover'); } catch (e2) {} _hqMapRerender(); return; }
             const mapMode = e.target.closest('[data-mapmode]');
-            if (mapMode && mapMode.getAttribute('data-mapmode') === 'atlas') { _hqMap.mode = 'atlas'; _hqMap.view = null; _hqMap.anim++; const A = _hqAtlasState(); if (A.st === 'failed') A.st = 'idle'; try { playSfx('uiButtonConfirm'); } catch (e2) {} _hqMapRerender(); return; }
-            if (mapMode && mapMode.getAttribute('data-mapmode') === 'land') { _hqMap.mode = 'land'; _hqMap.view = null; _hqMap.anim++; try { playSfx('uiButtonConfirm'); } catch (e2) {} _hqMapRerender(); return; }
             if (mapMode) { const mode = mapMode.getAttribute('data-mapmode'); const area = mapMode.getAttribute('data-maparea'); if (mode === 'area') { if (!_hqMapOpenArea(area || _hqWorldHere())) { _hqMap.mode = 'area'; _hqMap.area = area || _hqWorldHere(); _hqMap.sel = null; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } } else if (!_hqMapOpenWorld()) { _hqMap.mode = 'world'; _hqMap.view = null; _hqMap.anim++; _hqMapRerender(); } return; }
             const mapZoom = e.target.closest('[data-mapzoom]');
             if (mapZoom) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; const v = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number); const f = mapZoom.getAttribute('data-mapzoom') === 'in' ? 1 / 1.3 : 1.3; const w = Math.max(160, Math.min(v[2] * f, 6000)), h = v[3] * (w / v[2]); const nv = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; if (!_hqMapZoomSwitch(nv, null)) _hqMapSetView(svg, nv); } return; }

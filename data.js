@@ -24381,8 +24381,15 @@ const DOOR_HQ = {
            asphalt on into the fog under a gantry that names the next town. THE CROSS STREET's east end is the on-ramp to
            (Nuketown, retired 2026-09-18 — the east end is a dead end now), its west end the same road west to THE STRIP; THE AVENUE's north end is the stadium road; the Strip's
            road runs on, later, to CYBERPUNK CITY's cross street. The board room's north wall is free again. */
-        /* G7 (WORLD_GEOGRAPHY_PLAN, 2026-09-29): downtown_strip, stadium_downtown and streets_strip RETIRED — Downtown, the Bowl and the Strip
-           stand on the land; you walk (or ride) the roads between them */
+        /* downtown_strip, stadium_downtown and streets_strip: retired in G7 (the land), restored in ZONES_PLAN Z0 (2026-09-29) */
+        { id: 'downtown_strip', route: 'highway', way: 'road',
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 0, sub: 'THE CROSS STREET · WEST · THE STRIP' },
+          b: { site: 'prebuilt_strip', part: 'streets', wall: 'e', z: 0, sub: 'THE BOULEVARD · EAST · DOWNTOWN' },
+          why: 'the same road, west; the neon starts where the tower\'s shadow stops', note: 'west', draft: true },
+        { id: 'stadium_downtown', route: 'highway', way: 'road',
+          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: 0, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL — 2026-09-26: at the end of THE PLAYERS' TUNNEL
+          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'n', x: 0, sub: 'THE AVENUE · NORTH · THE STADIUM' },
+          why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
         { id: 'strip_cyberpunk', route: 'highway', way: 'road',
           a: { site: 'prebuilt_strip', part: 'streets', wall: 'w', z: 0, sub: 'THE BOULEVARD · WEST · CYBERPUNK CITY' },
           b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS · EAST · THE STRIP' },
@@ -24481,6 +24488,11 @@ const DOOR_HQ = {
            MACHINE in the mall's arcade is the ONLY way from the city into CYBERPUNK ("not just a regular door" — the
            user) and stands FREE on Cyberpunk's north strip at the far end, set for 1954; THE GUTTER in the east kerb
            drops into THE STORM DRAIN (the tunnels — candidate #3's first seam), whose end is its own grate. */
+        { id: 'streets_strip', route: 'highway', leaf: 'leaf_motel',
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 18, sub: 'THE STRIP · THE CHAPEL\'S PARKING LOT' },
+          b: { site: 'prebuilt_strip', part: 'chapel', wall: 'w', z: 5.0, sub: 'DISASTER CITY · THE STREETS · OUT THE SIDE' },
+          why: 'the chapel\'s side door opens on a parking lot that is not on the Strip; the officiant says the lot is Downtown\'s and Downtown says it is the chapel\'s, and the cars in it are from both',
+          note: 'the parking lot', draft: true },
         /* streets_stadium (Gate C, a wired double door at n x −24) retired 2026-09-17: THE AVENUE's north end IS the stadium road now (stadium_downtown, a `road` way) */
         { id: 'timemachine_cyberpunk', route: 'seams', way: 'timemachine',
           /* THE SECOND PASS (2026-09-17): the machine moved out of the arcade into the mall's SUPPLY CLOSET (the user's rule) and its far end into the noodle bar's back room on the grid — a building in the city, never the board room's strip */
@@ -24658,7 +24670,7 @@ const DOOR_HQ = {
             /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
-            prebuilt_camelot:   { room: 'site_prebuilt_camelot_ward',        door: { id: 'bay', wall: 's', x: 0 } },   // WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the portcullis at the ward's south edge, the ward on its pad on the land
+            prebuilt_camelot:   { room: 'site_prebuilt_camelot_ward',        door: { id: 'bay', wall: 's', x: 0 } },   // WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the portcullis at the ward's south edge (the ward is the entry)
             /* THE RANCH (2026-09-18 — the woods split): the stable door lands you in THE CORN FIELDS, the ranch's hub; the well and the woods'
                gate that stood on the board moved onto the fields the same day (a link door in a bypassed room would land at the bay door). */
             prebuilt_skinwalker: { room: 'site_prebuilt_skinwalker_fields',   door: { id: 'bay', wall: 's', x: 0 } },
@@ -25134,12 +25146,13 @@ const DOOR_HQ = {
                   label: 'THE MAIN HALL', sub: 'INTO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'foyer' },
                   desc: 'The revolving door. It turns one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of it.' },
-                /* the front door: THE LAND (WORLD_GEOGRAPHY_PLAN G2, 2026-09-28) — it opens onto HQ's pad on the moor, where every
-                   road starts. The main menu is the pause menu's MAIN MENU · LEAVE THE BUILDING (it was this door's until G2). */
-                { id: 'street', wall: 's', x: 0, leaf: 'leaf_entrance',
-                  label: 'THE FRONT DOOR', sub: 'OUTSIDE · THE LAND',
-                  action: { room: 'land', at: 'hq' },
-                  desc: 'The front door. Outside is the moor, and every road in the world starts on it; the building will be here when you come back, and so will your corners.' },
+                /* the front door (ZONES_PLAN Z0, 2026-09-29): SEALED. It opened onto THE LAND (G2) until the land was cut; it stays shut
+                   until the story opens it (where the building stands is not told). The main menu is the pause menu's MAIN MENU ·
+                   LEAVE THE BUILDING. */
+                { id: 'street', wall: 's', x: 0, leaf: 'leaf_entrance', sealed: true,
+                  label: 'THE FRONT DOOR', sub: 'SEALED',
+                  action: {},
+                  desc: 'The front door. It is locked from the outside, which is the wrong side to lock a front door from. Nobody at the desk has the key, and nobody at the desk has asked where it is.' },
             ],
             counters: [
                 /* CORNER INSPECTION → the by-id panel (map.js): your corners, counted and verified */
@@ -25203,56 +25216,6 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 1.9, face: 0 },     // just inside the front door, facing the revolving door and the hall
         },
-
-        /* ── THE LAND (WORLD_GEOGRAPHY_PLAN.md §5.2, G2 — 2026-09-28): the one outdoors. Not a box you are in: the room is the
-           baked world (HQ_LAND, `npm run bake-land`) in its own metres — x east, z SOUTH, y above sea level, D.O.O.R. HQ at the
-           origin on its pad. The renderer streams the 2 m tiles round the walker (data.js hqLand* is the sampler), draws near
-           chunks at three levels of detail and the rest of the world in THE FAR PASS, and the walker stands on the land
-           (hqLandFeet: a face steeper than HQ_LAND_RULES.walk.maxSlope refuses, and every such face is drawn as cliff). The sea
-           is at 0 m (swum). The sites are still reached by their old doors (G6 puts them on their pads): G2 is the bare land.
-           `shell.w / d` are the world's (the ice wall's disc and the sea to the baked edge); nothing is drawn at them. */
-        land: {
-            label: 'THE LAND',
-            sub: 'AREA 1 · D.O.O.R. HQ',
-            kind: 'box', land: true,
-            shell: {
-                w: 5600, d: 5600, h: 600, wallH: 600, dadoH: 1.0,
-                open: true, edge: 'open',
-                floor: 'grass', wall: 'concrete', dado: 'concrete', trim: 'metal', ceiling: 'concrete',
-                pipes: false, strips: false, lights: [],
-                heightFog: false,   // the land's haze is the distance fog (THE FAR PASS reads it too); a floor at 0 m would fog the coast only
-                sky: { night: 0, tint: 0x9fc4e8, tintAmt: 0.3, stars: 0.3, nebula: 0.2, day: 1, clouds: 0.3,
-                       fog: { color: 0xb4c6d8, amount: 0.45, top: 0.04, band: 0.5, density: 0.00032 }, scenery: 'none', density: 0 },
-            },
-            doors: [
-                /* HQ's front door on the land: the drum's south face (HQ_LAND_RULES.hq), standing on the pad — `y` is the baked pad's
-                   height (hqLandPadY, re-read below the recipe once HQ_LAND is defined) */
-                { id: 'hq', wall: 'free', x: 0, z: 22.35, face: 180, y: 84.9, pad: 'hq', leaf: 'leaf_entrance',
-                  label: 'D.O.O.R. HQ', sub: 'THE FRONT DOOR · THE FOYER',
-                  action: { room: 'foyer', at: 'street' },
-                  desc: 'The front door of the Department of Orthogonal Realities, from the outside. The drum has no windows at eye level; it has never needed them. The foyer is on the other side.' },
-                /* WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): Dead Man's Cave on its pad (HQ_LAND_RULES.places deadmans) — the storm drain's mouth */
-                { id: 'deadmans', wall: 'free', x: -470, z: -530, face: 90, y: 75.9, pad: 'deadmans', leaf: 'leaf_cell',
-                  label: 'DEAD MAN’S CAVE', sub: 'THE STORM DRAIN · IN',
-                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'land' },
-                  desc: 'The mouth of the storm drain, a grate on its hinges.' },
-                /* WORLD_GEOGRAPHY_PLAN G7 (2026-09-29): THE BAYSIDE MALL's main entrance on its pad behind the bay's beach, facing the sand and
-                   the water (it was a door on Downtown's west wall) */
-                { id: 'mall', wall: 'free', x: 1205, z: 527, face: 0, y: 5, pad: 'mall', leaf: 'leaf_glass',
-                  label: 'THE BAYSIDE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL',
-                  action: { room: 'site_prebuilt_downtown_mall', at: 'street' },
-                  desc: 'The mall\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },
-            ],
-            counters: [],
-            /* G7: THE LIGHTHOUSE on the bay's south head (HQ_LAND.places lighthouse; Trail K ends at it) — the harbour's own light model */
-            props: [ { key: 'lighthouse', x: 1505, z: 365, y: 4.2, place: 'lighthouse', face: 300 } ],
-            agents: [],
-            npcSpots: [],
-            onlineSpots: [],
-            lines: [],
-            spawn: { x: 0, z: 26, face: 180 },   // on the pad in front of the door, facing the moor (the door row's `at` is the usual way in)
-        },
-
         /* ── YOUR OFFICE: the janitor's closet (HQ plan 2.7, ref
            janitor_closet_v1) — the first interior, and the first `kind:
            'box'` room. A box room is a CARTESIAN frame: x east, z south,
@@ -32740,6 +32703,22 @@ const DOOR_HQ = {
                   label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
                   action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
                   desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
+                { id: 'stair', wall: 'n', x: 9.625, leaf: null,
+                  label: 'THE STAIRCASE', sub: 'A FLIGHT OF STAIRS · IN THE WOODS',
+                  action: { room: 'site_prebuilt_fairy_forest_stair', at: 'clearing' },
+                  desc: 'Past the crag, a clearing with a staircase in it. Nobody built it there. It is in good repair.' },
+                { id: 'redwoods', wall: 'e', z: -7.875, leaf: null,
+                  label: 'THE REDWOOD TRAIL', sub: 'EAST · TOWARD THE GROVE',
+                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
+                  desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
+                { id: 'deadmans', wall: 'e', z: 9.625, leaf: null,
+                  label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
+                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
+                  desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
+                { id: 'ritual', wall: 'w', z: 9.625, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'THE STONES · THE FIRE',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE — the stones are not on the way to anywhere (was THE RITUAL GROUND)
+                  action: { room: 'site_prebuilt_fairy_forest_ritual', at: 'clearing' },
+                  desc: 'Candle smoke on the wind, from the west. The stones are older than the candles and the candles are recent.' },
             ],
             counters: [],
             props: [
@@ -32798,6 +32777,14 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
+                { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
+                  desc: 'Back west, where the trees are young enough to be trees.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT — the creek goes into a pipe under the bank; the pipe is the storm drain (R4) */
+                { id: 'culvert', wall: 'n', x: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',
+                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'culvert' },
+                  desc: 'The creek goes into the bank and does not come out. The pipe it goes into is big enough, if you do not mind the dark.', draft: true },
             ],
             counters: [],
             props: [
@@ -32848,6 +32835,10 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
+                { id: 'clearing', wall: 's', x: -0.875, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'stair' },
+                  desc: 'Back past the crag. The stairs stay where they are, which is the most that can be said for them.' },
             ],
             counters: [],
             props: [
@@ -32861,7 +32852,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 2.625, z: 2.625 },
             ],
             agents: [],
-            npcSpots: [{ x: 4.6, z: -7.0, face: 250, race: 'mothman' }],
+            npcSpots: [{ x: 2.6, z: -7.0, face: 250, race: 'mothman' }],
             onlineSpots: [],
             lines: [
                 '“Who built the stairs?” “Nobody.” “Who maintains them?” “Also nobody. Look at the varnish.”',
@@ -32909,10 +32900,14 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'land', wall: 'w', z: 0, leaf: null,   // WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the mouth opens on the land (DOOR_HQ.rooms.land door `deadmans`)
-                  label: 'THE WOODS', sub: 'BACK OUT · INTO THE TREES',
-                  action: { room: 'land', at: 'deadmans' },
+                { id: 'clearing', wall: 'w', z: 0, leaf: null,
+                  label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
                   desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
+                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT's other end (R4) */
+                { id: 'culvert', wall: 's', x: 5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · OUT UNDER THE REDWOODS',
+                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'culvert' },
+                  desc: 'A pipe in the south wall with daylight at the far end of it and the creek coming down it. The redwoods are up there.', draft: true },
             ],
             counters: [],
             props: [
@@ -32973,6 +32968,10 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
+                { id: 'clearing', wall: 'e', z: -0.875, leaf: null, secret: true,
+                  label: 'A DRAUGHT', sub: 'BACK TO THE CROSSROADS',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE (was THE CLEARING)
+                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'ritual' },
+                  desc: 'Back east, downwind of the candles.' },
             ],
             counters: [],
             props: [
@@ -33079,16 +33078,6 @@ const DOOR_HQ = {
                 /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
                 noise: { amp: 0.05, scale: 6 },
-                /* ═══ THE CITY ON THE HILL (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29): Downtown stands on the land turned a quarter (rot 1: its
-                   north, the old town, uphill to the west; its south, the docks, down at the bay's water), and its ground climbs the hill.
-                   THE SLOPE (room z → metres over the quay): the quay, the basin and the flooded quay level at the water; the docks'
-                   streets climb 7 % off the waterfront to THE CANAL's level (its four bridges level with it); the financial blocks climb
-                   12 % from the canal to THE PLAZA (a level square round the fountain) and on 12 % to the ring road's north side; there
-                   THE STEPS (a 3.2 m retaining wall under the blocks, a stair street on every street that crosses it: the avenue, market
-                   lane, church lane, the tower's street) lift the old town, which climbs 12 % to THE HIGH STREET (level, with market square
-                   and church square) and 12 % again to the north edge. Every authored height stands over the slope at its own spot
-                   (hqTerrainSlopeFn): the roofs level, the pools level, the bridges level. ═══ */
-                slope: { axis: 'z', pts: [[-88, 14.47], [-75, 12.91], [-53, 12.91], [-45, 11.95], [-45, 8.75], [-37, 8.75], [-5, 4.91], [5, 4.91], [36, 1.19], [53, 1.19], [70, 0], [88, 0]] },
                 gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.16, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.22, ruinP: 0.35,   /* 2026-09-21 (the user): Disaster City is the PRISM city — more of the map-builder buildings than the Grid or the Strip (texP 0.22), fewer flat roofs; THE INFILL fills every block */
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
                        districts: [
@@ -33115,12 +33104,6 @@ const DOOR_HQ = {
                               { x: 48, z: -64, r: 11 }, { x: 48, z: -79, r: 9 },                                                                                  // CHURCH SQUARE + THE CHURCHYARD (the church stands in it)
                               { x0: -100, z0: 79, x1: 100, z1: 79, w: 22 }] },   /* Phase 7: to past the edge — the quay meets the harbour */                                                                                    // THE QUAY (the open apron south of the waterfront: the cranes, the siding, the basin, the flooded quay)
                 features: [
-                    /* THE STEPS (G7): the stair streets up the retaining wall between the financial blocks and the old town (street + both sidewalks
-                       wide, 0.4 m risers; each ends 0.5 m past the wall on the upper level) */
-                    { k: 'ramp', x0: 0, z0: -36.8, x1: 0, z1: -45.5, w: 15, h0: 0, h1: 0, stairs: true },                                   // THE AVENUE STEPS
-                    { k: 'ramp', x0: -40, z0: -36.8, x1: -40, z1: -45.5, w: 11, h0: 0, h1: 0, stairs: true },                               // MARKET LANE's steps
-                    { k: 'ramp', x0: 40, z0: -36.8, x1: 40, z1: -45.5, w: 11, h0: 0, h1: 0, stairs: true },                                 // CHURCH LANE's steps
-                    { k: 'ramp', x0: -76, z0: -36.8, x1: -76, z1: -45.5, w: 11, h0: 0, h1: 0, stairs: true },                               // the tower's street's steps
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
                     { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.9 → 3.0)
@@ -33152,7 +33135,7 @@ const DOOR_HQ = {
                     { k: 'climb', x: 70.0, z: -34.6, face: 270, look: 'fireescape' },                                                // the landing → the roof
                     { k: 'rail', x0: 57.8, z0: -38.4, x1: 68.2, z1: -38.4 },                                                          // the roof's rail (the grind — 1.6 m inside the edge: a rail's forced band never lies past a tier's edge on the mass)
                     /* THE OLD TOWN (D2): THE COURT off the high street, THE WAREHOUSE ROOF up its fire escape */
-                    { k: 'path', pts: [[-20, -58], [-20, -47]], w: 4 },   // G7: ends on the old town's level (the steps' wall is at z −45)                                                              // THE COURT (a dead-end court south off the high street)
+                    { k: 'path', pts: [[-20, -58], [-20, -46]], w: 4 },                                                              // THE COURT (a dead-end court south off the high street)
                     { k: 'plateau', x: -28, z: -47, w: 12, d: 10, h: 6.0, edge: 0.35 },                                             // THE WAREHOUSE ROOF (west of the court)
                     { k: 'plateau', x: -21.2, z: -47, w: 1.6, d: 2.2, h: 3.0, edge: 0.15 },                                         // its landing
                     { k: 'climb', x: -20.4, z: -46.4, face: 270, look: 'fireescape' },                                               // the court → the landing
@@ -33199,7 +33182,7 @@ const DOOR_HQ = {
                 traffic: [
                     { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['suv', 'taxi', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
                     { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['cadillac', 'taxi', 'copcar', 'truck', 'suv', 'firetruck'] },
-                    { pts: [[0, -36], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 44]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end starts again at the start)
+                    { pts: [[0, -88], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 44]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end starts again at the start)
                     { pts: [[-112, 0], [-8, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [100, 0], [100, 60]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] },
                     { pts: [[-98, -64], [98, -64]], loop: false, n: 1, speed: 3.2, lane: 2.0, kinds: ['cadillac', 'taxi'] }, { pts: [[98, -64], [-98, -64]], loop: false, n: 1, speed: 3.2, lane: 2.0, kinds: ['suv'] },      // THE HIGH STREET (D2)
                     { pts: [[-98, 64], [98, 64]], loop: false, n: 1, speed: 3.6, lane: 2.2, kinds: ['truck', 'taxi'] }, { pts: [[98, 64], [-98, 64]], loop: false, n: 1, speed: 3.6, lane: 2.2, kinds: ['truck', 'suv'] },     // THE WATERFRONT (D2)
@@ -33208,12 +33191,19 @@ const DOOR_HQ = {
                 race: { label: 'THE DISASTER CITY GRAND PRIX', pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], w: 11, gates: 8 },
             },
             doors: [
+                /* ZONES_PLAN Z0: the harbour off the quay's south edge (a door now, the stage join is gone) */
+                { id: 'harbour', wall: 's', x: 40, leaf: null,
+                  label: 'THE HARBOUR', sub: 'THE QUAY · OUT ON THE PIER',
+                  action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },
+                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },
                 { id: 'tower', wall: 'w', z: -8, leaf: 'leaf_entrance',
                   label: 'THE TOWER', sub: 'THE AVENUE DOORS · INTO THE LOBBY',
                   action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },
                   desc: 'The tower\'s other doors, onto the avenue. The lobby is behind them, the intersection is behind the lobby, and the tower is above all of it for the rest of the year.' },
-                /* G7: THE MALL's door moved to its own pad on the bay's beach (DOOR_HQ.rooms.land door `mall`); the mall's street runs on out of
-                   the city's edge toward Route 7 */
+                { id: 'mall', wall: 'w', z: 30, leaf: 'leaf_glass',   // Phase 7: off the south edge (THE QUAY) to the west wall
+                  label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL',
+                  action: { room: 'site_prebuilt_downtown_mall', at: 'street' },
+                  desc: 'The mall\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },
                 { id: 'metro', wall: 'n', x: 12, leaf: 'leaf_frame_only',
                   label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM',
                   action: { room: 'site_prebuilt_downtown_subway', at: 'street' },
@@ -33403,8 +33393,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'street', wall: 's', x: 0, leaf: 'leaf_glass',
-                  label: 'THE BEACH', sub: 'THE MAIN ENTRANCE · OUT TO THE BAY',   // G7: the mall stands on its own pad behind the bay's beach (DOOR_HQ.rooms.land door `mall`)
-                  action: { room: 'land', at: 'mall' },
+                  label: 'DOWNTOWN', sub: 'THE MAIN ENTRANCE · OUT TO THE CITY',
+                  action: { room: 'site_prebuilt_downtown_streets', at: 'mall' },
                   desc: 'The sliding doors, from the inside. They open for everyone, which is the policy, and closed for the incident, which was not.' },
                 /* THE SECOND PASS (2026-09-17, the user: "the time machine should be in a random basement or supply closet of the mall"): the service door at the end of the north wing */
                 { id: 'closet', wall: 'n', x: 0, leaf: 'leaf_closet',
@@ -34654,8 +34644,8 @@ const DOOR_HQ = {
            OPEN WORLD Phase 6 (2026-09-27) rebuilt the ward BUILT (its own comment
            below; the ward's lines here are its 2026-09-18 plan, kept as history).
            The hall and the keep stand in the ward's north wall by DOOR JOINS.
-           WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the ward sits on its pad on THE
-           LAND (HQ_WORLD.land); the portcullis is the site's entry.
+           WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the portcullis is the site's
+           entry (the land it stood on was cut in ZONES_PLAN Z0).
              site_prebuilt_camelot_ward — THE OUTER WARD (family A', open under
                Camelot's own night, hqCastleShell): the approach, THE MOAT (a U of
                deep water round the bailey — never entered), THE DRAWBRIDGE (the
@@ -35459,6 +35449,10 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
+                { id: 'gate', wall: 'n', x: 0, leaf: null,   // ZONES_PLAN Z0: back out to the gate (was the land's road join)
+                  label: 'THE GATE', sub: 'THE MAIN GATE · THE GUARD HUT',
+                  action: { room: 'site_prebuilt_area51_gate', at: 'flightline' },
+                  desc: 'The road off the apron to the main gate, past a guard hut with the light on.' },
                 { id: 'hangar', wall: 's', x: 18, leaf: 'leaf_bulkhead', wide: true,
                   label: 'HANGAR 18', sub: 'THE BIG DOOR · BACK INTO THE HANGAR',
                   action: { room: 'site_prebuilt_area51_hangar', at: 'flightline' },
@@ -35546,7 +35540,13 @@ const DOOR_HQ = {
                     { k: 'text', x: -2.9, z: -12, text: 'TURN BACK', size: 1.1, rot: 180, color: 0xe8b830 },
                 ],
             },
-            doors: [],
+            doors: [
+                /* ZONES_PLAN Z0 (2026-09-29): the road onto the flight line was a join on the land; a gate in the fence now */
+                { id: 'flightline', wall: 's', x: 0, leaf: null,
+                  label: 'THE FLIGHT LINE', sub: 'THROUGH THE GATE · THE APRON',
+                  action: { room: 'site_prebuilt_area51_flightline', at: 'gate' },
+                  desc: 'The gate is open. The sign on it says it is not, and the guard in the hut agrees with the sign.' },
+            ],
             counters: [],
             props: [
                 { key: 'warning_tape',    x: -3.5, z: 4, face: 90 },                                              // THE BARRIER's arm
@@ -37116,10 +37116,9 @@ const DOOR_HQ = {
            harbour as islands (DOOR_HQ.world.zones.coast): THE DUTCHMAN at anchor (x 38…102, z −76…−24) and THE TRIANGLE (x −145…5,
            z −20…140: the cay, the lighthouse, the maelstrom). Nothing is authored inside the islands' boxes (the floor sinks
            there: hqTerrainIslandSinks). Every line is Claude's DRAFT. */
-        /* G7 (WORLD_GEOGRAPHY_PLAN, 2026-09-29): THE HARBOUR ON THE LAND — cut to the water it uses (220 × 110 from 300 × 300: every
-           row moved +46 m x, +95 m z so the quay is still its north edge, x −92…108 here = Downtown's −100…100), standing east of Downtown's
-           quay in the bay (rot 1); its sea (−0.4 over a frame at 0.4) IS the land's sea at 0 — the land's sheet is the water drawn. The
-           Dutchman and the Triangle are no longer on it (G8 puts them out in the Deep). */
+        /* G7 (WORLD_GEOGRAPHY_PLAN, 2026-09-29): THE HARBOUR cut to the water it uses (220 × 110 from 300 × 300: every row moved
+           +46 m x, +95 m z so the quay is still its north edge). ZONES_PLAN Z0 (2026-09-29): its own room again behind the quay's door
+           (the land it stood in was cut); the Dutchman and the Triangle are rooms of their own. */
         site_prebuilt_downtown_harbour: {
             label: 'DISASTER CITY · THE HARBOUR',
             sub: 'THE LONG PIER · THE SKIFF · THE BREAKWATER · THE CHANNEL',
@@ -37145,7 +37144,14 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'fish_school', n: 4, x: 46, z: 15, r: 50, seed: 35, sea: true },
                 ],
             },
-            doors: [],   // the ways in are the joins: the quay (Downtown's south edge) and the land's bay round it (G7)
+            doors: [
+                /* ZONES_PLAN Z0 (2026-09-29): the quay was a stage join (the coast, then the land); it is a door again — the pier's
+                   head back up onto Downtown's quay */
+                { id: 'quay', wall: 'n', x: 8, leaf: null,
+                  label: 'THE QUAY', sub: 'UP THE PIER · DOWNTOWN',
+                  action: { room: 'site_prebuilt_downtown_streets', at: 'harbour' },
+                  desc: 'The pier runs back to the quay and the quay runs back to the city. The cranes are still pointing at the water.' },
+            ],
             counters: [],
             props: [
                 { key: 'skiff',       x: 22.8, z: -18.6, y: 0.32, face: 90 },                                             // THE SKIFF at the T-head's east end (afloat — `float`)
@@ -39814,28 +39820,18 @@ function hqWorldFloorOf(roomId) { return _hqWorldFloorOf(roomId); }
 const HQ_WORLD_RULES = {
     far: 900,          // m — the camera's far plane in a zone (§5.4; Phase 1)
     joinTol: 0.5,      // m — two parts' edges meet when they lie this close (the validator's tolerance)
-    islandEdgeM: 1.5,  // m — G6: the open strip either side of an island's edge (the land meets the plan's bank, not a bare rim)
-    islandMouthW: 10,  // m — G6: the gap a generated plan opens in the middle of each side of an island on the land
     stitchM: 6,        // m — the band either side of a join where the two height fields blend to the join's profile (§4.2; Phase 2)
     swingM: 1.6,       // m — a door join swings open when the walker is this close (§4.3; Phase 2)
     crossHys: 1.0,     // m — the crossing's hysteresis (§5.3; Phase 1)
     warmDoorM: 20,     // m — a door to another zone warms its arrival when the walker is this close (§5.4)
-    farRes: 4,         // m — the far shell's ground sampling (§5.4)
-    /* THE FAR SHELLS (§5.4, Phase 10, 2026-09-27): the places on this ground that are not drawn (neither current nor a drawn
-       neighbour) stand as ONE cheap mesh each — the compiled ground every `farRes` m, the blocks as columns to their roofs,
-       the tall walls, the sea — vertex-coloured, no sheets. They take `farHaze` of the room's fog density (so they read as
-       haze at 200–500 m instead of vanishing at 150 m), never more than `farHazeMax` of the fog colour; a shell stands down
-       while the walker is within `farMinM` of its box (the outer ground is the ground there). At most `farMax` shells, the
-       nearest first, and `farTris` triangles in all (a shell over `farTrisPart` drops its smallest walls). The ground sits
-       `farSink` m under the real one, so a part attaching over its shell never fights it; its edge is a SKIRT down to the
-       ground's floor and `farSkirt` m past it (a raised part reads as a mountainside, never a floating plate). */
-    farHaze: 0.3, farHazeMax: 0.9, farMinM: 24, farMax: 12, farTris: 90000, farTrisPart: 20000, farSink: 0.3, farWallH: 1.5, farSkirt: 4,
     wallM: 0.2,        // m — the wall between two rooms joined by a door (Phase 2): the two shells stand this far apart, the doorway's sleeve lines the gap
-    islandSink: { inM: 1.5, rampM: 3, m: 10 },   // Phase 7: a sea's floor sinks `m` under an island standing on it, from `inM` inside the island's edge over `rampM`
 };
-const HQ_STAGE_RULES = {
-    partsBuilt: 3, lampsLive: 12, lampR: 60, buildMs: 6, heapMB: 700, cacheIdleMs: 120000,   // §5.1–5.2 (Phase 1)
-    tileM: 32, cullM: 1.2, cullFarM: 90, callsMax: 2500, trisMax: 1500000,                     // §5.5 (Phase 1)
+/* THE ENGINE RULES (split from HQ_STAGE_RULES in ZONES_PLAN Z0, 2026-09-29): the rows every room reads, staged or not —
+   the build slice, the heap budget and the cache, the tile and cull distances, the call / triangle caps, the instance pass,
+   the LOD levels and the near-first queue. */
+const HQ_ENGINE_RULES = {
+    buildMs: 6, heapMB: 700, cacheIdleMs: 120000,   // §5.1–5.2 (Phase 1)
+    tileM: 32, cullM: 1.2, cullFarM: 90, callsMax: 2500, trisMax: 1500000,   // §5.5 (Phase 1)
     /* THE INSTANCE PASS (§5.5, live since Phase 0): a GLB prop placed at least `instanceMin` times in a room is drawn as
        one InstancedMesh per mesh of the model per `instanceCell` m square of the floor (so the frustum still drops the
        squares behind the camera); the placements stay (their groups, blockers, seats, the fade, the battle's keep read
@@ -39848,12 +39844,15 @@ const HQ_STAGE_RULES = {
        (about 2 px on a 1080 p screen). Re-picked every `lodTickMs`. THE NEAR FIRST: the model queue re-reads each queued
        file's distance to the walker every `mqDistMs`. */
     lodScreen: [0.12, 0.04], lodHys: 0.12, lodCull: 0.002, lodTickMs: 200, mqDistMs: 250,
+};
+const HQ_STAGE_RULES = {
+    partsBuilt: 3, lampsLive: 12, lampR: 60,   // §5.1–5.2 (Phase 1)
     /* THE STAGE (§5.1–5.3, Phase 1, 2026-09-26): the zones whose parts stand on ONE stage — the joined neighbours are
        built into the same scene, drawn and walked, and the feet crossing a join SWAP the current part (no card, no
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'basement', 'dumb', 'land'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); Phase 7: THE COAST; WORLD_GEOGRAPHY G6 (2026-09-28): THE LAND (the woods, the highway, Area 51, the kingdom and the mountain retired into it)
+    zones: ['medwing', 'basement', 'dumb'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -39962,7 +39961,6 @@ function hqWorldDir(az, el, rot) {
 function hqRoomClock(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell;
     if (!S || !S.open || !S.sky) return null;
-    if (R.land) return { zone: 'land', rot: 0, locked: false, hour: null, dayLook: (HQ_WORLD_CLOCK.dayLook || {}).land || null };   // G2: the land runs on the one clock
     if (S.sky.clock === true) {   // THE EDITOR (E6): an outdoor room of his on the world clock (the SKY tab's WORLD CLOCK), north up
         const own = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : null;
         return { zone: 'own', rot: 0, locked: own != null, hour: own != null ? hqClockNorm(own) : null, dayLook: S.sky.dayLook || null };
@@ -39975,180 +39973,21 @@ function hqRoomClock(roomId) {
     const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
     return { zone: F.zone, rot: F.rot || 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
 }
-/* a far target's bearing from a room, in the room's own compass (a ground weenie: THE WEENIES' `toward`) — null when the two
-   do not stand on one ground */
-function hqWorldBearing(roomId, targetId, fromPlace) {
-    const A = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null, B = (typeof hqWorldFrame === 'function') ? hqWorldFrame(targetId) : null;
-    if (!B) return null;
-    /* G6: a room off the land sees a site on the land from its own place there (`fromPlace`, a HQ_LAND.places id); G7: also a
-       room in no zone (Bermuda's sea, behind its door until G8) */
-    const pl = (fromPlace && B.ground === 'land' && (!A || A.ground !== 'land') && typeof HQ_LAND !== 'undefined') ? (HQ_LAND.places || []).find(q => q.id === fromPlace) : null;
-    if (!A && !pl) return null;
-    if (!pl && A.ground !== B.ground) return null;
-    const ax = pl ? pl.at[0] : A.x, az = pl ? pl.at[1] : A.z, dx = B.x - ax, dz = B.z - az;
-    if (Math.hypot(dx, dz) < 1) return null;
-    const deg = Math.atan2(dx, -dz) * 180 / Math.PI + ((A && A.rot) || 0) * 90;
-    return { deg: ((deg % 360) + 360) % 360, dist: Math.hypot(dx, dz) };
-}
-/* THE WEENIES ON THE GROUND (Phase 3: the landmark kinds `mountain`, `tower`, `gate`): far places that stand on this ground,
-   hung on a room's horizon at their true bearing from the frames (`toward` = the place's room or part). The shell's own
-   `sky.landmarks` (the sky castle, the stairway, the waterspout) stay; a room's rows here are added to them. When a later
-   phase draws the place itself (the far shells, Phase 10) its row here goes. */
-const HQ_WORLD_WEENIES = {
-    /* G6 (2026-09-28): the sites on the land wear none — the places themselves stand on its horizon (hqRoomLandmarks); G8 (2026-09-29):
-       Bermuda's sea stands on the land now too, so its Disaster City row went (the last row) */
-};
-/* a room's horizon: its shell's landmarks + its ground weenies at their bearings (the renderer's _hqBuildSky reads this) */
+/* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], sky = R && R.shell && R.shell.sky;
-    const Fl = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
-    if ((R && R.land) || (Fl && Fl.ground === 'land')) return [];   // G6: on the land the places themselves stand on the horizon
-    const out = (sky && Array.isArray(sky.landmarks)) ? sky.landmarks.slice() : [];
-    (HQ_WORLD_WEENIES[roomId] || []).forEach(w => {
-        const b = hqWorldBearing(roomId, w.toward, w.from);
-        if (!b) return;
-        out.push(Object.assign({}, w, { deg: Math.round(b.deg * 10) / 10, far: Math.round(b.dist) }));
-    });
-    return out;
-}
-/* ══ THE FAR SHELLS (OPEN_WORLD_PLAN.md §5.4, Phase 10, 2026-09-27) ══════════════════════════════════════════════════
-   The readers the renderer's far shells stand on. hqFarParts: the open-sky parts on this room's ground a far shell may
-   stand for (staged, not an interior, not this room), each with its frame seen from here, its box in this room's metres
-   and its gap to this room's box, the nearest first, within HQ_WORLD_RULES.far and at most farMax. hqFarShell: ONE mesh
-   for a part, in its own metres, from its COMPILED floor plan (never compiled here: a part the survey has not compiled
-   yet has no shell until it has) — the ground sampled every farRes m (the floor's colour, the cliff's on a slope), the
-   solid blocks as columns to their roofs (info.solidTop), the walls (info.walls) at least farWallH tall, the sea's
-   surface. No sheet anywhere (the black-texture rule has nothing to wait for). */
-const HQ_FAR_COLORS = [
-    [/water|sea|ocean|lagoon/, 0x2d5b6e], [/snow|ice|cloud/, 0xdfe6ee], [/marble|gold|white/, 0xd6cfbf], [/sand|desert|dune/, 0xc2a676],
-    [/grass|forest|meadow|lawn|moss/, 0x4d6a36], [/dirt|mud|earth|wasteland|soil/, 0x7a6248], [/wood|plank/, 0x6e5238],
-    [/cobble|brick|castle/, 0x8a7d6c], [/asphalt|road|street/, 0x3e4046], [/concrete|plaster|tile|urban|stone|pavement/, 0x8e8e88],
-    [/rock|cliff|mountain|crag/, 0x6d665e],
-];
-function hqFarColor(key) {
-    const k = String(key || '').toLowerCase();
-    for (const [re, c] of HQ_FAR_COLORS) if (re.test(k)) return c;
-    return 0x6f6a60;
-}
-const _hqFarPartsCache = {};
-function hqFarParts(roomId) {
-    const W = DOOR_HQ.world; if (!W || !roomId) return [];
-    const hit = _hqFarPartsCache[roomId]; if (hit && hit.W === W) return hit.out;
-    const A = hqWorldFrame(roomId), RA = (DOOR_HQ.rooms || {})[roomId], out = [];
-    if (A && !A.absorbedBy && RA && RA.shell && RA.shell.w > 0 && RA.shell.open && RA.shell.sky) {
-        const hwA = RA.shell.w / 2, hdA = RA.shell.d / 2, far = HQ_WORLD_RULES.far || 900;
-        Object.keys(_hqWorldIndex().part).forEach(id => {
-            if (id === roomId || !hqStagePart(id)) return;
-            const B = hqWorldFrame(id); if (!B || B.ground !== A.ground || B.interior) return;
-            const R = DOOR_HQ.rooms[id], S = R && R.shell; if (!S || !(S.open && S.sky) || R.land) return;   // G6: the land is drawn by its own pass, never as a shell
-            const rel = hqStageRel(roomId, id); if (!rel) return;
-            const hw = S.w / 2, hd = S.d / 2;
-            const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
-            const rect = { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) };
-            const gx = Math.max(rect.x0 - hwA, -hwA - rect.x1, 0), gz = Math.max(rect.z0 - hdA, -hdA - rect.z1, 0), gap = Math.hypot(gx, gz);
-            if (gap > far) return;
-            out.push({ id, rel, rect, gap: Math.round(gap * 10) / 10 });
-        });
-        out.sort((p, q) => p.gap - q.gap || (p.id < q.id ? -1 : 1));
-        if (!RA.land) out.splice(HQ_WORLD_RULES.farMax || 12);   // G6: from the land every site is a candidate; the renderer keeps the farMax nearest the walker
-    }
-    _hqFarPartsCache[roomId] = { W, out };
-    return out;
-}
-/* metres from (x, z) of the current room to a far part's box there (0 inside) */
-function hqFarGap(fp, x, z) {
-    const r = fp.rect, dx = Math.max(r.x0 - x, x - r.x1, 0), dz = Math.max(r.z0 - z, z - r.z1, 0);
-    return Math.hypot(dx, dz);
-}
-/* the part's far mesh: { pos (m, the part's own frame), col (0..1), idx, tris, cols, walls, sea } | null (not compiled yet) */
-function hqFarShell(roomId, info) {
-    const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell; if (!S || !(S.w > 0)) return null;
-    if (R.terrain && !info) info = R._terrainInfo || null;
-    if (R.terrain && !info) return null;
-    const res = HQ_WORLD_RULES.farRes || 4, sink = HQ_WORLD_RULES.farSink || 0, capT = HQ_WORLD_RULES.farTrisPart || 20000;
-    const hw = S.w / 2, hd = S.d / 2, pos = [], col = [], idx = [];
-    const rgb = hex => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
-    const cFloor = rgb(hqFarColor(info ? info.floor : S.floor)), cCliff = rgb(hqFarColor(info ? info.cliff : S.wall)), cMass = rgb(0x7d7a74), cRoof = rgb(0x5f5e5c);
-    const hAt = (x, z) => info ? hqTerrainHeight(info, x, z) : 0;
-    const vert = (x, y, z, c) => { pos.push(x, y, z); col.push(c[0], c[1], c[2]); return pos.length / 3 - 1; };
-    const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
-    /* THE GROUND: a grid over the box (the edges exactly on it), the floor's colour, the cliff's where it is steep */
-    const nx = Math.max(2, Math.ceil(S.w / res) + 1), nz = Math.max(2, Math.ceil(S.d / res) + 1), g0 = pos.length / 3;
-    const cliffFrom = (info && info.rules && info.rules.cliffFrom) || 0.6, cliffTo = (info && info.rules && info.rules.cliffTo) || 1.2;
-    const H = new Float32Array(nx * nz);
-    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hAt(-hw + i * S.w / (nx - 1), -hd + j * S.d / (nz - 1));
-    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-        const x = -hw + i * S.w / (nx - 1), z = -hd + j * S.d / (nz - 1), h = H[j * nx + i];
-        const hx = (H[j * nx + Math.min(nx - 1, i + 1)] - H[j * nx + Math.max(0, i - 1)]) / (2 * S.w / (nx - 1));
-        const hz = (H[Math.min(nz - 1, j + 1) * nx + i] - H[Math.max(0, j - 1) * nx + i]) / (2 * S.d / (nz - 1));
-        let t = (Math.hypot(hx, hz) - cliffFrom) / ((cliffTo - cliffFrom) || 1); t = t < 0 ? 0 : t > 1 ? 1 : t;
-        vert(x, h - sink, z, [cFloor[0] + (cCliff[0] - cFloor[0]) * t, cFloor[1] + (cCliff[1] - cFloor[1]) * t, cFloor[2] + (cCliff[2] - cFloor[2]) * t]);
-    }
-    for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = g0 + j * nx + i; quad(a, a + nx, a + nx + 1, a + 1); }
-    /* THE SKIRT: the box's edge carried down to the ground's floor (the zone's y 0, a part raised on the mountain) and farSkirt m
-       further, in the cliff's colour — a raised part's shell is a mountainside, never a plate floating over the fog */
-    const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
-    let lo = Infinity; for (let k = 0; k < H.length; k++) if (H[k] < lo) lo = H[k];
-    const skirtY = Math.min(lo, (F && F.ground === 'land') ? lo : -((F && F.y) || 0)) - (HQ_WORLD_RULES.farSkirt || 4) - sink;   // G6: a site on the land stands on its pad (the land is the mountainside)
-    const edge = [];
-    for (let i = 0; i < nx; i++) edge.push(i);                                  // north, west → east
-    for (let j = 1; j < nz; j++) edge.push(j * nx + nx - 1);                    // east, north → south
-    for (let i = nx - 2; i >= 0; i--) edge.push((nz - 1) * nx + i);             // south, east → west
-    for (let j = nz - 2; j >= 0; j--) edge.push(j * nx);                        // west, south → north
-    for (let e = 0; e < edge.length - 1; e++) {
-        const t0 = g0 + edge[e], t1 = g0 + edge[e + 1];
-        const b0 = vert(pos[t0 * 3], skirtY, pos[t0 * 3 + 2], cCliff), b1 = vert(pos[t1 * 3], skirtY, pos[t1 * 3 + 2], cCliff);
-        quad(t0, t1, b1, b0);
-    }
-    /* THE SEA: its surface over the box */
-    let sea = false;
-    if (info && info.sea && typeof info.sea.y === 'number') {
-        const c = rgb(hqFarColor('sea')), y = info.sea.y - sink * 0.5;
-        const a = vert(-hw, y, -hd, c), b = vert(-hw, y, hd, c), d = vert(hw, y, hd, c), e = vert(hw, y, -hd, c);
-        quad(a, b, d, e); sea = true;
-    }
-    /* a box from (x0..x1, z0..z1) along its own axes: centre (cx, cz), half sizes (a, b), yaw, base..top (the bottom never drawn) */
-    const box = (cx, cz, a, b, yaw, base, top, cs, ct) => {
-        const c = Math.cos(yaw), s = Math.sin(yaw), P = [[-a, -b], [a, -b], [a, b], [-a, b]].map(p => [cx + p[0] * c + p[1] * s, cz - p[0] * s + p[1] * c]);
-        const lo = P.map(p => vert(p[0], base - sink, p[1], cs)), hi = P.map(p => vert(p[0], top - sink, p[1], ct || cs));
-        quad(hi[0], hi[3], hi[2], hi[1]);
-        for (let k = 0; k < 4; k++) { const k2 = (k + 1) % 4; quad(lo[k], lo[k2], hi[k2], hi[k]); }
-    };
-    /* THE BLOCKS: a column per far cell whose solid top stands over the ground (a city's lots and yards, a hall's mass) */
-    let cols = 0;
-    const gn = info && info.gen;
-    if (gn && gn.solidMass && info.solidTop) {
-        const cx = Math.max(1, Math.round(S.w / res)), cz = Math.max(1, Math.round(S.d / res)), sx = S.w / cx, sz = S.d / cz;
-        for (let j = 0; j < cz; j++) for (let i = 0; i < cx; i++) {
-            const x = -hw + (i + 0.5) * sx, z = -hd + (j + 0.5) * sz;
-            const top = hqTerrainSolidTop(info, x, z); if (!(top > 0)) continue;
-            const g = hAt(x, z); if (top < g + 0.5) continue;
-            box(x, z, sx / 2, sz / 2, 0, g, top, cMass, cRoof); cols++;
-        }
-    }
-    /* THE WALLS: the tall ones, the biggest first, until the part's triangle cap */
-    let walls = 0;
-    const wl = ((info && info.walls) || []).filter(w => !w.ghost && (w.top - w.base) >= (HQ_WORLD_RULES.farWallH || 1.5))
-        .map(w => ({ w, k: (w.top - w.base) * Math.hypot(w.x1 - w.x0, w.z1 - w.z0) })).sort((p, q) => q.k - p.k);
-    for (const { w } of wl) {
-        if (idx.length / 3 + 10 > capT) break;
-        const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0);
-        box((w.x0 + w.x1) / 2, (w.z0 + w.z1) / 2, (w.t || 0.3) / 2, (L + (w.t || 0.3)) / 2, yaw, w.base, w.top, w.key ? rgb(hqFarColor(w.key)) : cCliff);
-        walls++;
-    }
-    return { pos: new Float32Array(pos), col: new Float32Array(col), idx: new Uint32Array(idx), tris: idx.length / 3, cols, walls, sea, nx, nz };
+    return (sky && Array.isArray(sky.landmarks)) ? sky.landmarks.slice() : [];
 }
 const HQ_WORLD = {
     grounds: {
-        land:    { label: 'THE LAND', note: 'the one outdoors (WORLD_GEOGRAPHY_PLAN G6): the land room, every outdoor site standing on it at its place' },
         under:   { label: 'UNDERGROUND', note: 'no sky: the underworld under the city, the cave under the woods, the D.U.M.B. under the desert' },
         ley:     { label: 'THE LEY', note: 'the tell over the ley tunnel; the far stations stay doors' },
 
         hq:      { label: 'THE BUILDING', note: 'D.O.O.R. HQ inside: a wing whose rooms open into one another (Phase 2, the door joins)' },
     },
     zones: {
-        /* Z1 THE CITY and Z1b THE COAST RETIRED (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29): Downtown, the Bowl and the harbour stand on THE
-           LAND (zones.land below) at their places; G8 (2026-09-29) put the cay and the Dutchman in the Bermuda Triangle out in the Deep. */
+        /* Z1 THE CITY and Z1b THE COAST RETIRED (WORLD_GEOGRAPHY_PLAN G7); THE LAND zone CUT (ZONES_PLAN Z0, 2026-09-29): the
+           outdoor sites are rooms behind doors again. The stage stays inside DOOR HQ only (HQ_STAGE_RULES.zones). */
         /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
            Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
         dumb: { label: 'THE D.U.M.B.', ground: 'under', hub: 'site_prebuilt_dumb_motorpool', sky: null, clock: false,
@@ -40194,95 +40033,13 @@ const HQ_WORLD = {
                 { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_cells', side: 'n', span: [-3, 3], kind: 'hall' },
                 { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_workings', side: 'e', span: [-3, 3], kind: 'hall' },
             ] },
-        /* Z9 — THE LEY: the ley tunnel (the tell over it moved onto the land in G6; the cistern's door and the well stay doors).
+        /* Z9 — THE LEY: the ley tunnel (the tell over it is its own room since G6; the cistern's door and the well stay doors).
            Stonehenge, Giza, Babel and Technoticlan stay doors at the tunnel's far stations. */
         ley: { label: 'THE LEY LINES', ground: 'ley', hub: 'site_prebuilt_gobekli_leylines', sky: null, clock: false,
             parts: {
                 site_prebuilt_gobekli_leylines: { x: 0, z: 0, y: -12, rot: 0 },
             },
             joins: [] },
-        /* THE LAND (WORLD_GEOGRAPHY_PLAN G6, 2026-09-28): the land room (DOOR_HQ.rooms.land, the baked world in its own metres) is
-           the host, and every outdoor site stands ON it as an ISLAND at its place: a row's `place` (an HQ_LAND.places id) and
-           `dx` / `dz` / `dy` (metres from the place and its pad) are written into x, z, y below the recipe (hqLandSiteFrames), and
-           the bake levels one rectangle under each place's parts (hqLandSites; HQ_LAND_RULES.sites). The feet cross into a site
-           when they stand inside its box and back onto the land past its edge; the island join's `y` (the pad) is where the
-           site's four edges ease to. A site's closed rooms stand beside it by their door joins (Camelot's hall and keep, Hangar
-           18 and the white rooms); the observatory stands beside the cortile up its stair. The old stitched zones retired here:
-           the forecourt, the highway, the kingdom's road, the mountain's foothills and switchbacks, the woods' trail and pasture
-           and the old path. */
-        land: { label: 'THE LAND', ground: 'land', hub: 'land', sky: 'land', clock: true,
-            parts: {
-                land:                                { x: 0, z: 0, y: 0, rot: 0 },
-                site_prebuilt_strip_streets:         { place: 'strip' },
-                site_prebuilt_area51_flightline:     { place: 'area51' },
-                site_prebuilt_area51_gate:           { place: 'area51', dz: -52 },
-                site_prebuilt_area51_hangar:         { place: 'area51', dz: 56.2 },
-                site_prebuilt_area51_ward:           { place: 'area51', dx: -58.2, dz: 56.2 },
-                site_prebuilt_camelot_ward:          { place: 'camelot' },
-                site_prebuilt_camelot_hall:          { place: 'camelot', dz: -86.2 },
-                site_prebuilt_camelot_keep:          { place: 'camelot', dx: -35.2, dz: -82.2 },
-                site_prebuilt_olympus_summit:        { place: 'olympus' },
-                site_prebuilt_shasta_slopes:         { place: 'shasta' },
-                site_prebuilt_fairy_forest_clearing: { place: 'clearing' },
-                site_prebuilt_fairy_forest_redwoods: { place: 'redwoods' },
-                site_prebuilt_fairy_forest_stair:    { place: 'stair' },
-                site_prebuilt_fairy_forest_ritual:   { place: 'ritual' },
-                site_prebuilt_bohemian_grove_grove:  { place: 'grove' },
-                site_prebuilt_skinwalker_fields:     { place: 'estate' },
-                site_prebuilt_haunted_grounds:       { place: 'haunted' },
-                site_prebuilt_haunted_hall:          { place: 'haunted', dz: -8, interior: true, on: 'site_prebuilt_haunted_grounds' },
-                site_prebuilt_stonehenge_henge:      { place: 'henge' },
-                site_prebuilt_giza_plateau:          { place: 'giza' },
-                site_prebuilt_babel_tower:           { place: 'babel' },
-                site_prebuilt_gobekli_tell:          { place: 'gobekli' },
-                site_prebuilt_vatican_courtyard:     { place: 'vatican' },
-                site_prebuilt_vatican_basilica:      { place: 'vatican', dz: -44, interior: true },
-                site_prebuilt_vatican_library:       { place: 'vatican', dx: 35, interior: true },
-                site_prebuilt_vatican_observatory:   { place: 'vatican', dx: -32, dy: 6 },
-                /* G7 THE CITY ON THE HILL (2026-09-29): Downtown turned a quarter (rot 1: the old town up the hill to the west, the docks
-                   at the bay's water to the east; its ground is its `terrain.slope`), the harbour east of its quay (its sea is the land's:
-                   `sea` = the bake leaves the bay's floor alone), the Bowl turned a quarter (its players' tunnel faces the stadium road) */
-                site_prebuilt_downtown_streets:      { place: 'downtown', rot: 1 },
-                site_prebuilt_downtown_harbour:      { place: 'harbour', rot: 1, sea: true },
-                site_prebuilt_stadium_bowl:          { place: 'stadium', rot: 1 },
-                /* G8 THE EDGE OF THE WORLD (2026-09-29): the Bermuda Triangle out in the Deep (its cay on the cay's place: the part's cay is
-                   52 m south of its middle), the Dutchman at anchor off it (her water −2.6 over a frame at 2.6 = the sea at 0), each on a
-                   bank at its floor (`bank`, land metres: the bake raises the Deep's floor to it under the box and slopes it back down);
-                   the station on the ice shelf (turned half round: its way in faces the landing), the Pole's village on the pack */
-                site_prebuilt_bermuda_sea:           { place: 'cay', dz: -52, sea: true, bank: -3.5 },
-                site_prebuilt_revenge_deck:          { place: 'dutchman', dy: 2.6, sea: true, bank: -5.6 },
-                site_prebuilt_antarctica_station:    { place: 'station', rot: 2 },
-                site_prebuilt_northpole_village:     { place: 'pole' },
-            },
-            joins: [
-                /* the islands: walked into from the land (their edges ease to the pad) */
-                ...['site_prebuilt_strip_streets', 'site_prebuilt_area51_flightline', 'site_prebuilt_area51_gate', 'site_prebuilt_camelot_ward',
-                    'site_prebuilt_olympus_summit', 'site_prebuilt_shasta_slopes', 'site_prebuilt_fairy_forest_clearing', 'site_prebuilt_fairy_forest_redwoods',
-                    'site_prebuilt_fairy_forest_stair', 'site_prebuilt_fairy_forest_ritual', 'site_prebuilt_bohemian_grove_grove', 'site_prebuilt_skinwalker_fields',
-                    'site_prebuilt_haunted_grounds', 'site_prebuilt_stonehenge_henge', 'site_prebuilt_giza_plateau', 'site_prebuilt_babel_tower',
-                    'site_prebuilt_gobekli_tell', 'site_prebuilt_vatican_courtyard', 'site_prebuilt_downtown_streets', 'site_prebuilt_stadium_bowl'].map(b => ({ a: 'land', b, kind: 'island', pad: true })),
-                /* G7: the harbour's edges ease to its sea floor (the land's bay floor round it); its quay side is Downtown's (a SHORE: the
-                   harbour's floor rises to the quay in 2 m — the quay wall over the water) */
-                { a: 'land', b: 'site_prebuilt_downtown_harbour', kind: 'island', y: -5.6 },
-                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_harbour', side: 's', span: [-100, 100], kind: 'shore', stitchM: 2 },
-                /* G8: the two sea sites ease to their banks; the station and the village stand on their pads (the shelf, the pack) */
-                { a: 'land', b: 'site_prebuilt_bermuda_sea', kind: 'island', y: -3.5 },
-                { a: 'land', b: 'site_prebuilt_revenge_deck', kind: 'island', y: -5.6 },
-                ...['site_prebuilt_antarctica_station', 'site_prebuilt_northpole_village'].map(b => ({ a: 'land', b, kind: 'island', pad: true })),
-                /* Area 51: the gate onto the flight line (a road), Hangar 18 off its south apron, the white rooms off the hangar */
-                { a: 'site_prebuilt_area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road', pad: true },
-                { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
-                { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door', door: 'white', bDoor: 'hangar' },
-                /* Camelot: the great hall and the keep behind the ward's north side */
-                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_hall', kind: 'door', door: 'hall', bDoor: 'ward' },
-                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'ward' },
-                { a: 'site_prebuilt_camelot_hall', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'hall' },
-                /* the haunted house on its lawn; the Vatican's basilica and archive off the cortile (map facts), the observatory up its stair */
-                { a: 'site_prebuilt_haunted_grounds', b: 'site_prebuilt_haunted_hall', kind: 'door' },
-                { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_basilica', kind: 'door' },
-                { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_library', kind: 'door' },
-                { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_observatory', side: 'w', span: [-3, 3], kind: 'stair' },
-            ] },
         /* Z10 — THE MEDICAL WING (Phase 2, 2026-09-26 — the user: "I hate walking into the medical bay and every single little
            room in there is a different loading screen"). The five rooms stay the rooms they are (every id, number, counter,
            ledger key and save is untouched) and stand round the wing's corridor as they would in the building: the ward and
@@ -40578,25 +40335,6 @@ function hqStageNeighbours(roomId) {
             out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via: nb.id });
         });
     });
-    /* THE LAND (G6): a site's closed rooms and raised parts stand beside it on the land too — every part its islands reach by a
-       door or an edge join, however many joins in (Area 51's white rooms behind Hangar 18), is drawn with it (never crossed into
-       from the land: you reach it through the site) */
-    if (R.land) {
-        const front = out.filter(nb => nb.inside).map(nb => nb.id), seen = new Set(out.map(nb => nb.id));
-        while (front.length) {
-            const via = front.shift();
-            hqWorldJoins(via).forEach(j => {
-                if (j.kind === 'island') return;
-                const other = j.a === via ? j.b : j.a;
-                if (other === roomId || seen.has(other) || !hqStagePart(other)) return;
-                const rel = hqStageRel(roomId, other); if (!rel) return;
-                seen.add(other); front.push(other);
-                const S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
-                const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
-                out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via });
-            });
-        }
-    }
     /* the host last (G6): a site's own edge joins (the gate onto the flight line) win over the land that holds them all */
     return out.filter(nb => !nb.host).concat(out.filter(nb => nb.host));
 }
@@ -40816,7 +40554,7 @@ function hqWorldValidate() {
                 }
             }
             if (j.kind === 'island' && I.part[j.b].P.on !== j.a) err(tag + ': an island stands on its sea');
-            if (j.kind === 'island' && R[j.a] && R[j.b] && !R[j.a].land) {   // G6: an island on THE LAND stands on its pad, not in a sea
+            if (j.kind === 'island' && R[j.a] && R[j.b]) {
                 /* Phase 7: the sea is a sea, and an island's own water (the part's field alone, before its sea is drawn) lies at
                    the sea's surface on the ground */
                 const sa = R[j.a].terrain && R[j.a].terrain.sea, sb = R[j.b].terrain && R[j.b].terrain.sea;
@@ -40845,127 +40583,11 @@ function hqWorldValidate() {
         while (grew) { grew = false; (Z.joins || []).forEach(j => { if (reach[j.a] && !reach[j.b]) { reach[j.b] = true; grew = true; } if (reach[j.b] && !reach[j.a]) { reach[j.a] = true; grew = true; } }); }
         Object.keys(Z.parts).forEach(pid => { if (!reach[pid]) err(zid + ': ' + pid + ' is not reached from the hub ' + Z.hub); });
     });
-    const surf = Object.keys(W.zones).filter(z => W.zones[z].ground === 'surface'), zr = { city: true };   // G6: the forecourt retired (HQ's front door opens onto the land)
+    const surf = Object.keys(W.zones).filter(z => W.zones[z].ground === 'surface'), zr = { city: true };   // G6: the forecourt retired
     let grew = true;
     while (grew) { grew = false; I.joins.forEach(j => { const za = I.part[j.a] && I.part[j.a].zone, zb = I.part[j.b] && I.part[j.b].zone; if (za && zb) { if (zr[za] && !zr[zb]) { zr[zb] = true; grew = true; } if (zr[zb] && !zr[za]) { zr[za] = true; grew = true; } } }); }
     surf.forEach(z => { if (!zr[z]) err('the surface zone ' + z + ' is not reached from the city'); });
     return { ok: errors.length === 0, errors, parts: ids.length, joins: I.joins.length };
-}
-/* THE LAND SHEET (§7, Phase 0): the map drawn from the frames — map.js's LAND tab draws what this returns. Metres are
-   metres (x east, z south; the sheet's y is the ground's z). A part is its rectangle at its frame; an absorbed room is
-   its rectangle at its spot in its field; a JOIN is a span on an edge (drawn open, in its kind's ink); a DOOR JOIN is
-   a door glyph between its two parts; a LINK's door is a glyph on the wall it stands in (the way it is today — that is
-   what the stage will turn into joins). THE FOG (§7): a room you have stood in is drawn and named; a room a seen door
-   names is a blank outline ('q'); anything else is not on the sheet; a planned part is on the sheet only with `all`
-   (the console's EW_HQ_MAP_ALL, the same flag the other sheets honour). A ground with nothing on it is not offered.
-   → { grounds: [{ id, label, n }], ground, parts, joins, doors, zones, box: { x, y, w, h }, here, beyond } */
-function hqWorldSheet(profile, curRoom, opts) {
-    opts = opts || {};
-    const W = DOOR_HQ.world, R = DOOR_HQ.rooms || {}, I = _hqWorldIndex(), all = !!opts.all;
-    const seenRec = (typeof hqRoomsSeenRecord === 'function') ? (hqRoomsSeenRecord(profile) || {}) : {};
-    const seen = id => all || !!seenRec[id] || id === curRoom;
-    /* the question marks: a room a SEEN room's door names (the directory's own rule; a secret door names nothing) */
-    const q = {};
-    (DOOR_HQ.links || []).forEach(l => {
-        if (l.secret) return;
-        const a = hqLinkRoom(l.a), b = hqLinkRoom(l.b);
-        if (a && b) { if (seen(a) && !seen(b)) q[b] = true; if (seen(b) && !seen(a)) q[a] = true; }
-    });
-    I.joins.forEach(j => { if (seen(j.a) && !seen(j.b)) q[j.b] = true; if (seen(j.b) && !seen(j.a)) q[j.a] = true; });
-    const stOf = id => (id === curRoom) ? 'here' : seen(id) ? 'seen' : q[id] ? 'q' : null;
-    const labelOf = id => { const r = R[id]; const P = I.part[id] && I.part[id].P; return String((r && (r.label || r.name)) || (P && P.planned && P.planned.label) || id).toUpperCase(); };
-    /* every drawable rectangle: the parts, then the absorbed rooms */
-    const items = [];
-    Object.keys(I.part).forEach(id => {
-        const P = I.part[id].P, rc = hqWorldPartRect(id);
-        if (!rc) return;
-        let st = P.planned ? (all ? 'planned' : null) : stOf(id);
-        if (P.planned && !all && Object.keys(P.absorbs || {}).some(r => stOf(r))) st = null;   // a field not built yet: its rooms are drawn, not the field
-        items.push({ id, zone: I.part[id].zone, ground: I.part[id].ground, st, rc, planned: !!P.planned, interior: !!P.interior, on: P.on || null, rot: P.rot || 0, absorbedBy: null });
-    });
-    Object.keys(I.absorbed).forEach(id => {
-        const rc = hqWorldPartRect(id), f = I.part[I.absorbed[id]];
-        if (!rc || !f) return;
-        items.push({ id, zone: f.zone, ground: f.ground, st: stOf(id), rc, planned: false, interior: false, on: null, rot: f.P.rot || 0, absorbedBy: I.absorbed[id] });
-    });
-    const grounds = Object.keys(W.grounds).map(g => ({ id: g, label: W.grounds[g].label, n: items.filter(it => it.ground === g && it.st).length })).filter(g => g.n > 0);
-    const hereF = curRoom ? hqWorldFrame(curRoom) : null;
-    const ground = (opts.ground && grounds.some(g => g.id === opts.ground)) ? opts.ground : (hereF && grounds.some(g => g.id === hereF.ground)) ? hereF.ground : (grounds[0] ? grounds[0].id : 'surface');
-    const parts = items.filter(it => it.ground === ground && it.st).map(it => ({
-        id: it.id, zone: it.zone, st: it.st, planned: it.planned, interior: it.interior, on: it.on, absorbedBy: it.absorbedBy,
-        label: (it.st === 'q') ? 'UNCHARTED' : labelOf(it.id), x0: it.rc.x0, z0: it.rc.z0, x1: it.rc.x1, z1: it.rc.z1, y: it.rc.y0,
-        size: hqWorldPartSize(it.id) }));
-    const drawn = {}; parts.forEach(p => { drawn[p.id] = p; });
-    const joins = [];
-    I.joins.forEach(j => {
-        const A = drawn[j.a], B = drawn[j.b];
-        if (!A || !B || A.st === 'q' && B.st === 'q') return;
-        if (j.side) {
-            const J = hqWorldJoinResolve(j);
-            if (!J) return;
-            joins.push({ key: j.a + '|' + j.b, kind: j.kind, border: !!j.border, a: j.a, b: j.b,
-                x0: J.line === 'x' ? J.g0 : J.at, z0: J.line === 'x' ? J.at : J.g0, x1: J.line === 'x' ? J.g1 : J.at, z1: J.line === 'x' ? J.at : J.g1 });
-        } else {
-            /* a door join: its glyph on the smaller part's edge nearest the bigger one's centre (on a host: toward the host's centre) */
-            const small = ((A.x1 - A.x0) * (A.z1 - A.z0) <= (B.x1 - B.x0) * (B.z1 - B.z0)) ? A : B, big = small === A ? B : A;
-            const cx = (small.x0 + small.x1) / 2, cz = (small.z0 + small.z1) / 2, bx = (big.x0 + big.x1) / 2, bz = (big.z0 + big.z1) / 2;
-            const inside = small.x0 >= big.x0 && small.x1 <= big.x1 && small.z0 >= big.z0 && small.z1 <= big.z1;
-            let gx, gz;
-            if (inside) {   // on its host: the door faces the host's middle
-                const dx = bx - cx, dz = bz - cz;
-                if (Math.abs(dx) >= Math.abs(dz)) { gx = dx >= 0 ? small.x1 : small.x0; gz = cz; } else { gx = cx; gz = dz >= 0 ? small.z1 : small.z0; }
-            } else {        // beside it: the middle of the shared stretch of edge
-                gx = Math.max(small.x0, Math.min(small.x1, Math.max(big.x0, Math.min(big.x1, cx))));
-                gz = Math.max(small.z0, Math.min(small.z1, Math.max(big.z0, Math.min(big.z1, cz))));
-            }
-            joins.push({ key: j.a + '|' + j.b, kind: j.kind, border: !!j.border, a: j.a, b: j.b, x: gx, z: gz });
-        }
-    });
-    /* the doors that are still doors: every link end on a drawn, seen part's wall (the far end named when it is known) */
-    const doors = [];
-    (DOOR_HQ.links || []).forEach(l => {
-        [['a', 'b'], ['b', 'a']].forEach(([me, other]) => {
-            const e = l[me], rid = hqLinkRoom(e), P = rid ? drawn[rid] : null;
-            if (!P || P.st === 'q' || !e || e.door) return;
-            if (l.secret && !(seen(hqLinkRoom(l[other])))) return;   // a draught you have not found is on no sheet
-            const S = P.size; if (!S) return;
-            let lx = 0, lz = 0;
-            if (e.wall === 'free') { lx = e.x; lz = e.z; }
-            else if (e.wall === 'n' || e.wall === 's') { lx = e.x || 0; lz = (e.wall === 'n' ? -1 : 1) * S.d / 2; }
-            else if (e.wall === 'e' || e.wall === 'w') { lz = e.z || 0; lx = (e.wall === 'w' ? -1 : 1) * S.w / 2; }
-            else return;
-            const g = hqWorldToZone(rid, lx, lz); if (!g) return;
-            const far = hqLinkRoom(l[other]), fst = far ? stOf(far) : null;
-            doors.push({ key: (l.id || '') + ':' + me, room: rid, to: far, x: g.x, z: g.z, way: l.way || null, secret: !!l.secret, free: e.wall === 'free',
-                         toLabel: (fst && fst !== 'q') ? labelOf(far) : (fst === 'q' ? 'UNCHARTED' : '?'), toGround: far ? ((hqWorldFrame(far) || {}).ground || 'beyond') : null });
-        });
-    });
-    const zones = [];
-    Object.keys(W.zones).forEach(zid => {
-        const ps = parts.filter(p => p.zone === zid && p.st !== 'q');
-        if (!ps.length) return;
-        const hub = ps.find(p => p.id === W.zones[zid].hub) || ps[0];   // the name sits over the zone's hub (a zone's corner can lie over another zone)
-        zones.push({ id: zid, label: W.zones[zid].label, x0: Math.min(...ps.map(p => p.x0)), z0: Math.min(...ps.map(p => p.z0)), x1: Math.max(...ps.map(p => p.x1)), z1: Math.max(...ps.map(p => p.z1)), lx: hub.x0, lz: hub.z0 });
-    });
-    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
-    parts.forEach(p => { x0 = Math.min(x0, p.x0); z0 = Math.min(z0, p.z0); x1 = Math.max(x1, p.x1); z1 = Math.max(z1, p.z1); });
-    if (!parts.length) { x0 = -50; z0 = -50; x1 = 50; z1 = 50; }
-    let here = null;
-    if (hereF && hereF.ground === ground) {
-        const at = (opts.feet && Number.isFinite(opts.feet.x) && Number.isFinite(opts.feet.z)) ? opts.feet : { x: 0, z: 0 };
-        const g = hqWorldToZone(curRoom, at.x, at.z);
-        if (g) here = { room: curRoom, x: g.x, z: g.z };
-    }
-    /* BEYOND: the rooms you have stood in that stand on no ground (the facility, the planets, the other realms) — by site */
-    const beyond = {};
-    Object.keys(R).forEach(id => {
-        if (I.part[id] || I.absorbed[id] || !(seen(id) && !all || all && R[id].site)) return;
-        const site = R[id].site ? hqSiteId(R[id].site) : 'hq';
-        (beyond[site] = beyond[site] || []).push(id);
-    });
-    return { grounds, ground, parts, joins, doors, zones, box: { x: x0, y: z0, w: x1 - x0, h: z1 - z0 }, here,
-             beyond: Object.keys(beyond).sort().map(site => ({ site, rooms: beyond[site].length, here: beyond[site].indexOf(curRoom) >= 0,
-                 label: String(((R[beyond[site][0]] || {}).label || site)).split('·')[0].trim().toUpperCase() })) };   // the site's name: its rooms' label before the ·
 }
 /* ── THE COMPLEXES (HQ plan 9.2 stage 1, 2026-09-15) ─────────────────────
    A site that is several rooms. The GENERATED room (hqSiteRoom) stays the
@@ -41054,1543 +40676,6 @@ function hqReplateDoors() {
     }));
     return n;
 }
-/* ══ THE LAND (WORLD_GEOGRAPHY_PLAN.md §5.1, G0 — 2026-09-28) ═══════════════════════════════════════════════════════════
-   HQ_LAND is THE WORLD RECIPE: the one land every outdoor place will stand on (the plan's §4). Metres; x = east, z = SOUTH
-   (the game's frame: north is −z); D.O.O.R. HQ stands at the origin; y above sea level. It is the sketch's recipe.js
-   moved in whole (open-world/geography/sketch/), plus each place's REGION / weenie TOP / peak / lookout (the sight rule's
-   inputs, were r2check.js's tables) and the few constants the sketch hard-coded (region hill amplitude, the city's
-   ellipse, the farms). `bake-land.js` (repo tool, `npm run bake-land`) reads it through load-data.js and bakes the land:
-   the 2 m tiles, the 8 m sea, land.json (roads, rivers, lakes, places with their baked heights, the sight lists, the
-   reveals) and land-map.png, all under Assets/Land/ on R2 — and stamps `R.baked.id` below with the bake's hash, which
-   is what the game's URLs carry (`?b=<id>`), so a re-bake reaches players without the manifest.
-   Nothing walks on it yet: G0 draws it as the map's ATLAS tab (map.js); G2 puts the walker on the tiles.
-   Edit the recipe, then `npm run bake-land` (a ~4 minute bake at 2 m) — land-bake.test.js re-bakes it at 8 m and holds
-   the rules (R2 sight from every pad, rivers downhill, lakes level, road grades, the ring a loop, every place on a route,
-   cliffs drawn). */
-const HQ_LAND = (function () {
-    const R = {};
-
-    R.seed = 1977;
-    R.sea = 0;
-
-    // ── THE DISC: the ice wall rings the world (Antarctica). Its inner face is at wallR(θ) — pulled in at the
-    //    south (the bottom of the map) where the Antarctic ice shelf is widest.
-    //    G8 (2026-09-29): the shelf's front is an ice cliff all along but at `landing`, where a ramp of ice runs up out of the water to the
-    //    station (the skiff pulls up at its toe, `toe` m under the sea, `toeOut` m off the front; it climbs at `grade`, `w` m wide).
-    R.wall = { r: 2600, southPull: 250, southSpread: 0.95, h: 92, thick: 150, shelf: { z0: 2040, h: 11, landing: { pts: [[110, 1930], [110, 2020], [110, 2110], [110, 2200]], w: 34, grade: 0.1, toe: -2, toeOut: 40 } } };
-    // ── THE ARCTIC: the sea north of this line is frozen over (pack ice you walk on); the North Pole stands on it.
-    //    G8 (2026-09-29): every frozen cell stands `floe` m over the sea and runs down under it over `foot` m where it meets open water (the
-    //    ice foot); `fast` = ice frozen to the north coast where the pass comes down, out across the pack to the Pole (the way on foot).
-    R.arctic = { z: -1700, bow: 0.00007, pole: [0, -2150], floe: 0.6, foot: 7, footDepth: 1.8,
-        fast: { w: 90, pts: [[-385, -1215], [-372, -1330], [-340, -1480], [-270, -1660], [-170, -1850], [-60, -2020], [0, -2150]] } };
-
-    // ── THE CONTINENT: the coastline (clockwise from the north-west). Smoothed + roughened by the generator.
-    R.coast = [
-      [-1380, -900], [-1300, -1020], [-1210, -1150], [-1090, -1200], [-980, -1170], [-900, -1250], [-780, -1330],
-      [-640, -1300], [-560, -1210], [-500, -1230], [-440, -1330], [-410, -1235], [-385, -1190], [-352, -1228],
-      [-320, -1340], [-200, -1380], [-40, -1350], [120, -1400], [300, -1390], [460, -1330], [560, -1380], [720, -1450],
-      [880, -1430], [1020, -1340], [1100, -1220], [1060, -1100], [980, -985], [1050, -880], [1200, -820], [1310, -700],
-      [1360, -560], [1340, -400], [1300, -260], [1290, -190], [1250, -150], [1300, -100], [1360, -40], [1335, 60],
-      [1255, 110], [1160, 92], [1080, 88], [1030, 98], [1010, 140], [1008, 230], [1012, 300], [1045, 385],   // G7: the bay's west shore is the quay (the harbour east of it is water)
-      [1110, 440], [1210, 470], [1320, 480], [1410, 455],
-      [1475, 400], [1525, 345], [1580, 380], [1600, 470], [1575, 580], [1510, 670], [1420, 740], [1330, 800],
-      [1240, 880], [1120, 990], [1000, 1060],
-      // AREA 9: the land runs on south past the valley (the Strip) to Area 51's range
-      [930, 1120], [975, 1240], [990, 1380], [950, 1510], [870, 1620], [750, 1700], [600, 1740], [450, 1740],
-      [310, 1700], [200, 1620], [120, 1520], [60, 1420], [20, 1340], [-20, 1300], [-100, 1335], [-190, 1300], [-260, 1220], [-380, 1180], [-520, 1170], [-660, 1130], [-780, 1150],
-      [-900, 1200], [-1040, 1290], [-1150, 1280], [-1180, 1180], [-1170, 1060], [-1230, 900], [-1300, 760],
-      [-1340, 640], [-1375, 580], [-1400, 520], [-1450, 420], [-1440, 300], [-1500, 200], [-1470, 60], [-1420, -60],
-      [-1460, -200], [-1500, -340], [-1560, -480], [-1540, -600], [-1460, -700], [-1420, -800],
-    ];
-    // ── ISLANDS off the coasts: [x, z, r, h]
-    R.islands = [ [-1760, -300, 95, 34], [-1700, 170, 60, 22], [-1850, -70, 40, 18], [1560, -470, 55, 16], [1200, -1560, 70, 20] ];
-
-    // ── REGIONS: soft plateaus of base height (applied in order; each one pulls the land toward h).
-    //    r = full-strength radius, edge = the blend band.
-    R.plateaus = [
-      { id: 'central',  at: [-20, -20],   r: 360, edge: 280, h: 92 },     // AREA 1 (HQ's hills)
-      { id: 'woods',    at: [-700, -430], r: 330, edge: 260, h: 88 },     // THE WOODS' hill country
-      { id: 'west',     at: [-960, 140],  r: 380, edge: 220, h: 104 },    // THE WESTERN HILLS (the glen cuts them)
-      { id: 'badlands', at: [-820, 690],  r: 260, edge: 220, h: 58 },     // AREA 8 (Göbekli's hills)
-      { id: 'desert',   at: [200, 800],   r: 430, edge: 130, h: 34 },     // THE DESERT basin (tilted south, below)
-      { id: 'deepdesert', at: [480, 1400], r: 400, edge: 160, h: 30 },  // AREA 9 (Area 51's range, Area 16, Area 17)
-      { id: 'downs',    at: [330, -330],  r: 170, edge: 150, h: 106 },    // AREA 10 (Stonehenge's chalk; the stones sit on the far, northern slope)
-      { id: 'kingdom',  at: [-20, -690],  r: 210, edge: 200, h: 32 },     // THE KINGDOM's valley floor
-      { id: 'city',     at: [930, 210],   r: 250, edge: 180, h: 20 },     // DISASTER CITY's ground (G7: the old town's level; the city's streets climb it from the quay)
-      { id: 'north',    at: [0, -1140],   r: 420, edge: 200, h: 14 },     // the north coast's tundra plain
-    ];
-
-    // ── BUMPS: single hills (added). The city's hill, the Vatican's hill, the knolls.
-    R.bumps = [
-      { id: 'cityhill',  at: [760, 190],  r: 230, h: 14, p: 1.6 },   // G7: the hill rises on west of the old town toward Ridge 1 (the city's streets carry the rest)
-      { id: 'ridge_g7',  at: [1160, -30], r: 80, h: 18, p: 1.4 },   // G7: a knoll on the headland east of the Bowl breaks the lighthouse's line to the Vatican's hill (R2)
-      { id: 'vatican',   at: [760, -380], r: 150, h: 60, p: 1.4 },   // the Vatican's hill, over the river
-      { id: 'camelot',   at: [-40, -640], r: 95,  h: 22, p: 1.2 },   // Camelot's knoll inside the river's loop
-      { id: 'sheep',     at: [690, 760],  r: 150, h: 110, p: 1.5 },  // HILL 1: hides the Strip from the city
-      { id: 'tikaboo',   at: [770, 1400], r: 170, h: 235, p: 1.6 },  // AREA 17: the lookout over Area 51
-      { id: 'passhills', at: [640, 1150], r: 120, h: 70, p: 1.5 },   // PASS 1's east shoulder (the highway runs between it and Range 1)
-      { id: 'redwoodhills', at: [1060, -560], r: 220, h: 55, p: 1.4 }, // AREA 3's hills, across River 1
-      { id: 'eastridge', at: [470, 110],  r: 220, h: 40, p: 1.5 },   // the ridge between HQ and the city
-      { id: 'crownrise', at: [-30, -300], r: 190, h: 34, p: 1.6 },   // AREA 14: the crest before the kingdom
-    ];
-
-    // ── RANGES: ridged mountain chains along polylines (added; w = half-width).
-    R.ranges = [
-      { id: 'northrange', h: 205, w: 175, pts: [[-1180, -960], [-880, -1010], [-560, -1050], [-250, -1010], [60, -1000], [360, -985], [680, -1010], [960, -900]] },
-      // sketch 3 (mondo: no rings round the Strip or Area 51): open desert ranges, each one straight-ish chain, pines on top.
-      // AREA 5: well west of the Strip, a backdrop across the open valley floor (the pines of Area 12 on its crest)
-      { id: 'springs',     h: 150, w: 95, vary: 0.5, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]] },
-      // RANGE 1: one chain on the north-west and north of Lake 1 (Area 51 sees the lake, the range, Area 17 and the sea)
-      { id: 'groomrange',  h: 125, w: 80, vary: 0.5, pts: [[130, 1560], [180, 1440], [260, 1340], [350, 1290], [450, 1280], [515, 1300]] },
-      { id: 'westcliffs', h: 55,  w: 90,  pts: [[-1290, -600], [-1300, -300], [-1290, -60]] },
-    ];
-
-    // ── PEAKS: explicit mountains.
-    R.peaks = [
-      { id: 'olympus', at: [60, -1000],  h: 410, r: 300, p: 1.55, snow: 245 },
-      { id: 'shasta',  at: [-1040, -440], h: 330, r: 330, p: 2.1, crater: { r: 34, d: 22 }, snow: 230 },   // moved south, clear of Area 2
-      { id: 'peak_ne', at: [640, -1040], h: 270, r: 220, p: 1.6 },
-      { id: 'peak_nw', at: [-560, -1060], h: 260, r: 230, p: 1.6 },
-    ];
-
-    // ── AREA 13: the escarpment south of HQ. North of the line the highlands stand; south of it the land
-    //    drops to the desert as a cliff band. (A polyline; south side = the low side.)
-    R.rim = { top: 96, band: 24, pts: [[-560, 330], [-330, 290], [-100, 270], [150, 290], [420, 330], [700, 390]] };
-
-    // ── THE GLEN: the long straight fault valley of Loch Ness (NE → SW).
-    R.glen = { a: [-600, -105], b: [-1160, 450], floor: 20, flat: 58, slope: 1.1 };
-    // ── LAKES (water level, polygon given as an ellipse along an axis).
-    R.lakes = [
-      { id: 'lochness', label: 'LOCH NESS', a: [-628, -78], b: [-1122, 420], half: 52, level: 18, depth: 30 },
-    ];
-
-    // ── THE CANYON (Canyon 1): a cut with near-vertical walls through Area 8 to River 4.
-    R.canyons = [ { id: 'drywash', label: 'CANYON 1', w: 16, wall: 7, pts: [[-930, 470], [-760, 510], [-600, 560], [-430, 580], [-300, 610], [-175, 640]] } ];
-
-    // ── MESAS in the desert and Area 8 (noise-picked, terraced) and THE DUNES.
-    R.mesas = { box: [-700, 420, 980, 1720], avoid: [[395, 890, 190], [-330, 840, 200], [690, 760, 130], [-150, 700, 90], [-110, 500, 110], [425, 1455, 170], [770, 1400, 160],
-      [560, 1250, 80], [470, 1215, 70], [430, 1090, 80], [500, 1160, 70], [425, 700, 70], [560, 650, 70],
-      [-600, 722, 80]], thr: 0.30, h: 34 };   // G5: Route 1's gap between Area 8' mesas (it cut 44 m through one)
-    R.dunes = { at: [-360, 860], r: 230, h: 9, dir: [0.93, 0.36], wave: 34 };
-    // ── BASINS: flat floors inside the rings. VALLEY 1 (the Strip's floor) and LAKE 1 (the playa at Area 51).
-    R.basins = [
-      { id: 'valley', at: [395, 890], rx: 130, rz: 175, h: 38 },
-      { id: 'playa',  at: [420, 1455], rx: 140, rz: 100, h: 34, playa: true },
-    ];
-    // ── BEACHES: a sand strip graded gently down to the water. THE BAY's beach, under the Bayside Mall.
-    R.beaches = [ { id: 'baybeach', w: 40, pts: [[1052, 372], [1112, 428], [1210, 458], [1320, 468], [1405, 444]] } ];
-    // ── FOREST boosts (added to the forest weight): a disc (`at`, r) or a band along `pts` (r = its half-width).
-    //    `dry`: a forest that grows in the desert too (the pines of a desert sky island), only above `minH`.
-    //    sketch 3 (mondo: more forest, the woods' places spread out, sight broken up):
-    R.forests = [
-      { id: 'fairy', label: 'THE FAIRY FOREST', at: [-400, -640], r: 230, add: 0.55 },                  // the woods nearest Camelot
-      { id: 'redwood', label: 'AREA 3', at: [1060, -560], r: 260, add: 0.8 },                 // the Redwoods moved here (NE, across the river)
-      { id: 'pines', label: 'AREA 4', at: [920, 900], r: 250, add: 0.8 },                      // the Staircase moved here (SE, below Hill 1)
-      { id: 'eastwood', label: 'AREA 11', pts: [[330, 30], [470, 90], [600, 120]], r: 95, add: 0.55 },   // on the ridge between HQ and the city
-      { id: 'charleston', label: 'AREA 12', dry: true, minH: 70, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]], r: 120, add: 1.1 },
-      { id: 'sheeppines', dry: true, minH: 75, at: [690, 760], r: 160, add: 1.1 },   // Hill 1's crown of pines
-      { id: 'groompines', dry: true, minH: 65, pts: [[130, 1560], [180, 1440], [260, 1340], [350, 1290], [450, 1280], [515, 1300]], r: 100, add: 1.1 },
-      { id: 'passpines', dry: true, minH: 55, at: [640, 1150], r: 130, add: 1.1 },   // Pass 1's east shoulder
-    ];
-    // ── URBAN beyond the downtown ellipse: THE STRIP down the desert highway through the valley.
-    R.urban = [ { id: 'strip', w: 55, pts: [[412, 790], [403, 860], [393, 940], [388, 1000]] } ];   // one straight boulevard, north to south, like the real one
-    // ── THE BERMUDA TRIANGLE: far out in the south-east Deep, behind the land from the bay (a trench under it, the cay on a shoal).
-    R.bermuda = { at: [1400, 1520], trench: 360 };
-    // ── TUNNELS (underground; the map draws them dotted): THE STORM DRAIN from Dead Man's Cave in the woods, under
-    //    the highlands, to the sewers under Downtown and out at the harbour. It falls the whole way (R7).
-    R.tunnels = [ { id: 'drain', label: 'THE STORM DRAIN', pts: [[-470, -530], [-330, -420], [-160, -300], [40, -160], [250, -20], [480, 80], [700, 180], [880, 280], [960, 330], [1035, 238]] } ];
-
-    // ── RIVERS: source → mouth. The generator carves each monotone downhill. w = channel half-width (grows downstream).
-    //    THE MOUTH (G3, R7): a river that reaches the coast (its line within `coast` m of it) meets the sea at the sea's level
-    //    (+ lift): its run-out — up to `run` m, never past the foot of a falls (a stretch steeper than `falls`) — falls to it in
-    //    one even grade (at least `grade`), the channel deepening with it; never a step of water standing over the sea (the
-    //    River 1 stood 4.8 m over it at the coast, River 3 4 m).
-    R.riverMouth = { coast: 16, lift: 0.05, grade: 0.02, run: 400, falls: 0.35 };
-    R.rivers = [
-      { id: 'great', label: 'RIVER 1', w0: 4, w1: 16, valley: 90,
-        pts: [[-330, -925], [-290, -820], [-230, -730], [-150, -690], [-110, -610], [-40, -565], [40, -600], [70, -680],
-              [170, -730], [330, -760], [520, -740], [680, -650], [800, -560], [880, -470], [940, -350], [1010, -250],
-              [1110, -175], [1210, -150], [1330, -140]] },
-      { id: 'creek', label: 'RIVER 2', w0: 2.5, w1: 6, valley: 50, falls: [[-633, -150]],
-        pts: [[-880, -585], [-800, -605], [-720, -612], [-640, -600], [-578, -570], [-560, -500], [-575, -420], [-600, -330], [-620, -240], [-635, -160], [-622, -88]] },
-      { id: 'ness', label: 'RIVER 3', w0: 7, w1: 11, valley: 45, falls: [[-1235, 505]],
-        pts: [[-1128, 430], [-1180, 470], [-1240, 510], [-1300, 540], [-1370, 560]] },
-      { id: 'nile', label: 'RIVER 4', w0: 4, w1: 14, valley: 70,
-        pts: [[-150, 330], [-175, 440], [-160, 560], [-165, 650], [-140, 760], [-120, 880], [-110, 1000], [-105, 1120], [-100, 1230]] },
-      { id: 'olympus_brook', label: '', w0: 1.5, w1: 3, valley: 25,
-        pts: [[110, -900], [120, -820], [100, -760], [60, -700]] },
-    ];
-
-    // ── ROADS: the highway ring (ROUTE 1), its spurs, the country roads and the trails.
-    //    type: highway | road | lane | trail. grade = max rise per metre the baker allows (trails follow the ground).
-    R.roads = [
-      { id: 'ring', label: 'ROUTE 1', type: 'highway', w: 12, grade: 0.075, loop: true, pts: [
-        [770, 330], [775, 150], [800, -20], [790, -170], [720, -290], [620, -400], [540, -520], [420, -570], [260, -580],
-        [110, -545], [-20, -510], [-160, -505], [-300, -470], [-430, -445], [-520, -420], [-600, -385], [-690, -375],
-        [-750, -330], [-745, -270], [-700, -185], [-650, -110], [-585, -40], [-560, 80], [-600, 200], [-660, 315],
-        [-760, 420], [-880, 500], [-990, 565], [-1050, 630], [-1070, 690], [-940, 745], [-800, 765],
-        [-660, 745], [-520, 700], [-410, 650], [-290, 640], [-165, 690], [-20, 640], [140, 600], [300, 585],
-        [440, 600], [580, 600], [700, 580], [760, 470]] },
-      // G5: re-laid (switchbacks down the Rise's north face, not a 204 m viaduct)
-      { id: 'crown', label: 'ROUTE 2', type: 'road', w: 7, grade: 0.1, pts: [[0, -40], [14, -60], [27, -83], [30, -107], [30, -131], [36, -154], [45, -179], [48, -203], [55, -226], [68, -247], [68, -269], [57, -292], [48, -315], [35, -337], [30, -345], [10, -358], [-11, -372], [-35, -377], [-58, -370], [-82, -362], [-106, -354], [-128, -341], [-150, -329], [-172, -318], [-187, -298], [-207, -283], [-229, -291], [-241, -313], [-241, -337], [-222, -355], [-200, -366], [-177, -372], [-153, -379], [-132, -396], [-120, -416], [-107, -437], [-84, -447], [-60, -455], [-36, -456], [-11, -450], [11, -441], [31, -427], [48, -410], [65, -393], [87, -378], [111, -369], [134, -372], [146, -393], [138, -416], [117, -429], [94, -440], [72, -451], [49, -462], [27, -474], [4, -485], [-19, -495], [-30, -500], [-40, -530], [-40, -630]] },
-      { id: 'east', label: 'ROUTE 3', type: 'road', w: 7, grade: 0.1, pts: [[40, 0], [200, 40], [350, 80], [346, 104], [348, 128], [360, 150], [377, 166], [402, 169], [426, 159], [445, 145], [454, 123], [448, 99], [439, 74], [430, 52], [412, 34], [395, 17], [388, -6], [401, -26], [421, -39], [445, -43], [467, -31], [483, -12], [497, 8], [508, 30], [517, 53], [529, 75], [539, 98], [547, 122], [556, 146], [569, 166], [592, 176], [616, 178], [640, 182], [665, 190], [688, 196], [712, 196], [736, 190], [754, 172], [771, 155], [775, 150]] },   // G5: winds down the Ridge 1 (was a 287 m viaduct)
-      { id: 'west', label: 'ROUTE 5', type: 'lane', w: 5, grade: 0.12, pts: [[-40, 0], [-190, 25], [-350, 55], [-500, 70], [-560, 82]] },   // G5: meets Route 1 in its cutting over the ridge (was an 86 m drop onto stilts to the shore)
-      { id: 'south', label: 'ROUTE 4', type: 'road', w: 7, grade: 0.1, pts: [[0, 40], [20, 160], [50, 250], [100, 281], [150, 291], [200, 301], [250, 309], [300, 319], [350, 329], [400, 340], [450, 351], [490, 359], [515, 385], [500, 440], [482, 500], [468, 560], [440, 600]] },   // G5: a shelf down Area 13's face to the desert highway's turn (was a 189 m viaduct)
-      // THE DESERT HIGHWAY: leaves Route 1 below Area 13, rounds Hill 1, enters the valley by its east gap, runs the
-      // Strip, leaves by the south gap and crosses Area 9 to Area 16. Route 6 goes on from Area 16 to Area 51.
-      { id: 'desert_hwy', label: 'THE DESERT HIGHWAY', type: 'highway', w: 10, grade: 0.075, pts: [[440, 600], [432, 680], [418, 760], [408, 830], [398, 900],
-        [390, 970], [398, 1040], [445, 1105], [505, 1165], [545, 1215], [560, 1250]] },
-      { id: 'groom', label: 'ROUTE 6', type: 'lane', w: 5, grade: 0.12, pts: [[560, 1250], [612, 1290], [656, 1358], [668, 1428], [642, 1478], [572, 1480], [500, 1468]] },
-      { id: 'bay', label: 'ROUTE 7', type: 'road', w: 7, grade: 0.1, pts: [[922, 326], [960, 350], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
-      { id: 'vatican', label: 'ROUTE 8', type: 'lane', surface: 'paved', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [787, -445]] },
-      { id: 'henge', label: 'ROUTE 9', type: 'lane', w: 4, grade: 0.14, pts: [[380, -570], [420, -540], [455, -500]] },
-      { id: 'estate', label: 'ROUTE 10', type: 'lane', w: 4, grade: 0.14, pts: [[-990, 565], [-1040, 512], [-1058, 470], [-1020, 420], [-972, 369], [-920, 318], [-870, 268], [-820, 226], [-778, 190]] },
-      { id: 'giza', label: 'ROUTE 11', type: 'lane', w: 5, grade: 0.12, pts: [[-290, 640], [-300, 690], [-320, 715]] },
-      { id: 'stadium', label: '', type: 'road', w: 8, grade: 0.1, pts: [[800, -20], [900, -50], [990, -70]] },
-      // G7: Downtown's own roads out (it stands turned: the avenue's end faces west, the cross street's south, the bay door's alley north)
-      { id: 'city_west', label: '', type: 'road', w: 8, grade: 0.1, pts: [[773, 210], [803, 210], [833, 210]] },
-      { id: 'city_north', label: '', type: 'road', w: 8, grade: 0.1, pts: [[986, 96], [975, 30], [950, -35], [945, -60]] },
-      { id: 'gobekli', label: '', type: 'lane', w: 4, grade: 0.14, pts: [[-800, 765], [-790, 700], [-780, 650]] },
-      // trails (dirt): they follow the ground
-      { id: 'olympus_trail', label: 'TRAIL A', type: 'trail', w: 2.4, grade: 0.3, pts: [[-40, -685], [-10, -720], [30, -760], [80, -800], [20, -840], [90, -880], [30, -915], [85, -950], [50, -975], [60, -995]] },
-      { id: 'shasta_trail', label: 'TRAIL B', type: 'trail', w: 2.2, grade: 0.3, pts: [[-716, -371], [-726, -420], [-730, -470], [-800, -492], [-860, -525], [-900, -560], [-945, -525], [-985, -485], [-1015, -458], [-1036, -442]] },
-      // THE FAIRY FOREST (nearest Camelot): Trail C leaves Camelot's west gate, crosses River 1 on a footbridge
-      { id: 'woods_trail', label: 'TRAIL C', type: 'trail', w: 2.2, grade: 0.3, pts: [[-40, -685], [-95, -672], [-150, -660], [-215, -648], [-285, -632], [-360, -625]] },
-      { id: 'cave_trail', label: 'TRAIL D', type: 'trail', w: 2.2, grade: 0.3, pts: [[-430, -445], [-455, -490], [-470, -530], [-440, -580], [-400, -610], [-360, -625]] },
-      // ROUTE 12: from the Bowl up the coast, over River 1's mouth, into Area 3
-      { id: 'redwood', label: 'ROUTE 12', type: 'lane', w: 5, grade: 0.12, pts: [[990, -70], [1050, -120], [1090, -200], [1100, -290], [1090, -380], [1070, -470], [1050, -545]] },
-      // AREA 4: a trail off Route 7's end, south into the pines, to the Staircase
-      { id: 'stair_trail', label: 'TRAIL E', type: 'trail', w: 1.8, grade: 0.3, pts: [[1170, 520], [1110, 600], [1050, 690], [990, 780], [950, 860], [935, 925]] },
-      // AREA 6 (on the loch's north-west shore, across the water from the estate): a loop off Trail G
-      { id: 'grove_trail', label: 'TRAIL F', type: 'trail', w: 2, grade: 0.3, pts: [[-780, -30], [-792, -100], [-800, -172], [-860, -140], [-905, -100], [-928, -70], [-905, 0], [-870, 60]] },
-      { id: 'loch_path', label: 'TRAIL G', type: 'trail', w: 2, grade: 0.3, pts: [[-585, -40], [-610, -120], [-690, -110], [-780, -30], [-870, 60], [-950, 135]] },
-      { id: 'tikaboo_trail', label: 'TRAIL H', type: 'trail', w: 1.8, grade: 0.35, pts: [[656, 1358], [712, 1330], [690, 1356], [748, 1344], [716, 1372], [770, 1366], [742, 1388], [766, 1398]] },
-      { id: 'north_pass', label: 'TRAIL I', type: 'trail', w: 2.2, grade: 0.3, pts: [[-250, -700], [-330, -800], [-390, -880], [-430, -960], [-440, -1040], [-420, -1130], [-380, -1220]] },
-      { id: 'nile_path', label: '', type: 'trail', w: 2, grade: 0.3, pts: [[-150, 700], [-100, 820], [-90, 950], [-200, 1020], [-330, 1040]] },
-      { id: 'coast_path', label: 'TRAIL J', type: 'trail', w: 1.8, grade: 0.3, pts: [[-1150, 500], [-1250, 380], [-1290, 200], [-1300, 0], [-1280, -200]] },
-      // G0 (2026-09-28): every place on a route (R5) — the lighthouse on the bay's head, the haunted house by the estate
-      { id: 'lighthouse_path', label: 'TRAIL K', type: 'trail', w: 1.8, grade: 0.3, pts: [[1205, 545], [1290, 530], [1380, 505], [1450, 460], [1490, 405], [1505, 365]] },
-      { id: 'haunted_drive', label: 'ROUTE 13', type: 'lane', w: 4, grade: 0.14, pts: [[-778, 190], [-735, 152], [-690, 118]] },
-    ];
-
-    // ── BRIDGES the sketch draws where a road crosses water (the baker finds them; these just name them).
-    R.bridgeNames = { great: 'BRIDGE 1', ness: 'BRIDGE 2', nile: 'BRIDGE 3', creek: 'BRIDGE 4', foot: 'FOOTBRIDGE' };
-    // ── G5 THE ROADS (2026-09-28): how the bake grades them. `fill` = the most a road may stand over the ground (a trail `trailFill`)
-    //    before it must cut into the slope instead — so a road leaves the ground only over water (± `approach` m, its deck `clear` m
-    //    over the water) or on a NAMED VIADUCT below. `railDrop`: a guard rail wherever the edge drops more than this (m), `railOff` m
-    //    past the edge, the drop read `railProbe` m past the shoulder; runs shorter than `railMinRun` m are dropped. `looks`: a river's
-    //    bridge (River 4's is a truss); every other span over water is a girder deck, a trail's a timber footbridge.
-    R.roadRules = { fill: 6.5, trailFill: 2.4, approach: { highway: 36, road: 24, lane: 16, trail: 8 }, clear: { highway: 9, road: 5, lane: 5, trail: 2 }, smallRiver: 8, clearSmall: 3,
-        railDrop: 2, railOff: 1.0, railProbe: [1.5, 3.5], railMinRun: 8, looks: { nile: 'truss' }, names: { crown: 'BRIDGE 5' } };
-    // ── THE NAMED VIADUCTS (fork 6's default: keep Bridges 6 and 7 as landmarks — arched concrete).
-    //    Inside a zone ([x, z, r]) the road keeps its own graded line however high it stands; everywhere else it is regraded.
-    R.viaducts = [
-      { id: 'lochhead', road: 'ring', label: 'BRIDGE 6', look: 'arch', zones: [[-632, -88, 118]] },
-      { id: 'glen', road: 'ring', label: 'BRIDGE 7', look: 'arch', zones: [[-873, 494, 106], [-680, 338, 56], [-776, 432, 24]] },
-    ];
-
-    // ── PLACES: where each existing place stands on THE LAND (the site pads) and its label on the map.
-    //    pad = flattened disc (r) at the land's height there (or at y). kind: site | poi | dungeon | door
-    R.places = [
-      { id: 'hq',        label: 'D.O.O.R. HQ',         at: [0, 0],        pad: 64, kind: 'hub', region: 'highlands', top: 26 },
-      { id: 'downtown',  label: 'DOWNTOWN',            at: [922, 210],    padY: 0.4, kind: 'site', city: true, region: 'city', top: 120 },   // G7: the quay's level (its streets climb its slope)
-      { id: 'harbour',   label: 'THE HARBOUR',         at: [1065, 218],   padY: 0.4, sea: true, kind: 'site', region: 'city', top: 20 },   // G7: east of the quay (the sea at 0 = its own −0.4)
-      { id: 'mall',      label: 'THE BAYSIDE MALL',    at: [1205, 548],   pad: 45, padY: 5, kind: 'site', region: 'city', top: 14 },
-      { id: 'lighthouse',label: 'THE LIGHTHOUSE',      at: [1505, 365],   kind: 'poi', region: 'city', top: 28 },
-      { id: 'stadium',   label: 'THE BOWL',            at: [990, -70],    pad: 85, padY: 22, kind: 'site', region: 'city', top: 34 },
-      { id: 'strip',     label: 'THE STRIP',           at: [398, 890],    pad: 70, padY: 35.6, kind: 'site', region: 'desert', top: 70 },
-      { id: 'vatican',   label: 'VATICAN CITY',        at: [787, -445],   pad: 70, padY: 44.2, kind: 'site', region: 'downs', top: 48 },
-      { id: 'henge',     label: 'STONEHENGE',          at: [455, -500],   pad: 45, padY: 53.8, kind: 'site', region: 'downs', top: 7 },
-      { id: 'camelot',   label: 'CAMELOT',             at: [-40, -685],   pad: 70, padY: 43.6, kind: 'site', region: 'kingdom', top: 34 },
-      { id: 'olympus',   label: 'MT OLYMPUS',          at: [60, -1000],   pad: 30, padY: 325.7, kind: 'site', region: 'north', top: 12, peak: true },
-      { id: 'shasta',    label: 'MT SHASTA',           at: [-1040, -440], padY: 233.3, kind: 'site', region: 'woods', top: 8, peak: true },
-      { id: 'clearing',  label: 'THE CLEARING',        at: [-360, -625],  pad: 30, padY: 58.3, kind: 'site', region: 'woods', top: 3 },
-      { id: 'redwoods',  label: 'THE REDWOODS',        at: [1050, -560],  padY: 71, kind: 'site', region: 'redwoodcoast', top: 60 },
-      { id: 'grove',     label: 'BOHEMIAN GROVE',      at: [-800, -175],  pad: 30, padY: 104.3, kind: 'site', region: 'woods', top: 12 },
-      { id: 'stair',     label: 'THE STAIRCASE',       at: [935, 930],    pad: 12, padY: 11.4, kind: 'poi', region: 'barrens', top: 6 },
-      { id: 'ritual',    label: 'THE RITUAL GROUND',   at: [-930, -70],   pad: 14, padY: 96.5, kind: 'poi', region: 'woods', top: 3 },
-      { id: 'deadmans',  label: 'DEAD MAN’S CAVE',     at: [-470, -530],  pad: 10, padY: 75.9, kind: 'dungeon', region: 'woods', top: 3 },
-      { id: 'estate',    label: 'THE ESTATE',          at: [-778, 188],   pad: 70, padY: 26, kind: 'site', region: 'glen', top: 10 },
-      { id: 'haunted',   label: 'THE HAUNTED HOUSE',   at: [-690, 118],   pad: 26, padY: 41.4, kind: 'site', region: 'glen', top: 16 },
-      { id: 'urquhart',  label: 'AREA 15',             at: [-965, 140],   pad: 24, kind: 'poi', region: 'glen', top: 14 },
-      { id: 'gobekli',   label: 'GÖBEKLI TEPE',        at: [-780, 650],   pad: 45, padY: 52.5, kind: 'site', region: 'badlands', top: 6 },
-      { id: 'giza',      label: 'GIZA',                at: [-330, 725],   pad: 95, padY: 24.4, kind: 'site', region: 'desert', top: 70 },
-      { id: 'babel',     label: 'BABEL',               at: [-360, 1040],  pad: 60, padY: 15.3, kind: 'site', region: 'desert', top: 150 },
-      { id: 'area51',    label: 'AREA 51',             at: [425, 1455],   padY: 33.9, kind: 'site', region: 'deepdesert', top: 22 },
-      { id: 'rachel',    label: 'AREA 16',             at: [566, 1244],   pad: 22, kind: 'poi', region: 'deepdesert', top: 8 },
-      { id: 'tikaboo',   label: 'AREA 17',             at: [768, 1400],   kind: 'poi', topSearch: 24, region: 'deepdesert', top: 3, peak: true, lookout: true },
-      { id: 'rim',       label: 'AREA 13',             at: [45, 262],     kind: 'poi', region: 'highlands', top: 2, lookout: true },
-      { id: 'crownrise', label: 'AREA 14',             at: [-32, -368],   kind: 'poi', region: 'highlands', top: 2, lookout: true },
-      { id: 'bermuda',   label: 'THE BERMUDA TRIANGLE',at: [1400, 1520],  kind: 'sea', region: 'sea', top: 2 },
-      // G8 (2026-09-29): the Triangle's part stands with its cay on the cay's place and its maelstrom (the whirlpool) where the part has it;
-      // the Dutchman rides at anchor (her water is the sea's); the station on the shelf (turned: its way in faces the landing); the Pole's
-      // village on the pack. padY 0 on a sea site = the sea's surface (the part's own sea stands on it).
-      { id: 'cay',       label: 'THE CAY',             at: [1320, 1440],  padY: 0, kind: 'site', region: 'sea', top: 6 },
-      { id: 'dutchman',  label: 'THE FLYING DUTCHMAN', at: [1500, 1580],  padY: 0, kind: 'site', region: 'sea', top: 17 },   // G8: top from her bank (−5.6): the maintop ~11 m over the sea
-      { id: 'whirlpool', label: 'THE WHIRLPOOL',       at: [1342, 1360],  kind: 'door', region: 'sea', top: 2 },
-      { id: 'station',   label: 'ANTARCTICA · THE STATION', at: [110, 2215], padY: 11.5, kind: 'site', region: 'edge', top: 14 },
-      { id: 'flatlands', label: 'THE FLAT LANDS (on the wall)', at: [110, 2440], kind: 'site', region: 'edge', top: 3 },
-      { id: 'pole',      label: 'THE NORTH POLE',      at: [0, -2150],    padY: 1.0, kind: 'site', region: 'arctic', top: 18 },
-      { id: 'sewers',    label: 'THE SEWERS',          at: [960, 330],    kind: 'dungeon', region: 'city', top: 2 },
-      { id: 'cavern',    label: 'THE CAVERN',          at: [-895, -585],  kind: 'dungeon', region: 'woods', top: 3 },
-      { id: 'ley',       label: 'THE LEY LINES',       at: [-560, 820],   kind: 'dungeon', region: 'badlands', top: 2 },
-      { id: 'dumb',      label: 'THE D.U.M.B.',        at: [440, 1545],   kind: 'dungeon', region: 'deepdesert', top: 2 },
-    ];
-
-    // Regions' labels for the map (big italic names).
-    R.regions = [
-      { label: 'AREA 1', at: [290, 200] }, { label: 'THE KINGDOM', at: [200, -680] },
-      { label: 'AREA 2', at: [-330, -1000] }, { label: 'THE WOODS', at: [-820, -830] },
-      { label: 'THE FAIRY FOREST', at: [-360, -790], small: true }, { label: 'AREA 3', at: [1100, -720], small: true },
-      { label: 'AREA 4', at: [1000, 1010], small: true }, { label: 'AREA 5', at: [150, 790], small: true }, { label: 'AREA 6', at: [-1130, -330], small: true },
-      { label: 'AREA 7', at: [-930, 330] }, { label: 'AREA 8', at: [-900, 560] },
-      { label: 'THE DESERT', at: [-130, 890] }, { label: 'AREA 9', at: [470, 1680] },
-      { label: 'DISASTER CITY', at: [860, 450] }, { label: 'THE BAY', at: [1250, 330], small: true }, { label: 'AREA 10', at: [360, -250] },
-      { label: 'THE DEEP', at: [-2000, 300] }, { label: 'THE DEEP', at: [1950, -300] }, { label: 'THE DEEP', at: [1520, 1230] }, { label: 'THE ARCTIC', at: [-400, -1950] },
-      { label: 'THE ICE WALL', at: [-1150, 2230] }, { label: 'ANTARCTICA', at: [560, 2240] },
-    ];
-
-
-    // ── G0 (2026-09-28): what the sketch hard-coded, now in the recipe
-    R.regionAmp = { central: 30, woods: 34, west: 30, badlands: 22, desert: 5, deepdesert: 6, downs: 7, kingdom: 7, city: 9, north: 9 };   // the hills' amplitude per plateau
-    R.city = { at: [900, 190], rx: 250, rz: 312 };                // DISASTER CITY's blocks (an ellipse, roughened)
-    R.farms = [ { at: [-765, 235], r: 110 } ];                    // the estate's fields (the kingdom's are its valley floor)
-    R.hubMinY = 70;                                               // HQ's pad never sinks below this
-    // the region names the map prints (a place's `region` above)
-    R.regionNames = { highlands: 'AREA 1', city: 'DISASTER CITY', desert: 'THE DESERT', deepdesert: 'AREA 9',
-        badlands: 'AREA 8', downs: 'AREA 10', kingdom: 'THE KINGDOM', north: 'AREA 2', woods: 'THE WOODS',
-        redwoodcoast: 'AREA 3', barrens: 'AREA 4', glen: 'AREA 7', sea: 'THE DEEP', edge: 'ANTARCTICA', arctic: 'THE ARCTIC' };
-    // THE SIGHT RULE (R2): a place's pad may see another place's GROUND only when that place is a peak or a lookout, is in
-    // the same region, or lies across open sea (≥ `sea` of the line over water or ice). Peaks and lookouts are the reward
-    // and are not checked from. `never`: mondo's named separations (2026-09-28), not even the tops; `both` = checked both ways.
-    R.sight = { eye: 1.7, target: 3, maxD: 2600, forest: 110, canopyForest: 20, canopyCity: 28, clear: 30, sea: 0.35, lookoutReach: 40, lookoutDrop: 14,
-        underground: ['bermuda', 'whirlpool', 'sewers', 'cavern', 'ley', 'dumb'],
-        never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
-            ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
-    // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: 'e6f6667c8a', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
-    return R;
-})();
-/* the recipe's readers (the map, the bake and the tests read the land through these) */
-function hqLandPlace(id) { return HQ_LAND.places.find(p => p.id === id) || null; }
-function hqLandRegionLabel(region) { return HQ_LAND.regionNames[region] || String(region || '').toUpperCase(); }
-function hqLandBaked() { return !!(HQ_LAND.baked && HQ_LAND.baked.id); }
-/* a baked file's url ('land.json', 'land-map.png', 'tiles/…'): the bake id rides as ?b= so a re-bake is a new url; null before the first bake */
-function hqLandUrl(name) { return hqLandBaked() ? HQ_LAND.baked.base + name + '?b=' + HQ_LAND.baked.id : null; }
-/* R2 as one pure rule (the bake's sight test and the tests share it): may place `a`'s pad see place `b`'s GROUND?
-   `seaShare` = the fraction of the line a→b over water or ice. true for an exempt viewer (a peak or a lookout). */
-function hqLandSightOk(a, b, seaShare) {
-    const A = hqLandPlace(a), B = hqLandPlace(b);
-    if (!A || !B) return true;
-    if (A.peak || A.lookout) return true;
-    if (B.peak || B.lookout || A.region === B.region) return true;
-    return (seaShare || 0) >= HQ_LAND.sight.sea;
-}
-/* mondo's named separations: the pairs `a` must not see at all (the ground or the top); returns the ids */
-function hqLandNever(a) {
-    const out = [];
-    HQ_LAND.sight.never.forEach(([x, y, both]) => { if (x === a) out.push(y); else if (both && y === a) out.push(x); });
-    return out;
-}
-/* ══ THE LAND UNDERFOOT (WORLD_GEOGRAPHY_PLAN.md §5.2, G2 — 2026-09-28) ═══════════════════════════════════════════════════════
-   The walker stands on the baked land. HQ_LAND_RULES are the numbers; HQ_LAND_STORE holds what has landed (the index read from
-   land.json, the 2 m tiles in an LRU, the whole world at 8 m from sea.bin); the hqLand* readers below are THE SAMPLER — one set
-   of pure functions the renderer's walker, its camera, its chunk builder and the tests all read, so what you stand on is what is
-   drawn:
-     hqLandBase(x, z)     the baked ground: Catmull-Rom over the 2 m samples (a tile not landed yet reads the 8 m world grid)
-     hqLandDetail(x, z)   deterministic value noise near the walker (±0.3 m on grass, ±1.2 m on rock; nothing on a road, a
-                          street or a river bed — they are stamped at their exact height by the bake)
-     hqLandHeight(x, z)   the two added: the drawn ground
-     hqLandSlope / hqLandCliff   the baked ground's steepness and the cliff sheet's weight there (the chunk's `aLand.x`)
-     hqLandFeet(x, z)     the walker's ground, or null where the face is steeper than walk.maxSlope — and every such face is
-                          drawn as cliff (cliff.to < maxSlope), so the walker is never refused by nothing (R3)
-     hqLandMaterial / hqLandWater / hqLandForest   the tile's layers (nearest sample)
-   Tiles are fetched by the renderer in the order hqLandWant returns (nearest first) and filed with hqLandPut, which drops the
-   least recently touched past tiles.cap (hqLandTouch marks the walker's neighbourhood). Nothing here fetches. */
-const HQ_LAND_RULES = {
-    chunk: 64,                                                           // m: a near chunk's side
-    lods: [ { step: 1, to: 80 }, { step: 2, to: 176 }, { step: 4, to: 272 }, { step: 8, to: 400 } ],   // m: a chunk's vertex spacing by its distance from the walker (centre to centre)
-    camFar: 460,                                                         // m: the near camera's reach on the land (the building's rooms keep 274)
-    skirt: 0.8,                                                          // m (+ three steps): the curtain under a chunk's edge that hides the seams between levels
-    buildMs: 6,                                                          // ms a frame the chunk builder may spend
-    reLodM: 6,                                                           // m the walker moves before the chunk set is re-read
-    /* THE FAR PASS: the world past the near chunks from the 8 m grid, drawn first with its own lens (near → far, m), then the
-       depth is cleared and the near scene drawn with the building's camera (274 m). `fine` spacing inside fineTo, else `coarse` */
-    far: { near: 30, far: 7200, block: 256, fine: 16, coarse: 32, fineTo: 1300, rebuildM: 128 },
-    tiles: { cap: 72, reach: 420, inFlight: 4 },                         // the LRU (tiles), how far ahead to fetch (m), fetches at once
-    detail: { wl: 9.5, wl2: 3.4, mix2: 0.3 },                            // m: the detail noise's two wavelengths, the second's share
-    walk: { maxSlope: 1.0, probe: 0.5 },                                 // the steepest face a walker climbs; the slope's probe (m)
-    sites: { margin: 3, band: 24, keepOff: 1.5, build: 300, drop: 380 },   // G6 THE SITES ON PADS: the level box past the parts (m), the blend back to the land (m), how far the trees / grass / roads keep off it (m), the walker's distance at which a site is built beside the land / let go (m)
-    cliff: { from: 0.72, to: 0.97 },                                     // the drawn cliff: slope 0.72 starts it, 0.97 is all cliff
-    sea: { y: 0, color: 0x2e627c, far: 0x3a6f88 },                       // the sea's level; its near / far colours (G3: the water shader's own, below)
-    /* THE WATER (G3, §5.4): the sea stands at sea.y wherever its ground is below it; the rivers and the lakes are the bake's water
-       layer (each tile's surface: a river's falling one, a lake's one level). A river sample within `nearSea` m of the sea over ground
-       below it is the sea's (a mouth is one surface, never two sheets). `hull`: the most a hull's five probes may differ in water
-       level (one body of water — no sailing up or over a falls). `current`: a river carries a swimmer and a skiff downhill at k × its
-       grade m/s (capped; the grade read over `base` m either side). `falls`: a stretch steeper than `grade` that falls at least `drop` m
-       is drawn as a waterfall (R7); white water past `rapids`. `look`: the colours by depth (shallow → deep over deepM m), the fresh
-       water's tint, the foam band (m), the ripple's scale (m), the bucket's own water sheets (TERRAIN_SPRITES keys, fork 8's rule).
-       `depthTex`: the near sea's depth window (n samples every step m, re-centred when the camera has moved reM m). `moor`: where the
-       skiffs lie — the spot nearest `at` within r m where the hull floats and dry ground is in the step-off's reach (hqLandMooring). */
-    water: {
-        nearSea: 0.6, hull: 0.6,
-        current: { k: 45, max: 1.5, min: 0.0015, base: 6 },
-        falls: { grade: 0.35, drop: 2.0 }, rapids: 0.03,
-        look: { shallow: 0x3e9c96, mid: 0x2c6780, deep: 0x0d2a40, fresh: 0x2f5c52, foam: 0xeef6f4, deepM: 22, foamM: 1.4, ripple: 5.5, sheet: 'water', waves: 'waves_1' },
-        depthTex: { n: 256, step: 2, reM: 96 },
-        moor: [
-            { id: 'loch', at: [-778, 128], r: 40 },          // Loch Ness below the estate (the south-east shore)
-            { id: 'bay', at: [1210, 484], r: 40 },           // the bay's beach under the Bayside Mall
-            { id: 'harbour', at: [1026, 244], r: 40 },       // the harbour's quay
-            { id: 'river', at: [1064, -186], r: 40 },        // River 1's lower reach, under the Stadium
-        ],
-    },
-    ao: { r: 5, k: 0.08, min: 0.58 },                                    // the ground's own AO: a hollow `r` m across darkens by k a metre
-    /* THE TREES AND THE GRASS (G4, §5.5; mondo 2026-09-28: "use only the trees, grass, plants and props the game already has").
-       Every model is one the game already draws: the board's foliage OBJs (Assets/foilage/OBJ Tree_1 / 3 / 6 / 9, DeadTree_2 / 5,
-       wearing the bucket's wood.png + leaves.png), the woods batch's Meshy pine, dead snag and fern (Assets/misc), the D.O.O.R.
-       kit's two asteroid rocks (no grass blades since 2026-09-29: the ground's sheet is the grass). `src` = 'foliage:<OBJ name>' |
-       'misc:<_MISC_GLB key>' | 'door:<catalogue key>'. Placement is a pure function of the baked tile (hqLandFlora): a jittered
-       grid, a hash-local-maximum spacing test (no two trunks nearer than minSp), and the slope / water / road / pad windows.
-       `r` = a trunk's blocker radius (m, the most it may be: the renderer measures each model's trunk and writes `rM`, a share of
-       the tree's height, and the blocker is the smaller — never wider than the bark drawn, R3). The forest stays walkable
-       between the trunks: minSp − 2 r leaves more than a body's width. */
-    flora: {
-        trees: { cell: 3.6, minSp: 3.2, jit: 0.9, from: 0.4, to: 0.9, max: 0.82, lone: 0.035, slope: 0.62, road: 3.5, pad: 5, shore: 0.6, hq: 8 },
-        kinds: [
-            { id: 'oak',   src: 'foliage:Tree_1',     h: [8, 12.5],  r: 0.3 },
-            { id: 'ash',   src: 'foliage:Tree_3',     h: [8.5, 13],  r: 0.3 },
-            { id: 'elm',   src: 'foliage:Tree_6',     h: [7, 11],    r: 0.3 },
-            { id: 'tall',  src: 'foliage:Tree_9',     h: [12, 18],   r: 0.36 },
-            { id: 'dead',  src: 'foliage:DeadTree_2', h: [6, 9],     r: 0.26 },
-            { id: 'dead2', src: 'foliage:DeadTree_5', h: [6, 9],     r: 0.26 },
-            { id: 'pine',  src: 'misc:pine',          h: [10, 17],   r: 0.32 },
-            { id: 'snag',  src: 'misc:dead_snag',     h: [5, 8],     r: 0.28 },
-        ],
-        /* the kinds a stand grows ([kind, weight]); a named forest of the recipe (HQ_LAND.forests) picks its own, a `dry` one the
-           desert pines; `north` above northH m or north of northZ; `zones` = a mix round a spot (the ritual woods by the loch) */
-        mixes: {
-            broad: [['oak', 3], ['ash', 3], ['elm', 2], ['tall', 1], ['dead', 0.25], ['dead2', 0.25], ['snag', 0.15]],
-            fairy: [['oak', 3], ['elm', 3], ['ash', 2], ['tall', 1.5]],
-            redwood: [['tall', 5], ['pine', 3], ['snag', 0.3]],
-            pine: [['pine', 6], ['tall', 1], ['snag', 0.4]],
-            dry: [['pine', 8], ['snag', 1.2]],
-            north: [['pine', 5], ['tall', 1], ['dead', 0.3]],
-            haunt: [['dead', 3], ['dead2', 3], ['snag', 2], ['elm', 1.5], ['oak', 1]],
-            lone: [['oak', 3], ['ash', 2], ['elm', 2], ['dead', 0.5], ['snag', 0.4]],
-        },
-        forestMix: { fairy: 'fairy', redwood: 'redwood', pines: 'pine', eastwood: 'broad' },
-        northH: 150, northZ: -950,
-        zones: [ { at: [-1130, -330], r: 240, mix: 'haunt' } ],          // AREA 6
-        /* the undergrowth: the woods batch's fern, never a blocker */
-        under: { cell: 2.3, minSp: 1.7, jit: 0.9, p: 0.5, edge: 0.06, slope: 0.8, kinds: [{ id: 'fern', src: 'misc:fern', h: [0.7, 1.3] }] },
-        /* the rocks: the D.O.O.R. kit's asteroids, fitted to `span` m across and span × hK m tall, sunk `sink` of that; a rock is a
-           blocker of radius span × rK with its top on the rock (a walker jumps onto it, as onto furniture). p = the chance per cell */
-        rocks: { cell: 10, minSp: 7, jit: 0.85, span: [0.9, 2.6], hK: 0.6, rK: 0.36, sink: 0.2, slope: 0.95,
-                 p: { rock: 0.3, redrock: 0.28, clay: 0.08, desert: 0.04, tundra: 0.08, snow: 0.05, forest: 0.07, meadow: 0.04, grass: 0.025, farm: 0.01 },
-                 kinds: [{ id: 'boulder', src: 'door:asteroid_a' }, { id: 'crag', src: 'door:asteroid_b' }] },
-        /* the drawing: whole models within near.r m (nearest first, while the triangles fit near.tris — near.low with EW_PERF_LOW),
-           crossed cards of each model past them to the far pass's cut, and the far pass's cards from the 8 m world past that */
-        near: { r: 90, tris: 900000, low: 360000, every: 4, underR: 48, rockR: 180 },
-        far: { p: 0.8, jit: 0.8, hK: 1.1 },
-        blockers: { r: 10, every: 1.5 },
-        buildMs: 3,                                                      // ms a frame the tiles' flora may take once the card is down (48 steps a tile)
-    },
-    /* THE GROUND'S SHEETS (fork 8; 2026-09-28 mondo: "we already have a bunch of terrain textures in the r2 bucket, and the urban
-       textures as well"): every layer wears a sheet the game already ships. `src` is a TERRAIN_SPRITES key or `urban:<Name>`
-       (sprites.js URBAN_TEXTURES) — the same names a room's floor / cliff / path uses, picked by mondo. `tint` multiplies the sheet (a
-       TERRAIN_BASE_TINT key's own tint when none is given), `m` its repeat in metres, `col` its mean colour: the far pass and the
-       fallback without WebGL2 paint with it. The renderer draws each to `size` px, one layer of the texture array. */
-    tex: { size: 256, layers: [   // mondo's picks (2026-09-28)
-        { id: 'grass', src: 'grass_2', col: 0x5d7b38, m: 3.5 }, { id: 'meadow', src: 'healing_spring', col: 0x8d8a4e, m: 3.5 },
-        { id: 'forest', src: 'grass_dark_fantasy', col: 0x4d4631, m: 3.5 }, { id: 'rock', src: 'rocks_1', col: 0x7d7870, m: 7 },
-        { id: 'cliff', src: 'rocks_5', col: 0x6e665c, m: 7 }, { id: 'sand', src: 'desert', tint: 0xfff6e4, col: 0xd3c298, m: 3.5 },
-        { id: 'snow', src: 'ice', col: 0xe4eaf0, m: 5 }, { id: 'desert', src: 'desert', col: 0xcca26c, m: 5 },
-        { id: 'redrock', src: 'mars', col: 0xa85c3c, m: 7 }, { id: 'playa', src: 'dirt_2', col: 0xd4ccba, m: 7 },
-        { id: 'asphalt', src: 'urban:ConcreteStriped2a', col: 0x44454a, m: 3.5 }, { id: 'dirt', src: 'dirt', col: 0x86694b, m: 3.5 },
-        { id: 'pavement', src: 'urban:ConcreteStriped1b', col: 0x9d9a95, m: 3.5 }, { id: 'ice', src: 'ice', col: 0xc4dce8, m: 7 },
-        { id: 'trail', src: 'dirt', tint: 0xfff4e6, col: 0x9a7c5c, m: 3.5 },
-    ] },
-    /* the bake's materials (HQ_LAND's table, land.json `materials`) → [the sheet, a tint over it, the detail noise's amplitude m] */
-    mats: {
-        deep: ['sand', 0x76878a, 0.2], shallow: ['sand', 0xb6b29c, 0.15], sand: ['sand', 0xffffff, 0.12], grass: ['grass', 0xffffff, 0.3],
-        meadow: ['meadow', 0xffffff, 0.25], forest: ['forest', 0xffffff, 0.35], rock: ['rock', 0xffffff, 1.0], snow: ['snow', 0xffffff, 0.35],
-        desert: ['desert', 0xffffff, 0.15], redrock: ['redrock', 0xffffff, 0.9], playa: ['playa', 0xffffff, 0.03], farm: ['meadow', 0xc2d494, 0.08],
-        urban: ['pavement', 0xffffff, 0], road: ['asphalt', 0xffffff, 0], trail: ['trail', 0xffffff, 0.05], river: ['sand', 0x9a9482, 0],
-        lake: ['dirt', 0x8c8672, 0], ice: ['ice', 0xffffff, 0.2], pack: ['ice', 0xe6eef2, 0.3], tundra: ['meadow', 0xa9b19b, 0.3],
-        clay: ['dirt', 0xc99c7a, 0.3], cliff: ['cliff', 0xffffff, 1.2],
-        lane: ['dirt', 0xe8dccb, 0.06], paved: ['pavement', 0xffffff, 0],   // G5: a dirt lane is packed dirt (§5.6), the Vatican's lane is paved
-    },
-    /* THE ROADS (G5, §5.6; the bake grades them: bake-land.js §6, land.json `roads` / `bridges` / `junctions`). The ground under a road
-       is already its surface (the bake stamps it flat and paints its material); the renderer adds, within `near` m of the walker, the
-       road's own RIBBON (a crisp edge over the ground's 2 m samples, `lift` m over it) and its PAINT, THE DECKS of every bridge and
-       viaduct (walkable: hqLandDeckFeet — the terrain rooms' bridge layer, graded), their piers, parapets and lamps, THE GUARD RAILS
-       the bake put wherever a road's edge drops more than 2 m (the rail is the blocker, R3; a skater grinds it), THE SIGNS at the
-       junctions (the next place each way, never what is in sight) and Route 1's traffic. Every look is a sheet or a model the game
-       already has: the bucket's urban asphalt / pavement / dirt, the terrain rooms' concrete, the street lamp OBJ, the city's cars. */
-    roads: {
-        near: 300, piece: 64, lift: 0.035,
-        sheets: { asphalt: 'urban:ConcreteStriped2a', paved: 'urban:ConcreteStriped1b', dirt: 'dirt', trail: 'dirt' },
-        /* the paint (m): edge lines `edgeIn` in from the edge, a centre line; dashes [on, off] */
-        paint: { w: 0.16, edgeIn: 0.45, dash: [3, 6], edge: 0xe8e6da, centre: { highway: 0xe0b440, road: 0xe8e6da } },
-        /* a deck: its slab `thick` m (a footbridge's `footThick`), the parapets (a road's concrete wall, a footbridge's steel rail),
-           `edge` m of the deck the walker cannot stand on at the rail, the piers every `pier` m of a span (an arch's every `arch` m)
-           where the deck stands more than `pierMin` m over the ground, `r` their radius, the walker's `headroom` under a slab */
-        deck: { thick: 1.1, footThick: 0.35, girder: 1.4, parapet: 1.05, parapetW: 0.3, footRail: 1.1, edge: 0.66, pier: 26, arch: 22, pierMin: 2.2, r: 0.9, footR: 0.18, headroom: 1.95, climb: 0.45, lift: 0.02 },
-        /* the guard rails: a steel beam at `h` m on posts every `post` m, `off` m past the road's edge (the bake's railOff) */
-        rail: { h: 0.78, post: 2.0, off: 1.0, band: 0.2 },
-        lamps: { every: 34, min: 60 },                                   // a deck longer than `min` m carries lamps every `every` m
-        sign: { back: 16, h: 3.4, w: 3.6, board: 1.35 },                 // a junction's sign `back` m up the joining road
-        near2: { blockR: 36, every: 1.5 },                               // the rails' and piers' blockers round the walker, re-read every `every` m
-        /* Route 1's traffic (the city's cars): `n` a direction, both lanes `lane` m off the crown line */
-        traffic: { road: 'ring', n: 9, speed: 15, lane: 3.1, kinds: ['suv', 'taxi', 'cadillac', 'truck', 'copcar', 'schoolbus', 'suv', 'cadillac', 'taxi'] },
-    },
-    /* G9 THE DISCOVERY PASS (WORLD_GEOGRAPHY_PLAN §5.11 + R6, 2026-09-29). bake-land.js §9 reads these (through load-data.js) and writes
-       land.json `regionGrid` (every `grid` m: the region there), `revealPts` (where a route first shows a region's ground, each dressed with
-       a cairn, a bench or a broken fence) and `stops` (a something along every route: no stretch of route runs more than `gap` m without
-       one; a gap is filled every `aim` m). The renderer dresses them with the game's own catalogue models (THE DISCOVERY); the map's
-       fog of war clears from them (map.js THE ATLAS). Places to find, never tapes or finds. No puzzles.
-         kinds   a stop's set: `props` rows [catalogue key, x across, z toward the road, face deg, size m (the row's fit), lift m, tilt rad]
-                 in the stop's frame (+z faces the road), `r` its footprint (m, the bake keeps it off roads, water, pads and sites; the
-                 trees keep off it), `label` (plain words, no names) */
-    discovery: {
-        gap: 250, aim: 200,                                 // R6: the most route between two somethings (m); the spacing a gap is filled at
-        side: 4, sideMax: 16, slope: 0.55, rise: 4,         // m past the road's edge a stop stands (tried out to sideMax); the steepest ground under it; the most
-                                                            // it stands above or below the road (reached from it: no cliff on the way either; the bake's
-                                                            // last passes, for a gap nothing else fills, go 1.5 × as far and as high)
-        grid: 40,                                           // m: the region grid's cell
-        reveal: { merge: 70, r: 26, place: 12 },            // reveal points within `merge` m are one; the walker within `r` m sees what it shows; a place is
-                                                            // seen standing within its pad + `place` m (a pad-less place: 30 m)
-        near: 260, drop: 320, blockR: 30, every: 1.5,       // the dressing is drawn within `near` m (dropped past `drop`); blockers within blockR, re-filed every m
-        see: 0.25,                                          // s between the walker's discovery reads
-        quiet: ['flatlands'],                               // places whose ground never clears their region by sight (the wall's top shows from every south shore)
-        kinds: {
-            camp:    { label: 'A CAMP',          r: 5.5, props: [['camping_tent', -0.6, -2.2, 195], ['campfire', 1.9, 0.6, 0], ['fallen_log', 3.4, -0.8, 75], ['stump', 0.4, 1.9, 0]] },
-            stones:  { label: 'STANDING STONES', r: 5,   props: [['menhir', -1.8, -1.2, 20], ['sarsen', 1.2, -2.0, 70], ['cave_stone', 0.2, 0.6, 140], ['cave_stone', 2.7, 0.4, 300, 0.7]] },
-            arch:    { label: 'A RUIN',          r: 5,   props: [['brick_arch', 0, -1.6, 0], ['greek_column', 2.6, -0.6, 0, 2.4], ['cave_stone', -2.2, 0.2, 60], ['cave_stone', 1.0, 1.2, 200, 0.6]] },
-            well:    { label: 'AN OLD WELL',     r: 4,   props: [['ancient_well', 0, -0.8, 0], ['wooden_bucket', 1.1, 0.3, 30], ['stump', -1.6, 0.6, 0]] },
-            wreck:   { label: 'A WRECK',         r: 5,   props: [['crashed_car', 0, -1.4, 28], ['traffic_barrel', 2.6, 0.9, 0], ['cinder_block', -2.2, 1.0, 40]] },
-            wreck2:  { label: 'A WRECK',         r: 5,   props: [['crashed_car_2', 0, -1.4, -22], ['traffic_cone', 2.2, 1.2, 0], ['traffic_barrel', -2.4, 0.6, 0]] },
-            tank:    { label: 'A WRECK',         r: 6.5, props: [['military_tank', 0, -2.6, 35], ['traffic_barrel', 3.6, 1.2, 0], ['cinder_block', -3.2, 1.4, 20]] },
-            deadtree:{ label: 'A DEAD TREE',     r: 4,   props: [['hollow_dead_tree', 0, -1.2, 40], ['skull_pile', 1.4, 0.4, 200], ['stump', -1.7, 0.5, 0]] },
-            anchor:  { label: 'A WRECK',         r: 4,   props: [['ship_anchor', 0, -1.0, 30], ['sea_chest', 1.5, 0.4, 200], ['cave_stone', -1.6, 0.2, 90, 0.7]] },
-            shelter: { label: 'A BUS STOP',      r: 3.5, props: [['bus_shelter', 0, -1.0, 0], ['city_bin', 2.4, -0.4, 0]] },
-            /* the reveal points' dressing (the plan's "a cairn, a bench, a broken fence"): +z faces the road, the view is behind */
-            cairn:   { label: 'A CAIRN',         r: 2.5, props: [['menhir', 0, -0.6, 10, 1.5], ['cave_stone', 0.9, -0.2, 120, 0.7], ['cave_stone', -0.8, 0.1, 250, 0.6]] },
-            bench:   { label: 'A BENCH',         r: 2.5, props: [['city_bench', 0, -0.6, 180]] },
-            fence:   { label: 'A BROKEN FENCE',  r: 3,   props: [['railing_1m', -1.4, -0.8, 0], ['railing_1m', 0.9, -0.8, 0], ['railing_1m', 2.4, -0.4, 35, null, 0, 0.5]] },
-            /* a trail's marker: a knee-high cairn on the verge of a path benched into a slope (the bake's last word for R6 there) */
-            marker:  { label: 'A TRAIL MARKER',  r: 1.3, props: [['menhir', 0, 0, 15, 1.0], ['cave_stone', 0.6, 0.35, 140, 0.5]] },
-        },
-        /* the stops a spot may take (by the ground under it, then its region); the bake takes the list's kth, so neighbours differ */
-        byGround: { urban: ['shelter'], sand: ['anchor', 'wreck'], desert: ['wreck', 'deadtree', 'wreck2', 'stones'], redrock: ['deadtree', 'wreck2', 'stones'],
-            playa: ['wreck', 'wreck2', 'deadtree'], clay: ['deadtree', 'stones', 'wreck'], forest: ['camp', 'stones', 'deadtree'], snow: ['stones', 'camp'],
-            tundra: ['stones', 'camp'], rock: ['stones', 'arch'], grass: ['arch', 'camp', 'well', 'stones'], meadow: ['well', 'stones', 'camp', 'arch'],
-            farm: ['well', 'arch', 'wreck'], trail: ['stones', 'camp'], lane: ['well', 'stones'] },
-        byRegion: { deepdesert: ['tank', 'wreck', 'wreck2', 'deadtree'], downs: ['stones', 'arch', 'well', 'camp'], kingdom: ['arch', 'well', 'camp', 'stones'] },
-        dressFor: { rock: 'cairn', snow: 'cairn', tundra: 'cairn', cliff: 'cairn', redrock: 'cairn', grass: 'bench', meadow: 'bench', farm: 'bench', sand: 'bench',
-            urban: 'bench', lane: 'bench' },   // any other ground: a broken fence
-        /* the region title card (map.js, the arrival card's letterbox) */
-        card: { sight: 'FIRST SIGHT', enter: 'A NEW AREA' },
-    },
-    /* D.O.O.R. HQ from outside (G2 draws the building on its pad; G6 dresses the pads): a concrete drum with a shallow dome, the
-       front door in its south face (the land room's door row `hq`). The drum is solid to the walker and the camera — drawn walls */
-    hq: { r: 22, h: 13, dome: 5.5, band: [8.2, 9.6] },
-};
-const HQ_LAND_STORE = { id: '', index: null, pads: null, per: 0, S: 0, step: 2, tile: 256, ext: 2800, base: -200, hstep: 0.01, baked: null, grid: null, n: 0, bytes: 0, clock: 0, world: null, amp: null, col: null, layer: null, cliffId: -1 };
-/* land.json read: the tile index (which tiles the bake kept) and the format; a new bake id drops what the old bake filed */
-function hqLandIndex(ov) {
-    const St = HQ_LAND_STORE, tf = ov && ov.tileFormat, bk = (ov && ov.bake) || {};
-    if (!tf) return null;
-    const id = String(bk.id || '');
-    if (St.index && St.id === id) { St.index = ov; return St; }
-    St.id = id; St.index = ov; St.tile = tf.tile; St.S = tf.samples; St.step = tf.tile / (tf.samples - 1);
-    St.base = tf.heightBase; St.hstep = tf.heightStep; St.ext = bk.ext || HQ_LAND.baked.ext;
-    St.per = Math.ceil(2 * St.ext / St.tile);
-    St.baked = new Uint8Array(St.per * St.per);
-    (ov.tiles || []).forEach(t => { if (t[0] >= 0 && t[1] >= 0 && t[0] < St.per && t[1] < St.per) St.baked[t[1] * St.per + t[0]] = 1; });
-    St.grid = new Array(St.per * St.per).fill(null); St.n = 0; St.bytes = 0; St.world = null;
-    St.pads = (ov.places || []).filter(p => p.pad > 0 && p.at).map(p => [p.at[0], p.at[1], p.pad]);
-    _hqLandTables(ov.materials);
-    try { hqLandRoadsIndex(ov); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ land] the roads did not read', e); }   // G5: THE ROADS (the trees keep off the decks)
-    try { hqLandDiscIndex(ov); } catch (e) { if (typeof console !== 'undefined') console.warn('[HQ land] the discovery did not read', e); }   // G9: THE DISCOVERY (the trees keep off the stops)
-    return St;
-}
-/* ══ THE DISCOVERY (WORLD_GEOGRAPHY_PLAN §5.11 + R6, G9 — 2026-09-29) ═════════════════════════════════════════════════════════
-   land.json's `regionGrid` / `revealPts` / `stops` (bake-land.js §9) read once per bake id into HQ_LAND_DISC. Pure readers:
-     hqLandRegionAt(x, z)              the region standing there (a HQ_LAND.regionNames key), null off the grid
-     hqLandStopKind(ground, region, k) the bake's pick of a stop's kind (by the ground under it, then its region; the kth of the list)
-     hqLandDressKind(ground)           a reveal point's dressing (a cairn, a bench, a broken fence)
-     hqLandDiscNear(x, z, r)           the stops and the reveal points' dressing within r m (the renderer draws them)
-     hqLandDiscoverAt(x, z)            what the walker standing there has seen: { entered, sighted, places } — the region stood in, what
-                                       a reveal point within reveal.r shows, a place's own pad and what that pad sees (R2's lists)
-     hqLandSeenRecord / hqLandSee      THE NEW SAVE KEY (profile.door.hq.land: { r: { region: date }, p: { place: date } }); no migration
-   A region's ground is shown by a place of it that is not a peak or a lookout (those are seen from afar by design, R2: Mt Olympus
-   from HQ) nor in discovery.quiet; a region with nothing else (Area 2 is Mt Olympus's) clears when you walk into it. A peak's NAME
-   still appears on the map when you first see it. */
-const HQ_LAND_DISC = { id: '', grid: null, reveals: [], stops: [], places: null, sight: null, qual: null, weather: {} };
-function hqLandDiscIndex(ov) {
-    const Q = HQ_LAND_DISC, id = String((ov && ov.bake && ov.bake.id) || '');
-    if (!ov) return Q;
-    if (Q.id === id && Q.places) return Q;
-    const K = HQ_LAND_RULES.discovery.kinds;
-    Q.id = id; Q.reveals = ov.revealPts || []; Q.stops = ov.stops || []; Q.sight = ov.sight || {};
-    const g = ov.regionGrid; Q.grid = g ? { n: g.n, cell: g.cell, x0: g.x0, z0: g.z0, ids: g.ids, s: (g.rows || []).join('') } : null;
-    Q.places = {}; (ov.places || []).forEach(p => { Q.places[p.id] = p; });
-    Q.weather = {}; (ov.regions || []).forEach(r => { if (r && r.id && r.weather) Q.weather[r.id] = r.weather; });   // E6: region weather
-    Q.qual = hqLandRegionShowers(ov.places || []);
-    /* the trees keep off what is dressed (data.js _hqFloraJob reads these with the pads) */
-    HQ_LAND_STORE.disc = Q.stops.map(s => [s.at[0], s.at[1], (K[s.kind] || {}).r || 4])
-        .concat(Q.reveals.filter(v => v.dress).map(v => [v.dress.at[0], v.dress.at[1], (K[v.dress.kind] || {}).r || 2.5]));
-    return Q;
-}
-/* the places whose ground shows their region (a place id → 1) */
-function hqLandRegionShowers(places) {
-    const under = HQ_LAND.sight.underground, by = {};
-    (places || []).forEach(p => { if (!p || under.includes(p.id)) return; (by[p.region] = by[p.region] || []).push(p); });
-    const out = {};
-    const quiet = HQ_LAND_RULES.discovery.quiet || [];
-    Object.keys(by).forEach(r => { by[r].forEach(p => { if (!p.peak && !p.lookout && !quiet.includes(p.id)) out[p.id] = 1; }); });
-    return out;
-}
-function hqLandRegionAt(x, z) {
-    const g = HQ_LAND_DISC.grid; if (!g || !g.s) return null;
-    const i = Math.floor((x - g.x0) / g.cell), j = Math.floor((z - g.z0) / g.cell);
-    if (i < 0 || j < 0 || i >= g.n || j >= g.n) return null;
-    const k = g.s.charCodeAt(j * g.n + i) - 97;
-    return (k >= 0 && k < g.ids.length) ? g.ids[k] : null;
-}
-/* THE REGION WEATHER (EDITOR_PLAN E6, §6 #17): a region of his land may carry `weather: { fog, sight }` — fog = the fog density per
-   metre while the walker is inside it, sight = how far he sees (m; the fog is set so the view is gone there). null = the sky's own */
-function hqLandWeatherAt(x, z) {
-    const id = hqLandRegionAt(x, z), w = id ? HQ_LAND_DISC.weather[id] : null;
-    if (!w) return null;
-    const fog = +w.fog > 0 ? +w.fog : (+w.sight > 0 ? 1.7 / +w.sight : 0);
-    return fog > 0 ? { fog, sight: +w.sight || null } : null;
-}
-function hqLandStopKind(ground, region, k) {
-    const D = HQ_LAND_RULES.discovery, own = ['urban', 'sand', 'forest', 'snow', 'tundra'];
-    const list = (!own.includes(ground) && D.byRegion[region]) || D.byGround[ground] || ['stones'];
-    const n = list.length; return list[(((k | 0) % n) + n) % n];
-}
-function hqLandDressKind(ground) { return HQ_LAND_RULES.discovery.dressFor[ground] || 'fence'; }
-function hqLandDiscNear(x, z, r) {
-    const Q = HQ_LAND_DISC, out = [];
-    Q.stops.forEach(s => { if (Math.hypot(s.at[0] - x, s.at[1] - z) < r) out.push(s); });
-    Q.reveals.forEach(v => { const d = v.dress; if (d && Math.hypot(d.at[0] - x, d.at[1] - z) < r) out.push({ id: v.id, kind: d.kind, at: d.at, y: d.y, face: d.face, reveal: true }); });
-    return out;
-}
-function hqLandDiscoverAt(x, z) {
-    const Q = HQ_LAND_DISC, D = HQ_LAND_RULES.discovery, entered = [], sighted = [], places = [];
-    const add = (a, v) => { if (v && a.indexOf(v) < 0) a.push(v); };
-    if (!Q.places) return { entered, sighted, places };
-    add(entered, hqLandRegionAt(x, z));
-    Q.reveals.forEach(v => { if (Math.hypot(v.at[0] - x, v.at[1] - z) >= D.reveal.r) return; (v.regions || []).forEach(r => add(sighted, r)); (v.places || []).forEach(p => add(places, p)); });
-    const under = HQ_LAND.sight.underground;
-    Object.keys(Q.places).forEach(id => {
-        const p = Q.places[id]; if (!p.at || under.includes(id)) return;
-        const rr = p.pad > 0 ? p.pad + D.reveal.place : 30;
-        if (Math.hypot(p.at[0] - x, p.at[1] - z) >= rr) return;
-        add(places, id); add(entered, p.region);
-        (Q.sight[id] || []).forEach(e => { if (e[0] === '^') return; add(places, e); if (Q.qual[e] && Q.places[e]) add(sighted, Q.places[e].region); });
-    });
-    return { entered, sighted: sighted.filter(r => entered.indexOf(r) < 0), places };
-}
-function hqLandSeenRecord(profile) {
-    let L = null; try { L = profile && profile.door && profile.door.hq && profile.door.hq.land; } catch (e) {}
-    return { r: (L && L.r && typeof L.r === 'object') ? L.r : {}, p: (L && L.p && typeof L.p === 'object') ? L.p : {} };
-}
-/* the ONE write: files what was seen on the profile OBJECT handed in (the caller saves once) → { ok, regions: [{ id, how }], places } (the new) */
-function hqLandSee(profile, what, now) {
-    if (!profile || !what) return { ok: false, regions: [], places: [] };
-    const rec = hqLandSeenRecord(profile), date = hqToday(now ? new Date(now) : undefined), out = { ok: true, regions: [], places: [] };
-    const r = Object.assign({}, rec.r), p = Object.assign({}, rec.p), ent = what.entered || [];
-    ent.concat(what.sighted || []).forEach(id => { if (id && !r[id] && HQ_LAND.regionNames[id]) { r[id] = date; out.regions.push({ id, how: ent.includes(id) ? 'enter' : 'sight' }); } });
-    (what.places || []).forEach(id => { if (id && !p[id] && hqLandPlace(id)) { p[id] = date; out.places.push(id); } });
-    if (!out.regions.length && !out.places.length) return out;
-    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
-    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
-    profile.door.hq.land = { r, p };
-    return out;
-}
-/* the per-material tables (amplitude, mean colour, the sheet's layer), in the bake's material order */
-function _hqLandTables(names) {
-    const St = HQ_LAND_STORE, R = HQ_LAND_RULES, L = R.tex.layers, list = names || Object.keys(R.mats);
-    St.amp = new Float32Array(32); St.col = new Float32Array(96); St.layer = new Uint8Array(32); St.tint = new Float32Array(96); St.cliffId = list.indexOf('cliff');
-    list.forEach((m, k) => {
-        const row = R.mats[m] || ['grass', 0xffffff, 0.2];
-        let li = L.findIndex(l => l.id === row[0]); if (li < 0) li = 0;
-        const c = (L[li].mean != null) ? L[li].mean : L[li].col, t = row[1];   // `mean` = the loaded sheet's measured mean (the renderer writes it)
-        St.amp[k] = row[2]; St.layer[k] = li;
-        St.tint[k * 3] = ((t >> 16) & 255) / 255; St.tint[k * 3 + 1] = ((t >> 8) & 255) / 255; St.tint[k * 3 + 2] = (t & 255) / 255;
-        St.col[k * 3] = ((c >> 16) & 255) / 255 * St.tint[k * 3]; St.col[k * 3 + 1] = ((c >> 8) & 255) / 255 * St.tint[k * 3 + 1]; St.col[k * 3 + 2] = (c & 255) / 255 * St.tint[k * 3 + 2];
-    });
-    return St;
-}
-/* a tile file ('EWLT' v1, bake-land.js writeOutputs) → { ti, tj, S, x0, z0, h, mat, forest, water } in metres */
-function hqLandTileRead(buf) {
-    const St = HQ_LAND_STORE;
-    const dv = (buf instanceof ArrayBuffer) ? new DataView(buf) : new DataView(buf.buffer, buf.byteOffset || 0, buf.byteLength);
-    if (dv.byteLength < 16 || String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== 'EWLT') throw new Error('not a land tile');
-    const S = dv.getUint16(6, true), x0 = dv.getFloat32(8, true), z0 = dv.getFloat32(12, true), S2 = S * S;
-    if (dv.byteLength < 16 + S2 * 6) throw new Error('a short land tile');
-    const h = new Float32Array(S2), mat = new Uint8Array(S2), forest = new Uint8Array(S2);
-    let water = null;
-    for (let o = 0; o < S2; o++) {
-        h[o] = dv.getUint16(16 + o * 2, true) * St.hstep + St.base;
-        mat[o] = dv.getUint8(16 + S2 * 2 + o); forest[o] = dv.getUint8(16 + S2 * 3 + o);
-        const w = dv.getUint16(16 + S2 * 4 + o * 2, true);
-        if (w !== 0xffff) { if (!water) water = new Float32Array(S2).fill(NaN); water[o] = w * St.hstep + St.base; }
-    }
-    return { ti: Math.round((x0 + St.ext) / St.tile), tj: Math.round((z0 + St.ext) / St.tile), S, x0, z0, h, mat, forest, water, used: 0, bytes: S2 * 6 + (water ? S2 * 4 : 0) };
-}
-/* sea.bin ('EWLS' v1): the whole world at 8 m, sample centres → { n, x0, cell, h, mat } */
-function hqLandWorldRead(buf) {
-    const St = HQ_LAND_STORE;
-    const dv = (buf instanceof ArrayBuffer) ? new DataView(buf) : new DataView(buf.buffer, buf.byteOffset || 0, buf.byteLength);
-    if (dv.byteLength < 16 || String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== 'EWLS') throw new Error('not the land\'s sea');
-    const n = dv.getUint16(6, true), x0 = dv.getFloat32(8, true), cell = dv.getFloat32(12, true), N2 = n * n;
-    const h = new Float32Array(N2), mat = new Uint8Array(N2);
-    for (let o = 0; o < N2; o++) { h[o] = dv.getUint16(16 + o * 2, true) * St.hstep + St.base; mat[o] = dv.getUint8(16 + N2 * 2 + o); }
-    St.world = { n, x0, cell, h, mat, bytes: N2 * 5 };
-    return St.world;
-}
-function hqLandTileName(ti, tj) { return 'tiles/t_' + ti + '_' + tj + '.bin'; }
-function hqLandTileOf(x, z) { const St = HQ_LAND_STORE; return [Math.floor((x + St.ext) / St.tile), Math.floor((z + St.ext) / St.tile)]; }
-function hqLandHas(ti, tj) { const St = HQ_LAND_STORE; return !!(St.grid && ti >= 0 && tj >= 0 && ti < St.per && tj < St.per && St.grid[tj * St.per + ti]); }
-/* file a decoded tile; past tiles.cap the least recently touched go (never one touched this call) → the dropped [ti, tj] */
-function hqLandPut(rec) {
-    const St = HQ_LAND_STORE; if (!St.grid || !rec) return [];
-    const k = rec.tj * St.per + rec.ti; if (rec.ti < 0 || rec.tj < 0 || rec.ti >= St.per || rec.tj >= St.per) return [];
-    if (St.grid[k]) { St.bytes -= St.grid[k].bytes; St.n--; }
-    St.grid[k] = rec; St.n++; St.bytes += rec.bytes; rec.used = ++St.clock;
-    const out = [], cap = HQ_LAND_RULES.tiles.cap;
-    while (St.n > cap) {
-        let lo = -1, loU = Infinity;
-        for (let i = 0; i < St.grid.length; i++) { const t = St.grid[i]; if (t && t !== rec && t.used < loU) { loU = t.used; lo = i; } }
-        if (lo < 0) break;
-        const t = St.grid[lo]; St.grid[lo] = null; St.n--; St.bytes -= t.bytes; out.push([t.ti, t.tj]);
-    }
-    return out;
-}
-/* the walker's neighbourhood is in use: every filed tile within r m of (x, z) is marked most recent */
-function hqLandTouch(x, z, r) {
-    const St = HQ_LAND_STORE; if (!St.grid) return 0;
-    const c = ++St.clock; let n = 0;
-    for (let i = 0; i < St.grid.length; i++) { const t = St.grid[i]; if (t && _hqLandRectD(t.ti, t.tj, x, z) <= r) { t.used = c; n++; } }
-    return n;
-}
-function _hqLandRectD(ti, tj, x, z) {
-    const St = HQ_LAND_STORE, x0 = -St.ext + ti * St.tile, z0 = -St.ext + tj * St.tile;
-    const dx = Math.max(x0 - x, 0, x - (x0 + St.tile)), dz = Math.max(z0 - z, 0, z - (z0 + St.tile));
-    return Math.hypot(dx, dz);
-}
-/* the baked tiles within r m of (x, z) that have not landed, nearest first → [{ ti, tj, d, name }] */
-function hqLandWant(x, z, r) {
-    const St = HQ_LAND_STORE; if (!St.baked) return [];
-    const out = [], [ci, cj] = hqLandTileOf(x, z), span = Math.ceil(r / St.tile) + 1;
-    for (let tj = cj - span; tj <= cj + span; tj++) for (let ti = ci - span; ti <= ci + span; ti++) {
-        if (ti < 0 || tj < 0 || ti >= St.per || tj >= St.per || !St.baked[tj * St.per + ti] || St.grid[tj * St.per + ti]) continue;
-        const d = _hqLandRectD(ti, tj, x, z); if (d <= r) out.push({ ti, tj, d, name: hqLandTileName(ti, tj) });
-    }
-    return out.sort((a, b) => a.d - b.d || a.tj - b.tj || a.ti - b.ti);
-}
-/* is the ground under (x, z) the real 2 m land? (a tile the bake dropped — the open Deep — is the 8 m world's) */
-function hqLandReadyAt(x, z) {
-    const St = HQ_LAND_STORE; if (!St.baked || !St.world) return false;
-    const [ti, tj] = hqLandTileOf(x, z);
-    if (ti < 0 || tj < 0 || ti >= St.per || tj >= St.per || !St.baked[tj * St.per + ti]) return true;
-    return !!St.grid[tj * St.per + ti];
-}
-/* one sample of the global 2 m lattice (a tile's edge row is shared with its neighbour's) — NaN when nothing has landed */
-function _hqLandS(GX, GZ, layer) {
-    const St = HQ_LAND_STORE, n = St.S - 1, per = St.per, g = St.grid;
-    let ti = Math.floor(GX / n), tj = Math.floor(GZ / n), q = GX - ti * n, k = GZ - tj * n;
-    let t = (ti >= 0 && tj >= 0 && ti < per && tj < per) ? g[tj * per + ti] : null;
-    if (!t && q === 0 && ti > 0 && tj >= 0 && tj < per) { const t2 = g[tj * per + ti - 1]; if (t2) { t = t2; q = n; } }
-    if (!t && k === 0 && tj > 0 && ti >= 0 && ti < per) { const t2 = g[(tj - 1) * per + ti]; if (t2) { t = t2; k = n; } }
-    if (t) return layer ? t.mat[k * St.S + q] : t.h[k * St.S + q];
-    const x = -St.ext + GX * St.step, z = -St.ext + GZ * St.step;
-    return layer ? _hqLandWorldM(x, z) : _hqLandWorldH(x, z);
-}
-function _hqLandWorldH(x, z) {
-    const W = HQ_LAND_STORE.world; if (!W) return NaN;
-    const gx = Math.max(0, Math.min(W.n - 1.001, (x - W.x0) / W.cell - 0.5)), gz = Math.max(0, Math.min(W.n - 1.001, (z - W.x0) / W.cell - 0.5));
-    const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, o = j * W.n + i, H = W.h;
-    return (H[o] * (1 - fx) + H[o + 1] * fx) * (1 - fz) + (H[o + W.n] * (1 - fx) + H[o + W.n + 1] * fx) * fz;
-}
-function _hqLandWorldM(x, z) {
-    const W = HQ_LAND_STORE.world; if (!W) return 0;
-    const i = Math.max(0, Math.min(W.n - 1, Math.floor((x - W.x0) / W.cell))), j = Math.max(0, Math.min(W.n - 1, Math.floor((z - W.x0) / W.cell)));
-    return W.mat[j * W.n + i];
-}
-function _hqLandCR(p0, p1, p2, p3, t) { return p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0))); }
-/* the baked ground at (x, z) (metres): Catmull-Rom over the 16 samples round it — null before anything has landed */
-function hqLandBase(x, z) {
-    const St = HQ_LAND_STORE; if (!St.grid) return null;
-    const gx = (x + St.ext) / St.step, gz = (z + St.ext) / St.step, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
-    const r = [0, 0, 0, 0];
-    for (let j = 0; j < 4; j++) { const Z = iz - 1 + j; r[j] = _hqLandCR(_hqLandS(ix - 1, Z), _hqLandS(ix, Z), _hqLandS(ix + 1, Z), _hqLandS(ix + 2, Z), fx); }
-    const y = _hqLandCR(r[0], r[1], r[2], r[3], fz);
-    return isFinite(y) ? y : null;
-}
-function _hqLandHash(i, j) { let h = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
-function _hqLandVN(x, z) {
-    const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
-    const a = _hqLandHash(i, j), b = _hqLandHash(i + 1, j), c = _hqLandHash(i, j + 1), d = _hqLandHash(i + 1, j + 1);
-    return (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * 2 - 1;
-}
-/* the detail noise (m): the four nearest samples' materials set its amplitude (bilinear, so it fades out onto a road) */
-function hqLandDetail(x, z) {
-    const St = HQ_LAND_STORE; if (!St.grid || !St.amp) return 0;
-    const gx = (x + St.ext) / St.step, gz = (z + St.ext) / St.step, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
-    const A = St.amp;
-    const amp = (A[_hqLandS(ix, iz, 1)] * (1 - fx) + A[_hqLandS(ix + 1, iz, 1)] * fx) * (1 - fz) + (A[_hqLandS(ix, iz + 1, 1)] * (1 - fx) + A[_hqLandS(ix + 1, iz + 1, 1)] * fx) * fz;
-    const k = _hqLandPadK(_hqLandPadsNear(x, z, x, z), x, z);
-    if (!(amp * k > 1e-4)) return 0;
-    const D = HQ_LAND_RULES.detail;
-    return amp * k * ((1 - D.mix2) * _hqLandVN(x / D.wl, z / D.wl) + D.mix2 * _hqLandVN(x / D.wl2 + 17.3, z / D.wl2 - 9.1));
-}
-/* a place's pad is flat (the bake levelled it; the door and the building stand on it): the detail fades out over its rim */
-function _hqLandPadsNear(xa, za, xb, zb) {
-    const P = HQ_LAND_STORE.pads; if (!P || !P.length) return [];
-    const out = [];
-    for (let i = 0; i < P.length; i++) { const p = P[i]; if (p[0] + p[2] > xa && p[0] - p[2] < xb && p[1] + p[2] > za && p[1] - p[2] < zb) out.push(p); }
-    return out;
-}
-function _hqLandPadK(pads, x, z) {
-    let k = 1;
-    for (let i = 0; i < pads.length; i++) { const p = pads[i], d = Math.hypot(x - p[0], z - p[1]); if (d < p[2]) { const t = Math.max(0, (d - p[2] * 0.55) / (p[2] * 0.45)); k = Math.min(k, t * t * (3 - 2 * t)); } }
-    return Math.min(k, _hqLandSiteK(x, z));
-}
-/* G6: a site's box is flat (the bake levelled it + HQ_LAND_RULES.sites.margin): the detail fades out over its band */
-function _hqLandSiteK(x, z) {
-    const SR = HQ_LAND_RULES.sites; if (!SR) return 1;
-    const d = hqLandSiteGap(x, z).d, t = Math.max(0, Math.min(1, (d - SR.margin) / (SR.band * 0.5)));
-    return t * t * (3 - 2 * t);
-}
-/* the drawn ground (the chunk's vertex, the walker's feet): the base + the detail — null before anything has landed */
-function hqLandHeight(x, z) { const b = hqLandBase(x, z); return b == null ? null : b + hqLandDetail(x, z); }
-/* the baked ground's steepness at (x, z) (rise over run, the probe's central difference) */
-function hqLandSlope(x, z) {
-    const e = HQ_LAND_RULES.walk.probe, a = hqLandBase(x - e, z), b = hqLandBase(x + e, z), c = hqLandBase(x, z - e), d = hqLandBase(x, z + e);
-    if (a == null || b == null || c == null || d == null) return 0;
-    return Math.hypot(b - a, d - c) / (2 * e);
-}
-/* the cliff sheet's weight at a slope (0 … 1): what the chunk writes and the shader draws */
-function hqLandCliffW(slope) { const C = HQ_LAND_RULES.cliff, t = Math.max(0, Math.min(1, (slope - C.from) / (C.to - C.from))); return t * t * (3 - 2 * t); }
-function hqLandCliff(x, z) { return hqLandCliffW(hqLandSlope(x, z)); }
-/* THE WALKER'S GROUND: the drawn height, or null where the face is too steep to climb (always a drawn cliff: hqLandCliff is 1 there) */
-function hqLandFeet(x, z) {
-    const y = hqLandHeight(x, z); if (y == null) return null;
-    return hqLandSlope(x, z) > HQ_LAND_RULES.walk.maxSlope ? null : y;
-}
-function hqLandMaterial(x, z) { const St = HQ_LAND_STORE; if (!St.grid) return 0; return _hqLandS(Math.round((x + St.ext) / St.step), Math.round((z + St.ext) / St.step), 1); }
-function hqLandMaterialName(x, z) { const St = HQ_LAND_STORE, m = (St.index && St.index.materials) || []; return m[hqLandMaterial(x, z)] || null; }
-function _hqLandTileAtS(x, z) {
-    const St = HQ_LAND_STORE; if (!St.grid) return null;
-    const GX = Math.round((x + St.ext) / St.step), GZ = Math.round((z + St.ext) / St.step), n = St.S - 1;
-    const ti = Math.min(St.per - 1, Math.floor(GX / n)), tj = Math.min(St.per - 1, Math.floor(GZ / n));
-    const t = (ti >= 0 && tj >= 0) ? St.grid[tj * St.per + ti] : null;
-    return t ? { t, o: (GZ - tj * n) * St.S + (GX - ti * n) } : null;
-}
-/* the water surface over (x, z) (a river, a lake, the sea) — null where there is none, or the tile has not landed */
-function hqLandWater(x, z) { const a = _hqLandTileAtS(x, z); if (!a || !a.t.water) return null; const w = a.t.water[a.o]; return isFinite(w) ? w : null; }
-function hqLandForest(x, z) { const a = _hqLandTileAtS(x, z); return a ? a.t.forest[a.o] / 255 : 0; }
-/* ══ THE WATER LAYER (WORLD_GEOGRAPHY_PLAN.md §5.4 — G3, 2026-09-28) ══════════════════════════════════════════════════════
-   ONE READ of the water for everything that meets it: the swimmer, the skiff, the underwater look and the sheets the renderer draws
-   all ask these, so the surface you see is the surface that floats you. The sea stands at HQ_LAND_RULES.sea.y; the rivers and the
-   lakes are the tiles' baked water surface (hqLandFresh: bilinear over the 2 m samples that carry water); a river sample within
-   water.nearSea of the sea over ground below it is the sea's. */
-function _hqLandW(GX, GZ) {   // one sample of the 2 m lattice's fresh water (NaN: none, the sea's, or its tile has not landed)
-    const St = HQ_LAND_STORE, n = St.S - 1, per = St.per, g = St.grid;
-    let ti = Math.floor(GX / n), tj = Math.floor(GZ / n), q = GX - ti * n, k = GZ - tj * n;
-    let t = (ti >= 0 && tj >= 0 && ti < per && tj < per) ? g[tj * per + ti] : null;
-    if (!t && q === 0 && ti > 0 && tj >= 0 && tj < per) { const t2 = g[tj * per + ti - 1]; if (t2) { t = t2; q = n; } }
-    if (!t && k === 0 && tj > 0 && ti >= 0 && ti < per) { const t2 = g[(tj - 1) * per + ti]; if (t2) { t = t2; k = n; } }
-    if (!t || !t.water) return NaN;
-    const o = k * St.S + q, w = t.water[o];
-    if (w !== w) return NaN;
-    const sea = HQ_LAND_RULES.sea.y;
-    return (w - sea < HQ_LAND_RULES.water.nearSea && t.h[o] < sea) ? NaN : w;
-}
-/* the river / lake surface over (x, z) — null where there is none (dry land, the open sea) or its tile has not landed */
-function hqLandFresh(x, z) {
-    const St = HQ_LAND_STORE; if (!St.grid) return null;
-    const gx = (x + St.ext) / St.step, gz = (z + St.ext) / St.step, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
-    let ws = 0, ys = 0;
-    for (let b = 0; b < 2; b++) for (let a = 0; a < 2; a++) {
-        const w = _hqLandW(ix + a, iz + b); if (w !== w) continue;
-        const k = (a ? fx : 1 - fx) * (b ? fz : 1 - fz) + 1e-3; ws += k; ys += w * k;
-    }
-    return ws ? ys / ws : null;
-}
-/* THE WATER'S SURFACE at (x, z): the river or the lake there, else the sea's level (the depth below says whether it is wet) */
-function hqLandWaterY(x, z) { const f = hqLandFresh(x, z); return f == null ? HQ_LAND_RULES.sea.y : f; }
-/* the water over the drawn ground at (x, z), m (≤ 0 = dry) — null before the ground has landed */
-function hqLandWaterDepth(x, z) { const g = hqLandHeight(x, z); return g == null ? null : hqLandWaterY(x, z) - g; }
-/* is the water at (x, z) a river or a lake (the underwater look's colour) */
-function hqLandWaterFresh(x, z) { return hqLandFresh(x, z) != null; }
-/* THE CURRENT at (x, z): a river's surface falls, and the water runs down it → [vx, vz, grade] (m/s, m/s, rise over run);
-   a lake and the sea hold still */
-function hqLandFlow(x, z) {
-    const C = HQ_LAND_RULES.water.current, c = hqLandFresh(x, z); if (c == null) return [0, 0, 0];
-    const b = C.base, xp = hqLandFresh(x + b, z), xm = hqLandFresh(x - b, z), zp = hqLandFresh(x, z + b), zm = hqLandFresh(x, z - b);
-    const gx = (xp != null && xm != null) ? (xp - xm) / (2 * b) : xp != null ? (xp - c) / b : xm != null ? (c - xm) / b : 0;
-    const gz = (zp != null && zm != null) ? (zp - zm) / (2 * b) : zp != null ? (zp - c) / b : zm != null ? (c - zm) / b : 0;
-    const g = Math.hypot(gx, gz); if (g < C.min) return [0, 0, g];
-    const v = Math.min(C.max, C.k * g) / g;
-    return [-gx * v, -gz * v, g];
-}
-/* THE HULL on the land's water: the five probes (the helm's layout: the middle, bow, stern, both beams) each over water at least
-   `draft` deep, all on one surface (within water.hull m of the middle's — no sailing up or over a falls), off D.O.O.R. HQ's drum */
-function hqLandHullFloats(x, z, yaw, len, beam, draft) {
-    const L = len / 2, B = beam / 2, fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw), W = HQ_LAND_RULES.water;
-    const w0 = hqLandWaterY(x, z), probes = [[0, 0], [L, 0], [-L, 0], [0, B], [0, -B]];
-    for (let i = 0; i < probes.length; i++) {
-        const px = x + fx * probes[i][0] + rx * probes[i][1], pz = z + fz * probes[i][0] + rz * probes[i][1];
-        if (!hqLandReadyAt(px, pz) || hqLandHQSolid(px, pz, 0)) return false;
-        const g = hqLandHeight(px, pz), w = hqLandWaterY(px, pz);
-        if (g == null || w - g < draft || Math.abs(w - w0) > W.hull) return false;
-    }
-    return true;
-}
-/* THE FALLS (R7: a drop is a waterfall, drawn as one): every stretch of a river's baked surface (land.json rivers[].pts) steeper
-   than water.falls.grade that falls at least water.falls.drop m → [{ id, river, pts (x, z, y), drop, w (half-width), top, foot }] */
-function hqLandFalls() {
-    const St = HQ_LAND_STORE, ov = St.index; if (!ov) return [];
-    if (St.falls && St.falls.id === St.id && St.falls.ov === ov) return St.falls.list;
-    const F = HQ_LAND_RULES.water.falls, list = [];
-    (ov.rivers || []).forEach(rv => {
-        const p = rv.pts || []; if (p.length < 2) return;
-        const L = [0]; for (let k = 1; k < p.length; k++) L.push(L[k - 1] + Math.hypot(p[k][0] - p[k - 1][0], p[k][1] - p[k - 1][1]));
-        const Lt = L[L.length - 1] || 1; let k0 = -1, n = 0;
-        const close = k1 => {
-            const drop = p[k0][2] - p[k1][2], s = (L[k0] + L[k1]) / 2;
-            if (drop >= F.drop) list.push({ id: rv.id + ':' + (n++), river: rv.id, pts: p.slice(k0, k1 + 1).map(q => q.slice()), drop: +drop.toFixed(2), w: rv.w0 + (rv.w1 - rv.w0) * s / Lt, top: p[k0].slice(), foot: p[k1].slice(), len: +(L[k1] - L[k0]).toFixed(1) });
-            k0 = -1;
-        };
-        for (let k = 1; k < p.length; k++) {
-            const g = (p[k - 1][2] - p[k][2]) / Math.max(1e-6, L[k] - L[k - 1]);
-            if (g >= F.grade) { if (k0 < 0) k0 = k - 1; } else if (k0 >= 0) close(k - 1);
-        }
-        if (k0 >= 0) close(p.length - 1);
-    });
-    St.falls = { id: St.id, ov, list };
-    return list;
-}
-/* THE SHEET of one landed tile's rivers and lakes (the renderer's mesh, in metres from the tile's corner): every 2 m cell with a
-   wet corner; a wet vertex stands on the water layer, a dry one (the rim, under the bank) on its wet neighbours' mean with `edge` 0
-   (the shader fades it out) → { x0, z0, n, pos (x, y, z), wat (depth, edge, flow x, flow z), grade, idx } or null (no water) */
-function hqLandWaterSheet(t) {
-    const St = HQ_LAND_STORE; if (!t || !t.water) return null;
-    const S = t.S, st = St.step, n = St.S - 1, GX0 = t.ti * n, GZ0 = t.tj * n, W = new Float32Array(S * S);
-    const sea = HQ_LAND_RULES.sea.y, near = HQ_LAND_RULES.water.nearSea, TW = t.water, TH = t.h;
-    let any = false;
-    for (let o = 0; o < S * S; o++) { const w = TW[o]; if (w === w && !(w - sea < near && TH[o] < sea)) { W[o] = w; any = true; } else W[o] = NaN; }   // _hqLandW's rule, read in place
-    if (!any) return null;
-    const vi = new Int32Array(S * S).fill(-1), cells = [];
-    for (let k = 0; k < S - 1; k++) for (let q = 0; q < S - 1; q++) {
-        const o = k * S + q;
-        if (W[o] === W[o] || W[o + 1] === W[o + 1] || W[o + S] === W[o + S] || W[o + S + 1] === W[o + S + 1]) { cells.push(o); vi[o] = vi[o + 1] = vi[o + S] = vi[o + S + 1] = 0; }
-    }
-    let nv = 0; for (let o = 0; o < S * S; o++) if (vi[o] === 0) vi[o] = nv++;
-    const pos = new Float32Array(nv * 3), wat = new Float32Array(nv * 4), grade = new Float32Array(nv), C = HQ_LAND_RULES.water.current, b = Math.max(1, Math.round(C.base / st));
-    const wAt = (q, k) => (q >= 0 && k >= 0 && q < S && k < S) ? W[k * S + q] : _hqLandW(GX0 + q, GZ0 + k);
-    for (let k = 0; k < S; k++) for (let q = 0; q < S; q++) {
-        const o = k * S + q, v = vi[o]; if (v < 0) continue;
-        let y = W[o], edge = 1;
-        if (y !== y) { edge = 0; let s = 0, c = 0; for (let dk = -1; dk <= 1; dk++) for (let dq = -1; dq <= 1; dq++) { const w = wAt(q + dq, k + dk); if (w === w) { s += w; c++; } } y = c ? s / c : HQ_LAND_RULES.sea.y; }
-        /* the current: the surface's fall over ±base (one-sided at a bank) */
-        const xp = wAt(q + b, k), xm = wAt(q - b, k), zp = wAt(q, k + b), zm = wAt(q, k - b), d = b * st;
-        const gx = (xp === xp && xm === xm) ? (xp - xm) / (2 * d) : xp === xp ? (xp - y) / d : xm === xm ? (y - xm) / d : 0;
-        const gz = (zp === zp && zm === zm) ? (zp - zm) / (2 * d) : zp === zp ? (zp - y) / d : zm === zm ? (y - zm) / d : 0;
-        const g = Math.hypot(gx, gz), sp = g < C.min ? 0 : Math.min(C.max, C.k * g) / g;
-        pos[v * 3] = q * st; pos[v * 3 + 1] = y; pos[v * 3 + 2] = k * st;
-        wat[v * 4] = y - t.h[o]; wat[v * 4 + 1] = edge; wat[v * 4 + 2] = -gx * sp; wat[v * 4 + 3] = -gz * sp;
-        grade[v] = g;
-    }
-    const idx = new Uint32Array(cells.length * 6);
-    for (let c = 0; c < cells.length; c++) { const o = cells[c], a = vi[o], b1 = vi[o + 1], c2 = vi[o + S], d3 = vi[o + S + 1]; idx.set([a, c2, b1, b1, c2, d3], c * 6); }
-    return { x0: t.x0, z0: t.z0, n: nv, pos, wat, grade, idx };
-}
-/* THE SEA'S DEPTH for the water shader: a byte a sample, (depth + 8) × 4 (−8 … 55.75 m, 255 = deeper), row-major from (x0, z0)
-   every `step` m (a multiple of the lattice's), nx × nz — the near window round the camera (built a slice of rows at a time) */
-function hqLandSeaDepth(x0, z0, nx, nz, step, out) {
-    const St = HQ_LAND_STORE, sea = HQ_LAND_RULES.sea.y, o = out || new Uint8Array(nx * nz);
-    if (!St.grid) { o.fill(255); return o; }
-    const k = Math.max(1, Math.round(step / St.step)), GX0 = Math.round((x0 + St.ext) / St.step), GZ0 = Math.round((z0 + St.ext) / St.step);
-    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const h = _hqLandS(GX0 + i * k, GZ0 + j * k); const v = (sea - h + 8) * 4; o[j * nx + i] = v === v ? (v < 0 ? 0 : v > 255 ? 255 : v) : 255; }
-    return o;
-}
-/* …and the whole world's, from the 8 m world (the far sea, and the near sea past its window) → { n, x0, cell, d } */
-function hqLandSeaDepthWorld() {
-    const W = HQ_LAND_STORE.world; if (!W) return null;
-    const sea = HQ_LAND_RULES.sea.y, d = new Uint8Array(W.n * W.n);
-    for (let o = 0; o < d.length; o++) { const v = (sea - W.h[o] + 8) * 4; d[o] = v < 0 ? 0 : v > 255 ? 255 : v; }
-    return { n: W.n, x0: W.x0 + W.cell * 0.5, cell: W.cell, d };
-}
-/* THE MOORINGS (HQ_LAND_RULES.water.moor): where a skiff lies — the spot nearest `at` (within r m) where the hull floats with a
-   hand's breadth to spare (bow out, or alongside) and the walker can stand within the board's reach (dry ground or a wade) → { id, x,
-   z, yaw, y, shore: [x, z, y] }, { id, none: true } when there is no such spot, or null while the tiles round it have not landed */
-function hqLandMooring(m) {
-    const SR = (typeof HQ_SEA_RULES !== 'undefined' && HQ_SEA_RULES.boat) || {}, len = SR.len || 4.6, beam = SR.beam || 1.7, draft = (SR.draft || 0.55) + 0.15;
-    const reach = (SR.boardReach || 3.6) - 0.5, wade = ((typeof HQ_SEA_RULES !== 'undefined' && HQ_SEA_RULES.exitDepth) || 0.95) - 0.2, r = m.r || 60, ax = m.at[0], az = m.at[1];
-    for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]]) if (!hqLandReadyAt(ax + c[0] * r, az + c[1] * r)) return null;
-    /* outward from `at`, 1 m apart, nearest first (the offsets sorted once per radius): the first spot that serves is the one */
-    const K = _hqLandMoorRing(r);
-    for (let i = 0, tried = 0; i < K.length && tried < 600; i++) {
-        const x = ax + K[i][0], z = az + K[i][1], g0 = hqLandBase(x, z);
-        if (g0 == null || hqLandWaterY(x, z) - g0 < draft + 0.2) continue;
-        tried++;
-        const wy = hqLandWaterY(x, z);
-        let shore = null;
-        for (let a = 0; a < 16 && !shore; a++) {
-            const ang = a * Math.PI / 8;
-            for (let s = beam / 2 + 0.9; s <= reach; s += 0.4) {
-                const sx = x + Math.sin(ang) * s, sz = z + Math.cos(ang) * s, f = hqLandFeet(sx, sz);
-                if (f == null || hqLandWaterY(sx, sz) - f > wade || Math.abs(f - wy) > 3) continue;
-                shore = { ang, x: sx, z: sz, y: f }; break;
-            }
-        }
-        if (!shore) continue;
-        for (const yaw of [shore.ang + Math.PI, shore.ang + Math.PI / 2, shore.ang - Math.PI / 2]) if (hqLandHullFloats(x, z, yaw, len, beam, draft)) return { id: m.id, x, z, yaw, y: wy, shore: [shore.x, shore.z, shore.y] };
-    }
-    return { id: m.id, none: true };
-}
-const _HQ_LAND_MOOR_RINGS = {};
-function _hqLandMoorRing(r) {
-    if (_HQ_LAND_MOOR_RINGS[r]) return _HQ_LAND_MOOR_RINGS[r];
-    const K = []; for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dz * dz <= r * r) K.push([dx, dz]);
-    K.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]) || a[1] - b[1] || a[0] - b[0]);
-    return (_HQ_LAND_MOOR_RINGS[r] = K);
-}
-/* ══ THE TREES AND THE GRASS (WORLD_GEOGRAPHY_PLAN.md §5.5 — G4, 2026-09-28) ══════════════════════════════════════════════
-   ONE placement for everyone: the renderer draws what hqLandFlora lists, and the walker is stopped by the same list
-   (hqLandFloraNear → the room's blockers), so every trunk that stops you is a trunk that is drawn (R3), and nothing else is.
-   A tile's flora is a pure function of the tile file (its own samples only — never a neighbour's, so the same trees stand
-   whatever landed first) and the recipe; it is kept on the tile record and goes when the store drops the tile.
-     THE GRID      a candidate per `cell` m of the world's lattice (the cell's hash jitters it), kept only if no neighbour within
-                   minSp outranks it (the hash-local-maximum test): a Poisson-like spacing without a pass over the neighbours'
-                   tiles. The candidate belongs to the tile its point falls in.
-     THE WINDOWS   a tree grows on the forest material (the denser the bake's forest byte, the likelier) or, rarely, alone on grass
-                   / meadow / farm / tundra / clay; never on a slope past trees.slope, in water or within `shore` m over it, within
-                   `road` m of a road, trail, street or river, on a pad (+ `pad` m) or at HQ's drum.
-     THE KINDS     the stand's mix (flora.mixes): a named forest's own, the desert pines, the north's firs, a zone's (the ritual
-                   woods), else the broadleaf mix. */
-let _HQ_FLORA_TAB = null;
-/* the per-material table (the bake's material order): forest / lone / clear (no tree near it) / rock chance / fern floor */
-function _hqFloraTab() {
-    const St = HQ_LAND_STORE, names = (St.index && St.index.materials) || Object.keys(HQ_LAND_RULES.mats), key = names.join(',');
-    if (_HQ_FLORA_TAB && _HQ_FLORA_TAB.key === key) return _HQ_FLORA_TAB;
-    const F = HQ_LAND_RULES.flora, lone = { grass: 1, meadow: 1, farm: 0.6, tundra: 0.5, clay: 0.35 };
-    const clear = { road: 1, trail: 1, lane: 1, paved: 1, urban: 1, river: 1, lake: 1, deep: 1, shallow: 1 };
-    const T = { key, n: names.length, forest: new Uint8Array(32), lone: new Float32Array(32), clear: new Uint8Array(32), rock: new Float32Array(32), under: new Uint8Array(32) };
-    names.forEach((m, k) => {
-        T.forest[k] = m === 'forest' ? 1 : 0; T.lone[k] = lone[m] || 0; T.clear[k] = clear[m] ? 1 : 0;
-        T.rock[k] = (F.rocks.p[m] || 0); T.under[k] = (m === 'forest' || m === 'meadow' || m === 'grass') ? 1 : 0;
-    });
-    return (_HQ_FLORA_TAB = T);
-}
-function _hqFloraH(i, j, k) { return _hqLandHash(Math.imul(i, 3) + k * 7919 + 101, Math.imul(j, 7) - k * 104729 - 57); }
-/* a layer's candidate for cell (I, J): its point and its rank */
-function _hqFloraPt(I, J, cell, jit, salt, out) {
-    const ext = HQ_LAND_STORE.ext;
-    out[0] = (I + 0.5 + (_hqFloraH(I, J, salt) - 0.5) * jit) * cell - ext;
-    out[1] = (J + 0.5 + (_hqFloraH(I, J, salt + 1) - 0.5) * jit) * cell - ext;
-    out[2] = _hqFloraH(I, J, salt + 2);
-    return out;
-}
-/* every kept candidate of a layer whose point falls in [x0, x1) × [z0, z1): fn(I, J, x, z). Each cell's point is hashed once into
-   a local window (the neighbours' test reads the window, not the hash again): a tile's 5 000 cells cost a few ms */
-function _hqFloraGrid(L, salt, x0, z0, x1, z1, fn) {
-    const ext = HQ_LAND_STORE.ext, c = L.cell, jit = L.jit, sp2 = L.minSp * L.minSp;
-    const I0 = Math.floor((x0 + ext) / c) - 2, I1 = Math.floor((x1 + ext) / c) + 2, J0 = Math.floor((z0 + ext) / c) - 2, J1 = Math.floor((z1 + ext) / c) + 2;
-    const nw = I1 - I0 + 1, nh = J1 - J0 + 1, PX = new Float64Array(nw * nh), PZ = new Float64Array(nw * nh), PR = new Float64Array(nw * nh);
-    const HS = (i, j) => { let v = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967295; };
-    const H = (i, j, k) => HS(Math.imul(i, 3) + k * 7919 + 101, Math.imul(j, 7) - k * 104729 - 57);   // = _hqFloraH
-    for (let J = J0; J <= J1; J++) for (let I = I0; I <= I1; I++) {
-        const o = (J - J0) * nw + (I - I0);
-        PX[o] = (I + 0.5 + (H(I, J, salt) - 0.5) * jit) * c - ext; PZ[o] = (J + 0.5 + (H(I, J, salt + 1) - 0.5) * jit) * c - ext; PR[o] = H(I, J, salt + 2);
-    }
-    for (let J = J0 + 1; J < J1; J++) for (let I = I0 + 1; I < I1; I++) {
-        const o = (J - J0) * nw + (I - I0), px = PX[o], pz = PZ[o], pr = PR[o];
-        if (px < x0 || px >= x1 || pz < z0 || pz >= z1) continue;
-        let keep = true;
-        for (let dj = -1; dj <= 1 && keep; dj++) for (let di = -1; di <= 1; di++) {
-            if (!di && !dj) continue;
-            const q = o + dj * nw + di, dx = PX[q] - px, dz = PZ[q] - pz;
-            if (dx * dx + dz * dz < sp2 && (PR[q] > pr || (PR[q] === pr && (dj > 0 || (dj === 0 && di > 0))))) { keep = false; break; }
-        }
-        if (keep) fn(I, J, px, pz);
-    }
-}
-/* the stand's mix at (x, z): a zone's, a named forest's (the one whose band holds the point best), the north's, else the broadleaf */
-function hqLandFloraMix(x, z, h, lone) {
-    const F = HQ_LAND_RULES.flora;
-    if (HQ_LAND.baked && HQ_LAND.baked.own) return (h > F.northH) ? 'north' : (lone ? 'lone' : 'broad');   // E4: his land — no recipe forests or zones
-    for (const zn of F.zones || []) if (Math.hypot(x - zn.at[0], z - zn.at[1]) < zn.r) return zn.mix;
-    let best = null, bw = 0.25;
-    for (const fb of HQ_LAND.forests || []) {
-        let d;
-        if (fb.pts) { d = Infinity; for (let k = 1; k < fb.pts.length; k++) { const a = fb.pts[k - 1], b = fb.pts[k], dx = b[0] - a[0], dz = b[1] - a[1], ll = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / ll)); d = Math.min(d, Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t)); } }
-        else d = Math.hypot(x - fb.at[0], z - fb.at[1]);
-        const w = 1 - d / fb.r;
-        if (w > bw && (!fb.minH || h > fb.minH - 12)) { bw = w; best = fb; }
-    }
-    if (best) return best.dry ? 'dry' : (F.forestMix[best.id] || 'broad');
-    if (h > F.northH || z < F.northZ) return 'north';
-    return lone ? 'lone' : 'broad';
-}
-function _hqFloraPick(mix, r) {
-    const F = HQ_LAND_RULES.flora, M = F.mixes[mix] || F.mixes.broad;
-    let tot = 0; for (const e of M) tot += e[1];
-    let a = r * tot;
-    for (const e of M) { a -= e[1]; if (a <= 0) return e[0]; }
-    return M[M.length - 1][0];
-}
-function hqLandFloraKind(id) { const K = HQ_LAND_RULES.flora.kinds; for (let k = 0; k < K.length; k++) if (K[k].id === id) return k; return 0; }
-/* a trunk's blocker radius (m): the rule's, or the measured bark's share of the height when that is smaller (R3) */
-function hqLandTrunkR(kind, h) { const K = HQ_LAND_RULES.flora.kinds[kind] || {}; const r = K.r || 0.3; return (K.rM > 0) ? Math.min(r, Math.max(0.12, K.rM * h)) : r; }
-/* A TILE'S FLORA → { trees: Float32Array [x, z, y, kind, h, yaw] × nT, under: [x, z, y, kind, h, yaw] × nU, rocks: [x, z, y, kind, span, yaw] × nR, cells } */
-function hqLandFlora(t) { if (!t) return null; if (!t.flora) hqLandFloraStep(t); return t.flora; }
-/* the tile's flora a few steps at a time (a step = one layer over a 64 m square; 48 steps a tile) → true once it is done.
-   The steps run in one fixed order (the trees, the ferns, then the rocks), so the result is the one hqLandFlora gives. */
-function hqLandFloraStep(t, steps) {
-    if (!t) return true;
-    if (t.flora) return true;
-    const Jb = t.floraJob || (t.floraJob = _hqFloraJob(t));
-    let n = steps == null ? Infinity : steps;
-    while (n-- > 0 && Jb.k < Jb.steps.length) Jb.steps[Jb.k++]();
-    if (Jb.k < Jb.steps.length) return false;
-    t.flora = Jb.finish(); t.floraJob = null;
-    return true;
-}
-function _hqFloraJob(t) {
-    const St = HQ_LAND_STORE, F = HQ_LAND_RULES.flora, T = F.trees, tab = _hqFloraTab(), S = t.S, st = St.step, x0 = t.x0, z0 = t.z0, x1 = x0 + St.tile, z1 = z0 + St.tile;
-    const sea = HQ_LAND_RULES.sea.y, pads = (St.pads || []).concat(St.disc || []);   // G9: the trees keep off the stops and the reveal points' dressing too
-    /* the tile's own samples: nearest (materials, forest, water) and bilinear (heights), clamped to the tile */
-    const cl = (v, n) => v < 0 ? 0 : v > n ? n : v;
-    const near = (x, z) => cl(Math.round((z - z0) / st), S - 1) * S + cl(Math.round((x - x0) / st), S - 1);
-    const hy = (x, z) => { const gx = cl((x - x0) / st, S - 1.0001), gz = cl((z - z0) / st, S - 1.0001), i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, o = j * S + i, H = t.h;
-        return (H[o] * (1 - fx) + H[o + 1] * fx) * (1 - fz) + (H[o + S] * (1 - fx) + H[o + S + 1] * fx) * fz; };
-    const e = Math.max(st, 1), slope = (x, z) => Math.hypot(hy(x + e, z) - hy(x - e, z), hy(x, z + e) - hy(x, z - e)) / (2 * e);
-    const wet = (x, z, y, m) => { const w = t.water ? t.water[near(x, z)] : NaN; return (w === w && w > y - m) || y < sea + m + 0.4; };
-    const clearOf = (x, z, d) => !(tab.clear[t.mat[near(x + d, z)]] || tab.clear[t.mat[near(x - d, z)]] || tab.clear[t.mat[near(x, z + d)]] || tab.clear[t.mat[near(x, z - d)]] || tab.clear[t.mat[near(x, z)]]);
-    const hqR = HQ_LAND_RULES.hq.r + T.hq, nearHQ = !(HQ_LAND.baked && HQ_LAND.baked.noHQ) && x0 < hqR && x1 > -hqR && z0 < hqR && z1 > -hqR;
-    const tp = pads.filter(q => q[0] + q[2] + 12 > x0 && q[0] - q[2] - 12 < x1 && q[1] + q[2] + 12 > z0 && q[1] - q[2] - 12 < z1);   // the pads near this tile
-    const ko = (HQ_LAND_RULES.sites && HQ_LAND_RULES.sites.keepOff) || 0, ts = hqLandSites().filter(S => S.x0 - 12 < x1 && S.x1 + 12 > x0 && S.z0 - 12 < z1 && S.z1 + 12 > z0);   // G6: the sites near this tile
-    const onPad = (x, z, m) => { if (nearHQ && x * x + z * z < hqR * hqR) return true; for (let i = 0; i < tp.length; i++) { const dx = x - tp[i][0], dz = z - tp[i][1], rr = tp[i][2] + m; if (dx * dx + dz * dz < rr * rr) return true; }
-        for (let i = 0; i < ts.length; i++) { const S = ts[i], p = m + ko; if (x > S.x0 - p && x < S.x1 + p && z > S.z0 - p && z < S.z1 + p) return true; } return false; };
-    const low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), ownLand = !!(HQ_LAND.baked && HQ_LAND.baked.own);   // E4: his land has no lone trees (it starts empty)
-    const trees = [], cells = new Map(), steps = [], SUB = 4, sw = St.tile / SUB;
-    const layer = (L, salt, fn) => { for (let b = 0; b < SUB * SUB; b++) { const sx = x0 + (b % SUB) * sw, sz = z0 + Math.floor(b / SUB) * sw; steps.push(() => _hqFloraGrid(L, salt, sx, sz, b % SUB === SUB - 1 ? x1 : sx + sw, b >= SUB * (SUB - 1) ? z1 : sz + sw, fn)); } };
-    layer(T, 11, (I, J, x, z) => {
-        const o = near(x, z), m = t.mat[o], f = t.forest[o] / 255, r = _hqFloraH(I, J, 14);
-        let p = 0, lone = false;
-        if (tab.forest[m] || (ownLand && tab.lone[m])) p = T.max * Math.max(0, Math.min(1, (f - T.from) / (T.to - T.from)));   // E4: on his land the FOREST brush plants on any ground that takes trees
-        else if (tab.lone[m]) { p = T.lone * tab.lone[m] * (0.4 + 3 * f); lone = true; }
-        if (low) p *= 0.5;   // EW_PERF_LOW halves the density (§5.12)
-        if (!(r < p)) return;
-        const y = hy(x, z);
-        if (slope(x, z) > T.slope || wet(x, z, y, T.shore) || !clearOf(x, z, T.road) || onPad(x, z, T.pad) || hqLandDeckNear(x, z, T.road)) return;   // G5: never through a deck
-        const kind = hqLandFloraKind(_hqFloraPick(hqLandFloraMix(x, z, y, lone), _hqFloraH(I, J, 15))), K = F.kinds[kind];
-        const h = K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(I, J, 16);
-        cells.set(I * 65536 + J, trees.length / 6);
-        trees.push(x, z, y, kind, h, _hqFloraH(I, J, 17) * Math.PI * 2);
-    });
-    const Uu = F.under, under = [];
-    layer(Uu, 21, (I, J, x, z) => {
-        const o = near(x, z), m = t.mat[o], f = t.forest[o] / 255;
-        if (!tab.under[m]) return;
-        let p = tab.forest[m] ? Uu.p * Math.max(0.25, f) : (f > 0.12 ? Uu.edge : 0);
-        if (low) p *= 0.5;
-        if (!(_hqFloraH(I, J, 24) < p)) return;
-        const y = hy(x, z);
-        if (slope(x, z) > Uu.slope || wet(x, z, y, 0.3) || !clearOf(x, z, 1.5) || onPad(x, z, 1)) return;
-        const K = Uu.kinds[0];
-        under.push(x, z, y, 0, K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(I, J, 25), _hqFloraH(I, J, 26) * Math.PI * 2);
-    });
-    const Rk = F.rocks, rocks = [], rcells = new Map();
-    layer(Rk, 31, (I, J, x, z) => {
-        const m = t.mat[near(x, z)], p = (ownLand && tab.lone[m] >= 0.6) ? 0 : tab.rock[m];   // E4: his grass, meadow and farm start clear of boulders
-        if (!(p > 0) || !(_hqFloraH(I, J, 34) < p)) return;
-        const y = hy(x, z);
-        if (slope(x, z) > Rk.slope || wet(x, z, y, 0.4) || !clearOf(x, z, 2.5) || onPad(x, z, 3) || hqLandDeckNear(x, z, 2)) return;
-        /* a rock never stands in a tree: the trees were placed first */
-        const span = Rk.span[0] + (Rk.span[1] - Rk.span[0]) * Math.pow(_hqFloraH(I, J, 35), 1.6);
-        const cI = Math.floor((x + St.ext) / T.cell), cJ = Math.floor((z + St.ext) / T.cell);
-        for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const q = cells.get((cI + di) * 65536 + cJ + dj); if (q != null && Math.hypot(trees[q * 6] - x, trees[q * 6 + 1] - z) < span * 0.6 + 1.2) return; }
-        rcells.set(I * 65536 + J, rocks.length / 6);
-        rocks.push(x, z, y, _hqFloraH(I, J, 36) < 0.5 ? 0 : 1, span, _hqFloraH(I, J, 37) * Math.PI * 2);
-    });
-    const finish = () => ({ trees: new Float32Array(trees), nT: trees.length / 6, under: new Float32Array(under), nU: under.length / 6, rocks: new Float32Array(rocks), nR: rocks.length / 6, cells, rcells });
-    return { k: 0, steps, finish };
-}
-/* the tile a point's flora lives in (it must have landed) */
-function _hqFloraTileAt(x, z) { const St = HQ_LAND_STORE; if (!St.grid) return null; const [ti, tj] = hqLandTileOf(x, z); return (ti >= 0 && tj >= 0 && ti < St.per && tj < St.per) ? St.grid[tj * St.per + ti] : null; }
-/* THE BLOCKERS round (x, z) within r m: every trunk and every rock there → [{ kind: 'tree' | 'rock', x, z, y, rad, top, h }].
-   The renderer files these as the room's blockers (a trunk to its crown, a rock with its top: jumped onto like furniture). */
-function hqLandFloraNear(x, z, r, out) {
-    const St = HQ_LAND_STORE, F = HQ_LAND_RULES.flora, o = out || [];
-    if (!St.grid) return o;
-    const [a0, b0] = hqLandTileOf(x - r, z - r), [a1, b1] = hqLandTileOf(x + r, z + r);
-    for (let tj = b0; tj <= b1; tj++) for (let ti = a0; ti <= a1; ti++) {
-        if (ti < 0 || tj < 0 || ti >= St.per || tj >= St.per) continue;
-        const t = St.grid[tj * St.per + ti]; if (!t) continue;
-        const Fl = hqLandFlora(t), A = Fl.trees, B = Fl.rocks;
-        for (let k = 0; k < A.length; k += 6) {
-            const dx = A[k] - x, dz = A[k + 1] - z; if (dx * dx + dz * dz > r * r) continue;
-            o.push({ kind: 'tree', x: A[k], z: A[k + 1], y: A[k + 2], rad: hqLandTrunkR(A[k + 3], A[k + 4]), top: null, h: A[k + 4], k: A[k + 3] });
-        }
-        for (let k = 0; k < B.length; k += 6) {
-            const dx = B[k] - x, dz = B[k + 1] - z; if (dx * dx + dz * dz > r * r) continue;
-            const span = B[k + 4], hh = span * F.rocks.hK;
-            o.push({ kind: 'rock', x: B[k], z: B[k + 1], y: B[k + 2], rad: span * F.rocks.rK, top: B[k + 2] + hh * (1 - F.rocks.sink), h: hh, k: B[k + 3] });
-        }
-    }
-    return o;
-}
-/* the first trunk or rock whose footprint (grown by pad) holds (x, z) — null where the way is open */
-function hqLandFloraHit(x, z, pad) {
-    const L = hqLandFloraNear(x, z, 4 + (pad || 0));
-    for (const b of L) if (Math.hypot(b.x - x, b.z - z) < b.rad + (pad || 0)) return b;
-    return null;
-}
-/* THE FAR FOREST: the 8 m world's forest cells as far cards (the far pass, past the tiles) → Float32Array [x, z, y, kind, h] × n.
-   Built once per bake; the near trees own everything inside the far pass's cut. */
-function hqLandFarForest() {
-    const W = HQ_LAND_STORE.world, F = HQ_LAND_RULES.flora, tab = _hqFloraTab(); if (!W) return new Float32Array(0);
-    const out = [], n = W.n, low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-        const o = j * n + i; if (!tab.forest[W.mat[o]]) continue;
-        if (_hqFloraH(i, j, 51) > F.far.p * (low ? 0.5 : 1)) continue;
-        const x = W.x0 + (i + 0.5 + (_hqFloraH(i, j, 52) - 0.5) * F.far.jit) * W.cell, z = W.x0 + (j + 0.5 + (_hqFloraH(i, j, 53) - 0.5) * F.far.jit) * W.cell, y = _hqLandWorldH(x, z);
-        if (!(y > HQ_LAND_RULES.sea.y + 0.5)) continue;
-        const kind = hqLandFloraKind(_hqFloraPick(hqLandFloraMix(x, z, y, false), _hqFloraH(i, j, 54))), K = F.kinds[kind];
-        out.push(x, z, y, kind, (K.h[0] + (K.h[1] - K.h[0]) * _hqFloraH(i, j, 55)) * F.far.hK);
-    }
-    return new Float32Array(out);
-}
-/* a place's pad height: the baked hub for HQ (data.js carries it), else land.json's once it has landed */
-/* ══ THE ROADS (WORLD_GEOGRAPHY_PLAN.md §5.6 — G5, 2026-09-28) ══════════════════════════════════════════════════════════════
-   The bake grades every road (bake-land.js §6): it writes each road's line with its height every 8 m (land.json `roads`), every
-   span where the road leaves the ground — a bridge over water, a named viaduct — as a DECK with its own line every 4 m, its two
-   abutment samples on the ground at either end (`bridges`), the guard rails as runs along a road's side (`rails`: [s0, s1, side],
-   side +1 = the left of travel), and the junctions with the places each way (`junctions`). This is the one reader of all of it:
-     THE DECKS     a second surface over the ground (the terrain rooms' bridge layer, graded): hqLandDeckFeet stands a walker whose
-                   feet arrive within a climb of a deck ON it, the parapet band at its edges is solid (R3: the parapet is drawn),
-                   the ground under a low deck is a wall while the slab leaves no headroom, the slab is solid to the air and the boom.
-     THE RAILS     the guard rails as short runs (a piece per road sample), each a blocker to the walker (hqLandRailHit) and a rail a
-                   skater grinds from one piece into the next (`next` / `prev`).
-     THE SIGNS     a board at each junction for a traveller on the joining road (the main road's places left and right) and one
-                   each way on the main road (the joining road's first place) — the next place, never what is in sight.
-   Built once per bake id from land.json by hqLandIndex (so the trees know where the decks are before a tile's flora is placed). */
-const HQ_LAND_ROADS = { id: null, roads: [], byId: {}, decks: [], rails: [], signs: [], junctions: [], cell: 32, grid: new Map(), railGrid: new Map() };
-function _hqRoadCum(P) { const L = [0]; for (let k = 1; k < P.length; k++) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1])); return L; }
-function _hqRoadFile(G, cell, x0, z0, x1, z1, item) {
-    const i0 = Math.floor(Math.min(x0, x1) / cell), i1 = Math.floor(Math.max(x0, x1) / cell), j0 = Math.floor(Math.min(z0, z1) / cell), j1 = Math.floor(Math.max(z0, z1) / cell);
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const k = i * 100003 + j; let a = G.get(k); if (!a) G.set(k, a = []); a.push(item); }
-}
-function _hqRoadCell(G, cell, x, z) { return G.get(Math.floor(x / cell) * 100003 + Math.floor(z / cell)) || null; }
-/* a road's pose at s (m along it): the point, the height, the unit heading */
-function hqLandRoadPose(road, s) {
-    const P = road.P, L = road.L, tot = L[L.length - 1];
-    if (road.loop) s = ((s % tot) + tot) % tot; else s = Math.max(0, Math.min(tot, s));
-    let lo = 0, hi = L.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= s) lo = m; else hi = m; }
-    const a = P[lo], b = P[hi], sl = Math.max(1e-6, L[hi] - L[lo]), t = Math.max(0, Math.min(1, (s - L[lo]) / sl));
-    const dx = (b[0] - a[0]) / sl, dz = (b[1] - a[1]) / sl;
-    return { x: a[0] + (b[0] - a[0]) * t, z: a[1] + (b[1] - a[1]) * t, y: a[2] + (b[2] - a[2]) * t, dx, dz, k: lo };
-}
-/* a road's name on a sign: Route 1's number ('ROUTE 1 · THE RING' → 'ROUTE 1'), else the name */
-function _hqRoadSignName(label) { const s = String(label || ''); return s.indexOf('·') > 0 ? s.split('·')[0].trim() : s; }
-function hqLandPlaceLabel(id) { const p = (typeof HQ_LAND !== 'undefined' && HQ_LAND.places || []).find(q => q.id === id); return p ? String(p.label).replace(/\s*\(.*\)\s*$/, '') : String(id || '').toUpperCase(); }
-function hqLandRoadsIndex(ov) {
-    const W = HQ_LAND_ROADS, id = String(((ov && ov.bake) || {}).id || '');
-    if (W.id === id && W.id) return W;
-    const RR = HQ_LAND_RULES.roads, D = RR.deck, C = W.cell;
-    W.id = id; W.roads = []; W.byId = {}; W.decks = []; W.rails = []; W.signs = []; W.junctions = (ov && ov.junctions) || []; W.grid = new Map(); W.railGrid = new Map();
-    for (const r of (ov && ov.roads) || []) {
-        if (!r || !r.pts || r.pts.length < 2) continue;
-        const P = r.pts.map(q => [q[0], q[1], q[2] != null ? q[2] : 0]);
-        if (r.loop) P.push(P[0].slice());
-        const road = { id: r.id, label: r.label, type: r.type, surface: r.surface || (r.type === 'trail' ? 'trail' : 'asphalt'), w: r.w, loop: !!r.loop, P, L: _hqRoadCum(P), rails: r.rails || [], decks: [] };
-        W.roads.push(road); W.byId[road.id] = road;
-    }
-    for (const b of (ov && ov.bridges) || []) {
-        if (!b || !b.pts || b.pts.length < 2) continue;
-        const P = b.pts.map(q => [q[0], q[1], q[2]]), L = _hqRoadCum(P), foot = b.type === 'trail' || b.look === 'foot';
-        const d = { i: W.decks.length, id: b.id, road: b.road, type: b.type, w: b.w + (foot ? 0.6 : 1.2), look: b.look || 'girder', label: b.label || '', wet: !!b.wet, viaduct: b.viaduct || null, hMax: b.hMax || 0,
-                    P, L, len: L[L.length - 1], thick: foot ? D.footThick : D.thick, foot, s0: b.deck ? b.deck[0] : 0, s1: b.deck ? b.deck[1] : 0 };
-        W.decks.push(d);
-        const rd = W.byId[b.road]; if (rd) rd.decks.push([d.s0, d.s1, d.i]);
-        for (let k = 0; k + 1 < P.length; k++) { const m = d.w / 2 + 1; _hqRoadFile(W.grid, C, Math.min(P[k][0], P[k + 1][0]) - m, Math.min(P[k][1], P[k + 1][1]) - m, Math.max(P[k][0], P[k + 1][0]) + m, Math.max(P[k][1], P[k + 1][1]) + m, [d.i, k]); }
-    }
-    /* THE GUARD RAILS: each run → pieces from sample to sample, `off` m past the road's edge, linked end to end */
-    for (const road of W.roads) {
-        const P = road.P, L = road.L, n = P.length, hw = road.w / 2;
-        for (const run of road.rails) {
-            const [s0, s1, side] = run, pts = [];
-            const at = s => { const p = hqLandRoadPose(road, s), nx = -p.dz * side, nz = p.dx * side; return [p.x + nx * (hw + RR.rail.off), p.z + nz * (hw + RR.rail.off), p.y]; };
-            pts.push(at(s0)); for (let k = 0; k < n; k++) if (L[k] > s0 + 0.5 && L[k] < s1 - 0.5) pts.push(at(L[k])); pts.push(at(s1));
-            const ss = [s0]; for (let k = 0; k < n; k++) if (L[k] > s0 + 0.5 && L[k] < s1 - 0.5) ss.push(L[k]); ss.push(s1);
-            let prev = null;
-            for (let k = 0; k + 1 < pts.length; k++) {
-                const a = pts[k], b = pts[k + 1]; if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.05) continue;
-                const pc = { i: W.rails.length, road: road.id, side, sa: ss[k], sb: ss[k + 1], x0: a[0], z0: a[1], y0: a[2], x1: b[0], z1: b[1], y1: b[2], prev, next: null };
-                if (prev) prev.next = pc; prev = pc; W.rails.push(pc);
-                _hqRoadFile(W.railGrid, C, a[0] - 1, a[1] - 1, b[0] + 1, b[1] + 1, pc);
-            }
-        }
-    }
-    /* THE SIGNS (§5.6: the next place, not what is visible) */
-    const S = RR.sign;
-    for (const j of W.junctions) {
-        const b = W.byId[j.branch], m = W.byId[j.main]; if (!b || !m) continue;
-        const bl = b.L[b.L.length - 1], sb = j.end ? bl - S.back : S.back;
-        if (bl < S.back + 6) continue;
-        const pb = hqLandRoadPose(b, sb), hx = j.end ? pb.dx : -pb.dx, hz = j.end ? pb.dz : -pb.dz;   // the traveller's heading, toward the main road
-        const pm = hqLandRoadPose(m, j.sM), rgt = (pm.dx * -hz + pm.dz * hx) > 0;                   // is the main road's +s to the traveller's right?
-        const L = j.ahead ? hqLandPlaceLabel(j.ahead) : null, Bk = j.back ? hqLandPlaceLabel(j.back) : null;
-        const left = rgt ? Bk : L, right = rgt ? L : Bk;
-        const lines = [_hqRoadSignName(m.label)]; if (left) lines.push('◄ ' + left); if (right) lines.push(right + ' ►');
-        const off = b.w / 2 + 1.6, x = pb.x + -hz * off, z = pb.z + hx * off;   // on the traveller's right shoulder
-        if (lines.length > 1) W.signs.push({ id: j.branch + ':' + j.end, x, z, y: pb.y, yaw: Math.atan2(-hx, -hz), lines, road: b.id, s: sb });
-        /* on the main road, each way: the joining road's first place, left or right of that traveller */
-        if (!j.to) continue;
-        for (const dir of [1, -1]) {
-            const ml = m.L[m.L.length - 1]; let s = j.sM - dir * S.back * 1.5; if (!m.loop && (s < 4 || s > ml - 4)) continue;
-            const q = hqLandRoadPose(m, s), tx = q.dx * dir, tz = q.dz * dir;
-            const toB = (j.end ? -1 : 1), bx = pb.dx * toB, bz = pb.dz * toB;   // the joining road's heading away from the main road
-            const bRight = (bx * -tz + bz * tx) > 0, lab = hqLandPlaceLabel(j.to);
-            const o2 = m.w / 2 + 1.6, sx = q.x + -tz * o2, sz = q.z + tx * o2;
-            W.signs.push({ id: j.branch + ':' + j.end + ':' + dir, x: sx, z: sz, y: q.y, yaw: Math.atan2(-tx, -tz), lines: [_hqRoadSignName(b.label), bRight ? lab + ' ►' : '◄ ' + lab], road: m.id, s: ((s % ml) + ml) % ml });
-        }
-    }
-    return W;
-}
-/* the deck under (x, z): the nearest point of each deck's line whose slab (grown by pad) covers it → [{ d, s, t (across, m), y }] */
-function hqLandDecksAt(x, z, pad, out) {
-    const W = HQ_LAND_ROADS, o = out || []; o.length = 0;
-    const a = W.decks.length ? _hqRoadCell(W.grid, W.cell, x, z) : null; if (!a) return o;
-    for (let q = 0; q < a.length; q++) {
-        const d = W.decks[a[q][0]], k = a[q][1], A = d.P[k], B = d.P[k + 1];
-        const ex = B[0] - A[0], ez = B[1] - A[1], l2 = ex * ex + ez * ez || 1e-9, u = ((x - A[0]) * ex + (z - A[1]) * ez) / l2;
-        if ((u < 0 && k > 0) || (u > 1 && k < d.P.length - 2) || u < -0.02 || u > 1.02) continue;
-        const uc = Math.max(0, Math.min(1, u)), l = Math.sqrt(l2), t = ((x - A[0]) * -ez + (z - A[1]) * ex) / l;
-        if (Math.abs(t) > d.w / 2 + (pad || 0)) continue;
-        const prevHit = o.find(h => h.d === d); const y = A[2] + (B[2] - A[2]) * uc;
-        if (prevHit) { if (Math.abs(t) < Math.abs(prevHit.t)) { prevHit.t = t; prevHit.y = y; prevHit.s = d.L[k] + uc * l; } continue; }
-        o.push({ d, s: d.L[k] + uc * l, t, y });
-    }
-    return o;
-}
-const _HQ_DECK_HITS = [];
-/* THE WALKER on the decks: undefined = no deck has a say here (the ground's feet stand); null = a parapet, or the ground under a
-   slab with no headroom; else the deck's top the walker stands on. `curY` = the feet now (null: a free query — the ground's), `g`
-   = the ground's feet at (x, z) (the headroom test) */
-function hqLandDeckFeet(x, z, curY, g) {
-    if (curY == null || !HQ_LAND_ROADS.decks.length) return undefined;
-    const D = HQ_LAND_RULES.roads.deck, hits = hqLandDecksAt(x, z, 0.4, _HQ_DECK_HITS);
-    if (!hits.length) return undefined;
-    let best = null;
-    for (const h of hits) if (Math.abs(h.t) <= h.d.w / 2 && h.y <= curY + D.climb && h.y >= curY - 1.2 && (!best || h.y > best.y)) best = h;
-    if (best) return Math.abs(best.t) > best.d.w / 2 - D.edge ? null : best.y;
-    if (g != null) for (const h of hits) if (h.y - g > D.climb + 0.05 && h.y - h.d.thick - g < D.headroom) return null;
-    return undefined;
-}
-/* the highest deck top at or under y at (x, z) — a landing, the door gun's ray */
-function hqLandDeckBelow(x, z, y) {
-    if (!HQ_LAND_ROADS.decks.length) return null;
-    const E = HQ_LAND_RULES.roads.deck.edge; let best = null;
-    for (const h of hqLandDecksAt(x, z, 0, _HQ_DECK_HITS)) if (Math.abs(h.t) <= h.d.w / 2 - E && h.y <= y + 0.05 && (!best || h.y > best.y)) best = h;
-    return best ? best.y : null;
-}
-/* is (x, z, y) inside a deck's slab or its parapet (the airborne body, the boom — pad grows it)? → the deck, else null */
-function hqLandInDeck(x, z, y, pad) {
-    if (!HQ_LAND_ROADS.decks.length) return null;
-    const D = HQ_LAND_RULES.roads.deck, p = pad || 0;
-    for (const h of hqLandDecksAt(x, z, p, _HQ_DECK_HITS)) {
-        if (y > h.y - h.d.thick - p && y < h.y - 0.02 + p) return h.d;
-        const rail = h.d.foot ? D.footRail : D.parapet;
-        if (Math.abs(h.t) > h.d.w / 2 - D.edge - p && y >= h.y - 0.05 && y < h.y + rail + p) return h.d;
-    }
-    return null;
-}
-/* is (x, z) within `pad` m of a deck's slab in plan, at any height (the trees keep off the decks) */
-function hqLandDeckNear(x, z, pad) { return hqLandDecksAt(x, z, pad || 0, _HQ_DECK_HITS).length > 0; }
-/* THE PIERS of a deck: [{ s, x, z, y (the slab's underside), dx, dz }] — every `pier` m (an arch's every `arch` m, a truss's
-   only past 60 m, a footbridge's every 12 m), the renderer drops each to the ground (and skips one the deck stands low over) */
-function hqLandDeckPiers(d) {
-    if (d.piers) return d.piers;
-    const D = HQ_LAND_RULES.roads.deck, sp = d.look === 'arch' ? D.arch : d.look === 'truss' ? 60 : d.foot ? 12 : D.pier;
-    const a = d.L[Math.min(2, d.L.length - 1)], b = d.L[Math.max(0, d.L.length - 3)], span = b - a, n = Math.floor(span / sp);
-    const out = [];
-    if (n >= 1) for (let k = 1; k <= n; k++) {
-        const s = a + span * k / (n + 1), pose = hqLandRoadPose({ P: d.P, L: d.L, loop: false }, s);
-        out.push({ s, x: pose.x, z: pose.z, y: pose.y - d.thick, dx: pose.dx, dz: pose.dz });
-    }
-    return (d.piers = out);
-}
-/* THE GUARD RAILS round (x, z) within r m → the pieces */
-function hqLandRailsNear(x, z, r, out) {
-    const W = HQ_LAND_ROADS, o = out || [], seen = new Set(); o.length = 0; if (!W.rails.length) return o;
-    const C = W.cell, i0 = Math.floor((x - r) / C), i1 = Math.floor((x + r) / C), j0 = Math.floor((z - r) / C), j1 = Math.floor((z + r) / C);
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const a = W.railGrid.get(i * 100003 + j); if (!a) continue; for (const pc of a) if (!seen.has(pc.i)) { seen.add(pc.i); o.push(pc); } }
-    return o;
-}
-/* the guard rail within `pad` m of (x, z) whose beam stands over the feet at y (null y: any) → the piece, else null */
-function hqLandRailHit(x, z, pad, y) {
-    const W = HQ_LAND_ROADS; if (!W.rails.length) return null;
-    const a = _hqRoadCell(W.railGrid, W.cell, x, z); if (!a) return null;
-    const h = HQ_LAND_RULES.roads.rail.h;
-    for (const pc of a) {
-        const ex = pc.x1 - pc.x0, ez = pc.z1 - pc.z0, l2 = ex * ex + ez * ez || 1e-9, u = Math.max(0, Math.min(1, ((x - pc.x0) * ex + (z - pc.z0) * ez) / l2));
-        if (Math.hypot(x - pc.x0 - ex * u, z - pc.z0 - ez * u) > pad) continue;
-        if (y == null || y < pc.y0 + (pc.y1 - pc.y0) * u + h - 0.05) return pc;
-    }
-    return null;
-}
-function hqLandPadY(id) {
-    if (id === 'hq' && HQ_LAND.baked && isFinite(+HQ_LAND.baked.hubY)) return +HQ_LAND.baked.hubY;
-    const ov = HQ_LAND_STORE.index, p = ov && (ov.places || []).find(q => q.id === id);
-    return p && isFinite(+p.y) ? +p.y : null;
-}
-/* D.O.O.R. HQ's drum on its pad (hqLandPadY('hq')): solid to a body of radius `pad` */
-function hqLandHQSolid(x, z, pad) { if (HQ_LAND.baked && HQ_LAND.baked.noHQ) return false; return Math.hypot(x, z) < HQ_LAND_RULES.hq.r + (pad || 0); }   // E4: his land has no drum
-/* the mean colour of a material (0 … 1 rgb, into out at o): the far pass and the fallback paint with it */
-function hqLandColor(mat, out, o) { const C = HQ_LAND_STORE.col || _hqLandTables(null).col; out[o] = C[mat * 3]; out[o + 1] = C[mat * 3 + 1]; out[o + 2] = C[mat * 3 + 2]; return out; }
-function hqLandStats() { const St = HQ_LAND_STORE; return { tiles: St.n, cap: HQ_LAND_RULES.tiles.cap, mb: +((St.bytes + (St.world ? St.world.bytes : 0)) / 1048576).toFixed(1), world: !!St.world, id: St.id }; }
-/* THE CHUNK'S READ: the baked ground and the drawn ground on a regular grid in one pass — the same arithmetic as hqLandBase +
-   hqLandDetail, from a local copy of the samples (a chunk's 5 000 reads cost what 300 point reads do) → { base, h, mat, nx, nz }
-   row-major from (x0, z0) every `step` m; `mat` = each point's nearest sample's material. A 1 m grid is hqLandHeight exactly;
-   a 2 m grid carries the detail's first octave, a coarser one none (the far chunks — nobody stands there). null before
-   anything has landed. */
-function hqLandGrid(x0, z0, step, nx, nz) {
-    const St = HQ_LAND_STORE; if (!St.grid) return null;
-    const s = St.step, ext = St.ext, D = HQ_LAND_RULES.detail, A = St.amp;
-    const GX0 = Math.floor((x0 + ext) / s) - 1, GZ0 = Math.floor((z0 + ext) / s) - 1;
-    const bw = Math.floor((x0 + (nx - 1) * step + ext) / s) + 3 - GX0, bh = Math.floor((z0 + (nz - 1) * step + ext) / s) + 3 - GZ0;
-    const B = new Float32Array(bw * bh), M = new Uint8Array(bw * bh);
-    for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) { B[j * bw + i] = _hqLandS(GX0 + i, GZ0 + j); M[j * bw + i] = _hqLandS(GX0 + i, GZ0 + j, 1); }
-    const N = nx * nz, base = new Float32Array(N), h = new Float32Array(N), mat = new Uint8Array(N);
-    /* local copies of the readers (a hot loop: no global lookups) — the arithmetic is hqLandBase's / _hqLandVN's */
-    const CR = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
-    const HS = (i, j) => { let v = Math.imul(i, 374761393) + Math.imul(j, 668265263) | 0; v = Math.imul(v ^ (v >>> 13), 1274126177); return ((v ^ (v >>> 16)) >>> 0) / 4294967295; };
-    const VN = (x, z) => { const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
-        const a = HS(i, j), b = HS(i + 1, j), c = HS(i, j + 1), d = HS(i + 1, j + 1); return (a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v) * 2 - 1; };
-    const oct = step <= 1.01 ? 2 : step <= 2.01 ? 1 : 0;   // the detail a grid this coarse can carry (a 4 m grid would alias 3.4 m noise): the walker's chunks (1 m) carry all of it
-    const wl = D.wl, wl2 = D.wl2, m2 = D.mix2, pads = _hqLandPadsNear(x0, z0, x0 + (nx - 1) * step, z0 + (nz - 1) * step);
-    for (let b = 0; b < nz; b++) {
-        const z = z0 + b * step, gz = (z + ext) / s, iz = Math.floor(gz), fz = gz - iz, rz = iz - GZ0;
-        for (let a = 0; a < nx; a++) {
-            const x = x0 + a * step, gx = (x + ext) / s, ix = Math.floor(gx), fx = gx - ix, rx = ix - GX0, o = b * nx + a;
-            let r0 = (rz - 1) * bw + rx - 1;
-            const c0 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx); r0 += bw;
-            const c1 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx); r0 += bw;
-            const c2 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx); r0 += bw;
-            const c3 = CR(B[r0], B[r0 + 1], B[r0 + 2], B[r0 + 3], fx);
-            const y = CR(c0, c1, c2, c3, fz);
-            const q = rz * bw + rx;
-            const amp = (A[M[q]] * (1 - fx) + A[M[q + 1]] * fx) * (1 - fz) + (A[M[q + bw]] * (1 - fx) + A[M[q + bw + 1]] * fx) * fz;
-            base[o] = y;
-            const k = pads.length ? _hqLandPadK(pads, x, z) : 1;
-            h[o] = (oct && amp * k > 1e-4) ? y + amp * k * ((1 - m2) * VN(x / wl, z / wl) + (oct > 1 ? m2 * VN(x / wl2 + 17.3, z / wl2 - 9.1) : 0)) : y;
-            mat[o] = M[(fx < 0.5 ? q : q + 1) + (fz < 0.5 ? 0 : bw)];
-        }
-    }
-    return { base, h, mat, nx, nz };
-}
-/* a chunk's materials: the 2 m samples from (GX0, GZ0) on the global lattice, w × w (the splat's id sheet) */
-function hqLandIds(GX0, GZ0, w, out) {
-    const o = out || new Uint8Array(w * w);
-    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) o[j * w + i] = _hqLandS(GX0 + i, GZ0 + j, 1);
-    return o;
-}
-/* the whole world on a coarse grid (the far pass): every `k`-th sample of the 8 m world, heights + materials → { n, x0, cell, h, mat } */
-function hqLandWorldGrid(k) {
-    const W = HQ_LAND_STORE.world; if (!W) return null;
-    k = Math.max(1, k | 0);
-    const n = Math.floor((W.n - 1) / k) + 1, h = new Float32Array(n * n), mat = new Uint8Array(n * n);
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const o = (j * k) * W.n + i * k; h[j * n + i] = W.h[o]; mat[j * n + i] = W.mat[o]; }
-    return { n, x0: W.x0 + W.cell * 0.5, cell: W.cell * k, h, mat };
-}
-/* the land room's doors stand on their pads (the bake moves a pad's height: the row's `y` is re-read here) */
-(function () { const L = DOOR_HQ.rooms && DOOR_HQ.rooms.land; if (!L) return; (L.doors || []).forEach(d => { if (d.pad) { const y = hqLandPadY(d.pad); if (y != null) d.y = y; } }); })();
-/* ══ THE SITES ON THEIR PADS (WORLD_GEOGRAPHY_PLAN G6, 2026-09-28) ══════════════════════════════════════════════════════
-   HQ_WORLD.zones.land's rows name their place (`place`, `dx` / `dz` / `dy`): hqLandSiteFrames writes their frames (x, z = the
-   place's `at` + the offsets, y = its `padY` + dy, rot 0, `on: 'land'`) and an island join's `y` (the pad the site's edges ease
-   to). hqLandSites: one row per place — the union of its parts' boxes (land metres), the pad's height, the parts. The bake
-   levels that box + HQ_LAND_RULES.sites.margin flat and blends it back over `band`; the trees, the grass and the roads keep off
-   it (the site's own ground is there once it is drawn). hqLandSiteAt: the site whose box (+ pad) holds a point. */
-function hqLandSiteFrames() {
-    const Z = HQ_WORLD.zones && HQ_WORLD.zones.land; if (!Z) return;
-    const placeOf = id => (HQ_LAND.places || []).find(q => q.id === id) || null;
-    Object.keys(Z.parts).forEach(id => {
-        const P = Z.parts[id]; if (!P.place) return;
-        const pl = placeOf(P.place); if (!pl) { if (typeof console !== 'undefined') console.warn('[HQ land] ' + id + ': no place ' + P.place); return; }
-        P.x = Math.round((pl.at[0] + (P.dx || 0)) * 1000) / 1000; P.z = Math.round((pl.at[1] + (P.dz || 0)) * 1000) / 1000;
-        P.y = Math.round(((+pl.padY || 0) + (P.dy || 0)) * 1000) / 1000; P.rot = ((P.rot || 0) % 4 + 4) % 4;   // G7: a site may stand turned (Downtown, the Bowl)
-        if (!P.on) P.on = 'land';
-    });
-    (Z.joins || []).forEach(j => { if (!j.pad) return; const P = Z.parts[j.b], pl = P && placeOf(P.place); if (pl) j.y = +pl.padY || 0; });
-    _hqWorldIdx = null; _hqLandSitesCache = null;
-}
-let _hqLandSitesCache = null;
-function hqLandSites() {
-    if (HQ_LAND.baked && HQ_LAND.baked.edit) return [];   // E4: the editor's land — his rooms are not staged on it until E8
-    if (_hqLandSitesCache && _hqLandSitesCache.W === HQ_WORLD) return _hqLandSitesCache.out;
-    const Z = HQ_WORLD.zones && HQ_WORLD.zones.land, by = {}, out = [];
-    if (Z) Object.keys(Z.parts).forEach(id => {
-        const P = Z.parts[id]; if (!P.place || P.float) return;   // E3: a floating part hangs over its place — no pad, the land runs on under it
-        const r = hqWorldPartRect(id); if (!r) return;
-        const pl = (HQ_LAND.places || []).find(q => q.id === P.place);
-        const S = by[P.place] || (by[P.place] = { place: P.place, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, y: pl ? +pl.padY || 0 : 0, parts: [] });
-        S.x0 = Math.min(S.x0, r.x0); S.z0 = Math.min(S.z0, r.z0); S.x1 = Math.max(S.x1, r.x1); S.z1 = Math.max(S.z1, r.z1); S.parts.push(id);
-        if (P.sea) S.sea = true;   // G7: a sea site (the harbour) — the bake leaves the water's floor under it alone
-        if (P.bank != null) S.bank = P.bank;   // G8: a sea site out in the Deep stands on a bank at its floor (the bake raises the Deep to it)
-        const rm = DOOR_HQ.rooms && DOOR_HQ.rooms[id]; if (rm && rm.terrain && rm.terrain.slope) S.slope = true;   // G7: a sloped site (hqLandSiteY)
-    });
-    Object.keys(by).forEach(k => out.push(by[k]));
-    _hqLandSitesCache = { W: HQ_WORLD, out };
-    return out;
-}
-/* G7 (THE CITY ON THE HILL): the height the land stands at under a site at (x, z) (land metres) — its pad, or for a sloped site the
-   part's slope there (the nearest point of the part's box: the band round it eases from the edge's own height). The bake levels a
-   site's box to this and the site's edges ease to it (hqTerrainStitchRows), so the two meet at the line. */
-function hqLandSiteY(S, x, z) {
-    if (!S || !S.slope) return S ? S.y : 0;
-    let best = null, bd = Infinity;
-    for (const id of S.parts) {
-        const rm = DOOR_HQ.rooms[id], B = rm && hqTerrainSlopeFn(rm.terrain); if (!B) continue;
-        const r = hqWorldPartRect(id); if (!r) continue;
-        const d = Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
-        if (d >= bd) continue;
-        const cx = Math.max(r.x0, Math.min(r.x1, x)), cz = Math.max(r.z0, Math.min(r.z1, z)), q = hqZoneToRoom(id, cx, cz), F = hqWorldFrame(id);
-        bd = d; best = (F.y || 0) + (rm.terrain.base || 0) + B(q.x, q.z);
-    }
-    return best == null ? S.y : best;
-}
-/* the site whose box grown by `pad` m holds (x, z) (land metres), else null */
-function hqLandSiteAt(x, z, pad) {
-    const L = hqLandSites(), p = pad || 0;
-    for (let i = 0; i < L.length; i++) { const S = L[i]; if (x > S.x0 - p && x < S.x1 + p && z > S.z0 - p && z < S.z1 + p) return S; }
-    return null;
-}
-/* metres from (x, z) to the nearest site's box (0 inside), and that site — the detail noise and the grass fade by it */
-function hqLandSiteGap(x, z) {
-    const L = hqLandSites(); let best = Infinity, site = null;
-    for (let i = 0; i < L.length; i++) { const S = L[i], d = Math.hypot(Math.max(S.x0 - x, 0, x - S.x1), Math.max(S.z0 - z, 0, z - S.z1)); if (d < best) { best = d; site = S; } }
-    return { d: best, site };
-}
-hqLandSiteFrames();
-/* a site on the land sees as far as the land does (§5.3: the region's weather, not the old part's box, sets the sight): its fog's
-   density is the land's; its colours, its night and its lock stay its own */
-(function () {
-    const LR = DOOR_HQ.rooms && DOOR_HQ.rooms.land, d = LR && LR.shell && LR.shell.sky && LR.shell.sky.fog && LR.shell.sky.fog.density;
-    const Z = HQ_WORLD.zones && HQ_WORLD.zones.land; if (!d || !Z) return;
-    Object.keys(Z.parts).forEach(id => { const R = id !== 'land' && DOOR_HQ.rooms[id], f = R && R.shell && R.shell.sky && R.shell.sky.fog; if (f && f.density > 0) f.density = d; });
-})();
 /* ── THE UNDISCOVERED DOOR (2026-09-21, the user: "don't show the names of undiscovered
    locations on doors — just a question mark or nothing at all; get rid of the descriptors,
    we just need the location") ─────────────────────────────────────────────────────────
@@ -43939,7 +42024,7 @@ const HQ_WORLD_DOC_RULES = {
     /* NEW WORLD's first room = a FLAT EMPTY ground: one open terrain room, no features, no props, no doors, no treeline, a plain
        day sky with no scenery roster (the sheets are the bucket's own: lawn grass_2, cliff rocks_5, path dirt — mondo's ruling) */
     room: { w: 128, d: 128, h: 9, floor: 'grass_2', cliff: 'rocks_5', path: 'dirt' },
-    maxRoomM: 512,                  // a room's side (the compile is per room; the land is E4's)
+    maxRoomM: 512,                  // a room's side (the compile is per room)
     editKey: 'edit',                // the ONE key the runtime ignores (R1)
     rowLists: ['terrain.features', 'terrain.marks', 'props', 'doors', 'counters', 'agents', 'npcSpots', 'onlineSpots', 'climbs', 'stairs'],
     copyDrop: ['site', 'part', 'variants', 'area', 'land'],   // a library copy is his room: no site, no part of a zone, no variants
@@ -44058,16 +42143,6 @@ function hqWorldDocApply(doc) {
         R[id] = room;
     });
     if (doc.zones && typeof doc.zones === 'object' && typeof HQ_WORLD !== 'undefined' && HQ_WORLD && HQ_WORLD.zones) Object.keys(doc.zones).forEach(z => { HQ_WORLD.zones[z] = doc.zones[z]; });
-    /* E4: HIS LAND (world.json `land`: the bake id, his places, the land zone). Applied only once his world is LIVE (E8): until then the
-       game walks the old land and his is seen in the editor */
-    const LD = doc.land;
-    if (LD && LD.live && LD.id && typeof HQ_LAND !== 'undefined') {
-        HQ_LAND.baked = { id: LD.id, cell: 2, ext: LD.ext || 2800, tile: 256, heightBase: -200, base: HQ_WORLD_DOC_RULES.base + (LD.dir || 'land/'), noHQ: true, own: true };
-        if (Array.isArray(LD.places)) HQ_LAND.places = LD.places;
-        if (LD.zone && typeof HQ_WORLD !== 'undefined' && HQ_WORLD && HQ_WORLD.zones) HQ_WORLD.zones.land = LD.zone;
-        try { hqLandSiteFrames(); } catch (e) { console.warn('[world doc] the land sites', e); }
-        out.land = LD.id;
-    }
     if (Array.isArray(doc.links) && doc.links.length) {
         const L = DOOR_HQ.links || (DOOR_HQ.links = []);
         doc.links.forEach(l => { if (!l || !l.id) return; const i = L.findIndex(q => q && q.id === l.id); if (i >= 0) L[i] = l; else L.push(l); });
@@ -44141,597 +42216,6 @@ if (typeof window !== 'undefined') {
         hqWorldDocIndexRooms, hqWorldDocFetch, hqWorldDocLoad, hqWorldDocStart });
     if (window._EW_WORLD_ID && !window.importScripts) { try { hqWorldDocLoad(); } catch (e) { console.warn('[world doc] load', e); } }   // never inside the survey worker (it is handed each room)
 }
-/* ══ THE LAND IN THE EDITOR (EDITOR_PLAN.md §4.5 + §5.5 + §5.6, E4 — 2026-09-29) ═════════════════════════════════════════════
-   mondo's land, held by the editor the way the bake held the old one: the 2 m lattice in the runtime's own tile records
-   ({ ti, tj, S, x0, z0, h, mat, forest, water }, hqLandTileRead's shape), so the renderer streams it from memory unchanged
-   (HQ_LAND_STORE.src, three-renderer.js _hqLandStream). A tile he never touched is not kept: its samples come from the START
-   (hqLandEdStartH / M) — a flat disc at start.h, the ice wall at wall.r, and, once he draws a coast, the sea round his land.
-   Every stamp is pure arithmetic on that lattice (no DOM, no THREE):
-     hqLandEdNew()                          a new land (flat and empty, the ruling)
-     hqLandEdH / M / F / W(E, GX, GZ)       one lattice sample (GX = (x + ext) / 2)
-     hqLandEdSet(E, GX, GZ, v)              write one sample into every tile that holds it ({ h, m, f, w }; w NaN = dry)
-     hqLandEdBrush(E, tool, x, z, o)        a brush dab (raise lower smooth flatten terrace set cliff roughen mat forest water dry clear)
-     hqLandEdRidge / Plateau / Coast / Lake / River / Road / Pad   the lines and areas (each → its row + the touched tiles)
-     hqLandEdTileBytes(t) / hqLandEdSeaBytes(E) / hqLandEdMapRGBA(E, …)   the bake's files (EWLT, EWLS, the map's shading)
-     hqLandEdIndex(E, V, opts)              land.json (the runtime's overlay + the `edit` block the editor reads back)
-     hqLandEdInstall(E, ov) / hqLandEdUninstall()   the runtime reads this land (the 3D view, PLAY HERE on the land)
-   E.touch (a Map, set by the editor for one undo step): each tile's state before its first write. The files go to
-   Assets/World/land/ (NOT Assets/Land/, the old bake the live game still reads until E8 makes his world live). */
-const HQ_LAND_EDIT_RULES = {
-    mats: ['deep', 'shallow', 'sand', 'grass', 'meadow', 'forest', 'rock', 'snow', 'desert', 'redrock', 'playa', 'farm',
-        'urban', 'road', 'trail', 'river', 'lake', 'ice', 'pack', 'tundra', 'clay', 'cliff', 'lane', 'paved'],   // the bake's 24, in its order
-    tile: 256, samples: 129, ext: 2800, heightBase: -200, heightStep: 0.01,
-    start: { h: 1, mat: 'grass' },
-    wall: { r: 2600, edge: 14, h: 92, mat: 'ice' },                        // the ice wall rings the world (the old land's radius)
-    coast: { floor: -14, slope: 60, beach: 10, shore: 0.4, grid: 8 },      // outside his coast: the beach, then down to the floor
-    world: 8, map: 4, dir: 'land/',                                       // sea.bin's cell, the map's metres a pixel, the folder under Assets/World/
-    pad: { r: 36, margin: 3, band: 24 },                                  // a place's pad (its half-side), the level margin, the blend back
-    brush: { rMin: 4, rMax: 400, amt: 1.2, wl: 7 },                       // m a dab at full strength; roughen's noise wavelength (m)
-    roads: {
-        road:  { w: 10, grade: 0.08, mat: 'road',  label: 'Route', surface: 'asphalt', shoulder: 8 },
-        lane:  { w: 6,  grade: 0.12, mat: 'lane',  label: 'Lane',  surface: 'dirt',    shoulder: 6 },
-        trail: { w: 3,  grade: 0.22, mat: 'trail', label: 'Trail', surface: 'trail',   shoulder: 4 },
-        step: 4, smooth: 40, deck: 4, rail: 2, keep: 8,                   // resample m, the profile's smoothing (m), fill → a deck, drop → a rail, pts kept every m
-    },
-    river: { w: 10, depth: 2.2, bank: 8, below: 0.35, step: 4, keep: 8 },   // full width (m), the bed's depth, the bank's blend, the surface under the ground
-    lake: { depth: 4, edge: 14, row: 24 },                                 // the bed's depth, its shelf, the far pass's capsule rows (m)
-    region: { cell: 32 },                                                  // land.json regionGrid's cell (m)
-    sight: { rays: 720, eye: 1.7, target: 1.5, maxD: 2600, step: 8 },
-    undoMB: 256,
-};
-const _HQ_LAND_ED_M = {}; HQ_LAND_EDIT_RULES.mats.forEach((m, k) => { _HQ_LAND_ED_M[m] = k; });
-function hqLandEdMatId(name) { const k = _HQ_LAND_ED_M[name]; return k == null ? _HQ_LAND_ED_M.grass : k; }
-function _hqLandEdSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
-function hqLandEdNew() {
-    const R = HQ_LAND_EDIT_RULES, per = Math.ceil(2 * R.ext / R.tile), n = R.samples - 1;
-    return { v: 1, per, S: R.samples, n, step: R.tile / n, ext: R.ext, tile: R.tile, grid: new Array(per * per).fill(null),
-             blank: new Map(), coasts: [], cD: null, plain: null, touch: null, rev: 0, changed: new Set() };
-}
-/* ── THE START: what an untouched sample is ───────────────────────────────────────────────────────────────── */
-function _hqLandEdCoastD(E, x, z) {   // metres inside his land (+) / out at sea (−) — bilinear over the 8 m field; Infinity without a coast
-    const C = E.cD; if (!C) return Infinity;
-    const gx = Math.max(0, Math.min(C.n - 1.001, (x - C.x0) / C.cell)), gz = Math.max(0, Math.min(C.n - 1.001, (z - C.x0) / C.cell));
-    const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, o = j * C.n + i, D = C.d;
-    return (D[o] * (1 - fx) + D[o + 1] * fx) * (1 - fz) + (D[o + C.n] * (1 - fx) + D[o + C.n + 1] * fx) * fz;
-}
-function hqLandEdStartH(E, x, z) {
-    const R = HQ_LAND_EDIT_RULES, W = R.wall, C = R.coast;
-    let h = R.start.h;
-    const d = E.cD ? _hqLandEdCoastD(E, x, z) : Infinity;
-    if (d < C.beach) h = d >= 0 ? C.shore + (R.start.h - C.shore) * _hqLandEdSmooth(d / C.beach) : C.shore + (C.floor - C.shore) * _hqLandEdSmooth(-d / C.slope);
-    const r2 = x * x + z * z;
-    if (r2 > W.r * W.r) h = Math.max(h, W.h * _hqLandEdSmooth((Math.sqrt(r2) - W.r) / W.edge));
-    return h;
-}
-function hqLandEdStartM(E, x, z) {
-    const R = HQ_LAND_EDIT_RULES;
-    if (x * x + z * z > R.wall.r * R.wall.r) return _HQ_LAND_ED_M[R.wall.mat];
-    const d = E.cD ? _hqLandEdCoastD(E, x, z) : Infinity;
-    if (d < R.coast.beach) return d >= -R.coast.slope * 0.35 ? _HQ_LAND_ED_M.sand : d >= -R.coast.slope ? _HQ_LAND_ED_M.shallow : _HQ_LAND_ED_M.deep;
-    return _HQ_LAND_ED_M[R.start.mat];
-}
-/* is a tile nothing but the flat start (no wall, no coast in it)? — such a tile is left out of the export (sea.bin covers it) */
-function hqLandEdPlain(E, ti, tj) {
-    const R = HQ_LAND_EDIT_RULES, x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile, x1 = x0 + E.tile, z1 = z0 + E.tile;
-    const far = Math.max(Math.hypot(x0, z0), Math.hypot(x1, z0), Math.hypot(x0, z1), Math.hypot(x1, z1));
-    if (far > R.wall.r) return false;
-    if (!E.cD) return true;
-    if (!E.plain) {
-        E.plain = new Uint8Array(E.per * E.per);
-        const C = E.cD, k = E.tile / C.cell;
-        for (let j = 0; j < E.per; j++) for (let i = 0; i < E.per; i++) {
-            let lo = Infinity;
-            for (let b = Math.max(0, j * k - 1); b <= Math.min(C.n - 1, (j + 1) * k + 1); b++) for (let a = Math.max(0, i * k - 1); a <= Math.min(C.n - 1, (i + 1) * k + 1); a++) lo = Math.min(lo, C.d[b * C.n + a]);
-            E.plain[j * E.per + i] = lo > R.coast.beach + C.cell ? 1 : 0;
-        }
-    }
-    return !!E.plain[tj * E.per + ti];
-}
-function hqLandEdBlank(E, ti, tj) {
-    const k = tj * E.per + ti; let t = E.blank.get(k);
-    if (t) return t;
-    const S = E.S, S2 = S * S, x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile;
-    t = { ti, tj, S, x0, z0, h: new Float32Array(S2), mat: new Uint8Array(S2), forest: new Uint8Array(S2), water: null, used: 0, bytes: S2 * 6, blank: true };
-    for (let q = 0; q < S; q++) for (let p = 0; p < S; p++) { const x = x0 + p * E.step, z = z0 + q * E.step; t.h[q * S + p] = hqLandEdStartH(E, x, z); t.mat[q * S + p] = hqLandEdStartM(E, x, z); }
-    if (E.blank.size > 96) E.blank.delete(E.blank.keys().next().value);
-    E.blank.set(k, t);
-    return t;
-}
-/* a tile as the runtime reads it: his edited one, else the start's */
-function hqLandEdView(E, ti, tj) {
-    if (ti < 0 || tj < 0 || ti >= E.per || tj >= E.per) return null;
-    return E.grid[tj * E.per + ti] || hqLandEdBlank(E, ti, tj);
-}
-function _hqLandEdCopy(t) { return { h: t.h.slice(), mat: t.mat.slice(), forest: t.forest.slice(), water: t.water ? t.water.slice() : null }; }
-/* the tile he writes into (made from the start on first touch; its before-state filed in E.touch for the undo step) */
-function hqLandEdTile(E, ti, tj) {
-    if (ti < 0 || tj < 0 || ti >= E.per || tj >= E.per) return null;
-    const k = tj * E.per + ti; let t = E.grid[k];
-    if (E.touch && !E.touch.has(k)) E.touch.set(k, t ? _hqLandEdCopy(t) : null);
-    if (!t) {
-        const b = hqLandEdBlank(E, ti, tj);
-        t = { ti, tj, S: b.S, x0: b.x0, z0: b.z0, h: b.h.slice(), mat: b.mat.slice(), forest: b.forest.slice(), water: null, used: 0, bytes: b.S * b.S * 6 };
-        E.grid[k] = t;
-    }
-    E.changed.add(k);
-    return t;
-}
-/* one lattice sample (the tile that holds it; a shared edge row reads the same from either side) */
-let _hqLandEdT = null, _hqLandEdO = 0;   // the last sample's tile and offset (no allocation on the hot path)
-function _hqLandEdAt(E, GX, GZ) {
-    const n = E.n, per = E.per; let ti = Math.floor(GX / n), tj = Math.floor(GZ / n);
-    if (ti >= per) ti = per - 1; else if (ti < 0) ti = 0;
-    if (tj >= per) tj = per - 1; else if (tj < 0) tj = 0;
-    const t = E.grid[tj * per + ti], o = (GZ - tj * n) * E.S + (GX - ti * n);
-    _hqLandEdT = (t && o >= 0 && o < t.h.length) ? t : null; _hqLandEdO = o;
-    return _hqLandEdT;
-}
-function hqLandEdH(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t ? t.h[_hqLandEdO] : hqLandEdStartH(E, -E.ext + GX * E.step, -E.ext + GZ * E.step); }
-function hqLandEdM(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t ? t.mat[_hqLandEdO] : hqLandEdStartM(E, -E.ext + GX * E.step, -E.ext + GZ * E.step); }
-function hqLandEdF(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t ? t.forest[_hqLandEdO] : 0; }
-function hqLandEdW(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t && t.water ? t.water[_hqLandEdO] : NaN; }
-/* the ground at (x, z) in metres (bilinear over the lattice) — the editor's cursor and the pads read it */
-function hqLandEdHeight(E, x, z) {
-    const gx = (x + E.ext) / E.step, gz = (z + E.ext) / E.step, i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j;
-    return (hqLandEdH(E, i, j) * (1 - fx) + hqLandEdH(E, i + 1, j) * fx) * (1 - fz) + (hqLandEdH(E, i, j + 1) * (1 - fx) + hqLandEdH(E, i + 1, j + 1) * fx) * fz;
-}
-/* write one sample: every tile that holds it (up to four at a corner); v = { h, m, f, w } (any left out stays) */
-function hqLandEdSet(E, GX, GZ, v) {
-    const n = E.n, top = E.per * n;
-    if (GX < 0 || GZ < 0 || GX > top || GZ > top) return;
-    const tis = [Math.floor(GX / n)], tjs = [Math.floor(GZ / n)];
-    if (GX % n === 0 && GX > 0) tis.push(GX / n - 1);
-    if (GZ % n === 0 && GZ > 0) tjs.push(GZ / n - 1);
-    for (const tj of tjs) for (const ti of tis) {
-        if (ti >= E.per || tj >= E.per) continue;
-        const t = hqLandEdTile(E, ti, tj); if (!t) continue;
-        const o = (GZ - tj * n) * E.S + (GX - ti * n);
-        if (v.h != null) t.h[o] = Math.max(HQ_LAND_EDIT_RULES.heightBase, Math.min(HQ_LAND_EDIT_RULES.heightBase + 655, v.h));
-        if (v.m != null) t.mat[o] = v.m;
-        if (v.f != null) t.forest[o] = Math.max(0, Math.min(255, Math.round(v.f)));
-        if (v.w !== undefined) {
-            if (v.w === v.w) { if (!t.water) { t.water = new Float32Array(E.S * E.S).fill(NaN); t.bytes = E.S * E.S * 10; } t.water[o] = v.w; }
-            else if (t.water) t.water[o] = NaN;
-        }
-    }
-}
-/* the lattice rows / columns inside a box (m) → [GX0, GX1, GZ0, GZ1] clamped to the world */
-function _hqLandEdBox(E, x0, z0, x1, z1) {
-    const top = E.per * E.n, f = v => Math.max(0, Math.min(top, v));
-    return [f(Math.ceil((x0 + E.ext) / E.step)), f(Math.floor((x1 + E.ext) / E.step)), f(Math.ceil((z0 + E.ext) / E.step)), f(Math.floor((z1 + E.ext) / E.step))];
-}
-/* the tiles a box touches (indices) — what the renderer rebuilds after a stamp */
-function hqLandEdTilesIn(E, x0, z0, x1, z1) {
-    const out = [], a = Math.max(0, Math.floor((x0 + E.ext) / E.tile - 1e-6)), b = Math.min(E.per - 1, Math.floor((x1 + E.ext) / E.tile + 1e-6));
-    const c = Math.max(0, Math.floor((z0 + E.ext) / E.tile - 1e-6)), d = Math.min(E.per - 1, Math.floor((z1 + E.ext) / E.tile + 1e-6));
-    for (let tj = c; tj <= d; tj++) for (let ti = a; ti <= b; ti++) out.push(tj * E.per + ti);
-    return out;
-}
-function _hqLandEdFall(t, hard) { if (t >= 1) return 0; const i = Math.max(0, Math.min(0.95, hard || 0)); return t <= i ? 1 : _hqLandEdSmooth(1 - (t - i) / (1 - i)); }
-/* ── THE BRUSHES (§5.6): one dab at (x, z). o = { r, s (0 … 1), hard (0 … 0.95), h (flatten / set / cliff / water), step
-   (terrace), amt (m), mat (an id), f (forest 0 … 1) }. → the touched tiles */
-function hqLandEdBrush(E, tool, x, z, o) {
-    o = o || {};
-    const R = HQ_LAND_EDIT_RULES, B = R.brush, r = Math.max(B.rMin, Math.min(B.rMax, o.r || 20)), s = o.s == null ? 0.5 : o.s, amt = (o.amt != null ? o.amt : B.amt) * s;
-    const [X0, X1, Z0, Z1] = _hqLandEdBox(E, x - r, z - r, x + r, z + r);
-    if (X1 < X0 || Z1 < Z0) return [];
-    let snap = null, kk = 1;
-    if (tool === 'smooth') {   // read first, so a dab smooths against the ground before it (not its own writes)
-        kk = Math.max(1, Math.round(r / 16));
-        const w = X1 - X0 + 1 + 2 * kk, hh = Z1 - Z0 + 1 + 2 * kk; snap = new Float32Array(w * hh);
-        for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) snap[j * w + i] = hqLandEdH(E, X0 - kk + i, Z0 - kk + j);
-        snap.w = w;
-    }
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, w = _hqLandEdFall(Math.hypot(px - x, pz - z) / r, o.hard);
-        if (w <= 0) continue;
-        const h = hqLandEdH(E, GX, GZ);
-        switch (tool) {
-            case 'raise': hqLandEdSet(E, GX, GZ, { h: h + amt * w }); break;
-            case 'lower': hqLandEdSet(E, GX, GZ, { h: h - amt * w }); break;
-            case 'smooth': {
-                const i = GX - X0 + kk, j = GZ - Z0 + kk, W = snap.w;
-                const avg = (snap[j * W + i] * 4 + snap[j * W + i - kk] + snap[j * W + i + kk] + snap[(j - kk) * W + i] + snap[(j + kk) * W + i]
-                    + snap[(j - kk) * W + i - kk] + snap[(j - kk) * W + i + kk] + snap[(j + kk) * W + i - kk] + snap[(j + kk) * W + i + kk]) / 12;
-                hqLandEdSet(E, GX, GZ, { h: h + (avg - h) * w * Math.min(1, s * 1.5) }); break;
-            }
-            case 'flatten': hqLandEdSet(E, GX, GZ, { h: h + ((o.h != null ? o.h : h) - h) * w * Math.min(1, s * 1.5) }); break;
-            case 'terrace': { const st = Math.max(0.5, o.step || 5), tg = Math.round(h / st) * st; hqLandEdSet(E, GX, GZ, { h: h + (tg - h) * w * Math.min(1, s * 1.5) }); break; }
-            case 'set': hqLandEdSet(E, GX, GZ, { h: h + ((o.h != null ? o.h : h) - h) * w }); break;
-            case 'cliff': if (w >= 0.5) hqLandEdSet(E, GX, GZ, { h: o.h != null ? o.h : h }); break;
-            case 'roughen': hqLandEdSet(E, GX, GZ, { h: h + amt * w * _hqLandVN(px / (o.wl || B.wl), pz / (o.wl || B.wl)) }); break;
-            case 'mat': if (w > _hqLandHash(GX, GZ) * 0.9 + 0.05) hqLandEdSet(E, GX, GZ, { m: o.mat != null ? o.mat : hqLandEdMatId('grass') }); break;
-            case 'forest': { const f = hqLandEdF(E, GX, GZ), tg = (o.f != null ? o.f : 1) * 255; hqLandEdSet(E, GX, GZ, { f: f + (tg - f) * w * Math.min(1, s * 1.5) }); break; }
-            case 'water': if (w >= 0.5 && h < o.h) hqLandEdSet(E, GX, GZ, { w: o.h }); break;
-            case 'dry': if (w >= 0.5) hqLandEdSet(E, GX, GZ, { w: NaN }); break;
-            case 'clear': if (w >= 0.5) hqLandEdSet(E, GX, GZ, { h: hqLandEdStartH(E, px, pz), m: hqLandEdStartM(E, px, pz), f: 0, w: NaN }); break;
-        }
-    }
-    return hqLandEdTilesIn(E, x - r, z - r, x + r, z + r);
-}
-/* ── THE LINES: a Catmull-Rom spline through his clicks, resampled every `step` m → [[x, z]] */
-function hqLandEdSpline(pts, step) {
-    const P = (pts || []).map(p => [p[0], p[1]]); step = step || 4;
-    if (P.length < 2) return P;
-    const out = [P[0].slice()];
-    for (let k = 0; k + 1 < P.length; k++) {
-        const p0 = P[Math.max(0, k - 1)], p1 = P[k], p2 = P[k + 1], p3 = P[Math.min(P.length - 1, k + 2)];
-        const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
-        for (let i = 1; i <= n; i++) { const t = i / n; out.push([_hqLandCR(p0[0], p1[0], p2[0], p3[0], t), _hqLandCR(p0[1], p1[1], p2[1], p3[1], t)]); }
-    }
-    return out;
-}
-/* a polyline's nearest-point reader, bucketed every `cell` m: near(x, z) → { d, s (m along), k, side (+1 left) } or null past `reach` */
-function _hqLandEdAlong(P, reach, cell) {
-    cell = cell || 32;
-    const L = [0]; for (let k = 1; k < P.length; k++) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]));
-    const G = new Map(), key = (i, j) => i * 100003 + j;
-    for (let k = 0; k + 1 < P.length; k++) {
-        const i0 = Math.floor((Math.min(P[k][0], P[k + 1][0]) - reach) / cell), i1 = Math.floor((Math.max(P[k][0], P[k + 1][0]) + reach) / cell);
-        const j0 = Math.floor((Math.min(P[k][1], P[k + 1][1]) - reach) / cell), j1 = Math.floor((Math.max(P[k][1], P[k + 1][1]) + reach) / cell);
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const q = key(i, j); let a = G.get(q); if (!a) G.set(q, a = []); a.push(k); }
-    }
-    return {
-        L, len: L[L.length - 1] || 0,
-        near(x, z) {
-            const a = G.get(key(Math.floor(x / cell), Math.floor(z / cell))); if (!a) return null;
-            let best = null;
-            for (const k of a) {
-                const ax = P[k][0], az = P[k][1], dx = P[k + 1][0] - ax, dz = P[k + 1][1] - az, ll = dx * dx + dz * dz || 1e-9;
-                const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / ll)), ex = x - ax - dx * t, ez = z - az - dz * t, d = Math.hypot(ex, ez);
-                if (d <= reach && (!best || d < best.d)) best = { d, k, t, s: L[k] + (L[k + 1] - L[k]) * t, side: (dx * ez - dz * ex) > 0 ? 1 : -1 };
-            }
-            return best;
-        },
-    };
-}
-function _hqLandEdBoxOf(P, m) { let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity; for (const p of P) { x0 = Math.min(x0, p[0]); z0 = Math.min(z0, p[1]); x1 = Math.max(x1, p[0]); z1 = Math.max(z1, p[1]); } return [x0 - m, z0 - m, x1 + m, z1 + m]; }
-/* a polygon's signed distance (m, + inside) */
-function hqLandEdPolyD(poly, x, z) {
-    let inside = false, d = Infinity;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-        const a = poly[i], b = poly[j];
-        if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
-        const dx = b[0] - a[0], dz = b[1] - a[1], ll = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / ll));
-        d = Math.min(d, Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t));
-    }
-    return inside ? d : -d;
-}
-/* RIDGE / VALLEY: a raised (or sunk) band along the line — `h` m at the crest, `w` m wide (a cosine shoulder) */
-function hqLandEdRidge(E, pts, o) {
-    const P = hqLandEdSpline(pts, 4), w = Math.max(4, (o && o.w) || 60), hw = w / 2, hh = ((o && o.h) || 20) * (o && o.valley ? -1 : 1);
-    if (P.length < 2) return [];
-    const A = _hqLandEdAlong(P, hw), [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(P, hw), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, q = A.near(px, pz); if (!q) continue;
-        const k = 0.5 + 0.5 * Math.cos(Math.PI * Math.min(1, q.d / hw));
-        if (k > 1e-3) hqLandEdSet(E, GX, GZ, { h: hqLandEdH(E, GX, GZ) + hh * k });
-    }
-    return hqLandEdTilesIn(E, bx0, bz0, bx1, bz1);
-}
-/* PLATEAU: a polygon at `h` m; the ground eases up to it over `edge` m outside the line */
-function hqLandEdPlateau(E, poly, o) {
-    if (!poly || poly.length < 3) return [];
-    const h = (o && o.h != null) ? o.h : 20, edge = Math.max(2, (o && o.edge) || 30), [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(poly, edge), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, d = hqLandEdPolyD(poly, px, pz);
-        if (d < -edge) continue;
-        const k = d >= 0 ? 1 : _hqLandEdSmooth(1 + d / edge), g = hqLandEdH(E, GX, GZ);
-        hqLandEdSet(E, GX, GZ, { h: g + (h - g) * k });
-    }
-    return hqLandEdTilesIn(E, bx0, bz0, bx1, bz1);
-}
-/* COAST: his land's outline(s). Outside every polygon is the sea (the beach, then down to coast.floor); the START changes, so every
-   tile he already shaped takes the difference (his relief rides on the new start) and every tile he never touched just reads it.
-   → every tile index (the whole world redraws) */
-function hqLandEdCoastField(E, polys) {
-    const R = HQ_LAND_EDIT_RULES, cell = R.coast.grid, n = Math.round(2 * E.ext / cell) + 1, x0 = -E.ext, d = new Float32Array(n * n);
-    const P = (polys || []).filter(p => p && p.length >= 3);
-    if (!P.length) return null;
-    const cap = R.coast.slope + R.coast.beach + 16;
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-        const x = x0 + i * cell, z = x0 + j * cell; let best = -Infinity;
-        for (const p of P) { const v = hqLandEdPolyD(p, x, z); if (v > best) best = v; }
-        d[j * n + i] = Math.max(-cap, Math.min(cap, best));
-    }
-    return { n, x0, cell, d };
-}
-function hqLandEdCoast(E, polys) {
-    const old = { cD: E.cD };
-    const next = hqLandEdCoastField(E, polys);
-    const oldStartH = (x, z) => { const k = E.cD; E.cD = old.cD; const v = hqLandEdStartH(E, x, z); E.cD = k; return v; };
-    const oldStartM = (x, z) => { const k = E.cD; E.cD = old.cD; const v = hqLandEdStartM(E, x, z); E.cD = k; return v; };
-    const tiles = [];
-    for (let k = 0; k < E.grid.length; k++) if (E.grid[k]) tiles.push(k);
-    const before = tiles.map(k => { const t = E.grid[k]; return { k, t, h0: new Float32Array(t.h.length), m0: new Uint8Array(t.mat.length) }; });
-    before.forEach(b => { const t = b.t; for (let q = 0; q < t.S; q++) for (let p = 0; p < t.S; p++) { const x = t.x0 + p * E.step, z = t.z0 + q * E.step, o = q * t.S + p; b.h0[o] = oldStartH(x, z); b.m0[o] = oldStartM(x, z); } });
-    E.coasts = (polys || []).map(p => p.map(q => [q[0], q[1]])); E.cD = next; E.plain = null; E.blank.clear();
-    before.forEach(b => {
-        const t = hqLandEdTile(E, b.t.ti, b.t.tj);
-        for (let q = 0; q < t.S; q++) for (let p = 0; p < t.S; p++) {
-            const x = t.x0 + p * E.step, z = t.z0 + q * E.step, o = q * t.S + p;
-            t.h[o] += hqLandEdStartH(E, x, z) - b.h0[o];
-            if (t.mat[o] === b.m0[o]) t.mat[o] = hqLandEdStartM(E, x, z);
-        }
-    });
-    const all = []; for (let k = 0; k < E.per * E.per; k++) all.push(k);
-    return all;
-}
-/* LAKE: a polygon at `level` m. The bed sinks `depth` m under it over `edge` m in from the shore; the water surface is set where the
-   ground is under the level; the far pass's capsules (rows every lake.row m) → the lake row { id, label, level, pts, caps } */
-function hqLandEdLake(E, poly, o) {
-    if (!poly || poly.length < 3) return { row: null, tiles: [] };
-    const R = HQ_LAND_EDIT_RULES.lake, level = (o && o.level != null) ? o.level : 0.5, depth = (o && o.depth) || R.depth, edge = R.edge, lakeM = hqLandEdMatId('lake'), sandM = hqLandEdMatId('sand');
-    const [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(poly, 6), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, d = hqLandEdPolyD(poly, px, pz);
-        if (d < -6) continue;
-        const g = hqLandEdH(E, GX, GZ);
-        if (d < 0) { if (g < level + 0.3) hqLandEdSet(E, GX, GZ, { m: sandM }); continue; }   // the shore
-        const bed = level - 0.4 - (depth - 0.4) * _hqLandEdSmooth(d / edge), h = Math.min(g, bed);
-        hqLandEdSet(E, GX, GZ, { h, w: level, m: d > 3 ? lakeM : sandM });
-    }
-    const caps = [], half = R.row / Math.SQRT2;
-    for (let z = Math.ceil(bz0 / R.row) * R.row; z <= bz1; z += R.row) {
-        let run = null;
-        for (let x = Math.floor(bx0 / 4) * 4; x <= bx1 + 4; x += 4) {
-            const inn = hqLandEdPolyD(poly, x, z) > 0;
-            if (inn && !run) run = [x, x];
-            else if (inn) run[1] = x;
-            else if (run) { caps.push({ a: [run[0], z], b: [run[1], z], half, level }); run = null; }
-        }
-        if (run) caps.push({ a: [run[0], z], b: [run[1], z], half, level });
-    }
-    return { row: { level, depth, pts: poly.map(p => [p[0], p[1]]), caps }, tiles: hqLandEdTilesIn(E, bx0, bz0, bx1, bz1) };
-}
-/* RIVER: a spline from its source. The surface runs down the ground under it (never up: monotone), `below` m under the ground,
-   never under the sea; the bed is carved `depth` m under the surface across the width (w0 at the source to w1 at the mouth, full
-   widths), the banks ease back over `bank` m. → the river row { pts [[x, z, y]], w0, w1 (half-widths, land.json's) } + tiles */
-function hqLandEdRiver(E, pts, o) {
-    const RR = HQ_LAND_EDIT_RULES.river, P = hqLandEdSpline(pts, RR.step);
-    if (P.length < 2) return { row: null, tiles: [] };
-    const w0 = ((o && o.w0) || RR.w * 0.6) / 2, w1 = ((o && o.w1) || RR.w) / 2, depth = (o && o.depth) || RR.depth, sea = HQ_LAND_RULES.sea ? HQ_LAND_RULES.sea.y || 0 : 0;
-    const Y = []; let y = Infinity;
-    P.forEach((p, k) => { const g = hqLandEdHeight(E, p[0], p[1]) - RR.below; y = Math.min(y, g); Y.push(Math.max(sea, y)); });
-    const reach = Math.max(w0, w1) + RR.bank, A = _hqLandEdAlong(P, reach), L = A.len || 1;
-    const [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(P, reach), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1), rivM = hqLandEdMatId('river');
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, q = A.near(px, pz); if (!q) continue;
-        const hw = w0 + (w1 - w0) * q.s / L, ys = Y[q.k] + (Y[q.k + 1] - Y[q.k]) * q.t, g = hqLandEdH(E, GX, GZ);
-        if (q.d <= hw) { const bed = ys - depth * (1 - (q.d / hw) * (q.d / hw)) - 0.3; hqLandEdSet(E, GX, GZ, { h: Math.min(g, bed), w: ys, m: rivM }); }
-        else if (q.d <= hw + RR.bank) { const t = _hqLandEdSmooth((q.d - hw) / RR.bank), top = ys + 0.4; if (g > top) hqLandEdSet(E, GX, GZ, { h: top + (g - top) * t }); }
-    }
-    const keep = [], every = RR.keep / RR.step;
-    P.forEach((p, k) => { if (k % every === 0 || k === P.length - 1) keep.push([+p[0].toFixed(2), +p[1].toFixed(2), +Y[k].toFixed(2)]); });
-    return { row: { pts: keep, w0: +w0.toFixed(2), w1: +w1.toFixed(2), src: pts.map(p => [p[0], p[1]]) }, tiles: hqLandEdTilesIn(E, bx0, bz0, bx1, bz1) };
-}
-/* ROAD / LANE / TRAIL: a spline graded to its grade limit (the ground's profile smoothed, then held to ± grade both ways), flat
-   across its width; the ground under it is cut or filled to it and eases back over the shoulder. Where the fill passes `deck` m a
-   deck (a bridge) carries it and the ground is left; where the fill passes `rail` m a guard rail runs on both sides.
-   → { row (land.json roads[]), bridges [], tiles } */
-function hqLandEdGrade(G, step, grade, smooth) {   // the graded profile: G = the ground every `step` m → the road's heights
-    const n = G.length, k = Math.max(1, Math.round((smooth || 40) / step / 2)), Y = new Float64Array(n);
-    for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) { s += G[j]; c++; } Y[i] = s / c; }
-    const d = grade * step;
-    for (let pass = 0; pass < 2; pass++) {
-        for (let i = 1; i < n; i++) Y[i] = Math.max(Y[i - 1] - d, Math.min(Y[i - 1] + d, Y[i]));
-        for (let i = n - 2; i >= 0; i--) Y[i] = Math.max(Y[i + 1] - d, Math.min(Y[i + 1] + d, Y[i]));
-    }
-    return Y;
-}
-function hqLandEdRoad(E, pts, o) {
-    const RR = HQ_LAND_EDIT_RULES.roads, type = (o && o.type) || 'road', T = RR[type] || RR.road, P = hqLandEdSpline(pts, RR.step);
-    if (P.length < 2) return { row: null, bridges: [], tiles: [] };
-    const w = (o && o.w) || T.w, hw = w / 2, sea = HQ_LAND_RULES.sea ? HQ_LAND_RULES.sea.y || 0 : 0;
-    const G = P.map(p => hqLandEdHeight(E, p[0], p[1])), Y = hqLandEdGrade(G.map(g => Math.max(g, sea + 0.6)), RR.step, (o && o.grade) || T.grade, RR.smooth);
-    const fill = P.map((p, k) => Y[k] - G[k]);
-    const reach = hw + T.shoulder, A = _hqLandEdAlong(P, reach), m = hqLandEdMatId(T.mat);
-    const deckAt = k => fill[k] > RR.deck;
-    const [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(P, reach), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, q = A.near(px, pz); if (!q) continue;
-        const yr = Y[q.k] + (Y[q.k + 1] - Y[q.k]) * q.t, g = hqLandEdH(E, GX, GZ), deck = deckAt(q.k) || deckAt(q.k + 1);
-        if (deck && g < yr) continue;   // a deck spans it: the ground under stays
-        if (q.d <= hw) hqLandEdSet(E, GX, GZ, { h: yr, m, w: NaN });
-        else { const t = _hqLandEdSmooth((q.d - hw) / T.shoulder); hqLandEdSet(E, GX, GZ, { h: yr + (g - yr) * t }); }
-    }
-    /* the decks and the rails, as runs along the road (m) */
-    const runs = test => { const out = []; let s0 = -1; for (let k = 0; k < P.length; k++) { const on = test(k); if (on && s0 < 0) s0 = k; if ((!on || k === P.length - 1) && s0 >= 0) { const k1 = on ? k : k - 1; if (k1 > s0) out.push([A.L[s0], A.L[k1]]); s0 = -1; } } return out; };
-    const decks = runs(deckAt), rails = [];
-    runs(k => fill[k] > RR.rail && !deckAt(k)).forEach(r => { rails.push([+r[0].toFixed(1), +r[1].toFixed(1), 1], [+r[0].toFixed(1), +r[1].toFixed(1), -1]); });
-    const keep = [], every = RR.keep / RR.step;
-    P.forEach((p, k) => { if (k % every === 0 || k === P.length - 1) keep.push([+p[0].toFixed(2), +p[1].toFixed(2), +Y[k].toFixed(2)]); });
-    const bridges = decks.map(d => {
-        const bp = []; P.forEach((p, k) => { if (A.L[k] >= d[0] - 1e-6 && A.L[k] <= d[1] + 1e-6) bp.push([+p[0].toFixed(2), +p[1].toFixed(2), +Y[k].toFixed(2)]); });
-        return { type, w, look: type === 'trail' ? 'foot' : 'girder', pts: bp, deck: [+d[0].toFixed(1), +d[1].toFixed(1)] };
-    });
-    return { row: { type, surface: T.surface, w, pts: keep, rails, src: pts.map(p => [p[0], p[1]]) }, bridges, tiles: hqLandEdTilesIn(E, bx0, bz0, bx1, bz1) };
-}
-/* PAD: a place's ground levelled at `y` over its square (`r` m half-side + pad.margin) and eased back over pad.band (the bake's rule) */
-function hqLandEdPad(E, x, z, r, y) {
-    const R = HQ_LAND_EDIT_RULES.pad, h = r + R.margin, reach = h + R.band, [X0, X1, Z0, Z1] = _hqLandEdBox(E, x - reach, z - reach, x + reach, z + reach);
-    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
-        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, d = Math.hypot(Math.max(0, Math.abs(px - x) - h), Math.max(0, Math.abs(pz - z) - h));
-        if (d > R.band) continue;
-        const g = hqLandEdH(E, GX, GZ), t = _hqLandEdSmooth(d / R.band);
-        hqLandEdSet(E, GX, GZ, { h: y + (g - y) * t });
-    }
-    return hqLandEdTilesIn(E, x - reach, z - reach, x + reach, z + reach);
-}
-/* the tiles that go in the export: every tile he shaped, and every tile the start is not plain in (the wall, the coast) */
-function hqLandEdListed(E) {
-    const out = [];
-    for (let tj = 0; tj < E.per; tj++) for (let ti = 0; ti < E.per; ti++) {
-        const x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile;
-        if (Math.hypot(Math.max(0, Math.abs(x0 + E.tile / 2) - E.tile / 2), Math.max(0, Math.abs(z0 + E.tile / 2) - E.tile / 2)) > HQ_LAND_EDIT_RULES.wall.r + HQ_LAND_EDIT_RULES.wall.edge + 40) continue;   // wholly past the wall: sea.bin's
-        if (E.grid[tj * E.per + ti] || !hqLandEdPlain(E, ti, tj)) out.push([ti, tj]);
-    }
-    return out;
-}
-/* ── THE FILES (bake-land.js writeOutputs, byte for byte) ─────────────────────────────────────────────────── */
-function _hqLandEdEncH(y) { const R = HQ_LAND_EDIT_RULES; return Math.max(0, Math.min(65534, Math.round((y - R.heightBase) / R.heightStep))); }
-function hqLandEdTileBytes(t) {
-    const S = t.S, S2 = S * S, buf = new Uint8Array(16 + S2 * 6), dv = new DataView(buf.buffer);
-    buf[0] = 69; buf[1] = 87; buf[2] = 76; buf[3] = 84; buf[4] = 1; buf[5] = 0;   // 'EWLT' v1
-    dv.setUint16(6, S, true); dv.setFloat32(8, t.x0, true); dv.setFloat32(12, t.z0, true);
-    for (let o = 0; o < S2; o++) {
-        dv.setUint16(16 + o * 2, _hqLandEdEncH(t.h[o]), true);
-        buf[16 + S2 * 2 + o] = t.mat[o]; buf[16 + S2 * 3 + o] = t.forest[o];
-        const w = t.water ? t.water[o] : NaN; dv.setUint16(16 + S2 * 4 + o * 2, w === w ? _hqLandEdEncH(w) : 0xffff, true);
-    }
-    return buf;
-}
-/* the whole world at `cell` m (sample centres: the lattice's own samples, 4 lattice steps apart) → { n, x0, cell, h, mat };
-   `into` + a box (m) redraws only that part of an earlier one */
-function hqLandEdWorld(E, into, box) {
-    const cell = HQ_LAND_EDIT_RULES.world, n = Math.round(2 * E.ext / cell), k = cell / E.step, W = into || { n, x0: -E.ext, cell, h: new Float32Array(n * n), mat: new Uint8Array(n * n), bytes: n * n * 5 };
-    let i0 = 0, i1 = n - 1, j0 = 0, j1 = n - 1;
-    if (box) { i0 = Math.max(0, Math.floor((box[0] + E.ext) / cell) - 1); j0 = Math.max(0, Math.floor((box[1] + E.ext) / cell) - 1); i1 = Math.min(n - 1, Math.ceil((box[2] + E.ext) / cell) + 1); j1 = Math.min(n - 1, Math.ceil((box[3] + E.ext) / cell) + 1); }
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const GX = i * k + k / 2, GZ = j * k + k / 2; W.h[j * n + i] = hqLandEdH(E, GX, GZ); W.mat[j * n + i] = hqLandEdM(E, GX, GZ); }
-    return W;
-}
-function hqLandEdSeaBytes(W) {
-    const n = W.n, N2 = n * n, buf = new Uint8Array(16 + N2 * 3), dv = new DataView(buf.buffer);
-    buf[0] = 69; buf[1] = 87; buf[2] = 76; buf[3] = 83; buf[4] = 1; buf[5] = 0;   // 'EWLS' v1
-    dv.setUint16(6, n, true); dv.setFloat32(8, W.x0, true); dv.setFloat32(12, W.cell, true);
-    for (let o = 0; o < N2; o++) { dv.setUint16(16 + o * 2, _hqLandEdEncH(W.h[o]), true); buf[16 + N2 * 2 + o] = W.mat[o]; }
-    return buf;
-}
-/* THE MAP: the bake's shaded relief (its colours, its sun, contours every 25 m, every 100 m darker), 4 m a pixel, into an RGBA
-   buffer of size² (size = 2 ext / 4); a box (pixels [i0, j0, i1, j1]) redraws only that part */
-const HQ_LAND_MAP_COL = [[22, 58, 96], [58, 118, 160], [222, 204, 158], [122, 158, 86], [150, 180, 100], [56, 98, 52], [132, 124, 114], [240, 243, 247], [218, 182, 124],
-    [180, 108, 72], [230, 224, 208], [176, 184, 104], [150, 150, 154], [70, 70, 74], [150, 116, 78], [70, 138, 186], [52, 110, 160], [226, 238, 246], [212, 228, 238], [150, 162, 138], [186, 142, 102], [112, 100, 92], [128, 100, 70], [168, 164, 156]];
-function hqLandEdMapSize(E) { return Math.round(2 * E.ext / HQ_LAND_EDIT_RULES.map); }
-function hqLandEdMapRGBA(E, rgba, box) {
-    const PX = HQ_LAND_EDIT_RULES.map, W = hqLandEdMapSize(E), k = PX / E.step, M = _HQ_LAND_ED_M;
-    const i0 = box ? Math.max(0, box[0]) : 0, j0 = box ? Math.max(0, box[1]) : 0, i1 = box ? Math.min(W - 1, box[2]) : W - 1, j1 = box ? Math.min(W - 1, box[3]) : W - 1;
-    const bw = i1 - i0 + 3, bh = j1 - j0 + 3, H = new Float32Array(bw * bh);
-    for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) { const I = Math.max(0, Math.min(W - 1, i0 - 1 + i)), J = Math.max(0, Math.min(W - 1, j0 - 1 + j)); H[j * bw + i] = hqLandEdH(E, I * k + k / 2, J * k + k / 2); }
-    const sun = [-0.55, 0.62, -0.56], sl = Math.hypot(sun[0], sun[1], sun[2]); sun[0] /= sl; sun[1] /= sl; sun[2] /= sl;
-    const cl = (v, a, b) => v < a ? a : v > b ? b : v;
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const a = (j - j0 + 1) * bw + (i - i0 + 1), h = H[a], GX = i * k + k / 2, GZ = j * k + k / 2, m = hqLandEdM(E, GX, GZ), wv = hqLandEdW(E, GX, GZ);
-        let col = (HQ_LAND_MAP_COL[m] || HQ_LAND_MAP_COL[3]).slice();
-        if (m === M.farm) { const q = (((Math.floor((GX * E.step - E.ext) / 36) * 7 + Math.floor((GZ * E.step - E.ext) / 28) * 13) % 5) + 5) % 5; col = [[176, 184, 104], [196, 190, 110], [150, 168, 92], [206, 176, 108], [160, 176, 96]][q].slice(); }
-        let water = m === M.deep || m === M.shallow || m === M.pack || m === M.river || m === M.lake;
-        if (h < 0 || m === M.deep || m === M.shallow) { const t = cl(-h / 160, 0, 1); col = [64 + (12 - 64) * t, 130 + (40 - 130) * t, 170 + (86 - 170) * t]; water = true; }
-        else if (wv === wv && wv > h) { col = HQ_LAND_MAP_COL[M.lake].slice(); water = true; }
-        const hx = (H[a + 1] - H[a - 1]) / (2 * PX), hz = (H[a + bw] - H[a - bw]) / (2 * PX);
-        let nx = -hx, ny = 1, nz = -hz; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
-        const lit = cl(nx * sun[0] + ny * sun[1] + nz * sun[2], 0, 1);
-        let shade = water ? 0.92 + 0.08 * lit : 0.35 + 0.85 * lit;
-        const ht = water ? 1 : 1 + cl(h / 900, 0, 0.18);
-        if (!water && h > 0.5) { const b0 = Math.floor(h / 25), br = Math.floor(H[a + 1] / 25), bd = Math.floor(H[a + bw] / 25); if (b0 !== br || b0 !== bd) shade *= (Math.max(b0, br, bd) % 4 === 0) ? 0.72 : 0.86; }
-        const o = (j * W + i) * 4; rgba[o] = cl(col[0] * shade * ht, 0, 255); rgba[o + 1] = cl(col[1] * shade * ht, 0, 255); rgba[o + 2] = cl(col[2] * shade * ht, 0, 255); rgba[o + 3] = 255;
-    }
-    return rgba;
-}
-/* ── THE SIGHT TOOL: the ground seen from (x, z) (eye m over it), `rays` rays out to maxD over the 8 m world → per ray the runs seen
-   [[d0, d1], …] (information only, R4) */
-function hqLandEdSight(E, W, x, z, o) {
-    const R = Object.assign({}, HQ_LAND_EDIT_RULES.sight, o || {}), y0 = hqLandEdHeight(E, x, z) + R.eye, out = [];
-    const hAt = (px, pz) => { const gx = (px - W.x0) / W.cell - 0.5, gz = (pz - W.x0) / W.cell - 0.5; if (gx < 0 || gz < 0 || gx >= W.n - 1 || gz >= W.n - 1) return null; const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, b = j * W.n + i; return Math.max(0, (W.h[b] * (1 - fx) + W.h[b + 1] * fx) * (1 - fz) + (W.h[b + W.n] * (1 - fx) + W.h[b + W.n + 1] * fx) * fz); };
-    for (let r = 0; r < R.rays; r++) {
-        const a = r / R.rays * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a), runs = []; let best = -Infinity, on = -1;
-        for (let d = R.step; d <= R.maxD; d += R.step) {
-            const h = hAt(x + dx * d, z + dz * d); if (h == null) break;
-            const s = (h + R.target - y0) / d, seen = s >= best;
-            if ((h - y0) / d > best) best = (h - y0) / d;
-            if (seen && on < 0) on = d; else if (!seen && on >= 0) { runs.push([on, d - R.step]); on = -1; }
-        }
-        if (on >= 0) runs.push([on, R.maxD]);
-        out.push(runs);
-    }
-    return { x, z, y: y0, rays: out, maxD: R.maxD };
-}
-/* ── land.json: the runtime's overlay (places, roads, bridges, rivers, lakes → capsules, the region grid, the reveal points, the
-   map, the tiles, the format) + `edit` = his vector doc as the editor reads it back. V = the doc's land block. `id` is filled by
-   the caller (sha256 of this JSON + the map png, the bake's rule, hqLandEdId). */
-function hqLandEdIndex(E, V, opts) {
-    V = V || {}; opts = opts || {};
-    const R = HQ_LAND_EDIT_RULES, RC = R.region.cell, n = Math.ceil(2 * E.ext / RC);
-    const regions = (V.regions || []).filter(r => r && r.pts && r.pts.length >= 3), ids = regions.map(r => r.id);
-    const regionAt = (x, z) => { for (let k = regions.length - 1; k >= 0; k--) if (hqLandEdPolyD(regions[k].pts, x, z) >= 0) return k; return -1; };
-    let regionGrid = null;
-    if (regions.length) {
-        const rows = [];
-        for (let j = 0; j < n; j++) { let s = ''; for (let i = 0; i < n; i++) { const k = regionAt(-E.ext + (i + 0.5) * RC, -E.ext + (j + 0.5) * RC); s += k < 0 ? '.' : String.fromCharCode(97 + k); } rows.push(s); }
-        regionGrid = { n, cell: RC, x0: -E.ext, z0: -E.ext, ids, rows };
-    }
-    const places = (V.places || []).map(p => {
-        const k = regionAt(p.at[0], p.at[1]);
-        return { id: p.id, label: p.label, room: p.room, kind: p.kind || 'site', at: [p.at[0], p.at[1]], pad: p.float ? 0 : (p.pad || R.pad.r), y: +(+p.padY || 0).toFixed(2), padY: +(+p.padY || 0).toFixed(2), region: p.region || (k >= 0 ? ids[k] : null), float: !!p.float, rot: p.rot || 0 };
-    });
-    const roads = [], bridges = [];
-    (V.roads || []).forEach(r => { if (!r || !r.pts || r.pts.length < 2) return; roads.push({ id: r.id, label: r.label, type: r.type, surface: r.surface, w: r.w, loop: false, pts: r.pts, rails: r.rails || [] }); (r.bridges || []).forEach((b, k) => bridges.push(Object.assign({ id: r.id + '_b' + k, road: r.id, label: r.label }, b))); });
-    const lakes = []; (V.lakes || []).forEach(l => (l.caps || []).forEach(c => lakes.push(c)));
-    const rivers = (V.rivers || []).filter(r => r && r.pts && r.pts.length >= 2).map(r => ({ id: r.id, label: r.label, pts: r.pts, w0: r.w0, w1: r.w1 }));
-    const revealPts = (V.reveals || []).map(v => { const k = regionAt(v.at[0], v.at[1]), rg = v.regions || (k >= 0 ? [ids[k]] : []); return { id: v.id, at: [v.at[0], v.at[1]], regions: rg, places: places.filter(p => rg.indexOf(p.region) >= 0).map(p => p.id) }; });
-    const size = hqLandEdMapSize(E);
-    return {
-        v: 1, materials: R.mats.slice(), places, roads, bridges, junctions: [], rivers, lakes,
-        regions: regions.map(r => Object.assign({ id: r.id, label: r.label, pts: r.pts }, (r.weather && (+r.weather.fog > 0 || +r.weather.sight > 0)) ? { weather: { fog: +r.weather.fog || 0, sight: +r.weather.sight || 0 } } : {})), regionNames: Object.fromEntries(regions.map(r => [r.id, r.label])),
-        revealPts, stops: [], sight: {}, regionGrid,
-        map: { file: 'land-map.png', px: R.map, size, x0: -E.ext, z0: -E.ext },
-        tiles: opts.tiles || hqLandEdListed(E),
-        tileFormat: { tile: R.tile, samples: R.samples, heightBase: R.heightBase, heightStep: R.heightStep, waterNone: 65535 },
-        bake: { cell: E.step, ext: E.ext, id: opts.id || '' },
-        edit: { v: 1, coasts: E.coasts, regions: V.regions || [], reveals: V.reveals || [], places: V.places || [], roads: V.roads || [], rivers: V.rivers || [], lakes: V.lakes || [], lines: V.lines || [] },
-    };
-}
-/* the runtime reads his land: HQ_LAND.baked swaps to an editor bake (no drum, his places, no recipe forests; the old one kept),
-   the store's tile SOURCE is the editor (three-renderer.js streams from it instead of fetching), the 8 m world is W */
-let _hqLandEdSaved = null;
-function hqLandEdInstall(E, ov, W) {
-    const St = HQ_LAND_STORE;
-    if (!_hqLandEdSaved) _hqLandEdSaved = { baked: HQ_LAND.baked, places: HQ_LAND.places, regionNames: HQ_LAND.regionNames, cap: HQ_LAND_RULES.tiles.cap };
-    if (!E.liveId) E.liveId = 'ed_' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);   // one id a land (the far pass caches by it)
-    const id = E.liveId;
-    HQ_LAND.baked = { id, cell: E.step, ext: E.ext, tile: E.tile, heightBase: HQ_LAND_EDIT_RULES.heightBase, base: '', noHQ: true, own: true, edit: true };
-    HQ_LAND.places = ov.places; HQ_LAND.regionNames = Object.assign({}, ov.regionNames || {});
-    ov.bake = Object.assign({}, ov.bake, { id });
-    ov.tiles = []; for (let tj = 0; tj < E.per; tj++) for (let ti = 0; ti < E.per; ti++) ov.tiles.push([ti, tj]);   // every tile streams (from memory)
-    HQ_LAND_RULES.tiles.cap = Math.max(_hqLandEdSaved.cap, 160);
-    if (St.id !== id) { St.id = ''; St.index = null; }
-    HQ_LAND_ROADS.id = ''; HQ_LAND_DISC.id = ''; St.falls = null; _hqLandSitesCache = null;
-    St.src = { tile: (ti, tj) => hqLandEdView(E, ti, tj), E };
-    hqLandIndex(ov);
-    if (St.index !== ov) St.index = ov;
-    St.pads = (ov.places || []).filter(p => p.pad > 0 && p.at).map(p => [p.at[0], p.at[1], p.pad]);
-    hqLandRoadsIndex(ov); hqLandDiscIndex(ov);
-    St.world = W || hqLandEdWorld(E);
-    return id;
-}
-function hqLandEdUninstall() {
-    const St = HQ_LAND_STORE; if (!_hqLandEdSaved) return false;
-    HQ_LAND.baked = _hqLandEdSaved.baked; HQ_LAND.places = _hqLandEdSaved.places; HQ_LAND.regionNames = _hqLandEdSaved.regionNames; HQ_LAND_RULES.tiles.cap = _hqLandEdSaved.cap;
-    _hqLandEdSaved = null;
-    St.src = null; St.id = ''; St.index = null; St.grid = null; St.baked = null; St.world = null; St.n = 0; St.bytes = 0; St.pads = null; St.falls = null;
-    HQ_LAND_ROADS.id = ''; HQ_LAND_DISC.id = ''; _hqLandSitesCache = null;
-    return true;
-}
-/* his land, read back from its land.json + tiles (IMPORT FROM R2, or the IndexedDB copy): tiles = { 'ti_tj': ArrayBuffer } */
-function hqLandEdFromFiles(ov, tiles) {
-    const E = hqLandEdNew(), ed = (ov && ov.edit) || {};
-    if (ed.coasts && ed.coasts.length) { E.coasts = ed.coasts; E.cD = hqLandEdCoastField(E, ed.coasts); }
-    const R = HQ_LAND_EDIT_RULES;
-    Object.keys(tiles || {}).forEach(key => {
-        const buf = tiles[key], dv = new DataView(buf instanceof ArrayBuffer ? buf : buf.buffer, buf.byteOffset || 0, buf.byteLength);
-        const S = dv.getUint16(6, true), S2 = S * S, x0 = dv.getFloat32(8, true), z0 = dv.getFloat32(12, true);
-        const ti = Math.round((x0 + E.ext) / E.tile), tj = Math.round((z0 + E.ext) / E.tile); if (ti < 0 || tj < 0 || ti >= E.per || tj >= E.per || S !== E.S) return;
-        const t = { ti, tj, S, x0, z0, h: new Float32Array(S2), mat: new Uint8Array(S2), forest: new Uint8Array(S2), water: null, used: 0, bytes: S2 * 6 };
-        for (let o = 0; o < S2; o++) {
-            t.h[o] = dv.getUint16(16 + o * 2, true) * R.heightStep + R.heightBase; t.mat[o] = dv.getUint8(16 + S2 * 2 + o); t.forest[o] = dv.getUint8(16 + S2 * 3 + o);
-            const w = dv.getUint16(16 + S2 * 4 + o * 2, true); if (w !== 0xffff) { if (!t.water) { t.water = new Float32Array(S2).fill(NaN); t.bytes = S2 * 10; } t.water[o] = w * R.heightStep + R.heightBase; }
-        }
-        E.grid[tj * E.per + ti] = t;
-    });
-    return { E, doc: { coasts: E.coasts, regions: ed.regions || [], reveals: ed.reveals || [], places: ed.places || [], roads: ed.roads || [], rivers: ed.rivers || [], lakes: ed.lakes || [], lines: ed.lines || [] } };
-}
-if (typeof window !== 'undefined') Object.assign(window, { HQ_LAND_EDIT_RULES, HQ_LAND_MAP_COL, hqLandEdMatId, hqLandEdNew, hqLandEdStartH, hqLandEdStartM, hqLandEdPlain, hqLandEdBlank, hqLandEdView, hqLandEdTile,
-    hqLandEdH, hqLandEdM, hqLandEdF, hqLandEdW, hqLandEdHeight, hqLandEdSet, hqLandEdTilesIn, hqLandEdBrush, hqLandEdSpline, hqLandEdPolyD, hqLandEdRidge, hqLandEdPlateau, hqLandEdCoastField, hqLandEdCoast,
-    hqLandEdLake, hqLandEdRiver, hqLandEdGrade, hqLandEdRoad, hqLandEdPad, hqLandEdListed, hqLandEdTileBytes, hqLandEdWorld, hqLandEdSeaBytes, hqLandEdMapSize, hqLandEdMapRGBA, hqLandEdSight,
-    hqLandEdIndex, hqLandEdInstall, hqLandEdUninstall, hqLandEdFromFiles });
 /* ══ THE SHAPES (EDITOR_PLAN.md §4.3 + §5.3 + §6 rows 5–6, E1 — 2026-09-29) ═══════════════════════════════════════════════════
    The building rows the editor's tools write, expanded into the compiler's own rows before hqTerrainCompile reads them
    (hqRoomExpand), so the walker, the camera, the solver and the renderer see only walls, plateaus, bridges … (R1):
@@ -47129,7 +44613,7 @@ function hqTerrainStitchRows(roomId) {
         if (j.kind === 'island' && j.b === roomId && F.float) return;   // E3: a floating part keeps its own edge (nothing to ease down to)
         if (j.kind === 'island' && j.b === roomId && j.y != null && hqStagePart(j.a) && hqStagePart(j.b)) {
             const Si = hqWorldPartSize(roomId), yi = j.y - (F.y || 0), mi = (j.stitchM > 0) ? j.stitchM : m;
-            /* G7: a sloped site's edges ease to its slope there (the bake levels the land round it to the same profile: hqLandSiteY) */
+            /* G7: a sloped site's edges ease to its slope there (a slope's edges; the land that met them was cut in Z0) */
             const rm = DOOR_HQ.rooms && DOOR_HQ.rooms[roomId], B = rm ? hqTerrainSlopeFn(rm.terrain) : null, hw = Si.w / 2, hd = Si.d / 2;
             const at = { n: t => [t, -hd], s: t => [t, hd], e: t => [hw, t], w: t => [-hw, t] };
             [['n', Si.w], ['s', Si.w], ['e', Si.d], ['w', Si.d]].forEach(s => out.push({ side: s[0], t0: -s[1] / 2, t1: s[1] / 2, m: mi,
@@ -47188,7 +44672,7 @@ function hqTerrainIslandSinks(roomId) {
    levels, which a stair `ramp` crosses on a street). Every authored height (a plateau's h, a ramp's h0 / h1, a deck's / a bridge's / a
    pool's / a stream's / a wall's y) is read as ABOVE the base at its own spot, so a room authored flat stands on the slope as it was
    drawn: a roof stays level, a pool keeps one level, a stair lands where it landed. Outside the box the profile holds its end values
-   (the bake levels the land round the site to it: hqLandSiteY). null for a room without a slope. */
+   (the land that met it was cut in Z0). null for a room without a slope. */
 /* the field's base at a point: `terrain.base` plus the slope's profile there (G7) */
 function _hqTBaseAt(info, x, z) { return (info.base || 0) + (info.slope ? info.slope(x, z) : 0); }
 function hqTerrainSlopeFn(T) {
@@ -53625,6 +51109,7 @@ function hqAvatarLabel(pref) {
    mastery, or strobes when it is the Code Red site (until cleared today). */
 function doorSiteState(door, profile) {
     if (!door) return 'open';
+    if (door.sealed) return 'sealed';   // a door shut until the story opens it (the foyer's front door, ZONES_PLAN Z0)
     const lv = (typeof doorClearance === 'function') ? doorClearance(profile).level : 1;
     if (door.minClearance && lv < door.minClearance) return 'clearance';
     if (hqKeysShort(door, profile) > 0) return 'clearance';
@@ -54723,7 +52208,7 @@ if (typeof window !== 'undefined') {
     window.hqRoomBase = hqRoomBase;
     window.hqRoomVariantIds = hqRoomVariantIds;
     window.hqVariantRoll = hqVariantRoll;
-    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqWorldBearing = hqWorldBearing; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
+    window.HQ_WORLD_CLOCK = HQ_WORLD_CLOCK; window.hqClockRead = hqClockRead; window.hqClockWrite = hqClockWrite; window.hqClockRate = hqClockRate; window.hqClockNorm = hqClockNorm; window.hqWorldSun = hqWorldSun; window.hqWorldDir = hqWorldDir; window.hqRoomClock = hqRoomClock; window.hqRoomLandmarks = hqRoomLandmarks;   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3)
     window.hqApplyRoomVariant = hqApplyRoomVariant;
     window.hqRollRoomVariants = hqRollRoomVariants;
     window.hqVariantRollEach = hqVariantRollEach;

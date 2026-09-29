@@ -83,16 +83,10 @@ diffs. The deliverable is always the full edited file, produced in chat.
   Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): notes in
   rendering-loading-perf.md "THE SMOOTH ATTACH".
   Phase 12 = WORLD_GEOGRAPHY_PLAN G1 (portals `_hqCull*`, memory budget `_mm*`, the MEM line): notes rendering-loading-perf.md "THE PORTALS + THE MEMORY BUDGET".
-- `bake-land.js` (2026-09-28, WORLD_GEOGRAPHY_PLAN G0): `npm run bake-land` bakes data.js HQ_LAND (the world recipe) into
-  Assets/Land/ (land.json, land-map.png, tiles, sea.bin; ~2.5 min at 2 m) and stamps HQ_LAND.baked.id (the `?b=` on the
-  game's urls). A recipe edit = re-bake + upload. The map's ATLAS tab draws it. notes areas-complexes.md "THE LAND".
-  G2 (the land underfoot: foyer front door → room `land`): the bake stamps hubY; the ground wears the bucket's terrain / urban sheets
-  (HQ_LAND_RULES.tex src). Upload Assets/Land/. notes areas-complexes.md "THE LAND UNDERFOOT".
-  G3 (the water: `hqLandWater*` layer, sheets, falls, moored skiffs): notes areas-complexes.md "THE WATER".
-  G4 (trees, ferns, rocks, grass from the game's own models; trunk blockers): notes "THE TREES AND THE GRASS".
-  G5 (roads: graded lines, walkable decks, guard rails + grind, junction signs, Route 1 traffic): notes "THE ROADS".
-  G8 (edge: ice wall R4, pack + fast ice, shelf landing, sea sites on banks): notes "THE EDGE OF THE WORLD".
-  G9 (discovery: region grid, reveal points, R6 stops, title cards, atlas fog of war, save door.hq.land): notes "THE DISCOVERY".
+- THE LAND is CUT (2026-09-29, ZONES_PLAN.md Z0): no bake-land.js, no land.json, no HQ_LAND, no LAND/ATLAS map tabs, no
+  editor land mode. The world is DOOR HQ + zones behind doors (ZONES_PLAN.md, the plan of record; its §12 is the log). The
+  stage (door-joined parts, no card) is HQ-only: HQ_STAGE_RULES.zones. Engine rows (heap, LOD, instance, cull, queue) are
+  HQ_ENGINE_RULES. OPEN_WORLD_PLAN.md + WORLD_GEOGRAPHY_PLAN.md are history in docs/archive/.
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

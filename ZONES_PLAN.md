@@ -1,6 +1,6 @@
 # THE ZONES — DOOR HQ the hub, separate zones behind its doors, the open world gone
 
-*Plan document, 2026-09-29. Nothing in this plan is built. It replaces OPEN_WORLD_PLAN.md and
+*Plan document, 2026-09-29. Z0 built (see §12). It replaces OPEN_WORLD_PLAN.md and
 WORLD_GEOGRAPHY_PLAN.md (both move to docs/archive/ in Z0). House rules that stand over every phase:
 no puzzles (secret pathways are fine, puzzle content is not); no sound work; no test files; no invented
 names (plain labels: Zone 3, Room 2, Path A; only the names mondo wrote); every R2 delivery bumps `?v=`.*
@@ -422,3 +422,18 @@ with a thread per zone for the swap and the checks.
 ## 12. Log
 
 - 2026-09-29: plan written. Nothing built.
+- 2026-09-29: **Z0 THE CUT built** (token 20260929-zones-01-cors; R2: data.js, three-renderer.js, map.js, editor.js).
+  THE LAND gone from all four (data.js: HQ_LAND + rules/store/sampler/discovery/water/flora/roads/grid/sites,
+  HQ_LAND_EDIT_RULES + hqLandEd*, the `land` room, `HQ_WORLD.zones.land` + `grounds.land`, the far shells' readers,
+  hqWorldBearing + HQ_WORLD_WEENIES, hqWorldSheet, the world doc's `land` apply, HQ_WORLD_RULES far*/island* rows;
+  three-renderer.js the land block, far shells, stage land branches, `_hqPartOnLand`, `dev.land/water/flora/disc`,
+  `hq.far`, `hq.landEdited`; map.js the LAND + ATLAS tabs and the discovery cards; editor.js THE LAND mode). The stage is
+  HQ-only (`HQ_STAGE_RULES.zones` = medwing, basement, dumb); the engine rows moved to `HQ_ENGINE_RULES`. The foyer's
+  front door is `sealed: true` (`doorSiteState` returns 'sealed' for it). Restored from 1ed44e1: the woods rooms' doors
+  (clearing, stair, redwoods, ritual, Dead Man's Cave), the mall, Downtown (its G7 slope and steps gone); the clearing's
+  trail/pasture doors and the stair's deer path dropped (those rooms were retired before the land). Links downtown_strip,
+  stadium_downtown, streets_strip restored from 6d1dac8. Two stage joins became plain doors (Downtown quay ⇄ harbour,
+  Area 51 gate ⇄ flight line); the harbour keeps its 220 × 110 box. Kept: `float` ground, the Phase 7 island joins (inert,
+  no staged zone uses them). Left (dead, harmless): the `hq-land-*` / `hq-atlas-*` / `.ed-map` CSS. bake-land.js,
+  land.json, WORLD_GEOGRAPHY_MAP.jpg and the npm script deleted; OPEN_WORLD_PLAN.md + WORLD_GEOGRAPHY_PLAN.md in
+  docs/archive/. Load check: HQ opens, the foyer and the woods stair enter, no console errors. Next: Z1 THE TWO EXITS.

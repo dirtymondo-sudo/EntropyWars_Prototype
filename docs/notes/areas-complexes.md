@@ -1570,6 +1570,16 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
 - Test: `hq-coast.test.js` (the skiff's crossing in a vm harness). Plan log: OPEN_WORLD_PLAN.md §12.
 
 
+## THE LAND CUT (ZONES_PLAN Z0, 2026-09-29)
+
+Every THE LAND section below (G0-G9) is HISTORY: the land, its bake, the far shells, the LAND/ATLAS map tabs, the `land`
+room and the editor's land mode were deleted in Z0. The sites are rooms behind doors again. What Z0 put back: the woods rooms'
+own doors (clearing, stair, redwoods, ritual, Dead Man's Cave) and the mall and Downtown from git 1ed44e1 (the trail and
+pasture doors dropped: those rooms are gone); the links downtown_strip, stadium_downtown, streets_strip from 6d1dac8; new
+plain doors where a stage join was the only way in (Downtown quay <-> harbour, Area 51 gate <-> flight line). The foyer's
+front door is `sealed: true` (doorSiteState -> 'sealed'). The harbour keeps its G7 220 x 110 box (the 300 x 300 one held the
+Dutchman's and the Triangle's island holes).
+
 ## THE LAND — the bake and the atlas (WORLD_GEOGRAPHY_PLAN G0, 2026-09-28)
 - The world recipe is data.js `HQ_LAND` (was the sketch's recipe.js in the project folder open-world/geography/sketch/,
   now retired): coast, plateaus, bumps, ranges, peaks, Area 13, the glen, lakes, canyons, rivers, roads, places (each
