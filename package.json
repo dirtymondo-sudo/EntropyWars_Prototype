@@ -5,7 +5,6 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "bake-land": "node bake-land.js",
     "deploy": "node deploy.js",
     "optimize": "node optimize-assets.js",
     "manifest": "node manifest-assets.js",

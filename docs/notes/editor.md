@@ -144,6 +144,10 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
 
 ## E4 — the land and the world map (2026-09-29, token 20260929-editor-05-cors)
 
+**CUT 2026-09-29 (ZONES_PLAN Z0):** the whole land mode below was deleted from editor.js and data.js (hqLandEd*,
+HQ_LAND_EDIT_RULES, the land export, `world.json.land`, the outliner row, EWEditor.act.land). Kept: float ground (E3).
+Old IndexedDB `land` stores stay unused (the db version is unchanged). This section is history.
+
 R2 files: editor.js, data.js, three-renderer.js, styles-editor.css. Repo: index.html (token), deploy.js (`--world` now uploads
 `.bin` and `.png` with their types), docs.
 

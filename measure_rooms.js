@@ -51,7 +51,7 @@ const rooms = process.argv.slice(2);
   const t0 = Date.now(); let ok = false;
   while (Date.now() - t0 < 120000) { try { const st = await page.evaluate(() => [typeof window._hqEnter, typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.hq]); if (st[0] === 'function' && st[1]) { ok = true; break; } } catch (e) {} await sleep(800); }
   if (!ok) { console.log('page never ready', errs.slice(0, 5)); await browser.close(); process.exit(1); }
-  await page.evaluate(() => { window.EW_HQ_NO_POST = true; window.EW_DISABLE_CAST = true; window.EW_HQ_VARIANT = 'none'; }); if (process.env.CELL) await page.evaluate((c) => { HQ_STAGE_RULES.instanceCell = +c[0]; HQ_STAGE_RULES.instanceMin = +c[1]; }, [process.env.CELL, process.env.MIN || 4]); if (process.env.NOQ) await page.evaluate(() => { window.EW_NO_MODEL_QUEUE = true; }); if (process.env.NOINST) await page.evaluate(() => { window.EW_HQ_NO_INSTANCE = true; });
+  await page.evaluate(() => { window.EW_HQ_NO_POST = true; window.EW_DISABLE_CAST = true; window.EW_HQ_VARIANT = 'none'; }); if (process.env.CELL) await page.evaluate((c) => { HQ_ENGINE_RULES.instanceCell = +c[0]; HQ_ENGINE_RULES.instanceMin = +c[1]; }, [process.env.CELL, process.env.MIN || 4]); if (process.env.NOQ) await page.evaluate(() => { window.EW_NO_MODEL_QUEUE = true; }); if (process.env.NOINST) await page.evaluate(() => { window.EW_HQ_NO_INSTANCE = true; });
   const out = [];
   for (const room of rooms) {
     const glb0 = cnt.glbReq;
