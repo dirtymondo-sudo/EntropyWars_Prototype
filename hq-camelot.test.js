@@ -23,6 +23,8 @@
 // 6 m, three hollow towers climbed inside, the gatehouse, the lists); the hall and
 // the keep stand in its north wall by DOOR JOINS (hq-mountain.test.js has the
 // stage and the walk to the mountain).
+// WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the road retired — the parts stand on their pad on THE LAND and the portcullis
+// (the ward's bay door) is the entry again; the spring's pool left with the woods' parts (one land: walked).
 'use strict';
 const test = require('node:test');
 const { heavy } = require('./test-heavy.js');   // 2026-09-18: the heavy geometry proofs run on `npm run test:full` / in CI
@@ -32,8 +34,8 @@ const vm = require('node:vm');
 const { loadGameData } = require('./load-data');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const SITE = 'prebuilt_camelot', BOARD = 'site_prebuilt_camelot';
-const ROAD = BOARD + '_road', WARD = BOARD + '_ward', HALL = BOARD + '_hall', KEEP = BOARD + '_keep', DUNGEON = BOARD + '_dungeon', SKY = BOARD + '_sky';
-const PARTS = { [ROAD]: 'road', [WARD]: 'ward', [HALL]: 'hall', [KEEP]: 'keep', [DUNGEON]: 'dungeon', [SKY]: 'sky' };
+const WARD = BOARD + '_ward', HALL = BOARD + '_hall', KEEP = BOARD + '_keep', DUNGEON = BOARD + '_dungeon', SKY = BOARD + '_sky';
+const PARTS = { [WARD]: 'ward', [HALL]: 'hall', [KEEP]: 'keep', [DUNGEON]: 'dungeon', [SKY]: 'sky' };
 const IDS = Object.keys(PARTS);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const data = fs.readFileSync(__dirname + '/data.js', 'utf8');
@@ -71,7 +73,7 @@ function propBlocks(room, p, x, z, margin) {
 const reachFrom = (id, doorId) => { const room = HQ.rooms[id], info = D.hqTerrainInfo(id), L = D.hqTerrainDoorLanding(room, at(id, doorId)); return [info, D.hqTerrainReach(info, L.x, L.z)]; };
 const key = (info, x, z) => D.hqTerrainNodeKey(info, x, z);
 
-test('the sheet: six parts on Room i — site + part, none numbered, every one a terrain room; the ward and the sky OPEN under their own skies (hqCastleShell), the hall / the keep / the undercroft closed and lit by their own fire; three families (rooms · none · halls · cave · rooms); the looks; the register lists the site once and its complex is six rooms', heavy, () => {
+test('the sheet: five parts on Room i — site + part, none numbered, every one a terrain room; the ward and the sky OPEN under their own skies (hqCastleShell), the hall / the keep / the undercroft closed and lit by their own fire; three families (rooms · none · halls · cave · rooms); the looks; the register lists the site once and its complex is five rooms', heavy, () => {
     for (const id of IDS) {
         const r = HQ.rooms[id];
         assert.ok(r && r.kind === 'box' && r.site === SITE && r.part === PARTS[id], id + ': a box room wearing site + part');
@@ -86,7 +88,7 @@ test('the sheet: six parts on Room i — site + part, none numbered, every one a
         const joins = D.hqStageNeighbours(id).filter(n => n.spans.some(sp => !sp.door)).length;
         assert.ok(r.doors.length + joins >= 2, id + ': two ways out (the cycle rule at the complex’s scale; a road join is a way)');
     }
-    assert.equal(HQ.rooms[ROAD].terrain.gen, undefined, 'the road: no plan'); assert.equal(HQ.rooms[WARD].terrain.gen, undefined, 'the ward is BUILT — no plan'); assert.equal(HQ.rooms[HALL].terrain.gen, undefined, 'the hall is prefab — no plan');
+    assert.equal(HQ.rooms[WARD].terrain.gen, undefined, 'the ward is BUILT — no plan'); assert.equal(HQ.rooms[HALL].terrain.gen, undefined, 'the hall is prefab — no plan');
     assert.equal(HQ.rooms[KEEP].terrain.gen.kind, 'halls'); assert.equal(HQ.rooms[DUNGEON].terrain.gen.kind, 'cave'); assert.equal(HQ.rooms[SKY].terrain.gen.kind, 'rooms');
     assert.equal(HQ.rooms[SKY].terrain.gen.thicket, false, 'no trees in the sky');
     for (const id of [HALL, KEEP, DUNGEON]) { const S = HQ.rooms[id].shell; assert.ok(!S.open && S.fog && S.fog.density > 0 && S.ceilTile === 1.75, id + ': closed, a haze'); }
@@ -101,7 +103,7 @@ test('the sheet: six parts on Room i — site + part, none numbered, every one a
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === SITE).length, 1, 'the register lists the site once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex(SITE).length, 6, 'six parts');
+    assert.equal(D.hqSiteComplex(SITE).length, 5, 'five parts');
 });
 
 test('THE WEENIES: THE CASTLE IN THE SKY hangs on the ward’s sky over the north-north-east, a third of the way up (a `skycastle` landmark the renderer builds off the castle); Camelot itself stands on the sky castle’s horizon below, facing back; the gatehouse is lit; THE ORB is the one lit thing in the undercroft', () => {
@@ -115,16 +117,14 @@ test('THE WEENIES: THE CASTLE IN THE SKY hangs on the ward’s sky over the nort
     assert.ok(HQ.rooms[DUNGEON].props.some(p => p.key === 'floating_orb'), 'the orb');
 });
 
-test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcullis lands you on THE CROWN’S ROAD (the bay door on its south wall is the site’s egress); the spring’s pool surfaces on the moat’s bank, the wardrobe’s snow is in the trees outside the moat, the well stands free in the bailey, the Lodge opens off the great hall, THE SKY BRIDGE joins the castle in the sky to the stairway to heaven', () => {
-    const eg = D.hqSiteEgressDoor(SITE), bay = at(ROAD, 'bay');
-    assert.ok(D.hqSiteEntryOf(SITE) && D.hqSiteEntryOf(SITE).room === ROAD);
-    assert.ok(!at(WARD, 'bay'), 'the ward has no bay door: the road walks into it');
+test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcullis lands you in THE OUTER WARD (the bay door on its south wall is the site’s egress); the wardrobe’s snow is in the trees outside the moat, the well stands free in the bailey, the Lodge opens off the great hall, THE SKY BRIDGE joins the castle in the sky to the stairway to heaven', () => {
+    const eg = D.hqSiteEgressDoor(SITE), bay = at(WARD, 'bay');
+    assert.ok(D.hqSiteEntryOf(SITE) && D.hqSiteEntryOf(SITE).room === WARD);
     assert.ok(bay && bay.entry === SITE && bay.wall === 's' && bay.x === 0 && bay.leaf === eg.leaf && bay.label === eg.label && bay.action.room === eg.action.room && bay.action.at === eg.action.at, 'the bay door is the site’s egress');
-    assert.equal(HQ.rooms[ROAD].doors.filter(d => d.id === 'bay').length, 1, 'once');
+    assert.equal(HQ.rooms[WARD].doors.filter(d => d.id === 'bay').length, 1, 'once');
     assert.equal(D.hqSiteEntry(BOARD, 'egress').at, 'bay'); assert.equal(D.hqSiteEntry(BOARD, 'crossing').at, 'bay');
     assert.ok(!HQ.rooms[BOARD], 'no board room (2026-09-27)');
     const ends = {
-        fairy_camelot:   ['b', WARD, 'free', null, 'pool'],
         haunted_camelot: ['b', WARD, 'w', 28, 'wardrobe'],
         well_camelot:    ['a', WARD, 'free', null, 'well'],
         skycastle_stair: ['a', SKY, 'e', 8, null],
@@ -145,13 +145,12 @@ test('THE ENTRY + THE SEAMS: `site_prebuilt_camelot` is an alias — the portcul
     assert.ok(sb.route === 'divine' && sb.b.site === 'prebuilt_heaven' && sb.b.part === 'stair' && sb.b.wall === 'w', 'onto the stairway’s west wall, on the divine line');
     const divine = D.hqWorldRoutes(SKY).find(r => r.id === 'divine');
     assert.ok(divine && divine.stations.some(s => s.site === SITE) && divine.legs.some(l => l.fromRoom === SKY || l.toRoom === SKY), 'the divine line calls at Camelot');
-    assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'woods').stations.some(s => s.site === SITE), 'the woods line still calls at Camelot (the spring)');
     assert.ok(!D.hqWorldRoutes('foyer').find(r => r.id === 'ley').stations.some(s => s.site === SITE), 'the ley line no longer calls at Camelot (the Lodge left for the ranch, 2026-09-18)');
     assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'kingdom').stations.some(s => s.site === SITE), 'CAMELOT KINGDOM calls at Camelot (the North Pole)');
 });
 
-test('ONE PIECE: from the bay door every part is walked (the road walks into the ward by its road join); every inside door is a pair with the same leaf; nothing leaves the site but a links row or the bay; the complex is a cycle (ward → hall → keep → ward; keep ⇄ undercroft ⇄ ward; keep ⇄ sky)', () => {
-    const seen = new Set(), queue = [ROAD];
+test('ONE PIECE: from the bay door every part is walked; every inside door is a pair with the same leaf; nothing leaves the site but a links row or the bay; the complex is a cycle (ward → hall → keep → ward; keep ⇄ undercroft ⇄ ward; keep ⇄ sky)', () => {
+    const seen = new Set(), queue = [WARD];
     while (queue.length) {
         const id = queue.shift(); if (seen.has(id)) continue; seen.add(id);
         for (const nb of D.hqStageNeighbours(id)) if (IDS.includes(nb.id) && nb.spans.some(sp => !sp.door)) queue.push(nb.id);   // an edge join inside the site
@@ -278,7 +277,7 @@ test('THE PARK RULE + THE LIGHT: a rail and a stair and a tier in every part; ev
     }
 });
 
-test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all six', heavy, () => {
+test('the shell helper, the looks, the four procs, the landmark and the source sites; check-terrain solves all five', heavy, () => {
     const S = D.hqCastleShell({ w: 10, d: 12 }), K = D.hqCastleShell({ sky: true, w: 10, d: 12 });
     assert.ok(S.open && S.edge === 'open' && S.w === 10 && S.d === 12 && S.sky.night === 1 && S.sky.landmarks[0].kind === 'skycastle' && S.forest && S.lights.length === 0 && S.look === D.HQ_ROOM_LOOKS.camelot && S.mood.night === 1, 'hqCastleShell (the ward)');
     assert.ok(K.open && K.sky.night === 0 && K.sky.landmarks[0].kind === 'castle' && !K.forest && K.floor === 'cloud_2' && K.look === D.HQ_ROOM_LOOKS.skycastle && K.sky === undefined || K.sky.scenery === 'islands', 'hqCastleShell({ sky: true })');
@@ -292,6 +291,6 @@ test('the shell helper, the looks, the four procs, the landmark and the source s
     const r = spawnSync(process.execPath, ['check-terrain.js', '--json', ...IDS], { cwd: __dirname, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     const rows = JSON.parse(r.stdout);
-    assert.equal(rows.length, 6);
+    assert.equal(rows.length, IDS.length);   // G6: five (the road retired)
     for (const row of rows) { assert.equal(row.unreached.length, 0, row.id + ': every door reached'); assert.equal(row.traps.length, 0, row.id + ': nothing traps'); if (row.plan && row.plan.kind === 'halls') assert.equal(row.plan.deadEnds, 0, row.id + ': no dead ends'); }
 });

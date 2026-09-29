@@ -27,6 +27,7 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const TR_RULES = vm.runInContext('TERRAIN_RULES', D);
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const ROOMS = D.hqTerrainRooms();
+const LAND_PARTS = Object.keys(vm.runInContext('HQ_WORLD', D).zones.land.parts);
 const KINDS = ['hill', 'dip', 'ridge', 'plateau', 'ramp', 'deck', 'pool', 'stream', 'wall', 'rail', 'path', 'tree', 'grove', 'scatter', 'climb', 'bridge', 'spiral'];   // + THE ROUND PIECES (2026-09-26: the garage's spiral ramp)   // + THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19) + THE BRIDGE LAYER (D2b)
 const SPRITES_SRC = fs.readFileSync(require('node:path').join(__dirname, 'sprites.js'), 'utf8');
 const sheetOk = k => !!(HQ.textures[k] || TR_RULES[k] || (typeof k === 'string' && k.startsWith('urban:') && SPRITES_SRC.includes("'" + k.slice(6) + "'")));   // THE URBAN PACK (2026-09-17): `urban:<Name>` is a sheet too
@@ -58,6 +59,7 @@ test('the sheet: eighteen terrain rooms — the cave\'s seven, the woods\' seven
 test('THE SOLVER: in every room, from every door\'s landing every other door\'s landing is reached under the walker\'s own rule; every sill is its pad\'s height; a door that carries y stands at y', heavy, () => {
     for (const id of ROOMS) {
         const room = HQ.rooms[id], info = D.hqTerrainInfo(id), doors = room.doors || [];
+        if (!doors.length && LAND_PARTS.includes(id)) continue;   // G6: an island on the land is walked onto over the land, doorless
         assert.ok(doors.length >= 1, id + ': doors');
         const L = doors.map(d => Object.assign({ d }, D.hqTerrainDoorLanding(room, d)));
         for (const a of L) {
@@ -138,14 +140,14 @@ test('THE RENDERER: the field is built on entry, the walker\'s surface / air / c
      "if (_hq.terrain && !hqTerrainAir(_hq.terrain, x, z, y)) return false;", "if (_hq.terrain) return hqTerrainCam(_hq.terrain, px, pz, py);",
      "if (room && room.terrain && typeof hqTerrainDoorY === 'function') return hqTerrainDoorY(room, door);", "land = _hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z) :",
      "if (room.cave || room.terrain) {", ".concat(_hq.terrainScatter || [])", "function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng)", "_hq.terrain ? _hq.terrain.rules.dropMax : 0",
-     "function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain)); }", "function _hqTerrainMat(info, S) {", "attribute vec2 aBlend;", "_hq.rails.push.apply(_hq.rails, info.rails);",
+     "function _hqHasGround() { return !!(_hq && ((_hq.site && _hq.site.cave) || _hq.terrain || _hq.land)); }", "function _hqTerrainMat(info, S) {", "attribute vec2 aBlend;", "_hq.rails.push.apply(_hq.rails, info.rails);",
      "function _hqTreeWay(U, ctx, dead) {", "hollowtree: function (U, ctx) { return _hqTreeWay(U, ctx, false); },", "deadtree: function (U, ctx) { return _hqTreeWay(U, ctx, true); },"]
         .forEach(f => assert.ok(renderer.includes(f), f));
-    assert.equal(renderer.split('land = _hq.terrain ? hqTerrainHeight(').length, 3, 'both landing sites (the walker and the rider)');
+    assert.equal(renderer.split('_hq.terrain ? hqTerrainHeight(_hq.terrain, pl.x, pl.z)').length, 3, 'both landing sites (the walker and the rider — G2: the rider\'s reads the land first)');
     for (const id of ROOMS) assert.equal(D.hqFieldRoomOk(id), !!(D.hqRoomSite(id) && !(HQ.rooms[id].terrain && HQ.rooms[id].terrain.sea)), id + ': THE SEAMLESS FIELD (2026-09-22) — a WILD terrain room rasterises its own window (a sea room keeps the site\'s Δ; the facility\'s garage is no encounter room)');
     assert.ok(HQ.ways.hollowtree && HQ.ways.deadtree && HQ.catalogue.hollow_tree && HQ.catalogue.hollow_dead_tree, 'the two trees with holes in them');
     assert.ok(HQ.rooms.site_prebuilt_fairy_forest_clearing.doors.find(d => d.id === 'forest').way === 'hollowtree', 'the clearing\'s way back is the hollow tree');
-    assert.ok(HQ.links.find(l => l.id === 'ranch_haunted').way === 'deadtree' /* THE RANCH (2026-09-18): the pasture's gate is the ranch's now */ && HQ.links.find(l => l.id === 'deadtree_lookingglass').way === 'deadtree', 'the dead tree leads to the house and to the Looking-Glass');
+    assert.ok(!HQ.links.find(l => l.id === 'ranch_haunted') /* G6 (2026-09-28): the haunted grounds are walked to over the land */ && HQ.links.find(l => l.id === 'deadtree_lookingglass').way === 'deadtree', 'the dead tree leads to the house and to the Looking-Glass');
 });
 
 test('the tool: check-terrain.js prints every room with every door reached and exits 0', heavy, () => {

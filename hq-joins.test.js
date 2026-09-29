@@ -14,7 +14,7 @@ const {heavy} = require('./test-heavy');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const R = n => vm.runInContext(n, D);
 const HQ_STAGE_RULES = R('HQ_STAGE_RULES'), HQ_WORLD_RULES = R('HQ_WORLD_RULES');
-const DT = 'site_prebuilt_downtown_streets', STRIP = 'site_prebuilt_strip_streets', BOWL = 'site_prebuilt_stadium_bowl';
+const DT = 'site_prebuilt_downtown_streets', BOWL = 'site_prebuilt_stadium_bowl', HARB = 'site_prebuilt_downtown_harbour';
 const WING = ['medwing', 'medical', 'dispensary', 'interrogation', 'padded'];
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const mapSrc = fs.readFileSync(__dirname + '/map.js', 'utf8');
@@ -68,32 +68,39 @@ test('a door join is a doorway span on its wall, no link replaced; the side list
 
 test('the city\'s edge joins are open sides too, and each side of a join stitches to the same height', () => {
  assert.ok(D.hqShellSideOpen(DT, 'n').some(o => o.nb === BOWL && o.kind !== 'door'));
- assert.ok(D.hqShellSideOpen(DT, 'w').some(o => o.nb === STRIP));
+ assert.ok(D.hqShellSideOpen(DT, 's').some(o => o.nb === HARB), 'the harbour\'s shore south (G6: the Strip no longer joins the west edge — it stands on the land)');
  assert.ok(HQ_WORLD_RULES.stitchM > 0);
- for (const [a, b] of [[DT, BOWL], [DT, STRIP]]) {
+ for (const [a, b] of [[DT, BOWL], [DT, HARB]]) {
   const ra = D.hqTerrainStitchRows(a).find(s => s.other === b), rb = D.hqTerrainStitchRows(b).find(s => s.other === a);
   assert.ok(ra && rb, a + ' ⇄ ' + b);
   const ya = D.hqWorldFrame(a).y, yb = D.hqWorldFrame(b).y;
   assert.ok(near(ra.yAt(ra.t0) + ya, rb.yAt(rb.t0) + yb, 1e-6), 'one zone height both sides');
-  assert.equal(ra.m, HQ_WORLD_RULES.stitchM);
+  if (b === BOWL) assert.equal(ra.m, HQ_WORLD_RULES.stitchM);
  }
  assert.deepEqual(plain(D.hqTerrainStitchRows('medwing')), [], 'a door join never stitches a field');
  assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_heaven_stair')), [], 'a zone the stage does not walk is not stitched yet');
- assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_camelot_ward').map(r => r.other)).sort(), ['site_prebuilt_camelot_road', 'site_prebuilt_olympus_foothills'], 'the ward (OPEN WORLD Phase 6) stitches to the road and the foothills');
+ assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_camelot_ward').map(r => [r.other, r.side])), [['land', 'n'], ['land', 's'], ['land', 'e'], ['land', 'w']], 'the ward (G6) is an island on the land: its four edges ease to its pad');
 });
 
-test('the stitch: Downtown and the Strip compile alone to fields that meet along their join', heavy, () => {
- const a = HQ.rooms[DT], b = HQ.rooms[STRIP];
- const ia = D.hqTerrainCompile(a, DT), ib = D.hqTerrainCompile(b, STRIP);
- const J = D.hqWorldJoinResolve(D.hqWorldJoins(DT).find(j => (j.a === DT && j.b === STRIP) || (j.b === DT && j.a === STRIP)));
- let worst = 0;
- for (let k = 0; k <= 20; k++) {
-  const g = J.g0 + (J.g1 - J.g0) * k / 20, q = J.line === 'x' ? [g, J.at] : [J.at, g];
-  const pa = D.hqZoneToRoom(DT, q[0], q[1]), pb = D.hqZoneToRoom(STRIP, q[0], q[1]);
-  const ha = D.hqTerrainHeight(ia, pa.x, pa.z) + D.hqWorldFrame(DT).y, hb = D.hqTerrainHeight(ib, pb.x, pb.z) + D.hqWorldFrame(STRIP).y;
-  worst = Math.max(worst, Math.abs(ha - hb));
+test('the stitch (G6): every site on the land compiles alone to a field whose four edges stand on its pad (its authored tiers aside)', heavy, () => {
+ const Z = vm.runInContext('HQ_WORLD.zones.land', D), bad = [];
+ let n = 0;
+ for (const id of Object.keys(Z.parts)) {
+  const room = HQ.rooms[id]; if (id === 'land' || !room || !room.terrain) continue;
+  const j = D.hqWorldJoins(id).find(j => j.kind === 'island' && j.b === id && j.y != null); if (!j) continue;
+  const S = room.shell, info = D.hqTerrainCompile(room, id), fy = D.hqWorldFrame(id).y || 0;
+  /* an authored tier (a plateau, a ramp) keeps its own height at the edge — the stair's landing stays a landing */
+  const tier = (x, z) => room.terrain.features.some(f => f.k === 'plateau' ? (f.r > 0 ? Math.hypot(x - f.x, z - f.z) < f.r + 1 : Math.abs(x - f.x) <= (f.w || 0) / 2 + 1 && Math.abs(z - f.z) <= (f.d || 0) / 2 + 1)
+   : (f.k === 'ramp' && f.x0 != null) ? (() => { const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L2 = dx * dx + dz * dz || 1, u = ((x - f.x0) * dx + (z - f.z0) * dz) / L2; return u >= -0.1 && u <= 1.1 && Math.hypot(x - f.x0 - dx * u, z - f.z0 - dz * u) <= (f.w || 0) / 2 + 1; })() : false);
+  let worst = 0;
+  for (let k = 0; k <= 20; k++) {
+   const tx = -S.w / 2 + S.w * k / 20, tz = -S.d / 2 + S.d * k / 20;
+   for (const [x, z] of [[tx, -S.d / 2], [tx, S.d / 2], [-S.w / 2, tz], [S.w / 2, tz]]) if (!tier(x, z)) worst = Math.max(worst, Math.abs(D.hqTerrainHeight(info, x, z) + fy - j.y));
+  }
+  n++; if (worst > 0.05) bad.push(id + ' ' + worst.toFixed(3) + ' m off its pad');
  }
- assert.ok(worst <= 0.05, 'the two fields differ by ' + worst.toFixed(3) + ' m on the line');
+ assert.ok(n >= 15, n + ' sites checked');
+ assert.deepEqual(bad, []);
 });
 
 test('the renderer: a joined door is cut through its wall, swings for the walker from either side, and is no press-in', () => {

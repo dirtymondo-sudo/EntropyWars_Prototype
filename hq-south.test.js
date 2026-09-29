@@ -1,11 +1,11 @@
 'use strict';
-/* THE SOUTH (OPEN_WORLD_PLAN.md Phase 5, 2026-09-27):
-   - THE HIGHWAY: two BUILT parts (the Strip's and Area 51's) of flat desert road, joined to the Strip's south edge and to
-     each other by road joins, and by a border to AREA 51's GATE (a BUILT part), which joins the flight line's north edge;
+/* THE SOUTH (OPEN_WORLD_PLAN.md Phase 5, 2026-09-27; WORLD_GEOGRAPHY_PLAN.md G6, 2026-09-28):
+   - G6: the two highway parts retired — the land's own road runs from the Strip to Area 51. The Strip, AREA 51'S GATE and the
+     flight line are sites on THE LAND; the gate still joins the flight line's north edge by a road join on the pad;
    - AREA 51: Hangar 18 and the white rooms as DOOR JOINS at the doors they already had (the yard gate and the drains stay doors);
    - THE D.U.M.B.: six parts by DOOR JOINS (the war room 3 m up and the bunker 2.4 m up: their doors are on the hub's gantries);
-   - (heavy) the walker's reach: road end to road end in each part, into the diner, the kiosk and the guard post, up the tower,
-     and from the Strip's bay door out of its south edge; the flight line from its hangar door to the gate road. */
+   - (heavy) the walker's reach: the gate road end to end, into the guard post, up the tower, through the gate; the flight line
+     from its hangar door to the gate road. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
@@ -15,39 +15,40 @@ const D = loadGameData(), HQ = D.DOOR_HQ;
 const R = n => vm.runInContext(n, D);
 const HQ_STAGE_RULES = R('HQ_STAGE_RULES'), HQ_WORLD_RULES = R('HQ_WORLD_RULES'), W = R('HQ_WORLD');
 const P = 'site_prebuilt_';
-const ROAD = [P + 'strip_highway', P + 'area51_highway', P + 'area51_gate'];
+const ROAD = [P + 'area51_gate'];
 const DUMB = ['motorpool', 'sublevel7', 'dreamlab', 'clonevats', 'warroom', 'bunker'].map(s => P + 'dumb_' + s);
 
-test('the world is valid; the highway, the desert and the D.U.M.B. are staged zones of real parts', () => {
+test('the world is valid; the land and the D.U.M.B. are staged zones of real parts; the highway is retired (G6)', () => {
     const v = D.hqWorldValidate();
     assert.ok(v.ok, v.errors.join('\n'));
-    for (const z of ['highway', 'desert', 'dumb']) assert.ok(HQ_STAGE_RULES.zones.includes(z), z + ' is staged');
+    for (const z of ['land', 'dumb']) assert.ok(HQ_STAGE_RULES.zones.includes(z), z + ' is staged');
+    for (const z of ['highway', 'desert']) assert.ok(!W.zones[z] && !HQ_STAGE_RULES.zones.includes(z), z + ' is gone (G6)');
+    for (const id of [P + 'strip_highway', P + 'area51_highway']) assert.ok(!HQ.rooms[id], id + ' retired (G6)');
     for (const id of ROAD.concat([P + 'area51_flightline', P + 'area51_hangar', P + 'area51_ward']).concat(DUMB)) {
         assert.ok(HQ.rooms[id], id + ' is a room');
         assert.ok(D.hqStagePart(id), id + ' is a staged part');
     }
-    for (const z of ['highway', 'desert']) for (const id of Object.keys(W.zones[z].parts)) assert.ok(!W.zones[z].parts[id].planned, id + ' is built, not planned');
+    for (const id of [P + 'strip_streets', P + 'area51_gate', P + 'area51_flightline']) assert.ok(W.zones.land.parts[id] && W.zones.land.parts[id].place, id + ' stands on its place on the land');
 });
 
-test('the road: the Strip ⇄ the highway ⇄ the highway ⇄ the gate ⇄ the flight line, each an edge join the stage walks', () => {
-    const chain = [P + 'strip_streets'].concat(ROAD, [P + 'area51_flightline']);
-    for (let i = 0; i + 1 < chain.length; i++) {
-        const a = chain[i], b = chain[i + 1];
-        const nb = D.hqStageNeighbours(a).find(n => n.id === b);
-        assert.ok(nb, a + ' has ' + b + ' beside it');
-        const sp = nb.spans.find(s => s.side === 's' && s.kind === 'road');
-        assert.ok(sp && sp.t0 <= -7.9 && sp.t1 >= 7.9, a + ': the road join on its south edge, x −8…8');
-        const back = D.hqStageNeighbours(b).find(n => n.id === a);
-        assert.ok(back && back.spans.some(s => s.side === 'n'), b + ' sees ' + a + ' across its north edge');
-    }
-    /* the Strip's bay door moved off the road's span; the city plan runs a street out of the south edge */
+test('the road: the gate ⇄ the flight line, an edge join on the pad the stage walks; the Strip an island on the land', () => {
+    const a = P + 'area51_gate', b = P + 'area51_flightline';
+    const nb = D.hqStageNeighbours(a).find(n => n.id === b);
+    assert.ok(nb, a + ' has ' + b + ' beside it');
+    const sp = nb.spans.find(s => s.side === 's' && s.kind === 'road');
+    assert.ok(sp && sp.t0 <= -7.9 && sp.t1 >= 7.9, a + ': the road join on its south edge, x −8…8');
+    const back = D.hqStageNeighbours(b).find(n => n.id === a);
+    assert.ok(back && back.spans.some(s => s.side === 'n'), b + ' sees ' + a + ' across its north edge');
+    assert.ok(Math.abs(D.hqWorldFrame(a).y - D.hqWorldFrame(b).y) < 1e-6, 'one pad under both');
+    /* the Strip stands alone on the land: every side of it an island edge onto the land */
+    const sn = D.hqStageNeighbours(P + 'strip_streets');
+    assert.equal(sn.length, 1); assert.equal(sn[0].id, 'land');
     const strip = HQ.rooms[P + 'strip_streets'];
     const bay = strip.doors.find(d => d.id === 'bay');
-    assert.ok(bay && bay.wall === 's' && Math.abs(bay.x) > 12, 'the bay door is clear of the highway');
-    assert.ok(strip.terrain.gen.streets.some(s => s.pts.some(p => p[0] === 0 && p[1] === 32)), 'a street reaches the south edge at x 0');
+    assert.ok(bay && bay.wall === 's', 'the bay door is the Strip\'s egress');
 });
 
-test('THE BUILT ROAD: flat desert, no floor plan, the paint, the diner, the canopy, the guard post, the tower', () => {
+test('THE BUILT ROAD: flat desert, no floor plan, the paint, the guard post, the tower', () => {
     for (const id of ROAD) {
         const r = HQ.rooms[id], t = r.terrain;
         assert.ok(!t.gen, id + ': no generator (family E)');
@@ -60,13 +61,11 @@ test('THE BUILT ROAD: flat desert, no floor plan, the paint, the diner, the cano
         assert.ok(R('HQ_WORLD_CLOCK').dayLook[id], id + ' has its day look');
     }
     const f = id => HQ.rooms[id].terrain.features;
-    assert.ok(f(ROAD[0]).some(x => x.k === 'bridge' && x.id === 'diner_roof'), 'the diner has its roof');
-    assert.ok(f(ROAD[1]).some(x => x.k === 'bridge' && x.id === 'canopy' && x.y >= 4.5), 'the canopy stands 5 m up');
-    assert.ok(f(ROAD[2]).some(x => x.k === 'bridge' && x.id === 'post_roof'), 'the guard post has its roof');
+    assert.ok(f(ROAD[0]).some(x => x.k === 'bridge' && x.id === 'post_roof'), 'the guard post has its roof');
 });
 
 test('THE DOOR JOINS: Area 51 and the D.U.M.B. meet at their own doors, 0.2 m apart and facing; the secret ways stay doors', () => {
-    const doorJoins = D.hqWorldJoins().filter(j => j.kind === 'door' && (j.zone === 'desert' || j.zone === 'dumb'));
+    const doorJoins = D.hqWorldJoins().filter(j => j.kind === 'door' && ((j.zone === 'land' && /area51/.test(j.a)) || j.zone === 'dumb'));
     assert.equal(doorJoins.length, 2 + 5);
     for (const j of doorJoins) {
         const J = D.hqWorldDoorJoinResolve(j);
@@ -84,7 +83,7 @@ test('THE DOOR JOINS: Area 51 and the D.U.M.B. meet at their own doors, 0.2 m ap
         assert.ok(!D.hqStageDoorJoin(id, door), id + '#' + door + ' stays a door');
 });
 
-test('(heavy) the walker: every road part end to end and into its buildings; the Strip and the flight line reach their road joins', heavy, () => {
+test('(heavy) the walker: the gate road end to end and into its buildings; the flight line reaches its road join', heavy, () => {
     const reachOf = (id, x, z) => { const info = D.hqTerrainInfo(id); return { info, set: D.hqTerrainReach(info, x, z) }; };
     const has = (r, x, z, y) => r.set.has(y == null ? D.hqTerrainNodeKey(r.info, x, z) : D.hqTerrainNodeKey(r.info, x, z, y));
     const hw = id => HQ.rooms[id].shell.d / 2 - 1.5;
@@ -92,18 +91,10 @@ test('(heavy) the walker: every road part end to end and into its buildings; the
         const r = reachOf(id, 0, -hw(id));
         assert.ok(has(r, 0, hw(id)), id + ': the road runs end to end');
     }
-    const n = reachOf(ROAD[0], 0, -hw(ROAD[0]));
-    assert.ok(has(n, 22, -50), 'into the diner');
-    assert.ok(has(n, -22, 20), 'the rest stop');
-    const s = reachOf(ROAD[1], 0, -hw(ROAD[1]));
-    assert.ok(has(s, -30.5, 10), 'into the kiosk');
-    assert.ok(has(s, -18, 10), 'under the canopy');
-    const g = reachOf(ROAD[2], 0, -hw(ROAD[2]));
+    const g = reachOf(ROAD[0], 0, -hw(ROAD[0]));
     assert.ok(has(g, 11, 3), 'into the guard post');
     assert.ok(has(g, -20, 8, 4.5), 'up the watchtower');
     assert.ok(has(g, 0, 18), 'through the gate');
-    const strip = HQ.rooms[P + 'strip_streets'], bay = D.hqTerrainDoorLanding(strip, strip.doors.find(d => d.id === 'bay'));
-    assert.ok(has(reachOf(P + 'strip_streets', bay.x, bay.z), 0, 30.5), 'the Strip: the bay door reaches the highway');
     const fl = HQ.rooms[P + 'area51_flightline'], L = D.hqTerrainDoorLanding(fl, fl.doors[0]);
     assert.ok(has(reachOf(P + 'area51_flightline', L.x, L.z), 0, -30.5), 'the flight line: the hangar door reaches the gate road');
 });

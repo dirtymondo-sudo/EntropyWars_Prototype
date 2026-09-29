@@ -65,7 +65,7 @@ test('every river meets the sea at the sea\'s level (the bake\'s run-out); a riv
     const sea = R('HQ_LAND_RULES.sea.y'), RM = R('HQ_LAND.riverMouth');
     assert.ok(RM && RM.coast > 0 && RM.lift >= 0, 'the recipe carries the river mouth');
     const mouths = ov.rivers.filter(r => r.mouth);
-    assert.ok(mouths.length >= 2 && mouths.some(r => r.id === 'great') && mouths.some(r => r.id === 'ness'), `the Great River and the Ness reach the sea (${mouths.map(r => r.id)})`);
+    assert.ok(mouths.length >= 2 && mouths.some(r => r.id === 'great') && mouths.some(r => r.id === 'ness'), `River 1 and River 3 reach the sea (${mouths.map(r => r.id)})`);
     for (const r of mouths) assert.ok(r.mouth[2] <= sea + RM.lift + 0.011, `${r.id} meets the sea at its level (${r.mouth[2]})`);
     for (const r of ov.rivers) for (let k = 1; k < r.pts.length; k++) assert.ok(r.pts[k][2] <= r.pts[k - 1][2] + 1e-6, `${r.id} runs downhill at ${k}`);
 });

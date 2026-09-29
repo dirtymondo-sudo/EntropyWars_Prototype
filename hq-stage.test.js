@@ -10,7 +10,7 @@ const {loadGameData} = require('./load-data');
 const D = loadGameData(), HQ = D.DOOR_HQ;
 const R = n => vm.runInContext(n, D);
 const HQ_STAGE_RULES = R('HQ_STAGE_RULES'), HQ_WORLD_RULES = R('HQ_WORLD_RULES');
-const DT = 'site_prebuilt_downtown_streets', STRIP = 'site_prebuilt_strip_streets', BOWL = 'site_prebuilt_stadium_bowl';
+const DT = 'site_prebuilt_downtown_streets', STRIP = 'site_prebuilt_strip_streets', BOWL = 'site_prebuilt_stadium_bowl', HARB = 'site_prebuilt_downtown_harbour';
 const renderer = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 function extract(name) {
  const start = renderer.indexOf('    function ' + name + '(');
@@ -28,36 +28,29 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 /* three.js's rotation.y about the origin (the renderer places a neighbour's root this way) */
 const rotY = (th, x, z) => ({ x: x * Math.cos(th) + z * Math.sin(th), z: -x * Math.sin(th) + z * Math.cos(th) });
 
-test('the stage stands on the city, the medical wing, the woods and the basement, and its parts are the real box rooms of its frames', () => {
- assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain', 'coast']);   // + OPEN WORLD Phase 7 (2026-09-27): the coast (hq-coast.test.js)   // + OPEN WORLD Phase 6 (2026-09-27): the north (hq-mountain.test.js)   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
+test('the stage stands on the city, the medical wing, the basement, the D.U.M.B., the coast and the land, and its parts are the real box rooms of its frames', () => {
+ assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'basement', 'dumb', 'coast', 'land']);   // WORLD GEOGRAPHY G6 (2026-09-28): the woods, the highway, the desert, the kingdom and the mountain are sites on THE LAND   // + OPEN WORLD Phase 7 (2026-09-27): the coast (hq-coast.test.js)   // + OPEN WORLD Phase 6 (2026-09-27): the north (hq-mountain.test.js)   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
  for (const id of [DT, STRIP, BOWL]) assert.ok(D.hqStagePart(id), id + ' is a staged part');
  assert.equal(D.hqStagePart('central_egress'), null, 'the building is not staged');
  assert.equal(D.hqStageNeighbours('central_egress').length, 0);
  assert.ok(HQ_STAGE_RULES.buildDelayMs > 0 && HQ_STAGE_RULES.lampPickMs > 0 && HQ_STAGE_RULES.tileM === 32 && HQ_STAGE_RULES.lampsLive === 12);
 });
 
-test('Downtown sees the stadium north and the Strip west, their boxes touching its edge, the gantry links replaced', () => {
+test('Downtown sees the stadium north, its box touching its edge, the gantry link replaced; the Strip is a site on the land (G6)', () => {
  const nbs = D.hqStageNeighbours(DT), S = HQ.rooms[DT].shell;
- const bowl = nbs.find(n => n.id === BOWL), strip = nbs.find(n => n.id === STRIP);
- assert.ok(bowl && strip);
+ const bowl = nbs.find(n => n.id === BOWL);
+ assert.ok(bowl); assert.ok(!nbs.some(n => n.id === STRIP), 'the Strip stands in the desert on the land (G6), not beside Downtown');
  assert.equal(bowl.rel.rot, 2); assert.ok(near(bowl.rel.x, 0, 1e-3)); assert.ok(near(bowl.rel.z, -154.1, 1e-3));
  assert.ok(near(bowl.rect.z1, -S.d / 2, 0.01), 'the bowl ends on Downtown\'s north edge');
  assert.deepEqual(plain(bowl.spans.map(s => [s.side, s.t0, s.t1])), [['n', -12, 12]]);
  assert.deepEqual([...bowl.links], ['link_stadium_downtown']);
- assert.equal(strip.rel.rot, 0); assert.ok(near(strip.rel.x, -162, 1e-3)); assert.ok(near(strip.rel.z, 0, 1e-3));
- assert.ok(near(strip.rect.x1, -S.w / 2, 0.01), 'the Strip ends on Downtown\'s west edge');
- assert.deepEqual(plain(strip.spans.map(s => [s.side, s.t0, s.t1])), [['w', -7, 7]]);
- assert.deepEqual([...strip.links], ['link_downtown_strip']);
- assert.equal(D.hqStageJoinedDoor(DT, 'link_downtown_strip'), true);
  assert.equal(D.hqStageJoinedDoor(DT, 'link_stadium_downtown'), true);
- assert.equal(D.hqStageJoinedDoor(DT, 'link_streets_strip'), false, 'the second street to the Strip stays a door');
- /* the far ends read the same join back */
- assert.deepEqual(plain(D.hqStageNeighbours(STRIP).map(n => [n.id, n.spans[0].side])), [[DT, 'e'], ['site_prebuilt_strip_highway', 's']]);   // + the highway south (Phase 5)
+ /* the far end reads the same join back */
  assert.deepEqual(plain(D.hqStageNeighbours(BOWL).map(n => [n.id, n.spans[0].side])), [[DT, 'n']]);
 });
 
 test('the frames: to-room and from-room invert each other, and match a root placed with rotation.y = rot·π/2', () => {
- for (const [a, b] of [[DT, BOWL], [BOWL, DT], [DT, STRIP], [STRIP, DT]]) {
+ for (const [a, b] of [[DT, BOWL], [BOWL, DT], [DT, HARB], [HARB, DT]]) {
   const rel = D.hqStageRel(a, b);
   for (const p of [[0, 0], [10, -3], [-40, 60]]) {
    const q = D.hqStageToRoom(rel, p[0], p[1]), back = D.hqStageFromRoom(rel, q.x, q.z);
@@ -78,15 +71,14 @@ test('the crossing: a metre of hysteresis past the edge, inside the neighbour; t
  assert.equal(H, 1.0);
  assert.equal(D.hqStageWhere(hw, hd, nbs, 0, -hd - 0.5, H), null, 'half a metre past: still Downtown');
  assert.equal(D.hqStageWhere(hw, hd, nbs, 0, -hd - 1.2, H), BOWL);
- assert.equal(D.hqStageWhere(hw, hd, nbs, -hw - 1.2, 0, H), STRIP);
+ assert.equal(D.hqStageWhere(hw, hd, nbs, -hw - 1.2, 0, H), null, 'the west edge joins nothing (G6: the Strip is on the land)');
  assert.equal(D.hqStageWhere(hw, hd, nbs, 100, -hd - 5, H), null, 'past the edge but beside the bowl: nobody');
  /* after the swap the same feet are a metre INSIDE the new part: no flip-flop */
  const rel = D.hqStageRel(DT, BOWL), f = D.hqStageFromRoom(rel, 0, -hd - 1.2), Sb = HQ.rooms[BOWL].shell;
  assert.equal(D.hqStageWhere(Sb.w / 2, Sb.d / 2, D.hqStageNeighbours(BOWL), f.x, f.z, H), null);
  const pad = 1.5;
  assert.ok(D.hqStageSpanAt(hw, hd, nbs, 0, -hd + 0.5, pad));
- assert.ok(D.hqStageSpanAt(hw, hd, nbs, -hw + 0.2, 5, pad), 'the cross street (±7) less the pad');
- assert.equal(D.hqStageSpanAt(hw, hd, nbs, -hw + 0.2, 6, pad), null, 'the kerb');
+ assert.equal(D.hqStageSpanAt(hw, hd, nbs, -hw + 0.2, 5, pad), null, 'the west edge is wall');
  assert.equal(D.hqStageSpanAt(hw, hd, nbs, 20, -hd + 0.5, pad), null, 'the north edge beside the avenue is wall');
 });
 
@@ -194,16 +186,16 @@ test('the ring: the one-hop neighbours stay, a part two hops away is detached, t
  const mkRoot = () => ({ parent: null, position: { set(x, y, z) { Object.assign(this, { x, y, z }); } }, rotation: { set(x, y, z) { this.y = y; } }, updateMatrixWorld() {}, traverse() {} });
  const part = (id) => ({ id, built: true, attached: false, P: { partRoot: mkRoot(), outerSides: {} }, rel: null });
  const sideDT = { visible: true }, sideB = { visible: true };
- const H = { scene, opts: { room: STRIP }, outerSides: { [DT]: sideDT }, stage: { id: STRIP, nbs: D.hqStageNeighbours(STRIP), parts: {}, lampN: 0 } };
+ const H = { scene, opts: { room: HARB }, outerSides: { [DT]: sideDT }, stage: { id: HARB, nbs: D.hqStageNeighbours(HARB), parts: {}, lampN: 0 } };
  const dt = part(DT), bowl = part(BOWL); dt.P.outerSides[BOWL] = sideB;
  H.stage.parts[DT] = dt; H.stage.parts[BOWL] = bowl;
  c._hqStageAttach(H, dt, true); c._hqStageAttach(H, bowl, true);
  c._hqStageRing(H);
- assert.equal(dt.attached, true); assert.equal(bowl.attached, false, 'the bowl is two hops from the Strip');
+ assert.equal(dt.attached, true); assert.equal(bowl.attached, false, 'the bowl is two hops from the harbour');
  assert.ok(H.stage.parts[BOWL], 'kept built (partsBuilt 3)');
- assert.equal(sideDT.visible, false, 'Downtown drawn: the Strip\'s outer ground toward it hides');
+ assert.equal(sideDT.visible, false, 'Downtown drawn: the harbour\'s outer ground toward it hides');
  assert.equal(sideB.visible, true, 'the bowl not drawn: Downtown\'s ground toward it stands');
- const r = D.hqStageRel(STRIP, DT);
+ const r = D.hqStageRel(HARB, DT);
  assert.ok(near(dt.P.partRoot.position.x, r.x * 73) && near(dt.P.partRoot.rotation.y, r.rot * Math.PI / 2));
 });
 

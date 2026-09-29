@@ -29,17 +29,17 @@ A working sketch of this land already exists (§11). It is a 4 m heightmap with 
 graded roads and switchbacks, forests, and a sight test that checks what can be seen from where. It
 proves that the layout in §4 works:
 - From HQ you see only the tops of Olympus and the Downtown towers (and the summits).
-- Camelot appears only when you crest the Crown's Rise.
+- Camelot appears only when you crest Area 14.
 - The Strip appears only when the desert highway comes through its valley's gap; before that you see its towers over the ridge.
-- Area 51 appears only from Tikaboo Lookout, and never from the Strip, not even its hangar tops.
-- Loch Ness and the estate open up when the trees part on the north shore path.
+- Area 51 appears only from Area 17, and never from the Strip, not even its hangar tops.
+- Loch Ness and the estate open up when the trees part on Trail G.
 - Nine places see no other place at all from their own ground.
 
 **Size.** The land is 7.08 km² inside a 5.6 km disc: about 3.2 km east to west and 3.2 km north to south
-(the deep desert runs south to 1.74 km). Heights run from 356 m on Olympus down to −177 m in the Deep.
+(Area 9 runs south to 1.74 km). Heights run from 356 m on Olympus down to −177 m in the Deep.
 - On foot (running) a kilometre takes about 3.5 minutes. On the skateboard it takes about 1.5.
 - Route 1, the ring road, is 5.8 km: 21 minutes running, about 8 on the board.
-- Disaster City to Area 51 is about 2.2 km of road (Route 1, the desert highway, Groom Lake Road): 8 minutes
+- Disaster City to Area 51 is about 2.2 km of road (Route 1, the desert highway, Route 6): 8 minutes
   running, 3.5 on the board. As the crow flies it is 1.33 km (it was 0.87 km in sketch 1).
 
 ---
@@ -52,7 +52,7 @@ proves that the layout in §4 works:
 |---|---|---|
 | Not stitched; an actual map | One land, one heightmap; sites on pads; no rectangle edges outdoors | §3 R1, §5.1–5.2, §5.7 |
 | Trails and routes between places | Route 1 (the ring), 6 roads, 6 lanes, 11 trails; every place on a route | §4.4 |
-| Height differences, cliffs, valleys, rolling hills | 356 m of relief; the Rim cliff (60 m); the Great Glen; the Dry Wash canyon; the Downs; erosion | §4.2, §4.6 |
+| Height differences, cliffs, valleys, rolling hills | 356 m of relief; Area 13 cliff (60 m); Area 7; Canyon 1 canyon; Area 10; erosion | §4.2, §4.6 |
 | Discovery as a "huge moment" | THE SIGHT RULE and seven reveal points, checked by a test on every bake | §3 R2, §4.7, §5.11 |
 | Can't see the next area's entrance | Nine places see no other ground; others see only summits, lookouts and places across the sea | §4.7 |
 | Sloped city streets | Disaster City on a hill falling 58 m to the harbour; streets carry height; terraced lots; stair streets | §5.8 |
@@ -61,9 +61,9 @@ proves that the layout in §4 works:
 | Constant discovery | Something every 150–250 m of route; the map fills in as you see places | §3 R6, phase G9 |
 | The Deep all round | The ocean surrounds the land; the Bermuda triangle is far out in the south-east | §4.1 |
 | Antarctica at the bottom, the North Pole at the top, an ice wall border | The ice wall rings the world; the Antarctic shelf lies inside it to the south; the frozen Arctic and the Pole to the north | §4.1, fork 1 |
-| Loch Ness at the estate, with woods | Loch Ness fills the Great Glen: 0.7 km long, 30 m deep. The estate is on its south-east shore and the woods come down its north side | §4.5 |
-| Rivers from the mountains to the Deep | The Great River (Olympus to the east coast), Redwood Creek (Shasta to the loch, with falls), the River Ness (loch to the sea, with falls), the Nile (desert to the south coast) | §4.5 |
-| The highway goes round the map | Route 1 loops 5.8 km through the kingdom, the woods, the glen, the badlands, the desert and the city | §4.4 |
+| Loch Ness at the estate, with woods | Loch Ness fills Area 7: 0.7 km long, 30 m deep. The estate is on its south-east shore and the woods come down its north side | §4.5 |
+| Rivers from the mountains to the Deep | River 1 (Olympus to the east coast), River 2 (Shasta to the loch, with falls), River 3 (loch to the sea, with falls), River 4 (desert to the south coast) | §4.5 |
+| The highway goes round the map | Route 1 loops 5.8 km through the kingdom, the woods, the glen, Area 8, the desert and the city | §4.4 |
 | Dungeons like Skyrim, same rules | The storm drain and the sewers (Dead Man's Cave is its mouth in the woods), the Cavern, the ley lines and the D.U.M.B. as dungeon zones with mouths on the land. No puzzles | §5.13, phase G10 |
 | ProceduralTerrains | Its ideas are reimplemented, not copied (licence note in §5.1): noise stack, erosion, spline carving, water, props, fog | §5 |
 | threex.grass | Its crossed-quad tuft idea, rewritten for three r128 with instancing and wind | §5.5 |
@@ -74,13 +74,13 @@ proves that the layout in §4 works:
 
 | Ask | Sketch 2 | Where |
 |---|---|---|
-| A bayside mall by the beach | THE BAY: the harbour's inlet opened into a real bay (about 450 m across, 400 m deep) with a sand beach on its south shore. THE BAYSIDE MALL stands on its own pad behind the beach at (1205, 548), 5 m up, reached by the Bay Road from Downtown along the shore. The lighthouse moved to the bay's south head. The mall is no longer behind Downtown's street doors | §4.2, §4.3, §5.8 |
-| The Strip out of the city, into the desert, like Las Vegas | THE VALLEY: the Strip runs down the desert highway on the floor of a valley ringed by desert ridges (the ring that held Area 51 in sketch 1). You see its towers over the ridge from Route 1, the Rim and the Crown's Road; its streets only when the highway comes through the valley's east gap (reveal 4) | §4.2, §4.7 |
-| City > highway > desert highway > the Strip > Area 51 | Route 1 leaves the city south and west under the Rim; THE DESERT HIGHWAY turns off it, rounds the Sheep Hill, enters the valley by its east gap, runs the Strip, leaves by the south gap and crosses THE DEEP DESERT (new land, south of sketch 1's coast) to Rachel's diner; GROOM LAKE ROAD goes on to Area 51 in its own ring of hills by Groom Lake, with Tikaboo beside it. Area 51 is 1.33 km from Downtown and 0.61 km past the Strip, and neither can see the other | §4.4 |
-| Bermuda farther from the bay | The triangle moved from 0.4 km off the bay's coast to the far south-east Deep, 0.9 km from the mall and 1.25 km from the harbour, behind the land from both (the bay can't see it). You find it by sailing south round the deep desert, or you spot it from Tikaboo | §4.1 |
+| A bayside mall by the beach | THE BAY: the harbour's inlet opened into a real bay (about 450 m across, 400 m deep) with a sand beach on its south shore. THE BAYSIDE MALL stands on its own pad behind the beach at (1205, 548), 5 m up, reached by Route 7 from Downtown along the shore. The lighthouse moved to the bay's south head. The mall is no longer behind Downtown's street doors | §4.2, §4.3, §5.8 |
+| The Strip out of the city, into the desert, like Las Vegas | VALLEY 1: the Strip runs down the desert highway on the floor of a valley ringed by desert ridges (the ring that held Area 51 in sketch 1). You see its towers over the ridge from Route 1, Area 13 and Route 2; its streets only when the highway comes through the valley's east gap (reveal 4) | §4.2, §4.7 |
+| City > highway > desert highway > the Strip > Area 51 | Route 1 leaves the city south and west under Area 13; THE DESERT HIGHWAY turns off it, rounds Hill 1, enters the valley by its east gap, runs the Strip, leaves by the south gap and crosses AREA 9 (new land, south of sketch 1's coast) to Area 16; ROUTE 6 goes on to Area 51 in its own ring of hills by Lake 1, with Area 17 beside it. Area 51 is 1.33 km from Downtown and 0.61 km past the Strip, and neither can see the other | §4.4 |
+| Bermuda farther from the bay | The triangle moved from 0.4 km off the bay's coast to the far south-east Deep, 0.9 km from the mall and 1.25 km from the harbour, behind the land from both (the bay can't see it). You find it by sailing south round Area 9, or you spot it from Area 17 | §4.1 |
 | The woods to Downtown through Dead Man's Cave (the sewer) | DEAD MAN'S CAVE is the upper mouth of THE STORM DRAIN: a 1.8 km drain under the highlands from the woods' east edge (by Route 1) to the Sewers under Downtown, and out at the harbour's outfall. It falls the whole way (R7) | §5.13 |
-| The Fairy Forest nearest Camelot; the ritual stuff nearer the estate | THE FAIRY FOREST is the woods' north-east corner across the Great River from Camelot: the Fairy Clearing (320 m from Camelot, by the Fairy Trail and a footbridge), the Redwoods, the Staircase and Dead Man's Cave. THE RITUAL WOODS are on Loch Ness's north-west shore, across the water from the estate: Bohemian Grove (364 m from it) and the Ritual Ground (299 m), on the Grove Trail off the north shore path | §4.2, §4.3 |
-| Shasta south, away from Olympus | Mt Shasta moved 330 m south to (−1040, −440), on the woods' west side above the ritual woods: 1.23 km from Olympus and clear of the Northern Range. The Cavern and the creek (now Shasta Creek) moved with it | §4.3, §4.5 |
+| The Fairy Forest nearest Camelot; the ritual stuff nearer the estate | THE FAIRY FOREST is the woods' north-east corner across River 1 from Camelot: the clearing (320 m from Camelot, by Trail C and a footbridge), the Redwoods, the Staircase and Dead Man's Cave. AREA 6 is on Loch Ness's north-west shore, across the water from the estate: Bohemian Grove (364 m from it) and the Ritual Ground (299 m), on Trail F off Trail G | §4.2, §4.3 |
+| Shasta south, away from Olympus | Mt Shasta moved 330 m south to (−1040, −440), on the woods' west side above the ritual woods: 1.23 km from Olympus and clear of Area 2. The Cavern and the creek (now River 2) moved with it | §4.3, §4.5 |
 
 ### 1c. Sketch 3 (mondo, 2026-09-28, on sketch 2)
 
@@ -88,9 +88,9 @@ proves that the layout in §4 works:
 
 | Ask | Sketch 3 | Where |
 |---|---|---|
-| No ring round the Strip | The valley's ring is gone. The Strip is one straight boulevard, north to south, on an open valley floor (38 m), and the desert highway runs straight down it. The SPRING MOUNTAINS stand 350–450 m to the west as a backdrop, pines on the crest (the Charleston pines); the Sheep Hill (pines on its crown) hides the Strip from the city. From the Rim and Route 1 only its towers show; its streets open at the valley floor | §4.2, §4.4, §4.7 |
-| No ring round Area 51 | The Groom ring is gone. THE GROOM RANGE is one chain on the north-west and north of Groom Lake, pines on top; Tikaboo stands east; the lake is open to the south and the sea. The desert highway runs through THE PASS between the range's east end and the pass hills (pines) to Rachel. The range hides Area 51 from the Strip, the Rim and the highway | §4.2, §4.4 |
-| More forest, the woods' places spread out | Forest went from 15 % to 16 % of the land, in four new forests: THE REDWOOD COAST (north-east, across the Great River from the Vatican: THE REDWOODS moved there, on the Redwood Highway from the Bowl); THE PINE BARRENS (south-east, below the Sheep Hill, behind the mall: THE STAIRCASE moved there, on the Barrens Trail off the Bay Road); THE EAST WOOD on the ridge between HQ and Downtown (HQ no longer sees the skyline); and the desert's pines on the Spring Mountains, the Sheep Hill, the Groom Range and the pass hills. The west keeps three woods: the fairy forest (the Fairy Clearing, Dead Man's Cave), the deep woods (Shasta, the Cavern), the ritual woods (Bohemian Grove, the Ritual Ground) | §4.2, §4.3 |
+| No ring round the Strip | The valley's ring is gone. The Strip is one straight boulevard, north to south, on an open valley floor (38 m), and the desert highway runs straight down it. The SPRING MOUNTAINS stand 350–450 m to the west as a backdrop, pines on the crest (Area 12); Hill 1 (pines on its crown) hides the Strip from the city. From Area 13 and Route 1 only its towers show; its streets open at the valley floor | §4.2, §4.4, §4.7 |
+| No ring round Area 51 | The ring at Area 51 is gone. RANGE 1 is one chain on the north-west and north of Lake 1, pines on top; Area 17 stands east; the lake is open to the south and the sea. The desert highway runs through PASS 1 between the range's east end and the pass hills (pines) to Area 16. The range hides Area 51 from the Strip, Area 13 and the highway | §4.2, §4.4 |
+| More forest, the woods' places spread out | Forest went from 15 % to 16 % of the land, in four new forests: AREA 3 (north-east, across River 1 from the Vatican: THE REDWOODS moved there, on Route 12 from the Bowl); AREA 4 (south-east, below Hill 1, behind the mall: THE STAIRCASE moved there, on Trail E off Route 7); AREA 11 on the ridge between HQ and Downtown (HQ no longer sees the skyline); and the desert's pines on Area 5, Hill 1, Range 1 and the pass hills. The west keeps three woods: the fairy forest (the clearing, Dead Man's Cave), the deep woods (Shasta, the Cavern), the ritual woods (Bohemian Grove, the Ritual Ground) | §4.2, §4.3 |
 
 ---
 
@@ -141,7 +141,7 @@ D = data.js, R = three-renderer.js. The "measured" numbers come from headless co
 
 **R2. THE SIGHT RULE.** Discovery is built into the ground.
 - From any place's pad, you may see:
-  - another place's ground only if that place is a **summit** (Olympus, Shasta, Tikaboo), a **lookout** (the Rim, the Crown's Rise), in the **same region**, or across **open sea**;
+  - another place's ground only if that place is a **summit** (Olympus, Shasta, Area 17), a **lookout** (Area 13, Area 14), in the **same region**, or across **open sea**;
   - the **tops** of weenies (Olympus, the Downtown towers, Babel, the haunted house's gable).
 - The first sight of a region's ground happens at a **reveal point**: a crest, a pass, the edge of the
   trees, or a bend in a canyon. The road or trail climbs to it and the view opens.
@@ -206,35 +206,35 @@ finer resolution; the relations (what hides what) are what the test pins.
   The research station (`antarctica_station`) stands on it at (110, 2190).
 - **THE FLAT LANDS** (`flatlands_plain`) are on top of the wall at (110, 2440). Fork 5 decides whether you can
   climb there.
-- **THE ARCTIC.** Frozen sea north of the Northern Range, from about z −1,700 to the wall. The North Pole
-  village (`northpole_village`) stands on the ice at (0, −2150). The only way north is the North Pass.
+- **THE ARCTIC.** Frozen sea north of Area 2, from about z −1,700 to the wall. The North Pole
+  village (`northpole_village`) stands on the ice at (0, −2150). The only way north is Trail I.
 - **THE DEEP.** Ocean all round the land, to −177 m.
   - Offshore islands lie west and east.
   - The Bermuda triangle is far out in the south-east Deep, over its own trench, with the cay (1320, 1440), the
     Flying Dutchman (1500, 1580) and the whirlpool (1410, 1625). It is 0.9 km from the Bayside Mall and
     1.25 km from the harbour, and the land between hides it from the whole bay: you sail south round the
-    deep desert to find it (or spot it from Tikaboo). Today's door to Atlantis and the other deep places can
+    deep desert to find it (or spot it from Area 17). Today's door to Atlantis and the other deep places can
     stay on the whirlpool.
 
 ### 4.2 The regions
 | Region | Ground | What it is | What hides it | First seen from |
 |---|---|---|---|---|
-| THE CENTRAL HIGHLANDS | 70–110 m | Rolling moor in the middle; D.O.O.R. HQ at 85 m; every road starts here | Its own edges: the Rim cliff south, the Great Glen's rim west, the Crown's brow north, the East Ridge | You start here |
-| THE KINGDOM | valley 25–60 m | Camelot on a knoll in the Great River's loop under Olympus | The Crown's brow (111 m) | 3 · THE CROWN'S RISE |
-| THE NORTHERN RANGE | 150–356 m | Olympus (356 m, snow above 245 m), peaks to the north-west and north-east, the North Pass | Nothing: it is the weenie | Its tops, from nearly everywhere |
-| THE DOWNS | 40–110 m | Chalk downs east of the kingdom; Stonehenge in a hollow; Vatican City on a hill over the Great River | The downs' ridge (a 106 m plateau) | 5 · THE DROVE ROAD (the stones); the last bend of the Via (the Vatican) |
-| THE WOODS | 30–140 m; Shasta 254 | Dense forest on the west, in three parts. **THE FAIRY FOREST** (the north-east corner, across the Great River from Camelot): the Fairy Clearing and Dead Man's Cave. **THE DEEP WOODS** under Shasta: Mt Shasta and the Cavern. **THE RITUAL WOODS** on Loch Ness's north-west shore, facing the estate across the water: Bohemian Grove and the Ritual Ground | The canopy | Only from inside the trees; the Fairy Clearing from the Fairy Trail's last bend |
-| THE GREAT GLEN | floor 18–30 m; rims 60–100 m | Loch Ness, the estate on its shore bench, the haunted house above, Urquhart Ruin, the River Ness falls, the Glen Viaduct | The glen's walls and the woods | 4 · THE NORTH SHORE PATH (and the West Lane's end) |
-| THE BADLANDS | 40–90 m | Red-rock mesas, the Dry Wash canyon, Göbekli Tepe's tell | Mesas and the canyon | Route 1 rounding the glen's foot |
-| THE DESERT | 10–60 m | The Nile valley; Giza's plateau; Babel by the south coast; the dunes | The Rim (96 m falling to 36 m) | 2 · THE RIM |
-| THE VALLEY | floor 38 m; the Spring Mountains 150–190 m | Las Vegas: THE STRIP, one straight boulevard down the desert highway on an open valley floor; the Spring Mountains (pines on the crest) to the west, the Sheep Hill (pines) to the north-east | The valley floor sits low under the Rim; the Sheep Hill; only the casino towers show from above | 4 · THE DESERT HIGHWAY |
-| THE DEEP DESERT | 20–60 m; Tikaboo 234 | Rachel's diner past THE PASS, the Groom Range (one chain, pines on top) north-west and north of Groom Lake's playa, Area 51 on the lake, Tikaboo Peak east, the D.U.M.B. under the lake | The Groom Range and the pass hills | 1 · TIKABOO LOOKOUT (Area 51) |
-| THE REDWOOD COAST | 20–110 m | New forest in the north-east, across the Great River: THE REDWOODS (their 60 m crowns are a landmark from the ring and the downs) | The canopy and the river | The Redwood Highway's last bend |
-| THE PINE BARRENS | 5–30 m | New low pine forest in the south-east between the Sheep Hill, the mall and the sea: THE STAIRCASE | The canopy | Only from inside: the Barrens Trail's end |
-| THE EAST WOOD | 60–110 m | A wood on the ridge between HQ and Downtown | The canopy | — (it hides the skyline from HQ) |
-| DISASTER CITY and THE BAY | −4 to 60 m | A hill city: Downtown on the crown, the Bowl to the north, the harbour on the bay; the bay's beach with the Bayside Mall behind it; the lighthouse on the bay's south head | The East Ridge (78 m) and its own towers | The East Road's crest (only the skyline is seen from HQ); the Bay Road shows the beach and the mall |
+| AREA 1 | 70–110 m | Rolling moor in the middle; D.O.O.R. HQ at 85 m; every road starts here | Its own edges: Area 13 cliff south, Area 7's rim west, Area 14 north, Ridge 1 | You start here |
+| THE KINGDOM | valley 25–60 m | Camelot on a knoll in River 1's loop under Olympus | The Crown's brow (111 m) | 3 · AREA 14 |
+| AREA 2 | 150–356 m | Olympus (356 m, snow above 245 m), peaks to the north-west and north-east, Trail I | Nothing: it is the weenie | Its tops, from nearly everywhere |
+| AREA 10 | 40–110 m | Chalk downs east of the kingdom; Stonehenge in a hollow; Vatican City on a hill over River 1 | The downs' ridge (a 106 m plateau) | 5 · ROUTE 9 (the stones); the last bend of the Via (the Vatican) |
+| THE WOODS | 30–140 m; Shasta 254 | Dense forest on the west, in three parts. **THE FAIRY FOREST** (the north-east corner, across River 1 from Camelot): the clearing and Dead Man's Cave. **THE DEEP WOODS** under Shasta: Mt Shasta and the Cavern. **AREA 6** on Loch Ness's north-west shore, facing the estate across the water: Bohemian Grove and the Ritual Ground | The canopy | Only from inside the trees; the clearing from Trail C's last bend |
+| AREA 7 | floor 18–30 m; rims 60–100 m | Loch Ness, the estate on its shore bench, the haunted house above, Area 15, River 3 falls, Bridge 7 | The glen's walls and the woods | 4 · TRAIL G (and Route 5's end) |
+| AREA 8 | 40–90 m | Red-rock mesas, Canyon 1 canyon, Göbekli Tepe's tell | Mesas and the canyon | Route 1 rounding the glen's foot |
+| THE DESERT | 10–60 m | River 4 valley; Giza's plateau; Babel by the south coast; the dunes | Area 13 (96 m falling to 36 m) | 2 · AREA 13 |
+| VALLEY 1 | floor 38 m; Area 5 150–190 m | Las Vegas: THE STRIP, one straight boulevard down the desert highway on an open valley floor; Area 5 (pines on the crest) to the west, Hill 1 (pines) to the north-east | The valley floor sits low under Area 13; Hill 1; only the casino towers show from above | 4 · THE DESERT HIGHWAY |
+| AREA 9 | 20–60 m; Area 17 234 | Area 16 past PASS 1, Range 1 (one chain, pines on top) north-west and north of Lake 1's playa, Area 51 on the lake, Area 17 east, the D.U.M.B. under the lake | Range 1 and the pass hills | 1 · AREA 17 (Area 51) |
+| AREA 3 | 20–110 m | New forest in the north-east, across River 1: THE REDWOODS (their 60 m crowns are a landmark from the ring and the downs) | The canopy and the river | Route 12's last bend |
+| AREA 4 | 5–30 m | New low pine forest in the south-east between Hill 1, the mall and the sea: THE STAIRCASE | The canopy | Only from inside: Trail E's end |
+| AREA 11 | 60–110 m | A wood on the ridge between HQ and Downtown | The canopy | — (it hides the skyline from HQ) |
+| DISASTER CITY and THE BAY | −4 to 60 m | A hill city: Downtown on the crown, the Bowl to the north, the harbour on the bay; the bay's beach with the Bayside Mall behind it; the lighthouse on the bay's south head | Ridge 1 (78 m) and its own towers | Route 3's crest (only the skyline is seen from HQ); Route 7 shows the beach and the mall |
 | THE DEEP | to −133 m | The ocean; the Bermuda triangle | Nothing | Every coast |
-| THE ARCTIC | ice | Pack ice, the Pole | The Northern Range | 6 · THE NORTH PASS |
+| THE ARCTIC | ice | Pack ice, the Pole | Area 2 | 6 · TRAIL I |
 | ANTARCTICA and THE ICE WALL | shelf 11 m; wall 92 m | The shelf, the station; the wall around everything; the Flat Lands on top | Distance and the sea | The south coast |
 
 ### 4.3 The places
@@ -244,41 +244,41 @@ G10 move them.
 | Place | x, z | y | Region | Today | Reached by |
 |---|---|---|---|---|---|
 | D.O.O.R. HQ | 0, 0 | 85 | Highlands | the building, `hq_grounds` | every road |
-| The Crown's Rise (lookout) | −32, −368 | 111 | Highlands' brow | new | the Crown's Road |
-| The Rim (lookout) | 45, 262 | 97 | Highlands' south cliff | new | the Rim Road |
-| Downtown | 900, 210 | 54 | Disaster City | `downtown_streets` (+ lobby, showroom, subway) | the East Road, Route 1 |
+| Area 14 (lookout) | −32, −368 | 111 | Highlands' brow | new | Route 2 |
+| Area 13 (lookout) | 45, 262 | 97 | Highlands' south cliff | new | Route 4 |
+| Downtown | 900, 210 | 54 | Disaster City | `downtown_streets` (+ lobby, showroom, subway) | Route 3, Route 1 |
 | The Bowl | 990, −70 | 22 | Disaster City | `stadium_bowl` | the stadium road |
-| The Harbour | 1030, 228 | −2 to 3 | Disaster City, on the bay | `downtown_harbour` | the city's streets, the Bay Road |
-| The Bayside Mall | 1205, 548 | 5 | the bay's beach | the mall (today behind Downtown's street doors; §8.1 of the old plan rebuilds it) on its own pad | the Bay Road |
+| The Harbour | 1030, 228 | −2 to 3 | Disaster City, on the bay | `downtown_harbour` | the city's streets, Route 7 |
+| The Bayside Mall | 1205, 548 | 5 | the bay's beach | the mall (today behind Downtown's street doors; §8.1 of the old plan rebuilds it) on its own pad | Route 7 |
 | The Lighthouse | 1505, 365 | 4 | the bay's south head | new landmark | the beach, then the head |
 | The Sewers (mouth) | 960, 330 | — | under the city | the `underworld` zone | the storm drain from Dead Man's Cave, the harbour's outfall, a grate in Downtown |
-| The Strip | 398, 890 | 38 | The Valley | `strip_streets` (+ chapel, casino) | the desert highway |
-| Vatican City | 812, −445 | 45 | Downs | the `divine` zone (Rome ground) | the Via della Conciliazione (fork 4) |
-| Stonehenge | 455, −500 | 55 | Downs | `stonehenge_henge` | the Drove Road |
-| Camelot | −40, −640 | 44 | Kingdom | `camelot_*` (the road part retires into the land) | the Crown's Road, the Fairy Trail |
-| Mt Olympus (summit) | 60, −1000 | 356 | Northern Range | `olympus_summit`; the foothills and switchbacks retire into the land | the Pilgrims' Way |
-| Mt Shasta | −1040, −440 | 254 | Woods (the deep woods) | `shasta_slopes`; Agartha stays a door inside | the Shasta Trail |
-| The Fairy Clearing | −360, −625 | 58 | Woods (the fairy forest) | `fairy_forest_clearing` | the Fairy Trail from Camelot, the Cave Trail |
-| The Redwoods | 1050, −560 | 69 | The Redwood Coast | `fairy_forest_redwoods` | the Redwood Highway from the Bowl |
-| The Staircase | 935, 930 | 11 | The Pine Barrens | `fairy_forest_stair` | the Barrens Trail off the Bay Road |
-| Dead Man's Cave | −470, −530 | 76 | Woods (the fairy forest's edge) | `fairy_forest_deadmans`; the storm drain's upper mouth | the Cave Trail, off Route 1 |
-| Bohemian Grove | −800, −175 | 104 | Woods (the ritual woods) | `bohemian_grove_grove` | the Grove Trail |
-| The Ritual Ground | −930, −70 | 97 | Woods (the ritual woods) | `fairy_forest_ritual` | the Grove Trail |
-| The Cavern (mouth) | −895, −585 | 95 | Shasta's foot | the `hollow_earth_*` rooms (the Cavern hub) and the `under` zone | the Shasta Trail |
-| The Estate | −778, 188 | 26 | Great Glen | `skinwalker_fields` (the corn fields) and the estate's rooms | the Estate Lane along the loch shore |
-| The Haunted House | −690, 118 | 54 | Great Glen | `haunted_*` | the north shore path |
-| Urquhart Ruin | −965, 140 | 33 | Great Glen | new landmark | the north shore path |
-| Göbekli Tepe | −780, 650 | 53 | Badlands | `gobekli_tell` | a lane off Route 1 |
-| The Ley Lines (mouth) | −560, 820 | — | under the badlands | `gobekli_leylines` | a shaft in the tell |
-| Giza | −330, 725 | 24 | Desert | `giza_plateau` | the Plateau Road |
-| Babel | −360, 1040 | 11 | Desert (south coast) | `babel_tower` | the Nile path |
-| Area 51 | 425, 1455 | 34 | Deep Desert | `area51_*` (the highway parts retire) | Groom Lake Road |
-| The D.U.M.B. (mouth) | 440, 1545 | — | under Groom Lake | the `dumb` zone | a vent or lift at Area 51 |
-| Rachel (the diner) | 566, 1244 | 33 | Deep Desert | new | the end of the desert highway |
-| Tikaboo Lookout | 766, 1394 | 234 | Deep Desert | new | the Tikaboo Trail off Groom Lake Road |
+| The Strip | 398, 890 | 38 | Valley 1 | `strip_streets` (+ chapel, casino) | the desert highway |
+| Vatican City | 812, −445 | 45 | Downs | the `divine` zone (Rome ground) | Route 8 (fork 4) |
+| Stonehenge | 455, −500 | 55 | Downs | `stonehenge_henge` | Route 9 |
+| Camelot | −40, −640 | 44 | Kingdom | `camelot_*` (the road part retires into the land) | Route 2, Trail C |
+| Mt Olympus (summit) | 60, −1000 | 356 | Area 2 | `olympus_summit`; the foothills and switchbacks retire into the land | Trail A |
+| Mt Shasta | −1040, −440 | 254 | Woods (the deep woods) | `shasta_slopes`; Agartha stays a door inside | Trail B |
+| The clearing | −360, −625 | 58 | Woods (the fairy forest) | `fairy_forest_clearing` | Trail C from Camelot, Trail D |
+| The Redwoods | 1050, −560 | 69 | Area 3 | `fairy_forest_redwoods` | Route 12 from the Bowl |
+| The Staircase | 935, 930 | 11 | Area 4 | `fairy_forest_stair` | Trail E off Route 7 |
+| Dead Man's Cave | −470, −530 | 76 | Woods (the fairy forest's edge) | `fairy_forest_deadmans`; the storm drain's upper mouth | Trail D, off Route 1 |
+| Bohemian Grove | −800, −175 | 104 | Woods (the ritual woods) | `bohemian_grove_grove` | Trail F |
+| The Ritual Ground | −930, −70 | 97 | Woods (the ritual woods) | `fairy_forest_ritual` | Trail F |
+| The Cavern (mouth) | −895, −585 | 95 | Shasta's foot | the `hollow_earth_*` rooms (the Cavern hub) and the `under` zone | Trail B |
+| The Estate | −778, 188 | 26 | Area 7 | `skinwalker_fields` (the corn fields) and the estate's rooms | Route 10 along the loch shore |
+| The Haunted House | −690, 118 | 54 | Area 7 | `haunted_*` | Trail G |
+| Area 15 | −965, 140 | 33 | Area 7 | new landmark | Trail G |
+| Göbekli Tepe | −780, 650 | 53 | Area 8 | `gobekli_tell` | a lane off Route 1 |
+| The Ley Lines (mouth) | −560, 820 | — | under Area 8 | `gobekli_leylines` | a shaft in the tell |
+| Giza | −330, 725 | 24 | Desert | `giza_plateau` | Route 11 |
+| Babel | −360, 1040 | 11 | Desert (south coast) | `babel_tower` | River 4 path |
+| Area 51 | 425, 1455 | 34 | Area 9 | `area51_*` (the highway parts retire) | Route 6 |
+| The D.U.M.B. (mouth) | 440, 1545 | — | under Lake 1 | the `dumb` zone | a vent or lift at Area 51 |
+| Area 16 | 566, 1244 | 33 | Area 9 | new | the end of the desert highway |
+| Area 17 | 766, 1394 | 234 | Area 9 | new | Trail H off Route 6 |
 | The Cay / The Dutchman | 1320, 1440 / 1500, 1580 | 3 / sea | the Deep (the Bermuda triangle) | `bermuda_sea`, `revenge_*` | the skiff |
 | Antarctica · The Station | 110, 2190 | 10 | the shelf | `antarctica_station` | the skiff, then on foot |
-| The North Pole | 0, −2150 | ice | the Arctic | `northpole_village` | the North Pass, then on foot across the ice |
+| The North Pole | 0, −2150 | ice | the Arctic | `northpole_village` | Trail I, then on foot across the ice |
 
 These stay **doors** to other worlds, as today: Heaven and Hell, the moon, Mars, Saturn, the derelict,
 the singularity, the backrooms, the looking-glass, Atlantis (from the whirlpool), CERN (from the D.U.M.B.),
@@ -286,66 +286,66 @@ the lodge and the Technoticlan. Hollow Earth is the Cavern (§5.13).
 
 ### 4.4 The routes (sketch lengths and maximum grades)
 **ROUTE 1, THE RING** (a 12 m highway, 5,822 m, 7.5 % max). Starting at Downtown and heading north:
-1. Past the Bowl, then north-west over the Downs past the Vatican turn and Stonehenge's drove road.
-2. West through the kingdom, between the Crown's Rise and Camelot's river loop, and into the woods at the fairy forest's edge, past Dead Man's Cave and over Redwood Creek.
-3. South through the woods, over the Loch Head Viaduct, and down the Great Glen's east rim on the Glen Viaduct.
-4. Round the glen's foot, then east across the badlands past Göbekli Tepe, over the Nile Bridge and past Giza.
-5. East below the Rim, past the desert highway's turn, and back into the city from the south.
+1. Past the Bowl, then north-west over Area 10 past the Vatican turn and Stonehenge's drove road.
+2. West through the kingdom, between Area 14 and Camelot's river loop, and into the woods at the fairy forest's edge, past Dead Man's Cave and over River 2.
+3. South through the woods, over Bridge 6, and down Area 7's east rim on Bridge 7.
+4. Round the glen's foot, then east across Area 8 past Göbekli Tepe, over Bridge 3 and past Giza.
+5. East below Area 13, past the desert highway's turn, and back into the city from the south.
 
 **Roads** (7–8 m wide, 10 % max):
 | Road | Length | Route |
 |---|---|---|
-| The Crown's Road | 1,265 m | HQ north over the Crown's Rise, then hairpins down to Camelot |
-| The East Road | 759 m | HQ over the East Ridge to Downtown |
-| The Rim Road | 1,012 m | HQ south along the Rim's ledge, down to Route 1 by the desert highway's turn |
+| Route 2 | 1,265 m | HQ north over Area 14, then hairpins down to Camelot |
+| Route 3 | 759 m | HQ over Ridge 1 to Downtown |
+| Route 4 | 1,012 m | HQ south along Area 13's ledge, down to Route 1 by the desert highway's turn |
 | The stadium road | 197 m | to the Bowl |
-| The Bay Road | 353 m | Downtown down to the bay, along behind the beach to the Bayside Mall |
+| Route 7 | 353 m | Downtown down to the bay, along behind the beach to the Bayside Mall |
 
-**THE DESERT HIGHWAY** (a 10 m highway, 712 m, 7.5 % max): turns off Route 1 below the Rim and runs
-straight south down the valley floor as the Strip's boulevard, then south-east through THE PASS (between the
-Groom Range's east end and the pass hills) to Rachel's diner. The way to Area 51 is **Disaster City > Route 1 > the desert highway > the Strip >
-Rachel > Groom Lake Road > Area 51**.
+**THE DESERT HIGHWAY** (a 10 m highway, 712 m, 7.5 % max): turns off Route 1 below Area 13 and runs
+straight south down the valley floor as the Strip's boulevard, then south-east through PASS 1 (between the
+Range 1's east end and the pass hills) to Area 16. The way to Area 51 is **Disaster City > Route 1 > the desert highway > the Strip >
+Area 16 > Route 6 > Area 51**.
 
 **Lanes** (4–5 m wide, 12–14 % max):
 | Lane | Length | Route |
 |---|---|---|
-| The West Lane | 616 m | HQ to the Great Glen's rim |
-| Groom Lake Road | 421 m | from Rachel round the Groom Range's east end and Tikaboo's foot to Area 51 on the lake |
-| The Redwood Highway | 520 m | from the Bowl up the coast, over the Great River's mouth, into the Redwood Coast |
-| Via della Conciliazione | 182 m | to the Vatican |
-| The Drove Road | 103 m | to Stonehenge |
-| The Estate Lane | 518 m | leaves Route 1 south of the loch and runs up its south-east shore |
-| The Plateau Road | 83 m | to Giza |
+| Route 5 | 616 m | HQ to Area 7's rim |
+| Route 6 | 421 m | from Area 16 round Range 1's east end and Area 17's foot to Area 51 on the lake |
+| Route 12 | 520 m | from the Bowl up the coast, over River 1's mouth, into Area 3 |
+| Route 8 | 182 m | to the Vatican |
+| Route 9 | 103 m | to Stonehenge |
+| Route 10 | 518 m | leaves Route 1 south of the loch and runs up its south-east shore |
+| Route 11 | 83 m | to Giza |
 | The Göbekli lane | 117 m | to Göbekli Tepe |
 
 **Trails** (dirt, 1.6–2.4 m wide, hugging the ground; 11 in all):
-- The Pilgrims' Way up Olympus (569 m)
-- The Shasta Trail
-- The Fairy Trail (325 m): from Camelot's west gate over a footbridge on the Great River to the Fairy Clearing
-- The Cave Trail (247 m): Route 1 past Dead Man's Cave to the clearing
-- The Barrens Trail (473 m): off the Bay Road's end, south into the pine barrens to the Staircase
-- The Grove Trail (458 m): a loop off the north shore path through the ritual woods, by Bohemian Grove and the Ritual Ground
-- The North Shore Path (527 m)
-- The Tikaboo Trail (320 m, switchbacking up the peak from Groom Lake Road)
-- The North Pass (590 m)
-- The Nile path
-- The Cliff Path along the west coast
+- Trail A up Olympus (569 m)
+- Trail B
+- Trail C (325 m): from Camelot's west gate over a footbridge on River 1 to the clearing
+- Trail D (247 m): Route 1 past Dead Man's Cave to the clearing
+- Trail E (473 m): off Route 7's end, south into the pine barrens to the Staircase
+- Trail F (458 m): a loop off Trail G through the ritual woods, by Bohemian Grove and the Ritual Ground
+- Trail G (527 m)
+- Trail H (320 m, switchbacking up the peak from Route 6)
+- Trail I (590 m)
+- River 4 path
+- Trail J along the west coast
 
 **Travel times.**
 - HQ to Camelot: 1.3 km, about 4.5 minutes running.
-- HQ to the Strip by the Rim Road, Route 1 and the desert highway: about 1.8 km, 6.5 minutes running.
-- HQ to Area 51 (on past the Strip, Rachel and Groom Lake Road): about 2.7 km, 9.5 minutes running or 4 on the board.
+- HQ to the Strip by Route 4, Route 1 and the desert highway: about 1.8 km, 6.5 minutes running.
+- HQ to Area 51 (on past the Strip, Area 16 and Route 6): about 2.7 km, 9.5 minutes running or 4 on the board.
 - Disaster City to Area 51: about 2.2 km of road, 8 minutes running.
 
 ### 4.5 Water
 | Water | Course | Features |
 |---|---|---|
-| THE GREAT RIVER | From the snowfields under Olympus's west shoulder, down through the kingdom (looping round Camelot's knoll), east along the Downs past the Vatican, to the east coast north of the city | 4 m wide at the source, 16 m at the estuary; the Crown's Road crosses it into Camelot |
-| SHASTA CREEK | From Shasta's east flank through the woods, south under Route 1, over a waterfall into the head of Loch Ness | Crossed by Route 1, the woods' trails and the north shore path |
-| LOCH NESS | Fills the Great Glen from (−628, −78) to (−1122, 420): 0.7 km long, up to 104 m wide | Level 18 m, 30 m deep; forest down the north-west side; the estate's bench on the south-east shore; Urquhart Ruin on a point |
-| THE RIVER NESS | From the loch's south-west end, over a falls, to the sea | The Cliff Path's Ness Bridge |
-| THE NILE | Down the desert from the Rim's foot, past Giza, to the south coast by Babel | Route 1's Nile Bridge |
-| The Olympus brook | Feeds the Great River | — |
+| RIVER 1 | From the snowfields under Olympus's west shoulder, down through the kingdom (looping round Camelot's knoll), east along Area 10 past the Vatican, to the east coast north of the city | 4 m wide at the source, 16 m at the estuary; Route 2 crosses it into Camelot |
+| RIVER 2 | From Shasta's east flank through the woods, south under Route 1, over a waterfall into the head of Loch Ness | Crossed by Route 1, the woods' trails and Trail G |
+| LOCH NESS | Fills Area 7 from (−628, −78) to (−1122, 420): 0.7 km long, up to 104 m wide | Level 18 m, 30 m deep; forest down the north-west side; the estate's bench on the south-east shore; Area 15 on a point |
+| RIVER 3 | From the loch's south-west end, over a falls, to the sea | Trail J crosses on Bridge 2 |
+| RIVER 4 | Down the desert from Area 13's foot, past Giza, to the south coast by Babel | Route 1's Bridge 3 |
+| The Olympus brook | Feeds River 1 | — |
 | THE BAY | The harbour's inlet on the east coast, about 450 m across and 400 m deep, between the Bowl's headland and the lighthouse head | A sand beach along its south shore (graded about 7 % into the water) under the Bayside Mall; the harbour on its west side; the storm drain's outfall |
 
 ### 4.6 The relief
@@ -353,11 +353,11 @@ Rachel > Groom Lake Road > Area 51**.
 |---|---|
 | Olympus | 356 m |
 | Shasta | 254 m (crater) |
-| Tikaboo | 234 m |
-| The Northern Range ridge | about 205 m |
-| The Spring Mountains, the Groom Range | 120–190 m |
-| The Rim | 97 m, over a 60 m cliff to the desert |
-| The Crown's Rise | 111 m |
+| Area 17 | 234 m |
+| Area 2 ridge | about 205 m |
+| Area 5, Range 1 | 120–190 m |
+| Area 13 | 97 m, over a 60 m cliff to the desert |
+| Area 14 | 111 m |
 | HQ | 85 m |
 | The Downs | 106 m |
 | The haunted house | 54 m |
@@ -368,43 +368,43 @@ Rachel > Groom Lake Road > Area 51**.
 | The harbour | −4 m |
 
 The bake runs thermal erosion (talus relaxation) and a droplet pass that cuts gullies (reduced on high
-ground). Mesas sit on the badlands. The Dry Wash is a canyon 16 m wide with 7 m walls. Dunes lie along
-the south desert. The valley's floor is flat under the Strip, and Groom Lake is a playa.
+ground). Mesas sit on Area 8. The Canyon 1 is a canyon 16 m wide with 7 m walls. Dunes lie along
+the south desert. The valley's floor is flat under the Strip, and Lake 1 is a playa.
 
 ### 4.7 The reveals (the sketch's sight test)
 The seven marked reveal points:
 
 | # | Where | What opens up |
 |---|---|---|
-| 1 | TIKABOO LOOKOUT (the summit after a 320 m switchback climb) | The only place Area 51 can be seen from. Its ground comes into view 125 m up the trail, 310 m away. Groom Lake Road shows it only at the gate, 240 m away |
-| 2 | THE RIM | The highlands end in a cliff; the desert, the Nile, Giza and Babel lie below. Their ground first shows 237 m along the Rim Road. The Strip sits low on its valley floor: only its towers show, from 144 m |
-| 3 | THE CROWN'S RISE | Camelot's ground first shows 329 m along the Crown's Road, 275 m away, in its valley under Olympus |
-| 4 | THE DESERT HIGHWAY | Off Route 1 the highway drops onto the valley floor and the Strip's streets open straight ahead at 232 m. Before that only its towers show, from Route 1, the Rim Road and the Crown's Road (the glow over the Rim) |
-| 5 | THE NORTH SHORE PATH | Out of the trees: the haunted house at 95 m, the estate at 175 m (306 m away), Urquhart at 500 m. On the Estate Lane the estate comes round the shore at 405 m of 518. The Grove Trail leaves it for the ritual woods |
-| 6 | THE DROVE ROAD | Stonehenge is hidden from HQ and the Vatican; it appears when Route 1 reaches the drove road's mouth, 104 m away |
-| 7 | THE NORTH PASS | The Arctic and the Pole open at 436 m, 1.16 km across the ice |
+| 1 | AREA 17 (the summit after a 320 m switchback climb) | The only place Area 51 can be seen from. Its ground comes into view 125 m up the trail, 310 m away. Route 6 shows it only at the gate, 240 m away |
+| 2 | AREA 13 | The highlands end in a cliff; the desert, River 4, Giza and Babel lie below. Their ground first shows 237 m along Route 4. The Strip sits low on its valley floor: only its towers show, from 144 m |
+| 3 | AREA 14 | Camelot's ground first shows 329 m along Route 2, 275 m away, in its valley under Olympus |
+| 4 | THE DESERT HIGHWAY | Off Route 1 the highway drops onto the valley floor and the Strip's streets open straight ahead at 232 m. Before that only its towers show, from Route 1, Route 4 and Route 2 (the glow over Area 13) |
+| 5 | TRAIL G | Out of the trees: the haunted house at 95 m, the estate at 175 m (306 m away), Area 15 at 500 m. On Route 10 the estate comes round the shore at 405 m of 518. Trail F leaves it for the ritual woods |
+| 6 | ROUTE 9 | Stonehenge is hidden from HQ and the Vatican; it appears when Route 1 reaches the drove road's mouth, 104 m away |
+| 7 | TRAIL I | The Arctic and the Pole open at 436 m, 1.16 km across the ice |
 
-The Fairy Clearing is a small reveal of its own: the Fairy Trail from Camelot shows it only at its last bend,
+The the clearing is a small reveal of its own: Trail C from Camelot shows it only at its last bend,
 58 m away. The Bermuda triangle is out of sight of the whole bay; the first glimpse from a route is a speck
-of the cay 1.4 km off, from the Rim Road's descent.
+of the cay 1.4 km off, from Route 4's descent.
 
 **What each place sees from its own pad** (ground, or ^top only):
 
 | Place | What it sees |
 |---|---|
-| HQ | ^Olympus, Shasta, Tikaboo, the Rim (the East Wood hides the skyline) |
-| Downtown, the Bowl, the Strip, the Fairy Clearing, the Redwoods, the Staircase, Dead Man's Cave, Bohemian Grove, the Ritual Ground | **nothing** |
-| The Bayside Mall | ^Downtown, the harbour and the lighthouse across the bay, ^Olympus, Tikaboo |
-| Camelot | Shasta, ^the Redwoods, the Crown's Rise |
+| HQ | ^Olympus, Shasta, Area 17, Area 13 (Area 11 hides the skyline) |
+| Downtown, the Bowl, the Strip, the clearing, the Redwoods, the Staircase, Dead Man's Cave, Bohemian Grove, the Ritual Ground | **nothing** |
+| The Bayside Mall | ^Downtown, the harbour and the lighthouse across the bay, ^Olympus, Area 17 |
+| Camelot | Shasta, ^the Redwoods, Area 14 |
 | Stonehenge | ^Olympus |
-| The Vatican | ^Downtown, ^the lighthouse, ^the Bowl, ^Olympus, Tikaboo |
-| The estate | Olympus, ^the haunted house, Urquhart (not the ritual woods across the loch: the trees hide them) |
+| The Vatican | ^Downtown, ^the lighthouse, ^the Bowl, ^Olympus, Area 17 |
+| The estate | Olympus, ^the haunted house, Area 15 (not the ritual woods across the loch: the trees hide them) |
 | Giza | ^Downtown, ^Olympus, ^Babel, the Flat Lands (on the wall, across the sea) |
-| Area 51 | Tikaboo, ^the Station |
-| Rachel | ^the Strip, ^Olympus, Tikaboo |
-| The Staircase | Tikaboo |
+| Area 51 | Area 17, ^the Station |
+| Area 16 | ^the Strip, ^Olympus, Area 17 |
+| The Staircase | Area 17 |
 | The Redwoods | ^the Cay |
-| Tikaboo | 21 places: the reward for the climb |
+| Area 17 | 21 places: the reward for the climb |
 
 Every place passes R2, and so do mondo's named separations: the Strip never sees Area 51 or the D.U.M.B.
 (ground or top), Downtown never sees Area 51, and no place on the bay sees the cay or the Dutchman. The
@@ -431,7 +431,7 @@ The bake's steps, in the sketch's order:
 1. coast and islands;
 2. plateaus, bumps, ranges and peaks;
 3. thermal erosion;
-4. the Rim cliff and the glen;
+4. Area 13 cliff and the glen;
 5. dunes and the playa;
 6. droplet erosion;
 7. mesas and canyons;
@@ -514,7 +514,7 @@ shader.
 - **Lakes.** A level plane, clipped by depth.
 - **Underwater.** A fog pass when the camera is under the water layer.
 - **Swimming and the skiff.** You swim anywhere deeper than wading depth. The skiff works on any water
-  deep enough: the Deep, the loch and the Great River's lower reach. `_hqTickVehicle` pins to the water
+  deep enough: the Deep, the loch and River 1's lower reach. `_hqTickVehicle` pins to the water
   layer instead of `sea.y`, so "one sea per part" goes away.
 
 ### 5.5 THE TREES AND THE GRASS
@@ -542,8 +542,8 @@ shader.
 - Road meshes are ribbons following the baked per-sample height: asphalt with painted lines for the
   highway, packed dirt for lanes, and trails painted into the land's path weight.
 - **Bridges and viaducts** are walkable decks (today's bridge layer), with piers down to the ground, rails
-  and lamp posts. Named bridges get their own look: the Glen Viaduct is an arched railway-style viaduct,
-  the Nile Bridge a truss.
+  and lamp posts. Named bridges get their own look: Bridge 7 is an arched railway-style viaduct,
+  Bridge 3 a truss.
 - Guard rails are drawn wherever the road edge drops more than 2 m, so the rail is the blocker, not the edge.
 - Signs at junctions name the next place, not what is visible.
 - NPC traffic runs on Route 1 (today's traffic routes).
@@ -571,16 +571,16 @@ Disaster City is rebuilt on the land's slope, falling from Downtown's crown (abo
   - An alley at least 1.6 m wide is walkable, either through to the far side or ending at a drawn wall.
   - A gap under 1.6 m gets a drawn fence or wall, and the audit proves every one.
 - **Districts on levels.** The Bowl sits in a hollow north of Downtown. The harbour is on the bay's west
-  shore. Switchback streets, a funicular-style stair and a viaduct link the levels. The Bay Road runs down
+  shore. Switchback streets, a funicular-style stair and a viaduct link the levels. Route 7 runs down
   to the beach.
 - **The bay.** The beach is graded sand (about 7 % into the water) that you walk and swim from. The Bayside
   Mall is a site on its own pad behind the beach: its front faces the sand and the water, its car park and
-  the Bay Road are behind it.
-- **The Strip is not in the city any more.** It is a site in THE VALLEY (§4.2): the casinos line the desert
+  Route 7 are behind it.
+- **The Strip is not in the city any more.** It is a site in VALLEY 1 (§4.2): the casinos line the desert
   highway on the valley floor, which falls a few metres towards the south gap. Its podiums, stairs and
   ramps follow R8's spirit (no invisible walls, every gap walkable or walled), but it is Las Vegas, so its
   floor is nearly flat.
-- The East Road arrives over the East Ridge. From its crest the city's streets appear for the first time;
+- Route 3 arrives over Ridge 1. From its crest the city's streets appear for the first time;
   from HQ only the skyline shows.
 
 ### 5.9 NO INVISIBLE WALLS (the audit)
@@ -629,7 +629,7 @@ Rough numbers:
 
 | # | Rule |
 |---|---|
-| D1 | A **mouth on the land**, visible from a route: a cave mouth, the harbour's storm outfall, a grate, a shaft in the tell, a vent at Groom Lake. It is a door join into the dungeon's zone on the `under` ground |
+| D1 | A **mouth on the land**, visible from a route: a cave mouth, the harbour's storm outfall, a grate, a shaft in the tell, a vent at Lake 1. It is a door join into the dungeon's zone on the `under` ground |
 | D2 | **400–900 m of path**, 3–5 set-piece chambers, and **at least 40 m of vertical**: shafts, ramps, chasms with bridges, an underground river and a waterfall. It is built with the cave and halls families |
 | D3 | **R3 underground**: every wall is drawn rock or brick at the mask edge (the cave family's cliff sheet on every solid; the halls get drawn walls). No bare banks |
 | D4 | **R2 underground**: chambers separated by bends, drops and narrows, so each chamber opens as a reveal. A lookout ledge over the biggest one |
@@ -642,8 +642,8 @@ Rough numbers:
 |---|---|---|
 | THE STORM DRAIN and THE SEWERS | Dead Man's Cave (`fairy_forest_deadmans`) is the upper mouth; the drain; then `underworld`: sewers, running tunnels, holding cells, old workings | **The woods' link to Downtown** (mondo, 2026-09-28). From Dead Man's Cave at the fairy forest's edge, 1.8 km under the highlands to the Sewers under Downtown, falling the whole way (76 m to sea level), and out at the harbour's outfall on the bay. The chambers are at the two ends; the long middle is a concrete trunk drain with a stream in its channel, which the skateboard rides (about 1.5 minutes end to end). Grates up into Downtown and the harbour are its other mouths |
 | THE CAVERN | `hollow_earth_*`: mouth, adit, gallery, vent, blast, oubliette, inner sun; the `under` zone | Under Shasta's foot, down to the inner sun |
-| THE LEY LINES | `gobekli_leylines` | Under the badlands from Göbekli's tell, with a second mouth in the Dry Wash |
-| THE D.U.M.B. | `dumb_*` | Under Groom Lake in the deep desert; CERN stays a door from it |
+| THE LEY LINES | `gobekli_leylines` | Under Area 8 from Göbekli's tell, with a second mouth in Canyon 1 |
+| THE D.U.M.B. | `dumb_*` | Under Lake 1 in Area 9; CERN stays a door from it |
 
 The storm drain breaks D2's 400–900 m because it is a link as well as a dungeon: its length is the
 distance from the woods to the city. D2 applies to its two ends.
@@ -704,7 +704,7 @@ Shadow cascades matter far more on open land.
 | G3 ✓ (2026-09-28, zip G3) | **THE WATER**: sea, rivers, lakes, waterfalls, underwater, swimming and the skiff on the water layer | three-renderer.js, data.js | `land-water.test.js` (the water layer's y matches the bake; the skiff floats on the loch) |
 | G4 ✓ (2026-09-28, zip G4) | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
 | G5 ✓ (2026-09-28, zip G5) | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
-| G6 | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
+| G6 ✓ (2026-09-28, zip G6) | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
 | G7 | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the harbour, the bay's beach, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
 | G8 | **THE EDGE OF THE WORLD**: the Deep to the wall, the ice wall, the shelf and the station, the pack ice and the Pole, the islands, the Bermuda triangle with the cay, the Dutchman and the whirlpool; the Flat Lands per fork 5 | data.js, three-renderer.js | `land-edge.test.js` (the wall is the only border; the skiff reaches it everywhere) |
 | G9 | **THE DISCOVERY PASS** (R6, §5.11): landmarks every 150–250 m of route, the reveal points dressed (a cairn, a bench, a broken fence), the region title cards, the map's fog of war | data.js, map.js, three-renderer.js | the bake's R6 spacing check; no finds or tapes pinned |
@@ -728,9 +728,9 @@ bump, and to Render only if the server reads something new (it doesn't in this p
 | 1 | **The world's border** | **The ice wall ring** (the sketch): ocean all round, the wall beyond it, Antarctica's shelf inside it to the south, the frozen Arctic to the north | (b) Ocean only, fading into sea haze, with no visible edge (breaks R4); (c) a mountain ring (hides the sea he asked for) |
 | 2 | **The scale** | **As sketched**: 7.08 km² of land (sketch 2), Route 1 at 5.8 km, a km in about 3.5 minutes running | (b) 0.7 × (3.5 km², faster to cross, lower hills, weaker reveals); (c) 1.4 × (14 km², would need a car) |
 | 3 | **Cyberpunk** | **Stays a door** (2047, another time) | A district on the city's hill with `sky.lock` night |
-| 4 | **Vatican City** | **On the land** on its hill over the Great River in the Downs, the painting kept as a second way in | Stays its own "Rome" ground behind the painting |
+| 4 | **Vatican City** | **On the land** on its hill over River 1 in Area 10, the painting kept as a second way in | Stays its own "Rome" ground behind the painting |
 | 5 | **The Flat Lands** | **Seen, not reached yet**: on top of the wall, visible from the south coast and the station | A stair cut in the wall near the station (a later place) |
-| 6 | **The big viaducts** | **Keep the Glen Viaduct and the Loch Head Viaduct as landmarks** (Glenfinnan-style); regrade the rest (§11) | Regrade all of them (longer detours, no bridges) |
+| 6 | **The big viaducts** | **Keep Bridge 7 and Bridge 6 as landmarks**; regrade the rest (§11) | Regrade all of them (longer detours, no bridges) |
 | 7 | **A drivable car on Route 1** | **Not in this plan**: the skateboard and traffic are the ring's speed | A car as its own later plan (the helm's vehicle code already drives a hull) |
 | 8 | **The textures** | **RULED 2026-09-28 (mondo): the bucket's own terrain and urban sheets** (sprites.js TERRAIN_SPRITES / URBAN_TEXTURES), nothing new | Procedural colour only (ProceduralTerrains' default look: cheaper, flatter) |
 | 9 | **The map's fog of war** | **On**: regions clear on first sight | The whole map drawn from the start |
@@ -757,7 +757,7 @@ bump, and to Render only if the server reads something new (it doesn't in this p
 |---|---|
 | **Performance** on mondo's machine | Budgets in §5.12, `EW_PERF_LOW` halves density, the readout's MEM and TRIS lines, and each phase measured with the Playwright probe before shipping |
 | **Site compile time** (3–31 s today) | Compiles happen in the worker while you walk toward a site; the pad is walkable land meanwhile. The woods retire as fields, so the woods cost nothing to compile |
-| **Sight results depend on resolution** (the sketch lost Tikaboo's view of Area 51 at 2.7 m cells) | The test runs at the bake's own resolution, reveal points are placed with a brink rule (stand where the ground starts falling), and ridges that hide keep a minimum width |
+| **Sight results depend on resolution** (the sketch lost Area 17's view of Area 51 at 2.7 m cells) | The test runs at the bake's own resolution, reveal points are placed with a brink rule (stand where the ground starts falling), and ridges that hide keep a minimum width |
 | **Scope** | This is the largest plan so far. G0–G2 give a walkable land; each later phase ships a visible improvement on its own |
 
 ---
@@ -782,15 +782,15 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
 **Known limits:**
 1. **4 m cells.** Sight results shift with resolution (see §10).
 2. **Viaducts where the sketch's road solver gave up:**
-   - the Crown's Road hairpins (208 m of deck);
-   - the Rim Road's descent to Route 1 (189 m);
-   - the East Road into the city (287 m: could stay as the city's grand bridge);
+   - Route 2 hairpins (208 m of deck);
+   - Route 4's descent to Route 1 (189 m);
+   - Route 3 into the city (287 m: could stay as the city's grand bridge);
    - Route 1 past Giza (353 m, 25 m over the plateau the pad flattened).
 
-   The Glen (177 + 102 m), the Loch Head (208 m) and the river bridges are meant to be there. G5 regrades the rest with longer switchbacks or cuttings.
+   Bridge 7 (177 + 102 m), Bridge 6 (208 m) and the river bridges are meant to be there. G5 regrades the rest with longer switchbacks or cuttings.
 3. **Trail grades.** Trails hug the ground and reach local slopes of 1.4–3.1 on the steepest pitches. G0 benches them and adds steps.
-4. **Rounded hills.** Thermal erosion rounds hills into domes, and Groom Lake's basin reads as a crater from above. G0 adds ridged noise with gradient damping.
-5. **The East Road** glimpses the Vatican's ground from 687 m away. G0 raises the ridge or moves the road.
+4. **Rounded hills.** Thermal erosion rounds hills into domes, and Lake 1's basin reads as a crater from above. G0 adds ridged noise with gradient damping.
+5. **Route 3** glimpses the Vatican's ground from 687 m away. G0 raises the ridge or moves the road.
 6. **Stand-ins.** The city and the Strip are grey blocks with their streets drawn only on the map, and the models in the views are boxes and cones.
 7. **The Staircase** now stands in the pine barrens at 11 m (sketch 3); nothing to decide.
 
@@ -798,15 +798,15 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
 
 ## 12. THE LOG (each phase appends here)
 
-- 2026-09-28: plan written; sketch baked at 4 m; map and eight views rendered. The Estate Lane was
+- 2026-09-28: plan written; sketch baked at 4 m; map and eight views rendered. Route 10 was
   re-routed along the loch's south-east shore (the first sketch dropped it onto the estate from a 52 m
   viaduct).
 - 2026-09-28, sketch 2 (mondo's layout changes, §1b): the bay and the beach with the Bayside Mall; the Strip
-  moved into the valley (sketch 1's Area 51 ring, opened east and south); the deep desert added south of it
-  (+0.53 km² of land) with Rachel, Area 51 in a new Groom range ring, Groom Lake and Tikaboo; the desert
-  highway (Route 1 > the Strip > Rachel); the Bermuda triangle moved to the far south-east Deep; the woods
+  moved into the valley (sketch 1's Area 51 ring, opened east and south); Area 9 added south of it
+  (+0.53 km² of land) with Area 16, Area 51 in a new Range 1 ring, Lake 1 and Area 17; the desert
+  highway (Route 1 > the Strip > Area 16); the Bermuda triangle moved to the far south-east Deep; the woods
   split into the fairy forest (by Camelot), the deep woods (Shasta, moved 330 m south) and the ritual woods
-  (on the loch's north-west shore, facing the estate); Redwood Creek re-routed; the storm drain from Dead
+  (on the loch's north-west shore, facing the estate); River 2 re-routed; the storm drain from Dead
   Man's Cave to the Sewers. `r2check.js` added (R2 plus the named separations): it holds. Map and ten views
   re-rendered (new: the valley gap, the bay). Forks 1–10 are still the defaults (silence); fork 11 is new.
 - 2026-09-28 — **G1 DONE** (OPEN_WORLD_PLAN Phase 12; same thread, zip `ENTROPY_WARS_WORLD_GEOGRAPHY_1.zip`, token
@@ -816,12 +816,11 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
   first; the rigs are counted, not dropped; the readout gains `MEM used/budget MB`; `window.EW_NO_MEM_BUDGET`. The
   detail is OPEN_WORLD_PLAN.md §12. Next: G0 (the bake and the in-game map).
 - 2026-09-28 — **sketch 3** (mondo: no rings round the Strip or Area 51; more forest; the woods' places spread
-  out). The valley ring and the Groom ring are gone: the Strip is one straight north–south boulevard on an open
-  valley floor with the Spring Mountains to the west; Area 51 sits under one Groom Range chain (north-west and
-  north) with Tikaboo east; the desert highway runs through the Pass. New forests: the Redwood Coast (the
-  Redwoods moved there), the Pine Barrens (the Staircase moved there), the East Wood, and desert pines on the
-  Spring Mountains, the Sheep Hill, the Groom Range and the pass hills (the sketch's `dry` forests). Redwood Creek
-  renamed Shasta Creek; the Redwood Trail became the Cave Trail. r2check.js now checks the desert separations both
+  out). The valley ring and the ring at Area 51 are gone: the Strip is one straight north–south boulevard on an open
+  valley floor with Area 5 to the west; Area 51 sits under one Range 1 chain (north-west and
+  north) with Area 17 east; the desert highway runs through Pass 1. New forests: Area 3 (the
+  Redwoods moved there), Area 4 (the Staircase moved there), Area 11, and desert pines on the
+  Area 5, Hill 1, Range 1 and the pass hills (the sketch's `dry` forests). r2check.js now checks the desert separations both
   ways and counts the ice shelf as open sea. R2 holds; the named separations hold. Map and views re-rendered.
 - 2026-09-28 — **G0 DONE** (the bake + the map; zip `ENTROPY_WARS_WORLD_GEOGRAPHY_3.zip`, token `20260928-geography-03-cors`).
   - **The recipe** is data.js `HQ_LAND` (the sketch's recipe.js moved in whole, plus each place's region, weenie top, peak and
@@ -833,12 +832,12 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     tiles (256 m at 2 m) and sea.bin under `Assets/Land/`, and stamps `HQ_LAND.baked.id` (bake `0b57d9ab50`).
   - **The rules hold at 2 m and at 8 m**: R2 from every pad and the named separations; rivers downhill; the loch level with an
     outlet; every road within its grade; Route 1 a closed loop; every place on a route from HQ; every face over 1.0 drawn as
-    cliff. HQ sees the ground of Olympus and Tikaboo only; the Strip sees no other place.
-  - **Two routes added** so every place is on one (R5): THE LIGHTHOUSE PATH (the mall to the bay's head) and THE HAUNTED DRIVE
+    cliff. HQ sees the ground of Olympus and Area 17 only; the Strip sees no other place.
+  - **Two routes added** so every place is on one (R5): TRAIL K (the mall to the bay's head) and ROUTE 13
     (the estate to the haunted house).
   - **The numbers** (2 m): 7.08 km² of land; heights −176.7 to 354.4 m; forest 14.5 % (the sketch said 16 %: the damped ridges
     and the cliff rule thin the desert pines a little); 18.3 km of routes. Bridges over 100 m are the sketch's known ones
-    (§11 limit 2: the ring's 208, 185, 353 and 103 m, the Crown's Road 204 m, the East Road 287 m, the Rim Road 189 m); G5
+    (§11 limit 2: the ring's 208, 185, 353 and 103 m, Route 2 204 m, Route 3 287 m, Route 4 189 m); G5
     regrades them.
   - **THE ATLAS**: a new tab on the map (map.js `_hqAtlas*`) draws the baked relief with the roads by kind, rivers, the storm
     drain, bridges, regions and places. A place's card shows what its pad sees, where each route first shows it, and the routes
@@ -890,7 +889,7 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
 
 - **G3 THE WATER — DONE 2026-09-28** (zip `ENTROPY_WARS_WORLD_GEOGRAPHY_G3.zip`, token 20260928-geography-07-cors, bake id
   5e65e17571, on G2_ALL):
-  - **THE MOUTH (a bake fix, R7):** the Great River stood 4.8 m over the sea at the coast and the Ness 4 m. The recipe's new
+  - **THE MOUTH (a bake fix, R7):** River 1 stood 4.8 m over the sea at the coast and River 3 4 m. The recipe's new
     `R.riverMouth` gives a river that reaches the coast one even run-out (up to 400 m, never past a falls' foot) down to the sea's
     level + 0.05 m, the channel deepening with it; land.json's rivers carry `mouth`, and the bake's R7 check refuses a mouth
     standing over the sea. It moved 8 tiles (t_14_8/9/10, t_15_8/9/10, t_16_10, t_5_13) plus land.json, land-map.png, sea.bin.
@@ -900,7 +899,7 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     all over water deeper than the draft and on one surface within 0.6 m: no sailing up or down a falls), `hqLandFalls` (every
     stretch of a river steeper than 0.35 that drops ≥ 2 m: 8 on this bake, the Olympus brook's 155 m the tallest, the creek's 42 m
     into the loch), `hqLandWaterSheet` (a tile's river and lake mesh), `hqLandSeaDepth` / `hqLandSeaDepthWorld` (the shader's depth
-    bytes), `hqLandMooring`. A river sample within 0.6 m of the sea over ground below it is the sea's (the Nile's lagoon). Rules in
+    bytes), `hqLandMooring`. A river sample within 0.6 m of the sea over ground below it is the sea's (River 4's lagoon). Rules in
     `HQ_LAND_RULES.water`.
   - **THE SEA** (three-renderer.js): one Phong sheet round the camera whose shader reads the sea's depth from two byte textures
     (a 512 m window at 2 m re-centred on the camera, the world at 8 m past it): shallow → mid → deep colour, a foam band lapping at
@@ -917,11 +916,11 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     hand-back, the wader's ripples, the helm and the look under the surface. A surface swimmer keeps to one surface (rides a
     river's slope, never up a falls), drifts with the current, and over a falls' lip the water lets go: the body drops and plunges
     in at the foot. Under the loch or a river the fog turns green and thicker.
-  - **THE SKIFF**: four moorings (`water.moor`: the loch, the bay, the harbour, the Great River's mouth) found at run time once
+  - **THE SKIFF**: four moorings (`water.moor`: the loch, the bay, the harbour, River 1's mouth) found at run time once
     their tiles are in (a spot the hull floats with a hand to spare, alongside a shore the walker can board from): the sea's skiff,
     registered as a vehicle, with a mooring pile on the shore. The helm reads `hqLandHullFloats`, rides the water under the hull and
     drifts downstream on a river.
-  - **Probe** (offline, swiftshader): the loch, the bay and the harbour moor their skiffs; the Great River, the loch, the creek
+  - **Probe** (offline, swiftshader): the loch, the bay and the harbour moor their skiffs; River 1, the loch, the creek
     falls and the bay drawn; the shaders compile on WebGL1 and WebGL2. Not measured on a real GPU.
   - **Forks**: none of §8 touches the water; nothing ruled.
   - **What mondo uploads**: R2 data.js, three-renderer.js, `Assets/Land/` land.json, land-map.png, sea.bin and the 8 tiles;
@@ -980,12 +979,12 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
 - **G5 — THE ROADS (2026-09-28, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G5.zip, token
   20260928-geography-10-cors, delta on G4B; new bake 35b9269ad8)**
   - **The giveaway viaducts are gone** (§11 limit 2). The bake now caps how high a road may stand over dry ground (6.5 m): a
-    long dry span is regraded into the slope as a cutting instead. The Crown's Road, the East Road, the Rim Road and the West
+    long dry span is regraded into the slope as a cutting instead. Route 2, Route 3, Route 4 and the West
     Lane were re-laid with switchbacks; Route 1 passes Giza through a gap in the mesas. A road leaves the ground only over water
     or inside the two named viaducts. Every grade holds (R5).
-  - **Fork 6, default**: the Glen Viaduct and the Loch Head Viaduct stay as landmarks, drawn as arched stone-grey viaducts with
-    spandrel walls. The Nile Bridge is a steel truss. The Crown's Road crosses the Great River on THE KING'S BRIDGE; Route 1
-    crosses Shasta Creek on a short bridge (the old line ran 10 m under the perched creek, so the crossing moved north onto the
+  - **Fork 6, default**: Bridge 7 and Bridge 6 stay as landmarks, drawn as arched stone-grey viaducts with
+    spandrel walls. Bridge 3 is a steel truss. Route 2 crosses River 1 on Bridge 5; Route 1
+    crosses River 2 on a short bridge (the old line ran 10 m under the perched creek, so the crossing moved north onto the
     plain). Trails cross water on footbridges with steel rails.
   - **The roads drawn**: within 300 m each road wears its own sheet from the bucket (urban asphalt, the Vatican's paving, packed
     dirt for the lanes, fork §5.6) on the drawn ground, with edge lines and a centre line (yellow on Route 1). Trails stay
@@ -994,15 +993,33 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
     deck, and jumps land on it. Piers, girders, lamps along the long decks (the game's street lamp) and name plates at each end.
   - **Guard rails** wherever a road's edge drops more than 2 m (the bake finds them: 4.7 km of rail). The rail is the blocker;
     skaters grind it and the grind runs on from piece to piece.
-  - **Signs** at every junction name the next place each way (ROUTE 1 · ◄ THE ESTATE · URQUHART RUIN ►), never what is in sight;
+  - **Signs** at every junction name the next place each way (ROUTE 1 · ◄ THE ESTATE · AREA 15 ►), never what is in sight;
     Route 1 carries signs for each joining road's first place.
   - **Traffic**: nine cars each way on Route 1 (the city's cars), riding the graded line and pitching with it.
-  - **Forks**: fork 6 default (keep the Glen and the Loch Head, regrade the rest); fork 7 default (no car to drive); §5.6 lanes
+  - **Forks**: fork 6 default (keep Bridges 6 and 7, regrade the rest); fork 7 default (no car to drive); §5.6 lanes
     are packed dirt; the Vatican's lane paved. The 2 m bake (rules hold) has 38 decks: the two viaducts, the
     river bridges, the footbridges and short gully bridges (none dry over 64 m). The deepest cuttings are where the recipe's
-    own lines cross ridges (Route 1 west of HQ 48 m, the Pilgrims' Way 53 m, the Redwood road 34 m, the Vatican's lane 31 m):
+    own lines cross ridges (Route 1 west of HQ 48 m, Trail A 53 m, Route 12 34 m, the Vatican's lane 31 m):
     left as cuttings with cliff banks; moving those lines is a recipe edit if mondo wants them shallower.
   - **What mondo uploads**: R2 data.js, three-renderer.js and `Assets/Land/` (land.json, land-map.png, sea.bin and 73 changed tiles); index.html to Render; the repo
     bake-land.js, land-roads.test.js, land-stream.test.js, this plan, docs/notes/areas-complexes.md, CLAUDE.md. Test:
     land-roads.test.js. Not measured on a real GPU. Kill-switch `window.EW_NO_LAND_ROADS`.
     Next: G6 (the sites on pads).
+
+- **G6 — THE SITES ON PADS (2026-09-28, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G6.zip, token
+  20260928-geography-11-cors, delta on G5; new bake da0db7e906)**
+  - Every outdoor site stands on its place's pad on the land: the Strip, Area 51 (gate, flight line, Hangar 18, the white
+    rooms), Camelot (ward, hall, keep), Olympus's summit, Shasta, the woods' clearing, redwoods, staircase and ritual ground,
+    the Grove, the estate's fields, the haunted grounds, Stonehenge, Giza, Babel, Göbekli Tepe and the Vatican. Walking off a
+    site's edge puts you on the land; walking onto a site's pad puts you in it, with no load card.
+  - Retired: Camelot's road part, Olympus's foothills and switchbacks, the two highway parts, the woods' trail and pasture, and the
+    outdoor zones that stitched them. The links between the woods, the ranch, the Grove, Shasta and Camelot are gone (you walk
+    there over the land). Dead Man's Cave opens off the land at the storm drain's mouth.
+  - Camelot and the Vatican moved off River 1 (their pads buried it). The loch's skiff mooring moved with the loch's shore.
+  - Inside a site the land is drawn around you (its ground cut under the site, no grass or trees through it); the site's
+    edges ease to its pad, except where an authored tier stands at the edge (the staircase's landing stays a landing).
+  - Downtown and the Bowl see Olympus at its real bearing from Downtown's place on the land.
+  - The wall audit (R3) passes on every site. What mondo uploads: R2 data.js, three-renderer.js and all of `Assets/Land/`;
+    index.html to Render; the repo bake-land.js, the tests, this plan, docs/notes/areas-complexes.md. Next: G7 (the city on
+    the hill).
+

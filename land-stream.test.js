@@ -131,7 +131,7 @@ test('the renderer: the land arms, the walker / air / camera / sea read it, the 
     assert.match(tr, /if \(_hq\.land\) return _hqLandCamBlocked\(px, pz, py\);/, 'the camera boom');
     assert.match(tr, /_hq\.land && _hq\.land\.sea/, 'the land\'s sea is the swimmer\'s');
     assert.match(tr, /_hqLandTick\(H, dt, now\)/, 'the frame ticks the land');
-    assert.match(tr, /H\.land\.readyNear/, 'the card waits for the ground round the door');
+    assert.match(tr, /H\.landZ\.readyNear/, 'the card waits for the ground round the door');
     assert.match(tr, /land\.renderOrder = -900[\s\S]{0,1400}?sea\.renderOrder = -899[\s\S]{0,1400}?clr\.renderOrder = -850[\s\S]{0,200}?clearDepth\(\)/, 'far land, far sea, then the depth cleared');
     assert.match(tr, /try \{ _hqLandDisarm\(H\); \} catch \(e\) \{\}/, '_hqLeave lets the land go');
     assert.match(tr, /if \(room\.land\) return;   \/\/ G2: THE LAND has no shell/, 'no box shell on the land');

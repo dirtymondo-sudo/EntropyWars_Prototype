@@ -13,7 +13,7 @@ const R = n => vm.runInContext(n, D);
 const TR = fs.readFileSync(__dirname + '/three-renderer.js', 'utf8');
 const MP = fs.readFileSync(__dirname + '/map.js', 'utf8');
 const HQ_STAGE_RULES = R('HQ_STAGE_RULES'), HQ_WORLD_RULES = R('HQ_WORLD_RULES');
-const FOOT = 'site_prebuilt_olympus_foothills', SWITCH = 'site_prebuilt_olympus_switchbacks', SUMMIT = 'site_prebuilt_olympus_summit';
+const WARD = 'site_prebuilt_camelot_ward', SUMMIT = 'site_prebuilt_olympus_summit';   // G6 (2026-09-28): the foothills and the switchbacks retired — the land's own slope climbs to the summit
 let THREE = null; try { THREE = require('three'); if (!THREE.InstancedMesh) THREE = null; } catch (e) { THREE = null; }
 /* the renderer's instance pass + LOD + far block (one slice: they share the batch records) */
 function block() {
@@ -39,36 +39,39 @@ test('the rules: the levels by screen size, the cull, the ticks; the far shells\
 });
 
 test('hqFarParts: the open-sky parts of this ground, the nearest first, never an interior, never this room, none from inside', () => {
-    const fp = D.hqFarParts(FOOT), ids = fp.map(p => p.id);
-    assert.ok(ids.includes(SWITCH) && ids.includes(SUMMIT), 'the mountain above the foothills');
-    assert.ok(!ids.includes(FOOT), 'not itself');
+    const fp = D.hqFarParts(WARD), ids = fp.map(p => p.id);
+    assert.ok(ids.includes(SUMMIT), 'the summit seen from Camelot');
+    assert.ok(!ids.includes(WARD) && !ids.includes('land'), 'not itself, never the land (its own pass draws it)');
     for (const id of ids) {
         assert.ok(D.hqStagePart(id), id + ' is a staged part');
         const S = D.DOOR_HQ.rooms[id].shell; assert.ok(S.open && S.sky, id + ' is open');
-        assert.equal(D.hqWorldFrame(id).ground, D.hqWorldFrame(FOOT).ground);
+        assert.equal(D.hqWorldFrame(id).ground, D.hqWorldFrame(WARD).ground);
     }
     assert.ok(!ids.includes('site_prebuilt_camelot_hall') && !ids.includes('site_prebuilt_camelot_keep'), 'the closed rooms never stand as shells');
     for (let i = 1; i < fp.length; i++) assert.ok(fp[i].gap >= fp[i - 1].gap, 'the nearest first');
     assert.ok(fp.length <= HQ_WORLD_RULES.farMax);
     assert.ok(fp.every(p => p.gap <= HQ_WORLD_RULES.far));
-    /* the frame and the box: the summit's box, seen from the foothills, is where its frame puts it */
+    /* the frame and the box: the summit's box, seen from the ward, is where its frame puts it */
     const s = fp.find(p => p.id === SUMMIT), c = D.hqStageToRoom(s.rel, 0, 0);
     assert.ok(c.x >= s.rect.x0 && c.x <= s.rect.x1 && c.z >= s.rect.z0 && c.z <= s.rect.z1, 'its centre is in its box');
-    assert.equal(s.rel.y, 60, 'sixty metres up');
+    assert.ok(Math.abs(s.rel.y - (D.hqWorldFrame(SUMMIT).y - D.hqWorldFrame(WARD).y)) < 1e-6 && s.rel.y > 100, 'the summit\'s pad over the ward\'s');
     assert.equal(D.hqFarGap(s, c.x, c.z), 0, 'inside the box: no gap');
     assert.ok(D.hqFarGap(s, 0, 0) > 0);
     assert.equal(D.hqFarParts('site_prebuilt_camelot_hall').length, 0, 'from inside a closed room: nothing');
     assert.equal(D.hqFarParts('central_egress').length, 0, 'the building has no far');
+    /* from the land every open site is a candidate (the renderer keeps the farMax nearest the walker) */
+    const fl = D.hqFarParts('land');
+    assert.ok(fl.length > HQ_WORLD_RULES.farMax && fl.some(p => p.id === SUMMIT) && !fl.some(p => p.id === 'site_prebuilt_camelot_hall'), 'the land\'s far candidates');
 });
 
 test('hqFarShell: the compiled ground on the far grid, its colours, sunk under the real one; nothing before the survey compiled it', () => {
-    const room = D.DOOR_HQ.rooms[SWITCH];
+    const room = D.DOOR_HQ.rooms[SUMMIT];
     const saved = room._terrainInfo;
     try {
         if (saved) Object.defineProperty(room, '_terrainInfo', { value: null, writable: true, configurable: true });
-        assert.equal(D.hqFarShell(SWITCH), null, 'never compiled here: the survey does it');
-        const info = D.hqTerrainCompile(room, SWITCH);
-        const f = D.hqFarShell(SWITCH, info), S = room.shell, res = HQ_WORLD_RULES.farRes;
+        assert.equal(D.hqFarShell(SUMMIT), null, 'never compiled here: the survey does it');
+        const info = D.hqTerrainCompile(room, SUMMIT);
+        const f = D.hqFarShell(SUMMIT, info), S = room.shell, res = HQ_WORLD_RULES.farRes;
         const nx = Math.ceil(S.w / res) + 1, nz = Math.ceil(S.d / res) + 1;
         assert.equal(f.nx, nx); assert.equal(f.nz, nz);
         assert.equal(f.idx.length % 3, 0); assert.equal(f.tris, f.idx.length / 3);
@@ -82,9 +85,10 @@ test('hqFarShell: the compiled ground on the far grid, its colours, sunk under t
             const x = f.pos[k * 3], y = f.pos[k * 3 + 1], z = f.pos[k * 3 + 2];
             assert.ok(Math.abs(y - (D.hqTerrainHeight(info, x, z) - HQ_WORLD_RULES.farSink)) < 1e-4, 'on the field, sunk');
         }
-        /* the skirt: a part 25 m up the mountain reaches down to the ground's floor and past it */
-        let lo = Infinity; for (let k = 1; k < f.pos.length; k += 3) lo = Math.min(lo, f.pos[k]);
-        assert.ok(lo <= -25 - HQ_WORLD_RULES.farSkirt, 'a mountainside, never a floating plate');
+        /* the skirt: a site on the land (G6) stands on its pad — its box's edge reaches farSkirt m under its lowest ground */
+        let lo = Infinity, top = Infinity; for (let k = 1; k < f.pos.length; k += 3) lo = Math.min(lo, f.pos[k]);
+        for (let k = 0; k < nx * nz; k++) top = Math.min(top, f.pos[k * 3 + 1]);
+        assert.ok(lo <= top - HQ_WORLD_RULES.farSkirt + 1e-6, 'never a floating plate');
         /* grass and a cliff: two colours on a mountain part */
         const cols = new Set(); for (let k = 0; k < nx * nz; k++) cols.add(f.col.slice(k * 3, k * 3 + 3).map(v => v.toFixed(2)).join(','));
         assert.ok(cols.size > 1, 'the slope picks the cliff\'s colour');
@@ -126,7 +130,7 @@ test('the renderer: the far shell is one flat-shaded vertex-coloured mesh on a l
                   hqFarShell: D.hqFarShell, hqFarParts: D.hqFarParts, hqFarGap: D.hqFarGap, _hqData: () => D.DOOR_HQ };
     vm.createContext(ctx);
     vm.runInContext(block() + '\nthis.mesh = _hqFarMesh; this.place = _hqFarPlace; this.mat = _hqFarMat; this.tick = _hqFarTick; this.stats = _hqFarStats;', ctx);
-    const info = D.hqTerrainCompile(D.DOOR_HQ.rooms[SWITCH], SWITCH), d = D.hqFarShell(SWITCH, info), F = {};
+    const info = D.hqTerrainCompile(D.DOOR_HQ.rooms[SUMMIT], SUMMIT), d = D.hqFarShell(SUMMIT, info), F = {};
     const m = ctx.mesh(F, d);
     assert.equal(m.material, ctx.mat(F), 'one material for every shell');
     assert.equal(m.material.vertexColors, true); assert.equal(m.material.flatShading, true);
@@ -143,26 +147,27 @@ test('the renderer: the far shell is one flat-shaded vertex-coloured mesh on a l
     assert.ok(Math.abs(p.x / 73 - q.x) < 1e-6 && Math.abs(p.z / 73 - q.z) < 1e-6 && Math.abs(p.y - 25 * 73) < 1e-6, 'the frame is the stage\'s own');
     /* the tick in a walk: the shells stand for the compiled parts, a drawn one stands down, the far plane reaches them */
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(52, 1, 4, 20000);
-    const room = D.DOOR_HQ.rooms[FOOT];
-    const H = { opts: { room: FOOT, farWarm(id) { H.asked.push(id); } }, asked: [], room, player: { x: 0, z: 55 }, scene, camera: cam, stage: { parts: {} } };   // the foothills' south edge
-    const sw = D.DOOR_HQ.rooms[SWITCH], swSaved = sw._terrainInfo;
+    const room = D.DOOR_HQ.rooms[WARD];
+    const H = { opts: { room: WARD, farWarm(id) { H.asked.push(id); } }, asked: [], room, player: { x: 0, z: 0 }, scene, camera: cam, stage: { parts: {} } };   // the ward's middle
+    const sw = D.DOOR_HQ.rooms[SUMMIT], swSaved = sw._terrainInfo, fs0 = D.hqFarParts(WARD).find(p => p.id === SUMMIT);
+    const inX = (fs0.rect.x0 + fs0.rect.x1) / 2, inZ = (fs0.rect.z0 + fs0.rect.z1) / 2;   // the summit's box, in the ward's metres
     Object.defineProperty(sw, '_terrainInfo', { value: info, writable: true, configurable: true, enumerable: false });
     try {
         ctx.tick(H, 1000);
         const st = ctx.stats(H);
-        assert.ok(st.built >= 1 && H.far.shells[SWITCH], 'the switchbacks stand (compiled)');
-        assert.ok(H.asked.length >= 1 && !H.asked.includes(SWITCH), 'the rest are asked of the survey');
-        const gap = D.hqFarGap(D.hqFarParts(FOOT).find(p => p.id === SWITCH), 0, 55);
+        assert.ok(st.built >= 1 && H.far.shells[SUMMIT], 'the summit stands (compiled)');
+        assert.ok(H.asked.length >= 1 && !H.asked.includes(SUMMIT), 'the rest are asked of the survey');
+        const gap = D.hqFarGap(fs0, 0, 0);
         assert.ok(gap >= HQ_WORLD_RULES.farMinM);
-        assert.equal(H.far.shells[SWITCH].mesh.visible, true, 'not drawn, far enough: the shell stands');
-        assert.ok(cam.far > 20000 && cam.far <= HQ_WORLD_RULES.far * 73, 'the far plane reaches the shell (its far corner is 240 m off)');
-        H.player.z = -50; ctx.tick(H, 1600);
-        assert.equal(H.far.shells[SWITCH].mesh.visible, false, 'within farMinM of its box: the outer ground is the ground there');
-        H.player.z = 55; ctx.tick(H, 2200);
-        assert.equal(H.far.shells[SWITCH].mesh.visible, true, 'back out: it stands again');
-        H.stage.parts[SWITCH] = { attached: true };
+        assert.equal(H.far.shells[SUMMIT].mesh.visible, true, 'not drawn, far enough: the shell stands');
+        assert.ok(cam.far > 20000 && cam.far <= HQ_WORLD_RULES.far * 73, 'the far plane reaches the shell');
+        H.player.x = inX; H.player.z = inZ; ctx.tick(H, 1600);
+        assert.equal(H.far.shells[SUMMIT].mesh.visible, false, 'within farMinM of its box: the outer ground is the ground there');
+        H.player.x = 0; H.player.z = 0; ctx.tick(H, 2200);
+        assert.equal(H.far.shells[SUMMIT].mesh.visible, true, 'back out: it stands again');
+        H.stage.parts[SUMMIT] = { attached: true };
         ctx.tick(H, 2800);
-        assert.equal(H.far.shells[SWITCH].mesh.visible, false, 'drawn for real: the shell stands down');
+        assert.equal(H.far.shells[SUMMIT].mesh.visible, false, 'drawn for real: the shell stands down');
         ctx.window.EW_HQ_NO_FAR = true; ctx.tick(H, 3400);
         assert.ok(Object.values(H.far.shells).every(s => !s.mesh.visible) && cam.far === 20000, 'the switch');
     } finally { Object.defineProperty(sw, '_terrainInfo', { value: swSaved || null, writable: true, configurable: true, enumerable: false }); }

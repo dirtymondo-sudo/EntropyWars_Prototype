@@ -1572,7 +1572,7 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
 
 ## THE LAND — the bake and the atlas (WORLD_GEOGRAPHY_PLAN G0, 2026-09-28)
 - The world recipe is data.js `HQ_LAND` (was the sketch's recipe.js in the project folder open-world/geography/sketch/,
-  now retired): coast, plateaus, bumps, ranges, peaks, the Rim, the glen, lakes, canyons, rivers, roads, places (each
+  now retired): coast, plateaus, bumps, ranges, peaks, Area 13, the glen, lakes, canyons, rivers, roads, places (each
   with `region`, weenie `top`, `peak` / `lookout`), `sight` (THE SIGHT RULE's constants + mondo's `never` pairs) and
   `baked` (the bake id the game's urls carry). Readers: `hqLandPlace`, `hqLandRegionLabel`, `hqLandBaked`, `hqLandUrl`,
   `hqLandSightOk` (R2 as one pure rule), `hqLandNever`.
@@ -1582,7 +1582,7 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   the one check (R2 + never pairs, R7 rivers / lakes, R5 grades / the ring / every place on a route, R3 cliffs): the CLI
   exits 1 and does not stamp on a breach; land-bake.test.js runs it at 8 m (~14 s) and at 2 m (`heavy`).
 - A one-cell erosion brush digs runaway pits (heights of ±50 km at 8 m): the brush is never under 2 cells.
-- Two routes were added so every place is on one: THE LIGHTHOUSE PATH (mall → the bay's head) and THE HAUNTED DRIVE
+- Two routes were added so every place is on one: TRAIL K (mall → the bay's head) and ROUTE 13
   (estate → the haunted house). The reachability rule counts Disaster City's streets (G7) as joining every road that
   enters the city ellipse; sea, edge, arctic and underground places are reached by sea or through a mouth.
 - Outputs (Assets/Land/ on R2): land.json (~110 KB), land-map.png (1400², 4 m a pixel, contours every 25 m, ~1.7 MB),
@@ -1667,21 +1667,21 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
 
 ## THE ROADS (WORLD_GEOGRAPHY_PLAN G5, 2026-09-28, token 20260928-geography-10-cors, bake 35b9269ad8)
 - bake-land.js §6 `gradeLine(rd, pts)`: smoothing (roadRules.smooth), the water's lift (`clear` by type; a river no wider than
-  `smallRiver` m, i.e. Shasta Creek, only `clearSmall`: a culvert span), the grade clamp, then THE FILL CAP: a dry span standing
+  `smallRiver` m, i.e. River 2, only `clearSmall`: a culvert span), the grade clamp, then THE FILL CAP: a dry span standing
   more than 7 m over the ground for `maxDry` (60) m is regraded to at most `fill` (6.5) m over the ground ± `capPad` m (the lower
   envelope of grade cones: it cuts into the slope), except within `approach` m of water and inside a NAMED VIADUCT
-  (`HQ_LAND.viaducts`: the Glen, the Loch Head — fork 6's default). Last, the water's lift is made HARD (its cones): a road
+  (`HQ_LAND.viaducts`: Bridges 6 and 7 — fork 6's default). Last, the water's lift is made HARD (its cones): a road
   never passes under a river. The stamp reads the height between two samples off the line (the nearest sample stepped it).
   Overlay rows: roads gain `surface` (asphalt / paved / dirt / trail), `maxCut`, `cutAt`, `rails` ([s0, s1, side], side +1 = left
   of travel); `bridges` rows {id, road, type, w, len, wet, river, viaduct, look, label, span, deck, hMax, pts (4 m, ±2
   abutment samples)}; `junctions` {at, y, branch, end, sB, main, sM, ahead, back, to, kind, mainKind} (an end on another road's
-  end is a road changing its name: no junction). Names: a viaduct's own, `roadRules.names[road]` (crown = THE KING'S BRIDGE),
+  end is a road changing its name: no junction). Names: a viaduct's own, `roadRules.names[road]` (crown = BRIDGE 5),
   else `bridgeNames[river]`, a trail's = `bridgeNames.foot`. Looks: viaduct 'arch', `roadRules.looks[river]` (nile = truss),
   trail 'foot', else 'girder'. Materials `lane` (packed dirt) and `paved` (the Vatican's lane) joined MATS (24 now: the grass
   shader's uGCol[24] and the splat's uLay[24] are full).
-- Recipe changes (data.js HQ_LAND): the Crown's Road, the East Road, the Rim Road (south), the West Lane re-laid (switchbacks, no
-  viaducts); Route 1 crosses Shasta Creek on the plain north of the old line (the old line ran 10 m under the perched creek;
-  holding it over the creek made a 718 m ramp); the Shasta Trail starts on the new line; a mesa gap by Giza (`mesas.avoid`).
+- Recipe changes (data.js HQ_LAND): Route 2, Route 3, Route 4 (south), Route 5 re-laid (switchbacks, no
+  viaducts); Route 1 crosses River 2 on the plain north of the old line (the old line ran 10 m under the perched creek;
+  holding it over the creek made a 718 m ramp); Trail B starts on the new line; a mesa gap by Giza (`mesas.avoid`).
 - data.js "THE ROADS" before `hqLandPadY`: `HQ_LAND_RULES.roads` (near, piece, lift, sheets, paint, deck, rail, lamps, sign,
   near2, traffic), `HQ_LAND_ROADS` (built by `hqLandRoadsIndex(ov)` from inside `hqLandIndex`, once per bake id), readers
   `hqLandRoadPose(road, s)`, `hqLandDecksAt`, `hqLandDeckFeet(x, z, curY, g)` (undefined = no say, null = parapet / no headroom,
@@ -1698,3 +1698,40 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
 - Test land-roads.test.js (a 16 m bake: grades, no giveaway viaduct, wet decks clear their water, rails at the drops, the
   junctions' places, the deck and rail readers, the wiring and the assets). Offline analysis: an 8 m bake's roads / bridges
   report is the fast way to check a recipe edit (`bake({ cell: 8 })`, 12 s).
+
+## THE SITES ON THE LAND (WORLD_GEOGRAPHY_PLAN G6, 2026-09-28, token 20260928-geography-11-cors, bake da0db7e906)
+- data.js `HQ_WORLD.zones.land` (ground `land`, hub `land`): the land room plus 26 site parts, each `{ place, dx, dz, dy }`
+  on a `HQ_LAND.places` row; `hqLandSiteFrames()` writes x/z from the place and y from its `padY` (rot 0 always). Joins: an
+  `island` join `land → part` for each open site (`pad: true`, `y` = the pad), door joins for Area 51 (flight line ⇄ Hangar 18
+  ⇄ the white rooms), Camelot (ward ⇄ hall ⇄ keep), the haunted grounds ⇄ the hall, the Vatican's cortile ⇄ basilica ⇄
+  library, a stair join to the observatory (dy 6), a road join gate ⇄ flight line on the pad.
+- Retired: zones forecourt, highway, desert, kingdom, mountain, woods, haunted, divine, the ground `rome`; rooms
+  `fairy_forest_trail`, `fairy_forest_pasture`, `camelot_road`, `olympus_foothills`, `olympus_switchbacks`, `strip_highway`,
+  `area51_highway`; links `ranch_haunted`, `ranch_grove`, `woods_grove`, `woods_shasta`, `fairy_camelot` (and their KEPT_LEAVES
+  rows); the woods' doors between parts and the three draught pairs (40 secret doors now). Camelot is entered by the ward.
+  Dead Man's Cave: its `land` door ⇄ the land room's free `deadmans` door (the storm drain's mouth, Trail D's end).
+- Moved off River 1: Camelot to [-40, -685], the Vatican to [787, -445] (their pads buried the river). The loch skiff's
+  mooring moved to [-778, 128] (the loch keeps its full outline now that no pad buries it).
+- `hqLandSites()` (per place: the union of its parts' rects, the pad y) and `hqLandSiteAt(x, z, pad)`, `hqLandSiteGap`.
+  `HQ_LAND_RULES.sites` `{ margin 3, band 24, keepOff 1.5, build 300, drop 380 }`.
+- The bake (bake-land.js 5b): after the disc pads each site's rect (+ margin) is flat at the pad y and eases back over `band`;
+  the band lets go toward water (a chamfer distance, the shore keeps its bank); disc pads never bury water past 0.8 r; no
+  forest in a site (`SITE` mask); rails keep off; overlay `sites` [{ place, rect, y, parts }].
+- The island stitch (`hqTerrainStitchRows`, rows `island: true`): the four edges ease to the pad over stitchM, EXCEPT inside an
+  authored plateau or ramp (the stair's landing stays 3.5 m up at the north edge; the summit's and the haunted grounds' tiers).
+  The generated plan opens an island row with a mouth `islandMouthW` (10 m) wide at the side's middle plus an open strip
+  `islandEdgeM` (1.5 m) either side of the edge, so the plan keeps its thicket and trees and the land meets flat ground.
+- The land drawn from a site: `H.landZ` (the land record, armed at `_hqEnter` for a land site by `_hqStageLandEarly`) sits in
+  `L.group` at the land's frame in the current part's metres (`_hqLandO` / `_hqLandPlace`, uniform `uLandO` in the splat and
+  water shaders); `L.v` (`_hqLandView`) = the walker and the eye in land metres, `own` = standing on the land. The land ground
+  discards inside the attached sites' rects (`uSiteR[12]`, `_hqLandSiteCut`; a part with dy > 0.5 is not cut); flora, grass
+  and road pieces keep off site rects. On a land site `_hqPartOnLand()` skips the outer ground, the treeline and the city
+  backdrop.
+- The stage on the land: `_hqStageLandPick` keeps the islands within `build` m of the walker and drops past `drop`; beside
+  parts (the hall and the keep from the land) follow their island and are never crossed into (`_hqStageLandBeside`); the
+  crossing onto an unbuilt island shows no load card. `hqFarParts('land')` lists every open site; `_hqFarTick` keeps the
+  farMax nearest the walker.
+- Weenies: sites on the land hang none (`hqRoomLandmarks` → the places stand on the horizon). Downtown and the Bowl see
+  Olympus from their land place (`HQ_WORLD_WEENIES` row `from: 'downtown'`, `hqWorldBearing(room, target, fromPlace)`).
+- Tests: wall-audit.test.js (R3 on every land site, heavy, ~65 s), the re-pinned hq-*.test.js (stage, joins, lod, clock,
+  south, mountain, west, woods, world-map, world, map, ranch, urban, floors, coast, terrain, camelot, areas).

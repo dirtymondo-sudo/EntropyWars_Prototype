@@ -86,7 +86,7 @@ test('the sheet: three parts on Room 51 — site + part, none numbered, every on
     const reg = D.hqRoomRegister();
     assert.equal(reg.filter(r => r.mapId === 'prebuilt_area51').length, 1, 'the register lists the site once');
     assert.ok(!reg.some(r => IDS.includes(r.id) || IDS.includes(r.room)), 'no part is a register entry');
-    assert.equal(D.hqSiteComplex('prebuilt_area51').length, 5, 'five parts: the hangar, the ward, the flight line, the desert miles, the gate (OPEN WORLD Phase 5, 2026-09-27)');
+    assert.equal(D.hqSiteComplex('prebuilt_area51').length, 4, 'four parts: the hangar, the ward, the flight line, the gate (G6, 2026-09-28: the desert miles retired — the land runs up to the gate)');
 });
 
 test('THE ENTRY + THE TUNNEL: `site_prebuilt_area51` is an alias — the man-door lands you in HANGAR 18 (the bay door on its south wall is the site’s egress); area51_dumb lives on the hangar’s EAST wall and lands on the motor pool’s WEST', () => {

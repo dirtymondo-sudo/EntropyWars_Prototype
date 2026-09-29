@@ -2,7 +2,7 @@
 //
 // Bakes the land at 16 m (as land-forest.test.js does) and holds THE ROADS to §5.6 and R5: every graded line keeps its grade,
 // a road leaves the ground only over water or inside a named viaduct (the sketch's giveaway viaducts are regraded: fork 6's
-// default keeps the Glen and the Loch Head), every deck clears its water, a guard rail stands wherever a road's edge drops more
+// default keeps Bridges 6 and 7), every deck clears its water, a guard rail stands wherever a road's edge drops more
 // than 2 m, and the junctions' signs name the next place. Then data.js's readers (a walker on a deck, its parapet, the ground
 // under it, a guard rail) and the renderer's wiring. Every sheet and model is one the game already ships (no new art).
 'use strict';
@@ -42,10 +42,10 @@ test('R5: every road keeps its grade (a trail is benched; its steep bits are ste
     assert.ok(lane, 'a lane is packed dirt (§5.6)'); assert.strictEqual(vat.surface, 'paved', 'the Vatican\'s lane is paved');
 });
 
-test('§11 limit 2: a road leaves the ground only over water or inside a named viaduct (the Glen, the Loch Head)', () => {
+test('§11 limit 2: a road leaves the ground only over water or inside a named viaduct (Bridges 6 and 7)', () => {
     const { ov } = w16();
     const via = ov.bridges.filter(b => b.viaduct);
-    assert.ok(via.some(b => b.viaduct === 'glen') && via.some(b => b.viaduct === 'lochhead'), 'fork 6: the Glen and the Loch Head stand');
+    assert.ok(via.some(b => b.viaduct === 'glen') && via.some(b => b.viaduct === 'lochhead'), 'fork 6: Bridges 6 and 7 stand');
     for (const b of ov.bridges) {
         if (b.viaduct || b.wet) continue;
         assert.ok(b.len <= 60, `${b.id}: a dry span of ${b.len} m is a gully bridge, not a giveaway viaduct`);
@@ -69,12 +69,12 @@ test('every wet deck clears its water; a creek\'s by a culvert span, a river\'s 
         }
     }
     assert.ok(n > 20, `the decks cross water (${n} samples)`);
-    // the named bridges: a river's own name, the road's own (the King's Bridge), a footbridge on a trail only
+    // the named bridges: a river's own name, the road's own (Bridge 5), a footbridge on a trail only
     const lab = id => (ov.bridges.find(b => b.id === id) || {}).label;
-    assert.ok(ov.bridges.some(b => b.label === 'THE NILE BRIDGE' && b.look === 'truss'), 'the Nile Bridge is a truss');
-    assert.ok(ov.bridges.some(b => b.road === 'crown' && b.label === 'THE KING’S BRIDGE'), 'the Crown\'s Road crosses on the King\'s Bridge');
-    for (const b of ov.bridges) if (b.label === 'THE FOOTBRIDGE') assert.strictEqual(b.type, 'trail', `${b.id}: only a trail's bridge is a footbridge`);
-    assert.ok(lab('ring:0') !== 'THE FOOTBRIDGE', 'Route 1 never crosses on a footbridge');
+    assert.ok(ov.bridges.some(b => b.label === 'BRIDGE 3' && b.look === 'truss'), 'Bridge 3 is a truss');
+    assert.ok(ov.bridges.some(b => b.road === 'crown' && b.label === 'BRIDGE 5'), 'Route 2 crosses on Bridge 5');
+    for (const b of ov.bridges) if (b.label === 'FOOTBRIDGE') assert.strictEqual(b.type, 'trail', `${b.id}: only a trail's bridge is a footbridge`);
+    assert.ok(lab('ring:0') !== 'FOOTBRIDGE', 'Route 1 never crosses on a footbridge');
 });
 
 test('§5.6: a guard rail wherever a road\'s edge drops more than 2 m', () => {

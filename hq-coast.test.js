@@ -191,7 +191,7 @@ test('THE SOURCE: the crossing lets the swimmer and the helm through; the swap c
     assert.ok(/rv\(pl, 'svx', 'svz'\);/.test(renderer), 'the swimmer\'s way on turns with the frame');
     assert.ok(/if \(Vx\) \{\n\s+var vp = mp\(Vx\.x, Vx\.z\); Vx\.x = vp\.x; Vx\.z = vp\.z; Vx\.y -= \(rel\.y \|\| 0\); Vx\.yaw \+= th;/.test(renderer), 'the helm re-anchored (the test\'s carry() mirrors it)');
     assert.ok(/\(H\.propGroup \|\| H\.partRoot\)\.add\(vr\.grp\)/.test(renderer) && /Q\.P\.boats = Q\.P\.boats\.filter/.test(renderer), 'the hull moves to the new part\'s moorings');
-    assert.ok(/try \{ _hqSeaDisarm\(H\); \}/.test(renderer) && /try \{ if \(H\.terrain && H\.terrain\.sea\) _hqSeaArm\(H\.room\); \}/.test(renderer), 'the sea look disarmed and re-armed');
+    assert.ok(/try \{ _hqSeaDisarm\(H\); \}/.test(renderer) && /try \{ if \(\(H\.terrain && H\.terrain\.sea\) \|\| H\.land\) _hqSeaArm\(H\.room\); \}/.test(renderer), 'the sea look disarmed and re-armed');
     assert.ok(/var bFog = _hqDryFog\(H\);/.test(renderer) && /var cFog = _hqDryFog\(H\); if \(cFog\) cFog\.color\.copy\(V\.fogC\);/.test(renderer), 'the blend and the clock ease the dry fog');
     assert.ok(/seaMesh\._ew_hqOuterSideIds = seaHosts; _hq\.outerSides\['~sea'\] = seaMesh;/.test(renderer), 'the island\'s sheet is an outer side keyed on its host');
     assert.ok(/var isl = _hqStageIslandAt\(st, x, z\);/.test(renderer) && /var isl = _hqStageIslandAt\(st, px, pz\);/.test(renderer) && /var isA = _hqStageIslandAt\(_hq\.stage, x, z\);/.test(renderer), 'the feet, the boom and the air over an island');

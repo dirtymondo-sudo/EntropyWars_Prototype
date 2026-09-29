@@ -119,7 +119,7 @@ test('THE DOOR RULE: no plain-leaf door joins two sites but the designed seams (
     assert.ok(!D.hqLinkPlain(HQ.links.find(l => l.id === 'vatican_hell')), 'a draught is not a plain door');
     assert.ok(!HQ.rooms.site_prebuilt_vatican_basilica.doors.some(d => /hell/.test(d.id)) && !HQ.rooms.site_prebuilt_vatican_library.doors.some(d => /heaven|hell/.test(d.id)), 'no door to hell in the Vatican, no elevator to heaven');
     /* the ways stay */
-    for (const id of ['observatory_stair', 'haunted_camelot', 'mirror_lookingglass', 'northpole_haunted', 'lodge_olympus', 'bermuda_abyss', 'downtown_strip', 'tunnel_cyberpunk', 'well_cellar', 'ranch_haunted', 'deadtree_lookingglass', 'fairy_camelot']) assert.ok(D.hqLinkLive(HQ.links.find(l => l.id === id)), id + ' (a way) is live');
+    for (const id of ['observatory_stair', 'haunted_camelot', 'mirror_lookingglass', 'northpole_haunted', 'lodge_olympus', 'bermuda_abyss', 'downtown_strip', 'tunnel_cyberpunk', 'well_cellar', 'deadtree_lookingglass']) assert.ok(D.hqLinkLive(HQ.links.find(l => l.id === id)), id + ' (a way) is live');
     /* Mars is a course on the ship's collar now */
     assert.equal(D.hqShipDestinations().map(d => d.link).join(','), 'moon_derelict,derelict_saturn,antarctica_derelict,mars_derelict');
     /* the board rooms are gone (2026-09-27): `site_<id>` is an alias for the entry part */

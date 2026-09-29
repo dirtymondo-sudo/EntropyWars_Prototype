@@ -118,7 +118,7 @@ test('the stands: a named forest grows its own mix, the desert its pines, the no
     assert.strictEqual(R('hqLandFloraMix(-400, -640, 60, false)'), 'fairy', 'the fairy forest');
     assert.strictEqual(R('hqLandFloraMix(1060, -560, 40, false)'), 'redwood', 'the redwood coast');
     assert.strictEqual(R('hqLandFloraMix(920, 900, 40, false)'), 'pine', 'the pine barrens');
-    assert.strictEqual(R('hqLandFloraMix(690, 760, 120, false)'), 'dry', 'the Sheep hill\'s desert pines');
+    assert.strictEqual(R('hqLandFloraMix(690, 760, 120, false)'), 'dry', 'Hill 1\'s desert pines');
     assert.strictEqual(R('hqLandFloraMix(-1130, -330, 30, false)'), 'haunt', 'the ritual woods');
     assert.strictEqual(R('hqLandFloraMix(0, -1100, 40, false)'), 'north', 'the north');
     const kinds = R('HQ_LAND_RULES.flora.kinds.map(k => k.id)');
@@ -128,14 +128,17 @@ test('the stands: a named forest grows its own mix, the desert its pines, the no
 test('the grass grows on the grass materials only, the same every time', () => {
     const W = w16(), T = forestTile(W), { R, put } = store(W);
     for (const [a, b] of around(T.ti, T.tj)) put(a, b);
-    const r = R(`(() => { const St = HQ_LAND_STORE, G = HQ_LAND_RULES.flora.grass, t = St.grid[${T.tj} * St.per + ${T.ti}], b0 = Math.floor(t.x0 / G.block), c0 = Math.floor(t.z0 / G.block), out = { n: 0, bad: 0, same: true };
-        for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) { const a = hqLandGrassBlock(b0 + i, c0 + j), b = hqLandGrassBlock(b0 + i, c0 + j); if (!a) continue;
-            if (a.join() !== b.join()) out.same = false;
-            for (let k = 0; k < a.length; k += 7) { out.n++; if (!(G.mats[St.index.materials[a[k + 6]]] > 0)) out.bad++; } }
+    const r = R(`(() => { const St = HQ_LAND_STORE, G = HQ_LAND_RULES.flora.grass, t = St.grid[${T.tj} * St.per + ${T.ti}], n = 48, out = { n: 0, bad: 0, same: true };
+        const mk = () => ({ h: new Float32Array(n * n), d: new Uint8Array(n * n), m: new Uint8Array(n * n) });
+        const ix0 = Math.ceil(t.x0 / G.step) + 1, iz0 = Math.ceil(t.z0 / G.step) + 1, A = mk(), B = mk();
+        if (!hqLandGrassField(A, n, ix0, iz0, n, n) || !hqLandGrassField(B, n, ix0, iz0, n, n)) return null;
+        for (let o = 0; o < n * n; o++) { if (A.d[o] !== B.d[o] || A.h[o] !== B.h[o]) out.same = false;
+            if (A.d[o] > 0) { out.n++; if (!(G.mats[St.index.materials[A.m[o]]] > 0)) out.bad++; } }
         return out; })()`);
+    assert.ok(r, 'the field fills once the tiles have landed');
     assert.ok(r.same, 'deterministic');
     assert.strictEqual(r.bad, 0, 'only on the grass materials');
-    assert.ok(r.n > 50, `${r.n} tufts in the forest tile's corner`);
+    assert.ok(r.n > 50, `${r.n} grass texels in the forest tile's corner`);
 });
 
 test('every model is one the game already ships (no new art), and the renderer instances them', () => {

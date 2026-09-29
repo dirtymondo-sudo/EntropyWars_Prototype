@@ -273,7 +273,7 @@ test('THE WORLD OVERVIEW: one node per place (the building, every hub, every lon
   const G = D.hqMapGraph();
   for (const rid of G.order) { const w = D.hqWorldNodeOf(rid); assert.ok(w && W.nodes[w] && W.nodes[w].rooms.includes(rid), 'every room belongs to one place: ' + rid + ' → ' + w); }
   assert.equal(D.hqWorldNodeOf('reception'), 'hq'); assert.equal(D.hqWorldNodeOf('ring_g'), 'hq'); assert.equal(D.hqWorldNodeOf('car'), 'hq');
-  assert.equal(D.hqWorldNodeOf('site_prebuilt_fairy_forest_trail'), 'hub:woods'); assert.equal(D.hqWorldNodeOf('site_prebuilt_moon_mare'), 'site:prebuilt_moon');
+  assert.equal(D.hqWorldNodeOf('site_prebuilt_fairy_forest_redwoods'), 'hub:woods'); assert.equal(D.hqWorldNodeOf('site_prebuilt_moon_mare'), 'site:prebuilt_moon');
   assert.equal(W.nodes['site:prebuilt_moon'].no, D.hqRoomNo('site_prebuilt_moon'), 'a lone site wears its number');
   /* the layout */
   const ids = W.order.filter(id => id !== 'hq');
@@ -294,8 +294,8 @@ test('THE WORLD OVERVIEW: one node per place (the building, every hub, every lon
   assert.equal(cold.nodes.find(n => n.id === 'hq').st, 'here'); assert.ok(cold.nodes.every(n => n.id === 'hq' || n.st === 'q'), 'every other place is a question at most');
   assert.ok(cold.nodes.every(n => n.st !== 'q' || (n.label === 'UNCHARTED' && !n.no)), 'a question mark wears no name and no number');
   assert.equal(cold.floors.find(f => f.id === 'M').st, 'here', 'the foyer is on the main hall\'s floor');
-  const p = { door: {} }; D.hqRoomSee(p, 'foyer'); D.hqRoomSee(p, 'ring_g'); D.hqRoomSee(p, 'site_prebuilt_fairy_forest_clearing'); D.hqRoomSee(p, 'site_prebuilt_fairy_forest_trail');
-  const m = D.hqWorldOverview(p, 'site_prebuilt_fairy_forest_trail');
+  const p = { door: {} }; D.hqRoomSee(p, 'foyer'); D.hqRoomSee(p, 'ring_g'); D.hqRoomSee(p, 'site_prebuilt_fairy_forest_clearing'); D.hqRoomSee(p, 'site_prebuilt_fairy_forest_redwoods');
+  const m = D.hqWorldOverview(p, 'site_prebuilt_fairy_forest_redwoods');
   const woods = m.nodes.find(n => n.id === 'hub:woods');
   assert.equal(woods.st, 'here'); assert.equal(woods.roomsSeen, 2); assert.equal(woods.rooms, W.nodes['hub:woods'].rooms.length); assert.equal(m.here, 'hub:woods');
   assert.equal(m.nodes.find(n => n.id === 'hq').st, 'seen');
@@ -306,7 +306,7 @@ test('THE WORLD OVERVIEW: one node per place (the building, every hub, every lon
   assert.ok(m.box.w > 0 && m.box.h > 0);
   const all = D.hqWorldOverview(null, 'foyer', { all: true }); assert.equal(all.nodes.length, W.order.length); assert.ok(all.nodes.every(n => n.st !== 'q'));
   /* the panel on the world sheet: the block with its bands, a node per place drawn, the LOCATIONS rail, THE KEY, the crumb, the card; a pick marks the place, a second pick travels */
-  const c = renderDirectory(p, 'site_prebuilt_fairy_forest_trail', 'world');
+  const c = renderDirectory(p, 'site_prebuilt_fairy_forest_redwoods', 'world');
   const html = c.out;
   assert.ok(html.includes('<svg class="hq-map-svg hq-map-world"'));
   assert.equal((html.match(/<g class="hq-map-n hq-map-wn /g) || []).length, m.nodes.length, 'a node per place (the building included)');
@@ -346,7 +346,7 @@ test('THE WORLD OVERVIEW: one node per place (the building, every hub, every lon
   D.hqRoomSee(p, 'ring_m');   // the mezzanine ring the woods' bay threshold hangs on
   c.map.mode = 'area'; c.map.area = 'hub:woods';
   vm.runInContext('this.out = _hqDirectoryHtml();', c);
-  assert.ok(c.out.includes('<svg class="hq-map-svg"') && c.out.includes('data-mapnode="site_prebuilt_fairy_forest_trail"') && c.out.includes('data-mapmode="world"'), 'the area sheet + the way back');
+  assert.ok(c.out.includes('<svg class="hq-map-svg"') && c.out.includes('data-mapnode="site_prebuilt_fairy_forest_redwoods"') && c.out.includes('data-mapmode="world"'), 'the area sheet + the way back');
   assert.ok(!c.out.includes('data-mapnode="reception"'), 'a room of another place is not on this sheet');
   /* THE MAP REMEMBERS (2026-09-22): a room OUTSIDE the place the officer has STOOD IN keeps its name on the sheet as an EXIT; a never-entered one is the question mark */
   const areaM = c.map.drawn;
@@ -388,7 +388,7 @@ test('THE DIRECTORY GUARD: every room in DOOR_HQ.rooms is a node of the map (rea
   const all = D.hqMapModel(null, 'foyer', { all: true });
   assert.equal(all.nodes.length, G.order.length, 'dev: everything drawn = every node');
   /* THE WOODS (9.3 stage 3): the first complex added under this guard hangs off its site */
-  assert.equal(P.site_prebuilt_fairy_forest_trail.where, P.site_prebuilt_fairy_forest_clearing.where, 'the woods hang off the clearing (THE AREAS, 2026-09-18: the board is off the walk — the clearing IS the Fairy Forest)');
+  assert.equal(P.site_prebuilt_fairy_forest_redwoods.where, P.land.where, 'G6 (2026-09-28): the woods\' parts stand apart on the land — the redwoods hang off the land (out the front door), the clearing off its bay');
 });
 
 test('Directory travel survives SVG pointer capture; a drag or cancelled touch never travels', () => {

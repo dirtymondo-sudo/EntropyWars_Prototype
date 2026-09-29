@@ -14758,37 +14758,7 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_flightline = function () {
     return M.finishDelta();
 };
 
-/* ── THE HIGHWAY + THE GATE (OPEN WORLD Phase 5, 2026-09-27) ──────────── */
-
-/* THE STRIP END — the road and its double yellow, the last diner, the
-   loading dock, the rest stop's kickers, the parked truck. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_strip_highway = function () {
-    const M = _mfAreaDelta({ name: 'DISASTER CITY · THE HIGHWAY', base: 'dirt_4', seed: 8571,
-        tints: { dirt_4: '#c8b08a', road: '#5a5a58', holo: '#ffd040', drywall: '#e8d8c0', wood: '#8a6a4a', gunmetal: '#5a6068' },
-        desc: 'THE HIGHWAY — the road and its double yellow, the last diner, the loading dock, the rest stop, the parked truck' });
-    M.rect(3, 1, 4, 2, 'road');                              // the road
-    M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'drywall' });       // the diner's front
-    M.block(7, 3, 'drywall', 2);                             // the loading dock
-    M.step(0, 2, 'wood'); M.step(1, 3, 'wood');              // the rest stop's kickers
-    M.step(1, 1, 'gunmetal');                                // the parked truck
-    M.symAll();
-    return M.finishDelta();
-};
-
-/* THE DESERT MILES — the road, LAST GAS's canopy and pumps, the kiosk, the
-   plinth, the crash dip. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_highway = function () {
-    const M = _mfAreaDelta({ name: 'AREA 51 · THE DESERT MILES', base: 'dirt_4', seed: 8572,
-        tints: { dirt_4: '#c4ac84', road: '#5e5c58', aluminium: '#d0d8e0', metal_2: '#c83a30', wasteland: '#a09078' },
-        desc: 'THE DESERT MILES — the road, the gas canopy and its pumps, the kiosk, the plinth, the crash dip' });
-    M.rect(3, 1, 4, 2, 'road');                              // the road
-    M.block(1, 2, 'metal_2'); M.block(1, 3, 'metal_2');      // the pumps
-    M.block(0, 1, 'aluminium', 2);                           // the kiosk
-    M.block(6, 3, 'wasteland', 2);                           // the plinth
-    M.lake(7, 1, 'dirt_4', 1);                               // the crash dip
-    M.symAll();
-    return M.finishDelta();
-};
+/* ── THE GATE (OPEN WORLD Phase 5, 2026-09-27) ───────────────────────── */
 
 /* THE GATE — the fence, the guard post, the barrier, THE WATCHTOWER. */
 _MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_gate = function () {
@@ -14806,23 +14776,6 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_area51_gate = function () {
 
 /* ── THE NORTH (OPEN WORLD Phase 6, 2026-09-27) ────────────────────────── */
 
-/* THE CROWN ROAD — the road north, the river and its stone bridge, the
-   avenue trees, the wayside shrine, the camp. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_road = function () {
-    const M = _mfAreaDelta({ name: 'CAMELOT · THE CROWN ROAD', base: 'grass_2', seed: 8581,
-        tints: { grass_2: '#8fc47a', dirt_2: '#b09470', water: '#6ac0e0', castle_wall: '#b8b0a0', wood: '#8a6a4a' },
-        desc: 'THE CROWN ROAD — the road north, the river and its stone bridge, the avenue trees, the shrine, the camp' });
-    M.rect(3, 0, 2, 4, 'dirt_2');                            // the road
-    M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 1); M.lake(2, 2, 'water', 1);   // the river
-    M.lake(5, 2, 'water', 1); M.lake(6, 2, 'water', 1); M.lake(7, 2, 'water', 1);
-    M.t(3, 2, 'castle_wall'); M.t(4, 2, 'castle_wall');      // the bridge
-    M.block(1, 3, 'castle_wall', 2);                         // the shrine
-    M.step(6, 3, 'wood');                                    // the camp's log
-    M.treeL(2, 1, 'tree_2'); M.treeL(5, 1, 'tree_2'); M.treeL(0, 0, 'tree_5');
-    M.symAll();
-    return M.finishDelta();
-};
-
 /* THE WARD — the curtain wall and its walk, a round tower, the gatehouse,
    the lists and their stand, the moat along the west. */
 _MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_ward = function () {
@@ -14836,37 +14789,6 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_camelot_ward = function () {
     M.rect(5, 2, 2, 1, 'sand');                              // the lists
     M.step(5, 3, 'wood'); M.step(6, 3, 'wood');              // the stand
     M.treeL(7, 1, 'tree_2');                                 // the orchard
-    M.symAll();
-    return M.finishDelta();
-};
-
-/* THE FOOTHILLS — the meadow bench and its tarn, the trail up the slope,
-   the lookout's rocks, the pines. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_olympus_foothills = function () {
-    const M = _mfAreaDelta({ name: 'MOUNT OLYMPUS · THE FOOTHILLS', base: 'grass_2', seed: 8582,
-        tints: { grass_2: '#9cc47e', dirt_2: '#a88c68', rock_wall_1: '#9a968a', water: '#7ad0f0' },
-        desc: 'THE FOOTHILLS — the meadow bench and its tarn, the trail up the slope, the lookout\'s rocks, the pines' });
-    M.rect(2, 1, 1, 3, 'dirt_2'); M.rect(3, 1, 2, 1, 'dirt_2');   // the trail
-    M.step(5, 2, 'grass_2'); M.step(6, 2, 'grass_2'); M.step(6, 3, 'grass_2');   // the meadow bench
-    M.lake(7, 3, 'water', 1);                                // the tarn
-    M.block(0, 1, 'rock_wall_1', 2); M.step(0, 2, 'rock_wall_1');   // the lookout's rocks
-    M.treeL(1, 3, 'tree_5'); M.treeL(5, 0, 'tree_5'); M.treeL(7, 1, 'tree_2');
-    M.symAll();
-    return M.finishDelta();
-};
-
-/* THE SWITCHBACKS — the ledges stepping up the face, the trail's legs, the
-   ropes on the east, the lookout. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_olympus_switchbacks = function () {
-    const M = _mfAreaDelta({ name: 'MOUNT OLYMPUS · THE SWITCHBACKS', base: 'grass_2', seed: 8583,
-        tints: { grass_2: '#a8c48e', dirt_2: '#a8906c', rock_wall_1: '#a09a90', wood: '#8a6a4a' },
-        desc: 'THE SWITCHBACKS — the ledges stepping up the face, the trail\'s legs, the ropes, the lookout' });
-    M.step(0, 1, 'rock_wall_1'); M.step(1, 1, 'rock_wall_1');   // the first ledge
-    M.block(0, 2, 'rock_wall_1'); M.block(1, 2, 'rock_wall_1');   // the second
-    M.block(0, 3, 'rock_wall_1', 2);                         // the high ledge
-    M.rect(2, 1, 1, 3, 'dirt_2');                            // the trail's leg
-    M.block(6, 2, 'rock_wall_1'); M.step(7, 2, 'wood');      // the lookout and its rope stand
-    M.treeL(5, 3, 'tree_5'); M.treeL(4, 1, 'tree_5');
     M.symAll();
     return M.finishDelta();
 };
@@ -14966,20 +14888,6 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_hollow_earth_oubliette = function () {
 
 /* ── THE WOODS (Room 9's parts) ────────────────────────────────────────── */
 
-/* THE MOUNTAIN TRAIL — the two tiers up to Shasta's door, the stream, the
-   pines, the dead snag. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_trail = function () {
-    const M = _mfAreaDelta({ name: 'THE WOODS · THE MOUNTAIN TRAIL', base: 'grass_2', seed: 8571,
-        tints: { grass_2: '#8fc47a', dirt_2: '#a88860', rock_wall_1: '#8a8a7a', water: '#7ae0ff' },
-        desc: 'THE MOUNTAIN TRAIL — the two tiers up to Shasta\'s door, the stream, the pines, the dead snag' });
-    M.rect(3, 1, 4, 2, 'dirt_2');                            // the trail
-    M.step(1, 3, 'grass_2'); M.step(0, 3, 'grass_2'); M.block(0, 2, 'rock_wall_1'); M.block(0, 1, 'rock_wall_1', 3);   // the tiers
-    M.lake(6, 1, 'water', 1); M.lake(7, 1, 'water', 1); M.lake(7, 2, 'water', 1);   // the stream
-    M.treeL(1, 1, 'tree_2'); M.treeL(6, 3, 'tree_5'); M.treeL(6, 2, 'tree_2');
-    M.symAll();
-    return M.finishDelta();
-};
-
 /* THE REDWOOD TRAIL — the forest floor, the creek and the gully log, THE
    STAND, the redwoods. */
 _MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_redwoods = function () {
@@ -14990,21 +14898,6 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_redwoods = function () {
     M.lake(0, 2, 'water', 1); M.lake(1, 2, 'water', 1); M.lake(0, 3, 'water', 1); M.t(1, 3, 'bridge');   // the creek and the log
     M.treeL(0, 0, 'tree_3'); M.treeL(1, 1, 'tree_3'); M.treeL(6, 2, 'tree_3'); M.treeL(5, 3, 'tree_3');   // the redwoods
     M.step(6, 3, 'dirt_2'); M.block(7, 2, 'wood');           // THE STAND
-    M.symAll();
-    return M.finishDelta();
-};
-
-/* THE BACK PASTURE — the dry-stone fence with THE DEAD TREE in its gap, the
-   pool, the hills, the ritual circle. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_pasture = function () {
-    const M = _mfAreaDelta({ name: 'THE WOODS · THE BACK PASTURE', base: 'grass_2', seed: 8573,
-        tints: { grass_2: '#9fd48a', dirt_2: '#a88860', rocks_1: '#a8a090', water: '#7ae0ff' },
-        desc: 'THE BACK PASTURE — the dry-stone fence with THE DEAD TREE in its gap, the pool, the hills, the ritual circle' });
-    M.ring(3.5, 3.5, 1.4, 2.3, 'dirt_2');                    // the circle
-    M.wrun(0, 2, 1, 2, 'N', { h: 2, tex: 'rocks_1' }); M.wrun(6, 2, 7, 2, 'N', { h: 2, tex: 'rocks_1' });   // the fence
-    M.treeL(2, 2, 'tree_5');                                 // THE DEAD TREE in the gap
-    M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);      // the pool
-    M.step(6, 3, 'grass_2'); M.step(7, 3, 'grass_2'); M.step(7, 1, 'grass_2');   // the hills
     M.symAll();
     return M.finishDelta();
 };
@@ -24385,28 +24278,12 @@ const DOOR_HQ = {
         /* THE RANCH (2026-09-18, the woods split): the house's dead tree and the ranch's gate LEFT the pasture — both stand on THE CORN
            FIELDS now (route `ranch`); the pasture keeps its fence, its gap and its clearing door. The Lodge left Camelot's hall (the ley
            line) for the fields; the grove is the interchange — its woods gate stays, its ranch gate is new. */
-        { id: 'ranch_haunted', route: 'ranch', way: 'deadtree',
-          a: { site: 'prebuilt_haunted', part: 'grounds', wall: 'w', z: 4, sub: 'THE DEAD TREE · BY THE WEST FENCE' },   // THE AREAS (2026-09-18): on THE GROUNDS
-          b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: -16, sub: 'THE DEAD TREE · THE HOLE LOOKS INTO THE HOUSE' },
-          why: 'the dead tree in the corn has a hole in it and the hole is the house\'s garden; the tree stood in the pasture until the ranch fenced it', note: 'mind the hole', draft: true },
         { id: 'ranch_lodge', route: 'ranch', leaf: 'leaf_saloon',
           a: { site: 'prebuilt_lodge', part: 'halls', wall: 'n', x: -5, sub: 'THE BACK DOOR · ONTO THE FIELDS' },   // THE AREAS (2026-09-18): off THE HALLS
           b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: -4, sub: 'THE SALOON DOOR · INTO THE LODGE' },
           why: 'the Lodge\'s back door was Camelot\'s once; the members voted and the door opens on the corn now, where the members are from', note: 'members only, both ways', draft: true },
-        { id: 'ranch_grove', route: 'ranch', leaf: 'leaf_shabby_wood',
-          a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'n', x: -5, sub: 'THE BACK GATE · ONTO THE FIELDS' },   // THE AREAS (2026-09-18): on THE GROVE
-          b: { site: 'prebuilt_skinwalker', part: 'fields', wall: 'n', x: 8, sub: 'THE GROVE’S GATE · TO THE WOODS, THROUGH THE GROVE' },
-          why: 'the grove is the ranch\'s neighbour and the woods\' — its back gate opens on the corn, its owl\'s gate on the redwood trail; the ranch reaches the woods through it', note: 'the owl counts you', draft: true },
         /* THE GRAVEYARD and THE WESTERN MAP (the user's ranch list) are NOT launch maps yet — their gates go on the fields' EAST wall
            (z 2 the lychgate, z −6 the western road) the day the sites are built; the sheet's rule is that every link is LIVE, so no held row */
-        { id: 'woods_grove', route: 'woods', leaf: 'leaf_shabby_wood',
-          a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'w', z: 0, y: 2.2, sub: 'THE OWL’S GATE · TO THE WOODS' },   // THE AREAS (2026-09-18): the owl's gate on THE GROVE's west wall; AREA CONTENT D3 (2026-09-19): ON THE WEST TERRACE — a door you climb to
-          b: { site: 'prebuilt_fairy_forest', part: 'redwoods', wall: 'e', z: -0.875, sub: 'THE OWL’S GATE · TO THE GROVE' },
-          why: 'the owl\'s gate at the back of the grove opens on the redwood trail; the members walk it once a year and come back smaller', note: 'the fourth gate', draft: true },
-        { id: 'woods_shasta', route: 'woods', leaf: 'leaf_frame_only',
-          a: { site: 'prebuilt_fairy_forest', part: 'trail', wall: 'n', x: -0.875, y: 3.5, sub: 'THE MOUNTAIN · THE LAST SWITCHBACK' },
-          b: { site: 'prebuilt_shasta', part: 'slopes', wall: 'n', x: -10, y: 4.4, sub: 'THE SNOWLINE · THE FRAME IN THE SNOW' },   // THE AREAS (2026-09-18): the frame on THE SLOPES; AREA CONTENT D3 (2026-09-19): ON THE SNOWLINE tier — a door you climb to
-          why: 'the trail up out of the woods tops out at a frame in the snow line; the mountain was over the trees the whole way up, and now it is under your feet', note: 'the white thing over the trees', draft: true },
         /* AREA CONTENT D3 (2026-09-19): LEMURIA — a DRAUGHT (the plain door was pruned with THE AREAS; the hidden passage is the earned exit R4 asks for): the ranger says the city is under the mountain, and the adit under the west wall says so too */
         { id: 'shasta_lemuria', route: 'woods', leaf: 'leaf_coffee', secret: true,
           a: { site: 'prebuilt_shasta', part: 'slopes', wall: 'w', z: 8, sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN' },
@@ -24450,10 +24327,6 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'n', x: -0.875, sub: 'THE CIRCLE · ROOM 333' },
           b: { room: 'ritual', wall: 'e', z: 0, sub: 'THE CIRCLE · THE RITUAL GROUND' },
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
-        { id: 'fairy_camelot', route: 'woods', way: 'pool',
-          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 4, z: 11.5, face: 90, sub: 'THE SPRING · SURFACE IN THE MOAT' },   // THE AREAS (2026-09-18): the spring is IN THE CLEARING, by the stream (the board is bypassed)
-          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'free', x: -67.6, z: -13, face: 90, sub: 'THE MOAT · SURFACE IN THE SPRING' },   // CAMELOT CASTLE (2026-09-18): on the moat's west bank in THE OUTER WARD; OPEN WORLD Phase 6: the rebuilt ward's track, outside the west arm
-          why: 'the spring in the fairy forest and the castle moat share their water; dive in the woods and surface under the battlements, which the besiegers should have found suspicious', note: 'the same water', draft: true },
         /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
         { id: 'deadtree_lookingglass', route: 'seams', way: 'deadtree',
           a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'free', x: 7.0, z: 6.5, face: 300, sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE' },
@@ -24796,7 +24669,7 @@ const DOOR_HQ = {
             /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
-            prebuilt_camelot:   { room: 'site_prebuilt_camelot_road',        door: { id: 'bay', wall: 's', x: 0 } },   // OPEN WORLD Phase 6 (2026-09-27): the portcullis stands at the crown's road's south end — the castle is walked to
+            prebuilt_camelot:   { room: 'site_prebuilt_camelot_ward',        door: { id: 'bay', wall: 's', x: 0 } },   // WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the portcullis at the ward's south edge, the ward on its pad on the land
             /* THE RANCH (2026-09-18 — the woods split): the stable door lands you in THE CORN FIELDS, the ranch's hub; the well and the woods'
                gate that stood on the board moved onto the fields the same day (a link door in a bypassed room would land at the bay door). */
             prebuilt_skinwalker: { room: 'site_prebuilt_skinwalker_fields',   door: { id: 'bay', wall: 's', x: 0 } },
@@ -25351,7 +25224,7 @@ const DOOR_HQ = {
            `shell.w / d` are the world's (the ice wall's disc and the sea to the baked edge); nothing is drawn at them. */
         land: {
             label: 'THE LAND',
-            sub: 'THE CENTRAL HIGHLANDS · D.O.O.R. HQ',
+            sub: 'AREA 1 · D.O.O.R. HQ',
             kind: 'box', land: true,
             shell: {
                 w: 5600, d: 5600, h: 600, wallH: 600, dadoH: 1.0,
@@ -25369,6 +25242,11 @@ const DOOR_HQ = {
                   label: 'D.O.O.R. HQ', sub: 'THE FRONT DOOR · THE FOYER',
                   action: { room: 'foyer', at: 'street' },
                   desc: 'The front door of the Department of Orthogonal Realities, from the outside. The drum has no windows at eye level; it has never needed them. The foyer is on the other side.' },
+                /* WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): Dead Man's Cave on its pad (HQ_LAND_RULES.places deadmans) — the storm drain's mouth */
+                { id: 'deadmans', wall: 'free', x: -470, z: -530, face: 90, y: 75.9, pad: 'deadmans', leaf: 'leaf_cell',
+                  label: 'DEAD MAN’S CAVE', sub: 'THE STORM DRAIN · IN',
+                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'land' },
+                  desc: 'The mouth of the storm drain, a grate on its hinges.' },
             ],
             counters: [],
             props: [],
@@ -32866,30 +32744,6 @@ const DOOR_HQ = {
                   label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
                   action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
                   desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
-                { id: 'trail', wall: 'n', x: -14, leaf: null,   // OPEN WORLD Phase 4: −7.875 → −14, so the trail and the stair stand side by side north of the clearing on one ground
-                  label: 'THE MOUNTAIN TRAIL', sub: 'UP · TOWARD THE MOUNTAIN',
-                  action: { room: 'site_prebuilt_fairy_forest_trail', at: 'clearing' },
-                  desc: 'The trail climbs. The mountain is the white thing over the trees to the north-west, and it has been there the whole time.' },
-                { id: 'stair', wall: 'n', x: 9.625, leaf: null,
-                  label: 'THE STAIRCASE', sub: 'A FLIGHT OF STAIRS · IN THE WOODS',
-                  action: { room: 'site_prebuilt_fairy_forest_stair', at: 'clearing' },
-                  desc: 'Past the crag, a clearing with a staircase in it. Nobody built it there. It is in good repair.' },
-                { id: 'redwoods', wall: 'e', z: -7.875, leaf: null,
-                  label: 'THE REDWOOD TRAIL', sub: 'EAST · TOWARD THE GROVE',
-                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
-                  desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
-                { id: 'deadmans', wall: 'e', z: 9.625, leaf: null,
-                  label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
-                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
-                  desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
-                { id: 'pasture', wall: 'w', z: -4.375, leaf: null,
-                  label: 'THE BACK PASTURE', sub: 'WEST · THE FENCE LINE',
-                  action: { room: 'site_prebuilt_fairy_forest_pasture', at: 'clearing' },
-                  desc: 'The trees thin into grass and a fence, and the fence has two gates, and neither of them is the Department’s.' },
-                { id: 'ritual', wall: 'w', z: 9.625, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THE STONES · THE FIRE',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE — the stones are not on the way to anywhere (was THE RITUAL GROUND)
-                  action: { room: 'site_prebuilt_fairy_forest_ritual', at: 'clearing' },
-                  desc: 'Candle smoke on the wind, from the west. The stones are older than the candles and the candles are recent.' },
             ],
             counters: [],
             props: [
@@ -32917,69 +32771,6 @@ const DOOR_HQ = {
                 '“Seven paths.” “Six, and the one you came in by.” “That is seven.” “That is the one you leave by.”',
             ],
             spawn: { x: 2.0, z: 12.0, face: 0 },
-        },
-        /* ── THE MOUNTAIN TRAIL — the switchbacks up to Shasta: two tiers, a stream at the foot, the door at the top ── */
-        site_prebuilt_fairy_forest_trail: {
-            label: 'THE WOODS · THE MOUNTAIN TRAIL',
-            sub: 'THE SWITCHBACKS · TWO TIERS · THE WAY TO ROOM 14179',
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'trail',
-            shell: hqWoodsShell({ w: 24.5, d: 31.5, plate: { x: 0, z: -15.0, y: 7.0 }, floorColor: 0x7a8c5a }),
-            /* THE FIELD (2026-09-17): the switchbacks — the floor with a stream across
-               it, THE TERRACE (1.75 m) the full width of the trail up a ramp at the
-               east end, THE TOP TIER (3.5 m) up a ramp at the west, Shasta's frame on
-               it against the north wall. A dead snag on the top, the rims railed. */
-            terrain: {
-                floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
-                noise: { amp: 0.18, scale: 5 },
-                gen: { kind: 'rooms', seed: 12 },
-                features: [
-                    { k: 'hill', x: -7, z: 9, r: 5, h: 0.9 },
-                    { k: 'stream', pts: [[-12.25, 12], [-4, 9.5], [4, 12], [12.25, 13.5]], w: 2.2, y: -0.2, depth: 0.5 },
-                    { k: 'plateau', x: 0, z: -2, w: 24.5, d: 8, h: 1.75 },                                    // THE TERRACE
-                    { k: 'ramp', x0: 9.5, z0: 6.8, x1: 9.5, z1: 1.7, w: 3.0, h0: 0, h1: 1.75 },               // up at the east end
-                    { k: 'plateau', x: 0, z: -11, w: 24.5, d: 9.5, h: 3.5 },                                  // THE TOP TIER
-                    { k: 'ramp', x0: -9.5, z0: -2.6, x1: -9.5, z1: -6.6, w: 2.8, h0: 1.75, h1: 3.5 },          // up at the west end
-                    { k: 'plateau', x: 8.5, z: -12.5, r: 1.5, h: 5.6, edge: 0.3 },                            // THE PINNACLE over the tier (the tape's)
-                    { k: 'rail', x0: -4.5, z0: -6.3, x1: 4.5, z1: -6.3 },                                      // the top tier's rim
-                    { k: 'rail', x0: -1.0, z0: 1.9, x1: 6.5, z1: 1.9 },                                        // the terrace's rim
-                    { k: 'path', pts: [[-0.9, 14], [3, 10], [9.5, 5], [9.5, -1], [-9.5, -4], [-9.5, -8], [-0.9, -13]], w: 1.6 },
-                    { k: 'grove', n: 12, kinds: ['tree', 'tree_2', 'tree_3'], seed: 2 },
-                    { k: 'scatter', key: 'pine', n: 5, seed: 3 },
-                    { k: 'scatter', key: 'fern', n: 8, seed: 4 },
-                    { k: 'scatter', key: 'menhir', n: 1, seed: 5 },
-                ],
-            },
-            doors: [
-                { id: 'clearing', wall: 's', x: -0.875, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK DOWN TO THE CROSSROADS',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'trail' },
-                  desc: 'Back down. The clearing is where every path in the woods ends up, including the ones that do not.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE DEER PATH — a draught through the thicket to THE STAIRCASE (R4: the trail's earned exit) */
-                { id: 'deerpath', wall: 'e', z: 4, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DEER PATH · THROUGH THE THICKET TO THE STAIRCASE',
-                  action: { room: 'site_prebuilt_fairy_forest_stair', at: 'deerpath' },
-                  desc: 'A gap in the thicket a deer would take and a person would not, until they do. It comes out at the foot of the staircase.', draft: true },
-            ],
-            counters: [],
-            props: [
-                { key: 'cave_torch',     x: -10.2, z: 14.5 },                               // the trail's torches: the foot, the terrace, the top
-                { key: 'cave_torch',     x: 8.75, z: -1.2 },
-                { key: 'cave_torch',     x: -7.875, z: -4.375 },
-                { key: 'cave_torch',     x: 7.875, z: -9.0 },
-                { key: 'dead_snag',      x: -6.5, z: -12.5 },                               // the snag on the top tier
-                { key: 'paper_sheet',    x: 4.375, z: -9.5, y: 0.01, face: 200 },          // a hand-drawn map of the mountain's inside, weighted with a stone
-                { key: 'floor_stain',    x: -2.625, z: 7.0 },
-                { key: 'cardboard_box',  x: -6.0, z: -0.875, face: 30 },                    // a cache of rope on the terrace: the switchbacks are the long way and Facilities knows a short one
-            ],
-            agents: [],
-            npcSpots: [{ x: 2.625, z: -10.5, face: 200, race: 'nordic' }, { x: -7.875, z: 5.5, face: 40, race: 'yeti' }],
-            onlineSpots: [],
-            lines: [
-                '“How far is the mountain?” “Two tiers.” “That is not a distance.” “It is here.”',
-                '“The snow does not melt.” “It is not snow.” “Then what is on the mountain?” “The mountain.”',
-                '“There is a door at the top.” “There is always a door at the top.”',
-            ],
-
-            spawn: { x: -2.625, z: 12.25, face: 0 },
         },
         /* ── THE REDWOOD TRAIL — the old trees, the creek and its plank, the owl's gate at the far end ── */
         site_prebuilt_fairy_forest_redwoods: {
@@ -33011,14 +32802,6 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
-                  desc: 'Back west, where the trees are young enough to be trees.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT — the creek goes into a pipe under the bank; the pipe is the storm drain (R4) */
-                { id: 'culvert', wall: 'n', x: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',
-                  action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'culvert' },
-                  desc: 'The creek goes into the bank and does not come out. The pipe it goes into is big enough, if you do not mind the dark.', draft: true },
             ],
             counters: [],
             props: [
@@ -33039,64 +32822,6 @@ const DOOR_HQ = {
                 '“The lantern.” “What lantern?” “Exactly.”',
             ],
             spawn: { x: -9.625, z: 0.875, face: 90 },
-        },
-        /* ── THE BACK PASTURE — the fence line with two gates in it: the ranch's and the house's ── */
-        site_prebuilt_fairy_forest_pasture: {
-            label: 'THE WOODS · THE BACK PASTURE',
-            sub: 'THE FENCE LINE · THE GAP · THE RANCH IS OVER THE WIRE',   // the woods split (2026-09-18): the two gates that stood here are THE CORN FIELDS' now
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'pasture',
-            shell: hqWoodsShell({ w: 28, d: 21, plate: { x: 0, z: -9.8, y: 4.4 }, floorColor: 0x8a9a5e, mood: { light: 0xc8b0e8, ambient: 0.4 } }),
-            /* THE FIELD (2026-09-17): the back pasture — the knoll with the crop circle
-               on it, two more rises, THE POND, and THE FENCE along the north (two
-               lengths of dry-stone wall the walker jumps onto and rides): the garden
-               gate stands in its gap — the dead tree with the hole in it, the house on
-               the other side — and the ranch's gate on the west. */
-            terrain: {
-                floor: 'grass_2', cliff: 'dirt_2', path: 'dirt_2',
-                noise: { amp: 0.18, scale: 6 },
-                gen: { kind: 'rooms', seed: 14, rMax: 7.5 },
-                features: [
-                    { k: 'hill', x: -2.6, z: -3.5, r: 6, h: 1.2 },                                            // THE KNOLL (the circle)
-                    { k: 'hill', x: 9, z: -6, r: 4, h: 0.7 }, { k: 'hill', x: -9, z: 6, r: 4.5, h: 0.8 },
-                    { k: 'pool', x: 8, z: 5, r: 3.4, y: -0.25, depth: 0.6 },                                   // THE POND
-                    { k: 'plateau', x: -9, z: 6, r: 2.4, h: 1.3, edge: 0.5 },                                  // THE OUTCROP (a jump, or the ramp)
-                    { k: 'ramp', x0: -12.6, z0: 6, x1: -9.6, z1: 6, w: 2.0, h0: 0, h1: 1.3 },
-                    { k: 'wall', x0: -12.8, z0: -8.0, x1: -2.4, z1: -8.0, h: 1.0 },                            // THE FENCE, west of the gate
-                    { k: 'wall', x0: 0.9, z0: -8.0, x1: 12.8, z1: -8.0, h: 1.0 },                              // …and east of it
-                    { k: 'path', pts: [[11.6, -0.9], [4, -1], [-0.9, -6], [-0.9, -8.5]], w: 1.5 },
-                    { k: 'path', pts: [[4, -1], [-6, -0.9], [-11.6, -0.9]], w: 1.5 },
-                    { k: 'grove', n: 7, kinds: ['tree', 'tree_2', 'tree_5'], seed: 13 },
-                    { k: 'scatter', key: 'dead_snag', n: 1, seed: 14 },
-                    { k: 'scatter', key: 'stump', n: 3, seed: 15 },
-                    { k: 'scatter', key: 'fern', n: 6, seed: 16 },
-                ],
-            },
-            doors: [
-                { id: 'clearing', wall: 'e', z: -0.875, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK INTO THE TREES',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'pasture' },
-                  desc: 'Back into the trees. The pasture stops where they start; it has been asked to.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'ritual_circle',  x: -2.625, z: -3.5, y: 0.0 },                      // THE CROP CIRCLE on the knoll: the ranch's, and this season's
-                { key: 'cave_torch',     x: -12.25, z: 5.25 },
-                { key: 'cave_torch',     x: 12.25, z: -6.5 },
-                { key: 'cave_torch',     x: 12.25, z: 8.6 },
-                { key: 'cardboard_boxes', x: -12.25, z: -5.25, face: 340 },                 // the ranch hands' tools, left in 1994
-                { key: 'floor_stain',    x: 3.0, z: 1.5 },
-                { key: 'paper_sheet',    x: -5.25, z: 5.25, y: 0.01, face: 20 },
-            ],
-
-            agents: [],
-            npcSpots: [{ x: 3.2, z: 8.6, face: 300, race: 'skinwalker' }, { x: -3.5, z: -3.5, face: 180, race: 'scarecrow' }],
-            onlineSpots: [],
-            lines: [
-                '“Whose fence is it?” “The ranch’s.” “And the gap?” “Where the gate was.” “And the pasture?” “The woods’.”',
-                '“Something on the mesa.” “There is no mesa here.” “Then what is it on?”',
-                '“The circle is fresh.” “They always are.”',
-            ],
-            spawn: { x: 0.875, z: 3.5, face: 270 },
         },
         /* ── THE STAIRCASE — the lone flight in the woods: four wooden risers to a landing and a door with nothing behind it, which opens ── */
         site_prebuilt_fairy_forest_stair: {
@@ -33127,14 +32852,6 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 's', x: -0.875, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'stair' },
-                  desc: 'Back past the crag. The stairs stay where they are, which is the most that can be said for them.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE DEER PATH's other end (R4) */
-                { id: 'deerpath', wall: 'w', z: 4, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE DEER PATH · THROUGH THE THICKET TO THE TRAIL',
-                  action: { room: 'site_prebuilt_fairy_forest_trail', at: 'deerpath' },
-                  desc: 'The thicket is thinner here than it looks. The trail is on the other side of it, and so is the mountain.', draft: true },
             ],
             counters: [],
             props: [
@@ -33148,7 +32865,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 2.625, z: 2.625 },
             ],
             agents: [],
-            npcSpots: [{ x: 2.6, z: -7.0, face: 250, race: 'mothman' }],
+            npcSpots: [{ x: 4.6, z: -7.0, face: 250, race: 'mothman' }],
             onlineSpots: [],
             lines: [
                 '“Who built the stairs?” “Nobody.” “Who maintains them?” “Also nobody. Look at the varnish.”',
@@ -33196,14 +32913,10 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'w', z: 0, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
+                { id: 'land', wall: 'w', z: 0, leaf: null,   // WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the mouth opens on the land (DOOR_HQ.rooms.land door `deadmans`)
+                  label: 'THE WOODS', sub: 'BACK OUT · INTO THE TREES',
+                  action: { room: 'land', at: 'deadmans' },
                   desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT's other end (R4) */
-                { id: 'culvert', wall: 's', x: 5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · OUT UNDER THE REDWOODS',
-                  action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'culvert' },
-                  desc: 'A pipe in the south wall with daylight at the far end of it and the creek coming down it. The redwoods are up there.', draft: true },
             ],
             counters: [],
             props: [
@@ -33264,10 +32977,6 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'e', z: -0.875, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'BACK TO THE CROSSROADS',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE (was THE CLEARING)
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'ritual' },
-                  desc: 'Back east, downwind of the candles.' },
             ],
             counters: [],
             props: [
@@ -34932,11 +34641,11 @@ const DOOR_HQ = {
            THE WOODS blueprint (EXPLORABLE_AREAS_GUIDE) — three families in one
            complex, the hand-offs at doors. The board room is BYPASSED
            (siteRooms.entry): the portcullis lands you in THE OUTER WARD.
-           OPEN WORLD Phase 6 (2026-09-27) — SIX parts: THE CROWN'S ROAD (the entry:
-           the portcullis at its south end, a road join into the ward) and the ward
-           REBUILT BUILT (its own comment below; the ward's lines here are its
-           2026-09-18 plan, kept as history). The hall and the keep stand in the
-           ward's north wall by DOOR JOINS; the postern track joins THE MOUNTAIN.
+           OPEN WORLD Phase 6 (2026-09-27) rebuilt the ward BUILT (its own comment
+           below; the ward's lines here are its 2026-09-18 plan, kept as history).
+           The hall and the keep stand in the ward's north wall by DOOR JOINS.
+           WORLD_GEOGRAPHY_PLAN G6 (2026-09-28): the ward sits on its pad on THE
+           LAND (HQ_WORLD.land); the portcullis is the site's entry.
              site_prebuilt_camelot_ward — THE OUTER WARD (family A', open under
                Camelot's own night, hqCastleShell): the approach, THE MOAT (a U of
                deep water round the bailey — never entered), THE DRAWBRIDGE (the
@@ -34980,73 +34689,6 @@ const DOOR_HQ = {
            ≤ HQ_PROP_LIGHT_MAX, never a rank leaf, a plan room hangs nothing on
            the shell, THE PARK RULE in every part. Lines are Claude's DRAFT (A15).
            ═══════════════════════════════════════════════════════════════════ */
-        /* ── THE CROWN'S ROAD (OPEN WORLD Phase 6, 2026-09-27) — the kingdom's road north from the portcullis to the ward's gate ──
-           60 × 160 m of the surface (the kingdom zone; family A': open country, the banks rising either side into the trees):
-           THE PORTCULLIS (the bay door, the site's entry) at its south end — the forecourt's border when the forecourt is built;
-           THE ROAD (stone, 7 m) straight to the castle, an avenue of trees along it; THE RIVER across it (waded; the stone
-           BRIDGE over it); THE WAYSIDE SHRINE; THE KNIGHTS' CAMP; its north end runs on into the ward's approach
-           (a road join, no card). */
-        site_prebuilt_camelot_road: {
-            label: 'CAMELOT · THE CROWN’S ROAD',
-            sub: 'THE PORTCULLIS · THE AVENUE · THE RIVER · THE ROAD TO THE GATE',
-            kind: 'box', site: 'prebuilt_camelot', part: 'road',
-            shell: hqCastleShell({ w: 60, d: 160, plate: { x: 0, z: -79.4, y: 4.4 } }),
-            parti: 'A straight stone road from the gate you came through to the gate you are going to, with a river in the way and a bridge over it for anyone who minds wet boots.',
-            typology: 'corridor',
-            terrain: {
-                floor: 'grass_2', cliff: 'rock_wall_1', path: 'cobblestone',
-                noise: { amp: 0.14, scale: 9 },
-                features: [
-                    { k: 'ridge', pts: [[-27, 82], [-27, -82]], w: 10, h: 1.8 },                                             // THE BANKS (into the treeline)
-                    { k: 'ridge', pts: [[27, 82], [27, -82]], w: 10, h: 1.8 },
-                    { k: 'stream', pts: [[-44, 9], [-14, 16], [0, 18], [14, 20], [44, 15]], w: 7, y: -0.4, depth: 1.0, key: 'water', bank: 1.2 },   // THE RIVER (waded — the bridge keeps your boots dry)
-                    { k: 'bridge', x0: 0, z0: 25.2, x1: 0, z1: 10.8, w: 7.4, y: 0.4, thick: 0.4, key: 'castle_wall', id: 'river_bridge' },           // THE BRIDGE — the way over
-                    { k: 'path', pts: [[0, 82], [0, -82]], w: 7 },                                                          // THE ROAD
-                    { k: 'path', pts: [[0, -30], [-4.6, -30]], w: 1.6 },                                                    // to the shrine
-                    { k: 'plateau', x: -12, z: -31, w: 8, d: 7, h: 0.9, edge: 0.3 },                                         // THE SHRINE's plinth (a tier)
-                    { k: 'ramp', x0: -5.0, z0: -30, x1: -8.9, z1: -30, w: 2.4, h0: 0, h1: 0.9, edge: 0.2, stairs: true },    // its steps up from the road
-                    { k: 'rail', x0: 9.5, z0: -46.5, x1: 15.5, z1: -46.5 },                                                  // THE CAMP's hitching rail (a grind)
-                    { k: 'path', pts: [[0, -40], [12, -38]], w: 1.6 },                                                      // to the camp
-                    /* THE AVENUE: a tree every 12 m either side of the road (none at the river) */
-                    { k: 'tree', x: -6.5, z: 72, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: 72, kind: 'tree_3', h: 5.6, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: 60, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: 60, kind: 'tree_2', h: 6.2, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: 48, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: 48, kind: 'tree_3', h: 5.6, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: 36, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: 36, kind: 'tree_2', h: 6.2, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: 0, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: 0, kind: 'tree_3', h: 5.6, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: -12, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: -12, kind: 'tree_2', h: 6.2, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: -24, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: -24, kind: 'tree_3', h: 5.6, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: -48, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: -48, kind: 'tree_2', h: 6.2, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: -60, kind: 'tree_2', h: 6.0, r: 0.6 }, { k: 'tree', x: 6.5, z: -60, kind: 'tree_3', h: 5.6, r: 0.6 },
-                    { k: 'tree', x: -6.5, z: -72, kind: 'tree_3', h: 5.8, r: 0.6 }, { k: 'tree', x: 6.5, z: -72, kind: 'tree_2', h: 6.2, r: 0.6 },
-                    { k: 'grove', x: -18, z: 50, r: 7, n: 6, kinds: ['tree_3', 'tree_2'] }, { k: 'grove', x: 19, z: -62, r: 7, n: 6, kinds: ['tree_2', 'tree_3'] }, { k: 'grove', x: 18, z: 44, r: 6, n: 4, kinds: ['tree_3'] },
-                    { k: 'scatter', key: 'fern', n: 10, seed: 21 }, { k: 'scatter', key: 'stump', n: 4, seed: 22 }, { k: 'scatter', key: 'cave_stone', n: 6, seed: 23 },
-                ],
-            },
-            doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry — the portcullis); the north end is the road join into the ward
-            counters: [],
-            props: [
-                { key: 'signpost',     x: 5, z: 68 }, { key: 'signpost', x: -5, z: 30 },
-                /* THE WAYSIDE SHRINE */
-                { key: 'stone_altar',  x: -12, z: -30, face: 90 }, { key: 'candle_ring', x: -12, z: -30 }, { key: 'menhir', x: -15, z: -35 },
-                /* THE KNIGHTS' CAMP */
-                { key: 'camping_tent', x: 16, z: -42, face: 270 }, { key: 'camping_tent', x: 20, z: -35, face: 250 }, { key: 'campfire', x: 13.4, z: -36 },
-                { key: 'armour_stand', x: 18, z: -30, face: 200 },
-                { key: 'cave_torch',   x: 4.6, z: 26.6 }, { key: 'cave_torch', x: -4.6, z: 9.4 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: 4.6, z: 64, face: 200, race: 'knight', say: ['“The road goes to the castle.” “And from the castle?” “To the mountain. Nobody asks where the mountain goes.”', '“Keep to the stones. The grass belongs to the Crown and the Crown is particular.”'] },
-                { x: -9.6, z: -28.4, face: 90, race: 'priest', say: ['“A candle for the road.” “Which road?” “All of them lead here eventually. I light one each.”'] },
-                { x: 15.6, z: -32.4, face: 220, race: 'swordfighter', say: ['“We are camping.” “Outside a castle?” “The castle is full. It is always full. That is what a castle is for.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“How far to the gate?” “Straight on. It is a crown’s road; it does not know how to bend.”',
-                '“The bridge is older than the castle.” “Then what did it cross to?” “The castle it expected.”',
-                '“Why is there a mountain behind the castle?” “Every castle needs something taller to be afraid of.”',
-            ],
-            spawn: { x: 0, z: 74, face: 0 },
-        },
         /* ── THE OUTER WARD — the moat, the drawbridge, the gatehouse, the curtain wall, the bailey, the keep tower ── */
         site_prebuilt_camelot_ward: {
             label: 'CAMELOT · THE OUTER WARD',
@@ -35189,127 +34831,6 @@ const DOOR_HQ = {
                 '“The postern goes to the mountain.” “Which mountain?” “The one that is always behind the keep.”',
             ],
             spawn: { x: 0, z: 50, face: 0 },
-        },
-        /* ═══════════════════════════════════════════════════════════════════
-           THE MOUNTAIN (OPEN WORLD Phase 6, 2026-09-27 — OPEN_WORLD_PLAN §4.5 Z4b): Mount Olympus climbed on foot from the
-           kingdom's postern — THE FOOTHILLS (0 → 25 m) and THE SWITCHBACKS (25 → 60 m) to THE SUMMIT (lifted to 60 m;
-           its own terraces take it to ~70). Two new parts on Room 12, stitched by trail joins (no card between them), the
-           ward's postern the trailhead. Heaven's gate on the summit's terrace stays the door it is.
-             site_prebuilt_olympus_foothills — THE FOOTHILLS (140 × 120, family A' — rolling ground rising north the whole
-               way, 25 m over 120): THE TRAILHEAD SHRINE at the postern, THE TRAIL winding up through the pines, THE TARN
-               on its meadow bench, THE LOOKOUT back over the castle; the trail tops out at the switchbacks' foot.
-             site_prebuilt_olympus_switchbacks — THE SWITCHBACKS (100 × 120, the `switchback` typology): five ledges
-               7 m apart up a rock face between two ridges, each leg of the trail a ramp along the foot of the next cliff,
-               the turns on the ledges (the trail walks W, E, W, E, W); THE SCRAMBLE — a rope up every cliff on the east
-               side, the fast way for whoever wants it; THE LOOKOUT on the third ledge; the summit's court at the top.
-           RULES kept: every join reached from every other (hq-mountain.test.js solves the climb end to end, the ward's
-           postern to the summit's court), nothing traps, no puzzle. Lines are Claude's DRAFT (A15). */
-        site_prebuilt_olympus_foothills: {
-            label: 'MOUNT OLYMPUS · THE FOOTHILLS',
-            sub: 'THE TRAILHEAD · THE PINES · THE TARN · THE LOOKOUT',
-            kind: 'box', site: 'prebuilt_olympus', part: 'foothills',
-            shell: hqMountainShell({ w: 140, d: 120, plate: { x: 0, z: 59.4, y: 4.4 } }),
-            parti: 'The ground starts climbing at the castle wall and does not stop, and the trail is the easy way up it.',
-            typology: 'pearls',
-            terrain: {
-                floor: 'grass_2', cliff: 'mountain', path: 'dirt_2',
-                noise: { amp: 0.35, scale: 11 },
-                outer: { keep: 1 },   // the ground past the field carries the slope on sideways (no lift: a rim would stand as a bank beside the castle)
-                features: [
-                    { k: 'ramp', x0: 0, z0: 60, x1: 0, z1: -60, w: 160, h0: 0, h1: 25, edge: 0.5 },                         // THE SLOPE: 25 m over 120, the whole field
-                    { k: 'hill', x: 30, z: 32, r: 16, h: 4 }, { k: 'hill', x: 52, z: -8, r: 14, h: 5 }, { k: 'hill', x: -52, z: 12, r: 14, h: 4.5 },
-                    { k: 'hill', x: -42, z: -34, r: 12, h: 3.5 }, { k: 'hill', x: 22, z: -40, r: 10, h: 3 }, { k: 'hill', x: 56, z: 44, r: 10, h: 3 }, { k: 'hill', x: -8, z: 22, r: 9, h: 1.6 },
-                    { k: 'plateau', x: 38, z: 14, w: 22, d: 16, h: 10, edge: 2.0, blend: 'ground' },                         // THE MEADOW BENCH
-                    { k: 'pool', x: 38, z: 14, r: 6.5, rz: 5, y: 10, depth: 0.6, key: 'water', bank: 1.2 },                   // THE TARN
-                    { k: 'path', pts: [[-55, 60], [-50, 50], [-36, 42], [-18, 44], [0, 38], [16, 30], [24, 20], [18, 6], [0, 0], [-18, -6], [-30, -18], [-24, -32], [-8, -38], [6, -46], [2, -54], [0, -60]], w: 2.6 },   // THE TRAIL
-                    { k: 'path', pts: [[24, 20], [30, 22]], w: 1.6 },                                                        // to the tarn
-                    { k: 'path', pts: [[6, -46], [22, -40], [36, -32]], w: 1.6 },                                            // to the lookout
-                    { k: 'grove', x: -30, z: 20, r: 10, n: 8, kinds: ['pine', 'pine', 'tree_3'] }, { k: 'grove', x: 46, z: 42, r: 9, n: 6, kinds: ['pine', 'tree_3'] },
-                    { k: 'grove', x: -50, z: -18, r: 10, n: 8, kinds: ['pine'] }, { k: 'grove', x: 28, z: -12, r: 8, n: 6, kinds: ['pine', 'tree_2'] },
-                    { k: 'grove', x: 52, z: -44, r: 8, n: 6, kinds: ['pine'] }, { k: 'grove', x: -32, z: -50, r: 8, n: 6, kinds: ['pine'] }, { k: 'grove', x: 8, z: 50, r: 7, n: 4, kinds: ['tree_2', 'pine'] },
-                    { k: 'scatter', key: 'cave_stone', n: 14, seed: 31 }, { k: 'scatter', key: 'fern', n: 12, seed: 32 }, { k: 'scatter', key: 'stump', n: 5, seed: 33 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 34 },
-                ],
-            },
-            doors: [],   // the ways in are the joins: the ward's postern (the south edge, west end), the switchbacks (the north edge)
-            counters: [],
-            props: [
-                /* THE TRAILHEAD SHRINE */
-                { key: 'menhir',       x: -44, z: 54 }, { key: 'stone_altar', x: -46.5, z: 49, face: 90 }, { key: 'signpost', x: -51, z: 53 },
-                /* THE LOOKOUT (back over the castle) */
-                { key: 'park_bench',   x: 38, z: -30, face: 180 }, { key: 'brass_telescope', x: 41.4, z: -31, face: 200 },
-                { key: 'railing_1m',   x: 37, z: -27.4, face: 0 }, { key: 'railing_1m', x: 40, z: -27.4, face: 0 },
-                { key: 'signpost',     x: 3, z: -52 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: -42, z: 47, face: 30, race: 'goatman', say: ['“Up?” “Up.” “Everyone says up like it is a direction. Up here it is a toll.”', '“The shrine is to the mountain.” “Which god?” “The mountain. It was here first; the gods rent.”'] },
-                { x: 30, z: 17.6, face: 90, race: 'gnome', say: ['“The tarn has no bottom.” “I can see the bottom.” “Then it has one for you.”'] },
-                { x: 35, z: -29.6, face: 160, race: 'cyclops', say: ['“You can see the whole castle from here.” “And the sky castle?” “Only with the other eye.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“How much further?” “All of it. The foothills are the part where you still think it is a hill.”',
-                '“The pines are the gods’ fence.” “What are they keeping in?” “The ones who stopped here.”',
-            ],
-            spawn: { x: -55, z: 56, face: 0 },
-        },
-        site_prebuilt_olympus_switchbacks: {
-            label: 'MOUNT OLYMPUS · THE SWITCHBACKS',
-            sub: 'FIVE LEDGES · THE SCRAMBLE · THE LOOKOUT',
-            kind: 'box', site: 'prebuilt_olympus', part: 'switchbacks',
-            shell: hqMountainShell({ w: 100, d: 120, plate: { x: 0, z: 59.4, y: 4.4 } }),
-            parti: 'A rock face between two ridges that the trail climbs back and forth, a ledge at every turn, a rope for anyone who will not wait.',
-            typology: 'switchback',
-            terrain: {
-                floor: 'grass_2', cliff: 'mountain', path: 'dirt_2',
-                noise: { amp: 0.25, scale: 9 },
-                outer: { keep: 1, lift: 22 },   // the ridges run on past the field and rise
-                features: [
-                    /* THE LEDGES: 7 m apart, each a floor from its cliff back to the north edge */
-                    { k: 'plateau', x: 0, z: -9, w: 104, d: 106, h: 7, edge: 0.6 },
-                    { k: 'plateau', x: 0, z: -18, w: 104, d: 88, h: 14, edge: 0.6 },
-                    { k: 'plateau', x: 0, z: -27, w: 104, d: 70, h: 21, edge: 0.6 },
-                    { k: 'plateau', x: 0, z: -36, w: 104, d: 52, h: 28, edge: 0.6 },
-                    { k: 'plateau', x: 0, z: -45, w: 104, d: 34, h: 35, edge: 0.6 },
-                    /* THE LEGS: each a ramp along the foot of the next cliff (24 m for 7: 0.29) — W, E, W, E, W */
-                    { k: 'ramp', x0: -4, z0: 44.9, x1: -28, z1: 44.9, w: 3.6, h0: 0, h1: 7, edge: 0.3 },
-                    { k: 'ramp', x0: -32, z0: 26.9, x1: -8, z1: 26.9, w: 3.6, h0: 7, h1: 14, edge: 0.3 },
-                    { k: 'ramp', x0: -4, z0: 8.9, x1: -28, z1: 8.9, w: 3.6, h0: 14, h1: 21, edge: 0.3 },
-                    { k: 'ramp', x0: -32, z0: -9.1, x1: -8, z1: -9.1, w: 3.6, h0: 21, h1: 28, edge: 0.3 },
-                    { k: 'ramp', x0: -4, z0: -27.1, x1: -28, z1: -27.1, w: 3.6, h0: 28, h1: 35, edge: 0.3 },
-                    /* THE RIDGES either side (the valley walls — never climbed) */
-                    { k: 'ridge', pts: [[-50, 64], [-50, -64]], w: 20, h: 14 },
-                    { k: 'ridge', pts: [[50, 64], [50, -64]], w: 20, h: 14 },
-                    /* THE SCRAMBLE: a rope up every cliff on the east side */
-                    { k: 'climb', x: 22, z: 44.2, face: 0, look: 'rope' }, { k: 'climb', x: 24, z: 26.2, face: 0, look: 'rope' }, { k: 'climb', x: 20, z: 8.2, face: 0, look: 'rope' },
-                    { k: 'climb', x: 24, z: -9.8, face: 0, look: 'rope' }, { k: 'climb', x: 22, z: -27.8, face: 0, look: 'rope' },
-                    { k: 'path', pts: [[0, 60], [0, 50], [-4, 45.4], [-28, 45.4], [-30, 36], [-32, 27.6], [-8, 27.6], [-6, 18], [-4, 9.6], [-28, 9.6], [-30, 0], [-32, -8.4], [-8, -8.4], [-6, -18], [-4, -26.4], [-28, -26.4], [-24, -40], [-8, -50], [0, -60]], w: 2.4 },   // THE TRAIL
-                    { k: 'path', pts: [[-6, 18], [18, 14], [30, 3]], w: 1.6 },                                               // to the lookout
-                    { k: 'grove', x: 26, z: 36, r: 7, n: 5, kinds: ['pine'] }, { k: 'grove', x: 12, z: 16, r: 6, n: 4, kinds: ['pine', 'tree_3'] }, { k: 'grove', x: 22, z: -20, r: 7, n: 5, kinds: ['pine'] },
-                    { k: 'grove', x: 20, z: -44, r: 7, n: 4, kinds: ['pine'] }, { k: 'grove', x: -30, z: 52, r: 6, n: 4, kinds: ['pine', 'tree_3'] },
-                    { k: 'scatter', key: 'cave_stone', n: 16, seed: 41 }, { k: 'scatter', key: 'dead_snag', n: 4, seed: 42 }, { k: 'scatter', key: 'fern', n: 6, seed: 43 },
-                ],
-            },
-            doors: [],   // the ways in are the joins: the foothills (the south edge), the summit (the north edge)
-            counters: [],
-            props: [
-                /* THE LOOKOUT (the third ledge, east) */
-                { key: 'park_bench',   x: 32, z: 2, face: 180 }, { key: 'brass_telescope', x: 35.4, z: 1.6, face: 190 },
-                { key: 'railing_1m',   x: 31, z: 6.6, face: 0 }, { key: 'railing_1m', x: 34, z: 6.6, face: 0 },
-                { key: 'signpost',     x: 3, z: 52 }, { key: 'signpost', x: -24, z: -36 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: -34, z: 18, face: 90, race: 'goatman', say: ['“The trail goes back and forth.” “Why?” “So the mountain can look at you from both sides.”'] },
-                { x: 29.4, z: 1.2, face: 200, race: 'valkraye', say: ['“From here the castle is a toy.” “And from the summit?” “From the summit the castle is a rumour.”'] },
-                { x: -20, z: -42, face: 150, race: 'yeti', say: ['“The rope is faster.” “Is it safe?” “It is faster.”', '“The summit is just there.” “It has been just there for an hour.” “That is how summits work.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Five ledges.” “Who counted?” “Everyone, on the way down.”',
-                '“The ropes are for the impatient.” “And the trail?” “For the ones who want to arrive the same person.”',
-            ],
-            spawn: { x: 0, z: 56, face: 0 },
         },
         /* ── THE GREAT HALL — the round table, the dais and the throne, the minstrels' gallery, the loft ── */
         site_prebuilt_camelot_hall: {
@@ -35975,184 +35496,6 @@ const DOOR_HQ = {
                 '“The crater is not on the plan.” “What made it?” “The plan.”',
             ],
             spawn: { x: 18, z: 24, face: 0 },
-        },
-        /* ═══════════════════════════════════════════════════════════════════
-           THE HIGHWAY + THE GATE (OPEN_WORLD_PLAN Phase 5, 2026-09-27 — THE SOUTH,
-           family E · BUILT on flat desert): the Strip's boulevard runs out of its
-           south edge onto two 210 m parts of two-lane road (80 m wide: the road,
-           its shoulders, the scrub, a bank of dunes either side), then through
-           AREA 51's gate onto the flight line — one walk from the Strip to the
-           runway, no card. The north half is the Strip's (the diner, the rest
-           stop), the south half Area 51's (the gas station, the crash nobody
-           reported). Joins only: no door of their own. Lines are Claude's DRAFT.
-           ═══════════════════════════════════════════════════════════════════ */
-        site_prebuilt_strip_highway: {
-            label: 'DISASTER CITY · THE HIGHWAY',
-            sub: 'THE LAST DINER · THE REST STOP · AREA 51, SOUTH',
-            kind: 'box', site: 'prebuilt_strip', part: 'highway',
-            shell: hqAirbaseShell({ w: 80, d: 210, plate: { x: 0, z: -100, y: 4.4 } }),
-            parti: 'One road south out of the neon, and the last lit thing on it.',
-            typology: 'corridor',
-            terrain: {
-                floor: 'desert', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',                      // the asphalt is the city's own sheet
-                noise: { amp: 0.03, scale: 9 },
-                features: [
-                    { k: 'path', pts: [[0, -105], [0, 105]], w: 12 },                                              // THE ROAD (two lanes, the shoulders)
-                    { k: 'ridge', pts: [[-35, -96], [-35, 96]], w: 12, h: 2.4 },                                   // the dunes either side (the bank)
-                    { k: 'ridge', pts: [[35, -96], [35, 60]], w: 12, h: 2.4 },
-                    /* THE LAST DINER (east of the road): four walls, the door on the road, a roof slab, the loading dock behind */
-                    { k: 'path', pts: [[6, -50], [15, -50]], w: 3.0 },                                             // the lot's walk to the door
-                    { k: 'path', pts: [[9, -60], [9, -38]], w: 6.0 },                                              // the parking lot
-                    { k: 'wall', x0: 15, z0: -54.5, x1: 29, z1: -54.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: 15, z0: -45.5, x1: 29, z1: -45.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: 29, z0: -54.5, x1: 29, z1: -45.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: 15, z0: -54.5, x1: 15, z1: -51.3, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: 15, z0: -48.7, x1: 15, z1: -45.5, h: 3.4, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'bridge', x0: 15.3, z0: -50, x1: 28.7, z1: -50, w: 8.6, drawW: 9.8, y: 3.6, thick: 0.3, plain: true, rails: false, key: 'metal', id: 'diner_roof' },
-                    { k: 'wall', x0: 30.5, z0: -53, x1: 30.5, z1: -47, y: 1.1, t: 2.4, key: 'concrete' },          // THE LOADING DOCK (a tier: jumped, 1.1 m)
-                    /* THE REST STOP (west of the road): the pad, the kickers, the grind rail */
-                    { k: 'path', pts: [[-12, 20], [-30, 20]], w: 12 },
-                    { k: 'ramp', x0: -26, z0: 16, x1: -23.4, z1: 16, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },
-                    { k: 'ramp', x0: -16, z0: 24, x1: -18.6, z1: 24, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },
-                    { k: 'rail', x0: -26, z0: 23, x1: -19, z1: 23 },
-                    /* THE GUARD RAILS along the shoulders (the grind) */
-                    { k: 'rail', x0: -7.2, z0: -96, x1: -7.2, z1: -62 }, { k: 'rail', x0: 7.2, z0: 62, x1: 7.2, z1: 98 },
-                    { k: 'scatter', key: 'cinder_block', n: 5, seed: 51 },
-                    { k: 'scatter', key: 'dead_snag', n: 6, seed: 52 },
-                    { k: 'scatter', key: 'stump', n: 4, seed: 53 },
-                ],
-                /* THE PAINT: the double yellow down the middle, the white edge lines, the words on the southbound lane */
-                marks: [
-                    { k: 'line', x0: -0.18, z0: -105, x1: -0.18, z1: 105, w: 0.12, color: 0xe8b830 },
-                    { k: 'line', x0: 0.18, z0: -105, x1: 0.18, z1: 105, w: 0.12, color: 0xe8b830 },
-                    { k: 'line', x0: -5.6, z0: -105, x1: -5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
-                    { k: 'line', x0: 5.6, z0: -105, x1: 5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
-                    { k: 'text', x: 2.9, z: -80, text: 'AREA 51', size: 1.4, rot: 180, color: 0xf0f0e8 },
-                    { k: 'text', x: -2.9, z: 80, text: 'STRIP', size: 1.4, rot: 0, color: 0xf0f0e8 },
-                ],
-                traffic: [
-                    { pts: [[2.6, -105], [2.6, 105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['truck', 'suv'] },
-                    { pts: [[-2.6, 105], [-2.6, -105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['cadillac', 'suv'] },
-                ],
-            },
-            doors: [],
-            counters: [],
-            props: [
-                /* the diner inside: the counter, the booths, the register, the radio */
-                { key: 'serving_line',    x: 27.4, z: -50, face: 270 },
-                { key: 'cash_register',   x: 25.6, z: -53.2, face: 270 },
-                { key: 'coffee_maker',    x: 27.6, z: -46.6, face: 270 },
-                { key: 'round_table',     x: 19, z: -52.3 }, { key: 'cafeteria_chair', x: 17.8, z: -52.3, face: 90 }, { key: 'cafeteria_chair', x: 20.2, z: -52.3, face: 270 },
-                { key: 'round_table',     x: 19, z: -47.7 }, { key: 'cafeteria_chair', x: 17.8, z: -47.7, face: 90 }, { key: 'cafeteria_chair', x: 20.2, z: -47.7, face: 270 },
-                { key: 'retro_radio',     x: 23, z: -54, face: 0 },
-                { key: 'trash_bin',       x: 16.2, z: -45.6 + 0.9 },
-                /* the lot */
-                { key: 'car_truck',       x: 9, z: -56, face: 0 }, { key: 'car_cadillac', x: 9, z: -42, face: 180 },
-                { key: 'signpost',        x: 13.6, z: -57 },
-                { key: 'flood_mast',      x: 12.5, z: -60 },
-                /* the rest stop */
-                { key: 'bus_shelter',     x: -14, z: 25.5, face: 180 },
-                { key: 'park_bench',      x: -20, z: 13.6, face: 0 }, { key: 'park_bench', x: -28, z: 13.6, face: 0 },
-                { key: 'vending_machine', x: -30, z: 25.5, face: 180 },
-                { key: 'trash_bin',       x: -12.6, z: 14.2 },
-                { key: 'quarter_pipe',    x: -32, z: 20, face: 90 },
-                /* the road's lamps (night lamps: the clock lights them) */
-                { key: 'flood_mast',      x: -8, z: -84 }, { key: 'flood_mast', x: 8, z: 0 }, { key: 'flood_mast', x: -8, z: 84 },
-                { key: 'traffic_barrel',  x: 7.4, z: 40 }, { key: 'traffic_barrel', x: 7.6, z: 43 }, { key: 'traffic_cone', x: 6.8, z: 46 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: 23.5, z: -50, face: 90, race: 'cowboy', say: ['“Pie’s fresh.” “Since when?” “Since the Strip closed.” “The Strip never closes.” “Then it’s very fresh.”'] },
-                { x: -18, z: 18, face: 0, race: 'conspiracy theorist', say: ['“Every car that goes south comes back north.” “So?” “Not the same car.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“How far to Area 51?” “There is no Area 51.” “How far to where it isn’t?” “Four hundred metres.”',
-                '“The diner never closes.” “Who runs it?” “The pie.”',
-                '“Last gas for a hundred miles.” “The sign says four hundred metres.” “The sign is optimistic.”',
-            ],
-            spawn: { x: -3.0, z: -92, face: 180 },
-        },
-        site_prebuilt_area51_highway: {
-            label: 'THE HIGHWAY · THE DESERT MILES',
-            sub: 'LAST GAS · THE CRASH NOBODY REPORTED · THE GATE, SOUTH',
-            kind: 'box', site: 'prebuilt_area51', part: 'highway',
-            shell: hqAirbaseShell({ w: 80, d: 210, plate: { x: 0, z: -100, y: 4.4 } }),
-            parti: 'The road runs straight at the fence; the only shade is the canopy.',
-            typology: 'corridor',
-            terrain: {
-                floor: 'desert', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',
-                noise: { amp: 0.03, scale: 9 },
-                features: [
-                    { k: 'path', pts: [[0, -105], [0, 105]], w: 12 },                                              // THE ROAD
-                    { k: 'ridge', pts: [[-35, -96], [-35, -30]], w: 12, h: 2.4 }, { k: 'ridge', pts: [[-35, 30], [-35, 96]], w: 12, h: 2.4 },
-                    { k: 'ridge', pts: [[35, -96], [35, 96]], w: 12, h: 2.4 },
-                    /* LAST GAS (west of the road): the canopy on four columns, the pumps under it, the kiosk behind */
-                    { k: 'path', pts: [[-6, 10], [-26, 10]], w: 14 },                                              // the forecourt
-                    { k: 'wall', x0: -24.25, z0: 6, x1: -23.75, z1: 6, y: 5.0, t: 0.5, key: 'concrete' },
-                    { k: 'wall', x0: -12.25, z0: 6, x1: -11.75, z1: 6, y: 5.0, t: 0.5, key: 'concrete' },
-                    { k: 'wall', x0: -24.25, z0: 14, x1: -23.75, z1: 14, y: 5.0, t: 0.5, key: 'concrete' },
-                    { k: 'wall', x0: -12.25, z0: 14, x1: -11.75, z1: 14, y: 5.0, t: 0.5, key: 'concrete' },
-                    { k: 'bridge', x0: -24.8, z0: 10, x1: -11.2, z1: 10, w: 9.6, drawW: 10.4, y: 5.0, thick: 0.6, plain: true, rails: false, key: 'metal', id: 'canopy' },
-                    { k: 'wall', x0: -34, z0: 6.5, x1: -27, z1: 6.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },   // THE KIOSK
-                    { k: 'wall', x0: -34, z0: 13.5, x1: -27, z1: 13.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: -34, z0: 6.5, x1: -34, z1: 13.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: -27, z0: 6.5, x1: -27, z1: 8.8, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'wall', x0: -27, z0: 11.2, x1: -27, z1: 13.5, h: 3.2, t: 0.3, key: 'urban:PlasterWallStucco2a' },
-                    { k: 'bridge', x0: -33.7, z0: 10, x1: -27.3, z1: 10, w: 6.7, drawW: 7.6, y: 3.4, thick: 0.3, plain: true, rails: false, key: 'metal', id: 'kiosk_roof' },
-                    { k: 'wall', x0: -30.5, z0: 15.5, x1: -30.5, z1: 19.5, y: 1.2, t: 3.0, key: 'concrete' },     // the propane cage's plinth (a tier: jumped)
-                    /* THE CRASH (east of the road, fenced off): the crater, the tape, the thing in it */
-                    { k: 'dip', x: 22, z: 60, r: 7, h: 1.6 },
-                    { k: 'wall', x0: 12, z0: 50, x1: 12, z1: 70, h: 0.45, t: 0.3, key: 'urban:ConcreteStriped2a' },   // the kerb they poured round it (the grind)
-                    { k: 'rail', x0: 7.2, z0: -96, x1: 7.2, z1: -40 }, { k: 'rail', x0: -7.2, z0: 40, x1: -7.2, z1: 96 },
-                    { k: 'scatter', key: 'cinder_block', n: 5, seed: 61 },
-                    { k: 'scatter', key: 'dead_snag', n: 7, seed: 62 },
-                ],
-                marks: [
-                    { k: 'line', x0: -0.18, z0: -105, x1: -0.18, z1: 105, w: 0.12, color: 0xe8b830 },
-                    { k: 'line', x0: 0.18, z0: -105, x1: 0.18, z1: 105, w: 0.12, color: 0xe8b830 },
-                    { k: 'line', x0: -5.6, z0: -105, x1: -5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
-                    { k: 'line', x0: 5.6, z0: -105, x1: 5.6, z1: 105, w: 0.15, color: 0xf0f0e8 },
-                    { k: 'text', x: 2.9, z: 70, text: 'SLOW', size: 1.6, rot: 180, color: 0xf0f0e8 },
-                    { k: 'text', x: 2.9, z: 88, text: 'STOP AHEAD', size: 1.2, rot: 180, color: 0xf0f0e8 },
-                ],
-                traffic: [
-                    { pts: [[2.6, -105], [2.6, 105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['suv', 'truck'] },
-                    { pts: [[-2.6, 105], [-2.6, -105]], loop: false, n: 1, speed: 6.5, lane: 0, kinds: ['truck', 'copcar'] },
-                ],
-            },
-            doors: [],
-            counters: [],
-            props: [
-                /* LAST GAS: the pumps, the car at them, the kiosk's shelves and till */
-                { key: 'vending_machine', x: -18, z: 8.2, face: 90 }, { key: 'vending_machine', x: -18, z: 11.8, face: 90 },   // the pumps (a utility box is a board / horizon piece, never a room's)
-                { key: 'car_suv',         x: -14.5, z: 10, face: 0 },
-                { key: 'steel_table',     x: -28.2, z: 10, face: 90 }, { key: 'cash_register', x: -28.2, z: 10, y: 0.76, face: 90 },
-                { key: 'metal_shelving',  x: -33.2, z: 8.2, face: 90 }, { key: 'round_fridge', x: -33.2, z: 11.8, face: 90 },
-                { key: 'coffee_maker',    x: -30.5, z: 12.9, face: 180 },
-                { key: 'flood_mast',      x: -9, z: 3 },
-                { key: 'signpost',        x: -8.2, z: 18 },
-                /* THE CRASH: the rig in the crater, the tape, the truck that found it */
-                { key: 'saucer_rig',      x: 22, z: 60, face: 30 },
-                { key: 'warning_tape',    x: 13, z: 56, face: 90 }, { key: 'warning_tape', x: 13, z: 64, face: 90 },
-                { key: 'radiation_sign',  x: 13.2, z: 52 },
-                { key: 'car_cop',         x: 9.6, z: 74, face: 0 },
-                /* the road's lamps */
-                { key: 'flood_mast',      x: 8, z: -84 }, { key: 'flood_mast', x: -8, z: -40 }, { key: 'flood_mast', x: 8, z: 90 },
-                { key: 'crashed_car',     x: -16, z: -70, face: 60 },
-            ],
-            agents: [],
-            npcSpots: [
-                { x: -20, z: 13, face: 90, race: 'cowboy', say: ['“Fill her up?” “I’m on foot.” “Then fill you up.”'] },
-                { x: 11, z: 66, face: 270, race: 'men in black', say: ['“Nothing to see.” “There is a saucer.” “There is a weather balloon shaped like nothing to see.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Last gas.” “Before what?” “Before the part of the map they drew in pencil.”',
-                '“The crash was in 1947.” “The tape is new.” “The crash keeps happening.”',
-                '“The fence is ahead.” “What is behind it?” “Runway thirty-three, which does not exist, lit.”',
-            ],
-            spawn: { x: 3.0, z: -92, face: 180 },
         },
         /* ── AREA 51 · THE GATE — the fence, the guard post, the barrier, the tower (Phase 5) ── */
         site_prebuilt_area51_gate: {
@@ -40458,6 +39801,8 @@ function hqWorldFloorOf(roomId) { return _hqWorldFloorOf(roomId); }
 const HQ_WORLD_RULES = {
     far: 900,          // m — the camera's far plane in a zone (§5.4; Phase 1)
     joinTol: 0.5,      // m — two parts' edges meet when they lie this close (the validator's tolerance)
+    islandEdgeM: 1.5,  // m — G6: the open strip either side of an island's edge (the land meets the plan's bank, not a bare rim)
+    islandMouthW: 10,  // m — G6: the gap a generated plan opens in the middle of each side of an island on the land
     stitchM: 6,        // m — the band either side of a join where the two height fields blend to the join's profile (§4.2; Phase 2)
     swingM: 1.6,       // m — a door join swings open when the walker is this close (§4.3; Phase 2)
     crossHys: 1.0,     // m — the crossing's hysteresis (§5.3; Phase 1)
@@ -40495,7 +39840,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city', 'medwing', 'woods', 'basement', 'highway', 'desert', 'dumb', 'kingdom', 'mountain', 'coast'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE WOODS + THE BASEMENT; Phase 5 (2026-09-27): THE HIGHWAY, AREA 51, THE D.U.M.B. (door joins); Phase 6: THE KINGDOM, THE MOUNTAIN; Phase 7: THE COAST
+    zones: ['city', 'medwing', 'basement', 'dumb', 'coast', 'land'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); Phase 7: THE COAST; WORLD_GEOGRAPHY G6 (2026-09-28): THE LAND (the woods, the highway, Area 51, the kingdom and the mountain retired into it)
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -40529,17 +39874,11 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                          duskLook: { color: 0xff9860, fog: 0.32, key: 0xffb27a },
                          dayLook: {
                              site_prebuilt_camelot_ward: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },
-                             site_prebuilt_camelot_road: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },   // Phase 6: the crown's road wears the ward's day
                              site_prebuilt_area51_flightline: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
-                             /* THE SOUTH (Phase 5): the highway's two parts and the gate wear the flight line's desert day */
-                             site_prebuilt_strip_highway: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
-                             site_prebuilt_area51_highway: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
-                             site_prebuilt_area51_gate: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
-                             /* the woods' six clearings (one shell): a sunlit green haze under the canopy */
+                             site_prebuilt_area51_gate: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },   // the gate wears the flight line's desert day
+                             /* the woods' places (one shell): a sunlit green haze under the canopy */
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
-                             site_prebuilt_fairy_forest_trail: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
-                             site_prebuilt_fairy_forest_pasture: { fog: 0xa6bca2, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_stair: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              /* the Grove (old redwoods, a deeper green) and the ranch's corn fields (a dry, dusty haze) by day */
@@ -40621,10 +39960,13 @@ function hqRoomClock(roomId) {
 }
 /* a far target's bearing from a room, in the room's own compass (a ground weenie: THE WEENIES' `toward`) — null when the two
    do not stand on one ground */
-function hqWorldBearing(roomId, targetId) {
+function hqWorldBearing(roomId, targetId, fromPlace) {
     const A = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null, B = (typeof hqWorldFrame === 'function') ? hqWorldFrame(targetId) : null;
-    if (!A || !B || A.ground !== B.ground) return null;
-    const dx = B.x - A.x, dz = B.z - A.z;
+    if (!A || !B) return null;
+    /* G6: a room off the land (the city, still its own zone) sees a site on the land from its own place there (`fromPlace`, a HQ_LAND.places id) */
+    const pl = (fromPlace && B.ground === 'land' && A.ground !== 'land' && typeof HQ_LAND !== 'undefined') ? (HQ_LAND.places || []).find(q => q.id === fromPlace) : null;
+    if (!pl && A.ground !== B.ground) return null;
+    const ax = pl ? pl.at[0] : A.x, az = pl ? pl.at[1] : A.z, dx = B.x - ax, dz = B.z - az;
     if (Math.hypot(dx, dz) < 1) return null;
     const deg = Math.atan2(dx, -dz) * 180 / Math.PI + (A.rot || 0) * 90;
     return { deg: ((deg % 360) + 360) % 360, dist: Math.hypot(dx, dz) };
@@ -40634,34 +39976,19 @@ function hqWorldBearing(roomId, targetId) {
    `sky.landmarks` (the sky castle, the stairway, the waterspout) stay; a room's rows here are added to them. When a later
    phase draws the place itself (the far shells, Phase 10) its row here goes. */
 const HQ_WORLD_WEENIES = {
-    site_prebuilt_downtown_streets: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_stadium_bowl: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_strip_streets: [{ kind: 'gate', toward: 'site_prebuilt_area51_gate', s: 0.8, dist: 0.86, label: 'AREA 51 · THE GATE' },
-                                  { kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.5, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_area51_flightline: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.8, dist: 0.9, label: 'DISASTER CITY' }],
-    /* THE SOUTH (Phase 5): the gate ahead down the road, the city behind */
-    site_prebuilt_strip_highway: [{ kind: 'gate', toward: 'site_prebuilt_area51_gate', s: 0.8, dist: 0.86, label: 'AREA 51 · THE GATE' },
-                                  { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.9, label: 'DISASTER CITY' }],
-    site_prebuilt_area51_highway: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, label: 'DISASTER CITY' }],
-    site_prebuilt_area51_gate: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, label: 'DISASTER CITY' }],
-    site_prebuilt_camelot_ward: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.8, dist: 0.88, temple: true, label: 'MOUNT OLYMPUS' },
-                                 { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.6, dist: 0.93, label: 'DISASTER CITY' }],
-    site_prebuilt_olympus_summit: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.7, dist: 0.92, y: -0.08, label: 'DISASTER CITY' }],
-    /* THE NORTH (Phase 6): the mountain ahead up the crown's road and from the foothills; the city behind from the switchbacks (the summit is on their stage) */
-    site_prebuilt_camelot_road: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.8, dist: 0.88, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_olympus_foothills: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.9, dist: 0.85, temple: true, label: 'MOUNT OLYMPUS' },
-                                      { kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.6, dist: 0.93, label: 'DISASTER CITY' }],
-    site_prebuilt_olympus_switchbacks: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.65, dist: 0.93, y: -0.05, label: 'DISASTER CITY' }],
+    site_prebuilt_downtown_streets: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', from: 'downtown', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],   // G6: `from` = the room's place on the land (the summit stands on it)
+    site_prebuilt_stadium_bowl: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', from: 'downtown', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
     site_prebuilt_bermuda_sea: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.85, dist: 0.86, label: 'DISASTER CITY' }],
-    site_prebuilt_shasta_slopes: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.55, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_haunted_grounds: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', s: 0.5, dist: 0.93, temple: true, label: 'MOUNT OLYMPUS' }],
+    /* G6 (2026-09-28): the sites on the land wear none — the places themselves stand on its horizon (hqRoomLandmarks) */
 };
 /* a room's horizon: its shell's landmarks + its ground weenies at their bearings (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], sky = R && R.shell && R.shell.sky;
+    const Fl = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
+    if ((R && R.land) || (Fl && Fl.ground === 'land')) return [];   // G6: on the land the places themselves stand on the horizon
     const out = (sky && Array.isArray(sky.landmarks)) ? sky.landmarks.slice() : [];
     (HQ_WORLD_WEENIES[roomId] || []).forEach(w => {
-        const b = hqWorldBearing(roomId, w.toward);
+        const b = hqWorldBearing(roomId, w.toward, w.from);
         if (!b) return;
         out.push(Object.assign({}, w, { deg: Math.round(b.deg * 10) / 10, far: Math.round(b.dist) }));
     });
@@ -40696,7 +40023,7 @@ function hqFarParts(roomId) {
         Object.keys(_hqWorldIndex().part).forEach(id => {
             if (id === roomId || !hqStagePart(id)) return;
             const B = hqWorldFrame(id); if (!B || B.ground !== A.ground || B.interior) return;
-            const R = DOOR_HQ.rooms[id], S = R && R.shell; if (!S || !(S.open && S.sky)) return;
+            const R = DOOR_HQ.rooms[id], S = R && R.shell; if (!S || !(S.open && S.sky) || R.land) return;   // G6: the land is drawn by its own pass, never as a shell
             const rel = hqStageRel(roomId, id); if (!rel) return;
             const hw = S.w / 2, hd = S.d / 2;
             const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
@@ -40706,7 +40033,7 @@ function hqFarParts(roomId) {
             out.push({ id, rel, rect, gap: Math.round(gap * 10) / 10 });
         });
         out.sort((p, q) => p.gap - q.gap || (p.id < q.id ? -1 : 1));
-        out.splice(HQ_WORLD_RULES.farMax || 12);
+        if (!RA.land) out.splice(HQ_WORLD_RULES.farMax || 12);   // G6: from the land every site is a candidate; the renderer keeps the farMax nearest the walker
     }
     _hqFarPartsCache[roomId] = { W, out };
     return out;
@@ -40745,7 +40072,7 @@ function hqFarShell(roomId, info) {
        further, in the cliff's colour — a raised part's shell is a mountainside, never a plate floating over the fog */
     const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
     let lo = Infinity; for (let k = 0; k < H.length; k++) if (H[k] < lo) lo = H[k];
-    const skirtY = Math.min(lo, -((F && F.y) || 0)) - (HQ_WORLD_RULES.farSkirt || 4) - sink;
+    const skirtY = Math.min(lo, (F && F.ground === 'land') ? lo : -((F && F.y) || 0)) - (HQ_WORLD_RULES.farSkirt || 4) - sink;   // G6: a site on the land stands on its pad (the land is the mountainside)
     const edge = [];
     for (let i = 0; i < nx; i++) edge.push(i);                                  // north, west → east
     for (let j = 1; j < nz; j++) edge.push(j * nx + nx - 1);                    // east, north → south
@@ -40796,20 +40123,14 @@ function hqFarShell(roomId, info) {
 }
 const HQ_WORLD = {
     grounds: {
-        surface: { label: 'THE SURFACE', note: 'the forecourt at the origin; the kingdom and the mountain north, the city east, the coast off the docks, the highway south to Area 51, the woods west' },
+        surface: { label: 'THE SURFACE', note: 'the city and the coast (WORLD_GEOGRAPHY_PLAN G7 moves them onto the land)' },
+        land:    { label: 'THE LAND', note: 'the one outdoors (WORLD_GEOGRAPHY_PLAN G6): the land room, every outdoor site standing on it at its place' },
         under:   { label: 'UNDERGROUND', note: 'no sky: the underworld under the city, the cave under the woods, the D.U.M.B. under the desert' },
-        rome:    { label: 'ROME', note: 'the Vatican: its own ground, reached through the bureau\'s painting' },
         ley:     { label: 'THE LEY', note: 'the tell over the ley tunnel; the far stations stay doors' },
 
         hq:      { label: 'THE BUILDING', note: 'D.O.O.R. HQ inside: a wing whose rooms open into one another (Phase 2, the door joins)' },
     },
     zones: {
-        /* Z0 — THE FORECOURT (fork 1: the foyer's front door opens onto it; Phase 1 builds it, family E) */
-        forecourt: { label: 'THE FORECOURT', ground: 'surface', hub: 'hq_grounds', sky: null, clock: true,
-            parts: {
-                hq_grounds: { x: 0, z: 0, y: 0, rot: 0, planned: { w: 100, d: 80, h: 14, family: 'E', label: 'D.O.O.R. HQ · THE FORECOURT' } },
-            },
-            joins: [] },
         /* Z1 — THE CITY (east). Downtown's west edge carries the forecourt's road into the old town's high street
            (local z −64); its cross street runs west into the Strip (the road way that exists, Downtown W z0 ⇄ Strip E
            z0); the avenue's north end meets the stadium's players' tunnel (the bowl turned half round so its north
@@ -40819,13 +40140,9 @@ const HQ_WORLD = {
             parts: {
                 site_prebuilt_downtown_streets: { x: 162, z: 72, y: 0, rot: 0 },
                 site_prebuilt_stadium_bowl:     { x: 162, z: -82.1, y: 0, rot: 2 },
-                site_prebuilt_strip_streets:    { x: 0, z: 72, y: 0, rot: 0 },
-                site_prebuilt_downtown_mall:    { x: 102, z: 92, y: 0, rot: 0, interior: true, on: 'site_prebuilt_downtown_streets' },
             },
             joins: [
                 { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_stadium_bowl', side: 'n', span: [-12, 12], kind: 'road' },
-                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_strip_streets', side: 'w', span: [-7, 7], kind: 'road' },
-                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_mall', kind: 'door' },
             ] },
         /* Z1b — THE COAST (fork 2: its own zone, joined at the docks' quay). OPEN WORLD Phase 7 (2026-09-27): BUILT — THE HARBOUR
            (a 300 × 300 sea part, its surface at −0.4 under the quay's 0) meets Downtown's quay by a SHORE border; THE DUTCHMAN (her
@@ -40842,112 +40159,6 @@ const HQ_WORLD = {
             joins: [
                 { a: 'site_prebuilt_downtown_harbour', b: 'site_prebuilt_bermuda_sea', kind: 'island', y: -6 },
                 { a: 'site_prebuilt_downtown_harbour', b: 'site_prebuilt_revenge_deck', kind: 'island' },
-            ] },
-        /* Z2 — THE HIGHWAY (south from the Strip, two parts of 210 m: 420 m of road, ~90 s on foot, ~60 on the board) */
-        /* Phase 5 (2026-09-27): BUILT — two real parts, the Strip's (the diner, the rest stop) and Area 51's (the gas station, the crash) */
-        highway: { label: 'THE HIGHWAY', ground: 'surface', hub: 'site_prebuilt_strip_highway', sky: 'site_prebuilt_strip_highway', clock: true,
-            parts: {
-                site_prebuilt_strip_highway:  { x: 0, z: 209, y: 0, rot: 0 },
-                site_prebuilt_area51_highway: { x: 0, z: 419, y: 0, rot: 0 },
-            },
-            joins: [
-                { a: 'site_prebuilt_strip_highway', b: 'site_prebuilt_area51_highway', side: 's', span: [-8, 8], kind: 'road' },
-            ] },
-        /* Z2b — THE DESERT: Area 51's gate (planned), the flight line, Hangar 18 off its east edge, the white rooms
-           behind the hangar. The D.U.M.B. below is its own zone (down is a load). */
-        /* Phase 5 (2026-09-27): the gate is a real part; Hangar 18 stands off the flight line's SOUTH apron (its big door is
-           the flight line's `hangar` door, 0.2 m apart), the white rooms off the hangar's west wall. The yard gate and the storm
-           drain stay doors. */
-        desert: { label: 'AREA 51', ground: 'surface', hub: 'site_prebuilt_area51_flightline', sky: 'site_prebuilt_area51_flightline', clock: true,
-            parts: {
-                site_prebuilt_area51_gate:        { x: 0, z: 544, y: 0, rot: 0 },
-                site_prebuilt_area51_flightline:  { x: 0, z: 596, y: 0, rot: 0 },
-                site_prebuilt_area51_hangar:      { x: 0, z: 652.2, y: 0, rot: 0 },
-                site_prebuilt_area51_ward:        { x: -58.2, z: 652.2, y: 0, rot: 0 },
-            },
-            joins: [
-                { a: 'site_prebuilt_area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road' },
-                { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
-                { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door', door: 'white', bDoor: 'hangar' },
-            ] },
-        /* Z4 — THE KINGDOM (north). OPEN WORLD Phase 6 (2026-09-27): BUILT — the crown's road (the portcullis at its south
-           end, the site's entry; the forecourt's border when the forecourt is built) runs into the ward's approach (a road
-           join); the ward rebuilt BUILT at 140 × 120 in this frame; the great hall and the keep stand BESIDE it, their fronts
-           the north side of the court — door joins (the hall door and the keep door 0.2 m apart back to back, the hall's and
-           the keep's stable doors the same), no longer interiors. Merlin's undercroft (down) and the castle in the sky (up)
-           stay doors. */
-        kingdom: { label: 'CAMELOT', ground: 'surface', hub: 'site_prebuilt_camelot_ward', sky: 'site_prebuilt_camelot_ward', clock: true,
-            parts: {
-                site_prebuilt_camelot_road:  { x: 0, z: -120, y: 0, rot: 0 },
-                site_prebuilt_camelot_ward:  { x: 0, z: -260, y: 0, rot: 0 },
-                site_prebuilt_camelot_hall:  { x: 0, z: -346.2, y: 0, rot: 0 },
-                site_prebuilt_camelot_keep:  { x: -35.2, z: -342.2, y: 0, rot: 0 },
-            },
-            joins: [
-                { a: 'site_prebuilt_camelot_road', b: 'site_prebuilt_camelot_ward', side: 'n', span: [-10, 10], kind: 'road' },
-                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_hall', kind: 'door', door: 'hall', bDoor: 'ward' },
-                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'ward' },
-                { a: 'site_prebuilt_camelot_hall', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'hall' },
-            ] },
-        /* Z4b — THE MOUNTAIN (north-east of the kingdom, behind the hall). OPEN WORLD Phase 6 (2026-09-27): BUILT — the
-           foothills 0 → 25 m (the ward's postern is the trailhead: a border), the switchbacks 25 → 60 m, the summit lifted
-           to 60 m (its own terraces take it to ~70). Heaven's gate on the high terrace stays the door it is. */
-        mountain: { label: 'MOUNT OLYMPUS', ground: 'surface', hub: 'site_prebuilt_olympus_foothills', sky: 'site_prebuilt_olympus_summit', clock: true,
-            parts: {
-                site_prebuilt_olympus_foothills:   { x: 84, z: -380, y: 0, rot: 0, rise: 25 },
-                site_prebuilt_olympus_switchbacks: { x: 84, z: -500, y: 25, rot: 0, rise: 35 },
-                site_prebuilt_olympus_summit:      { x: 84, z: -586, y: 60, rot: 0, rise: 9 },
-            },
-            joins: [
-                { a: 'site_prebuilt_olympus_foothills', b: 'site_prebuilt_olympus_switchbacks', side: 'n', span: [-5, 5], y: 25, kind: 'trail' },
-                { a: 'site_prebuilt_olympus_switchbacks', b: 'site_prebuilt_olympus_summit', side: 'n', span: [-5, 5], y: 60, kind: 'trail' },
-            ] },
-        /* Z5 — THE WOODS (west). OPEN WORLD Phase 4 (2026-09-27): ON THE STAGE, as JOINED PARTS — the clearing, the
-           trail, the stair, the redwoods, the pasture, the Grove, the estate's fields and Shasta's slopes stand where their
-           own doors meet (each join is a TRAIL: a lane through the treeline, the door that stood in it gone, the two
-           grounds stitched to the door's sill), so the woods are one walk with no card between the clearings. The
-           deviation from §8.5 (one compiled field of 160 × 140 with the six rooms as aliases): the rooms stay whole — their
-           ids, finds, tapes, natives, ledgers and saves don't move — as the medical wing did in Phase 2. The frames come
-           from the doors (the clearing a quarter turn, so its north runs west): the trail and the stair west of it (Shasta
-           beyond the trail, its old frame-only door the trailhead), the redwoods north with the Grove past them, the
-           estate's corn off the Grove's north gate, the pasture south. The ritual ground stays behind its draught (a
-           secret door is never a join: the protractor finds it) — it stands in the thicket off the clearing's south-west
-           corner and rides the zone's clock. Dead Man's cave (down), the lodge and the house stay doors. `y` lifts a part
-           so its door's sill meets the lane (the Grove's gate is on a 2.2 m bank; Shasta's trailhead 0.9 m above the
-           trail's top). */
-        woods: { label: 'THE WOODS', ground: 'surface', hub: 'site_prebuilt_fairy_forest_clearing', sky: 'site_prebuilt_fairy_forest_clearing', clock: true,
-            parts: {
-                site_prebuilt_fairy_forest_clearing:  { x: -192, z: 0, y: 0, rot: 1,
-                                                        absorbs: { site_prebuilt_fairy_forest_ritual: { x: -35, z: 30 } } },   // not a field: the ritual stands BESIDE the clearing, behind its draught, unstaged
-                site_prebuilt_fairy_forest_trail:     { x: -227, z: 13.125, y: 0.05, rot: 1, rise: 3.5 },
-                site_prebuilt_fairy_forest_stair:     { x: -221.75, z: -10.5, y: 0.05, rot: 1, rise: 3.5 },
-                site_prebuilt_fairy_forest_redwoods:  { x: -199, z: -38.5, y: -0.05, rot: 1 },
-                site_prebuilt_fairy_forest_pasture:   { x: -195.5, z: 38.5, y: 0.05, rot: 1 },
-                site_prebuilt_bohemian_grove_grove:   { x: -199.875, z: -85.5, y: -2.2, rot: 1, rise: 2.5 },
-                site_prebuilt_skinwalker_fields:      { x: -251.875, z: -88.5, y: -2.2, rot: 3 },
-                site_prebuilt_shasta_slopes:          { x: -272.75, z: 24, y: -0.75, rot: 3, rise: 5 },
-            },
-            joins: [
-                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_trail',    side: 'n', span: [-17, -11],       y: 0.075, kind: 'trail' },
-                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_stair',    side: 'n', span: [6.625, 12.625], y: 0.05,  kind: 'trail', stitchM: 3 },
-                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_redwoods', side: 'e', span: [-10.875, -4.875], y: -0.125, kind: 'trail' },
-                { a: 'site_prebuilt_fairy_forest_clearing', b: 'site_prebuilt_fairy_forest_pasture',  side: 'w', span: [-7.375, -1.375], y: 0.05,  kind: 'trail' },
-                { a: 'site_prebuilt_fairy_forest_redwoods', b: 'site_prebuilt_bohemian_grove_grove',  side: 'e', span: [-3.875, 2.125],  y: -0.05,  kind: 'trail' },
-                { a: 'site_prebuilt_fairy_forest_trail',    b: 'site_prebuilt_shasta_slopes',         side: 'n', span: [-3.875, 2.125],  y: 3.6,   kind: 'trail' },
-                { a: 'site_prebuilt_bohemian_grove_grove',  b: 'site_prebuilt_skinwalker_fields',     side: 'n', span: [-8, -2],         y: -2.25, kind: 'trail' },
-            ] },
-        /* Z5a — THE HAUNTED GROUNDS (Phase 4: its own zone, off the stage for now): the house on its lawn (a door join), the
-           forecourt's trail in from the east and the old path west through the trees to the clearing (planned: 60 m of
-           woods between the gate and the clearing's back — the walk the forecourt's phase builds). */
-        haunted: { label: 'THE HAUNTED GROUNDS', ground: 'surface', hub: 'site_prebuilt_haunted_grounds', sky: 'site_prebuilt_haunted_grounds', clock: true,
-            parts: {
-                site_prebuilt_haunted_grounds: { x: -81, z: 0, y: 0, rot: 0 },
-                site_prebuilt_haunted_hall:    { x: -81, z: -8, y: 0, rot: 0, interior: true, on: 'site_prebuilt_haunted_grounds' },
-                woods_trailhead:               { x: -142.375, z: 0, y: 0, rot: 0, planned: { w: 60.75, d: 14, h: 9, family: "A'", label: 'THE WOODS · THE OLD PATH' } },
-            },
-            joins: [
-                { a: 'site_prebuilt_haunted_grounds', b: 'site_prebuilt_haunted_hall', kind: 'door' },
-                { a: 'site_prebuilt_haunted_grounds', b: 'woods_trailhead', side: 'w', span: [-6, 6], kind: 'trail' },
             ] },
         /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
            Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
@@ -40994,29 +40205,72 @@ const HQ_WORLD = {
                 { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_cells', side: 'n', span: [-3, 3], kind: 'hall' },
                 { a: 'site_prebuilt_downtown_sewers', b: 'site_prebuilt_downtown_workings', side: 'e', span: [-3, 3], kind: 'hall' },
             ] },
-        /* Z8 — THE DIVINE (Rome): the cortile the hub, the basilica and the archive off it (door joins), the observatory
-           up a stair; the catacombs stay a door (down, the well). */
-        divine: { label: 'VATICAN CITY', ground: 'rome', hub: 'site_prebuilt_vatican_courtyard', sky: 'site_prebuilt_vatican_courtyard', clock: true,
+        /* Z9 — THE LEY: the ley tunnel (the tell over it moved onto the land in G6; the cistern's door and the well stay doors).
+           Stonehenge, Giza, Babel and Technoticlan stay doors at the tunnel's far stations. */
+        ley: { label: 'THE LEY LINES', ground: 'ley', hub: 'site_prebuilt_gobekli_leylines', sky: null, clock: false,
             parts: {
-                site_prebuilt_vatican_courtyard:   { x: 0, z: 0, y: 0, rot: 0 },
-                site_prebuilt_vatican_basilica:    { x: 0, z: -44, y: 0, rot: 0, interior: true },
-                site_prebuilt_vatican_library:     { x: 35, z: 0, y: 0, rot: 0, interior: true },
-                site_prebuilt_vatican_observatory: { x: -32, z: 0, y: 6, rot: 0 },
+                site_prebuilt_gobekli_leylines: { x: 0, z: 0, y: -12, rot: 0 },
+            },
+            joins: [] },
+        /* THE LAND (WORLD_GEOGRAPHY_PLAN G6, 2026-09-28): the land room (DOOR_HQ.rooms.land, the baked world in its own metres) is
+           the host, and every outdoor site stands ON it as an ISLAND at its place: a row's `place` (an HQ_LAND.places id) and
+           `dx` / `dz` / `dy` (metres from the place and its pad) are written into x, z, y below the recipe (hqLandSiteFrames), and
+           the bake levels one rectangle under each place's parts (hqLandSites; HQ_LAND_RULES.sites). The feet cross into a site
+           when they stand inside its box and back onto the land past its edge; the island join's `y` (the pad) is where the
+           site's four edges ease to. A site's closed rooms stand beside it by their door joins (Camelot's hall and keep, Hangar
+           18 and the white rooms); the observatory stands beside the cortile up its stair. The old stitched zones retired here:
+           the forecourt, the highway, the kingdom's road, the mountain's foothills and switchbacks, the woods' trail and pasture
+           and the old path. */
+        land: { label: 'THE LAND', ground: 'land', hub: 'land', sky: 'land', clock: true,
+            parts: {
+                land:                                { x: 0, z: 0, y: 0, rot: 0 },
+                site_prebuilt_strip_streets:         { place: 'strip' },
+                site_prebuilt_area51_flightline:     { place: 'area51' },
+                site_prebuilt_area51_gate:           { place: 'area51', dz: -52 },
+                site_prebuilt_area51_hangar:         { place: 'area51', dz: 56.2 },
+                site_prebuilt_area51_ward:           { place: 'area51', dx: -58.2, dz: 56.2 },
+                site_prebuilt_camelot_ward:          { place: 'camelot' },
+                site_prebuilt_camelot_hall:          { place: 'camelot', dz: -86.2 },
+                site_prebuilt_camelot_keep:          { place: 'camelot', dx: -35.2, dz: -82.2 },
+                site_prebuilt_olympus_summit:        { place: 'olympus' },
+                site_prebuilt_shasta_slopes:         { place: 'shasta' },
+                site_prebuilt_fairy_forest_clearing: { place: 'clearing' },
+                site_prebuilt_fairy_forest_redwoods: { place: 'redwoods' },
+                site_prebuilt_fairy_forest_stair:    { place: 'stair' },
+                site_prebuilt_fairy_forest_ritual:   { place: 'ritual' },
+                site_prebuilt_bohemian_grove_grove:  { place: 'grove' },
+                site_prebuilt_skinwalker_fields:     { place: 'estate' },
+                site_prebuilt_haunted_grounds:       { place: 'haunted' },
+                site_prebuilt_haunted_hall:          { place: 'haunted', dz: -8, interior: true, on: 'site_prebuilt_haunted_grounds' },
+                site_prebuilt_stonehenge_henge:      { place: 'henge' },
+                site_prebuilt_giza_plateau:          { place: 'giza' },
+                site_prebuilt_babel_tower:           { place: 'babel' },
+                site_prebuilt_gobekli_tell:          { place: 'gobekli' },
+                site_prebuilt_vatican_courtyard:     { place: 'vatican' },
+                site_prebuilt_vatican_basilica:      { place: 'vatican', dz: -44, interior: true },
+                site_prebuilt_vatican_library:       { place: 'vatican', dx: 35, interior: true },
+                site_prebuilt_vatican_observatory:   { place: 'vatican', dx: -32, dy: 6 },
             },
             joins: [
+                /* the islands: walked into from the land (their edges ease to the pad) */
+                ...['site_prebuilt_strip_streets', 'site_prebuilt_area51_flightline', 'site_prebuilt_area51_gate', 'site_prebuilt_camelot_ward',
+                    'site_prebuilt_olympus_summit', 'site_prebuilt_shasta_slopes', 'site_prebuilt_fairy_forest_clearing', 'site_prebuilt_fairy_forest_redwoods',
+                    'site_prebuilt_fairy_forest_stair', 'site_prebuilt_fairy_forest_ritual', 'site_prebuilt_bohemian_grove_grove', 'site_prebuilt_skinwalker_fields',
+                    'site_prebuilt_haunted_grounds', 'site_prebuilt_stonehenge_henge', 'site_prebuilt_giza_plateau', 'site_prebuilt_babel_tower',
+                    'site_prebuilt_gobekli_tell', 'site_prebuilt_vatican_courtyard'].map(b => ({ a: 'land', b, kind: 'island', pad: true })),
+                /* Area 51: the gate onto the flight line (a road), Hangar 18 off its south apron, the white rooms off the hangar */
+                { a: 'site_prebuilt_area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road', pad: true },
+                { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
+                { a: 'site_prebuilt_area51_hangar', b: 'site_prebuilt_area51_ward', kind: 'door', door: 'white', bDoor: 'hangar' },
+                /* Camelot: the great hall and the keep behind the ward's north side */
+                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_hall', kind: 'door', door: 'hall', bDoor: 'ward' },
+                { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'ward' },
+                { a: 'site_prebuilt_camelot_hall', b: 'site_prebuilt_camelot_keep', kind: 'door', door: 'keep', bDoor: 'hall' },
+                /* the haunted house on its lawn; the Vatican's basilica and archive off the cortile (map facts), the observatory up its stair */
+                { a: 'site_prebuilt_haunted_grounds', b: 'site_prebuilt_haunted_hall', kind: 'door' },
                 { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_basilica', kind: 'door' },
                 { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_library', kind: 'door' },
                 { a: 'site_prebuilt_vatican_courtyard', b: 'site_prebuilt_vatican_observatory', side: 'w', span: [-3, 3], kind: 'stair' },
-            ] },
-        /* Z9 — THE LEY: the tell stands over the ley tunnel (12 m down); a door at the cistern joins them. Stonehenge,
-           Giza, Babel and Technoticlan stay doors at the tunnel's far stations. */
-        ley: { label: 'THE LEY LINES', ground: 'ley', hub: 'site_prebuilt_gobekli_leylines', sky: 'site_prebuilt_gobekli_tell', clock: false,
-            parts: {
-                site_prebuilt_gobekli_leylines: { x: 0, z: 0, y: -12, rot: 0 },
-                site_prebuilt_gobekli_tell:     { x: -45, z: -30, y: 0, rot: 0 },
-            },
-            joins: [
-                { a: 'site_prebuilt_gobekli_leylines', b: 'site_prebuilt_gobekli_tell', kind: 'door' },
             ] },
         /* Z10 — THE MEDICAL WING (Phase 2, 2026-09-26 — the user: "I hate walking into the medical bay and every single little
            room in there is a different loading screen"). The five rooms stay the rooms they are (every id, number, counter,
@@ -41073,17 +40327,9 @@ const HQ_WORLD = {
                 { a: 'corridor_b', b: 'deadend',    kind: 'door', door: 'deadend',    bDoor: 'corridor' },
             ] },
     },
-    /* THE BORDERS — joins between two zones of one ground (the forecourt's three roads, the docks' quay, the highway's
-       two ends, the kingdom's gate, the mountain's trailhead). */
+    /* THE BORDERS — joins between two zones of one ground (the docks' quay). */
     borders: [
-        { a: 'hq_grounds', b: 'site_prebuilt_downtown_streets', side: 'e', span: [2, 14], kind: 'road' },
-        { a: 'hq_grounds', b: 'site_prebuilt_haunted_grounds', side: 'w', span: [-6, 6], kind: 'trail' },
-        { a: 'woods_trailhead', b: 'site_prebuilt_fairy_forest_clearing', side: 'w', span: [-6, 6], kind: 'trail' },   // Phase 4: the old path's west end at the clearing's back (its east side)
-        { a: 'hq_grounds', b: 'site_prebuilt_camelot_road', side: 'n', span: [-6, 6], kind: 'road' },
         { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_harbour', side: 's', span: [-100, 100], kind: 'shore', stitchM: 2 },   // Phase 7: THE QUAY (the harbour's floor rises to the quay's 0 in 2 m: the quay wall)
-        { a: 'site_prebuilt_strip_streets', b: 'site_prebuilt_strip_highway', side: 's', span: [-8, 8], kind: 'road' },
-        { a: 'site_prebuilt_area51_highway', b: 'site_prebuilt_area51_gate', side: 's', span: [-8, 8], kind: 'road' },
-        { a: 'site_prebuilt_camelot_ward', b: 'site_prebuilt_olympus_foothills', side: 'n', span: [25, 33], kind: 'trail' },   // Phase 6: THE POSTERN in the ward's north wall
     ],
     retires: [],   // THE WELL ROOM (site_prebuilt_hollow_earth_shaft, §8.3) was DELETED in Phase 4 (2026-09-27): the five wells land in five different rooms
 };
@@ -41321,7 +40567,27 @@ function hqStageNeighbours(roomId) {
             out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via: nb.id });
         });
     });
-    return out;
+    /* THE LAND (G6): a site's closed rooms and raised parts stand beside it on the land too — every part its islands reach by a
+       door or an edge join, however many joins in (Area 51's white rooms behind Hangar 18), is drawn with it (never crossed into
+       from the land: you reach it through the site) */
+    if (R.land) {
+        const front = out.filter(nb => nb.inside).map(nb => nb.id), seen = new Set(out.map(nb => nb.id));
+        while (front.length) {
+            const via = front.shift();
+            hqWorldJoins(via).forEach(j => {
+                if (j.kind === 'island') return;
+                const other = j.a === via ? j.b : j.a;
+                if (other === roomId || seen.has(other) || !hqStagePart(other)) return;
+                const rel = hqStageRel(roomId, other); if (!rel) return;
+                seen.add(other); front.push(other);
+                const S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
+                const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+                out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via });
+            });
+        }
+    }
+    /* the host last (G6): a site's own edge joins (the gate onto the flight line) win over the land that holds them all */
+    return out.filter(nb => !nb.host).concat(out.filter(nb => nb.host));
 }
 /* THE NEARBY PARTS (2026-09-27, the woods' floating grass): every OTHER staged part that can stand on ONE stage with this
    one (a stage is a part + its joined neighbours, so: this part's neighbours and theirs) and whose box lies within `reach` m
@@ -41468,7 +40734,7 @@ function hqStageDoorJoin(roomId, doorId) {
       within b's side; the join's height lies within both parts' floors + rise (a `stair` join may climb: it only
       needs the two to touch). A door / island join's two parts touch or one stands on the other.
    5. every part of a zone is reached from its hub through that zone's joins; every zone of the surface is reached from
-      the forecourt's hub through joins and borders. */
+      the city through joins and borders (G6: the forecourt retired). */
 function hqWorldValidate() {
     const W = DOOR_HQ.world, R = DOOR_HQ.rooms || {}, tol = HQ_WORLD_RULES.joinTol, errors = [];
     const I = _hqWorldIndex(), ids = Object.keys(I.part), seen = {};
@@ -41514,7 +40780,8 @@ function hqWorldValidate() {
     for (let i = 0; i < ids.length; i++) for (let k = i + 1; k < ids.length; k++) {
         const A = ids[i], B = ids[k], a = rect[A], b = rect[B];
         if (!a || !b || I.part[A].ground !== I.part[B].ground) continue;
-        if (I.part[A].P.on === B || I.part[B].P.on === A) continue;
+        const onChain = (x, y) => { for (let k2 = 0, q = I.part[x]; q && q.P.on && k2 < 8; k2++) { if (q.P.on === y) return true; q = I.part[q.P.on]; } return false; };
+        if (onChain(A, B) || onChain(B, A)) continue;   // G6: the haunted hall stands on its lawn, which stands on the land
         const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), oz = Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0), oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
         if (ox > tol && oz > tol && oy > tol) err(A + ' and ' + B + ' overlap (' + ox.toFixed(1) + ' × ' + oz.toFixed(1) + ' m)');
     }
@@ -41538,7 +40805,7 @@ function hqWorldValidate() {
                 }
             }
             if (j.kind === 'island' && I.part[j.b].P.on !== j.a) err(tag + ': an island stands on its sea');
-            if (j.kind === 'island' && R[j.a] && R[j.b]) {
+            if (j.kind === 'island' && R[j.a] && R[j.b] && !R[j.a].land) {   // G6: an island on THE LAND stands on its pad, not in a sea
                 /* Phase 7: the sea is a sea, and an island's own water (the part's field alone, before its sea is drawn) lies at
                    the sea's surface on the ground */
                 const sa = R[j.a].terrain && R[j.a].terrain.sea, sb = R[j.b].terrain && R[j.b].terrain.sea;
@@ -41567,10 +40834,10 @@ function hqWorldValidate() {
         while (grew) { grew = false; (Z.joins || []).forEach(j => { if (reach[j.a] && !reach[j.b]) { reach[j.b] = true; grew = true; } if (reach[j.b] && !reach[j.a]) { reach[j.a] = true; grew = true; } }); }
         Object.keys(Z.parts).forEach(pid => { if (!reach[pid]) err(zid + ': ' + pid + ' is not reached from the hub ' + Z.hub); });
     });
-    const surf = Object.keys(W.zones).filter(z => W.zones[z].ground === 'surface'), zr = { forecourt: true };
+    const surf = Object.keys(W.zones).filter(z => W.zones[z].ground === 'surface'), zr = { city: true };   // G6: the forecourt retired (HQ's front door opens onto the land)
     let grew = true;
     while (grew) { grew = false; I.joins.forEach(j => { const za = I.part[j.a] && I.part[j.a].zone, zb = I.part[j.b] && I.part[j.b].zone; if (za && zb) { if (zr[za] && !zr[zb]) { zr[zb] = true; grew = true; } if (zr[zb] && !zr[za]) { zr[za] = true; grew = true; } } }); }
-    surf.forEach(z => { if (!zr[z]) err('the surface zone ' + z + ' is not reached from the forecourt'); });
+    surf.forEach(z => { if (!zr[z]) err('the surface zone ' + z + ' is not reached from the city'); });
     return { ok: errors.length === 0, errors, parts: ids.length, joins: I.joins.length };
 }
 /* THE LAND SHEET (§7, Phase 0): the map drawn from the frames — map.js's LAND tab draws what this returns. Metres are
@@ -41811,7 +41078,7 @@ const HQ_LAND = (function () {
       [1255, 120], [1150, 160], [1070, 215], [1030, 300], [1045, 385], [1110, 440], [1210, 470], [1320, 480], [1410, 455],
       [1475, 400], [1525, 345], [1580, 380], [1600, 470], [1575, 580], [1510, 670], [1420, 740], [1330, 800],
       [1240, 880], [1120, 990], [1000, 1060],
-      // THE DEEP DESERT: the land runs on south past the valley (the Strip) to Area 51's range
+      // AREA 9: the land runs on south past the valley (the Strip) to Area 51's range
       [930, 1120], [975, 1240], [990, 1380], [950, 1510], [870, 1620], [750, 1700], [600, 1740], [450, 1740],
       [310, 1700], [200, 1620], [120, 1520], [60, 1420], [20, 1340], [-20, 1300], [-100, 1335], [-190, 1300], [-260, 1220], [-380, 1180], [-520, 1170], [-660, 1130], [-780, 1150],
       [-900, 1200], [-1040, 1290], [-1150, 1280], [-1180, 1180], [-1170, 1060], [-1230, 900], [-1300, 760],
@@ -41824,13 +41091,13 @@ const HQ_LAND = (function () {
     // ── REGIONS: soft plateaus of base height (applied in order; each one pulls the land toward h).
     //    r = full-strength radius, edge = the blend band.
     R.plateaus = [
-      { id: 'central',  at: [-20, -20],   r: 360, edge: 280, h: 92 },     // THE CENTRAL HIGHLANDS (HQ's hills)
+      { id: 'central',  at: [-20, -20],   r: 360, edge: 280, h: 92 },     // AREA 1 (HQ's hills)
       { id: 'woods',    at: [-700, -430], r: 330, edge: 260, h: 88 },     // THE WOODS' hill country
-      { id: 'west',     at: [-960, 140],  r: 380, edge: 220, h: 104 },    // THE WESTERN HIGHLANDS (the glen cuts them)
-      { id: 'badlands', at: [-820, 690],  r: 260, edge: 220, h: 58 },     // THE BADLANDS (Göbekli's hills)
+      { id: 'west',     at: [-960, 140],  r: 380, edge: 220, h: 104 },    // THE WESTERN HILLS (the glen cuts them)
+      { id: 'badlands', at: [-820, 690],  r: 260, edge: 220, h: 58 },     // AREA 8 (Göbekli's hills)
       { id: 'desert',   at: [200, 800],   r: 430, edge: 130, h: 34 },     // THE DESERT basin (tilted south, below)
-      { id: 'deepdesert', at: [480, 1400], r: 400, edge: 160, h: 30 },  // THE DEEP DESERT (Area 51's range, Rachel, Tikaboo)
-      { id: 'downs',    at: [330, -330],  r: 170, edge: 150, h: 106 },    // THE DOWNS (Stonehenge's chalk; the stones sit on the far, northern slope)
+      { id: 'deepdesert', at: [480, 1400], r: 400, edge: 160, h: 30 },  // AREA 9 (Area 51's range, Area 16, Area 17)
+      { id: 'downs',    at: [330, -330],  r: 170, edge: 150, h: 106 },    // AREA 10 (Stonehenge's chalk; the stones sit on the far, northern slope)
       { id: 'kingdom',  at: [-20, -690],  r: 210, edge: 200, h: 32 },     // THE KINGDOM's valley floor
       { id: 'city',     at: [930, 210],   r: 250, edge: 180, h: 26 },     // DISASTER CITY's ground
       { id: 'north',    at: [0, -1140],   r: 420, edge: 200, h: 14 },     // the north coast's tundra plain
@@ -41841,21 +41108,21 @@ const HQ_LAND = (function () {
       { id: 'cityhill',  at: [850, 190],  r: 230, h: 42, p: 1.6 },   // downtown climbs this hill from the bay
       { id: 'vatican',   at: [760, -380], r: 150, h: 60, p: 1.4 },   // the Vatican's hill, over the river
       { id: 'camelot',   at: [-40, -640], r: 95,  h: 22, p: 1.2 },   // Camelot's knoll inside the river's loop
-      { id: 'sheep',     at: [690, 760],  r: 150, h: 110, p: 1.5 },  // THE SHEEP HILL: hides the Strip from the city
-      { id: 'tikaboo',   at: [770, 1400], r: 170, h: 235, p: 1.6 },  // TIKABOO PEAK: the lookout over Area 51
-      { id: 'passhills', at: [640, 1150], r: 120, h: 70, p: 1.5 },   // THE PASS's east shoulder (the highway runs between it and the Groom Range)
-      { id: 'redwoodhills', at: [1060, -560], r: 220, h: 55, p: 1.4 }, // THE REDWOOD COAST's hills, across the Great River
+      { id: 'sheep',     at: [690, 760],  r: 150, h: 110, p: 1.5 },  // HILL 1: hides the Strip from the city
+      { id: 'tikaboo',   at: [770, 1400], r: 170, h: 235, p: 1.6 },  // AREA 17: the lookout over Area 51
+      { id: 'passhills', at: [640, 1150], r: 120, h: 70, p: 1.5 },   // PASS 1's east shoulder (the highway runs between it and Range 1)
+      { id: 'redwoodhills', at: [1060, -560], r: 220, h: 55, p: 1.4 }, // AREA 3's hills, across River 1
       { id: 'eastridge', at: [470, 110],  r: 220, h: 40, p: 1.5 },   // the ridge between HQ and the city
-      { id: 'crownrise', at: [-30, -300], r: 190, h: 34, p: 1.6 },   // THE CROWN'S RISE: the crest before the kingdom
+      { id: 'crownrise', at: [-30, -300], r: 190, h: 34, p: 1.6 },   // AREA 14: the crest before the kingdom
     ];
 
     // ── RANGES: ridged mountain chains along polylines (added; w = half-width).
     R.ranges = [
       { id: 'northrange', h: 205, w: 175, pts: [[-1180, -960], [-880, -1010], [-560, -1050], [-250, -1010], [60, -1000], [360, -985], [680, -1010], [960, -900]] },
       // sketch 3 (mondo: no rings round the Strip or Area 51): open desert ranges, each one straight-ish chain, pines on top.
-      // THE SPRING MOUNTAINS: well west of the Strip, a backdrop across the open valley floor (the pines of Mt Charleston on its crest)
+      // AREA 5: well west of the Strip, a backdrop across the open valley floor (the pines of Area 12 on its crest)
       { id: 'springs',     h: 150, w: 95, vary: 0.5, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]] },
-      // THE GROOM RANGE: one chain on the north-west and north of Groom Lake (Area 51 sees the lake, the range, Tikaboo and the sea)
+      // RANGE 1: one chain on the north-west and north of Lake 1 (Area 51 sees the lake, the range, Area 17 and the sea)
       { id: 'groomrange',  h: 125, w: 80, vary: 0.5, pts: [[130, 1560], [180, 1440], [260, 1340], [350, 1290], [450, 1280], [515, 1300]] },
       { id: 'westcliffs', h: 55,  w: 90,  pts: [[-1290, -600], [-1300, -300], [-1290, -60]] },
     ];
@@ -41863,12 +41130,12 @@ const HQ_LAND = (function () {
     // ── PEAKS: explicit mountains.
     R.peaks = [
       { id: 'olympus', at: [60, -1000],  h: 410, r: 300, p: 1.55, snow: 245 },
-      { id: 'shasta',  at: [-1040, -440], h: 330, r: 330, p: 2.1, crater: { r: 34, d: 22 }, snow: 230 },   // moved south, clear of the Northern Range
+      { id: 'shasta',  at: [-1040, -440], h: 330, r: 330, p: 2.1, crater: { r: 34, d: 22 }, snow: 230 },   // moved south, clear of Area 2
       { id: 'peak_ne', at: [640, -1040], h: 270, r: 220, p: 1.6 },
       { id: 'peak_nw', at: [-560, -1060], h: 260, r: 230, p: 1.6 },
     ];
 
-    // ── THE RIM: the escarpment south of HQ. North of the line the highlands stand; south of it the land
+    // ── AREA 13: the escarpment south of HQ. North of the line the highlands stand; south of it the land
     //    drops to the desert as a cliff band. (A polyline; south side = the low side.)
     R.rim = { top: 96, band: 24, pts: [[-560, 330], [-330, 290], [-100, 270], [150, 290], [420, 330], [700, 390]] };
 
@@ -41879,15 +41146,15 @@ const HQ_LAND = (function () {
       { id: 'lochness', label: 'LOCH NESS', a: [-628, -78], b: [-1122, 420], half: 52, level: 18, depth: 30 },
     ];
 
-    // ── THE CANYON (the Dry Wash): a cut with near-vertical walls through the badlands to the Nile.
-    R.canyons = [ { id: 'drywash', label: 'THE DRY WASH', w: 16, wall: 7, pts: [[-930, 470], [-760, 510], [-600, 560], [-430, 580], [-300, 610], [-175, 640]] } ];
+    // ── THE CANYON (Canyon 1): a cut with near-vertical walls through Area 8 to River 4.
+    R.canyons = [ { id: 'drywash', label: 'CANYON 1', w: 16, wall: 7, pts: [[-930, 470], [-760, 510], [-600, 560], [-430, 580], [-300, 610], [-175, 640]] } ];
 
-    // ── MESAS in the desert and the badlands (noise-picked, terraced) and THE DUNES.
+    // ── MESAS in the desert and Area 8 (noise-picked, terraced) and THE DUNES.
     R.mesas = { box: [-700, 420, 980, 1720], avoid: [[395, 890, 190], [-330, 840, 200], [690, 760, 130], [-150, 700, 90], [-110, 500, 110], [425, 1455, 170], [770, 1400, 160],
       [560, 1250, 80], [470, 1215, 70], [430, 1090, 80], [500, 1160, 70], [425, 700, 70], [560, 650, 70],
-      [-600, 722, 80]], thr: 0.30, h: 34 };   // G5: Route 1's gap between the badlands' mesas (it cut 44 m through one)
+      [-600, 722, 80]], thr: 0.30, h: 34 };   // G5: Route 1's gap between Area 8' mesas (it cut 44 m through one)
     R.dunes = { at: [-360, 860], r: 230, h: 9, dir: [0.93, 0.36], wave: 34 };
-    // ── BASINS: flat floors inside the rings. THE VALLEY (the Strip's floor) and GROOM LAKE (the playa at Area 51).
+    // ── BASINS: flat floors inside the rings. VALLEY 1 (the Strip's floor) and LAKE 1 (the playa at Area 51).
     R.basins = [
       { id: 'valley', at: [395, 890], rx: 130, rz: 175, h: 38 },
       { id: 'playa',  at: [420, 1455], rx: 140, rz: 100, h: 34, playa: true },
@@ -41899,13 +41166,13 @@ const HQ_LAND = (function () {
     //    sketch 3 (mondo: more forest, the woods' places spread out, sight broken up):
     R.forests = [
       { id: 'fairy', label: 'THE FAIRY FOREST', at: [-400, -640], r: 230, add: 0.55 },                  // the woods nearest Camelot
-      { id: 'redwood', label: 'THE REDWOOD COAST', at: [1060, -560], r: 260, add: 0.8 },                 // the Redwoods moved here (NE, across the river)
-      { id: 'pines', label: 'THE PINE BARRENS', at: [920, 900], r: 250, add: 0.8 },                      // the Staircase moved here (SE, below the Sheep hill)
-      { id: 'eastwood', label: 'THE EAST WOOD', pts: [[330, 30], [470, 90], [600, 120]], r: 95, add: 0.55 },   // on the ridge between HQ and the city
-      { id: 'charleston', label: 'THE CHARLESTON PINES', dry: true, minH: 70, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]], r: 120, add: 1.1 },
-      { id: 'sheeppines', dry: true, minH: 75, at: [690, 760], r: 160, add: 1.1 },   // the Sheep hill's crown of pines
+      { id: 'redwood', label: 'AREA 3', at: [1060, -560], r: 260, add: 0.8 },                 // the Redwoods moved here (NE, across the river)
+      { id: 'pines', label: 'AREA 4', at: [920, 900], r: 250, add: 0.8 },                      // the Staircase moved here (SE, below Hill 1)
+      { id: 'eastwood', label: 'AREA 11', pts: [[330, 30], [470, 90], [600, 120]], r: 95, add: 0.55 },   // on the ridge between HQ and the city
+      { id: 'charleston', label: 'AREA 12', dry: true, minH: 70, pts: [[60, 650], [-10, 760], [-40, 880], [-30, 1000], [-70, 1110]], r: 120, add: 1.1 },
+      { id: 'sheeppines', dry: true, minH: 75, at: [690, 760], r: 160, add: 1.1 },   // Hill 1's crown of pines
       { id: 'groompines', dry: true, minH: 65, pts: [[130, 1560], [180, 1440], [260, 1340], [350, 1290], [450, 1280], [515, 1300]], r: 100, add: 1.1 },
-      { id: 'passpines', dry: true, minH: 55, at: [640, 1150], r: 130, add: 1.1 },   // the Pass's east shoulder
+      { id: 'passpines', dry: true, minH: 55, at: [640, 1150], r: 130, add: 1.1 },   // Pass 1's east shoulder
     ];
     // ── URBAN beyond the downtown ellipse: THE STRIP down the desert highway through the valley.
     R.urban = [ { id: 'strip', w: 55, pts: [[412, 790], [403, 860], [393, 940], [388, 1000]] } ];   // one straight boulevard, north to south, like the real one
@@ -41919,18 +41186,18 @@ const HQ_LAND = (function () {
     //    THE MOUTH (G3, R7): a river that reaches the coast (its line within `coast` m of it) meets the sea at the sea's level
     //    (+ lift): its run-out — up to `run` m, never past the foot of a falls (a stretch steeper than `falls`) — falls to it in
     //    one even grade (at least `grade`), the channel deepening with it; never a step of water standing over the sea (the
-    //    Great River stood 4.8 m over it at the coast, the Ness 4 m).
+    //    River 1 stood 4.8 m over it at the coast, River 3 4 m).
     R.riverMouth = { coast: 16, lift: 0.05, grade: 0.02, run: 400, falls: 0.35 };
     R.rivers = [
-      { id: 'great', label: 'THE GREAT RIVER', w0: 4, w1: 16, valley: 90,
+      { id: 'great', label: 'RIVER 1', w0: 4, w1: 16, valley: 90,
         pts: [[-330, -925], [-290, -820], [-230, -730], [-150, -690], [-110, -610], [-40, -565], [40, -600], [70, -680],
               [170, -730], [330, -760], [520, -740], [680, -650], [800, -560], [880, -470], [940, -350], [1010, -250],
               [1110, -175], [1210, -150], [1330, -140]] },
-      { id: 'creek', label: 'SHASTA CREEK', w0: 2.5, w1: 6, valley: 50, falls: [[-633, -150]],
+      { id: 'creek', label: 'RIVER 2', w0: 2.5, w1: 6, valley: 50, falls: [[-633, -150]],
         pts: [[-880, -585], [-800, -605], [-720, -612], [-640, -600], [-578, -570], [-560, -500], [-575, -420], [-600, -330], [-620, -240], [-635, -160], [-622, -88]] },
-      { id: 'ness', label: 'THE RIVER NESS', w0: 7, w1: 11, valley: 45, falls: [[-1235, 505]],
+      { id: 'ness', label: 'RIVER 3', w0: 7, w1: 11, valley: 45, falls: [[-1235, 505]],
         pts: [[-1128, 430], [-1180, 470], [-1240, 510], [-1300, 540], [-1370, 560]] },
-      { id: 'nile', label: 'THE NILE', w0: 4, w1: 14, valley: 70,
+      { id: 'nile', label: 'RIVER 4', w0: 4, w1: 14, valley: 70,
         pts: [[-150, 330], [-175, 440], [-160, 560], [-165, 650], [-140, 760], [-120, 880], [-110, 1000], [-105, 1120], [-100, 1230]] },
       { id: 'olympus_brook', label: '', w0: 1.5, w1: 3, valley: 25,
         pts: [[110, -900], [120, -820], [100, -760], [60, -700]] },
@@ -41939,7 +41206,7 @@ const HQ_LAND = (function () {
     // ── ROADS: the highway ring (ROUTE 1), its spurs, the country roads and the trails.
     //    type: highway | road | lane | trail. grade = max rise per metre the baker allows (trails follow the ground).
     R.roads = [
-      { id: 'ring', label: 'ROUTE 1 · THE RING', type: 'highway', w: 12, grade: 0.075, loop: true, pts: [
+      { id: 'ring', label: 'ROUTE 1', type: 'highway', w: 12, grade: 0.075, loop: true, pts: [
         [770, 330], [775, 150], [800, -20], [790, -170], [720, -290], [620, -400], [540, -520], [420, -570], [260, -580],
         [110, -545], [-20, -510], [-160, -505], [-300, -470], [-430, -445], [-520, -420], [-600, -385], [-690, -375],
         [-750, -330], [-745, -270], [-700, -185], [-650, -110], [-585, -40], [-560, 80], [-600, 200], [-660, 315],
@@ -41947,58 +41214,58 @@ const HQ_LAND = (function () {
         [-660, 745], [-520, 700], [-410, 650], [-290, 640], [-165, 690], [-20, 640], [140, 600], [300, 585],
         [440, 600], [580, 600], [700, 580], [760, 470]] },
       // G5: re-laid (switchbacks down the Rise's north face, not a 204 m viaduct)
-      { id: 'crown', label: 'THE CROWN’S ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, -40], [14, -60], [27, -83], [30, -107], [30, -131], [36, -154], [45, -179], [48, -203], [55, -226], [68, -247], [68, -269], [57, -292], [48, -315], [35, -337], [30, -345], [10, -358], [-11, -372], [-35, -377], [-58, -370], [-82, -362], [-106, -354], [-128, -341], [-150, -329], [-172, -318], [-187, -298], [-207, -283], [-229, -291], [-241, -313], [-241, -337], [-222, -355], [-200, -366], [-177, -372], [-153, -379], [-132, -396], [-120, -416], [-107, -437], [-84, -447], [-60, -455], [-36, -456], [-11, -450], [11, -441], [31, -427], [48, -410], [65, -393], [87, -378], [111, -369], [134, -372], [146, -393], [138, -416], [117, -429], [94, -440], [72, -451], [49, -462], [27, -474], [4, -485], [-19, -495], [-30, -500], [-40, -530], [-40, -600]] },
-      { id: 'east', label: 'THE EAST ROAD', type: 'road', w: 7, grade: 0.1, pts: [[40, 0], [200, 40], [350, 80], [346, 104], [348, 128], [360, 150], [377, 166], [402, 169], [426, 159], [445, 145], [454, 123], [448, 99], [439, 74], [430, 52], [412, 34], [395, 17], [388, -6], [401, -26], [421, -39], [445, -43], [467, -31], [483, -12], [497, 8], [508, 30], [517, 53], [529, 75], [539, 98], [547, 122], [556, 146], [569, 166], [592, 176], [616, 178], [640, 182], [665, 190], [688, 196], [712, 196], [736, 190], [754, 172], [771, 155], [775, 150]] },   // G5: winds down the East Ridge (was a 287 m viaduct)
-      { id: 'west', label: 'THE WEST LANE', type: 'lane', w: 5, grade: 0.12, pts: [[-40, 0], [-190, 25], [-350, 55], [-500, 70], [-560, 82]] },   // G5: meets Route 1 in its cutting over the ridge (was an 86 m drop onto stilts to the shore)
-      { id: 'south', label: 'THE RIM ROAD', type: 'road', w: 7, grade: 0.1, pts: [[0, 40], [20, 160], [50, 250], [100, 281], [150, 291], [200, 301], [250, 309], [300, 319], [350, 329], [400, 340], [450, 351], [490, 359], [515, 385], [500, 440], [482, 500], [468, 560], [440, 600]] },   // G5: a shelf down the Rim's face to the desert highway's turn (was a 189 m viaduct)
-      // THE DESERT HIGHWAY: leaves Route 1 below the Rim, rounds the Sheep hill, enters the valley by its east gap, runs the
-      // Strip, leaves by the south gap and crosses the deep desert to Rachel. Groom Lake Road goes on from Rachel to Area 51.
+      { id: 'crown', label: 'ROUTE 2', type: 'road', w: 7, grade: 0.1, pts: [[0, -40], [14, -60], [27, -83], [30, -107], [30, -131], [36, -154], [45, -179], [48, -203], [55, -226], [68, -247], [68, -269], [57, -292], [48, -315], [35, -337], [30, -345], [10, -358], [-11, -372], [-35, -377], [-58, -370], [-82, -362], [-106, -354], [-128, -341], [-150, -329], [-172, -318], [-187, -298], [-207, -283], [-229, -291], [-241, -313], [-241, -337], [-222, -355], [-200, -366], [-177, -372], [-153, -379], [-132, -396], [-120, -416], [-107, -437], [-84, -447], [-60, -455], [-36, -456], [-11, -450], [11, -441], [31, -427], [48, -410], [65, -393], [87, -378], [111, -369], [134, -372], [146, -393], [138, -416], [117, -429], [94, -440], [72, -451], [49, -462], [27, -474], [4, -485], [-19, -495], [-30, -500], [-40, -530], [-40, -630]] },
+      { id: 'east', label: 'ROUTE 3', type: 'road', w: 7, grade: 0.1, pts: [[40, 0], [200, 40], [350, 80], [346, 104], [348, 128], [360, 150], [377, 166], [402, 169], [426, 159], [445, 145], [454, 123], [448, 99], [439, 74], [430, 52], [412, 34], [395, 17], [388, -6], [401, -26], [421, -39], [445, -43], [467, -31], [483, -12], [497, 8], [508, 30], [517, 53], [529, 75], [539, 98], [547, 122], [556, 146], [569, 166], [592, 176], [616, 178], [640, 182], [665, 190], [688, 196], [712, 196], [736, 190], [754, 172], [771, 155], [775, 150]] },   // G5: winds down the Ridge 1 (was a 287 m viaduct)
+      { id: 'west', label: 'ROUTE 5', type: 'lane', w: 5, grade: 0.12, pts: [[-40, 0], [-190, 25], [-350, 55], [-500, 70], [-560, 82]] },   // G5: meets Route 1 in its cutting over the ridge (was an 86 m drop onto stilts to the shore)
+      { id: 'south', label: 'ROUTE 4', type: 'road', w: 7, grade: 0.1, pts: [[0, 40], [20, 160], [50, 250], [100, 281], [150, 291], [200, 301], [250, 309], [300, 319], [350, 329], [400, 340], [450, 351], [490, 359], [515, 385], [500, 440], [482, 500], [468, 560], [440, 600]] },   // G5: a shelf down Area 13's face to the desert highway's turn (was a 189 m viaduct)
+      // THE DESERT HIGHWAY: leaves Route 1 below Area 13, rounds Hill 1, enters the valley by its east gap, runs the
+      // Strip, leaves by the south gap and crosses Area 9 to Area 16. Route 6 goes on from Area 16 to Area 51.
       { id: 'desert_hwy', label: 'THE DESERT HIGHWAY', type: 'highway', w: 10, grade: 0.075, pts: [[440, 600], [432, 680], [418, 760], [408, 830], [398, 900],
         [390, 970], [398, 1040], [445, 1105], [505, 1165], [545, 1215], [560, 1250]] },
-      { id: 'groom', label: 'GROOM LAKE ROAD', type: 'lane', w: 5, grade: 0.12, pts: [[560, 1250], [612, 1290], [656, 1358], [668, 1428], [642, 1478], [572, 1480], [500, 1468]] },
-      { id: 'bay', label: 'THE BAY ROAD', type: 'road', w: 7, grade: 0.1, pts: [[955, 305], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
-      { id: 'vatican', label: 'VIA DELLA CONCILIAZIONE', type: 'lane', surface: 'paved', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [812, -445]] },
-      { id: 'henge', label: 'THE DROVE ROAD', type: 'lane', w: 4, grade: 0.14, pts: [[380, -570], [420, -540], [455, -500]] },
-      { id: 'estate', label: 'THE ESTATE LANE', type: 'lane', w: 4, grade: 0.14, pts: [[-990, 565], [-1040, 512], [-1058, 470], [-1020, 420], [-972, 369], [-920, 318], [-870, 268], [-820, 226], [-778, 190]] },
-      { id: 'giza', label: 'THE PLATEAU ROAD', type: 'lane', w: 5, grade: 0.12, pts: [[-290, 640], [-300, 690], [-320, 715]] },
+      { id: 'groom', label: 'ROUTE 6', type: 'lane', w: 5, grade: 0.12, pts: [[560, 1250], [612, 1290], [656, 1358], [668, 1428], [642, 1478], [572, 1480], [500, 1468]] },
+      { id: 'bay', label: 'ROUTE 7', type: 'road', w: 7, grade: 0.1, pts: [[955, 305], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
+      { id: 'vatican', label: 'ROUTE 8', type: 'lane', surface: 'paved', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [787, -445]] },
+      { id: 'henge', label: 'ROUTE 9', type: 'lane', w: 4, grade: 0.14, pts: [[380, -570], [420, -540], [455, -500]] },
+      { id: 'estate', label: 'ROUTE 10', type: 'lane', w: 4, grade: 0.14, pts: [[-990, 565], [-1040, 512], [-1058, 470], [-1020, 420], [-972, 369], [-920, 318], [-870, 268], [-820, 226], [-778, 190]] },
+      { id: 'giza', label: 'ROUTE 11', type: 'lane', w: 5, grade: 0.12, pts: [[-290, 640], [-300, 690], [-320, 715]] },
       { id: 'stadium', label: '', type: 'road', w: 8, grade: 0.1, pts: [[800, -20], [900, -50], [990, -70]] },
       { id: 'gobekli', label: '', type: 'lane', w: 4, grade: 0.14, pts: [[-800, 765], [-790, 700], [-780, 650]] },
       // trails (dirt): they follow the ground
-      { id: 'olympus_trail', label: 'THE PILGRIMS’ WAY', type: 'trail', w: 2.4, grade: 0.3, pts: [[-40, -640], [-10, -700], [30, -760], [80, -800], [20, -840], [90, -880], [30, -915], [85, -950], [50, -975], [60, -995]] },
-      { id: 'shasta_trail', label: 'THE SHASTA TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-716, -371], [-726, -420], [-730, -470], [-800, -492], [-860, -525], [-900, -560], [-945, -525], [-985, -485], [-1015, -458], [-1036, -442]] },
-      // THE FAIRY FOREST (nearest Camelot): the Fairy Trail leaves Camelot's west gate, crosses the Great River on a footbridge
-      { id: 'woods_trail', label: 'THE FAIRY TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-40, -640], [-95, -652], [-150, -660], [-215, -648], [-285, -632], [-360, -625]] },
-      { id: 'cave_trail', label: 'THE CAVE TRAIL', type: 'trail', w: 2.2, grade: 0.3, pts: [[-430, -445], [-455, -490], [-470, -530], [-440, -580], [-400, -610], [-360, -625]] },
-      // THE REDWOOD HIGHWAY: from the Bowl up the coast, over the Great River's mouth, into the Redwood Coast
-      { id: 'redwood', label: 'THE REDWOOD HIGHWAY', type: 'lane', w: 5, grade: 0.12, pts: [[990, -70], [1050, -120], [1090, -200], [1100, -290], [1090, -380], [1070, -470], [1050, -545]] },
-      // THE PINE BARRENS: a trail off the Bay Road's end, south into the pines, to the Staircase
-      { id: 'stair_trail', label: 'THE BARRENS TRAIL', type: 'trail', w: 1.8, grade: 0.3, pts: [[1170, 520], [1110, 600], [1050, 690], [990, 780], [950, 860], [935, 925]] },
-      // THE RITUAL WOODS (on the loch's north-west shore, across the water from the estate): a loop off the north shore path
-      { id: 'grove_trail', label: 'THE GROVE TRAIL', type: 'trail', w: 2, grade: 0.3, pts: [[-780, -30], [-792, -100], [-800, -172], [-860, -140], [-905, -100], [-928, -70], [-905, 0], [-870, 60]] },
-      { id: 'loch_path', label: 'THE NORTH SHORE PATH', type: 'trail', w: 2, grade: 0.3, pts: [[-585, -40], [-610, -120], [-690, -110], [-780, -30], [-870, 60], [-950, 135]] },
-      { id: 'tikaboo_trail', label: 'THE TIKABOO TRAIL', type: 'trail', w: 1.8, grade: 0.35, pts: [[656, 1358], [712, 1330], [690, 1356], [748, 1344], [716, 1372], [770, 1366], [742, 1388], [766, 1398]] },
-      { id: 'north_pass', label: 'THE NORTH PASS', type: 'trail', w: 2.2, grade: 0.3, pts: [[-250, -700], [-330, -800], [-390, -880], [-430, -960], [-440, -1040], [-420, -1130], [-380, -1220]] },
+      { id: 'olympus_trail', label: 'TRAIL A', type: 'trail', w: 2.4, grade: 0.3, pts: [[-40, -685], [-10, -720], [30, -760], [80, -800], [20, -840], [90, -880], [30, -915], [85, -950], [50, -975], [60, -995]] },
+      { id: 'shasta_trail', label: 'TRAIL B', type: 'trail', w: 2.2, grade: 0.3, pts: [[-716, -371], [-726, -420], [-730, -470], [-800, -492], [-860, -525], [-900, -560], [-945, -525], [-985, -485], [-1015, -458], [-1036, -442]] },
+      // THE FAIRY FOREST (nearest Camelot): Trail C leaves Camelot's west gate, crosses River 1 on a footbridge
+      { id: 'woods_trail', label: 'TRAIL C', type: 'trail', w: 2.2, grade: 0.3, pts: [[-40, -685], [-95, -672], [-150, -660], [-215, -648], [-285, -632], [-360, -625]] },
+      { id: 'cave_trail', label: 'TRAIL D', type: 'trail', w: 2.2, grade: 0.3, pts: [[-430, -445], [-455, -490], [-470, -530], [-440, -580], [-400, -610], [-360, -625]] },
+      // ROUTE 12: from the Bowl up the coast, over River 1's mouth, into Area 3
+      { id: 'redwood', label: 'ROUTE 12', type: 'lane', w: 5, grade: 0.12, pts: [[990, -70], [1050, -120], [1090, -200], [1100, -290], [1090, -380], [1070, -470], [1050, -545]] },
+      // AREA 4: a trail off Route 7's end, south into the pines, to the Staircase
+      { id: 'stair_trail', label: 'TRAIL E', type: 'trail', w: 1.8, grade: 0.3, pts: [[1170, 520], [1110, 600], [1050, 690], [990, 780], [950, 860], [935, 925]] },
+      // AREA 6 (on the loch's north-west shore, across the water from the estate): a loop off Trail G
+      { id: 'grove_trail', label: 'TRAIL F', type: 'trail', w: 2, grade: 0.3, pts: [[-780, -30], [-792, -100], [-800, -172], [-860, -140], [-905, -100], [-928, -70], [-905, 0], [-870, 60]] },
+      { id: 'loch_path', label: 'TRAIL G', type: 'trail', w: 2, grade: 0.3, pts: [[-585, -40], [-610, -120], [-690, -110], [-780, -30], [-870, 60], [-950, 135]] },
+      { id: 'tikaboo_trail', label: 'TRAIL H', type: 'trail', w: 1.8, grade: 0.35, pts: [[656, 1358], [712, 1330], [690, 1356], [748, 1344], [716, 1372], [770, 1366], [742, 1388], [766, 1398]] },
+      { id: 'north_pass', label: 'TRAIL I', type: 'trail', w: 2.2, grade: 0.3, pts: [[-250, -700], [-330, -800], [-390, -880], [-430, -960], [-440, -1040], [-420, -1130], [-380, -1220]] },
       { id: 'nile_path', label: '', type: 'trail', w: 2, grade: 0.3, pts: [[-150, 700], [-100, 820], [-90, 950], [-200, 1020], [-330, 1040]] },
-      { id: 'coast_path', label: 'THE CLIFF PATH', type: 'trail', w: 1.8, grade: 0.3, pts: [[-1150, 500], [-1250, 380], [-1290, 200], [-1300, 0], [-1280, -200]] },
+      { id: 'coast_path', label: 'TRAIL J', type: 'trail', w: 1.8, grade: 0.3, pts: [[-1150, 500], [-1250, 380], [-1290, 200], [-1300, 0], [-1280, -200]] },
       // G0 (2026-09-28): every place on a route (R5) — the lighthouse on the bay's head, the haunted house by the estate
-      { id: 'lighthouse_path', label: 'THE LIGHTHOUSE PATH', type: 'trail', w: 1.8, grade: 0.3, pts: [[1205, 545], [1290, 530], [1380, 505], [1450, 460], [1490, 405], [1505, 365]] },
-      { id: 'haunted_drive', label: 'THE HAUNTED DRIVE', type: 'lane', w: 4, grade: 0.14, pts: [[-778, 190], [-735, 152], [-690, 118]] },
+      { id: 'lighthouse_path', label: 'TRAIL K', type: 'trail', w: 1.8, grade: 0.3, pts: [[1205, 545], [1290, 530], [1380, 505], [1450, 460], [1490, 405], [1505, 365]] },
+      { id: 'haunted_drive', label: 'ROUTE 13', type: 'lane', w: 4, grade: 0.14, pts: [[-778, 190], [-735, 152], [-690, 118]] },
     ];
 
     // ── BRIDGES the sketch draws where a road crosses water (the baker finds them; these just name them).
-    R.bridgeNames = { great: 'THE ESTUARY BRIDGE', ness: 'THE NESS BRIDGE', nile: 'THE NILE BRIDGE', creek: 'THE SHASTA CREEK BRIDGE', foot: 'THE FOOTBRIDGE' };
+    R.bridgeNames = { great: 'BRIDGE 1', ness: 'BRIDGE 2', nile: 'BRIDGE 3', creek: 'BRIDGE 4', foot: 'FOOTBRIDGE' };
     // ── G5 THE ROADS (2026-09-28): how the bake grades them. `fill` = the most a road may stand over the ground (a trail `trailFill`)
     //    before it must cut into the slope instead — so a road leaves the ground only over water (± `approach` m, its deck `clear` m
     //    over the water) or on a NAMED VIADUCT below. `railDrop`: a guard rail wherever the edge drops more than this (m), `railOff` m
     //    past the edge, the drop read `railProbe` m past the shoulder; runs shorter than `railMinRun` m are dropped. `looks`: a river's
-    //    bridge (the Nile's is a truss); every other span over water is a girder deck, a trail's a timber footbridge.
+    //    bridge (River 4's is a truss); every other span over water is a girder deck, a trail's a timber footbridge.
     R.roadRules = { fill: 6.5, trailFill: 2.4, approach: { highway: 36, road: 24, lane: 16, trail: 8 }, clear: { highway: 9, road: 5, lane: 5, trail: 2 }, smallRiver: 8, clearSmall: 3,
-        railDrop: 2, railOff: 1.0, railProbe: [1.5, 3.5], railMinRun: 8, looks: { nile: 'truss' }, names: { crown: 'THE KING’S BRIDGE' } };
-    // ── THE NAMED VIADUCTS (fork 6's default: keep the Glen and the Loch Head as landmarks, Glenfinnan-style — arched concrete).
+        railDrop: 2, railOff: 1.0, railProbe: [1.5, 3.5], railMinRun: 8, looks: { nile: 'truss' }, names: { crown: 'BRIDGE 5' } };
+    // ── THE NAMED VIADUCTS (fork 6's default: keep Bridges 6 and 7 as landmarks — arched concrete).
     //    Inside a zone ([x, z, r]) the road keeps its own graded line however high it stands; everywhere else it is regraded.
     R.viaducts = [
-      { id: 'lochhead', road: 'ring', label: 'THE LOCH HEAD VIADUCT', look: 'arch', zones: [[-632, -88, 118]] },
-      { id: 'glen', road: 'ring', label: 'THE GLEN VIADUCT', look: 'arch', zones: [[-873, 494, 106], [-680, 338, 56], [-776, 432, 24]] },
+      { id: 'lochhead', road: 'ring', label: 'BRIDGE 6', look: 'arch', zones: [[-632, -88, 118]] },
+      { id: 'glen', road: 'ring', label: 'BRIDGE 7', look: 'arch', zones: [[-873, 494, 106], [-680, 338, 56], [-776, 432, 24]] },
     ];
 
     // ── PLACES: where each existing place stands on THE LAND (the site pads) and its label on the map.
@@ -42010,29 +41277,29 @@ const HQ_LAND = (function () {
       { id: 'mall',      label: 'THE BAYSIDE MALL',    at: [1205, 548],   pad: 45, padY: 5, kind: 'site', region: 'city', top: 14 },
       { id: 'lighthouse',label: 'THE LIGHTHOUSE',      at: [1505, 365],   kind: 'poi', region: 'city', top: 28 },
       { id: 'stadium',   label: 'THE BOWL',            at: [990, -70],    pad: 85, kind: 'site', region: 'city', top: 34 },
-      { id: 'strip',     label: 'THE STRIP',           at: [398, 890],    pad: 70, kind: 'site', region: 'desert', top: 70 },
-      { id: 'vatican',   label: 'VATICAN CITY',        at: [812, -445],   pad: 70, kind: 'site', region: 'downs', top: 48 },
-      { id: 'henge',     label: 'STONEHENGE',          at: [455, -500],   pad: 45, kind: 'site', region: 'downs', top: 7 },
-      { id: 'camelot',   label: 'CAMELOT',             at: [-40, -640],   pad: 70, kind: 'site', region: 'kingdom', top: 34 },
-      { id: 'olympus',   label: 'MT OLYMPUS',          at: [60, -1000],   pad: 30, kind: 'site', region: 'north', top: 12, peak: true },
-      { id: 'shasta',    label: 'MT SHASTA',           at: [-1040, -440], kind: 'site', region: 'woods', top: 8, peak: true },
-      { id: 'clearing',  label: 'THE FAIRY CLEARING',  at: [-360, -625],  pad: 30, kind: 'site', region: 'woods', top: 3 },
-      { id: 'redwoods',  label: 'THE REDWOODS',        at: [1050, -560],  kind: 'site', region: 'redwoodcoast', top: 60 },
-      { id: 'grove',     label: 'BOHEMIAN GROVE',      at: [-800, -175],  pad: 30, kind: 'site', region: 'woods', top: 12 },
-      { id: 'stair',     label: 'THE STAIRCASE',       at: [935, 930],    pad: 12, kind: 'poi', region: 'barrens', top: 6 },
-      { id: 'ritual',    label: 'THE RITUAL GROUND',   at: [-930, -70],   pad: 14, kind: 'poi', region: 'woods', top: 3 },
-      { id: 'deadmans',  label: 'DEAD MAN’S CAVE',     at: [-470, -530],  kind: 'dungeon', region: 'woods', top: 3 },
+      { id: 'strip',     label: 'THE STRIP',           at: [398, 890],    pad: 70, padY: 35.6, kind: 'site', region: 'desert', top: 70 },
+      { id: 'vatican',   label: 'VATICAN CITY',        at: [787, -445],   pad: 70, padY: 44.2, kind: 'site', region: 'downs', top: 48 },
+      { id: 'henge',     label: 'STONEHENGE',          at: [455, -500],   pad: 45, padY: 53.8, kind: 'site', region: 'downs', top: 7 },
+      { id: 'camelot',   label: 'CAMELOT',             at: [-40, -685],   pad: 70, padY: 43.6, kind: 'site', region: 'kingdom', top: 34 },
+      { id: 'olympus',   label: 'MT OLYMPUS',          at: [60, -1000],   pad: 30, padY: 325.7, kind: 'site', region: 'north', top: 12, peak: true },
+      { id: 'shasta',    label: 'MT SHASTA',           at: [-1040, -440], padY: 233.3, kind: 'site', region: 'woods', top: 8, peak: true },
+      { id: 'clearing',  label: 'THE CLEARING',        at: [-360, -625],  pad: 30, padY: 58.3, kind: 'site', region: 'woods', top: 3 },
+      { id: 'redwoods',  label: 'THE REDWOODS',        at: [1050, -560],  padY: 71, kind: 'site', region: 'redwoodcoast', top: 60 },
+      { id: 'grove',     label: 'BOHEMIAN GROVE',      at: [-800, -175],  pad: 30, padY: 104.3, kind: 'site', region: 'woods', top: 12 },
+      { id: 'stair',     label: 'THE STAIRCASE',       at: [935, 930],    pad: 12, padY: 11.4, kind: 'poi', region: 'barrens', top: 6 },
+      { id: 'ritual',    label: 'THE RITUAL GROUND',   at: [-930, -70],   pad: 14, padY: 96.5, kind: 'poi', region: 'woods', top: 3 },
+      { id: 'deadmans',  label: 'DEAD MAN’S CAVE',     at: [-470, -530],  pad: 10, padY: 75.9, kind: 'dungeon', region: 'woods', top: 3 },
       { id: 'estate',    label: 'THE ESTATE',          at: [-778, 188],   pad: 70, padY: 26, kind: 'site', region: 'glen', top: 10 },
-      { id: 'haunted',   label: 'THE HAUNTED HOUSE',   at: [-690, 118],   pad: 26, kind: 'site', region: 'glen', top: 16 },
-      { id: 'urquhart',  label: 'URQUHART RUIN',       at: [-965, 140],   pad: 24, kind: 'poi', region: 'glen', top: 14 },
-      { id: 'gobekli',   label: 'GÖBEKLI TEPE',        at: [-780, 650],   pad: 45, kind: 'site', region: 'badlands', top: 6 },
-      { id: 'giza',      label: 'GIZA',                at: [-330, 725],   pad: 95, kind: 'site', region: 'desert', top: 70 },
-      { id: 'babel',     label: 'BABEL',               at: [-360, 1040],  pad: 60, kind: 'site', region: 'desert', top: 150 },
-      { id: 'area51',    label: 'AREA 51',             at: [425, 1455],   kind: 'site', region: 'deepdesert', top: 22 },
-      { id: 'rachel',    label: 'RACHEL (THE DINER)',  at: [566, 1244],   pad: 22, kind: 'poi', region: 'deepdesert', top: 8 },
-      { id: 'tikaboo',   label: 'TIKABOO LOOKOUT',     at: [768, 1400],   kind: 'poi', topSearch: 24, region: 'deepdesert', top: 3, peak: true, lookout: true },
-      { id: 'rim',       label: 'THE RIM',             at: [45, 262],     kind: 'poi', region: 'highlands', top: 2, lookout: true },
-      { id: 'crownrise', label: 'THE CROWN’S RISE',    at: [-32, -368],   kind: 'poi', region: 'highlands', top: 2, lookout: true },
+      { id: 'haunted',   label: 'THE HAUNTED HOUSE',   at: [-690, 118],   pad: 26, padY: 41.4, kind: 'site', region: 'glen', top: 16 },
+      { id: 'urquhart',  label: 'AREA 15',             at: [-965, 140],   pad: 24, kind: 'poi', region: 'glen', top: 14 },
+      { id: 'gobekli',   label: 'GÖBEKLI TEPE',        at: [-780, 650],   pad: 45, padY: 52.5, kind: 'site', region: 'badlands', top: 6 },
+      { id: 'giza',      label: 'GIZA',                at: [-330, 725],   pad: 95, padY: 24.4, kind: 'site', region: 'desert', top: 70 },
+      { id: 'babel',     label: 'BABEL',               at: [-360, 1040],  pad: 60, padY: 15.3, kind: 'site', region: 'desert', top: 150 },
+      { id: 'area51',    label: 'AREA 51',             at: [425, 1455],   padY: 33.9, kind: 'site', region: 'deepdesert', top: 22 },
+      { id: 'rachel',    label: 'AREA 16',             at: [566, 1244],   pad: 22, kind: 'poi', region: 'deepdesert', top: 8 },
+      { id: 'tikaboo',   label: 'AREA 17',             at: [768, 1400],   kind: 'poi', topSearch: 24, region: 'deepdesert', top: 3, peak: true, lookout: true },
+      { id: 'rim',       label: 'AREA 13',             at: [45, 262],     kind: 'poi', region: 'highlands', top: 2, lookout: true },
+      { id: 'crownrise', label: 'AREA 14',             at: [-32, -368],   kind: 'poi', region: 'highlands', top: 2, lookout: true },
       { id: 'bermuda',   label: 'THE BERMUDA TRIANGLE',at: [1400, 1520],  kind: 'sea', region: 'sea', top: 2 },
       { id: 'cay',       label: 'THE CAY',             at: [1320, 1440],  kind: 'site', region: 'sea', top: 6 },
       { id: 'dutchman',  label: 'THE FLYING DUTCHMAN', at: [1500, 1580],  kind: 'site', region: 'sea', top: 30 },
@@ -42048,13 +41315,13 @@ const HQ_LAND = (function () {
 
     // Regions' labels for the map (big italic names).
     R.regions = [
-      { label: 'THE CENTRAL HIGHLANDS', at: [290, 200] }, { label: 'THE KINGDOM', at: [200, -680] },
-      { label: 'THE NORTHERN RANGE', at: [-330, -1000] }, { label: 'THE WOODS', at: [-820, -830] },
-      { label: 'THE FAIRY FOREST', at: [-360, -790], small: true }, { label: 'THE REDWOOD COAST', at: [1100, -720], small: true },
-      { label: 'THE PINE BARRENS', at: [1000, 1010], small: true }, { label: 'THE SPRING MOUNTAINS', at: [150, 790], small: true }, { label: 'THE RITUAL WOODS', at: [-1130, -330], small: true },
-      { label: 'THE GREAT GLEN', at: [-930, 330] }, { label: 'THE BADLANDS', at: [-900, 560] },
-      { label: 'THE DESERT', at: [-130, 890] }, { label: 'THE DEEP DESERT', at: [470, 1680] },
-      { label: 'DISASTER CITY', at: [860, 450] }, { label: 'THE BAY', at: [1250, 330], small: true }, { label: 'THE DOWNS', at: [360, -250] },
+      { label: 'AREA 1', at: [290, 200] }, { label: 'THE KINGDOM', at: [200, -680] },
+      { label: 'AREA 2', at: [-330, -1000] }, { label: 'THE WOODS', at: [-820, -830] },
+      { label: 'THE FAIRY FOREST', at: [-360, -790], small: true }, { label: 'AREA 3', at: [1100, -720], small: true },
+      { label: 'AREA 4', at: [1000, 1010], small: true }, { label: 'AREA 5', at: [150, 790], small: true }, { label: 'AREA 6', at: [-1130, -330], small: true },
+      { label: 'AREA 7', at: [-930, 330] }, { label: 'AREA 8', at: [-900, 560] },
+      { label: 'THE DESERT', at: [-130, 890] }, { label: 'AREA 9', at: [470, 1680] },
+      { label: 'DISASTER CITY', at: [860, 450] }, { label: 'THE BAY', at: [1250, 330], small: true }, { label: 'AREA 10', at: [360, -250] },
       { label: 'THE DEEP', at: [-2000, 300] }, { label: 'THE DEEP', at: [1950, -300] }, { label: 'THE DEEP', at: [1520, 1230] }, { label: 'THE ARCTIC', at: [-400, -1950] },
       { label: 'THE ICE WALL', at: [-1150, 2230] }, { label: 'ANTARCTICA', at: [560, 2240] },
     ];
@@ -42066,9 +41333,9 @@ const HQ_LAND = (function () {
     R.farms = [ { at: [-765, 235], r: 110 } ];                    // the estate's fields (the kingdom's are its valley floor)
     R.hubMinY = 70;                                               // HQ's pad never sinks below this
     // the region names the map prints (a place's `region` above)
-    R.regionNames = { highlands: 'THE CENTRAL HIGHLANDS', city: 'DISASTER CITY', desert: 'THE DESERT', deepdesert: 'THE DEEP DESERT',
-        badlands: 'THE BADLANDS', downs: 'THE DOWNS', kingdom: 'THE KINGDOM', north: 'THE NORTHERN RANGE', woods: 'THE WOODS',
-        redwoodcoast: 'THE REDWOOD COAST', barrens: 'THE PINE BARRENS', glen: 'THE GREAT GLEN', sea: 'THE DEEP', edge: 'ANTARCTICA', arctic: 'THE ARCTIC' };
+    R.regionNames = { highlands: 'AREA 1', city: 'DISASTER CITY', desert: 'THE DESERT', deepdesert: 'AREA 9',
+        badlands: 'AREA 8', downs: 'AREA 10', kingdom: 'THE KINGDOM', north: 'AREA 2', woods: 'THE WOODS',
+        redwoodcoast: 'AREA 3', barrens: 'AREA 4', glen: 'AREA 7', sea: 'THE DEEP', edge: 'ANTARCTICA', arctic: 'THE ARCTIC' };
     // THE SIGHT RULE (R2): a place's pad may see another place's GROUND only when that place is a peak or a lookout, is in
     // the same region, or lies across open sea (≥ `sea` of the line over water or ice). Peaks and lookouts are the reward
     // and are not checked from. `never`: mondo's named separations (2026-09-28), not even the tops; `both` = checked both ways.
@@ -42077,7 +41344,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: '35b9269ad8', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
+    R.baked = { id: 'da0db7e906', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -42129,6 +41396,7 @@ const HQ_LAND_RULES = {
     tiles: { cap: 72, reach: 420, inFlight: 4 },                         // the LRU (tiles), how far ahead to fetch (m), fetches at once
     detail: { wl: 9.5, wl2: 3.4, mix2: 0.3 },                            // m: the detail noise's two wavelengths, the second's share
     walk: { maxSlope: 1.0, probe: 0.5 },                                 // the steepest face a walker climbs; the slope's probe (m)
+    sites: { margin: 3, band: 24, keepOff: 1.5, build: 300, drop: 380 },   // G6 THE SITES ON PADS: the level box past the parts (m), the blend back to the land (m), how far the trees / grass / roads keep off it (m), the walker's distance at which a site is built beside the land / let go (m)
     cliff: { from: 0.72, to: 0.97 },                                     // the drawn cliff: slope 0.72 starts it, 0.97 is all cliff
     sea: { y: 0, color: 0x2e627c, far: 0x3a6f88 },                       // the sea's level; its near / far colours (G3: the water shader's own, below)
     /* THE WATER (G3, §5.4): the sea stands at sea.y wherever its ground is below it; the rivers and the lakes are the bake's water
@@ -42147,10 +41415,10 @@ const HQ_LAND_RULES = {
         look: { shallow: 0x3e9c96, mid: 0x2c6780, deep: 0x0d2a40, fresh: 0x2f5c52, foam: 0xeef6f4, deepM: 22, foamM: 1.4, ripple: 5.5, sheet: 'water', waves: 'waves_1' },
         depthTex: { n: 256, step: 2, reM: 96 },
         moor: [
-            { id: 'loch', at: [-814, 126], r: 40 },          // Loch Ness below the estate (the south-east shore)
+            { id: 'loch', at: [-778, 128], r: 40 },          // Loch Ness below the estate (the south-east shore)
             { id: 'bay', at: [1210, 484], r: 40 },           // the bay's beach under the Bayside Mall
             { id: 'harbour', at: [1026, 244], r: 40 },       // the harbour's quay
-            { id: 'river', at: [1064, -186], r: 40 },        // the Great River's lower reach, under the Stadium
+            { id: 'river', at: [1064, -186], r: 40 },        // River 1's lower reach, under the Stadium
         ],
     },
     ao: { r: 5, k: 0.08, min: 0.58 },                                    // the ground's own AO: a hollow `r` m across darkens by k a metre
@@ -42189,7 +41457,7 @@ const HQ_LAND_RULES = {
         },
         forestMix: { fairy: 'fairy', redwood: 'redwood', pines: 'pine', eastwood: 'broad' },
         northH: 150, northZ: -950,
-        zones: [ { at: [-1130, -330], r: 240, mix: 'haunt' } ],          // THE RITUAL WOODS
+        zones: [ { at: [-1130, -330], r: 240, mix: 'haunt' } ],          // AREA 6
         /* the undergrowth: the woods batch's fern, never a blocker */
         under: { cell: 2.3, minSp: 1.7, jit: 0.9, p: 0.5, edge: 0.06, slope: 0.8, kinds: [{ id: 'fern', src: 'misc:fern', h: [0.7, 1.3] }] },
         /* the rocks: the D.O.O.R. kit's asteroids, fitted to `span` m across and span × hK m tall, sunk `sink` of that; a rock is a
@@ -42432,7 +41700,13 @@ function _hqLandPadsNear(xa, za, xb, zb) {
 function _hqLandPadK(pads, x, z) {
     let k = 1;
     for (let i = 0; i < pads.length; i++) { const p = pads[i], d = Math.hypot(x - p[0], z - p[1]); if (d < p[2]) { const t = Math.max(0, (d - p[2] * 0.55) / (p[2] * 0.45)); k = Math.min(k, t * t * (3 - 2 * t)); } }
-    return k;
+    return Math.min(k, _hqLandSiteK(x, z));
+}
+/* G6: a site's box is flat (the bake levelled it + HQ_LAND_RULES.sites.margin): the detail fades out over its band */
+function _hqLandSiteK(x, z) {
+    const SR = HQ_LAND_RULES.sites; if (!SR) return 1;
+    const d = hqLandSiteGap(x, z).d, t = Math.max(0, Math.min(1, (d - SR.margin) / (SR.band * 0.5)));
+    return t * t * (3 - 2 * t);
 }
 /* the drawn ground (the chunk's vertex, the walker's feet): the base + the detail — null before anything has landed */
 function hqLandHeight(x, z) { const b = hqLandBase(x, z); return b == null ? null : b + hqLandDetail(x, z); }
@@ -42743,7 +42017,9 @@ function _hqFloraJob(t) {
     const clearOf = (x, z, d) => !(tab.clear[t.mat[near(x + d, z)]] || tab.clear[t.mat[near(x - d, z)]] || tab.clear[t.mat[near(x, z + d)]] || tab.clear[t.mat[near(x, z - d)]] || tab.clear[t.mat[near(x, z)]]);
     const hqR = HQ_LAND_RULES.hq.r + T.hq, nearHQ = x0 < hqR && x1 > -hqR && z0 < hqR && z1 > -hqR;
     const tp = pads.filter(q => q[0] + q[2] + 12 > x0 && q[0] - q[2] - 12 < x1 && q[1] + q[2] + 12 > z0 && q[1] - q[2] - 12 < z1);   // the pads near this tile
-    const onPad = (x, z, m) => { if (nearHQ && x * x + z * z < hqR * hqR) return true; for (let i = 0; i < tp.length; i++) { const dx = x - tp[i][0], dz = z - tp[i][1], rr = tp[i][2] + m; if (dx * dx + dz * dz < rr * rr) return true; } return false; };
+    const ko = (HQ_LAND_RULES.sites && HQ_LAND_RULES.sites.keepOff) || 0, ts = hqLandSites().filter(S => S.x0 - 12 < x1 && S.x1 + 12 > x0 && S.z0 - 12 < z1 && S.z1 + 12 > z0);   // G6: the sites near this tile
+    const onPad = (x, z, m) => { if (nearHQ && x * x + z * z < hqR * hqR) return true; for (let i = 0; i < tp.length; i++) { const dx = x - tp[i][0], dz = z - tp[i][1], rr = tp[i][2] + m; if (dx * dx + dz * dz < rr * rr) return true; }
+        for (let i = 0; i < ts.length; i++) { const S = ts[i], p = m + ko; if (x > S.x0 - p && x < S.x1 + p && z > S.z0 - p && z < S.z1 + p) return true; } return false; };
     const low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
     const trees = [], cells = new Map(), steps = [], SUB = 4, sw = St.tile / SUB;
     const layer = (L, salt, fn) => { for (let b = 0; b < SUB * SUB; b++) { const sx = x0 + (b % SUB) * sw, sz = z0 + Math.floor(b / SUB) * sw; steps.push(() => _hqFloraGrid(L, salt, sx, sz, b % SUB === SUB - 1 ? x1 : sx + sw, b >= SUB * (SUB - 1) ? z1 : sz + sw, fn)); } };
@@ -42838,7 +42114,7 @@ function hqLandGrassField(F, n, ix0, iz0, w, h) {
             const q = (b + 1) * W + a + 1, o = row + md(ix0 + a), y = g.h[q], m = g.mat[q], x = (ix0 + a) * st;
             F.h[o] = y; F.m[o] = m;
             let p = tab.grass[m];
-            if (p > 0 && (Math.hypot(g.h[q + 1] - g.h[q - 1], g.h[q + W] - g.h[q - W]) > sl || y < seaY || hqLandHQSolid(x, z, 0.5))) p = 0;
+            if (p > 0 && (Math.hypot(g.h[q + 1] - g.h[q - 1], g.h[q + W] - g.h[q - W]) > sl || y < seaY || hqLandHQSolid(x, z, 0.5) || hqLandSiteAt(x, z, (HQ_LAND_RULES.sites && HQ_LAND_RULES.sites.keepOff) || 0))) p = 0;   // G6: never through a site's own ground
             if (p > 0) { const wy = hqLandFresh(x, z); if (wy != null && wy > y - 0.05) p = 0; }
             F.d[o] = Math.round(p * 255);
         }
@@ -43105,6 +42381,60 @@ function hqLandWorldGrid(k) {
 }
 /* the land room's doors stand on their pads (the bake moves a pad's height: the row's `y` is re-read here) */
 (function () { const L = DOOR_HQ.rooms && DOOR_HQ.rooms.land; if (!L) return; (L.doors || []).forEach(d => { if (d.pad) { const y = hqLandPadY(d.pad); if (y != null) d.y = y; } }); })();
+/* ══ THE SITES ON THEIR PADS (WORLD_GEOGRAPHY_PLAN G6, 2026-09-28) ══════════════════════════════════════════════════════
+   HQ_WORLD.zones.land's rows name their place (`place`, `dx` / `dz` / `dy`): hqLandSiteFrames writes their frames (x, z = the
+   place's `at` + the offsets, y = its `padY` + dy, rot 0, `on: 'land'`) and an island join's `y` (the pad the site's edges ease
+   to). hqLandSites: one row per place — the union of its parts' boxes (land metres), the pad's height, the parts. The bake
+   levels that box + HQ_LAND_RULES.sites.margin flat and blends it back over `band`; the trees, the grass and the roads keep off
+   it (the site's own ground is there once it is drawn). hqLandSiteAt: the site whose box (+ pad) holds a point. */
+function hqLandSiteFrames() {
+    const Z = HQ_WORLD.zones && HQ_WORLD.zones.land; if (!Z) return;
+    const placeOf = id => (HQ_LAND.places || []).find(q => q.id === id) || null;
+    Object.keys(Z.parts).forEach(id => {
+        const P = Z.parts[id]; if (!P.place) return;
+        const pl = placeOf(P.place); if (!pl) { if (typeof console !== 'undefined') console.warn('[HQ land] ' + id + ': no place ' + P.place); return; }
+        P.x = Math.round((pl.at[0] + (P.dx || 0)) * 1000) / 1000; P.z = Math.round((pl.at[1] + (P.dz || 0)) * 1000) / 1000;
+        P.y = Math.round(((+pl.padY || 0) + (P.dy || 0)) * 1000) / 1000; P.rot = 0;
+        if (!P.on) P.on = 'land';
+    });
+    (Z.joins || []).forEach(j => { if (!j.pad) return; const P = Z.parts[j.b], pl = P && placeOf(P.place); if (pl) j.y = +pl.padY || 0; });
+    _hqWorldIdx = null; _hqLandSitesCache = null;
+}
+let _hqLandSitesCache = null;
+function hqLandSites() {
+    if (_hqLandSitesCache && _hqLandSitesCache.W === HQ_WORLD) return _hqLandSitesCache.out;
+    const Z = HQ_WORLD.zones && HQ_WORLD.zones.land, by = {}, out = [];
+    if (Z) Object.keys(Z.parts).forEach(id => {
+        const P = Z.parts[id]; if (!P.place) return;
+        const r = hqWorldPartRect(id); if (!r) return;
+        const pl = (HQ_LAND.places || []).find(q => q.id === P.place);
+        const S = by[P.place] || (by[P.place] = { place: P.place, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, y: pl ? +pl.padY || 0 : 0, parts: [] });
+        S.x0 = Math.min(S.x0, r.x0); S.z0 = Math.min(S.z0, r.z0); S.x1 = Math.max(S.x1, r.x1); S.z1 = Math.max(S.z1, r.z1); S.parts.push(id);
+    });
+    Object.keys(by).forEach(k => out.push(by[k]));
+    _hqLandSitesCache = { W: HQ_WORLD, out };
+    return out;
+}
+/* the site whose box grown by `pad` m holds (x, z) (land metres), else null */
+function hqLandSiteAt(x, z, pad) {
+    const L = hqLandSites(), p = pad || 0;
+    for (let i = 0; i < L.length; i++) { const S = L[i]; if (x > S.x0 - p && x < S.x1 + p && z > S.z0 - p && z < S.z1 + p) return S; }
+    return null;
+}
+/* metres from (x, z) to the nearest site's box (0 inside), and that site — the detail noise and the grass fade by it */
+function hqLandSiteGap(x, z) {
+    const L = hqLandSites(); let best = Infinity, site = null;
+    for (let i = 0; i < L.length; i++) { const S = L[i], d = Math.hypot(Math.max(S.x0 - x, 0, x - S.x1), Math.max(S.z0 - z, 0, z - S.z1)); if (d < best) { best = d; site = S; } }
+    return { d: best, site };
+}
+hqLandSiteFrames();
+/* a site on the land sees as far as the land does (§5.3: the region's weather, not the old part's box, sets the sight): its fog's
+   density is the land's; its colours, its night and its lock stay its own */
+(function () {
+    const LR = DOOR_HQ.rooms && DOOR_HQ.rooms.land, d = LR && LR.shell && LR.shell.sky && LR.shell.sky.fog && LR.shell.sky.fog.density;
+    const Z = HQ_WORLD.zones && HQ_WORLD.zones.land; if (!d || !Z) return;
+    Object.keys(Z.parts).forEach(id => { const R = id !== 'land' && DOOR_HQ.rooms[id], f = R && R.shell && R.shell.sky && R.shell.sky.fog; if (f && f.density > 0) f.density = d; });
+})();
 /* ── THE UNDISCOVERED DOOR (2026-09-21, the user: "don't show the names of undiscovered
    locations on doors — just a question mark or nothing at all; get rid of the descriptors,
    we just need the location") ─────────────────────────────────────────────────────────
@@ -43251,9 +42581,6 @@ const HQ_AREA_KEPT_LEAVES = {
     dumb_cern: 'THE TUNNEL is the route (the bases)',
     cern_backrooms: 'a SECRET service bay — not on the plan',
     ranch_lodge: 'THE RANCH: the saloon door onto the corn is the Lodge\'s only gate',
-    ranch_grove: 'THE RANCH: the grove\'s back gate is the interchange to the woods',
-    woods_grove: 'THE WOODS: the owl\'s gate off the redwood trail',
-    woods_shasta: 'THE WOODS: the trail tops out on the mountain — a door you climb to',
     woods_stair: 'a facility stair', woods_sewer: 'a facility grate', woods_ritual: 'a facility circle',
     northpole_camelot: 'CAMELOT KINGDOM: the sleigh road is the Pole\'s only road',
     stonehenge_gobekli: 'THE LEY LINE is the tunnel', gobekli_giza: 'THE LEY LINE is the tunnel', giza_babel: 'THE LEY LINE is the tunnel', babel_technoticlan: 'THE LEY LINE is the tunnel',
@@ -43285,7 +42612,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
     site_prebuilt_hell_pit: { x: -0.5, z: 0 },   // THE PIT: the bowl floor
     site_prebuilt_heaven_gate: { x: -1.5, z: 1 },   // THE CLOUD FIELDS: under the dais
-    site_prebuilt_camelot_road: { x: 10, z: 60 },   // THE CROWN'S ROAD: on the verge by the portcullis (OPEN WORLD Phase 6: the road is Camelot's entry)
+    site_prebuilt_camelot_ward: { x: 8, z: 54 },   // CAMELOT: inside the portcullis (G6: the ward is the entry)
     site_prebuilt_skinwalker_fields: { x: -4, z: 6 },   // THE CORN FIELDS: by the circle
     site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
     site_prebuilt_atlantis_temple: { x: 0, z: 0 },   // THE TEMPLE: the dais
@@ -46262,7 +45589,7 @@ function hqTerrainStitchRows(roomId) {
            the water with no step where the two parts meet. An island with no `y` (the Dutchman's hull) keeps its own edge. */
         if (j.kind === 'island' && j.b === roomId && j.y != null && hqStagePart(j.a) && hqStagePart(j.b)) {
             const Si = hqWorldPartSize(roomId), yi = j.y - (F.y || 0), mi = (j.stitchM > 0) ? j.stitchM : m;
-            [['n', Si.w], ['s', Si.w], ['e', Si.d], ['w', Si.d]].forEach(s => out.push({ side: s[0], t0: -s[1] / 2, t1: s[1] / 2, m: mi, yAt: () => yi, other: j.a }));
+            [['n', Si.w], ['s', Si.w], ['e', Si.d], ['w', Si.d]].forEach(s => out.push({ side: s[0], t0: -s[1] / 2, t1: s[1] / 2, m: mi, yAt: () => yi, other: j.a, island: true }));
             return;
         }
         if (j.kind === 'door' || j.kind === 'island') return;
@@ -46437,8 +45764,17 @@ function hqTerrainCompile(room, roomId) {
        HQ_WORLD_RULES.stitchM of the joined side (and stitchM past the span's ends) the field eases to it. Both parts read the
        same authored numbers, so each compiles alone and the two agree at the line (hq-joins.test.js). */
     const stitch = hqTerrainStitchRows(roomId);
+    /* G6: an island's ease leaves its authored tiers standing (a landing at the box's edge stays a landing, its face drawn) */
+    const tierIn = (px, pz) => F.some(f => {
+        if (f.k === 'plateau') return f.r > 0 ? Math.hypot(px - f.x, pz - f.z) < f.r + 0.5 : Math.abs(px - f.x) <= (f.w || 0) / 2 + 0.5 && Math.abs(pz - f.z) <= (f.d || 0) / 2 + 0.5;
+        if (f.k === 'ramp' && f.x0 != null) { const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L2 = dx * dx + dz * dz || 1, u = ((px - f.x0) * dx + (pz - f.z0) * dz) / L2;
+            if (u < 0 || u > 1) return false; return Math.hypot(px - f.x0 - dx * u, pz - f.z0 - dz * u) <= (f.w || 0) / 2 + 0.5; }
+        return false;
+    });
     const hStitch = (px, pz, h) => {
+        let tier = null;
         for (const s of stitch) {
+            if (s.island && (tier === null ? (tier = tierIn(px, pz)) : tier)) continue;
             const din = s.side === 'n' ? pz + S.d / 2 : s.side === 's' ? S.d / 2 - pz : s.side === 'e' ? S.w / 2 - px : px + S.w / 2;
             if (din >= s.m) continue;
             const t = (s.side === 'n' || s.side === 's') ? px : pz;
@@ -46502,9 +45838,17 @@ function hqTerrainCompile(room, roomId) {
     let genUse = T.gen;
     if (T.gen && T.gen.kind !== 'city' && stitch.length) {   // a city plan's streets already run out through its road joins (Phase 1's stitch)
         const hw = S.w / 2, hd = S.d / 2, inD = 4, outD = roam + 2;
-        const extra = stitch.map(st => { const tc = (st.t0 + st.t1) / 2, w = Math.max(2, st.t1 - st.t0);
+        /* G6: an island's side is a whole edge of the box — its mouth is a gap in the middle of the side (`islandMouthW` m),
+           never the side's full width (a capsule that wide would open the whole plan: the corn, the maze, the woods' banks) */
+        const extra = stitch.map(st => { const tc = (st.t0 + st.t1) / 2, w = st.island ? Math.min(Math.max(2, st.t1 - st.t0), HQ_WORLD_RULES.islandMouthW || 10) : Math.max(2, st.t1 - st.t0);
             return st.side === 'n' ? { x0: tc, z0: -hd + inD, x1: tc, z1: -hd - outD, w } : st.side === 's' ? { x0: tc, z0: hd - inD, x1: tc, z1: hd + outD, w }
                  : st.side === 'e' ? { x0: hw - inD, z0: tc, x1: hw + outD, z1: tc, w } : { x0: -hw + inD, z0: tc, x1: -hw - outD, z1: tc, w }; });
+        /* …and a strip along each island side (`islandEdgeM` m either side of the edge): the land runs on to the plan's bank,
+           which the thicket dresses on its outer face — never a solid rim with nothing drawn on it where the land meets the box */
+        const eM = HQ_WORLD_RULES.islandEdgeM || 1.5;
+        stitch.filter(st => st.island).forEach(st => { const w = eM * 2;
+            extra.push(st.side === 'n' ? { x0: -hw, z0: -hd, x1: hw, z1: -hd, w } : st.side === 's' ? { x0: -hw, z0: hd, x1: hw, z1: hd, w }
+                     : st.side === 'e' ? { x0: hw, z0: -hd, x1: hw, z1: hd, w } : { x0: -hw, z0: -hd, x1: -hw, z1: hd, w }); });
         genUse = Object.assign({}, T.gen, { open: (T.gen.open || []).concat(extra), mouths: extra });
     }
     if (T.gen) { try { _hqTGenerate(info, room, roomId, genUse, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
@@ -47046,9 +46390,7 @@ const HQ_TAPE_SHEET = {
     site_prebuilt_bermuda_sea: [['FLIGHT 19, 14:10', 'Five aircraft in formation over a flat sea. The lead turns. The others turn with it. The sea does not.', 'evidence']],   // AREA 51 (2026-09-18): its second tape went to the flight line; THE DEEP (2026-09-18): the board bypassed — the tape is on the lighthouse rock
     /* THE WOODS (9.3 stage 3, 2026-09-16): seven tapes re-homed — the garden's tree (the names are carved in THE OLD TREE now), and six sites' second tapes (Shasta's map on the tree, the ranch's mesa, the forest's lantern, the grove's fire, Babel's climb, Downtown's alley camera) — the hundred stays a hundred; a built site keeps at least one */
     site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents'], ['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
-    site_prebuilt_fairy_forest_trail:    [['THE TUNNEL MOUTH', 'A hand-drawn map of the mountain’s inside, pinned to a tree on the trail. Your father’s handwriting.', 'parents']],
     site_prebuilt_fairy_forest_redwoods: [['THE LANTERN', 'A lantern moving between the redwoods at ankle height. It stops when watched.', 'evidence']],
-    site_prebuilt_fairy_forest_pasture:  [['THE MESA', 'A shape on the mesa at dusk, over the pasture fence. It gets closer on every loop.', 'evidence']],
     site_prebuilt_fairy_forest_stair:    [['THE CLIMB', 'A staircase in the woods that keeps going. The landing is the fourth step every time.', 'evidence']],
     site_prebuilt_fairy_forest_deadmans: [['THE ALLEY CAMERA', 'A security feed of a storm drain. A door in the drain wall opens onto this building’s platform.', 'facility']],
     site_prebuilt_fairy_forest_ritual:   [['THE CREMATION OF CARE', 'Men in robes at a fire between the stones. One of them is on the Bureau’s wall.', 'facility']],
@@ -47410,7 +46752,6 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_hollow_earth_mouth:   { tape: { x: -6.5, z: 6.5 } },      // THE SHELF in the mouth's south corner
     site_prebuilt_skinwalker_fields:    { tape: { x: 18.0, z: -14.0 }, tape2: { x: 8.0, z: 12.0 } },   // THE AREAS (2026-09-18): the board's tape came onto the fields — by the track     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
     site_prebuilt_fairy_forest_clearing: { tape: { x: 14.5, z: -12.5 } },   // THE CRAG under the staircase's lane
-    site_prebuilt_fairy_forest_trail:   { tape: { x: 8.5, z: -12.5 } },     // THE PINNACLE over the top tier
     site_prebuilt_fairy_forest_redwoods: { tape: { x: 10.0, z: 6.0 } },     // THE STAND
     site_prebuilt_fairy_forest_stair:   { tape: { x: -7.0, z: 4.0 } },      // THE TOWER
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the skull stack, the colossus's plinth, the stairway's pinnacle, the pillar of light — the door gun's four */

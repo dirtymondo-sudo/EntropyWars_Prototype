@@ -34,7 +34,7 @@ function withWorld(edit, fn) {
 
 test('the world table is DOOR_HQ.world, with its rules, and the validator passes on the shipped geography', () => {
     assert.ok(W && W.grounds && W.zones && Array.isArray(W.borders), 'grounds, zones, borders');
-    for (const g of ['surface', 'under', 'rome', 'ley']) assert.ok(W.grounds[g], 'the ground ' + g);
+    for (const g of ['surface', 'land', 'under', 'ley']) assert.ok(W.grounds[g], 'the ground ' + g);   // G6 (2026-09-28): the Vatican's own ground went onto the land
     const WR = vm.runInContext('HQ_WORLD_RULES', D), SR = vm.runInContext('HQ_STAGE_RULES', D), CK = vm.runInContext('HQ_WORLD_CLOCK', D);
     assert.ok(WR.joinTol > 0 && WR.far > 0, 'HQ_WORLD_RULES');
     assert.ok(SR.instanceMin >= 2 && SR.instanceCell > 0 && SR.callsMax > 0, 'HQ_STAGE_RULES carries the instance pass\'s numbers and the budget');
@@ -46,15 +46,14 @@ test('the world table is DOOR_HQ.world, with its rules, and the validator passes
     assert.ok(v.joins >= 30, 'the joins and the borders (' + v.joins + ')');
 });
 
-test('the compass (§4.5): the forecourt at the origin, the city east, the woods west, the kingdom north, the highway and the desert south', () => {
-    const F = id => D.hqWorldFrame(id);
-    assert.equal(D.hqWorldZoneOf('hq_grounds'), 'forecourt');
-    assert.equal(F('hq_grounds').x, 0); assert.equal(F('hq_grounds').z, 0);
-    assert.ok(F('site_prebuilt_downtown_streets').x > 0, 'Downtown east');
-    assert.ok(F('site_prebuilt_haunted_grounds').x < 0, 'the estate west');
+test('the compass (G6): on the land HQ at the origin, Downtown east, the estate west, Camelot north, the Strip then Area 51 south, Olympus high', () => {
+    const F = id => D.hqWorldFrame(id), P = vm.runInContext('HQ_LAND.places', D), hq = P.find(q => q.id === 'hq');
+    assert.deepEqual([hq.at[0], hq.at[1]], [0, 0], 'HQ at the land\'s origin');
+    assert.ok(P.find(q => q.id === 'downtown').at[0] > 0, 'Downtown east');
+    assert.ok(F('site_prebuilt_haunted_grounds').x < 0 && F('site_prebuilt_haunted_grounds').ground === 'land', 'the estate west');
     assert.ok(F('site_prebuilt_camelot_ward').z < 0, 'Camelot north (north is −z)');
-    assert.ok(F('site_prebuilt_strip_highway').z > 0 && F('site_prebuilt_area51_flightline').z > F('site_prebuilt_strip_highway').z, 'the highway then Area 51 south');
-    assert.ok(F('site_prebuilt_olympus_summit').y > F('site_prebuilt_olympus_foothills').y, 'Olympus climbs');
+    assert.ok(F('site_prebuilt_strip_streets').z > 0 && F('site_prebuilt_area51_flightline').z > F('site_prebuilt_strip_streets').z, 'the Strip then Area 51 south');
+    assert.ok(F('site_prebuilt_olympus_summit').y > F('site_prebuilt_camelot_ward').y + 200, 'Olympus climbs');
     for (const id of Object.keys(W.zones.underworld.parts)) assert.equal(F(id).ground, 'under', 'the underworld is under the surface');
 });
 
@@ -65,8 +64,8 @@ test('the two transforms round-trip for every part, and a quarter turn carries n
             assert.ok(Math.abs(back.x - x) < 1e-9 && Math.abs(back.z - z) < 1e-9, id + ' round-trips');
         }
     }
-    withWorld(W2 => { W2.zones.forecourt.parts.hq_grounds.rot = 1; }, () => {
-        const n = D.hqWorldToZone('hq_grounds', 0, -1);   // a step north in the room
+    withWorld(W2 => { W2.zones.city.parts.site_prebuilt_downtown_streets.rot = 1; }, () => {
+        const n0 = D.hqWorldToZone('site_prebuilt_downtown_streets', 0, 0), n1 = D.hqWorldToZone('site_prebuilt_downtown_streets', 0, -1), n = { x: n1.x - n0.x, z: n1.z - n0.z };   // a step north in the room
         assert.ok(Math.abs(n.x + 1) < 1e-9 && Math.abs(n.z) < 1e-9, 'rot 1: north lands west (three.js rotation.y = +π/2)');
     });
     /* an absorbed room lands at its spot in its field (the cave field); OPEN WORLD Phase 4: the woods' rooms are parts of their own,
@@ -74,9 +73,8 @@ test('the two transforms round-trip for every part, and a quarter turn carries n
     const f = D.hqWorldFrame('site_prebuilt_hollow_earth_vent'), field = D.hqWorldFrame('under_field');
     assert.equal(f.absorbedBy, 'under_field');
     assert.equal(f.x, field.x + W.zones.under.parts.under_field.absorbs.site_prebuilt_hollow_earth_vent.x);
-    assert.equal(D.hqWorldFrame('site_prebuilt_fairy_forest_trail').absorbedBy, null, 'the trail is a part of the woods');
-    assert.equal(D.hqWorldFrame('site_prebuilt_fairy_forest_ritual').absorbedBy, 'site_prebuilt_fairy_forest_clearing', 'the ritual ground beside the clearing');
-    assert.equal(D.hqStagePart('site_prebuilt_fairy_forest_ritual'), null, 'and never staged');
+    assert.equal(D.hqWorldFrame('site_prebuilt_fairy_forest_ritual').absorbedBy, null, 'G6: the ritual ground is a site of its own on the land');
+    assert.ok(D.hqStagePart('site_prebuilt_fairy_forest_ritual'), 'and staged');
 });
 
 test('every edge join resolves onto both parts\' opposite sides; borders cross zones on one ground; the ring grows by hops', () => {
@@ -89,18 +87,21 @@ test('every edge join resolves onto both parts\' opposite sides; borders cross z
         assert.equal(sides[(sides.indexOf(J.b.side) - Fb.rot + 4) % 4], opp[J.gSide], j.a + ' ⇄ ' + j.b + ': b meets it face to face');
     }
     for (const b of W.borders) assert.notEqual(D.hqWorldZoneOf(b.a), D.hqWorldZoneOf(b.b), b.a + ' ⇄ ' + b.b + ' is a border');
-    const ring = D.hqWorldRing('hq_grounds', 2);
-    assert.equal(ring.hq_grounds, 0);
-    assert.equal(ring.site_prebuilt_downtown_streets, 1, 'the forecourt\'s east road reaches Downtown in one hop');
+    const ring = D.hqWorldRing('site_prebuilt_downtown_harbour', 2);
+    assert.equal(ring.site_prebuilt_downtown_harbour, 0);
+    assert.equal(ring.site_prebuilt_downtown_streets, 1, 'the quay reaches Downtown in one hop');
+    assert.equal(ring.site_prebuilt_stadium_bowl, 2, 'the bowl two hops off');
     assert.ok(Object.values(ring).every(h => h <= 2));
-    assert.ok(D.hqWorldNeighbours('site_prebuilt_downtown_streets').includes('hq_grounds'));
+    assert.ok(D.hqWorldNeighbours('site_prebuilt_downtown_streets').includes('site_prebuilt_downtown_harbour'));
+    const lr = D.hqWorldRing('land', 1);
+    assert.ok(lr.site_prebuilt_camelot_ward === 1 && lr.site_prebuilt_strip_streets === 1, 'every island is one hop off the land');
 });
 
 test('the validator catches what it promises: an overlap, a join off its line, a part cut off, a planned part without a size, a room in two zones', () => {
     const has = (errs, re) => errs.some(e => re.test(e));
-    withWorld(W2 => { W2.zones.city.parts.site_prebuilt_strip_streets.x = 150; }, () => {
+    withWorld(W2 => { W2.zones.city.parts.site_prebuilt_stadium_bowl.z = W2.zones.city.parts.site_prebuilt_downtown_streets.z; }, () => {
         const v = D.hqWorldValidate(); assert.equal(v.ok, false);
-        assert.ok(has(v.errors, /overlap/), 'the Strip dropped onto Downtown overlaps: ' + v.errors.join('; '));
+        assert.ok(has(v.errors, /overlap/), 'the bowl dropped onto Downtown overlaps: ' + v.errors.join('; '));
     });
     withWorld(W2 => { W2.zones.city.parts.site_prebuilt_stadium_bowl.z -= 5; }, () => {
         assert.ok(has(D.hqWorldValidate().errors, /off the join's line/), 'a stadium moved 5 m off its road');
@@ -108,10 +109,10 @@ test('the validator catches what it promises: an overlap, a join off its line, a
     withWorld(W2 => { W2.zones.city.joins = W2.zones.city.joins.filter(j => j.b !== 'site_prebuilt_stadium_bowl' && j.a !== 'site_prebuilt_stadium_bowl'); }, () => {
         assert.ok(has(D.hqWorldValidate().errors, /not reached from the hub/), 'a part with no join is cut off');
     });
-    withWorld(W2 => { delete W2.zones.forecourt.parts.hq_grounds.planned.w; }, () => {
+    withWorld(W2 => { W2.zones.city.parts.city_lot = { x: 900, z: 900, rot: 0, planned: { h: 10 } }; }, () => {
         assert.ok(has(D.hqWorldValidate().errors, /planned without a size/));
     });
-    withWorld(W2 => { W2.zones.woods.parts.site_prebuilt_downtown_streets = clone(W2.zones.city.parts.site_prebuilt_downtown_streets); }, () => {
+    withWorld(W2 => { W2.zones.coast.parts.site_prebuilt_downtown_streets = clone(W2.zones.city.parts.site_prebuilt_downtown_streets); }, () => {
         assert.ok(has(D.hqWorldValidate().errors, /in two zones/));
     });
     assert.equal(D.hqWorldValidate().ok, true, 'the shipped table is untouched');
@@ -127,9 +128,10 @@ test('THE LAND SHEET: the fog draws the room you stand in and names its neighbou
     assert.ok(!S.parts.some(p => p.planned), 'no planned part without all');
     assert.ok(!S.parts.some(p => p.st === 'seen' && p.id !== here), 'nothing else is charted on a fresh profile');
     const A = D.hqWorldSheet({}, here, { all: true });
-    assert.ok(A.parts.some(p => p.planned), 'EW_HQ_MAP_ALL draws the parts not built yet');
-    assert.ok(A.parts.some(p => p.absorbedBy === 'site_prebuilt_fairy_forest_clearing'), 'the ritual ground at its spot beside the clearing (OPEN WORLD Phase 4)');
-    assert.ok(A.joins.length >= 20 && A.doors.length > 0, 'joins and the doors that are still doors');
+    assert.ok(A.parts.every(p => !p.planned), 'G6: no planned part left on the table (the forecourt went onto the land)');
+    assert.ok(A.parts.length >= S.parts.length && A.joins.length >= 3 && A.doors.length > 0, 'joins and the doors that are still doors');
+    const L = D.hqWorldSheet({}, 'land', { all: true });
+    assert.equal(L.ground, 'land'); assert.ok(L.parts.length >= 20, 'the land sheet draws its sites');
     assert.ok(A.grounds.length >= 3, 'the grounds are tabs');
     for (const j of A.joins) assert.ok(isFinite(j.x0 != null ? j.x0 : j.x), 'a join has a place');
 });

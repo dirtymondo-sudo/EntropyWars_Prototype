@@ -217,7 +217,7 @@ function bake(opts) {
         const hills = fbm(nA, wx / 420, wz / 420, 6, 2.05, 0.5);
         const hills2 = fbm(nB, wx / 150, wz / 150, 4, 2.1, 0.45);
         let h = base + amp * (hills * 1.15 + 0.35 * hills2);
-        h += W.badlands[c] * 18 * (ridged(nB, wx / 160, wz / 160, 4) - 0.35);   // the badlands: eroded ridges
+        h += W.badlands[c] * 18 * (ridged(nB, wx / 160, wz / 160, 4) - 0.35);   // Area 8: eroded ridges
         H[c] = h;
     } }
     for (const b of R.bumps) { const [bx, bz] = b.at; const [i0, i1, j0, j1] = box(bx - b.r, bz - b.r, bx + b.r, bz + b.r);
@@ -244,7 +244,7 @@ function bake(opts) {
     log('thermal');
     { const T = 1.05 * CELL, iters = Math.round(30 * 4 / CELL); for (let it = 0; it < iters; it++) for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) { const c = j * N + i;
         for (let q4 = 0; q4 < 4; q4++) { const q = q4 === 0 ? c + 1 : q4 === 1 ? c - 1 : q4 === 2 ? c + N : c - N; const d = H[c] - H[q]; if (d > T) { const mv = (d - T) * 0.22; H[c] -= mv; H[q] += mv; } } } }
-    // THE RIM: the escarpment (north of the line the highlands stand; south of it the foot is the desert)
+    // AREA 13: the escarpment (north of the line the highlands stand; south of it the foot is the desert)
     log('rim');
     { const P = resample(R.rim.pts, 6, false); const F = polyField(P, 280, true); const Ltot = F.L[F.L.length - 1];
         for (let c = 0; c < NN; c++) { if (F.d[c] > 280) continue; const sd = F.side[c] * F.d[c];
@@ -281,6 +281,16 @@ function bake(opts) {
     // the drops per km²), so a 2 m bake and an 8 m bake carve the same land at their own grain.
     log('erosion');
     const PADS = new Float32Array(NN);   // 1 = a place stands here (no erosion, no trees)
+    // G6 (THE SITES ON THEIR PADS, 2026-09-28): each place's parts stand on the land (data.js hqLandSites — the union of their boxes);
+    // the ground under that box (+ `margin`) is flat at the pad's height and eases back to the land over `band` m; no trees in it
+    const SR = (sb && vm.runInContext('typeof HQ_LAND_RULES !== "undefined" && HQ_LAND_RULES.sites ? JSON.stringify(HQ_LAND_RULES.sites) : "null"', sb)) || 'null';
+    const SRULE = Object.assign({ margin: 3, band: 24 }, JSON.parse(SR) || {});
+    const SITES = (sb && typeof sb.hqLandSites === 'function') ? JSON.parse(JSON.stringify(sb.hqLandSites())) : [];
+    const rectD = (S, x, z) => Math.hypot(Math.max(S.x0 - x, 0, x - S.x1), Math.max(S.z0 - z, 0, z - S.z1));
+    const SITE = new Uint8Array(NN);     // 1 = inside a site's box + margin (the island's own ground covers it)
+    for (const S of SITES) { const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const c = j * N + i, d = rectD(S, X(i), Z(j)); if (d <= SRULE.margin) SITE[c] = 1;
+            PADS[c] = Math.max(PADS[c], 1 - ss(SRULE.margin, SRULE.margin + SRULE.band, d)); } }
     for (const p of R.places) if (p.pad) { const [px, pz] = p.at; const r = p.pad * 1.3; const [i0, i1, j0, j1] = box(px - r, pz - r, px + r, pz + r);
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const t = Math.hypot(X(i) - px, Z(j) - pz) / r; if (t < 1) PADS[j * N + i] = Math.max(PADS[j * N + i], 1 - ss(0.75, 1, t)); } }
     (function erode() {
@@ -436,14 +446,27 @@ function bake(opts) {
         p.y = y;
         const [i0, i1, j0, j1] = box(px - r * 1.6, pz - r * 1.6, px + r * 1.6, pz + r * 1.6);
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-            const c = j * N + i; const t = Math.hypot(X(i) - px, Z(j) - pz) / r; if (t > 1.6) continue; const w = 1 - ss(0.8, 1.6, t); if (WATER[c] > -9000 && WATER[c] > y) continue; H[c] = lerp(H[c], y, w); } }
+            const c = j * N + i; const t = Math.hypot(X(i) - px, Z(j) - pz) / r; if (t > 1.6) continue; const w = 1 - ss(0.8, 1.6, t); if (WATER[c] > -9000 && (WATER[c] > y || t > 0.8)) continue; H[c] = lerp(H[c], y, w); } }   // G6: a river past the flat keeps its bed (the blend never buries it)
+    // G6: the sites' boxes, flat to their pad's height (after the discs, so the box wins where a disc's blend runs under it)
+    for (const S of SITES) { const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
+        // the band lets go of the ground toward a shore (a chamfer distance to the window's water): the bank meets its water, never a wall
+        const wi = i1 - i0 + 1, wj = j1 - j0 + 1, DW = new Float32Array(wi * wj), BIG = 1e9, dg = CELL * Math.SQRT2;
+        for (let j = 0; j < wj; j++) for (let i = 0; i < wi; i++) DW[j * wi + i] = WATER[(j + j0) * N + i + i0] > -9000 ? 0 : BIG;
+        for (let j = 0; j < wj; j++) for (let i = 0; i < wi; i++) { const o = j * wi + i; let v = DW[o];
+            if (i > 0) v = Math.min(v, DW[o - 1] + CELL); if (j > 0) { v = Math.min(v, DW[o - wi] + CELL); if (i > 0) v = Math.min(v, DW[o - wi - 1] + dg); if (i < wi - 1) v = Math.min(v, DW[o - wi + 1] + dg); } DW[o] = v; }
+        for (let j = wj - 1; j >= 0; j--) for (let i = wi - 1; i >= 0; i--) { const o = j * wi + i; let v = DW[o];
+            if (i < wi - 1) v = Math.min(v, DW[o + 1] + CELL); if (j < wj - 1) { v = Math.min(v, DW[o + wi] + CELL); if (i < wi - 1) v = Math.min(v, DW[o + wi + 1] + dg); if (i > 0) v = Math.min(v, DW[o + wi - 1] + dg); } DW[o] = v; }
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const c = j * N + i, d = rectD(S, X(i), Z(j)); if (d > g) continue;
+            if (WATER[c] > -9000 && d > SRULE.margin) continue;
+            let w = 1 - ss(SRULE.margin, g, d); if (d > SRULE.margin) w *= ss(0, SRULE.band * 0.5, DW[(j - j0) * wi + i - i0]);
+            H[c] = lerp(H[c], S.y, w); } }
 
     // ───────── 6. ROADS (graded corridors) and TRAILS (benched)
     // G5 (THE ROADS, 2026-09-28): THE FILL CAP. The sketch's grader smoothed a road and clamped its grade, so wherever the ground fell
     // faster than the road could, the road floated off it on a "bridge" (the sketch's giveaway viaducts, §11 limit 2). Now a road may
     // stand at most `fill` m over the ground (a trail `trailFill`): the most grade-feasible profile under that cap (the lower envelope
     // of grade cones) is taken, so the road cuts into the slope instead (a cutting, its banks drawn as cliff) and leaves the ground only
-    // over water (plus `approach` m either side) or inside a NAMED VIADUCT (HQ_LAND.viaducts: fork 6, the Glen and the Loch Head).
+    // over water (plus `approach` m either side) or inside a NAMED VIADUCT (HQ_LAND.viaducts: fork 6, Bridges 6 and 7).
     log('roads');
     const RR = R.roadRules || {};
     const ROAD = new Uint8Array(NN);   // the surface: 1 highway 2 road 3 paved lane 4 dirt lane 5 trail (the lower wins where two meet)
@@ -499,7 +522,7 @@ function bake(opts) {
             for (let k = 0; k < y.length; k++) y[k] = Math.max(Math.min(y[k], E[k]), lb[k]);
             gradeClamp();
         }
-        // the water's lift is HARD: a road never passes under a river (the sketch ran Route 1 ten metres under Shasta Creek) — the
+        // the water's lift is HARD: a road never passes under a river (the sketch ran Route 1 ten metres under River 2) — the
         // lower bound's cones raise the road's approaches to clear the water, whatever the smoothing and the cap did
         { const LB = lb.slice(); for (let lap = 0; lap < (rd.loop ? 2 : 1); lap++) {
             for (let k = 1; k < LB.length; k++) LB[k] = Math.max(LB[k], LB[k - 1] - grade * (L[k] - L[k - 1]));
@@ -551,7 +574,7 @@ function bake(opts) {
     { const railDrop = RR.railDrop || 2, railOff = RR.railOff || 1.0, probe = RR.railProbe || [1.5, 3.5], minRun = RR.railMinRun || 8;
       const others = baked.map(b => ({ id: b.rd.id, P: b.P, hw: b.hw, box: b.P.reduce((a, p) => [Math.min(a[0], p[0]), Math.min(a[1], p[1]), Math.max(a[2], p[0]), Math.max(a[3], p[1])], [1e9, 1e9, -1e9, -1e9]) }));
       const nearRoad = (self, x, z) => { for (const o of others) { if (o.id === self) continue; const r = o.hw + 2.5; if (x < o.box[0] - r || x > o.box[2] + r || z < o.box[1] - r || z > o.box[3] + r) continue; for (let k = 0; k < o.P.length - 1; k++) { const a = o.P[k], b = o.P[k + 1], ex = b[0] - a[0], ez = b[1] - a[1], l2 = ex * ex + ez * ez || 1e-9; let t = ((x - a[0]) * ex + (z - a[1]) * ez) / l2; t = clamp(t, 0, 1); if (Math.hypot(x - a[0] - ex * t, z - a[1] - ez * t) < r) return true; } } return false; };
-      const onPad = (x, z) => R.places.some(p => p.pad && Math.hypot(x - p.at[0], z - p.at[1]) < p.pad + 4);
+      const onPad = (x, z) => R.places.some(p => p.pad && Math.hypot(x - p.at[0], z - p.at[1]) < p.pad + 4) || SITES.some(S => rectD(S, x, z) < SRULE.margin + 4);
       for (const b of baked) { if (b.isTrail) continue; const { P, L, y, inBridge, hw, rd } = b, n = P.length;
         for (const side of [-1, 1]) { let s0 = -1, last = -1;
             const flush = () => { if (s0 >= 0 && L[last] - L[s0] >= minRun) b.row.rails.push([+L[s0].toFixed(1), +L[last].toFixed(1), side]); s0 = -1; };
@@ -638,6 +661,7 @@ function bake(opts) {
                 else m = M.grass;
             }
             if (m !== M.forest) FOREST[c] = Math.min(FOREST[c], 60);
+            if (SITE[c]) { FOREST[c] = 0; if (m === M.forest) m = M.grass; }   // G6: a site's own ground covers its box
         }
         // R3: a face steeper than CLIFF_SLOPE is drawn as a cliff, whatever grew or was built on it (the ice wall is its own face;
         // a trail's steps and the roads are drawn by their own meshes). The forest density stays: the sight test's canopy.
@@ -681,6 +705,7 @@ function bake(opts) {
         reveals[rd.id] = seen; }
     overlay.sight = sight; overlay.seas = seas; overlay.reveals = reveals;
     overlay.places = R.places.map(p => ({ id: p.id, label: p.label, kind: p.kind, region: p.region, at: [+p.at[0].toFixed(1), +p.at[1].toFixed(1)], y: p.y, top: p.top, pad: p.pad || 0, peak: !!p.peak, lookout: !!p.lookout }));
+    overlay.sites = SITES.map(S => ({ place: S.place, rect: [S.x0, S.z0, S.x1, S.z1].map(v => +v.toFixed(1)), y: S.y, parts: S.parts }));   // G6: the map draws them
     overlay.regionNames = R.regionNames;
     let land = 0, forest = 0, hmin = 1e9, hmax = -1e9; for (let c = 0; c < NN; c++) { if (D[c] > 0) { land++; if (MAT[c] === M.forest) forest++; } if (H[c] < hmin) hmin = H[c]; if (H[c] > hmax) hmax = H[c]; }
     overlay.stats = { cell: CELL, n: N, hmin: +hmin.toFixed(1), hmax: +hmax.toFixed(1), landKm2: +(land * CELL * CELL / 1e6).toFixed(2), forestShare: +(forest / land).toFixed(3),

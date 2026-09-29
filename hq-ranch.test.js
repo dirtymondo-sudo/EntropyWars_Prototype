@@ -71,7 +71,7 @@ test('THE RANCH: THE CORN FIELDS is a terrain part on Room 512, the entry part, 
     const info = D.hqTerrainInfo(FIELDS);
     assert.ok(info && info.maskD, 'compiled with a plan');
     const doors = r.doors.filter(d => d.action && d.action.room);
-    assert.ok(doors.length >= 5, 'the bay, the tree, the saloon door, the grove gate, the well: ' + doors.map(d => d.id).join(','));
+    assert.ok(doors.length >= 3, 'the bay, the saloon door, the well (G6: the tree and the grove gate went — the haunted grounds and the grove are walked to over the land): ' + doors.map(d => d.id).join(','));
     for (const a of doors) for (const b of doors) if (a !== b) assert.ok(D.hqTerrainReach(info, a, b), a.id + ' → ' + b.id);
     assert.equal(D.hqTerrainTraps(info).length, 0, 'nothing traps');
     assert.ok(info.rails.length >= 1 && r.props.some(p => p.key === 'railing_1m') && r.props.some(p => /^riser_/.test(p.key)), 'the park rule');
@@ -82,8 +82,8 @@ test('THE RANCH: THE CORN FIELDS is a terrain part on Room 512, the entry part, 
     assert.ok(lit >= 1 && lit <= 10 && Array.isArray(r.shell.lights) && r.shell.lights.length === 0, 'lights itself');
 });
 
-test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the grove\'s back gate and the well stand on the fields; the Graveyard and the Western map wait on their sites', heavy, () => {
-    const ends = { ranch_haunted: ['site_prebuilt_haunted_grounds', 'n', -16, 'deadtree'], ranch_lodge: ['site_prebuilt_lodge_halls', 'n', -4, null], ranch_grove: ['site_prebuilt_bohemian_grove_grove', 'n', 8, null] };   // THE AREAS (2026-09-18): the far ends are the areas
+test('THE RANCH\'S GATES: the Lodge\'s saloon door and the well stand on the fields (G6: the house and the grove are walked to over the land); the Graveyard and the Western map wait on their sites', heavy, () => {
+    const ends = { ranch_lodge: ['site_prebuilt_lodge_halls', 'n', -4, null] };   // THE AREAS (2026-09-18): the far ends are the areas
     for (const [id, [far, wall, along, way]] of Object.entries(ends)) {
         const l = L(id); assert.ok(l && l.route === 'ranch' && D.hqLinkLive(l), id + ' live on THE RANCH');
         assert.equal(D.hqLinkRoom(l.a), far); assert.equal(D.hqLinkRoom(l.b), FIELDS);
@@ -95,7 +95,7 @@ test('THE RANCH\'S GATES: the house\'s dead tree, the Lodge\'s saloon door, the 
     const well = L('well_skinwalker');
     assert.ok(well.a.part === 'fields' && well.a.wall === 'free' && at(FIELDS, 'link_well_skinwalker').way === 'well', 'the well is free in the farmyard');
     assert.ok(!L('woods_haunted') && !L('woods_skinwalker'), 'the pasture\'s two gates are gone');
-    assert.ok(L('woods_grove') && D.hqLinkLive(L('woods_grove')) && L('woods_grove').route === 'woods', 'the grove keeps its owl\'s gate onto the redwood trail — the interchange');
+    for (const id of ['ranch_haunted', 'ranch_grove', 'woods_grove']) assert.ok(!L(id), id + ' is gone (G6: walked over the land)');
     assert.ok(!L('ranch_graveyard') && !L('ranch_western'), 'the graveyard and the western map wait on their sites (no held rows — every link on the sheet is live)');
     assert.ok(!HQ.rooms[FIELDS].doors.some(d => d.wall === 'e'), 'the east wall is kept for them');
 });
@@ -129,11 +129,10 @@ test('THE PLATE READS THE ROOM THROUGH THE DOOR: every room door wears the label
     }
     assert.ok(checked > 300, 'checked ' + checked);
     assert.equal(at('ring_g', 'site_prebuilt_skinwalker').label, 'THE ESTATE · THE CORN FIELDS', 'the ring\'s stable door names the fields');
-    assert.equal(at('ring_m', 'site_prebuilt_camelot').label, 'CAMELOT · THE CROWN’S ROAD');   // OPEN WORLD Phase 6: the portcullis lands on the crown's road
+    assert.equal(at('ring_m', 'site_prebuilt_camelot').label, 'CAMELOT · THE OUTER WARD');   // G6 (2026-09-28): the crown's road retired, the portcullis lands in the ward
     assert.equal(at('central_egress', 'medical').label, 'THE MEDICAL WING');
     assert.equal(D.hqDoorThrough({ action: { room: 'site_prebuilt_fairy_forest', at: 'egress' } }), 'site_prebuilt_fairy_forest_clearing', 'the `site_<id>` alias reads through to the entry part');
-    assert.equal(at('site_prebuilt_fairy_forest_clearing', 'link_fairy_camelot').label, 'CAMELOT · THE OUTER WARD', 'a link door reads the part, not the site');   // THE AREAS (2026-09-18): the spring stands in the clearing
     assert.equal(at('site_prebuilt_lodge_halls', 'link_ranch_lodge').label, 'THE ESTATE · THE CORN FIELDS');   // THE AREAS (2026-09-18): off THE HALLS
-    assert.equal(D.hqDoorThrough({ action: { fn: '_goToShop' } }), null); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_camelot' } }), 'site_prebuilt_camelot_road'); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_lodge' } }), 'site_prebuilt_lodge_halls');   // THE AREAS (2026-09-18)
+    assert.equal(D.hqDoorThrough({ action: { fn: '_goToShop' } }), null); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_camelot' } }), 'site_prebuilt_camelot_ward'); assert.equal(D.hqDoorThrough({ action: { mission: 'prebuilt_lodge' } }), 'site_prebuilt_lodge_halls');   // THE AREAS (2026-09-18)
     assert.ok(/^hqReplateDoors\(\);/m.test(fs.readFileSync(__dirname + '/data.js', 'utf8')), 'the pass runs at load');
 });

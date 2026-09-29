@@ -24243,8 +24243,8 @@ const ThreeRenderer = (function () {
     /* the readout's line: MEM <misc + rigs> / <budget> MB */
     function _mmLine() {
         var R = _mmLast; if (!R) return '';
-        var land = (_hq && _hq.land && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
-        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.land.n + ' chunks' + (_hq.land.flora ? ' · TREES ' + _hq.land.flora.stats.trees + ' + ' + _hq.land.flora.stats.cards + ' cards · GRASS ' + _hq.land.flora.stats.grass : '') : '');
+        var land = (_hq && _hq.landZ && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
+        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.landZ.n + ' chunks' + (_hq.landZ.flora ? ' · TREES ' + _hq.landZ.flora.stats.trees + ' + ' + _hq.landZ.flora.stats.cards + ' cards · GRASS ' + _hq.landZ.flora.stats.grass : '') : '');
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -41302,7 +41302,7 @@ const ThreeRenderer = (function () {
            clear of every door's lane (the panel stands on the shell wall; a trunk
            behind it would poke through the doorway) — so the clearing is a hole in
            a wood, not a field with a hedge. EW_PERF_LOW plants every other tree. */
-        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng);   // THE TREELINE (shared with the terrain rooms since 2026-09-17)
+        if (TK && S.forest && S.open && !_hqPartOnLand()) _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng);   // THE TREELINE (shared with the terrain rooms since 2026-09-17)
         /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row — and never under an open sky (THE WOODS has no ceiling to hang them from) */
         var open = [];
         for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock && !inHole(sx, sy)) open.push([sx, sy]); }
@@ -41989,6 +41989,13 @@ const ThreeRenderer = (function () {
         if (!roomId || _hqStageOff() || typeof hqStageNeighbours !== 'function') return [];
         try { return hqStageNeighbours(roomId) || []; } catch (e) { return []; }
     }
+    /* G6 (THE SITES ON THEIR PADS): is the part being built one of the land zone's sites (the land drawn round it by the stage)? */
+    function _hqPartOnLand() {
+        var id = _hq && _hq.opts && _hq.opts.room; if (!id || _hqStageOff() || typeof hqWorldFrame !== 'function') return false;
+        var F = null; try { F = hqWorldFrame(id); } catch (e) { F = null; }
+        var R = _hqData() && _hqData().rooms[id];
+        return !!(F && F.ground === 'land' && R && !R.land);
+    }
     function _hqStageOff() { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_STAGE) || (typeof HQ_STAGE_RULES === 'undefined'); }
     /* every staged part near a room being built, joined or not (data.js hqStageNearbyParts; [] off the stage) */
     function _hqStageNearbyOf(roomId) {
@@ -42102,7 +42109,9 @@ const ThreeRenderer = (function () {
            runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
-        if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
+        var onLandG = _hqPartOnLand();   // G6: a part on the land stands in the land's own ground — no outer ground, no treeline, no skyline of its own
+        if (onLandG) { /* the land runs on past the edge */ }
+        else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
         else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
@@ -42270,7 +42279,7 @@ const ThreeRenderer = (function () {
         };
         for (var tki = 0, tks = info.thicket || []; tki < tks.length; tki++) { thicketOne(tks[tki]); if ((tki & 7) === 7 && _hqSliceDue()) yield; }
         if (_hqSliceDue()) yield;
-        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
+        if (TK && S.forest && S.open && !_hqPartOnLand()) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
         if (_hqSliceDue()) yield;
         /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
         _hqBuildCityEntrances(room, info, G, TK);
@@ -42281,7 +42290,7 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         if (info.lots && info.lots.length) { try { _hqBuildCityLots(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city lots failed', e); } }
         if (_hqSliceDue()) yield;
-        if (info.gen && info.gen.kind === 'city' && S.open) { try { _hqBuildCityBackdrop(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city backdrop failed', e); } }   // THE BACKDROP (2026-09-21): the skyline past the room's edge
+        if (info.gen && info.gen.kind === 'city' && S.open && !_hqPartOnLand()) { try { _hqBuildCityBackdrop(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city backdrop failed', e); } }   // THE BACKDROP (2026-09-21): the skyline past the room's edge
         if (_hqSliceDue()) yield;
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
@@ -52870,14 +52879,63 @@ const ThreeRenderer = (function () {
         var p = _asAvailable() ? _asFetch(url, { rec: rec }) : fetch(url, { mode: 'cors', credentials: 'omit' }).then(function (r) { if (!r || !r.ok) throw new Error('HTTP ' + (r ? r.status : 0) + ' ' + url); return r; });
         return p.then(function (res) { return res.arrayBuffer(); }).then(function (b) { rec.settle(true); return b; }, function (e) { rec.settle(false); throw e; });
     }
-    function _hqLandArm(room) {
-        var H = _hq; H.land = null;
+    /* G6 (THE SITES ON THEIR PADS, 2026-09-28): the land is the visit's (H.landZ) — drawn round the walker wherever they stand on
+       its zone. On the land itself its record carries `land` too (the feet, the sea, the boom read the land); on a site the land
+       is the stage's host neighbour (its record carries `land`, asked in its own metres) and L.group stands at the land's frame in
+       the site's metres (_hqLandPlace: every land part stands at rot 0, so the frame is a shift). `own` = the walker is on the land. */
+    var _HQ_LAND_O0 = { x: 0, y: 0, z: 0 };
+    function _hqLandO(H, L) {
+        if (!H || !L || H.land === L) return _HQ_LAND_O0;
+        var id = (H.stage && H.stage.id) || (H.opts && H.opts.room);
+        if (L.oFor !== id) { var rel = null; try { rel = (typeof hqStageRel === 'function') ? hqStageRel(id, L.id) : null; } catch (e) { rel = null; } L.o = rel ? { x: rel.x, y: rel.y || 0, z: rel.z } : { x: 0, y: 0, z: 0 }; L.oFor = id; }
+        return L.o;
+    }
+    function _hqLandPlace(H, L) {
+        L = L || (H && H.landZ); if (!L || L.dead) return _HQ_LAND_O0;
+        var o = _hqLandO(H, L), U = _hqUnits();
+        if (L.group.position.x !== o.x * U || L.group.position.y !== o.y * U || L.group.position.z !== o.z * U) { L.group.position.set(o.x * U, o.y * U, o.z * U); L.group.updateMatrixWorld(true); }
+        L.uO.value.set(-o.x, -o.y, -o.z);
+        return o;
+    }
+    /* the boxes of the land zone's parts drawn now (the current part, the attached neighbours; a raised part stands over the land and
+       cuts nothing), in the land's metres: the splat discards the land's ground inside them (the part's own field is the ground) */
+    var HQ_LAND_SITE_MAX = 12;
+    function _hqLandSiteU(L) {
+        if (!L.siteU) { var r = []; for (var i = 0; i < HQ_LAND_SITE_MAX; i++) r.push(new THREE.Vector4(0, 0, 0, 0)); L.siteU = { r: { value: r }, n: { value: 0 }, key: null }; }
+        return L.siteU;
+    }
+    function _hqLandSiteCut(H, L) {
+        var S = _hqLandSiteU(L), st = H.stage, ids = [];
+        if (st) { if (st.id !== L.id) ids.push(st.id); for (var id in st.parts) if (id !== L.id && st.parts[id].attached) ids.push(id); }
+        var key = ids.sort().join(','); if (S.key === key) return; S.key = key;
+        var n = 0;
+        for (var i = 0; i < ids.length && n < HQ_LAND_SITE_MAX; i++) {
+            var r = null, F = null; try { r = hqWorldPartRect(ids[i]); F = hqWorldFrame(ids[i]); } catch (e) { r = null; }
+            if (!r || !F || F.ground !== 'land') continue;
+            var Zp = HQ_WORLD.zones && HQ_WORLD.zones.land && HQ_WORLD.zones.land.parts[ids[i]];
+            if (Zp && (Zp.dy || 0) > 0.5) continue;
+            S.r.value[n++].set(r.x0, r.z0, r.x1, r.z1);
+        }
+        S.n.value = n;
+    }
+    /* the walker and the eye in the land's metres (L.v: px, pz, cx, cy, cz; own = the walker stands on the land) */
+    function _hqLandView(H, L) {
+        var o = _hqLandPlace(H, L), U = _hqUnits(), pl = H.player, cam = H.camera, V = L.v || (L.v = {});
+        V.own = H.land === L; V.o = o;
+        V.px = (pl ? pl.x : 0) - o.x; V.pz = (pl ? pl.z : 0) - o.z; V.py = (pl ? pl.y : 0) - o.y;
+        if (cam) { V.cx = cam.position.x / U - o.x; V.cy = cam.position.y / U - o.y; V.cz = cam.position.z / U - o.z; } else { V.cx = V.px; V.cy = V.py; V.cz = V.pz; }
+        return V;
+    }
+    function _hqLandArm(room, part) {
+        var H = _hq; if (!part) H.land = null;
         if (!room || !room.land || !_hqLandOk()) return;
+        if (H.landZ && !H.landZ.dead) { if (part) part.P.land = H.landZ; else H.land = H.landZ; return; }   // one land a visit
         var R = _hqLandR(), U = _hqUnits();
-        var L = H.land = { room: room, group: new THREE.Group(), chunks: {}, n: 0, want: [], inflight: {}, nFlight: 0, failed: {}, idx: false, world: false,
+        var L = { id: part ? part.id : ((H.opts && H.opts.room) || 'land'), uO: { value: new THREE.Vector3() }, siteU: null, room: room, group: new THREE.Group(), chunks: {}, n: 0, want: [], inflight: {}, nFlight: 0, failed: {}, idx: false, world: false,
                            sea: { y: (R.sea && R.sea.y) || 0, key: 'land', under: false }, lastX: 1e9, lastZ: 1e9, lastWantAt: 0, cut: 0, readyNear: false,
                            gl2: _hqLandGL2(), mats: null, far: null, hqY: (typeof hqLandPadY === 'function' ? hqLandPadY('hq') : 0) || 0, t0: performance.now(), dead: false, stats: { built: 0, ms: 0 } };
-        L.group.name = 'hq_land'; H.scene.add(L.group);
+        H.landZ = L; if (part) part.P.land = L; else H.land = L;
+        L.group.name = 'hq_land'; H.scene.add(L.group); _hqLandView(H, L);
         /* the near camera reaches past the building's 274 m (the chunks run to 400 m; the far pass beyond) */
         if (H.camera && R.camFar) { H.camera.far = R.camFar * U; H.camera.updateProjectionMatrix(); }
         try { _hqLandBuildHQ(L); } catch (e) { console.warn('[HQ land] the building failed', e); }
@@ -52900,9 +52958,9 @@ const ThreeRenderer = (function () {
     }
     /* the index is in: the far pass, and the first ring of tiles asked for while the room's card is still up */
     function _hqLandWorldReady(L) {
-        var H = _hq; if (!H || H.land !== L) return;
+        var H = _hq; if (!H || H.landZ !== L) return;
         try { _hqLandBuildFar(L); } catch (e) { console.warn('[HQ land] the far pass failed', e); }
-        var pl = H.player; _hqLandStream(L, pl ? pl.x : 0, pl ? pl.z : 0, true);
+        var V = _hqLandView(H, L); _hqLandStream(L, V.px, V.pz, true);
     }
     /* ── THE STREAM ── */
     function _hqLandStream(L, x, z, force) {
@@ -52924,7 +52982,7 @@ const ThreeRenderer = (function () {
                     var gone = hqLandPut(rec);
                     for (var g = 0; g < gone.length; g++) { _hqLandWaterDrop(L, gone[g][0] + '_' + gone[g][1]); if (L.flora) _hqFloraDropTile(L, gone[g][0] + '_' + gone[g][1]); }   // G3: its rivers and lakes go with it; G4: its trees
                     _hqLandTileLanded(L, rec.ti, rec.tj);
-                    _hqLandStream(L, _hq && _hq.player ? _hq.player.x : x, _hq && _hq.player ? _hq.player.z : z, true);
+                    _hqLandStream(L, L.v ? L.v.px : x, L.v ? L.v.pz : z, true);
                 }).catch(function (e) {
                     L.inflight[key] = 0; L.nFlight--; L.failed[key] = (L.failed[key] || 0) + 1;
                     if (L.failed[key] === 1) console.warn('[HQ land] tile ' + w.name + ' did not land', e);
@@ -52962,12 +53020,13 @@ const ThreeRenderer = (function () {
         return -1;
     }
     function _hqLandTick(H, dt, now) {
-        var L = H.land; if (!L || L.dead) return;
-        var R = _hqLandR(), U = _hqUnits(), pl = H.player, C = R.chunk;
-        var px = pl ? pl.x : 0, pz = pl ? pl.z : 0;
+        var L = H.landZ; if (!L || L.dead) return;
+        var R = _hqLandR(), U = _hqUnits(), C = R.chunk, V = _hqLandView(H, L), own = V.own, pl = own ? H.player : null;   // G6: on a site, the land is drawn round the walker; nothing of the site's walker is touched
+        var px = V.px, pz = V.pz;
         _hqLandStream(L, px, pz, false);
         if (L.far) _hqLandFarFrame(L, H);
-        if (L.nearSea) { var cx0 = H.camera.position.x, cz0 = H.camera.position.z, sn = 64 * U; L.nearSea.position.set(Math.round(cx0 / sn) * sn, L.sea.y * U, Math.round(cz0 / sn) * sn); }
+        if (L.nearSea) { var sn = 64; L.nearSea.position.set(Math.round(V.cx / sn) * sn * U, L.sea.y * U, Math.round(V.cz / sn) * sn * U); }
+        _hqLandSiteCut(H, L);
         try { _hqLandWaterTick(L, H, dt, now); } catch (e) { if (!L.waterTickWarned) { L.waterTickWarned = true; console.warn('[HQ land] the water', e); } }   // G3: THE WATER
         if (!L.idx || !L.world) return;
         /* the walker's own ground: off a face too steep to stand on (a landing on a cliff) it slides down the fall line */
@@ -53009,7 +53068,7 @@ const ThreeRenderer = (function () {
         if (built) { L.stats.built += built; L.stats.ms += performance.now() - t0; }
         L.pending = L.want.length > 0;
         /* the far pass's cut: the ring every chunk already covers (from the camera), inside the near camera's reach */
-        var cam = H.camera, ccx = cam.position.x / U, ccz = cam.position.z / U, cut = R.camFar * 0.94;
+        var ccx = V.cx, ccz = V.cz, cut = R.camFar * 0.94;
         for (var q = 0; q < L.want.length; q++) { var ww = L.want[q]; if (L.chunks[ww.key]) continue; var dx = Math.max(ww.i * C - ccx, 0, ccx - (ww.i + 1) * C), dz = Math.max(ww.j * C - ccz, 0, ccz - (ww.j + 1) * C); cut = Math.min(cut, Math.hypot(dx, dz)); }
         cut = Math.min(cut, R.lods[R.lods.length - 1].to - C * 0.75);
         L.cut = Math.max(0, cut);
@@ -53140,7 +53199,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLandSheets(L) {
         var R = _hqLandR(), T = R.tex, key = JSON.stringify(T.layers.map(function (ly) { return [ly.src, ly.tint || 0]; }));
-        var done = function (arr) { if (L.dead || !_hq || _hq.land !== L) return; if (!arr) { L.texFailed = true; return; } _hqLandRetone(L); L.mats = _hqLandSplatShared(arr); for (var k in L.chunks) { var c = L.chunks[k]; if (c.mesh && c.ids && c.mesh.material === L.plainMat) c.mesh.material = _hqLandChunkMat(L, c); } };
+        var done = function (arr) { if (L.dead || !_hq || _hq.landZ !== L) return; if (!arr) { L.texFailed = true; return; } _hqLandRetone(L); L.mats = _hqLandSplatShared(arr); L.mats.uLandO = L.uO; L.mats.uSiteR = _hqLandSiteU(L).r; L.mats.uSiteN = _hqLandSiteU(L).n; for (var k in L.chunks) { var c = L.chunks[k]; if (c.mesh && c.ids && c.mesh.material === L.plainMat) c.mesh.material = _hqLandChunkMat(L, c); } };
         if (_hqLandCache.tex && _hqLandCache.texKey === key) { done(_hqLandCache.tex); return; }
         if (!_hqLandCache.texLoading || _hqLandCache.texLoadKey !== key) {
             _hqLandCache.texLoadKey = key;
@@ -53198,13 +53257,16 @@ const ThreeRenderer = (function () {
         return { uLayers: { value: arr }, uLay: { value: lay }, uTint: { value: tint }, uRep: { value: rep }, uCliffL: { value: cliff }, uLandU: { value: 1 / _hqUnits() } };
     }
     var _HQ_LAND_SPLAT_VS_HEAD = [
-        'attribute vec2 aLand;', 'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;', 'uniform float uLandU;',
+        'attribute vec2 aLand;', 'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;', 'uniform float uLandU;', 'uniform vec3 uLandO;',
     ].join('\n');
     var _HQ_LAND_SPLAT_FS_HEAD = [
         'precision highp sampler2DArray;',
         'uniform sampler2DArray uLayers;', 'uniform sampler2D uIds;', 'uniform vec4 uIdO;',
         'uniform float uLay[24];', 'uniform vec3 uTint[24];', 'uniform float uRep[16];', 'uniform float uCliffL;',
         'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;',
+        'uniform vec4 uSiteR[' + HQ_LAND_SITE_MAX + ']; uniform float uSiteN;',
+        /* G6: a drawn site part's box is its own ground (the land under it would fight it) */
+        'bool ewInSite(vec2 p) { for (int i = 0; i < ' + HQ_LAND_SITE_MAX + '; i++) { if (float(i) >= uSiteN) break; vec4 r = uSiteR[i]; if (p.x > r.x && p.x < r.z && p.y > r.y && p.y < r.w) return true; } return false; }',
         'float ewLH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
         'float ewLN(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f); return mix(mix(ewLH(i), ewLH(i + vec2(1.0, 0.0)), u.x), mix(ewLH(i + vec2(0.0, 1.0)), ewLH(i + vec2(1.0, 1.0)), u.x), u.y); }',
         /* one material's colour at this pixel: its sheet, twice (the second read turned and scaled: no visible repeat) */
@@ -53217,6 +53279,7 @@ const ThreeRenderer = (function () {
         '}',
     ].join('\n');
     var _HQ_LAND_SPLAT_FS_BODY = [
+        'if (ewInSite(vLandW.xz)) discard;',
         'vec3 ewLand = vec3(1.0);',
         '{',
         /* the sixteen samples round the pixel, weighted by a cubic B-spline (a road's edge is a curve, not the 2 m grid's
@@ -53255,15 +53318,15 @@ const ThreeRenderer = (function () {
         'diffuseColor.rgb *= ewLand;',
     ].join('\n');
     function _hqLandSplatHook(shader) {
-        var L = _hq && _hq.land, S = (L && L.mats) || null; if (!S) return;
+        var L = _hq && _hq.landZ, S = (L && L.mats) || null; if (!S) return;
         for (var k in S) shader.uniforms[k] = S[k];
         shader.uniforms.uIds = this.userData.uIds; shader.uniforms.uIdO = this.userData.uIdO;
-        shader.vertexShader = _HQ_LAND_SPLAT_VS_HEAD + '\n' + shader.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vLand = aLand; vLandW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU; vLandN = objectNormal;');
+        shader.vertexShader = _HQ_LAND_SPLAT_VS_HEAD + '\n' + shader.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vLand = aLand; vLandW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU + uLandO; vLandN = objectNormal;');
         shader.fragmentShader = _HQ_LAND_SPLAT_FS_HEAD + '\n' + shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + _HQ_LAND_SPLAT_FS_BODY);
     }
     /* ── THE FAR PASS ── */
     function _hqLandFarHook(shader) {
-        var F = _hq && _hq.land && _hq.land.far; if (!F) return;
+        var F = _hq && _hq.landZ && _hq.landZ.far; if (!F) return;
         shader.uniforms.uFarProj = F.uProj; shader.uniforms.uFarCut = F.uCut; shader.uniforms.uFarCam = F.uCam;
         shader.vertexShader = 'uniform mat4 uFarProj;\nvarying vec3 vFarW;\n' + shader.vertexShader
             .replace('#include <project_vertex>', 'vec4 mvPosition = vec4(transformed, 1.0);\nmvPosition = modelViewMatrix * mvPosition;\ngl_Position = uFarProj * mvPosition;')
@@ -53376,7 +53439,7 @@ const ThreeRenderer = (function () {
         var W = _hqLandWR(), K = W.look, U = _hqUnits();
         var white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat); white.needsUpdate = true;
         L.wu = {
-            uWT: { value: 0 }, uLandU: { value: 1 / U }, uWFx: { value: _hqLandWaterFxOff() ? 0 : 1 },
+            uWT: { value: 0 }, uLandU: { value: 1 / U }, uLandO: L.uO, uWFx: { value: _hqLandWaterFxOff() ? 0 : 1 },
             uWShallow: { value: new THREE.Color(K.shallow) }, uWMid: { value: new THREE.Color(K.mid) }, uWDeep: { value: new THREE.Color(K.deep) },
             uWFresh: { value: new THREE.Color(K.fresh) }, uWFoam: { value: new THREE.Color(K.foam) }, uWSky: { value: new THREE.Color(0x9fb8c8) },
             uWLook: { value: new THREE.Vector4(K.deepM, K.foamM, 1 / K.ripple, W.rapids) }, uWLit: { value: 1 },
@@ -53468,12 +53531,12 @@ const ThreeRenderer = (function () {
     ].join('\n');
     function _hqLandWaterHook(kind) {
         return function (shader) {
-            var L = _hq && _hq.land, S = L && L.wu; if (!S) return;
+            var L = _hq && _hq.landZ, S = L && L.wu; if (!S) return;
             for (var k in S) shader.uniforms[k] = S[k];
             var sea = kind !== 'fresh';
             if (sea) shader.defines = Object.assign(shader.defines || {}, { EW_WSEA: '' });
-            shader.vertexShader = (sea ? '' : 'attribute vec4 aWat; attribute float aWatG; varying vec4 vWat; varying float vWatG;\n') + 'uniform float uLandU; varying vec3 vWatW;\n' + shader.vertexShader
-                .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vWatW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU;' + (sea ? '' : ' vWat = aWat; vWatG = aWatG;'));
+            shader.vertexShader = (sea ? '' : 'attribute vec4 aWat; attribute float aWatG; varying vec4 vWat; varying float vWatG;\n') + 'uniform float uLandU; uniform vec3 uLandO; varying vec3 vWatW;\n' + shader.vertexShader
+                .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vWatW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU + uLandO;' + (sea ? '' : ' vWat = aWat; vWatG = aWatG;'));
             shader.fragmentShader = _HQ_WATER_FS_HEAD + '\n' + shader.fragmentShader
                 .replace('#include <color_fragment>', '#include <color_fragment>\n' + _HQ_WATER_FS_COLOR)
                 .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + _HQ_WATER_FS_NORMAL)
@@ -53548,7 +53611,7 @@ const ThreeRenderer = (function () {
        swapped in whole (a tile landing inside the window marks it dirty: the 2 m ground replaces the 8 m world's) */
     function _hqLandWaterDepthTick(L, cam) {
         var D = L.wdepth; if (!D) return;
-        var U = _hqUnits(), cx = cam.position.x / U, cz = cam.position.z / U, T = _hqLandWR().depthTex, half = D.n * D.step / 2;
+        var U = _hqUnits(), cx = L.v.cx, cz = L.v.cz, T = _hqLandWR().depthTex, half = D.n * D.step / 2;
         if (!D.job) {
             var far = Math.hypot(cx - D.cx, cz - D.cz) > T.reM, dirty = D.dirtyAt && performance.now() - D.dirtyAt > 1500;
             if (!far && !dirty) return;
@@ -53678,7 +53741,7 @@ const ThreeRenderer = (function () {
         });
     }
     function _hqLandFallsTick(L, cam, dt) {
-        var U = _hqUnits(), cx = cam.position.x / U, cz = cam.position.z / U;
+        var U = _hqUnits(), cx = L.v.cx, cz = L.v.cz;
         for (var i = 0; i < L.falls.length; i++) {
             var F = L.falls[i], m = F.mist; if (!m) continue;
             var near = Math.hypot(cx - F.x, cz - F.z) < 320; m.visible = near; if (!near) continue;
@@ -53725,7 +53788,7 @@ const ThreeRenderer = (function () {
         if (!L.wdepth) { try { _hqLandWaterFar(L); } catch (e) { L.wdepth = { n: 0, dead: true }; console.warn('[HQ land] the sea\'s depth failed', e); } }
         if (L.wdepth && !L.wdepth.dead) _hqLandWaterDepthTick(L, H.camera);
         if (!L.fallsBuilt) { L.fallsBuilt = true; try { _hqLandBuildFalls(L); } catch (e) { console.warn('[HQ land] the falls failed', e); } }
-        var pl = H.player, px = pl ? pl.x : 0, pz = pl ? pl.z : 0;
+        var px = L.v.px, pz = L.v.pz;
         if (L.waterQ.length) {
             var St = HQ_LAND_STORE;
             L.waterQ.sort(function (a, b) { return _hqLandTileD(a, px, pz) - _hqLandTileD(b, px, pz); });
@@ -53733,7 +53796,7 @@ const ThreeRenderer = (function () {
             while (n-- > 0 && L.waterQ.length) { var w = L.waterQ.shift(); try { _hqLandWaterTile(L, w[0], w[1]); } catch (e) { if (!L.waterWarned) { L.waterWarned = true; console.warn('[HQ land] a water sheet failed', e); } } }
         }
         if (L.falls.length) _hqLandFallsTick(L, H.camera, dt);
-        _hqLandMoorTick(L, px, pz);
+        if (L.v.own) _hqLandMoorTick(L, px, pz);   // G6: the skiffs are the land's record's (moored once the walker is on the land)
     }
     function _hqLandTileD(w, x, z) { var St = HQ_LAND_STORE, x0 = -St.ext + w[0] * St.tile, z0 = -St.ext + w[1] * St.tile; return Math.hypot(Math.max(x0 - x, 0, x - x0 - St.tile), Math.max(z0 - z, 0, z - z0 - St.tile)); }
     /* ══ THE TREES AND THE GRASS (WORLD_GEOGRAPHY_PLAN.md §5.5 — G4, 2026-09-28) ══════════════════════════════════════════════
@@ -53980,7 +54043,7 @@ const ThreeRenderer = (function () {
     /* ── THE TICK ── */
     function _hqLandFloraTick(L, H, now) {
         var FL = L.flora; if (!FL || !L.idx || !L.world) return;
-        var F = _hqFloraR(), U = _hqUnits(), pl = H.player, px = pl ? pl.x : 0, pz = pl ? pl.z : 0, St = HQ_LAND_STORE;
+        var F = _hqFloraR(), U = _hqUnits(), px = L.v.px, pz = L.v.pz, St = HQ_LAND_STORE;
         /* the models: a foliage OBJ is polled (its loader hands back the root once it is in); a new model → its picture again */
         var all = FL.models.concat(FL.rocks, [FL.under]);
         for (var i = 0; i < all.length; i++) {
@@ -54013,8 +54076,9 @@ const ThreeRenderer = (function () {
         L.floraU.cut.value = (L.cut > 0 ? L.cut : (_hqLandR().camFar || 460) * 0.9) * U; L.floraU.cam.value.copy(H.camera.position);
         /* THE NEAR: whole models, nearest first, re-read every near.every m */
         if (FL.dirty || Math.hypot(px - FL.nearAt[0], pz - FL.nearAt[1]) > F.near.every) { _hqFloraNear(L, px, pz); FL.nearAt = [px, pz]; FL.dirty = false; FL.blkAt = [1e9, 1e9]; }
+        L.floraU.c.value.set((FL.nearAt[0] + L.v.o.x) * U, 0, (FL.nearAt[1] + L.v.o.z) * U);   // G6: the near ring's centre where the scene draws it
         /* THE BLOCKERS: the trunks and rocks round the walker, as the room's blockers (drawn: the near models hold them) */
-        if (Math.hypot(px - FL.blkAt[0], pz - FL.blkAt[1]) > F.blockers.every || now - (FL.blkT || 0) > 500) { _hqFloraBlockers(L, px, pz); FL.blkAt = [px, pz]; FL.blkT = now; }   // (and twice a second: a tile that just landed brings its trunks)
+        if (L.v.own && (Math.hypot(px - FL.blkAt[0], pz - FL.blkAt[1]) > F.blockers.every || now - (FL.blkT || 0) > 500)) { _hqFloraBlockers(L, px, pz); FL.blkAt = [px, pz]; FL.blkT = now; }   // G6: on the land's own record only   // (and twice a second: a tile that just landed brings its trunks)
         /* THE GRASS */
         _hqFloraGrassTick(L, H, px, pz);
     }
@@ -54367,7 +54431,7 @@ const ThreeRenderer = (function () {
             var cx = (i + 0.5) * P, cz = (j + 0.5) * P, d = Math.hypot(cx - px, cz - pz); if (d > R) continue;
             var k = d < G.near + P * 0.71 ? 0 : 1, rec = GS.meshes[k]; if (cnt[k] >= rec.cap) continue;
             var o = md(Math.round(cz / st)) * n + md(Math.round(cx / st)), cy = GS.F.h[o];
-            _hqGrassSp.center.set(cx * U, cy * U, cz * U); _hqGrassSp.radius = P * 1.2 * U;
+            _hqGrassSp.center.set((cx + L.v.o.x) * U, (cy + L.v.o.y) * U, (cz + L.v.o.z) * U); _hqGrassSp.radius = P * 1.2 * U;
             if (!_hqGrassFr.intersectsSphere(_hqGrassSp)) continue;
             rec.ap.array[cnt[k] * 2] = i * P; rec.ap.array[cnt[k] * 2 + 1] = j * P; cnt[k]++;
         }
@@ -54414,7 +54478,7 @@ const ThreeRenderer = (function () {
          THE SIGNS     a green board on two posts at each junction (hqLandRoadsIndex worded them), drawn with their road's piece.
          THE DECKS     every bridge and viaduct within the near camera's reach (a viaduct is a landmark): the slab on its graded line,
                        its parapets (a footbridge's steel rail), a girder under a road deck, piers to the ground, the Glen's and the
-                       Loch Head's arches, the Nile's truss, lamps along a long deck and a name plate at each end of a named one.
+                       Bridge 6's arches, River 4's truss, lamps along a long deck and a name plate at each end of a named one.
          THE BLOCKERS  the piers, the sign and lamp posts round the walker join the room's blockers (they replace the last set, as
                        the trees' do); the guard rails round the walker join the grind register, linked run to run.
          THE TRAFFIC   Route 1's cars, one direction a lane, on the road's own graded line (the city rooms' cars and their ticker).
@@ -54487,7 +54551,7 @@ const ThreeRenderer = (function () {
     function _hqRoadsTick(L, H) {
         var RD = L.roads; if (!RD || !L.idx) return;
         if (RD.W !== HQ_LAND_ROADS.id) _hqRoadsReady(L);
-        var RR = _hqRoadsR(), W = HQ_LAND_ROADS, pl = H.player, px = pl ? pl.x : 0, pz = pl ? pl.z : 0, U = _hqUnits();
+        var RR = _hqRoadsR(), W = HQ_LAND_ROADS, px = L.v.px, pz = L.v.pz, U = _hqUnits();
         /* the set: re-read every reLodM m */
         if (Math.hypot(px - RD.lastX, pz - RD.lastZ) > _hqLandR().reLodM || RD.pending) {
             RD.lastX = px; RD.lastZ = pz; var seen = {}, list = [], P = RR.piece;
@@ -54497,6 +54561,7 @@ const ThreeRenderer = (function () {
                     var d = Math.min(Math.hypot(a.x - px, a.z - pz), Math.hypot(b.x - px, b.z - pz), Math.hypot(m.x - px, m.z - pz));
                     var key = r.id + ':' + i, has = RD.pieces[key];
                     if (d > RR.near + (has ? 24 : 0)) continue;
+                    if (typeof hqLandSiteAt === 'function' && hqLandSiteAt(m.x, m.z, 0)) continue;   // G6: a site's own streets there
                     seen[key] = 1; if (!has) list.push({ kind: 'p', key: key, r: r, i: i, s0: s0, s1: s1, d: d });
                 }
             });
@@ -54525,7 +54590,8 @@ const ThreeRenderer = (function () {
         }
         RD.pending = RD.want.length > 0;
         /* the blockers and the grind rails round the walker */
-        if (Math.hypot(px - RD.blkX, pz - RD.blkZ) > RR.near2.every) { RD.blkX = px; RD.blkZ = pz; _hqRoadsBlockers(L, H, px, pz); }
+        if (L.v.own && Math.hypot(px - RD.blkX, pz - RD.blkZ) > RR.near2.every) { RD.blkX = px; RD.blkZ = pz; _hqRoadsBlockers(L, H, px, pz); }   // G6: on the land's own record only
+        else if (!L.v.own) { RD.blkX = 1e9; RD.blkZ = 1e9; }
     }
     function _hqRoadsDrop(L, set, key) {
         var p = set[key]; if (!p) return;
@@ -54597,7 +54663,7 @@ const ThreeRenderer = (function () {
         var tex = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_land_sign_' + sg.id + '_' + sg.lines.join('|'), sg.lines, { w: 384, h: Math.round(384 * bh / wide), color: '#ffffff', bg: bg, border: '#f2f2f2', pad: 0.12, weight: 'bold', font: '"Arial Narrow", "Helvetica Neue", Arial, sans-serif' }) : null;
         var face = new THREE.MeshLambertMaterial({ map: tex || null, color: tex ? 0xffffff : 0x1f6a3c }); face.emissive = new THREE.Color(0x222222); if (tex) face.emissiveMap = tex;
         face._ew_roadOwn = true; var board = new THREE.Mesh(new THREE.PlaneGeometry(wide * U, bh * U), face); board._ew_roadOwn = true; board.position.set(0, (top - bh / 2) * U, 0.06 * U); grp.add(board);
-        var MM = _hq.land.roads.M, back = new THREE.Mesh(new THREE.PlaneGeometry(wide * U, bh * U), MM.post); back._ew_roadOwn = true; back.rotation.y = Math.PI; back.position.set(0, (top - bh / 2) * U, 0.04 * U); grp.add(back);
+        var MM = _hq.landZ.roads.M, back = new THREE.Mesh(new THREE.PlaneGeometry(wide * U, bh * U), MM.post); back._ew_roadOwn = true; back.rotation.y = Math.PI; back.position.set(0, (top - bh / 2) * U, 0.04 * U); grp.add(back);
         var posts = [];
         [-1, 1].forEach(function (sd) { var ox = sd * wide * 0.36, pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.07 * U, (top + 0.4) * U, 8), MM.post); pole._ew_roadOwn = true; pole.position.set(ox * U, (top - 0.4) / 2 * U, 0); grp.add(pole);
             posts.push({ x: sg.x + Math.cos(sg.yaw) * ox, z: sg.z - Math.sin(sg.yaw) * ox, y: gy }); });
@@ -54685,7 +54751,7 @@ const ThreeRenderer = (function () {
             _hqRBeam(Bp, [p.x, bot, p.z], [p.x, topY + 0.05, p.z], across, along);
             pierRec.push({ x: p.x, z: p.z, y: gy, top: topY, hw: across / 2, hd: along / 2, yaw: Math.atan2(ax, az) });
         });
-        /* the Nile's truss: two trusses over the deck, a chord 5 m up, verticals every sample, diagonals */
+        /* River 4's truss: two trusses over the deck, a chord 5 m up, verticals every sample, diagonals */
         if (d.look === 'truss') {
             var TH = 5.2, k0 = Math.min(2, n - 1), k1 = Math.max(0, n - 3);
             [1, -1].forEach(function (sd) {
@@ -54811,8 +54877,8 @@ const ThreeRenderer = (function () {
         return g != null && py < g + 0.25;
     }
     function _hqLandDisarm(H) {
-        var L = H && H.land; if (!L) return;
-        L.dead = true;
+        var L = H && (H.landZ || H.land); if (!L) return;
+        L.dead = true; H.landZ = null;
         try { _hqFloraDisarm(L); } catch (e) {}   // G4: the visit's instances and cards (the models and their pictures stay for the next visit)
         try { _hqRoadsDisarm(L); } catch (e) {}   // G5: the roads' pieces, decks, blockers and grind rails
         for (var k in L.chunks) { var c = L.chunks[k]; if (c.ids) { try { c.ids.dispose(); } catch (e) {} } }
@@ -57663,7 +57729,7 @@ const ThreeRenderer = (function () {
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         _hqTickChars(wdt);
         _hqTickCamera(dt);
-        if (H.land) { try { _hqLandTick(H, dt, now); } catch (e) { if (!H._landWarned) { H._landWarned = true; console.warn('[HQ land] tick', e); } } }   // G2: THE LAND — the stream, the chunks, the far pass's lens
+        if (H.landZ) { try { _hqLandTick(H, dt, now); } catch (e) { if (!H._landWarned) { H._landWarned = true; console.warn('[HQ land] tick', e); } } }   // G2: THE LAND — the stream, the chunks, the far pass's lens
         _hqTickWorld(dt, now);
         if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
         if (H.stage) { try { _hqCullTick(H, now); } catch (e) { if (!H.stage.warnedCull) { H.stage.warnedCull = true; console.warn('[HQ portals] tick', e); } try { _hqCullReset(H); } catch (e2) {} } }   // THE PORTALS (G1): a room behind shut doors is not drawn
@@ -58083,7 +58149,7 @@ const ThreeRenderer = (function () {
         var id = H.opts && H.opts.room, S = H.room && H.room.shell, F = H.far;
         var on = !_hqFarOff() && id && S && S.open && S.sky && H.player && H.scene && H.camera;
         if (!on) {
-            if (F) { for (var k in F.shells) F.shells[k].mesh.visible = false; if (H.camera && H.camera.far > 20000) { H.camera.far = 20000; H.camera.updateProjectionMatrix(); } F.farU = 20000; }
+            if (F) { var lf0 = (H.landZ && _hqLandR() && _hqLandR().camFar) ? _hqLandR().camFar * _hqUnits() : 20000; for (var k in F.shells) F.shells[k].mesh.visible = false; if (H.camera && H.camera.far > Math.max(20000, lf0)) { H.camera.far = Math.max(20000, lf0); H.camera.updateProjectionMatrix(); } F.farU = H.camera ? H.camera.far : 20000; }
             return;
         }
         if (!F) { F = H.far = { group: new THREE.Group(), shells: {}, list: [], for: null, tris: 0, asked: {}, farU: 0 }; F.group.name = 'hq_far_shells'; }
@@ -58092,9 +58158,14 @@ const ThreeRenderer = (function () {
         if (!moved && now - (F.at || 0) < HQ_FAR_TICK_MS) return;
         F.at = now;
         if (moved) { F.for = id; try { F.list = hqFarParts(id) || []; } catch (e) { F.list = []; } }
-        var WR = HQ_WORLD_RULES || {}, pl = H.player, U = _hqUnits(), want = {}, built = false, reach = 0;
-        for (var i = 0; i < F.list.length; i++) {
-            var fp = F.list[i], sh = F.shells[fp.id];
+        var WR = HQ_WORLD_RULES || {}, pl = H.player, U = _hqUnits(), want = {}, built = false, reach = 0, LIST = F.list;
+        if (H.room && H.room.land) {   // G6: from the land every site is a candidate: the farMax nearest the walker (the rest let go)
+            LIST = F.list.slice().sort(function (a, b) { return hqFarGap(a, pl.x, pl.z) - hqFarGap(b, pl.x, pl.z); }).slice(0, WR.farMax || 12);
+            var keepF = {}; LIST.forEach(function (fp) { keepF[fp.id] = 1; });
+            for (var dk in F.shells) if (!keepF[dk]) { var ds = F.shells[dk]; F.group.remove(ds.mesh); try { ds.mesh.geometry.dispose(); } catch (e) {} F.tris -= ds.tris; delete F.shells[dk]; }
+        }
+        for (var i = 0; i < LIST.length; i++) {
+            var fp = LIST[i], sh = F.shells[fp.id];
             want[fp.id] = 1;
             if (!sh) {
                 if (built) continue;
@@ -58117,7 +58188,8 @@ const ThreeRenderer = (function () {
         }
         for (var sid in F.shells) if (!want[sid]) F.shells[sid].mesh.visible = false;   // a part this room does not see (after a crossing)
         /* the far plane: the farthest shown shell's far corner (+ its height), never under the building's own 274 m */
-        var cam = H.camera, farU = Math.max(20000, Math.min((WR.far || 900), reach + 80) * U);
+        var landFar = (H.landZ && _hqLandR() && _hqLandR().camFar) ? _hqLandR().camFar * U : 0;   // G6: the land's own reach (its chunks run to 400 m)
+        var cam = H.camera, farU = Math.max(20000, landFar, Math.min((WR.far || 900), reach + 80) * U);
         if (Math.abs(farU - cam.far) > 200) { cam.far = farU; cam.updateProjectionMatrix(); }
         F.farU = cam.far;
     }
@@ -58140,7 +58212,7 @@ const ThreeRenderer = (function () {
     function _hqGateTick(H, now) {
         var G = H.gate, pd = H.player ? H.player.def : null;
         var playerOk = H.playerAttached || !pd || !pd.model || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);   // (2026-09-22: the walker is a rig whatever the board's 3D-unit preference — the card waits for it)
-        var gateOk = (!G || G.idle() || G.closed) && (!H.land || H.land.readyNear || H.land.failedIndex);   // G2: the land's ground round the door is built
+        var gateOk = (!G || G.idle() || G.closed) && (!H.landZ || H.landZ.readyNear || H.landZ.failedIndex);   // G6: on a site, the land round it too   // G2: the land's ground round the door is built
         var capped = now - H.t0 > HQ_GATE_CAP_MS;
         if (!((playerOk && gateOk) || capped)) return;
         H.ready = true;
@@ -58882,7 +58954,8 @@ const ThreeRenderer = (function () {
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'far', 'lod', '_lodAt', '_lodWarned', '_farWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'far' / 'lod': THE FAR SHELLS / THE LOD LEVELS (Phase 10)
     _HQ_ZONE_KEYS._batchWarned = 1;
-    _HQ_ZONE_KEYS.cull = 1;   // THE PORTALS (G1): the cull record is the visit's (the swap resets it)   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
+    _HQ_ZONE_KEYS.cull = 1;
+    _HQ_ZONE_KEYS.landZ = 1;   // G6 (THE SITES ON THEIR PADS): the land drawn for the visit (the land's own record carries `land`: the walker is on it)   // THE PORTALS (G1): the cull record is the visit's (the swap resets it)   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
     function _hqStageArm(H) {
@@ -58890,7 +58963,32 @@ const ThreeRenderer = (function () {
         var id = H.opts && H.opts.room;
         if (!id || _hqStageOff() || typeof hqStagePart !== 'function' || !hqStagePart(id) || !H.room || H.room.kind !== 'box') return;
         var nbs = _hqStageNbsOf(id); if (!nbs.length) return;
-        H.stage = { id: id, nbs: nbs, parts: {}, skyYaw: 0, readyAt: 0, lampAt: 0, lampN: -1, blend: null, crossed: 0, loadAsked: null, warned: {} };
+        H.stage = { id: id, nbs: nbs, nbsAll: nbs, parts: {}, skyYaw: 0, readyAt: 0, lampAt: 0, lampN: -1, blend: null, crossed: 0, loadAsked: null, warned: {}, pickAt: 0 };
+        if (H.room.land) H.stage.nbs = [];   // G6: from the land the sites are staged by distance (_hqStageLandPick, the first tick)
+    }
+    /* G6 (THE SITES ON THEIR PADS): from the land, the sites within HQ_LAND_RULES.sites.build m of the walker are staged (a part
+       beside one with it); one already built stays until `drop` m. → the picked list (st.nbsAll's order) */
+    function _hqStageLandPick(H, st) {
+        var SR = (typeof HQ_LAND_RULES !== 'undefined' && HQ_LAND_RULES.sites) || { build: 300, drop: 380 }, pl = H.player;
+        if (!pl) return st.nbs;
+        var gapOf = function (r) { return Math.hypot(Math.max(r.x0 - pl.x, 0, pl.x - r.x1), Math.max(r.z0 - pl.z, 0, pl.z - r.z1)); };
+        var keep = {};
+        st.nbsAll.forEach(function (nb) { if (!nb.inside) return; var g = gapOf(nb.rect); if (g < SR.build || (st.parts[nb.id] && g < SR.drop)) keep[nb.id] = 1; });
+        return st.nbsAll.filter(function (nb) { return nb.inside ? keep[nb.id] : (nb.beside ? !!keep[_hqStageLandRoot(st, nb)] : true); });
+    }
+    /* G6: a site entered by its door — its host land is staged at once (the card waits for the ground round the site) */
+    function _hqStageLandEarly(H) {
+        var st = H.stage, D = _hqData(), nb = st.nbs.filter(function (n) { return n.host && D.rooms[n.id] && D.rooms[n.id].land; })[0];
+        if (!nb || st.parts[nb.id]) return;
+        var E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) return;
+        E.rel = nb.rel; E.t0 = performance.now(); E.gate = _alGateOpen('part:' + nb.id, { own: true });
+        _hqLandArm(D.rooms[nb.id], E);
+    }
+    /* the island a part beside hangs on (through its `via` chain) */
+    function _hqStageLandRoot(st, nb) {
+        var by = {}; st.nbsAll.forEach(function (n) { by[n.id] = n; });
+        for (var k = 0, n = nb; n && k < 12; k++) { if (n.inside) return n.id; n = by[n.via]; }
+        return null;
     }
     /* a neighbour's record: its part fields, a stand-in `scene` group (a builder that adds to the scene adds to the part),
        its own opts (the room it is), its own gate (the black-texture rule) */
@@ -59157,6 +59255,11 @@ const ThreeRenderer = (function () {
     /* one frame of the stage: the build step, the attach, the neighbours' tick, the lamps, the blend, the crossing */
     function _hqStageTick(H, dt, now) {
         var st = H.stage; if (!st || !H.ready) return;
+        if (H.land && H.room && H.room.land && now - (st.pickAt || 0) > 500) {   // G6: the land's sites by distance
+            st.pickAt = now;
+            var pk = _hqStageLandPick(H, st), was = st.nbs.map(function (n) { return n.id; }).join(','), is = pk.map(function (n) { return n.id; }).join(',');
+            if (was !== is) { st.nbs = pk; if (st.readyAt) _hqStageRing(H); }
+        }
         if (!st.readyAt) { st.readyAt = now + (HQ_STAGE_RULES.buildDelayMs || 600); _hqStageRing(H); }
         if (now >= st.readyAt) _hqStageBuildTick(H, now);
         for (var id in st.parts) { var E = st.parts[id]; if (E.attached) _hqStageTickPart(H, E, dt, now); }
@@ -59191,7 +59294,8 @@ const ThreeRenderer = (function () {
                 if (!st.warned[nb.id]) { st.warned[nb.id] = 1; if (H.opts.stageWarm) { try { H.opts.stageWarm(nb.id); } catch (e) {} } }
                 continue;
             }
-            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id, { own: true }); }
+            if (!E) { E = st.parts[nb.id] = _hqStagePartNew(H, nb.id); if (!E) continue; E.rel = nb.rel; E.t0 = now; E.gate = _alGateOpen('part:' + nb.id, { own: true });
+                if (room.land) { try { _hqLandArm(room, E); } catch (e) { console.warn('[HQ stage] the land failed', e); } } }   // G6: a site entered by its door — the land round it
             _hqStageBuildSlice(H, E, room);
             return;   // one part a frame, whoever it is
         }
@@ -59901,6 +60005,7 @@ const ThreeRenderer = (function () {
         if (V && !(E && E.attached)) return;   // aboard, the crossing waits for the part to be drawn (no load under a hull)
         var placed = (H.portal && H.portal.placed && Object.keys(H.portal.placed).length) || (H.gun && H.gun.doors && H.gun.doors.length);
         if (E && E.attached && !placed) { _hqStageSwap(H, to); return; }
+        if (H.land && H.room && H.room.land) return;   // G6: from the land a site not drawn yet is walked onto (its pad is the land's) — it attaches round the walker
         _hqStageLoad(H, to, now);
     }
     /* the neighbour is not on the stage yet (or the door gun's pair stands in this part): a plain load to the same spot */
@@ -59990,7 +60095,8 @@ const ThreeRenderer = (function () {
         delete st.parts[to];
         Q.rel = hqStageRel(to, fromId);
         st.parts[fromId] = Q;
-        st.id = to; st.nbs = _hqStageNbsOf(to); st.crossed++; st.lampN = -1;
+        st.id = to; st.nbsAll = _hqStageNbsOf(to); st.nbs = (H.room && H.room.land) ? _hqStageLandPick(H, st) : st.nbsAll; st.crossed++; st.lampN = -1; st.pickAt = 0;
+        try { if (H.landZ) _hqLandView(H, H.landZ); } catch (e) {}   // G6: the land stands at the new part's frame this frame
         H.opts = Object.assign({}, H.opts, { room: to });
         H.roomDef = H.room;
         _hqStageRing(H);
@@ -60000,7 +60106,7 @@ const ThreeRenderer = (function () {
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
-        try { if (H.terrain && H.terrain.sea) _hqSeaArm(H.room); } catch (e) { console.warn('[HQ stage] the sea', e); }   // THE COAST: this part's water
+        try { if ((H.terrain && H.terrain.sea) || H.land) _hqSeaArm(H.room); } catch (e) { console.warn('[HQ stage] the sea', e); }   // G6: the land's sea when you step back onto it   // THE COAST: this part's water
         _hqStageBlendStart(H, fromRoom, H.room, fromId, to);
         try { _hqClockArm(H); } catch (e) { console.warn('[HQ stage] the clock', e); }   // THE WORLD CLOCK (Phase 3): the part you stand in decides
         H.targetKey = '';
@@ -60205,11 +60311,22 @@ const ThreeRenderer = (function () {
         }
         return null;
     }
+    /* G6: the drawn part beside an island (a site's closed room, a raised court) whose box holds (x, z) → { E, nb, q, ry } | null */
+    function _hqStageLandBeside(st, x, z) {
+        for (var i = 0; i < st.nbs.length; i++) {
+            var nb = st.nbs[i]; if (!nb.beside) continue;
+            var r = nb.rect; if (!(x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) continue;
+            var E = st.parts[nb.id]; if (!E || !E.attached) continue;
+            return { E: E, nb: nb, q: hqStageFromRoom(nb.rel, x, z), ry: nb.rel.y || 0 };
+        }
+        return null;
+    }
     function _hqStageSurface(x, z, curY, ignoreBlockers) {
         var H = _hq, st = H.stage; if (!st) return undefined;
         /* an island's box is the island's ground (the host's floor is sunk under it): its own surface, read in its frame */
         var isl = _hqStageIslandAt(st, x, z);
         if (isl) { var yi = null; _hqStageAsk(H, isl.E, function () { yi = _hqSurface(isl.q.x, isl.q.z, curY == null ? null : curY - isl.ry, ignoreBlockers); }); return (yi == null) ? null : yi + isl.ry; }
+        if (H.room.land && _hqStageLandBeside(st, x, z)) return null;   // G6: a site's closed rooms are walked into through the site, never from the land
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(x) - hw, Math.abs(z) - hd);
         if (over < -HQ_STAGE_PAD) return undefined;
         var sp = hqStageSpanAt(hw, hd, st.nbs, x, z, HQ_STAGE_PAD);
@@ -60235,6 +60352,7 @@ const ThreeRenderer = (function () {
         var H = _hq, st = H.stage; if (!st) return undefined;
         var isl = _hqStageIslandAt(st, px, pz);
         if (isl) { var bi = true; _hqStageAsk(H, isl.E, function () { bi = _hqCamBlocked(isl.q.x, isl.q.z, py - isl.ry); }); return bi; }   // THE COAST: over an island, the island's
+        if (H.room.land) { var bs = _hqStageLandBeside(st, px, pz); if (bs) { var bb = true; _hqStageAsk(H, bs.E, function () { bb = _hqCamBlocked(bs.q.x, bs.q.z, py - bs.ry); }); return bb; } }   // G6: over a site's room, the room's
         var S = H.room.shell, hw = S.w / 2, hd = S.d / 2, over = Math.max(Math.abs(px) - hw, Math.abs(pz) - hd);
         if (over < -HQ_STAGE_PAD) return undefined;
         var sp = hqStageSpanAt(hw, hd, st.nbs, px, pz, HQ_STAGE_PAD * 0.5);
@@ -60450,6 +60568,7 @@ const ThreeRenderer = (function () {
         /* an outdoor room (HQ plan 7.2 stage 3): the map's sky and far roster */
         if (S.open) { try { _hqBuildSky(room); } catch (e) { console.error('[HQ] sky failed', e); } }
         if (room.land) { try { _hqLandArm(room); } catch (e) { console.error('[HQ] the land failed', e); } }   // G2: THE LAND (before the sea, the light rig and the shadows read it)
+        else if (_hq.stage && _hqPartOnLand()) { try { _hqStageLandEarly(_hq); } catch (e) { console.error('[HQ] the land round the site failed', e); } }   // G6: a site entered by its door stands on the land from the first frame
         try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }
         try { _hqBuildDesk(room); } catch (e) { console.error('[HQ] desk failed', e); }
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
@@ -61008,11 +61127,11 @@ const ThreeRenderer = (function () {
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqInst: function () { return _hqInstStats(_hq); },
             /* G2: THE LAND's state (a probe's read: the card, the chunks, the build cost, the far pass's cut, the store) */
-            land: function () { var L = _hq && _hq.land; if (!L) return null; return { ready: !!_hq.ready, readyNear: L.readyNear, readyMs: L.readyMs || null, playerAttached: !!_hq.playerAttached, gatePending: _hq.gate && !_hq.gate.closed ? _hq.gate.pending() : 0, idx: L.idx, world: L.world, chunks: L.n, waiting: L.want.length, built: L.stats.built, msPer: L.stats.built ? +(L.stats.ms / L.stats.built).toFixed(2) : 0, cut: +L.cut.toFixed(1), splat: !!L.mats, gl2: L.gl2, store: (typeof hqLandStats === 'function') ? hqLandStats() : null }; },
+            land: function () { var L = _hq && _hq.landZ; if (!L) return null; return { ready: !!_hq.ready, readyNear: L.readyNear, readyMs: L.readyMs || null, playerAttached: !!_hq.playerAttached, gatePending: _hq.gate && !_hq.gate.closed ? _hq.gate.pending() : 0, idx: L.idx, world: L.world, chunks: L.n, waiting: L.want.length, built: L.stats.built, msPer: L.stats.built ? +(L.stats.ms / L.stats.built).toFixed(2) : 0, cut: +L.cut.toFixed(1), splat: !!L.mats, gl2: L.gl2, store: (typeof hqLandStats === 'function') ? hqLandStats() : null }; },
             /* G3: THE WATER at (x, z) (the walker's spot by default): the surface, the depth, the current; the sheets drawn, the falls, the moorings, the depth window, the sheets' look */
-            water: function (x, z) { var L = _hq && _hq.land; if (!L || typeof hqLandWaterY !== 'function') return null; var pl = _hq.player; if (x == null && pl) { x = pl.x; z = pl.z; } var W = L.wdepth; return { y: hqLandWaterY(x, z), depth: hqLandWaterDepth(x, z), fresh: hqLandWaterFresh(x, z), flow: hqLandFlow(x, z), sheets: Object.keys(L.waters || {}).length, queued: (L.waterQ || []).length, falls: (L.falls || []).length, moors: L.moors || {}, near: W ? { n: W.n, cx: W.cx, cz: W.cz, built: !!W.tex } : null, look: L.wu ? { sheet: !!L.wu.uWHave.value.x, waves: !!L.wu.uWHave.value.y } : null }; },
+            water: function (x, z) { var L = _hq && _hq.landZ; if (!L || typeof hqLandWaterY !== 'function') return null; var pl = _hq.player; if (x == null && pl) { x = pl.x; z = pl.z; } var W = L.wdepth; return { y: hqLandWaterY(x, z), depth: hqLandWaterDepth(x, z), fresh: hqLandWaterFresh(x, z), flow: hqLandFlow(x, z), sheets: Object.keys(L.waters || {}).length, queued: (L.waterQ || []).length, falls: (L.falls || []).length, moors: L.moors || {}, near: W ? { n: W.n, cx: W.cx, cz: W.cz, built: !!W.tex } : null, look: L.wu ? { sheet: !!L.wu.uWHave.value.x, waves: !!L.wu.uWHave.value.y } : null }; },
             /* G4: THE TREES AND THE GRASS (a probe's read): what is drawn, the models' state, the blockers filed, and the walker's ground at (x, z) */
-            flora: function (x, z) { var L = _hq && _hq.land, FL = L && L.flora; if (!FL) return null; var ms = FL.models.concat(FL.rocks, [FL.under]).map(function (M) { return { src: M.src, real: M.real, failed: M.failed, tris: M.tris, rM: +M.rM.toFixed(3), baked: M.baked === M.ver }; });
+            flora: function (x, z) { var L = _hq && _hq.landZ, FL = L && L.flora; if (!FL) return null; var ms = FL.models.concat(FL.rocks, [FL.under]).map(function (M) { return { src: M.src, real: M.real, failed: M.failed, tris: M.tris, rM: +M.rM.toFixed(3), baked: M.baked === M.ver }; });
                 var tiles = 0, done = 0; for (var k in FL.tiles) { tiles++; if (FL.tiles[k].done) done++; }
                 return { stats: FL.stats, nearR: FL.nearR, rockR: FL.rockR, blk: FL.blk || 0, blockers: (_hq.blockers || []).filter(function (b) { return b.landFlora; }).length, tiles: tiles, done: done, far: FL.far ? (FL.far.n || 0) : null, models: ms,
                          surface: (x != null) ? _hqSurface(x, z, null, false) : undefined }; },

@@ -115,6 +115,7 @@ test('THE FAR END (3.5): every halls / ley / city plan room\'s fog is half gone 
     let n = 0;
     for (const id of Object.keys(D.rooms)) {
         const r = D.rooms[id], g = r.terrain && r.terrain.gen; if (!g || !/^(halls|ley|city)$/.test(g.kind)) continue;
+        const Fl = W.hqWorldFrame(id); if (Fl && Fl.ground === 'land') continue;   // G6: a site on the land wears the land's fog (it sees the land)
         const half = W.hqRoomFogHalfAt(r), diag = Math.hypot(r.shell.w, r.shell.d); n++;
         assert.ok(half != null && half <= 0.6 * diag + 0.5, id + ': the fog reaches 0.5 at ' + (half == null ? 'never' : half.toFixed(1) + ' m') + ' of a ' + diag.toFixed(0) + ' m diagonal');
     }
