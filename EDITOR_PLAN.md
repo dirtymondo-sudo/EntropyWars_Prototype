@@ -663,6 +663,7 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
 | Delivery tooling | deploy.js (`--assets`), manifest-assets.js, optimize-assets.js, `_asFetch` / `_asNetUrl` three-renderer.js 1550–1690, `hqLandUrl` data.js 41374 |
 | Sky and clock | data.js `HQ_WORLD_CLOCK` 39883, `hqRoomClock` 39962, `HQ_ROOM_LOOKS` 15539, `HQ_LIGHT_RULES` 50462; three-renderer.js `_hzThemeRoster` 29720, `_hqLandmarkBuilders` 43358, `_WD_RIM` 30261, `_hqTickSky` 43633, `_hqClockApply` 60094 |
 | The editor (E0) | editor.js (`EWEditorCore` = the pure core: zip, command stack, `rowTransform`, `rowShape`, `KINDS`; `EWEditor` = the tool); data.js THE WORLD FILE block after `hqBuildHealZones()` (`HQ_WORLD_DOC_RULES`, `hqWorldDoc*`, `HQ_WORLD_DOC_STATE`); map.js `_goToEditor` / `_hqEditEnter` / `_hqEditLeave` / `_edBootParam` (after `_hqExitToMenu`), pause `edit`; three-renderer.js `_hqEditing`, `hq.edit` / `editView` / `surface`, `terrain.outer.flat`; deploy.js `--world`; tests world-doc.test.js, probe playtest_editor.js |
+| The editor (E2) | data.js THE PALETTE (E2) block after `hqPrefabFromRows` (`HQ_TREE_KINDS`, `HQ_CATALOGUE_MISC`, `HQ_CATALOGUE_WEAPONS`, `HQ_PALETTE_RULES`, `hqPalette`, `hqPaletteRow`, `hqDoorPair`, `hqWorldDocDoorCheck`, `hqDoorPartners`); editor.js `PAL_TABS` / `palette` / `palPick` / `palDrop`, `doorClick` / `doorModal` / `doorWrite`, `paintAt`, `markerObj`, `TH` thumbnails; three-renderer.js `hq.propPreview` / `hq.treePreview`, `editView().chars`, the cast spot in `_hqSpawnPopulation`; probe `node playtest_editor.js e2` |
 | three.js | r128 from cdnjs; examples from jsdelivr (index.html 264–293); `TransformControls` at `three@0.128.0/examples/js/controls/TransformControls.js` |
 
 ---
@@ -705,3 +706,22 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   only (9 builders incl. the stand bowl and the football paint). `texbuilding`: `{ x, z, w, d, rot, storeys, style?, seed? }`,
   its front is local +z (SOUTH at rot 0); drawn by `_hqTexBuilding`, walked as four ghost faces + a roof plateau. ARRAY and
   MIRROR (EDIT menu / inspector). Walls: `keyIn`, `glass`. Tests: editor-shapes.test.js.
+- 2026-09-29: **E2 BUILT** (zip editor/ENTROPY_WARS_EDITOR_E2.zip, token 20260929-editor-03-cors, delta on E1). The left
+  panel is now tabs: BUILD (E1's tools), MODELS, PEOPLE, TREES, DOORS, LIGHTS, MARKERS, TEXTURES, KITS, each with a search
+  box, groups and thumbnails. The thumbnails are the real thing, built by the renderer, drawn once at 96 px and cached in
+  IndexedDB. Click a tile, then the ground: it is placed facing you, and the tool stays armed for more copies. What shipped:
+  - The catalogue gained rows for the 40 `_MISC_GLB` models and the 24 spell props (`_WPN_MODELS`). The files are the
+    renderer's own; the sizes are unmeasured and can be overridden per prop.
+  - TREES has all 20 foliage OBJs (`HQ_TREE_KINDS`; the board's six unchanged).
+  - PEOPLE has the races, the story cast (`npcSpots.cast`, new in the renderer) and agents with poses.
+  - MARKERS has the spawn, a sign, a roster spot and an online spot. Each shows a coloured post in the view.
+  - TEXTURES paints a wall's outside or inside, a shape, or the room floor.
+  - THE DOOR TOOL: click a wall (a gap is cut and the door stands in it) or the ground, then choose the room (or a new one)
+    and the arrival (a new return door, the spawn one way, or an existing door re-pointed back). It is one undo step.
+    DIFFERS from §5.5: a pair is two door rows whose `action.at` name each other, not a `links[]` entry, so both ends
+    stay editable. The door inspector has LEADS TO… and GO THROUGH. Deleting a door clears its partner's target, and the
+    status line counts doors that lead nowhere.
+  - Tiles no longer rebuild under a click when the room reloads.
+  - The battle marker waits for E7 (it needs a site).
+  - No test file (the repo's tests were removed 2026-09-29); checked by a browser sweep, `node playtest_editor.js e2`.
+

@@ -44307,6 +44307,218 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
 if (typeof window !== 'undefined') Object.assign(window, { HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+/* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
+   What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
+   (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
+   TREES = HQ_TREE_KINDS (the foliage OBJs in Assets/foilage/OBJ), DOORS = the leaves + DOOR_HQ.ways, LIGHTS = the catalogue
+   rows that carry a `light` or a `glow`, MARKERS = the spawn, a sign (a counter), a roster spot, an online spot. Every entry is
+   { id, label, sub, group, list, row, thumb } — `row` the doc row it places (its x, z, face are the click's), `thumb` what its
+   picture is drawn from. Nothing here is new art: every file below is one the game already loads somewhere (the same-thing
+   rule): each misc / spell-prop row names the renderer's own file. */
+/* THE TREE KINDS: a `tree` row's `kind` → the foliage OBJ it draws (three-renderer.js _nrTree). tree … tree_6 are the board's six;
+   tree_7 … tree_20 are the other fourteen models in the same folder, which nothing drew before E2. `dead` = a bare model (no
+   canopy: the smaller default height, the branch stand-in while it loads). */
+const HQ_TREE_KINDS = {
+    tree:    { model: 'Tree_1' },      tree_2:  { model: 'Tree_3' },      tree_3:  { model: 'Tree_6' },      tree_4:  { model: 'Tree_9', tall: true },
+    tree_5:  { model: 'DeadTree_2', dead: true },                          tree_6:  { model: 'DeadTree_5', dead: true },
+    tree_7:  { model: 'Tree_2' },      tree_8:  { model: 'Tree_4' },      tree_9:  { model: 'Tree_5' },      tree_10: { model: 'Tree_7' },
+    tree_11: { model: 'Tree_8' },      tree_12: { model: 'Tree_10' },
+    tree_13: { model: 'DeadTree_1', dead: true },  tree_14: { model: 'DeadTree_3', dead: true },  tree_15: { model: 'DeadTree_4', dead: true },
+    tree_16: { model: 'DeadTree_6', dead: true },  tree_17: { model: 'DeadTree_7', dead: true },  tree_18: { model: 'DeadTree_8', dead: true },
+    tree_19: { model: 'DeadTree_9', dead: true },  tree_20: { model: 'DeadTree_10', dead: true },
+};
+function hqTreeDead(kind) { const t = HQ_TREE_KINDS[kind]; return !!(t && t.dead); }
+/* THE MISC MODELS WITH NO ROW (§5.2: "E2 adds a catalogue row for each key that has none"): the renderer's _MISC_GLB files the
+   rooms never placed (the celestial bodies, the moving maps' batch, the far kits). Same file, `base: 'misc'` (Assets/misc/).
+   Sizes are the game's own for each (the metres its builders fit it to: 1.75 m a tile), UNMEASURED against the files (the
+   sandbox cannot reach the bucket): the inspector's `h` / `span` on a placed prop overrides. */
+const HQ_CATALOGUE_MISC = {
+    moon:            { file: 'Meshy_AI_moon_realistic_0727195427_texture.glb',        base: 'misc', h: 3,    foot: 0 },
+    earth:           { file: 'Meshy_AI_planet_earth_realist_0727195349_texture.glb',  base: 'misc', h: 3,    foot: 0 },
+    jupiter:         { file: 'Meshy_AI_jupiter_realistic_0727195413_texture.glb',     base: 'misc', h: 3,    foot: 0 },
+    saturn:          { file: 'Meshy_AI_saturn_realistic_0727200914_texture.glb',      base: 'misc', span: 5, foot: 0 },
+    alien:           { file: 'Meshy_AI_alien_planet_realis_0727195330_texture.glb',   base: 'misc', h: 3,    foot: 0 },
+    star:            { file: 'Meshy_AI_star_realistic_0727195402_texture.glb',        base: 'misc', h: 3,    foot: 0 },
+    solar:           { file: 'Meshy_AI_solar_system_realist_0727195437_texture.glb',  base: 'misc', span: 4, foot: 0 },
+    ufo:             { file: 'Meshy_AI_Triangle_UFO_0727195842_texture.glb',          base: 'misc', span: 6, foot: 0 },
+    spaceship:       { file: 'Meshy_AI_spaceship_0727195825_texture.glb',             base: 'misc', span: 8, foot: 0 },
+    clock:           { file: 'Meshy_AI_analog_clock_realist_0727195259_texture.glb',  base: 'misc', h: 0.5,  foot: 0 },
+    gclock:          { file: 'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',  base: 'misc', h: 2.1,  foot: 0.35, block: true },
+    skateboard:      { file: 'Meshy_AI_a_skateboard_0915212313_texture.glb',          base: 'misc', span: 0.8, foot: 0 },
+    dumpster:        { file: 'Meshy_AI_dumpster_0727195512_texture.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
+    mushroom:        { file: 'Meshy_AI_mushroom_0727200342_texture.glb',        base: 'misc', h: 3.5,  foot: 0.5, block: true },
+    mushroom2:       { file: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',    base: 'misc', h: 1.75, foot: 0.3 },
+    vault:           { file: 'Meshy_AI_a_bank_vault_0912231605_texture.glb',            base: 'misc', h: 5.25, foot: 1.4, block: true },
+    flamingo:        { file: 'Meshy_AI_a_flamingo_0912231434_texture.glb',            base: 'misc', h: 1.2,  foot: 0.2 },
+    tentacle:        { file: 'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
+    tentacle2:       { file: 'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
+    rowboat:         { file: 'Meshy_AI_a_rowboat_0912231059_texture.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
+    dish:            { file: 'Meshy_AI_a_satellite_dish_0912231301_texture.glb',        base: 'misc', h: 2.45, foot: 0.6, block: true },
+    wheel:           { file: 'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',            base: 'misc', h: 1.66, foot: 0.3, block: true },
+    dockring:        { file: 'Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb',          base: 'misc', h: 4.5,  foot: 0 },
+    palmisle:        { file: 'Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb',           base: 'misc', span: 10, foot: 0 },
+    hullplate:       { file: 'Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb',       base: 'misc', h: 5,    foot: 0.8, block: true },
+    nacelle:         { file: 'Meshy_AI_an_engine_nacelle_0912231313_texture.glb',        base: 'misc', span: 11, foot: 1.6, block: true },
+    escapepod:       { file: 'Meshy_AI_an_escape_pod_0912231249_texture.glb',            base: 'misc', span: 2.8, foot: 0.8, block: true },
+    caterpillar:     { file: 'Meshy_AI_caterpillar_0912231445_texture.glb', base: 'misc', span: 2.1, foot: 0.6 },
+    astronaut:       { file: 'Meshy_AI_dead_astronaut_0912231349_texture.glb',        base: 'misc', h: 2.0,  foot: 0.4 },
+    saucer_lg:       { file: 'Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb',   base: 'misc', span: 6, foot: 2.4, block: true },
+    shark:           { file: 'Meshy_AI_shark_0912231236_texture.glb',   base: 'misc', span: 5, foot: 0 },
+    teacups:         { file: 'Meshy_AI_stacked_teacups_0912231425_texture.glb',               base: 'misc', h: 1.2,  foot: 0.5 },
+    teapot:          { file: 'Meshy_AI_teapot_0912231417_texture.glb',                base: 'misc', span: 1.0, foot: 0.3 },
+    road_straight:   { file: 'Meshy_AI_a_straight_city_road_0917064651_texture.glb', base: 'misc', span: 8,  foot: 0 },
+    road_turn:       { file: 'Meshy_AI_a_road_turn_quarter_0917065230_texture.glb', base: 'misc', span: 8,  foot: 0 },
+    storefront:      { file: 'Meshy_AI_storefront_0917064551_texture.glb', base: 'misc', span: 8,  foot: 0 },
+    storefront_unit: { file: 'Meshy_AI_storefront_unit_0917064533_texture.glb', base: 'misc', span: 8,  foot: 0 },
+    vatican_dome:    { file: 'Meshy_AI_the_Vatican_dome_0917061915_texture.glb', base: 'misc', h: 12,    foot: 4, block: true },
+    subway_cart:     { file: 'Meshy_AI_a_subway_train_cart_0915195417_texture.glb', base: 'misc', span: 14, foot: 1.6, block: true },
+    subway_front:    { file: 'Meshy_AI_a_subway_train_front_0915195457_texture.glb', base: 'misc', span: 14, foot: 1.6, block: true },
+};
+/* THE SPELL PROPS (§5.2 "_WPN_MODELS through _hqCatGlb"): three-vfx-effects.js's files in Assets/weapons/ that no catalogue row
+   named (the F22 already is `fighter_jet`), `base: 'weapons'`, at their real-world sizes. */
+const HQ_CATALOGUE_WEAPONS = {
+    revolver:    { file: 'Meshy_AI_Revolver_0713030235_texture.glb',                  base: 'weapons', span: 0.3,  foot: 0 },
+    pistol:      { file: 'Meshy_AI_pistol_0713030139_texture.glb',                    base: 'weapons', span: 0.22, foot: 0 },
+    plasma:      { file: 'Meshy_AI_plasma_gun_0713030043_texture.glb',                base: 'weapons', span: 0.5,  foot: 0 },
+    football:    { file: 'Meshy_AI_american_football_0713030210_texture.glb',         base: 'weapons', span: 0.28, foot: 0 },
+    arrow:       { file: 'Meshy_AI_arrow_0713025846_texture.glb',                     base: 'weapons', span: 0.8,  foot: 0 },
+    cauldron:    { file: 'Meshy_AI_black_cauldron_0713025916_texture.glb',            base: 'weapons', h: 0.8,     foot: 0.45, block: true },
+    crystalBall: { file: 'Meshy_AI_crystal_ball_0713025648_texture.glb',              base: 'weapons', h: 0.3,     foot: 0 },
+    sword:       { file: 'Meshy_AI_master_sword_0713025949_texture.glb',              base: 'weapons', h: 1.1,     foot: 0 },
+    bullet:      { file: 'Meshy_AI_bullet_realistic_0725070829_texture.glb',          base: 'weapons', span: 0.06, foot: 0 },
+    missile:     { file: 'Meshy_AI_missle_0725070818_texture.glb',                    base: 'weapons', span: 4,    foot: 0.5, block: true },
+    shotgun:     { file: 'Meshy_AI_shotgun_realistic_0725070540_texture.glb',         base: 'weapons', span: 1.0,  foot: 0 },
+    sniper:      { file: 'Meshy_AI_sniper_rifle_realist_0725070547_texture.glb',      base: 'weapons', span: 1.2,  foot: 0 },
+    fist:        { file: 'Meshy_AI_closed_fist_realisti_0725070236_texture.glb',      base: 'weapons', h: 0.3,     foot: 0 },
+    sleigh:      { file: 'Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb',         base: 'weapons', span: 3,    foot: 1.2, block: true },
+    femur:       { file: 'Meshy_AI_femur_bone_realistic_0725070208_texture.glb',      base: 'weapons', span: 0.45, foot: 0 },
+    ulna:        { file: 'Meshy_AI_ulna_bone_realistic_0725070052_texture.glb',       base: 'weapons', span: 0.28, foot: 0 },
+    skull:       { file: 'Meshy_AI_skull_realistic_0725070330_texture.glb',           base: 'weapons', h: 0.22,    foot: 0 },
+    candle:      { file: 'Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb', base: 'weapons', h: 0.3,   foot: 0 },
+    candleLine:  { file: 'Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb', base: 'weapons', span: 0.8, foot: 0 },
+    candleRing:  { file: 'Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb',  base: 'weapons', span: 1.2, foot: 0 },
+    tarot:       { file: 'Meshy_AI_tarot_card_realistic_0725071149_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
+    tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
+    tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
+    cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
+};
+/* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
+[HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
+const HQ_PALETTE_RULES = {
+    /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
+    groups: [
+        ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|train_car|missile)/],
+        ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
+        ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
+        ['Structure',       null, /(stair|riser|landing|pillar|column|arch|walkway|footbridge|platform|track_bed|railing|quarter_pipe|ramp|pool|fountain|escalator|culvert|drain|window|porthole|viewport|shutter|building|dome|church_wall|catacomb|pipe_run|vent|panel$|bay$|obelisk|seal|conveyor)/],
+        ['Spell props',     c => c.base === 'weapons', null],
+        ['Built (procedural)', c => !!c.proc, null],
+        ['Misc',            c => c.base === 'misc', null],
+        ['Furniture and office', () => true, null],
+    ],
+    /* a placed prop faces the eye; a door's landing is `doorPad` m in front of it */
+    doorPad: 4, returnAhead: 4,
+};
+function hqPaletteGroup(key, cat) {
+    for (const g of HQ_PALETTE_RULES.groups) { if ((g[1] && g[1](cat)) || (g[2] && g[2].test(key))) return g[0]; }
+    return 'Furniture and office';
+}
+/* the model file a catalogue row loads, as a bucket path (Assets/…/<file>), or null for a proc */
+function hqCatalogueFilePath(cat) {
+    if (!cat || !cat.file) return null;
+    const F = HQ_PALETTE_RULES.folders;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : F.door) + cat.file;
+}
+/* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
+   registries (the editor passes them; headless callers may leave them out) */
+function hqPalette(o) {
+    o = o || {};
+    const C = DOOR_HQ.catalogue || {}, out = { models: [], people: [], trees: [], doors: [], lights: [], markers: [] };
+    Object.keys(C).sort().forEach(k => {
+        const c = C[k]; if (!c || (!c.file && !c.proc)) return;
+        if (c.leaf) { out.doors.push({ id: 'leaf:' + k, label: k.replace(/^leaf_/, '').replace(/_/g, ' '), sub: 'door leaf' + (c.open ? ' · ' + c.open : '') + (c.wide ? ' · wide' : ''), group: 'Door leaves', list: 'doors', row: { wall: 'free', leaf: k }, thumb: { kind: 'prop', key: k } }); return; }
+        const size = c.h ? c.h + ' m tall' : c.span ? c.span + ' m across' : '';
+        const e = { id: 'prop:' + k, label: k.replace(/_/g, ' '), sub: (c.proc ? 'built' : (c.base || 'door')) + (size ? ' · ' + size : '') + (c.light ? ' · light' : ''), group: hqPaletteGroup(k, c), list: 'props', row: { key: k }, thumb: { kind: 'prop', key: k } };
+        if (c.light || c.glow) out.lights.push(Object.assign({}, e, { id: 'light:' + k, group: c.light ? (c.light.night ? 'Lamps (on at night)' : 'Lights') : 'Glows (no light)' }));
+        out.models.push(e);
+    });
+    Object.keys(DOOR_HQ.ways || {}).sort().forEach(w => {
+        const W = DOOR_HQ.ways[w];
+        out.doors.push({ id: 'way:' + w, label: w, sub: String(W.verb || '').toLowerCase() + ' · ' + String(W.sub || '').split('·')[0].trim().toLowerCase(), group: 'Ways (a door that is a thing)', list: 'doors', row: { wall: 'free', way: w }, thumb: null });
+    });
+    Object.keys(HQ_TREE_KINDS).forEach(k => {
+        const T = HQ_TREE_KINDS[k];
+        out.trees.push({ id: 'tree:' + k, label: k.replace('_', ' '), sub: T.model + (T.dead ? ' · bare' : ''), group: T.dead ? 'Bare trees' : 'Trees', list: 'terrain.features', row: { k: 'tree', kind: k }, thumb: { kind: 'tree', key: k } });
+    });
+    out.trees.push({ id: 'grove', label: 'grove', sub: 'trees in a disc · kinds, n, seed', group: 'Groups', list: 'terrain.features', row: { k: 'grove', r: 8, n: 10, kinds: ['tree', 'tree_2', 'tree_3'], seed: 1 }, thumb: null });
+    out.trees.push({ id: 'scatter', label: 'scatter', sub: 'props in a disc · key, n, seed', group: 'Groups', list: 'terrain.features', row: { k: 'scatter', key: 'fern', r: 6, n: 8, seed: 1 }, thumb: null });
+    (o.races || []).slice().sort().forEach(r => out.people.push({ id: 'race:' + r, label: r, sub: 'stands here (' + ((o.genders && o.genders[r]) || []).join(' / ') + ')', group: 'Races', list: 'npcSpots', row: { race: r }, thumb: { kind: 'portrait', key: r } }));
+    (o.cast || []).forEach(c => out.people.push({ id: 'cast:' + c, label: c, sub: 'the cast model', group: 'The cast', list: 'npcSpots', row: { cast: c }, thumb: null }));
+    out.people.push({ id: 'agent', label: 'agent', sub: 'a D.O.O.R. agent · pose, line, patrol', group: 'Agents', list: 'agents', row: { label: 'D.O.O.R. AGENT' }, thumb: null });
+    (o.poses || []).forEach(p => out.people.push({ id: 'agent:' + p, label: 'agent · ' + p.replace(/^hq/, '').toLowerCase(), sub: 'a D.O.O.R. agent in the ' + p + ' pose', group: 'Agents', list: 'agents', row: { label: 'D.O.O.R. AGENT', pose: p }, thumb: null }));
+    out.markers.push({ id: 'spawn', label: 'spawn', sub: 'where the walker arrives (moves the room\'s one spawn)', group: 'Markers', list: 'spawn', row: {}, thumb: null });
+    out.markers.push({ id: 'sign', label: 'sign', sub: 'a counter: label, sub, desc · READ', group: 'Markers', list: 'counters', row: { label: 'SIGN', sub: '', desc: '', verb: 'READ', action: {}, radius: 1.8, plateY: 1.8 }, thumb: null });
+    out.markers.push({ id: 'roster', label: 'roster spot', sub: 'one of your vessels stands here (up to 3 a room)', group: 'Markers', list: 'npcSpots', row: {}, thumb: null });
+    out.markers.push({ id: 'online', label: 'online spot', sub: 'an agent per other player online stands here', group: 'Markers', list: 'onlineSpots', row: {}, thumb: null });
+    return out;
+}
+/* the row an entry places at (x, z) facing `face` (degrees clockwise from north) — a fresh copy; the spawn is { x, z, face } */
+function hqPaletteRow(entry, x, z, face) {
+    const r = JSON.parse(JSON.stringify(entry.row || {}));
+    r.x = Math.round(x * 4) / 4; r.z = Math.round(z * 4) / 4;
+    if (entry.list !== 'terrain.features' || r.k === 'tree') r.face = Math.round((((+face || 0) % 360) + 360) % 360);
+    if (r.k === 'tree') delete r.face;
+    return r;
+}
+/* ── THE DOOR TOOL (§5.5): both ends at once. `a` = { room, x, z, face, wall?, y? } this side; `b` = { room, door? } the far side
+   (door = one of its doors to pair with, else a new return door `ahead` m in front of its spawn); `o` = { leaf, way, back (default
+   true), ids: { a, b } }. → { mine, back, relink } where `relink` = { room, id, action } re-points an existing far door here.
+   Pure: the editor turns it into one undo step. */
+function hqDoorPair(doc, a, b, o) {
+    o = o || {};
+    const R = (doc && doc.rooms) || {}, far = R[b.room]; if (!far) return null;
+    const look = o.way ? { way: o.way } : { leaf: o.leaf || 'leaf_office' };
+    const q = v => (Math.round(v * 100) / 100) || 0;
+    const mine = Object.assign({ id: o.ids && o.ids.a, wall: a.wall || 'free' }, look, { action: { room: b.room } });
+    if (mine.wall === 'free') { mine.x = q(a.x); mine.z = q(a.z); mine.face = Math.round((((+a.face || 0) % 360) + 360) % 360); }
+    else if (mine.wall === 'n' || mine.wall === 's') mine.x = q(a.x); else mine.z = q(a.z);
+    if (typeof a.y === 'number' && a.y) mine.y = q(a.y);
+    let back = null, relink = null;
+    if (o.back !== false) {
+        const pick = b.door ? (far.doors || []).find(d => d && d.id === b.door) : null;
+        if (pick) {
+            mine.action.at = pick.id;
+            relink = { room: b.room, id: pick.id, action: { room: a.room, at: mine.id } };
+        } else {
+            const sp = far.spawn || { x: 0, z: 0, face: 0 }, fr = (+sp.face || 0) * Math.PI / 180, ahead = HQ_PALETTE_RULES.returnAhead;
+            back = Object.assign({ id: o.ids && o.ids.b, wall: 'free', x: q((+sp.x || 0) + Math.sin(fr) * ahead), z: q((+sp.z || 0) - Math.cos(fr) * ahead), face: ((+sp.face || 0) + 180) % 360 }, look, { action: { room: a.room, at: mine.id } });
+            mine.action.at = back.id;
+        }
+    } else if (b.door) mine.action.at = b.door;
+    return { mine, back, relink };
+}
+/* every door of the doc's rooms whose target is not there: { room, door, why } — `why` 'no room' (the target room is gone) or
+   'no door' (its `at` names a door the far room does not have). A door with no `at` lands at the far room's spawn (live). */
+function hqWorldDocDoorCheck(doc) {
+    const R = (doc && doc.rooms) || {}, bad = [];
+    Object.keys(R).forEach(id => ((R[id] && R[id].doors) || []).forEach(d => {
+        if (!d || !d.action) return;
+        const to = d.action.room; if (!to) return;
+        const far = R[to] || ((typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) ? DOOR_HQ.rooms[to] : null);
+        if (!far) { bad.push({ room: id, door: d.id, why: 'no room' }); return; }
+        if (d.action.at && !(far.doors || []).some(x => x && x.id === d.action.at)) bad.push({ room: id, door: d.id, why: 'no door' });
+    }));
+    return bad;
+}
+/* the doors that lead back to `room`'s door `id` (a pair's other end: its action names this room and this door) */
+function hqDoorPartners(doc, room, id) {
+    const R = (doc && doc.rooms) || {}, out = [];
+    Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
+    return out;
+}
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -45907,7 +46119,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             if (!inShell(px, pz, 0.5)) continue;
             const d = hqTerrainMaskAt(info, px, pz); if (d > -0.55) continue;
             const kind = kinds[Math.floor(rnd() * kinds.length)];
-            const h = kind === 'pine' ? 5.0 + rnd() * 1.6 : kind === 'tree_4' ? 4.5 + rnd() * 1.5 : (kind === 'tree_5' || kind === 'tree_6') ? 2.2 + rnd() * 0.8 : 2.6 + rnd() * 1.3;
+            const h = kind === 'pine' ? 5.0 + rnd() * 1.6 : kind === 'tree_4' ? 4.5 + rnd() * 1.5 : hqTreeDead(kind) ? 2.2 + rnd() * 0.8 : 2.6 + rnd() * 1.3;
             want.push({ x: Math.round(px * 100) / 100, z: Math.round(pz * 100) / 100, kind, h, r: 0.42, d, y: hqTerrainHeight(info, px, pz) });
         }
         /* the nearest to the open ground first (the wall of the woods), the interior thinned to the cap */

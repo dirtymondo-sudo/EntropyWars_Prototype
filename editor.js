@@ -258,7 +258,7 @@
         reloadTimer: null, saveTimer: null, statusAt: 0, flags: null, hook: null, ready: false,
         /* E1: the draw tool ({ tool, a, chain, preview }), its options, the prefab being edited */
         draw: null, pfId: null,
-        opts: { wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3 },
+        opts: { wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3, tab: 'build', doorLeaf: 'leaf_office' },
     };
     var PF_ROOM = '__ed_prefab';   // the room the editor lays a prefab out in while it is edited (never saved, never exported)
     var U = function () { return (ED.view && ED.view.units) || (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.units) || 73; };
@@ -280,8 +280,8 @@
         if (_db) return _db;
         _db = new Promise(function (res, rej) {
             if (typeof indexedDB === 'undefined') { rej(new Error('no IndexedDB')); return; }
-            var q = indexedDB.open('ew_editor', 1);
-            q.onupgradeneeded = function () { var db = q.result; if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'name' }); if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta'); };
+            var q = indexedDB.open('ew_editor', 2);   // v2 (E2): the palette's thumbnails
+            q.onupgradeneeded = function () { var db = q.result; if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'name' }); if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta'); if (!db.objectStoreNames.contains('thumbs')) db.createObjectStore('thumbs'); };
             q.onsuccess = function () { res(q.result); };
             q.onerror = function () { rej(q.error); };
         });
@@ -383,7 +383,7 @@
     function redo() { var s = ED.redo.pop(); if (!s) return; try { Core.stepDo(ED.doc, s); } catch (e) { toast('REDO FAILED · ' + e.message); return; } ED.undo.push(s); afterStep(s); toast('REDO · ' + s.label, 1200); }
 
     /* ══ ROWS: selection = [{ list, id }] ('spawn' and 'room' are the room's own) ═══════════════════════════════════════ */
-    var LISTS = ['terrain.features', 'props', 'doors', 'counters', 'npcSpots', 'agents'];
+    var LISTS = ['terrain.features', 'props', 'doors', 'counters', 'npcSpots', 'agents', 'onlineSpots'];
     function listOf(r, list) { return (r && W.hqWorldDocList) ? W.hqWorldDocList(r, list) : null; }
     function rowPath(list, i) { return basePath().concat(list.split('.'), [i]); }
     function findRow(list, id) { var L = listOf(room(), list); if (!L) return null; for (var i = 0; i < L.length; i++) if (L[i] && L[i].id === id) return { row: L[i], i: i, list: list }; return null; }
@@ -407,7 +407,7 @@
     }
     function nextId(r) {
         var max = 0;
-        LISTS.concat(['terrain.marks', 'onlineSpots']).forEach(function (l) { (listOf(r, l) || []).forEach(function (x) { var m = /^r(\d+)$/.exec(String(x && x.id || '')); if (m) max = Math.max(max, +m[1]); }); });
+        LISTS.concat(['terrain.marks']).forEach(function (l) { (listOf(r, l) || []).forEach(function (x) { var m = /^r(\d+)$/.exec(String(x && x.id || '')); if (m) max = Math.max(max, +m[1]); }); });
         return 'r' + (max + 1);
     }
     function addRow(list, row, label, o) {
@@ -428,7 +428,14 @@
         if (!editable() || !ED.sel.length) return;
         var hits = ED.sel.map(selRow).filter(function (h) { return h && h.list !== 'spawn'; });
         hits.sort(function (a, b) { return a.list === b.list ? b.i - a.i : (a.list < b.list ? -1 : 1); });   // highest index first: the undo re-inserts in reverse
-        var step = hits.map(function (h) { return { path: rowPath(h.list, h.i), before: Core.clone(h.row), after: undefined }; });
+        var step = [], gone = {};
+        hits.forEach(function (h) { if (h.list === 'doors') gone[ED.roomId + '|' + h.row.id] = 1; });
+        /* E2: a door of a pair goes alone — the far end keeps leading here, to the spawn now (its `at` named the door that went) */
+        if (ED.mode === 'world') hits.forEach(function (h) {
+            if (h.list !== 'doors') return;
+            W.hqDoorPartners(ED.doc, ED.roomId, h.row.id).forEach(function (q) { if (gone[q.room + '|' + q.id]) return; var d = ED.doc.rooms[q.room].doors[q.i]; step.push({ path: ['rooms', q.room, 'doors', q.i, 'action'], before: Core.clone(d.action), after: { room: d.action.room } }); });
+        });
+        hits.forEach(function (h) { step.push({ path: rowPath(h.list, h.i), before: Core.clone(h.row), after: undefined }); });
         ED.sel = [];
         commit(step, 'delete ' + hits.length);
     }
@@ -539,6 +546,8 @@
         (V.props || []).forEach(function (p) { if (p.row && p.row.id && p.grp) { p.grp.userData.edSel = { list: 'props', id: p.row.id }; ED.proxies.push({ obj: p.grp, own: false, sel: p.grp.userData.edSel }); } });
         (V.doors || []).forEach(function (d) { if (d.door && d.door.id && d.group && (r.doors || []).some(function (x) { return x && x.id === d.door.id; })) { d.group.userData.edSel = { list: 'doors', id: d.door.id }; ED.proxies.push({ obj: d.group, own: false, sel: d.group.userData.edSel }); } });
         if (ED.spawnObj) ED.proxies.push({ obj: ED.spawnObj, own: false, sel: { list: 'spawn' } });
+        /* E2: the people's spots, the agents, the online spots and the signs, as posts */
+        ['npcSpots', 'agents', 'onlineSpots', 'counters'].forEach(function (list) { (listOf(r, list) || []).forEach(function (row) { if (!row || row.id == null || !isFinite(row.x) || !isFinite(row.z)) return; var m = markerObj(list, row); ED.group.add(m); ED.proxies.push({ obj: m, own: true, sel: m.userData.edSel }); }); });
         boxesUpdate();
     }
     /* an opening's box: on its wall, `at` metres from the wall's start, sill → sill + h, a little thicker than the wall */
@@ -740,11 +749,12 @@
         building: { label: 'BUILDING', how: 'rect', tip: 'Drag a rectangle: a textured building of STOREYS floors.' },
         door:     { label: 'DOOR GAP', how: 'wall', tip: 'Click on a wall: a door-sized gap with a lintel.' },
         window:   { label: 'WINDOW', how: 'wall', tip: 'Click on a wall: a window (a sill, glass, a lintel).' },
+        doorway:  { label: 'DOOR', how: 'doorway', tip: 'Click a wall you drew (the door stands in a gap) or the ground (free-standing); then pick where it leads.' },
     };
     function drawSet(tool) {
         drawPreview(null);
         ED.draw = tool ? { tool: tool, a: null, chain0: null, b: null } : null;
-        if (tool) { select(null); toast(DRAWS[tool] ? DRAWS[tool].tip : ('PLACE · click on the ground'), 3200); }
+        if (tool) { select(null); if (DRAWS[tool]) toast(DRAWS[tool].tip, 3200); }
         panels();
     }
     /* a ground point under the mouse, snapped: to a wall's end within 0.6 m (walls join), else to the grid (SNAP, 0.25 m at least);
@@ -806,8 +816,11 @@
     function drawUp(e) {
         var D = ED.draw; if (!D) return;
         var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click', O = ED.opts, p = drawPt(e.clientX, e.clientY, e);
+        if (how === 'doorway') { doorClick(e); return; }
+        if (D.tool === 'paint') { paintAt(e); return; }
         if (how === 'click') {   // a shape from the ADD list, dropped where clicked
             var c = rayGround(e.clientX, e.clientY); if (!c) return;
+            if (D.entry) { palDrop(D, c); return; }   // E2: a palette tile
             var row = D.row ? Core.clone(D.row) : Core.kindRow(D.tool, c.x, c.z);
             if (D.row) { row.x = Core.snap(c.x, Math.max(0.25, ED.snap || 0)); row.z = Core.snap(c.z, Math.max(0.25, ED.snap || 0)); }
             drawSet(null); if (row) addRow(D.list || 'terrain.features', row, D.label);
@@ -951,7 +964,11 @@
             c.x = O.x + Math.sin(yaw) * Math.cos(el) * R; c.z = O.z - Math.cos(yaw) * Math.cos(el) * R; c.y = O.y + Math.sin(el) * R;
             c.yaw = Math.atan2(O.x - c.x, -(O.z - c.z)); c.pitch = Math.atan2(O.y - c.y, Math.hypot(O.x - c.x, O.z - c.z));
         }
-        if (ED.draw && ED.mouse.in) { var D = ED.draw, how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click'; drawShow(how === 'click' || how === 'wall' ? null : drawPt(e.clientX, e.clientY, e)); }
+        if (ED.draw && ED.mouse.in) {
+            var D = ED.draw, how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
+            if (how === 'doorway' || (how === 'click' && (D.entry || D.row) && D.tool !== 'paint')) placeShow(rayGround(e.clientX, e.clientY));
+            else drawShow(how === 'click' || how === 'wall' ? null : drawPt(e.clientX, e.clientY, e));
+        }
     }
     function onMouseUp(e) {
         if (!ED.open || ED.playing) return;
@@ -1070,51 +1087,6 @@
         var r = room(), sp = r.spawn || { x: 0, z: 0, face: 0 };
         commit([{ path: ['start'], before: Core.clone(ED.doc.start), after: { room: ED.roomId, at: { x: sp.x || 0, z: sp.z || 0, face: sp.face || 0 } } }], 'set start');
         toast('THE WORLD STARTS IN ' + String(r.label || ED.roomId).toUpperCase() + ' (after THE SWAP)');
-    }
-
-    /* ══ DOORS: both ends at once (RETURN DOOR), plates are the runtime's (on the door, eye level, '?' until visited — R7) ══ */
-    function addDoor() {
-        if (!editable()) { toast('THE LIBRARY IS READ ONLY'); return; }
-        var ids = Object.keys(ED.doc.rooms), p = spot(), leaves = Object.keys(DOOR_HQ.catalogue).filter(function (k) { return DOOR_HQ.catalogue[k].leaf; }).sort();
-        ask('ADD DOOR', [
-            { name: 'to', label: 'Leads to', type: 'select', value: ids.filter(function (x) { return x !== ED.roomId; })[0] || ED.roomId, options: ids.map(function (x) { return [x, (ED.doc.rooms[x].label || x) + ' (' + x + ')']; }) },
-            { name: 'where', label: 'Stands', type: 'select', value: 'free', options: [['free', 'Free-standing, at the cursor'], ['n', 'On the north edge'], ['s', 'On the south edge'], ['e', 'On the east edge'], ['w', 'On the west edge']] },
-            { name: 'leaf', label: 'Leaf', type: 'select', value: 'leaf_office', options: leaves.map(function (x) { return [x, x]; }) },
-            { name: 'back', label: 'Return door in the far room', type: 'checkbox', value: true },
-        ], function (v) {
-            var to = v.to, r = room(), far = ED.doc.rooms[to]; if (!far) return;
-            var myId = nextId(r), step = [];
-            var face = Math.round(((ED.cam.yaw * 180 / Math.PI + 180) % 360 + 360) % 360);   // a free door faces the eye
-            var mine = v.where === 'free' ? { id: myId, wall: 'free', x: Math.round(p.x * 4) / 4, z: Math.round(p.z * 4) / 4, face: face, leaf: v.leaf, action: { room: to } }
-                                          : { id: myId, wall: v.where, leaf: v.leaf, action: { room: to } };
-            if (v.where === 'n' || v.where === 's') mine.x = Math.round(p.x * 4) / 4; else if (v.where === 'e' || v.where === 'w') mine.z = Math.round(p.z * 4) / 4;
-            var farId = null;
-            if (v.back) {
-                farId = to === ED.roomId ? 'r' + (+myId.slice(1) + 1) : nextId(far);
-                var sp = far.spawn || { x: 0, z: 0, face: 0 }, ff = ((sp.face || 0) + 180) % 360, fr = (sp.face || 0) * Math.PI / 180;
-                var back = { id: farId, wall: 'free', x: Math.round(((+sp.x || 0) + Math.sin(fr) * 4) * 4) / 4, z: Math.round(((+sp.z || 0) - Math.cos(fr) * 4) * 4) / 4, face: ff, leaf: v.leaf, action: { room: ED.roomId, at: myId } };
-                mine.action.at = farId;
-                var fn = (far.doors || []).length;
-                if (!far.doors) step.push({ path: ['rooms', to, 'doors'], before: undefined, after: [] });
-                step.push({ path: ['rooms', to, 'doors', fn + (to === ED.roomId ? 1 : 0)], before: undefined, after: back });
-            }
-            var n = ensureList('doors', step);
-            step.splice(step.length - (v.back ? 1 : 0), 0, { path: rowPath('doors', n), before: undefined, after: mine });
-            commit(step, 'add door');
-            if (to !== ED.roomId) docSync([to]);
-            select('doors', myId);
-            toast(v.back ? 'DOOR ADDED · its return door stands 4 m in front of ' + (far.label || to) + '\'s spawn' : 'DOOR ADDED (one way)', 4000);
-        });
-    }
-    function doorRetarget(h) {
-        var ids = Object.keys(ED.doc.rooms);
-        ask('DOOR LEADS TO', [
-            { name: 'to', label: 'Room', type: 'select', value: (h.row.action && h.row.action.room) || ids[0], options: ids.map(function (x) { return [x, (ED.doc.rooms[x].label || x) + ' (' + x + ')']; }) },
-            { name: 'at', label: 'Arrive at door (id, empty = the spawn)', type: 'text', value: (h.row.action && h.row.action.at) || '' },
-        ], function (v) {
-            var after = Core.clone(h.row); after.action = { room: v.to }; if (v.at) after.action.at = v.at;
-            replaceRows([{ list: 'doors', i: h.i, before: Core.clone(h.row), after: after }], 'door target');
-        });
     }
 
     /* ══ EXPORT / IMPORT: one zip at the bucket's paths, only what changed since the last export (the shas are kept) ═════ */
@@ -1396,10 +1368,10 @@
         stairs: [['height', 'Top height (m, absolute)']],
         ramp: [['height', 'Top height (m, absolute)']],
         building: [['storeys', 'Storeys']],
+        doorway: [['doorLeaf', 'Leaf', 'leaf']],
     };
-    function paletteHtml() {
-        if (!editable()) return '';
-        var D = ED.draw, h = '<div class="ed-sec ed-pal"><div class="ed-hd">BUILD</div><div class="ed-palb">';
+    function buildHtml() {
+        var D = ED.draw, h = '<div class="ed-palb">';
         h += '<button class="ed-btn' + (!D ? ' on' : '') + '" data-draw="" title="Pick and move (V)">SELECT</button>';
         Object.keys(DRAWS).forEach(function (k) { h += '<button class="ed-btn' + (D && D.tool === k ? ' on' : '') + '" data-draw="' + k + '" title="' + esc(DRAWS[k].tip) + '">' + DRAWS[k].label + '</button>'; });
         h += '</div>';
@@ -1408,11 +1380,12 @@
             var F = OPT_FIELDS[D.tool] || [];
             if (F.length) h += '<div class="ed-form" data-scope="opts">' + F.map(function (f) {
                 var v = ED.opts[f[0]];
+                if (f[2] === 'leaf') return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlLeaf"></label>';
                 if (f[2]) return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlTex"><button class="ed-btn ed-texb" data-otex="' + f[0] + '" title="Pick a texture"' + texSwatchStyle(v) + '>…</button></label>';
                 return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="number" step="any" data-o="' + f[0] + '" value="' + esc(v) + '"></label>';
             }).join('') + '</div>';
         }
-        return h + '</div>';
+        return h;
     }
     function texSwatchStyle(key) { var u = key && texUrl(key); return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
     function paletteWire(L) {
@@ -1434,6 +1407,350 @@
         L.querySelectorAll('[data-act="newpf"]').forEach(function (b) { b.onclick = newPrefab; });
     }
 
+    /* ══ THE PALETTE (E2, EDITOR_PLAN §5.2 + §5.5): the left panel's tabs, built from the game's registries at run time (data.js
+       hqPalette): MODELS (the catalogue), PEOPLE (the races, the cast, the agents), TREES (the foliage models, groves, scatter),
+       DOORS (the leaves and the ways: the door tool, both ends at once), LIGHTS, MARKERS (the spawn, a sign, a roster spot, an
+       online spot), TEXTURES (paint a sheet onto a face) and KITS (the game's builders and his prefabs). A tile arms the tool:
+       click on the ground to place (again and again; ESC or V stops). Thumbnails are live renders cached in IndexedDB ═══════ */
+    var PAL_TABS = [['build', 'BUILD'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS']];
+    var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
+    ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
+    function palData() {
+        if (ED.pal) return ED.pal;
+        var races = [], genders = {}, cast = [], poses = [];
+        try { if (typeof RACE_MODELS_3D !== 'undefined') { races = Object.keys(RACE_MODELS_3D); races.forEach(function (r) { genders[r] = Object.keys(RACE_MODELS_3D[r] || {}); }); } } catch (e) {}
+        try { if (typeof DOOR_CAST_MODELS !== 'undefined') cast = Object.keys(DOOR_CAST_MODELS); } catch (e) {}
+        try { if (typeof _CAST_POSES !== 'undefined') poses = Object.keys(_CAST_POSES); } catch (e) {}
+        ED.pal = W.hqPalette({ races: races, genders: genders, cast: cast, poses: poses });
+        return ED.pal;
+    }
+    /* the entries of a tab: the palette's lists, the texture sheets, the kits + his prefabs */
+    function palEntries(tab) {
+        if (tab === 'textures') return texSources().map(function (t) { return { id: 'tex:' + t.key, label: t.key.replace(/^urban:/, ''), sub: t.key, group: t.fam, tex: t.key, url: t.url }; });
+        if (tab === 'kits') {
+            var F = W.HQ_KIT_FORMS || {}, out = Object.keys(F).map(function (fn) { return { id: 'kit:' + fn, label: F[fn].label, sub: fn + (F[fn].marks ? ' · paint' : ''), group: 'Kits (the game\'s builders)', kit: fn }; });
+            Object.keys((ED.doc && ED.doc.prefabs) || {}).forEach(function (id) { if (ED.mode === 'prefab' && id === ED.pfId) return; var p = ED.doc.prefabs[id]; out.push({ id: 'pf:' + id, label: p.label || id, sub: id + ' · ' + p.terrain.features.length + ' shape(s) · ' + p.props.length + ' prop(s)', group: 'Your prefabs', pf: id }); });
+            return out;
+        }
+        return palData()[tab] || [];
+    }
+    function palette() {
+        var B = $('edPalBox'); if (!B) return;
+        var ae = document.activeElement;
+        if (ae && B.contains(ae) && ae.id === 'edPalQ') { palMark(); return; }   // typing in the search: the body only
+        if (!editable()) { B.innerHTML = ''; return; }
+        var tab = ED.opts.tab || 'build';
+        var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+        if (tab === 'build') h += buildHtml();
+        else h += '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
+        h += '</div>';
+        /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
+           room reloads is not lost to a rebuilt button */
+        if (B._h === h && B.firstChild) { if (tab === 'build') { paletteWire(B); return; } palBody(); return; }
+        B._h = h; B.innerHTML = h;
+        B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
+        if (tab === 'build') { paletteWire(B); return; }
+        $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
+        $('edPalQ').onkeydown = function (e) { if (e.key === 'Escape') { this.value = ''; ED.palQ[tab] = ''; this.blur(); palBody(); } };
+        palBody();
+    }
+    function palHint(tab) {
+        var t = { models: 'Click a tile, then click on the ground (again for more copies). It faces you; [ ] turns it. ESC stops.',
+                  people: 'Races stand where you click (a native of this room); the cast are the story\'s models; agents take a pose.',
+                  trees: 'A tree where you click. GROVE / SCATTER fill a disc (the inspector: kinds, n, r, seed).',
+                  doors: 'Pick a leaf or a way, then click a wall you drew (a door in a gap) or the ground (a free-standing door), then pick where it leads.',
+                  lights: 'Lamps carry a real light (the cap is in the status line). Glows only glow.',
+                  markers: 'SPAWN moves the room\'s arrival point. A SIGN is read with the action key. Roster / online spots are where people stand.',
+                  textures: 'Click a sheet, then click a shape: a wall\'s outside or inside face, a floor, a block. The open ground takes it as the room\'s floor.',
+                  kits: 'The game\'s own builders and your prefabs: click one, then the ground.' }[tab];
+        return t ? '<div class="ed-note">' + esc(t) + '</div>' : '';
+    }
+    function palBody() {
+        var P = $('edPalBody'); if (!P) return;
+        var tab = ED.opts.tab, all = palEntries(tab), q = String(ED.palQ[tab] || '').toLowerCase().trim(), groups = [], byG = {};
+        all.forEach(function (e, i) { if (q && (e.label + ' ' + (e.sub || '') + ' ' + (e.group || '')).toLowerCase().indexOf(q) < 0) return; var g = e.group || ''; if (!byG[g]) { byG[g] = []; groups.push(g); } byG[g].push(i); });
+        var few = all.length <= 40, h = '', shown = 0; ED.palShown = all;
+        groups.forEach(function (g) {
+            var key = tab + '|' + g, open = !!q || few || !!ED.palOpen[key];
+            h += '<button class="ed-palg' + (open ? ' on' : '') + '" data-pg="' + esc(key) + '">' + (open ? '▾ ' : '▸ ') + esc(g) + ' <span>' + byG[g].length + '</span></button>';
+            if (!open) return;
+            h += '<div class="ed-tiles">';
+            byG[g].forEach(function (i) { if (shown++ > 240) return; h += tileHtml(all[i], i); });
+            h += '</div>';
+        });
+        if (shown > 240) h += '<div class="ed-note">… ' + (shown - 240) + ' more: type to narrow it</div>';
+        h = h || '<div class="ed-note">Nothing matches.</div>';
+        var sig = h.replace(/<(img|b) [^>]*data-thk="([^"]*)"[^>]*>([^<]*<\/b>)?/g, '[$2]');   // a thumbnail landing in place is not a change
+        if (P._h === sig) { palMark(); return; }
+        P._h = sig; P.innerHTML = h;
+        P.scrollTop = ED.palScroll[tab] || 0; P.onscroll = function () { ED.palScroll[tab] = P.scrollTop; };
+        P.querySelectorAll('[data-pg]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-pg'); ED.palOpen[k] = !ED.palOpen[k]; palBody(); }; });
+        P.querySelectorAll('[data-pe]').forEach(function (b) { b.onclick = function () { palPick(ED.palShown[+b.getAttribute('data-pe')]); }; });
+        palMark();
+        thumbFill(P);
+    }
+    function tileHtml(e, i) {
+        var img = '', t = e.thumb;
+        if (e.url) img = '<img loading="lazy" src="' + esc(e.url) + '" alt="">';
+        else if (t && t.kind === 'portrait') { var pu = portraitUrl(t.key); img = pu ? '<img loading="lazy" src="' + esc(pu) + '" alt="">' : ''; }
+        else if (t) { var tk = thumbKey(t), got = TH.mem[tk]; img = got ? '<img data-thk="' + esc(tk) + '" src="' + got + '" alt="">' : got === null ? '<b class="ed-thg" data-thk="' + esc(tk) + '">' + esc(PAL_GLYPH[e.list] || '·') + '</b>' : '<b class="ed-thw" data-th="' + esc(tk) + '" data-thk="' + esc(tk) + '">…</b>'; }
+        if (!img) img = '<b class="ed-thg">' + esc(PAL_GLYPH[e.list] || (e.kit ? 'K' : e.pf ? 'F' : '·')) + '</b>';
+        return '<button class="ed-tile" data-pe="' + i + '" data-pid="' + esc(e.id) + '" title="' + esc(e.label + (e.sub ? ' — ' + e.sub : '')) + '">' + img + '<span>' + esc(e.label) + '</span></button>';
+    }
+    function portraitUrl(race) { try { var P = (typeof RACE_PORTRAITS !== 'undefined') ? RACE_PORTRAITS[race] : null; return P ? (P.male || P.female || null) : null; } catch (e) { return null; } }
+    /* the armed tile wears `on` (no re-render while he types) */
+    function palMark() {
+        var B = $('edPalBox'); if (!B) return;
+        var D = ED.draw, cur = D && (D.entry ? D.entry.id : D.key ? 'tex:' + D.key : null);
+        B.querySelectorAll('[data-pid]').forEach(function (b) { b.classList.toggle('on', !!cur && b.getAttribute('data-pid') === cur); });
+    }
+    /* a tile → its tool */
+    function palPick(e) {
+        if (!e) return;
+        if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return; }
+        var D = ED.draw;
+        if (D && ((D.entry && D.entry.id === e.id) || (D.key && e.tex === D.key))) { drawSet(null); return; }   // the armed tile again = stop
+        if (e.tex) { drawSet('paint'); ED.draw.key = e.tex; toast('PAINT ' + e.tex + ' · click a face (a wall\'s side, a floor, a block) · ESC stops', 3500); palMark(); return; }
+        if (e.kit) { var F = W.HQ_KIT_FORMS[e.kit]; placeRow({ k: 'kit', fn: e.kit, args: Core.clone(F.args), yaw: 0 }, F.label); return; }
+        if (e.pf) { placeRow({ k: 'prefab', pf: e.pf, yaw: 0 }, e.label); return; }
+        if (ED.mode === 'prefab' && e.list !== 'terrain.features' && e.list !== 'props') { toast('A PREFAB HOLDS SHAPES AND PROPS ONLY'); return; }
+        if (e.list === 'doors') { drawSet('doorway'); ED.draw.entry = e; toast('DOOR · ' + e.label + ' · click a wall you drew, or the ground · ESC cancels', 4000); palMark(); return; }
+        drawSet('place'); ED.draw.entry = e; ED.draw.repeat = e.list !== 'spawn';
+        toast(e.list === 'spawn' ? 'CLICK WHERE THE WALKER ARRIVES (facing away from you)' : ('PLACE ' + e.label.toUpperCase() + ' · click on the ground, again for more · ESC stops'), 3200);
+        palMark();
+    }
+    /* the eye's heading turned round: what a placed thing faces (degrees clockwise from north) */
+    function faceEye() { return Math.round(((ED.cam.yaw * 180 / Math.PI + 180) % 360 + 360) % 360); }
+    function palDrop(D, c) {
+        var e = D.entry, sn = Math.max(0.25, ED.snap || 0), x = Core.snap(c.x, sn), z = Core.snap(c.z, sn);
+        if (e.list === 'spawn') {
+            var r = room(); if (!r || ED.mode === 'prefab') return;
+            var face = Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360);
+            commit([{ path: basePath().concat(['spawn']), before: Core.clone(r.spawn), after: { x: x, z: z, face: face, level: 0 } }], 'move the spawn', { noReload: true });
+            spawnPlace(); drawSet(null); return;
+        }
+        var row = W.hqPaletteRow(e, x, z, faceEye());
+        addRow(e.list, row, 'add ' + e.label, { noSelect: !!D.repeat });
+        if (!D.repeat) drawSet(null);
+    }
+    /* the ghost at the cursor while placing: the thing's size (the catalogue's foot / h / span; a person, a tree, a door) */
+    function placeShow(c) {
+        var D = ED.draw; if (!D || !c) { drawPreview(null); return; }
+        var e = D.entry, g = c.y || ground(c.x, c.z), w = 0.8, d = 0.8, h = 1.2;
+        if (D.tool === 'doorway') { w = 1.2; d = 0.3; h = 2.2; }
+        else if (e && e.list === 'props') { var cat = DOOR_HQ.catalogue[e.row.key] || {}; w = d = Math.max(0.3, cat.foot ? cat.foot * 2 : (cat.span || 0.8)); h = cat.h || (cat.span ? Math.min(cat.span, 3) : 1); }
+        else if (e && (e.list === 'npcSpots' || e.list === 'agents' || e.list === 'onlineSpots')) { w = d = 0.6; h = 1.8; }
+        else if (e && e.row && e.row.k === 'tree') { w = d = 1.2; h = 6; }
+        else if (e && e.row && (e.row.k === 'grove' || e.row.k === 'scatter')) { w = d = 2 * (e.row.r || 6); h = 0.3; }
+        else if (D.row && D.row.k === 'kit') { w = d = 4; h = 2; }
+        var sn = Math.max(0.25, ED.snap || 0), x = Core.snap(c.x, sn), z = Core.snap(c.z, sn), f = faceEye() * Math.PI / 180;
+        drawPreview([{ cx: x, cz: z, w: w, L: d, y0: g, y1: g + h, yaw: -f }, { cx: x + Math.sin(f) * (d / 2 + 0.3), cz: z - Math.cos(f) * (d / 2 + 0.3), w: 0.18, L: 0.6, y0: g, y1: g + 0.12, yaw: -f }]);
+    }
+
+    /* ── THE DOOR TOOL (§5.5): click a wall of his (a gap is cut and the door stands in it, facing the side he clicked from) or the
+       ground (a free-standing door facing him); then WHERE IT LEADS: a room of his (or a new one) and where he arrives there — a new
+       door in front of its spawn that leads back (RETURN DOOR), its spawn (one way), or one of its doors (re-pointed back here).
+       One undo step for the whole thing. The plate is the runtime's (on the door, eye level, '?' until visited — R7). ── */
+    function doorClick(e) {
+        var D = ED.draw, ent = D.entry || { id: 'leaf:' + (ED.opts.doorLeaf || 'leaf_office'), label: ED.opts.doorLeaf || 'leaf_office', row: { wall: 'free', leaf: ED.opts.doorLeaf || 'leaf_office' } };
+        var sp = null, r = rayFrom(e.clientX, e.clientY);
+        if (r && !ent.row.way) {
+            var hits = r.intersectObjects(ED.proxies.filter(function (q) { return q.sel.list === 'terrain.features'; }).map(function (q) { return q.obj; }), true);
+            for (var i = 0; i < hits.length && !sp; i++) {
+                var o = hits[i].object; while (o && !(o.userData && o.userData.edSel)) o = o.parent;
+                var hw = o && findRow('terrain.features', o.userData.edSel.id); if (!hw || hw.row.k !== 'wall') continue;
+                var w = hw.row, u = U(), pt = hits[i].point, px = pt.x / u, pz = pt.z / u, L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0) || 1, ux = (w.x1 - w.x0) / L, uz = (w.z1 - w.z0) / L;
+                var cat = DOOR_HQ.catalogue[ent.row.leaf] || {}, S = W.HQ_SHAPE_RULES || {}, ow = cat.wide ? 2.4 : (S.doorW || 1.2);
+                if (L < ow + 0.1) { toast('THAT WALL IS SHORTER THAN THE DOOR (' + ow + ' m)'); return; }
+                var at = Math.max(ow / 2, Math.min(L - ow / 2, Core.snap((px - w.x0) * ux + (pz - w.z0) * uz, 0.25)));
+                var cx = w.x0 + ux * at, cz = w.z0 + uz * at, nx = -uz, nz = ux;   // the right-hand normal (walking x0 → x1)
+                if ((ED.cam.x - cx) * nx + (ED.cam.z - cz) * nz < 0) { nx = -nx; nz = -nz; }   // the side he clicked from
+                sp = { x: cx, z: cz, face: Math.round(((Math.atan2(nx, -nz) * 180 / Math.PI) % 360 + 360) % 360), wallId: w.id, at: at, ow: ow, oh: S.doorH || 2.2 };
+            }
+        }
+        if (!sp) { var c = rayGround(e.clientX, e.clientY); if (!c) return; var sn = Math.max(0.25, ED.snap || 0); sp = { x: Core.snap(c.x, sn), z: Core.snap(c.z, sn), face: faceEye() }; }
+        drawSet(null);
+        doorModal(null, function (v) { doorWrite(sp, ent, v); });
+    }
+    /* WHERE IT LEADS: `cur` = the door being re-targeted (null = a new one). → onOk({ to, arrive }) with arrive '' (a new return
+       door), '__spawn' (one way, at the spawn) or a door id there */
+    function doorModal(cur, onOk) {
+        var ids = Object.keys(ED.doc.rooms).sort(function (a, b) { return (W.hqWorldDocRoomNo(a) || 0) - (W.hqWorldDocRoomNo(b) || 0); });
+        var to0 = (cur && cur.action && cur.action.room && ED.doc.rooms[cur.action.room]) ? cur.action.room : (ids.filter(function (x) { return x !== ED.roomId; })[0] || '__new');
+        modalOpen('<div class="ed-hd">' + (cur ? 'DOOR ' + esc(cur.id) + ' LEADS TO' : 'THE DOOR LEADS TO') + '</div><div class="ed-form">' +
+            '<label class="ed-f"><span>Room</span><select id="edDTo">' + ids.map(function (x) { return '<option value="' + esc(x) + '"' + (x === to0 ? ' selected' : '') + '>' + esc((ED.doc.rooms[x].label || x) + ' (' + x + ')' + (x === ED.roomId ? ' · this room' : '')) + '</option>'; }).join('') + (cur ? '' : '<option value="__new"' + (to0 === '__new' ? ' selected' : '') + '>A new room (flat, empty)</option>') + '</select></label>' +
+            '<label class="ed-f"><span>You arrive at</span><select id="edDAt"></select></label></div>' +
+            '<div class="ed-note" id="edDNote"></div><div class="ed-acts"><button class="ed-btn ed-primary" id="edOk">OK</button><button class="ed-btn" id="edCancel">CANCEL</button></div>');
+        var fill = function () {
+            var to = $('edDTo').value, far = to === '__new' ? null : ED.doc.rooms[to], ds = (far && far.doors) || [];
+            var cat = (cur && cur.action && cur.action.room === to) ? (cur.action.at || '__spawn') : '';
+            var opts = [['', 'A new door in front of its spawn, leading back here'], ['__spawn', 'Its spawn (one way: no door back)']];
+            ds.forEach(function (d) { if (!d || (cur && to === ED.roomId && d.id === cur.id)) return; opts.push([d.id, 'Door ' + d.id + (d.action && d.action.room ? ' (now to ' + ((ED.doc.rooms[d.action.room] || {}).label || d.action.room) + ')' : '') + ' · it will lead back here']); });
+            $('edDAt').innerHTML = opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === cat ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('');
+            $('edDNote').textContent = to === '__new' ? 'A new flat empty room is made with the door.' : '';
+        };
+        $('edDTo').onchange = fill; fill();
+        $('edCancel').onclick = modalClose;
+        $('edOk').onclick = function () { var v = { to: $('edDTo').value, arrive: $('edDAt').value }; modalClose(); onOk(v); };
+    }
+    /* the far room's doors path + its next index, creating the list in the step when it is absent */
+    function farDoors(step, to, far, extra) { if (!far.doors) step.push({ path: ['rooms', to, 'doors'], before: undefined, after: [] }); return (far.doors || []).length + (extra || 0); }
+    function doorWrite(sp, ent, v) {
+        if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; }
+        var r = room(), step = [], n0 = +nextId(r).slice(1), openId = sp.wallId ? 'r' + n0 : null, mineId = 'r' + (n0 + (sp.wallId ? 1 : 0));
+        var to = v.to, fresh = null;
+        if (to === '__new') { to = W.hqWorldDocNextRoomId(ED.doc); fresh = W.hqWorldDocNewRoom(to); step.push({ path: ['rooms', to], before: undefined, after: fresh }); }
+        var far = fresh || ED.doc.rooms[to]; if (!far) return;
+        var backId = to === ED.roomId ? 'r' + (+mineId.slice(1) + 1) : (fresh ? 'r1' : nextId(far));
+        var docv = { rooms: Object.assign({}, ED.doc.rooms) }; docv.rooms[to] = far;
+        var P = W.hqDoorPair(docv, { room: ED.roomId, x: sp.x, z: sp.z, face: sp.face }, { room: to, door: (v.arrive && v.arrive !== '__spawn') ? v.arrive : null },
+                             { leaf: ent.row.leaf, way: ent.row.way, back: v.arrive !== '__spawn', ids: { a: mineId, b: backId } });
+        if (!P) return;
+        if (openId) { var nf = ensureList('terrain.features', step); step.push({ path: rowPath('terrain.features', nf), before: undefined, after: { id: openId, k: 'opening', wall: sp.wallId, at: sp.at, w: sp.ow, h: sp.oh, sill: 0 } }); }
+        var nd = ensureList('doors', step);
+        step.push({ path: rowPath('doors', nd), before: undefined, after: P.mine });
+        if (P.back) step.push({ path: ['rooms', to, 'doors', farDoors(step, to, far, to === ED.roomId ? 1 : 0)], before: undefined, after: P.back });
+        if (P.relink) { var fi = (far.doors || []).findIndex(function (d) { return d && d.id === P.relink.id; }); if (fi >= 0) step.push({ path: ['rooms', to, 'doors', fi, 'action'], before: Core.clone(far.doors[fi].action), after: P.relink.action }); }
+        commit(step, 'add door');
+        if (to !== ED.roomId) docSync([to]);
+        select('doors', mineId);
+        toast('DOOR ADDED → ' + (far.label || to).toUpperCase() + (P.back ? ' · its return door stands ' + W.HQ_PALETTE_RULES.returnAhead + ' m in front of the spawn there' : P.relink ? ' · door ' + P.relink.id + ' there leads back' : ' · one way'), 4500);
+    }
+    /* LEADS TO… on a picked door: the same question, written onto it */
+    function doorRetarget(h) {
+        doorModal(h.row, function (v) {
+            var step = [], to = v.to, far = ED.doc.rooms[to]; if (!far) return;
+            var r = room(), backId = to === ED.roomId ? nextId(r) : nextId(far);
+            var docv = { rooms: ED.doc.rooms };
+            var P = W.hqDoorPair(docv, { room: ED.roomId, x: 0, z: 0, face: 0 }, { room: to, door: (v.arrive && v.arrive !== '__spawn') ? v.arrive : null }, { leaf: h.row.leaf, way: h.row.way, back: v.arrive !== '__spawn', ids: { a: h.row.id, b: backId } });
+            if (!P) return;
+            var after = Core.clone(h.row); after.action = P.mine.action;
+            if (h.row.action && h.row.action.room === to && h.row.action.at && !v.arrive) { toast('KEPT · it already leads there'); return; }
+            step.push({ path: rowPath('doors', h.i), before: Core.clone(h.row), after: after });
+            if (P.back) { var bx = Core.clone(P.back); if (h.row.wall === 'free') { /* the return door stands at the far spawn */ } step.push({ path: ['rooms', to, 'doors', farDoors(step, to, far)], before: undefined, after: bx }); }
+            if (P.relink) { var fi = (far.doors || []).findIndex(function (d) { return d && d.id === P.relink.id; }); if (fi >= 0) step.push({ path: ['rooms', to, 'doors', fi, 'action'], before: Core.clone(far.doors[fi].action), after: P.relink.action }); }
+            commit(step, 'door target');
+            if (to !== ED.roomId) docSync([to]);
+        });
+    }
+    /* GO THROUGH: the editor follows the door into the room it leads to, the eye behind where he arrives */
+    function doorFollow(h) {
+        var a = h.row.action || {}, to = a.room; if (!to || !DOOR_HQ.rooms[to]) { toast('THAT DOOR LEADS NOWHERE'); return; }
+        var far = DOOR_HQ.rooms[to], d = a.at ? (far.doors || []).filter(function (x) { return x && x.id === a.at; })[0] : null, at = null;
+        if (d && d.wall === 'free' && isFinite(d.x)) { var f = (+d.face || 0) * Math.PI / 180; at = { x: d.x + Math.sin(f) * 2, z: d.z - Math.cos(f) * 2, face: d.face || 0 }; }
+        saveCam(); enterRoom(to, ED.doc.rooms[to] ? 'world' : 'library', { at: at || undefined });
+        if (d) select('doors', d.id);
+    }
+
+    /* ── TEXTURES: PAINT a sheet onto the face under the cursor (a wall's outside = `key`, its inside = `keyIn`; a kit's `args.key`;
+       any other shape's `key`); the open ground takes it as the room's floor. One undo step a click; the tool stays armed ── */
+    var PAINTS = { wall: 1, plateau: 1, bridge: 1, deck: 1, ramp: 1, spiral: 1, kit: 1, pool: 0 };
+    function paintAt(e) {
+        var D = ED.draw, key = D && D.key; if (!key) return;
+        var r = rayFrom(e.clientX, e.clientY); if (!r) return;
+        var hits = r.intersectObjects(ED.proxies.filter(function (q) { return q.sel.list === 'terrain.features'; }).map(function (q) { return q.obj; }), true);
+        for (var i = 0; i < hits.length; i++) {
+            var o = hits[i].object; while (o && !(o.userData && o.userData.edSel)) o = o.parent;
+            var h = o && findRow('terrain.features', o.userData.edSel.id); if (!h || !PAINTS[h.row.k]) continue;
+            var after = Core.clone(h.row), field = 'key';
+            if (h.row.k === 'kit') { after.args = after.args || {}; after.args.key = key; field = 'args.key'; }
+            else if (h.row.k === 'wall') {
+                var u = U(), p = hits[i].point, mx = (h.row.x0 + h.row.x1) / 2, mz = (h.row.z0 + h.row.z1) / 2, dx = h.row.x1 - h.row.x0, dz = h.row.z1 - h.row.z0;
+                field = ((p.x / u - mx) * -dz + (p.z / u - mz) * dx) > 0 ? 'keyIn' : 'key';   // the right-hand face = the inside
+                after[field] = key;
+            } else after.key = key;
+            replaceRows([{ list: 'terrain.features', i: h.i, before: Core.clone(h.row), after: after }], 'paint ' + field);
+            toast('PAINTED ' + Core.rowLabel('terrain.features', h.row) + ' · ' + field + ' = ' + key, 1600);
+            return;
+        }
+        var rm = room(); if (!rm || !rm.terrain || ED.mode === 'prefab') { toast('CLICK A SHAPE'); return; }
+        commit([{ path: basePath().concat(['terrain', 'floor']), before: rm.terrain.floor, after: key }], 'paint the floor');
+        toast('THE ROOM\'S FLOOR = ' + key, 1600);
+    }
+
+    /* ── THE MARKERS IN THE VIEW: every person's spot, agent, online spot and sign gets a post the editor draws (and picks by), so
+       a spot shows even when nobody stands on it (a roster spot with no vessel unlocked, the cast switched off) ── */
+    var MK_COLOR = { npcSpots: 0x6fd3ff, agents: 0x9aa4ff, onlineSpots: 0xc58cff, counters: 0xffd84a };
+    var _mkMat = {};
+    function markerObj(list, row) {
+        var u = U(), g = new THREE.Group(), col = MK_COLOR[list];
+        if (!_mkMat[list]) _mkMat[list] = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.42, depthWrite: false, fog: false });
+        var sign = list === 'counters', hgt = sign ? (+row.plateY || 1.8) : 1.8;
+        var body = sign ? new THREE.Mesh(new THREE.BoxGeometry(0.7 * u, 0.5 * u, 0.12 * u), _mkMat[list]) : new THREE.Mesh(new THREE.CylinderGeometry(0.28 * u, 0.28 * u, hgt * u, 10), _mkMat[list]);
+        body.position.y = (sign ? hgt : hgt / 2) * u; g.add(body);
+        if (sign) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * u, 0.04 * u, hgt * u, 6), _mkMat[list]); post.position.y = hgt / 2 * u; g.add(post); }
+        var nose = new THREE.Mesh(new THREE.ConeGeometry(0.16 * u, 0.45 * u, 8), _mkMat[list]); nose.rotation.x = -Math.PI / 2; nose.position.set(0, 0.25 * u, -0.45 * u); g.add(nose);
+        var gy = ground(+row.x, +row.z) + (list === 'agents' && isFinite(row.y) ? +row.y : 0);
+        g.position.set(+row.x * u, gy * u, +row.z * u); g.rotation.y = -((+row.face || 0) * Math.PI / 180);
+        g.userData.edSel = { list: list, id: row.id };
+        return g;
+    }
+
+    /* ── THE THUMBNAILS: a tile's picture is the thing itself, built the way the room builds it (ThreeRenderer.hq.propPreview /
+       treePreview), rendered once at 96 px by a small renderer of the editor's own and cached in IndexedDB (`thumbs`, keyed by the
+       file, so a renamed upload draws again). One at a time, newest ask first; a thing that cannot be built keeps its label ── */
+    var TH = { mem: {}, want: [], busy: false, r: null, sc: null, cam: null, off: false };
+    function thumbKey(t) { return t.kind + ':' + t.key; }
+    function thumbStoreKey(k) {
+        var p = k.split(':'), kind = p[0], key = p.slice(1).join(':');
+        if (kind === 'prop') { var c = DOOR_HQ.catalogue[key] || {}; return k + '|' + (c.file || c.proc || ''); }
+        if (kind === 'tree') { var T = (W.HQ_TREE_KINDS || {})[key]; return k + '|' + (T ? T.model : ''); }
+        return k;
+    }
+    function thumbFill(P) { P.querySelectorAll('[data-th]').forEach(function (b) { thumbWant(b.getAttribute('data-th')); }); }
+    function thumbWant(k) {
+        if (TH.off || !k || TH.mem[k] || TH.mem[k] === null) return;
+        var i = TH.want.indexOf(k); if (i >= 0) TH.want.splice(i, 1);
+        TH.want.push(k); thumbPump();
+    }
+    function thumbShow(k) {
+        var url = TH.mem[k], B = $('edPalBox'); if (!B) return;
+        B.querySelectorAll('[data-th="' + k.replace(/"/g, '\\"') + '"]').forEach(function (b) {
+            if (url) { var im = document.createElement('img'); im.src = url; im.alt = ''; im.setAttribute('data-thk', k); b.parentNode.replaceChild(im, b); }
+            else { b.textContent = PAL_GLYPH.props; b.className = 'ed-thg'; b.removeAttribute('data-th'); }
+        });
+    }
+    function thumbPump() {
+        if (W.EW_ED_NO_THUMBS) TH.off = true;   /* console switch */
+        if (TH.off || TH.busy || !TH.want.length || !ED.open || ED.playing || !ED.ready) return;
+        TH.busy = true;
+        var k = TH.want.pop(), sk = thumbStoreKey(k), done = function (url) { TH.mem[k] = url || null; thumbShow(k); TH.busy = false; setTimeout(thumbPump, 60); };
+        idbDo('thumbs', 'readonly', function (st) { return st.get(sk); }).catch(function () { return null; }).then(function (hit) {
+            if (hit && hit.url) { done(hit.url); return; }
+            var p = k.split(':'), kind = p[0], key = p.slice(1).join(':'), H = ThreeRenderer.hq;
+            var fn = kind === 'prop' ? H.propPreview : kind === 'tree' ? H.treePreview : null;
+            if (!fn) { done(null); return; }
+            fn(key, function (obj) {
+                var url = obj ? thumbRender(obj) : null;
+                if (url) idbDo('thumbs', 'readwrite', function (st) { return st.put({ url: url, at: Date.now() }, sk); }).catch(function () {});
+                done(url);
+            });
+        });
+    }
+    function thumbRender(obj) {
+        if (!TH.r) {
+            try {
+                var cv = document.createElement('canvas'); cv.width = cv.height = 96;
+                TH.r = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true });
+                TH.r.setPixelRatio(1); TH.r.setSize(96, 96, false); TH.r.setClearColor(0x000000, 0);
+                TH.sc = new THREE.Scene(); TH.sc.add(new THREE.AmbientLight(0xffffff, 0.8));
+                var dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(3, 5, 4); TH.sc.add(dl);
+                TH.cam = new THREE.PerspectiveCamera(30, 1, 0.01, 1e7);
+            } catch (e) { TH.off = true; console.warn('[editor] the thumbnails are off (no second WebGL context)', e); return null; }
+        }
+        var holder = new THREE.Group(); holder.add(obj); TH.sc.add(holder);
+        try {
+            holder.updateMatrixWorld(true);
+            var bb = new THREE.Box3().setFromObject(holder); if (bb.isEmpty()) return null;
+            var c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z) * 0.62 || 1;
+            var d = R / Math.sin(15 * Math.PI / 180), dir = new THREE.Vector3(0.75, 0.55, 1.2).normalize();
+            TH.cam.position.copy(c).addScaledVector(dir, d); TH.cam.near = d / 50; TH.cam.far = d * 6; TH.cam.updateProjectionMatrix(); TH.cam.lookAt(c);
+            TH.r.render(TH.sc, TH.cam);
+            return TH.r.domElement.toDataURL('image/png');
+        } catch (e) { return null; }
+        finally { TH.sc.remove(holder); }
+    }
+
     /* ══ THE DOM ════════════════════════════════════════════════════════════════════════════════════════════════════════ */
     var MENUS = {
         FILE: [['New world (flat, empty)', newWorld], ['Open…', openProject], ['Save', function () { saveNow().then(function (ok) { if (ok) toast('SAVED · ' + ED.project); }); }], ['Save as…', saveAs], null,
@@ -1442,7 +1759,7 @@
         EDIT: [['Undo  (Ctrl Z)', undo], ['Redo  (Ctrl Y)', redo], null, ['Duplicate  (Ctrl D)', duplicateSel], ['Delete  (Del)', deleteSel], ['Turn −' + '15°  ([)', function () { turnSel(-(ED.rotSnap || 15)); }], ['Turn +15°  (])', function () { turnSel(ED.rotSnap || 15); }], null,
                ['Array… (copies in a row / round)', arraySel], ['Mirror east–west', function () { mirrorSel('x'); }], ['Mirror north–south', function () { mirrorSel('z'); }], null,
                ['Save selection as prefab', selToPrefab], ['Bake the prefab / kit into rows', bakeSel], null, ['Deselect  (Esc)', function () { select(null); }]],
-        ADD: function () { return [['Prefab…', addPrefab], ['Kit (the game\'s builders)…', addKit], ['Prop (the catalogue)…', addProp], ['Door…', addDoor], null].concat(Core.KINDS.map(function (K) { return [K.label, function () { addShape(K.id); }]; })); },   // the draw tools live on the BUILD palette
+        ADD: function () { return [['Prefab…', addPrefab], ['Kit (the game\'s builders)…', addKit], ['Prop (the catalogue)…', addProp], ['Door…  (click a wall or the ground)', function () { if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; } drawSet('doorway'); }], null].concat(Core.KINDS.map(function (K) { return [K.label, function () { addShape(K.id); }]; })); },   // the draw tools live on the BUILD palette
         ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this library room into the world', copyIntoWorld]],
         VIEW: [['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }]],
     };
@@ -1455,7 +1772,7 @@
             '<button class="ed-btn ed-play" id="edPlay" title="PLAY HERE (P): the walker at the cursor, the real game; ESC comes back">▶ PLAY HERE</button>' +
             '<button class="ed-btn" id="edHelp" title="Keys (H)">?</button><button class="ed-btn" id="edClose" title="Close the editor">✕</button></div>' +
             '<div class="ed-banner" id="edBanner" style="display:none"></div>' +
-            '<div class="ed-left" id="edLeft"></div><div class="ed-right" id="edRight"></div>' +
+            '<div class="ed-left" id="edLeft"><div id="edPalBox"></div><div id="edOutl"></div></div><div class="ed-right" id="edRight"></div>' +
             '<div class="ed-status" id="edStatus"></div><div class="ed-menu" id="edMenu" style="display:none"></div>' +
             '<div class="ed-modal" id="edModal" style="display:none"><div class="ed-card" id="edCard"></div></div>' +
             '<div class="ed-toast" id="edToast" style="display:none"></div><div class="ed-playtag" id="edPlayTag">PLAY HERE · ESC back to the editor</div>';
@@ -1492,18 +1809,18 @@
     }
     /* ── THE OUTLINER: the world (his rooms), then this room's rows by list ── */
     function outliner() {
-        var L = $('edLeft'); if (!L || !ED.doc) return;
+        var L = $('edOutl'); if (!L || !ED.doc) return;
         var h = '<div class="ed-sec"><div class="ed-hd">WORLD · ' + esc(ED.project) + '</div>';
         Object.keys(ED.doc.rooms).sort(function (a, b) { return (W.hqWorldDocRoomNo(a) || 0) - (W.hqWorldDocRoomNo(b) || 0); }).forEach(function (id) {
             var r = ED.doc.rooms[id];
             h += '<button class="ed-row' + (ED.mode === 'world' && id === ED.roomId ? ' on' : '') + '" data-room="' + esc(id) + '">' + esc(r.label || id) + (ED.doc.start && ED.doc.start.room === id ? ' <i>START</i>' : '') + '<span>' + esc(id) + ' · ' + roomSize(r) + '</span></button>';
         });
         h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button></div>';
-        h = paletteHtml() + h + prefabsHtml();
+        h = h + prefabsHtml();
         if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">LIBRARY · READ ONLY</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
         var r = room();
         if (r) {
-            var groups = [['terrain.features', 'SHAPES'], ['props', 'PROPS'], ['doors', 'DOORS'], ['counters', 'COUNTERS'], ['npcSpots', 'PEOPLE'], ['agents', 'AGENTS']];
+            var groups = [['terrain.features', 'SHAPES'], ['props', 'PROPS'], ['doors', 'DOORS'], ['counters', 'SIGNS'], ['npcSpots', 'PEOPLE'], ['agents', 'AGENTS'], ['onlineSpots', 'ONLINE SPOTS']];
             h += '<div class="ed-sec"><div class="ed-hd">' + esc(String(r.label || ED.roomId).toUpperCase()) + '</div>';
             if (ED.mode !== 'prefab') h += '<button class="ed-row' + (isSel('spawn') ? ' on' : '') + '" data-list="spawn">spawn<span>x ' + ((r.spawn && r.spawn.x) || 0) + ' z ' + ((r.spawn && r.spawn.z) || 0) + '</span></button>';
             groups.forEach(function (g) {
@@ -1516,7 +1833,7 @@
             h += '</div>';
         }
         var sc = L.scrollTop; L.innerHTML = h; L.scrollTop = sc;
-        paletteWire(L); prefabsWire(L);
+        prefabsWire(L);
         L.querySelectorAll('[data-room]').forEach(function (b) { b.onclick = function () { saveCam(); enterRoom(b.getAttribute('data-room'), 'world'); }; });
         L.querySelectorAll('[data-act="newroom"]').forEach(function (b) { b.onclick = newRoom; });
         L.querySelectorAll('[data-list]').forEach(function (b) { b.onclick = function (e) { select(b.getAttribute('data-list'), b.getAttribute('data-id'), e.shiftKey); if (!e.shiftKey) frameSel(); }; });
@@ -1541,7 +1858,11 @@
         d.innerHTML = '<datalist id="edDlTex">' + texList().map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
             '<datalist id="edDlProp">' + Object.keys(C).filter(function (k) { return !C[k].leaf; }).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
             '<datalist id="edDlLeaf">' + Object.keys(C).filter(function (k) { return C[k].leaf; }).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
-            '<datalist id="edDlLook">' + (W.HQ_CLIMB_LOOKS || []).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>';
+            '<datalist id="edDlLook">' + (W.HQ_CLIMB_LOOKS || []).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
+            /* E2: the palette's registries */
+            ['Race:races', 'Cast:cast', 'Pose:poses'].map(function (x) { var p = x.split(':'), P = palData(), src = p[1] === 'races' ? P.people.filter(function (e) { return e.row.race; }).map(function (e) { return e.row.race; }) : p[1] === 'cast' ? P.people.filter(function (e) { return e.row.cast; }).map(function (e) { return e.row.cast; }) : P.people.filter(function (e) { return e.row.pose; }).map(function (e) { return e.row.pose; }); return '<datalist id="edDl' + p[0] + '">' + src.map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>'; }).join('') +
+            '<datalist id="edDlTree">' + Object.keys(W.HQ_TREE_KINDS || {}).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
+            '<datalist id="edDlWay">' + Object.keys(DOOR_HQ.ways || {}).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>';
         $('edRoot').appendChild(d);
     }
     function fieldHtml(key, val, list) {
@@ -1551,7 +1872,7 @@
         if (typeof val === 'boolean') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="checkbox" data-k="' + esc(key) + '" data-t="bool"' + (val ? ' checked' : '') + '></label>';
         if (typeof val === 'number') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="number" step="any" data-k="' + esc(key) + '" data-t="num" value="' + esc(val) + '"></label>';
         if (typeof val === 'string') {
-            var dl = key === 'key' && list === 'props' ? 'edDlProp' : key === 'leaf' ? 'edDlLeaf' : key === 'look' ? 'edDlLook' : '';
+            var dl = key === 'key' && list === 'props' ? 'edDlProp' : key === 'leaf' ? 'edDlLeaf' : key === 'look' ? 'edDlLook' : key === 'race' ? 'edDlRace' : key === 'cast' ? 'edDlCast' : key === 'pose' ? 'edDlPose' : key === 'way' ? 'edDlWay' : (key === 'kind' && list === 'terrain.features') ? 'edDlTree' : '';
             return '<label class="ed-f"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="str" value="' + esc(val) + '"' + (dl ? ' list="' + dl + '"' : '') + ' id="' + id + '"></label>';
         }
         return '<label class="ed-f ed-fj"><span>' + esc(key) + '</span><textarea data-k="' + esc(key) + '" data-t="json" rows="' + Math.min(8, 1 + Math.ceil(JSON.stringify(val).length / 38)) + '">' + esc(JSON.stringify(val)) + '</textarea></label>';
@@ -1596,7 +1917,7 @@
             h += '</div>';
             if (!ro) {
                 h += '<div class="ed-addf"><input type="text" id="edNewK" placeholder="field"><input type="text" id="edNewV" placeholder="value (JSON)"><button class="ed-btn" id="edNewAdd">+ FIELD</button></div>';
-                h += '<div class="ed-acts">' + (x.list === 'doors' ? '<button class="ed-btn" data-a="target">LEADS TO…</button>' : '') +
+                h += '<div class="ed-acts">' + (x.list === 'doors' ? '<button class="ed-btn" data-a="target">LEADS TO…</button><button class="ed-btn" data-a="follow" title="Open the room it leads to">GO THROUGH</button>' : '') +
                     (row.k === 'prefab' ? '<button class="ed-btn ed-copy" data-a="pfedit">EDIT PREFAB</button>' : '') + (row.k === 'prefab' || row.k === 'kit' ? '<button class="ed-btn" data-a="bake">BAKE TO ROWS</button>' : '') +
                     '<button class="ed-btn" data-a="dupr">DUPLICATE</button><button class="ed-btn ed-danger" data-a="delr">DELETE</button></div>';
                 if (x.list === 'terrain.features' || x.list === 'props') h += '<div class="ed-acts"><button class="ed-btn" data-a="array">ARRAY…</button><button class="ed-btn" data-a="mirx">MIRROR E–W</button><button class="ed-btn" data-a="mirz">MIRROR N–S</button>' + (ED.mode !== 'prefab' ? '<button class="ed-btn" data-a="topf">SAVE AS PREFAB</button>' : '') + '</div>';
@@ -1605,6 +1926,13 @@
                 if (row.k === 'kit') h += '<div class="ed-note">A kit: the game\'s ' + esc(row.fn) + ' builder; args are its form (metres, degrees, about its own 0, 0).</div>';
                 h += '<div class="ed-sub">RAW</div><textarea class="ed-raw" id="edRaw" rows="6">' + esc(JSON.stringify(row, null, 1)) + '</textarea><button class="ed-btn" id="edRawApply">APPLY RAW</button>';
             }
+            if (x.list === 'doors') {
+                var da = row.action || {}, far = da.room ? DOOR_HQ.rooms[da.room] : null, dbad = (ED.doorBad || []).filter(function (b) { return b.room === ED.roomId && b.door === row.id; })[0];
+                h += '<div class="ed-sub">LEADS TO</div><div class="ed-note' + (dbad ? ' ed-warnt' : '') + '">' + (far ? esc(far.label || da.room) + ' (' + esc(da.room) + ') · ' + (da.at ? 'you arrive at its door ' + esc(da.at) : 'you arrive at its spawn') : 'NOWHERE: that room is not in your world') + (dbad && dbad.why === 'no door' ? ' · THAT DOOR IS NOT THERE (LEADS TO… fixes it)' : '') + '</div>';
+            }
+            if (x.list === 'npcSpots') h += '<div class="ed-note">race = who stands here (a native of this room) · cast = one of the story\'s models · neither = one of your vessels (up to 3 a room) · say = what they say (a line, or a list: one a day).</div>';
+            if (x.list === 'agents') h += '<div class="ed-note">pose = a building pose (sit, phone, arms folded …) · patrol = walks a loop · line = what the agent says.</div>';
+            if (x.list === 'counters') h += '<div class="ed-note">A sign: label and sub are its plate, desc is what reading it shows; verb is the prompt (READ).</div>';
             if (x.list === 'props') { var cat = DOOR_HQ.catalogue[row.key]; if (cat) h += '<div class="ed-sub">CATALOGUE · ' + esc(row.key) + '</div><div class="ed-note">' + esc(JSON.stringify(cat).slice(0, 400)) + '</div>'; }
         }
         /* THE FOCUS: a re-render keeps the field he was in (ENTER stays, TAB moves on) */
@@ -1625,7 +1953,7 @@
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
         act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', copyIntoWorld);
         act('dupr', duplicateSel); act('delr', deleteSel); act('array', arraySel); act('mirx', function () { mirrorSel('x'); }); act('mirz', function () { mirrorSel('z'); });
-        act('topf', selToPrefab); act('bake', bakeSel); act('pfedit', function () { if (hits[0] && hits[0].row.pf) enterPrefab(hits[0].row.pf); }); act('pfdone', leavePrefab); act('pfdel', function () { deletePrefab(ED.pfId); }); act('target', function () { if (hits[0]) doorRetarget(hits[0]); });
+        act('topf', selToPrefab); act('bake', bakeSel); act('pfedit', function () { if (hits[0] && hits[0].row.pf) enterPrefab(hits[0].row.pf); }); act('pfdone', leavePrefab); act('pfdel', function () { deletePrefab(ED.pfId); }); act('target', function () { if (hits[0]) doorRetarget(hits[0]); }); act('follow', function () { if (hits[0]) doorFollow(hits[0]); });
         if ($('edNewAdd')) $('edNewAdd').onclick = function () {
             var k = ($('edNewK').value || '').trim(), vs = $('edNewV').value; if (!k || !hits[0]) return;
             var v; try { v = JSON.parse(vs); } catch (e) { v = vs; }
@@ -1679,6 +2007,7 @@
             ED.ready ? 'READY' : 'BUILDING…',
             'lights ' + lights + (cap ? ' / ' + cap : ''),
             perf && perf.fps ? Math.round(perf.fps) + ' fps' : '',
+            (ED.doorBad && ED.doorBad.length) ? '<b class="ed-warn" title="' + esc(ED.doorBad.map(function (b) { return b.room + ' ' + b.door + ': ' + b.why; }).join(' · ')) + '">' + ED.doorBad.length + ' DOOR' + (ED.doorBad.length > 1 ? 'S LEAD' : ' LEADS') + ' NOWHERE</b>' : '',
             ED.undo.length + ' undo',
             ED.dirty ? 'SAVING…' : (ED.savedAt ? 'saved' : ''),
         ].filter(Boolean).map(function (x) { return '<span>' + x + '</span>'; }).join('');
@@ -1689,7 +2018,8 @@
         else if (ED.mode === 'prefab' && ED.doc.prefabs[ED.pfId]) { b.style.display = ''; b.innerHTML = 'PREFAB · ' + esc(ED.doc.prefabs[ED.pfId].label || ED.pfId) + ' · placed ' + prefabUses(ED.pfId) + '× · every placement follows these edits — <button class="ed-btn ed-copy" id="edBanDone">DONE</button>'; $('edBanDone').onclick = leavePrefab; }
         else b.style.display = 'none';
     }
-    function panels() { toolsBar(); outliner(); inspector(); banner(); status(); }
+    function panels() { var LS = $('edLeft'), lsc = LS ? LS.scrollTop : 0; panels0(); if (LS) LS.scrollTop = lsc; }
+    function panels0() { try { ED.doorBad = (ED.doc && W.hqWorldDocDoorCheck) ? W.hqWorldDocDoorCheck(ED.doc) : []; } catch (e) { ED.doorBad = []; } toolsBar(); palette(); outliner(); inspector(); banner(); status(); }
 
     /* ── the pick list and the small form (plain DOM) ── */
     function modalOpen(html) { var m = $('edModal'); $('edCard').innerHTML = html; m.style.display = ''; }
@@ -1724,6 +2054,9 @@
             ['F · Home · G', 'frame the pick · to the spawn · the grid'], ['DEL · CTRL D', 'delete · duplicate'],
             ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head · DOOR GAP, WINDOW: click a wall'],
             ['SHIFT while drawing', 'lock the line to 45° steps (ends snap to wall ends within 0.6 m, else to the grid)'], ['V · Esc', 'back to SELECT · end the run / drop the pick'], ['CTRL Z · CTRL Y · CTRL S', 'undo · redo · save (it autosaves anyway)'],
+            ['The palette tabs (left)', 'MODELS · PEOPLE · TREES · DOORS · LIGHTS · MARKERS · TEXTURES · KITS: click a tile, then click on the ground (again for more copies; it faces you). ESC or V stops. The armed tile again stops too'],
+            ['DOOR (BUILD or DOORS)', 'click a wall you drew (a gap is cut, the door stands in it) or the ground; then pick the room it leads to and where you arrive (a new door back, its spawn, or one of its doors)'],
+            ['TEXTURES', 'click a sheet, then a face: a wall\'s outside / inside, a floor, a block; the open ground = the room\'s floor'],
             ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'drop the pick'],
         ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
         '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a built-in room to look at or copy. FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
@@ -1781,6 +2114,7 @@
         draw: function () { return ED.draw ? { tool: ED.draw.tool, a: ED.draw.a, info: ED._drawInfo } : null; },
         act: { addShape: addShape, addRow: addRow, select: select, undo: undo, redo: redo, deleteSel: deleteSel, duplicateSel: duplicateSel, turnSel: turnSel, exportZip: exportZip, newRoom: function (w, d) { var id = W.hqWorldDocNextRoomId(ED.doc), r = W.hqWorldDocNewRoom(id, { w: w, d: d }); commit([{ path: ['rooms', id], before: undefined, after: r }], 'new room'); enterRoom(id, 'world'); return id; },
                drawSet: drawSet, drawUp: drawUp, drawDown: drawDown, enterPrefab: enterPrefab, leavePrefab: leavePrefab, newPrefab: newPrefab, selToPrefab: selToPrefab, roomToPrefab: roomToPrefab, bakeSel: bakeSel, mirrorSel: mirrorSel, placeRow: placeRow, texPick: texPick, arrayRows: function (n, dx, dz, dyaw) { var ask0 = ask; ask = function (t, f, ok) { ok({ n: n, dx: dx, dz: dz, dyaw: dyaw }); }; try { arraySel(); } finally { ask = ask0; } },
+               palPick: palPick, palEntries: palEntries, palData: palData, doorWrite: doorWrite, doorFollow: doorFollow, thumbs: function () { return { have: Object.keys(TH.mem).filter(function (k) { return !!TH.mem[k]; }).length, none: Object.keys(TH.mem).filter(function (k) { return TH.mem[k] === null; }).length, want: TH.want.length, off: TH.off }; },
                enter: enterRoom, playHere: playHere, library: function (id) { enterRoom(id, 'library'); }, copyIntoWorld: copyIntoWorld, pickAt: pickAt, frame: frameSel,
                moveSel: function (dx, dz) { var hits = ED.sel.map(selRow).filter(Boolean), a = hits[0] ? Core.rowAnchor(hits[0].row) : { x: 0, z: 0 }; replaceRows(hits.filter(function (h) { return h.list !== 'spawn'; }).map(function (h) { return { list: h.list, i: h.i, before: Core.clone(h.row), after: Core.rowTransform(h.row, { dx: dx, dz: dz, px: a.x, pz: a.z }) }; }), 'move'); } },
     };

@@ -53,3 +53,50 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
   The survey worker gets `HQ_PREFABS` with each room (map.js).
 - **Texture picker** (`texPick`): TERRAIN_SPRITES, URBAN_TEX_FAMILIES (as `urban:<Name>`), DOOR_HQ.textures. Only existing sheets.
 - **Probe:** the E1 sweep drives the palette with real mouse drags via `EWEditor.w2s(x, y, z)` and `EWEditor.cam({...})`.
+
+## E2 — the palette and the door tool (2026-09-29, token 20260929-editor-03-cors)
+- **The tabs** (editor.js `PAL_TABS`, `palette` / `palBody` / `tileHtml`; `ED.opts.tab` remembered): BUILD (E1's draw tools),
+  MODELS, PEOPLE, TREES, DOORS, LIGHTS, MARKERS, TEXTURES, KITS. Each tab has a search box and collapsible groups (all open
+  when a tab holds ≤ 40 tiles or you are searching), 240 tiles at most shown. The entries come from data.js `hqPalette(o)`,
+  built at run time from the registries. `o` = sprites.js `RACE_MODELS_3D` keys, `DOOR_CAST_MODELS` keys and the agent poses.
+  Every entry is `{ id, label, sub, group, list, row, thumb }`; `hqPaletteRow(entry, x, z, face)` makes the row.
+- **Placing** (`palPick` → `drawSet('place')`, `palDrop`): click a tile, then the ground; each click is one undo step and the
+  tool stays armed (the spawn is the exception: one click). The thing faces the eye (`faceEye`); a box ghost shows where it
+  lands (`placeShow`). Clicking the armed tile again, ESC or V stops.
+- **Stable tiles:** `palette()` / `palBody()` keep their elements when their HTML has not changed (`B._h`, `P._h`, with the
+  thumbnails masked out), because every edit re-enters the room and calls `panels()`. A rebuilt button was losing clicks.
+- **New catalogue rows** (data.js "THE PALETTE (E2)"): `HQ_CATALOGUE_MISC` (40 `_MISC_GLB` keys, `base: 'misc'`) and
+  `HQ_CATALOGUE_WEAPONS` (24 `_WPN_MODELS` keys, `base: 'weapons'`) join `DOOR_HQ.catalogue` only where the key is free.
+  The files are copied from the renderer's own tables, and the test holds them equal. Their `h` / `span` sizes are
+  UNMEASURED guesses (the bucket is blocked in the sandbox); the inspector overrides them per prop.
+- **Trees:** `HQ_TREE_KINDS` maps `tree` … `tree_20` onto the 20 foliage OBJs. The board's six keep their models; tree_7 …
+  tree_20 are the other fourteen. `hqTreeDead(kind)` replaces the renderer's old `tree_5 || tree_6` checks
+  (`_foliageDead`). New kinds wear leaves.png.
+- **People:** a race tile is an `npcSpots` row `{ race }` (a native). A cast tile is `{ cast }`, and `_hqSpawnPopulation`
+  now spawns `getCastModel(cast)` for it. Agent tiles are `agents` rows with a pose. `hq.editView().chars` lists them.
+- **Markers:** spawn (moves the room's one spawn), sign (a `counters` row, READ), roster spot (an `npcSpots` row with no
+  race), online spot (`onlineSpots`). Every spot, agent and sign gets a coloured post in the view (`markerObj`), so an empty
+  spot can still be picked.
+- **Textures:** click a sheet, then a face. A wall's side picks `key` or `keyIn` (the right-hand face walking x0→x1 is the
+  inside); a kit sets `args.key`; other shapes set `key`; the open ground sets the room's `terrain.floor`.
+- **The door tool** (`DRAWS.doorway`, `doorClick`, `doorModal`, `doorWrite`; ADD → Door…, or a DOORS tile):
+  - Clicking one of his walls cuts an `opening` (door width, or 2.4 m for a `wide` leaf) and stands a free door in the gap,
+    facing the side he clicked from. Clicking the ground stands a free door facing him. A way (`way:` tile) always goes on
+    the ground.
+  - Then he picks the room it leads to (his rooms, or A NEW ROOM) and where he arrives: a new return door
+    (`HQ_PALETTE_RULES.returnAhead` = 4 m in front of its spawn, facing back), its spawn (one way), or one of its doors
+    (re-pointed back here).
+  - It is all one undo step, built by data.js `hqDoorPair(doc, a, b, o)` (pure).
+  - This DIFFERS from §5.5's `links[]`: the pair is two door rows whose `action.at` name each other, so both stay
+    pickable and editable.
+  - The door inspector says where it leads and has LEADS TO… (asks again) and GO THROUGH (the editor goes to its far door).
+    Deleting a door clears its partner's `at` in the same step (`hqDoorPartners`).
+  - `hqWorldDocDoorCheck(doc)` lists the doors whose room or door is gone; the status line shows "N DOORS LEAD NOWHERE".
+- **Thumbnails** (`TH`, `thumbPump`, `thumbRender`): the renderer builds the real thing (`hq.propPreview(key, cb)` for props
+  and procs, `hq.treePreview(kind, cb)` for trees, each giving up after 20 s). A second 96 px WebGLRenderer draws it once,
+  and the picture is cached in IndexedDB `ew_editor` (version 2, store `thumbs`, keyed by the file name). A thing that
+  can't be built shows its letter. `window.EW_ED_NO_THUMBS = true` turns them off. Races use RACE_PORTRAITS.
+- **Not in E2:** the battle marker (E7, it needs a site). Lights edit through the inspector; the light cap is the game's.
+- **Probe (no test file; the repo's tests were removed 2026-09-29):** `node playtest_editor.js e2` runs the palette sweep with real
+  clicks. It serves a stand-in GLB and OBJ, and takes around 10 minutes under swiftshader, so don't wrap it in a short
+  `timeout`. `NOTHUMB=1` turns the thumbnails off; `ONLY='[[list,row],…]'` just adds rows.

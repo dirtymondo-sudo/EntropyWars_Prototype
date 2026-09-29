@@ -5101,6 +5101,10 @@ const ThreeRenderer = (function () {
         tree_5: 'DeadTree_2',
         tree_6: 'DeadTree_5'
     };
+    /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): data.js HQ_TREE_KINDS names the other fourteen OBJs in the folder (tree_7 …
+       tree_20) for the editor's TREES tab; a key the board already maps keeps its model */
+    if (typeof HQ_TREE_KINDS !== 'undefined') Object.keys(HQ_TREE_KINDS).forEach(function (k) { if (!_FOLIAGE_MODEL_FOR_KEY[k] && HQ_TREE_KINDS[k].model) _FOLIAGE_MODEL_FOR_KEY[k] = HQ_TREE_KINDS[k].model; });
+    function _foliageDead(kind) { return (typeof hqTreeDead === 'function') ? hqTreeDead(kind) : (kind === 'tree_5' || kind === 'tree_6'); }
     /* Pixel sprite wrapped on the trunk/branches (Bark material group). */
     var _FOLIAGE_BARK_TEX = 'wood.png';
     /* Pixel sprite wrapped on the canopy (Tree_Leaves group). All tree tops now
@@ -5115,6 +5119,7 @@ const ThreeRenderer = (function () {
         tree_5: 'leaves.png',
         tree_6: 'leaves.png'
     };
+    Object.keys(_FOLIAGE_MODEL_FOR_KEY).forEach(function (k) { if (!_FOLIAGE_LEAF_TEX_FOR_KEY[k]) _FOLIAGE_LEAF_TEX_FOR_KEY[k] = 'leaves.png'; });   /* E2's kinds wear the same leaves */
     /* How many times each sprite tiles across the model's UVs (the OBJ UVs span
        ~0..2.3, so this multiplies on top). Higher = smaller, denser pixels that
        stretch/distort less across big canopy and trunk faces. */
@@ -27446,7 +27451,7 @@ const ThreeRenderer = (function () {
     /* Trees: the board's own foliage OBJs when loaded (swapped in as they
        arrive — _nrPending), a procedural trunk + canopy meanwhile. */
     function _nrTreeProc(K, kind, o) {
-        var ts = K.ts, g = new THREE.Group(), v = _TREE_VARIANTS[kind] || _TREE_VARIANTS.tree, dead = (kind === 'tree_5' || kind === 'tree_6');
+        var ts = K.ts, g = new THREE.Group(), v = _TREE_VARIANTS[kind] || _TREE_VARIANTS.tree, dead = _foliageDead(kind);
         var trunkH = ts * 1.3 * v.trunkHMul * (o.s || 1), r = ts * 0.55 * v.canopyRMul * (o.s || 1);
         var trunk = K.cyl(ts * 0.06, ts * 0.13, trunkH, 7, K.mat('wood', v.trunkColor)); trunk.position.y = trunkH / 2; g.add(K.lit(trunk, true));
         if (!dead) {
@@ -41270,7 +41275,7 @@ const ThreeRenderer = (function () {
         };
         if (TK && trees.length) {
             trees.forEach(function (t) {
-                var kind = t.c.tree, tall = !!t.c.tall, dead = (kind === 'tree_5' || kind === 'tree_6');
+                var kind = t.c.tree, tall = !!t.c.tall, dead = _foliageDead(kind);
                 var h = tall ? 5.2 : dead ? 2.3 : 2.6 + rng() * 0.5;
                 var jx = (rng() - 0.5) * C * 0.35, jz = (rng() - 0.5) * C * 0.35;
                 plantTree(kind, h, cellX(t.x) + jx, cellZ(t.y) + jz, t.c.top * U + 0.3);
@@ -41470,7 +41475,7 @@ const ThreeRenderer = (function () {
                 if (inLane(px, pz, ro)) continue;
                 if (nbRects.length && inNb(px, pz)) continue;
                 var fk = kinds[(rng() * kinds.length) | 0];
-                var fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : (fk === 'tree_5' || fk === 'tree_6') ? 2.0 + rng() * 0.6 : 2.3 + rng() * 1.1;
+                var fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : _foliageDead(fk) ? 2.0 + rng() * 0.6 : 2.3 + rng() * 1.1;
                 var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
                 if (plantTree(fk, fh, px, pz, gy * _hqUnits())) planted++;
             }
@@ -42261,7 +42266,7 @@ const ThreeRenderer = (function () {
             return tg;
         };
         var treeOne = function (t) {
-            var tall = t.kind === 'tree_4', dead = (t.kind === 'tree_5' || t.kind === 'tree_6');
+            var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
             plantTree(t.kind, h, t.x, t.z, t.y * U);
             var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
@@ -50469,7 +50474,7 @@ const ThreeRenderer = (function () {
                     agDef = Object.assign({}, base, { libClips: lc, libTimeScales: lt });
                 }
             }
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose });   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
         });
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
@@ -50510,6 +50515,14 @@ const ThreeRenderer = (function () {
                 if (spot.clone && av.race) {
                     _hqSpawnCharacter({ id: 'hq-clone-' + si, kind: 'npc', race: av.race, gender: av.gender || 'male', appearance: av.appearance || undefined, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
                                         line: sayOf(spot), label: 'THE OTHER ONE', sub: 'YOU · ALREADY HERE' });
+                    return;
+                }
+                /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): a spot with `cast` stands that cast model (sprites.js DOOR_CAST_MODELS) — the
+                   editor's PEOPLE tab places them; the story's own cast draw (hqCastInRoom) is untouched */
+                if (spot.cast && typeof getCastModel === 'function' && getCastModel(spot.cast)) {
+                    var cdef = getCastModel(spot.cast), cm = (typeof DOOR_CAST !== 'undefined' && DOOR_CAST[spot.cast]) || null;
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: (cm && (cm.base || cm.race)) || 'men in black', gender: spot.gender || (cm && cm.gender) || 'male', def: cdef, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
+                                        line: sayOf(spot), label: spot.label || (cm && cm.name) || String(spot.cast).toUpperCase(), sub: spot.sub || (cm && cm.title) || null, pose: spot.pose || null, spot: spot, spotIndex: si });
                     return;
                 }
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
@@ -60911,7 +60924,39 @@ const ThreeRenderer = (function () {
             return { scene: H.scene, camera: H.camera, units: _hqUnits(), canvas: canvas, room: H.room, roomId: H.opts.room, ready: !!H.ready, info: H.terrain || null,
                      props: (H.props || []).map(function (p) { return { key: p.key, grp: p.grp, row: (p.grp && p.grp.userData) ? p.grp.userData.ewRow || null : null }; }),
                      doors: (H.doors || []).map(function (d) { return { door: d.door, group: d.group }; }),
-                     player: H.player ? { x: H.player.x, y: H.player.y, z: H.player.z, group: H.player.entry ? H.player.entry.group : null } : null };
+                     player: H.player ? { x: H.player.x, y: H.player.y, z: H.player.z, group: H.player.entry ? H.player.entry.group : null } : null,
+                     /* E2: the people standing on the room's spots (a native / a cast model / an agent) — the row they stand at */
+                     chars: (H.chars || []).filter(function (c) { return c && c !== H.player && c.entry && c.entry.group; }).map(function (c) { return { id: c.id, kind: c.kind, spot: c.spot || null, group: c.entry.group }; }) };
+        },
+        /* THE PALETTE'S THUMBNAILS (EDITOR_PLAN E2): one catalogue prop / one tree kind built on its own, the way the room builds it
+           (the misc loader + the room's material pick, the procs' own builders, the foliage OBJ in its bark and leaves) —
+           `cb(group)` once it stands (a file prop when its GLB lands; null when it cannot be built). World units. */
+        propPreview: function (key, cb) {
+            var D = _hqData(), cat = D && D.catalogue ? D.catalogue[key] : null, U = _hqUnits();
+            if (!cat) { cb(null); return; }
+            try {
+                if (cat.proc) { var pg = _hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }); cb(pg || null); return; }
+                if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
+                var fitSpan = cat.span != null && cat.h == null, done = false;
+                var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
+                    onDone: function (g) { if (done) return; done = true; cb(inst); } });
+                setTimeout(function () { if (!done) { done = true; cb(null); } }, 20000);
+            } catch (e) { cb(null); }
+        },
+        treePreview: function (kind, cb) {
+            var name = _FOLIAGE_MODEL_FOR_KEY[kind] || (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] ? HQ_TREE_KINDS[kind].model : null);
+            if (!name) { cb(null); return; }
+            var t0 = Date.now();
+            (function wait() {
+                var src = _loadFoliageModel(name), e = _foliageModelCache[name];
+                if (src && src._ew_bbox) {
+                    var bark = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT), leaf = _getFoliagePixelTex('leaves.png', _FOLIAGE_LEAF_REPEAT), m = src.clone(true);
+                    m.traverse(function (n) { if (!n.isMesh) return; var pick = function (sm) { return (sm && sm.name === 'Tree_Leaves') ? new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: bark }); }; n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); });
+                    cb(m); return;
+                }
+                if ((e && e.failed) || Date.now() - t0 > 20000) { cb(null); return; }
+                setTimeout(wait, 250);
+            })();
         },
         surface: function (x, z, y) { if (!_hq) return null; try { return _hqSurface(x, z, (y == null) ? null : y, true); } catch (e) { return null; } },
         lock: function () { _hqTryLock(); },
