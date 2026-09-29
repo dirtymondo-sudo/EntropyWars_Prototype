@@ -44774,7 +44774,7 @@ function hqRowPlace(row, P) {
     };
     if (r.k === 'spiral') { r.x = +row.x || 0; r.z = +row.z || 0; arcOf(r); }
     if (r.arc && typeof r.arc === 'object') arcOf(r.arc);
-    ['face', 'rot'].forEach(k => { if (typeof r[k] === 'number' || (k === 'face' && (r.k === 'climb' || r.key && !r.k))) r[k] = ang(r[k]); });
+    ['face', 'rot'].forEach(k => { if (typeof r[k] === 'number' || (k === 'face' && (r.k === 'climb' || r.key && !r.k)) || (k === 'rot' && r.k === 'space')) r[k] = ang(r[k]); });   // E5: a layout room turns with its placement
     /* a mirror swaps a wall's two ends so its RIGHT face (keyIn) stays the inside; the aisles along it run the other way */
     if ((mx || mz) && r.k === 'wall' && typeof r.x0 === 'number') {
         const L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
@@ -44910,7 +44910,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
@@ -45605,8 +45605,77 @@ const HQ_TERRAIN_GEN = {
        `info.genPlan.forks / chambers / niches` (check-terrain prints the niches; a niche is the design, never a `deadEnd`). */
     ley:   { w: 2.4, forkW: [1.5, 2.1], forks: 18, forkLen: [14, 46], forkDeg: [30, 45, 60, 90, 120], reforkP: 0.35, joinP: 0.55, nicheR: 1.9, crossR: 4.6, padR: 3.4, chamberR: 5.0,
              wallH: 3.0, edge: 0.3, jitter: 0, topNoise: 0, solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.55, wallInner: 0.75, rim: 1.2, minOpen: 0.05, minDegree: 0 },
+    /* THE LAYOUT (EDITOR_PLAN E5, 2026-09-29 — mondo: "rooms of different sizes connected with hallways", and a forest where "the
+       walls are the trees … a dirt pathway while you're surrounded by trees; clearings the rooms, paths the hallways"). The HAND
+       plan: nothing is rolled. The open ground is exactly the `space` rows ({ k: 'space', x, z, w, d, rot?, round? } — a room, a
+       clearing) and the `hall` rows ({ k: 'hall', pts, w } — a hallway, a path) the editor draws; no corridor is added, no room is
+       filled back in. `look` says what the solid is:
+         walls  a MASS to the ceiling (the halls' rule: the walker refused by the mask, the boundary traced into info.planWalls in
+                `wallKey`, the halls' square corners);
+         trees  a MASS the walker never enters, grown with the game's own trees (info.thicket): a line of trunks `treeGap` apart
+                `treeIn` m inside the boundary, the band behind it on a `spacing` lattice `depth` m deep (`maxTrees` in all); the
+                paths wear the room's `path` sheet (dirt), a clearing with `dirt: true` too; the boom stops at `treeTop` m;
+         rock   a RISE (a cave's bank, the cliff sheet) `rockH` m high.
+       The door guarantee still cuts a corridor to a door no drawn space reaches (a door is never a trap); the editor says so.
+       `keep: true` (FREEZE writes it) opens the ground round the room's features, props and people as the generators do. */
+    plan:  { look: 'walls', wallH: 4.0, edge: 0.3, jitter: 0, topNoise: 0, solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.5, wallInner: 0.75, rim: 0.6, minOpen: 0, minDegree: 0,
+             treeGap: 1.55, treeIn: 0.85, spacing: 2.3, depth: 7, maxTrees: 700, treeTop: 5.5, treeH: [4.2, 6.4], kinds: ['tree', 'tree_2', 'tree_3', 'tree_7', 'tree_8', 'tree_9', 'tree_4'],
+             rockH: 3.2, rockEdge: 0.9, rockJitter: 0.3, rockTopNoise: 0.45 },
     forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
 };
+/* THE LAYOUT (E5): the hand plan's shapes out of a room's (expanded) features — pure */
+function hqPlanShapes(features) {
+    const spaces = [], halls = [];
+    (features || []).forEach(f => {
+        if (!f) return;
+        if (f.k === 'space' && isFinite(f.x) && isFinite(f.z)) spaces.push({ id: f.id, x: +f.x, z: +f.z, w: Math.max(0.5, +f.w || 6), d: Math.max(0.5, +f.d || +f.w || 6), rot: +f.rot || 0, round: !!f.round, dirt: !!f.dirt, label: f.label || null });
+        else if (f.k === 'hall' && Array.isArray(f.pts) && f.pts.length > 1) halls.push({ id: f.id, pts: f.pts.map(p => [+p[0] || 0, +p[1] || 0]), w: Math.max(0.6, +f.w || 2.6), label: f.label || null });
+    });
+    return { spaces, halls };
+}
+/* is (px, pz) in the drawn open ground? `square` = a hallway's ends and joints are square (walls); else round (trees, rock) */
+function hqPlanIn(P, px, pz, square) {
+    for (const r of P.spaces) { if (r.round ? _hqTEllipse(px, pz, { x: r.x, z: r.z, r: r.w / 2, rz: r.d / 2, rot: r.rot }) <= 1 : _hqTRectIn(px, pz, r) >= 0) return true; }
+    for (const h of P.halls) {
+        const hw = h.w / 2;
+        if (!square) { if (_hqTPolyDist(px, pz, h.pts).d < hw) return true; continue; }
+        for (let i = 0; i + 1 < h.pts.length; i++) {
+            const ax = h.pts[i][0], az = h.pts[i][1], bx = h.pts[i + 1][0], bz = h.pts[i + 1][1], dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+            if (L < 1e-6) { if (Math.abs(px - ax) <= hw && Math.abs(pz - az) <= hw) return true; continue; }
+            const ux = dx / L, uz = dz / L, rx = px - ax, rz = pz - az, along = rx * ux + rz * uz, across = -rx * uz + rz * ux;
+            if (along >= -hw && along <= L + hw && Math.abs(across) <= hw) return true;
+        }
+    }
+    return false;
+}
+/* FREEZE (EDITOR_PLAN §5.8, E5): a GENERATED floor plan (`rooms`: clearings and winding paths, a thicket or banks; `halls`: rooms and
+   L-corridors) as the hand plan's rows, so it can be edited — the same seed's plan, every piece a row. → { gen, rows } or null
+   (a cave, a city, the ley lines have no rooms and halls to hand over). The rows carry no ids (the editor numbers them). */
+function hqPlanFreeze(info, gen0) {
+    const gp = info && info.genPlan, kind = info && info.gen && info.gen.kind; if (!gp || (kind !== 'rooms' && kind !== 'halls')) return null;
+    const R2 = v => Math.round(v * 100) / 100, rows = [];
+    if (kind === 'rooms') {
+        (gp.rooms || []).forEach(r => rows.push({ k: 'space', x: R2(r.x), z: R2(r.z), w: R2(2 * r.r), d: R2(2 * (r.rz || r.r)), rot: R2(r.rot || 0), round: true }));
+        (gp.corridors || []).forEach(c => rows.push({ k: 'hall', pts: c.pts.map(p => [R2(p[0]), R2(p[1])]), w: R2(c.w) }));
+        const trees = !gen0 || gen0.thicket !== false;
+        const gen = { kind: 'plan', look: trees ? 'trees' : 'rock', keep: true };
+        if (!trees && info.gen.wallH) gen.wallH = R2(info.gen.wallH);
+        if (trees && gen0 && Array.isArray(gen0.kinds)) gen.kinds = gen0.kinds.slice();
+        return { gen, rows };
+    }
+    (gp.rooms || []).forEach(r => rows.push({ k: 'space', x: R2(r.x), z: R2(r.z), w: R2(r.w), d: R2(r.d) }));
+    (gp.corridors || []).forEach(c => rows.push({ k: 'hall', pts: c.pts.map(p => [R2(p[0]), R2(p[1])]), w: R2(c.w) }));
+    (gp.halls || []).forEach(h => rows.push({ k: 'hall', pts: h.pts.map(p => [R2(p[0]), R2(p[1])]), w: R2(h.w) }));
+    const gen = { kind: 'plan', look: 'walls', keep: true };
+    if (gen0 && gen0.wallH != null) gen.wallH = gen0.wallH;
+    if (gen0 && gen0.wallKey) gen.wallKey = gen0.wallKey;
+    return { gen, rows };
+}
+/* THE LAYOUT's readout for the editor: which drawn spaces and halls the walker reaches from the spawn and the doors (info.genPlan.reach) */
+function hqPlanReport(info) {
+    const gp = info && info.genPlan; if (!gp || !gp.hand) return null;
+    return { spaces: gp.spaces.length, halls: gp.halls.length, cut: (info.gen && info.gen.carved) || 0, cold: (gp.cold || []).slice(), trees: (info.thicket || []).length, walls: (info.planWalls || []).length };
+}
 function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
 /* the signed distance (m) of every grid cell to the mask's boundary (> 0 open, < 0 solid) — a two-pass chamfer (3-4) per side */
 function _hqTMaskDistance(mask, nx, nz, res) {
@@ -45869,7 +45938,10 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     const seed = (typeof hqHash === 'function') ? hqHash(((room.terrain && room.terrain.seedOf) || roomId || room.label || 'gen') + '|gen|' + (gen.seed || 0)) : 1234 + (gen.seed || 0);   // THE EDITOR (E0): a copied room keeps its source's seed (`terrain.seedOf`), so the copy is the same plan
     const rnd = _hqTRng(seed);
     const mask = new Uint8Array(nx * nz), forced = new Uint8Array(nx * nz);
-    const halfW = S.w / 2, halfD = S.d / 2, rim = (gen.rim != null) ? gen.rim : G.rim;
+    /* THE LAYOUT (E5): the hand plan — the drawn spaces and halls are the open ground, nothing else opens it */
+    const hand = gen.kind === 'plan', look = hand ? (({ walls: 1, trees: 1, rock: 1 })[gen.look] ? gen.look : K.look) : null;
+    const strict = hand && !gen.keep;   // `keep: true` (a FROZEN plan): the room's features, props and people keep their open ground as the generator gave it
+    const halfW = S.w / 2, halfD = S.d / 2, rim = (gen.rim != null) ? gen.rim : (hand ? K.rim : G.rim);
     const inShell = (px, pz, inset) => Math.abs(px) < halfW - inset && Math.abs(pz) < halfD - inset;
     const each = (fn) => { for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) fn(j * nx + i, x0 + i * res, z0 + j * res); };
     /* ── the forced-open set: every authored thing, grown by forceGrow ── */
@@ -45878,7 +45950,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     doorPads.forEach(p => { if (p.r) discs.push({ x: p.x, z: p.z, r: p.r + grow }); else rects.push({ x: p.x, z: p.z, w: p.w + 2 * grow, d: p.d + 2 * grow, rot: p.rot || 0 });
         /* the lane out through the rim to the wall */
         if (p.lane && !p.free) rects.push({ x: (p.x + p.lane.x) / 2, z: (p.z + p.lane.z) / 2, w: (p.w || 3.4) + 2 * grow, d: Math.max(p.d || 3.2, 2 * Math.abs(p.z - p.lane.z) + 3.2, 2 * Math.abs(p.x - p.lane.x) + 3.2) + 2 * grow, rot: 0 }); });
+    const HAND_FORCE = { ramp: 1, deck: 1, bridge: 1, climb: 1 };   // THE LAYOUT: a drawn plan is opened only by what must stand on open ground to work
     features.forEach(f => {
+        if (strict && !HAND_FORCE[f.k]) return;
         switch (f.k) {
             case 'plateau': {
                 if (f.sink) break;   // THE CUT (D2): a sunk district is not a feature to keep open — its streets and blocks are the plan's
@@ -45917,11 +45991,11 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             default: break;
         }
     });
-    (room.props || []).forEach(p => { if (p.wall || p.ceil) return; discs.push({ x: p.x || 0, z: p.z || 0, r: 1.2 }); });
-    (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || []).forEach(q => { if (q && q.x != null) discs.push({ x: q.x, z: q.z, r: 1.8 }); });
-    (room.counters || []).forEach(c => discs.push({ x: c.x, z: c.z, r: (c.radius || 2) + 0.8 }));
-    if (room.spawn) discs.push({ x: room.spawn.x, z: room.spawn.z, r: 2.2 });
-    const pins = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.findSpots && roomId) ? DOOR_HQ.findSpots[roomId] : null;
+    if (!strict) (room.props || []).forEach(p => { if (p.wall || p.ceil) return; discs.push({ x: p.x || 0, z: p.z || 0, r: 1.2 }); });
+    if (!strict) (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || []).forEach(q => { if (q && q.x != null) discs.push({ x: q.x, z: q.z, r: 1.8 }); });
+    if (!strict) (room.counters || []).forEach(c => discs.push({ x: c.x, z: c.z, r: (c.radius || 2) + 0.8 }));
+    if (room.spawn) discs.push({ x: room.spawn.x, z: room.spawn.z, r: strict ? 1.2 : 2.2 });
+    const pins = (!strict && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.findSpots && roomId) ? DOOR_HQ.findSpots[roomId] : null;
     if (pins) Object.keys(pins).forEach(k => { const sp = pins[k]; if (sp && sp.x != null) discs.push({ x: sp.x, z: sp.z, r: 1.4 }); });
     (gen.open || []).forEach(o => { if (o.r) discs.push(o); else polys.push({ pts: [[o.x0, o.z0], [o.x1, o.z1]], w: o.w || 3 }); });
     const inForced = (px, pz) => {
@@ -45934,7 +46008,14 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     const solidRows = (gen.solid || []);
     const inSolid = (px, pz) => { for (const o of solidRows) { if (o.r) { if (Math.hypot(px - o.x, pz - o.z) < o.r) return true; } else if (_hqTPolyDist(px, pz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 1) / 2) return true; } return false; };
     /* ── the plan ── */
-    if (gen.kind === 'rooms') {
+    let HP = null;
+    if (hand) {
+        /* THE LAYOUT (E5): exactly what he drew */
+        HP = hqPlanShapes(features);
+        const square = look === 'walls';
+        each((k, px, pz) => { if (inShell(px, pz, rim) && hqPlanIn(HP, px, pz, square)) mask[k] = 1; });
+        info.genPlan = { hand: true, look, spaces: HP.spaces, halls: HP.halls, cold: [] };
+    } else if (gen.kind === 'rooms') {
         const rMin = gen.rMin || K.rMin, rMax = gen.rMax || K.rMax;
         const area = S.w * S.d, n = Math.max(K.nMin, Math.min(K.nMax, gen.n || Math.round(area / (gen.perArea || K.perArea))));
         const rooms = [];
@@ -46245,14 +46326,16 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             if (!walk.path) break;   // the authored room itself does not join them — the solver test will say so
             carve(walk.path); carved++;
         }
-        /* open = reachable: a pocket the walker never reaches (and no feature needs) is filled back in */
+        /* open = reachable: a pocket the walker never reaches (and no feature needs) is filled back in — never in a hand plan (THE
+           LAYOUT: what he drew stays; the editor names what no door reaches) */
+        if (hand) return;
         const main2 = _hqTReachGrid(info, padNodes[0][0], padNodes[0][1], mask, null).seen;
         for (let k = 0; k < mask.length; k++) if (mask[k] && !forced[k] && !main2.has(k)) mask[k] = 0;
     };
     /* THE HALLS (2026-09-17): a rounded hall at 45° rasterises to single-cell SAW-TEETH (a solid cell with three open
        neighbours, an open nub with one) that the wall tracer cannot simplify — two passes of tooth removal first; a
        forced cell is never touched, and nothing opens in the rim band */
-    if (gen.kind === 'halls' || gen.kind === 'ley') for (let pass = 0; pass < 2; pass++) {
+    if (gen.kind === 'halls' || gen.kind === 'ley' || look === 'walls') for (let pass = 0; pass < 2; pass++) {
         const M = new Uint8Array(mask);
         for (let j = 1; j + 1 < nz; j++) for (let i = 1; i + 1 < nx; i++) {
             const k = j * nx + i; if (forced[k]) continue;
@@ -46282,14 +46365,15 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
        — or, when no incline fits, is SEALED (filled back into the solid, never a feature's
        forced cell). Repeated until nothing traps. `info.rescues` lists the ramps. */
     /* ── the distance field and the rise ── */
-    const wallH = (gen.wallH != null) ? gen.wallH : ((gen.kind === 'halls' || gen.kind === 'ley') ? ((S.open ? K.wallH : (S.h || K.wallH))) : Math.min(K.wallH, S.open ? 99 : Math.max(1.2, (S.h || 4) - 1.2)));   // THE HALLS (2026-09-17): the walls reach the ceiling
-    const edge = (gen.edge != null) ? gen.edge : K.edge, jit = (gen.jitter != null) ? gen.jitter : K.jitter, topN = (gen.topNoise != null) ? gen.topNoise : K.topNoise;
+    const wallH = (look === 'trees') ? ((gen.treeTop != null) ? gen.treeTop : K.treeTop) : (look === 'rock') ? ((gen.wallH != null) ? gen.wallH : K.rockH)
+        : (gen.wallH != null) ? gen.wallH : ((gen.kind === 'halls' || gen.kind === 'ley' || hand) ? ((S.open ? K.wallH : (S.h || K.wallH))) : Math.min(K.wallH, S.open ? 99 : Math.max(1.2, (S.h || 4) - 1.2)));   // THE HALLS (2026-09-17): the walls reach the ceiling
+    const edge = (gen.edge != null) ? gen.edge : (look === 'rock' ? K.rockEdge : K.edge), jit = (gen.jitter != null) ? gen.jitter : (look === 'rock' ? K.rockJitter : K.jitter), topN = (gen.topNoise != null) ? gen.topNoise : (look === 'rock' ? K.rockTopNoise : K.topNoise);
     const H0 = Float32Array.from(info.H);   // the authored field (before the plan's rise)
     let D = null, open = 0;
     /* THE KERB (the city, 2026-09-17): the sidewalk band stands `kerb` m over the road — a step the walker takes, a bump the rider hops; never on a forced cell (a pad, a side street) */
     const kerb = (gen.kind === 'city') ? ((gen.kerb != null) ? gen.kerb : K.kerb) : 0, walkW = (gen.kind === 'city') ? ((gen.walkW != null) ? gen.walkW : K.walkW) : 0;
     /* STREET LEVEL rev 2 (2026-09-17): a city's solid is MASS — no rise at all unless the plan says `podium: true` (the mall's units) */
-    const solidMass = ((gen.kind === 'city') && !((gen.podium != null) ? gen.podium : K.podium)) || gen.kind === 'halls' || gen.kind === 'ley';   // THE HALLS (2026-09-17): a dungeon's walls are a mass too; THE LEY LINES (2026-09-18) likewise
+    const solidMass = ((gen.kind === 'city') && !((gen.podium != null) ? gen.podium : K.podium)) || gen.kind === 'halls' || gen.kind === 'ley' || (hand && look !== 'rock');   // THE HALLS (2026-09-17): a dungeon's walls are a mass too; THE LEY LINES (2026-09-18) likewise
     const solidPad = solidMass ? ((gen.solidPad != null) ? gen.solidPad : K.solidPad) : 0;
     info.gen = { kind: gen.kind, solidMass, solidPad };   // provisional: THE RETURN GUARANTEE judges the traps through hqTerrainFeet, which reads the mass rule
     const applyRise = () => {
@@ -46313,11 +46397,11 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     };
     /* THE RETURN GUARANTEE runs on the RISEN field — what the walker meets (a low bank is hopped onto, a cliff is not) — and
        every rescue ramp is a CUT re-laid over the rise each round */
-    const RG = _hqTReturnGuarantee(info, padNodes, mask, forced, cR, applyRise);
+    const RG = hand ? (applyRise(), { sealed: 0, rescues: [] }) : _hqTReturnGuarantee(info, padNodes, mask, forced, cR, applyRise);   // THE LAYOUT: his plan is never sealed or ramped
     const sealed = RG.sealed, rescues = RG.rescues;
     info.rescues = rescues;
     info.mask = mask; info.maskD = D; info.forced = forced;
-    info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, sealed, rescued: rescues.length, solidSheet: (gen.kind === 'cave' || gen.kind === 'city') ? 'cliff' : 'floor',
+    info.gen = { kind: gen.kind, wallH, edge, open: open / (nx * nz), carved, sealed, rescued: rescues.length, solidSheet: (gen.kind === 'cave' || gen.kind === 'city' || look === 'rock') ? 'cliff' : 'floor', look,
                  fronts: gen.fronts || null, prisms: gen.prisms !== false, sidewalk: walkW, kerb, texP: (gen.texP != null) ? gen.texP : 0, ruinP: (gen.ruinP != null) ? gen.ruinP : 0.3,   // THE URBAN PACK (2026-09-17): the textured-lot share and the ruined share ride to the renderer
                  /* STREET LEVEL rev 2: the solid is a mass (the walker refused by the mask, the air / the boom by info.solidTop), never a rise */
                  solidMass, solidPad };
@@ -46702,7 +46786,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     }
     /* ── THE HALLS: the solid tops (the walls to the ceiling) and THE PLAN WALLS traced off the mask ── */
     info.planWalls = [];
-    if (gen.kind === 'halls' || gen.kind === 'ley') {
+    if (gen.kind === 'halls' || gen.kind === 'ley' || look === 'walls') {
         const tops = new Float32Array(nx * nz);
         each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : (_hqTBaseAt(info, px, pz) + wallH); });
         info.solidTop = tops;
@@ -46716,6 +46800,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     }
     /* ── THE THICKET (rooms): the forest growing on the solid, a lattice of trees `spacing` apart ── */
     info.thicket = [];
+    if (hand) _hqTPlanFinish(info, room, gen, K, HP, look, mask, padNodes, rnd, inShell, wallH);
     if (gen.kind === 'rooms' && gen.thicket !== false) {
         const sp = gen.spacing || K.spacing, kinds = gen.kinds || K.kinds, maxT = gen.maxTrees || K.maxTrees, want = [];
         for (let gz = -halfD + 0.4; gz < halfD - 0.4; gz += sp) for (let gx = -halfW + 0.4; gx < halfW - 0.4; gx += sp) {
@@ -46730,6 +46815,84 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         want.sort((a, b) => b.d - a.d);
         info.thicket = want.slice(0, maxT);
     }
+}
+/* THE LAYOUT (E5): what a hand plan adds once its mask stands — the TREES look's trunk line and band (info.thicket) + the camera's
+   ceiling over them (info.solidTop) + the dirt (info.paths: every path, every clearing marked `dirt`); every look's READOUT: the
+   drawn spaces and halls the walker reaches from neither the spawn nor a door (info.genPlan.cold, the editor's status line) */
+function _hqTPlanFinish(info, room, gen, K, HP, look, mask, padNodes, rnd, inShell, wallH) {
+    const nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, gp = info.genPlan;
+    const num = (v, d) => (v != null && isFinite(v)) ? +v : d;
+    if (look === 'trees') {
+        const tops = new Float32Array(nx * nz);
+        for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = j * nx + i; tops[k] = (mask[k] || (info.maskD && info.maskD[k] > -0.05)) ? 0 : _hqTBaseAt(info, x0 + i * res, z0 + j * res) + wallH; }
+        info.solidTop = tops;
+        const gap = num(gen.treeGap, K.treeGap), tin = num(gen.treeIn, K.treeIn), sp = num(gen.spacing, K.spacing), depth = num(gen.depth, K.depth), maxT = Math.max(0, Math.round(num(gen.maxTrees, K.maxTrees)));
+        const kinds = (Array.isArray(gen.kinds) && gen.kinds.length) ? gen.kinds : K.kinds, TH = Array.isArray(gen.treeH) ? gen.treeH : K.treeH;
+        const cell = 2, hash = new Map(), near = (px, pz, m) => {
+            const gi = Math.floor(px / cell), gj = Math.floor(pz / cell);
+            for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const b = hash.get((gi + di) + ':' + (gj + dj)); if (b) for (const q of b) if (Math.hypot(q.x - px, q.z - pz) < m) return true; }
+            return false;
+        };
+        const out = [];
+        const put = (px, pz, d) => {
+            if (out.length >= maxT) return false;
+            const kind = kinds[Math.floor(rnd() * kinds.length)];
+            const h = hqTreeDead(kind) ? TH[0] * 0.75 + rnd() * 0.8 : TH[0] + rnd() * (TH[1] - TH[0]);
+            const t = { x: Math.round(px * 100) / 100, z: Math.round(pz * 100) / 100, kind, h: Math.round(h * 100) / 100, r: 0.42, d, y: hqTerrainHeight(info, px, pz) };
+            out.push(t); const key = Math.floor(px / cell) + ':' + Math.floor(pz / cell); let b = hash.get(key); if (!b) { b = []; hash.set(key, b); } b.push(t);
+            return true;
+        };
+        /* THE LINE: the boundary traced (the halls' tracer, a hair-thin wall), a trunk every `gap` m `tin` m into the solid */
+        let edge = [];
+        try { edge = _hqTTraceMaskWalls(info, mask, { t: 0.02, key: null, top: 0, simplify: 0.35, inner: 0.3, inShell }); } catch (e) { edge = []; }
+        edge.forEach(w => {
+            const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < 0.2) return;
+            const ux = (w.x1 - w.x0) / L, uz = (w.z1 - w.z0) / L, n = Math.max(1, Math.round(L / gap));
+            for (let q = 0; q < n; q++) {
+                const a = (q + 0.5) * L / n + (rnd() - 0.5) * gap * 0.3, bx = w.x0 + ux * a, bz = w.z0 + uz * a;
+                for (const side of [1, -1]) {
+                    const o = tin + (rnd() - 0.5) * 0.25, px = bx - uz * side * o, pz = bz + ux * side * o;
+                    const d = hqTerrainMaskAt(info, px, pz);
+                    if (d > -0.55 || !inShell(px, pz, 0.35) || near(px, pz, gap * 0.7)) continue;
+                    put(px, pz, d); break;
+                }
+            }
+        });
+        /* THE BAND: the lattice behind the line, nearest the open ground first, to `depth` m */
+        const band = [], hw = info.S.w / 2, hd = info.S.d / 2;
+        for (let gz = -hd + 0.4; gz < hd - 0.4; gz += sp) for (let gx = -hw + 0.4; gx < hw - 0.4; gx += sp) {
+            const px = gx + (rnd() - 0.5) * sp * 0.7, pz = gz + (rnd() - 0.5) * sp * 0.7;
+            if (!inShell(px, pz, 0.4)) continue;
+            const d = hqTerrainMaskAt(info, px, pz); if (d > -(tin + 1.1) || d < -depth) continue;
+            band.push([px, pz, d]);
+        }
+        band.sort((a, b) => b[2] - a[2]);
+        for (const b of band) { if (out.length >= maxT) break; if (!near(b[0], b[1], sp * 0.62)) put(b[0], b[1], b[2]); }
+        info.thicket = out;
+        gp.treesCut = Math.max(0, band.length - out.length);
+    }
+    /* THE DIRT (trees, rock): the paths and the marked clearings in the room's path sheet (the renderer's path blend) */
+    if (look !== 'walls' && Array.isArray(info.paths)) {
+        HP.halls.forEach(h => info.paths.push({ k: 'path', pts: h.pts, w: h.w, plan: true }));
+        HP.spaces.forEach(r => {
+            if (!r.dirt) return;
+            const long = Math.max(r.w, r.d), short = Math.min(r.w, r.d), q = (r.rot || 0) * Math.PI / 180, alongX = r.w >= r.d;
+            const hl = (long - short) / 2, ux = alongX ? Math.cos(q) : -Math.sin(q), uz = alongX ? Math.sin(q) : Math.cos(q);
+            info.paths.push({ k: 'path', pts: [[r.x - ux * hl, r.z - uz * hl], [r.x + ux * hl + 1e-3, r.z + uz * hl]], w: short, plan: true });
+        });
+    }
+    /* THE READOUT: the spaces and halls no walk from the spawn or a door reaches */
+    try {
+        const seen = new Set(), from = [];
+        if (room && room.spawn) from.push([Math.round(((+room.spawn.x || 0) - x0) / res), Math.round(((+room.spawn.z || 0) - z0) / res)]);
+        (padNodes || []).forEach(p => from.push(p));
+        from.forEach(p => { if (p[0] < 0 || p[1] < 0 || p[0] >= nx || p[1] >= nz) return; if (seen.has(p[1] * nx + p[0])) return; _hqTReachGrid(info, p[0], p[1], mask, null).seen.forEach((y, k) => seen.add(k % (nx * nz))); });
+        const hit = (px, pz) => { const i = Math.round((px - x0) / res), j = Math.round((pz - z0) / res); if (i < 0 || j < 0 || i >= nx || j >= nz) return false; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const k = (j + dj) * nx + i + di; if (seen.has(k)) return true; } return false; };
+        if (from.length) {
+            HP.spaces.forEach(r => { if (!hit(r.x, r.z)) gp.cold.push(r.id || 'space'); });
+            HP.halls.forEach(h => { const m = h.pts[Math.floor(h.pts.length / 2)], a = h.pts[Math.floor(h.pts.length / 2) - 1] || m; if (!hit((m[0] + a[0]) / 2, (m[1] + a[1]) / 2) && !hit(m[0], m[1])) gp.cold.push(h.id || 'hall'); });
+        }
+    } catch (e) { /* a readout only */ }
 }
 /* THE PLAN WALLS (THE HALLS, 2026-09-17): the mask's boundary as wall rows. Every face between an open cell and a solid
    one (inside the shell by `inner` — the shell's own wall serves past that) is a unit edge on the half-cell lattice; the
@@ -47329,8 +47492,10 @@ function hqTerrainCompile(room, roomId) {
     /* THE STITCHED MOUTH (OPEN WORLD Phase 4): a floor plan's rim is solid past the shell (the thicket's bank, 1.4–1.8 m in the
        woods); along a joined span the plan is told the edge is a corridor mouth — open from 4 m inside to past the field's end
        — so the two parts' grounds meet level at the line (the stitch's target), never over a bank */
-    let genUse = T.gen;
-    if (T.gen && T.gen.kind !== 'city' && stitch.length) {   // a city plan's streets already run out through its road joins (Phase 1's stitch)
+    /* THE LAYOUT (E5): a room with drawn spaces / halls and no plan of its own is a hand plan (the walls look) */
+    const planGen = T.gen || (F.some(f => f && (f.k === 'space' || f.k === 'hall')) ? { kind: 'plan', look: 'walls' } : null);
+    let genUse = planGen;
+    if (planGen && planGen.kind !== 'city' && stitch.length) {   // a city plan's streets already run out through its road joins (Phase 1's stitch)
         const hw = S.w / 2, hd = S.d / 2, inD = 4, outD = roam + 2;
         /* G6: an island's side is a whole edge of the box — its mouth is a gap in the middle of the side (`islandMouthW` m),
            never the side's full width (a capsule that wide would open the whole plan: the corn, the maze, the woods' banks) */
@@ -47343,9 +47508,9 @@ function hqTerrainCompile(room, roomId) {
         stitch.filter(st => st.island).forEach(st => { const w = eM * 2;
             extra.push(st.side === 'n' ? { x0: -hw, z0: -hd, x1: hw, z1: -hd, w } : st.side === 's' ? { x0: -hw, z0: hd, x1: hw, z1: hd, w }
                      : st.side === 'e' ? { x0: hw, z0: -hd, x1: hw, z1: hd, w } : { x0: -hw, z0: -hd, x1: -hw, z1: hd, w }); });
-        genUse = Object.assign({}, T.gen, { open: (T.gen.open || []).concat(extra), mouths: extra });
+        genUse = Object.assign({}, planGen, { open: (planGen.open || []).concat(extra), mouths: extra });
     }
-    if (T.gen) { try { _hqTGenerate(info, room, roomId, genUse, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
+    if (planGen) { try { _hqTGenerate(info, room, roomId, genUse, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     else {
         /* THE RETURN GUARANTEE without a plan (2026-09-17): a room that is its own floor still gets its rescue ramps */
         try { const pn = doorPads.map(p => [Math.round((p.x - x0) / res), Math.round((p.z - z0) / res)]); info.rescues = _hqTReturnGuarantee(info, pn, null, null, Math.ceil(HQ_TERRAIN_GEN.corridorW / 2 / res), null).rescues; }

@@ -201,3 +201,48 @@ block and the tiles; a delta zip keeps this project's tiles for the ones it lack
 **Differs from the plan.** No full 2801² array in memory (tiles on demand). bake-land.js is untouched (its `gradeLine` did not
 move; the editor grades roads with `hqLandEdGrade`). No junctions or signs are written for his roads yet; no ICE tool (paint
 `ice` / `pack`). The map is the editor's own canvas, not map.js's ATLAS. Checked by a quick load in the sandbox only.
+
+## E5 — the layout: rooms and hallways, forests with tree walls, dungeons (2026-09-29, token 20260929-editor-06-cors)
+
+R2 files: editor.js, data.js, three-renderer.js. Repo: index.html (token), docs. mondo's ask, built over §5.7: rooms of different
+sizes joined by hallways (dungeons, building interiors); a forest "dungeon" whose walls are trees (clearings = rooms, dirt paths =
+hallways, no walking into the trees).
+
+**The rows.** `{ k: 'space', x, z, w, d, rot?, round?, dirt?, label? }` (a room / clearing; `round` = the ellipse filling w × d;
+`dirt` = a clearing in the path sheet) and `{ k: 'hall', pts, w, label? }` (a hallway / path). Picked, moved, turned, sized like
+any row (the gizmo turns `rot`; a prefab placement turns it too).
+
+**The plan.** `terrain.gen = { kind: 'plan', look: 'walls' | 'trees' | 'rock', … }`; a room with space / hall rows and no gen compiles
+as `walls`. data.js `_hqTGenerate` `hand` branch: the mask is exactly `hqPlanIn` (walls: square hallway ends; trees / rock: round);
+only door pads (+ lanes), the spawn (1.2 m), climbs and ramp / deck / bridge mouths are forced open (`keep: true` restores the
+generators' forcing of props, people and features — FREEZE writes it); the door corridor carve stays, the pocket fill-in, the
+return guarantee's seals and ramps do not run. Settings (HQ_TERRAIN_GEN.plan): walls `wallH` (open room 4 m, else the shell's h),
+`wallKey`, `wallT`; trees `kinds`, `treeGap` 1.55 (trunks along the edge), `treeIn` 0.85, `spacing` 2.3, `depth` 7, `maxTrees`
+700, `treeH` [4.2, 6.4], `treeTop` 5.5 (the camera ceiling); rock `wallH` (3.2). `_hqTPlanFinish`: the trunk line walks the traced
+boundary (`_hqTTraceMaskWalls` at t 0.02), the band fills behind it nearest-first to the cap, the halls (+ dirt clearings) go
+into `info.paths` (the renderer's path blend), and `genPlan.cold` lists the pieces no walk from the spawn or a door reaches
+(`hqPlanReport`). The trees are ordinary thicket trees (each a blocker; the mask refuses the walker anyway). three-renderer.js:
+the tree kit is made when a room has only a thicket.
+
+**Perf note.** Each tree is its own model clone (the existing thicket path). 700 is the default cap; a big forest with long
+paths hits it and the far band thins (the tab shows the count). Instancing the trees is the fix if it ever drags.
+
+**The editor** (LAYOUT tab, between BUILD and GROUND): ROOM / ROUND ROOM (drag), HALLWAY (click points; ENTER ends, ESC drops,
+BACKSPACE takes a point back, SHIFT = 45° from the last point; HALLWAY WIDTH option); LOOK (WALLS / TREES / ROCK — before the first
+piece it is the look the room will take; after, it changes the room; switching to TREES over the default grass floor sets floor
+grass_dark_fantasy and path dirt, mondo's ruling); the look's fields; the floor / path sheets; the readout (rooms, hallways,
+trees or wall pieces; NOT JOINED pieces as buttons that select them; a door a way was cut to); REMOVE LAYOUT; FREEZE (a copied
+room with a generated `rooms` / `halls` plan → rows: `rooms` → round spaces + paths with look trees, or rock when it had no
+thicket; `halls` → spaces + hallways, walls). The first piece drawn gives the room its plan (one undo step with the piece). The
+status line shows `layout n / n` and NOT JOINED.
+
+**Dungeons.** world.json `dungeons[w_dgN] = { label: 'Dungeon N', look, levels: [{ room, y }] }` (the export already wrote the
+table). NEW DUNGEON asks the look and makes `Dungeon N Level 1`: 96 × 96, closed with a 4 m ceiling for walls (floor dungeon,
+walls bricks_3, paths cobblestone), open with the forest treeline for trees (grass_dark_fantasy / dirt), closed 6 m for rock
+(cave_floor / rock_wall_1); one 14 × 12 room round the spawn. + LEVEL adds `Dungeon N Level M` 6 m lower on the list. Levels are
+joined with the DOOR tool. Not built: the stacked levels on the map, mask grids and carve brushes (the layout replaced them).
+
+**Quick check:** a scratch Playwright run (stand-in textures and tree model) opened the editor, made a walls dungeon, drew two
+rooms and two hallways (27 wall pieces), switched it to TREES (299 trees): no new errors (the sandbox's `THREE.Scene is not a
+constructor` at index.html load is old).
+

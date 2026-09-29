@@ -42320,7 +42320,7 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
         var TK = null;
-        if ((info.trees.length || (S.forest && S.open) || (info.lots && info.lots.length)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
+        if ((info.trees.length || (info.thicket && info.thicket.length) || (S.forest && S.open) || (info.lots && info.lots.length)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {   // THE LAYOUT (E5): a tree-walled plan's thicket needs the kit too
             try { TK = _nrKit(G, { ts: TM, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
         }
