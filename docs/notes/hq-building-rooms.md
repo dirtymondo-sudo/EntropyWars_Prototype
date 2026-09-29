@@ -823,7 +823,7 @@ doors (`hqMapGraph`), when the layout cannot place a node, when a built
 site / complex part / numbered threshold is off the map, or when the
 register / world tab name a room the map cannot reach. Only `bay_*`
 (stage-1 rooms) may be off the walk. ADDING A ROOM = give it a door from a
-room that is on the map (or a `links` row) and run `npm test`; ADDING A
+room that is on the map (or a `links` row); ADDING A
 SITE = the 7.10 checklist (the threshold puts it on the map). No manual
 directory edit exists to forget.
 

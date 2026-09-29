@@ -34,14 +34,14 @@ local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
 1. Edit the ACTUAL existing files in the repo in place (never create new GAME
    .js files, never split game logic into a new module — work with what's
    already there; that rule protects the fixed R2 upload set. Repo-only dev
-   tooling at the repo root (check-*.js, *.test.js, deploy.js, load-data.js)
-   is fine and expected — see TOOLING).
+   tooling at the repo root (deploy.js, load-data.js, bake-*.js) is fine —
+   see TOOLING).
 2. Hand the user the COMPLETE edited file(s) in the chat AS ONE ZIP
    (SendUserFile). STANDARD since 2026-09-12 (the user's rule): every
    delivery is a single `ENTROPY_WARS_<TOPIC>.zip` built with `zip -j`
    (flat, no folders) in the scratchpad, holding every changed file —
    the R2 scripts, the bumped index.html (RULE #1b), and any repo-only
-   files (tests, docs, CLAUDE.md). Never a loose file list. The chat
+   files (docs, CLAUDE.md). Never a loose file list. The chat
    caption says which files go to R2, which to Render, which to the repo.
 3. The user uploads them to the R2 bucket (and manually syncs the repo so future
    sessions start from the latest) — or runs `npm run deploy` (see TOOLING),
@@ -49,33 +49,16 @@ local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
 DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
 diffs. The deliverable is always the full edited file, produced in chat.
 
-### TOOLING (added 2026-07-29; THE SCOPE RULE 2026-09-18 — the user: "why do we even have to test at all, especially if the changes have nothing to do with the maps / areas")
-- **THE END-OF-SESSION CHECK (2026-09-27, mondo: "update whatever files you need so that the tests run faster at
-  the end or not at all"): `npm run test:end` and NOTHING ELSE** = `test:quick` (`node --check` on every JS, the
-  data / server parity, the content schema, ~15 s — a stray brace in data.js takes the whole game down) plus only
-  the `*.test.js` files this session changed or added (git status), or the ones named: `npm run test:end -- hq-clock`.
-  NEVER run `npm test` or `npm run test:full` at the end of a session, whatever the delivery touched. CI runs
-  `npm test` on every push on GitHub's minutes; a red CI e-mail is fixed when it comes (read its `not ok` lines).
+### TOOLING
+- **NO TESTS (2026-09-29, mondo):** the test suite, the check-* tools and the CI workflow were deleted. Never write
+  test files, never run a test suite, never re-add CI. Check work with `node --check <file>` on the JS you edited
+  (a stray brace in data.js takes the whole game down) and, when useful, a quick load/playtest of what changed.
 - **NO TAPE / FIND / OLD-SAVE GUARDS (2026-09-27, mondo):** "I do not care about the tapes or the finds ... I do
-  not care about save files or old saves." Don't write tests that pin tapes, finds, their counts or their spots,
-  don't migrate old save keys, and let tapes/finds move or drop when a room changes.
-- `npm test` — zero-dependency (Node 22 built-in runner): syntax-checks every
-  repo JS, validates data.js content schemas (races/spells/abilities/classes),
-  and diffs the hand-synced server.js economy copy against data.js (this
-  caught real drift on day one: `swordfighter` missing from the server's
-  AVAILABLE_RACES). A server-boot smoke test runs when node_modules exists.
-  .github/workflows/ci.yml runs the FULL suite on every push
-  (must live at exactly that path — GitHub ignores workflows elsewhere).
-- **THE TWO SPEEDS.** `npm test` is the FAST suite; the heavy HQ geometry proofs (`test('…', heavy, () => …)`,
-  test-heavy.js) are SKIPPED unless `npm run test:full` (`EW_FULL_TESTS=1`). A new test that compiles more than one
-  terrain room or spawns a check-* tool takes `heavy`. Neither suite is a session-end step (above).
-- `npm run test:parity` / `npm run test:syntax` — the individual checks.
-  ANY edit to the ACCT_* constants / starter lists / race lists in data.js or
-  server.js MUST pass test:parity. Since 2026-07-29 the server RUNTIME derives
-  these from data.js at boot (server.js `ECON` object, headless load via
-  load-data.js), but the server literals remain the boot-failure fallback AND
-  the parity tool's extraction target — keep them synced, and keep them as
-  plain `const NAME = <literal>` declarations (extraction is source-text based).
+  not care about save files or old saves." Don't migrate old save keys, and let tapes/finds move or drop when a
+  room changes.
+- The server RUNTIME derives the ACCT_* constants / starter lists / race lists from data.js at boot (server.js
+  `ECON` object, headless load via load-data.js); the server literals are the boot-failure fallback, so keep them
+  synced by hand when you change those lists in data.js.
 - `npm run deploy` — USER-run (needs wrangler auth + EW_R2_BUCKET env): finds
   the changed R2 files (git status, explicit args, or `--all`), node --checks
   them, bumps the `?v=` token in index.html, uploads via wrangler, and prints
@@ -89,30 +72,27 @@ diffs. The deliverable is always the full edited file, produced in chat.
 - `bake-spell-mods.js` (2026-09-26, SPELL_LIBRARY_PLAN.md Phase 0) — bakes a
   Spell Library export into data.js's literal rows (`node bake-spell-mods.js
   <export.json>`; `--stamp-tiers` wrote the explicit numeric `tier` on every
-  row). Notes go to docs/spell-notes.md, never data.js. Test: spell-schema.test.js.
-  Phase 1 (the v2 screen): test spell-library-ui.test.js, probe playtest_library.js. Phase 2 (the grid +
-  the look): tests aoe-mask.test.js + spell-anim-pick.test.js; notes in ui-menus-audio.md + spells-vfx.md.
-  Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): spell-riders, family-passives, spell-upgrades, spell-families
-  .test.js; notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
+  row). Notes go to docs/spell-notes.md, never data.js.
+  Phase 1 (the v2 screen): probe playtest_library.js. Phase 2 (the grid + the look): notes in ui-menus-audio.md +
+  spells-vfx.md. Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
   of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
-  Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off; test hq-lod.test.js.
-  Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): test hq-attach.test.js; notes in
+  Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off.
+  Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): notes in
   rendering-loading-perf.md "THE SMOOTH ATTACH".
-  Phase 12 = WORLD_GEOGRAPHY_PLAN G1 (portals `_hqCull*`, memory budget `_mm*`, the MEM line): tests hq-joins +
-  asset-store; notes rendering-loading-perf.md "THE PORTALS + THE MEMORY BUDGET".
+  Phase 12 = WORLD_GEOGRAPHY_PLAN G1 (portals `_hqCull*`, memory budget `_mm*`, the MEM line): notes rendering-loading-perf.md "THE PORTALS + THE MEMORY BUDGET".
 - `bake-land.js` (2026-09-28, WORLD_GEOGRAPHY_PLAN G0): `npm run bake-land` bakes data.js HQ_LAND (the world recipe) into
   Assets/Land/ (land.json, land-map.png, tiles, sea.bin; ~2.5 min at 2 m) and stamps HQ_LAND.baked.id (the `?b=` on the
-  game's urls). A recipe edit = re-bake + upload. The map's ATLAS tab draws it. Test land-bake.test.js; notes areas-complexes.md "THE LAND".
+  game's urls). A recipe edit = re-bake + upload. The map's ATLAS tab draws it. notes areas-complexes.md "THE LAND".
   G2 (the land underfoot: foyer front door → room `land`): the bake stamps hubY; the ground wears the bucket's terrain / urban sheets
-  (HQ_LAND_RULES.tex src). Upload Assets/Land/. Test land-stream.test.js; notes areas-complexes.md "THE LAND UNDERFOOT".
-  G3 (the water: `hqLandWater*` layer, sheets, falls, moored skiffs): test land-water.test.js; notes areas-complexes.md "THE WATER".
-  G4 (trees, ferns, rocks, grass from the game's own models; trunk blockers): test land-forest.test.js; notes "THE TREES AND THE GRASS".
-  G5 (roads: graded lines, walkable decks, guard rails + grind, junction signs, Route 1 traffic): test land-roads.test.js; notes "THE ROADS".
-  G8 (edge: ice wall R4, pack + fast ice, shelf landing, sea sites on banks): test land-edge.test.js; notes "THE EDGE OF THE WORLD".
-  G9 (discovery: region grid, reveal points, R6 stops, title cards, atlas fog of war, save door.hq.land): test land-discovery.test.js; notes "THE DISCOVERY".
+  (HQ_LAND_RULES.tex src). Upload Assets/Land/. notes areas-complexes.md "THE LAND UNDERFOOT".
+  G3 (the water: `hqLandWater*` layer, sheets, falls, moored skiffs): notes areas-complexes.md "THE WATER".
+  G4 (trees, ferns, rocks, grass from the game's own models; trunk blockers): notes "THE TREES AND THE GRASS".
+  G5 (roads: graded lines, walkable decks, guard rails + grind, junction signs, Route 1 traffic): notes "THE ROADS".
+  G8 (edge: ice wall R4, pack + fast ice, shelf landing, sea sites on banks): notes "THE EDGE OF THE WORLD".
+  G9 (discovery: region grid, reveal points, R6 stops, title cards, atlas fog of war, save door.hq.land): notes "THE DISCOVERY".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on
@@ -254,11 +234,3 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
   To persist new files, hand them to the user (SendUserFile) to upload via GitHub
   manually. Don't waste time retrying pushes.
 
-## THE RED CI (2026-09-20; the session-end part superseded 2026-09-27 by `npm run test:end`, TOOLING above)
-`.github/workflows/ci.yml` runs `npm test` on every push (`checkout@v5` / `setup-node@v5`). Most tests here are
-SOURCE PINS (a regex on another file's source, a hard-coded count), so a delivery can break another file's test:
-CI is where that shows, and a red run is fixed in the next delivery. Pin rules: (1) never pin the CURRENT `?v=`
-token — assert `/\?v=\d{8}[a-z0-9-]*-cors/`; (2) a TOTAL lives in ONE test (secret doors = hq-floors.test.js);
-(3) a test that walks door pairs on a site resolves `site_<mapId>` to its entry part (`hqSiteEntry`; the board rooms
-were deleted 2026-09-27); (4) `mobile-audio/` is not in the repo — its test SKIPS when the folder is absent. mondo
-uploads a zip across several commits, so check the NEWEST run on main is red before fixing anything.
