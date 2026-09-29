@@ -1,6 +1,6 @@
 # THE ZONES — DOOR HQ the hub, separate zones behind its doors, the open world gone
 
-*Plan document, 2026-09-29. Z0 built (see §12). It replaces OPEN_WORLD_PLAN.md and
+*Plan document, 2026-09-29. Z0 + Z1 built (see §12). It replaces OPEN_WORLD_PLAN.md and
 WORLD_GEOGRAPHY_PLAN.md (both move to docs/archive/ in Z0). House rules that stand over every phase:
 no puzzles (secret pathways are fine, puzzle content is not); no sound work; no test files; no invented
 names (plain labels: Zone 3, Room 2, Path A; only the names mondo wrote); every R2 delivery bumps `?v=`.*
@@ -437,3 +437,17 @@ with a thread per zone for the swap and the checks.
   no staged zone uses them). Left (dead, harmless): the `hq-land-*` / `hq-atlas-*` / `.ed-map` CSS. bake-land.js,
   land.json, WORLD_GEOGRAPHY_MAP.jpg and the npm script deleted; OPEN_WORLD_PLAN.md + WORLD_GEOGRAPHY_PLAN.md in
   docs/archive/. Load check: HQ opens, the foyer and the woods stair enter, no console errors. Next: Z1 THE TWO EXITS.
+- 2026-09-29: **Z1 THE TWO EXITS built** (token 20260929-zones-02-cors; R2: data.js, map.js, three-renderer.js).
+  THE TAXI: a new `way` kind `taxi` (DOOR_HQ.ways + three-renderer.js `_hqWayBuilders.taxi`: the traffic's taxi GLB parked
+  along the plane, the rear door at x 0, the dome light + roof glow on the press-in; no sound) and the link `garage_taxi`
+  (route `taxi`): the garage's lower ring by the elevator (free end x 21.3 z 9.9 face 295) ⇄ Downtown's streets, the east
+  kerb of the cross street's east leg (free end x 102.9 z 24 face 270). The kit is fitted with `_hzKitTs = 1.75 × U` (the
+  train's builder does not do this, so its cars are drawn at the board tile's scale). SHUT AT THE START: `secret: true`
+  (a DRAUGHT) on the links garage_motorpool, woods_sewer, woods_ritual and on the garage's and the stairwell's hatches
+  onto the platform (`tunnel`); every other link out of a facility room is `hidden` on the HQ side until its far room is
+  seen (data.js `HQ_EXIT_RULES.open` = garage_taxi, woods_stair; `hqApplyShutExits(profile)`, run by map.js `_hqEnter`
+  next to hqApplyEarnedDoors; `?alldoors` opens all) — the mirror, the pools, the garden well, the screens, the painting,
+  the cells, the train and the track. The world overview draws no '?' through a shut exit (`shutExit` in hqWorldOverview).
+  `HQ_WORLD_L.slots` re-laid: the Woods' half west, Disaster City's half east (§3); hub labels THE SEWERS, LEYLINES,
+  HEAVEN + HELL + VATICAN. `downtown_strip`'s plates read ROUTE 1. Load check: the garage and Downtown both build with the
+  cab standing, no console errors. Next: Z2 THE FLOORS.

@@ -24100,6 +24100,10 @@ const DOOR_HQ = {
            plane. `pad` keeps the sea floor flat under either. */
         whirlpool:   { verb: 'GO DOWN', sub: 'THE MAELSTROM · IT ONLY GOES DOWN', sfx: 'wayWhirl', w: 9, h: 2.0, pad: 6, open: true },
         upwelling:   { verb: 'RIDE UP', sub: 'THE UPWELLING · IT ONLY GOES UP', sfx: 'wayUpwell', w: 5, h: 8.0, pad: 5, open: true },
+        /* THE TAXI (ZONES_PLAN Z1, 2026-09-29): the garage's taxi rank ⇄ Disaster City's. A parked cab (the traffic's taxi GLB,
+           three-renderer.js _hqWayBuilders.taxi) with its rear door on the kerb side; the roof light comes on and the door
+           opens as you come up; getting in is the fade. One of DOOR HQ's two open exits at the start. No sound (mondo's rule). */
+        taxi:        { verb: 'GET IN', sub: 'THE TAXI · THE BACK SEAT', w: 1.0, h: 1.4 },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -24130,6 +24134,7 @@ const DOOR_HQ = {
         wonderland: { label: 'THE WONDERLAND',   sub: 'A PLANE ONTO A CARPET', color: '#e39cff' },
         seams:      { label: 'THE SEAMS',        sub: 'THE DOORS THAT ARE NOT DOORS', color: '#f0e6c8', dashed: true },
         undercroft: { label: 'THE UNDERCROFT',   sub: 'EVERY WELL COMES OUT UNDER ITS OWN PLACE', color: '#c8a2e0', dashed: true },
+        taxi:       { label: 'THE TAXI',         sub: 'THE GARAGE · DISASTER CITY', color: '#f2c11a' },   // ZONES_PLAN Z1: one of the two open exits
         subway:     { label: 'THE SUBWAY',       sub: 'ALL LINES · THE TUNNEL IS ONE TUNNEL', color: '#f2d21a' },
         sewers:     { label: 'THE SEWERS',       sub: 'EVERY GUTTER DRAINS INTO THE SAME CULVERT', color: '#7fb8a0', dashed: true },   // DISASTER CITY (2026-09-17): the tunnels' first seam (candidate #3)
         dungeons:   { label: 'THE DUNGEONS',     sub: 'EVERY CELL JOINS UP · THE FOURTH WALL IS A DOOR', color: '#a88fb8', dashed: true },   // THE UNDERWORLD (2026-09-18): the cells ⇄ Room 24601, the workings ⇄ the oubliette — never THE UNDERCROFT's (hq-cave: every undercroft leg touches Hollow Earth)
@@ -24150,17 +24155,17 @@ const DOOR_HQ = {
         cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_gallery', sites: ['prebuilt_hollow_earth'], color: '#c8a2e0' },
         woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_clearing', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
         ranch:   { label: 'THE ESTATE', room: 'site_prebuilt_skinwalker_fields', sites: ['prebuilt_skinwalker'], color: '#d9b24c' },
-        divine:  { label: 'THE DIVINE STAIR', room: 'site_prebuilt_heaven_stair', sites: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_vatican'], color: '#ffd28a' },
+        divine:  { label: 'HEAVEN + HELL + VATICAN', room: 'site_prebuilt_heaven_stair', sites: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_vatican'], color: '#ffd28a' },
         city:    { label: 'DISASTER CITY', room: 'site_prebuilt_downtown_streets', sites: ['prebuilt_downtown', 'prebuilt_strip', 'prebuilt_cyberpunk'], color: '#ff9e6b' },
         dumb:    { label: 'THE D.U.M.B.', room: 'site_prebuilt_dumb_sublevel7', sites: ['prebuilt_dumb', 'prebuilt_cern'], color: '#b9f27c' },
         kingdom: { label: 'CAMELOT KINGDOM', room: 'site_prebuilt_camelot_ward', sites: ['prebuilt_camelot'], color: '#b8c8ff' },
         /* THE UNDERWORLD (2026-09-18, complex candidate #3): four parts on Downtown's site that are NOT the city's — an explicit `rooms` list claims them
            before the site rule (hqHubOf reads `rooms` first); the sewers' junction is the anchor */
-        underworld: { label: 'THE UNDERWORLD', room: 'site_prebuilt_downtown_sewers', rooms: ['site_prebuilt_downtown_sewers', 'site_prebuilt_downtown_tunnels', 'site_prebuilt_downtown_cells', 'site_prebuilt_downtown_workings'], color: '#7fb8a0' },
+        underworld: { label: 'THE SEWERS', room: 'site_prebuilt_downtown_sewers', rooms: ['site_prebuilt_downtown_sewers', 'site_prebuilt_downtown_tunnels', 'site_prebuilt_downtown_cells', 'site_prebuilt_downtown_workings'], color: '#7fb8a0' },
         /* THE DEEP (2026-09-18, complex candidate #8): the open sea and the abyss under it — Bermuda's and Atlantis's parts; the abyss is the anchor */
         deep:    { label: 'THE DEEP', room: 'site_prebuilt_atlantis_abyss', sites: ['prebuilt_atlantis', 'prebuilt_bermuda'], color: '#4fc3c8' },
         /* THE LEY LINES (2026-09-18, complex candidate #9): the tunnels and the four ancient sites' parts — the tunnels are the anchor (Göbekli's part) */
-        ley:     { label: 'THE LEY LINES', room: 'site_prebuilt_gobekli_leylines', sites: ['prebuilt_gobekli', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel'], color: '#e0b06a' },
+        ley:     { label: 'LEYLINES', room: 'site_prebuilt_gobekli_leylines', sites: ['prebuilt_gobekli', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel'], color: '#e0b06a' },
         /* THE ASTRAL REALM (2026-09-19, complex candidate #10): four parts on the Looking-Glass's site that are NOT the garden's — claimed BY ID (the underworld's rule); the sea is the anchor */
         astral:  { label: 'THE ASTRAL REALM', room: 'site_prebuilt_lookingglass_sea', rooms: ['site_prebuilt_lookingglass_waiting', 'site_prebuilt_lookingglass_sea', 'site_prebuilt_lookingglass_nightmare', 'site_prebuilt_lookingglass_library'], color: '#d8b4ff' },
     },
@@ -24248,7 +24253,7 @@ const DOOR_HQ = {
         /* THE RAMP (2026-09-18 — the user: "I don't know if I like the motor pool being a thing when there is already a parking
            garage, maybe connect them"): THE GARAGE (P1) ⇄ THE MOTOR POOL (P3) — a facility room seaming into a wild one (the
            garden well's precedent, never gated); the motor pool is the parking level the car's panel never had */
-        { id: 'garage_motorpool', route: 'bases', leaf: 'leaf_bulkhead',
+        { id: 'garage_motorpool', route: 'bases', leaf: 'leaf_bulkhead', secret: true,   // ZONES_PLAN Z1: a DRAUGHT at both ends — found later (only the taxi and the woods stair are open at the start)
           a: { room: 'garage', wall: 'w', z: 0, sub: 'THE RAMP DOWN · P3 · THE MOTOR POOL' },   // THE ROUND GARAGE (rebuilt 2026-09-26): in the drum wall's west opening, under the deck
           b: { site: 'prebuilt_dumb', part: 'motorpool', wall: 's', x: -16, sub: 'THE RAMP UP · P1 · THE GARAGE' },
           why: 'the ramp in the garage goes up to an exit sign and down to a level the panel does not have; the cars signed out of P1 are parked on P3 and both sheets are fine with it', note: 'the panel stops at P1', draft: true },
@@ -24319,11 +24324,11 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
           b: { room: 'stairwell', wall: 'e', z: -2, sub: 'THE STAIRCASE IN THE WOODS · OUT' },
           why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the building\'s own stairwell, which has no window for it to open through', note: 'nobody built it', draft: true },
-        { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell',
+        { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
           a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: 0, sub: 'THE GRATE · INTO THE TUNNEL' },
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
           why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
-        { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch',
+        { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
           a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'n', x: -0.875, sub: 'THE CIRCLE · ROOM 333' },
           b: { room: 'ritual', wall: 'e', z: 0, sub: 'THE CIRCLE · THE RITUAL GROUND' },
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
@@ -24383,8 +24388,8 @@ const DOOR_HQ = {
            road runs on, later, to CYBERPUNK CITY's cross street. The board room's north wall is free again. */
         /* downtown_strip, stadium_downtown and streets_strip: retired in G7 (the land), restored in ZONES_PLAN Z0 (2026-09-29) */
         { id: 'downtown_strip', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 0, sub: 'THE CROSS STREET · WEST · THE STRIP' },
-          b: { site: 'prebuilt_strip', part: 'streets', wall: 'e', z: 0, sub: 'THE BOULEVARD · EAST · DOWNTOWN' },
+          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 0, sub: 'ROUTE 1 · WEST · THE STRIP' },   // ZONES_PLAN Z1: Route 1 (the Desert's entry once the Desert exists; the Strip's streets until then)
+          b: { site: 'prebuilt_strip', part: 'streets', wall: 'e', z: 0, sub: 'ROUTE 1 · EAST · DISASTER CITY' },
           why: 'the same road, west; the neon starts where the tower\'s shadow stops', note: 'west', draft: true },
         { id: 'stadium_downtown', route: 'highway', way: 'road',
           a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: 0, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL — 2026-09-26: at the end of THE PLAYERS' TUNNEL
@@ -24470,6 +24475,13 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'free', x: -42, z: -6, face: 90, sub: 'THE STATION · ALL LINES' },   // THE SECOND PASS (2026-09-17): the train arrives at THE STATION on the grid's siding (a free end on the part), no longer half inside the board room's wall
           why: 'the train at the platform has been there for an hour with its doors open; it goes to every line, and the first stop is under an intersection that is always raining',
           note: 'mind the gap', draft: true },
+        /* THE TAXI (ZONES_PLAN Z1, 2026-09-29): DOOR HQ's exit to Disaster City. The cab waits in the garage's lower ring by
+           the elevator (a FREE end — the rear door faces the plaza), and at the far end on the kerb of the cross street's east
+           leg in Downtown (parked on the east kerb, the rear door to the road). Open from the start (HQ_EXIT_RULES.open). */
+        { id: 'garage_taxi', route: 'taxi', way: 'taxi',
+          a: { room: 'garage', wall: 'free', x: 21.3, z: 9.9, face: 295, sub: 'THE TAXI · DISASTER CITY' },
+          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: 102.9, z: 24, face: 270, sub: 'THE TAXI · DOOR HQ · THE GARAGE' },
+          why: 'the taxi rank in the garage; the cab drives to Disaster City and waits there to drive back', note: 'the taxi', draft: true },
         /* THE URBAN BLOCK (9.2 stage 4, 2026-09-16): the subway's third station.
            Downtown's PLATFORM (a complex part — the spaceship's rule: a link end
            on a part) stands its train FREE on its own track; the far end is a
@@ -27745,8 +27757,8 @@ const DOOR_HQ = {
                   action: { room: 'car', at: 'panel' },
                   desc: 'The car. It came down here; it will go anywhere on the panel.' },
                 /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (beside the elevator, under the deck) */
-                { id: 'tunnel', wall: 'e', z: -3.5, leaf: 'leaf_bulkhead', wide: true,
-                  label: 'THE TUNNEL', sub: 'SERVICE HATCH · THE PLATFORM',
+                { id: 'tunnel', wall: 'e', z: -3.5, leaf: null, secret: true,   // ZONES_PLAN Z1: the platform is found later (a DRAUGHT)
+                  label: 'A DRAUGHT', sub: 'COLD, FROM THE WALL · THE PLATFORM',
                   action: { room: 'tunnel', at: 'garage' },
                   desc: 'A maintenance door beside the elevator, under the deck. Tiles at the bottom of the steps, a draught, a train that is always there.' },
                 { id: 'dock', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
@@ -29913,8 +29925,8 @@ const DOOR_HQ = {
                   label: 'DOWN', sub: 'THE NEXT FLIGHT · B4',
                   action: { room: 'stairwell', at: 'landing' },
                   desc: 'The next flight down. Through the door, and down, and the landing at the bottom of that is the one you started on. The sign still says 2.' },
-                { id: 'tunnel', wall: 'w', z: -2.0, leaf: 'leaf_white_wood',
-                  label: 'THE TUNNEL', sub: 'THE PLATFORM · MIND THE GAP',
+                { id: 'tunnel', wall: 'w', z: -2.0, leaf: null, secret: true,   // ZONES_PLAN Z1: the platform is found later (a DRAUGHT)
+                  label: 'A DRAUGHT', sub: 'COLD, FROM THE WALL · THE PLATFORM',
                   action: { room: 'tunnel', at: 'stairwell' },
                   desc: 'A door at the bottom of the stair that is not on the stair’s plan. Tiles, a draught, a train.' },
             ],
@@ -38458,6 +38470,41 @@ function hqApplyEarnedDoors(profile) {
     }
     return out;
 }
+/* ── THE TWO EXITS (ZONES_PLAN Z1, 2026-09-29) ──────────────────────────
+   mondo: "Parking Garage you can take a Taxi to the City, somewhere else you
+   can take a staircase to the woods. Those should be the only 2 open doors to
+   the outside to start off." So every other way OUT of DOOR HQ is shut at the
+   start: the named secrets are DRAUGHTS in the link rows (`secret: true` —
+   the ramp to the motor pool, the storm drain, Room 333's circle, the two
+   hatches onto the platform); every other link that leaves a facility room
+   (the mirror, the pools, the well, the screens, the painting, the train, the
+   cells, the track) stands NOWHERE on the HQ side until the room on its far
+   side has been SEEN — you find the seam from the other end first, then the
+   building's end of it is there. `open` = the link ids that are never shut.
+   hqApplyShutExits(profile) stamps `hidden` (+ `_shut`, so the earned-door
+   rule's own `hidden` is never cleared) on those rows; map.js _hqEnter runs
+   it on EVERY entry, next to hqApplyEarnedDoors. `?alldoors` opens them all.
+   Viewer-local, nothing on `state`, nothing relayed. */
+const HQ_EXIT_RULES = { open: ['garage_taxi', 'woods_stair'] };
+function hqApplyShutExits(profile) {
+    const rooms = DOOR_HQ.rooms || {};
+    const out = { shut: [], open: [] };
+    const all = hqDoorsAllOpen();
+    for (const rid in rooms) {
+        const R = rooms[rid];
+        if (!R || R.site || !Array.isArray(R.doors)) continue;          // a facility room (DOOR HQ) only
+        for (const d of R.doors) {
+            if (!d || !d.link || d.secret) continue;                     // a link door; a draught is its own secret
+            const to = d.action && d.action.room, T = to ? rooms[to] : null;
+            if (!T || !T.site) continue;                                 // it must lead OUT of the building
+            let shut = HQ_EXIT_RULES.open.indexOf(d.link) < 0 && !all;
+            if (shut) { try { shut = !(profile && hqRoomSeen(profile, to)); } catch (e) {} }
+            if (shut) { d.hidden = true; d._shut = true; out.shut.push(rid + '/' + d.id); }
+            else { if (d._shut) { delete d.hidden; delete d._shut; } out.open.push(rid + '/' + d.id); }
+        }
+    }
+    return out;
+}
 /* the sites with a threshold on the rings, in bay order */
 function hqThresholdSites() {
     const out = [];
@@ -39615,25 +39662,29 @@ function hqMapModel(profile, curRoom, opts) {
 const HQ_WORLD_L = {
     hubR: 0.44, siteR: 0.27, minD: 0.8, autoR: 5.8, autoStep: 0.6,
     block: { w: 1.7, h: 2.3 },
-    /* THE GEOGRAPHY (2026-09-23 — the user: "I don't like how the cavern is right in between the estate and the
-       woods"): the SURFACE stands north of the building (the kingdom at twelve, the woods and the mountain to the
-       north-west with the estate below them on the west, the divine stair and the astral realm to the north-east,
-       the city east), the UNDERGROUND south of it (the cavern due south-west — the undercroft every well drops
-       into, joined to the ley lines west of it and the D.U.M.B. east of it; the underworld under the city; the
-       deep off the city's coast; the space route beyond the deep in the south-east; the bases and the ice along
-       the bottom). A hub sits beside the sites its lines reach; nothing lies on the woods ⇄ estate line. */
+    /* THE TWO EXITS (ZONES_PLAN Z1, 2026-09-29 — re-authored to §3's zone graph): the building in the middle, THE WOODS
+       to the WEST (the stair) and DISASTER CITY to the EAST (the taxi) — the two ways out, each the root of its half of
+       the world. West: Camelot and the looking glass north of the woods (through the Fairy Forest), the Estate west of
+       them (its haunted house, the lodge and the grove beyond it), Dead Man's Cave down to the Sewers south-west, the
+       Cavern under them with Leylines, Agartha and Hell (Heaven + Hell + Vatican) further down. East: the stadium beside
+       the city, Area 51 and the D.U.M.B. north-east of it with Outer Space past them, the Deep (the Bay, Atlantis, the
+       Dutchman) south-east. Antarctica is right under the building (the foyer's sealed door). Off-list sites sit next to
+       the zone whose secret seam reaches them. */
     slots: {
         hub: {
-            kingdom:    { x: 0.2, y: -3.4 },  woods:    { x: -3.0, y: -2.5 }, divine: { x: 2.7, y: -3.1 }, astral: { x: 5.0, y: -2.7 },
-            city:       { x: 3.3, y: -0.8 },  deep:     { x: 5.2, y: 1.5 },   ranch:  { x: -4.3, y: 0.3 },
-            cavern:     { x: -1.4, y: 2.9 },  ley:      { x: -3.9, y: 3.0 },  underworld: { x: 2.9, y: 1.8 }, dumb: { x: 1.1, y: 3.9 },
+            woods:   { x: -3.0, y: -0.8 },  kingdom: { x: -3.4, y: -3.6 }, astral: { x: -0.6, y: -3.6 }, ranch: { x: -5.8, y: -1.2 },
+            underworld: { x: -4.4, y: 1.9 }, cavern: { x: -3.2, y: 3.8 },  ley:    { x: -5.6, y: 4.4 },  divine: { x: -1.2, y: 5.0 },
+            city:    { x: 3.0, y: -0.8 },   deep:    { x: 5.0, y: 1.8 },   dumb:   { x: 5.2, y: -3.8 },
         },
         site: {
-            prebuilt_northpole: { x: -0.5, y: -4.9 }, prebuilt_haunted: { x: -1.6, y: -2.1 }, prebuilt_olympus: { x: 1.3, y: -4.5 }, prebuilt_lookingglass: { x: 3.6, y: -4.5 },
-            prebuilt_shasta: { x: -4.8, y: -3.5 }, prebuilt_agartha: { x: -5.9, y: -1.8 }, prebuilt_bohemian_grove: { x: -2.7, y: -0.7 }, prebuilt_lodge: { x: -2.6, y: 1.0 },
-            prebuilt_stadium: { x: 5.1, y: -0.6 }, prebuilt_revenge: { x: 4.0, y: 2.9 }, prebuilt_technoticlan: { x: -5.6, y: 3.6 },
-            prebuilt_flatlands: { x: -3.4, y: 5.4 }, prebuilt_backrooms: { x: -1.6, y: 5.2 }, prebuilt_antarctica: { x: 0.1, y: 5.7 }, prebuilt_area51: { x: 2.1, y: 5.3 },
-            prebuilt_derelict: { x: 3.6, y: 4.4 }, prebuilt_mars: { x: 5.0, y: 3.7 }, prebuilt_moon: { x: 5.9, y: 4.9 }, prebuilt_saturn: { x: 4.5, y: 5.8 }, prebuilt_singularity: { x: 6.2, y: 6.3 },
+            prebuilt_lookingglass: { x: -1.8, y: -2.4 }, prebuilt_northpole: { x: -4.6, y: -5.0 }, prebuilt_flatlands: { x: 0.8, y: -5.0 },
+            prebuilt_haunted: { x: -7.2, y: -2.4 }, prebuilt_lodge: { x: -7.4, y: -0.2 }, prebuilt_bohemian_grove: { x: -6.6, y: 0.8 },
+            prebuilt_shasta: { x: -7.4, y: 2.4 }, prebuilt_agartha: { x: -4.4, y: 5.6 }, prebuilt_technoticlan: { x: -7.4, y: 5.2 },
+            prebuilt_olympus: { x: 0.8, y: 5.8 }, prebuilt_antarctica: { x: 0.0, y: 2.6 },
+            prebuilt_stadium: { x: 5.4, y: -0.4 }, prebuilt_area51: { x: 3.0, y: -3.4 }, prebuilt_backrooms: { x: 7.4, y: -2.4 },
+            prebuilt_revenge: { x: 6.8, y: 3.0 },
+            prebuilt_derelict: { x: 6.6, y: -5.4 }, prebuilt_mars: { x: 8.4, y: -4.6 }, prebuilt_moon: { x: 8.2, y: -6.2 },
+            prebuilt_saturn: { x: 6.8, y: -7.0 }, prebuilt_singularity: { x: 9.8, y: -7.2 },
         },
     },
 };
@@ -39740,7 +39791,10 @@ function hqWorldOverview(profile, curRoom, opts) {
     const hereId = curRoom ? hqWorldNodeOf(curRoom) : null;
     if (hereId && W.nodes[hereId]) seen[hereId] = true;
     /* THE EARNED DOORS (2026-09-20): a place joined to the building ONLY by thresholds Otto has not built is no question — it is found in the field */
-    const hidden = e => !!(e.thresholds && e.thresholds.length && !e.plain && !opts.all && typeof hqSiteEarned === 'function' && !e.thresholds.some(m => hqSiteEarned(m, profile)));
+    const earnedHidden = e => !!(e.thresholds && e.thresholds.length && !e.plain && !opts.all && typeof hqSiteEarned === 'function' && !e.thresholds.some(m => hqSiteEarned(m, profile)));
+    /* THE TWO EXITS (ZONES_PLAN Z1): a way out of DOOR HQ that is shut (hqApplyShutExits) charts nothing from the building's side — the place behind it is not a '?' until it is found from its own end */
+    const shutExit = e => !opts.all && (e.a === 'hq' || e.b === 'hq') && e.links.length > 0 && e.links.every(l => HQ_EXIT_RULES.open.indexOf(l) < 0);
+    const hidden = e => earnedHidden(e) || shutExit(e);
     const q = {};
     W.edges.forEach(e => { if (e.kind === 'secret' || hidden(e)) return; if (seen[e.a] && !seen[e.b]) q[e.b] = true; if (seen[e.b] && !seen[e.a]) q[e.a] = true; });
     const nodes = [];
@@ -40021,7 +40075,7 @@ const HQ_WORLD = {
             joins: [] },
         /* Z7 — THE UNDERWORLD (under the city, no sky): the sewers and the three halls off them. The gutters from the
            streets stay ways (a climb down is a load worth having). */
-        underworld: { label: 'THE UNDERWORLD', ground: 'under', hub: 'site_prebuilt_downtown_sewers', sky: null, clock: false,
+        underworld: { label: 'THE SEWERS', ground: 'under', hub: 'site_prebuilt_downtown_sewers', sky: null, clock: false,
             parts: {
                 site_prebuilt_downtown_sewers:   { x: 162, z: 72, y: -10, rot: 0 },
                 site_prebuilt_downtown_tunnels:  { x: 40, z: 72, y: -10, rot: 0 },
@@ -52072,7 +52126,7 @@ if (typeof window !== 'undefined') {
     window.hqMapMastered = hqMapMastered;
     window.hqSiteChecklist = hqSiteChecklist; window.HQ_MASTERY_HOW = HQ_MASTERY_HOW;
     window.hqMasteryCount = hqMasteryCount;
-    window.hqSiteEarned = hqSiteEarned; window.hqSiteSeen = hqSiteSeen; window.hqDoorEarned = hqDoorEarned; window.hqApplyEarnedDoors = hqApplyEarnedDoors;
+    window.hqSiteEarned = hqSiteEarned; window.hqSiteSeen = hqSiteSeen; window.hqDoorEarned = hqDoorEarned; window.hqApplyEarnedDoors = hqApplyEarnedDoors; window.HQ_EXIT_RULES = HQ_EXIT_RULES; window.hqApplyShutExits = hqApplyShutExits;
     window.hqEarnedDoorsNew = hqEarnedDoorsNew; window.hqEarnedDoorsStamp = hqEarnedDoorsStamp; window.hqThresholdSites = hqThresholdSites; window.hqDoorsAllOpen = hqDoorsAllOpen;
     window.hqMissionPool = hqMissionPool;
     window.hqBayId = hqBayId;
