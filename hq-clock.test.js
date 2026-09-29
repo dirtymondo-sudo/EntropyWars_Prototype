@@ -85,16 +85,13 @@ test('the directions: a bearing seen from a turned room; the weenies stand at th
     const LM = G('hqRoomLandmarks');
     /* G6 (2026-09-28): on the land the places themselves stand on the horizon — a site there hangs no painted weenie */
     for (const id of ['land', 'site_prebuilt_strip_streets', 'site_prebuilt_area51_flightline', 'site_prebuilt_camelot_ward']) assert.equal(LM(id).filter(l => ['gate', 'mountain', 'tower'].includes(l.kind)).length, 0, id + ' hangs no weenie');
-    /* G7 (2026-09-29): Downtown and the Bowl stand on the land too — they hang no weenie; Bermuda (behind its door until G8)
-       sees Disaster City from its place on the land */
-    for (const id of ['site_prebuilt_downtown_streets', 'site_prebuilt_stadium_bowl']) assert.equal(LM(id).filter(l => ['gate', 'mountain', 'tower'].includes(l.kind)).length, 0, id + ' hangs no weenie');
-    const pb = G('HQ_LAND').places.find(q => q.id === 'bermuda'), Fd = D.hqWorldFrame('site_prebuilt_downtown_streets');
-    const trueDeg = (Math.atan2(Fd.x - pb.at[0], -(Fd.z - pb.at[1])) * 180 / Math.PI + 360) % 360;
-    const city = LM('site_prebuilt_bermuda_sea').find(l => l.kind === 'tower');
-    assert.ok(city && Math.abs(((city.deg - trueDeg + 540) % 360) - 180) < 1, 'Disaster City from Bermuda at its bearing on the land');
-    const WW = G('HQ_WORLD_WEENIES'), kinds = new Set();
-    for (const id of Object.keys(WW)) for (const w of WW[id]) { kinds.add(w.kind); assert.ok(G('hqWorldBearing')(id, w.toward, w.from), id + ' → ' + w.toward + ' on one ground (or from its place on the land)'); }
-    assert.deepEqual([...kinds].sort(), ['tower'], 'the kinds still hung (G6: the gate stands on the land itself; G7: Olympus too)');
+    /* G7 (2026-09-29): Downtown and the Bowl stand on the land too; G8 (2026-09-29): so do Bermuda's sea, the Dutchman, the station
+       and the Pole — none hangs a weenie */
+    for (const id of ['site_prebuilt_downtown_streets', 'site_prebuilt_stadium_bowl', 'site_prebuilt_bermuda_sea', 'site_prebuilt_revenge_deck', 'site_prebuilt_antarctica_station', 'site_prebuilt_northpole_village'])
+        assert.equal(LM(id).filter(l => ['gate', 'mountain', 'tower'].includes(l.kind)).length, 0, id + ' hangs no weenie');
+    const WW = G('HQ_WORLD_WEENIES');
+    for (const id of Object.keys(WW)) for (const w of WW[id]) assert.ok(G('hqWorldBearing')(id, w.toward, w.from), id + ' → ' + w.toward + ' on one ground (or from its place on the land)');
+    assert.equal(Object.keys(WW).length, 0, 'no room hangs a painted weenie any more (G8: the last, Bermuda\'s, stands on the land)');
     for (const k of ['mountain', 'tower', 'gate']) assert.match(TR, new RegExp('^        ' + k + ': function \\(U, o, rng\\) \\{', 'm'), 'the renderer builds `' + k + '`');
 });
 

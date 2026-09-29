@@ -1753,3 +1753,23 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   traffic pitches with `info.slope`.
 - The mall's `street` door leads to the land's `mall` door on the beach pad; the lighthouse is a land prop at its place.
 - Test: city-slopes.test.js (R8 per district, the 12 % grade, the stairs walked, the land edge, the renderer pins).
+
+## THE EDGE OF THE WORLD (WORLD_GEOGRAPHY_PLAN G8, 2026-09-29, token 20260929-geography-13-cors, bake 5aa5d61879)
+- Four more parts of `HQ_WORLD.zones.land`: `site_prebuilt_bermuda_sea` (place cay, dz −52 so the part's cay is on the place; its
+  maelstrom = the `whirlpool` place, moved to 1342, 1360), `site_prebuilt_revenge_deck` (place dutchman, dy 2.6: her water −2.6 is
+  the sea at 0), both `sea: true` with `bank` (land metres = the part's floor: −3.5, −5.6; the island join's `y` is the same);
+  `site_prebuilt_antarctica_station` (place station 110, 2215, rot 2: its way in faces the landing) on the shelf at 11.5;
+  `site_prebuilt_northpole_village` (place pole) on the pack at 1.0. HQ_WORLD_WEENIES is empty (Bermuda's row went).
+- THE BAKE (bake-land.js step 5'): the baked cay mound is gone (the site is the cay); `hqLandSites` carries `bank`, and a sea site
+  with a bank raises the Deep's floor to it under its box and slopes back over `bankBand` (90 m). THE PACK: every ICE 2 cell stands
+  `R.arctic.floe` (0.6) over the sea, running down to −`footDepth` within `foot` m of open water (a chamfer distance; the coast
+  counts as ice). THE FAST ICE: `R.arctic.fast` (a 90 m band from the North Pass's foot to the Pole). THE LANDING:
+  `R.wall.shelf.landing`, a 34 m ramp of ice from −2 in the water up the shelf's front at 10 % toward the station.
+- R4 in `checkRules` via `edgeReach(B)`: a flood from the harbour's water (sail deeper than 1.2 m, walk slope ≤ 1 and wade the
+  last 1.3 m); per half-degree the wall's face stands at full height, the wall's foot is reached, nothing reached lies past it;
+  the cay, the Dutchman, the station and the Pole are reached. At 2 m the open sea reaches the wall on most bearings, the pack in
+  the north (its leads let the skiff in too), the shelf in the south. The Flat Lands on the wall top are not reached (fork 5).
+- THE RENDERER: `_hqLandIceMats()` (ice, pack by code); a chunk writes a NEGATIVE cliff weight on an ice face, and the splat reads
+  the ice sheet side-on there (`uIceL`), blued low on the face; the far land and the no-WebGL2 colours skip the rock cliff for ice.
+- Test: land-edge.test.js (8 m bake: R4, the bearings by kind, the fast ice and the landing, the sites' banks and water, the
+  whirlpool on the maelstrom, the renderer pins).

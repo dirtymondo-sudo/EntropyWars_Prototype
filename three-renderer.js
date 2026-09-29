@@ -53108,7 +53108,7 @@ const ThreeRenderer = (function () {
         var G = hqLandGrid(x0 - M * st, z0 - M * st, st, NX, NX); if (!G) return;
         var nv = (n + 1) * (n + 1), ns = 4 * (n + 1);
         var pos = new Float32Array((nv + ns) * 3), nor = new Float32Array((nv + ns) * 3), col = new Float32Array((nv + ns) * 3), land = new Float32Array((nv + ns) * 2);
-        var AO = R.ao, CL = R.tex.layers, cliffCol = null;
+        var AO = R.ao, CL = R.tex.layers, cliffCol = null, iceM = _hqLandIceMats();
         for (var li = 0; li < CL.length; li++) if (CL[li].id === 'cliff') cliffCol = new THREE.Color(CL[li].col);
         var tmp = [0, 0, 0];
         for (var b = 0; b <= n; b++) for (var a = 0; a <= n; a++) {
@@ -53122,9 +53122,10 @@ const ThreeRenderer = (function () {
             var cw = hqLandCliffW(Math.sqrt(bx * bx + bz * bz));
             var mean = (G.base[g + M] + G.base[g - M] + G.base[g + M * NX] + G.base[g - M * NX]) * 0.25;
             var ao = Math.max(AO.min, 1 - AO.k * Math.max(0, mean - G.base[g]));
-            land[v * 2] = cw; land[v * 2 + 1] = ao;
+            var icy = !!iceM[G.mat[g]];   // G8: an ice face (the wall, the shelf's front, a floe's edge) is ice side-on, never the rock cliff
+            land[v * 2] = icy ? -cw : cw; land[v * 2 + 1] = ao;
             hqLandColor(G.mat[g], tmp, 0);
-            if (cliffCol && cw > 0) { tmp[0] += (cliffCol.r - tmp[0]) * cw; tmp[1] += (cliffCol.g - tmp[1]) * cw; tmp[2] += (cliffCol.b - tmp[2]) * cw; }
+            if (cliffCol && cw > 0 && !icy) { tmp[0] += (cliffCol.r - tmp[0]) * cw; tmp[1] += (cliffCol.g - tmp[1]) * cw; tmp[2] += (cliffCol.b - tmp[2]) * cw; }
             col[v * 3] = tmp[0] * ao; col[v * 3 + 1] = tmp[1] * ao; col[v * 3 + 2] = tmp[2] * ao;
         }
         /* the skirt: every edge vertex again, dropped under the ground */
@@ -53256,6 +53257,12 @@ const ThreeRenderer = (function () {
         _hqLandCache.texLoading.then(done);
     }
     /* the uniforms every chunk shares: the array, the layer / tint / scale of every material, the cliff's layer */
+    /* G8 (THE EDGE OF THE WORLD): the materials whose steep faces are ice, not rock — by code (the tiles' u8), from the bake's table */
+    function _hqLandIceMats() {
+        var names = (HQ_LAND_STORE.index && HQ_LAND_STORE.index.materials) || [], out = {};
+        for (var k = 0; k < names.length; k++) if (names[k] === 'ice' || names[k] === 'pack') out[k] = true;
+        return out;
+    }
     function _hqLandSplatShared(arr) {
         var R = _hqLandR(), St = HQ_LAND_STORE, names = (St.index && St.index.materials) || Object.keys(R.mats), T = R.tex.layers;
         var lay = [], tint = [], rep = [], cliff = 0;
@@ -53265,8 +53272,9 @@ const ThreeRenderer = (function () {
             lay.push(li); tint.push(new THREE.Color(row ? row[1] : 0xffffff));
         }
         for (var q2 = 0; q2 < 16; q2++) rep.push(T[q2] ? 1 / (T[q2].m || 4) : 0.25);
-        for (var q3 = 0; q3 < T.length; q3++) if (T[q3].id === 'cliff') cliff = q3;
-        return { uLayers: { value: arr }, uLay: { value: lay }, uTint: { value: tint }, uRep: { value: rep }, uCliffL: { value: cliff }, uLandU: { value: 1 / _hqUnits() } };
+        var ice = -1;
+        for (var q3 = 0; q3 < T.length; q3++) { if (T[q3].id === 'cliff') cliff = q3; if (T[q3].id === 'ice') ice = q3; }
+        return { uLayers: { value: arr }, uLay: { value: lay }, uTint: { value: tint }, uRep: { value: rep }, uCliffL: { value: cliff }, uIceL: { value: ice < 0 ? cliff : ice }, uLandU: { value: 1 / _hqUnits() } };
     }
     var _HQ_LAND_SPLAT_VS_HEAD = [
         'attribute vec2 aLand;', 'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;', 'uniform float uLandU;', 'uniform vec3 uLandO;', 'uniform vec2 uLandR;',
@@ -53274,7 +53282,7 @@ const ThreeRenderer = (function () {
     var _HQ_LAND_SPLAT_FS_HEAD = [
         'precision highp sampler2DArray;',
         'uniform sampler2DArray uLayers;', 'uniform sampler2D uIds;', 'uniform vec4 uIdO;',
-        'uniform float uLay[24];', 'uniform vec3 uTint[24];', 'uniform float uRep[16];', 'uniform float uCliffL;',
+        'uniform float uLay[24];', 'uniform vec3 uTint[24];', 'uniform float uRep[16];', 'uniform float uCliffL;', 'uniform float uIceL;',
         'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;',
         'uniform vec4 uSiteR[' + HQ_LAND_SITE_MAX + ']; uniform float uSiteN;',
         /* G6: a drawn site part's box is its own ground (the land under it would fight it) */
@@ -53316,12 +53324,15 @@ const ThreeRenderer = (function () {
         '  if (sw.y > 0.004) col += ewLMat(id1, vLandW.xz, mixB) * sw.y;',
         '  if (sw.z > 0.004) col += ewLMat(id2, vLandW.xz, mixB) * sw.z;',
         '  if (sw.w > 0.004) col += ewLMat(id3, vLandW.xz, mixB) * sw.w;',
-        /* the cliff: side-on reads of the cliff sheet where the walker would be refused */
-        '  if (vLand.x > 0.01) {',
-        '    vec3 an = abs(normalize(vLandN)); float cr = uRep[int(uCliffL)];',
-        '    vec3 cx = texture(uLayers, vec3(vLandW.zy * cr, uCliffL)).rgb, cz = texture(uLayers, vec3(vLandW.xy * cr, uCliffL)).rgb, cy = texture(uLayers, vec3(vLandW.xz * cr, uCliffL)).rgb;',
+        /* the cliff: side-on reads of the cliff sheet where the walker would be refused (G8: an ice face — a negative weight — reads
+           the ice sheet side-on instead, blued with the depth of the face: the ice wall, the shelf's front, a floe's edge) */
+        '  if (abs(vLand.x) > 0.01) {',
+        '    float CL = vLand.x < 0.0 ? uIceL : uCliffL;',
+        '    vec3 an = abs(normalize(vLandN)); float cr = uRep[int(CL)];',
+        '    vec3 cx = texture(uLayers, vec3(vLandW.zy * cr, CL)).rgb, cz = texture(uLayers, vec3(vLandW.xy * cr, CL)).rgb, cy = texture(uLayers, vec3(vLandW.xz * cr, CL)).rgb;',
         '    vec3 tri = (cx * an.x + cz * an.z + cy * an.y) / max(0.001, an.x + an.y + an.z);',
-        '    col = mix(col, tri, vLand.x);',
+        '    if (vLand.x < 0.0) tri *= mix(vec3(0.72, 0.86, 1.0), vec3(1.0), smoothstep(0.0, 60.0, vLandW.y) * 0.6 + 0.3 * ewLN(vec2(vLandW.x + vLandW.z, vLandW.y) / 7.0));',
+        '    col = mix(col, tri, abs(vLand.x));',
         '  }',
         /* a broad variation (a field is never one flat green) and the hollows' AO */
         '  col *= 0.9 + 0.2 * ewLN(vLandW.xz / 61.0);',
@@ -53353,7 +53364,7 @@ const ThreeRenderer = (function () {
         var W = hqLandWorldGrid(Math.max(1, Math.round(R.far.fine / HQ_LAND_STORE.world.cell))); if (!W) return null;
         var U = _hqUnits(), n = W.n, N = n * n, pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), tmp = [0, 0, 0];
         var cliffCol = new THREE.Color(0x6e665c); (R.tex.layers || []).forEach(function (l) { if (l.id === 'cliff') cliffCol = new THREE.Color(l.mean != null ? l.mean : l.col); });
-        var sea = new THREE.Color(R.sea.far || 0x3a6f88);
+        var sea = new THREE.Color(R.sea.far || 0x3a6f88), iceM = _hqLandIceMats();
         /* G3: THE WATER far off — a lake's cells stand at its level in its colour; a river's wear its colour */
         var WR = R.water, fresh = new THREE.Color(WR ? WR.look.fresh : 0x2f5c52), wet = new Float32Array(N), lvl = new Float32Array(N).fill(NaN), ov = HQ_LAND_STORE.index || {};
         (ov.lakes || []).forEach(function (lk) {
@@ -53384,7 +53395,7 @@ const ThreeRenderer = (function () {
             pos[o * 3] = (W.x0 + i * W.cell) * U; pos[o * 3 + 1] = h * U; pos[o * 3 + 2] = (W.x0 + j * W.cell) * U;
             nor[o * 3] = -hx / nl; nor[o * 3 + 1] = 1 / nl; nor[o * 3 + 2] = -hz / nl;
             hqLandColor(W.mat[o], tmp, 0);
-            var cw = hqLandCliffW(Math.sqrt(hx * hx + hz * hz) * 1.3);   // a 16 m grid rounds a cliff off: lean it steeper
+            var cw = iceM[W.mat[o]] ? 0 : hqLandCliffW(Math.sqrt(hx * hx + hz * hz) * 1.3);   // a 16 m grid rounds a cliff off: lean it steeper (G8: an ice face stays ice)
             tmp[0] += (cliffCol.r - tmp[0]) * cw; tmp[1] += (cliffCol.g - tmp[1]) * cw; tmp[2] += (cliffCol.b - tmp[2]) * cw;
             if (h < -0.5) { var dk = Math.min(1, -h / 12); tmp[0] += (sea.r - tmp[0]) * dk; tmp[1] += (sea.g - tmp[1]) * dk; tmp[2] += (sea.b - tmp[2]) * dk; }
             if (wet[o] > 0) { var wk = wet[o]; tmp[0] += (fresh.r - tmp[0]) * wk; tmp[1] += (fresh.g - tmp[1]) * wk; tmp[2] += (fresh.b - tmp[2]) * wk; }

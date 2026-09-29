@@ -110,6 +110,7 @@ diffs. The deliverable is always the full edited file, produced in chat.
   G3 (the water: `hqLandWater*` layer, sheets, falls, moored skiffs): test land-water.test.js; notes areas-complexes.md "THE WATER".
   G4 (trees, ferns, rocks, grass from the game's own models; trunk blockers): test land-forest.test.js; notes "THE TREES AND THE GRASS".
   G5 (roads: graded lines, walkable decks, guard rails + grind, junction signs, Route 1 traffic): test land-roads.test.js; notes "THE ROADS".
+  G8 (edge: ice wall R4, pack + fast ice, shelf landing, sea sites on banks): test land-edge.test.js; notes "THE EDGE OF THE WORLD".
 - `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
   boot by server.js `runMigrations` (recorded in `schema_migrations`;
   duplicate-column/already-exists errors are tolerated so it converges on

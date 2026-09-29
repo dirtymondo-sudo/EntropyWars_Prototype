@@ -39991,8 +39991,8 @@ function hqWorldBearing(roomId, targetId, fromPlace) {
    `sky.landmarks` (the sky castle, the stairway, the waterspout) stay; a room's rows here are added to them. When a later
    phase draws the place itself (the far shells, Phase 10) its row here goes. */
 const HQ_WORLD_WEENIES = {
-    site_prebuilt_bermuda_sea: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', from: 'bermuda', s: 0.85, dist: 0.86, label: 'DISASTER CITY' }],   // G7: seen from Bermuda's place on the land
-    /* G6 (2026-09-28): the sites on the land wear none — the places themselves stand on its horizon (hqRoomLandmarks) */
+    /* G6 (2026-09-28): the sites on the land wear none — the places themselves stand on its horizon (hqRoomLandmarks); G8 (2026-09-29):
+       Bermuda's sea stands on the land now too, so its Disaster City row went (the last row) */
 };
 /* a room's horizon: its shell's landmarks + its ground weenies at their bearings (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
@@ -40144,8 +40144,7 @@ const HQ_WORLD = {
     },
     zones: {
         /* Z1 THE CITY and Z1b THE COAST RETIRED (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29): Downtown, the Bowl and the harbour stand on THE
-           LAND (zones.land below) at their places; the cay and the Dutchman stand alone behind their own doors until G8 puts them in
-           the Bermuda triangle out in the Deep. */
+           LAND (zones.land below) at their places; G8 (2026-09-29) put the cay and the Dutchman in the Bermuda Triangle out in the Deep. */
         /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
            Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
         dumb: { label: 'THE D.U.M.B.', ground: 'under', hub: 'site_prebuilt_dumb_motorpool', sky: null, clock: false,
@@ -40242,6 +40241,14 @@ const HQ_WORLD = {
                 site_prebuilt_downtown_streets:      { place: 'downtown', rot: 1 },
                 site_prebuilt_downtown_harbour:      { place: 'harbour', rot: 1, sea: true },
                 site_prebuilt_stadium_bowl:          { place: 'stadium', rot: 1 },
+                /* G8 THE EDGE OF THE WORLD (2026-09-29): the Bermuda Triangle out in the Deep (its cay on the cay's place: the part's cay is
+                   52 m south of its middle), the Dutchman at anchor off it (her water −2.6 over a frame at 2.6 = the sea at 0), each on a
+                   bank at its floor (`bank`, land metres: the bake raises the Deep's floor to it under the box and slopes it back down);
+                   the station on the ice shelf (turned half round: its way in faces the landing), the Pole's village on the pack */
+                site_prebuilt_bermuda_sea:           { place: 'cay', dz: -52, sea: true, bank: -3.5 },
+                site_prebuilt_revenge_deck:          { place: 'dutchman', dy: 2.6, sea: true, bank: -5.6 },
+                site_prebuilt_antarctica_station:    { place: 'station', rot: 2 },
+                site_prebuilt_northpole_village:     { place: 'pole' },
             },
             joins: [
                 /* the islands: walked into from the land (their edges ease to the pad) */
@@ -40254,6 +40261,10 @@ const HQ_WORLD = {
                    harbour's floor rises to the quay in 2 m — the quay wall over the water) */
                 { a: 'land', b: 'site_prebuilt_downtown_harbour', kind: 'island', y: -5.6 },
                 { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_harbour', side: 's', span: [-100, 100], kind: 'shore', stitchM: 2 },
+                /* G8: the two sea sites ease to their banks; the station and the village stand on their pads (the shelf, the pack) */
+                { a: 'land', b: 'site_prebuilt_bermuda_sea', kind: 'island', y: -3.5 },
+                { a: 'land', b: 'site_prebuilt_revenge_deck', kind: 'island', y: -5.6 },
+                ...['site_prebuilt_antarctica_station', 'site_prebuilt_northpole_village'].map(b => ({ a: 'land', b, kind: 'island', pad: true })),
                 /* Area 51: the gate onto the flight line (a road), Hangar 18 off its south apron, the white rooms off the hangar */
                 { a: 'site_prebuilt_area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road', pad: true },
                 { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
@@ -41059,9 +41070,14 @@ const HQ_LAND = (function () {
 
     // ── THE DISC: the ice wall rings the world (Antarctica). Its inner face is at wallR(θ) — pulled in at the
     //    south (the bottom of the map) where the Antarctic ice shelf is widest.
-    R.wall = { r: 2600, southPull: 250, southSpread: 0.95, h: 92, thick: 150, shelf: { z0: 2040, h: 11 } };
+    //    G8 (2026-09-29): the shelf's front is an ice cliff all along but at `landing`, where a ramp of ice runs up out of the water to the
+    //    station (the skiff pulls up at its toe, `toe` m under the sea, `toeOut` m off the front; it climbs at `grade`, `w` m wide).
+    R.wall = { r: 2600, southPull: 250, southSpread: 0.95, h: 92, thick: 150, shelf: { z0: 2040, h: 11, landing: { pts: [[110, 1930], [110, 2020], [110, 2110], [110, 2200]], w: 34, grade: 0.1, toe: -2, toeOut: 40 } } };
     // ── THE ARCTIC: the sea north of this line is frozen over (pack ice you walk on); the North Pole stands on it.
-    R.arctic = { z: -1700, bow: 0.00007, pole: [0, -2150] };
+    //    G8 (2026-09-29): every frozen cell stands `floe` m over the sea and runs down under it over `foot` m where it meets open water (the
+    //    ice foot); `fast` = ice frozen to the north coast where the pass comes down, out across the pack to the Pole (the way on foot).
+    R.arctic = { z: -1700, bow: 0.00007, pole: [0, -2150], floe: 0.6, foot: 7, footDepth: 1.8,
+        fast: { w: 90, pts: [[-385, -1215], [-372, -1330], [-340, -1480], [-270, -1660], [-170, -1850], [-60, -2020], [0, -2150]] } };
 
     // ── THE CONTINENT: the coastline (clockwise from the north-west). Smoothed + roughened by the generator.
     R.coast = [
@@ -41301,12 +41317,15 @@ const HQ_LAND = (function () {
       { id: 'rim',       label: 'AREA 13',             at: [45, 262],     kind: 'poi', region: 'highlands', top: 2, lookout: true },
       { id: 'crownrise', label: 'AREA 14',             at: [-32, -368],   kind: 'poi', region: 'highlands', top: 2, lookout: true },
       { id: 'bermuda',   label: 'THE BERMUDA TRIANGLE',at: [1400, 1520],  kind: 'sea', region: 'sea', top: 2 },
-      { id: 'cay',       label: 'THE CAY',             at: [1320, 1440],  kind: 'site', region: 'sea', top: 6 },
-      { id: 'dutchman',  label: 'THE FLYING DUTCHMAN', at: [1500, 1580],  kind: 'site', region: 'sea', top: 30 },
-      { id: 'whirlpool', label: 'THE WHIRLPOOL',       at: [1410, 1625],  kind: 'door', region: 'sea', top: 2 },
-      { id: 'station',   label: 'ANTARCTICA · THE STATION', at: [110, 2190], kind: 'site', region: 'edge', top: 14 },
+      // G8 (2026-09-29): the Triangle's part stands with its cay on the cay's place and its maelstrom (the whirlpool) where the part has it;
+      // the Dutchman rides at anchor (her water is the sea's); the station on the shelf (turned: its way in faces the landing); the Pole's
+      // village on the pack. padY 0 on a sea site = the sea's surface (the part's own sea stands on it).
+      { id: 'cay',       label: 'THE CAY',             at: [1320, 1440],  padY: 0, kind: 'site', region: 'sea', top: 6 },
+      { id: 'dutchman',  label: 'THE FLYING DUTCHMAN', at: [1500, 1580],  padY: 0, kind: 'site', region: 'sea', top: 17 },   // G8: top from her bank (−5.6): the maintop ~11 m over the sea
+      { id: 'whirlpool', label: 'THE WHIRLPOOL',       at: [1342, 1360],  kind: 'door', region: 'sea', top: 2 },
+      { id: 'station',   label: 'ANTARCTICA · THE STATION', at: [110, 2215], padY: 11.5, kind: 'site', region: 'edge', top: 14 },
       { id: 'flatlands', label: 'THE FLAT LANDS (on the wall)', at: [110, 2440], kind: 'site', region: 'edge', top: 3 },
-      { id: 'pole',      label: 'THE NORTH POLE',      at: [0, -2150],    kind: 'site', region: 'arctic', top: 18 },
+      { id: 'pole',      label: 'THE NORTH POLE',      at: [0, -2150],    padY: 1.0, kind: 'site', region: 'arctic', top: 18 },
       { id: 'sewers',    label: 'THE SEWERS',          at: [960, 330],    kind: 'dungeon', region: 'city', top: 2 },
       { id: 'cavern',    label: 'THE CAVERN',          at: [-895, -585],  kind: 'dungeon', region: 'woods', top: 3 },
       { id: 'ley',       label: 'THE LEY LINES',       at: [-560, 820],   kind: 'dungeon', region: 'badlands', top: 2 },
@@ -41344,7 +41363,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: '5d00c20e10', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
+    R.baked = { id: '5aa5d61879', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -42376,6 +42395,7 @@ function hqLandSites() {
         const S = by[P.place] || (by[P.place] = { place: P.place, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, y: pl ? +pl.padY || 0 : 0, parts: [] });
         S.x0 = Math.min(S.x0, r.x0); S.z0 = Math.min(S.z0, r.z0); S.x1 = Math.max(S.x1, r.x1); S.z1 = Math.max(S.z1, r.z1); S.parts.push(id);
         if (P.sea) S.sea = true;   // G7: a sea site (the harbour) — the bake leaves the water's floor under it alone
+        if (P.bank != null) S.bank = P.bank;   // G8: a sea site out in the Deep stands on a bank at its floor (the bake raises the Deep to it)
         const rm = DOOR_HQ.rooms && DOOR_HQ.rooms[id]; if (rm && rm.terrain && rm.terrain.slope) S.slope = true;   // G7: a sloped site (hqLandSiteY)
     });
     Object.keys(by).forEach(k => out.push(by[k]));

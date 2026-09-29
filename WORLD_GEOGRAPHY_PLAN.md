@@ -277,7 +277,7 @@ G10 move them.
 | Area 16 | 566, 1244 | 33 | Area 9 | new | the end of the desert highway |
 | Area 17 | 766, 1394 | 234 | Area 9 | new | Trail H off Route 6 |
 | The Cay / The Dutchman | 1320, 1440 / 1500, 1580 | 3 / sea | the Deep (the Bermuda triangle) | `bermuda_sea`, `revenge_*` | the skiff |
-| Antarctica · The Station | 110, 2190 | 10 | the shelf | `antarctica_station` | the skiff, then on foot |
+| Antarctica · The Station | 110, 2215 (G8) | 11.5 | the shelf | `antarctica_station` | the skiff, then on foot |
 | The North Pole | 0, −2150 | ice | the Arctic | `northpole_village` | Trail I, then on foot across the ice |
 
 These stay **doors** to other worlds, as today: Heaven and Hell, the moon, Mars, Saturn, the derelict,
@@ -706,7 +706,7 @@ Shadow cascades matter far more on open land.
 | G5 ✓ (2026-09-28, zip G5) | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
 | G6 ✓ (2026-09-28, zip G6) | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
 | G7 ✓ (2026-09-29, zip G7) | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the harbour, the bay's beach, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
-| G8 | **THE EDGE OF THE WORLD**: the Deep to the wall, the ice wall, the shelf and the station, the pack ice and the Pole, the islands, the Bermuda triangle with the cay, the Dutchman and the whirlpool; the Flat Lands per fork 5 | data.js, three-renderer.js | `land-edge.test.js` (the wall is the only border; the skiff reaches it everywhere) |
+| G8 ✓ (2026-09-29, zip G8) | **THE EDGE OF THE WORLD**: the Deep to the wall, the ice wall, the shelf and the station, the pack ice and the Pole, the islands, the Bermuda triangle with the cay, the Dutchman and the whirlpool; the Flat Lands per fork 5 | data.js, three-renderer.js | `land-edge.test.js` (the wall is the only border; the skiff reaches it everywhere) |
 | G9 | **THE DISCOVERY PASS** (R6, §5.11): landmarks every 150–250 m of route, the reveal points dressed (a cairn, a bench, a broken fence), the region title cards, the map's fog of war | data.js, map.js, three-renderer.js | the bake's R6 spacing check; no finds or tapes pinned |
 | G10 | **THE DUNGEONS** (§5.13): the kit first, then one dungeon per thread (the storm drain and the sewers, the Cavern, the ley lines, the D.U.M.B.) | data.js, three-renderer.js | `dungeon-kit.test.js` (D1–D5: mouth reachable, vertical ≥ 40 m, a way back, the wall audit underground) |
 | G11 | **SOUND IN SPACE** (old Phase 13): positional rivers, falls, surf, wind in the trees, the city | audio.js, three-renderer.js | `audio-space.test.js` |
@@ -1046,4 +1046,19 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
   - Not done: the mall has no outside building on the beach yet; the cay and the Dutchman stand in no zone (behind their doors)
     until G8. Tests: city-slopes.test.js; the wall audit is clean on the three city sites. hq-coast.test.js is deleted.
     Next: G8 (the edge of the world).
+
+- **G8 — THE EDGE OF THE WORLD (2026-09-29, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G8.zip, token
+  20260929-geography-13-cors, delta on G7; new bake 5aa5d61879)**
+  - The Bermuda Triangle and the Dutchman stand on the land out in the Deep, each on a shallow bank (the cay on its place, the
+    maelstrom on the whirlpool's place, now 1342, 1360; the Dutchman at anchor with her water the sea's). You sail there from the bay.
+  - The station stands on the ice shelf (moved 25 m south to 110, 2215, turned to face the sea). The shelf's front is an ice cliff
+    except at THE LANDING: a ramp of ice up out of the water to the station. The skiff pulls up at its toe.
+  - The Pole's village stands on the pack. The pack is walkable ice (0.6 m over the sea, running down under the water at its
+    edges so you can climb out). A band of fast ice runs from the North Pass's foot to the Pole.
+  - The ice wall is the only border (R4, checked on every bake): it has no gap, nothing gets past it, and it is reached on every
+    bearing (by the skiff on the open sea; on foot over the pack and the shelf). Its faces, the shelf's front and the floes' edges
+    now wear the ice sheet, not the rock cliff.
+  - Forks (defaults, none ruled): the ice wall border (fork 1); the Flat Lands seen, not reached (fork 5: its door stays the way in).
+  - Not done: no snow haze for the Arctic and Antarctica yet (§5.3); the islands are unchanged (already baked). Tests:
+    land-edge.test.js; hq-clock.test.js re-pinned (no room hangs a painted weenie). Next: G9 (the discovery pass).
 

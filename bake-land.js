@@ -410,7 +410,6 @@ function bake(opts) {
     const wallR = (x, z) => { const ang = Math.atan2(x, z);   // 0 = due south
         const s = Math.pow(Math.max(0, Math.cos(ang)), 1 / R.wall.southSpread * 2.2); return R.wall.r - R.wall.southPull * s + 26 * nB(ang * 3.1, 0.7) + 8 * nC(ang * 17, 3.3); };
     const ICE = new Uint8Array(NN);   // 1 = the ice wall / shelf, 2 = pack ice
-    const CAY = R.places.find(p => p.id === 'cay').at;
     for (let c = 0; c < NN; c++) { const x = X(c % N), z = Z((c / N) | 0); const d = D[c];
         const off = -d; let sea = -3 - 26 * ss(0, 280, off) - 70 * ss(220, 700, off) - 30 * ss(0, 1, (Math.hypot(x, z) - 1700) / 600);
         sea -= 90 * (1 - ss(0, R.bermuda.trench, Math.hypot(x - R.bermuda.at[0], z - R.bermuda.at[1])));
@@ -418,7 +417,7 @@ function bake(opts) {
         const stacks = ss(0.62, 0.7, fbm(nC, x / 60, z / 60, 2, 2, 0.5)) * (1 - ss(40, 260, off)) * (x < -1200 ? 1 : 0);
         sea = Math.max(sea, lerp(sea, 26 + 20 * nA(x / 20, z / 20), stacks));
         for (const isl of (R.islands || [])) { if (Math.abs(x - isl[0]) > isl[2] * 2 || Math.abs(z - isl[1]) > isl[2] * 2) continue; const [iwx, iwz] = warp(x, z, 38, 90); const t = Math.hypot(iwx - isl[0], iwz - isl[1]) / isl[2]; if (t < 1.4) { const ih = isl[3] * Math.pow(Math.max(0, 1 - ss(0.2, 1.0, t)), 1.2) * (0.8 + 0.3 * nA(x / 30, z / 30)) - 18 * ss(0.9, 1.4, t); sea = Math.max(sea, ih); } }
-        const cay = 1 - ss(40, 95, Math.hypot(x - CAY[0], z - CAY[1])); if (cay > 0) sea = Math.max(sea, lerp(sea, 3.5 + 2 * nA(x / 30, z / 30), cay));
+        // G8: the cay is its site (the Bermuda Triangle's part stands on a bank in the Deep: 5b THE SEA SITES' BANKS below)
         let h = d > 0 ? H[c] : sea;
         if (d > -60 && d < 60) { const land = H[c]; const t = ss(-18, 26, d); h = lerp(sea, land, t); }
         const r = Math.hypot(x, z); const wr = wallR(x, z);
@@ -430,6 +429,33 @@ function bake(opts) {
         }
         { const az = R.arctic.z + (R.arctic.bow || 0) * x * x + 110 * nA(x / 300, 0.3) + 40 * nC(x / 90, 4.4); const pIce = ss(az + 140, az - 180, z); if (d < -6 && !ICE[c] && pIce > 0 && pIce > 0.5 + 0.42 * fbm(nB, x / 45, z / 45, 3, 2, 0.5)) ICE[c] = 2; }
         H[c] = h; }
+
+    // ───────── 5'. THE EDGE OF THE WORLD (G8, 2026-09-29): the pack ice you walk on, the fast ice off the north coast, the shelf's landing
+    // THE FAST ICE: a band of ice frozen to the north coast where the pass comes down, out to the pack (the Pole is reached on foot)
+    if (R.arctic.fast) { const FA = R.arctic.fast, P = resample(FA.pts, 4, false), F = polyField(P, FA.w, false);
+        for (let c = 0; c < NN; c++) { if (F.d[c] > FA.w || ICE[c] === 1 || D[c] > 0) continue; const x = X(c % N), z = Z((c / N) | 0);
+            if (F.d[c] < FA.w / 2 + 14 * nB(x / 60, z / 60)) ICE[c] = 2; } }
+    // THE PACK: every frozen cell stands a floe's freeboard over the sea; within `foot` m of open water it runs down under the surface
+    // (the ice foot: a swimmer wades up it and the skiff pulls up to it). The coast counts as ice here (no foot against the land).
+    if (R.arctic.floe != null) { const EF = new Float32Array(NN), BIG = 1e9, dg = CELL * Math.SQRT2, foot = R.arctic.foot || 7;
+        for (let c = 0; c < NN; c++) EF[c] = (ICE[c] === 2 || D[c] > 0 || ICE[c] === 1) ? BIG : 0;
+        for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const c = j * N + i; let v = EF[c]; if (!v) continue;
+            if (i > 0) v = Math.min(v, EF[c - 1] + CELL); if (j > 0) { v = Math.min(v, EF[c - N] + CELL); if (i > 0) v = Math.min(v, EF[c - N - 1] + dg); if (i < N - 1) v = Math.min(v, EF[c - N + 1] + dg); } EF[c] = v; }
+        for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) { const c = j * N + i; let v = EF[c]; if (!v) continue;
+            if (i < N - 1) v = Math.min(v, EF[c + 1] + CELL); if (j < N - 1) { v = Math.min(v, EF[c + N] + CELL); if (i < N - 1) v = Math.min(v, EF[c + N + 1] + dg); if (i > 0) v = Math.min(v, EF[c + N - 1] + dg); } EF[c] = v; }
+        for (let c = 0; c < NN; c++) { if (ICE[c] !== 2) continue; const x = X(c % N), z = Z((c / N) | 0);
+            const top = R.arctic.floe + 0.12 * nA(x / 9, z / 9) + 0.1 * nC(x / 31, z / 31);
+            H[c] = Math.max(H[c], lerp(-(R.arctic.footDepth || 1.8), top, ss(0, foot, EF[c] - CELL * 0.5))); } }
+    // THE LANDING: the shelf's front is an ice cliff all along but here, where a ramp of ice runs up out of the water to the station
+    if (R.wall.shelf.landing) { const LD = R.wall.shelf.landing, P = resample(LD.pts, 2, false), F = polyField(P, LD.w / 2 + 10, false), L = F.L;
+        let sFront = null; for (let k = 0; k < P.length && sFront === null; k++) if (ICE[cellAt(P[k][0], P[k][1])] === 1 && sampleG(H, P[k][0], P[k][1]) > 2) sFront = L[k];
+        if (sFront !== null) { const s0 = sFront - (LD.toeOut || 16), top = R.wall.shelf.h;
+            for (let c = 0; c < NN; c++) { const dd = F.d[c]; if (dd > LD.w / 2 + 10) continue; const sc = F.s[c]; if (sc < s0 - 12) continue;
+                const y = Math.min(top + 3, (LD.toe != null ? LD.toe : -2) + Math.max(0, sc - s0) * LD.grade);
+                const w = (1 - ss(LD.w / 2, LD.w / 2 + 8, dd)) * ss(s0 - 12, s0, sc); if (w <= 0) continue;
+                if (ICE[c] === 1 && H[c] > y) H[c] = lerp(H[c], y, w);
+                else if (!ICE[c] && D[c] <= 0 && H[c] < y) { H[c] = lerp(H[c], y, w); if (w > 0.5) ICE[c] = 1; } } }
+        else log('warn: the landing never meets the shelf'); }
 
     // ───────── 5a. BEACHES: a sand strip graded gently down into the water
     const BEACH = new Uint8Array(NN);
@@ -451,6 +477,12 @@ function bake(opts) {
     // G6: the sites' boxes, flat to their pad's height (after the discs, so the box wins where a disc's blend runs under it)
     // G7 (THE CITY ON THE HILL): a sloped site's box is levelled to its slope (data.js hqLandSiteY), not to one height
     const siteY = (S, x, z) => (S.slope && sb && typeof sb.hqLandSiteY === 'function') ? sb.hqLandSiteY(S, x, z) : S.y;
+    // G8 THE SEA SITES' BANKS: a sea site out in the Deep (the Triangle's cay, the Dutchman) stands on a bank at its field's floor
+    // (`bank`), which slopes back down to the Deep over `bankBand` m (a shoal the sea's colours show); the harbour keeps the bay's floor
+    for (const S of SITES) { if (!S.sea || S.bank == null) continue;
+        const g = SRULE.margin + (S.bankBand || 90); const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const c = j * N + i, d = rectD(S, X(i), Z(j)); if (d > g || D[c] > 0) continue;
+            const w = 1 - ss(SRULE.margin, g, d); if (H[c] < S.bank) H[c] = lerp(H[c], S.bank, w); } }
     for (const S of SITES) { if (S.sea) continue;   // G7: the harbour keeps the bay's floor
         const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
         // the band lets go of the ground toward a shore (a chamfer distance to the window's water): the bank meets its water, never a wall
@@ -716,7 +748,7 @@ function bake(opts) {
         routeKm: +(overlay.roads.reduce((s, r) => s + r.length, 0) / 1000).toFixed(1), bridgesM: overlay.bridges.reduce((s, b) => s + b.len, 0) };
     overlay.materials = MATS;
     log('baked', JSON.stringify(overlay.stats));
-    return { R, sb, N, NN, EXT, CELL, X, Z, toI, sampleG, H, D, MAT, FOREST, WATER, URB, ICE, ROAD, SLOPE, overlay, M, MATS };
+    return { R, sb, N, NN, EXT, CELL, X, Z, toI, sampleG, H, D, MAT, FOREST, WATER, URB, ICE, ROAD, SLOPE, overlay, M, MATS, wallR, cellAt };
 }
 
 // ════════ THE RULES (the CLI's exit code and land-bake.test.js both read this) ══════════════════════════════════════
@@ -760,7 +792,44 @@ function checkRules(B) {
     let undrawn = 0, first = null;
     for (let c = 0; c < NN; c++) if (SLOPE[c] > 1.0) { const m = MAT[c]; if (m === Mt.cliff || m === Mt.ice || m === Mt.pack || m === Mt.road || m === Mt.trail || m === Mt.lane || m === Mt.paved || WET.has(m)) continue; undrawn++; if (!first) first = [B.X(c % N), B.Z((c / N) | 0)]; }
     if (undrawn) bad('R3', `${undrawn} cells steeper than 1.0 are not drawn as cliffs (first at ${first.map(v => v.toFixed(0)).join(', ')})`);
+    // R4 THE EDGE OF THE WORLD (G8): the ice wall is the only border, and the skiff (then the feet, over the pack and the shelf) reaches it
+    const E = edgeReach(B);
+    if (E.gaps.length) bad('R4', `the ice wall has ${E.gaps.length} gaps (first at bearing ${E.gaps[0]}°)`);
+    if (E.past) bad('R4', `the walker or the skiff gets past the wall (${E.past.map(v => v.toFixed(0)).join(', ')})`);
+    if (E.unreached.length) bad('R4', `the wall is not reached at ${E.unreached.length} bearings (first ${E.unreached[0]}°)`);
+    for (const id of E.lost) bad('R4', `${id} is not reached by the skiff and on foot`);
     return out;
+}
+// R4 (G8): a flood from the harbour's water. The skiff sails any sea cell deeper than its hull wants; it lands on any walkable cell
+// that stands low at the water; the feet walk on (slope ≤ 1 between cells) and re-board at the water. Per half-degree bearing: the
+// wall's inner face stands there (a gap is a bearing with no face at full height), something reached stands at its foot (the sea,
+// the pack or the shelf), and nothing reached lies past it. The four edge sites must be reached.
+function edgeReach(B) {
+    const { R, N, NN, X, Z, H, D, SLOPE, WATER, ICE, CELL, overlay: ov, wallR, cellAt } = B;
+    const boat = c => H[c] < -1.2 && WATER[c] < -9000, walk = c => SLOPE[c] <= 1.0 && H[c] > -1.3 && WATER[c] < -9000;   // the feet wade the last 1.3 m (the skiff and the walker overlap there)
+    const P = Object.fromEntries(ov.places.map(p => [p.id, p]));
+    const seen = new Uint8Array(NN), q = new Int32Array(NN); let qh = 0, qt = 0;   // 1 = sailed, 2 = walked
+    { const [hx, hz] = (P.harbour || P.bermuda).at; let best = -1, bd = 1e9;
+        for (let c = 0; c < NN; c++) if (boat(c)) { const d = Math.hypot(X(c % N) - hx, Z((c / N) | 0) - hz); if (d < bd) { bd = d; best = c; } }
+        if (best >= 0) { seen[best] = 1; q[qt++] = best; } }
+    while (qh < qt) { const c = q[qh++], i = c % N, j = (c / N) | 0, k = seen[c];
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= N || jj >= N) continue; const n = jj * N + ii; if (seen[n]) continue;
+            let to = 0;
+            if (k === 1) { if (boat(n)) to = 1; else if (walk(n) && H[n] <= 1.2) to = 2; }
+            else { if (walk(n) && Math.abs(H[n] - H[c]) <= CELL * 1.0 + 0.62) to = 2; else if (boat(n) && H[c] <= 1.2) to = 1; }
+            if (to) { seen[n] = to; q[qt++] = n; } } }
+    const BINS = 720, reach = new Float32Array(BINS).fill(-1), face = new Float32Array(BINS).fill(-1), gaps = [], unreached = []; let past = null;
+    for (let c = 0; c < NN; c++) { const x = X(c % N), z = Z((c / N) | 0), r = Math.hypot(x, z); const wr = wallR(x, z);
+        const b = Math.floor(((Math.atan2(x, z) / (2 * Math.PI)) + 1) % 1 * BINS) % BINS;
+        if (seen[c]) { if (r > reach[b]) reach[b] = r; if (r > wr + 8 && !past) past = [x, z]; }
+        if (ICE[c] === 1 && r >= wr - 2 && r <= wr + 40 && H[c] >= R.wall.h - 15) face[b] = Math.max(face[b], H[c]); }
+    for (let b = 0; b < BINS; b++) { const th = (b + 0.5) / BINS * 2 * Math.PI, wr = wallR(Math.sin(th) * 2500, Math.cos(th) * 2500);
+        if (face[b] < 0) gaps.push((b / 2).toFixed(1));
+        if (reach[b] < wr - 3 * CELL - 8) unreached.push((b / 2).toFixed(1)); }
+    const lost = ['cay', 'dutchman', 'station', 'pole'].filter(id => { const p = P[id]; if (!p) return false; const r = 60;
+        for (let dz = -r; dz <= r; dz += CELL) for (let dx = -r; dx <= r; dx += CELL) if (seen[cellAt(p.at[0] + dx, p.at[1] + dz)]) return false; return true; });
+    let sailed = 0, walked = 0; for (let c = 0; c < NN; c++) { if (seen[c] === 1) sailed++; else if (seen[c] === 2) walked++; }
+    return { gaps, past, unreached, lost, reach, face, seen, sailed, walked };
 }
 // every place on land is on a route: roads join where they touch; a place is served by a road that passes within its pad
 // (+40 m); Disaster City's places are served by its streets (G7) once any road enters the city; sea, edge and underground
@@ -897,4 +966,4 @@ if (require.main === module) {
     process.exit(breaches.length ? 1 : 0);
 }
 
-module.exports = { bake, checkRules, writeOutputs, stampData, readRecipe, encodePng, MATS };
+module.exports = { bake, checkRules, edgeReach, writeOutputs, stampData, readRecipe, encodePng, MATS };
