@@ -44032,6 +44032,8 @@ function hqWorldDocApply(doc) {
         delete R[id]; out.retired.push(id);
         if (Array.isArray(DOOR_HQ.links)) DOOR_HQ.links = DOOR_HQ.links.filter(l => !(l && ((l.a && l.a.room === id) || (l.b && l.b.room === id))));
     });
+    /* THE SHAPES (E1): the prefabs first — a room's `prefab` rows read them when it compiles */
+    if (doc.prefabs && typeof doc.prefabs === 'object' && typeof HQ_PREFABS !== 'undefined') Object.keys(doc.prefabs).forEach(id => { const pf = doc.prefabs[id]; if (pf && typeof pf === 'object' && !Array.isArray(pf)) HQ_PREFABS[id] = pf; });
     Object.keys(doc.rooms || {}).forEach(id => {
         const room = doc.rooms[id];
         const why = hqWorldDocRoomOk(room);
@@ -44079,10 +44081,11 @@ function hqWorldDocFetch(id, fresh) {
         .then(r => { if (!r || !r.ok) throw new Error('world.json HTTP ' + (r ? r.status : 0)); return r.json(); })
         .then(index => {
             const doc = Object.assign({}, index, { rooms: {}, prefabs: {} });
-            const rooms = hqWorldDocIndexRooms(index);
-            return Promise.all(rooms.map(e => fetch(hqWorldDocUrl('rooms/' + e.id + '.json', 'h=' + encodeURIComponent(e.sha)), { mode: 'cors', credentials: 'omit' })
-                .then(r => { if (!r || !r.ok) throw new Error('room ' + e.id + ' HTTP ' + (r ? r.status : 0)); return r.json(); })
-                .then(room => { doc.rooms[e.id] = room; })))
+            const rooms = hqWorldDocIndexRooms(index), prefabs = hqWorldDocIndexRooms({ rooms: index.prefabs || {} });
+            const one = (dir, e, into) => fetch(hqWorldDocUrl(dir + '/' + e.id + '.json', 'h=' + encodeURIComponent(e.sha)), { mode: 'cors', credentials: 'omit' })
+                .then(r => { if (!r || !r.ok) throw new Error(dir + ' ' + e.id + ' HTTP ' + (r ? r.status : 0)); return r.json(); })
+                .then(v => { into[e.id] = v; });
+            return Promise.all(rooms.map(e => one('rooms', e, doc.rooms)).concat(prefabs.map(e => one('prefabs', e, doc.prefabs))))
                 .then(() => doc);
         });
 }
@@ -44112,6 +44115,198 @@ if (typeof window !== 'undefined') {
         hqWorldDocIndexRooms, hqWorldDocFetch, hqWorldDocLoad, hqWorldDocStart });
     if (window._EW_WORLD_ID && !window.importScripts) { try { hqWorldDocLoad(); } catch (e) { console.warn('[world doc] load', e); } }   // never inside the survey worker (it is handed each room)
 }
+/* ══ THE SHAPES (EDITOR_PLAN.md §4.3 + §5.3 + §6 rows 5–6, E1 — 2026-09-29) ═══════════════════════════════════════════════════
+   The building rows the editor's tools write, expanded into the compiler's own rows before hqTerrainCompile reads them
+   (hqRoomExpand), so the walker, the camera, the solver and the renderer see only walls, plateaus, bridges … (R1):
+     opening     { k: 'opening', wall: '<wall row id>', at, w, h, sill?, glaze? } — a gap in one wall row, `at` metres along it
+                 from its (x0, z0) end to the gap's middle. The wall becomes its pieces, a LINTEL over the gap (a HUNG wall: its
+                 bottom `lift` m over the ground — the walker passes under it) and, with a sill, the piece under it; `glaze` fills
+                 the gap with a glass pane (solid, drawn see-through). Nothing drawn is cut: the pieces are walls (fork 5).
+     texbuilding { k: 'texbuilding', x, z, w, d, rot?, storeys, style?, y?, seed? } — a block of the city's textured buildings
+                 (three-renderer.js _hqTexBuilding: the urban pack's faces, the roof, the parapet), its front (+z turned by rot,
+                 degrees clockwise) the street face; solid to the walker (four ghost walls on its faces, a plateau for its roof).
+     prefab      { k: 'prefab', pf: '<prefab id>', x, z, y?, yaw?, mirror? } — every row and prop of a PREFAB (a mini room:
+                 { id, label, terrain: { features }, props }, laid out round its own 0, 0) placed here, turned `yaw` degrees
+                 clockwise, `mirror: 'x' | 'z'` flipped first; prefabs nest to depth 4. Edit the prefab once, every placement follows.
+     kit         { k: 'kit', fn: '<builder>', args: {…}, x, z, y?, yaw?, mirror? } — the rows one of the game's own builders makes
+                 (HQ_KIT_FORMS: the allow-list — nothing else is ever called), placed like a prefab. Editing args re-expands.
+   Walls gained three keys: `keyIn` (the sheet on the wall's RIGHT face, walking x0 → x1 — the inside of a room drawn clockwise),
+   `lift` (a hung wall: its bottom that high over the ground under it) and `glass`. Prefab docs live in the world file
+   (Assets/World/prefabs/<id>.json) and in HQ_PREFABS here; the survey worker is handed them with each room. */
+const HQ_PREFABS = {};
+const HQ_SHAPE_RULES = { depth: 4, doorW: 1.2, doorH: 2.2, winW: 1.4, winH: 1.2, winSill: 0.9, glassT: 0.06, minPiece: 0.05, texStorey: 3.5, texParapet: 0.45, ghostT: 0.3 };
+/* THE KITS: the builders a `kit` row may call (the allow-list), each with its form's defaults (metres, degrees). `marks: true` =
+   the builder makes paint (`terrain.marks` rows), not features */
+const HQ_KIT_FORMS = {
+    hqRoundBlock:    { label: 'Round block / pillar', args: { r: 1.2, y: 4, n: 16, key: 'urban:ConcreteStriped2c' } },
+    hqCastleTower:   { label: 'Castle tower (a stair inside)', args: { r: 5, t: 0.8, top: 10, crown: 1.2, n: 32, span: 300, door: [170, 190], doorH: 3, key: 'rocks_1' } },
+    hqCastleCrown:   { label: 'Battlement ring (on a solid block)', args: { r: 5, top: 8, crown: 1.1, n: 24, skip: [], key: 'rocks_1' } },
+    hqCurtainWall:   { label: 'Curtain wall with battlement', args: { x0: -12, z0: 0, x1: 12, z1: 0, t: 3.2, top: 8, crown: 1.1, out: 1, key: 'rocks_1' } },
+    hqRingWalls:     { label: 'Ring of walls', args: { r: 8, h: 1.05, t: 0.35, n: 24, a0: 0, a1: 360, skip: [], key: 'urban:ConcreteStriped2c' } },
+    hqRingBridges:   { label: 'Ring deck (bridges)', args: { r: 8, w: 3, y: 4, a0: 0, a1: 360, n: 16, rails: true } },
+    hqHelixRamp:     { label: 'Helix ramp', args: { r: 8, w: 3, a0: 0, a1: 270, h0: 0, h1: 4, n: 10 } },
+    hqStandBowl:     { label: 'Stand bowl (stadium seating)', args: { hx: 30, hz: 45, rc: 12, rows: 10, seats: {} } },
+    hqGridironMarks: { label: 'Football field paint', args: { yard: 0.7315 }, marks: true },
+};
+function _hqR4(v) { return Math.round(v * 10000) / 10000; }
+/* one row (feature, mark or prop) placed: mirror (in its own frame), turn `yaw` degrees clockwise about 0, 0, move to x, z, lift
+   its absolute heights by y. Pure; the row is copied. */
+function hqRowPlace(row, P) {
+    const r = JSON.parse(JSON.stringify(row)), yaw = +(P && P.yaw) || 0, q = yaw * Math.PI / 180, c = Math.cos(q), s = Math.sin(q);
+    const mx = P && P.mirror === 'x', mz = P && P.mirror === 'z', ox = +(P && P.x) || 0, oz = +(P && P.z) || 0, dy = +(P && P.y) || 0;
+    const pt = (x, z) => { if (mx) x = -x; if (mz) z = -z; return [_hqR4(ox + x * c - z * s), _hqR4(oz + x * s + z * c)]; };
+    const ang = a => { let v = +a || 0; if (mx || mz) v = mx ? -v : 180 - v; v = (v + yaw) % 360; if (v < 0) v += 360; return _hqR4(v); };
+    const dir = v => { let x = +v[0] || 0, z = +v[1] || 0; if (mx) x = -x; if (mz) z = -z; return [_hqR4(x * c - z * s), _hqR4(x * s + z * c)]; };
+    [['x', 'z'], ['x0', 'z0'], ['x1', 'z1']].forEach(p => { if (typeof r[p[0]] === 'number' && typeof r[p[1]] === 'number') { const v = pt(r[p[0]], r[p[1]]); r[p[0]] = v[0]; r[p[1]] = v[1]; } });
+    ['pts', 'quad'].forEach(k => { if (Array.isArray(r[k])) r[k] = r[k].map(v => Array.isArray(v) ? pt(+v[0] || 0, +v[1] || 0).concat(v.slice(2)) : v); });
+    if (Array.isArray(r.front)) r.front = dir(r.front);
+    if (Array.isArray(r.span)) { const a = pt(r.span[0], r.span[1]), b = pt(r.span[2], r.span[3]); r.span = [a[0], a[1], b[0], b[1]]; }
+    /* an arc (a spiral row, an arc bridge): its centre moves, its angles turn (a mirror swaps the ends so a1 > a0 still holds) */
+    const arcOf = A => {
+        const cc = pt(+A.x || 0, +A.z || 0); A.x = cc[0]; A.z = cc[1];
+        let a0 = +A.a0 || 0, a1 = +A.a1 || 0;
+        if (mx || mz) { const b0 = mx ? -a1 : 180 - a1, b1 = mx ? -a0 : 180 - a0; a0 = b0; a1 = b1; }
+        A.a0 = _hqR4(a0 + yaw); A.a1 = _hqR4(a1 + yaw);
+    };
+    if (r.k === 'spiral') { r.x = +row.x || 0; r.z = +row.z || 0; arcOf(r); }
+    if (r.arc && typeof r.arc === 'object') arcOf(r.arc);
+    ['face', 'rot'].forEach(k => { if (typeof r[k] === 'number' || (k === 'face' && (r.k === 'climb' || r.key && !r.k))) r[k] = ang(r[k]); });
+    /* a mirror swaps a wall's two ends so its RIGHT face (keyIn) stays the inside; the aisles along it run the other way */
+    if ((mx || mz) && r.k === 'wall' && typeof r.x0 === 'number') {
+        const L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
+        [r.x0, r.z0, r.x1, r.z1] = [r.x1, r.z1, r.x0, r.z0];
+        if (Array.isArray(r.gaps)) r.gaps = r.gaps.map(g => [_hqR4(L - g[1]), _hqR4(L - g[0])]);
+        if (Array.isArray(r.rail)) r.rail = [r.rail[1], r.rail[0]];
+        if (Array.isArray(r.slopeTop)) r.slopeTop = [r.slopeTop[1], r.slopeTop[0]];
+    }
+    if ((mx || mz) && r.k === 'opening' && typeof r.at === 'number') r._mirrored = !r._mirrored;   // measured from the other end once its wall swapped
+    /* a placement inside a placement: its turn and its mirror compose with this one's (M_x R(y) = R(−y) M_x; M_z = R(180) M_x) */
+    if (r.k === 'prefab' || r.k === 'kit') {
+        r.yaw = ang(r.yaw);
+        if (mx || mz) { const m = r.mirror; if (!m) r.mirror = 'x'; else { delete r.mirror; if (m === 'z') r.yaw = _hqR4((r.yaw + 180) % 360); } }
+    }
+    if (dy) {
+        ['y', 'h0', 'h1', 'y0', 'y1'].forEach(k => { if (typeof r[k] === 'number') r[k] = _hqR4(r[k] + dy); });
+        if (r.k === 'plateau' && typeof r.h === 'number') r.h = _hqR4(r.h + dy);
+        if (Array.isArray(r.rail)) r.rail = r.rail.map(v => _hqR4(v + dy));
+        if (Array.isArray(r.slopeTop)) r.slopeTop = r.slopeTop.map(v => _hqR4(v + dy));
+    }
+    return r;
+}
+/* the rows a kit row's builder makes, in the builder's own frame (null when the name is not on the allow-list) */
+function hqKitRows(fn, args) {
+    const F = HQ_KIT_FORMS[fn]; if (!F) return null;
+    const f = (typeof globalThis !== 'undefined' && typeof globalThis[fn] === 'function') ? globalThis[fn] : ({ hqRoundBlock, hqCastleTower, hqCastleCrown, hqCurtainWall, hqRingWalls, hqRingBridges, hqHelixRamp, hqStandBowl, hqGridironMarks })[fn];
+    if (typeof f !== 'function') return null;
+    const a = Object.assign({}, F.args, args || {}); delete a.x; delete a.z;
+    try { const out = f(a); return Array.isArray(out) ? out : []; } catch (e) { console.warn('[shapes] the kit failed', fn, e); return []; }
+}
+/* THE OPENINGS: a wall row cut by its openings → its pieces (the ids `<wall>#1` …, all carrying the whole wall's `span`, so their
+   tops read the same ground as the wall's did) */
+function hqOpeningPieces(w, ops) {
+    const R = HQ_SHAPE_RULES, L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (!(L > 0.1)) return [w];
+    const ux = (w.x1 - w.x0) / L, uz = (w.z1 - w.z0) / L, t = w.t || 0.35, span = w.span || [w.x0, w.z0, w.x1, w.z1];
+    const at = s => [_hqR4(w.x0 + ux * s), _hqR4(w.z0 + uz * s)];
+    const gaps = ops.map(o => { const ow = Math.max(0.3, +o.w || R.doorW), m = (o._mirrored ? L - (+o.at || 0) : (+o.at || 0)); return { a: Math.max(0, m - ow / 2), b: Math.min(L, m + ow / 2), o }; })
+        .filter(g => g.b - g.a > 0.1).sort((p, q) => p.a - q.a);
+    const out = []; let n = 0;
+    const base = Object.assign({}, w); delete base.id; delete base.gaps; delete base.from;
+    const piece = (s0, s1, extra) => {
+        if (s1 - s0 < R.minPiece) return;
+        const p0 = at(s0), p1 = at(s1), pc = Object.assign({}, base, { x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], span, id: (w.id || 'wall') + '#' + (++n) }, extra || {});
+        if (w.from) pc.from = w.from;
+        out.push(pc);
+    };
+    let s = 0;
+    gaps.forEach(g => {
+        if (g.a < s) g.a = s;
+        /* a solid run: its drawn box runs t/2 past each end, so an end at a gap is pulled back by t/2 (the box stops on the gap's edge) */
+        piece(s === 0 ? s : s + t / 2, g.a - t / 2);
+        const o = g.o, oh = Math.max(0.5, +o.h || R.doorH), sill = Math.max(0, +o.sill || 0);
+        const mid0 = g.a + t / 2, mid1 = g.b - t / 2, over = { rail: false };
+        if (mid1 - mid0 >= R.minPiece) {
+            if (sill > 0.05) piece(mid0, mid1, Object.assign({ h: sill }, over));
+            piece(mid0, mid1, Object.assign({ lift: sill + oh }, over));
+            if (o.glaze) piece(mid0, mid1, { lift: sill, h: sill + oh, glass: true, t: R.glassT, key: null, keyIn: null, rail: false });
+        }
+        s = g.b;
+    });
+    piece(s === 0 ? 0 : s + t / 2, L);
+    return out.filter(p => !(p.lift > 0) || (typeof p.y === 'number' ? p.y : p.h) - p.lift > 0.05);
+}
+/* a texbuilding row → what the compiler walks (four ghost walls on its faces, their tops the parapet's; a plateau for the roof,
+   set in from the faces so its blended edge never shows past the drawn building) */
+function hqTexBuildingRows(f) {
+    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), H = st * R.texStorey, y0 = +f.y || 0;
+    const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), t = R.ghostT;
+    const P = (lx, lz) => [_hqR4(f.x + lx * c - lz * s), _hqR4(f.z + lx * s + lz * c)];
+    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = y0 + H + R.texParapet;
+    const C = [P(-hw, -hd), P(hw, -hd), P(hw, hd), P(-hw, hd)], out = [];
+    for (let i = 0; i < 4; i++) { const a = C[i], b = C[(i + 1) % 4]; out.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true }); }
+    if (w > 1.6 && d > 1.6) out.push({ k: 'plateau', x: f.x, z: f.z, w: w - 1.2, d: d - 1.2, rot: f.rot || 0, h: y0 + H, edge: 0.05, texb: f.id || true });
+    return out;
+}
+/* THE EXPANSION: a room's features (and a prefab's props, a kit's paint) as the compiler reads them. A room with none of the four
+   kinds gets its own arrays back untouched. → { features, props, marks, texb } */
+function hqRoomExpand(room, prefabs) {
+    const T = (room && room.terrain) || {}, F = Array.isArray(T.features) ? T.features : [];
+    const PF = prefabs || HQ_PREFABS;
+    const busy = F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding'));
+    if (!busy) return { features: F, props: [], marks: [], texb: [] };
+    const props = [], marks = [], texb = [];
+    const walk = (rows, depth, P, from, path) => {
+        const out = [];
+        (rows || []).forEach(f0 => {
+            if (!f0 || typeof f0.k !== 'string') return;
+            const f = P ? hqRowPlace(f0, P) : f0;
+            const tag = r => { if (from) { r.from = from; if (r.id != null) r.id = from + '/' + r.id; if (r.k === 'opening' && r.wall) r.wall = from + '/' + r.wall; } return r; };
+            if (f.k === 'prefab' || f.k === 'kit') {
+                if (depth >= HQ_SHAPE_RULES.depth) { console.warn('[shapes] too deep', f.pf || f.fn); return; }
+                const Q = { x: +f.x || 0, z: +f.z || 0, y: +f.y || 0, yaw: +f.yaw || 0, mirror: f.mirror || null };
+                const via = from ? from + '/' + (f0.id || '?') : (f0.id || f.k);
+                if (f.k === 'kit') {
+                    const K = HQ_KIT_FORMS[f.fn], rows = hqKitRows(f.fn, f.args);
+                    if (!rows) return;
+                    if (K && K.marks) { rows.forEach(m => { const pm = hqRowPlace(m, Q); pm.from = via; marks.push(pm); }); return; }
+                    walk(rows.map((r, i) => Object.assign({}, r, { id: r.id || ('k' + i) })), depth + 1, Q, via, path).forEach(r => out.push(r));
+                    return;
+                }
+                const pf = PF && PF[f.pf];
+                if (!pf || (path && path.indexOf(f.pf) >= 0)) { if (pf) console.warn('[shapes] a prefab inside itself', f.pf); return; }
+                const inner = walk(((pf.terrain && pf.terrain.features) || []), depth + 1, Q, via, (path || []).concat([f.pf]));
+                inner.forEach(r => out.push(r));
+                (pf.props || []).forEach(p => { const pp = hqRowPlace(p, Q); pp.from = via; if (pp.id != null) pp.id = via + '/' + pp.id; props.push(pp); });
+                ((pf.terrain && pf.terrain.marks) || []).forEach(m => { const pm = hqRowPlace(m, Q); pm.from = via; marks.push(pm); });
+                return;
+            }
+            out.push(tag(f === f0 ? Object.assign({}, f) : f));
+        });
+        return out;
+    };
+    let rows = walk(F, 0, null, null, []);
+    /* the texbuildings: drawn by the renderer from info.texb, walked as their rows */
+    const tb = [];
+    rows.forEach(f => { if (f.k === 'texbuilding') { texb.push(f); hqTexBuildingRows(f).forEach(r => tb.push(r)); } });
+    rows = rows.filter(f => f.k !== 'texbuilding').concat(tb);
+    /* the openings last: every wall they name is cut into its pieces where it stands in the list */
+    const ops = {};
+    rows.forEach(f => { if (f.k === 'opening' && f.wall) (ops[f.wall] || (ops[f.wall] = [])).push(f); });
+    const cut = [];
+    rows.forEach(f => {
+        if (f.k === 'opening') return;
+        if (f.k === 'wall' && f.id != null && ops[f.id]) { hqOpeningPieces(f, ops[f.id]).forEach(p => cut.push(p)); return; }
+        cut.push(f);
+    });
+    return { features: cut, props, marks, texb };
+}
+/* one row's expansion alone (the editor's pick proxies for a prefab / kit placement): its rows in room metres */
+function hqRowExpand(row, prefabs) { return hqRoomExpand({ terrain: { features: [row] } }, prefabs).features; }
+/* ROOM AS PREFAB (§5.3): a room's rows and props as a prefab doc laid out round (cx, cz) — the doors, the people and the markers stay */
+function hqPrefabFromRows(id, label, features, props, cx, cz) {
+    const P = { x: -(+cx || 0), z: -(+cz || 0) };
+    return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
+}
+if (typeof window !== 'undefined') Object.assign(window, { HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -45920,6 +46115,7 @@ function hqTerrainWorkerServe(scope) {
         const t0 = Date.now();
         let out = null, err = null;
         try {
+            if (m.prefabs && typeof m.prefabs === 'object') Object.keys(m.prefabs).forEach(k => { HQ_PREFABS[k] = m.prefabs[k]; });   // THE SHAPES (E1): the prefabs the room places
             const room = m.room || DOOR_HQ.rooms[m.roomId];
             if (!room || !room.terrain) throw new Error('no terrain room ' + m.roomId);
             out = hqTerrainPlain(hqTerrainCompile(room, m.roomId));
@@ -46037,7 +46233,8 @@ function hqTerrainCompile(room, roomId) {
     const nx = Math.ceil(2 * halfW / res) + 1, nz = Math.ceil(2 * halfD / res) + 1;
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(T.seedOf || roomId || room.label || 'terrain')) : 7;   // THE EDITOR (E0): `seedOf` = a copy's source id (the same noise)
-    const F = slopeB ? _hqTSlopeFeatures(T.features || [], slopeB) : (T.features || []);
+    const X = hqRoomExpand(room);   // THE SHAPES (E1): openings, prefabs, kits and textured buildings as the compiler's own rows
+    const F = slopeB ? _hqTSlopeFeatures(X.features, slopeB) : X.features;
     const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [];
     F.forEach(f => {
         switch (f.k) {
@@ -46263,9 +46460,14 @@ function hqTerrainCompile(room, roomId) {
     /* the walls: standing on the ground, their top h above the highest ground under them (or an absolute `y`) */
     walls.forEach(w => {
         let gmax = -Infinity, gmin = Infinity;
-        for (let k = 0; k <= 8; k++) { const g = hAt(w.x0 + (w.x1 - w.x0) * k / 8, w.z0 + (w.z1 - w.z0) * k / 8); if (g > gmax) gmax = g; if (g < gmin) gmin = g; }
+        /* THE SHAPES (E1): a wall cut by an opening reads the whole wall's ground (`span`), so its pieces keep one top */
+        const sp = (Array.isArray(w.span) && w.span.length === 4) ? w.span : [w.x0, w.z0, w.x1, w.z1];
+        for (let k = 0; k <= 8; k++) { const g = hAt(sp[0] + (sp[2] - sp[0]) * k / 8, sp[1] + (sp[3] - sp[1]) * k / 8); if (g > gmax) gmax = g; if (g < gmin) gmin = g; }
         const top = (typeof w.y === 'number') ? w.y : gmax + w.h;
         const row = { x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, t: w.t || 0.35, base: gmin - 0.3, top, h: w.h, key: w.key || null };
+        /* a HUNG wall (a lintel, a pane): its bottom `lift` m over the ground — the walker passes under it (hqTerrainWallAt's band) */
+        if (w.lift > 0) { row.base = gmax + w.lift; row.hung = true; if (row.top - row.base < 0.05) return; }
+        if (w.keyIn) row.keyIn = w.keyIn; if (w.glass) row.glass = true; if (w.id != null) row.id = w.id; if (w.from) row.from = w.from;
         /* THE STANDS (2026-09-26): a TIER wall is a row of seating (its top a tread the walker steps up, 0.42 a row); `front` = the unit
            normal toward the pitch (the seats face it), `seat` = the seats' colour (hex) — three-renderer.js draws them; `rail: false` =
            no grind rail on its top (a tread is not a ledge), `rail: 'front'` = the grind on its FRONT edge (a ledge's lip) */
@@ -46330,6 +46532,11 @@ function hqTerrainCompile(room, roomId) {
             else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined });
         }
     });
+    /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
+       joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
+    X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
+    info.marksX = X.marks;
+    info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : hAt(f.x, f.z) }));
     return info;
 }
 /* ── THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19) ─────────────────────────────────────────────────────────────
@@ -46514,12 +46721,16 @@ function _hqTWallIndex(info) {
     Object.defineProperty(info, '_wallIdx', { value: ix, enumerable: false, configurable: true, writable: true });
     return ix;
 }
-function hqTerrainWallAt(info, x, z, pad) {
+/* THE SHAPES (E1): a HUNG wall (a lintel, a pane — `hung`, its `base` over the ground) counts only for a body whose vertical band
+   [lo, hi] meets it; a query with no band (a prop's spot, the field's raster, the solver's walkable test) never meets one, so a
+   doorway is open to everything that walks through it */
+function hqTerrainWallAt(info, x, z, pad, lo, hi) {
     if (!info.walls.length && !(info.gen && info.gen.wallSlack > 0 && info.planWalls && info.planWalls.length)) return null;
     const ix = _hqTWallIndex(info), b = ix.map.get(Math.floor(x / ix.cell) + ':' + Math.floor(z / ix.cell));
     if (!b) return null;
     let band = null;   // a PLAN wall counts only inside the slack band (the mask used to refuse it there) — never on floor the mask has always allowed, so no room loses a route it had
     for (const w of b) {
+        if (w.hung && (lo == null || hi == null || hi <= w.base || lo >= w.top)) continue;
         if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d > w.t / 2 + (pad || 0)) continue;
         if (w.plan) { if (band === null) band = hqTerrainMaskAt(info, x, z) < (info.gen.solidPad || 0); if (!band) continue; }
         return w;
@@ -46554,7 +46765,7 @@ function hqTerrainFeet(info, x, z, curY) {
     /* THE DEEP (2026-09-18): a DROWNED room — the swimmer reaches every cell (the ground, a wall's top); no slope, no climb */
     if (info.sea && info.sea.under) { const wu = hqTerrainWallAt(info, x, z, R.bodyR); return wu ? wu.top : g; }
     let y = g;
-    const w = hqTerrainWallAt(info, x, z, R.bodyR);
+    const w = hqTerrainWallAt(info, x, z, R.bodyR, g, Math.max(g, (curY != null) ? curY : g) + R.headroom);
     if (w) { if (w.plan) return null; if (curY == null || curY >= w.top - R.climb) y = w.top; else return null; }   // rev 8: a TRACED plan wall reaches the ceiling — never a floor, not even to a free query (the door gun's ray, a find's spot)
     else {
         const f = hqTerrainFluidAt(info, x, z);
@@ -46578,7 +46789,7 @@ function hqTerrainAir(info, x, z, y) {
     const g = hqTerrainHeight(info, x, z);
     if (y < g - 0.05) return false;
     if (hqTerrainSolidAt(info, x, z, 0) && y < hqTerrainSolidTop(info, x, z) - 0.05) return false;   // inside a block's mass
-    const w = hqTerrainWallAt(info, x, z, info.rules.bodyR); if (w && y < w.top - 0.05) return false;
+    const w = hqTerrainWallAt(info, x, z, info.rules.bodyR, y, y + info.rules.headroom); if (w && y < w.top - 0.05) return false;
     if (info.bridges && info.bridges.length && hqTerrainInBridgeSlab(info, x, z, y, 0.05)) return false;   // THE BRIDGE LAYER: the slab is solid (the feet never inside it; the head clears it by the headroom rule at the feet)
     const f = hqTerrainFluidAt(info, x, z);
     if (f && !f.sea && g < f.y - 0.05 && (f.key !== 'water' || f.y - g > info.rules.wadeMax) && y < f.y + 0.4) return false;   // THE DEEP: the sea is entered (the swimmer's own rule, three-renderer.js _hqSwimFree)
@@ -46589,7 +46800,7 @@ function hqTerrainCam(info, x, z, y) {
     const g = hqTerrainHeight(info, x, z);
     if (y < g + 0.24) return true;
     if (hqTerrainSolidAt(info, x, z, -0.15) && y < hqTerrainSolidTop(info, x, z) + 0.2) return true;   // the boom never enters a block
-    const w = hqTerrainWallAt(info, x, z, 0.15); if (w && y < w.top + 0.2) return true;
+    const w = hqTerrainWallAt(info, x, z, 0.15, y - 0.2, y + 0.2); if (w && y < w.top + 0.2) return true;
     if (info.bridges && info.bridges.length && hqTerrainInBridgeSlab(info, x, z, y, 0.22)) return true;   // THE BRIDGE LAYER: the boom never enters a slab
     const f = hqTerrainFluidAt(info, x, z); if (f && !f.sea && g < f.y && y < f.y + 0.22) return true;   // THE DEEP: the boom follows a diver under the sea
     return false;

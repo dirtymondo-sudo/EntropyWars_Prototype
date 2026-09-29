@@ -34,3 +34,22 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
   his rooms until THE SWAP (E8, `live: true`).
 - **Tests / probe:** world-doc.test.js (fast); `node playtest_editor.js` (needs `npm start` and
   `npm i --no-save three@0.128.0 playwright`) drives add / pick / gizmo drag / undo / play / library / copy / export.
+
+## E1 — shapes and buildings (2026-09-29, token 20260929-editor-02-cors)
+- **THE POINTER (mondo's report):** three-renderer.js `_hqTryLock` returns while `_hqEditing`. The editor locks only while
+  the RIGHT mouse is held over the canvas (`lookLock`), drops it on button up / blur, and `onLockChange` drops any lock taken
+  without the right button. Panel fields, menus and modals never lock (the probe counts `requestPointerLock` calls: 0).
+- **Draw tools** (editor.js `DRAWS`, `drawDown/Up/Show`, `ED.opts` saved in localStorage `ew_editor_opts`): each finished piece
+  is ONE undo step (`drawRows`). Preview boxes live in `ED._pv`. `drawPt` snaps to wall ends (0.6 m) else the grid (≥ 0.25 m).
+  V = SELECT; ENTER / ESC end a wall run, a second ESC leaves the tool.
+- **The rows E1 adds** are expanded before the compiler (data.js `hqRoomExpand`, called at the top of `hqTerrainCompile`):
+  `opening` → `hqOpeningPieces`; `prefab` / `kit` → `hqRowPlace` (mirror, yaw clockwise, move, lift by y; a mirrored wall
+  swaps its ends so `keyIn` stays inside); `texbuilding` → `hqTexBuildingRows` (walking) + `info.texb` (the renderer's
+  `_hqBuildTexRows` → `_hqTexBuilding`, seeded). Prefab props join `info.scatter`; kit paint joins `info.marksX`.
+- **Hung walls:** a row with `lift` is `hung`; `hqTerrainWallAt(info, x, z, pad, lo, hi)` counts it only when the band
+  overlaps [base, top]; callers without a band ignore it (feet, air, cam pass their bands).
+- **Prefab mode:** `ED.mode = 'prefab'`, `ED.pfId`; the prefab is laid out in the wrapper room `__ed_prefab` whose arrays ARE the
+  prefab's, so every tool works unchanged (`basePath()` = `['prefabs', id]`). `stepTouched` re-syncs every room placing a prefab.
+  The survey worker gets `HQ_PREFABS` with each room (map.js).
+- **Texture picker** (`texPick`): TERRAIN_SPRITES, URBAN_TEX_FAMILIES (as `urban:<Name>`), DOOR_HQ.textures. Only existing sheets.
+- **Probe:** the E1 sweep drives the palette with real mouse drags via `EWEditor.w2s(x, y, z)` and `EWEditor.cam({...})`.

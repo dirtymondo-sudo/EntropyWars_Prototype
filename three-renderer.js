@@ -41877,7 +41877,7 @@ const ThreeRenderer = (function () {
        { k: 'line', x0, z0, x1, z1, w, color } · { k: 'ring', x, z, r, w, a0?, a1?, color } · { k: 'text', x, z, text, size, rot?, color }
        — `y` = the surface (else the ground under the mark), `rot` degrees clockwise. Drawn only: 1.5 cm proud, no depth write fight. */
     function _hqBuildMarks(room, info, G, U) {
-        var marks = (room.terrain && room.terrain.marks) || []; if (!marks.length) return 0;
+        var marks = ((room.terrain && room.terrain.marks) || []).concat(info.marksX || []); if (!marks.length) return 0;   // + a kit's / a prefab's paint (E1)
         var matCache = {};
         var matOf = function (col, a) { var k = col + '|' + (a || 1); if (!matCache[k]) { matCache[k] = new THREE.MeshLambertMaterial({ color: col, transparent: (a || 1) < 1, opacity: a || 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); } return matCache[k]; };
         var yAt = function (m, x, z) { return (typeof m.y === 'number') ? m.y + 0.025 : hqTerrainHeight(info, x, z); };
@@ -42196,13 +42196,20 @@ const ThreeRenderer = (function () {
             if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); keyedMats[key] = km; }
             return keyedMats[key];
         };
+        var glassMat = null;
         var drawWall = function (w) {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
-            var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), w.key ? keyedMat(w.key) : wallMat);
+            /* THE SHAPES (EDITOR_PLAN E1): `keyIn` = the sheet on the RIGHT face walking x0 → x1 (the box's −x face: the inside of a
+               room drawn clockwise); `glass` = a window's pane, drawn see-through (it is still a wall to the walker) */
+            var wm = w.key ? keyedMat(w.key) : wallMat;
+            if (w.glass) { if (!glassMat) { glassMat = new THREE.MeshPhongMaterial({ color: 0xbfd8e6, transparent: true, opacity: 0.28, shininess: 90, specular: 0xffffff, depthWrite: false }); } wm = glassMat; }
+            else if (w.keyIn && w.keyIn !== w.key) wm = [wm, keyedMat(w.keyIn), wm, wm, wm, wm];
+            var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), wm);
+            if (w.glass) { m.renderOrder = 3; m.castShadow = false; }
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat */
             _hzBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, w.yard ? TM * ((typeof HZ_TEX_DENSITY !== 'undefined') ? HZ_TEX_DENSITY : 0.5) : TM);
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
-            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; m.renderOrder = 1; m.castShadow = !w.plan; G.add(m);
+            m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
         };
         /* THE STANDS (2026-09-26): the tier rows (data.js hqStandBowl) are merged into one mesh per sheet, their seats instanced */
@@ -42212,6 +42219,8 @@ const ThreeRenderer = (function () {
         if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k) { return k ? keyedMat(k) : wallMat; }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
         try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
+        /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
+        if (info.texb && info.texb.length) { try { _hqBuildTexRows(info, G, U); } catch (e) { console.warn('[HQ] the textured buildings failed', e); } }
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -42517,6 +42526,21 @@ const ThreeRenderer = (function () {
             batch.add(rk, null, 'wall', [W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[0] - nx * t, H + ph2, e[1] - nz * t), W(e[0] - nx * t, H, e[1] - nz * t), W(e[2] - nx * t, H, e[3] - nz * t)], [[0, 0], [L / C, 0], [L / C, ph2 / C], [0, ph2 / C]]);
         });
         return { H: H + ph2, plan: P };
+    }
+    /* THE SHAPES (EDITOR_PLAN E1): `texbuilding` rows drawn by the city's own lot builder (_hqTexBuilding: the urban pack's cells,
+       roof and parapet) — the row's seed picks the style's sheets, so a building looks the same every time it is built; its front
+       (the lot's +z) turned by the row's `rot` (degrees clockwise → the lot frame's radians, anticlockwise) */
+    function _hqBuildTexRows(info, G, U) {
+        if (typeof URBAN_TEXTURES === 'undefined' || typeof urbanTexPick !== 'function') return 0;
+        var batch = _hqTexBatch(G, U, false), n = 0;
+        info.texb.forEach(function (f) {
+            var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
+            var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0 };
+            _hqTexBuilding(lot, info, batch, rng, {}, U); n++;
+        });
+        batch.flush();
+        return n;
     }
     function _hqBuildCityLots(room, info, G, TM, rng, TK) {
         var U = _hqUnits(), gen = info.gen || {}, lots = info.lots || [], fronts = info.fronts || [];
@@ -51328,6 +51352,11 @@ const ThreeRenderer = (function () {
     function _hqTryLock() {
         try {
             if (document.pointerLockElement === canvas) return;
+            /* THE EDITOR (E1, 2026-09-29 — mondo: "clicking in the entry fields takes control of my pointer"): the editor's viewport
+               never asks for the lock — every edit re-enters the room (map.js _hqEditEnter → _hqClosePanel → setPaused(false)), and
+               that request rode the click / the ENTER on a field. The editor takes the lock itself, only while the RIGHT button is
+               held over the view (editor.js). */
+            if (_hq && _hqEditing(_hq)) return;
             var p = canvas.requestPointerLock();
             if (p && typeof p.catch === 'function') p.catch(function () {});
         } catch (e) {}
@@ -54894,7 +54923,7 @@ const ThreeRenderer = (function () {
         var sea = _hqSea(), gLim = y;
         if (sea && !sea.under && y >= sea.y - _hqSeaRules().surfaceDraft - 0.01) gLim = sea.y - (_hqSeaRules().exitDepth - 0.25) + 0.2;   // a quarter past the exit line, so the hand-over is always crossed
         if (gLim < hqTerrainHeight(ti, x, z) + 0.2) return false;
-        var w = hqTerrainWallAt(ti, x, z, HQ_BODY_R); if (w && y < w.top - 0.05) return false;
+        var w = hqTerrainWallAt(ti, x, z, HQ_BODY_R, y, y + 1.8); if (w && y < w.top - 0.05) return false;   // (a hung lintel only meets a body it overlaps — E1)
         if (typeof hqTerrainSolidAt === 'function' && hqTerrainSolidAt(ti, x, z, 0) && y < hqTerrainSolidTop(ti, x, z) - 0.05) return false;
         return _hqAirClearOfBlockers(x, z, y);
     }

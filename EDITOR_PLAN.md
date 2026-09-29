@@ -685,3 +685,23 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   ESC back). An edit re-enters the room (debounced 220 ms) instead of rebuilding one piece; a prop moved flat on the ground
   moves live with no rebuild. deploy.js `--world <dir>` uploads the export and writes `_EW_WORLD_ID`. Not in E0 (per §8):
   the real shape tools (E1), the palette panel (E2), stroke tools and audits (E3), the land (E4) onward.
+- 2026-09-29: **THE POINTER FIX + E1 BUILT** (zip editor/ENTROPY_WARS_EDITOR_E1.zip, token 20260929-editor-02-cors, delta on E0).
+  mondo's report: a click in an entry field took the mouse (ESC to get it back). Cause: the room's own click handler
+  (`_hqTryLock`) still asked for pointer lock while editing; it now stands down under `_hqEditing`, and the editor takes the
+  lock itself ONLY while the right mouse is held over the view (released on button up, blur, and any stray lock). A browser
+  sweep of every E0 flow followed (menus, ADD, inspector, gizmo, rooms, library, PLAY HERE / ESC, undo, export): the library
+  now lists every built-in room (the rotunda halls were hidden), ENTER / TAB keep the inspector's field, texture fields have
+  a picker, PLAY HERE comes back into a prefab. E1 as shipped:
+  BUILD palette (left): WALL (click the corners, ends snap to wall ends within 0.6 m, SHIFT = 45°), ROOM (drag: four walls
+  drawn clockwise, `keyIn` = the inside sheet on each wall's right-hand face), FLOOR (a `bridge {plain}` slab at HEIGHT),
+  STAIRS / RAMP (drag foot → head up to HEIGHT; warns under L ≥ 2.2 h), BUILDING (a `texbuilding`), DOOR GAP / WINDOW (click a
+  wall: an `opening` row). Openings compile (data.js `hqOpeningPieces`) into solid pieces, a sill, a HUNG lintel (`lift`:
+  blocks only its own height band — `hqTerrainWallAt` gained `lo, hi`) and a glass pane; every piece keeps the wall's `span`.
+  PREFABS (differs from §5.3's wording): a prefab is `{ id: 'w_pfN', label: 'Prefab N', terrain: { features, marks }, props }`
+  about its own 0, 0, exported to `Assets/World/prefabs/<id>.json` + `world.json` `prefabs`; a placement is
+  `{ k: 'prefab', pf, x, z, y?, yaw, mirror? }` (key `pf`), nested to depth 4, expanded by `hqRoomExpand` (ids
+  `<placement>/<row>`, `from`). EDIT → SAVE SELECTION AS PREFAB, ADD → PREFAB, the PREFABS list edits one (every placement
+  follows), BAKE TO ROWS, ROOM → THIS ROOM AS A PREFAB. KITS: `{ k: 'kit', fn, args }`, `fn` on the `HQ_KIT_FORMS` allow-list
+  only (9 builders incl. the stand bowl and the football paint). `texbuilding`: `{ x, z, w, d, rot, storeys, style?, seed? }`,
+  its front is local +z (SOUTH at rot 0); drawn by `_hqTexBuilding`, walked as four ghost faces + a roof plateau. ARRAY and
+  MIRROR (EDIT menu / inspector). Walls: `keyIn`, `glass`. Tests: editor-shapes.test.js.

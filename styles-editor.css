@@ -1881,3 +1881,19 @@
         .ed-playtag { display: none; position: absolute; top: 8px; right: 10px; padding: 4px 10px; background: rgba(10,14,20,0.8); border: 1px solid rgba(87,242,135,0.5);
                       border-radius: 3px; color: #b8ffd0; pointer-events: none; }
         body.ed-playing .ed-playtag { display: block; }
+        /* E1: the BUILD palette, the texture picker, the prefab rows */
+        .ed-palb { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3px; margin-bottom: 4px; }
+        .ed-palb .ed-btn { padding: 4px 2px; font-size: 10.5px; letter-spacing: .5px; }
+        .ed-pal .ed-f > span { width: 96px; }
+        .ed-texb { flex: none; width: 26px; height: 22px; padding: 0 !important; background-size: cover; background-position: center; text-shadow: 0 0 3px #000; }
+        .ed-rowx { display: flex; align-items: center; gap: 2px; }
+        .ed-rowx .ed-row { flex: 1; min-width: 0; }
+        .ed-x { flex: none; padding: 1px 6px !important; }
+        .ed-swatches { overflow-y: auto; flex: 1; min-height: 160px; display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start; }
+        .ed-swfam { width: 100%; margin: 6px 0 0; }
+        .ed-sw { width: 86px; padding: 3px; background: rgba(255,255,255,0.03); border: 1px solid rgba(140,160,200,0.18); border-radius: 3px; cursor: pointer; color: #cfd8e2; font: inherit; font-size: 10px; }
+        .ed-sw img { display: block; width: 78px; height: 58px; object-fit: cover; background: #222; margin-bottom: 2px; }
+        .ed-sw span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ed-sw:hover { border-color: rgba(111,211,255,0.6); }
+        .ed-sw.on { border-color: #ffd84a; }
+        .ed-card:has(.ed-swatches) { width: min(880px, 94vw); }

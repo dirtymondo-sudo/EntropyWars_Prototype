@@ -310,7 +310,8 @@
                 if (!_hqSurveyJobs[id]) _hqSurveyJobs[id] = _hqSurveyJob();
                 _hqSurveyJobs[id].t0 = performance.now();
                 _hqSurveyBusy = id;
-                try { w.postMessage({ id: ++_hqSurveySeq, roomId: id, room }); } catch (e) { _hqSurveyKill(); return; }
+                const prefabs = (typeof HQ_PREFABS !== 'undefined' && Object.keys(HQ_PREFABS).length) ? HQ_PREFABS : null;   // THE SHAPES (E1): the worker is handed the prefabs a room places
+                try { w.postMessage({ id: ++_hqSurveySeq, roomId: id, room, prefabs }); } catch (e) { _hqSurveyKill(); return; }
                 return;
             }
         }
