@@ -41425,7 +41425,7 @@ const HQ_LAND_RULES = {
     /* THE TREES AND THE GRASS (G4, §5.5; mondo 2026-09-28: "use only the trees, grass, plants and props the game already has").
        Every model is one the game already draws: the board's foliage OBJs (Assets/foilage/OBJ Tree_1 / 3 / 6 / 9, DeadTree_2 / 5,
        wearing the bucket's wood.png + leaves.png), the woods batch's Meshy pine, dead snag and fern (Assets/misc), the D.O.O.R.
-       kit's two asteroid rocks, and the battle board's grass tuft (grass_2.png blades). `src` = 'foliage:<OBJ name>' |
+       kit's two asteroid rocks (no grass blades since 2026-09-29: the ground's sheet is the grass). `src` = 'foliage:<OBJ name>' |
        'misc:<_MISC_GLB key>' | 'door:<catalogue key>'. Placement is a pure function of the baked tile (hqLandFlora): a jittered
        grid, a hash-local-maximum spacing test (no two trunks nearer than minSp), and the slope / water / road / pad windows.
        `r` = a trunk's blocker radius (m, the most it may be: the renderer measures each model's trunk and writes `rM`, a share of
@@ -41465,15 +41465,6 @@ const HQ_LAND_RULES = {
         rocks: { cell: 10, minSp: 7, jit: 0.85, span: [0.9, 2.6], hK: 0.6, rK: 0.36, sink: 0.2, slope: 0.95,
                  p: { rock: 0.3, redrock: 0.28, clay: 0.08, desert: 0.04, tundra: 0.08, snow: 0.05, forest: 0.07, meadow: 0.04, grass: 0.025, farm: 0.01 },
                  kinds: [{ id: 'boulder', src: 'door:asteroid_a' }, { id: 'crag', src: 'door:asteroid_b' }] },
-        /* THE GRASS BLADES (mondo 2026-09-28: "I do want you to try grass blades"): a field of single blades drawn on the GPU in
-           `patch` m squares round the walker — `blades[0]` a patch within `near` m, `blades[1]` past it. Each blade stands on the land
-           (a `win` m window of the ground's height, density and material every `step` m that follows the walker: once they are
-           `recentre` m off its middle it gains the strips ahead, `texels` a call). `dens` = [distance m, the share of the near patch's blades kept]; they shrink away over
-           `fade`; `mats` = the density per ground material (none on a road, rock, sand or snow), none steeper than `slope`. The
-           blades wear the ground's own colour under them (the material's tint) streaked by grass_2, dark at the root. */
-        grass: { win: 160, step: 1, texels: 1600, recentre: 12, patch: 8, blades: [2304, 384], near: 22, reach: 58, fade: [42, 58],
-                 dens: [[8, 1], [22, 0.17], [58, 0.05]], h: [0.24, 0.62], w: 0.03, lean: 0.3, push: 1.1, slope: 0.8, low: 0.5,
-                 mats: { grass: 0.95, meadow: 1, farm: 0.7, tundra: 0.4, forest: 0.35, clay: 0.06 } },
         /* the drawing: whole models within near.r m (nearest first, while the triangles fit near.tris — near.low with EW_PERF_LOW),
            crossed cards of each model past them to the far pass's cut, and the far pass's cards from the 8 m world past that */
         near: { r: 90, tris: 900000, low: 360000, every: 4, underR: 48, rockR: 180 },
@@ -41918,16 +41909,16 @@ function _hqLandMoorRing(r) {
      THE KINDS     the stand's mix (flora.mixes): a named forest's own, the desert pines, the north's firs, a zone's (the ritual
                    woods), else the broadleaf mix. */
 let _HQ_FLORA_TAB = null;
-/* the per-material table (the bake's material order): forest / lone / clear (no tree near it) / rock chance / grass density */
+/* the per-material table (the bake's material order): forest / lone / clear (no tree near it) / rock chance / fern floor */
 function _hqFloraTab() {
     const St = HQ_LAND_STORE, names = (St.index && St.index.materials) || Object.keys(HQ_LAND_RULES.mats), key = names.join(',');
     if (_HQ_FLORA_TAB && _HQ_FLORA_TAB.key === key) return _HQ_FLORA_TAB;
     const F = HQ_LAND_RULES.flora, lone = { grass: 1, meadow: 1, farm: 0.6, tundra: 0.5, clay: 0.35 };
     const clear = { road: 1, trail: 1, lane: 1, paved: 1, urban: 1, river: 1, lake: 1, deep: 1, shallow: 1 };
-    const T = { key, n: names.length, forest: new Uint8Array(32), lone: new Float32Array(32), clear: new Uint8Array(32), rock: new Float32Array(32), grass: new Float32Array(32), under: new Uint8Array(32) };
+    const T = { key, n: names.length, forest: new Uint8Array(32), lone: new Float32Array(32), clear: new Uint8Array(32), rock: new Float32Array(32), under: new Uint8Array(32) };
     names.forEach((m, k) => {
         T.forest[k] = m === 'forest' ? 1 : 0; T.lone[k] = lone[m] || 0; T.clear[k] = clear[m] ? 1 : 0;
-        T.rock[k] = (F.rocks.p[m] || 0); T.grass[k] = (F.grass.mats[m] || 0); T.under[k] = (m === 'forest' || m === 'meadow' || m === 'grass') ? 1 : 0;
+        T.rock[k] = (F.rocks.p[m] || 0); T.under[k] = (m === 'forest' || m === 'meadow' || m === 'grass') ? 1 : 0;
     });
     return (_HQ_FLORA_TAB = T);
 }
@@ -42094,32 +42085,6 @@ function hqLandFloraHit(x, z, pad) {
     const L = hqLandFloraNear(x, z, 4 + (pad || 0));
     for (const b of L) if (Math.hypot(b.x - x, b.z - z) < b.rad + (pad || 0)) return b;
     return null;
-}
-/* THE GRASS in one `block` m square (its corner on the block lattice): the tufts a deterministic hash plants on the grass
-   materials → Float32Array [x, z, y, variant, scale, yaw, material] × n (tufts past a tile that has not landed are left out) */
-/* THE GRASS FIELD: the blades' ground on the world's G.step m lattice, texel (ix, iz) at x = ix × step, z = iz × step. Fills the
-   w × h block from (ix0, iz0) into F = { h: Float32Array (the drawn ground), d: Uint8Array (0 … 255 density), m: Uint8Array
-   (material) } of n × n, WRAPPED (texel (ix, iz) at ((iz mod n) × n + ix mod n)): a window that follows the walker computes only
-   the strips it gains. Pure: a texel reads the same whatever block it came in. Density 0 on a slope over G.slope, under fresh
-   water, below the sea's edge and on D.O.O.R. HQ's drum; false (nothing written) while a tile under the block has not landed. */
-function hqLandGrassField(F, n, ix0, iz0, w, h) {
-    const G = HQ_LAND_RULES.flora.grass, st = G.step, tab = _hqFloraTab(), seaY = HQ_LAND_RULES.sea.y + 0.25;
-    const xa = (ix0 - 1) * st, za = (iz0 - 1) * st, xb = (ix0 + w) * st, zb = (iz0 + h) * st;
-    if (!hqLandReadyAt(xa, za) || !hqLandReadyAt(xb, za) || !hqLandReadyAt(xa, zb) || !hqLandReadyAt(xb, zb)) return false;
-    const W = w + 2, g = hqLandGrid(xa, za, st, W, h + 2); if (!g) return false;
-    const sl = G.slope * 2 * st, md = (v) => ((v % n) + n) % n;
-    for (let b = 0; b < h; b++) {
-        const row = md(iz0 + b) * n, z = (iz0 + b) * st;
-        for (let a = 0; a < w; a++) {
-            const q = (b + 1) * W + a + 1, o = row + md(ix0 + a), y = g.h[q], m = g.mat[q], x = (ix0 + a) * st;
-            F.h[o] = y; F.m[o] = m;
-            let p = tab.grass[m];
-            if (p > 0 && (Math.hypot(g.h[q + 1] - g.h[q - 1], g.h[q + W] - g.h[q - W]) > sl || y < seaY || hqLandHQSolid(x, z, 0.5) || hqLandSiteAt(x, z, (HQ_LAND_RULES.sites && HQ_LAND_RULES.sites.keepOff) || 0))) p = 0;   // G6: never through a site's own ground
-            if (p > 0) { const wy = hqLandFresh(x, z); if (wy != null && wy > y - 0.05) p = 0; }
-            F.d[o] = Math.round(p * 255);
-        }
-    }
-    return true;
 }
 /* THE FAR FOREST: the 8 m world's forest cells as far cards (the far pass, past the tiles) → Float32Array [x, z, y, kind, h] × n.
    Built once per bake; the near trees own everything inside the far pass's cut. */

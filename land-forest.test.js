@@ -125,22 +125,6 @@ test('the stands: a named forest grows its own mix, the desert its pines, the no
     for (const [id, mix] of Object.entries(R('HQ_LAND_RULES.flora.mixes'))) for (const e of mix) assert.ok(kinds.includes(e[0]), `${id}: ${e[0]} is a kind`);
 });
 
-test('the grass grows on the grass materials only, the same every time', () => {
-    const W = w16(), T = forestTile(W), { R, put } = store(W);
-    for (const [a, b] of around(T.ti, T.tj)) put(a, b);
-    const r = R(`(() => { const St = HQ_LAND_STORE, G = HQ_LAND_RULES.flora.grass, t = St.grid[${T.tj} * St.per + ${T.ti}], n = 48, out = { n: 0, bad: 0, same: true };
-        const mk = () => ({ h: new Float32Array(n * n), d: new Uint8Array(n * n), m: new Uint8Array(n * n) });
-        const ix0 = Math.ceil(t.x0 / G.step) + 1, iz0 = Math.ceil(t.z0 / G.step) + 1, A = mk(), B = mk();
-        if (!hqLandGrassField(A, n, ix0, iz0, n, n) || !hqLandGrassField(B, n, ix0, iz0, n, n)) return null;
-        for (let o = 0; o < n * n; o++) { if (A.d[o] !== B.d[o] || A.h[o] !== B.h[o]) out.same = false;
-            if (A.d[o] > 0) { out.n++; if (!(G.mats[St.index.materials[A.m[o]]] > 0)) out.bad++; } }
-        return out; })()`);
-    assert.ok(r, 'the field fills once the tiles have landed');
-    assert.ok(r.same, 'deterministic');
-    assert.strictEqual(r.bad, 0, 'only on the grass materials');
-    assert.ok(r.n > 50, `${r.n} grass texels in the forest tile's corner`);
-});
-
 test('every model is one the game already ships (no new art), and the renderer instances them', () => {
     const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
     const sb = loadGameData(), F = vm.runInContext('HQ_LAND_RULES.flora', sb), cat = vm.runInContext('DOOR_HQ.catalogue', sb);
@@ -153,7 +137,7 @@ test('every model is one the game already ships (no new art), and the renderer i
         else if (kind === 'door') assert.ok(cat[name] && cat[name].file, `${name} is a D.O.O.R. kit model`);
         else assert.fail(`unknown source ${s}`);
     }
-    assert.match(tr, /_getFoliagePixelTex\(GRASS\.texture, 1\)/, 'the grass wears the board\'s grass_2 blades');
+    assert.doesNotMatch(tr, /_hqFloraGrass|hq_land_blades/, 'no grass blades on the land (mondo 2026-09-29: the texture is enough)');
     // the wiring: instanced parts, the wind knows the instance, the blockers, the tick, the tile's drop, the far pass
     assert.match(tr, /new THREE\.InstancedMesh\(p\.geo, p\.mats, cap\)/, 'one InstancedMesh per model part');
     assert.match(tr, /#ifdef USE_INSTANCING\\n vec4 ewo = modelMatrix \* instanceMatrix/, 'the wind\'s phase from each instance');

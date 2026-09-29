@@ -1029,3 +1029,13 @@ generated (`terrain` has no `gen`, noise 0, `stalactites: false`): 56×56 box, h
   traced-wall check now reads the motor pool's plan), hwing, hq-dumb, hq-floors updated. check-terrain: every door
   reached, nothing traps. Screenshots: the playtest probe needs WAIT ≥ 30 s for the garage (GLB 404 retries in the
   sandbox), else the shot shows Central Egress.
+
+## QUICK FIXES 2026-09-29 (mondo: grass blades, room names, door names)
+- **No grass blades.** The land's GPU blade field (`_hqFloraGrass*`, data.js `HQ_LAND_RULES.flora.grass`, `hqLandGrassField`) is
+  deleted, and the board's cosmetic tufts are off (`GRASS.enabled: false`; `_buildGrassTuft3D` returns null, so placed
+  `grass_tuft` objects draw nothing too). "The texture is enough": the ground's sheet is the grass.
+- **No floating room name.** The box and bay shells no longer hang a `hq-plate-bay` CSS2D plate (`_hq.roomPlate` is gone); the HUD's
+  top-left names the room. data.js `shell.plate` rows are now unread.
+- **Door names on the door.** A door's plate (its room's name once stood in, else '?') sits on the door's face at eye level:
+  `HQ_PLATE_EYE` (1.45 m, the text stands on it), capped at the opening − 0.3 m. Same for ways (min of the builder's plateY and
+  the eye) and standing thresholds. Trail posts now use `_hqPlateHtml` too, so an unvisited place reads '?' there as well.

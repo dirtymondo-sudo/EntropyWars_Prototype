@@ -216,9 +216,10 @@ test('the world graph knows the parts: a { site, part } link end resolves only t
     assert.deepStrictEqual(PART_IDS.map(id => HQ.rooms[id].doors.length).join(','), before.join(','), 'the probe left nothing behind');
 });
 
-test('source scan: the parts take their link doors, a part end resolves by the authored room, the plate reads the number through site, and the helpers are on window', () => {
+test('source scan: the parts take their link doors, a part end resolves by the authored room, no floating room plate, and the helpers are on window', () => {
     assert.match(dataSrc, /\nhqRefreshComplexLinks\(\);\n/, 'the parts take theirs once at load');
     assert.match(dataSrc, /if \(end\.part\) \{ const pid = hqComplexRoomId\(end\.site, end\.part\); return \(DOOR_HQ\.rooms\[pid\] && DOOR_HQ\.rooms\[pid\]\.part === end\.part\) \? pid : null; \}/, 'a part end resolves by the authored room');
-    assert.match(renderer, /\(room\.site && typeof hqRoomNo === 'function'\) \? \(hqRoomNo\(room\.site\) \|\| ''\) : ''/, 'the room plate reads the number through site');
+    assert.doesNotMatch(renderer, /_hq\.roomPlate = el/, 'no floating room plate (mondo 2026-09-29: the HUD names the room)');
+    assert.match(renderer, /plate\.position\.set\(0, Math\.min\(HQ_PLATE_EYE, oh - 0\.3\) \* U/, 'a door\'s name sits on the door at eye level');
     for (const fn of ['hqComplexRoomId', 'hqRoomSite', 'hqRoomPart', 'hqComplexRooms', 'hqSiteComplex', 'hqRefreshComplexLinks', 'hqLinkRoom', 'hqLinkDoors', 'hqWorldGraph']) assert.match(dataSrc, new RegExp('window\\.' + fn + ' = ' + fn + ';'), fn + ' on window');
 });

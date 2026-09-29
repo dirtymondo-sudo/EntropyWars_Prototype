@@ -47,7 +47,7 @@ const ThreeRenderer = (function () {
        gameplay, no pathing effect. Tweak freely — flip enabled:false to remove,
        or autoScatter:false to keep only the editor-placed tufts. */
     var GRASS = {
-        enabled: true,
+        enabled: false,   // mondo 2026-09-29: "get rid of the grass blades, the texture is enough" (auto-scatter AND placed tufts)
         autoScatter: true, // auto-sprinkle on grassy tiles of every map (false = editor-placed only)
         texture: 'grass_2.png', // R2 /Assets/Sprites/terrain sprite wrapped on each blade
         coverage: 150,   // 0-255 hash cutoff — ~ (this/255) of grass tiles get an auto tuft (~59%)
@@ -5744,6 +5744,7 @@ const ThreeRenderer = (function () {
         return _grassBladeMat;
     }
     function _buildGrassTuft3D(x, y) {
+        if (!GRASS.enabled) return null;
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var g = new THREE.Group();
@@ -24244,7 +24245,7 @@ const ThreeRenderer = (function () {
     function _mmLine() {
         var R = _mmLast; if (!R) return '';
         var land = (_hq && _hq.landZ && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
-        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.landZ.n + ' chunks' + (_hq.landZ.flora ? ' · TREES ' + _hq.landZ.flora.stats.trees + ' + ' + _hq.landZ.flora.stats.cards + ' cards · GRASS ' + _hq.landZ.flora.stats.grass : '') : '');
+        return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.landZ.n + ' chunks' + (_hq.landZ.flora ? ' · TREES ' + _hq.landZ.flora.stats.trees + ' + ' + _hq.landZ.flora.stats.cards + ' cards' : '') : '');
     }
 
     // Return a Group that fills (async) with a normalized instance of a misc
@@ -39914,6 +39915,8 @@ const ThreeRenderer = (function () {
     /* the number on a door / counter plate (HQ plan 7.1, the room register):
        data.js hqDoorNo — the entry's own roomNo, the site's for a threshold,
        the room's for a way in. '' = no plate line (bays, the elevator). */
+    /* where a door's name (or '?') sits: on the door's face at eye level (the plate's text stands on this point) — mondo 2026-09-29 */
+    var HQ_PLATE_EYE = 1.45;
     function _hqPlateNo(entry) {
         try { if (typeof hqDoorNo === 'function') return hqDoorNo(entry) || ''; } catch (e) {}
         return (entry && entry.roomNo != null) ? String(entry.roomNo) : '';
@@ -40278,14 +40281,7 @@ const ThreeRenderer = (function () {
             br.rotation.y = -_hqRad(ba);
             G.add(br);
         }
-        /* the bay's stencil on the inner wall at the far end of the corridor (CSS2D) */
-        var el = document.createElement('div');
-        el.className = 'hq-plate hq-plate-bay';
-        el.innerHTML = '<b>' + (room.label || 'BAY') + '</b><span>' + (room.sub || '') + '</span>';
-        var plate = new THREE.CSS2DObject(el);
-        plate.position.copy(_hqPolarW(a0 + 9, rIn + 0.02, 2.7));
-        G.add(plate);
-        _hq.roomPlate = el;
+        /* no floating room name (mondo 2026-09-29: the HUD's top-left already names the room) */
     }
 
     /* ── a box room (HQ plan 2.7): the janitor's closet and every later
@@ -40487,16 +40483,7 @@ const ThreeRenderer = (function () {
             gl._ew_hqPart = 'strip';
             G.add(gl);
         });
-        /* the room plate (CSS2D) */
-        var el = document.createElement('div');
-        el.className = 'hq-plate hq-plate-bay';
-        var plateNo = (room.roomNo != null) ? String(room.roomNo) : ((room.site && typeof hqRoomNo === 'function') ? (hqRoomNo(room.site) || '') : '');
-        el.innerHTML = (plateNo ? '<em>ROOM ' + plateNo + '</em>' : '') + '<b>' + (room.label || 'ROOM') + '</b><span>' + (room.sub || '') + '</span>';
-        var plate = new THREE.CSS2DObject(el);
-        var P = S.plate || { x: 0, z: -Dp / 2, y: H - 0.5 };
-        plate.position.set(P.x * U, (P.y != null ? P.y : H - 0.5) * U, (P.z + 0.02) * U);
-        G.add(plate);
-        _hq.roomPlate = el;
+        /* no floating room name (mondo 2026-09-29: "totally redundant and confusing" — the HUD's top-left already names the room) */
     }
 
     /* ── THE RETRO-FUTURIST KIT — THE CURVED SHELL (2026-09-21; the user: "1960s
@@ -47463,7 +47450,7 @@ const ThreeRenderer = (function () {
         el.innerHTML = _hqPlateHtml(door);   // THE UNDISCOVERED DOOR (2026-09-21)
         el.appendChild(chip);
         var plate = new THREE.CSS2DObject(el);
-        var plateY = built.plateY || (oh + 0.4);
+        var plateY = Math.min(built.plateY || (oh + 0.4), HQ_PLATE_EYE);   // ON THE DOOR (mondo 2026-09-29): at eye level, never over the head
         if (room.kind === 'box') plateY = Math.min(plateY, S.h - 0.12);
         plate.position.set(0, plateY * U, 0.3 * U);
         grp.add(plate);
@@ -47504,7 +47491,7 @@ const ThreeRenderer = (function () {
         G.add(grp);
         if (typeof THREE.CSS2DObject === 'function' && door.label) {
             var el = document.createElement('div'); el.className = 'hq-plate hq-plate-way';
-            el.textContent = door.label; el.style.fontSize = '10px'; el.style.opacity = '0.85';
+            el.innerHTML = _hqPlateHtml(door); el.style.fontSize = '10px'; el.style.opacity = '0.85';   // the room's name once stood in, else '?'
             var pl = new THREE.CSS2DObject(el); pl.position.set(-0.3 * U, 1.72 * U, 0.1 * U); grp.add(pl);
         }
     }
@@ -47707,7 +47694,8 @@ const ThreeRenderer = (function () {
                 }
             }
             grp.add(leafGroup);
-            /* nameplate above the panel (CSS2D) */
+            /* the nameplate ON the door, at eye level (mondo 2026-09-29: "players don't look up" — over the panel it left the frame
+               when standing right in front of the door) */
             var el = document.createElement('div');
             el.className = 'hq-plate';
             var chip = document.createElement('i');
@@ -47716,7 +47704,7 @@ const ThreeRenderer = (function () {
             if (secret && !found) el.style.display = 'none';
             var glimmer = (secret && !found) ? _hqAngleGlimmer(grp, U, oh, pd) : null;
             var plate = new THREE.CSS2DObject(el);
-            plate.position.set(0, ((room.kind === 'box') ? Math.min(ph + 0.42, S.h - 0.12) : (ph + 0.42)) * U, (pd / 2) * U);
+            plate.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, (pd / 2 + 0.03) * U);
             grp.add(plate);
             if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
@@ -49447,7 +49435,7 @@ const ThreeRenderer = (function () {
             motion.pivot.add(panel); leafGroup.add(motion.pivot);
         }
         grp.add(leafGroup);
-        /* the plate (CSS2D) — over the head of a standing door, off the mouth of a flat one */
+        /* the plate (CSS2D) — on the face of a standing door at eye level, off the mouth of a flat one */
         var el = document.createElement('div');
         el.className = 'hq-plate hq-plate-portal hq-plate-portal-' + slot;
         var chip = document.createElement('i');
@@ -49457,7 +49445,7 @@ const ThreeRenderer = (function () {
         el.appendChild(chip);
         var plateObj = new THREE.CSS2DObject(el);
         if (flat) plateObj.position.set(0, oh / 2 * U, 0.45 * U);
-        else plateObj.position.set(0, Math.min(oh + lh + 0.9, (room.kind === 'box' && S.h) ? S.h - 0.12 : oh + lh + 0.9) * U, 0.3 * U);
+        else plateObj.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, 0.3 * U);
         grp.add(plateObj);
         H.doorGroup.add(grp);
         var door = { id: 'portal:' + slot, label: label, sub: subTxt, wall: 'free', x: spec.x, z: spec.z, face: spec.face, surf: surf, portal: slot, verb: 'STEP THROUGH', action: { portal: slot }, leaf: leafKey };
@@ -53815,8 +53803,7 @@ const ThreeRenderer = (function () {
                       the 8 m world's forest the same way past the cut — so the forest reaches the horizon.
          THE FERNS    crossed cards of the fern within flora.near.underR, shrinking away (never blockers).
          THE ROCKS    the asteroids within flora.near.rockR, tinted like the ground they sit on.
-         THE GRASS    single blades on the GPU (see THE GRASS BLADES below): dense within flora.grass.near, thinning to
-                      flora.grass.reach, standing on hqLandGrassField's window, the ground's colour, swaying and bent by the walker.
+         THE GRASS    none: the ground's own sheet is the grass (mondo 2026-09-29: "the texture is enough" — the blades were removed).
        Kill-switch window.EW_NO_LAND_FLORA (nothing drawn — and nothing blocks). EW_PERF_LOW halves the density and the
        triangle budget. */
     var _hqFloraCache = { models: {}, grass: null, far: null, farKey: '', bake: null };
@@ -54079,8 +54066,6 @@ const ThreeRenderer = (function () {
         L.floraU.c.value.set((FL.nearAt[0] + L.v.o.x) * U, 0, (FL.nearAt[1] + L.v.o.z) * U);   // G6: the near ring's centre where the scene draws it
         /* THE BLOCKERS: the trunks and rocks round the walker, as the room's blockers (drawn: the near models hold them) */
         if (L.v.own && (Math.hypot(px - FL.blkAt[0], pz - FL.blkAt[1]) > F.blockers.every || now - (FL.blkT || 0) > 500)) { _hqFloraBlockers(L, px, pz); FL.blkAt = [px, pz]; FL.blkT = now; }   // G6: on the land's own record only   // (and twice a second: a tile that just landed brings its trunks)
-        /* THE GRASS */
-        _hqFloraGrassTick(L, H, px, pz);
     }
     /* a model changed (the real file landed): the cards' materials pick up the new picture (the same render target — no rebuild) */
     function _hqFloraRemat(L, M) {
@@ -54258,192 +54243,11 @@ const ThreeRenderer = (function () {
         if (H.nav) H.nav.staticKey = -1;   // the navigator's copy of the statics is read again
         L.flora.blk = list.length;
     }
-    /* ── THE GRASS BLADES ── (mondo 2026-09-28: "I do want you to try grass blades") a field of single blades drawn on the GPU:
-       two patch geometries (flora.grass.blades: a dense one within .near m, a thin one past it), each an InstancedBufferGeometry
-       whose instances are the patches (aPatch = the patch's corner, metres) in view round the walker. The vertex shader stands
-       every blade on the land from a float window of the ground (hqLandGrassField: height, density, material; wrapped, so the
-       window follows the walker a strip at a time), keeps the share flora.grass.dens asks for at its distance, leans it, sways it
-       on the room's wind clock, bends it away from the walker, and paints it the ground's own colour under it (the material's
-       mean, as the far land wears it), dark at the root, streaked by the board's grass_2. */
-    var _HQ_GRASS_VS_HEAD = [
-        'uniform float uEwWind; uniform sampler2D uGH; uniform vec4 uGW; uniform vec4 uGP; uniform float uGF; uniform vec4 uGK; uniform vec4 uGK2; uniform vec4 uGS; uniform vec3 uGCol[24];',
-        'attribute vec4 aBlade; attribute vec2 aPatch;',
-        'float ewGH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
-        'vec4 ewGT(vec2 ij) { return texture2D(uGH, (mod(ij, uGW.x) + 0.5) / uGW.x); }'
-    ].join('\n');
-    var _HQ_GRASS_VS_BODY = [
-        /* the patch: one of 8 turns / mirrors of the one layout (from the patch's own hash) — no 8 m repeat */
-        'float ewPH = ewGH(aPatch * 0.125 + 0.37);',
-        'vec2 ewLp = aBlade.xy - 0.5 * uGW.w; float ewK = floor(ewPH * 8.0), ewR = mod(ewK, 4.0);',
-        'if (ewR > 0.5) ewLp = vec2(-ewLp.y, ewLp.x); if (ewR > 1.5) ewLp = vec2(-ewLp.y, ewLp.x); if (ewR > 2.5) ewLp = vec2(-ewLp.y, ewLp.x);',
-        'if (ewK > 3.5) ewLp.x = -ewLp.x;',
-        'vec2 ewRt = aPatch + 0.5 * uGW.w + ewLp; float ewRd = fract(aBlade.w + ewPH * 7.13);',
-        /* the ground under the root: the height bilinear (the drawn ground at the window's step), the rest from the nearest texel */
-        'vec2 ewG = ewRt / uGW.y, ewI = floor(ewG), ewF = ewG - ewI;',
-        'vec4 ewA = ewGT(ewI), ewB = ewGT(ewI + vec2(1.0, 0.0)), ewC = ewGT(ewI + vec2(0.0, 1.0)), ewE = ewGT(ewI + vec2(1.0, 1.0));',
-        'float ewY = mix(mix(ewA.x, ewB.x, ewF.x), mix(ewC.x, ewE.x, ewF.x), ewF.y);',
-        'vec4 ewN = ewF.x < 0.5 ? (ewF.y < 0.5 ? ewA : ewC) : (ewF.y < 0.5 ? ewB : ewE);',
-        /* how many stand here: the share at this distance × the ground's density; a blade near the cut grows in, the far ones shrink away */
-        'float ewDs = distance(ewRt, uGP.xy);',
-        'float ewKp = ewDs < uGK.x ? uGK.y : (ewDs < uGK.z ? mix(uGK.y, uGK.w, (ewDs - uGK.x) / (uGK.z - uGK.x)) : mix(uGK.w, uGK2.y, clamp((ewDs - uGK.z) / (uGK2.x - uGK.z), 0.0, 1.0)));',
-        'ewKp *= ewN.y * uGF;',
-        'float ewS = clamp((ewKp - ewRd) * 10.0, 0.0, 1.0) * (1.0 - smoothstep(uGK2.z, uGK2.w, ewDs));',
-        'float ewH = mix(uGS.x, uGS.y, ewGH(vec2(ewRd, ewPH) * 3.7)) * (0.55 + 0.45 * ewN.y) * ewS;',
-        'float ewWd = uGS.z * (0.8 + 0.4 * fract(ewRd * 13.7)) * ewS * uGP.w;',
-        /* the blade: its width across, a lean along its face, then the wind (a travelling gust + a flutter) and the walker's push */
-        'float ewT = position.y, ewT2 = ewT * ewT; vec2 ewAx = vec2(cos(aBlade.z), sin(aBlade.z)), ewFw = vec2(-ewAx.y, ewAx.x);',
-        'vec2 ewOff = ewAx * position.x * ewWd * (1.0 - 0.8 * ewT);',
-        'vec2 ewBd = ewFw * uGS.w * (0.3 + 0.7 * fract(ewRd * 5.3)) * ewT2 * ewH;',
-        'vec2 ewWn = vec2(0.94, 0.34); float ewGu = sin(dot(ewRt, ewWn) * 0.21 - uEwWind * 1.9) * 0.5 + 0.5;',
-        'ewBd += (ewWn * (0.06 + 0.26 * ewGu * ewGu) + ewFw * sin(uEwWind * 3.1 + ewRd * 6.283 + ewRt.x * 0.9) * 0.06) * ewT2 * ewH;',
-        'vec2 ewAw = ewRt - uGP.xy; float ewAd = length(ewAw);',
-        'ewBd += ewAw / max(ewAd, 0.05) * clamp(1.0 - ewAd / uGP.z, 0.0, 1.0) * 0.9 * ewT * ewH;',
-        'float ewUp = ewT * ewH * (1.0 - 0.35 * min(1.0, length(ewBd) / max(ewH, 0.01)));',
-        'vec3 transformed = vec3(ewRt.x + ewOff.x + ewBd.x, ewY - 0.03 + ewUp, ewRt.y + ewOff.y + ewBd.y) * uGW.z;',
-        '#ifdef USE_COLOR',
-        ' vColor = uGCol[int(ewN.z + 0.5)] * mix(0.5, 1.2, ewT) * (0.85 + 0.3 * fract(ewRd * 17.1));',
-        '#endif',
-        '#ifdef USE_UV',
-        ' vUv = vec2(fract(ewRd * 3.1) * 0.8 + position.x * 0.03, 0.1 + 0.6 * ewT);',
-        '#endif'
-    ].join('\n');
-    function _hqFloraGrassOk() {
-        try { var c = renderer && renderer.capabilities; return !!(c && c.vertexTextures && (c.isWebGL2 || (renderer.extensions && renderer.extensions.get('OES_texture_float')))); } catch (e) { return false; }
-    }
-    /* a patch's blades: a stratified jitter over the patch (so the thinned share stays even), shuffled (so EW_PERF_LOW draws the
-       first half); `seg` 3 = seven vertices a blade (the near ones bend), 1 = one triangle */
-    function _hqFloraGrassGeo(k) {
-        var C = _hqFloraCache.grassGeo || (_hqFloraCache.grassGeo = []);
-        if (C[k]) return C[k];
-        var G = _hqFloraR().grass, N = G.blades[k], P = G.patch, g = Math.ceil(Math.sqrt(N)), seed = 7717 + k * 104729;
-        var sr = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
-        var spots = [];
-        for (var j = 0; j < g; j++) for (var i = 0; i < g; i++) spots.push([(i + 0.1 + 0.8 * sr()) * P / g, (j + 0.1 + 0.8 * sr()) * P / g]);
-        for (var s = spots.length - 1; s > 0; s--) { var r = Math.floor(sr() * (s + 1)), tmp = spots[s]; spots[s] = spots[r]; spots[r] = tmp; }
-        spots.length = N;
-        var shape = k === 0 ? [[-1, 0], [1, 0], [-1, 0.35], [1, 0.35], [-1, 0.7], [1, 0.7], [0, 1]] : [[-1.6, 0], [1.6, 0], [0, 1]];
-        var tri = k === 0 ? [0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 6] : [0, 1, 2], V = shape.length;
-        var pos = new Float32Array(N * V * 3), bl = new Float32Array(N * V * 4), idx = new (N * V > 65535 ? Uint32Array : Uint16Array)(N * tri.length);
-        for (var b = 0; b < N; b++) {
-            var yaw = sr() * Math.PI * 2, rd = sr();
-            for (var v = 0; v < V; v++) { var o = b * V + v; pos[o * 3] = shape[v][0]; pos[o * 3 + 1] = shape[v][1]; bl[o * 4] = spots[b][0]; bl[o * 4 + 1] = spots[b][1]; bl[o * 4 + 2] = yaw; bl[o * 4 + 3] = rd; }
-            for (var t = 0; t < tri.length; t++) idx[b * tri.length + t] = b * V + tri[t];
-        }
-        var geo = new THREE.InstancedBufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('aBlade', new THREE.BufferAttribute(bl, 4));
-        geo.setIndex(new THREE.BufferAttribute(idx, 1));
-        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e9); geo._ewPer = tri.length;
-        return (C[k] = geo);
-    }
-    function _hqFloraGrassMat(L, k) {
-        var GS = L.flora.gs, G = _hqFloraR().grass;
-        var m = new THREE.MeshLambertMaterial({ map: _getFoliagePixelTex(GRASS.texture, 1), vertexColors: true, side: THREE.DoubleSide });
-        var own = { value: k === 0 ? 1 : G.blades[0] / G.blades[1] };
-        m.onBeforeCompile = function (sh) {
-            sh.uniforms.uEwWind = _EW_WIND; sh.uniforms.uGF = own;
-            for (var u in GS.u) sh.uniforms[u] = GS.u[u];
-            sh.vertexShader = _HQ_GRASS_VS_HEAD + '\n' + sh.vertexShader
-                .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);')
-                .replace('#include <begin_vertex>', _HQ_GRASS_VS_BODY);
-            /* grass_2 streaks the blade by its brightness only: the colour is the ground's */
-            sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>',
-                '#ifdef USE_MAP\n vec4 ewTx = texture2D(map, vUv);\n diffuseColor.rgb *= clamp(dot(ewTx.rgb, vec3(0.299, 0.587, 0.114)) * 2.4, 0.65, 1.35);\n#endif');
-            _hqFloraBothLit(sh);
-        };
-        m.customProgramCacheKey = function () { return 'ewland-blades-1'; };
-        return m;
-    }
-    function _hqFloraGrassArm(L) {
-        if (!_hqFloraGrassOk()) return { dead: true };
-        var G = _hqFloraR().grass, U = _hqUnits(), n = Math.round(G.win / G.step);
-        var data = new Float32Array(n * n * 4), tex = new THREE.DataTexture(data, n, n, THREE.RGBAFormat, THREE.FloatType);
-        tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false; tex.needsUpdate = true;
-        var cols = []; for (var c = 0; c < 24; c++) cols.push(new THREE.Color(0.3, 0.45, 0.2));
-        var GS = { n: n, data: data, tex: tex, F: { h: new Float32Array(n * n), d: new Uint8Array(n * n), m: new Uint8Array(n * n) }, ax: null, az: null, jobs: [], tone: null, meshes: [],
-            u: { uGH: { value: tex }, uGW: { value: new THREE.Vector4(n, G.step, U, G.patch) }, uGP: { value: new THREE.Vector4(1e9, 1e9, G.push, 1) },
-                 uGK: { value: new THREE.Vector4(G.dens[0][0], G.dens[0][1], G.dens[1][0], G.dens[1][1]) }, uGK2: { value: new THREE.Vector4(G.dens[2][0], G.dens[2][1], G.fade[0], G.fade[1]) },
-                 uGS: { value: new THREE.Vector4(G.h[0], G.h[1], G.w, G.lean) }, uGCol: { value: cols } } };
-        L.flora.gs = GS;
-        for (var k = 0; k < 2; k++) {
-            var src = _hqFloraGrassGeo(k), geo = new THREE.InstancedBufferGeometry();
-            geo.index = src.index; geo.setAttribute('position', src.getAttribute('position')); geo.setAttribute('aBlade', src.getAttribute('aBlade'));
-            var cap = k === 0 ? 64 : 256, ap = new THREE.InstancedBufferAttribute(new Float32Array(cap * 2), 2);
-            ap.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('aPatch', ap); geo.instanceCount = 0;
-            geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e9);
-            geo.setDrawRange(0, k === 0 && _hqFloraLow() ? Math.floor(G.blades[0] * G.low) * src._ewPer : Infinity);
-            var mesh = new THREE.Mesh(geo, _hqFloraGrassMat(L, k));
-            mesh.frustumCulled = false; mesh.receiveShadow = true; mesh.castShadow = false; mesh.name = 'hq_land_blades_' + k;
-            mesh._ew_occSkip = true; mesh._ew_noInstance = true; mesh.raycast = function () {};
-            L.group.add(mesh); GS.meshes.push({ mesh: mesh, ap: ap, cap: cap });
-        }
-        return GS;
-    }
-    /* the window: world texels [ax, ax + n) × [az, az + n); a move queues the strips it gains (their density zeroed at once, so a
-       stale texel never stands a blade) and clips what was still queued to the new window */
-    function _hqFloraGrassShift(GS, bx, bz) {
-        var n = GS.n, F = GS.F, jobs = [];
-        var clip = function (j) { var x0 = Math.max(j.x, bx), z0 = Math.max(j.z, bz), x1 = Math.min(j.x + j.w, bx + n), z1 = Math.min(j.z + j.h, bz + n); if (x1 > x0 && z1 > z0) jobs.push({ x: x0, z: z0, w: x1 - x0, h: z1 - z0 }); };
-        GS.jobs.forEach(clip);
-        if (GS.ax == null || Math.abs(bx - GS.ax) >= n || Math.abs(bz - GS.az) >= n) jobs = [{ x: bx, z: bz, w: n, h: n }];
-        else {
-            var ax = GS.ax, az = GS.az, oz0 = Math.max(az, bz), oz1 = Math.min(az + n, bz + n);
-            if (bz < az) jobs.push({ x: bx, z: bz, w: n, h: az - bz }); else if (bz > az) jobs.push({ x: bx, z: az + n, w: n, h: bz - az });
-            if (bx < ax) jobs.push({ x: bx, z: oz0, w: ax - bx, h: oz1 - oz0 }); else if (bx > ax) jobs.push({ x: ax + n, z: oz0, w: bx - ax, h: oz1 - oz0 });
-        }
-        var md = function (v) { return ((v % n) + n) % n; };
-        for (var q = 0; q < jobs.length; q++) { var J = jobs[q]; for (var iz = J.z; iz < J.z + J.h; iz++) { var row = md(iz) * n; for (var ix = J.x; ix < J.x + J.w; ix++) { var o = row + md(ix); F.d[o] = 0; GS.data[o * 4 + 1] = 0; } } }
-        GS.tex.needsUpdate = true;
-        GS.jobs = jobs; GS.ax = bx; GS.az = bz;
-    }
-    function _hqFloraGrassFill(GS, budget) {
-        var n = GS.n, F = GS.F, t1 = performance.now() + budget, G = _hqFloraR().grass, md = function (v) { return ((v % n) + n) % n; }, did = false;
-        while (GS.jobs.length && performance.now() < t1) {
-            var J = GS.jobs[0], rows = Math.max(1, Math.min(J.h, Math.floor(G.texels / J.w)));
-            if (!hqLandGrassField(F, n, J.x, J.z, J.w, rows)) { GS.jobs.push(GS.jobs.shift()); break; }   // a tile not in yet: try the rest next frame
-            for (var iz = J.z; iz < J.z + rows; iz++) { var row = md(iz) * n; for (var ix = J.x; ix < J.x + J.w; ix++) { var o = row + md(ix); GS.data[o * 4] = F.h[o]; GS.data[o * 4 + 1] = F.d[o] / 255; GS.data[o * 4 + 2] = F.m[o]; } }
-            J.z += rows; J.h -= rows; if (J.h <= 0) GS.jobs.shift();
-            did = true;
-        }
-        if (did) GS.tex.needsUpdate = true;
-    }
-    var _hqGrassFr = null, _hqGrassM4 = null, _hqGrassSp = null;
-    function _hqFloraGrassTick(L, H, px, pz) {
-        var FL = L.flora, G = _hqFloraR().grass; if (!G || !G.win) return;
-        var GS = FL.gs || _hqFloraGrassArm(L); if (!GS || GS.dead) { FL.gs = GS; return; }
-        var n = GS.n, st = G.step, U = _hqUnits();
-        /* the window follows the walker */
-        var bx = Math.round(px / st) - (n >> 1), bz = Math.round(pz / st) - (n >> 1);
-        if (GS.ax == null || Math.abs(bx - GS.ax) * st > G.recentre || Math.abs(bz - GS.az) * st > G.recentre) _hqFloraGrassShift(GS, bx, bz);
-        _hqFloraGrassFill(GS, H.ready ? 2 : 30);
-        /* the ground's colours (again once the sheets land and retone the land) */
-        if (GS.tone !== (L.tone || 'x') && HQ_LAND_STORE.col) {
-            GS.tone = L.tone || 'x'; var tmp = [0, 0, 0];
-            for (var c = 0; c < 24; c++) { hqLandColor(c, tmp, 0); GS.u.uGCol.value[c].setRGB(tmp[0], tmp[1], tmp[2]); }
-        }
-        GS.u.uGP.value.x = px; GS.u.uGP.value.y = pz; GS.u.uGW.value.z = U;
-        /* the patches in view: dense within .near, thin past it to .reach */
-        var P = G.patch, R = G.reach + P * 0.71, cam = H.camera;
-        if (!_hqGrassFr) { _hqGrassFr = new THREE.Frustum(); _hqGrassM4 = new THREE.Matrix4(); _hqGrassSp = new THREE.Sphere(); }
-        cam.updateMatrixWorld(); _hqGrassM4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); _hqGrassFr.setFromProjectionMatrix(_hqGrassM4);
-        var i0 = Math.floor((px - R) / P), i1 = Math.floor((px + R) / P), j0 = Math.floor((pz - R) / P), j1 = Math.floor((pz + R) / P), cnt = [0, 0], blades = 0;
-        var md = function (v) { return ((v % n) + n) % n; };
-        for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
-            var cx = (i + 0.5) * P, cz = (j + 0.5) * P, d = Math.hypot(cx - px, cz - pz); if (d > R) continue;
-            var k = d < G.near + P * 0.71 ? 0 : 1, rec = GS.meshes[k]; if (cnt[k] >= rec.cap) continue;
-            var o = md(Math.round(cz / st)) * n + md(Math.round(cx / st)), cy = GS.F.h[o];
-            _hqGrassSp.center.set((cx + L.v.o.x) * U, (cy + L.v.o.y) * U, (cz + L.v.o.z) * U); _hqGrassSp.radius = P * 1.2 * U;
-            if (!_hqGrassFr.intersectsSphere(_hqGrassSp)) continue;
-            rec.ap.array[cnt[k] * 2] = i * P; rec.ap.array[cnt[k] * 2 + 1] = j * P; cnt[k]++;
-        }
-        for (var q = 0; q < 2; q++) { var M = GS.meshes[q]; M.mesh.geometry.instanceCount = cnt[q]; M.ap.needsUpdate = true; M.ap.updateRange.count = cnt[q] * 2; blades += cnt[q] * G.blades[q]; }
-        FL.stats.grass = blades;
-    }
     function _hqFloraDisarm(L) {
         var FL = L && L.flora; if (!FL) return;
         if (_hq && _hq.blockers) _hq.blockers = _hq.blockers.filter(function (b) { return !b.landFlora; });
         for (var key in FL.tiles) { var T = FL.tiles[key]; if (T.mesh) { try { T.mesh.geometry.dispose(); } catch (e) {} } }
         for (var nk in FL.near) FL.near[nk].ims.forEach(function (im) { if (im.dispose) { try { im.dispose(); } catch (e) {} } });
-        if (FL.gs && FL.gs.meshes) { FL.gs.meshes.forEach(function (r) { try { r.mesh.geometry.dispose(); r.mesh.material.dispose(); } catch (e) {} }); try { FL.gs.tex.dispose(); } catch (e) {} }
         if (FL.underIm && FL.underIm.im.dispose) { try { FL.underIm.im.dispose(); } catch (e) {} }
         if (FL.far && FL.far.mesh) { try { FL.far.mesh.geometry.dispose(); } catch (e) {} }
         (FL.cardMats || []).concat(FL.farMats || [], [FL.underMat]).forEach(function (m) { if (m) { try { m.dispose(); } catch (e) {} } });
