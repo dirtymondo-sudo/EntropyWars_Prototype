@@ -285,8 +285,8 @@
         if (_db) return _db;
         _db = new Promise(function (res, rej) {
             if (typeof indexedDB === 'undefined') { rej(new Error('no IndexedDB')); return; }
-            var q = indexedDB.open('ew_editor', 2);   // v2 (E2): the palette's thumbnails
-            q.onupgradeneeded = function () { var db = q.result; if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'name' }); if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta'); if (!db.objectStoreNames.contains('thumbs')) db.createObjectStore('thumbs'); };
+            var q = indexedDB.open('ew_editor', 3);   // v2 (E2): the palette's thumbnails; v3 (E4): the land's tiles
+            q.onupgradeneeded = function () { var db = q.result; if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'name' }); if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta'); if (!db.objectStoreNames.contains('thumbs')) db.createObjectStore('thumbs'); if (!db.objectStoreNames.contains('land')) db.createObjectStore('land'); };
             q.onsuccess = function () { res(q.result); };
             q.onerror = function () { rej(q.error); };
         });
@@ -384,8 +384,8 @@
         if (ED.mode === 'world' && ED.roomId && !ED.doc.rooms[ED.roomId]) { var first = Object.keys(ED.doc.rooms)[0]; if (first) enterRoom(first, 'world'); }
         panels();
     }
-    function undo() { var s = ED.undo.pop(); if (!s) return; try { Core.stepUndo(ED.doc, s); } catch (e) { toast('UNDO FAILED · ' + e.message); return; } ED.redo.push(s); afterStep(s); toast('UNDO · ' + s.label, 1200); }
-    function redo() { var s = ED.redo.pop(); if (!s) return; try { Core.stepDo(ED.doc, s); } catch (e) { toast('REDO FAILED · ' + e.message); return; } ED.undo.push(s); afterStep(s); toast('REDO · ' + s.label, 1200); }
+    function undo() { var s = ED.undo.pop(); if (!s) return; try { Core.stepUndo(ED.doc, s); if (s.land && ED.land) landSnapsApply(s.land, 'before'); } catch (e) { toast('UNDO FAILED · ' + e.message); return; } ED.redo.push(s); if (isLandStep(s)) landAfter(s); else afterStep(s); toast('UNDO · ' + s.label, 1200); }
+    function redo() { var s = ED.redo.pop(); if (!s) return; try { Core.stepDo(ED.doc, s); if (s.land && ED.land) landSnapsApply(s.land, 'after'); } catch (e) { toast('REDO FAILED · ' + e.message); return; } ED.undo.push(s); if (isLandStep(s)) landAfter(s); else afterStep(s); toast('REDO · ' + s.label, 1200); }
 
     /* ══ ROWS: selection = [{ list, id }] ('spawn' and 'room' are the room's own) ═══════════════════════════════════════ */
     var LISTS = ['terrain.features', 'props', 'doors', 'counters', 'npcSpots', 'agents', 'onlineSpots'];
@@ -466,7 +466,11 @@
     function enterRoom(id, mode, o) {
         o = o || {};
         var prevRoom = ED.roomId, prevMode = ED.mode;
+        if (prevMode === 'land' && ED.land && ED.land.stroke) landStrokeEnd();
+        if (prevMode === 'land') ED.landCam = Object.assign({}, ED.cam);
         ED.mode = mode || (W.hqWorldDocIsOwn(id) && ED.doc.rooms[id] ? 'world' : 'library');
+        if (prevMode === 'land' && ED.mode !== 'land') landUninstall();   // E4: the game's own land comes back
+        if (ED.mode === 'land' && !DOOR_HQ.rooms[LAND_ROOM]) landRoom();
         ED.roomId = id; ED.libRoom = ED.mode === 'library' ? id : null;
         if (prevRoom !== id || prevMode !== ED.mode) { ED.sel = []; if (!o.keepCam) camHome(o.at); }
         ED.ready = false;
@@ -477,6 +481,7 @@
         if (!ok) { toast('THE ROOM DID NOT BUILD · ' + id, 5000); return false; }
         if (!ED.rmb) lookLock(false);   // THE POINTER: a lock the walk carried back from PLAY HERE goes
         overlayBuild();
+        landMapShow();
         panels();
         return true;
     }
@@ -498,6 +503,7 @@
        or a floor slab (the walker's surface stands ON a wall: a wall's pick box, a new wall at its end, a door gap all floated a
        wall's height up) */
     function ground(x, z) {
+        if (ED.mode === 'land' && ED.land) return W.hqLandEdHeight(ED.land.E, x, z);   // E4: his land, straight from memory
         try {
             var r = room(), ti = r && r.terrain && r._terrainInfo;
             if (ti && typeof W.hqTerrainHeight === 'function') { var h = W.hqTerrainHeight(ti, x, z); if (isFinite(h)) return h + strokeDelta(ti, x, z); }
@@ -513,11 +519,11 @@
         var S = r.shell || {}, size = Math.max(8, Math.ceil(Math.max(S.w || 40, S.d || 40) / 2) * 2 + 8), step = Math.max(0.25, ED.snap >= 1 ? ED.snap : 1);
         var grid = new THREE.GridHelper(size * u, Math.round(size / step), 0x6fd3ff, 0x2a4a5a);
         grid.material.transparent = true; grid.material.opacity = 0.35; grid.material.depthWrite = false; grid.material.fog = false;
-        grid.position.y = 0.03 * u; grid.visible = ED.grid; grid.renderOrder = 11; G.add(grid); ED.gridObj = grid;
+        grid.position.y = 0.03 * u; grid.visible = ED.grid && ED.mode !== 'land'; grid.renderOrder = 11; G.add(grid); ED.gridObj = grid;
         /* the spawn: a cone pointing where the walker faces (picked as 'spawn') */
         var sp = new THREE.Mesh(new THREE.ConeGeometry(0.35 * u, 1.1 * u, 12), new THREE.MeshBasicMaterial({ color: 0x57f287, transparent: true, opacity: 0.85, depthTest: false, fog: false }));
         sp.rotation.x = Math.PI / 2; var spW = new THREE.Group(); spW.add(sp); spW.userData.edSel = { list: 'spawn' }; G.add(spW); ED.spawnObj = spW; spawnPlace();
-        if (ED.mode === 'prefab') { spW.visible = false; ED.spawnObj = null; }   // a prefab has no spawn
+        if (ED.mode === 'prefab' || ED.mode === 'land') { spW.visible = false; ED.spawnObj = null; }   // a prefab (and the land) has no spawn
         ED.pivot = new THREE.Object3D(); G.add(ED.pivot);
         /* E3: the brush's ring (it follows the ground under the cursor while a ground tool is armed) */
         var rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(65 * 3), 3));
@@ -525,6 +531,7 @@
         ED.auditObjs = []; ED.fightObj = null; ED.fightKey = '';
         tcBuild();
         rebuildProxies();
+        if (ED.mode === 'land') { if (ED.land) ED.land.lineObj = null; return; }   // E4: the land's near camera is the renderer's (the far pass draws past it)
         ED.view.camera.near = 0.05 * u; ED.view.camera.far = Math.max(400, Math.hypot(S.w || 100, S.d || 100) * 2) * u; ED.view.camera.updateProjectionMatrix();
     }
     function spawnPlace() {
@@ -689,12 +696,16 @@
         var pl = H.player;
         if (pl) {
             if (pl.entry && pl.entry.group) pl.entry.group.visible = false;
-            if (ED.mode === 'world' && !H.stage) { var g = ground(c.x, c.z); pl.x = c.x; pl.z = c.z; pl.y = g; pl.visY = g; }
+            if ((ED.mode === 'world' || ED.mode === 'land') && !H.stage) { var g = ground(c.x, c.z); pl.x = c.x; pl.z = c.z; pl.y = g; pl.visY = g; }
         }
         for (var i = 0; i < ED.boxes.length; i++) ED.boxes[i].update();
         var now = performance.now();
         /* E3: a brush held on the ground works every frame (the cursor re-read each frame: the ground under it is moving) */
-        if (ED.stroke && ED.stroke.tool !== 'gramp' && ED.mouse.in) { var sc = rayGround(ED.mouse.x, ED.mouse.y); if (sc) { ED.cursor = sc; ED.cursorAt = now; strokeDab(ED.stroke, sc, Math.min(0.05, dt)); } }
+        if (ED.mode === 'land' && ED.land && ED.land.stroke) {   // E4: a land brush held (the 3D cursor re-read; the map's comes from its own mouse)
+            if (ED.opts.landView !== 'map' && ED.mouse.in) { var lc = rayGround(ED.mouse.x, ED.mouse.y); if (lc) { ED.cursor = lc; ED.land.stroke.at = lc; } }
+            landDab(Math.min(0.05, dt));
+        }
+        else if (ED.stroke && ED.stroke.tool !== 'gramp' && ED.mouse.in) { var sc = rayGround(ED.mouse.x, ED.mouse.y); if (sc) { ED.cursor = sc; ED.cursorAt = now; strokeDab(ED.stroke, sc, Math.min(0.05, dt)); } }
         else if (ED.mouse.in && now - ED.cursorAt > 90) { ED.cursorAt = now; ED.cursor = rayGround(ED.mouse.x, ED.mouse.y); }
         ringUpdate();
         if (ED.audit.fight && now - ED.fightAt > 200) { ED.fightAt = now; fightShow(); }
@@ -713,7 +724,7 @@
     function rayGround(mx, my) {
         var r = rayFrom(mx, my); if (!r) return null;
         var u = U(), o = r.ray.origin.clone().multiplyScalar(1 / u), d = r.ray.direction;
-        var t = 0, stepM = 0.5, maxT = 600, prev = null;
+        var t = 0, stepM = 0.5, maxT = ED.mode === 'land' ? 6000 : 600, prev = null;
         for (; t < maxT; t += stepM) {
             var x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t, g = ground(x, z);
             if (y <= g) {
@@ -722,6 +733,7 @@
             }
             prev = t;
             if (t > 40) stepM = 1.5;
+            if (t > 300 && ED.mode === 'land') stepM = t > 1500 ? 16 : 6;
         }
         if (d.y < -1e-3) { var tf = -o.y / d.y; return { x: o.x + d.x * tf, y: 0, z: o.z + d.z * tf }; }
         return null;
@@ -1061,6 +1073,7 @@
         var RG = ED.ring; if (!RG) return;
         var D = ED.draw, how = D && DRAWS[D.tool] ? DRAWS[D.tool].how : null, c = ED.cursor, at = null, rad = 0;
         if (how === 'brush' && c && (ED.mouse.in || ED.stroke)) { at = c; rad = +ED.opts.brushR || 4; }
+        else if (ED.mode === 'land' && ED.land && LAND_TOOLS[landTool()].how === 'brush' && c && (ED.mouse.in || ED.land.stroke)) { at = c; rad = +ED.opts.landR || 40; }
         else if (how === 'disc' && ED._disc && ED._disc.r > 0.05) { at = ED._disc; rad = ED._disc.r; }
         if (!at) { RG.visible = false; return; }
         var P = RG.geometry.attributes.position, u = U();
@@ -1278,6 +1291,7 @@
         if (typing(e)) return;
         if (e.target && e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) e.preventDefault();   // a focused panel button never re-fires on SPACE / ENTER
         var key = (e.key || '').toLowerCase(), k = KEYMAP[key] || key;
+        if (landKey(k, e)) { e.preventDefault(); return; }   // E4
         if (drawKey(k)) { e.preventDefault(); return; }
         ED.keys.shift = e.shiftKey; ED.keys.ctrl = e.ctrlKey || e.metaKey;
         var mod = e.ctrlKey || e.metaKey;
@@ -1332,6 +1346,10 @@
         if (e.button === 2) { ED.rmb = true; e.preventDefault(); lookLock(true); return; }
         if (e.button === 1) { ED.mmb = true; e.preventDefault(); return; }
         if (e.button === 0 && e.altKey) { var o = ED.sel.map(selRow).filter(Boolean)[0], a = o ? Core.rowAnchor(o.row) : spot(); ED.orbit = { x: a.x, z: a.z, y: ground(a.x, a.z) }; e.preventDefault(); return; }
+        if (e.button === 0 && ED.mode === 'land' && ED.land) {   // E4: a brush starts, anything else is a click (on the release)
+            if (LAND_TOOLS[landTool()].how === 'brush') { if (landStrokeStart(rayGround(e.clientX, e.clientY), e.shiftKey)) e.preventDefault(); return; }
+            _down = { x: e.clientX, y: e.clientY, land: true }; return;
+        }
         if (e.button === 0) { _down = { x: e.clientX, y: e.clientY, tc: !!(ED.tc && ED.tc.axis) }; if (ED.draw) { e.preventDefault(); drawDown(e); } }
     }
     function onMouseMove(e) {
@@ -1364,6 +1382,11 @@
             ED.orbit = null;
             if (ED.stroke && !(ED.view && e.target === ED.view.canvas)) { _down = null; strokeEnd(e); return; }   // E3: a stroke let go off the view still ends
             var d = _down; _down = null;
+            if (ED.mode === 'land' && ED.land) {
+                if (ED.land.stroke && ED.opts.landView !== 'map') { landStrokeEnd(); return; }
+                if (d && d.land && ED.view && e.target === ED.view.canvas && Math.hypot(e.clientX - d.x, e.clientY - d.y) <= 4) landClick(rayGround(e.clientX, e.clientY));
+                return;
+            }
             if (ED.draw && d && !d.tc && ED.view && e.target === ED.view.canvas) { drawUp(e); return; }
             if (!d || d.tc || ED.tcDragging || !ED.view || e.target !== ED.view.canvas) return;
             if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
@@ -1404,6 +1427,8 @@
         if (!ED.roomId) return;
         var p = spot(), face = Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360);
         if (ED.stroke) strokeEnd(); bandClipOff();
+        if (ED.land && ED.land.stroke) landStrokeEnd();
+        if (ED.mode === 'land') { var cv0 = $('edMap'); if (cv0) cv0.style.display = 'none'; landSaveNow(); }
         ED.playing = true; ED.hook.play = true;
         document.body.classList.add('ed-playing');
         saveNow();
@@ -1419,6 +1444,10 @@
         if (ED.mode === 'prefab' && ED.pfId && ED.doc.prefabs[ED.pfId] && (!rid || rid === PF_ROOM)) {
             if (pos) { ED.cam.x = pos.x - Math.sin(ED.cam.yaw) * 6; ED.cam.z = pos.z + Math.cos(ED.cam.yaw) * 6; ED.cam.y = (pos.y || 0) + 4; ED.cam.pitch = -0.4; }
             prefabSync(); enterRoom(PF_ROOM, 'prefab', { keepCam: !!pos }); return;
+        }
+        if (rid === LAND_ROOM || (!rid && ED.roomId === LAND_ROOM)) {   // E4: back over his land
+            if (pos) { ED.cam.x = pos.x - Math.sin(ED.cam.yaw) * 30; ED.cam.z = pos.z + Math.cos(ED.cam.yaw) * 30; ED.cam.y = (pos.y || 0) + 25; ED.cam.pitch = -0.4; }
+            ED.landCam = null; landInstall(); enterRoom(LAND_ROOM, 'land', { keepCam: true }); return;
         }
         var mine = !!(rid && ED.doc.rooms[rid]);
         var id = rid && DOOR_HQ.rooms[rid] ? rid : ED.roomId;
@@ -1488,6 +1517,10 @@
         setTimeout(function () { URL.revokeObjectURL(url); if (a.parentNode) a.parentNode.removeChild(a); }, 2000);
     }
     function exportZip(all) {
+        if (ED.land && ED.land.stroke) landStrokeEnd();
+        return landExport(all).catch(function (e) { console.error('[editor] the land export', e); toast('THE LAND DID NOT EXPORT · ' + (e && e.message || e), 6000); return null; }).then(function (LX) { return exportZip0(all, LX); });
+    }
+    function exportZip0(all, LX) {
         var doc = ED.doc, ids = Object.keys(doc.rooms).sort(), prev = (ED.exported && ED.exported.rooms) || {}, files = [], index = { v: 1, made: new Date().toISOString(), rooms: {}, prefabs: {}, retire: doc.retire || [], zones: doc.zones || {}, links: doc.links || [], dungeons: doc.dungeons || {}, start: doc.start || null, live: !!doc.live };
         var prevPf = (ED.exported && ED.exported.prefabs) || {};
         return Promise.all(ids.map(function (id) {
@@ -1497,22 +1530,25 @@
             var u8 = Core.utf8(JSON.stringify(Core.cleanExport(doc.prefabs[id])));
             return sha10(u8).then(function (sha) { index.prefabs[id] = [u8.length, sha]; if (all || prevPf[id] !== sha) files.push({ name: 'Assets/World/prefabs/' + id + '.json', data: u8 }); });
         }))).then(function () {
+            if (LX) { index.land = LX.block; LX.files.forEach(function (f) { files.push(f); }); }   // E4: his land (Assets/World/land/)
             var wj = Core.utf8(JSON.stringify(index, null, 1));
             return sha10(wj).then(function (wid) {
-                var gone = Object.keys(prev).filter(function (id) { return !doc.rooms[id]; }).map(function (g) { return 'Assets/World/rooms/' + g + '.json'; }).concat(Object.keys(prevPf).filter(function (id) { return !doc.prefabs[id]; }).map(function (g) { return 'Assets/World/prefabs/' + g + '.json'; }));
+                var gone = Object.keys(prev).filter(function (id) { return !doc.rooms[id]; }).map(function (g) { return 'Assets/World/rooms/' + g + '.json'; }).concat(Object.keys(prevPf).filter(function (id) { return !doc.prefabs[id]; }).map(function (g) { return 'Assets/World/prefabs/' + g + '.json'; }), LX ? LX.gone : []);
+                var landN = LX ? LX.files.filter(function (f) { return /\/tiles\//.test(f.name); }).length : 0;
                 var note = ['ENTROPY WARS · THE WORLD FILE (the editor\'s export, ' + index.made + ')', '',
                     'Upload everything under Assets/World/ to the R2 bucket at the same paths (npm run deploy -- --world Assets/World does it).',
                     'World id: ' + wid + '  (deploy.js --world writes it into index.html as window._EW_WORLD_ID; the game reads the world only when it is named there — until THE SWAP nothing in the player\'s game leads into it).',
                     all ? 'This zip holds EVERY room and prefab.' : 'This zip holds only the rooms and prefabs that changed since the last export (' + (files.length) + ' file(s)); world.json always.',
+                    LX ? 'THE LAND (Assets/World/land/, bake id ' + LX.block.id + '): ' + landN + ' changed tile(s) of ' + LX.block.tiles + ', land.json and land-map.png always, sea.bin when it changed. The game walks it from THE SWAP (E8); until then it is read by the editor only.' : 'No land yet.',
                     gone.length ? 'DELETE from the bucket (no longer in the world): ' + gone.join(', ') : 'Nothing to delete.', ''].join('\n');
                 files.unshift({ name: 'Assets/World/world.json', data: wj });
                 files.push({ name: 'Assets/World/README_EXPORT.txt', data: Core.utf8(note) });
                 var zip = Core.zipStore(files);
                 download(zip, 'ENTROPY_WARS_WORLD.zip');
                 var shas = function (o) { return Object.keys(o || {}).reduce(function (a, k) { a[k] = o[k][1]; return a; }, {}); };
-                ED.exported = { rooms: shas(index.rooms), prefabs: shas(index.prefabs), world: wid, at: Date.now() };
+                ED.exported = { rooms: shas(index.rooms), prefabs: shas(index.prefabs), world: wid, at: Date.now(), land: LX ? LX.land : ((ED.exported && ED.exported.land) || null) };
                 saveNow();
-                toast('EXPORTED · ' + (files.length - 2) + ' room / prefab file(s) + world.json · world id ' + wid + (gone.length ? ' · see README for files to delete' : ''), 6000);
+                toast('EXPORTED · ' + (files.length - 2 - (LX ? LX.files.length : 0)) + ' room / prefab file(s)' + (LX ? ' + the land (' + landN + ' tile(s))' : '') + ' + world.json · world id ' + wid + (gone.length ? ' · see README for files to delete' : ''), 6000);
                 return { files: files.map(function (f) { return f.name; }), id: wid };
             });
         });
@@ -1530,7 +1566,7 @@
                 var ents = Core.unzip(new Uint8Array(buf));
                 var wj = ents.filter(function (e) { return /(^|\/)world\.json$/.test(e.name); })[0];
                 if (!wj) throw new Error('no world.json in the zip');
-                return Promise.all(ents.map(function (e) { return inflate(e).then(function (d) { e.text = Core.utf8dec(d); }); })).then(function () {
+                return Promise.all(ents.map(function (e) { return inflate(e).then(function (d) { e.bytes = d; if (!/\.(bin|png)$/.test(e.name)) e.text = Core.utf8dec(d); }); })).then(function () {
                     var index = JSON.parse(wj.text), rooms = {}, missing = [];
                     var pfs = {};
                     ents.forEach(function (e) { var m = /rooms\/(.+)\.json$/.exec(e.name); if (m) rooms[m[1]] = JSON.parse(e.text); var mp = /prefabs\/(.+)\.json$/.exec(e.name); if (mp) pfs[mp[1]] = JSON.parse(e.text); });
@@ -1541,10 +1577,18 @@
                     Object.keys(index.prefabs || {}).forEach(function (id) { if (pfs[id]) doc.prefabs[id] = pfs[id]; else if (!doc.prefabs[id]) missing.push(id); });
                     Object.keys(doc.prefabs).forEach(function (id) { if (index.prefabs && !index.prefabs[id]) delete doc.prefabs[id]; });
                     ['retire', 'zones', 'links', 'dungeons', 'start', 'live'].forEach(function (k) { if (index[k] !== undefined) doc[k] = index[k]; });
+                    var lj = ents.filter(function (e) { return /land\/land\.json$/.test(e.name); })[0], ltiles = {};
+                    ents.forEach(function (e) { var m = /land\/tiles\/(t_\d+_\d+)\.bin$/.exec(e.name); if (m) ltiles[m[1]] = e.bytes.buffer.slice(e.bytes.byteOffset, e.bytes.byteOffset + e.bytes.byteLength); });
+                    if (ED.mode === 'land') enterRoom(ED.doc.start.room, 'world');
+                    var oldLand = ED.land;
                     docLoad(doc, ED.project || 'World 1');
                     saveNow();
-                    enterRoom((doc.start && doc.rooms[doc.start.room]) ? doc.start.room : Object.keys(doc.rooms)[0], 'world');
-                    toast('IMPORTED · ' + Object.keys(rooms).length + ' room file(s)' + (missing.length ? ' · MISSING (not in this zip, not in this project): ' + missing.join(', ') : ''), 6000);
+                    var landJob = Promise.resolve(null);
+                    if (lj) landJob = landImportFiles(JSON.parse(lj.text), ltiles, oldLand);
+                    return landJob.then(function (nl) {
+                        enterRoom((doc.start && doc.rooms[doc.start.room]) ? doc.start.room : Object.keys(doc.rooms)[0], 'world');
+                        toast('IMPORTED · ' + Object.keys(rooms).length + ' room file(s)' + (nl != null ? ' · the land (' + nl + ' tile(s) in the zip)' : '') + (missing.length ? ' · MISSING (not in this zip, not in this project): ' + missing.join(', ') : ''), 6000);
+                    });
                 });
             }).catch(function (e) { toast('IMPORT FAILED · ' + (e && e.message || e), 6000); });
         };
@@ -1553,10 +1597,14 @@
     function importR2() {
         if (!confirm('Replace this project with the world published on R2? (UNDO cannot bring the project back — EXPORT it first if you want a copy)')) return;
         toast('FETCHING THE PUBLISHED WORLD…', 8000);
+        if (ED.mode === 'land') enterRoom(ED.doc.start.room, 'world');
         W.hqWorldDocFetch(null, true).then(function (doc) {
+            var block = doc.land; delete doc.land;
             docLoad(doc, ED.project || 'World 1'); saveNow();
-            enterRoom((doc.start && doc.rooms[doc.start.room]) ? doc.start.room : Object.keys(doc.rooms)[0], 'world');
-            toast('IMPORTED FROM R2 · ' + Object.keys(doc.rooms).length + ' room(s)', 4000);
+            return (block ? landImportR2(block).catch(function (e) { toast('THE LAND DID NOT COME · ' + (e && e.message || e), 6000); return null; }) : Promise.resolve(null)).then(function (nl) {
+                enterRoom((doc.start && doc.rooms[doc.start.room]) ? doc.start.room : Object.keys(doc.rooms)[0], 'world');
+                toast('IMPORTED FROM R2 · ' + Object.keys(doc.rooms).length + ' room(s)' + (nl ? ' · the land (' + nl + ' tile(s))' : ''), 4000);
+            });
         }).catch(function (e) { toast('NOTHING PUBLISHED YET (or the bucket is out of reach) · ' + (e && e.message || e), 6000); });
     }
     function newWorld() {
@@ -1844,6 +1892,7 @@
         var B = $('edPalBox'); if (!B) return;
         var ae = document.activeElement;
         if (ae && B.contains(ae) && ae.id === 'edPalQ') { palMark(); return; }   // typing in the search: the body only
+        if (ED.mode === 'land') { var lh = landPaletteHtml(); if (B._h !== lh) { B._h = lh; B.innerHTML = lh; } landPaletteWire(B); return; }   // E4: the land's tools
         if (!editable()) { B.innerHTML = ''; return; }
         var tab = ED.opts.tab || 'build';
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
@@ -2167,7 +2216,8 @@
                ['Save selection as prefab', selToPrefab], ['Bake the prefab / kit into rows', bakeSel], null, ['Deselect  (Esc)', function () { select(null); }]],
         ADD: function () { return [['Prefab…', addPrefab], ['Kit (the game\'s builders)…', addKit], ['Prop (the catalogue)…', addProp], ['Door…  (click a wall or the ground)', function () { if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; } drawSet('doorway'); }], null].concat(Core.KINDS.map(function (K) { return [K.label, function () { addShape(K.id); }]; })); },   // the draw tools live on the BUILD palette
         ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this library room into the world', copyIntoWorld]],
-        VIEW: [['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }], null,
+        VIEW: [['The land (the world map)', landOpen], ['The land: MAP / 3D  (TAB)', function () { if (ED.mode === 'land') landView(ED.opts.landView === 'map' ? '3d' : 'map'); else landOpen(); }], null,
+               ['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid && ED.mode !== 'land'; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }], null,
                ['The level band on / off  (L)', function () { bandSet({ on: !ED.band.on }); }], ['The level band up a floor  (Shift L)', function () { bandStep(1); }], ['The level band down a floor', function () { bandStep(-1); }], null,
                ['Audit: invisible walls', function () { auditToggle('walls'); }], ['Audit: pockets (ground nobody reaches)', function () { auditToggle('pockets'); }], ['Audit: the fight window at the cursor', function () { auditToggle('fight'); }]],
     };
@@ -2180,6 +2230,7 @@
             '<button class="ed-btn ed-play" id="edPlay" title="PLAY HERE (P): the walker at the cursor, the real game; ESC comes back">▶ PLAY HERE</button>' +
             '<button class="ed-btn" id="edHelp" title="Keys (H)">?</button><button class="ed-btn" id="edClose" title="Close the editor">✕</button></div>' +
             '<div class="ed-banner" id="edBanner" style="display:none"></div>' +
+            '<canvas class="ed-map" id="edMap" style="display:none"></canvas>' +
             '<div class="ed-left" id="edLeft"><div id="edPalBox"></div><div id="edOutl"></div></div><div class="ed-right" id="edRight"></div>' +
             '<div class="ed-status" id="edStatus"></div><div class="ed-menu" id="edMenu" style="display:none"></div>' +
             '<div class="ed-modal" id="edModal" style="display:none"><div class="ed-card" id="edCard"></div></div>' +
@@ -2190,6 +2241,7 @@
             var b = document.createElement('button'); b.className = 'ed-btn ed-menubtn'; b.textContent = name; b.onclick = function (e) { e.stopPropagation(); menuOpen(name, b); }; menus.appendChild(b);
         });
         $('edPlay').onclick = playHere; $('edHelp').onclick = help; $('edClose').onclick = function () { close(); };
+        mapBind($('edMap'));
         document.addEventListener('mousedown', function (e) { var m = $('edMenu'); if (m && m.style.display !== 'none' && !m.contains(e.target)) m.style.display = 'none'; }, true);
     }
     function menuOpen(name, btn) {
@@ -2233,8 +2285,11 @@
             var r = ED.doc.rooms[id];
             h += '<button class="ed-row' + (ED.mode === 'world' && id === ED.roomId ? ' on' : '') + '" data-room="' + esc(id) + '">' + esc(r.label || id) + (ED.doc.start && ED.doc.start.room === id ? ' <i>START</i>' : '') + '<span>' + esc(id) + ' · ' + roomSize(r) + '</span></button>';
         });
-        h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button></div>';
+        h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button>';
+        h += '<button class="ed-row ed-land' + (ED.mode === 'land' ? ' on' : '') + '" data-act="land">THE LAND<span>the world map · ' + ((ED.doc.landEd && ED.doc.landEd.places && ED.doc.landEd.places.length) || 0) + ' place(s)</span></button></div>';
+        if (ED.mode === 'land') h += '<div class="ed-sec"><div class="ed-hd">ON THE LAND</div>' + landOutlinerHtml() + '</div>';
         h = h + prefabsHtml();
+        if (ED.mode === 'land') { var sc0 = L.scrollTop; L.innerHTML = h; L.scrollTop = sc0; prefabsWire(L); L.querySelectorAll('[data-room]').forEach(function (b) { b.onclick = function () { enterRoom(b.getAttribute('data-room'), 'world'); }; }); L.querySelectorAll('[data-act="newroom"]').forEach(function (b) { b.onclick = newRoom; }); L.querySelectorAll('[data-lk]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-lk'), i = b.getAttribute('data-li'); ED.land.sel = { kind: k, id: k === 'coasts' ? +i : i }; landFrame(ED.land.sel); panels(); }; }); return; }
         if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">LIBRARY · READ ONLY</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
         var r = room();
         if (r) {
@@ -2254,6 +2309,8 @@
         prefabsWire(L);
         L.querySelectorAll('[data-room]').forEach(function (b) { b.onclick = function () { saveCam(); enterRoom(b.getAttribute('data-room'), 'world'); }; });
         L.querySelectorAll('[data-act="newroom"]').forEach(function (b) { b.onclick = newRoom; });
+        L.querySelectorAll('[data-act="land"]').forEach(function (b) { b.onclick = function () { if (ED.mode !== 'land') landOpen(); }; });
+        L.querySelectorAll('[data-lk]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-lk'), i = b.getAttribute('data-li'); ED.land.sel = { kind: k, id: k === 'coasts' ? +i : i }; landFrame(ED.land.sel); panels(); }; });
         L.querySelectorAll('[data-list]').forEach(function (b) { b.onclick = function (e) { select(b.getAttribute('data-list'), b.getAttribute('data-id'), e.shiftKey); if (!e.shiftKey) frameSel(); }; });
     }
     function roomSize(r) { var S = (r && r.shell) || {}; if (S.w > 0 && S.d > 0) return Math.round(S.w) + '×' + Math.round(S.d) + ' m'; var R = S.radius || S.r; return R > 0 ? 'r ' + Math.round(R) + ' m' : (r && r.kind) || ''; }
@@ -2298,6 +2355,7 @@
     function inspector() {
         var P = $('edRight'); if (!P) return;
         datalists();
+        if (ED.mode === 'land') { P.innerHTML = landInspectorHtml(); landInspectorWire(P); return; }   // E4
         var r = room(); if (!r) { P.innerHTML = ''; return; }
         var ro = !editable();
         var hits = ED.sel.map(selRow).filter(Boolean);
@@ -2440,6 +2498,8 @@
             '<b>' + esc(ED.mode === 'library' ? 'LIBRARY' : ED.mode === 'prefab' ? 'PREFAB' : ED.project || '') + '</b>',
             esc((r && r.label) || ED.roomId || ''),
             c ? 'x ' + c.x.toFixed(2) + ' z ' + c.z.toFixed(2) + ' ground ' + c.y.toFixed(2) + ' m' : 'the cursor is off the ground',
+            ED.mode === 'land' ? '<b>LAND · ' + esc(LAND_TOOLS[landTool()].label) + '</b> · ' + (ED.opts.landView === 'map' ? 'MAP' : '3D') + (ED.land ? ' · ' + ED.land.E.grid.filter(Boolean).length + ' tile(s) shaped' : '') : '',
+            (ED.mode === 'land' && ED.land) ? (function () { var ck = landCheck(); return ck.length ? '<b class="ed-warn" title="' + esc(ck.join(' · ')) + '">' + ck.length + ' PLACE WARNING' + (ck.length > 1 ? 'S' : '') + '</b>' : ''; })() : '',
             ED.draw ? '<b>' + esc(DRAWS[ED.draw.tool] ? DRAWS[ED.draw.tool].label : 'PLACE') + '</b>' + (ED._drawInfo ? ' ' + esc(ED._drawInfo) : '') : '',
             'eye ' + ED.cam.x.toFixed(1) + ', ' + ED.cam.y.toFixed(1) + ', ' + ED.cam.z.toFixed(1) + ' · ' + ED.cam.speed.toFixed(0) + ' m/s',
             ED.ready ? 'READY' : 'BUILDING…',
@@ -2503,10 +2563,608 @@
             ['PLATFORM · DECK (BUILD)', 'drag a rectangle: a floating platform / a railed deck at HEIGHT'],
             ['L · Shift L', 'the level band on / off · up a floor (the top bar: its bottom, its top, ▼ ▲): only what overlaps it picks, everything above it is cut away'],
             ['AUDIT (top bar)', 'WALLS: red posts where the walker is stopped by nothing you can see · POCKETS: yellow ground nobody reaches from the spawn or a door · FIGHT: the 8 × 8 battle window at the cursor'],
+            ['THE LAND (outliner, VIEW)', 'your world map: MAP (wheel zooms, right drag pans) or 3D (TAB / M switches). BRUSHES and PAINT: hold the left mouse ([ ] size) · LINES: click the points, ENTER ends (BACKSPACE takes one back) · PLACE: pick a room, click where it stands · SELECT: click a thing to edit or DELETE it'],
             ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'drop the pick'],
         ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
         '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a built-in room to look at or copy. FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
         $('edCancel').onclick = modalClose;
+    }
+
+    /* ══ THE LAND (E4, EDITOR_PLAN §5.5 + §5.6): his land in memory (data.js hqLandEd*), seen two ways — the MAP (top-down, the
+       bake's shading, the vector layers) and 3D (the renderer streams the land from memory, HQ_LAND_STORE.src). It starts flat
+       and empty (a disc with the ice wall round it); the old land is never imported. BRUSHES shape the 2 m lattice; LINES stamp
+       ridges, valleys, plateaus, rivers, roads, the coast and lakes; PLACES stand his rooms on levelled pads; REGIONS and REVEALS
+       are the map's areas and its first-seen points; SIGHT shows what is seen from a point (information only). Every stamp and
+       every stroke is ONE undo step: the doc's vector patches + `step.land` (each touched tile before and after). The lattice
+       lives in IndexedDB (store 'land', one record a tile), the vectors in the project's doc (doc.landEd). EXPORT writes
+       Assets/World/land/ (land.json, land-map.png, sea.bin, the tiles that changed) + world.json `land`. ═════════════════════ */
+    var LAND_ROOM = '__ed_land';
+    ED.land = null;
+    var LAND_TOOLS = {
+        pick:    { label: 'SELECT',   how: 'pick',  grp: 'mark',  tip: 'Click a place, a route, a river, a lake, a region or a reveal on the MAP to edit it (the inspector, right).' },
+        raise:   { label: 'RAISE',    how: 'brush', grp: 'brush', tip: 'Hold the left mouse: the ground rises (SHIFT lowers).' },
+        lower:   { label: 'LOWER',    how: 'brush', grp: 'brush', tip: 'Hold the left mouse: the ground sinks.' },
+        smooth:  { label: 'SMOOTH',   how: 'brush', grp: 'brush', tip: 'Hold the left mouse: bumps and edges even out.' },
+        flatten: { label: 'FLATTEN',  how: 'brush', grp: 'brush', tip: 'Hold the left mouse: the ground eases to the height where the stroke began.' },
+        terrace: { label: 'TERRACE',  how: 'brush', grp: 'brush', tip: 'Hold the left mouse: the slope steps (STEP m a step).' },
+        set:     { label: 'SET',      how: 'brush', grp: 'brush', tip: 'Hold the left mouse: the ground goes to HEIGHT (m, absolute).' },
+        cliff:   { label: 'CLIFF',    how: 'brush', grp: 'brush', tip: 'Hold the left mouse: a hard-edged block at HEIGHT (a steep face is a cliff: drawn as rock, the walker cannot climb it).' },
+        roughen: { label: 'ROUGHEN',  how: 'brush', grp: 'brush', tip: 'Hold the left mouse: a hand stroke of noise (the only noise in the editor).' },
+        mat:     { label: 'MATERIAL', how: 'brush', grp: 'paint', tip: 'Hold the left mouse: paint the ground (pick one of the 24 below).' },
+        forest:  { label: 'FOREST',   how: 'brush', grp: 'paint', tip: 'Hold the left mouse: trees (DENSITY 0 – 1; 0 clears them). The game places them as you walk.' },
+        water:   { label: 'WATER',    how: 'brush', grp: 'paint', tip: 'Hold the left mouse: standing water at LEVEL over the ground under it.' },
+        dry:     { label: 'DRY',      how: 'brush', grp: 'paint', tip: 'Hold the left mouse: the water goes.' },
+        clear:   { label: 'CLEAR',    how: 'brush', grp: 'paint', tip: 'Hold the left mouse: back to the flat start (height, paint, trees, water).' },
+        ridge:   { label: 'RIDGE',    how: 'line',  grp: 'line',  tip: 'Click its course, ENTER ends it: a raised band (WIDTH, HEIGHT).' },
+        valley:  { label: 'VALLEY',   how: 'line',  grp: 'line',  tip: 'Click its course, ENTER ends it: a sunk band (WIDTH, DEPTH = HEIGHT).' },
+        plateau: { label: 'PLATEAU',  how: 'poly',  grp: 'line',  tip: 'Click its outline, ENTER closes it: level ground at HEIGHT, eased down over EDGE.' },
+        river:   { label: 'RIVER',    how: 'line',  grp: 'line',  tip: 'Click from the source down, ENTER ends it: the bed is carved, the water runs downhill (a falls where it drops).' },
+        road:    { label: 'ROUTE',    how: 'line',  grp: 'line',  tip: 'Click its course, ENTER ends it: graded, flat across, a bridge where the ground falls away, rails where it drops.' },
+        lane:    { label: 'LANE',     how: 'line',  grp: 'line',  tip: 'A narrower dirt road, steeper allowed. Click its course, ENTER ends it.' },
+        trail:   { label: 'TRAIL',    how: 'line',  grp: 'line',  tip: 'A footpath. Click its course, ENTER ends it.' },
+        coast:   { label: 'COAST',    how: 'poly',  grp: 'line',  tip: 'Click round your land, ENTER closes it: outside every coast is the sea (a beach, then deep water). Draw more for islands.' },
+        lake:    { label: 'LAKE',     how: 'poly',  grp: 'line',  tip: 'Click its shore, ENTER closes it: a bed at LEVEL − DEPTH, the water at LEVEL.' },
+        place:   { label: 'PLACE',    how: 'click', grp: 'mark',  tip: 'Pick one of your rooms, then click where it stands: its pad is levelled under it (FLOAT skips the pad).' },
+        region:  { label: 'REGION',   how: 'poly',  grp: 'mark',  tip: 'Click its outline, ENTER closes it: an area of the map (Area N).' },
+        reveal:  { label: 'REVEAL',   how: 'click', grp: 'mark',  tip: 'Click: a point that shows its region on the map when the player first stands there.' },
+        sight:   { label: 'SIGHT',    how: 'click', grp: 'mark',  tip: 'Click: what is seen from there (green on the map). Information only. ESC clears it.' },
+    };
+    var LAND_OPTS = {
+        brush: [['landR', 'Radius (m) · [ ]'], ['landS', 'Strength (0 – 1)'], ['landHard', 'Hard edge (0 – 0.95)']],
+        set: [['landH', 'Height (m, absolute)']], cliff: [['landH', 'Height (m, absolute)']], terrace: [['landStep', 'Step (m)']],
+        forest: [['landForest', 'Density (0 – 1)']], water: [['landWater', 'Level (m)']],
+        ridge: [['ridgeW', 'Width (m)'], ['ridgeH', 'Height (m)']], valley: [['ridgeW', 'Width (m)'], ['ridgeH', 'Depth (m)']],
+        plateau: [['plateauH', 'Height (m, absolute)'], ['plateauEdge', 'Edge (m)']],
+        river: [['riverW0', 'Width at the source (m)'], ['riverW1', 'Width at the mouth (m)'], ['riverD', 'Depth (m)']],
+        lake: [['lakeLevel', 'Level (m)'], ['lakeDepth', 'Depth (m)']],
+    };
+    Object.assign(ED.opts, { landTool: 'pick', landR: 40, landS: 0.5, landHard: 0.3, landH: 12, landStep: 5, landMat: 'grass', landForest: 0.8, landWater: 1.5,
+        ridgeW: 90, ridgeH: 30, plateauH: 20, plateauEdge: 30, riverW0: 6, riverW1: 16, riverD: 2.2, lakeLevel: 1.5, lakeDepth: 4, landView: 'map' });
+    function landDoc() {
+        var D = ED.doc.landEd || (ED.doc.landEd = {});
+        ['coasts', 'places', 'regions', 'reveals', 'roads', 'rivers', 'lakes', 'lines'].forEach(function (k) { if (!Array.isArray(D[k])) D[k] = []; });
+        return D;
+    }
+    function landHas() { var D = ED.doc && ED.doc.landEd; if (ED.land && ED.land.E.grid.some(Boolean)) return true; return !!(D && ['coasts', 'places', 'regions', 'reveals', 'roads', 'rivers', 'lakes', 'lines'].some(function (k) { return D[k] && D[k].length; })); }
+    function landTool() { return LAND_TOOLS[ED.opts.landTool] ? ED.opts.landTool : 'pick'; }
+    /* the lattice in IndexedDB: one record a tile ('<project>|<index>'), written as they change */
+    function landKeyRange(name) { return IDBKeyRange.bound(name + '|', name + '|￿'); }
+    function landLoadRaster(name) {
+        return idbDo('land', 'readonly', function (st) { return st.getAll(landKeyRange(name)); }).then(function (a) { return a || []; }).catch(function () { return []; });
+    }
+    function landSaveSoon() { clearTimeout(ED.landSaveTimer); ED.landSaveTimer = setTimeout(landSaveNow, 1500); }
+    function landSaveNow() {
+        var L = ED.land; if (!L || !ED.project || !L.unsaved.size) return Promise.resolve(true);
+        var keys = Array.from(L.unsaved), name = ED.project; L.unsaved.clear();
+        return idbDo('land', 'readwrite', function (st) {
+            keys.forEach(function (k) { var t = L.E.grid[k], id = name + '|' + k; if (t) st.put({ k: k, h: t.h, mat: t.mat, forest: t.forest, water: t.water }, id); else st.delete(id); });
+        }).catch(function (e) { keys.forEach(function (k) { L.unsaved.add(k); }); console.warn('[editor] the land did not save', e); toast('THE LAND DID NOT SAVE · ' + (e && e.message || e), 5000); });
+    }
+    function landRasterClear(name) { return idbDo('land', 'readwrite', function (st) { return st.delete(landKeyRange(name)); }).catch(function () {}); }
+    function landTileFrom(E, k, v) {
+        var ti = k % E.per, tj = Math.floor(k / E.per), t = E.grid[k];
+        if (!t) { var b = W.hqLandEdBlank(E, ti, tj); t = { ti: ti, tj: tj, S: b.S, x0: b.x0, z0: b.z0, h: new Float32Array(b.h.length), mat: new Uint8Array(b.h.length), forest: new Uint8Array(b.h.length), water: null, used: 0, bytes: b.h.length * 6 }; E.grid[k] = t; }
+        t.h.set(v.h); t.mat.set(v.mat); t.forest.set(v.forest);
+        if (v.water) { if (!t.water) t.water = new Float32Array(v.water.length); t.water.set(v.water); t.bytes = t.h.length * 10; } else if (t.water) { t.water = null; t.bytes = t.h.length * 6; }
+        return t;
+    }
+    /* the land of this project (made once, from IndexedDB) */
+    function landEnsure() {
+        if (ED.land && ED.land.project === ED.project) return Promise.resolve(ED.land);
+        var E = W.hqLandEdNew(), D = landDoc();
+        if (D.coasts.length) { E.coasts = Core.clone(D.coasts); E.cD = W.hqLandEdCoastField(E, E.coasts); }
+        ED.land = { project: ED.project, E: E, W: null, unsaved: new Set(), pend: new Set(), liveAt: 0, stroke: null, pts: [], sel: null, sight: null, map: { cx: 0, cz: 0, s: 4 }, img: null, imgData: null, mapDirty: true, exported: null };
+        var L = ED.land;
+        return landLoadRaster(ED.project).then(function (rows) {
+            rows.forEach(function (v) { if (v && v.h && v.k >= 0 && v.k < E.per * E.per) landTileFrom(E, v.k, v); });
+            E.changed.clear();
+            L.W = W.hqLandEdWorld(E);
+            return L;
+        });
+    }
+    function landRoom() {
+        var src = (DOOR_HQ.rooms || {}).land, S = src ? Core.clone(src.shell) : { w: 5600, d: 5600, h: 600, open: true, edge: 'open', floor: 'grass' };
+        DOOR_HQ.rooms[LAND_ROOM] = { id: LAND_ROOM, label: 'THE LAND', sub: String(ED.project || '').toUpperCase(), kind: 'box', land: true, shell: S, doors: [], props: [], spawn: { x: 0, z: 0, face: 0 } };
+    }
+    function landOv() { return W.hqLandEdIndex(ED.land.E, landDoc(), { tiles: [] }); }
+    function landInstall() { landRoom(); W.hqLandEdInstall(ED.land.E, landOv(), ED.land.W); }
+    function landUninstall() { try { W.hqLandEdUninstall(); } catch (e) { console.warn('[editor] the land did not let go', e); } }
+    /* the vectors changed: the runtime re-reads the places, the roads, the rivers, the regions */
+    function landReindex(o) {
+        if (!ED.land) return;
+        try { W.hqLandEdInstall(ED.land.E, landOv(), ED.land.W); } catch (e) { console.warn('[editor] the land index', e); }
+        if (ED.mode === 'land') { try { ThreeRenderer.hq.landEdited([], o || { roads: true, falls: true }); } catch (e) {} }
+    }
+    function landOpen() {
+        if (!ED.doc) return;
+        saveCam();
+        landEnsure().then(function () {
+            landInstall();
+            var first = !ED.landCamSet; ED.landCamSet = true;
+            if (first && !(ED.landCam)) Object.assign(ED.cam, { x: 0, y: 140, z: 320, yaw: 0, pitch: -0.42, speed: 60 });
+            else if (ED.landCam) Object.assign(ED.cam, ED.landCam);
+            enterRoom(LAND_ROOM, 'land', { keepCam: true });
+            landMapShow();
+        }).catch(function (e) { console.error('[editor] the land', e); toast('THE LAND DID NOT OPEN · ' + (e && e.message || e), 6000); });
+    }
+    /* ── THE STROKE (a brush held down, in either view) ── */
+    function landStrokeStart(at, shift) {
+        var L = ED.land, tool = landTool(); if (!L || !at || LAND_TOOLS[tool].how !== 'brush') return false;
+        if (tool === 'raise' && shift) tool = 'lower';
+        L.E.touch = new Map();
+        L.stroke = { tool: tool, at: at, h0: W.hqLandEdHeight(L.E, at.x, at.z), box: null };
+        return true;
+    }
+    function landDab(dt) {
+        var L = ED.land, S = L && L.stroke; if (!S || !S.at) return;
+        var O = ED.opts, t = S.tool, o = { r: +O.landR || 40, hard: +O.landHard || 0 }, str = Math.max(0.02, Math.min(1, +O.landS || 0.5));
+        if (t === 'raise' || t === 'lower') { o.s = 1; o.amt = 14 * str * dt; }
+        else if (t === 'roughen') { o.s = 1; o.amt = 10 * str * dt; }
+        else o.s = Math.min(1, str * dt * 5);
+        if (t === 'set' || t === 'cliff') o.h = +O.landH;
+        if (t === 'flatten') o.h = S.h0;
+        if (t === 'terrace') o.step = +O.landStep || 5;
+        if (t === 'mat') o.mat = W.hqLandEdMatId(O.landMat);
+        if (t === 'forest') { o.f = Math.max(0, Math.min(1, +O.landForest)); o.s = Math.min(1, str * dt * 6); }
+        if (t === 'water') o.h = +O.landWater;
+        var tl = W.hqLandEdBrush(L.E, t, S.at.x, S.at.z, o);
+        tl.forEach(function (k) { L.pend.add(k); });
+        var r = o.r; S.box = S.box ? [Math.min(S.box[0], S.at.x - r), Math.min(S.box[1], S.at.z - r), Math.max(S.box[2], S.at.x + r), Math.max(S.box[3], S.at.z + r)] : [S.at.x - r, S.at.z - r, S.at.x + r, S.at.z + r];
+        if (performance.now() - L.liveAt > 150) landLive();
+    }
+    function landStrokeEnd() {
+        var L = ED.land, S = L && L.stroke; if (!S) return;
+        L.stroke = null;
+        landLive();
+        landCommit([], LAND_TOOLS[S.tool] ? LAND_TOOLS[S.tool].label.toLowerCase() : S.tool, landTake(), { far: true });
+    }
+    /* the tiles this step changed: before (filed on their first write) and after */
+    function landSnap(t) { return t ? { h: t.h.slice(), mat: t.mat.slice(), forest: t.forest.slice(), water: t.water ? t.water.slice() : null } : null; }
+    function landTake() {
+        var L = ED.land, E = L.E, out = [];
+        if (E.touch) E.touch.forEach(function (before, k) { out.push({ k: k, before: before, after: landSnap(E.grid[k]) }); });
+        E.touch = null;
+        return out;
+    }
+    function snapBytes(s) { return s ? s.h.byteLength + s.mat.byteLength + s.forest.byteLength + (s.water ? s.water.byteLength : 0) : 0; }
+    function landSnapsApply(snaps, which) {
+        var E = ED.land.E;
+        snaps.forEach(function (s) { var v = s[which]; if (v) landTileFrom(E, s.k, v); else E.grid[s.k] = null; ED.land.unsaved.add(s.k); });
+    }
+    /* THE LIVE VIEW: the tiles a stroke touched so far go to the renderer, the map and the 8 m world */
+    function landLive() {
+        var L = ED.land; if (!L) return;
+        L.liveAt = performance.now();
+        var list = Array.from(L.pend); L.pend.clear(); if (!list.length) return;
+        if (ED.mode === 'land') { try { ThreeRenderer.hq.landEdited(list); } catch (e) {} }
+        landPatch(list);
+    }
+    function landBoxOf(list) {
+        var E = ED.land.E, b = [Infinity, Infinity, -Infinity, -Infinity];
+        list.forEach(function (k) { var ti = k % E.per, tj = Math.floor(k / E.per), x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile; b[0] = Math.min(b[0], x0); b[1] = Math.min(b[1], z0); b[2] = Math.max(b[2], x0 + E.tile); b[3] = Math.max(b[3], z0 + E.tile); });
+        return b;
+    }
+    function landPatch(list, all) {
+        var L = ED.land, E = L.E;
+        if (all || !list.length) { L.W = W.hqLandEdWorld(E, L.W); L.mapDirty = true; }
+        else {
+            var b = landBoxOf(list);
+            W.hqLandEdWorld(E, L.W, b);
+            if (L.imgData) { var px = W.HQ_LAND_EDIT_RULES.map, i0 = Math.floor((b[0] + E.ext) / px) - 1, j0 = Math.floor((b[1] + E.ext) / px) - 1, i1 = Math.ceil((b[2] + E.ext) / px) + 1, j1 = Math.ceil((b[3] + E.ext) / px) + 1; W.hqLandEdMapRGBA(E, L.imgData.data, [i0, j0, i1, j1]); L.imgCtx.putImageData(L.imgData, 0, 0, Math.max(0, i0), Math.max(0, j0), i1 - i0 + 1, j1 - j0 + 1); }
+        }
+        mapDraw();
+    }
+    /* ONE UNDO STEP on the land: the doc's patches (the vectors) + the tiles' snapshots */
+    var LAND_UNDO_BYTES = 256 * 1048576;
+    function landCommit(step, label, snaps, o) {
+        step = step || [];
+        if (!step.length && !(snaps && snaps.length)) return;
+        try { Core.stepDo(ED.doc, step); } catch (e) { console.warn('[editor] the land edit failed', e); toast('THAT EDIT FAILED · ' + e.message, 4000); return; }
+        step.label = label || 'land'; step.land = (snaps && snaps.length) ? snaps : null; step.landO = o || {};
+        step.landBytes = (snaps || []).reduce(function (a, s) { return a + snapBytes(s.before) + snapBytes(s.after); }, 0);
+        ED.undo.push(step); ED.redo = [];
+        var tot = ED.undo.reduce(function (a, s) { return a + (s.landBytes || 0); }, 0);
+        while ((ED.undo.length > UNDO_MAX || tot > (W.HQ_LAND_EDIT_RULES.undoMB || 256) * 1048576) && ED.undo.length > 1) { tot -= ED.undo[0].landBytes || 0; ED.undo.shift(); }
+        landAfter(step);
+    }
+    function isLandStep(s) { return !!(s && (s.land || s.some(function (p) { return p.path[0] === 'landEd'; }))); }
+    function landAfter(step) {
+        var L = ED.land; if (!L) { saveSoon(); panels(); return; }
+        var o = step.landO || {}, keys = (step.land || []).map(function (s) { return s.k; }), vec = step.some(function (p) { return p.path[0] === 'landEd'; });
+        keys.forEach(function (k) { L.unsaved.add(k); });
+        if (step.some(function (p) { return p.path[0] === 'landEd' && p.path[1] === 'coasts'; })) {
+            var E = L.E; E.coasts = Core.clone(landDoc().coasts); E.cD = W.hqLandEdCoastField(E, E.coasts); E.plain = null; E.blank.clear();
+            keys = []; for (var k = 0; k < E.per * E.per; k++) keys.push(k); o = Object.assign({}, o, { far: true });
+        }
+        if (vec) landReindex({ roads: true, falls: true });
+        if (ED.mode === 'land') { try { ThreeRenderer.hq.landEdited(keys, { far: !!o.far || keys.length > 24 }); } catch (e) {} }
+        landPatch(keys, keys.length > 60);
+        saveSoon(); landSaveSoon();
+        if (L.sel && !landSelRow(L.sel)) L.sel = null;
+        panels();
+    }
+    /* ── THE LINES: points clicked, ENTER finishes ── */
+    function landNo(list, prefix) { var n = 1, ids = {}; list.forEach(function (r) { ids[r.id] = 1; }); while (ids[prefix + n]) n++; return n; }
+    function landFinish() {
+        var L = ED.land, tool = landTool(), T = LAND_TOOLS[tool], pts = L.pts.map(function (p) { return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]; }), O = ED.opts, D = landDoc(), E = L.E;
+        L.pts = []; landLineShow();
+        if (!T || pts.length < (T.how === 'poly' ? 3 : 2)) { mapDraw(); return; }
+        var step = [], label = T.label.toLowerCase(), res, o = {};
+        E.touch = new Map();
+        try {
+            if (tool === 'ridge' || tool === 'valley' || tool === 'plateau') {
+                if (tool === 'plateau') W.hqLandEdPlateau(E, pts, { h: +O.plateauH, edge: +O.plateauEdge });
+                else W.hqLandEdRidge(E, pts, { w: +O.ridgeW, h: +O.ridgeH, valley: tool === 'valley' });
+                var nl = landNo(D.lines, tool);
+                step.push({ path: ['landEd', 'lines', D.lines.length], before: undefined, after: { id: tool + nl, label: T.label.charAt(0) + T.label.slice(1).toLowerCase() + ' ' + nl, kind: tool, pts: pts, w: +O.ridgeW, h: tool === 'plateau' ? +O.plateauH : +O.ridgeH } });
+            } else if (tool === 'river') {
+                res = W.hqLandEdRiver(E, pts, { w0: +O.riverW0, w1: +O.riverW1, depth: +O.riverD });
+                var nr = landNo(D.rivers, 'river');
+                step.push({ path: ['landEd', 'rivers', D.rivers.length], before: undefined, after: Object.assign({ id: 'river' + nr, label: 'River ' + nr }, res.row) });
+            } else if (tool === 'road' || tool === 'lane' || tool === 'trail') {
+                res = W.hqLandEdRoad(E, pts, { type: tool });
+                var pre = { road: 'Route ', lane: 'Lane ', trail: 'Trail ' }[tool], nn = 1, used = {};
+                D.roads.forEach(function (r) { used[r.label] = 1; }); while (used[pre + nn]) nn++;
+                step.push({ path: ['landEd', 'roads', D.roads.length], before: undefined, after: Object.assign({ id: tool + '_' + landNo(D.roads, tool + '_'), label: pre + nn, bridges: res.bridges }, res.row) });
+            } else if (tool === 'lake') {
+                res = W.hqLandEdLake(E, pts, { level: +O.lakeLevel, depth: +O.lakeDepth });
+                var nk = landNo(D.lakes, 'lake');
+                step.push({ path: ['landEd', 'lakes', D.lakes.length], before: undefined, after: Object.assign({ id: 'lake' + nk, label: 'Lake ' + nk }, res.row) });
+            } else if (tool === 'coast') {
+                var nc = D.coasts.concat([pts]);
+                W.hqLandEdCoast(E, nc);
+                step.push({ path: ['landEd', 'coasts'], before: Core.clone(D.coasts), after: nc });
+                o.far = true;
+            } else if (tool === 'region') {
+                var ng = landNo(D.regions, 'area');
+                step.push({ path: ['landEd', 'regions', D.regions.length], before: undefined, after: { id: 'area' + ng, label: 'Area ' + ng, pts: pts } });
+            }
+        } catch (e) { console.error('[editor] the stamp', e); toast('THAT STAMP FAILED · ' + e.message, 4000); }
+        landCommit(step, label, landTake(), Object.assign({ far: true }, o));
+    }
+    function landClick(at) {
+        var L = ED.land, tool = landTool(), T = LAND_TOOLS[tool], D = landDoc();
+        if (!at) return;
+        if (T.how === 'line' || T.how === 'poly') { L.pts.push([at.x, at.z]); landLineShow(); mapDraw(); return; }
+        if (tool === 'pick') { var hit = landHit(at.x, at.z, landPickR()); L.sel = hit; panels(); mapDraw(); return; }
+        if (tool === 'reveal') { var nv = landNo(D.reveals, 'v'); landCommit([{ path: ['landEd', 'reveals', D.reveals.length], before: undefined, after: { id: 'v' + nv, label: 'Reveal ' + nv, at: [Math.round(at.x), Math.round(at.z)] } }], 'reveal'); return; }
+        if (tool === 'sight') {
+            if (!L.W) L.W = W.hqLandEdWorld(L.E);
+            L.sight = W.hqLandEdSight(L.E, L.W, at.x, at.z);
+            var seen = 0, tot = 0; L.sight.rays.forEach(function (r) { r.forEach(function (s) { seen += s[1] - s[0]; }); tot += L.sight.maxD; });
+            toast('SIGHT from ' + Math.round(at.x) + ', ' + Math.round(at.z) + ' (eye ' + L.sight.y.toFixed(1) + ' m) · ' + Math.round(seen / tot * 100) + '% of the rays reach the ground they cross · ESC clears', 5000);
+            mapDraw(); return;
+        }
+        if (tool === 'place') landPlaceAt(at);
+    }
+    function landPickR() { return ED.opts.landView === 'map' ? 12 * ED.land.map.s : 20; }
+    /* PLACES: one of his rooms at a spot; its pad (the room's half-size) levelled at the ground there */
+    function landPlaceAt(at) {
+        var D = landDoc(), placed = {}; D.places.forEach(function (p) { placed[p.room] = 1; });
+        var items = Object.keys(ED.doc.rooms).filter(function (id) { return !placed[id]; }).map(function (id) { var r = ED.doc.rooms[id]; return { label: String(r.label || id), sub: id + ' · ' + roomSize(r), value: id }; });
+        if (!items.length) { toast('EVERY ROOM OF YOURS IS ALREADY ON THE LAND (ROOM → NEW ROOM makes another)', 4000); return; }
+        pick('WHICH ROOM STANDS HERE? (x ' + Math.round(at.x) + ', z ' + Math.round(at.z) + ')', items, function (rid) {
+            var r = ED.doc.rooms[rid], S = (r && r.shell) || {}, half = Math.ceil(Math.max(S.w || 40, S.d || 40, (S.radius || S.r || 0) * 2) / 2);
+            var y = Math.round(W.hqLandEdHeight(ED.land.E, at.x, at.z) * 10) / 10, np = landNo(D.places, 'w_p');
+            var row = { id: 'w_p' + np, label: String(r.label || ('Area ' + np)), room: rid, kind: 'site', at: [Math.round(at.x), Math.round(at.z)], padY: y, pad: half, float: false, rot: 0 };
+            ED.land.E.touch = new Map();
+            W.hqLandEdPad(ED.land.E, row.at[0], row.at[1], row.pad, row.padY);
+            landCommit([{ path: ['landEd', 'places', D.places.length], before: undefined, after: row }], 'place ' + row.label, landTake(), { far: true });
+            ED.land.sel = { kind: 'places', id: row.id }; panels();
+        });
+    }
+    /* the inspector moved / re-levelled a place: the new pad stamped in the same step (the old pad's ground stays: SMOOTH it) */
+    function landPlaceSet(i, after, label) {
+        var D = landDoc(), before = D.places[i]; if (!before) return;
+        ED.land.E.touch = new Map();
+        if (!after.float) W.hqLandEdPad(ED.land.E, after.at[0], after.at[1], after.pad, after.padY);
+        landCommit([{ path: ['landEd', 'places', i], before: Core.clone(before), after: after }], label || 'place', landTake(), { far: true });
+    }
+    /* ── WHAT IS UNDER A POINT (the SELECT tool) ── */
+    var LAND_LISTS = [['places', 'PLACES'], ['roads', 'ROUTES'], ['rivers', 'RIVERS'], ['lakes', 'LAKES'], ['regions', 'REGIONS'], ['reveals', 'REVEALS'], ['lines', 'SHAPES'], ['coasts', 'COASTS']];
+    function landSelRow(s) { var D = landDoc(), L = D[s.kind] || []; if (s.kind === 'coasts') return L[s.id] ? { row: { pts: L[s.id], label: 'Coast ' + (s.id + 1) }, i: s.id } : null; for (var i = 0; i < L.length; i++) if (L[i] && L[i].id === s.id) return { row: L[i], i: i }; return null; }
+    function segD(px, pz, P, closed) {
+        var d = Infinity, n = P.length;
+        for (var k = 0; k < n - (closed ? 0 : 1); k++) { var a = P[k], b = P[(k + 1) % n], dx = b[0] - a[0], dz = b[1] - a[1], ll = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / ll)); d = Math.min(d, Math.hypot(px - a[0] - dx * t, pz - a[1] - dz * t)); }
+        return d;
+    }
+    function landHit(x, z, r) {
+        var D = landDoc(), best = null, bd = r;
+        var cand = function (kind, id, d) { if (d < bd) { bd = d; best = { kind: kind, id: id }; } };
+        D.places.forEach(function (p) { var h = p.pad || 20; cand('places', p.id, Math.max(0, Math.max(Math.abs(x - p.at[0]), Math.abs(z - p.at[1])) - h) * 0.5); });
+        D.reveals.forEach(function (v) { cand('reveals', v.id, Math.hypot(x - v.at[0], z - v.at[1])); });
+        D.roads.forEach(function (rd) { cand('roads', rd.id, segD(x, z, rd.pts, false)); });
+        D.rivers.forEach(function (rv) { cand('rivers', rv.id, segD(x, z, rv.pts, false)); });
+        D.lakes.forEach(function (lk) { cand('lakes', lk.id, segD(x, z, lk.pts, true)); });
+        D.lines.forEach(function (ln) { cand('lines', ln.id, segD(x, z, ln.pts, ln.kind === 'plateau')); });
+        D.regions.forEach(function (rg) { cand('regions', rg.id, segD(x, z, rg.pts, true)); });
+        D.coasts.forEach(function (c, i) { cand('coasts', i, segD(x, z, c, true)); });
+        return best;
+    }
+    function landFrame(s) {
+        var h = landSelRow(s); if (!h) return;
+        var P = h.row.at ? [h.row.at] : (h.row.pts || []); if (!P.length) return;
+        var x = 0, z = 0; P.forEach(function (p) { x += p[0]; z += p[1]; }); x /= P.length; z /= P.length;
+        ED.land.map.cx = x; ED.land.map.cz = z; mapDraw();
+        var g = W.hqLandEdHeight(ED.land.E, x, z); ED.cam.x = x; ED.cam.z = z + 120; ED.cam.y = g + 90; ED.cam.yaw = 0; ED.cam.pitch = -0.6;
+    }
+    function landDelete(s) {
+        var D = landDoc(), h = landSelRow(s); if (!h) return;
+        if (s.kind === 'coasts') { var nc = D.coasts.filter(function (c, i) { return i !== s.id; }); ED.land.E.touch = new Map(); W.hqLandEdCoast(ED.land.E, nc); landCommit([{ path: ['landEd', 'coasts'], before: Core.clone(D.coasts), after: nc }], 'delete coast', landTake(), { far: true }); }
+        else landCommit([{ path: ['landEd', s.kind, h.i], before: Core.clone(h.row), after: undefined }], 'delete ' + (h.row.label || s.kind));
+        ED.land.sel = null; panels();
+    }
+    /* the checks shown in the status line (never blocking): places that overlap, a place whose room is gone, one past the wall */
+    function landCheck() {
+        var D = landDoc(), out = [], P = D.places, wr = W.HQ_LAND_EDIT_RULES.wall.r;
+        P.forEach(function (p, i) {
+            if (!ED.doc.rooms[p.room]) out.push(p.label + ': its room is gone');
+            if (Math.hypot(p.at[0], p.at[1]) + (p.pad || 0) > wr) out.push(p.label + ': past the ice wall');
+            for (var j = i + 1; j < P.length; j++) { var q = P[j]; if (!p.float && !q.float && Math.abs(p.at[0] - q.at[0]) < (p.pad || 0) + (q.pad || 0) && Math.abs(p.at[1] - q.at[1]) < (p.pad || 0) + (q.pad || 0)) out.push(p.label + ' overlaps ' + q.label); }
+        });
+        return out;
+    }
+    /* ── THE 3D VIEW'S LINE (the points clicked so far) ── */
+    function landLineShow() {
+        var L = ED.land; if (!ED.group) return;
+        if (L.lineObj) { ED.group.remove(L.lineObj); try { L.lineObj.geometry.dispose(); } catch (e) {} L.lineObj = null; }
+        if (!L.pts.length || ED.mode !== 'land') return;
+        var u = U(), a = [];
+        L.pts.forEach(function (p) { a.push(p[0] * u, (W.hqLandEdHeight(L.E, p[0], p[1]) + 1.5) * u, p[1] * u); });
+        if (LAND_TOOLS[landTool()].how === 'poly' && L.pts.length > 2) a.push(a[0], a[1], a[2]);
+        var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(a), 3));
+        L.lineObj = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffd84a, depthTest: false, fog: false })); L.lineObj.renderOrder = 15; L.lineObj.frustumCulled = false;
+        ED.group.add(L.lineObj);
+    }
+    /* ── THE MAP (a canvas over the 3D view: the land image at 4 m a pixel + the vectors) ── */
+    function landMapImage() {
+        var L = ED.land, E = L.E, n = W.hqLandEdMapSize(E);
+        if (!L.img) { L.img = document.createElement('canvas'); L.img.width = n; L.img.height = n; L.imgCtx = L.img.getContext('2d'); L.imgData = L.imgCtx.createImageData(n, n); L.mapDirty = true; }
+        if (L.mapDirty) { W.hqLandEdMapRGBA(E, L.imgData.data); L.imgCtx.putImageData(L.imgData, 0, 0); L.mapDirty = false; }
+        return L.img;
+    }
+    function landMapShow() {
+        var cv = $('edMap'), on = ED.mode === 'land' && ED.opts.landView === 'map';
+        if (!cv) return;
+        cv.style.display = on ? '' : 'none';
+        if (on) mapDraw();
+    }
+    function mapXY(e) { var cv = $('edMap'), rc = cv.getBoundingClientRect(), M = ED.land.map; return { x: M.cx + (e.clientX - rc.left - rc.width / 2) * M.s, z: M.cz + (e.clientY - rc.top - rc.height / 2) * M.s, sx: e.clientX - rc.left, sy: e.clientY - rc.top }; }
+    var _mapRaf = 0;
+    function mapDraw() { if (_mapRaf || !ED.land || ED.mode !== 'land' || ED.opts.landView !== 'map') return; _mapRaf = requestAnimationFrame(function () { _mapRaf = 0; try { mapDraw0(); } catch (e) { console.warn('[editor] the map', e); } }); }
+    function mapDraw0() {
+        var cv = $('edMap'); if (!cv || cv.style.display === 'none') return;
+        var L = ED.land, E = L.E, M = L.map, dpr = W.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+        if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+        var c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c.fillStyle = '#0c1a2a'; c.fillRect(0, 0, w, h);
+        var sx = function (x) { return w / 2 + (x - M.cx) / M.s; }, sy = function (z) { return h / 2 + (z - M.cz) / M.s; };
+        var img = landMapImage(), px = W.HQ_LAND_EDIT_RULES.map;
+        c.imageSmoothingEnabled = M.s > px * 0.75;
+        c.drawImage(img, sx(-E.ext), sy(-E.ext), 2 * E.ext / M.s, 2 * E.ext / M.s);
+        var path = function (P, closed) { c.beginPath(); P.forEach(function (p, k) { if (k) c.lineTo(sx(p[0]), sy(p[1])); else c.moveTo(sx(p[0]), sy(p[1])); }); if (closed) c.closePath(); };
+        var D = landDoc(), sel = L.sel, isSel = function (kind, id) { return sel && sel.kind === kind && sel.id === id; };
+        var label = function (t, x, z, col) { c.font = '11px monospace'; c.fillStyle = 'rgba(0,0,0,0.7)'; var tw = c.measureText(t).width; c.fillRect(sx(x) - tw / 2 - 3, sy(z) - 8, tw + 6, 14); c.fillStyle = col || '#fff'; c.textAlign = 'center'; c.fillText(t, sx(x), sy(z) + 3); };
+        /* the ice wall */
+        c.strokeStyle = 'rgba(230,240,250,0.6)'; c.lineWidth = 1; c.beginPath(); c.arc(sx(0), sy(0), W.HQ_LAND_EDIT_RULES.wall.r / M.s, 0, Math.PI * 2); c.stroke();
+        D.regions.forEach(function (rg) { path(rg.pts, true); c.setLineDash([6, 4]); c.strokeStyle = isSel('regions', rg.id) ? '#ffd84a' : 'rgba(255,255,255,0.75)'; c.lineWidth = 1.5; c.stroke(); c.setLineDash([]); var cx = 0, cz = 0; rg.pts.forEach(function (p) { cx += p[0]; cz += p[1]; }); label(rg.label, cx / rg.pts.length, cz / rg.pts.length, '#dfe'); });
+        D.coasts.forEach(function (cs, i) { path(cs, true); c.strokeStyle = isSel('coasts', i) ? '#ffd84a' : 'rgba(255,255,255,0.5)'; c.lineWidth = 1; c.stroke(); });
+        D.lines.forEach(function (ln) { path(ln.pts, ln.kind === 'plateau'); c.strokeStyle = isSel('lines', ln.id) ? '#ffd84a' : 'rgba(255,220,160,0.55)'; c.lineWidth = 1; c.setLineDash([2, 3]); c.stroke(); c.setLineDash([]); });
+        D.lakes.forEach(function (lk) { path(lk.pts, true); c.strokeStyle = isSel('lakes', lk.id) ? '#ffd84a' : '#9fd4ff'; c.lineWidth = 1.5; c.stroke(); var cx = 0, cz = 0; lk.pts.forEach(function (p) { cx += p[0]; cz += p[1]; }); if (M.s < 8) label(lk.label, cx / lk.pts.length, cz / lk.pts.length, '#bfe4ff'); });
+        D.rivers.forEach(function (rv) { path(rv.pts, false); c.strokeStyle = isSel('rivers', rv.id) ? '#ffd84a' : '#5fb4ff'; c.lineWidth = Math.max(1.5, (rv.w0 + rv.w1) / M.s); c.stroke(); });
+        D.roads.forEach(function (rd) { path(rd.pts, false); c.strokeStyle = isSel('roads', rd.id) ? '#ffd84a' : rd.type === 'trail' ? '#c9a070' : rd.type === 'lane' ? '#a88a64' : '#3a3a40'; c.lineWidth = Math.max(rd.type === 'trail' ? 1.2 : 2, rd.w / M.s); c.stroke(); (rd.bridges || []).forEach(function (b) { path(b.pts, false); c.strokeStyle = '#e8e6da'; c.lineWidth = Math.max(1, rd.w / M.s * 0.5); c.stroke(); }); var m = rd.pts[Math.floor(rd.pts.length / 2)]; if (m && M.s < 8) label(rd.label, m[0], m[1], '#ffe9b0'); });
+        D.reveals.forEach(function (v) { var x = sx(v.at[0]), y = sy(v.at[1]); c.fillStyle = isSel('reveals', v.id) ? '#ffd84a' : '#c58cff'; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y); c.lineTo(x, y + 6); c.lineTo(x - 6, y); c.closePath(); c.fill(); });
+        D.places.forEach(function (p) { var hh = (p.pad || 20) / M.s; c.strokeStyle = isSel('places', p.id) ? '#ffd84a' : p.float ? '#9aa4ff' : '#57f287'; c.lineWidth = 2; c.strokeRect(sx(p.at[0]) - hh, sy(p.at[1]) - hh, hh * 2, hh * 2); label(p.label, p.at[0], p.at[1] + (p.pad || 20) + 10 * M.s, '#bff5cf'); });
+        /* the sight: every ray's seen runs in green */
+        if (L.sight) {
+            var S = L.sight; c.strokeStyle = 'rgba(87,242,135,0.55)'; c.lineWidth = 1.2; c.beginPath();
+            S.rays.forEach(function (runs, r) { var a = r / S.rays.length * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a); runs.forEach(function (s) { c.moveTo(sx(S.x + dx * s[0]), sy(S.z + dz * s[0])); c.lineTo(sx(S.x + dx * s[1]), sy(S.z + dz * s[1])); }); });
+            c.stroke(); c.fillStyle = '#57f287'; c.beginPath(); c.arc(sx(S.x), sy(S.z), 4, 0, Math.PI * 2); c.fill();
+        }
+        /* the line being drawn */
+        if (L.pts.length) { var poly = LAND_TOOLS[landTool()].how === 'poly', P = L.pts.slice(); if (L.mapCur) P.push([L.mapCur.x, L.mapCur.z]); path(P, poly); c.strokeStyle = '#ffd84a'; c.lineWidth = 2; c.stroke(); L.pts.forEach(function (p) { c.fillStyle = '#ffd84a'; c.fillRect(sx(p[0]) - 2.5, sy(p[1]) - 2.5, 5, 5); }); }
+        /* the brush ring and the 3D eye */
+        if (L.mapCur && LAND_TOOLS[landTool()].how === 'brush') { c.strokeStyle = '#ffd84a'; c.lineWidth = 1.2; c.beginPath(); c.arc(L.mapCur.sx, L.mapCur.sy, (+ED.opts.landR || 40) / M.s, 0, Math.PI * 2); c.stroke(); }
+        var ex = sx(ED.cam.x), ez = sy(ED.cam.z); c.fillStyle = '#6fd3ff'; c.beginPath(); c.moveTo(ex + Math.sin(ED.cam.yaw) * 10, ez - Math.cos(ED.cam.yaw) * 10); c.lineTo(ex + Math.cos(ED.cam.yaw) * 5, ez + Math.sin(ED.cam.yaw) * 5); c.lineTo(ex - Math.cos(ED.cam.yaw) * 5, ez - Math.sin(ED.cam.yaw) * 5); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(8, h - 22, 190, 16); c.fillStyle = '#dfe6ee'; c.font = '11px monospace'; c.textAlign = 'left';
+        c.fillText('MAP · ' + (M.s < 1 ? (1 / M.s).toFixed(1) + ' px/m' : M.s.toFixed(1) + ' m/px') + (L.mapCur ? ' · ' + Math.round(L.mapCur.x) + ', ' + Math.round(L.mapCur.z) : ''), 12, h - 10);
+    }
+    function mapBind(cv) {
+        var drag = null;
+        cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        cv.addEventListener('mousedown', function (e) {
+            if (!ED.land) return;
+            var p = mapXY(e); e.preventDefault();
+            if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) { drag = { x: e.clientX, y: e.clientY, cx: ED.land.map.cx, cz: ED.land.map.cz }; return; }
+            if (e.button !== 0) return;
+            var at = { x: p.x, z: p.z, y: W.hqLandEdHeight(ED.land.E, p.x, p.z) };
+            if (LAND_TOOLS[landTool()].how === 'brush') { landStrokeStart(at, e.shiftKey); return; }
+            landClick(at);
+        });
+        cv.addEventListener('mousemove', function (e) {
+            if (!ED.land) return;
+            var p = mapXY(e), L = ED.land;
+            L.mapCur = p;
+            if (drag) { L.map.cx = drag.cx - (e.clientX - drag.x) * L.map.s; L.map.cz = drag.cz - (e.clientY - drag.y) * L.map.s; }
+            if (L.stroke) L.stroke.at = { x: p.x, z: p.z };
+            ED.cursor = { x: p.x, z: p.z, y: W.hqLandEdHeight(L.E, p.x, p.z) };
+            mapDraw();
+        });
+        cv.addEventListener('mouseleave', function () { if (ED.land) { ED.land.mapCur = null; mapDraw(); } });
+        window.addEventListener('mouseup', function () { drag = null; if (ED.land && ED.land.stroke && ED.opts.landView === 'map') landStrokeEnd(); });
+        cv.addEventListener('wheel', function (e) {
+            if (!ED.land) return; e.preventDefault();
+            var M = ED.land.map, p = mapXY(e), k = e.deltaY < 0 ? 1 / 1.25 : 1.25, s = Math.max(0.25, Math.min(8, M.s * k));
+            M.cx = p.x - (p.x - M.cx) * s / M.s; M.cz = p.z - (p.z - M.cz) * s / M.s; M.s = s; mapDraw();
+        }, { passive: false });
+        cv.addEventListener('dblclick', function (e) { if (!ED.land) return; var T = LAND_TOOLS[landTool()]; if (T.how === 'line' || T.how === 'poly') { e.preventDefault(); ED.land.pts.pop(); landFinish(); } });
+    }
+    function landView(v) {
+        ED.opts.landView = v; saveOpts();
+        if (v === '3d' && ED.land && ED.land.mapCur) { /* the eye goes where the map was looked at */ }
+        landMapShow(); landLineShow(); panels();
+    }
+    function landKey(k, e) {   // → true when the land took the key
+        if (ED.mode !== 'land' || !ED.land) return false;
+        var L = ED.land, T = LAND_TOOLS[landTool()];
+        if (k === 'tab' || k === 'm') { landView(ED.opts.landView === 'map' ? '3d' : 'map'); return true; }
+        if ((T.how === 'line' || T.how === 'poly') && L.pts.length) {
+            if (k === 'enter') { landFinish(); return true; }
+            if (k === 'escape') { L.pts = []; landLineShow(); mapDraw(); return true; }
+            if (k === 'backspace') { L.pts.pop(); landLineShow(); mapDraw(); return true; }
+        }
+        if (T.how === 'brush' && (k === '[' || k === ']')) { var R = W.HQ_LAND_EDIT_RULES.brush; ED.opts.landR = Math.max(R.rMin, Math.min(R.rMax, Math.round((+ED.opts.landR || 40) * (k === ']' ? 1.25 : 0.8)))); saveOpts(); toast('BRUSH ' + ED.opts.landR + ' m', 900); panels(); mapDraw(); return true; }
+        if (k === 'escape' && L.sight) { L.sight = null; mapDraw(); return true; }
+        if (k === 'escape' && L.sel) { L.sel = null; panels(); mapDraw(); return true; }
+        if ((k === 'delete') && L.sel) { landDelete(L.sel); return true; }
+        if (k === 'escape' && landTool() !== 'pick') { ED.opts.landTool = 'pick'; saveOpts(); panels(); return true; }
+        return false;
+    }
+    /* ── THE PANELS in land mode ── */
+    function landPaletteHtml() {
+        var tool = landTool(), O = ED.opts, h = '<div class="ed-sec ed-pal"><div class="ed-hd">THE LAND · ' + esc(ED.project) + '</div>';
+        h += '<div class="ed-palb"><button class="ed-btn' + (O.landView === 'map' ? ' on' : '') + '" data-lview="map" title="The map (TAB or M)">MAP</button><button class="ed-btn' + (O.landView === '3d' ? ' on' : '') + '" data-lview="3d" title="Fly over it (TAB or M)">3D</button></div>';
+        [['mark', 'MARKS'], ['brush', 'BRUSHES'], ['paint', 'PAINT'], ['line', 'LINES AND AREAS']].forEach(function (g) {
+            h += '<div class="ed-sub">' + g[1] + '</div><div class="ed-palb">';
+            Object.keys(LAND_TOOLS).forEach(function (k) { var T = LAND_TOOLS[k]; if (T.grp !== g[0]) return; h += '<button class="ed-btn' + (tool === k ? ' on' : '') + '" data-ltool="' + k + '" title="' + esc(T.tip) + '">' + T.label + '</button>'; });
+            h += '</div>';
+        });
+        var T = LAND_TOOLS[tool];
+        h += '<div class="ed-note">' + esc(T.tip) + '</div>';
+        var F = [].concat(T.how === 'brush' ? LAND_OPTS.brush : [], LAND_OPTS[tool] || []);
+        if (F.length) h += '<div class="ed-form">' + F.map(function (f) { return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="number" step="any" data-lo="' + f[0] + '" value="' + esc(O[f[0]]) + '"></label>'; }).join('') + '</div>';
+        if (tool === 'mat') {
+            h += '<div class="ed-lmats">' + W.HQ_LAND_EDIT_RULES.mats.map(function (m, i) { var c = W.HQ_LAND_MAP_COL[i] || [128, 128, 128]; return '<button class="ed-lmat' + (O.landMat === m ? ' on' : '') + '" data-lmat="' + m + '" title="' + m + '"><i style="background:rgb(' + c.join(',') + ')"></i>' + m + '</button>'; }).join('') + '</div>';
+        }
+        if (T.how === 'line' || T.how === 'poly') h += '<div class="ed-note">' + (ED.land && ED.land.pts.length ? ED.land.pts.length + ' point(s) · ENTER finishes · BACKSPACE takes the last back · ESC drops it' : 'Click the first point.') + '</div>';
+        h += '<div class="ed-note">MAP: wheel zooms, right or middle drag pans. 3D: fly as in a room. P walks here (PLAY HERE). Your rooms stand on the land in the game from THE SWAP (E8); here they are marked by their pads.</div></div>';
+        return h;
+    }
+    function landPaletteWire(B) {
+        B.querySelectorAll('[data-lview]').forEach(function (b) { b.onclick = function () { landView(b.getAttribute('data-lview')); }; });
+        B.querySelectorAll('[data-ltool]').forEach(function (b) { b.onclick = function () { ED.opts.landTool = b.getAttribute('data-ltool'); if (ED.land) { ED.land.pts = []; landLineShow(); } saveOpts(); panels(); mapDraw(); }; });
+        B.querySelectorAll('[data-lo]').forEach(function (el) { el.onchange = function () { var v = parseFloat(el.value); if (isFinite(v)) { ED.opts[el.getAttribute('data-lo')] = v; saveOpts(); } }; });
+        B.querySelectorAll('[data-lmat]').forEach(function (b) { b.onclick = function () { ED.opts.landMat = b.getAttribute('data-lmat'); saveOpts(); panels(); }; });
+    }
+    function landOutlinerHtml() {
+        var D = landDoc(), sel = ED.land && ED.land.sel, h = '';
+        LAND_LISTS.forEach(function (g) {
+            var list = D[g[0]] || []; if (!list.length) return;
+            h += '<div class="ed-sub">' + g[1] + ' · ' + list.length + '</div>';
+            list.forEach(function (row, i) {
+                var id = g[0] === 'coasts' ? i : row.id, lab = g[0] === 'coasts' ? 'Coast ' + (i + 1) : row.label || row.id;
+                var sub = g[0] === 'places' ? ((ED.doc.rooms[row.room] || {}).label || row.room) + ' · pad ' + row.padY + ' m' : g[0] === 'roads' ? row.type + (row.bridges && row.bridges.length ? ' · ' + row.bridges.length + ' bridge(s)' : '') : '';
+                h += '<button class="ed-row' + (sel && sel.kind === g[0] && sel.id === id ? ' on' : '') + '" data-lk="' + g[0] + '" data-li="' + esc(String(id)) + '">' + esc(lab) + '<span>' + esc(sub) + '</span></button>';
+            });
+        });
+        return h || '<div class="ed-note">Nothing on the land yet: shape it with the BRUSHES, draw with LINES, stand a room on it with PLACE.</div>';
+    }
+    function landInspectorHtml() {
+        var L = ED.land, s = L && L.sel, h = '';
+        if (!s || !landSelRow(s)) {
+            var n = L ? L.E.grid.filter(Boolean).length : 0, chk = landCheck();
+            h += '<div class="ed-hd">THE LAND</div><div class="ed-note">' + n + ' tile(s) shaped (256 m each) · ' + landDoc().places.length + ' place(s). It started flat and empty; the old land is never brought in.</div>';
+            if (chk.length) h += '<div class="ed-note ed-warn">' + chk.map(esc).join('<br>') + '</div>';
+            h += '<div class="ed-note">FILE → EXPORT writes the land with the world (Assets/World/land/): the tiles that changed, sea.bin, land.json, land-map.png.</div>';
+            return h;
+        }
+        var hr = landSelRow(s), row = hr.row, kind = s.kind;
+        h += '<div class="ed-hd">' + esc(String(row.label || '').toUpperCase()) + '</div><div class="ed-form" data-scope="land">';
+        if (kind !== 'coasts') h += '<label class="ed-f"><span>label</span><input type="text" data-lf="label" value="' + esc(row.label || '') + '"></label>';
+        if (kind === 'places') {
+            var rooms = Object.keys(ED.doc.rooms).map(function (id) { return [id, (ED.doc.rooms[id].label || id)]; });
+            h += '<label class="ed-f"><span>room</span><select data-lf="room">' + rooms.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === row.room ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+            h += '<label class="ed-f"><span>kind</span><select data-lf="kind">' + ['site', 'hub', 'poi', 'dungeon', 'door', 'sea'].map(function (k) { return '<option' + (row.kind === k ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select></label>';
+            [['x', row.at[0]], ['z', row.at[1]], ['padY', row.padY], ['pad', row.pad], ['rot', row.rot || 0]].forEach(function (f) { h += '<label class="ed-f"><span>' + f[0] + (f[0] === 'pad' ? ' (half-side m)' : f[0] === 'rot' ? ' (quarter turns)' : f[0] === 'padY' ? ' (m)' : '') + '</span><input type="number" step="any" data-lf="' + f[0] + '" value="' + esc(f[1]) + '"></label>'; });
+            h += '<label class="ed-f"><span>float (no pad)</span><input type="checkbox" data-lf="float"' + (row.float ? ' checked' : '') + '></label>';
+        }
+        if (kind === 'lakes') h += '<div class="ed-note">level ' + row.level + ' m · depth ' + row.depth + ' m</div>';
+        if (kind === 'roads') h += '<div class="ed-note">' + row.type + ' · ' + row.w + ' m wide · ' + (row.bridges || []).length + ' bridge(s) · ' + (row.rails || []).length / 2 + ' rail run(s)</div>';
+        if (kind === 'rivers') h += '<div class="ed-note">' + (row.w0 * 2).toFixed(1) + ' → ' + (row.w1 * 2).toFixed(1) + ' m wide · falls where it drops</div>';
+        h += '</div><div class="ed-acts">' + (kind === 'places' && !row.float ? '<button class="ed-btn" data-la="relevel">RE-LEVEL THE PAD</button>' : '') + '<button class="ed-btn" data-la="frame">GO TO IT</button><button class="ed-btn ed-danger" data-la="del">DELETE</button></div>';
+        if (kind !== 'places' && kind !== 'regions' && kind !== 'reveals') h += '<div class="ed-note">DELETE takes the line off the map; the ground it shaped stays (UNDO takes both back).</div>';
+        if (kind === 'places') h += '<div class="ed-note">Moving it levels a new pad there; the old pad\'s ground stays (SMOOTH it). The room stands here in the game from THE SWAP (E8).</div>';
+        return h;
+    }
+    function landInspectorWire(P) {
+        var L = ED.land, s = L && L.sel; if (!s) return;
+        P.querySelectorAll('[data-lf]').forEach(function (el) {
+            el.onchange = function () {
+                var hr = landSelRow(s); if (!hr) return;
+                var k = el.getAttribute('data-lf'), v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? parseFloat(el.value) : el.value;
+                if (el.type === 'number' && !isFinite(v)) { toast('NOT A NUMBER'); return; }
+                if (s.kind === 'places') {
+                    var a = Core.clone(hr.row);
+                    if (k === 'x') a.at[0] = v; else if (k === 'z') a.at[1] = v; else if (k === 'rot') a.rot = ((Math.round(v) % 4) + 4) % 4; else if (k === 'pad') a.pad = Math.max(4, v); else a[k] = v;
+                    if (['x', 'z', 'padY', 'pad', 'float'].indexOf(k) >= 0) { landPlaceSet(hr.i, a, k); return; }
+                    landCommit([{ path: ['landEd', 'places', hr.i], before: Core.clone(hr.row), after: a }], k);
+                    return;
+                }
+                landCommit([{ path: ['landEd', s.kind, hr.i, k], before: hr.row[k], after: v }], k);
+            };
+        });
+        P.querySelectorAll('[data-la]').forEach(function (b) {
+            b.onclick = function () {
+                var a = b.getAttribute('data-la'), hr = landSelRow(s); if (!hr) return;
+                if (a === 'del') landDelete(s); else if (a === 'frame') landFrame(s); else if (a === 'relevel') landPlaceSet(hr.i, Core.clone(hr.row), 're-level');
+            };
+        });
+    }
+    /* ── EXPORT: Assets/World/land/ (the tiles that changed since the last export, sea.bin, land.json, land-map.png) → { files,
+       block (world.json `land`) } ── */
+    function landExport(all) {
+        if (!ED.doc) return Promise.resolve(null);
+        return landEnsure().then(function (L) {
+            if (!landHas() && !(ED.exported && ED.exported.land)) return null;   // flat and empty, never exported: no land yet
+            var E = L.E, D = landDoc(), R = W.HQ_LAND_EDIT_RULES, dir = 'Assets/World/' + R.dir, prev = (ED.exported && ED.exported.land) || {}, prevT = prev.tiles || {}, files = [], shas = {};
+            var listed = W.hqLandEdListed(E);
+            var ov = W.hqLandEdIndex(E, D, { tiles: listed });
+            delete ov.bake.id;
+            L.W = W.hqLandEdWorld(E, L.W);
+            var sea = W.hqLandEdSeaBytes(L.W);
+            L.mapDirty = true; var img = landMapImage();
+            return new Promise(function (res) { img.toBlob(function (b) { res(b); }, 'image/png'); }).then(function (blob) { return blob.arrayBuffer(); }).then(function (pngBuf) {
+                var png = new Uint8Array(pngBuf), body = Core.utf8(JSON.stringify(ov)), both = new Uint8Array(body.length + png.length); both.set(body, 0); both.set(png, body.length);
+                return sha10(both).then(function (id) {
+                    ov.bake.id = id;
+                    var jobs = listed.map(function (t) {
+                        var u8 = W.hqLandEdTileBytes(W.hqLandEdView(E, t[0], t[1])), name = 't_' + t[0] + '_' + t[1];
+                        return sha10(u8).then(function (sha) { shas[name] = sha; if (all || prevT[name] !== sha) files.push({ name: dir + 'tiles/' + name + '.bin', data: u8 }); });
+                    });
+                    return Promise.all(jobs).then(function () { return sha10(sea); }).then(function (seaSha) {
+                        if (all || prev.sea !== seaSha) files.push({ name: dir + 'sea.bin', data: sea });
+                        files.push({ name: dir + 'land.json', data: Core.utf8(JSON.stringify(ov)) }, { name: dir + 'land-map.png', data: png });
+                        var gone = Object.keys(prevT).filter(function (n) { return !shas[n]; }).map(function (n) { return dir + 'tiles/' + n + '.bin'; });
+                        var zone = { label: 'THE LAND', ground: 'land', hub: 'land', sky: 'land', clock: true, parts: { land: { x: 0, z: 0, y: 0, rot: 0 } }, joins: [] };
+                        D.places.forEach(function (p) { if (!ED.doc.rooms[p.room]) return; zone.parts[p.room] = { place: p.id, rot: p.rot || 0 }; if (p.float) zone.parts[p.room].float = true; else zone.joins.push({ a: 'land', b: p.room, kind: 'island', pad: true }); });
+                        var block = { id: id, dir: R.dir, ext: E.ext, live: !!ED.doc.live, tiles: listed.length, places: ov.places, zone: zone };
+                        L.exported = { tiles: shas, sea: seaSha, id: id };
+                        return { files: files, block: block, gone: gone, land: L.exported };
+                    });
+                });
+            });
+        });
+    }
+    /* IMPORT: his land from its files (a zip's Assets/World/land/, or R2) — the lattice replaces this project's */
+    function landImportFiles(ov, tiles, old) {
+        var r = W.hqLandEdFromFiles(ov, tiles), name = ED.project;
+        /* a delta zip holds only the tiles that changed: the rest come from this project's land (when it is loaded) */
+        if (old && old.E) (ov.tiles || []).forEach(function (t) { var k = t[1] * r.E.per + t[0]; if (!r.E.grid[k] && old.E.grid[k]) r.E.grid[k] = old.E.grid[k]; });
+        ED.doc.landEd = r.doc;
+        return landRasterClear(name).then(function () {
+            ED.land = { project: name, E: r.E, W: W.hqLandEdWorld(r.E), unsaved: new Set(), pend: new Set(), liveAt: 0, stroke: null, pts: [], sel: null, sight: null, map: { cx: 0, cz: 0, s: 4 }, img: null, imgData: null, mapDirty: true };
+            r.E.grid.forEach(function (t, k) { if (t) ED.land.unsaved.add(k); });
+            return landSaveNow();
+        }).then(function () { saveNow(); return Object.keys(tiles).length; });
+    }
+    function landImportR2(block) {
+        if (!block || !block.id) return Promise.resolve(0);
+        var base = W.HQ_WORLD_DOC_RULES.base + (block.dir || 'land/'), q = '?b=' + block.id;
+        return fetch(base + 'land.json' + q, { mode: 'cors', credentials: 'omit', cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('land.json HTTP ' + r.status); return r.json(); }).then(function (ov) {
+            var tiles = {};
+            return Promise.all((ov.tiles || []).map(function (t) { var n = 't_' + t[0] + '_' + t[1]; return fetch(base + 'tiles/' + n + '.bin' + q, { mode: 'cors', credentials: 'omit' }).then(function (r) { if (!r.ok) throw new Error(n + ' HTTP ' + r.status); return r.arrayBuffer(); }).then(function (b) { tiles[n] = b; }); }))
+                .then(function () { return landImportFiles(ov, tiles); });
+        });
     }
 
     /* ══ OPEN / CLOSE ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -2539,6 +3197,10 @@
     }
     function close() {
         if (ED.stroke) strokeEnd();
+        if (ED.land && ED.land.stroke) landStrokeEnd();
+        if (ED.mode === 'land') { ED.landCam = Object.assign({}, ED.cam); landUninstall(); ED.mode = 'world'; ED.roomId = ED.doc && ED.doc.start ? ED.doc.start.room : null; }
+        if (ED.land) landSaveNow();
+        if ($('edMap')) $('edMap').style.display = 'none';
         if (ED.draw) { ED.draw = null; drawPreview(null); }
         bandClipOff(); clearTimeout(ED.auditTimer);
         saveCam(); saveNow();
@@ -2565,6 +3227,7 @@
         act: { addShape: addShape, addRow: addRow, select: select, undo: undo, redo: redo, deleteSel: deleteSel, duplicateSel: duplicateSel, turnSel: turnSel, exportZip: exportZip, newRoom: function (w, d) { var id = W.hqWorldDocNextRoomId(ED.doc), r = W.hqWorldDocNewRoom(id, { w: w, d: d }); commit([{ path: ['rooms', id], before: undefined, after: r }], 'new room'); enterRoom(id, 'world'); return id; },
                drawSet: drawSet, drawUp: drawUp, drawDown: drawDown, enterPrefab: enterPrefab, leavePrefab: leavePrefab, newPrefab: newPrefab, selToPrefab: selToPrefab, roomToPrefab: roomToPrefab, bakeSel: bakeSel, mirrorSel: mirrorSel, placeRow: placeRow, texPick: texPick, arrayRows: function (n, dx, dz, dyaw) { var ask0 = ask; ask = function (t, f, ok) { ok({ n: n, dx: dx, dz: dz, dyaw: dyaw }); }; try { arraySel(); } finally { ask = ask0; } },
                palPick: palPick, palEntries: palEntries, palData: palData, doorWrite: doorWrite, doorFollow: doorFollow, thumbs: function () { return { have: Object.keys(TH.mem).filter(function (k) { return !!TH.mem[k]; }).length, none: Object.keys(TH.mem).filter(function (k) { return TH.mem[k] === null; }).length, want: TH.want.length, off: TH.off }; },
+               land: { open: landOpen, view: landView, tool: function (t) { ED.opts.landTool = t; panels(); }, click: landClick, finish: landFinish, pts: function (p) { ED.land.pts = p; }, strokeStart: landStrokeStart, dab: landDab, strokeEnd: landStrokeEnd, doc: landDoc, get: function () { return ED.land; }, export: landExport },
                enter: enterRoom, playHere: playHere, library: function (id) { enterRoom(id, 'library'); }, copyIntoWorld: copyIntoWorld, pickAt: pickAt, frame: frameSel,
                moveSel: function (dx, dz) { var hits = ED.sel.map(selRow).filter(Boolean), a = hits[0] ? Core.rowAnchor(hits[0].row) : { x: 0, z: 0 }; replaceRows(hits.filter(function (h) { return h.list !== 'spawn'; }).map(function (h) { return { list: h.list, i: h.i, before: Core.clone(h.row), after: Core.rowTransform(h.row, { dx: dx, dz: dz, px: a.x, pz: a.z }) }; }), 'move'); } },
     };

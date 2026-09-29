@@ -42115,6 +42115,7 @@ function _hqFloraGrid(L, salt, x0, z0, x1, z1, fn) {
 /* the stand's mix at (x, z): a zone's, a named forest's (the one whose band holds the point best), the north's, else the broadleaf */
 function hqLandFloraMix(x, z, h, lone) {
     const F = HQ_LAND_RULES.flora;
+    if (HQ_LAND.baked && HQ_LAND.baked.own) return (h > F.northH) ? 'north' : (lone ? 'lone' : 'broad');   // E4: his land — no recipe forests or zones
     for (const zn of F.zones || []) if (Math.hypot(x - zn.at[0], z - zn.at[1]) < zn.r) return zn.mix;
     let best = null, bw = 0.25;
     for (const fb of HQ_LAND.forests || []) {
@@ -42163,18 +42164,18 @@ function _hqFloraJob(t) {
     const e = Math.max(st, 1), slope = (x, z) => Math.hypot(hy(x + e, z) - hy(x - e, z), hy(x, z + e) - hy(x, z - e)) / (2 * e);
     const wet = (x, z, y, m) => { const w = t.water ? t.water[near(x, z)] : NaN; return (w === w && w > y - m) || y < sea + m + 0.4; };
     const clearOf = (x, z, d) => !(tab.clear[t.mat[near(x + d, z)]] || tab.clear[t.mat[near(x - d, z)]] || tab.clear[t.mat[near(x, z + d)]] || tab.clear[t.mat[near(x, z - d)]] || tab.clear[t.mat[near(x, z)]]);
-    const hqR = HQ_LAND_RULES.hq.r + T.hq, nearHQ = x0 < hqR && x1 > -hqR && z0 < hqR && z1 > -hqR;
+    const hqR = HQ_LAND_RULES.hq.r + T.hq, nearHQ = !(HQ_LAND.baked && HQ_LAND.baked.noHQ) && x0 < hqR && x1 > -hqR && z0 < hqR && z1 > -hqR;
     const tp = pads.filter(q => q[0] + q[2] + 12 > x0 && q[0] - q[2] - 12 < x1 && q[1] + q[2] + 12 > z0 && q[1] - q[2] - 12 < z1);   // the pads near this tile
     const ko = (HQ_LAND_RULES.sites && HQ_LAND_RULES.sites.keepOff) || 0, ts = hqLandSites().filter(S => S.x0 - 12 < x1 && S.x1 + 12 > x0 && S.z0 - 12 < z1 && S.z1 + 12 > z0);   // G6: the sites near this tile
     const onPad = (x, z, m) => { if (nearHQ && x * x + z * z < hqR * hqR) return true; for (let i = 0; i < tp.length; i++) { const dx = x - tp[i][0], dz = z - tp[i][1], rr = tp[i][2] + m; if (dx * dx + dz * dz < rr * rr) return true; }
         for (let i = 0; i < ts.length; i++) { const S = ts[i], p = m + ko; if (x > S.x0 - p && x < S.x1 + p && z > S.z0 - p && z < S.z1 + p) return true; } return false; };
-    const low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
+    const low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), ownLand = !!(HQ_LAND.baked && HQ_LAND.baked.own);   // E4: his land has no lone trees (it starts empty)
     const trees = [], cells = new Map(), steps = [], SUB = 4, sw = St.tile / SUB;
     const layer = (L, salt, fn) => { for (let b = 0; b < SUB * SUB; b++) { const sx = x0 + (b % SUB) * sw, sz = z0 + Math.floor(b / SUB) * sw; steps.push(() => _hqFloraGrid(L, salt, sx, sz, b % SUB === SUB - 1 ? x1 : sx + sw, b >= SUB * (SUB - 1) ? z1 : sz + sw, fn)); } };
     layer(T, 11, (I, J, x, z) => {
         const o = near(x, z), m = t.mat[o], f = t.forest[o] / 255, r = _hqFloraH(I, J, 14);
         let p = 0, lone = false;
-        if (tab.forest[m]) p = T.max * Math.max(0, Math.min(1, (f - T.from) / (T.to - T.from)));
+        if (tab.forest[m] || (ownLand && tab.lone[m])) p = T.max * Math.max(0, Math.min(1, (f - T.from) / (T.to - T.from)));   // E4: on his land the FOREST brush plants on any ground that takes trees
         else if (tab.lone[m]) { p = T.lone * tab.lone[m] * (0.4 + 3 * f); lone = true; }
         if (low) p *= 0.5;   // EW_PERF_LOW halves the density (§5.12)
         if (!(r < p)) return;
@@ -42199,7 +42200,7 @@ function _hqFloraJob(t) {
     });
     const Rk = F.rocks, rocks = [], rcells = new Map();
     layer(Rk, 31, (I, J, x, z) => {
-        const m = t.mat[near(x, z)], p = tab.rock[m];
+        const m = t.mat[near(x, z)], p = (ownLand && tab.lone[m] >= 0.6) ? 0 : tab.rock[m];   // E4: his grass, meadow and farm start clear of boulders
         if (!(p > 0) || !(_hqFloraH(I, J, 34) < p)) return;
         const y = hy(x, z);
         if (slope(x, z) > Rk.slope || wet(x, z, y, 0.4) || !clearOf(x, z, 2.5) || onPad(x, z, 3) || hqLandDeckNear(x, z, 2)) return;
@@ -42443,7 +42444,7 @@ function hqLandPadY(id) {
     return p && isFinite(+p.y) ? +p.y : null;
 }
 /* D.O.O.R. HQ's drum on its pad (hqLandPadY('hq')): solid to a body of radius `pad` */
-function hqLandHQSolid(x, z, pad) { return Math.hypot(x, z) < HQ_LAND_RULES.hq.r + (pad || 0); }
+function hqLandHQSolid(x, z, pad) { if (HQ_LAND.baked && HQ_LAND.baked.noHQ) return false; return Math.hypot(x, z) < HQ_LAND_RULES.hq.r + (pad || 0); }   // E4: his land has no drum
 /* the mean colour of a material (0 … 1 rgb, into out at o): the far pass and the fallback paint with it */
 function hqLandColor(mat, out, o) { const C = HQ_LAND_STORE.col || _hqLandTables(null).col; out[o] = C[mat * 3]; out[o + 1] = C[mat * 3 + 1]; out[o + 2] = C[mat * 3 + 2]; return out; }
 function hqLandStats() { const St = HQ_LAND_STORE; return { tiles: St.n, cap: HQ_LAND_RULES.tiles.cap, mb: +((St.bytes + (St.world ? St.world.bytes : 0)) / 1048576).toFixed(1), world: !!St.world, id: St.id }; }
@@ -42524,6 +42525,7 @@ function hqLandSiteFrames() {
 }
 let _hqLandSitesCache = null;
 function hqLandSites() {
+    if (HQ_LAND.baked && HQ_LAND.baked.edit) return [];   // E4: the editor's land — his rooms are not staged on it until E8
     if (_hqLandSitesCache && _hqLandSitesCache.W === HQ_WORLD) return _hqLandSitesCache.out;
     const Z = HQ_WORLD.zones && HQ_WORLD.zones.land, by = {}, out = [];
     if (Z) Object.keys(Z.parts).forEach(id => {
@@ -44043,6 +44045,16 @@ function hqWorldDocApply(doc) {
         R[id] = room;
     });
     if (doc.zones && typeof doc.zones === 'object' && typeof HQ_WORLD !== 'undefined' && HQ_WORLD && HQ_WORLD.zones) Object.keys(doc.zones).forEach(z => { HQ_WORLD.zones[z] = doc.zones[z]; });
+    /* E4: HIS LAND (world.json `land`: the bake id, his places, the land zone). Applied only once his world is LIVE (E8): until then the
+       game walks the old land and his is seen in the editor */
+    const LD = doc.land;
+    if (LD && LD.live && LD.id && typeof HQ_LAND !== 'undefined') {
+        HQ_LAND.baked = { id: LD.id, cell: 2, ext: LD.ext || 2800, tile: 256, heightBase: -200, base: HQ_WORLD_DOC_RULES.base + (LD.dir || 'land/'), noHQ: true, own: true };
+        if (Array.isArray(LD.places)) HQ_LAND.places = LD.places;
+        if (LD.zone && typeof HQ_WORLD !== 'undefined' && HQ_WORLD && HQ_WORLD.zones) HQ_WORLD.zones.land = LD.zone;
+        try { hqLandSiteFrames(); } catch (e) { console.warn('[world doc] the land sites', e); }
+        out.land = LD.id;
+    }
     if (Array.isArray(doc.links) && doc.links.length) {
         const L = DOOR_HQ.links || (DOOR_HQ.links = []);
         doc.links.forEach(l => { if (!l || !l.id) return; const i = L.findIndex(q => q && q.id === l.id); if (i >= 0) L[i] = l; else L.push(l); });
@@ -44116,6 +44128,597 @@ if (typeof window !== 'undefined') {
         hqWorldDocIndexRooms, hqWorldDocFetch, hqWorldDocLoad, hqWorldDocStart });
     if (window._EW_WORLD_ID && !window.importScripts) { try { hqWorldDocLoad(); } catch (e) { console.warn('[world doc] load', e); } }   // never inside the survey worker (it is handed each room)
 }
+/* ══ THE LAND IN THE EDITOR (EDITOR_PLAN.md §4.5 + §5.5 + §5.6, E4 — 2026-09-29) ═════════════════════════════════════════════
+   mondo's land, held by the editor the way the bake held the old one: the 2 m lattice in the runtime's own tile records
+   ({ ti, tj, S, x0, z0, h, mat, forest, water }, hqLandTileRead's shape), so the renderer streams it from memory unchanged
+   (HQ_LAND_STORE.src, three-renderer.js _hqLandStream). A tile he never touched is not kept: its samples come from the START
+   (hqLandEdStartH / M) — a flat disc at start.h, the ice wall at wall.r, and, once he draws a coast, the sea round his land.
+   Every stamp is pure arithmetic on that lattice (no DOM, no THREE):
+     hqLandEdNew()                          a new land (flat and empty, the ruling)
+     hqLandEdH / M / F / W(E, GX, GZ)       one lattice sample (GX = (x + ext) / 2)
+     hqLandEdSet(E, GX, GZ, v)              write one sample into every tile that holds it ({ h, m, f, w }; w NaN = dry)
+     hqLandEdBrush(E, tool, x, z, o)        a brush dab (raise lower smooth flatten terrace set cliff roughen mat forest water dry clear)
+     hqLandEdRidge / Plateau / Coast / Lake / River / Road / Pad   the lines and areas (each → its row + the touched tiles)
+     hqLandEdTileBytes(t) / hqLandEdSeaBytes(E) / hqLandEdMapRGBA(E, …)   the bake's files (EWLT, EWLS, the map's shading)
+     hqLandEdIndex(E, V, opts)              land.json (the runtime's overlay + the `edit` block the editor reads back)
+     hqLandEdInstall(E, ov) / hqLandEdUninstall()   the runtime reads this land (the 3D view, PLAY HERE on the land)
+   E.touch (a Map, set by the editor for one undo step): each tile's state before its first write. The files go to
+   Assets/World/land/ (NOT Assets/Land/, the old bake the live game still reads until E8 makes his world live). */
+const HQ_LAND_EDIT_RULES = {
+    mats: ['deep', 'shallow', 'sand', 'grass', 'meadow', 'forest', 'rock', 'snow', 'desert', 'redrock', 'playa', 'farm',
+        'urban', 'road', 'trail', 'river', 'lake', 'ice', 'pack', 'tundra', 'clay', 'cliff', 'lane', 'paved'],   // the bake's 24, in its order
+    tile: 256, samples: 129, ext: 2800, heightBase: -200, heightStep: 0.01,
+    start: { h: 1, mat: 'grass' },
+    wall: { r: 2600, edge: 14, h: 92, mat: 'ice' },                        // the ice wall rings the world (the old land's radius)
+    coast: { floor: -14, slope: 60, beach: 10, shore: 0.4, grid: 8 },      // outside his coast: the beach, then down to the floor
+    world: 8, map: 4, dir: 'land/',                                       // sea.bin's cell, the map's metres a pixel, the folder under Assets/World/
+    pad: { r: 36, margin: 3, band: 24 },                                  // a place's pad (its half-side), the level margin, the blend back
+    brush: { rMin: 4, rMax: 400, amt: 1.2, wl: 7 },                       // m a dab at full strength; roughen's noise wavelength (m)
+    roads: {
+        road:  { w: 10, grade: 0.08, mat: 'road',  label: 'Route', surface: 'asphalt', shoulder: 8 },
+        lane:  { w: 6,  grade: 0.12, mat: 'lane',  label: 'Lane',  surface: 'dirt',    shoulder: 6 },
+        trail: { w: 3,  grade: 0.22, mat: 'trail', label: 'Trail', surface: 'trail',   shoulder: 4 },
+        step: 4, smooth: 40, deck: 4, rail: 2, keep: 8,                   // resample m, the profile's smoothing (m), fill → a deck, drop → a rail, pts kept every m
+    },
+    river: { w: 10, depth: 2.2, bank: 8, below: 0.35, step: 4, keep: 8 },   // full width (m), the bed's depth, the bank's blend, the surface under the ground
+    lake: { depth: 4, edge: 14, row: 24 },                                 // the bed's depth, its shelf, the far pass's capsule rows (m)
+    region: { cell: 32 },                                                  // land.json regionGrid's cell (m)
+    sight: { rays: 720, eye: 1.7, target: 1.5, maxD: 2600, step: 8 },
+    undoMB: 256,
+};
+const _HQ_LAND_ED_M = {}; HQ_LAND_EDIT_RULES.mats.forEach((m, k) => { _HQ_LAND_ED_M[m] = k; });
+function hqLandEdMatId(name) { const k = _HQ_LAND_ED_M[name]; return k == null ? _HQ_LAND_ED_M.grass : k; }
+function _hqLandEdSmooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+function hqLandEdNew() {
+    const R = HQ_LAND_EDIT_RULES, per = Math.ceil(2 * R.ext / R.tile), n = R.samples - 1;
+    return { v: 1, per, S: R.samples, n, step: R.tile / n, ext: R.ext, tile: R.tile, grid: new Array(per * per).fill(null),
+             blank: new Map(), coasts: [], cD: null, plain: null, touch: null, rev: 0, changed: new Set() };
+}
+/* ── THE START: what an untouched sample is ───────────────────────────────────────────────────────────────── */
+function _hqLandEdCoastD(E, x, z) {   // metres inside his land (+) / out at sea (−) — bilinear over the 8 m field; Infinity without a coast
+    const C = E.cD; if (!C) return Infinity;
+    const gx = Math.max(0, Math.min(C.n - 1.001, (x - C.x0) / C.cell)), gz = Math.max(0, Math.min(C.n - 1.001, (z - C.x0) / C.cell));
+    const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, o = j * C.n + i, D = C.d;
+    return (D[o] * (1 - fx) + D[o + 1] * fx) * (1 - fz) + (D[o + C.n] * (1 - fx) + D[o + C.n + 1] * fx) * fz;
+}
+function hqLandEdStartH(E, x, z) {
+    const R = HQ_LAND_EDIT_RULES, W = R.wall, C = R.coast;
+    let h = R.start.h;
+    const d = E.cD ? _hqLandEdCoastD(E, x, z) : Infinity;
+    if (d < C.beach) h = d >= 0 ? C.shore + (R.start.h - C.shore) * _hqLandEdSmooth(d / C.beach) : C.shore + (C.floor - C.shore) * _hqLandEdSmooth(-d / C.slope);
+    const r2 = x * x + z * z;
+    if (r2 > W.r * W.r) h = Math.max(h, W.h * _hqLandEdSmooth((Math.sqrt(r2) - W.r) / W.edge));
+    return h;
+}
+function hqLandEdStartM(E, x, z) {
+    const R = HQ_LAND_EDIT_RULES;
+    if (x * x + z * z > R.wall.r * R.wall.r) return _HQ_LAND_ED_M[R.wall.mat];
+    const d = E.cD ? _hqLandEdCoastD(E, x, z) : Infinity;
+    if (d < R.coast.beach) return d >= -R.coast.slope * 0.35 ? _HQ_LAND_ED_M.sand : d >= -R.coast.slope ? _HQ_LAND_ED_M.shallow : _HQ_LAND_ED_M.deep;
+    return _HQ_LAND_ED_M[R.start.mat];
+}
+/* is a tile nothing but the flat start (no wall, no coast in it)? — such a tile is left out of the export (sea.bin covers it) */
+function hqLandEdPlain(E, ti, tj) {
+    const R = HQ_LAND_EDIT_RULES, x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile, x1 = x0 + E.tile, z1 = z0 + E.tile;
+    const far = Math.max(Math.hypot(x0, z0), Math.hypot(x1, z0), Math.hypot(x0, z1), Math.hypot(x1, z1));
+    if (far > R.wall.r) return false;
+    if (!E.cD) return true;
+    if (!E.plain) {
+        E.plain = new Uint8Array(E.per * E.per);
+        const C = E.cD, k = E.tile / C.cell;
+        for (let j = 0; j < E.per; j++) for (let i = 0; i < E.per; i++) {
+            let lo = Infinity;
+            for (let b = Math.max(0, j * k - 1); b <= Math.min(C.n - 1, (j + 1) * k + 1); b++) for (let a = Math.max(0, i * k - 1); a <= Math.min(C.n - 1, (i + 1) * k + 1); a++) lo = Math.min(lo, C.d[b * C.n + a]);
+            E.plain[j * E.per + i] = lo > R.coast.beach + C.cell ? 1 : 0;
+        }
+    }
+    return !!E.plain[tj * E.per + ti];
+}
+function hqLandEdBlank(E, ti, tj) {
+    const k = tj * E.per + ti; let t = E.blank.get(k);
+    if (t) return t;
+    const S = E.S, S2 = S * S, x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile;
+    t = { ti, tj, S, x0, z0, h: new Float32Array(S2), mat: new Uint8Array(S2), forest: new Uint8Array(S2), water: null, used: 0, bytes: S2 * 6, blank: true };
+    for (let q = 0; q < S; q++) for (let p = 0; p < S; p++) { const x = x0 + p * E.step, z = z0 + q * E.step; t.h[q * S + p] = hqLandEdStartH(E, x, z); t.mat[q * S + p] = hqLandEdStartM(E, x, z); }
+    if (E.blank.size > 96) E.blank.delete(E.blank.keys().next().value);
+    E.blank.set(k, t);
+    return t;
+}
+/* a tile as the runtime reads it: his edited one, else the start's */
+function hqLandEdView(E, ti, tj) {
+    if (ti < 0 || tj < 0 || ti >= E.per || tj >= E.per) return null;
+    return E.grid[tj * E.per + ti] || hqLandEdBlank(E, ti, tj);
+}
+function _hqLandEdCopy(t) { return { h: t.h.slice(), mat: t.mat.slice(), forest: t.forest.slice(), water: t.water ? t.water.slice() : null }; }
+/* the tile he writes into (made from the start on first touch; its before-state filed in E.touch for the undo step) */
+function hqLandEdTile(E, ti, tj) {
+    if (ti < 0 || tj < 0 || ti >= E.per || tj >= E.per) return null;
+    const k = tj * E.per + ti; let t = E.grid[k];
+    if (E.touch && !E.touch.has(k)) E.touch.set(k, t ? _hqLandEdCopy(t) : null);
+    if (!t) {
+        const b = hqLandEdBlank(E, ti, tj);
+        t = { ti, tj, S: b.S, x0: b.x0, z0: b.z0, h: b.h.slice(), mat: b.mat.slice(), forest: b.forest.slice(), water: null, used: 0, bytes: b.S * b.S * 6 };
+        E.grid[k] = t;
+    }
+    E.changed.add(k);
+    return t;
+}
+/* one lattice sample (the tile that holds it; a shared edge row reads the same from either side) */
+let _hqLandEdT = null, _hqLandEdO = 0;   // the last sample's tile and offset (no allocation on the hot path)
+function _hqLandEdAt(E, GX, GZ) {
+    const n = E.n, per = E.per; let ti = Math.floor(GX / n), tj = Math.floor(GZ / n);
+    if (ti >= per) ti = per - 1; else if (ti < 0) ti = 0;
+    if (tj >= per) tj = per - 1; else if (tj < 0) tj = 0;
+    const t = E.grid[tj * per + ti], o = (GZ - tj * n) * E.S + (GX - ti * n);
+    _hqLandEdT = (t && o >= 0 && o < t.h.length) ? t : null; _hqLandEdO = o;
+    return _hqLandEdT;
+}
+function hqLandEdH(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t ? t.h[_hqLandEdO] : hqLandEdStartH(E, -E.ext + GX * E.step, -E.ext + GZ * E.step); }
+function hqLandEdM(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t ? t.mat[_hqLandEdO] : hqLandEdStartM(E, -E.ext + GX * E.step, -E.ext + GZ * E.step); }
+function hqLandEdF(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t ? t.forest[_hqLandEdO] : 0; }
+function hqLandEdW(E, GX, GZ) { const t = _hqLandEdAt(E, GX, GZ); return t && t.water ? t.water[_hqLandEdO] : NaN; }
+/* the ground at (x, z) in metres (bilinear over the lattice) — the editor's cursor and the pads read it */
+function hqLandEdHeight(E, x, z) {
+    const gx = (x + E.ext) / E.step, gz = (z + E.ext) / E.step, i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j;
+    return (hqLandEdH(E, i, j) * (1 - fx) + hqLandEdH(E, i + 1, j) * fx) * (1 - fz) + (hqLandEdH(E, i, j + 1) * (1 - fx) + hqLandEdH(E, i + 1, j + 1) * fx) * fz;
+}
+/* write one sample: every tile that holds it (up to four at a corner); v = { h, m, f, w } (any left out stays) */
+function hqLandEdSet(E, GX, GZ, v) {
+    const n = E.n, top = E.per * n;
+    if (GX < 0 || GZ < 0 || GX > top || GZ > top) return;
+    const tis = [Math.floor(GX / n)], tjs = [Math.floor(GZ / n)];
+    if (GX % n === 0 && GX > 0) tis.push(GX / n - 1);
+    if (GZ % n === 0 && GZ > 0) tjs.push(GZ / n - 1);
+    for (const tj of tjs) for (const ti of tis) {
+        if (ti >= E.per || tj >= E.per) continue;
+        const t = hqLandEdTile(E, ti, tj); if (!t) continue;
+        const o = (GZ - tj * n) * E.S + (GX - ti * n);
+        if (v.h != null) t.h[o] = Math.max(HQ_LAND_EDIT_RULES.heightBase, Math.min(HQ_LAND_EDIT_RULES.heightBase + 655, v.h));
+        if (v.m != null) t.mat[o] = v.m;
+        if (v.f != null) t.forest[o] = Math.max(0, Math.min(255, Math.round(v.f)));
+        if (v.w !== undefined) {
+            if (v.w === v.w) { if (!t.water) { t.water = new Float32Array(E.S * E.S).fill(NaN); t.bytes = E.S * E.S * 10; } t.water[o] = v.w; }
+            else if (t.water) t.water[o] = NaN;
+        }
+    }
+}
+/* the lattice rows / columns inside a box (m) → [GX0, GX1, GZ0, GZ1] clamped to the world */
+function _hqLandEdBox(E, x0, z0, x1, z1) {
+    const top = E.per * E.n, f = v => Math.max(0, Math.min(top, v));
+    return [f(Math.ceil((x0 + E.ext) / E.step)), f(Math.floor((x1 + E.ext) / E.step)), f(Math.ceil((z0 + E.ext) / E.step)), f(Math.floor((z1 + E.ext) / E.step))];
+}
+/* the tiles a box touches (indices) — what the renderer rebuilds after a stamp */
+function hqLandEdTilesIn(E, x0, z0, x1, z1) {
+    const out = [], a = Math.max(0, Math.floor((x0 + E.ext) / E.tile - 1e-6)), b = Math.min(E.per - 1, Math.floor((x1 + E.ext) / E.tile + 1e-6));
+    const c = Math.max(0, Math.floor((z0 + E.ext) / E.tile - 1e-6)), d = Math.min(E.per - 1, Math.floor((z1 + E.ext) / E.tile + 1e-6));
+    for (let tj = c; tj <= d; tj++) for (let ti = a; ti <= b; ti++) out.push(tj * E.per + ti);
+    return out;
+}
+function _hqLandEdFall(t, hard) { if (t >= 1) return 0; const i = Math.max(0, Math.min(0.95, hard || 0)); return t <= i ? 1 : _hqLandEdSmooth(1 - (t - i) / (1 - i)); }
+/* ── THE BRUSHES (§5.6): one dab at (x, z). o = { r, s (0 … 1), hard (0 … 0.95), h (flatten / set / cliff / water), step
+   (terrace), amt (m), mat (an id), f (forest 0 … 1) }. → the touched tiles */
+function hqLandEdBrush(E, tool, x, z, o) {
+    o = o || {};
+    const R = HQ_LAND_EDIT_RULES, B = R.brush, r = Math.max(B.rMin, Math.min(B.rMax, o.r || 20)), s = o.s == null ? 0.5 : o.s, amt = (o.amt != null ? o.amt : B.amt) * s;
+    const [X0, X1, Z0, Z1] = _hqLandEdBox(E, x - r, z - r, x + r, z + r);
+    if (X1 < X0 || Z1 < Z0) return [];
+    let snap = null, kk = 1;
+    if (tool === 'smooth') {   // read first, so a dab smooths against the ground before it (not its own writes)
+        kk = Math.max(1, Math.round(r / 16));
+        const w = X1 - X0 + 1 + 2 * kk, hh = Z1 - Z0 + 1 + 2 * kk; snap = new Float32Array(w * hh);
+        for (let j = 0; j < hh; j++) for (let i = 0; i < w; i++) snap[j * w + i] = hqLandEdH(E, X0 - kk + i, Z0 - kk + j);
+        snap.w = w;
+    }
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, w = _hqLandEdFall(Math.hypot(px - x, pz - z) / r, o.hard);
+        if (w <= 0) continue;
+        const h = hqLandEdH(E, GX, GZ);
+        switch (tool) {
+            case 'raise': hqLandEdSet(E, GX, GZ, { h: h + amt * w }); break;
+            case 'lower': hqLandEdSet(E, GX, GZ, { h: h - amt * w }); break;
+            case 'smooth': {
+                const i = GX - X0 + kk, j = GZ - Z0 + kk, W = snap.w;
+                const avg = (snap[j * W + i] * 4 + snap[j * W + i - kk] + snap[j * W + i + kk] + snap[(j - kk) * W + i] + snap[(j + kk) * W + i]
+                    + snap[(j - kk) * W + i - kk] + snap[(j - kk) * W + i + kk] + snap[(j + kk) * W + i - kk] + snap[(j + kk) * W + i + kk]) / 12;
+                hqLandEdSet(E, GX, GZ, { h: h + (avg - h) * w * Math.min(1, s * 1.5) }); break;
+            }
+            case 'flatten': hqLandEdSet(E, GX, GZ, { h: h + ((o.h != null ? o.h : h) - h) * w * Math.min(1, s * 1.5) }); break;
+            case 'terrace': { const st = Math.max(0.5, o.step || 5), tg = Math.round(h / st) * st; hqLandEdSet(E, GX, GZ, { h: h + (tg - h) * w * Math.min(1, s * 1.5) }); break; }
+            case 'set': hqLandEdSet(E, GX, GZ, { h: h + ((o.h != null ? o.h : h) - h) * w }); break;
+            case 'cliff': if (w >= 0.5) hqLandEdSet(E, GX, GZ, { h: o.h != null ? o.h : h }); break;
+            case 'roughen': hqLandEdSet(E, GX, GZ, { h: h + amt * w * _hqLandVN(px / (o.wl || B.wl), pz / (o.wl || B.wl)) }); break;
+            case 'mat': if (w > _hqLandHash(GX, GZ) * 0.9 + 0.05) hqLandEdSet(E, GX, GZ, { m: o.mat != null ? o.mat : hqLandEdMatId('grass') }); break;
+            case 'forest': { const f = hqLandEdF(E, GX, GZ), tg = (o.f != null ? o.f : 1) * 255; hqLandEdSet(E, GX, GZ, { f: f + (tg - f) * w * Math.min(1, s * 1.5) }); break; }
+            case 'water': if (w >= 0.5 && h < o.h) hqLandEdSet(E, GX, GZ, { w: o.h }); break;
+            case 'dry': if (w >= 0.5) hqLandEdSet(E, GX, GZ, { w: NaN }); break;
+            case 'clear': if (w >= 0.5) hqLandEdSet(E, GX, GZ, { h: hqLandEdStartH(E, px, pz), m: hqLandEdStartM(E, px, pz), f: 0, w: NaN }); break;
+        }
+    }
+    return hqLandEdTilesIn(E, x - r, z - r, x + r, z + r);
+}
+/* ── THE LINES: a Catmull-Rom spline through his clicks, resampled every `step` m → [[x, z]] */
+function hqLandEdSpline(pts, step) {
+    const P = (pts || []).map(p => [p[0], p[1]]); step = step || 4;
+    if (P.length < 2) return P;
+    const out = [P[0].slice()];
+    for (let k = 0; k + 1 < P.length; k++) {
+        const p0 = P[Math.max(0, k - 1)], p1 = P[k], p2 = P[k + 1], p3 = P[Math.min(P.length - 1, k + 2)];
+        const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
+        for (let i = 1; i <= n; i++) { const t = i / n; out.push([_hqLandCR(p0[0], p1[0], p2[0], p3[0], t), _hqLandCR(p0[1], p1[1], p2[1], p3[1], t)]); }
+    }
+    return out;
+}
+/* a polyline's nearest-point reader, bucketed every `cell` m: near(x, z) → { d, s (m along), k, side (+1 left) } or null past `reach` */
+function _hqLandEdAlong(P, reach, cell) {
+    cell = cell || 32;
+    const L = [0]; for (let k = 1; k < P.length; k++) L.push(L[k - 1] + Math.hypot(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]));
+    const G = new Map(), key = (i, j) => i * 100003 + j;
+    for (let k = 0; k + 1 < P.length; k++) {
+        const i0 = Math.floor((Math.min(P[k][0], P[k + 1][0]) - reach) / cell), i1 = Math.floor((Math.max(P[k][0], P[k + 1][0]) + reach) / cell);
+        const j0 = Math.floor((Math.min(P[k][1], P[k + 1][1]) - reach) / cell), j1 = Math.floor((Math.max(P[k][1], P[k + 1][1]) + reach) / cell);
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const q = key(i, j); let a = G.get(q); if (!a) G.set(q, a = []); a.push(k); }
+    }
+    return {
+        L, len: L[L.length - 1] || 0,
+        near(x, z) {
+            const a = G.get(key(Math.floor(x / cell), Math.floor(z / cell))); if (!a) return null;
+            let best = null;
+            for (const k of a) {
+                const ax = P[k][0], az = P[k][1], dx = P[k + 1][0] - ax, dz = P[k + 1][1] - az, ll = dx * dx + dz * dz || 1e-9;
+                const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / ll)), ex = x - ax - dx * t, ez = z - az - dz * t, d = Math.hypot(ex, ez);
+                if (d <= reach && (!best || d < best.d)) best = { d, k, t, s: L[k] + (L[k + 1] - L[k]) * t, side: (dx * ez - dz * ex) > 0 ? 1 : -1 };
+            }
+            return best;
+        },
+    };
+}
+function _hqLandEdBoxOf(P, m) { let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity; for (const p of P) { x0 = Math.min(x0, p[0]); z0 = Math.min(z0, p[1]); x1 = Math.max(x1, p[0]); z1 = Math.max(z1, p[1]); } return [x0 - m, z0 - m, x1 + m, z1 + m]; }
+/* a polygon's signed distance (m, + inside) */
+function hqLandEdPolyD(poly, x, z) {
+    let inside = false, d = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[i], b = poly[j];
+        if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+        const dx = b[0] - a[0], dz = b[1] - a[1], ll = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / ll));
+        d = Math.min(d, Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t));
+    }
+    return inside ? d : -d;
+}
+/* RIDGE / VALLEY: a raised (or sunk) band along the line — `h` m at the crest, `w` m wide (a cosine shoulder) */
+function hqLandEdRidge(E, pts, o) {
+    const P = hqLandEdSpline(pts, 4), w = Math.max(4, (o && o.w) || 60), hw = w / 2, hh = ((o && o.h) || 20) * (o && o.valley ? -1 : 1);
+    if (P.length < 2) return [];
+    const A = _hqLandEdAlong(P, hw), [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(P, hw), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, q = A.near(px, pz); if (!q) continue;
+        const k = 0.5 + 0.5 * Math.cos(Math.PI * Math.min(1, q.d / hw));
+        if (k > 1e-3) hqLandEdSet(E, GX, GZ, { h: hqLandEdH(E, GX, GZ) + hh * k });
+    }
+    return hqLandEdTilesIn(E, bx0, bz0, bx1, bz1);
+}
+/* PLATEAU: a polygon at `h` m; the ground eases up to it over `edge` m outside the line */
+function hqLandEdPlateau(E, poly, o) {
+    if (!poly || poly.length < 3) return [];
+    const h = (o && o.h != null) ? o.h : 20, edge = Math.max(2, (o && o.edge) || 30), [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(poly, edge), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, d = hqLandEdPolyD(poly, px, pz);
+        if (d < -edge) continue;
+        const k = d >= 0 ? 1 : _hqLandEdSmooth(1 + d / edge), g = hqLandEdH(E, GX, GZ);
+        hqLandEdSet(E, GX, GZ, { h: g + (h - g) * k });
+    }
+    return hqLandEdTilesIn(E, bx0, bz0, bx1, bz1);
+}
+/* COAST: his land's outline(s). Outside every polygon is the sea (the beach, then down to coast.floor); the START changes, so every
+   tile he already shaped takes the difference (his relief rides on the new start) and every tile he never touched just reads it.
+   → every tile index (the whole world redraws) */
+function hqLandEdCoastField(E, polys) {
+    const R = HQ_LAND_EDIT_RULES, cell = R.coast.grid, n = Math.round(2 * E.ext / cell) + 1, x0 = -E.ext, d = new Float32Array(n * n);
+    const P = (polys || []).filter(p => p && p.length >= 3);
+    if (!P.length) return null;
+    const cap = R.coast.slope + R.coast.beach + 16;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const x = x0 + i * cell, z = x0 + j * cell; let best = -Infinity;
+        for (const p of P) { const v = hqLandEdPolyD(p, x, z); if (v > best) best = v; }
+        d[j * n + i] = Math.max(-cap, Math.min(cap, best));
+    }
+    return { n, x0, cell, d };
+}
+function hqLandEdCoast(E, polys) {
+    const old = { cD: E.cD };
+    const next = hqLandEdCoastField(E, polys);
+    const oldStartH = (x, z) => { const k = E.cD; E.cD = old.cD; const v = hqLandEdStartH(E, x, z); E.cD = k; return v; };
+    const oldStartM = (x, z) => { const k = E.cD; E.cD = old.cD; const v = hqLandEdStartM(E, x, z); E.cD = k; return v; };
+    const tiles = [];
+    for (let k = 0; k < E.grid.length; k++) if (E.grid[k]) tiles.push(k);
+    const before = tiles.map(k => { const t = E.grid[k]; return { k, t, h0: new Float32Array(t.h.length), m0: new Uint8Array(t.mat.length) }; });
+    before.forEach(b => { const t = b.t; for (let q = 0; q < t.S; q++) for (let p = 0; p < t.S; p++) { const x = t.x0 + p * E.step, z = t.z0 + q * E.step, o = q * t.S + p; b.h0[o] = oldStartH(x, z); b.m0[o] = oldStartM(x, z); } });
+    E.coasts = (polys || []).map(p => p.map(q => [q[0], q[1]])); E.cD = next; E.plain = null; E.blank.clear();
+    before.forEach(b => {
+        const t = hqLandEdTile(E, b.t.ti, b.t.tj);
+        for (let q = 0; q < t.S; q++) for (let p = 0; p < t.S; p++) {
+            const x = t.x0 + p * E.step, z = t.z0 + q * E.step, o = q * t.S + p;
+            t.h[o] += hqLandEdStartH(E, x, z) - b.h0[o];
+            if (t.mat[o] === b.m0[o]) t.mat[o] = hqLandEdStartM(E, x, z);
+        }
+    });
+    const all = []; for (let k = 0; k < E.per * E.per; k++) all.push(k);
+    return all;
+}
+/* LAKE: a polygon at `level` m. The bed sinks `depth` m under it over `edge` m in from the shore; the water surface is set where the
+   ground is under the level; the far pass's capsules (rows every lake.row m) → the lake row { id, label, level, pts, caps } */
+function hqLandEdLake(E, poly, o) {
+    if (!poly || poly.length < 3) return { row: null, tiles: [] };
+    const R = HQ_LAND_EDIT_RULES.lake, level = (o && o.level != null) ? o.level : 0.5, depth = (o && o.depth) || R.depth, edge = R.edge, lakeM = hqLandEdMatId('lake'), sandM = hqLandEdMatId('sand');
+    const [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(poly, 6), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, d = hqLandEdPolyD(poly, px, pz);
+        if (d < -6) continue;
+        const g = hqLandEdH(E, GX, GZ);
+        if (d < 0) { if (g < level + 0.3) hqLandEdSet(E, GX, GZ, { m: sandM }); continue; }   // the shore
+        const bed = level - 0.4 - (depth - 0.4) * _hqLandEdSmooth(d / edge), h = Math.min(g, bed);
+        hqLandEdSet(E, GX, GZ, { h, w: level, m: d > 3 ? lakeM : sandM });
+    }
+    const caps = [], half = R.row / Math.SQRT2;
+    for (let z = Math.ceil(bz0 / R.row) * R.row; z <= bz1; z += R.row) {
+        let run = null;
+        for (let x = Math.floor(bx0 / 4) * 4; x <= bx1 + 4; x += 4) {
+            const inn = hqLandEdPolyD(poly, x, z) > 0;
+            if (inn && !run) run = [x, x];
+            else if (inn) run[1] = x;
+            else if (run) { caps.push({ a: [run[0], z], b: [run[1], z], half, level }); run = null; }
+        }
+        if (run) caps.push({ a: [run[0], z], b: [run[1], z], half, level });
+    }
+    return { row: { level, depth, pts: poly.map(p => [p[0], p[1]]), caps }, tiles: hqLandEdTilesIn(E, bx0, bz0, bx1, bz1) };
+}
+/* RIVER: a spline from its source. The surface runs down the ground under it (never up: monotone), `below` m under the ground,
+   never under the sea; the bed is carved `depth` m under the surface across the width (w0 at the source to w1 at the mouth, full
+   widths), the banks ease back over `bank` m. → the river row { pts [[x, z, y]], w0, w1 (half-widths, land.json's) } + tiles */
+function hqLandEdRiver(E, pts, o) {
+    const RR = HQ_LAND_EDIT_RULES.river, P = hqLandEdSpline(pts, RR.step);
+    if (P.length < 2) return { row: null, tiles: [] };
+    const w0 = ((o && o.w0) || RR.w * 0.6) / 2, w1 = ((o && o.w1) || RR.w) / 2, depth = (o && o.depth) || RR.depth, sea = HQ_LAND_RULES.sea ? HQ_LAND_RULES.sea.y || 0 : 0;
+    const Y = []; let y = Infinity;
+    P.forEach((p, k) => { const g = hqLandEdHeight(E, p[0], p[1]) - RR.below; y = Math.min(y, g); Y.push(Math.max(sea, y)); });
+    const reach = Math.max(w0, w1) + RR.bank, A = _hqLandEdAlong(P, reach), L = A.len || 1;
+    const [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(P, reach), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1), rivM = hqLandEdMatId('river');
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, q = A.near(px, pz); if (!q) continue;
+        const hw = w0 + (w1 - w0) * q.s / L, ys = Y[q.k] + (Y[q.k + 1] - Y[q.k]) * q.t, g = hqLandEdH(E, GX, GZ);
+        if (q.d <= hw) { const bed = ys - depth * (1 - (q.d / hw) * (q.d / hw)) - 0.3; hqLandEdSet(E, GX, GZ, { h: Math.min(g, bed), w: ys, m: rivM }); }
+        else if (q.d <= hw + RR.bank) { const t = _hqLandEdSmooth((q.d - hw) / RR.bank), top = ys + 0.4; if (g > top) hqLandEdSet(E, GX, GZ, { h: top + (g - top) * t }); }
+    }
+    const keep = [], every = RR.keep / RR.step;
+    P.forEach((p, k) => { if (k % every === 0 || k === P.length - 1) keep.push([+p[0].toFixed(2), +p[1].toFixed(2), +Y[k].toFixed(2)]); });
+    return { row: { pts: keep, w0: +w0.toFixed(2), w1: +w1.toFixed(2), src: pts.map(p => [p[0], p[1]]) }, tiles: hqLandEdTilesIn(E, bx0, bz0, bx1, bz1) };
+}
+/* ROAD / LANE / TRAIL: a spline graded to its grade limit (the ground's profile smoothed, then held to ± grade both ways), flat
+   across its width; the ground under it is cut or filled to it and eases back over the shoulder. Where the fill passes `deck` m a
+   deck (a bridge) carries it and the ground is left; where the fill passes `rail` m a guard rail runs on both sides.
+   → { row (land.json roads[]), bridges [], tiles } */
+function hqLandEdGrade(G, step, grade, smooth) {   // the graded profile: G = the ground every `step` m → the road's heights
+    const n = G.length, k = Math.max(1, Math.round((smooth || 40) / step / 2)), Y = new Float64Array(n);
+    for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) { s += G[j]; c++; } Y[i] = s / c; }
+    const d = grade * step;
+    for (let pass = 0; pass < 2; pass++) {
+        for (let i = 1; i < n; i++) Y[i] = Math.max(Y[i - 1] - d, Math.min(Y[i - 1] + d, Y[i]));
+        for (let i = n - 2; i >= 0; i--) Y[i] = Math.max(Y[i + 1] - d, Math.min(Y[i + 1] + d, Y[i]));
+    }
+    return Y;
+}
+function hqLandEdRoad(E, pts, o) {
+    const RR = HQ_LAND_EDIT_RULES.roads, type = (o && o.type) || 'road', T = RR[type] || RR.road, P = hqLandEdSpline(pts, RR.step);
+    if (P.length < 2) return { row: null, bridges: [], tiles: [] };
+    const w = (o && o.w) || T.w, hw = w / 2, sea = HQ_LAND_RULES.sea ? HQ_LAND_RULES.sea.y || 0 : 0;
+    const G = P.map(p => hqLandEdHeight(E, p[0], p[1])), Y = hqLandEdGrade(G.map(g => Math.max(g, sea + 0.6)), RR.step, (o && o.grade) || T.grade, RR.smooth);
+    const fill = P.map((p, k) => Y[k] - G[k]);
+    const reach = hw + T.shoulder, A = _hqLandEdAlong(P, reach), m = hqLandEdMatId(T.mat);
+    const deckAt = k => fill[k] > RR.deck;
+    const [bx0, bz0, bx1, bz1] = _hqLandEdBoxOf(P, reach), [X0, X1, Z0, Z1] = _hqLandEdBox(E, bx0, bz0, bx1, bz1);
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, q = A.near(px, pz); if (!q) continue;
+        const yr = Y[q.k] + (Y[q.k + 1] - Y[q.k]) * q.t, g = hqLandEdH(E, GX, GZ), deck = deckAt(q.k) || deckAt(q.k + 1);
+        if (deck && g < yr) continue;   // a deck spans it: the ground under stays
+        if (q.d <= hw) hqLandEdSet(E, GX, GZ, { h: yr, m, w: NaN });
+        else { const t = _hqLandEdSmooth((q.d - hw) / T.shoulder); hqLandEdSet(E, GX, GZ, { h: yr + (g - yr) * t }); }
+    }
+    /* the decks and the rails, as runs along the road (m) */
+    const runs = test => { const out = []; let s0 = -1; for (let k = 0; k < P.length; k++) { const on = test(k); if (on && s0 < 0) s0 = k; if ((!on || k === P.length - 1) && s0 >= 0) { const k1 = on ? k : k - 1; if (k1 > s0) out.push([A.L[s0], A.L[k1]]); s0 = -1; } } return out; };
+    const decks = runs(deckAt), rails = [];
+    runs(k => fill[k] > RR.rail && !deckAt(k)).forEach(r => { rails.push([+r[0].toFixed(1), +r[1].toFixed(1), 1], [+r[0].toFixed(1), +r[1].toFixed(1), -1]); });
+    const keep = [], every = RR.keep / RR.step;
+    P.forEach((p, k) => { if (k % every === 0 || k === P.length - 1) keep.push([+p[0].toFixed(2), +p[1].toFixed(2), +Y[k].toFixed(2)]); });
+    const bridges = decks.map(d => {
+        const bp = []; P.forEach((p, k) => { if (A.L[k] >= d[0] - 1e-6 && A.L[k] <= d[1] + 1e-6) bp.push([+p[0].toFixed(2), +p[1].toFixed(2), +Y[k].toFixed(2)]); });
+        return { type, w, look: type === 'trail' ? 'foot' : 'girder', pts: bp, deck: [+d[0].toFixed(1), +d[1].toFixed(1)] };
+    });
+    return { row: { type, surface: T.surface, w, pts: keep, rails, src: pts.map(p => [p[0], p[1]]) }, bridges, tiles: hqLandEdTilesIn(E, bx0, bz0, bx1, bz1) };
+}
+/* PAD: a place's ground levelled at `y` over its square (`r` m half-side + pad.margin) and eased back over pad.band (the bake's rule) */
+function hqLandEdPad(E, x, z, r, y) {
+    const R = HQ_LAND_EDIT_RULES.pad, h = r + R.margin, reach = h + R.band, [X0, X1, Z0, Z1] = _hqLandEdBox(E, x - reach, z - reach, x + reach, z + reach);
+    for (let GZ = Z0; GZ <= Z1; GZ++) for (let GX = X0; GX <= X1; GX++) {
+        const px = -E.ext + GX * E.step, pz = -E.ext + GZ * E.step, d = Math.hypot(Math.max(0, Math.abs(px - x) - h), Math.max(0, Math.abs(pz - z) - h));
+        if (d > R.band) continue;
+        const g = hqLandEdH(E, GX, GZ), t = _hqLandEdSmooth(d / R.band);
+        hqLandEdSet(E, GX, GZ, { h: y + (g - y) * t });
+    }
+    return hqLandEdTilesIn(E, x - reach, z - reach, x + reach, z + reach);
+}
+/* the tiles that go in the export: every tile he shaped, and every tile the start is not plain in (the wall, the coast) */
+function hqLandEdListed(E) {
+    const out = [];
+    for (let tj = 0; tj < E.per; tj++) for (let ti = 0; ti < E.per; ti++) {
+        const x0 = -E.ext + ti * E.tile, z0 = -E.ext + tj * E.tile;
+        if (Math.hypot(Math.max(0, Math.abs(x0 + E.tile / 2) - E.tile / 2), Math.max(0, Math.abs(z0 + E.tile / 2) - E.tile / 2)) > HQ_LAND_EDIT_RULES.wall.r + HQ_LAND_EDIT_RULES.wall.edge + 40) continue;   // wholly past the wall: sea.bin's
+        if (E.grid[tj * E.per + ti] || !hqLandEdPlain(E, ti, tj)) out.push([ti, tj]);
+    }
+    return out;
+}
+/* ── THE FILES (bake-land.js writeOutputs, byte for byte) ─────────────────────────────────────────────────── */
+function _hqLandEdEncH(y) { const R = HQ_LAND_EDIT_RULES; return Math.max(0, Math.min(65534, Math.round((y - R.heightBase) / R.heightStep))); }
+function hqLandEdTileBytes(t) {
+    const S = t.S, S2 = S * S, buf = new Uint8Array(16 + S2 * 6), dv = new DataView(buf.buffer);
+    buf[0] = 69; buf[1] = 87; buf[2] = 76; buf[3] = 84; buf[4] = 1; buf[5] = 0;   // 'EWLT' v1
+    dv.setUint16(6, S, true); dv.setFloat32(8, t.x0, true); dv.setFloat32(12, t.z0, true);
+    for (let o = 0; o < S2; o++) {
+        dv.setUint16(16 + o * 2, _hqLandEdEncH(t.h[o]), true);
+        buf[16 + S2 * 2 + o] = t.mat[o]; buf[16 + S2 * 3 + o] = t.forest[o];
+        const w = t.water ? t.water[o] : NaN; dv.setUint16(16 + S2 * 4 + o * 2, w === w ? _hqLandEdEncH(w) : 0xffff, true);
+    }
+    return buf;
+}
+/* the whole world at `cell` m (sample centres: the lattice's own samples, 4 lattice steps apart) → { n, x0, cell, h, mat };
+   `into` + a box (m) redraws only that part of an earlier one */
+function hqLandEdWorld(E, into, box) {
+    const cell = HQ_LAND_EDIT_RULES.world, n = Math.round(2 * E.ext / cell), k = cell / E.step, W = into || { n, x0: -E.ext, cell, h: new Float32Array(n * n), mat: new Uint8Array(n * n), bytes: n * n * 5 };
+    let i0 = 0, i1 = n - 1, j0 = 0, j1 = n - 1;
+    if (box) { i0 = Math.max(0, Math.floor((box[0] + E.ext) / cell) - 1); j0 = Math.max(0, Math.floor((box[1] + E.ext) / cell) - 1); i1 = Math.min(n - 1, Math.ceil((box[2] + E.ext) / cell) + 1); j1 = Math.min(n - 1, Math.ceil((box[3] + E.ext) / cell) + 1); }
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const GX = i * k + k / 2, GZ = j * k + k / 2; W.h[j * n + i] = hqLandEdH(E, GX, GZ); W.mat[j * n + i] = hqLandEdM(E, GX, GZ); }
+    return W;
+}
+function hqLandEdSeaBytes(W) {
+    const n = W.n, N2 = n * n, buf = new Uint8Array(16 + N2 * 3), dv = new DataView(buf.buffer);
+    buf[0] = 69; buf[1] = 87; buf[2] = 76; buf[3] = 83; buf[4] = 1; buf[5] = 0;   // 'EWLS' v1
+    dv.setUint16(6, n, true); dv.setFloat32(8, W.x0, true); dv.setFloat32(12, W.cell, true);
+    for (let o = 0; o < N2; o++) { dv.setUint16(16 + o * 2, _hqLandEdEncH(W.h[o]), true); buf[16 + N2 * 2 + o] = W.mat[o]; }
+    return buf;
+}
+/* THE MAP: the bake's shaded relief (its colours, its sun, contours every 25 m, every 100 m darker), 4 m a pixel, into an RGBA
+   buffer of size² (size = 2 ext / 4); a box (pixels [i0, j0, i1, j1]) redraws only that part */
+const HQ_LAND_MAP_COL = [[22, 58, 96], [58, 118, 160], [222, 204, 158], [122, 158, 86], [150, 180, 100], [56, 98, 52], [132, 124, 114], [240, 243, 247], [218, 182, 124],
+    [180, 108, 72], [230, 224, 208], [176, 184, 104], [150, 150, 154], [70, 70, 74], [150, 116, 78], [70, 138, 186], [52, 110, 160], [226, 238, 246], [212, 228, 238], [150, 162, 138], [186, 142, 102], [112, 100, 92], [128, 100, 70], [168, 164, 156]];
+function hqLandEdMapSize(E) { return Math.round(2 * E.ext / HQ_LAND_EDIT_RULES.map); }
+function hqLandEdMapRGBA(E, rgba, box) {
+    const PX = HQ_LAND_EDIT_RULES.map, W = hqLandEdMapSize(E), k = PX / E.step, M = _HQ_LAND_ED_M;
+    const i0 = box ? Math.max(0, box[0]) : 0, j0 = box ? Math.max(0, box[1]) : 0, i1 = box ? Math.min(W - 1, box[2]) : W - 1, j1 = box ? Math.min(W - 1, box[3]) : W - 1;
+    const bw = i1 - i0 + 3, bh = j1 - j0 + 3, H = new Float32Array(bw * bh);
+    for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) { const I = Math.max(0, Math.min(W - 1, i0 - 1 + i)), J = Math.max(0, Math.min(W - 1, j0 - 1 + j)); H[j * bw + i] = hqLandEdH(E, I * k + k / 2, J * k + k / 2); }
+    const sun = [-0.55, 0.62, -0.56], sl = Math.hypot(sun[0], sun[1], sun[2]); sun[0] /= sl; sun[1] /= sl; sun[2] /= sl;
+    const cl = (v, a, b) => v < a ? a : v > b ? b : v;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const a = (j - j0 + 1) * bw + (i - i0 + 1), h = H[a], GX = i * k + k / 2, GZ = j * k + k / 2, m = hqLandEdM(E, GX, GZ), wv = hqLandEdW(E, GX, GZ);
+        let col = (HQ_LAND_MAP_COL[m] || HQ_LAND_MAP_COL[3]).slice();
+        if (m === M.farm) { const q = (((Math.floor((GX * E.step - E.ext) / 36) * 7 + Math.floor((GZ * E.step - E.ext) / 28) * 13) % 5) + 5) % 5; col = [[176, 184, 104], [196, 190, 110], [150, 168, 92], [206, 176, 108], [160, 176, 96]][q].slice(); }
+        let water = m === M.deep || m === M.shallow || m === M.pack || m === M.river || m === M.lake;
+        if (h < 0 || m === M.deep || m === M.shallow) { const t = cl(-h / 160, 0, 1); col = [64 + (12 - 64) * t, 130 + (40 - 130) * t, 170 + (86 - 170) * t]; water = true; }
+        else if (wv === wv && wv > h) { col = HQ_LAND_MAP_COL[M.lake].slice(); water = true; }
+        const hx = (H[a + 1] - H[a - 1]) / (2 * PX), hz = (H[a + bw] - H[a - bw]) / (2 * PX);
+        let nx = -hx, ny = 1, nz = -hz; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
+        const lit = cl(nx * sun[0] + ny * sun[1] + nz * sun[2], 0, 1);
+        let shade = water ? 0.92 + 0.08 * lit : 0.35 + 0.85 * lit;
+        const ht = water ? 1 : 1 + cl(h / 900, 0, 0.18);
+        if (!water && h > 0.5) { const b0 = Math.floor(h / 25), br = Math.floor(H[a + 1] / 25), bd = Math.floor(H[a + bw] / 25); if (b0 !== br || b0 !== bd) shade *= (Math.max(b0, br, bd) % 4 === 0) ? 0.72 : 0.86; }
+        const o = (j * W + i) * 4; rgba[o] = cl(col[0] * shade * ht, 0, 255); rgba[o + 1] = cl(col[1] * shade * ht, 0, 255); rgba[o + 2] = cl(col[2] * shade * ht, 0, 255); rgba[o + 3] = 255;
+    }
+    return rgba;
+}
+/* ── THE SIGHT TOOL: the ground seen from (x, z) (eye m over it), `rays` rays out to maxD over the 8 m world → per ray the runs seen
+   [[d0, d1], …] (information only, R4) */
+function hqLandEdSight(E, W, x, z, o) {
+    const R = Object.assign({}, HQ_LAND_EDIT_RULES.sight, o || {}), y0 = hqLandEdHeight(E, x, z) + R.eye, out = [];
+    const hAt = (px, pz) => { const gx = (px - W.x0) / W.cell - 0.5, gz = (pz - W.x0) / W.cell - 0.5; if (gx < 0 || gz < 0 || gx >= W.n - 1 || gz >= W.n - 1) return null; const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, b = j * W.n + i; return Math.max(0, (W.h[b] * (1 - fx) + W.h[b + 1] * fx) * (1 - fz) + (W.h[b + W.n] * (1 - fx) + W.h[b + W.n + 1] * fx) * fz); };
+    for (let r = 0; r < R.rays; r++) {
+        const a = r / R.rays * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a), runs = []; let best = -Infinity, on = -1;
+        for (let d = R.step; d <= R.maxD; d += R.step) {
+            const h = hAt(x + dx * d, z + dz * d); if (h == null) break;
+            const s = (h + R.target - y0) / d, seen = s >= best;
+            if ((h - y0) / d > best) best = (h - y0) / d;
+            if (seen && on < 0) on = d; else if (!seen && on >= 0) { runs.push([on, d - R.step]); on = -1; }
+        }
+        if (on >= 0) runs.push([on, R.maxD]);
+        out.push(runs);
+    }
+    return { x, z, y: y0, rays: out, maxD: R.maxD };
+}
+/* ── land.json: the runtime's overlay (places, roads, bridges, rivers, lakes → capsules, the region grid, the reveal points, the
+   map, the tiles, the format) + `edit` = his vector doc as the editor reads it back. V = the doc's land block. `id` is filled by
+   the caller (sha256 of this JSON + the map png, the bake's rule, hqLandEdId). */
+function hqLandEdIndex(E, V, opts) {
+    V = V || {}; opts = opts || {};
+    const R = HQ_LAND_EDIT_RULES, RC = R.region.cell, n = Math.ceil(2 * E.ext / RC);
+    const regions = (V.regions || []).filter(r => r && r.pts && r.pts.length >= 3), ids = regions.map(r => r.id);
+    const regionAt = (x, z) => { for (let k = regions.length - 1; k >= 0; k--) if (hqLandEdPolyD(regions[k].pts, x, z) >= 0) return k; return -1; };
+    let regionGrid = null;
+    if (regions.length) {
+        const rows = [];
+        for (let j = 0; j < n; j++) { let s = ''; for (let i = 0; i < n; i++) { const k = regionAt(-E.ext + (i + 0.5) * RC, -E.ext + (j + 0.5) * RC); s += k < 0 ? '.' : String.fromCharCode(97 + k); } rows.push(s); }
+        regionGrid = { n, cell: RC, x0: -E.ext, z0: -E.ext, ids, rows };
+    }
+    const places = (V.places || []).map(p => {
+        const k = regionAt(p.at[0], p.at[1]);
+        return { id: p.id, label: p.label, room: p.room, kind: p.kind || 'site', at: [p.at[0], p.at[1]], pad: p.float ? 0 : (p.pad || R.pad.r), y: +(+p.padY || 0).toFixed(2), padY: +(+p.padY || 0).toFixed(2), region: p.region || (k >= 0 ? ids[k] : null), float: !!p.float, rot: p.rot || 0 };
+    });
+    const roads = [], bridges = [];
+    (V.roads || []).forEach(r => { if (!r || !r.pts || r.pts.length < 2) return; roads.push({ id: r.id, label: r.label, type: r.type, surface: r.surface, w: r.w, loop: false, pts: r.pts, rails: r.rails || [] }); (r.bridges || []).forEach((b, k) => bridges.push(Object.assign({ id: r.id + '_b' + k, road: r.id, label: r.label }, b))); });
+    const lakes = []; (V.lakes || []).forEach(l => (l.caps || []).forEach(c => lakes.push(c)));
+    const rivers = (V.rivers || []).filter(r => r && r.pts && r.pts.length >= 2).map(r => ({ id: r.id, label: r.label, pts: r.pts, w0: r.w0, w1: r.w1 }));
+    const revealPts = (V.reveals || []).map(v => { const k = regionAt(v.at[0], v.at[1]), rg = v.regions || (k >= 0 ? [ids[k]] : []); return { id: v.id, at: [v.at[0], v.at[1]], regions: rg, places: places.filter(p => rg.indexOf(p.region) >= 0).map(p => p.id) }; });
+    const size = hqLandEdMapSize(E);
+    return {
+        v: 1, materials: R.mats.slice(), places, roads, bridges, junctions: [], rivers, lakes,
+        regions: regions.map(r => ({ id: r.id, label: r.label, pts: r.pts })), regionNames: Object.fromEntries(regions.map(r => [r.id, r.label])),
+        revealPts, stops: [], sight: {}, regionGrid,
+        map: { file: 'land-map.png', px: R.map, size, x0: -E.ext, z0: -E.ext },
+        tiles: opts.tiles || hqLandEdListed(E),
+        tileFormat: { tile: R.tile, samples: R.samples, heightBase: R.heightBase, heightStep: R.heightStep, waterNone: 65535 },
+        bake: { cell: E.step, ext: E.ext, id: opts.id || '' },
+        edit: { v: 1, coasts: E.coasts, regions: V.regions || [], reveals: V.reveals || [], places: V.places || [], roads: V.roads || [], rivers: V.rivers || [], lakes: V.lakes || [], lines: V.lines || [] },
+    };
+}
+/* the runtime reads his land: HQ_LAND.baked swaps to an editor bake (no drum, his places, no recipe forests; the old one kept),
+   the store's tile SOURCE is the editor (three-renderer.js streams from it instead of fetching), the 8 m world is W */
+let _hqLandEdSaved = null;
+function hqLandEdInstall(E, ov, W) {
+    const St = HQ_LAND_STORE;
+    if (!_hqLandEdSaved) _hqLandEdSaved = { baked: HQ_LAND.baked, places: HQ_LAND.places, regionNames: HQ_LAND.regionNames, cap: HQ_LAND_RULES.tiles.cap };
+    if (!E.liveId) E.liveId = 'ed_' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);   // one id a land (the far pass caches by it)
+    const id = E.liveId;
+    HQ_LAND.baked = { id, cell: E.step, ext: E.ext, tile: E.tile, heightBase: HQ_LAND_EDIT_RULES.heightBase, base: '', noHQ: true, own: true, edit: true };
+    HQ_LAND.places = ov.places; HQ_LAND.regionNames = Object.assign({}, ov.regionNames || {});
+    ov.bake = Object.assign({}, ov.bake, { id });
+    ov.tiles = []; for (let tj = 0; tj < E.per; tj++) for (let ti = 0; ti < E.per; ti++) ov.tiles.push([ti, tj]);   // every tile streams (from memory)
+    HQ_LAND_RULES.tiles.cap = Math.max(_hqLandEdSaved.cap, 160);
+    if (St.id !== id) { St.id = ''; St.index = null; }
+    HQ_LAND_ROADS.id = ''; HQ_LAND_DISC.id = ''; St.falls = null; _hqLandSitesCache = null;
+    St.src = { tile: (ti, tj) => hqLandEdView(E, ti, tj), E };
+    hqLandIndex(ov);
+    if (St.index !== ov) St.index = ov;
+    St.pads = (ov.places || []).filter(p => p.pad > 0 && p.at).map(p => [p.at[0], p.at[1], p.pad]);
+    hqLandRoadsIndex(ov); hqLandDiscIndex(ov);
+    St.world = W || hqLandEdWorld(E);
+    return id;
+}
+function hqLandEdUninstall() {
+    const St = HQ_LAND_STORE; if (!_hqLandEdSaved) return false;
+    HQ_LAND.baked = _hqLandEdSaved.baked; HQ_LAND.places = _hqLandEdSaved.places; HQ_LAND.regionNames = _hqLandEdSaved.regionNames; HQ_LAND_RULES.tiles.cap = _hqLandEdSaved.cap;
+    _hqLandEdSaved = null;
+    St.src = null; St.id = ''; St.index = null; St.grid = null; St.baked = null; St.world = null; St.n = 0; St.bytes = 0; St.pads = null; St.falls = null;
+    HQ_LAND_ROADS.id = ''; HQ_LAND_DISC.id = ''; _hqLandSitesCache = null;
+    return true;
+}
+/* his land, read back from its land.json + tiles (IMPORT FROM R2, or the IndexedDB copy): tiles = { 'ti_tj': ArrayBuffer } */
+function hqLandEdFromFiles(ov, tiles) {
+    const E = hqLandEdNew(), ed = (ov && ov.edit) || {};
+    if (ed.coasts && ed.coasts.length) { E.coasts = ed.coasts; E.cD = hqLandEdCoastField(E, ed.coasts); }
+    const R = HQ_LAND_EDIT_RULES;
+    Object.keys(tiles || {}).forEach(key => {
+        const buf = tiles[key], dv = new DataView(buf instanceof ArrayBuffer ? buf : buf.buffer, buf.byteOffset || 0, buf.byteLength);
+        const S = dv.getUint16(6, true), S2 = S * S, x0 = dv.getFloat32(8, true), z0 = dv.getFloat32(12, true);
+        const ti = Math.round((x0 + E.ext) / E.tile), tj = Math.round((z0 + E.ext) / E.tile); if (ti < 0 || tj < 0 || ti >= E.per || tj >= E.per || S !== E.S) return;
+        const t = { ti, tj, S, x0, z0, h: new Float32Array(S2), mat: new Uint8Array(S2), forest: new Uint8Array(S2), water: null, used: 0, bytes: S2 * 6 };
+        for (let o = 0; o < S2; o++) {
+            t.h[o] = dv.getUint16(16 + o * 2, true) * R.heightStep + R.heightBase; t.mat[o] = dv.getUint8(16 + S2 * 2 + o); t.forest[o] = dv.getUint8(16 + S2 * 3 + o);
+            const w = dv.getUint16(16 + S2 * 4 + o * 2, true); if (w !== 0xffff) { if (!t.water) { t.water = new Float32Array(S2).fill(NaN); t.bytes = S2 * 10; } t.water[o] = w * R.heightStep + R.heightBase; }
+        }
+        E.grid[tj * E.per + ti] = t;
+    });
+    return { E, doc: { coasts: E.coasts, regions: ed.regions || [], reveals: ed.reveals || [], places: ed.places || [], roads: ed.roads || [], rivers: ed.rivers || [], lakes: ed.lakes || [], lines: ed.lines || [] } };
+}
+if (typeof window !== 'undefined') Object.assign(window, { HQ_LAND_EDIT_RULES, HQ_LAND_MAP_COL, hqLandEdMatId, hqLandEdNew, hqLandEdStartH, hqLandEdStartM, hqLandEdPlain, hqLandEdBlank, hqLandEdView, hqLandEdTile,
+    hqLandEdH, hqLandEdM, hqLandEdF, hqLandEdW, hqLandEdHeight, hqLandEdSet, hqLandEdTilesIn, hqLandEdBrush, hqLandEdSpline, hqLandEdPolyD, hqLandEdRidge, hqLandEdPlateau, hqLandEdCoastField, hqLandEdCoast,
+    hqLandEdLake, hqLandEdRiver, hqLandEdGrade, hqLandEdRoad, hqLandEdPad, hqLandEdListed, hqLandEdTileBytes, hqLandEdWorld, hqLandEdSeaBytes, hqLandEdMapSize, hqLandEdMapRGBA, hqLandEdSight,
+    hqLandEdIndex, hqLandEdInstall, hqLandEdUninstall, hqLandEdFromFiles });
 /* ══ THE SHAPES (EDITOR_PLAN.md §4.3 + §5.3 + §6 rows 5–6, E1 — 2026-09-29) ═══════════════════════════════════════════════════
    The building rows the editor's tools write, expanded into the compiler's own rows before hqTerrainCompile reads them
    (hqRoomExpand), so the walker, the camera, the solver and the renderer see only walls, plateaus, bridges … (R1):
