@@ -288,7 +288,8 @@ function bake(opts) {
     const SITES = (sb && typeof sb.hqLandSites === 'function') ? JSON.parse(JSON.stringify(sb.hqLandSites())) : [];
     const rectD = (S, x, z) => Math.hypot(Math.max(S.x0 - x, 0, x - S.x1), Math.max(S.z0 - z, 0, z - S.z1));
     const SITE = new Uint8Array(NN);     // 1 = inside a site's box + margin (the island's own ground covers it)
-    for (const S of SITES) { const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
+    for (const S of SITES) { if (S.sea) continue;   // G7: a sea site (the harbour) stands on the water's own floor
+        const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const c = j * N + i, d = rectD(S, X(i), Z(j)); if (d <= SRULE.margin) SITE[c] = 1;
             PADS[c] = Math.max(PADS[c], 1 - ss(SRULE.margin, SRULE.margin + SRULE.band, d)); } }
     for (const p of R.places) if (p.pad) { const [px, pz] = p.at; const r = p.pad * 1.3; const [i0, i1, j0, j1] = box(px - r, pz - r, px + r, pz + r);
@@ -448,7 +449,10 @@ function bake(opts) {
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
             const c = j * N + i; const t = Math.hypot(X(i) - px, Z(j) - pz) / r; if (t > 1.6) continue; const w = 1 - ss(0.8, 1.6, t); if (WATER[c] > -9000 && (WATER[c] > y || t > 0.8)) continue; H[c] = lerp(H[c], y, w); } }   // G6: a river past the flat keeps its bed (the blend never buries it)
     // G6: the sites' boxes, flat to their pad's height (after the discs, so the box wins where a disc's blend runs under it)
-    for (const S of SITES) { const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
+    // G7 (THE CITY ON THE HILL): a sloped site's box is levelled to its slope (data.js hqLandSiteY), not to one height
+    const siteY = (S, x, z) => (S.slope && sb && typeof sb.hqLandSiteY === 'function') ? sb.hqLandSiteY(S, x, z) : S.y;
+    for (const S of SITES) { if (S.sea) continue;   // G7: the harbour keeps the bay's floor
+        const g = SRULE.margin + SRULE.band; const [i0, i1, j0, j1] = box(S.x0 - g, S.z0 - g, S.x1 + g, S.z1 + g);
         // the band lets go of the ground toward a shore (a chamfer distance to the window's water): the bank meets its water, never a wall
         const wi = i1 - i0 + 1, wj = j1 - j0 + 1, DW = new Float32Array(wi * wj), BIG = 1e9, dg = CELL * Math.SQRT2;
         for (let j = 0; j < wj; j++) for (let i = 0; i < wi; i++) DW[j * wi + i] = WATER[(j + j0) * N + i + i0] > -9000 ? 0 : BIG;
@@ -459,7 +463,7 @@ function bake(opts) {
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const c = j * N + i, d = rectD(S, X(i), Z(j)); if (d > g) continue;
             if (WATER[c] > -9000 && d > SRULE.margin) continue;
             let w = 1 - ss(SRULE.margin, g, d); if (d > SRULE.margin) w *= ss(0, SRULE.band * 0.5, DW[(j - j0) * wi + i - i0]);
-            H[c] = lerp(H[c], S.y, w); } }
+            H[c] = lerp(H[c], siteY(S, X(i), Z(j)), w); } }
 
     // ───────── 6. ROADS (graded corridors) and TRAILS (benched)
     // G5 (THE ROADS, 2026-09-28): THE FILL CAP. The sketch's grader smoothed a road and clamped its grade, so wherever the ground fell

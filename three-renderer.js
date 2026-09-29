@@ -42529,6 +42529,22 @@ const ThreeRenderer = (function () {
         var batch = texOn ? _hqTexBatch(G, U, neon) : null, batchAlt = null, texMade = 0;   // THE DISTRICTS (D2): a lot whose district flips the neon flag goes into a second batch
         var batchFor = function (lotNeon) { if (lotNeon === neon) return batch; if (!batchAlt) batchAlt = _hqTexBatch(G, U, lotNeon); return batchAlt; };
         var lotNeonOf = function (lot) { return (lot.neon != null) ? !!lot.neon : neon; };
+        /* THE PLINTHS (WORLD_GEOGRAPHY_PLAN G7, the city on the hill, 2026-09-29): on a sloped field a lot stands level at its front's
+           height, so its downhill side would float — a concrete plinth (the retaining wall of a terraced lot) runs from the lowest
+           ground under the lot up to its floor; its uphill side cuts into the slope inside the building. One instanced mesh a room. */
+        var plinths = [];
+        if (info.slope) lots.forEach(function (lot) {
+            var yaw0 = lot.rot || 0, c = Math.cos(yaw0), sn = Math.sin(yaw0), gmin = Infinity, hw0 = lot.w / 2, hd0 = lot.d / 2;
+            [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]].forEach(function (q) {
+                var lx = q[0] * hw0, lz = q[1] * hd0, g = hqTerrainHeight(info, lot.x + lx * c + lz * sn, lot.z - lx * sn + lz * c); if (g < gmin) gmin = g; });
+            var drop = (lot.base || 0) - gmin; if (drop > 0.12) plinths.push({ x: lot.x, z: lot.z, yaw: yaw0, w: lot.w, d: lot.d, y0: gmin - 0.3, y1: (lot.base || 0) + 0.3 });
+        });
+        if (plinths.length) {
+            var pm = new THREE.MeshPhongMaterial({ map: _hzTex('concrete') || null, color: 0x8c8a86, shininess: 4 }); pm.emissive = new THREE.Color(0x121212);
+            var pim = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), pm, plinths.length), m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), up4 = new THREE.Vector3(0, 1, 0);
+            plinths.forEach(function (p, k) { q4.setFromAxisAngle(up4, p.yaw); m4.compose(new THREE.Vector3(p.x * U, (p.y0 + p.y1) / 2 * U + 0.3, p.z * U), q4, new THREE.Vector3(p.w * U, (p.y1 - p.y0) * U, p.d * U)); pim.setMatrixAt(k, m4); });
+            pim.instanceMatrix.needsUpdate = true; pim.castShadow = true; pim.receiveShadow = true; pim.name = 'hq_city_plinths'; G.add(pim);
+        }
         try {
             lots.forEach(function (lot) {
                 lotById[lot.i] = lot;
@@ -43252,6 +43268,7 @@ const ThreeRenderer = (function () {
             car.g.position.set(p.x * U, gy * U + (car.yAt ? 0 : 0.3), p.z * U);
             car.g.rotation.y = Math.atan2(p.dx, p.dz);
             if (car.yAt) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((car.yAt(car.s + 2) - car.yAt(car.s - 2)) / 4); }
+            else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((hqTerrainHeight(info, p.x + p.dx * 2, p.z + p.dz * 2) - hqTerrainHeight(info, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
             car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
             if (car.hitT > 0) { car.hitT -= dt; continue; }
             /* THE HIT: the walker inside the car's box — shoved along its heading with a hop; a rider is thrown */
@@ -52875,14 +52892,21 @@ const ThreeRenderer = (function () {
     function _hqLandO(H, L) {
         if (!H || !L || H.land === L) return _HQ_LAND_O0;
         var id = (H.stage && H.stage.id) || (H.opts && H.opts.room);
-        if (L.oFor !== id) { var rel = null; try { rel = (typeof hqStageRel === 'function') ? hqStageRel(id, L.id) : null; } catch (e) { rel = null; } L.o = rel ? { x: rel.x, y: rel.y || 0, z: rel.z } : { x: 0, y: 0, z: 0 }; L.oFor = id; }
+        if (L.oFor !== id) { var rel = null; try { rel = (typeof hqStageRel === 'function') ? hqStageRel(id, L.id) : null; } catch (e) { rel = null; } L.o = rel ? { x: rel.x, y: rel.y || 0, z: rel.z, rot: rel.rot || 0 } : { x: 0, y: 0, z: 0, rot: 0 }; L.oFor = id; }
         return L.o;
     }
+    /* G7 (THE CITY ON THE HILL, 2026-09-29): a site may stand TURNED on the land (Downtown and the Bowl, rot 1), so the land's frame in
+       the site's metres is a shift AND a quarter turn: L.group wears both, the shaders turn their world point back into the land's
+       metres (uLandO then uLandR = [cos, sin] of the turn: land = R⁻¹ (p − o)), and _hqLandToScene / _hqLandFromScene carry a point */
+    function _hqLandCS(o) { var r = ((o && o.rot) || 0) & 3; return r === 0 ? [1, 0] : r === 1 ? [0, 1] : r === 2 ? [-1, 0] : [0, -1]; }
+    function _hqLandToScene(L, x, z) { var o = (L && L.v && L.v.o) || _HQ_LAND_O0, cs = _hqLandCS(o); return { x: o.x + x * cs[0] + z * cs[1], z: o.z - x * cs[1] + z * cs[0] }; }
+    function _hqLandFromScene(o, x, z) { var cs = _hqLandCS(o), dx = x - o.x, dz = z - o.z; return { x: dx * cs[0] - dz * cs[1], z: dx * cs[1] + dz * cs[0] }; }
     function _hqLandPlace(H, L) {
         L = L || (H && H.landZ); if (!L || L.dead) return _HQ_LAND_O0;
-        var o = _hqLandO(H, L), U = _hqUnits();
-        if (L.group.position.x !== o.x * U || L.group.position.y !== o.y * U || L.group.position.z !== o.z * U) { L.group.position.set(o.x * U, o.y * U, o.z * U); L.group.updateMatrixWorld(true); }
+        var o = _hqLandO(H, L), U = _hqUnits(), ry = (((o.rot || 0) & 3) * Math.PI / 2);
+        if (L.group.position.x !== o.x * U || L.group.position.y !== o.y * U || L.group.position.z !== o.z * U || L.group.rotation.y !== ry) { L.group.position.set(o.x * U, o.y * U, o.z * U); L.group.rotation.y = ry; L.group.updateMatrixWorld(true); }
         L.uO.value.set(-o.x, -o.y, -o.z);
+        var cs = _hqLandCS(o); if (!L.uR) L.uR = { value: new THREE.Vector2(1, 0) }; L.uR.value.set(cs[0], cs[1]);
         return o;
     }
     /* the boxes of the land zone's parts drawn now (the current part, the attached neighbours; a raised part stands over the land and
@@ -52910,8 +52934,8 @@ const ThreeRenderer = (function () {
     function _hqLandView(H, L) {
         var o = _hqLandPlace(H, L), U = _hqUnits(), pl = H.player, cam = H.camera, V = L.v || (L.v = {});
         V.own = H.land === L; V.o = o;
-        V.px = (pl ? pl.x : 0) - o.x; V.pz = (pl ? pl.z : 0) - o.z; V.py = (pl ? pl.y : 0) - o.y;
-        if (cam) { V.cx = cam.position.x / U - o.x; V.cy = cam.position.y / U - o.y; V.cz = cam.position.z / U - o.z; } else { V.cx = V.px; V.cy = V.py; V.cz = V.pz; }
+        var pp = _hqLandFromScene(o, pl ? pl.x : 0, pl ? pl.z : 0); V.px = pp.x; V.pz = pp.z; V.py = (pl ? pl.y : 0) - o.y;
+        if (cam) { var cp = _hqLandFromScene(o, cam.position.x / U, cam.position.z / U); V.cx = cp.x; V.cy = cam.position.y / U - o.y; V.cz = cp.z; } else { V.cx = V.px; V.cy = V.py; V.cz = V.pz; }
         return V;
     }
     function _hqLandArm(room, part) {
@@ -52919,7 +52943,7 @@ const ThreeRenderer = (function () {
         if (!room || !room.land || !_hqLandOk()) return;
         if (H.landZ && !H.landZ.dead) { if (part) part.P.land = H.landZ; else H.land = H.landZ; return; }   // one land a visit
         var R = _hqLandR(), U = _hqUnits();
-        var L = { id: part ? part.id : ((H.opts && H.opts.room) || 'land'), uO: { value: new THREE.Vector3() }, siteU: null, room: room, group: new THREE.Group(), chunks: {}, n: 0, want: [], inflight: {}, nFlight: 0, failed: {}, idx: false, world: false,
+        var L = { id: part ? part.id : ((H.opts && H.opts.room) || 'land'), uO: { value: new THREE.Vector3() }, uR: { value: new THREE.Vector2(1, 0) }, siteU: null, room: room, group: new THREE.Group(), chunks: {}, n: 0, want: [], inflight: {}, nFlight: 0, failed: {}, idx: false, world: false,
                            sea: { y: (R.sea && R.sea.y) || 0, key: 'land', under: false }, lastX: 1e9, lastZ: 1e9, lastWantAt: 0, cut: 0, readyNear: false,
                            gl2: _hqLandGL2(), mats: null, far: null, hqY: (typeof hqLandPadY === 'function' ? hqLandPadY('hq') : 0) || 0, t0: performance.now(), dead: false, stats: { built: 0, ms: 0 } };
         H.landZ = L; if (part) part.P.land = L; else H.land = L;
@@ -53187,7 +53211,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLandSheets(L) {
         var R = _hqLandR(), T = R.tex, key = JSON.stringify(T.layers.map(function (ly) { return [ly.src, ly.tint || 0]; }));
-        var done = function (arr) { if (L.dead || !_hq || _hq.landZ !== L) return; if (!arr) { L.texFailed = true; return; } _hqLandRetone(L); L.mats = _hqLandSplatShared(arr); L.mats.uLandO = L.uO; L.mats.uSiteR = _hqLandSiteU(L).r; L.mats.uSiteN = _hqLandSiteU(L).n; for (var k in L.chunks) { var c = L.chunks[k]; if (c.mesh && c.ids && c.mesh.material === L.plainMat) c.mesh.material = _hqLandChunkMat(L, c); } };
+        var done = function (arr) { if (L.dead || !_hq || _hq.landZ !== L) return; if (!arr) { L.texFailed = true; return; } _hqLandRetone(L); L.mats = _hqLandSplatShared(arr); L.mats.uLandO = L.uO; L.mats.uLandR = L.uR; L.mats.uSiteR = _hqLandSiteU(L).r; L.mats.uSiteN = _hqLandSiteU(L).n; for (var k in L.chunks) { var c = L.chunks[k]; if (c.mesh && c.ids && c.mesh.material === L.plainMat) c.mesh.material = _hqLandChunkMat(L, c); } };
         if (_hqLandCache.tex && _hqLandCache.texKey === key) { done(_hqLandCache.tex); return; }
         if (!_hqLandCache.texLoading || _hqLandCache.texLoadKey !== key) {
             _hqLandCache.texLoadKey = key;
@@ -53245,7 +53269,7 @@ const ThreeRenderer = (function () {
         return { uLayers: { value: arr }, uLay: { value: lay }, uTint: { value: tint }, uRep: { value: rep }, uCliffL: { value: cliff }, uLandU: { value: 1 / _hqUnits() } };
     }
     var _HQ_LAND_SPLAT_VS_HEAD = [
-        'attribute vec2 aLand;', 'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;', 'uniform float uLandU;', 'uniform vec3 uLandO;',
+        'attribute vec2 aLand;', 'varying vec2 vLand;', 'varying vec3 vLandW;', 'varying vec3 vLandN;', 'uniform float uLandU;', 'uniform vec3 uLandO;', 'uniform vec2 uLandR;',
     ].join('\n');
     var _HQ_LAND_SPLAT_FS_HEAD = [
         'precision highp sampler2DArray;',
@@ -53309,7 +53333,7 @@ const ThreeRenderer = (function () {
         var L = _hq && _hq.landZ, S = (L && L.mats) || null; if (!S) return;
         for (var k in S) shader.uniforms[k] = S[k];
         shader.uniforms.uIds = this.userData.uIds; shader.uniforms.uIdO = this.userData.uIdO;
-        shader.vertexShader = _HQ_LAND_SPLAT_VS_HEAD + '\n' + shader.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vLand = aLand; vLandW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU + uLandO; vLandN = objectNormal;');
+        shader.vertexShader = _HQ_LAND_SPLAT_VS_HEAD + '\n' + shader.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vLand = aLand; vLandW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU + uLandO; vLandW.xz = vec2(vLandW.x * uLandR.x - vLandW.z * uLandR.y, vLandW.x * uLandR.y + vLandW.z * uLandR.x); vLandN = objectNormal;');
         shader.fragmentShader = _HQ_LAND_SPLAT_FS_HEAD + '\n' + shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n' + _HQ_LAND_SPLAT_FS_BODY);
     }
     /* ── THE FAR PASS ── */
@@ -53427,7 +53451,7 @@ const ThreeRenderer = (function () {
         var W = _hqLandWR(), K = W.look, U = _hqUnits();
         var white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat); white.needsUpdate = true;
         L.wu = {
-            uWT: { value: 0 }, uLandU: { value: 1 / U }, uLandO: L.uO, uWFx: { value: _hqLandWaterFxOff() ? 0 : 1 },
+            uWT: { value: 0 }, uLandU: { value: 1 / U }, uLandO: L.uO, uLandR: L.uR, uWFx: { value: _hqLandWaterFxOff() ? 0 : 1 },
             uWShallow: { value: new THREE.Color(K.shallow) }, uWMid: { value: new THREE.Color(K.mid) }, uWDeep: { value: new THREE.Color(K.deep) },
             uWFresh: { value: new THREE.Color(K.fresh) }, uWFoam: { value: new THREE.Color(K.foam) }, uWSky: { value: new THREE.Color(0x9fb8c8) },
             uWLook: { value: new THREE.Vector4(K.deepM, K.foamM, 1 / K.ripple, W.rapids) }, uWLit: { value: 1 },
@@ -53523,8 +53547,8 @@ const ThreeRenderer = (function () {
             for (var k in S) shader.uniforms[k] = S[k];
             var sea = kind !== 'fresh';
             if (sea) shader.defines = Object.assign(shader.defines || {}, { EW_WSEA: '' });
-            shader.vertexShader = (sea ? '' : 'attribute vec4 aWat; attribute float aWatG; varying vec4 vWat; varying float vWatG;\n') + 'uniform float uLandU; uniform vec3 uLandO; varying vec3 vWatW;\n' + shader.vertexShader
-                .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vWatW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU + uLandO;' + (sea ? '' : ' vWat = aWat; vWatG = aWatG;'));
+            shader.vertexShader = (sea ? '' : 'attribute vec4 aWat; attribute float aWatG; varying vec4 vWat; varying float vWatG;\n') + 'uniform float uLandU; uniform vec3 uLandO; uniform vec2 uLandR; varying vec3 vWatW;\n' + shader.vertexShader
+                .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n  vWatW = (modelMatrix * vec4(transformed, 1.0)).xyz * uLandU + uLandO; vWatW.xz = vec2(vWatW.x * uLandR.x - vWatW.z * uLandR.y, vWatW.x * uLandR.y + vWatW.z * uLandR.x);' + (sea ? '' : ' vWat = aWat; vWatG = aWatG;'));
             shader.fragmentShader = _HQ_WATER_FS_HEAD + '\n' + shader.fragmentShader
                 .replace('#include <color_fragment>', '#include <color_fragment>\n' + _HQ_WATER_FS_COLOR)
                 .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + _HQ_WATER_FS_NORMAL)
@@ -53978,7 +54002,7 @@ const ThreeRenderer = (function () {
             else {
                 sh.uniforms.uFloraC = U.c; sh.uniforms.uFloraNear = U.near; sh.uniforms.uFloraCut = U.cut; sh.uniforms.uFloraCam = U.cam;
                 sh.vertexShader = 'attribute vec2 aTree;\nuniform vec3 uFloraC; uniform float uFloraNear; uniform float uFloraCut; uniform vec3 uFloraCam;\n' + sh.vertexShader
-                    .replace('#include <project_vertex>', '#include <project_vertex>\n if (distance(aTree, uFloraC.xz) < uFloraNear || distance(aTree, uFloraCam.xz) > uFloraCut) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);');
+                    .replace('#include <project_vertex>', '#include <project_vertex>\n vec2 ewTr = (modelMatrix * vec4(aTree.x, 0.0, aTree.y, 1.0)).xz;\n if (distance(ewTr, uFloraC.xz) < uFloraNear || distance(ewTr, uFloraCam.xz) > uFloraCut) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);');   // G7: the tree's spot in the scene (the land may stand shifted and turned)
             }
             sh.vertexShader = sh.vertexShader.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);');
             _hqFloraBothLit(sh);
@@ -54063,7 +54087,7 @@ const ThreeRenderer = (function () {
         L.floraU.cut.value = (L.cut > 0 ? L.cut : (_hqLandR().camFar || 460) * 0.9) * U; L.floraU.cam.value.copy(H.camera.position);
         /* THE NEAR: whole models, nearest first, re-read every near.every m */
         if (FL.dirty || Math.hypot(px - FL.nearAt[0], pz - FL.nearAt[1]) > F.near.every) { _hqFloraNear(L, px, pz); FL.nearAt = [px, pz]; FL.dirty = false; FL.blkAt = [1e9, 1e9]; }
-        L.floraU.c.value.set((FL.nearAt[0] + L.v.o.x) * U, 0, (FL.nearAt[1] + L.v.o.z) * U);   // G6: the near ring's centre where the scene draws it
+        var fc = _hqLandToScene(L, FL.nearAt[0], FL.nearAt[1]); L.floraU.c.value.set(fc.x * U, 0, fc.z * U);   // G6: the near ring's centre where the scene draws it (G7: turned with the land)
         /* THE BLOCKERS: the trunks and rocks round the walker, as the room's blockers (drawn: the near models hold them) */
         if (L.v.own && (Math.hypot(px - FL.blkAt[0], pz - FL.blkAt[1]) > F.blockers.every || now - (FL.blkT || 0) > 500)) { _hqFloraBlockers(L, px, pz); FL.blkAt = [px, pz]; FL.blkT = now; }   // G6: on the land's own record only   // (and twice a second: a tile that just landed brings its trunks)
     }
@@ -54123,7 +54147,7 @@ const ThreeRenderer = (function () {
         FL.rockR = Infinity;
         for (var r = 0; r < rk.length; r++) { var er = rk[r], rkd = er[1][er[2] + 3] | 0, RM = FL.rocks[rkd]; if (rused + RM.tris > rb) { FL.rockR = er[0]; break; } rused += RM.tris; rlists[rkd].push(er); }
         FL.nearR = nearR; FL.nearN = 0; FL.rockN = 0;
-        L.floraU.c.value.set(px * U, 0, pz * U); L.floraU.near.value = nearR * U;
+        var fc0 = _hqLandToScene(L, px, pz); L.floraU.c.value.set(fc0.x * U, 0, fc0.z * U); L.floraU.near.value = nearR * U;
         var m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
         FL.models.forEach(function (M, kd) {
             var ims = _hqFloraIms(L, M, 'tree', kd, lists[kd].length);
@@ -54237,8 +54261,9 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < list.length; i++) {
             var b = list[i];
             if (b.kind === 'rock' && !(Math.hypot(b.x - nc[0], b.z - nc[1]) < FL.rockR)) continue;   // a rock the budget did not draw never blocks (R3)
-            var o = new THREE.Object3D(); o.position.set(b.x * U, b.y * U, b.z * U);
-            H.blockers.push(b.kind === 'tree' ? { obj: o, y: b.y, top: null, rad: b.rad, tree: true, landFlora: true } : { obj: o, y: b.y, top: b.top, rad: b.rad, rock: true, landFlora: true });
+            var sc = _hqLandToScene(L, b.x, b.z), oy = (L.v && L.v.o && L.v.o.y) || 0;   // G6/G7: in the scene's metres (the land stands shifted and turned on a site)
+            var o = new THREE.Object3D(); o.position.set(sc.x * U, (b.y + oy) * U, sc.z * U);
+            H.blockers.push(b.kind === 'tree' ? { obj: o, y: b.y + oy, top: null, rad: b.rad, tree: true, landFlora: true } : { obj: o, y: b.y + oy, top: b.top != null ? b.top + oy : b.top, rad: b.rad, rock: true, landFlora: true });
         }
         if (H.nav) H.nav.staticKey = -1;   // the navigator's copy of the statics is read again
         L.flora.blk = list.length;
@@ -54599,9 +54624,11 @@ const ThreeRenderer = (function () {
     function _hqRoadsBlockers(L, H, px, pz) {
         var RD = L.roads, RR = _hqRoadsR(), U = _hqUnits(), r = RR.near2.blockR; if (!H.blockers) H.blockers = [];
         H.blockers = H.blockers.filter(function (b) { return !b.landRoad; });
-        var n = 0, post = function (p, rad, top) { if (Math.hypot(p.x - px, p.z - pz) > r) return; var o = new THREE.Object3D(); o.position.set(p.x * U, p.y * U, p.z * U); H.blockers.push({ obj: o, y: p.y, top: top == null ? null : top, rad: rad, landRoad: true }); n++; };
+        /* G7: in the scene's metres (on a site the land stands shifted and turned) */
+        var oy = (L.v && L.v.o && L.v.o.y) || 0, oyaw = ((((L.v && L.v.o && L.v.o.rot) || 0) & 3) * Math.PI / 2), at = function (p) { var q = _hqLandToScene(L, p.x, p.z); var o = new THREE.Object3D(); o.position.set(q.x * U, (p.y + oy) * U, q.z * U); return o; };
+        var n = 0, post = function (p, rad, top) { if (Math.hypot(p.x - px, p.z - pz) > r) return; H.blockers.push({ obj: at(p), y: p.y + oy, top: top == null ? null : top + oy, rad: rad, landRoad: true }); n++; };
         for (var k in RD.decks) { var D = RD.decks[k]; if (!D.g) continue;
-            (D.piers || []).forEach(function (p) { if (Math.hypot(p.x - px, p.z - pz) > r + p.hw) return; var o = new THREE.Object3D(); o.position.set(p.x * U, p.y * U, p.z * U); H.blockers.push({ obj: o, y: p.y, top: p.top, rad: Math.max(p.hw, p.hd), rect: { hw: p.hw, hd: p.hd }, yaw: p.yaw, landRoad: true }); n++; });
+            (D.piers || []).forEach(function (p) { if (Math.hypot(p.x - px, p.z - pz) > r + p.hw) return; H.blockers.push({ obj: at(p), y: p.y + oy, top: p.top != null ? p.top + oy : p.top, rad: Math.max(p.hw, p.hd), rect: { hw: p.hw, hd: p.hd }, yaw: (p.yaw || 0) + oyaw, landRoad: true }); n++; });
             (D.lamps || []).forEach(function (p) { post(p, 0.22, null); });
             (D.plates || []).forEach(function (pl2) { pl2.posts.forEach(function (p) { post(p, 0.12, null); }); }); }
         for (var k2 in RD.pieces) { var Pc = RD.pieces[k2]; (Pc.signs || []).forEach(function (sg) { sg.posts.forEach(function (p) { post(p, 0.12, null); }); }); }

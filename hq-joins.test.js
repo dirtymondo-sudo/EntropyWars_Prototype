@@ -67,15 +67,16 @@ test('a door join is a doorway span on its wall, no link replaced; the side list
 });
 
 test('the city\'s edge joins are open sides too, and each side of a join stitches to the same height', () => {
- assert.ok(D.hqShellSideOpen(DT, 'n').some(o => o.nb === BOWL && o.kind !== 'door'));
- assert.ok(D.hqShellSideOpen(DT, 's').some(o => o.nb === HARB), 'the harbour\'s shore south (G6: the Strip no longer joins the west edge — it stands on the land)');
+ /* G7 (2026-09-29): Downtown, the Bowl and the harbour stand on the land; the quay is the one site-to-site join left */
+ assert.ok(!D.hqShellSideOpen(DT, 'n').some(o => o.nb === BOWL), 'the Bowl stands on its own place on the land');
+ assert.ok(D.hqShellSideOpen(DT, 's').some(o => o.nb === HARB), 'the harbour\'s shore south of the quay');
  assert.ok(HQ_WORLD_RULES.stitchM > 0);
- for (const [a, b] of [[DT, BOWL], [DT, HARB]]) {
+ for (const [a, b] of [[DT, HARB]]) {
   const ra = D.hqTerrainStitchRows(a).find(s => s.other === b), rb = D.hqTerrainStitchRows(b).find(s => s.other === a);
   assert.ok(ra && rb, a + ' ⇄ ' + b);
   const ya = D.hqWorldFrame(a).y, yb = D.hqWorldFrame(b).y;
   assert.ok(near(ra.yAt(ra.t0) + ya, rb.yAt(rb.t0) + yb, 1e-6), 'one zone height both sides');
-  if (b === BOWL) assert.equal(ra.m, HQ_WORLD_RULES.stitchM);
+  assert.ok(!D.hqTerrainStitchRows(a).some(r => r.island && r.side === ra.side && r.t0 < ra.t1 - 0.01 && r.t1 > ra.t0 + 0.01), 'the quay\'s join owns its span: no ease to the land under it');
  }
  assert.deepEqual(plain(D.hqTerrainStitchRows('medwing')), [], 'a door join never stitches a field');
  assert.deepEqual(plain(D.hqTerrainStitchRows('site_prebuilt_heaven_stair')), [], 'a zone the stage does not walk is not stitched yet');

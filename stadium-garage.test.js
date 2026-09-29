@@ -50,9 +50,8 @@ test('THE BOWL: a flat grass gridiron (no generated plan, no noise) painted end 
     assert.deepEqual(P.filter(p => p.key === 'field_goal_post').map(p => Math.abs(p.z)).sort().join(','), '43.9,43.9', 'goal posts on both end lines');
     assert.ok(P.some(p => p.key === 'scoreboard') && HQ.catalogue.scoreboard && HQ.catalogue.scoreboard.proc === 'scoreboard', 'the scoreboard');
     assert.equal(P.filter(p => p.key === 'flood_mast').length, 4, 'four flood masts');
-    /* the road home leaves from the north tunnel's mouth */
-    const road = HQ.links.find(l => l.id === 'stadium_downtown');
-    assert.ok(road.a.wall === 'n' && road.a.x === 0, 'the city road out of the north tunnel');
+    /* the road home: G7 (2026-09-29) the Bowl stands on the land, its north tunnel's mouth opens onto it (the stadium_downtown link is retired) */
+    assert.ok(!HQ.links.find(l => l.id === 'stadium_downtown'), 'no link: the land\'s roads run to the city');
 });
 
 test('THE PARKING GARAGE: a round drum (one mitred ring, no jags), an open plaza, one smooth spiral ramp a car fits on, one upper deck, no way into H-Wing', () => {

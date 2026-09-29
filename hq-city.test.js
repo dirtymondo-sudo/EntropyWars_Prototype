@@ -172,29 +172,24 @@ test('THE WAYS IN: the tower lobby’s AVENUE doors (its east wall, the clock mo
     assert.ok(st && st.wall === 'n' && st.x === 2.2 && st.leaf === 'leaf_frame_only' && st.action.room === STREETS && st.action.at === 'metro', 'the platform’s street stair');
     assert.ok(me && me.wall === 'n' && me.x === 12 && me.leaf === 'leaf_frame_only' && me.action.room === PLAT && me.action.at === 'street', 'the metro stair');
     assert.ok(HQ.rooms[PLAT].props.find(p => p.key === 'departures_board').x < -1.5, 'the departures board hangs over the track');
-    const ml = at(STREETS, 'mall'), ms = at(MALL, 'street');
-    assert.ok(ml && ml.wall === 'w' && ml.z === 30 && ml.leaf === 'leaf_glass' && ml.action.room === MALL && ml.action.at === 'street' && ms && ms.wall === 's' && ms.x === 0 && ms.leaf === 'leaf_glass' && ms.action.room === STREETS && ms.action.at === 'mall', 'the mall’s doors');
+    /* WORLD GEOGRAPHY G7 (2026-09-29): the mall stands on the bay's beach, its main entrance a door on the land */
+    const ml = at('land', 'mall'), ms = at(MALL, 'street');
+    assert.ok(!at(STREETS, 'mall'), 'the streets have no mall door any more');
+    assert.ok(ml && ml.wall === 'free' && ml.leaf === 'leaf_glass' && ml.action.room === MALL && ml.action.at === 'street' && ms && ms.wall === 's' && ms.x === 0 && ms.leaf === 'leaf_glass' && ms.action.room === 'land' && ms.action.at === 'mall', 'the mall’s doors');
     for (const d of [av, tw, st, me, ml, ms]) assert.ok(!d.rankDoor && !d.minClearance && D.doorSiteState(d, null) === 'open', d.id + ': never gated');
 });
 
 test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel leaf, the highway), the Stadium (streets_stadium — Room 50’s last free north lane, the highway), THE TIME MACHINE (timemachine_cyberpunk — a `way` at BOTH ends: free in the mall’s arcade, free on Cyberpunk’s north strip; the ONLY way from the city into Cyberpunk), THE GUTTER (streets_drain — a `way` free in the east kerb ⇄ the storm drain’s own grate on its north wall, on THE SEWERS line); all live, all explained, never a rank leaf; the world graph carries them', () => {
     const L = id => HQ.links.find(l => l.id === id);
     /* THE ROADS OUT (2026-09-17, THE URBAN PACK): Gate C (streets_stadium) is retired — THE AVENUE's north end IS the stadium road (stadium_downtown, a `road` way at both ends) */
-    const strip = L('streets_strip'), stad = L('stadium_downtown'), tm = L('timemachine_cyberpunk'), gut = L('streets_drain');
-    assert.ok(!L('streets_stadium'), 'Gate C is retired');
-    for (const l of [strip, stad, tm, gut]) { assert.ok(l && D.hqLinkLive(l) && l.why && l.note && l.draft === true, l && l.id); assert.ok(!(HQ.catalogue[l.leaf] || {}).rank); }
-    assert.ok(strip.route === 'highway' && strip.a.part === 'streets' && strip.a.wall === 'w' && strip.a.z === 18 && strip.b.site === 'prebuilt_strip' && strip.b.part === 'chapel' && strip.b.wall === 'w' && strip.leaf === 'leaf_motel');
-    assert.equal(D.hqLinkRoom(strip.a), STREETS); assert.equal(D.hqLinkRoom(strip.b), CHAPEL);
-    assert.ok(stad.route === 'highway' && stad.way === 'road' && !stad.leaf && stad.b.part === 'streets' && stad.b.wall === 'n' && stad.b.x === 0 && stad.a.site === 'prebuilt_stadium' && stad.a.part === 'bowl' && stad.a.wall === 'n' && stad.a.x === 0, 'the avenue\'s north end is the stadium road (THE AREAS, 2026-09-18: out of THE BOWL; THE BOWL rebuilt 2026-09-26: out of the north tunnel\'s mouth, x 0)');
-    const BOWL = STADIUM + '_bowl';   // THE AREAS (2026-09-18): the stadium is an area — the road leaves the bowl
-    assert.equal(D.hqLinkRoom(stad.a), BOWL); assert.equal(D.hqLinkRoom(stad.b), STREETS);
-    for (const o of HQ.rooms[BOWL].doors) if (o.id !== 'link_stadium_downtown' && o.wall === 'n') assert.ok(Math.abs(o.x - stad.a.x) >= 4.4, 'the stadium road shares a lane with ' + o.id);
-    for (const id of ['downtown_strip', 'strip_cyberpunk']) { const l = L(id); assert.ok(l && l.way === 'road' && D.hqLinkLive(l), id + ': a road way'); }
-    const ends = HQ.rooms[STREETS].doors.filter(d => d.way === 'road').map(d => d.wall + ':' + (d.x != null ? d.x : d.z)).sort().join(' ');
-    assert.equal(ends, 'n:0 w:0', 'the cross street\'s west end and the avenue\'s north end are roads out (the east end went with Nuketown, 2026-09-18); the avenue\'s south end is the mall\'s door');
+    /* WORLD GEOGRAPHY G7 (2026-09-29): Downtown, the Bowl and the Strip stand on the land; the highway's roads between them are
+       the land's own roads, so streets_strip, stadium_downtown and downtown_strip are retired */
+    const tm = L('timemachine_cyberpunk'), gut = L('streets_drain');
+    for (const id of ['streets_stadium', 'streets_strip', 'stadium_downtown', 'downtown_strip']) assert.ok(!L(id), id + ' is retired');
+    for (const l of [tm, gut]) { assert.ok(l && D.hqLinkLive(l) && l.why && l.note && l.draft === true, l && l.id); assert.ok(!(HQ.catalogue[l.leaf] || {}).rank); }
+    { const l = L('strip_cyberpunk'); assert.ok(l && l.way === 'road' && D.hqLinkLive(l), 'strip_cyberpunk: a road way'); }
+    assert.equal(HQ.rooms[STREETS].doors.filter(d => d.way === 'road').length, 0, 'the streets\' ends run on onto the land (G7): no road doors');
     assert.ok(HQ.ways.road && HQ.ways.road.pad >= 9 && HQ.ways.road.w >= 9 && HQ.ways.road.open === true, 'the road is catalogued as a wide, open way');
-    for (const d of HQ.rooms[STREETS].doors.filter(d => d.way === 'road')) { const pad = D.hqTerrainInfo(STREETS).pads.find(q => q.door.id === d.id); assert.ok(pad && Math.max(pad.w, pad.d) >= 10, d.id + ': the whole street is the landing'); }
-    assert.ok(HQ.rooms[BOWL].doors.filter(d => d.link && d.wall === 'n').length <= 3, 'the stadium keeps ≤ 3 link doors on its north wall');
     /* THE SECOND PASS (2026-09-17): the machine stands in the mall's SUPPLY CLOSET and comes out in the noodle bar's back room on the grid — both FREE ends on complex parts, both a building in the city */
     assert.ok(tm.route === 'seams' && tm.way === 'timemachine' && tm.a.site === 'prebuilt_downtown' && tm.a.part === 'closet' && tm.a.wall === 'free' && tm.a.face === 180 && tm.b.site === 'prebuilt_cyberpunk' && tm.b.part === 'noodle' && tm.b.wall === 'free' && tm.b.face === 270 && !tm.b.leaf, 'the time machine at both ends');
     const a = at(CLOSET, 'link_timemachine_cyberpunk'), b = at(NOODLE, 'link_timemachine_cyberpunk');
@@ -211,12 +206,11 @@ test('THE SEAMS: the Strip (streets_strip — the chapel’s west wall, a motel 
     for (const k of ['timemachine', 'gutter']) assert.ok(HQ.ways[k] && HQ.ways[k].verb && HQ.ways[k].sub && HQ.ways[k].sfx && HQ.ways[k].w > 0 && HQ.ways[k].h > 0, k + ' is catalogued');
     assert.equal(HQ.ways.timemachine.sfx, 'wayTime'); assert.equal(HQ.ways.gutter.sfx, 'wayGutter');
     const graph = D.hqWorldGraph();
-    for (const l of [strip, stad, tm, gut]) assert.ok(graph.edges.some(e => e.link === l.id && e.from === D.hqLinkRoom(l.a) && e.to === D.hqLinkRoom(l.b)) && graph.edges.some(e => e.link === l.id && e.from === D.hqLinkRoom(l.b) && e.to === D.hqLinkRoom(l.a)), l.id + ' both ways on the graph');
-    assert.ok(D.hqWorldRoutes('foyer').find(r => r.id === 'highway').stations.some(s => s.site === 'prebuilt_stadium'), 'the stadium is on the highway line now');
+    for (const l of [tm, gut]) assert.ok(graph.edges.some(e => e.link === l.id && e.from === D.hqLinkRoom(l.a) && e.to === D.hqLinkRoom(l.b)) && graph.edges.some(e => e.link === l.id && e.from === D.hqLinkRoom(l.b) && e.to === D.hqLinkRoom(l.a)), l.id + ' both ways on the graph');
 });
 
 test('ONE PIECE: from the lobby’s avenue doors both parts are walked; every inside door is a pair with the same leaf / object; nothing leaves the site but a links row; the lobby, the platform, the streets and the mall are one complex with the board room', () => {
-    const seen = new Set(), queue = [STREETS];
+    const seen = new Set(), queue = [STREETS, MALL];   // G7: the mall is entered from the beach on the land
     while (queue.length) {
         const id = queue.shift(); if (seen.has(id)) continue; seen.add(id);
         for (const d of HQ.rooms[id].doors) {
@@ -224,6 +218,7 @@ test('ONE PIECE: from the lobby’s avenue doors both parts are walked; every in
             assert.ok(a.room && HQ.rooms[a.room], id + '/' + d.id + ' leads to a room');
             if (d.link) { assert.ok(HQ.links.some(l => l.id === d.link), id + '/' + d.id + ' is a links row'); const far = at(a.room, a.at); assert.ok(far && far.link === d.link, id + '/' + d.id + ': the far end pairs'); continue; }
             if (d.entry) { assert.ok(HQ.rooms[a.room].kind === 'bay' && d.entry === 'prebuilt_downtown', id + '/' + d.id + ' is the site\'s bay door (siteRooms.entry, 2026-09-17)'); continue; }
+            if (a.room === 'land') { const far = at('land', a.at); assert.ok(far && far.action.room === id && far.action.at === d.id, id + '/' + d.id + ': the land\'s door pairs'); continue; }
             const other = at(a.room, a.at);
             assert.ok(other && other.action.room === id && other.action.at === d.id, id + '/' + d.id + ' ⇄ ' + a.room + ' is a pair');
             assert.equal(other.leaf, d.leaf); assert.equal(other.way, d.way);
@@ -391,7 +386,7 @@ test('the sources: the renderer reads lots / fronts / sidewalk / traffic / race 
         "if (info.gen.sidewalk > 0 && md > 0 && md < info.gen.sidewalk + 0.15) sw = 1 - Math.max(0, (md - info.gen.sidewalk) / 0.15);", "if (R && R.on) { R.hd = Math.atan2(vx, vz); R.v = Math.min(_hqSkateRules().maxV, Math.hypot(vx, vz));", "_hqRideEmit({ kind: 'carhit', kindOf: car.g._ew_hqCar, v: car.v });", "_hqRideEmit({ kind: 'lap', ms: ms, best: best, room: rc.room, label: rc.label, laps: rc.laps });",
         "race: { hw: 5.5, tickMs: 250, minLapMs: 8000 },", "_hzKitTs = TM;", "window.EW_HQ_NO_TRAFFIC", "_nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U,", "var _HQ_STORE_NAMES = ["]) assert.ok(renderer.includes(f), 'renderer: ' + f);
     for (const k of ['timemachine', 'gutter']) assert.ok(new RegExp('^        ' + k + ': function \\(U, ctx\\) \\{', 'm').test(renderer), k + ': a way builder');
-    for (const f of ["if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], (info.base || 0) + wallH * j1 + top) * t;", "if (solidMass) return;", "if (hqTerrainSolidAt(info, x, z, 0)) return null;", "} else if (gen.kind === 'city') {", "info.lots = []; info.fronts = [];", "traffic: (T.traffic || []).filter(", "race: (T.race && Array.isArray(T.race.pts)", "if (ev.lap) {", "laps: rec.laps || {}, lapsRun: rec.lapsRun | 0,"]) assert.ok(data.includes(f), 'data: ' + f);
+    for (const f of ["if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], _hqTBaseAt(info, px, pz) + wallH * j1 + top) * t;", "if (solidMass) return;", "if (hqTerrainSolidAt(info, x, z, 0)) return null;", "} else if (gen.kind === 'city') {", "info.lots = []; info.fronts = [];", "traffic: (T.traffic || []).filter(", "race: (T.race && Array.isArray(T.race.pts)", "if (ev.lap) {", "laps: rec.laps || {}, lapsRun: rec.lapsRun | 0,"]) assert.ok(data.includes(f), 'data: ' + f);
     for (const f of ["case 'carhit':", "case 'lapstart':", "case 'laptick':", "case 'lap': {", "case 'lapdrop':", "case 'gate':", "_hqSkateFile({ lap: { room: ev.room, ms: ev.ms } })", "function _hqLapFmt(ms)", "row('THE CIRCUIT'"]) assert.ok(map.includes(f), 'map: ' + f);
     for (const f of ['wayTime(ctx, t, out, vol) {', 'wayGutter(ctx, t, out, vol) {', 'wayTime: 0.3, wayGutter: 0.3']) assert.ok(audio.includes(f), 'audio: ' + f);
     /* the defaults: a route with only points gets n / speed / lane / kinds */

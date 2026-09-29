@@ -24381,18 +24381,12 @@ const DOOR_HQ = {
            asphalt on into the fog under a gantry that names the next town. THE CROSS STREET's east end is the on-ramp to
            (Nuketown, retired 2026-09-18 — the east end is a dead end now), its west end the same road west to THE STRIP; THE AVENUE's north end is the stadium road; the Strip's
            road runs on, later, to CYBERPUNK CITY's cross street. The board room's north wall is free again. */
-        { id: 'downtown_strip', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 0, sub: 'THE CROSS STREET · WEST · THE STRIP' },
-          b: { site: 'prebuilt_strip', part: 'streets', wall: 'e', z: 0, sub: 'THE BOULEVARD · EAST · DOWNTOWN' },
-          why: 'the same road, west; the neon starts where the tower\'s shadow stops', note: 'west', draft: true },
+        /* G7 (WORLD_GEOGRAPHY_PLAN, 2026-09-29): downtown_strip, stadium_downtown and streets_strip RETIRED — Downtown, the Bowl and the Strip
+           stand on the land; you walk (or ride) the roads between them */
         { id: 'strip_cyberpunk', route: 'highway', way: 'road',
           a: { site: 'prebuilt_strip', part: 'streets', wall: 'w', z: 0, sub: 'THE BOULEVARD · WEST · CYBERPUNK CITY' },
           b: { site: 'prebuilt_cyberpunk', part: 'streets', wall: 'e', z: 0, sub: 'THE CROSS · EAST · THE STRIP' },
           why: 'the same road, later; the last exit is the city the Strip was practising for', note: 'the last exit', draft: true },
-        { id: 'stadium_downtown', route: 'highway', way: 'road',
-          a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'n', x: 0, sub: 'THE STADIUM ROAD · DISASTER CITY' },   // THE AREAS (2026-09-18): the road out of THE BOWL — 2026-09-26: at the end of THE PLAYERS' TUNNEL
-          b: { site: 'prebuilt_downtown', part: 'streets', wall: 'n', x: 0, sub: 'THE AVENUE · NORTH · THE STADIUM' },
-          why: 'the parking structure joins the stadium to the block; on game day the road is the crowd', note: 'the parking structure', draft: true },
         /* AREA CONTENT D3 (2026-09-19): THE PITCH DRAIN — a DRAUGHT behind the east stand into the sewers' east return (the bowl's earned exit; the road out is never one) */
         { id: 'stadium_sewers', route: 'sewers', leaf: 'leaf_cell', secret: true,   // a draught still names a catalogued leaf (hqLinkLive's wear rule) — the door wears none
           a: { site: 'prebuilt_stadium', part: 'bowl', wall: 'e', z: 12, sub: 'THE PITCH DRAIN · UNDER THE EAST STAND' },   // 2026-09-26: at the end of THE CULVERT (the service tunnel under the east stand)
@@ -24487,11 +24481,6 @@ const DOOR_HQ = {
            MACHINE in the mall's arcade is the ONLY way from the city into CYBERPUNK ("not just a regular door" — the
            user) and stands FREE on Cyberpunk's north strip at the far end, set for 1954; THE GUTTER in the east kerb
            drops into THE STORM DRAIN (the tunnels — candidate #3's first seam), whose end is its own grate. */
-        { id: 'streets_strip', route: 'highway', leaf: 'leaf_motel',
-          a: { site: 'prebuilt_downtown', part: 'streets', wall: 'w', z: 18, sub: 'THE STRIP · THE CHAPEL\'S PARKING LOT' },
-          b: { site: 'prebuilt_strip', part: 'chapel', wall: 'w', z: 5.0, sub: 'DISASTER CITY · THE STREETS · OUT THE SIDE' },
-          why: 'the chapel\'s side door opens on a parking lot that is not on the Strip; the officiant says the lot is Downtown\'s and Downtown says it is the chapel\'s, and the cars in it are from both',
-          note: 'the parking lot', draft: true },
         /* streets_stadium (Gate C, a wired double door at n x −24) retired 2026-09-17: THE AVENUE's north end IS the stadium road now (stadium_downtown, a `road` way) */
         { id: 'timemachine_cyberpunk', route: 'seams', way: 'timemachine',
           /* THE SECOND PASS (2026-09-17): the machine moved out of the arcade into the mall's SUPPLY CLOSET (the user's rule) and its far end into the noodle bar's back room on the grid — a building in the city, never the board room's strip */
@@ -25247,9 +25236,16 @@ const DOOR_HQ = {
                   label: 'DEAD MAN’S CAVE', sub: 'THE STORM DRAIN · IN',
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'land' },
                   desc: 'The mouth of the storm drain, a grate on its hinges.' },
+                /* WORLD_GEOGRAPHY_PLAN G7 (2026-09-29): THE BAYSIDE MALL's main entrance on its pad behind the bay's beach, facing the sand and
+                   the water (it was a door on Downtown's west wall) */
+                { id: 'mall', wall: 'free', x: 1205, z: 527, face: 0, y: 5, pad: 'mall', leaf: 'leaf_glass',
+                  label: 'THE BAYSIDE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL',
+                  action: { room: 'site_prebuilt_downtown_mall', at: 'street' },
+                  desc: 'The mall\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },
             ],
             counters: [],
-            props: [],
+            /* G7: THE LIGHTHOUSE on the bay's south head (HQ_LAND.places lighthouse; Trail K ends at it) — the harbour's own light model */
+            props: [ { key: 'lighthouse', x: 1505, z: 365, y: 4.2, place: 'lighthouse', face: 300 } ],
             agents: [],
             npcSpots: [],
             onlineSpots: [],
@@ -33083,6 +33079,16 @@ const DOOR_HQ = {
                 /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
                 noise: { amp: 0.05, scale: 6 },
+                /* ═══ THE CITY ON THE HILL (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29): Downtown stands on the land turned a quarter (rot 1: its
+                   north, the old town, uphill to the west; its south, the docks, down at the bay's water), and its ground climbs the hill.
+                   THE SLOPE (room z → metres over the quay): the quay, the basin and the flooded quay level at the water; the docks'
+                   streets climb 7 % off the waterfront to THE CANAL's level (its four bridges level with it); the financial blocks climb
+                   12 % from the canal to THE PLAZA (a level square round the fountain) and on 12 % to the ring road's north side; there
+                   THE STEPS (a 3.2 m retaining wall under the blocks, a stair street on every street that crosses it: the avenue, market
+                   lane, church lane, the tower's street) lift the old town, which climbs 12 % to THE HIGH STREET (level, with market square
+                   and church square) and 12 % again to the north edge. Every authored height stands over the slope at its own spot
+                   (hqTerrainSlopeFn): the roofs level, the pools level, the bridges level. ═══ */
+                slope: { axis: 'z', pts: [[-88, 14.47], [-75, 12.91], [-53, 12.91], [-45, 11.95], [-45, 8.75], [-37, 8.75], [-5, 4.91], [5, 4.91], [36, 1.19], [53, 1.19], [70, 0], [88, 0]] },
                 gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.16, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.22, ruinP: 0.35,   /* 2026-09-21 (the user): Disaster City is the PRISM city — more of the map-builder buildings than the Grid or the Strip (texP 0.22), fewer flat roofs; THE INFILL fills every block */
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
                        districts: [
@@ -33109,6 +33115,12 @@ const DOOR_HQ = {
                               { x: 48, z: -64, r: 11 }, { x: 48, z: -79, r: 9 },                                                                                  // CHURCH SQUARE + THE CHURCHYARD (the church stands in it)
                               { x0: -100, z0: 79, x1: 100, z1: 79, w: 22 }] },   /* Phase 7: to past the edge — the quay meets the harbour */                                                                                    // THE QUAY (the open apron south of the waterfront: the cranes, the siding, the basin, the flooded quay)
                 features: [
+                    /* THE STEPS (G7): the stair streets up the retaining wall between the financial blocks and the old town (street + both sidewalks
+                       wide, 0.4 m risers; each ends 0.5 m past the wall on the upper level) */
+                    { k: 'ramp', x0: 0, z0: -36.8, x1: 0, z1: -45.5, w: 15, h0: 0, h1: 0, stairs: true },                                   // THE AVENUE STEPS
+                    { k: 'ramp', x0: -40, z0: -36.8, x1: -40, z1: -45.5, w: 11, h0: 0, h1: 0, stairs: true },                               // MARKET LANE's steps
+                    { k: 'ramp', x0: 40, z0: -36.8, x1: 40, z1: -45.5, w: 11, h0: 0, h1: 0, stairs: true },                                 // CHURCH LANE's steps
+                    { k: 'ramp', x0: -76, z0: -36.8, x1: -76, z1: -45.5, w: 11, h0: 0, h1: 0, stairs: true },                               // the tower's street's steps
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
                     { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.9 → 3.0)
@@ -33140,7 +33152,7 @@ const DOOR_HQ = {
                     { k: 'climb', x: 70.0, z: -34.6, face: 270, look: 'fireescape' },                                                // the landing → the roof
                     { k: 'rail', x0: 57.8, z0: -38.4, x1: 68.2, z1: -38.4 },                                                          // the roof's rail (the grind — 1.6 m inside the edge: a rail's forced band never lies past a tier's edge on the mass)
                     /* THE OLD TOWN (D2): THE COURT off the high street, THE WAREHOUSE ROOF up its fire escape */
-                    { k: 'path', pts: [[-20, -58], [-20, -46]], w: 4 },                                                              // THE COURT (a dead-end court south off the high street)
+                    { k: 'path', pts: [[-20, -58], [-20, -47]], w: 4 },   // G7: ends on the old town's level (the steps' wall is at z −45)                                                              // THE COURT (a dead-end court south off the high street)
                     { k: 'plateau', x: -28, z: -47, w: 12, d: 10, h: 6.0, edge: 0.35 },                                             // THE WAREHOUSE ROOF (west of the court)
                     { k: 'plateau', x: -21.2, z: -47, w: 1.6, d: 2.2, h: 3.0, edge: 0.15 },                                         // its landing
                     { k: 'climb', x: -20.4, z: -46.4, face: 270, look: 'fireescape' },                                               // the court → the landing
@@ -33187,7 +33199,7 @@ const DOOR_HQ = {
                 traffic: [
                     { pts: [[-40, -29], [40, -29], [40, -6], [31, 4], [40, 14], [40, 29], [12, 29], [-8, 22], [-40, 29], [-40, 4]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['suv', 'taxi', 'copcar', 'suv', 'cadillac', 'ambulance', 'schoolbus'] },
                     { pts: [[-40, 4], [-40, 29], [-8, 22], [12, 29], [40, 29], [40, 14], [31, 4], [40, -6], [40, -29], [-40, -29]], loop: true, n: 2, speed: 4.5, lane: 2.3, kinds: ['cadillac', 'taxi', 'copcar', 'truck', 'suv', 'firetruck'] },
-                    { pts: [[0, -88], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 44]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end starts again at the start)
+                    { pts: [[0, -36], [0, -8]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] }, { pts: [[0, 8], [0, 44]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['cadillac'] },   // the avenue, either side of the plaza (a car off the end starts again at the start)
                     { pts: [[-112, 0], [-8, 0]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['copcar'] }, { pts: [[8, 0], [100, 0], [100, 60]], loop: false, n: 1, speed: 3.5, lane: 2.2, kinds: ['suv'] },
                     { pts: [[-98, -64], [98, -64]], loop: false, n: 1, speed: 3.2, lane: 2.0, kinds: ['cadillac', 'taxi'] }, { pts: [[98, -64], [-98, -64]], loop: false, n: 1, speed: 3.2, lane: 2.0, kinds: ['suv'] },      // THE HIGH STREET (D2)
                     { pts: [[-98, 64], [98, 64]], loop: false, n: 1, speed: 3.6, lane: 2.2, kinds: ['truck', 'taxi'] }, { pts: [[98, 64], [-98, 64]], loop: false, n: 1, speed: 3.6, lane: 2.2, kinds: ['truck', 'suv'] },     // THE WATERFRONT (D2)
@@ -33200,10 +33212,8 @@ const DOOR_HQ = {
                   label: 'THE TOWER', sub: 'THE AVENUE DOORS · INTO THE LOBBY',
                   action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },
                   desc: 'The tower\'s other doors, onto the avenue. The lobby is behind them, the intersection is behind the lobby, and the tower is above all of it for the rest of the year.' },
-                { id: 'mall', wall: 'w', z: 30, leaf: 'leaf_glass',   // Phase 7: off the south edge (THE QUAY) to the west wall
-                  label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL',
-                  action: { room: 'site_prebuilt_downtown_mall', at: 'street' },
-                  desc: 'The mall\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },
+                /* G7: THE MALL's door moved to its own pad on the bay's beach (DOOR_HQ.rooms.land door `mall`); the mall's street runs on out of
+                   the city's edge toward Route 7 */
                 { id: 'metro', wall: 'n', x: 12, leaf: 'leaf_frame_only',
                   label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM',
                   action: { room: 'site_prebuilt_downtown_subway', at: 'street' },
@@ -33393,8 +33403,8 @@ const DOOR_HQ = {
             },
             doors: [
                 { id: 'street', wall: 's', x: 0, leaf: 'leaf_glass',
-                  label: 'DOWNTOWN', sub: 'THE MAIN ENTRANCE · OUT TO THE CITY',
-                  action: { room: 'site_prebuilt_downtown_streets', at: 'mall' },
+                  label: 'THE BEACH', sub: 'THE MAIN ENTRANCE · OUT TO THE BAY',   // G7: the mall stands on its own pad behind the bay's beach (DOOR_HQ.rooms.land door `mall`)
+                  action: { room: 'land', at: 'mall' },
                   desc: 'The sliding doors, from the inside. They open for everyone, which is the policy, and closed for the incident, which was not.' },
                 /* THE SECOND PASS (2026-09-17, the user: "the time machine should be in a random basement or supply closet of the mall"): the service door at the end of the north wing */
                 { id: 'closet', wall: 'n', x: 0, leaf: 'leaf_closet',
@@ -37106,48 +37116,51 @@ const DOOR_HQ = {
            harbour as islands (DOOR_HQ.world.zones.coast): THE DUTCHMAN at anchor (x 38…102, z −76…−24) and THE TRIANGLE (x −145…5,
            z −20…140: the cay, the lighthouse, the maelstrom). Nothing is authored inside the islands' boxes (the floor sinks
            there: hqTerrainIslandSinks). Every line is Claude's DRAFT. */
+        /* G7 (WORLD_GEOGRAPHY_PLAN, 2026-09-29): THE HARBOUR ON THE LAND — cut to the water it uses (220 × 110 from 300 × 300: every
+           row moved +46 m x, +95 m z so the quay is still its north edge, x −92…108 here = Downtown's −100…100), standing east of Downtown's
+           quay in the bay (rot 1); its sea (−0.4 over a frame at 0.4) IS the land's sea at 0 — the land's sheet is the water drawn. The
+           Dutchman and the Triangle are no longer on it (G8 puts them out in the Deep). */
         site_prebuilt_downtown_harbour: {
             label: 'DISASTER CITY · THE HARBOUR',
-            sub: 'THE LONG PIER · THE SKIFF · THE BREAKWATER · THE DUTCHMAN AT ANCHOR · THE TRIANGLE',
+            sub: 'THE LONG PIER · THE SKIFF · THE BREAKWATER · THE CHANNEL',
             kind: 'box', site: 'prebuilt_downtown', part: 'harbour',
-            shell: hqSeaShell({ w: 300, d: 300, plate: { x: -38, z: -147.5, y: 3.6 } }),
+            shell: hqSeaShell({ w: 220, d: 110, plate: { x: 8, z: -52.5, y: 3.6 } }),
             terrain: {
                 floor: 'desert', cliff: 'urban:ConcreteStriped2a', path: 'wood_planks',
                 base: -6, res: 1.0, noise: { amp: 0.3, scale: 20 }, crag: false,
                 sea: { y: -0.4, key: 'water' },
                 outer: { m: 60 },
                 features: [
-                    { k: 'deck', x0: -38, z0: -149.6, x1: -38, z1: -118, w: 4, y: 0 },                                          // THE LONG PIER (the avenue, run on out over the water)
-                    { k: 'deck', x0: -50, z0: -116, x1: -26, z1: -116, w: 4, y: 0 },                                            // its T-HEAD
-                    { k: 'rail', x0: -40.3, z0: -148, x1: -40.3, z1: -119 },                                                     // the pier's rail (the grind)
-                    { k: 'ramp', x0: -45, z0: -138.4, x1: -45, z1: -149.3, w: 3, h0: -1.6, h1: 0, stairs: true, edge: 0.2 },    // THE WATER STEPS (the way out of the water, beside the pier)
-                    { k: 'ramp', x0: 42, z0: -149.5, x1: 42, z1: -122, w: 8, h0: 0, h1: -2.6, edge: 0.3 },                      // THE SLIPWAY (down into the water)
-                    { k: 'ridge', pts: [[-134, -148], [-130, -112], [-114, -86], [-92, -74]], w: 9, h: 7.4 },                 // THE BREAKWATER (a rubble mole: its crest a metre over the water)
-                    { k: 'plateau', x: -90, z: -73, r: 4.2, h: 1.4, edge: 0.4 },                                               // its head (THE HARBOUR LIGHT stands on it)
-                    { k: 'scatter', key: 'cave_stone', n: 16, x: -118, z: -104, r: 22, seed: 31 },                             // the mole's boulders
-                    { k: 'scatter', key: 'kelp', n: 22, x: -112, z: -96, r: 20, seed: 32, sea: true },                         // the kelp in the mole's lee
-                    { k: 'scatter', key: 'coral_fan', n: 10, x: 34, z: -100, r: 14, seed: 33, sea: true },                     // the slip's reef
-                    { k: 'scatter', key: 'coral_brain', n: 6, x: 30, z: -96, r: 12, seed: 34, sea: true },
-                    { k: 'scatter', key: 'fish_school', n: 4, x: 0, z: -80, r: 50, seed: 35, sea: true },
-                    { k: 'scatter', key: 'kelp', n: 14, x: 60, z: 60, r: 40, seed: 36, sea: true },                            // the open water south of the anchorage
+                    { k: 'deck', x0: 8, z0: -54.6, x1: 8, z1: -23, w: 4, y: 0 },                                          // THE LONG PIER (the avenue, run on out over the water)
+                    { k: 'deck', x0: -4, z0: -21, x1: 20, z1: -21, w: 4, y: 0 },                                            // its T-HEAD
+                    { k: 'rail', x0: 5.7, z0: -53, x1: 5.7, z1: -24 },                                                     // the pier's rail (the grind)
+                    { k: 'ramp', x0: 1, z0: -43.4, x1: 1, z1: -54.3, w: 3, h0: -1.6, h1: 0, stairs: true, edge: 0.2 },    // THE WATER STEPS (the way out of the water, beside the pier)
+                    { k: 'ramp', x0: 88, z0: -54.5, x1: 88, z1: -27, w: 8, h0: 0, h1: -2.6, edge: 0.3 },                      // THE SLIPWAY (down into the water)
+                    { k: 'ridge', pts: [[-88, -53], [-84, -17], [-68, 9], [-46, 21]], w: 9, h: 7.4 },                 // THE BREAKWATER (a rubble mole: its crest a metre over the water)
+                    { k: 'plateau', x: -44, z: 22, r: 4.2, h: 1.4, edge: 0.4 },                                               // its head (THE HARBOUR LIGHT stands on it)
+                    { k: 'scatter', key: 'cave_stone', n: 16, x: -72, z: -9, r: 22, seed: 31 },                             // the mole's boulders
+                    { k: 'scatter', key: 'kelp', n: 22, x: -66, z: -1, r: 20, seed: 32, sea: true },                         // the kelp in the mole's lee
+                    { k: 'scatter', key: 'coral_fan', n: 10, x: 80, z: -5, r: 14, seed: 33, sea: true },                     // the slip's reef
+                    { k: 'scatter', key: 'coral_brain', n: 6, x: 76, z: -1, r: 12, seed: 34, sea: true },
+                    { k: 'scatter', key: 'fish_school', n: 4, x: 46, z: 15, r: 50, seed: 35, sea: true },
                 ],
             },
-            doors: [],   // the ways in are the joins: the quay (Downtown's south edge) and the two islands
+            doors: [],   // the ways in are the joins: the quay (Downtown's south edge) and the land's bay round it (G7)
             counters: [],
             props: [
-                { key: 'skiff',       x: -23.2, z: -113.6, y: 0.32, face: 90 },                                             // THE SKIFF at the T-head's east end (afloat — `float`)
-                { key: 'lighthouse',  x: -90, z: -73, face: 0 },                                                             // THE HARBOUR LIGHT on the mole's head (the beam turns; lit at dusk)
-                { key: 'sea_buoy',    x: -52, z: -96, y: 0.32 }, { key: 'sea_buoy', x: -22, z: -96, y: 0.32 },                // THE CHANNEL: two pairs of red buoys
-                { key: 'sea_buoy',    x: -56, z: -64, y: 0.32 }, { key: 'sea_buoy', x: -18, z: -64, y: 0.32 },
-                { key: 'sea_chest',   x: -29, z: -116.4, face: 40 },                                                         // on the T-head: what came off the freight
-                { key: 'ship_anchor', x: 44, z: -147, face: 110 },                                                           // at the slipway's head: the Dutchman's spare, never raised
-                { key: 'cardboard_boxes', x: -37.2, z: -124, y: 0 },                                                         // the pier's freight
-                { key: 'folding_chair', x: -46, z: -117.6, y: 0, face: 200 },                                                // the angler's chair
+                { key: 'skiff',       x: 22.8, z: -18.6, y: 0.32, face: 90 },                                             // THE SKIFF at the T-head's east end (afloat — `float`)
+                { key: 'lighthouse',  x: -44, z: 22, face: 0 },                                                             // THE HARBOUR LIGHT on the mole's head (the beam turns; lit at dusk)
+                { key: 'sea_buoy',    x: -6, z: -1, y: 0.32 }, { key: 'sea_buoy', x: 24, z: -1, y: 0.32 },                // THE CHANNEL: two pairs of red buoys
+                { key: 'sea_buoy',    x: -10, z: 31, y: 0.32 }, { key: 'sea_buoy', x: 28, z: 31, y: 0.32 },
+                { key: 'sea_chest',   x: 17, z: -21.4, face: 40 },                                                         // on the T-head: what came off the freight
+                { key: 'ship_anchor', x: 90, z: -52, face: 110 },                                                           // at the slipway's head: the Dutchman's spare, never raised
+                { key: 'cardboard_boxes', x: 8.8, z: -29, y: 0 },                                                         // the pier's freight
+                { key: 'folding_chair', x: 0, z: -22.6, y: 0, face: 200 },                                                // the angler's chair
             ],
             agents: [],
             npcSpots: [
-                { x: -32.5, z: -116, y: 0, face: 150, race: 'homosapien', say: ['“The skiff is the harbour’s.” “Who do I sign for it?” “The harbour does not have a desk. It has a skiff.”', '“The ship out there dropped anchor in the flood.” “Which flood?” “She has not said.”'] },
-                { x: -92.2, z: -73, y: 1.4, face: 270, race: 'pirate', say: ['“The light is for her.” “For the ship?” “She keeps coming in. She never arrives.”', '“Past the buoys the sea stops being the city’s.” “Whose is it?” “Room 345’s.”'] },
+                { x: 13.5, z: -21, y: 0, face: 150, race: 'homosapien', say: ['“The skiff is the harbour’s.” “Who do I sign for it?” “The harbour does not have a desk. It has a skiff.”', '“The ship out there dropped anchor in the flood.” “Which flood?” “She has not said.”'] },
+                { x: -46.2, z: 22, y: 1.4, face: 270, race: 'pirate', say: ['“The light is for her.” “For the ship?” “She keeps coming in. She never arrives.”', '“Past the buoys the sea stops being the city’s.” “Whose is it?” “Room 345’s.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -37155,7 +37168,7 @@ const DOOR_HQ = {
                 '“That ship has been at anchor since the evacuation.” “Whose is she?” “The Admiralty says no nation’s. Customs says they are welcome to her.”',
                 '“Sail past the buoys and the chart goes blank.” “Blank?” “Triangular.”',
             ],
-            spawn: { x: -38, z: -146, face: 180 },
+            spawn: { x: 8, z: -51, face: 180 },
         },
         site_prebuilt_atlantis_abyss: {
             label: 'ATLANTIS · THE ABYSS',
@@ -39840,7 +39853,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['city', 'medwing', 'basement', 'dumb', 'coast', 'land'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); Phase 7: THE COAST; WORLD_GEOGRAPHY G6 (2026-09-28): THE LAND (the woods, the highway, Area 51, the kingdom and the mountain retired into it)
+    zones: ['medwing', 'basement', 'dumb', 'land'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); Phase 7: THE COAST; WORLD_GEOGRAPHY G6 (2026-09-28): THE LAND (the woods, the highway, Area 51, the kingdom and the mountain retired into it)
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -39962,13 +39975,15 @@ function hqRoomClock(roomId) {
    do not stand on one ground */
 function hqWorldBearing(roomId, targetId, fromPlace) {
     const A = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null, B = (typeof hqWorldFrame === 'function') ? hqWorldFrame(targetId) : null;
-    if (!A || !B) return null;
-    /* G6: a room off the land (the city, still its own zone) sees a site on the land from its own place there (`fromPlace`, a HQ_LAND.places id) */
-    const pl = (fromPlace && B.ground === 'land' && A.ground !== 'land' && typeof HQ_LAND !== 'undefined') ? (HQ_LAND.places || []).find(q => q.id === fromPlace) : null;
+    if (!B) return null;
+    /* G6: a room off the land sees a site on the land from its own place there (`fromPlace`, a HQ_LAND.places id); G7: also a
+       room in no zone (Bermuda's sea, behind its door until G8) */
+    const pl = (fromPlace && B.ground === 'land' && (!A || A.ground !== 'land') && typeof HQ_LAND !== 'undefined') ? (HQ_LAND.places || []).find(q => q.id === fromPlace) : null;
+    if (!A && !pl) return null;
     if (!pl && A.ground !== B.ground) return null;
     const ax = pl ? pl.at[0] : A.x, az = pl ? pl.at[1] : A.z, dx = B.x - ax, dz = B.z - az;
     if (Math.hypot(dx, dz) < 1) return null;
-    const deg = Math.atan2(dx, -dz) * 180 / Math.PI + (A.rot || 0) * 90;
+    const deg = Math.atan2(dx, -dz) * 180 / Math.PI + ((A && A.rot) || 0) * 90;
     return { deg: ((deg % 360) + 360) % 360, dist: Math.hypot(dx, dz) };
 }
 /* THE WEENIES ON THE GROUND (Phase 3: the landmark kinds `mountain`, `tower`, `gate`): far places that stand on this ground,
@@ -39976,9 +39991,7 @@ function hqWorldBearing(roomId, targetId, fromPlace) {
    `sky.landmarks` (the sky castle, the stairway, the waterspout) stay; a room's rows here are added to them. When a later
    phase draws the place itself (the far shells, Phase 10) its row here goes. */
 const HQ_WORLD_WEENIES = {
-    site_prebuilt_downtown_streets: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', from: 'downtown', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],   // G6: `from` = the room's place on the land (the summit stands on it)
-    site_prebuilt_stadium_bowl: [{ kind: 'mountain', toward: 'site_prebuilt_olympus_summit', from: 'downtown', s: 0.55, dist: 0.92, temple: true, label: 'MOUNT OLYMPUS' }],
-    site_prebuilt_bermuda_sea: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', s: 0.85, dist: 0.86, label: 'DISASTER CITY' }],
+    site_prebuilt_bermuda_sea: [{ kind: 'tower', toward: 'site_prebuilt_downtown_streets', from: 'bermuda', s: 0.85, dist: 0.86, label: 'DISASTER CITY' }],   // G7: seen from Bermuda's place on the land
     /* G6 (2026-09-28): the sites on the land wear none — the places themselves stand on its horizon (hqRoomLandmarks) */
 };
 /* a room's horizon: its shell's landmarks + its ground weenies at their bearings (the renderer's _hqBuildSky reads this) */
@@ -40123,7 +40136,6 @@ function hqFarShell(roomId, info) {
 }
 const HQ_WORLD = {
     grounds: {
-        surface: { label: 'THE SURFACE', note: 'the city and the coast (WORLD_GEOGRAPHY_PLAN G7 moves them onto the land)' },
         land:    { label: 'THE LAND', note: 'the one outdoors (WORLD_GEOGRAPHY_PLAN G6): the land room, every outdoor site standing on it at its place' },
         under:   { label: 'UNDERGROUND', note: 'no sky: the underworld under the city, the cave under the woods, the D.U.M.B. under the desert' },
         ley:     { label: 'THE LEY', note: 'the tell over the ley tunnel; the far stations stay doors' },
@@ -40131,35 +40143,9 @@ const HQ_WORLD = {
         hq:      { label: 'THE BUILDING', note: 'D.O.O.R. HQ inside: a wing whose rooms open into one another (Phase 2, the door joins)' },
     },
     zones: {
-        /* Z1 — THE CITY (east). Downtown's west edge carries the forecourt's road into the old town's high street
-           (local z −64); its cross street runs west into the Strip (the road way that exists, Downtown W z0 ⇄ Strip E
-           z0); the avenue's north end meets the stadium's players' tunnel (the bowl turned half round so its north
-           tunnel faces the city); the mall stands on its financial-district lot (fork 12; the lot is cleared when the
-           mall is rebuilt). Cyberpunk stays a door: Downtown in 2047 (fork 3). */
-        city: { label: 'DISASTER CITY', ground: 'surface', hub: 'site_prebuilt_downtown_streets', sky: 'site_prebuilt_downtown_streets', clock: true,
-            parts: {
-                site_prebuilt_downtown_streets: { x: 162, z: 72, y: 0, rot: 0 },
-                site_prebuilt_stadium_bowl:     { x: 162, z: -82.1, y: 0, rot: 2 },
-            },
-            joins: [
-                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_stadium_bowl', side: 'n', span: [-12, 12], kind: 'road' },
-            ] },
-        /* Z1b — THE COAST (fork 2: its own zone, joined at the docks' quay). OPEN WORLD Phase 7 (2026-09-27): BUILT — THE HARBOUR
-           (a 300 × 300 sea part, its surface at −0.4 under the quay's 0) meets Downtown's quay by a SHORE border; THE DUTCHMAN (her
-           main deck on a hull, 2.2 m over the water) rides at anchor 75 m off the docks and THE TRIANGLE (Bermuda's sea: the cay,
-           the lighthouse, the maelstrom) lies 130 m out — both ISLANDS standing ON the harbour (`on`): the crossing takes you onto
-           one when the feet stand inside its box and off it past its edge, swimming, sailing or walking. The Triangle's edges ease
-           to the harbour's floor (`y` −6); the Dutchman keeps her hull. */
-        coast: { label: 'THE COAST', ground: 'surface', hub: 'site_prebuilt_downtown_harbour', sky: 'site_prebuilt_downtown_harbour', clock: true,
-            parts: {
-                site_prebuilt_downtown_harbour: { x: 200, z: 310, y: 0, rot: 0 },
-                site_prebuilt_bermuda_sea:      { x: 130, z: 370, y: -0.4, rot: 0, on: 'site_prebuilt_downtown_harbour' },
-                site_prebuilt_revenge_deck:     { x: 270, z: 260, y: 2.2, rot: 0, on: 'site_prebuilt_downtown_harbour' },
-            },
-            joins: [
-                { a: 'site_prebuilt_downtown_harbour', b: 'site_prebuilt_bermuda_sea', kind: 'island', y: -6 },
-                { a: 'site_prebuilt_downtown_harbour', b: 'site_prebuilt_revenge_deck', kind: 'island' },
-            ] },
+        /* Z1 THE CITY and Z1b THE COAST RETIRED (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29): Downtown, the Bowl and the harbour stand on THE
+           LAND (zones.land below) at their places; the cay and the Dutchman stand alone behind their own doors until G8 puts them in
+           the Bermuda triangle out in the Deep. */
         /* Z3 — THE D.U.M.B. (under the desert, no sky): six halls parts joined corridor to corridor; the motorpool under
            Hangar 18 (its ramp up stays a door), CERN's ring stays a door (Europe). */
         dumb: { label: 'THE D.U.M.B.', ground: 'under', hub: 'site_prebuilt_dumb_motorpool', sky: null, clock: false,
@@ -40250,6 +40236,12 @@ const HQ_WORLD = {
                 site_prebuilt_vatican_basilica:      { place: 'vatican', dz: -44, interior: true },
                 site_prebuilt_vatican_library:       { place: 'vatican', dx: 35, interior: true },
                 site_prebuilt_vatican_observatory:   { place: 'vatican', dx: -32, dy: 6 },
+                /* G7 THE CITY ON THE HILL (2026-09-29): Downtown turned a quarter (rot 1: the old town up the hill to the west, the docks
+                   at the bay's water to the east; its ground is its `terrain.slope`), the harbour east of its quay (its sea is the land's:
+                   `sea` = the bake leaves the bay's floor alone), the Bowl turned a quarter (its players' tunnel faces the stadium road) */
+                site_prebuilt_downtown_streets:      { place: 'downtown', rot: 1 },
+                site_prebuilt_downtown_harbour:      { place: 'harbour', rot: 1, sea: true },
+                site_prebuilt_stadium_bowl:          { place: 'stadium', rot: 1 },
             },
             joins: [
                 /* the islands: walked into from the land (their edges ease to the pad) */
@@ -40257,7 +40249,11 @@ const HQ_WORLD = {
                     'site_prebuilt_olympus_summit', 'site_prebuilt_shasta_slopes', 'site_prebuilt_fairy_forest_clearing', 'site_prebuilt_fairy_forest_redwoods',
                     'site_prebuilt_fairy_forest_stair', 'site_prebuilt_fairy_forest_ritual', 'site_prebuilt_bohemian_grove_grove', 'site_prebuilt_skinwalker_fields',
                     'site_prebuilt_haunted_grounds', 'site_prebuilt_stonehenge_henge', 'site_prebuilt_giza_plateau', 'site_prebuilt_babel_tower',
-                    'site_prebuilt_gobekli_tell', 'site_prebuilt_vatican_courtyard'].map(b => ({ a: 'land', b, kind: 'island', pad: true })),
+                    'site_prebuilt_gobekli_tell', 'site_prebuilt_vatican_courtyard', 'site_prebuilt_downtown_streets', 'site_prebuilt_stadium_bowl'].map(b => ({ a: 'land', b, kind: 'island', pad: true })),
+                /* G7: the harbour's edges ease to its sea floor (the land's bay floor round it); its quay side is Downtown's (a SHORE: the
+                   harbour's floor rises to the quay in 2 m — the quay wall over the water) */
+                { a: 'land', b: 'site_prebuilt_downtown_harbour', kind: 'island', y: -5.6 },
+                { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_harbour', side: 's', span: [-100, 100], kind: 'shore', stitchM: 2 },
                 /* Area 51: the gate onto the flight line (a road), Hangar 18 off its south apron, the white rooms off the hangar */
                 { a: 'site_prebuilt_area51_gate', b: 'site_prebuilt_area51_flightline', side: 's', span: [-8, 8], kind: 'road', pad: true },
                 { a: 'site_prebuilt_area51_flightline', b: 'site_prebuilt_area51_hangar', kind: 'door', door: 'hangar', bDoor: 'flightline' },
@@ -40329,7 +40325,6 @@ const HQ_WORLD = {
     },
     /* THE BORDERS — joins between two zones of one ground (the docks' quay). */
     borders: [
-        { a: 'site_prebuilt_downtown_streets', b: 'site_prebuilt_downtown_harbour', side: 's', span: [-100, 100], kind: 'shore', stitchM: 2 },   // Phase 7: THE QUAY (the harbour's floor rises to the quay's 0 in 2 m: the quay wall)
     ],
     retires: [],   // THE WELL ROOM (site_prebuilt_hollow_earth_shaft, §8.3) was DELETED in Phase 4 (2026-09-27): the five wells land in five different rooms
 };
@@ -41075,7 +41070,8 @@ const HQ_LAND = (function () {
       [-320, -1340], [-200, -1380], [-40, -1350], [120, -1400], [300, -1390], [460, -1330], [560, -1380], [720, -1450],
       [880, -1430], [1020, -1340], [1100, -1220], [1060, -1100], [980, -985], [1050, -880], [1200, -820], [1310, -700],
       [1360, -560], [1340, -400], [1300, -260], [1290, -190], [1250, -150], [1300, -100], [1360, -40], [1335, 60],
-      [1255, 120], [1150, 160], [1070, 215], [1030, 300], [1045, 385], [1110, 440], [1210, 470], [1320, 480], [1410, 455],
+      [1255, 110], [1160, 92], [1080, 88], [1030, 98], [1010, 140], [1008, 230], [1012, 300], [1045, 385],   // G7: the bay's west shore is the quay (the harbour east of it is water)
+      [1110, 440], [1210, 470], [1320, 480], [1410, 455],
       [1475, 400], [1525, 345], [1580, 380], [1600, 470], [1575, 580], [1510, 670], [1420, 740], [1330, 800],
       [1240, 880], [1120, 990], [1000, 1060],
       // AREA 9: the land runs on south past the valley (the Strip) to Area 51's range
@@ -41099,13 +41095,14 @@ const HQ_LAND = (function () {
       { id: 'deepdesert', at: [480, 1400], r: 400, edge: 160, h: 30 },  // AREA 9 (Area 51's range, Area 16, Area 17)
       { id: 'downs',    at: [330, -330],  r: 170, edge: 150, h: 106 },    // AREA 10 (Stonehenge's chalk; the stones sit on the far, northern slope)
       { id: 'kingdom',  at: [-20, -690],  r: 210, edge: 200, h: 32 },     // THE KINGDOM's valley floor
-      { id: 'city',     at: [930, 210],   r: 250, edge: 180, h: 26 },     // DISASTER CITY's ground
+      { id: 'city',     at: [930, 210],   r: 250, edge: 180, h: 20 },     // DISASTER CITY's ground (G7: the old town's level; the city's streets climb it from the quay)
       { id: 'north',    at: [0, -1140],   r: 420, edge: 200, h: 14 },     // the north coast's tundra plain
     ];
 
     // ── BUMPS: single hills (added). The city's hill, the Vatican's hill, the knolls.
     R.bumps = [
-      { id: 'cityhill',  at: [850, 190],  r: 230, h: 42, p: 1.6 },   // downtown climbs this hill from the bay
+      { id: 'cityhill',  at: [760, 190],  r: 230, h: 14, p: 1.6 },   // G7: the hill rises on west of the old town toward Ridge 1 (the city's streets carry the rest)
+      { id: 'ridge_g7',  at: [1160, -30], r: 80, h: 18, p: 1.4 },   // G7: a knoll on the headland east of the Bowl breaks the lighthouse's line to the Vatican's hill (R2)
       { id: 'vatican',   at: [760, -380], r: 150, h: 60, p: 1.4 },   // the Vatican's hill, over the river
       { id: 'camelot',   at: [-40, -640], r: 95,  h: 22, p: 1.2 },   // Camelot's knoll inside the river's loop
       { id: 'sheep',     at: [690, 760],  r: 150, h: 110, p: 1.5 },  // HILL 1: hides the Strip from the city
@@ -41223,12 +41220,15 @@ const HQ_LAND = (function () {
       { id: 'desert_hwy', label: 'THE DESERT HIGHWAY', type: 'highway', w: 10, grade: 0.075, pts: [[440, 600], [432, 680], [418, 760], [408, 830], [398, 900],
         [390, 970], [398, 1040], [445, 1105], [505, 1165], [545, 1215], [560, 1250]] },
       { id: 'groom', label: 'ROUTE 6', type: 'lane', w: 5, grade: 0.12, pts: [[560, 1250], [612, 1290], [656, 1358], [668, 1428], [642, 1478], [572, 1480], [500, 1468]] },
-      { id: 'bay', label: 'ROUTE 7', type: 'road', w: 7, grade: 0.1, pts: [[955, 305], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
+      { id: 'bay', label: 'ROUTE 7', type: 'road', w: 7, grade: 0.1, pts: [[922, 326], [960, 350], [995, 380], [1050, 430], [1115, 478], [1170, 520], [1205, 545]] },
       { id: 'vatican', label: 'ROUTE 8', type: 'lane', surface: 'paved', w: 5, grade: 0.12, pts: [[720, -290], [735, -335], [770, -385], [787, -445]] },
       { id: 'henge', label: 'ROUTE 9', type: 'lane', w: 4, grade: 0.14, pts: [[380, -570], [420, -540], [455, -500]] },
       { id: 'estate', label: 'ROUTE 10', type: 'lane', w: 4, grade: 0.14, pts: [[-990, 565], [-1040, 512], [-1058, 470], [-1020, 420], [-972, 369], [-920, 318], [-870, 268], [-820, 226], [-778, 190]] },
       { id: 'giza', label: 'ROUTE 11', type: 'lane', w: 5, grade: 0.12, pts: [[-290, 640], [-300, 690], [-320, 715]] },
       { id: 'stadium', label: '', type: 'road', w: 8, grade: 0.1, pts: [[800, -20], [900, -50], [990, -70]] },
+      // G7: Downtown's own roads out (it stands turned: the avenue's end faces west, the cross street's south, the bay door's alley north)
+      { id: 'city_west', label: '', type: 'road', w: 8, grade: 0.1, pts: [[773, 210], [803, 210], [833, 210]] },
+      { id: 'city_north', label: '', type: 'road', w: 8, grade: 0.1, pts: [[986, 96], [975, 30], [950, -35], [945, -60]] },
       { id: 'gobekli', label: '', type: 'lane', w: 4, grade: 0.14, pts: [[-800, 765], [-790, 700], [-780, 650]] },
       // trails (dirt): they follow the ground
       { id: 'olympus_trail', label: 'TRAIL A', type: 'trail', w: 2.4, grade: 0.3, pts: [[-40, -685], [-10, -720], [30, -760], [80, -800], [20, -840], [90, -880], [30, -915], [85, -950], [50, -975], [60, -995]] },
@@ -41272,11 +41272,11 @@ const HQ_LAND = (function () {
     //    pad = flattened disc (r) at the land's height there (or at y). kind: site | poi | dungeon | door
     R.places = [
       { id: 'hq',        label: 'D.O.O.R. HQ',         at: [0, 0],        pad: 64, kind: 'hub', region: 'highlands', top: 26 },
-      { id: 'downtown',  label: 'DOWNTOWN',            at: [900, 210],    kind: 'site', city: true, region: 'city', top: 120 },
-      { id: 'harbour',   label: 'THE HARBOUR',         at: [1030, 228],   kind: 'site', region: 'city', top: 20 },
+      { id: 'downtown',  label: 'DOWNTOWN',            at: [922, 210],    padY: 0.4, kind: 'site', city: true, region: 'city', top: 120 },   // G7: the quay's level (its streets climb its slope)
+      { id: 'harbour',   label: 'THE HARBOUR',         at: [1065, 218],   padY: 0.4, sea: true, kind: 'site', region: 'city', top: 20 },   // G7: east of the quay (the sea at 0 = its own −0.4)
       { id: 'mall',      label: 'THE BAYSIDE MALL',    at: [1205, 548],   pad: 45, padY: 5, kind: 'site', region: 'city', top: 14 },
       { id: 'lighthouse',label: 'THE LIGHTHOUSE',      at: [1505, 365],   kind: 'poi', region: 'city', top: 28 },
-      { id: 'stadium',   label: 'THE BOWL',            at: [990, -70],    pad: 85, kind: 'site', region: 'city', top: 34 },
+      { id: 'stadium',   label: 'THE BOWL',            at: [990, -70],    pad: 85, padY: 22, kind: 'site', region: 'city', top: 34 },
       { id: 'strip',     label: 'THE STRIP',           at: [398, 890],    pad: 70, padY: 35.6, kind: 'site', region: 'desert', top: 70 },
       { id: 'vatican',   label: 'VATICAN CITY',        at: [787, -445],   pad: 70, padY: 44.2, kind: 'site', region: 'downs', top: 48 },
       { id: 'henge',     label: 'STONEHENGE',          at: [455, -500],   pad: 45, padY: 53.8, kind: 'site', region: 'downs', top: 7 },
@@ -41344,7 +41344,7 @@ const HQ_LAND = (function () {
         never: [ ['strip', 'area51', true], ['strip', 'dumb', true], ['downtown', 'area51', true],
             ...['mall', 'harbour', 'downtown', 'lighthouse'].flatMap(a => ['cay', 'dutchman'].map(b => [a, b, false])) ] };
     // THE BAKE: `bake-land.js` rewrites the id (the bake's hash) — '' = never baked (the ATLAS says so)
-    R.baked = { id: 'da0db7e906', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
+    R.baked = { id: '5d00c20e10', cell: 2, ext: 2800, tile: 256, heightBase: -200, base: 'https://cdn.entropywars.net/Assets/Land/', hubY: 84.9 };   // G2: hubY = HQ's baked pad (the land room's door stands on it)
     return R;
 })();
 /* the recipe's readers (the map, the bake and the tests read the land through these) */
@@ -42359,7 +42359,7 @@ function hqLandSiteFrames() {
         const P = Z.parts[id]; if (!P.place) return;
         const pl = placeOf(P.place); if (!pl) { if (typeof console !== 'undefined') console.warn('[HQ land] ' + id + ': no place ' + P.place); return; }
         P.x = Math.round((pl.at[0] + (P.dx || 0)) * 1000) / 1000; P.z = Math.round((pl.at[1] + (P.dz || 0)) * 1000) / 1000;
-        P.y = Math.round(((+pl.padY || 0) + (P.dy || 0)) * 1000) / 1000; P.rot = 0;
+        P.y = Math.round(((+pl.padY || 0) + (P.dy || 0)) * 1000) / 1000; P.rot = ((P.rot || 0) % 4 + 4) % 4;   // G7: a site may stand turned (Downtown, the Bowl)
         if (!P.on) P.on = 'land';
     });
     (Z.joins || []).forEach(j => { if (!j.pad) return; const P = Z.parts[j.b], pl = P && placeOf(P.place); if (pl) j.y = +pl.padY || 0; });
@@ -42375,10 +42375,28 @@ function hqLandSites() {
         const pl = (HQ_LAND.places || []).find(q => q.id === P.place);
         const S = by[P.place] || (by[P.place] = { place: P.place, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity, y: pl ? +pl.padY || 0 : 0, parts: [] });
         S.x0 = Math.min(S.x0, r.x0); S.z0 = Math.min(S.z0, r.z0); S.x1 = Math.max(S.x1, r.x1); S.z1 = Math.max(S.z1, r.z1); S.parts.push(id);
+        if (P.sea) S.sea = true;   // G7: a sea site (the harbour) — the bake leaves the water's floor under it alone
+        const rm = DOOR_HQ.rooms && DOOR_HQ.rooms[id]; if (rm && rm.terrain && rm.terrain.slope) S.slope = true;   // G7: a sloped site (hqLandSiteY)
     });
     Object.keys(by).forEach(k => out.push(by[k]));
     _hqLandSitesCache = { W: HQ_WORLD, out };
     return out;
+}
+/* G7 (THE CITY ON THE HILL): the height the land stands at under a site at (x, z) (land metres) — its pad, or for a sloped site the
+   part's slope there (the nearest point of the part's box: the band round it eases from the edge's own height). The bake levels a
+   site's box to this and the site's edges ease to it (hqTerrainStitchRows), so the two meet at the line. */
+function hqLandSiteY(S, x, z) {
+    if (!S || !S.slope) return S ? S.y : 0;
+    let best = null, bd = Infinity;
+    for (const id of S.parts) {
+        const rm = DOOR_HQ.rooms[id], B = rm && hqTerrainSlopeFn(rm.terrain); if (!B) continue;
+        const r = hqWorldPartRect(id); if (!r) continue;
+        const d = Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
+        if (d >= bd) continue;
+        const cx = Math.max(r.x0, Math.min(r.x1, x)), cz = Math.max(r.z0, Math.min(r.z1, z)), q = hqZoneToRoom(id, cx, cz), F = hqWorldFrame(id);
+        bd = d; best = (F.y || 0) + (rm.terrain.base || 0) + B(q.x, q.z);
+    }
+    return best == null ? S.y : best;
 }
 /* the site whose box grown by `pad` m holds (x, z) (land metres), else null */
 function hqLandSiteAt(x, z, pad) {
@@ -42555,7 +42573,6 @@ const HQ_AREA_KEPT_LEAVES = {
     vatican_hell: 'a SECRET draught in the crypt\'s warm wall (the divine stair is the way; the wall is the hint)',
     garage_motorpool: 'a facility ramp', tunnels_works: 'a facility tunnel', tunnels_platform: 'the subway line', cells_dungeon: 'a facility wall', workings_oubliette: 'THE DUNGEONS', sewers_drain: 'THE SEWERS',
     cave_hell: 'THE UNDERCROFT: the vent chamber IS the way to Hell', cave_dumb: 'THE UNDERCROFT: the blast chamber', cave_agartha: 'THE UNDERCROFT: the adit', cave_hollow: 'THE UNDERCROFT: the cave\'s own mouth onto the inner sun',
-    streets_strip: 'DISASTER CITY: the chapel\'s parking lot off the streets (one city)',
     tunnel_cyberpunk: 'the train', subway_downtown: 'the train',
 };
 /* is a link a PLAIN door between two different sites (no way at either end, not docked, not secret)? */
@@ -44910,7 +44927,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             const t = _hqTSmooth((d0 - d) / (gen.kind === 'city' ? edge : (edge + 0.2)));
             const j1 = 1 + jit * _hqTNoise(px, pz, 2.6, seed + 17), top = topN * _hqTNoise(px, pz, 1.9, seed + 29) * _hqTSmooth((-d - 0.4) / 0.8);
             /* a CITY's podium is a LEVEL, never a stack: an authored roof / mezzanine inside a block keeps its own height (max), the rest rises to wallH */
-            if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], (info.base || 0) + wallH * j1 + top) * t;
+            if (gen.kind === 'city') info.H[k] = info.H[k] * (1 - t) + Math.max(info.H[k], _hqTBaseAt(info, px, pz) + wallH * j1 + top) * t;
             else info.H[k] += (wallH * j1 + top) * t;
         });
         info.maskD = D;
@@ -45221,7 +45238,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                notional mass — the boom never dips into a block); info.solidTop on the field's grid, read by hqTerrainSolidTop */
             const stH = (gen.storeyH != null) ? gen.storeyH : K.storeyH;
             const tops = new Float32Array(nx * nz);
-            each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : ((info.base || 0) + wallH); });
+            each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : (_hqTBaseAt(info, px, pz) + wallH); });
             info.lots.forEach((lot) => {
                 const R = rectOf(lot), h = (lot.base || 0) + (lot.storeys ? lot.storeys * stH : wallH);
                 const reach = Math.hypot(R.hw, R.hd) + res;
@@ -45265,7 +45282,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                the rim between two rim lots. The walker met an invisible line there; it meets a hoarding now. */
             if (fenceH > 0 && gen.boundaryWalls !== false && typeof _hqTTraceMaskWalls === 'function') {
                 let traced = [];
-                try { traced = _hqTTraceMaskWalls(info, mask, { t: 0.3, key: fenceKey, top: (info.base || 0) + fenceH, simplify: 0.6, inner: 0.25, inShell }); } catch (e) { console.warn('[terrain] the boundary walls failed', roomId, e); traced = []; }
+                try { traced = _hqTTraceMaskWalls(info, mask, { t: 0.3, key: fenceKey, top: (info.base || 0) + fenceH, rel: info.slope ? fenceH : null, simplify: 0.6, inner: 0.25, inShell }); } catch (e) { console.warn('[terrain] the boundary walls failed', roomId, e); traced = []; }
                 const padNear = (px, pz) => (info.pads || []).some(p => p && ((p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -1.2));
                 let nB = 0;
                 const bMinRun = (gen.boundaryMinRun != null) ? gen.boundaryMinRun : (K.boundaryMinRun || 1.2);   // 2026-09-22: the trace keeps its own minimum — a corner sliver under 1.2 m fenced off the pocket behind it (the Strip)
@@ -45308,10 +45325,10 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
     info.planWalls = [];
     if (gen.kind === 'halls' || gen.kind === 'ley') {
         const tops = new Float32Array(nx * nz);
-        each((k) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : ((info.base || 0) + wallH); });
+        each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : (_hqTBaseAt(info, px, pz) + wallH); });
         info.solidTop = tops;
         try {
-            info.planWalls = _hqTTraceMaskWalls(info, mask, { t: (gen.wallT != null) ? gen.wallT : K.wallT, key: gen.wallKey || K.wallKey || null, top: (info.base || 0) + wallH,
+            info.planWalls = _hqTTraceMaskWalls(info, mask, { t: (gen.wallT != null) ? gen.wallT : K.wallT, key: gen.wallKey || K.wallKey || null, top: (info.base || 0) + wallH, rel: info.slope ? wallH : null,
                                                               simplify: (gen.simplify != null) ? gen.simplify : K.simplify, inner: (gen.wallInner != null) ? gen.wallInner : K.wallInner, inShell });
         } catch (e) { console.warn('[terrain] the plan walls failed', roomId, e); info.planWalls = []; }
         info.gen.walls = info.planWalls.length;
@@ -45401,10 +45418,11 @@ function _hqTTraceMaskWalls(info, mask, o) {
             let dev = 0;
             for (let i = i0 + 1; i < i1; i++) { const sd = ((pts[i][0] - ax) * nxv + (pts[i][1] - az) * nzv) * -side; if (sd > dev) dev = sd; }
             const ox = nxv * side * (t / 2 + dev), oz = nzv * side * (t / 2 + dev);
-            let gmin = Infinity;
-            for (let q = 0; q <= 4; q++) { const g = hqTerrainHeight(info, ax + (bx - ax) * q / 4, az + (bz - az) * q / 4); if (g < gmin) gmin = g; }
+            let gmin = Infinity, gmax = -Infinity;
+            for (let q = 0; q <= 4; q++) { const g = hqTerrainHeight(info, ax + (bx - ax) * q / 4, az + (bz - az) * q / 4); if (g < gmin) gmin = g; if (g > gmax) gmax = g; }
+            const top = (o.rel != null) ? Math.round((gmax + o.rel) * 100) / 100 : o.top;   // G7: on a sloped field the wall stands its height over its highest ground
             rows.push({ x0: Math.round((ax + ox) * 100) / 100, z0: Math.round((az + oz) * 100) / 100, x1: Math.round((bx + ox) * 100) / 100, z1: Math.round((bz + oz) * 100) / 100,
-                        t, base: Math.round((gmin - 0.3) * 100) / 100, top: o.top, h: o.top - gmin, key: o.key, plan: true, push: Math.round((t / 2 + dev) * 100) / 100 });
+                        t, base: Math.round((gmin - 0.3) * 100) / 100, top, h: top - gmin, key: o.key, plan: true, push: Math.round((t / 2 + dev) * 100) / 100 });
         }
     });
     return rows;
@@ -45554,7 +45572,11 @@ function hqTerrainStitchRows(roomId) {
            the water with no step where the two parts meet. An island with no `y` (the Dutchman's hull) keeps its own edge. */
         if (j.kind === 'island' && j.b === roomId && j.y != null && hqStagePart(j.a) && hqStagePart(j.b)) {
             const Si = hqWorldPartSize(roomId), yi = j.y - (F.y || 0), mi = (j.stitchM > 0) ? j.stitchM : m;
-            [['n', Si.w], ['s', Si.w], ['e', Si.d], ['w', Si.d]].forEach(s => out.push({ side: s[0], t0: -s[1] / 2, t1: s[1] / 2, m: mi, yAt: () => yi, other: j.a, island: true }));
+            /* G7: a sloped site's edges ease to its slope there (the bake levels the land round it to the same profile: hqLandSiteY) */
+            const rm = DOOR_HQ.rooms && DOOR_HQ.rooms[roomId], B = rm ? hqTerrainSlopeFn(rm.terrain) : null, hw = Si.w / 2, hd = Si.d / 2;
+            const at = { n: t => [t, -hd], s: t => [t, hd], e: t => [hw, t], w: t => [-hw, t] };
+            [['n', Si.w], ['s', Si.w], ['e', Si.d], ['w', Si.d]].forEach(s => out.push({ side: s[0], t0: -s[1] / 2, t1: s[1] / 2, m: mi,
+                yAt: B ? (t => { const q = at[s[0]](t); return yi + B(q[0], q[1]); }) : () => yi, other: j.a, island: true }));
             return;
         }
         if (j.kind === 'door' || j.kind === 'island') return;
@@ -45576,7 +45598,18 @@ function hqTerrainStitchRows(roomId) {
         } else { const y = J.y - py; yAt = () => y; }
         out.push({ side: mine.side, t0: mine.span[0], t1: mine.span[1], m: (j.stitchM > 0) ? j.stitchM : m, yAt, other: j.a === roomId ? j.b : j.a });   // a join's own `stitchM` (Phase 4: the stair's flight starts 4.5 m in)
     });
-    return out;
+    /* G7: where a site on the land meets another site edge to edge (Downtown's quay over the harbour), that join's row owns the
+       edge: the island's ease to the land is cut out of it, so the quay meets the harbour and not the sea floor */
+    const joined = out.filter(r => !r.island);
+    if (!joined.length) return out;
+    const res = [];
+    for (const r of out) {
+        if (!r.island) { res.push(r); continue; }
+        let segs = [[r.t0, r.t1]];
+        for (const q of joined) if (q.side === r.side) segs = segs.flatMap(([a, b]) => (q.t1 <= a || q.t0 >= b) ? [[a, b]] : [[a, q.t0], [q.t1, b]].filter(([u, v]) => v - u > 0.01));
+        for (const [a, b] of segs) res.push(Object.assign({}, r, { t0: a, t1: b }));
+    }
+    return res;
 }
 /* THE SEA UNDER AN ISLAND (Phase 7): the rectangles of the islands standing on a sea part, in the sea's own metres. The
    sea's floor sinks `sinkM` under them from `sinkIn` inside their edge, so the island's own floor (drawn over its whole box)
@@ -45593,15 +45626,50 @@ function hqTerrainIslandSinks(roomId) {
     });
     return out;
 }
+/* THE CITY ON THE HILL (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29): `terrain.slope = { axis: 'z' | 'x', pts: [[t, dy] …] }` — the field's BASE
+   follows a profile along one of the room's axes (room metres, `t` ascending; a repeated `t` is a STEP: the retaining wall between two
+   levels, which a stair `ramp` crosses on a street). Every authored height (a plateau's h, a ramp's h0 / h1, a deck's / a bridge's / a
+   pool's / a stream's / a wall's y) is read as ABOVE the base at its own spot, so a room authored flat stands on the slope as it was
+   drawn: a roof stays level, a pool keeps one level, a stair lands where it landed. Outside the box the profile holds its end values
+   (the bake levels the land round the site to it: hqLandSiteY). null for a room without a slope. */
+/* the field's base at a point: `terrain.base` plus the slope's profile there (G7) */
+function _hqTBaseAt(info, x, z) { return (info.base || 0) + (info.slope ? info.slope(x, z) : 0); }
+function hqTerrainSlopeFn(T) {
+    const sl = T && T.slope; if (!sl || !Array.isArray(sl.pts) || !sl.pts.length) return null;
+    const P = sl.pts, n = P.length, ax = sl.axis === 'x' ? 0 : 1;
+    return (x, z) => {
+        const t = ax ? z : x;
+        if (t <= P[0][0]) return P[0][1];
+        for (let k = 1; k < n; k++) if (t < P[k][0]) { const a = P[k - 1], b = P[k]; return b[0] > a[0] ? a[1] + (b[1] - a[1]) * (t - a[0]) / (b[0] - a[0]) : b[1]; }
+        return P[n - 1][1];
+    };
+}
+/* the features of a sloped room with their authored heights carried onto the slope (hqTerrainSlopeFn) */
+function _hqTSlopeFeatures(F, B) {
+    const r2 = v => Math.round(v * 1000) / 1000;
+    return F.map(f => {
+        switch (f.k) {
+            case 'plateau': return Object.assign({}, f, { h: r2(f.h + B(f.x, f.z)) });
+            case 'ramp': return (f.x0 == null) ? f : Object.assign({}, f, { h0: r2(f.h0 + B(f.x0, f.z0)), h1: r2(f.h1 + B(f.x1, f.z1)) });
+            case 'spiral': { const b = B(f.x, f.z); return Object.assign({}, f, { h0: r2(f.h0 + b), h1: r2(f.h1 + b) }); }
+            case 'deck': case 'bridge': return Object.assign({}, f, { y: r2(f.y + B((f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2)) });
+            case 'pool': return Object.assign({}, f, { y: r2((f.y || 0) + B(f.x, f.z)) });
+            case 'stream': return Object.assign({}, f, { y: r2((f.y || 0) + B(f.pts[0][0], f.pts[0][1])) });
+            case 'wall': return (typeof f.y === 'number') ? Object.assign({}, f, { y: r2(f.y + B((f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2)) }) : f;
+            default: return f;
+        }
+    });
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
+    const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
     const roam = (S.edge === 'open' && S.roam > 0) ? S.roam : 0;
     const halfW = S.w / 2 + roam + 1.0, halfD = S.d / 2 + roam + 1.0;
     const res = T.res || (Math.max(S.w, S.d) <= R.fineBelow ? R.resFine : R.res);
     const nx = Math.ceil(2 * halfW / res) + 1, nz = Math.ceil(2 * halfD / res) + 1;
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(roomId || room.label || 'terrain')) : 7;
-    const F = T.features || [];
+    const F = slopeB ? _hqTSlopeFeatures(T.features || [], slopeB) : (T.features || []);
     const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [];
     F.forEach(f => {
         switch (f.k) {
@@ -45650,7 +45718,7 @@ function hqTerrainCompile(room, roomId) {
        crosses it as a causeway ── */
     const inLane = (px, pz, grow) => doorPads.some(p => (p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p)) > -grow);
     const hBase = (px, pz) => {
-        let h = base;
+        let h = slopeB ? base + slopeB(px, pz) : base;
         if (noise) h += ((noise.amp != null) ? noise.amp : 0.15) * _hqTNoise(px, pz, noise.scale || 5, seed + (noise.seed || 0));
         if (crag && closed && !inLane(px, pz, 1.3)) {
             const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz));
@@ -45769,6 +45837,7 @@ function hqTerrainCompile(room, roomId) {
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
                    pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
+                   slope: slopeB,   // G7: the base's profile (room metres → m over `base`), null on a flat room
                    /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `plateau` or a stair `ramp` wearing `float: true` is a CLOUD
                       PLATFORM / a flight of FLOATING STEPS — the height rule is untouched (the field carries it like any tier: the walker climbs its
                       low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs

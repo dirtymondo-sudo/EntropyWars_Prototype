@@ -1735,3 +1735,21 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 6". Test: hq-mountain.test.js (+ hq-cam
   Olympus from their land place (`HQ_WORLD_WEENIES` row `from: 'downtown'`, `hqWorldBearing(room, target, fromPlace)`).
 - Tests: wall-audit.test.js (R3 on every land site, heavy, ~65 s), the re-pinned hq-*.test.js (stage, joins, lod, clock,
   south, mountain, west, woods, world-map, world, map, ranch, urban, floors, coast, terrain, camelot, areas).
+
+## THE CITY ON THE HILL (WORLD_GEOGRAPHY_PLAN G7, 2026-09-29, token 20260929-geography-12-cors, bake 5d00c20e10)
+- Downtown (`site_prebuilt_downtown_streets`, rot 1), the harbour (rot 1, `sea: true`) and the Bowl (rot 1) are parts of
+  `HQ_WORLD.zones.land` on the places downtown / harbour / stadium. Zones city and coast are gone; the cay and the Dutchman
+  are in no zone until G8 (their doors still work). `hqLandSiteFrames` keeps a part's `rot`.
+- THE SLOPE: a terrain room may carry `terrain.slope = { axis: 'z' | 'x', pts: [[t, dy], ...] }` (a repeated t is a step).
+  `hqTerrainSlopeFn` reads it; `hqTerrainCompile` adds it to the base height and `_hqTSlopeFeatures` lifts every authored
+  feature (plateau, ramp ends, deck, bridge, pool, stream, numeric wall y) by the profile at its spot. City lots and solid
+  tops use `_hqTBaseAt`; traced walls pass `rel` so they ride the slope. Stair ramps with h0 = h1 = 0 then climb the step.
+- THE BAKE: `hqLandSiteY(S, x, z)` gives the site's ground at the nearest point of its rect; bake-land.js flattens a sloped
+  site to it and skips `S.sea` sites (the bay's floor stays). Island stitch rows ease to the slope; a site-to-site join
+  (Downtown's quay ⇄ the harbour) owns its span of the edge (hqTerrainStitchRows cuts the island ease there).
+- THE RENDERER: the land group wears `rotation.y = rot·π/2` for a turned site; `uLandR` (cos, sin) turns the splat and
+  water shaders' points back into land metres; `_hqLandToScene` / `_hqLandFromScene` for flora, blockers and roads.
+  `_hqBuildCityLots` adds THE PLINTHS (`hq_city_plinths`, one InstancedMesh) under lots stood above their lowest ground;
+  traffic pitches with `info.slope`.
+- The mall's `street` door leads to the land's `mall` door on the beach pad; the lighthouse is a land prop at its place.
+- Test: city-slopes.test.js (R8 per district, the 12 % grade, the stairs walked, the land edge, the renderer pins).

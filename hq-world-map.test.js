@@ -34,7 +34,8 @@ function withWorld(edit, fn) {
 
 test('the world table is DOOR_HQ.world, with its rules, and the validator passes on the shipped geography', () => {
     assert.ok(W && W.grounds && W.zones && Array.isArray(W.borders), 'grounds, zones, borders');
-    for (const g of ['surface', 'land', 'under', 'ley']) assert.ok(W.grounds[g], 'the ground ' + g);   // G6 (2026-09-28): the Vatican's own ground went onto the land
+    for (const g of ['land', 'under', 'ley']) assert.ok(W.grounds[g], 'the ground ' + g);   // G6 (2026-09-28): the Vatican's own ground went onto the land
+    assert.ok(!W.grounds.surface, 'G7 (2026-09-29): the city and the coast went onto the land; the old surface ground is gone');
     const WR = vm.runInContext('HQ_WORLD_RULES', D), SR = vm.runInContext('HQ_STAGE_RULES', D), CK = vm.runInContext('HQ_WORLD_CLOCK', D);
     assert.ok(WR.joinTol > 0 && WR.far > 0, 'HQ_WORLD_RULES');
     assert.ok(SR.instanceMin >= 2 && SR.instanceCell > 0 && SR.callsMax > 0, 'HQ_STAGE_RULES carries the instance pass\'s numbers and the budget');
@@ -64,8 +65,8 @@ test('the two transforms round-trip for every part, and a quarter turn carries n
             assert.ok(Math.abs(back.x - x) < 1e-9 && Math.abs(back.z - z) < 1e-9, id + ' round-trips');
         }
     }
-    withWorld(W2 => { W2.zones.city.parts.site_prebuilt_downtown_streets.rot = 1; }, () => {
-        const n0 = D.hqWorldToZone('site_prebuilt_downtown_streets', 0, 0), n1 = D.hqWorldToZone('site_prebuilt_downtown_streets', 0, -1), n = { x: n1.x - n0.x, z: n1.z - n0.z };   // a step north in the room
+    withWorld(W2 => { W2.zones.land.parts.site_prebuilt_downtown_harbour.rot = 1; }, () => {   // G7: Downtown and its harbour stand turned a quarter on the land
+        const n0 = D.hqWorldToZone('site_prebuilt_downtown_streets', 0, 0), n1 = D.hqWorldToZone('site_prebuilt_downtown_streets', 0, -1), n = { x: n1.x - n0.x, z: n1.z - n0.z };   // a step north in the room (Downtown ships at rot 1)
         assert.ok(Math.abs(n.x + 1) < 1e-9 && Math.abs(n.z) < 1e-9, 'rot 1: north lands west (three.js rotation.y = +π/2)');
     });
     /* an absorbed room lands at its spot in its field (the cave field); OPEN WORLD Phase 4: the woods' rooms are parts of their own,
@@ -90,7 +91,8 @@ test('every edge join resolves onto both parts\' opposite sides; borders cross z
     const ring = D.hqWorldRing('site_prebuilt_downtown_harbour', 2);
     assert.equal(ring.site_prebuilt_downtown_harbour, 0);
     assert.equal(ring.site_prebuilt_downtown_streets, 1, 'the quay reaches Downtown in one hop');
-    assert.equal(ring.site_prebuilt_stadium_bowl, 2, 'the bowl two hops off');
+    assert.equal(ring.land, 1, 'the land round it in one');
+    assert.equal(ring.site_prebuilt_stadium_bowl, 2, 'the bowl two hops off (across the land, G7)');
     assert.ok(Object.values(ring).every(h => h <= 2));
     assert.ok(D.hqWorldNeighbours('site_prebuilt_downtown_streets').includes('site_prebuilt_downtown_harbour'));
     const lr = D.hqWorldRing('land', 1);
@@ -99,20 +101,23 @@ test('every edge join resolves onto both parts\' opposite sides; borders cross z
 
 test('the validator catches what it promises: an overlap, a join off its line, a part cut off, a planned part without a size, a room in two zones', () => {
     const has = (errs, re) => errs.some(e => re.test(e));
-    withWorld(W2 => { W2.zones.city.parts.site_prebuilt_stadium_bowl.z = W2.zones.city.parts.site_prebuilt_downtown_streets.z; }, () => {
+    /* G7: the city and the coast went onto the land; the validator is exercised on Downtown's quay join and the medical wing */
+    /* (a land part's x / z are written from its place at boot: hqLandSiteFrames) */
+    withWorld(W2 => { const L = W2.zones.land.parts; L.site_prebuilt_downtown_harbour.x = L.site_prebuilt_downtown_streets.x; L.site_prebuilt_downtown_harbour.z = L.site_prebuilt_downtown_streets.z; }, () => {
         const v = D.hqWorldValidate(); assert.equal(v.ok, false);
-        assert.ok(has(v.errors, /overlap/), 'the bowl dropped onto Downtown overlaps: ' + v.errors.join('; '));
+        assert.ok(has(v.errors, /overlap/), 'the harbour dropped onto Downtown overlaps: ' + v.errors.join('; '));
     });
-    withWorld(W2 => { W2.zones.city.parts.site_prebuilt_stadium_bowl.z -= 5; }, () => {
-        assert.ok(has(D.hqWorldValidate().errors, /off the join's line/), 'a stadium moved 5 m off its road');
+    withWorld(W2 => { W2.zones.land.parts.site_prebuilt_downtown_harbour.x += 5; }, () => {
+        assert.ok(has(D.hqWorldValidate().errors, /off the join's line/), 'a harbour moved 5 m off its quay');
     });
-    withWorld(W2 => { W2.zones.city.joins = W2.zones.city.joins.filter(j => j.b !== 'site_prebuilt_stadium_bowl' && j.a !== 'site_prebuilt_stadium_bowl'); }, () => {
-        assert.ok(has(D.hqWorldValidate().errors, /not reached from the hub/), 'a part with no join is cut off');
+    const MW = Object.keys(W.zones.medwing.parts), leaf = MW.find(id => W.zones.medwing.joins.filter(j => j.a === id || j.b === id).length === 1);
+    withWorld(W2 => { W2.zones.medwing.joins = W2.zones.medwing.joins.filter(j => j.b !== leaf && j.a !== leaf); }, () => {
+        assert.ok(has(D.hqWorldValidate().errors, /not reached from the hub/), 'a part with no join is cut off (' + leaf + ')');
     });
-    withWorld(W2 => { W2.zones.city.parts.city_lot = { x: 900, z: 900, rot: 0, planned: { h: 10 } }; }, () => {
+    withWorld(W2 => { W2.zones.land.parts.city_lot = { x: 900, z: 900, rot: 0, planned: { h: 10 } }; }, () => {
         assert.ok(has(D.hqWorldValidate().errors, /planned without a size/));
     });
-    withWorld(W2 => { W2.zones.coast.parts.site_prebuilt_downtown_streets = clone(W2.zones.city.parts.site_prebuilt_downtown_streets); }, () => {
+    withWorld(W2 => { W2.zones.medwing.parts.site_prebuilt_downtown_streets = clone(W2.zones.land.parts.site_prebuilt_downtown_streets); }, () => {
         assert.ok(has(D.hqWorldValidate().errors, /in two zones/));
     });
     assert.equal(D.hqWorldValidate().ok, true, 'the shipped table is untouched');
@@ -121,7 +126,7 @@ test('the validator catches what it promises: an overlap, a join off its line, a
 test('THE LAND SHEET: the fog draws the room you stand in and names its neighbours UNCHARTED; the planned parts only with all', () => {
     const here = 'site_prebuilt_downtown_streets';
     const S = D.hqWorldSheet({}, here, {});
-    assert.equal(S.ground, 'surface');
+    assert.equal(S.ground, 'land', 'G7: Downtown stands on the land');
     const me = S.parts.find(p => p.id === here);
     assert.ok(me && me.st === 'here', 'the room you stand in');
     assert.ok(S.parts.some(p => p.st === 'q' && p.label === 'UNCHARTED'), 'a joined neighbour is an outline');

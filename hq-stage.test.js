@@ -28,29 +28,28 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 /* three.js's rotation.y about the origin (the renderer places a neighbour's root this way) */
 const rotY = (th, x, z) => ({ x: x * Math.cos(th) + z * Math.sin(th), z: -x * Math.sin(th) + z * Math.cos(th) });
 
-test('the stage stands on the city, the medical wing, the basement, the D.U.M.B., the coast and the land, and its parts are the real box rooms of its frames', () => {
- assert.deepEqual([...HQ_STAGE_RULES.zones], ['city', 'medwing', 'basement', 'dumb', 'coast', 'land']);   // WORLD GEOGRAPHY G6 (2026-09-28): the woods, the highway, the desert, the kingdom and the mountain are sites on THE LAND   // + OPEN WORLD Phase 7 (2026-09-27): the coast (hq-coast.test.js)   // + OPEN WORLD Phase 6 (2026-09-27): the north (hq-mountain.test.js)   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
+test('the stage stands on the medical wing, the basement, the D.U.M.B. and the land, and its parts are the real box rooms of its frames', () => {
+ assert.deepEqual([...HQ_STAGE_RULES.zones], ['medwing', 'basement', 'dumb', 'land']);   // WORLD GEOGRAPHY G7 (2026-09-29): Downtown, the Bowl and the harbour are sites on THE LAND; the city and coast zones are retired   // WORLD GEOGRAPHY G6 (2026-09-28): the woods, the highway, the desert, the kingdom and the mountain are sites on THE LAND   // + OPEN WORLD Phase 7 (2026-09-27): the coast (hq-coast.test.js)   // + OPEN WORLD Phase 6 (2026-09-27): the north (hq-mountain.test.js)   // + OPEN WORLD Phase 5 (2026-09-27): the south (hq-south.test.js)   // OPEN WORLD Phase 4 (2026-09-27): the woods (trail joins) + the basement (door joins)
  for (const id of [DT, STRIP, BOWL]) assert.ok(D.hqStagePart(id), id + ' is a staged part');
  assert.equal(D.hqStagePart('central_egress'), null, 'the building is not staged');
  assert.equal(D.hqStageNeighbours('central_egress').length, 0);
  assert.ok(HQ_STAGE_RULES.buildDelayMs > 0 && HQ_STAGE_RULES.lampPickMs > 0 && HQ_STAGE_RULES.tileM === 32 && HQ_STAGE_RULES.lampsLive === 12);
 });
 
-test('Downtown sees the stadium north, its box touching its edge, the gantry link replaced; the Strip is a site on the land (G6)', () => {
+test('Downtown sees the harbour south of its quay, its box touching its edge, and the land on every side (G7)', () => {
  const nbs = D.hqStageNeighbours(DT), S = HQ.rooms[DT].shell;
- const bowl = nbs.find(n => n.id === BOWL);
- assert.ok(bowl); assert.ok(!nbs.some(n => n.id === STRIP), 'the Strip stands in the desert on the land (G6), not beside Downtown');
- assert.equal(bowl.rel.rot, 2); assert.ok(near(bowl.rel.x, 0, 1e-3)); assert.ok(near(bowl.rel.z, -154.1, 1e-3));
- assert.ok(near(bowl.rect.z1, -S.d / 2, 0.01), 'the bowl ends on Downtown\'s north edge');
- assert.deepEqual(plain(bowl.spans.map(s => [s.side, s.t0, s.t1])), [['n', -12, 12]]);
- assert.deepEqual([...bowl.links], ['link_stadium_downtown']);
- assert.equal(D.hqStageJoinedDoor(DT, 'link_stadium_downtown'), true);
+ const harb = nbs.find(n => n.id === HARB);
+ assert.ok(harb); assert.ok(!nbs.some(n => n.id === STRIP || n.id === BOWL), 'the Strip and the Bowl stand on the land (G6, G7), not beside Downtown');
+ assert.equal(harb.rel.rot, 0); assert.ok(near(harb.rel.x, -8, 1e-3)); assert.ok(near(harb.rel.z, 143, 1e-3));
+ assert.ok(near(harb.rect.z0, S.d / 2, 0.01), 'the harbour begins on Downtown\'s quay');
+ assert.deepEqual(plain(harb.spans.map(s => [s.side, s.t0, s.t1])), [['s', -100, 100]]);
+ assert.ok(nbs.some(n => n.id === 'land'), 'the land round it');
  /* the far end reads the same join back */
- assert.deepEqual(plain(D.hqStageNeighbours(BOWL).map(n => [n.id, n.spans[0].side])), [[DT, 'n']]);
+ assert.deepEqual(plain(D.hqStageNeighbours(HARB).filter(n => n.id !== 'land').map(n => [n.id, n.spans[0].side])), [[DT, 'n']]);
 });
 
 test('the frames: to-room and from-room invert each other, and match a root placed with rotation.y = rot·π/2', () => {
- for (const [a, b] of [[DT, BOWL], [BOWL, DT], [DT, HARB], [HARB, DT]]) {
+ for (const [a, b] of [[DT, HARB], [HARB, DT], [DT, 'land'], ['land', DT]]) {
   const rel = D.hqStageRel(a, b);
   for (const p of [[0, 0], [10, -3], [-40, 60]]) {
    const q = D.hqStageToRoom(rel, p[0], p[1]), back = D.hqStageFromRoom(rel, q.x, q.z);
@@ -61,25 +60,25 @@ test('the frames: to-room and from-room invert each other, and match a root plac
   const inv = D.hqStageRel(b, a), o = D.hqStageToRoom(inv, rel.x, rel.z);
   assert.ok(near(o.x, 0, 1e-6) && near(o.z, 0, 1e-6), 'each sees the other\'s origin');
  }
- /* the stadium's players' tunnel (its north edge, rot 2) lies on Downtown's avenue */
- const rel = D.hqStageRel(DT, BOWL), Sb = HQ.rooms[BOWL].shell, t = D.hqStageToRoom(rel, 0, -Sb.d / 2);
- assert.ok(near(t.x, 0, 1e-3) && near(t.z, -HQ.rooms[DT].shell.d / 2, 0.01));
+ /* the harbour's north edge lies on Downtown's quay */
+ const rel = D.hqStageRel(DT, HARB), Sb = HQ.rooms[HARB].shell, t = D.hqStageToRoom(rel, 8, -Sb.d / 2);
+ assert.ok(near(t.x, 0, 1e-3) && near(t.z, HQ.rooms[DT].shell.d / 2, 0.01));
 });
 
 test('the crossing: a metre of hysteresis past the edge, inside the neighbour; the doorway strip is the span less the pad', () => {
- const S = HQ.rooms[DT].shell, hw = S.w / 2, hd = S.d / 2, nbs = D.hqStageNeighbours(DT), H = HQ_WORLD_RULES.crossHys;
+ const S = HQ.rooms[DT].shell, hw = S.w / 2, hd = S.d / 2, nbs = D.hqStageNeighbours(DT).filter(n => n.id === HARB), H = HQ_WORLD_RULES.crossHys;
  assert.equal(H, 1.0);
- assert.equal(D.hqStageWhere(hw, hd, nbs, 0, -hd - 0.5, H), null, 'half a metre past: still Downtown');
- assert.equal(D.hqStageWhere(hw, hd, nbs, 0, -hd - 1.2, H), BOWL);
- assert.equal(D.hqStageWhere(hw, hd, nbs, -hw - 1.2, 0, H), null, 'the west edge joins nothing (G6: the Strip is on the land)');
- assert.equal(D.hqStageWhere(hw, hd, nbs, 100, -hd - 5, H), null, 'past the edge but beside the bowl: nobody');
+ assert.equal(D.hqStageWhere(hw, hd, nbs, 0, hd + 0.5, H), null, 'half a metre past: still Downtown');
+ assert.equal(D.hqStageWhere(hw, hd, nbs, 0, hd + 1.2, H), HARB);
+ assert.equal(D.hqStageWhere(hw, hd, nbs, -hw - 1.2, 0, H), null, 'the west edge joins no site');
+ assert.equal(D.hqStageWhere(hw, hd, nbs, 110, hd + 5, H), null, 'past the edge but beside the harbour: nobody');
  /* after the swap the same feet are a metre INSIDE the new part: no flip-flop */
- const rel = D.hqStageRel(DT, BOWL), f = D.hqStageFromRoom(rel, 0, -hd - 1.2), Sb = HQ.rooms[BOWL].shell;
- assert.equal(D.hqStageWhere(Sb.w / 2, Sb.d / 2, D.hqStageNeighbours(BOWL), f.x, f.z, H), null);
+ const rel = D.hqStageRel(DT, HARB), f = D.hqStageFromRoom(rel, 0, hd + 1.2), Sb = HQ.rooms[HARB].shell;
+ assert.equal(D.hqStageWhere(Sb.w / 2, Sb.d / 2, D.hqStageNeighbours(HARB).filter(n => n.id === DT), f.x, f.z, H), null);
  const pad = 1.5;
- assert.ok(D.hqStageSpanAt(hw, hd, nbs, 0, -hd + 0.5, pad));
- assert.equal(D.hqStageSpanAt(hw, hd, nbs, -hw + 0.2, 5, pad), null, 'the west edge is wall');
- assert.equal(D.hqStageSpanAt(hw, hd, nbs, 20, -hd + 0.5, pad), null, 'the north edge beside the avenue is wall');
+ assert.ok(D.hqStageSpanAt(hw, hd, nbs, 0, hd - 0.5, pad));
+ assert.equal(D.hqStageSpanAt(hw, hd, nbs, -hw + 0.2, 5, pad), null, 'the west edge is no join to a site');
+ assert.equal(D.hqStageSpanAt(hw, hd, nbs, 105, hd - 0.5, pad), null, 'the quay beside the harbour\'s span is edge');
 });
 
 /* ── the renderer's pieces in a vm ── */
@@ -123,41 +122,41 @@ function stageCtx(extra) {
 test('the crossing swaps into a drawn neighbour, else loads it at the same spot looking the same way', () => {
  const swaps = [], loads = [];
  const c = stageCtx({ _hqStageSwap: (H, to) => swaps.push(to) });
- const S = HQ.rooms[DT].shell, nbs = D.hqStageNeighbours(DT);
- const H = { room: HQ.rooms[DT], player: { x: 0, z: -S.d / 2 - 0.5 }, cam: { yaw: 0.3 }, portal: { placed: {} }, gun: { doors: [] },
+ const S = HQ.rooms[DT].shell, nbs = D.hqStageNeighbours(DT).filter(n => n.id === HARB);
+ const H = { room: HQ.rooms[DT], player: { x: 0, z: S.d / 2 + 0.5 }, cam: { yaw: 0.3 }, portal: { placed: {} }, gun: { doors: [] },
   opts: { room: DT, onStageLoad: (to, at) => loads.push([to, at]) }, stage: { id: DT, nbs, parts: {}, loadAsked: null } };
  c._hqStageCross(H, 1000); assert.deepEqual([swaps, loads], [[], []], 'inside the band: nothing');
- H.player.z = -S.d / 2 - 1.2;
+ H.player.z = S.d / 2 + 1.2;
  c._hqStageCross(H, 1000);
- assert.deepEqual(swaps, []); assert.equal(loads.length, 1, 'the bowl is not on the stage yet: the load');
- const [to, at] = loads[0], f = D.hqStageFromRoom(D.hqStageRel(DT, BOWL), 0, -S.d / 2 - 1.2);
- assert.equal(to, BOWL); assert.ok(near(at.x, f.x) && near(at.z, f.z));
- assert.ok(near(at.face, (0.3 * 180 / Math.PI + 180) % 360, 1e-6), 'the eye keeps its heading through the half turn');
+ assert.deepEqual(swaps, []); assert.equal(loads.length, 1, 'the harbour is not on the stage yet: the load');
+ const [to, at] = loads[0], f = D.hqStageFromRoom(D.hqStageRel(DT, HARB), 0, S.d / 2 + 1.2);
+ assert.equal(to, HARB); assert.ok(near(at.x, f.x) && near(at.z, f.z));
+ assert.ok(near(at.face, (0.3 * 180 / Math.PI) % 360, 1e-6), 'the eye keeps its heading (the two stand the same way)');
  c._hqStageCross(H, 2000); assert.equal(loads.length, 1, 'asked once');
- H.stage.parts[BOWL] = { attached: true };
- c._hqStageCross(H, 9000); assert.deepEqual(swaps, [BOWL], 'drawn: the swap');
+ H.stage.parts[HARB] = { attached: true };
+ c._hqStageCross(H, 9000); assert.deepEqual(swaps, [HARB], 'drawn: the swap');
  H.gun.doors.push({}); H.stage.loadAsked = null;
- c._hqStageCross(H, 9500); assert.deepEqual(swaps, [BOWL]); assert.equal(loads.length, 2, 'a standing door gun door: the load (its doors belong to this room)');
+ c._hqStageCross(H, 9500); assert.deepEqual(swaps, [HARB]); assert.equal(loads.length, 2, 'a standing door gun door: the load (its doors belong to this room)');
  H.player.dash = {}; c._hqStageCross(H, 20000); assert.equal(loads.length, 2, 'never mid-dash');
 });
 
 test('the feet past the edge: the road through the span, a wall beside it, the neighbour\'s own surface beyond', () => {
  const asked = [];
  const c = stageCtx({ hqTerrainHeight: (info, x, z) => info.h, _hqSurface: (x, z, curY) => { asked.push([c._hq.room.id || c._hq.tag, x, z, curY]); return 0.25; } });
- const S = HQ.rooms[DT].shell, hd = S.d / 2, nbs = D.hqStageNeighbours(DT);
- const bowlP = { room: { id: BOWL }, tag: BOWL, terrain: { h: 0.1 } };
+ const S = HQ.rooms[DT].shell, hd = S.d / 2, nbs = D.hqStageNeighbours(DT).filter(n => n.id === HARB);
+ const harbP = { room: { id: HARB }, tag: HARB, terrain: { h: 0.1 } };
  const H = { room: HQ.rooms[DT], terrain: { h: 0.05 }, opts: { room: DT }, stage: { id: DT, nbs, parts: {} } };
  c._hq = H;
  assert.equal(c._hqStageSurface(0, 0, 0), undefined, 'the middle of the room is the room\'s');
- assert.equal(c._hqStageSurface(0, -hd + 0.5, 0), 0.05, 'the avenue at the edge: the road');
- assert.equal(c._hqStageSurface(0, -hd - 0.5, 0), 0.05, 'a step past, the bowl not drawn: our road still');
- assert.equal(c._hqStageSurface(20, -hd - 0.5, 0), null, 'beside the avenue: nothing past the edge');
- assert.equal(c._hqStageSurface(0, -hd - 5, 0), null, 'the bowl not drawn: no floor out there');
- H.stage.parts[BOWL] = { attached: true, P: bowlP, opts: { room: BOWL } };
- assert.equal(c._hqStageSurface(0, -hd - 0.5, 0), 0.1, 'the bowl drawn: its field under the feet');
- assert.equal(c._hqStageSurface(3, -hd - 5, 0.2), 0.25);
- const f = D.hqStageFromRoom(D.hqStageRel(DT, BOWL), 3, -hd - 5);
- assert.equal(asked.length, 1); assert.equal(asked[0][0], BOWL); assert.ok(near(asked[0][1], f.x) && near(asked[0][2], f.z), 'asked in the bowl\'s own metres');
+ assert.equal(c._hqStageSurface(0, hd - 0.5, 0), 0.05, 'the quay at the edge: the quay');
+ assert.equal(c._hqStageSurface(0, hd + 0.5, 0), 0.05, 'a step past, the harbour not drawn: our quay still');
+ assert.equal(c._hqStageSurface(101, hd + 0.5, 0), null, 'beside the span, the harbour not drawn: nothing past the edge');
+ assert.equal(c._hqStageSurface(0, hd + 5, 0), null, 'the harbour not drawn: no floor out there');
+ H.stage.parts[HARB] = { attached: true, P: harbP, opts: { room: HARB } };
+ assert.equal(c._hqStageSurface(0, hd + 0.5, 0), 0.1, 'the harbour drawn: its field under the feet');
+ assert.equal(c._hqStageSurface(3, hd + 5, 0.2), 0.25);
+ const f = D.hqStageFromRoom(D.hqStageRel(DT, HARB), 3, hd + 5);
+ assert.equal(asked.length, 1); assert.equal(asked[0][0], HARB); assert.ok(near(asked[0][1], f.x) && near(asked[0][2], f.z), 'asked in the harbour\'s own metres');
  assert.equal(c._hq, H, 'the visit\'s record is back');
 });
 

@@ -705,7 +705,7 @@ Shadow cascades matter far more on open land.
 | G4 ✓ (2026-09-28, zip G4) | **THE TREES + THE GRASS**: instanced forests, shared wind materials, impostors, trunk blockers, undergrowth, grass | three-renderer.js, data.js | `land-forest.test.js` (deterministic placement per tile; a trunk under every blocker; instancing accepted) |
 | G5 ✓ (2026-09-28, zip G5) | **THE ROADS**: Route 1 and every road, lane and trail; bridges and viaducts; rails; signs; traffic; regrading the sketch's giveaway viaducts (§11) | three-renderer.js, data.js, bake-land.js | `land-roads.test.js` (grades, deck clearance, rails where the drop is > 2 m) |
 | G6 ✓ (2026-09-28, zip G6) | **THE SITES ON PADS**: every outdoor place of §4.3 on its pad; the outdoor zones retire; the woods' parts become pads in the forest (the fairy forest by Camelot, the ritual woods by the loch); the Strip on its valley pad; the Bayside Mall on its beach pad; Olympus and Camelot on real slopes | data.js, three-renderer.js | `wall-audit.test.js` over every site (R3); the old site tests re-pinned |
-| G7 | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the harbour, the bay's beach, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
+| G7 ✓ (2026-09-29, zip G7) | **THE CITY ON THE HILL** (§5.8): Downtown, the Bowl, the harbour, the bay's beach, the lighthouse | data.js, three-renderer.js | `city-slopes.test.js` (R8: every district has a street > 6 % and a stair or ramp; every alley ≥ 1.6 m walkable, every smaller gap walled) plus the wall audit |
 | G8 | **THE EDGE OF THE WORLD**: the Deep to the wall, the ice wall, the shelf and the station, the pack ice and the Pole, the islands, the Bermuda triangle with the cay, the Dutchman and the whirlpool; the Flat Lands per fork 5 | data.js, three-renderer.js | `land-edge.test.js` (the wall is the only border; the skiff reaches it everywhere) |
 | G9 | **THE DISCOVERY PASS** (R6, §5.11): landmarks every 150–250 m of route, the reveal points dressed (a cairn, a bench, a broken fence), the region title cards, the map's fog of war | data.js, map.js, three-renderer.js | the bake's R6 spacing check; no finds or tapes pinned |
 | G10 | **THE DUNGEONS** (§5.13): the kit first, then one dungeon per thread (the storm drain and the sewers, the Cavern, the ley lines, the D.U.M.B.) | data.js, three-renderer.js | `dungeon-kit.test.js` (D1–D5: mouth reachable, vertical ≥ 40 m, a way back, the wall audit underground) |
@@ -1022,4 +1022,28 @@ Run with `node land-sketch.js && node r2check.js && node reveals.js && node rend
   - The wall audit (R3) passes on every site. What mondo uploads: R2 data.js, three-renderer.js and all of `Assets/Land/`;
     index.html to Render; the repo bake-land.js, the tests, this plan, docs/notes/areas-complexes.md. Next: G7 (the city on
     the hill).
+
+- **G7 — THE CITY ON THE HILL (2026-09-29, zip open-world/geography/ENTROPY_WARS_WORLD_GEOGRAPHY_G7.zip, token
+  20260929-geography-12-cors, delta on the quick fixes zip; new bake 5d00c20e10)**
+  - Downtown, the Bowl and the harbour stand on the land. Downtown is turned a quarter so the docks face the bay (east) and the
+    old town climbs uphill to the west; the harbour lies off its quay; the Bowl stands on its own pad (rot 1) north of the city.
+    The city and coast zones are retired; `HQ_STAGE_RULES.zones` is medwing, basement, dumb, land.
+  - Downtown's ground carries a slope (`terrain.slope`, a profile along one axis read by `hqTerrainSlopeFn`): quay 0.4 m,
+    old town 14.9 m above the sea. The streets are graded to 12 % at most; four stair streets cross the 3.2 m retaining step
+    at the old town's edge (the avenue, the market lane, the church lane, the tower's street). Every district has a street
+    steeper than 6 % and a stair. The canal and the fountains stay level on their terraces.
+  - The bake levels the land round Downtown to the same profile (`hqLandSiteY`), and the island's edges ease to it. Where
+    Downtown meets the harbour, that join owns the edge (no ease to the sea floor under the quay).
+  - The renderer turns the land for a turned site (`uLandR` in the ground and water shaders; flora, blockers and roads through
+    `_hqLandToScene`). Terraced lots stand on concrete plinths; city cars pitch with the slope.
+  - The mall's main entrance moved to the bay's beach (a door on the land); the lighthouse stands on the bay's head.
+    Retired links: downtown_strip, stadium_downtown, streets_strip (the land's roads run between the city, the Bowl and the Strip).
+  - Recipe: city plateau h 20, the city hill bump west of the old town, a knoll on the headland east of the Bowl (it breaks the
+    lighthouse's line to the Vatican's hill, R2), the bay's coast redrawn round the harbour, Route 7 from the city's south end,
+    two unlabeled city roads.
+  - Deviation: the plan's crown of about 60 m is not reached. A 176 m site with streets at 12 % or less carries about 15 m; the
+    land's hill beyond the old town carries the rest.
+  - Not done: the mall has no outside building on the beach yet; the cay and the Dutchman stand in no zone (behind their doors)
+    until G8. Tests: city-slopes.test.js; the wall audit is clean on the three city sites. hq-coast.test.js is deleted.
+    Next: G8 (the edge of the world).
 

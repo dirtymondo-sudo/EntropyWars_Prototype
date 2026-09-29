@@ -60,17 +60,20 @@ test('the hour is the profile\'s: a save mid-walk ran on by the minutes since; a
 test('which rooms ride the clock: the open parts of a clocked zone; the locked ones keep their hour; interiors and unclocked zones are not on it', () => {
     const RC = G('hqRoomClock');
     const dt = RC('site_prebuilt_downtown_streets');
-    assert.ok(dt && !dt.locked && dt.zone === 'city' && dt.rot === 0, 'Downtown rides the clock');
-    assert.equal(RC('site_prebuilt_stadium_bowl').rot, 2, 'the bowl turned half round carries its turn');
+    assert.ok(dt && !dt.locked && dt.zone === 'land' && dt.rot === 1, 'Downtown rides the land\'s clock, turned a quarter (G7)');
+    assert.equal(RC('site_prebuilt_stadium_bowl').rot, 1, 'the bowl turned a quarter carries its turn');
     const strip = RC('site_prebuilt_strip_streets');
     assert.ok(strip && strip.locked && strip.hour === CK.lock.site_prebuilt_strip_streets, 'the Strip keeps its neon night (fork 4)');
-    for (const id of Object.keys(CK.lock)) { const c = RC(id); assert.ok(c && c.locked, id + ' is locked'); assert.ok(!G('hqWorldSun')(c.hour).isDay, id + ' is locked at night'); }
+    const zoned = Object.keys(CK.lock).filter(id => G('hqWorldZoneOf')(id));   // G7: the Dutchman stands in no zone until G8 (its lock waits for it)
+    assert.ok(zoned.length >= 1);
+    for (const id of zoned) { const c = RC(id); assert.ok(c && c.locked, id + ' is locked'); assert.ok(!G('hqWorldSun')(c.hour).isDay, id + ' is locked at night'); }
     assert.ok(RC('site_prebuilt_camelot_ward').dayLook, 'a night-authored room that rides the clock names its day look');
     for (const id of ['medwing', 'site_prebuilt_downtown_mall', 'site_prebuilt_camelot_keep', 'site_prebuilt_dumb_motorpool', 'site_prebuilt_gobekli_leylines', 'central_egress']) assert.equal(RC(id), null, id + ' is not on the clock');
     for (const id of ['land', 'site_prebuilt_gobekli_tell', 'site_prebuilt_olympus_summit']) { const c = RC(id); assert.ok(c && c.zone === 'land' && !c.locked, id + ' rides the land\'s clock (G6)'); }
     const W = G('HQ_WORLD'), R = G('DOOR_HQ').rooms;
     for (const id of Object.keys(CK.dayLook)) assert.ok(R[id] && R[id].shell.sky && R[id].shell.sky.night, id + ': a dayLook is for a night-authored room');
-    for (const id of Object.keys(CK.lock)) assert.ok(R[id] && W.zones[G('hqWorldZoneOf')(id)].clock, id + ': a lock is for a room of a clocked zone');
+    for (const id of zoned) assert.ok(R[id] && W.zones[G('hqWorldZoneOf')(id)].clock, id + ': a lock is for a room of a clocked zone');
+    for (const id of Object.keys(CK.lock)) assert.ok(R[id], id + ' is a room');
 });
 
 test('the directions: a bearing seen from a turned room; the weenies stand at their true bearing from the frames', () => {
@@ -82,16 +85,16 @@ test('the directions: a bearing seen from a turned room; the weenies stand at th
     const LM = G('hqRoomLandmarks');
     /* G6 (2026-09-28): on the land the places themselves stand on the horizon — a site there hangs no painted weenie */
     for (const id of ['land', 'site_prebuilt_strip_streets', 'site_prebuilt_area51_flightline', 'site_prebuilt_camelot_ward']) assert.equal(LM(id).filter(l => ['gate', 'mountain', 'tower'].includes(l.kind)).length, 0, id + ' hangs no weenie');
-    /* the city (its own zone) sees Olympus from its place on the land */
-    const pl = G('HQ_LAND').places.find(q => q.id === 'downtown'), Fo = D.hqWorldFrame('site_prebuilt_olympus_summit');
-    const trueDeg = (Math.atan2(Fo.x - pl.at[0], -(Fo.z - pl.at[1])) * 180 / Math.PI + 360) % 360;
-    const bowl = LM('site_prebuilt_stadium_bowl').find(l => l.kind === 'mountain');
-    const dt = LM('site_prebuilt_downtown_streets').find(l => l.kind === 'mountain');
-    assert.ok(dt && Math.abs(((dt.deg - trueDeg + 540) % 360) - 180) < 1, 'Olympus from Downtown at its bearing on the land');
-    assert.ok(bowl && Math.abs(((bowl.deg - 180 - dt.deg + 540) % 360) - 180) < 8, 'the turned bowl sees Olympus where Downtown does, less its half turn');
+    /* G7 (2026-09-29): Downtown and the Bowl stand on the land too — they hang no weenie; Bermuda (behind its door until G8)
+       sees Disaster City from its place on the land */
+    for (const id of ['site_prebuilt_downtown_streets', 'site_prebuilt_stadium_bowl']) assert.equal(LM(id).filter(l => ['gate', 'mountain', 'tower'].includes(l.kind)).length, 0, id + ' hangs no weenie');
+    const pb = G('HQ_LAND').places.find(q => q.id === 'bermuda'), Fd = D.hqWorldFrame('site_prebuilt_downtown_streets');
+    const trueDeg = (Math.atan2(Fd.x - pb.at[0], -(Fd.z - pb.at[1])) * 180 / Math.PI + 360) % 360;
+    const city = LM('site_prebuilt_bermuda_sea').find(l => l.kind === 'tower');
+    assert.ok(city && Math.abs(((city.deg - trueDeg + 540) % 360) - 180) < 1, 'Disaster City from Bermuda at its bearing on the land');
     const WW = G('HQ_WORLD_WEENIES'), kinds = new Set();
     for (const id of Object.keys(WW)) for (const w of WW[id]) { kinds.add(w.kind); assert.ok(G('hqWorldBearing')(id, w.toward, w.from), id + ' → ' + w.toward + ' on one ground (or from its place on the land)'); }
-    assert.deepEqual([...kinds].sort(), ['mountain', 'tower'], 'the kinds still hung (G6: the gate stands on the land itself)');
+    assert.deepEqual([...kinds].sort(), ['tower'], 'the kinds still hung (G6: the gate stands on the land itself; G7: Olympus too)');
     for (const k of ['mountain', 'tower', 'gate']) assert.match(TR, new RegExp('^        ' + k + ': function \\(U, o, rng\\) \\{', 'm'), 'the renderer builds `' + k + '`');
 });
 
