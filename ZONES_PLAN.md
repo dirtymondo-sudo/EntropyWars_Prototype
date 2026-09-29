@@ -1,6 +1,6 @@
 # THE ZONES — DOOR HQ the hub, separate zones behind its doors, the open world gone
 
-*Plan document, 2026-09-29. Z0 built (see §12). It replaces OPEN_WORLD_PLAN.md and
+*Plan document, 2026-09-29. Z0 + Z1 built (see §12). It replaces OPEN_WORLD_PLAN.md and
 WORLD_GEOGRAPHY_PLAN.md (both move to docs/archive/ in Z0). House rules that stand over every phase:
 no puzzles (secret pathways are fine, puzzle content is not); no sound work; no test files; no invented
 names (plain labels: Zone 3, Room 2, Path A; only the names mondo wrote); every R2 delivery bumps `?v=`.*
