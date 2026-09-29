@@ -58,7 +58,7 @@ test('THE ROOM-BOX AO: one shared hook on _hqMat and _hqPropMatPick, armed per r
     assert.ok(/if \(!opts\.noAo\) m\.onBeforeCompile = _hqAoHook;/.test(fn(TR, '_hqMat')), '_hqMat wears it');
     assert.ok(/lm\.onBeforeCompile = _hqAoHook;/.test(fn(TR, '_hqPropMatPick')), '_hqPropMatPick wears it');
     const arm = fn(TR, '_hqAoArm');
-    assert.ok(arm.includes('if (H.terrain || (H.site && H.site.cave)) k = 0;') && arm.includes("var box = room.kind === 'box' && !S.open;"), 'the field gets no box AO; an open room the floor contact alone');
+    assert.ok(arm.includes('if (H.terrain || H.land || (H.site && H.site.cave)) k = 0;') && arm.includes("var box = room.kind === 'box' && !S.open;"), 'the field gets no box AO; an open room the floor contact alone');
     const bt = fn(TR, '_hqBuildTerrain');
     assert.ok(bt.includes("geo.setAttribute('aAO', new THREE.BufferAttribute(ao, 1));") && fn(TR, '_hqTerrainAoAt').includes('var lap = (hL + hR + hU + hD - 4 * h) / res;'), 'the field bakes its concavity');
     assert.ok(fn(TR, '_hqBuildOuterGround').includes("geo.setAttribute('aAO', new THREE.BufferAttribute(aoO, 1));"), 'the outer ground shares the material: the attribute must exist (a missing one reads 0 = black)');
@@ -288,7 +288,7 @@ test('THE RIPPLES (5.3, a vm run): a walker wading leaves a ring every beat that
     c._hq.player.moving = true; c._hq.player.velX = 1.4;
     for (let i = 0; i < 30; i++) vm.runInContext('_hqTickRipples(' + dt + ')', c);
     assert.equal(c.added.length, made, 'a new ring came out of the pool, no new mesh');
-    assert.ok(fn(TR, '_hqSwimStart').includes('_hqRippleSplash(pl.x, sea.y, pl.z)'), 'a plunge is a splash');
+    assert.ok(/_hqRippleSplash\(pl\.x, \w+, pl\.z\)/.test(fn(TR, '_hqSwimStart')), 'a plunge is a splash');
     assert.ok(fn(TR, '_hqFrame').includes('_hqTickRipples(dt);'), 'the frame ticks them');
 });
 

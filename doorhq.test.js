@@ -451,7 +451,7 @@ test('box-room doors hang on a named wall with a panel that fits, one action eac
             ids.add(d.id);
             /* a FREE-STANDING seam (HQ plan 9.3 `way`, 2026-09-15): the well in the cellar's floor — x / z inside the room, a heading */
             if (d.wall === 'free') {
-                if (!d.way && !room.land) problems.push(k + ': door ' + d.id + ' stands free but is no way');   // G2: THE LAND's door stands on the building's own face
+                if (!d.way && !room.land && !d.entry) problems.push(k + ': door ' + d.id + ' stands free but is no way');   // G2: THE LAND's door stands on the building's own face; an island site's bay door stands on its beach / deck (open world Phase 7)
                 if (!(Math.abs(d.x || 0) + 1.0 < S.w / 2 && Math.abs(d.z || 0) + 1.0 < S.d / 2) || !Number.isFinite(d.face)) problems.push(k + ': free seam ' + d.id + ' stands in a wall or faces nowhere');
             } else if (!WALLS.includes(d.wall)) { problems.push(k + ': door ' + d.id + ' names no wall'); continue; }
             const a = d.wall === 'free' ? { v: 0, half: 99 } : alongOf(S, d.wall, d);

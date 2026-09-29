@@ -68,7 +68,7 @@ test('the renderer: a replaced room door builds a trail post (no plate, no recor
  const G = { children: [], add(o) { this.children.push(o); } };
  class Obj { constructor() { this.children = []; this.position = { set: (x, y, z) => Object.assign(this.position, { x, y, z }) }; this.rotation = { set() {} }; } add(o) { this.children.push(o); } traverse(f) { f(this); this.children.forEach(c => c.traverse ? c.traverse(f) : f(c)); } }
  class Mesh extends Obj { constructor() { super(); this.isMesh = true; } }
- const c = { _hq: { doorGroup: G }, _hqUnits: () => 1, _hqMat: () => ({}), document: { createElement: () => ({ style: {} }) },
+ const c = { _hq: { doorGroup: G }, _hqUnits: () => 1, _hqMat: () => ({}), _hqPlateHtml: (d) => '<b>' + d.label + '</b>', document: { createElement: () => ({ style: {} }) },
   _hqBoxWall: () => ({ wx: 0, wz: -10, nx: 0, nz: 1, yaw: 0 }),
   THREE: { Group: Obj, Mesh, BoxGeometry: class {}, ConeGeometry: class {}, CSS2DObject: Obj } };
  vm.createContext(c); vm.runInContext(post, c);

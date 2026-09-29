@@ -24244,7 +24244,7 @@ const ThreeRenderer = (function () {
     /* the readout's line: MEM <misc + rigs> / <budget> MB */
     function _mmLine() {
         var R = _mmLast; if (!R) return '';
-        var land = (_hq && _hq.landZ && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
+        var land = (typeof _hq !== 'undefined' && _hq && _hq.landZ && typeof hqLandStats === 'function') ? hqLandStats() : null;   // G2: the land's tiles + its 8 m world
         return ' · MEM ' + Math.round(R.misc.mb + R.rigs.mb) + '/' + R.budget + ' MB' + (land ? ' · LAND ' + land.mb + ' MB ' + land.tiles + '/' + land.cap + ' tiles ' + _hq.landZ.n + ' chunks' + (_hq.landZ.flora ? ' · TREES ' + _hq.landZ.flora.stats.trees + ' + ' + _hq.landZ.flora.stats.cards + ' cards' : '') : '');
     }
 
