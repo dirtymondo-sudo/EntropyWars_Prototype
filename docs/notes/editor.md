@@ -246,3 +246,48 @@ joined with the DOOR tool. Not built: the stacked levels on the map, mask grids 
 rooms and two hallways (27 wall pieces), switched it to TREES (299 trees): no new errors (the sandbox's `THREE.Scene is not a
 constructor` at index.html load is old).
 
+
+## E6 — roofs, the grab, sizes; the sky and the light (2026-09-29, token 20260929-editor-07-cors)
+
+R2 files: editor.js, data.js, three-renderer.js. Repo: index.html (token), docs.
+
+**mondo's asks first** ("a button that lets me hide the roof", "click on an object and move it and rotate it, R 45°", "different sized
+trees, resize objects already placed"):
+- **HIDE ROOFS** (top bar, C; `ED.roof = { off, h }`, localStorage `ew_editor_roof`): `roofHide` hides every `_ew_hqPart === 'ceil'`
+  mesh in the shell / prop groups (the box shell's ceiling and a staged room's roof slab), and `bandClip` cuts at
+  min(the level band's top, `roofCutY()` = ground at the spawn + h). The drum / ring / mezzanine shells don't tag their ceilings,
+  so the cut is what opens them. Re-applied once a second (late models) and after every rebuild; off for PLAY HERE and close.
+- **THE GRAB** (`grabStart` / `grabMove` / `grabEnd`): a left press on a visible thing (or on an already-picked shape) and a drag
+  > 4 px drives the gizmo's pivot over `rayGround` (the SNAP), through the gizmo's own `dragStart` / `dragMove` / `dragEnd`, so it
+  is one undo step and a prop moves live without a rebuild.
+- **Keys:** R / SHIFT R = `turnSel(±45)` (props turn live, no rebuild), T = the gizmo SIZE, - / = (SHIFT: ×1.25) = `sizeSel`.
+  W and E still switch the gizmo to MOVE / TURN.
+- **Sizes** (`sizeOf`, `sizeRow`, `sizeSel`): a prop's `h` (or `span` when the catalogue sizes it by span, read from the catalogue
+  when the row has none: the gizmo's SIZE used to drop the row's h), a tree's `h` + `r`, a grove's `h`, any other shape through
+  `rowTransform` scaling about its anchor. People, doors, signs, openings, prefabs and kits keep their size. A tree row's `h` is in
+  TERRAIN TILES (1.75 m; `_nrTree` also varies each tree 0.85-1.3 ×) — SIZE shows metres (`treeTile()`).
+- **Placing:** the placed row is selected (the tile stays armed). TREES tab `sizeStrip`: TREE SIZE (`ED.opts.treeSize` m, 0 = the
+  game's) + VARY (±20 %); MODELS: `ED.opts.propX`.
+- **Engine:** `_hqPlaceProps` scales the prop's blocker (`rad`, `top`, `rect`) by h / catalogue h; `hqTerrainCompile` keeps a
+  tree row's `face`, and the terrain's `plantTree` turns it by `face` (the seeded spin is still drawn, so the other trees keep theirs).
+
+**THE SKY tab** (editor.js THE SKY AND THE LIGHT, `skyHtml` / `skyWire`; left palette SKY; his rooms only). Keys the runtime
+reads (surveyed 2026-09-29): `shell.sky` = night (0/1), day, clouds, stars, nebula, tint, tintAmt, fog { color, density per m,
+amount, top, band }, scenery (none, cosmic, divine, infernal, ruins, pyramids, crystals, orbs, eyes, islands, city, space, dark, sea,
+wreckage, wonder, holosim), density, doors, landmarks [{ kind, deg, dist, y, s }] (mountain, tower, gate, dome, peak, castle,
+skycastle, stairway, waterspout, whale, eye), lock; `shell.look` = a HQ_ROOM_LOOKS OBJECT (the select stores a copy); `shell.rig`
+{ az, el, color, intensity }; `shell.mood` { light, ambient }; `shell.atmos` ({ kind } / false / absent); `shell.fog` (closed
+rooms); `shell.lights` [{ x, z }] (+ LAMP tool). A sky needs `shell.open`. `sky.world/rim/wall/sea` are NOT room keys (battle
+maps' `env`). Edits: `shellPut(top, after)` = one step on `shell.<top>`; the live sliders (`SKY_LIVE`: day, clouds, stars, nebula,
+tintAmt, fog amount/top/band/density) write the live room on `input` (`skyLive`, the scene fog for density) and commit without a
+rebuild on `change`; the rest rebuild.
+- **The clock:** data.js `hqRoomClock` — a room with `sky.clock === true` is clocked (zone 'own', north up, `sky.lock` pins it).
+  PREVIEW overrides `window._hqClockHour` and calls `ThreeRenderer.hq.clockSnap()` (restored by THE GAME'S HOUR, PLAY HERE, close).
+- **Region weather:** a land region's inspector (E4 MARKS → SELECT a region) takes `weather { sight, fog }`; `hqLandEdIndex`
+  writes it on land.json's region; `hqLandDiscIndex` files it (`HQ_LAND_DISC.weather`); `hqLandWeatherAt(x, z)` → { fog per m }
+  (sight → 1.7 / sight); three-renderer `_hqLandWeatherTick` (after the discovery tick) eases the dry fog's density to it and back.
+
+**Quick check:** a scratch Playwright run (stand-in textures) placed a prop and a tree, R R = (face 90, h × 1.1), sized and turned the
+tree, grabbed a prop 2.5 m to the east (one undo step), HIDE ROOFS on the library's main hall (the drum opened from above), made
+the room outdoor, set clouds, scenery, clock, a landmark, a look, a key light and a lamp, previewed 20:00: no new errors (the
+sandbox's `THREE.Scene is not a constructor` at index.html load is old).

@@ -42324,19 +42324,20 @@ const ThreeRenderer = (function () {
             try { TK = _nrKit(G, { ts: TM, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
         }
-        var plantTree = function (kind, h, px, pz, py) {
+        var plantTree = function (kind, h, px, pz, py, face) {
             if (!TK) return null;
             var tg = null;
             try { tg = _nrTree(TK, kind, { h: h }); } catch (e) { tg = null; }
             if (!tg) return null;
-            tg.position.set(px * U, py + 0.3, pz * U); tg.rotation.y = rng() * Math.PI * 2; tg._ew_hqTree = true;
+            var spin = rng() * Math.PI * 2;   // drawn either way, so the seeded turns of the trees after it never shift
+            tg.position.set(px * U, py + 0.3, pz * U); tg.rotation.y = (face != null && isFinite(face)) ? -face * Math.PI / 180 : spin; tg._ew_hqTree = true;
             if (tg.parent !== G) G.add(tg);
             return tg;
         };
         var treeOne = function (t) {
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
             var h = t.h || (tall ? 5.0 + rng() * 1.2 : dead ? 2.3 : 2.6 + rng() * 0.6);
-            plantTree(t.kind, h, t.x, t.z, t.y * U);
+            plantTree(t.kind, h, t.x, t.z, t.y * U, t.face);
             var blk = new THREE.Object3D(); blk.position.set(t.x * U, t.y * U, t.z * U); G.add(blk);
             _hq.blockers.push({ obj: blk, y: t.y, top: null, rad: t.r || 0.38, tree: true });
         };
@@ -48103,6 +48104,7 @@ const ThreeRenderer = (function () {
             if (flip) y = (cat.ceil || p.ceil) ? (y0 + (cat.h || 0.1)) : (y0 + ceilY - mount - (p.y || 0));
             var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
+            var fs = fitSpan ? ((p.span && cat.span) ? p.span / cat.span : 1) : ((p.h && cat.h) ? p.h / cat.h : 1);   // THE EDITOR (E6): a resized prop's blocker grows / shrinks with it
             if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
             grp.userData.ewRow = p;   // THE EDITOR (EDITOR_PLAN E0): the row this prop was placed from (selection, the live drag)
@@ -48151,7 +48153,7 @@ const ThreeRenderer = (function () {
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
-                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y });   // `rect` (2026-09-14): a rectangular footprint in room axes
+                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y });   // `rect` (2026-09-14): a rectangular footprint in room axes
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
             }
@@ -48164,7 +48166,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0 + (p.y || 0), top: y + (cat.h || 1), rect: (p.rect === false) ? undefined : (cat.rect || undefined), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
@@ -53229,6 +53231,19 @@ const ThreeRenderer = (function () {
         if (L.flora) { try { _hqLandFloraTick(L, H, now); } catch (e2) { if (!L.floraWarned) { L.floraWarned = true; console.warn('[HQ land] the trees and the grass', e2); } } }   // G4: THE TREES AND THE GRASS
         if (L.roads) { try { _hqRoadsTick(L, H); } catch (e3) { if (!L.roadsWarned) { L.roadsWarned = true; console.warn('[HQ land] the roads', e3); } } }   // G5: THE ROADS
         if (L.disc) { try { _hqDiscTick(L, H, dt); } catch (e4) { if (!L.discWarned) { L.discWarned = true; console.warn('[HQ land] the discovery', e4); } } }   // G9: THE DISCOVERY
+        try { _hqLandWeatherTick(L, H, dt); } catch (e5) { if (!L.wxWarned) { L.wxWarned = true; console.warn('[HQ land] the region weather', e5); } }   // E6: THE REGION WEATHER
+    }
+    /* THE REGION WEATHER (EDITOR_PLAN E6): inside a region with `weather`, the (dry) fog eases to its density; out of it, back to the
+       sky's own. Only the density: the clock keeps the fog's colour */
+    function _hqLandWeatherTick(L, H, dt) {
+        if (typeof hqLandWeatherAt !== 'function' || !L.v) return;
+        var fog = _hqDryFog(H); if (!fog || fog.density == null) return;
+        var X = L.wx; if (!X || X.fog !== fog) X = L.wx = { fog: fog, base: fog.density, cur: fog.density, on: false };
+        var w = hqLandWeatherAt(L.v.px, L.v.pz), want = w ? w.fog / _hqUnits() : X.base;
+        if (!w && !X.on) { X.base = fog.density; X.cur = fog.density; return; }   // at rest: follow whatever else sets the sky's fog
+        X.cur += (want - X.cur) * (1 - Math.exp(-(dt || 0.016) * 1.2));
+        fog.density = X.cur; X.on = true;
+        if (!w && Math.abs(X.cur - X.base) < X.base * 0.01 + 1e-9) { fog.density = X.base; X.on = false; }
     }
     function _hqLandDropChunk(L, key) {
         var c = L.chunks[key]; if (!c) return;
