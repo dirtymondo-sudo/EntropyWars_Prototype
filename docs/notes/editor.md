@@ -141,3 +141,63 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
 - **Quick check:** a scratch Playwright script (not in the repo) opened the editor, raised the ground (hmap 19 × 18, +0.78 m at
   the centre), painted dirt twice (live the second time), added a float platform + a pool, turned on all three audits and
   the band, and floated the room: no shader or editor errors.
+
+## E4 — the land and the world map (2026-09-29, token 20260929-editor-05-cors)
+
+R2 files: editor.js, data.js, three-renderer.js, styles-editor.css. Repo: index.html (token), deploy.js (`--world` now uploads
+`.bin` and `.png` with their types), docs.
+
+**Where it lives.** data.js THE LAND IN THE EDITOR block (just before THE SHAPES): `HQ_LAND_EDIT_RULES`, `hqLandEd*`.
+editor.js THE LAND section (just before OPEN / CLOSE): `landOpen`, `landEnsure`, strokes (`landStrokeStart` / `landDab` /
+`landStrokeEnd`), `landFinish` (the lines), `landPlaceAt` / `landPlaceSet`, `landCommit` / `landAfter` (undo), the MAP
+(`mapDraw0`, `mapBind`), `landExport`, `landImportFiles` / `landImportR2`. three-renderer.js `hq.landEdited(list, o)` and the
+`HQ_LAND_STORE.src` branch of `_hqLandStream`.
+
+**How the land is held.** The lattice is the runtime's own tile records (256 m tiles, 129² samples at 2 m, the bake's
+`EWLT` fields: h, mat, forest, water). Only tiles he touched are kept (`E.grid`); every other sample comes from the START
+function (`hqLandEdStartH` / `M`): a flat disc at 1 m, grass, the ice wall at r 2600 (a 14 m face up to 92 m, ice). A COAST
+changes the start itself (an 8 m signed-distance field `E.cD`: beach 10 m, down to −14 m over 60 m); tiles he already
+shaped take the difference, so his relief rides on the new coast.
+
+**The runtime reads it from memory.** `hqLandEdInstall` swaps `HQ_LAND.baked` to `{ id: 'ed_…' (one per land), noHQ, own, edit }` (the
+old one is kept and put back by `hqLandEdUninstall` when he leaves the land), lists every tile as baked and sets
+`HQ_LAND_STORE.src`; `_hqLandStream` then files tiles from the editor (six a frame) instead of fetching. Gates on those
+flags: no HQ drum (`hqLandHQSolid`, `_hqLandBuildHQ`, the flora's keep-off), no recipe forests or zones in the flora mix, no
+lone trees or boulders on his grass / meadow / farm (the FOREST brush plants trees on any ground that takes them),
+`hqLandSites()` is empty while editing. `hq.landEdited(list, o)` marks the chunks, water sheets and trees over those tiles
+to rebuild; `o.far` rebuilds the far pass, `o.roads` the roads, `o.falls` the falls. The wrapper room is `__ed_land`
+(the land room's shell, no doors). Brushes update the 3D view every 150 ms while held and the far pass on release.
+
+**The tools** (left panel in land mode; MAP / 3D, TAB or M switches): SELECT; BRUSHES (raise, lower, smooth, flatten,
+terrace, set, cliff, roughen; radius 4–400 m, strength, hard edge); PAINT (the 24 materials, forest density, water level,
+dry, clear); LINES (ridge, valley, plateau, river, route, lane, trail, coast, lake: click points, ENTER ends, BACKSPACE takes
+one back, a double click on the map ends too); MARKS (place, region, reveal, sight). Routes are graded to the type's limit
+(two passes after a 40 m smoothing), flat across; a fill over 4 m becomes a bridge deck (the ground is left), over 2 m gets
+rails both sides. Rivers run monotone downhill, never under the sea, carve a bed and set the water; the falls come from the
+runtime's own rule. Lakes are rows of capsules for the far pass (every 24 m). Labels are plain (Route N, Lane N, Trail N,
+River N, Lake N, Area N, Reveal N); a place takes its room's label.
+
+**Places.** PLACE picks one of his rooms (each room once) and levels a square pad (half-side = half the room's larger side,
++3 m margin, eased back over 24 m) at the ground there. The inspector moves it (a new pad is levelled; the old one stays),
+re-levels it, sets float (no pad), quarter turns and kind. The status line warns (never blocks) when pads overlap, a room is
+gone or a pad crosses the ice wall. His rooms are NOT staged on the land in the game until E8: the export writes the land
+zone into world.json `land.zone` and `hqWorldDocApply` applies `land` only when the world is `live`.
+
+**Undo.** A stroke or a stamp is one step: the doc's vector patches (`doc.landEd`) + `step.land` = each touched tile before
+and after (typed arrays). Steps are trimmed past 256 MB of snapshots (`undoMB`). A coast step recomputes the field from
+`doc.landEd.coasts` on undo.
+
+**Saving.** The vectors are in the project doc (`doc.landEd`); the lattice in IndexedDB v3 store `land`, one record a tile
+(`<project>|<tile index>`), written 1.5 s after a change.
+
+**Export** (FILE → EXPORT, with the rooms): `Assets/World/land/` = land.json (the runtime overlay: places, roads, bridges,
+rivers, lakes as capsules, regions + regionGrid 32 m, revealPts, map, tiles, tileFormat, bake, and `edit` = his vectors),
+land-map.png (the bake's shading, 4 m a pixel, 1400²), sea.bin (8 m), and the tiles whose sha changed (every tile he shaped
+plus the start's non-plain tiles: the wall ring and the coast band). The bake id is the bake's rule: sha256 of land.json
+(without the id) + the png, first 10 hex. world.json gains `land: { id, dir, ext, live, tiles, places, zone }`. The folder is
+Assets/World/land/, NOT Assets/Land/ (the old bake the live game still reads). IMPORT (zip or R2) reads land.json's `edit`
+block and the tiles; a delta zip keeps this project's tiles for the ones it lacks.
+
+**Differs from the plan.** No full 2801² array in memory (tiles on demand). bake-land.js is untouched (its `gradeLine` did not
+move; the editor grades roads with `hqLandEdGrade`). No junctions or signs are written for his roads yet; no ICE tool (paint
+`ice` / `pack`). The map is the editor's own canvas, not map.js's ATLAS. Checked by a quick load in the sandbox only.

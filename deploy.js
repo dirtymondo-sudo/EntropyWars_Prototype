@@ -139,7 +139,7 @@ function walkWorld(dir, rel, out) {
         if (n.startsWith('.')) continue;
         const p = path.join(dir, n), r = rel ? rel + '/' + n : n;
         if (fs.statSync(p).isDirectory()) walkWorld(p, r, out);
-        else if (/\.json$/i.test(n)) out.push({ p, r });
+        else if (/\.(json|bin|png)$/i.test(n)) out.push({ p, r });   // E4: the land's tiles, sea.bin and map (Assets/World/land/)
     }
     return out;
 }
@@ -159,7 +159,7 @@ function deployWorld(dir, bucket, dryRun) {
         let bad = 0;
         for (const f of list) {
             const r = spawnSync('npx', ['wrangler', 'r2', 'object', 'put', `${bucket}/Assets/World/${f.r}`, '--file', f.p,
-                '--content-type', 'application/json', '--remote', '--cache-control', CACHE_CONTROL],
+                '--content-type', /\.bin$/i.test(f.r) ? 'application/octet-stream' : /\.png$/i.test(f.r) ? 'image/png' : 'application/json', '--remote', '--cache-control', CACHE_CONTROL],
                 { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
             if (r.status === 0) console.log('✓ Assets/World/' + f.r);
             else { bad++; console.error('✗ Assets/World/' + f.r + ':\n' + (r.stderr || r.stdout || '').trim().split('\n').slice(-3).join('\n')); }

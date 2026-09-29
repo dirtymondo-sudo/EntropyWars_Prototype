@@ -1917,4 +1917,12 @@
         .ed-tile:hover { border-color: rgba(111,211,255,0.6); }
         .ed-tile.on { border-color: #ffd84a; background: rgba(255,216,74,0.14); }
         .ed-status .ed-warn { color: #ffb05a; }
+        /* E4: THE LAND — the map over the 3D view, the material swatches, the warnings */
+        .ed-map { position: absolute; left: 262px; right: 300px; top: 36px; bottom: 24px; width: calc(100% - 562px); height: calc(100% - 60px); background: #0c1a2a; cursor: crosshair; }
+        .ed-lmats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 4px 0; }
+        .ed-lmat { display: flex; align-items: center; gap: 5px; font: inherit; font-size: 11px; color: #dfe6ee; background: rgba(255,255,255,0.03); border: 1px solid transparent; border-radius: 3px; padding: 2px 4px; cursor: pointer; text-align: left; }
+        .ed-lmat.on { border-color: #ffd84a; }
+        .ed-lmat i { width: 12px; height: 12px; border-radius: 2px; flex: none; }
+        .ed-note.ed-warn { color: #ffb05a; }
+        .ed-row.ed-land { color: #57f287; }
         .ed-warnt { color: #ffb05a; }

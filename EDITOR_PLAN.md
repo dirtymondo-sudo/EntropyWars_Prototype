@@ -665,6 +665,7 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
 | The editor (E0) | editor.js (`EWEditorCore` = the pure core: zip, command stack, `rowTransform`, `rowShape`, `KINDS`; `EWEditor` = the tool); data.js THE WORLD FILE block after `hqBuildHealZones()` (`HQ_WORLD_DOC_RULES`, `hqWorldDoc*`, `HQ_WORLD_DOC_STATE`); map.js `_goToEditor` / `_hqEditEnter` / `_hqEditLeave` / `_edBootParam` (after `_hqExitToMenu`), pause `edit`; three-renderer.js `_hqEditing`, `hq.edit` / `editView` / `surface`, `terrain.outer.flat`; deploy.js `--world`; tests world-doc.test.js, probe playtest_editor.js |
 | The editor (E2) | data.js THE PALETTE (E2) block after `hqPrefabFromRows` (`HQ_TREE_KINDS`, `HQ_CATALOGUE_MISC`, `HQ_CATALOGUE_WEAPONS`, `HQ_PALETTE_RULES`, `hqPalette`, `hqPaletteRow`, `hqDoorPair`, `hqWorldDocDoorCheck`, `hqDoorPartners`); editor.js `PAL_TABS` / `palette` / `palPick` / `palDrop`, `doorClick` / `doorModal` / `doorWrite`, `paintAt`, `markerObj`, `TH` thumbnails; three-renderer.js `hq.propPreview` / `hq.treePreview`, `editView().chars`, the cast spot in `_hqSpawnPopulation`; probe `node playtest_editor.js e2` |
 | The editor (E3) | data.js THE GROUND GRIDS before `hqTerrainCompile` (`HQ_GROUND_RULES`, `hqGridDecode` / `hqGridHeightAt` / `hqGridPaintAt` / `hqGridEncode`), THE AUDITS before `hqTerrainNodeKey` (`hqTerrainWallAudit`, `hqTerrainPockets`), `hqWorldFrame().float`; three-renderer.js `_hqTerrainMat` paint layers, `_hqPaintAttrs`, `_hqFieldFloats` / `_hqBuildUnderside`, `editView()` groups; editor.js THE GROUND (`strokeStart` / `strokeDab` / `meshLive` / `strokeEnd`, `poolAt`, `streamOf`, `sheetAdd`), THE LEVEL BAND (`bandClip`), THE AUDITS (`auditRun`, `fightShow`) |
+| The editor (E4) | data.js THE LAND IN THE EDITOR block before THE SHAPES (`HQ_LAND_EDIT_RULES`, `hqLandEd*`, `HQ_LAND_MAP_COL`), gates on `HQ_LAND.baked.noHQ / own / edit` (`hqLandHQSolid`, `hqLandSites`, `hqLandFloraMix`, the flora's nearHQ), `hqWorldDocApply` `land` (live only); three-renderer.js `hq.landEdited`, the `HQ_LAND_STORE.src` branch of `_hqLandStream`; editor.js THE LAND section before OPEN / CLOSE; deploy.js `walkWorld` (.bin, .png) |
 | three.js | r128 from cdnjs; examples from jsdelivr (index.html 264–293); `TransformControls` at `three@0.128.0/examples/js/controls/TransformControls.js` |
 
 ---
@@ -733,3 +734,13 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   outliner filtered to it, everything above it cut away) and the AUDITS (invisible walls, pockets, the fight window at the
   cursor). Differs from §5.4: the paint is blended in the field's own material (not the land's splat hook); CLIFF is a hard
   raise; the audits' rules moved into data.js because their test files were deleted. Details: docs/notes/editor.md "E3".
+- 2026-09-29: **E4 BUILT** (zip editor/ENTROPY_WARS_EDITOR_E4.zip, token 20260929-editor-05-cors, delta on E3: editor.js, data.js,
+  three-renderer.js, styles-editor.css). THE LAND in the outliner (and VIEW): his land, flat and empty, as a MAP (the bake's
+  shaded relief + his lines, places and regions; wheel zoom, right-drag pan) or in 3D (the renderer streams it from memory).
+  BRUSHES (raise, lower, smooth, flatten, terrace, set, cliff, roughen), PAINT (24 materials, forest, water, dry, clear),
+  LINES (ridge, valley, plateau, river, route, lane, trail, coast, lake), MARKS (place a room on a levelled pad, region,
+  reveal, sight). One undo step per stroke or stamp; the lattice saves in IndexedDB. EXPORT adds Assets/World/land/ (tiles
+  that changed, sea.bin, land.json, land-map.png, the bake id) and world.json `land`; IMPORT reads it back. Differs from
+  §4.5 / §5.6: files go to Assets/World/land/ (not Assets/Land/, which the live game still reads); tiles are held on demand,
+  not one 2801² array; bake-land.js is untouched (the editor grades roads itself); his rooms stand on the land in the game
+  only once the world is live (E8). Details: docs/notes/editor.md "E4".

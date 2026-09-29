@@ -53068,7 +53068,7 @@ const ThreeRenderer = (function () {
         L.group.name = 'hq_land'; H.scene.add(L.group); _hqLandView(H, L);
         /* the near camera reaches past the building's 274 m (the chunks run to 400 m; the far pass beyond) */
         if (H.camera && R.camFar) { H.camera.far = R.camFar * U; H.camera.updateProjectionMatrix(); }
-        try { _hqLandBuildHQ(L); } catch (e) { console.warn('[HQ land] the building failed', e); }
+        if (!(HQ_LAND.baked && HQ_LAND.baked.noHQ)) { try { _hqLandBuildHQ(L); } catch (e) { console.warn('[HQ land] the building failed', e); } }   // E4: his land has no drum
         try { _hqLandBuildSea(L); } catch (e) { console.warn('[HQ land] the sea failed', e); }
         /* the index + the world (a second visit reads them from HQ_LAND_STORE at once) */
         var St = HQ_LAND_STORE;
@@ -53097,6 +53097,21 @@ const ThreeRenderer = (function () {
     function _hqLandStream(L, x, z, force) {
         var R = _hqLandR(), T = R.tiles, now = performance.now();
         if (!L.idx || !L.world) return;
+        var Src = HQ_LAND_STORE.src;
+        if (Src) {   // E4: the editor's land — its tiles come from memory (a few a frame), nothing is fetched
+            if (!force && now - L.lastWantAt < 100) return;
+            L.lastWantAt = now;
+            hqLandTouch(x, z, T.reach);
+            var wantE = hqLandWant(x, z, T.reach);
+            for (var ie = 0; ie < wantE.length && ie < 6; ie++) {
+                var recE = Src.tile(wantE[ie].ti, wantE[ie].tj); if (!recE) continue;
+                var goneE = hqLandPut(recE);
+                for (var ge = 0; ge < goneE.length; ge++) { _hqLandWaterDrop(L, goneE[ge][0] + '_' + goneE[ge][1]); if (L.flora) _hqFloraDropTile(L, goneE[ge][0] + '_' + goneE[ge][1]); }
+                _hqLandTileLanded(L, recE.ti, recE.tj);
+            }
+            if (wantE.length > 6) L.lastWantAt = 0;
+            return;
+        }
         if (!force && now - L.lastWantAt < 250) return;
         L.lastWantAt = now;
         hqLandTouch(x, z, T.reach);
@@ -60987,6 +61002,38 @@ const ThreeRenderer = (function () {
            built room — the scene, the eye, the units, the canvas, the placed props / doors with their rows, the floor under a
            spot (metres). Nothing here runs in the player's game. */
         edit: function (hook) { if (!_hq) return false; _hq.opts.edit = hook || null; _hq.keys = {}; _hq.drag = null; if (hook && !hook.play) { try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} } else { _hq.cam.init = false; _hqTryLock(); } return true; },
+        /* E4 (EDITOR_PLAN §5.6): the editor changed these tiles of its land (indices tj * per + ti): each is filed again from the
+           source, every chunk, water sheet and tree over it is drawn again. o.far: the far pass (the world at 8 m) too; o.roads: the
+           roads' pieces and decks; o.falls: the falls */
+        landEdited: function (list, o) {
+            var H = _hq, St = HQ_LAND_STORE, L = H && (H.landZ || H.land); o = o || {};
+            if (!St.grid || !St.src) return false;
+            var boxes = [];
+            (list || []).forEach(function (idx) {
+                var ti = idx % St.per, tj = Math.floor(idx / St.per), key = ti + '_' + tj;
+                if (St.grid[idx]) { var rec = St.src.tile(ti, tj); if (rec && rec !== St.grid[idx]) hqLandPut(rec); var t = St.grid[idx]; if (t) { delete t.flora; delete t.floraJob; } }
+                if (!L) return;
+                if (L.flora) _hqFloraDropTile(L, key);
+                var x0 = -St.ext + ti * St.tile, z0 = -St.ext + tj * St.tile; boxes.push([x0 - 16, z0 - 16, x0 + St.tile + 16, z0 + St.tile + 16]);
+                if (L.waterQ && !L.waterQ.some(function (w) { return w[0] === ti && w[1] === tj; })) L.waterQ.push([ti, tj]);
+            });
+            if (!L) return true;
+            for (var k in L.chunks) { var c = L.chunks[k]; for (var b = 0; b < boxes.length; b++) { var B = boxes[b]; if (c.x0 < B[2] && c.x0 + c.size > B[0] && c.z0 < B[3] && c.z0 + c.size > B[1]) { c.stale = true; break; } } }
+            L.lastX = 1e9; L.pending = true;
+            if (L.wdepth && !L.wdepth.dead) L.wdepth.dirtyAt = performance.now() - 2000;
+            if (o.far && L.far) {
+                L.far.meshes.forEach(function (m) { L.group.remove(m); try { m.geometry.dispose(); } catch (e) {} });
+                _hqLandCache.farKey = ''; _hqLandWaterCache.farKey = ''; if (typeof _hqFloraCache !== 'undefined') _hqFloraCache.farKey = '';
+                L.far = null; if (L.flora) L.flora.far = null; L.wdepth = null;
+                try { _hqLandBuildFar(L); } catch (e) { console.warn('[HQ land] the far pass failed', e); }
+            }
+            if (o.roads) { try { _hqRoadsDisarm(L); _hqRoadsArm(L); } catch (e) { L.roads = null; console.warn('[HQ land] the roads failed', e); } }
+            if (o.falls) {
+                (L.falls || []).forEach(function (F) { [F.curtain, F.pool, F.mist].forEach(function (m) { if (m) { L.group.remove(m); try { m.geometry.dispose(); } catch (e) {} } }); });
+                L.falls = []; try { _hqLandBuildFalls(L); } catch (e) { console.warn('[HQ land] the falls failed', e); }
+            }
+            return true;
+        },
         editView: function () {
             var H = _hq; if (!H) return null;
             return { scene: H.scene, camera: H.camera, units: _hqUnits(), canvas: canvas, room: H.room, roomId: H.opts.room, ready: !!H.ready, info: H.terrain || null,
