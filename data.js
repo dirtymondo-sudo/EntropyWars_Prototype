@@ -39963,6 +39963,10 @@ function hqRoomClock(roomId) {
     const R = (DOOR_HQ.rooms || {})[roomId], S = R && R.shell;
     if (!S || !S.open || !S.sky) return null;
     if (R.land) return { zone: 'land', rot: 0, locked: false, hour: null, dayLook: (HQ_WORLD_CLOCK.dayLook || {}).land || null };   // G2: the land runs on the one clock
+    if (S.sky.clock === true) {   // THE EDITOR (E6): an outdoor room of his on the world clock (the SKY tab's WORLD CLOCK), north up
+        const own = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : null;
+        return { zone: 'own', rot: 0, locked: own != null, hour: own != null ? hqClockNorm(own) : null, dayLook: S.sky.dayLook || null };
+    }
     const F = (typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null;
     if (!F || F.interior) return null;
     const Z = HQ_WORLD.zones[F.zone];
@@ -41624,7 +41628,7 @@ function hqLandIndex(ov) {
    A region's ground is shown by a place of it that is not a peak or a lookout (those are seen from afar by design, R2: Mt Olympus
    from HQ) nor in discovery.quiet; a region with nothing else (Area 2 is Mt Olympus's) clears when you walk into it. A peak's NAME
    still appears on the map when you first see it. */
-const HQ_LAND_DISC = { id: '', grid: null, reveals: [], stops: [], places: null, sight: null, qual: null };
+const HQ_LAND_DISC = { id: '', grid: null, reveals: [], stops: [], places: null, sight: null, qual: null, weather: {} };
 function hqLandDiscIndex(ov) {
     const Q = HQ_LAND_DISC, id = String((ov && ov.bake && ov.bake.id) || '');
     if (!ov) return Q;
@@ -41633,6 +41637,7 @@ function hqLandDiscIndex(ov) {
     Q.id = id; Q.reveals = ov.revealPts || []; Q.stops = ov.stops || []; Q.sight = ov.sight || {};
     const g = ov.regionGrid; Q.grid = g ? { n: g.n, cell: g.cell, x0: g.x0, z0: g.z0, ids: g.ids, s: (g.rows || []).join('') } : null;
     Q.places = {}; (ov.places || []).forEach(p => { Q.places[p.id] = p; });
+    Q.weather = {}; (ov.regions || []).forEach(r => { if (r && r.id && r.weather) Q.weather[r.id] = r.weather; });   // E6: region weather
     Q.qual = hqLandRegionShowers(ov.places || []);
     /* the trees keep off what is dressed (data.js _hqFloraJob reads these with the pads) */
     HQ_LAND_STORE.disc = Q.stops.map(s => [s.at[0], s.at[1], (K[s.kind] || {}).r || 4])
@@ -41654,6 +41659,14 @@ function hqLandRegionAt(x, z) {
     if (i < 0 || j < 0 || i >= g.n || j >= g.n) return null;
     const k = g.s.charCodeAt(j * g.n + i) - 97;
     return (k >= 0 && k < g.ids.length) ? g.ids[k] : null;
+}
+/* THE REGION WEATHER (EDITOR_PLAN E6, §6 #17): a region of his land may carry `weather: { fog, sight }` — fog = the fog density per
+   metre while the walker is inside it, sight = how far he sees (m; the fog is set so the view is gone there). null = the sky's own */
+function hqLandWeatherAt(x, z) {
+    const id = hqLandRegionAt(x, z), w = id ? HQ_LAND_DISC.weather[id] : null;
+    if (!w) return null;
+    const fog = +w.fog > 0 ? +w.fog : (+w.sight > 0 ? 1.7 / +w.sight : 0);
+    return fog > 0 ? { fog, sight: +w.sight || null } : null;
 }
 function hqLandStopKind(ground, region, k) {
     const D = HQ_LAND_RULES.discovery, own = ['urban', 'sand', 'forest', 'snow', 'tundra'];
@@ -44657,7 +44670,7 @@ function hqLandEdIndex(E, V, opts) {
     const size = hqLandEdMapSize(E);
     return {
         v: 1, materials: R.mats.slice(), places, roads, bridges, junctions: [], rivers, lakes,
-        regions: regions.map(r => ({ id: r.id, label: r.label, pts: r.pts })), regionNames: Object.fromEntries(regions.map(r => [r.id, r.label])),
+        regions: regions.map(r => Object.assign({ id: r.id, label: r.label, pts: r.pts }, (r.weather && (+r.weather.fog > 0 || +r.weather.sight > 0)) ? { weather: { fog: +r.weather.fog || 0, sight: +r.weather.sight || 0 } } : {})), regionNames: Object.fromEntries(regions.map(r => [r.id, r.label])),
         revealPts, stops: [], sight: {}, regionGrid,
         map: { file: 'land-map.png', px: R.map, size, x0: -E.ext, z0: -E.ext },
         tiles: opts.tiles || hqLandEdListed(E),
@@ -47296,7 +47309,7 @@ function hqTerrainCompile(room, roomId) {
             case 'wall': walls.push(f); break;
             case 'rail': rails.push(f); break;
             case 'path': paths.push(f); break;
-            case 'tree': trees.push({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR }); break;
+            case 'tree': trees.push({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }); break;   // face (E6): the editor's R turns a tree
             case 'grove': case 'scatter': scatterRows.push(f); break;
             case 'climb': climbRows.push(f); break;
             default: break;

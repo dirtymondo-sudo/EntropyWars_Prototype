@@ -760,3 +760,22 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   be re-done with tree walls. Differs from §5.7: no `terrain.mask` grids, CARVE / FILL / FLOOR / CEILING brushes or TUNNEL (the
   layout pieces replace them); caves are the ROCK look; levels are not drawn stacked on the map yet; mouths are E4's place kind
   `dungeon`. Details: docs/notes/editor.md "E5".
+- 2026-09-29: **E6 BUILT** (zip editor/ENTROPY_WARS_EDITOR_E6.zip, token 20260929-editor-07-cors, delta on E5: editor.js, data.js,
+  three-renderer.js). First mondo's asks from the thread that opened it: HIDE ROOFS (top bar, key C): every shell ceiling / roof
+  (`_ew_hqPart 'ceil'`) is hidden and everything over the floor + N m (default 3, the number beside the button) is cut away in the
+  view, so a built-in room with a ceiling or a dome can be seen into (the view only). THE GRAB: press on a thing and drag it over
+  the ground (a shape's box only once it is picked); R turns the pick 45° (SHIFT R back); - / = size it (SHIFT a bigger step);
+  T is the gizmo's SIZE (R was); the inspector has SIZE AND TURN (metres tall, ×½ − + ×2, ⟲ ⟳ 45°). A placed thing is picked at
+  once while its tile stays armed. TREES tab: TREE SIZE (GAME, 3, 5, 8, 12, 18 m) + VARY; MODELS: SIZE ×0.5 to ×3. A prop sizes
+  by its `h` (or `span`), its blocker follows (three-renderer `_hqPlaceProps`); a tree by `h` (in 1.75 m tiles; SIZE shows metres)
+  and `r`, and a tree row's `face` now turns it. THE SKY (§5.9): a SKY tab on his rooms — outdoor / indoor, take a sky from any
+  built-in room, day, night, clouds, stars, nebula, tint, fog (colour, density, horizon haze), scenery (the 15 rosters, cosmic,
+  none), how many, floating doors, landmarks (the 11 kinds; bearing, distance, height, size), the WORLD CLOCK (`sky.clock: true`,
+  new in data.js `hqRoomClock`: his outdoor room follows the game's hour) with a pinned hour and a PREVIEW scrubber (the view
+  only; the saved hour is untouched), the LOOK (the 48 HQ_ROOM_LOOKS rows, stored whole in `shell.look`), the key light
+  (`shell.rig`), lamp colour and brightness (`shell.mood`), the air (`shell.atmos`), the indoor fog (`shell.fog`) and LAMPS
+  (`shell.lights`: + LAMP, click). Live sliders move the view as they are dragged, one undo step on release. REGION WEATHER
+  (§6 #17): a land region's inspector takes sight (m) and fog (per m); land.json carries `weather` on the region and
+  `_hqLandWeatherTick` eases the fog density in while the walker is inside it. Differs from §5.9: `world` / `rim` / `wall` / `sea`
+  are not offered (the room runtime never reads them; they are the battle maps' `env`); the zone `clock` is not edited (his rooms
+  are in no zone until E8; `sky.clock` stands in). Checked by a quick load only. Details: docs/notes/editor.md "E6".

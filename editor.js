@@ -127,7 +127,7 @@
             });
             PT_LISTS.forEach(function (k) { if (Array.isArray(r[k])) r[k] = r[k].map(function (q) { return Array.isArray(q) ? mv(+q[0] || 0, +q[1] || 0).concat(q.slice(2)) : q; }); });
             DIRS.forEach(function (k) { if (Array.isArray(r[k]) && rot) { var x = +r[k][0] || 0, z = +r[k][1] || 0; r[k] = [R4(x * c - z * s), R4(x * s + z * c)]; } });
-            if (rot && !t.axis) YAWS.forEach(function (k) { if (isFinite(r[k]) || (k === 'face' && (r.k === 'climb' || r.key || r.wall === 'free')) || (k === 'yaw' && (r.k === 'prefab' || r.k === 'kit')) || (k === 'rot' && (r.k === 'texbuilding' || r.k === 'space'))) { var v = ((+r[k] || 0) + t.rot) % 360; if (v < 0) v += 360; r[k] = R4(v); } });
+            if (rot && !t.axis) YAWS.forEach(function (k) { if (isFinite(r[k]) || (k === 'face' && (r.k === 'climb' || r.k === 'tree' || r.key || r.wall === 'free')) || (k === 'yaw' && (r.k === 'prefab' || r.k === 'kit')) || (k === 'rot' && (r.k === 'texbuilding' || r.k === 'space'))) { var v = ((+r[k] || 0) + t.rot) % 360; if (v < 0) v += 360; r[k] = R4(v); } });
             if (rot && !t.axis && r.arc && typeof r.arc === 'object') { var ac = mv(+r.arc.x || 0, +r.arc.z || 0); r.arc.x = ac[0]; r.arc.z = ac[1]; r.arc.a0 = R4((+r.arc.a0 || 0) + t.rot); r.arc.a1 = R4((+r.arc.a1 || 0) + t.rot); }
             else if (!t.axis && r.arc && typeof r.arc === 'object' && (t.dx || t.dz)) { r.arc.x = R4((+r.arc.x || 0) + (t.dx || 0)); r.arc.z = R4((+r.arc.z || 0) + (t.dz || 0)); }
             if (t.dy) YS.forEach(function (k) { if (isFinite(r[k])) r[k] = R4(+r[k] + t.dy); });
@@ -189,7 +189,7 @@
             else if (k === 'pool') out.push(rectBox(x, z, 2 * num(row.r, 3), 2 * num(row.rz, num(row.r, 3)), row.rot, num(row.y, g0) - num(row.depth, 0.8), num(row.y, g0) + 0.15));
             else if (k === 'spiral') out.push(rectBox(x, z, 2 * num(row.r1, 4), 2 * num(row.r1, 4), 0, Math.min(num(row.h0, 0), num(row.h1, 0)) - 0.1, Math.max(num(row.h0, 0), num(row.h1, 0)) + 0.2));
             else if (k === 'grove' || k === 'scatter') out.push(rectBox(x, z, 2 * num(row.r, 5), 2 * num(row.r, 5), 0, g0 - 0.05, g0 + 0.25));
-            else if (k === 'tree') out.push(rectBox(x, z, 1.4, 1.4, 0, g0, g0 + num(row.h, 6)));
+            else if (k === 'tree') { var th = num(row.h, row.kind === 'tree_4' ? 5.6 : 2.9) * 1.75; out.push(rectBox(x, z, Math.max(1.2, th * 0.3), Math.max(1.2, th * 0.3), 0, g0, g0 + th)); }
             else if (k === 'climb') out.push(rectBox(x, z, num(row.w, 0.8), 0.8, row.face, num(row.y0, g0), isFinite(row.y1) ? row.y1 : g0 + 3));
             else out.push(rectBox(x, z, 1, 1, 0, g0, g0 + 1));
             return out;
@@ -268,10 +268,14 @@
                 /* E3: the ground brushes, the paint, the water */
                 brushR: 4, brushS: 0.5, brushFall: 'smooth', terraceH: 1, cliffH: 3, setH: 0, paintKey: '', paintErase: false, waterKey: 'water', waterDepth: 0.8, streamW: 2.4,
                 /* E5: the layout */
-                planLook: 'walls', hallW: 2.6 },
+                planLook: 'walls', hallW: 2.6,
+                /* E6: the size a placed tree / model takes (treeSize m tall, 0 = the game's own; treeVary = ±20 %; propX = × the catalogue) */
+                treeSize: 0, treeVary: true, propX: 1 },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
         audit: { walls: false, pockets: false, fight: false }, auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
+        /* E6: THE ROOFS (C): off = the ceilings and roofs hidden and everything `h` m over the floor cut away, so he sees in */
+        roof: { off: false, h: 3 }, roofHidden: [], grab: null,
     };
     var PF_ROOM = '__ed_prefab';   // the room the editor lays a prefab out in while it is edited (never saved, never exported)
     var U = function () { return (ED.view && ED.view.units) || (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.units) || 73; };
@@ -485,7 +489,7 @@
         ED.hook.play = false;
         clearTimeout(ED.reloadTimer); ED.reloadTimer = null;
         ED.stroke = null; ED.auditRes = {};
-        var ok = W._hqEditEnter({ room: id, edit: ED.hook, onReady: function () { ED.ready = true; rebuildProxies(); bandClip(); auditSoon(); status(); }, onEscape: null });
+        var ok = W._hqEditEnter({ room: id, edit: ED.hook, onReady: function () { ED.ready = true; rebuildProxies(); ED.roofHidden = []; roofHide(); bandClip(); auditSoon(); status(); }, onEscape: null });
         if (!ok) { toast('THE ROOM DID NOT BUILD · ' + id, 5000); return false; }
         if (!ED.rmb) lookLock(false);   // THE POINTER: a lock the walk carried back from PLAY HERE goes
         overlayBuild();
@@ -673,6 +677,10 @@
             if (h.list === 'doors' && h.row.wall && h.row.wall !== 'free') { t.axis = (h.row.wall === 'n' || h.row.wall === 's') ? 'x' : 'z'; t.rot = 0; t.dy = 0; }
             if (h.list === 'spawn') { spawn = Core.rowTransform(h.row, t); return; }
             var after = Core.rowTransform(h.row, t);
+            if (sized && (h.list === 'props' || (h.list === 'terrain.features' && (h.row.k === 'tree' || h.row.k === 'grove')))) {   // E6: a prop / a tree sizes by its height (the catalogue's when it has none)
+                var fz = [d.sx, d.sy, d.sz].reduce(function (m, v) { return Math.abs(v - 1) > Math.abs(m - 1) ? v : m; }, 1);
+                after = sizeRow(h, fz) || after;
+            }
             if (h.row.k === 'opening') {   // a door gap / window slides along its wall (clamped to it)
                 var wl = findRow('terrain.features', h.row.wall), ww = wl && wl.row;
                 if (ww) { var L = Math.hypot(ww.x1 - ww.x0, ww.z1 - ww.z0) || 1, hw = (+after.w || 1.2) / 2; after.at = Core.snap(Math.max(hw, Math.min(L - hw, (+h.row.at || 0) + (d.dx * (ww.x1 - ww.x0) + d.dz * (ww.z1 - ww.z0)) / L)), 0.05); }
@@ -717,7 +725,7 @@
         else if (ED.mouse.in && now - ED.cursorAt > 90) { ED.cursorAt = now; ED.cursor = rayGround(ED.mouse.x, ED.mouse.y); }
         ringUpdate();
         if (ED.audit.fight && now - ED.fightAt > 200) { ED.fightAt = now; fightShow(); }
-        if (ED.band.on && now - (ED.bandAt || 0) > 1000) { ED.bandAt = now; bandClip(false); }   // the models that load late are cut too
+        if ((ED.band.on || ED.roof.off) && now - (ED.bandAt || 0) > 1000) { ED.bandAt = now; bandClip(false); roofHide(); }   // the models that load late are cut too (E6: and the roofs)
         if (now - ED.statusAt > 250) status();
     }
     var _ray = null;
@@ -804,6 +812,7 @@
         lroom:    { label: 'ROOM', how: 'rect', tab: 'layout', tip: 'Drag a rectangle: a room (in a forest, a clearing). Everything you have not drawn is solid.' },
         lround:   { label: 'ROUND ROOM', how: 'rect', tab: 'layout', tip: 'Drag a rectangle: a round room or clearing that fills it.' },
         lhall:    { label: 'HALLWAY', how: 'course', tab: 'layout', tip: 'Click along it, from room to room; ENTER ends it (ESC drops it, BACKSPACE takes a point back). In a forest it is a dirt path.' },
+        lamp:     { label: '+ LAMP', how: 'click', tab: 'sky', tip: 'Click where a lamp goes: a lamp mast outdoors (lit at night), a ceiling fluorescent indoors. The SKY tab lists them.' },   // E6
         stream:   { label: 'STREAM', how: 'course', tab: 'ground', tip: 'Click along its course; ENTER ends it (ESC drops it): a stream, its level just under the lowest ground along it.' },
     };
     function drawSet(tool) {
@@ -889,6 +898,7 @@
         if (how === 'click') {   // a shape from the ADD list, dropped where clicked
             var c = rayGround(e.clientX, e.clientY); if (!c) return;
             if (D.entry) { palDrop(D, c); return; }   // E2: a palette tile
+            if (D.tool === 'lamp') { lampAt(c); return; }   // E6: the tool stays armed for more
             var row = D.row ? Core.clone(D.row) : Core.kindRow(D.tool, c.x, c.z);
             if (D.row) { row.x = Core.snap(c.x, Math.max(0.25, ED.snap || 0)); row.z = Core.snap(c.z, Math.max(0.25, ED.snap || 0)); }
             drawSet(null); if (row) addRow(D.list || 'terrain.features', row, D.label);
@@ -1193,9 +1203,9 @@
     /* full = drop what it cut and cut again (a new band, a rebuilt room); else only the materials that arrived since (a model loading) */
     function bandClip(full) {
         if (full !== false) bandClipOff();
-        var V = ED.view; if (!V || !ED.band.on || ED.playing) return;
+        var V = ED.view; if (!V || !(ED.band.on || ED.roof.off) || ED.playing) return;
         if (!ED.clipPlane) ED.clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
-        ED.clipPlane.constant = ED.band.y1 * U() + 0.3;
+        ED.clipPlane.constant = Math.min(ED.band.on ? ED.band.y1 * U() + 0.3 : Infinity, ED.roof.off ? roofCutY() * U() : Infinity);   // E6: the roofs' cut too
         if (V.renderer) V.renderer.localClippingEnabled = true;
         var seen = ED.clipSet || (ED.clipSet = new Set());
         [V.shellGroup, V.propGroup, V.doorGroup, V.charGroup].forEach(function (G) {
@@ -1324,11 +1334,17 @@
         if (mod) return;
         if (['w', 'a', 's', 'd', 'q', 'e', 'up', 'down', 'left', 'right', 'pgup', 'pgdn'].indexOf(k) >= 0) {
             ED.keys[k] = true;
-            if (!ED.rmb && KEYMAP[key] == null && ['w', 'e', 'r'].indexOf(k) >= 0) { tcMode(k === 'w' ? 'translate' : k === 'e' ? 'rotate' : 'scale'); }
+            if (!ED.rmb && KEYMAP[key] == null && ['w', 'e'].indexOf(k) >= 0) { tcMode(k === 'w' ? 'translate' : 'rotate'); }
             if (KEYMAP[key]) e.preventDefault();
             return;
         }
-        if (k === 'r') { tcMode('scale'); return; }
+        /* E6 (mondo, 2026-09-29: "click on an object and be able to move it and rotate it. Like R to rotate 45 degrees at a time"):
+           R turns the pick 45° clockwise, SHIFT R back; - / = size it (SHIFT: a bigger step); T is the gizmo's SIZE; C hides the roofs */
+        if (k === 'r') { turnSel(e.shiftKey ? -45 : 45); return; }
+        if (k === 't') { tcMode('scale'); return; }
+        if (k === '-' || k === '_') { sizeSel(1 / (k === '_' ? 1.25 : 1.1)); return; }
+        if (k === '=' || k === '+') { sizeSel(k === '+' ? 1.25 : 1.1); return; }
+        if (k === 'c') { roofSet({ off: !ED.roof.off }); return; }
         if (k === 'escape') { select(null); return; }
         if (k === 'v') { drawSet(null); return; }
         if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); return; }
@@ -1345,7 +1361,7 @@
         var key = (e.key || '').toLowerCase(), k = KEYMAP[key] || key;
         ED.keys[k] = false; ED.keys.shift = e.shiftKey; ED.keys.ctrl = e.ctrlKey || e.metaKey;
     }
-    function onBlur() { ED.keys = {}; ED.rmb = false; ED.mmb = false; ED.orbit = null; lookLock(false); if (ED.stroke) strokeEnd(); }
+    function onBlur() { if (ED.grab) grabEnd(); ED.keys = {}; ED.rmb = false; ED.mmb = false; ED.orbit = null; lookLock(false); if (ED.stroke) strokeEnd(); }
     /* THE POINTER (E1, 2026-09-29 — mondo: "clicking in the entry fields takes control of my pointer and I have to press escape"):
        the editor holds the pointer ONLY while the RIGHT button is held over the 3D view (the fly look), and gives it back on the
        release. Any other lock that lands while the editor is open (a late request from a room re-entering, the walk's lock carried
@@ -1372,8 +1388,28 @@
             if (LAND_TOOLS[landTool()].how === 'brush') { if (landStrokeStart(rayGround(e.clientX, e.clientY), e.shiftKey)) e.preventDefault(); return; }
             _down = { x: e.clientX, y: e.clientY, land: true }; return;
         }
-        if (e.button === 0) { _down = { x: e.clientX, y: e.clientY, tc: !!(ED.tc && ED.tc.axis) }; if (ED.draw) { e.preventDefault(); drawDown(e); } }
+        if (e.button === 0) {
+            _down = { x: e.clientX, y: e.clientY, tc: !!(ED.tc && ED.tc.axis) }; if (ED.draw) { e.preventDefault(); drawDown(e); return; }
+            /* E6: THE GRAB — press on a thing and drag it: it follows the cursor over the ground (the grid snap). A thing you can see
+               (a prop, a door, a person's post, the spawn) grabs at once; a shape's box only when it is already picked */
+            if (!_down.tc && editable() && ED.pivot) { var gh = pickAt(e.clientX, e.clientY); if (gh && (gh.list !== 'terrain.features' || isSel(gh.list, gh.id))) _down.grab = gh; }
+        }
     }
+    function grabStart(d, e) {
+        var gh = d.grab; d.grab = null;
+        if (!isSel(gh.list, gh.id)) select(gh.list, gh.id, e.shiftKey);
+        if (!ED.sel.length || !ED.pivot || !ED.tc || !ED.tc.object) return;
+        var g0 = rayGround(d.x, d.y); if (!g0) return;
+        dragStart(); ED.grab = { g0: g0, p0: ED.pivot.position.clone() }; ED.tcDragging = true;
+    }
+    function grabMove(e) {
+        var G = ED.grab, g = rayGround(e.clientX, e.clientY); if (!G || !g) return;
+        var u = U(), sn = ED.snap > 0 ? ED.snap : 0, dx = g.x - G.g0.x, dz = g.z - G.g0.z;
+        if (sn) { dx = Core.snap(dx, sn); dz = Core.snap(dz, sn); }
+        ED.pivot.position.set(G.p0.x + dx * u, G.p0.y, G.p0.z + dz * u); ED.pivot.updateMatrixWorld(true);
+        dragMove();
+    }
+    function grabEnd() { if (!ED.grab) return; ED.grab = null; var t = ED.tool; ED.tool = 'translate'; dragEnd(); ED.tool = t; ED.tcDragging = false; }
     function onMouseMove(e) {
         if (!ED.open || ED.playing) return;
         var locked = !!(ED.view && document.pointerLockElement === ED.view.canvas);
@@ -1381,6 +1417,8 @@
         if (locked) { if (ED.rmb) { var c0 = ED.cam; c0.yaw += dx * 0.0042; c0.pitch = Math.max(-1.55, Math.min(1.55, c0.pitch - dy * 0.0042)); } return; }
         ED.last.x = e.clientX; ED.last.y = e.clientY;
         ED.mouse.x = e.clientX; ED.mouse.y = e.clientY; ED.mouse.in = !!(ED.view && e.target === ED.view.canvas);
+        if (_down && _down.grab && Math.hypot(e.clientX - _down.x, e.clientY - _down.y) > 4) grabStart(_down, e);   // E6: the grab
+        if (ED.grab) { grabMove(e); return; }
         var c = ED.cam;
         if (ED.rmb) { c.yaw += dx * 0.0042; c.pitch = Math.max(-1.55, Math.min(1.55, c.pitch - dy * 0.0042)); return; }
         if (ED.mmb) { var sp = Math.max(0.02, Math.abs(c.y) * 0.0025 + 0.02); c.x -= (Math.cos(c.yaw) * dx) * sp; c.z -= (Math.sin(c.yaw) * dx) * sp; c.y += dy * sp; return; }
@@ -1402,6 +1440,7 @@
         if (e.button === 1) ED.mmb = false;
         if (e.button === 0) {
             ED.orbit = null;
+            if (ED.grab) { _down = null; grabEnd(); return; }   // E6: the grab lands (one undo step)
             if (ED.stroke && !(ED.view && e.target === ED.view.canvas)) { _down = null; strokeEnd(e); return; }   // E3: a stroke let go off the view still ends
             var d = _down; _down = null;
             if (ED.mode === 'land' && ED.land) {
@@ -1433,22 +1472,77 @@
         document[f]('pointerlockchange', onLockChange);
     }
     function turnSel(deg) {
-        var hits = ED.sel.map(selRow).filter(Boolean); if (!hits.length || !editable()) return;
-        var a = Core.rowAnchor(hits[0].row), step = [];
+        var hits = ED.sel.map(selRow).filter(Boolean); if (!editable()) return;
+        if (!hits.length) { toast('CLICK A THING FIRST, THEN R TURNS IT', 1600); return; }
+        var a = Core.rowAnchor(hits[0].row), step = [], live = true;
         hits.forEach(function (h) {
             if (h.list === 'doors' && h.row.wall && h.row.wall !== 'free') return;
             var after = Core.rowTransform(h.row, { rot: deg, px: a.x, pz: a.z });
+            if (h.list !== 'props') live = false;
             if (h.list === 'spawn') step.push({ path: ['rooms', ED.roomId, 'spawn'], before: Core.clone(room().spawn), after: after });
             else step.push({ path: rowPath(h.list, h.i), before: Core.clone(h.row), after: after });
         });
-        commit(step, 'turn ' + deg + '°');
+        if (!step.length) { toast('A DOOR IN A WALL TURNS WITH ITS WALL', 1600); return; }
+        /* E6: props turn in place at once (no rebuild of the room): the same turn the gizmo's live drag makes */
+        if (live) {
+            var u = U(), c = Math.cos(-deg * Math.PI / 180), s = Math.sin(-deg * Math.PI / 180);
+            ED.sel.forEach(function (sl) { var o = objFor(sl); if (!o) { live = false; return; } var rx = o.position.x - a.x * u, rz = o.position.z - a.z * u; o.position.x = a.x * u + rx * c + rz * s; o.position.z = a.z * u - rx * s + rz * c; o.rotation.y -= deg * Math.PI / 180; });
+        }
+        commit(step, 'turn ' + deg + '°', { noReload: live });
+        if (live) { rebuildProxies(); gizmoAttach(); }
+        toast('TURN ' + (deg > 0 ? '+' : '') + deg + '°', 700);
+    }
+    /* E6: SIZE (- / =, the inspector's SIZE): a prop by its height (or its span, when the catalogue sizes it by span), a tree by
+       its height (its trunk's blocker follows), a grove by its trees' height, a shape by scaling it about its middle. People,
+       doors, signs and the spawn keep their size. → the row at f × its size, or null */
+    /* a tree row's `h` is in the terrain's TILES (1.75 m; the renderer's _nrTree also varies each tree 0.85-1.3 ×): SIZE shows metres */
+    function treeTile() { return (W.HQ_TERRAIN_RULES && +W.HQ_TERRAIN_RULES.tile) || 1.75; }
+    function treeDefH(row) { var dead = false; try { dead = W.hqTreeDead ? W.hqTreeDead(row.kind || 'tree') : false; } catch (e) {} return row.kind === 'tree_4' ? 5.6 : dead ? 2.3 : 2.9; }
+    function sizeOf(h) {   // the size shown: { v (m), what }
+        var row = h.row;
+        if (h.list === 'props') { var cat = DOOR_HQ.catalogue[row.key] || {}, sp = row.span != null || (cat.span != null && cat.h == null); return sp ? { v: +(row.span || cat.span || 1), what: 'wide' } : { v: +(row.h || cat.h || 1), what: 'tall' }; }
+        if (h.list === 'terrain.features' && (row.k === 'tree' || row.k === 'grove')) return { v: +(row.h || treeDefH(row)) * treeTile(), what: 'tall (about)' };
+        return null;
+    }
+    function sizeRow(h, f) {
+        var row = h.row, a = Core.clone(row), R2 = function (v) { return Math.round(v * 100) / 100; }, cl = function (v, lo, hi) { return Math.max(lo, Math.min(hi, v)); };
+        if (h.list === 'props') { var z = sizeOf(h); if (z.what === 'wide') a.span = R2(cl(z.v * f, 0.05, 200)); else a.h = R2(cl(z.v * f, 0.05, 200)); return a; }
+        if (h.list !== 'terrain.features' || row.k === 'opening' || row.k === 'prefab' || row.k === 'kit') return null;
+        if (row.k === 'tree' || row.k === 'grove') { a.h = R2(cl((+row.h || treeDefH(row)) * f, 0.3, 40)); if (row.k === 'tree') a.r = R2(cl((+row.r || 0.38) * f, 0.12, 4)); return a; }
+        var an = Core.rowAnchor(row); return Core.rowTransform(row, { sx: f, sy: f, sz: f, px: an.x, pz: an.z });
+    }
+    function sizeSel(f, label) {
+        var hits = ED.sel.map(selRow).filter(Boolean); if (!editable()) return;
+        if (!hits.length) { toast('CLICK A THING FIRST, THEN - / = SIZE IT', 1600); return; }
+        var pairs = [];
+        hits.forEach(function (h) { if (h.list === 'spawn') return; var after = sizeRow(h, f); if (after) pairs.push({ list: h.list, i: h.i, before: Core.clone(h.row), after: after }); });
+        if (!pairs.length) { toast('THAT KEEPS ITS SIZE (people, doors, signs, openings; a prefab: edit the prefab)', 2400); return; }
+        replaceRows(pairs, label || ('size ×' + f.toFixed(2)));
+        var z = hits.length === 1 ? sizeOf(Object.assign({}, hits[0], { row: pairs[0].after })) : null;
+        toast(z ? 'SIZE ' + z.v.toFixed(2) + ' m ' + z.what : 'SIZE ×' + f.toFixed(2), 900);
+    }
+    /* E6: THE ROOFS (C, the top bar's ROOFS): every ceiling / roof the shells tag (`_ew_hqPart === 'ceil'`) is hidden, and a cut at
+       the floor + h m (the spawn's floor) takes off whatever else roofs the room: a dome, a cave's rock, a hall's ceiling, the upper
+       walls. The view only: nothing in the room changes. Kept per browser (localStorage `ew_editor_roof`). */
+    function roofCutY() { var r = room(), sp = (r && r.spawn) || { x: 0, z: 0 }, g = ground(+sp.x || 0, +sp.z || 0); return (isFinite(g) ? g : 0) + (+ED.roof.h || 3); }
+    function roofShow() { ED.roofHidden.forEach(function (o) { o.visible = true; }); ED.roofHidden = []; }
+    function roofHide() {
+        var V = ED.view; if (!V || !ED.roof.off || ED.playing) return;
+        [V.shellGroup, V.propGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o._ew_hqPart === 'ceil' && o.visible) { o.visible = false; ED.roofHidden.push(o); } }); });
+    }
+    function roofSet(o) {
+        Object.assign(ED.roof, o || {});
+        ED.roof.h = Math.max(0.5, Math.min(60, +ED.roof.h || 3));
+        try { localStorage.setItem('ew_editor_roof', JSON.stringify(ED.roof)); } catch (e) {}
+        roofShow(); roofHide(); bandClip(true); panels();
+        toast(ED.roof.off ? 'ROOFS HIDDEN · cut at ' + ED.roof.h + ' m over the floor (C shows them)' : 'ROOFS SHOWN', 1400);
     }
 
     /* ══ PLAY HERE: the walker at the cursor, the game's own entry (every system live); ESC comes back ══════════════════ */
     function playHere() {
         if (!ED.roomId) return;
         var p = spot(), face = Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360);
-        if (ED.stroke) strokeEnd(); bandClipOff();
+        if (ED.stroke) strokeEnd(); bandClipOff(); roofShow(); if (ED.clockH != null) clockPreview(null);
         if (ED.land && ED.land.stroke) landStrokeEnd();
         if (ED.mode === 'land') { var cv0 = $('edMap'); if (cv0) cv0.style.display = 'none'; landSaveNow(); }
         ED.playing = true; ED.hook.play = true;
@@ -2078,7 +2172,179 @@
        DOORS (the leaves and the ways: the door tool, both ends at once), LIGHTS, MARKERS (the spawn, a sign, a roster spot, an
        online spot), TEXTURES (paint a sheet onto a face) and KITS (the game's builders and his prefabs). A tile arms the tool:
        click on the ground to place (again and again; ESC or V stops). Thumbnails are live renders cached in IndexedDB ═══════ */
-    var PAL_TABS = [['build', 'BUILD'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS']];
+    /* ══ THE SKY AND THE LIGHT (E6, EDITOR_PLAN §5.9): the SKY tab edits the open room's `shell` keys the runtime reads — the sky
+       (`shell.sky`: day, night, clouds, stars, nebula, tint, fog, scenery, landmarks, lock, and `clock` = on the world clock), the post
+       look (`shell.look` = a HQ_ROOM_LOOKS row, stored whole), the key light (`shell.rig`), the lamps (`shell.lights`, masts outdoors,
+       fluorescents indoors), `shell.mood`, the indoor fog (`shell.fog`) and the air (`shell.atmos`). A sky needs an OUTDOOR room
+       (`shell.open`). The sliders marked live move the view as they are dragged (the dome reads them every frame) and land as ONE undo
+       step on the release; everything else rebuilds the room. The CLOCK previews an hour in a room on the world clock (the view only:
+       the player's saved hour is not touched). ══════════════════════════════════════════════════════════════════════════════ */
+    var SKY_SCENERY = ['none', 'cosmic', 'divine', 'infernal', 'ruins', 'pyramids', 'crystals', 'orbs', 'eyes', 'islands', 'city', 'space', 'dark', 'sea', 'wreckage', 'wonder', 'holosim'];
+    var SKY_MARKS = ['mountain', 'tower', 'gate', 'dome', 'peak', 'castle', 'skycastle', 'stairway', 'waterspout', 'whale', 'eye'];
+    var SKY_ATMOS = ['dust', 'embers', 'fireflies', 'snow', 'rain', 'spores', 'ash', 'motes'];
+    var SKY_LIVE = { 'sky.day': 1, 'sky.clouds': 1, 'sky.stars': 1, 'sky.nebula': 1, 'sky.tintAmt': 1, 'sky.fog.amount': 1, 'sky.fog.top': 1, 'sky.fog.band': 1, 'sky.fog.density': 1 };
+    var SKY_DEFAULT = { night: 0, day: 1, clouds: 0.3, stars: 0.3, nebula: 0.2, tint: 0x9fc4e8, tintAmt: 0.3, fog: { color: 0xb4c6d8, amount: 0.45, top: 0.04, band: 0.5, density: 0.004 }, scenery: 'none', density: 0 };
+    var RIG_DEFAULT = { az: 300, el: 58, color: 0xfff1dc, intensity: 0.34 };
+    function hexCss(v, d) { var n = isFinite(v) ? +v : d; return '#' + ('000000' + (n >>> 0).toString(16)).slice(-6); }
+    function skyGet(S, path) { var o = S; for (var i = 0; i < path.length; i++) { if (o == null) return undefined; o = o[path[i]]; } return o; }
+    function skySetIn(o, path, v) { for (var i = 0; i < path.length - 1; i++) { if (o[path[i]] == null || typeof o[path[i]] !== 'object') o[path[i]] = {}; o = o[path[i]]; } if (v === undefined) delete o[path[path.length - 1]]; else o[path[path.length - 1]] = v; }
+    /* one shell key (its top: sky, rig, mood, fog, look, atmos, lights, open) before → after = ONE undo step */
+    function shellPut(top, after, label, live) {
+        var S = room() && room().shell; if (!S || !editable()) return;
+        var before = (ED._skB && ED._skB.top === top) ? ED._skB.v : (S[top] === undefined ? undefined : Core.clone(S[top]));
+        ED._skB = null;
+        commit([{ path: basePath().concat(['shell', top]), before: before, after: after }], label, { noReload: !!live });
+    }
+    function skyCommit(key, v, live) {
+        var S = room() && room().shell; if (!S) return;
+        var path = key.split('.'), top = path[0];
+        if (path.length === 1) { shellPut(top, v, key, live); return; }
+        var cur = (ED._skB && ED._skB.top === top) ? ED._skB.v : S[top], after = (cur && typeof cur === 'object') ? Core.clone(cur) : {};
+        skySetIn(after, path.slice(1), v);
+        shellPut(top, after, key, live);
+    }
+    /* a live slider: the value goes straight onto the room the view draws (and its fog), the undo step lands on the release */
+    function skyLive(key, v) {
+        var r = room(), S = r && r.shell; if (!S) return;
+        var path = key.split('.'), top = path[0];
+        if (!ED._skB || ED._skB.top !== top) ED._skB = { top: top, v: S[top] === undefined ? undefined : Core.clone(S[top]) };
+        if (S[top] == null || typeof S[top] !== 'object') S[top] = {};
+        skySetIn(S[top], path.slice(1), v);
+        var V = ED.view; if (V && V.room && V.room.shell && V.room.shell !== S) { if (!V.room.shell[top] || typeof V.room.shell[top] !== 'object') V.room.shell[top] = {}; skySetIn(V.room.shell[top], path.slice(1), v); }
+        if (key === 'sky.fog.density' && V && V.scene && V.scene.fog && V.scene.fog.density != null) V.scene.fog.density = Math.max(0.00001, v) / U();
+    }
+    function lookKeyOf(S) {
+        var L = W.HQ_ROOM_LOOKS || (typeof HQ_ROOM_LOOKS !== 'undefined' ? HQ_ROOM_LOOKS : {}), lk = S && S.look;
+        if (!lk || typeof lk !== 'object') return '';
+        for (var k in L) if (L[k] === lk || (L[k] && lk.name && L[k].name === lk.name)) return k;
+        return '?';
+    }
+    function skyPresets() {
+        var out = [];
+        Object.keys(DOOR_HQ.rooms || {}).forEach(function (id) { var r = DOOR_HQ.rooms[id], S = r && r.shell; if (id.charAt(0) === '_' || !S || !S.open || !S.sky) return; out.push([id, (r.label || id) + (W.hqWorldDocIsOwn && W.hqWorldDocIsOwn(id) ? ' (yours)' : '')]); });
+        out.sort(function (a, b) { return a[1] < b[1] ? -1 : 1; });
+        return out;
+    }
+    function skyHtml() {
+        var r = room(); if (!r) return '';
+        if (ED.mode === 'prefab') return '<div class="ed-note">A prefab has no sky: the room you place it in has.</div>';
+        var S = r.shell || {}, sky = S.sky || null, fg = (sky && sky.fog) || {}, h = '';
+        var rng = function (label, key, min, max, step, val, tip) { var v = isFinite(val) ? +val : min; return '<label class="ed-f" title="' + esc(tip || '') + '"><span>' + esc(label) + (SKY_LIVE[key] ? '' : ' ·') + '</span><input type="range" data-sk="' + key + '" data-t="num" min="' + min + '" max="' + max + '" step="' + step + '" value="' + v + '" style="flex:1;min-width:0"><b class="ed-skv" style="width:44px;text-align:right">' + v + '</b></label>'; };
+        var col = function (label, key, val, d) { return '<label class="ed-f"><span>' + esc(label) + ' ·</span><input type="color" data-sk="' + key + '" data-t="col" value="' + hexCss(val, d) + '"></label>'; };
+        var sel = function (label, key, opts, val) { return '<label class="ed-f"><span>' + esc(label) + ' ·</span><select data-sk="' + key + '" data-t="str">' + opts.map(function (o) { var ov = Array.isArray(o) ? o[0] : o, ol = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(ov) + '"' + (String(ov) === String(val) ? ' selected' : '') + '>' + esc(ol) + '</option>'; }).join('') + '</select></label>'; };
+        var chk = function (label, key, val, tip) { return '<label class="ed-f" title="' + esc(tip || '') + '"><span>' + esc(label) + ' ·</span><input type="checkbox" data-sk="' + key + '" data-t="bool"' + (val ? ' checked' : '') + '></label>'; };
+        h += '<div class="ed-palb"><button class="ed-btn' + (!ED.draw ? ' on' : '') + '" data-draw="" title="Pick and move (V)">SELECT</button><button class="ed-btn' + (ED.draw && ED.draw.tool === 'lamp' ? ' on' : '') + '" data-draw="lamp" title="' + esc(DRAWS.lamp.tip) + '">+ LAMP</button></div>';
+        h += '<div class="ed-note">Sliders without a dot move the view as you drag. The ones with a dot (·) rebuild the room when you let go.</div>';
+        /* OUTDOOR / INDOOR */
+        if (!S.open) {
+            h += '<div class="ed-sub">AN INDOOR ROOM</div><div class="ed-note">It has a ceiling, so it has no sky. Its light is below. MAKE IT OUTDOOR takes the ceiling off and gives it a day sky.</div><div class="ed-acts"><button class="ed-btn" data-ska="outdoor">MAKE IT OUTDOOR</button></div>';
+            h += '<div class="ed-sub">THE ROOM\'S FOG</div><div class="ed-form">' + col('colour', 'fog.color', (S.fog || {}).color, 0x0d0e12) + rng('density', 'fog.density', 0, 0.06, 0.001, (S.fog || {}).density != null ? S.fog.density : 0.012, 'per metre: 0.012 is the default haze, 0.05 is thick') + '</div>';
+        } else {
+            h += '<div class="ed-sub">THE SKY</div>';
+            var pr = skyPresets();
+            h += '<div class="ed-form"><label class="ed-f"><span>take from</span><select data-ska="preset"><option value="">a room\'s sky…</option>' + pr.map(function (p) { return '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>'; }).join('') + '</select></label></div>';
+            if (!sky) h += '<div class="ed-note">No sky yet.</div><div class="ed-acts"><button class="ed-btn" data-ska="daysky">A DAY SKY</button><button class="ed-btn" data-ska="nightsky">A NIGHT SKY</button></div>';
+            else {
+                h += '<div class="ed-form">' +
+                    rng('day', 'sky.day', 0, 1, 0.05, sky.day || 0, 'the blue day dome and the sun (0 = deep space)') +
+                    rng('night', 'sky.night', 0, 1, 1, sky.night ? 1 : 0, 'the night lights: moonlight, lamps on') +
+                    rng('clouds', 'sky.clouds', 0, 1, 0.05, sky.clouds || 0) +
+                    rng('stars', 'sky.stars', 0, 1.5, 0.05, sky.stars != null ? sky.stars : 1) +
+                    rng('nebula', 'sky.nebula', 0, 2, 0.05, sky.nebula != null ? sky.nebula : 1) +
+                    col('tint', 'sky.tint', sky.tint, 0x000000) + rng('tint amount', 'sky.tintAmt', 0, 1, 0.02, sky.tintAmt || 0) +
+                    '</div><div class="ed-sub">THE FOG</div><div class="ed-form">' +
+                    col('colour', 'sky.fog.color', fg.color, 0x0d0e12) +
+                    rng('density', 'sky.fog.density', 0, 0.06, 0.0005, fg.density || 0, 'per metre: 0.0003 is the open land, 0.03 the woods, 0.05 the abyss') +
+                    rng('horizon', 'sky.fog.amount', 0, 1, 0.05, fg.amount || 0, 'the haze on the sky at the horizon') +
+                    rng('haze top', 'sky.fog.top', 0, 1, 0.02, fg.top || 0) + rng('haze band', 'sky.fog.band', 0, 1, 0.05, fg.band != null ? fg.band : 0.5) +
+                    '</div><div class="ed-sub">WHAT FLOATS IN IT</div><div class="ed-form">' +
+                    sel('scenery', 'sky.scenery', SKY_SCENERY, sky.scenery || 'cosmic') +
+                    rng('how many', 'sky.density', 0, 1.5, 0.05, sky.density != null ? sky.density : 1) +
+                    chk('floating doors', 'sky.doors', sky.doors !== false, 'the three lone doors in the sky') + '</div>';
+                /* the landmarks */
+                var lm = sky.landmarks || [];
+                h += '<div class="ed-sub">LANDMARKS ON THE HORIZON</div>';
+                lm.forEach(function (m, i) {
+                    h += '<div class="ed-form ed-skm" data-lmi="' + i + '"><label class="ed-f"><span>' + (i + 1) + '</span><select data-lm="kind">' + SKY_MARKS.map(function (k) { return '<option' + (k === m.kind ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select><button class="ed-btn ed-danger" data-lmdel="' + i + '" title="Take it away">✕</button></label>' +
+                        [['deg', 'bearing °', m.deg || 0, 5], ['dist', 'distance', m.dist != null ? m.dist : 0.9, 0.05], ['y', 'height', m.y != null ? m.y : -0.03, 0.01], ['s', 'size', m.s || 1, 0.1]].map(function (f) { return '<label class="ed-f"><span>' + f[1] + '</span><input type="number" step="' + f[3] + '" data-lm="' + f[0] + '" value="' + f[2] + '"></label>'; }).join('') + '</div>';
+                });
+                h += '<div class="ed-acts"><button class="ed-btn" data-ska="addmark" title="On the horizon where you are looking">+ LANDMARK</button></div>';
+                /* the clock */
+                var C = null; try { C = W.hqRoomClock ? W.hqRoomClock(ED.roomId) : null; } catch (e) {}
+                h += '<div class="ed-sub">THE CLOCK</div><div class="ed-form">' + chk('world clock', 'sky.clock', sky.clock === true || !!r.land, 'The room\'s light follows the game\'s hour: dawn, day, dusk, night') +
+                    sel('pinned hour', 'sky.lock', [['', 'none (the clock runs)'], ['true', 'its own light']].concat(Array.apply(null, Array(24)).map(function (_, k) { return [String(k), k + ':00']; })), sky.lock == null || sky.lock === false ? '' : String(sky.lock)) + '</div>';
+                if (C && !C.locked) h += '<div class="ed-form"><label class="ed-f"><span>preview</span><input type="range" id="edClockH" min="0" max="24" step="0.25" value="' + (ED.clockH != null ? ED.clockH : 12) + '" style="flex:1;min-width:0"><b id="edClockV" style="width:44px;text-align:right">' + (ED.clockH != null ? clockTxt(ED.clockH) : 'live') + '</b></label></div><div class="ed-acts"><button class="ed-btn' + (ED.clockH == null ? ' on' : '') + '" data-ska="clocklive">THE GAME\'S HOUR</button></div><div class="ed-note">Drag PREVIEW to see any hour here (the view only).</div>';
+                else h += '<div class="ed-note">' + (C && C.locked ? 'Pinned: the light stays at its hour (the sun and the moon still move on the dome).' : 'Its own light: the sky stays as set here. Tick WORLD CLOCK to put it on the game\'s hour.') + '</div>';
+            }
+            h += '<div class="ed-acts"><button class="ed-btn" data-ska="indoor" title="A ceiling over it (no sky)">MAKE IT INDOOR</button></div>';
+        }
+        /* the look */
+        var LK = W.HQ_ROOM_LOOKS || {}, lkey = lookKeyOf(S);
+        h += '<div class="ed-sub">THE LOOK (the picture\'s grade)</div><div class="ed-form">' + sel('look', 'look', [['', 'none']].concat(lkey === '?' ? [['?', 'its own']] : []).concat(Object.keys(LK)), lkey) + '</div>';
+        /* the light */
+        var rig = S.rig || null, mood = S.mood || {};
+        h += '<div class="ed-sub">THE LIGHT</div><div class="ed-form">' + chk('own key light', 'rigOn', !!rig, 'The main light\'s direction, colour and strength (else the game\'s)');
+        if (rig) h += rng('from °', 'rig.az', 0, 360, 5, rig.az != null ? rig.az : RIG_DEFAULT.az, 'where it comes from, clockwise from north') + rng('height °', 'rig.el', 5, 89, 1, rig.el != null ? rig.el : RIG_DEFAULT.el) + col('colour', 'rig.color', rig.color, RIG_DEFAULT.color) + rng('strength', 'rig.intensity', 0, 2, 0.02, rig.intensity != null ? rig.intensity : RIG_DEFAULT.intensity);
+        h += col('lamp colour', 'mood.light', mood.light, S.open ? 0xfff0d0 : 0xe6eeff);
+        if (!S.open) h += rng('brightness', 'mood.ambient', 0.5, 2, 0.05, mood.ambient != null ? mood.ambient : 1, 'the whole room lighter or darker');
+        var at = S.atmos === false ? 'none' : (S.atmos && S.atmos.kind) || '';
+        h += sel('in the air', 'atmos', [['', 'the game\'s pick'], ['none', 'nothing']].concat(SKY_ATMOS), at) + '</div>';
+        var lamps = S.lights || [];
+        h += '<div class="ed-note">LAMPS (' + lamps.length + '): ' + (S.open ? 'lamp masts, lit at night' : 'ceiling fluorescents') + '. + LAMP, then click where one goes.</div>';
+        if (lamps.length) h += '<div class="ed-tiles">' + lamps.map(function (L, i) { return '<button class="ed-btn" data-lampdel="' + i + '" title="Take this lamp away">' + (+L.x).toFixed(1) + ', ' + (+L.z).toFixed(1) + ' ✕</button>'; }).join('') + '</div>';
+        return h;
+    }
+    function clockTxt(h) { var hh = Math.floor(h) % 24, mm = Math.round((h - Math.floor(h)) * 60); return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm; }
+    function clockPreview(h) {
+        if (h == null) { if (ED._clkFn) { window._hqClockHour = ED._clkFn; ED._clkFn = null; } ED.clockH = null; }
+        else { if (!ED._clkFn) ED._clkFn = window._hqClockHour || function () { return (typeof HQ_WORLD_CLOCK !== 'undefined') ? HQ_WORLD_CLOCK.start : 12; }; ED.clockH = h; window._hqClockHour = function () { return ED.clockH; }; }
+        try { ThreeRenderer.hq.clockSnap(); } catch (e) {}
+    }
+    function skyWire(L) {
+        L.querySelectorAll('[data-sk]').forEach(function (el) {
+            var key = el.getAttribute('data-sk'), t = el.getAttribute('data-t');
+            var val = function () { if (t === 'bool') return !!el.checked; if (t === 'col') return parseInt(el.value.slice(1), 16); if (t === 'num') return parseFloat(el.value); return el.value; };
+            if (t === 'num') el.oninput = function () { var v = val(), b = el.parentNode.querySelector('.ed-skv'); if (b) b.textContent = v; if (SKY_LIVE[key]) skyLive(key, v); };
+            el.onchange = function () {
+                var v = val();
+                if (key === 'rigOn') { shellPut('rig', v ? Core.clone(RIG_DEFAULT) : undefined, 'key light'); return; }
+                if (key === 'look') { if (v === '?') return; shellPut('look', v ? Core.clone(W.HQ_ROOM_LOOKS[v]) : undefined, 'look'); return; }
+                if (key === 'atmos') { shellPut('atmos', v === '' ? undefined : v === 'none' ? false : { kind: v }, 'the air'); return; }
+                if (key === 'sky.lock') v = v === '' ? undefined : v === 'true' ? true : +v;
+                if (key === 'sky.clock') v = v ? true : undefined;
+                if (key === 'sky.night') v = v ? 1 : 0;
+                if (key === 'sky.doors') v = v ? undefined : false;
+                skyCommit(key, v, !!SKY_LIVE[key]);
+            };
+        });
+        L.querySelectorAll('[data-ska]').forEach(function (el) {
+            var a = el.getAttribute('data-ska'), S = room() && room().shell; if (!S) return;
+            if (a === 'preset') { el.onchange = function () { var src = DOOR_HQ.rooms[el.value]; if (!src || !src.shell || !src.shell.sky) return; var sk = Core.clone(src.shell.sky); delete sk.landmarks; delete sk.lock; if (sk.fog) sk.fog = Core.clone(sk.fog); var step = [{ path: basePath().concat(['shell', 'sky']), before: S.sky === undefined ? undefined : Core.clone(S.sky), after: sk }]; if (src.shell.look && typeof src.shell.look === 'object') step.push({ path: basePath().concat(['shell', 'look']), before: S.look === undefined ? undefined : Core.clone(S.look), after: Core.clone(src.shell.look) }); commit(step, 'sky from ' + (src.label || el.value)); toast('THE SKY OF ' + String(src.label || el.value).toUpperCase(), 1500); }; return; }
+            el.onclick = function () {
+                if (a === 'daysky') shellPut('sky', Core.clone(SKY_DEFAULT), 'a day sky');
+                else if (a === 'nightsky') shellPut('sky', { night: 1, day: 0, clouds: 0.1, stars: 1, nebula: 0.6, tint: 0x0a1428, tintAmt: 0.4, fog: { color: 0x060a14, amount: 0.5, top: 0.04, band: 0.5, density: 0.006 }, scenery: 'none', density: 0 }, 'a night sky');
+                else if (a === 'outdoor') commit([{ path: basePath().concat(['shell', 'open']), before: S.open, after: true }].concat(S.sky ? [] : [{ path: basePath().concat(['shell', 'sky']), before: undefined, after: Core.clone(SKY_DEFAULT) }]), 'outdoor');
+                else if (a === 'indoor') commit([{ path: basePath().concat(['shell', 'open']), before: S.open, after: false }], 'indoor');
+                else if (a === 'addmark') { var lm = (S.sky.landmarks || []).slice(); lm.push({ kind: 'mountain', deg: Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360), dist: 0.9, y: -0.03, s: 1 }); skyCommit('sky.landmarks', lm); }
+                else if (a === 'clocklive') { clockPreview(null); panels(); }
+            };
+        });
+        L.querySelectorAll('[data-lmi]').forEach(function (box) {
+            var i = +box.getAttribute('data-lmi');
+            box.querySelectorAll('[data-lm]').forEach(function (el) { el.onchange = function () { var S = room().shell, lm = Core.clone(S.sky.landmarks || []); if (!lm[i]) return; var k = el.getAttribute('data-lm'), v = k === 'kind' ? el.value : parseFloat(el.value); if (k !== 'kind' && !isFinite(v)) { toast('NOT A NUMBER'); return; } lm[i][k] = v; skyCommit('sky.landmarks', lm); }; });
+        });
+        L.querySelectorAll('[data-lmdel]').forEach(function (b) { b.onclick = function () { var S = room().shell, lm = Core.clone(S.sky.landmarks || []); lm.splice(+b.getAttribute('data-lmdel'), 1); skyCommit('sky.landmarks', lm.length ? lm : undefined); }; });
+        L.querySelectorAll('[data-lampdel]').forEach(function (b) { b.onclick = function () { var S = room().shell, ls = Core.clone(S.lights || []); ls.splice(+b.getAttribute('data-lampdel'), 1); shellPut('lights', ls.length ? ls : undefined, 'lamp away'); }; });
+        var ck = $('edClockH'); if (ck) ck.oninput = function () { var v = parseFloat(ck.value); clockPreview(v); var b = $('edClockV'); if (b) b.textContent = clockTxt(v); };
+    }
+    function lampAt(c) {
+        var r = room(), S = r && r.shell; if (!S || !c || !editable()) return;
+        var sn = Math.max(0.25, ED.snap || 0), ls = Core.clone(S.lights || []);
+        ls.push({ x: Core.snap(c.x, sn), z: Core.snap(c.z, sn) });
+        shellPut('lights', ls, 'lamp');
+    }
+
+    var PAL_TABS = [['build', 'BUILD'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS']];
     var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
     ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
     function palData() {
@@ -2109,20 +2375,32 @@
         var tab = ED.opts.tab || 'build';
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
         if (tab === 'build' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
-        else h += '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
+        else if (tab === 'sky') h += skyHtml();   // E6
+        else h += sizeStrip(tab) + '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
         h += '</div>';
         /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
            room reloads is not lost to a rebuilt button */
-        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } palBody(); return; }
+        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky') return; palBody(); return; }
         B._h = h; B.innerHTML = h;
+        B.querySelectorAll('[data-psz]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-psz').split(':'); if (v[0] === 'vary') ED.opts.treeVary = !ED.opts.treeVary; else ED.opts[v[0]] = +v[1]; saveOpts(); palette(); }; });
         B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
         if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
+        if (tab === 'sky') { paletteWire(B); skyWire(B); return; }   // E6
         $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
         $('edPalQ').onkeydown = function (e) { if (e.key === 'Escape') { this.value = ''; ED.palQ[tab] = ''; this.blur(); palBody(); } };
         palBody();
     }
+    /* E6: the size the next tree / model goes down at (mondo: "make sure I can place different sized trees") */
+    var TREE_SIZES = [[0, 'GAME'], [3, 'SMALL 3 m'], [5, 'MEDIUM 5 m'], [8, 'LARGE 8 m'], [12, 'HUGE 12 m'], [18, 'GIANT 18 m']], PROP_XS = [0.5, 0.75, 1, 1.5, 2, 3];
+    function sizeStrip(tab) {
+        var O = ED.opts;
+        if (tab === 'trees') return '<div class="ed-sub">TREE SIZE</div><div class="ed-palb ed-wrap">' + TREE_SIZES.map(function (t) { return '<button class="ed-btn' + ((+O.treeSize || 0) === t[0] ? ' on' : '') + '" data-psz="treeSize:' + t[0] + '" title="' + (t[0] ? 'Trees go down about ' + t[0] + ' m tall' : 'The game\'s own size (about 5 m)') + '">' + t[1] + '</button>'; }).join('') +
+            '<button class="ed-btn' + (O.treeVary ? ' on' : '') + '" data-psz="vary" title="Each tree a little taller or shorter (±20 %)">VARY</button></div><div class="ed-note">A placed tree is picked: - / = size it, R turns it, drag moves it.</div>';
+        if (tab === 'models') return '<div class="ed-sub">MODEL SIZE</div><div class="ed-palb ed-wrap">' + PROP_XS.map(function (x) { return '<button class="ed-btn' + ((+O.propX || 1) === x ? ' on' : '') + '" data-psz="propX:' + x + '">×' + x + '</button>'; }).join('') + '</div>';
+        return '';
+    }
     function palHint(tab) {
-        var t = { models: 'Click a tile, then click on the ground (again for more copies). It faces you; [ ] turns it. ESC stops.',
+        var t = { models: 'Click a tile, then click on the ground (again for more copies). It faces you. What you placed is picked: R turns it 45°, - / = size it, drag it to move it. ESC stops placing.',
                   people: 'Races stand where you click (a native of this room); the cast are the story\'s models; agents take a pose.',
                   trees: 'A tree where you click. GROVE / SCATTER fill a disc (the inspector: kinds, n, r, seed).',
                   doors: 'Pick a leaf or a way, then click a wall you drew (a door in a gap) or the ground (a free-standing door), then pick where it leads.',
@@ -2196,8 +2474,14 @@
             commit([{ path: basePath().concat(['spawn']), before: Core.clone(r.spawn), after: { x: x, z: z, face: face, level: 0 } }], 'move the spawn', { noReload: true });
             spawnPlace(); drawSet(null); return;
         }
-        var row = W.hqPaletteRow(e, x, z, faceEye());
-        addRow(e.list, row, 'add ' + e.label, { noSelect: !!D.repeat });
+        var row = W.hqPaletteRow(e, x, z, faceEye()), O = ED.opts;
+        /* E6: the size it goes down at (the TREES tab: SIZE and VARY; MODELS: SIZE ×) */
+        if (row.k === 'tree' || row.k === 'grove') {
+            var th = (+O.treeSize || 0) ? +O.treeSize / treeTile() : (row.k === 'tree' ? treeDefH(row) : 0);   // tiles
+            if (th) { if (O.treeVary && row.k === 'tree') th *= 0.8 + Math.random() * 0.4; row.h = Math.round(th * 100) / 100; if (row.k === 'tree' && +O.treeSize) row.r = Math.round(Math.max(0.25, Math.min(1.6, 0.38 * th / 2.9)) * 100) / 100; }
+        } else if (e.list === 'props' && +O.propX && +O.propX !== 1) row = sizeRow({ list: 'props', row: row }, +O.propX) || row;
+        /* the thing just placed is picked (R turns it, - / = size it, drag moves it) while the tile stays armed for more */
+        addRow(e.list, row, 'add ' + e.label);
         if (!D.repeat) drawSet(null);
     }
     /* the ghost at the cursor while placing: the thing's size (the catalogue's foot / h / span; a person, a tree, a door) */
@@ -2205,9 +2489,9 @@
         var D = ED.draw; if (!D || !c) { drawPreview(null); return; }
         var e = D.entry, g = c.y || ground(c.x, c.z), w = 0.8, d = 0.8, h = 1.2;
         if (D.tool === 'doorway') { w = 1.2; d = 0.3; h = 2.2; }
-        else if (e && e.list === 'props') { var cat = DOOR_HQ.catalogue[e.row.key] || {}; w = d = Math.max(0.3, cat.foot ? cat.foot * 2 : (cat.span || 0.8)); h = cat.h || (cat.span ? Math.min(cat.span, 3) : 1); }
+        else if (e && e.list === 'props') { var cat = DOOR_HQ.catalogue[e.row.key] || {}, px = +ED.opts.propX || 1; w = d = Math.max(0.3, (cat.foot ? cat.foot * 2 : (cat.span || 0.8)) * px); h = (cat.h || (cat.span ? Math.min(cat.span, 3) : 1)) * px; }
         else if (e && (e.list === 'npcSpots' || e.list === 'agents' || e.list === 'onlineSpots')) { w = d = 0.6; h = 1.8; }
-        else if (e && e.row && e.row.k === 'tree') { w = d = 1.2; h = 6; }
+        else if (e && e.row && e.row.k === 'tree') { h = +ED.opts.treeSize || treeDefH(e.row) * treeTile(); w = d = Math.max(1.2, h * 0.3); }
         else if (e && e.row && (e.row.k === 'grove' || e.row.k === 'scatter')) { w = d = 2 * (e.row.r || 6); h = 0.3; }
         else if (D.row && D.row.k === 'kit') { w = d = 4; h = 2; }
         var sn = Math.max(0.25, ED.snap || 0), x = Core.snap(c.x, sn), z = Core.snap(c.z, sn), f = faceEye() * Math.PI / 180;
@@ -2470,9 +2754,12 @@
     function toolsBar() {
         var t = $('edTools'); if (!t) return;
         var snaps = [0, 0.25, 0.5, 1, 1.75], rs = [0, 5, 15, 45, 90];
-        t.innerHTML = ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE (W)', rotate: 'TURN (E)', scale: 'SIZE (R)' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') +
+        t.innerHTML = ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE (W) · or drag the thing itself', rotate: 'TURN (E) · R turns 45°, SHIFT R back', scale: 'SIZE (T) · - / = size the pick' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') +
             '<label class="ed-lab">SNAP <select id="edSnap">' + snaps.map(function (s) { return '<option value="' + s + '"' + (s === ED.snap ? ' selected' : '') + '>' + (s ? s + ' m' : 'off') + '</option>'; }).join('') + '</select></label>' +
             '<label class="ed-lab"><select id="edRSnap">' + rs.map(function (s) { return '<option value="' + s + '"' + (s === ED.rotSnap ? ' selected' : '') + '>' + (s ? s + '°' : 'free') + '</option>'; }).join('') + '</select></label>' +
+            /* E6: the roofs */
+            '<button class="ed-btn' + (ED.roof.off ? ' on' : '') + '" id="edRoof" title="HIDE THE ROOFS AND CEILINGS (C): see inside a room; everything higher than the number (metres over the floor) is cut away in the view. Nothing in the room changes">' + (ED.roof.off ? 'ROOFS HIDDEN' : 'HIDE ROOFS') + '</button>' +
+            (ED.roof.off ? '<input type="number" step="0.5" min="0.5" id="edRoofH" value="' + ED.roof.h + '" style="width:48px" title="the cut: metres over the floor">' : '') +
             /* E3: the level band and the audits */
             '<label class="ed-lab" title="THE LEVEL BAND (L): only what overlaps it picks; everything above its top is cut away in the view"><input type="checkbox" id="edBand"' + (ED.band.on ? ' checked' : '') + '>LEVEL</label>' +
             '<input type="number" step="0.5" id="edBandY0" value="' + ED.band.y0 + '" style="width:52px" title="the band\'s bottom (m)"><input type="number" step="0.5" id="edBandY1" value="' + ED.band.y1 + '" style="width:52px" title="the band\'s top (m)">' +
@@ -2483,6 +2770,8 @@
         $('edSnap').onchange = function () { ED.snap = +this.value; tcMode(ED.tool); };
         $('edRSnap').onchange = function () { ED.rotSnap = +this.value; tcMode(ED.tool); };
         if ($('edCopy')) $('edCopy').onclick = copyIntoWorld;
+        $('edRoof').onclick = function () { roofSet({ off: !ED.roof.off }); };
+        if ($('edRoofH')) $('edRoofH').onchange = function () { var v = parseFloat(this.value); if (isFinite(v)) roofSet({ h: v }); };
         $('edBand').onchange = function () { bandSet({ on: this.checked }); };
         $('edBandY0').onchange = function () { var v = parseFloat(this.value); if (isFinite(v)) bandSet({ y0: v }); };
         $('edBandY1').onchange = function () { var v = parseFloat(this.value); if (isFinite(v)) bandSet({ y1: v }); };
@@ -2595,17 +2884,23 @@
                 h += '<div class="ed-note">sea = water over everything below seaY (seaUnder: you swim under it) · floating = the room hangs in the air: no ground runs on past its edge, rock hangs under it floatDepth m.<br>HEIGHTS: ' + (hm ? hm.nx + ' × ' + hm.nz + ' nodes at ' + hm.res + ' m' : 'none') + ' · PAINT: ' + (pt && pt.pal && pt.pal.length ? pt.pal.map(esc).join(', ') : 'none') + ' (the GROUND tab, left)</div>';
                 if (!ro) h += '<div class="ed-acts"><button class="ed-btn" data-gact="clrh"' + (hm ? '' : ' disabled') + '>CLEAR HEIGHTS</button><button class="ed-btn" data-gact="clrp"' + (pt && pt.d ? '' : ' disabled') + '>CLEAR PAINT</button></div>';
             }
-            h += '<div class="ed-sub">THE SKY (E6 brings the picker)</div><div class="ed-form" data-scope="shell">' + fieldHtml('sky', S.sky || null) + fieldHtml('mood', S.mood || null) + '</div>';
+            h += '<div class="ed-sub">THE SKY AND THE LIGHT (the SKY tab, left, edits them)</div><div class="ed-form" data-scope="shell">' + fieldHtml('sky', S.sky || null) + fieldHtml('mood', S.mood || null) + '</div>';
             if (r.edit) h += '<div class="ed-sub">NOTES</div><div class="ed-form" data-scope="edit"><label class="ed-f ed-fj"><textarea data-k="notes" data-t="str" rows="3">' + esc(r.edit.notes || '') + '</textarea></label></div>';
             if (!ro) h += '<div class="ed-acts"><button class="ed-btn" data-a="dup">DUPLICATE ROOM</button><button class="ed-btn" data-a="start">WORLD STARTS HERE</button><button class="ed-btn ed-danger" data-a="del">DELETE ROOM</button></div>';
             else h += '<div class="ed-acts"><button class="ed-btn ed-copy" data-a="copy">COPY INTO WORLD</button></div>';
-            h += '<div class="ed-sub">BUILD</div><div class="ed-note">BUILD (left) draws walls, rooms, floors, stairs, buildings, door gaps and windows on the ground. ADD (top bar) puts a shape, a prefab, a kit, a prop or a door at the cursor. Click a thing to pick it; SHIFT + click adds to the pick.</div>';
+            h += '<div class="ed-sub">BUILD</div><div class="ed-note">BUILD (left) draws walls, rooms, floors, stairs, buildings, door gaps and windows on the ground. ADD (top bar) puts a shape, a prefab, a kit, a prop or a door at the cursor. Click a thing to pick it; SHIFT + click adds to the pick. Drag a thing to move it; R turns it 45° (SHIFT R back); - / = size it. C (or HIDE ROOFS, top bar) takes the roofs and ceilings off so you can see in.</div>';
         } else if (hits.length > 1) {
             h += '<div class="ed-hd">' + hits.length + ' PICKED</div><div class="ed-note">' + hits.map(function (x) { return esc(Core.rowLabel(x.list, x.row)); }).join('<br>') + '</div><div class="ed-note">The gizmo moves / turns them together. DEL deletes, CTRL D duplicates.</div>';
             if (!ro) h += '<div class="ed-acts"><button class="ed-btn" data-a="array">ARRAY…</button><button class="ed-btn" data-a="mirx">MIRROR E–W</button><button class="ed-btn" data-a="mirz">MIRROR N–S</button>' + (ED.mode !== 'prefab' ? '<button class="ed-btn ed-copy" data-a="topf">SAVE AS PREFAB</button>' : '') + '</div>';
         } else {
             var x = hits[0], row = x.row;
             h += '<div class="ed-hd">' + esc(Core.rowLabel(x.list, row).toUpperCase()) + '</div><div class="ed-note">' + esc(x.list) + (row.id ? ' · ' + esc(row.id) : '') + (ro ? ' · read only' : '') + '</div>';
+            if (!ro && x.list !== 'spawn' && sizeRow(x, 1)) {   // E6: SIZE and TURN, the simple way
+                var zs = sizeOf(x);
+                h += '<div class="ed-sub">SIZE AND TURN</div><div class="ed-acts ed-sizeb">' + (zs ? '<input type="number" step="0.1" min="0.05" id="edSizeV" value="' + (Math.round(zs.v * 100) / 100) + '" style="width:64px" title="metres ' + zs.what + '"> m ' + zs.what + ' ' : '') +
+                    '<button class="ed-btn" data-sz="0.5">×½</button><button class="ed-btn" data-sz="0.9091" title="smaller (-)">−</button><button class="ed-btn" data-sz="1.1" title="bigger (=)">+</button><button class="ed-btn" data-sz="2">×2</button>' +
+                    '<button class="ed-btn" data-turn="-45" title="SHIFT R">⟲ 45°</button><button class="ed-btn" data-turn="45" title="R">⟳ 45°</button></div>';
+            }
             h += '<div class="ed-form" data-scope="row">';
             var keys = Object.keys(row).filter(function (k) { return k !== 'id' && k.charAt(0) !== '_'; });
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
@@ -2620,6 +2915,7 @@
                 if (x.list === 'terrain.features' || x.list === 'props') h += '<div class="ed-acts"><button class="ed-btn" data-a="array">ARRAY…</button><button class="ed-btn" data-a="mirx">MIRROR E–W</button><button class="ed-btn" data-a="mirz">MIRROR N–S</button>' + (ED.mode !== 'prefab' ? '<button class="ed-btn" data-a="topf">SAVE AS PREFAB</button>' : '') + '</div>';
                 if (row.k === 'wall') h += '<div class="ed-note">key = the outside sheet, keyIn = the inside (the right-hand face walking start → end). BUILD → DOOR GAP / WINDOW cuts an opening.</div>';
                 if (row.k === 'opening') h += '<div class="ed-note">An opening in wall ' + esc(row.wall) + ', at = metres from the wall\'s start (MOVE slides it). sill 0 = a door gap; glaze = glass.</div>';
+                if (row.k === 'tree' || row.k === 'grove') h += '<div class="ed-note">h is in ground tiles (1.75 m each); SIZE above is in metres. r = the trunk the walker bumps into. face = which way it turns (R).</div>';
                 if (row.k === 'kit') h += '<div class="ed-note">A kit: the game\'s ' + esc(row.fn) + ' builder; args are its form (metres, degrees, about its own 0, 0).</div>';
                 h += '<div class="ed-sub">RAW</div><textarea class="ed-raw" id="edRaw" rows="6">' + esc(JSON.stringify(row, null, 1)) + '</textarea><button class="ed-btn" id="edRawApply">APPLY RAW</button>';
             }
@@ -2649,6 +2945,9 @@
         P.querySelectorAll('[data-tex]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); texPick(el.value, function (v) { el.value = v; fieldCommit(el); }); }; });
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
         groundWire(P);
+        P.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { sizeSel(+b.getAttribute('data-sz')); }; });
+        P.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { turnSel(+b.getAttribute('data-turn')); }; });
+        if ($('edSizeV')) $('edSizeV').onchange = function () { var h0 = hits[0], z0 = h0 && sizeOf(h0), v = parseFloat(this.value); if (z0 && isFinite(v) && v > 0 && Math.abs(v - z0.v) > 1e-3) sizeSel(v / z0.v, 'size ' + v + ' m'); };
         act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', copyIntoWorld);
         act('dupr', duplicateSel); act('delr', deleteSel); act('array', arraySel); act('mirx', function () { mirrorSel('x'); }); act('mirz', function () { mirrorSel('z'); });
         act('topf', selToPrefab); act('bake', bakeSel); act('pfedit', function () { if (hits[0] && hits[0].row.pf) enterPrefab(hits[0].row.pf); }); act('pfdone', leavePrefab); act('pfdel', function () { deletePrefab(ED.pfId); }); act('target', function () { if (hits[0]) doorRetarget(hits[0]); }); act('follow', function () { if (hits[0]) doorFollow(hits[0]); });
@@ -2720,6 +3019,7 @@
             (ED.doorBad && ED.doorBad.length) ? '<b class="ed-warn" title="' + esc(ED.doorBad.map(function (b) { return b.room + ' ' + b.door + ': ' + b.why; }).join(' · ')) + '">' + ED.doorBad.length + ' DOOR' + (ED.doorBad.length > 1 ? 'S LEAD' : ' LEADS') + ' NOWHERE</b>' : '',
             (function () { var lr = (ED.mode === 'world' || ED.mode === 'prefab') && planOf(r) ? layoutReport() : null; if (!lr) return ''; return 'layout ' + lr.spaces + ' / ' + lr.halls + (lr.cold.length ? ' · <b class="ed-warn">' + lr.cold.length + ' NOT JOINED</b>' : ''); })(),   // E5
             ED.band.on ? '<b>LEVEL ' + ED.band.y0 + ' → ' + ED.band.y1 + ' m</b>' : '',
+            ED.roof.off ? '<b>ROOFS HIDDEN (C)</b>' : '',
             ED.audit.walls ? (ED.auditRes.none ? 'walls: no ground here' : ED.auditRes.walls == null ? 'walls …' : (ED.auditRes.walls ? '<b class="ed-warn">' + ED.auditRes.walls + ' INVISIBLE WALL' + (ED.auditRes.walls > 1 ? 'S' : '') + '</b>' : 'no invisible walls')) : '',
             ED.audit.pockets ? (ED.auditRes.none ? '' : ED.auditRes.pockets == null ? 'pockets …' : (ED.auditRes.pockets ? '<b class="ed-warn">POCKETS ' + ED.auditRes.pocketM + ' m² nobody reaches</b>' : 'no pockets')) : '',
             ED.audit.fight ? (ED.auditRes.fight ? 'fight window: ' + ED.auditRes.fight.ins + ' / ' + ED.auditRes.fight.n + ' tiles · reach ' + ED.auditRes.fight.reach : 'fight window: none here') : '',
@@ -2765,7 +3065,8 @@
         modalOpen('<div class="ed-hd">THE KEYS</div><div class="ed-help">' + [
             ['RIGHT MOUSE held', 'look; with W A S D fly, Q E down / up, SHIFT fast, CTRL slow, wheel = fly speed'],
             ['Arrows · PgUp PgDn', 'fly without the mouse'], ['Wheel', 'dolly forward / back'], ['ALT + LEFT drag', 'orbit the pick'], ['MIDDLE drag', 'pan'],
-            ['LEFT click', 'pick (SHIFT adds) · the gizmo moves it'], ['W · E · R', 'MOVE · TURN · SIZE'], ['[ · ]', 'turn the pick by the angle snap'],
+            ['LEFT click', 'pick (SHIFT adds) · the gizmo moves it'], ['LEFT drag on a thing', 'move it over the ground (the grid snap)'], ['R · SHIFT R', 'turn the pick 45° · back'], ['- · =', 'the pick smaller · bigger (SHIFT: a bigger step); the inspector\'s SIZE takes metres'],
+            ['C', 'hide / show the roofs and ceilings (the top bar\'s HIDE ROOFS; its number = the cut in metres over the floor)'], ['W · E · T', 'the gizmo: MOVE · TURN · SIZE'], ['[ · ]', 'turn the pick by the angle snap'],
             ['F · Home · G', 'frame the pick · to the spawn · the grid'], ['DEL · CTRL D', 'delete · duplicate'],
             ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head · DOOR GAP, WINDOW: click a wall'],
             ['SHIFT while drawing', 'lock the line to 45° steps (ends snap to wall ends within 0.6 m, else to the grid)'], ['V · Esc', 'back to SELECT · end the run / drop the pick'], ['CTRL Z · CTRL Y · CTRL S', 'undo · redo · save (it autosaves anyway)'],
@@ -3291,6 +3592,12 @@
             [['x', row.at[0]], ['z', row.at[1]], ['padY', row.padY], ['pad', row.pad], ['rot', row.rot || 0]].forEach(function (f) { h += '<label class="ed-f"><span>' + f[0] + (f[0] === 'pad' ? ' (half-side m)' : f[0] === 'rot' ? ' (quarter turns)' : f[0] === 'padY' ? ' (m)' : '') + '</span><input type="number" step="any" data-lf="' + f[0] + '" value="' + esc(f[1]) + '"></label>'; });
             h += '<label class="ed-f"><span>float (no pad)</span><input type="checkbox" data-lf="float"' + (row.float ? ' checked' : '') + '></label>';
         }
+        if (kind === 'regions') {   // E6: THE REGION WEATHER
+            var wx = row.weather || {};
+            h += '<label class="ed-f"><span>sight (m, 0 = the sky\'s)</span><input type="number" step="10" min="0" data-lw="sight" value="' + esc(+wx.sight || 0) + '"></label>' +
+                 '<label class="ed-f"><span>fog (per m, 0 = the sky\'s)</span><input type="number" step="0.001" min="0" data-lw="fog" value="' + esc(+wx.fog || 0) + '"></label>';
+            h += '<div class="ed-note">THE WEATHER: inside this area the fog eases in so the view ends about sight m away (fog, when set, is the density itself: the woods use 0.03). 0 and 0 = the sky\'s own fog.</div>';
+        }
         if (kind === 'lakes') h += '<div class="ed-note">level ' + row.level + ' m · depth ' + row.depth + ' m</div>';
         if (kind === 'roads') h += '<div class="ed-note">' + row.type + ' · ' + row.w + ' m wide · ' + (row.bridges || []).length + ' bridge(s) · ' + (row.rails || []).length / 2 + ' rail run(s)</div>';
         if (kind === 'rivers') h += '<div class="ed-note">' + (row.w0 * 2).toFixed(1) + ' → ' + (row.w1 * 2).toFixed(1) + ' m wide · falls where it drops</div>';
@@ -3314,6 +3621,15 @@
                     return;
                 }
                 landCommit([{ path: ['landEd', s.kind, hr.i, k], before: hr.row[k], after: v }], k);
+            };
+        });
+        P.querySelectorAll('[data-lw]').forEach(function (el) {   // E6: a region's weather (one undo step)
+            el.onchange = function () {
+                var hr = landSelRow(s); if (!hr) return;
+                var v = parseFloat(el.value); if (!isFinite(v) || v < 0) { toast('NOT A NUMBER'); return; }
+                var wb = hr.row.weather, wa = Object.assign({ fog: 0, sight: 0 }, wb || {}); wa[el.getAttribute('data-lw')] = v;
+                if (!(wa.fog > 0) && !(wa.sight > 0)) wa = undefined;
+                landCommit([{ path: ['landEd', 'regions', hr.i, 'weather'], before: wb === undefined ? undefined : Core.clone(wb), after: wa }], 'weather');
             };
         });
         P.querySelectorAll('[data-la]').forEach(function (b) {
@@ -3386,6 +3702,7 @@
         if (typeof DOOR_HQ === 'undefined' || typeof W.hqWorldDocNew !== 'function' || typeof W._hqEditEnter !== 'function') { alert('The editor needs data.js / map.js from the same delivery (hqWorldDoc*, _hqEditEnter).'); return; }
         build(); loadOpts();
         try { var bo = JSON.parse(localStorage.getItem('ew_editor_band') || 'null'); if (bo && isFinite(bo.y0) && isFinite(bo.y1)) { ED.band.y0 = +bo.y0; ED.band.y1 = +bo.y1; ED.band.on = !!bo.on; } } catch (e) {}
+        try { var rfo = JSON.parse(localStorage.getItem('ew_editor_roof') || 'null'); if (rfo) { ED.roof.off = !!rfo.off; if (isFinite(rfo.h)) ED.roof.h = +rfo.h; } } catch (e) {}
         try { var ao = JSON.parse(localStorage.getItem('ew_editor_audit') || 'null'); if (ao) ['walls', 'pockets', 'fight'].forEach(function (k) { ED.audit[k] = !!ao[k]; }); } catch (e) {}
         if (!ED.flags) ED.flags = { batch: W.EW_HQ_NO_BATCH, inst: W.EW_HQ_NO_INSTANCE };
         W.EW_HQ_NO_BATCH = true; W.EW_HQ_NO_INSTANCE = true;   // the pieces stay pieces while editing (a live drag moves the real prop); a look-only difference, never the player's
@@ -3415,7 +3732,7 @@
         if (ED.land) landSaveNow();
         if ($('edMap')) $('edMap').style.display = 'none';
         if (ED.draw) { ED.draw = null; drawPreview(null); }
-        bandClipOff(); clearTimeout(ED.auditTimer);
+        bandClipOff(); roofShow(); if (ED.clockH != null) clockPreview(null); clearTimeout(ED.auditTimer);
         saveCam(); saveNow();
         ED.open = false; ED.playing = false;
         bind(false);
@@ -3442,6 +3759,7 @@
                drawSet: drawSet, drawUp: drawUp, drawDown: drawDown, enterPrefab: enterPrefab, leavePrefab: leavePrefab, newPrefab: newPrefab, selToPrefab: selToPrefab, roomToPrefab: roomToPrefab, bakeSel: bakeSel, mirrorSel: mirrorSel, placeRow: placeRow, texPick: texPick, arrayRows: function (n, dx, dz, dyaw) { var ask0 = ask; ask = function (t, f, ok) { ok({ n: n, dx: dx, dz: dz, dyaw: dyaw }); }; try { arraySel(); } finally { ask = ask0; } },
                palPick: palPick, palEntries: palEntries, palData: palData, doorWrite: doorWrite, doorFollow: doorFollow, thumbs: function () { return { have: Object.keys(TH.mem).filter(function (k) { return !!TH.mem[k]; }).length, none: Object.keys(TH.mem).filter(function (k) { return TH.mem[k] === null; }).length, want: TH.want.length, off: TH.off }; },
                land: { open: landOpen, view: landView, tool: function (t) { ED.opts.landTool = t; panels(); }, click: landClick, finish: landFinish, pts: function (p) { ED.land.pts = p; }, strokeStart: landStrokeStart, dab: landDab, strokeEnd: landStrokeEnd, doc: landDoc, get: function () { return ED.land; }, export: landExport },
+               sizeSel: sizeSel, roofSet: roofSet, skyCommit: skyCommit, shellPut: shellPut, clockPreview: clockPreview, lampAt: lampAt, palette: function (tab) { ED.opts.tab = tab; palette(); },   // E6
                enter: enterRoom, playHere: playHere, library: function (id) { enterRoom(id, 'library'); }, copyIntoWorld: copyIntoWorld, pickAt: pickAt, frame: frameSel,
                moveSel: function (dx, dz) { var hits = ED.sel.map(selRow).filter(Boolean), a = hits[0] ? Core.rowAnchor(hits[0].row) : { x: 0, z: 0 }; replaceRows(hits.filter(function (h) { return h.list !== 'spawn'; }).map(function (h) { return { list: h.list, i: h.i, before: Core.clone(h.row), after: Core.rowTransform(h.row, { dx: dx, dz: dz, px: a.x, pz: a.z }) }; }), 'move'); } },
     };
