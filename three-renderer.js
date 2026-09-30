@@ -51233,7 +51233,7 @@ const ThreeRenderer = (function () {
         var okFn = (typeof hqEncounterCharOk === 'function') ? hqEncounterCharOk : function (ch) { return ch && ch.kind === 'npc' && !!ch.race && !ch.cast; };
         /* THE ROAMING GROUP (2026-09-21): the target's companions in the room (the same `group`, not away) — data.js hqEncounterGroup seats them */
         var group = [];
-        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null }); }
+        if (best.group) for (var k = 0; k < H.chars.length; k++) { var c = H.chars[k]; if (c !== best && c.group === best.group && !c.away && okFn(c)) group.push({ id: c.id, race: c.race, gender: c.gender, label: c.label || null, x: c.x, z: c.z, y: c.y }); }   // x / z: THE STAND RULE seats each member on its own cell (EXPLORATION_BATTLES_PLAN §3.3)
         return { kind: 'npc', id: best.id, label: best.label, sub: best.sub || null, race: best.race, gender: best.gender, x: best.x, z: best.z, y: best.y, dist: bestD, group: group.length ? group : null, swarm: best.swarm || (best.spot && best.spot.swarm) || null };   // an authored spot may say `swarm: true`
     }
     /* THE EYE (9.4 seam 2): the camera as it stands when the swing lands — position
@@ -56254,7 +56254,7 @@ const ThreeRenderer = (function () {
         if (!run || !run.room) { _hqBattleRoomCache.key = null; _hqBattleRoomCache.R = null; return null; }
         /* read once per run (the scenery key asks every frame; the marker is a fresh object per call) */
         var bd = run.field && run.field.board;
-        var ck = run.room + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
+        var ck = run.room + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
         if (_hqBattleRoomCache.key === ck) return _hqBattleRoomCache.R;
         var R = null;
         try {
@@ -56286,7 +56286,7 @@ const ThreeRenderer = (function () {
     function _hqBattleRoomCoverAt(R, xm, zm) {
         if (!R.field || !R.field.cells) return false;
         var C = R.T.C, ix = Math.floor((xm - R.T.x0) / C), iz = Math.floor((zm - R.T.z0) / C);
-        if (ix < 0 || iz < 0 || ix >= R.T.N || iz >= R.T.N) return false;
+        if (ix < 0 || iz < 0 || ix >= R.T.W || iz >= R.T.H) return false;
         var row = R.field.cells[iz], ch = row ? String(row).charAt(ix) : '';
         return ch >= '2' && ch <= '9';
     }
@@ -56301,7 +56301,9 @@ const ThreeRenderer = (function () {
     var _fieldGroundCache = { key: null, G: null };
     function _fieldGround() {
         var R = _hqBattleRoom();
-        if (!R || R.cave || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
+        /* THE FIELD IS THE ROOM (EXPLORATION_BATTLES_PLAN §3.5): a cave field built on THE FEET RULE files the walker's real tops
+           (entry.field.caveGround) and stands on them like every other room; an older cave record keeps its columns */
+        if (!R || (R.cave && !(R.field && R.field.caveGround)) || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         if (typeof hqFieldGroundOn === 'function' ? !hqFieldGroundOn() : !!(typeof window !== 'undefined' && window.EW_HQ_NO_TRUE_GROUND)) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         var ts = CONFIG.tileSize || BASE_TILE;
         var key = _hqBattleRoomKey() + '|' + ts;
@@ -56310,7 +56312,7 @@ const ThreeRenderer = (function () {
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
-        var G = { R: R, N: R.T.N, tops: R.field.tops, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: R.base * elev,
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: R.field.tops, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: R.base * elev,
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -56326,7 +56328,7 @@ const ThreeRenderer = (function () {
     function _fieldGroundTop(x, y) {
         if (!_fieldGroundArmed) return null;
         var G = _fieldGround(); if (!G) return null;
-        if (x < 0 || y < 0 || x >= G.N || y >= G.N) return null;
+        if (x < 0 || y < 0 || x >= G.W || y >= G.H) return null;
         return G.yAt(x, y);
     }
     function _fieldGroundLive() { return _fieldGroundArmed && !!_fieldGround(); }
@@ -56349,7 +56351,7 @@ const ThreeRenderer = (function () {
     function _fieldGroundLiftPx(ts, hx, hy) {
         if (!_fieldGroundArmed) return 0;
         var G = _fieldGround(); if (!G) return 0;
-        if (hx < 0 || hy < 0 || hx >= G.N || hy >= G.N) return 0;
+        if (hx < 0 || hy < 0 || hx >= G.W || hy >= G.H) return 0;
         var t = G.yAt(hx, hy); if (t === null || t === undefined) return 0;
         return HL_FIELD_LIFT * ts;
     }
@@ -56406,7 +56408,7 @@ const ThreeRenderer = (function () {
         var G = _fieldGround(); if (!G) return null;
         if (tx === undefined || ty === undefined || tx === null || ty === null) return null;
         var cx = Math.round(tx), cy = Math.round(ty);
-        if (cx < 0 || cy < 0 || cx >= G.N || cy >= G.N) return null;
+        if (cx < 0 || cy < 0 || cx >= G.W || cy >= G.H) return null;
         var top = G.yAt(cx, cy);
         if (top === null || top === undefined) return null;
         if (wx !== undefined && wz !== undefined && wx !== null && wz !== null) {
@@ -56552,7 +56554,7 @@ const ThreeRenderer = (function () {
             _fieldPickGeo = { ts: ts, geo: geo, mat: mat };
         }
         var grp = new THREE.Group(); grp.name = 'field_pick'; grp._ew_occSkip = true;
-        for (var y = 0; y < G.N; y++) for (var x = 0; x < G.N; x++) {
+        for (var y = 0; y < G.H; y++) for (var x = 0; x < G.W; x++) {
             var top = G.yAt(x, y); if (top === null || top === undefined) continue;
             var m = new THREE.Mesh(_fieldPickGeo.geo, _fieldPickGeo.mat);
             m.position.set(x * ts + ts / 2, top + 0.5, y * ts + ts / 2);
@@ -56568,11 +56570,11 @@ const ThreeRenderer = (function () {
        of its four edges, a face wherever its top differs from the neighbour's — outward from a raised cell, inward (the
        pit's wall, the neighbour's mass) into a dug one whose neighbour stands unmoved — in THE BED's side sheet
        (data.js hqFieldBedFor: the room's hub, never the site's Δ). Pure planning in _fieldStrataFaces (tested in a vm). */
-    function _fieldStrataFaces(N, yAt, deltaAt, elev) {
+    function _fieldStrataFaces(W, H, yAt, deltaAt, elev) {   // THE FIELD IS THE ROOM: W × H (was one N)
         var faces = [], tops = [];
-        var top = function (x, y) { if (x < 0 || y < 0 || x >= N || y >= N) return null; var v = yAt(x, y); return (v === null || v === undefined) ? null : v; };
-        var moved = function (x, y) { return (x >= 0 && y >= 0 && x < N && y < N) && deltaAt(x, y) !== 0; };
-        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+        var top = function (x, y) { if (x < 0 || y < 0 || x >= W || y >= H) return null; var v = yAt(x, y); return (v === null || v === undefined) ? null : v; };
+        var moved = function (x, y) { return (x >= 0 && y >= 0 && x < W && y < H) && deltaAt(x, y) !== 0; };
+        for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
             var d = deltaAt(x, y); if (!d) continue;
             var t = top(x, y); if (t === null) continue;
             tops.push({ x: x, y: y, top: t, delta: d });
@@ -56596,10 +56598,10 @@ const ThreeRenderer = (function () {
        neighbour keeps its centre); a RAISE stays a block (the strata's quad + faces — "I can place blocks now"). The
        floor's ORIGINAL vertices are kept on the mesh and re-derived on every rebuild; deactivate() puts them back, and
        the next room entry rebuilds the room from its data anyway — the map is back to normal after the battle. */
-    function _fieldDeformPlan(N, deltaAt, elev, band) {
-        var dug = [], D = new Array(N * N);
-        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var d = deltaAt(x, y) || 0; D[y * N + x] = d < 0 ? d * elev : 0; if (d < 0) dug.push({ x: x, y: y, delta: d }); }
-        var at = function (x, y) { return (x < 0 || y < 0 || x >= N || y >= N) ? 0 : D[y * N + x]; };
+    function _fieldDeformPlan(W, H, deltaAt, elev, band) {   // THE FIELD IS THE ROOM: W × H (was one N)
+        var dug = [], D = new Array(W * H);
+        for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) { var d = deltaAt(x, y) || 0; D[y * W + x] = d < 0 ? d * elev : 0; if (d < 0) dug.push({ x: x, y: y, delta: d }); }
+        var at = function (x, y) { return (x < 0 || y < 0 || x >= W || y >= H) ? 0 : D[y * W + x]; };
         var ss = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
         var side = function (f) { return f < band ? -(1 - ss(f / band)) : f > 1 - band ? ss((f - (1 - band)) / band) : 0; };
         var dyAt = function (tx, tz) {   // tiles in → the drop (≤ 0, the elev's units) out
@@ -56623,7 +56625,7 @@ const ThreeRenderer = (function () {
         if (_fieldDeformCache.key === key) return _fieldDeformCache.plan;
         var band = FIELD_DEFORM_BAND;
         try { var rs = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && HQ_FIELD_RULES.strata) ? HQ_FIELD_RULES.strata : null; if (rs && rs.deformBand > 0 && rs.deformBand < 0.5) band = rs.deformBand; } catch (e) {}
-        var plan = _fieldDeformPlan(G.N, function (x, y) { return G.deltaAt(x, y); }, G.elev, band);
+        var plan = _fieldDeformPlan(G.W, G.H, function (x, y) { return G.deltaAt(x, y); }, G.elev, band);
         _fieldDeformCache.key = key; _fieldDeformCache.plan = plan;
         return plan;
     }
@@ -56664,7 +56666,7 @@ const ThreeRenderer = (function () {
         if (!m._ew_fieldOrig || m._ew_fieldOrig.length !== pos.array.length) m._ew_fieldOrig = new Float32Array(pos.array);
         _fdInv.copy(mw).invert();
         var o = m._ew_fieldOrig, v = _fdV, G = _fieldGround(); if (!G) return false;
-        var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.N * ts + pad, z0 = -pad, z1 = G.N * ts + pad, moved = 0;
+        var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.W * ts + pad, z0 = -pad, z1 = G.H * ts + pad, moved = 0;
         for (var i = 0, n = pos.count; i < n; i++) {
             var ox = o[i * 3], oy = o[i * 3 + 1], oz = o[i * 3 + 2];
             v.set(ox, oy, oz).applyMatrix4(mw);
@@ -56709,7 +56711,7 @@ const ThreeRenderer = (function () {
             if (!plan || !plan.dug.length) { if (o.position.y !== o._ew_sinkBase) o.position.y = o._ew_sinkBase; return; }
             o.updateWorldMatrix(true, false);
             _fdV.setFromMatrixPosition(o.matrixWorld);
-            if (_fdV.x < 0 || _fdV.z < 0 || _fdV.x > G.N * ts || _fdV.z > G.N * ts) { o.position.y = o._ew_sinkBase; return; }
+            if (_fdV.x < 0 || _fdV.z < 0 || _fdV.x > G.W * ts || _fdV.z > G.H * ts) { o.position.y = o._ew_sinkBase; return; }
             var dy = plan.dyAt(_fdV.x / ts, _fdV.z / ts);
             var e = o.parent ? o.parent.matrixWorld.elements : null, sPx = e ? (Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]) || 1) : 1;
             o.position.y = o._ew_sinkBase + dy / sPx;
@@ -56727,7 +56729,7 @@ const ThreeRenderer = (function () {
         var elev = G.elev;
         /* THE DEFORM: the room's floor takes every dig as a bowl; the columns below draw only what it did not take */
         var deformed = 0; try { deformed = _fieldDeformApply(ts); } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
-        var plan = _fieldStrataFaces(G.N, function (x, y) { return G.yAt(x, y); }, function (x, y) { return G.deltaAt(x, y); }, elev);
+        var plan = _fieldStrataFaces(G.W, G.H, function (x, y) { return G.yAt(x, y); }, function (x, y) { return G.deltaAt(x, y); }, elev);
         if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return G.deltaAt(f.x, f.y) > 0; }); }
         if (!plan.tops.length) return 0;
         var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
@@ -56790,7 +56792,7 @@ const ThreeRenderer = (function () {
     }
     function _hqBuildRoomInBattle(ctx) {
         var R = _hqBattleRoom(); if (!R || !ctx || typeof THREE === 'undefined' || !_horizonGroup) return;
-        if (ctx.bw !== R.T.N || ctx.bh !== R.T.N) return;   // the board the battle built is not the room's window
+        if (ctx.bw !== R.T.W || ctx.bh !== R.T.H) return;   // the board the battle built is not the room's frame (THE FIELD IS THE ROOM: W × H)
         var room = R.room, U = _hqUnits(), ts = ctx.ts, C = R.T.C;
         /* the copy the builders read: no battle marker (it stood on the board's centre cell) */
         var copy = Object.assign({}, room, { counters: (room.counters || []).filter(function (c) { return !!c && c.id !== 'battle' && c.proc !== 'battle_marker'; }) });
@@ -56806,7 +56808,7 @@ const ThreeRenderer = (function () {
                   clockLamps: [],   // THE WORLD CLOCK's night lamps (a lamp prop's glow, a lamp mast): the builders push here — without it every prop after the first night lamp was dropped in the battle
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
-        H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.N * C, z0: R.T.z0, z1: R.T.z0 + R.T.N * C };
+        H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.W * C, z0: R.T.z0, z1: R.T.z0 + R.T.H * C };
         if (trueGroundEarly) H.propLights = 0;   // rev 3: the whole HQ light budget — the walk had every torch
         var trueGround = !!_fieldGround();   // THE TRUE GROUND: no columns fill the window — the room's floor is drawn whole and every prop stands
         if (trueGround) H.floorHole = null;
@@ -56856,7 +56858,7 @@ const ThreeRenderer = (function () {
         /* THE BATTLE RADIUS (SEAMLESS_FIELD_PLAN.md §5): a piece's box (room px) against the window's rect — a prop / door /
            counter / tree-line piece farther than keepM is not taken, scenery (a lot, a backdrop prism, a tree) past keepFarM;
            a shell part, the field mesh, the outer ground, a plan wall and any merged batch (its box spans the room) always stand */
-        var wx0 = R.T.x0 * U, wx1 = (R.T.x0 + R.T.N * C) * U, wz0 = R.T.z0 * U, wz1 = (R.T.z0 + R.T.N * C) * U;
+        var wx0 = R.T.x0 * U, wx1 = (R.T.x0 + R.T.W * C) * U, wz0 = R.T.z0 * U, wz1 = (R.T.z0 + R.T.H * C) * U;   // THE BATTLE RADIUS from the field's rim (§3.7): the frame's own box
         var _rbox = new THREE.Box3();
         var farOf = function (c) {
             if (!HR.radius || c._ew_hqPart || c._ew_hqTerrain || c._ew_hqOuter) return 0;

@@ -1,6 +1,6 @@
 # EXPLORATION BATTLES — the fight is the room you were walking
 
-*Plan document, 2026-09-30. Nothing built yet; §12 is the log. House rules that stand over every phase: no
+*Plan document, 2026-09-30. Phase 1 built (2026-09-30); §12 is the log. House rules that stand over every phase: no
 puzzles; no sound work; no test files; no invented names (plain labels only); every R2 delivery bumps `?v=`;
 RULE #2 is moot here because encounters are refused online (map.js `_hqEncounterFire`), so every phase is
 story-mode only and nothing below is relayed.*
@@ -448,3 +448,12 @@ to docs/notes/seamless-field-encounter.md and §12 here.
 ## 12. Log
 
 - 2026-09-30 — the plan written (this document). Nothing built.
+- 2026-09-30 — **Phase 1 THE FIELD IS THE ROOM built** (token 20260930-battles-01-cors; R2: data.js, map.js, three-renderer.js,
+  editor.js). `hqFieldFrame` (whole lattice ≤ 24 a side, else a 24×24 crop on the feet; padded to 6) on the encounter path;
+  rasters / transform / entry / GAME_MODES row / renderer are W × H; THE STAND RULE = `entry.field.seats` (no respawn test),
+  the group seated on its own cells (the aim reports their feet); the box FEET RULE (centre `bodyR` inside, a prop covers when
+  it holds the centre); the terrain reference = the median IN top; the cave files its real tops (`caveGround`, dormant: no
+  cave rooms today); editor FIGHT previews the frame, AUDIT 8×8 → AUDIT FIELD (`hqPlanFieldSeats`); ZONES_PLAN §2.3 / §4
+  amended. Kill-switch `EW_HQ_FIELD_WINDOW`. One deviation: a cell more than one level under the main floor is clamped to
+  −1, not made a hazard (a sloped whole-room frame would lose ground the walker walks on). The arenas are untouched
+  (every pick's raster diffed identical). Notes: docs/notes/seamless-field-encounter.md. Next: Phase 4 ESCAPE.

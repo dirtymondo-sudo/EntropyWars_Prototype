@@ -832,3 +832,45 @@ the strike leap's landing on a slope.
 ## THE PLAN FOR THE NEXT STEP — EXPLORATION_BATTLES_PLAN.md (2026-09-30, docs only)
 The fixed 8×8 window (`hqFieldWindow`), the seats, the followers, the hand-back and ESCAPE / TEAM ESCAPE are planned in
 EXPLORATION_BATTLES_PLAN.md at the repo root (§1 has the causes read off the code, §11 the anchors). Nothing built yet.
+
+## EXPLORATION BATTLES Phase 1 — THE FIELD IS THE ROOM (2026-09-30, PR, token 20260930-battles-01-cors)
+
+mondo: "get rid of the 8x8 limitation", "the grid is always drawn with the enemies on a back edge", "units can spawn inside
+the wall or floating in the air". EXPLORATION_BATTLES_PLAN.md §3 + §7, built. R2 files: data.js, map.js, three-renderer.js,
+editor.js. PvP untouched: the arenas and the Δ boards read the 8 × 8 path (every arena pick's raster diffed identical after
+the change, headless).
+
+- **The frame** — data.js `hqFieldFrame(roomId, feet[])` (feet = walker, native, then the native's group) replaces
+  `hqFieldWindow` on the encounter path: the room's whole lattice when ≤ `HQ_FIELD_RULES.max` (24) a side, else the 24 × 24
+  crop centred on the feet's bounding box, clamped; a lattice under `min` (6) a side is padded with OUT cells. No reach score.
+  Kill-switch `window.EW_HQ_FIELD_WINDOW = true` = the old 8 × 8 window (map.js `_hqEncounterFire`).
+- **W × H** — `hqFieldRaster(roomId, ox, oz, W, H, { feet })` and the three rasters take W / H (default 8 = the arenas);
+  records carry `W`, `H` (and `S` = the longer side for old readers). `hqFieldTransform` carries W / H (`cellOf` / `inside`
+  clamp per axis); `hqEncounterEye` clamps per axis; `hqFieldBuild(…, { W, H, feet })` / `hqFieldRegister` / map.js
+  `_hqFieldRegister` build a W × H entry and GAME_MODES row (`boardWidth` / `boardHeight`). The battle.js / map.js `|| 8`
+  fallbacks already read the mode's `boardWidth` first: unchanged.
+- **THE STAND RULE** — `entry.field.seats` (a '1' / '0' string per row: IN, not a hazard, not a cover) is the ONLY seat test
+  map.js `_encounterPlaceSeats` uses for a field (`objectBlocksLanding` still refuses a carried door); `_respawnTileSafe` is
+  out of the field path (a Δ fallback with no raster keeps it). `hqEncounterField` files every group member's cell
+  (`cells.group`, from the aim's new `x` / `z` per member — three-renderer.js `_hqEncounterTargetOf`), and
+  `hqEncounterSeats` seats each member on its own cell (ring-nudged towards the native) as P2 seats 2..k (state.js's order),
+  before the fill for the bodies the walk never had (the party's other three until THE FOLLOWERS).
+- **THE FEET RULE (box)** — `hqFieldBoxInfo(roomId, feet)`: a cell is IN when the centre stands `bodyR` (0.34) inside the
+  floor; a prop is cover when its footprint holds the centre. Its own cache (`_hqFieldBoxCacheFeet`); the lattice offsets
+  (THE EDGE) are the same in both modes.
+- **The reference floor (terrain)** — under `feet` the tier reference is the MEDIAN IN top (the room's main floor), and a
+  cell a real ledge under it (≥ tierMin) is level −1 (`hqFieldTierOf(…, down)`). DEVIATION from plan §2 rule 4 ("more than
+  one level below = a hazard"): cells lower than that clamp to −1 instead, because a whole-room frame of a sloped meadow
+  would otherwise turn its lower third into hazards the walker walks on; the body is drawn at its true top either way.
+- **The cave's ground** — the cave raster files the walker's feet at each cell centre (`hqCaveFeet`) under `feet`
+  (`entry.field.caveGround`); three-renderer.js `_fieldGround` stands a cave on it (no columns, the whole chamber drawn).
+  No cave room exists today (all 91 field rooms are 19 box + 72 terrain), so this is dormant.
+- **The renderer** — every `G.N` / `R.T.N` read is W / H: the bounds, the pick quads, `_fieldStrataFaces(W, H, …)`,
+  `_fieldDeformPlan(W, H, …)`, the deform / sink rects, the room-build gate (`ctx.bw !== R.T.W || ctx.bh !== R.T.H`), the
+  floor hole, THE BATTLE RADIUS's box.
+- **The editor** — FIGHT previews the frame at the cursor (yellow = a cover); AUDIT 8×8 → AUDIT FIELD (`hqPlanFieldSeats`:
+  per `space`, the lattice cells meeting the feet rule on the plan, the largest connected region; red under
+  `fieldMinSeats` 48, amber over the 24 × 24 crop). `HQ_ZONE_TOOL_RULES.patchTiles` / `patchStep` and
+  `hqPlanFightPatches` retired. ZONES_PLAN §2.3 / §4 amended.
+- Headless check (load-data.js): haunted hall 8×7 whole, attic 5×4 padded to 6×6, hollow earth gallery 30×24 → 24×24 crop;
+  a frame + build is 3–200 ms on a surveyed room.
