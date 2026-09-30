@@ -4127,11 +4127,6 @@ const DEFAULT_PARTY_RACES = {
     2: ['martian', 'knight', 'android', 'angel']
 };
 
-const DEFAULT_PARTY_NAMES = {
-    1: ['P1 Martian', 'P1 Knight', 'P1 Seraphim', 'P1 Angel'],
-    2: ['P2 Martian', 'P2 Knight', 'P2 Android', 'P2 Angel']
-};
-
 const ITEM_RULES = {
     healPotion: {
         name: 'Healing Potion',
@@ -48669,7 +48664,7 @@ function hqPartyFollowers(profile) {
         const race = (m.meta && m.meta.race) || 'homosapien';
         const genders = hqPartyGenders(race);
         let gender = (m.meta && m.meta.gender) || genders[0]; if (genders.indexOf(gender) < 0) gender = genders[0];
-        const f = { id: m.id, race, gender, name: m.name || m.cls || '', you: !!m.you };
+        const f = { id: m.id, race, gender, name: m.name || ((typeof getRaceLabel === 'function') ? getRaceLabel(race, gender) : race), you: !!m.you };   // THE NAMES: a nameless member is its race
         if (m.meta && m.meta.appearance) f.appearance = m.meta.appearance;
         out.push(f);
     });
@@ -48905,12 +48900,16 @@ function hqPartyRecord(profile) {
     r.v = 1; if (!(r.seq >= 1)) r.seq = 1;
     r.members = r.members.filter(m => m && typeof m === 'object' && m.cls).slice(0, HQ_PARTY_RULES.roster).map(m => hqPartyNormMember(m, r));
     if (r.members.length && !r.members.some(m => m.you)) r.members[0].you = true;
+    /* THE NAMES (mondo, 2026-09-30): the random names are gone — once per record, every member but the officer drops the
+       name it was filed with (a rolled name or its race in capitals) and reads as its race until the player renames it */
+    if (r.names !== 2) { r.members.forEach(m => { if (!m.you) m.name = ''; }); r.names = 2; }
     return r;
 }
 function hqPartyNormMember(m, r) {
     if (!m.id) m.id = 'p' + (r.seq++);
     m.cls = UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): one neutral class for every member
-    m.name = typeof m.name === 'string' ? m.name.slice(0, 24) : '';
+    m.name = typeof m.name === 'string' ? m.name.trim().slice(0, 24) : '';
+    if (m.name && !m.you && hqNameIsRace(m.name, m.meta && m.meta.race)) m.name = '';   // THE NAMES: the race's own label is never filed as a name
     if (!m.meta || typeof m.meta !== 'object') m.meta = {};
     if (!m.meta.race) m.meta.race = 'homosapien';
     if (m.meta.customSpells && !Array.isArray(m.meta.customSpells)) delete m.meta.customSpells;
@@ -49088,9 +49087,32 @@ function hqPartyPrune(profile) {
 function hqPartySpec(race, gender, cls) {
     const genders = hqPartyGenders(race); if (genders.indexOf(gender) < 0) gender = genders[0];
     const job = cls || hqPartyDefaultJob(race);
-    let name = '';
-    try { name = (typeof getRaceLabel === 'function') ? String(getRaceLabel(race, gender)).toUpperCase().slice(0, 24) : race.toUpperCase(); } catch (e) { name = race.toUpperCase(); }
+    const name = '';   // THE NAMES (2026-09-30): a new member is its race until the player names it
     return { cls: job, name, meta: { race, gender }, loadout: { spells: [], items: { healPotion: 1 }, equipment: {} }, hp: null, hpMax: null, mp: null, mpMax: null };
+}
+/* THE NAMES (2026-09-30): true when `name` is only the race's label (either gender, any case) or its key */
+function hqNameIsRace(name, race) {
+    const lc = String(name || '').trim().toLowerCase();
+    if (!lc || !race) return false;
+    if (String(race).toLowerCase() === lc) return true;
+    try { return typeof getRaceLabel === 'function' && ['male', 'female'].some(g => String(getRaceLabel(race, g) || '').toLowerCase() === lc); } catch (e) { return false; }
+}
+/* RENAME a member (the pause menu's sheet): an empty name, or the race's own label, clears it back to the race. The officer's
+   name is the agent's — it is written to the officer record and the look as well. Pure over the profile handed in (the caller saves). */
+function hqPartyRename(profile, id, name) {
+    const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
+    const m = r.members.find(x => x.id === id); if (!m) return { ok: false, reason: 'who' };
+    let nm = String(name == null ? '' : name).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 18);
+    if (m.you) {
+        if (!nm) return { ok: false, reason: 'you' };
+        m.name = nm;
+        try { const H = profile.door && profile.door.hq; if (H && H.officer) H.officer.name = nm; if (H && H.look) H.look.name = nm; } catch (e) {}
+    } else {
+        if (hqNameIsRace(nm, m.meta && m.meta.race)) nm = '';
+        m.name = nm;
+    }
+    r.at = Date.now();
+    return { ok: true, member: m, name: m.name };
 }
 function hqPartyMember(profile, id) { const r = hqPartyRecord(profile); return r ? (r.members.find(m => m.id === id) || null) : null; }
 function hqPartyShifts(profile) {
@@ -53559,7 +53581,7 @@ if (typeof window !== 'undefined') {
     /* THE PARTY (2026-09-19): two shifts, the health that carries, field medicine */
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyLead = hqPartyLead; window.hqPartyLeadAvatar = hqPartyLeadAvatar; window.hqPartyGauge = hqPartyGauge; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
-    window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
+    window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRename = hqPartyRename; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
     window.hqEncounterEndSpot = hqEncounterEndSpot; window.hqEncounterEndRows = hqEncounterEndRows; window.HQ_FOLLOW_RULES = HQ_FOLLOW_RULES; window.hqPartyFollowers = hqPartyFollowers; window.HQ_ESCAPE_RULES = HQ_ESCAPE_RULES; window.hqEscapeRules = hqEscapeRules; window.hqEscapeTeamNeed = hqEscapeTeamNeed; window.hqPartyEscapedFront = hqPartyEscapedFront; window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.KILL_XP = KILL_XP; window.killXpFor = killXpFor; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;

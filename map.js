@@ -2493,6 +2493,12 @@
             /* THE ELEMENT BOX (2026-09-23): a party member's reactions are always read (own: true) */
             if (u && typeof window.elemAffinityBoxHtml === 'function') html += `<div class="hq-pp-elem">${window.elemAffinityBoxHtml(u.race, { own: true, size: 'md', label: 'ELEMENTS' })}</div>`;
             else html += `<p class="hq-panel-note">The sheet could not be rebuilt from the record (a retired vessel?). The bare loadout is below.</p>`;
+            /* THE NAME (mondo, 2026-09-30): rename a member here — an empty name (or the race's own label) makes it its race again */
+            html += `<div class="hq-pp-duty hq-pp-name"><b>NAME</b><span>${m.you ? 'YOUR AGENT · THE ID CARD WEARS IT TOO' : (m.name ? 'CLEAR IT TO GO BACK TO THE RACE' : 'NO NAME · READS AS ITS RACE')}</span>`
+                + `<div class="hq-pp-name-row"><input class="hq-pp-name-input" type="text" maxlength="18" spellcheck="false" autocomplete="off" data-party-rename="${_hqEsc(m.id)}" value="${_hqEsc(m.name || '')}" placeholder="${_hqEsc(_hqPauseRaceLabel(m, u))}" aria-label="Name">`
+                + `<button class="hq-btn hq-btn-sm" data-party-act="rename:${_hqEsc(m.id)}">✎ RENAME</button>`
+                + (m.name && !m.you ? `<button class="hq-btn hq-btn-sm" data-party-act="unname:${_hqEsc(m.id)}" title="Back to the race's name">✕ CLEAR</button>` : '')
+                + `</div></div>`;
             /* THE DUTY ROSTER: swap the slot (a shift change), relieve (never the officer) */
             html += `<div class="hq-pp-duty"><b>DUTY</b><span>${v.down ? 'DOWN — A REVIVE OR THE COT IN MEDICAL BRINGS THEM BACK' : idx === 0 ? 'THE LEAD · SLOT 1 · YOU WALK THE BUILDING AS THEM' : idx < HQ_PARTY_RULES.shift ? 'FIRST SHIFT · SENT OUT FIRST' : 'SECOND SHIFT · ON THE BENCH'}</span>`
                 + `<div class="hq-panel-actions">`
@@ -2777,6 +2783,16 @@
             const say = (h, bad) => _hqPauseSay(h, bad);
             if (verb === 'circuit' || verb === 'node' || verb === 'fold' || verb === 'sock' || verb === 'sockclose' || verb === 'spelldef' || verb === 'spellrnd' || verb === 'spellclr' || verb === 'upg') { _hqPartyCircuitAct(verb, a, b, String(act).split(':')[3] || null); }   // THE CIRCUIT IN THE FIELD (2026-09-21)
             else if (verb === 'cancel') { P.arm = null; }
+            else if (verb === 'rename' || verb === 'unname') {   // THE NAME (2026-09-30)
+                const inp = document.querySelector(`#hqPause [data-party-rename="${a}"]`);
+                const was = rec.members.find(x => x.id === a);
+                const r = _hqPartyTx(p => window.hqPartyRename(p, a, verb === 'unname' ? '' : (inp ? inp.value : '')));
+                if (r && r.ok) {
+                    say(r.name ? `<b>RENAMED</b> ${_hqEsc(r.name)}` : `<b>NAME CLEARED</b> ${_hqEsc(_hqMemberName(r.member))} READS AS ITS RACE`);
+                    try { playSfx('uiButtonConfirm'); } catch (e) {}
+                    if (was && (was.you || rec.members[0] === was)) { try { if (typeof window._hqRefreshAvatar === 'function') window._hqRefreshAvatar(); } catch (e) {} }
+                } else { say(`<b>NOT RENAMED</b> ${r && r.reason === 'you' ? 'YOUR AGENT NEEDS A NAME' : 'THE BUILDING SAID NO'}`, true); try { playSfx('uiError'); } catch (e) {} }
+            }
             else if (verb === 'enlist') {
                 const r = _hqPartyTx(p => window.hqPartyEnlist(p, { race: a, gender: b }));
                 if (r && r.ok) { say(`<b>ENLISTED</b> ${_hqEsc(r.member.name)} · ${r.index < HQ_PARTY_RULES.shift ? 'FIRST' : 'SECOND'} SHIFT · SLOT ${r.index + 1}`); try { playSfx('uiButtonConfirm'); } catch (e) {} }
@@ -2968,6 +2984,7 @@
             const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
             const k = e.key;
             if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (P.socket) { P.socket = null; P.sockQ = ''; _hqPauseRender(); } else if (P.circuit) { P.circuit = null; _hqPauseRender(); } else if (P.arm) { P.arm = null; _hqPauseRender(); } else if (P.member != null) { P.member = null; _hqPauseRender(); } else window._hqClosePause(); return; }
+            if (typing && k === 'Enter' && t.getAttribute && t.getAttribute('data-party-rename')) { e.preventDefault(); e.stopPropagation(); _hqPartyAct('rename:' + t.getAttribute('data-party-rename')); return; }   // THE NAME: ENTER files it
             if (typing) return;
             if (k === 'ArrowUp' || k === 'ArrowDown') {
                 e.preventDefault();
