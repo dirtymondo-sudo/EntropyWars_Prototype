@@ -1106,3 +1106,8 @@ Run Out of Town = bookEm, Five Arms = releaseTheKraken, The Big Top = farewellTo
 eventHorizon, The Lure = theBloom. Homes: Haunted House, the Strip, Bermuda Triangle ×2, Agartha, Skinwalker Ranch,
 Downtown, Fairy Forest ×2, Area 51, Atlantis, Football Stadium, Göbekli Tepe, D.U.M.B.
 UNSEEN LIVE: every rig's scale/facing (heightRatio is the one-field edit).
+**HOMES MOVED (same day, the user)**: clown + ringmaster live in THE CARNIVAL (HQ Room 1893, floor 4): race `npcSpots` there,
+the ringmaster race standing where THE RINGMASTER agent stood (his line kept as `say`); their POINT_OF_ENTRY reads 'The
+Carnival' (no site, so no site draw). Jack-o'-lantern = The Haunted House (the graveyard). NEW `DOOR_TEXT.ALSO_NATIVE`
+{ race: [site labels] } — a second home that `doorSiteCrossings` reads: professor also Downtown (POE D.U.M.B.), sharkman
++ deep sea fish also Atlantis (POE Bermuda Triangle).
