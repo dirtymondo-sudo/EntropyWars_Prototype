@@ -120,7 +120,7 @@ prefers 3 tiers: every kept T4 becomes a T3 with `cost: 100` pinned, SP max drop
 | `SPELL_FAMILY_AUDIT_HANDOFF.md` | This file. |
 | `docs/spell-audit/sections/*.md` | The 15 verified sections (source of the plan) + `00-front.md` once synthesized. |
 | `docs/spell-audit/data/*.md` | The data snapshot the audit was checked against (2026-09-30 data.js). |
-| `docs/spell-audit/tools/*.js` | `dump.js` (writes families/races/summary .md next to it), `synergy.js` (prints synergy.md), `prep.js` (group slices + family-index), `assemble.js` (stitches sections into the plan). They expect to run from the folder holding `families.md`; `assemble.js` reads `./sections` and writes the repo-root plan. |
+| (tools) | The dump/assemble scripts were not committed; the data snapshot above is what they produced. |
 
 Each family block uses verb tags: DELETE · MERGE · MOVE · RENAME · RETIER · RECOST · REWRITE · UPGRADE · PASSIVE ·
 NEW, then Additions (new spells with full numbers) and Upgrades (which shipped upgrades the rows should take).
