@@ -17148,7 +17148,7 @@ const EW_RACE_BIOMES = {
     'bee queen': ['ancient', 'forest'],   // 2026-09-30
     'professor': ['underground_base', 'clandestine'],   // 2026-09-30
     'deep sea fish': ['deep_sea'],   // 2026-09-30
-    'clown': ['gothic', 'clandestine'],   // 2026-09-30
+    'clown': ['urban', 'stadium'],   // 2026-09-30
     'bunny girl': ['urban', 'neon_city'],   // 2026-09-30
     'sharkman': ['deep_sea', 'tropical'],   // 2026-09-30
     'crystal guardian': ['inner_earth', 'ancient'],   // 2026-09-30
@@ -21883,15 +21883,15 @@ const DOOR_TEXT = {
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
         'popstar': 'Football Stadium',   // 2026-09-22 — the Bowl is the tour's first date
         'starfish': 'Atlantis',   // 2026-09-30 — Atlantis
-        'ringmaster': 'Football Stadium',   // 2026-09-30 — Disaster City
+        'ringmaster': 'The Carnival',   // 2026-09-30 — the user: the carnival (HQ Room 1893, floor 4; npcSpots there)
         'bee queen': 'Göbekli Tepe',   // 2026-09-30 — Leylines
         'professor': 'D.U.M.B.',   // 2026-09-30 — The D.U.M.B.
         'deep sea fish': 'The Bermuda Triangle',   // 2026-09-30 — The Deep
-        'clown': 'The Haunted House',   // 2026-09-30 — The Estate
+        'clown': 'The Carnival',   // 2026-09-30 — the user: the carnival (HQ Room 1893, floor 4; npcSpots there)
         'bunny girl': 'The Strip',   // 2026-09-30 — The Desert
         'sharkman': 'The Bermuda Triangle',   // 2026-09-30 — The Deep
         'crystal guardian': 'Agartha',   // 2026-09-30 — The Cavern
-        'jack o lantern': 'Skinwalker Ranch',   // 2026-09-30 — The Estate
+        'jack o lantern': 'The Haunted House',   // 2026-09-30 — the user: the graveyard (The Estate)
         'sidekick': 'Downtown',   // 2026-09-30 — Disaster City
         'mushroom girl': 'Fairy Forest',   // 2026-09-30 — The Fairy Forest
         'tree person': 'Fairy Forest',   // 2026-09-30 — The Woods
@@ -21924,6 +21924,14 @@ const DOOR_TEXT = {
         'king arthur': 'Camelot', 'king kong': 'Downtown', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
         'occulus': 'The Looking-Glass', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
         'super sentai': 'Technoticlan', 'symbiote': 'Spaceship', 'valkraye': 'Heaven', 'watcher': 'The Singularity',
+    },
+
+    // THE SECOND HOMES (2026-09-30, the user): a race native to more than one site. doorSiteCrossings reads these too;
+    // POINT_OF_ENTRY stays the one the dossier prints.
+    ALSO_NATIVE: {
+        'professor': ['Downtown'],
+        'sharkman': ['Atlantis'],
+        'deep sea fish': ['Atlantis'],
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -22147,6 +22155,8 @@ function doorSiteCrossings(mapLabel) {
     for (const race in DOOR_TEXT.POINT_OF_ENTRY) {
         if (DOOR_TEXT.POINT_OF_ENTRY[race] === lbl) out.push(race);
     }
+    const also = DOOR_TEXT.ALSO_NATIVE || {};
+    for (const race in also) if (Array.isArray(also[race]) && also[race].indexOf(lbl) >= 0 && out.indexOf(race) < 0) out.push(race);
     return out;
 }
 /* Stable "first documented crossing" canon date per site (FNV of the id →
@@ -30577,12 +30587,13 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 3.0, z: 2.6 },
             ],
             agents: [
-                { x: -0.4, z: 1.2, face: 180, pose: 'hqArms', gender: 'male', label: 'THE RINGMASTER', reach: 2.6,
-                  line: '“Ladies and gentlemen and operatives! The wheel! The horses! The lady who knows! The bell nobody has rung! And behind the mirrors — well. You will see.”' },
                 { x: 4.0, z: 6.0, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
                   line: '“Step right up. No, further. No — further than that. There. You are in.”' },
             ],
             npcSpots: [
+                /* 2026-09-30 (the user): the ringmaster and the clown live here — the ringmaster race stands where THE RINGMASTER agent stood, with his line */
+                { x: -0.4, z: 1.2, face: 180, race: 'ringmaster', say: ['“Ladies and gentlemen and operatives! The wheel! The horses! The lady who knows! The bell nobody has rung! And behind the mirrors — well. You will see.”'] },
+                { x: 3.2, z: 1.4, face: 220, race: 'clown' },
                 { x: 1.4, z: -4.4, face: 0, race: 'giant', say: ['“Nobody has rung the bell.” “Have you tried?” “I am the bell.”'] },
                 { x: -7.0, z: 3.2, face: 0, race: 'fortune teller', say: ['“I know what is behind the mirrors.” “What?” “A room. I do not know which. That is what makes me honest.”'] },
                 { x: -3.6, z: -1.2, face: 90, race: 'mermaid', say: ['“The tank act. Two shows a night.” “There is no tank.” “There is a tank. It is on the fourth floor. I get changed here.”'] },
