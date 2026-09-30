@@ -828,3 +828,7 @@ height was never the problem, the field already carried it. RULE: a new "where d
 `_fieldSurfaceY` (or `tileTopY` / `surfaceYAt`), never `getBaseHeightAt × ELEV_STEP_RATIO`. `npm test` runs seamless-field.test.js (31).
 SEAMLESS_FIELD_PLAN §7 has the entry. UNSEEN LIVE (RULE #1c): the foot contact on the treads during a walk, a flyer's bob over a dais,
 the strike leap's landing on a slope.
+
+## THE PLAN FOR THE NEXT STEP — EXPLORATION_BATTLES_PLAN.md (2026-09-30, docs only)
+The fixed 8×8 window (`hqFieldWindow`), the seats, the followers, the hand-back and ESCAPE / TEAM ESCAPE are planned in
+EXPLORATION_BATTLES_PLAN.md at the repo root (§1 has the causes read off the code, §11 the anchors). Nothing built yet.
