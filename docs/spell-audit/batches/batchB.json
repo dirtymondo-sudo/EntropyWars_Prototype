@@ -1,0 +1,1342 @@
+{
+ "format": "entropy-wars-spell-mods",
+ "v": 2,
+ "modified": {
+  "passiveGreenThumb": {
+   "families": [
+    "agriculture"
+   ]
+  },
+  "raceGravityBoots": {
+   "families": [
+    "alientechnology"
+   ]
+  },
+  "raceDinoTailWhip": {
+   "families": [
+    "apexpredator"
+   ]
+  },
+  "raceInkCloud": {
+   "families": [
+    "tentacleappendages"
+   ]
+  },
+  "passiveFieldOperative": {
+   "families": [
+    "computerhacking"
+   ]
+  },
+  "raceCultTithe": {
+   "families": [
+    "cult"
+   ]
+  },
+  "passiveTinker": {
+   "families": [
+    "engineering"
+   ]
+  },
+  "raceStarCrossed": {
+   "families": [
+    "fortunetelling"
+   ]
+  },
+  "raceStoneThrow": {
+   "families": [
+    "titan"
+   ]
+  },
+  "raceThickHide": {
+   "families": [
+    "titan"
+   ]
+  },
+  "raceSeismicLeap": {
+   "families": [
+    "apeintelligence"
+   ]
+  },
+  "raceDivineJudgment": {
+   "families": [
+    "angelic"
+   ]
+  },
+  "raceJellyDrift": {
+   "families": [
+    "jellyfish"
+   ]
+  },
+  "raceHydraulicPunch": {
+   "families": [
+    "machinery"
+   ]
+  },
+  "raceBlessedBlade": {
+   "families": [
+    "maincharacter"
+   ]
+  },
+  "raceQuickDraw": {
+   "families": [
+    "marksmanship"
+   ]
+  },
+  "raceBoneBarrage": {
+   "families": [
+    "necromancy"
+   ]
+  },
+  "sharedNuke": {
+   "families": [
+    "politics"
+   ]
+  },
+  "raceAyahuascaRetreat": {
+   "families": [
+    "psychadelic"
+   ]
+  },
+  "provoke": {
+   "families": [
+    "stagepresence"
+   ]
+  },
+  "raceHitALick": {
+   "families": [
+    "thievery"
+   ]
+  },
+  "raceBorrowedClaw": {
+   "families": [
+    "trickery"
+   ]
+  },
+  "raceChitinArmor": {
+   "cost": 0,
+   "apCost": 0,
+   "range": 0,
+   "statStageBoost": null,
+   "statusEffects": null,
+   "spellType": null,
+   "kind": "passive",
+   "type": "utility",
+   "tier": 2,
+   "icon": "🪲",
+   "hooks": {
+    "statBonus": {
+     "def": 8
+    },
+    "immuneStatus": [
+     "stagger"
+    ]
+   },
+   "desc": "A shell that does not flinch: +8 DEF, and Stagger never takes hold."
+  },
+  "raceSymbioteArmor": {
+   "cost": 0,
+   "apCost": 0,
+   "range": 0,
+   "statStageBoost": null,
+   "statusEffects": null,
+   "spellType": null,
+   "kind": "passive",
+   "type": "utility",
+   "tier": 2,
+   "icon": "🧬",
+   "hooks": {
+    "healOnceBelowPct": {
+     "pct": 40,
+     "healPct": 30
+    }
+   },
+   "desc": "Once per life, when the host falls under 40% HP the suit knits it back for 30% of max HP."
+  }
+ },
+ "added": {
+  "raceRollCredits": {
+   "_home": {
+    "race": "chosen one"
+   },
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "maincharacter"
+   ],
+   "spellType": "human",
+   "name": "Roll Credits",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 180,
+   "range": 2,
+   "bonusVsStatus": {
+    "status": "stagger",
+    "mult": 1.5
+   },
+   "desc": "This is the part where it ends. Deals HEAVY physical damage to a Single Enemy. Deals bonus damage to Staggered targets."
+  },
+  "raceDisintegrator": {
+   "_home": {
+    "race": "martian"
+   },
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "alientechnology"
+   ],
+   "spellType": "alien",
+   "element": "lightning",
+   "name": "Disintegrator",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 180,
+   "range": 4,
+   "bonusVsStatus": {
+    "status": [
+     "stun",
+     "minimize"
+    ],
+    "mult": 1.5
+   },
+   "desc": "There is no body to recover. Deals HEAVY physical damage to a Single Enemy. Deals bonus damage to Stunned or Minimized targets."
+  },
+  "raceEntanglingRoots": {
+   "_home": {
+    "race": "bigfoot"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "nature"
+   ],
+   "spellType": "anomaly",
+   "element": "nature",
+   "name": "Entangling Roots",
+   "type": "damage",
+   "kind": "aoe",
+   "damageType": "magic",
+   "dmg": 125,
+   "range": 4,
+   "aoeRadius": 1,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 1
+    }
+   ],
+   "desc": "The ground remembers what it grew. Deals MEDIUM magic damage to All Enemies in a 3×3 and Roots them for a round."
+  },
+  "raceBoneLance": {
+   "_home": {
+    "race": "skeleton"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "bonedensity"
+   ],
+   "spellType": "unholy",
+   "name": "Bone Lance",
+   "type": "damage",
+   "kind": "line",
+   "damageType": "physical",
+   "dmg": 125,
+   "range": 4,
+   "lineWidth": 1,
+   "ignoreArmor": true,
+   "desc": "A femur, thrown like a javelin, through everyone in the way. Deals MEDIUM physical damage to All Enemies in a line. Ignores DEF."
+  },
+  "raceScrapMine": {
+   "_home": {
+    "race": "gnome"
+   },
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "trapmaking"
+   ],
+   "spellType": "tech",
+   "element": "fire",
+   "name": "Scrap Mine",
+   "type": "utility",
+   "kind": "deployObject",
+   "damageType": "physical",
+   "range": 3,
+   "objectHp": 20,
+   "blastRadius": 1,
+   "blastDmg": 100,
+   "detonateOnStep": true,
+   "maxActivePerCaster": 2,
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a MEDIUM blast in a 3×3 that Staggers. Two per caster."
+  },
+  "raceCarToss": {
+   "_home": {
+    "race": "kaiju"
+   },
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "kaiju"
+   ],
+   "spellType": "unholy",
+   "name": "Car Toss",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 100,
+   "range": 4,
+   "ignoresLineOfSight": true,
+   "desc": "Whatever was parked there. Deals MEDIUM physical damage to a Single Enemy, over any wall."
+  },
+  "raceRot": {
+   "_home": {
+    "race": "bee queen"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "poison"
+   ],
+   "spellType": "unholy",
+   "element": "poison",
+   "name": "Rot",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 125,
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "poison",
+     "duration": 2
+    },
+    {
+     "id": "grievous",
+     "duration": 2
+    }
+   ],
+   "desc": "It does not heal. Deals MEDIUM magic damage to a Single Enemy; the wound Poisons and will not close — healing on them is halved."
+  },
+  "raceLongBomb": {
+   "_home": {
+    "race": "quarterback"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "football"
+   ],
+   "spellType": "human",
+   "element": "wind",
+   "name": "Long Bomb",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 135,
+   "range": 6,
+   "ignoresLineOfSight": true,
+   "desc": "Let it fly. Deals MEDIUM physical damage to a Single Enemy up to 6 tiles away; the ball arcs over cover."
+  },
+  "raceWebSwing": {
+   "_home": {
+    "race": "symbiote"
+   },
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "symbiosis"
+   ],
+   "spellType": "unholy",
+   "name": "Web Swing",
+   "type": "utility",
+   "kind": "teleport",
+   "range": 4,
+   "teleportDistance": 4,
+   "desc": "The line goes out, the host goes after it. Swing to any free tile within 4."
+  },
+  "raceTimeRewindHeal": {
+   "_home": {
+    "race": "watcher"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "temporal"
+   ],
+   "spellType": "anomaly",
+   "name": "Time Rewind",
+   "type": "heal",
+   "kind": "heal",
+   "range": 3,
+   "healPct": 0.4,
+   "cleanse": 99,
+   "desc": "Restore them to the moment before. Heals an ally for 40% of their max HP and removes every debuff."
+  },
+  "raceEmptyTheClip": {
+   "_home": {
+    "race": "gangster"
+   },
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "streetsmarts"
+   ],
+   "spellType": "human",
+   "element": "metal",
+   "name": "Empty the Clip",
+   "type": "damage",
+   "kind": "line",
+   "damageType": "physical",
+   "dmg": 160,
+   "range": 4,
+   "lineWidth": 3,
+   "projectileOverride": "proj-bullet",
+   "bonusVsStatus": {
+    "status": "discord",
+    "mult": 1.5
+   },
+   "desc": "Hold the trigger down until it clicks. HEAVY physical damage to everything on a three-wide street in front of you — anyone already Discorded gets the rest of the belt."
+  },
+  "raceSoothe": {
+   "_home": {
+    "race": "starfish"
+   },
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "healingmagic"
+   ],
+   "spellType": "divine",
+   "element": "light",
+   "name": "Soothe",
+   "type": "heal",
+   "kind": "heal",
+   "range": 3,
+   "healAmt": 80,
+   "statusEffects": [
+    {
+     "id": "regen",
+     "duration": 2
+    }
+   ],
+   "desc": "A hand on the brow. It does not fix you; it keeps you going. Heals an ally a MEDIUM amount and gives them Regen for 2 rounds."
+  },
+  "raceBrood": {
+   "_home": {
+    "race": "bee queen"
+   },
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "insectoid"
+   ],
+   "spellType": "alien",
+   "element": "poison",
+   "name": "Brood",
+   "type": "utility",
+   "kind": "summonUnit",
+   "range": 1,
+   "maxActivePerCaster": 1,
+   "summonDef": {
+    "key": "drone",
+    "name": "Drone",
+    "move": 4,
+    "dmg": 55,
+    "hits": 3
+   },
+   "desc": "One is never found alone. Hatches a Drone beside the caster: at the end of every round it flies 4 tiles at the nearest enemy and stings for 55. Three hits to bring it down."
+  },
+  "raceDeadMansHand": {
+   "_home": {
+    "race": "bunny girl"
+   },
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "gambling"
+   ],
+   "spellType": "anomaly",
+   "element": "arcane",
+   "name": "Dead Man's Hand",
+   "type": "damage",
+   "kind": "multiHit",
+   "damageType": "magic",
+   "range": 3,
+   "hitDamages": [
+    26,
+    26,
+    26,
+    26
+   ],
+   "desc": "Aces and eights, thrown edge-first. Four cards at a Single Enemy for WEAK magic damage each."
+  },
+  "raceDoubleDown": {
+   "_home": {
+    "race": "bunny girl"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "gambling"
+   ],
+   "spellType": "anomaly",
+   "name": "Double Down",
+   "type": "buff",
+   "kind": "buff",
+   "range": 0,
+   "statStageBoost": {
+    "atk": 2,
+    "def": -1
+   },
+   "desc": "Everything on the table. Raises the caster's ATK by 2 stages and lowers their DEF by 1 stage."
+  },
+  "racePetrify": {
+   "_home": {
+    "race": "crystal guardian"
+   },
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "livingstone"
+   ],
+   "spellType": "unholy",
+   "element": "earth",
+   "name": "Petrify",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 3,
+   "cooldownRounds": 2,
+   "statusEffects": [
+    {
+     "id": "stun",
+     "duration": 2
+    }
+   ],
+   "statStageBoost": {
+    "def": -1
+   },
+   "desc": "Grey climbs from the feet up. For two rounds they are a statue; when it lets go, the cracks stay. Stuns a Single Enemy for 2 rounds and lowers DEF by 1 stage. Cooldown: 2 rounds."
+  },
+  "raceSprint": {
+   "_home": {
+    "race": "rabbit"
+   },
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "athleticism"
+   ],
+   "spellType": "human",
+   "element": "wind",
+   "name": "Sprint",
+   "type": "utility",
+   "kind": "dash",
+   "damageType": "physical",
+   "dmg": 0,
+   "range": 3,
+   "desc": "Go. Runs up to 3 tiles in a straight line."
+  },
+  "raceVault": {
+   "_home": {
+    "race": "rabbit"
+   },
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "athleticism"
+   ],
+   "spellType": "human",
+   "name": "Vault",
+   "type": "damage",
+   "kind": "leapStrike",
+   "damageType": "physical",
+   "dmg": 125,
+   "range": 3,
+   "dmgPerLevel": 15,
+   "desc": "Over, not through. Leaps over walls and bodies onto a Single Enemy within 3 tiles for MEDIUM physical damage."
+  }
+ },
+ "deleted": [
+  "raceAmbushLunge",
+  "raceNeuralHack",
+  "raceRealityShift",
+  "raceInnerDemon",
+  "raceClockworkTurret",
+  "racePixieDust",
+  "radiantBolt",
+  "raceCliffCharge",
+  "improvise",
+  "raceIceShard",
+  "raceGothicRampart",
+  "raceTinkersContraption",
+  "racePrimalRoar",
+  "raceUnstoppableCharge",
+  "raceRoboPunch"
+ ],
+ "families": {
+  "actingchops": null,
+  "archaeology": null,
+  "astronautcamp": null,
+  "culinaryarts": null,
+  "musictheory": null,
+  "persuasion": null,
+  "astrology": null,
+  "stoneage": null,
+  "ancientknowledge": {
+   "name": "Ancient Knowledge",
+   "glyph": "🚫",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": null
+  },
+  "tentacleappendages": {
+   "name": "Cephalopod Anatomy",
+   "glyph": "🦑",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": null
+  },
+  "chemistry": {
+   "name": "Chemistry",
+   "glyph": "🧪",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": null
+  },
+  "apeintelligence": {
+   "name": "Great Ape",
+   "glyph": "🙉",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": null
+  },
+  "psychadelic": {
+   "name": "Psychedelics",
+   "glyph": "😵‍💫",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": null
+  },
+  "scarecrow": {
+   "name": "Scarecrow Abilities",
+   "glyph": "🧑‍🌾🐦‍⬛",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": "scarecrow"
+  },
+  "ki": {
+   "name": "Ki Energy",
+   "glyph": "💥",
+   "color": "#a08cc8",
+   "kind": "discipline",
+   "desc": "",
+   "unique": "ki fighter"
+  }
+ },
+ "raceFamilies": {
+  "ai": [
+   "artificialintelligence",
+   "computerhacking",
+   "engineering"
+  ],
+  "android": [
+   "robot",
+   "computerhacking",
+   "cyberpunkweapons",
+   "trickery"
+  ],
+  "angel": [
+   "angelic",
+   "light",
+   "healingmagic"
+  ],
+  "annunaki": [
+   "cosmic",
+   "ancientknowledge",
+   "alientechnology"
+  ],
+  "antihero": [
+   "dirtyfighting",
+   "superheropowers",
+   "spygear",
+   "humangrit"
+  ],
+  "antperson": [
+   "insectoid",
+   "poison",
+   "teamwork",
+   "agriculture"
+  ],
+  "anubis": [
+   "ancientknowledge",
+   "necromancy",
+   "desertacclimation"
+  ],
+  "astronaut": [
+   "advancedtechnology",
+   "cosmic",
+   "humangrit"
+  ],
+  "atlantean": [
+   "water",
+   "arcane",
+   "temporal",
+   "ancientknowledge"
+  ],
+  "barbarella": [
+   "alientechnology",
+   "seduction",
+   "spygear"
+  ],
+  "bee queen": [
+   "insectoid",
+   "poison",
+   "agriculture",
+   "teamwork"
+  ],
+  "bigfoot": [
+   "sasquatch",
+   "nature",
+   "cryptid",
+   "athleticism"
+  ],
+  "black goo": [
+   "ooze",
+   "poison",
+   "symbiosis"
+  ],
+  "bunny girl": [
+   "seduction",
+   "athleticism",
+   "trickery",
+   "gambling"
+  ],
+  "catgirl": [
+   "feline",
+   "athleticism",
+   "seduction"
+  ],
+  "chosen one": [
+   "maincharacter",
+   "light",
+   "shadow"
+  ],
+  "clown": [
+   "trickery",
+   "dirtyfighting",
+   "shadow"
+  ],
+  "conspiracy theorist": [
+   "conspiracyknowledge",
+   "advancedtechnology",
+   "deepstate",
+   "internetaddiction"
+  ],
+  "cosmic wraith": [
+   "cosmic",
+   "shadow",
+   "temporal"
+  ],
+  "cowboy": [
+   "cowboyskills",
+   "huntingskills",
+   "weaponstraining",
+   "ropework"
+  ],
+  "crystal guardian": [
+   "livingstone",
+   "prismlattice",
+   "holydefense",
+   "earth"
+  ],
+  "cult leader": [
+   "cult",
+   "meditation",
+   "blackmagic"
+  ],
+  "cyborg": [
+   "cyberpunkweapons",
+   "robot",
+   "humangrit"
+  ],
+  "cyclops": [
+   "titan",
+   "eyesight",
+   "earth"
+  ],
+  "deep sea fish": [
+   "deepsea",
+   "water",
+   "beastabilities"
+  ],
+  "demon": [
+   "demonicabilities",
+   "shadow",
+   "fire",
+   "blood"
+  ],
+  "demon prince": [
+   "infernalcourt",
+   "demonicabilities",
+   "fire",
+   "blood"
+  ],
+  "demon princess": [
+   "infernalcourt",
+   "witchcraft",
+   "poison",
+   "blood",
+   "seduction"
+  ],
+  "dinosaur": [
+   "apexpredator",
+   "beastabilities",
+   "earth"
+  ],
+  "djinn": [
+   "arcane",
+   "ancientknowledge",
+   "trickery"
+  ],
+  "door agent": [
+   "door",
+   "doors",
+   "humangrit"
+  ],
+  "dragon": [
+   "dragonabilities",
+   "fire",
+   "wind",
+   "beastabilities"
+  ],
+  "dreameater": [
+   "astral",
+   "psychic",
+   "shadow"
+  ],
+  "droid": [
+   "computerhacking",
+   "robot",
+   "engineering",
+   "artificialintelligence"
+  ],
+  "fairy": [
+   "fae",
+   "trickery",
+   "nature"
+  ],
+  "fallen angel": [
+   "fallenangel",
+   "angelic",
+   "demonicabilities"
+  ],
+  "firefighter": [
+   "water",
+   "humangrit",
+   "teamwork",
+   "athleticism"
+  ],
+  "fortune teller": [
+   "fortunetelling",
+   "witchcraft",
+   "astralprojection"
+  ],
+  "gangster": [
+   "streetsmarts",
+   "dirtyfighting",
+   "weaponstraining",
+   "thievery"
+  ],
+  "gargoyle": [
+   "livingstone",
+   "earth",
+   "wind"
+  ],
+  "general": [
+   "militarysupport",
+   "weaponstraining",
+   "teamwork"
+  ],
+  "ghost": [
+   "haunted",
+   "shadow",
+   "computerhacking"
+  ],
+  "ghoul": [
+   "ghoulish",
+   "poison",
+   "shadow"
+  ],
+  "giant": [
+   "titan",
+   "earth",
+   "dirtyfighting"
+  ],
+  "glitch": [
+   "computerhacking",
+   "temporal",
+   "artificialintelligence"
+  ],
+  "gnome": [
+   "engineering",
+   "trapmaking",
+   "advancedtechnology"
+  ],
+  "goatman": [
+   "horns",
+   "blood",
+   "blackmagic"
+  ],
+  "goblin": [
+   "thievery",
+   "trapmaking",
+   "dirtyfighting",
+   "poison"
+  ],
+  "golem": [
+   "livingstone",
+   "earth",
+   "ancientknowledge"
+  ],
+  "grey": [
+   "ufo",
+   "psychic",
+   "cryptid"
+  ],
+  "halfdemon": [
+   "demonicabilities",
+   "shadow",
+   "spygear"
+  ],
+  "hippie": [
+   "psychadelic",
+   "meditation",
+   "nature",
+   "agriculture"
+  ],
+  "homosapien": [
+   "humangrit",
+   "teamwork",
+   "athleticism",
+   "ropework"
+  ],
+  "honda civic": [
+   "drivingskills",
+   "robot",
+   "machinery"
+  ],
+  "ice queen": [
+   "ice",
+   "cosmic",
+   "prismlattice"
+  ],
+  "jack o lantern": [
+   "fire",
+   "agriculture",
+   "haunted",
+   "witchcraft"
+  ],
+  "jellyfish": [
+   "deepsea",
+   "water",
+   "jellyfish"
+  ],
+  "juggernaut": [
+   "athleticism",
+   "dirtyfighting",
+   "titan"
+  ],
+  "kaiju": [
+   "kaiju",
+   "earth",
+   "titan"
+  ],
+  "ki fighter": [
+   "ki",
+   "martialarts",
+   "athleticism",
+   "humangrit"
+  ],
+  "king arthur": [
+   "royalty",
+   "knight",
+   "swordsmanship",
+   "horsebackriding"
+  ],
+  "king kong": [
+   "kaiju",
+   "beastabilities",
+   "apeintelligence",
+   "titan"
+  ],
+  "knight": [
+   "knight",
+   "royalty",
+   "swordsmanship",
+   "horsebackriding"
+  ],
+  "kraken": [
+   "deepsea",
+   "water",
+   "tentacleappendages",
+   "cryptid"
+  ],
+  "krampus": [
+   "christmasspirit",
+   "horns",
+   "blackmagic",
+   "winter"
+  ],
+  "loch ness monster": [
+   "deepsea",
+   "water",
+   "cryptid",
+   "beastabilities"
+  ],
+  "luchador": [
+   "martialarts",
+   "athleticism",
+   "dirtyfighting",
+   "stagepresence"
+  ],
+  "machine elves": [
+   "prismlattice",
+   "fractal",
+   "psychadelic",
+   "trickery"
+  ],
+  "mad scientist": [
+   "unethicalscience",
+   "advancedtechnology",
+   "chemistry"
+  ],
+  "mantid": [
+   "insectoid",
+   "fractal",
+   "psychic"
+  ],
+  "marksman": [
+   "militarysupport",
+   "weaponstraining",
+   "huntingskills",
+   "marksmanship"
+  ],
+  "martian": [
+   "alientechnology",
+   "ufo",
+   "desertacclimation"
+  ],
+  "mech": [
+   "mecha",
+   "militarysupport",
+   "cyberpunkweapons"
+  ],
+  "men in black": [
+   "spygear",
+   "advancedtechnology",
+   "alientechnology",
+   "deepstate"
+  ],
+  "mermaid": [
+   "water",
+   "sonic",
+   "deepsea"
+  ],
+  "minotaur": [
+   "horns",
+   "beastabilities",
+   "dirtyfighting"
+  ],
+  "mothman": [
+   "cryptid",
+   "lightning",
+   "mothman",
+   "psychic"
+  ],
+  "mushroom girl": [
+   "psychadelic",
+   "nature",
+   "poison",
+   "fae"
+  ],
+  "necromancer": [
+   "necromancy",
+   "bonedensity",
+   "blackmagic",
+   "poison"
+  ],
+  "nephilim": [
+   "fallenangel",
+   "earth",
+   "titan"
+  ],
+  "nordic": [
+   "galacticfederation",
+   "light",
+   "psychic"
+  ],
+  "nun": [
+   "biblestudy",
+   "light",
+   "angelic"
+  ],
+  "occulus": [
+   "eyesight",
+   "psychic",
+   "ancientknowledge"
+  ],
+  "orb of light": [
+   "light",
+   "cosmic",
+   "healingmagic"
+  ],
+  "overlord": [
+   "infernalcourt",
+   "dirtyfighting",
+   "demonicabilities"
+  ],
+  "pirate": [
+   "piracy",
+   "swordsmanship",
+   "ropework"
+  ],
+  "police officer": [
+   "policetraining",
+   "weaponstraining",
+   "humangrit"
+  ],
+  "politician": [
+   "politics",
+   "deepstate",
+   "militarysupport",
+   "cult"
+  ],
+  "popstar": [
+   "stagepresence",
+   "sonic",
+   "seduction"
+  ],
+  "priest": [
+   "biblestudy",
+   "light",
+   "healingmagic"
+  ],
+  "professor": [
+   "ancientknowledge",
+   "chemistry",
+   "advancedtechnology"
+  ],
+  "quarterback": [
+   "football",
+   "athleticism",
+   "teamwork"
+  ],
+  "rabbit": [
+   "athleticism",
+   "trickery",
+   "temporal",
+   "mirrormagic"
+  ],
+  "reptilian": [
+   "conspiracyknowledge",
+   "trickery",
+   "poison",
+   "spygear"
+  ],
+  "ringmaster": [
+   "stagepresence",
+   "ropework",
+   "trickery",
+   "teamwork",
+   "animalhandling"
+  ],
+  "robinhood": [
+   "archery",
+   "huntingskills",
+   "thievery",
+   "marksmanship"
+  ],
+  "robot": [
+   "robot",
+   "machinery",
+   "cyberpunkweapons"
+  ],
+  "santa clause": [
+   "christmasspirit",
+   "winter",
+   "engineering"
+  ],
+  "scarecrow": [
+   "scarecrow",
+   "witchcraft",
+   "nature",
+   "agriculture"
+  ],
+  "seraphim": [
+   "angelic",
+   "biblestudy",
+   "light"
+  ],
+  "shadow entity": [
+   "shadow",
+   "haunted",
+   "temporal"
+  ],
+  "shaman": [
+   "nature",
+   "psychadelic",
+   "astralprojection",
+   "agriculture"
+  ],
+  "sharkman": [
+   "deepsea",
+   "water",
+   "beastabilities",
+   "apexpredator"
+  ],
+  "sheriff": [
+   "weaponstraining",
+   "cowboyskills",
+   "policetraining",
+   "horsebackriding",
+   "marksmanship"
+  ],
+  "sidekick": [
+   "superheropowers",
+   "teamwork",
+   "athleticism",
+   "humangrit"
+  ],
+  "siren": [
+   "sonic",
+   "water",
+   "seduction"
+  ],
+  "skeleton": [
+   "bonedensity",
+   "haunted",
+   "swordsmanship"
+  ],
+  "skinwalker": [
+   "trickery",
+   "blackmagic",
+   "cryptid"
+  ],
+  "starfish": [
+   "water",
+   "deepsea",
+   "healingmagic"
+  ],
+  "succubus": [
+   "seduction",
+   "astral",
+   "demonicabilities"
+  ],
+  "super sentai": [
+   "sentai",
+   "teamwork",
+   "martialarts"
+  ],
+  "superhero": [
+   "superheropowers",
+   "wind",
+   "athleticism",
+   "humangrit"
+  ],
+  "swordfighter": [
+   "maincharacter",
+   "swordsmanship",
+   "athleticism"
+  ],
+  "symbiote": [
+   "symbiosis",
+   "ooze",
+   "athleticism"
+  ],
+  "telepath": [
+   "psychic",
+   "deepstate",
+   "astralprojection"
+  ],
+  "tree person": [
+   "nature",
+   "earth",
+   "agriculture"
+  ],
+  "valkraye": [
+   "holydefense",
+   "wind",
+   "knight"
+  ],
+  "vampire": [
+   "vampiricabilties",
+   "beastabilities",
+   "blood"
+  ],
+  "voidweaver": [
+   "arachnid",
+   "insectoid",
+   "fractal",
+   "shadow"
+  ],
+  "watcher": [
+   "temporal",
+   "cosmic",
+   "astralprojection"
+  ],
+  "werewolf": [
+   "werewolf",
+   "beastabilities",
+   "apexpredator"
+  ],
+  "wizard": [
+   "arcane",
+   "lightning",
+   "fire",
+   "ice"
+  ],
+  "yeti": [
+   "ice",
+   "winter",
+   "cryptid",
+   "sasquatch"
+  ],
+  "zombie": [
+   "zombie",
+   "poison",
+   "ghoulish"
+  ]
+ }
+}

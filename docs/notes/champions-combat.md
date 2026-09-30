@@ -1119,3 +1119,6 @@ explicit `tier` (data.js `getTierMpCost`, 25/50/75/100; ring only when untiered;
 Q2: `EW_MP_L1_FRAC` 0.35. battle.js now reads `cleanse` on heal/buff, `statusEffects` on shield/displacement,
 `statStageBoost` on cleanse and no-damage barrages, `selfHealPct` on escape, and `noDamage` on aoe. Batches B
 (registry), C (new rows) and D (engine) are listed at the end of the log.
+Batch B (the registry) shipped the same day: 8 families gone, 6 renamed, Scarecrow / Ki UNIQUE, every race's families
+and 73 races' rungs from plan §7, 22 MOVEs, 16 rung rows deleted, Chitin / Symbiote Armor now passives (passives never
+cost MP), 18 new rung rows, and the heal kind's `healPct` + `statusEffects`. Log: docs/spell-audit/BATCH_B_LOG.md.

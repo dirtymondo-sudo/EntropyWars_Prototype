@@ -62018,19 +62018,25 @@
                 const _ht = _healResult.target;
                 const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
                 let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
+                /* THE SPELL AUDIT Batch B (2026-09-30): `healPct` heals a share of the TARGET's max HP (Time Rewind, 40%) —
+                   already a percent of scaled max HP, so it lands pre-scaled like escape's selfHealPct. */
+                const _healPreScaled = !!spell.healPct;
+                if (_healPreScaled) healAmount = Math.floor(_ht.maxHp * spell.healPct);
                 if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
                 // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
                 if (spell.id === 'repair') { const _rm = unitPassiveMult(unit, 'repairMult') || 1; if (_rm !== 1) healAmount = Math.round(healAmount * _rm); }
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
-                    const healed = applyHealingToUnit(_ht, healAmount, unit);
+                    const healed = applyHealingToUnit(_ht, healAmount, unit, _healPreScaled ? { preScaled: true } : {});
                     /* THE SPELL AUDIT (2026-09-30): a heal row's `cleanse` (a count, 99 = all) was never read here —
                        Herbal Remedy, Séance, Absolution and Tidal Blessing all promise it. */
                     if (spell.cleanse) {
                         const _hcDebuffs = getActiveStatusKeys(_ht).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
                         for (const k of _hcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_ht, k);
                     }
+                    // THE SPELL AUDIT Batch B: a heal row's own statusEffects land on the ally (Soothe's Regen)
+                    if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_ht, spell.statusEffects, `${spell.name}: `, unit);
                     addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
                     markDirty('hud');
                     renderIfDirty();
