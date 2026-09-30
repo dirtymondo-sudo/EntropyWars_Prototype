@@ -1,6 +1,6 @@
 # THE ZONES — DOOR HQ the hub, separate zones behind its doors, the open world gone
 
-*Plan document, 2026-09-29. Z0, Z1 + Z2 built (see §12). It replaces OPEN_WORLD_PLAN.md and
+*Plan document, 2026-09-29. Z0, Z1, Z2 + Z3 built (see §12). It replaces OPEN_WORLD_PLAN.md and
 WORLD_GEOGRAPHY_PLAN.md (both move to docs/archive/ in Z0). House rules that stand over every phase:
 no puzzles (secret pathways are fine, puzzle content is not); no sound work; no test files; no invented
 names (plain labels: Zone 3, Room 2, Path A; only the names mondo wrote); every R2 delivery bumps `?v=`.*
@@ -479,3 +479,21 @@ with a thread per zone for the swap and the checks.
   procedural `train_car` (Downtown's freight siding, the D.U.M.B. motor pool's tram, the running tunnels' depot ×2) is the
   Meshy `subway_cart` now (catalogue `h: 3.7, turn: 90`), and the `train_car` proc + catalogue row are deleted
   (MODEL_INDEX §9). Next: Z3 THE MAP.
+- 2026-09-30: **Z3 THE MAP built** (token 20260930-zones-04-cors; R2: data.js, map.js). THE ROOM PLAN ON THE AREA SHEET: a room
+  whose floor is a LAYOUT (the editor's `space` + `hall` rows, `terrain.gen.kind 'plan'`) is drawn on its place's sheet as its
+  plan — each space a node where it stands with its outline (16 m to a sheet unit), each hallway / path a lane along its own
+  line, revealed space by space as the walker stands in them; an unseen space a drawn lane reaches is a '?'. The room's doors
+  hang off the space holding them (the door's landing spot), and a door in a space not yet stood in shows nothing behind it
+  (the sight rule). data.js `hqRoomPlan` (cached per room + rows: spaces, halls, lane systems, doors → spaces),
+  `hqPlanSpaceAt`, `hqRoomSpacesSeen` / `hqRoomSpaceSee` (ledger `door.hq.spaces[room][space]`, local only),
+  `hqRoomPlanModel`; map.js `_hqAreaPlans` (the plan's rooms replace the room's node; every other body steps out by the plan's
+  radius) and the plan tick (`_hqPlanTick`, 400 ms, `ThreeRenderer.hq.pos()` → the ledger, saved on a first sighting). A room
+  with no space stood in yet stays one node. No player-facing room has a LAYOUT until mondo's editor rooms go live (Z4 / E9),
+  so this is dormant until then. SECRET EDGES DASHED: a DRAUGHT link (`secret: true` on a links row or its end) is kind
+  'secret' in `hqMapGraph` now (it was a plain 'link' — all 19 draught links, the Z1 ones included, drew as solid seams and put a '?'
+  behind them): dashed in the secret ink on both sheets (a route colour no longer paints over it), on the map only once both
+  its rooms are stood in, and not walked by the layout / floor walks as a door. The room map now hides a shut way out of the
+  building like the world sheet does (no '?' behind the mirror, the pools, etc. until the far room is seen), and THE LINES
+  list no unwalked draught and no shut exit whose far room is unseen. FAST TRAVEL (fork 3's default): GO / a node click /
+  the world pick / a floor's GO / a line's stop / the register only travel to a room you have stood in (a place's GO lands on
+  its anchor if charted, else its first charted room); GO ANYWAY is gone. Next: E7 THE ZONE TOOLS.

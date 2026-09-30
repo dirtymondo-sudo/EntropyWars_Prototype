@@ -1122,6 +1122,7 @@
             if (typeof _hqGunCaptureSettle === 'function') _hqGunCaptureSettle(roomId);   // THE ONE-WAY WEDGE (Phase 4): a capture door standing in another room goes back in the bag
             const profile = _hqProfile();
             _hqHome = true;
+            _hqPlanTickStart();   // ZONES_PLAN Z3: the rooms of a LAYOUT room go on the map as they are stood in
             _hqSuspended = false;
             _hqTermDrop();
             _hqPauseDrop();
@@ -4532,7 +4533,28 @@
         function _hqMapWhere(n) { return n.where || (n.wild ? 'THE WORLD' : 'THE FACILITY'); }
         /* the GO landing for a node: a site room's egress, else nothing (the room's default spot) */
         function _hqMapAt(id) { const r = DOOR_HQ.rooms[id]; if (r && (r.doors || []).some(d => d.id === 'egress')) return 'egress'; return ''; }
+        /* FAST TRAVEL (ZONES_PLAN Z3, §10 fork 3's default): GO takes you only to a room you have STOOD IN (charted) — an
+           uncharted question mark is walked to, never travelled to */
+        function _hqMapCharted(id) {
+            if (!id || !_hqRoomExists(id)) return false;
+            if (id === _hqCurRoom || window.EW_HQ_MAP_ALL) return true;
+            try { return typeof window.hqRoomSeen === 'function' ? !!window.hqRoomSeen(_hqProfile(), id) : true; } catch (e) { return false; }
+        }
+        /* a site is charted when any room of it has been stood in (the GO lands on its entry) */
+        function _hqMapChartedSite(site) {
+            if (!site) return false;
+            if (window.EW_HQ_MAP_ALL) return true;
+            let rec = {}; try { rec = (typeof window.hqRoomsSeenRecord === 'function') ? window.hqRoomsSeenRecord(_hqProfile()) : {}; } catch (e) { rec = {}; }
+            const R = DOOR_HQ.rooms || {};
+            for (const id in R) if (R[id] && R[id].site === site && (rec[id] || id === _hqCurRoom)) return true;
+            return false;
+        }
         function _hqMapCardHtml(M) {
+            /* ZONES_PLAN Z3: a room of a room's plan (a `space` of its LAYOUT) is a node of the drawn sheet, not of the model */
+            if (_hqMap.sel && _hqMap.sel.indexOf('~') > 0 && _hqMap.drawn) {
+                const sp = _hqMap.drawn.nodes.find(x => x.id === _hqMap.sel);
+                if (sp) return _hqMapSpaceCardHtml(sp, M);
+            }
             const selId = (_hqMap.sel && M.nodes.some(n => n.id === _hqMap.sel)) ? _hqMap.sel : M.here;
             const n = M.nodes.find(x => x.id === selId);
             if (!n) return '';
@@ -4540,7 +4562,7 @@
             let html = `<div class="hq-map-card st-${n.st}${here ? ' here' : ''}">`;
             if (n.st === 'q') {
                 html += `<div class="hq-map-card-hd"><b>${_hqNoTag('?')}UNCHARTED</b><span>A DOOR YOU HAVE SEEN · WALK THROUGH IT TO PUT IT ON THE MAP</span></div>`;
-                html += `<div class="hq-panel-actions">${_hqRoomExists(n.id) ? `<button class="hq-btn" data-room="${_hqEsc(n.id)}" data-at="${_hqEsc(_hqMapAt(n.id))}" title="The building will take you; the map fills in when you arrive">GO ANYWAY ▸</button>` : ''}<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
+                html += `<div class="hq-panel-actions"><button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div><p class="hq-panel-note">THE MAP TRAVELS ONLY TO ROOMS YOU HAVE STOOD IN</p>`;
                 return html + '</div>';
             }
             const kv = [];
@@ -4566,17 +4588,47 @@
                     html += '</div></details>';
                 }
             } else {
-                html += `<div class="hq-panel-actions">${_hqRoomExists(n.id) ? `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(n.id)}" data-at="${_hqEsc(_hqMapAt(n.id))}">GO ▸ ${_hqEsc(String(n.label).toUpperCase())}</button>` : ''}<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
-                if (_hqRoomExists(n.id)) html += '<p class="hq-panel-note">CLICK A NODE TO TRAVEL · DRAG TO PAN</p>';
+                html += `<div class="hq-panel-actions">${_hqMapCharted(n.id) ? `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(n.id)}" data-at="${_hqEsc(_hqMapAt(n.id))}">GO ▸ ${_hqEsc(String(n.label).toUpperCase())}</button>` : ''}<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
+                if (_hqMapCharted(n.id)) html += '<p class="hq-panel-note">CLICK A NODE TO TRAVEL · DRAG TO PAN</p>';
             }
+            return html + '</div>';
+        }
+        /* the card of a room of a room's plan: its name, the room it is part of, GO to that room (the room's own spot) */
+        function _hqMapSpaceCardHtml(sp, M) {
+            const room = DOOR_HQ.rooms[sp.planOf] || {};
+            const inRoom = String(room.label || sp.planOf).toUpperCase();
+            let html = `<div class="hq-map-card st-${sp.st}${sp.st === 'here' ? ' here' : ''}">`;
+            if (sp.st === 'q') {
+                html += `<div class="hq-map-card-hd"><b>${_hqNoTag('?')}UNCHARTED</b><span>A WAY YOU HAVE SEEN IN ${_hqEsc(inRoom)} · WALK IT TO PUT IT ON THE MAP</span></div>`;
+                html += `<div class="hq-panel-actions"><button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
+                return html + '</div>';
+            }
+            const kv = ['PART OF ' + _hqEsc(inRoom)];
+            if (sp.first) kv.push('FIRST SEEN ' + _hqEsc(sp.first));
+            if (sp.st === 'here') kv.push('YOU ARE HERE');
+            html += `<div class="hq-map-card-hd"><b>${_hqEsc(String(sp.label).toUpperCase())}</b><span>${kv.join(' · ')}</span></div>`;
+            html += '<div class="hq-panel-actions">';
+            if (sp.planOf !== _hqCurRoom && _hqMapCharted(sp.planOf)) html += `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(sp.planOf)}" data-at="${_hqEsc(_hqMapAt(sp.planOf))}">GO ▸ ${_hqEsc(inRoom)}</button>`;
+            html += `<button class="hq-btn" data-mapnode="${_hqEsc(M.here || '')}">◂ YOU ARE HERE</button></div>`;
             return html + '</div>';
         }
         function _hqMapTravel(id) {
             if (/^w:/.test(id)) { _hqWorldPick(id.slice(2)); return; }   // THE WORLD OVERVIEW: a place picked / travelled
+            if (id.indexOf('~') > 0) {                                       // ZONES_PLAN Z3: a room of a room's plan — travel to that room
+                const sp = _hqMap.drawn && _hqMap.drawn.nodes.find(x => x.id === id);
+                if (!sp) return;
+                _hqMap.sel = id;
+                if (sp.st !== 'q' && sp.planOf !== _hqCurRoom && _hqMapCharted(sp.planOf)) {
+                    _hqMap.anim++;
+                    try { playSfx('uiButtonConfirm'); } catch (e) {}
+                    window._hqDoAction({ room: sp.planOf, at: _hqMapAt(sp.planOf) }, null);
+                } else _hqMapRerender();
+                return;
+            }
             const n = _hqMap.model && _hqMap.model.nodes.find(n => n.id === id);
             if (!n) return;
             _hqMap.sel = id;
-            if (id !== _hqCurRoom && _hqRoomExists(id)) {
+            if (id !== _hqCurRoom && n.st !== 'q' && _hqMapCharted(id)) {   // FAST TRAVEL (ZONES_PLAN Z3): charted rooms only
                 _hqMap.anim++;
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
                 window._hqDoAction({ room: id, at: _hqMapAt(id) }, null);
@@ -4651,6 +4703,10 @@
             if (shaftYs.length > 1) svg += `<line class="hq-map-shaft" x1="${F(M.shaft.x * U)}" y1="${F(Math.min(...shaftYs) * U)}" x2="${F(M.shaft.x * U)}" y2="${F(Math.max(...shaftYs) * U)}"/>`;
             /* the edges */
             M.edges.forEach(e => {
+                if (e.pts) {   // ZONES_PLAN Z3: a lane of a room's plan, drawn along its own line
+                    svg += `<path class="hq-map-e k-door k-lane st-${e.st}" data-mapedge="${_hqEsc(e.key)}" style="stroke-width:${F(e.sw || 3)};stroke-linejoin:round" d="M ${e.pts.map(p => F(p[0] * U) + ' ' + F(p[1] * U)).join(' L ')}"><title>A PATH</title></path>`;
+                    return;
+                }
                 const A = posOf[e.a], B = posOf[e.b];
                 if (!A || !B) return;
                 if (A.hall && B.ring || B.hall && A.ring) return;          // the ring encloses the hall
@@ -4663,7 +4719,7 @@
                 if (A.ring) a = ringPt(A, B.x, B.y);
                 if (B.ring) b = ringPt(B, A.x, A.y);
                 const cls = `hq-map-e k-${e.kind} st-${e.st}${e.charted ? '' : ' uncharted'}${e.gate ? ' gated' : ''}`;
-                const style = e.color ? ` style="stroke:${_hqEsc(e.color)}"` : '';
+                const style = (e.color && e.kind !== 'secret') ? ` style="stroke:${_hqEsc(e.color)}"` : '';   // ZONES_PLAN Z3: a secret keeps the secret ink (dashed)
                 const title = (e.kind === 'link' || e.kind === 'way') ? ((e.route && DOOR_HQ.routes && DOOR_HQ.routes[e.route] && DOOR_HQ.routes[e.route].label) || 'A SEAM') + (e.way ? ' · ' + String(e.way).toUpperCase() : '') : (e.kind === 'secret' ? 'A DOOR THAT IS NOT ON A PLATE' : e.kind === 'lift' ? 'THE ELEVATOR' : 'A DOOR');
                 if (e.kind === 'link' || e.kind === 'way' || (e.kind === 'lift' && !e.stop)) {
                     /* a seam bows outward from the hall — the world's lines arc round the outside */
@@ -4688,6 +4744,10 @@
                    its label over every other's, the topmost the only one under the pointer. The translate stays on the outer <g>;
                    the pop plays on the inner `.hq-map-nb` — never animate transform on an element that carries a transform attribute. */
                 svg += `<g class="${cls}" data-mapnode="${_hqEsc(n.id)}"${n.key && n.key !== n.id ? ` data-mapkey="${_hqEsc(n.key)}"` : ''} tabindex="0" role="button" aria-label="${_hqEsc(title)}"${hubStyle} transform="translate(${F(n.x * U)} ${F(n.y * U)})"><title>${_hqEsc(title)}</title><g class="hq-map-nb">`;
+                if (n.shape) {   // ZONES_PLAN Z3: a room of a room's plan wears its own outline
+                    const sw = n.shape.w * U, sd = n.shape.d * U, rot = n.shape.rot ? ` transform="rotate(${F(n.shape.rot)})"` : '', st = ` style="fill-opacity:${n.st === 'q' ? 0.05 : 0.16};stroke-opacity:${n.st === 'q' ? 0.35 : 0.7};stroke-width:1.5"`;
+                    svg += n.shape.round ? `<ellipse class="hq-map-dot hq-map-room" rx="${F(sw / 2)}" ry="${F(sd / 2)}"${rot}${st}/>` : `<rect class="hq-map-dot hq-map-room" x="${F(-sw / 2)}" y="${F(-sd / 2)}" width="${F(sw)}" height="${F(sd)}" rx="3"${rot}${st}/>`;
+                }
                 if (n.hub && !n.ring) svg += '<circle class="hq-map-hubring" r="34"/><circle class="hq-map-hubring inner" r="27"/>';
                 else if (n.hubOf && !n.ring && !n.hall) svg += '<circle class="hq-map-halo" r="15"/>';
                 if (n.ring) {
@@ -4786,7 +4846,7 @@
             Wm.edges.slice().sort((x, y) => order[x.kind] - order[y.kind]).forEach(e => {
                 if (e.kind === 'bay' && !(sel && (sel === 'hq' || e.a === sel || e.b === sel))) return;   // the ring's threads (every site has one) show only for the place picked — the building is the origin, the seams are the map
                 const cls = `hq-map-e hq-map-we k-${e.kind} st-${e.st}${e.charted ? '' : ' uncharted'}${e.gate ? ' gated' : ''}${(sel && (e.a === sel || e.b === sel)) ? ' near-sel' : ''}`;
-                const style = (e.color && e.kind !== 'bay') ? ` style="stroke:${_hqEsc(e.color)}"` : '';
+                const style = (e.color && e.kind !== 'bay' && e.kind !== 'secret') ? ` style="stroke:${_hqEsc(e.color)}"` : '';
                 svg += `<path class="${cls}" data-mapedge="w:${_hqEsc(e.key)}"${style} d="${_hqWorldRoute(Wm, e, U)}"><title>${_hqEsc(_hqWorldEdgeTitle(e))}</title></path>`;
             });
             /* the building: a block with a band per floor */
@@ -4865,9 +4925,10 @@
                 if (!copies[key]) { copies[key] = Object.assign(portalOf(byId[out]), { key, via }); nodes.push(copies[key]); }
                 edges.push(Object.assign({}, e, { a: via, b: out, aKey: via, bKey: key }));
             });
-            if (areaId !== 'hq') _hqAreaLayout(nodes, edges, areaId);   // the building keeps its own layout (the hall, the rings, the shaft); every other place is a radial tree round its anchor
+            if (areaId !== 'hq') { _hqAreaLayout(nodes, edges, areaId); _hqAreaPlans(nodes, edges); }   // the building keeps its own layout (the hall, the rings, the shaft); every other place is a radial tree round its anchor; a room with a LAYOUT is drawn as its plan (Z3)
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            nodes.forEach(n => { const r = n.ring || 0.05; minX = Math.min(minX, n.x - r); maxX = Math.max(maxX, n.x + r); minY = Math.min(minY, n.y - r); maxY = Math.max(maxY, n.y + r); });
+            nodes.forEach(n => { const r = n.ring || (n.shape ? Math.max(n.shape.w, n.shape.d) / 2 : 0.05); minX = Math.min(minX, n.x - r); maxX = Math.max(maxX, n.x + r); minY = Math.min(minY, n.y - r); maxY = Math.max(maxY, n.y + r); });
+            edges.forEach(e => { if (e.pts) e.pts.forEach(p => { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]); }); });
             if (!nodes.length) { minX = -1; minY = -1; maxX = 1; maxY = 1; }
             return Object.assign({}, M, { nodes, edges, box: { x: minX, y: minY, w: Math.max(0.6, maxX - minX), h: Math.max(0.6, maxY - minY) }, area: areaId });
         }
@@ -4921,6 +4982,110 @@
             nodes.forEach(n => { const p = pos[K(n)]; if (p) { n.x = p.x; n.y = p.y; } if (placeLabel && !n.portal && String(n.label).toUpperCase().indexOf(placeLabel + ' · ') === 0) n.label = String(n.label).slice(placeLabel.length + 3); });
             edges.forEach(e => { const A = pos[e.aKey || e.a], B = pos[e.bKey || e.b]; if (A) { e.ax = A.x; e.ay = A.y; } if (B) { e.bx = B.x; e.by = B.y; } e.aRing = 0; e.bRing = 0; });
         }
+        /* ══ THE ROOM PLAN ON THE AREA SHEET (ZONES_PLAN Z3 THE MAP, 2026-09-30) ══════════════════════════════════════════
+           §6: "THIS AREA for a zone built in the editor: rooms as nodes, lanes as edges, drawn as visited". A room whose floor is
+           a LAYOUT (the editor's `space` + `hall` rows; data.js hqRoomPlanModel) is drawn on its place's sheet AS ITS PLAN: every
+           space it has a node where it stands (its outline under it, HQ_MAP_PLAN_M metres to a unit), every hallway / path a lane
+           along its own line, the rooms revealed one by one as the walker stands in them (the plan tick below writes the ledger),
+           an unseen room a drawn lane reaches a question mark. The room's doors hang off the space that holds them. The rest of
+           the sheet steps back by the plan's radius so nothing lands on it. A room with no space stood in yet stays one node.
+           Viewer-local, nothing on `state`, nothing relayed (RULE #2). */
+        const HQ_MAP_PLAN_M = 16;          // metres of a room's plan to one sheet unit (a 14 m fight room ≈ 88 px at the fit)
+        const _hqPlanHere = { room: null, space: null };   // the space the walker stands in now (the plan tick)
+        function _hqAreaPlans(nodes, edges) {
+            if (typeof window.hqRoomPlanModel !== 'function') return;
+            const profile = _hqProfile(), all = !!window.EW_HQ_MAP_ALL, s = 1 / HQ_MAP_PLAN_M;
+            const K = n => n.key || n.id;
+            /* rigid bodies: a room node with the portals hanging off it; a plan pushes every other body out as one piece */
+            const bodies = [], bodyOf = {};
+            nodes.forEach(n => { if (n.portal) return; const b = { cx: n.x, cy: n.y, nodes: [n], lanes: [] }; bodies.push(b); bodyOf[K(n)] = b; });
+            nodes.forEach(n => { if (!n.portal) return; const b = bodyOf[n.via]; if (b) b.nodes.push(n); else bodies.push({ cx: n.x, cy: n.y, nodes: [n], lanes: [] }); });
+            let any = false;
+            bodies.slice().forEach(b => {
+                const n = b.nodes[0]; if (n.portal || n.st === 'q' || !bodyOf[K(n)]) return;
+                let PM = null; try { PM = window.hqRoomPlanModel(profile, n.id, (_hqPlanHere.room === n.id) ? _hqPlanHere.space : null, { all }); } catch (e) { PM = null; }
+                if (!PM || !PM.spaces.length) return;
+                any = true;
+                const pcx = (PM.box.x0 + PM.box.x1) / 2, pcz = (PM.box.z0 + PM.box.z1) / 2;
+                const R = Math.hypot(PM.box.x1 - PM.box.x0, PM.box.z1 - PM.box.z0) / 2 * s;
+                const ox = b.cx, oy = b.cy, at = (x, z) => ({ x: ox + (x - pcx) * s, y: oy + (z - pcz) * s });
+                bodies.forEach(o => {
+                    if (o === b) return;
+                    const dx = o.cx - ox, dy = o.cy - oy, d = Math.hypot(dx, dy), ux = d > 1e-6 ? dx / d : 0, uy = d > 1e-6 ? dy / d : -1, mx = ux * (R + 0.2), my = uy * (R + 0.2);
+                    o.cx += mx; o.cy += my; o.nodes.forEach(m => { m.x += mx; m.y += my; }); o.lanes.forEach(l => l.pts.forEach(p => { p[0] += mx; p[1] += my; }));
+                });
+                /* the spaces */
+                const sp = {};
+                PM.spaces.forEach(q => {
+                    const p = at(q.x, q.z), id = n.id + '~' + q.id;
+                    sp[q.id] = Object.assign({}, n, { id, key: id, st: q.st, x: p.x, y: p.y, label: q.label, no: '', sub: '', hub: null, hubOf: null, hubLabel: null, ring: 0, hall: false, exit: false,
+                        planOf: n.id, space: q.id, first: q.first, shape: { w: q.w * s, d: q.d * s, rot: q.rot || 0, round: !!q.round } });
+                    nodes.push(sp[q.id]); b.nodes.push(sp[q.id]);
+                });
+                const home = PM.spaces.find(q => q.st === 'here') || PM.spaces.find(q => q.st === 'seen') || PM.spaces[0];
+                const spaceFor = other => sp[PM.doorTo[other]] || sp[home.id];
+                /* the lanes (a hall along its own line) and the rooms that meet edge to edge */
+                PM.halls.forEach(h => {
+                    const ends = h.spaces.filter(id => sp[id]);
+                    const lane = { key: n.id + '~' + h.id, a: ends[0] ? sp[ends[0]].id : sp[home.id].id, b: ends[1] ? sp[ends[1]].id : (ends[0] ? sp[ends[0]].id : sp[home.id].id), kind: 'door', lane: true, st: h.st, charted: true,
+                        pts: h.pts.map(p => { const q = at(p[0], p[1]); return [q.x, q.y]; }), sw: Math.max(3, Math.min(18, h.w * s * HQ_MAP_U * 0.6)) };
+                    lane.aKey = lane.a; lane.bKey = lane.b;
+                    edges.push(lane); b.lanes.push(lane);
+                });
+                PM.direct.forEach(d => { if (sp[d.a] && sp[d.b]) edges.push({ key: n.id + '~' + d.a + '|' + d.b, a: sp[d.a].id, b: sp[d.b].id, aKey: sp[d.a].id, bKey: sp[d.b].id, kind: 'door', st: d.st, charted: true }); });
+                /* the room's own edges: re-hung on the space that holds the door they go through */
+                edges.forEach(e => {
+                    if (e.lane || (e.planOf && e.planOf === n.id)) return;
+                    const ak = e.aKey || e.a, bk = e.bKey || e.b;
+                    if (ak !== K(n) && bk !== K(n)) return;
+                    const mine = ak === K(n) ? 'a' : 'b', other = String(mine === 'a' ? e.b : e.a).split('~')[0], S = spaceFor(other);
+                    if (!S) return;
+                    e[mine] = S.id; e[mine + 'Key'] = S.id; e.planOf = n.id;
+                    /* a door in a room of the plan not yet stood in shows nothing behind it yet (the sight rule: an exit is found in its own room) */
+                    if (S.st === 'q' && e.st !== 'known') e._drop = true;
+                });
+                /* a portal off this room stands just outside its door */
+                b.nodes.forEach(m => {
+                    if (!m.portal) return;
+                    const S = spaceFor(m.id), D = PM.doorAt[m.id];
+                    if (!S) return;
+                    const p = D ? at(D.x, D.z) : { x: S.x, y: S.y - S.shape.d / 2 };
+                    let vx = p.x - S.x, vy = p.y - S.y; const L = Math.hypot(vx, vy); if (L < 1e-6) { vx = 0; vy = -1; } else { vx /= L; vy /= L; }
+                    m.x = p.x + vx * 0.5; m.y = p.y + vy * 0.5;
+                });
+                /* the room's own node goes: its spaces are the room now */
+                const i = nodes.indexOf(n); if (i >= 0) nodes.splice(i, 1);
+                b.nodes.splice(b.nodes.indexOf(n), 1);
+                delete bodyOf[K(n)];
+            });
+            if (!any) return;
+            for (let i = edges.length - 1; i >= 0; i--) if (edges[i]._drop) edges.splice(i, 1);
+            const linked = {}; edges.forEach(e => { linked[e.aKey || e.a] = 1; linked[e.bKey || e.b] = 1; });
+            for (let i = nodes.length - 1; i >= 0; i--) if (nodes[i].st === 'q' && !nodes[i].planOf && !linked[K(nodes[i])]) nodes.splice(i, 1);
+            const byKey = {}; nodes.forEach(n => { byKey[K(n)] = n; });
+            edges.forEach(e => { if (e.pts) return; const A = byKey[e.aKey || e.a], B = byKey[e.bKey || e.b]; if (A) { e.ax = A.x; e.ay = A.y; } if (B) { e.bx = B.x; e.by = B.y; } });
+        }
+        /* THE PLAN TICK: which space of a LAYOUT room the walker stands in — the first time, it is on the map (saved once) */
+        let _hqPlanTickId = 0;
+        function _hqPlanTick() {
+            try {
+                if (!_hqHome || !_hqCurRoom || typeof window.hqRoomPlan !== 'function' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq) return;
+                if (_hqPlanHere.room !== _hqCurRoom) { _hqPlanHere.room = _hqCurRoom; _hqPlanHere.space = null; }
+                if (!window.hqRoomPlan(_hqCurRoom)) return;
+                if (ThreeRenderer.hq.active && !ThreeRenderer.hq.active()) return;
+                const p = ThreeRenderer.hq.pos ? ThreeRenderer.hq.pos() : null; if (!p) return;
+                const sid = window.hqPlanSpaceAt(_hqCurRoom, p.x, p.z);
+                if (!sid || sid === _hqPlanHere.space) return;
+                _hqPlanHere.space = sid;
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
+                const idx = PS.getActiveProfileIndex(); if (idx === null || idx === undefined) return;
+                const prof = PS.loadProfile(idx); if (!prof) return;
+                const r = window.hqRoomSpaceSee(prof, _hqCurRoom, sid);
+                if (r && r.ok && r.first) PS.saveProfile(idx, prof);
+            } catch (e) {}
+        }
+        function _hqPlanTickStart() { if (!_hqPlanTickId && typeof setInterval === 'function') _hqPlanTickId = setInterval(_hqPlanTick, 400); }
         function _hqWorldNode(id) { const Wm = _hqMap.world; return (Wm && Wm.nodes.find(n => n.id === id)) || null; }
         function _hqWorldLabelOf(id) {
             if (id === 'hq') { const n = _hqWorldNode('hq'); return n ? n.label : 'D.O.O.R. HEADQUARTERS'; }
@@ -4985,13 +5150,13 @@
         function _hqWorldPick(id) {
             const Wm = _hqMap.world; if (!Wm) return;
             let target = null, ok = true;
-            if (/^floor:/.test(id)) { const room = id.slice(6); const f = Wm.floors.find(x => x.room === room); if (!f) return; target = room; }
+            if (/^floor:/.test(id)) { const room = id.slice(6); const f = Wm.floors.find(x => x.room === room); if (!f) return; target = room; ok = f.st !== 'q'; }
             else {
-                const n = Wm.nodes.find(x => x.id === id); if (!n) return; target = n.anchor; ok = n.st !== 'q' || true;
+                const n = Wm.nodes.find(x => x.id === id); if (!n) return; target = _hqWorldGoRoom(n); ok = n.st !== 'q';   // FAST TRAVEL (ZONES_PLAN Z3): a charted place only, to a room of it you have stood in
                 /* a CHARTED place clicked = its focused sheet (the card rides along: GO ▸ its anchor); an uncharted one keeps the card + GO ANYWAY */
                 if (n.st !== 'q' && _hqMapOpenArea(id)) return;
             }
-            if (_hqMap.wsel === id && ok && target && target !== _hqCurRoom && _hqRoomExists(target)) {
+            if (_hqMap.wsel === id && ok && target && target !== _hqCurRoom && _hqMapCharted(target)) {
                 _hqMap.anim++;
                 try { playSfx('uiButtonConfirm'); } catch (e) {}
                 window._hqDoAction({ room: target, at: _hqMapAt(target) }, null);
@@ -5000,6 +5165,14 @@
             _hqMap.wsel = id;
             try { playSfx('uiButtonHover'); } catch (e) {}
             _hqMapRerender();
+        }
+        /* the room a place's GO lands in: its anchor when stood in, else the first room of it stood in (charted only) */
+        function _hqWorldGoRoom(n) {
+            if (!n) return null;
+            if (_hqMapCharted(n.anchor)) return n.anchor;
+            let G = null; try { G = window.hqWorldOverviewGraph(); } catch (e) { G = null; }
+            const rooms = (G && G.nodes[n.id] && G.nodes[n.id].rooms) || [];
+            return rooms.find(r => _hqMapCharted(r)) || null;
         }
         function _hqWorldCardHtml(Wm) {
             const selId = (_hqMap.wsel && (Wm.nodes.some(n => n.id === _hqMap.wsel) || /^floor:/.test(_hqMap.wsel))) ? _hqMap.wsel : (Wm.here || 'hq');
@@ -5010,7 +5183,7 @@
             let html = `<div class="hq-map-card hq-map-wcard st-${n.st}${here ? ' here' : ''}"${n.color ? ` style="--hub:${_hqEsc(n.color)}"` : ''}>`;
             if (n.st === 'q') {
                 html += `<div class="hq-map-card-hd"><b>${_hqNoTag('?')}UNCHARTED</b><span>A PLACE A DOOR YOU HAVE SEEN LEADS TO · WALK THROUGH IT TO PUT IT ON THE MAP</span></div>`;
-                html += `<div class="hq-panel-actions">${_hqRoomExists(n.anchor) ? `<button class="hq-btn" data-room="${_hqEsc(n.anchor)}" data-at="${_hqEsc(_hqMapAt(n.anchor))}" title="The building will take you; the map fills in when you arrive">GO ANYWAY ▸</button>` : ''}<button class="hq-btn" data-mapnode="w:${_hqEsc(Wm.here || 'hq')}">◂ YOU ARE HERE</button></div>`;
+                html += `<div class="hq-panel-actions"><button class="hq-btn" data-mapnode="w:${_hqEsc(Wm.here || 'hq')}">◂ YOU ARE HERE</button></div><p class="hq-panel-note">THE MAP TRAVELS ONLY TO PLACES YOU HAVE STOOD IN</p>`;
                 return html + '</div>';
             }
             const kind = n.kind === 'hq' ? 'THE FACILITY' : n.kind === 'hub' ? 'A HUB' : 'A LOCATION';
@@ -5022,12 +5195,12 @@
             html += `<div class="hq-map-card-hd"><b>${_hqNoTag(n.no)}${_hqEsc(floor ? floor.label : n.label)}</b><span>${floor ? _hqEsc(n.label) + ' · ' : ''}${kv.join(' · ')}</span></div>`;
             if (n.kind === 'hq' && !floor) {
                 html += '<div class="hq-rows hq-rows-scroll hq-map-floors">';
-                Wm.floors.forEach(f => { html += `<div class="hq-row"><b>${_hqEsc(f.id)} · ${_hqEsc(f.st === 'q' ? '· · ·' : f.label)}</b><span>${f.st === 'here' ? 'YOU ARE HERE' : f.st === 'seen' ? 'CHARTED' : 'NOT YET WALKED'}</span>${(f.room !== _hqCurRoom && _hqRoomExists(f.room)) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(f.room)}" data-at="${_hqEsc(_hqMapAt(f.room))}">GO</button>` : ''}</div>`; });
+                Wm.floors.forEach(f => { html += `<div class="hq-row"><b>${_hqEsc(f.id)} · ${_hqEsc(f.st === 'q' ? '· · ·' : f.label)}</b><span>${f.st === 'here' ? 'YOU ARE HERE' : f.st === 'seen' ? 'CHARTED' : 'NOT YET WALKED'}</span>${(f.room !== _hqCurRoom && f.st !== 'q' && _hqMapCharted(f.room)) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(f.room)}" data-at="${_hqEsc(_hqMapAt(f.room))}">GO</button>` : ''}</div>`; });
                 html += '</div>';
             }
-            const target = floor ? floor.room : n.anchor;
+            const target = floor ? floor.room : _hqWorldGoRoom(n);
             html += '<div class="hq-panel-actions">';
-            if (target !== _hqCurRoom && _hqRoomExists(target)) html += `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(target)}" data-at="${_hqEsc(_hqMapAt(target))}">GO ▸ ${_hqEsc(floor ? floor.label : String((DOOR_HQ.rooms[target] || {}).label || n.label).toUpperCase())}</button>`;
+            if (target && target !== _hqCurRoom && _hqMapCharted(target)) html += `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(target)}" data-at="${_hqEsc(_hqMapAt(target))}">GO ▸ ${_hqEsc(floor ? floor.label : String((DOOR_HQ.rooms[target] || {}).label || n.label).toUpperCase())}</button>`;
             html += `<button class="hq-btn" data-mapmode="area" data-maparea="${_hqEsc(n.id)}">OPEN THE AREA MAP ▸</button>`;
             if (!here || floor) html += `<button class="hq-btn" data-mapnode="w:${_hqEsc(Wm.here || 'hq')}">◂ YOU ARE HERE</button>`;
             html += '</div>';
@@ -5103,7 +5276,7 @@
             const charted = (typeof window.hqWorldCharted === 'function') ? window.hqWorldCharted(profile) : null;
             const hereId = _hqWorldHere();
             let html = '<div class="hq-map">' + _hqMapCrumbHtml(Wm);
-            html += `<div class="hq-map-bar"><span>${world ? (M.seen + ' OF ' + M.total + ' ROOMS CHARTED') : (drawn.nodes.filter(n => n.st !== 'q').length + ' OF ' + M.nodes.filter(n => n.st !== 'q' && (!_hqWorldEnabled() || window.hqWorldNodeOf(n.id) === _hqMap.area)).length + ' ROOMS OF THIS AREA CHARTED')}${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i>`;
+            html += `<div class="hq-map-bar"><span>${world ? (M.seen + ' OF ' + M.total + ' ROOMS CHARTED') : (Object.keys(drawn.nodes.reduce((o, n) => { if (n.st !== 'q' && !n.portal) o[n.planOf || n.id] = 1; return o; }, {})).length + ' OF ' + M.nodes.filter(n => n.st !== 'q' && (!_hqWorldEnabled() || window.hqWorldNodeOf(n.id) === _hqMap.area)).length + ' ROOMS OF THIS AREA CHARTED')}${charted ? ' · ' + charted.seen + ' OF ' + charted.total + ' SEAMS WALKED' : ''}</span><i>`;
             if (Wm) html += `<button class="hq-btn hq-btn-sm hq-map-tab${world ? ' on' : ''}" data-mapmode="world" title="every place">WORLD</button><button class="hq-btn hq-btn-sm hq-map-tab${!world ? ' on' : ''}" data-mapmode="area" data-maparea="${_hqEsc(world ? hereId : _hqMap.area)}" title="the rooms of one place">${world ? 'THIS AREA' : 'AREA'}</button>`;
             html += `<button class="hq-btn hq-btn-sm" data-mapzoom="in" title="zoom in">+</button><button class="hq-btn hq-btn-sm" data-mapzoom="out" title="zoom out">−</button><button class="hq-btn hq-btn-sm" data-mapfit="1" title="fit the charted map">FIT</button></i></div>`;
             html += `<div class="hq-map-stage">${world ? _hqWorldSvg(Wm) : _hqMapSvg(drawn)}${_HQ_MAP_COMPASS}</div>`;
@@ -5275,7 +5448,7 @@
                     let go = '';
                     const hereId = r.kind === 'site' ? 'site_' + r.id : (r.kind === 'room' ? null : r.id);
                     if (r.room && r.room === _hqCurRoom && hereId) go = `<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(hereId)}">WALK</button>`;
-                    else if (r.kind === 'site' && r.siteRoom && _hqRoomExists(r.siteRoom)) go = (r.siteRoom === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="site_${_hqEsc(r.id)}" data-at="egress">GO</button>`;   // the alias → the entry part's bay door (_hqGoRoom)
+                    else if (r.kind === 'site' && r.siteRoom && _hqRoomExists(r.siteRoom) && _hqMapChartedSite(r.id)) go = (r.siteRoom === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="site_${_hqEsc(r.id)}" data-at="egress">GO</button>`;   // the alias → the entry part's bay door (_hqGoRoom)
                     else if (r.kind === 'site' && r.room && _hqRoomExists(r.room)) go = `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="site_${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'room' && _hqRoomExists(r.id)) go = (r.id === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'facility' && _hqRoomExists('training')) go = `<button class="hq-btn hq-btn-sm" data-room="training" data-at="range">GO</button>`;
@@ -5303,7 +5476,7 @@
            takes you to the site's entry part at its way in). A leg's `why`
            is the row's title. Viewer-local (RULE #2). */
         function _hqWorldHtml() {
-            /* THE MAP REMEMBERS (D6): the profile decides what is CHARTED — an unseen leg is dotted, an unknown stop unlabelled; GO stays for every stop */
+            /* THE MAP REMEMBERS (D6): the profile decides what is CHARTED — an unseen leg is dotted, an unknown stop unlabelled; GO only for a stop stood in (ZONES_PLAN Z3) */
             const profile = _hqProfile();
             const routes = (typeof window.hqWorldRoutes === 'function') ? window.hqWorldRoutes(_hqCurRoom, { profile }) : [];
             if (!routes.length) return '';
@@ -5336,9 +5509,9 @@
                 html += `<div class="hq-world-line" style="--hq-line:${_hqEsc(r.color)}"><div class="hq-world-hd"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span></div>${svg}<div class="hq-rows">`;
                 r.stations.forEach(st => {
                     const board = st.site ? ('site_' + st.site) : st.room;
-                    const go = st.here ? '<span>YOU ARE HERE</span>' : (_hqRoomExists(st.site ? _hqSiteRoomId(st.site) : board) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(board)}" data-at="egress">GO</button>` : '');
+                    const go = st.here ? '<span>YOU ARE HERE</span>' : ((st.known !== false && (st.site ? _hqMapChartedSite(st.site) : _hqMapCharted(board)) && _hqRoomExists(st.site ? _hqSiteRoomId(st.site) : board)) ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(board)}" data-at="egress">GO</button>` : '');
                     const other = st.lines.filter(id => id !== r.id).map(id => (DOOR_HQ.routes && DOOR_HQ.routes[id] && DOOR_HQ.routes[id].label) || id.toUpperCase());
-                    if (st.known === false) { html += `<div class="hq-row hq-row-tray hq-world-unk"><b>${_hqNoTag('?')}UNCHARTED</b><span>WALK A DOOR TO IT · GO STILL TAKES YOU</span>${go}</div>`; return; }
+                    if (st.known === false) { html += `<div class="hq-row hq-row-tray hq-world-unk"><b>${_hqNoTag('?')}UNCHARTED</b><span>WALK A DOOR TO IT · THE MAP TRAVELS ONLY TO ROOMS YOU HAVE STOOD IN</span>${go}</div>`; return; }
                     html += `<div class="hq-row hq-row-tray"><b>${_hqNoTag(st.no)}${_hqEsc(st.label)}</b><span>${other.length ? 'INTERCHANGE · ' + _hqEsc(other.join(' · ')) : 'STOP'}</span>${go}</div>`;
                 });
                 html += '</div></div>';
