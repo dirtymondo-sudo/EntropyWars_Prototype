@@ -42776,56 +42776,77 @@ const HQ_AREA_SPECS = {
        across the sanctum's mouth; THE BAR with THE MEZZANINE over it (a stair, a ladder, the panelling's hand-holds — the painting of Olympus on
        the east wall is seen from it); THE LIBRARY with THE STACKS (a stair, the library ladder, a pipe); THE WINE CELLAR sunk under the east wing
        (the 322 basement: a stair down); the saloon door onto the corn; THE MEMBERS' TUNNEL from the grove comes out on the east wall */
+    /* LEVEL_DESIGN_PLAN L6 (2026-09-30): a LAYOUT in damask on map_layout.JPG's pattern (the `halls` BSP went). THE HALLS (the way in, the
+       marker) in the middle of the south side; THE SANCTUM north of it up one short hall, behind THE SCREEN (a dead end); THE LIBRARY west,
+       THE BAR east, each one hall off THE HALLS; hall A (the long back passage) along the north wall from side room 2 (north-west) past the
+       saloon door onto the corn to the east leg, which comes down into THE BAR — the loop THE HALLS ⇄ THE LIBRARY ⇄ side room 2 ⇄ hall A ⇄
+       THE BAR ⇄ THE HALLS; THE WINE CELLAR (sunk, a built stair down) a dead end off the east leg; side room 1 (THE MEMBERS' TUNNEL) a dead
+       end behind THE BAR. The four doors stand in four different places and none sees another. Every tier is built: crisp edges, built flights. */
     prebuilt_lodge: { part: 'halls', label: 'THE HALLS', sub: 'THE SANCTUM · THE GALLERY · THE HIGH TABLE · MEMBERS ONLY', w: 58, d: 46, open: false, h: 5.0, look: 'greathall',
         parti: 'A sanctum behind a screen, two galleries facing each other over the round table with a walk between them, and the bar where the members say what the sanctum does not.', typology: 'halls',
         floor: 'checkerboard', cliff: 'damask', path: 'wood', floorColor: 0xd8ccb0, cliffColor: 0x6a2438, wallSheet: 'damask', ceiling: 'wood', crag: false,
         fog: { color: 0x1a0c10, density: 0.02 }, mood: { light: 0xffd8a0, strip: 0xffc890, ambient: 0.34 }, noise: { amp: 0, scale: 8 },
-        gen: { kind: 'halls', seed: 33, loops: 2, leafMin: 8, leafMax: 16, wallH: 5.0, wallKey: 'wood',
-              rooms: [{ id: 'sanctum', x: 0, z: -12, w: 22, d: 14 }, { id: 'bar', x: 18, z: 6, w: 16, d: 14 }, { id: 'library', x: -18, z: 6, w: 14, d: 12 }, { id: 'cellar', x: 18, z: -14, w: 12, d: 10 }] },
-        plaza: { x: 0, z: 8 },
+        gen: { kind: 'plan', look: 'walls', wallKey: 'damask', rim: 0, forceGrow: -0.3 },
+        plaza: { x: 0, z: 13 },   // L6: the marker in THE HALLS (the plaza's open disc stays inside the drawn room)
         features: [
-            /* THE WEST GALLERY (2.2): the stair up its south end, a ladder on its east face, the bell rope on its north end */
-            { k: 'plateau', x: -8, z: -12, w: 6, d: 10, h: 2.2, edge: 0.3 }, { k: 'ramp', x0: -8, z0: -0.9, x1: -8, z1: -7.7, w: 2.4, h0: 0, h1: 2.2, stairs: true },
-            { k: 'climb', x: -5.3, z: -14, face: 270, look: 'ladder' }, { k: 'climb', x: -8, z: -16.7, face: 180, look: 'rope' },
-            /* THE ORGAN LOFT (2.2): THE MINSTRELS' WALK from the gallery (a level span, the bridge layer), a ladder on its east face, the organ's pipe on its south */
-            { k: 'plateau', x: 8, z: -12, w: 6, d: 10, h: 2.2, edge: 0.3 }, { k: 'bridge', x0: -5.7, z0: -9, x1: 5.7, z1: -9, w: 2.0, y: 2.2 },
-            { k: 'climb', x: 10.7, z: -10, face: 270, look: 'ladder' }, { k: 'climb', x: 8, z: -7.3, face: 0, look: 'pipe' },
+            /* THE ROOMS */
+            { k: 'space', x: 0, z: 13.5, w: 14, d: 15 },                        // THE HALLS (the way in: the bay door, the marker)
+            { k: 'space', x: 0, z: -9.75, w: 22, d: 17.5 },                     // THE SANCTUM
+            { k: 'space', x: -20, z: 7, w: 14, d: 14 },                         // THE LIBRARY
+            { k: 'space', x: 20.25, z: 1, w: 15.5, d: 16 },                     // THE BAR (the painting of Olympus on its east wall)
+            { k: 'space', x: 18.5, z: -14.6, w: 9, d: 7.6 },                    // THE WINE CELLAR (a dead end, sunk)
+            { k: 'space', x: 23.5, z: 16, w: 9, d: 10 },                        // side room 1 (THE MEMBERS' TUNNEL's end; a dead end behind the bar)
+            { k: 'space', x: -21.5, z: -12.5, w: 11, d: 9 },                    // side room 2
+            /* THE HALLWAYS */
+            { k: 'hall', pts: [[0, -1], [0, 6]], w: 3.0 },                                              // up to THE SANCTUM's mouth
+            { k: 'hall', pts: [[-13, 9], [-7, 9]], w: 2.6 },                                            // THE HALLS ⇄ THE LIBRARY
+            { k: 'hall', pts: [[7, 7.5], [12.5, 7.5]], w: 2.6 },                                        // THE HALLS ⇄ THE BAR
+            { k: 'hall', pts: [[-21.5, -8], [-21.5, 0]], w: 2.6 },                                      // THE LIBRARY ⇄ side room 2
+            { k: 'hall', pts: [[-21.5, -17], [-21.5, -20.8], [26, -20.8], [26, -7]], w: 2.4 },          // hall A: the back passage (the saloon door onto the corn) and its east leg down into THE BAR
+            { k: 'hall', pts: [[23, -12], [26, -12]], w: 2.4 },                                         // the east leg ⇄ THE WINE CELLAR's stair
+            { k: 'hall', pts: [[23, 9], [23, 11]], w: 2.6 },                                            // THE BAR ⇄ side room 1
+            /* THE WEST GALLERY (2.2) against the sanctum's west wall: the stair up its south end, a ladder on its east face, the bell rope on its north end */
+            { k: 'plateau', x: -8, z: -11, w: 6, d: 10, h: 2.2, edge: 0.15 },
+            { k: 'ramp', x0: -8, z0: -3.0, x1: -8, z1: -6.7, w: 2.4, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'climb', x: -5.3, z: -14, face: 270, look: 'ladder' }, { k: 'climb', x: -8, z: -15.7, face: 180, look: 'rope' },
+            /* THE ORGAN LOFT (2.2) against the east wall: THE MINSTRELS' WALK from the gallery (a level span, the bridge layer), a ladder on its north face, the organ's pipe on its south */
+            { k: 'plateau', x: 8, z: -11, w: 6, d: 10, h: 2.2, edge: 0.15 }, { k: 'bridge', x0: -5.7, z0: -9, x1: 5.7, z1: -9, w: 2.0, y: 2.2 },
+            { k: 'climb', x: 8, z: -15.7, face: 180, look: 'ladder' }, { k: 'climb', x: 8, z: -6.3, face: 0, look: 'pipe' },
             /* THE HIGH TABLE (3.9, the tape — the door gun's; 1.7 m over the galleries, out of a jump's reach) */
-            { k: 'plateau', x: 0, z: -15, w: 4, d: 3, h: 3.9, edge: 0.3 },
-            /* THE SCREEN across the sanctum's mouth (the door in the corn and the bay door never see each other) */
-            { k: 'wall', x0: -3, z0: -2, x1: 2, z1: -2, h: 2.2, t: 0.3, key: 'wood' },
-            /* THE MEZZANINE over the bar (2.6): the stair up its east end, a ladder on its south face, the panelling's hand-holds on its west */
-            { k: 'plateau', x: 14, z: 10, w: 7, d: 5, h: 2.6, edge: 0.3 }, { k: 'ramp', x0: 25, z0: 10, x1: 16.8, z1: 10, w: 2.4, h0: 0, h1: 2.6, stairs: true },
-            { k: 'climb', x: 14, z: 7.8, face: 180, look: 'ladder' }, { k: 'climb', x: 10.8, z: 10, face: 90, look: 'wall' },
-            { k: 'wall', x0: 12, z0: 2, x1: 12, z1: 7, h: 1.1, t: 0.4, key: 'wood' },                                // THE BAR (the grind)
-            /* THE STACKS in the library (2.4): the stair down its west end, the library ladder on its south face, a pipe at its east end */
-            { k: 'plateau', x: -18, z: 2.5, w: 12, d: 3, h: 2.4, edge: 0.3 }, { k: 'ramp', x0: -22, z0: 10, x1: -22, z1: 3.3, w: 2.2, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: -15, z: 3.7, face: 0, look: 'ladder' }, { k: 'climb', x: -12.3, z: 2.5, face: 270, look: 'pipe' },
-            /* THE WINE CELLAR (−1.6): the stair down into it from the north */
-            { k: 'dip', x: 18, z: -14, r: 4.5, h: 1.6, open: true }, { k: 'ramp', x0: 18, z0: -8.5, x1: 18, z1: -13, w: 2.2, h0: 0, h1: -1.4, stairs: true },
-            /* THE CORRIDORS the plan keeps: the sanctum both sides of the screen, the bar and the painting, the cellar, the library and the corn door, the tunnel */
-            { k: 'path', pts: [[0, 8], [6, 0], [4, -6]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-6, 0], [-4, -6]], w: 2.6 },
-            { k: 'path', pts: [[0, 8], [14, 6], [24, 4], [27, 0]], w: 2.6 }, { k: 'path', pts: [[24, 4], [24, -4], [18, -8]], w: 2.4 }, { k: 'path', pts: [[24, 12], [27, 14]], w: 2.4 },
-            { k: 'path', pts: [[0, 8], [-12, 8], [-18, 10]], w: 2.6 }, { k: 'path', pts: [[-18, 10], [-24, -4], [-14, -20], [-5, -22.5]], w: 2.4 },
+            { k: 'plateau', x: 0, z: -15, w: 4, d: 3, h: 3.9, edge: 0.15 },
+            /* THE SCREEN across the sanctum's mouth */
+            { k: 'wall', x0: -3, z0: -3, x1: 3, z1: -3, h: 2.2, t: 0.3, key: 'wood' },
+            /* THE MEZZANINE (2.6) over the bar's north end: the stair up its west end (along the bar's west wall), a ladder on its south face, the panelling's hand-holds on its east */
+            { k: 'plateau', x: 17, z: -4.5, w: 9, d: 5, h: 2.6, edge: 0.15 },
+            { k: 'ramp', x0: 13.7, z0: 3.6, x1: 13.7, z1: -2.7, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'climb', x: 19.5, z: -2.3, face: 0, look: 'ladder' }, { k: 'climb', x: 21.2, z: -4.5, face: 270, look: 'wall' },
+            { k: 'wall', x0: 15.5, z0: 6, x1: 21.5, z1: 6, h: 1.1, t: 0.4, key: 'wood' },                            // THE BAR (the grind)
+            /* THE STACKS (2.4) along the library's south wall: the stair up its west end, the library ladder on its north face, a pipe at its east end */
+            { k: 'plateau', x: -21, z: 12.5, w: 12, d: 3, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: -25.9, z0: 5, x1: -25.9, z1: 11.7, w: 2.2, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'climb', x: -19, z: 11.3, face: 180, look: 'ladder' }, { k: 'climb', x: -15.3, z: 12.5, face: 270, look: 'pipe' },
+            /* THE WINE CELLAR (−1.6, sunk: a built retaining edge) and the built stair down into it from the east leg */
+            { k: 'plateau', x: 18.5, z: -14.6, w: 9, d: 7.6, h: -1.6, edge: 0.15, sink: true },
+            { k: 'ramp', x0: 24, z0: -12, x1: 17.5, z1: -12, w: 2.4, h0: 0, h1: -1.6, stairs: true, built: true, edge: 0.15, key: 'wood' },
             { k: 'scatter', key: 'office_chair', n: 4, seed: 33 }, { k: 'scatter', key: 'potted_plant', n: 4, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -5, z: -12, face: 90, y: 2.2 }, { key: 'railing_1m', x: 11, z: -14, face: 270, y: 2.2 }, { key: 'railing_1m', x: 14, z: 12.6, face: 180, y: 2.6 }, { key: 'railing_1m', x: -18, z: 1.2, face: 0, y: 2.4 }, { key: 'riser_1', x: 6, z: 14 },
+        props: [{ key: 'railing_1m', x: -5, z: -11.5, face: 90, y: 2.2 }, { key: 'railing_1m', x: 5, z: -13, face: 90, y: 2.2 }, { key: 'railing_1m', x: 16, z: -2, face: 180, y: 2.6 }, { key: 'railing_1m', x: -22, z: 11, face: 0, y: 2.4 }, { key: 'riser_1', x: 5, z: 17 },
                 /* THE SANCTUM: the round table under the walk, the lectern on the high table, the braziers, the knights at the screen */
-                { key: 'round_table', x: 0, z: -6 }, { key: 'lectern', x: 0, z: -15, y: 3.9, face: 180 }, { key: 'brazier', x: -3, z: -18.5 }, { key: 'brazier', x: 3, z: -18.5 }, { key: 'armour_stand', x: -4.5, z: -3.5, face: 90 }, { key: 'armour_stand', x: 4.5, z: -3.5, face: 270 },
-                { key: 'royal_throne', x: 8, z: -15, y: 2.2, face: 180 }, { key: 'candle_ring', x: -8, z: -10, y: 2.2 }, { key: 'pocket_watch', x: 0.8, z: -6.4, y: 1.25 }, { key: 'manila_folders', x: -0.6, z: -5.6, y: 1.25 }, { key: 'candle_ring', x: 0, z: -11 },
+                { key: 'round_table', x: 0, z: -6 }, { key: 'lectern', x: 0, z: -15, y: 3.9, face: 180 }, { key: 'brazier', x: -3, z: -17.6 }, { key: 'brazier', x: 3, z: -17.6 }, { key: 'armour_stand', x: -4.5, z: -3.5, face: 90 }, { key: 'armour_stand', x: 4.5, z: -3.5, face: 270 },
+                { key: 'royal_throne', x: 8, z: -13, y: 2.2, face: 180 }, { key: 'candle_ring', x: -8, z: -10, y: 2.2 }, { key: 'pocket_watch', x: 0.8, z: -6.4, y: 1.25 }, { key: 'manila_folders', x: -0.6, z: -5.6, y: 1.25 }, { key: 'candle_ring', x: 0, z: -11 },
                 /* THE BAR: the counter, the couches, the members' table */
-                { key: 'mobius_bar', x: 16, z: 3.5, face: 0 }, { key: 'curved_couch', x: 21, z: 8, face: 180 }, { key: 'coffee_table', x: 21, z: 5.5 }, { key: 'retro_radio', x: 21, z: 5.5, y: 0.46 }, { key: 'solo_cup', x: 20.2, z: 5.2, y: 0.46 }, { key: 'table_lamp', x: 24.5, z: 2, y: 0 },
-                { key: 'globe_lamp', x: 12, z: 12 }, { key: 'candle_ring', x: 14, z: 10, y: 2.6 }, { key: 'teal_chair', x: 15.5, z: 11.5, y: 2.6, face: 200 }, { key: 'coffee_table', x: 13, z: 9, y: 2.6 }, { key: 'brass_telescope', x: 12, z: 11, y: 2.6, face: 120 },
-                { key: 'cash_register', x: 14.5, z: 3.5, y: 1.05 }, { key: 'coffee_mug', x: 17.5, z: 3.5, y: 1.05 },
-                /* THE LIBRARY: the shelves on the stacks and under them, the reading table */
-                { key: 'library_shelf_full', x: -21, z: 2.5, y: 2.4, face: 0 }, { key: 'library_shelf_full', x: -15, z: 2.5, y: 2.4, face: 0 }, { key: 'library_shelf_full', x: -24, z: 11, face: 0 }, { key: 'library_shelf_full', x: -12, z: 11, face: 0 },
-                { key: 'steel_table', x: -18, z: 7.5 }, { key: 'papers_a', x: -17.5, z: 7.5, y: 0.76 }, { key: 'desk_lamp', x: -19, z: 7, y: 0.76 }, { key: 'office_chair', x: -18, z: 9.5, face: 0 }, { key: 'globe_lamp', x: -12.5, z: 4.5 },
+                { key: 'mobius_bar', x: 18, z: 1, face: 0 }, { key: 'curved_couch', x: 24.5, z: 6, face: 180 }, { key: 'coffee_table', x: 24.5, z: 3.5 }, { key: 'retro_radio', x: 24.5, z: 3.5, y: 0.46 }, { key: 'solo_cup', x: 23.7, z: 3.2, y: 0.46 }, { key: 'table_lamp', x: 22.8, z: -6.2, y: 0 },
+                { key: 'globe_lamp', x: 27, z: 8.2 }, { key: 'candle_ring', x: 15, z: -4.5, y: 2.6 }, { key: 'teal_chair', x: 16.5, z: -5.8, y: 2.6, face: 200 }, { key: 'coffee_table', x: 14.5, z: -6, y: 2.6 }, { key: 'brass_telescope', x: 20.5, z: -3.6, y: 2.6, face: 120 },
+                { key: 'cash_register', x: 16.5, z: 1, y: 1.05 }, { key: 'coffee_mug', x: 19.5, z: 1, y: 1.05 },
+                /* THE LIBRARY: the shelves on the stacks and along the north wall, the reading table */
+                { key: 'library_shelf_full', x: -24, z: 12.5, y: 2.4, face: 180 }, { key: 'library_shelf_full', x: -18, z: 12.5, y: 2.4, face: 180 }, { key: 'library_shelf_full', x: -25.5, z: 0.8, face: 0 }, { key: 'library_shelf_full', x: -15, z: 0.8, face: 0 },
+                { key: 'steel_table', x: -19, z: 6 }, { key: 'papers_a', x: -18.5, z: 6, y: 0.76 }, { key: 'desk_lamp', x: -20, z: 5.5, y: 0.76 }, { key: 'office_chair', x: -19, z: 8, face: 0 }, { key: 'globe_lamp', x: -14, z: 2 },
                 /* THE WINE CELLAR: the 322 basement */
-                { key: 'sea_chest', x: 15, z: -14, y: -1.6 }, { key: 'sea_chest', x: 21, z: -15, y: -1.6 }, { key: 'skull_pile', x: 18, z: -16.5, y: -1.6 }, { key: 'candle_ring', x: 18, z: -14, y: -1.6 }, { key: 'cardboard_boxes', x: 21, z: -12, y: -1.4 },
+                { key: 'sea_chest', x: 15.5, z: -16, y: -1.6 }, { key: 'sea_chest', x: 20.5, z: -17, y: -1.6 }, { key: 'skull_pile', x: 18, z: -17.3, y: -1.6 }, { key: 'candle_ring', x: 18, z: -15, y: -1.6 }, { key: 'cardboard_boxes', x: 22, z: -15.5, y: -1.6 },
                 /* THE HALLS */
-                { key: 'lesson_sign', x: 4, z: 12, face: 200, lesson: 'climb' }, { key: 'umbrella_stand', x: -3, z: 20 }, { key: 'potted_plant', x: 3, z: 20 }, { key: 'office_plant', x: -26, z: -20 }, { key: 'wet_floor_sign', x: 27, z: 8 }],
-        npcSpots: [{ x: 3, z: 6, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 18, z: 6, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' },
-                   { x: 16, z: 11, face: 180, race: 'men in black', say:   /* 2026-09-20: onto the mezzanine's flat top (19, 9 was its edge blend) */ '“You did not see the tunnel. There is no tunnel. Redwood is a cologne.”' }, { x: -20, z: 9, face: 90, race: 'conspiracy theorist', say: '“Every book on the top shelf is about the bottom shelf.”' }],
+                { key: 'lesson_sign', x: 4, z: 11, face: 200, lesson: 'climb' }, { key: 'umbrella_stand', x: -3, z: 20 }, { key: 'potted_plant', x: 3, z: 20 }, { key: 'office_plant', x: -26, z: -16 }, { key: 'wet_floor_sign', x: 21, z: 19.5 }],
+        npcSpots: [{ x: 3, z: 8, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 22, z: 1, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' },
+                   { x: 17, z: -5, face: 180, race: 'men in black', say:   /* 2026-09-20: onto the mezzanine's flat top */ '“You did not see the tunnel. There is no tunnel. Redwood is a cologne.”' }, { x: -22, z: 8, face: 90, race: 'conspiracy theorist', say: '“Every book on the top shelf is about the bottom shelf.”' }],
         lines: ['“Members only.” “Both ways.”'] },
     /* ROOM 0 · THE SINGULARITY · THE HORIZON (AREA CONTENT D3, 2026-09-19 — brought up to the cave): obsidian ground under the void, everything
        leaning toward THE DROP (a bowl to −4 m round the point); THE WEST SHELF (a ramp, the hand-holds) and over it THE NEAR LENS (a ramp, a rope)
@@ -43101,44 +43122,58 @@ const HQ_AREA_SPECS = {
     /* OPEN WORLD Phase 7 (2026-09-27): she rides at anchor off Disaster City's docks — an ISLAND on THE HARBOUR (DOOR_HQ.world.zones.coast,
        her deck 2.2 m over the water): THE HULL (a plateau at the deck's 0, 0.5 m inside her box) over the sea floor at −8.2, her own water at
        −2.6 (the harbour's −0.4 on the ground). Boarded from the skiff (step off onto her deck); a swimmer cannot climb her side. */
+    /* LEVEL_DESIGN_PLAN L6 (2026-09-30, §3 #8 "built decks"): the rooms gen and its banks went (the derelict deck's L3 recipe). The deck is
+       flat plate at crisp edges; THE QUARTERDECK, THE POOP, THE FORECASTLE, THE BOWSPRIT PLATFORM and THE BOAT DECK are crisp tiers up built
+       flights; the bulwarks round the waist and the rail round the hull's edge are built walls (the gangways cut for the companionway and the
+       way in); the main hatch and the fore hatch are coamings on the waist (a step up). The sea stays round her. */
     prebuilt_revenge: { part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE POOP · THE MAINTOP', w: 64, d: 52, night: 1, look: 'sea', fogD: 0.026,
         base: -8.2, sea: { y: -2.6, key: 'water' },
         parti: 'A ghost ship\'s weather deck is one corridor from the poop to the forecastle, and everything worth having is UP — the maintop over the waist, the poop over the quarterdeck, the boat deck off the fore chains — because the sea past the bulwarks is not a floor.', typology: 'corridor',
         floor: 'wood_planks', cliff: 'wood', path: 'wood', floorColor: 0xb9885a, cliffColor: 0x7a5636,
-        gen: { kind: 'rooms', seed: 1717, loops: 2, rMin: 8, rMax: 14, wallH: 1.4, thicket: false, open: [{ x: -26, z: 18, r: 3 }, { x: 26, z: 18, r: 3 }, { x: -26, z: -18, r: 3 }, { x: 26, z: -18, r: 3 }] }, noise: { amp: 0.06, scale: 9 },   // the open circles: the strips between the tiers' ends and the bulwarks, round to the chains
+        noise: { amp: 0, scale: 9 }, crag: false,   // L6: a ship's deck, not a hillside
         plaza: { x: 0, z: 4 },
         features: [
             /* THE HULL (Phase 7): the deck over the sea — everything after it stands on it */
-            { k: 'plateau', x: 0, z: 0, w: 63, d: 51, h: 0, edge: 0.4 },
-            /* THE QUARTERDECK (2.4, the stern west): the stair up from the waist, a rope on its north face, a ladder on its south */
-            { k: 'plateau', x: -22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: 0, z: 0, w: 63, d: 51, h: 0, edge: 0.15 },
+            /* THE QUARTERDECK (2.4, the stern west): the built stair up from the waist, a rope on its north face, a ladder on its south */
+            { k: 'plateau', x: -22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'climb', x: -22, z: -16.7, face: 180, look: 'rope' }, { k: 'climb', x: -22, z: 16.7, face: 0, look: 'ladder' },
-            /* THE POOP (4.4) over the quarterdeck's stern — the skylight draught stands ON it: the stair up from the quarterdeck, the stern lantern's chain on its north face */
-            { k: 'plateau', x: -29, z: 0, w: 10, d: 20, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true },
+            /* THE POOP (4.4) over the quarterdeck's stern — the skylight draught stands ON it: the built stair up from the quarterdeck, the stern lantern's chain on its north face */
+            { k: 'plateau', x: -27.75, z: 0, w: 7.5, d: 20, h: 4.4, edge: 0.15 },   // L6: to the hull's stern edge (it stood out over the sea)
+            { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'climb', x: -29, z: -9.7, face: 180, look: 'chain' },
-            /* THE FORECASTLE (2.4, the bow east): the stair up from the waist, a rope on its south face, a ladder on its north */
-            { k: 'plateau', x: 22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            /* THE FORECASTLE (2.4, the bow east): the built stair up from the waist, a rope on its south face, a ladder on its north */
+            { k: 'plateau', x: 22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'climb', x: 22, z: 16.7, face: 0, look: 'rope' }, { k: 'climb', x: 22, z: -16.7, face: 180, look: 'ladder' },
-            /* THE BOWSPRIT PLATFORM (3.6) on the forecastle's bow: the stair up from the forecastle, a chain on its north face */
-            { k: 'plateau', x: 27, z: 0, w: 6, d: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true },
+            /* THE BOWSPRIT PLATFORM (3.6) on the forecastle's bow: the built stair up from the forecastle, a chain on its north face */
+            { k: 'plateau', x: 27, z: 0, w: 6, d: 8, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'climb', x: 27, z: -3.7, face: 180, look: 'chain' },
             /* THE BOAT DECK (2.4) off the starboard bulwark, a rope on its west face; THE GANGWAY from the forecastle to it (a level span, the bridge layer) */
-            { k: 'plateau', x: 8, z: 14, w: 8, d: 6, h: 2.4, edge: 0.4 }, { k: 'climb', x: 4.3, z: 14, face: 90, look: 'rope' },
+            { k: 'plateau', x: 8, z: 14, w: 8, d: 6, h: 2.4, edge: 0.15 }, { k: 'climb', x: 4.3, z: 14, face: 90, look: 'rope' },
             { k: 'bridge', x0: 16.7, z0: 14, x1: 11.3, z1: 14, w: 2.2, y: 2.4 },
             /* THE MAINMAST: THE CROSSTREES (4.6) up the ratlines — a rope on its south face, a chain on its north — under THE MAINTOP (8.4, the tape — the door gun's) */
-            { k: 'plateau', x: 0, z: -4, r: 3.2, h: 4.6, edge: 0.4 }, { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.4 },
+            { k: 'plateau', x: 0, z: -4, r: 3.2, h: 4.6, edge: 0.15 }, { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.15 },
             { k: 'climb', x: 0, z: -1.1, face: 0, look: 'rope' }, { k: 'climb', x: 0, z: -6.9, face: 180, look: 'chain' },
-            { k: 'plateau', x: -22, z: 6, r: 1.4, h: 7.0, edge: 0.3 },   // THE MIZZEN on the quarterdeck (a mast, nothing climbs it): the skylight is not seen from the way in (R3)
-            /* THE BULWARKS (the grind) — the gangways cut at the companionway (north, x −8..−2) and the way in (south, x −3..3) */
+            { k: 'plateau', x: -22, z: 6, r: 1.4, h: 7.0, edge: 0.15 },   // THE MIZZEN on the quarterdeck (a mast, nothing climbs it): the skylight is not seen from the way in (R3)
+            /* THE HATCH GRATINGS: the main hatch and the fore hatch, coamings on the waist (a step up) */
+            { k: 'plateau', x: -7, z: -10, w: 4, d: 3, h: 0.35, edge: 0.15 }, { k: 'plateau', x: 7, z: -10, w: 4, d: 3, h: 0.35, edge: 0.15 },
+            /* THE BULWARKS round the waist (the grind) — the gangways cut at the companionway (north, x −8..−2) and the way in (south, x −8..−2) */
             { k: 'wall', x0: -24, z0: 19, x1: -8, z1: 19, h: 1.1, t: 0.4, key: 'wood' }, { k: 'wall', x0: -2, z0: 19, x1: 24, z1: 19, h: 1.1, t: 0.4, key: 'wood' },
             { k: 'wall', x0: -24, z0: -19, x1: -8, z1: -19, h: 1.1, t: 0.4, key: 'wood' }, { k: 'wall', x0: -2, z0: -19, x1: 24, z1: -19, h: 1.1, t: 0.4, key: 'wood' },
+            /* THE RAIL round the hull's edge (the sea is not a floor; 1.5 m, over the walker's jump): cut for the companionway on the north side and the skylight on the
+               poop's stern, each cut boxed in along its landing's sides; the poop's own run stands on the poop (the taffrail) */
+            { k: 'wall', x0: -31.6, z0: -25, x1: -6.9, z1: -25, h: 1.5, t: 0.4, key: 'wood' }, { k: 'wall', x0: -3.1, z0: -25, x1: 31.6, z1: -25, h: 1.5, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: -6.9, z0: -25, x1: -6.9, z1: -26.6, h: 1.5, t: 0.4, key: 'wood' }, { k: 'wall', x0: -3.1, z0: -25, x1: -3.1, z1: -26.6, h: 1.5, t: 0.4, key: 'wood' },   // the companionway's cut
+            { k: 'wall', x0: -31.6, z0: 25, x1: 31.6, z1: 25, h: 1.5, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: 31, z0: -25.6, x1: 31, z1: 25.6, h: 1.5, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: -31, z0: -25.6, x1: -31, z1: -10.3, h: 1.5, t: 0.4, key: 'wood' }, { k: 'wall', x0: -31, z0: 10.3, x1: -31, z1: 25.6, h: 1.5, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: -31, z0: -10.3, x1: -31, z1: -1.9, h: 1.5, t: 0.4, key: 'wood' }, { k: 'wall', x0: -31, z0: 1.9, x1: -31, z1: 10.3, h: 1.5, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: -31, z0: -1.9, x1: -32.6, z1: -1.9, h: 1.5, t: 0.4, key: 'wood' }, { k: 'wall', x0: -31, z0: 1.9, x1: -32.6, z1: 1.9, h: 1.5, t: 0.4, key: 'wood' },   // the skylight's cut
             /* THE CHAINS outside the bulwarks (the grind) */
             { k: 'rail', x0: -20, z0: 23, x1: 20, z1: 23 }, { k: 'rail', x0: -20, z0: -23, x1: 20, z1: -23 },
-            /* THE PATHS: the two stairs off the waist, the companionway through the port gangway, the boat deck's rope, the ratlines, round the tiers' ends to the chains */
-            { k: 'path', pts: [[0, 4], [-8.5, 0]], w: 2.4 }, { k: 'path', pts: [[0, 4], [8.5, 0]], w: 2.4 }, { k: 'path', pts: [[0, 4], [-5, -22], [-5, -24.8]], w: 2.6 },
-            { k: 'path', pts: [[0, 4], [2.5, 14]], w: 2.2 }, { k: 'path', pts: [[0, 4], [0, -0.5]], w: 2.2 },
-            { k: 'path', pts: [[-8.5, 0], [-14, 17.5], [-26, 17.5], [-26, 23], [-20, 23]], w: 2.2 }, { k: 'path', pts: [[8.5, 0], [14, 17.5], [26, 17.5], [26, 23], [20, 23]], w: 2.2 },
-            { k: 'path', pts: [[-5, -22], [-14, -17.5], [-26, -17.5], [-26, -23], [-20, -23]], w: 2.2 }, { k: 'path', pts: [[8.5, 0], [14, -17.5], [26, -17.5], [26, -23], [20, -23]], w: 2.2 },
             { k: 'scatter', key: 'sea_chest', n: 3, seed: 17 }, { k: 'scatter', key: 'cardboard_box', n: 4, seed: 71 },
         ],
         doors: [{ id: 'companionway', wall: 'n', x: -5, leaf: 'leaf_shabby_wood', label: 'THE FLYING DUTCHMAN · THE GUN DECK', sub: 'THE COMPANIONWAY · GO BELOW',
@@ -43155,7 +43190,7 @@ const HQ_AREA_SPECS = {
                 { key: 'stocks', x: 12, z: -8, face: 180 }, { key: 'skull_pile', x: -13, z: -12 },
                 /* THE QUARTERDECK and THE POOP: the helm, the log at the lectern, the stern lantern */
                 { key: 'lectern', x: -20, z: 0, y: 2.4, face: 90 }, { key: 'candle_ring', x: -20, z: 0, y: 3.5 }, { key: 'brass_telescope', x: -19, z: -6, y: 2.4, face: 120 }, { key: 'sea_chest', x: -19, z: 6, y: 2.4 }, { key: 'lone_gun', x: -22, z: -12, y: 2.4 }, { key: 'lone_gun', x: -22, z: 12, y: 2.4 },
-                { key: 'ship_lantern', x: -31, z: 0, y: 7.0 }, { key: 'brazier', x: -30, z: 6, y: 4.4 }, { key: 'sea_chest', x: -31, z: -6, y: 4.4 }, { key: 'skull_pile', x: -28, z: -7, y: 4.4 },
+                { key: 'ship_lantern', x: -31, z: 0, y: 7.0 }, { key: 'brazier', x: -30, z: 6, y: 4.4 }, { key: 'sea_chest', x: -30, z: -6, y: 4.4 }, { key: 'skull_pile', x: -28, z: -7, y: 4.4 },
                 /* THE FORECASTLE and THE BOWSPRIT: the anchor, the bell's gun, the lookout's glass */
                 { key: 'ship_anchor', x: 20, z: -8, y: 2.4 }, { key: 'brazier', x: 20, z: 8, y: 2.4 }, { key: 'lone_gun', x: 22, z: 12, y: 2.4 }, { key: 'sea_chest', x: 24, z: -12, y: 2.4 }, { key: 'brass_telescope', x: 28, z: 2, y: 3.6, face: 90 }, { key: 'ship_lantern', x: 29, z: -2, y: 6.0 },
                 /* THE BOAT DECK: the ship's boat is missing; the chocks are not */
@@ -43163,7 +43198,7 @@ const HQ_AREA_SPECS = {
                 /* THE MAINTOP and THE CROSSTREES */
                 { key: 'ship_lantern', x: 0, z: -4, y: 8.2 }, { key: 'cardboard_box', x: 2.2, z: -4, y: 4.6 },
                 /* THE CHAINS: what the sea left on the channels */
-                { key: 'giant_clam', x: -14, z: 23.5 }, { key: 'anemone', x: 8, z: 23.5 }, { key: 'coral_fan', x: 16, z: -23.5 }, { key: 'kelp', x: -10, z: -23.5 }, { key: 'sea_buoy', x: 24, z: 24 }, { key: 'sea_buoy', x: -24, z: -24 }, { key: 'sea_chest', x: 0, z: 24.5 }],
+                { key: 'giant_clam', x: -14, z: 23.5 }, { key: 'anemone', x: 8, z: 23.5 }, { key: 'coral_fan', x: 16, z: -23.5 }, { key: 'kelp', x: -10, z: -23.5 }, { key: 'sea_buoy', x: 24, z: 24 }, { key: 'sea_buoy', x: -24, z: -24 }, { key: 'sea_chest', x: 0, z: 24 }],
         npcSpots: [{ x: -3, z: 8, face: 30, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -22, z: 3, y: 2.4, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' },
                    { x: 22, z: 4, y: 2.4, face: 270, race: 'pirate', say: '“Land off the bow. There is always land off the bow. We never reach it.”' }, { x: -14, z: 21, face: 0, race: 'siren', say: '“The chains are mine. The deck is theirs. The sky is nobody\'s, yet.”' }],
         lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
