@@ -4522,6 +4522,10 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-pp-duty b { font-family: 'Cormorant SC', serif; font-size: 16px; letter-spacing: 0.2em; display: block; }
 .hq-pp-duty span { display: block; font-size: 8px; letter-spacing: 0.2em; color: #b8a060; margin: 3px 0 8px; }
 .hq-pp-duty .hq-panel-actions { margin: 0; }
+.hq-pp-name-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }   /* THE NAME (2026-09-30): rename a member */
+#hqPage .hq-pp-name-input { flex: 1 1 140px; min-width: 110px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; padding: 5px 8px; color: #ece7d8; background: rgba(0,0,0,0.45); border: 1px solid rgba(184,160,96,0.45); outline: none; }
+#hqPage .hq-pp-name-input:focus { border-color: #f2c468; box-shadow: 0 0 0 1px rgba(242,196,104,0.35); }
+#hqPage .hq-pp-name-input::placeholder { color: rgba(236,231,216,0.4); }
 .hq-btn.danger { border-color: rgba(255,106,106,0.6); color: #ffb0b0; }
 .hq-btn-xs { padding: 1px 6px; font-size: 8px; margin-left: 6px; vertical-align: middle; }
 .hq-pp-spell.field { border-color: rgba(88,216,88,0.35); }
@@ -5864,7 +5868,7 @@ body.diorama-3d .tile-underpass.jump::before {
    (the CSS2D "grey box" is gone): the name in the theme's ink over a
    shadow, a hairline of the function colour under it, the number small.
    ═══════════════════════════════════════════════════════════════════════ */
-#hqPage {
+#hqPage, #pauseOverlay {   /* #pauseOverlay: the battle's pause menu wears the same frame (2026-09-30) */
   --hq-plate-bg: var(--ew-plate-bg, linear-gradient(180deg, #16188e 0%, #0c0e64 42%, #050632 78%, #010214 100%));
   --hq-plate-edge: var(--ew-plate-edge, #e6e8f4);
   --hq-plate-seam: var(--ew-plate-seam, #061040);

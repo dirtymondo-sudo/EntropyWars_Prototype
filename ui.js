@@ -6634,7 +6634,7 @@
             // Dynamic toggle handlers can change with the value; their position
             // is stable within the same tab. A different tab selects its header.
             if (!target && snapshot) target = controls[snapshot.index];
-            target = target || controls.find(el => el.matches('.pause-tab.active')) || controls[0] || _pauseOverlay;
+            target = target || controls.find(el => el.matches('.hq-pause-cmd.cur, .pause-tab.active')) || controls[0] || _pauseOverlay;
             target.focus({ preventScroll: true });
         }
         function _pauseKeydown(e) {
@@ -6643,6 +6643,29 @@
                 e.preventDefault();
                 e.stopPropagation();
                 closePauseMenu();
+                return;
+            }
+            /* THE BATTLE PAUSE MENU (2026-09-30): P resumes too; ↑ ↓ walk the command column and ← → the settings pages,
+               unless a slider / field has the key (a focused range input keeps its arrows) */
+            const _t = e.target, _field = _t && (_t.tagName === 'INPUT' || _t.tagName === 'SELECT' || _t.tagName === 'TEXTAREA');
+            if ((e.key === 'p' || e.key === 'P') && !_field && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); closePauseMenu(); return; }
+            if (!_field && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault(); e.stopPropagation();
+                const cmds = _pauseCmds();
+                _pauseCursor = (_pauseCursor + (e.key === 'ArrowDown' ? 1 : cmds.length - 1)) % cmds.length;
+                const btn = _pauseOverlay && _pauseOverlay.querySelector(`[data-pause-cmd="${cmds[_pauseCursor].id}"]`);
+                _pauseOverlay.querySelectorAll('.hq-pause-cmd.cur').forEach(b => b.classList.remove('cur'));
+                if (btn) { btn.classList.add('cur'); btn.focus({ preventScroll: true }); }
+                try { playSfx('uiCursorMove'); } catch (err) {}
+                return;
+            }
+            if (!_field && _pauseTab === 'settings' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault(); e.stopPropagation();
+                const tabs = _PAUSE_SETS.filter(t => !(state.phase === 'editor' && t.id === 'game'));
+                const at = Math.max(0, tabs.findIndex(t => t.id === _pauseSet));
+                _pauseSet = tabs[(at + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length].id;
+                try { playSfx('uiCursorMove'); } catch (err) {}
+                _renderPauseMenu();
                 return;
             }
             // Keep native button/slider behavior but do not bubble menu keys
@@ -6708,9 +6731,39 @@
             return _TRACK_DISPLAY_NAMES[key] || key || '—';
         }
 
-        let _pauseTab = 'scoreboard';
+        /* ══ THE BATTLE PAUSE MENU (mondo, 2026-09-30: "2 different pause menus during a battle … reconcile them and
+           organize them better … AAA JRPG pause menu") — ONE menu: ESC, P, the HUD's ☰ and the pad's START all open it.
+           A command column (RESUME · PARTY · MATCH · STATUSES · SETTINGS · FORFEIT) beside the page it opens, in the same
+           frame as the building's pause menu (map.js _hqOpenPause). SETTINGS holds AUDIO · VIDEO · GAME · CONTROLS.
+           ↑ ↓ walk the commands, ← → the settings pages, ENTER picks, ESC / P resume. Viewer-local: nothing on `state`,
+           nothing relayed (RULE #2) — every setting was already local. ══ */
+        let _pauseTab = 'party';        // party · match · library · settings
+        let _pauseSet = 'audio';        // the SETTINGS page: audio · video · game · controls
+        let _pauseCursor = 0;
+        const _PAUSE_SETS = [
+            { id: 'audio', label: 'AUDIO' },
+            { id: 'video', label: 'VIDEO' },
+            { id: 'game', label: 'GAME' },
+            { id: 'controls', label: 'CONTROLS' },
+        ];
+        function _pauseCmds() {
+            const inEditor = state.phase === 'editor';
+            const story = !!window._hqEncounterRun;
+            const cmds = [{ id: 'resume', label: 'RESUME', sub: inEditor ? 'BACK TO THE EDITOR' : 'BACK TO THE FIGHT' }];
+            if (!inEditor) {
+                cmds.push({ id: 'party', label: 'PARTY', sub: 'HP · MP · STATUS' });
+                cmds.push({ id: 'match', label: 'MATCH', sub: 'SCORE · STATS · AWARDS' });
+            }
+            cmds.push({ id: 'library', label: 'STATUSES', sub: 'EVERY EFFECT IN THE GAME' });
+            cmds.push({ id: 'settings', label: 'SETTINGS', sub: 'AUDIO · VIDEO · CONTROLS' });
+            if (!inEditor) cmds.push({ id: 'forfeit', label: 'FORFEIT', sub: 'COUNTS AS A LOSS', danger: true });
+            return cmds;
+        }
 
         function openPauseMenu() {
+            const cmds0 = _pauseCmds();
+            if (!cmds0.some(c => c.id === _pauseTab)) _pauseTab = cmds0.some(c => c.id === 'party') ? 'party' : 'settings';
+            _pauseCursor = Math.max(0, cmds0.findIndex(c => c.id === _pauseTab));
             if (!_gamePaused) _pauseReturnFocus = document.activeElement;
             _gamePaused = true;
             _mdHeldMoveKeys.clear();
@@ -6730,7 +6783,8 @@
                 _pauseOverlay.tabIndex = -1;
                 _pauseOverlay.setAttribute('role', 'dialog');
                 _pauseOverlay.setAttribute('aria-modal', 'true');
-                _pauseOverlay.setAttribute('aria-label', 'Match menu');
+                _pauseOverlay.setAttribute('aria-label', 'Pause menu');
+                _pauseOverlay.addEventListener('click', _pauseClick);
                 _pauseOverlay.addEventListener('keydown', _pauseKeydown);
                 (document.getElementById("game-viewport") || document.body).appendChild(_pauseOverlay);
             }
@@ -6742,76 +6796,139 @@
         }
         window.openPauseMenu = openPauseMenu;
 
+        function _pauseEsc(t) { return (typeof escapeHtml === 'function') ? escapeHtml(String(t == null ? '' : t)) : String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function _pauseViewer() {
+            try { if (typeof getLocalPlayer === 'function') { const p = getLocalPlayer(); if (p === 1 || p === 2) return p; } } catch (e) {}
+            return 1;
+        }
+
         function _renderPauseMenu() {
             if (!_pauseOverlay) return;
             const focusSnapshot = _pauseFocusSnapshot();
-            /* In the map editor there is no match, so the scoreboard tab is
-               meaningless — land on Audio (the reason to pause in the editor is
-               almost always "change the song / volumes"). */
             const _inEditor = state.phase === 'editor';
-            if (_inEditor && _pauseTab === 'scoreboard') _pauseTab = 'audio';
+            const cmds = _pauseCmds();
+            if (!cmds.some(c => c.id === _pauseTab && c.id !== 'resume' && c.id !== 'forfeit')) _pauseTab = _inEditor ? 'settings' : 'party';
+            if (_pauseCursor >= cmds.length) _pauseCursor = cmds.length - 1;
             const roundNum = state.round || 0;
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-            const modeLabel = mpMode ? (mpMode.icon || '') + ' ' + (mpMode.label || '') : '⚔ Arena';
+            const story = !!window._hqEncounterRun;
+            const modeLabel = story ? 'STORY FIGHT' : (mpMode ? String(mpMode.label || '').toUpperCase() : 'ARENA');
 
             const durationMs = Date.now() - (state.startTime || Date.now());
             const durationMin = Math.floor(durationMs / 60000);
             const durationSec = Math.floor((durationMs % 60000) / 1000);
-            const durationStr = durationMin > 0 ? `${durationMin}m ${durationSec}s` : `${durationSec}s`;
-
-            let tabContent = '';
-            if (_pauseTab === 'scoreboard') {
-                tabContent = _buildPauseScoreboard();
-            } else if (_pauseTab === 'audio') {
-                tabContent = _buildPauseMusic();
-            } else if (_pauseTab === 'video') {
-                tabContent = _buildPauseVideo();
-            } else if (_pauseTab === 'controls') {
-                tabContent = _buildPauseControls();
-            } else if (_pauseTab === 'library') {
-                tabContent = _buildPauseStatusLibrary();
-            }
-
+            const durationStr = durationMin + ':' + String(durationSec).padStart(2, '0');
             const _pauseRl = state.matchClock && state.matchClock.roundLimit ? state.matchClock.roundLimit : 0;
             const _pausePastLimit = _pauseRl > 0 && roundNum > _pauseRl;
-            const _pauseRoundStr = _pausePastLimit
-                ? (state.suddenDeathActive ? '⚡ Sudden Death' : '⏱ TIME')
-                : `Round ${roundNum}`;
+            const roundStr = _pausePastLimit ? (state.suddenDeathActive ? 'SUDDEN DEATH' : 'TIME') : ('ROUND ' + roundNum + (_pauseRl > 0 ? ' / ' + _pauseRl : ''));
+
+            let vitals = '';
+            if (!_inEditor) {
+                const me = _pauseViewer(), foe = me === 1 ? 2 : 1;
+                const mine = (state.units || []).filter(u => u.player === me), theirs = (state.units || []).filter(u => u.player === foe);
+                const up = mine.filter(u => !u.dead).length;
+                const kills = state.matchKills ? [(state.matchKills[me] || 0), (state.matchKills[foe] || 0)] : [0, 0];
+                vitals = `<div class="hq-pause-vitals">`
+                    + `<span><b>${roundStr}</b><i>${_pauseEsc(modeLabel)}</i></span>`
+                    + `<span><b>${durationStr}</b><i>TIME</i></span>`
+                    + `<span><b>${up} / ${mine.length}</b><i>YOUR SIDE STANDING</i></span>`
+                    + `<span><b>${kills[0]} — ${kills[1]}</b><i>KILLS</i></span>`
+                    + (theirs.length && !(state.fogOfWar || (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active)) ? `<span><b>${theirs.filter(u => !u.dead).length}</b><i>FOES STANDING</i></span>` : '')
+                    + `</div>`;
+            }
+
+            let body = '';
+            if (_pauseTab === 'party') body = _buildPauseParty();
+            else if (_pauseTab === 'match') body = `<div class="bp-hd"><b>MATCH</b><span>${_pauseEsc(modeLabel)} · ${roundStr} · ${durationStr}</span></div>` + _buildPauseScoreboard();
+            else if (_pauseTab === 'library') body = `<div class="bp-hd"><b>STATUSES</b><span>EVERY EFFECT IN THE GAME · WHAT IT DOES</span></div>` + _buildPauseStatusLibrary();
+            else {
+                const tabs = _PAUSE_SETS.filter(t => !(_inEditor && t.id === 'game'));
+                if (!tabs.some(t => t.id === _pauseSet)) _pauseSet = tabs[0].id;
+                body = `<div class="bp-hd"><b>SETTINGS</b><span>← → PAGE · SAVED ON THIS DEVICE</span></div>`
+                    + `<div class="bp-subtabs" role="tablist">${tabs.map(t => `<button class="bp-subtab${_pauseSet === t.id ? ' on' : ''}" role="tab" aria-selected="${_pauseSet === t.id}" data-pause-set="${t.id}">${t.label}</button>`).join('')}</div>`
+                    + `<div class="bp-settings">${_pauseSet === 'audio' ? _buildPauseMusic() : _pauseSet === 'video' ? _buildPauseVideo() : _pauseSet === 'game' ? _buildPauseGame() : _buildPauseControls()}</div>`;
+            }
+
+            const nav = cmds.map((c, i) => `<button class="hq-pause-cmd${_pauseTab === c.id ? ' sel' : ''}${i === _pauseCursor ? ' cur' : ''}${c.danger ? ' danger' : ''}" data-pause-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
 
             _pauseOverlay.innerHTML = `
-            <div class="pause-card">
-                <div class="pause-header">
-                    <div class="pause-title-row">
-                        <div class="pause-title">PAUSED</div>
-                        <button class="pause-close-btn" onclick="closePauseMenu()" title="Resume (ESC)">✕</button>
-                    </div>
-                    <div class="pause-subtitle">${_inEditor ? '🗺 Map Editor' : `${modeLabel} · ${_pauseRoundStr} · ${durationStr}`}</div>
+            <div class="pause-card bp-frame">
+                <div class="hq-pause-head bp-head">
+                    <div class="hq-pause-title"><div><b>PAUSED</b><span>${_inEditor ? 'THE MAP EDITOR' : _pauseEsc(modeLabel)}</span></div></div>
+                    ${vitals}
                 </div>
-                <div class="pause-tabs">
-                    ${_inEditor ? '' : `<button class="pause-tab${_pauseTab === 'scoreboard' ? ' active' : ''}" onclick="window._setPauseTab('scoreboard')">Match</button>`}
-                    <button class="pause-tab${_pauseTab === 'audio' ? ' active' : ''}" onclick="window._setPauseTab('audio')">Audio</button>
-                    <button class="pause-tab${_pauseTab === 'video' ? ' active' : ''}" onclick="window._setPauseTab('video')">Video</button>
-                    <button class="pause-tab${_pauseTab === 'controls' ? ' active' : ''}" onclick="window._setPauseTab('controls')">Controls</button>
-                    <button class="pause-tab${_pauseTab === 'library' ? ' active' : ''}" onclick="window._setPauseTab('library')">Statuses</button>
+                <div class="hq-pause-main bp-main">
+                    <nav class="hq-pause-nav bp-nav" role="menu">${nav}</nav>
+                    <section class="hq-pause-body bp-body" data-view="${_pauseTab}">${body}</section>
                 </div>
-                <div class="pause-tab-body">
-                    ${tabContent}
-                </div>
-                <div class="pause-footer">
-                    <button class="pause-resume-btn" onclick="closePauseMenu()">
-                        <span class="pause-resume-icon">▶</span> Resume
-                    </button>
-                </div>
+                <div class="hq-pause-foot bp-foot"><span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${_pauseTab === 'settings' ? '<span>← → PAGE</span>' : ''}<span>ESC / P RESUME</span></div>
             </div>
             `;
             _pauseFocusRestore(focusSnapshot);
         }
 
+        /* the commands and the settings pages (one delegated listener on the overlay) */
+        function _pauseSelect(id) {
+            if (id === 'resume') { closePauseMenu(); return; }
+            if (id === 'forfeit') { closePauseMenu(); document.getElementById('forfeitBtn')?.click(); return; }
+            _pauseTab = id;
+            _pauseCursor = Math.max(0, _pauseCmds().findIndex(c => c.id === id));
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _renderPauseMenu();
+            _pauseFocusRestore(null);
+        }
+        function _pauseClick(e) {
+            const cmd = e.target.closest && e.target.closest('[data-pause-cmd]');
+            if (cmd) { _pauseSelect(cmd.getAttribute('data-pause-cmd')); return; }
+            const set = e.target.closest && e.target.closest('[data-pause-set]');
+            if (set) { _pauseSet = set.getAttribute('data-pause-set'); try { playSfx('uiCursorMove'); } catch (err) {} _renderPauseMenu(); _pauseFocusRestore(null); }
+        }
+
         window._setPauseTab = function(tab) {
+            if (tab === 'scoreboard') tab = 'match';
+            if (tab === 'audio' || tab === 'video' || tab === 'controls' || tab === 'game') { _pauseSet = tab; tab = 'settings'; }
             _pauseTab = tab;
+            _pauseCursor = Math.max(0, _pauseCmds().findIndex(c => c.id === tab));
             _renderPauseMenu();
             _pauseFocusRestore(null);
         };
+
+        /* PARTY: the viewer's side — every unit on the board, then the bench and the escaped (a JRPG status screen) */
+        function _buildPauseParty() {
+            const me = _pauseViewer();
+            const units = (state.units || []).filter(u => u.player === me);
+            const bench = (state.bench && Array.isArray(state.bench[me])) ? state.bench[me] : [];
+            const escaped = (state.escaped && Array.isArray(state.escaped[me])) ? state.escaped[me] : [];
+            const bar = (cls, v, max) => `<span class="bp-bar ${cls}"><i style="width:${max > 0 ? Math.max(0, Math.min(100, v / max * 100)).toFixed(1) : 0}%"></i></span>`;
+            const card = (u, where) => {
+                let sprite = '';
+                try { sprite = (typeof getUnitPortraitUrl === 'function' && getUnitPortraitUrl(u)) || (typeof getBattleMapSpriteUrl === 'function' ? getBattleMapSpriteUrl(u) : ''); } catch (e) {}
+                const race = (typeof getRaceLabel === 'function') ? getRaceLabel(u.race, u.gender) : (u.race || '');
+                const nm = (typeof unitDisplayName === 'function') ? unitDisplayName(u) : (u.name || race);
+                const lvl = (typeof getUnitLevel === 'function') ? getUnitLevel(u) : (u.level || 1);
+                const hp = Math.max(0, u.hp | 0), mhp = Math.max(1, u.maxHp | 0), mp = Math.max(0, u.mp | 0), mmp = Math.max(0, u.maxMp | 0);
+                let chips = '';
+                try {
+                    if (typeof getActiveStatusKeys === 'function' && typeof STATUS_DEFS !== 'undefined') {
+                        chips = getActiveStatusKeys(u).map(k => STATUS_DEFS[k]).filter(d => d && (d.category === 'status' || d.kind === 'buff' || d.kind === 'debuff'))
+                            .slice(0, 8).map(d => `<i class="bp-chip ${d.kind === 'debuff' ? 'bad' : d.kind === 'buff' ? 'good' : ''}" title="${_pauseEsc(d.label || '')}">${_pauseEsc(d.icon || '')} ${_pauseEsc(d.short || d.label || '')}</i>`).join('');
+                    }
+                } catch (e) { chips = ''; }
+                const state_ = u.dead ? 'KO' : where === 'bench' ? 'BENCH' : where === 'escaped' ? 'ESCAPED' : (state._blitzActiveUnitId === u.id ? 'ACTING' : '');
+                return `<div class="bp-unit${u.dead ? ' ko' : ''}${where !== 'field' ? ' off' : ''}">`
+                    + `<span class="bp-face"${sprite ? ` style="background-image:url('${sprite}')"` : ''}>${state_ ? `<em>${state_}</em>` : ''}</span>`
+                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}</small>`
+                    + `<span class="bp-vit"><em>HP</em>${bar('hp', hp, mhp)}<tt>${hp} / ${mhp}</tt></span>`
+                    + (mmp > 0 ? `<span class="bp-vit"><em>MP</em>${bar('mp', mp, mmp)}<tt>${mp} / ${mmp}</tt></span>` : '')
+                    + (chips ? `<span class="bp-chips">${chips}</span>` : '')
+                    + `</span></div>`;
+            };
+            let html = `<div class="bp-hd"><b>PARTY</b><span>${units.filter(u => !u.dead).length} OF ${units.length} STANDING${bench.length ? ' · ' + bench.length + ' ON THE BENCH' : ''}${escaped.length ? ' · ' + escaped.length + ' ESCAPED' : ''}</span></div>`;
+            html += units.length ? `<div class="bp-party">${units.map(u => card(u, 'field')).join('')}</div>` : `<p class="bp-note">No units on the field.</p>`;
+            if (bench.length) html += `<div class="bp-sec">BENCH</div><div class="bp-party">${bench.map(u => card(u, 'bench')).join('')}</div>`;
+            if (escaped.length) html += `<div class="bp-sec">ESCAPED</div><div class="bp-party">${escaped.map(u => card(u, 'escaped')).join('')}</div>`;
+            return html;
+        }
 
         /* 📖 Status Effect Library (2026-07-23) — player-facing reference of
            every status in the game, grouped by kind. Content comes straight
@@ -6825,7 +6942,7 @@
                 { title: 'Buffs & Blessings',  match: d => d.kind === 'buff' },
                 { title: 'Markers & Other',    match: d => d.kind !== 'debuff' && d.kind !== 'buff' }
             ];
-            let html = '<div class="pause-status-lib" style="max-height:52vh;overflow-y:auto;text-align:left;padding-right:6px;">';
+            let html = '<div class="pause-status-lib" style="text-align:left;padding-right:6px;">';
             for (const g of groups) {
                 // statChange carriers are stat changes, not status effects —
                 // they never list here (belt and braces on top of the missing
@@ -7004,13 +7121,7 @@
 
             const awards = _buildPauseLiveAwards();
 
-            const quickActions = `
-            <div class="pm-set-row" style="margin-top:14px">
-                <button class="pm-set-btn" id="pmAutoBtn" onclick="document.getElementById('autoBtn')?.click(); setTimeout(()=>{const a=document.getElementById('autoBtn');if(a)document.getElementById('pmAutoBtn').textContent=a.textContent;},50);">Auto: Off</button>
-                <button class="pm-set-btn danger" onclick="closePauseMenu();document.getElementById('forfeitBtn')?.click()">Forfeit Match</button>
-            </div>`;
-
-            return scoreHeader + towerHtml + statsTable + awards + quickActions;
+            return scoreHeader + towerHtml + statsTable + awards;   // AUTO lives on SETTINGS › GAME, FORFEIT in the command column (2026-09-30)
         }
 
         function _buildPauseLiveAwards() {
@@ -7739,51 +7850,8 @@
                         <span class="pm-vol-val">${opts.sensitivity}×</span>
                     </div>
                 </div>
-                ${(() => {
-                    /* ── STRIKE MODE (real-time shooter) — mouse + keybinds ── */
-                    const scc = window.StrikeControlsConfig;
-                    if (!scc) return '';
-                    const binds = scc.getBinds();
-                    const so = scc.getOpts();
-                    let rows = '';
-                    for (const id of Object.keys(scc.labels)) {
-                        rows += `<div class="pm-keybind"><span class="pm-keybind-action">${_escCtl(scc.labels[id])}</span>`
-                            + `<button class="pm-kbd pm-bind-btn" title="Click, then press the key or mouse button to bind"`
-                            + ` onclick="window._ewStrikeRebind('${id}')">${_escCtl(scc.glyph(binds[id]))}</button></div>`;
-                    }
-                    return `
                 <div class="pm-set-group">
-                    <div class="pm-set-group-title">🎯 Strike Mode (Real-Time Shooter)</div>
-                    <div style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:8px">Applies only to the real-time Strike Mode: WASD runs, mouse aims, LMB fires the held hotbar slot, RMB aims down sights, V toggles first/third person, wheel/1-9 switch abilities, TAB holds the scoreboard. Every key below is rebindable — click a key, then press the new one (ESC cancels).</div>
-                    <div class="pm-set-row" style="align-items:center;gap:8px">
-                        <span class="pm-vol-label">Mouse Sens.</span>
-                        <input type="range" class="pm-vol-slider" min="0.04" max="0.50" step="0.01" value="${so.sens}"
-                            oninput="window.StrikeControlsConfig.setOpt('sens',parseFloat(this.value));this.nextElementSibling.textContent=this.value;">
-                        <span class="pm-vol-val">${so.sens}</span>
-                    </div>
-                    <div class="pm-set-row" style="align-items:center;gap:8px">
-                        <span class="pm-vol-label">ADS Sens. ×</span>
-                        <input type="range" class="pm-vol-slider" min="0.2" max="1.0" step="0.05" value="${so.adsSensMult}"
-                            oninput="window.StrikeControlsConfig.setOpt('adsSensMult',parseFloat(this.value));this.nextElementSibling.textContent=this.value+'×';">
-                        <span class="pm-vol-val">${so.adsSensMult}×</span>
-                    </div>
-                    <div class="pm-set-row" style="align-items:center;gap:8px">
-                        <span class="pm-vol-label">Field of View</span>
-                        <input type="range" class="pm-vol-slider" min="40" max="75" step="1" value="${so.fov}"
-                            oninput="window.StrikeControlsConfig.setOpt('fov',parseInt(this.value,10));this.nextElementSibling.textContent=this.value+'°';">
-                        <span class="pm-vol-val">${so.fov}°</span>
-                    </div>
-                    <div class="pm-set-row" style="margin:8px 0;gap:6px;flex-wrap:wrap">
-                        <button class="pm-set-btn${so.viewMode !== 'third' ? ' active' : ''}" onclick="window.StrikeControlsConfig.setOpt('viewMode','${so.viewMode === 'third' ? 'first' : 'third'}');window._ewControlsRerender();">Camera: ${so.viewMode === 'third' ? '3RD PERSON' : '1ST PERSON'}</button>
-                        <button class="pm-set-btn${so.invertY ? ' active' : ''}" onclick="window.StrikeControlsConfig.setOpt('invertY',${so.invertY ? 'false' : 'true'});window._ewControlsRerender();">Invert Mouse Y: ${so.invertY ? 'ON' : 'OFF'}</button>
-                        <button class="pm-set-btn" onclick="window.StrikeControlsConfig.resetOpts();window._ewControlsRerender();">Reset Sliders</button>
-                        <button class="pm-set-btn" onclick="window.StrikeControlsConfig.resetBinds();window._ewControlsRerender();">Reset Keybinds</button>
-                    </div>
-                    <div class="pm-keybinds-grid">${rows}</div>
-                </div>`;
-                })()}
-                <div class="pm-set-group">
-                    <div class="pm-set-group-title">Keyboard &amp; Mouse (Turn-Based)</div>
+                    <div class="pm-set-group-title">Keyboard &amp; Mouse</div>
                     <div class="pm-keybinds-grid">
                         <div class="pm-keybind"><span class="pm-keybind-action">Move / Cursor</span><kbd class="pm-kbd">WASD</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Confirm</span><kbd class="pm-kbd">ENTER</kbd></div>
@@ -7795,28 +7863,9 @@
                         <div class="pm-keybind"><span class="pm-keybind-action">Orbit Camera</span><kbd class="pm-kbd">MID-DRAG</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Pan Camera</span><kbd class="pm-kbd">R-DRAG</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Zoom</span><kbd class="pm-kbd">SCROLL</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Pause</span><kbd class="pm-kbd">ESC</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Pause</span><kbd class="pm-kbd">ESC · P</kbd></div>
                     </div>
                 </div>`;
-        };
-        /* Strike Mode keybind capture: click a bind button, then the next key
-           press or mouse click becomes the new binding (ESC cancels). */
-        window._ewStrikeRebind = function(actionId) {
-            const cfg = window.StrikeControlsConfig;
-            if (!cfg) return;
-            if (window._ewToast) window._ewToast('PRESS A KEY OR MOUSE BUTTON… (ESC CANCELS)', 1800);
-            const done = (code) => {
-                window.removeEventListener('keydown', onKey, true);
-                window.removeEventListener('mousedown', onMouse, true);
-                if (code && code !== 'Escape') cfg.setBind(actionId, code);
-                window._ewControlsRerender();
-            };
-            const onKey = (e) => { e.preventDefault(); e.stopImmediatePropagation(); done(e.code); };
-            const onMouse = (e) => { e.preventDefault(); e.stopImmediatePropagation(); done('Mouse' + e.button); };
-            setTimeout(() => {   // skip the click that pressed the bind button itself
-                window.addEventListener('keydown', onKey, true);
-                window.addEventListener('mousedown', onMouse, true);
-            }, 60);
         };
         window._ewPadRebind = function(actionId) {
             if (!window.EWPad) return;
@@ -7830,7 +7879,7 @@
             try {
                 const ov = document.getElementById('pauseOverlay');
                 if (ov && ov.classList.contains('active')) {
-                    if (_pauseTab === 'controls') _renderPauseMenu();
+                    if (_pauseTab === 'settings' && _pauseSet === 'controls') _renderPauseMenu();
                     return;
                 }
                 const mm = document.getElementById('mmSettingsBody');
@@ -7853,9 +7902,10 @@
                 </div>`;
         };
 
-        function _buildPauseControls() {
+        /* GAME (SETTINGS): the speed, the CPU's play, auto */
+        function _buildPauseGame() {
             const curSpeed = state.devSimSpeed || 1;
-
+            const autoTxt = (document.getElementById('autoBtn') || {}).textContent || 'Auto: Off';
             return `
             <div class="pm-settings-section">
                 <div class="pm-set-group">
@@ -7866,9 +7916,16 @@
                         <button class="pm-set-btn speed${curSpeed===4?' active':''}" onclick="document.getElementById('devSimBattleSpeed4Btn')?.click();_renderPauseMenu();">×4</button>
                     </div>
                 </div>
+                <div class="pm-set-group">
+                    <div class="pm-set-group-title">Auto Battle</div>
+                    <div class="pm-set-row"><button class="pm-set-btn" onclick="document.getElementById('autoBtn')?.click();setTimeout(()=>_renderPauseMenu(),50);">${_pauseEsc(autoTxt)}</button></div>
+                </div>
                 ${window._buildAiDifficultyHTML('_renderPauseMenu();')}
-                ${window._buildControlsSettingsHTML()}
             </div>`;
+        }
+        /* CONTROLS (SETTINGS): the camera, the pad, the keyboard (shared with the main menu's Settings) */
+        function _buildPauseControls() {
+            return `<div class="pm-settings-section">${window._buildControlsSettingsHTML()}</div>`;
         }
 
         function closePauseMenu() {

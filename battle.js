@@ -33575,8 +33575,7 @@
                     const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName);
                     ensurePartyMeta();
                     const unit = createUnit(`${player}-${idx}`, player, spawn.x, spawn.y, template, loadout, state.partyMeta?.[player]?.[idx] || null);
-                    const fallbackName = getDefaultUnitName(clsName);
-                    unit.name = sanitizeUnitName(state.partyNames?.[player]?.[idx], fallbackName);
+                    unit.name = sanitizeUnitName(state.partyNames?.[player]?.[idx], unit.name);   // THE NAMES (2026-09-30): no name typed = createUnit's race label
                     out.push(unit);
                 });
             });
@@ -39795,7 +39794,7 @@
                 const rInst = rosterId ? save.roster.find(r => r.id === rosterId) : null;
                 if (rInst) {
                     state.partyBuilds[1][i] = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): a roster member's old job is ignored
-                    state.partyNames[1][i] = rInst.name || rInst.race;
+                    state.partyNames[1][i] = rInst.name || '';   // THE NAMES (2026-09-30): no name = the race label (createUnit)
                     state.loadouts[1][i] = emptyLoadout();
 
                     if (rInst.loadout && rInst.loadout.items) {
@@ -39825,10 +39824,9 @@
                     const validGenders = (typeof getAvailableGendersForRace === 'function')
                         ? getAvailableGendersForRace(allyRace) : ['male', 'female'];
                     const allyGender = validGenders[Math.floor(Math.random() * validGenders.length)];
-                    const allyName = allyRace.charAt(0).toUpperCase() + allyRace.slice(1);
 
                     state.partyBuilds[1][i] = UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): was the race's default job
-                    state.partyNames[1][i] = allyName;
+                    state.partyNames[1][i] = '';
                     state.loadouts[1][i] = emptyLoadout();
                     state.partyMeta[1][i] = {
                         race: allyRace,
@@ -39843,7 +39841,7 @@
                 } else {
 
                     state.partyBuilds[1][i] = UNIT_CLASS;
-                    state.partyNames[1][i] = 'Recruit';
+                    state.partyNames[1][i] = '';
                     state.loadouts[1][i] = emptyLoadout();
                     state.partyMeta[1][i] = { race: 'homosapien', gender: 'male' };
                 }
@@ -39869,7 +39867,7 @@
                     const eGender = validGenders[Math.floor(Math.random() * validGenders.length)];
 
                     state.partyBuilds[2][i] = UNIT_CLASS;   // THE JOBS REMOVAL (2026-09-27): was the race's default job
-                    state.partyNames[2][i] = eRace.charAt(0).toUpperCase() + eRace.slice(1);
+                    state.partyNames[2][i] = '';   // the race label (createUnit)
                     state.loadouts[2][i] = emptyLoadout();
                     state.partyMeta[2][i] = {
                         race: eRace,
@@ -41399,7 +41397,7 @@
                 const lvl = isBoss ? spec.boss.level : (lo + randInt(Math.max(1, hi - lo + 1)));
                 const genders = (typeof getAvailableGendersForRace === 'function') ? getAvailableGendersForRace(race) : ['male'];
                 state.partyBuilds[2][i] = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): was the race's default job
-                state.partyNames[2][i] = isBoss ? 'Dungeon Lord' : race.charAt(0).toUpperCase() + race.slice(1);
+                state.partyNames[2][i] = isBoss ? 'Dungeon Lord' : '';   // the race label (createUnit)
                 state.loadouts[2][i] = emptyLoadout();
                 state.partyMeta[2][i] = {
                     race,

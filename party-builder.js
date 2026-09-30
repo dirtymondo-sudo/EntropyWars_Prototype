@@ -2486,22 +2486,19 @@ function PartyBuilder(props) {
   };
   const isFav = (raceKey, gender) => favRaces.includes(raceKey + ':' + gender);
 
-  // Resolve a unit's display name ONCE and persist it, so the party list and the
-  // detail panel never show two different random names for the same vessel.
-  const resolveUnitName = (p, i, cls) => {
-    if (!st.partyNames) st.partyNames = {};
-    if (!st.partyNames[p]) st.partyNames[p] = [];
-    const cur = st.partyNames[p][i];
-    const isDefault = (typeof window.isGeneratedDefaultName === 'function')
-      ? window.isGeneratedDefaultName(cur, cls, p, i)
-      : !String(cur || '').trim();
-    if (isDefault) {
-      const gen = (typeof window.getDefaultUnitName === 'function') ? window.getDefaultUnitName(cls) : (String(cur || '').trim() || cls);
-      st.partyNames[p][i] = gen;
-      return gen;
-    }
-    return (typeof window.sanitizeUnitName === 'function') ? window.sanitizeUnitName(cur, cur) : cur;
+  /* THE NAMES (mondo, 2026-09-30): no random names — a unit is named its race until the player types one. The typed
+     name is the slot's partyNames entry; an empty entry (or the race's own label) is the default and shows the race. */
+  const slotRaceLabel = (p, i) => {
+    const mt = st.partyMeta?.[p]?.[i] || {};
+    const race = mt.race || 'homosapien';
+    return (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(race, mt.gender || 'male') : '') || race;
   };
+  const customUnitName = (p, i) => {
+    const cur = String(st.partyNames?.[p]?.[i] || '').trim();
+    const isDefault = (typeof window.isGeneratedDefaultName === 'function') ? window.isGeneratedDefaultName(cur, st.partyBuilds?.[p]?.[i], p, i) : !cur;
+    return isDefault ? '' : cur;
+  };
+  const resolveUnitName = (p, i, cls) => customUnitName(p, i) || slotRaceLabel(p, i);
 
   const getTeamPresets = () => {
     const p = window.ProfileSystem?.getActiveProfile?.();
@@ -2521,7 +2518,7 @@ function PartyBuilder(props) {
         race: mt.race || 'homosapien',
         gender: mt.gender || 'male',
         appearance: window.normalizeCharacterAppearance?.(mt.appearance) || null,
-        unitName: (st.partyNames?.[player] || [])[i] || cn,
+        unitName: customUnitName(player, i),   // THE NAMES: '' = the race
         customSpells: mt.customSpells ? mt.customSpells.slice() : [],
         spellUpgrades: mt.spellUpgrades ? JSON.parse(JSON.stringify(mt.spellUpgrades)) : {},   // THE UPGRADES (Phase 5)
         zodiac: mt.zodiac || 'aries',
@@ -2595,7 +2592,7 @@ function PartyBuilder(props) {
       else delete st.partyMeta[player][i].spellUpgrades;
       if (!st.partyNames) st.partyNames = {};
       if (!st.partyNames[player]) st.partyNames[player] = [];
-      st.partyNames[player][i] = s.unitName || s.cls;
+      st.partyNames[player][i] = (s.unitName && s.unitName !== s.cls) ? s.unitName : '';
       if (!st.loadouts[player]) st.loadouts[player] = [];
       st.loadouts[player][i] = s.loadout ? { items: { ...s.loadout.items }, equipment: { ...s.loadout.equipment } } : (typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {});
     }
@@ -2698,7 +2695,7 @@ function PartyBuilder(props) {
       const cls = window.DEFAULT_BUILDS?.[player]?.[i] || st.partyBuilds[player][i % Math.max(1, st.partyBuilds[player].length)] || 'Warrior';
       st.partyBuilds[player][i] = cls;
       st.partyMeta[player][i] = {};
-      st.partyNames[player][i] = typeof window.getDefaultUnitName === 'function' ? window.getDefaultUnitName(cls) : cls;
+      st.partyNames[player][i] = '';   // THE NAMES: a new slot is its race
       st.loadouts[player][i] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
     }
     st.partyBuilds[player].length = size;
@@ -2873,7 +2870,7 @@ function PartyBuilder(props) {
     if (typeof window.applyPartyBuild==='function') window.applyPartyBuild();
     if (st.teamLockedIn && typeof window.startMatch==='function') window.startMatch();
   }
-  function handleNameChange(val) { if (!st.partyNames) st.partyNames={}; if (!st.partyNames[player]) st.partyNames[player]=[]; st.partyNames[player][slot]=val; }
+  function handleNameChange(val) { if (!st.partyNames) st.partyNames={}; if (!st.partyNames[player]) st.partyNames[player]=[]; const v=String(val||'').trim().slice(0,18); st.partyNames[player][slot]=(typeof window.isGeneratedDefaultName==='function'&&window.isGeneratedDefaultName(v, st.partyBuilds?.[player]?.[slot], player, slot))?'':v; }
   function handleZodiacChange(val) { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].zodiac=val; refresh(); }
   function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap||pbSpUsed(arr)+pbSpCost(spellId)>pbSpMax()){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
@@ -3141,6 +3138,7 @@ function PartyBuilder(props) {
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
   const unitName = resolveUnitName(player, slot, clsName);
+  const unitCustomName = customUnitName(player, slot);
   const allItemKeys = (typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [])
     .filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].fieldOnly))   // THE BAG (2026-09-20): a field-only item is the pause menu's, never a battle slot's
     .filter(k => !(window.ITEM_RULES[k] && window.ITEM_RULES[k].story))   // THE ONE-WAY DOOR (CAPTURE_PLAN.md §3.1): a story-only capture door is never a forge slot
@@ -3215,6 +3213,10 @@ function PartyBuilder(props) {
       else {
         const so = document.getElementById('startOverlay');
         if (so && so.isConnected && !so.classList.contains('hidden') && getComputedStyle(so).display !== 'none') return;   // a title page is in front
+        /* THE PAUSE BUG (mondo, 2026-09-30): the pre-match forge stays mounted in #builderOverlay through the battle, so ESC in a
+           fight ran its BACK (backToModeSelect) under the pause menu — the battle ended and RESUME landed in the room. A battle
+           owns ESC, and a forge that is not on screen never takes a key. */
+        if (st.phase === 'battle' || root.getClientRects().length === 0) return;
       }
       const k = e.key;
       if (k === 'Escape') {
@@ -3612,7 +3614,7 @@ function PartyBuilder(props) {
           }))),
       h('div', { className: 'pb-gear-row', style:{ marginTop: 6 } },
         h('div', { className: 'pb-gear-label' }, 'NAME', h('small', null, 'THE MANIFEST')),
-        h('input', { key:player+'-'+slot, className:'pb-gear-input', defaultValue:unitName, maxLength:24, onBlur:e=>{ handleNameChange(e.target.value); refresh(); }, onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } })),
+        h('input', { key:player+'-'+slot+'-'+unitCustomName, className:'pb-gear-input', defaultValue:unitCustomName, placeholder:unitName, maxLength:18, onBlur:e=>{ handleNameChange(e.target.value); refresh(); }, onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } })),
       // ZODIAC — a wheel of twelve round glyph chips (Stage 5, §5.5 item 4; handleZodiacChange as the <select> did)
       (() => {
         const cur = identity.zodiac || 'aries';
@@ -3819,7 +3821,7 @@ function PartyBuilder(props) {
           : h(React.Fragment, null,
             !viewerLoads ? h('p', { className: 'pb-creator-note' }, 'The 3D stage is unavailable here — changes still save with the team.') : null,
             h(CreatorControls, { appearance, gender: identity.gender || 'male', disabled: isWaitingOnline, onChange: changeAppearance,
-              name: unitName, onName: (v) => { handleNameChange(v); refresh(); },
+              name: unitCustomName, onName: (v) => { handleNameChange(v); refresh(); },
               onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }, footer:
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}) }, '⚄ RANDOMIZE'),

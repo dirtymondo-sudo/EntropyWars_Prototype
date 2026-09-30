@@ -70,6 +70,9 @@ function backfillProfile(p) {
   if (!p.matchHistory) p.matchHistory = [];
   if (!p.unitBuilds) p.unitBuilds = [];
   if (!p.teamPresets) p.teamPresets = [];
+  /* THE NAMES (mondo, 2026-09-30): the random names are gone — once, every saved team's slots drop the name they were filed
+     with (a rolled name or the class) and read as their race until the player types a name in the forge */
+  if (p._namesV !== 2) { p.teamPresets.forEach(t => (t && Array.isArray(t.slots) ? t.slots : []).forEach(sl => { if (sl) sl.unitName = ''; })); p._namesV = 2; }
   if (!p.favRaces) p.favRaces = [];
   /* Achievement showcase (plan §6.3): picked achievement keys for a future
      public profile. Data-only for now — the UI lands with public profiles. */
@@ -275,7 +278,7 @@ function migrateOldData() {
             race: meta[1]?.[i]?.race || 'human',
             gender: meta[1]?.[i]?.gender || 'male',
             appearance: window.normalizeCharacterAppearance?.(meta[1]?.[i]?.appearance) || null,
-            unitName: (names[1] || [])[i] || _profRaceLabel(meta[1]?.[i]?.race),
+            unitName: '',   // THE NAMES (2026-09-30): the race until the player names it
             customSpells: meta[1]?.[i]?.customSpells || [],
             loadout: (loadouts[1] || [])[i] || { items: {}, equipment: {} },
           });

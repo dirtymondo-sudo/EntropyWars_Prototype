@@ -3848,23 +3848,10 @@
             return clean ? clean.slice(0, 18) : fallback;
         }
 
+        /* THE NAMES (mondo, 2026-09-30): no random names. A unit is named its race until the player types a name —
+           an empty party name IS the default, and createUnit's race label (getRaceLabel) stands in for it. */
         function getDefaultUnitName(cls) {
-            return generateRandomName();
-        }
-
-        function generateRandomName() {
-            const starts = ['Ash', 'Bri', 'Cal', 'Dax', 'Eli', 'Fen', 'Gra', 'Hux', 'Iri', 'Jax', 'Kai', 'Lor', 'Myr', 'Nox', 'Ori', 'Pax', 'Qin', 'Ryn', 'Sol', 'Tyr', 'Umi', 'Vex', 'Wyl', 'Xan', 'Yar', 'Zev',
-                'Ald', 'Bel', 'Cor', 'Dra', 'Eth', 'Fyn', 'Gil', 'Hal', 'Isk', 'Jas', 'Kol', 'Lux', 'Mor', 'Nel', 'Osk', 'Pyr', 'Rex', 'Syl', 'Tal', 'Ura', 'Val', 'Wren', 'Zel', 'Ara', 'Bok', 'Cyn'
-            ];
-            const mids = ['a', 'e', 'i', 'o', 'u', 'ar', 'en', 'ir', 'on', 'al', 'is', 'an', 'el', 'or', 'in', 'ae', 'io', 'ia', 'ra', 'ri', 'lo', 'na', 'th', ''];
-            const ends = ['n', 's', 'x', 'r', 'th', 'ra', 'ne', 'us', 'an', 'el', 'ix', 'ar', 'os', 'is', 'en', 'on', 'ax', 'yn', 'ik', 'or', 'al', 'um', 'ia', ''];
-            const s = starts[Math.floor(Math.random() * starts.length)];
-            const m = mids[Math.floor(Math.random() * mids.length)];
-            const e = ends[Math.floor(Math.random() * ends.length)];
-            let name = s + m + e;
-
-            name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-            return name.slice(0, 12);
+            return '';
         }
 
         /* THE JOBS REMOVAL (the user 2026-09-27): one neutral class — any build normalizes to data.js UNIT_CLASS */
@@ -4010,7 +3997,16 @@
                 `${player === 1 ? 'P1' : 'P2'} ${cls} ${Number(idx) + 1}`,
                 `Player ${player} ${cls}`
             ].filter(Boolean));
-            return defaults.has(clean);
+            if (defaults.has(clean)) return true;
+            /* THE NAMES (2026-09-30): the slot's own race label (either gender, any case) is the default too — it is never filed as a name */
+            try {
+                const race = (typeof state !== 'undefined' && player != null && idx != null) ? state.partyMeta?.[player]?.[idx]?.race : null;
+                if (race && typeof getRaceLabel === 'function') {
+                    const lc = clean.toLowerCase();
+                    if (['male', 'female'].some(g => String(getRaceLabel(race, g) || '').toLowerCase() === lc) || race.toLowerCase() === lc) return true;
+                }
+            } catch (e) {}
+            return false;
         }
 
         function normalizeDisplayedUnitName(name, cls, player, idx) {
@@ -4179,7 +4175,7 @@
             showUnitInfo: false,
             actionMode: null,
             actionMenuView: 'root',
-            nametagMode: 'race',
+            nametagMode: 'name',   // THE NAMES (2026-09-30): a nameless unit's name IS its race, so 'name' shows a typed name and the race otherwise
             selectedTool: null,
             partyBuilds: structuredClone(DEFAULT_BUILDS),
             partyNames: buildDefaultPartyNames(),
@@ -5128,7 +5124,7 @@
                         return {
                             slot: idx + 1,
                             cls,
-                            name: state.partyNames[1][idx],
+                            name: unit?.name || state.partyNames[1][idx] || '',
                             race: unit?.race || 'unknown',
                             loadout: serializeLoadoutForExport(state.loadouts[1][idx], unit),
                             stats: unit ? {
@@ -5156,7 +5152,7 @@
                         return {
                             slot: idx + 1,
                             cls,
-                            name: state.partyNames[2][idx],
+                            name: unit?.name || state.partyNames[2][idx] || '',
                             race: unit?.race || 'unknown',
                             loadout: serializeLoadoutForExport(state.loadouts[2][idx], unit),
                             stats: unit ? {

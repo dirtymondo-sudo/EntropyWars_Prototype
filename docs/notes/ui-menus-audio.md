@@ -791,3 +791,25 @@ mondo: "I dont want players to get into a lobby and then spend five minutes asse
 - Fixed on the way: the host stored the guest's `partyNames` array as one String (every guest unit read a single letter).
 - Quick Play search is a radar (`.lq-radar`, "THE QUEUE" CSS); match found turns it gold.
 - CSS: styles-base.css "THE SQUAD DESK" + "THE QUEUE" (end of file).
+
+## THE NAMES + THE ONE BATTLE PAUSE MENU — 2026-09-30 (token 20260930-pause-01-cors)
+mondo: no random names, a unit is its race until the player types a name, rename in the story pause menu, one battle
+pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the fight), no Strike Mode section.
+- **Names.** state.js `generateRandomName` is gone; `getDefaultUnitName` returns `''` (empty = the race). battle.js
+  `makeUnitsFromBuilds` falls back to createUnit's race label. `isGeneratedDefaultName` also treats the slot's own race
+  label as a default. data.js `DEFAULT_PARTY_NAMES` (unused P1/P2 list) deleted. The forge's NAME field shows the
+  typed name with the race as its placeholder (party-builder.js `customUnitName` / `resolveUnitName`). Default
+  `state.nametagMode` is `'name'` (a nameless unit's name IS its race). One-time wipes: saved team slots
+  (profile.js backfill, `p._namesV = 2`) and the story party's non-officer names (data.js hqPartyRecord, `r.names = 2`);
+  `hqPartyNormMember` never files a race label as a name; `hqPartySpec` names a new member `''`.
+- **Rename (story pause menu).** map.js member sheet: NAME block (`data-party-rename` input, ✎ RENAME, ✕ CLEAR, ENTER
+  files it) → data.js `hqPartyRename(profile, id, name)` (18 chars; the race's label or empty = back to the race; the
+  officer needs a name and it also writes door.hq.officer.name + the look's name). CSS `.hq-pp-name*` in styles-base.css.
+- **The ESC bug.** The pre-match forge stays mounted in #builderOverlay through the battle, and its ESC listener ran BACK
+  (`backToModeSelect`) under the pause menu: the fight ended and RESUME landed in the room. party-builder.js now ignores
+  keys while `state.phase === 'battle'` or when the forge is not on screen.
+- **The battle pause menu** (ui.js `_renderPauseMenu`): one menu for ESC / P / ☰ / START, in the building's frame (the
+  `.hq-pause-*` layout + THE HQ HUD PASS tokens, now also defined on `#pauseOverlay`; `bp-*` CSS in styles-hud.css).
+  Commands RESUME · PARTY (your units: portrait, LV, HP/MP, statuses; bench + escaped) · MATCH (the scoreboard + awards)
+  · STATUSES · SETTINGS (AUDIO · VIDEO · GAME [speed, auto, CPU difficulty] · CONTROLS) · FORFEIT. ↑↓ commands, ←→
+  settings pages, ESC / P resume. The Strike Mode block (and `_ewStrikeRebind`) is gone from the shared controls page.
