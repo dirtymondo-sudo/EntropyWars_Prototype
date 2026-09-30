@@ -24692,8 +24692,11 @@ const ThreeRenderer = (function () {
         firetruck:    { m: 9.0, yaw: Math.PI / 2, foot: 2.2, w: 2.5, h: 3.4, color: 0xc81e1e, lift: 0.16, beacon: true },
         schoolbus:    { m: 10.5, yaw: Math.PI / 2, foot: 2.5, w: 2.5, h: 3.0, color: 0xf2b820, lift: 0.14 },
         ambulance:    { m: 6.2, yaw: Math.PI / 2, foot: 1.5, w: 2.3, h: 2.6, color: 0xf4f4f0, lift: 0.16, beacon: true },
-        subway_front: { m: 12.0, yaw: Math.PI / 2, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 },
-        subway_cart:  { m: 12.0, yaw: Math.PI / 2, foot: 3.0, w: 2.6, h: 3.2, color: 0xb8bcc0, lift: 0.2 },
+        /* THE SUBWAY AT ITS REAL SIZE (ZONES_PLAN Z2, 2026-09-30 — mondo: the cars were drawn under size): the two GLBs measured
+           (their accessor bounds: front 1 × 0.376 × 0.295, cart 1 × 0.358 × 0.294, long along X) and stood at a subway car's
+           real 3.7 m from rail to roof, so each is its own length at that height (front 9.84 m, cart 10.33 m) and 2.9–3.0 m wide */
+        subway_front: { m: 9.84, yaw: Math.PI / 2, foot: 3.0, w: 2.9, h: 3.7, color: 0xb8bcc0, lift: 0.2 },
+        subway_cart:  { m: 10.33, yaw: Math.PI / 2, foot: 3.0, w: 3.0, h: 3.7, color: 0xb8bcc0, lift: 0.2 },
         /* DISASTER CITY, THE SECOND PASS (2026-09-17): the taxi and the delivery truck join the traffic (targets, unmeasured) */
         taxi:         { m: 4.8, yaw: Math.PI / 2, foot: 1.2, w: 1.9, h: 1.5, color: 0xf2c11a, lift: 0.22 },
         truck:        { m: 8.0, yaw: Math.PI / 2, foot: 2.0, w: 2.5, h: 3.4, color: 0x3a4048, lift: 0.18 }
@@ -46234,24 +46237,7 @@ const ThreeRenderer = (function () {
             var tact = _hqBox(0.4, 0.01, L, _hqMat('tilefloor', 1, 8, { color: 0xc8b8a0 })); tact.position.set(0.3 * U, 0.005 * U, 0); g.add(tact);
             return g;
         },
-        train_car: function (U) {
-            var g = new THREE.Group();
-            var body = _hqMat('aluminium', 4, 1, { color: 0xb8bcc0, shininess: 70 });
-            var W = 2.6, H = 3.0, L = 12;
-            var hull = _hqBox(W, H - 0.5, L, body); hull.position.y = (0.5 + (H - 0.5) / 2) * U; g.add(hull);
-            var roof = new THREE.Mesh(new THREE.CylinderGeometry(W / 2 * U, W / 2 * U, L * U, 12, 1, false, 0, Math.PI), body); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2; roof.scale.y = 0.3; roof.position.y = H * U; g.add(roof);
-            var stripe = _hqBox(W + 0.02, 0.3, L, _hqBasic(0xc03038)); stripe.position.y = 1.6 * U; g.add(stripe);
-            var glass = new THREE.MeshPhongMaterial({ color: 0xfff0c0, emissive: 0xfff0c0, emissiveIntensity: 0.55, shininess: 120 });
-            for (var i = 0; i < 6; i++) { var wz = (-L / 2 + 1.2 + i * 1.9); [-1, 1].forEach(function (s) { var w = _hqBox(0.02, 0.8, 1.1, glass); w.position.set(s * (W / 2 + 0.01) * U, 2.1 * U, wz * U); g.add(w); }); }
-            /* the doors: open, platform side (+x), a lit interior behind them */
-            [-3.5, 3.5].forEach(function (dz) { var op = _hqBox(0.02, 2.0, 1.3, glass); op.position.set((W / 2 + 0.005) * U, 1.5 * U, dz * U); g.add(op);
-                [-1, 1].forEach(function (s) { var leaf = _hqBox(0.03, 2.0, 0.6, body); leaf.position.set((W / 2 + 0.03) * U, 1.5 * U, (dz + s * 0.95) * U); g.add(leaf); }); });
-            for (var b = 0; b < 4; b++) { var bog = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.4 * U, 0.2 * U, 12), _hqMat(null, 1, 1, { color: 0x2a2a2e })); bog.rotation.z = Math.PI / 2; bog.position.set(((b % 2) ? 0.72 : -0.72) * U, 0.4 * U, ((b < 2) ? -4 : 4) * U); g.add(bog); }
-            var head = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-0.7 * U, 1.0 * U, (-L / 2 - 0.01) * U); head.rotation.y = Math.PI; g.add(head);
-            var tx = _hzTextTex('hq_train_dest', ['ALL LINES · THE END OF THE LINE'], { w: 512, h: 64, color: '#ffb020', bg: '#1a1a1e' });
-            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.4 * U, 0.18 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set((W / 2 + 0.06) * U, 2.75 * U, 0); m.rotation.y = Math.PI / 2; g.add(m); }
-            return g;
-        },
+        /* train_car (the procedural subway car) DELETED in ZONES_PLAN Z2 (2026-09-30): every placed car is the Meshy `subway_cart` (MODEL_INDEX §9) */
         /* THE TUNNEL: the departures board — every route, DELAYED (the minutes never change; the ticker only blinks the colon) */
         departures_board: function (U) {
             var g = new THREE.Group();
@@ -46980,7 +46966,10 @@ const ThreeRenderer = (function () {
            the body's length, placed by _hqBuildWay in the room's frame. */
         train: function (U, ctx) {
             var g = new THREE.Group();
-            var W = 1.4, H = 2.1, D = 2.4, CL = 12, zBack = ctx.free ? -D : -(D - 0.9);
+            /* the cars at their real size (Z2): CL / CC = the front car's and the cart's length off the kit, D = the body's width;
+               the front car's rear door (x 0) stays 3 m from its tail, the cart trails 0.4 m behind it */
+            var VK = _VEHICLE_KIT, CL = VK.subway_front.m, CC = VK.subway_cart.m, D = VK.subway_front.w, CH = VK.subway_front.h;
+            var W = 1.4, H = 2.1, zBack = ctx.free ? -D : -(D - 0.9), xF = 3.0 - CL / 2, xC = 3.0 + 0.4 + CC / 2, nose = -(CL - 3.0);
             var steel = _hqMat('aluminium', 4, 1, { color: 0xb8bcc0, shininess: 70 });
             var dark = _hqMat('gunmetal', 1, 1, { color: 0x2a2a2e, shininess: 30 });
             var conc = _hqMat('concrete', 2, 1, { color: 0x8a8884, shininess: 2 });
@@ -46994,25 +46983,32 @@ const ThreeRenderer = (function () {
             var zc = zBack + D / 2;
             function procCar(front) {
                 var c = new THREE.Group();
-                var hull = _hqBox(CL, 2.5, D - 0.2, steel); hull.position.set(0, 1.75 * U, 0); c.add(hull);
-                var stripe = _hqBox(CL, 0.3, D - 0.18, _hqBasic(0xc03038)); stripe.position.set(0, 1.6 * U, 0); c.add(stripe);
+                var L = front ? CL : CC;
+                var hull = _hqBox(L, CH - 1.0, D - 0.2, steel); hull.position.set(0, (0.5 + (CH - 1.0) / 2) * U, 0); c.add(hull);
+                var stripe = _hqBox(L, 0.3, D - 0.18, _hqBasic(0xc03038)); stripe.position.set(0, 1.6 * U, 0); c.add(stripe);
                 var glass = _hqBasic(0xfff0c0, { transparent: true, opacity: 0.85 });
-                for (var i = 0; i < 6; i++) { var w = _hqBox(1.1, 0.8, 0.02, glass); w.position.set((-CL / 2 + 1.2 + i * 1.9) * U, 2.1 * U, (D / 2 - 0.09) * U); c.add(w); }
+                for (var i = 0; i < 5; i++) { var w = _hqBox(1.1, 0.8, 0.02, glass); w.position.set((-L / 2 + 1.2 + i * 1.9) * U, 2.1 * U, (D / 2 - 0.09) * U); c.add(w); }
                 for (var b = 0; b < 4; b++) { var bog = new THREE.Mesh(new THREE.CylinderGeometry(0.4 * U, 0.4 * U, 0.2 * U, 12), dark); bog.rotation.x = Math.PI / 2; bog.position.set(((b < 2) ? -4 : 4) * U, 0.4 * U, ((b % 2) ? 0.72 : -0.72) * U); c.add(bog); }
-                if (front) { var head = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-(CL / 2 + 0.01) * U, 1.0 * U, 0); head.rotation.y = -Math.PI / 2; c.add(head); }
+                if (front) { var head = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-(L / 2 + 0.01) * U, 1.0 * U, 0); head.rotation.y = -Math.PI / 2; c.add(head); }
                 return c;
             }
             /* the front car's nose leads (−X); its doorway is at x 0 (the car's
                rear door), so the car is centred 3 m down the platform and the
                cart trails at +X. A WALL end stands the front car ALONE — the
-               rest of the train is in the tunnel — so the body (x −9..3) never
+               rest of the train is in the tunnel — so the body (x −6.8..3 at the real size, Z2) never
                crosses the next lane's door (Cyberpunk's Strip door at x −5 is
                5 m from this lane; a full train would have run through it). */
-            var cars = ctx.free ? [[-3.0, 'subway_front', true], [9.4, 'subway_cart', false]] : [[-3.0, 'subway_front', true]];
-            cars.forEach(function (row) {
-                var car = (typeof _hzVehicle === 'function') ? _hzVehicle(row[1], { yaw: -Math.PI / 2, beacon: false, lift: 0.2, fallback: function () { return procCar(row[2]); } }) : procCar(row[2]);
-                car.position.set(row[0] * U, 0, zc * U); tr.add(car);
-            });
+            var cars = ctx.free ? [[xF, 'subway_front', true], [xC, 'subway_cart', false]] : [[xF, 'subway_front', true]];
+            /* the kit fits in board tiles: one 1.75 m tile in the building's units (the taxi's rule), so each car is its real length —
+               without it the cars were fitted to the battle's tile and came out at about half size (Z2, mondo) */
+            var prevTs = _hzKitTs;
+            _hzKitTs = 1.75 * U;
+            try {
+                cars.forEach(function (row) {
+                    var car = (typeof _hzVehicle === 'function') ? _hzVehicle(row[1], { yaw: -Math.PI / 2, beacon: false, lift: 0.2, fallback: function () { return procCar(row[2]); } }) : procCar(row[2]);
+                    car.position.set(row[0] * U, 0, zc * U); tr.add(car);
+                });
+            } finally { _hzKitTs = prevTs; }
             /* the doorway at x 0: a lit opening in the flank, two leaves that slide apart */
             var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), _hqBasic(0xfff0c0, { transparent: true, opacity: 0.35, depthWrite: false }));
             glow.position.set(0, (H / 2) * U, (zBack + D - 0.02) * U); g.add(glow);
@@ -47020,8 +47016,8 @@ const ThreeRenderer = (function () {
             var leafL = _hqBox(W / 2 + 0.02, H, 0.05, steel), leafR = _hqBox(W / 2 + 0.02, H, 0.05, steel);
             var zl = (zBack + D + 0.03) * U;
             leafL.position.set(-(W / 4) * U, (H / 2) * U, zl); leafR.position.set((W / 4) * U, (H / 2) * U, zl); g.add(leafL, leafR);
-            var head = new THREE.Mesh(new THREE.CircleGeometry(0.22 * U, 12), _hqBasic(0xfff8e0)); head.position.set(-(3.0 + CL / 2 + 0.06) * U, 1.0 * U, zc * U); head.rotation.y = -Math.PI / 2; tr.add(head);
-            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set(-(3.0 + CL / 2 + 0.4) * U, 1.0 * U, zc * U); tr.add(beam);
+            var head = new THREE.Mesh(new THREE.CircleGeometry(0.22 * U, 12), _hqBasic(0xfff8e0)); head.position.set((nose - 0.06) * U, 1.0 * U, zc * U); head.rotation.y = -Math.PI / 2; tr.add(head);
+            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set((nose - 0.4) * U, 1.0 * U, zc * U); tr.add(beam);
             var motion = { mode: 'way', ow: W, tick: function (k) {
                 leafL.position.x = (-(W / 4) - 0.72 * k) * U; leafR.position.x = ((W / 4) + 0.72 * k) * U;
                 glow.material.opacity = 0.35 + 0.5 * k; mouth.material.opacity = 0.2 + 0.5 * k;
@@ -47036,7 +47032,7 @@ const ThreeRenderer = (function () {
             };
             if (_hq) _hq.tickers.push(function (dt, now) { g._ew_arrive(now); });
             var blockers = [];
-            for (var bx = -9; bx <= (ctx.free ? 15.4 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: 3.2 });
+            for (var bx = nose; bx <= (ctx.free ? xC + CC / 2 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: CH });
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 1.2, blockers: blockers };
         },
         /* THE TAXI (ZONES_PLAN Z1, 2026-09-29): DOOR HQ's rank in the garage ⇄ Disaster City's kerb. The traffic's taxi GLB
