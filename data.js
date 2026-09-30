@@ -42460,51 +42460,77 @@ const HQ_AREA_SPECS = {
     prebuilt_technoticlan: { part: 'templecity', label: 'THE TEMPLE CITY', sub: 'THE CAUSEWAY · THE CANAL · THE BALL COURT · THE PYRAMID', w: 72, d: 62, night: 1, look: 'tell', fogD: 0.02,
         parti: 'A causeway from the door to a pyramid that was climbed once a year, past a ball court where the losing side knew the rules; the other stair is under all of it.', typology: 'processional',
         floor: 'cobblestone', cliff: 'bricks_3', path: 'cobblestone', floorColor: 0x8fb0b8, cliffColor: 0x7aa0a8,
-        gen: { kind: 'rooms', seed: 2012, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false }, noise: { amp: 0.08, scale: 9 },
-        plaza: { x: 0, z: 10 },
+        gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_3', wallH: 5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 9 },
+        plaza: { x: 7, z: 14 },
         features: [
-            /* THE CANAL (waded) and its two planks — the causeway's at the pyramid's stair, the west one by the observatory's foot */
-            { k: 'stream', pts: [[-36, -6], [-10, -4], [10, 0], [36, 2]], w: 3.4, depth: 0.7, key: 'water' },
-            { k: 'deck', x0: 14, z0: 3.8, x1: 14, z1: -2.6, w: 3.0, y: 0.25 }, { k: 'deck', x0: -26, z0: -1.6, x1: -26, z1: -8.6, w: 1.8, y: 0.3 },
+            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built stone walls (5 m) where the rooms gen raised banks. The bay door's
+               hall to THE PLAZA; THE CAUSEWAY north from it over THE CANAL (straight now, east–west, in culverts between the rooms) to
+               THE PYRAMID's court; the aqueduct's court west of it (THE PRIEST HOUSE north of the canal, THE MARKET TERRACE south of it,
+               the span over the water); THE LEY TERRACE's court north of that; the observatory's yard west (the temple city's
+               draught off its south end); THE BALL COURT south-west; side room 1 east of the plaza, side room 2 a dead end off it;
+               side room 3 at the bay door.
+               Loops: observatory yard ⇄ ley court ⇄ aqueduct court ⇄ observatory yard; plaza ⇄ causeway ⇄ pyramid court ⇄ side room 1
+               ⇄ plaza; observatory yard ⇄ ball court ⇄ aqueduct court (⇄ plaza). */
+            { k: 'hall', pts: [[0, 31], [0, 19.5]], w: 3.4 },                                           // the bay door's hall
+            { k: 'space', x: 2, z: 24.5, w: 8, d: 7 },                                                   // side room 3 (the bay door's, open onto the plaza)
+            { k: 'space', x: 7, z: 14, w: 18, d: 16 },                                                  // THE PLAZA
+            { k: 'hall', pts: [[14, 6.5], [14, 0.5]], w: 3.4 },                                         // THE CAUSEWAY
+            { k: 'space', x: 15, z: -14.5, w: 30, d: 31 },                                              // THE PYRAMID's court (the canal along its south side)
+            { k: 'space', x: -12, z: -4.75, w: 18, d: 26.5 },                                           // the aqueduct's court
+            { k: 'hall', pts: [[-3.5, -3], [0.5, -3]], w: 4.4 }, { k: 'hall', pts: [[-22.5, -3], [-20.5, -3]], w: 4.4 },   // the canal's culverts
+            { k: 'hall', pts: [[-4.5, 8], [-4.5, 12], [-1.5, 12]], w: 3 },
+            { k: 'space', x: -11.5, z: -25, w: 15, d: 10 },                                             // THE LEY TERRACE's court
+            { k: 'hall', pts: [[-12, -20.5], [-12, -17.5]], w: 3 }, { k: 'hall', pts: [[-22.5, -24], [-18.5, -24]], w: 3 },
+            { k: 'space', x: -28, z: -14.5, w: 12, d: 31 },                                             // the observatory's yard
+            { k: 'hall', pts: [[-36, 4], [-31, 4], [-31, 0.5]], w: 3 },                                 // Agartha's draught
+            { k: 'space', x: -25, z: 18.25, w: 20, d: 17.5 },                                           // THE BALL COURT
+            { k: 'hall', pts: [[-26, 0.5], [-26, 10]], w: 3 }, { k: 'hall', pts: [[-19, 10], [-19, 8]], w: 3 },
+            { k: 'space', x: 25, z: 15, w: 10, d: 10 },                                                 // side room 1
+            { k: 'hall', pts: [[15.5, 14], [20.5, 14]], w: 3 }, { k: 'hall', pts: [[28, 0.5], [28, 10.5]], w: 3 },
+            { k: 'space', x: 29, z: 26, w: 10, d: 6 }, { k: 'hall', pts: [[27, 19.5], [27, 23.5]], w: 2.6 },   // side room 2 (a dead end)
+            /* THE CANAL (waded, straight through its culverts) and its two planks — the causeway's at the pyramid's stair, the west one in the observatory's yard */
+            { k: 'stream', pts: [[-34, -3], [30, -3]], w: 3.4, depth: 0.7, key: 'water' },
+            { k: 'deck', x0: 14, z0: 0.8, x1: 14, z1: -5.4, w: 3.0, y: 0.25 }, { k: 'deck', x0: -27, z0: -0.4, x1: -27, z1: -5.6, w: 1.8, y: 0.3 },
             /* THE PYRAMID: tier 1 (2.5) up THE GREAT STAIR on the south face, tier 2 (5.0) up THE OTHER STAIR on the west flank, the hand-holds up both east faces, THE TEMPLE (7.5, the tape — the door gun's) */
-            { k: 'plateau', x: 14, z: -20, w: 26, d: 22, h: 2.5, edge: 0.4 }, { k: 'plateau', x: 14, z: -20, w: 12, d: 13, h: 5.0, edge: 0.4 }, { k: 'plateau', x: 14, z: -21, w: 6, d: 5, h: 7.5, edge: 0.4 },   // the back against the north wall — the strip behind it was a pocket
-            { k: 'ramp', x0: 14, z0: -3.4, x1: 14, z1: -9.7, w: 3.2, h0: 0, h1: 2.5, stairs: true },
-            { k: 'ramp', x0: 1.7, z0: -20, x1: 7.3, z1: -20, w: 2.6, h0: 2.5, h1: 5.0, stairs: true },
-            { k: 'climb', x: 26.7, z: -14, face: 270, look: 'wall' }, { k: 'climb', x: 19.7, z: -16, face: 270, look: 'wall' },   // a climb's LINE stands 0.3 m INSIDE the tier's nominal edge
-            { k: 'rail', x0: 4, z0: -10.6, x1: 11, z1: -10.6 },
+            { k: 'plateau', x: 14, z: -22, w: 26, d: 18, h: 2.5, edge: 0.15 }, { k: 'plateau', x: 14, z: -21, w: 12, d: 10, h: 5.0, edge: 0.15 }, { k: 'plateau', x: 14, z: -21, w: 6, d: 5, h: 7.5, edge: 0.15 },
+            { k: 'ramp', x0: 14, z0: -6.4, x1: 14, z1: -13.6, w: 3.2, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'ramp', x0: 2.2, z0: -21, x1: 8.6, z1: -21, w: 2.6, h0: 2.5, h1: 5.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'climb', x: 26.7, z: -19, face: 270, look: 'wall' }, { k: 'climb', x: 19.7, z: -21, face: 270, look: 'wall' },   // a climb's LINE stands 0.3 m INSIDE the tier's nominal edge
+            { k: 'rail', x0: 4, z0: -14.2, x1: 11, z1: -14.2 },
             /* THE AQUEDUCT: THE PRIEST HOUSE (3.0) north of the canal — a stair from the east, a rope up its north face — and THE MARKET TERRACE (3.0) south of it — a stair from the east, a vine up its west face — joined by a level span the canal is waded under (the bridge layer) */
-            { k: 'plateau', x: -16, z: -14, w: 8, d: 6, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: -4.7, z0: -14, x1: -11.3, z1: -14, w: 2.6, h0: 0, h1: 3.0, stairs: true },
-            { k: 'climb', x: -16, z: -16.7, face: 180, look: 'rope' },
-            { k: 'plateau', x: -16, z: 10, w: 8, d: 6, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: -5.4, z0: 10, x1: -12.7, z1: 10, w: 2.6, h0: 0, h1: 3.0, stairs: true },
-            { k: 'climb', x: -19.7, z: 10, face: 90, look: 'vine' },
-            { k: 'deck', x0: -16, z0: -11.3, x1: -16, z1: 7.3, w: 2.4, y: 3.0, over: true },
+            { k: 'plateau', x: -13, z: -13, w: 8, d: 6, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: -3.8, z0: -13, x1: -9.6, z1: -13, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'climb', x: -13, z: -15.7, face: 180, look: 'rope' },
+            { k: 'plateau', x: -13, z: 3.5, w: 8, d: 6, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: -3.8, z0: 3.5, x1: -9.6, z1: 3.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'climb', x: -16.7, z: 3.5, face: 90, look: 'vine' },
+            { k: 'deck', x0: -13, z0: -9.7, x1: -13, z1: 1.2, w: 2.4, y: 3.0, over: true },
             /* THE BALL COURT: the two walls (the grind) and THE STAND (2.4) at its west end — a stair from the north, a ladder on its court face */
-            { k: 'wall', x0: -26, z0: 14, x1: -14, z1: 14, h: 2.2, t: 0.9, key: 'bricks_3' }, { k: 'wall', x0: -26, z0: 22, x1: -14, z1: 22, h: 2.2, t: 0.9, key: 'bricks_3' },
-            { k: 'plateau', x: -30, z: 18, w: 6, d: 10, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -30, z0: 8.4, x1: -30, z1: 13.7, w: 2.6, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: -27.3, z: 18, face: 270, look: 'ladder' },
-            /* THE OBSERVATORY (4.2): the long ramp down from the north wall's side, a chain up its east face */
-            { k: 'plateau', x: -29, z: -16, r: 3.6, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -29, z0: -28.1, x1: -29, z1: -18.9, w: 2.6, h0: 0, h1: 4.2, stairs: true },
+            { k: 'wall', x0: -27, z0: 16, x1: -17, z1: 16, h: 2.2, t: 0.9, key: 'bricks_3' }, { k: 'wall', x0: -27, z0: 24, x1: -17, z1: 24, h: 2.2, t: 0.9, key: 'bricks_3' },
+            { k: 'plateau', x: -31, z: 20, w: 6, d: 10, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: -31, z0: 10.6, x1: -31, z1: 15.6, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'climb', x: -28.3, z: 20, face: 270, look: 'ladder' },
+            /* THE OBSERVATORY (4.2): the long stair down from the north wall's side, a chain up its east face */
+            { k: 'plateau', x: -29, z: -16, r: 3.6, h: 4.2, edge: 0.15 },
+            { k: 'ramp', x0: -29, z0: -27.4, x1: -29, z1: -18.9, w: 2.6, h0: 0, h1: 4.2, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: -25.7, z: -16, face: 270, look: 'chain' },
             /* THE LEY TERRACE (2.0) against the north wall — the other stair's frame stands ON it (a door you climb to): a stair from the west, the hand-holds up its south face */
-            { k: 'plateau', x: -5, z: -28, w: 10, d: 6, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -16.3, z0: -28, x1: -10.7, z1: -28, w: 2.6, h0: 0, h1: 2.0, stairs: true },
-            { k: 'climb', x: -5, z: -25.3, face: 0, look: 'wall' },
-            { k: 'path', pts: [[0, 10], [14, 6], [14, 4]], w: 3.2 }, { k: 'path', pts: [[14, -2.6], [14, -3.4]], w: 3.0 }, { k: 'path', pts: [[14, -4], [0, -4], [-4.7, -14]], w: 2.6 },
-            { k: 'path', pts: [[0, 10], [-8, 16], [-20, 18]], w: 2.6 }, { k: 'path', pts: [[-8, 16], [-30, 6], [-30, 8.4]], w: 2.4 }, { k: 'path', pts: [[0, 10], [-5.4, 10]], w: 2.4 },
-            { k: 'path', pts: [[-4.7, -14], [-18, -21], [-17, -28]], w: 2.4 }, { k: 'path', pts: [[-17, -28], [-29, -28.5]], w: 2.4 },
-            { k: 'path', pts: [[-5.4, 10], [-26, 4], [-26, -1.6]], w: 2.2 }, { k: 'path', pts: [[-26, 4], [-36, 4]], w: 2.4 },
+            { k: 'plateau', x: -7, z: -28, w: 8, d: 6, h: 2.0, edge: 0.15 },
+            { k: 'ramp', x0: -17, z0: -28, x1: -10.4, z1: -28, w: 2.6, h0: 0, h1: 2.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'climb', x: -7, z: -25.3, face: 0, look: 'wall' },
             { k: 'scatter', key: 'obelisk', n: 3, seed: 7 }, { k: 'scatter', key: 't_pillar', n: 5, seed: 4 }, { k: 'scatter', key: 'cave_stone', n: 6, seed: 3 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 },
             { k: 'scatter', key: 'palm_tree', n: 5, seed: 9 }, { k: 'scatter', key: 'menhir', n: 3, seed: 5 }, { k: 'scatter', key: 'brazier', n: 4, seed: 6 },
         ],
-        props: [{ key: 'railing_1m', x: 14, z: -10.6, face: 0, y: 2.5 }, { key: 'railing_1m', x: -16, z: -11.4, face: 0, y: 3.0 }, { key: 'railing_1m', x: -30, z: 13.8, face: 0, y: 2.4 }, { key: 'railing_1m', x: -3, z: -25.4, face: 0, y: 2.0 },
-                { key: 'riser_1', x: 6, z: 14 }, { key: 'brazier', x: 10, z: -5.5 }, { key: 'brazier', x: 18, z: -5.5 }, { key: 'brazier', x: 9, z: -14.5, y: 5.0 }, { key: 'brazier', x: 19, z: -14.5, y: 5.0 }, { key: 'brazier', x: 9, z: -25.5, y: 5.0 }, { key: 'brazier', x: 19, z: -25.5, y: 5.0 },
-                { key: 'stone_altar', x: 14, z: -21, y: 7.5 }, { key: 'candle_ring', x: 14, z: -19, y: 7.5 }, { key: 'skull_pile', x: 22, z: -11.5, y: 2.5 }, { key: 'demon_statue', x: 4, z: -12, y: 2.5, face: 180 }, { key: 'demon_statue', x: 24, z: -12, y: 2.5, face: 180 },
-                { key: 'skull_pile', x: -24, z: 18 }, { key: 'skull_pile', x: -16, z: 18 }, { key: 'stocks', x: -20, z: 16, face: 180 }, { key: 'folding_chair', x: -30, z: 20, y: 2.4, face: 90 }, { key: 'folding_chair', x: -30, z: 17, y: 2.4, face: 90 },
-                { key: 'sarcophagus', x: -17, z: -14, y: 3.0, face: 90 }, { key: 'lectern', x: -14, z: -13, y: 3.0, face: 90 }, { key: 'candle_ring', x: -18, z: -12.5, y: 3.0 },
-                { key: 'cardboard_boxes', x: -17, z: 11.5, y: 3.0 }, { key: 'sea_chest', x: -14, z: 8.5, y: 3.0 }, { key: 'planter', x: -18, z: 9, y: 3.0 },
+        props: [{ key: 'railing_1m', x: 11, z: -13.4, face: 0, y: 2.5 }, { key: 'railing_1m', x: -10.5, z: -10.4, face: 0, y: 3.0 }, { key: 'railing_1m', x: -28.8, z: 15.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: -4, z: -25.4, face: 0, y: 2.0 },
+                { key: 'riser_1', x: 3, z: 17 }, { key: 'brazier', x: 10, z: -6 }, { key: 'brazier', x: 18, z: -6 }, { key: 'brazier', x: 9, z: -16.8, y: 5.0 }, { key: 'brazier', x: 19, z: -16.8, y: 5.0 }, { key: 'brazier', x: 9, z: -25.5, y: 5.0 }, { key: 'brazier', x: 19, z: -25.5, y: 5.0 },
+                { key: 'stone_altar', x: 14, z: -21, y: 7.5 }, { key: 'candle_ring', x: 14, z: -19, y: 7.5 }, { key: 'skull_pile', x: 22, z: -14.5, y: 2.5 }, { key: 'demon_statue', x: 4, z: -14.5, y: 2.5, face: 180 }, { key: 'demon_statue', x: 24, z: -14.5, y: 2.5, face: 180 },
+                { key: 'skull_pile', x: -25, z: 20 }, { key: 'skull_pile', x: -18, z: 20 }, { key: 'stocks', x: -21.5, z: 17.5, face: 180 }, { key: 'folding_chair', x: -31, z: 21, y: 2.4, face: 90 }, { key: 'folding_chair', x: -31, z: 18, y: 2.4, face: 90 },
+                { key: 'sarcophagus', x: -15, z: -13, y: 3.0, face: 90 }, { key: 'lectern', x: -11, z: -12, y: 3.0, face: 90 }, { key: 'candle_ring', x: -15.5, z: -11, y: 3.0 },
+                { key: 'cardboard_boxes', x: -15, z: 5.5, y: 3.0 }, { key: 'sea_chest', x: -10.5, z: 2, y: 3.0 }, { key: 'planter', x: -16, z: 2, y: 3.0 },
                 { key: 'ritual_circle', x: -29, z: -16, y: 4.2 }, { key: 'brass_telescope', x: -30, z: -17.5, y: 4.2, face: 0 }, { key: 'sea_chest', x: -27.5, z: -15, y: 4.2 },
-                { key: 'obelisk', x: -8, z: -27, y: 2.0 }, { key: 'signpost', x: 3, z: 14 }, { key: 'signpost', x: -8, z: 2 }, { key: 'campfire', x: 6, z: 8 }, { key: 'campfire', x: -24, z: 8 },
-                { key: 'park_bench', x: 4, z: 6, face: 180 }, { key: 'lesson_sign', x: 10, z: 8, face: 180, lesson: 'climb' }, { key: 'stone_altar', x: -22, z: 18 }, { key: 'cave_stone', x: 30, z: -22 }, { key: 'palm_tree', x: 30, z: 16 }, { key: 'palm_tree', x: -8, z: 24 }],
-        npcSpots: [{ x: -3, z: 6, face: 40, race: 'annunaki', say: '“The calendar did not end. It was turned over.”' }, { x: 20, z: 6, face: 250, race: 'reptilian', say: '“The ball court is not a game. The losing side knows that.”' },
+                { key: 'obelisk', x: -8, z: -27, y: 2.0 }, { key: 'signpost', x: 3, z: 14 }, { key: 'signpost', x: -6, z: -8 }, { key: 'campfire', x: 2, z: 11 }, { key: 'campfire', x: -24, z: 11 },
+                { key: 'park_bench', x: 5, z: 9, face: 180 }, { key: 'lesson_sign', x: 10.5, z: 9, face: 180, lesson: 'climb' }, { key: 'stone_altar', x: -21.5, z: 22.5 }, { key: 'cave_stone', x: 29, z: -22 }, { key: 'palm_tree', x: 28.5, z: 16 }, { key: 'palm_tree', x: 31, z: 26 }],
+        npcSpots: [{ x: 0, z: 13, face: 40, race: 'annunaki', say: '“The calendar did not end. It was turned over.”' }, { x: 15, z: 17, face: 250, race: 'reptilian', say: '“The ball court is not a game. The losing side knows that.”' },
                    { x: -29, z: -14, y: 4.2, face: 180, race: 'annunaki', say: '“Venus rises there. Every eight years it is exactly where the wall says, and every eight years somebody is surprised.”' }],
         lines: ['“Which stair is the other stair?” “Both of them.”'] },
     /* ROOM 88 · AGARTHA · THE CRYSTAL CITY (AREA CONTENT D3, 2026-09-19 — brought up to the cave): white terraces under the lit crystal roof
@@ -42515,45 +42541,65 @@ const HQ_AREA_SPECS = {
     prebuilt_agartha: { part: 'crystalcity', label: 'THE CRYSTAL CITY', sub: 'THE TERRACES · THE LAKE · THE SPIRE', w: 66, d: 56, night: 1, look: 'cave', fogD: 0.024,
         parti: 'A city of white terraces under a roof of lit crystal, where every hidden way into the inner earth comes out on a different terrace; the sun is inside.', typology: 'terraces',
         floor: 'marble_light', cliff: 'rocks_dark_fantasy', path: 'marble_light', floorColor: 0xbfe8c8, cliffColor: 0x8a9a88,
-        gen: { kind: 'rooms', seed: 88, loops: 3, rMin: 6, rMax: 12, wallH: 3.4, thicket: false }, noise: { amp: 0.1, scale: 7 },
+        gen: { kind: 'plan', look: 'walls', wallKey: 'marble_light', wallH: 5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 7 },
         plaza: { x: 0, z: 8 },
         features: [
-            /* THE LAKE and its bridge (both banks); THE PIER's wall along the south bank (the grind) */
-            { k: 'pool', x: 16, z: -6, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },
-            { k: 'deck', x0: 6.5, z0: -6, x1: 25.5, z1: -6, w: 2.4, y: 0.3 },
-            { k: 'wall', x0: 8, z0: 2.2, x1: 24, z1: 2.2, h: 0.8, t: 0.5, key: 'marble_light' },
-            /* THE LOWER TERRACE (1.6) up its stair or the vine on its east face; THE UPPER TERRACE (3.6) up its stair or the rope on its south face */
-            { k: 'plateau', x: -18, z: -6, r: 9, h: 1.6, edge: 0.4 }, { k: 'ramp', x0: -18, z0: 8.5, x1: -18, z1: 3.7, w: 2.8, h0: 0, h1: 1.6, stairs: true },
-            { k: 'climb', x: -9.3, z: -4, face: 270, look: 'vine' },
-            { k: 'plateau', x: -20, z: -12, r: 5, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: -11.2, z0: -12, x1: -15.7, z1: -12, w: 2.4, h0: 1.6, h1: 3.6, stairs: true },
-            { k: 'climb', x: -20, z: -7.3, face: 0, look: 'rope' },
+            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built marble walls (5 m) where the rooms gen raised banks. Side room 1 at
+               the bay door; THE PLAZA (the fountain, the marker); THE TERRACES north-west (the lower terrace, the upper terrace, the
+               gallery to the balcony) with THE ADIT TERRACE's yard off their north side; side room 2 west (the polar opening) and
+               side room 4 off it (a dead end); THE LAKE north-east (the bridge, the pier's wall, the spire; Lemuria's draught off
+               its north side) and side room 3 off it (a dead end); THE CRYSTAL FOREST east up its stair (the temple city's draught).
+               Loops: plaza ⇄ terraces ⇄ side room 2 ⇄ plaza; plaza ⇄ lake ⇄ crystal forest ⇄ side room 1 ⇄ plaza. */
+            { k: 'space', x: 0, z: 23, w: 9, d: 7 },                                                   // side room 1 (the bay door)
+            { k: 'hall', pts: [[0, 26], [0, 28]], w: 3.4 }, { k: 'hall', pts: [[0, 19.5], [0, 15]], w: 3.4 },
+            { k: 'space', x: 0, z: 8, w: 16, d: 14 },                                                  // THE PLAZA
+            { k: 'space', x: -17, z: -10, w: 28, d: 18 },                                              // THE TERRACES
+            { k: 'hall', pts: [[-6, 1.5], [-6, -1.5]], w: 3 },
+            { k: 'space', x: -5.5, z: -23, w: 13, d: 8 },                                              // THE ADIT TERRACE's yard
+            { k: 'space', x: -23, z: 15, w: 14, d: 10 },                                               // side room 2 (the polar opening)
+            { k: 'hall', pts: [[-33, 14], [-30, 14]], w: 3 }, { k: 'hall', pts: [[-16, 12], [-8, 12]], w: 3 }, { k: 'hall', pts: [[-24, -1.5], [-24, 10.5]], w: 3 },
+            { k: 'space', x: -28, z: 24.5, w: 6, d: 5 }, { k: 'hall', pts: [[-28, 20], [-28, 22.5]], w: 2.6 },   // side room 4 (a dead end)
+            { k: 'space', x: 16, z: -11, w: 24, d: 20 },                                               // THE LAKE
+            { k: 'hall', pts: [[7, 1.5], [7, -1.5]], w: 3 }, { k: 'hall', pts: [[10, -28], [10, -20.5]], w: 3 },   // from the plaza; Lemuria's draught
+            { k: 'space', x: 25, z: -25, w: 10, d: 4 }, { k: 'hall', pts: [[25, -23.5], [25, -20.5]], w: 2.6 },   // side room 3 (a dead end)
+            { k: 'space', x: 22, z: 14, w: 14, d: 18 },                                                // THE CRYSTAL FOREST
+            { k: 'hall', pts: [[7.5, 13], [15.5, 13]], w: 3 }, { k: 'hall', pts: [[22, -1.5], [22, 5.5]], w: 3 }, { k: 'hall', pts: [[33, 6], [28.5, 6]], w: 3 },
+            { k: 'hall', pts: [[16, 21.5], [4, 21.5]], w: 3 },
+            /* THE LAKE and its bridge (both banks); THE PIER's wall along the south bank (the grind); THE SPIRE's foot (6.2, the tape — the door gun's) over the lake's west bank */
+            { k: 'pool', x: 16, z: -11, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },
+            { k: 'deck', x0: 6.5, z0: -11, x1: 25.5, z1: -11, w: 2.4, y: 0.3 },
+            { k: 'wall', x0: 10, z0: -3.2, x1: 20, z1: -3.2, h: 0.8, t: 0.5, key: 'marble_light' },
+            { k: 'plateau', x: 6, z: -16, r: 2.6, h: 6.2, edge: 0.15 },
+            /* THE LOWER TERRACE (1.6) up its stair from the east or the vine on its south face; THE UPPER TERRACE (3.6) up its stair or the rope on its south face */
+            { k: 'plateau', x: -23, z: -11.5, w: 16, d: 15, h: 1.6, edge: 0.15 },
+            { k: 'ramp', x0: -10.5, z0: -7, x1: -15.6, z1: -7, w: 2.8, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'climb', x: -18, z: -4.3, face: 0, look: 'vine' },
+            { k: 'plateau', x: -27.5, z: -15, w: 7, d: 8, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: -18.5, z0: -17, x1: -24.6, z1: -17, w: 2.4, h0: 1.6, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'climb', x: -29, z: -11.3, face: 0, look: 'rope' },
             /* THE GALLERY: a level span from the upper terrace east to THE BALCONY (3.6) — the bridge layer over the lower terrace —; the balcony's ladder up from the ground */
-            { k: 'plateau', x: -5, z: -9, w: 6, d: 6, h: 3.6, edge: 0.4 }, { k: 'deck', x0: -16.7, z0: -9, x1: -7.3, z1: -9, w: 2.4, y: 3.6, over: true },
-            { k: 'climb', x: -5, z: -6.3, face: 0, look: 'ladder' },
-            /* THE ADIT TERRACE (2.4) against the north wall — the cave's adit stands ON it (a door you climb to): a stair from the south, the hand-holds up its east face */
-            { k: 'plateau', x: -5, z: -25, w: 12, d: 6, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -16, x1: -5, z1: -21.3, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 0.7, z: -25, face: 270, look: 'wall' },
-            /* THE SPIRE's foot (6.2, the tape — the door gun's) over the lake's west bank */
-            { k: 'plateau', x: 6, z: -16, r: 2.6, h: 6.2, edge: 0.4 },
-            /* THE CRYSTAL FOREST (3.0) south-east: a stair from the west, a vine up its north face */
-            { k: 'plateau', x: 20, z: 14, r: 6, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 8.1, z0: 14, x1: 14.7, z1: 14, w: 2.6, h0: 0, h1: 3.0, stairs: true },
-            { k: 'climb', x: 20, z: 8.3, face: 180, look: 'vine' },
-            { k: 'rail', x0: -26, z0: 2, x1: -10, z1: 2 },
-            { k: 'path', pts: [[0, 8], [-10, 10], [-18, 10]], w: 2.6 }, { k: 'path', pts: [[0, 8], [4, -4]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-5, 0], [-5, -5.5]], w: 2.2 },
-            { k: 'path', pts: [[0, 8], [2, -10], [-5, -15]], w: 2.6 }, { k: 'path', pts: [[2, -10], [10, -22], [10, -27]], w: 2.4 },
-            { k: 'path', pts: [[0, 8], [8, 14]], w: 2.4 }, { k: 'path', pts: [[8, 14], [28, 6], [33, 6]], w: 2.4 }, { k: 'path', pts: [[-18, 10], [-28, 14], [-33, 14]], w: 2.4 },
-            { k: 'path', pts: [[28, 6], [29, 20], [20, 25], [8, 24]], w: 2.2 }, { k: 'path', pts: [[-5, -15], [-20, -22], [-28, -24]], w: 2.2 },   // the walk round the forest's back and the way behind the upper terrace — two pockets the walker dropped into (rescue ramps) until the ground joined up
+            { k: 'plateau', x: -10.5, z: -13, w: 5, d: 6, h: 3.6, edge: 0.15 }, { k: 'deck', x0: -25.2, z0: -13, x1: -12.3, z1: -13, w: 2.4, y: 3.6, over: true },
+            { k: 'climb', x: -10.5, z: -10.3, face: 0, look: 'ladder' },
+            /* THE ADIT TERRACE (2.4) against the north wall — the cave's adit stands ON it (a door you climb to): a stair from the south, the hand-holds up its south face */
+            { k: 'plateau', x: -5.5, z: -25, w: 13, d: 6, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: -5, z0: -15.8, x1: -5, z1: -22.6, w: 2.8, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'climb', x: -9.5, z: -22.3, face: 0, look: 'wall' },
+            /* THE CRYSTAL FOREST (3.0): a stair from the plaza, a vine up its north face */
+            { k: 'plateau', x: 20, z: 15, w: 10, d: 10, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: 9, z0: 13, x1: 15.6, z1: 13, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'climb', x: 20, z: 10.3, face: 180, look: 'vine' },
+            { k: 'rail', x0: -29.5, z0: -2.3, x1: -21.5, z1: -2.3 },
             { k: 'scatter', key: 'crystal_cluster', n: 10, seed: 5 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'greek_column', n: 4, seed: 8 }, { k: 'scatter', key: 'menhir', n: 3, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 12 },
         ],
-        props: [{ key: 'railing_1m', x: -18, z: 3.2, face: 0 }, { key: 'railing_1m', x: -16, z: -12, face: 90, y: 3.6 }, { key: 'railing_1m', x: -3, z: -21.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: 16, z: 14, face: 90, y: 3.0 },
-                { key: 'riser_1', x: 8, z: 12 }, { key: 'crystal_cluster', x: 6, z: -16, y: 6.2 }, { key: 'fountain', x: 0, z: 2 }, { key: 'crystal_cluster', x: 22, z: 12, y: 3.0 }, { key: 'crystal_cluster', x: 18, z: 16, y: 3.0 }, { key: 'crystal_cluster', x: 21, z: 17, y: 3.0 },
-                { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 4, z: 12, face: 0 }, { key: 'garden_ring', x: -10, z: 14 }, { key: 'garden_ring', x: 10, z: 6 }, { key: 'planter', x: -8, z: 4 }, { key: 'planter', x: 8, z: 4 },
-                { key: 'lectern', x: -20, z: -13, y: 3.6, face: 180 }, { key: 'brass_telescope', x: -21.5, z: -11, y: 3.6, face: 0 }, { key: 'brazier', x: -22, z: -5, y: 1.6 }, { key: 'brazier', x: -14, z: -1, y: 1.6 }, { key: 'sea_chest', x: -5, z: -10, y: 3.6 },
+        props: [{ key: 'railing_1m', x: -15.4, z: -10, face: 90, y: 1.6 }, { key: 'railing_1m', x: -26.5, z: -11.3, face: 0, y: 3.6 }, { key: 'railing_1m', x: -2, z: -22.3, face: 0, y: 2.4 }, { key: 'railing_1m', x: 15.4, z: 16.5, face: 90, y: 3.0 },
+                { key: 'riser_1', x: 5, z: 12 }, { key: 'crystal_cluster', x: 6, z: -16, y: 6.2 }, { key: 'fountain', x: 0, z: 3 }, { key: 'crystal_cluster', x: 22, z: 12, y: 3.0 }, { key: 'crystal_cluster', x: 18, z: 16, y: 3.0 }, { key: 'crystal_cluster', x: 21, z: 17, y: 3.0 },
+                { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 4, z: 12, face: 0 }, { key: 'garden_ring', x: -5.5, z: 3 }, { key: 'garden_ring', x: 5.5, z: 3 }, { key: 'planter', x: -3.5, z: 21 }, { key: 'planter', x: 3.5, z: 25 },
+                { key: 'lectern', x: -28, z: -14, y: 3.6, face: 180 }, { key: 'brass_telescope', x: -29.5, z: -12.5, y: 3.6, face: 0 }, { key: 'brazier', x: -22, z: -5, y: 1.6 }, { key: 'brazier', x: -30, z: -5, y: 1.6 }, { key: 'sea_chest', x: -10.5, z: -14, y: 3.6 },
                 { key: 'stone_altar', x: -5, z: -26, y: 2.4 }, { key: 'brazier', x: -9, z: -24, y: 2.4 }, { key: 'brazier', x: -1, z: -24, y: 2.4 }, { key: 'candle_ring', x: -18, z: -8, y: 1.6 },
-                { key: 'greek_column', x: 26, z: -2 }, { key: 'greek_column', x: 6, z: 0 }, { key: 'signpost', x: 3, z: 10 }, { key: 'lesson_sign', x: -12, z: 8, face: 180, lesson: 'climb' }, { key: 'potted_plant', x: 24, z: 6 }, { key: 'potted_plant', x: -26, z: 12 },
-                { key: 'cave_stone', x: 28, z: 20 }, { key: 'cave_stone', x: -28, z: -22 }, { key: 'crystal_cluster', x: 27, z: -20 }, { key: 'crystal_cluster', x: -30, z: 20 }, { key: 'campfire', x: -22, z: 18 }],
-        npcSpots: [{ x: -3, z: 12, face: 30, race: 'nordic', say: '“The crystals keep the time. Ours, not yours.”' }, { x: 12, z: 4, face: 300, race: 'machine elves', say: '“The adit was cut from both sides and met. That should not happen.”' },
-                   { x: -18, z: -4, y: 1.6, face: 90, race: 'nordic', say: '“Three ways in that nobody built, and one stair. Guess which one gets used.”' }],
+                { key: 'greek_column', x: 26, z: -2 }, { key: 'greek_column', x: 5, z: -5 }, { key: 'signpost', x: 3, z: 10 }, { key: 'lesson_sign', x: -7, z: 9, face: 180, lesson: 'climb' }, { key: 'potted_plant', x: 27, z: 8 }, { key: 'potted_plant', x: -26, z: 12 },
+                { key: 'cave_stone', x: 28, z: 20 }, { key: 'cave_stone', x: -29.5, z: 25.5 }, { key: 'crystal_cluster', x: 28, z: -25 }, { key: 'crystal_cluster', x: -28, z: 18.5 }, { key: 'campfire', x: -22, z: 18 }],
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'nordic', say: '“The crystals keep the time. Ours, not yours.”' }, { x: 4.5, z: -8, face: 90, race: 'machine elves', say: '“The adit was cut from both sides and met. That should not happen.”' },
+                   { x: -21, z: -6, y: 1.6, face: 90, race: 'nordic', say: '“Three ways in that nobody built, and one stair. Guess which one gets used.”' }],
         lines: ['“Where is the sun?” “Inside.”'] },
     /* ROOM 90S · ANTARCTICA · THE STATION (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the traverse from the bay door past
        THE HUTS on their deck (a ramp, a ladder, the hand-holds), THE RADIO MAST's plinth (a ladder, a chain), THE MELT POOL (waded), THE
@@ -42564,44 +42610,67 @@ const HQ_AREA_SPECS = {
     prebuilt_antarctica: { part: 'station', label: 'THE STATION', sub: 'THE HUTS · THE CREVASSE · THE ICE WALL · THE COLLAR', w: 70, d: 56, look: 'white', fogD: 0.028,
         parti: 'A research station on the ice over a hull nobody drilled for; the crevasse runs across the whole traverse, the only way over it is a plank, and the only way down is the collar.', typology: 'traverse',
         floor: 'marble_light', cliff: 'ice_1', path: 'ice_1', floorColor: 0xe4f2fc, cliffColor: 0xbfe0ff,
-        gen: { kind: 'rooms', seed: 905, loops: 2, rMin: 8, rMax: 14, wallH: 2.6, thicket: false }, noise: { amp: 0.18, scale: 8 },
+        gen: { kind: 'plan', look: 'walls', wallKey: 'ice_1', wallH: 5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 8 },
         plaza: { x: 0, z: 8 },
         landmarks: [{ kind: 'peak', id: 'prebuilt_antarctica', deg: 250, dist: 0.85, s: 1.1, label: 'THE TRANSANTARCTICS' }],
         features: [
-            /* THE DECK the huts stand on (1.2): the ramp from the east, a ladder on its north face, the hand-holds up its south */
-            { k: 'plateau', x: -16, z: 2, w: 14, d: 10, h: 1.2, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 2, x1: -10.3, z1: 2, w: 3.0, h0: 0, h1: 1.2 },
-            { k: 'climb', x: -16, z: -2.7, face: 180, look: 'ladder' }, { k: 'climb', x: -16, z: 6.7, face: 0, look: 'wall' },
+            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built ice walls (5 m) where the rooms gen raised banks. The bay door's
+               hall to THE PLAZA; THE DECK the huts stand on west of it (its stair from the plaza) with the radio mast's yard beyond
+               (the polar opening off its west end, side room 2 a dead end off its east side); the pressure ridges' yard east (the melt
+               pool, the ridges, the polar opening behind the east ridge) with side room 1 a dead end off its north side; THE
+               CREVASSE's room north of the plaza, the one plank across it; beyond it THE HULL's court (the collar on the hull, the
+               ice wall, the drill rig) and the ice shelf's yard west of that. Loops: plaza ⇄ crevasse ⇄ ridges' yard ⇄ plaza;
+               plaza ⇄ deck ⇄ mast yard ⇄ plaza; deck yard ⇄ crevasse; hull court ⇄ ice shelf yard (two halls). */
+            { k: 'hall', pts: [[0, 28], [0, 14.5]], w: 3.4 },                                             // the bay door's hall
+            { k: 'space', x: 0, z: 8, w: 16, d: 14 },                                                     // THE PLAZA
+            { k: 'space', x: -19.5, z: 2, w: 15, d: 14 },                                                 // THE DECK's yard (the huts)
+            { k: 'hall', pts: [[-7.5, 2.5], [-12.5, 2.5]], w: 3 }, { k: 'hall', pts: [[-12.5, -5.5], [-7.5, -5.5]], w: 3 },
+            { k: 'space', x: -25, z: 17.5, w: 12, d: 11 },                                                // the radio mast's yard
+            { k: 'hall', pts: [[-35, 18], [-30.5, 18]], w: 3 }, { k: 'hall', pts: [[-23, 8.5], [-23, 12.5]], w: 3 }, { k: 'hall', pts: [[-19.5, 13], [-7.5, 13]], w: 3 },
+            { k: 'space', x: -12, z: 21, w: 8, d: 6 }, { k: 'hall', pts: [[-19.5, 21], [-15.5, 21]], w: 2.6 },   // side room 2 (a dead end)
+            { k: 'space', x: 20.5, z: 11, w: 19, d: 26 },                                                 // the pressure ridges' yard
+            { k: 'hall', pts: [[7.5, 5], [11.5, 5]], w: 3 }, { k: 'hall', pts: [[35, 8], [29.5, 8]], w: 3 },
+            { k: 'space', x: 24, z: -9, w: 12, d: 6 }, { k: 'hall', pts: [[24, -6.5], [24, -1.5]], w: 2.6 },   // side room 1 (a dead end)
+            { k: 'space', x: 3, z: -11, w: 22, d: 12 },                                                   // THE CREVASSE (the plank)
+            { k: 'hall', pts: [[-4, 1.5], [-4, -5.5]], w: 3 }, { k: 'hall', pts: [[12.5, -1.5], [12.5, -5.5]], w: 3 },
+            { k: 'space', x: 11.5, z: -22, w: 43, d: 10 },                                                // THE HULL's court (the collar, the ice wall, the drill rig)
+            { k: 'space', x: -22.5, z: -20, w: 21, d: 12 },                                               // THE ICE SHELF's yard
+            { k: 'hall', pts: [[-12.5, -20], [-9.5, -20]], w: 3 }, { k: 'hall', pts: [[-12.5, -25], [-9.5, -25]], w: 2.6 },
+            /* THE DECK the huts stand on (1.2): the stair from the plaza, a ladder on its north face, the hand-holds up its south */
+            { k: 'plateau', x: -20, z: 2, w: 16, d: 8, h: 1.2, edge: 0.15 },
+            { k: 'ramp', x0: -9, z0: 2.5, x1: -12.6, z1: 2.5, w: 2.8, h0: 0, h1: 1.2, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'climb', x: -20, z: -1.7, face: 180, look: 'ladder' }, { k: 'climb', x: -20, z: 5.7, face: 0, look: 'wall' },
             /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south */
-            { k: 'plateau', x: -26, z: 14, r: 2.2, h: 3.2, edge: 0.35 }, { k: 'climb', x: -26, z: 12.1, face: 180, look: 'ladder' }, { k: 'climb', x: -26, z: 15.9, face: 0, look: 'chain' },
-            /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) on the east side */
-            { k: 'pool', x: 12, z: 4, r: 3, depth: 0.6, key: 'water', bank: 0.8 },
-            { k: 'wall', x0: 4, z0: 12, x1: 18, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 18, x1: 30, z1: 8, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
+            { k: 'plateau', x: -25, z: 16, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -25, z: 14.1, face: 180, look: 'ladder' }, { k: 'climb', x: -25, z: 17.9, face: 0, look: 'chain' },
+            /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) in the east yard */
+            { k: 'pool', x: 16, z: 3, r: 3, depth: 0.6, key: 'water', bank: 0.8 },
+            { k: 'wall', x0: 13, z0: 12, x1: 25, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 21, x1: 28, z1: 13, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
             /* THE CREVASSE (never entered) and the one plank across it */
-            { k: 'stream', pts: [[-34, -12], [-8, -14], [14, -10], [34, -14]], w: 3.6, depth: 0.55, key: 'deep_water' },
-            { k: 'deck', x0: 2, z0: -8.6, x1: 2, z1: -15.4, w: 2.2, y: 0.2 },
-            /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side, a ladder on its west face */
-            { k: 'plateau', x: 0, z: -25, w: 16, d: 6, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true },
+            { k: 'stream', pts: [[-8, -12], [3, -11], [14, -12.5]], w: 3.6, depth: 0.55, key: 'deep_water' },
+            { k: 'deck', x0: 2, z0: -7.6, x1: 2, z1: -14.6, w: 2.2, y: 0.2 },
+            /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side (behind the ice wall), a ladder on its west face */
+            { k: 'plateau', x: 0, z: -25, w: 16, d: 6, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
             { k: 'climb', x: -7.7, z: -25, face: 90, look: 'ladder' },
-            /* THE ICE SHELF (4.0) west of the crevasse's north bank: the long stair from the east, a rope down its south face */
-            { k: 'plateau', x: -28, z: -20, w: 10, d: 8, h: 4.0, edge: 0.4 }, { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true },
+            /* THE ICE SHELF (4.0): the long stair from the east, a rope down its south face */
+            { k: 'plateau', x: -28, z: -20, w: 10, d: 8, h: 4.0, edge: 0.15 },
+            { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
             { k: 'climb', x: -28, z: -16.3, face: 0, look: 'rope' },
-            /* THE ICE WALL (6.0, the tape — the door gun's) and THE DRILL RIG (2.2) beside it — a chain up its south face, a ladder on its east */
-            { k: 'plateau', x: 17, z: -21.5, w: 14, d: 4, h: 6.0, edge: 0.4 },
-            { k: 'plateau', x: 29, z: -21, r: 2.6, h: 2.2, edge: 0.35 }, { k: 'climb', x: 29, z: -18.7, face: 0, look: 'chain' }, { k: 'climb', x: 31.3, z: -21, face: 270, look: 'ladder' },
-            { k: 'rail', x0: -22, z0: 8, x1: -10, z1: 8 },
-            { k: 'path', pts: [[0, 8], [-8, 4]], w: 2.4 }, { k: 'path', pts: [[0, 8], [2, -6]], w: 2.6 }, { k: 'path', pts: [[2, -17], [14, -22], [15, -25.5]], w: 2.4 }, { k: 'path', pts: [[2, -17], [-6, -19], [-13, -20]], w: 2.4 },
-            { k: 'path', pts: [[2, -17], [22, -17], [29, -17.5]], w: 2.2 }, { k: 'path', pts: [[0, 8], [-14, 12], [-26, 10.5]], w: 2.2 }, { k: 'path', pts: [[-14, 12], [-24, 18], [-35, 18]], w: 2.4 }, { k: 'path', pts: [[0, 8], [8, 8], [12, 16]], w: 2.2 },
+            /* THE ICE WALL (6.0, the tape — the door gun's) and THE DRILL RIG (2.2) east of it — a chain up its south face, a ladder on its west */
+            { k: 'plateau', x: 19, z: -21.5, w: 14, d: 4, h: 6.0, edge: 0.15 },
+            { k: 'plateau', x: 30.5, z: -21, r: 2.2, h: 2.2, edge: 0.15 }, { k: 'climb', x: 30.5, z: -19.1, face: 0, look: 'chain' }, { k: 'climb', x: 28.6, z: -21, face: 90, look: 'ladder' },
+            { k: 'rail', x0: -27, z0: 7.8, x1: -22.5, z1: 7.8 },
             { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -16, z: 8.4, face: 0 }, { key: 'railing_1m', x: 6, z: -21.6, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -15.6, face: 0, y: 4.0 }, { key: 'riser_1', x: 8, z: 12 },
-                { key: 'cot', x: -19, z: 2, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 1.2, face: 90 }, { key: 'sea_chest', x: -21, z: 6, y: 1.2 }, { key: 'steel_table', x: -13, z: 3, y: 1.2 }, { key: 'crt_terminal', x: -13, z: 3, y: 1.96 },
-                { key: 'retro_radio', x: -13, z: 2.2, y: 1.96 }, { key: 'folding_chair', x: -13, z: 5, y: 1.2, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 1.2 }, { key: 'cardboard_boxes', x: -11, z: -1, y: 1.2 },
-                { key: 'flood_mast', x: -26, z: 14, y: 3.2 }, { key: 'boiler', x: -22, z: 12 }, { key: 'traffic_barrel', x: -20, z: 13 }, { key: 'traffic_barrel', x: -20.8, z: 14.2 }, { key: 'laundry_cart', x: -8, z: 12 },
-                { key: 'signpost', x: 3, z: 12 }, { key: 'signpost', x: 4, z: -18 }, { key: 'campfire', x: -12, z: 12 }, { key: 'campfire', x: 6, z: -19 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
-                { key: 'car_truck', x: 12, z: 20, face: 90 }, { key: 'car_suv', x: 20, z: 24, face: 60 }, { key: 'flood_mast', x: 30, z: 22 }, { key: 'flood_mast', x: -30, z: -26 }, { key: 'flood_mast', x: 24, z: -26 },
-                { key: 'iso_tank', x: 29, z: -21, y: 2.2 }, { key: 'warning_tape', x: 26, z: -18 }, { key: 'warning_tape', x: 32, z: -18.5 }, { key: 'sea_chest', x: -28, z: -22, y: 4.0 }, { key: 'brass_telescope', x: -30, z: -19, y: 4.0, face: 90 },
-                { key: 'sea_chest', x: 3, z: -26, y: 3.0 }, { key: 'lone_gun', x: -3, z: -26, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 2, z: -7 }, { key: 'traffic_cone', x: 0, z: -16.5 }, { key: 'traffic_cone', x: 4, z: -16.5 },
-                { key: 'cave_stone', x: 8, z: -21.5, y: 6.0 }, { key: 'cardboard_boxes', x: 34, z: 4 }, { key: 'cinder_block', x: -32, z: 8 }],
+        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 1.2 }, { key: 'railing_1m', x: 5, z: -22.3, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.3, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
+                { key: 'cot', x: -19, z: 2, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 1.2, face: 90 }, { key: 'sea_chest', x: -22, z: 5.3, y: 1.2 }, { key: 'steel_table', x: -16, z: 4.5, y: 1.2 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 1.96 },
+                { key: 'retro_radio', x: -16, z: 3.7, y: 1.96 }, { key: 'folding_chair', x: -16.8, z: 5.4, y: 1.2, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 1.2 }, { key: 'cardboard_boxes', x: -13.5, z: -1.2, y: 1.2 },
+                { key: 'flood_mast', x: -25, z: 16, y: 3.2 }, { key: 'boiler', x: -29, z: 14 }, { key: 'traffic_barrel', x: -20, z: 21 }, { key: 'traffic_barrel', x: -21, z: 22 }, { key: 'laundry_cart', x: -6.5, z: 9.5 },
+                { key: 'signpost', x: 3, z: 12 }, { key: 'signpost', x: 4, z: -18 }, { key: 'campfire', x: -28, z: 21.5 }, { key: 'campfire', x: 6, z: -19 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
+                { key: 'car_truck', x: 14, z: 17, face: 90 }, { key: 'car_suv', x: 15, z: 22, face: 60 }, { key: 'flood_mast', x: 28.5, z: 22.5 }, { key: 'flood_mast', x: -30, z: -25 }, { key: 'flood_mast', x: 24, z: -26 },
+                { key: 'iso_tank', x: 30.5, z: -21, y: 2.2 }, { key: 'warning_tape', x: 27, z: -18 }, { key: 'warning_tape', x: 32, z: -18.5 }, { key: 'sea_chest', x: -28, z: -22, y: 4.0 }, { key: 'brass_telescope', x: -30, z: -19, y: 4.0, face: 90 },
+                { key: 'sea_chest', x: 3, z: -26, y: 3.0 }, { key: 'lone_gun', x: -3, z: -26, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 4, z: -6.5 }, { key: 'traffic_cone', x: 0.5, z: -15.5 }, { key: 'traffic_cone', x: 3.5, z: -15.5 },
+                { key: 'cave_stone', x: 13, z: -21.5, y: 6.0 }, { key: 'cardboard_boxes', x: 28.5, z: -1 }, { key: 'cinder_block', x: -14, z: 23 }],
         npcSpots: [{ x: -3, z: 12, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 4, z: -20, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
                    { x: -18, z: 4, y: 1.2, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
@@ -42893,37 +42962,62 @@ const HQ_AREA_SPECS = {
     prebuilt_northpole: { part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE DRIFT · THE POLE', w: 64, d: 52, night: 1, look: 'white', fogD: 0.026,
         parti: 'A workshop village on a frozen lake; the sleigh road leaves north over the drift where the pole stands.', typology: 'pearls',
         floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
-        gen: { kind: 'rooms', seed: 1225, loops: 3, rMin: 6, rMax: 11, wallH: 1.6, kinds: ['pine'], spacing: 3.4, maxTrees: 140 }, noise: { amp: 0.16, scale: 7 },
+        gen: { kind: 'plan', look: 'walls', wallKey: 'wood_planks', wallH: 4.5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 7 },
         forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['pine'] },
         plaza: { x: 0, z: 6 },
         features: [
-            /* THE WORKSHOP's deck (1.0) to the west wall — the hearth stands on it; the ramp up, the ice-block hand-holds up its south lip; THE LOFT (3.4) up the ladder */
-            { k: 'plateau', x: -21.5, z: 0, w: 21, d: 12, h: 1.0, edge: 0.35 }, { k: 'ramp', x0: -7.5, z0: 0, x1: -11.7, z1: 0, w: 3.0, h0: 0, h1: 1.0 },
-            { k: 'climb', x: -18, z: 5.6, face: 0, look: 'wall' },
-            { k: 'plateau', x: -25, z: 2, r: 3, h: 3.4, edge: 0.4 }, { k: 'climb', x: -22.3, z: 2, face: 270, look: 'ladder' },
-            /* THE FROZEN LAKE (a wade) and two floes to hop; THE ICE WALL between the plaza and the drift (the grind) */
-            { k: 'pool', x: 17, z: -3, r: 8, rz: 6, depth: 0.5, key: 'water', bank: 1.0 },
-            { k: 'plateau', x: 12, z: -3, r: 1.6, h: 0.5, edge: 0.3, float: true }, { k: 'plateau', x: 17, z: -5, r: 1.6, h: 0.9, edge: 0.3, float: true },
-            { k: 'wall', x0: 3, z0: -6, x1: 11, z1: -6, h: 3.2, t: 0.8, key: 'ice_1' },
+            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built timber walls (4.5 m) where the rooms gen raised banks. The bay
+               door's hall to THE PLAZA; THE WORKSHOP west (its deck to the west wall, the hearth's door on it, THE LOFT) up its steps
+               from the plaza; THE SLEDGE HILL's yard north-west (THE ICE SHELF on it); the pole's yard north (THE DRIFT with the
+               sleigh road's door on it, THE POLE's cairn, THE ICE WALL); THE FROZEN LAKE east; the gift yard south-east (THE GIFT
+               STACK, the meltwater and its plank); side room 1 south-west (the pines), side room 2 a dead end off the pole's yard.
+               Loops: plaza ⇄ workshop ⇄ sledge yard ⇄ pole yard ⇄ plaza; plaza ⇄ lake ⇄ pole yard; plaza ⇄ workshop ⇄ side room 1
+               ⇄ plaza; plaza ⇄ lake ⇄ gift yard ⇄ plaza. */
+            { k: 'hall', pts: [[0, 26], [0, 12.5]], w: 3.4 },                                             // the bay door's hall
+            { k: 'space', x: 0, z: 6, w: 16, d: 14 },                                                     // THE PLAZA
+            { k: 'space', x: -21, z: 0, w: 20, d: 16 },                                                   // THE WORKSHOP (its deck)
+            { k: 'hall', pts: [[-7.5, 0], [-11.5, 0]], w: 3.2 },
+            { k: 'space', x: -21, z: -17.5, w: 18, d: 13 },                                               // THE SLEDGE HILL's yard
+            { k: 'hall', pts: [[-15, -11.5], [-15, -7.5]], w: 3 }, { k: 'hall', pts: [[-12.5, -20], [-3.5, -20]], w: 3 },
+            { k: 'space', x: 10, z: -16.5, w: 28, d: 17 },                                                // the pole's yard (THE DRIFT, THE POLE)
+            { k: 'hall', pts: [[-2, -8.5], [-2, -0.5]], w: 3 },
+            { k: 'space', x: 29, z: -18, w: 4, d: 12 }, { k: 'hall', pts: [[23.5, -14], [27.5, -14]], w: 2.6 },   // side room 2 (a dead end)
+            { k: 'space', x: 19, z: 1, w: 18, d: 14 },                                                    // THE FROZEN LAKE
+            { k: 'hall', pts: [[7.5, 3], [10.5, 3]], w: 3 }, { k: 'hall', pts: [[25, -5.5], [25, -8.5]], w: 3 },
+            { k: 'space', x: 20, z: 16.5, w: 16, d: 11 },                                                 // the gift yard
+            { k: 'hall', pts: [[18, 7.5], [18, 11.5]], w: 3 }, { k: 'hall', pts: [[7.5, 12], [12.5, 12]], w: 3 },
+            { k: 'space', x: -13, z: 18.5, w: 14, d: 9 },                                                 // side room 1 (the pines)
+            { k: 'hall', pts: [[-7.5, 11], [-10, 11], [-10, 14.5]], w: 3 }, { k: 'hall', pts: [[-22, 7.5], [-22, 17], [-19.5, 17]], w: 3 },
+            /* THE WORKSHOP's deck (1.0) to the west wall — the hearth stands on it; the steps up from the plaza, the ice-block hand-holds up its south lip; THE LOFT (3.4) up the ladder */
+            { k: 'plateau', x: -21.5, z: 0, w: 21, d: 12, h: 1.0, edge: 0.15 },
+            { k: 'ramp', x0: -8.4, z0: 0, x1: -11.6, z1: 0, w: 3.0, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'climb', x: -18, z: 5.7, face: 0, look: 'wall' },
+            { k: 'plateau', x: -25, z: 2, r: 3, h: 3.4, edge: 0.15 }, { k: 'climb', x: -22.3, z: 2, face: 270, look: 'ladder' },
+            /* THE FROZEN LAKE (a wade) and two floes to hop; THE ICE WALL between the plaza's hall and the drift (the grind) */
+            { k: 'pool', x: 19, z: 1, r: 7, rz: 5, depth: 0.5, key: 'water', bank: 1.0 },
+            { k: 'plateau', x: 14.5, z: 1, r: 1.6, h: 0.5, edge: 0.15, float: true }, { k: 'plateau', x: 19, z: -1, r: 1.6, h: 0.9, edge: 0.15, float: true },
+            { k: 'wall', x0: 1, z0: -10, x1: 9, z1: -10, h: 3.2, t: 0.8, key: 'ice_1' },
             /* THE DRIFT (2.2) up its stair — the sleigh road's door stands on it; THE POLE's cairn (6.2, the tape) off its west edge, seen from the drift */
-            { k: 'plateau', x: 14, z: -20, w: 14, d: 10, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: 14, z0: -9.5, x1: 14, z1: -15.7, w: 3.0, h0: 0, h1: 2.2, stairs: true },
-            { k: 'climb', x: 20.9, z: -18, face: 270, look: 'rope' },
-            { k: 'plateau', x: 3, z: -17, r: 3.2, h: 6.2, edge: 0.4 },
+            { k: 'plateau', x: 14, z: -20, w: 14, d: 10, h: 2.2, edge: 0.15 },
+            { k: 'ramp', x0: 14, z0: -9.5, x1: 14, z1: -15.7, w: 3.0, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'climb', x: 20.7, z: -18, face: 270, look: 'rope' },
+            { k: 'plateau', x: 3, z: -17, r: 3.2, h: 6.2, edge: 0.15 },
             { k: 'rail', x0: 8, z0: -15.6, x1: 20, z1: -15.6 },
-            /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank; the meltwater stream from the lake with a plank over it */
-            { k: 'hill', x: -20, z: -16, r: 9, h: 2.4 },
-            { k: 'plateau', x: -23, z: -19, r: 4.5, h: 4.0, edge: 0.4 }, { k: 'climb', x: -18.7, z: -19, face: 270, look: 'rope' },
-            { k: 'stream', pts: [[10, 4], [4, 12], [-2, 24]], w: 1.8, depth: 0.5, key: 'water' },
-            { k: 'deck', x0: 0.5, z0: 15, x1: 8.5, z1: 15, w: 1.6, y: 0.3 },
+            /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank */
+            { k: 'hill', x: -20, z: -16, r: 7, h: 2.0 },
+            { k: 'plateau', x: -24, z: -19, r: 4, h: 4.0, edge: 0.15 }, { k: 'climb', x: -20.3, z: -19, face: 270, look: 'rope' },
+            /* the meltwater from the lake down the gift yard, a plank over it */
+            { k: 'stream', pts: [[18, 5], [18, 21]], w: 1.8, depth: 0.5, key: 'water' },
+            { k: 'deck', x0: 15, z0: 18, x1: 21, z1: 18, w: 1.6, y: 0.3 },
             /* THE GIFT STACK (1.3) — a crate pile with a ladder up it */
-            { k: 'plateau', x: 22, z: 12, w: 5, d: 5, h: 1.3, edge: 0.3 }, { k: 'climb', x: 19.3, z: 12, face: 90, look: 'ladder' },
-            { k: 'path', pts: [[0, 6], [-8, 2]], w: 2.4 }, { k: 'path', pts: [[0, 6], [6, -1], [14, -9]], w: 2.4 }, { k: 'path', pts: [[0, 6], [-10, -8], [-18, -12]], w: 2.4 }, { k: 'path', pts: [[0, 6], [14, 8], [22, 8]], w: 2.2 },
-            { k: 'grove', x: -8, z: 18, r: 7, n: 6, kinds: ['pine'] }, { k: 'grove', x: 24, z: -12, r: 5, n: 4, kinds: ['pine'] },
+            { k: 'plateau', x: 25, z: 16, w: 5, d: 5, h: 1.3, edge: 0.15 }, { k: 'climb', x: 22.8, z: 16, face: 90, look: 'ladder' },
+            { k: 'grove', x: -13, z: 18.5, r: 5, n: 5, kinds: ['pine'] }, { k: 'grove', x: 22, z: -10.5, r: 2, n: 2, kinds: ['pine'] },
             { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -16, z: 6.4, face: 0, y: 1.0 }, { key: 'railing_1m', x: 12, z: -15.6, face: 0, y: 2.2 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
-                { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 22, z: 12, y: 1.3 }, { key: 'signpost', x: -2, z: 2 }],
-        npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 12, z: 2, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
+        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 1.0 }, { key: 'railing_1m', x: 12, z: -15.6, face: 0, y: 2.2 }, { key: 'riser_1', x: 6, z: 9 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
+                { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 25, z: 16, y: 1.3 }, { key: 'signpost', x: -2, z: 2 },
+                { key: 'cardboard_boxes', x: 29, z: -22 }, { key: 'cardboard_box', x: 29.5, z: -20 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 11, z: -5, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
                    { x: -20, z: -3, face: 180, race: 'yeti', say: '“The loft is where the wrapping is kept. I am not allowed up the ladder.”' }],
         lines: ['“December 25th.” “Every day here.”'] },
     /* ROOM E4 · THE LOOKING-GLASS · THE GARDEN (AREA CONTENT D3, 2026-09-19 — brought up to the cave): a hedge maze in marble round
