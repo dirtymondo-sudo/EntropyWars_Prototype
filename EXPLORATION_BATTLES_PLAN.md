@@ -119,7 +119,11 @@ return should take.
    turn order, cannot be switched in, cannot be targeted, and survives whatever the result is.
 9. **A retreat is neither a win nor a loss.** Nothing is cleared, no XP pool is shared, no drops, no ward,
    no loss counted. The natives stand where the fight left them.
-10. **Fog stays on in encounters** (`state.fogOfWar` defaults true; the encounter never turns it off). With
+10. **PvP is untouched.** The 8×8 maps (the Δ boards, `MF_DELTA_S`) and every prebuilt arena stay exactly as
+    they are: they are the PvP boards and have nothing to do with the exploration fights. Everything here
+    lives behind the encounter path (`HQ_FIELD_RULES`, `hqField*`, `_encRun()`); a sea room's fallback to
+    the Δ board is the only place the two meet, and it is unchanged.
+11. **Fog stays on in encounters** (`state.fogOfWar` defaults true; the encounter never turns it off). With
     the whole room as the board, fog is what makes hiding, and so escaping, a decision.
 
 ---
