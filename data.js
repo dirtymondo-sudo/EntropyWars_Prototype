@@ -4599,25 +4599,7 @@ const SPELL_LIBRARY = [
         desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Burn.'
     },
 
-    {
-        id: 'radiantBolt',
-        spellType: 'divine',
-        element: 'light',
-        name: 'Radiant Bolt',
-        type: 'damage',
-        cost: 25,
-        equipCost: 12,
-        dmg: 100,
-        range: 4,
-        kind: 'damage',
-        damageType: 'magic',
-        tier: 1,
-        families: ['angelic'],
-        school: 'White Mage',
-        jobPreference: ['White Mage'],
-        unholyBonus: 40,
-        desc: 'Deals MEDIUM magic damage to a Single Enemy.'
-    },
+
     {
         id: 'revive1',
         spellType: 'divine',
@@ -5063,6 +5045,7 @@ const SPELL_LIBRARY = [
         range: 3,
         kind: 'debuff',
         tier: 2,
+        families: ['stagepresence'],
         school: 'Tank',
         jobPreference: ['Tank'],
         statusEffects: [{
@@ -5852,13 +5835,7 @@ const SHARED_FISSURE = {
     desc: 'Reshapes the battlefield — creates chasm across 3 tiles (pick the orientation). Applies Stagger.'
 };
 
-const SHARED_SCORCHED_EARTH = {
-    id: 'sharedScorchedEarth', tier: 3, spellType: 'unholy', element: 'fire', name: 'Scorched Earth',
-    type: 'damage', cost: 25, dmg: 70, range: 4,
-    kind: 'terrainCreate', terrainType: 'scorched', tileCount: 3, orientable: true,
-    damageType: 'magic',
-    desc: 'Scorch 3 tiles in a line. Enemies caught take damage. Scorched tiles punish anyone who lingers.'
-};
+/* SHARED_SCORCHED_EARTH deleted by THE SPELL AUDIT Batch B (2026-09-30): Wall of Fire covers the scorched line. */
 
 const SHARED_POISON_SWAMP = {
     id: 'sharedPoisonSwamp', tier: 1, spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
@@ -5934,7 +5911,7 @@ const SHARED_SUMMON_BLOOD_RAIN = {
 
 const SHARED_NUKE = {
     id: 'sharedNuke', spellType: 'tech', element: 'fire', name: 'Nuclear Option',
-    type: 'damage', tier: 4, families: ['militarysupport'], cost: 45, dmg: 180, range: 5, apCost: 2,
+    type: 'damage', tier: 4, families: ['politics'], cost: 45, dmg: 180, range: 5, apCost: 2,
     kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 2,
     leaveTerrain: 'scorched',
     terrainDeform: { centerDelta: -3, edgeDelta: -1 },
@@ -6048,7 +6025,7 @@ const _STAGGER_1 = [{ id: 'stagger', duration: 1 }];
 const RACE_ABILITIES = {
 
     'seraphim': [
-        { id: 'raceDivineJudgment', tier: 3, families: ['holydefense'], spellType: 'divine', name: 'Divine Judgment',
+        { id: 'raceDivineJudgment', tier: 3, families: ['angelic'], spellType: 'divine', name: 'Divine Judgment',
           type: 'damage', cost: 75, dmg: 125, range: 4, apCost: 1,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 2 }],
@@ -6155,13 +6132,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger. Fires through cover.' },
-        { id: 'raceGothicRampart', tier: 2, families: ['livingstone'], spellType: 'unholy', name: 'Gothic Rampart',
-          type: 'utility', cost: 25, range: 2, apCost: 1,
-          kind: 'terrainCreate', terrainType: 'mountain', tileCount: 2, orientable: true,
-          dmg: 50, damageType: 'physical',
-          terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-          monument: { kind: 'gothic_wall' },   // THE SPELL-MADE MONUMENTS (2026-09-18): two cathedral wall pieces (the church_wall GLB)
-          desc: 'Raise 2 pieces of cathedral wall — pointed stone two tiles high that blocks the way and the sight. Cheaper than Rampart but smaller. The cathedral grows.' },
+
         { id: 'raceStoneDrop', element: 'earth', spellType: 'unholy', name: 'Stone Drop',
           type: 'damage', tier: 3, cost: 75, dmg: 125, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
@@ -6220,7 +6191,6 @@ const RACE_ABILITIES = {
           throwRange: 3, collisionBonus: 50,
           requiresFlight: true,
           desc: 'Grabs the target, carries it skyward and hurls it up to 3 tiles. Deals WEAK physical damage, more if they crash into another unit. Caster must be flying.' },
-        SHARED_SCORCHED_EARTH,
         SHARED_SUMMON_BLOOD_RAIN,
         SHARED_WING_ATTACK
     ],
@@ -6325,6 +6295,11 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, ignoreArmor: true,
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'Deals HEAVY physical damage to All Enemies in an AOE. Ignores DEF. Deals bonus damage to targets with Poison. Cooldown: 2 rounds.' },
+        { id: 'raceBoneLance', name: 'Bone Lance', tier: 3, families: ['bonedensity'], cost: 75, apCost: 1,
+          spellType: 'unholy', type: 'damage', kind: 'line', damageType: 'physical', dmg: 125, range: 4, lineWidth: 1,
+          ignoreArmor: true,
+          desc: 'A femur, thrown like a javelin, through everyone in the way. Deals MEDIUM physical damage to All Enemies in a line. Ignores DEF.' },
+
     ],
     'mothman': [
         { id: 'raceDreadAura', tier: 1, noDamage: true, families: ['cryptid'], spellType: 'unholy', name: 'Dread Aura',
@@ -6416,11 +6391,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 30, range: 0, apCost: 2,
           kind: 'trickRoom', trickRoomDuration: 3,
           desc: 'Warp the flow of time for 3 rounds. Turn order is reversed — the slowest units act first and the fastest act last.' },
-        { id: 'racePixieDust', tier: 2, families: ['fae'], spellType: 'anomaly', element: 'light', name: 'Pixie Dust',
-          type: 'buff', cost: 18, range: 3, apCost: 1,
-          kind: 'buff',
-          statusEffects: [{ id: 'pixieDust', duration: 2 }],
-          desc: 'Sprinkle an ally with pixie dust. For 2 turns they move 2 tiles further — a happy thought and off the ground they go.' },
+
         /* 2026-08-12: reworked from a heal zone into the fairy's damage
            capstone — a ring-shaped blast (aoeShape 'ring': only the 16
            perimeter tiles of the 5×5, the inside is spared). */
@@ -6441,7 +6412,7 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN
     ],
     'skinwalker': [
-        { id: 'raceBorrowedClaw', tier: 1, families: ['beastabilities'], spellType: 'anomaly', name: 'Borrowed Claw',
+        { id: 'raceBorrowedClaw', tier: 1, families: ['trickery'], spellType: 'anomaly', name: 'Borrowed Claw',
           type: 'damage', cost: 25, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical', stealSpell: true,
           desc: 'Deals MEDIUM physical damage to a Single Enemy and tears one spell out of them: the skinwalker keeps it, they lose it for the match. Cooldown: 3 rounds.' },
@@ -6504,11 +6475,7 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Deals WEAK physical damage to All Enemies in an AOE. Applies Stagger.' },
-        { id: 'raceRealityShift', tier: 2, families: ['cryptid'], spellType: 'anomaly', element: 'arcane', name: 'Blurry Photo',
-          type: 'buff', cost: 25, range: 0, apCost: 1,
-          kind: 'buff', cleanse: 99,
-          statusEffects: [{ id: 'invisible', duration: 2 }],
-          desc: 'Empowers the caster. Applies Invisible. Cooldown: 2 rounds.' },
+
         /* §6.16 Treeline Retreat (Phase 5 wave A, 2026-09-08): disengage +
            heal in one spell so Cryptid can re-engage. Twins Blurry Photo. */
         { id: 'raceTreelineRetreat', tier: 2, spellType: 'anomaly', element: 'nature', name: 'Into the Green',
@@ -6525,7 +6492,12 @@ const RACE_ABILITIES = {
           families: ['sasquatch'],
           kind: 'damage', damageType: 'physical',
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals HEAVY physical damage to a Single Enemy. The photo would have been blurry anyway. Deals bonus damage to Staggered targets.' }
+          desc: 'Deals HEAVY physical damage to a Single Enemy. The photo would have been blurry anyway. Deals bonus damage to Staggered targets.' },
+        { id: 'raceEntanglingRoots', name: 'Entangling Roots', tier: 3, families: ['nature'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'nature', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125,
+          range: 4, aoeRadius: 1, statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'The ground remembers what it grew. Deals MEDIUM magic damage to All Enemies in a 3×3 and Roots them for a round.' },
+
     ],
     'siren': [
         { id: 'raceSonicBreaker', tier: 2, element: 'sonic', spellType: 'anomaly', name: 'Sonic Breaker',
@@ -6567,7 +6539,6 @@ const RACE_ABILITIES = {
           kind: 'escape', teleportDistance: 3,
           desc: 'Punch out. The pilot escapes up to 3 tiles, sheds every debuff and the frame restores 20% of max HP.' },
         SHARED_NUKE,
-        SHARED_SCORCHED_EARTH
     ],
     'glitch': [
         { id: 'raceCrashLoop', tier: 1, families: ['computerhacking'], spellType: 'tech', name: 'Crash Loop',
@@ -6636,10 +6607,7 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Knocks the target back 2 tiles.' },
     ],
     'android': [
-        { id: 'raceNeuralHack', tier: 3, families: ['computerhacking'], spellType: 'tech', name: 'Neural Hack',
-          type: 'debuff', cost: 25, range: 3,
-          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 1 }],
-          desc: 'Weakens a Single Enemy. Applies Jammed.' },
+
         { id: 'raceSelfRepairProtocol', tier: 2, families: ['robot'], spellType: 'tech', name: 'Self-Repair Protocol',
           type: 'heal', cost: 25, range: 0, apCost: 1,
           kind: 'selfHeal', selfHealPct: 0.45, cleanse: 2,
@@ -6730,11 +6698,7 @@ const RACE_ABILITIES = {
            same ids — saves keep working). They are homosapien abilities now,
            twinned onto the race tree (RACE_TREE.homosapien); the Freelancer
            job's primary branch became four race-ability sockets instead. */
-        { id: 'improvise', spellType: 'human', name: 'Improvise',
-          type: 'damage', cost: 20, equipCost: 10, dmg: 80, range: 2,
-          kind: 'damage', damageType: 'physical', tier: 1,
-          families: ['humangrit'],
-          desc: 'Deals WEAK physical damage to a Single Enemy.' },
+
         { id: 'jackOfAll', spellType: 'human', name: 'Pep Talk',
           type: 'buff', cost: 75, equipCost: 15, apCost: 1, range: 3,
           kind: 'buff', tier: 3,
@@ -6801,7 +6765,7 @@ const RACE_ABILITIES = {
           markLogText: 'freezes the frame on {target} — the episode resumes at the end of the round, and the finishing strike lands with it.',
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Marks the target: the hit lands at the end of the round, but only while your team can still see them.' },
         { id: 'raceBlessedBlade', spellType: 'divine', element: 'light', name: 'Blessed Blade',
-          type: 'damage', tier: 3, families: ['swordsmanship'], cost: 75, dmg: 135, range: 1,
+          type: 'damage', tier: 3, families: ['maincharacter'], cost: 75, dmg: 135, range: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE.' },
     ],
@@ -6837,7 +6801,7 @@ const RACE_ABILITIES = {
           desc: 'Restores a BIG amount of HP to a Single Ally and cleanses 2 debuffs.' },
         /* Demoted from capstone 2026-08-12 (Bad Trip is the capstone now) —
            single-stat per §2.1, the heal+cleanse stays its identity. */
-        { id: 'raceAyahuascaRetreat', tier: 3, spellType: 'anomaly', element: 'nature', name: 'Ayahuasca Retreat',
+        { id: 'raceAyahuascaRetreat', tier: 3, families: ['psychadelic'], spellType: 'anomaly', element: 'nature', name: 'Ayahuasca Retreat',
           type: 'buff', cost: 35, apCost: 2, range: 0,
           kind: 'buff',
           selfHealPct: 0.50, cleanse: 99,
@@ -6940,7 +6904,7 @@ const RACE_ABILITIES = {
           groundsFlyers: true,
           statusEffects: [{ id: 'tethered', duration: 2 }],
           desc: 'Rope an enemy and yank them 2 tiles toward you — then keep the rope on. For 2 rounds they are Roped: they cannot move on their own and are dragged behind you wherever you go, taking 20 damage per tile. Hauls flyers down to the dirt where they belong.' },
-        { id: 'raceQuickDraw', tier: 2, families: ['huntingskills'], spellType: 'human', element: 'metal', name: 'Long Rifle',
+        { id: 'raceQuickDraw', tier: 2, families: ['marksmanship'], spellType: 'human', element: 'metal', name: 'Long Rifle',
           type: 'damage', cost: 50, dmg: 110, range: 5,
           kind: 'damage', damageType: 'physical',
           projectileOverride: 'proj-bullet',
@@ -7062,7 +7026,7 @@ const RACE_ABILITIES = {
           afterShot: { dmg: 100, range: 3 },
           projectileOverride: 'proj-bullet',
           desc: 'Roll up. Dash up to 3 tiles — anyone on the line is shoved aside — then fire a MEDIUM physical shot at the weakest enemy within 3 tiles of where you stop.' },
-        { id: 'raceHitALick', tier: 1, families: ['streetsmarts'], spellType: 'human', element: 'metal', name: 'Stick-Up',
+        { id: 'raceHitALick', tier: 1, families: ['thievery'], spellType: 'human', element: 'metal', name: 'Stick-Up',
           type: 'damage', cost: 25, dmg: 60, range: 2, apCost: 1,
           kind: 'steal', damageType: 'physical',
           stealKeys: 1, stealItems: 1,
@@ -7084,6 +7048,11 @@ const RACE_ABILITIES = {
           kind: 'warCry', auraRadius: 3,
           teamStatusEffects: [{ id: 'extendedClips', duration: 3 }],
           desc: 'Everybody reload. Allies within 3 tiles pack Extended Clips for 3 rounds: +1 basic-attack range and +1 ATK stage.' },
+        { id: 'raceEmptyTheClip', name: 'Empty the Clip', tier: 4, families: ['streetsmarts'], cost: 100, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'line', damageType: 'physical', dmg: 160,
+          range: 4, lineWidth: 3, projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'discord', mult: 1.5 },
+          desc: 'Hold the trigger down until it clicks. HEAVY physical damage to everything on a three-wide street in front of you — anyone already Discorded gets the rest of the belt.' },
+
     ],
     /* THE 2026-09-21 BATCH — three new races on the user's Meshy rigs.
        POLICE OFFICER (Gunslinger, ranged; Disaster City's law): Nightstick →
@@ -7138,7 +7107,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
           desc: 'A thousand of them at once. Deals MEDIUM magic damage to every enemy in a 3×3 within 3 tiles and leaves them Wet for 2 rounds.' },
-        _mkBlink('short', { id: 'raceJellyDrift', tier: 2, families: ['deepsea'], spellType: 'anomaly', element: 'water', name: 'Ocean Current',
+        _mkBlink('short', { id: 'raceJellyDrift', tier: 2, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Ocean Current',
           desc: 'Go where the current goes. Drift to any tile within 3 — the bell folds, the water carries it, it opens again.' }),
         { id: 'raceJellyNet', spellType: 'anomaly', element: 'water', name: 'Nematocyst Net',
           type: 'damage', cost: 40, dmg: 125, range: 3, apCost: 1, tier: 3,
@@ -7162,7 +7131,7 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'charm', duration: 2 }],
           desc: 'Drink. A Single Enemy within 3 tiles is Charmed for 2 rounds — they will not raise a hand to the family.' },
-        { id: 'raceCultTithe', tier: 1, families: ['biblestudy'], spellType: 'unholy', element: 'shadow', name: 'Tithe',
+        { id: 'raceCultTithe', tier: 1, families: ['cult'], spellType: 'unholy', element: 'shadow', name: 'Tithe',
           type: 'damage', cost: 25, dmg: 50, range: 2, apCost: 1,
           kind: 'steal', damageType: 'magic',
           stealKeys: 0, stealItems: 1,
@@ -7214,7 +7183,15 @@ const RACE_ABILITIES = {
        rungs (RACE_TREE) are picked from them. */
     'astronaut': [],
     'krampus': [],
-    'rabbit': [],
+    'rabbit': [
+        { id: 'raceSprint', name: 'Sprint', tier: 1, families: ['athleticism'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'wind', type: 'utility', kind: 'dash', damageType: 'physical', dmg: 0, range: 3,
+          desc: 'Go. Runs up to 3 tiles in a straight line.' },
+
+        { id: 'raceVault', name: 'Vault', tier: 3, families: ['athleticism'], cost: 75, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 125, range: 3, dmgPerLevel: 15,
+          desc: 'Over, not through. Leaps over walls and bodies onto a Single Enemy within 3 tiles for MEDIUM physical damage.' },
+],
     'luchador': [],
     'firefighter': [],
     'goblin': [],
@@ -7222,9 +7199,23 @@ const RACE_ABILITIES = {
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
     'clown': [],
-    'bunny girl': [],
+    'bunny girl': [
+        { id: 'raceDeadMansHand', name: 'Dead Man\'s Hand', tier: 1, families: ['gambling'], cost: 25, apCost: 1,
+          spellType: 'anomaly', element: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3,
+          hitDamages: [26, 26, 26, 26],
+          desc: 'Aces and eights, thrown edge-first. Four cards at a Single Enemy for WEAK magic damage each.' },
+
+        { id: 'raceDoubleDown', name: 'Double Down', tier: 3, families: ['gambling'], cost: 75, apCost: 1,
+          spellType: 'anomaly', type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, def: -1 },
+          desc: 'Everything on the table. Raises the caster\'s ATK by 2 stages and lowers their DEF by 1 stage.' },
+],
     'sharkman': [],
-    'crystal guardian': [],
+    'crystal guardian': [
+        { id: 'racePetrify', name: 'Petrify', tier: 4, families: ['livingstone'], cost: 100, apCost: 1, spellType: 'unholy',
+          element: 'earth', type: 'debuff', kind: 'debuff', range: 3, cooldownRounds: 2,
+          statusEffects: [{ id: 'stun', duration: 2 }], statStageBoost: { def: -1 },
+          desc: 'Grey climbs from the feet up. For two rounds they are a statue; when it lets go, the cracks stay. Stuns a Single Enemy for 2 rounds and lowers DEF by 1 stage. Cooldown: 2 rounds.' },
+],
     'jack o lantern': [],
     'sidekick': [],
     'mushroom girl': [],
@@ -7232,9 +7223,24 @@ const RACE_ABILITIES = {
     'sheriff': [],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
-    'starfish': [],
+    'starfish': [
+        { id: 'raceSoothe', name: 'Soothe', tier: 1, families: ['healingmagic'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'light', type: 'heal', kind: 'heal', range: 3, healAmt: 80,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'A hand on the brow. It does not fix you; it keeps you going. Heals an ally a MEDIUM amount and gives them Regen for 2 rounds.' },
+],
     'ringmaster': [],
-    'bee queen': [],
+    'bee queen': [
+        { id: 'raceRot', name: 'Rot', tier: 3, families: ['poison'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4,
+          statusEffects: [{ id: 'poison', duration: 2 }, { id: 'grievous', duration: 2 }],
+          desc: 'It does not heal. Deals MEDIUM magic damage to a Single Enemy; the wound Poisons and will not close — healing on them is halved.' },
+
+        { id: 'raceBrood', name: 'Brood', tier: 2, families: ['insectoid'], cost: 50, apCost: 1, spellType: 'alien',
+          element: 'poison', type: 'utility', kind: 'summonUnit', range: 1, maxActivePerCaster: 1,
+          summonDef: { key: 'drone', name: 'Drone', move: 4, dmg: 55, hits: 3 },
+          desc: 'One is never found alone. Hatches a Drone beside the caster: at the end of every round it flies 4 tiles at the nearest enemy and stings for 55. Three hits to bring it down.' },
+],
     'professor': [],
     'deep sea fish': [],
     /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
@@ -7346,7 +7352,7 @@ const RACE_ABILITIES = {
           kind: 'warCry', auraRadius: 99,
           randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
           desc: 'Empowers All Allies nearby. Raises a random stat of every ally by 1 stage. Cooldown: 3 rounds.' },
-        { id: 'raceStarCrossed', tier: 1, families: ['astrology'], spellType: 'anomaly', element: 'arcane', name: 'Star Crossed',
+        { id: 'raceStarCrossed', tier: 1, families: ['fortunetelling'], spellType: 'anomaly', element: 'arcane', name: 'Star Crossed',
           type: 'debuff', cost: 25, dmg: 70, range: 4, apCost: 1,
           kind: 'debuff', damageType: 'magic', zodiacReading: true,
           desc: 'Read the target\'s birth chart and turn their own stars against them. Magic damage plus an affliction by their zodiac: Fire signs burn, Earth signs are rooted and exposed, Air signs are silenced, Water signs grow drowsy. +50% damage if their sign rules the sky.' },
@@ -7383,8 +7389,12 @@ const RACE_ABILITIES = {
           desc: 'The sky fills with saucers. A UFO swarm strafes the zone, dealing HEAVY magic damage to All Enemies in a wide AOE. No one would have believed it.' },
         SHARED_SHRINK_RAY,
         SHARED_LOW_GRAVITY,
-        SHARED_SCORCHED_EARTH,
-        SHARED_SUMMON_SANDSTORM
+        SHARED_SUMMON_SANDSTORM,
+        { id: 'raceDisintegrator', name: 'Disintegrator', tier: 4, families: ['alientechnology'], cost: 100, apCost: 1,
+          spellType: 'alien', element: 'lightning', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 180,
+          range: 4, bonusVsStatus: { status: ['stun', 'minimize'], mult: 1.5 },
+          desc: 'There is no body to recover. Deals HEAVY physical damage to a Single Enemy. Deals bonus damage to Stunned or Minimized targets.' },
+
     ],
     'annunaki': [
         { id: 'raceStarDecree', spellType: 'alien', element: 'light', name: 'Star Decree',
@@ -7484,12 +7494,10 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, range: 1,
           kind: 'multiHit', damageType: 'physical', hitDamages: [45, 45, 45],
           desc: 'Deals MEDIUM physical damage to a Single Enemy across 3 hits.' },
-        { id: 'raceChitinArmor', tier: 2, families: ['insectoid'], spellType: 'alien', name: 'Chitin Armor',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff',
-          statStageBoost: { def: 1 },
-          desc: 'Empowers the caster. Raises DEF by 1 stage.' },
-        _mkCharge({ id: 'raceAmbushLunge', tier: 3, families: ['beastabilities'], spellType: 'alien', name: 'Ambush Lunge', dmg: 125, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
+        { id: 'raceChitinArmor', tier: 2, icon: '🪲', hooks: { statBonus: { def: 8 }, immuneStatus: ['stagger'] }, families: ['insectoid'], name: 'Chitin Armor',
+          type: 'utility', cost: 0, apCost: 0, range: 0,
+          kind: 'passive',
+          desc: 'A shell that does not flinch: +8 DEF, and Stagger never takes hold.' },
         { id: 'raceFractalNeedle', spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
           type: 'damage', tier: 4, families: ['fractal'], cost: 45, dmg: 170, range: 4,
           kind: 'splitBeam', damageType: 'magic',
@@ -7567,7 +7575,7 @@ const RACE_ABILITIES = {
           dashDamage: 56,
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Enemies along the path also take damage. Applies Stun.' },
-        { id: 'raceStoneThrow', tier: 1, families: ['stoneage'], element: 'earth', spellType: 'alien', name: 'Stone Throw',
+        { id: 'raceStoneThrow', tier: 1, families: ['titan'], element: 'earth', spellType: 'alien', name: 'Stone Throw',
           type: 'damage', cost: 25, dmg: 100, range: 5,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -7588,7 +7596,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'jammed', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
-        { id: 'raceHydraulicPunch', tier: 1, families: ['robot'], spellType: 'tech', name: 'Hydraulic Punch',
+        { id: 'raceHydraulicPunch', tier: 1, families: ['machinery'], spellType: 'tech', name: 'Hydraulic Punch',
           type: 'damage', cost: 25, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical',
           pushDistance: 2,
@@ -7640,7 +7648,6 @@ const RACE_ABILITIES = {
           kind: 'pull',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Report for duty. Deals WEAK magic damage to a Single Enemy, drags them 3 tiles toward the caster and Staggers them.' },
-        SHARED_SCORCHED_EARTH,
         SHARED_SUMMON_BLOOD_RAIN
     ],
     'demon princess': [
@@ -7707,7 +7714,6 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Dives from the sky onto the target, dealing MEDIUM magic damage. Applies Burn. Deals bonus damage to targets with Burn. Caster must be flying.' },
         SHARED_SUMMON_BLOOD_RAIN,
-        SHARED_SCORCHED_EARTH,
         SHARED_WING_ATTACK
     ],
     'goatman': [
@@ -7719,10 +7725,7 @@ const RACE_ABILITIES = {
           kind: 'buff', selfDamagePct: 0.10,
           statStageBoost: { atk: 1 },
           desc: 'Empowers the caster. Raises ATK by 1 stage. Costs a portion of your HP.' },
-        { id: 'raceCliffCharge', tier: 2, families: ['horns'], spellType: 'unholy', name: 'Cliff Charge',
-          type: 'damage', cost: 25, dmg: 100, range: 2, apCost: 1,
-          kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
-          desc: 'Leaps to a Single Enemy, dealing MEDIUM physical damage.' },
+
         { id: 'raceBaphometsRite', spellType: 'unholy', element: 'fire', name: 'Baphomet\'s Rite',
           type: 'damage', cost: 45, dmg: 160, range: 4, apCost: 1, tier: 4,
           families: ['blackmagic'],
@@ -7744,12 +7747,7 @@ const RACE_ABILITIES = {
           desc: 'Dashes in and deals MEDIUM physical damage to a Single Enemy.' }),
         /* Demoted from capstone 2026-08-12 (Demonic Claw is the capstone now)
            — single-stat per §2.1. */
-        { id: 'raceInnerDemon', tier: 1, families: ['demonicabilities'], spellType: 'unholy', element: 'shadow', name: 'Inner Demon',
-          type: 'buff', cost: 25, apCost: 1, range: 0, cooldownRounds: 2,
-          kind: 'buff', selfDamagePct: 0.20,
-          statStageBoost: { atk: 1 },
-          desc: 'Empowers the caster. Raises ATK by 1 stage. Costs a portion of your HP. Cooldown: 2 rounds.' },
-        SHARED_SCORCHED_EARTH,
+
         SHARED_SMOKE_SCREEN
     ],
     'mermaid': [
@@ -7989,7 +7987,6 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE). Leaves lava tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' },
-        SHARED_SCORCHED_EARTH,
         SHARED_NUKE
     ],
     'chosen one': [
@@ -8009,6 +8006,11 @@ const RACE_ABILITIES = {
           selfHealPct: 0.30, cleanse: 99,
           statStageBoost: { atk: 2, spd: 2 },
           desc: 'The prophecy stops being about you and starts being you. Cleanses everything, restores 30% HP, and raises ATK and SPD by 2 stages.' },
+        { id: 'raceRollCredits', name: 'Roll Credits', tier: 4, families: ['maincharacter'], cost: 100, apCost: 1,
+          spellType: 'human', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 180, range: 2,
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'This is the part where it ends. Deals HEAVY physical damage to a Single Enemy. Deals bonus damage to Staggered targets.' },
+
     ],
     'politician': [
         { id: 'raceExecutiveOrder', tier: 3, noDamage: true, aoeRadius: 1, cooldownRounds: 2, families: ['politics'], spellType: 'human', name: 'Executive Order',
@@ -8072,7 +8074,7 @@ const RACE_ABILITIES = {
         _mkCharge({ id: 'raceApexCharge', tier: 3, dashDamage: 50, families: ['apexpredator'], spellType: 'anomaly', name: 'Stampede',
           kind: 'dash', cost: 75, apCost: 2, statusEffects: _STAGGER_1,
           desc: 'Stampedes through the battlefield and ends up behind the target. Deals MEDIUM physical damage to the target and tramples every enemy on the path. Applies Stagger.', dmg: 130 }),
-        { id: 'raceDinoTailWhip', tier: 1, families: ['beastabilities'], spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
+        { id: 'raceDinoTailWhip', tier: 1, families: ['apexpredator'], spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
           type: 'damage', cost: 20, dmg: 100, range: 1, apCost: 1,
           kind: 'damage', damageType: 'physical', pushDistance: 2,
           desc: 'A spinning tail strike. Deals MEDIUM physical damage to a Single Enemy. Knocks the target back 2 tiles.' },
@@ -8081,12 +8083,7 @@ const RACE_ABILITIES = {
           kind: 'warCry', aoeRadius: 2, auraRadius: 2,
           statStageBoost: { atk: 1 },
           desc: 'Empowers All Allies nearby. Raises ATK by 1 stage.' },
-        { id: 'racePrimalRoar', tier: 1, families: ['apexpredator'], spellType: 'anomaly', name: 'Primal Roar',
-          type: 'debuff', cost: 20, range: 0, apCost: 1,
-          kind: 'aoe', aoeRadius: 1, aoeOriginSelf: true,
-          damageType: 'physical', dmg: 0,
-          statusEffects: [{ id: 'discord', duration: 2 }],
-          desc: 'Ear-splitting roar. All enemies in 3×3 around self have their ATK lowered by 2 stages and DEF by 1 stage for 2 turns.' },
+
         /* Dinosaur capstone since the 2026-08-12 capstone pass (was Primal Roar). */
         { id: 'raceJurassicJaw', spellType: 'anomaly', name: 'Jurassic Jaw',
           type: 'damage', tier: 4, families: ['apexpredator'], cost: 55, dmg: 160, range: 1,
@@ -8123,7 +8120,6 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Grabs the target, carries it skyward and hurls it up to 3 tiles. The grab itself is light; the fall and any crash into another unit do the damage. Deals bonus damage to Burning targets.' },
-        SHARED_SCORCHED_EARTH,
         SHARED_FISSURE,
     ],
     'ghoul': [
@@ -8163,22 +8159,21 @@ const RACE_ABILITIES = {
         SHARED_POISON_SWAMP,
     ],
     'gnome': [
-        { id: 'raceClockworkTurret', tier: 3, families: ['engineering'], spellType: 'anomaly', name: 'Clockwork Turret',
-          type: 'utility', cost: 30, range: 2, apCost: 1,
-          kind: 'deployTurret', turretDmg: 65, turretRange: 3, turretHp: 80,
-          maxActivePerCaster: 1,
-          desc: 'Deploy a clockwork turret. Auto-fires at nearest enemy each round. 65 damage, 3 range.' },
 
-        { id: 'raceTinkersContraption', tier: 2, families: ['trapmaking'], spellType: 'anomaly', name: 'Tinker\'s Contraption',
-          type: 'buff', cost: 20, apCost: 1, range: 3,
-          kind: 'aoeShield', aoeRadius: 0, shieldHp: 100,
-          desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
+
+
         { id: 'raceOvertinker', spellType: 'anomaly', element: 'metal', name: 'Overtinker',
           type: 'buff', cost: 45, apCost: 1, range: 0, tier: 4,
           cooldownRounds: 2,
           families: ['engineering'],
           kind: 'aoeShield', aoeRadius: 2, shieldHp: 160, aoeOriginSelf: true,
           desc: 'One more adjustment. One MORE. Grants a heavy damage-absorbing shield to All Allies (and contraptions) around the caster.' },
+        { id: 'raceScrapMine', name: 'Scrap Mine', tier: 2, families: ['trapmaking'], cost: 50, apCost: 1, spellType: 'tech',
+          element: 'fire', type: 'utility', kind: 'deployObject', damageType: 'physical', range: 3, objectHp: 20,
+          blastRadius: 1, blastDmg: 100, detonateOnStep: true, maxActivePerCaster: 2,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a MEDIUM blast in a 3×3 that Staggers. Two per caster.' },
+
     ],
     'kaiju': [
         { id: 'raceCataclysmStomp', tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
@@ -8199,7 +8194,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, ignoresLineOfSight: true,
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Fires through cover.' },
-        { id: 'raceSeismicLeap', tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Seismic Leap',
+        { id: 'raceSeismicLeap', tier: 2, families: ['apeintelligence'], spellType: 'unholy', name: 'Seismic Leap',
           type: 'damage', cost: 30, dmg: 100, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 30,
           aoeRadius: 1, aoeDmgPct: 0.40,
@@ -8208,14 +8203,18 @@ const RACE_ABILITIES = {
           desc: 'Leaps to a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' },
         SHARED_FISSURE
         /* (SHARED_NUKE removed 2026-07-23 — Thermal Regen made him the
-           anti-fire monster, not the nuke platform.) */
+           anti-fire monster, not the nuke platform.) */,
+        { id: 'raceCarToss', name: 'Car Toss', tier: 1, families: ['kaiju'], cost: 25, apCost: 1, spellType: 'unholy',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 4, ignoresLineOfSight: true,
+          desc: 'Whatever was parked there. Deals MEDIUM physical damage to a Single Enemy, over any wall.' },
+
     ],
     'kraken': [
         { id: 'raceTentacleLash', tier: 1, element: 'water', families: ['tentacleappendages'], spellType: 'anomaly', name: 'Tentacle Lash',
           type: 'damage', cost: 25, dmg: 80, range: 3,
           kind: 'pull', damageType: 'magic', pullDistance: 2, lineOfSight: true,
           desc: 'An arm from below the surface. Deals WEAK water damage to a Single Enemy and drags them 2 tiles toward you.' },
-        { id: 'raceInkCloud', tier: 2, families: ['deepsea'], spellType: 'anomaly', name: 'Ink Cloud',
+        { id: 'raceInkCloud', tier: 2, families: ['tentacleappendages'], spellType: 'anomaly', name: 'Ink Cloud',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'discord', duration: 2 }],
@@ -8289,11 +8288,7 @@ const RACE_ABILITIES = {
           desc: 'A frostbitten haymaker on a Single Enemy — MEDIUM physical damage. Deals bonus damage to Frozen targets.' },
         /* §6.5 Ice Shard (Phase 5 wave A, 2026-09-08): the single-target spell
            his new M.ATK exists for. Twins Frozen Punch at r1. */
-        { id: 'raceIceShard', tier: 1, spellType: 'anomaly', element: 'ice', name: 'Ice Shard',
-          type: 'damage', cost: 20, dmg: 100, range: 3, apCost: 1,
-          kind: 'damage', damageType: 'magic',
-          statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Hurls a jagged shard of ice at a Single Enemy — MEDIUM magic damage. Applies Slow.' },
+
         SHARED_SUMMON_BLIZZARD
     ],
 
@@ -8308,7 +8303,7 @@ const RACE_ABILITIES = {
           kind: 'aoePull', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'The crowd rushes the stage, and the stage is you. Deals MEDIUM magic damage to every enemy within 2 tiles, drags them 1 tile toward the caster and Staggers them.' },
-        _mkBlink('short', { id: 'raceGravityBoots', tier: 2, families: ['astronautcamp'], spellType: 'tech', name: 'Gravity Boots',
+        _mkBlink('short', { id: 'raceGravityBoots', tier: 2, families: ['alientechnology'], spellType: 'tech', name: 'Gravity Boots',
           desc: 'Activate anti-gravity boots to reposition up to 3 tiles. Far out.' }),
         { id: 'racePlasmaWhip', tier: 3, lineWidth: 1, families: ['alientechnology'], element: 'fire', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 125, range: 3,
@@ -8407,11 +8402,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 20, range: 0, apCost: 1,
           kind: 'transform', formA: 'carForm', formB: 'mechaForm',
           desc: 'Stand up into the combat platform: −3 SPD, +1 DEF and +2 M DEF stages, +2 RNG. Or fold back down.' },
-        { id: 'raceRoboPunch', tier: 3, families: ['robot'], spellType: 'tech', name: 'Robo Punch',
-          type: 'damage', cost: 25, dmg: 135, range: 1,
-          kind: 'damage', damageType: 'physical',
-          bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to Staggered targets.' },
+
         /* 2026-08-12: renamed from Missile Barrage (id kept for VFX/saves). */
         { id: 'raceMissileBarrage', spellType: 'tech', name: 'Vehicular Manslaughter',
           type: 'damage', tier: 4, dashDamage: 160, families: ['drivingskills'], cost: 50, dmg: 160, range: 4, apCost: 1,
@@ -8449,14 +8440,11 @@ const RACE_ABILITIES = {
     ],
 
     'juggernaut': [
-        _mkCharge({ id: 'raceUnstoppableCharge', spellType: 'unholy', name: 'Unstoppable Charge',
-          kind: 'dash', tier: 4, families: ['athleticism'], dmg: 180, range: 4, statusEffects: _STAGGER_1,
-          desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Applies Stagger.' }),
         { id: 'raceBrutalSlam', tier: 3, statusEffects: [{ id: 'grievous', duration: 2 }], families: ['dirtyfighting'], spellType: 'human', name: 'Brutal Slam',
           type: 'damage', cost: 30, dmg: 110, range: 0, apCost: 1,
           kind: 'barrage', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           desc: 'Deals MEDIUM physical damage to All Enemies around the caster and leaves them Grievously Wounded: healing is halved.' },
-        { id: 'raceThickHide', tier: 2, families: ['athleticism'], spellType: 'human', name: 'Thick Hide',
+        { id: 'raceThickHide', tier: 2, families: ['titan'], spellType: 'human', name: 'Thick Hide',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { def: 1 },
@@ -8561,7 +8549,7 @@ const RACE_ABILITIES = {
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.35,
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Rooted. Heals the caster for part of the damage dealt.' },
-        { id: 'raceBoneBarrage', tier: 3, families: ['bonedensity'], spellType: 'unholy', name: 'Bone Barrage',
+        { id: 'raceBoneBarrage', tier: 3, families: ['necromancy'], spellType: 'unholy', name: 'Bone Barrage',
           type: 'damage', cost: 25, dmg: 125, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statStageBoost: { def: -1 },
@@ -8650,6 +8638,11 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           projectileOverride: 'proj-football',
           desc: 'Deals WEAK physical damage to All Enemies in an AOE.' },
+        { id: 'raceLongBomb', name: 'Long Bomb', tier: 3, families: ['football'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 135, range: 6,
+          ignoresLineOfSight: true,
+          desc: 'Let it fly. Deals MEDIUM physical damage to a Single Enemy up to 6 tiles away; the ball arcs over cover.' },
+
 
     ],
 
@@ -8799,11 +8792,14 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'A thread of void-silk. Deals WEAK arcane damage to a Single Enemy and Roots them for a round.' },
-        { id: 'raceSymbioteArmor', tier: 2, families: ['symbiosis'], spellType: 'unholy', name: 'Symbiote Armor',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff',
-          statusEffects: [{ id: 'regen', duration: 2 }],
-          desc: 'Empowers the caster. Applies Regen.' },
+        { id: 'raceSymbioteArmor', tier: 2, icon: '🧬', hooks: { healOnceBelowPct: { pct: 40, healPct: 30 } }, families: ['symbiosis'], name: 'Symbiote Armor',
+          type: 'utility', cost: 0, apCost: 0, range: 0,
+          kind: 'passive',
+          desc: 'Once per life, when the host falls under 40% HP the suit knits it back for 30% of max HP.' },
+        { id: 'raceWebSwing', name: 'Web Swing', tier: 2, families: ['symbiosis'], cost: 50, apCost: 1, spellType: 'unholy',
+          type: 'utility', kind: 'teleport', range: 4, teleportDistance: 4,
+          desc: 'The line goes out, the host goes after it. Swing to any free tile within 4.' },
+
 
     ],
 
@@ -8851,6 +8847,10 @@ const RACE_ABILITIES = {
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 90,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
         SHARED_WING_ATTACK,
+        { id: 'raceTimeRewindHeal', name: 'Time Rewind', tier: 3, families: ['temporal'], cost: 75, apCost: 1,
+          spellType: 'anomaly', type: 'heal', kind: 'heal', range: 3, healPct: 0.4, cleanse: 99,
+          desc: 'Restore them to the moment before. Heals an ally for 40% of their max HP and removes every debuff.' },
+
     ]
 };
 
@@ -9013,16 +9013,16 @@ const TRAINING_PASSIVES = [
     { id: 'passiveGrace', tier: 1, name: 'Grace', icon: '🕊️',
       hooks: { healRangeBonus: 2, healBonus: 24 },
       desc: 'Heal and revive spells gain +2 range and +24 healing power.' },
-    { id: 'passiveFieldOperative', tier: 1, name: 'Field Operative', icon: '🕵️',
+    { id: 'passiveFieldOperative', tier: 1, families: ['computerhacking'], name: 'Field Operative', icon: '🕵️',
       hooks: { scannerCap: 2, inspectBonus: 1 },
       desc: 'Can carry up to 2 scanners and inspects 1 tile farther.' },
     { id: 'passiveThirdEye', tier: 1, name: 'Third Eye', icon: '👁️',
       hooks: { debuffTurnsBonus: 1, teleportMpDiscount: 1 },
       desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
-    { id: 'passiveGreenThumb', tier: 1, name: 'Green Thumb', icon: '🌱',
+    { id: 'passiveGreenThumb', tier: 1, families: ['agriculture'], name: 'Green Thumb', icon: '🌱',
       hooks: { lifeSapMult: 1.2, plantedTrees: true },
       desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Life Sap heals 20% more. Enemies can chop or burn the forest to shut it down.' },
-    { id: 'passiveTinker', tier: 1, name: 'Tinker', icon: '🔧',
+    { id: 'passiveTinker', tier: 1, families: ['engineering'], name: 'Tinker', icon: '🔧',
       hooks: { turretRangeBonus: 1, repairMult: 1.2 },
       desc: 'Turrets have +1 range and Repair heals 20% more.' },
     { id: 'passiveCrescendo', tier: 1, name: 'Crescendo', icon: '🎵',
@@ -9112,7 +9112,6 @@ for (const [race, ids] of [
        clergy work, and a sasquatch hurling trees needs no explanation.
        Borrowed by id, so the defs keep their job identity (no _isRaceAbility). */
     ['mothman',           ['thunderstorm']],
-    ['angel',             ['radiantBolt']],
     ['priest',            ['protect1']],
     ['bigfoot',           ['trunkThrow']],
 ]) {
@@ -9475,6 +9474,7 @@ function computeSpellManaCost(s){
     }
     let changed = 0, maxCost = 0, maxName = '';
     for (const spell of all){
+        if (spell.kind === 'passive') { spell.cost = 0; continue; }   // THE SPELL AUDIT Batch B: a family passive costs SP, never MP
         const newCost = computeSpellManaCost(spell);
         if (newCost !== spell.cost) changed++;
         spell.cost = newCost;
@@ -17559,134 +17559,134 @@ const RACE_TREE = {
        authored final-4s — no race falls back to "first 4 abilities" anymore.
        Phase 2 twins (2026-09-07) are the CHAMP_REWORK_PLAN §6 pairs whose
        two spells both exist today; a pair with a NEW spell lands with it. */
-    'homosapien':    [['raceElbowGrease', 'improvise'], ['raceAdrenalineRush', 'jackOfAll'], 'raceUnderdogSpirit', 'raceIndomitableWill'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'homosapien':    ['raceElbowGrease', ['raceAdrenalineRush', 'jackOfAll'], 'raceUnderdogSpirit', 'raceIndomitableWill'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
-    'cowboy':        ['raceLasso', ['raceFanTheHammer', 'raceDynamite'], ['raceQuickDraw', 'raceWhistle'], 'raceHighNoon'],   // §6.15 (wave C)
+    'cowboy':        ['raceLasso', ['raceFanTheHammer', 'raceDynamite'], 'raceWhistle', 'raceHighNoon'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'marksman':      ['raceSuppressiveFire', 'raceIncendiaryRounds', 'raceRangefinder', 'raceFireForEffect'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceAbsoluteZero'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceColossalCrush'],
-    'fairy':         [['raceGlitterburst', 'raceSparkle'], ['racePixieDust', 'raceFairyDust'], ['raceTrickRoom', 'raceGlitterBomb'], 'raceFaeRing'],  // §6.21 (wave C); Fae Ring is a ring-shaped damage capstone since 2026-08-12
-    'bigfoot':       [['raceBigKick', 'raceDreadAura'], ['raceRealityShift', 'raceTreelineRetreat'], 'trunkThrow', 'raceSasquatchSmash'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceGiantSmash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'fairy':         [['raceGlitterburst', 'raceSparkle'], 'raceFairyDust', ['raceTrickRoom', 'raceGlitterBomb'], 'raceFaeRing'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'bigfoot':       [['raceBigKick', 'raceDreadAura'], ['raceCryptidVanish', 'raceTreelineRetreat'], 'raceEntanglingRoots', 'raceSasquatchSmash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
-    'orb of light':  ['raceAuroraRay', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', 'raceBoneBarrage', 'raceMarrowstorm'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'orb of light':  ['raceAuroraRay', 'racePleiadianShield', 'raceLuminousShield', 'sharedBlackHole'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', 'raceBoneLance', 'raceMarrowstorm'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'zombie':        ['raceInfectiousBite', ['raceZombieRush', 'raceCannibalize'], ['raceOutbreak', 'raceInfect'], 'raceShamblingHorde'],   // §6.18 (wave B)
-    'dreameater':    ['raceDreamSiphon', 'raceCorpseCrawl', 'raceNightmarePulse', 'raceEternalSlumber'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'goatman':       ['raceGoreCharge', 'raceCliffCharge', 'raceBloodRitual', 'raceBaphometsRite'],
-    'antihero':      ['raceDarkJustice', 'raceInvulnerable', 'raceCosmicSlam', 'raceNoMercy'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'chosen one':    ['raceDarkFeather', 'racePlotArmor', 'raceProphecyFulfilled', 'raceMindCrush'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'gnome':         ['sharedFissure', 'raceTinkersContraption', 'raceClockworkTurret', 'raceOvertinker'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'dreameater':    ['raceDreamSiphon', 'raceSleepParalysis', 'raceNightmarePulse', 'raceEternalSlumber'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'goatman':       ['raceGoreCharge', 'raceLabyrinthRoar', 'lifeDrain', 'raceBullRush'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'antihero':      ['raceDarkJustice', 'raceInvulnerable', 'raceShockwaveClap', 'raceNoMercy'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'chosen one':    ['raceDarkFeather', 'racePlotArmor', 'raceProphecyFulfilled', 'raceRollCredits'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'gnome':         ['raceTeslaTrap', 'raceScrapMine', 'fiveGTower', 'raceOvertinker'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
-    'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
-    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceAyahuascaRetreat', ['raceBadTrip', 'sharedEgoDeath']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceRollCredits'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', ['raceAyahuascaRetreat', 'raceBadTrip'], 'sharedEgoDeath'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'mad scientist': ['raceTeslaTrap', ['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum'], 'racePlandemic'],   // §6.26 (wave C)
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
-    'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
-    'priest':        ['raceDivineLight', 'protect1', 'raceSmite', 'exorcism'],
-    'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceExtendedClips'],   // §6.19 (Phase 6)
-    'nun':           [['racePurify', 'raceSmite'], 'raceBlessing', 'racePrayer', 'raceHallelujah'],           // §6.20 (Phase 6)
-    'door agent':    [['raceSwingDoor', 'raceDoorDash'], ['raceBreakingEntering', 'raceAirMail'], 'raceUnderdogSpirit', 'raceDropIn'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'mindShatter'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'priest':        ['heal1', 'protect1', 'raceSmite', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceEmptyTheClip'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'nun':           [['raceAbsolution', 'raceBlessing'], ['racePurify', 'raceCultSermon'], 'racePrayer', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'door agent':    ['raceSwingDoor', ['raceBreakingEntering', 'raceAirMail', 'raceDoorDash'], 'raceUnderdogSpirit', 'raceDropIn'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
-    'cult leader':   ['raceJudgmentBeam', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'cult leader':   ['raceCultTithe', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
-    'starfish': ['heal1', 'raceTidalBlessing', 'raceTemporalTide', 'revive1'],   // 2026-09-30
+    'starfish': ['raceSoothe', ['heal1', 'raceTidalBlessing'], 'raceTemporalTide', 'revive1'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'ringmaster': ['raceLasso', 'encore', 'raceSkinSwap', 'racePopStadiumShow'],   // 2026-09-30
-    'bee queen': ['raceVenomFang', 'raceChitinArmor', 'raceSplash', 'raceSwarmSignal'],   // 2026-09-30
-    'professor': ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceAncientMagic'],   // 2026-09-30
-    'deep sea fish': ['raceAuroraRay', 'raceInkCloud', 'raceDepthCharge', 'raceTidalSlam'],   // 2026-09-30
+    'bee queen': ['raceCorrosiveSplash', 'raceBrood', 'raceRot', 'raceSwarmSignal'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'professor': ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceWeighTheHeart'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'deep sea fish': ['raceBite', 'raceDeepDive', 'raceDepthCharge', 'raceTidalSlam'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'clown': ['raceDarkJustice', 'raceFear', 'raceTrickRoom', 'raceNoMercy'],   // 2026-09-30
-    'bunny girl': ['racePopMicDrop', 'raceNimbleDodge', 'racePopSpotlight', 'raceMimicry'],   // 2026-09-30
-    'sharkman': ['raceBite', 'raceApexCharge', 'raceAmbushLunge', 'raceJurassicJaw'],   // 2026-09-30
-    'crystal guardian': ['racePrismMirror', 'raceStoneSkin', 'raceCalcify', 'rampart'],   // 2026-09-30
+    'bunny girl': ['raceDeadMansHand', 'raceNimbleDodge', 'raceDoubleDown', 'raceMimicry'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'sharkman': ['raceBite', 'raceApexCharge', 'raceFeralDive', 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'crystal guardian': ['racePrismMirror', 'raceStoneSkin', 'raceCalcify', 'racePetrify'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'jack o lantern': ['fire1', 'raceColdSpot', 'raceCurseOfMisfortune', 'meteor'],   // 2026-09-30
-    'sidekick': ['raceHeroicLeap', 'jackOfAll', 'sentaiTeamStrike', 'raceIndomitableWill'],   // 2026-09-30
-    'mushroom girl': ['raceHerbalRemedy', 'racePixieDust', 'raceSplash', 'sharedEgoDeath'],   // 2026-09-30
-    'tree person': ['raceTremorStomp', 'raceEarthenGrasp', 'trunkThrow', 'raceQuake'],   // 2026-09-30
+    'sidekick': ['raceHeroicLeap', 'encore', 'sentaiTeamStrike', 'raceIndomitableWill'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'mushroom girl': ['raceHerbalRemedy', 'raceFairyDust', 'raceRot', 'sharedEgoDeath'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'tree person': ['raceTremorStomp', ['raceEarthenGrasp', 'trunkThrow'], 'raceEntanglingRoots', 'raceQuake'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'sheriff': ['doubleShot', 'raceFanTheHammer', 'racePoliceCuffs', 'raceHighNoon'],   // 2026-09-30
-    'astronaut': ['raceGravityWell', 'raceGravityBoots', 'sharedGravityCrush', 'railgun'],   // 2026-09-30
-    'krampus': ['raceLumpOfCoal', 'raceCliffCharge', 'raceNaughtyList', 'raceBaphometsRite'],   // 2026-09-30
-    'rabbit': ['raceSparkle', 'raceNimbleDodge', 'raceTrickRoom', 'raceTimeRewind'],   // 2026-09-30
+    'astronaut': ['raceGravityWell', 'racePhaseWalk', 'sharedGravityCrush', 'railgun'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'krampus': [['raceLumpOfCoal', 'raceFrozenPunch'], 'raceLabyrinthRoar', 'raceWhiteChristmas', ['raceBaphometsRite', 'raceAvalancheStrike']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'rabbit': ['raceSprint', 'raceNimbleDodge', 'raceVault', ['raceTimeRewind', 'rampage']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'luchador': ['raceBodyCheck', 'racePopStageDive', 'raceBrutalSlam', 'rampage'],   // 2026-09-30
-    'firefighter': ['raceRiptide', 'sharedTidalSurge', 'raceUnderdogSpirit', 'raceTsunami'],   // 2026-09-30
+    'firefighter': ['raceRiptide', 'sharedTidalSurge', 'raceUnderdogSpirit', 'raceTidalSlam'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'goblin': ['raceInfectiousBite', 'raceStealFromRich', 'raceTrapdoor', 'raceNoMercy'],   // 2026-09-30
     'hippie': ['healingSeed', 'cleanse', 'raceAyahuascaRetreat', 'raceAwakening'],   // 2026-09-30
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
-    'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceWarOfTheWorlds'],   // 2026-09-27: Summon Sandstorm (Desert Acclimation) keeps a ring-II seat
+    'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
-    'grey':          ['raceProbe', 'raceImplant', 'raceAbductionBeam', 'raceCropCircle'],
-    'shadow entity': ['raceShadowBind', 'sharedSmokeScreen', 'racePhaseShift', 'voidRush'],
-    'reptilian':     ['sharedPoisonSwamp', 'raceShedSkin', 'sharedSmokeScreen', 'raceTruthBomb'],   // Phase 6: Tail Whip deleted → Flat Earth (Conspiracy Knowledge) is the capstone
+    'grey':          ['raceProbe', 'raceImplant', 'raceAbductionBeam', 'raceWarOfTheWorlds'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'shadow entity': ['raceShadowBind', 'raceFear', 'raceShadowStep', 'raceShadowRealm'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'reptilian':     ['sharedPoisonSwamp', 'raceShedSkin', 'sharedSmokeScreen', 'sneakSlash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'robot':         ['raceRocketFist', 'overclock', 'raceHydraulicCrush', 'raceChassisSlam'],
-    'android':       ['raceSyntheticBlade', 'raceSelfRepairProtocol', 'raceNeuralHack', 'empBurst'],
-    'angel':         ['radiantBolt', 'raceWingsOfMercy', 'raceSanctuary', 'raceDivineSmite'],
-    'seraphim':      ['raceRapture', 'raceAbsolution', 'raceSanctuary', 'raceMerkaba'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'android':       ['raceSyntheticBlade', 'raceSelfRepairProtocol', 'raceBlueScreen', 'empBurst'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'angel':         ['raceDivineLight', 'raceWingsOfMercy', 'raceSanctuary', 'raceDivineSmite'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'seraphim':      ['raceAbsolution', 'raceRapture', 'raceSanctuary', 'raceMerkaba'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'demon':         ['raceContract', ['raceInfernalHurl', 'raceSoulBind'], 'raceVoidContract', ['raceHellmouth', 'raceShadowRealm']],   // §6.8 (wave B)
-    'succubus':      ['raceSoulSuck', 'raceCharm', ['raceSleepParalysis', 'raceEnthrall'], 'raceDrainingEmbrace'],   // §6.29 (wave B)
-    'mech':          ['raceMortarSalvo', 'raceSiegeMode', 'raceEject', 'sharedNuke'],
+    'succubus':      ['raceSoulSuck', 'raceCharm', ['raceNightmarePulse', 'raceEnthrall'], 'raceDrainingEmbrace'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'mech':          ['raceMortarSalvo', 'raceSiegeMode', 'raceEject', 'raceFireForEffect'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'ghost':         ['raceHaunt', ['raceColdSpot', 'raceFear'], 'racePossession', 'raceBoo'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
     'skinwalker':    ['raceBorrowedClaw', 'raceShedSkin', 'raceSkinSwap', 'raceMimicry'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
-    'gargoyle':      [['raceWingGust', 'raceStonefall'], ['raceStoneform', 'raceGothicRampart'], 'raceCalcify', 'raceStoneDrop'],   // §6.17 — Perch Form retired; Stoneform twins Rampart
-    'djinn':         ['raceSacredGeometry', 'raceSpellsteal', 'raceWishGranted', 'raceAncientMagic'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'gargoyle':      [['raceWingGust', 'raceStonefall'], 'raceStoneform', 'raceCalcify', 'raceQuake'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'djinn':         ['raceSacredGeometry', ['raceSpellsteal', 'raceWishGranted'], 'racePolymorph', 'raceWeighTheHeart'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'anubis':        ['raceDustDevil', 'raceRigormortis', 'sharedSummonSandstorm', 'raceWeighTheHeart'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
-    'mantid':        ['raceMandibleStrike', 'raceChitinArmor', 'raceFractalStitch', 'raceFractalNeedle'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'mantid':        ['racePsychicBeam', 'racePsychicBarrier', 'raceFractalStitch', 'raceFractalNeedle'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'antperson':     ['raceFormicAcid', 'sharedPoisonSwamp', 'raceTunnelNetwork', 'raceSwarmSignal'],
     'mothman':       [['raceRedEyes', 'raceDreadAura'], 'thunderstorm', 'raceCryptidVanish', 'raceProphecyOfDisaster'],   // Phase 6: Abduction deleted → Cryptid Vanish (Cryptid Abilities); Dread Aura twins Red Eyes
-    'siren':         ['raceSonicBoomerang', 'raceRiptide', 'raceDeafeningWail', 'raceCallOfTheDeep'],
+    'siren':         ['raceSonicBoomerang', 'raceRiptide', ['raceDeafeningWail', 'raceCallOfTheDeep'], 'raceFlood'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'scarecrow':     ['raceHarvestHook', 'raceStuffedDouble', 'sharedHexOfToil', 'raceCrowStorm'],
     'glitch':        ['raceCrashLoop', 'raceMemoryLeak', 'raceBlueScreen', 'raceTimeRewind'],
     'machine elves': ['racePrismMirror', 'racePulseLattice', 'raceTuneFrequency', 'sharedEgoDeath'],
-    'cyclops':       ['raceStoneThrow', 'raceBalefulGaze', 'raceTitanDrop', 'raceGiantSmash'],
-    'cyborg':        ['raceHydraulicPunch', 'raceClusterRockets', ['overclock', 'racePlasmaCannon'], 'raceRocketToss'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'sharedScorchedEarth', 'raceDarkDominion'],
+    'cyclops':       ['raceStoneThrow', 'raceHypnoticPulse', 'raceTitanDrop', 'raceGiantSmash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'cyborg':        ['raceRocketFist', 'raceClusterRockets', ['overclock', 'racePlasmaCannon'], 'raceRocketToss'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'wallOfFire', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     /* 2026-08-16 balance (stats18): demon princess ran +16.6 residual — Kiss
        of Decay (top-10 dmg/MP at 25 MP) moves to ring 3 (75 MP, tier II);
        Poison Swamp opens the pillar at ring 1 (it already prices as ring 1
        via its reptilian slot — shared ids take their lowest ring). */
-    'demon princess': ['sharedPoisonSwamp', 'sharedHexOfToil', 'raceKissOfDecay', 'raceDarkLullaby'],
-    'fallen angel':  ['raceFallenGrace', 'raceAbyssalWings', 'raceSanctuary', 'raceDescendingWrath'],
-    'halfdemon':     ['raceInnerDemon', 'sharedSmokeScreen', 'raceShadowStep', 'raceDemonicClaw'],
+    'demon princess': ['sharedPoisonSwamp', 'sharedHexOfToil', 'raceKissOfDecay', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'fallen angel':  ['raceFallenGrace', 'raceAbyssalWings', 'raceSanctuary', 'raceWrathOfTheWatchers'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'halfdemon':     ['raceDemonicRoar', 'sharedSmokeScreen', 'raceShadowStep', 'raceDemonicClaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'mermaid':       ['raceSirenSong', 'raceTidalBlessing', 'raceRiptide', 'raceFlood'],
-    'nephilim':      ['raceFallenGrace', 'raceAbyssalWings', 'sharedFissure', 'raceWrathOfTheWatchers'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'nephilim':      ['raceTremorStomp', 'raceAbyssalWings', 'groundSlam', 'raceGiantSmash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'vampire':       ['raceBite', 'raceMistForm', ['raceBatSwarm', 'raceThrallBite'], 'racePredatorDrop'],   // §6.29 (wave B)
     'voidweaver':    ['raceVenomFang', 'raceWebSnare', 'raceDimensionalWeb', 'raceFractalNeedle'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'cosmic wraith': ['raceEntropicBeam', 'racePhaseWalk', 'sharedNebula', 'raceHeatDeath'],
     'superhero':     ['raceHeroicLeap', ['raceInvulnerable', 'raceFreezeBreath'], ['raceShockwaveClap', 'raceSkyTackle'], 'raceLaserBeam'],   // §6.25 (Heat Vision = raceLaserBeam)
-    'general':       ['raceRallyCommand', 'raceIronBulwark', 'raceArtilleryStrike', 'sharedNuke'],
+    'general':       ['raceRallyCommand', 'raceIronBulwark', 'raceArtilleryStrike', 'raceFireForEffect'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'droid':         ['raceCrashLoop', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
-    'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
+    'overlord':      ['raceHellfireCrown', 'raceInfernalConscription', 'raceBrutalSlam', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
-    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceCallOfTheDeep']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'dinosaur':      [['racePrimalRoar', 'raceDinoTailWhip'], 'raceApexCharge', ['sharedFissure', 'raceApexRoar'], 'raceJurassicJaw'],   // §6.14 (Stampede = raceApexCharge)
+    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['raceTsunami', 'raceFlood']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'dinosaur':      ['raceDinoTailWhip', 'raceApexCharge', ['groundSlam', 'raceApexRoar'], 'raceJurassicJaw'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'dragon':        [['raceDragonBreath', 'raceWingGust'], 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],   // §6.7 (wave C)
-    'ghoul':         [['raceGhoulishBite', 'raceFrenzy'], ['raceCorpseCrawl', 'raceFear'], ['sharedPoisonSwamp', 'raceCarrionFeast'], 'raceTerrorPounce'],   // §6.23 (wave C)
-    'kaiju':         ['raceCataclysmStomp', 'raceSeismicLeap', 'raceSkyscraperToss', 'raceAtomicBreath'],
-    'kraken':        ['raceTentacleLash', 'raceInkCloud', 'raceDepthCharge', 'sharedVortexSlam'],
+    'ghoul':         ['raceGhoulishBite', ['raceCorpseCrawl', 'raceFrenzy'], ['sharedPoisonSwamp', 'raceCarrionFeast'], 'raceTerrorPounce'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'kaiju':         ['raceCarToss', 'raceCataclysmStomp', 'raceSkyscraperToss', 'raceAtomicBreath'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'kraken':        ['raceTentacleLash', 'raceInkCloud', 'raceDepthCharge', 'raceFlood'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'loch ness monster': ['raceRiptide', 'raceDeepDive', 'raceCryptidVanish', 'raceTidalSlam'],
-    'yeti':          [['raceFrozenPunch', 'raceIceShard'], 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],   // §6.5
-    'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceDrainingEmbrace'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
-    'black goo':     [['raceGooShot', 'raceCorrosiveSplash'], ['raceIckySurprise', 'raceAbsorb'], ['raceSplash', 'raceToxicNova'], 'raceMitosisSplit'],   // §6.22 (wave C)
-    'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'sharedFissure', 'raceQuake'],
-    'honda civic':   ['raceRamCharge', ['raceTransform', 'raceExhaustCloud'], ['raceRoboPunch', 'raceNitroBoost'], 'raceMissileBarrage'],   // §6.2
+    'yeti':          [['raceFrozenPunch', 'raceIceSpear'], 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'barbarella':    ['raceHeatRay', 'raceGravityBoots', 'racePlasmaWhip', 'sneakSlash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'black goo':     [['raceGooShot', 'raceCorrosiveSplash'], ['raceIckySurprise', 'raceAbsorb'], ['raceRot', 'raceToxicNova'], 'raceMitosisSplit'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'groundSlam', 'raceQuake'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'honda civic':   ['raceRamCharge', ['raceTransform', 'raceExhaustCloud'], ['raceHydraulicCrush', 'raceNitroBoost'], 'raceMissileBarrage'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'ice queen':     ['raceIceSpear', 'sharedFlashFreeze', 'raceDiamondDust', 'raceAbsoluteZero'],
-    'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'raceUnstoppableCharge'],
+    'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'rampage'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'ki fighter':    [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // §6.10
     'king arthur':   ['raceRoyalDecree', 'raceShieldWall', 'raceKnightsOfRound', 'raceExcaliburStrike'],
     'king kong':     ['raceChestPound', 'raceSeismicLeap', 'raceApeFury', 'racePrimalSmash'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'minotaur':      ['raceHornToss', 'raceLabyrinthRoar', 'raceGoreCharge', 'raceBullRush'],
     'necromancer':   ['raceSoulDrain', 'racePlaguefield', 'raceBoneBarrage', 'raceRaiseDead'],
     'occulus':       ['racePsychicBeam', 'raceOmniVision', 'raceHypnoticPulse', 'raceDeathGaze'],
-    'quarterback':   ['raceBulletPass', ['raceBlitz', 'raceQBSneak'], ['raceAudible', 'raceSpikeTheBall'], 'raceHailMary'],   // §6.1
-    'robinhood':     [['raceFireArrow', 'racePoisonArrow'], ['raceStealFromRich', 'raceBombArrow'], ['raceSplittingArrow', 'racePiercingArrow'], 'raceArrowRain'],   // §6.24 (Arrow Volley = raceArrowRain)
-    'santa clause':  [['raceLumpOfCoal', 'raceSnowballVolley'], 'raceSleighDash', ['raceNaughtyList', 'raceWhiteChristmas'], 'raceBlizzardPresent'],   // §6.3
-    'super sentai':  ['sentaiRedSlash', 'sentaiPinkHeal', 'sentaiTeamStrike', 'sentaiMegazordBlast'],
-    'symbiote':      ['raceGooShot', 'raceSymbioteArmor', 'raceSymbioticDrain', 'raceTendrilStrike'],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
+    'quarterback':   ['raceBulletPass', ['raceBlitz', 'raceQBSneak'], ['raceAudible', 'raceLongBomb'], 'raceHailMary'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'robinhood':     ['raceFireArrow', ['raceStealFromRich', 'raceBombArrow'], ['raceSplittingArrow', 'racePiercingArrow'], 'raceArrowRain'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'santa clause':  [['raceLumpOfCoal', 'raceSnowballVolley'], ['raceSleighDash', 'raceNaughtyList'], 'raceWhiteChristmas', 'raceBlizzardPresent'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'super sentai':  ['sentaiRedSlash', 'sentaiBlackGuard', 'sentaiTeamStrike', 'sentaiMegazordBlast'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
+    'symbiote':      ['raceGooShot', 'raceWebSwing', 'raceSymbioticDrain', 'raceTendrilStrike'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'valkraye':      ['raceValkyrieSpear', 'raceShieldMaiden', 'raceDivineSwoop', 'raceChooserOfSlain'],
-    'watcher':       ['raceJudgmentBeam', 'raceCosmicSight', 'raceTemporalShift', 'raceRealityPulse'],
+    'watcher':       ['raceJudgmentBeam', 'raceCosmicSight', 'raceTimeRewindHeal', 'raceTimeRewind'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
 };
 
 
@@ -17800,7 +17800,7 @@ function applyTreeRingCosts(skipIds, snapOffTree) {
     }
     let treed = 0, snapped = 0;
     for (const sp of all) {
-        if (!sp || sp.kind === 'basicAttack') continue;
+        if (!sp || sp.kind === 'basicAttack' || sp.kind === 'passive') continue;
         if (skipIds && sp.id && skipIds.has(sp.id)) continue;
         if (typeof sp.manaCostOverride === 'number') { sp.cost = sp.manaCostOverride; continue; }
         const tierCost = getTierMpCost(sp);
@@ -18906,7 +18906,7 @@ const SPELL_FAMILIES = {
     },
     chemistry: {
         id: 'chemistry',
-        name: 'Chemistry Knowldege',
+        name: 'Chemistry',
         glyph: '🧪',
         color: '#a08cc8',
         kind: 'discipline',
@@ -18953,15 +18953,6 @@ const SPELL_FAMILIES = {
         id: 'fortunetelling',
         name: 'Fortune Telling',
         glyph: '🔮',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
-    astrology: {
-        id: 'astrology',
-        name: 'Astrology',
-        glyph: '♐️',
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
@@ -19068,7 +19059,7 @@ const SPELL_FAMILIES = {
     },
     ancientknowledge: {
         id: 'ancientknowledge',
-        name: 'Occult Knowledge',
+        name: 'Ancient Knowledge',
         glyph: '🚫',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19084,7 +19075,15 @@ const SPELL_FAMILIES = {
         desc: '',
         unique: null
     },
-    ki: { id: 'ki', name: 'Ki Energy', glyph: '💥', color: '#a08cc8', kind: 'discipline', desc: '', unique: null },
+    ki: {
+        id: 'ki',
+        name: 'Ki Energy',
+        glyph: '💥',
+        color: '#a08cc8',
+        kind: 'discipline',
+        desc: '',
+        unique: 'ki fighter'
+    },
     zombie: {
         id: 'zombie',
         name: 'Zombie Behavior',
@@ -19186,7 +19185,7 @@ const SPELL_FAMILIES = {
     },
     psychadelic: {
         id: 'psychadelic',
-        name: 'Drug Use',
+        name: 'Psychedelics',
         glyph: '😵‍💫',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19429,12 +19428,12 @@ const SPELL_FAMILIES = {
     },
     scarecrow: {
         id: 'scarecrow',
-        name: 'Scarecrow Abilties',
+        name: 'Scarecrow Abilities',
         glyph: '🧑‍🌾🐦‍⬛',
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
-        unique: null
+        unique: 'scarecrow'
     },
     artificialintelligence: {
         id: 'artificialintelligence',
@@ -19607,15 +19606,6 @@ const SPELL_FAMILIES = {
         desc: 'A living suit: tendrils, drains, webbing and armor.',
         unique: null
     },
-    culinaryarts: {
-        id: 'culinaryarts',
-        name: 'Culinary Arts',
-        glyph: '🧑🏻‍🍳',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
     ropework: {
         id: 'ropework',
         name: 'Ropework',
@@ -19697,15 +19687,6 @@ const SPELL_FAMILIES = {
         desc: '',
         unique: null
     },
-    archaeology: {
-        id: 'archaeology',
-        name: 'Archaeology',
-        glyph: '🛕',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
     agriculture: {
         id: 'agriculture',
         name: 'Agriculture',
@@ -19724,45 +19705,9 @@ const SPELL_FAMILIES = {
         desc: '',
         unique: null
     },
-    musictheory: {
-        id: 'musictheory',
-        name: 'Music Theory',
-        glyph: '🎼',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
-    actingchops: {
-        id: 'actingchops',
-        name: 'Acting Chops',
-        glyph: '🎭',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
-    astronautcamp: {
-        id: 'astronautcamp',
-        name: 'Astronaut Camp',
-        glyph: '👨‍🚀',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
-    stoneage: {
-        id: 'stoneage',
-        name: 'Stone Age',
-        glyph: '🗿',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
     tentacleappendages: {
         id: 'tentacleappendages',
-        name: 'Tentacle Appendages',
+        name: 'Cephalopod Anatomy',
         glyph: '🦑',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19771,7 +19716,7 @@ const SPELL_FAMILIES = {
     },
     apeintelligence: {
         id: 'apeintelligence',
-        name: 'Monkey Brains',
+        name: 'Great Ape',
         glyph: '🙉',
         color: '#a08cc8',
         kind: 'discipline',
@@ -19791,15 +19736,6 @@ const SPELL_FAMILIES = {
         id: 'internetaddiction',
         name: 'Internet Addiction',
         glyph: '🛜',
-        color: '#a08cc8',
-        kind: 'discipline',
-        desc: '',
-        unique: null
-    },
-    persuasion: {
-        id: 'persuasion',
-        name: 'Persuasion',
-        glyph: '🗣️',
         color: '#a08cc8',
         kind: 'discipline',
         desc: '',
@@ -20136,130 +20072,130 @@ function spellUpgradeLabel(upId) {
 const RACE_FAMILIES = {
     /* THE JOBS REMOVAL (2026-09-27): MARKSMANSHIP (the Sniper's shots) and AGRICULTURE (the Harvester's seeds) sat on no
        race — the job was their only road — so they go to the races whose default job was Sniper / Harvester. */
-    ai: ['artificialintelligence', 'computerhacking', 'internetaddiction'],
-    android: ['robot', 'computerhacking', 'cyberpunkweapons'],
-    angel: ['angelic', 'light', 'wind', 'healingmagic'],
-    annunaki: ['cosmic', 'ancientknowledge', 'earth', 'marksmanship'],
-    antihero: ['dirtyfighting', 'cosmic', 'superheropowers'],
+    ai: ['artificialintelligence', 'computerhacking', 'engineering'],
+    android: ['robot', 'computerhacking', 'cyberpunkweapons', 'trickery'],
+    angel: ['angelic', 'light', 'healingmagic'],
+    annunaki: ['cosmic', 'ancientknowledge', 'alientechnology'],
+    antihero: ['dirtyfighting', 'superheropowers', 'spygear', 'humangrit'],
     antperson: ['insectoid', 'poison', 'teamwork', 'agriculture'],
     anubis: ['ancientknowledge', 'necromancy', 'desertacclimation'],
-    atlantean: ['water', 'ice', 'arcane'],
-    barbarella: ['alientechnology', 'seduction', 'astronautcamp'],
-    bigfoot: ['sasquatch', 'nature', 'cryptid', 'agriculture'],
-    'black goo': ['ooze', 'poison', 'alientechnology'],
+    atlantean: ['water', 'arcane', 'temporal', 'ancientknowledge'],
+    barbarella: ['alientechnology', 'seduction', 'spygear'],
+    bigfoot: ['sasquatch', 'nature', 'cryptid', 'athleticism'],
+    'black goo': ['ooze', 'poison', 'symbiosis'],
     catgirl: ['feline', 'athleticism', 'seduction'],
-    'chosen one': ['maincharacter', 'psychic', 'light'],
-    'conspiracy theorist': ['conspiracyknowledge', 'internetaddiction', 'advancedtechnology'],
-    'cosmic wraith': ['cosmic', 'shadow', 'temporal', 'marksmanship'],
-    cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining', 'horsebackriding', 'ropework'],
-    'cult leader': ['cult', 'temporal', 'persuasion', 'healingmagic', 'meditation'],
+    'chosen one': ['maincharacter', 'light', 'shadow'],
+    'conspiracy theorist': ['conspiracyknowledge', 'advancedtechnology', 'deepstate', 'internetaddiction'],
+    'cosmic wraith': ['cosmic', 'shadow', 'temporal'],
+    cowboy: ['cowboyskills', 'huntingskills', 'weaponstraining', 'ropework'],
+    'cult leader': ['cult', 'meditation', 'blackmagic'],
     cyborg: ['cyberpunkweapons', 'robot', 'humangrit'],
-    cyclops: ['titan', 'eyesight', 'earth', 'stoneage'],
+    cyclops: ['titan', 'eyesight', 'earth'],
     demon: ['demonicabilities', 'shadow', 'fire', 'blood'],
     'demon prince': ['infernalcourt', 'demonicabilities', 'fire', 'blood'],
-    'demon princess': ['infernalcourt', 'witchcraft', 'poison', 'blood'],
+    'demon princess': ['infernalcourt', 'witchcraft', 'poison', 'blood', 'seduction'],
     dinosaur: ['apexpredator', 'beastabilities', 'earth'],
     djinn: ['arcane', 'ancientknowledge', 'trickery'],
     'door agent': ['door', 'doors', 'humangrit'],
-    dragon: ['dragonabilities', 'fire', 'wind'],
-    dreameater: ['astral', 'psychic', 'ghoulish'],
-    droid: ['computerhacking', 'robot', 'engineering'],
+    dragon: ['dragonabilities', 'fire', 'wind', 'beastabilities'],
+    dreameater: ['astral', 'psychic', 'shadow'],
+    droid: ['computerhacking', 'robot', 'engineering', 'artificialintelligence'],
     fairy: ['fae', 'trickery', 'nature'],
     'fallen angel': ['fallenangel', 'angelic', 'demonicabilities'],
-    'fortune teller': ['fortunetelling', 'witchcraft', 'astrology'],
-    gangster: ['streetsmarts', 'dirtyfighting', 'weaponstraining'],
+    'fortune teller': ['fortunetelling', 'witchcraft', 'astralprojection'],
+    gangster: ['streetsmarts', 'dirtyfighting', 'weaponstraining', 'thievery'],
     gargoyle: ['livingstone', 'earth', 'wind'],
     general: ['militarysupport', 'weaponstraining', 'teamwork'],
-    ghost: ['haunted', 'shadow', 'trickery'],
+    ghost: ['haunted', 'shadow', 'computerhacking'],
     ghoul: ['ghoulish', 'poison', 'shadow'],
     giant: ['titan', 'earth', 'dirtyfighting'],
     glitch: ['computerhacking', 'temporal', 'artificialintelligence'],
-    gnome: ['engineering', 'earth', 'trapmaking'],
+    gnome: ['engineering', 'trapmaking', 'advancedtechnology'],
     goatman: ['horns', 'blood', 'blackmagic'],
-    golem: ['livingstone', 'earth', 'desertacclimation'],
+    golem: ['livingstone', 'earth', 'ancientknowledge'],
     grey: ['ufo', 'psychic', 'cryptid'],
     halfdemon: ['demonicabilities', 'shadow', 'spygear'],
-    homosapien: ['humangrit', 'teamwork', 'athleticism'],
+    homosapien: ['humangrit', 'teamwork', 'athleticism', 'ropework'],
     'honda civic': ['drivingskills', 'robot', 'machinery'],
-    'ice queen': ['ice', 'winter', 'healingmagic'],
-    jellyfish: ['deepsea', 'water', 'poison', 'jellyfish'],
+    'ice queen': ['ice', 'cosmic', 'prismlattice'],
+    jellyfish: ['deepsea', 'water', 'jellyfish'],
     juggernaut: ['athleticism', 'dirtyfighting', 'titan'],
-    kaiju: ['kaiju', 'earth', 'deepsea'],
-    'ki fighter': ['ki', 'martialarts', 'athleticism'],
-    'king arthur': ['royalty', 'knight', 'swordsmanship'],
-    'king kong': ['kaiju', 'beastabilities', 'apeintelligence', 'agriculture'],
+    kaiju: ['kaiju', 'earth', 'titan'],
+    'ki fighter': ['ki', 'martialarts', 'athleticism', 'humangrit'],
+    'king arthur': ['royalty', 'knight', 'swordsmanship', 'horsebackriding'],
+    'king kong': ['kaiju', 'beastabilities', 'apeintelligence', 'titan'],
     knight: ['knight', 'royalty', 'swordsmanship', 'horsebackriding'],
-    kraken: ['deepsea', 'water', 'wind', 'tentacleappendages'],
-    'loch ness monster': ['deepsea', 'water', 'cryptid', 'ice'],
+    kraken: ['deepsea', 'water', 'tentacleappendages', 'cryptid'],
+    'loch ness monster': ['deepsea', 'water', 'cryptid', 'beastabilities'],
     'machine elves': ['prismlattice', 'fractal', 'psychadelic', 'trickery'],
     'mad scientist': ['unethicalscience', 'advancedtechnology', 'chemistry'],
     mantid: ['insectoid', 'fractal', 'psychic'],
     marksman: ['militarysupport', 'weaponstraining', 'huntingskills', 'marksmanship'],
-    martian: ['alientechnology', 'ufo', 'fire', 'desertacclimation'],
+    martian: ['alientechnology', 'ufo', 'desertacclimation'],
     mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
     'men in black': ['spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
     mermaid: ['water', 'sonic', 'deepsea'],
     minotaur: ['horns', 'beastabilities', 'dirtyfighting'],
-    mothman: ['cryptid', 'lightning', 'wind', 'mothman'],
-    necromancer: ['necromancy', 'bonedensity', 'blackmagic'],
+    mothman: ['cryptid', 'lightning', 'mothman', 'psychic'],
+    necromancer: ['necromancy', 'bonedensity', 'blackmagic', 'poison'],
     nephilim: ['fallenangel', 'earth', 'titan'],
-    nordic: ['galacticfederation', 'light', 'alientechnology'],
+    nordic: ['galacticfederation', 'light', 'psychic'],
     nun: ['biblestudy', 'light', 'angelic'],
     occulus: ['eyesight', 'psychic', 'ancientknowledge'],
     'orb of light': ['light', 'cosmic', 'healingmagic'],
-    overlord: ['infernalcourt', 'fire', 'dirtyfighting'],
+    overlord: ['infernalcourt', 'dirtyfighting', 'demonicabilities'],
     pirate: ['piracy', 'swordsmanship', 'ropework'],
-    'police officer': ['policetraining', 'weaponstraining', 'drivingskills'],
-    politician: ['politics', 'deepstate', 'militarysupport'],
-    popstar: ['stagepresence', 'sonic', 'seduction', 'musictheory'],
-    'starfish': ['water', 'deepsea', 'healingmagic', 'cosmic'],
-    'ringmaster': ['stagepresence', 'ropework', 'trickery', 'teamwork'],
+    'police officer': ['policetraining', 'weaponstraining', 'humangrit'],
+    politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
+    popstar: ['stagepresence', 'sonic', 'seduction'],
+    'starfish': ['water', 'deepsea', 'healingmagic'],
+    'ringmaster': ['stagepresence', 'ropework', 'trickery', 'teamwork', 'animalhandling'],
     'bee queen': ['insectoid', 'poison', 'agriculture', 'teamwork'],
-    'professor': ['ancientknowledge', 'chemistry', 'advancedtechnology', 'psychic'],
-    'deep sea fish': ['deepsea', 'water', 'light', 'poison'],
-    'clown': ['trickery', 'stagepresence', 'dirtyfighting', 'shadow'],
-    'bunny girl': ['seduction', 'athleticism', 'stagepresence', 'trickery'],
+    'professor': ['ancientknowledge', 'chemistry', 'advancedtechnology'],
+    'deep sea fish': ['deepsea', 'water', 'beastabilities'],
+    'clown': ['trickery', 'dirtyfighting', 'shadow'],
+    'bunny girl': ['seduction', 'athleticism', 'trickery', 'gambling'],
     'sharkman': ['deepsea', 'water', 'beastabilities', 'apexpredator'],
     'crystal guardian': ['livingstone', 'prismlattice', 'holydefense', 'earth'],
     'jack o lantern': ['fire', 'agriculture', 'haunted', 'witchcraft'],
     'sidekick': ['superheropowers', 'teamwork', 'athleticism', 'humangrit'],
     'mushroom girl': ['psychadelic', 'nature', 'poison', 'fae'],
-    'tree person': ['nature', 'earth', 'agriculture', 'cryptid'],
-    'sheriff': ['weaponstraining', 'cowboyskills', 'policetraining', 'horsebackriding'],
-    'astronaut': ['astronautcamp', 'advancedtechnology', 'cosmic', 'athleticism'],
+    'tree person': ['nature', 'earth', 'agriculture'],
+    'sheriff': ['weaponstraining', 'cowboyskills', 'policetraining', 'horsebackriding', 'marksmanship'],
+    'astronaut': ['advancedtechnology', 'cosmic', 'humangrit'],
     'krampus': ['christmasspirit', 'horns', 'blackmagic', 'winter'],
-    'rabbit': ['athleticism', 'trickery', 'fae', 'temporal'],
+    'rabbit': ['athleticism', 'trickery', 'temporal', 'mirrormagic'],
     'luchador': ['martialarts', 'athleticism', 'dirtyfighting', 'stagepresence'],
     'firefighter': ['water', 'humangrit', 'teamwork', 'athleticism'],
     'goblin': ['thievery', 'trapmaking', 'dirtyfighting', 'poison'],
-    'hippie': ['psychadelic', 'meditation', 'nature', 'agriculture', 'healingmagic'],
-    priest: ['biblestudy', 'light', 'angelic', 'healingmagic'],
-    quarterback: ['football', 'athleticism', 'teamwork', 'marksmanship'],
+    'hippie': ['psychadelic', 'meditation', 'nature', 'agriculture'],
+    priest: ['biblestudy', 'light', 'healingmagic'],
+    quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['conspiracyknowledge', 'trickery', 'poison', 'spygear'],
     robinhood: ['archery', 'huntingskills', 'thievery', 'marksmanship'],
     robot: ['robot', 'machinery', 'cyberpunkweapons'],
-    'santa clause': ['christmasspirit', 'winter', 'ice'],
+    'santa clause': ['christmasspirit', 'winter', 'engineering'],
     scarecrow: ['scarecrow', 'witchcraft', 'nature', 'agriculture'],
     seraphim: ['angelic', 'biblestudy', 'light'],
-    'shadow entity': ['shadow', 'haunted', 'spygear'],
+    'shadow entity': ['shadow', 'haunted', 'temporal'],
     shaman: ['nature', 'psychadelic', 'astralprojection', 'agriculture'],
     siren: ['sonic', 'water', 'seduction'],
     skeleton: ['bonedensity', 'haunted', 'swordsmanship'],
-    skinwalker: ['trickery', 'beastabilities', 'blackmagic', 'cryptid'],
+    skinwalker: ['trickery', 'blackmagic', 'cryptid'],
     succubus: ['seduction', 'astral', 'demonicabilities'],
     'super sentai': ['sentai', 'teamwork', 'martialarts'],
-    superhero: ['superheropowers', 'cosmic', 'wind'],
+    superhero: ['superheropowers', 'wind', 'athleticism', 'humangrit'],
     swordfighter: ['maincharacter', 'swordsmanship', 'athleticism'],
-    symbiote: ['symbiosis', 'ooze', 'poison'],
+    symbiote: ['symbiosis', 'ooze', 'athleticism'],
     telepath: ['psychic', 'deepstate', 'astralprojection'],
-    valkraye: ['holydefense', 'angelic', 'wind'],
+    valkraye: ['holydefense', 'wind', 'knight'],
     vampire: ['vampiricabilties', 'beastabilities', 'blood'],
-    voidweaver: ['arachnid', 'insectoid', 'fractal'],
+    voidweaver: ['arachnid', 'insectoid', 'fractal', 'shadow'],
     watcher: ['temporal', 'cosmic', 'astralprojection'],
-    werewolf: ['werewolf', 'beastabilities', 'huntingskills'],
+    werewolf: ['werewolf', 'beastabilities', 'apexpredator'],
     wizard: ['arcane', 'lightning', 'fire', 'ice'],
-    yeti: ['ice', 'winter', 'cryptid'],
-    zombie: ['zombie', 'poison', 'necromancy'],
+    yeti: ['ice', 'winter', 'cryptid', 'sasquatch'],
+    zombie: ['zombie', 'poison', 'ghoulish'],
 };
 /* A row's families (§4.2): the explicit tags, else its element's family, plus the wheel's for a door-wheel row. */
 function spellFamiliesOf(d) {

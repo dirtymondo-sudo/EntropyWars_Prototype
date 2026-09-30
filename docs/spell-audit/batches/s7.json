@@ -1,0 +1,1294 @@
+{
+ "ai": {
+  "fams": [
+   "artificialintelligence",
+   "computerhacking",
+   "engineering"
+  ],
+  "rungs": "—",
+  "pool": "10 → 16",
+  "tiers": "3/4/4/3"
+ },
+ "android": {
+  "fams": [
+   "robot",
+   "computerhacking",
+   "cyberpunkweapons",
+   "trickery"
+  ],
+  "rungs": "3: Neural Hack → Blue Screen",
+  "pool": "18 → 24",
+  "tiers": "7/6/6/4"
+ },
+ "angel": {
+  "fams": [
+   "angelic",
+   "light",
+   "healingmagic"
+  ],
+  "rungs": "1: Radiant Bolt → Divine Light",
+  "pool": "21 → 19",
+  "tiers": "4/6/6/3"
+ },
+ "annunaki": {
+  "fams": [
+   "cosmic",
+   "ancientknowledge",
+   "alientechnology"
+  ],
+  "rungs": "—",
+  "pool": "27 → 23",
+  "tiers": "6/4/10/3"
+ },
+ "antihero": {
+  "fams": [
+   "dirtyfighting",
+   "superheropowers",
+   "spygear",
+   "humangrit"
+  ],
+  "rungs": "3: Cosmic Slam → Shockwave Clap",
+  "pool": "23 → 23",
+  "tiers": "6/8/5/4"
+ },
+ "antperson": {
+  "fams": [
+   "insectoid",
+   "poison",
+   "teamwork",
+   "agriculture"
+  ],
+  "rungs": "—",
+  "pool": "16 → 23",
+  "tiers": "8/4/5/4"
+ },
+ "anubis": {
+  "fams": [
+   "ancientknowledge",
+   "necromancy",
+   "desertacclimation"
+  ],
+  "rungs": "—",
+  "pool": "10 → 14",
+  "tiers": "3/4/4/3"
+ },
+ "astronaut": {
+  "fams": [
+   "advancedtechnology",
+   "cosmic",
+   "humangrit"
+  ],
+  "rungs": "2: Gravity Boots → Phase Walk",
+  "pool": "21 → 21",
+  "tiers": "6/3/9/3"
+ },
+ "atlantean": {
+  "fams": [
+   "water",
+   "arcane",
+   "temporal",
+   "ancientknowledge"
+  ],
+  "rungs": "4: Tsunami/Call of the Deep → Tsunami/Great Flood",
+  "pool": "20 → 24",
+  "tiers": "4/7/9/4"
+ },
+ "barbarella": {
+  "fams": [
+   "alientechnology",
+   "seduction",
+   "spygear"
+  ],
+  "rungs": "1: Stun Ray → Heat Ray; 4: Draining Embrace → Sneak Slash",
+  "pool": "11 → 19",
+  "tiers": "5/7/4/3"
+ },
+ "bee queen": {
+  "fams": [
+   "insectoid",
+   "poison",
+   "agriculture",
+   "teamwork"
+  ],
+  "rungs": "1: Venom Fang → Corrosive Splash; 2: Chitin Armor → Brood; 3: Splash → Rot",
+  "pool": "16 → 23",
+  "tiers": "8/4/5/4"
+ },
+ "bigfoot": {
+  "fams": [
+   "sasquatch",
+   "nature",
+   "cryptid",
+   "athleticism"
+  ],
+  "rungs": "2: Blurry Photo/Treeline Retreat → Cryptid Vanish/Treeline Retreat; 3: Trunk Throw → Entangling Roots",
+  "pool": "12 → 17",
+  "tiers": "4/6/3/4"
+ },
+ "black goo": {
+  "fams": [
+   "ooze",
+   "poison",
+   "symbiosis"
+  ],
+  "rungs": "3: Splash/Toxic Nova → Rot/Toxic Nova",
+  "pool": "16 → 18",
+  "tiers": "7/4/3/3"
+ },
+ "bunny girl": {
+  "fams": [
+   "seduction",
+   "athleticism",
+   "trickery",
+   "gambling"
+  ],
+  "rungs": "1: Mic Drop → Dead Man's Hand; 3: Spotlight → Double Down",
+  "pool": "18 → 21",
+  "tiers": "7/5/5/4"
+ },
+ "catgirl": {
+  "fams": [
+   "feline",
+   "athleticism",
+   "seduction"
+  ],
+  "rungs": "—",
+  "pool": "11 → 14",
+  "tiers": "4/4/3/3"
+ },
+ "chosen one": {
+  "fams": [
+   "maincharacter",
+   "light",
+   "shadow"
+  ],
+  "rungs": "4: Migraine → Roll Credits",
+  "pool": "21 → 23",
+  "tiers": "5/7/8/3"
+ },
+ "clown": {
+  "fams": [
+   "trickery",
+   "dirtyfighting",
+   "shadow"
+  ],
+  "rungs": "—",
+  "pool": "24 → 22",
+  "tiers": "7/6/6/3"
+ },
+ "conspiracy theorist": {
+  "fams": [
+   "conspiracyknowledge",
+   "advancedtechnology",
+   "deepstate",
+   "internetaddiction"
+  ],
+  "rungs": "—",
+  "pool": "9 → 16",
+  "tiers": "5/4/5/2"
+ },
+ "cosmic wraith": {
+  "fams": [
+   "cosmic",
+   "shadow",
+   "temporal"
+  ],
+  "rungs": "—",
+  "pool": "26 → 25",
+  "tiers": "5/7/10/3"
+ },
+ "cowboy": {
+  "fams": [
+   "cowboyskills",
+   "huntingskills",
+   "weaponstraining",
+   "ropework"
+  ],
+  "rungs": "3: Long Rifle/Whistle → Whistle",
+  "pool": "18 → 18",
+  "tiers": "5/5/5/3"
+ },
+ "crystal guardian": {
+  "fams": [
+   "livingstone",
+   "prismlattice",
+   "holydefense",
+   "earth"
+  ],
+  "rungs": "4: Rampart → Petrify",
+  "pool": "23 → 23",
+  "tiers": "6/8/5/4"
+ },
+ "cult leader": {
+  "fams": [
+   "cult",
+   "meditation",
+   "blackmagic"
+  ],
+  "rungs": "1: Judgment Beam → Tithe",
+  "pool": "12 → 13",
+  "tiers": "3/4/3/3"
+ },
+ "cyborg": {
+  "fams": [
+   "cyberpunkweapons",
+   "robot",
+   "humangrit"
+  ],
+  "rungs": "1: Synthetic Punch → Rocket Fist",
+  "pool": "17 → 14",
+  "tiers": "4/4/3/3"
+ },
+ "cyclops": {
+  "fams": [
+   "titan",
+   "eyesight",
+   "earth"
+  ],
+  "rungs": "2: Baleful Gaze → Hypnotic Pulse",
+  "pool": "19 → 21",
+  "tiers": "5/8/5/3"
+ },
+ "deep sea fish": {
+  "fams": [
+   "deepsea",
+   "water",
+   "beastabilities"
+  ],
+  "rungs": "1: Aurora Ray → Bite; 2: Ink Cloud → Deep Dive",
+  "pool": "26 → 16",
+  "tiers": "4/4/6/2"
+ },
+ "demon": {
+  "fams": [
+   "demonicabilities",
+   "shadow",
+   "fire",
+   "blood"
+  ],
+  "rungs": "—",
+  "pool": "23 → 24",
+  "tiers": "5/9/6/4"
+ },
+ "demon prince": {
+  "fams": [
+   "infernalcourt",
+   "demonicabilities",
+   "fire",
+   "blood"
+  ],
+  "rungs": "3: Scorched Earth → Wall of Fire; 4: Dark Dominion → Cataclysm Decree",
+  "pool": "22 → 23",
+  "tiers": "5/7/7/4"
+ },
+ "demon princess": {
+  "fams": [
+   "infernalcourt",
+   "witchcraft",
+   "poison",
+   "blood",
+   "seduction"
+  ],
+  "rungs": "4: Dark Lullaby → Cataclysm Decree",
+  "pool": "18 → 28",
+  "tiers": "9/7/7/5"
+ },
+ "dinosaur": {
+  "fams": [
+   "apexpredator",
+   "beastabilities",
+   "earth"
+  ],
+  "rungs": "1: Primal Roar/Tail Whip → Tail Whip; 3: Fissure/Apex Roar → Ground Slam/Apex Roar",
+  "pool": "20 → 18",
+  "tiers": "6/6/4/2"
+ },
+ "djinn": {
+  "fams": [
+   "arcane",
+   "ancientknowledge",
+   "trickery"
+  ],
+  "rungs": "2: Spellsteal → Spellsteal/Wish Granted; 3: Wish Granted → Polymorph; 4: Ancient Magic → Weigh the Heart",
+  "pool": "12 → 17",
+  "tiers": "5/4/5/3"
+ },
+ "door agent": {
+  "fams": [
+   "door",
+   "doors",
+   "humangrit"
+  ],
+  "rungs": "1: Swing Door/Door Dash → Swing Door; 2: Breaking and Entering/Air Mail → Breaking and Entering/Air Mail/Door Dash",
+  "pool": "10 → 19",
+  "tiers": "3/8/5/3"
+ },
+ "dragon": {
+  "fams": [
+   "dragonabilities",
+   "fire",
+   "wind",
+   "beastabilities"
+  ],
+  "rungs": "—",
+  "pool": "11 → 18",
+  "tiers": "5/6/4/3"
+ },
+ "dreameater": {
+  "fams": [
+   "astral",
+   "psychic",
+   "shadow"
+  ],
+  "rungs": "2: Corpse Crawl → Sleep Paralysis",
+  "pool": "17 → 21",
+  "tiers": "5/7/6/3"
+ },
+ "droid": {
+  "fams": [
+   "computerhacking",
+   "robot",
+   "engineering",
+   "artificialintelligence"
+  ],
+  "rungs": "—",
+  "pool": "18 → 21",
+  "tiers": "4/6/5/4"
+ },
+ "fairy": {
+  "fams": [
+   "fae",
+   "trickery",
+   "nature"
+  ],
+  "rungs": "2: Pixie Dust/Fairy Dust → Fairy Dust",
+  "pool": "14 → 17",
+  "tiers": "6/4/4/3"
+ },
+ "fallen angel": {
+  "fams": [
+   "fallenangel",
+   "angelic",
+   "demonicabilities"
+  ],
+  "rungs": "4: Descending Wrath → Wrath of the Watchers",
+  "pool": "19 → 19",
+  "tiers": "4/6/6/3"
+ },
+ "firefighter": {
+  "fams": [
+   "water",
+   "humangrit",
+   "teamwork",
+   "athleticism"
+  ],
+  "rungs": "4: Tsunami → Tidal Slam",
+  "pool": "20 → 22",
+  "tiers": "4/6/8/4"
+ },
+ "fortune teller": {
+  "fams": [
+   "fortunetelling",
+   "witchcraft",
+   "astralprojection"
+  ],
+  "rungs": "—",
+  "pool": "7 → 11",
+  "tiers": "3/4/2/2"
+ },
+ "gangster": {
+  "fams": [
+   "streetsmarts",
+   "dirtyfighting",
+   "weaponstraining",
+   "thievery"
+  ],
+  "rungs": "4: Extended Clips → Empty the Clip",
+  "pool": "18 → 20",
+  "tiers": "6/5/6/3"
+ },
+ "gargoyle": {
+  "fams": [
+   "livingstone",
+   "earth",
+   "wind"
+  ],
+  "rungs": "2: Stoneform/Gothic Rampart → Stoneform; 4: Stone Drop → Quake",
+  "pool": "16 → 18",
+  "tiers": "4/7/4/3"
+ },
+ "general": {
+  "fams": [
+   "militarysupport",
+   "weaponstraining",
+   "teamwork"
+  ],
+  "rungs": "4: Nuke → Fire for Effect",
+  "pool": "20 → 19",
+  "tiers": "5/5/6/3"
+ },
+ "ghost": {
+  "fams": [
+   "haunted",
+   "shadow",
+   "computerhacking"
+  ],
+  "rungs": "—",
+  "pool": "17 → 20",
+  "tiers": "4/7/5/3"
+ },
+ "ghoul": {
+  "fams": [
+   "ghoulish",
+   "poison",
+   "shadow"
+  ],
+  "rungs": "1: Ghoulish Bite/Frenzy → Ghoulish Bite; 2: Corpse Crawl/Fear → Corpse Crawl/Frenzy",
+  "pool": "18 → 20",
+  "tiers": "6/7/4/3"
+ },
+ "giant": {
+  "fams": [
+   "titan",
+   "earth",
+   "dirtyfighting"
+  ],
+  "rungs": "4: Colossal Crush → Giant Smash",
+  "pool": "20 → 23",
+  "tiers": "7/7/6/3"
+ },
+ "glitch": {
+  "fams": [
+   "computerhacking",
+   "temporal",
+   "artificialintelligence"
+  ],
+  "rungs": "—",
+  "pool": "14 → 17",
+  "tiers": "3/5/5/3"
+ },
+ "gnome": {
+  "fams": [
+   "engineering",
+   "trapmaking",
+   "advancedtechnology"
+  ],
+  "rungs": "1: Fissure → Tesla Coil; 2: Tinker's Contraption → Scrap Mine; 3: Clockwork Turret → 5G Tower",
+  "pool": "17 → 15",
+  "tiers": "4/3/4/3"
+ },
+ "goatman": {
+  "fams": [
+   "horns",
+   "blood",
+   "blackmagic"
+  ],
+  "rungs": "2: Cliff Charge → Labyrinth Roar; 3: Blood Ritual → Life Sap; 4: Baphomet's Rite → Bull Rush",
+  "pool": "12 → 15",
+  "tiers": "4/5/3/3"
+ },
+ "goblin": {
+  "fams": [
+   "thievery",
+   "trapmaking",
+   "dirtyfighting",
+   "poison"
+  ],
+  "rungs": "—",
+  "pool": "16 → 21",
+  "tiers": "9/4/5/3"
+ },
+ "golem": {
+  "fams": [
+   "livingstone",
+   "earth",
+   "ancientknowledge"
+  ],
+  "rungs": "3: Fissure → Ground Slam",
+  "pool": "15 → 18",
+  "tiers": "4/6/5/3"
+ },
+ "grey": {
+  "fams": [
+   "ufo",
+   "psychic",
+   "cryptid"
+  ],
+  "rungs": "4: Crop Circle → War of the Worlds",
+  "pool": "17 → 19",
+  "tiers": "5/5/6/3"
+ },
+ "halfdemon": {
+  "fams": [
+   "demonicabilities",
+   "shadow",
+   "spygear"
+  ],
+  "rungs": "1: Inner Demon → Demonic Roar",
+  "pool": "23 → 22",
+  "tiers": "4/10/5/3"
+ },
+ "hippie": {
+  "fams": [
+   "psychadelic",
+   "meditation",
+   "nature",
+   "agriculture"
+  ],
+  "rungs": "—",
+  "pool": "14 → 19",
+  "tiers": "4/4/6/4"
+ },
+ "homosapien": {
+  "fams": [
+   "humangrit",
+   "teamwork",
+   "athleticism",
+   "ropework"
+  ],
+  "rungs": "1: Elbow Grease/Improvise → Elbow Grease",
+  "pool": "12 → 19",
+  "tiers": "5/5/5/4"
+ },
+ "honda civic": {
+  "fams": [
+   "drivingskills",
+   "robot",
+   "machinery"
+  ],
+  "rungs": "3: Robo Punch/Nitro Boost → Hydraulic Crush/Nitro Boost",
+  "pool": "13 → 12",
+  "tiers": "3/4/3/2"
+ },
+ "ice queen": {
+  "fams": [
+   "ice",
+   "cosmic",
+   "prismlattice"
+  ],
+  "rungs": "—",
+  "pool": "14 → 24",
+  "tiers": "7/5/9/3"
+ },
+ "jack o lantern": {
+  "fams": [
+   "fire",
+   "agriculture",
+   "haunted",
+   "witchcraft"
+  ],
+  "rungs": "—",
+  "pool": "15 → 18",
+  "tiers": "5/4/4/4"
+ },
+ "jellyfish": {
+  "fams": [
+   "deepsea",
+   "water",
+   "jellyfish"
+  ],
+  "rungs": "—",
+  "pool": "22 → 17",
+  "tiers": "3/5/6/3"
+ },
+ "juggernaut": {
+  "fams": [
+   "athleticism",
+   "dirtyfighting",
+   "titan"
+  ],
+  "rungs": "4: Unstoppable Charge → Rampage",
+  "pool": "15 → 19",
+  "tiers": "5/6/5/3"
+ },
+ "kaiju": {
+  "fams": [
+   "kaiju",
+   "earth",
+   "titan"
+  ],
+  "rungs": "1: Cataclysm Stomp → Car Toss; 2: Seismic Leap → Cataclysm Stomp",
+  "pool": "18 → 20",
+  "tiers": "5/7/5/3"
+ },
+ "ki fighter": {
+  "fams": [
+   "ki",
+   "martialarts",
+   "athleticism",
+   "humangrit"
+  ],
+  "rungs": "—",
+  "pool": "12 → 19",
+  "tiers": "5/6/4/4"
+ },
+ "king arthur": {
+  "fams": [
+   "royalty",
+   "knight",
+   "swordsmanship",
+   "horsebackriding"
+  ],
+  "rungs": "—",
+  "pool": "12 → 16",
+  "tiers": "4/4/4/4"
+ },
+ "king kong": {
+  "fams": [
+   "kaiju",
+   "beastabilities",
+   "apeintelligence",
+   "titan"
+  ],
+  "rungs": "—",
+  "pool": "17 → 19",
+  "tiers": "5/6/5/3"
+ },
+ "knight": {
+  "fams": [
+   "knight",
+   "royalty",
+   "swordsmanship",
+   "horsebackriding"
+  ],
+  "rungs": "—",
+  "pool": "13 → 16",
+  "tiers": "4/4/4/4"
+ },
+ "kraken": {
+  "fams": [
+   "deepsea",
+   "water",
+   "tentacleappendages",
+   "cryptid"
+  ],
+  "rungs": "4: Vortex Slam → Great Flood",
+  "pool": "17 → 20",
+  "tiers": "4/6/7/3"
+ },
+ "krampus": {
+  "fams": [
+   "christmasspirit",
+   "horns",
+   "blackmagic",
+   "winter"
+  ],
+  "rungs": "1: Lump of Coal → Lump of Coal/Frozen Punch; 2: Cliff Charge → Labyrinth Roar; 3: Naughty List → White Christmas; 4: Baphomet's Rite → Baphomet's Rite/Avalanche Strike",
+  "pool": "17 → 21",
+  "tiers": "6/6/5/4"
+ },
+ "loch ness monster": {
+  "fams": [
+   "deepsea",
+   "water",
+   "cryptid",
+   "beastabilities"
+  ],
+  "rungs": "—",
+  "pool": "24 → 20",
+  "tiers": "5/5/7/3"
+ },
+ "luchador": {
+  "fams": [
+   "martialarts",
+   "athleticism",
+   "dirtyfighting",
+   "stagepresence"
+  ],
+  "rungs": "—",
+  "pool": "20 → 23",
+  "tiers": "7/6/6/4"
+ },
+ "machine elves": {
+  "fams": [
+   "prismlattice",
+   "fractal",
+   "psychadelic",
+   "trickery"
+  ],
+  "rungs": "—",
+  "pool": "13 → 21",
+  "tiers": "7/3/7/4"
+ },
+ "mad scientist": {
+  "fams": [
+   "unethicalscience",
+   "advancedtechnology",
+   "chemistry"
+  ],
+  "rungs": "—",
+  "pool": "10 → 15",
+  "tiers": "4/4/4/3"
+ },
+ "mantid": {
+  "fams": [
+   "insectoid",
+   "fractal",
+   "psychic"
+  ],
+  "rungs": "1: Mandible Strike → Psychic Beam; 2: Chitin Armor → Psychic Barrier",
+  "pool": "16 → 19",
+  "tiers": "6/4/5/3"
+ },
+ "marksman": {
+  "fams": [
+   "militarysupport",
+   "weaponstraining",
+   "huntingskills",
+   "marksmanship"
+  ],
+  "rungs": "—",
+  "pool": "24 → 21",
+  "tiers": "6/6/6/3"
+ },
+ "martian": {
+  "fams": [
+   "alientechnology",
+   "ufo",
+   "desertacclimation"
+  ],
+  "rungs": "4: War of the Worlds → Disintegrator",
+  "pool": "17 → 17",
+  "tiers": "4/5/5/3"
+ },
+ "mech": {
+  "fams": [
+   "mecha",
+   "militarysupport",
+   "cyberpunkweapons"
+  ],
+  "rungs": "4: Nuke → Fire for Effect",
+  "pool": "17 → 17",
+  "tiers": "6/4/4/3"
+ },
+ "men in black": {
+  "fams": [
+   "spygear",
+   "advancedtechnology",
+   "alientechnology",
+   "deepstate"
+  ],
+  "rungs": "—",
+  "pool": "19 → 23",
+  "tiers": "6/8/6/3"
+ },
+ "mermaid": {
+  "fams": [
+   "water",
+   "sonic",
+   "deepsea"
+  ],
+  "rungs": "—",
+  "pool": "23 → 21",
+  "tiers": "5/5/8/3"
+ },
+ "minotaur": {
+  "fams": [
+   "horns",
+   "beastabilities",
+   "dirtyfighting"
+  ],
+  "rungs": "—",
+  "pool": "19 → 16",
+  "tiers": "7/3/4/2"
+ },
+ "mothman": {
+  "fams": [
+   "cryptid",
+   "lightning",
+   "mothman",
+   "psychic"
+  ],
+  "rungs": "—",
+  "pool": "10 → 22",
+  "tiers": "6/6/6/4"
+ },
+ "mushroom girl": {
+  "fams": [
+   "psychadelic",
+   "nature",
+   "poison",
+   "fae"
+  ],
+  "rungs": "2: Pixie Dust → Fairy Dust; 3: Splash → Rot",
+  "pool": "17 → 22",
+  "tiers": "8/4/6/4"
+ },
+ "necromancer": {
+  "fams": [
+   "necromancy",
+   "bonedensity",
+   "blackmagic",
+   "poison"
+  ],
+  "rungs": "—",
+  "pool": "12 → 21",
+  "tiers": "7/6/4/4"
+ },
+ "nephilim": {
+  "fams": [
+   "fallenangel",
+   "earth",
+   "titan"
+  ],
+  "rungs": "1: Fallen Grace → Tremor Stomp; 3: Fissure → Ground Slam; 4: Wrath of the Watchers → Giant Smash",
+  "pool": "17 → 21",
+  "tiers": "5/7/6/3"
+ },
+ "nordic": {
+  "fams": [
+   "galacticfederation",
+   "light",
+   "psychic"
+  ],
+  "rungs": "—",
+  "pool": "16 → 21",
+  "tiers": "6/5/7/3"
+ },
+ "nun": {
+  "fams": [
+   "biblestudy",
+   "light",
+   "angelic"
+  ],
+  "rungs": "1: Purify/Smite → Absolution/Blessing; 2: Blessing → Purify/Sermon",
+  "pool": "22 → 21",
+  "tiers": "5/6/7/3"
+ },
+ "occulus": {
+  "fams": [
+   "eyesight",
+   "psychic",
+   "ancientknowledge"
+  ],
+  "rungs": "—",
+  "pool": "17 → 19",
+  "tiers": "5/5/6/3"
+ },
+ "orb of light": {
+  "fams": [
+   "light",
+   "cosmic",
+   "healingmagic"
+  ],
+  "rungs": "2: Luminous Shield → Light Shield; 3: Prism Burst → Luminous Shield; 4: Supernova → Black Hole",
+  "pool": "22 → 23",
+  "tiers": "6/4/10/3"
+ },
+ "overlord": {
+  "fams": [
+   "infernalcourt",
+   "dirtyfighting",
+   "demonicabilities"
+  ],
+  "rungs": "2: Infernal Decree → Infernal Conscription; 3: Scorched Earth → Brutal Slam",
+  "pool": "18 → 21",
+  "tiers": "6/5/7/3"
+ },
+ "pirate": {
+  "fams": [
+   "piracy",
+   "swordsmanship",
+   "ropework"
+  ],
+  "rungs": "—",
+  "pool": "13 → 15",
+  "tiers": "5/4/3/3"
+ },
+ "police officer": {
+  "fams": [
+   "policetraining",
+   "weaponstraining",
+   "humangrit"
+  ],
+  "rungs": "—",
+  "pool": "18 → 15",
+  "tiers": "3/5/4/3"
+ },
+ "politician": {
+  "fams": [
+   "politics",
+   "deepstate",
+   "militarysupport",
+   "cult"
+  ],
+  "rungs": "—",
+  "pool": "13 → 19",
+  "tiers": "6/5/5/3"
+ },
+ "popstar": {
+  "fams": [
+   "stagepresence",
+   "sonic",
+   "seduction"
+  ],
+  "rungs": "—",
+  "pool": "20 → 20",
+  "tiers": "6/5/6/3"
+ },
+ "priest": {
+  "fams": [
+   "biblestudy",
+   "light",
+   "healingmagic"
+  ],
+  "rungs": "1: Divine Light → Heal; 4: Exorcism → Hallelujah",
+  "pool": "25 → 18",
+  "tiers": "5/4/6/3"
+ },
+ "professor": {
+  "fams": [
+   "ancientknowledge",
+   "chemistry",
+   "advancedtechnology"
+  ],
+  "rungs": "4: Ancient Magic → Weigh the Heart",
+  "pool": "18 → 15",
+  "tiers": "4/3/5/3"
+ },
+ "quarterback": {
+  "fams": [
+   "football",
+   "athleticism",
+   "teamwork"
+  ],
+  "rungs": "3: Audible/Spike the Ball → Audible/Long Bomb",
+  "pool": "17 → 17",
+  "tiers": "4/5/5/3"
+ },
+ "rabbit": {
+  "fams": [
+   "athleticism",
+   "trickery",
+   "temporal",
+   "mirrormagic"
+  ],
+  "rungs": "1: Sparkle → Sprint; 3: Trick Room → Vault; 4: Time Rewind → Time Rewind/Rampage",
+  "pool": "18 → 22",
+  "tiers": "6/6/6/4"
+ },
+ "reptilian": {
+  "fams": [
+   "conspiracyknowledge",
+   "trickery",
+   "poison",
+   "spygear"
+  ],
+  "rungs": "4: Flat Earth → Sneak Slash",
+  "pool": "20 → 25",
+  "tiers": "9/7/5/4"
+ },
+ "ringmaster": {
+  "fams": [
+   "stagepresence",
+   "ropework",
+   "trickery",
+   "teamwork",
+   "animalhandling"
+  ],
+  "rungs": "—",
+  "pool": "14 → 27",
+  "tiers": "8/6/8/5"
+ },
+ "robinhood": {
+  "fams": [
+   "archery",
+   "huntingskills",
+   "thievery",
+   "marksmanship"
+  ],
+  "rungs": "1: Fire Arrow/Poison Arrow → Fire Arrow",
+  "pool": "15 → 15",
+  "tiers": "4/4/5/2"
+ },
+ "robot": {
+  "fams": [
+   "robot",
+   "machinery",
+   "cyberpunkweapons"
+  ],
+  "rungs": "—",
+  "pool": "13 → 12",
+  "tiers": "4/3/3/2"
+ },
+ "santa clause": {
+  "fams": [
+   "christmasspirit",
+   "winter",
+   "engineering"
+  ],
+  "rungs": "2: Sleigh Dash → Sleigh Dash/Naughty List; 3: Naughty List/White Christmas → White Christmas",
+  "pool": "16 → 16",
+  "tiers": "4/4/4/3"
+ },
+ "scarecrow": {
+  "fams": [
+   "scarecrow",
+   "witchcraft",
+   "nature",
+   "agriculture"
+  ],
+  "rungs": "—",
+  "pool": "13 → 18",
+  "tiers": "4/5/4/4"
+ },
+ "seraphim": {
+  "fams": [
+   "angelic",
+   "biblestudy",
+   "light"
+  ],
+  "rungs": "1: Rapture → Absolution; 2: Absolution → Rapture",
+  "pool": "22 → 21",
+  "tiers": "5/6/7/3"
+ },
+ "shadow entity": {
+  "fams": [
+   "shadow",
+   "haunted",
+   "temporal"
+  ],
+  "rungs": "2: Smoke Screen → Fear; 3: Phase Shift → Shadow Step; 4: Void Rush → Shadow Realm",
+  "pool": "20 → 19",
+  "tiers": "4/7/5/3"
+ },
+ "shaman": {
+  "fams": [
+   "nature",
+   "psychadelic",
+   "astralprojection",
+   "agriculture"
+  ],
+  "rungs": "3: Ayahuasca Retreat → Ayahuasca Retreat/Bad Trip; 4: Bad Trip/Ego Death → Ego Death",
+  "pool": "11 → 18",
+  "tiers": "4/4/6/3"
+ },
+ "sharkman": {
+  "fams": [
+   "deepsea",
+   "water",
+   "beastabilities",
+   "apexpredator"
+  ],
+  "rungs": "3: Ambush Lunge → Feral Dive",
+  "pool": "24 → 21",
+  "tiers": "5/6/7/3"
+ },
+ "sheriff": {
+  "fams": [
+   "weaponstraining",
+   "cowboyskills",
+   "policetraining",
+   "horsebackriding",
+   "marksmanship"
+  ],
+  "rungs": "—",
+  "pool": "17 → 23",
+  "tiers": "5/7/6/5"
+ },
+ "sidekick": {
+  "fams": [
+   "superheropowers",
+   "teamwork",
+   "athleticism",
+   "humangrit"
+  ],
+  "rungs": "2: Pep Talk → Encore",
+  "pool": "17 → 19",
+  "tiers": "4/6/5/4"
+ },
+ "siren": {
+  "fams": [
+   "sonic",
+   "water",
+   "seduction"
+  ],
+  "rungs": "3: Deafening Wail → Deafening Wail/Call of the Deep; 4: Call of the Deep → Great Flood",
+  "pool": "23 → 22",
+  "tiers": "6/5/8/3"
+ },
+ "skeleton": {
+  "fams": [
+   "bonedensity",
+   "haunted",
+   "swordsmanship"
+  ],
+  "rungs": "3: Bone Barrage → Bone Lance",
+  "pool": "14 → 13",
+  "tiers": "4/3/3/3"
+ },
+ "skinwalker": {
+  "fams": [
+   "trickery",
+   "blackmagic",
+   "cryptid"
+  ],
+  "rungs": "—",
+  "pool": "18 → 16",
+  "tiers": "5/4/4/3"
+ },
+ "starfish": {
+  "fams": [
+   "water",
+   "deepsea",
+   "healingmagic"
+  ],
+  "rungs": "1: Heal → Soothe; 2: Tidal Blessing → Heal/Tidal Blessing",
+  "pool": "27 → 16",
+  "tiers": "3/4/6/3"
+ },
+ "succubus": {
+  "fams": [
+   "seduction",
+   "astral",
+   "demonicabilities"
+  ],
+  "rungs": "3: Sleep Paralysis/Enthrall → Nightmare Pulse/Enthrall",
+  "pool": "17 → 16",
+  "tiers": "5/4/4/3"
+ },
+ "super sentai": {
+  "fams": [
+   "sentai",
+   "teamwork",
+   "martialarts"
+  ],
+  "rungs": "2: Pink Healing → Black Guard",
+  "pool": "13 → 16",
+  "tiers": "5/4/4/3"
+ },
+ "superhero": {
+  "fams": [
+   "superheropowers",
+   "wind",
+   "athleticism",
+   "humangrit"
+  ],
+  "rungs": "—",
+  "pool": "19 → 19",
+  "tiers": "4/7/4/4"
+ },
+ "swordfighter": {
+  "fams": [
+   "maincharacter",
+   "swordsmanship",
+   "athleticism"
+  ],
+  "rungs": "4: Blessed Blade → Roll Credits",
+  "pool": "14 → 16",
+  "tiers": "4/4/5/3"
+ },
+ "symbiote": {
+  "fams": [
+   "symbiosis",
+   "ooze",
+   "athleticism"
+  ],
+  "rungs": "2: Symbiote Armor → Web Swing",
+  "pool": "14 → 16",
+  "tiers": "4/5/3/3"
+ },
+ "telepath": {
+  "fams": [
+   "psychic",
+   "deepstate",
+   "astralprojection"
+  ],
+  "rungs": "4: Migraine → Mind Shatter",
+  "pool": "12 → 15",
+  "tiers": "5/4/5/1"
+ },
+ "tree person": {
+  "fams": [
+   "nature",
+   "earth",
+   "agriculture"
+  ],
+  "rungs": "2: Earthen Grasp → Earthen Grasp/Trunk Throw; 3: Trunk Throw → Entangling Roots",
+  "pool": "19 → 19",
+  "tiers": "5/6/4/3"
+ },
+ "valkraye": {
+  "fams": [
+   "holydefense",
+   "wind",
+   "knight"
+  ],
+  "rungs": "—",
+  "pool": "16 → 14",
+  "tiers": "3/5/3/3"
+ },
+ "vampire": {
+  "fams": [
+   "vampiricabilties",
+   "beastabilities",
+   "blood"
+  ],
+  "rungs": "—",
+  "pool": "15 → 14",
+  "tiers": "4/4/4/2"
+ },
+ "voidweaver": {
+  "fams": [
+   "arachnid",
+   "insectoid",
+   "fractal",
+   "shadow"
+  ],
+  "rungs": "—",
+  "pool": "11 → 22",
+  "tiers": "5/7/5/4"
+ },
+ "watcher": {
+  "fams": [
+   "temporal",
+   "cosmic",
+   "astralprojection"
+  ],
+  "rungs": "3: Temporal Shift → Time Rewind; 4: Reality Pulse → Time Rewind",
+  "pool": "17 → 20",
+  "tiers": "5/4/9/2"
+ },
+ "werewolf": {
+  "fams": [
+   "werewolf",
+   "beastabilities",
+   "apexpredator"
+  ],
+  "rungs": "—",
+  "pool": "13 → 13",
+  "tiers": "4/4/3/2"
+ },
+ "wizard": {
+  "fams": [
+   "arcane",
+   "lightning",
+   "fire",
+   "ice"
+  ],
+  "rungs": "—",
+  "pool": "18 → 22",
+  "tiers": "5/8/5/4"
+ },
+ "yeti": {
+  "fams": [
+   "ice",
+   "winter",
+   "cryptid",
+   "sasquatch"
+  ],
+  "rungs": "1: Frozen Punch/Ice Shard → Frozen Punch/Ice Spear",
+  "pool": "14 → 20",
+  "tiers": "6/6/4/4"
+ },
+ "zombie": {
+  "fams": [
+   "zombie",
+   "poison",
+   "ghoulish"
+  ],
+  "rungs": "—",
+  "pool": "14 → 18",
+  "tiers": "6/5/4/3"
+ }
+}

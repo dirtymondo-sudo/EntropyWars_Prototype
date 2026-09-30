@@ -3024,7 +3024,8 @@
 
         // ── healing / support family ──
         if (kind === 'heal' && target) {
-            const amt = spell.healAmt != null ? spell.healAmt : (spell.heal || 24);
+            const amt = spell.healPct ? Math.floor((target.maxHp || 0) * spell.healPct)   // THE SPELL AUDIT B: Time Rewind heals a share of max HP
+                : (spell.healAmt != null ? spell.healAmt : (spell.heal || 24));
             return healValue(g, unit, target, amt, v);
         }
         if (kind === 'healAll') {
