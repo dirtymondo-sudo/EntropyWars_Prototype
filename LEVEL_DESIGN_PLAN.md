@@ -197,3 +197,27 @@ built (sewers, catacombs, dungeons, bases, the ship), `look: 'rock'` with a tall
     colossus chamber, the warm ledge and its causeway, the gallery ledge and its alcove; the east crawl loops to the channel.
   - The small cavern rooms (vent, blast, adit, mouth, oubliette) stay single chambers.
   - Tool used: a script moves every floor prop / person / spawn left inside rock to the nearest open cell.
+- 2026-09-30, L6 in one delivery (branch claude/level-design-l6-1pwam9):
+  - **The Backrooms and the Flat Lands DELETED** (mondo: "I do not want the backrooms or the flatlands in the game … H-Wing is
+    the backrooms"): the two battle maps and their Δ boards, their EW_MAP_META rows, the site rooms (THE LEVELS, THE PLAIN),
+    their links (cern_backrooms, flatlands_backrooms), map slots, dossiers, room numbers, tapes, the arena pick, the far-roster
+    builders (three-renderer.js), the training / challenge pools (map.js, data.js), the server's queue rows, the music tag;
+    BAY 6 · QUARANTINED (it held only those two) with its sector, door and notice; H-Wing's EXIT door. The shadow entity's
+    home is H-Wing, the scarecrow's Skinwalker Ranch. The Backrooms look is `HQ_ROOM_LOOKS.faded` (the thirteenth floor wears it).
+  - **H-Wing is the backrooms:** the west leg, the crossbar, the east leg, the typing pool, the break room and the office
+    (six box rooms behind cards) are ONE layout room, `hwing_floor` (72 × 60, 3 m ceiling, yellow `wallpaper` walls, damp
+    carpet, the faded look): the H as the spine (two legs, the crossbar, a north corridor joining the legs), THE HUM ROOM and
+    THE POOL ROOMS (waded) between the legs, THE TYPING POOL, THE BREAK ROOM and the open office south of the crossbar, six
+    identical offices off the legs with narrow passages behind the walls; the corridor that repeats is a door off the north
+    corridor; the room at the end's cell door kept. Zone `hwing` (HQ_WORLD.zones, HQ_STAGE_RULES.zones): lobby ⇄ floor ⇄ HOME
+    door joins, no card inside the wing.
+  - **§3 #7:** the D.U.M.B. (motor pool, sub-level 7 on map_layout_3's hub + spokes + vent, dream lab, clone vats, bunker),
+    Area 51 (Hangar 18 with a perimeter corridor, the white rooms on the ward-room idea), CERN (the ring as an octagon of hall
+    rows, the detector hall, the control room), the Lodge's halls: every one a `plan` gen (walls look) instead of the BSP.
+  - **§3 #8:** the Flying Dutchman's main deck: no generator (the derelict deck's recipe), a flat hull, crisp tiers, built
+    flights, the two hatches, a 1.5 m rail round the hull.
+  - **§3 #9:** Agartha, the temple city, Antarctica's station, the North Pole village, Olympus's summit (walls look: courts,
+    streets and plazas between built walls, terraces as crisp plateaus with built stairs), the haunted grounds (pine hedges, the
+    crypt built), Giza and Babel (walls look: walled courts, a town), Stonehenge and Göbekli (a hand-drawn rock bound; the henge
+    bank the one earthwork, Göbekli's enclosures ring walls, the barrows crisp with stairs).
+  - Every room checked: every door lands and is reached, no traps, no cold space, a 48-seat room in each. Arenas re-baked.
