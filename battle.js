@@ -62743,7 +62743,11 @@
             } else if (spell.kind === 'healAll') {
                 playSfx('healRegen');
                 unit.mp -= effectiveSpellCost;
-                const allies = aliveUnitsFor(unit.player);
+                // THE SPELL AUDIT Batch C: auraRadius limits the heal to allies
+                // within that many tiles of the caster (Rejuvenation, Milk and
+                // Cookies); without it the whole team is healed as before.
+                const allies = aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
+                    || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
 
                 // TWO BEATS (2026-08-03): beat 1 — the CAST on the caster;
                 // beat 2 — the camera cuts WIDE to frame every ally while the
@@ -62883,11 +62887,12 @@
                 // skip cleanse there to avoid double-dipping; stat buffs apply in all.
                 // Runs at beat 2 so the buff/cleanse floaters pop while the wide
                 // shot frames the team (not during the caster's wind-up).
-                if (spell.statStageBoost || (spell.cleanse && !_useVfx3dHealAllAura)) {
+                if (spell.statStageBoost || spell.teamStatusEffects || (spell.cleanse && !_useVfx3dHealAllAura)) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle') return;
                         for (const ally of allies) {
                             if (ally.dead) continue;
+                            if (spell.teamStatusEffects) applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
                             if (spell.cleanse && !_useVfx3dHealAllAura) {
                                 const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                                 const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
@@ -62973,7 +62978,10 @@
                         (spell.dmg || 0) + spellPower, spellPower, {
                             waterBonus: spell.waterBonus,
                             rngRange: 40, minDmg: 32,
-                            deformCenter: { x, y }
+                            deformCenter: { x, y },
+                            // THE SPELL AUDIT Batch C: an area row with
+                            // groundsFlyers (Tempest, Meteor) slams flyers down.
+                            groundAirborne: !!spell.groundsFlyers
                         });
                     if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
                 }, timing.impactDelay);
@@ -64157,6 +64165,9 @@
                         const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                         for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
                     }
+                    // THE SPELL AUDIT Batch C: a self heal may also land
+                    // statuses on the caster (Lunar Regeneration: Regen).
+                    if (spell.statusEffects) applyStatusEffects(unit, spell.statusEffects, `${spell.name}: `, unit);
                     addLog(`${unitDisplayName(unit)} uses ${spell.name}! Heals ${healAmt} HP.`);
                     markDirty('hud');
                     renderIfDirty();
@@ -66134,6 +66145,14 @@
                 } else { _vfxBuff(unit.x, unit.y); }
                 const allies = aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
                 let buffCount = 0;
+                // THE SPELL AUDIT Batch C: cleanse N debuffs (true = 1, 99 =
+                // every one) from each ally in the aura (Mantra, Everybody Up).
+                if (spell.cleanse) {
+                    for (const ally of allies) {
+                        const _wcDebuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                        for (const k of _wcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(ally, k);
+                    }
+                }
                 if (spell.teamStatusEffects) {
                     // Fermata & co: a warCry that lands STATUSES on the team
                     // (statLock) instead of stat stages.
