@@ -12835,7 +12835,9 @@
             const at = (ms, fn) => window.setTimeout(() => { if (state.phase !== 'battle') return; _ewsSafe(fn); }, Math.max(0, ms));
             const pos = (u) => ({ x: (u && u._dyingX != null) ? u._dyingX : u.x, y: (u && u._dyingY != null) ? u._dyingY : u.y });
             const grade = (kind, ms) => { try { if (typeof cineGrade === 'function') cineGrade(kind, ms); } catch (err) {} };
-            const insert = (html, kind, ms) => { try { if (typeof cineInsert === 'function') cineInsert(html, kind, ms); } catch (err) {} };
+            /* a finisher row that borrows another's staging (the 2026-09-30 batch: `sig` = the built director, `lines` = its own
+               captions) swaps each caption through _finLine — same timings, same VFX, so both screens stay in step */
+            const insert = (html, kind, ms) => { try { if (typeof cineInsert === 'function') cineInsert(_finLine(def, html), kind, ms); } catch (err) {} };
             const flash = (color, ms, peak) => { if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash(color, ms, peak); };
             const ring = (x, y, color, o) => { if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, Object.assign({ r0: ts * 0.2, r1: ts * 1.5, ms: 440, color }, o || {})); };
             const kick = (px, ms) => { try { if (typeof ThreePost !== 'undefined' && ThreePost.spellGradeKick) ThreePost.spellGradeKick(px, ms); } catch (err) {} };
@@ -12931,6 +12933,14 @@
             return totalMs;
         }
         window._finPlayCinematic = _finPlayCinematic;
+        /* THE CAPTION SWAP: `def.lines` = [[from, to], …]; every `from` found in a caption is replaced (a prefix such as
+           '🎅 NAUGHTY: ' keeps the victim's name after it). A row with no `lines` shows the director's own words. */
+        function _finLine(def, html) {
+            if (!def || !Array.isArray(def.lines) || typeof html !== 'string') return html;
+            let out = html;
+            for (const pair of def.lines) if (Array.isArray(pair) && pair[0]) out = out.split(pair[0]).join(pair[1] || '');
+            return out;
+        }
 
         /* ═══════════════════════════════════════════════════════════════════
            THE EXECUTION DIRECTORS. Hooks (every one best-effort, the same
