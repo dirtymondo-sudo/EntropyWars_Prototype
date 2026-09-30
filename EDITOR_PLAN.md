@@ -480,6 +480,10 @@ which the water layer already draws as sea, river or lake, with falls where the 
   the walker is inside its polygon.
 
 ### 5.10 Arenas and fights (E7)
+*2026-09-30, mondo: PvP maps are a FIXED 8×8 and have nothing to do with the exploration battles; he does not need an arena
+for every little room, only the main sites (or sites big enough to hold an 8×8), cut from the site's real room, replacing
+the Δ maps; the voxel editor stays for now. BUILT as E8 THE ARENAS (§13): no markers or `N × M` sizes; `bake-arenas.js`
+picks each site's 8×8 automatically and files it as the site's `<site>_delta`. The rest of this section is superseded.*
 - An ARENA marker is a rectangle on a room's ground (`N × M`, 8–36 cells of 1.75 m) with team seats;
   `hqFieldBuild` rasterises the room inside it exactly as an encounter does, at that size. The match
   select lists published arenas (a `MS_MAP_LIST` row per marker, `arena:<room>:<marker>`); the mode
@@ -784,4 +788,12 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   and ZONE, ZONES in world.json (`{ label, rooms, anchor, hub?, slot?, color? }`, the outliner grouped by zone; at load his zone is a
   DOOR_HQ.hubs node or joins one), the LEADS TO tab (hqWorldGraph drawn; OPEN BIG), AUDIT SIGHT (exits in a line of sight or in
   one room) and AUDIT 8×8 (a clear battle patch per layout room). Checked by a quick load only. Details: docs/notes/editor.md "E7".
-
+- 2026-09-30: **E8 THE ARENAS built** (mondo: replace the Δ maps with 8×8 cuts of each main site's real room; not every little
+  room; keep the voxel editor for now). Token 20260930-arenas-01-cors; R2: data.js, three-renderer.js, map.js, match-select.js,
+  battle.js, state.js, online.js; repo tool `bake-arenas.js`. Differs from §5.10: no markers, no `N × M`, no migration, no editor
+  deletion: the tool picks each site's 8×8 automatically (the entry room first; spawn rows, egress rows and nexus flat; at most 8
+  free-standing obstacle cells; everything reachable) and files it as the site's `<site>_delta`, so every mode, ranked, the HQ
+  crossing and online get it with no id change; the room is surveyed before the launch and drawn round the board in battle.
+  33 of 38 sites have one; Heaven, Hell, the Backrooms, the Revenge and Bermuda keep their Δ. The complex parts' Δ boards leave
+  the match-select list. Checked headlessly (all 33 rebuild level for level) + a quick launch on two arenas. Details:
+  docs/notes/editor.md "E8".

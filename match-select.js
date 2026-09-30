@@ -301,7 +301,7 @@ function SiteFile({ mp, variant, pre, gameModes, multiplayerModes, gmId }) {
       h('h1', null, mp.name),
       sf && h(DoorStamp, { text: sf.status, tone: sf.tone, title: 'Customs status · ' + sf.juris })
     ),
-    h('div', { className: 'ms-tty-sub' }, mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
+    h('div', { className: 'ms-tty-sub' }, mp.arena ? '· arena · 8×8 cut of the site’s own room' : mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
     h('div', { className: 'ms-tty-meta' },
       h('span', null, h('em', null, 'SIZE'), boardSizeLabel),
       h('span', null, h('em', null, 'SPAWNS'), (mp.team || 4) + ' per side'),
@@ -372,7 +372,7 @@ function MatchSelect(props) {
     /* THE EARNED DOORS (2026-09-20): a desk that deals only earned sites opens on the first Δ it may deal */
     const allow = (pre && Array.isArray(pre.allow)) ? new Set(pre.allow) : null;
     const siteOf0 = (id) => (typeof window.hqSiteId === 'function') ? window.hqSiteId(id) : String(id || '').replace(/_delta$/, '');
-    const di = mapList.findIndex(m => m.isDelta && !m.field && (!allow || allow.has(siteOf0(m.modeId))));
+    const di = mapList.findIndex(m => m.isDelta && !m.field && !m.area && (!allow || allow.has(siteOf0(m.modeId))));
     if (di >= 0) return di;
     const ai = allow ? mapList.findIndex(m => !m.field && allow.has(siteOf0(m.modeId))) : -1;
     return ai >= 0 ? ai : 7;
@@ -451,6 +451,12 @@ function MatchSelect(props) {
     // Clash is locked to 4v4 — snap the stepper so the display matches launch.
     if (mpMode.isClash) setTeamSize(4);
   }, [gmIdx, mapIdx]);
+  /* THE ARENAS (E8, 2026-09-30): the picked arena's room is surveyed while the form is filled (map.js _hqArenaWarm), so
+     CONFIRM seldom waits for it */
+  useEffect(() => {
+    const mp = mapList[mapIdx];
+    try { if (mp && mp.arena && typeof window._hqArenaWarm === 'function') { const p = window._hqArenaWarm(mp.modeId, true); if (p) p.catch(() => {}); } } catch (_e) {}
+  }, [mapIdx]);
 
   const compatibleMapIndices = useMemo(() => {
     if (!mpMode.compatibleMaps) return mapList.map((_, i) => i);
@@ -465,6 +471,7 @@ function MatchSelect(props) {
       const m = mapList[i];
       if (!m) return false;
       if (m.field) return false;   // THE FIELD (Phase 9 stage B): an encounter's rasterised window is never filed from the console
+      if (m.area) return false;    // THE ARENAS (E8, 2026-09-30, mondo: not an arena for every little room): a complex part's own Δ is never listed
       /* THE EARNED DOORS (2026-09-20): a console may deal only the sites Otto has built a door to (pre.allow = site ids; since 2026-09-23 the RANGE console passes the earned + visited sites too — only Practice / the classic desk pass none = every site) */
       if (allowSites && !allowSites.has(siteOf(m.modeId))) return false;
       if (deltaOnly && !m.isDelta) return false;
@@ -655,7 +662,7 @@ function MatchSelect(props) {
     h('div', { className: 'ms-tty-line' }, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '') + (reservesOn ? ' · ⇄ RESERVES' : '')),
     sf && h('div', { className: 'ms-tty-line' }, 'SITE STATUS  ', h('span', { style: { color: STAMP_INK[sf.tone] || undefined } }, sf.status)),
     pre && !pre.practice && h('div', { className: 'ms-tty-dispatch' }, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · '
-      + (mp.isDelta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · '
+      + (mp.arena ? '4v4 ARENA' : mp.isDelta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · '
       + (Array.isArray(pre.roster) && pre.roster.length ? 'CPU FIELDS THE SITE’S NATIVE ENTITIES' : 'FREE CPU DRAW · NOTHING FILED'))
   );
 
@@ -663,7 +670,9 @@ function MatchSelect(props) {
   let body;
   if (isSite) {
     const boards = [
-      { id: 'delta', label: 'Δ BOARD', sub: '8×8 · hand-authored · 4v4', off: deltaIdx < 0, title: 'Arena-ready 8×8 cut of the site, the CPU fielding the entities on file' },
+      (deltaIdx >= 0 && mapList[deltaIdx].arena)
+        ? { id: 'delta', label: 'ARENA', sub: '8×8 · the site’s own room · 4v4', off: false, title: 'An 8×8 cut of the site’s own room, the CPU fielding the entities on file' }
+        : { id: 'delta', label: 'Δ BOARD', sub: '8×8 · hand-authored · 4v4', off: deltaIdx < 0, title: 'Arena-ready 8×8 cut of the site, the CPU fielding the entities on file' },
       { id: 'full', label: 'FULL SITE', sub: (mapList[fullIdx] ? mapList[fullIdx].size + ' · ' + (mapList[fullIdx].team || 4) + 'v' + (mapList[fullIdx].team || 4) : 'deep crossing'), off: fullIdx < 0, title: 'Deep crossing: the whole site at its own team size' },
     ];
     body = h('div', { className: 'ms-tty-body ms-tty-site' },
@@ -708,7 +717,7 @@ function MatchSelect(props) {
           h('div', { className: 'ms-tty-h' }, 'SITES', h('span', null, filteredMaps.length + '/' + compatibleMapIndices.length)),
           h('div', { className: 'ms-tty-input' }, h('span', null, '⌕'),
             h('input', { value: query, onChange: e => setQuery(e.target.value), placeholder: 'search sites', spellCheck: false })),
-          h(Chip, { on: deltaOnly, onClick: () => { setDeltaOnly(d => !d); playUi(); } }, 'Δ MAPS'),
+          h(Chip, { on: deltaOnly, onClick: () => { setDeltaOnly(d => !d); playUi(); }, title: 'The 8×8 maps: the arenas cut from each site’s own room, the Δ boards of the sites with no room for one, the facility boards' }, '8×8 MAPS'),
           h('span', { className: 'ms-tty-note', style: { letterSpacing: '0.18em' } }, 'SIZE'),
           ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) => h(Chip, { key: k, on: sizeFilter === k, onClick: () => setSizeFilter(sizeFilter === k ? null : k) }, l))
         ),
