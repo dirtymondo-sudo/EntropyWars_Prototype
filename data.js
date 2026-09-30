@@ -50466,7 +50466,8 @@ function hqFieldBuild(roomId, ox, oz, opts) {
 function hqFieldLayout(site, baseKey, opts) {
     opts = opts || {};
     const S = HQ_FIELD_RULES.size;
-    const src = (typeof MAP_LAYOUT_PRESETS !== 'undefined') ? (MAP_LAYOUT_PRESETS[site + '_delta'] || MAP_LAYOUT_PRESETS[site]) : null;
+    const src = (typeof hqArenaSiteLayout === 'function' && hqArenaSiteLayout(site))   // THE ARENAS (E8): a site whose Δ became its arena keeps the Δ's own layout here
+        || ((typeof MAP_LAYOUT_PRESETS !== 'undefined') ? (MAP_LAYOUT_PRESETS[site + '_delta'] || MAP_LAYOUT_PRESETS[site]) : null);
     const env = (src && src.env) ? JSON.parse(JSON.stringify(src.env)) : null;
     /* stage C: a BOX field (a complex part) is indoors — no near setting round it (the site's apron / moat / hull would
        stand round a room), no streaming motion, THE WORLD inert (`kind: 'room'`); the site's sky and far roster stand
@@ -50508,6 +50509,192 @@ function hqFieldRegister(roomId, ox, oz, opts) {
                    biomes: (siteMeta && siteMeta.biomes) ? siteMeta.biomes.slice() : [], isDelta: true, field: true, base: entry.base, env: layout.env, desc: entry.deltaDesc };
     return { id, entry, layout, meta };
 }
+/* ══ THE ARENAS (EDITOR_PLAN E8, 2026-09-30) ══════════════════════════════════════════════════════════════════════
+   mondo: "yes replace the delta maps" / "i dont need an arena map for every little room, just the main sites or sites big
+   enough to have an 8x8 area in them". A site's PvP 8×8 map is no longer the hand-authored voxel Δ board: it is an 8×8 cut
+   of the site's OWN room (the entry part first — the room the bay door lands in), rasterised by THE FIELD's own code
+   (hqFieldRaster) and played with the Δ's house rules (4v4, P2 on row 0 x 2..5, P1 on row 7, the 2×2 nexus at dead centre),
+   so every mode, the ranked pool, the challenges, the HQ crossing and online keep reading `<site>_delta` and get the arena.
+   PvP boards stay a FIXED 8×8 (the exploration battles plan changes encounters only).
+   · THE PICK is baked, never computed at load (a site room's floor plan takes 1–30 s to compile): `node bake-arenas.js`
+     (repo tool) scans every 8×8 window of each site's rooms and files the best one that FITS in HQ_ARENA_RULES.picks —
+     the spawn rows, the egress rows and the nexus flat walkable floor, no walkable cell over two battle levels, at most
+     `obstacles` cells of the room's own free-standing trees / rocks / props / pools (solid or hazard to the engine, drawn as
+     what they are; never the room's edge, a cliff wall or a building), every walkable cell reachable from both spawn rows; then the most (balanced) cover, then the nearest to the
+     room's BATTLE marker. A site with no window that fits keeps its Δ (the bake's log names them). Rerun the tool after a
+     site room changes.
+   · AT LOAD (hqArenaRegisterAll) each pick becomes the `<site>_delta` entry from the baked cells (sheet + level per
+     cell) — the engine board, the thumbnails and GAME_MODES read it; the Δ's own layout (its `near` scenery) stands.
+   · AT LAUNCH (hqArenaUpgrade, once the room is surveyed — map.js _hqArenaWarm / _msConfirm's gate) the entry is rebuilt
+     from the live raster with THE FIELD's full record (the true tops, the covers, the no-deform cells) and the room's own
+     layout (hqFieldLayout), and the battle draws the ROOM round the board exactly as an encounter does (three-renderer.js
+     _hqBattleRoom reads hqArenaRun, latched at activate so a survey that lands mid-fight changes nothing until the next).
+   · The complex parts' own Δ boards (`<roomId>_delta`, THE AREA BOARDS) stay registered for the HQ encounter fallback but
+     leave the match-select list (the little rooms). The voxel editor is untouched. */
+const HQ_ARENA_RULES = {
+    size: 8,
+    teamSize: 4,
+    obstacles: 8,   // the most cells of an arena that may be the room's own obstacles (a tree, a rock, a prop, a pool)…
+    featureMax: 12, // …each a FEATURE: a blocked patch of at most this many cells standing free in the room (never its edge or a wall)
+    label: 'Arena',
+    /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is 64 pairs
+       (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
+    picks: {
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":5,"oz":21,"base":"grass_2","open":1,"keys":["dirt","grass_2","cliff"],"cells":"01010101010101011111111111111111111111111111111111111111112424111111111111112411111111241111111111111111111111111111111111111101"},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":29,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","dirt"],"cells":"01010101010101010101010101010101010101010101010101010101010114140101010101010101020202020202020202020101010101012101010101010101"},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":46,"oz":37,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"01111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111124111111111111112424111111111111"},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":55,"oz":44,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":54,"oz":32,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101011414142121212101020202010101010101010101010101010101010101010101010101"},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":20,"oz":34,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":1,"base":"marble_light","open":0,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010102020201010101010202020101010101020202010101010104020201010101010101010101010101010101"},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":11,"oz":17,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010201010101010101020101010101010102010101010101010201010101010101020101010101010102010101010101010201010101010101"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"01010101111124240101010111112401010101011111011111110101111111110111111111111111242401111111110124240101111101010101010111110101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":19,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101140101010101010114010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010201010101010101020201010101010102020201010101010202020101010101020201010101010102010101010101010101010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":19,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","ice_1","water"],"cells":"01110101010121210111010101012121111101010101012111111111111101011111010101111101111101020202120211110101010111111111010101010111"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":8,"base":"grass_rocky","open":1,"keys":["dirt_2","grass_rocky","grass_2"],"cells":"01010101111111241111111101010101111124240101010124111101111101012424011111010101241101110111010111110111011111011111011111011101"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"04041121211111110411112121111111211111212111112121212121212121211121212121211104212121212111110411111121211111111111112121111111"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":9,"oz":10,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","rock_wall_1"],"cells":"01010111111111111111011111111111111111012411241111111101112411241111110101111101111111010101011101011111011111241111111101111111"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":21,"oz":13,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"01010101010101010101010101010101010101010102020201010101010202020101010101020202010101010102020201010101010101140101010101010114"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":18,"base":"cobblestone","open":1,"keys":["cobblestone","water"],"cells":"01010101010101110101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":20,"oz":15,"base":"marble_light","open":1,"keys":["marble_light","water","rocks_dark_fantasy"],"cells":"01010101010111110101010101010101010101020202020201010101010101010101010101010101010101010101010101010101010101010101010101010124"},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":21,"base":"marble","open":0,"keys":["marble","carpet_4","marble_2"],"cells":"01010101011111010101010101111101240101010111110124010101011111010101010101111101010101010111110124241111111111112424010101111101"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":16,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01011111010101010101111101010101140111110101010114011111011414141401111101010114010111110101010101011111010101010101111101010101"},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":39,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03020101010101010202010101010101020201010101010102020101010101010202010101010101020201010101010102020101010101010202010101010101"},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":14,"oz":2,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101011401010101010101140101010101010114010101010101010101010101010101010101010101010101"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101140101010101010114010101010114010101010101141414010101010101141401010101010101010101010101010101"},
+        prebuilt_flatlands: {"room":"site_prebuilt_flatlands_plain","ox":25,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"01010101010101140101010101010101010101010101010114140101010101011414140101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2","gunmetal"],"cells":"01010101010101011111010101010101021212121202242401010111111111240101010101011111010101010101011101010101010101010202010101010111"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":14,"oz":16,"base":"marble_light","open":1,"keys":["marble_light","marble"],"cells":"01111101010101010101111101010111010101110111111111111111111101010101011111010101010101111101010101010111110101011111111111111111"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":18,"oz":19,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"01010111111111110111111111111111010111111111111101010111111111110111110101111104011111110101110401111111110101110104111111110101"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":11,"base":"checkerboard","open":0,"keys":["checkerboard","wood","damask"],"cells":"01011111010101010101111101010101010111110101010101240111110101112424240111010111010101011111111111111111111111110101010101111101"},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":14,"oz":19,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"01010101010101010101010101011414210101010101010121212121210101010101012121212121010101212121212101010121210101210101012121010101"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"04111121212121210421112121212121042111212121210421211111212121042121111111111121111111211111111111212121212121212121212121212121"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":20,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010114141401010101011414010101010101141401010101010101010101010101010101010101010101"},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":60,"oz":35,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101011401010101010101140101010101010114010101010101011401010101010101140101010101010101010101010101010101010101010101"},
+    },
+    /* </ARENA PICKS> */
+};
+/* the Δ's own layout of each site with an arena (the field layout of every other room of that site reads it — hqFieldLayout) */
+const _HQ_ARENA_SITE_LAYOUTS = {};
+function hqArenaSiteLayout(site) { return _HQ_ARENA_SITE_LAYOUTS[site] || null; }
+function hqArenaSpawns() {
+    const S = HQ_ARENA_RULES.size, p1 = [], p2 = [];
+    for (let i = 0; i < 4; i++) { p1.push({ x: 2 + i, y: S - 1 }); p2.push({ x: 2 + i, y: 0 }); }
+    return { 1: p1, 2: p2 };
+}
+/* the baked cells → rows of { key, tile } */
+function hqArenaCells(pick) {
+    const S = HQ_ARENA_RULES.size, keys = (pick && pick.keys) || [], s = String((pick && pick.cells) || '');
+    if (s.length !== S * S * 2) return null;
+    const rows = [];
+    for (let y = 0; y < S; y++) {
+        const row = [];
+        for (let x = 0; x < S; x++) { const i = (y * S + x) * 2; row.push({ key: keys[parseInt(s.charAt(i), 36)] || pick.base || 'grass_2', tile: (parseInt(s.charAt(i + 1), 10) || 1) - 1 }); }
+        rows.push(row);
+    }
+    return rows;
+}
+/* the map entry: the Δ's frame (the bed, the base height, 4v4 on the Δ's spawn rows, the centre nexus) over the room's cells */
+function hqArenaEntry(site, pick, cells, tints) {
+    if (!cells || typeof _mfNew !== 'function') return null;
+    const S = HQ_ARENA_RULES.size, B = HQ_FIELD_RULES.base;
+    const room = (DOOR_HQ.rooms || {})[pick.room] || {};
+    const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
+    const label = ((meta && meta.label) || site) + ' ' + HQ_ARENA_RULES.label;
+    const M = _mfNew({
+        name: label, w: S, h: S, base: pick.base || 'grass_2', baseH: B, seed: (typeof hqHash === 'function') ? (hqHash(site + '|arena') % 100000) + 1 : 8008,
+        strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: tints ? Object.assign({}, tints) : null,
+    });
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
+    const sp = hqArenaSpawns();
+    M.spawns(sp[1], sp[2]);
+    M.obj(3, 3, 'nexus');   // the centre nexus: Arena stamps the 2×2 zone from it (map.js _initNexusFromObjects), every other mode strips it
+    const entry = M.finish();
+    entry.isDelta = true;
+    entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
+    entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
+    entry.arena = { site, room: pick.room, ox: pick.ox | 0, oz: pick.oz | 0, open: !!pick.open };
+    return entry;
+}
+/* the arena of a map id (a `<site>_delta` wearing `arena`): { site, room, ox, oz, ready } — ready = the full field is attached */
+function hqArenaOf(mapId) {
+    const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[String(mapId || '')] : null;
+    if (!e || !e.arena) return null;
+    return Object.assign({ id: String(mapId), ready: !!(e.field && e.field.tops), failed: !!e.arena.failed }, e.arena);
+}
+/* the room needs its floor plan compiled before the full field can be read (map.js surveys it off the main thread) */
+function hqArenaNeedsSurvey(mapId) {
+    const a = hqArenaOf(mapId); if (!a || a.ready || a.failed) return false;
+    const r = (DOOR_HQ.rooms || {})[a.room];
+    return !!(r && r.terrain && !r._terrainInfo);
+}
+/* THE LAUNCH: the entry rebuilt from the LIVE raster with THE FIELD's full record, the room's own layout. `compile` lets
+   the sync compile run (the no-worker fallback); without it an unsurveyed room returns false. A window that is no longer
+   clear (a room changed since the bake) keeps the baked board and the Δ's layout (`failed`, warned once). */
+function hqArenaUpgrade(mapId, opts) {
+    opts = opts || {};
+    const id = String(mapId || '');
+    const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[id] : null;
+    if (!e || !e.arena) return false;
+    if (e.field && e.field.tops) return true;
+    if (e.arena.failed) return false;
+    const a = e.arena, room = (DOOR_HQ.rooms || {})[a.room];
+    if (!room) { e.arena.failed = true; return false; }
+    if (room.terrain && !room._terrainInfo && !opts.compile) return false;
+    let built = null, R = null;
+    try { R = hqFieldRaster(a.room, a.ox, a.oz); built = R ? hqFieldBuild(a.room, a.ox, a.oz) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
+    const sp = hqArenaSpawns(), open = (c) => !!(c && c.in && !c.rock && !c.hazard);
+    let out = 0;
+    if (R) R.cells.forEach(row => row.forEach(c => { if (!open(c)) out++; else if ((c.tile | 0) > 2) out += 99; }));
+    const fits = !!(R && built && out <= HQ_ARENA_RULES.obstacles
+        && sp[1].concat(sp[2], [{ x: 3, y: 3 }, { x: 4, y: 3 }, { x: 3, y: 4 }, { x: 4, y: 4 }]).every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
+    if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
+    const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0 })));
+    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null);
+    if (!next) { e.arena.failed = true; return false; }
+    next.name = e.name; next.deltaDesc = e.deltaDesc;
+    next.field = Object.assign({}, built.field, { id, arena: true });
+    Object.keys(e).forEach(k => { delete e[k]; });
+    Object.assign(e, next);   // in place: every holder of the entry (the thumbnails, GAME_MODES' source) sees the room's own board
+    const sh = room.shell || {};
+    const closedDome = (!sh.open) ? ((sh.fog && sh.fog.color != null) ? sh.fog.color : 0x0d0e12) : null;
+    if (typeof MAP_LAYOUT_PRESETS !== 'undefined') {
+        MAP_LAYOUT_PRESETS[id] = hqFieldLayout(a.site, e.base, { box: !!e.field.box, cave: !!e.field.cave, terrain: !!e.field.terrain, open: !!e.field.open,
+                                                              look: (sh.look && typeof sh.look === 'object') ? sh.look : null, dome: closedDome });
+    }
+    return true;
+}
+/* the renderer's record (three-renderer.js _hqBattleRoom — the encounter's shape): the room, the window's frame, the map id */
+function hqArenaRun(mapId) {
+    const id = String(mapId || '');
+    const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[id] : null;
+    if (!e || !e.arena || !e.field || !e.field.tops) return null;
+    const f = e.field;
+    const board = Object.assign({ N: f.S, C: f.C, x0: f.x0, z0: f.z0 }, f.cave ? { cave: true } : f.terrain ? { terrain: true } : { box: true });
+    return { room: e.arena.room, field: { board }, fieldId: id, site: e.arena.site, arena: true };
+}
+/* AT LOAD: every baked pick replaces its site's Δ (the entry, the roster row); the Δ's layout is kept for the site's other rooms */
+(function hqArenaRegisterAll() {
+    const P = HQ_ARENA_RULES.picks || {};
+    if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
+    Object.keys(P).forEach(site => {
+        try {
+            const pick = P[site], did = site + '_delta';
+            const old = PREBUILT_MAPS[did], row = EW_MAP_META.find(m => m.id === did);
+            if (!old || !row || !pick || !(DOOR_HQ.rooms || {})[pick.room]) return;
+            const entry = hqArenaEntry(site, pick, hqArenaCells(pick), old.terrainTints || null);
+            if (!entry) return;
+            if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[did]) _HQ_ARENA_SITE_LAYOUTS[site] = MAP_LAYOUT_PRESETS[did];
+            PREBUILT_MAPS[did] = entry;
+            const room = DOOR_HQ.rooms[pick.room];
+            row.label = entry.name;
+            row.arena = true; row.room = pick.room;
+            row.desc = HQ_ARENA_RULES.size + '×' + HQ_ARENA_RULES.size + ' arena, ' + HQ_ARENA_RULES.teamSize + 'v' + HQ_ARENA_RULES.teamSize + ' — cut from ' + (room.label || pick.room);
+        } catch (err) { console.error('[ARENA] the pick failed — the Δ stands', site, err); }
+    });
+})();
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
    `state`, nothing relayed (RULE #2). This is the ONE table the rider reads

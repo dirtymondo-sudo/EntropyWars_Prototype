@@ -3415,6 +3415,7 @@
                     if (data.ranked) {
                         NET.ranked = true;
                         NET.matchMapModeId = data.mapModeId || null;
+                        { try { if (NET.matchMapModeId && typeof window._hqArenaWarm === 'function') { const _aw = window._hqArenaWarm(NET.matchMapModeId, true); if (_aw) _aw.catch(() => {}); } } catch (e) {} }   // THE ARENAS (E8): the arena's room surveyed while the players file their rosters
                         NET.matchTeamSize = data.teamSize || 4;
                         NET.matchRankedMode = data.rankedMode || 'arena';
                     }
@@ -3473,6 +3474,7 @@
                     NET.roomCode = data.roomCode;
                     NET.ranked = true;
                     NET.matchMapModeId = data.mapModeId || null;
+                    { try { if (NET.matchMapModeId && typeof window._hqArenaWarm === 'function') { const _aw = window._hqArenaWarm(NET.matchMapModeId, true); if (_aw) _aw.catch(() => {}); } } catch (e) {} }   // THE ARENAS (E8): the arena's room surveyed while the players file their rosters
                     NET.matchTeamSize = data.teamSize || 4;
                     NET.matchRankedMode = data.rankedMode || 'arena';
                     NET.opponentName = data.opponent || 'Opponent';

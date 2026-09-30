@@ -3985,6 +3985,50 @@
             return reg;
         }
         window._hqFieldRegister = _hqFieldRegister;
+        /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): a PvP arena is an 8×8 cut of its site's room (data.js hqArenaUpgrade) — the room's
+           floor plan is surveyed off the main thread (the worker above), then the arena's full field is attached so the battle draws
+           the room round the board. A promise, or null when nothing is needed (not an arena, already full, no worker — the caller
+           compiles under its card). A record that lands while a fight is on ITS map waits for the next launch (the renderer latches
+           the room at activate; the board never swaps under a battle). Warmed by the match select card, the lobby's map, every
+           applyGameMode; _msConfirm waits for it. Viewer-local, nothing on `state`, nothing relayed (RULE #2): the host and the
+           guest each read the same room. */
+        function _hqArenaWarm(mapId, urgent) {
+            if (typeof window.hqArenaOf !== 'function') return null;
+            const a = window.hqArenaOf(mapId);
+            if (!a || a.ready || a.failed) return null;
+            const midFight = () => (typeof state !== 'undefined' && state.gameState === GS.BATTLE && typeof activeGameMode !== 'undefined' && activeGameMode === a.id);
+            if (!window.hqArenaNeedsSurvey(a.id)) { if (!midFight()) { try { window.hqArenaUpgrade(a.id); } catch (e) { console.warn('[ARENA] upgrade failed', a.id, e); } } return null; }
+            const p = _hqSurvey(a.room, !!urgent);
+            if (!p) return null;
+            return p.then(() => { if (!midFight()) { try { window.hqArenaUpgrade(a.id); } catch (e) { console.warn('[ARENA] upgrade failed', a.id, e); } } return true; },
+                          (e) => { console.warn('[ARENA] the room survey failed — the arena plays without its room', a.id, e && e.message); return false; });
+        }
+        window._hqArenaWarm = _hqArenaWarm;
+        /* _msConfirm's gate: the arena's room surveyed before the launch. A small card over the screen says so; no worker = the
+           sync compile under that card (the old HQ fallback). true = go on now. */
+        let _msArenaGateBusy = false;
+        function _msArenaGate(mapId) {
+            if (typeof window.hqArenaOf !== 'function') return true;
+            const a = window.hqArenaOf(mapId);
+            if (!a || a.ready || a.failed) return true;
+            if (_msArenaGateBusy) return false;
+            const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[a.room]) || {};
+            let card = null;
+            try {
+                card = document.createElement('div');
+                card.className = 'ew-arena-survey';
+                card.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100060;padding:14px 22px;background:rgba(6,8,6,0.94);border:1px solid rgba(120,255,160,0.45);color:#b8ffcc;font:600 13px/1.5 monospace;letter-spacing:0.08em;text-align:center;pointer-events:none;';
+                card.textContent = 'SURVEYING ' + String(room.label || a.room).toUpperCase() + ' …';
+                document.body.appendChild(card);
+            } catch (e) { card = null; }
+            _msArenaGateBusy = true;
+            const done = () => { _msArenaGateBusy = false; try { if (card && card.parentNode) card.parentNode.removeChild(card); } catch (e) {} window._msConfirm(); };
+            const p = _hqArenaWarm(mapId, true);
+            if (p) { p.then(done, done); return false; }
+            /* no worker (or the record is already here): compile after the card paints */
+            _hqDeferBuild(() => { try { window.hqArenaUpgrade(mapId, { compile: true }); } catch (e) { console.warn('[ARENA] upgrade failed', mapId, e); } done(); });
+            return false;
+        }
         /* the strip pill / the panel button: draw or holster */
         window._hqPortalDraw = function (on) {
             if (_hqSuspended || state.gameState !== GS.HQ) return false;
@@ -8348,7 +8392,9 @@
             // The 8×8 Δ boards — one per launch map, played as-is in every mode
             // (Arena included: each carries its own centre nexus zone).
             meta.filter(m => m.isDelta).forEach(m => {
-                list.push({ modeId: m.id, name: m.label, size: '8×8 Δ', team: m.teamSize, floors: false, w: 8, h: 8, isPrebuilt: true, isDelta: true, tier: m.tier, biomes: m.biomes });
+                /* THE ARENAS (E8, 2026-09-30): a site's Δ became its arena (data.js HQ_ARENA_RULES) — `arena` labels it; a complex
+                   part's own Δ (`area`) stays registered for the HQ encounter fallback but the console never lists it */
+                list.push({ modeId: m.id, name: m.label, size: m.arena ? '8×8 ARENA' : '8×8 Δ', team: m.teamSize, floors: false, w: 8, h: 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes });
             });
             return list;
         })();
@@ -8637,6 +8683,9 @@
         };
 
         window._msConfirm = function() {
+            /* THE ARENAS (E8): an arena waits for its room's survey before anything launches (the gate calls back in here) */
+            { const _amp = MS_MAP_LIST[_msSelectedMap], _agm = MS_GAME_MODES[_msSelectedGM];
+              if (_amp && !(_agm && _agm.id === 'clash') && !_msArenaGate(_amp.modeId)) return; }
             playSfx('uiButtonConfirm');
             /* THE TERMINAL: filed on a console's screen — the building goes
                down with it (the match owns the canvas next); the return spot

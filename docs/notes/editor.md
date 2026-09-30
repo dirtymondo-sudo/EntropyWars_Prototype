@@ -334,3 +334,55 @@ R2 files: editor.js, data.js. Repo: index.html (token), docs.
 - **Quick check:** a scratch Playwright run drew a layout (20 × 20 + 10 × 10 + a hall), two doors (a pair and a one-way to a new
   room), made a zone with the site Mount Shasta, flipped secret / locked / one way / two way, ran SIGHT + 8×8, the LEADS TO tab and
   OPEN BIG, then undid everything: no new errors (the sandbox's `THREE.Scene is not a constructor` at load is old).
+
+## E8 — THE ARENAS: the Δ maps become 8×8 cuts of each site's own room (2026-09-30, token 20260930-arenas-01-cors)
+
+R2 files: data.js, three-renderer.js, map.js, match-select.js, battle.js, state.js, online.js. Repo: index.html (token),
+bake-arenas.js (new repo tool), docs.
+
+mondo (2026-09-30): PvP maps are a fixed 8×8 and have nothing to do with the exploration battles; "i dont need an arena map
+for every little room, just the main sites or sites big enough to have an 8x8 area in them"; "they will look better right? yes
+replace the delta maps"; "dont delete the voxel editor yet". Replaces §5.10's markers: nothing is placed by hand.
+
+- **The pick** (`bake-arenas.js`, repo tool; data.js `HQ_ARENA_RULES.picks`): per launch site, the site's rooms are compiled
+  (the entry part first, `DOOR_HQ.siteRooms.entry`, then the rest biggest first; `hqFieldRoomOk` drops a room with a sea) and
+  every 8×8 window of THE FIELD's lattice is judged with the game's own raster (`hqFieldRaster`, `hqFieldReach`). It FITS when
+  the Δ house tiles (spawn rows 0 / 7 + egress rows 1 / 6 at x 2..5, the nexus x 3..4 y 3..4) are level-0 walkable floor with a
+  seat (no water, wall top, bridge), the spawns' apron is at most +1, no walkable cell is over +2, at most `obstacles` (8) cells
+  are blocked and each blocked cell belongs to a FEATURE (a blocked lattice patch of at most `featureMax` (12) cells that touches
+  no lattice edge: a tree, a rock, a prop, a pool; never the room's edge, a cliff wall or a building), and every walkable cell is
+  reachable from both spawn rows. Score = min(cover, 12) − 0.75 × |cover north − cover south| − metres to the room's BATTLE
+  marker / 12 (cover = raised + blocked cells off the house tiles). The first room with a fit wins; none = the site keeps its Δ.
+  A pick row: `{ room, ox, oz, base, open, keys, cells }`, `cells` = 64 pairs (key index base 36 + level + 1). ~3 min headless.
+  RERUN IT after a site room changes (the launch warns `[ARENA] the window no longer fits` and keeps the baked board).
+- **At load** (`hqArenaRegisterAll`, after hqFieldRegister): each pick replaces `PREBUILT_MAPS[<site>_delta]` (hqArenaEntry:
+  `_mfNew` 8×8 on MF_DELTA_BASE_H + the Δ bed, the Δ's tints, spawns P2 row 0 / P1 row 7 x 2..5, the `nexus` object at 3,3) and
+  its EW_MAP_META row (`label` "<site> Arena", `arena: true`, `room`, `desc`). The id stays `<site>_delta`, so GAME_MODES,
+  compatibleMaps, the ranked pool (server.js list), the challenges, the training pool and the HQ crossing all get the arena. The
+  Δ's layout stays under the id until the upgrade and is kept in `_HQ_ARENA_SITE_LAYOUTS` (hqFieldLayout reads it for the
+  site's other rooms' encounters).
+- **At launch** (`hqArenaUpgrade(id, { compile })`): needs the room's floor plan (`room._terrainInfo`); rebuilds the entry in place
+  from the live raster, attaches THE FIELD's full record (`hqFieldBuild(...).field`, id = the arena id, `arena: true`: tops,
+  levels, cells, fixed, doors, edges) and swaps `MAP_LAYOUT_PRESETS[id]` to `hqFieldLayout(site, …, { terrain, open, look, dome })`.
+  map.js `_hqArenaWarm(id, urgent)` surveys the room on the worker then upgrades (never while a fight is on that map);
+  `_msArenaGate` at the top of `_msConfirm` waits for it under a small "SURVEYING <ROOM> …" card (no worker = the sync compile
+  under the card). Warmed by: the match-select card (`useEffect` on the pick), state.js `applyGameMode` (before the layout is
+  read), online.js ranked `match-found` / room join (the guest surveys while the rosters are filed).
+- **In battle** (three-renderer.js `_arenaLatch` in `activate()`, `_arenaRun`, `_hqBattleRoom`): no encounter record → the arena's
+  `hqArenaRun(activeGameMode)` `{ room, field: { board: { N, C, x0, z0, terrain } }, fieldId }`, latched at activate (cleared at
+  deactivate) so a survey that lands mid-fight changes nothing until the next fight. Everything an encounter field does follows:
+  the room built round the board, THE TRUE GROUND, the room's lights, fog and look. battle.js `fieldCellFixed` reads the arena's
+  flags when there is no encounter. Online: the host and the guest each read the same room; a guest whose survey has not landed at
+  activate sees the same board without the room (nothing relayed; the engine is the host's).
+- **Match select**: arena rows say `8×8 ARENA`, the site file `· arena · 8×8 cut of the site's own room`, the SITE form's board
+  `ARENA`, the filter chip `8×8 MAPS` (arenas + the Δ boards left + the facility boards). The complex parts' own Δ boards
+  (`<roomId>_delta`, `area`) stay registered for the HQ encounter fallback but are no longer listed (MS_MAP_LIST rows carry `area`).
+- **The bake of 2026-09-30**: 33 arenas of 38 sites. Keep their Δ: Heaven, Hell, the Backrooms (no 8×8 fits), the Revenge and
+  the Bermuda Triangle (their rooms are seas). The Fairy Forest and the Lodge fit once free-standing trees count as obstacles.
+  Every pick was rebuilt through hqArenaUpgrade headlessly: all 33 match their live rooms level for level.
+- **Fixed on the way** (three-renderer.js `_hqBuildRoomInBattle`): the scratch record had no `clockLamps`, so the first night-lamp
+  prop threw and every prop after it was dropped from the room round an encounter's field (now the arena's too).
+- **Quick check:** a scratch Playwright run launched TDM on the Moon and Camelot arenas from the classic menu: the survey landed
+  (the Moon in 0.8 s), the room stood round the board on the true ground, no new errors.
+- NOT done: the voxel editor (kept, mondo's word); the Δ builders (still run for the sites without an arena and as the tints /
+  layout source); the HQ panels' "CROSS ▸ Δ" wording.

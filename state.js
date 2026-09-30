@@ -1251,6 +1251,9 @@
             }
             const mode = GAME_MODES[modeId];
             if (!mode) return;
+            /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): an arena's full field (its site's room) attaches now if the room is surveyed,
+               else the survey starts for the next launch (map.js _hqArenaWarm) — before the layout below is read */
+            try { if (typeof window._hqArenaWarm === 'function') { const _aw = window._hqArenaWarm(modeId, false); if (_aw) _aw.catch(() => {}); } } catch (e) {}
             activeGameMode = modeId;
             CONFIG.boardSize = mode.boardSize;
             CONFIG.boardWidth = mode.boardWidth || mode.boardSize;

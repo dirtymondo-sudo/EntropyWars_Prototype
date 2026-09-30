@@ -31624,6 +31624,7 @@ const ThreeRenderer = (function () {
         _viewW = -1; _viewH = -1;
         _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
         /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S brightness through the fight */
+        _arenaLatch();   // THE ARENAS (E8): the room round a PvP arena, read once per fight
         _fieldGroundArmed = !!_fieldGround();
         try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof _fieldGroundArm === 'function') _fieldGroundArm(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the dome snapped to the room, the crossfade gated on the rigs, the swoop held under it
@@ -31674,7 +31675,8 @@ const ThreeRenderer = (function () {
         active = false;
         /* THE SEAMLESS FIELD: the room's fog leaves with the fight, the true-ground gate closes (typeof-guarded: scene-lifecycle.test.js evals deactivate alone) */
         try { if (typeof _fieldGroundFog !== 'undefined' && _fieldGroundFog) { _fieldGroundFog = false; _ewHeightFogSet(0, 1, 0, 0); } if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; } } catch (e) {}
-        try { if (typeof _fieldDeformRestore === 'function') _fieldDeformRestore(); } catch (e) {}   // THE DEFORM: the room's floor back to its data before the room is dropped
+        try { if (typeof _fieldDeformRestore === 'function') _fieldDeformRestore(); } catch (e) {}
+        try { if (typeof _arenaLatchId !== 'undefined') _arenaLatchId = null; } catch (e) {}   // THE ARENAS (E8): the latch leaves with the fight   // THE DEFORM: the room's floor back to its data before the room is dropped
         try { if (typeof _fieldGroundRelease === 'function') _fieldGroundRelease(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the room's fog / rig / AO / ceiling leave with the fight
         if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
         hideSplitscreen();
@@ -56216,10 +56218,28 @@ const ThreeRenderer = (function () {
        point lights in the battle (every light recompiles every material once). */
     var HQ_BATTLE_ROOM_LIGHTS = 4;
     var _hqBattleRoomCache = { key: null, R: null };
+    /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): a PvP arena is an 8×8 cut of its site's room (data.js hqArenaRun) — the room
+       stands round it exactly as round an encounter's field. LATCHED at activate(): the arena whose full field was attached
+       before the fight (map.js surveys the room first); a survey that lands mid-fight waits for the next one, so the board
+       never swaps under a battle. The same read on the host and the guest (activeGameMode is the match's map on both). */
+    var _arenaLatchId = null;
+    function _arenaLatch() {
+        _arenaLatchId = null;
+        try {
+            var id = (typeof activeGameMode !== 'undefined') ? activeGameMode : null;
+            if (id && typeof hqArenaRun === 'function' && hqArenaRun(id)) _arenaLatchId = id;
+        } catch (e) { _arenaLatchId = null; }
+    }
+    function _arenaRun() {
+        if (!_arenaLatchId || typeof hqArenaRun !== 'function') return null;
+        if (typeof activeGameMode === 'undefined' || activeGameMode !== _arenaLatchId) return null;
+        try { return hqArenaRun(_arenaLatchId); } catch (e) { return null; }
+    }
     function _hqBattleRoom() {
         if (typeof window === 'undefined' || window.EW_HQ_NO_ROOM_IN_BATTLE) return null;
         var run = null;
         try { run = (typeof window._ewEncounterRoom === 'function') ? window._ewEncounterRoom() : null; } catch (e) { run = null; }
+        if (!run || !run.room) run = _arenaRun();
         if (!run || !run.room) { _hqBattleRoomCache.key = null; _hqBattleRoomCache.R = null; return null; }
         /* read once per run (the scenery key asks every frame; the marker is a fresh object per call) */
         var bd = run.field && run.field.board;
@@ -56772,6 +56792,7 @@ const ThreeRenderer = (function () {
                   rails: [], ramps: [], ride: null, finds: [], findLights: 0, climbs: [], climbNear: null,
                   portal: { drawn: false, ghost: null, aim: null, placed: {}, lastKey: '', hold: null, cross: null, issued: false, sight: null, fAt: 0, fFired: false, slot: 'a', vm: null },
                   tickers: [], propLights: Math.max(0, HQ_PROP_LIGHT_MAX - HQ_BATTLE_ROOM_LIGHTS), props: [], focus: null, tabletops: [], kicks: [], seats: [], sways: [],
+                  clockLamps: [],   // THE WORLD CLOCK's night lamps (a lamp prop's glow, a lamp mast): the builders push here — without it every prop after the first night lamp was dropped in the battle
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
         H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.N * C, z0: R.T.z0, z1: R.T.z0 + R.T.N * C };

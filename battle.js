@@ -44750,8 +44750,11 @@
            filed it on the entry at the build) — the room's floor is the only thing the deform moves, and a fountain with
            one corner dug would hang over air. The reason, else null; null outside a field (a board keeps its own rules). */
         function fieldCellFixed(x, y) {
-            const m = _encMatch || _encRoomLast; if (!m || !m.fieldId) return null;
-            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[m.fieldId] : null;
+            const m = _encMatch || _encRoomLast;
+            /* THE ARENAS (E8, 2026-09-30): a PvP arena is a cut of its site's room — the same flags (data.js hqArenaRun: the full field is attached) */
+            const fid = (m && m.fieldId) ? m.fieldId : (!m && typeof hqArenaRun === 'function' && typeof activeGameMode !== 'undefined' && hqArenaRun(activeGameMode)) ? activeGameMode : null;
+            if (!fid) return null;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
             if (!e || !e.field || !e.field.fixed || typeof hqFieldFixedAt !== 'function') return null;
             return hqFieldFixedAt(e.field, x, y);
         }

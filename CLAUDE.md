@@ -75,6 +75,8 @@ diffs. The deliverable is always the full edited file, produced in chat.
   row). Notes go to docs/spell-notes.md, never data.js.
   Phase 1 (the v2 screen): probe playtest_library.js. Phase 2 (the grid + the look): notes in ui-menus-audio.md +
   spells-vfx.md. Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
+- `bake-arenas.js` (2026-09-30, EDITOR_PLAN E8): picks each site's PvP 8×8 ARENA from its own room and writes data.js
+  HQ_ARENA_RULES.picks (`node bake-arenas.js`, a few minutes; `--dry-run`). Rerun after a site room changes. Notes: editor.md "E8".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
