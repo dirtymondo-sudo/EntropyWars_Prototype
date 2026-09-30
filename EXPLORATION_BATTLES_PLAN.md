@@ -482,3 +482,11 @@ to docs/notes/seamless-field-encounter.md and §12 here.
     built — the handover takes the room's groups apart into the battle scene and disposes far props, so the walk's
     records cannot resume without a rebuild; the room is still rebuilt under the held frame (THE WAY BACK), which already
     hides it. Next: §5.1 needs the handover to lend the room groups instead of moving them.
+- **2026-09-30 — THE DASH-IN (token 20260930-dashin-01-cors).** mondo: "take away the party members following you, its
+  too distracting. Instead let's have them jump into action or dash in behind you." THE FOLLOWERS (§4) are REMOVED:
+  data.js `HQ_FOLLOW_RULES` / `hqPartyFollowers`, map.js `_hqFollowers` / `_hqRefreshFollowers`, three-renderer.js
+  `_hqSpawnFollowers` / `_hqTickFollowers` / `hq.setFollowers` and the strike's `party` feet are gone. The walk has
+  the lead only; the party's other members are seated by the fill. battle.js `_encPartyDashIn` (called right before
+  the first render of a story fight): each member LEAPS onto its seat from up to 3 tiles behind the lead (away from
+  the native, where the crane starts), the stock jump tween + jump clip, all take off together, landing 150 ms apart.
+  The hand-back lands the lead only. Kill-switch `window.EW_ENC_NO_DASH_IN`.

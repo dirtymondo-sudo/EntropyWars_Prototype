@@ -44908,6 +44908,56 @@
             return true;
         }
         window._encArrivalRules = _encArrivalRules;
+        /* ══ THE DASH-IN (2026-09-30) — mondo: "take away the party members following you, its too distracting. Instead
+           let's have them jump into action or dash in behind you as part of the transition from explore to battle." ══
+           The walk has only the lead now; the party's other members are seated by the fill (data.js hqEncounterSeats) and,
+           as the arrival crane lifts off the walker's eye, each LEAPS in from behind the lead (the side away from the
+           native, where the camera starts) onto its own seat: the stock jump tween (ThreeAnim.jumpArc, the rig's jump
+           clip), all taking off together and landing one after another (`ms` + k × `stepMs`). Every body is already on
+           its seat in the engine; this is the 3D body's flight only. Story fights only (VS-CPU: nothing to relay).
+           Kill-switch: window.EW_ENC_NO_DASH_IN. */
+        const ENC_DASH_IN = { backTiles: 3, ms: 620, stepMs: 150 };
+        function _encPartyDashIn() {
+            const er = _encRun();
+            if (!er || window.EW_ENC_NO_DASH_IN || state.cameraDisabled || _skipVisuals()) return false;
+            if (!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive())) return false;
+            try {
+                const seats = er.field && er.field.seats && er.field.seats.lead;
+                const lead = _encLeadUnit(1, seats && seats[1]);
+                if (!lead) return false;
+                const foe = _encLeadUnit(2, seats && seats[2]) || (state.units || []).find(u => u.player !== 1 && !u.dead) || null;
+                const crew = (state.units || []).filter(u => u.player === 1 && u !== lead && !u.dead && !u._benched);
+                if (!crew.length) return false;
+                /* "behind" = from the native through the lead, on the 8 compass steps */
+                let bx = foe ? Math.sign(lead.x - foe.x) : 0, by = foe ? Math.sign(lead.y - foe.y) : 0;
+                if (!bx && !by) by = 1;
+                const px = -by, py = bx;   // the side step
+                const W = bw(), H = bh();
+                const zAt = (x, y) => (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y) : 0;
+                const standable = (u, x, y) => {
+                    if (x < 0 || y < 0 || x >= W || y >= H) return false;
+                    if (typeof getWalkableSurfaces === 'function' && !getWalkableSurfaces(x, y).length) return false;   // a void / a rock cell of the lattice
+                    const z = zAt(x, y);
+                    if (z === null || z === undefined || !isFinite(z)) return false;
+                    try { return typeof unitCanTraverse !== 'function' || unitCanTraverse(u, x, y, z); } catch (e) { return false; }
+                };
+                const sides = [-1, 1, 0];
+                crew.forEach((u, k) => {
+                    const side = sides[k % sides.length];
+                    let from = null;
+                    for (let d = ENC_DASH_IN.backTiles; d >= 1 && !from; d--) {
+                        for (const sd of [side, 0]) {
+                            const x = lead.x + bx * d + px * sd, y = lead.y + by * d + py * sd;
+                            if (standable(u, x, y)) { from = { x, y }; break; }
+                        }
+                    }
+                    if (!from) from = { x: lead.x, y: lead.y };   // a lead with its back to a wall: they spring out from its own cell
+                    if (from.x === u.x && from.y === u.y) return;
+                    window.ThreeAnim.jumpArc(u, from.x, from.y, u.x, u.y, zAt(from.x, from.y) || 0, u.z || 0, ENC_DASH_IN.ms + k * ENC_DASH_IN.stepMs);
+                });
+                return true;
+            } catch (e) { console.warn('[HQ] the dash-in failed — the party stands on its seats', e); return false; }
+        }
         /* THE LEVELS (2026-09-21) — THE POOL: Σ computeKillXP over the enemy bodies that fell, the killer a pseudo-unit at THE PARTY LEVEL
            (data.js hqPartyLevel), so the payout scales with the natives' levels and the gap exactly as a kill does (a boss ×1.5) */
         /* THE SPOILS (2026-09-23): the enemy bodies that FELL this fight — [{ race, name, types }] for the drop roller (never the seat's own, never a neutral) */
@@ -45235,6 +45285,8 @@
             }
             addLog(`⚡ Round ${state.round}`);
             syncMusicToState();
+
+            if (_encRun()) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
 
             invalidateLayoutCache();
             render();

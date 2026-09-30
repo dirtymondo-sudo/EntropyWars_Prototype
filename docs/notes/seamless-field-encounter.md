@@ -896,3 +896,16 @@ R2: data.js, battle.js, hud.js, map.js, three-renderer.js. Full log in EXPLORATI
   face = atan2(dx, −dy) of `unit.facing`); map.js lands the lead there (`hqEncounterEndSpot(res, null)`, else the swing spot)
   and hands each follower an `at`; a held follower (`ch.follow.held`) stands until the lead is 1 m off its landing, then runs
   in at 6.5 m/s. The room is still rebuilt under the held debrief frame (no suspend; see the plan's §12 deviation).
+
+## THE DASH-IN — the followers removed (2026-09-30, token 20260930-dashin-01-cors)
+
+R2: battle.js, data.js, map.js, three-renderer.js. mondo: the followers were "too distracting"; the party should
+"jump into action or dash in behind you" as the walk turns into the fight.
+- **Followers removed** — no follower spawn / tick / trail, no `party` feet on a strike, no `HQ_FOLLOW_RULES`. The
+  seats' fill (data.js `hqEncounterSeats`) places the party's other members on the lead's side as before delivery 2.
+- **The dash-in** — battle.js `_encPartyDashIn()` (`ENC_DASH_IN = { backTiles: 3, ms: 620, stepMs: 150 }`), called
+  before the first render of an encounter: every living P1 unit but the lead gets `ThreeAnim.jumpArc` from a
+  standable cell up to 3 tiles behind the lead (away from the native; members fan left / right / centre; else the
+  lead's own cell) onto its seat. Engine positions are already final; it is the 3D flight only. 3D + visuals only.
+  Kill-switch `window.EW_ENC_NO_DASH_IN`.
+- **Hand-back** — a win lands the lead on its end cell; nobody else is in the room.
