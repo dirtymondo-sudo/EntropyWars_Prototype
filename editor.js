@@ -229,7 +229,7 @@
         function rowLabel(list, row) {
             if (!row) return '?';
             if (list === 'props') return (row.key || 'prop') + (row.label ? ' · ' + row.label : '');
-            if (list === 'doors') return 'door ' + (row.id || '') + (row.action && row.action.room ? ' → ' + row.action.room : '') + (row.wall ? ' (' + row.wall + ')' : '');
+            if (list === 'doors') return 'door ' + (row.id || '') + (row.action && row.action.room ? ' → ' + row.action.room : '') + (row.wall ? ' (' + row.wall + ')' : '') + (row.secret ? ' · secret' : '') + (+row.minClearance ? ' · L' + row.minClearance : '') + (+row.requiresKeys ? ' · ' + row.requiresKeys + ' keys' : '');
             if (row.k === 'prefab') return 'prefab · ' + (row.pf || '?');
             if (row.k === 'kit') return 'kit · ' + String(row.fn || '?').replace(/^hq/, '');
             if (row.k === 'opening') return 'opening · ' + (row.glaze ? 'window' : (row.sill > 0.05 ? 'window gap' : 'door gap')) + ' in ' + (row.wall || '?');
@@ -273,7 +273,7 @@
                 treeSize: 0, treeVary: true, propX: 1 },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
-        audit: { walls: false, pockets: false, fight: false }, auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
+        audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, 8×8 auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
         /* E6: THE ROOFS (C): off = the ceilings and roofs hidden and everything `h` m over the floor cut away, so he sees in */
         roof: { off: false, h: 3 }, roofHidden: [], grab: null,
     };
@@ -370,7 +370,7 @@
     function docLoad(doc, name) {
         /* the previous project's rooms leave DOOR_HQ first */
         if (ED.doc) Object.keys(ED.doc.rooms).forEach(function (id) { if (!doc.rooms || !doc.rooms[id]) { try { W.hqWorldDocRemoveRoom(id); } catch (e) {} } });
-        ED.doc = docPrepare(doc); ED.project = name; ED.undo = []; ED.redo = []; ED.sel = [];
+        ED.doc = docPrepare(doc); ED.project = name; ED.undo = []; ED.redo = []; ED.sel = []; ED.stepNo = (ED.stepNo || 0) + 1;
         if (ED.mode === 'prefab') { ED.mode = 'world'; ED.pfId = null; }
         prefabSync();
         var res = W.hqWorldDocApply({ rooms: ED.doc.rooms });
@@ -387,6 +387,7 @@
         afterStep(step, o);
     }
     function afterStep(step, o) {
+        ED.stepNo = (ED.stepNo || 0) + 1;   // E7: the LEADS TO tab redraws on a change
         var ids = stepTouched(step);
         docSync(ids);
         if (ED.mode === 'prefab' && !ED.doc.prefabs[ED.pfId]) { ED.mode = 'world'; ED.pfId = null; var f0 = Object.keys(ED.doc.rooms)[0]; if (f0) { enterRoom(f0, 'world'); panels(); return; } }
@@ -1217,7 +1218,7 @@
     }
     function auditSoon() {
         clearTimeout(ED.auditTimer); auditClear(); ED.auditRes = {}; ED.fightKey = '';
-        if (ED.audit.walls || ED.audit.pockets) ED.auditTimer = setTimeout(auditRun, 350);
+        if (ED.audit.walls || ED.audit.pockets || ED.audit.sight || ED.audit.patch) ED.auditTimer = setTimeout(auditRun, 350);
     }
     function auditMarks(pts, color, post, size) {
         if (!pts.length || !ED.group) return;
@@ -1232,6 +1233,7 @@
         if (!ED.open || ED.playing || !ED.ready) return;
         auditClear(); ED.auditRes = {};
         var r = room(), info = termInfo();
+        if (r && (ED.audit.sight || ED.audit.patch)) zoneAudit(r);   // E7: over the layout rows (no compile needed)
         if (!info) { ED.auditRes.none = true; status(); return; }
         if (ED.audit.walls) {
             var walls = []; try { walls = W.hqTerrainWallAudit(info, { step: info.halfW * info.halfD > 4000 ? 1 : 0.5 }); } catch (e) { console.warn('[editor] the wall audit', e); }
@@ -1564,6 +1566,7 @@
             var ds = ED.doc.rooms[oid].doors || [];
             for (var i = ds.length - 1; i >= 0; i--) if (ds[i] && ds[i].action && ds[i].action.room === id) step.push({ path: ['rooms', oid, 'doors', i], before: Core.clone(ds[i]), after: undefined });
         });
+        zoneMovePatches(id, null, step);   // E7: out of its zone with it
         step.push({ path: ['rooms', id], before: Core.clone(r), after: undefined });
         if (ED.doc.start && ED.doc.start.room === id) { var other = ids.filter(function (x) { return x !== id; })[0]; step.push({ path: ['start'], before: Core.clone(ED.doc.start), after: { room: other, at: { x: 0, z: 0, face: 0 } } }); }
         commit(step, 'delete room');
@@ -1573,7 +1576,9 @@
         if (!editable()) return;
         var id = W.hqWorldDocNextRoomId(ED.doc), r = Core.clone(Core.cleanExport(room())), n = W.hqWorldDocRoomNo(id);
         r.label = 'Room ' + n; r.doors = [];
-        commit([{ path: ['rooms', id], before: undefined, after: r }], 'duplicate room');
+        var zd = zoneOf(ED.roomId), st = [{ path: ['rooms', id], before: undefined, after: r }];
+        if (zd) zoneMovePatches(id, zd, st);   // E7: the copy stands in the same zone
+        commit(st, 'duplicate room');
         enterRoom(id, 'world');
         toast('DUPLICATED AS ' + r.label.toUpperCase() + ' (its doors stay with the original)');
     }
@@ -2051,6 +2056,306 @@
         L.querySelectorAll('[data-dgroom]').forEach(function (b) { b.onclick = function () { saveCam(); enterRoom(b.getAttribute('data-dgroom'), 'world'); }; });
     }
 
+    /* ══ THE ZONE TOOLS (E7, ZONES_PLAN §8.2): the door's FLAGS (SECRET, ONE WAY, LOCKED), a room's SITE and ZONE, ZONES (his rooms
+       grouped, each a node on the world map once his world is live: data.js hqWorldDocApply), the LEADS TO tab (hqWorldGraph for his
+       rooms, drawn), and two audits: SIGHT (§2.2: two exits in a straight line of sight, or in one room) and 8×8 (§2.3: a room of the
+       layout with no clear battle patch). Each edit is one undo step ═════════════════════════════════════════════════════════════ */
+    var ZONE_COLORS = ['#6fd3ff', '#57f287', '#ffd84a', '#ff9f43', '#c792ea', '#ff6b9d', '#4ecdc4', '#b8e986'];
+    function byRoomNo(a, b) { return (W.hqWorldDocRoomNo(a) || 0) - (W.hqWorldDocRoomNo(b) || 0); }
+    function zoneNo(id) { var m = /(\d+)$/.exec(String(id || '')); return m ? +m[1] : 0; }
+    function zoneIds() { var Z = (ED.doc && ED.doc.zones) || {}; return Object.keys(Z).filter(function (z) { return W.hqWorldDocIsOwnZone(Z[z]); }).sort(function (a, b) { return zoneNo(a) - zoneNo(b); }); }
+    function zoneOf(rid) { return (ED.doc && W.hqWorldDocZoneOf) ? W.hqWorldDocZoneOf(ED.doc, rid) : null; }
+    function zoneColor(zid) { var i = zoneIds().indexOf(zid); return i < 0 ? '#8a96a8' : (ED.doc.zones[zid].color || ZONE_COLORS[i % ZONE_COLORS.length]); }
+    function zoneLabel(zid) { var Z = zid && ED.doc.zones[zid]; return Z ? String(Z.label || zid) : ''; }
+    /* the patches that move room `rid` into zone `zid` (null = out of every zone), appended to `step` */
+    function zoneMovePatches(rid, zid, step) {
+        var cur = zoneOf(rid);
+        if (cur === zid) return step;
+        if (cur) {
+            var Z = ED.doc.zones[cur], left = Z.rooms.filter(function (x) { return x !== rid; });
+            step.push({ path: ['zones', cur, 'rooms'], before: Core.clone(Z.rooms), after: left });
+            if (Z.anchor === rid) step.push({ path: ['zones', cur, 'anchor'], before: Z.anchor, after: left[0] });
+        }
+        if (zid) {
+            var N = ED.doc.zones[zid];
+            step.push({ path: ['zones', zid, 'rooms'], before: Core.clone(N.rooms), after: N.rooms.concat([rid]) });
+            if (!N.anchor || !ED.doc.rooms[N.anchor]) step.push({ path: ['zones', zid, 'anchor'], before: N.anchor, after: rid });
+        }
+        return step;
+    }
+    function zoneCommit(step, label) { commit(step, label, { noReload: true }); auditSoon(); }
+    function zoneSet(rid, zid) {
+        if (zid === '__new') { zoneNew(rid); return; }
+        var step = zoneMovePatches(rid, zid || null, []);
+        if (step.length) zoneCommit(step, zid ? 'into ' + zoneLabel(zid) : 'out of ' + zoneLabel(zoneOf(rid)));
+    }
+    function zoneNew(rid) {
+        if (!ED.doc) return;
+        var zid = W.hqWorldDocNextZoneId(ED.doc);
+        ask('NEW ZONE', [{ name: 'label', label: 'Name', value: 'Zone ' + zoneNo(zid) }], function (v) {
+            var step = [{ path: ['zones', zid], before: undefined, after: { label: String(v.label || '').trim() || ('Zone ' + zoneNo(zid)), rooms: [] } }];
+            if (rid) {
+                var cur = zoneOf(rid);
+                if (cur) { var Z = ED.doc.zones[cur], left = Z.rooms.filter(function (x) { return x !== rid; }); step.push({ path: ['zones', cur, 'rooms'], before: Core.clone(Z.rooms), after: left }); if (Z.anchor === rid) step.push({ path: ['zones', cur, 'anchor'], before: Z.anchor, after: left[0] }); }
+                step.push({ path: ['zones', zid, 'rooms'], before: [], after: [rid] }, { path: ['zones', zid, 'anchor'], before: undefined, after: rid });
+            }
+            zoneCommit(step, 'new zone');
+            toast(String(step[0].after.label).toUpperCase() + (rid ? ' · ' + String((ED.doc.rooms[rid] || {}).label || rid).toUpperCase() + ' is in it' : ' · pick it in a room\'s ZONE (the inspector)'), 3500);
+        });
+    }
+    /* a zone's name, its node on the map (its own, or an existing place's: the Woods' node …), the room the node opens on, its
+       spot on the WORLD sheet (blank = the ring round the building), and DELETE (its rooms stay, in no zone) */
+    function zoneEdit(zid) {
+        var Z = ED.doc.zones[zid]; if (!Z) return;
+        var H = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.hubs) || {}, hubs = Object.keys(H).filter(function (k) { return k !== 'hq' && !W.hqWorldDocIsOwn(k); });
+        var rooms = Z.rooms.filter(function (r) { return ED.doc.rooms[r]; }).sort(byRoomNo);
+        ask('ZONE · ' + String(Z.label || zid).toUpperCase(), [
+            { name: 'label', label: 'Name', value: Z.label || '' },
+            { name: 'hub', label: 'On the map', type: 'select', value: Z.hub || '', options: [['', 'A node of its own']].concat(hubs.map(function (k) { return [k, 'Joins ' + String(H[k].label || k) + ' (' + k + ')']; })) },
+            { name: 'anchor', label: 'The node opens on', type: 'select', value: Z.anchor || rooms[0] || '', options: rooms.length ? rooms.map(function (r) { return [r, (ED.doc.rooms[r].label || r) + ' (' + r + ')']; }) : [['', 'no rooms yet']] },
+            { name: 'sx', label: 'Map spot x (blank = the ring)', value: Z.slot && isFinite(Z.slot.x) ? Z.slot.x : '' },
+            { name: 'sy', label: 'Map spot y (north is −)', value: Z.slot && isFinite(Z.slot.y) ? Z.slot.y : '' },
+            { name: 'color', label: 'Colour (#rrggbb, blank = the list\'s)', value: Z.color || '' },
+            { name: 'del', label: 'Delete this zone (its rooms stay)', type: 'checkbox', value: false },
+        ], function (v) {
+            if (v.del) { zoneCommit([{ path: ['zones', zid], before: Core.clone(Z), after: undefined }], 'delete ' + (Z.label || zid)); return; }
+            var after = Core.clone(Z), sx = parseFloat(v.sx), sy = parseFloat(v.sy);
+            after.label = String(v.label || '').trim() || Z.label || zid;
+            if (v.hub) after.hub = v.hub; else delete after.hub;
+            if (v.anchor) after.anchor = v.anchor;
+            if (isFinite(sx) && isFinite(sy)) after.slot = { x: sx, y: sy }; else delete after.slot;
+            if (/^#[0-9a-f]{6}$/i.test(String(v.color || '').trim())) after.color = String(v.color).trim(); else delete after.color;
+            zoneCommit([{ path: ['zones', zid], before: Core.clone(Z), after: after }], 'zone ' + after.label);
+        });
+    }
+    /* SITE (§8.2.2): the battle map, population and encounter table the room belongs to (EW_MAP_META); without one no fight starts */
+    function siteList() {
+        if (siteList._c) return siteList._c;
+        var M = []; try { M = (typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : W.EW_MAP_META) || []; } catch (e) {}
+        return (siteList._c = M.filter(function (m) { return m && m.id; }).map(function (m) { return [m.id, String(m.label || m.id)]; }).sort(function (a, b) { return a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0; }));
+    }
+    function siteLabel(id) { var s = siteList().filter(function (x) { return x[0] === id; })[0]; return s ? s[1] : id; }
+    function siteSet(v) {
+        var r = room(); if (!r || ED.mode !== 'world') return;
+        var after = v || undefined; if (r.site === after) return;
+        commit([{ path: ['rooms', ED.roomId, 'site'], before: r.site, after: after }], after ? 'site ' + siteLabel(after) : 'no site', { noReload: true });
+    }
+    function zoneSiteHtml(r) {
+        var z = zoneOf(ED.roomId), zs = zoneIds();
+        var h = '<div class="ed-sub">ZONE AND SITE</div><div class="ed-form">' +
+            '<label class="ed-f"><span>zone</span><select id="edZone"><option value="">no zone</option>' + zs.map(function (id) { return '<option value="' + esc(id) + '"' + (id === z ? ' selected' : '') + '>' + esc(zoneLabel(id)) + '</option>'; }).join('') + '<option value="__new">a new zone…</option></select></label>' +
+            '<label class="ed-f"><span>site</span><select id="edSite"><option value="">none (no fights here)</option>' + siteList().map(function (s) { return '<option value="' + esc(s[0]) + '"' + (s[0] === r.site ? ' selected' : '') + '>' + esc(s[1]) + '</option>'; }).join('') + '</select></label></div>';
+        h += '<div class="ed-note">ZONE = which of your zones this room belongs to (the outliner groups them; the world map shows a zone as one place). SITE = the battle map, the people and the encounters this room uses' + (r.site ? ' (now ' + esc(siteLabel(r.site)) + ')' : '; with none, no fight can start here') + '.</div>';
+        return h;
+    }
+    function zoneSiteWire(P) {
+        if ($('edZone')) $('edZone').onchange = function () { zoneSet(ED.roomId, this.value); };
+        if ($('edSite')) $('edSite').onchange = function () { siteSet(this.value); };
+    }
+
+    /* ── THE DOOR'S FLAGS (§8.2.1). SECRET = a draught on both ends of the pair (no leaf, no plate, the wall's own panel; the runtime's
+       `secret`); ONE WAY = no door leads back (the far end's door goes, you arrive at the spawn); off = a door back in front of the
+       far spawn (the DOOR tool's RETURN DOOR). LOCKED = `minClearance` (the clearance level) and `requiresKeys` (Keys held). ── */
+    function doorFlagsHtml(row) {
+        var da = row.action || {}, partners = W.hqDoorPartners(ED.doc, ED.roomId, row.id), farMine = !!(da.room && ED.doc.rooms[da.room]);
+        var lv = [[0, 'open to all']].concat([2, 3, 4, 5, 6].map(function (l) { return [l, 'clearance L' + l]; }));
+        return '<div class="ed-sub">FLAGS</div><div class="ed-form">' +
+            '<label class="ed-f"><span>secret</span><input type="checkbox" data-df="secret"' + (row.secret ? ' checked' : '') + '></label>' +
+            '<label class="ed-f"><span>one way</span><input type="checkbox" data-df="oneway"' + (!partners.length ? ' checked' : '') + (farMine ? '' : ' disabled') + '></label>' +
+            '<label class="ed-f"><span>locked</span><select data-df="minClearance">' + lv.map(function (l) { return '<option value="' + l[0] + '"' + ((+row.minClearance || 0) === l[0] ? ' selected' : '') + '>' + l[1] + '</option>'; }).join('') + '</select></label>' +
+            '<label class="ed-f"><span>keys needed</span><input type="number" min="0" step="1" data-df="requiresKeys" value="' + (+row.requiresKeys || 0) + '"></label></div>' +
+            '<div class="ed-note">SECRET: a draught, the wall\'s own panel with no leaf or plate, found with the protractor; on the map dashed once both sides are walked (both ends change). ONE WAY: no door back, you arrive at the far room\'s spawn (off: a door back stands in front of its spawn). LOCKED: the clearance and the Keys the walker needs.</div>';
+    }
+    function doorFlagsWire(P, h) {
+        P.querySelectorAll('[data-df]').forEach(function (el) {
+            el.onchange = function () { var k = el.getAttribute('data-df'); doorFlag(h, k, el.type === 'checkbox' ? el.checked : el.value); };
+        });
+    }
+    function doorFlag(h, k, v) {
+        if (!h || ED.mode !== 'world' || !editable()) return;
+        var row = h.row, step = [], after = Core.clone(row);
+        if (k === 'secret') {
+            if (v) after.secret = true; else delete after.secret;
+            step.push({ path: rowPath('doors', h.i), before: Core.clone(row), after: after });
+            W.hqDoorPartners(ED.doc, ED.roomId, row.id).forEach(function (q) {
+                if (q.room === ED.roomId && q.i === h.i) return;
+                var d = ED.doc.rooms[q.room].doors[q.i], a2 = Core.clone(d); if (v) a2.secret = true; else delete a2.secret;
+                step.push({ path: ['rooms', q.room, 'doors', q.i], before: Core.clone(d), after: a2 });
+            });
+            commit(step, v ? 'secret door' : 'not secret');
+            return;
+        }
+        if (k === 'oneway') {
+            var to = row.action && row.action.room, far = to && ED.doc.rooms[to]; if (!far) { toast('THAT DOOR LEADS OUTSIDE YOUR WORLD'); return; }
+            if (v) {
+                var ps = W.hqDoorPartners(ED.doc, ED.roomId, row.id).sort(function (a, b) { return a.room === b.room ? b.i - a.i : (a.room < b.room ? -1 : 1); });
+                after.action = { room: to };
+                step.push({ path: rowPath('doors', h.i), before: Core.clone(row), after: after });
+                ps.forEach(function (q) { var d = ED.doc.rooms[q.room].doors[q.i]; step.push({ path: ['rooms', q.room, 'doors', q.i], before: Core.clone(d), after: undefined }); });
+                commit(step, 'one way');
+                toast('ONE WAY · you arrive at ' + String(far.label || to).toUpperCase() + '\'s spawn' + (ps.length ? ' · its door back went (UNDO brings it back)' : ''), 4000);
+                return;
+            }
+            var backId = to === ED.roomId ? nextId(room()) : nextId(far);
+            var P = W.hqDoorPair({ rooms: ED.doc.rooms }, { room: ED.roomId, x: 0, z: 0, face: 0 }, { room: to, door: null }, { leaf: row.leaf, way: row.way, back: true, ids: { a: row.id, b: backId } });
+            if (!P || !P.back) return;
+            after.action = P.mine.action;
+            if (row.secret) P.back.secret = true;
+            step.push({ path: rowPath('doors', h.i), before: Core.clone(row), after: after });
+            step.push({ path: ['rooms', to, 'doors', farDoors(step, to, far)], before: undefined, after: P.back });
+            commit(step, 'two way');
+            toast('A DOOR BACK stands ' + W.HQ_PALETTE_RULES.returnAhead + ' m in front of ' + String(far.label || to).toUpperCase() + '\'s spawn', 4000);
+            return;
+        }
+        var n = Math.max(0, Math.round(parseFloat(v) || 0));
+        if (n) after[k] = n; else delete after[k];
+        if ((+row[k] || 0) === n) return;
+        rowReplace(h, after, k === 'minClearance' ? (n ? 'locked L' + n : 'unlocked') : n + ' keys');
+    }
+
+    /* ── LEADS TO (§8.2.4): the runtime's own door graph (hqWorldGraph) for his rooms — a node per room (his, coloured by zone; a
+       built-in room it leads to, grey), an edge per pair of rooms: dashed = secret, an arrow = one way, red = a door that leads
+       nowhere, L / K = locked. Click a room to go there. ── */
+    var LEADS = { key: '', g: null };
+    function leadsGraph() {
+        var key = (ED.stepNo || 0) + ':' + ED.project;
+        if (LEADS.key === key && LEADS.g) return LEADS.g;
+        var R = DOOR_HQ.rooms || {}, mine = {}, nodes = {}, order = [];
+        Object.keys(ED.doc.rooms).forEach(function (id) { mine[id] = 1; });
+        var node = function (id) { if (!nodes[id]) { var r = R[id]; nodes[id] = { id: id, label: String((r && r.label) || id), mine: !!mine[id], zone: mine[id] ? zoneOf(id) : null, gone: !r }; order.push(id); } return nodes[id]; };
+        Object.keys(ED.doc.rooms).sort(byRoomNo).forEach(node);
+        var G = null; try { G = W.hqWorldGraph(); } catch (e) { console.warn('[editor] the door graph', e); }
+        var bad = {}; (ED.doorBad || []).forEach(function (b) { bad[b.room + '|' + b.door] = b.why; });
+        var pairs = {}, edges = [], seen = {};
+        var edge = function (a, b, door) {
+            var d = ((ED.doc.rooms[a] || {}).doors || []).filter(function (x) { return x && x.id === door; })[0] || {};
+            var k = a < b ? a + '|' + b : b + '|' + a, P = pairs[k] || (pairs[k] = { a: a < b ? a : b, b: a < b ? b : a, ab: 0, ba: 0, secret: 0, n: 0, bad: 0, lock: '' });
+            if (a === P.a) P.ab++; else P.ba++;
+            P.n++; if (d.secret) P.secret++; if (bad[a + '|' + door] || !R[b]) P.bad++;
+            var lk = (+d.minClearance ? 'L' + d.minClearance : '') + (+d.requiresKeys ? (d.minClearance ? ' ' : '') + d.requiresKeys + 'K' : ''); if (lk && !P.lock) P.lock = lk;
+            seen[a + '|' + door] = 1;
+        };
+        (G ? G.edges : []).forEach(function (e) { if (!mine[e.from] || !e.door || !e.to) return; node(e.to); edge(e.from, e.to, e.door); });
+        /* the doors the graph could not follow (their room is gone) */
+        Object.keys(ED.doc.rooms).forEach(function (id) { (ED.doc.rooms[id].doors || []).forEach(function (d) { if (!d || !d.action || !d.action.room || seen[id + '|' + d.id]) return; node(d.action.room); edge(id, d.action.room, d.id); }); });
+        Object.keys(pairs).forEach(function (k) { edges.push(pairs[k]); });
+        /* the layout: a ring, zones together, then springs (deterministic) */
+        var N = order.length, pos = {};
+        order.sort(function (a, b) { var za = nodes[a].zone || (nodes[a].mine ? '~' : '~~'), zb = nodes[b].zone || (nodes[b].mine ? '~' : '~~'); return za < zb ? -1 : za > zb ? 1 : byRoomNo(a, b); });
+        order.forEach(function (id, i) { var t = 2 * Math.PI * i / Math.max(1, N); pos[id] = { x: Math.cos(t) * 100, y: Math.sin(t) * 100 }; });
+        for (var it = 0; it < 240 && N > 1; it++) {
+            var F = {}; order.forEach(function (id) { F[id] = { x: -pos[id].x * 0.01, y: -pos[id].y * 0.01 }; });
+            for (var i = 0; i < N; i++) for (var j = i + 1; j < N; j++) {
+                var A = pos[order[i]], B = pos[order[j]], dx = A.x - B.x, dy = A.y - B.y, d2 = Math.max(25, dx * dx + dy * dy), f = 900 / d2, dl = Math.sqrt(d2);
+                if (nodes[order[i]].zone && nodes[order[i]].zone === nodes[order[j]].zone) f -= dl * 0.004;   // a zone's rooms keep together
+                F[order[i]].x += dx / dl * f; F[order[i]].y += dy / dl * f; F[order[j]].x -= dx / dl * f; F[order[j]].y -= dy / dl * f;
+            }
+            edges.forEach(function (e) { var A = pos[e.a], B = pos[e.b]; if (!A || !B) return; var dx = B.x - A.x, dy = B.y - A.y, dl = Math.max(1, Math.hypot(dx, dy)), f = (dl - 45) * 0.05; F[e.a].x += dx / dl * f; F[e.a].y += dy / dl * f; F[e.b].x -= dx / dl * f; F[e.b].y -= dy / dl * f; });
+            var cool = 1 - it / 260;
+            order.forEach(function (id) { var f = F[id], m = Math.hypot(f.x, f.y), lim = 8 * cool; if (m > lim) { f.x *= lim / m; f.y *= lim / m; } pos[id].x += f.x; pos[id].y += f.y; });
+        }
+        LEADS.key = key; LEADS.g = { nodes: nodes, order: order, edges: edges, pos: pos };
+        return LEADS.g;
+    }
+    function leadsSvg(g, Wd, Hd, big) {
+        var xs = g.order.map(function (id) { return g.pos[id].x; }), ys = g.order.map(function (id) { return g.pos[id].y; });
+        var x0 = Math.min.apply(null, xs.concat([0])), x1 = Math.max.apply(null, xs.concat([0])), y0 = Math.min.apply(null, ys.concat([0])), y1 = Math.max.apply(null, ys.concat([0]));
+        var pad = big ? 60 : 26, s = Math.min((Wd - 2 * pad) / Math.max(1, x1 - x0), (Hd - 2 * pad) / Math.max(1, y1 - y0), big ? 3 : 1.6);
+        var P = function (id) { var p = g.pos[id]; return { x: pad + (p.x - x0) * s + ((Wd - 2 * pad) - (x1 - x0) * s) / 2, y: pad + (p.y - y0) * s + ((Hd - 2 * pad) - (y1 - y0) * s) / 2 }; };
+        var fs = big ? 12 : 8, r = big ? 9 : 5, mid = big ? 'edArrB' : 'edArrS';
+        var h = '<svg width="100%" viewBox="0 0 ' + Wd + ' ' + Hd + '" style="display:block;background:rgba(0,0,0,0.25);border-radius:4px"><defs><marker id="' + mid + '" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="' + (big ? 8 : 6) + '" markerHeight="' + (big ? 8 : 6) + '" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d8e4f0"/></marker></defs>';
+        g.edges.forEach(function (e) {
+            var A = P(e.a), B = P(e.b), dx = B.x - A.x, dy = B.y - A.y, L = Math.max(1, Math.hypot(dx, dy)), ux = dx / L, uy = dy / L;
+            var ax = A.x + ux * (r + 1), ay = A.y + uy * (r + 1), bx = B.x - ux * (r + 2), by = B.y - uy * (r + 2);
+            var col = e.bad ? '#ff3344' : '#9fb4c8', one = !!(e.ab) !== !!(e.ba);
+            h += '<line x1="' + ax.toFixed(1) + '" y1="' + ay.toFixed(1) + '" x2="' + bx.toFixed(1) + '" y2="' + by.toFixed(1) + '" stroke="' + col + '" stroke-width="' + (big ? 2 : 1.3) + '"' + (e.secret ? ' stroke-dasharray="' + (big ? '6 5' : '3 3') + '"' : '') +
+                (one ? (e.ab ? ' marker-end="url(#' + mid + ')"' : ' marker-start="url(#' + mid + ')"') : '') + '><title>' + esc((g.nodes[e.a].label) + ' ⇄ ' + g.nodes[e.b].label + ' · ' + e.n + ' door' + (e.n > 1 ? 's' : '') + (e.secret ? ' · secret' : '') + (one ? ' · one way' : '') + (e.lock ? ' · locked ' + e.lock : '') + (e.bad ? ' · LEADS NOWHERE' : '')) + '</title></line>';
+            if (e.lock) h += '<text x="' + ((ax + bx) / 2).toFixed(1) + '" y="' + ((ay + by) / 2 - 3).toFixed(1) + '" fill="#ffd84a" font-size="' + fs + '" text-anchor="middle">' + esc(e.lock) + '</text>';
+        });
+        g.order.forEach(function (id) {
+            var n = g.nodes[id], p = P(id), fill = n.gone ? '#ff3344' : n.mine ? (n.zone ? zoneColor(n.zone) : '#d8e4f0') : '#5a6676', here = id === ED.roomId;
+            h += '<g data-lnode="' + esc(id) + '" style="cursor:pointer"><circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r + '" fill="' + fill + '" stroke="' + (here ? '#ffffff' : 'rgba(0,0,0,0.6)') + '" stroke-width="' + (here ? 2.5 : 1) + '"><title>' + esc(n.label + ' (' + id + ')' + (n.zone ? ' · ' + zoneLabel(n.zone) : '') + (n.gone ? ' · NOT THERE' : n.mine ? '' : ' · built-in')) + '</title></circle>' +
+                '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + r + fs + 1).toFixed(1) + '" fill="' + (n.mine ? '#d8e4f0' : '#8a96a8') + '" font-size="' + fs + '" text-anchor="middle">' + esc(n.gone ? 'NOWHERE' : (big ? n.label : n.label.slice(0, 14))) + '</text></g>';
+        });
+        return h + '</svg>';
+    }
+    function leadsLegend() {
+        return '<div class="ed-note">A dot is a room (coloured by its zone; grey = a built-in room it leads to; white ring = here). A line is the doors between two rooms: dashed = secret, an arrow = one way, red = leads nowhere, L / K = locked. Click a room to go there.</div>';
+    }
+    function leadsHtml() {
+        if (!ED.doc || ED.mode === 'prefab') return '<div class="ed-note">LEADS TO shows the rooms of your world.</div>';
+        var g = leadsGraph(), mine = g.order.filter(function (id) { return g.nodes[id].mine; }).length, one = g.edges.filter(function (e) { return !!e.ab !== !!e.ba; }).length, sec = g.edges.filter(function (e) { return e.secret; }).length;
+        var h = '<div class="ed-sub">LEADS TO · ' + mine + ' room' + (mine === 1 ? '' : 's') + ' · ' + g.edges.length + ' way' + (g.edges.length === 1 ? '' : 's') + (sec ? ' · ' + sec + ' secret' : '') + (one ? ' · ' + one + ' one way' : '') + '</div>';
+        h += leadsSvg(g, 246, 246, false) + '<div class="ed-acts"><button class="ed-btn" data-lead="big">OPEN BIG</button></div>' + leadsLegend();
+        var bad = ED.doorBad || [];
+        if (bad.length) h += '<div class="ed-sub ed-warnt">' + bad.length + ' DOOR' + (bad.length > 1 ? 'S LEAD' : ' LEADS') + ' NOWHERE</div>' + bad.map(function (b) { return '<button class="ed-row" data-ldoor="' + esc(b.room + '|' + b.door) + '">' + esc(String((ED.doc.rooms[b.room] || {}).label || b.room) + ' · door ' + b.door) + '<span>' + esc(b.why === 'no door' ? 'its door there is gone' : 'its room is gone') + '</span></button>'; }).join('');
+        return h;
+    }
+    function leadsGo(id) { if (!id || !DOOR_HQ.rooms[id]) { toast('THAT ROOM IS NOT THERE'); return; } saveCam(); enterRoom(id, ED.doc.rooms[id] ? 'world' : 'library'); }
+    function leadsWire(L) {
+        L.querySelectorAll('[data-lnode]').forEach(function (b) { b.onclick = function () { if ($('edModal') && $('edModal').contains(b)) modalClose(); leadsGo(b.getAttribute('data-lnode')); }; });
+        L.querySelectorAll('[data-lead="big"]').forEach(function (b) { b.onclick = leadsBig; });
+        L.querySelectorAll('[data-ldoor]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-ldoor').split('|'); leadsGo(v[0]); if (ED.roomId === v[0]) select('doors', v[1]); }; });
+    }
+    function leadsBig() {
+        var g = leadsGraph();
+        modalOpen('<div class="ed-hd">LEADS TO · ' + esc(String(ED.project || '').toUpperCase()) + '</div><div style="overflow:auto">' + leadsSvg(g, 960, 600, true) + '</div>' + leadsLegend() + '<div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
+        $('edCard').style.width = 'min(1000px, 94vw)';
+        $('edCancel').onclick = modalClose;
+        leadsWire($('edCard'));
+    }
+
+    /* ── THE SIGHT CHECK and THE 8×8 (AUDIT SIGHT / 8×8; §8.2.5–6, data.js hqPlanSightCheck / hqPlanFightPatches). An EXIT is a door
+       out of the room's zone (every door when the room is in no zone). SIGHT: blue posts on the exits, a red line between two in a
+       straight line of sight through open ground, orange when they open into the same room. 8×8: green = the clear patch a fight
+       takes in that room, red = a room with none. Layout rooms only. ── */
+    function exitsOf(rid) {
+        var r = (ED.mode === 'world' && ED.doc.rooms[rid]) || room(), z = ED.mode === 'world' ? zoneOf(rid) : null;
+        return ((r && r.doors) || []).filter(function (d) { return d && d.id != null && d.action && d.action.room && (!z || zoneOf(d.action.room) !== z); }).map(function (d) { return d.id; });
+    }
+    function auditLine(a, b, color) {
+        if (!a || !b || !ED.group) return;
+        var u = U(), ya = ground(a[0], a[1]) + 1.2, yb = ground(b[0], b[1]) + 1.2, geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([a[0] * u, ya * u, a[1] * u, b[0] * u, yb * u, b[1] * u]), 3));
+        var L = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.95, depthTest: false, fog: false }));
+        L.renderOrder = 14; L.frustumCulled = false; ED.group.add(L); ED.auditObjs.push(L);
+    }
+    function auditArea(x, z, w, d, rot, color, op, round) {
+        if (!ED.group) return;
+        var u = U(), geo = round ? new THREE.CircleGeometry(0.5, 32) : new THREE.PlaneGeometry(1, 1);
+        geo.rotateX(-Math.PI / 2); geo.scale(w * u, 1, d * u);
+        var M = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: op, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+        M.position.set(x * u, (ground(x, z) + 0.12) * u + 0.3, z * u); M.rotation.y = -(rot || 0) * Math.PI / 180; M.renderOrder = 13; M.frustumCulled = false;
+        ED.group.add(M); ED.auditObjs.push(M);
+    }
+    function zoneAudit(r) {
+        if (ED.audit.sight) {
+            var ex = exitsOf(ED.roomId), res = null;
+            try { res = W.hqPlanSightCheck(r, ex); } catch (e) { console.warn('[editor] the sight check', e); }
+            ED.auditRes.sight = res ? { exits: ex.length, sight: res.sight.length, same: res.same.length } : { none: true };
+            if (res) {
+                auditMarks(ex.map(function (id) { var p = res.spots[id]; return p ? { x: p[0], z: p[1], y: ground(p[0], p[1]) } : null; }).filter(Boolean), 0x6fd3ff, true);
+                res.sight.forEach(function (q) { auditLine(res.spots[q[0]], res.spots[q[1]], 0xff3344); });
+                res.same.forEach(function (q) { auditLine(res.spots[q[0]], res.spots[q[1]], 0xff9f43); });
+                ED.auditRes.sightDoors = res.sight.concat(res.same).map(function (q) { return q[0] + ' + ' + q[1] + (q[2] ? ' (one room)' : ''); });
+            }
+        }
+        if (ED.audit.patch) {
+            var pt = null; try { pt = W.hqPlanFightPatches(r); } catch (e) { console.warn('[editor] the 8 × 8 check', e); }
+            ED.auditRes.patch = pt ? { n: pt.length, bad: pt.filter(function (p) { return !p.ok; }).map(function (p) { return p.label || ('room ' + p.no); }) } : { none: true };
+            if (pt) {
+                var side = ((W.HQ_ZONE_TOOL_RULES && W.HQ_ZONE_TOOL_RULES.patchTiles) || 8) * treeTile();
+                pt.forEach(function (p) { if (p.ok) auditArea(p.at.x, p.at.z, side, side, 0, 0x57f287, 0.22); else auditArea(p.x, p.z, p.w, p.d, p.rot, 0xff3344, 0.3, p.round); });
+            }
+        }
+    }
+    function zoneAuditStatus() {
+        var A = ED.auditRes, out = [];
+        if (ED.audit.sight) { var s = A.sight; out.push(!s ? 'sight …' : s.none ? 'sight: no layout here' : (s.sight + s.same) ? '<b class="ed-warn" title="' + esc((A.sightDoors || []).join(' · ')) + '">SIGHT: ' + (s.sight ? s.sight + ' EXIT PAIR' + (s.sight > 1 ? 'S' : '') + ' IN VIEW' : '') + (s.sight && s.same ? ' · ' : '') + (s.same ? s.same + ' IN ONE ROOM' : '') + '</b>' : 'sight: ' + s.exits + ' exit' + (s.exits === 1 ? '' : 's') + ', none in view'); }
+        if (ED.audit.patch) { var p = A.patch; out.push(!p ? '8×8 …' : p.none ? '8×8: no layout here' : p.bad.length ? '<b class="ed-warn" title="' + esc(p.bad.join(' · ')) + '">' + p.bad.length + ' ROOM' + (p.bad.length > 1 ? 'S' : '') + ' WITH NO 8×8</b>' : '8×8: every room (' + p.n + ')'); }
+        return out.join(' · ');
+    }
+
     /* ══ THE BUILD PALETTE (the left panel's top): SELECT + the draw tools, the tool's options under them ══════════════════ */
     var OPT_FIELDS = {
         wall: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
@@ -2297,7 +2602,7 @@
         shellPut('lights', ls, 'lamp');
     }
 
-    var PAL_TABS = [['build', 'BUILD'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS']];
+    var PAL_TABS = [['build', 'BUILD'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
     var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
     ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
     function palData() {
@@ -2328,16 +2633,18 @@
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
         if (tab === 'build' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
         else if (tab === 'sky') h += skyHtml();   // E6
+        else if (tab === 'leads') h += leadsHtml();   // E7
         else h += sizeStrip(tab) + '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
         h += '</div>';
         /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
            room reloads is not lost to a rebuilt button */
-        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky') return; palBody(); return; }
+        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
         B._h = h; B.innerHTML = h;
         B.querySelectorAll('[data-psz]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-psz').split(':'); if (v[0] === 'vary') ED.opts.treeVary = !ED.opts.treeVary; else ED.opts[v[0]] = +v[1]; saveOpts(); palette(); }; });
         B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
         if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
         if (tab === 'sky') { paletteWire(B); skyWire(B); return; }   // E6
+        if (tab === 'leads') { leadsWire(B); return; }   // E7
         $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
         $('edPalQ').onkeydown = function (e) { if (e.key === 'Escape') { this.value = ''; ED.palQ[tab] = ''; this.blur(); palBody(); } };
         palBody();
@@ -2666,7 +2973,7 @@
         ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this library room into the world', copyIntoWorld]],
         VIEW: [['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }], null,
                ['The level band on / off  (L)', function () { bandSet({ on: !ED.band.on }); }], ['The level band up a floor  (Shift L)', function () { bandStep(1); }], ['The level band down a floor', function () { bandStep(-1); }], null,
-               ['Audit: invisible walls', function () { auditToggle('walls'); }], ['Audit: pockets (ground nobody reaches)', function () { auditToggle('pockets'); }], ['Audit: the fight window at the cursor', function () { auditToggle('fight'); }]],
+               ['Audit: invisible walls', function () { auditToggle('walls'); }], ['Audit: pockets (ground nobody reaches)', function () { auditToggle('pockets'); }], ['Audit: the fight window at the cursor', function () { auditToggle('fight'); }], ['Audit: exits in sight of each other', function () { auditToggle('sight'); }], ['Audit: the 8 × 8 patch in each room', function () { auditToggle('patch'); }]],
     };
     function build() {
         if ($('edRoot')) return;
@@ -2713,7 +3020,7 @@
             '<label class="ed-lab" title="THE LEVEL BAND (L): only what overlaps it picks; everything above its top is cut away in the view"><input type="checkbox" id="edBand"' + (ED.band.on ? ' checked' : '') + '>LEVEL</label>' +
             '<input type="number" step="0.5" id="edBandY0" value="' + ED.band.y0 + '" style="width:52px" title="the band\'s bottom (m)"><input type="number" step="0.5" id="edBandY1" value="' + ED.band.y1 + '" style="width:52px" title="the band\'s top (m)">' +
             '<button class="ed-btn" id="edBandDn" title="The band down a floor">▼</button><button class="ed-btn" id="edBandUp" title="The band up a floor (Shift L)">▲</button>' +
-            '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The 8 × 8 battle window a fight at the cursor would take']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
+            '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The 8 × 8 battle window a fight at the cursor would take'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', '8×8', 'Each room of the layout: the clear 8 × 8 battle patch (green), or none (red)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
             (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="Make this built-in room a room of yours">COPY INTO WORLD</button>' : '');
         t.querySelectorAll('[data-tool]').forEach(function (b) { b.onclick = function () { tcMode(b.getAttribute('data-tool')); }; });
         $('edSnap').onchange = function () { ED.snap = +this.value; tcMode(ED.tool); };
@@ -2731,11 +3038,21 @@
     function outliner() {
         var L = $('edOutl'); if (!L || !ED.doc) return;
         var h = '<div class="ed-sec"><div class="ed-hd">WORLD · ' + esc(ED.project) + '</div>';
-        Object.keys(ED.doc.rooms).sort(function (a, b) { return (W.hqWorldDocRoomNo(a) || 0) - (W.hqWorldDocRoomNo(b) || 0); }).forEach(function (id) {
+        /* E7: the rooms under their zones, then the rooms in no zone */
+        var roomBtn = function (id, zid) {
             var r = ED.doc.rooms[id];
-            h += '<button class="ed-row' + (ED.mode === 'world' && id === ED.roomId ? ' on' : '') + '" data-room="' + esc(id) + '">' + esc(r.label || id) + (ED.doc.start && ED.doc.start.room === id ? ' <i>START</i>' : '') + '<span>' + esc(id) + ' · ' + roomSize(r) + '</span></button>';
+            return '<button class="ed-row' + (ED.mode === 'world' && id === ED.roomId ? ' on' : '') + '" data-room="' + esc(id) + '"' + (zid ? ' style="border-left:3px solid ' + zoneColor(zid) + '"' : '') + '>' + esc(r.label || id) + (ED.doc.start && ED.doc.start.room === id ? ' <i>START</i>' : '') + (r.site ? ' <i>' + esc(siteLabel(r.site)) + '</i>' : '') + '<span>' + esc(id) + ' · ' + roomSize(r) + '</span></button>';
+        };
+        var zs = zoneIds(), inZ = {};
+        zs.forEach(function (zid) {
+            var Z = ED.doc.zones[zid], zr = Z.rooms.filter(function (id) { return ED.doc.rooms[id]; }).sort(byRoomNo);
+            h += '<div class="ed-rowx"><span class="ed-sub" style="flex:1;color:' + zoneColor(zid) + '">' + esc(String(Z.label || zid).toUpperCase()) + ' · ' + zr.length + '</span><button class="ed-btn" data-zedit="' + esc(zid) + '" title="Its name, its node on the map, delete">✎</button></div>';
+            zr.forEach(function (id) { inZ[id] = 1; h += roomBtn(id, zid); });
         });
-        h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button></div>';
+        var loose = Object.keys(ED.doc.rooms).filter(function (id) { return !inZ[id]; }).sort(byRoomNo);
+        if (zs.length && loose.length) h += '<div class="ed-sub">NO ZONE · ' + loose.length + '</div>';
+        loose.forEach(function (id) { h += roomBtn(id, null); });
+        h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button><button class="ed-row ed-add" data-act="newzone" title="A group of your rooms: one place on the world map">+ NEW ZONE</button></div>';
         h = h + prefabsHtml();
         if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">LIBRARY · READ ONLY</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
         var r = room();
@@ -2756,6 +3073,8 @@
         prefabsWire(L);
         L.querySelectorAll('[data-room]').forEach(function (b) { b.onclick = function () { saveCam(); enterRoom(b.getAttribute('data-room'), 'world'); }; });
         L.querySelectorAll('[data-act="newroom"]').forEach(function (b) { b.onclick = newRoom; });
+        L.querySelectorAll('[data-act="newzone"]').forEach(function (b) { b.onclick = function () { zoneNew(ED.mode === 'world' ? ED.roomId : null); }; });   // E7
+        L.querySelectorAll('[data-zedit]').forEach(function (b) { b.onclick = function () { zoneEdit(b.getAttribute('data-zedit')); }; });
         L.querySelectorAll('[data-list]').forEach(function (b) { b.onclick = function (e) { select(b.getAttribute('data-list'), b.getAttribute('data-id'), e.shiftKey); if (!e.shiftKey) frameSel(); }; });
     }
     function roomSize(r) { var S = (r && r.shell) || {}; if (S.w > 0 && S.d > 0) return Math.round(S.w) + '×' + Math.round(S.d) + ' m'; var R = S.radius || S.r; return R > 0 ? 'r ' + Math.round(R) + ' m' : (r && r.kind) || ''; }
@@ -2814,6 +3133,7 @@
             var S = r.shell || {}, T = r.terrain || {};
             h += '<div class="ed-hd">' + (ro ? 'LIBRARY ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (ro ? ' · read only' : '') + '</div>';
             h += '<div class="ed-form" data-scope="room">' + fieldHtml('label', String(r.label || '')) + fieldHtml('sub', String(r.sub || '')) + '</div>';
+            if (!ro && ED.mode === 'world') h += zoneSiteHtml(r);   // E7
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             h += '<div class="ed-sub">THE SHELL</div><div class="ed-form" data-scope="shell">' + shellKeys.map(function (k) { return fieldHtml(k, S[k]); }).join('') + '</div>';
@@ -2865,6 +3185,7 @@
             if (x.list === 'doors') {
                 var da = row.action || {}, far = da.room ? DOOR_HQ.rooms[da.room] : null, dbad = (ED.doorBad || []).filter(function (b) { return b.room === ED.roomId && b.door === row.id; })[0];
                 h += '<div class="ed-sub">LEADS TO</div><div class="ed-note' + (dbad ? ' ed-warnt' : '') + '">' + (far ? esc(far.label || da.room) + ' (' + esc(da.room) + ') · ' + (da.at ? 'you arrive at its door ' + esc(da.at) : 'you arrive at its spawn') : 'NOWHERE: that room is not in your world') + (dbad && dbad.why === 'no door' ? ' · THAT DOOR IS NOT THERE (LEADS TO… fixes it)' : '') + '</div>';
+                if (!ro && ED.mode === 'world') h += doorFlagsHtml(row);   // E7
             }
             if (x.list === 'npcSpots') h += '<div class="ed-note">race = who stands here (a native of this room) · cast = one of the story\'s models · neither = one of your vessels (up to 3 a room) · say = what they say (a line, or a list: one a day).</div>';
             if (x.list === 'agents') h += '<div class="ed-note">pose = a building pose (sit, phone, arms folded …) · patrol = walks a loop · line = what the agent says.</div>';
@@ -2888,6 +3209,7 @@
         P.querySelectorAll('[data-tex]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); texPick(el.value, function (v) { el.value = v; fieldCommit(el); }); }; });
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
         groundWire(P);
+        zoneSiteWire(P); if (hits.length === 1 && hits[0].list === 'doors') doorFlagsWire(P, hits[0]);   // E7
         P.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { sizeSel(+b.getAttribute('data-sz')); }; });
         P.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { turnSel(+b.getAttribute('data-turn')); }; });
         if ($('edSizeV')) $('edSizeV').onchange = function () { var h0 = hits[0], z0 = h0 && sizeOf(h0), v = parseFloat(this.value); if (z0 && isFinite(v) && v > 0 && Math.abs(v - z0.v) > 1e-3) sizeSel(v / z0.v, 'size ' + v + ' m'); };
@@ -2950,7 +3272,7 @@
         var cap = W.HQ_PROP_LIGHT_MAX || (typeof HQ_PROP_LIGHT_MAX !== 'undefined' ? HQ_PROP_LIGHT_MAX : null);
         s.innerHTML = [
             '<b>' + esc(ED.mode === 'library' ? 'LIBRARY' : ED.mode === 'prefab' ? 'PREFAB' : ED.project || '') + '</b>',
-            esc((r && r.label) || ED.roomId || ''),
+            esc((r && r.label) || ED.roomId || '') + (ED.mode === 'world' && zoneOf(ED.roomId) ? ' · ' + esc(zoneLabel(zoneOf(ED.roomId))) : ''),
             c ? 'x ' + c.x.toFixed(2) + ' z ' + c.z.toFixed(2) + ' ground ' + c.y.toFixed(2) + ' m' : 'the cursor is off the ground',
             ED.draw ? '<b>' + esc(DRAWS[ED.draw.tool] ? DRAWS[ED.draw.tool].label : 'PLACE') + '</b>' + (ED._drawInfo ? ' ' + esc(ED._drawInfo) : '') : '',
             'eye ' + ED.cam.x.toFixed(1) + ', ' + ED.cam.y.toFixed(1) + ', ' + ED.cam.z.toFixed(1) + ' · ' + ED.cam.speed.toFixed(0) + ' m/s',
@@ -2963,6 +3285,7 @@
             ED.roof.off ? '<b>ROOFS HIDDEN (C)</b>' : '',
             ED.audit.walls ? (ED.auditRes.none ? 'walls: no ground here' : ED.auditRes.walls == null ? 'walls …' : (ED.auditRes.walls ? '<b class="ed-warn">' + ED.auditRes.walls + ' INVISIBLE WALL' + (ED.auditRes.walls > 1 ? 'S' : '') + '</b>' : 'no invisible walls')) : '',
             ED.audit.pockets ? (ED.auditRes.none ? '' : ED.auditRes.pockets == null ? 'pockets …' : (ED.auditRes.pockets ? '<b class="ed-warn">POCKETS ' + ED.auditRes.pocketM + ' m² nobody reaches</b>' : 'no pockets')) : '',
+            zoneAuditStatus(),   // E7
             ED.audit.fight ? (ED.auditRes.fight ? 'fight window: ' + ED.auditRes.fight.ins + ' / ' + ED.auditRes.fight.n + ' tiles · reach ' + ED.auditRes.fight.reach : 'fight window: none here') : '',
             ED.undo.length + ' undo',
             ED.dirty ? 'SAVING…' : (ED.savedAt ? 'saved' : ''),
@@ -2978,7 +3301,7 @@
     function panels0() { try { ED.doorBad = (ED.doc && W.hqWorldDocDoorCheck) ? W.hqWorldDocDoorCheck(ED.doc) : []; } catch (e) { ED.doorBad = []; } toolsBar(); palette(); outliner(); inspector(); banner(); status(); }
 
     /* ── the pick list and the small form (plain DOM) ── */
-    function modalOpen(html) { var m = $('edModal'); $('edCard').innerHTML = html; m.style.display = ''; }
+    function modalOpen(html) { var m = $('edModal'); $('edCard').style.width = ''; $('edCard').innerHTML = html; m.style.display = ''; }
     function modalClose() { var m = $('edModal'); if (m) m.style.display = 'none'; }
     function pick(title, items, onPick) {
         modalOpen('<div class="ed-hd">' + esc(title) + '</div><input type="text" class="ed-search" id="edSearch" placeholder="search…"><div class="ed-list" id="edList"></div><div class="ed-acts"><button class="ed-btn" id="edCancel">CANCEL</button></div>');
@@ -3018,6 +3341,11 @@
             ['PLATFORM · DECK (BUILD)', 'drag a rectangle: a floating platform / a railed deck at HEIGHT'],
             ['L · Shift L', 'the level band on / off · up a floor (the top bar: its bottom, its top, ▼ ▲): only what overlaps it picks, everything above it is cut away'],
             ['AUDIT (top bar)', 'WALLS: red posts where the walker is stopped by nothing you can see · POCKETS: yellow ground nobody reaches from the spawn or a door · FIGHT: the 8 × 8 battle window at the cursor'],
+            ['ZONES (the outliner)', '+ NEW ZONE groups rooms (a room\'s ZONE in the inspector); ✎ names it, joins it to a place on the map or gives it its own spot, deletes it'],
+            ['SITE (a room\'s inspector)', 'the battle map, the people and the encounters the room uses; with none, no fight starts there'],
+            ['A door\'s FLAGS', 'SECRET (a draught, both ends) · ONE WAY (no door back) · LOCKED (clearance, Keys)'],
+            ['LEADS TO (left tab)', 'your rooms and the doors between them: dashed = secret, an arrow = one way, red = nowhere; click a room to go there; OPEN BIG'],
+            ['AUDIT SIGHT · 8×8', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · 8×8: the clear battle patch in each room (green) or none (red)'],
             ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'drop the pick'],
         ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
         '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a built-in room to look at or copy. FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
@@ -3031,7 +3359,7 @@
         build(); loadOpts();
         try { var bo = JSON.parse(localStorage.getItem('ew_editor_band') || 'null'); if (bo && isFinite(bo.y0) && isFinite(bo.y1)) { ED.band.y0 = +bo.y0; ED.band.y1 = +bo.y1; ED.band.on = !!bo.on; } } catch (e) {}
         try { var rfo = JSON.parse(localStorage.getItem('ew_editor_roof') || 'null'); if (rfo) { ED.roof.off = !!rfo.off; if (isFinite(rfo.h)) ED.roof.h = +rfo.h; } } catch (e) {}
-        try { var ao = JSON.parse(localStorage.getItem('ew_editor_audit') || 'null'); if (ao) ['walls', 'pockets', 'fight'].forEach(function (k) { ED.audit[k] = !!ao[k]; }); } catch (e) {}
+        try { var ao = JSON.parse(localStorage.getItem('ew_editor_audit') || 'null'); if (ao) ['walls', 'pockets', 'fight', 'sight', 'patch'].forEach(function (k) { ED.audit[k] = !!ao[k]; }); } catch (e) {}
         if (!ED.flags) ED.flags = { batch: W.EW_HQ_NO_BATCH, inst: W.EW_HQ_NO_INSTANCE };
         W.EW_HQ_NO_BATCH = true; W.EW_HQ_NO_INSTANCE = true;   // the pieces stay pieces while editing (a live drag moves the real prop); a look-only difference, never the player's
         ED.open = true; ED.playing = false;
@@ -3082,6 +3410,7 @@
                layoutAdd: layoutAdd, layoutSet: layoutSet, layoutFreeze: layoutFreeze, layoutRemove: layoutRemove, layoutReport: layoutReport, dungeonNew: dungeonNew, dungeonLevel: dungeonLevel,   // E5
                drawSet: drawSet, drawUp: drawUp, drawDown: drawDown, enterPrefab: enterPrefab, leavePrefab: leavePrefab, newPrefab: newPrefab, selToPrefab: selToPrefab, roomToPrefab: roomToPrefab, bakeSel: bakeSel, mirrorSel: mirrorSel, placeRow: placeRow, texPick: texPick, arrayRows: function (n, dx, dz, dyaw) { var ask0 = ask; ask = function (t, f, ok) { ok({ n: n, dx: dx, dz: dz, dyaw: dyaw }); }; try { arraySel(); } finally { ask = ask0; } },
                palPick: palPick, palEntries: palEntries, palData: palData, doorWrite: doorWrite, doorFollow: doorFollow, thumbs: function () { return { have: Object.keys(TH.mem).filter(function (k) { return !!TH.mem[k]; }).length, none: Object.keys(TH.mem).filter(function (k) { return TH.mem[k] === null; }).length, want: TH.want.length, off: TH.off }; },
+               zoneNew: zoneNew, zoneSet: zoneSet, zoneEdit: zoneEdit, siteSet: siteSet, doorFlag: function (id, k, v) { doorFlag(findRow('doors', id), k, v); }, leadsGraph: leadsGraph, leadsBig: leadsBig, exitsOf: exitsOf, auditToggle: auditToggle, auditRes: function () { return JSON.parse(JSON.stringify(ED.auditRes || {})); },   // E7
                sizeSel: sizeSel, roofSet: roofSet, skyCommit: skyCommit, shellPut: shellPut, clockPreview: clockPreview, lampAt: lampAt, palette: function (tab) { ED.opts.tab = tab; palette(); },   // E6
                enter: enterRoom, playHere: playHere, library: function (id) { enterRoom(id, 'library'); }, copyIntoWorld: copyIntoWorld, pickAt: pickAt, frame: frameSel,
                moveSel: function (dx, dz) { var hits = ED.sel.map(selRow).filter(Boolean), a = hits[0] ? Core.rowAnchor(hits[0].row) : { x: 0, z: 0 }; replaceRows(hits.filter(function (h) { return h.list !== 'spawn'; }).map(function (h) { return { list: h.list, i: h.i, before: Core.clone(h.row), after: Core.rowTransform(h.row, { dx: dx, dz: dz, px: a.x, pz: a.z }) }; }), 'move'); } },

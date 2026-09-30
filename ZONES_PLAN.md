@@ -497,3 +497,17 @@ with a thread per zone for the swap and the checks.
   list no unwalked draught and no shut exit whose far room is unseen. FAST TRAVEL (fork 3's default): GO / a node click /
   the world pick / a floor's GO / a line's stop / the register only travel to a room you have stood in (a place's GO lands on
   its anchor if charted, else its first charted room); GO ANYWAY is gone. Next: E7 THE ZONE TOOLS.
+- 2026-09-30: **E7 THE ZONE TOOLS built** (token 20260930-zones-05-cors; R2: editor.js, data.js). All six of §8.2: (1) the door
+  inspector's FLAGS: SECRET (`secret: true` on both ends of the pair), ONE WAY (ticked = the door back is deleted and you arrive at
+  the spawn; unticked = a return door in front of the far spawn), LOCKED (`minClearance` L2-L6 + `requiresKeys`). (2) SITE on a room
+  (an EW_MAP_META pick, blank = no fights). (3) ZONES: world.json `zones[w_zN] = { label, rooms, anchor, hub?, slot?, color? }`
+  (a row with `parts` stays a stage zone); + NEW ZONE, a room's ZONE, ✎ (name, its own map node or JOINS a place already on the map,
+  the node's room, the map spot, colour, delete); the outliner shows rooms under their zones. DEFAULT picked: the map node is a
+  `DOOR_HQ.hubs` row made by `hqWorldDocApply` when the published world loads (`_hqWorldDocZoneHub`: the hub claims the rooms by id,
+  its slot goes in `HQ_WORLD_L.slots.hub`); joining an existing place (the Woods) appends the rooms to that hub, which is how the
+  E9 swap keeps a zone's node where it is. (4) LEADS TO tab: hqWorldGraph for his rooms (dashed secret, arrow one way, red nowhere,
+  L / K locked; click to go; OPEN BIG). (5) AUDIT SIGHT: an exit = a door out of the room's zone; red line = two exits in a straight
+  line of sight through the plan, orange = two exits in one room. (6) AUDIT 8×8: per `space`, a clear 14 m patch centred in it, or a
+  red room. Pure checks in data.js (`hqPlanSightCheck`, `hqPlanFightPatches`, `hqPlanDoorSpot`, `hqPlanOfRoom`). Next: Z4 THE WOODS
+  (mondo builds §4 in the editor).
+

@@ -295,3 +295,42 @@ rebuild on `change`; the rest rebuild.
 tree, grabbed a prop 2.5 m to the east (one undo step), HIDE ROOFS on the library's main hall (the drum opened from above), made
 the room outdoor, set clouds, scenery, clock, a landmark, a look, a key light and a lamp, previewed 20:00: no new errors (the
 sandbox's `THREE.Scene is not a constructor` at index.html load is old).
+
+## E7 — THE ZONE TOOLS (ZONES_PLAN §8.2; 2026-09-30, token 20260930-zones-05-cors)
+
+R2 files: editor.js, data.js. Repo: index.html (token), docs.
+
+- **Door FLAGS** (the door inspector, his world only; editor.js `doorFlagsHtml` / `doorFlag`): SECRET writes `secret: true` on the door
+  AND its partners (`hqDoorPartners`), one step; the runtime's draught (no leaf, no plate, the wall's panel, the protractor, a dashed
+  secret edge on the map). ONE WAY = the door has no partner: ticking it deletes the far door(s) that lead back and sets this door's
+  action to `{ room }` (you arrive at the spawn); unticking stands a RETURN DOOR in front of the far spawn (`hqDoorPair`, the DOOR
+  tool's own), secret if this one is. LOCKED = `minClearance` (L2-L6, blank at 0) + `requiresKeys` (the story's gates, map.js reads
+  them). The outliner's door label shows secret / L / keys.
+- **SITE** (the room inspector's ZONE AND SITE; `siteSet`): `rooms[id].site` = an `EW_MAP_META` id (sorted by label), blank = none
+  (no fight: `hqEncounterRoomOk`). A library COPY still drops `site` (`HQ_WORLD_DOC_RULES.copyDrop`); set it here.
+- **ZONES** (world.json `zones[w_zN] = { label, rooms, anchor, hub?, slot?, color? }`; data.js `hqWorldDocIsOwnZone`,
+  `hqWorldDocNextZoneId`, `hqWorldDocZoneOf`): + NEW ZONE (the outliner; the open room goes in it), a room's ZONE select, ✎ on a
+  zone = name, ON THE MAP (a node of its own, or JOINS an existing `DOOR_HQ.hubs` place, e.g. the Woods), the room the node opens
+  on, the map spot x / y (HQ_WORLD_L units, blank = the ring), colour, delete (rooms stay). The outliner lists rooms under their
+  zones (coloured bar) then NO ZONE. Deleting a room takes it out of its zone; DUPLICATE keeps the zone. A zone row with `parts` is
+  still a STAGE zone laid over `HQ_WORLD.zones` whole. RUNTIME: `hqWorldDocApply` turns his zone into a `DOOR_HQ.hubs` row claiming
+  its rooms by id (`_hqWorldDocZoneHub`; `hqHubOf` reads `rooms` first) + `HQ_WORLD_L.slots.hub[w_zN]`, or appends the rooms to the
+  joined hub; it clears the overview caches. Only read when a published world loads (the editor applies rooms only).
+- **LEADS TO** (left tab; `leadsGraph` / `leadsSvg` / `leadsBig`): `hqWorldGraph()` edges out of his rooms (+ his doors whose room is
+  gone), one line per pair of rooms: dashed = secret, arrow = one way (doors one direction only), red = nowhere (`hqWorldDocDoorCheck`
+  or no room), L / K = locked. Nodes coloured by zone, grey = built-in, white ring = here; a spring layout seeded on a ring sorted by
+  zone. Click a room to go there; OPEN BIG = the same in a 960 × 600 modal; the NOWHERE doors are listed as buttons. Redrawn per step
+  (`ED.stepNo`).
+- **AUDIT SIGHT** (data.js `hqPlanSightCheck(room, exitIds)`): an EXIT = a door whose far room is outside the room's zone (every door
+  when the room is in no zone). Each exit's spot = 2.4 m in from its door (`hqPlanDoorSpot`, the map's landing); a pair is IN VIEW
+  when every 0.5 m sample of the straight line between the spots is in the plan (`hqPlanIn`, square ends for walls), the first /
+  last 3 m forgiven (a door's cut mouth); two exits whose spots are within 1 m of one `space` are IN ONE ROOM. Blue posts = exits,
+  red line = in view, orange = one room. Layout rooms only.
+- **AUDIT 8×8** (`hqPlanFightPatches(room)`): per `space`, an axis-aligned 8 × 8 patch at 1.75 m (14 m) centred in the space (1 m
+  candidates, nearest the middle first), every tile corner in the plan. Green square = found, red over the room = none; the status
+  line names the rooms without one. FIGHT (the real window at the cursor) stays.
+- `hqPlanOfRoom` builds the plan uncached from `hqRoomExpand`: `hqRoomPlan`'s WeakMap keys on the arrays' identity, which the
+  editor's in-place patches keep, so it would go stale while editing.
+- **Quick check:** a scratch Playwright run drew a layout (20 × 20 + 10 × 10 + a hall), two doors (a pair and a one-way to a new
+  room), made a zone with the site Mount Shasta, flipped secret / locked / one way / two way, ran SIGHT + 8×8, the LEADS TO tab and
+  OPEN BIG, then undid everything: no new errors (the sandbox's `THREE.Scene is not a constructor` at load is old).

@@ -779,3 +779,9 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   `_hqLandWeatherTick` eases the fog density in while the walker is inside it. Differs from §5.9: `world` / `rim` / `wall` / `sea`
   are not offered (the room runtime never reads them; they are the battle maps' `env`); the zone `clock` is not edited (his rooms
   are in no zone until E8; `sky.clock` stands in). Checked by a quick load only. Details: docs/notes/editor.md "E6".
+- 2026-09-30: **E7 THE ZONE TOOLS built** (ZONES_PLAN §8.2; this plan's arenas phase is now E8). Token 20260930-zones-05-cors; R2:
+  editor.js, data.js. The door inspector's FLAGS (SECRET both ends, ONE WAY, LOCKED clearance + Keys), a room's SITE (EW_MAP_META)
+  and ZONE, ZONES in world.json (`{ label, rooms, anchor, hub?, slot?, color? }`, the outliner grouped by zone; at load his zone is a
+  DOOR_HQ.hubs node or joins one), the LEADS TO tab (hqWorldGraph drawn; OPEN BIG), AUDIT SIGHT (exits in a line of sight or in
+  one room) and AUDIT 8×8 (a clear battle patch per layout room). Checked by a quick load only. Details: docs/notes/editor.md "E7".
+
