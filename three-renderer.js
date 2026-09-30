@@ -25276,7 +25276,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Custom on-board monument props (Moon / Heaven / Backrooms map set) ───
+    // ── Custom on-board monument props (Moon / Heaven map set) ───
     // Built from the same _hz* helpers as the esoteric landmarks so they grade
     // with day/night and keep terrain pixel density. Registered in _monBuilders
     // and driven by state.monuments = [{kind,x,y,foot,maxH,seed}]. None of these
@@ -25464,7 +25464,7 @@ const ThreeRenderer = (function () {
     }
 
     // A glowing EXIT sign on a slim post — a freestanding wayfinder in the maze
-    // (stands on the floor since the backrooms has no ceiling to hang from).
+    // (stands on the floor since a board has no ceiling to hang from).
     function _hzExitSign(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
@@ -25504,7 +25504,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // Backrooms hanging fluorescent — a buzzing light panel on a ceiling conduit.
+    // Hanging fluorescent — a buzzing light panel on a ceiling conduit.
     function _hzFluorescent(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
@@ -26250,7 +26250,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Backrooms / D.U.M.B.: the camera that was already watching you ──
+    // ── D.U.M.B.: the camera that was already watching you ──
     function _hzSecurityCam(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
@@ -28412,23 +28412,6 @@ const ThreeRenderer = (function () {
         _nrSign(K, 'cern_s', ['BEAM ON', 'DO NOT ENTER TUNNEL'], 2.6 * ts, 1.0 * ts, K.CX, K.fy + 2.7 * ts, K.Z1 - 0.06 * ts, Math.PI, { sizes: [96, 40], bg: '#2a1010', border: '#ff8080', color: '#ffe0e0' });
         var stripe = _hzStripeTex(); if (stripe) _nrRectRing(K, 1.0 * ts, 2.4 * ts, function (x, z, side) { var g = new THREE.PlaneGeometry(1.4 * ts, 0.3 * ts); _nrUV(g, 3, 1); var pl = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: stripe, color: 0xb9b0a0 })); pl.rotation.x = -Math.PI / 2; pl.rotation.z = (side === 'w' || side === 'e') ? Math.PI / 2 : 0; pl.position.set(x, K.fy + 0.6, z); pl.renderOrder = 1; K.add(pl); }, { skipLanes: true, corners: false });
     };
-    /* BACKROOMS — level 0 goes on: wallpaper partitions in every direction,
-       the humming fluorescents, exit signs that lie, damp carpet. */
-    _NR_BUILDERS.backrooms = function (group, ctx) {
-        var K = _nrKit(group, ctx, { w: 4.0, occ: true }), ts = K.ts, rng = K.rng;
-        _nrApron(K, { tex: 'carpet', color: 0xc8b878, deep: true });
-        _nrRoom(K, { tex: 'wallpaper', color: 0xe8d890, dadoTex: 'wallpaper', dadoColor: 0xd8c880, h: 2.6, dh: 0.6, trim: 0xb8a860, strip: null });
-        var paper = K.mat('wallpaper', 0xe8d890, { side: THREE.DoubleSide });
-        var parts = [[K.BX0 - 1.8 * ts, K.BZ0 - 1.2 * ts, 2.6, 0], [K.BX1 + 1.8 * ts, K.BZ1 + 1.2 * ts, 2.6, 0], [K.BX0 - 2.6 * ts, K.CZ + 0.4 * ts, 3.2, Math.PI / 2], [K.BX1 + 2.6 * ts, K.CZ - 0.4 * ts, 3.2, Math.PI / 2], [K.CX + 2.2 * ts, K.BZ0 - 2.6 * ts, 2.2, Math.PI / 2], [K.CX - 2.2 * ts, K.BZ1 + 2.6 * ts, 2.2, Math.PI / 2], [K.BX0 - 1.2 * ts, K.BZ1 + 2.2 * ts, 2.0, 0], [K.BX1 + 1.2 * ts, K.BZ0 - 2.2 * ts, 2.0, 0]];
-        parts.forEach(function (p) { var w = K.box(p[2] * ts, 2.4 * ts, 0.12 * ts, paper); w.position.set(p[0], K.fy + 1.2 * ts, p[1]); w.rotation.y = p[3]; K.addW(K.side(p[0], p[1]), K.lit(w, true)); });
-        _nrRectRing(K, 1.6 * ts, 2.4 * ts, function (x, z, side) { var f = _hzFluorescent(rng); f.position.set(x, K.fy, z); f.rotation.y = (side === 'w' || side === 'e') ? Math.PI / 2 : 0; K.addW(side, f); }, { skipLanes: false, corners: true });
-        _nrRectRing(K, 3.2 * ts, 3.0 * ts, function (x, z, side) { var f = _hzFluorescent(rng); f.position.set(x, K.fy, z); f.rotation.y = (side === 'w' || side === 'e') ? Math.PI / 2 : 0; K.addW(side, f); }, { skipLanes: false, corners: false });
-        _nrProp(K, _hzExitSign, K.BX0 - 3.0 * ts, K.BZ0 - 3.0 * ts, { s: 0.9 }); _nrProp(K, _hzExitSign, K.BX1 + 3.0 * ts, K.BZ1 + 3.0 * ts, { s: 0.9 });
-        var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.04, 0, 3.0);
-        var ceil = K.mat('drywall_2', 0xd8d0b0, { side: THREE.DoubleSide });
-        [[K.X0, K.Z0, K.X1, K.BZ0 - 2.2 * ts], [K.X0, K.BZ1 + 2.2 * ts, K.X1, K.Z1]].forEach(function (r) { var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return; var m = K.plane(w, d, ceil); m.rotation.x = Math.PI / 2; m.position.set(r[0] + w / 2, K.fy + 2.6 * ts, r[1] + d / 2); K.addW(r[1] < K.CZ ? 'n' : 's', m); });   // a ceiling only over the far ends: the maze goes on
-    };
     /* NORTH POLE — the compound: snow, the workshop with its lit windows,
        candy poles, the sleigh, present depots, pines, the aurora. */
     _NR_BUILDERS.northpole = function (group, ctx) {
@@ -28444,14 +28427,6 @@ const ThreeRenderer = (function () {
         _nrRibbons(K, { n: 5, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff, 0xff9ad0] });
         var pole = K.cyl(0.06 * ts, 0.06 * ts, 2.4 * ts, 8, K.mat('marble_light', 0xffffff)); pole.position.set(K.BX1 + 1.4 * ts, K.fy + 1.2 * ts, K.CZ); K.add(pole); var stripe = K.cyl(0.07 * ts, 0.07 * ts, 2.4 * ts, 8, _hzLit(null, 0xd03030)); stripe.scale.set(1, 1, 1); stripe.position.copy(pole.position); stripe.scale.y = 0.5; K.add(stripe); K.add(K.lamp(K.BX1 + 1.4 * ts, K.fy + 2.5 * ts, K.CZ, 0xfff2c0, 0.8 * ts, 0.7));
         _nrPool(K, K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.1 * ts, 'water', { rimTex: 'marble_light', rimColor: 0xffffff });
-    };
-    /* FLAT LANDS — the plane goes on and on. A dead tree. Nothing else. */
-    _NR_BUILDERS.flatlands = function (group, ctx) {
-        var K = _nrKit(group, ctx, { w: 14 }), ts = K.ts;
-        _nrApron(K, { tex: 'grass_2', color: 0xc0c8b8, deep: true, skirt: 'dirt_2', skirtColor: 0xb0a890 });
-        var t = _nrTree(K, 'tree_5', { h: 2.4 }); t.position.set(K.BX1 + 9 * ts, K.fy, K.BZ0 - 6 * ts); K.add(t);
-        var circle = new THREE.Mesh(new THREE.RingGeometry(3.2 * ts, 3.4 * ts, 48), new THREE.MeshBasicMaterial({ color: 0xb0a890, transparent: true, opacity: 0.35, depthWrite: false })); circle.rotation.x = -Math.PI / 2; circle.position.set(K.BX0 - 7 * ts, K.fy + 0.8, K.BZ1 + 5 * ts); K.add(circle);
-        var stone = K.box(0.5 * ts, 0.7 * ts, 0.3 * ts, K.mat('rocks_1', 0xa8a8a0)); stone.position.set(K.BX0 - 7 * ts, K.fy + 0.3 * ts, K.BZ1 + 5 * ts); stone.rotation.y = 0.4; K.add(K.lit(stone, true));
     };
     // ── 7.6 WAVE 1 (2026-09-13): the new sites ───────────────────────────
     /* THE HAUNTED HOUSE (Room 13) — the rest of the house: two-storey gabled
@@ -30141,7 +30116,7 @@ const ThreeRenderer = (function () {
     //      ENTROPY GAUGE (starts cracking at 12 %, fully adrift at 96 %,
     //      reforms after the strike resets it) · 'grounded' · 'floating');
     //      `kind: 'void'` (Heaven, the Spaceship, the Looking-Glass) never
-    //      grounds, `kind: 'room'` (D.U.M.B., CERN, the Backrooms) is inert.
+    //      grounds, `kind: 'room'` (D.U.M.B., CERN) is inert.
     //      state.entropyGauge SYNCS to the guest, so both seats see one world
     //      with nothing relayed (RULE #2). Dev: window.EW_WORLD_STAB = 0..1.
     //  Readout: ThreeRenderer.world(); setWorldMode(m) / getWorldMode().
@@ -30798,7 +30773,7 @@ const ThreeRenderer = (function () {
            board's immediate surroundings (the Training Room enclosure, the
            Holo Sim apron). A theme with no roster is indoors — near-only.
            (MAP SETTINGS: the 'none' early-return below now comes AFTER this,
-           so an indoor map — D.U.M.B., CERN, Backrooms — still gets its room.) */
+           so an indoor map — D.U.M.B., CERN — still gets its room.) */
         /* MAP SETTINGS (2026-09-06): env.near names a per-map near builder
            (the castle bailey, the neon intersection, the collider hall…);
            the facility themes still key theirs off the scenery name. */
@@ -58427,7 +58402,7 @@ const ThreeRenderer = (function () {
     function _hqBoxRoomLamps(room, sc) {
         var U = _hqUnits(), S = room.shell;
         var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
-        var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider, yellow in the Backrooms)
+        var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider)
         lightsAt.forEach(function (Lt) {
             var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
         });

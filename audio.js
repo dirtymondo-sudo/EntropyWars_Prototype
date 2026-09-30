@@ -519,7 +519,7 @@
             heaven: ['sacred', 'calm', 'sacred_site'], vatican: ['sacred', 'sacred_site'], olympus: ['sacred', 'epic', 'sacred_site'],
             cyberpunk: ['cyber', 'electronic', 'urban'], strip: ['urban', 'upbeat'], downtown: ['urban'], stadium: ['urban', 'upbeat'],
             camelot: ['fantasy', 'epic'], agartha: ['fantasy', 'mysterious'], hollow_earth: ['fantasy', 'mysterious'],
-            dumb: ['facility', 'tense'], cern: ['facility', 'electronic'], backrooms: ['horror', 'mysterious', 'facility'],
+            dumb: ['facility', 'tense'], cern: ['facility', 'electronic'],
             lookingglass: ['playful', 'mysterious'],
         };
         const MUSIC_TAGS_LS = 'ew_music_tags';
