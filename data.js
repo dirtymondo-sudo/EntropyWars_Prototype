@@ -47872,8 +47872,7 @@ function hqEncounterLead(enc) {
    usable walker (the old return: the console). */
 /* THE HAND-BACK (EXPLORATION_BATTLES_PLAN §5.2, 2026-09-30): where a party member ENDED the fight, in room metres — the
    commit files `end.units` ([{ partyId, x, z, face, lead? }], the field's cell centres through hqFieldTransform); the lead
-   stands there on the way back (memberId null = the lead's row) and the followers stand on their own (null = that member
-   did not end standing: the swing spot / the file behind the lead as before) */
+   stands there on the way back (memberId null = the lead's row; null = the lead did not end standing: the swing spot) */
 function hqEncounterEndSpot(res, memberId) {
     const E = res && res.end;
     if (!E || !Array.isArray(E.units)) return null;
@@ -48437,10 +48436,7 @@ function hqEncounterField(ev) {
            member's feet (three-renderer.js _hqEncounterTargetOf), in the order state.js seats them (P2 seats 2..n) */
         const grp = (T && Array.isArray(T.group)) ? T.group.filter(x => x && x.race && x.id !== T.id) : [];   // hqEncounterGroup's own filter: the same order as encounter.members
         const gcells = grp.map(g => (g && isFinite(+g.x) && isFinite(+g.z)) ? cellOf({ x: +g.x, z: +g.z }) : null);
-        /* THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4.4): the party's other members stand on their own cells too — the renderer
-           reports each follower's feet in shift order (= the launch's P1 seats 2..n while the first shift is fit) */
-        const pcells = Array.isArray(ev.party) ? ev.party.map(p => (p && isFinite(+p.x) && isFinite(+p.z)) ? cellOf({ x: +p.x, z: +p.z }) : null) : [];
-        F.cells = { walker: cw, target: ct, group: gcells, party: pcells };
+        F.cells = { walker: cw, target: ct, group: gcells };
         F.snap = { walker: TR.centre(cw), target: TR.centre(ct) };
     }
     return F;
@@ -48491,7 +48487,7 @@ function hqEncounterSeats(field, opts) {
     l2 = nearest(l2); if (!l2) return null; taken.add(key(l2.x, l2.y));
     /* THE STAND RULE (EXPLORATION_BATTLES_PLAN §2 rule 2): every body the room knows starts on the cell under its own feet — the
        native's group members first (their own cells, nudged to the nearest seat towards the native), then the fill below for the
-       bodies the walk never had (the party's other three until THE FOLLOWERS, a solo native's companions) */
+       bodies the walk never had (the party's other three, who leap in behind the lead — battle.js THE DASH-IN; a solo native's companions) */
     const own2 = [];
     if (C && Array.isArray(C.group)) {
         for (let i = 0; i < C.group.length && own2.length < n2 - 1; i++) {
@@ -48499,16 +48495,6 @@ function hqEncounterSeats(field, opts) {
             const c = g ? nearest({ x: cl(g.x, W), y: cl(g.y, H) }, l2) : null;
             if (!c) break;   // no seat for this one: it and every later member take the fill (the seat order holds)
             taken.add(key(c.x, c.y)); own2.push(c);
-        }
-    }
-    /* THE FOLLOWERS (§4.4): the party's followers on their own cells (nudged to the nearest seat towards the lead) */
-    const own1 = [];
-    if (C && Array.isArray(C.party)) {
-        for (let i = 0; i < C.party.length && own1.length < n1 - 1; i++) {
-            const g = C.party[i];
-            const c = g ? nearest({ x: cl(g.x, W), y: cl(g.y, H) }, l1) : null;
-            if (!c) break;
-            taken.add(key(c.x, c.y)); own1.push(c);
         }
     }
     const fill = (lead, enemy, n, own) => {
@@ -48528,7 +48514,7 @@ function hqEncounterSeats(field, opts) {
         for (const c of cands) { if (out.length >= n) break; taken.add(key(c.x, c.y)); out.push(c); }
         return out;
     };
-    const s1 = fill(l1, l2, n1, own1), s2 = fill(l2, l1, n2, own2);
+    const s1 = fill(l1, l2, n1, []), s2 = fill(l2, l1, n2, own2);
     return { 1: s1, 2: s2, lead: { 1: l1, 2: l2 }, W, H, board: !!(C && C.walker) };
 }
 function hqEncounterEyeFromSeats(field, seats) {
@@ -48645,31 +48631,6 @@ const HQ_PARTY_RULES = {
     carryGauge: true,
     labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU', lead: 'THE LEAD' },
 };
-/* ══ THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4, 2026-09-30) ══
-   mondo: "do we need to have the first 3 party members following behind the player?" — yes. The FIRST SHIFT's members
-   2–4 that are fit (hp !== 0), in shift order, walk behind the lead in file (three-renderer.js THE TRAIL): the lead's feet
-   are sampled every `sampleM` into a trail and follower k stands `k × gap` metres back along it. No pathfinding, no
-   collision: they walk through people and each other, never block a door or a prompt, never talk, never fight on their
-   own. More than `catchUpM` off their point (a jump down, a teleport) they are placed on it at once. Hidden while the lead
-   rides, drives, swims or climbs. Everywhere the lead walks (`halls`: DOOR HQ's halls too — fork §10.4). At a strike their
-   feet are the party's seats (THE STAND RULE, hqEncounterField `party`). Kill-switch: window.EW_HQ_NO_FOLLOWERS. */
-const HQ_FOLLOW_RULES = { count: 3, gap: 1.4, sampleM: 0.35, catchUpM: 6, halls: true };
-/* who follows: [{ id, race, gender, appearance?, name }] — the first shift's members 2..shift that are not DOWN, in order */
-function hqPartyFollowers(profile) {
-    const r = hqPartyRecord(profile); if (!r || !r.members.length) return [];
-    const n = Math.max(0, Math.min(HQ_FOLLOW_RULES.count | 0, (HQ_PARTY_RULES.shift | 0) - 1));
-    const out = [];
-    r.members.slice(1, 1 + n).forEach(m => {
-        if (!m || hqPartyDown(m)) return;
-        const race = (m.meta && m.meta.race) || 'homosapien';
-        const genders = hqPartyGenders(race);
-        let gender = (m.meta && m.meta.gender) || genders[0]; if (genders.indexOf(gender) < 0) gender = genders[0];
-        const f = { id: m.id, race, gender, name: m.name || ((typeof getRaceLabel === 'function') ? getRaceLabel(race, gender) : race), you: !!m.you };   // THE NAMES: a nameless member is its race
-        if (m.meta && m.meta.appearance) f.appearance = m.meta.appearance;
-        out.push(f);
-    });
-    return out;
-}
 /* ══ ESCAPE · TEAM ESCAPE · THE RETREAT (EXPLORATION_BATTLES_PLAN §6, 2026-09-30) ══
    mondo: "an Escape action, where if you are hidden your unit can escape. A unit that escapes survives the battle even
    after a loss, but is not available to be switched in. If I lose a fight and my whole team got wiped out except for one
@@ -53582,7 +53543,7 @@ if (typeof window !== 'undefined') {
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyLead = hqPartyLead; window.hqPartyLeadAvatar = hqPartyLeadAvatar; window.hqPartyGauge = hqPartyGauge; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRename = hqPartyRename; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqEncounterEndSpot = hqEncounterEndSpot; window.hqEncounterEndRows = hqEncounterEndRows; window.HQ_FOLLOW_RULES = HQ_FOLLOW_RULES; window.hqPartyFollowers = hqPartyFollowers; window.HQ_ESCAPE_RULES = HQ_ESCAPE_RULES; window.hqEscapeRules = hqEscapeRules; window.hqEscapeTeamNeed = hqEscapeTeamNeed; window.hqPartyEscapedFront = hqPartyEscapedFront; window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
+    window.hqEncounterEndSpot = hqEncounterEndSpot; window.hqEncounterEndRows = hqEncounterEndRows; window.HQ_ESCAPE_RULES = HQ_ESCAPE_RULES; window.hqEscapeRules = hqEscapeRules; window.hqEscapeTeamNeed = hqEscapeTeamNeed; window.hqPartyEscapedFront = hqPartyEscapedFront; window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.KILL_XP = KILL_XP; window.killXpFor = killXpFor; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;

@@ -49426,7 +49426,7 @@ const ThreeRenderer = (function () {
         _hq.chars.push(ch);
         if (spec.hold) _hqAttachHeld(ch, spec.hold);
         /* people are never a floor: the top sits above any jump apex */
-        if (spec.kind !== 'player' && spec.kind !== 'follower') _hq.blockers.push({ obj: entry.group, rad: spec.rad || 0.42, y: y, top: y + 2.6, npc: true });   // THE FOLLOWERS never block anything (EXPLORATION_BATTLES §4.2)
+        if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: spec.rad || 0.42, y: y, top: y + 2.6, npc: true });
         return ch;
     }
     /* ══ THE FINDS (HQ plan 9.1 stage 1, 2026-09-15 rev 12) ══
@@ -51285,7 +51285,7 @@ const ThreeRenderer = (function () {
         var target = _hqEncounterTargetOf(ch, Math.hypot(ch.x - pl.x, ch.z - pl.z));
         try {
             var ok = H.opts.onEncounter({ gesture: 'door', door: { key: rec.key, at: rec.at, x: rec.x, y: rec.y, z: rec.z, face: rec.face }, target: target, room: H.opts.room,
-                                 x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye(), party: _hqFollowerFeet() });
+                                 x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() });
             if (!ok) H.gun.strikeAt = performance.now() + 11000;   // refused (the party is down, a panel is open…): the door waits a while before it asks again
         } catch (e) { console.warn('[HQ] the door strike failed', e); }
         return true;
@@ -51571,7 +51571,6 @@ const ThreeRenderer = (function () {
            2026-09-06) or a roster vessel / the agent in black */
         var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;   // (resolved under _hq3DOn — the population call lifts the board's sprite preference)
         if (!opts._stageNoPlayer) _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, appearance: av.appearance || null, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
-        if (!opts._stageNoPlayer) { try { _hqSpawnFollowers(opts.followers || []); } catch (e) { console.warn('[HQ] the followers were not spawned', e); } }   // THE FOLLOWERS (EXPLORATION_BATTLES §4)
         (room.agents || []).forEach(function (ag, i) {
             var g = ag.gender || ((i % 2) ? 'female' : 'male');
             /* an agent with a building pose (a seated clerk) borrows the MIB
@@ -52147,7 +52146,7 @@ const ThreeRenderer = (function () {
             if (dist < bestD) { bestD = dist; best = { kind: 'counter', id: c.counter.id, label: c.counter.label, sub: c.counter.sub, counter: c.counter }; }
         });
         _hq.chars.forEach(function (ch) {
-            if (ch.kind === 'player' || ch.kind === 'follower' || ch.away) return;   // THE ROUNDS: a walker out of the room is not here; THE FOLLOWERS are never a talk target
+            if (ch.kind === 'player' || ch.away) return;   // THE ROUNDS: a walker out of the room is not here
             if (Math.abs(ch.y - pl.y) > 1) return;
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > (ch.reach || 1.75)) return;
@@ -52292,7 +52291,7 @@ const ThreeRenderer = (function () {
             var still = null;
             for (var i = 0; i < H.chars.length; i++) if (H.chars[i].id === tid) { still = H.chars[i]; break; }
             if (!still) return;
-            if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye(), party: _hqFollowerFeet() }); } catch (e) { console.warn('[HQ] onEncounter failed', e); } }
+            if (H.opts.onEncounter) { try { H.opts.onEncounter({ gesture: gesture, target: target, room: room, x: pl.x, z: pl.z, y: pl.y, yaw: H.cam.yaw, pitch: H.cam.pitch, eye: _hqEncounterEye() }); } catch (e) { console.warn('[HQ] onEncounter failed', e); } }
         }, landMs);
         return true;
     }
@@ -52854,7 +52853,7 @@ const ThreeRenderer = (function () {
         /* yield: the officer in the way → hold; another walker just ahead → slow */
         var pl = H.player;
         if (pl && !pl.away) { var px = pl.x - ch.x, pz = pl.z - ch.z, pd = Math.hypot(px, pz); if (pd < R.yieldM && (px * mx + pz * mz) / Math.max(0.01, pd) > 0.3 && Math.abs(pl.y - ch.y) < 1.5) { rd.hold += dt; if (rd.hold > 4) { rd.hold = 0; _hqRoundsNext(ch, R, { drop: true }); } ch.targetYaw = Math.atan2(mx, mz); return; } }
-        for (var i = 0; i < H.chars.length; i++) { var o = H.chars[i]; if (o === ch || o.kind === 'player' || o.kind === 'follower' || o.away) continue; var ox = o.x - ch.x, oz = o.z - ch.z, od = Math.hypot(ox, oz); if (od < 0.8 && (ox * mx + oz * mz) / Math.max(0.01, od) > 0.5 && Math.abs(o.y - ch.y) < 1.5) { slow = 0.35; break; } }
+        for (var i = 0; i < H.chars.length; i++) { var o = H.chars[i]; if (o === ch || o.kind === 'player' || o.away) continue; var ox = o.x - ch.x, oz = o.z - ch.z, od = Math.hypot(ox, oz); if (od < 0.8 && (ox * mx + oz * mz) / Math.max(0.01, od) > 0.5 && Math.abs(o.y - ch.y) < 1.5) { slow = 0.35; break; } }
         rd.hold = 0;
         var step = Math.min(dist, R.walkSpeed * slow * dt), nx = ch.x + mx * step, nz = ch.z + mz * step, moved = false;
         var y1 = _hqNavQuery(nx, nz, ch.y);
@@ -55572,162 +55571,6 @@ const ThreeRenderer = (function () {
         if (pl.y - y > HQ_FALL_MIN) { pl.air = true; pl.vy = 0; pl.jumpT = -1; }
         else pl.y = y;
     }
-    /* ══ THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4, 2026-09-30) ══
-       mondo: "do we need to have the first 3 party members following behind the player?" — the first shift's other fit
-       members walk behind the lead in file (map.js hands the list: data.js hqPartyFollowers). THE TRAIL: the lead's feet are
-       sampled every HQ_FOLLOW_RULES.sampleM into H.follow.trail (newest first); follower k (1..3) stands k × gap metres
-       back along it and eases onto that point. No pathfinding, no collision: nobody reacts to them, they walk through
-       people and each other, they are never a talk / strike target (kind 'follower'). More than catchUpM off their point
-       (a door placement, a teleport, a fall) the file is laid again behind the lead at once. Hidden while the lead rides,
-       drives, swims or climbs. Their rigs load in the background like the extras (they never hold the loading card).
-       Their feet ride every strike (`party`, _hqFollowerFeet) so the fight opens in the file you walked in.
-       Kill-switch: window.EW_HQ_NO_FOLLOWERS. */
-    function _hqFollowRules() {
-        var R = (typeof HQ_FOLLOW_RULES !== 'undefined' && HQ_FOLLOW_RULES) || {};
-        return { count: (R.count != null) ? Math.max(0, R.count | 0) : 3, gap: (+R.gap > 0) ? +R.gap : 1.4, sampleM: (+R.sampleM > 0) ? +R.sampleM : 0.35,
-                 catchUpM: (+R.catchUpM > 0) ? +R.catchUpM : 6, halls: R.halls !== false };
-    }
-    function _hqFollowOn(H) {
-        if (typeof window !== 'undefined' && window.EW_HQ_NO_FOLLOWERS) return false;
-        if (!H || !H.opts || H.opts.edit) return false;
-        if (!_hqFollowRules().halls && typeof hqRoomSite === 'function' && !hqRoomSite(H.opts.room)) return false;
-        return true;
-    }
-    function _hqFollowerDrop(H, ch) {
-        try { var rig = _unitModelRigs.get(ch.id); if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); } _modelAnimState.delete(ch.id); } catch (e) {}
-        try { if (ch.entry && ch.entry.group) { H.charGroup.remove(ch.entry.group); _disposeR(ch.entry.group); } } catch (e) {}
-        var i = H.chars.indexOf(ch); if (i >= 0) H.chars.splice(i, 1);
-    }
-    /* a standable point `d` metres from (x, z) along (dx, dz): the walker's own feet rule, within a step of the lead's height */
-    function _hqFollowStand(x, z, y, dx, dz, d) {
-        var px = x + dx * d, pz = z + dz * d, fy = null;
-        try { fy = _hqSurface(px, pz, y); } catch (e) { fy = null; }
-        if (fy === null || fy === undefined || !isFinite(fy) || Math.abs(fy - y) > 0.8) return null;
-        return { x: px, z: pz, y: fy };
-    }
-    /* THE FILE LAID AGAIN: a straight trail behind the lead — behind first, then the diagonals, the sides, ahead; the direction
-       that stands longest wins (a lead with its back to a wall lays the file beside it) */
-    function _hqFollowSeed(H) {
-        var R = _hqFollowRules(), pl = H.player, need = R.count * R.gap + 0.6;
-        var fx = Math.sin(pl.yaw), fz = Math.cos(pl.yaw);
-        var dirs = [[-fx, -fz], [-fx - fz, -fz + fx], [-fx + fz, -fz - fx], [-fz, fx], [fz, -fx], [fx, fz]];
-        var best = null, bestLen = -1;
-        for (var di = 0; di < dirs.length; di++) {
-            var L = Math.hypot(dirs[di][0], dirs[di][1]) || 1, dx = dirs[di][0] / L, dz = dirs[di][1] / L;
-            var pts = [];
-            for (var d = R.sampleM; d <= need + 1e-6; d += R.sampleM) { var p = _hqFollowStand(pl.x, pl.z, pl.y, dx, dz, d); if (!p) break; pts.push(p); }
-            if (pts.length * R.sampleM >= need - 1e-6) { best = pts; break; }
-            if (pts.length > bestLen) { bestLen = pts.length; best = pts; }
-        }
-        return (best && best.length) ? best : [{ x: pl.x, z: pl.z, y: pl.y }];
-    }
-    /* the point `dist` metres back along the trail from the lead's feet */
-    function _hqFollowPoint(trail, head, dist) {
-        var prev = head, left = dist;
-        for (var i = 0; i < trail.length; i++) {
-            var p = trail[i], seg = Math.hypot(p.x - prev.x, p.z - prev.z);
-            if (seg >= left && seg > 1e-6) { var t = left / seg; return { x: prev.x + (p.x - prev.x) * t, z: prev.z + (p.z - prev.z) * t, y: prev.y + (p.y - prev.y) * t }; }
-            left -= seg; prev = p;
-        }
-        return { x: prev.x, z: prev.z, y: prev.y };
-    }
-    function _hqFollowPlace(ch, p, U) {
-        ch.x = p.x; ch.z = p.z; ch.y = p.y; ch.visY = p.y;
-        if (ch.entry && ch.entry.group) ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
-    }
-    /* the list (map.js _hqFollowers): [{ id, race, gender, appearance?, name }] — respawned only when it changed */
-    function _hqSpawnFollowers(list) {
-        var H = _hq; if (!H) return false;
-        var R = _hqFollowRules();
-        list = (Array.isArray(list) ? list : []).slice(0, R.count);
-        if (!_hqFollowOn(H) || !H.player) list = [];
-        var sig = list.map(function (f) { return [f.id, f.race, f.gender, f.cast || '', f.appearance ? JSON.stringify(f.appearance) : ''].join(':'); }).join('|');
-        if (H.follow && H.follow.sig === sig) return true;
-        (H.followers || []).slice().forEach(function (ch) { _hqFollowerDrop(H, ch); });
-        H.followers = []; H.follow = { sig: sig, trail: null };
-        if (!list.length) return true;
-        var U = _hqUnits();
-        list.forEach(function (f, k) {
-            var spawn = function () {
-                if (_hq !== H || !H.player || !H.follow || H.follow.sig !== sig) return;
-                var pl = H.player;
-                var fs3 = _hq3DOn(), cdef = null; try { cdef = (f.cast && typeof getCastModel === 'function') ? getCastModel(f.cast) : null; } catch (e) { cdef = null; } finally { _hq3DOff(fs3); }   // the officer following: the Player cast model (map.js _hqAvatar's spec)
-                var ch = _hqSpawnCharacter({ id: 'hq-follow-' + (k + 1), kind: 'follower', race: f.race || 'men in black', gender: f.gender || 'male', def: cdef || undefined, appearance: f.appearance || null, x: pl.x, z: pl.z, y: 0, level: 0, face: 0, label: f.name || undefined });
-                if (!ch) return;
-                ch.follow = { k: k + 1, memberId: f.id }; ch.hidden = false;
-                H.followers.push(ch);
-                /* THE HAND-BACK (EXPLORATION_BATTLES §5.2): a follower handed back from a won fight starts on its own end cell,
-                   facing the way it faced, and HOLDS there until the lead walks off (then it runs back into the file) */
-                var held = f.at && isFinite(+f.at.x) && isFinite(+f.at.z) && Math.hypot(+f.at.x - pl.x, +f.at.z - pl.z) < 40;
-                var fy0 = null;
-                if (held) { try { fy0 = _hqSurface(+f.at.x, +f.at.z, pl.y); } catch (e) { fy0 = null; } if (fy0 === null || fy0 === undefined || !isFinite(fy0) || Math.abs(fy0 - pl.y) > 2.5) held = false; }
-                var at = held ? { x: +f.at.x, z: +f.at.z, y: fy0 } : H.follow.trail ? _hqFollowPoint(H.follow.trail, { x: pl.x, z: pl.z, y: pl.y }, (k + 1) * R.gap) : { x: pl.x, z: pl.z, y: pl.y };
-                _hqFollowPlace(ch, at, U);
-                ch.yaw = ch.targetYaw = held ? (Math.PI - (+f.at.face || 0) * Math.PI / 180) : pl.yaw;
-                if (held) ch.follow.held = { x: pl.x, z: pl.z };
-            };
-            /* the rig: at once when the caches hold it, else in the background (the file joins when it lands) */
-            var def0 = null, s3 = _hq3DOn();
-            try { def0 = (f.cast && typeof getCastModel === 'function') ? getCastModel(f.cast) : (f.appearance && typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(f.race, f.gender, f.appearance) : ((typeof getRace3DModel === 'function') ? getRace3DModel(f.race, f.gender) : null); } catch (e) { def0 = null; } finally { _hq3DOff(s3); }
-            var murl = def0 && def0.model;
-            var hot = !murl || !!(_unitGlbCache[murl] && _unitGlbCache[murl].root) || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS);
-            if (hot) { spawn(); return; }
-            _bgLoadDepth++;
-            try { _loadUnitGLB(murl, spawn); } finally { _bgLoadDepth--; }
-        });
-        return true;
-    }
-    /* the followers' feet, in file order (a strike's `party`) — the hidden are left out (they re-form at the lead) */
-    function _hqFollowerFeet() {
-        var H = _hq; if (!H || !H.followers || !H.followers.length) return null;
-        var out = H.followers.slice().sort(function (a, b) { return a.follow.k - b.follow.k; }).filter(function (ch) { return !ch.hidden; }).map(function (ch) { return { x: ch.x, z: ch.z, y: ch.y, id: ch.follow.memberId }; });
-        return out.length ? out : null;
-    }
-    function _hqTickFollowers(dt) {
-        var H = _hq; if (!H || !H.followers || !H.followers.length || !H.player || !H.follow) return;
-        var R = _hqFollowRules(), pl = H.player, F = H.follow, U = _hqUnits();
-        var hide = !!((H.ride && H.ride.on) || (H.vehicle && H.vehicle.on) || pl.swim || pl.climb || pl.away);
-        var head = { x: pl.x, z: pl.z, y: pl.y };
-        var relay = false;
-        if (!F.trail || !F.trail.length) { F.trail = _hqFollowSeed(H); relay = true; }
-        else {
-            var last = F.trail[0], jump = Math.hypot(head.x - last.x, head.z - last.z);
-            if (jump > R.catchUpM || Math.abs(head.y - last.y) > 2.5) { F.trail = _hqFollowSeed(H); relay = true; }
-            else if (jump >= R.sampleM && !pl.air) {
-                F.trail.unshift(head);
-                var keep = Math.ceil((R.count * R.gap + 2) / R.sampleM) + 4;
-                if (F.trail.length > keep) F.trail.length = keep;
-            }
-        }
-        for (var i = 0; i < H.followers.length; i++) {
-            var ch = H.followers[i], e = ch.entry; if (!e) continue;
-            var want = _hqFollowPoint(F.trail, head, ch.follow.k * R.gap);
-            if (hide) { ch.hidden = true; e.group.visible = false; ch.moving = false; _hqFollowPlace(ch, want, U); continue; }
-            /* THE HAND-BACK: a held follower stands on its end cell until the lead is 1 m off its landing, then runs back into
-               the file at a runner's pace (never a snap across the room; past 40 m it re-forms at the lead) */
-            var H0 = ch.follow.held;
-            if (H0) {
-                if (Math.hypot(pl.x - H0.x, pl.z - H0.z) < 1) { ch.moving = false; continue; }
-            }
-            if (ch.hidden || (relay && !H0)) { ch.hidden = false; e.group.visible = true; _hqFollowPlace(ch, want, U); ch.yaw = ch.targetYaw = pl.yaw; ch.moving = false; continue; }
-            var dx = want.x - ch.x, dz = want.z - ch.z, d = Math.hypot(dx, dz);
-            if (H0 && d < 0.6) ch.follow.held = H0 = null;
-            if (d > (H0 ? 40 : R.catchUpM)) { _hqFollowPlace(ch, want, U); ch.moving = false; ch.follow.held = null; continue; }
-            var k = Math.min(1, dt * 6), mv = d * k;
-            if (H0) { mv = Math.min(d, 6.5 * dt); k = d > 0 ? mv / d : 0; }
-            ch.x += dx * k; ch.z += dz * k;
-            if (H0) { var hy = null; try { hy = _hqSurface(ch.x, ch.z, ch.y); } catch (err) { hy = null; } if (hy !== null && hy !== undefined && isFinite(hy) && Math.abs(hy - ch.y) < 1.2) ch.y = hy; }
-            else ch.y = want.y;
-            var sp = dt > 0 ? mv / dt : 0;
-            ch.moving = sp > 0.35 && d > 0.08;
-            ch.running = ch.moving && (!!pl.running || !!H0);
-            if (ch.moving) ch.targetYaw = Math.atan2(dx, dz);
-            else if (!pl.moving) ch.targetYaw = ch.yaw;
-            var dy = ch.targetYaw - ch.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; ch.yaw += dy * Math.min(1, dt * 9);
-            ch.visY += (ch.y - ch.visY) * Math.min(1, dt * 14); if (Math.abs(ch.y - ch.visY) < 0.004) ch.visY = ch.y;
-            e.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
-        }
-    }
     function _hqTickChars(dt) {
         var H = _hq;
         for (var i = 0; i < H.chars.length; i++) {
@@ -55756,8 +55599,6 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             /* THE ROUNDS (2026-09-19): a walker on its loop plays the walk clip at a stroll's pace */
             if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
-            /* THE FOLLOWERS (EXPLORATION_BATTLES §4): the file walks / runs / idles with the pace it keeps */
-            if (ch.kind === 'follower') { want = ch.moving ? ((ch.running && e.actions && e.actions.run) ? 'run' : 'walk') : 'idle'; if (e.actions && e.actions.walk) { var fts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = fts * 0.92; } }
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
                 if (ch.sit) want = (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
@@ -56966,7 +56807,6 @@ const ThreeRenderer = (function () {
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
-        if (!editing) { try { _hqTickFollowers(wdt); } catch (e) { if (!H._followWarned) { H._followWarned = true; console.warn('[HQ] followers tick', e); } } }   /* THE FOLLOWERS (EXPLORATION_BATTLES §4) */
         _hqTickChars(wdt);
         if (!editing) _hqTickCamera(dt);
         else { try { H.opts.edit.tick(dt, H); } catch (e) { if (!H._editWarned) { H._editWarned = true; console.warn('[HQ] the editor tick', e); } } }
@@ -59929,7 +59769,6 @@ const ThreeRenderer = (function () {
        you just came out of it — HQ plan D7). */
     function _hqGoTo(id, faceAway) {
         if (!_hq || !_hq.player) return false;
-        if (_hq.follow) _hq.follow.trail = null;   // THE FOLLOWERS: the file is laid again behind the lead where it lands
         var S = _hq.room.shell, U = _hqUnits(), pl = _hq.player;
         var d = null;
         var spot = null, face = 0;
@@ -60200,9 +60039,6 @@ const ThreeRenderer = (function () {
             _hq.player = nu; _hq.dirty = true;
             return true;
         },
-        /* THE FOLLOWERS (EXPLORATION_BATTLES §4): the file behind the lead after a party change (map.js _hqRefreshFollowers) */
-        setFollowers: function (list) { return _hq ? _hqSpawnFollowers(list) : false; },
-        followers: function () { return (_hq && _hq.followers) ? _hq.followers.map(function (ch) { return { id: ch.id, k: ch.follow.k, member: ch.follow.memberId, race: ch.race, x: +ch.x.toFixed(2), z: +ch.z.toFixed(2), y: +ch.y.toFixed(2), moving: !!ch.moving, hidden: !!ch.hidden }; }) : []; },
         focused: function () { return !!(_hq && _hq.focus && !_hq.focus.out); },
         refreshLamps: _hqRefreshLamps,
         goTo: _hqGoTo,
