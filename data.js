@@ -42173,7 +42173,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_cyberpunk_streets: { x: 0, z: 0 },   // THE GRID: the intersection at the plaza
     site_prebuilt_strip_streets: { x: 0, z: -3.5 },   // THE STRIP: the boulevard
     site_prebuilt_downtown_streets: { x: -2, z: -2.5 },   // DISASTER CITY: the plaza
-    site_prebuilt_dumb_motorpool: { x: 0, z: 0 },   // LEVEL P3: the hall
+    site_prebuilt_dumb_motorpool: { x: 0, z: -10 },   // LEVEL P3: the hall
     site_prebuilt_cern_ring: { x: 26, z: 0 },   // THE RING: on the ring hall (the centre is the machine)
     site_prebuilt_area51_hangar: { x: 0, z: 0 },   // HANGAR 18: the floor under the rig
     site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
