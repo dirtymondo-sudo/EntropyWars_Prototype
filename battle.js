@@ -47469,6 +47469,9 @@
                 const _prevActivePlayer = state._prevBlitzActivePlayer;
                 state._prevBlitzActivePlayer = nextUnit.player;
 
+                // A grab never outlives its caster's activation: the next unit
+                // up drops any enemy still hanging from a sky throw.
+                _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
@@ -50666,6 +50669,24 @@
             renderIfDirty();
         }
 
+        /* Drop a held sky-throw victim: clears the grab so the renderer's carry-
+           hold watchdog lowers the body back onto its own tile (and the saucer
+           leaves). Plain state change, so the guest's state-sync drops it too.
+           With no unit given, every live grab is released. */
+        function _releaseSkyThrowGrab(unit) {
+            const holders = unit ? [unit] : (state.units || []).filter(u => u && u._skyThrowGrab);
+            let any = false;
+            for (const u of holders) {
+                if (!u || !u._skyThrowGrab) continue;
+                u._skyThrowGrab = null;
+                any = true;
+            }
+            if (any || state._skyThrowHighlight) {
+                state._skyThrowHighlight = null;
+                _clearSkyThrowDestPreview();
+            }
+        }
+
         function setTool(mode, toolName) {
             if (state.activePlayer === state.aiPlayer) return;
             playSfx('uiConfirm');
@@ -50674,6 +50695,12 @@
             if (!unit) {
                 addLog('Select one of your units first.');
                 return;
+            }
+            // Picking any other action while an enemy is held drops them back down.
+            if (unit._skyThrowGrab) {
+                const _grabSp = (unit.spells || []).concat(unit._raceAbilities || [])
+                    .find(s => s && s.id === unit._skyThrowGrab.spellId);
+                if (mode !== 'spell' || !_grabSp || _grabSp.name !== toolName) _releaseSkyThrowGrab(unit);
             }
             if (!canUnitAct(unit)) {
                 addLog(`${unitDisplayName(unit)} already acted this round.`);
@@ -61252,6 +61279,9 @@
                     ? nearestWalkableZ(x, y, unit.z ?? 0)
                     : (state.boardHeights?.[y]?.[x] ?? 0);
             }
+            // A live sky-throw grab ends the moment the caster casts anything
+            // else: the held body drops back onto its tile (never left floating).
+            if (unit._skyThrowGrab && spell.id !== unit._skyThrowGrab.spellId) _releaseSkyThrowGrab(unit);
             if (unitSpellsBlocked(unit)) {
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast spells this turn.`);
                 state._teleportingUnit = null;
@@ -61527,7 +61557,10 @@
             // Shared formula (earth-sign terraform discount + status deltas) —
             // the same number every menu used to light the row up.
             const effectiveSpellCost = getSpellMpCostFor(unit, spell);
-            if (unit.mp < effectiveSpellCost) {
+            /* Sky-throw phase 2 (the throw click): the GRAB already paid the MP.
+               Re-checking it here left a caster with less than the cost after the
+               grab stuck on "Not enough MP" with the enemy hanging in the air. */
+            if (unit.mp < effectiveSpellCost && !(spell.kind === 'skyThrow' && unit._skyThrowGrab)) {
                 addLog(mpPenalty > 0 ? `Not enough MP. A status is increasing spell costs by ${mpPenalty}.` : 'Not enough MP.');
                 state._teleportingUnit = null;
                 playErrorSfx();
