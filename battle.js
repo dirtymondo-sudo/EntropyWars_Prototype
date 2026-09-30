@@ -5586,6 +5586,18 @@
                 const _tileTargets = opts.findTarget
                     ? [opts.findTarget(tile)].filter(Boolean)
                     : enemies.filter(e => e.x === tile.x && e.y === tile.y);
+                /* THE SPELL AUDIT (2026-09-30): a `noDamage` area (Dragonfear, Hypnotic Pulse, Executive Order,
+                   Curse of Misfortune) lands its statuses and stat stages on every enemy in it and deals nothing —
+                   no hit roll, no turret/door/object chip. */
+                if (spell.noDamage) {
+                    for (const target of _tileTargets) {
+                        if (!target || target.dead) continue;
+                        if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                        if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
+                        hitCount++;
+                    }
+                    continue;
+                }
                 for (const target of _tileTargets) {
                 if (target && !target.dead) {
                     const _vr = calcAoeVariance(!!opts.noRandom, opts.rngRange, SPELL_DMG_VARIANCE);
@@ -6957,8 +6969,6 @@
                     || spell.kind === 'healAll' || spell.kind === 'revive')) {
                 range += _graceRange;
             }
-            // Crescendo (passive row): Lullaby carries +1 tile — the `lullabyRangeBonus` hook (sum).
-            if (spell.id === 'lullaby') range += (unitPassiveSum(unit, 'lullabyRangeBonus') || 0);
             return range;
         }
 
@@ -62015,6 +62025,12 @@
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
                     const healed = applyHealingToUnit(_ht, healAmount, unit);
+                    /* THE SPELL AUDIT (2026-09-30): a heal row's `cleanse` (a count, 99 = all) was never read here —
+                       Herbal Remedy, Séance, Absolution and Tidal Blessing all promise it. */
+                    if (spell.cleanse) {
+                        const _hcDebuffs = getActiveStatusKeys(_ht).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
+                        for (const k of _hcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_ht, k);
+                    }
                     addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
                     markDirty('hud');
                     renderIfDirty();
@@ -62036,6 +62052,7 @@
                     : ((spell.shield || 0) + getHourglassPower(unit));
                 const shieldGain = Math.min(_shBase, Math.max(0, shieldCap - _st.shield));
                 _st.shield += shieldGain;
+                if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_st, spell.statusEffects, `${spell.name}: `, unit);   // THE SPELL AUDIT: Prayer's Blessed
                 addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(_st)} a ${shieldGain} HP shield.`);
                 completionDelay = Math.max(completionDelay, _shResult.completionDelay);
             } else if (spell.kind === 'buff') {
@@ -62058,6 +62075,12 @@
                 // looked like they had no VFX at all.
                 const _bt = _buffResult.target;
                 window.setTimeout(() => {
+                    /* THE SPELL AUDIT (2026-09-30): a buff row's `cleanse` runs first (Wish Granted, Underdog Spirit,
+                       Prophecy Fulfilled), so the fresh buffs are never the ones it strips. */
+                    if (spell.cleanse) {
+                        const _bcDebuffs = getActiveStatusKeys(_bt).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
+                        for (const k of _bcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_bt, k);
+                    }
                     applyStatusEffects(_bt, spell.statusEffects, `${spell.name}: `, unit);
                     if (spell.statStageBoost) applyStatStageBoost(_bt, spell.statStageBoost, `${spell.name}: `, unit);
                     markDirty('hud');
@@ -63004,6 +63027,8 @@
                                 // vs magic doesn't apply to a spell that never hits.
                                 if (spell.noDamage) {
                                     applyStatusEffects(enemy, spell.statusEffects, `${spell.name}: `, unit);
+                                    // THE SPELL AUDIT: Meow's DEF −1 is a stat stage — it was never applied
+                                    if (spell.statStageBoost) applyStatStageBoost(enemy, spell.statStageBoost, `${spell.name}: `, unit);
                                     return;
                                 }
                                 let dmg = Math.max(32, Math.floor(computeSpellBase(spell, spellPower, { floor: 0 }) * _barrageWaterMult));
@@ -63143,6 +63168,7 @@
                     cleansedCount++;
                 }
                 if (cleansedCount > 0) unit._matchCleanses = (unit._matchCleanses || 0) + cleansedCount;
+                if (spell.statStageBoost) applyStatStageBoost(_ct, spell.statStageBoost, `${spell.name}: `, unit);   // THE SPELL AUDIT: Inner Peace
                 addLog(`${unitDisplayName(unit)} cleanses ${unitDisplayName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
                 flashUnit(_ct.id, 'heal');
@@ -63193,6 +63219,7 @@
 
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
+                        statusEffects: spell.statusEffects,   // THE SPELL AUDIT: Body Check's Stagger
                         damageType: spell.damageType || 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                         element: classifySpellElement(spell)
@@ -64062,6 +64089,11 @@
                    Treeline Retreat's Regen. The branch never applied them. */
                 if (spell.statusEffects && spell.statusEffects.length) {
                     applyStatusEffects(unit, spell.statusEffects, `${spell.name}: `, unit);
+                }
+                /* THE SPELL AUDIT (2026-09-30): an escape's `selfHealPct` (Reassemble) heals the caster on landing. */
+                if (spell.selfHealPct && !unit.dead) {
+                    const _escHeal = applyHealingToUnit(unit, Math.floor(unit.maxHp * spell.selfHealPct), unit, { preScaled: true });
+                    if (_escHeal > 0) addLog(`${unitDisplayName(unit)} restores ${_escHeal} HP.`);
                 }
 
                 if (spell.spawnDecoy) {

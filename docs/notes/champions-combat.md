@@ -1111,3 +1111,11 @@ the ringmaster race standing where THE RINGMASTER agent stood (his line kept as 
 Carnival' (no site, so no site draw). Jack-o'-lantern = The Haunted House (the graveyard). NEW `DOOR_TEXT.ALSO_NATIVE`
 { race: [site labels] } — a second home that `doorSiteCrossings` reads: professor also Downtown (POE D.U.M.B.), sharkman
 + deep sea fish also Atlantis (POE Bermuda Triangle).
+
+## THE SPELL AUDIT — Batch A + A2 (2026-09-30)
+SPELL_FAMILY_AUDIT_PLAN.md §9 Batch A + A2 shipped (log: docs/spell-audit/BATCH_A_LOG.md; patch list
+docs/spell-audit/batches/batchA.js). 294 rows patched, 8 deleted, the 21 Q1 T4 folds done. MP now follows the
+explicit `tier` (data.js `getTierMpCost`, 25/50/75/100; ring only when untiered; `manaCostOverride` still wins).
+Q2: `EW_MP_L1_FRAC` 0.35. battle.js now reads `cleanse` on heal/buff, `statusEffects` on shield/displacement,
+`statStageBoost` on cleanse and no-damage barrages, `selfHealPct` on escape, and `noDamage` on aoe. Batches B
+(registry), C (new rows) and D (engine) are listed at the end of the log.
