@@ -749,3 +749,16 @@ info for whichever one you have selected/hovered on." The forge TECHNIQUES rack 
 - Job pickers are gone from the builder, the roster wall (no job pill), the MD delver page, the campaign creator
   (`#cccJobSelect`), the shop, the HQ pause menu, the dungeon picker and the secondary-job dialog. Role labels in the
   builder read the race's role (pbRoleLabel = CODEX_CLASS_LABELS[RACE_CLASS[race]]).
+
+## THE MAP (ZONES_PLAN Z3, 2026-09-30, token 20260930-zones-04-cors)
+- Area sheet draws a LAYOUT room as its plan: data.js `hqRoomPlan(roomId)` / `hqRoomPlanModel(profile, roomId, hereSpace)`;
+  map.js `_hqAreaPlans` (called after `_hqAreaLayout`, non-HQ areas only). Space node ids are `<room>~<space>`; `_hqMapTravel`
+  and `_hqMapSpaceCardHtml` resolve them to the room (`planOf`). Lanes are edges with `pts` (sheet units) + `sw` (stroke px);
+  `_hqMapSvg` draws them as paths before the plain edges. `HQ_MAP_PLAN_M` = 16 m per unit.
+- Ledger: `profile.door.hq.spaces[roomId][spaceId] = date`, written by `_hqPlanTick` (setInterval 400 ms, started in
+  `_hqEnter`). Not synced to the server blob.
+- Secret links: `hqMapGraph` gives a link door with `secret` (row or end) kind 'secret'; the layout walk and
+  `_hqWorldFloorOf` still treat it as a seam. `hqWorldRoutes(cur, { profile })` drops unwalked draughts and shut exits.
+- Fast travel: `_hqMapCharted(roomId)` / `_hqMapChartedSite(site)` gate every map GO; `_hqWorldGoRoom(place)` picks the
+  anchor if charted, else the first charted room of the place. `EW_HQ_MAP_ALL` still opens everything.
+

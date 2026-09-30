@@ -39660,7 +39660,20 @@ function hqWorldRoutes(curRoom, opts) {
     const R = DOOR_HQ.routes || {};
     const rooms = DOOR_HQ.rooms || {};
     const hereSite = curRoom ? hqRoomSite(curRoom) : null;
-    const live = (DOOR_HQ.links || []).map(l => ({ link: l, live: hqLinkLive(l) })).filter(x => x.live);
+    let live = (DOOR_HQ.links || []).map(l => ({ link: l, live: hqLinkLive(l) })).filter(x => x.live);
+    /* ZONES_PLAN Z3: for an officer (`opts.profile`), a DRAUGHT link not yet walked and a shut way out of the building whose far
+       room is not yet seen are on no line — the lines never give a secret away */
+    if (opts && Object.prototype.hasOwnProperty.call(opts, 'profile') && !(typeof hqDoorsAllOpen === 'function' && hqDoorsAllOpen())) {
+        const walked = hqLinksSeenRecord(opts.profile);
+        const secretOf = l => !!(l.secret || (l.a && l.a.secret) || (l.b && l.b.secret));
+        live = live.filter(x => {
+            if (walked[x.link.id]) return true;
+            if (secretOf(x.link)) return false;
+            const A = rooms[x.live.a], B = rooms[x.live.b];
+            if (HQ_EXIT_RULES.open.indexOf(x.link.id) < 0 && A && B && !A.site !== !B.site) { const far = A.site ? x.live.a : x.live.b; return !!(opts.profile && hqRoomSeen(opts.profile, far)); }
+            return true;
+        });
+    }
     /* a STATION is a site (its board room): a seam that leaves a complex's
        part (the wardrobe upstairs) is the house's — Room 13 is one station */
     const stationRoom = (rid) => { const room = rooms[rid] || {}; const ent = (room.part && room.site) ? hqSiteEntryOf(room.site) : null; return (ent && rooms[ent.room]) ? ent.room : rid; };
@@ -39914,6 +39927,7 @@ function hqMapGraph() {
         if (e.link) {
             const L = linkOf(e.link);
             kind = (d.way || (L && L.way)) ? 'way' : 'link';
+            if (d.secret || (L && L.secret)) kind = 'secret';   // ZONES_PLAN Z3: a DRAUGHT link is a SECRET edge (dashed, on the map only once found), never a plain seam
             way = d.way || (L && L.way) || null;
             route = (L && L.route) || null;
             color = (route && DOOR_HQ.routes && DOOR_HQ.routes[route] && DOOR_HQ.routes[route].color) || null;
@@ -40028,8 +40042,8 @@ function hqMapLayout(graph) {
                 if (seen[b] || pos[b] || !G.nodes[b]) return;
                 const e = G.edges.find(x => (x.a === id && x.b === b) || (x.a === b && x.b === id));
                 /* a seam that stays inside ONE site (the cave's mouth off Hollow Earth's board room) is a domestic door for the walk */
-                const domestic = !!(e && e.kind === 'link' && hqRoomSite(id) && hqRoomSite(id) === hqRoomSite(b));
-                if (!e || (!allowSeams && !doorKinds[e.kind] && !domestic)) return;
+                const domestic = !!(e && (e.kind === 'link' || (e.kind === 'secret' && e.link)) && hqRoomSite(id) && hqRoomSite(id) === hqRoomSite(b));
+                if (!e || (!allowSeams && !(doorKinds[e.kind] && !(e.kind === 'secret' && e.link)) && !domestic)) return;   // ZONES_PLAN Z3: a secret LINK is still a seam for the walk
                 seen[b] = true; kids.push(b);
             });
             kids.forEach(b => {
@@ -40074,7 +40088,11 @@ function hqMapModel(profile, curRoom, opts) {
     G.order.forEach(id => { if (opts.all || rec[id]) seen[id] = true; });
     if (curRoom && G.nodes[curRoom]) seen[curRoom] = true;
     /* THE EARNED DOORS (2026-09-20): a bay threshold Otto has not built is a SECRET door to the map — no question mark behind it, no leg until both rooms are stood in */
-    const hidden = e => !!(e.threshold && !opts.all && typeof hqSiteEarned === 'function' && !hqSiteEarned(e.threshold, profile));
+    const hiddenEarned = e => !!(e.threshold && !opts.all && typeof hqSiteEarned === 'function' && !hqSiteEarned(e.threshold, profile));
+    /* THE TWO EXITS (ZONES_PLAN Z1/Z3): a shut way out of the building (a link from a facility room to a site that is not one of
+       HQ_EXIT_RULES.open) puts no question mark on the room map either — it is found from its own end first */
+    const shutExit = e => !opts.all && !!e.link && HQ_EXIT_RULES.open.indexOf(e.link) < 0 && !!(G.nodes[e.a] && G.nodes[e.b]) && (!G.nodes[e.a].site !== !G.nodes[e.b].site);
+    const hidden = e => hiddenEarned(e) || shutExit(e);
     const q = {};
     G.edges.forEach(e => {
         if (e.kind === 'secret' || hidden(e)) return;                 // a secret door is on no plate: the far room is not a question, it is nothing
@@ -40319,7 +40337,7 @@ function _hqWorldFloorOf(roomId) {
         while (todo.length) {
             const at = todo.shift();
             G.edges.forEach(e => {
-                if (e.kind === 'lift' || e.kind === 'link' || e.kind === 'way') return;
+                if (e.kind === 'lift' || e.kind === 'link' || e.kind === 'way' || (e.kind === 'secret' && e.link)) return;
                 const other = e.a === at ? e.b : e.b === at ? e.a : null;
                 if (!other || floor[other] || hqWorldNodeOf(other) !== 'hq') return;
                 floor[other] = floor[at]; todo.push(other);
@@ -43819,6 +43837,153 @@ function hqPlanFreeze(info, gen0) {
 function hqPlanReport(info) {
     const gp = info && info.genPlan; if (!gp || !gp.hand) return null;
     return { spaces: gp.spaces.length, halls: gp.halls.length, cut: (info.gen && info.gen.carved) || 0, cold: (gp.cold || []).slice(), trees: (info.thicket || []).length, walls: (info.planWalls || []).length };
+}
+/* ── THE ROOM PLAN ON THE MAP (ZONES_PLAN Z3 THE MAP, 2026-09-30) ──────────────────────────────────────────────────────────
+   §6: "THIS AREA for a zone built in the editor: rooms as nodes, lanes as edges, drawn as visited". A room with a LAYOUT (the
+   editor's `space` + `hall` rows, terrain.gen { kind: 'plan' }) is drawn on its area sheet as its own plan: every `space` a
+   node where it stands, every `hall` a lane along its own line, revealed ROOM BY ROOM as the walker stands in them.
+     hqRoomPlan(roomId)                    → { spaces, halls, direct, adj, doorTo, box } or null (cached per room + rows)
+     hqPlanSpaceAt(roomId, x, z)           → the space the point stands in (a hall is no space) or null
+     hqRoomSpacesSeen(profile, roomId)     → { spaceId: 'YYYY-MM-DD' }
+     hqRoomSpaceSee(profile, roomId, sid)  → the ONE write (map.js's plan tick; the caller saves once) { ok, first }
+     hqRoomPlanModel(profile, roomId, hereSpace, opts) → what the sheet draws: spaces with a state ('here' / 'seen' / 'q' — an
+                                             unseen space a drawn lane or a seen space's edge reaches), the lanes touching a
+                                             seen space, the doors' spaces; null when nothing of the plan is seen yet
+   A hall TOUCHES a space when its line runs within half its width of it; halls that touch are one LANE SYSTEM, and every
+   space a system touches is joined through it. Viewer-local, nothing on `state`, nothing relayed (RULE #2). */
+const HQ_PLAN_MAP_RULES = { sampleM: 1.0, doorPad: 1.0 };
+const _hqRoomPlanCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+function _hqPlanInSpace(s, x, z, pad) {
+    pad = pad || 0;
+    if (s.round) return _hqTEllipse(x, z, { x: s.x, z: s.z, r: s.w / 2 + pad, rz: s.d / 2 + pad, rot: s.rot }) <= 1;
+    return _hqTRectIn(x, z, s) >= -pad;
+}
+function _hqPlanSpaceDist(s, x, z) {
+    if (s.round) { const e = _hqTEllipse(x, z, { x: s.x, z: s.z, r: s.w / 2, rz: s.d / 2, rot: s.rot }); return Math.max(0, (e - 1) * Math.min(s.w, s.d) / 2); }
+    return Math.max(0, -_hqTRectIn(x, z, s));
+}
+function _hqPlanRim(s, step) {
+    const out = [], rot = (s.rot || 0) * Math.PI / 180, c = Math.cos(rot), sn = Math.sin(rot), hw = s.w / 2, hd = s.d / 2;
+    const N = Math.max(8, Math.ceil(2 * (s.w + s.d) / step));
+    for (let i = 0; i < N; i++) {
+        const t = i / N; let u, v;
+        if (s.round) { const a = t * 2 * Math.PI; u = Math.sin(a) * hw; v = -Math.cos(a) * hd; }
+        else { let q = t * 2 * (s.w + s.d); if (q < s.w) { u = -hw + q; v = -hd; } else if ((q -= s.w) < s.d) { u = hw; v = -hd + q; } else if ((q -= s.d) < s.w) { u = hw - q; v = hd; } else { q -= s.w; u = -hw; v = hd - q; } }
+        out.push([s.x + u * c - v * sn, s.z + u * sn + v * c]);
+    }
+    return out;
+}
+function _hqPlanSamples(pts, step) {
+    const out = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+        const ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / step));
+        for (let k = 0; k < n; k++) out.push([ax + (bx - ax) * k / n, az + (bz - az) * k / n]);
+    }
+    if (pts.length) out.push(pts[pts.length - 1].slice());
+    return out;
+}
+function _hqRoomPlanBuild(room, roomId) {
+    const T = room.terrain;
+    let feats = null; try { feats = hqRoomExpand(room).features; } catch (e) { feats = T.features || []; }
+    feats = feats || [];
+    const hasRows = feats.some(f => f && (f.k === 'space' || f.k === 'hall'));
+    const gen = T.gen || (hasRows ? { kind: 'plan' } : null);
+    if (!gen || gen.kind !== 'plan') return null;
+    const P = hqPlanShapes(feats);
+    if (!P.spaces.length) return null;
+    const R = HQ_PLAN_MAP_RULES, used = {};
+    const uid = (id, pre, i) => { let k = String(id || (pre + (i + 1))).replace(/[^A-Za-z0-9_]/g, '_'); while (used[k]) k += '_'; used[k] = true; return k; };
+    const spaces = P.spaces.map((s, i) => Object.assign({}, s, { id: uid(s.id, 's', i), no: i + 1 }));
+    const halls = P.halls.map((h, i) => Object.assign({}, h, { id: uid(h.id, 'h', i), spaces: [], sys: i }));
+    /* a hall touches a space; halls that touch are one system */
+    const samples = halls.map(h => _hqPlanSamples(h.pts, R.sampleM));
+    halls.forEach((h, i) => spaces.forEach(s => { if (samples[i].some(p => _hqPlanInSpace(s, p[0], p[1], h.w / 2))) h.spaces.push(s.id); }));
+    const up = halls.map((h, i) => i), find = i => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
+    for (let i = 0; i < halls.length; i++) for (let j = i + 1; j < halls.length; j++) {
+        const lim = (halls[i].w + halls[j].w) / 2;
+        if (samples[i].some(p => _hqTPolyDist(p[0], p[1], halls[j].pts).d <= lim)) up[find(i)] = find(j);
+    }
+    halls.forEach((h, i) => { h.sys = find(i); });
+    const sysSpaces = {};
+    halls.forEach(h => { const L = sysSpaces[h.sys] = sysSpaces[h.sys] || []; h.spaces.forEach(id => { if (L.indexOf(id) < 0) L.push(id); }); });
+    halls.forEach(h => { h.reach = sysSpaces[h.sys].slice(); });
+    /* two spaces whose edges meet are joined with no lane */
+    const direct = [];
+    for (let i = 0; i < spaces.length; i++) for (let j = i + 1; j < spaces.length; j++) {
+        const A = spaces[i], B = spaces[j];
+        if (_hqPlanRim(A, R.sampleM).some(p => _hqPlanInSpace(B, p[0], p[1], 0.3)) || _hqPlanRim(B, R.sampleM).some(p => _hqPlanInSpace(A, p[0], p[1], 0.3))) direct.push([A.id, B.id]);
+    }
+    const adj = {}; spaces.forEach(s => { adj[s.id] = []; });
+    const join = (a, b) => { if (a === b) return; if (adj[a].indexOf(b) < 0) adj[a].push(b); if (adj[b].indexOf(a) < 0) adj[b].push(a); };
+    Object.keys(sysSpaces).forEach(k => { const L = sysSpaces[k]; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) join(L[i], L[j]); });
+    direct.forEach(d => join(d[0], d[1]));
+    /* the doors: each door's landing (hqTerrainDoorLanding's spot, no compile) → the space that holds it, else the nearest */
+    const S = room.shell || {}, doorTo = {}, doorAt = {};
+    const landing = d => {
+        if (d.wall === 'free') { const f = (d.face || 0) * Math.PI / 180; return [(d.x || 0) + Math.sin(f) * 2.4, (d.z || 0) - Math.cos(f) * 2.4]; }
+        if (d.wall === 'n') return [d.x || 0, -(S.d || 0) / 2 + 2.4];
+        if (d.wall === 's') return [d.x || 0, (S.d || 0) / 2 - 2.4];
+        if (d.wall === 'e') return [(S.w || 0) / 2 - 2.4, d.z || 0];
+        return [-(S.w || 0) / 2 + 2.4, d.z || 0];
+    };
+    const spaceNear = (x, z) => { let best = null, bd = Infinity; spaces.forEach(s => { const dd = _hqPlanInSpace(s, x, z, R.doorPad) ? -1 : _hqPlanSpaceDist(s, x, z); if (dd < bd) { bd = dd; best = s; } }); return best; };
+    const doorRow = {}; (room.doors || []).forEach(d => { if (d && d.id) doorRow[d.id] = d; });
+    let edges = []; try { edges = hqWorldGraph().edges.filter(e => e.from === roomId); } catch (e) { edges = []; }
+    edges.forEach(e => {
+        const d = doorRow[e.door]; if (!d || !e.to || doorTo[e.to]) return;
+        const L = landing(d), sp = spaceNear(L[0], L[1]);
+        if (!sp) return;
+        doorTo[e.to] = sp.id; doorAt[e.to] = { x: (d.wall === 'free' ? (d.x || 0) : L[0]), z: (d.wall === 'free' ? (d.z || 0) : L[1]) };
+    });
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    const grow = (x, z) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
+    spaces.forEach(s => _hqPlanRim(s, 4).forEach(p => grow(p[0], p[1])));
+    halls.forEach(h => h.pts.forEach(p => grow(p[0], p[1])));
+    return { roomId, spaces, halls: halls.map(h => ({ id: h.id, label: h.label, pts: h.pts, w: h.w, spaces: h.spaces, reach: h.reach })), direct, adj, doorTo, doorAt, box: { x0, z0, x1, z1 } };
+}
+function hqRoomPlan(roomId) {
+    const room = (DOOR_HQ.rooms || {})[roomId];
+    if (!room || !room.terrain) return null;
+    const T = room.terrain, c = _hqRoomPlanCache && _hqRoomPlanCache.get(room);
+    if (c && c.features === T.features && c.gen === T.gen && c.doors === room.doors) return c.plan;
+    let plan = null; try { plan = _hqRoomPlanBuild(room, roomId); } catch (e) { plan = null; }
+    if (_hqRoomPlanCache) _hqRoomPlanCache.set(room, { features: T.features, gen: T.gen, doors: room.doors, plan });
+    return plan;
+}
+function hqPlanSpaceAt(roomId, x, z) {
+    const P = hqRoomPlan(roomId); if (!P || !isFinite(x) || !isFinite(z)) return null;
+    const s = P.spaces.find(q => _hqPlanInSpace(q, x, z, 0.2));
+    return s ? s.id : null;
+}
+function hqRoomSpacesSeen(profile, roomId) {
+    try { const r = profile && profile.door && profile.door.hq && profile.door.hq.spaces && profile.door.hq.spaces[roomId]; return (r && typeof r === 'object') ? r : {}; } catch (e) { return {}; }
+}
+function hqRoomSpaceSee(profile, roomId, spaceId, now) {
+    const rid = String(roomId || ''), sid = String(spaceId || '');
+    if (!profile || !HQ_ROOM_ID_RE.test(rid) || !HQ_ROOM_ID_RE.test(sid)) return { ok: false, reason: 'id' };
+    const P = hqRoomPlan(rid); if (!P || !P.spaces.some(s => s.id === sid)) return { ok: false, reason: 'unknown' };
+    const cur = hqRoomSpacesSeen(profile, rid);
+    if (cur[sid]) return { ok: true, first: false, date: cur[sid] };
+    const date = hqToday(now ? new Date(now) : undefined);
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+    const all = profile.door.hq.spaces = Object.assign({}, profile.door.hq.spaces || {});
+    all[rid] = Object.assign({}, cur); all[rid][sid] = date;
+    return { ok: true, first: true, date };
+}
+function hqRoomPlanModel(profile, roomId, hereSpace, opts) {
+    opts = opts || {};
+    const P = hqRoomPlan(roomId); if (!P) return null;
+    const rec = hqRoomSpacesSeen(profile, roomId), seen = {};
+    P.spaces.forEach(s => { if (opts.all || rec[s.id] || s.id === hereSpace) seen[s.id] = true; });
+    if (!Object.keys(seen).length) return null;
+    const q = {};
+    P.spaces.forEach(s => { if (!seen[s.id]) return; (P.adj[s.id] || []).forEach(b => { if (!seen[b]) q[b] = true; }); });
+    const spaces = P.spaces.filter(s => seen[s.id] || q[s.id]).map(s => ({ id: s.id, no: s.no, x: s.x, z: s.z, w: s.w, d: s.d, rot: s.rot, round: s.round,
+        label: seen[s.id] ? String(s.label || ('ROOM ' + s.no)) : 'UNCHARTED', st: s.id === hereSpace ? 'here' : seen[s.id] ? 'seen' : 'q', first: rec[s.id] || null }));
+    const halls = P.halls.filter(h => h.reach.some(id => seen[id])).map(h => ({ id: h.id, pts: h.pts, w: h.w, spaces: h.spaces.slice(), st: h.spaces.length && h.spaces.every(id => seen[id]) ? 'known' : 'q' }));
+    const direct = P.direct.filter(d => seen[d[0]] || seen[d[1]]).map(d => ({ a: d[0], b: d[1], st: (seen[d[0]] && seen[d[1]]) ? 'known' : 'q' }));
+    return { roomId, spaces, halls, direct, doorTo: Object.assign({}, P.doorTo), doorAt: Object.assign({}, P.doorAt), box: Object.assign({}, P.box), seen: Object.keys(seen).length, total: P.spaces.length };
 }
 function _hqTRng(seed) { let s = (seed >>> 0) || 1; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
 /* the signed distance (m) of every grid cell to the mask's boundary (> 0 open, < 0 solid) — a two-pass chamfer (3-4) per side */
@@ -52719,7 +52884,7 @@ if (typeof window !== 'undefined') {
     window.hqMapMastered = hqMapMastered;
     window.hqSiteChecklist = hqSiteChecklist; window.HQ_MASTERY_HOW = HQ_MASTERY_HOW;
     window.hqMasteryCount = hqMasteryCount;
-    window.hqSiteEarned = hqSiteEarned; window.hqSiteSeen = hqSiteSeen; window.hqDoorEarned = hqDoorEarned; window.hqApplyEarnedDoors = hqApplyEarnedDoors; window.HQ_EXIT_RULES = HQ_EXIT_RULES; window.hqApplyShutExits = hqApplyShutExits;
+    window.hqSiteEarned = hqSiteEarned; window.hqSiteSeen = hqSiteSeen; window.hqDoorEarned = hqDoorEarned; window.hqApplyEarnedDoors = hqApplyEarnedDoors; window.HQ_EXIT_RULES = HQ_EXIT_RULES; window.hqApplyShutExits = hqApplyShutExits; window.hqRoomPlan = hqRoomPlan; window.hqPlanSpaceAt = hqPlanSpaceAt; window.hqRoomSpacesSeen = hqRoomSpacesSeen; window.hqRoomSpaceSee = hqRoomSpaceSee; window.hqRoomPlanModel = hqRoomPlanModel;   // ZONES_PLAN Z3
     window.hqEarnedDoorsNew = hqEarnedDoorsNew; window.hqEarnedDoorsStamp = hqEarnedDoorsStamp; window.hqThresholdSites = hqThresholdSites; window.hqDoorsAllOpen = hqDoorsAllOpen;
     window.hqMissionPool = hqMissionPool;
     window.hqBayId = hqBayId;
