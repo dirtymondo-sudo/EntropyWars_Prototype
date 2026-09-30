@@ -37413,24 +37413,54 @@ const DOOR_HQ = {
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xb8c4e8, ambient: 0.36, night: 1 },
                                     sky: { night: 1, tint: 0x241b3e, tintAmt: 0.42, stars: 1.3, nebula: 0.9, fog: { color: 0x35284f, amount: 0.5, top: 0.06, band: 0.5, density: 0.022 }, scenery: 'ruins', density: 0.5 },
                                     look: HQ_ROOM_LOOKS.henge }),
-            /* THE FIELD (120 × 100 m): the frame with nothing in it (the bay door, the board bypassed) on the south wall; THE BANK and
-               THE DITCH ring the circle (a ridge and a gully, open); THE SARSEN CIRCLE sixteen stones as walls in the rock sheet with
-               the four lanes broken through and one span fallen; THE TRILITHON HORSESHOE inside it, open to the north-east; THE GREAT
-               TRILITHON at the horseshoe's back is a tier (6.6 m — the tape, the door gun's); the bluestones the user's standing-stone
-               GLB; THE HEEL STONE up THE AVENUE; three BARROWS on the plain with a chalk cut up the biggest (the rider's ramp); THE
-               LONG BARROW banked round the ley door on the north wall; the chalk banks the plan grows. */
+            /* THE FIELD (120 × 100 m; LEVEL_DESIGN_PLAN L6, 2026-09-30 — §3 #9, "built walls and plazas instead of banks where a
+               structure is meant"): a LAYOUT on the plain. The outer bound is the plain's chalk (`look: 'rock'`, a 3.4 m bank drawn by
+               hand, no generated banks). THE BANK and THE DITCH are the one earthwork (a low ridge and a gully, as before) round the
+               circle's round space; THE SARSEN CIRCLE (sixteen stones as walls in the rock sheet, the four lanes broken through, one span
+               fallen) and THE TRILITHON HORSESHOE stand in it, THE GREAT TRILITHON at the horseshoe's back a tier (6.6 m — the tape, the
+               door gun's). The frame with nothing in it (the bay door) opens on its own space south, hall A up into the circle, hall B
+               west past the visitors' rail to the barrows' space (THE KING BARROW a kerbed drum up a built stair), hall C back into the
+               circle (loop 1). THE AVENUE runs north-east out of the circle to the heel stone's space, hall F west along the north to
+               THE LONG BARROW's space round the ley door (a kerbed long mound up a built stair), hall D back into the circle (loop 2).
+               Dead ends: side room 1 (the small barrow) off hall D, side room 2 (the east barrow) off hall G, side room 3 (the second
+               trilithon) east of the circle. The doors never see each other (hall A sits east of the line, the ley space is walled off
+               from the circle). */
             terrain: {
                 floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt',
-                noise: { amp: 0.28, scale: 9 },
-                gen: { kind: 'rooms', seed: 56, loops: 3, rMin: 8, rMax: 16, wallH: 1.3, thicket: false },                   // THE FLOOR PLAN: the plain's chalk banks (no thicket on Salisbury Plain)
+                noise: { amp: 0, scale: 9 }, crag: false,
+                gen: { kind: 'plan', look: 'rock', wallH: 3.4, jitter: 0.1, topNoise: 0.3, rim: 0, forceGrow: -0.4 },   // THE LAYOUT: the plain's chalk, a bank drawn by hand
                 features: [
+                    /* THE ROOMS */
+                    { k: 'space', x: 0, z: 0, w: 58, d: 58, round: true },               // THE BANK, THE DITCH, THE SARSEN CIRCLE
+                    { k: 'space', x: 0, z: 41.5, w: 14, d: 13 },                         // the bay door's space (the frame with nothing in it)
+                    { k: 'space', x: -38, z: 24, w: 24, d: 28 },                         // the barrows' space (THE KING BARROW)
+                    { k: 'space', x: -23, z: -40.5, w: 38, d: 16 },                      // THE LONG BARROW's space, round the ley door
+                    { k: 'space', x: 30, z: -40, w: 14, d: 12 },                         // the heel stone's space (THE AVENUE's end)
+                    { k: 'space', x: -50, z: -20, w: 12, d: 12 },                        // side room 1 (a dead end: the small barrow)
+                    { k: 'space', x: 38, z: 28, w: 18, d: 18 },                          // side room 2 (a dead end: the east barrow)
+                    { k: 'space', x: 40, z: -10, w: 14, d: 14 },                         // side room 3 (a dead end: the second trilithon)
+                    /* THE HALLS */
+                    { k: 'hall', pts: [[4, 35.5], [4, 27.5]], w: 3.4 },                  // hall A: the bay door's space up into the circle
+                    { k: 'hall', pts: [[-6.5, 37], [-26.5, 37]], w: 4 },                 // hall B: past the visitors' rail to the barrows
+                    { k: 'hall', pts: [[-32, 10.5], [-32, 3], [-27.5, 3]], w: 3.4 },     // hall C: the barrows back into the circle (loop 1)
+                    { k: 'hall', pts: [[-38, -32.8], [-38, -18], [-22, -18]], w: 3.4 },  // hall D: the long barrow's space into the circle
+                    { k: 'hall', pts: [[-38, -20], [-44.5, -20]], w: 3 },                // hall E: to side room 1
+                    { k: 'hall', pts: [[14, -20], [28, -38]], w: 7 },                    // THE AVENUE, north-east (its banks the plain's chalk)
+                    { k: 'hall', pts: [[23.5, -44], [-4.5, -44]], w: 3.4 },              // hall F: the heel stone west to the long barrow (loop 2)
+                    { k: 'hall', pts: [[6.5, 44], [38, 44], [38, 36.5]], w: 3.4 },       // hall G: the bay door's space to side room 2
+                    { k: 'hall', pts: [[27, -10], [33.5, -10]], w: 3.4 },                // hall H: the circle to side room 3
+                    /* THE EARTHWORK (the one allowed): the bank and the ditch, low */
                     { k: 'ridge', pts: [[24.0, 0.0], [23.5, 4.7], [22.2, 9.2], [20.0, 13.3], [17.0, 17.0], [13.3, 20.0], [9.2, 22.2], [4.7, 23.5], [0.0, 24.0], [-4.7, 23.5], [-9.2, 22.2], [-13.3, 20.0], [-17.0, 17.0], [-20.0, 13.3], [-22.2, 9.2], [-23.5, 4.7], [-24.0, 0.0], [-23.5, -4.7], [-22.2, -9.2], [-20.0, -13.3], [-17.0, -17.0], [-13.3, -20.0], [-9.2, -22.2], [-4.7, -23.5], [-0.0, -24.0], [4.7, -23.5], [9.2, -22.2], [13.3, -20.0], [17.0, -17.0], [20.0, -13.3], [22.2, -9.2], [23.5, -4.7], [24.0, -0.0]], w: 5, h: 0.9, open: true },                                                     // THE BANK
                     { k: 'ridge', pts: [[20.5, 0.0], [20.1, 4.0], [18.9, 7.8], [17.0, 11.4], [14.5, 14.5], [11.4, 17.0], [7.8, 18.9], [4.0, 20.1], [0.0, 20.5], [-4.0, 20.1], [-7.8, 18.9], [-11.4, 17.0], [-14.5, 14.5], [-17.0, 11.4], [-18.9, 7.8], [-20.1, 4.0], [-20.5, 0.0], [-20.1, -4.0], [-18.9, -7.8], [-17.0, -11.4], [-14.5, -14.5], [-11.4, -17.0], [-7.8, -18.9], [-4.0, -20.1], [-0.0, -20.5], [4.0, -20.1], [7.8, -18.9], [11.4, -17.0], [14.5, -14.5], [17.0, -11.4], [18.9, -7.8], [20.1, -4.0], [20.5, -0.0]], w: 3.4, h: -0.7, open: true },                                                 // THE DITCH
-                    { k: 'hill', x: -38, z: 22, r: 8, h: 1.8 },                                                                   // THE KING BARROW
-                    { k: 'hill', x: 38, z: 30, r: 6, h: 1.4 },
-                    { k: 'hill', x: -42, z: -28, r: 5, h: 1.1 },
-                    { k: 'ramp', x0: -38, z0: 33, x1: -38, z1: 22.5, w: 2.6, h0: 0, h1: 1.8, edge: 0.3 },                         // the chalk cut up the king barrow (the rider's ramp)
-                    { k: 'plateau', x: -28, z: -44, w: 18, d: 7, h: 2.0, edge: 1.4 },                                            // THE LONG BARROW (a bank the walker climbs), west of the ley door
+                    /* THE BARROWS: kerbed drums with crisp sides (built, never banks), each up a built stair */
+                    { k: 'plateau', x: -38, z: 22, r: 7, h: 1.8, edge: 0.15 },                                                   // THE KING BARROW
+                    { k: 'ramp', x0: -38, z0: 33.4, x1: -38, z1: 28.3, w: 2.6, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair (was the chalk cut)
+                    { k: 'plateau', x: 38, z: 29, r: 5, h: 1.2, edge: 0.15 },                                                    // the east barrow
+                    { k: 'ramp', x0: 38, z0: 36.6, x1: 38, z1: 33.3, w: 2.4, h0: 0, h1: 1.2, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
+                    { k: 'plateau', x: -50, z: -20, r: 3.5, h: 1.0, edge: 0.15 },                                                // the small barrow
+                    { k: 'ramp', x0: -44.6, z0: -20, x1: -47.2, z1: -20, w: 2.2, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
+                    { k: 'plateau', x: -28, z: -40, w: 16, d: 6, h: 1.6, edge: 0.15 },                                           // THE LONG BARROW, west of the ley door
+                    { k: 'ramp', x0: -16.2, z0: -40, x1: -20.7, z1: -40, w: 2.4, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair, at the east end
                     { k: 'wall', x0: 10.7, z0: 2.7, x1: 9.5, z1: 5.6, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
                     { k: 'wall', x0: 8.8, z0: 6.6, x1: 6.6, z1: 8.8, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
                     { k: 'wall', x0: 5.6, z0: 9.5, x1: 2.7, z1: 10.7, h: 4.2, t: 1.1, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
@@ -37446,12 +37476,12 @@ const DOOR_HQ = {
                     { k: 'wall', x0: 1.7, z0: 6.0, x1: -1.7, z1: 6.0, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
                     { k: 'wall', x0: -3.0, z0: 5.4, x1: -5.4, z1: 3.0, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
                     { k: 'wall', x0: -6.0, z0: 1.7, x1: -6.0, z1: -1.7, h: 6.0, t: 1.3, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
-                    { k: 'plateau', x: 0, z: 5.6, w: 3.6, d: 1.5, h: 6.6, edge: 0.3 },                                            // THE GREAT TRILITHON (the tape — the door gun's)
-                    { k: 'rail', x0: -20, z0: 34, x1: -8, z1: 34 },                                                                // the visitors' rail (the grind)
-                    { k: 'path', pts: [[0, 48], [0, 34], [-8, 20], [0, 12]], w: 3.0 },                                            // from the bay door
-                    { k: 'path', pts: [[8, -8], [30, -38]], w: 4.6 },                                                              // THE AVENUE, north-east
-                    { k: 'path', pts: [[-10, -46], [-10, -30], [-8, -12]], w: 2.4 },                                              // the ley door's track
-                    { k: 'path', pts: [[-38, 34], [-30, 34], [-20, 34], [0, 34]], w: 2.0 },                                       // to the king barrow
+                    { k: 'plateau', x: 0, z: 5.6, w: 3.6, d: 1.5, h: 6.6, edge: 0.15 },                                           // THE GREAT TRILITHON (the tape — the door gun's)
+                    { k: 'rail', x0: -20, z0: 35.4, x1: -8, z1: 35.4 },                                                            // the visitors' rail (the grind), along hall B
+                    { k: 'path', pts: [[0, 48], [0, 38], [4, 35], [4, 24]], w: 2.6 },                                             // from the bay door
+                    { k: 'path', pts: [[8, -8], [28, -38]], w: 4.6 },                                                              // THE AVENUE, north-east
+                    { k: 'path', pts: [[-10, -47], [-10, -34], [-38, -34], [-38, -18], [-24, -18]], w: 2.4 },                     // the ley door's track
+                    { k: 'path', pts: [[-6, 37], [-38, 37], [-38, 34]], w: 2.0 },                                                 // to the king barrow
                     { k: 'scatter', key: 'cave_stone', n: 8, seed: 4 },
                     { k: 'scatter', key: 'stump', n: 3, seed: 5 },
                 ],
@@ -37460,13 +37490,13 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* the stones: the trilithon GLB twice outside the circle, the bluestones, the heel stone, the slaughter stone fallen */
-                { key: 'trilithon',      x: -32, z: 8, face: 0 }, { key: 'trilithon', x: 34, z: -12, face: 180 },
+                { key: 'trilithon',      x: -31, z: 13.5, face: 0 }, { key: 'trilithon', x: 40, z: -10, face: 180 },
                 { key: 'sarsen',         x: 26, z: -34, face: 40, h: 4.8 },                                                          // THE HEEL STONE, leaning up the avenue
                 { key: 'sarsen',         x: 7.9, z: -3.3, face: 20 }, { key: 'sarsen', x: 3.0, z: 7.6, face: 200 }, { key: 'sarsen', x: -7.4, z: 4.5, face: 300 }, { key: 'sarsen', x: -8.0, z: -2.9, face: 90 }, { key: 'sarsen', x: -2.6, z: -8.1, face: 150 },   // the bluestones
                 { key: 'fallen_log',     x: 14, z: -16, face: 30 },                                                                  // THE SLAUGHTER STONE (the fallen one)
                 /* the plain: the fires, the rail, the signs */
                 { key: 'campfire',       x: -6, z: 26 },
-                { key: 'railing_1m',     x: -14, z: 34.4, face: 0 },
+                { key: 'railing_1m',     x: -14, z: 35.8, face: 0 },
                 { key: 'signpost',       x: 3, z: 40 }, { key: 'signpost', x: 24, z: -30 },
                 { key: 'brazier',        x: -13.5, z: -45 }, { key: 'brazier', x: -6.5, z: -45 },
                 { key: 'sea_chest',      x: -34, z: 20, face: 120 },
@@ -37475,7 +37505,7 @@ const DOOR_HQ = {
             agents: [],
             npcSpots: [
                 { x: 14, z: 2, face: 250, race: 'shaman', say: ['“The stones throw two shadows.” “There is one moon.” “There is one moon HERE.”', '“Do not touch the altar.” “Why?” “It is not an altar. It is a table. Do not touch the table.”'] },
-                { x: -22, z: 20, face: 60, race: 'conspiracy theorist', say: ['“Ley lines.” “Everyone says that.” “Everyone is standing on one.”', '“The barrows are hollow.” “They are graves.” “The graves are hollow.”'] },
+                { x: -20, z: 19, face: 60, race: 'conspiracy theorist', say: ['“Ley lines.” “Everyone says that.” “Everyone is standing on one.”', '“The barrows are hollow.” “They are graves.” “The graves are hollow.”'] },
                 { x: 30, z: 32, face: 300, race: 'knight', say: ['“The Crown’s plain.” “Whose Crown?” “Lapsed. Mind the ditch.”'] },
             ],
             onlineSpots: [],
@@ -37495,54 +37525,94 @@ const DOOR_HQ = {
             shell: hqAncientShell({ w: 110, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xc8a878, floorColor: 0xc8a878, plate: { x: 0, z: -43.8, y: 4.4 },
                                     sky: { night: 0, tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'ruins', density: 0.6 },
                                     look: HQ_ROOM_LOOKS.tell }),
-            /* THE FIELD (110 × 90 m): the oldest doorway (the bay door) on the south wall; THE TELL a 3.2 m hill over the middle of the
-               room; four ENCLOSURES sunk two metres into it (A, B, C, D — the dig's letters), each ringed by a low wall with a gap and
-               the T-PILLARS standing in it, the two great ones in the middle; THE SENTINEL in D is a tier 5.4 m over the enclosure's
-               floor (the tape — the door gun's); THE DIG on the west: the spoil heap with its stair and rail, two trenches, the crates,
-               the fire; the unexcavated banks the plan grows; the ley's mouth on the north wall — a door pair into the tunnels, the
-               same site (never a link). */
+            /* THE FIELD (110 × 90 m; LEVEL_DESIGN_PLAN L6, 2026-09-30 — §3 #9, "built walls and plazas instead of banks where a
+               structure is meant"): a LAYOUT cut into the tell. The outer bound is the unexcavated mound (`look: 'rock'`, a 3.4 m bank
+               drawn by hand); what the dig opened is the floor. Four ENCLOSURES (A, B, C, D — the dig's letters) are round courts, each
+               a stone RING WALL (1.8 m, a gap in it) round a floor sunk a metre with crisp sides and a built stair down through the gap,
+               the T-PILLARS standing in it, the two great ones in the middle; THE SENTINEL in D is a tier 5.4 m over the ground (the
+               tape — the door gun's). The courts are joined ring-wise by the excavation's cuts (hall A: A to C, hall B: C to D, hall C:
+               D to B, hall D: B to A — loop 1), the space in the middle of them (the tell's top) by two more (loop 2). The oldest
+               doorway (the bay door) opens on its own space south, hall E up to C, hall F west to THE DIG (the spoil heap up its built
+               stair, the rail, the crates, the fire), hall G from THE DIG up to A; the well on the east flank stands in its own space off
+               D (hall H), hall I back to the doorway's space (loop 3). TRENCH I (off A) and TRENCH II (off B) are dead-end cuts sunk a
+               metre; the ley's mouth on the north wall is its own space off hall D (hall J) — a door pair into the tunnels, the same site
+               (never a link). The doors never see each other. */
             terrain: {
                 floor: 'dirt_3', cliff: 'rock_wall_1', path: 'dirt_2',
-                noise: { amp: 0.2, scale: 7 },
-                gen: { kind: 'rooms', seed: 9600, loops: 3, rMin: 7, rMax: 14, wallH: 2.0, thicket: false },                   // THE FLOOR PLAN: the mound's spoil banks
+                noise: { amp: 0, scale: 7 }, crag: false,
+                gen: { kind: 'plan', look: 'rock', wallH: 3.4, jitter: 0.1, topNoise: 0.3, rim: 0, forceGrow: -0.4 },   // THE LAYOUT: the unexcavated tell a bank drawn by hand
                 features: [
-                    { k: 'hill', x: 0, z: -4, r: 38, h: 3.2, open: true },                                                        // THE TELL
-                    { k: 'dip', x: -16, z: -8, r: 6.5, h: 2.0, dome: true, open: true },                                          // ENCLOSURE A
-                    { k: 'dip', x: 12, z: -14, r: 6.5, h: 2.0, dome: true, open: true },                                          // ENCLOSURE B
-                    { k: 'dip', x: -4, z: 14, r: 6.5, h: 2.0, dome: true, open: true },                                           // ENCLOSURE C
-                    { k: 'dip', x: 18, z: 8, r: 6.5, h: 2.0, dome: true, open: true },                                            // ENCLOSURE D
-                    { k: 'wall', x0: -11.6, z0: -10.1, x1: -11.6, z1: -5.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -16.4, z0: -3.1, x1: -20.0, z1: -5.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -20.4, z0: -5.9, x1: -20.4, z1: -10.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -20.0, z0: -10.8, x1: -16.4, z1: -12.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -15.6, z0: -12.9, x1: -12.0, z1: -10.8, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 16.4, z0: -16.1, x1: 16.4, z1: -11.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 16.0, z0: -11.2, x1: 12.4, z1: -9.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 11.6, z0: -9.1, x1: 8.0, z1: -11.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 7.6, z0: -11.9, x1: 7.6, z1: -16.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 12.4, z0: -18.9, x1: 16.0, z1: -16.8, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 0.0, z0: 16.8, x1: -3.6, z1: 18.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -4.4, z0: 18.9, x1: -8.0, z1: 16.8, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -8.4, z0: 16.1, x1: -8.4, z1: 11.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -8.0, z0: 11.2, x1: -4.4, z1: 9.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: -3.6, z0: 9.1, x1: 0.0, z1: 11.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 22.4, z0: 5.9, x1: 22.4, z1: 10.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 22.0, z0: 10.8, x1: 18.4, z1: 12.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 13.6, z0: 10.1, x1: 13.6, z1: 5.9, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 14.0, z0: 5.2, x1: 17.6, z1: 3.1, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'wall', x0: 18.4, z0: 3.1, x1: 22.0, z1: 5.2, h: 1.3, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
-                    { k: 'plateau', x: 18.5, z: 8, r: 0.8, h: 5.4, edge: 0.3 },                                                   // THE SENTINEL (the tape — the door gun's)
-                    { k: 'plateau', x: -30, z: 22, w: 12, d: 6, h: 1.4, edge: 0.3 },                                              // THE DIG's spoil heap
-                    { k: 'ramp', x0: -30, z0: 32, x1: -30, z1: 24.3, w: 2.4, h0: 0, h1: 1.4, stairs: true, edge: 0.2 },            // its stair (L 7.7 for 1.4; ends 0.7 m inside — THE RAMP RULE)
-                    { k: 'rail', x0: -35.5, z0: 19.6, x1: -24.5, z1: 19.6 },                                                       // the heap's rail (the grind)
-                    { k: 'ridge', pts: [[-34, -28], [-14, -34]], w: 2.6, h: -1.0, open: true },                                    // TRENCH I
-                    { k: 'ridge', pts: [[20, -30], [36, -22]], w: 2.6, h: -1.0, open: true },                                     // TRENCH II
-                    { k: 'path', pts: [[0, 43], [0, 30], [-4, 20]], w: 3.0 },                                                      // from the doorway up the tell
-                    { k: 'path', pts: [[-4, 20], [-16, -8]], w: 2.2 }, { k: 'path', pts: [[-4, 20], [18, 8]], w: 2.2 }, { k: 'path', pts: [[-16, -8], [12, -14]], w: 2.2 },
-                    { k: 'path', pts: [[-10, -41], [-10, -30], [-16, -14]], w: 2.4 },                                              // the ley mouth's track
-                    { k: 'path', pts: [[-30, 34], [-20, 30], [-4, 20]], w: 2.2 },                                                  // the dig's track
+                    /* THE ROOMS */
+                    { k: 'space', x: -16, z: -8, w: 15, d: 15, round: true },            // ENCLOSURE A
+                    { k: 'space', x: 12, z: -14, w: 15, d: 15, round: true },            // ENCLOSURE B
+                    { k: 'space', x: -4, z: 14, w: 15, d: 15, round: true },             // ENCLOSURE C
+                    { k: 'space', x: 18, z: 8, w: 15, d: 15, round: true },              // ENCLOSURE D
+                    { k: 'space', x: 1, z: -1, w: 10, d: 8 },                            // THE TELL's top, between the four
+                    { k: 'space', x: 0, z: 38, w: 14, d: 12 },                           // the oldest doorway's space (the bay door)
+                    { k: 'space', x: -30, z: 26, w: 22, d: 20 },                         // THE DIG (the spoil heap, the crates, the fire)
+                    { k: 'space', x: -10, z: -38, w: 10, d: 11 },                        // the ley's mouth
+                    { k: 'space', x: 30, z: 29, w: 12, d: 12 },                          // the east flank (the well)
+                    /* THE HALLS (the excavation's cuts) */
+                    { k: 'hall', pts: [[-16, -1], [-16, 14], [-11, 14]], w: 3 },         // hall A: A to C
+                    { k: 'hall', pts: [[3, 14], [14, 14]], w: 3 },                       // hall B: C to D
+                    { k: 'hall', pts: [[18, 1], [18, -10]], w: 3 },                      // hall C: D to B
+                    { k: 'hall', pts: [[5, -14], [-12, -14]], w: 3 },                    // hall D: B to A (loop 1)
+                    { k: 'hall', pts: [[0, 2.5], [0, 8.5]], w: 3 },                      // the tell's top to C
+                    { k: 'hall', pts: [[1, -4.5], [1, -14]], w: 3 },                     // the tell's top to hall D (loop 2)
+                    { k: 'hall', pts: [[-4, 32.5], [-4, 21]], w: 3 },                    // hall E: the doorway's space up to C
+                    { k: 'hall', pts: [[-6.5, 40], [-22, 40], [-22, 35.5]], w: 3 },      // hall F: the doorway's space to THE DIG
+                    { k: 'hall', pts: [[-34, 16.5], [-34, -8], [-23, -8]], w: 3 },       // hall G: THE DIG up to A
+                    { k: 'hall', pts: [[22, 14], [22, 29], [24.5, 29]], w: 3 },          // hall H: D to the east flank
+                    { k: 'hall', pts: [[24.5, 32.5], [6.5, 32.5]], w: 3 },               // hall I: the east flank to the doorway's space (loop 3)
+                    { k: 'hall', pts: [[-20, -14], [-20, -30], [-34, -30]], w: 2.6 },    // TRENCH I (a dead end)
+                    { k: 'hall', pts: [[16, -20], [16, -26], [34, -26]], w: 2.6 },       // TRENCH II (a dead end)
+                    { k: 'hall', pts: [[-6, -33], [-6, -24], [-3, -24], [-3, -14]], w: 3 },   // hall J: the ley's mouth down to hall D
+                    /* THE ENCLOSURES: the floors sunk a metre (crisp), a built stair down through each ring wall's gap */
+                    { k: 'plateau', x: -16, z: -8, r: 4.0, h: -1.0, sink: true, edge: 0.15 },                                   // A's floor
+                    { k: 'plateau', x: 12, z: -14, r: 4.0, h: -1.0, sink: true, edge: 0.15 },                                   // B's floor
+                    { k: 'plateau', x: -4, z: 14, r: 4.0, h: -1.0, sink: true, edge: 0.15 },                                    // C's floor
+                    { k: 'plateau', x: 18, z: 8, r: 4.0, h: -1.0, sink: true, edge: 0.15 },                                     // D's floor
+                    { k: 'ramp', x0: -13.7, z0: -4.0, x1: -14.9, z1: -6.1, w: 2.0, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // A's stair (the gap on the south-east)
+                    { k: 'ramp', x0: 9.7, z0: -18.0, x1: 10.9, z1: -15.9, w: 2.0, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },    // B's stair (the gap on the north-west)
+                    { k: 'ramp', x0: 0.6, z0: 14, x1: -1.6, z1: 14, w: 2.0, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },          // C's stair (the gap on the east)
+                    { k: 'ramp', x0: 15.7, z0: 12.0, x1: 16.9, z1: 9.9, w: 2.0, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },      // D's stair (the gap on the south-west)
+                    { k: 'wall', x0: -11.6, z0: -10.1, x1: -11.6, z1: -5.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -16.4, z0: -3.1, x1: -20.0, z1: -5.2, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -20.4, z0: -5.9, x1: -20.4, z1: -10.1, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -20.0, z0: -10.8, x1: -16.4, z1: -12.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -15.6, z0: -12.9, x1: -12.0, z1: -10.8, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 16.4, z0: -16.1, x1: 16.4, z1: -11.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 16.0, z0: -11.2, x1: 12.4, z1: -9.1, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 11.6, z0: -9.1, x1: 8.0, z1: -11.2, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 7.6, z0: -11.9, x1: 7.6, z1: -16.1, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 12.4, z0: -18.9, x1: 16.0, z1: -16.8, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 0.0, z0: 16.8, x1: -3.6, z1: 18.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -4.4, z0: 18.9, x1: -8.0, z1: 16.8, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -8.4, z0: 16.1, x1: -8.4, z1: 11.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -8.0, z0: 11.2, x1: -4.4, z1: 9.1, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: -3.6, z0: 9.1, x1: 0.0, z1: 11.2, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 22.4, z0: 5.9, x1: 22.4, z1: 10.1, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 22.0, z0: 10.8, x1: 18.4, z1: 12.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 13.6, z0: 10.1, x1: 13.6, z1: 5.9, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 14.0, z0: 5.2, x1: 17.6, z1: 3.1, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'wall', x0: 18.4, z0: 3.1, x1: 22.0, z1: 5.2, h: 1.8, t: 0.8, key: 'rock_wall_1' },   // an enclosure's ring wall
+                    { k: 'plateau', x: 18.5, z: 8, r: 0.8, h: 5.4, edge: 0.15 },                                                  // THE SENTINEL (the tape — the door gun's)
+                    /* THE DIG: the spoil heap (crisp, built stair), TRENCH I and TRENCH II sunk a metre */
+                    { k: 'plateau', x: -30, z: 23, w: 12, d: 6, h: 1.4, edge: 0.15 },                                             // THE DIG's spoil heap
+                    { k: 'ramp', x0: -30, z0: 31, x1: -30, z1: 25.3, w: 2.4, h0: 0, h1: 1.4, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
+                    { k: 'rail', x0: -35.5, z0: 20.6, x1: -24.5, z1: 20.6 },                                                       // the heap's rail (the grind)
+                    { k: 'plateau', x: -27.15, z: -30, w: 17.7, d: 3.4, h: -1.0, sink: true, edge: 0.15 },                         // TRENCH I, sunk
+                    { k: 'plateau', x: -20, z: -26.9, w: 3.4, d: 8.2, h: -1.0, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: -20, z0: -22.6, x1: -20, z1: -26.6, w: 2.6, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair down
+                    { k: 'plateau', x: 25.75, z: -26, w: 20.5, d: 3.4, h: -1.0, sink: true, edge: 0.15 },                          // TRENCH II, sunk
+                    { k: 'plateau', x: 16, z: -24.3, w: 3.4, d: 6.8, h: -1.0, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: 16, z0: -20.8, x1: 16, z1: -22.8, w: 2.6, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },     // its stair down
+                    { k: 'path', pts: [[0, 43], [0, 36], [-4, 32], [-4, 20]], w: 2.6 },                                           // from the doorway up the tell
+                    { k: 'path', pts: [[-16, -2], [-16, 14], [-10, 14]], w: 2.0 }, { k: 'path', pts: [[3, 14], [14, 14]], w: 2.0 }, { k: 'path', pts: [[18, 1], [18, -8]], w: 2.0 }, { k: 'path', pts: [[5, -14], [-10, -14]], w: 2.0 },
+                    { k: 'path', pts: [[-10, -42], [-10, -33], [-6, -33], [-6, -24], [-3, -24], [-3, -15]], w: 2.2 },            // the ley mouth's track
+                    { k: 'path', pts: [[-6, 40], [-22, 40], [-22, 32]], w: 2.2 },                                                 // the dig's track
                     { k: 'scatter', key: 'cave_stone', n: 10, seed: 6 },
-                    { k: 'scatter', key: 'menhir', n: 3, x: -30, z: -30, r: 12, seed: 7 },                                        // the fallen pillars by the trenches
+                    { k: 'scatter', key: 'menhir', n: 3, x: -27, z: -30, r: 6, seed: 7 },                                        // the fallen pillars by the trenches
                 ],
             },
             doors: [
@@ -37564,11 +37634,11 @@ const DOOR_HQ = {
                 { key: 't_pillar',       x: 18, z: 3.8, face: 0, h: 3.0 }, { key: 't_pillar', x: 14.2, z: 10.5, face: 60, h: 3.0 }, { key: 't_pillar', x: 21.5, z: 11.5, face: 300, h: 3.0 },
                 /* THE DIG: the crates, the fire, the rail, the signs, the forms */
                 { key: 'cardboard_boxes', x: -36, z: 30, face: 20 }, { key: 'cardboard_boxes', x: -24, z: 31, face: 340 },
-                { key: 'campfire',       x: -20, z: 26 },
-                { key: 'railing_1m',     x: -30, z: 19.2, face: 0 },
-                { key: 'signpost',       x: -25, z: 36 }, { key: 'signpost', x: 4, z: 38 },
+                { key: 'campfire',       x: -21, z: 26 },
+                { key: 'railing_1m',     x: -30, z: 20.2, face: 0 },
+                { key: 'signpost',       x: -25, z: 34.5 }, { key: 'signpost', x: 4, z: 38 },
                 { key: 'paper_sheet',    x: -33, z: 27, y: 0.01, face: 120 }, { key: 'paper_sheet', x: 19, z: 14.5, y: 0.01, face: 30 },
-                { key: 'sea_chest',      x: -27, z: 17, face: 200 },
+                { key: 'sea_chest',      x: -27, z: 18, face: 200 },
                 { key: 'brazier',        x: -13.5, z: -40 }, { key: 'brazier', x: -6.5, z: -40 },
                 { key: 'brazier',        x: 18, z: 12.3 },
             ],
@@ -37597,57 +37667,85 @@ const DOOR_HQ = {
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
                                     sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
                                     look: HQ_ROOM_LOOKS.plateau }),
-            /* THE FIELD (150 × 120 m): the sealed tomb door (the bay door) on the south wall; THE GREAT PYRAMID four tiers of dressed stone
-               (3.5 m each, 60 m at the base) with THE NORTH STAIR up its north face tier to tier (8.2 m a flight for 3.5 m — THE RAMP RULE
-               and the tread rule both hold; the 14 m top is walked to); KHAFRE three tiers and MENKAURE two, solid; THE SPHINX with her
-               head 6.8 m over the sand (the tape — the door gun's); THE CAUSEWAY from her paws to the pyramid's foot and the door; THE
-               DIG's two trenches and its camp; the twin obelisks; the dunes the plan grows; the ley's mouth — THE ROBBERS' TUNNEL — on
-               the north wall west of the stair. */
+            /* THE FIELD (150 × 120 m; LEVEL_DESIGN_PLAN L6, 2026-09-30 — §3 #9, "built walls and plazas instead of banks where a
+               structure is meant"): a LAYOUT of walled courts (`look: 'walls'` in the dressed stone, 4.5 m: the necropolis is built,
+               never dunes). The sealed tomb door (the bay door) opens on its own court south; THE CAUSEWAY (5 m, walled) runs north
+               from it to a crossing, west to room 1 with the twin obelisks and the pyramid's court, east to THE SPHINX's court
+               (her body a tier, her head 6.8 m over the sand — the tape, the door gun's). THE GREAT PYRAMID stands in its court, four
+               crisp tiers of dressed stone (3.5 m each, 60 m at the base) with THE NORTH STAIR up its north face tier to tier (four
+               built flights; the 14 m top is walked to), the ley's mouth — THE ROBBERS' TUNNEL — in the court's north apron west of
+               the stair. Hall C east out of the pyramid's court to THE DIG (the camp, TRENCH I sunk a metre), hall D on to KHAFRE's
+               court (three tiers up a built stair on the south face), hall F down to THE SPHINX's court (the loop: causeway ⇄ pyramid ⇄ dig ⇄ Khafre ⇄ sphinx ⇄
+               causeway). Dead ends: MENKAURE's court (two tiers up a built stair) off the sphinx's, side room 1 (TRENCH II) off the door's
+               court. The doors never see each other (room 1's wall stands on the line). */
             terrain: {
                 floor: 'desert', cliff: 'bricks_1', path: 'dirt_2',
-                noise: { amp: 0.32, scale: 10 },
-                gen: { kind: 'rooms', seed: 444, loops: 3, rMin: 9, rMax: 18, wallH: 1.4, thicket: false },                  // THE FLOOR PLAN: the dunes
+                noise: { amp: 0, scale: 10 }, crag: false,
+                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_1', wallH: 4.5, rim: 0, forceGrow: -0.3 },   // THE LAYOUT: walled courts in the dressed stone
                 features: [
-                    { k: 'plateau', x: -30, z: -20, w: 60, d: 60, h: 3.5, edge: 0.35 },                                          // THE GREAT PYRAMID, tier 1
-                    { k: 'plateau', x: -30, z: -20, w: 44, d: 44, h: 7.0, edge: 0.35 },                                          // tier 2
-                    { k: 'plateau', x: -30, z: -20, w: 28, d: 28, h: 10.5, edge: 0.35 },                                         // tier 3
-                    { k: 'plateau', x: -30, z: -20, w: 12, d: 12, h: 14.0, edge: 0.35 },                                         // THE TOP
-                    { k: 'ramp', x0: -30, z0: -57.5, x1: -30, z1: -49.3, w: 2.6, h0: 0, h1: 3.5, stairs: true, edge: 0.25 },      // THE NORTH STAIR, flight 1 (into tier 1: ends 0.7 m inside)
-                    { k: 'ramp', x0: -30, z0: -49.5, x1: -30, z1: -41.3, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, edge: 0.25 },    // flight 2
-                    { k: 'ramp', x0: -30, z0: -41.5, x1: -30, z1: -33.3, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, edge: 0.25 },   // flight 3
-                    { k: 'ramp', x0: -30, z0: -33.5, x1: -30, z1: -25.3, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, edge: 0.25 },  // flight 4, onto the top
-                    { k: 'plateau', x: 44, z: -34, w: 30, d: 30, h: 3.5, edge: 0.35 },                                            // KHAFRE
-                    { k: 'plateau', x: 44, z: -34, w: 18, d: 18, h: 7.0, edge: 0.35 },
-                    { k: 'plateau', x: 44, z: -34, w: 8, d: 8, h: 10.5, edge: 0.35 },
-                    { k: 'plateau', x: 55, z: 30, w: 16, d: 16, h: 3.0, edge: 0.35 },                                             // MENKAURE
-                    { k: 'plateau', x: 55, z: 30, w: 8, d: 8, h: 6.0, edge: 0.35 },
-                    { k: 'plateau', x: 28, z: 26, w: 20, d: 7, h: 3.4, edge: 0.35 },                                              // THE SPHINX's body, facing east
-                    { k: 'plateau', x: 37, z: 26, r: 2.6, h: 6.8, edge: 0.35 },                                                   // her head (the tape — the door gun's)
+                    /* THE ROOMS */
+                    { k: 'space', x: 0, z: 50, w: 16, d: 18 },                           // the sealed tomb door's court (the bay door)
+                    { k: 'space', x: -30, z: -22.25, w: 68, d: 72.5 },                   // THE GREAT PYRAMID's court (THE NORTH STAIR, THE ROBBERS' TUNNEL)
+                    { k: 'space', x: -30, z: 19, w: 16, d: 10 },                         // room 1 (the twin obelisks), in front of the pyramid's court
+                    { k: 'space', x: 14.5, z: -37, w: 15, d: 26 },                       // THE DIG
+                    { k: 'space', x: 43.5, z: -31.5, w: 39, d: 43 },                     // KHAFRE's court
+                    { k: 'space', x: 27.5, z: 21, w: 29, d: 26 },                        // THE SPHINX's court
+                    { k: 'space', x: 55.5, z: 28, w: 23, d: 26 },                        // MENKAURE's court (a dead end)
+                    { k: 'space', x: 16, z: 45, w: 12, d: 10 },                          // side room 1 (a dead end: TRENCH II)
+                    /* THE HALLS */
+                    { k: 'hall', pts: [[0, 41.5], [0, 26]], w: 5 },                      // THE CAUSEWAY, north from the door's court
+                    { k: 'hall', pts: [[-30, 26], [13.5, 26]], w: 5 },                   // … west to room 1, east to the sphinx's paws
+                    { k: 'hall', pts: [[3.5, -40], [7.5, -40]], w: 3.4 },                // hall C: the pyramid's court to THE DIG
+                    { k: 'hall', pts: [[21.5, -30], [24.5, -30]], w: 3.4 },              // hall D: THE DIG to KHAFRE's court
+                    { k: 'hall', pts: [[36, -10.5], [36, -2], [28, -2], [28, 8.5]], w: 3.4 },   // hall F: KHAFRE's court down to the sphinx's (the loop)
+                    { k: 'hall', pts: [[41.5, 32], [44.5, 32]], w: 3 },                  // hall G: the sphinx's court to MENKAURE's
+                    { k: 'hall', pts: [[7.5, 45], [10.5, 45]], w: 3 },                   // hall H: the door's court to side room 1
+                    /* THE GREAT PYRAMID: four crisp tiers and THE NORTH STAIR's four built flights */
+                    { k: 'plateau', x: -30, z: -20, w: 60, d: 60, h: 3.5, edge: 0.15 },                                          // THE GREAT PYRAMID, tier 1
+                    { k: 'plateau', x: -30, z: -20, w: 44, d: 44, h: 7.0, edge: 0.15 },                                          // tier 2
+                    { k: 'plateau', x: -30, z: -20, w: 28, d: 28, h: 10.5, edge: 0.15 },                                         // tier 3
+                    { k: 'plateau', x: -30, z: -20, w: 12, d: 12, h: 14.0, edge: 0.15 },                                         // THE TOP
+                    { k: 'ramp', x0: -30, z0: -55.5, x1: -30, z1: -49.6, w: 2.6, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },       // THE NORTH STAIR, flight 1 (into tier 1: ends 0.7 m inside)
+                    { k: 'ramp', x0: -30, z0: -49.5, x1: -30, z1: -41.3, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },     // flight 2
+                    { k: 'ramp', x0: -30, z0: -41.5, x1: -30, z1: -33.3, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },    // flight 3
+                    { k: 'ramp', x0: -30, z0: -33.5, x1: -30, z1: -25.3, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },   // flight 4, onto the top
+                    { k: 'plateau', x: 44, z: -34, w: 30, d: 30, h: 3.5, edge: 0.15 },                                            // KHAFRE
+                    { k: 'plateau', x: 44, z: -34, w: 18, d: 18, h: 7.0, edge: 0.15 },
+                    { k: 'plateau', x: 44, z: -34, w: 8, d: 8, h: 10.5, edge: 0.15 },
+                    { k: 'ramp', x0: 44, z0: -12.5, x1: 44, z1: -19.3, w: 2.6, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },       // KHAFRE's south stair, three built flights
+                    { k: 'ramp', x0: 44, z0: -19.2, x1: 44, z1: -25.3, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'ramp', x0: 44, z0: -25.2, x1: 44, z1: -30.3, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'plateau', x: 55, z: 30, w: 16, d: 16, h: 3.0, edge: 0.15 },                                             // MENKAURE
+                    { k: 'plateau', x: 55, z: 30, w: 8, d: 8, h: 6.0, edge: 0.15 },
+                    { k: 'ramp', x0: 55, z0: 18.6, x1: 55, z1: 22.3, w: 2.4, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },         // MENKAURE's north stair, two built flights
+                    { k: 'ramp', x0: 55, z0: 22.4, x1: 55, z1: 26.3, w: 2.4, h0: 3.0, h1: 6.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'plateau', x: 28, z: 26, w: 20, d: 7, h: 3.4, edge: 0.15 },                                              // THE SPHINX's body, facing east
+                    { k: 'plateau', x: 37, z: 26, r: 2.6, h: 6.8, edge: 0.15 },                                                   // her head (the tape — the door gun's)
                     { k: 'rail', x0: -50, z0: -45, x1: -34, z1: -45 },                                                             // tier 1's north ledge, west of the stair (the grind)
                     { k: 'rail', x0: -26, z0: -45, x1: -10, z1: -45 },                                                             // … and east
-                    { k: 'ridge', pts: [[10, -40], [24, -52]], w: 2.6, h: -1.1, open: true },                                     // TRENCH I
-                    { k: 'ridge', pts: [[6, 44], [22, 40]], w: 2.6, h: -1.1, open: true },                                        // TRENCH II
+                    { k: 'plateau', x: 14, z: -44, w: 12, d: 2.6, h: -1.0, sink: true, edge: 0.15 },                              // TRENCH I, sunk
+                    { k: 'plateau', x: 16, z: 43, w: 9, d: 2.6, h: -1.0, sink: true, edge: 0.15 },                                // TRENCH II, sunk
                     { k: 'path', pts: [[0, 58], [0, 26], [18, 26]], w: 3.2 },                                                     // THE CAUSEWAY, from the door to the sphinx's paws
                     { k: 'path', pts: [[0, 26], [-30, 26], [-30, 12]], w: 3.2 },                                                  // … and to the pyramid's south foot
-                    { k: 'path', pts: [[-30, 12], [-64, 12], [-64, -57], [-30, -57]], w: 2.6 },                                   // round the pyramid to the north stair
-                    { k: 'path', pts: [[-30, -57], [-10, -57]], w: 2.4 },                                                          // to the robbers' tunnel
-                    { k: 'path', pts: [[0, 26], [10, -10], [24, -44]], w: 2.0 },                                                  // to the dig
+                    { k: 'path', pts: [[-30, 12], [-62, 12], [-62, -54], [-30, -54]], w: 2.6 },                                   // round the pyramid to the north stair
+                    { k: 'path', pts: [[-30, -54], [-10, -54], [-10, -58]], w: 2.4 },                                             // to the robbers' tunnel
+                    { k: 'path', pts: [[2, 10], [2, -40], [14, -40], [14, -30], [36, -30]], w: 2.0 },                             // to the dig and on
                     { k: 'scatter', key: 'cave_stone', n: 12, seed: 8 },
-                    { k: 'scatter', key: 'skull_pile', n: 2, x: 18, z: -46, r: 8, seed: 9 },
+                    { k: 'scatter', key: 'skull_pile', n: 2, x: 16, z: -47, r: 4, seed: 9 },
                 ],
             },
             doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); THE ROBBERS' TUNNEL on the north wall is links.giza_ley
             counters: [],
             props: [
                 /* the obelisks flanking the causeway's turn, the braziers at the stair's foot and the sphinx's paws */
-                { key: 'obelisk',        x: -36, z: 15 }, { key: 'obelisk', x: -24, z: 15 },
-                { key: 'brazier',        x: -34, z: -59 }, { key: 'brazier', x: -26, z: -59 },
+                { key: 'obelisk',        x: -36, z: 17 }, { key: 'obelisk', x: -24, z: 17 },
+                { key: 'brazier',        x: -34, z: -57 }, { key: 'brazier', x: -26, z: -57 },
                 { key: 'brazier',        x: 15, z: 22.5 }, { key: 'brazier', x: 15, z: 29.5 },
                 /* THE DIG: the camp between the trenches */
                 { key: 'campfire',       x: 12, z: -30 },
-                { key: 'cardboard_boxes', x: 8, z: -34, face: 20 }, { key: 'cardboard_boxes', x: 16, z: -26, face: 300 },
-                { key: 'sarcophagus',    x: 20, z: -34, face: 60 },
-                { key: 'paper_sheet',    x: 11, z: -27, y: 0.01, face: 150 }, { key: 'paper_sheet', x: 4, z: 40, y: 0.01, face: 250 },
+                { key: 'cardboard_boxes', x: 9, z: -34, face: 20 }, { key: 'cardboard_boxes', x: 16, z: -26, face: 300 },
+                { key: 'sarcophagus',    x: 19, z: -34, face: 60 },
+                { key: 'paper_sheet',    x: 11, z: -27, y: 0.01, face: 150 }, { key: 'paper_sheet', x: 4, z: 43, y: 0.01, face: 250 },
                 { key: 'signpost',       x: 4, z: 52 }, { key: 'signpost', x: -14, z: -54 },
                 { key: 'sea_chest',      x: 15, z: 46, face: 30 },
                 { key: 'railing_1m',     x: -42, z: -45.4, face: 0 },
@@ -37657,7 +37755,7 @@ const DOOR_HQ = {
                 { x: 17, z: 30, face: 200, race: 'anubis', say: ['“She faces east.” “Why?” “That is where the line comes out of the ground.”', '“Do not climb her.” “Something is on her head.” “Something is always on her head.”'] },
                 { x: -33, z: -55, face: 90, race: 'annunaki', say: ['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”'] },
                 { x: 14, z: -32, face: 300, race: 'skeleton', say: ['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”'] },
-                { x: 2.5, z: 34, face: 40, race: 'conspiracy theorist', say: ['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”', '“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”'] },
+                { x: 1.5, z: 34, face: 40, race: 'conspiracy theorist', say: ['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”', '“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -37677,36 +37775,62 @@ const DOOR_HQ = {
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b8, ambient: 0.5 },
                                     sky: { night: 0, tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, day: 1, clouds: 0.15, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'pyramids', density: 0.6 },
                                     look: HQ_ROOM_LOOKS.babel }),
-            /* THE FIELD (130 × 110 m): the scaffold-plank barn door (the bay door) on the south wall; THE TOWER four square tiers of
-               brick (64 m at the foot, 3.5 m a tier) with THE SPIRAL — a ramp on each face in turn: up the north face onto tier 1, along
-               the east ledge onto tier 2, up the south ledge onto tier 3, along the west ledge onto THE UNFINISHED TOP (14 m), where THE
-               CRANE stands and THE LOAD it never lifted hangs 4 m over the top (the tape — the door gun's, from the top); the brick
-               stacks the rider grinds; THE KILN with its chimney and fires; the rubble banks the plan grows; the ley's mouth — THE
-               FOUNDATION SHAFT — on the north wall west of the stair. */
+            /* THE FIELD (130 × 110 m; LEVEL_DESIGN_PLAN L6, 2026-09-30 — §3 #9, "built walls and plazas instead of banks where a
+               structure is meant"): a LAYOUT — the city round the tower's foot is a town of brick (`look: 'walls'`, 5 m: the houses and
+               the yard walls are the solid, never rubble banks). The scaffold-plank barn door (the bay door) opens on its own square
+               south; hall A runs north to THE TOWER's foot (a 4 m walk round it and the north apron where THE SPIRAL starts). THE
+               TOWER is four crisp square tiers of brick (64 m at the foot, 3.5 m a tier) with THE SPIRAL — a built flight on each face
+               in turn: up the north face onto tier 1, along the east ledge onto tier 2, up the south ledge onto tier 3, along the west
+               ledge onto THE UNFINISHED TOP (14 m), where THE CRANE stands and THE LOAD it never lifted hangs 4 m over the top (the
+               tape — the door gun's, from the top). West of the square, room 3 (a brick stack) and hall C to THE KILN's yard (the kiln
+               with its chimney and fires), on north to room 1 (a brick stack) and into the foot (loop 1); east, room 2 (a brick stack)
+               and hall B back round to the square (loop 2). Dead ends: side room 1 off hall B, side room 2 off the foot's north-west
+               corner. The ley's mouth — THE FOUNDATION SHAFT — is in the foot's north apron west of the stair; the doors never see
+               each other (hall A is offset east). */
             terrain: {
                 floor: 'bricks_1', cliff: 'bricks_1', path: 'desert',
-                noise: { amp: 0.18, scale: 8 },
-                gen: { kind: 'rooms', seed: 11, loops: 3, rMin: 8, rMax: 16, wallH: 1.6, thicket: false },                   // THE FLOOR PLAN: the rubble of scattered tongues
+                noise: { amp: 0, scale: 8 }, crag: false,
+                gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_1', wallH: 5, rim: 0, forceGrow: -0.3 },   // THE LAYOUT: the town's brick
                 features: [
-                    { k: 'plateau', x: 0, z: -8, w: 64, d: 64, h: 3.5, edge: 0.35 },                                              // THE TOWER, tier 1
-                    { k: 'plateau', x: 0, z: -8, w: 46, d: 46, h: 7.0, edge: 0.35 },                                              // tier 2
-                    { k: 'plateau', x: 0, z: -8, w: 28, d: 28, h: 10.5, edge: 0.35 },                                             // tier 3
-                    { k: 'plateau', x: 0, z: -8, w: 10, d: 10, h: 14.0, edge: 0.35 },                                             // THE UNFINISHED TOP
-                    { k: 'ramp', x0: 0, z0: -47.5, x1: 0, z1: -39.3, w: 2.6, h0: 0, h1: 3.5, stairs: true, edge: 0.25 },          // THE SPIRAL: up the north face
-                    { k: 'ramp', x0: 31.5, z0: -8, x1: 22.3, z1: -8, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, edge: 0.25 },        // along the east ledge onto tier 2
-                    { k: 'ramp', x0: 0, z0: 14.5, x1: 0, z1: 5.3, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, edge: 0.25 },          // up the south ledge onto tier 3
-                    { k: 'ramp', x0: -13.5, z0: -8, x1: -4.3, z1: -8, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, edge: 0.25 },     // along the west ledge onto the top
-                    { k: 'plateau', x: 3, z: -5.5, r: 1.0, h: 18.0, edge: 0.3 },                                                  // THE LOAD (the tape — the door gun's, from the top)
-                    { k: 'plateau', x: -46, z: 22, r: 4.2, h: 2.6, edge: 0.35 },                                                  // THE KILN
-                    { k: 'plateau', x: -46, z: 22, r: 0.9, h: 6.4, edge: 0.3 },                                                   // its chimney
-                    { k: 'wall', x0: -44, z0: -22, x1: -44, z1: -8, h: 1.0, t: 1.2, key: 'bricks_1' },                            // THE BRICK STACKS (the grinds)
-                    { k: 'wall', x0: 40, z0: 12, x1: 52, z1: 12, h: 1.0, t: 1.2, key: 'bricks_1' },
-                    { k: 'wall', x0: -22, z0: 40, x1: -8, z1: 40, h: 1.0, t: 1.2, key: 'bricks_1' },
+                    /* THE ROOMS */
+                    { k: 'space', x: 0, z: -12.5, w: 72, d: 83 },                        // THE TOWER's foot (the walk round it, the north apron)
+                    { k: 'space', x: 0, z: 47, w: 16, d: 14 },                           // the barn door's square (the bay door)
+                    { k: 'space', x: -19.5, z: 44, w: 19, d: 10 },                       // room 3 (a brick stack)
+                    { k: 'space', x: -48, z: 25, w: 18, d: 22 },                         // THE KILN's yard
+                    { k: 'space', x: -46, z: -15, w: 12, d: 20 },                        // room 1 (a brick stack)
+                    { k: 'space', x: 50, z: 12, w: 16, d: 16 },                          // room 2 (a brick stack)
+                    { k: 'space', x: 34, z: 45, w: 12, d: 10 },                          // side room 1 (a dead end)
+                    { k: 'space', x: -48, z: -42, w: 12, d: 12 },                        // side room 2 (a dead end)
+                    /* THE HALLS */
+                    { k: 'hall', pts: [[5, 40.5], [5, 28.5]], w: 4 },                    // hall A: the square up to the tower's foot
+                    { k: 'hall', pts: [[-8.5, 46], [-10.5, 46]], w: 3 },                 // the square to room 3
+                    { k: 'hall', pts: [[-28.5, 42], [-34, 42], [-34, 30], [-40.5, 30]], w: 3.4 },   // hall C: room 3 to THE KILN's yard
+                    { k: 'hall', pts: [[-42, 14.5], [-42, -5.5]], w: 3.4 },              // THE KILN's yard north to room 1
+                    { k: 'hall', pts: [[-40.5, -15], [-35.5, -15]], w: 3.4 },            // room 1 into the tower's foot (loop 1)
+                    { k: 'hall', pts: [[35.5, 8], [42.5, 8]], w: 3.4 },                  // the tower's foot to room 2
+                    { k: 'hall', pts: [[50, 19.5], [50, 34], [20, 34], [20, 44], [8.5, 44]], w: 3.4 },   // hall B: room 2 back round to the square (loop 2)
+                    { k: 'hall', pts: [[34, 35.5], [34, 40.5]], w: 3 },                  // to side room 1
+                    { k: 'hall', pts: [[-35.5, -44], [-42.5, -44]], w: 3 },              // to side room 2
+                    /* THE TOWER: four crisp tiers and THE SPIRAL's four built flights */
+                    { k: 'plateau', x: 0, z: -8, w: 64, d: 64, h: 3.5, edge: 0.15 },                                              // THE TOWER, tier 1
+                    { k: 'plateau', x: 0, z: -8, w: 46, d: 46, h: 7.0, edge: 0.15 },                                              // tier 2
+                    { k: 'plateau', x: 0, z: -8, w: 28, d: 28, h: 10.5, edge: 0.15 },                                             // tier 3
+                    { k: 'plateau', x: 0, z: -8, w: 10, d: 10, h: 14.0, edge: 0.15 },                                             // THE UNFINISHED TOP
+                    { k: 'ramp', x0: 0, z0: -47.5, x1: 0, z1: -39.6, w: 2.6, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },          // THE SPIRAL: up the north face
+                    { k: 'ramp', x0: 31.5, z0: -8, x1: 22.6, z1: -8, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },        // along the east ledge onto tier 2
+                    { k: 'ramp', x0: 0, z0: 14.5, x1: 0, z1: 5.6, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },          // up the south ledge onto tier 3
+                    { k: 'ramp', x0: -13.5, z0: -8, x1: -4.6, z1: -8, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },     // along the west ledge onto the top
+                    { k: 'plateau', x: 3, z: -5.5, r: 1.0, h: 18.0, edge: 0.15 },                                                 // THE LOAD (the tape — the door gun's, from the top)
+                    { k: 'plateau', x: -50, z: 20, r: 4.2, h: 2.6, edge: 0.15 },                                                  // THE KILN
+                    { k: 'plateau', x: -50, z: 20, r: 0.9, h: 6.4, edge: 0.15 },                                                  // its chimney
+                    { k: 'wall', x0: -46, z0: -21, x1: -46, z1: -9, h: 1.0, t: 1.2, key: 'bricks_1' },                            // THE BRICK STACKS (the grinds)
+                    { k: 'wall', x0: 44, z0: 12, x1: 56, z1: 12, h: 1.0, t: 1.2, key: 'bricks_1' },
+                    { k: 'wall', x0: -26, z0: 44, x1: -14, z1: 44, h: 1.0, t: 1.2, key: 'bricks_1' },
                     { k: 'rail', x0: -20, z0: 20, x1: 20, z1: 20 },                                                                // tier 1's south ledge rail (the grind)
-                    { k: 'path', pts: [[0, 53], [0, 26]], w: 3.0 },                                                               // from the barn door to the foot
-                    { k: 'path', pts: [[0, 26], [36, 26], [36, -8], [36, -47], [0, -47]], w: 2.6 },                               // round the foot to the north stair
+                    { k: 'path', pts: [[0, 53], [0, 42], [5, 40], [5, 26]], w: 3.0 },                                             // from the barn door to the foot
+                    { k: 'path', pts: [[5, 26], [34, 26], [34, -47], [0, -47]], w: 2.6 },                                         // round the foot to the north stair
                     { k: 'path', pts: [[0, -47], [-10, -51]], w: 2.4 },                                                            // to the foundation shaft
-                    { k: 'path', pts: [[0, 26], [-36, 26], [-46, 26]], w: 2.4 },                                                  // to the kiln
+                    { k: 'path', pts: [[-8, 46], [-34, 42], [-34, 30], [-46, 30]], w: 2.4 },                                     // to the kiln
                     { k: 'scatter', key: 'cave_stone', n: 10, seed: 10 },
                     { k: 'scatter', key: 'cinder_block', n: 14, seed: 11 },                                                       // the fired bricks
                 ],
@@ -37718,22 +37842,22 @@ const DOOR_HQ = {
                 { key: 'babel_crane',    x: -2, z: -11.5, face: 90, y: 14.0 },
                 { key: 'sea_chest',      x: 3, z: -10.5, y: 14.0, face: 200 },
                 /* THE KILN: the fires, the signs in eleven alphabets, the mason */
-                { key: 'campfire',       x: -40, z: 18 }, { key: 'campfire', x: -52, z: 26 },
-                { key: 'signpost',       x: -38, z: 28 }, { key: 'signpost', x: 4, z: 46 }, { key: 'signpost', x: 38, z: 30 },
-                { key: 'cardboard_boxes', x: -48, z: 30, face: 30 },
-                { key: 'paper_sheet',    x: -42, z: 24, y: 0.01, face: 80 },
+                { key: 'campfire',       x: -43, z: 18 }, { key: 'campfire', x: -55, z: 28 },
+                { key: 'signpost',       x: -42, z: 32.5 }, { key: 'signpost', x: 4, z: 46 }, { key: 'signpost', x: 38, z: 32.5 },
+                { key: 'cardboard_boxes', x: -50, z: 30, face: 30 },
+                { key: 'paper_sheet',    x: -43, z: 25, y: 0.01, face: 80 },
                 /* the foot: the braziers at the stair, the rail, the chests */
                 { key: 'brazier',        x: -3.5, z: -49 }, { key: 'brazier', x: 3.5, z: -49 },
                 { key: 'brazier',        x: -13.5, z: -50 }, { key: 'brazier', x: -6.5, z: -50 },
                 { key: 'railing_1m',     x: 0, z: 20.4, face: 0 },
-                { key: 'sea_chest',      x: 44, z: 16, face: 300 },
+                { key: 'sea_chest',      x: 50, z: 16, face: 300 },
             ],
             agents: [],
             npcSpots: [
-                { x: 40, z: -12, face: 270, race: 'giant', say: ['“We carried the bricks.” “All of them?” “The big ones. The small ones were yours.”', '“The crane never lifted the load.” “Why?” “The word for LIFT went first.”'] },
-                { x: -40, z: 22, face: 100, race: 'golem', say: ['“Fired. Fired. Fired.” “The bricks?” “Everybody.”'] },
+                { x: 34, z: -12, face: 270, race: 'giant', say: ['“We carried the bricks.” “All of them?” “The big ones. The small ones were yours.”', '“The crane never lifted the load.” “Why?” “The word for LIFT went first.”'] },
+                { x: -43, z: 21, face: 100, race: 'golem', say: ['“Fired. Fired. Fired.” “The bricks?” “Everybody.”'] },
                 { x: -8, z: -49, face: 60, race: 'antperson', say: ['“The shaft goes under the tower.” “The foundation?” “The tower was put on the line. The line was not asked.”'] },
-                { x: 10, z: 30, face: 320, race: 'conspiracy theorist', say: ['“One language.” “Before?” “After. It is one word. Listen.”', '“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”'] },
+                { x: 6, z: 33, face: 320, race: 'conspiracy theorist', say: ['“One language.” “Before?” “After. It is one word. Listen.”', '“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”'] },
             ],
             onlineSpots: [],
             lines: [
