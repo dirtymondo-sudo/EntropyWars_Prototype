@@ -762,3 +762,32 @@ info for whichever one you have selected/hovered on." The forge TECHNIQUES rack 
 - Fast travel: `_hqMapCharted(roomId)` / `_hqMapChartedSite(site)` gate every map GO; `_hqWorldGoRoom(place)` picks the
   anchor if charted, else the first charted room of the place. `EW_HQ_MAP_ALL` still opens everything.
 
+
+## THE SQUAD DESK (menu + PvP entry flow, 2026-09-30, token 20260930-menu-01-cors)
+mondo: "I dont want players to get into a lobby and then spend five minutes assembling their teams." The flow now:
+- **Main menu:** the first button reads NEW GAME until a story is on file (map.js `_storyOnFile`: the officer is on file,
+  or `profile.storyStarted`, set by `_goToPlayHub` when the building opens), CONTINUE after (`_mmRefreshPlayLabel`, run by
+  `_showTitlePage('mainMenuPage')`). ONLINE → ONLINE PVP, PRACTICE → PLAY VS CPU.
+- **#squadDeskPage** (map.js block "THE SQUAD DESK" after `_playHubBack`): both battle doors open it first
+  (`_openSquadDesk(mode, next)`). Cards = `profile.teamPresets` (the Party Builder archive), newest used first. Online needs
+  4+ vessels (a smaller team shows "Needs 4 vessels"); VS CPU takes any (a team of 2 plays 2v2). A team of more than 4
+  opens THE PICK (`_sqPickOpen`, keys 1–9 toggle, remembered as `preset.lastPick`). No team → BUILD YOUR FIRST TEAM →
+  the standalone forge opens on a new sheet (`window._ewForgeOpen`) and SAVE / BACK return to the desk
+  (`window._ewForgeReturn`, party-builder.js `tbSaveTeam` → `_ewForgeSaved`). EDIT on a card opens that team.
+- The pick is `window._ewSquad = { mode, teamId, name, slots }` (UI-only, dropped by the main menu). `_ewApplySquad(seat)`
+  seats it the way the forge's LOAD does.
+- **VS CPU:** the desk goes to the practice terminal with `_hqPreselect.squad` (match-select.js shows YOUR SQUAD read-only,
+  team size = the squad, no reserves); `_msConfirm` seats it, draws the CPU and starts the match (no builder; a failed start
+  falls back to the builder). ESC on the terminal goes back to the team pick.
+- **Online:** the desk → the online hub (squad strip + CHANGE) → Quick Play (mode only; 4v4; the server draws the map) or
+  Friendly (the host picks mode + rounds; the map is drawn at random by `_friendlyDrawMap` at room create / mode change,
+  sent in friendly-config as before). `_goToQuickPlay` / `_goToFriendlyMatch` open the desk first when no squad is armed
+  (DISPATCH's desk in the building).
+- **THE READY ROOM** (online.js `_rrOpen`, `#ewReadyRoom`, z 10000 under the loading screen): at room-full the squad is
+  copied to `NET._squad`; `_enterOnlineMode` calls `_ewSquadAutoLock` (seat the squad on my seat, `applyPartyBuild(false)`
+  after 450 ms). The host auto-starts friendly rooms too (`_tryAutoStartRanked` accepts `NET._squad`). The guest re-sends its
+  party on every `host-locked` so a rematch reset order never loses it. Rematch reopens the room and re-locks. Closes when
+  `.ls-overlay` appears, the session ends, or the phase turns to battle after setup was seen.
+- Fixed on the way: the host stored the guest's `partyNames` array as one String (every guest unit read a single letter).
+- Quick Play search is a radar (`.lq-radar`, "THE QUEUE" CSS); match found turns it gold.
+- CSS: styles-base.css "THE SQUAD DESK" + "THE QUEUE" (end of file).

@@ -923,7 +923,7 @@
         /* ── Auto-start helper for ranked matchmaking ──────────────── */
         function _tryAutoStartRanked() {
             var NET = window._NET;
-            if (!NET || !NET.ranked) return;
+            if (!NET || !(NET.ranked || NET._squad)) return;   // THE SQUAD DESK: a friendly room with squads starts itself too
             var lock = NET._lockState;
             if (!lock || !lock.host || !lock.guestPartyReceived) return;
             /* Host is the authority — only host calls origStartMatch */
@@ -1029,7 +1029,8 @@
                 /* Tell the guest too — drives the "opponent locked in" state
                    on their SEAL YOUR FATE button (ranked already emits this). */
                 _emit('relay', { type: 'host-locked' });
-                addLog('Your party is locked in.' + (!lock.guestPartyReceived ? ' Waiting for Player 2 to lock in…' : ' Both players ready — click Start Match!'));
+                addLog('Your party is locked in.' + (!lock.guestPartyReceived ? ' Waiting for Player 2 to lock in…' : (NET._squad ? '' : ' Both players ready — click Start Match!')));
+                if (NET._squad) _tryAutoStartRanked();
             }
             render();
             return true;
@@ -1592,6 +1593,14 @@
                 state._guestBoardBuilt = false;
                 hideResultOverlay();
             }
+            /* THE SQUAD DESK (2026-09-30): the rematch fields the same squad — the ready room again, then the lock by itself
+               (the guest re-sends on the host's host-locked, so the order of the two resets never matters) */
+            if (window._NET._squad) {
+                if (_isGuest() && window._NET._lockState) { window._NET._lockState.guest = false; window._NET._lockState.hostLocked = false; }
+                window._NET._waitingForOpponent = false;
+                if (window._ewReadyRoomOpen) window._ewReadyRoomOpen();
+                setTimeout(function () { if (typeof window._ewSquadAutoLock === 'function') window._ewSquadAutoLock(); }, _isGuest() ? 900 : 300);
+            }
         }
 
         window._executeRemoteAction = function(data) {
@@ -2092,6 +2101,8 @@
             } catch (e) {
             }
 
+            /* THE SQUAD DESK (2026-09-30): the squad picked before the lobby takes my seat and locks in by itself */
+            if (window._NET && window._NET._squad && typeof window._ewSquadAutoLock === 'function') window._ewSquadAutoLock();
         };
 
         window._applyRemotePartyConfig = function(data) {
@@ -2122,7 +2133,11 @@
             /* THE JOBS REMOVAL (the user 2026-09-27): every build is the one neutral class — whatever the guest sent */
             if (Array.isArray(data.builds)) state.partyBuilds[2] = data.builds.map(function () { return UNIT_CLASS; });
             if (data.loadouts) state.loadouts[2] = data.loadouts;
-            if (data.name && state.partyNames) state.partyNames[2] = String(data.name).slice(0, 24);
+            /* the guest sends its names as an ARRAY (online.js _sendPartyConfig) — String() of it made one string and every
+               guest unit read a single letter of it; each name is clamped instead (2026-09-30) */
+            if (data.name && state.partyNames) state.partyNames[2] = Array.isArray(data.name)
+                ? data.name.slice(0, _ts).map(function (n) { return String(n == null ? '' : n).slice(0, 24); })
+                : String(data.name).slice(0, 24);
             if (data.meta && state.partyMeta) state.partyMeta[2] = data.meta;
             /* Spell-tree authority (RULE #2): the HOST re-validates every
                received loadout against the sender's own tree — off-tree or
@@ -2153,7 +2168,8 @@
             const lock = window._NET._lockState;
             if (lock) lock.guestPartyReceived = true;
 
-            if (window._NET.ranked) {
+            if (window._ewReadyRoomMark) window._ewReadyRoomMark('opp');
+            if (window._NET.ranked || window._NET._squad) {
                 addLog('Opponent\'s party received.');
                 _tryAutoStartRanked();
             } else {
@@ -2781,6 +2797,121 @@
             var _queueStartTime = 0;
             var _inQueue = false;
 
+            /* ══ THE READY ROOM (2026-09-30, THE SQUAD DESK) ══════════════════════════════════════════════════════════════
+               The squad was picked before the lobby (map.js _openSquadDesk → window._ewSquad, copied to NET._squad at
+               room-full), so nobody builds a party in the lobby any more: both seats seat their squad and lock in by
+               themselves (_ewSquadAutoLock), the host starts the match the moment both are in (_tryAutoStartRanked, friendly
+               rooms too). This full-screen card covers the wait: you and your squad against the opponent (their faces stay
+               hidden until the fight), the mode, the drawn map, and each side's state. It sits under the match loading
+               screen (.ls-overlay, z 10001) and fades out once that is up, the phase turns to battle, or the session ends.
+               UI-only: nothing on `state`, nothing relayed (each seat draws its own from the lock relays it already gets). */
+            var _rr = null;   // { el, poll, onKey, meLocked, oppLocked }
+            function _rrLabelMode(id) {
+                var m = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[id] : null;
+                return (m && m.label) || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Arena');
+            }
+            function _rrLabelMap(id) {
+                var g = (typeof GAME_MODES !== 'undefined') ? GAME_MODES[id] : null;
+                return (g && (g.label || g.name)) || 'Random';
+            }
+            function _rrEsc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+            function _rrOpen() {
+                _rrClose(true);
+                var sq = NET._squad;
+                if (!sq) return;
+                var prof = null;
+                try { prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile(); } catch (e) {}
+                var myName = (prof && prof.username) || 'You', myElo = (prof && typeof prof.elo === 'number') ? prof.elo : null;
+                var fc = NET.friendlyConfig || {};
+                var modeId = NET.ranked ? (NET.matchRankedMode || 'arena') : (fc.mode || 'arena');
+                var mapId = NET.ranked ? NET.matchMapModeId : fc.mapId;
+                var faceHtml = function (s) { return (typeof window._sqFaceHtml === 'function') ? window._sqFaceHtml(s) : ''; };
+                var mine = sq.slots.map(function (s, i) { return '<span class="rr-slot" style="--i:' + i + '">' + faceHtml(s) + '<em>' + _rrEsc(s.unitName || '') + '</em></span>'; }).join('');
+                var theirs = sq.slots.map(function (_, i) { return '<span class="rr-slot rr-slot-hidden" style="--i:' + i + '"><span class="sq-face"><i></i><b>?</b></span><em>&nbsp;</em></span>'; }).join('');
+                var el = document.createElement('div');
+                el.id = 'ewReadyRoom';
+                el.className = 'rr ' + (NET.myPlayer === 2 ? 'rr-p2' : 'rr-p1');
+                el.innerHTML = '<div class="rr-bg"></div><div class="ls-grain"></div><div class="rr-streak"></div>'
+                    + '<div class="rr-kicker">' + (NET.ranked ? 'Online PvP · Quick Play' : 'Online PvP · Friendly Match') + '</div>'
+                    + '<div class="rr-stage">'
+                    +   '<div class="rr-side rr-me"><div class="rr-name">' + _rrEsc(myName) + '</div>'
+                    +     '<div class="rr-meta">' + (myElo != null ? 'ELO ' + myElo + ' · ' : '') + _rrEsc(sq.name || 'Team') + '</div>'
+                    +     '<div class="rr-faces">' + mine + '</div>'
+                    +     '<div class="rr-state" id="rrMeState"><i></i><span>Locking in</span></div></div>'
+                    +   '<div class="rr-vs"><span>VS</span></div>'
+                    +   '<div class="rr-side rr-opp"><div class="rr-name">' + _rrEsc(NET.opponentName || 'Opponent') + '</div>'
+                    +     '<div class="rr-meta">' + (NET.ranked && NET.opponentElo ? 'ELO ' + NET.opponentElo : 'Squad hidden until the fight') + '</div>'
+                    +     '<div class="rr-faces">' + theirs + '</div>'
+                    +     '<div class="rr-state" id="rrOppState"><i></i><span>Locking in</span></div></div>'
+                    + '</div>'
+                    + '<div class="rr-info"><span>Mode</span><b>' + _rrEsc(_rrLabelMode(modeId)) + '</b><span>Map</span><b>' + _rrEsc(_rrLabelMap(mapId)) + '</b><span>Teams</span><b>' + (sq.slots.length) + 'v' + (sq.slots.length) + '</b></div>'
+                    + '<div class="rr-status" id="rrStatus"><span class="rr-dots"><i></i><i></i><i></i></span><span id="rrStatusText">Waiting for both squads</span></div>'
+                    + '<button class="rr-leave" type="button">Leave</button>';
+                document.body.appendChild(el);
+                var leave = el.querySelector('.rr-leave');
+                if (leave) leave.addEventListener('click', function () {
+                    try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+                    _rrClose(true);
+                    if (typeof backToMainMenu === 'function') backToMainMenu(); else if (typeof window.backToMainMenu === 'function') window.backToMainMenu();
+                });
+                /* the builder sleeps underneath: its keys (ENTER locks, ESC backs out) must not fire through the card */
+                var onKey = function (e) { if (_rr && e.key !== 'Tab') { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') e.preventDefault(); } };
+                window.addEventListener('keydown', onKey, true);
+                _rr = { el: el, poll: null, onKey: onKey, meLocked: false, oppLocked: false };
+                requestAnimationFrame(function () { requestAnimationFrame(function () { if (_rr && _rr.el === el) el.classList.add('is-on'); }); });
+                try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+                /* out once the loading screen is up, the session ends, or the board goes live — the last only after the card
+                   has seen the setup phase (a rematch opens it while the old result still stands on the guest's mirror) */
+                var seenSetup = false;
+                _rr.poll = setInterval(function () {
+                    var st = window._gameState;
+                    if (st && st.phase === 'setup' && !st.winner) seenSetup = true;
+                    if (!NET.online || document.querySelector('.ls-overlay') || (seenSetup && st && st.phase === 'battle')) _rrClose(false);
+                }, 250);
+            }
+            function _rrClose(now) {
+                if (!_rr) return;
+                var r = _rr;
+                _rr = null;
+                if (r.poll) clearInterval(r.poll);
+                window.removeEventListener('keydown', r.onKey, true);
+                if (now) { if (r.el.parentNode) r.el.parentNode.removeChild(r.el); return; }
+                r.el.classList.add('is-out');
+                setTimeout(function () { if (r.el.parentNode) r.el.parentNode.removeChild(r.el); }, 700);
+            }
+            function _rrMark(side) {
+                if (!_rr) return;
+                var id = side === 'me' ? 'rrMeState' : 'rrOppState';
+                if (side === 'me') { if (_rr.meLocked) return; _rr.meLocked = true; } else { if (_rr.oppLocked) return; _rr.oppLocked = true; }
+                var s = document.getElementById(id);
+                if (s) { s.classList.add('is-ready'); var t = s.querySelector('span'); if (t) t.textContent = 'Ready'; }
+                var sideEl = _rr.el.querySelector(side === 'me' ? '.rr-me' : '.rr-opp');
+                if (sideEl) { sideEl.classList.remove('is-locked'); void sideEl.offsetWidth; sideEl.classList.add('is-locked'); }
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.55 }); } catch (e) {}
+                var txt = document.getElementById('rrStatusText');
+                if (txt) txt.textContent = (_rr.meLocked && _rr.oppLocked) ? 'Both squads ready · deploying' : (_rr.meLocked ? 'Waiting for ' + (NET.opponentName || 'the opponent') : 'Locking in your squad');
+                if (_rr.meLocked && _rr.oppLocked) _rr.el.classList.add('is-go');
+            }
+            window._ewReadyRoomOpen = _rrOpen;
+            window._ewReadyRoomClose = _rrClose;
+            window._ewReadyRoomMark = _rrMark;
+
+            /* the lock itself: the squad onto MY seat, then the ordinary lock (the applyPartyBuild wrapper sends the guest's
+               party / relays host-locked and starts the match when both are in) */
+            window._ewSquadAutoLock = function () {
+                if (!NET.online || !NET._squad) return false;
+                var seat = NET.myPlayer === 2 ? 2 : 1;
+                if (typeof window._ewApplySquad !== 'function' || !window._ewApplySquad(seat, NET._squad)) return false;
+                NET._waitingForOpponent = false;
+                setTimeout(function () {
+                    if (!NET.online || !NET._squad) return;
+                    var ok = false;
+                    try { ok = (typeof applyPartyBuild === 'function') && applyPartyBuild(false) !== false; } catch (e) { console.error('[SQUAD] auto lock failed', e); }
+                    if (ok) _rrMark('me');
+                }, 450);
+                return true;
+            };
+
             window.lobbyPlayOffline = function() {
                 NET.online = false;
                 NET.myPlayer = 1;
@@ -2817,6 +2948,8 @@
                 NET.matchRankedMode = null;
                 NET.rejoinToken = null;
                 NET.friendlyConfig = null;
+                NET._squad = null;   // THE SQUAD DESK: the lobby's copy (window._ewSquad stays for the next queue)
+                if (window._ewReadyRoomClose) window._ewReadyRoomClose(true);
                 NET._wasInMatch = false;
                 NET._waitingForOpponent = false;
                 NET._autoStartFired = false;
@@ -2885,9 +3018,19 @@
                 return results;
             }
 
+            /* THE SQUAD DESK (2026-09-30, the user: "dont let players select a map for online PvP, it should just be random so
+               that it is fair"): the host's room draws its map at random from the mode's compatible boards (again on a mode
+               change); the card only says RANDOM. The drawn id rides friendly-config as before, so both seats build the same
+               board. Online is 4v4 — the squad was picked before the lobby. */
+            function _friendlyDrawMap() {
+                _friendlySize = 4;
+                var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
+                if (maps.length) _friendlyMapId = maps[Math.floor(Math.random() * maps.length)].id;
+            }
+
             function _friendlyRefreshMaps() {
                 var sel = document.getElementById('friendlyMapSelect');
-                if (!sel) return;
+                if (!sel) { _friendlyDrawMap(); return; }
                 var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
                 sel.innerHTML = '';
                 for (var i = 0; i < maps.length; i++) {
@@ -2970,6 +3113,10 @@
 
             window.lobbyShowQuickPlay = function() {
                 _showPage('lobbyQuickPlay');
+                /* THE SQUAD DESK (2026-09-30): the squad picked on the way in; online queues are 4v4 */
+                _queueTeamSize = 4;
+                var sqHost = document.getElementById('lobbyQueueSquad');
+                if (sqHost && typeof window._sqStripHtml === 'function') sqHost.innerHTML = window._sqStripHtml(window._ewSquad, { change: true });
 
                 var elo = 1200;
                 try {
@@ -2983,7 +3130,7 @@
                 var searchDiv = document.getElementById('lobbyQueueSearching');
                 var backBtn = document.getElementById('lobbyRankedBackBtn');
                 if (startBtn) startBtn.style.display = '';
-                if (searchDiv) searchDiv.style.display = 'none';
+                if (searchDiv) { searchDiv.style.display = 'none'; searchDiv.classList.remove('is-found'); }
                 if (backBtn) backBtn.style.display = '';
                 _inQueue = false;
             };
@@ -3016,6 +3163,7 @@
                         _showPage('lobbyHosting');
 
                         _friendlyRefreshMaps();
+                        _friendlyEmitConfig();   // the drawn map is on the room before the guest joins
                     });
                 });
             };
@@ -3459,6 +3607,11 @@
                     }
 
                     _showPage('lobbyConnected');
+                    /* THE SQUAD DESK (2026-09-30): a squad picked before the lobby skips the party builder — the ready room
+                       covers the lock-in and the host starts the match as soon as both squads are in */
+                    NET._squad = (window._ewSquad && window._ewSquad.mode === 'online' && Array.isArray(window._ewSquad.slots) && window._ewSquad.slots.length)
+                        ? JSON.parse(JSON.stringify(window._ewSquad)) : null;
+                    if (NET._squad && window._ewReadyRoomOpen) window._ewReadyRoomOpen();
 
                     setTimeout(function() {
                         if (window._enterOnlineMode) {
@@ -3481,6 +3634,9 @@
                     NET.opponentElo = data.opponentElo || 1200;
 
                     _setStatus('lobbyQueueStatus', 'Match found! vs ' + data.opponent + ' (ELO ' + data.opponentElo + ')', 'connected');
+                    var _qs = document.getElementById('lobbyQueueSearching');   // THE QUEUE: the radar locks on (styles-base.css)
+                    if (_qs) _qs.classList.add('is-found');
+                    try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
                 });
 
                 NET.socket.on('queue-status', function(data) {
@@ -3733,6 +3889,7 @@
                     if (data.type === 'guest-locked') {
                         var lock = NET._lockState;
                         if (lock) lock.guestPartyReceived = true;
+                        if (window._ewReadyRoomMark) window._ewReadyRoomMark('opp');
 
                         /* For ranked, try auto-start now that guest is locked */
                         if (NET.ranked && typeof _tryAutoStartRanked === 'function') {
@@ -3746,6 +3903,10 @@
                         /* Guest learns the host has locked in */
                         var lockHL = NET._lockState;
                         if (lockHL) lockHL.hostLocked = true;
+                        if (window._ewReadyRoomMark) window._ewReadyRoomMark('opp');
+                        /* THE SQUAD DESK: host-locked follows the host's own lock reset (a rematch included), so a squad already
+                           locked here is sent again — the host never misses it to a reset that landed after it */
+                        if (NET._squad && NET.role === 'guest' && lockHL && lockHL.guest && window._sendPartyConfig) window._sendPartyConfig();
                         if (typeof window.addLog === 'function') window.addLog('Opponent has locked in their party.');
                         if (typeof window.render === 'function') window.render();
                     }

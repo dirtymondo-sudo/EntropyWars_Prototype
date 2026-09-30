@@ -388,6 +388,7 @@ function MatchSelect(props) {
   const mountedRef = useRef(false);
   const [query, setQuery] = useState('');
   const [teamSize, setTeamSize] = useState(() => (pre && pre.teamSize > 0) ? pre.teamSize : 0);
+  const squad = (pre && pre.squad && pre.squad.n > 0) ? pre.squad : null;   // THE SQUAD DESK: the team picked before the desk
   const [rounds, setRounds] = useState(15);
   /* CPU TEMPO (2026-09-07): ⚡ TRAINING = the CPU's turns resolve instantly
      (no animations, no camera, no banners — battle.js _setAiTurbo); the
@@ -450,6 +451,8 @@ function MatchSelect(props) {
     if (mpMode.roundLimit) setRounds(mpMode.roundLimit);
     // Clash is locked to 4v4 — snap the stepper so the display matches launch.
     if (mpMode.isClash) setTeamSize(4);
+    /* THE SQUAD DESK (2026-09-30): PLAY VS CPU brought a squad — the team size is the squad's, whatever the board */
+    if (squad) setTeamSize(Math.max(1, Math.min(maxT, squad.n)));
   }, [gmIdx, mapIdx]);
   /* THE ARENAS (E8, 2026-09-30): the picked arena's room is surveyed while the form is filled (map.js _hqArenaWarm), so
      CONFIRM seldom waits for it */
@@ -521,7 +524,7 @@ function MatchSelect(props) {
   _msSelectedRounds = rounds;
   _msTraining = training;
   const RR = (typeof RESERVE_RULES !== 'undefined' && RESERVE_RULES) || { roster: 8, deploy: 4, switchApCost: 2, switchesPerRound: 1 };
-  const reservesOk = !!(mpMode && mpMode.respawns && !mpMode.isFFA && !mpMode.isClash);
+  const reservesOk = !squad && !!(mpMode && mpMode.respawns && !mpMode.isFFA && !mpMode.isClash);   // a squad of 4 has no bench
   const reservesOn = reservesOk && reserves;
   _msReserves = reservesOn;
 
@@ -631,7 +634,9 @@ function MatchSelect(props) {
   );
 
   /* ── the config form (both variants) ── */
-  const teamField = h(Field, { label: isFFA ? 'PLAYERS' : 'TEAM SIZE', hint: mpMode.isClash ? 'CLASH · 4v4' : (reservesOn ? ('ON THE FIELD · MAX ' + RR.deploy) : ('MAX ' + maxT)) },
+  const teamField = squad ? h(Field, { label: 'YOUR SQUAD', hint: teamSize + 'v' + teamSize },
+    h('div', { className: 'ms-tty-ro' }, h('span', null, String(squad.name || 'Team').toUpperCase()), h('em', null, 'ESC · CHANGE')))
+  : h(Field, { label: isFFA ? 'PLAYERS' : 'TEAM SIZE', hint: mpMode.isClash ? 'CLASH · 4v4' : (reservesOn ? ('ON THE FIELD · MAX ' + RR.deploy) : ('MAX ' + maxT)) },
     h('div', { className: 'ms-tty-chips' },
       ...(() => { const opts = []; for (let t = 1; t <= maxT; t++) opts.push(h(Chip, { key: t, on: teamSize === t, disabled: reservesOn && t > RR.deploy, title: reservesOn && t > RR.deploy ? 'Reserves: ' + RR.deploy + ' on the field, the rest on the bench' : undefined, onClick: () => { setTeamSize(t); playUi(); } }, isFFA ? t + ' Players' : t + 'v' + t)); return opts; })()
     )

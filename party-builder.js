@@ -2715,10 +2715,22 @@ function PartyBuilder(props) {
     const fallback = editingTeamId ? null : ('Team ' + (getTeamPresets().length + 1));
     const id = saveTeamAs(editingTeamId, teamNameDraft.trim() || fallback);
     if (id == null) return;             // archive full
+    /* THE SQUAD DESK (2026-09-30): a forge opened from the team pick goes straight back to it with the team on file */
+    if (window._ewForgeReturn && typeof window._ewForgeSaved === 'function' && window._ewForgeSaved(id)) return;
     setEditingTeamId(id);
     setTbView('locker');
     refresh();
   };
+  /* THE SQUAD DESK (2026-09-30): the team pick opens the forge on a fresh sheet (no team on file / NEW TEAM) or on the
+     team to EDIT (map.js _sqForge sets window._ewForgeOpen before mounting) */
+  React.useEffect(() => {
+    if (!standalone) return;
+    const req = window._ewForgeOpen;
+    window._ewForgeOpen = null;
+    if (!req) return;
+    if (req.edit) { const t = getTeamPresets().find(x => x.id === req.edit); if (t) tbEditTeam(t); }
+    else if (req.startNew) tbNewTeam();
+  }, []);
 
   const clsName = typeof window.normalizeClassName === 'function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[slot], window.DEFAULT_BUILDS?.[player]?.[slot]) : (st.partyBuilds?.[player]?.[slot] || 'Warrior');
   const meta = st.partyMeta?.[player]?.[slot] || (typeof window.getDefaultIdentity === 'function' ? window.getDefaultIdentity() : {});
@@ -3180,6 +3192,7 @@ function PartyBuilder(props) {
   const backOut = () => {
     if (standalone) {
       if (tbView === 'locker') { if (typeof window._teamBuilderBack === 'function') window._teamBuilderBack(); }
+      else if (window._ewForgeReturn && typeof window._teamBuilderBack === 'function') window._teamBuilderBack();   // THE SQUAD DESK: back to the team pick
       else { setTbView('locker'); sfx('uiCursorMove'); refresh(); }
     } else doBack();
   };
@@ -3713,7 +3726,7 @@ function PartyBuilder(props) {
   const partyRow = h('div', { className: 'pb-party' },
     h('div', { className: 'pb-party-left' },
       standalone
-        ? h('button', { className: 'ms-tty-btn danger', onClick: () => { setTbView('locker'); sfx('uiCursorMove'); refresh(); }, title: 'Back to the archive' }, '◂ TEAMS')
+        ? h('button', { className: 'ms-tty-btn danger', onClick: () => { if (window._ewForgeReturn && typeof window._teamBuilderBack === 'function') { window._teamBuilderBack(); return; } setTbView('locker'); sfx('uiCursorMove'); refresh(); }, title: window._ewForgeReturn ? 'Back to the team pick' : 'Back to the archive' }, '◂ TEAMS')
         : h('button', { className: 'ms-tty-btn danger', onClick: doBack, title: 'Back' }, '◂ BACK'),
       (!isOnline && st.showPlayer2Builder) ? h('div', { className: 'pb-party-side' },
         h('button', { className: 'pb-pill' + (player === 1 ? ' on' : ''), onClick: () => selectPlayer(1) }, 'P1'),
@@ -3899,7 +3912,7 @@ function PartyBuilder(props) {
         presets.length === 0 && h('div', { style:{ marginTop:22, fontSize:11, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.06em' }},
           'The archive is empty. Forge your first squad — the entropy is patient, but not that patient.')),
       h('div', { className: 'ms-tty-foot pb-foot' },
-        h('button', { className: 'ms-tty-btn danger', onClick: () => { if (typeof window._teamBuilderBack==='function') window._teamBuilderBack(); } }, '◂ MAIN MENU'),
+        h('button', { className: 'ms-tty-btn danger', onClick: () => { if (typeof window._teamBuilderBack==='function') window._teamBuilderBack(); } }, window._ewForgeReturn ? '◂ TEAM SELECT' : '◂ MAIN MENU'),
         h('div', { className: 'ms-tty-spacer' }),
         h('span', { className: 'ms-tty-prompt' }, '> ', h('b', null, 'archive --list'), h('span', { className: 'ms-tty-cursor' })),
         h('span', { className: 'pb-foot-note' }, 'SQUADS ARE SAVED TO YOUR PROFILE', DOOR ? ' · MANIFESTS REMAIN PROPERTY OF THE DEPARTMENT' : '')));
