@@ -1,7 +1,9 @@
 # SPELL FAMILY AUDIT — HANDOFF (2026-09-30)
 
-Written for the next session (and for mondo) while the audit's synthesis step was still running. Everything below is
-already in the repo; nothing depends on the scratchpad.
+Written for the next session (and for mondo). **Status (2026-09-30, second session): the plan is COMPLETE** — the
+design-skeptic pass on R.1 / R.3 is finished and the front matter (§1–§11 of `SPELL_FAMILY_AUDIT_PLAN.md`, also
+`docs/spell-audit/sections/00-front.md`) reconciles all 15 sections into one change set. Nothing has been applied to
+`data.js` and nothing has been playtested. Everything below is in the repo; nothing depends on a scratchpad.
 
 ## 1. What was asked
 
@@ -34,11 +36,14 @@ and do an overall tactical-JRPG audit (synergies, many viable strategies, balanc
    families, the yeti test, "bigger version = upgrade not spell", THE TIER RULE, no vague proposals; 9–24 fixes
    per section, in place). The sections are in `docs/spell-audit/sections/` and are concatenated into
    `SPELL_FAMILY_AUDIT_PLAN.md` (this is the full audit; ~730 KB).
-3. **Synthesis + critic** — a synthesis agent writes the front matter (`00-front.md`: verdict, principles, the
-   3-vs-4-tier recommendation, master change tables, race pools after the plan, team archetypes, implementation
-   order, open questions), then a completeness critic checks every family and race has a verdict and the tables
-   agree with the sections, with one fill round. **The run was stopped at this step on mondo's call (2026-09-30): no front matter exists yet. The design-skeptic pass on `races-1` and `races-3` was interrupted mid-edit. If `SPELL_FAMILY_AUDIT_PLAN.md` still opens with a
-   "front matter pending" note, this step did not land before the session ended — see §6 to resume.**
+3. **Synthesis + critic (done in the second session).** Every proposal in the 15 sections was turned into a change
+   record (2,575 records), applied to a copy of the 2026-09-30 data with the precedence rules of front §1 / §11.1
+   (the owning family block decides a row; the race block decides membership and rungs; the cross-family audit, then
+   synergy, fill in where the family block is silent), and re-checked against the audit's rules (no race under 3 or
+   over 5 families, every rung inside its race's families, one T4 per family under Q1, THE TIER RULE, no worn empty
+   family). The remaining breaks got explicit resolutions (front §11.7). The engine claims were re-verified in the
+   code, which overturned four of them (front §11.2 — above all the MP gate, see §3 below). Two completeness critics
+   then read the front matter against the sections and the computed after-plan state, with one fill round.
 
 ## 3. Headline findings
 
@@ -96,14 +101,15 @@ never read); No Mercy and Weigh the Heart say "more damage the lower the target'
 Recursive Loop and Dark Justice say "bonus damage to debuffed targets" (`bonusVsDebuffed` unread); Miracle's
 heal-on-arrival and Iron Dome (a healAll with heal 0) are flagged too. Each needs a real mechanic or a rewrite.
 
-**Synergy (synergy.md).** Marked has 7 setups and 0 payoffs; Blind, Wet, Minimize, Scanner, Grievous, Blessed,
+**Synergy (synergy.md).** Marked has 7 setups and 0 finishers (it does pay +40 on the next hit); Blind, Minimize, Scanner, Grievous, Blessed,
 Possessed, Protect, Overclock, Invisible, Taunt, Corroded, Incendiary are setup-only; Frozen's 3 payoffs are all
-Winter / Christmas. The single-race loops (tethered, voodoo, haunted, feared, infected, contract, soulBound, goo)
-are judged good signatures. **The MP economy is the biggest structural finding:** base MP is fixed and regens
-3%/round, so every bruiser/tank under 100 MP (juggernaut 40, robot 50, giant 60, dinosaur 60, cyclops 65,
-minotaur / zombie / golem 70, sixteen more under 100) can never cast the 100-MP T4 finishers the Stagger economy
-(23 setups / 16 payoffs) is built around. Proposed: floor base MP at 100, or pin bruiser-only T4s to 75 MP.
-Proposed synergy layer: ~20 family passives (Brittle, Septic, Aftershock, Ambush, Foreman…) and ~12 family-scoped
+Winter / Christmas. (Wet was listed as setup-only by the scan but is live in the elemental combo layer — front §11.2.) The single-race loops (tethered, voodoo, haunted, feared, infected, contract, soulBound, goo)
+are judged good signatures. **The MP economy — CORRECTED in the second session:** the first session read base MP (`RACE_BASE_STATS`) as final
+and concluded that 25 bruisers/tanks under 100 MP could never cast their 100-MP T4s, proposing an MP floor at 100 or
+75-MP T4 pins. That is wrong for PvP: every unit is built at a level, `levelStatGains` adds MP, and every PvP mode
+builds at level 100, where MP = base + 100 (juggernaut 140, giant 160, casters 330–360). The floor and every pin are
+dropped (front §5); what remains is a narrower story-mode question for the four lowest pools at low party level
+(front §10 Q2). Proposed synergy layer: ~20 family passives (Brittle, Septic, Aftershock, Ambush, Foreman…) and ~12 family-scoped
 upgrades (Exploit: Marked, Shatter, Concussive…), plus one Marked payoff per setup family.
 
 **The tier question (cross-redundancy §5).** Recommendation: keep 4 tiers but enforce ONE categorically bigger T4
@@ -116,7 +122,8 @@ prefers 3 tiers: every kept T4 becomes a T3 with `cost: 100` pinned, SP max drop
 
 | Path | What |
 |---|---|
-| `SPELL_FAMILY_AUDIT_PLAN.md` | The full plan: front matter (if synthesis landed) + F (cross-family) + S (synergy) + F.g1–g9 (family blocks) + R.1–R.4 (race fit). |
+| `SPELL_FAMILY_AUDIT_PLAN.md` | The full plan (~1 MB): front matter §1–§11 + F (cross-family) + S (synergy) + F.g1–g9 (family blocks) + R.1–R.4 (race fit). |
+| `docs/spell-audit/sections/00-front.md` | The front matter alone (~280 KB): verdict, principles, tiers, MP, master change tables, race pools after, archetypes, implementation order, decisions, reconciliation log. Read this first. |
 | `SPELL_FAMILY_AUDIT_HANDOFF.md` | This file. |
 | `docs/spell-audit/sections/*.md` | The 15 verified sections (source of the plan) + `00-front.md` once synthesized. |
 | `docs/spell-audit/data/*.md` | The data snapshot the audit was checked against (2026-09-30 data.js). |
@@ -142,31 +149,25 @@ Pool gaps · Identity.
 
 ## 6. Next steps
 
-1. **Finish the front matter** if it is missing: the workflow script is
-   `~/.claude/projects/-home-user-EntropyWars-Prototype/a7769b3b-7c02-57c0-9c27-2253b99f7546/workflows/scripts/spell-family-audit-wf_116853e1-f9c.js`
-   (resume with `resumeFromRunId: "wf_116853e1-f9c"` in the same session), or simply run the Synthesize prompt
-   from that script in a new session against `docs/spell-audit/sections/` (copy them back to a scratch
-   `sections/` folder, or point the prompt at the repo path), then `node docs/spell-audit/tools/assemble.js`.
-2. **mondo's decisions** (the front's §9 lists them; the ones every section hits): 4 tiers with one T4 per family
-   vs 3 tiers · floor base MP at 100 vs pin bruiser T4s at 75 MP · keep or delete the 9 empty families (the audit
-   builds Gambling, Animal Handling, Mirror Magic, Internet Addiction and deletes the rest) · allow more than 5
-   families per race or hold the line · the 25-MP T4 jokes · implement guaranteed crit / execute scaling / bonus vs
-   debuffed as real mechanics or reword · a pool-size target (the race auditors settled on 12–24).
-3. **Apply through the Spell Library** (Settings → Developer), in this order, each as one export → `node
-   bake-spell-mods.js <export.json>` → deliver `data.js` (R2 + Render) with an `index.html` `?v=` bump (RULE #1b):
-   - Batch A, data-only and safe: RETIER / RECOST / RENAME / description fixes / deletions of pure same-family
-     duplicates that are nobody's rung (cross-redundancy §1–§3).
-   - Batch B, the registry: FAMILIES tab deletes / merges / renames / UNIQUE flags, POOLS tab race re-seating with
-     the rung swaps named in R.1–R.4 (the bake refuses a RACE_TREE rung outside its race's families).
-   - Batch C, new content: NEW rows from the role templates (family blocks' Additions), the family passives and
-     family-scoped upgrades (synergy §5), the Marked payoffs.
-   - Batch D, engine: the dead fields (`guaranteedCrit`, `executeBonusPct`, `bonusVsDebuffed` → either a real read
-     in battle.js `_applyDamageSpellHit` / the crit roll, or strip the text), any new hook keys the passives name
-     (`PASSIVE_HOOK_KEYS`), any new upgrade patch keys (`_upgApplyPatch`), an MP floor or T4 pin, and — for any new
-     on-screen moment — the online.js relay (RULE #2).
-4. **After each bake**: `node --check data.js`, rerun `docs/spell-audit/tools/dump.js` + `synergy.js` from the
-   data folder and diff against the snapshot: the "Spells in no family", "RACE_FAMILIES naming unknown families",
-   "Families on no race" and "Race pools missing a role" sections should shrink, and no race may sit under 3
-   families.
-5. Regenerate `SPELL_CATALOGUE.md` from the library when the pools settle (it is stale: it predates the 2026-09-27
-   family export and the 2026-09-30 races).
+1. **mondo rules on front §10** (Q1–Q12). The plan as written assumes each recommendation: four tiers with one T4 per
+   family (Q1), no base-MP change for PvP (Q2), at most five families per race (Q3), A Really Good Punch deleted and
+   Hocus Pocus laddered (Q4), `guaranteedCrit` reworded and `executeBonusPct` wired for Weigh the Heart (Q5), 12–24 as
+   a pool guide (Q6), the 20 data-only family passives in Batch C (Q7), the four one-race families kept (Q8),
+   Scarecrow Abilities and Ki Energy as the only new UNIQUE flags (Q9), a separate stat pass (Q10), off-tier rungs
+   accepted (Q11), ids confirmed at export (Q12).
+2. **Apply in the order of front §9** through the Spell Library, one export per batch → `node bake-spell-mods.js
+   <export.json>` → `node --check data.js` → deliver `data.js` (R2) + `index.html` with a fresh `?v=` token (RULE #1b;
+   `npm run deploy`) → Render:
+   - **A** row edits (RETIER / RECOST / RETUNE / RETYPE / RENAME / DESC, live-field REWRITEs, dead-field deletions,
+     deletions of rows nobody rungs); **A2** the 13 Q1 folds if Q1 = four tiers.
+   - **B** the registry in ONE export (the bake refuses a rung outside its race's families): the 8 family deletes /
+     folds, the 22 MOVEs, rung-row deletions, 64 races' new family lists, 67 races' rung changes, the family renames,
+     the UNIQUE flags.
+   - **C** new content with live mechanics: the new rows of front §6.3, the 20 LIVE passives, the live upgrades, the
+     per-row upgrade lists from the family blocks.
+   - **D** engine (battle.js / data.js; online.js for any new on-screen moment, RULE #2): front §6.5, `addStatus` first.
+3. **After every bake**, re-dump with `dump.js` + `synergy.js` (in git history at fdefd66, `docs/spell-audit/tools/`)
+   and diff against `docs/spell-audit/data/`: pools should match front §7 and ladders front §6.1; no race under 3
+   families; every rung inside its race's families; "spells in no family" and "families on no race" empty.
+4. Regenerate `SPELL_CATALOGUE.md` from the library when the pools settle (it predates the 2026-09-27 family export and
+   the 2026-09-30 races).
