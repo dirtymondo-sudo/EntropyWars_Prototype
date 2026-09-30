@@ -42601,6 +42601,39 @@ const ThreeRenderer = (function () {
            sky — the map builder's floating staircase in the room's own kit.
        Nothing new for the walker, the camera or the tests to read.
        ═══════════════════════════════════════════════════════════════════════ */
+    /* THE BUILT STAIR (LEVEL_DESIGN_PLAN §4, 2026-09-30 — the staircase to the Woods): a `built: true` stair ramp drawn as masonry — one
+       block per compiled step (the same treads the field carries: 2 × res deep, h0 + rise · k / n), each block standing on the flight's
+       foot height so the flanks are solid to the floor, the treads in `key` (else the path sheet), the flanks and risers in `side` (else
+       the cliff sheet), and a carpet `runner: { w, color }` laid up the treads and the risers. The field under the flight is cut away
+       (_hqBuildTerrain's index loop); the walker still walks the field's steps. */
+    function _hqBuildBuiltStairs(room, info, G, TM) {
+        var U = _hqUnits(), res = info.res, S = room.shell || {};
+        (info.builts || []).forEach(function (f) {
+            var treadMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.key || info.path) || null, color: 0xffffff, shininess: 16 }); treadMat.emissive = new THREE.Color(0x141414);
+            var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.side || info.cliff) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
+            if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
+            var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
+            var n = Math.max(1, Math.round(L / (2 * res))), rise = (f.h1 - f.h0) / n, depth = L / n, base = Math.min(f.h0, f.h1) - 0.05;
+            var runW = (f.runner && f.runner.w) ? Math.min(f.w - 0.2, f.runner.w) : 0, runMat = null;
+            if (runW > 0) { runMat = new THREE.MeshPhongMaterial({ color: (f.runner.color != null) ? f.runner.color : 0x3558d8, shininess: 6 }); runMat.emissive = new THREE.Color(runMat.color).multiplyScalar(0.12); }
+            for (var k = 0; k < n; k++) {
+                var top = f.h0 + rise * k; if (rise > 0 && top - base < 0.06) continue;
+                var s0 = k * depth, s1 = (k === n - 1) ? L + 0.25 : (k + 1) * depth + 0.02, sm = (s0 + s1) / 2, dd = s1 - s0, hh = Math.max(0.06, top - base);
+                var cx = f.x0 + ux * sm, cz = f.z0 + uz * sm;
+                var geo = new THREE.BoxGeometry(f.w * U, hh * U, dd * U); _hzBoxUV(geo, f.w * U, hh * U, dd * U, TM);
+                var blk = new THREE.Mesh(geo, [sideMat, sideMat, treadMat, sideMat, sideMat, sideMat]);
+                blk.position.set(cx * U, (base + hh / 2) * U + 0.3, cz * U); blk.rotation.y = yaw; blk.castShadow = true; blk.receiveShadow = true; blk.renderOrder = 1; G.add(blk);
+                if (runMat) {
+                    var rt = new THREE.Mesh(new THREE.BoxGeometry(runW * U, 0.03 * U, dd * U), runMat);
+                    rt.position.set(cx * U, (top + 0.015) * U + 0.3, cz * U); rt.rotation.y = yaw; rt.renderOrder = 2; G.add(rt);
+                    if (k > 0 && rise > 0) {   // the riser's face toward the flight's foot
+                        var rr = new THREE.Mesh(new THREE.BoxGeometry(runW * U, rise * U, 0.03 * U), runMat), rs = s0 - 0.015;
+                        rr.position.set((f.x0 + ux * rs) * U, (top - rise / 2) * U + 0.3, (f.z0 + uz * rs) * U); rr.rotation.y = yaw; rr.renderOrder = 2; G.add(rr);
+                    }
+                }
+            }
+        });
+    }
     function _hqBuildFloats(room, info, G, TM, rng, floats) {
         var U = _hqUnits(), S = room.shell, res = info.res;
         var puffMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xf8f6ff, shininess: 4 }); puffMat.emissive = new THREE.Color(0x2a2a34);
@@ -43117,7 +43150,7 @@ const ThreeRenderer = (function () {
            cloud sheet, the pool carved into it, the path painted on it) and loses its FLANK — the ring of triangles round its edge
            blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
-        var floats = info.floats || [];
+        var floats = (info.floats || []).concat(info.builts || []);   // THE BUILT STAIR (2026-09-30): a built flight cuts the field away like a floating one
         var underFloat = function (mx, mz) {
             for (var fi = 0; fi < floats.length; fi++) {
                 var f = floats[fi];
@@ -43127,6 +43160,7 @@ const ThreeRenderer = (function () {
                     if (din > -(edge + res * 1.2) && din < edge + res * 0.75) return true;
                 } else {
                     var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
+                    if (f.built) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true; continue; }
                     if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true;
                 }
             }
@@ -43263,7 +43297,8 @@ const ThreeRenderer = (function () {
            lies ≥ 1.5 m below and no traffic route runs (a pier in a road would be driven through) — each pier a blocker. ── */
         if (info.bridges && info.bridges.length) { try { _hqBuildBridges(room, info, G, TM, U); } catch (e) { console.warn('[HQ] the bridges failed', e); } }
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
-        if (floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
+        if (info.floats && info.floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, info.floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
+        if (info.builts && info.builts.length) { try { _hqBuildBuiltStairs(room, info, G, TM); } catch (e) { console.warn('[HQ] the built stairs failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
@@ -43378,7 +43413,10 @@ const ThreeRenderer = (function () {
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
         _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
-        if (!S.open && room.terrain.stalactites !== false) {
+        /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
+           (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
+        var stGen = room.terrain.gen || {}, stCave = stGen.kind === 'cave' || (stGen.kind === 'plan' && stGen.look === 'rock');
+        if (!S.open && (room.terrain.stalactites === true || (stCave && room.terrain.stalactites !== false))) {
             var stMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, shininess: 3 }); stMat.emissive = new THREE.Color(0x0e0e0e);
             if (S.wallColor != null) stMat.color.multiply(new THREE.Color(S.wallColor));
             var nSt = Math.min(70, Math.floor(S.w * S.d / 45));

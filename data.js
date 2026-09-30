@@ -24699,8 +24699,8 @@ const DOOR_HQ = {
           why: 'there is no tunnel under the lawn to the Lodge; the members are very clear about that, and they come out of the Lodge\'s east wall smelling of redwood', note: 'there is no tunnel', draft: true },
         { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
           a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
-          b: { room: 'stairwell', wall: 'e', z: -2, sub: 'THE STAIRCASE IN THE WOODS · OUT' },
-          why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the building\'s own stairwell, which has no window for it to open through', note: 'nobody built it', draft: true },
+          b: { room: 'woodstair', wall: 'n', x: 0, y: 8.75, sub: 'THE WOODS · THE DOOR AT THE TOP OF THE STAIR' },   // LEVEL_DESIGN_PLAN §4 (2026-09-30): the grand stair off the main hall, not the fire stair
+          why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the landing of the stair hall off the main hall', note: 'nobody built it', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
           a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: 0, sub: 'THE GRATE · INTO THE TUNNEL' },
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
@@ -25237,6 +25237,8 @@ const DOOR_HQ = {
                    225°; the number stays on each room (hqDoorNo reads it through). */
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'THE RECORDS WING',        sub: 'CODEX · DAILY TASKS', action: { room: 'recwing', at: 'egress' },
                   desc: 'The wing. Room 42 keeps the file — dossiers on the reading desk, the unfiled sites in the card catalogue, the service stair up to Room 360. Room 247 keeps the time: three requirements a day, the punch clock, and every clock in the building that disagrees with every other one.' },
+                /* THE STAIRCASE TO THE WOODS (LEVEL_DESIGN_PLAN §4, 2026-09-30): the free stretch at 255° (Room 1984's door until 2026-09-13) */
+                { id: 'woods',          deg: 255, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · THE DOOR AT THE TOP', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The door at the top of the stair opens on the Woods.' },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
@@ -30345,6 +30347,82 @@ const DOOR_HQ = {
                 '“Do not count the steps.” “Why?” “You get a different number on the way back up. There is no way back up.”',
             ],
             spawn: { x: -0.2, z: 0.4, face: 180 },
+        },
+        /* ── THE STAIRCASE TO THE WOODS (LEVEL_DESIGN_PLAN §4, 2026-09-30 — mondo: "the staircase to the woods inside the door
+           facility to look like the reference image, not in the stairwell"; door_reference_images/staircase_to_the_woods.PNG):
+           one tall hall off the main hall's ground ring. The door from the hall stands at the south end; a blue runner up the
+           middle, a gold ring round the floor, six columns; ONE straight flight 7 m wide rising 8.75 m (five battle levels) to
+           the landing on the north wall, and the door to the Woods on the landing under the clock. ── */
+        woodstair: {
+            label: 'THE STAIRCASE TO THE WOODS',
+            sub: 'THE STAIR · THE DOOR AT THE TOP',
+            kind: 'box',
+            shell: {
+                w: 30, d: 44, h: 18,
+                wallH: 18, dadoH: 1.6,
+                round: 2.0, cove: 0.6,
+                floor: 'checkerboard_3', wall: 'marble_2', dado: 'gold', trim: 'gold', ceiling: 'damask_3',
+                floorColor: 0xe4ecff, wallColor: 0x3c6a4c, dadoColor: 0xd8b860, ceilColor: 0x2e4a38,
+                pipes: false, strips: false, lights: [],
+                mood: { light: 0xd8ffe8, ambient: 0.6 },
+                fog: { color: 0x0e2a1c, density: 0.006 },
+                plate: { x: -9, z: 21.5, y: 3.2 },
+            },
+            /* THE FIELD: flat checker (no noise); THE STAIR a stair ramp (19 m for 8.75 m: nineteen 0.46 m treads, under the climb) that ends
+               0.7 m inside THE LANDING (a masonry platform along the north wall, 16 × 8.5 m); the parapets are rails; the runner is paint on the
+               floor and the path sheet on the treads */
+            terrain: {
+                floor: 'checkerboard_3', cliff: 'marble_light', path: 'marble_light',
+                noise: { amp: 0, scale: 6 }, crag: false,
+                features: [
+                    { k: 'ramp', x0: 0, z0: 6.5, x1: 0, z1: -13.0, w: 7, h0: 0, h1: 8.75, stairs: true, edge: 0.2,              // THE STAIR (built: white marble, the blue runner up the middle)
+                      built: true, key: 'marble_light', side: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 } },
+                    { k: 'plateau', x: 0, z: -17.5, w: 16, d: 8.5, h: 8.75, edge: 0.2 },                                // THE LANDING
+                    { k: 'rail', x0: -3.7, z0: 5.8, x1: -3.7, z1: -13.0 },                                               // the stair's parapets
+                    { k: 'rail', x0: 3.7, z0: 5.8, x1: 3.7, z1: -13.0 },
+                    { k: 'rail', x0: -7.8, z0: -13.4, x1: -3.8, z1: -13.4 },                                              // the landing's front, either side of the stair's head
+                    { k: 'rail', x0: 3.8, z0: -13.4, x1: 7.8, z1: -13.4 },
+                    { k: 'rail', x0: -7.8, z0: -13.4, x1: -7.8, z1: -21.6 },                                              // the landing's ends
+                    { k: 'rail', x0: 7.8, z0: -13.4, x1: 7.8, z1: -21.6 },
+                ],
+                marks: [
+                    { k: 'rect', x: 0, z: 14.6, w: 4.2, d: 16.2, color: 0x2f58d0 },                                      // THE RUNNER from the door to the stair's foot
+                    { k: 'rect', x: 0, z: -17.6, w: 4.2, d: 8.4, y: 8.75, color: 0x2f58d0 },                            // … and across the landing to the door
+                    { k: 'ring', x: 0, z: 10, r: 11.2, w: 0.7, color: 0xd8b048 },                                         // THE GOLD RING
+                    { k: 'ring', x: 0, z: 10, r: 12.2, w: 0.18, color: 0xd8b048 },
+                    { k: 'ring', x: 0, z: 10, r: 10.3, w: 0.18, color: 0xd8b048 },
+                ],
+            },
+            doors: [
+                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_bulkhead',
+                  label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'woods' },
+                  desc: 'The way back to the main hall.' },
+            ],
+            counters: [],
+            props: [
+                /* THE COLUMNS: three each side of the runner, the last pair beside the stair's foot */
+                { key: 'greek_column',   x: -7.5, z: 17, h: 11 }, { key: 'greek_column', x: 7.5, z: 17, h: 11 },
+                { key: 'greek_column',   x: -7.5, z: 9.5, h: 11 }, { key: 'greek_column', x: 7.5, z: 9.5, h: 11 },
+                { key: 'greek_column',   x: -7.5, z: 2, h: 11 }, { key: 'greek_column', x: 7.5, z: 2, h: 11 },
+                /* THE CLOCK over the door at the top, the lamps and the braziers either side of it */
+                { key: 'wall_clock',     wall: 'n', x: 0, h: 5.2, mount: 13.4 },
+                { key: 'globe_lamp',     x: -5.6, z: -19.8, y: 8.75 }, { key: 'globe_lamp', x: 5.6, z: -19.8, y: 8.75 },
+                { key: 'brazier',        x: -6.4, z: -15, y: 8.75 }, { key: 'brazier', x: 6.4, z: -15, y: 8.75 },
+                /* THE WINDOWS high in the side walls (the green light) */
+                { key: 'stained_glass',  wall: 'w', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'w', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'w', z: -12, h: 5.0, mount: 10.5 },
+                { key: 'stained_glass',  wall: 'e', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: -12, h: 5.0, mount: 10.5 },
+                /* the lamps round the ring on the floor */
+                { key: 'globe_lamp',     x: -11.5, z: 18 }, { key: 'globe_lamp', x: 11.5, z: 18 },
+                { key: 'globe_lamp',     x: -12, z: 4 }, { key: 'globe_lamp', x: 12, z: 4 },
+                { key: 'gclock',         x: -12.5, z: -8, face: 90 },                                                   // a grandfather clock by the west wall (the reference's standing clock)
+                { key: 'banner',         wall: 'w', z: -18, mount: 6.0 }, { key: 'banner', wall: 'e', z: -18, mount: 6.0 },
+            ],
+            agents: [],
+            npcSpots: [],
+            onlineSpots: [],
+            lines: [],
+            spawn: { x: 0, z: 19.5, face: 0 },
         },
         /* ── THE TUNNEL — a subway platform under everything: tiles, a train
            at the platform with its doors open and nobody aboard, the route
@@ -45839,6 +45917,11 @@ function hqTerrainCompile(room, roomId) {
                       low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs
                       the piece in the air — a puffy underside under a platform, a slab tread + a puff under every step of a flight */
                    floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))),
+                   /* THE BUILT STAIR (LEVEL_DESIGN_PLAN §4, 2026-09-30): a stair `ramp` wearing `built: true` is drawn as a solid flight of
+                      masonry (a tread and a riser per compiled step, the sides down to the floor, an optional carpet `runner: { w, color }`) —
+                      the field keeps the steps for the walker, the renderer cuts the field away under the flight (three-renderer.js
+                      _hqBuildBuiltStairs). `key` = the treads' sheet (else the path sheet), `side` = the flanks' (else the cliff sheet). */
+                   builts: F.filter(f => f.k === 'ramp' && f.stairs && f.built && !f.float),
                    climbs: [],   // THE CLIMB (2026-09-19): filled after the field is final (hqTerrainClimbs)
                    bridges: [],  // THE BRIDGE LAYER (2026-09-19): filled after the field is final (hqTerrainBridges)
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
