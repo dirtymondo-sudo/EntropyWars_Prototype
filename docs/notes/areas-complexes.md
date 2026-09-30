@@ -1792,3 +1792,11 @@ Dutchman's and the Triangle's island holes).
 - Adding a new HQ exit: it is shut by default; add its link id to `HQ_EXIT_RULES.open` only if mondo says it is open.
 - `_hqWayBuilders.taxi` sets `_hzKitTs = 1.75 * U` round `_hzVehicle` so the GLB is real size; any new way builder that
   uses the vehicle kit must do the same.
+
+## LEVEL DESIGN PLAN L1-L3 (2026-09-30)
+Plan of record: LEVEL_DESIGN_PLAN.md (repo root), log in its §9. Staircase hall `woodstair` off the DOOR HQ main hall; the
+Vatican's five rooms rebuilt as architecture (flat floors, plain bridges for galleries, `built` ramps, hung parapet walls,
+plan-gen catacombs and garden); the Astral sea as floating islands over `terrain.void` (data.js hqTerrainVoidAt,
+three-renderer _hqBuildIslandRock / _hqBuildVoidGlow / _hqVoidReturn); the spaceship as staged zone `derelict` (ground
+`space`). Gotcha: a prop over a terrain `wall` stands on the wall's top (hqTerrainFeet), so dress shelf cores thin (t 0.2)
+with the shelves beside them. Built flights step one tread per 0.5 m cell so the grid solver sees every riser.

@@ -152,3 +152,27 @@ built (sewers, catacombs, dungeons, bases, the ship), `look: 'rock'` with a tall
 ## 9. Log
 
 - 2026-09-30: plan written, ranking in §3.
+- 2026-09-30, L1 + L2 + L3 in one delivery (branch claude/area-level-design-3m97bp):
+  - **The staircase (§4):** room `woodstair` off the main hall (central_egress door `woods`, deg 255); `woods_stair` now
+    starts at its north wall at y 8.75. Built flights (`ramp` with `built: true`) step one tread per grid cell (data.js
+    ramp height + three-renderer `_hqBuildBuiltStairs`), so the 0.62 climb solver never skips a riser.
+  - **The Vatican (§3 #1):** the library is a flat wood floor with shelf ranges (11 thin cores, t 0.2, dressed with
+    `library_shelf_full` both sides), a gallery on a plain bridge at 4 m reached by a built stair. The basilica is a flat
+    nave with side galleries (plain bridges at 4.6 m on `greek_column` rows), built altar and side stairs, parapets as hung
+    walls. The catacombs are a `plan` gen (`look: 'walls'`, bricks_3, `forceGrow: -0.3` so the forced band is the stair's
+    own width): two flights down, a gallery, chapel, skull room, cistern, ossuary, tombs, loops and dead ends. The
+    courtyard is a `plan` gen with `look: 'trees'` (pine hedges): terrace, fountain court, cloister loop, garden paths.
+    The observatory's dais got crisp edges and built steps.
+  - **The Astral sea (§5):** `terrain.void: { rock, glow, glowY, fall, lip }`. Deviation from §5: the void is not a far
+    floor; it is every cell under `base + lip` (data.js `hqTerrainVoidAt`). The walker cannot step onto it (hqTerrainFeet
+    returns null there), so nobody walks off an island; a jump that lands on no island falls, and under `fall` (−8) the
+    walker fades back (`_hqVoidReturn`) to the last grounded spot. The field raster makes void cells `cloud_gap` (no seat).
+    Islands are `float` plateaus with `_hqBuildIslandRock` stepped rock undersides; `_hqBuildVoidGlow` draws the glow.
+    About 36 islands: the landing, the Pool of Ideas, Route A (level stones), Route B (rising stones to the High Thought),
+    the far shore, the west chain to the closet island, dead ends for the tape and the fortune teller. Gaps 1.5–2.8 m,
+    rises ≤ 0.8 m. The solver does not model jumps, so chk shows those doors unreached by design.
+  - **The spaceship (§6):** zone `derelict` on its own ground `space` (hub the airlock): airlock, deck (y −3.2), hold,
+    bridge, joined door to door; `derelict` added to HQ_STAGE_RULES.zones. Deviation: the deck stays the hull's open top
+    (it is outside), but the rooms gen's 3 m banks are gone (flat plate, crisp 0.15 edges, the dorsal fin a wall in three
+    pieces). The deck ⇄ hold cargo hatch was removed: it was a card between two rooms of the ship.
+  - Arenas re-baked (`node bake-arenas.js`) for the basilica and the deck.
