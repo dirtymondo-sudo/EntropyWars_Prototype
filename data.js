@@ -36612,38 +36612,57 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_dumb', part: 'motorpool',
             shell: hqBunkerShell({ w: 64, d: 40, h: 6.0, wallH: 6.0, plate: { x: 0, z: -18.8, y: 3.4 }, floorColor: 0xa8acb0 }),
             terrain: {
+                /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT in concrete, the parking level as a drawn plan. THE HALL
+                   along the north (the tram on its rails, THE PLATFORM in two halves either side of the stair door's gap) and THE
+                   BAYS south with the cars, joined by three passages: the west one and the east one (each with THE GANTRY's room
+                   off it at the end wall: the tunnel doors stand ON the gantries at 2.6, up their stairs) and the jogged one down
+                   the middle with THE BOOTH off it. Side room 1 (THE RAMP's foot) off the bays' west end, side room 2 a dead end
+                   off their east end. Two loops (hall ⇄ west passage ⇄ bays ⇄ middle, and the same by the east). */
                 floor: 'urban:ConcreteStriped2b', cliff: 'urban:ConcreteStriped1c', path: 'urban:TileGeneric2a',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 7, loops: 3, wallKey: 'urban:ConcreteStriped1c', open: [{ x: -28, z: 0, r: 6 }, { x: 28, z: 0, r: 6 }],   // AREA CONTENT D4: the floor round THE TWO GANTRIES
-                       rooms: [{ id: 'hall', x: 0, z: -9, w: 50, d: 14 }, { id: 'bays', x: 0, z: 11, w: 30, d: 12 }] },
+                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:ConcreteStriped1c', rim: 0, forceGrow: -0.3 },
                 features: [
-                    { k: 'plateau', x: 0, z: -14, w: 40, d: 4, h: 1.0, edge: 0.3 },                                   // THE PLATFORM along the hall's north side
-                    { k: 'ramp', x0: -19, z0: -8, x1: -19, z1: -12.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.2 }, // the west stair up to it (ends 0.7 m inside the tier — THE RAMP RULE)
-                    { k: 'ramp', x0: 19, z0: -8, x1: 19, z1: -12.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.2 },   // the east stair
-                    { k: 'rail', x0: -15, z0: -12.5, x1: 15, z1: -12.5 },                                             // the platform's edge rail (the grind)
-                    { k: 'plateau', x: -8, z: 6, r: 1.5, h: 4.4, edge: 0.3 },                                         // THE SIGNAL GANTRY (the tape — the door gun's)
+                    /* THE ROOMS */
+                    { k: 'space', x: 0, z: -12.5, w: 54, d: 11 },                       // THE HALL (the platform along its north side, the tram's rails)
+                    { k: 'space', x: 6, z: 12, w: 32, d: 12 },                          // THE BAYS
+                    { k: 'space', x: -8.5, z: 5, w: 5, d: 4 },                          // the signal gantry's alcove on the bays' north wall
+                    { k: 'space', x: -25, z: 0, w: 12, d: 10 },                         // THE WEST GANTRY's room
+                    { k: 'space', x: 25, z: 0, w: 12, d: 10 },                          // THE EAST GANTRY's room
+                    { k: 'space', x: 9.5, z: -0.5, w: 5, d: 5 },                        // THE BOOTH (a dead end off the middle passage)
+                    { k: 'space', x: -16, z: 16, w: 8, d: 6 },                          // side room 1 (THE RAMP's foot)
+                    { k: 'space', x: 28, z: 13.5, w: 6, d: 7 },                         // side room 2 (a dead end)
+                    /* the passages */
+                    { k: 'hall', pts: [[3, -8], [3, -0.5]], w: 3 },                     // the middle passage: down from the hall …
+                    { k: 'hall', pts: [[-3, -0.5], [8, -0.5]], w: 3 },                  // … across (THE BOOTH off its east end) …
+                    { k: 'hall', pts: [[-3, -0.5], [-3, 7]], w: 3 },                    // … and down into the bays
+                    { k: 'hall', pts: [[-15, -8], [-15, 9.5], [-9, 9.5]], w: 3 },       // the west passage (hall ⇄ bays)
+                    { k: 'hall', pts: [[-20, 0], [-15, 0]], w: 3 },                     // … THE WEST GANTRY's room off it
+                    { k: 'hall', pts: [[15, -8], [15, 7]], w: 3 },                      // the east passage (hall ⇄ bays)
+                    { k: 'hall', pts: [[20, 0], [15, 0]], w: 3 },                       // … THE EAST GANTRY's room off it
+                    { k: 'hall', pts: [[-13, 16], [-9, 16]], w: 3 },                    // side room 1 ⇄ the bays
+                    { k: 'hall', pts: [[21, 14], [26, 14]], w: 3 },                     // the bays ⇄ side room 2
+                    /* THE PLATFORM along the hall's north side, in two halves: the gap between them is the stair door's (the wired
+                       double door behind the platform, at floor level) */
+                    { k: 'plateau', x: -15.25, z: -16, w: 25.5, d: 6, h: 1.0, edge: 0.15 },   // (drawn 1 m into the walls so its lip is the wall's, not a sliver of floor)
+                    { k: 'plateau', x: 15.25, z: -16, w: 25.5, d: 6, h: 1.0, edge: 0.15 },
+                    { k: 'ramp', x0: -10, z0: -8.5, x1: -10, z1: -13.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // the west stair up to it (ends 0.7 m inside the tier — THE RAMP RULE)
+                    { k: 'ramp', x0: 10, z0: -8.5, x1: 10, z1: -13.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },     // the east stair
+                    { k: 'rail', x0: -24, z0: -13.5, x1: -11.6, z1: -13.5 }, { k: 'rail', x0: 11.6, z0: -13.5, x1: 24, z1: -13.5 },   // the platform's edge rail (the grind)
+                    { k: 'plateau', x: -8, z: 6, r: 1.5, h: 4.4, edge: 0.15 },                                         // THE SIGNAL GANTRY (the tape — the door gun's)
                     { k: 'wall', x0: 2, z0: 16, x1: 12, z1: 16, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb ledge the cars park against
-                    { k: 'path', pts: [[0, 18], [0, 2], [0, -6], [0, -18]], w: 2.2 },                                 // the painted lane lift → tram
-                    { k: 'path', pts: [[-30, 0], [-16, 0], [-16, -6]], w: 2.0 },                                      // the tunnel's lane from the west wall
-                    { k: 'path', pts: [[30, 0], [16, 0], [16, -6]], w: 2.0 },                                         // … and to the east
+                    { k: 'path', pts: [[0, 17], [0, 12], [-3, 12], [-3, -0.5], [3, -0.5], [3, -10], [0, -10], [0, -17]], w: 2.2 },   // the painted lane lift → tram
+                    { k: 'path', pts: [[-21, 0], [-15, 0], [-15, -10]], w: 2.0 },                                                      // the tunnel's lane from the west gantry
+                    { k: 'path', pts: [[21, 0], [15, 0], [15, -10]], w: 2.0 },                                                         // … and from the east
                     /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE TWO GANTRIES — the tunnel doors stand 2.6 m up on freight gantries
-                       against the end walls (a door you climb to = an earned exit, R4), each up its own stair; THE BOOTH and the
-                       partitions break the bay door's sightlines (R3: from the lift you see one door, not four) */
-                    { k: 'plateau', x: -29, z: 0, w: 6, d: 8, h: 2.6, edge: 0.3 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
-                    { k: 'ramp', x0: -19.5, z0: 0, x1: -26.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.2 },   // its stair (L 7.2 ≥ 2.2 × 2.6; ends 0.7 m inside)
-                    { k: 'plateau', x: 29, z: 0, w: 6, d: 8, h: 2.6, edge: 0.3 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
-                    { k: 'ramp', x0: 19.5, z0: 0, x1: 26.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.2 },
-                    { k: 'rail', x0: -31.5, z0: -3.5, x1: -31.5, z1: 3.5 }, { k: 'rail', x0: 31.5, z0: -3.5, x1: 31.5, z1: 3.5 },   // the gantries' back rails (the grind)
-                    { k: 'wall', x0: -2.4, z0: 2.5, x1: 2.4, z1: 2.5, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // THE BOOTH between the lift and the tram
-                    { k: 'wall', x0: -12.5, z0: 14.5, x1: -12.5, z1: 17.5, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // the partition between the lift and THE RAMP's door
-                    { k: 'wall', x0: 13, z0: 7, x1: 17, z1: 10.5, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // the partition on the lift → east gantry line
-                    { k: 'wall', x0: -17, z0: 10.5, x1: -13, z1: 7, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // … and the west
-                    /* AREA CONTENT D4 (2026-09-20): THE PARAPETS — a concrete parapet round each gantry but its stair's mouth: the tunnel doors are seen from the gantry, not from the floor (R3) */
-                    { k: 'wall', x0: -27.0, z0: -3.6, x1: -27.0, z1: -1.5, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: -27.0, z0: 1.5, x1: -27.0, z1: 3.6, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },
-                    { k: 'wall', x0: -31.5, z0: -3.4, x1: -27.0, z1: -3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: -31.5, z0: 3.4, x1: -27.0, z1: 3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },
-                    { k: 'wall', x0: 27.0, z0: -3.6, x1: 27.0, z1: -1.5, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: 27.0, z0: 1.5, x1: 27.0, z1: 3.6, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },
-                    { k: 'wall', x0: 27.0, z0: -3.4, x1: 31.5, z1: -3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' }, { k: 'wall', x0: 27.0, z0: 3.4, x1: 31.5, z1: 3.4, h: 1.9, t: 0.6, key: 'urban:ConcreteStriped1c' },   // on the gantry's flat top (a wall's top is the ground UNDER it + h — on the edge blend it stood a metre low)
-                    { k: 'wall', x0: -14.2, z0: 7.75, x1: -9.8, z1: 9.75, h: 2.2, t: 0.6, key: 'urban:ConcreteStriped1c' },   // the partition on the stair door → THE RAMP line
+                       against the end walls (a door you climb to = an earned exit, R4), each up its own stair, now each in its own room */
+                    { k: 'plateau', x: -28.5, z: 0, w: 7, d: 12, h: 2.6, edge: 0.15 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
+                    { k: 'ramp', x0: -19.8, z0: 0, x1: -25.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // its stair (L 5.9 ≥ 2.2 × 2.6; ends 0.7 m inside)
+                    { k: 'plateau', x: 28.5, z: 0, w: 7, d: 12, h: 2.6, edge: 0.15 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
+                    { k: 'ramp', x0: 19.8, z0: 0, x1: 25.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'rail', x0: -30.6, z0: -4.4, x1: -27.6, z1: -4.4 }, { k: 'rail', x0: 27.6, z0: -4.4, x1: 30.6, z1: -4.4 },   // the gantries' side rails (the grind)
+                    /* (L6: the D4 parapets are gone — each gantry's own room keeps its door out of sight of the floor now (R3); a rail on the lip either side of the stair's mouth) */
+                    { k: 'rail', x0: -25.5, z0: -4.6, x1: -25.5, z1: -1.6 }, { k: 'rail', x0: -25.5, z0: 1.6, x1: -25.5, z1: 4.6 },
+                    { k: 'rail', x0: 25.5, z0: -4.6, x1: 25.5, z1: -1.6 }, { k: 'rail', x0: 25.5, z0: 1.6, x1: 25.5, z1: 4.6 },
                 ],
             },
             doors: [
@@ -36658,25 +36677,25 @@ const DOOR_HQ = {
                 /* THE TRAM: the rails in front of the platform, the car parked at the east end, lit and empty — the near weenie */
                 { key: 'track_bed',       x: -12, z: -9, face: 90 }, { key: 'track_bed', x: -4, z: -9, face: 90 }, { key: 'track_bed', x: 4, z: -9, face: 90 }, { key: 'track_bed', x: 12, z: -9, face: 90 },
                 { key: 'subway_cart',     x: 22.6, z: -9, face: 0 },   // THE TRAM (Z2: the Meshy cart, not the retired train_car proc)
-                { key: 'railing_1m',      x: -6, z: -12.6, face: 0 }, { key: 'railing_1m', x: 6, z: -12.6, face: 0 },   // THE PARK RULE's catalogue rail on the platform
+                { key: 'railing_1m',      x: -6, z: -13.6, face: 0 }, { key: 'railing_1m', x: 6, z: -13.6, face: 0 },   // THE PARK RULE's catalogue rail on the platform
                 { key: 'bare_bulb',       x: -14, z: -8, ceil: true }, { key: 'bare_bulb', x: 14, z: -8, ceil: true }, { key: 'bare_bulb', x: 0, z: 10, ceil: true }, { key: 'bare_bulb', x: 0, z: -14, ceil: true },
-                { key: 'evac_button',     x: 24.4, z: -14, face: 270, mount: 1.2 },                                    // on the hall's east wall, free-standing (a plan wall)
-                { key: 'radiation_sign',  x: -24.4, z: -14, face: 90, mount: 1.7 },
+                { key: 'evac_button',     x: 26.4, z: -10, face: 270, mount: 1.2 },                                    // on the hall's east wall, free-standing (a plan wall)
+                { key: 'radiation_sign',  x: -26.4, z: -10, face: 90, mount: 1.7 },
                 /* THE BAYS: the black cars, the tools, the ramp nobody takes */
                 { key: 'car_suv',         x: 6, z: 11, face: 0 }, { key: 'car_cop', x: 12, z: 11, face: 0 },
-                { key: 'quarter_pipe',    x: -10, z: 14.5, face: 0 },                                                  // THE PARK RULE's ramp, against the bays' south side
-                { key: 'traffic_barrel',  x: -13.5, z: 6, face: 90 },
-                { key: 'cardboard_boxes', x: 13.8, z: 6.2, face: 20 },
+                { key: 'quarter_pipe',    x: -5, z: 16.5, face: 0 },                                                  // THE PARK RULE's ramp, against the bays' south side
+                { key: 'traffic_barrel',  x: -9, z: 12.5, face: 90 },
+                { key: 'cardboard_boxes', x: 11.2, z: -2.2, face: 20 },   // in THE BOOTH
                 { key: 'traffic_cone',    x: 2.6, z: 14.4 }, { key: 'traffic_cone', x: 9.4, z: 14.4 },
                 { key: 'security_camera', x: 14.6, z: 16.6, face: 225, mount: 2.55 },
-                { key: 'fire_extinguisher', x: 24.5, z: -6, face: 270 },
+                { key: 'fire_extinguisher', x: 11.5, z: 1.4, face: 270 },
                 { key: 'floor_stain',     x: -6, z: 10 },
                 { key: 'paper_sheet',     x: 3, z: 16.6, y: 0.01, face: 40 },                                          // the motor pool's sign-out sheet: every car is out, every car is here
             ],
             agents: [],
             npcSpots: [
-                { x: -2.6, z: -14.2, face: 90, race: 'men in black', say: ['“The tram runs on the hour.” “It is on the hour.” “Then it has run.”', '“Badge.” “I have a badge.” “Everyone has a badge. That is the problem.”'] },
-                { x: 16, z: 4.5, face: 300, race: 'mad scientist', say: ['“Level seven is a rumour.” “The stair says seven.” “The stair is also a rumour. It is a very solid rumour.”'] },
+                { x: -4.6, z: -15, face: 90, race: 'men in black', say: ['“The tram runs on the hour.” “It is on the hour.” “Then it has run.”', '“Badge.” “I have a badge.” “Everyone has a badge. That is the problem.”'] },
+                { x: 16, z: 7.5, face: 300, race: 'mad scientist', say: ['“Level seven is a rumour.” “The stair says seven.” “The stair is also a rumour. It is a very solid rumour.”'] },
                 { x: -21.5, z: 2.4, face: 90, race: 'cowboy', say: ['“Came in from the hangar. Tunnel goes straight for a day and then it goes down.” “Down where?” “Here. This is where down is.”'] },
             ],
             onlineSpots: [],
@@ -36688,7 +36707,7 @@ const DOOR_HQ = {
                 '“The red light is not an emergency.” “What is it?” “The default.”',
                 '“P3.” “The panel stops at P1.” “The ramp does not.”',
             ],
-            spawn: { x: 3, z: 6, face: 0 },
+            spawn: { x: 3, z: 8, face: 0 },
         },
         /* ── SUB-LEVEL 7 · THE TEST CHAMBERS — the hub, the tower, the four chambers, the four departments ── */
         site_prebuilt_dumb_sublevel7: {
@@ -36697,40 +36716,83 @@ const DOOR_HQ = {
             kind: 'box', site: 'prebuilt_dumb', part: 'sublevel7',
             shell: hqBunkerShell({ w: 96, d: 72, h: 8.0, wallH: 8.0, plate: { x: 0, z: 34.8, y: 3.6 }, ceiling: 'urban:MetalSubwayGrill1a', ceilColor: 0x8a9096 }),
             terrain: {
+                /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT in concrete on map_layout_3.JPG — the hub and its spokes.
+                   THE HUB in the middle with THE TOWER; four spokes off it: north to room A (the blast door), south to room B (the
+                   stair up to the motor pool, jogged so the two never line up), west to the corridor where DREAM RESEARCH (room C)
+                   and CLONE RESEARCH (room D) open off its ends, east to THE VAULT GANTRY's stair (THE WAR ROOM). The four numbered
+                   chambers sit between the spokes, each off one by a short passage: 01 THE DROP (NW), 02 THE CATWALK (NE), 03 THE
+                   PIT (SW), 04 OBSERVATION (SE), whose deck runs east at 2.4 into room F (THE BUNKER's door). THE VENT: a narrow
+                   twisting shaft from chamber 01 to room A (the loop: hub ⇄ west spoke ⇄ 01 ⇄ vent ⇄ A ⇄ north spoke ⇄ hub), with
+                   side room 3 a dead end off it; side rooms 1, 2 and 4 are dead ends off room B, the east spoke and the west spoke. */
                 floor: 'urban:ConcreteStriped1b', cliff: 'urban:ConcreteStriped1c', path: 'urban:TileGeneric1a',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 77, loops: 3, wallKey: 'urban:ConcreteStriped1d',
-                       rooms: [{ id: 'hub', x: 0, z: 0, w: 26, d: 26 },
-                               { id: 'ch01', x: -30, z: -20, w: 22, d: 18 }, { id: 'ch02', x: 30, z: -20, w: 24, d: 18 },
-                               { id: 'ch03', x: -30, z: 20, w: 22, d: 18 },  { id: 'ch04', x: 30, z: 20, w: 24, d: 18 }] },
+                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:ConcreteStriped1d', rim: 0, forceGrow: -0.3 },
                 features: [
-                    { k: 'plateau', x: 0, z: 0, r: 1.7, h: 6.5, edge: 0.3 },                                            // THE TOWER at the hub's centre (the tape — the door gun's; the near weenie)
-                    /* CHAMBER 01 · THE DROP: the 3.5 m tier and its stair */
-                    { k: 'plateau', x: -30, z: -25, w: 14, d: 6, h: 3.5, edge: 0.35 },
-                    { k: 'ramp', x0: -36, z0: -15, x1: -36, z1: -22.7, w: 2.4, h0: 0, h1: 3.5, stairs: true, edge: 0.2 },   // ends 0.7 m inside the tier: the last tread within a climb before the edge overtakes it
-                    { k: 'rail', x0: -33, z0: -22.6, x1: -24, z1: -22.6 },
-                    /* CHAMBER 02 · THE CATWALK: two 4 m towers, the plank between them, one stair up */
-                    { k: 'plateau', x: 22, z: -25, w: 6, d: 6, h: 4.0, edge: 0.35 },
-                    { k: 'plateau', x: 38, z: -25, w: 6, d: 6, h: 4.0, edge: 0.35 },
-                    { k: 'deck', x0: 24.6, z0: -25, x1: 35.4, z1: -25, w: 1.6, y: 4.0 },
-                    { k: 'ramp', x0: 22, z0: -14, x1: 22, z1: -22.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, edge: 0.2 },
-                    /* AREA CONTENT D4 (2026-09-20): THE VAULT GANTRY — the war room's vault door stands 3 m up on the chamber's east wall
-                       (its far side is the war room's south gallery at 3.0), up a stair off the chamber floor (R4: a door you climb to) */
-                    { k: 'plateau', x: 45, z: -18, w: 6, d: 8, h: 3.0, edge: 0.3 },
-                    { k: 'ramp', x0: 35, z0: -16, x1: 42.7, z1: -16, w: 2.4, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },   // L 7.7 ≥ 2.2 × 3; ends 0.7 m inside the gantry (z −16: inside its z range, clear of the far tower)
+                    /* THE ROOMS */
+                    { k: 'space', x: 0, z: -5.5, w: 24, d: 13 },                        // THE HUB (drawn in two halves that overlap: its centre is THE TOWER, never the floor) …
+                    { k: 'space', x: 0, z: 6, w: 24, d: 12 },                           // … its south half
+                    { k: 'space', x: 0, z: -30, w: 10, d: 9 },                          // room A (the blast door, north)
+                    { k: 'space', x: 0, z: 30, w: 10, d: 9 },                           // room B (the stair up to the motor pool, south)
+                    { k: 'space', x: -42.5, z: -18, w: 9, d: 10 },                      // room C (DREAM RESEARCH's door)
+                    { k: 'space', x: -42.5, z: 18, w: 9, d: 10 },                       // room D (CLONE RESEARCH's door)
+                    { k: 'space', x: 42.5, z: -18.5, w: 9, d: 13 },                     // room E (THE VAULT GANTRY and its stair: THE WAR ROOM's door)
+                    { k: 'space', x: 42.5, z: 18, w: 9, d: 10 },                        // room F (the deck's east end: THE BUNKER's door)
+                    { k: 'space', x: -25, z: -24, w: 20, d: 18 },                       // CHAMBER 01 · THE DROP
+                    { k: 'space', x: 25, z: -24, w: 20, d: 18 },                        // CHAMBER 02 · THE CATWALK
+                    { k: 'space', x: -25, z: 24, w: 20, d: 18 },                        // CHAMBER 03 · THE PIT
+                    { k: 'space', x: 25, z: 24, w: 20, d: 18 },                         // CHAMBER 04 · OBSERVATION
+                    { k: 'space', x: 9, z: 29, w: 6, d: 6 },                            // side room 1 (a dead end off room B)
+                    { k: 'space', x: 31.5, z: 7, w: 7, d: 6 },                          // side room 2 (a dead end off the east spoke)
+                    { k: 'space', x: -12, z: -29, w: 4, d: 4 },                         // side room 3 (a dead end off the vent)
+                    { k: 'space', x: -33, z: -7, w: 6, d: 5 },                          // side room 4 (a dead end off the west spoke)
+                    /* THE SPOKES */
+                    { k: 'hall', pts: [[6, -12], [6, -19], [0, -19], [0, -26]], w: 3 },                 // the north spoke (jogged)
+                    { k: 'hall', pts: [[-6, 12], [-6, 19], [0, 19], [0, 26]], w: 3.5 },                 // the south spoke (jogged)
+                    { k: 'hall', pts: [[-12, 0], [-41, 0]], w: 3.5 },                                   // the west spoke …
+                    { k: 'hall', pts: [[-41, -13.5], [-41, 13.5]], w: 3 },                              // … and the west corridor, rooms C and D at its ends
+                    { k: 'hall', pts: [[12, 0], [39.75, 0], [39.75, -12]], w: 3.5 },                    // the east spoke, to THE VAULT GANTRY's stair
+                    /* the passages to the chambers and the side rooms */
+                    { k: 'hall', pts: [[-24, -1], [-24, -15.5]], w: 3 },                                // west spoke ⇄ chamber 01
+                    { k: 'hall', pts: [[-24, 1], [-24, 15.5]], w: 3 },                                  // west spoke ⇄ chamber 03
+                    { k: 'hall', pts: [[26, -1], [26, -15.5]], w: 3 },                                  // east spoke ⇄ chamber 02
+                    { k: 'hall', pts: [[22, 1], [22, 15.5]], w: 3 },                                    // east spoke ⇄ chamber 04
+                    { k: 'hall', pts: [[34.5, 18], [38.5, 18]], w: 3 },                                 // the deck ⇄ room F (at 2.4)
+                    { k: 'hall', pts: [[4.5, 29], [6.5, 29]], w: 3 },                                   // room B ⇄ side room 1
+                    { k: 'hall', pts: [[31.5, 1], [31.5, 4.5]], w: 3 },                                 // east spoke ⇄ side room 2
+                    { k: 'hall', pts: [[-33, -1], [-33, -5]], w: 3 },                                   // west spoke ⇄ side room 4
+                    /* THE VENT (narrow, twisting): chamber 01 ⇄ room A, side room 3 off it */
+                    { k: 'hall', pts: [[-15.5, -19], [-11, -19], [-11, -23], [-8, -23], [-8, -30], [-5.5, -30]], w: 2 },
+                    { k: 'hall', pts: [[-8.5, -29], [-10.5, -29]], w: 2 },
+                    /* THE TOWER at the hub's centre (the tape — the door gun's; the near weenie) */
+                    { k: 'plateau', x: 0, z: 0, r: 1.7, h: 6.5, edge: 0.15 },
+                    /* CHAMBER 01 · THE DROP: the 3.5 m tier along its north wall and its stair (the tier drawn 1 m into the walls: its lip is the wall's) */
+                    { k: 'plateau', x: -25, z: -30, w: 22, d: 8, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: -31, z0: -17.6, x1: -31, z1: -26.7, w: 2.4, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // ends 0.7 m inside the tier
+                    { k: 'rail', x0: -28.6, z0: -26.6, x1: -17, z1: -26.6 },
+                    /* CHAMBER 02 · THE CATWALK: two 4 m towers against its north wall, the plank between them, one stair up */
+                    { k: 'plateau', x: 18, z: -29, w: 8, d: 10, h: 4.0, edge: 0.15 },
+                    { k: 'plateau', x: 32, z: -29, w: 8, d: 10, h: 4.0, edge: 0.15 },
+                    { k: 'deck', x0: 21.6, z0: -29, x1: 28.4, z1: -29, w: 1.6, y: 4.0, over: true },   // over: the walker passes under it
+                    { k: 'ramp', x0: 18, z0: -17.1, x1: 18, z1: -24.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    /* AREA CONTENT D4 (2026-09-20): THE VAULT GANTRY — the war room's vault door stands 3 m up on the east wall (its far side is
+                       the war room's south gallery at 3.0), now in its own room at the east spoke's end: the stair climbs north to a landing,
+                       the landing turns east onto the gantry (R4: a door you climb to) */
+                    { k: 'plateau', x: 45, z: -18.5, w: 7, d: 16, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: 40, z: -25.5, w: 5, d: 7, h: 3.0, edge: 0.15 },   // the stair's landing (turns east onto the gantry)
+                    { k: 'ramp', x0: 39.75, z0: -12.5, x1: 39.75, z1: -23.2, w: 4, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     /* CHAMBER 03 · THE PIT: the bowl (walked down, climbed out) and the grind ledge on its lip */
-                    { k: 'dip', x: -30, z: 22, r: 6, h: 2.2 },
-                    { k: 'wall', x0: -37, z0: 13.5, x1: -23, z1: 13.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
-                    /* CHAMBER 04 · OBSERVATION: the 2.4 m deck behind the windows, its stair, its rail */
-                    { k: 'plateau', x: 36, z: 20, w: 8, d: 14, h: 2.4, edge: 0.35 },
-                    { k: 'ramp', x0: 26, z0: 20, x1: 32.7, z1: 20, w: 2.6, h0: 0, h1: 2.4, stairs: true, edge: 0.2 },
-                    { k: 'rail', x0: 32.5, z0: 14, x1: 32.5, z1: 26 },
-                    /* AREA CONTENT D4 (2026-09-20): the observation deck runs on to the east wall — the bunker's hotel door stands ON it (R4) */
-                    { k: 'plateau', x: 43.5, z: 18, w: 9, d: 8, h: 2.4, edge: 0.35 },   // overlaps the deck by a metre: two abutting rects leave a solid seam in a halls plan
+                    { k: 'dip', x: -25, z: 25, r: 6, h: 2.2 },
+                    { k: 'wall', x0: -32, z0: 17.8, x1: -18, z1: 17.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
+                    /* CHAMBER 04 · OBSERVATION: the 2.4 m deck along its east side behind the windows, its stair, its rail; AREA CONTENT D4
+                       (2026-09-20): the deck runs on east through a passage into room F — the bunker's hotel door stands ON it (R4) */
+                    { k: 'plateau', x: 31.5, z: 24, w: 9, d: 20, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 42, z: 18, w: 13, d: 12, h: 2.4, edge: 0.15 },   // overlaps the deck by half a metre (two abutting rects leave a seam)
+                    { k: 'ramp', x0: 19, z0: 24, x1: 27.7, z1: 24, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'rail', x0: 27.5, z0: 16, x1: 27.5, z1: 22.4 }, { k: 'rail', x0: 27.5, z0: 25.6, x1: 27.5, z1: 32 },
                     /* the painted lanes off the hub */
-                    { k: 'path', pts: [[0, 34], [0, 14]], w: 2.4 },
-                    { k: 'path', pts: [[-13, 0], [-46, 0]], w: 2.0 },
-                    { k: 'path', pts: [[13, 0], [46, 0]], w: 2.0 },
+                    { k: 'path', pts: [[0, 33], [0, 19], [-6, 19], [-6, 13]], w: 2.4 },
+                    { k: 'path', pts: [[-13, 0], [-41, 0]], w: 2.0 },
+                    { k: 'path', pts: [[13, 0], [39.75, 0], [39.75, -11]], w: 2.0 },
                 ],
             },
             doors: [
@@ -36760,33 +36822,33 @@ const DOOR_HQ = {
                 /* THE HUB: the desk under the tower, the feeds */
                 { key: 'steel_table',     x: -5, z: 8, face: 0 }, { key: 'crt_terminal', x: -5, z: 8, y: 0.76, face: 0 }, { key: 'clipboard_flat', x: -4.3, z: 7.6, y: 0.76, face: 15 },
                 { key: 'computer_chair_grey', x: -5, z: 9.2, face: 0 },
-                { key: 'monitor_stack',   x: -3, z: -12.5, face: 0 }, { key: 'monitor_stack', x: 3, z: -12.5, face: 0 },   // against the hub's north plan wall
+                { key: 'monitor_stack',   x: -3, z: -11.4, face: 0 }, { key: 'monitor_stack', x: 3, z: -11.4, face: 0 },   // against the hub's north plan wall
                 { key: 'warning_tape',    x: 0, z: 4, face: 0 },
                 { key: 'bare_bulb',       x: -8, z: -8, ceil: true }, { key: 'bare_bulb', x: 8, z: 8, ceil: true },
-                { key: 'security_camera', x: 12.5, z: -12.5, face: 225, mount: 2.55 },
+                { key: 'security_camera', x: 11.4, z: -11.4, face: 225, mount: 2.55 },
                 /* CHAMBER 01 */
                 { key: 'bare_bulb',       x: -30, z: -16, ceil: true },
-                { key: 'radiation_sign',  x: -40.5, z: -18, face: 90, mount: 1.7 },
-                { key: 'cardboard_boxes', x: -22, z: -13, face: 30 },
+                { key: 'radiation_sign',  x: -34.4, z: -19, face: 90, mount: 1.7 },
+                { key: 'cardboard_boxes', x: -17, z: -17, face: 30 },
                 /* CHAMBER 02 */
                 { key: 'bare_bulb',       x: 30, z: -16, ceil: true },
-                { key: 'railing_1m',      x: 38, z: -22.5, face: 0 },                                                   // the far tower's rail (the catalogue's)
+                { key: 'railing_1m',      x: 32, z: -24.6, face: 0 },                                                   // the far tower's rail (the catalogue's)
                 /* CHAMBER 03 */
                 { key: 'bare_bulb',       x: -30, z: 20, ceil: true },
-                { key: 'floor_stain',     x: -30, z: 22 },
-                { key: 'traffic_cone',    x: -36, z: 27 },
+                { key: 'floor_stain',     x: -25, z: 25 },
+                { key: 'traffic_cone',    x: -33, z: 31 },
                 /* CHAMBER 04 */
                 { key: 'bare_bulb',       x: 30, z: 20, ceil: true },
-                { key: 'observation_window', x: 32.6, z: 16.5, face: 270, mount: 1.6 }, { key: 'observation_window', x: 32.6, z: 23.5, face: 270, mount: 1.6 },   // on the deck's face, free-standing
-                { key: 'steel_table',     x: 37, z: 20, face: 270 }, { key: 'crt_terminal', x: 37, z: 20, y: 0.76, face: 270 }, { key: 'desk_lamp', x: 37.4, z: 21, y: 0.76, face: 200 },
-                { key: 'computer_chair_grey', x: 38.3, z: 20, face: 270 },
+                { key: 'observation_window', x: 26.4, z: 19, face: 270, mount: 1.6 }, { key: 'observation_window', x: 26.4, z: 29, face: 270, mount: 1.6 },   // on the deck's face, free-standing
+                { key: 'steel_table',     x: 32, z: 20, face: 270 }, { key: 'crt_terminal', x: 32, z: 20, y: 0.76, face: 270 }, { key: 'desk_lamp', x: 32.4, z: 21, y: 0.76, face: 200 },
+                { key: 'computer_chair_grey', x: 33.3, z: 20, face: 270 },
             ],
             agents: [],
             npcSpots: [
                 { x: 4, z: 6, face: 250, race: 'men in black', say: ['“Level seven.” “There is no level seven.” “Then we are not here, and you may proceed.”', '“The tower.” “Do not go up the tower.” “There is no stair.” “That is why.”'] },
                 { x: -24, z: -18, face: 90, race: 'mad scientist', say: ['“Chamber one. The subject climbs the stair and steps off the edge.” “Why?” “That is chamber one.”'] },
                 { x: 26, z: -16, face: 0, race: 'android', say: ['“The plank is rated for one.” “One what?” “One.”'] },
-                { x: 38, z: 24, face: 270, race: 'grey', say: ['“We observe.” “What?” “The chamber.” “It is empty.” “We observe that.”'] },
+                { x: 33, z: 28, face: 270, race: 'grey', say: ['“We observe.” “What?” “The chamber.” “It is empty.” “We observe that.”'] },
                 { x: -27, z: 16, face: 200, race: 'telepath', say: ['“Do not think about the pit.” “I was not.” “You are now. Everyone does. It is a very good pit.”'] },
             ],
             onlineSpots: [],
