@@ -372,3 +372,90 @@ from the paint pass, so the name is the guard). A model without vertex colours c
 RULE: a self-lit material whose colour lives in vertex colours takes this hook — never a bare white
 emissive again. character-creator.test.js pins it. Ship three-renderer.js to R2 + the bumped index.html.
 UNSEEN LIVE (RULE #1c): the officer's coat / hair against a native in a dark room at night (0.85 glow).
+
+## CHARACTER CREATOR rev 12 — THE CLOTHES (the jagged edges, the clipping, the hanging skirt and coat, the prints) (2026-09-30)
+mondo: "improve the character creator, especially the clothes models. Lots of weird jagged edges and clipping
+through the body. Want the clothes and other accessories to look as good and realistic as possible." Every
+outfit was captured POSED (idle + walk, close views of every hem, waist, collar, cuff and pocket, Playwright +
+swiftshader) and each defect traced to its cause; the poke counts are rays whose first hit is an under layer
+with the layer meant to cover it within 3 cm behind. All in three-renderer.js (`rebuildGeometry`), no data change.
+- **THE FILLED BASE** (`filledBase(K)`, cached per rebuild): each layer hangs on the relaxed skin with its
+  VALLEYS FILLED first (K passes of an outward-only normal relaxation) — an offset along the normals of a concave
+  crease (neck/shoulder, armpit, navel, groin, seat) folded over itself: 1-2 % of every shell's triangles were
+  FLIPPED (dark scratches, the layer under a jacket showing through as white slivers). The offset is now 3D along
+  the filled base's normals (the cloth used to keep the skin's height: a jacket z-fought the tank on the shoulders).
+- **THE LAYERS IN ORDER** (`orderOver`, `clearance`, `untangle`): every layer is pushed 3 mm past each layer worn
+  under it wherever both cover a vertex (order: gloves < bottoms < bottoms2 < shoes < top < top2 < belt < outer),
+  coverage from `cutVals` (every cut evaluated once, up front); the clearance is MEASURED (not the catalogue's
+  eases); `untangle` relaxes any triangle still facing away from the skin under it. **THE FLY** relaxes the
+  trousers' front; **THE COLLAR HUGS THE NECK** (a layer over another eases in to 7 mm within 3.5 cm(q) of the
+  neckline).
+- **THE RIMS ARE ONE FOLD** (`finishRims`): every collar, cuff and hem fold used to be a quad per edge with its
+  own inward direction (a sawtooth inner edge); the rim edges are joined into nodes by position, each with ONE
+  inward direction and normal, depth = the measured clearance − 1.5 mm. Every triangle is classified ONCE up front
+  (`CLS`, `part.triNbr` for the T-junction fillers of a refined garment).
+- **A LEVEL LINE** (`levelCut`): hems, waists, shoe tops and the belt's edges are cut at the CLOTH's height
+  (`q[4]` on every record, carried by `mix` / `split`), not the skin's — the cloth hangs up to 2 cm off its
+  skin's height over the belly and a skin-height cut came out as teeth (the hoodie's hem). The body under a
+  garment is cut with THAT garment's cloth height per skin vertex (`ct`, `bodyRec`); `levelVals` re-reads the
+  coverage once the cloth exists (a tee drawn a centimetre under its line came through the hoodie's side).
+- **THE CUT PATCH** (`cutPatch`): pockets, flaps and welts are the layer's own triangles clipped by a
+  superellipse in arc length round the body's axis (the thigh's for a side pocket), raised 3-4 mm with a puff and
+  a wall round the edge — the old fans were flat cards that cut into the body. (`surfacePatch` stays for the
+  tie knot and the bow tie.)
+- **THE HANGING SKIRT** (`buildLathe` + `hangFrame` / `hangLathe` / `collideSkirt` every frame): below the
+  waistband a lathe rides the HIPS (`rigid`) and the legs only PUSH it (the columns used to ride the legs and
+  linear skinning pulled a V up between the spread legs of the idle stance); folds ripple every hem (`folds`).
+  The coat, trench and parka shells stop at the hips (`hem` 0.50) and a TAIL lathe hangs from there (`tail`,
+  open front `gapW`, the edges turned in, `flush` under the shell's hem, `noRim` on the shell's hem).
+- **UNDER / OVER a lathe**: a skirt under a coat is held 6 mm inside it down to 1.2 cm(q) under its hem, with a
+  3 mm-off-the-skin floor (`map0`), and widens as a cone below; the coat's fold over the lathe is held to 5 mm. A
+  dress's skirt starts 1.2 cm(q) up its bodice, 4 mm off the trousers under it; the under layers are cleared AS
+  DRAWN (every triangle sampled ~3 mm apart, each sample lifting its NEAREST grid point — lifting the four round
+  each vertex stepped the ring on the waist's slope).
+- **A TOP TUCKED INTO A SKIRT** (`tuckT`): every top's hem and every skirt's waist are 0.565, so the tank ended
+  exactly at the lathe's top ring 9 mm(q) off the skin — a peach strip round the back. A top reaching the
+  waistband runs on 2 cm(q) inside the skirt and the waistband HUGS it (`hug` 1.5 mm(q), `hugBuf`). A copy of
+  the def (the defs are shared).
+- **THE LATHE'S GRID**: empty bins take the straight line between the bins either side (`fillRuns`; the old fill
+  copied the left one along the run — a plateau then a cliff, a bump at the back of every waistband); the seam
+  column's normal no longer reads column −2 when there is no back split (`half` −1: a NaN normal — a black sliver
+  at the top of every skirt's front seam, a tilted one down it).
+- **THE COAT HANGS** (`hangBack`, the coat, the trench, the parka — the rows with a `tail`): the shell rode the skin into
+  the small of the back and the seat's cleft (a long coat wrapped each buttock; a print on it came out as a heart).
+  Each 5 mm row from 0.47 to 0.82 is pushed out, radially round the pelvis axis only, to a TAUT LINE: the row's convex
+  hull (all of it within 60° of the back, eased out by 90°) and down each of 96 columns the least concave line over the
+  rows (85 % of it, eased out from 125° round the back), pinned at the belt (`beltBand.t`). What moved within 60° of the
+  back is left out of `untangle` (it bridged the notch over the join). Every patch there that ends up facing IN or on
+  edge is relaxed over its new surface with three rings round it until every triangle faces out (bright and dark specks,
+  a crack over the tail's join); a whole-back relaxation was tried and tore every print (the uv stayed with the skin).
+  Flipped triangles on the long coats stay at the old counts (coat 21, trench 25, parka 18 of ~15k).
+- **A COAT HANGS FROM THE HIPS** (`hipsBand`, `hipsBack`, `hipsTop`): the shell's back weights (and the trim's) are all
+  the hips' up to 2 cm(q) over its hem, eased back to the skin's by 8 cm(q), over the back half only (the front panels
+  follow the thighs); the tail's top band rides the hips too and sits 2 mm(q) inside the shell (`flush`), so the two meet
+  in any pose. A vertex an arm bone owns is left alone (the cuff tore off the wrist in a walk).
+- **THE PRINTS** (stripes, plaid, hearts…): every cloth layer's uv frame is read off its OWN cloth (`clothFrame`; the
+  skin's, FR0, is the fallback) — the base vertices kept the skin's uv while the cut vertices were re-projected from
+  the cloth, and a print kinked along every cut and tore over the fly, the seat and a hung back. The tops and the belt
+  use `clothRegionTop` (one torso cylinder down to 0.46: the jacket's band switched to the leg cylinders at 0.565).
+  A polygon across two cylinders is CUT along the line between them (`frameLines` in `emit`), a polygon across the
+  wrap seam is cut at the angle π (`fixClothUv` returns the pieces) — both used to switch along triangle edges, torn
+  into teeth. `limbUv` rounds every joint of a limb's polyline into an arc of 4 R (`limbPath`; `limbNearest`, the arm's
+  capsule, keeps the sharp polyline): v jumped by 2 r tan(θ/2) across each elbow in a staircase. The torso and the legs
+  take v = the HEIGHT (`level`: plaid runs level round a shirt, across a seat), every limb's print stands upright
+  (`flipU` / `flipV` — hearts stood on their heads on sleeves, trousers and skirts), and a cylinder whose turn is near a
+  whole half metre (torso 0.94 m, legs 0.53 m) is scaled to it (`uvS`): every fabric tile is 1/16 … 1/6 m, so the print
+  meets itself at the back and the inseam. The lathes (skirts, the coat's tail, a dress's skirt) wear the torso's uv, so
+  a tail and a dress's skirt run on from the body's print. The arms keep a seam under the arm, the trousers at the fly
+  and the seat. Still: a cylinder over the flat top of the shoulder stretches a plaid's lines there (as before).
+- **THE TRENCH'S BELT** is one level loop: the layer's triangles cut by the belt's plane, the outermost crossing per
+  3.75° round the pelvis axis (two halves met at x = ±0.144 and stood off the hip as flags; nearest-vertex samples made
+  the edges wave). Every ribbon (belt, plackets, sandal straps) takes the frame's uv at both edges (a 4 cm belt had its
+  weave squeezed into streaks), and its walls turn from the side toward the top (the belt's lower wall was a black line).
+- **BUTTONS** are domed (`disc(…, dome)`: the rim 30 % lower, normals leaning out) — a flat dark button read as a hole.
+Checked posed (idle, walk 0.3) front and back for every outfit and every print above. Probe: a Playwright page on the
+creator (swiftshader), `/shots` with the look and the views; a same-look `update` does not rebuild, so every capture
+first nudges `width` by 3e-6.
+Results (posed): trousers through a dress 0 pokes (idle, walk 0.3 / 0.8, front + back); tee through a hoodie 0;
+tank through a skirt 0 (four sides, idle + walk); the skirt's waistband top row |Δ²| mean 0.2 mm in walk.
+Not done: a skirt worn OVER trousers (bottoms2) still stands its big ease (2 cm(q)) off the body at the waist.
