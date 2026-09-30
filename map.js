@@ -47,6 +47,10 @@
             });
 
             if (pageId === 'mainMenuPage') {
+                /* THE SQUAD DESK (2026-09-30): the menu drops a squad picked for a launch that never happened; the first
+                   door reads NEW GAME / CONTINUE */
+                window._ewSquad = null;
+                try { if (typeof window._mmRefreshPlayLabel === 'function') window._mmRefreshPlayLabel(); } catch (e) {}
                 /* THE ARRIVAL WARM (2026-09-19): the building's first downloads start behind the menu —
                    2026-09-20: AFTER the menu's own door leaf and car have landed (they used to share the
                    connection with the warm and land 70 s in — the user saw a menu with no door), else 8 s in;
@@ -139,8 +143,10 @@
                 /* THE INTAKE (2026-09-21): a profile with no agent on file creates one FIRST — the creator over the
                    menu; ENLIST files the officer (a D.O.O.R. agent) and Play resumes into the building */
                 if (!opts.enlisted && _hqIntakeNeeded()) { _hqIntakeOpen(); return; }
+                _storyMarkStarted();   // NEW GAME → CONTINUE from here on (_mmRefreshPlayLabel)
                 if (window._hqEnter({ from: 'play' })) return;
             }
+            _storyMarkStarted();
             playSfx('uiButtonConfirm');
             /* the classic route (?nohq / ew_hq='off'): the hub page with its VS CPU row */
             _showPlayHubPage({ classic: true });
@@ -152,15 +158,18 @@
            'all'); PRACTICE is VS CPU on Arena + Team Deathmatch only, the whole roster
            (_goToPractice). The old play hub page is the ONLINE hub now; its VS CPU row shows
            only on the classic route. */
+        let _hubClassic = false;
         function _showPlayHubPage(opts) {
             opts = opts || {};
+            _hubClassic = !!opts.classic;
             state.gameState = GS.MODE_SELECT;
             try {
                 const logo = document.getElementById('playHubLogo'), sub = document.getElementById('playHubSub'), cpu = document.getElementById('playHubVsCpu');
-                if (logo) logo.textContent = opts.classic ? 'PLAY' : 'ONLINE';
-                if (sub) sub.textContent = opts.classic ? 'Choose your path' : 'PvP over the wire — every vessel unlocked';
+                if (logo) logo.textContent = opts.classic ? 'PLAY' : 'ONLINE PVP';
+                if (sub) sub.textContent = opts.classic ? 'Choose your path' : 'Quick Play or a Friendly Match';
                 if (cpu) cpu.style.display = opts.classic ? '' : 'none';
             } catch (e) {}
+            try { const hs = document.getElementById('playHubSquad'); if (hs) hs.innerHTML = opts.classic ? '' : ((window._ewSquad && window._ewSquad.mode === 'online') ? window._sqStripHtml(window._ewSquad, { change: true }) : ''); } catch (e) {}
             try {
                 var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
                 var eloTag = document.getElementById('playHubEloTag');
@@ -171,23 +180,17 @@
             _showTitlePage('playHubPage');
         }
         window._goToOnline = function () {
-            playSfx('uiButtonConfirm');
             _hqHome = false;   // online is never the building's; a lobby's Back comes to this hub, a match's result to the menu
-            _showPlayHubPage({ classic: false });
+            /* THE SQUAD DESK (2026-09-30): the team first, then the hub (Quick Play / Friendly) */
+            _openSquadDesk('online', 'hub');
         };
-        /* PRACTICE: the classic VS CPU desk restricted to the two modes (match-select.js reads
-           pre.modes on the FULL variant); nothing of the building rides along (no pool, no Code
-           Red, no site pin); BACK and the result overlay return to the main menu (no _hqHome). */
+        /* PLAY VS CPU (was PRACTICE): the team first (THE SQUAD DESK), then the classic VS CPU desk restricted to the two
+           modes (match-select.js reads pre.modes on the FULL variant) with the squad's size — _sqToDesk; nothing of the
+           building rides along (no pool, no Code Red, no site pin); BACK returns to the team pick, the result overlay to
+           the main menu (no _hqHome). */
         window._goToPractice = function () {
-            playSfx('uiButtonConfirm');
             _hqHome = false;
-            state.gameState = GS.MODE_SELECT;
-            window._msCpuOnly = true;
-            window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): practice = the whole roster
-            window._hqPreselect = { practice: true, modes: PRACTICE_MODES.slice(), delta: true, doorLabel: 'PRACTICE' };
-            window._hqCpuPool = null;
-            window._hqCodeRedRun = null;
-            _showTitlePage('modePage');
+            _openSquadDesk('cpu');
         };
         const PRACTICE_MODES = ['arena', 'tdm'];
         window.PRACTICE_MODES = PRACTICE_MODES;
@@ -195,11 +198,402 @@
         window._goToModeSelector = window._goToPlayHub;
 
         window._playHubBack = function() {
+            /* THE SQUAD DESK (2026-09-30): the online hub steps back to the team pick it came through */
+            if (!_hubClassic && _sqArmed('online')) { _openSquadDesk('online', 'hub'); return; }
             playSfx('uiButtonConfirm');
             window._ewRosterScope = 'owned';   // THE ROSTER LOCK: the whole roster is Online's / Practice's alone — the menu's screens field what you own
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
         };
+
+        /* ══ THE SQUAD DESK (2026-09-30, the user: "I dont want players to get into a lobby and then spend five minutes
+           assembling their teams, they should already have them ready to go so they can hop right into queue") ══════════
+           PLAY VS CPU and ONLINE PVP open #squadDeskPage first: the profile's saved teams (the Party Builder's archive,
+           profile.teamPresets) as cards. A team of more than SQ_DEPLOY vessels opens THE PICK (choose 4 — the last pick
+           per team is remembered as preset.lastPick); no team on file forges the first one (the standalone forge opens on
+           a new sheet and SAVE brings you back here — party-builder.js reads window._ewForgeOpen / _ewForgeReturn). The
+           pick is window._ewSquad ({ mode, teamId, name, slots }) — UI-only, never on `state`: VS CPU carries it into the
+           practice desk (_hqPreselect.squad → _msConfirm seats it and skips the builder), Online carries it into the
+           lobby (online.js copies it to NET._squad at room-full and locks it in by itself — no builder, no lobby wait).
+           Online is always 4v4 (a team under 4 cannot queue); VS CPU fields up to 4 (a smaller team plays NvN). The
+           main menu drops the pick (_showTitlePage), so a squad never leaks into a later launch. */
+        const SQ_DEPLOY = 4;
+        let _sqMode = 'online';   // 'online' | 'cpu'
+        let _sqNext = 'hub';      // online: 'hub' | 'quickplay' | 'friendly'
+        let _sqFocusId = null;    // the focused card's team id (keys + the new-team highlight)
+        let _sqNewId = null;      // the team just forged — stamped NEW on the way back
+        let _sqPick = null;       // THE PICK: { preset, chosen: [slot index…] }
+        let _sqBusy = false;      // the deploy beat is playing
+        window._ewSquad = null;
+        const _sqEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        function _sqPresets() {
+            const p = _hqProfile();
+            const list = (p && Array.isArray(p.teamPresets)) ? p.teamPresets.filter(t => t && Array.isArray(t.slots) && t.slots.length) : [];
+            return list.slice().sort((a, b) => String(b.lastUsed || b.createdAt || '').localeCompare(String(a.lastUsed || a.createdAt || '')));
+        }
+        function _sqNeed() { return _sqMode === 'online' ? SQ_DEPLOY : 1; }
+        function _sqRaceLabel(s) {
+            try { if (typeof getRaceLabel === 'function') { const l = getRaceLabel(s.race || '', s.gender); if (l) return l; } } catch (e) {}
+            try { if (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[s.race] && RACE_PROFILES[s.race].label) return RACE_PROFILES[s.race].label; } catch (e) {}
+            return String(s.race || 'Unit').replace(/\b\w/g, c => c.toUpperCase());
+        }
+        /* a slot's face: the 128×128 portrait when the vessel has one (cover), else the map sprite (contain) */
+        function _sqFace(s, extra) {
+            let url = '', portrait = false;
+            try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male' }) || ''; portrait = !!url; } } catch (e) {}
+            if (!url) { try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl(s.race || 'homosapien', s.gender || 'male', UNIT_CLASS) || ''; } catch (e) {} }
+            return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i></span>`;
+        }
+        window._sqFaceHtml = s => _sqFace(s || {});   // the ready room (online.js) draws the same faces
+        /* the squad strip (online hub / quick play / the ready room): faces + the team name (+ CHANGE) */
+        window._sqStripHtml = function (sq, opts) {
+            opts = opts || {};
+            if (!sq || !Array.isArray(sq.slots) || !sq.slots.length) return '';
+            return `<div class="sq-strip">`
+                + `<div class="sq-strip-faces">${sq.slots.map((s, i) => `<span class="sq-strip-slot" style="--i:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">${_sqFace(s)}</span>`).join('')}</div>`
+                + `<div class="sq-strip-text"><span class="sq-strip-k">SQUAD</span><b>${_sqEsc(sq.name || 'Team')}</b></div>`
+                + (opts.change ? `<button class="sq-strip-change" onclick="window._sqChange()">Change</button>` : '')
+                + `</div>`;
+        };
+        window._sqChange = function () {
+            /* CHANGE from Quick Play mid-search leaves the queue first (the search must not run on behind the desk) */
+            try { const qs = document.getElementById('lobbyQueueSearching'); if (qs && qs.style.display === 'block' && typeof window.lobbyLeaveQueue === 'function') window.lobbyLeaveQueue(); } catch (e) {}
+            _openSquadDesk(_sqMode === 'cpu' ? 'cpu' : 'online', _sqNext || 'hub');
+        };
+        /* armed = a squad picked on the desk for THIS kind of launch */
+        function _sqArmed(mode) { const s = window._ewSquad; return !!(s && s.mode === mode && Array.isArray(s.slots) && s.slots.length); }
+        window._sqArmed = _sqArmed;
+
+        function _openSquadDesk(mode, next) {
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _sqMode = mode === 'cpu' ? 'cpu' : 'online';
+            _sqNext = next || (_sqMode === 'online' ? 'hub' : null);
+            _sqBusy = false;
+            window._ewRosterScope = 'all';   // THE ROSTER LOCK: both battle doors field the whole roster
+            state.gameState = GS.MODE_SELECT;
+            _sqPickClose(true);
+            _sqRender();
+            _showTitlePage('squadDeskPage');
+            const page = document.getElementById('squadDeskPage');
+            if (page) { page.classList.remove('sq-enter'); void page.offsetWidth; page.classList.add('sq-enter'); }
+        }
+        window._openSquadDesk = _openSquadDesk;
+
+        function _sqRender() {
+            const body = document.getElementById('sqBody');
+            if (!body) return;
+            const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
+            const online = _sqMode === 'online';
+            if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
+            if (sub) sub.textContent = online ? 'Online matches are 4v4. Pick the team you queue with.' : 'Pick a team, then pick the map.';
+            const presets = _sqPresets();
+            const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
+            if (count) count.innerHTML = presets.length ? `<b>${presets.length}</b> / ${max} TEAMS` : '';
+            if (foot) foot.innerHTML = presets.length
+                ? '<span><kbd>←</kbd><kbd>→</kbd> Select</span><span><kbd>Enter</kbd> Deploy</span><span><kbd>Esc</kbd> Back</span>'
+                : '<span><kbd>Enter</kbd> Build a team</span><span><kbd>Esc</kbd> Back</span>';
+            if (!presets.length) {
+                _sqFocusId = null;
+                body.innerHTML = `<div class="sq-empty">`
+                    + `<div class="sq-empty-ring"><span>+</span></div>`
+                    + `<div class="sq-empty-title">No teams on file</div>`
+                    + `<div class="sq-empty-text">Build your first team to play. It is saved to your profile, ready for every match after this one.</div>`
+                    + `<button class="sq-cta sq-cta-big" data-sq-new>Build Your First Team</button>`
+                    + `</div>`;
+                return;
+            }
+            const need = _sqNeed();
+            const ok = t => t.slots.length >= need;
+            if (!_sqFocusId || !presets.some(t => t.id === _sqFocusId)) _sqFocusId = (_sqNewId && presets.some(t => t.id === _sqNewId)) ? _sqNewId : ((presets.find(ok) || presets[0]).id);
+            let html = '<div class="sq-grid">';
+            presets.forEach((t, k) => {
+                const n = t.slots.length, locked = !ok(t), over = n > SQ_DEPLOY;
+                const cls = ['sq-card', locked ? 'is-locked' : '', t.id === _sqFocusId ? 'is-focus' : '', t.id === _sqNewId ? 'is-new' : ''].filter(Boolean).join(' ');
+                const when = t.lastUsed ? new Date(t.lastUsed) : null;
+                html += `<div class="${cls}" role="button" tabindex="0" data-sq-team="${_sqEsc(t.id)}" style="--i:${k}">`
+                    + `<span class="sq-card-sheen"></span>`
+                    + (t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
+                    + `<div class="sq-card-top"><span class="sq-card-name">${_sqEsc(t.name || 'Team')}</span><span class="sq-card-n">${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}</span></div>`
+                    + `<div class="sq-card-faces">${t.slots.slice(0, 8).map((s, i) => `<span class="sq-card-slot${i >= SQ_DEPLOY && over ? ' is-bench' : ''}" style="--j:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">${_sqFace(s)}</span>`).join('')}</div>`
+                    + `<div class="sq-card-foot">`
+                    + (locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play online</span>`
+                        : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
+                        : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
+                    + `<span class="sq-card-edit" role="button" tabindex="0" data-sq-edit="${_sqEsc(t.id)}">Edit</span>`
+                    + `</div></div>`;
+            });
+            if (presets.length < max) html += `<div class="sq-card sq-card-new" role="button" tabindex="0" data-sq-new style="--i:${presets.length}"><span class="sq-card-plus">+</span><span class="sq-card-name">New Team</span></div>`;
+            html += '</div>';
+            body.innerHTML = html;
+        }
+
+        function _sqFocusCard(id, scroll) {
+            _sqFocusId = id;
+            document.querySelectorAll('#sqBody .sq-card[data-sq-team]').forEach(c => c.classList.toggle('is-focus', c.getAttribute('data-sq-team') === id));
+            const el = document.querySelector(`#sqBody .sq-card[data-sq-team="${CSS.escape(id)}"]`);
+            if (el && scroll) { try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
+        }
+        function _sqCardEl(id) { return document.querySelector(`#sqBody .sq-card[data-sq-team="${CSS.escape(id)}"]`); }
+        function _sqBump(el, cls) { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+        function _sqChoose(id) {
+            if (_sqBusy) return;
+            const preset = _sqPresets().find(t => t.id === id);
+            if (!preset) return;
+            const el = _sqCardEl(id);
+            _sqFocusCard(id);
+            if (preset.slots.length < _sqNeed()) { try { playSfx('uiError'); } catch (e) {} _sqBump(el, 'sq-shake'); return; }
+            if (preset.slots.length > SQ_DEPLOY) { _sqPickOpen(preset); return; }
+            _sqDeploy(preset, preset.slots.map((_, i) => i));
+        }
+
+        /* ── THE PICK: a team of more than 4 chooses who crosses (order = the order on the sheet) ── */
+        function _sqPickOpen(preset) {
+            const n = preset.slots.length;
+            let chosen = Array.isArray(preset.lastPick) ? preset.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n) : [];
+            chosen = Array.from(new Set(chosen)).slice(0, SQ_DEPLOY);
+            if (chosen.length !== SQ_DEPLOY) chosen = preset.slots.map((_, i) => i).slice(0, SQ_DEPLOY);
+            _sqPick = { preset, chosen };
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            const host = document.getElementById('sqPick');
+            if (!host) return;
+            host.innerHTML = `<div class="sq-pick-scrim" data-sq-pick-close></div>`
+                + `<div class="sq-pick-panel">`
+                + `<div class="sq-pick-head"><div><div class="sq-kicker">${_sqEsc(preset.name || 'Team')}</div><div class="sq-pick-title">Choose ${SQ_DEPLOY} to Deploy</div></div>`
+                + `<div class="sq-pick-count"><b id="sqPickN">0</b><span>/ ${SQ_DEPLOY}</span></div></div>`
+                + `<div class="sq-pick-grid">${preset.slots.map((s, i) => `<div class="sq-tile" role="button" tabindex="0" data-sq-tile="${i}" style="--i:${i}">`
+                    + `<div class="sq-tile-art">${_sqFace(s)}</div>`
+                    + `<div class="sq-tile-name">${_sqEsc(s.unitName || _sqRaceLabel(s))}</div>`
+                    + `<div class="sq-tile-race">${_sqEsc(_sqRaceLabel(s))}</div>`
+                    + `<span class="sq-tile-key">${i + 1}</span><span class="sq-tile-badge"></span></div>`).join('')}</div>`
+                + `<div class="sq-pick-foot"><span class="sq-pick-hint"><kbd>1</kbd>–<kbd>${Math.min(9, n)}</kbd> Toggle · <kbd>Enter</kbd> Deploy · <kbd>Esc</kbd> Cancel</span>`
+                + `<button class="sq-ghost" data-sq-pick-close>Cancel</button><button class="sq-cta" data-sq-pick-go>Deploy</button></div>`
+                + `</div>`;
+            host.classList.add('is-open');
+            host.setAttribute('aria-hidden', 'false');
+            _sqPickPaint(null);
+        }
+        function _sqPickPaint(changed) {
+            if (!_sqPick) return;
+            const host = document.getElementById('sqPick');
+            if (!host) return;
+            host.querySelectorAll('.sq-tile').forEach(t => {
+                const i = parseInt(t.getAttribute('data-sq-tile'), 10);
+                const k = _sqPick.chosen.indexOf(i);
+                t.classList.toggle('is-on', k >= 0);
+                const b = t.querySelector('.sq-tile-badge');
+                if (b) b.textContent = k >= 0 ? String(k + 1) : '';
+                if (i === changed) _sqBump(t, k >= 0 ? 'sq-pop' : 'sq-drop');
+            });
+            const nEl = document.getElementById('sqPickN');
+            if (nEl) { nEl.textContent = String(_sqPick.chosen.length); if (changed != null) _sqBump(nEl, 'sq-pop'); }
+            const go = host.querySelector('[data-sq-pick-go]');
+            if (go) { go.disabled = _sqPick.chosen.length !== SQ_DEPLOY; go.classList.toggle('is-ready', _sqPick.chosen.length === SQ_DEPLOY); }
+            host.querySelector('.sq-pick-panel')?.classList.toggle('is-full', _sqPick.chosen.length === SQ_DEPLOY);
+        }
+        function _sqPickToggle(i) {
+            if (!_sqPick || !_sqPick.preset.slots[i]) return;
+            const at = _sqPick.chosen.indexOf(i);
+            if (at >= 0) _sqPick.chosen.splice(at, 1);
+            else if (_sqPick.chosen.length >= SQ_DEPLOY) {
+                try { playSfx('uiError'); } catch (e) {}
+                const t = document.querySelector(`#sqPick .sq-tile[data-sq-tile="${i}"]`);
+                _sqBump(t, 'sq-shake');
+                _sqBump(document.getElementById('sqPickN'), 'sq-shake');
+                return;
+            } else _sqPick.chosen.push(i);
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            _sqPickPaint(i);
+        }
+        function _sqPickClose(silent) {
+            const host = document.getElementById('sqPick');
+            if (host) { host.classList.remove('is-open'); host.setAttribute('aria-hidden', 'true'); if (silent) host.innerHTML = ''; }
+            if (_sqPick && !silent) { try { playSfx('uiCursorMove'); } catch (e) {} }
+            _sqPick = null;
+        }
+        function _sqPickGo() {
+            if (!_sqPick) return;
+            if (_sqPick.chosen.length !== SQ_DEPLOY) { try { playSfx('uiError'); } catch (e) {} _sqBump(document.getElementById('sqPickN'), 'sq-shake'); return; }
+            const preset = _sqPick.preset, idx = _sqPick.chosen.slice().sort((a, b) => a - b);
+            _sqPickClose(false);
+            _sqDeploy(preset, idx);
+        }
+
+        /* ── THE DEPLOY: file the squad, play the beat (the faces slam into a row + SQUAD READY), then move on ── */
+        function _sqDeploy(preset, idx) {
+            if (_sqBusy) return;
+            _sqBusy = true;
+            const slots = idx.map(i => JSON.parse(JSON.stringify(preset.slots[i])));
+            window._ewSquad = { mode: _sqMode, teamId: preset.id, name: preset.name || 'Team', slots };
+            try {
+                const p = _hqProfile(), pi = window.ProfileSystem && window.ProfileSystem.getActiveProfileIndex();
+                const tp = p && Array.isArray(p.teamPresets) ? p.teamPresets.find(t => t.id === preset.id) : null;
+                if (tp && pi != null) {
+                    tp.lastUsed = new Date().toISOString();
+                    if (preset.slots.length > SQ_DEPLOY) tp.lastPick = idx.slice();
+                    window.ProfileSystem.saveProfile(pi, p);
+                }
+            } catch (e) { console.warn('[SQUAD] the pick could not be filed', e); }
+            _sqNewId = null;
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.7 }); } catch (e) {}
+            const el = _sqCardEl(preset.id);
+            if (el) _sqBump(el, 'sq-chosen');
+            const flash = document.getElementById('sqFlash');
+            if (flash) {
+                flash.innerHTML = `<div class="sq-flash-row">${slots.map((s, i) => `<span class="sq-flash-slot" style="--i:${i}">${_sqFace(s)}</span>`).join('')}</div>`
+                    + `<div class="sq-flash-name">${_sqEsc(preset.name || 'Team')}</div><div class="sq-flash-stamp">Squad Ready</div>`;
+                _sqBump(flash, 'is-on');
+            }
+            setTimeout(() => {
+                _sqBusy = false;
+                if (flash) flash.classList.remove('is-on');
+                if (_sqMode === 'cpu') _sqToDesk();
+                else if (_sqNext === 'quickplay') window._goToQuickPlay();
+                else if (_sqNext === 'friendly') window._goToFriendlyMatch();
+                else _showPlayHubPage({ classic: false });
+            }, 900);
+        }
+        /* VS CPU: the practice desk with the squad on it — the team size is the squad's (the desk shows it read-only) */
+        function _sqToDesk() {
+            const sq = window._ewSquad;
+            state.gameState = GS.MODE_SELECT;
+            window._msCpuOnly = true;
+            window._ewRosterScope = 'all';
+            window._hqPreselect = { practice: true, modes: PRACTICE_MODES.slice(), delta: true, doorLabel: 'PLAY VS CPU',
+                teamSize: Math.min(SQ_DEPLOY, sq.slots.length), squad: { name: sq.name, n: Math.min(SQ_DEPLOY, sq.slots.length) } };
+            window._hqCpuPool = null;
+            window._hqCodeRedRun = null;
+            _showTitlePage('modePage');
+        }
+        /* the forge from the desk: a new sheet (or a team to edit); SAVE / BACK come back to the desk */
+        function _sqForge(teamId) {
+            if (_sqBusy) return;
+            window._ewForgeReturn = { mode: _sqMode, next: _sqNext };
+            window._ewForgeOpen = teamId ? { edit: teamId } : { startNew: true };
+            window._goToTeamBuilder();
+        }
+        window._ewForgeSaved = function (id) {
+            if (!window._ewForgeReturn) return false;
+            if (id) { _sqNewId = id; _sqFocusId = id; }
+            window._teamBuilderBack();
+            return true;
+        };
+        window._squadDeskBack = function () {
+            if (_sqBusy) return;
+            if (_sqPick) { _sqPickClose(false); return; }
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            window._ewSquad = null;
+            window._ewRosterScope = 'owned';
+            state.gameState = GS.MAIN_MENU;
+            window._hqReturnOrMenu();
+        };
+
+        /* ── SEATING: the squad onto a seat (the forge's LOAD, map.js side) — VS CPU's seat 1, online's own seat ── */
+        window._ewApplySquad = function (seat, sq) {
+            sq = sq || window._ewSquad;
+            if (!sq || !Array.isArray(sq.slots) || !sq.slots.length) return false;
+            const n = Math.max(1, Math.min(sq.slots.length, CONFIG.teamSize || sq.slots.length));
+            const builds = [], names = [], metas = [], los = [];
+            for (let i = 0; i < n; i++) {
+                const s = sq.slots[i] || {};
+                builds.push(UNIT_CLASS);   // THE JOBS REMOVAL: every member is the one neutral class
+                names.push((typeof sanitizeUnitName === 'function') ? sanitizeUnitName(s.unitName, getDefaultUnitName(UNIT_CLASS)) : (s.unitName || getDefaultUnitName(UNIT_CLASS)));
+                const meta = { race: s.race || 'homosapien', gender: s.gender || 'male', zodiac: s.zodiac || 'aries' };
+                try { meta.appearance = (typeof normalizeCharacterAppearance === 'function') ? (normalizeCharacterAppearance(s.appearance) || null) : (s.appearance || null); } catch (e) { meta.appearance = null; }
+                if (Array.isArray(s.customSpells) && s.customSpells.length) meta.customSpells = s.customSpells.slice();
+                if (s.spellUpgrades && typeof s.spellUpgrades === 'object' && Object.keys(s.spellUpgrades).length) meta.spellUpgrades = JSON.parse(JSON.stringify(s.spellUpgrades));
+                metas.push(meta);
+                const lo = emptyLoadout();
+                if (s.loadout && s.loadout.items) Object.assign(lo.items || (lo.items = {}), s.loadout.items);
+                if (s.loadout && s.loadout.equipment) Object.assign(lo.equipment || (lo.equipment = {}), s.loadout.equipment);
+                los.push(lo);
+            }
+            state.partyBuilds[seat] = builds; state.partyNames[seat] = names; state.loadouts[seat] = los;
+            if (!state.partyMeta) state.partyMeta = {};
+            state.partyMeta[seat] = metas;
+            if (state.builderConfirmedSlots) state.builderConfirmedSlots[seat] = {};
+            return true;
+        };
+
+        /* the page's clicks + keys (only while the desk is the page on screen) */
+        document.addEventListener('click', (e) => {
+            const page = document.getElementById('squadDeskPage');
+            if (!page || !page.contains(e.target)) return;
+            if (e.target.closest('[data-sq-pick-close]')) { _sqPickClose(false); return; }
+            if (e.target.closest('[data-sq-pick-go]')) { _sqPickGo(); return; }
+            const tile = e.target.closest('[data-sq-tile]');
+            if (tile) { _sqPickToggle(parseInt(tile.getAttribute('data-sq-tile'), 10)); return; }
+            const ed = e.target.closest('[data-sq-edit]');
+            if (ed) { e.stopPropagation(); _sqForge(ed.getAttribute('data-sq-edit')); return; }
+            if (e.target.closest('[data-sq-new]')) { _sqForge(null); return; }
+            const card = e.target.closest('[data-sq-team]');
+            if (card) _sqChoose(card.getAttribute('data-sq-team'));
+        });
+        document.addEventListener('mouseover', (e) => {
+            const card = e.target && e.target.closest ? e.target.closest('#sqBody .sq-card[data-sq-team]') : null;
+            if (card && card.getAttribute('data-sq-team') !== _sqFocusId && !_sqPick) {
+                _sqFocusCard(card.getAttribute('data-sq-team'));
+                try { playSfx('uiCursorMove'); } catch (err) {}
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            const page = document.getElementById('squadDeskPage');
+            if (!page || !page.classList.contains('active') || page.getClientRects().length === 0) return;
+            if (startOverlay && (startOverlay.classList.contains('hidden') || startOverlay.style.display === 'none')) return;
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (_sqBusy) { e.preventDefault(); return; }
+            if (e.key === 'Escape') { e.preventDefault(); window._squadDeskBack(); return; }
+            if (_sqPick) {
+                if (e.key === 'Enter') { e.preventDefault(); _sqPickGo(); return; }
+                const d = parseInt(e.key, 10);
+                if (d >= 1 && d <= 9) { e.preventDefault(); _sqPickToggle(d - 1); }
+                return;
+            }
+            const cards = Array.from(document.querySelectorAll('#sqBody .sq-card[data-sq-team]'));
+            if (!cards.length) { if (e.key === 'Enter') { e.preventDefault(); _sqForge(null); } return; }
+            if (e.key === 'Enter' || e.key === ' ') {
+                if (document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-sq-edit],[data-sq-new]')) return;
+                e.preventDefault();
+                if (_sqFocusId) _sqChoose(_sqFocusId);
+                return;
+            }
+            const dirs = { ArrowRight: 1, ArrowDown: 'row', ArrowLeft: -1, ArrowUp: '-row' };
+            if (!(e.key in dirs)) return;
+            e.preventDefault();
+            let at = Math.max(0, cards.findIndex(c => c.getAttribute('data-sq-team') === _sqFocusId));
+            let step = dirs[e.key];
+            if (step === 'row' || step === '-row') {
+                const top0 = cards[0].offsetTop; let perRow = cards.filter(c => c.offsetTop === top0).length || 1;
+                step = step === 'row' ? perRow : -perRow;
+            }
+            const next = Math.max(0, Math.min(cards.length - 1, at + step));
+            if (next !== at) { _sqFocusCard(cards[next].getAttribute('data-sq-team'), true); try { playSfx('uiCursorMove'); } catch (err) {} }
+        });
+
+        /* NEW GAME / CONTINUE (2026-09-30, the user): the first door reads NEW GAME until a story is on file — an agent
+           enlisted (the intake) or the building entered once (profile.storyStarted) — and CONTINUE from then on */
+        function _storyOnFile() {
+            const p = _hqProfile();
+            if (!p) return false;
+            if (p.storyStarted) return true;
+            try { if (typeof window.hqOfficerOnFile === 'function' && window.hqOfficerOnFile(p)) return true; } catch (e) {}
+            return false;
+        }
+        function _storyMarkStarted() {
+            try {
+                const p = _hqProfile(), pi = window.ProfileSystem && window.ProfileSystem.getActiveProfileIndex();
+                if (p && pi != null && !p.storyStarted) { p.storyStarted = true; window.ProfileSystem.saveProfile(pi, p); }
+            } catch (e) {}
+        }
+        function _mmRefreshPlayLabel() {
+            const on = _storyOnFile();
+            const l = document.getElementById('mmPlayLabel'), d = document.getElementById('mmPlayDesc');
+            if (l) l.textContent = on ? 'Continue' : 'New Game';
+            if (d) d.textContent = on ? 'Story mode — back to D.O.O.R. headquarters' : 'Story mode — report to D.O.O.R. headquarters';
+        }
+        window._mmRefreshPlayLabel = _mmRefreshPlayLabel;
 
         /* ══════════════════════════════════════════════════════════════════
            D.O.O.R. HEADQUARTERS — flow + DOM (DOOR_HQ_BUILD_PLAN.md §3.4)
@@ -6683,6 +7077,8 @@
         };
 
         window._goToQuickPlay = function() {
+            /* THE SQUAD DESK (2026-09-30): no squad picked (DISPATCH's desk, a console) → pick it first, then straight here */
+            if (!_sqArmed('online')) { _openSquadDesk('online', 'quickplay'); return; }
             playSfx('uiButtonConfirm');
             state.gameState = GS.LOBBY;
             window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): online PvP = the whole roster for everyone
@@ -6694,6 +7090,7 @@
         };
 
         window._goToFriendlyMatch = function() {
+            if (!_sqArmed('online')) { _openSquadDesk('online', 'friendly'); return; }
             playSfx('uiButtonConfirm');
             state.gameState = GS.LOBBY;
             window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): online PvP = the whole roster for everyone
@@ -7275,6 +7672,10 @@
             playSfx('uiButtonConfirm');
             if (window.EWCharViewer) window.EWCharViewer.unmount();
             if (typeof window._unmountReactTeamBuilder === 'function') window._unmountReactTeamBuilder();
+            window._ewForgeOpen = null;
+            /* THE SQUAD DESK (2026-09-30): a forge opened from the team pick goes back to it */
+            const _fr = window._ewForgeReturn;
+            if (_fr) { window._ewForgeReturn = null; _openSquadDesk(_fr.mode, _fr.next); return; }
             window._ewRosterScope = 'owned';   // THE ROSTER LOCK: the whole roster was the archive's alone
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
@@ -8740,9 +9141,12 @@
             window._msCpuOnly = false;
             window._ewRosterScope = 'owned';   // THE ROSTER LOCK: leaving a desk closes the whole roster again
             const wasPractice = !!(window._hqPreselect && window._hqPreselect.practice);
+            const wasSquad = !!(window._hqPreselect && window._hqPreselect.squad);
             window._hqPreselect = null;
             window._hqCodeRedRun = null;
             state.gameState = GS.MODE_SELECT;
+            /* THE SQUAD DESK (2026-09-30): PLAY VS CPU's desk steps back to the team pick */
+            if (wasSquad) { _openSquadDesk('cpu'); return; }
             /* PRACTICE (2026-09-21) came from the main menu; the classic desk from the hub */
             window._hqReturnOrMenu(wasPractice ? 'mainMenuPage' : 'playHubPage');
         };
@@ -8775,6 +9179,8 @@
                native landed anywhere the pool put it). The lead rides its own marker across the null; the encounter
                block below spends it after the CPU party is drawn. */
             window._hqEncounterLead = (_pre && _pre.encounter && _preSite === _pre.mapId) ? _pre.encounter : null;
+            /* THE SQUAD DESK (2026-09-30): PLAY VS CPU filed with a squad picked on the desk — seated below, no builder */
+            const _squad = (_pre && _pre.squad && _sqArmed('cpu')) ? window._ewSquad : null;
             window._hqPreselect = null;
 
             // Δ maps are the hand-authored 8×8 boards (data.js DELTA FORGE,
@@ -8987,6 +9393,25 @@
                 try { okStart = applyPartyBuild(false) !== false; if (okStart) startMatch(); } catch (e) { console.error('[HQ] the encounter could not start', e); okStart = false; }
                 finally { window._ewPartySlots = null; }   // THE PARTY: the exact-seat cap is for this launch's build only
                 if (!okStart) { window._hqEncounterRun = null; dismissTitleScreen(); }
+                render();
+                state.audioUnlocked = true;
+                syncMusicToState().catch(() => {});
+                return;
+            }
+
+            /* THE SQUAD DESK (2026-09-30, the user: "they should already have their teams ready to go"): the squad takes
+               seat 1, the CPU draws its party, and the match starts — the builder is skipped (the encounter's path). A
+               failed start falls back to the builder with the squad already on it. */
+            if (_squad && window._ewApplySquad(1, _squad)) {
+                window._ewSquad = null;   // spent: a rematch keeps the seated party, a later desk picks again
+                if (typeof optimizeRandomizeParty === 'function') optimizeRandomizeParty(2);
+                window._hqEncounterLead = null;
+                if (startOverlay) { startOverlay.classList.add('hidden'); startOverlay.style.display = 'none'; startOverlay.style.pointerEvents = 'none'; startOverlay.setAttribute('aria-hidden', 'true'); }
+                transitionTo(GS.PARTY_BUILDER);
+                state.teamLockedIn = true;
+                let okSq = false;
+                try { okSq = applyPartyBuild(false) !== false; if (okSq) startMatch(); } catch (e) { console.error('[SQUAD] the match could not start', e); okSq = false; }
+                if (!okSq) { state.teamLockedIn = false; dismissTitleScreen(); }
                 render();
                 state.audioUnlocked = true;
                 syncMusicToState().catch(() => {});
