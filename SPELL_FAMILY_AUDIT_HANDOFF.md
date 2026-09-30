@@ -152,19 +152,19 @@ Pool gaps · Identity.
 1. **mondo rules on front §10** (Q1–Q12). The plan as written assumes each recommendation: four tiers with one T4 per
    family (Q1), no base-MP change for PvP (Q2), at most five families per race (Q3), A Really Good Punch deleted and
    Hocus Pocus laddered (Q4), `guaranteedCrit` reworded and `executeBonusPct` wired for Weigh the Heart (Q5), 12–24 as
-   a pool guide (Q6), the 20 data-only family passives in Batch C (Q7), the four one-race families kept (Q8),
+   a pool guide (Q6), the 23 data-only family passives in Batch C (Q7), the four one-race families kept (Q8),
    Scarecrow Abilities and Ki Energy as the only new UNIQUE flags (Q9), a separate stat pass (Q10), off-tier rungs
    accepted (Q11), ids confirmed at export (Q12).
 2. **Apply in the order of front §9** through the Spell Library, one export per batch → `node bake-spell-mods.js
    <export.json>` → `node --check data.js` → deliver `data.js` (R2) + `index.html` with a fresh `?v=` token (RULE #1b;
    `npm run deploy`) → Render:
    - **A** row edits (RETIER / RECOST / RETUNE / RETYPE / RENAME / DESC, live-field REWRITEs, dead-field deletions,
-     deletions of rows nobody rungs); **A2** the 13 Q1 folds if Q1 = four tiers.
+     deletions of rows nobody rungs); **A2** the 21 one-T4 folds tagged (Q1).
    - **B** the registry in ONE export (the bake refuses a rung outside its race's families): the 8 family deletes /
-     folds, the 22 MOVEs, rung-row deletions, 64 races' new family lists, 67 races' rung changes, the family renames,
-     the UNIQUE flags.
-   - **C** new content with live mechanics: the new rows of front §6.3, the 20 LIVE passives, the live upgrades, the
-     per-row upgrade lists from the family blocks.
+     folds, the 22 MOVEs, rung-row deletions, 64 races' new family lists, 73 races' rung changes (16 of them the Q1
+     capstone re-seats), the family renames, the UNIQUE flags — and the 18 new rows that are rungs (front §9 lists them).
+   - **C** new content with live mechanics: the other new rows of front §6.3, the 23 LIVE passives, the live upgrades,
+     the per-row upgrade lists from the family blocks.
    - **D** engine (battle.js / data.js; online.js for any new on-screen moment, RULE #2): front §6.5, `addStatus` first.
 3. **After every bake**, re-dump with `dump.js` + `synergy.js` (in git history at fdefd66, `docs/spell-audit/tools/`)
    and diff against `docs/spell-audit/data/`: pools should match front §7 and ladders front §6.1; no race under 3
