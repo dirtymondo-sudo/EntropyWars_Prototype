@@ -9039,7 +9039,98 @@ const TRAINING_PASSIVES = [
       desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
 ];
 for (const sp of TRAINING_PASSIVES) {
-    Object.assign(sp, { kind: 'passive', type: 'utility', families: ['training'], cost: 0, apCost: 0, range: 0 });
+    // THE SPELL AUDIT Batch C: a row that moved into a family (Green Thumb, Tinker, Field Operative) keeps it
+    Object.assign(sp, { kind: 'passive', type: 'utility', families: (Array.isArray(sp.families) && sp.families.length) ? sp.families : ['training'], cost: 0, apCost: 0, range: 0 });
+    SPELL_BY_ID[sp.id] = sp;
+}
+
+/* ══ THE FAMILY PASSIVES (SPELL_FAMILY_AUDIT_PLAN.md §6.4, Batch C, 2026-09-30) ══════════════════════════════════════
+   One passive per family at most, tier = its SP, exactly one family, read through the same PASSIVE_HOOK_KEYS as TRAINING.
+   Only the LIVE hooks ship: a PARTIAL row carries its live half and its text says only that; the rest is Batch D. */
+const FAMILY_PASSIVES = [
+    { id: 'passiveCinderTouch', tier: 1, families: ['fire'], name: 'Cinder Touch', icon: '🔥',
+      hooks: { physicalElementRider: 'fire', physicalHitStatus: { id: 'burn', duration: 1 } },
+      desc: 'Basic attacks and physical spells are fire-element and Burn the target for a round.' },
+    { id: 'passiveLiveWire', tier: 1, families: ['lightning'], name: 'Live Wire', icon: '⚡',
+      hooks: { physicalElementRider: 'lightning' },
+      desc: 'Basic attacks and physical spells are lightning-element, so a Soaked target takes ×1.5.' },
+    { id: 'passiveVenomous', tier: 1, families: ['poison'], name: 'Venomous', icon: '🐍',
+      hooks: { physicalHitStatus: { id: 'poison', duration: 1 } },
+      desc: 'Every physical hit Poisons the target for a round.' },
+    { id: 'passiveThickFur', tier: 1, families: ['winter'], name: 'Thick Fur', icon: '🧥',
+      hooks: { immuneStatus: ['frozen'], weatherBonus: { blizzard: { spdStages: 1 } } },
+      desc: 'Never Frozen, and +1 SPD stage while standing in a blizzard.' },
+    { id: 'passiveRestuffing', tier: 1, families: ['scarecrow'], name: 'Restuffing', icon: '🌾',
+      hooks: { regenPerRound: 5 },
+      desc: 'Regenerates 5% of max HP at the end of every round.' },
+    { id: 'passiveTriage', tier: 1, families: ['healingmagic'], name: 'Triage', icon: '🩹',
+      hooks: { healOnceBelowPct: { pct: 40, healPct: 30 } },
+      desc: 'Once per life, dropping under 40% HP heals 30% of max HP.' },
+    { id: 'passiveStarChart', tier: 1, families: ['fortunetelling'], name: 'Star Chart', icon: '🔭',
+      hooks: { zodiacBonus: { own: { intStages: 1 } } },
+      desc: '+1 M ATK stage while this unit\'s own sign rules the sky.' },
+    { id: 'passiveSlowRot', tier: 1, families: ['zombie'], name: 'Slow Rot', icon: '🧟',
+      hooks: { regenPerRound: 3 },
+      desc: 'It keeps getting up: regenerates 3% of max HP at the end of every round.' },
+    { id: 'passiveTerminallyOnline', tier: 1, families: ['internetaddiction'], name: 'Terminally Online', icon: '📱',
+      hooks: { statBonus: { awr: 14, mp: 40 } },
+      desc: '+14 AWR and +40 MP.' },
+    { id: 'passiveKeenNose', tier: 1, families: ['beastabilities'], name: 'Keen Nose', icon: '👃',
+      hooks: { revealInvisibleWithin: 2, statBonus: { awr: 14 } },
+      desc: 'Invisible enemies within 2 tiles are revealed at the end of every round. +14 AWR.' },
+    { id: 'passiveUnweathered', tier: 1, families: ['livingstone'], name: 'Unweathered', icon: '🪨',
+      hooks: { immuneStatus: ['burn'], armor: 5 },
+      desc: 'Never Burned, and +5 armor.' },
+    { id: 'passiveDeepAdapted', tier: 1, families: ['deepsea'], name: 'Deep Adapted', icon: '🐟',
+      hooks: { terrainBonus: { water: { defStages: 1, spdStages: 1 }, deep_water: { defStages: 1, spdStages: 1 } } },
+      desc: '+1 DEF and +1 SPD stage while standing in water.' },
+    { id: 'passiveSecondWind', tier: 2, families: ['humangrit'], name: 'Second Wind', icon: '💨',
+      hooks: { healOnceBelowPct: { pct: 35, healPct: 30 } },
+      desc: 'Once per life, dropping under 35% HP heals 30% of max HP.' },
+    { id: 'passiveRisingPower', tier: 2, families: ['ki'], name: 'Rising Power', icon: '🔆',
+      hooks: { stagePerRounds: { atk: 1, every: 3 }, resetOnDeath: true },
+      desc: '+1 ATK stage every 3 rounds. The stages fall away at death.' },
+    { id: 'passiveCheapShot', tier: 2, families: ['dirtyfighting'], name: 'Cheap Shot', icon: '🥊',
+      hooks: { physicalHitStatus: { id: 'grievous', duration: 1 } },
+      desc: 'Every physical hit leaves a Grievous Wound for a round: the target\'s healing is halved.' },
+    { id: 'passiveSeaLegs', tier: 1, families: ['piracy'], name: 'Sea Legs', icon: '⚓',
+      hooks: { swim: true, terrainBonus: { water: { atkStages: 1, defStages: 1 }, deep_water: { atkStages: 1, defStages: 1 } } },
+      desc: 'Swims, and +1 ATK and +1 DEF stage while standing in water.' },
+    { id: 'passiveOverwatch', tier: 1, families: ['marksmanship'], name: 'Overwatch', icon: '🔭',
+      hooks: { basicAttackRangeBonus: 1, statBonus: { awr: 14 } },
+      desc: 'Basic attacks reach 1 tile further. +14 AWR.' },
+    { id: 'passiveBallisticVest', tier: 1, families: ['policetraining'], name: 'Ballistic Vest', icon: '🦺',
+      hooks: { armor: 5, healOnceBelowPct: { pct: 30, healPct: 25 } },
+      desc: '+5 armor. Once per life, dropping under 30% HP heals 25% of max HP.' },
+    /* PARTIAL — the live half only (the rest waits for its Batch D hook) */
+    { id: 'passiveSnowborn', tier: 1, families: ['ice'], name: 'Snowborn', icon: '❄️',
+      hooks: { weatherBonus: { blizzard: { intStages: 1 } } },
+      desc: '+1 M ATK stage while standing in a blizzard.' },
+    { id: 'passiveGills', tier: 1, families: ['water'], name: 'Gills', icon: '🫧',
+      hooks: { swim: true, terrainBonus: { water: { spdStages: 1 }, deep_water: { spdStages: 1 } } },
+      desc: 'Swims, and +1 SPD stage while standing in water.' },
+    { id: 'passiveWindborne', tier: 1, families: ['wind'], name: 'Windborne', icon: '🌬️',
+      hooks: { statBonus: { spd: 20 } },
+      desc: '+20 SPD.' },
+    { id: 'passiveConsecrated', tier: 1, families: ['light'], name: 'Consecrated', icon: '🕯️',
+      hooks: { healOnceBelowPct: { pct: 35, healPct: 20 } },
+      desc: 'Once per life, dropping under 35% HP heals 20% of max HP.' },
+    { id: 'passiveFaradayCage', tier: 1, families: ['robot'], name: 'Faraday Cage', icon: '🧲',
+      hooks: { immuneStatus: ['jammed'] },
+      desc: 'Never Jammed.' },
+    { id: 'passiveChorus', tier: 2, families: ['stagepresence'], name: 'Chorus', icon: '🎤',
+      hooks: { statBonus: { int: 8 } },
+      desc: '+8 INT.' },
+    { id: 'passiveChoir', tier: 2, families: ['angelic'], name: 'Choir', icon: '👼',
+      hooks: { healMult: 1.15 },
+      desc: 'Heals this unit casts are 15% stronger.' },
+    /* (Jellyfish's Deep Breath waits: its name is the Meditation T1 spell's — plan §6.3 — and its live half is Gills.) */
+    { id: 'passiveIronDiscipline', tier: 1, families: ['militarysupport'], name: 'Iron Discipline', icon: '🎖️',
+      hooks: { counterChance: 0.30 },
+      desc: '30% chance to counterattack when struck in melee.' },
+];
+for (const sp of FAMILY_PASSIVES) {
+    Object.assign(sp, { kind: 'passive', type: 'utility', cost: 0, apCost: 0, range: 0 });
     SPELL_BY_ID[sp.id] = sp;
 }
 
@@ -19820,6 +19911,20 @@ const SPELL_UPGRADES = {
                     desc: 'The turret: +25 % damage, +25 % HP, +1 range.', patch: { turret: { dmgMult: 1.25, hpMult: 1.25, rangeDelta: 1 } } },
     upGun:        { id: 'upGun',        name: 'Hot Loads',    glyph: '⁍', sp: 1, roles: [], families: [], requires: 'gun', excl: null, auto: true,
                     desc: 'The gun row: +20 % lane / arrow / beam damage and heal, +1 bounce.', patch: { gun: { dmgMult: 1.2, bounces: 1 } } },
+    /* THE SPELL AUDIT Batch C (SPELL_FAMILY_AUDIT_PLAN.md §6.4): the family-scoped upgrades whose patch keys are live today. */
+    upExploitMarked: { id: 'upExploitMarked', name: 'Exploit: Marked', glyph: '⌖', sp: 1, roles: ['damage', 'damageEffect'],
+                    families: ['weaponstraining', 'spygear', 'marksmanship', 'mothman', 'artificialintelligence', 'ufo', 'infernalcourt'],
+                    requires: 'dmg', excl: null, auto: true,
+                    desc: 'Deals bonus damage to Marked targets (×1.5).', patch: { statusBonus: { status: 'marked', mult: 1.5 } } },
+    upFrostbite:  { id: 'upFrostbite',  name: 'Frostbite',    glyph: '🧊', sp: 2, roles: ['damage', 'damageEffect'],
+                    families: ['ice', 'winter', 'christmasspirit', 'haunted'], requires: 'dmg', excl: null, auto: true,
+                    desc: 'Deals bonus damage to Frozen targets (×1.5).', patch: { statusBonus: { status: 'frozen', mult: 1.5 } } },
+    upEncorePerformance: { id: 'upEncorePerformance', name: 'Encore Performance', glyph: '🎭', sp: 2, roles: [],
+                    families: ['stagepresence'], requires: 'cooldown', excl: null, auto: true,
+                    desc: '−1 round of cooldown.', patch: { cooldownDelta: -1 } },
+    upCounterspell: { id: 'upCounterspell', name: 'Counterspell', glyph: '🌀', sp: 2, roles: [],
+                    families: ['arcane'], requires: 'cooldown', excl: null, auto: false,
+                    desc: 'Spellsteal\'s cooldown drops by 1 round.', patch: { cooldownDelta: -1 } },
 };
 /* Does upgrade `up` (a row or id) make sense on def `d`? roles · families · requires. */
 function spellUpgradeFits(d, up) {
@@ -20777,7 +20882,7 @@ Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP,
   STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
   moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
-  TRAINING_PASSIVES, ADAPTABLE_ROW_ID, loadoutBorrows, unitPassiveSum, unitPassiveMult, unitPassiveMax, CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
+  TRAINING_PASSIVES, FAMILY_PASSIVES, ADAPTABLE_ROW_ID, loadoutBorrows, unitPassiveSum, unitPassiveMult, unitPassiveMax, CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
   /* type chart + the Entropy Strike's six apocalypses (2026-09-07) */
   TYPE_CHART, STAB_MULTIPLIER, ENTROPY_STRIKE_TYPE_ORDER, ENTROPY_STRIKE_TYPES,
