@@ -36757,20 +36757,41 @@ const DOOR_HQ = {
                                    floor: 'urban:TileGeneric2b', wall: 'urban:TileSubway1a', dado: 'urban:TileSubway1d', floorColor: 0xc0c4c8, wallColor: 0xc8ccd0, dadoColor: 0x9aa0a6,
                                    mood: { lamp: 0x80ffb0, glow: 0x60ff90, strip: 0xe0ffe8, light: 0xd8f4ff, ambient: 0.44 }, fog: { color: 0x0a1210, density: 0.02 } }),
             terrain: {
+                /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT in subway tile (walls to the ceiling). The hub's door
+                   opens on hall A, the rubber lane west to THE WARD; THE RANGE north of the lane, THE BOOTH south of it up its
+                   step. Off the ward: THE SCREEN'S DAIS up its flight at the end of its corridor (the stacks' screen, a dead
+                   end), THE DREAM TOWER's side room (the tape, a dead end), and the service room south (the draught down to
+                   the vats). Loops: ward ⇄ hall A ⇄ range ⇄ hall B ⇄ ward; ward ⇄ service room ⇄ hall C ⇄ booth ⇄ hall A ⇄ ward. */
                 floor: 'urban:TileGeneric2b', cliff: 'urban:TileSubway1a', path: 'urban:RubberNonSlip3a',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 40, loops: 2, wallKey: 'urban:TileSubway1a', leafMin: 6, leafMax: 12, roomInset: 1.2,   // small leaves: the training rooms and the closets round the ward
-                       rooms: [{ id: 'ward', x: -10, z: 0, w: 22, d: 16 }, { id: 'range', x: 12, z: -8, w: 16, d: 12 }, { id: 'booth', x: 12, z: 9, w: 12, d: 8 }] },
+                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:TileSubway1a', rim: 0, forceGrow: -0.3 },
                 features: [
-                    { k: 'plateau', x: 13, z: 9, w: 6, d: 4, h: 1.2, edge: 0.3 },                                       // THE BOOTH's step (the observers' floor)
-                    { k: 'ramp', x0: 6.5, z0: 9, x1: 10.7, z1: 9, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
+                    /* THE ROOMS */
+                    { k: 'space', x: -7.5, z: 0.5, w: 15, d: 13 },                      // THE WARD
+                    { k: 'space', x: 12, z: -9, w: 14, d: 12 },                          // THE RANGE
+                    { k: 'space', x: 11.5, z: 9, w: 11, d: 8 },                          // THE BOOTH
+                    { k: 'space', x: -10, z: -15.25, w: 5, d: 5.5 },                     // THE SCREEN'S DAIS (a dead end: the stacks' screen)
+                    { k: 'space', x: -19.25, z: -5, w: 6.5, d: 8 },                      // side room 1: THE DREAM TOWER (a dead end, the tape)
+                    { k: 'space', x: -6, z: 13.5, w: 8, d: 5 },                          // side room 2: the service door's
+                    /* the halls */
+                    { k: 'hall', pts: [[24, 2], [0, 2]], w: 3 },                         // hall A: the rubber lane from the hub's door
+                    { k: 'hall', pts: [[12, 0.5], [12, -3]], w: 2.6 },
+                    { k: 'hall', pts: [[14, 3.5], [14, 5]], w: 2.6 },
+                    { k: 'hall', pts: [[5, -12], [-3, -12], [-3, -6]], w: 2.6 },        // hall B: range ⇄ ward
+                    { k: 'hall', pts: [[-10, -6], [-10, -12.5]], w: 3 },                // the screen's corridor
+                    { k: 'hall', pts: [[-15, 4.5], [-19, 4.5], [-19, -1]], w: 2.6 },   // to the tower
+                    { k: 'hall', pts: [[-12, 7], [-12, 13.5], [-10, 13.5]], w: 2.6 },   // ward ⇄ side room 2
+                    { k: 'hall', pts: [[-2, 14], [4, 14], [4, 11.5], [6, 11.5]], w: 2.6 },   // hall C: side room 2 ⇄ booth
+                    /* the rooms' pieces */
+                    { k: 'plateau', x: 13, z: 9, w: 6, d: 4, h: 1.2, edge: 0.15 },                                      // THE BOOTH's step (the observers' floor)
+                    { k: 'ramp', x0: 6.5, z0: 9, x1: 10.7, z1: 9, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'urban:TileGeneric2b' },
                     { k: 'rail', x0: 10.4, z0: 7.4, x1: 10.4, z1: 10.6 },
-                    { k: 'plateau', x: -18, z: -5, r: 1.4, h: 3.6, edge: 0.3 },                                         // THE DREAM TOWER in the ward's corner (the tape — the door gun's)
+                    { k: 'plateau', x: -18, z: -5, r: 1.4, h: 3.6, edge: 0.15 },                                        // THE DREAM TOWER (the tape — the door gun's)
                     /* AREA CONTENT D4 (2026-09-20): THE SCREEN'S DAIS — the ward's screen stands 1.2 m up at its corridor's end, seen from the ward floor before it is reached (R5) */
-                    { k: 'plateau', x: -10, z: -14, w: 5, d: 3, h: 1.2, edge: 0.3 },
-                    { k: 'ramp', x0: -10, z0: -9.5, x1: -10, z1: -13.2, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
+                    { k: 'plateau', x: -10, z: -15.25, w: 5, d: 5.5, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: -10, z0: -9.5, x1: -10, z1: -13.2, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'urban:TileGeneric2b' },
                     { k: 'path', pts: [[22, 2], [12, 2], [12, -4]], w: 1.8 },                                           // the rubber lane door → range
-                    { k: 'path', pts: [[12, 0], [-10, 0]], w: 1.8 },
+                    { k: 'path', pts: [[12, 2], [-6, 2]], w: 1.8 },
                 ],
             },
             doors: [
@@ -36790,9 +36811,9 @@ const DOOR_HQ = {
                 { key: 'cot',             x: -14, z: -4, face: 90 }, { key: 'cot', x: -14, z: 0, face: 90 }, { key: 'cot', x: -14, z: 4, face: 90 }, { key: 'cot', x: -8, z: 4, face: 90 },
                 { key: 'eeg_rack',        x: -12.6, z: -5.4, face: 0 }, { key: 'eeg_rack', x: -12.6, z: -1.4, face: 0 }, { key: 'eeg_rack', x: -12.6, z: 2.6, face: 0 }, { key: 'eeg_rack', x: -6.6, z: 2.6, face: 0 },
                 { key: 'iso_tank',        x: -5, z: -4.5, face: 0 }, { key: 'iso_tank', x: -1, z: -4.5, face: 0 },
-                { key: 'dream_screen',    x: -10, z: -7.5, face: 0, mount: 1.1 }, { key: 'dream_screen', x: -20.6, z: 2, face: 90, mount: 1.1 },   // free-standing on the ward's plan walls
+                { key: 'dream_screen',    x: -13, z: -5.6, face: 0, mount: 1.1 }, { key: 'dream_screen', x: -21.9, z: -5, face: 90, mount: 1.1 },   // free-standing on the ward's plan wall and the tower room's
                 { key: 'bare_bulb',       x: -4, z: 4, ceil: true },
-                { key: 'security_camera', x: 0.4, z: -7.4, face: 225, mount: 2.55 },
+                { key: 'security_camera', x: -0.6, z: -5.6, face: 225, mount: 2.55 },
                 /* THE RANGE: the object on its table, the spoons, the chair the subject sits in */
                 { key: 'floating_orb',    x: 14, z: -10, face: 0 },                                                      // THE OBJECT (the near weenie: the one lit thing down the lane)
                 { key: 'steel_table',     x: 9, z: -8, face: 0 }, { key: 'coffee_mug', x: 8.6, z: -8.2, y: 0.76 }, { key: 'stapler', x: 9.6, z: -7.6, y: 0.76, face: 30 },
@@ -36803,14 +36824,14 @@ const DOOR_HQ = {
                 { key: 'steel_table',     x: 14, z: 9, face: 90 }, { key: 'crt_terminal', x: 14, z: 9, y: 0.76, face: 90 }, { key: 'desk_lamp', x: 14.4, z: 10, y: 0.76, face: 220 },
                 { key: 'computer_chair_grey', x: 15.2, z: 9, face: 90 },
                 { key: 'railing_1m',      x: 13, z: 11.4, face: 0 },
-                { key: 'wall_clock',      x: 17.6, z: 9, face: 270, mount: 2.4 },
-                { key: 'trash_bin',       x: 17, z: 6, face: 270 },
+                { key: 'wall_clock',      x: 16.6, z: 9, face: 270, mount: 2.4 },
+                { key: 'trash_bin',       x: 16.4, z: 6, face: 270 },
             ],
             agents: [],
             npcSpots: [
                 { x: -8, z: -3, face: 180, race: 'telepath', say: ['“Do not think that.” “I had not.” “You had. Everyone thinks it on the way in. Try the other one.”', '“Night forty.” “What happens on night forty?” “Nothing. On night forty-one there is a tape of it.”'] },
                 { x: 12, z: -5, face: 0, race: 'telepath', say: ['“Bend the spoon.” “With what?” “That is the exam.”', '“The object.” “What is it?” “A control. The spoons are the object.”'] },
-                { x: -17, z: 3, face: 60, race: 'dreameater', say: ['“Asleep.” “You are standing.” “On the chart.”'] },
+                { x: -17, z: 4.5, face: 60, race: 'dreameater', say: ['“Asleep.” “You are standing.” “On the chart.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -36830,18 +36851,39 @@ const DOOR_HQ = {
                                    dado: 'urban:MetalCorrugatedPainted2a', ceiling: 'urban:MetalSubwayGrill2a', ceilColor: 0x7a8088,
                                    mood: { lamp: 0x60a0ff, glow: 0x4080ff, strip: 0xd0e4ff, light: 0xc8dcff, ambient: 0.4 }, fog: { color: 0x080c14, density: 0.022 } }),
             terrain: {
+                /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT in corrugated metal (walls to the grille). The hub's
+                   frosted door opens on hall A, west to side room 2 (the crossing); north of it the service room (the draught
+                   up to the ward) with side room 4 a dead end off it; south of it DISPOSAL with the furnace; west of it THE
+                   VAT HALL under its gantry. THE VAT STACK stands in side room 1, a dead end off hall C (the tape). Loops:
+                   vat hall ⇄ hall B ⇄ service room ⇄ side room 2 ⇄ vat hall; vat hall ⇄ side room 2 ⇄ disposal ⇄ hall C ⇄ vat hall. */
                 floor: 'urban:RubberNonSlip4a', cliff: 'urban:MetalCorrugatedPainted2a', path: 'urban:ConcreteStriped2c',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 12, loops: 2, wallKey: 'urban:MetalCorrugatedPainted2a',
-                       rooms: [{ id: 'vats', x: -8, z: 0, w: 32, d: 22 }, { id: 'disposal', x: 18, z: 8, w: 14, d: 12 }] },
+                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:MetalCorrugatedPainted2a', rim: 0, forceGrow: -0.3 },
                 features: [
-                    { k: 'plateau', x: -8, z: -8, w: 26, d: 3, h: 2.8, edge: 0.35 },                                    // THE GANTRY along the vat hall's north side
-                    { k: 'ramp', x0: -20, z0: -1, x1: -20, z1: -7.2, w: 2.2, h0: 0, h1: 2.8, stairs: true, edge: 0.2 },
-                    { k: 'rail', x0: -18, z0: -6.9, x1: 2, z1: -6.9 },
-                    { k: 'plateau', x: 2, z: 6, r: 1.5, h: 4.4, edge: 0.3 },                                            // THE VAT STACK (the tape — the door gun's)
-                    { k: 'wall', x0: 12, z0: 2.6, x1: 24, z1: 2.6, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' },   // the disposal bay's kerb (a grind)
-                    { k: 'path', pts: [[26, -2], [12, -2], [12, 0], [-8, 0]], w: 1.8 },
-                    { k: 'path', pts: [[18, 2], [18, 12]], w: 1.8 },
+                    /* THE ROOMS */
+                    { k: 'space', x: -12.5, z: 0, w: 21, d: 20 },                        // THE VAT HALL
+                    { k: 'space', x: 18, z: 9, w: 12, d: 10 },                           // DISPOSAL
+                    { k: 'space', x: 4.5, z: 6.5, w: 9, d: 7 },                           // side room 1: THE VAT STACK (a dead end, the tape)
+                    { k: 'space', x: 12, z: -2, w: 8, d: 6 },                            // side room 2: the crossing
+                    { k: 'space', x: 12, z: -14, w: 8, d: 8 },                           // side room 3: the service door's (the gurney)
+                    { k: 'space', x: 22.5, z: -13, w: 5, d: 6 },                         // side room 4 (a dead end)
+                    /* the halls */
+                    { k: 'hall', pts: [[28, -2], [16, -2]], w: 3.4 },                    // hall A from the hub's door
+                    { k: 'hall', pts: [[8, -2], [-2, -2]], w: 2.8 },
+                    { k: 'hall', pts: [[12, -5], [12, -10]], w: 2.6 },
+                    { k: 'hall', pts: [[12, 1], [12, 4]], w: 2.6 },
+                    { k: 'hall', pts: [[-2, -8.5], [4, -8.5], [4, -14], [8, -14]], w: 2.6 },   // hall B: vat hall ⇄ side room 3
+                    { k: 'hall', pts: [[16, -13], [20, -13]], w: 2.4 },
+                    { k: 'hall', pts: [[12, 12.5], [-6, 12.5], [-6, 10]], w: 2.6 },    // hall C: disposal ⇄ vat hall
+                    { k: 'hall', pts: [[3.5, 10], [3.5, 11.2]], w: 2.2 },
+                    /* the rooms' pieces */
+                    { k: 'plateau', x: -14.5, z: -8.5, w: 17, d: 3, h: 2.8, edge: 0.15 },                               // THE GANTRY along the vat hall's north wall
+                    { k: 'ramp', x0: -20, z0: -1, x1: -20, z1: -7.2, w: 2.2, h0: 0, h1: 2.8, stairs: true, edge: 0.15, built: true, key: 'urban:RubberNonSlip4a' },
+                    { k: 'rail', x0: -18.8, z0: -6.9, x1: -6.2, z1: -6.9 },
+                    { k: 'plateau', x: 2, z: 6, r: 1.5, h: 4.4, edge: 0.15 },                                           // THE VAT STACK (the tape — the door gun's)
+                    { k: 'wall', x0: 14, z0: 5.8, x1: 22, z1: 5.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' },   // the disposal bay's kerb (a grind)
+                    { k: 'path', pts: [[26, -2], [-8, -2]], w: 1.8 },
+                    { k: 'path', pts: [[12, -2], [12, 8], [18, 8]], w: 1.8 },
                 ],
             },
             doors: [
@@ -36859,18 +36901,18 @@ const DOOR_HQ = {
                 /* THE VATS: six pods in two rows, breathing */
                 { key: 'iso_tank',        x: -18, z: -3, face: 0 }, { key: 'iso_tank', x: -13, z: -3, face: 0 }, { key: 'iso_tank', x: -8, z: -3, face: 0 },
                 { key: 'iso_tank',        x: -18, z: 3, face: 180 }, { key: 'iso_tank', x: -13, z: 3, face: 180 }, { key: 'iso_tank', x: -8, z: 3, face: 180 },
-                { key: 'door_xray',       x: -23.6, z: 0, face: 90, mount: 1.1 },                                       // the light box on the hall's west plan wall
-                { key: 'steel_table',     x: -1, z: 8, face: 0 }, { key: 'clipboard_flat', x: -1.4, z: 7.8, y: 0.76, face: 10 }, { key: 'manila_folders', x: -0.2, z: 8.2, y: 0.76, face: 200 },
-                { key: 'bare_bulb',       x: -13, z: 0, ceil: true }, { key: 'bare_bulb', x: 2, z: 0, ceil: true },
-                { key: 'security_camera', x: 7.4, z: -10.5, face: 225, mount: 2.55 },
+                { key: 'door_xray',       x: -22.6, z: 0, face: 90, mount: 1.1 },                                       // the light box on the hall's west plan wall
+                { key: 'steel_table',     x: -3.5, z: 6, face: 0 }, { key: 'clipboard_flat', x: -3.9, z: 5.8, y: 0.76, face: 10 }, { key: 'manila_folders', x: -2.7, z: 6.2, y: 0.76, face: 200 },
+                { key: 'bare_bulb',       x: -13, z: 0, ceil: true }, { key: 'bare_bulb', x: -4, z: 0, ceil: true },
+                { key: 'security_camera', x: 8.6, z: -10.6, face: 225, mount: 2.55 },
                 { key: 'railing_1m',      x: -8, z: -6.7, face: 0 },
                 /* DISPOSAL: the furnace, the chute, the sign that says what it is for */
                 { key: 'door_furnace',    x: 18, z: 12.4, face: 180 },                                                  // free-standing against the bay's south plan wall, mouth to the room
-                { key: 'garbage_chute',   x: 11.6, z: 6, face: 90, mount: 0.6 },
-                { key: 'radiation_sign',  x: 24.5, z: 8, face: 270, mount: 1.7 },
+                { key: 'garbage_chute',   x: 12.4, z: 6, face: 90, mount: 0.6 },
+                { key: 'radiation_sign',  x: 23.6, z: 8, face: 270, mount: 1.7 },
                 { key: 'warning_tape',    x: 18, z: 9.4, face: 0 },
-                { key: 'evac_button',     x: 24.5, z: 4, face: 270, mount: 1.2 },
-                { key: 'cardboard_boxes', x: 13, z: 11, face: 20 },
+                { key: 'evac_button',     x: 23.6, z: 5, face: 270, mount: 1.2 },
+                { key: 'cardboard_boxes', x: 13.5, z: 10, face: 20 },
                 { key: 'floor_stain',     x: 18, z: 7 },
             ],
             agents: [],
@@ -36971,16 +37013,35 @@ const DOOR_HQ = {
                                    floorColor: 0xe0dcd4, wallColor: 0xd8d0c4, dadoColor: 0xc0b8ac, ceilColor: 0xd0c8bc,
                                    mood: { lamp: 0xffd9a0, glow: 0xffe0b0, strip: 0xfff0d8, light: 0xffe8cc, ambient: 0.48 }, fog: { color: 0x14100c, density: 0.018 }, look: HQ_ROOM_LOOKS.bunker }),
             terrain: {
+                /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT in painted plaster (walls to the stucco). The private
+                   lift opens on THE GREAT ROOM with THE LOFT over its west end up its flight; the marble runner (hall A) east
+                   to the foot of THE POOL (north) and THE CELLAR (south, THE SAFE — the tape); THE PANIC ROOM a dead end behind
+                   the cellar's keypad; side room 1 a dead end off the great room's south wall. The loop: great room ⇄ hall A ⇄
+                   pool ⇄ hall B ⇄ great room. The private stair's draught comes in at the pool end. */
                 floor: 'urban:TileMarble1a', cliff: 'urban:PlasterWallPainted1c', path: 'urban:TileMarble1b',
                 noise: { amp: 0, scale: 5 }, crag: false,
-                gen: { kind: 'halls', seed: 21, loops: 2, wallKey: 'urban:PlasterWallPainted1c', leafMin: 7, leafMax: 15,
-                       rooms: [{ id: 'great', x: -13, z: 0, w: 26, d: 20 }, { id: 'pool', x: 14, z: -9, w: 22, d: 14 }, { id: 'cellar', x: 15, z: 9, w: 18, d: 12 }] },
+                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:PlasterWallPainted1c', rim: 0, forceGrow: -0.3 },
                 features: [
-                    { k: 'plateau', x: -20, z: -6, w: 10, d: 6, h: 2.6, edge: 0.35 },                                    // THE LOFT over the great room's west end
-                    { k: 'ramp', x0: -9, z0: -6, x1: -15.7, z1: -6, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.2 },
+                    /* THE ROOMS */
+                    { k: 'space', x: -13, z: 0, w: 24, d: 20 },                          // THE GREAT ROOM
+                    { k: 'space', x: 14, z: -10, w: 20, d: 14 },                         // THE POOL
+                    { k: 'space', x: 16, z: 10, w: 16, d: 12 },                          // THE CELLAR
+                    { k: 'space', x: 2.5, z: 12, w: 5, d: 6 },                           // THE PANIC ROOM (a dead end)
+                    { k: 'space', x: -14, z: 15.5, w: 8, d: 5 },                         // side room 1 (a dead end)
+                    /* the halls */
+                    { k: 'hall', pts: [[-30, -2], [-25, -2]], w: 3 },                    // the private lift's
+                    { k: 'hall', pts: [[-1, 0], [14, 0], [14, 4]], w: 3 },               // hall A: the marble runner
+                    { k: 'hall', pts: [[14, 0], [14, -3]], w: 3 },
+                    { k: 'hall', pts: [[-1, -7], [4, -7]], w: 2.6 },                     // hall B: great room ⇄ pool
+                    { k: 'hall', pts: [[16, -20], [16, -17]], w: 2.6 },                  // the private stair's
+                    { k: 'hall', pts: [[5, 12], [8, 12]], w: 2.4 },                      // behind the keypad
+                    { k: 'hall', pts: [[-14, 10], [-14, 13]], w: 2.6 },
+                    /* the rooms' pieces */
+                    { k: 'plateau', x: -20, z: -6.5, w: 10, d: 7, h: 2.6, edge: 0.15 },                                  // THE LOFT over the great room's west end
+                    { k: 'ramp', x0: -9, z0: -6, x1: -15.7, z1: -6, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'urban:TileMarble1b' },
                     { k: 'rail', x0: -14.6, z0: -8.6, x1: -14.6, z1: -3.4 },
                     { k: 'pool', x: 14, z: -9, r: 5.5, rz: 3.2, y: 0, depth: 0.9 },                                     // THE POOL (waded, warm)
-                    { k: 'plateau', x: 20, z: 9, r: 1.4, h: 3.8, edge: 0.3 },                                           // THE SAFE STACK in the cellar (the tape — the door gun's)
+                    { k: 'plateau', x: 20, z: 9, r: 1.4, h: 3.8, edge: 0.15 },                                          // THE SAFE STACK in the cellar (the tape — the door gun's)
                     { k: 'wall', x0: 8, z0: 4.5, x1: 22, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' },         // the cellar's step (a grind)
                     { k: 'path', pts: [[-28, -2], [-13, -2], [-13, 0], [4, 0], [14, 0], [14, -4]], w: 2.0 },                        // the marble runner from the lift
                     { k: 'path', pts: [[14, 0], [14, 6]], w: 2.0 },
@@ -36999,7 +37060,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE GREAT ROOM: the windows that are screens, the couch, the throne, the sound system */
-                { key: 'false_window',    x: -25.6, z: 2, face: 90, mount: 1.0 }, { key: 'false_window', x: -25.6, z: 6, face: 90, mount: 1.0 }, { key: 'false_window', x: -8, z: -9.6, face: 0, mount: 1.0 },   // free-standing on the plan walls (the near weenie: daylight eighty metres down)
+                { key: 'false_window',    x: -24.6, z: 2, face: 90, mount: 1.0 }, { key: 'false_window', x: -24.6, z: 6, face: 90, mount: 1.0 }, { key: 'false_window', x: -8, z: -9.6, face: 0, mount: 1.0 },   // free-standing on the plan walls (the near weenie: daylight eighty metres down)
                 { key: 'curved_couch',    x: -8, z: 3, face: 180 }, { key: 'rug_round', x: -8, z: 0.5 }, { key: 'coffee_table', x: -8, z: -1 }, { key: 'tube_tv', x: -8, z: -1, y: 0.45, face: 180 },
                 { key: 'royal_throne',    x: -3, z: 6, face: 270 },
                 { key: 'retro_speakers',  x: -4, z: -8.5, face: 0 }, { key: 'retro_radio', x: -2.6, z: -8.5, y: 0.0, face: 0 },
@@ -37014,12 +37075,12 @@ const DOOR_HQ = {
                 { key: 'bare_bulb',       x: 14, z: -9, ceil: true },
                 { key: 'wet_floor_sign',  x: 6.6, z: -6, face: 40 },
                 /* THE CELLAR: the racks, the round fridge, the safe stack */
-                { key: 'library_shelf_full', x: 8.8, z: 6, face: 90 }, { key: 'library_shelf_full', x: 8.8, z: 9, face: 90 }, { key: 'library_shelf_full', x: 8.8, z: 12, face: 90 },
+                { key: 'library_shelf_full', x: 8.8, z: 5.8, face: 90 }, { key: 'library_shelf_full', x: 8.8, z: 8.4, face: 90 }, { key: 'library_shelf_full', x: 8.8, z: 14.6, face: 90 },
                 { key: 'round_fridge',    x: 22.4, z: 13.6, face: 315 },
                 { key: 'bare_bulb',       x: 15, z: 9, ceil: true },
                 { key: 'evac_button',     x: 23.5, z: 5, face: 270, mount: 1.2 },
-                { key: 'keypad',          x: 6.4, z: 9, face: 90, mount: 1.3 },                                         // the panic room's keypad, on the cellar's west plan wall
-                { key: 'security_camera', x: -0.6, z: -9.4, face: 135, mount: 2.55 },
+                { key: 'keypad',          x: 8.3, z: 10.4, face: 90, mount: 1.3 },                                      // the panic room's keypad, on the cellar's west plan wall by its passage
+                { key: 'security_camera', x: -1.6, z: -9.4, face: 135, mount: 2.55 },
             ],
             agents: [],
             npcSpots: [
