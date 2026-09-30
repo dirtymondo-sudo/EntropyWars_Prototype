@@ -1,0 +1,2206 @@
+{
+ "format": "entropy-wars-spell-mods",
+ "v": 2,
+ "modified": {
+  "raceSpellsteal": {
+   "upgrades": [
+    "upEfficient",
+    "upReach",
+    "upCounterspell"
+   ]
+  }
+ },
+ "added": {
+  "raceSandstoneTomb": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Sandstone Tomb",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "ancientknowledge"
+   ],
+   "spellType": "divine",
+   "element": "earth",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 125,
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 2
+    }
+   ],
+   "desc": "The sand closes over them, and the sand remembers. Deals MEDIUM magic damage to a Single Enemy and Roots them for 2 rounds."
+  },
+  "raceHawk": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Hawk",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "animalhandling"
+   ],
+   "spellType": "human",
+   "element": "nature",
+   "type": "utility",
+   "kind": "summonUnit",
+   "range": 1,
+   "maxActivePerCaster": 1,
+   "summonDef": {
+    "key": "hawk",
+    "name": "Hawk",
+    "move": 6,
+    "dmg": 35,
+    "hits": 2,
+    "reveals": 2
+   },
+   "desc": "Two fingers on the glove. At the end of every round it dives 6 tiles at the nearest enemy for 35; anything hidden within 2 tiles of it is spotted. Two hits to bring it down."
+  },
+  "raceWolfPack": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Wolf Pack",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "animalhandling"
+   ],
+   "spellType": "human",
+   "element": "nature",
+   "type": "utility",
+   "kind": "summonUnit",
+   "range": 1,
+   "maxActivePerCaster": 2,
+   "summonDef": {
+    "key": "wolf",
+    "name": "Wolf",
+    "move": 4,
+    "dmg": 45,
+    "hits": 2
+   },
+   "desc": "Never one. At the end of every round each wolf runs 4 tiles at the nearest enemy and bites for 45. Two per handler. Calls a Wolf to an adjacent tile; two hits to put one down."
+  },
+  "raceCrackTheWhip": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Crack the Whip",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "animalhandling"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 125,
+   "range": 2,
+   "statusEffects": [
+    {
+     "id": "feared",
+     "duration": 1
+    }
+   ],
+   "desc": "The whip cracks — or the spirit roars — and they run. Deals MEDIUM magic damage to a Single Enemy and Fears them for a round: on its next activation it can only flee."
+  },
+  "raceElephant": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Elephant",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "animalhandling"
+   ],
+   "spellType": "human",
+   "element": "nature",
+   "type": "utility",
+   "kind": "summonUnit",
+   "range": 1,
+   "maxActivePerCaster": 1,
+   "summonDef": {
+    "key": "elephant",
+    "name": "Elephant",
+    "move": 3,
+    "dmg": 110,
+    "hits": 6
+   },
+   "desc": "The big top's biggest act. Walks 3, hits for 110, takes six hits to put down. One per handler. Calls an Elephant to an adjacent tile; at the end of every round it walks toward the nearest enemy and strikes."
+  },
+  "raceDeathRoll": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Death Roll",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "apexpredator"
+   ],
+   "spellType": "anomaly",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 100,
+   "range": 1,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 2
+    }
+   ],
+   "desc": "Clamp and spin. MEDIUM physical damage, and the prey is not going anywhere. Roots a Single Enemy for 2 rounds."
+  },
+  "raceCocoon": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Cocoon",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "arachnid"
+   ],
+   "spellType": "alien",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 170,
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "silence",
+     "duration": 1
+    }
+   ],
+   "bonusVsStatus": {
+    "status": "root",
+    "mult": 1.5
+   },
+   "desc": "The silk closes over the mouth first. HEAVY arcane damage; a Rooted target is wrapped tight and takes half again. Silences a Single Enemy for a round."
+  },
+  "raceAnnihilation": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Annihilation",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "cooldownRounds": 2,
+   "families": [
+    "arcane"
+   ],
+   "spellType": "unholy",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 180,
+   "range": 4,
+   "purgeBuffs": true,
+   "desc": "Unmake it. Deals HEAVY magic damage to a Single Enemy and strips every buff they carry. Cooldown: 2 rounds."
+  },
+  "raceSpiritGuide": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Spirit Guide",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "astralprojection"
+   ],
+   "spellType": "anomaly",
+   "element": "psychic",
+   "type": "utility",
+   "kind": "buff",
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "invisible",
+     "duration": 1
+    },
+    {
+     "id": "levitating",
+     "duration": 2
+    }
+   ],
+   "desc": "Take my hand. They cannot see what is not here. An ally is Invisible for a round and Levitating for 2 rounds."
+  },
+  "raceShakeItOff": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Shake It Off",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "cooldownRounds": 2,
+   "families": [
+    "athleticism"
+   ],
+   "spellType": "human",
+   "type": "heal",
+   "kind": "selfHeal",
+   "range": 0,
+   "selfHealPct": 0.25,
+   "cleanse": 2,
+   "desc": "Walk it off. Restores 25% of the caster's max HP and cleanses 2 debuffs. Cooldown: 2 rounds."
+  },
+  "raceMaul": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Maul",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "beastabilities"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 110,
+   "range": 1,
+   "statusEffects": [
+    {
+     "id": "grievous",
+     "duration": 2
+    }
+   ],
+   "desc": "Jaws lock and shake. MEDIUM physical damage and a wound that will not close. A Single Enemy takes a Grievous Wound for 2 rounds — healing on them is halved."
+  },
+  "raceNeedleWork": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Needle Work",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "blackmagic"
+   ],
+   "spellType": "anomaly",
+   "element": "shadow",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 125,
+   "range": 4,
+   "ignoreArmor": true,
+   "bonusVsStatus": {
+    "status": "voodoo",
+    "mult": 1.5
+   },
+   "desc": "Push the pin in. Deals MEDIUM magic damage to a Single Enemy that ignores M DEF; a Voodoo-bound target takes it worse."
+  },
+  "raceHemorrhage": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Hemorrhage",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "blood"
+   ],
+   "spellType": "unholy",
+   "element": "blood",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 100,
+   "range": 3,
+   "statusEffects": [
+    {
+     "id": "grievous",
+     "duration": 2
+    }
+   ],
+   "desc": "Open the vein. MEDIUM magic damage and a wound that will not close — healing on them is halved. The Grievous Wound lasts 2 rounds."
+  },
+  "raceExsanguinate": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Exsanguinate",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 2,
+   "cooldownRounds": 2,
+   "families": [
+    "blood"
+   ],
+   "spellType": "unholy",
+   "element": "blood",
+   "type": "damage",
+   "kind": "lifeDrain",
+   "damageType": "magic",
+   "dmg": 180,
+   "range": 3,
+   "drainPct": 1,
+   "bonusVsStatus": {
+    "status": "grievous",
+    "mult": 1.5
+   },
+   "desc": "Take all of it. HEAVY magic damage to a Single Enemy and every point of it comes back to you. Deals bonus damage to targets with a Grievous Wound."
+  },
+  "raceConstrict": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Constrict",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "tentacleappendages"
+   ],
+   "spellType": "anomaly",
+   "element": "water",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 2,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 2
+    }
+   ],
+   "statStageBoost": {
+    "def": -1
+   },
+   "desc": "Two arms, then four. It is not going anywhere. Roots a Single Enemy for 2 rounds and lowers its DEF by 1 stage."
+  },
+  "raceEightfoldLash": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Eightfold Lash",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "tentacleappendages"
+   ],
+   "spellType": "anomaly",
+   "element": "water",
+   "type": "damage",
+   "kind": "multiHit",
+   "damageType": "magic",
+   "range": 2,
+   "hitDamages": [
+    32,
+    32,
+    32,
+    32
+   ],
+   "bonusVsStatus": {
+    "status": "root",
+    "mult": 1.5
+   },
+   "desc": "All of them at once. Deals WEAK magic damage to a Single Enemy across 4 hits. Deals bonus damage to Rooted targets."
+  },
+  "raceAcidFlask": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Acid Flask",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "chemistry"
+   ],
+   "spellType": "tech",
+   "element": "poison",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "magic",
+   "dmg": 100,
+   "range": 3,
+   "statStageBoost": {
+    "def": -1
+   },
+   "desc": "It eats the plate first. Deals MEDIUM magic damage to a Single Enemy and lowers its DEF by 1 stage."
+  },
+  "raceAntidote": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Antidote",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "chemistry"
+   ],
+   "spellType": "tech",
+   "type": "heal",
+   "kind": "heal",
+   "range": 3,
+   "healAmt": 140,
+   "cleanse": 2,
+   "desc": "Drink it before it stops fizzing. Restores a BIG amount of HP to a Single Ally and cleanses 2 debuffs."
+  },
+  "raceChainReaction": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Chain Reaction",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "cooldownRounds": 2,
+   "families": [
+    "chemistry"
+   ],
+   "spellType": "tech",
+   "element": "fire",
+   "type": "damage",
+   "kind": "aoe",
+   "damageType": "magic",
+   "dmg": 140,
+   "range": 4,
+   "aoeRadius": 2,
+   "bonusVsStatus": {
+    "status": [
+     "burn",
+     "poison"
+    ],
+    "mult": 1.5
+   },
+   "desc": "One spark. The whole table goes. Deals HEAVY magic damage to every enemy in a 5×5 area. Deals bonus damage to targets with Burn or Poison."
+  },
+  "raceMilkAndCookies": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Milk and Cookies",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "christmasspirit"
+   ],
+   "spellType": "divine",
+   "type": "heal",
+   "kind": "healAll",
+   "range": 0,
+   "healAmt": 100,
+   "cleanse": 1,
+   "desc": "Left out for whoever's still standing. Every ally within 2 tiles heals a MEDIUM amount of HP and is cleansed of 1 debuff.",
+   "auraRadius": 2
+  },
+  "raceSystemCrash": {
+   "_home": {
+    "lib": true
+   },
+   "name": "System Crash",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "cooldownRounds": 2,
+   "families": [
+    "computerhacking"
+   ],
+   "spellType": "tech",
+   "type": "damage",
+   "kind": "aoe",
+   "damageType": "magic",
+   "dmg": 150,
+   "range": 4,
+   "aoeRadius": 1,
+   "bonusVsStatus": {
+    "status": "jammed",
+    "mult": 1.5
+   },
+   "desc": "Fatal exception. Deals HEAVY magic damage to every enemy in a 3×3 area. Deals bonus damage to targets with Jammed."
+  },
+  "raceSlapLeather": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Slap Leather",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "cowboyskills"
+   ],
+   "spellType": "human",
+   "element": "metal",
+   "type": "damage",
+   "kind": "damage",
+   "damageType": "physical",
+   "dmg": 125,
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "actedTargetBonus": 30,
+   "desc": "Hand hovers, then it doesn't. MEDIUM physical damage to a Single Enemy — they flinch and lose an AP. Hits harder on anyone who already made their move."
+  },
+  "raceEyewitness": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Eyewitness",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "cryptid"
+   ],
+   "spellType": "anomaly",
+   "type": "debuff",
+   "kind": "aoe",
+   "noDamage": true,
+   "range": 4,
+   "aoeRadius": 1,
+   "statusEffects": [
+    {
+     "id": "feared",
+     "duration": 1
+    },
+    {
+     "id": "blind",
+     "duration": 2
+    }
+   ],
+   "desc": "They will describe it badly for the rest of their lives. Every enemy in a 3×3 within 4 tiles is Feared for a round and Blinded for 2 rounds."
+  },
+  "raceOutOfTheDark": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Out of the Dark",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "cryptid"
+   ],
+   "spellType": "anomaly",
+   "type": "damage",
+   "kind": "damage",
+   "range": 3,
+   "dmg": 180,
+   "damageType": "physical",
+   "chargeToTarget": true,
+   "bonusVsStatus": {
+    "status": "feared",
+    "mult": 1.5
+   },
+   "desc": "One clear look. That was the last photo on the roll. Charges up to 3 tiles and deals HEAVY physical damage to a Single Enemy. Deals bonus damage to Feared targets."
+  },
+  "raceDoorSlam": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Door Slam",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "door"
+   ],
+   "spellType": "anomaly",
+   "element": "psychic",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 130,
+   "damageType": "physical",
+   "doorGun": true,
+   "bonusVsStatus": {
+    "status": "stagger",
+    "mult": 1.5
+   },
+   "desc": "Mind your fingers. Shoot a door onto a Single Enemy within 4 tiles and slam it on them for MEDIUM physical damage. Deals bonus damage to Staggered targets."
+  },
+  "raceSpout": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Spout",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "deepsea"
+   ],
+   "spellType": "anomaly",
+   "element": "water",
+   "type": "damage",
+   "kind": "damage",
+   "range": 3,
+   "dmg": 80,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "wet",
+     "duration": 2
+    }
+   ],
+   "desc": "A jet of seawater from the gills. WEAK water damage and the target is soaked through."
+  },
+  "raceSurveillance": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Surveillance",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "deepstate"
+   ],
+   "spellType": "human",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 6,
+   "statusEffects": [
+    {
+     "id": "marked",
+     "duration": 2,
+     "bonusDamage": 40
+    }
+   ],
+   "desc": "We have had a file on you for years. A Single Enemy within 6 tiles is Marked for 2 rounds: they cannot hide, and the next physical hit any ally lands deals +40."
+  },
+  "raceQuicksand": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Quicksand",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "desertacclimation"
+   ],
+   "spellType": "alien",
+   "element": "earth",
+   "type": "utility",
+   "kind": "zoneDebuff",
+   "range": 4,
+   "aoeRadius": 1,
+   "zoneDuration": 2,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 1
+    },
+    {
+     "id": "slow",
+     "duration": 1
+    }
+   ],
+   "desc": "The ground is fine until it is not. Turns a 3×3 to quicksand for 2 rounds: enemies inside are Rooted and Slowed."
+  },
+  "raceSimoom": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Simoom",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "desertacclimation"
+   ],
+   "spellType": "alien",
+   "element": "wind",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 4,
+   "aoeRadius": 1,
+   "dmg": 160,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "blind",
+     "duration": 1
+    }
+   ],
+   "desc": "The hot wind that kills. HEAVY magic damage to everything in the square, and nobody sees where it came from. Applies Blind to All Enemies in the 3×3."
+  },
+  "raceEmberHeart": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Ember Heart",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "dragonabilities"
+   ],
+   "spellType": "unholy",
+   "element": "fire",
+   "type": "heal",
+   "kind": "heal",
+   "range": 0,
+   "healPct": 0.2,
+   "statusEffects": [
+    {
+     "id": "regen",
+     "duration": 2
+    }
+   ],
+   "desc": "The furnace inside never goes out. Restores 20% of the caster's max HP and gives them Regen for 2 rounds."
+  },
+  "raceBrokenHalo": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Broken Halo",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "fallenangel"
+   ],
+   "spellType": "unholy",
+   "element": "shadow",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 130,
+   "damageType": "magic",
+   "purgeBuffs": true,
+   "bonusVsStatus": {
+    "status": "burn",
+    "mult": 1.5
+   },
+   "desc": "What is left of the halo, thrown like a discus. Deals MEDIUM magic damage and strips every buff the target carries; Burning targets take it worse."
+  },
+  "raceCatNap": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Cat Nap",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "feline"
+   ],
+   "spellType": "anomaly",
+   "type": "heal",
+   "kind": "selfHeal",
+   "range": 0,
+   "selfHealPct": 0.3,
+   "cleanse": 99,
+   "desc": "Twenty minutes. Good as new. Restores 30% of the caster's max HP and removes every debuff."
+  },
+  "raceCombust": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Combust",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "fire"
+   ],
+   "spellType": "unholy",
+   "element": "fire",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 130,
+   "damageType": "magic",
+   "bonusVsStatus": {
+    "status": "burn",
+    "mult": 1.5
+   },
+   "desc": "Feed the fire what it wants. MEDIUM magic damage — a Burning target goes up like tinder."
+  },
+  "raceStrangeLoop": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Strange Loop",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "cooldownRounds": 2,
+   "families": [
+    "fractal"
+   ],
+   "spellType": "alien",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 70,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "stun",
+     "duration": 1
+    }
+   ],
+   "desc": "The pattern closes on itself. They cannot find the way out. Deals WEAK magic damage to a Single Enemy within 4 tiles and Stuns them for a round."
+  },
+  "racePleiadianTouch": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Pleiadian Touch",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "galacticfederation"
+   ],
+   "spellType": "alien",
+   "element": "light",
+   "type": "heal",
+   "kind": "heal",
+   "range": 3,
+   "healAmt": 130,
+   "cleanse": 1,
+   "desc": "A hand on the shoulder. The wound remembers being whole. Heals an ally a BIG amount and removes one debuff."
+  },
+  "raceStackedDeck": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Stacked Deck",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "gambling"
+   ],
+   "spellType": "anomaly",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "marked",
+     "duration": 2,
+     "bonusDamage": 40
+    }
+   ],
+   "statStageBoost": {
+    "def": -1
+   },
+   "desc": "You have been reading their tell all night. A Single Enemy within 4 tiles is Marked for 2 rounds (the next physical hit on them deals +40) and loses 1 DEF stage."
+  },
+  "raceJackpot": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Jackpot",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "gambling"
+   ],
+   "spellType": "anomaly",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 3,
+   "aoeRadius": 1,
+   "dmg": 160,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "The machine pays out. All of it. On their heads. Deals HEAVY magic damage to All Enemies in a 3×3 and Staggers them."
+  },
+  "raceGiantStride": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Giant Stride",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "titan"
+   ],
+   "spellType": "alien",
+   "type": "damage",
+   "kind": "dash",
+   "range": 4,
+   "dmg": 60,
+   "damageType": "physical",
+   "desc": "Four of your steps. One of his. Stride up to 4 tiles in a line; every enemy on the path takes WEAK physical damage."
+  },
+  "raceBlueBeam": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Blue Beam",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "advancedtechnology"
+   ],
+   "spellType": "tech",
+   "element": "light",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 5,
+   "aoeRadius": 1,
+   "dmg": 125,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "discord",
+     "duration": 1
+    }
+   ],
+   "desc": "Holograms in the sky. Half of them panic; the other half kneel. Deals MEDIUM magic damage to All Enemies in a 3×3 and applies Discord."
+  },
+  "raceHornHook": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Horn Hook",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "horns"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "pull",
+   "range": 3,
+   "dmg": 110,
+   "damageType": "physical",
+   "pullDistance": 2,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 1
+    }
+   ],
+   "desc": "Hooked on the horns and dragged home. MEDIUM physical damage; they end the turn where the hooves are. Pulls the target 2 tiles toward the caster and Roots it."
+  },
+  "raceSaddleUp": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Saddle Up",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "cooldownRounds": 3,
+   "families": [
+    "horsebackriding"
+   ],
+   "spellType": "human",
+   "type": "buff",
+   "kind": "buff",
+   "range": 0,
+   "cleanse": 2,
+   "statusEffects": [
+    {
+     "id": "overclock",
+     "duration": 2
+    }
+   ],
+   "desc": "Mount up. The caster is Overclocked for 2 rounds (+1 ATK stage, +1 MOV) and cleansed of up to 2 debuffs."
+  },
+  "raceRideBy": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Ride-By",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "horsebackriding"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "dash",
+   "range": 4,
+   "dmg": 110,
+   "dashDamage": 55,
+   "damageType": "physical",
+   "desc": "Don't stop. Ride up to 4 tiles in a line: MEDIUM physical damage to the enemy at the end of the ride, and WEAK physical damage to every enemy passed."
+  },
+  "raceLance": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Lance",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "families": [
+    "horsebackriding"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "tackle",
+   "range": 5,
+   "dmg": 170,
+   "damageType": "physical",
+   "chargeToTarget": true,
+   "pushDistance": 2,
+   "collisionBonus": 40,
+   "desc": "Couched and level. Charges a Single Enemy up to 5 tiles away and drives it up to 2 tiles along the line. Deals HEAVY physical damage; crashing into a wall or another unit deals 40 more."
+  },
+  "raceSnare": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Snare",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "huntingskills"
+   ],
+   "spellType": "human",
+   "element": "nature",
+   "type": "utility",
+   "kind": "placeTrap",
+   "range": 3,
+   "dmg": 40,
+   "damageType": "physical",
+   "trapType": "spike",
+   "trapSize": 1,
+   "maxActivePerCaster": 2,
+   "desc": "A loop of wire where the game walks. The first thing that steps in it is not going anywhere for 2 rounds. Hides a snare on an empty tile within 3; the enemy cannot see it. The first enemy to step on it takes WEAK physical damage and is Rooted for 2 rounds. Two snares per caster."
+  },
+  "raceShatter": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Shatter",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "ice"
+   ],
+   "spellType": "anomaly",
+   "element": "ice",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 100,
+   "damageType": "magic",
+   "bonusVsStatus": {
+    "status": "frozen",
+    "mult": 1.5
+   },
+   "desc": "Tap the ice and watch it go. MEDIUM magic damage — a Frozen target takes it through every crack."
+  },
+  "raceDoomscroll": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Doomscroll",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "internetaddiction"
+   ],
+   "spellType": "human",
+   "element": "psychic",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "discord",
+     "duration": 2
+    }
+   ],
+   "desc": "They read the comments. All of them. A Single Enemy within 4 tiles is Discorded for 2 rounds: ATK down 2 stages and DEF down 1."
+  },
+  "raceRabbitHole": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Rabbit Hole",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "internetaddiction"
+   ],
+   "spellType": "human",
+   "type": "utility",
+   "kind": "teleport",
+   "range": 3,
+   "teleportDistance": 3,
+   "desc": "Three hours later you are somewhere else entirely. Teleports the caster to an unoccupied tile within 3."
+  },
+  "raceRatiod": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Ratio'd",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "internetaddiction"
+   ],
+   "spellType": "human",
+   "element": "psychic",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 4,
+   "dmg": 125,
+   "damageType": "magic",
+   "statStageBoost": {
+    "atk": -1
+   },
+   "bonusVsStatus": {
+    "status": "discord",
+    "mult": 1.5
+   },
+   "desc": "The whole internet piles on. Deals MEDIUM magic damage to a Single Enemy and lowers their ATK by 1 stage. Deals bonus damage to targets with Discord."
+  },
+  "raceSpiritBomb": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Spirit Bomb",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 2,
+   "families": [
+    "ki"
+   ],
+   "spellType": "human",
+   "element": "light",
+   "type": "damage",
+   "kind": "delayed",
+   "range": 5,
+   "dmg": 160,
+   "damageType": "magic",
+   "aoeRadius": 1,
+   "delayTurns": 1,
+   "desc": "Lend me your energy. Marks a 3×3 within 5 tiles; at the end of the round it lands for HEAVY magic damage to everything inside."
+  },
+  "raceShieldBash": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Shield Bash",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "knight"
+   ],
+   "spellType": "human",
+   "element": "metal",
+   "type": "damage",
+   "kind": "damage",
+   "range": 1,
+   "dmg": 110,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "Edge of the shield, under the chin. Deals MEDIUM physical damage to an adjacent enemy and Staggers them: they lose 1 AP."
+  },
+  "raceStaticShock": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Static Shock",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "lightning"
+   ],
+   "spellType": "anomaly",
+   "element": "lightning",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 100,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "A crack of static across the gap. MEDIUM magic damage, and the jolt costs them an action."
+  },
+  "raceChainLightning": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Chain Lightning",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "lightning"
+   ],
+   "spellType": "anomaly",
+   "element": "lightning",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 130,
+   "damageType": "magic",
+   "chainProfile": [
+    130,
+    85,
+    50
+   ],
+   "chainRadius": 2,
+   "desc": "It never wanted just one of you. Deals MEDIUM magic damage to a Single Enemy, then jumps to up to 2 more enemies within 2 tiles of the last, weaker with each jump."
+  },
+  "raceTempest": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Tempest",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 2,
+   "cooldownRounds": 2,
+   "families": [
+    "lightning"
+   ],
+   "spellType": "anomaly",
+   "element": "lightning",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 4,
+   "dmg": 160,
+   "damageType": "magic",
+   "aoeRadius": 1,
+   "statusEffects": [
+    {
+     "id": "stun",
+     "duration": 1
+    }
+   ],
+   "desc": "Call the sky down on the lot of them. HEAVY magic damage to a 3x3; everything in it is Stunned for a round and flyers are knocked out of the air.",
+   "groundsFlyers": true
+  },
+  "raceRoundhouseKick": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Roundhouse Kick",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "martialarts"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "barrage",
+   "range": 0,
+   "dmg": 100,
+   "damageType": "physical",
+   "aoeRadius": 1,
+   "aoeOriginSelf": true,
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "Everyone in reach. Deals MEDIUM physical damage to All Enemies in the 3×3 around you and Staggers each of them."
+  },
+  "racePressurePoint": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Pressure Point",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "cooldownRounds": 2,
+   "families": [
+    "martialarts"
+   ],
+   "spellType": "human",
+   "type": "damage",
+   "kind": "damage",
+   "range": 1,
+   "dmg": 100,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "stun",
+     "duration": 1
+    }
+   ],
+   "desc": "Two fingers. Lights out. Deals MEDIUM physical damage to an adjacent enemy and Stuns them for a round. Cooldown: 2 rounds."
+  },
+  "raceFullBurst": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Full Burst",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 2,
+   "cooldownRounds": 2,
+   "families": [
+    "mecha"
+   ],
+   "spellType": "tech",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 5,
+   "dmg": 150,
+   "damageType": "physical",
+   "aoeRadius": 2,
+   "ignoresLineOfSight": true,
+   "desc": "Every hardpoint on the frame, at once. Deals HEAVY physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover."
+  },
+  "raceDeepBreath": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Deep Breath",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "meditation"
+   ],
+   "spellType": "divine",
+   "type": "heal",
+   "kind": "selfHeal",
+   "range": 0,
+   "healAmt": 100,
+   "cleanse": 1,
+   "desc": "In through the nose. Restores a MEDIUM amount of HP to the caster and cleanses 1 debuff."
+  },
+  "raceMantra": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Mantra",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "meditation"
+   ],
+   "spellType": "divine",
+   "element": "light",
+   "type": "buff",
+   "kind": "warCry",
+   "range": 0,
+   "auraRadius": 2,
+   "teamStatusEffects": [
+    {
+     "id": "regen",
+     "duration": 3
+    }
+   ],
+   "desc": "One word, everyone breathing it. Every ally within 2 tiles gains Regen for 3 rounds and is cleansed of 2 debuffs.",
+   "cleanse": 2
+  },
+  "raceMirrorShard": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Mirror Shard",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "mirrormagic"
+   ],
+   "spellType": "anomaly",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "ricochet",
+   "range": 4,
+   "dmg": 80,
+   "damageType": "magic",
+   "bounceDamage": 40,
+   "bounceRadius": 2,
+   "desc": "A sliver of the glass. It finds the next face too. Deals WEAK magic damage to a Single Enemy, then bounces to another enemy within 2 tiles for half."
+  },
+  "raceSevenYears": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Seven Years",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "mirrormagic"
+   ],
+   "spellType": "anomaly",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 100,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "hexed",
+     "duration": 2
+    }
+   ],
+   "desc": "You broke it. You know the rule. Deals MEDIUM magic damage to a Single Enemy and Hexes them for 2 rounds."
+  },
+  "raceShatteredMirror": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Shattered Mirror",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "mirrormagic"
+   ],
+   "spellType": "anomaly",
+   "element": "arcane",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 4,
+   "dmg": 125,
+   "damageType": "magic",
+   "aoeRadius": 1,
+   "statusEffects": [
+    {
+     "id": "blind",
+     "duration": 1
+    }
+   ],
+   "desc": "Every shard, every eye. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles and Blinds them for a round."
+  },
+  "racePremonition": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Premonition",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "mothman"
+   ],
+   "spellType": "anomaly",
+   "type": "buff",
+   "kind": "buff",
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "protect",
+     "duration": 1
+    }
+   ],
+   "statStageBoost": {
+    "spd": 1
+   },
+   "desc": "It saw the bridge go. It tells one of you to step back. A Single Ally within 4 tiles gains Protect for a round and +1 SPD stage."
+  },
+  "raceHarbinger": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Harbinger",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "mothman"
+   ],
+   "spellType": "anomaly",
+   "type": "debuff",
+   "kind": "aoe",
+   "range": 4,
+   "noDamage": true,
+   "aoeRadius": 1,
+   "statusEffects": [
+    {
+     "id": "marked",
+     "duration": 2,
+     "bonusDamage": 40
+    },
+    {
+     "id": "discord",
+     "duration": 2
+    }
+   ],
+   "desc": "Everything in the square is on the list. Every enemy in a 3×3 within 4 tiles is Marked and Discorded for 2 rounds."
+  },
+  "raceMiasma": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Miasma",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 2,
+   "cooldownRounds": 2,
+   "families": [
+    "poison"
+   ],
+   "spellType": "unholy",
+   "element": "poison",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 4,
+   "dmg": 160,
+   "damageType": "magic",
+   "aoeRadius": 2,
+   "statusEffects": [
+    {
+     "id": "poison",
+     "duration": 3
+    }
+   ],
+   "bonusVsStatus": {
+    "status": "poison",
+    "mult": 1.5
+   },
+   "desc": "The air goes green. HEAVY magic damage to a 5x5, Poison on all of it. Deals bonus damage to targets with Poison."
+  },
+  "raceCampaignPromise": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Campaign Promise",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "politics"
+   ],
+   "spellType": "human",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "charm",
+     "duration": 1
+    }
+   ],
+   "desc": "Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round."
+  },
+  "raceDosed": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Dosed",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "psychadelic"
+   ],
+   "spellType": "anomaly",
+   "element": "psychic",
+   "type": "damage",
+   "kind": "damage",
+   "range": 3,
+   "dmg": 80,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "slow",
+     "duration": 2
+    }
+   ],
+   "desc": "Something in the drink. Their feet stop agreeing with them. Deals WEAK magic damage to a Single Enemy and Slows them for 2 rounds."
+  },
+  "raceContactHigh": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Contact High",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "psychadelic"
+   ],
+   "spellType": "anomaly",
+   "element": "psychic",
+   "type": "buff",
+   "kind": "warCry",
+   "range": 0,
+   "auraRadius": 2,
+   "statStageBoost": {
+    "int": 1,
+    "spd": 1
+   },
+   "desc": "Everyone in the tent is on something. Every ally within 2 tiles gains +1 M ATK and +1 SPD stage."
+  },
+  "raceTelekineticSlam": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Telekinetic Slam",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "psychic"
+   ],
+   "spellType": "alien",
+   "element": "psychic",
+   "type": "damage",
+   "kind": "pull",
+   "range": 4,
+   "dmg": 125,
+   "damageType": "magic",
+   "pullDistance": 3,
+   "groundsFlyers": true,
+   "desc": "Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. Deals MEDIUM magic damage to a Single Enemy and pulls it 3 tiles toward the caster."
+  },
+  "raceHogtie": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Hogtie",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "ropework"
+   ],
+   "spellType": "human",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 1,
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 2
+    },
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "Hands and feet. Roots an adjacent enemy for 2 rounds and Staggers it for 1 round. No damage."
+  },
+  "raceTimberStomp": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Timber Stomp",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "sasquatch"
+   ],
+   "spellType": "anomaly",
+   "element": "earth",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 0,
+   "aoeRadius": 1,
+   "aoeOriginSelf": true,
+   "dmg": 100,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    }
+   ],
+   "desc": "One foot down. Everything adjacent staggers. Deals MEDIUM physical damage to All Enemies around the caster and applies Stagger."
+  },
+  "raceScareOff": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Scare Off",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "scarecrow"
+   ],
+   "spellType": "unholy",
+   "element": "shadow",
+   "type": "debuff",
+   "kind": "barrage",
+   "range": 0,
+   "aoeRadius": 2,
+   "aoeOriginSelf": true,
+   "noDamage": true,
+   "statusEffects": [
+    {
+     "id": "feared",
+     "duration": 1
+    },
+    {
+     "id": "discord",
+     "duration": 2
+    }
+   ],
+   "desc": "That is what it is for. Every enemy within 2 tiles is Feared for a round and shaken for two. Applies Feared (1 round) and Discord (2 rounds); no damage."
+  },
+  "raceConsumingDark": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Consuming Dark",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "shadow"
+   ],
+   "spellType": "unholy",
+   "element": "shadow",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 4,
+   "aoeRadius": 1,
+   "dmg": 125,
+   "damageType": "magic",
+   "bonusVsStatus": {
+    "status": "feared",
+    "mult": 1.5
+   },
+   "desc": "The dark eats first what is already running. MEDIUM magic damage to a 3×3; Feared targets take it worse."
+  },
+  "raceMeanMug": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Mean Mug",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "streetsmarts"
+   ],
+   "spellType": "human",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 3,
+   "statusEffects": [
+    {
+     "id": "discord",
+     "duration": 2
+    }
+   ],
+   "desc": "Stare them down until they look away. A Single Enemy within 3 tiles is Discorded for 2 rounds."
+  },
+  "raceTendrilWhip": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Tendril Whip",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "symbiosis"
+   ],
+   "spellType": "unholy",
+   "element": "poison",
+   "type": "damage",
+   "kind": "damage",
+   "range": 2,
+   "dmg": 90,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "poison",
+     "duration": 2
+    }
+   ],
+   "desc": "The suit lashes out two tiles. The barbs stay in. Deals WEAK physical damage to a Single Enemy within 2 and Poisons it for 2 rounds."
+  },
+  "raceEverybodyUp": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Everybody Up",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 1,
+   "cooldownRounds": 3,
+   "families": [
+    "teamwork"
+   ],
+   "spellType": "human",
+   "type": "buff",
+   "kind": "warCry",
+   "range": 0,
+   "auraRadius": 2,
+   "statStageBoost": {
+    "atk": 1,
+    "def": 1
+   },
+   "desc": "On three. Every ally within 2 tiles gains +1 ATK and +1 DEF stage and is cleansed of every debuff.",
+   "cleanse": 99
+  },
+  "raceStutter": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Stutter",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "temporal"
+   ],
+   "spellType": "anomaly",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 4,
+   "statusEffects": [
+    {
+     "id": "stagger",
+     "duration": 1
+    },
+    {
+     "id": "slow",
+     "duration": 1
+    }
+   ],
+   "desc": "They drop a frame. Staggers a Single Enemy for 1 round and Slows it for 1 round."
+  },
+  "raceMisdirection": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Misdirection",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "trickery"
+   ],
+   "spellType": "anomaly",
+   "type": "debuff",
+   "kind": "debuff",
+   "range": 3,
+   "statusEffects": [
+    {
+     "id": "blind",
+     "duration": 1
+    }
+   ],
+   "desc": "Look — over there. Blinds a Single Enemy within 3 for 1 round: its attacks miss half the time."
+  },
+  "raceSuckerPunch": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Sucker Punch",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "trickery"
+   ],
+   "spellType": "anomaly",
+   "type": "damage",
+   "kind": "damage",
+   "range": 1,
+   "dmg": 100,
+   "damageType": "physical",
+   "bonusVsStatus": {
+    "status": "blind",
+    "mult": 1.5
+   },
+   "desc": "They never saw it coming. Literally. Deals MEDIUM physical damage to an adjacent enemy. Deals bonus damage to Blinded targets."
+  },
+  "raceVivisection": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Vivisection",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "unethicalscience"
+   ],
+   "spellType": "tech",
+   "element": "poison",
+   "type": "damage",
+   "kind": "damage",
+   "range": 2,
+   "dmg": 100,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "grievous",
+     "duration": 2
+    }
+   ],
+   "desc": "For science. Hold still. Deals MEDIUM magic damage to a Single Enemy within 2 and inflicts Grievous Wound for 2 rounds (healing halved)."
+  },
+  "raceClawSweep": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Claw Sweep",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "werewolf"
+   ],
+   "spellType": "unholy",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 0,
+   "aoeRadius": 1,
+   "aoeOriginSelf": true,
+   "dmg": 100,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "grievous",
+     "duration": 2
+    }
+   ],
+   "desc": "Both arms, every direction. MEDIUM physical damage to everything adjacent, and none of it heals right. Applies Grievous Wound for 2 rounds."
+  },
+  "raceLunarRegeneration": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Lunar Regeneration",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "werewolf"
+   ],
+   "spellType": "unholy",
+   "type": "heal",
+   "kind": "selfHeal",
+   "range": 0,
+   "selfHealPct": 0.25,
+   "cleanse": 1,
+   "desc": "The wounds close while you watch. Restores 25% of the caster's max HP, cleanses 1 debuff and gives Regen for 2 rounds.",
+   "statusEffects": [
+    {
+     "id": "regen",
+     "duration": 2
+    }
+   ]
+  },
+  "raceGale": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Gale",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "wind"
+   ],
+   "spellType": "anomaly",
+   "element": "wind",
+   "type": "damage",
+   "kind": "linePush",
+   "range": 4,
+   "lineWidth": 1,
+   "dmg": 100,
+   "damageType": "magic",
+   "pushDistance": 3,
+   "desc": "One long breath down the row. MEDIUM magic damage to everything in the line, and all of it three tiles further from you."
+  },
+  "raceUpdraft": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Updraft",
+   "tier": 2,
+   "cost": 50,
+   "apCost": 1,
+   "families": [
+    "wind"
+   ],
+   "spellType": "anomaly",
+   "element": "wind",
+   "type": "utility",
+   "kind": "buff",
+   "range": 3,
+   "statusEffects": [
+    {
+     "id": "levitating",
+     "duration": 2
+    }
+   ],
+   "desc": "Give them the sky. One ally is Levitating for 2 rounds — flight and the high-ground bonus."
+  },
+  "raceGlacialSlam": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Glacial Slam",
+   "tier": 3,
+   "cost": 75,
+   "apCost": 1,
+   "families": [
+    "winter"
+   ],
+   "spellType": "anomaly",
+   "element": "ice",
+   "type": "damage",
+   "kind": "aoe",
+   "range": 0,
+   "aoeRadius": 1,
+   "aoeOriginSelf": true,
+   "dmg": 125,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "slow",
+     "duration": 2
+    }
+   ],
+   "bonusVsStatus": {
+    "status": "frozen",
+    "mult": 1.5
+   },
+   "desc": "Bring both fists down. MEDIUM physical damage to everything around you, all of it Slowed — and anything Frozen shatters."
+  },
+  "raceEvilEye": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Evil Eye",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "witchcraft"
+   ],
+   "spellType": "unholy",
+   "element": "shadow",
+   "type": "damage",
+   "kind": "damage",
+   "range": 4,
+   "dmg": 80,
+   "damageType": "magic",
+   "statusEffects": [
+    {
+     "id": "hexed",
+     "duration": 2
+    }
+   ],
+   "desc": "One look is enough. Deals WEAK magic damage and Hexes the target for 2 rounds."
+  },
+  "raceGrab": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Grab",
+   "tier": 1,
+   "cost": 25,
+   "apCost": 1,
+   "families": [
+    "zombie"
+   ],
+   "spellType": "unholy",
+   "type": "damage",
+   "kind": "damage",
+   "range": 1,
+   "dmg": 80,
+   "damageType": "physical",
+   "statusEffects": [
+    {
+     "id": "root",
+     "duration": 1
+    }
+   ],
+   "desc": "The hands do not let go. Deals WEAK physical damage and Roots the target for a round."
+  },
+  "raceRejuvenation": {
+   "_home": {
+    "lib": true
+   },
+   "name": "Rejuvenation",
+   "tier": 4,
+   "cost": 100,
+   "apCost": 2,
+   "cooldownRounds": 2,
+   "families": [
+    "nature"
+   ],
+   "spellType": "human",
+   "element": "nature",
+   "type": "heal",
+   "kind": "healAll",
+   "range": 0,
+   "auraRadius": 3,
+   "healAmt": 120,
+   "cleanse": 1,
+   "teamStatusEffects": [
+    {
+     "id": "regen",
+     "duration": 2
+    }
+   ],
+   "desc": "Everything green in you wakes up at once. Every ally within 3 tiles heals a MEDIUM amount of HP, is cleansed of 1 debuff and gains Regen for 2 rounds. Cooldown: 2 rounds."
+  }
+ },
+ "deleted": [],
+ "families": {},
+ "raceFamilies": {}
+}

@@ -3029,7 +3029,8 @@
             return healValue(g, unit, target, amt, v);
         }
         if (kind === 'healAll') {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = g.aliveUnitsFor(unit.player).filter(a => !spell.auraRadius   // THE SPELL AUDIT C: aura heals
+                || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
             const hBase = spell.healAmt != null ? spell.healAmt : (spell.heal || 16);
             let s = 0;
             for (const a of allies) s += healValue(g, unit, a, hBase, v) * 0.9;
