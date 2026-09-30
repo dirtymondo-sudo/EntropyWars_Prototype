@@ -74,7 +74,7 @@ layout, load cards inside one place, and how little it has been touched. The Woo
 | 4 | **The Sewers** (+ the running tunnels, the cells, the workings) | `halls` BSP rooms 120 × 84 and 124 × 96, `cave` workings | Big generated floors; not mazes. | LAYOUT mazes on `map_layout.JPG`'s pattern: culverts as hallways, junction chambers as rooms, loops, dead ends, the channel down the middle of the main culvert. |
 | 5 | **The Cavern** (hollow earth ×6, the inner sun) | `cave` gen ×6, `rooms` gen | Cellular blobs. | LAYOUT with the rock look: passages and chambers, ledges up the walls with stairs (`multiple_floors_interior`), the inner sun kept as the big open room at the end. |
 | 6 | **Dungeons**: Dead Man's Cave, Camelot's dungeon (`cave`), Hell's pit (`cave`) | | Blobs / one long room. | LAYOUT mazes: Camelot's dungeon cells off corridors (walls look), Dead Man's Cave as a culvert maze, Hell's pit as ledges round the pit. |
-| 7 | **The D.U.M.B.** (motor pool, sublevel 7, dream lab, clone vats, bunker), Area 51 hangar + ward, CERN, the Backrooms, the Lodge | `halls` BSP | Generated, samey. Closest to right already (walls to the ceiling). | FREEZE each into a LAYOUT and redraw it on `map_layout_3.JPG` (hub + spokes + vent maze). |
+| 7 | **The D.U.M.B.** (motor pool, sublevel 7, dream lab, clone vats, bunker), Area 51 hangar + ward, CERN, the Lodge (the Backrooms was deleted 2026-09-30: H-Wing is the game's backrooms) | `halls` BSP | Generated, samey. Closest to right already (walls to the ceiling). | FREEZE each into a LAYOUT and redraw it on `map_layout_3.JPG` (hub + spokes + vent maze). |
 | 8 | **Ship decks**: the Flying Dutchman's deck, the derelict's deck | `rooms` gen banks | Terrain on a ship. | Built decks (bridges, walls, hatches). The derelict's deck goes in delivery 3. |
 | 9 | **Built towns on banks**: Agartha, the temple city, Antarctica station, the North Pole village, the haunted grounds, Olympus, Babel, Giza, Stonehenge, Göbekli tell | `rooms` gen banks round built props | Outdoors, so banks read as ground more than inside; lowest priority. | Per site later: built walls and plazas instead of banks where a structure is meant. |
 
@@ -145,7 +145,7 @@ built (sewers, catacombs, dungeons, bases, the ship), `look: 'rock'` with a tall
 | L3 | §6 the spaceship staged + its deck rebuilt | data.js |
 | L4 | §7 the Sewers, the tunnels, the cells, the workings, Dead Man's Cave | data.js |
 | L5 | §7 the Cavern, Camelot's dungeon, Hell's pit | data.js |
-| L6 | §3 #7–#9 as mondo picks | data.js |
+| L6 | §3 #7–#9, plus deleting the Backrooms and the Flat Lands | data.js, map.js, three-renderer.js, audio.js |
 
 ---
 
