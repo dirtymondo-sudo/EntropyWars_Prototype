@@ -801,7 +801,38 @@
             } catch (e) { console.warn('[HQ] the intake could not file the agent', e); return null; }
         };
         window._hqIntakeNeeded = _hqIntakeNeeded;
-        function _hqAvatar(profile) {
+        /* THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4, 2026-09-30): the first shift's other fit members walk behind the lead
+           (data.js hqPartyFollowers); the officer's own row, when it follows, walks as the officer's avatar (the chair's rules) */
+        /* THE HAND-BACK: the fight's end rows for the next enter only (each follower starts on its own end cell) */
+        let _hqFollowEnd = null;
+        function _hqFollowers(profile) {
+            const endRes = _hqFollowEnd ? { end: _hqFollowEnd } : null;
+            _hqFollowEnd = null;
+            const out = _hqFollowersList(profile);
+            if (endRes && typeof window.hqEncounterEndSpot === 'function') out.forEach(f => { try { const at = window.hqEncounterEndSpot(endRes, f.id); if (at) f.at = { x: at.x, z: at.z, face: at.face }; } catch (e) {} });
+            return out;
+        }
+        function _hqFollowersList(profile) {
+            if (window.EW_HQ_NO_FOLLOWERS || typeof window.hqPartyFollowers !== 'function') return [];
+            let list = [];
+            try { list = window.hqPartyFollowers(profile) || []; } catch (e) { list = []; }
+            const out = [];
+            list.forEach(f => {
+                try {
+                    if (f.you) { const av = _hqAvatar(profile, { officer: true }); if (av) out.push(Object.assign({ id: f.id, name: f.name }, av)); return; }
+                    if (typeof getRace3DModel !== 'function') return;
+                    if (f.appearance && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel(f.race, f.gender, f.appearance)) { out.push(f); return; }
+                    if (getRace3DModel(f.race, f.gender)) { out.push(Object.assign({}, f, { appearance: null })); return; }
+                    const alt = f.gender === 'male' ? 'female' : 'male';
+                    if (getRace3DModel(f.race, alt)) out.push(Object.assign({}, f, { gender: alt, appearance: null }));
+                } catch (e) {}
+            });
+            return out;
+        }
+        window._hqRefreshFollowers = function () {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active() && ThreeRenderer.hq.setFollowers) ThreeRenderer.hq.setFollowers(_hqFollowers(_hqProfile())); } catch (e) { console.warn('[HQ] the followers could not be refreshed', e); }
+        };
+        function _hqAvatar(profile, aopts) {
             const ov = window.EW_HQ_AVATAR;
             if (typeof ov === 'string' && ov !== 'vessel') return { race: ov };
             if (ov && ov.race) return ov;
@@ -815,7 +846,7 @@
             /* THE LEAD (2026-09-23, the user: "the unit the player controls and moves around with should be whichever unit is in
                the first party slot"): slot 1 of THE PARTY is the walker. The officer's own row (`you`) keeps the chair's / the
                mirror's rules below; any other member walks as its vessel (a look on it rides too). */
-            try {
+            if (!(aopts && aopts.officer)) try {
                 const lead = (typeof window.hqPartyLeadAvatar === 'function') ? window.hqPartyLeadAvatar(profile) : null;
                 if (lead && !lead.you && ov !== 'vessel' && typeof getRace3DModel === 'function') {
                     if (lead.appearance && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel(lead.race, lead.gender, lead.appearance)) return { race: lead.race, gender: lead.gender, appearance: lead.appearance, lead: lead.id };
@@ -1169,6 +1200,7 @@
                 let ok = false;
                 try { ok = ThreeRenderer.hq.enter({
                     host, room: roomId, profile, avatar: _hqAvatar(profile),
+                    followers: _hqFollowers(profile),   // THE FOLLOWERS (EXPLORATION_BATTLES §4)
                     onPrompt: _hqSetPrompt,
                     onInteract: _hqInteractTarget,
                     onEnterDoor: _hqWalkThroughDoor,
@@ -1576,7 +1608,16 @@
                (data.js hqEncounterWakeRoom off the loss count the commit already wrote; the user's rule) */
             const encRes = window._hqEncounterResult || null;
             window._hqEncounterResult = null;
-            if (encRes && !encRes.won && enabled && _hqHome && DOOR_HQ.rooms) {
+            /* ESCAPE (EXPLORATION_BATTLES §6): THE RETREAT, and a loss someone got out of, come back to the ROOM — at the door it
+               was entered by (the swing spot when none is on file), the natives still in it, nothing cleared; never the ward */
+            const encBack = !!(encRes && !encRes.won && (encRes.retreat || encRes.escLoss));
+            if (encBack && enabled && _hqHome && encRes.room && DOOR_HQ.rooms) {
+                let land = null;
+                try { if (encRes.entry && (typeof window.hqEscapeRules !== 'function' || window.hqEscapeRules().landsAtDoor)) land = encRes.entry; } catch (e) { land = null; }
+                if (!land && typeof window.hqEncounterReturnSpot === 'function') land = window.hqEncounterReturnSpot(encRes);
+                _hqLastRoom = encRes.room; _hqLastDoor = land || null;
+            }
+            if (encRes && !encRes.won && !encBack && enabled && _hqHome && DOOR_HQ.rooms) {
                 let wake = null;
                 try { wake = (typeof window.hqEncounterWakeRoom === 'function') ? window.hqEncounterWakeRoom(_hqProfile()) : null; } catch (e) { wake = null; }
                 if (!wake || !DOOR_HQ.rooms[wake]) wake = DOOR_HQ.rooms.medical ? 'medical' : null;
@@ -1586,8 +1627,13 @@
                strike (the run marker's `walker`, home on the result) as _hqGoTo's free-spot form; the beaten native's spot
                in front of you stands empty (THE CLEARED ROOM). Only in the strike's own room; else the console as before. */
             if (encRes && encRes.won && enabled && _hqHome && encRes.room && encRes.room === _hqLastRoom && typeof window.hqEncounterReturnSpot === 'function') {
-                const spot = window.hqEncounterReturnSpot(encRes);
+                /* THE HAND-BACK (EXPLORATION_BATTLES §5.2): the lead stands on its own end-of-fight cell (the swing spot when it
+                   did not end standing), the followers on theirs (_hqFollowers `at`) */
+                let spot = null;
+                try { spot = (typeof window.hqEncounterEndSpot === 'function') ? window.hqEncounterEndSpot(encRes, null) : null; } catch (e) { spot = null; }
+                if (!spot) spot = window.hqEncounterReturnSpot(encRes);
                 if (spot) _hqLastDoor = spot;
+                _hqFollowEnd = (encRes.end && Array.isArray(encRes.end.units)) ? encRes.end : null;
             }
             /* THE WAY BACK (2026-09-22): the debrief's held frame + the camera's eye (battle.js _encReturnLeave) — the
                building is entered SEAMLESSLY under it, no load card; a return that never enters the building drops it */
@@ -1595,7 +1641,7 @@
             window._hqReturnArrive = null;
             const arriveDrop = () => { try { if (arrive && arrive.drop) arrive.drop(); } catch (e) {} };
             if (enabled && _hqHome) {
-                if (alive && _hqSuspended && window._hqResume()) { arriveDrop(); return true; }
+                if (alive && _hqSuspended && window._hqResume()) { _hqFollowEnd = null; arriveDrop(); return true; }
                 if (alive) window._hqLeave();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: (arrive && arrive.eye) ? arrive : null })) {
                     if (encRes) setTimeout(() => { try {
@@ -1610,6 +1656,8 @@
                                 const j = rows.filter(r => r.to === 'party'), ro = rows.filter(r => r.to === 'roster');
                                 return (j.length ? ` · ${j.map(up).join(', ')} JOINED THE PARTY` : '') + (ro.length ? ` · ${ro.map(up).join(', ')} ON YOUR ROSTER` : '') + ((cr && cr.gold > 0) ? ` · CAPTURE BOUNTY 💰 +${cr.gold | 0}` : '');
                             })();
+                        if (encRes.retreat) { _hqToast(`<b>THE RETREAT</b><span>THE PARTY SLIPPED OUT · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} STILL HAS THE ROOM${partyLine}</span>`, 4200); return; }
+                        if (encRes.escLoss) { _hqToast(`<b>THE PARTY IS DOWN</b><span>${_hqEsc((encRes.escaped || []).join(', ').toUpperCase())} GOT OUT${pr && pr.lead ? ' · ' + _hqEsc(String(pr.lead).toUpperCase()) + ' LEADS THE PARTY' : ''} · HEAL THE DOWN OR REST IN MEDICAL</span>`, 4600); return; }
                         _hqToast(encRes.won ? `<b>THRESHOLD HELD</b><span>${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} · THE ROOM IS YOURS${partyLine}</span>` : `<b>EXITED</b><span>${encRes.wake === 'office' ? 'YOU CAME TO AT YOUR DESK' : 'YOU CAME TO IN THE WARD'} · ${_hqEsc(String(encRes.label || encRes.race || 'THE NATIVE').toUpperCase())} HAD THE ROOM${partyLine}</span>`, 4200);
                     } catch (e) {} }, 1400);
                     return true;
@@ -1716,6 +1764,7 @@
                 const out = fn(p);
                 PS.saveProfile(idx, p);
                 if (_hqPause) _hqPause.units = {};
+                try { window._hqRefreshFollowers(); } catch (e) {}   // THE FOLLOWERS: a swap / a heal / a revive re-forms the file (unchanged = no respawn)
                 return out;
             } catch (e) { console.warn('[HQ] party', e); return { ok: false, reason: 'error' }; }
         }
@@ -3834,6 +3883,7 @@
                     else {
                         const feet = [{ x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }];
                         (Array.isArray(ev.target.group) ? ev.target.group : []).forEach(g => { if (g && isFinite(+g.x) && isFinite(+g.z)) feet.push({ x: +g.x, z: +g.z }); });
+                        (Array.isArray(ev.party) ? ev.party : []).forEach(g => { if (g && isFinite(+g.x) && isFinite(+g.z)) feet.push({ x: +g.x, z: +g.z }); });   // THE FOLLOWERS (§4.4): the file you walked in is on the field
                         win = window.hqFieldFrame(_hqCurRoom, feet);
                     }
                 } catch (e) { console.warn('[HQ] the field frame failed', e); win = null; }
@@ -3912,6 +3962,9 @@
                 party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;   // THE LEVELS: the adaptive levels, the lead's first
                 party.swarm = L.swarm || null;   // THE SWARM (CAPTURE_PLAN §5.2): all n on the board — the seats below size for it
             }
+            /* ESCAPE (EXPLORATION_BATTLES §6): the door this room was entered by — a retreat or a loss someone got out of
+               comes back to the room there (the run marker's `entry`, home on the result) */
+            const _entryDoor = (_hqLastRoom === _hqCurRoom && _hqLastDoor && _hqLastDoor !== 'crossing') ? _hqLastDoor : null;
             _hqLastDoor = L.doorId || 'crossing'; _hqLastRoom = _hqCurRoom; _hqRecordVisit(_hqLastDoor);
             /* the run marker: the intro off PER LAUNCH, the native's spawn id (THE CLEARED ROOM on a win), THE EYE
                (stage 2) — the walker's camera in board tiles, the first battle frame (battle.js → ThreeCamera.seedPose)
@@ -3921,7 +3974,7 @@
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
-                                       swarm: L.swarm || null };   // THE SWARM: battle.js keeps every native on the board
+                                       swarm: L.swarm || null, entry: _entryDoor };   // THE SWARM: battle.js keeps every native on the board
             window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is

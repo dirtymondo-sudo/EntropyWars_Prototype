@@ -11586,6 +11586,7 @@ function mergeProgressBlobs(a, b) {
     if (enc) {
       const E = out.hq.encounters;
       E.count = Math.max(E.count, clampVal(enc.count)); E.wins = Math.max(E.wins, clampVal(enc.wins)); E.losses = Math.max(E.losses, clampVal(enc.losses));
+      if (enc.retreats != null) E.retreats = Math.max(E.retreats | 0, clampVal(enc.retreats));   // THE RETREAT (EXPLORATION_BATTLES §6.3)
       const L = enc.last;
       if (L && typeof L === 'object' && typeof L.date === 'string' && DATE_RE.test(L.date)) {
         const cand = { site: RACE_TXT(L.site), room: (typeof L.room === 'string' && ROOM_RE.test(L.room)) ? L.room : null, race: RACE_TXT(L.race), date: L.date, won: !!L.won };
@@ -47736,8 +47737,11 @@ const HQ_ENCOUNTER_RULES = {
        its travel (a boom up and over, not a dolly out), `lookLead` = how far the gaze runs ahead of the body
        (the pan lands before the dolly), `fovLate` = the share of the move after which the lens tightens from the
        walker's to the board's. `swoopS` the move's length; `settleMs` the beat after it lands before the first
-       activation; `barsVh` the letterbox's height while it flies (0 = none). */
-    arrival: { tilt: 50, zoomMult: 1.0, lead: 0.42, swoopS: 2.1, settleMs: 260, barsVh: 7,
+       activation; `barsVh` the letterbox's height while it flies (0 = none). `frameTiles` (EXPLORATION_BATTLES,
+       2026-09-30): the board side every automatic framing of a story fight is sized for (battle.js
+       _framingBoardTiles). The board is the whole room now (up to 24 a side); sizing the view for that parked the
+       camera far out, so the fight is framed as the old 8×8 was. The overview still shows the whole room. */
+    arrival: { tilt: 50, zoomMult: 1.0, lead: 0.42, swoopS: 2.1, settleMs: 260, barsVh: 7, frameTiles: 8,
                crane: { bow: 0.22, lookLead: 1.18, fovLate: 0.35 } },
     /* rev 17 (the user's correction): the strike is LEFT CLICK with the door gun HOLSTERED
        — drawn, a click places a threshold (9.5) and never attacks. No number keys. */
@@ -47857,6 +47861,31 @@ function hqEncounterLead(enc) {
    accepts: { x, z, y, face } with `face` the heading in DEGREES (the walker's own
    look — the empty spot the native stood on is in front of you). Null without a
    usable walker (the old return: the console). */
+/* THE HAND-BACK (EXPLORATION_BATTLES_PLAN §5.2, 2026-09-30): where a party member ENDED the fight, in room metres — the
+   commit files `end.units` ([{ partyId, x, z, face, lead? }], the field's cell centres through hqFieldTransform); the lead
+   stands there on the way back (memberId null = the lead's row) and the followers stand on their own (null = that member
+   did not end standing: the swing spot / the file behind the lead as before) */
+function hqEncounterEndSpot(res, memberId) {
+    const E = res && res.end;
+    if (!E || !Array.isArray(E.units)) return null;
+    const u = (memberId == null) ? E.units.find(r => r && r.lead) : E.units.find(r => r && String(r.partyId) === String(memberId));
+    if (!u || !isFinite(+u.x) || !isFinite(+u.z)) return null;
+    const w = res.walker || null;   // the strike's height is the feet's hint (_hqGoTo takes the walkable surface under the cell)
+    return { x: +u.x, z: +u.z, y: (w && isFinite(+w.y)) ? +w.y : null, face: isFinite(+u.face) ? +u.face : 0, swing: true };
+}
+/* the end rows from the board: `units` = [{ partyId, x, y (board cell), facing {dx, dy}, lead }] → each cell centre and heading in the room */
+function hqEncounterEndRows(board, units) {
+    const TR = hqFieldTransform(board); if (!TR || !Array.isArray(units)) return null;
+    const out = [];
+    units.forEach(u => {
+        if (!u || u.partyId == null || !isFinite(+u.x) || !isFinite(+u.y)) return;
+        const c = TR.centre({ x: +u.x, y: +u.y });
+        let face = 0;
+        if (u.facing && (isFinite(+u.facing.dx) || isFinite(+u.facing.dy))) { face = Math.atan2(+u.facing.dx || 0, -(+u.facing.dy || 0)) * 180 / Math.PI; face = ((face % 360) + 360) % 360; }
+        out.push({ partyId: u.partyId, x: Math.round(c.x * 1000) / 1000, z: Math.round(c.z * 1000) / 1000, face: Math.round(face * 100) / 100, lead: !!u.lead });
+    });
+    return out.length ? { units: out } : null;
+}
 function hqEncounterReturnSpot(run) {
     const w = run && run.walker;
     if (!w || !isFinite(+w.x) || !isFinite(+w.z)) return null;
@@ -47901,10 +47930,11 @@ function hqClearedUnion(a, b) {
     return out;
 }
 function hqEncountersUnion(a, b) {
-    const out = { count: 0, wins: 0, losses: 0, last: null };
+    const out = { count: 0, wins: 0, losses: 0, retreats: 0, last: null };
     [a, b].forEach(src => {
         if (!src || typeof src !== 'object') return;
         out.count = Math.max(out.count, src.count | 0); out.wins = Math.max(out.wins, src.wins | 0); out.losses = Math.max(out.losses, src.losses | 0);
+        out.retreats = Math.max(out.retreats, src.retreats | 0);   // THE RETREAT (EXPLORATION_BATTLES §6.3): neither a win nor a loss
         const L = src.last;
         if (L && typeof L === 'object' && typeof L.date === 'string') {
             const cur = out.last;
@@ -48212,9 +48242,15 @@ function hqEncounterRecord(profile, ev) {
     const H = profile.door.hq;
     const E = H.encounters = hqEncounterLog(profile);
     E.count = (E.count | 0) + 1;
-    if (ev.won) E.wins = (E.wins | 0) + 1; else E.losses = (E.losses | 0) + 1;
     const date = ev.date || hqToday();
-    E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date, won: !!ev.won };
+    /* THE RETREAT (EXPLORATION_BATTLES_PLAN §6.3, 2026-09-30): the party slipped out — neither a win nor a loss. It is
+       counted as a retreat, `last` is left as it was (the ward's chart does not say you were brought in), nothing clears */
+    if (ev.retreat && !ev.won) {
+        E.retreats = (E.retreats | 0) + 1;
+    } else {
+        if (ev.won) E.wins = (E.wins | 0) + 1; else E.losses = (E.losses | 0) + 1;
+        E.last = { site: ev.site || null, room: ev.room || null, race: ev.race || null, date, won: !!ev.won };
+    }
     if (ev.won && ev.room) {
         const C = H.cleared = hqClearedRecord(profile);
         let c = C[ev.room];
@@ -48224,7 +48260,7 @@ function hqEncounterRecord(profile, ev) {
     }
     const synced = hqSyncedHq(profile, true);
     if (synced) {
-        synced.encounters = { count: E.count, wins: E.wins, losses: E.losses, last: Object.assign({}, E.last) };
+        synced.encounters = { count: E.count, wins: E.wins, losses: E.losses, retreats: E.retreats | 0, last: E.last ? Object.assign({}, E.last) : null };
         if (ev.won && ev.room) synced.cleared = hqClearedUnion(synced.cleared, H.cleared);
     }
     return E;
@@ -48392,7 +48428,10 @@ function hqEncounterField(ev) {
            member's feet (three-renderer.js _hqEncounterTargetOf), in the order state.js seats them (P2 seats 2..n) */
         const grp = (T && Array.isArray(T.group)) ? T.group.filter(x => x && x.race && x.id !== T.id) : [];   // hqEncounterGroup's own filter: the same order as encounter.members
         const gcells = grp.map(g => (g && isFinite(+g.x) && isFinite(+g.z)) ? cellOf({ x: +g.x, z: +g.z }) : null);
-        F.cells = { walker: cw, target: ct, group: gcells };
+        /* THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4.4): the party's other members stand on their own cells too — the renderer
+           reports each follower's feet in shift order (= the launch's P1 seats 2..n while the first shift is fit) */
+        const pcells = Array.isArray(ev.party) ? ev.party.map(p => (p && isFinite(+p.x) && isFinite(+p.z)) ? cellOf({ x: +p.x, z: +p.z }) : null) : [];
+        F.cells = { walker: cw, target: ct, group: gcells, party: pcells };
         F.snap = { walker: TR.centre(cw), target: TR.centre(ct) };
     }
     return F;
@@ -48453,6 +48492,16 @@ function hqEncounterSeats(field, opts) {
             taken.add(key(c.x, c.y)); own2.push(c);
         }
     }
+    /* THE FOLLOWERS (§4.4): the party's followers on their own cells (nudged to the nearest seat towards the lead) */
+    const own1 = [];
+    if (C && Array.isArray(C.party)) {
+        for (let i = 0; i < C.party.length && own1.length < n1 - 1; i++) {
+            const g = C.party[i];
+            const c = g ? nearest({ x: cl(g.x, W), y: cl(g.y, H) }, l1) : null;
+            if (!c) break;
+            taken.add(key(c.x, c.y)); own1.push(c);
+        }
+    }
     const fill = (lead, enemy, n, own) => {
         const out = [lead].concat(own || []);
         if (n <= out.length) return out.slice(0, Math.max(1, n));
@@ -48470,7 +48519,7 @@ function hqEncounterSeats(field, opts) {
         for (const c of cands) { if (out.length >= n) break; taken.add(key(c.x, c.y)); out.push(c); }
         return out;
     };
-    const s1 = fill(l1, l2, n1), s2 = fill(l2, l1, n2, own2);
+    const s1 = fill(l1, l2, n1, own1), s2 = fill(l2, l1, n2, own2);
     return { 1: s1, 2: s2, lead: { 1: l1, 2: l2 }, W, H, board: !!(C && C.walker) };
 }
 function hqEncounterEyeFromSeats(field, seats) {
@@ -48519,6 +48568,7 @@ function hqEncounterArrivalRules() {
     return { tilt: (isFinite(+A.tilt) && +A.tilt > 0) ? +A.tilt : 50, zoomMult: (isFinite(+A.zoomMult) && +A.zoomMult > 0) ? +A.zoomMult : 1,
              lead: (isFinite(+A.lead)) ? Math.max(0, Math.min(1, +A.lead)) : 0.42, swoopS: (isFinite(+A.swoopS) && +A.swoopS > 0) ? +A.swoopS : 2.1,
              settleMs: (isFinite(+A.settleMs) && +A.settleMs >= 0) ? +A.settleMs : 260, barsVh: (isFinite(+A.barsVh) && +A.barsVh >= 0) ? +A.barsVh : 7,
+             frameTiles: (isFinite(+A.frameTiles) && +A.frameTiles > 0) ? +A.frameTiles : 8,
              crane: { bow: isFinite(+c.bow) ? +c.bow : 0.22, lookLead: (isFinite(+c.lookLead) && +c.lookLead >= 1) ? +c.lookLead : 1.18, fovLate: (isFinite(+c.fovLate)) ? Math.max(0, Math.min(0.9, +c.fovLate)) : 0.35 } };
 }
 function hqEncounterArrival(eye, lead, foe, opts) {
@@ -48586,6 +48636,76 @@ const HQ_PARTY_RULES = {
     carryGauge: true,
     labels: { first: 'FIRST SHIFT', second: 'SECOND SHIFT', onCall: 'ON CALL', down: 'DOWN', fit: 'FIT', you: 'YOU', lead: 'THE LEAD' },
 };
+/* ══ THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4, 2026-09-30) ══
+   mondo: "do we need to have the first 3 party members following behind the player?" — yes. The FIRST SHIFT's members
+   2–4 that are fit (hp !== 0), in shift order, walk behind the lead in file (three-renderer.js THE TRAIL): the lead's feet
+   are sampled every `sampleM` into a trail and follower k stands `k × gap` metres back along it. No pathfinding, no
+   collision: they walk through people and each other, never block a door or a prompt, never talk, never fight on their
+   own. More than `catchUpM` off their point (a jump down, a teleport) they are placed on it at once. Hidden while the lead
+   rides, drives, swims or climbs. Everywhere the lead walks (`halls`: DOOR HQ's halls too — fork §10.4). At a strike their
+   feet are the party's seats (THE STAND RULE, hqEncounterField `party`). Kill-switch: window.EW_HQ_NO_FOLLOWERS. */
+const HQ_FOLLOW_RULES = { count: 3, gap: 1.4, sampleM: 0.35, catchUpM: 6, halls: true };
+/* who follows: [{ id, race, gender, appearance?, name }] — the first shift's members 2..shift that are not DOWN, in order */
+function hqPartyFollowers(profile) {
+    const r = hqPartyRecord(profile); if (!r || !r.members.length) return [];
+    const n = Math.max(0, Math.min(HQ_FOLLOW_RULES.count | 0, (HQ_PARTY_RULES.shift | 0) - 1));
+    const out = [];
+    r.members.slice(1, 1 + n).forEach(m => {
+        if (!m || hqPartyDown(m)) return;
+        const race = (m.meta && m.meta.race) || 'homosapien';
+        const genders = hqPartyGenders(race);
+        let gender = (m.meta && m.meta.gender) || genders[0]; if (genders.indexOf(gender) < 0) gender = genders[0];
+        const f = { id: m.id, race, gender, name: m.name || m.cls || '', you: !!m.you };
+        if (m.meta && m.meta.appearance) f.appearance = m.meta.appearance;
+        out.push(f);
+    });
+    return out;
+}
+/* ══ ESCAPE · TEAM ESCAPE · THE RETREAT (EXPLORATION_BATTLES_PLAN §6, 2026-09-30) ══
+   mondo: "an Escape action, where if you are hidden your unit can escape. A unit that escapes survives the battle even
+   after a loss, but is not available to be switched in. If I lose a fight and my whole team got wiped out except for one
+   unit I was able to escape with earlier, the game would put them at the front of my party and let me continue
+   exploring." / "If more than half your team (3/4 or better) is hidden you can do a team escape."
+   Story fights only (battle.js _encRun()). HIDDEN = the nameplate eye closed (battle.js isUnitSeenByAnyEnemy false) — no
+   new stealth rule. ESCAPE spends the unit's whole activation (`apMin` AP or more left): it walks up to `walkTiles` towards
+   the field's nearest rim over `ms` and is out of the fight for good (state.escaped — not the board, not the bench, not
+   the turn order; survives any result). TEAM ESCAPE is on the menu when `teamShare` of the LIVING BOARD is hidden (4
+   alive → 3, 3 → 3, 2 → 2; 1 alive is the single ESCAPE): everyone alive, board and bench, goes, and the fight ends as
+   THE RETREAT (also when the last body on the board escapes). A RETREAT is neither a win nor a loss: no pool, no drops,
+   no capture, nothing cleared, no ward, counted as `retreats`. A LOSS with escapes is not a wipe: nobody is treated, the
+   loss is counted, the escaped move to the FRONT of the party (slot 1 walks), and the way back is the room at the door
+   you came in by (`landsAtDoor`; the swing spot when there is no door on file). Natives never escape (fork §10.2). */
+const HQ_ESCAPE_RULES = {
+    apMin: 1,          // AP the unit must still hold to slip out (it spends all of it)
+    ms: 900,           // the walk-off
+    walkTiles: 3,      // how far the body walks towards the rim before it is gone
+    teamShare: 0.75,   // TEAM ESCAPE: hidden / living board ≥ this
+    landsAtDoor: true, // a retreat or an escape-loss comes back to the room at the entry door
+    labels: { escape: 'Escape', team: 'Team escape', escaped: 'ESCAPED', retreat: 'THE RETREAT', seen: 'Seen', noAp: 'No AP', story: 'Story fights only' },
+};
+function hqEscapeRules() {
+    const R = (typeof HQ_ESCAPE_RULES !== 'undefined' && HQ_ESCAPE_RULES) || {};
+    return { apMin: Math.max(0, +R.apMin || 1), ms: Math.max(0, isFinite(+R.ms) ? +R.ms : 900), walkTiles: Math.max(0, (R.walkTiles | 0) || 3),
+             teamShare: (isFinite(+R.teamShare) && +R.teamShare > 0) ? Math.min(1, +R.teamShare) : 0.75, landsAtDoor: R.landsAtDoor !== false,
+             labels: Object.assign({ escape: 'Escape', team: 'Team escape', escaped: 'ESCAPED', retreat: 'THE RETREAT', seen: 'Seen', noAp: 'No AP', story: 'Story fights only' }, R.labels || {}) };
+}
+/* TEAM ESCAPE's bar: how many of `living` board units must be hidden (ceil of the share; 0 living → never) */
+function hqEscapeTeamNeed(living) {
+    const n = Math.max(0, living | 0); if (!n) return Infinity;
+    return Math.max(1, Math.ceil(n * hqEscapeRules().teamShare - 1e-9));
+}
+/* the party record after a LOSS with escapes or a RETREAT: the escaped members move to the FRONT in their existing
+   order (slot 1 is who walks — the unit that got out leads the party home); everyone else keeps their order */
+function hqPartyEscapedFront(profile, ids) {
+    const r = hqPartyRecord(profile); if (!r || !Array.isArray(ids) || !ids.length) return { ok: false, leadChanged: false };
+    const set = new Set(ids.map(String));
+    const leadBefore = r.members[0] ? r.members[0].id : null;
+    const front = r.members.filter(m => set.has(String(m.id))), rest = r.members.filter(m => !set.has(String(m.id)));
+    if (!front.length) return { ok: false, leadChanged: false };
+    r.members = front.concat(rest); r.at = Date.now();
+    const leadAfter = r.members[0] ? r.members[0].id : null;
+    return { ok: true, leadChanged: leadBefore !== leadAfter, lead: leadAfter };
+}
 /* ══ THE LEVELS (2026-09-21) — the party's XP ledger, the adaptive enemy level, the group size ══
    The user: "start at level 5 in story mode; as the characters level up we need to see their stats go
    up and a satisfying level-up sequence; the NPCs' level as a range round the player's — adaptive
@@ -49352,6 +49472,7 @@ function hqPartyAfterMatch(profile, ev) {
     let down = 0, seen = 0;
     const xp = [];   // THE LEVELS (2026-09-21): the beats of every member who fought — the debrief's EXPERIENCE card plays them
     const pool = Math.max(0, Math.round(+ev.xpPool || 0));
+    const escapedIds = [];   // ESCAPE (EXPLORATION_BATTLES §6): the members who slipped out — never DOWN, they keep what they left with
     r.members.forEach(m => {
         const u = by[m.id]; if (!u) { if (hqPartyDown(m)) down++; return; }
         seen++;
@@ -49359,7 +49480,7 @@ function hqPartyAfterMatch(profile, ev) {
             /* THE LEVELS rev 2 (2026-09-22): the XP a unit EARNED IN THE FIELD (its kills, its blows — levelled live on the
                board, battle.js grantXP) is `xpBattle` (`xpHeld` is the old name); THE VICTORY SHARE lands on top of it —
                a WIN only, and only on a body alive at the end (hqPartyXpShare: fought · present · down) */
-            const dead = !!(u.dead || (u.hp | 0) <= 0);
+            const dead = !u.escaped && !!(u.dead || (u.hp | 0) <= 0);
             const battle = Math.max(0, Math.round(+(u.xpBattle != null ? u.xpBattle : u.xpHeld) || 0));
             const uu = Object.assign({}, u, { dead });
             const share = ev.won ? hqPartyXpShare(pool, uu) : 0;
@@ -49369,7 +49490,8 @@ function hqPartyAfterMatch(profile, ev) {
         } catch (e) {}
         const hpMax = Math.max(1, u.maxHp | 0), mpMax = Math.max(0, u.maxMp | 0);
         m.hpMax = hpMax; m.mpMax = mpMax;
-        if (u.dead || (u.hp | 0) <= 0) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
+        if (u.escaped) escapedIds.push(m.id);
+        if (!u.escaped && (u.dead || (u.hp | 0) <= 0)) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
         else { m.hp = Math.max(1, Math.min(hpMax, u.hp | 0)); m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
         /* THE LEVEL'S REST (2026-09-23): a member whose ledger crossed a level at the debrief comes home FULL (hp / mp null = the
            level's own max — the new max is bigger than the fight's build knew); a body dead at the end stays down */
@@ -49393,7 +49515,13 @@ function hqPartyAfterMatch(profile, ev) {
         Object.keys(ev.drops.items).forEach(k => { const a = hqBagAdd(profile, k, ev.drops.items[k] | 0); if (a.ok) { drops.items[k] = a.added; drops.total += a.added; } });
     }
     let restored = false;
-    if (!ev.won && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
+    /* ESCAPE: a LOSS with escapes is not a wipe and a RETREAT is not a loss — nobody is treated (the DOWN stay DOWN), and the
+       escaped go to the front of the party (the one who got out walks first) */
+    const retreat = !ev.won && !!ev.retreat;
+    const escLoss = !ev.won && !retreat && escapedIds.length > 0;
+    let front = null;
+    if (!ev.won && (retreat || escLoss) && escapedIds.length) front = hqPartyEscapedFront(profile, escapedIds);
+    if (!ev.won && !retreat && !escLoss && HQ_PARTY_RULES.lossRestore) { hqPartyRestore(profile); restored = true; down = 0; }
     /* THE GAUGE CARRIES (2026-09-23): the human seat's gauge at the end of the fight is the next fight's opening gauge (win or lose) */
     if (HQ_PARTY_RULES.carryGauge && Number.isFinite(+ev.gauge)) {
         const max = (typeof ENTROPY_GAUGE_MAX !== 'undefined') ? ENTROPY_GAUGE_MAX : ((typeof window !== 'undefined' && window.ENTROPY_GAUGE_MAX) || 100);
@@ -49401,7 +49529,9 @@ function hqPartyAfterMatch(profile, ev) {
     }
     r.at = Date.now();
     const leveled = xp.filter(b => b.after.lvl > b.before.lvl).length;
-    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile), gauge: hqPartyGauge(profile), drops };
+    const lead = r.members[0] || null;
+    return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile), gauge: hqPartyGauge(profile), drops,
+             retreat, escLoss, escaped: escapedIds.length, leadChanged: !!(front && front.leadChanged), lead: lead ? (lead.name || lead.cls || '') : '' };
 }
 /* ── FIELD MEDICINE — the party's own heal spells and potions outside a battle ── */
 function hqPartyIsFieldSpell(sp) { return !!(sp && HQ_PARTY_RULES.healKinds.indexOf(sp.kind) >= 0 && (sp.kind === 'revive' || sp.kind === 'selfHeal' || (sp.healAmt != null ? sp.healAmt : sp.heal) > 0)); }
@@ -53413,7 +53543,7 @@ if (typeof window !== 'undefined') {
     window.HQ_OFFICER_RULES = HQ_OFFICER_RULES; window.hqOfficerRecord = hqOfficerRecord; window.hqOfficerOnFile = hqOfficerOnFile; window.hqOfficerEnlist = hqOfficerEnlist;   // THE INTAKE (2026-09-21)
     window.HQ_PARTY_RULES = HQ_PARTY_RULES; window.hqPartyRecord = hqPartyRecord; window.hqPartyEnsure = hqPartyEnsure; window.hqPartyPrune = hqPartyPrune; window.hqPartyOfficer = hqPartyOfficer; window.hqPartyLead = hqPartyLead; window.hqPartyLeadAvatar = hqPartyLeadAvatar; window.hqPartyGauge = hqPartyGauge; window.hqPartyUnlocked = hqPartyUnlocked; window.hqPartyMember = hqPartyMember; window.hqPartyShifts = hqPartyShifts;
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
-    window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
+    window.hqEncounterEndSpot = hqEncounterEndSpot; window.hqEncounterEndRows = hqEncounterEndRows; window.HQ_FOLLOW_RULES = HQ_FOLLOW_RULES; window.hqPartyFollowers = hqPartyFollowers; window.HQ_ESCAPE_RULES = HQ_ESCAPE_RULES; window.hqEscapeRules = hqEscapeRules; window.hqEscapeTeamNeed = hqEscapeTeamNeed; window.hqPartyEscapedFront = hqPartyEscapedFront; window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
     /* THE LEVELS (2026-09-21) */
     window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
