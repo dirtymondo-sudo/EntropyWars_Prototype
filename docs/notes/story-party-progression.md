@@ -679,3 +679,19 @@ or more ghouls"). The room's sub says A SWARM OF n (the room still walks 2–3),
 grunts 4 under the party level, all on the board (no enemy bench), every turn animated in full (the user rejected the
 turbo: "why would I want the player to experience a dev tool"). CAPTURE_PLAN §8 has the hooks; test `capture-swarm.test.js`.
 
+
+## THE XP RULE + THE CURVE rev 2 (2026-09-30)
+The user: "the only thing that should reward exp points are kills, victories, and successfully capturing enemies; my units
+level up way too fast; every unit should offer the same exp, based on level; a standard curve, easier at first and harder to
+get to 100, like pokemon; level up during battle; heal on level-up mid-battle or after the match, whatever you think is best."
+**THE CURVE** (data.js `XP_CURVE` { k 1, exp 3, v 2 } → `xpThreshold(L)` = L^3, Pokémon's medium fast; battle.js
+`XP_THRESHOLDS` now reads `xpThreshold`). **THE KILL** (data.js `KILL_XP` { perLevel 10, gapExp 2.5 } → `killXpFor(v, k)` =
+floor(10 × v × ((2v+10)/(v+k+10))^2.5); battle.js `computeKillXP` calls it): no race yield (`getRaceXpYield` unused now), no
+boss ×1.5. A level costs ~3L² against a ~10L same-level kill: 1.8 kills a level at 5, 3.3 at 10, 6 at 20, 15 at 50, 30 at 99;
+~160 fights (3 foes, 4 on the board) from 5 to 49, ~660 to 99. **THE RULE**: battle.js `XP_REASONS` { kill, capture } —
+`grantXP` drops every other reason (damage, heals, buffs, rounds, casts, ASSISTS, objectives: the call sites stay, they pay
+nothing). **THE CAPTURE** pays the capturer a kill live at the seal (`captureDoorSeal` → grantXP 'capture'; CAPTURE_RULES.xpShare
+1) and counts in the victory pool like a fallen native. **THE VICTORY SHARE** unchanged in shape, `share.poolMult` 0.5.
+**THE HEAL** (the call made for the user): `HQ_LEVEL_RULES.levelHealBattle` false — a level-up in battle adds only the level's
+HP / MP growth (the _recomputeStatsForLevel delta), the full heal waits for the debrief (`levelHeal`, as before). **OLD LEDGERS**:
+`hqPartyNormMember` re-seats a member without `xpCurve` 2 at its stored level's new threshold (keeps the level, loses the bar).

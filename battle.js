@@ -34462,11 +34462,11 @@
         // Level 100 (see LEVEL100_PLAN.md). XP_MAX_LEVEL mirrors data.js LEVEL_CAP.
         const XP_MAX_LEVEL = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100;
         // Cumulative thresholds, index = level-1, length = XP_MAX_LEVEL.
-        // threshold(L) = round(12 × (L-1)^1.9): early levels quick, L100 ≈ 74k.
+        // data.js xpThreshold (THE XP CURVE rev 2: L^3, Pokémon's medium fast — L100 = 1,000,000).
         const XP_THRESHOLDS = (function () {
             const arr = [];
             for (let L = 1; L <= XP_MAX_LEVEL; L++) {
-                arr.push(L === 1 ? 0 : Math.round(12 * Math.pow(L - 1, 1.9)));
+                arr.push(L === 1 ? 0 : (typeof xpThreshold === 'function' ? xpThreshold(L) : Math.round(Math.pow(L, 3))));
             }
             return arr;
         })();
@@ -34505,29 +34505,21 @@
             return !!(m && isProgressionMode(m.id));
         }
 
-        // Pokémon/SMT-style kill XP. Each race has a base yield (data.js
-        // getRaceXpYield — derived from its campaign price tier) and the payout
-        // grows with the VICTIM's level, then is damped/boosted by the
-        // killer↔victim level gap (Pokémon Gen-5 "scaled" formula, with a
-        // harsher ^4 exponent for the SMT feel):
-        //   xp = floor( (yield × vLvl / 14) × ((2·vLvl+10)/(vLvl+kLvl+10))^4 ) + 1
-        // Grinding far-below-level mobs pays almost nothing, while punching up
-        // pays a premium — the run self-corrects toward the enemy level curve
-        // without any hard rubber-banding. Simulated against the challenge
-        // curve (enemy level ≈ battle number): player L10@b10, L28@b25,
-        // L60@b50, L93@b75, cap ≈ b90 — a modest hero's lead the whole way.
+        // THE KILL (rev 2, 2026-09-30 — the user: every unit offers the same XP, based on level): data.js
+        // killXpFor = KILL_XP.perLevel × the victim's level × Pokémon Gen 5's level gap. No race yield, no boss
+        // bonus — no unit reads as "worth more" than another. A capture pays the same (captureXp).
         function computeKillXP(killer, victim) {
             if (!victim) return XP_KILL;
             const vLvl = getUnitLevel(victim);
             const kLvl = killer ? getUnitLevel(killer) : vLvl;
-            const raceYield = (typeof getRaceXpYield === 'function')
-                ? getRaceXpYield(victim.race) : 60;
-            const base = (raceYield * vLvl) / 14;
-            const gap = Math.pow((2 * vLvl + 10) / (vLvl + kLvl + 10), 4);
-            let xp = Math.floor(base * gap) + 1;
-            if (victim._isBoss) xp = Math.floor(xp * 1.5);
-            return xp;
+            if (typeof killXpFor === 'function') return killXpFor(vLvl, kLvl);
+            return Math.max(1, Math.floor(10 * vLvl * Math.pow((2 * vLvl + 10) / (vLvl + kLvl + 10), 2.5)));
         }
+        // THE XP RULE (rev 2, 2026-09-30 — the user: "the only thing that should reward exp points are kills,
+        // victories, and successfully capturing enemies"): grantXP takes these reasons and nothing else. The old
+        // trickle call sites (damage, heals, buffs, rounds, casts, assists, objectives …) stay but pay nothing.
+        // Victories are THE VICTORY SHARE, paid on the ledger at the debrief (data.js hqPartyAfterMatch).
+        const XP_REASONS = { kill: true, capture: true };
 
         // Non-kill trickle XP (damage/heal/buff/passive-round/etc.) scales
         // gently with the earner's level so it stays a nudge — kills are THE
@@ -34631,11 +34623,7 @@
             if (state.phase !== 'battle' || state.winner) return;
             // PvP modes are level-normalized — XP is completely inert there.
             if (!xpProgressionActive()) return;
-            // Kill/assist amounts arrive pre-computed by computeKillXP; the
-            // flat trickle awards get a gentle level multiplier instead.
-            if (reason !== 'kill' && reason !== 'assist') {
-                amount = amount * _xpTrickleScale(unit);
-            }
+            if (!XP_REASONS[reason]) return;
             const amt = Math.max(0, Math.round(amount));
             if (amt <= 0) return;
             /* THE LEVELS rev 2 (2026-09-22 — the user: "let units level up during battle"): a story-mode encounter levels
@@ -34650,7 +34638,7 @@
 
             // The classic JRPG payoff pop: kills/assists float their XP over
             // the earner (trickle XP stays silent — it would spam every turn).
-            if ((reason === 'kill' || reason === 'assist') && !_skipVisuals()
+            if (!_skipVisuals()
                 && unit.player === (typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1)) {
                 try { showFloatingTextForUnit(unit, `+${amt} XP`, 'levelup', { durationMs: 1400 }); } catch (e) {}
             }
@@ -34669,11 +34657,11 @@
                 unit._lvlDlgSuppress = false;
                 // Grow max HP/MP to the new level (stats are recompute-from-base).
                 _recomputeStatsForLevel(unit, newLevel);
-                /* THE LEVEL'S REST (2026-09-23, the user: "leveling up should restore health and mana all the way"):
-                   a level-up is a full heal — HP and MP to the new max, on the board, for every progression mode
-                   (data.js HQ_LEVEL_RULES.levelHeal; the ledger does the same at the debrief) */
+                /* THE LEVEL'S REST (rev 2, 2026-09-30): a level-up in battle only adds the level's HP / MP growth (the
+                   _recomputeStatsForLevel delta above); the FULL heal waits for the debrief (data.js HQ_LEVEL_RULES.levelHeal)
+                   so a lucky killing blow is never a free heal mid-fight. HQ_LEVEL_RULES.levelHealBattle true = the old heal. */
                 let _lvHealed = false;
-                if (!unit.dead && (typeof HQ_LEVEL_RULES === 'undefined' || HQ_LEVEL_RULES.levelHeal !== false)) {
+                if (!unit.dead && typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.levelHealBattle === true) {
                     unit.hp = unit.maxHp || unit.hp; unit.mp = unit.maxMp || unit.mp; _lvHealed = true;
                     try { if (typeof window.RenderBus !== 'undefined' && window.RenderBus && typeof window.RenderBus.emit === 'function') window.RenderBus.emit('unit:healed', { unit }); } catch (e) {}
                 }
@@ -44946,15 +44934,15 @@
                     if (home === seat || home === 0) continue;
                     pool += computeKillXP(killer, u);
                 }
-                /* 🚪 THE ONE-WAY DOOR: a SEALED native pays half a kill (CAPTURE_RULES.xpShare) — a capture is no kill */
+                /* 🚪 THE ONE-WAY DOOR: a SEALED native counts toward the victory like a fallen one (CAPTURE_RULES.xpShare, 1 since rev 2) */
                 for (const u of (state.sealedUnits || [])) {
                     if (!u) continue;
                     const home = (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
                     if (home === seat || home === 0) continue;
                     pool += (typeof captureXp === 'function') ? captureXp(computeKillXP(killer, u)) : 0;
                 }
-                /* THE VICTORY SHARE (2026-09-22): the kills already paid the killer LIVE — the pool the whole party shares is
-                   the natives' worth × HQ_LEVEL_RULES.share.poolMult (the one dial) */
+                /* THE VICTORY SHARE (2026-09-22): the kills and captures already paid their unit LIVE — the pool every member alive
+                   at the end shares is the natives' worth × HQ_LEVEL_RULES.share.poolMult (the one dial) */
                 const S = (typeof HQ_LEVEL_RULES !== 'undefined' && HQ_LEVEL_RULES.share) ? HQ_LEVEL_RULES.share : {};
                 pool *= (S.poolMult != null && isFinite(+S.poolMult)) ? +S.poolMult : 1;
             } catch (e) { pool = 0; }
@@ -55720,6 +55708,11 @@
             if (!Array.isArray(state.captures)) state.captures = [];
             state.captures.push(rec);
             door.sealed = rec;
+            /* THE XP RULE (rev 2, 2026-09-30): a successful capture pays the capturer like a kill (CAPTURE_RULES.xpShare) */
+            try {
+                const capU = (door.ownerId != null) ? unitFromId(door.ownerId) : null;
+                if (capU && !capU.dead) grantXP(capU, (typeof captureXp === 'function') ? captureXp(computeKillXP(capU, unit)) : computeKillXP(capU, unit), 'capture');
+            } catch (e) {}
             const i = state.units.indexOf(unit);
             if (i >= 0) state.units.splice(i, 1);
             if (!Array.isArray(state.sealedUnits)) state.sealedUnits = [];

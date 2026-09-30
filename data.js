@@ -17405,16 +17405,30 @@ const EW_LEVEL_GAP_MIN  = 0.30;
 // Level of a unit without needing battle.js's getUnitLevel (data.js loads
 // first, and ai.js/ui.js/hud.js can't always see it). getUnitLevel keeps
 // _lvlCache fresh on every damage event, so this is a hit in practice; the
-// fallback mirrors battle.js XP_THRESHOLDS = round(12 × (L−1)^1.9).
-/* ── THE XP CURVE (2026-09-21) — ONE formula for the party ledger, the battle's XP_THRESHOLDS and the
-   pause menu: threshold(L) = round(12 × (L−1)^1.9), cumulative. Early levels are quick (L5→6 needs 88
-   XP, ~4 same-level kills), the curve stretches so a level stays ~4 same-level kills all the way to the
-   cap (L50→51 needs 756 against a 214-XP kill) — the Pokémon / SMT pacing computeKillXP was tuned to.
+// fallback mirrors battle.js XP_THRESHOLDS (= xpThreshold below).
+/* ── THE XP CURVE (rev 2, 2026-09-30 — the user: "a standard curve where it's easier to level up at first and harder
+   to get to level 100, similar to pokemon") — ONE formula for the party ledger, the battle's XP_THRESHOLDS and every
+   bar: threshold(L) = round(k × L^exp), cumulative, = Pokémon's "medium fast" group (L^3: L100 = 1,000,000). A level
+   costs ~3L² XP while a same-level kill pays ~KILL_XP.perLevel × L, so the kills a level needs grow with the level:
+   ~1.5 at L5, ~6 at L20, ~15 at L50, ~30 near the cap. `v` stamps a ledger member — a member filed under an older
+   curve keeps its LEVEL and is re-seated at that level's threshold (data.js hqPartyNormMember).
    xpToNext is the ONE read of a bar (the pause menu's, the debrief's). */
-const XP_CURVE = { k: 12, exp: 1.9 };
+const XP_CURVE = { k: 1, exp: 3, v: 2 };
+/* THE KILL (rev 2, 2026-09-30 — the user: "the only thing that should reward exp points are kills, victories, and
+   successfully capturing enemies"; "every unit should offer the same exp, based on level"): no race yield, no boss
+   bonus, no trickle — a defeated unit is worth perLevel × its level, scaled by Pokémon Gen 5's level gap
+   ((2v+10)/(v+k+10))^gapExp: punching up pays more, farming far-below-level units pays little. A CAPTURE pays the
+   same as a kill (CAPTURE_RULES.xpShare 1). battle.js computeKillXP reads this; the victory share is
+   HQ_LEVEL_RULES.share.poolMult of the fight's total. */
+const KILL_XP = { perLevel: 10, gapExp: 2.5, min: 1 };
+function killXpFor(victimLevel, killerLevel) {
+    const v = Math.max(1, +victimLevel || 1), k = Math.max(1, +killerLevel || v);
+    const gap = Math.pow((2 * v + 10) / (v + k + 10), KILL_XP.gapExp);
+    return Math.max(KILL_XP.min, Math.floor(KILL_XP.perLevel * v * gap));
+}
 function xpThreshold(level) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level | 0));
-    return L <= 1 ? 0 : Math.round(XP_CURVE.k * Math.pow(L - 1, XP_CURVE.exp));
+    return L <= 1 ? 0 : Math.round(XP_CURVE.k * Math.pow(L, XP_CURVE.exp));
 }
 function xpLevelFor(xp) {
     xp = Math.max(0, +xp || 0);
@@ -20908,7 +20922,7 @@ Object.assign(window, {
   LEVEL_TOTAL_STAT_GAINS, levelStatGains, EW_MP_L1_FRAC, LEVEL_STAT_GAIN_EXP,
   EW_COMBAT_PACE, EW_LEVEL_GAP_STEP, EW_LEVEL_GAP_MAX, EW_LEVEL_GAP_MIN,
   ewUnitLevel, levelGrowthDeficit, levelPowerStat, levelGapMult,
-  XP_CURVE, xpThreshold, xpLevelFor, xpToNext,
+  XP_CURVE, KILL_XP, killXpFor, xpThreshold, xpLevelFor, xpToNext,
   offenseScale, offenseMagnitude, defenseScale, supportScale,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
@@ -48047,7 +48061,7 @@ const CAPTURE_RULES = {
     perPlayer: 1,                       // live capture doors per player (a second placement folds the first)
     range: 4, los: true,                // the door gun's reach
     ap: 1,                              // a placement costs 1 AP, one per unit per turn
-    xpShare: 0.5,                       // a capture pays half a kill's XP …
+    xpShare: 1,                         // a capture pays a kill's XP (rev 2, 2026-09-30: kills, victories, captures) …
     spoils: false,                      // … and no drop, no defeated-ledger mark
     types: ['human', 'divine', 'unholy', 'tech', 'anomaly', 'alien'],   // a tuned door's choices (the banes' types)
     playerOnly: true,                   // the user (2026-09-25): "enemies cannot capture your party, the capture gun is DOOR technology" — only the story party's seat places one
@@ -48741,8 +48755,9 @@ const HQ_LEVEL_RULES = {
        `fought` (took an action or dealt / took a blow) · `present` (alive but never fought: the bench, an idle body)
        · `down` (dead at the end: nothing); `poolMult` scales the natives' worth into the pool (the kills already
        paid the killer live). The old `board` / `bench` keys read as fought / present. */
-    share: { fought: 1, present: 0.5, down: 0, poolMult: 0.6, board: 1, bench: 0.5 },
-    levelHeal: true,                   // THE LEVEL'S REST (2026-09-23, the user): a level-up restores HP and MP all the way — live on the board (battle.js grantXP) and on the ledger at the debrief
+    share: { fought: 1, present: 0.5, down: 0, poolMult: 0.5, board: 1, bench: 0.5 },
+    levelHeal: true,                   // THE LEVEL'S REST: a member that levelled (in the field or on the victory share) comes home at full HP and MP from the debrief
+    levelHealBattle: false,            // rev 2 (2026-09-30): a level-up IN BATTLE only adds the level's HP / MP growth, never a full heal (true = the old mid-fight heal)
     /* THE SIZES (CAPTURE_PLAN §5.1, 2026-09-25): NEVER ONE ENEMY — a lone native brings 1 or 2 companions (55 % two bodies,
        45 % three), so a capture door is never the whole fight; the lone-seal rule stays for a fight REDUCED to one */
     group: { solo: [1, 2], soloWeights: [0.55, 0.45], roamExtra: [0, 1], roamSize: [2, 3], groupP: 0.55, marker: 4 },
@@ -48918,6 +48933,8 @@ function hqPartyNormMember(m, r) {
     if (m.mp != null && m.mpMax != null && m.mp > m.mpMax) m.mp = m.mpMax;
     /* THE LEVELS (2026-09-21): xp is the ledger, lvl follows it; a member filed before the ledger starts at the start level */
     if (!Number.isFinite(+m.xp)) m.xp = xpThreshold((Number.isFinite(+m.lvl) && +m.lvl >= 1) ? Math.min(LEVEL_CAP, +m.lvl | 0) : HQ_LEVEL_RULES.start);
+    /* THE XP CURVE rev 2 (2026-09-30): a member filed under an older curve keeps its level, re-seated at that level's threshold */
+    if (m.xpCurve !== XP_CURVE.v) { m.xp = xpThreshold((Number.isFinite(+m.lvl) && +m.lvl >= 1) ? Math.min(LEVEL_CAP, +m.lvl | 0) : HQ_LEVEL_RULES.start); m.xpCurve = XP_CURVE.v; }
     m.xp = Math.max(0, Math.min(xpThreshold(LEVEL_CAP), Math.round(+m.xp)));
     m.lvl = xpLevelFor(m.xp);
     return m;
@@ -53545,7 +53562,7 @@ if (typeof window !== 'undefined') {
     window.hqPartyVitals = hqPartyVitals; window.hqPartyFit = hqPartyFit; window.hqPartyEnlist = hqPartyEnlist; window.hqPartyRelieve = hqPartyRelieve; window.hqPartySwap = hqPartySwap; window.hqPartyOnCall = hqPartyOnCall; window.hqPartyRestore = hqPartyRestore;
     window.hqEncounterEndSpot = hqEncounterEndSpot; window.hqEncounterEndRows = hqEncounterEndRows; window.HQ_FOLLOW_RULES = HQ_FOLLOW_RULES; window.hqPartyFollowers = hqPartyFollowers; window.HQ_ESCAPE_RULES = HQ_ESCAPE_RULES; window.hqEscapeRules = hqEscapeRules; window.hqEscapeTeamNeed = hqEscapeTeamNeed; window.hqPartyEscapedFront = hqPartyEscapedFront; window.hqPartyForLaunch = hqPartyForLaunch; window.hqPartyAfterMatch = hqPartyAfterMatch; window.hqPartyResync = hqPartyResync; window.hqPartyScaledVitals = hqPartyScaledVitals; window.hqPartySpellIds = hqPartySpellIds; window.hqPartySpellTree = hqPartySpellTree; window.hqPartySpellState = hqPartySpellState; window.hqPartyTreeCircuit = hqPartyTreeCircuit; window.hqPartySetSpells = hqPartySetSpells; window.hqPartyTreeClick = hqPartyTreeClick; window.hqPartySocketPool = hqPartySocketPool; window.hqPartySocketEquip = hqPartySocketEquip; window.hqPartySpellsDefault = hqPartySpellsDefault; window.hqPartySpellsRandom = hqPartySpellsRandom; window.hqPartySpellsClear = hqPartySpellsClear; window.hqPartyUpgradeClick = hqPartyUpgradeClick;
     /* THE LEVELS (2026-09-21) */
-    window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
+    window.HQ_LEVEL_RULES = HQ_LEVEL_RULES; window.HQ_AREA_LEVELS = HQ_AREA_LEVELS; window.XP_CURVE = XP_CURVE; window.KILL_XP = KILL_XP; window.killXpFor = killXpFor; window.xpThreshold = xpThreshold; window.xpLevelFor = xpLevelFor; window.xpToNext = xpToNext;
     window.hqPartyLevel = hqPartyLevel; window.hqPartyXp = hqPartyXp; window.hqPartyLevelGains = hqPartyLevelGains; window.hqPartyGrantXp = hqPartyGrantXp; window.hqPartyXpShare = hqPartyXpShare; window.hqEncounterLevels = hqEncounterLevels; window.hqEncounterGroup = hqEncounterGroup; window.hqSwarmRace = hqSwarmRace; window.hqRoomNatives = hqRoomNatives;
     window.HQ_DISPENSARY = HQ_DISPENSARY; window.hqBagRecord = hqBagRecord; window.hqBagCount = hqBagCount; window.hqBagAdd = hqBagAdd; window.hqBagTake = hqBagTake; window.hqBagList = hqBagList; window.hqBagTotal = hqBagTotal; window.HQ_BAG_TABS = HQ_BAG_TABS; window.hqBagCategoryOf = hqBagCategoryOf; window.hqBagTab = hqBagTab; window.hqBagTabs = hqBagTabs; window.HQ_DROP_RULES = HQ_DROP_RULES; window.hqDropBaneFor = hqDropBaneFor; window.hqEncounterDrops = hqEncounterDrops; window.hqBagSet = hqBagSet; window.hqBagForBattle = hqBagForBattle; window.hqBagCap = hqBagCap; window.hqShopStock = hqShopStock; window.hqCaptureDoorIssue = hqCaptureDoorIssue; window.hqShopQuote = hqShopQuote; window.hqShopBuyApply = hqShopBuyApply; window.hqShopSell = hqShopSell; window.hqPartyStock = hqPartyStock; window.hqPartyBagItems = hqPartyBagItems; window.hqPartyAutoHeal = hqPartyAutoHeal; window.hqPartyFieldSpells = hqPartyFieldSpells; window.hqPartyFieldTargets = hqPartyFieldTargets; window.hqPartyHealAmount = hqPartyHealAmount; window.hqPartyCast = hqPartyCast; window.hqPartyUseItem = hqPartyUseItem; window.hqPartyFieldItems = hqPartyFieldItems; window.hqPartySpec = hqPartySpec; window.hqPartyGenders = hqPartyGenders; window.hqPartyDefaultJob = hqPartyDefaultJob; window.raceDefaultKit = raceDefaultKit; window.hqOfficerKit = hqOfficerKit;
     window.DOOR_GUN_RULES = DOOR_GUN_RULES; window.DOOR_GUN_DOORS = DOOR_GUN_DOORS; window.DOOR_GUN_KEYS = DOOR_GUN_KEYS; window.DOOR_GUN_FACINGS = DOOR_GUN_FACINGS; window.SPELL_ID_RENAMED = SPELL_ID_RENAMED; window.DOOR_GUN_SPELLS = DOOR_GUN_SPELLS;   // THE DOOR WHEEL (DOOR_GUN_PLAN.md Phase 0)
