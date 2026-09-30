@@ -164,8 +164,8 @@ Columns as in §3.
 | `firetruck` | Meshy_AI_a_fire_truck_0915195407_texture.glb | lies along X, nose −X (`yaw: π/2` → +Z since 2026-09-16; unmeasured — a nose that lands backward is `-π/2` on its kit row / `turn: -90` on its catalogue row) | Downtown (across the north road — THE EVACUATION) | (`fire_truck`, 3.4 m — waits on a room with the headroom) | beacon |
 | `schoolbus` | Meshy_AI_a_school_bus_0915195620_texture.glb | lies along X, nose −X (`yaw: π/2` → +Z since 2026-09-16; unmeasured — a nose that lands backward is `-π/2` on its kit row / `turn: -90` on its catalogue row) | Nuketown (the south verge — the two yellow boxes are gone), the Stadium (the team bus, south wall) | (`school_bus`, catalogued) | |
 | `ambulance` | Meshy_AI_an_ambulance_0915195334_texture.glb | lies along X, nose −X (`yaw: π/2` → +Z since 2026-09-16; unmeasured — a nose that lands backward is `-π/2` on its kit row / `turn: -90` on its catalogue row) | the Stadium (the south end zone), Downtown (the south barriers) | P1 (`car_ambulance`, Medical's) | beacon |
-| `subway_front` | Meshy_AI_a_subway_train_front_0915195457_texture.glb | lies along X, nose −X (the batch's `yaw: π/2` turns it to +Z — 2026-09-16, unmeasured; a nose that lands backward is `-π/2`); the way rig turns it −X, the doorway at x 0 is the rear door) | — | THE TRAIN (`_hqWayBuilders.train`): the tunnel's track, Cyberpunk's north wall | the `train` way's lead car |
-| `subway_cart` | Meshy_AI_a_subway_train_cart_0915195417_texture.glb | lies along X, nose −X (`yaw: π/2` → +Z since 2026-09-16; unmeasured — a nose that lands backward is `-π/2` on its kit row / `turn: -90` on its catalogue row) | — | THE TRAIN: the trailing cart (the tunnel's track only — a street platform stands the front car alone) | |
+| `subway_front` | Meshy_AI_a_subway_train_front_0915195457_texture.glb | lies along X, nose −X (the batch's `yaw: π/2` turns it to +Z — 2026-09-16, unmeasured; a nose that lands backward is `-π/2`); the way rig turns it −X, the doorway at x 0 is the rear door) | — | THE TRAIN (`_hqWayBuilders.train`): the tunnel's track, Cyberpunk's north wall | the `train` way's lead car. REAL SIZE (Z2, 2026-09-30): measured 1 × 0.376 × 0.295 → 3.7 m rail to roof = 9.84 m long, 2.9 m wide (`_VEHICLE_KIT.subway_front.m`; catalogue `h: 3.7, turn: 90`) |
+| `subway_cart` | Meshy_AI_a_subway_train_cart_0915195417_texture.glb | lies along X, nose −X (`yaw: π/2` → +Z since 2026-09-16; unmeasured — a nose that lands backward is `-π/2` on its kit row / `turn: -90` on its catalogue row) | — | THE TRAIN: the trailing cart (the tunnel's track only — a street platform stands the front car alone); every PLACED car (Z2: the Downtown freight siding, the D.U.M.B. motor pool's tram, the running tunnels' depot ×2) | REAL SIZE (Z2): measured 1 × 0.358 × 0.294 → 3.7 m tall = 10.33 m long, 3.0 m wide; catalogue `h: 3.7, turn: 90` (the length along the row's z) |
 
 ## 3d. THE SKATEBOARD (Assets/misc/, 2026-09-15 — SKATEBOARDING, HQ plan 9.8)
 
@@ -378,7 +378,7 @@ No new file. The seven parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-17) are dressed fr
 
 | family | file(s) | stands as |
 | --- | --- | --- |
-| the kit (§6 / §6b) | `track_bed` ×4 + `train_car` (the tram, lit), `car_suv` / `car_cop`, `quarter_pipe`, `railing_1m`, `traffic_barrel` / `traffic_cone`, `cardboard_boxes`, `paper_sheet` | THE MOTOR POOL |
+| the kit (§6 / §6b) | `track_bed` ×4 + `subway_cart` (the tram; Z2: the Meshy cart, the `train_car` proc deleted), `car_suv` / `car_cop`, `quarter_pipe`, `railing_1m`, `traffic_barrel` / `traffic_cone`, `cardboard_boxes`, `paper_sheet` | THE MOTOR POOL |
 | the kit | `monitor_stack` ×2, `steel_table` + `crt_terminal`, `computer_chair_grey`, `observation_window` ×2 (free-standing on the deck's face), `warning_tape`, `radiation_sign`, `security_camera`, `bare_bulb` | SUB-LEVEL 7 |
 | the kit | `cot` ×4, `eeg_rack` ×4, `iso_tank` ×2, `dream_screen` ×2, `floating_orb` (THE OBJECT), `chalkboard`, `wall_clock`, `coffee_mug` / `stapler` (the spoons) | DREAM RESEARCH |
 | the kit | `iso_tank` ×6 (the vats), `door_furnace` (free-standing), `garbage_chute`, `door_xray`, `evac_button`, `manila_folders` | CLONE RESEARCH |
@@ -389,7 +389,7 @@ No new file. The seven parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-17) are dressed fr
 
 Procedural, in three-renderer.js: THE PLAN WALLS (`info.planWalls` through `drawWall` — the mask's boundary as
 wall boxes in the plan's sheet), THE STRIP LIGHTS (`_hqBuildHallsLights`: an emissive tube + a glow every 6.5 m
-down every corridor and hall). Stand-ins in use: `iso_tank` for the clone vats (a pod, lid ajar), `train_car` for
+down every corridor and hall). Stand-ins in use: `iso_tank` for the clone vats (a pod, lid ajar), `subway_cart` (the Meshy cart since Z2) for
 the tram, `floating_orb` for THE OBJECT and THE BEAM, `library_shelf_full` for wine racks, `dream_screen` /
 `monitor_stack` for THE BIG BOARD, `false_window` for the bunker's screens, `observation_window` for the
 chambers' glass.
@@ -397,7 +397,7 @@ chambers' glass.
 THE WISHLIST (Meshy, unit-normalised; a row = `base: 'misc'` + `h`/`span` + `foot`/`block`, then a prop line —
 nothing in the renderer unless noted):
 1. **a clone vat** (a glass cylinder on a base with a figure in it, lit; two states: full / drained) — the six `iso_tank`s.
-2. **a tram car** (a monorail / people-mover car with open doors, ~9 m) and **a tram rail section** — the motor pool's `train_car` + `track_bed`.
+2. **a tram car** (a monorail / people-mover car with open doors, ~9 m) and **a tram rail section** — the motor pool's `subway_cart` (Z2: the Meshy cart) + `track_bed`.
 3. **a Portal test-chamber kit**: a heavy panel wall tile (1.75 m), a round chamber door, a catwalk section with rails, a floor button — the chambers' walls are the pack's concrete today; a catwalk GLB would replace the `deck` planks (`_hqBuildTerrain` decks: a `kit` per deck).
 4. **a big situation board** (a curved wall screen, ~9 × 3 m, with a world map) — THE BIG BOARD (three screens + two racks today).
 5. **a round war-room table** with inset lamps, **a red phone**.
@@ -446,7 +446,7 @@ No new file. The four parts (DOOR_HQ_BUILD_PLAN §9, 2026-09-18) are dressed fro
 | family | file(s) | stands as |
 | --- | --- | --- |
 | the kit + §3e / §3i | `drain_grate` ×2, `pipe_run` ×3, `graffiti_wall` ×3, `traffic_barrel` ×2, `warning_tape`, `quarter_pipe`, `railing_1m` ×2, `bare_bulb` ×6, `cinder_block` / `cave_stone` (the scatter) | THE SEWERS |
-| the kit (§6b) | `train_car` ×2 + `track_bed` ×2 (THE DEPOT), `departures_board`, `tube_map`, `turnstile` ×2, `park_bench` ×2 (THE GHOST STATION), `quarter_pipe`, `riser_1`, `railing_1m`, `bare_bulb` ×7 | THE RUNNING TUNNELS |
+| the kit (§6b) | `subway_cart` ×2 (Z2) + `track_bed` ×2 (THE DEPOT), `departures_board`, `tube_map`, `turnstile` ×2, `park_bench` ×2 (THE GHOST STATION), `quarter_pipe`, `riser_1`, `railing_1m`, `bare_bulb` ×7 | THE RUNNING TUNNELS |
 | the kit | `cell_bars` ×6 (free-standing at the cell mouths), `cot` ×7, `wall_chains`, `steel_table` + `crt_terminal` + `desk_lamp`, `filing_cabinet` ×2, `clipboard`, `breaker_panel`, `security_camera`, `railing_1m`, `bare_bulb` ×6 | THE HOLDING CELLS |
 | the kit + §3e / §3g | `cave_torch` ×4, `brazier`, `skull_pile`, `signpost`, `drain_grate`, `pipe_run` ×2, `railing_1m`, `cave_stone` / `cinder_block` (the scatter) | THE OLD WORKINGS |
 
@@ -834,5 +834,5 @@ skinned clone of a cult member rig on the board is the next pass.
 | a street utility box | `utility_box` | every URBAN setting (Cyberpunk, the Strip, Downtown, Nuketown, the Stadium) |
 | an asteroid | `asteroid_a` / `asteroid_b` | the `space` + `wreckage` rosters (`_hzAsteroidFar`) |
 | a car / a truck / a bus | `_VEHICLE_KIT` (§3c: `suv` · `cadillac` · `copcar` · `cybercar` · `firetruck` · `schoolbus` · `ambulance`) | the URBAN settings through `_hzVehicle`, Room P1 through the catalogue's `car_*` rows — never a procedural box where the kit has the vehicle. SPELLS reach the same builder through `ThreeRenderer.vehicle(kind, o)` (2026-09-24: the Drive-By race spell's Cadillac ride, `SPELL_MAP[id].ride`); the weapon drip warms the spells' cars (`_WPN_DRIP_MISC`) |
-| the subway train | `subway_front` + `subway_cart` | ONLY the `train` way rig (`_hqWayBuilders.train`) — the tunnel's `train_car` proc is retired; never a second train as a prop |
+| the subway train | `subway_front` + `subway_cart` | the `train` way rig (`_hqWayBuilders.train`) and, for a car standing in a room, the `subway_cart` catalogue row — the `train_car` proc is DELETED (Z2, 2026-09-30, mondo: every subway car is the Meshy model); never a procedural or second train model |
 | the leaves in THE WORKS (Room 1000's belt + gripper + pallet, Room −1's furnace, Room ½'s vine, Room ?'s shelf) | `_HQ_WORKS_LEAVES` — 16 plain catalogue `leaf_*` rows (coffee · beige / white wood · shabby · suburban · closet · barn · stable · hotel · motel · birch / orange glass · medium window · entrance · bathroom · glass) | `_hqWorksLeaf` (2026-09-16) clones the door kit's own files fitted to the proc's slot; `_hqMiniDoor` is the hidden stand-in — never a procedural panel where the kit has the door |

@@ -23594,7 +23594,6 @@ const DOOR_HQ = {
         stair_landing_sq: { proc: 'stair_landing_sq', h: 0.25, foot: 0.7, rect: { hw: 0.7, hd: 0.7 }, block: true },        // … a half landing between flights
         track_bed:       { proc: 'track_bed',       h: 0.06, foot: 0 },                                                       // THE TUNNEL: sleepers and rails, the length of the platform (no blocker: nothing is coming)
         platform_edge:   { proc: 'platform_edge',   h: 0.04, foot: 0 },                                                       // THE TUNNEL: the yellow line and the tactile strip
-        train_car:       { proc: 'train_car',       h: 3.2,  foot: 1.4,  rect: { hw: 1.4, hd: 6.0 }, block: true, glow: { y: 1.6, size: 4.0, color: 0xfff0c0 } },   // THE TUNNEL: the car at the platform, doors open, lit, empty
         departures_board: { proc: 'departures_board', h: 0.9, foot: 0,   wall: true, mount: 2.4, depth: 0.1, glow: { y: 0.45, size: 1.6, color: 0xffb020 } },   // THE TUNNEL: every route, DELAYED (ticker: the minutes never change)
         tube_map:        { proc: 'tube_map',        h: 1.4,  foot: 0,    wall: true, mount: 1.1, depth: 0.05 },                // THE TUNNEL: DOOR_HQ.routes as a subway map on the tiles
         bigtop:          { proc: 'bigtop',          h: 0.6,  foot: 0,    ceil: true },                                          // Room 1893: the striped canvas under the ceiling
@@ -28504,7 +28503,7 @@ const DOOR_HQ = {
                   label: 'THE RITUAL ROOM', sub: 'ROOM 333',
                   action: { room: 'ritual', at: 'dungeon' },
                   desc: 'Candles under the door. A hum that is not the plant.' },
-                { id: 'orb', wall: 'n', x: 0, leaf: 'leaf_portcullis', wide: true,
+                { id: 'orb', wall: 'n', x: 0.5, leaf: 'leaf_portcullis', wide: true,
                   label: 'ROOM X', sub: 'THE OBJECT · CONTAINMENT',
                   action: { room: 'orb', at: 'dungeon' },
                   desc: 'The portcullis. Blue light through it that does not flicker like the torches.' },
@@ -29598,7 +29597,7 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -3.75, y: 3.0 },
             },
             doors: [
-                { id: 'works', wall: 'w', z: 0, leaf: 'leaf_bulkhead', wide: true,
+                { id: 'works', wall: 'w', z: 1, leaf: 'leaf_bulkhead', wide: true,
                   label: 'THE WAREHOUSE', sub: 'BACK TO THE FLOOR',
                   action: { room: 'warehouse', at: 'incinerator' },
                   desc: 'Back onto the floor, and cooler.' },
@@ -29627,14 +29626,14 @@ const DOOR_HQ = {
                 { key: 'door_stack',     x: -3.0, z: -0.6, face: 90 },                      // the next batch
                 { key: 'vent_grille',    wall: 'e', z: -2.6, mount: 4.2 },
                 { key: 'security_camera', wall: 's', x: -3.4, mount: 4.3 },
-                { key: 'exit_sign',      wall: 'w', z: 0, mount: 3.1 },
+                { key: 'exit_sign',      wall: 'w', z: 1, mount: 3.1 },
                 { key: 'bare_bulb',      x: 0, z: 1.6, ceil: true },
             ],
             agents: [
                 { x: 1.6, z: 3.0, face: 315, pose: 'hqLean', gender: 'male', label: 'THE OPERATOR', reach: 2.2,
                   line: '“It does not burn the wood.” “What does it burn?” “The other side. The wood comes out the same. We use it again.”' },
             ],
-            npcSpots: [{ x: -2.6, z: 1.4, face: 45, race: 'demon', say: ['“Warm. Finally a room in this building that is warm.” “It is an incinerator.” “Yes. Finally.”'] }],
+            npcSpots: [{ x: -2.6, z: -2.2, face: 45, race: 'demon', say: ['“Warm. Finally a room in this building that is warm.” “It is an incinerator.” “Yes. Finally.”'] }],
             onlineSpots: [],
             lines: [
                 '“How do you know a reality is closed for good?” “It stops knocking.”',
@@ -29787,7 +29786,7 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -2.75, y: 2.6 },
             },
             doors: [
-                { id: 'works', wall: 'w', z: 0, leaf: 'leaf_glass',
+                { id: 'works', wall: 'w', z: -1, leaf: 'leaf_glass',
                   label: 'THE SECOND FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'works', at: 'control' },
                   desc: 'The way back to the lobby. The camera over it watches you go.' },
@@ -29804,7 +29803,7 @@ const DOOR_HQ = {
                 { key: 'desk_lamp',      x: 1.4, z: -0.7, y: 0.76, face: 220 },
                 { key: 'papers_a',       x: 0.7, z: -0.5, y: 0.76, face: 10 },
                 { key: 'computer_chair_blue', x: -1.0, z: 0.4, face: 0 }, { key: 'computer_chair_grey', x: 1.0, z: 0.4, face: 0 },
-                { key: 'wall_clock',     wall: 'e', z: -1.8, mount: 2.5 }, { key: 'wall_clock', wall: 'w', z: -1.8, mount: 2.5 },
+                { key: 'wall_clock',     wall: 'e', z: -1.8, mount: 2.5 }, { key: 'wall_clock', wall: 'w', z: 1.8, mount: 2.5 },
                 { key: 'notice_board',   wall: 'e', z: 0.8 },
                 { key: 'breaker_panel',  wall: 's', x: 2.4 },
                 { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 },   // watching the watchers
@@ -29846,7 +29845,7 @@ const DOOR_HQ = {
                 plate: { x: 0, z: -2.75, y: 2.6 },
             },
             doors: [
-                { id: 'works', wall: 'e', z: 0, leaf: 'leaf_coffee',
+                { id: 'works', wall: 'e', z: -1, leaf: 'leaf_coffee',
                   label: 'THE SECOND FLOOR', sub: 'BACK TO THE FLOOR',
                   action: { room: 'works', at: 'lostfound' },
                   desc: 'The way back to the lobby. Check your pockets.' },
@@ -33275,7 +33274,7 @@ const DOOR_HQ = {
                 { key: 'flood_mast',      x: 96, z: 84 },
                 { key: 'car_truck',       x: -6, z: 76, face: 90 },                          // the freight on the quay
                 { key: 'car_truck',       x: 40, z: 74, face: 100 },
-                { key: 'track_bed',       x: -24, z: 80, face: 90 }, { key: 'train_car', x: -24, z: 80, face: 90 },   // THE FREIGHT SIDING
+                { key: 'track_bed',       x: -24, z: 80, face: 90 }, { key: 'subway_cart', x: -24, z: 80, face: 90 },   // THE FREIGHT SIDING (Z2: the Meshy cart, not the retired train_car proc)
                 { key: 'brazier',         x: 14, z: 82 },
                 { key: 'railing_1m',      x: 22, z: 86.4, face: 0 },                         // THE PARK RULE's rail on the crane platform
                 { key: 'quarter_pipe',    x: 76, z: 72, face: 0 },                           // the quay's pipe
@@ -35685,7 +35684,7 @@ const DOOR_HQ = {
             props: [
                 /* THE TRAM: the rails in front of the platform, the car parked at the east end, lit and empty — the near weenie */
                 { key: 'track_bed',       x: -12, z: -9, face: 90 }, { key: 'track_bed', x: -4, z: -9, face: 90 }, { key: 'track_bed', x: 4, z: -9, face: 90 }, { key: 'track_bed', x: 12, z: -9, face: 90 },
-                { key: 'train_car',       x: 22.6, z: -9, face: 0 },
+                { key: 'subway_cart',     x: 22.6, z: -9, face: 0 },   // THE TRAM (Z2: the Meshy cart, not the retired train_car proc)
                 { key: 'railing_1m',      x: -6, z: -12.6, face: 0 }, { key: 'railing_1m', x: 6, z: -12.6, face: 0 },   // THE PARK RULE's catalogue rail on the platform
                 { key: 'bare_bulb',       x: -14, z: -8, ceil: true }, { key: 'bare_bulb', x: 14, z: -8, ceil: true }, { key: 'bare_bulb', x: 0, z: 10, ceil: true }, { key: 'bare_bulb', x: 0, z: -14, ceil: true },
                 { key: 'evac_button',     x: 24.4, z: -14, face: 270, mount: 1.2 },                                    // on the hall's east wall, free-standing (a plan wall)
@@ -36816,8 +36815,8 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE DEPOT: two cars on their beds, one lit — the headlight at the end of the hall is the near weenie from the hatch */
-                { key: 'track_bed',       x: -6, z: -38, face: 90 }, { key: 'train_car', x: -6, z: -38, face: 90 },
-                { key: 'track_bed',       x: 8, z: -41.5, face: 90 }, { key: 'train_car', x: 8, z: -41.5, face: 90 },
+                { key: 'track_bed',       x: -6, z: -38, face: 90 }, { key: 'subway_cart', x: -6, z: -38, face: 90 },
+                { key: 'track_bed',       x: 8, z: -41.5, face: 90 }, { key: 'subway_cart', x: 8, z: -41.5, face: 90 },
                 { key: 'bare_bulb',       x: -6, z: -34, ceil: true }, { key: 'bare_bulb', x: 10, z: -34, ceil: true },
                 { key: 'quarter_pipe',    x: 12, z: -33.5, face: 180 },                                                          // THE PARK RULE's ramp in the depot
                 { key: 'riser_1',         x: -8, z: -33.2, face: 0, rect: false },
@@ -39906,7 +39905,7 @@ const HQ_STAGE_RULES = {
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
        joins are built. `buildDelayMs` = the beat after the room's card drops before the first neighbour builds (the
        arrival stays smooth); `lampPickMs` = how often the lamp budget re-picks the nearest `lampsLive` point lights. */
-    zones: ['medwing', 'basement', 'dumb'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only
+    zones: ['medwing', 'basement', 'dumb', 'works', 'annex', 'labs', 'executive', 'recwing', 'execwing'], buildDelayMs: 600, lampPickMs: 500,   // Phase 4: THE BASEMENT; Phase 5 (2026-09-27): THE D.U.M.B. (door joins); THE LAND cut (ZONES_PLAN Z0): the stage is DOOR HQ's only; ZONES_PLAN Z2 (2026-09-30): the floors
     /* a neighbour's PEOPLE (Phase 2): 'interior' = a closed room's cast (the nurse at her desk, the patient on his cot) is
        spawned with the room when it is built beside you, so the ward is not empty through its open door; an outdoor part's
        crowd still comes out when you cross (Phase 1's rule — a city block is dozens of rigs). 'none' = Phase 1's rule
@@ -40147,6 +40146,115 @@ const HQ_WORLD = {
                 { a: 'corridor_a', b: 'corridor_b', kind: 'door', door: 'corridor_b', bDoor: 'corridor_a' },
                 { a: 'corridor_b', b: 'server',     kind: 'door', door: 'server',     bDoor: 'corridor' },
                 { a: 'corridor_b', b: 'deadend',    kind: 'door', door: 'deadend',    bDoor: 'corridor' },
+            ] },
+        /* ZONES_PLAN Z2 THE FLOORS (2026-09-30): each floor of the building a staged zone, the medwing / basement recipe (DOOR
+           JOINS at the doors the rooms already had, the rooms kept whole, every leaf swings and you walk on). The frames were
+           solved door to door (each pair 0.2 m apart and facing) with no two rooms overlapping; a door whose room would stand
+           inside another (two rooms of 6 m on a 6 m wall of a lobby) stays a door. What stays a load inside the building: the
+           elevator (the floor change), the fire stair (the stair between floors), the dock's ramp (G ⇄ B), every secret
+           draught, and the main hall's own doors — the rotunda is round (its doors stand at 75°, 105°, 120°… round the
+           ring) and a part turns only in quarter turns, so it is its own room and each wing off it is a zone of its own.
+           Floor 2 (THE WORKS): the lobby, the works floor and the rooms off it. The fire stair stays a door (its 5 m box and
+           the lost and found's 6 m cannot both hang off the lobby's 6 m west wall). Doors moved 1 m for it: control's,
+           the lost and found's, the incinerator's (see their rows). */
+        /* the floors stand one over another on the building's ground (y: 2 at 8 m, 3 at 16, 4 at 24, PH at 34 — every room's
+           headroom under the next floor), the main hall's two wings beside the medical wing (x ∓60): only the validator
+           reads where a zone stands; the stage reads a part's frame relative to its neighbour's */
+        works: { label: 'THE SECOND FLOOR', ground: 'hq', hub: 'works', sky: null, clock: false,
+            parts: {
+                works:       { x: 0, z: 0, y: 8, rot: 0 },
+                warehouse:   { x: 0, z: -9.2, y: 8, rot: 0 },
+                control:     { x: 9.2, z: -0.5, y: 8, rot: 0 },
+                lostfound:   { x: -9.2, z: -0.5, y: 8, rot: 0 },
+                incinerator: { x: 14.2, z: -7.2, y: 8, rot: 0 },
+                autopsy:     { x: -13.7, z: -6.2, y: 8, rot: 0 },
+                doorgarden:  { x: -6, z: -19.4, y: 8, rot: 0 },
+            },
+            joins: [
+                { a: 'works', b: 'warehouse', kind: 'door', door: 'warehouse', bDoor: 'works' },
+                { a: 'works', b: 'control', kind: 'door', door: 'control', bDoor: 'works' },
+                { a: 'works', b: 'lostfound', kind: 'door', door: 'lostfound', bDoor: 'works' },
+                { a: 'warehouse', b: 'incinerator', kind: 'door', door: 'incinerator', bDoor: 'works' },
+                { a: 'warehouse', b: 'autopsy', kind: 'door', door: 'autopsy', bDoor: 'works' },
+                { a: 'warehouse', b: 'doorgarden', kind: 'door', door: 'garden', bDoor: 'works' },
+            ] },
+        /* Z2 — floor 3 (THE ANNEX): the lobby, the courtyard garden, the locker room, the classroom, the pool, the orb room and
+           the dungeon. Doors: the cubicles (the classroom holds the east wall's north end), the bathroom (the garden holds
+           the west wall's north end), the ritual room and the sacrifice room (they would stand in the garden), the locker
+           room ⇄ pool pair (it closes a loop the frames cannot), and the crawlspace behind its draughts. The dungeon's orb
+           door moved 0.5 m for it. */
+        annex: { label: 'THE THIRD FLOOR', ground: 'hq', hub: 'annex', sky: null, clock: false,
+            parts: {
+                annex:      { x: 0, z: 0, y: 16, rot: 0 },
+                garden:     { x: 0, z: -14.2, y: 16, rot: 0 },
+                locker:     { x: -9.7, z: 1.5, y: 16, rot: 0 },
+                classroom:  { x: 10.2, z: 1.1, y: 16, rot: 0 },
+                natatorium: { x: 20.2, z: -14.2, y: 16, rot: 0 },
+                orb:        { x: 1.6, z: -28.9, y: 16, rot: 3 },
+                dungeon:    { x: -6.1, z: -29.4, y: 16, rot: 3 },
+            },
+            joins: [
+                { a: 'annex', b: 'garden', kind: 'door', door: 'garden', bDoor: 'annex' },
+                { a: 'annex', b: 'locker', kind: 'door', door: 'locker', bDoor: 'annex' },
+                { a: 'annex', b: 'classroom', kind: 'door', door: 'classroom', bDoor: 'annex' },
+                { a: 'garden', b: 'natatorium', kind: 'door', door: 'pool', bDoor: 'garden' },
+                { a: 'garden', b: 'orb', kind: 'door', door: 'gate', bDoor: 'gate' },
+                { a: 'orb', b: 'dungeon', kind: 'door', door: 'dungeon', bDoor: 'orb' },
+            ] },
+        /* Z2 — floor 4 (THE LABS): the lobby, the dream lab and its tank, the Mandela room and the carnival through its
+           mirrors, closet 4B and the supply closet. Doors: the upside-down room and disposal (their walls hold the Mandela
+           room and closet 4B), the carnival's tunnel down to the garage. */
+        labs: { label: 'THE FOURTH FLOOR', ground: 'hq', hub: 'labs', sky: null, clock: false,
+            parts: {
+                labs:     { x: 0, z: 0, y: 24, rot: 0 },
+                dreamlab: { x: 0, z: -7.2, y: 24, rot: 0 },
+                mandela:  { x: -8.2, z: -1.5, y: 24, rot: 1 },
+                closet4b: { x: 7.7, z: -1.5, y: 24, rot: 3 },
+                tank:     { x: 7.4, z: -7.2, y: 24, rot: 0 },
+                carnival: { x: -22.4, z: -1.5, y: 24, rot: 0 },
+                supply:   { x: 12.2, z: -1.5, y: 24, rot: 3 },
+            },
+            joins: [
+                { a: 'labs', b: 'dreamlab', kind: 'door', door: 'dreamlab', bDoor: 'labs' },
+                { a: 'labs', b: 'mandela', kind: 'door', door: 'mandela', bDoor: 'labs' },
+                { a: 'labs', b: 'closet4b', kind: 'door', door: 'closet4b', bDoor: 'labs' },
+                { a: 'dreamlab', b: 'tank', kind: 'door', door: 'tank', bDoor: 'dreamlab' },
+                { a: 'mandela', b: 'carnival', kind: 'door', door: 'mirrors', bDoor: 'mirrors' },
+                { a: 'closet4b', b: 'supply', kind: 'door', door: 'blast', bDoor: 'blast' },
+            ] },
+        /* Z2 — PH (THE PENTHOUSE): the lobby, the corner office, the pool deck. */
+        executive: { label: 'THE PENTHOUSE', ground: 'hq', hub: 'executive', sky: null, clock: false,
+            parts: {
+                executive: { x: 0, z: 0, y: 34, rot: 0 },
+                corner:    { x: 8.9, z: -1.2, y: 34, rot: 0 },
+                pool:      { x: 2.2, z: -8.7, y: 34, rot: 0 },
+            },
+            joins: [
+                { a: 'executive', b: 'corner', kind: 'door', door: 'corner', bDoor: 'lobby' },
+                { a: 'executive', b: 'pool', kind: 'door', door: 'pool', bDoor: 'lobby' },
+            ] },
+        /* Z2 — floor M, the records wing (off the rotunda at 240°): the wing, the records room, the clock room. The records
+           room's tapes stay the projector's spot in the observatorium (the observatorium is off the rotunda itself). */
+        recwing: { label: 'THE RECORDS WING', ground: 'hq', hub: 'recwing', sky: null, clock: false,
+            parts: {
+                recwing:   { x: -60, z: 0, y: 0, rot: 0 },
+                records:   { x: -62.2, z: -9.2, y: 0, rot: 1 },
+                clockroom: { x: -49.3, z: 0, y: 0, rot: 0 },
+            },
+            joins: [
+                { a: 'recwing', b: 'records', kind: 'door', door: 'records', bDoor: 'egress' },
+                { a: 'recwing', b: 'clockroom', kind: 'door', door: 'clockroom', bDoor: 'egress' },
+            ] },
+        /* Z2 — floor M, the executive wing (off the rotunda's upper ring at 315°): the wing, the trophy case, continuity. */
+        execwing: { label: 'THE EXECUTIVE WING', ground: 'hq', hub: 'execwing', sky: null, clock: false,
+            parts: {
+                execwing:   { x: 60, z: 0, y: 0, rot: 0 },
+                trophycase: { x: 50.3, z: 0, y: 0, rot: 2 },
+                continuity: { x: 61.4, z: -8.2, y: 0, rot: 1 },
+            },
+            joins: [
+                { a: 'execwing', b: 'trophycase', kind: 'door', door: 'trophycase', bDoor: 'egress' },
+                { a: 'execwing', b: 'continuity', kind: 'door', door: 'continuity', bDoor: 'egress' },
             ] },
     },
     /* THE BORDERS — joins between two zones of one ground (the docks' quay). */
@@ -42526,8 +42634,10 @@ const HQ_CATALOGUE_MISC = {
     storefront:      { file: 'Meshy_AI_storefront_0917064551_texture.glb', base: 'misc', span: 8,  foot: 0 },
     storefront_unit: { file: 'Meshy_AI_storefront_unit_0917064533_texture.glb', base: 'misc', span: 8,  foot: 0 },
     vatican_dome:    { file: 'Meshy_AI_the_Vatican_dome_0917061915_texture.glb', base: 'misc', h: 12,    foot: 4, block: true },
-    subway_cart:     { file: 'Meshy_AI_a_subway_train_cart_0915195417_texture.glb', base: 'misc', span: 14, foot: 1.6, block: true },
-    subway_front:    { file: 'Meshy_AI_a_subway_train_front_0915195457_texture.glb', base: 'misc', span: 14, foot: 1.6, block: true },
+    /* ZONES_PLAN Z2 (2026-09-30): the subway at its real size — 3.7 m rail to roof (the cart 10.33 m long, the front 9.84 m),
+       turned a quarter so the length runs along the row's z like the retired `train_car` proc (every placed car is this cart) */
+    subway_cart:     { file: 'Meshy_AI_a_subway_train_cart_0915195417_texture.glb', base: 'misc', h: 3.7, turn: 90, foot: 1.5, rect: { hw: 1.5, hd: 5.2 }, block: true },
+    subway_front:    { file: 'Meshy_AI_a_subway_train_front_0915195457_texture.glb', base: 'misc', h: 3.7, turn: 90, foot: 1.5, rect: { hw: 1.5, hd: 4.95 }, block: true },
 };
 /* THE SPELL PROPS (§5.2 "_WPN_MODELS through _hqCatGlb"): three-vfx-effects.js's files in Assets/weapons/ that no catalogue row
    named (the F22 already is `fighter_jet`), `base: 'weapons'`, at their real-world sizes. */
@@ -42564,7 +42674,7 @@ const HQ_PALETTE_RULES = {
     folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
-        ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|train_car|missile)/],
+        ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
         ['Structure',       null, /(stair|riser|landing|pillar|column|arch|walkway|footbridge|platform|track_bed|railing|quarter_pipe|ramp|pool|fountain|escalator|culvert|drain|window|porthole|viewport|shutter|building|dome|church_wall|catacomb|pipe_run|vent|panel$|bay$|obelisk|seal|conveyor)/],

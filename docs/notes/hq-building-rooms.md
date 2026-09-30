@@ -1039,3 +1039,21 @@ generated (`terrain` has no `gen`, noise 0, `stalactites: false`): 56×56 box, h
 - **Door names on the door.** A door's plate (its room's name once stood in, else '?') sits on the door's face at eye level:
   `HQ_PLATE_EYE` (1.45 m, the text stands on it), capped at the opening − 0.3 m. Same for ways (min of the builder's plateY and
   the eye) and standing thresholds. Trail posts now use `_hqPlateHtml` too, so an unvisited place reads '?' there as well.
+
+## THE FLOORS (ZONES_PLAN Z2, 2026-09-30) — every floor a staged zone, the subway at its real size
+- Six zones added to data.js `HQ_WORLD.zones` and `HQ_STAGE_RULES.zones`: works (2), annex (3), labs (4), executive (PH),
+  recwing + execwing (M). Door joins only (`kind: 'door'`, `door` / `bDoor`), like medwing/basement. Full list of joined and
+  still-a-door rooms + why: ZONES_PLAN.md §12, 2026-09-30.
+- The frames were SOLVED, not hand-placed: for each join a → b, b's quarter turn is the one that puts its door wall facing a's
+  (ground side via `_hqWorldSideOnGround`), then b's centre = a's door on the ground + 0.2 m (`HQ_WORLD_RULES.wallM`) out
+  − b's door turned into the ground. A pair whose room would overlap one already placed stays a door (or its OWN door slides
+  along its wall, ≥ 1.8 m from the wall's other doors, till it clears). `hqWorldValidate()` must return ok (load it with
+  load-data.js + `vm.runInContext('hqWorldValidate()', sandbox)`: consts are not sandbox properties).
+- The rotunda (`central_egress`, kind `rotunda`) can never be a part: the stage needs `kind: 'box'` and quarter turns; its
+  doors are on degrees. Wings are the unit on M.
+- Floors stack on the building's ground by `y` (2 at 8, 3 at 16, 4 at 24, PH 34); the M wings sit at x ∓60 beside the medwing.
+  Only the validator reads absolute frames; the stage reads `hqStageRel` (relative).
+- The subway: `_hqWayBuilders.train` sets `_hzKitTs = 1.75 * U` round `_hzVehicle` (like the taxi). `_VEHICLE_KIT`
+  subway_front m 9.84 / w 2.9 / h 3.7, subway_cart m 10.33 / w 3.0 / h 3.7 (the GLBs measured: long along X, 3.7 m rail to
+  roof). The `train_car` proc and catalogue row are deleted; a car standing in a room is the `subway_cart` catalogue row
+  (`h: 3.7, turn: 90`, length along the row's z).

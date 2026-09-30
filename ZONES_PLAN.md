@@ -1,6 +1,6 @@
 # THE ZONES — DOOR HQ the hub, separate zones behind its doors, the open world gone
 
-*Plan document, 2026-09-29. Z0 + Z1 built (see §12). It replaces OPEN_WORLD_PLAN.md and
+*Plan document, 2026-09-29. Z0, Z1 + Z2 built (see §12). It replaces OPEN_WORLD_PLAN.md and
 WORLD_GEOGRAPHY_PLAN.md (both move to docs/archive/ in Z0). House rules that stand over every phase:
 no puzzles (secret pathways are fine, puzzle content is not); no sound work; no test files; no invented
 names (plain labels: Zone 3, Room 2, Path A; only the names mondo wrote); every R2 delivery bumps `?v=`.*
@@ -451,3 +451,31 @@ with a thread per zone for the swap and the checks.
   `HQ_WORLD_L.slots` re-laid: the Woods' half west, Disaster City's half east (§3); hub labels THE SEWERS, LEYLINES,
   HEAVEN + HELL + VATICAN. `downtown_strip`'s plates read ROUTE 1. Load check: the garage and Downtown both build with the
   cab standing, no console errors. Next: Z2 THE FLOORS.
+- 2026-09-30: **Z2 THE FLOORS built** (token 20260930-zones-03-cors; R2: data.js, three-renderer.js). Six new staged zones in
+  `HQ_WORLD.zones` + `HQ_STAGE_RULES.zones`, door joins at the doors the rooms already had (the medwing recipe), frames
+  SOLVED door to door (each pair 0.2 m apart and facing, no two rooms overlapping; `hqWorldValidate` clean):
+  **works** (floor 2: works, warehouse, control, lost and found, incinerator, autopsy, the door garden),
+  **annex** (floor 3: annex, the courtyard garden, locker room, classroom, natatorium, the orb room, the dungeon),
+  **labs** (floor 4: labs, dream lab + tank, the Mandela room + the carnival through its mirrors, closet 4B + supply),
+  **executive** (PH: executive, corner office, pool deck), **recwing** (M: records wing, records, clock room),
+  **execwing** (M: executive wing, trophy case, continuity). With medwing, basement and dumb that is nine staged zones.
+  DEFAULTS picked where the plan left it open: (1) THE ROTUNDA STAYS ITS OWN ROOM — `central_egress` is round, its doors
+  stand at 75°, 105°, 120°… and a part turns only in quarter turns, so no box room can meet its doors back to back; §7.2's
+  fallback applies (the floor splits at the rotunda's doors): M = the rotunda + three wing zones (medwing, recwing,
+  execwing), and the single rooms straight off the rotunda (cafeteria, barbershop, reception, office, training, foyer, IT,
+  the observatorium) stay a door from it. (2) STILL A DOOR where the rooms would stand inside each other or close a loop:
+  the fire stair (floor 2: its box and the lost and found's cannot both hang off the lobby's 6 m west wall; it is the stair
+  between floors anyway), the cubicles + the bathroom (floor 3's lobby walls), the ritual + sacrifice rooms (they would
+  stand in the garden), locker room ⇄ natatorium (the second way round a loop), the upside-down room + disposal (floor 4's
+  lobby walls), the carnival's tunnel (down to G). G has nothing to join (the tunnel is behind a draught, the dock is the
+  basement's and its ramp is the G ⇄ B floor change). H-Wing as it is. (3) Doors moved to fit: control's and the lost and
+  found's lobby doors 1 m north on their own walls, the incinerator's 1 m south (its exit sign and demon with it, the
+  control room's west clock to z 1.8), the dungeon's orb door 0.5 m east. Floors stack on the building's ground (2 at
+  y 8, 3 at 16, 4 at 24, PH at 34; the wings x ∓60 beside the medwing) — only the validator reads that. `warmZone` /
+  "Download this place" works on every floor zone with no code (it reads `hqWorldZoneOf`). The MEM line: see the load check.
+  THE SUBWAY (mondo): the `train` way now sets `_hzKitTs = 1.75 × U` (the taxi's rule) so the cars stand at their real size,
+  and the real size is measured off the GLBs — 3.7 m rail to roof, the front 9.84 m and the cart 10.33 m long
+  (`_VEHICLE_KIT.subway_front/cart.m`; the doorway, headlight, lip and blockers follow the lengths). Every placed
+  procedural `train_car` (Downtown's freight siding, the D.U.M.B. motor pool's tram, the running tunnels' depot ×2) is the
+  Meshy `subway_cart` now (catalogue `h: 3.7, turn: 90`), and the `train_car` proc + catalogue row are deleted
+  (MODEL_INDEX §9). Next: Z3 THE MAP.
