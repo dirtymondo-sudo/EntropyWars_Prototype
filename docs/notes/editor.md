@@ -384,5 +384,12 @@ replace the delta maps"; "dont delete the voxel editor yet". Replaces §5.10's m
   prop threw and every prop after it was dropped from the room round an encounter's field (now the arena's too).
 - **Quick check:** a scratch Playwright run launched TDM on the Moon and Camelot arenas from the classic menu: the survey landed
   (the Moon in 0.8 s), the room stood round the board on the true ground, no new errors.
+- **The Looking-Glass keeps its Δ** (2026-09-30, token 20260930-arenas-02-cors; R2 data.js, three-renderer.js): mondo: "keep the
+  looking glass delta map, for that one there needs to be a chessboard in the looking glass explorable area". `HQ_ARENA_RULES.keep`
+  (bake-arenas.js skips those sites, hqArenaRegisterAll never replaces them): 32 arenas. THE BOARD: a terrain feature `{ k: 'board',
+  x, z, n, cell, keys, colors, h }` (data.js hqTerrainBoard / _hqTBoardFloors / hqTerrainBoardAt / hqTerrainBoardMarks): a flat
+  plateau under it, no scatter on it, every square a textured mark (three-renderer.js _hqBuildMarks rect `tex`), THE FIELD's raster
+  keys each cell by its square. THE GARDEN's chessboard: x −7..7, z 1.75..15.75 (on the battle lattice), marble_light / marble
+  tinted as the Δ, the rim path moved outside it, the riser / lesson sign / signpost moved off it.
 - NOT done: the voxel editor (kept, mondo's word); the Δ builders (still run for the sites without an arena and as the tints /
   layout source); the HQ panels' "CROSS ▸ Δ" wording.

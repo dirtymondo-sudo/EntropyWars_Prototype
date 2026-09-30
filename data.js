@@ -42147,7 +42147,11 @@ const HQ_AREA_SPECS = {
         gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0], open: [{ x: 16, z: -14.5, r: 6 }, { x: 25, z: -12, r: 5 }, { x: 9, z: 22, r: 5 }, { x: -4, z: -24, r: 4 }, { x: -6.8, z: -18, r: 1.5 }] }, noise: { amp: 0.04, scale: 9 },   // the open circles: the strip north of the croquet ground under the red tower's ramp, its east end, behind the south hedge, and between the bishop's landing and the moon's perch were pockets (rescue ramps)
         plaza: { x: 0, z: 8 }, plazaR: 7,
         features: [
-            { k: 'path', pts: [[-7, 15], [7, 15], [7, 1], [-7, 1], [-7, 15]], w: 1.0 },                              // THE CHESSBOARD's rim
+            /* THE CHESSBOARD (2026-09-30, mondo: "there needs to be a chessboard in the looking glass explorable area"): 8 × 8 squares of a
+               battle tile each, the light marble and the dark (the Δ's two sheets and tints), on THE FIELD's lattice (x −7..7 = ±4 tiles,
+               z 1.75..15.75 = tiles 1..9), the marble rim round it */
+            { k: 'board', x: 0, z: 8.75, n: 8, cell: 1.75, keys: ['marble_light', 'marble'], colors: [0xf2eee6, 0x2c2a38] },
+            { k: 'path', pts: [[-7.5, 16.25], [7.5, 16.25], [7.5, 1.25], [-7.5, 1.25], [-7.5, 16.25]], w: 1.0 },          // THE CHESSBOARD's rim
             /* THE TEA LAWN (1.6): the ramp up its south side, a vine on its east face — the table is set on it */
             { k: 'plateau', x: -19, z: -2, r: 6.5, h: 1.6, edge: 0.35 }, { k: 'ramp', x0: -19, z0: 9, x1: -19, z1: 3.8, w: 2.6, h0: 0, h1: 1.6 },
             { k: 'climb', x: -12.8, z: -2, face: 270, look: 'vine' },
@@ -42176,7 +42180,7 @@ const HQ_AREA_SPECS = {
             { k: 'path', pts: [[-12, 8], [-20, 16], [-24, 22]], w: 2.2 },
             { k: 'scatter', key: 'garden_tree', n: 7, seed: 4 }, { k: 'scatter', key: 'potted_plant', n: 6, seed: 6 }, { k: 'scatter', key: 'park_bench', n: 3, seed: 9 },
         ],
-        props: [{ key: 'railing_1m', x: -19, z: -14.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: 24, z: -15.8, face: 0, y: 3.4 }, { key: 'riser_1', x: -8, z: 14 }, { key: 'riser_2', x: 10, z: 22 },
+        props: [{ key: 'railing_1m', x: -19, z: -14.6, face: 0, y: 3.4 }, { key: 'railing_1m', x: 24, z: -15.8, face: 0, y: 3.4 }, { key: 'riser_1', x: -9.5, z: 13.5 }, { key: 'riser_2', x: 10, z: 22 },
                 /* THE TEA TABLE on the lawn — set for four, the cups fill in the wrong order */
                 { key: 'round_table', x: -19, z: -2, y: 1.6 }, { key: 'teal_chair', x: -16.8, z: 0, y: 1.6, face: 220 }, { key: 'teal_chair', x: -21.2, z: 0, y: 1.6, face: 140 }, { key: 'teal_chair', x: -21.2, z: -4, y: 1.6, face: 40 }, { key: 'teal_chair', x: -16.8, z: -4, y: 1.6, face: 320 },
                 { key: 'coffee_mug', x: -18.3, z: -1.2, y: 2.36 }, { key: 'coffee_mug', x: -19.7, z: -2.6, y: 2.36 }, { key: 'pocket_watch', x: -18.6, z: -3, y: 2.36 }, { key: 'pool_umbrella', x: -23, z: 1, y: 1.6 }, { key: 'candle_ring', x: -15, z: -6, y: 1.6 },
@@ -42190,7 +42194,7 @@ const HQ_AREA_SPECS = {
                 { key: 'white_cloud', x: 3, z: -25, y: 7.6 }, { key: 'white_cloud', x: -3, z: -26, y: 8.2 }, { key: 'white_cloud', x: 5, z: -19, y: 6.9 },
                 /* THE CHESSBOARD: the knights at its gate, the fountain, the benches */
                 { key: 'armour_stand', x: -8.5, z: 17, face: 90 }, { key: 'armour_stand', x: 8.5, z: 17, face: 270 }, { key: 'fountain', x: 0, z: -4.5 }, { key: 'park_bench', x: -9.5, z: 8, face: 90 }, { key: 'park_bench', x: 9.5, z: 8, face: 270 },
-                { key: 'garden_ring', x: -6, z: 22 }, { key: 'garden_ring', x: 6, z: 22 }, { key: 'lesson_sign', x: 4, z: 12, face: 200, lesson: 'climb' }, { key: 'signpost', x: -3, z: 2 }, { key: 'signpost', x: 12, z: -20 },
+                { key: 'garden_ring', x: -6, z: 22 }, { key: 'garden_ring', x: 6, z: 22 }, { key: 'lesson_sign', x: 9.5, z: 12.5, face: 200, lesson: 'climb' }, { key: 'signpost', x: -3, z: 0.2 }, { key: 'signpost', x: 12, z: -20 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
                 { key: 'pocket_watch', x: -24, z: 13, y: -2.0 }, { key: 'cardboard_boxes', x: -27, z: 22 }, { key: 'garden_tree', x: -22, z: -8 }, { key: 'garden_tree', x: 4, z: -12 }, { key: 'garden_tree', x: 24, z: 12 }, { key: 'garden_tree', x: -26, z: 6 },
                 { key: 'potted_plant', x: -10, z: -16 }, { key: 'potted_plant', x: 12, z: -16 }, { key: 'park_bench', x: 16, z: -24, face: 0 }],
@@ -45696,6 +45700,51 @@ function hqGridEncode(t, vals, nx, nz, x0, z0, res) {
     const r4 = v => Math.round(v * 10000) / 10000;
     return { t: i16 ? 'i16' : 'u8', res: r4(res), x0: r4(x0 + i0 * res), z0: r4(z0 + j0 * res), nx: w, nz: h, d: _hqB64Enc(u) };
 }
+/* THE BOARD (2026-09-30 — mondo: "for that one there needs to be a chessboard in the looking glass explorable area"): a terrain
+   feature `{ k: 'board', x, z, n: 8, cell: 1.75, keys: [light, dark], colors: [light, dark], h: 0.06 }` — an n × n board of
+   squares centred on (x, z), a battle tile each (THE FIELD's lattice edges sit at k · 1.75 from the room's centre, so a board
+   centred on a lattice node / edge lines its squares up with the battle cells). The compile lays a FLAT floor under it at `h`
+   (a plateau row authored right after it — the noise never pokes through a square), keeps the scatter off it, and draws every
+   square as a textured mark 1.5 cm over that floor (three-renderer.js _hqBuildMarks `tex`); THE FIELD's raster keys each cell by its
+   square (the fight on the board stands on the squares). Square (0, 0) is the NW corner and wears keys[0] (the light one:
+   the near right-hand corner from the south is light, as on a real board). */
+function hqTerrainBoard(f) {
+    const n = Math.max(1, (f.n | 0) || 8), C = +f.cell || HQ_TERRAIN_RULES.tile;
+    const keys = (Array.isArray(f.keys) && f.keys.length) ? f.keys : ['marble_light', 'marble'];
+    const colors = Array.isArray(f.colors) ? f.colors : [0xf2eee6, 0x2c2a38];
+    return { n, C, x0: (+f.x || 0) - n * C / 2, z0: (+f.z || 0) - n * C / 2, keys: [keys[0], keys[1] || keys[0]], colors: [colors[0], (colors[1] != null) ? colors[1] : colors[0]], y: (typeof f.h === 'number') ? f.h : 0.06 };
+}
+function _hqTBoardFloors(features) {
+    if (!features || !features.some(f => f && f.k === 'board')) return features;
+    const out = [];
+    features.forEach(f => {
+        out.push(f);
+        if (!f || f.k !== 'board') return;
+        const b = hqTerrainBoard(f);
+        out.push({ k: 'plateau', x: b.x0 + b.n * b.C / 2, z: b.z0 + b.n * b.C / 2, w: b.n * b.C + 1.6, d: b.n * b.C + 1.6, h: b.y, edge: 0.2, board: true });
+    });
+    return out;
+}
+/* the square of a board at (x, z): { key, color, i, j } or null */
+function hqTerrainBoardAt(boards, x, z) {
+    for (const b of boards || []) {
+        const i = Math.floor((x - b.x0) / b.C), j = Math.floor((z - b.z0) / b.C);
+        if (i < 0 || j < 0 || i >= b.n || j >= b.n) continue;
+        const s = (i + j) % 2;
+        return { key: b.keys[s], color: b.colors[s], i, j };
+    }
+    return null;
+}
+function hqTerrainBoardMarks(boards) {
+    const out = [];
+    (boards || []).forEach(b => {
+        for (let j = 0; j < b.n; j++) for (let i = 0; i < b.n; i++) {
+            const s = (i + j) % 2;
+            out.push({ k: 'rect', x: b.x0 + (i + 0.5) * b.C, z: b.z0 + (j + 0.5) * b.C, w: b.C, d: b.C, color: b.colors[s], tex: b.keys[s], board: true });
+        }
+    });
+    return out;
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
     const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
@@ -45706,8 +45755,9 @@ function hqTerrainCompile(room, roomId) {
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(T.seedOf || roomId || room.label || 'terrain')) : 7;   // THE EDITOR (E0): `seedOf` = a copy's source id (the same noise)
     const X = hqRoomExpand(room);   // THE SHAPES (E1): openings, prefabs, kits and textured buildings as the compiler's own rows
-    const F = slopeB ? _hqTSlopeFeatures(X.features, slopeB) : X.features;
-    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [];
+    const F0 = _hqTBoardFloors(X.features);   // THE BOARD: each board row + the flat floor it lies on
+    const F = slopeB ? _hqTSlopeFeatures(F0, slopeB) : F0;
+    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [], boards = [];
     F.forEach(f => {
         switch (f.k) {
             case 'hill': case 'dip': case 'ridge': relief.push(f); break;
@@ -45722,6 +45772,7 @@ function hqTerrainCompile(room, roomId) {
             case 'tree': trees.push({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }); break;   // face (E6): the editor's R turns a tree
             case 'grove': case 'scatter': scatterRows.push(f); break;
             case 'climb': climbRows.push(f); break;
+            case 'board': boards.push(hqTerrainBoard(f)); break;   // THE BOARD: the squares (drawn as marks, read by THE FIELD's raster)
             default: break;
         }
     });
@@ -45875,7 +45926,7 @@ function hqTerrainCompile(room, roomId) {
     const H = new Float32Array(nx * nz);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
-                   pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
+                   pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, boards, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
                    slope: slopeB,   // G7: the base's profile (room metres → m over `base`), null on a flat room
                    /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `plateau` or a stair `ramp` wearing `float: true` is a CLOUD
                       PLATFORM / a flight of FLOATING STEPS — the height rule is untouched (the field carries it like any tier: the walker climbs its
@@ -45981,6 +46032,7 @@ function hqTerrainCompile(room, roomId) {
         if (hqTerrainSlope(info, px, pz) > (opts.slope || 0.5)) return false;
         for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
         if (!opts.onPath) for (const p of paths) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2 + rad) return false;
+        for (const b of boards) if (px > b.x0 - rad - 0.3 && px < b.x0 + b.n * b.C + rad + 0.3 && pz > b.z0 - rad - 0.3 && pz < b.z0 + b.n * b.C + rad + 0.3) return false;   // THE BOARD: nothing scattered on the squares
         for (const d of decks) { const L = _hqTRamp(px, pz, d); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < d.w / 2 + rad + 0.3) return false; }
         for (const b of info.bridges) { if (b.arc) { if (_hqTArcIn(b.arc, px, pz, rad + 0.3)) return false; continue; } const L = _hqTRamp(px, pz, b); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < b.w / 2 + rad + 0.3) return false; }   // THE BRIDGE LAYER: nothing under a bridge's mouth or its span
         /* THE MALL, THE THIRD PASS (2026-09-17 — the plant pot on the escalator): nothing stands on a ramp, a stair or an escalator, nor on the field's skirt beside it */
@@ -46018,7 +46070,7 @@ function hqTerrainCompile(room, roomId) {
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
-    info.marksX = X.marks;
+    info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
     info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : hAt(f.x, f.z) }));
     return info;
 }
@@ -50058,6 +50110,7 @@ function hqFieldTerrainInfo(roomId) {
     const trees = (info.trees || []).concat(info.thicket || []);
     const treeAt = (x, z) => { for (const t of trees) { const r = (t.r || R.treeR) + TR.treePad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; } return false; };
     const onPath = (x, z) => { for (const p of (info.paths || [])) if (_hqTPolyDist(x, z, p.pts).d <= p.w / 2) return true; return false; };
+    const onBoard = (x, z) => { const sq = (info.boards && info.boards.length) ? hqTerrainBoardAt(info.boards, x, z) : null; return (sq && known(sq.key)) ? sq.key : null; };
     const sub = Math.max(1, TR.sub | 0), cover = Math.min(sub * sub, TR.cover | 0);
     /* a sample STANDS when the walker's free query gives it feet AND it is not the plan's solid (a `rooms` plan's thicket bank is a
        RISE the free query climbs — the walker never does: it is refused by the slope, which the free query does not read) AND it is
@@ -50094,6 +50147,7 @@ function hqFieldTerrainInfo(roomId) {
             if (feet != null && walk >= cover) {
                 cell.in = true; cell.top = feet;
                 if (wet) { cell.fluid = 'water'; cell.key = known('water') ? 'water' : floorKey; cell.sheet = fl.y; cell.seat = false; }
+                else if (onBoard(cx, cz)) cell.key = onBoard(cx, cz);   // THE BOARD: the cell wears its square
                 else if (onPath(cx, cz)) cell.key = pathKey;
                 const wl = (typeof hqTerrainWallAt === 'function') ? hqTerrainWallAt(info, cx, cz, R.bodyR) : null;
                 if (wl && !wl.plan) cell.wall = true;
@@ -50537,6 +50591,9 @@ const HQ_ARENA_RULES = {
     obstacles: 8,   // the most cells of an arena that may be the room's own obstacles (a tree, a rock, a prop, a pool)…
     featureMax: 12, // …each a FEATURE: a blocked patch of at most this many cells standing free in the room (never its edge or a wall)
     label: 'Arena',
+    /* the sites that keep their Δ board whatever fits (mondo 2026-09-30: "keep the looking glass delta map, for that one there needs
+       to be a chessboard in the looking glass explorable area" — the garden's own chessboard, THE BOARD below) */
+    keep: ['prebuilt_lookingglass'],
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is 64 pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
@@ -50566,7 +50623,6 @@ const HQ_ARENA_RULES = {
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101140101010101010114010101010114010101010101141414010101010101141401010101010101010101010101010101"},
         prebuilt_flatlands: {"room":"site_prebuilt_flatlands_plain","ox":25,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"01010101010101140101010101010101010101010101010114140101010101011414140101010101010101010101010101010101010101010101010101010101"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2","gunmetal"],"cells":"01010101010101011111010101010101021212121202242401010111111111240101010101011111010101010101011101010101010101010202010101010111"},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":14,"oz":16,"base":"marble_light","open":1,"keys":["marble_light","marble"],"cells":"01111101010101010101111101010111010101110111111111111111111101010101011111010101010101111101010101010111110101011111111111111111"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":18,"oz":19,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"01010111111111110111111111111111010111111111111101010111111111110111110101111104011111110101110401111111110101110104111111110101"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":11,"base":"checkerboard","open":0,"keys":["checkerboard","wood","damask"],"cells":"01011111010101010101111101010101010111110101010101240111110101112424240111010111010101011111111111111111111111110101010101111101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":14,"oz":19,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"01010101010101010101010101011414210101010101010121212121210101010101012121212121010101212121212101010121210101210101012121010101"},
@@ -50682,6 +50738,7 @@ function hqArenaRun(mapId) {
     Object.keys(P).forEach(site => {
         try {
             const pick = P[site], did = site + '_delta';
+            if ((HQ_ARENA_RULES.keep || []).includes(site)) return;   // a kept site's Δ stands
             const old = PREBUILT_MAPS[did], row = EW_MAP_META.find(m => m.id === did);
             if (!old || !row || !pick || !(DOOR_HQ.rooms || {})[pick.room]) return;
             const entry = hqArenaEntry(site, pick, hqArenaCells(pick), old.terrainTints || null);
