@@ -392,6 +392,14 @@ const FINISHERS = {
     'jellyfish':      { id: 'fin_jellyfish', name: 'The Bloom', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'A THOUSAND OF US', desc: 'The sea comes up over the tile and the water fills with jellyfish, more and more of them, until the victim is a shape inside a glowing bloom. When the water drains there is nothing on the tile but a print.' },
     'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: 'ascensionDay', built: true, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
     'popstar':        { id: 'fin_popstar', name: 'Farewell Tour', glyph: '🎤', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'ONE NIGHT ONLY', desc: 'A stadium stands up round the victim — the stands, the floodlights, a crowd of glow sticks — and the spotlight finds them. She sings one last song from her stage. The pyro goes on the final note, the fireworks over the stands, and when the lights come back up there is a SOLD OUT poster where they stood.' },
+    /* THE 2026-09-30 BATCH — each borrows a built execution's staging (sig) and swaps its captions (`lines`, battle.js _finLine). */
+    'astronaut': { id: 'fin_astronaut', name: 'Zero G', glyph: '🚀', type: 'tech', sig: 'upUpAndAway', built: true, tagline: 'WE HAVE LIFTOFF', lines: [['🦸 UP', '🚀 LIFTOFF'], ['AND AWAY', 'MAX Q'], ['THE LANDING.', 'SPLASHDOWN.']], desc: 'The astronaut takes the victim up on a launch, past the clouds, far enough to see the curve of the Earth, and lets go. The victim comes back down alone at terminal velocity.' },
+    'krampus': { id: 'fin_krampus', name: 'Coal Season', glyph: '🔔', type: 'unholy', sig: 'naughtyList', built: true, tagline: 'HE CHECKED IT TWICE', lines: [['🎅 NAUGHTY: ', '🔔 NAUGHTY: '], ['HO HO HO', 'NO PRESENTS THIS YEAR']], desc: 'A scroll unrolls out of the sky with one name on it, the coal comes down, and something the size of a house is delivered from orbit. It is not a present.' },
+    'rabbit': { id: 'fin_rabbit', name: 'Out of a Hat', glyph: '🐇', type: 'anomaly', sig: 'abracadabra', built: true, tagline: 'WRONG WAY ROUND', lines: [['🎩 NOTHING UP MY SLEEVE', '🐇 WRONG WAY ROUND'], ['TA-DA.', 'LATE FOR A VERY IMPORTANT DATE.']], desc: 'A hat the size of a house drops over the victim; the rabbit taps it once; the hat lifts on nothing, and the victim turns up a hundred metres over the board with nowhere to land.' },
+    'luchador': { id: 'fin_luchador', name: 'Top Rope', glyph: '🤼', type: 'human', sig: 'orbitalDrop', built: true, tagline: '¡ARRIBA!', lines: [['🛰 IGNITION', '🤼 TO THE TOP ROPE'], ['ALT ↑ ↑ ↑', 'HIGHER'], ['ORBIT ACHIEVED · 400 KM', 'HIGHER STILL'], ['TARGET DESIGNATED', '¡ARRIBA!'], ['RE-ENTRY', 'FLYING ELBOW'], ['FROM THE MOON, WITH LOVE.', 'ONE. TWO. THREE.']], desc: 'The luchador leaves the board straight up off the top rope, keeps going until the board is a dot, and comes back down on the victim like a meteor.' },
+    'firefighter': { id: 'fin_firefighter', name: 'Hose Down', glyph: '🚒', type: 'human', sig: 'theWave', built: true, tagline: 'FULL PRESSURE', lines: [['🌊 THE TIDE', '🚒 OPEN THE HYDRANT'], ['NINE TILES TALL', 'FULL PRESSURE'], ['ONLY ONE WAS STANDING THERE.', 'FIRE\'S OUT.']], desc: 'Every hydrant in the city opens at once. A wall of water taller than the sky rolls in from the edge of the map, and only one unit is standing where it lands.' },
+    'goblin': { id: 'fin_goblin', name: 'The Horde', glyph: '👺', type: 'anomaly', sig: 'pileOn', built: true, tagline: 'SHINIES', lines: [['🧟 THEY COME OVER THE EDGE', '👺 THEY COME OVER THE EDGE'], ['BRAAAINS', 'SHINIES'], ['…AND OFF WITH THE PIECES.', '…AND OFF WITH THE POCKETS.']], desc: 'A horde pours over the edges of the map, dogpiles one unit, and runs off with everything it had on it.' },
+    'hippie': { id: 'fin_hippie', name: 'Bad Trip', glyph: '☮', type: 'human', sig: 'theTrip', built: true, tagline: 'FAR OUT', lines: [['🍄 THE DOSE', '☮ FAR OUT'], ['NO ONE HOME.', 'PEACE.']], desc: 'The victim\'s reality goes fractal, kaleidoscopes inside kaleidoscopes, until there is no victim left to have a bad time.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
@@ -528,6 +536,8 @@ const RACE_ELEMENT_AFFINITY = {
     'dragon':            { fire: 'resist', ice: 'weak' },
     'dinosaur':          { ice: 'weak' },
     'kaiju':             { fire: 'absorb' },   // Thermal Regen, generalized
+    'krampus': { ice: 'resist', fire: 'weak' },   // 2026-09-30
+    'firefighter': { fire: 'resist' },   // 2026-09-30
     'king kong':         { earth: 'resist' },
     'bigfoot':           { earth: 'resist' },
     // everyone else: elementally neutral (deliberately no row)
@@ -2829,6 +2839,44 @@ const RACE_PROFILES = {
         faction: 'space',
         types: ['human', 'anomaly']
     },
+    /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
+    'astronaut': {
+        label: 'Astronaut',
+        faction: 'space',
+        types: ['human', 'tech']
+    },
+    'krampus': {
+        label: 'Krampus',
+        faction: 'chaos',
+        types: ['unholy', 'anomaly']
+    },
+    'rabbit': {
+        label: 'Rabbit',
+        faction: 'time',
+        types: ['anomaly']
+    },
+    'luchador': {
+        label: 'Luchador',
+        faction: 'space',
+        types: ['human']
+    },
+    'firefighter': {
+        label: 'Firefighter',
+        faction: 'time',
+        types: ['human']
+    },
+    'goblin': {
+        label: 'Goblin',
+        faction: 'chaos',
+        types: ['anomaly']
+    },
+    'hippie': {
+        label: 'Hippie',
+        labelMale: 'Hippie',
+        labelFemale: 'Hippie',
+        faction: 'time',
+        types: ['human']
+    },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
@@ -3052,6 +3100,42 @@ const PASSIVE_DEFS = {
         immuneStatus: ['silence'],
         desc: 'Nobody cuts her mic — immune to Silence.',
     },
+    /* 2026-09-30 — the new-race batch: the same immuneStatus hook. */
+    sealedSuit: {
+        id: 'sealedSuit', icon: '🧑‍🚀', name: 'Sealed Suit',
+        immuneStatus: ['poison'],
+        desc: 'Breathes its own air — immune to Poison.',
+    },
+    alpineHide: {
+        id: 'alpineHide', icon: '🔔', name: 'Alpine Hide',
+        immuneStatus: ['frozen'],
+        desc: 'A winter coat of goat hair — immune to Freeze.',
+    },
+    quickFeet: {
+        id: 'quickFeet', icon: '🐇', name: 'Quick Feet',
+        immuneStatus: ['slow'],
+        desc: 'Always late, never slow — immune to Slow.',
+    },
+    ironChin: {
+        id: 'ironChin', icon: '🤼', name: 'Iron Chin',
+        immuneStatus: ['stagger'],
+        desc: 'Took a chair to the head every night for years — immune to Stagger.',
+    },
+    turnoutGear: {
+        id: 'turnoutGear', icon: '🧯', name: 'Turnout Gear',
+        immuneStatus: ['burn'],
+        desc: 'Fire-rated coat and helmet — immune to Burn.',
+    },
+    caveEyes: {
+        id: 'caveEyes', icon: '👺', name: 'Cave Eyes',
+        immuneStatus: ['blind'],
+        desc: 'Grew up in the dark — immune to Blind.',
+    },
+    goodVibes: {
+        id: 'goodVibes', icon: '☮', name: 'Good Vibes',
+        immuneStatus: ['discord'],
+        desc: 'Nothing can harsh this mellow — immune to Discord.',
+    },
     hemophage: {
         id: 'hemophage', icon: '🩸', name: 'Hemophage',
         basicAttackLifesteal: 0.25,
@@ -3187,6 +3271,13 @@ const RACE_PASSIVES = {
     'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
     'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
     'popstar':       ['showMustGoOn'],        // 2026-09-22 — nobody cuts her mic
+    'astronaut': ['sealedSuit'],   // 2026-09-30
+    'krampus': ['alpineHide'],   // 2026-09-30
+    'rabbit': ['quickFeet'],   // 2026-09-30
+    'luchador': ['ironChin'],   // 2026-09-30
+    'firefighter': ['turnoutGear'],   // 2026-09-30
+    'goblin': ['caveEyes'],   // 2026-09-30
+    'hippie': ['goodVibes'],   // 2026-09-30
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3258,7 +3349,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3334,6 +3425,13 @@ const RACE_CLASS = {
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
+    'astronaut': 'ranged',   // 2026-09-30
+    'krampus': 'bruiser',   // 2026-09-30
+    'rabbit': 'assassin',   // 2026-09-30
+    'luchador': 'bruiser',   // 2026-09-30
+    'firefighter': 'tank',   // 2026-09-30
+    'goblin': 'assassin',   // 2026-09-30
+    'hippie': 'support',   // 2026-09-30
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -3539,6 +3637,14 @@ const RACE_BASE_STATS = {
     'cult leader':        { hp: 500, mp: 220, atk:  26, def:  36, mdef:  66, int:  74, awr:  60, spd:  44 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
     'popstar':            { hp: 460, mp: 230, atk:  24, def:  30, mdef:  62, int:  74, awr:  52, spd:  62 },
+    // 2026-09-30 — the new-race batch
+    'astronaut': { hp: 540, mp: 150, atk: 64, def: 54, mdef: 50, int: 46, awr: 70, spd: 48 },
+    'krampus': { hp: 650, mp: 110, atk: 90, def: 44, mdef: 42, int: 36, awr: 42, spd: 48 },
+    'rabbit': { hp: 470, mp: 130, atk: 80, def: 28, mdef: 44, int: 40, awr: 72, spd: 66 },
+    'luchador': { hp: 620, mp: 90, atk: 88, def: 50, mdef: 36, int: 14, awr: 42, spd: 58 },
+    'firefighter': { hp: 700, mp: 100, atk: 58, def: 78, mdef: 50, int: 22, awr: 56, spd: 36 },
+    'goblin': { hp: 480, mp: 120, atk: 76, def: 34, mdef: 40, int: 30, awr: 70, spd: 64 },
+    'hippie': { hp: 480, mp: 230, atk: 22, def: 30, mdef: 62, int: 70, awr: 56, spd: 44 },
     'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
     'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
     'nephilim':           { hp: 680, mp:  90, atk:  68, def:  73, mdef:  36, int:  27, awr: 28, spd: 41 },
@@ -3619,6 +3725,13 @@ const RACE_PHYSIQUE = {
     'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
     'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
     'popstar':             { h: 1.68, w: 54 },   // 2026-09-22 — in the heels
+    'astronaut': { h: 1.8, w: 110 },   // 2026-09-30
+    'krampus': { h: 2.1, w: 140 },   // 2026-09-30
+    'rabbit': { h: 1.7, w: 45 },   // 2026-09-30
+    'luchador': { h: 1.8, w: 105 },   // 2026-09-30
+    'firefighter': { h: 1.85, w: 110 },   // 2026-09-30
+    'goblin': { h: 1.1, w: 35 },   // 2026-09-30
+    'hippie': { h: 1.75, w: 66 },   // 2026-09-30
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -6916,6 +7029,15 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'The pyro goes, the crowd goes. MEDIUM magic damage to every enemy in a 5×5 within 3 tiles, and every one of them is Charmed for a round — they are fans now. Once every 4 rounds.' },
     ],
+    /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
+       rungs (RACE_TREE) are picked from them. */
+    'astronaut': [],
+    'krampus': [],
+    'rabbit': [],
+    'luchador': [],
+    'firefighter': [],
+    'goblin': [],
+    'hippie': [],
     /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
        NOT THE DOORS. The user dropped the placed-door mechanic (Knock Knock,
        Slam, Special Delivery, EXIT, The Long Way Round are gone; the door
@@ -11046,7 +11168,7 @@ const ACH_CATALOG = [
   // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
   // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
   // counts mastered champs (evaluated at match commit, stored high-water).
-  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 103], hw: true },   // top tier = the roster size (103 since the popstar, 2026-09-22)
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 110], hw: true },   // top tier = the roster size (110 since the 2026-09-30 batch)
 ];
 
 // What a champ must reach on each mastery ladder to count as Mastered
@@ -16779,6 +16901,13 @@ const EW_RACE_BIOMES = {
     'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
     'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
     'popstar': ['stadium', 'urban', 'neon_city'],   // 2026-09-22 — the tour: the Bowl, Downtown, the Strip, the Grid
+    'astronaut': ['space'],   // 2026-09-30
+    'krampus': ['forest', 'polar'],   // 2026-09-30
+    'rabbit': ['astral', 'forest'],   // 2026-09-30
+    'luchador': ['urban', 'stadium'],   // 2026-09-30
+    'firefighter': ['urban'],   // 2026-09-30
+    'goblin': ['inner_earth', 'forest'],   // 2026-09-30
+    'hippie': ['forest', 'ancient'],   // 2026-09-30
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -17259,6 +17388,13 @@ const RACE_TREE = {
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceJudgmentBeam', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
+    'astronaut': ['raceGravityWell', 'raceGravityBoots', 'sharedGravityCrush', 'railgun'],   // 2026-09-30
+    'krampus': ['raceLumpOfCoal', 'raceCliffCharge', 'raceNaughtyList', 'raceBaphometsRite'],   // 2026-09-30
+    'rabbit': ['raceSparkle', 'raceNimbleDodge', 'raceTrickRoom', 'raceTimeRewind'],   // 2026-09-30
+    'luchador': ['raceBodyCheck', 'racePopStageDive', 'raceBrutalSlam', 'rampage'],   // 2026-09-30
+    'firefighter': ['raceRiptide', 'sharedTidalSurge', 'raceUnderdogSpirit', 'raceTsunami'],   // 2026-09-30
+    'goblin': ['raceInfectiousBite', 'raceStealFromRich', 'raceTrapdoor', 'raceNoMercy'],   // 2026-09-30
+    'hippie': ['healingSeed', 'cleanse', 'raceAyahuascaRetreat', 'raceAwakening'],   // 2026-09-30
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceWarOfTheWorlds'],   // 2026-09-27: Summon Sandstorm (Desert Acclimation) keeps a ring-II seat
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -19849,6 +19985,13 @@ const RACE_FAMILIES = {
     'police officer': ['policetraining', 'weaponstraining', 'drivingskills'],
     politician: ['politics', 'deepstate', 'militarysupport'],
     popstar: ['stagepresence', 'sonic', 'seduction', 'musictheory'],
+    'astronaut': ['astronautcamp', 'advancedtechnology', 'cosmic', 'athleticism'],
+    'krampus': ['christmasspirit', 'horns', 'blackmagic', 'winter'],
+    'rabbit': ['athleticism', 'trickery', 'fae', 'temporal'],
+    'luchador': ['martialarts', 'athleticism', 'dirtyfighting', 'stagepresence'],
+    'firefighter': ['water', 'humangrit', 'teamwork', 'athleticism'],
+    'goblin': ['thievery', 'trapmaking', 'dirtyfighting', 'poison'],
+    'hippie': ['psychadelic', 'meditation', 'nature', 'agriculture', 'healingmagic'],
     priest: ['biblestudy', 'light', 'angelic', 'healingmagic'],
     quarterback: ['football', 'athleticism', 'teamwork', 'marksmanship'],
     reptilian: ['conspiracyknowledge', 'trickery', 'poison', 'spygear'],
@@ -20299,6 +20442,14 @@ const CAMPAIGN_RACE_PRICES = {
   'cult leader': 400,
   // 2026-09-22
   'popstar': 350,
+  // 2026-09-30
+  'astronaut': 300,
+  'krampus': 400,
+  'rabbit': 300,
+  'luchador': 300,
+  'firefighter': 250,
+  'goblin': 200,
+  'hippie': 250,
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -21431,6 +21582,13 @@ const DOOR_TEXT = {
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
         'popstar': 'Football Stadium',   // 2026-09-22 — the Bowl is the tour's first date
+        'astronaut': 'Spaceship',   // 2026-09-30 — Outer Space
+        'krampus': 'Fairy Forest',   // 2026-09-30 — The Woods
+        'rabbit': 'The Looking-Glass',   // 2026-09-30 — The Fairy Forest
+        'luchador': 'The Strip',   // 2026-09-30 — The Desert
+        'firefighter': 'Downtown',   // 2026-09-30 — Disaster City
+        'goblin': 'Hollow Earth',   // 2026-09-30 — The Cavern
+        'hippie': 'Stonehenge',   // 2026-09-30 — Leylines
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',

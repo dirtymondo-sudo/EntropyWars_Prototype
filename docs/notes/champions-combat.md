@@ -1073,3 +1073,27 @@ the optional passives for 1 SP." What changed:
   from the old default jobs), so every race keeps its old shot.
 - Profile CHAMPIONS / OVERVIEW stats key by race. Dropped: homosapien-Psychic flight, the job nametag mode (a stale
   'job' setting draws the race), the balance lab's job tabs.
+
+## THE 2026-09-30 BATCH — seven new races from the user's Meshy uploads + the kaiju remodel
+The user uploaded Running exports to R2 `Assets/Sprites/Races/<race>/Meshy_AI_<race>_Running.glb` (rigged, 28 joints,
+1.7 m tall in the file). Wired: **astronaut** (ranged; astronautcamp · advancedtechnology · cosmic · athleticism; home
+Spaceship = Outer Space), **krampus** (bruiser; christmasspirit · horns · blackmagic · winter; Fairy Forest site = The
+Woods; ice resist / fire weak), **rabbit** (assassin; athleticism · trickery · fae · temporal; The Looking-Glass = off the
+Fairy Forest), **luchador** (bruiser; martialarts · athleticism · dirtyfighting · stagepresence; The Strip = The Desert),
+**firefighter** (tank; water · humangrit · teamwork · athleticism; Downtown = Disaster City; fire resist), **goblin**
+(assassin; thievery · trapmaking · dirtyfighting · poison; Hollow Earth = The Cavern), **hippie** (support, both genders;
+psychadelic · meditation · nature · agriculture · healingmagic; Stonehenge = Leylines). Each: data.js RACE_PROFILES,
+RACE_CLASS, RACE_BASE_STATS, RACE_PHYSIQUE, RACE_ABILITIES (EMPTY: the pool is the families), RACE_TREE (rungs picked from
+the families), RACE_FAMILIES, EW_RACE_BIOMES, POINT_OF_ENTRY (the home = population natives), CAMPAIGN_RACE_PRICES,
+AVAILABLE_RACES (110; server.js literal too; Heat Death top tier 110), a PASSIVE_DEFS row on the immuneStatus hook
+(sealedSuit poison · alpineHide frozen · quickFeet slow · ironChin stagger · turnoutGear burn · caveEyes blind ·
+goodVibes discord) + party-builder.js trait; sprites.js RACE_SPRITE_GENDERS, RACE_MODELS_3D (`model:` the Running GLB),
+RACE_SPRITES (2D borrows a sheet); lore in ui.js + party-builder.js.
+**FINISHERS BORROW A BUILT STAGING**: a row's `sig` may name another race's built director; its own `lines`
+([[from, to], …]) swap the director's captions (battle.js `_finLine`, applied in `_finPlayCinematic`'s `insert`). Same
+timings + VFX, so online and the forge preview (`_FIN_STAGE[sig]`) need nothing new. Zero G = upUpAndAway, Coal Season =
+naughtyList, Out of a Hat = abracadabra, Top Rope = orbitalDrop, Hose Down = theWave, The Horde = pileOn, Bad Trip = theTrip.
+**Kaiju**: `RACE_MODELS_3D.kaiju.male` now `Races/kaiju/male/Meshy_AI_kaiju_Running.glb` (heightRatio 1.6 kept).
+Still missing on R2 at build time (the user's list): clown, sharkman, crystalguardian, sherrif, ringmaster, jackolantern,
+beequeen, sidekick, professor, starfish, mushroomgirl, treeperson, deepseafish, bunnygirl — wire them the same way
+(scratchpad script pattern: one JSON row per race). UNSEEN LIVE: every rig's scale/facing (heightRatio is the one-field edit).

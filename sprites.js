@@ -91,6 +91,13 @@ const RACE_SPRITE_GENDERS = {
   'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
+  'astronaut': 'male',   // 2026-09-30
+  'krampus': 'male',   // 2026-09-30
+  'rabbit': 'male',   // 2026-09-30
+  'luchador': 'male',   // 2026-09-30
+  'firefighter': 'male',   // 2026-09-30
+  'goblin': 'male',   // 2026-09-30
+  'hippie': 'both',   // 2026-09-30
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -1773,6 +1780,53 @@ const RACE_MODELS_3D = {
       lib: { idle: { clip: 'Dance_Loop', lib: 0, ts: 1.0 } },
     }),
   },
+  // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
+  'astronaut': {
+    male: _mkUAL('astronaut', 'astronaut', {
+      model: `${_S}/Races/astronaut/Meshy_AI_astronaut_Running.glb`,
+      heightRatio: 1.03, basicAttackKind: 'punch',
+    }),
+  },
+  'krampus': {
+    male: _mkUAL('krampus', 'krampus', {
+      model: `${_S}/Races/krampus/Meshy_AI_krampus_Running.glb`,
+      heightRatio: 1.2, basicAttackKind: 'claw',
+    }),
+  },
+  'rabbit': {
+    male: _mkUAL('rabbit', 'rabbit', {
+      model: `${_S}/Races/rabbit/Meshy_AI_rabbit_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'punch',
+    }),
+  },
+  'luchador': {
+    male: _mkUAL('luchador', 'luchador', {
+      model: `${_S}/Races/luchador/Meshy_AI_luchador_Running.glb`,
+      heightRatio: 1.03, basicAttackKind: 'punch',
+    }),
+  },
+  'firefighter': {
+    male: _mkUAL('firefighter', 'firefighter', {
+      model: `${_S}/Races/firefighter/Meshy_AI_firefighter_Running.glb`,
+      heightRatio: 1.05, basicAttackKind: 'punch',
+    }),
+  },
+  'goblin': {
+    male: _mkUAL('goblin', 'goblin', {
+      model: `${_S}/Races/goblin/Meshy_AI_goblin_Running.glb`,
+      heightRatio: 0.65, basicAttackKind: 'claw',
+    }),
+  },
+  'hippie': {
+    male: _mkUAL('hippie', 'hippie_male', {
+      model: `${_S}/Races/hippie/Meshy_AI_hippie_male_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
+    female: _mkUAL('hippie', 'hippie_female', {
+      model: `${_S}/Races/hippie/Meshy_AI_hippie_female_Running.glb`,
+      heightRatio: 0.95, basicAttackKind: 'magic',
+    }),
+  },
   // AI (Gunslinger, ranged; flies — map.js SKY_RACES) — "AI_girl" Character_output (Races/ai/female/).
   'ai': {
     female: _mkUAL('ai/female', 'AI_girl', {
@@ -1893,8 +1947,10 @@ const RACE_MODELS_3D = {
   // 71MB preload hog). Library-animated, so the swap is prefix-only. Nearly
   // giant-sized (giant is 1.7); stomps classify to castSlam, Skyscraper Toss
   // to castThrow, Atomic Breath fires its mapped beam.
+  // REMODELED again 2026-09-30: the user's new "kaiju" Running export (Races/kaiju/male/Meshy_AI_kaiju_Running.glb).
   'kaiju': {
-    male: _mkUAL('kaiju/male', 'kaiju_realistic', {
+    male: _mkUAL('kaiju/male', 'kaiju', {
+      model: `${_S}/Races/kaiju/male/Meshy_AI_kaiju_Running.glb`,
       heightRatio: 1.6,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -3052,6 +3108,13 @@ const RACE_SPRITES = {
   'jellyfish': `${_S}/kraken.png`,            // 2026-09-21 — 2D borrows the kraken's sheet (his own art is the GLB)
   'cult leader': `${_S}/homosapien.png`,      // 2026-09-21
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
+  'astronaut': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'krampus': `${_S}/goatman.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'rabbit': `${_S}/catgirl.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'luchador': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'firefighter': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'goblin': `${_S}/gnome.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'hippie': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

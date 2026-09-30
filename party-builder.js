@@ -627,6 +627,13 @@ const CODEX_LORE = {
   'police officer': 'Municipal law-enforcement officer of Disaster City, sworn in under a charter nobody has produced. Subjects respond to every disturbance with the same escalation ladder — baton, taser, pepper spray, cuffs — and will, on a bad night, cordon an entire block and call it a lockdown. Ballistic vest, service pistol, a radio that only ever says "copy". The Cyberpunk City precinct wears a different uniform and answers to a different charter; do not expect the two to compare notes. Will ask for your badge. Will not accept ours.',
   'jellyfish': 'CLASSIFICATION: DRIFTING SOVEREIGN. Cnidarian entity of unprecedented scale recovered from the Bermuda Triangle\'s deep, wearing a crown nobody put on it. No brain, no heart, no blood; the interview went well regardless. Bell pulses at 0.3 Hz, tentacle skirt extends to nematocyst range 3, venom classed as neurotoxic-anomalous. Observed reverting to a polyp stage under lethal damage and regrowing inside a round (see: Turritopsis). Floats. Everything in the Department\'s aquarium wing has been moved.',
   'popstar': 'Human, ostensibly. Subject exhibits an anomalous field effect the Bureau has filed under FAME: crowds form where she stands, lights find her without being aimed, and a room of hostile agents will hold a lighter up on the second chorus. Crossed at the Football Stadium mid-tour and has not stopped touring since. Combat doctrine is the show — the mic as a blunt instrument, the stage dive, a spotlight that leaves nowhere to hide, and a stadium set the file describes only as "the pyro." Nobody has managed to silence her. Several have been charmed trying.',
+  'astronaut': 'Human. NASA-trained, suit on, never takes the helmet off indoors. Recovered from the derelict Spaceship with a mission patch nobody at the agency issued. Subjects treat zero gravity as a weapon: they pull the floor out from under a target, walk on walls in mag boots, and fire a railgun that was classified before it was built.',
+  'krampus': 'Anomalous. Horned, hooved, chained, and carrying a bell and a birch switch. Files arrive every December from the same forest and describe the same visitor: the one who comes for the names Santa Clause crossed off. Subjects are cold-proof, fire-shy, and hit harder than their list is long.',
+  'rabbit': 'Anomalous. Bipedal lagomorph recovered from the far side of the Looking-Glass, checking a watch that runs in both directions. Subjects are impossible to pin down: they are never where the report says, arrive before they are sent for, and leave before the fight is over.',
+  'luchador': 'Human. Masked professional wrestler; the mask has never come off and the Bureau has stopped asking. Recovered from a Strip casino\'s fight night with no contract and no opponent left standing. Subjects throw, slam and dive off anything taller than they are, and play to a crowd whether or not there is one.',
+  'firefighter': 'Human. The one engine company in Disaster City still answering calls. Subjects walk into what everyone else is running out of, carry the wounded out on one shoulder, and put out fires, floods and fights with the same hose.',
+  'goblin': 'Anomalous. Small, green, quick and never alone. Recovered from the tunnels of Hollow Earth with somebody else\'s wallet. Subjects rig the ground they stand on, bite with something in their teeth that should not be there, and take whatever is not bolted down.',
+  'hippie': 'Human. Found camped at the stones on the solstice and every day since. Subjects grow their own medicine, share it with anyone, and keep a whole squad on its feet on seeds, herbs and good intentions. The Bureau has asked them to leave the site eleven times.',
   'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
   'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
   'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
@@ -2062,6 +2069,27 @@ const RACE_TRAITS = {
   ],
   'popstar': [
     { icon: '🎤', name: 'The Show Must Go On', desc: 'Nobody cuts her mic — immune to Silence.' },                     // CODED (PASSIVE_DEFS)
+  ],
+  'astronaut': [
+    { icon: '🧑‍🚀', name: 'Sealed Suit', desc: 'Breathes its own air — immune to Poison.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'krampus': [
+    { icon: '🔔', name: 'Alpine Hide', desc: 'A winter coat of goat hair — immune to Freeze.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'rabbit': [
+    { icon: '🐇', name: 'Quick Feet', desc: 'Always late, never slow — immune to Slow.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'luchador': [
+    { icon: '🤼', name: 'Iron Chin', desc: 'Took a chair to the head every night for years — immune to Stagger.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'firefighter': [
+    { icon: '🧯', name: 'Turnout Gear', desc: 'Fire-rated coat and helmet — immune to Burn.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'goblin': [
+    { icon: '👺', name: 'Cave Eyes', desc: 'Grew up in the dark — immune to Blind.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'hippie': [
+    { icon: '☮', name: 'Good Vibes', desc: 'Nothing can harsh this mellow — immune to Discord.' },   // CODED (PASSIVE_DEFS)
   ],
   'door agent': [
     { icon: '🗝️', name: 'Keyholder', desc: 'Once a turn, open or shut a friendly door beside you for free; your doors take 4 hits; friendly doors never harm you.' },   // CODED (PASSIVE_DEFS)
