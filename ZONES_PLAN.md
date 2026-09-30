@@ -63,11 +63,11 @@ DOOR-made routes (a taxi ride you never see the road of, a staircase standing in
 building can be anywhere. The reveal: the foyer's front door (`street`, today the open world's door)
 stays sealed until mondo's story point, then opens onto the ice shelf. mondo's call on the when.
 
-**The battle grid? — Fixed 8×8 at 1.75 m (14 m square); every fight room needs one clear 14 m patch.**
-`HQ_FIELD_RULES.size` is 8 and `hqFieldWindow` picks the 8×8 origin holding both combatants with the
-most reachable cells; walls outside the room become rock. So: rooms of interest at least 12×12 tiles
-(21 m) with one 8×8 patch free of props over 2.2 m; lanes 3–4 tiles wide, with an 8×8 bulge every ~30 m so
-a lane fight is a fight and not a slot. Rules in §2.3.
+**The battle grid? — The room is the board (EXPLORATION_BATTLES_PLAN.md Phase 1, 2026-09-30).** A fight
+takes the room's own 1.75 m lattice, whole up to 24 tiles a side (42 m), a 24×24 crop centred on the bodies
+above it (`hqFieldFrame`). A room of interest needs enough seats (48 in one connected region), not a clear
+square; a lane fights as a lane. Rules in §2.3. (The first answer here was a fixed 8×8 window with one clear
+14 m patch per room; that rule is retired.)
 
 **Node map or world map? — Node map.** It exists, it is honest, and it is what the door graph is.
 
@@ -80,7 +80,7 @@ a lane fight is a fight and not a slot. Rules in §2.3.
 | Element | What it is here | Where it is authored |
 |---|---|---|
 | **Districts** | ZONES: the Woods, the Estate, Disaster City… (§3). One zone = one to three editor rooms (a big outdoor room, plus interiors as their own rooms). | editor rooms; `zones` group in world.json (E7, §8) |
-| **Nodes** | DOOR HQ globally; inside a zone, the rooms where lanes meet (a clearing, a plaza, a junction hall). Every node is a room of interest with a fight patch. | LAYOUT `space` rows |
+| **Nodes** | DOOR HQ globally; inside a zone, the rooms where lanes meet (a clearing, a plaza, a junction hall). Every node is a room of interest with enough battle seats (§2.3). | LAYOUT `space` rows |
 | **Paths** | The lanes between nodes: dirt paths through tree walls, hallways, streets, tunnels. The "2 rooms, 3 lanes, cross-links" template (§2.2). | LAYOUT `hall` rows |
 | **Landmarks** | One tall thing per zone seen from its lanes (a castle keep, the stadium's rim, a pyramid, the mansion's roof) so the player knows where they are. Never an exit. | MODELS / BUILD; sky landmarks (`hqRoomLandmarks`) |
 | **Edges / boundaries** | What stops you: tree walls, cliffs, water, building walls. No invisible walls, ever. | LAYOUT look (walls / trees / rock); GROUND cliffs and water |
@@ -96,7 +96,7 @@ Room 1 ──── Path A ──────┬────── Room 2
                     (a side room off the cross-link; a secret door or a dead end)
 ```
 
-- Path A is the obvious one (widest, straightest). Path B is longer with a fight bulge. Path C is the one
+- Path A is the obvious one (widest, straightest). Path B is the longer one. Path C is the one
   that passes a side room (Room 3) and is where the secret pathway to another zone lives, if this zone has one.
 - The cross-links between lanes are the "smaller connections". They make loops, so a player can go around
   a fight or come back a different way.
@@ -108,25 +108,30 @@ Room 1 ──── Path A ──────┬────── Room 2
 
 ### 2.3 The battle grid rules for a hand-built room
 
-*2026-09-30: EXPLORATION_BATTLES_PLAN.md (Phase 1) retires the fixed 8×8 window: the battle is the room's own
-lattice (whole under 24 tiles a side, a 24×24 crop above), and the "one clear 8×8 patch" rule becomes "enough
-seats" (its §7 lists every amendment to this section, §4 and the E7 audit). Until that phase merges, the rows
-below stand.*
+*Amended 2026-09-30 by EXPLORATION_BATTLES_PLAN.md §7 (Phase 1 built): the fixed 8×8 window is retired. A fight
+takes the room's own lattice; the rows below are the new rules.*
 
-- Cell 1.75 m; the arena is 8×8 = 14 m × 14 m (`HQ_FIELD_RULES`, data.js ~51298). No bigger arena
-  exists in the code (OPEN_WORLD_PLAN §5.6's 12/16 windows were never built).
-- A room of interest: at least 12×12 tiles, with one 8×8 patch where nothing stands taller than 2.2 m
-  (taller = a wall cell). Props under 0.5 m are floor, under 2.2 m are cover: place cover on purpose inside
-  the patch, it is what makes the fight.
-- A lane: 3 tiles wide minimum (a 2-tile lane fights inside walls of rock, which is fine once, not always);
-  an 8×8 bulge every ~30 m.
+- **The cell stays 1.75 m.** `HQ_TERRAIN_RULES.tile`, the height steps (1.75 m a level, 1.46 m the walkable
+  step) and the lane widths all stand.
+- **The field is the room.** A fight takes the room's whole lattice up to 24 tiles a side (42 m,
+  `HQ_FIELD_RULES.max`); a bigger room fights on a 24×24 crop centred on the bodies' feet (`hqFieldFrame`).
+  The crop's edge is not a wall and is not drawn.
+- **"One clear 8×8 patch" becomes "enough seats".** A room of interest needs at least 48 battle seats
+  (`HQ_FIELD_RULES.fieldMinSeats`) in one connected walkable region, and no room needs a clear square. Cover
+  INSIDE the room is wanted, not avoided: it is what hides a unit (EXPLORATION_BATTLES_PLAN §6.2). Props
+  under 0.5 m are floor, under 2.2 m are cover, taller is a wall cell.
+- **A lane fights as a lane.** A 3-tile hallway is a legal field; a bulge is nice, not required (a 2-tile
+  lane fights inside walls of rock, which is fine once, not always).
+- **The crop rule for big rooms.** A room over 24 tiles a side is legal but fights on a crop; the editor's
+  AUDIT FIELD says so on the room (amber, not red). Hand-built zone rooms should stay under it, which they do
+  by the template already.
 - Height steps of 1.75 m (one level) are cover and vantage; steps over 1.46 m cannot be walked, so a
   terrace needs a ramp.
 - Water: a room with `terrain.sea` never fights on its own ground (it falls back to the Δ board). Keep
   water as pools and streams, not a sea, in any room that should host encounters.
 - An encounter needs the room to name a `site` (`hqEncounterRoomOk`, data.js ~49277). Editor rooms
   have no site today; §8 adds the field.
-- The editor's AUDITS already checks "the fight window"; run it on every room of interest.
+- The editor's AUDITS check "the fight field" (FIGHT at the cursor, FIELD per room); run them on every room of interest.
 
 ### 2.4 Loading
 
@@ -189,13 +194,12 @@ walker cannot enter, dirt lanes), about 160 × 160 m. Plain labels; mondo names 
 | Room 1 | the stair clearing | back up the stairs to HQ | the staircase standing in the forest; the only thing here; 12×12 tiles |
 | Room 2 | the first junction | none | three lanes leave it (A, B, C); the zone's landmark is seen from here (a tall dead tree, a rock, mondo's pick) |
 | Room 3 | end of Path A | **the Fairy Forest** | the exit is in the far wall; Path A bends twice before it |
-| Room 4 | end of Path B | **the Estate** (a gate, a fence line) | Path B is the long one with a fight bulge and a cross-link to Path A |
+| Room 4 | end of Path B | **the Estate** (a gate, a fence line) | Path B is the long one with a cross-link to Path A |
 | Room 5 | end of Path C | **Dead Man's Cave** (a cave mouth, ROCK look inside as its own room) | Path C passes Room 6 |
 | Room 6 | a side clearing off Path C | secret: the ritual room (`woods_ritual`, HQ Room 333) as a draught | a dead end unless found |
 
 Rules checked: no exit is in Room 2; Rooms 3, 4 and 5 each hold one exit and are out of sight of each
-other (the trees do it, and each lane bends); every room of interest has an 8×8 fight patch; lanes are 3–4
-tiles wide with a bulge on Path B. The existing generated woods (`fairy_forest_clearing/redwoods`, gen
+other (the trees do it, and each lane bends); lanes are 3–4 tiles wide. The existing generated woods (`fairy_forest_clearing/redwoods`, gen
 `rooms`) can be copied from the LIBRARY and FROZEN into layout rows as a starting point, then redrawn.
 
 Dead Man's Cave is its own room (ROCK look, a dungeon with `+ LEVEL` if it goes deep) whose far door is
@@ -355,7 +359,9 @@ the Sewers' storm drain. The Estate's side of the gate is the Estate's Room 1.
 5. **THE SIGHT CHECK** in AUDITS: for a LAYOUT room, flag any two exit doors with a straight
    line-of-sight through open space, and any exit in a room that holds another exit (§2.2). A line test
    over the layout rows, not a render.
-6. **The fight window audit** stays; add "no 8×8 patch in this space" per `space` row.
+6. **The fight window audit** stays (it previews the whole-room field now); per `space` row, AUDIT FIELD counts the
+   battle seats and the largest connected region (red under 48, amber over the 24×24 crop). Was "no 8×8 patch in
+   this space" until EXPLORATION_BATTLES_PLAN Phase 1.
 
 ### 8.3 E9 the swap, one zone at a time
 
@@ -515,4 +521,7 @@ with a thread per zone for the swap and the checks.
   line of sight through the plan, orange = two exits in one room. (6) AUDIT 8×8: per `space`, a clear 14 m patch centred in it, or a
   red room. Pure checks in data.js (`hqPlanSightCheck`, `hqPlanFightPatches`, `hqPlanDoorSpot`, `hqPlanOfRoom`). Next: Z4 THE WOODS
   (mondo builds §4 in the editor).
-
+- 2026-09-30: **§2.3 amended by EXPLORATION_BATTLES_PLAN.md Phase 1** (THE FIELD IS THE ROOM, built): the 8×8 window and the
+  "one clear 8×8 patch" rule are retired; a fight takes the room's whole lattice up to 24 tiles a side (a 24×24 crop above),
+  and a room of interest needs 48 seats in one region. E7's AUDIT 8×8 is now AUDIT FIELD (`hqPlanFieldSeats` replaces
+  `hqPlanFightPatches`; `HQ_ZONE_TOOL_RULES.patchTiles` / `patchStep` retired). §4 lost its 8×8 patch and Path B bulge rows.

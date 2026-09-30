@@ -3822,9 +3822,21 @@
                holds both feet with the most of the walker's reach inside it (data.js hqFieldWindow) — and its frame
                becomes the event's `board`, which the field record, THE SLIDE, THE SEATS and THE EYE below read. The window is rasterised into a map entry at the launch (_hqFieldRegister). */
             let win = null;
+            /* THE FIELD IS THE ROOM (EXPLORATION_BATTLES_PLAN.md §3, Phase 1, 2026-09-30 — mondo: "get rid of the 8x8 limitation"): the
+               frame is the room's WHOLE lattice (a crop of HQ_FIELD_RULES.max tiles a side centred on every body's feet in a bigger room,
+               data.js hqFieldFrame) — the walker, the native and the native's group all stand inside it. window.EW_HQ_FIELD_WINDOW = the
+               old 8 × 8 window for one delivery. */
             /* THE AREA BOARDS (2026-09-19): a part with its own Δ (L.launchId, data.js hqAreaDeltaId) fights that board — no window is rasterised for it */
-            if (!L.launchId && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom) && typeof window.hqFieldWindow === 'function') {
-                try { win = window.hqFieldWindow(_hqCurRoom, { x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }); } catch (e) { console.warn('[HQ] the field window failed', e); win = null; }
+            if (!L.launchId && typeof window.hqFieldRoomOk === 'function' && window.hqFieldRoomOk(_hqCurRoom)) {
+                const oldWin = !!window.EW_HQ_FIELD_WINDOW || typeof window.hqFieldFrame !== 'function';
+                try {
+                    if (oldWin) win = (typeof window.hqFieldWindow === 'function') ? window.hqFieldWindow(_hqCurRoom, { x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }) : null;
+                    else {
+                        const feet = [{ x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }];
+                        (Array.isArray(ev.target.group) ? ev.target.group : []).forEach(g => { if (g && isFinite(+g.x) && isFinite(+g.z)) feet.push({ x: +g.x, z: +g.z }); });
+                        win = window.hqFieldFrame(_hqCurRoom, feet);
+                    }
+                } catch (e) { console.warn('[HQ] the field frame failed', e); win = null; }
                 if (win && win.board) { ev = Object.assign({}, ev, { board: win.board }); L.field = win; }
             }
             /* THE FIELD RECORD (data.js hqEncounterField): the board under the room, both feet, the heading, the raw
@@ -3966,20 +3978,20 @@
         function _hqFieldRegister(win, field) {
             if (!win || typeof window.hqFieldRegister !== 'function' || typeof GAME_MODES === 'undefined') return null;
             let reg = null;
-            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }
+            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null, W: win.W || null, H: win.H || null, feet: !!win.frame }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }
             if (!reg || !reg.entry || !reg.entry.spawns) return null;
-            const S = reg.meta.w, n = reg.meta.teamSize;
+            const FW = reg.meta.w, FH = reg.meta.h, S = Math.max(FW, FH), n = reg.meta.teamSize;   // THE FIELD IS THE ROOM: W × H
             const builds = []; for (let i = 0; i < n; i++) builds.push(UNIT_CLASS);   // (the jobs removal 2026-09-27)
             GAME_MODES[reg.id] = {
                 id: reg.id, label: reg.meta.label, desc: reg.meta.desc,
-                boardSize: S, boardWidth: S, boardHeight: S, teamSize: n,
+                boardSize: S, boardWidth: FW, boardHeight: FH, teamSize: n,
                 winHourglasses: 2, hiddenItemSpawns: 4,
                 blitzMode: true, hasTowers: false, isPrebuilt: true, isDelta: true, field: true, tier: reg.meta.tier, biomes: reg.meta.biomes.slice(),
                 terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
                 spawns: { 1: reg.entry.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: reg.entry.spawns[2].map(p => ({ x: p.x, y: p.y })) },
                 defaultBuilds: { 1: builds.slice(), 2: builds.slice() },
             };
-            const row = { modeId: reg.id, name: reg.meta.label, size: S + '×' + S + ' Δ', team: n, floors: false, w: S, h: S, isPrebuilt: true, isDelta: true, field: true, tier: reg.meta.tier, biomes: reg.meta.biomes };
+            const row = { modeId: reg.id, name: reg.meta.label, size: FW + '×' + FH + ' Δ', team: n, floors: false, w: FW, h: FH, isPrebuilt: true, isDelta: true, field: true, tier: reg.meta.tier, biomes: reg.meta.biomes };
             const i = MS_MAP_LIST.findIndex(m => m.modeId === reg.id);
             if (i >= 0) MS_MAP_LIST[i] = row; else MS_MAP_LIST.push(row);
             return reg;
@@ -14074,7 +14086,20 @@
             const live = (p) => state.units.filter(u => u.player === p && !u.dead && !u._benched);
             const u1 = live(1), u2 = live(2);
             if (!u1.length || !u2.length) return null;
-            const free = (x, y) => {
+            /* THE STAND RULE (EXPLORATION_BATTLES_PLAN §2 rule 2, 2026-09-30): a field's seats are the RASTER'S seats (data.js
+               hqFieldBuild → entry.field.seats: IN, not a hazard, not a cover) — never the respawn rule, which took a wall's rock
+               column for floor (every wall sheet is passable) and stood a body in the wall or in the air over it */
+            let seatRows = null;
+            try {
+                const rr = (typeof window._ewEncounterRoom === 'function') ? window._ewEncounterRoom() : null;
+                const fe = (rr && rr.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[rr.fieldId] : null;
+                if (fe && fe.field && Array.isArray(fe.field.seats) && fe.field.seats.length === bh()) seatRows = fe.field.seats;
+            } catch (e) { seatRows = null; }
+            const free = seatRows ? (x, y) => {
+                const row = seatRows[y]; if (typeof row !== 'string' || row.charAt(x) !== '1') return false;
+                if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
+                return true;
+            } : (x, y) => {
                 if (!_respawnTileSafe(x, y)) return false;
                 if (typeof getWalkableSurfaces === 'function' && !getWalkableSurfaces(x, y).length) return false;
                 if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
@@ -14083,7 +14108,7 @@
                     if (blk) { const rule = getTerrainRule(blk.terrain); if (rule && rule.passable === false) return false; }
                 }
                 return true;
-            };
+            };   // (a Δ board with no raster — a sea room, an area's own Δ — keeps the respawn test)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors on this board stand on their cells first — no seat lands on a door */
             try { if (typeof window.encounterCarryDoors === 'function') window.encounterCarryDoors(free); } catch (e) { console.warn('[HQ] the door carry failed', e); }
             const freeSeat = (x, y) => free(x, y) && !(typeof doorAt === 'function' && doorAt(x, y));

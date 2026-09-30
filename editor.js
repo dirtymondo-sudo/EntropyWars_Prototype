@@ -273,7 +273,7 @@
                 treeSize: 0, treeVary: true, propX: 1 },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
-        audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, 8×8 auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
+        audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, FIELD (was 8×8) auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
         /* E6: THE ROOFS (C): off = the ceilings and roofs hidden and everything `h` m over the floor cut away, so he sees in */
         roof: { off: false, h: 3 }, roofHidden: [], grab: null,
     };
@@ -1210,8 +1210,9 @@
 
     /* ══ THE AUDITS (E3, §5.4): marks in the view, never a gate. WALLS = an invisible wall (a step the walker is refused with
        nothing drawn there: data.js hqTerrainWallAudit), POCKETS = ground nobody can reach from the spawn or a door (hqTerrainPockets),
-       FIGHT = the 8 × 8 battle window a fight would take at the cursor (hqFieldWindow: green = a tile, the lighter the higher,
-       red = rock, blue = water / lava) ═════════════════════════════════════════════════════════════════════════════════ */
+       FIGHT = the battle field a fight at the cursor would take — the room's whole lattice, or its 24 × 24 crop round the cursor
+       (hqFieldFrame, EXPLORATION_BATTLES_PLAN §3: green = a seat, the lighter the higher, yellow = a cover, red = rock, blue =
+       water / lava) ═════════════════════════════════════════════════════════════════════════════════ */
     function auditClear() {
         (ED.auditObjs || []).forEach(function (o) { if (o.parent) o.parent.remove(o); try { o.geometry.dispose(); o.material.dispose(); } catch (e) {} });
         ED.auditObjs = [];
@@ -1252,32 +1253,34 @@
     function fightShow() {
         var FO = ED.fightObj;
         var hide = function () { if (ED.fightObj) ED.fightObj.visible = false; };
-        if (!ED.audit.fight || !ED.ready || !ED.roomId || !W.hqFieldWindow) { hide(); return; }
+        if (!ED.audit.fight || !ED.ready || !ED.roomId || !(W.hqFieldFrame || W.hqFieldWindow)) { hide(); return; }
         var c = ED.cursor; if (!c) { hide(); return; }
         var key = ED.roomId + ':' + Math.round(c.x) + ',' + Math.round(c.z) + ':' + ED.undo.length;
         if (key === ED.fightKey && FO && FO.parent === ED.group) return;
         ED.fightKey = key;
-        var win = null; try { win = W.hqFieldWindow(ED.roomId, { x: c.x, z: c.z }, { x: c.x, z: c.z }); } catch (e) { win = null; }
+        var win = null;
+        try { win = W.hqFieldFrame ? W.hqFieldFrame(ED.roomId, [{ x: c.x, z: c.z }, { x: c.x, z: c.z }]) : W.hqFieldWindow(ED.roomId, { x: c.x, z: c.z }, { x: c.x, z: c.z }); } catch (e) { win = null; }
         if (!win || !win.raster || !ED.group) { hide(); ED.auditRes.fight = null; return; }
-        var R = win.raster, N = R.S || 8, C = win.board.C, u = U(), x0 = (R.x0 != null) ? R.x0 : win.board.x0, z0 = (R.z0 != null) ? R.z0 : win.board.z0;
-        if (!FO || FO.parent !== ED.group || FO.count !== N * N) {
+        var R = win.raster, FW = R.W || R.S || 8, FH = R.H || R.S || 8, C = win.board.C, u = U(), x0 = (R.x0 != null) ? R.x0 : win.board.x0, z0 = (R.z0 != null) ? R.z0 : win.board.z0;
+        if (!FO || FO.parent !== ED.group || FO.count !== FW * FH) {
             if (FO && FO.parent) FO.parent.remove(FO);
             var geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
-            FO = ED.fightObj = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, fog: false, side: THREE.DoubleSide }), N * N);
+            FO = ED.fightObj = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, fog: false, side: THREE.DoubleSide }), FW * FH);
             FO.frustumCulled = false; FO.renderOrder = 13; ED.group.add(FO);
         }
-        var m4 = new THREE.Matrix4(), col = new THREE.Color(), n = 0, ins = 0, maxT = 1;
-        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) { var cc = R.cells[y] && R.cells[y][x]; if (cc && cc.in) maxT = Math.max(maxT, cc.tile || 0); }
-        for (var yy = 0; yy < N; yy++) for (var xx = 0; xx < N; xx++) {
+        var m4 = new THREE.Matrix4(), col = new THREE.Color(), n = 0, ins = 0, seats = 0, maxT = 1;
+        for (var y = 0; y < FH; y++) for (var x = 0; x < FW; x++) { var cc = R.cells[y] && R.cells[y][x]; if (cc && cc.in) maxT = Math.max(maxT, cc.tile || 0); }
+        for (var yy = 0; yy < FH; yy++) for (var xx = 0; xx < FW; xx++) {
             var cl = R.cells[yy] && R.cells[yy][xx], cx = x0 + (xx + 0.5) * C, cz = z0 + (yy + 0.5) * C;
             var top = cl && cl.in && isFinite(cl.top) ? +cl.top : ground(cx, cz);
             m4.makeScale(C * 0.9 * u, 1, C * 0.9 * u); m4.setPosition(cx * u, (top + 0.09) * u + 0.3, cz * u); FO.setMatrixAt(n, m4);
-            if (cl && cl.in) { ins++; var t = (cl.tile || 0) / maxT; col.setRGB(0.2 + 0.5 * t, 0.75 + 0.25 * t, 0.35 + 0.5 * t); }
+            if (cl && cl.in && cl.seat === false) { ins++; col.setHex(0xffd84a); }
+            else if (cl && cl.in) { ins++; seats++; var t = Math.max(0, cl.tile || 0) / maxT; col.setRGB(0.2 + 0.5 * t, 0.75 + 0.25 * t, 0.35 + 0.5 * t); }
             else if (cl && cl.hazard) col.setHex(0x3aa0ff); else col.setHex(0xff3344);
             FO.setColorAt(n, col); n++;
         }
         FO.instanceMatrix.needsUpdate = true; if (FO.instanceColor) FO.instanceColor.needsUpdate = true; FO.visible = true;
-        ED.auditRes.fight = { reach: win.reach, ins: ins, n: N * N };
+        ED.auditRes.fight = { ins: ins, seats: seats, n: FW * FH, w: FW, h: FH, crop: !!win.crop };
     }
     function auditToggle(k) {
         ED.audit[k] = !ED.audit[k];
@@ -2058,8 +2061,8 @@
 
     /* ══ THE ZONE TOOLS (E7, ZONES_PLAN §8.2): the door's FLAGS (SECRET, ONE WAY, LOCKED), a room's SITE and ZONE, ZONES (his rooms
        grouped, each a node on the world map once his world is live: data.js hqWorldDocApply), the LEADS TO tab (hqWorldGraph for his
-       rooms, drawn), and two audits: SIGHT (§2.2: two exits in a straight line of sight, or in one room) and 8×8 (§2.3: a room of the
-       layout with no clear battle patch). Each edit is one undo step ═════════════════════════════════════════════════════════════ */
+       rooms, drawn), and two audits: SIGHT (§2.2: two exits in a straight line of sight, or in one room) and FIELD (§2.3 as amended by
+       EXPLORATION_BATTLES_PLAN §7: a room of the layout with too few battle seats). Each edit is one undo step ═════════════════════════════════════════════════════════════ */
     var ZONE_COLORS = ['#6fd3ff', '#57f287', '#ffd84a', '#ff9f43', '#c792ea', '#ff6b9d', '#4ecdc4', '#b8e986'];
     function byRoomNo(a, b) { return (W.hqWorldDocRoomNo(a) || 0) - (W.hqWorldDocRoomNo(b) || 0); }
     function zoneNo(id) { var m = /(\d+)$/.exec(String(id || '')); return m ? +m[1] : 0; }
@@ -2305,10 +2308,11 @@
         leadsWire($('edCard'));
     }
 
-    /* ── THE SIGHT CHECK and THE 8×8 (AUDIT SIGHT / 8×8; §8.2.5–6, data.js hqPlanSightCheck / hqPlanFightPatches). An EXIT is a door
+    /* ── THE SIGHT CHECK and THE FIELD (AUDIT SIGHT / FIELD; §8.2.5–6, data.js hqPlanSightCheck / hqPlanFieldSeats). An EXIT is a door
        out of the room's zone (every door when the room is in no zone). SIGHT: blue posts on the exits, a red line between two in a
-       straight line of sight through open ground, orange when they open into the same room. 8×8: green = the clear patch a fight
-       takes in that room, red = a room with none. Layout rooms only. ── */
+       straight line of sight through open ground, orange when they open into the same room. FIELD (EXPLORATION_BATTLES_PLAN §7, was
+       the 8×8 patch): green = a room with enough battle seats in one connected region (HQ_FIELD_RULES.fieldMinSeats), red = under it,
+       amber = bigger than a fight's 24 × 24 (the fight takes a crop). Layout rooms only. ── */
     function exitsOf(rid) {
         var r = (ED.mode === 'world' && ED.doc.rooms[rid]) || room(), z = ED.mode === 'world' ? zoneOf(rid) : null;
         return ((r && r.doors) || []).filter(function (d) { return d && d.id != null && d.action && d.action.room && (!z || zoneOf(d.action.room) !== z); }).map(function (d) { return d.id; });
@@ -2341,18 +2345,17 @@
             }
         }
         if (ED.audit.patch) {
-            var pt = null; try { pt = W.hqPlanFightPatches(r); } catch (e) { console.warn('[editor] the 8 × 8 check', e); }
-            ED.auditRes.patch = pt ? { n: pt.length, bad: pt.filter(function (p) { return !p.ok; }).map(function (p) { return p.label || ('room ' + p.no); }) } : { none: true };
-            if (pt) {
-                var side = ((W.HQ_ZONE_TOOL_RULES && W.HQ_ZONE_TOOL_RULES.patchTiles) || 8) * treeTile();
-                pt.forEach(function (p) { if (p.ok) auditArea(p.at.x, p.at.z, side, side, 0, 0x57f287, 0.22); else auditArea(p.x, p.z, p.w, p.d, p.rot, 0xff3344, 0.3, p.round); });
-            }
+            var pt = null; try { pt = W.hqPlanFieldSeats ? W.hqPlanFieldSeats(r) : null; } catch (e) { console.warn('[editor] the field check', e); }
+            var nm = function (p) { return (p.label || ('room ' + p.no)) + ' (' + p.region + ' seats)'; };
+            ED.auditRes.patch = pt ? { n: pt.length, bad: pt.filter(function (p) { return !p.ok; }).map(nm), big: pt.filter(function (p) { return p.ok && p.crop; }).map(function (p) { return (p.label || ('room ' + p.no)) + ' (' + p.tiles.w + '×' + p.tiles.d + ')'; }),
+                                        min: (W.HQ_FIELD_RULES && W.HQ_FIELD_RULES.fieldMinSeats) || 48 } : { none: true };
+            if (pt) pt.forEach(function (p) { auditArea(p.x, p.z, p.w, p.d, p.rot, !p.ok ? 0xff3344 : p.crop ? 0xff9f43 : 0x57f287, !p.ok ? 0.3 : 0.22, p.round); });
         }
     }
     function zoneAuditStatus() {
         var A = ED.auditRes, out = [];
         if (ED.audit.sight) { var s = A.sight; out.push(!s ? 'sight …' : s.none ? 'sight: no layout here' : (s.sight + s.same) ? '<b class="ed-warn" title="' + esc((A.sightDoors || []).join(' · ')) + '">SIGHT: ' + (s.sight ? s.sight + ' EXIT PAIR' + (s.sight > 1 ? 'S' : '') + ' IN VIEW' : '') + (s.sight && s.same ? ' · ' : '') + (s.same ? s.same + ' IN ONE ROOM' : '') + '</b>' : 'sight: ' + s.exits + ' exit' + (s.exits === 1 ? '' : 's') + ', none in view'); }
-        if (ED.audit.patch) { var p = A.patch; out.push(!p ? '8×8 …' : p.none ? '8×8: no layout here' : p.bad.length ? '<b class="ed-warn" title="' + esc(p.bad.join(' · ')) + '">' + p.bad.length + ' ROOM' + (p.bad.length > 1 ? 'S' : '') + ' WITH NO 8×8</b>' : '8×8: every room (' + p.n + ')'); }
+        if (ED.audit.patch) { var p = A.patch; out.push(!p ? 'field …' : p.none ? 'field: no layout here' : p.bad.length ? '<b class="ed-warn" title="' + esc(p.bad.join(' · ')) + '">' + p.bad.length + ' ROOM' + (p.bad.length > 1 ? 'S' : '') + ' UNDER ' + p.min + ' SEATS</b>' : 'field: every room (' + p.n + ')' + (p.big.length ? ' · <span title="' + esc(p.big.join(' · ')) + '">' + p.big.length + ' fight on a crop</span>' : '')); }
         return out.join(' · ');
     }
 
@@ -2973,7 +2976,7 @@
         ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this library room into the world', copyIntoWorld]],
         VIEW: [['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }], null,
                ['The level band on / off  (L)', function () { bandSet({ on: !ED.band.on }); }], ['The level band up a floor  (Shift L)', function () { bandStep(1); }], ['The level band down a floor', function () { bandStep(-1); }], null,
-               ['Audit: invisible walls', function () { auditToggle('walls'); }], ['Audit: pockets (ground nobody reaches)', function () { auditToggle('pockets'); }], ['Audit: the fight window at the cursor', function () { auditToggle('fight'); }], ['Audit: exits in sight of each other', function () { auditToggle('sight'); }], ['Audit: the 8 × 8 patch in each room', function () { auditToggle('patch'); }]],
+               ['Audit: invisible walls', function () { auditToggle('walls'); }], ['Audit: pockets (ground nobody reaches)', function () { auditToggle('pockets'); }], ['Audit: the fight field at the cursor', function () { auditToggle('fight'); }], ['Audit: exits in sight of each other', function () { auditToggle('sight'); }], ['Audit: the battle seats in each room', function () { auditToggle('patch'); }]],
     };
     function build() {
         if ($('edRoot')) return;
@@ -3020,7 +3023,7 @@
             '<label class="ed-lab" title="THE LEVEL BAND (L): only what overlaps it picks; everything above its top is cut away in the view"><input type="checkbox" id="edBand"' + (ED.band.on ? ' checked' : '') + '>LEVEL</label>' +
             '<input type="number" step="0.5" id="edBandY0" value="' + ED.band.y0 + '" style="width:52px" title="the band\'s bottom (m)"><input type="number" step="0.5" id="edBandY1" value="' + ED.band.y1 + '" style="width:52px" title="the band\'s top (m)">' +
             '<button class="ed-btn" id="edBandDn" title="The band down a floor">▼</button><button class="ed-btn" id="edBandUp" title="The band up a floor (Shift L)">▲</button>' +
-            '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The 8 × 8 battle window a fight at the cursor would take'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', '8×8', 'Each room of the layout: the clear 8 × 8 battle patch (green), or none (red)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
+            '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The battle field a fight at the cursor would take: the whole room, or its 24 × 24 crop (yellow = cover)'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', 'FIELD', 'Each room of the layout: enough battle seats in one region (green), too few (red), bigger than a 24 × 24 fight (amber)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
             (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="Make this built-in room a room of yours">COPY INTO WORLD</button>' : '');
         t.querySelectorAll('[data-tool]').forEach(function (b) { b.onclick = function () { tcMode(b.getAttribute('data-tool')); }; });
         $('edSnap').onchange = function () { ED.snap = +this.value; tcMode(ED.tool); };
@@ -3286,7 +3289,7 @@
             ED.audit.walls ? (ED.auditRes.none ? 'walls: no ground here' : ED.auditRes.walls == null ? 'walls …' : (ED.auditRes.walls ? '<b class="ed-warn">' + ED.auditRes.walls + ' INVISIBLE WALL' + (ED.auditRes.walls > 1 ? 'S' : '') + '</b>' : 'no invisible walls')) : '',
             ED.audit.pockets ? (ED.auditRes.none ? '' : ED.auditRes.pockets == null ? 'pockets …' : (ED.auditRes.pockets ? '<b class="ed-warn">POCKETS ' + ED.auditRes.pocketM + ' m² nobody reaches</b>' : 'no pockets')) : '',
             zoneAuditStatus(),   // E7
-            ED.audit.fight ? (ED.auditRes.fight ? 'fight window: ' + ED.auditRes.fight.ins + ' / ' + ED.auditRes.fight.n + ' tiles · reach ' + ED.auditRes.fight.reach : 'fight window: none here') : '',
+            ED.audit.fight ? (ED.auditRes.fight ? 'fight field: ' + ED.auditRes.fight.w + '×' + ED.auditRes.fight.h + (ED.auditRes.fight.crop ? ' (a crop)' : '') + ' · ' + ED.auditRes.fight.seats + ' seats · ' + ED.auditRes.fight.ins + ' tiles' : 'fight field: none here') : '',
             ED.undo.length + ' undo',
             ED.dirty ? 'SAVING…' : (ED.savedAt ? 'saved' : ''),
         ].filter(Boolean).map(function (x) { return '<span>' + x + '</span>'; }).join('');
@@ -3340,12 +3343,12 @@
             ['GROUND (left)', 'RAISE, LOWER, SMOOTH, FLATTEN, TERRACE, CLIFF, SET: hold the left mouse over the ground ([ ] size the brush, SHIFT turns RAISE into LOWER) · RAMP: drag foot → head · PAINT: pick a sheet (+ SHEET), then paint (8 sheets a room) · POOL: drag middle → rim · STREAM: click its course, ENTER ends it'],
             ['PLATFORM · DECK (BUILD)', 'drag a rectangle: a floating platform / a railed deck at HEIGHT'],
             ['L · Shift L', 'the level band on / off · up a floor (the top bar: its bottom, its top, ▼ ▲): only what overlaps it picks, everything above it is cut away'],
-            ['AUDIT (top bar)', 'WALLS: red posts where the walker is stopped by nothing you can see · POCKETS: yellow ground nobody reaches from the spawn or a door · FIGHT: the 8 × 8 battle window at the cursor'],
+            ['AUDIT (top bar)', 'WALLS: red posts where the walker is stopped by nothing you can see · POCKETS: yellow ground nobody reaches from the spawn or a door · FIGHT: the battle field at the cursor (the whole room, or its 24 × 24 crop)'],
             ['ZONES (the outliner)', '+ NEW ZONE groups rooms (a room\'s ZONE in the inspector); ✎ names it, joins it to a place on the map or gives it its own spot, deletes it'],
             ['SITE (a room\'s inspector)', 'the battle map, the people and the encounters the room uses; with none, no fight starts there'],
             ['A door\'s FLAGS', 'SECRET (a draught, both ends) · ONE WAY (no door back) · LOCKED (clearance, Keys)'],
             ['LEADS TO (left tab)', 'your rooms and the doors between them: dashed = secret, an arrow = one way, red = nowhere; click a room to go there; OPEN BIG'],
-            ['AUDIT SIGHT · 8×8', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · 8×8: the clear battle patch in each room (green) or none (red)'],
+            ['AUDIT SIGHT · FIELD', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · FIELD: enough battle seats in each room (green), too few (red), bigger than a 24 × 24 fight (amber)'],
             ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'drop the pick'],
         ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
         '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a built-in room to look at or copy. FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
