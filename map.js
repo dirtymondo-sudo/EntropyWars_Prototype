@@ -6269,17 +6269,17 @@
                 const here = _hqCurRoom || 'hwing_lobby';
                 html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The floor plan.') + '</p>';
                 html += '<pre class="hq-plan-h" style="margin:6px 0 10px;font:12px/1.35 ui-monospace,monospace;opacity:.85;white-space:pre">'
-                    + '  W                 E\n'
-                    + '  ║      EXIT       ║\n'
-                    + '  ║                 ║\n'
-                    + '  ║═══ HOME ═══ ════║\n'
-                    + '  ║   POOL  BREAK   ║\n'
-                    + '  ║                 ║\n'
-                    + '  ▼ LOBBY    THE END ▼\n'
+                    + '  W       HOME  ↻      E\n'
+                    + '  ╠════════╬═════╩═════╣\n'
+                    + ' ▫║  HUM ══╣══ POOLS ══║▫\n'
+                    + ' ▫╠════════╩═══════════╣▫\n'
+                    + ' ▫║ TYPING POOL  BREAK ║▫\n'
+                    + '  ║   THE OPEN OFFICE ═║▫\n'
+                    + '  ▼ LOBBY      THE END ▼\n'
                     + '</pre>';
                 html += '<div class="hq-rows">'
                     + `<div class="hq-row hq-row-tray"><b>THE LEGS</b><span>${_hqEsc(String(HW.legM || 48))} M EACH · STRAIGHT · ${_hqEsc(String(doorsN))} DOORS ON THE PLAN</span><i class="hq-lamp-chip st-unstable">RIGHT ANGLES</i></div>`
-                    + `<div class="hq-row hq-row-tray"><b>THE OFFICES</b><span>EIGHT DOORS · ONE OFFICE</span><i class="hq-lamp-chip st-codered">1</i></div>`
+                    + `<div class="hq-row hq-row-tray"><b>THE OFFICES</b><span>SIX DOORS · SIX OFFICES · THE SAME ONE</span><i class="hq-lamp-chip st-codered">6</i></div>`
                     + `<div class="hq-row hq-row-tray"><b>YOU ARE HERE</b><span>${_hqEsc(((DOOR_HQ.rooms[here] || {}).label || here).toUpperCase())}</span><i class="hq-lamp-chip st-${(HW.rooms || []).includes(here) ? 'stabilized' : 'off'}">${(HW.rooms || []).includes(here) ? '●' : '—'}</i></div>`
                     + '</div>';
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-close="1">NOTED</button></div>';
