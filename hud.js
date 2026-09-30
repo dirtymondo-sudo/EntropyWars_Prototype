@@ -1903,6 +1903,15 @@ function PartyRoster({ st }) {
       }),
     ),
 
+    /* ESCAPE (EXPLORATION_BATTLES §6): the escaped sit under their own heading, greyed — never switchable */
+    (st.escaped && st.escaped[viewer] && st.escaped[viewer].length > 0) && h('div', { className: 'ew-party-reserves', style: { opacity: 0.6 } },
+      h('span', { className: 'ew-party-reserves-lbl' }, 'ESCAPED'),
+      st.escaped[viewer].map(r => h('div', {
+        key: 'esc-' + r.id, className: 'ew-party-reserve',
+        title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · escaped — out of the fight, safe',
+      }, h(UnitSprite, { unit: r, size: 20 }))),
+    ),
+
     party.length > 0 && h('div', { className: 'ew-party-row' },
       party.map(u => {
         const e = turn[u.id] || {};
@@ -4827,6 +4836,29 @@ function ActionMenu({ st, hidden }) {
     });
   }
 
+  // 🏃 ESCAPE / TEAM ESCAPE (EXPLORATION_BATTLES_PLAN §6, 2026-09-30) — story
+  // fights only (battle.js _escapeStoryFight). ESCAPE needs the eye closed
+  // (no enemy sees the unit) and AP; it spends the whole activation. TEAM
+  // ESCAPE shows while 2+ are on the board: 3/4 of them hidden ends the fight
+  // as THE RETREAT. Greyed rows carry the reason.
+  if (typeof window._escapeStoryFight === 'function' && window._escapeStoryFight()) {
+    const _escWhy = typeof window.escapeProblem === 'function' ? window.escapeProblem(unit) : 'Unavailable';
+    actions.push({
+      id: 'escape', label: 'Escape', icon: '🏃', cost: Math.max(1, unit.ap || 0),
+      available: !_escWhy,
+      sub: _escWhy || 'Unseen · ends turn',
+    });
+    const _tInfo = typeof window.teamEscapeInfo === 'function' ? window.teamEscapeInfo(unit.player) : null;
+    if (_tInfo && _tInfo.living >= 2) {
+      const _tWhy = typeof window.teamEscapeProblem === 'function' ? window.teamEscapeProblem(unit) : 'Unavailable';
+      actions.push({
+        id: 'teamEscape', label: 'Team escape', icon: '🏃', cost: null,
+        available: !_tWhy,
+        sub: _tWhy || (_tInfo.hidden + '/' + _tInfo.living + ' hidden · retreat'),
+      });
+    }
+  }
+
   // ── special-action pushers: situational one-shots surfaced as extra
   // stopwatch buttons on the bezel (the tile quick menu mirrors most of
   // them). Only built when usable right now — presence == opportunity.
@@ -4936,6 +4968,8 @@ function ActionMenu({ st, hidden }) {
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
+      case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
+      case 'teamEscape': if (typeof window.doTeamEscape === 'function' && typeof getSelectedUnit === 'function') window.doTeamEscape(getSelectedUnit()); break;
     }
   }
 

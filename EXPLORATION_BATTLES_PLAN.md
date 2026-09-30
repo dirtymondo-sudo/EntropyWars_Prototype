@@ -457,3 +457,28 @@ to docs/notes/seamless-field-encounter.md and §12 here.
   amended. Kill-switch `EW_HQ_FIELD_WINDOW`. One deviation: a cell more than one level under the main floor is clamped to
   −1, not made a hazard (a sloped whole-room frame would lose ground the walker walks on). The arenas are untouched
   (every pick's raster diffed identical). Notes: docs/notes/seamless-field-encounter.md. Next: Phase 4 ESCAPE.
+- 2026-09-30 — **THE CAMERA + Phases 4, 2, 3 (lite) and 5 built in one delivery** (token 20260930-battles-02-cors; R2: data.js,
+  battle.js, hud.js, map.js, three-renderer.js). mondo: "when the battle starts, the overhead view of the map is not zoomed too
+  far out, it needs to be zoomed in more".
+  - THE CAMERA: a story field frames `HQ_ENCOUNTER_RULES.arrival.frameTiles` (8) board tiles, not the whole field side
+    (battle.js `_framingBoardTiles` in `getDefaultZoomAtTilt`, `_getBattleZoom`, the intro's rest zoom). Checked live on the
+    fairy forest clearing (24 × 22): zoom 0.459 → 0.765. The player still zooms out by hand. PvP / Δ boards unchanged.
+  - ESCAPE + TEAM ESCAPE + THE RETREAT (§6): battle.js `escapeProblem` / `doEscape` / `teamEscapeInfo` / `doTeamEscape` /
+    `_escapeAll`; `state.escaped[seat]` (off the board, off the bench, out of the turn order); the ladder rows are in
+    **hud.js** (the action ladder lives there, not ui.js), the roster shows an ESCAPED row. The last body escaping = THE
+    RETREAT. data.js `HQ_ESCAPE_RULES`, `hqEscapeTeamNeed` (3 of 4, 3 of 3, 2 of 2), `hqPartyEscapedFront`; the encounter log
+    counts `retreats` and a retreat leaves `last` alone; `hqPartyAfterMatch` returns `retreat` / `escLoss` / `escaped` /
+    `lead`, and lossRestore runs only on a plain loss. map.js: the run carries the `entry` door; a retreat or an escape loss
+    comes back to the room at that door (the swing spot when none), never the ward. Checked live (escape, team escape,
+    result, the way back).
+  - THE FOLLOWERS (§4): data.js `HQ_FOLLOW_RULES` (count 3, gap 1.4 m, halls on) + `hqPartyFollowers`; map.js `_hqFollowers`
+    (the officer rides as the Player cast model when not the lead) and `_hqRefreshFollowers` (after every party change);
+    three-renderer.js THE FOLLOWERS block (`_hqSpawnFollowers`, `_hqTickFollowers`: a breadcrumb trail, eased, re-formed on a
+    jump, hidden on rides / vehicles / swim / climb; no collision, not talk targets). The strike files their feet
+    (`party`) and `hqEncounterSeats` seats the party on their own cells. Off switch `EW_HQ_NO_FOLLOWERS`.
+  - THE HAND-BACK, LITE (§5.2 only): a WIN lands the lead on its end-of-fight cell facing its facing, and each follower
+    on its own end cell (held until the lead walks off, then it runs back into the file). data.js `hqEncounterEndRows` /
+    `hqEncounterEndSpot`; battle.js files `end` on `_hqEncounterResult`. DEVIATION: §5.1 (suspend instead of leave) is NOT
+    built — the handover takes the room's groups apart into the battle scene and disposes far props, so the walk's
+    records cannot resume without a rebuild; the room is still rebuilt under the held frame (THE WAY BACK), which already
+    hides it. Next: §5.1 needs the handover to lend the room groups instead of moving them.

@@ -874,3 +874,25 @@ the change, headless).
   `hqPlanFightPatches` retired. ZONES_PLAN §2.3 / §4 amended.
 - Headless check (load-data.js): haunted hall 8×7 whole, attic 5×4 padded to 6×6, hollow earth gallery 30×24 → 24×24 crop;
   a frame + build is 3–200 ms on a surveyed room.
+
+## EXPLORATION BATTLES delivery 2 — THE CAMERA, ESCAPE / TEAM ESCAPE / THE RETREAT, THE FOLLOWERS, THE HAND-BACK lite (2026-09-30, token 20260930-battles-02-cors)
+
+R2: data.js, battle.js, hud.js, map.js, three-renderer.js. Full log in EXPLORATION_BATTLES_PLAN.md §12.
+
+- **The camera** — battle.js `_framingBoardTiles()` caps the framed side at `hqEncounterArrivalRules().frameTiles` (8) in a
+  story fight (`_encRun()`); `_getBattleZoom` / `getDefaultZoomAtTilt` / the intro rest zoom use it (+4 rows as before).
+- **Escape** — battle.js block after `_gauntletDeployReserve`: `escapeProblem(u)` → null | 'Story fights only' |
+  'Unavailable' | "Not this unit's turn" | 'No AP' | 'Seen'; hidden = `isUnitSeenByAnyEnemy(u) === false`. `_escapeWalkPath`
+  (BFS ≤ walkTiles toward the rim), `_escapeRemove` (state.units → `state.escaped[p]`, `_escaped`, turn-order ids filtered +
+  rebuilt). `_escapeAll` = THE RETREAT (`_encRetreatOn`, winner = the other seat, `_winCondition 'retreat'`). Career stats
+  skip a retreat. The commit carries escaped bodies' vitals (`escaped: true` rows are never dead / down).
+- **Result + way back** — `_hqEncounterResult.retreat / escaped / escLoss / entry / end`. Stamp RETREAT, button BACK TO THE
+  ROOM. map.js `_hqReturnOrMenu` `encBack` lands at `entry` (the door the room was entered by) with THE RETREAT / THE PARTY
+  IS DOWN toasts.
+- **Followers** — three-renderer.js `_hqSpawnFollowers(list)` (signature-diffed; rig loaded in the background), kind
+  `'follower'` (no blocker, skipped by `_hqFindTarget` and the roamer), `_hqTickFollowers` after `_hqTickRounds`, API
+  `hq.setFollowers / hq.followers()`. `_hqGoTo` resets the trail.
+- **Hand-back lite** — on a win, `end.units` = [{ partyId, x, z, face, lead }] (room metres via `hqFieldTransform.centre`,
+  face = atan2(dx, −dy) of `unit.facing`); map.js lands the lead there (`hqEncounterEndSpot(res, null)`, else the swing spot)
+  and hands each follower an `at`; a held follower (`ch.follow.held`) stands until the lead is 1 m off its landing, then runs
+  in at 6.5 m/s. The room is still rebuilt under the held debrief frame (no suspend; see the plan's §12 deviation).

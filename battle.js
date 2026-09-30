@@ -18159,7 +18159,7 @@
                         const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
                         let partyRes = null;
                         if (p) {
-                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
+                            hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
                                broken door is gone); a capture door that went onto the board is spent */
                             try {
@@ -18174,7 +18174,8 @@
                                 if (typeof hqPartyAfterMatch === 'function') {
                                     const seat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
                                     const benchBodies = (state.bench && state.bench[seat]) || [];
-                                    const bodies = (state.units || []).concat(benchBodies);
+                                    const escBodies = (state.escaped && state.escaped[seat]) || [];   // ESCAPE (EXPLORATION_BATTLES §6): they come home too
+                                    const bodies = (state.units || []).concat(benchBodies, escBodies);
                                     const vit = [];
                                     for (const u of bodies) {
                                         if (!u || (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) !== seat) continue;
@@ -18184,7 +18185,7 @@
                                         vit.push({ partyId: pm.partyId, hp: u.hp | 0, maxHp: u.maxHp | 0, mp: u.mp | 0, maxMp: u.maxMp | 0, dead: !!(u.dead || u._dying), items: Object.assign({}, u.items || {}),   // THE POCKETS (2026-09-20): what the fight spent stays spent
                                                    /* THE LEVELS rev 2 (2026-09-22): what the unit EARNED in the field (levelled live), whether it FOUGHT (spent AP / earned XP — the
                                                       pool's full share; the bench and an idle body take the present share, the dead none), its level-1 base for the stat card, its id for the podium beat */
-                                                   xpBattle: u._xpBattle | 0, fought: !!u._encFought, bench: benchBodies.indexOf(u) >= 0, baseHp: (u._baseStats && u._baseStats.maxHp) || 0, baseMp: (u._baseStats && isFinite(u._baseStats.maxMp)) ? u._baseStats.maxMp : 0, unitId: u.id });
+                                                   xpBattle: u._xpBattle | 0, fought: !!u._encFought, bench: benchBodies.indexOf(u) >= 0, escaped: !!u._escaped, baseHp: (u._baseStats && u._baseStats.maxHp) || 0, baseMp: (u._baseStats && isFinite(u._baseStats.maxMp)) ? u._baseStats.maxMp : 0, unitId: u.id });
                                     }
                                     /* THE POOL: every native that fell, priced by the battle's own kill formula against THE PARTY LEVEL (the share rule is data.js's) */
                                     const xpPool = _encXpPool(p, seat);
@@ -18197,7 +18198,7 @@
                                        the commit puts them in the bag on a win, the debrief's REWARDS sheet lists them */
                                     let drops = null;
                                     try { if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat)); } catch (e) { drops = null; }
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });
                                     /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): every native the party SEALED joins — the party, else the roster
                                        (the captured ledger: owned at once, never bought), else a bounty in gold */
                                     try {
@@ -18223,8 +18224,35 @@
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
                             PS.saveProfile(idx, p);
                         }
-                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes };   // D1: the swing spot rides home; THE PARTY: what the fight did to it
-                        addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.` : `🚪 EXITED — ${erun.label || erun.race} held the room. You come to elsewhere.`);
+                        /* ESCAPE (EXPLORATION_BATTLES §6): who got out (by name), THE RETREAT, and the door the room was entered by (the way back) */
+                        const _escSeat = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+                        const _escNames = ((state.escaped && state.escaped[_escSeat]) || []).map(u => unitDisplayName(u));
+                        const _retreat = !won && _encRetreatOn;
+                        /* THE HAND-BACK (EXPLORATION_BATTLES §5.2): a WIN hands the room back with the party where the fight left it —
+                           every standing party unit's end cell + heading in room metres (data.js hqEncounterEndRows; the lead's row flagged) */
+                        let _endRows = null;
+                        try {
+                            if (won && erun.field && erun.field.board && typeof hqEncounterEndRows === 'function') {
+                                let leadId = null;
+                                try { const PS2 = window.ProfileSystem, i2 = PS2 && PS2.getActiveProfileIndex ? PS2.getActiveProfileIndex() : null; const p2 = (i2 != null && PS2.loadProfile) ? PS2.loadProfile(i2) : null; const rec = (p2 && typeof hqPartyRecord === 'function') ? hqPartyRecord(p2) : null; leadId = (rec && rec.members && rec.members[0]) ? rec.members[0].id : null; } catch (e) { leadId = null; }
+                                const rows = [];
+                                (state.units || []).forEach(u => {
+                                    if (!u || u.dead || u._dying || !(u.hp > 0) || u._escaped) return;
+                                    if ((typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) !== _escSeat) return;
+                                    const ui = parseInt(String(u.id).split('-')[1], 10);
+                                    const pm = (Number.isFinite(ui) && state.partyMeta && state.partyMeta[_escSeat]) ? state.partyMeta[_escSeat][ui] : null;
+                                    if (!pm || !pm.partyId) return;
+                                    rows.push({ partyId: pm.partyId, x: u.x, y: u.y, facing: u.facing || null, lead: leadId != null && String(pm.partyId) === String(leadId) });
+                                });
+                                _endRows = hqEncounterEndRows(erun.field.board, rows);
+                            }
+                        } catch (e) { _endRows = null; }
+                        window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes,   // D1: the swing spot rides home; THE PARTY: what the fight did to it
+                                                      retreat: _retreat, escaped: _escNames, escLoss: !won && !_retreat && _escNames.length > 0, entry: erun.entry || null, end: _endRows };
+                        addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.`
+                            : _retreat ? `🏃 THE RETREAT — the party slipped out. ${erun.label || erun.race} still has the room.`
+                            : _escNames.length ? `🏃 THE PARTY IS DOWN — ${_escNames.join(', ')} got out and leads the party now.`
+                            : `🚪 EXITED — ${erun.label || erun.race} held the room. You come to elsewhere.`);
                     }
                 } catch (e) { console.warn('[HQ] encounter record failed', e); }
                 try {
@@ -19108,6 +19136,7 @@
         function updateCareerStatsAfterMatch() {
 
             if (state.winner === 0 || state.winner === null) return;
+            if (_encRetreatOn) return;   // THE RETREAT (EXPLORATION_BATTLES §6.3): neither a win nor a loss
             const stats = loadCareerStats();
             stats.matchesPlayed += 1;
             const viewer = getViewerPlayer();
@@ -22059,6 +22088,22 @@
         // real chunk of the map (the third-person shots keep their own fixed
         // world boom, so they stay closer than tactical by construction).
         const MAX_AUTO_ZOOM_OUT_TILES = 20;
+        /* THE ENCOUNTER FRAME (EXPLORATION_BATTLES, 2026-09-30): the board side every automatic framing is sized
+           for. A story fight's board is the ROOM (up to 24 a side), so sizing the tactical view for the whole
+           board parked the camera at the 20-row floor ("zoomed too far out"). In an encounter the framing is
+           sized for HQ_ENCOUNTER_RULES.arrival.frameTiles (the old 8×8's view) instead; the full-map overview
+           (getFullMapZoom) still shows the whole room. PvP and every other mode read the board as before. */
+        function _framingBoardTiles() {
+            const n = Math.max(bh() || 10, bw() || 10);
+            try {
+                if (typeof _encRun === 'function' && _encRun()) {
+                    const A = (typeof hqEncounterArrivalRules === 'function') ? hqEncounterArrivalRules() : null;
+                    const cap = (A && isFinite(+A.frameTiles) && +A.frameTiles > 0) ? +A.frameTiles : 8;
+                    return Math.min(n, cap);
+                }
+            } catch (e) {}
+            return n;
+        }
         const _zoomMemo = new Map();
         let _zoomMemoKey = '';
 
@@ -22135,9 +22180,7 @@
             return Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
         }
         function getDefaultZoomAtTilt(tiltDeg) {
-            const rows = bh() || 10;
-            const cols = bw() || 10;
-            const targetTiles = Math.max(rows, cols) + 4;
+            const targetTiles = _framingBoardTiles() + 4;
             const z = Math.max(_zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, tiltDeg),
                 Math.min(10.0, _zoomForVisibleTilesAtTilt(targetTiles, tiltDeg)));
             const _pm = (typeof getCameraPreset === 'function') ? getCameraPreset().zoomMult : 1;
@@ -22151,9 +22194,7 @@
 
         function _getBattleZoom() {
 
-            const rows = bh() || 10;
-            const cols = bw() || 10;
-            const targetTiles = Math.max(rows, cols) + 4;
+            const targetTiles = _framingBoardTiles() + 4;
             return clampAutoZoom(computeZoomForVisibleTiles(targetTiles));
         }
         function getDefaultZoom() {
@@ -33547,6 +33588,7 @@
            real match start (not in menu/diorama previews, which want all units). */
         function _gauntletPartitionBench() {
             state.bench = { 1: [], 2: [] };
+            state.escaped = { 1: [], 2: [] };   // ESCAPE (EXPLORATION_BATTLES §6): the third list — every match starts it empty
             if (!_benchOn()) return;
             const deploy = _gauntletDeploy();
             /* THE SWARM (CAPTURE_PLAN §5.2, 2026-09-25): a swarm's natives are ALL on the board (no enemy bench) */
@@ -35789,6 +35831,184 @@
         window._reserveTakeSeat = _reserveTakeSeat;
         window._gauntletReserves = _gauntletReserves;
         window._gauntletDeployReserve = _gauntletDeployReserve;
+
+        /* ══ ESCAPE · TEAM ESCAPE · THE RETREAT (EXPLORATION_BATTLES_PLAN §6, 2026-09-30) ══
+           Story fights only (_encRun(); an encounter is VS-CPU, never online — RULE #2 is moot, nothing here is relayed).
+           HIDDEN = the nameplate eye closed: isUnitSeenByAnyEnemy(u) === false (fog vision, LOS, wards, smoke, invisibility).
+           ESCAPE: the active unit (≥ apMin AP) spends its whole activation, walks a few tiles towards the field's nearest rim
+           and leaves the fight for good — out of state.units into state.escaped[player] (`_escaped`), out of the turn order;
+           the bench does NOT fill its seat (nobody fell). It survives any result and cannot be switched in
+           (_gauntletReserves reads state.bench only). TEAM ESCAPE (hidden / living board ≥ teamShare): everyone alive on the
+           board AND the bench goes at once and the fight ends as THE RETREAT — so does the last body on the board escaping.
+           The commit (commitAchProgress) reads `_encRetreatOn` and the escaped rows; data.js hqPartyAfterMatch does the rest. */
+        let _encRetreatOn = false;   // this match ended as THE RETREAT (module-local; reset at startMatch)
+        function _escapeRules() {
+            if (typeof hqEscapeRules === 'function') { try { return hqEscapeRules(); } catch (e) {} }
+            return { apMin: 1, ms: 900, walkTiles: 3, teamShare: 0.75, labels: { escape: 'Escape', team: 'Team escape', escaped: 'ESCAPED', retreat: 'THE RETREAT', seen: 'Seen', noAp: 'No AP', story: 'Story fights only' } };
+        }
+        function _escapeStoryFight() {
+            if (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES && ONLINE_RULES.active) return false;
+            return typeof _encRun === 'function' && !!_encRun();
+        }
+        function _escapeLiving(player) {
+            return (state.units || []).filter(u => u && unitHomePlayer(u) === player && u.player === player && !u.dead && !u._dying && !u._sealed);
+        }
+        /* null = the unit may ESCAPE now; else the reason the row is greyed */
+        function escapeProblem(unit) {
+            const R = _escapeRules(), L = R.labels || {};
+            if (!_escapeStoryFight()) return L.story || 'Story fights only';
+            if (!unit || unit.dead || unit._dying || unit._escaped || state.winner || state.phase !== 'battle') return 'Unavailable';
+            if (state._blitzActiveUnitId && state._blitzActiveUnitId !== unit.id) return 'Not this unit’s turn';
+            if ((unit.ap || 0) < R.apMin) return L.noAp || 'No AP';
+            if (isUnitSeenByAnyEnemy(unit)) return L.seen || 'Seen';
+            return null;
+        }
+        /* TEAM ESCAPE's read for `player`: { living, hidden, need, ok } over the LIVING BOARD (the bench is not on the field) */
+        function teamEscapeInfo(player) {
+            const living = _escapeLiving(player);
+            const hidden = living.filter(u => !isUnitSeenByAnyEnemy(u)).length;
+            const need = (typeof hqEscapeTeamNeed === 'function') ? hqEscapeTeamNeed(living.length) : Math.ceil(living.length * 0.75);
+            return { living: living.length, hidden, need, ok: living.length >= 2 && hidden >= need };
+        }
+        function teamEscapeProblem(unit) {
+            const R = _escapeRules(), L = R.labels || {};
+            if (!_escapeStoryFight()) return L.story || 'Story fights only';
+            if (!unit || unit.dead || unit._dying || state.winner || state.phase !== 'battle') return 'Unavailable';
+            if (state._blitzActiveUnitId && state._blitzActiveUnitId !== unit.id) return 'Not this unit’s turn';
+            const T = teamEscapeInfo(unit.player);
+            if (T.living < 2) return 'Use Escape';
+            if (!T.ok) return T.hidden + '/' + T.living + ' hidden · need ' + T.need;
+            return null;
+        }
+        /* the walk-off: up to walkTiles steps over free, climbable cells, ending on the reachable cell nearest the field's rim
+           (ties: farther from the nearest enemy). Visual only — the body leaves the board when it lands. */
+        function _escapeWalkPath(unit) {
+            const R = _escapeRules();
+            const W = bw(), H = bh();
+            const foes = (state.units || []).filter(f => f && !f.dead && f.player !== unit.player);
+            const zOf = (x, y) => (typeof getHeightAt === 'function') ? (getHeightAt(x, y) | 0) : 0;
+            const rim = (x, y) => Math.min(x, y, W - 1 - x, H - 1 - y);
+            const foeD = (x, y) => foes.length ? Math.min.apply(null, foes.map(f => Math.abs(f.x - x) + Math.abs(f.y - y))) : 99;
+            const key = (x, y) => x + ',' + y;
+            const prev = new Map(); prev.set(key(unit.x, unit.y), null);
+            let frontier = [{ x: unit.x, y: unit.y, z: zOf(unit.x, unit.y) }], best = null;
+            for (let step = 0; step < R.walkTiles && frontier.length; step++) {
+                const next = [];
+                for (const c of frontier) {
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const nx = c.x + dx, ny = c.y + dy, k = key(nx, ny);
+                        if (prev.has(k) || _gauntletTileBlocked(nx, ny, unit)) continue;
+                        const nz = zOf(nx, ny);
+                        if (Math.abs(nz - c.z) > 1) continue;
+                        prev.set(k, key(c.x, c.y));
+                        const n = { x: nx, y: ny, z: nz };
+                        next.push(n);
+                        if (!best || rim(nx, ny) < rim(best.x, best.y) || (rim(nx, ny) === rim(best.x, best.y) && foeD(nx, ny) > foeD(best.x, best.y))) best = n;
+                    }
+                }
+                frontier = next;
+            }
+            if (!best) return [];
+            const path = []; let k = key(best.x, best.y);
+            while (k && k !== key(unit.x, unit.y)) { const [x, y] = k.split(',').map(Number); path.unshift({ x, y, z: zOf(x, y) }); k = prev.get(k); }
+            return path;
+        }
+        /* the body walks off (the renderer's own walk tween) — the cell it ends on is where it leaves from */
+        function _escapeWalkOff(unit) {
+            const path = _escapeWalkPath(unit);
+            if (!path.length) return;
+            if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
+                try { window.ThreeAnim.walkPath(unit, path); } catch (e) {}
+            }
+            const last = path[path.length - 1];
+            unit.x = last.x; unit.y = last.y; unit.z = last.z;
+        }
+        /* out of the fight: off the board, onto the escaped list, out of the turn order */
+        function _escapeRemove(unit) {
+            const p = unit.player;
+            if (!state.escaped) state.escaped = { 1: [], 2: [] };
+            if (!state.escaped[p]) state.escaped[p] = [];
+            state.units = state.units.filter(u => u.id !== unit.id);
+            unit._escaped = true; unit.ap = 0; unit._benched = false;
+            if (state.escaped[p].indexOf(unit) < 0) state.escaped[p].push(unit);
+            if (Array.isArray(state._blitzTurnOrderIds)) {
+                state._blitzTurnOrderIds = state._blitzTurnOrderIds.filter(id => id !== unit.id);
+                if (typeof window._rebuildBlitzTurnOrderFromIds === 'function') window._rebuildBlitzTurnOrderFromIds();
+            }
+            if (state.selectedUnitId === unit.id) state.selectedUnitId = null;
+            if (state.focusedUnitId === unit.id) state.focusedUnitId = null;
+        }
+        function _escapeClearUi() {
+            state.actionMode = null; state.actionMenuView = 'root'; state.selectedTool = null; state.pendingTarget = null;
+            state._tileActionTarget = null; state._enemyActionTargetId = null;
+            if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview();
+            if (typeof clearAttackRangePreview === 'function') clearAttackRangePreview();
+        }
+        function doEscape(unit) {
+            const why = escapeProblem(unit);
+            if (why) { addLog(`🏃 ${unitDisplayName(unit)} cannot escape — ${why}.`); return false; }
+            /* the last body on the board: the fight ends as THE RETREAT (the bench goes with it) */
+            if (!_escapeLiving(unit.player).some(u => u.id !== unit.id)) return _escapeAll(unit, true);
+            const R = _escapeRules();
+            state._actionExecuting = true;
+            _escapeClearUi();
+            addLog(`🏃 ${unitDisplayName(unit)} slips out of the fight unseen — ESCAPED.`);
+            _escapeWalkOff(unit);
+            unit.ap = 0;
+            scheduleBoardRender();
+            if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+            window.setTimeout(() => {
+                _escapeRemove(unit);
+                state._actionExecuting = false;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                scheduleBoardRender();
+                if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+                if (state.phase === 'battle' && !state.winner) _waitForAnimationsThen(() => maybeAdvanceTurn());
+            }, actionMs(R.ms));
+            return true;
+        }
+        function doTeamEscape(unit) {
+            const why = teamEscapeProblem(unit);
+            if (why) { addLog(`🏃 No team escape — ${why}.`); return false; }
+            return _escapeAll(unit, false);
+        }
+        /* THE RETREAT: every living body of the seat walks off at once, the bench goes too, and the fight ends — neither a
+           win nor a loss (the result machinery needs a side: the other seat is `winner`, `_encRetreatOn` says what it was) */
+        function _escapeAll(unit, single) {
+            const R = _escapeRules();
+            const seat = unit.player;
+            const bodies = _escapeLiving(seat);
+            state._actionExecuting = true;
+            _escapeClearUi();
+            clearAiSafetyTimer();
+            addLog(single ? `🏃 ${unitDisplayName(unit)} slips out — the last one standing. THE RETREAT.` : `🏃 TEAM ESCAPE — the party slips out of the fight. THE RETREAT.`);
+            bodies.forEach(b => { _escapeWalkOff(b); b.ap = 0; });
+            scheduleBoardRender();
+            if (typeof renderBattleSelectionUI === 'function') renderBattleSelectionUI({ includeBoard: true });
+            window.setTimeout(() => {
+                bodies.forEach(b => _escapeRemove(b));
+                if (state.bench && Array.isArray(state.bench[seat])) {
+                    const live = state.bench[seat].filter(u => u && !u.dead);
+                    live.forEach(u => { u._escaped = true; u._benched = false; if (state.escaped[seat].indexOf(u) < 0) state.escaped[seat].push(u); });
+                    state.bench[seat] = state.bench[seat].filter(u => u && u.dead);
+                }
+                state._actionExecuting = false;
+                state.aiThinking = false;
+                _encRetreatOn = true;
+                if (state.phase === 'battle' && !state.winner) {
+                    state.winner = (seat === 1) ? 2 : 1;
+                    state._winCondition = 'retreat';
+                    checkWin();
+                }
+            }, actionMs(R.ms));
+            return true;
+        }
+        window.escapeProblem = escapeProblem;
+        window.teamEscapeProblem = teamEscapeProblem;
+        window.teamEscapeInfo = teamEscapeInfo;
+        window.doEscape = doEscape;
+        window.doTeamEscape = doTeamEscape;
+        window._escapeStoryFight = _escapeStoryFight;
 
         function canCastAnySpell(unit) {
             return TargetQuery.canCastAny(unit);
@@ -38705,7 +38925,7 @@
                     const labels = DOOR_HQ.masteryLabels || {};
                     tail = flag.mastered ? ' · THRESHOLD STABILIZED' : (flag.cond ? ' · FILED ' + (labels[flag.cond] || flag.cond) : '');
                 }
-                el.textContent = (er.won ? 'HELD' : 'EXITED') + ' · THE ENCOUNTER · ' + roomLabel + (er.label ? ' · ' + String(er.label).toUpperCase() : '') + tail + (f3Tag ? ' · ' + f3Tag : '');
+                el.textContent = (er.won ? 'HELD' : er.retreat ? 'RETREAT' : 'EXITED') + ' · THE ENCOUNTER · ' + roomLabel + (er.label ? ' · ' + String(er.label).toUpperCase() : '') + tail + (f3Tag ? ' · ' + f3Tag : '');
                 el.className = 'drs-site on' + (er.won ? '' : ' partial');
                 return;
             }
@@ -38734,7 +38954,9 @@
             const vicBottom = document.getElementById('vicBottom');
             if (!res || !vicBottom) return false;
             const won = !!res.won;
-            vicBottom.innerHTML = `<button id="encReturnBtn" class="primary enc-return">${won ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}</button>`;
+            /* ESCAPE (EXPLORATION_BATTLES §6): a retreat or a loss someone got out of goes back to the room, never the ward */
+            const back = won || !!res.retreat || !!res.escLoss;
+            vicBottom.innerHTML = `<button id="encReturnBtn" class="primary enc-return">${back ? '▸ BACK TO THE ROOM' : '▸ WAKE UP'}</button>`;
             const b = document.getElementById('encReturnBtn');
             if (b) {
                 b.onclick = () => { b.disabled = true; _encReturnLeave(); };
@@ -38902,7 +39124,8 @@
 
             vicSky.className = 'vic-sky ' + wonClass;
             vicGround.className = 'vic-ground ' + wonClass;
-            const _titleText = isNoContest ? 'No Contest' : (playerWon ? 'Victory' : 'Defeat');
+            const _encEsc = window._hqEncounterResult || null;   // ESCAPE (EXPLORATION_BATTLES §6): THE RETREAT has its own title
+            const _titleText = isNoContest ? 'No Contest' : (playerWon ? 'Victory' : ((_encEsc && _encEsc.retreat) ? 'Retreat' : 'Defeat'));
             vicTitle.textContent = _titleText;
             /* data-text feeds the chromatic-aberration ghost layers (CSS). */
             vicTitle.setAttribute('data-text', _titleText);
@@ -38930,7 +39153,9 @@
             const namePrefix = _profileUsername ? `<b class="vic-callsign">${escapeHtml(_profileUsername)}</b> ` : '';
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is exited.') + ' ' + streakHtml);
+                : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is exited · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? 'holds the field.' : 'is exited.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -44071,7 +44296,7 @@
                 const zoomFor = (tiles) => Math.max(0.15, Math.min(10.0, parentH / (tiles * (ts2 + gap) * tf)));
                 /* _getBattleZoom + clampAutoZoom + view preset, at rest tilt */
                 let z = Math.max(zoomFor(MAX_AUTO_ZOOM_OUT_TILES),
-                    Math.min(10.0, zoomFor(Math.max(bh() || 10, bw() || 10) + 4)));
+                    Math.min(10.0, zoomFor(_framingBoardTiles() + 4)));
                 const pm = (typeof getCameraPreset === 'function') ? getCameraPreset().zoomMult : 1;
                 z = Math.max(0.15, Math.min(10.0, z * pm));
                 const uz = state.userZoomScale || 0;
@@ -44769,6 +44994,7 @@
                skipped finalizeMatch) drops the stale marker, so it can never
                skip that match's intro, seed a dead eye or file a result. */
             _encMatch = null; window._ewEncounterFirstId = null;   // THE FIRST STRIKE: a stale marker never reaches another match
+            _encRetreatOn = false;   // THE RETREAT belongs to the match that ended in it
             try {
                 const er = window._hqEncounterRun;
                 if (er) { if (er.armed) { er.armed = false; _encMatch = er; } else window._hqEncounterRun = null; }
