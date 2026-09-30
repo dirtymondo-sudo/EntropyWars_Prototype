@@ -1094,6 +1094,15 @@ RACE_SPRITES (2D borrows a sheet); lore in ui.js + party-builder.js.
 timings + VFX, so online and the forge preview (`_FIN_STAGE[sig]`) need nothing new. Zero G = upUpAndAway, Coal Season =
 naughtyList, Out of a Hat = abracadabra, Top Rope = orbitalDrop, Hose Down = theWave, The Horde = pileOn, Bad Trip = theTrip.
 **Kaiju**: `RACE_MODELS_3D.kaiju.male` now `Races/kaiju/male/Meshy_AI_kaiju_Running.glb` (heightRatio 1.6 kept).
-Still missing on R2 at build time (the user's list): clown, sharkman, crystalguardian, sherrif, ringmaster, jackolantern,
-beequeen, sidekick, professor, starfish, mushroomgirl, treeperson, deepseafish, bunnygirl — wire them the same way
-(scratchpad script pattern: one JSON row per race). UNSEEN LIVE: every rig's scale/facing (heightRatio is the one-field edit).
+**SECOND + THIRD WAVE (same day, PR #13)**: the other 14. R2 file names are Meshy's ORIGINAL prompts, not the folder name
+(clown/Meshy_AI_evil_clown, bunnygirl/bunny_girl, sharkman/shark_man, crystalguardian/crystal_guardian,
+jackolantern/jack_o_lantern, sidekick/superhero_sidekick, mushroomgirl/mushroom_girl, sherrif/western_sherrif,
+treeperson/walking_tree, starfish/sentient_starfish, ringleader/circus_ringmaster, beequeen/the_hive_queen,
+professor/male_college_professor, deepseafish/alien_fish). Race keys: clown, bunny girl, sharkman, crystal guardian,
+jack o lantern, sidekick, mushroom girl, tree person, sheriff, starfish, ringmaster, bee queen, professor, deep sea fish
+(roster 124). Finishers: Behind You = sleepParalysis, Last Call = kissOfDeath, Jaws = nessieSurfaces, Shatter =
+flashFrozen, Trick or Treat = graveRobbery, Holy Haymaker = haymaker, Fairy Ring = changeling, Timber = blurryFootage,
+Run Out of Town = bookEm, Five Arms = releaseTheKraken, The Big Top = farewellTour, The Swarm = theColony, Final Exam =
+eventHorizon, The Lure = theBloom. Homes: Haunted House, the Strip, Bermuda Triangle ×2, Agartha, Skinwalker Ranch,
+Downtown, Fairy Forest ×2, Area 51, Atlantis, Football Stadium, Göbekli Tepe, D.U.M.B.
+UNSEEN LIVE: every rig's scale/facing (heightRatio is the one-field edit).

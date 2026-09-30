@@ -91,6 +91,20 @@ const RACE_SPRITE_GENDERS = {
   'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
+  'starfish': 'male',   // 2026-09-30
+  'ringmaster': 'male',   // 2026-09-30
+  'bee queen': 'female',   // 2026-09-30
+  'professor': 'male',   // 2026-09-30
+  'deep sea fish': 'male',   // 2026-09-30
+  'clown': 'male',   // 2026-09-30
+  'bunny girl': 'female',   // 2026-09-30
+  'sharkman': 'male',   // 2026-09-30
+  'crystal guardian': 'male',   // 2026-09-30
+  'jack o lantern': 'male',   // 2026-09-30
+  'sidekick': 'male',   // 2026-09-30
+  'mushroom girl': 'female',   // 2026-09-30
+  'tree person': 'male',   // 2026-09-30
+  'sheriff': 'male',   // 2026-09-30
   'astronaut': 'male',   // 2026-09-30
   'krampus': 'male',   // 2026-09-30
   'rabbit': 'male',   // 2026-09-30
@@ -1827,6 +1841,92 @@ const RACE_MODELS_3D = {
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
+  // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
+  'clown': {
+    male: _mkUAL('clown', 'evil_clown', {
+      model: `${_S}/Races/clown/Meshy_AI_evil_clown_Running.glb`,
+      heightRatio: 1.03, basicAttackKind: 'punch',
+    }),
+  },
+  'bunny girl': {
+    female: _mkUAL('bunnygirl', 'bunny_girl', {
+      model: `${_S}/Races/bunnygirl/Meshy_AI_bunny_girl_Running.glb`,
+      heightRatio: 0.97, basicAttackKind: 'punch',
+    }),
+  },
+  'sharkman': {
+    male: _mkUAL('sharkman', 'shark_man', {
+      model: `${_S}/Races/sharkman/Meshy_AI_shark_man_Running.glb`,
+      heightRatio: 1.15, basicAttackKind: 'claw',
+    }),
+  },
+  'crystal guardian': {
+    male: _mkUAL('crystalguardian', 'crystal_guardian', {
+      model: `${_S}/Races/crystalguardian/Meshy_AI_crystal_guardian_Running.glb`,
+      heightRatio: 1.15, basicAttackKind: 'punch',
+    }),
+  },
+  'jack o lantern': {
+    male: _mkUAL('jackolantern', 'jack_o_lantern', {
+      model: `${_S}/Races/jackolantern/Meshy_AI_jack_o_lantern_Running.glb`,
+      heightRatio: 1.08, basicAttackKind: 'magic',
+    }),
+  },
+  'sidekick': {
+    male: _mkUAL('sidekick', 'superhero_sidekick', {
+      model: `${_S}/Races/sidekick/Meshy_AI_superhero_sidekick_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
+  },
+  'mushroom girl': {
+    female: _mkUAL('mushroomgirl', 'mushroom_girl', {
+      model: `${_S}/Races/mushroomgirl/Meshy_AI_mushroom_girl_Running.glb`,
+      heightRatio: 0.92, basicAttackKind: 'magic',
+    }),
+  },
+  'tree person': {
+    male: _mkUAL('treeperson', 'walking_tree', {
+      model: `${_S}/Races/treeperson/Meshy_AI_walking_tree_Running.glb`,
+      heightRatio: 1.5, basicAttackKind: 'claw',
+    }),
+  },
+  'sheriff': {
+    male: _mkUAL('sherrif', 'western_sherrif', {
+      model: `${_S}/Races/sherrif/Meshy_AI_western_sherrif_Running.glb`,
+      heightRatio: 1.04, basicAttackKind: 'ranged',
+    }),
+  },
+  // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
+  'starfish': {
+    male: _mkUAL('starfish', 'sentient_starfish', {
+      model: `${_S}/Races/starfish/Meshy_AI_sentient_starfish_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
+  },
+  'ringmaster': {
+    male: _mkUAL('ringleader', 'circus_ringmaster', {
+      model: `${_S}/Races/ringleader/Meshy_AI_circus_ringmaster_Running.glb`,
+      heightRatio: 1.03, basicAttackKind: 'magic',
+    }),
+  },
+  'bee queen': {
+    female: _mkUAL('beequeen', 'the_hive_queen', {
+      model: `${_S}/Races/beequeen/Meshy_AI_the_hive_queen_Running.glb`,
+      heightRatio: 1.08, basicAttackKind: 'magic',
+    }),
+  },
+  'professor': {
+    male: _mkUAL('professor', 'male_college_professor', {
+      model: `${_S}/Races/professor/Meshy_AI_male_college_professor_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'magic',
+    }),
+  },
+  'deep sea fish': {
+    male: _mkUAL('deepseafish', 'alien_fish', {
+      model: `${_S}/Races/deepseafish/Meshy_AI_alien_fish_Running.glb`,
+      heightRatio: 1.03, basicAttackKind: 'claw',
+    }),
+  },
   // AI (Gunslinger, ranged; flies — map.js SKY_RACES) — "AI_girl" Character_output (Races/ai/female/).
   'ai': {
     female: _mkUAL('ai/female', 'AI_girl', {
@@ -3108,6 +3208,20 @@ const RACE_SPRITES = {
   'jellyfish': `${_S}/kraken.png`,            // 2026-09-21 — 2D borrows the kraken's sheet (his own art is the GLB)
   'cult leader': `${_S}/homosapien.png`,      // 2026-09-21
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
+  'starfish': `${_S}/kraken.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'ringmaster': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'bee queen': `${_S}/antperson.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'professor': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'deep sea fish': `${_S}/kraken.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'clown': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'bunny girl': `${_S}/catgirl.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'sharkman': `${_S}/kraken.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'crystal guardian': `${_S}/golem.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'jack o lantern': `${_S}/scarecrow.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'sidekick': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'mushroom girl': `${_S}/fairy.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'tree person': `${_S}/bigfoot.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'sheriff': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
   'astronaut': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
   'krampus': `${_S}/goatman.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
   'rabbit': `${_S}/catgirl.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)

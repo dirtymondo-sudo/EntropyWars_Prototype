@@ -393,6 +393,22 @@ const FINISHERS = {
     'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: 'ascensionDay', built: true, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
     'popstar':        { id: 'fin_popstar', name: 'Farewell Tour', glyph: '🎤', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'ONE NIGHT ONLY', desc: 'A stadium stands up round the victim — the stands, the floodlights, a crowd of glow sticks — and the spotlight finds them. She sings one last song from her stage. The pyro goes on the final note, the fireworks over the stands, and when the lights come back up there is a SOLD OUT poster where they stood.' },
     /* THE 2026-09-30 BATCH — each borrows a built execution's staging (sig) and swaps its captions (`lines`, battle.js _finLine). */
+    'starfish': { id: 'fin_starfish', name: 'Five Arms', glyph: '⭐', type: 'anomaly', sig: 'releaseTheKraken', built: true, tagline: 'FIVE IS PLENTY', lines: [['🐙 RELEASE THE KRAKEN', '⭐ FIVE ARMS'], ['EIGHT', 'FIVE']], desc: 'Arms come up through the board round one unit, and the last thing up is the mouth.' },
+    'ringmaster': { id: 'fin_ringmaster', name: 'The Big Top', glyph: '🎪', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'LADIES AND GENTLEMEN', lines: [['THE LAST SONG', 'LADIES AND GENTLEMEN'], ['…AND THIS ONE GOES OUT TO YOU', '…FOR OUR FINAL ACT'], ['ENCORE? NO.', 'THE SHOW IS OVER.']], desc: 'A stadium stands up round the victim, the floodlights and a crowd of glow sticks, and the spotlight finds them. The ringmaster announces the final act. The pyro goes, and when the lights come back up there is a SOLD OUT poster where they stood.' },
+    'bee queen': { id: 'fin_bee_queen', name: 'The Swarm', glyph: '🐝', type: 'alien', sig: 'theColony', built: true, tagline: 'LONG LIVE THE QUEEN', lines: [['🐜 THE COLONY HAS BEEN NOTIFIED', '🐝 THE HIVE HAS BEEN NOTIFIED']], desc: 'The board goes black with the colony: a mound beside the tile, a column that becomes a tide, the victim climbed to the crown and carried away in six pieces, one at a time, into the hole in the map.' },
+    'professor': { id: 'fin_professor', name: 'Final Exam', glyph: '📚', type: 'anomaly', sig: 'eventHorizon', built: true, tagline: 'PENCILS DOWN', lines: [['⚫ THE SEED', '📚 FINAL EXAM'], ['SPAGHETTIFIED.', 'FAIL.']], desc: 'A black hole the size of one unit; the unit is stretched into a line a mile long and then into nothing. It was on the syllabus.' },
+    'deep sea fish': { id: 'fin_deep_sea_fish', name: 'The Lure', glyph: '🎣', type: 'alien', sig: 'theBloom', built: true, tagline: 'FOLLOW THE LIGHT', lines: [['🪼 THE BLOOM', '🎣 THE LURE']], desc: 'The sea comes up over the tile and the water fills with glowing things, more and more of them, until the victim is a shape inside the light. When the water drains there is nothing on the tile but a print.' },
+    /* THE 2026-09-30 BATCH — each borrows a built execution's staging (sig) and swaps its captions (`lines`, battle.js _finLine). */
+    'clown': { id: 'fin_clown', name: 'Behind You', glyph: '🤡', type: 'anomaly', sig: 'sleepParalysis', built: true, tagline: 'HE\'S BEHIND YOU', lines: [['IT IS IN THE CORNER', 'HE IS IN THE CORNER'], ['IT IS CLOSER NOW.', 'HONK.']], desc: 'The lights go out, the victim cannot move, and the painted face in the corner of the frame gets closer every time the light flickers.' },
+    'bunny girl': { id: 'fin_bunny_girl', name: 'Last Call', glyph: '🐰', type: 'anomaly', sig: 'kissOfDeath', built: true, tagline: 'THE HOUSE ALWAYS WINS', lines: [['♪ LAST DANCE', '🐰 LAST CALL'], ['OUT LIKE A CANDLE.', 'THE HOUSE ALWAYS WINS.']], desc: 'A dance, a dip, a kiss, and the victim goes out like a candle with a heart-shaped smoke ring.' },
+    'sharkman': { id: 'fin_sharkman', name: 'Jaws', glyph: '🦈', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'YOU\'RE GONNA NEED A BIGGER BOARD', lines: [['🦕 THE LOCH', '🦈 THE FIN'], ['THE NECK', 'THE JAWS']], desc: 'The sea rises through the map, something with a fin comes up under the victim, and the only evidence is out of focus.' },
+    'crystal guardian': { id: 'fin_crystal_guardian', name: 'Shatter', glyph: '💎', type: 'divine', sig: 'flashFrozen', built: true, tagline: 'CLEAR AS CRYSTAL', lines: [['🧊 FLASH FROZEN', '💎 CRYSTALLISED']], desc: 'The victim is turned to crystal mid-scream, admired from three angles, and shattered with a fingertip.' },
+    'jack o lantern': { id: 'fin_jack_o_lantern', name: 'Trick or Treat', glyph: '🎃', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'TRICK', lines: [['⚰ THE PLOT WAS PRE-DUG', '🎃 TRICK OR TREAT'], ['REST IN PIECES.', 'TRICK.']], desc: 'The tile opens into a grave, the victim goes in, and the headstone already has the date on it.' },
+    'sidekick': { id: 'fin_sidekick', name: 'Holy Haymaker', glyph: '💥', type: 'human', sig: 'haymaker', built: true, tagline: 'POW!', lines: [['👊 WIND-UP', '💥 WIND-UP'], ['K.O.', 'POW!']], desc: 'A wind-up that lasts a full second, a punch that sends the victim around the planet and back into the same fist.' },
+    'mushroom girl': { id: 'fin_mushroom_girl', name: 'Fairy Ring', glyph: '🍄', type: 'anomaly', sig: 'changeling', built: true, tagline: 'STEP INSIDE', lines: [['🧚 THE RING', '🍄 THE RING']], desc: 'A ring of toadstools grows round the victim, the dance starts, and by the time it ends a hundred years have passed for one unit.' },
+    'tree person': { id: 'fin_tree_person', name: 'Timber', glyph: '🌳', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'TIMBER', lines: [['NOBODY WILL BELIEVE IT.', 'TIMBER.']], desc: 'The film goes grainy and hand-held; something enormous walks out of the treeline and through the victim; nobody will believe it.' },
+    'sheriff': { id: 'fin_sheriff', name: 'Run Out of Town', glyph: '⭐', type: 'human', sig: 'bookEm', built: true, tagline: 'THIS TOWN AIN\'T BIG ENOUGH', lines: [['🚔 BOOK \'EM', '⭐ YOU\'RE UNDER ARREST'], ['BOOKED.', 'RUN OUT OF TOWN.']], desc: 'The law pulls up with every light going. The victim is read their rights, cuffed, put in the back, and driven off the board.' },
+    /* THE 2026-09-30 BATCH — each borrows a built execution's staging (sig) and swaps its captions (`lines`, battle.js _finLine). */
     'astronaut': { id: 'fin_astronaut', name: 'Zero G', glyph: '🚀', type: 'tech', sig: 'upUpAndAway', built: true, tagline: 'WE HAVE LIFTOFF', lines: [['🦸 UP', '🚀 LIFTOFF'], ['AND AWAY', 'MAX Q'], ['THE LANDING.', 'SPLASHDOWN.']], desc: 'The astronaut takes the victim up on a launch, past the clouds, far enough to see the curve of the Earth, and lets go. The victim comes back down alone at terminal velocity.' },
     'krampus': { id: 'fin_krampus', name: 'Coal Season', glyph: '🔔', type: 'unholy', sig: 'naughtyList', built: true, tagline: 'HE CHECKED IT TWICE', lines: [['🎅 NAUGHTY: ', '🔔 NAUGHTY: '], ['HO HO HO', 'NO PRESENTS THIS YEAR']], desc: 'A scroll unrolls out of the sky with one name on it, the coal comes down, and something the size of a house is delivered from orbit. It is not a present.' },
     'rabbit': { id: 'fin_rabbit', name: 'Out of a Hat', glyph: '🐇', type: 'anomaly', sig: 'abracadabra', built: true, tagline: 'WRONG WAY ROUND', lines: [['🎩 NOTHING UP MY SLEEVE', '🐇 WRONG WAY ROUND'], ['TA-DA.', 'LATE FOR A VERY IMPORTANT DATE.']], desc: 'A hat the size of a house drops over the victim; the rabbit taps it once; the hat lifts on nothing, and the victim turns up a hundred metres over the board with nowhere to land.' },
@@ -536,6 +552,12 @@ const RACE_ELEMENT_AFFINITY = {
     'dragon':            { fire: 'resist', ice: 'weak' },
     'dinosaur':          { ice: 'weak' },
     'kaiju':             { fire: 'absorb' },   // Thermal Regen, generalized
+    'starfish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
+    'deep sea fish': { water: 'resist', lightning: 'weak' },   // 2026-09-30
+    'sharkman': { water: 'resist', lightning: 'weak' },   // 2026-09-30
+    'crystal guardian': { earth: 'resist' },   // 2026-09-30
+    'jack o lantern': { fire: 'resist', water: 'weak' },   // 2026-09-30
+    'tree person': { fire: 'weak', water: 'resist' },   // 2026-09-30
     'krampus': { ice: 'resist', fire: 'weak' },   // 2026-09-30
     'firefighter': { fire: 'resist' },   // 2026-09-30
     'king kong':         { earth: 'resist' },
@@ -2840,6 +2862,78 @@ const RACE_PROFILES = {
         types: ['human', 'anomaly']
     },
     /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
+    'starfish': {
+        label: 'Starfish',
+        faction: 'time',
+        types: ['anomaly']
+    },
+    'ringmaster': {
+        label: 'Ringmaster',
+        faction: 'chaos',
+        types: ['human']
+    },
+    'bee queen': {
+        label: 'Bee Queen',
+        faction: 'chaos',
+        types: ['alien', 'anomaly']
+    },
+    'professor': {
+        label: 'Professor',
+        faction: 'time',
+        types: ['human']
+    },
+    'deep sea fish': {
+        label: 'Deep Sea Fish',
+        faction: 'space',
+        types: ['alien', 'anomaly']
+    },
+    /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
+    'clown': {
+        label: 'Clown',
+        faction: 'chaos',
+        types: ['human', 'anomaly']
+    },
+    'bunny girl': {
+        label: 'Bunny Girl',
+        faction: 'space',
+        types: ['human', 'anomaly']
+    },
+    'sharkman': {
+        label: 'Sharkman',
+        faction: 'chaos',
+        types: ['anomaly']
+    },
+    'crystal guardian': {
+        label: 'Crystal Guardian',
+        faction: 'time',
+        types: ['anomaly', 'divine']
+    },
+    'jack o lantern': {
+        label: 'Jack-o\'-Lantern',
+        faction: 'chaos',
+        types: ['unholy', 'anomaly']
+    },
+    'sidekick': {
+        label: 'Sidekick',
+        faction: 'space',
+        types: ['human']
+    },
+    'mushroom girl': {
+        label: 'Mushroom Girl',
+        faction: 'time',
+        types: ['anomaly']
+    },
+    'tree person': {
+        label: 'Tree Person',
+        faction: 'time',
+        types: ['anomaly']
+    },
+    'sheriff': {
+        label: 'Sheriff',
+        faction: 'time',
+        types: ['human']
+    },
+    /* THE 2026-09-30 BATCH (the user's Meshy uploads, Races/<race>/) */
     'astronaut': {
         label: 'Astronaut',
         faction: 'space',
@@ -3101,6 +3195,78 @@ const PASSIVE_DEFS = {
         desc: 'Nobody cuts her mic — immune to Silence.',
     },
     /* 2026-09-30 — the new-race batch: the same immuneStatus hook. */
+    regrowth: {
+        id: 'regrowth', icon: '⭐', name: 'Regrowth',
+        immuneStatus: ['grievous'],
+        desc: 'Grows back whatever it loses — immune to Grievous Wounds.',
+    },
+    showman: {
+        id: 'showman', icon: '🎩', name: 'Showman',
+        immuneStatus: ['silence'],
+        desc: 'The voice carries to the back row — immune to Silence.',
+    },
+    royalJelly: {
+        id: 'royalJelly', icon: '🐝', name: 'Royal Jelly',
+        immuneStatus: ['poison'],
+        desc: 'Fed on royal jelly since the egg — immune to Poison.',
+    },
+    tenured: {
+        id: 'tenured', icon: '📚', name: 'Tenured',
+        immuneStatus: ['discord'],
+        desc: 'Cannot be fired, cannot be rattled — immune to Discord.',
+    },
+    abyssEyes: {
+        id: 'abyssEyes', icon: '🐟', name: 'Abyss Eyes',
+        immuneStatus: ['blind'],
+        desc: 'Lives where no light reaches — immune to Blind.',
+    },
+    /* 2026-09-30 — the new-race batch: the same immuneStatus hook. */
+    painted: {
+        id: 'painted', icon: '🤡', name: 'Painted Smile',
+        immuneStatus: ['charm'],
+        desc: 'The smile is painted on — immune to Charm.',
+    },
+    houseRules: {
+        id: 'houseRules', icon: '🐰', name: 'House Rules',
+        immuneStatus: ['discord'],
+        desc: 'The house always wins — immune to Discord.',
+    },
+    bloodInTheWater: {
+        id: 'bloodInTheWater', icon: '🦈', name: 'Blood in the Water',
+        immuneStatus: ['slow'],
+        desc: 'Never stops swimming — immune to Slow.',
+    },
+    faceted: {
+        id: 'faceted', icon: '💎', name: 'Faceted',
+        immuneStatus: ['stagger'],
+        desc: 'Cut from one crystal — immune to Stagger.',
+    },
+    carvedGrin: {
+        id: 'carvedGrin', icon: '🎃', name: 'Candlelit',
+        immuneStatus: ['burn'],
+        desc: 'There is already a candle inside — immune to Burn.',
+    },
+    wingman: {
+        id: 'wingman', icon: '🦸', name: 'Wingman',
+        immuneStatus: ['stun'],
+        desc: 'Always back on their feet for the hero — immune to Stun.',
+    },
+    sporeborn: {
+        id: 'sporeborn', icon: '🍄', name: 'Sporeborn',
+        immuneStatus: ['poison'],
+        desc: 'Made of the stuff — immune to Poison.',
+    },
+    deepRoots: {
+        id: 'deepRoots', icon: '🌳', name: 'Deep Roots',
+        immuneStatus: ['root'],
+        desc: 'Already rooted — immune to Root.',
+    },
+    tinStar: {
+        id: 'tinStar', icon: '⭐', name: 'Tin Star',
+        immuneStatus: ['charm'],
+        desc: 'The law does not take bribes — immune to Charm.',
+    },
+    /* 2026-09-30 — the new-race batch: the same immuneStatus hook. */
     sealedSuit: {
         id: 'sealedSuit', icon: '🧑‍🚀', name: 'Sealed Suit',
         immuneStatus: ['poison'],
@@ -3271,6 +3437,20 @@ const RACE_PASSIVES = {
     'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
     'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
     'popstar':       ['showMustGoOn'],        // 2026-09-22 — nobody cuts her mic
+    'starfish': ['regrowth'],   // 2026-09-30
+    'ringmaster': ['showman'],   // 2026-09-30
+    'bee queen': ['royalJelly'],   // 2026-09-30
+    'professor': ['tenured'],   // 2026-09-30
+    'deep sea fish': ['abyssEyes'],   // 2026-09-30
+    'clown': ['painted'],   // 2026-09-30
+    'bunny girl': ['houseRules'],   // 2026-09-30
+    'sharkman': ['bloodInTheWater'],   // 2026-09-30
+    'crystal guardian': ['faceted'],   // 2026-09-30
+    'jack o lantern': ['carvedGrin'],   // 2026-09-30
+    'sidekick': ['wingman'],   // 2026-09-30
+    'mushroom girl': ['sporeborn'],   // 2026-09-30
+    'tree person': ['deepRoots'],   // 2026-09-30
+    'sheriff': ['tinStar'],   // 2026-09-30
     'astronaut': ['sealedSuit'],   // 2026-09-30
     'krampus': ['alpineHide'],   // 2026-09-30
     'rabbit': ['quickFeet'],   // 2026-09-30
@@ -3349,7 +3529,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
+const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3425,6 +3605,20 @@ const RACE_CLASS = {
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
+    'starfish': 'healer',   // 2026-09-30
+    'ringmaster': 'specialist',   // 2026-09-30
+    'bee queen': 'caster',   // 2026-09-30
+    'professor': 'caster',   // 2026-09-30
+    'deep sea fish': 'assassin',   // 2026-09-30
+    'clown': 'assassin',   // 2026-09-30
+    'bunny girl': 'support',   // 2026-09-30
+    'sharkman': 'bruiser',   // 2026-09-30
+    'crystal guardian': 'tank',   // 2026-09-30
+    'jack o lantern': 'caster',   // 2026-09-30
+    'sidekick': 'hybrid',   // 2026-09-30
+    'mushroom girl': 'support',   // 2026-09-30
+    'tree person': 'tank',   // 2026-09-30
+    'sheriff': 'ranged',   // 2026-09-30
     'astronaut': 'ranged',   // 2026-09-30
     'krampus': 'bruiser',   // 2026-09-30
     'rabbit': 'assassin',   // 2026-09-30
@@ -3638,6 +3832,22 @@ const RACE_BASE_STATS = {
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
     'popstar':            { hp: 460, mp: 230, atk:  24, def:  30, mdef:  62, int:  74, awr:  52, spd:  62 },
     // 2026-09-30 — the new-race batch
+    'starfish': { hp: 560, mp: 220, atk: 26, def: 44, mdef: 60, int: 66, awr: 42, spd: 34 },
+    'ringmaster': { hp: 520, mp: 180, atk: 54, def: 38, mdef: 54, int: 58, awr: 70, spd: 52 },
+    'bee queen': { hp: 500, mp: 210, atk: 30, def: 36, mdef: 58, int: 76, awr: 56, spd: 50 },
+    'professor': { hp: 470, mp: 240, atk: 18, def: 28, mdef: 64, int: 84, awr: 60, spd: 36 },
+    'deep sea fish': { hp: 500, mp: 140, atk: 84, def: 34, mdef: 42, int: 40, awr: 56, spd: 58 },
+    // 2026-09-30 — the new-race batch
+    'clown': { hp: 490, mp: 130, atk: 82, def: 30, mdef: 44, int: 34, awr: 70, spd: 60 },
+    'bunny girl': { hp: 470, mp: 200, atk: 40, def: 30, mdef: 58, int: 62, awr: 64, spd: 62 },
+    'sharkman': { hp: 640, mp: 90, atk: 92, def: 46, mdef: 34, int: 16, awr: 42, spd: 56 },
+    'crystal guardian': { hp: 720, mp: 120, atk: 50, def: 84, mdef: 72, int: 40, awr: 42, spd: 30 },
+    'jack o lantern': { hp: 520, mp: 200, atk: 30, def: 36, mdef: 56, int: 76, awr: 42, spd: 40 },
+    'sidekick': { hp: 560, mp: 130, atk: 70, def: 50, mdef: 46, int: 36, awr: 64, spd: 58 },
+    'mushroom girl': { hp: 480, mp: 220, atk: 20, def: 32, mdef: 64, int: 70, awr: 56, spd: 40 },
+    'tree person': { hp: 780, mp: 110, atk: 60, def: 80, mdef: 60, int: 30, awr: 28, spd: 22 },
+    'sheriff': { hp: 560, mp: 110, atk: 76, def: 52, mdef: 44, int: 14, awr: 78, spd: 54 },
+    // 2026-09-30 — the new-race batch
     'astronaut': { hp: 540, mp: 150, atk: 64, def: 54, mdef: 50, int: 46, awr: 70, spd: 48 },
     'krampus': { hp: 650, mp: 110, atk: 90, def: 44, mdef: 42, int: 36, awr: 42, spd: 48 },
     'rabbit': { hp: 470, mp: 130, atk: 80, def: 28, mdef: 44, int: 40, awr: 72, spd: 66 },
@@ -3725,6 +3935,20 @@ const RACE_PHYSIQUE = {
     'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
     'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
     'popstar':             { h: 1.68, w: 54 },   // 2026-09-22 — in the heels
+    'starfish': { h: 1.7, w: 60 },   // 2026-09-30
+    'ringmaster': { h: 1.8, w: 78 },   // 2026-09-30
+    'bee queen': { h: 1.9, w: 70 },   // 2026-09-30
+    'professor': { h: 1.78, w: 76 },   // 2026-09-30
+    'deep sea fish': { h: 1.8, w: 90 },   // 2026-09-30
+    'clown': { h: 1.8, w: 70 },   // 2026-09-30
+    'bunny girl': { h: 1.72, w: 55 },   // 2026-09-30
+    'sharkman': { h: 2.0, w: 150 },   // 2026-09-30
+    'crystal guardian': { h: 2.0, w: 400 },   // 2026-09-30
+    'jack o lantern': { h: 1.9, w: 60 },   // 2026-09-30
+    'sidekick': { h: 1.75, w: 70 },   // 2026-09-30
+    'mushroom girl': { h: 1.6, w: 45 },   // 2026-09-30
+    'tree person': { h: 3.0, w: 900 },   // 2026-09-30
+    'sheriff': { h: 1.85, w: 85 },   // 2026-09-30
     'astronaut': { h: 1.8, w: 110 },   // 2026-09-30
     'krampus': { h: 2.1, w: 140 },   // 2026-09-30
     'rabbit': { h: 1.7, w: 45 },   // 2026-09-30
@@ -7038,6 +7262,24 @@ const RACE_ABILITIES = {
     'firefighter': [],
     'goblin': [],
     'hippie': [],
+    /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
+       rungs (RACE_TREE) are picked from them. */
+    'clown': [],
+    'bunny girl': [],
+    'sharkman': [],
+    'crystal guardian': [],
+    'jack o lantern': [],
+    'sidekick': [],
+    'mushroom girl': [],
+    'tree person': [],
+    'sheriff': [],
+    /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
+       rungs (RACE_TREE) are picked from them. */
+    'starfish': [],
+    'ringmaster': [],
+    'bee queen': [],
+    'professor': [],
+    'deep sea fish': [],
     /* DOOR_RACE_DESIGN.md §4 rev 3 (2026-09-20): the DOOR AGENT — THE GUN,
        NOT THE DOORS. The user dropped the placed-door mechanic (Knock Knock,
        Slam, Special Delivery, EXIT, The Long Way Round are gone; the door
@@ -11168,7 +11410,7 @@ const ACH_CATALOG = [
   // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
   // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
   // counts mastered champs (evaluated at match commit, stored high-water).
-  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 110], hw: true },   // top tier = the roster size (110 since the 2026-09-30 batch)
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 124], hw: true },   // top tier = the roster size (124 since the 2026-09-30 batches)
 ];
 
 // What a champ must reach on each mastery ladder to count as Mastered
@@ -16901,6 +17143,20 @@ const EW_RACE_BIOMES = {
     'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
     'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
     'popstar': ['stadium', 'urban', 'neon_city'],   // 2026-09-22 — the tour: the Bowl, Downtown, the Strip, the Grid
+    'starfish': ['deep_sea', 'tropical'],   // 2026-09-30
+    'ringmaster': ['stadium', 'urban'],   // 2026-09-30
+    'bee queen': ['ancient', 'forest'],   // 2026-09-30
+    'professor': ['underground_base', 'clandestine'],   // 2026-09-30
+    'deep sea fish': ['deep_sea'],   // 2026-09-30
+    'clown': ['gothic', 'clandestine'],   // 2026-09-30
+    'bunny girl': ['urban', 'neon_city'],   // 2026-09-30
+    'sharkman': ['deep_sea', 'tropical'],   // 2026-09-30
+    'crystal guardian': ['inner_earth', 'ancient'],   // 2026-09-30
+    'jack o lantern': ['ranch', 'gothic'],   // 2026-09-30
+    'sidekick': ['urban', 'stadium'],   // 2026-09-30
+    'mushroom girl': ['forest', 'astral'],   // 2026-09-30
+    'tree person': ['forest'],   // 2026-09-30
+    'sheriff': ['desert', 'ranch'],   // 2026-09-30
     'astronaut': ['space'],   // 2026-09-30
     'krampus': ['forest', 'polar'],   // 2026-09-30
     'rabbit': ['astral', 'forest'],   // 2026-09-30
@@ -17388,6 +17644,20 @@ const RACE_TREE = {
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceJudgmentBeam', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // 2026-09-27: the user's family export moved rungs off this race's families → rungs from its families
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
+    'starfish': ['heal1', 'raceTidalBlessing', 'raceTemporalTide', 'revive1'],   // 2026-09-30
+    'ringmaster': ['raceLasso', 'encore', 'raceSkinSwap', 'racePopStadiumShow'],   // 2026-09-30
+    'bee queen': ['raceVenomFang', 'raceChitinArmor', 'raceSplash', 'raceSwarmSignal'],   // 2026-09-30
+    'professor': ['raceSacredGeometry', 'raceZigguratProtocol', 'raceOvercharge', 'raceAncientMagic'],   // 2026-09-30
+    'deep sea fish': ['raceAuroraRay', 'raceInkCloud', 'raceDepthCharge', 'raceTidalSlam'],   // 2026-09-30
+    'clown': ['raceDarkJustice', 'raceFear', 'raceTrickRoom', 'raceNoMercy'],   // 2026-09-30
+    'bunny girl': ['racePopMicDrop', 'raceNimbleDodge', 'racePopSpotlight', 'raceMimicry'],   // 2026-09-30
+    'sharkman': ['raceBite', 'raceApexCharge', 'raceAmbushLunge', 'raceJurassicJaw'],   // 2026-09-30
+    'crystal guardian': ['racePrismMirror', 'raceStoneSkin', 'raceCalcify', 'rampart'],   // 2026-09-30
+    'jack o lantern': ['fire1', 'raceColdSpot', 'raceCurseOfMisfortune', 'meteor'],   // 2026-09-30
+    'sidekick': ['raceHeroicLeap', 'jackOfAll', 'sentaiTeamStrike', 'raceIndomitableWill'],   // 2026-09-30
+    'mushroom girl': ['raceHerbalRemedy', 'racePixieDust', 'raceSplash', 'sharedEgoDeath'],   // 2026-09-30
+    'tree person': ['raceTremorStomp', 'raceEarthenGrasp', 'trunkThrow', 'raceQuake'],   // 2026-09-30
+    'sheriff': ['doubleShot', 'raceFanTheHammer', 'racePoliceCuffs', 'raceHighNoon'],   // 2026-09-30
     'astronaut': ['raceGravityWell', 'raceGravityBoots', 'sharedGravityCrush', 'railgun'],   // 2026-09-30
     'krampus': ['raceLumpOfCoal', 'raceCliffCharge', 'raceNaughtyList', 'raceBaphometsRite'],   // 2026-09-30
     'rabbit': ['raceSparkle', 'raceNimbleDodge', 'raceTrickRoom', 'raceTimeRewind'],   // 2026-09-30
@@ -19985,6 +20255,20 @@ const RACE_FAMILIES = {
     'police officer': ['policetraining', 'weaponstraining', 'drivingskills'],
     politician: ['politics', 'deepstate', 'militarysupport'],
     popstar: ['stagepresence', 'sonic', 'seduction', 'musictheory'],
+    'starfish': ['water', 'deepsea', 'healingmagic', 'cosmic'],
+    'ringmaster': ['stagepresence', 'ropework', 'trickery', 'teamwork'],
+    'bee queen': ['insectoid', 'poison', 'agriculture', 'teamwork'],
+    'professor': ['ancientknowledge', 'chemistry', 'advancedtechnology', 'psychic'],
+    'deep sea fish': ['deepsea', 'water', 'light', 'poison'],
+    'clown': ['trickery', 'stagepresence', 'dirtyfighting', 'shadow'],
+    'bunny girl': ['seduction', 'athleticism', 'stagepresence', 'trickery'],
+    'sharkman': ['deepsea', 'water', 'beastabilities', 'apexpredator'],
+    'crystal guardian': ['livingstone', 'prismlattice', 'holydefense', 'earth'],
+    'jack o lantern': ['fire', 'agriculture', 'haunted', 'witchcraft'],
+    'sidekick': ['superheropowers', 'teamwork', 'athleticism', 'humangrit'],
+    'mushroom girl': ['psychadelic', 'nature', 'poison', 'fae'],
+    'tree person': ['nature', 'earth', 'agriculture', 'cryptid'],
+    'sheriff': ['weaponstraining', 'cowboyskills', 'policetraining', 'horsebackriding'],
     'astronaut': ['astronautcamp', 'advancedtechnology', 'cosmic', 'athleticism'],
     'krampus': ['christmasspirit', 'horns', 'blackmagic', 'winter'],
     'rabbit': ['athleticism', 'trickery', 'fae', 'temporal'],
@@ -20442,6 +20726,22 @@ const CAMPAIGN_RACE_PRICES = {
   'cult leader': 400,
   // 2026-09-22
   'popstar': 350,
+  // 2026-09-30
+  'starfish': 300,
+  'ringmaster': 350,
+  'bee queen': 400,
+  'professor': 300,
+  'deep sea fish': 350,
+  // 2026-09-30
+  'clown': 300,
+  'bunny girl': 300,
+  'sharkman': 350,
+  'crystal guardian': 400,
+  'jack o lantern': 300,
+  'sidekick': 250,
+  'mushroom girl': 300,
+  'tree person': 350,
+  'sheriff': 250,
   // 2026-09-30
   'astronaut': 300,
   'krampus': 400,
@@ -21582,6 +21882,20 @@ const DOOR_TEXT = {
         'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
         'popstar': 'Football Stadium',   // 2026-09-22 — the Bowl is the tour's first date
+        'starfish': 'Atlantis',   // 2026-09-30 — Atlantis
+        'ringmaster': 'Football Stadium',   // 2026-09-30 — Disaster City
+        'bee queen': 'Göbekli Tepe',   // 2026-09-30 — Leylines
+        'professor': 'D.U.M.B.',   // 2026-09-30 — The D.U.M.B.
+        'deep sea fish': 'The Bermuda Triangle',   // 2026-09-30 — The Deep
+        'clown': 'The Haunted House',   // 2026-09-30 — The Estate
+        'bunny girl': 'The Strip',   // 2026-09-30 — The Desert
+        'sharkman': 'The Bermuda Triangle',   // 2026-09-30 — The Deep
+        'crystal guardian': 'Agartha',   // 2026-09-30 — The Cavern
+        'jack o lantern': 'Skinwalker Ranch',   // 2026-09-30 — The Estate
+        'sidekick': 'Downtown',   // 2026-09-30 — Disaster City
+        'mushroom girl': 'Fairy Forest',   // 2026-09-30 — The Fairy Forest
+        'tree person': 'Fairy Forest',   // 2026-09-30 — The Woods
+        'sheriff': 'Area 51',   // 2026-09-30 — The Desert
         'astronaut': 'Spaceship',   // 2026-09-30 — Outer Space
         'krampus': 'Fairy Forest',   // 2026-09-30 — The Woods
         'rabbit': 'The Looking-Glass',   // 2026-09-30 — The Fairy Forest
