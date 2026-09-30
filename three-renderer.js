@@ -41940,7 +41940,17 @@ const ThreeRenderer = (function () {
     function _hqBuildMarks(room, info, G, U) {
         var marks = ((room.terrain && room.terrain.marks) || []).concat(info.marksX || []); if (!marks.length) return 0;   // + a kit's / a prefab's paint (E1)
         var matCache = {};
-        var matOf = function (col, a) { var k = col + '|' + (a || 1); if (!matCache[k]) { matCache[k] = new THREE.MeshLambertMaterial({ color: col, transparent: (a || 1) < 1, opacity: a || 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); } return matCache[k]; };
+        var matOf = function (col, a, tex) {
+            var k = col + '|' + (a || 1) + '|' + (tex || '');
+            if (!matCache[k]) {
+                /* THE BOARD (2026-09-30): a `tex` rect wears that sheet (one tile per room tile, top-projected) tinted by its colour — a chessboard's marble squares */
+                var map = tex ? (_hzTex(tex) || null) : null;
+                matCache[k] = map ? new THREE.MeshPhongMaterial({ map: map, color: col, shininess: 18, transparent: (a || 1) < 1, opacity: a || 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
+                                  : new THREE.MeshLambertMaterial({ color: col, transparent: (a || 1) < 1, opacity: a || 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+                if (map) matCache[k].emissive = new THREE.Color(col).multiplyScalar(0.08);
+            }
+            return matCache[k];
+        };
         var yAt = function (m, x, z) { return (typeof m.y === 'number') ? m.y + 0.025 : hqTerrainHeight(info, x, z); };
         var quad = function (cx, cz, w, d, yaw, y, mat) {
             var g = new THREE.PlaneGeometry(w * U, d * U); g.rotateX(-Math.PI / 2);
@@ -41949,15 +41959,15 @@ const ThreeRenderer = (function () {
         /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
         var bufs = {};
         var strip = function (cx, cz, w, d, yaw, y, ck) {
-            var B = bufs[ck] || (bufs[ck] = { P: [], I: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3;
-            [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (p) { B.P.push((cx + p[0] * c + p[1] * sn) * U, yy, (cz - p[0] * sn + p[1] * c) * U); });
+            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = info.tile || 1.75;
+            [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (p) { var wx = cx + p[0] * c + p[1] * sn, wz = cz - p[0] * sn + p[1] * c; B.P.push(wx * U, yy, wz * U); B.T.push(wx / tl, -wz / tl); });
             B.I.push(base, base + 2, base + 1, base, base + 3, base + 2);
         };
         var n = 0;
         marks.forEach(function (m) {
             try {
                 var col = (m.color != null) ? m.color : 0xffffff;
-                if (m.k === 'rect') { strip(m.x, m.z, m.w, m.d, -((m.rot || 0) * Math.PI / 180), yAt(m, m.x, m.z), col + '|' + (m.a || 1)); n++; }
+                if (m.k === 'rect') { strip(m.x, m.z, m.w, m.d, -((m.rot || 0) * Math.PI / 180), yAt(m, m.x, m.z), col + '|' + (m.a || 1) + '|' + (m.tex || '')); n++; }
                 else if (m.k === 'line') { var L = Math.hypot(m.x1 - m.x0, m.z1 - m.z0); if (L < 0.01) return; strip((m.x0 + m.x1) / 2, (m.z0 + m.z1) / 2, m.w || 0.12, L, Math.atan2(m.x1 - m.x0, m.z1 - m.z0), yAt(m, (m.x0 + m.x1) / 2, (m.z0 + m.z1) / 2) + 0.008, col + '|' + (m.a || 1)); n++; }   // a line rides over a painted rect (the goal line over the end zone)
                 else if (m.k === 'ring') {
                     var a0 = (m.a0 != null) ? m.a0 : 0, a1 = (m.a1 != null) ? m.a1 : 360, segs = Math.max(8, Math.ceil((a1 - a0) / 3)), rg = new THREE.RingGeometry((m.r - (m.w || 0.12) / 2) * U, (m.r + (m.w || 0.12) / 2) * U, segs, 1, 0, (a1 - a0) * Math.PI / 180);
@@ -41977,7 +41987,8 @@ const ThreeRenderer = (function () {
         Object.keys(bufs).forEach(function (ck) {
             var B = bufs[ck], parts = ck.split('|'), geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(B.P, 3)); geo.setIndex(B.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1)); geo.computeVertexNormals();
-            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1])); mesh.renderOrder = 2; mesh._ew_hqMarks = true; G.add(mesh);
+            if (parts[2]) geo.setAttribute('uv', new THREE.Float32BufferAttribute(B.T, 2));
+            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1], parts[2] || null)); mesh.renderOrder = 2; mesh._ew_hqMarks = true; G.add(mesh);
         });
         return n;
     }

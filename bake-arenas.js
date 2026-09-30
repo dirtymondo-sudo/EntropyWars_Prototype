@@ -37,7 +37,8 @@ const S = ev('HQ_ARENA_RULES.size');
 const OBST = ev('HQ_ARENA_RULES.obstacles');
 const FEAT = ev('HQ_ARENA_RULES.featureMax');
 
-const sites = META.filter(m => !m.isDelta && !m.facility && !m.area).map(m => m.id);
+const KEEP = new Set(ev('HQ_ARENA_RULES.keep') || []);   // the sites that keep their Δ board (no pick written)
+const sites = META.filter(m => !m.isDelta && !m.facility && !m.area && !KEEP.has(m.id)).map(m => m.id);
 const bySite = {};
 for (const id of Object.keys(ROOMS)) {
     const r = ROOMS[id];
