@@ -37,7 +37,7 @@ and do an overall tactical-JRPG audit (synergies, many viable strategies, balanc
 3. **Synthesis + critic** — a synthesis agent writes the front matter (`00-front.md`: verdict, principles, the
    3-vs-4-tier recommendation, master change tables, race pools after the plan, team archetypes, implementation
    order, open questions), then a completeness critic checks every family and race has a verdict and the tables
-   agree with the sections, with one fill round. **If `SPELL_FAMILY_AUDIT_PLAN.md` still opens with a
+   agree with the sections, with one fill round. **The run was stopped at this step on mondo's call (2026-09-30): no front matter exists yet. The design-skeptic pass on `races-1` and `races-3` was interrupted mid-edit. If `SPELL_FAMILY_AUDIT_PLAN.md` still opens with a
    "front matter pending" note, this step did not land before the session ended — see §6 to resume.**
 
 ## 3. Headline findings
