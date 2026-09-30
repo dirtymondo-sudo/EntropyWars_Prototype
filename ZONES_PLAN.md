@@ -108,6 +108,11 @@ Room 1 ──── Path A ──────┬────── Room 2
 
 ### 2.3 The battle grid rules for a hand-built room
 
+*2026-09-30: EXPLORATION_BATTLES_PLAN.md (Phase 1) retires the fixed 8×8 window: the battle is the room's own
+lattice (whole under 24 tiles a side, a 24×24 crop above), and the "one clear 8×8 patch" rule becomes "enough
+seats" (its §7 lists every amendment to this section, §4 and the E7 audit). Until that phase merges, the rows
+below stand.*
+
 - Cell 1.75 m; the arena is 8×8 = 14 m × 14 m (`HQ_FIELD_RULES`, data.js ~51298). No bigger arena
   exists in the code (OPEN_WORLD_PLAN §5.6's 12/16 windows were never built).
 - A room of interest: at least 12×12 tiles, with one 8×8 patch where nothing stands taller than 2.2 m
