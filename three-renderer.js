@@ -42613,7 +42613,7 @@ const ThreeRenderer = (function () {
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.side || info.cliff) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
-            var n = Math.max(1, Math.round(L / (2 * res))), rise = (f.h1 - f.h0) / n, depth = L / n, base = Math.min(f.h0, f.h1) - 0.05;
+            var n = Math.max(1, Math.round(L / res)), rise = (f.h1 - f.h0) / n, depth = L / n, base = Math.min(f.h0, f.h1) - 0.05;
             var runW = (f.runner && f.runner.w) ? Math.min(f.w - 0.2, f.runner.w) : 0, runMat = null;
             if (runW > 0) { runMat = new THREE.MeshPhongMaterial({ color: (f.runner.color != null) ? f.runner.color : 0x3558d8, shininess: 6 }); runMat.emissive = new THREE.Color(runMat.color).multiplyScalar(0.12); }
             for (var k = 0; k < n; k++) {
@@ -42642,7 +42642,11 @@ const ThreeRenderer = (function () {
         var puff = function (x, y, z, r, sy, sx, sz) {
             var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
         };
+        var voidRock = !!(info.void || (room.terrain && room.terrain.void));
         floats.forEach(function (f) {
+            /* THE ISLANDS (LEVEL_DESIGN_PLAN §5): a float plateau in a VOID room (or one wearing `under: 'rock'`) hangs a stepped rock
+               underside that tapers to a point, not a cloud (`under: 'cloud'` keeps the puffs) */
+            if (f.k === 'plateau' && (f.under === 'rock' || (voidRock && f.under !== 'cloud'))) { _hqBuildIslandRock(room, info, f, G, TM, rng); return; }
             if (f.k === 'plateau') {
                 var top = f.h - 0.12, round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, thick = Math.max(0.6, Math.min(1.6, 0.18 * Math.max(rx, rz) + 0.4));
                 var body;
@@ -42671,6 +42675,66 @@ const ThreeRenderer = (function () {
                     var pm = puff(cx + (rng() - 0.5) * f.w * 0.3, topY - thick2 - pr2 * 0.45, cz + (rng() - 0.5) * depth * 0.2, pr2, 0.55, f.w / (2 * pr2) + 0.3, 1.0); pm.rotation.y = yaw;
                 }
             }
+        });
+    }
+    /* THE ISLANDS (LEVEL_DESIGN_PLAN §5, 2026-09-30 — the reference: "islands of stepped rock hanging in a starfield, flat tops,
+       undersides that taper to a point"): one float plateau's rock. The outline (the ellipse, or the rect's perimeter) at the
+       top, then rings stepping in and down — a ledge every other ring — to a point `depth` m under the top (0.8 × the island's
+       reach + 2, 3…14 m, or the row's `depth`), in the room's `void.rock` sheet (else the cliff sheet); a cap in the floor sheet
+       just under the top fills the rim the field cuts away (the flank). Seeded by the island's place, so a rebuild is the same rock. */
+    function _hqBuildIslandRock(room, info, f, G, TM, rng0) {
+        var U = _hqUnits(), V = (room.terrain && room.terrain.void) || {};
+        var rkey = f.rock || V.rock || info.cliff, fkey = f.top || info.floor;
+        var rockMat = new THREE.MeshPhongMaterial({ map: _hzTex(rkey) || null, color: 0xffffff, shininess: 6, flatShading: true }); rockMat.emissive = new THREE.Color(0x1a1024);
+        var capMat = new THREE.MeshPhongMaterial({ map: _hzTex(fkey) || null, color: (room.shell && room.shell.floorColor != null) ? room.shell.floorColor : 0xffffff, shininess: 4 }); capMat.emissive = new THREE.Color(0x120c1c);
+        var seed = Math.abs(Math.round(f.x * 73.1 + f.z * 19.7 + f.h * 7.3)) + 11, rng = function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+        var round = !!f.r, rx = round ? f.r : f.w / 2, rz = round ? (f.rz || f.r) : f.d / 2, rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), sn = Math.sin(rot);
+        var top = f.h - 0.02, depth = (f.depth != null) ? +f.depth : Math.max(3, Math.min(14, 0.8 * Math.max(rx, rz) + 2));
+        /* the outline, local (x, z) about the centre */
+        var P = [];
+        if (round) { var nP = Math.max(12, Math.round(2 * Math.PI * Math.max(rx, rz) / 1.1)); for (var i = 0; i < nP; i++) { var a = i / nP * Math.PI * 2; P.push([Math.cos(a) * (rx + 0.08), Math.sin(a) * (rz + 0.08)]); } }
+        else {
+            var ex = rx + 0.08, ez = rz + 0.08, per = [[-ex, -ez], [ex, -ez], [ex, ez], [-ex, ez]];
+            for (var e = 0; e < 4; e++) { var A = per[e], B = per[(e + 1) % 4], L = Math.hypot(B[0] - A[0], B[1] - A[1]), nS = Math.max(2, Math.round(L / 1.2)); for (var t = 0; t < nS; t++) P.push([A[0] + (B[0] - A[0]) * t / nS, A[1] + (B[1] - A[1]) * t / nS]); }
+        }
+        var n = P.length, K = 6, pos = [], uv = [], idx = [];
+        /* the rings: k = 0 the top edge; a LEDGE ring (in, barely down) then a FACE ring (down) — stepped rock */
+        var ringScale = [1.0, 1.0, 0.86, 0.8, 0.58, 0.5, 0.26], ringDrop = [0, 0.55, 0.75, 0.42, 0.55, 0.78, 0.97];
+        for (var k = 0; k <= K; k++) {
+            var sc = ringScale[k], y = top - depth * ringDrop[k];
+            for (var m = 0; m < n; m++) {
+                var jr = (k > 1) ? 1 + (rng() - 0.5) * 0.22 : 1, lx = P[m][0] * sc * jr, lz = P[m][1] * sc * jr, yy = y + ((k > 0) ? (rng() - 0.5) * Math.min(0.9, depth * 0.06) : 0);
+                var wx = f.x + lx * c - lz * sn, wz = f.z + lx * sn + lz * c;
+                pos.push(wx * U, yy * U + 0.3, wz * U); uv.push((wx + wz) * U / TM, yy * U / TM);
+            }
+        }
+        for (k = 0; k < K; k++) for (m = 0; m < n; m++) { var a0 = k * n + m, b0 = k * n + (m + 1) % n, c0 = a0 + n, d0 = b0 + n; idx.push(a0, b0, c0, b0, d0, c0); }
+        var tip = pos.length / 3; pos.push(f.x * U, (top - depth * 1.08) * U + 0.3, f.z * U); uv.push(0, (top - depth) * U / TM);
+        for (m = 0; m < n; m++) idx.push(K * n + m, K * n + (m + 1) % n, tip);
+        var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+        var body = new THREE.Mesh(g, rockMat); body.renderOrder = 1; body.castShadow = true; body.receiveShadow = true; G.add(body);
+        /* the cap: a fan in the floor sheet just under the top (the field's own top covers its middle) */
+        var cp = [f.x * U, (top - 0.02) * U + 0.3, f.z * U], cu = [f.x * U / TM, f.z * U / TM], ci = [];
+        for (m = 0; m < n; m++) { var wx2 = f.x + P[m][0] * c - P[m][1] * sn, wz2 = f.z + P[m][0] * sn + P[m][1] * c; cp.push(wx2 * U, (top - 0.02) * U + 0.3, wz2 * U); cu.push(wx2 * U / TM, wz2 * U / TM); }
+        for (m = 0; m < n; m++) ci.push(0, 1 + (m + 1) % n, 1 + m);
+        var cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(cp, 3)); cg.setAttribute('uv', new THREE.Float32BufferAttribute(cu, 2)); cg.setIndex(ci); cg.computeVertexNormals();
+        if (cg.attributes.normal && cg.attributes.normal.getY(0) < 0) { ci.reverse(); cg.setIndex(ci); cg.computeVertexNormals(); }
+        var cap = new THREE.Mesh(cg, capMat); cap.renderOrder = 1; cap.receiveShadow = true; G.add(cap);
+    }
+    /* THE VOID's glow (LEVEL_DESIGN_PLAN §5): a wide soft disc far under the islands in the void's colour, and a second, fainter and
+       lower, so the fall has somewhere to look — never a floor (nothing stands on it, the walker returns before it) */
+    function _hqBuildVoidGlow(room, info, G) {
+        var U = _hqUnits(), V = info.void, S = room.shell || {};
+        var cv = document.createElement('canvas'); cv.width = cv.height = 256;
+        var cx = cv.getContext('2d'), gr = cx.createRadialGradient(128, 128, 4, 128, 128, 128);
+        var col = new THREE.Color(V.glow), css = function (a) { return 'rgba(' + Math.round(col.r * 255) + ',' + Math.round(col.g * 255) + ',' + Math.round(col.b * 255) + ',' + a + ')'; };
+        gr.addColorStop(0, css(0.85)); gr.addColorStop(0.35, css(0.45)); gr.addColorStop(0.75, css(0.12)); gr.addColorStop(1, css(0));
+        cx.fillStyle = gr; cx.fillRect(0, 0, 256, 256);
+        var tex = new THREE.CanvasTexture(cv);
+        var span = Math.max(S.w || 60, S.d || 60) * 1.6;
+        [[V.glowY, 1.0, 1.0], [V.glowY - 30, 1.8, 0.55]].forEach(function (L) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(span * L[1] * U, span * L[1] * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: L[2], depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+            m.rotation.x = -Math.PI / 2; m.position.set(0, L[0] * U + 0.3, 0); m.renderOrder = 0; G.add(m);
         });
     }
     /* THE FLOATING GROUND (EDITOR_PLAN §4.4 + §5.4, E3 — 2026-09-29): a room whose `terrain.float` is set ({ depth } or true), or a zone
@@ -43152,6 +43216,7 @@ const ThreeRenderer = (function () {
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
         var floats = (info.floats || []).concat(info.builts || []);   // THE BUILT STAIR (2026-09-30): a built flight cuts the field away like a floating one
         var underFloat = function (mx, mz) {
+            if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return true;   // THE VOID: no ground drawn between the islands
             for (var fi = 0; fi < floats.length; fi++) {
                 var f = floats[fi];
                 if (f.k === 'plateau') {
@@ -43182,7 +43247,7 @@ const ThreeRenderer = (function () {
                 var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
-            if (!underEscalator && !(floats.length && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            if (!underEscalator && !((floats.length || info.void) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -43299,6 +43364,7 @@ const ThreeRenderer = (function () {
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
         if (info.floats && info.floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, info.floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         if (info.builts && info.builts.length) { try { _hqBuildBuiltStairs(room, info, G, TM); } catch (e) { console.warn('[HQ] the built stairs failed', e); } }
+        if (info.void) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
@@ -55579,10 +55645,12 @@ const ThreeRenderer = (function () {
                 /* a furniture top under the feet is a floor too (2026-09-05) */
                 var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
                 if (bf !== null && bf > land) land = bf;
+                if (_hq.terrain && _hq.terrain.void && (bf === null || bf < land) && hqTerrainVoidAt(_hq.terrain, pl.x, pl.z)) land = -Infinity;   // THE VOID: nothing under the feet
                 if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
             }
             pl.y = ny;
-        }
+            if (_hq.terrain && _hq.terrain.void && pl.y < _hq.terrain.void.fall) { _hqVoidReturn(pl); return; }
+        } else if (!pl.air && _hq.terrain && _hq.terrain.void && !H.paused) pl._voidSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId };   // THE VOID: the last ground stood on
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 14));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         if (pl._hopped) pl._hopped = false;   // a hop set the velocity itself — the jump across the room is not a speed
@@ -55600,6 +55668,24 @@ const ThreeRenderer = (function () {
            hover-look and pointer lock both steer it — so walking never swings
            the view behind the runner any more (that swing, kicking in 1.4 s
            after the last mouse move, was the "snap" that fought mouse-look). */
+    }
+    /* THE VOID (LEVEL_DESIGN_PLAN §5): a body fallen past the room's `void.fall` comes back on the last ground it stood on — a quick
+       fade to the void's colour and back, no damage, the camera following (the jump is the only way off an island: hqTerrainFeet
+       never lets the walker step onto the void, so the spot is the takeoff) */
+    function _hqVoidReturn(pl) {
+        var sp = pl._voidSafe, V = (_hq.terrain && _hq.terrain.void) || {};
+        if (sp && sp.rid !== _hq.terrain.roomId) sp = null;
+        if (!sp) { var rm = (_hq.terrain && _hq.terrain.room) || {}; var s0 = rm.spawn || { x: 0, z: 0 }; sp = { x: s0.x, z: s0.z, y: hqTerrainFeet(_hq.terrain, s0.x, s0.z, null) || 0, yaw: pl.yaw }; }
+        pl.x = sp.x; pl.z = sp.z; pl.y = sp.y + 0.02; pl.visY = pl.y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.velX = pl.velY = pl.velZ = 0;
+        if (pl.entry) pl.entry.group.position.set(pl.x * _hqUnits(), pl.visY * _hqUnits(), pl.z * _hqUnits());
+        try {
+            var el = document.getElementById('ew-void-fade');
+            if (!el) { el = document.createElement('div'); el.id = 'ew-void-fade'; el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;transition:opacity 0.45s ease-out'; document.body.appendChild(el); }
+            var col = new THREE.Color(V.glow != null ? V.glow : 0x8a4cff);
+            el.style.background = 'radial-gradient(circle at 50% 55%, rgba(' + Math.round(col.r * 255) + ',' + Math.round(col.g * 255) + ',' + Math.round(col.b * 255) + ',0.9), rgba(8,4,16,1) 70%)';
+            el.style.transition = 'none'; el.style.opacity = '1'; void el.offsetWidth;
+            el.style.transition = 'opacity 0.55s ease-out'; el.style.opacity = '0';
+        } catch (e) {}
     }
     /* a walking move's new floor height: treads and low steps are walked
        (visY eases them), an EDGE is stepped off — the walker goes airborne
