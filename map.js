@@ -1195,37 +1195,6 @@
             } catch (e) { console.warn('[HQ] the intake could not file the agent', e); return null; }
         };
         window._hqIntakeNeeded = _hqIntakeNeeded;
-        /* THE FOLLOWERS (EXPLORATION_BATTLES_PLAN §4, 2026-09-30): the first shift's other fit members walk behind the lead
-           (data.js hqPartyFollowers); the officer's own row, when it follows, walks as the officer's avatar (the chair's rules) */
-        /* THE HAND-BACK: the fight's end rows for the next enter only (each follower starts on its own end cell) */
-        let _hqFollowEnd = null;
-        function _hqFollowers(profile) {
-            const endRes = _hqFollowEnd ? { end: _hqFollowEnd } : null;
-            _hqFollowEnd = null;
-            const out = _hqFollowersList(profile);
-            if (endRes && typeof window.hqEncounterEndSpot === 'function') out.forEach(f => { try { const at = window.hqEncounterEndSpot(endRes, f.id); if (at) f.at = { x: at.x, z: at.z, face: at.face }; } catch (e) {} });
-            return out;
-        }
-        function _hqFollowersList(profile) {
-            if (window.EW_HQ_NO_FOLLOWERS || typeof window.hqPartyFollowers !== 'function') return [];
-            let list = [];
-            try { list = window.hqPartyFollowers(profile) || []; } catch (e) { list = []; }
-            const out = [];
-            list.forEach(f => {
-                try {
-                    if (f.you) { const av = _hqAvatar(profile, { officer: true }); if (av) out.push(Object.assign({ id: f.id, name: f.name }, av)); return; }
-                    if (typeof getRace3DModel !== 'function') return;
-                    if (f.appearance && typeof getCharacterAppearanceModel === 'function' && getCharacterAppearanceModel(f.race, f.gender, f.appearance)) { out.push(f); return; }
-                    if (getRace3DModel(f.race, f.gender)) { out.push(Object.assign({}, f, { appearance: null })); return; }
-                    const alt = f.gender === 'male' ? 'female' : 'male';
-                    if (getRace3DModel(f.race, alt)) out.push(Object.assign({}, f, { gender: alt, appearance: null }));
-                } catch (e) {}
-            });
-            return out;
-        }
-        window._hqRefreshFollowers = function () {
-            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active() && ThreeRenderer.hq.setFollowers) ThreeRenderer.hq.setFollowers(_hqFollowers(_hqProfile())); } catch (e) { console.warn('[HQ] the followers could not be refreshed', e); }
-        };
         function _hqAvatar(profile, aopts) {
             const ov = window.EW_HQ_AVATAR;
             if (typeof ov === 'string' && ov !== 'vessel') return { race: ov };
@@ -1594,7 +1563,6 @@
                 let ok = false;
                 try { ok = ThreeRenderer.hq.enter({
                     host, room: roomId, profile, avatar: _hqAvatar(profile),
-                    followers: _hqFollowers(profile),   // THE FOLLOWERS (EXPLORATION_BATTLES §4)
                     onPrompt: _hqSetPrompt,
                     onInteract: _hqInteractTarget,
                     onEnterDoor: _hqWalkThroughDoor,
@@ -2022,12 +1990,11 @@
                in front of you stands empty (THE CLEARED ROOM). Only in the strike's own room; else the console as before. */
             if (encRes && encRes.won && enabled && _hqHome && encRes.room && encRes.room === _hqLastRoom && typeof window.hqEncounterReturnSpot === 'function') {
                 /* THE HAND-BACK (EXPLORATION_BATTLES §5.2): the lead stands on its own end-of-fight cell (the swing spot when it
-                   did not end standing), the followers on theirs (_hqFollowers `at`) */
+                   did not end standing); the rest of the party is back in the bag (no followers since 2026-09-30) */
                 let spot = null;
                 try { spot = (typeof window.hqEncounterEndSpot === 'function') ? window.hqEncounterEndSpot(encRes, null) : null; } catch (e) { spot = null; }
                 if (!spot) spot = window.hqEncounterReturnSpot(encRes);
                 if (spot) _hqLastDoor = spot;
-                _hqFollowEnd = (encRes.end && Array.isArray(encRes.end.units)) ? encRes.end : null;
             }
             /* THE WAY BACK (2026-09-22): the debrief's held frame + the camera's eye (battle.js _encReturnLeave) — the
                building is entered SEAMLESSLY under it, no load card; a return that never enters the building drops it */
@@ -2035,7 +2002,7 @@
             window._hqReturnArrive = null;
             const arriveDrop = () => { try { if (arrive && arrive.drop) arrive.drop(); } catch (e) {} };
             if (enabled && _hqHome) {
-                if (alive && _hqSuspended && window._hqResume()) { _hqFollowEnd = null; arriveDrop(); return true; }
+                if (alive && _hqSuspended && window._hqResume()) { arriveDrop(); return true; }
                 if (alive) window._hqLeave();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: (arrive && arrive.eye) ? arrive : null })) {
                     if (encRes) setTimeout(() => { try {
@@ -2158,7 +2125,6 @@
                 const out = fn(p);
                 PS.saveProfile(idx, p);
                 if (_hqPause) _hqPause.units = {};
-                try { window._hqRefreshFollowers(); } catch (e) {}   // THE FOLLOWERS: a swap / a heal / a revive re-forms the file (unchanged = no respawn)
                 return out;
             } catch (e) { console.warn('[HQ] party', e); return { ok: false, reason: 'error' }; }
         }
@@ -4294,7 +4260,6 @@
                     else {
                         const feet = [{ x: ev.x, z: ev.z }, { x: ev.target.x, z: ev.target.z }];
                         (Array.isArray(ev.target.group) ? ev.target.group : []).forEach(g => { if (g && isFinite(+g.x) && isFinite(+g.z)) feet.push({ x: +g.x, z: +g.z }); });
-                        (Array.isArray(ev.party) ? ev.party : []).forEach(g => { if (g && isFinite(+g.x) && isFinite(+g.z)) feet.push({ x: +g.x, z: +g.z }); });   // THE FOLLOWERS (§4.4): the file you walked in is on the field
                         win = window.hqFieldFrame(_hqCurRoom, feet);
                     }
                 } catch (e) { console.warn('[HQ] the field frame failed', e); win = null; }
