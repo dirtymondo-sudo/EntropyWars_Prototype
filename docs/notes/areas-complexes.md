@@ -1800,3 +1800,8 @@ plan-gen catacombs and garden); the Astral sea as floating islands over `terrain
 three-renderer _hqBuildIslandRock / _hqBuildVoidGlow / _hqVoidReturn); the spaceship as staged zone `derelict` (ground
 `space`). Gotcha: a prop over a terrain `wall` stands on the wall's top (hqTerrainFeet), so dress shelf cores thin (t 0.2)
 with the shelves beside them. Built flights step one tread per 0.5 m cell so the grid solver sees every riser.
+L4 + L5 (2026-09-30): the sewers, running tunnels, holding cells, old workings, Dead Man's Cave (box now 42 × 28),
+Camelot's dungeon, the Cavern's gallery and Hell's pit are `plan` layouts (spaces + halls). Gotchas: a `deck` over a
+walkable floor needs `over: true` (a plain deck is a height and cuts the floor under it in two); a flight's high end must sit
+0.7 m inside its tier and its forced band past the end must land on the tier, or the solver finds a floor sliver (a trap);
+wall props (`wall: 'n'` …) hang on the shell wall, so a plan that puts rock against that stretch hides them.

@@ -176,3 +176,24 @@ built (sewers, catacombs, dungeons, bases, the ship), `look: 'rock'` with a tall
     (it is outside), but the rooms gen's 3 m banks are gone (flat plate, crisp 0.15 edges, the dorsal fin a wall in three
     pieces). The deck ⇄ hold cargo hatch was removed: it was a card between two rooms of the ship.
   - Arenas re-baked (`node bake-arenas.js`) for the basilica and the deck.
+- 2026-09-30, L4 + L5 in one delivery (the mazes): every room below is now a `plan` gen (`space` / `hall` rows the editor
+  can open), `forceGrow: -0.3` (-0.4 in the rock rooms) so a flight's forced band is the flight's own width.
+  - **The Sewers** (walls, bricks): four rooms of interest (pump room, junction, cistern, outfall) and side rooms 1-5,
+    3.4 m culverts at right angles, the 5 m main culvert with its channel; three loops, three dead ends. The inspection
+    gallery and the pump gantry are built flights.
+  - **The running tunnels** (walls, concrete): the loop line with square corners, the crossover down the middle, the
+    depot on its own spur, the ghost station on the south leg, maintenance passages and side rooms 1-7 between the tracks.
+  - **The holding cells**: six cells off the corridor (each one mouth), the guardroom, the tank, the property room, side
+    rooms 1-3, a back passage; two loops.
+  - **The old workings** (rock): pump chamber, flood, chimney chamber, three dead-end side chambers, 3 m drifts, one loop.
+  - **Dead Man's Cave**: the box grew from 35 × 10.5 to 42 × 28; the channel runs straight through three chambers, side
+    chambers 1-3, the culvert pipe south; one loop.
+  - **Camelot's dungeon** (walls, brick): stair foot, workshop, cistern, well alcove, a cell passage with three cells,
+    the ossuary (dead end), the gaoler's room with its ledge; two loops.
+  - **The Cavern's gallery** (rock): the way in, the hall, the north chamber, the river chamber, the grotto, with the
+    terrace / west shelf / high tier / spur / hot shelf kept; the rope bridge is `over: true` (the walker passes under it);
+    the mouth door moved to z 16.5 so it clears the river.
+  - **Hell's pit** (rock): the rim, the switchback cut down the west wall, the bowl, the lava river in its channel, the
+    colossus chamber, the warm ledge and its causeway, the gallery ledge and its alcove; the east crawl loops to the channel.
+  - The small cavern rooms (vent, blast, adit, mouth, oubliette) stay single chambers.
+  - Tool used: a script moves every floor prop / person / spawn left inside rock to the nearest open cell.
