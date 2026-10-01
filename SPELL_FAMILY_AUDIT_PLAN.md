@@ -1614,7 +1614,9 @@ each archetype needs a different pair of families, and each has at least two ans
 
 > **Progress (2026-09-30):** Batch A + A2 DONE (data.js + battle.js; §10 taken at the recommendations, Q2 included). Log and
 > the B / D carry-over list: `docs/spell-audit/BATCH_A_LOG.md`. Batch B DONE (log: `docs/spell-audit/BATCH_B_LOG.md`). Batch C DONE (log:
-> `docs/spell-audit/BATCH_C_LOG.md`, with the rows and clauses it hands to D). Next: Batch D.
+> `docs/spell-audit/BATCH_C_LOG.md`, with the rows and clauses it hands to D). Batch D DONE (2026-10-01, log:
+> `docs/spell-audit/BATCH_D_LOG.md`; re-dump in `docs/spell-audit/data-after/`; SPELL_CATALOGUE.md regenerated). The plan is
+> built; what is left is mondo's taste pass and playtest.
 
 Every batch goes through the Spell Library (Settings → Developer) as one export → `node bake-spell-mods.js
 <export.json>` → `node --check data.js` → deliver `data.js` (R2) + `index.html` with a fresh `?v=` token (RULE #1b; `npm

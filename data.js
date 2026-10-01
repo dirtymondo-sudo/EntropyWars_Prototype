@@ -20494,7 +20494,7 @@ const SPELL_UPGRADES = {
                     desc: 'Restores 40% of max HP and cleanses 1 debuff.', patch: { set: { selfHealPct: 0.4, cleanse: 1 } } },
     upBottomless: { id: 'upBottomless', name: 'Bottomless',   glyph: '🍖', sp: 1, roles: [], families: ['ghoulish'],
                     rows: ['raceCarrionFeast'], requires: 'cooldown', excl: null, auto: true,
-                    desc: 'No cooldown.', patch: { set: { cooldownRounds: 0 } } },
+                    desc: 'No cooldown, and the eaten unit\'s respawn is delayed 3 rounds.', patch: { set: { cooldownRounds: 0, corpseDelay: 3 } } },
     upRestless:   { id: 'upRestless',   name: 'Restless',     glyph: '👻', sp: 1, roles: [], families: ['haunted'],
                     rows: ['raceHaunt'], requires: 'status', excl: null, auto: true,
                     desc: 'When a Haunted target dies, Haunted jumps to its nearest ally for the rounds it had left.', patch: { statusPayload: { id: 'haunted', set: { restless: true } } } },
