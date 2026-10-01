@@ -1122,7 +1122,7 @@
                         (mark.dead || (mark.hp || 0) <= 0) ? 1 : 0);
                 }
                 for (const eff of (ds.statusEffects || [])) {
-                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null }, `${ds.spellName}: `, sourceUnit);
+                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null, ifTargetHas: eff.ifTargetHas || undefined }, `${ds.spellName}: `, sourceUnit);
                 }
                 /* #21 To Be Continued — the delayed hit LANDS: freeze the
                    victim mid-reaction, sepia grade, arrow banner, sting. The
@@ -1159,7 +1159,7 @@
                             (hit.dead || (hit.hp || 0) <= 0) ? 1 : 0);
                     }
                     for (const eff of (ds.statusEffects || [])) {
-                        if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null }, `${ds.spellName}: `, sourceUnit);
+                        if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null, ifTargetHas: eff.ifTargetHas || undefined }, `${ds.spellName}: `, sourceUnit);
                     }
                 }
             }
