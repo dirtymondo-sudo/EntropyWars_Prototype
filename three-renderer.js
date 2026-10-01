@@ -33702,7 +33702,7 @@ const ThreeRenderer = (function () {
         return hid;
     }
     /* why a drawn piece is its own draw call (the sampled frame's scene pass): the static batch's own rules, in its order */
-    function _lensWhy(o) {
+    function _lensWhy(o, kind) {
         if (o._ew_hqBatch) return null;
         var root = null, flag = null;
         for (var q = o; q; q = q.parent) {
@@ -33710,7 +33710,7 @@ const ThreeRenderer = (function () {
             if (!flag) for (var k in q) if (_HQ_BATCH_FLAG_OFF[k] && q[k]) { flag = k; break; }
         }
         if (!root || root === 'chars' || root === 'fx') return null;
-        if (root !== 'terrain') return root + ': ' + (o.isMesh && !o.isSkinnedMesh && o.geometry && !o.geometry._ew_shared ? 'own geometry' : 'one of a kind');
+        if (root !== 'terrain') return (kind || root) + ': ' + (o.isMesh && !o.isSkinnedMesh && o.geometry && !o.geometry._ew_shared ? 'own geometry' : 'one of a kind');
         var w = (function () {
             if (flag) return 'flag ' + flag;
             if (!o.isMesh) return o.type;
@@ -33727,7 +33727,7 @@ const ThreeRenderer = (function () {
             if (!_hqBatchGeoSig(o.geometry)) return 'geometry kind';
             return _hq ? 'alone in its look / not yet merged' : 'battle (no static batch)';
         })();
-        return 'terrain: ' + w;
+        return (kind || 'terrain') + ': ' + w;
     }
     function _lensHook(on) {
         var L = _lens;
@@ -33771,7 +33771,7 @@ const ThreeRenderer = (function () {
                     if (object.isInstancedMesh) { F.inst++; F.instances += object.count; }
                 }
                 if (F.detail && object && pass !== 'post') { var d = F.detail.get(object); if (!d) F.detail.set(object, d = [0, 0, kind]); d[0] += dc; d[1] += dt; }
-                if (F.detail && object && pass === 'scene' && !object.isInstancedMesh) { var wy = null; try { wy = _lensWhy(object); } catch (e) {} if (wy) F.why[wy] = (F.why[wy] || 0) + dc; }
+                if (F.detail && object && pass === 'scene' && !object.isInstancedMesh) { var wy = null; try { wy = _lensWhy(object, kind); } catch (e) {} if (wy) F.why[wy] = (F.why[wy] || 0) + dc; }
             };
             R.shadowMap.render = function () {
                 var L2 = _lens;
@@ -57108,15 +57108,22 @@ const ThreeRenderer = (function () {
     /* ── THE PROP PASS (PREMIUM_POLISH_PLAN §5) + THE CAMERA PASS (§6), 2026-09-21 ── */
     /* 2.3 THE CONTACT DISC: a soft dark disc under every floor prop's foot (the battle draws the same `shadowProxy` under its
        sprites) — a chair with no shadow floats; with the disc AND the map it stands. One cached radial canvas. */
-    var _hqContactTex = null;
+    var _hqContactTex = null, _hqContactShared = {};
     function _hqContactDisc(rx, rz, U) {
         if (!_hqContactTex) {
             var c = document.createElement('canvas'); c.width = c.height = 64; var g = c.getContext('2d');
             var gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,0.92)'); gr.addColorStop(0.42, 'rgba(0,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
             g.fillStyle = gr; g.fillRect(0, 0, 64, 64); _hqContactTex = new THREE.CanvasTexture(c);
         }
-        var LR = _hqLightRules(), AO = LR.ao || {};
-        var m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: _hqContactTex, transparent: true, depthWrite: false, opacity: (AO.contact != null) ? AO.contact : 0.5, color: 0x000000, fog: false }));
+        var LR = _hqLightRules(), AO = LR.ao || {}, op = (AO.contact != null) ? AO.contact : 0.5;
+        /* THE PERF PASS 2 (2026-10-01): ONE plane and ONE material for every disc (each built its own pair: 325 draws in
+           Downtown), so the instance pass draws a square's discs as one batch — a kicked prop's disc rides its copy */
+        var D = _hqContactShared[op];
+        if (!D) {
+            D = _hqContactShared[op] = { g: new THREE.PlaneGeometry(1, 1), m: new THREE.MeshBasicMaterial({ map: _hqContactTex, transparent: true, depthWrite: false, opacity: op, color: 0x000000, fog: false }) };
+            D.g._ew_shared = true; D.m._ew_shared = true;
+        }
+        var m = new THREE.Mesh(D.g, D.m);
         m.rotation.x = -Math.PI / 2; m.scale.set(rx * 2 * U, rz * 2 * U, 1); m.position.y = 0.012 * U; m.renderOrder = 1;
         m._ew_hqPart = 'fx'; m._ew_shadowFlagged = true; m.castShadow = false; m.receiveShadow = false; m._ew_contact = true;
         return m;
@@ -59880,7 +59887,14 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2 };
+    var HQ_BATCH = { waitMs: 1500, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
+    /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
+       procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
+       had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
+       part's PROP group (R.batchP: the boxes, cylinders and plates the props are built from; a piece the instance pass can
+       take — shared geometry and material — stays the instance pass's), and an additive glow that writes no depth merges
+       too (its sum does not care about order). A merged piece re-parented or removed (a find picked up) breaks its batch
+       at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
                                _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1 };
@@ -59934,7 +59948,7 @@ const ThreeRenderer = (function () {
         var m = o.material; if (!m || Array.isArray(m) || m.isShaderMaterial || m.isRawShaderMaterial || !m.visible || m.wireframe) return false;
         if (o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
         if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return false;   // a patched shader may read the object's own space
-        if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false)) return false;   // a see-through piece is sorted by its own centre: only a cut-out merges
+        if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false) && !(m.blending === THREE.AdditiveBlending && m.depthWrite === false)) return false;   // a see-through piece is sorted by its own centre: only a cut-out (or an additive glow, order-free) merges
         for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture)) return false; }   // its sheets landed
         for (var k in o) if (_HQ_BATCH_FLAG_OFF[k]) return false;
         return true;
@@ -59943,7 +59957,7 @@ const ThreeRenderer = (function () {
     function _hqBatchSame(a, b) { var x = a.elements, y = b.elements; for (var i = 0; i < 16; i++) if (Math.abs(x[i] - y[i]) > 1e-4 * (1 + Math.abs(y[i]))) return false; return true; }
     /* the scan (a generator, sliced): every piece of the record's shell that may merge, with what it looks like now */
     function* _hqBatchScan(R, B) {
-        var root = R.shellGroup; if (!root) return;
+        var root = R[B.grp]; if (!root) return;
         var skip = {}; (R.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { skip[t.id] = 1; }); });
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), list = [], n = 0;
@@ -59958,7 +59972,7 @@ const ThreeRenderer = (function () {
         })(root, true);
         for (var j = 0; j < list.length; j++) {
             var o = list[j];
-            if (_hqBatchPieceOk(o)) {
+            if (_hqBatchPieceOk(o) && !(B.grp === 'propGroup' && (o._ew_noInstance || o._ew_instHidden || _hqInstKey(o)))) {   // a prop the instance pass can take is its
                 var sig = _hqBatchGeoSig(o.geometry);
                 if (sig) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: sig, parent: o.parent });
             }
@@ -60017,6 +60031,16 @@ const ThreeRenderer = (function () {
     function _hqBatchVisSet(v) { if (v === this._ew_bv) return; this._ew_bv = v; if (this._ew_bRec) _hqBatchBreak(this._ew_bRec, 'visible'); }
     function _hqBatchAncGet() { return this._ew_bv; }
     function _hqBatchAncSet(v) { if (v === this._ew_bv) return; this._ew_bv = v; var L = (this._ew_bAnc || []).slice(); for (var i = 0; i < L.length; i++) _hqBatchBreak(L[i], 'visible'); }
+    /* THE PERF PASS 2: `parent` too — a merged piece (or a group above it) taken out or moved to another parent breaks at once */
+    function _hqBatchParGet() { return this._ew_bp; }
+    function _hqBatchParSet(v) {
+        if (v === this._ew_bp) return;
+        this._ew_bp = v;
+        var L = (this._ew_bAnc || []).slice(); if (this._ew_bRec) L.push(this._ew_bRec);
+        for (var i = 0; i < L.length; i++) _hqBatchBreak(L[i], 'parent');
+    }
+    function _hqBatchParOn(o) { o._ew_bp = o.parent; Object.defineProperty(o, 'parent', { configurable: true, enumerable: true, get: _hqBatchParGet, set: _hqBatchParSet }); }
+    function _hqBatchParOff(o) { var p = o._ew_bp; delete o.parent; o.parent = p; o._ew_bp = undefined; }
     function _hqBatchInstall(root, cs, B) {
         var c0 = cs[0], o0 = c0.o, geo = _hqBatchMerge(cs);
         var mesh = new THREE.Mesh(geo, c0.m);
@@ -60030,8 +60054,9 @@ const ThreeRenderer = (function () {
             var o = c.o;
             o._ew_bv = o.visible; o._ew_bRec = rec;
             Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get: _hqBatchVisGet, set: _hqBatchVisSet });
+            _hqBatchParOn(o);
             for (var q = o.parent; q && q !== root; q = q.parent) {
-                if (!q._ew_bAnc) { q._ew_bv = q.visible; q._ew_bAnc = []; Object.defineProperty(q, 'visible', { configurable: true, enumerable: true, get: _hqBatchAncGet, set: _hqBatchAncSet }); }
+                if (!q._ew_bAnc) { q._ew_bv = q.visible; q._ew_bAnc = []; Object.defineProperty(q, 'visible', { configurable: true, enumerable: true, get: _hqBatchAncGet, set: _hqBatchAncSet }); _hqBatchParOn(q); }
                 if (q._ew_bAnc.indexOf(rec) < 0) { q._ew_bAnc.push(rec); rec.anc.push(q); }
             }
         });
@@ -60042,10 +60067,10 @@ const ThreeRenderer = (function () {
     function _hqBatchBreak(rec, why) {
         if (!rec || !rec.live) return;
         rec.live = false;
-        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; });
+        rec.cs.forEach(function (c) { var o = c.o; if (o._ew_bRec !== rec) return; var v = o._ew_bv; delete o.visible; o.visible = v; o._ew_bRec = null; _hqBatchParOff(o); });
         rec.anc.forEach(function (q) {
             var L = q._ew_bAnc; if (!L) return; var i = L.indexOf(rec); if (i >= 0) L.splice(i, 1);
-            if (!L.length) { var v = q._ew_bv; delete q.visible; q.visible = v; q._ew_bAnc = null; }
+            if (!L.length) { var v = q._ew_bv; delete q.visible; q.visible = v; q._ew_bAnc = null; _hqBatchParOff(q); }
         });
         if (rec.mesh.parent) rec.mesh.parent.remove(rec.mesh);
         try { rec.mesh.geometry.dispose(); } catch (e) {}
@@ -60055,10 +60080,10 @@ const ThreeRenderer = (function () {
     }
     /* the build (a generator, sliced): the pieces still as they were at the scan, grouped by look + square, merged */
     function* _hqBatchBuild(R, B) {
-        var root = R.shellGroup; if (!root || !root.parent) return;
+        var root = R[B.grp]; if (!root || !root.parent) return;
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
-        var U = _hqUnits(), T = (((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
+        var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
             if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
@@ -60072,14 +60097,22 @@ const ThreeRenderer = (function () {
             if ((++n & 63) === 0 && _hqSliceDue()) yield;
         }
         B.cands = [];
+        /* THE PERF PASS 2: a re-scan's late pieces (a kit that landed, a lot built after the first pass) join their look's batch
+           in the same square — that batch is handed back and re-merged with them — instead of standing alone */
+        var have = {};
+        B.batches.forEach(function (rec) { if (rec.key && rec.live) (have[rec.key] || (have[rec.key] = [])).push(rec); });
         for (var k = 0; k < keys.length; k++) {
-            var cs = groups[keys[k]]; if (cs.length < HQ_BATCH.minN) continue;
+            var cs = groups[keys[k]];
+            var nvNew = 0; cs.forEach(function (x) { nvNew += x.g.attributes.position.count; });
+            var ex = (have[keys[k]] || []).filter(function (r) { return r.live && r.mesh.geometry.attributes.position.count + nvNew <= HQ_BATCH.maxVerts; })[0];
+            if (ex && ex.cs.every(function (x) { return _hqBatchStill(x, root, inv, tmp); })) { var old = ex.cs; _hqBatchBreak(ex, null); B.stats.broken--; cs = old.concat(cs); }
+            if (cs.length < HQ_BATCH.minN) continue;
             /* a group past maxVerts goes as several batches */
             var run = [], verts = 0;
             for (var j = 0; j <= cs.length; j++) {
                 var cc = cs[j], nv = cc ? cc.g.attributes.position.count : 0;
                 if (!cc || (run.length && verts + nv > HQ_BATCH.maxVerts)) {
-                    if (run.length >= HQ_BATCH.minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) _hqBatchInstall(root, run, B); }
+                    if (run.length >= HQ_BATCH.minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) _hqBatchInstall(root, run, B).key = keys[k]; }
                     run = []; verts = 0;
                     if (_hqSliceDue()) yield;
                 }
@@ -60089,7 +60122,7 @@ const ThreeRenderer = (function () {
     }
     /* the watchdog: every piece of every live batch as it was */
     function _hqBatchCheck(R, B) {
-        var root = R.shellGroup; if (!root) return;
+        var root = R[B.grp]; if (!root) return;
         root.updateMatrixWorld(true);
         var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
         inv.copy(root.matrixWorld).invert();
@@ -60102,12 +60135,17 @@ const ThreeRenderer = (function () {
     function _hqBatchTick(H, now) {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
-        var end = _alNow() + HQ_BATCH.sliceMs;
+        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
-            var R = recs[r], B = R.batch;
-            if (!B) { R.batch = { phase: 'wait', at: now, cands: [], batches: [], it: null, checkAt: 0, stats: { batches: 0, pieces: 0, verts: 0, broken: 0, scanned: 0 } }; continue; }
+            var R = recs[r];
+            if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
+            if (!R.batchP && HQ_BATCH.props && !(typeof window !== 'undefined' && window.EW_HQ_NO_PROP_BATCH)) R.batchP = _hqBatchNew('propGroup', now);
+            var BB = [R.batch, R.batchP];
+            for (var bi = 0; bi < BB.length; bi++) {
+            var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
-            if (B.phase === 'live') { if (now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); } } continue; }
+            if (B.batches.length && now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            if (B.phase === 'live') { if (now - B.at < HQ_BATCH.rescanMs) continue; B.phase = 'scan'; B.it = _hqBatchScan(R, B); }   // THE PERF PASS 2: the late pieces
             if (B.phase === 'wait') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
             if (B.phase === 'watch') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
@@ -60117,16 +60155,21 @@ const ThreeRenderer = (function () {
             finally { _hqSliceEnd = 0; }
             if (res && res.done && B.phase !== 'off') {
                 B.it = null;
-                if (B.phase === 'scan') { B.phase = 'watch'; B.at = now; B.stats.scanned = B.cands.length; }
-                else if (B.phase === 'build') { B.phase = 'live'; B.checkAt = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
+                if (B.phase === 'scan') { if (B.cands.length) { B.phase = 'watch'; B.stats.scanned += B.cands.length; } else B.phase = 'live'; B.at = now; }
+                else if (B.phase === 'build') { B.phase = 'live'; B.at = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ' ' + B.grp + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
             }
             if (_alNow() >= end) return;
+            }
         }
     }
+    function _hqBatchNew(grp, now) { return { grp: grp, phase: 'wait', at: now, cands: [], batches: [], it: null, checkAt: 0, stats: { batches: 0, pieces: 0, verts: 0, broken: 0, scanned: 0 } }; }
     function _hqBatchDrop(R) {
-        var B = R && R.batch; if (!B) return;
-        B.batches.slice().forEach(function (rec) { _hqBatchBreak(rec, null); });
-        B.phase = 'off'; B.it = null; B.cands = [];
+        if (!R) return;
+        [R.batch, R.batchP].forEach(function (B) {
+            if (!B) return;
+            B.batches.slice().forEach(function (rec) { _hqBatchBreak(rec, null); });
+            B.phase = 'off'; B.it = null; B.cands = [];
+        });
     }
     /* the hand-over, the leave: every piece of every part handed back */
     function _hqBatchDropAll(H) {
@@ -60136,7 +60179,9 @@ const ThreeRenderer = (function () {
     }
     function _hqBatchStats(H) {
         H = H || _hq; if (!H) return null;
-        var out = {}, add = function (id, R) { var B = R && R.batch; if (B) out[id] = { phase: B.phase, batches: B.stats.batches, pieces: B.stats.pieces, verts: B.stats.verts, broken: B.stats.broken, scanned: B.stats.scanned }; };
+        var out = {}, add = function (id, R) {
+            [R && R.batch, R && R.batchP].forEach(function (B) { if (B) out[id + (B.grp === 'propGroup' ? ' props' : '')] = { phase: B.phase, batches: B.stats.batches, pieces: B.stats.pieces, verts: B.stats.verts, broken: B.stats.broken, scanned: B.stats.scanned }; });
+        };
         add((H.opts && H.opts.room) || 'room', H);
         if (H.stage) for (var id in H.stage.parts) add(id, H.stage.parts[id].P);
         return out;
