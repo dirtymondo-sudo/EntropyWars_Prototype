@@ -6529,59 +6529,72 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-atlas-wait b { color: #f0e6c8; font-size: 15px; }
 .hq-atlas-wait span { font-size: 11px; }
 
-/* ══ THE FAMILY TABS (THE JOBS REMOVAL, the user 2026-09-27: "Easy to read spell slots organized by family, maybe tabs
-   for the families, with one section that shows the spell info for whichever one you have selected/hovered on") ══
-   The rack is a fixed head (the loadout 4 × 2 — seven slot cards + the ALWAYS READY cell, the finisher over the basic
-   attack — and the family tabs) and a scrolling body (the open family: its head line, then its cards tier I → IV). The
-   technique panel under the rack is the one info section (it follows hover, else the selection). */
-.pb-circuit-scroll.pb-circuit-tabs { overflow: hidden; }
-.pb-rack.pb-rack-tabs { flex: 1 1 auto; min-height: 0; gap: 6px; }
+/* ══ THE FAMILY COLUMNS (the user 2026-10-01: "Each spell family should be a column so I can see every spell a unit has
+   at one time. We dont need to show the tiers anywhere ... Get rid of the crt filter of scanlines ... Where did the clear
+   button for the spell slots?") — replaces THE FAMILY TABS (2026-09-27). TECHNIQUES is now two columns: the rack (the
+   tech bar, the loadout strip, one column per family) and a side column (the hero over THE TECHNIQUE PANEL, a FIXED cell
+   that scrolls inside, so a hover never moves a card). The stats live on GEAR / DOSSIER. ══ */
+/* the forge glass reads clean: no scanlines, no rolling band, no flicker, no glare / corner darkening */
+.ms-crt-forge .ms-crt-scan, .ms-crt-forge .ms-crt-glare, .ms-crt-forge .pb-crt-roll { display: none; }
+.ms-crt-forge .ms-crt-screen { animation: none; text-shadow: none; }
+.ms-crt-forge .ms-crt-glass { box-shadow: inset 0 0 2px rgba(255,255,255,0.12), 0 0 0 2px #000, 0 0 30px rgba(255,205,107,0.06); }
+.ms-crt-forge .pb-notes { z-index: 9; }
+/* the TECHNIQUES grid */
+.ms-crt-forge { --pb-side-w: clamp(290px, 25%, 400px); }
+.pb-body[data-tab="tech"][data-panel] { grid-template-columns: minmax(0, 1fr) var(--pb-side-w); grid-template-rows: minmax(0, 46fr) minmax(0, 54fr) auto;
+  grid-template-areas: "tech stage" "tech panel" "party party"; row-gap: 8px; column-gap: 10px; }
+.pb-body[data-tab="tech"] .pb-stage { grid-area: stage; border: 1px solid var(--ph-line); background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,205,107,0.05), transparent 70%), rgba(0,0,0,0.2); }
+.pb-body[data-tab="tech"] .pb-zone-tech { border: 1px solid var(--ph-line); background: rgba(5,5,4,0.6); }
+.pb-body[data-tab="tech"] .pb-zone-tech::before, .pb-body[data-tab="tech"] .pb-zone-panel::before { display: none; }
+.pb-body[data-tab="tech"] .pb-zone-panel { padding-top: 0; }
+.pb-body[data-tab="tech"] .pb-zone-panel .pb-technique { flex: 1 1 auto; min-height: 0; margin: 0; overflow-y: auto; scrollbar-width: thin; }
+.pb-body[data-tab="tech"] .pb-party { margin-top: 2px; }
+/* the notes on TECHNIQUES ride the hero's cell, smaller */
+.pb-body[data-tab="tech"] .pb-notes { top: 8px; right: 8px; width: 92px; gap: 8px; }
+.pb-body[data-tab="tech"] .pb-note { width: 90px; min-height: 0; padding: 7px 8px 10px 9px; font-size: 12px; }
+.pb-body[data-tab="tech"] .pb-note b { font-size: 13px; }
+.pb-body[data-tab="tech"] .pb-note p { font-size: 11.5px; -webkit-line-clamp: 3; }
+.pb-body[data-tab="tech"] .pb-note.terrain p { -webkit-line-clamp: 1; }
+/* the info panel: the how-to when nothing is hovered */
+.pb-technique-how { margin: 2px 0 4px; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.35; color: var(--ph); opacity: 0.88; }
+.pb-technique-how b { color: var(--ph-gold); font-weight: 400; }
+.pb-body[data-tab="tech"] .pb-technique-desc { -webkit-line-clamp: 6; }
+.pb-body[data-tab="tech"] .pb-upgrades-list { grid-template-columns: minmax(0, 1fr); }
+/* the tech bar wraps instead of clipping its tools */
+.pb-tech-bar { flex-wrap: wrap; row-gap: 4px; }
+.pb-tech-tools { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+.pb-tech-hint { font-size: 9.5px; letter-spacing: 0.1em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* the party row's tools two by two (five stacked made the bar tall) */
+.pb-tools { display: grid; grid-template-columns: repeat(2, auto); }
+.pb-tools > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.pb-tech-tools .pb-mini { font-size: 10px; padding: 4px 11px; }
+.pb-mini:disabled { opacity: 0.35; cursor: default; }
+.pb-mini:disabled:hover { color: inherit; border-color: inherit; }
+/* the rack: the loadout strip over the columns */
+.pb-circuit-scroll.pb-circuit-cols { overflow: hidden; padding: 6px 6px 6px; }
+.pb-rack.pb-rack-cols { flex: 1 1 auto; min-height: 0; gap: 8px; }
 .pb-rack-head { flex: none; display: flex; flex-direction: column; gap: 6px; }
-.pb-rack-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 3px 4px 0; }
-.pb-rack-tabs .pb-loadout { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
-.pb-rack-tabs .pb-ls { --fam: var(--nc); height: auto; min-height: 44px; gap: 5px; border-radius: 8px; padding: 4px 20px 4px 5px; align-items: center;
+.pb-rack-cols .pb-loadout { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+.pb-rack-cols .pb-ls { --fam: var(--nc); height: auto; min-height: 46px; gap: 6px; border-radius: 8px; padding: 4px 6px 4px 6px; align-items: center;
   border: 1px solid color-mix(in srgb, var(--fam) 50%, transparent); border-left: 4px solid var(--fam);
   background: linear-gradient(90deg, color-mix(in srgb, var(--fam) 24%, #0d0d13) 0%, rgba(13,13,19,0.92) 100%); }
-.pb-rack-tabs .pb-ls:hover { border-color: var(--ph-red); border-left-color: var(--ph-red); background: rgba(255,106,92,0.14); }
-.pb-rack-tabs .pb-ls.hov { background: color-mix(in srgb, var(--fam) 34%, #0d0d13); }
-.pb-rack-tabs .pb-ls.sel { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--ph-gold); }
-.pb-rack-tabs .pb-ls-disc { width: 20px; height: 20px; font-size: 11px; flex: none; }
+.pb-rack-cols .pb-ls:has(.pb-ls-up) { padding-right: 26px; }
+.pb-rack-cols .pb-ls:hover { border-color: var(--ph-red); border-left-color: var(--ph-red); background: rgba(255,106,92,0.14); }
+.pb-rack-cols .pb-ls.hov:not(:hover) { background: color-mix(in srgb, var(--fam) 34%, #0d0d13); }
+.pb-rack-cols .pb-ls.sel { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--ph-gold); }
+.pb-rack-cols .pb-ls-disc { width: 22px; height: 22px; font-size: 12px; flex: none; }
 .pb-ls-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.pb-rack-tabs .pb-ls-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.05; font-size: 12px; letter-spacing: 0; overflow-wrap: anywhere; }
+.pb-rack-cols .pb-ls-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.05; font-size: 12.5px; letter-spacing: 0; }
 .pb-ls-fam { font-size: 8.5px; letter-spacing: 0.1em; color: color-mix(in srgb, var(--fam) 75%, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
-.pb-rack-tabs .pb-ls-tier { right: 7px; top: 6px; transform: none; font-size: 10px; }
-.pb-rack-tabs .pb-ls-up { right: 4px; top: auto; bottom: 4px; transform: none; font-size: 9px; }
-.pb-rack-tabs .pb-ls.empty { flex-direction: column; justify-content: center; gap: 1px; padding: 4px; border: 1px dashed rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); }
-.pb-rack-tabs .pb-ls.empty:hover { border-color: rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); }
+.pb-ls-cost { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700; color: var(--ph-gold); margin-right: 5px; letter-spacing: 0; }
+.pb-rack-cols .pb-ls-up { right: 4px; top: auto; bottom: 4px; transform: none; font-size: 9px; }
+.pb-ls-x { position: absolute; right: 4px; top: 3px; width: 17px; height: 17px; border-radius: 50%; display: none; align-items: center; justify-content: center;
+  background: var(--ph-red); color: #0d0d13; font-size: 10px; font-weight: 700; line-height: 1; pointer-events: none; }
+.pb-rack-cols .pb-ls:hover .pb-ls-x { display: flex; }
+.pb-rack-cols .pb-ls.empty { flex-direction: column; justify-content: center; gap: 1px; padding: 4px; border: 1px dashed rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); cursor: default; }
+.pb-rack-cols .pb-ls.empty:hover { border-color: rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); }
 .pb-ls.empty small { font-size: 7.5px; letter-spacing: 0.16em; color: var(--ph-faint); }
-/* the tabs — one pill per family: glyph · name · n/m on (lit in the family colour when it holds an equipped spell) */
-.pb-famtabs { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 6px; border-top: 1px solid var(--ph-line); }
-.pb-famtab { --fam: var(--ph-dim); display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px 4px 7px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--fam) 45%, transparent); background: rgba(0,0,0,0.4); color: var(--ph); font: inherit;
-  font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase; cursor: pointer; line-height: 1.2; transition: background 0.12s, border-color 0.12s, box-shadow 0.12s; }
-.pb-famtab i { font-style: normal; color: var(--fam); font-size: 12px; line-height: 1; }
-.pb-famtab em { font-style: normal; font-size: 9px; letter-spacing: 0.04em; color: var(--ph-dim); padding: 0 5px; border-radius: 999px; background: rgba(255,255,255,0.07); }
-.pb-famtab.has em { color: #0d0d13; background: var(--fam); font-weight: 700; }
-.pb-famtab:hover { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 14%, #0d0d13); }
-.pb-famtab.on { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 34%, #0d0d13); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--fam) 40%, transparent), inset 0 -2px 0 var(--fam); }
-.pb-famtab.on i { color: #fff; }
-.pb-famtab.k-training, .pb-famtab.k-gear, .pb-famtab.k-borrow { border-style: dashed; }
-.pb-famtab.locked { opacity: 0.55; }
-/* the open family: its head, then its cards tier by tier */
-.pb-fambody { display: flex; flex-direction: column; gap: 6px; }
-.pb-famhead { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 0; align-items: baseline; padding: 4px 8px;
-  border-left: 3px solid var(--fam); border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--fam) 18%, transparent), transparent 80%); }
-.pb-famhead b { grid-row: 1 / span 2; align-self: center; font-size: 19px; font-weight: 400; line-height: 1; color: var(--fam); }
-.pb-famhead-name { font-family: 'Cormorant SC', serif; font-size: 16px; font-weight: 700; line-height: 1.05; color: #f1e9cf; letter-spacing: 0.04em; }
-.pb-famhead em { grid-column: 3; grid-row: 1; font-style: normal; font-size: 9.5px; letter-spacing: 0.14em; color: var(--ph-gold); white-space: nowrap; }
-.pb-famhead-desc { grid-column: 2 / span 2; font-size: 10.5px; line-height: 1.3; color: var(--ph-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pb-famhead-desc:empty { display: none; }
-.pb-famrule { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 9px; letter-spacing: 0.16em; color: var(--ph-dim); }
-.pb-famrule b { font-family: 'Cinzel', 'Cormorant SC', serif; font-weight: 900; font-size: 10.5px; color: var(--ph); letter-spacing: 0.08em; }
-.pb-famrule::after { content: ''; flex: 1; height: 1px; background: var(--ph-line); }
-.pb-famlock { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 12px 14px; border: 1px dashed rgba(127,217,221,0.45); border-radius: 8px; font-size: 11.5px; line-height: 1.45; color: var(--ph-dim); }
-.pb-famlock b { color: var(--ph-teal); letter-spacing: 0.12em; font-size: 12px; }
-/* ALWAYS READY (the loadout's eighth cell; the old foot strip is gone): the ☠ finisher over the ⚔ basic attack, two half-height rows */
+/* ALWAYS READY (the loadout's eighth cell): the ☠ finisher over the ⚔ basic attack */
 .pb-ls-ready { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .pb-ls-mini { --fam: #e6e9f2; flex: 1; display: flex; align-items: center; gap: 5px; min-width: 0; padding: 0 6px; border-radius: 6px; cursor: pointer;
   border: 1px solid color-mix(in srgb, var(--fam) 40%, transparent); border-left: 3px solid var(--fam); background: color-mix(in srgb, var(--fam) 12%, #0d0d13);
@@ -6591,6 +6604,91 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-ls-mini:hover, .pb-ls-mini.hov { border-color: var(--fam); background: color-mix(in srgb, var(--fam) 24%, #0d0d13); }
 .pb-ls-mini.sel { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--ph-gold); }
 .pb-ls-fin { font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 12px; }
+/* the columns — one per family, side by side; a tall family scrolls inside its own column */
+.pb-famcols { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(136px, 1fr)); gap: 7px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.pb-famcol { --fam: var(--ph-dim); display: flex; flex-direction: column; min-height: 0; min-width: 0; border-radius: 8px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--fam) 26%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fam) 12%, rgba(0,0,0,0.5)) 0px, rgba(0,0,0,0.32) 64px); }
+.pb-famcol.has { border-color: color-mix(in srgb, var(--fam) 55%, transparent); }
+.pb-famcol.k-training, .pb-famcol.k-gear, .pb-famcol.k-borrow { border-style: dashed; }
+.pb-famcol-head { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 8px 5px; border-bottom: 2px solid var(--fam); cursor: default; }
+.pb-famcol-head i { font-style: normal; color: var(--fam); font-size: 16px; line-height: 1; }
+.pb-famcol-name { flex: 1; min-width: 0; font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 14.5px; line-height: 1.1; letter-spacing: 0.04em; color: #f1e9cf; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-famcol-name small { display: block; font-family: 'DotGothic16', monospace; font-weight: 400; font-size: 8px; letter-spacing: 0.18em; color: var(--ph-dim); }
+.pb-famcol-head em { flex: none; font-style: normal; font-size: 10px; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,0.07); color: var(--ph-dim); }
+.pb-famcol.has .pb-famcol-head em { background: var(--fam); color: #0d0d13; font-weight: 700; }
+.pb-famcol-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; scrollbar-width: thin; }
+/* one spell: disc · name over one meta line · its SP. Equipped = lit in its category colour; a refusal dims it and says why */
+.pb-sc { --nc: var(--ph-dim); position: relative; flex: none; display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px 6px 5px 5px; border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.08); background: rgba(10,10,14,0.72); cursor: pointer; user-select: none; transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.12s; }
+.pb-sc.step { margin-top: 5px; }
+.pb-sc:hover, .pb-sc.hov { background: color-mix(in srgb, var(--nc) 16%, #0d0d13); border-color: color-mix(in srgb, var(--nc) 70%, transparent); }
+.pb-sc-disc { width: 24px; height: 24px; flex: none; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--nc); background: #0d0d13; color: var(--nc);
+  display: flex; align-items: center; justify-content: center; font-family: 'Cormorant SC', serif; font-size: 12px; font-weight: 700; line-height: 1; }
+.pb-sc-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pb-sc-name { font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 14px; line-height: 1.08; letter-spacing: 0.02em; color: var(--ph); text-shadow: 0 1px 2px #000;
+  white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pb-sc-meta { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: 2px; font-size: 9.5px; line-height: 14px; letter-spacing: 0.04em; color: var(--ph-dim); white-space: nowrap; overflow: hidden; }
+.pb-sc-meta em { font-style: normal; flex: none; }
+.pb-sc-why { flex: 0 1 auto; min-width: 0; font-style: normal; font-size: 9px; letter-spacing: 0.05em; color: #ff8f84; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-sc-cost { flex: none; padding: 0 5px; border-radius: 4px; border: 1px solid rgba(255,205,107,0.5); background: rgba(255,205,107,0.08);
+  font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 700; line-height: 13px; letter-spacing: 0; color: var(--ph-gold); white-space: nowrap; }
+.pb-sc-cost i, .pb-sc-cost small { font-style: normal; font-weight: 400; font-size: inherit; }
+.pb-sc.is-equipped { background: linear-gradient(90deg, color-mix(in srgb, var(--nc) 46%, #0d0d13) 0%, color-mix(in srgb, var(--nc) 20%, #0d0d13) 100%);
+  border-color: color-mix(in srgb, var(--nc) 85%, #fff); box-shadow: 0 0 12px color-mix(in srgb, var(--nc) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.16); }
+.pb-sc.is-equipped .pb-sc-disc { background: var(--nc); border-color: #fff; color: #0d0d13; }
+.pb-sc.is-equipped .pb-sc-name { color: #fff; }
+.pb-sc.is-equipped .pb-sc-meta { color: #f1e9cf; }
+.pb-sc.is-equipped .pb-sc-cost { background: var(--ph-gold); border-color: var(--ph-gold); color: #0d0d13; }
+.pb-sc.is-equipped:hover { border-color: var(--ph-red); }
+.pb-sc.sel, .pb-sc.is-equipped.sel { box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--ph-gold); }
+.pb-sc.is-sp, .pb-sc.is-slots, .pb-sc.is-passives, .pb-sc.is-sealed { opacity: 0.6; }
+.pb-sc.is-sp:hover, .pb-sc.is-slots:hover, .pb-sc.is-passives:hover, .pb-sc.is-sealed:hover, .pb-sc.hov { opacity: 1; }
+.pb-sc.is-sp .pb-sc-cost, .pb-sc.is-slots .pb-sc-cost, .pb-sc.is-passives .pb-sc-cost { color: var(--ph-dim); border-color: var(--ph-line); }
+.pb-sc.is-sealed .pb-sc-disc { border-style: dashed; color: var(--ph-faint); }
+.pb-sc-browse .pb-sc-disc { border-style: dashed; border-color: var(--ph-teal); color: var(--ph-teal); }
+.pb-sc-browse .pb-sc-name { color: var(--ph-teal); }
+/* touch: no hover, so the slot's ✕ always shows and its SP drops to the bottom row */
+@media (hover: none) {
+  .pb-rack-cols .pb-ls .pb-ls-x { display: flex; width: 15px; height: 15px; font-size: 9px; opacity: 0.85; }
+}
+/* below 1400 px the slot cards drop their disc so the name keeps its room (the family edge still colours them) */
+@media (max-width: 1400px) { .pb-rack-cols .pb-ls-disc { display: none; } .pb-rack-cols .pb-ls { padding-left: 7px; } }
+/* a narrower glass: the loadout on two rows, a slimmer side column */
+@media (max-width: 1180px) {
+  .ms-crt-forge { --pb-side-w: clamp(250px, 28%, 320px); }
+  .pb-rack-cols .pb-loadout { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pb-famcols { grid-template-columns: repeat(var(--cols, 5), minmax(128px, 1fr)); }
+}
+/* a short glass (a phone on its side): one-line cards, a one-row loadout */
+@media (max-height: 680px) {
+  .pb-rack-cols .pb-loadout { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+  .pb-rack-cols .pb-ls { min-height: 34px; padding-top: 2px; padding-bottom: 2px; }
+  .pb-rack-cols .pb-ls-name { display: block; white-space: nowrap; text-overflow: ellipsis; font-size: 11.5px; }
+  .pb-rack-cols .pb-ls-fam { display: none; }
+  .pb-sc { padding: 3px 5px 3px 4px; gap: 5px; }
+  .pb-sc-text { flex-direction: row; align-items: center; gap: 5px; }
+  .pb-sc-name { flex: 1; min-width: 0; }
+  .pb-sc-meta { flex: none; margin-top: 0; }
+  .pb-sc-meta > :not(.pb-sc-cost) { display: none; }
+  .pb-sc-disc { width: 20px; height: 20px; font-size: 11px; }
+  .pb-sc-name { font-size: 13px; display: block; white-space: nowrap; text-overflow: ellipsis; }
+  .pb-famcol-head { padding: 4px 7px 3px; }
+  .pb-famcol-name small { display: none; }
+  .pb-body[data-tab="tech"][data-panel] { grid-template-rows: minmax(0, 40fr) minmax(0, 60fr) auto; }
+  .pb-body[data-tab="tech"] .pb-notes { display: none; }
+  .pb-sc-cost small { display: none; }
+  .ms-crt-forge { --pb-side-w: clamp(230px, 22%, 300px); }
+  .pb-body[data-tab="tech"] .pb-party { --pb-portrait: 52px; }
+  .pb-body[data-tab="tech"] .pb-party-slots { padding: 8px 4px 2px; }
+  .pb-body[data-tab="tech"] .pb-party-sub { display: none; }
+}
+/* the stacked phone-portrait / tiny-window layout: hero, rack, panel, party */
+@media (max-width: 940px) {
+  .pb-body[data-tab="tech"][data-panel] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "stage" "tech" "panel" "party"; }
+  .pb-body[data-tab="tech"] .pb-zone-panel { min-height: 34vh; }
+  .pb-body[data-tab="tech"] .pb-notes { display: flex; }
+}
 
 /* ══ THE SQUAD DESK (2026-09-30) ═══════════════════════════════════════════════════════════════════════════════════
    PLAY VS CPU / ONLINE PVP pick a saved team first (#squadDeskPage, map.js _openSquadDesk): team cards, THE PICK (4 of a
