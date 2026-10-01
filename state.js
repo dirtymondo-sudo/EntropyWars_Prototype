@@ -1122,7 +1122,7 @@
                         (mark.dead || (mark.hp || 0) <= 0) ? 1 : 0);
                 }
                 for (const eff of (ds.statusEffects || [])) {
-                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null }, `${ds.spellName}: `, sourceUnit);
+                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null, ifTargetHas: eff.ifTargetHas || undefined }, `${ds.spellName}: `, sourceUnit);
                 }
                 /* #21 To Be Continued — the delayed hit LANDS: freeze the
                    victim mid-reaction, sepia grade, arrow banner, sting. The
@@ -1159,7 +1159,7 @@
                             (hit.dead || (hit.hp || 0) <= 0) ? 1 : 0);
                     }
                     for (const eff of (ds.statusEffects || [])) {
-                        if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null }, `${ds.spellName}: `, sourceUnit);
+                        if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null, ifTargetHas: eff.ifTargetHas || undefined }, `${ds.spellName}: `, sourceUnit);
                     }
                 }
             }
@@ -2728,7 +2728,10 @@
                         // batters staggers out snow-blind — attacks whiff 50%
                         // while it lasts. Rides the same immunity as the
                         // damage roll (anomaly units shrug the whiteout off).
-                        if (hit && hit.amount > 0 && def.blinds) {
+                        // THE SPELL AUDIT Batch D — `weatherStatusImmune: { blizzard: ['blind'] }` (Snowborn): this weather's status never lands.
+                        const _wsi = (typeof unitPassiveValue === 'function') ? unitPassiveValue(v, 'weatherStatusImmune') : null;
+                        const _wsiBlind = !!(_wsi && Array.isArray(_wsi[weather.type]) && _wsi[weather.type].includes('blind'));
+                        if (hit && hit.amount > 0 && def.blinds && !_wsiBlind) {
                             applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
                         }
                         if (hit && hit.amount > 0) {
@@ -3435,11 +3438,14 @@
             // the level component keeps armour worth the same share of a hit at
             // every level; the level ADVANTAGE is levelGapMult's job instead.
             // Adds exactly 0 at the cap, so PvP armour is unchanged.
+            // THE SPELL AUDIT Batch D — `statAura` (Iron Discipline: other allies within 2 tiles +5 DEF): flat DEF / MDEF
+            // from a teammate's banner, folded like the unit's own stat (battle.js passiveAuraStat — max, never stacked).
+            const _aura = (unit && typeof passiveAuraStat === 'function');
             if (dt === 'physical') {
-                const _pDef = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'def') : (unit?.def || 0);
+                const _pDef = ((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'def') : (unit?.def || 0)) + (_aura ? passiveAuraStat(unit, 'def') : 0);
                 armor += Math.floor(_pDef * DEF_ARMOR_FOLD);
             } else if (dt === 'magic') {
-                const _pMdef = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0);
+                const _pMdef = ((typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0)) + (_aura ? passiveAuraStat(unit, 'mdef') : 0);
                 armor += Math.floor(_pMdef * MDEF_ARMOR_FOLD);
             }
             return Math.max(0, armor);
