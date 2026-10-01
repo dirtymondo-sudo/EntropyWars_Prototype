@@ -33584,7 +33584,7 @@ const ThreeRenderer = (function () {
     var _LENS_PASSES = ['shadow', 'scene', 'extra', 'post'];
     var _LENS_WIN_MS = 500, _LENS_CENSUS_MS = 1000;
     function _lensFrameRec(t0, detail) {
-        var F = { t0: t0, cpu: 0, submit: 0, anim: 0, renders: 0, shadowRuns: 0, calls: 0, tris: 0, meshes: 0, skinned: 0, inst: 0, instances: 0, pass: {}, kind: {}, detail: detail ? new Map() : null };
+        var F = { t0: t0, cpu: 0, submit: 0, anim: 0, renders: 0, shadowRuns: 0, calls: 0, tris: 0, meshes: 0, skinned: 0, inst: 0, instances: 0, pass: {}, kind: {}, detail: detail ? new Map() : null, why: {} };
         _LENS_PASSES.forEach(function (p) { F.pass[p] = [0, 0]; });
         _LENS_KINDS.forEach(function (k) { F.kind[k] = [0, 0]; });
         return F;
@@ -33686,6 +33686,49 @@ const ThreeRenderer = (function () {
             L.shadowWas = false; sm.enabled = true; sm.needsUpdate = true; _shadowsDirty = true; _lensRecompile();
         }
     }
+    /* the Point lights button: all / the nearest 4 / the nearest 2 / none — the rest hidden for this render only (a count that
+       stays the same frame to frame never recompiles; the first press does, once) */
+    var _lensLV = null;
+    function _lensLampCap(L, cam) {
+        var cap = L.lights === false ? 0 : (+L.lights || 0), on = [], hid = [], cp = _lensLV || (_lensLV = new THREE.Vector3());
+        cam.updateMatrixWorld(); cp.setFromMatrixPosition(cam.matrixWorld);
+        for (var i = 0; i < L.lightList.length; i++) {
+            var lt = L.lightList[i], vis = true;
+            for (var q = lt; q; q = q.parent) if (!q.visible) { vis = false; break; }
+            if (vis) { lt.getWorldPosition(lt._ew_lensP || (lt._ew_lensP = new THREE.Vector3())); on.push({ l: lt, d: lt._ew_lensP.distanceToSquared(cp) }); }
+        }
+        on.sort(function (a, b) { return a.d - b.d; });
+        for (var j = cap; j < on.length; j++) { on[j].l.visible = false; hid.push(on[j].l); }
+        return hid;
+    }
+    /* why a drawn piece is its own draw call (the sampled frame's scene pass): the static batch's own rules, in its order */
+    function _lensWhy(o) {
+        if (o._ew_hqBatch) return null;
+        var root = null, flag = null;
+        for (var q = o; q; q = q.parent) {
+            if (q._ew_lensRoot) { root = q._ew_lensRoot; break; }
+            if (!flag) for (var k in q) if (_HQ_BATCH_FLAG_OFF[k] && q[k]) { flag = k; break; }
+        }
+        if (!root || root === 'chars' || root === 'fx') return null;
+        if (root !== 'terrain') return root + ': ' + (o.isMesh && !o.isSkinnedMesh && o.geometry && !o.geometry._ew_shared ? 'own geometry' : 'one of a kind');
+        var w = (function () {
+            if (flag) return 'flag ' + flag;
+            if (!o.isMesh) return o.type;
+            if (o.isSkinnedMesh || o.morphTargetInfluences) return 'animated';
+            if (o.children.length) return 'has children';
+            if (o.frustumCulled === false) return 'never culled';
+            var m = o.material;
+            if (!m || Array.isArray(m)) return 'several materials';
+            if (m.isShaderMaterial || m.isRawShaderMaterial) return 'shader material';
+            if (o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return 'per-draw callback';
+            if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return 'shader hook' + (m._ew_wdInjected ? ' (haze)' : m._ew_hzFogInjected ? ' (horizon fog)' : '');
+            if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false)) return 'see-through';
+            for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture)) return 'sheet not ready'; }
+            if (!_hqBatchGeoSig(o.geometry)) return 'geometry kind';
+            return _hq ? 'alone in its look / not yet merged' : 'battle (no static batch)';
+        })();
+        return 'terrain: ' + w;
+    }
     function _lensHook(on) {
         var L = _lens;
         if (on) {
@@ -33698,7 +33741,7 @@ const ThreeRenderer = (function () {
                 var main = _lensIsMain(sc), prev = L2.pass;
                 L2.pass = !main ? 'post' : (sc.overrideMaterial ? 'extra' : (cam === _lensMainCam(sc) ? 'scene' : 'extra'));
                 var hid = null;
-                if (main && !L2.lights && L2.lightList) { hid = []; for (var i = 0; i < L2.lightList.length; i++) { var lt = L2.lightList[i]; if (lt.visible) { lt.visible = false; hid.push(lt); } } }
+                if (main && L2.lights !== true && L2.lightList) hid = _lensLampCap(L2, cam);
                 var t = performance.now();
                 L2.depth++;
                 try { return o.render.apply(this, arguments); }
@@ -33728,6 +33771,7 @@ const ThreeRenderer = (function () {
                     if (object.isInstancedMesh) { F.inst++; F.instances += object.count; }
                 }
                 if (F.detail && object && pass !== 'post') { var d = F.detail.get(object); if (!d) F.detail.set(object, d = [0, 0, kind]); d[0] += dc; d[1] += dt; }
+                if (F.detail && object && pass === 'scene' && !object.isInstancedMesh) { var wy = null; try { wy = _lensWhy(object); } catch (e) {} if (wy) F.why[wy] = (F.why[wy] || 0) + dc; }
             };
             R.shadowMap.render = function () {
                 var L2 = _lens;
@@ -33793,7 +33837,7 @@ const ThreeRenderer = (function () {
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         _LENS_PASSES.forEach(function (p) { A.pass[p][0] += F.pass[p][0]; A.pass[p][1] += F.pass[p][1]; });
         _LENS_KINDS.forEach(function (k) { A.kind[k][0] += F.kind[k][0]; A.kind[k][1] += F.kind[k][1]; });
-        if (F.detail) L.detail = _lensTop(F.detail);
+        if (F.detail) { L.detail = _lensTop(F.detail); L.why = Object.keys(F.why).map(function (k) { return [k, F.why[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8); }
         if (t1 - L.accT0 >= _LENS_WIN_MS) _lensPublish(L, t1);
     }
     function _lensAcc() {
@@ -33836,6 +33880,10 @@ const ThreeRenderer = (function () {
         S.census = L.census || null;
         S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
         S.top = L.detail || [];
+        S.why = L.why || [];
+        S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
+        S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
+        S.lampN = (_hq && _hq.stage) ? _hq.stage.lampN : null;
         S.overrides = { shadows: L.shadows, post: L.post, lights: L.lights, res: L.res, show: Object.assign({}, L.show) };
         L.last = S;
         L.acc = _lensAcc(); L.accT0 = t1; L.wantDetail = true;
@@ -33852,7 +33900,7 @@ const ThreeRenderer = (function () {
         if (!S) return 'PERF LENS: waiting for a drawn frame';
         var c = S.census || {}, L = [];
         var pad = function (s, n) { s = String(s); while (s.length < n) s += ' '; return s; };
-        L.push('PERF LENS · ' + S.mode + ' · ' + new Date().toISOString().slice(0, 19) + 'Z');
+        L.push('PERF LENS · ' + S.mode + (S.room ? ' · ' + S.room : '') + ' · ' + new Date().toISOString().slice(0, 19) + 'Z');
         L.push('FPS ' + S.fps.toFixed(1) + '  frame ' + _lensMs(S.frameMs) + '  worst ' + _lensMs(S.worst2s));
         L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : 'n/a (no timer query)'));
         L.push('Draw calls ' + Math.round(S.calls) + '  Triangles ' + _lensFmtN(S.tris) + '  renders ' + S.renders.toFixed(1));
@@ -33862,18 +33910,23 @@ const ThreeRenderer = (function () {
         _LENS_KINDS.forEach(function (k) { L.push('  ' + pad(k, 9) + pad(Math.round(S.kind[k][0]), 10) + _lensFmtN(S.kind[k][1])); });
         L.push('Meshes drawn ' + Math.round(S.meshes) + ' · skinned ' + Math.round(S.skinned) + ' · instanced ' + Math.round(S.instMeshes) + ' (' + Math.round(S.instances) + ' copies)');
         L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
-        L.push('Lights point ' + (c.point || 0) + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0));
+        L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0));
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
+        if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
+        if (S.why && S.why.length) {
+            L.push('Own draw calls, why not merged (scene pass, one frame):');
+            S.why.forEach(function (r) { L.push('  ' + pad(r[1], 6) + r[0]); });
+        }
         if (S.top && S.top.length) {
             L.push('Heaviest draws (one frame, all passes):');
             S.top.forEach(function (r) { L.push('  ' + pad(r.name, 29) + pad(r.kind, 8) + pad(r.calls, 4) + _lensFmtN(r.tris)); });
         }
         var off = [];
-        if (!S.overrides.shadows) off.push('shadows'); if (!S.overrides.post) off.push('post'); if (!S.overrides.lights) off.push('point lights');
+        if (!S.overrides.shadows) off.push('shadows'); if (!S.overrides.post) off.push('post'); if (S.overrides.lights !== true) off.push(S.overrides.lights === false ? 'point lights' : 'point lights past nearest ' + S.overrides.lights);
         _LENS_KINDS.concat(['outline']).forEach(function (k) { if (!S.overrides.show[k]) off.push(k); });
         L.push('Off: ' + (off.length ? off.join(', ') : 'nothing') + ' · resolution ' + (S.overrides.res ? S.overrides.res : 'game'));
         return L.join('\n');
@@ -33889,7 +33942,7 @@ const ThreeRenderer = (function () {
         t += _lensBtn('shadows', 'Shadows', L.shadows) + _lensBtn('post', 'Post FX', L.post);
         t += _lensBtn('chars', 'Characters', L.show.chars) + _lensBtn('props', 'Props', L.show.props) + _lensBtn('terrain', 'Terrain', L.show.terrain) + _lensBtn('fog', 'Fog grid', L.show.fog);
         t += _lensBtn('env', 'Environment', L.show.env) + _lensBtn('fx', 'Particles', L.show.fx) + _lensBtn('other', 'Other', L.show.other);
-        t += _lensBtn('outline', 'Outlines/X-ray', L.show.outline) + _lensBtn('lights', 'Point lights', L.lights);
+        t += _lensBtn('outline', 'Outlines/X-ray', L.show.outline) + _lensBtn('lights', L.lights === true ? 'Point lights: all' : L.lights === false ? 'Point lights: off' : 'Point lights: nearest ' + L.lights, L.lights === true);
         t += '<div style="margin-top:4px">Resolution ' + _lensBtn('res:0', 'Game', !L.res) + _lensBtn('res:1', '1.0', L.res === 1) + _lensBtn('res:1.5', '1.5', L.res === 1.5) + _lensBtn('res:native', 'Native', L.res === 'native') + '</div>';
         if (L.tog.innerHTML !== t) L.tog.innerHTML = t;
     }
@@ -33907,7 +33960,7 @@ const ThreeRenderer = (function () {
         if (id.indexOf('res:') === 0) { var r = id.slice(4); _lensRes(r === 'native' ? 'native' : (+r || 0)); }
         else if (id === 'shadows') L.shadows = (val != null) ? !!val : !L.shadows;
         else if (id === 'post') L.post = (val != null) ? !!val : !L.post;
-        else if (id === 'lights') L.lights = (val != null) ? !!val : !L.lights;
+        else if (id === 'lights') { var LC = [true, 4, 2, false]; L.lights = (val != null) ? (val === true || val === false ? val : (+val || false)) : LC[(LC.indexOf(L.lights) + 1) % LC.length]; }
         else if (L.show[id] != null) L.show[id] = (val != null) ? (val ? 1 : 0) : (L.show[id] ? 0 : 1);
         _shadowsDirty = true;
         if (renderer && renderer.shadowMap) renderer.shadowMap.needsUpdate = true;
