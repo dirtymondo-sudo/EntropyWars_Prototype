@@ -2575,7 +2575,7 @@
         for (const mate of [unit, ...(v.allies || [])]) {
             if (mate.dead || mate._dying || g.unitHasStatus(mate, 'silence')) continue;
             for (const pulse of mate.spells || []) {
-                if (pulse.kind !== 'pulseLattice') continue;
+                if (pulse.kind !== 'pulseLattice' || pulse.shatterPrisms) continue;
                 if (typeof getSpellCooldownRemaining === 'function' && getSpellCooldownRemaining(mate, pulse) > 0) continue;
                 const cost = _mpCost(mate, pulse), mp = mate.mp || 0;
                 if (mp < cost) continue;
@@ -2846,6 +2846,8 @@
             if (!victims.length) return 0;
             let s = 0, first = true;
             for (const e of victims) {
+                /* THE SPELL AUDIT Batch D: a noDamage pull (Round Up) is worth the haul and its statuses only */
+                if (spell.noDamage) { s += 25 + (spell.statusEffects ? 15 : 0); continue; }
                 s += scoreOffensiveHit(g, unit, e, spell, v, { splash: !first }).val;
                 s += 30;   // yanked out of position
                 first = false;
@@ -2981,6 +2983,16 @@
             return s;
         }
 
+        /* THE SPELL AUDIT Batch D: an ally haul (Rescue Line) — worth it for a hurt or debuffed ally with enemies on it */
+        if (kind === 'pull' && spell.allyOnly) {
+            if (!target || target.player !== unit.player || target.id === unit.id) return 0;
+            const threat = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 2).length;
+            if (!threat) return 0;
+            const hpPct = target.hp / Math.max(1, target.maxHp);
+            const debuffed = Object.keys(target.status || {}).some(k => (target.status[k] | 0) > 0 && typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff');
+            let s = threat * 25 + (hpPct < 0.5 ? 70 : hpPct < 0.75 ? 30 : 0) + (debuffed && spell.cleanse ? 35 : 0);
+            return s >= 50 ? s : 0;
+        }
         if (kind === 'pull') {
             if (!target) return 0;
             let s = 0;
@@ -3278,6 +3290,14 @@
         // ── mobility / utility family ──
         if (kind === 'teleport') return scoreTeleport(unit, spell, target, v);
 
+        /* THE SPELL AUDIT Batch D: an ally swap (Tag In) — trade places with a hurt ally under pressure when we are fitter */
+        if (kind === 'swap' && spell.allyOnly) {
+            if (!target || target.player !== unit.player || target.id === unit.id) return 0;
+            const tPct = target.hp / Math.max(1, target.maxHp), uPct = unit.hp / Math.max(1, unit.maxHp);
+            const onThem = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 1).length;
+            if (!onThem || tPct >= 0.5 || uPct < tPct + 0.25) return 0;
+            return 60 + onThem * 30 + Math.round((uPct - tPct) * 60);
+        }
         if (kind === 'swap') {
             if (!target) return 0;
             let s = 0, hasReason = false;
@@ -3427,6 +3447,20 @@
             if (aligns && nearE > 0) s += 35;
             if (owned.length < 3) s += 20;      // ramp toward a pulsable lattice
             return s;
+        }
+        /* THE SPELL AUDIT Batch D: Shatter the Lattice — worth the enemies inside the prisms' 3x3s, less the
+           prisms it spends (a lattice that still pulses is worth keeping). */
+        if (kind === 'pulseLattice' && spell.shatterPrisms) {
+            const owned = (g.state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
+            if (!owned.length) return 0;
+            let s = 0;
+            for (const m of owned) {
+                for (const e of v.visibleEnemies) {
+                    if (Math.max(Math.abs(e.x - m.x), Math.abs(e.y - m.y)) <= 1) s += 45 + getTargetPriority(e, unit, v) * 0.1;
+                }
+            }
+            if (s <= 0) return 0;
+            return Math.max(0, s - owned.length * 12);
         }
         if (kind === 'pulseLattice' || kind === 'tuneFrequency') {
             const owned = (g.state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
@@ -3641,6 +3675,14 @@
 
         if (kind === 'utility') {
             const sid = spell.id;
+            /* THE SPELL AUDIT Batch D: selfPullOnly (Grapple) — reel to an ally who is closer to the fight */
+            if ((sid === 'grapple' || sid === 'raceGrapple') && spell.selfPullOnly) {
+                if (!target || target.player !== unit.player || target.id === unit.id || !v.closestEnemy) return 0;
+                const ce = v.closestEnemy;
+                const now = Math.abs(unit.x - ce.x) + Math.abs(unit.y - ce.y);
+                const then = Math.abs(target.x - ce.x) + Math.abs(target.y - ce.y) + 1;
+                return (now - then >= 2) ? 30 + (now - then) * 8 : 0;
+            }
             if ((sid === 'grapple' || sid === 'raceGrapple') && target) {
                 let s = 140;
                 const meleeAllies = v.allies.filter(a =>
@@ -5228,6 +5270,15 @@
 
         if (kind === 'utility') {
             const sid = spell.id;
+            if ((sid === 'grapple' || sid === 'raceGrapple') && spell.selfPullOnly) {   // Batch D: an ally to reel to
+                const R = _effRange(unit, spell) || 3;
+                const ce = v.closestEnemy;
+                if (!ce) return null;
+                const mates = (v.allies || []).filter(a => !a.dead && a.id !== unit.id
+                    && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) >= 2 && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R)
+                    .sort((a, b) => (Math.abs(a.x - ce.x) + Math.abs(a.y - ce.y)) - (Math.abs(b.x - ce.x) + Math.abs(b.y - ce.y)));
+                return mates[0] || null;
+            }
             if (sid === 'grapple' || sid === 'raceGrapple') {
                 const inRange = v.visibleEnemies
                     .filter(e => {
@@ -5572,6 +5623,8 @@
                     if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
                     // wave C: onlyTerrain (Icky Surprise) — goo tiles only
                     if (spell.onlyTerrain && g.getTerrainAt(tx, ty) !== spell.onlyTerrain) continue;
+                    // THE SPELL AUDIT Batch D: needsLoS (Web Swing) — only a tile the caster can see
+                    if (spell.needsLoS && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) continue;
                     let val = 0;
                     if (hurt) {
                         let nd = Infinity;
@@ -5619,6 +5672,20 @@
             return best;
         }
 
+        if (kind === 'pull' && spell.allyOnly) {   // THE SPELL AUDIT Batch D: Rescue Line — the most endangered ally
+            const R = _effRange(unit, spell) || 4;
+            const cands = (v.allies || []).filter(a => !a.dead && a.id !== unit.id && a.player === unit.player
+                && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) >= 2 && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R);
+            cands.sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)));
+            return cands[0] || null;
+        }
+        if (kind === 'swap' && spell.allyOnly) {   // THE SPELL AUDIT Batch D: Tag In — the hurt ally in the thick of it
+            const R = _effRange(unit, spell) || 3;
+            const cands = (v.allies || []).filter(a => !a.dead && a.id !== unit.id && a.player === unit.player
+                && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) >= 1 && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R);
+            cands.sort((a, b) => (a.hp / Math.max(1, a.maxHp)) - (b.hp / Math.max(1, b.maxHp)));
+            return cands[0] || null;
+        }
         if (kind === 'pull') {
             const inRange = v.visibleEnemies
                 .filter(e => {
@@ -5648,6 +5715,10 @@
         if (kind === 'transform') return { x: unit.x, y: unit.y };
         if (kind === 'selfHeal') return { x: unit.x, y: unit.y };
 
+        if (kind === 'aoePull' && spell.aoeOriginSelf) {   // THE SPELL AUDIT Batch D: Round Up / Crowd Surge centre on the caster
+            const area = _aoeTilesAI(spell, unit.x, unit.y, spell.aoeRadius || 1);
+            return v.visibleEnemies.some(e => area.some(t => t.x === e.x && t.y === e.y)) ? { x: unit.x, y: unit.y } : null;
+        }
         if (kind === 'aoePull') {
             let best = null, bestScore = 0;
             const R = _effRange(unit, spell);

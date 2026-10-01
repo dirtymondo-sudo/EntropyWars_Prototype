@@ -141,7 +141,7 @@ const EQUIP_DEFS = {
     'purity_censer': { slot: 'accessory1', label: 'Censer of Purity', desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
     'berserkers_brand': { slot: 'accessory1', label: "Berserker's Brand", desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'atk', statVal: 16 },
     'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
-    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — pull an enemy 2 tiles toward you and reel them in for a hit.' },
+    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — hook a wall, a door or an ally within 3 and pull yourself beside it.' },
     'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
     'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
     'masons_gauntlets': { slot: 'accessory1', label: "Mason's Gauntlets", desc: 'A master builder’s grip: every AP spent on the Build action places or digs 2 blocks instead of 1.' },
@@ -741,7 +741,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     dirt_4:'rgba(112,86,52,0.4)', road:'rgba(150,140,120,0.4)', desert:'rgba(190,168,90,0.42)',
     // ── Water ──
     water:'rgba(50,100,200,0.5)', deep_water:'rgba(30,60,160,0.6)', bridge:'rgba(140,110,70,0.45)',
-    ice:'rgba(160,210,240,0.45)', well:'rgba(70,130,180,0.45)', healing_spring:'rgba(100,220,180,0.45)',
+    ice:'rgba(160,210,240,0.45)', snow_wall:'rgba(225,238,248,0.55)', well:'rgba(70,130,180,0.45)', healing_spring:'rgba(100,220,180,0.45)',
     // ── Trees / foliage ──
     tree:'rgba(45,105,45,0.5)', tree_top:'rgba(55,120,55,0.5)', forest:'rgba(40,100,40,0.5)',
     forest_2:'rgba(50,110,50,0.46)', dark_woods:'rgba(30,60,30,0.55)', leaves:'rgba(62,122,52,0.46)',
@@ -1331,6 +1331,17 @@ const TERRAIN_RULES = {
         passable: true,
         moveCost: 2,
         blocksRanged: false,
+        healMultiplier: 1,
+        endTurn(unit) { return null; }
+    },
+    /* THE SPELL AUDIT Batch D: Snow Fort's packed snow — raised a level by the spell's terrainDeform, blocks
+       sight (blocksRanged), slow to climb, and melts back on a timer (battle.js meltRounds / _tickTimedTerrain). */
+    snow_wall: {
+        label: 'Snow Wall',
+        short: 'SNW',
+        passable: true,
+        moveCost: 2,
+        blocksRanged: true,
         healMultiplier: 1,
         endTurn(unit) { return null; }
     },
@@ -4686,7 +4697,7 @@ const SPELL_LIBRARY = [
         weatherType: 'thunderstorm',
         weatherDuration: [3, 5],
         weatherTiles: [3, 5],
-        desc: 'Summons a thunderstorm for 3 to 4 rounds. It hunts the nearest unit, soaks everyone under it and strikes with lightning (deadly to the wet). −5 DEF in the eye.'
+        desc: 'Summons a thunderstorm for 3 to 5 rounds. Each round it chases the nearest grounded enemy up to 2 tiles. Every enemy it passes over is Soaked for 2 rounds, then struck for WEAK lightning damage (Soaked targets take half again). Flyers are skipped. −5 DEF in the eye.'
     },
     {
         id: 'wallOfFire',
@@ -4793,7 +4804,7 @@ const SPELL_LIBRARY = [
         families: ['agriculture'],
         school: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plants a seed beside an ally: allies within 1 tile heal every turn for 3 rounds, then it sprouts into a tree.'
+        desc: 'Plant a seed on a tile within 3; grass grows under it. An ally on the seed heals 8% of max HP each round (double in rain). After 2 rounds (1 beside water or in rain) it grows into a Healing Tree: allies within 1 tile heal 7% of max HP every round (double in rain) until it is cut down.'
     },
 
     {
@@ -4811,7 +4822,7 @@ const SPELL_LIBRARY = [
         families: ['agriculture'],
         school: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plants a seed: enemies within 1 tile are Poisoned every turn for 3 rounds, then it sprouts into a tree.'
+        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 6% of max HP and is Poisoned for 2 rounds, each round. After 2 rounds (1 beside water or in rain) it grows into a Toxin Tree: enemies within 1 tile lose 5% of max HP and are Poisoned for 2 rounds, every round, until it is cut down.'
     },
 
     {
@@ -4882,7 +4893,7 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['agriculture'],
         school: 'Harvester',
-        desc: 'Plants a seed on a Single Enemy: for 3 rounds it drains HP from the target each turn and heals the caster.'
+        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 5% of max HP each round, sent to your weakest ally; an ally on it heals 4%. After 2 rounds (1 beside water or in rain) it grows into a Leech Tree: enemies within 1 tile lose 4% of max HP every round, sent to your weakest ally, until it is cut down.'
     },
     {
         id: 'trunkThrow', upgradesBlock: ['upBlast'],
@@ -5717,8 +5728,8 @@ const SPELL_LIBRARY = [
           desc: 'The silk closes over the mouth first. HEAVY arcane damage; a Rooted target is wrapped tight and takes half again. Silences a Single Enemy for a round.' },
         { id: 'raceAnnihilation', name: 'Annihilation', tier: 4, families: ['arcane'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'unholy', element: 'arcane', type: 'damage', kind: 'damage',
-          damageType: 'magic', dmg: 180, range: 4, purgeBuffs: true,
-          desc: 'Unmake it. Deals HEAVY magic damage to a Single Enemy and strips every buff they carry. Cooldown: 2 rounds.' },
+          damageType: 'magic', dmg: 180, range: 4, purgeFirst: true,   // THE SPELL AUDIT Batch D: wards off BEFORE the hit
+          desc: 'Unmake it. Every ward, every blessing, every stage they stacked — gone — and then HEAVY magic damage to what is left. Strips a Single Enemy\'s buffs, raised stat stages and shield before the hit. Cooldown: 2 rounds.' },
         { id: 'raceSpiritGuide', name: 'Spirit Guide', tier: 3, families: ['astralprojection'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'buff', range: 4,
           statusEffects: [{ id: 'invisible', duration: 1 }, { id: 'levitating', duration: 2 }],
@@ -5768,7 +5779,8 @@ const SPELL_LIBRARY = [
         { id: 'raceSystemCrash', name: 'System Crash', tier: 4, families: ['computerhacking'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'tech', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 150, range: 4,
           aoeRadius: 1, bonusVsStatus: { status: 'jammed', mult: 1.5 },
-          desc: 'Fatal exception. Deals HEAVY magic damage to every enemy in a 3×3 area. Deals bonus damage to targets with Jammed.' },
+          statusIfTargetHas: { has: 'jammed', status: [{ id: 'stagger', duration: 1 }] },   // THE SPELL AUDIT Batch D
+          desc: 'Fatal exception. Everything running on them stops. Deals HEAVY magic damage to every enemy in a 3×3 area. Deals bonus damage to targets with Jammed, and every Jammed enemy hit is also Staggered 1.' },
         { id: 'raceSlapLeather', upgradesBlock: ['upLinger'], name: 'Slap Leather', tier: 3, families: ['cowboyskills'], cost: 75, apCost: 1,
           spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 125,
           range: 4, statusEffects: [{ id: 'stagger', duration: 1 }], actedTargetBonus: 30,
@@ -5941,7 +5953,8 @@ const SPELL_LIBRARY = [
           spellType: 'unholy', element: 'poison', type: 'damage', kind: 'aoe', range: 4, dmg: 160,
           damageType: 'magic', aoeRadius: 2, statusEffects: [{ id: 'poison', duration: 3 }],
           bonusVsStatus: { status: 'poison', mult: 1.5 },
-          desc: 'The air goes green. HEAVY magic damage to a 5x5, Poison on all of it. Deals bonus damage to targets with Poison.' },
+          leaveTerrain: 'poison', leaveTerrainRadius: 1,   // THE SPELL AUDIT Batch D: only the middle 3x3 stays poisoned
+          desc: 'The air goes green. HEAVY magic damage to a 5x5, Poison on all of it, and the middle stays poisoned after. Deals bonus damage to targets with Poison. The centre 3x3 turns to poison ground.' },
         { id: 'raceCampaignPromise', name: 'Campaign Promise', tier: 2, families: ['politics'], cost: 50, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round.' },
@@ -6015,7 +6028,8 @@ const SPELL_LIBRARY = [
         { id: 'raceUpdraft', upgradesBlock: ['upDeploy'], name: 'Updraft', tier: 2, families: ['wind'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'wind', type: 'utility', kind: 'buff', range: 3,
           statusEffects: [{ id: 'levitating', duration: 2 }],
-          desc: 'Give them the sky. One ally is Levitating for 2 rounds — flight and the high-ground bonus.' },
+          timedStatBonus: { move: 1, rounds: 2 },   // THE SPELL AUDIT Batch D
+          desc: 'Give them the sky. One ally is Levitating for 2 rounds — flight, the high-ground bonus, and a little more reach. +1 MOV for 2 rounds.' },
         { id: 'raceGlacialSlam', name: 'Glacial Slam', tier: 3, families: ['winter'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'aoe', range: 0, aoeRadius: 1,
           aoeOriginSelf: true, dmg: 125, damageType: 'physical', statusEffects: [{ id: 'slow', duration: 2 }],
@@ -6033,6 +6047,51 @@ const SPELL_LIBRARY = [
           cooldownRounds: 2, spellType: 'human', element: 'nature', type: 'heal', kind: 'healAll', range: 0,
           auraRadius: 3, healAmt: 120, cleanse: 1, teamStatusEffects: [{ id: 'regen', duration: 2 }],
           desc: 'Everything green in you wakes up at once. Every ally within 3 tiles heals a MEDIUM amount of HP, is cleansed of 1 debuff and gains Regen for 2 rounds. Cooldown: 2 rounds.' },
+        /* ══ THE SPELL AUDIT Batch D — rows set 2 (SPELL_FAMILY_AUDIT_PLAN.md §6.3 / §6.5): the rows Batch C held for
+           engine work. Each is one family, tier = SP, MP by tier; none is a rung — races reach them through their
+           families' pools. Engine keys: battle.js (THE SPELL AUDIT Batch D comments). ══ */
+        { id: 'raceBumperCrop', name: 'Bumper Crop', tier: 4, families: ['agriculture'], cost: 100, apCost: 2,
+          cooldownRounds: 2, spellType: 'divine', element: 'nature', type: 'damage', kind: 'aoe', range: 4,
+          aoeRadius: 2, dmg: 120, damageType: 'magic', statusEffects: [{ id: 'root', duration: 1 }], rimSeeds: true,
+          desc: 'Sow the whole field at once. Everything standing in it is rooted where it stands, and by next round there is a wood around them. Deals MEDIUM magic damage to every enemy in a 5x5 area and Roots them for 1 round. A seed lands on every empty tile of the area\'s edge and grows into a tree at the end of the round; the trees block sight and count as yours. Cooldown: 2 rounds.' },
+        { id: 'gunTwinDoors', name: 'Twin Doors', tier: 4, families: ['doors'], cost: 100, apCost: 1, cooldownRounds: 3,
+          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'deployPair', range: 4, maxActivePerCaster: 1,
+          pairPicks: true, doorGun: true,
+          desc: 'Whatever goes in one comes out the other. Pick two empty tiles within 4: a linked pair of doors opens on them. Anyone who walks onto one, or is knocked, blown or pulled into it, comes out of the other. One pair per agent. Cooldown: 3 rounds.' },
+        { id: 'raceLandOnYourFeet', name: 'Land on Your Feet', tier: 2, families: ['feline'], cost: 50, apCost: 1,
+          spellType: 'anomaly', element: 'physical', type: 'utility', kind: 'teleport', range: 3, teleportDistance: 3,
+          leap: true, arrivalStageBoost: { def: 1 }, arrivalStageRounds: 1,
+          desc: 'Cats do not fall. They arrive. Leap to any free tile within 3, whatever its height, and take no fall damage. +1 DEF stage for 1 round when you land.' },
+        { id: 'raceShatterLattice', name: 'Shatter the Lattice', tier: 4, families: ['prismlattice'], cost: 100, apCost: 2,
+          cooldownRounds: 2, spellType: 'tech', element: 'arcane', type: 'damage', kind: 'pulseLattice', range: 0,
+          dmg: 80, shatterPrisms: true,
+          desc: 'Eight panes. One note. Every prism you have standing bursts: each enemy within 1 tile of a prism takes MEDIUM magic damage in the current frequency (Infrared: Burn 2; Ultraviolet: DEF down 1 stage; Gamma: Slow 1). Then every one of your prisms is gone. Needs at least 1 prism. Cooldown: 2 rounds.' },
+        { id: 'raceRescueLine', name: 'Rescue Line', tier: 3, families: ['ropework'], cost: 75, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'utility', kind: 'pull', range: 4, allyOnly: true,
+          pullDistance: 3, cleanse: 1,
+          desc: 'Grab hold. Haul a Single Ally within 4 up to 3 tiles toward you and cleanse 1 debuff. No damage, no fall.' },
+        { id: 'raceRoundUp', name: 'Round Up', tier: 4, families: ['ropework'], cost: 100, apCost: 1, cooldownRounds: 3,
+          spellType: 'human', element: 'metal', type: 'utility', kind: 'aoePull', range: 0, aoeOriginSelf: true,
+          aoeRadius: 2, noDamage: true, pullToCenter: true, pullDistance: 2,
+          statusEffects: [{ id: 'tethered', duration: 1 }],
+          desc: 'Bring \'em in. Every enemy within 2 tiles is pulled 2 tiles toward you and Tethered for 1 round. No damage. Cooldown: 3 rounds.' },
+        { id: 'raceTagIn', name: 'Tag In', tier: 1, families: ['teamwork'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', element: 'physical', type: 'utility', kind: 'swap', range: 3, allyOnly: true,
+          desc: 'Sub in. Sub out. Swap places with a Single Ally within 3. Cooldown: 2 rounds.' },
+        { id: 'raceSwipe', name: 'Swipe', tier: 3, families: ['thievery'], cost: 75, apCost: 1,
+          spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', range: 2, dmg: 100,
+          damageType: 'physical', stealBuffs: true,
+          desc: 'Bump, lift, gone. MEDIUM physical damage to a Single Enemy within 2 and every buff they were carrying is yours now. Their buffs and raised stat stages move to you for the time they had left.' },
+        { id: 'raceDeathtrap', name: 'Deathtrap', tier: 4, families: ['trapmaking'], cost: 100, apCost: 1,
+          spellType: 'human', element: 'physical', type: 'utility', kind: 'placeTrap', range: 4, dmg: 120,
+          damageType: 'physical', trapType: 'trapdoor', trapSize: 3, trapHitsAll: true, maxActivePerCaster: 1,
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'Do not stand anywhere. Hide a 3x3 trap on empty tiles within 4; the enemy cannot see it. The first enemy to step on it drops the whole 3x3 two levels: every enemy on it takes MEDIUM physical damage plus the fall and is Rooted for 2 rounds. One per caster.' },
+        { id: 'raceSnowFort', name: 'Snow Fort', tier: 2, families: ['winter'], cost: 50, apCost: 1,
+          spellType: 'anomaly', element: 'ice', type: 'utility', kind: 'terrainCreate', range: 3,
+          terrainType: 'snow_wall', tileCount: 3, orientable: true, terrainDeform: { centerDelta: 1, edgeDelta: 0 },
+          meltRounds: 3, meltTo: 'water',
+          desc: 'Pack it, stack it, duck. Three tiles of snow wall in a line, one level high: it blocks sight and is slow to climb. It melts after 3 rounds and leaves a puddle. No damage.' },
 
 
 
@@ -6250,7 +6309,7 @@ const SHARED_SUMMON_BLOOD_RAIN = {
     weatherType: 'bloodRain',
     weatherDuration: [3, 5],
     weatherTiles: [5, 8],
-    desc: 'Summons Blood Rain for 3 to 5 rounds. Everyone in the downpour is soaked; Divine units are burned each turn, Unholy units heal HP and MP.'
+    desc: 'Summons Blood Rain over 5 to 8 tiles for 3 to 5 rounds; it drifts. Each turn everyone under it is Soaked for 2 rounds and any Burn is put out. Divine units take WEAK damage each turn; Unholy units heal a little HP and MP.'
 };
 
 /* (SHARED_CALL_LIGHTNING / Summon Storm was CUT 2026-07-26 via the Spell
@@ -7090,9 +7149,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Rooted.' },
         { id: 'raceGrapple', tier: 1, families: ['ropework'], spellType: 'human', element: 'metal', name: 'Grapple',
-          type: 'utility', cost: 20, apCost: 1, range: 3,
-          kind: 'utility',
-          desc: 'Fire a grappling hook. Pull target enemy 2 tiles toward you and reel them in for a hit, or pull yourself toward a wall.' },
+          type: 'utility', cost: 25, apCost: 1, range: 3,
+          kind: 'utility', selfPullOnly: true,   // THE SPELL AUDIT Batch D: the hook moves YOU
+          desc: 'Fire a grappling hook. Hook a wall, a door or an ally within 3 and pull yourself to the tile beside it. No damage.' },
     ],
     // Swordfighter (2026-07-13, reworked same day) — the anime-protagonist
     // duelist: a tragic past, an unkillable narrative, and a blade the story
@@ -7593,8 +7652,8 @@ const RACE_ABILITIES = {
 
         { id: 'raceBrood', name: 'Brood', tier: 2, families: ['insectoid'], cost: 50, apCost: 1, spellType: 'alien',
           element: 'poison', type: 'utility', kind: 'summonUnit', range: 1, maxActivePerCaster: 1,
-          summonDef: { key: 'drone', name: 'Drone', move: 4, dmg: 55, hits: 3 },
-          desc: 'One is never found alone. Hatches a Drone beside the caster: at the end of every round it flies 4 tiles at the nearest enemy and stings for 55. Three hits to bring it down.' },
+          summonDef: { key: 'drone', name: 'Drone', move: 4, dmg: 55, hits: 3, hitStatus: { id: 'poison', duration: 2 } },   // THE SPELL AUDIT Batch D
+          desc: 'One is never found alone. Hatches a Drone beside the caster: at the end of every round it flies 4 tiles at the nearest enemy and stings for 55, Poisoning it for 2 rounds. Three hits to bring it down.' },
 ],
     'professor': [],
     'deep sea fish': [],
@@ -9038,10 +9097,11 @@ const RACE_ABILITIES = {
           collisionBonus: 60, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
           desc: 'A bodkin that carries its victim with it. Deals MEDIUM physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
         { id: 'raceStealFromRich', upgradesBlock: ['upLinger'], tier: 2, families: ['thievery'], spellType: 'human', name: 'Steal from the Rich',
-          type: 'utility', cost: 20, range: 3, apCost: 1,
+          type: 'utility', cost: 50, range: 3, apCost: 1,
           kind: 'debuff',
           statStageBoost: { atk: -1 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage.' },
+          selfStageBoost: { atk: 1 },   // THE SPELL AUDIT Batch D: the caster takes the stage the target lost
+          desc: 'Steal from the rich. Lowers a Single Enemy\'s ATK by 1 stage and takes it for yourself.' },
 
         { id: 'raceSplittingArrow', tier: 3, families: ['archery'], spellType: 'human', name: 'Splitting Arrow',
           type: 'damage', cost: 30, dmg: 125, range: 4,
@@ -9159,8 +9219,8 @@ const RACE_ABILITIES = {
           kind: 'passive',
           desc: 'Once per life, when the host falls under 40% HP the suit knits it back for 30% of max HP.' },
         { id: 'raceWebSwing', name: 'Web Swing', tier: 2, families: ['symbiosis'], cost: 50, apCost: 1, spellType: 'unholy',
-          type: 'utility', kind: 'teleport', range: 4, teleportDistance: 4,
-          desc: 'The line goes out, the host goes after it. Swing to any free tile within 4.' },
+          type: 'utility', kind: 'teleport', range: 4, teleportDistance: 4, needsLoS: true,   // THE SPELL AUDIT Batch D
+          desc: 'The line goes out, the host goes after it. Swing to any free tile within 4 you can see.' },
 
 
     ],
@@ -9269,6 +9329,11 @@ const DOOR_GUN_SPELLS = [
       type: 'utility', cost: 50, range: 4, apCost: 1, cooldownRounds: 0,
       kind: 'doorDeploy', door: 'light', doorGun: true, damageType: 'magic', laneHeal: 40, laneDmg: 45, blindRounds: 1,
       desc: "A door to the pearly gate. Shoot it onto an empty tile within 4 and turn it to face a lane: a shaft of Heaven's light shines 4 tiles out of it. Your side in the lane heals (MODERATE) and is cleansed of every debuff; enemies in it take a holy blast (MODERATE) and Blind 1. It shines when it lands, again at the end of every round, and at once on anyone who steps into it. 3 hits to break; two standing doors per player." },
+    /* THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.3): the Shut Door — DOOR_GUN_DOORS.shut */
+    { id: 'gunShutDoor', tier: 1, families: ['doors'], spellType: 'human', element: 'physical', name: 'Shut Door',
+      type: 'utility', cost: 25, range: 4, apCost: 1, cooldownRounds: 0,
+      kind: 'doorDeploy', door: 'shut', doorGun: true,
+      desc: 'Just a door. Shoot it onto an empty tile within 4. It lands shut and goes nowhere: nobody walks through it and nobody sees past it. Cast it on your own Shut Door to open or shut it (no MP). 3 hits to break; two standing doors per player.' },
 ];
 for (const sp of DOOR_GUN_SPELLS) { sp._doorWheel = true; SPELL_BY_ID[sp.id] = sp; }
 
@@ -9332,7 +9397,7 @@ const GEAR_PASSIVES = [
       desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.' },
     { id: 'gearGrapnelGauntlet', tier: 1, name: 'Grapnel Gauntlet', icon: '🪝', accessory: 'grapnel_gauntlet',
       hooks: { grantSpell: { id: 'raceGrapple', cost: 12 } },
-      desc: 'Built-in grappling hook: grants the Grapple ability — pull an enemy 2 tiles toward you and reel them in for a hit.' },
+      desc: 'Built-in grappling hook: grants the Grapple ability — hook a wall, a door or an ally within 3 and pull yourself beside it.' },
     { id: 'gearEchoBand', tier: 2, name: 'Echo Band', icon: '🔁', accessory: 'echo_band',
       hooks: { basicEcho: 0.5 },
       desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
@@ -18443,6 +18508,11 @@ const DOOR_GUN_DOORS = {
     frost:     { name: 'Frost Door',    kind: 'standing', spell: 'gunFrostDoor',   tier: 2, lane: 4,    act: 'laneTerrain', terrain: 'ice',  spellType: 'anomaly', element: 'ice',       icon: '❄', color: 0x9fe6ff, unlock: { site: 'prebuilt_northpole' } },
     laser:     { name: 'Laser Door',    kind: 'standing', spell: 'gunLaserDoor',   tier: 3, beam: true, act: 'beam',                         spellType: 'tech',    element: 'lightning', icon: '🔴', color: 0xff2a4a, unlock: { site: 'prebuilt_cyberpunk' } },
     light:     { name: 'Light Door',    kind: 'standing', spell: 'gunLightDoor',   tier: 2, lane: 4,    act: 'laneLight',                    spellType: 'divine',  element: 'light',      icon: '✨', color: 0xfff1b0, unlock: { site: 'prebuilt_heaven' } },
+    /* THE SPELL AUDIT Batch D: the Shut Door — a door to nowhere. No act, no lane: it lands SHUT (blocks movement and
+       sight like a wall — doorBlocksMove / doorBlocksSightBetween read `open`), and its owner's side opens / shuts it by
+       casting the row on it (battle.js doSpell _shutToggle, 0 MP). A starter (always on the wheel), battle only (the
+       room's wheel skips it). */
+    shut:      { name: 'Shut Door',     kind: 'standing', spell: 'gunShutDoor',    tier: 1, shut: true, starter: true, battleOnly: true, spellType: 'human', element: 'physical', icon: '🚪', color: 0xb8a27a },
 };
 const DOOR_GUN_KEYS = Object.keys(DOOR_GUN_DOORS);
 /* the 8 facings, clockwise from north (the board's +y is south) */
@@ -18475,6 +18545,7 @@ function doorGunUnlocked(profile, key) {
     const d = DOOR_GUN_DOORS[key];
     if (!d) return false;
     if (d.kind !== 'standing') return true;
+    if (d.starter) return true;   // THE SPELL AUDIT Batch D: the Shut Door is always on the wheel
     if (DOOR_GUN_RULES.allUnlocked) return true;
     if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true;
     return !!doorGunLedger(profile)[key];
@@ -18492,6 +18563,7 @@ function doorGunWheel(profile, opts) {
            door, pre-placed in the room from the bag) — nine wedges. The two shot rows are battle verbs (a hinge push,
            a dash off a board tile). */
         if (o.room && !(d.roomOnly || d.kind === 'standing' || d.kind === 'capture')) continue;
+        if (o.room && d.battleOnly) continue;   // THE SPELL AUDIT Batch D: the Shut Door has no room verb
         out.push({ key, name: d.name, icon: d.icon, kind: d.kind, spell: d.spell || null, tier: d.tier || 0,
             sealed: !doorGunUnlocked(profile, key), place: d.unlock ? d.unlock.site : null });
     }
