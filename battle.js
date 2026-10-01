@@ -3628,6 +3628,8 @@
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (!_isIceTile(unit.x, unit.y)) return false;
             if (unit.terrainPreference === 'ice') return false;
+            // THE SPELL AUDIT Batch D — Snowborn's `noIceSlide`: sure-footed like the yeti (a unit-row read the guest mirrors).
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'noIceSlide')) return false;
             /* `dir` (THE CHAIN's ice rule): a displaced body slides in its TRAVEL direction, not the way it faces */
             const f = (dir && (dir.dx || dir.dy)) ? { dx: dir.dx, dy: dir.dy }
                 : (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
@@ -4225,13 +4227,16 @@
         // units sail one tile further, heavy units give one tile less (min 1),
         // colossal units simply do not budge. Every push path funnels through
         // this so spells, previews and the AI agree.
-        function getUnitPushDistance(unit, baseDist) {
+        function getUnitPushDistance(unit, baseDist, kind) {
             /* Clash: knockback never budges anyone — damage lands, formation
                holds. Every push path funnels through here, so one gate no-ops
                push/displacement/linePush across the whole engine. */
             if (typeof _isClashMode === 'function' && _isClashMode()) return 0;
             const d = Math.max(0, baseDist || 0);
             if (!d || !unit) return d;
+            // THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne: push and pull cannot move it). `kind` defaults to
+            // 'push'; the pull rows pass 'pull'. Pure read: previews and the AI see the same 0.
+            if (unitResistsDisplace(unit, kind || 'push')) return 0;
             const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
             if (wc === 'colossal') return 0;
             if (wc === 'heavy') return Math.max(1, d - 1);
@@ -4492,6 +4497,16 @@
                 slamDamage: 0, animMs: 0, chain: []
             };
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
+            /* THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne): a forced slide an ENEMY drives (a reel-in with
+               stopBefore is a pull, the rest are pushes / throws) does not move the anchored body. Callers that pass a
+               raw distance (door guns, grapples) meet the same gate getUnitPushDistance applies. */
+            if (opts.byUnit && opts.byUnit.id !== target.id && isEnemyUnit(opts.byUnit, target)) {
+                const _anchor = unitResistsDisplace(target, opts.stopBefore ? 'pull' : 'push');
+                if (_anchor) {
+                    if (!simulate) showFloatingTextForUnit(target, `${_anchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 900 });
+                    return res;
+                }
+            }
 
             let cx = res.fromX, cy = res.fromY, cz = res.fromZ;
             let vx = dx, vy = dy;
@@ -5630,7 +5645,15 @@
 
                     // AoePull-style pull toward center (Clash: damage only —
                     // nobody leaves their formation tile)
-                    if (!target.dead && spell.pullToCenter && opts.pullCenter
+                    /* THE SPELL AUDIT Batch D — Event Horizon's `pullRider` (the family's pull rows also land a status on
+                       every enemy they catch) and Windborne's `immuneDisplace: ['pull']` (the pull cannot move it). */
+                    if (!target.dead && spell.pullToCenter) {
+                        const _pr = passivePullRider(unit, spell);
+                        if (_pr) applyStatusPayload(target, { id: _pr.id, duration: _pr.duration || 1 }, `${_pr.name}: `, unit);
+                    }
+                    const _pullAnchor = (!target.dead && spell.pullToCenter && opts.pullCenter) ? unitResistsDisplace(target, 'pull') : null;
+                    if (_pullAnchor) showFloatingTextForUnit(target, `${_pullAnchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 900 });
+                    if (!target.dead && spell.pullToCenter && opts.pullCenter && !_pullAnchor
                         && !(typeof _isClashMode === 'function' && _isClashMode())) {
                         const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
                         const nx = target.x + pdx, ny = target.y + pdy;
@@ -6969,6 +6992,22 @@
                     || spell.kind === 'healAll' || spell.kind === 'revive')) {
                 range += _graceRange;
             }
+            /* THE SPELL AUDIT Batch D — two more passive rows whose text states their reach: Pathfinder's
+               `dashRangeBonus` (dash / leap / charge rows) and Resonant Voice's `familyRangeBonus` ({ sonic: 1 } —
+               ranged spells of that family). Self-cast (range 0) rows keep their shape. */
+            if (range > 0 && typeof unitPassiveRowIds === 'function' && unitPassiveRowIds(unit).length) {
+                if (spell.kind === 'dash' || spell.kind === 'leapStrike' || spell.kind === 'tackle' || spell.chargeToTarget) {
+                    range += (unitPassiveSum(unit, 'dashRangeBonus') || 0);
+                }
+                const _fams = (typeof spellFamiliesOf === 'function') ? (spellFamiliesOf(spell) || []) : (spell.families || []);
+                if (_fams.length) {
+                    for (const p of getUnitPassives(unit)) {
+                        const fr = p && p.familyRangeBonus;
+                        if (!fr || typeof fr !== 'object') continue;
+                        for (const f of _fams) if (typeof fr[f] === 'number') range += fr[f];
+                    }
+                }
+            }
             return range;
         }
 
@@ -7334,6 +7373,109 @@
             }
             return n;
         }
+
+        /* ══ THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.5, 2026-10-01) — the family passives' new hook keys ══
+           Small shared reads (data.js PASSIVE_HOOK_KEYS names each key's readers). Host-side reads of unit / state fields
+           the guest already mirrors: the outcomes (HP, statuses, stages) ride state-sync, the floats ride the relay. */
+        function passiveStatusDurationBonus(src, statusId) {           // statusDurationBonus (Σ) — composes with debuffTurnsBonus
+            if (!src || !statusId || typeof getUnitPassives !== 'function') return 0;
+            let n = 0;
+            for (const p of getUnitPassives(src)) {
+                const b = p && p.statusDurationBonus;
+                if (b && typeof b[statusId] === 'number' && isFinite(b[statusId])) n += b[statusId];
+            }
+            return n;
+        }
+        function unitResistsDisplace(unit, kind) {                     // immuneDisplace: 'push' | 'pull' | 'terrain' → the passive, or null
+            if (!unit || typeof getUnitPassives !== 'function') return null;
+            return getUnitPassives(unit).find(p => p && Array.isArray(p.immuneDisplace) && p.immuneDisplace.includes(kind)) || null;
+        }
+        /* the aura holders around `unit`: living teammates (never the unit itself) whose passive `key` reaches it (Chebyshev) */
+        function _passiveAuraHolders(unit, key, radiusOf) {
+            const out = [];
+            if (!unit || !Array.isArray(state.units) || typeof getUnitPassives !== 'function') return out;
+            for (const h of state.units) {
+                if (!h || h.dead || h._dying || h.id === unit.id || h.player !== unit.player) continue;
+                // aura keys live on rows: read the cached row wraps directly (getUnitPassives asks canFly — too dear for
+                // getEffectiveArmor, which the AI calls per candidate)
+                const _rows = (typeof unitPassiveRowIds === 'function') ? unitPassiveRowIds(h) : [];
+                if (!_rows.length) continue;
+                for (const p of _rows.map(id => (typeof passiveRowWrap === 'function') ? passiveRowWrap(id) : null)) {
+                    const v = p && p[key];
+                    if (v === undefined || v === null || v === false) continue;
+                    const r = +radiusOf(v) || 0;
+                    if (r > 0 && Math.max(Math.abs(h.x - unit.x), Math.abs(h.y - unit.y)) <= r) out.push({ holder: h, value: v, passive: p });
+                }
+            }
+            return out;
+        }
+        function unitCritWarded(unit) {                                 // allyNoCritWithin (Foresight)
+            return _passiveAuraHolders(unit, 'allyNoCritWithin', v => v).length > 0;
+        }
+        function passiveAuraStat(unit, stat) {                          // statAura (max per stat — two banners do not stack)
+            let best = 0;
+            for (const a of _passiveAuraHolders(unit, 'statAura', v => v && v.within)) {
+                const n = +a.value[stat] || 0;
+                if (n > best) best = n;
+            }
+            return best;
+        }
+        function passiveAuraRegenPct(unit) {                            // regenAura (max)
+            let best = 0;
+            for (const a of _passiveAuraHolders(unit, 'regenAura', v => v && v.within)) {
+                const n = +a.value.pct || 0;
+                if (n > best) best = n;
+            }
+            return best;
+        }
+        function passiveDeployBonus(unit) {                             // deployStatBonus (Σ) — Foreman
+            const out = { hp: 0, dmg: 0 };
+            if (!unit || typeof getUnitPassives !== 'function') return out;
+            for (const p of getUnitPassives(unit)) {
+                const d = p && p.deployStatBonus;
+                if (!d || typeof d !== 'object') continue;
+                out.hp += (+d.hp || 0);
+                out.dmg += (+d.dmg || 0);
+            }
+            return out;
+        }
+        function passivePullRider(unit, spell) {                        // pullRider — the status a pull row of the family also lands
+            if (!unit || !spell || typeof getUnitPassives !== 'function') return null;
+            const fams = (typeof spellFamiliesOf === 'function') ? spellFamiliesOf(spell) : (spell.families || []);
+            for (const p of getUnitPassives(unit)) {
+                const r = p && p.pullRider;
+                if (r && r.id && STATUS_DEFS[r.id] && (!r.family || (fams || []).includes(r.family))) return Object.assign({ name: p.name }, r);
+            }
+            return null;
+        }
+        /* the offensive multipliers (one product, read by applyDamageToUnit and ai.js estDamage): highGroundBonus,
+           flankBonus, finisherBonus, invisibleStrikeBonus. ctx: { srcH, tgtH, fromInvisible }. → { mult, parts: [label] } */
+        function passiveStrikeMult(src, tgt, damageType, ctx) {
+            ctx = ctx || {};
+            const out = { mult: 1, parts: [] };
+            if (!src || !tgt || typeof getUnitPassives !== 'function' || typeof unitPassiveRowIds !== 'function'
+                || !unitPassiveRowIds(src).length) return out;
+            const hg = unitPassiveSum(src, 'highGroundBonus') || 0;
+            if (hg && ctx.srcH != null && ctx.tgtH != null && ctx.srcH > ctx.tgtH) { out.mult *= 1 + hg; out.parts.push(`⛰ +${Math.round(hg * 100)}%`); }
+            const fb = unitPassiveSum(src, 'flankBonus') || 0;
+            if (fb && (state.units || []).some(a => a && !a.dead && !a._dying && a.id !== src.id && a.id !== tgt.id
+                && a.player === src.player && Math.max(Math.abs(a.x - tgt.x), Math.abs(a.y - tgt.y)) === 1)) {
+                out.mult *= 1 + fb; out.parts.push(`🐺 PACK +${Math.round(fb * 100)}%`);
+            }
+            for (const p of getUnitPassives(src)) {
+                const f = p && p.finisherBonus;
+                if (!f || !f.status || !(+f.bonus)) continue;
+                if (f.damageType && f.damageType !== damageType) continue;
+                if (typeof bonusStatusMatches === 'function' ? !bonusStatusMatches(tgt, f.status) : !unitHasStatus(tgt, f.status)) continue;
+                out.mult *= 1 + (+f.bonus); out.parts.push(`${p.icon || '✦'} +${Math.round(f.bonus * 100)}%`);
+            }
+            if (ctx.fromInvisible) {
+                const ib = unitPassiveSum(src, 'invisibleStrikeBonus') || 0;
+                if (ib) { out.mult *= 1 + ib; out.parts.push(`🏹 AMBUSH +${Math.round(ib * 100)}%`); }
+            }
+            return out;
+        }
+        if (typeof window !== 'undefined') window.passiveStrikeMult = passiveStrikeMult;
 
         function getStatStageDelta(unit, stat) {
             const step = STAT_STAGE_STEP[stat] || 0;
@@ -7800,6 +7942,9 @@
             // bonus — the Glare spell is a stat-stage debuff now, not a status.)
             // THE JOBS REMOVAL (the user 2026-09-27): was the Psychic job; Crescendo below was the Harbinger job.
             if (isEnemyDebuff) nextValue += (unitPassiveSum(sourceUnit, 'debuffTurnsBonus') || 0);
+            // THE SPELL AUDIT Batch D — `statusDurationBonus` (Aftershock's Stagger, Chorus's Discord, Showmanship's Charm):
+            // a per-status +N on top of the global Third Eye bonus above.
+            if (sourceUnit) nextValue += passiveStatusDurationBonus(sourceUnit, payload.id);
             // Crescendo (passive row, the `buffTurnsBonus` hook): buffs this unit grants last +1 turn.
             if (sourceUnit && meta.kind === 'buff'
                 && !isEnemyUnit(sourceUnit, target)) nextValue += (unitPassiveSum(sourceUnit, 'buffTurnsBonus') || 0);
@@ -7965,6 +8110,15 @@
                     target._staggerApDebt = (target._staggerApDebt || 0) + 1;
                     addLog(`💫 ${unitDisplayName(target)} is staggered — starts next round with 1 less AP!`);
                     showFloatingTextForUnit(target, '💫 -1 AP next round', 'debuff', { durationMs: 1000 });
+                }
+            }
+
+            /* THE SPELL AUDIT Batch D — `statusStageRider` (Showmanship: a charmed enemy also loses 1 ATK stage): the
+               status this unit just landed on an enemy carries these stat stages with it. */
+            if (sourceUnit && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, payload.id) && typeof getUnitPassives === 'function') {
+                for (const p of getUnitPassives(sourceUnit)) {
+                    const r = p && p.statusStageRider && p.statusStageRider[payload.id];
+                    if (r && typeof r === 'object') applyStatStageBoost(target, r, `${p.name}: `, sourceUnit);
                 }
             }
 
@@ -8507,10 +8661,27 @@
 
             for (const u of state.units) {
                 if (u.dead || u._dying) continue;
+                /* THE SPELL AUDIT Batch D — the conditional regen keys, read beside regenPerRound (all % max HP):
+                   `terrainRegen` (Gills in water, Photosynthesis on grass / forest), `regenAfterDealing` (Sanguine — the
+                   round's _dealtDmgThisRound flag, cleared below), `regenAura` (Spirit of Giving: a teammate's aura). */
+                let _condRegen = 0;
+                if (typeof getUnitPassives === 'function' && typeof unitPassiveRowIds === 'function') {
+                    if (unitPassiveRowIds(u).length) {
+                        const _tHere = getTerrainAt(u.x, u.y);
+                        for (const p of getUnitPassives(u)) {
+                            const _tr = p && p.terrainRegen;
+                            if (_tr && typeof _tr[_tHere] === 'number') _condRegen += _tr[_tHere];
+                        }
+                        if (u._dealtDmgThisRound) _condRegen += (unitPassiveSum(u, 'regenAfterDealing') || 0);
+                    }
+                    _condRegen += passiveAuraRegenPct(u);
+                }
+                u._dealtDmgThisRound = false;
+                if (u._ambushStrike) delete u._ambushStrike;   // Ambush: a spent cloak never carries past the round
                 if (u.hp < u.maxHp) {
                     // The `regenPerRound` hook (% max HP; the Chrono Locket's gear row = 5) on top of the baseline regen.
                     const _regenHook = (typeof unitPassiveValue === 'function') ? (+unitPassiveValue(u, 'regenPerRound') || 0) : 0;
-                    const _regenPct = REGEN_PERCENT + Math.max(0, _regenHook) / 100;
+                    const _regenPct = REGEN_PERCENT + (Math.max(0, _regenHook) + Math.max(0, _condRegen)) / 100;
                     const amt = Math.max(1, Math.round(u.maxHp * _regenPct));
                     const before = u.hp;
                     u.hp = Math.min(u.maxHp, u.hp + amt);
@@ -8522,7 +8693,9 @@
                 }
 
                 if ((u.mp || 0) < (u.maxMp || 0)) {
-                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * MP_REGEN_PERCENT));
+                    // THE SPELL AUDIT Batch D — `mpPerRound` (Mana Font: +10 flat MP) on top of the baseline MP regen.
+                    const mpAmt = Math.max(1, Math.round((u.maxMp || 0) * MP_REGEN_PERCENT))
+                        + Math.max(0, Math.round(unitPassiveSum(u, 'mpPerRound') || 0));
                     const mpBefore = u.mp || 0;
                     u.mp = Math.min(u.maxMp || 0, mpBefore + mpAmt);
                     const mpActual = u.mp - mpBefore;
@@ -8574,6 +8747,31 @@
                         }
                     }
                 }
+            }
+
+            /* THE SPELL AUDIT Batch D — `auraTick: { status, within, dmg }` (Faraday Cage: Jammed enemies within 2 take
+               20): a source-less DoT-style tick (level-scaled to the victim, armor ignored) credited to the bearer
+               through _lastDamageSourceId, like the seed ticks. applyDamageToUnit pops the number (relayed). */
+            if (typeof getUnitPassives === 'function' && typeof unitPassiveRowIds === 'function') {
+                let _auraTickKill = false;
+                for (const u of state.units) {
+                    if (!u || u.dead || u._dying || !unitPassiveRowIds(u).length) continue;
+                    for (const p of getUnitPassives(u)) {
+                        const at = p && p.auraTick;
+                        if (!at || !(+at.dmg > 0) || !(+at.within > 0)) continue;
+                        for (const e of state.units) {
+                            if (!e || e.dead || e._dying || !isEnemyUnit(u, e)) continue;
+                            if (Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y)) > +at.within) continue;
+                            if (at.status && !unitHasStatus(e, at.status)) continue;
+                            e._lastDamageSourceId = u.id;
+                            addLog(`${p.icon || '✦'} ${unitDisplayName(u)}'s ${p.name} arcs into ${unitDisplayName(e)}!`);
+                            if (applyDamageToUnit(e, +at.dmg, `${p.name}: `, {
+                                ignoreArmor: true, damageType: 'dot', consumeMarked: false, scaleByTargetLevel: true
+                            })) _auraTickKill = true;
+                        }
+                    }
+                }
+                if (_auraTickKill && typeof checkWin === 'function') checkWin();
             }
 
             if ((!healed.length && !manaRestored.length) || _skipVisuals()) {
@@ -8876,7 +9074,9 @@
         function _growSeedIntoTree(seed, events = null) {
             let gx = seed.x, gy = seed.y;
             const occupant = unitAt(gx, gy);
-            if (occupant && !getObjectAt(gx, gy)) {
+            // THE SPELL AUDIT Batch D — Mountainborn (`immuneDisplace: ['terrain']`) is never shoved by a sprouting tree;
+            // the tree takes the nearest free tile below instead.
+            if (occupant && !getObjectAt(gx, gy) && !unitResistsDisplace(occupant, 'terrain')) {
                 // Try to shove the occupant one tile aside (orthogonals first).
                 const shoves = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
                 for (const [dx, dy] of shoves) {
@@ -10999,6 +11199,25 @@
             const _healTaken = getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
             if (_healTaken !== 1) _amt *= _healTaken;
             const rawAmount = Math.max(0, Math.round(_amt));
+            /* THE SPELL AUDIT Batch D — `healRider: { <status>: { cleanse: N } }` (Choir: healing a Blessed ally also
+               cleanses 1 debuff). Rides the heal the caster sends to a teammate carrying the status, even a top-off. */
+            if (sourceUnit && sourceUnit.id !== target.id && rawAmount > 0 && !isEnemyUnit(sourceUnit, target)
+                && typeof getUnitPassives === 'function') {
+                for (const _hrp of getUnitPassives(sourceUnit)) {
+                    const _hr = _hrp && _hrp.healRider;
+                    if (!_hr || typeof _hr !== 'object') continue;
+                    for (const _hrs of Object.keys(_hr)) {
+                        const _hrn = +(_hr[_hrs] && _hr[_hrs].cleanse) || 0;
+                        if (_hrn <= 0 || !unitHasStatus(target, _hrs)) continue;
+                        const _hrDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
+                        for (const k of _hrDebuffs.slice(0, _hrn)) clearStatus(target, k);
+                        if (_hrDebuffs.length) {
+                            addLog(`👼 ${unitDisplayName(sourceUnit)}'s ${_hrp.name} lifts ${_hrDebuffs.slice(0, _hrn).map(k => STATUS_DEFS[k]?.label || k).join(', ')} off ${unitDisplayName(target)}.`);
+                            showFloatingTextForUnit(target, '✨ CLEANSED', 'buff', { durationMs: 1000 });
+                        }
+                    }
+                }
+            }
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
             if (actual <= 0) return 0;
             target.hp = Math.min(target.maxHp, target.hp + actual);
@@ -24516,7 +24735,7 @@
                 if (_bdm !== 1) dmg = Math.floor(dmg * _bdm);
                 let isCrit = false;
                 try {
-                    if (typeof rollCrit === 'function' && rollCrit(att)) {
+                    if (typeof rollCrit === 'function' && rollCrit(att) && !unitCritWarded(tgt)) {   // Batch D: Foresight wards the crit
                         isCrit = true;
                         dmg = Math.floor(dmg * ((typeof getCritMultiplier === 'function') ? getCritMultiplier(att) : 1.8));
                         /* parity with the turn-based crit path: count it */
@@ -30868,6 +31087,23 @@
                         // previews (ui.js) still surface the multiplier.
                     }
                 }
+
+                /* THE SPELL AUDIT Batch D — the family passives' strike multipliers, inside the capped product:
+                   Mountainborn `highGroundBonus`, Pack Tactics `flankBonus`, Hex Weaver `finisherBonus`, Ambush
+                   `invisibleStrikeBonus` (a basic attack passes opts.fromInvisible; a spell cast out of Invisible
+                   leaves sourceUnit._ambushStrike for its hits — doSpell sets / clears it). DoT ticks never ride it. */
+                if (damageType !== 'dot') {
+                    const _pH = (typeof getUnitStandingHeight === 'function');
+                    const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
+                        srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
+                        tgtH: _pH ? getUnitStandingHeight(target) : null,
+                        fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
+                    });
+                    if (_psm.mult !== 1) {
+                        _offMult *= _psm.mult;
+                        for (const _pl of _psm.parts) _multCallout(sourceUnit, _pl, 1000);
+                    }
+                }
             }
 
             // ── ⚗ STATUS-COMBO BONUS (2026-07-14 spell rework) ─────────────
@@ -31123,6 +31359,15 @@
                         ? unitPassiveValue(sourceUnit, 'physicalHitStatus') : undefined;
                     if (_serr && _serr.id && isEnemyUnit(sourceUnit, target) && STATUS_DEFS[_serr.id]) {
                         applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${unitDisplayName(sourceUnit)}'s serrated hit: `, sourceUnit);
+                    }
+                    /* THE SPELL AUDIT Batch D — Sanguine's ledger (`regenAfterDealing`: a primitive flag the round end reads
+                       and clears) and Jelly Drift's `terrainHitStatus` (an enemy hit while standing on that terrain). */
+                    if (isEnemyUnit(sourceUnit, target) && finalDamage > 0) sourceUnit._dealtDmgThisRound = true;
+                    if (target.hp > 0 && damageType !== 'dot' && isEnemyUnit(sourceUnit, target) && typeof getUnitPassives === 'function') {
+                        for (const _thp of getUnitPassives(sourceUnit)) {
+                            const _ths = _thp && _thp.terrainHitStatus && _thp.terrainHitStatus[getTerrainAt(target.x, target.y)];
+                            if (_ths && _ths.id && STATUS_DEFS[_ths.id]) applyStatusPayload(target, { id: _ths.id, duration: _ths.duration || 1 }, `${_thp.name}: `, sourceUnit);
+                        }
                     }
                     /* 🧨 Incendiary Rounds (CHAMP REWORK Phase 4, STATUS_DEFS
                        basicAttackStatus): a landed BASIC hit (physical, no
@@ -31466,6 +31711,12 @@
                     const _hobName = (getUnitPassives(target).find(p => p && p.healOnceBelowPct) || {}).name || 'Second Wind';
                     addLog(`💚 ${unitDisplayName(target)}'s ${_hobName} answers — +${target.hp - _hobBefore} HP!`);
                     showFloatingTextForUnit(target, `+${target.hp - _hobBefore}`, 'heal', { durationMs: 1200 });
+                    // THE SPELL AUDIT Batch D — the hook's optional `cleanse: N` (Consecrated sheds 1 debuff with the heal)
+                    if (+_hob.cleanse > 0) {
+                        const _hobDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
+                        for (const k of _hobDebuffs.slice(0, +_hob.cleanse)) clearStatus(target, k);
+                        if (_hobDebuffs.length) addLog(`💚 ${_hobName} sheds ${unitDisplayName(target)}'s ${_hobDebuffs.slice(0, +_hob.cleanse).map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`);
+                    }
                     flashUnit(target.id, 'heal');
                     if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
                 }
@@ -31527,6 +31778,37 @@
                 // Mystery Dungeon: a felled monster may rise and JOIN the
                 // party (PMD recruitment) — rolled after the death resolves.
                 if (typeof _mdMaybeOfferRecruit === 'function') _mdMaybeOfferRecruit(target, killer);
+                /* THE SPELL AUDIT Batch D — Bloodlust's `killStage` (the killer takes these stat stages) and Hex
+                   Weaver's `spreadOnDeath` (a status named by a living enemy of the fallen jumps to the fallen's
+                   nearest adjacent teammate that lacks it, at its remaining duration). Before defeatUnit wipes the
+                   statuses; ids only, never a unit on another unit. */
+                if (killer && !killer.dead && typeof getUnitPassives === 'function') {
+                    for (const _kp of getUnitPassives(killer)) {
+                        if (_kp && _kp.killStage && typeof _kp.killStage === 'object') applyStatStageBoost(killer, _kp.killStage, `${_kp.name}: `, killer);
+                    }
+                }
+                if (target.status && typeof getUnitPassives === 'function') {
+                    const _spreadIds = [];
+                    for (const _sh of state.units) {
+                        if (!_sh || _sh.dead || _sh._dying || !isEnemyUnit(_sh, target)) continue;
+                        if (typeof unitPassiveRowIds === 'function' && !unitPassiveRowIds(_sh).length) continue;
+                        for (const _sp of getUnitPassives(_sh)) {
+                            for (const _sid of (Array.isArray(_sp && _sp.spreadOnDeath) ? _sp.spreadOnDeath : [])) {
+                                if ((Number(target.status[_sid]) || 0) > 0 && !_spreadIds.some(e => e.id === _sid)) _spreadIds.push({ id: _sid, by: _sh, name: _sp.name });
+                            }
+                        }
+                    }
+                    for (const _se of _spreadIds) {
+                        const _next = state.units.find(u => u && !u.dead && !u._dying && u.id !== target.id && u.player === target.player
+                            && Math.max(Math.abs(u.x - target.x), Math.abs(u.y - target.y)) === 1 && !unitHasStatus(u, _se.id));
+                        if (!_next) continue;
+                        const _left = Math.max(1, Number(target.status[_se.id]) || 1);
+                        if (applyStatusPayload(_next, { id: _se.id, duration: _left }, `${_se.name}: `, _se.by)) {
+                            addLog(`🪄 ${unitDisplayName(_se.by)}'s ${_se.name}: the ${(STATUS_DEFS[_se.id]?.label) || _se.id} jumps from ${unitDisplayName(target)} to ${unitDisplayName(_next)}!`);
+                            showFloatingTextForUnit(_next, `🪄 ${(STATUS_DEFS[_se.id]?.label || _se.id).toUpperCase()} JUMPS`, 'debuff', { durationMs: 1100 });
+                        }
+                    }
+                }
                 defeatUnit(target, killer);
 
                 target._damageContributors = {};
@@ -32813,6 +33095,8 @@
             if (!unit || !isInside(destX, destY)) return [];
             const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             const unitZ = unit.z ?? 0;
+            // THE SPELL AUDIT Batch D — Mountainborn's `ignoreClimbCost` (read once; mirrors getMoveTiles below)
+            const _noClimbCost = typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'ignoreClimbCost');
 
             if (destZ === undefined || destZ === null) {
                 if (canFly(unit) && isUnitAirborne(unit)) {
@@ -32960,7 +33244,7 @@
 
                         /* Climbing costs movement — mirrors getMoveTiles:
                            max(terrain cost, levels risen); descents free. */
-                        const _pRise = Math.max(0, nz - cur.z);
+                        const _pRise = _noClimbCost ? 0 : Math.max(0, nz - cur.z);
                         const nextCost = cur.cost
                             + Math.max(getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined), _pRise);
                         if (nextCost > maxMove) continue;
@@ -57353,6 +57637,14 @@
 
             pushUndoSnapshot(true);
 
+            /* THE SPELL AUDIT Batch D — the cloak, read BEFORE the swing breaks it: Umbral's `invisibleCrit` (the round's
+               first basic attack out of Invisible crits; unit._umbralRound is a primitive) and Ambush's
+               `invisibleStrikeBonus` (passed to applyDamageToUnit as opts.fromInvisible). A basic attack also ends
+               any spell-side ambush flag. */
+            const _atkFromInvisible = unitHasStatus(unit, 'invisible');
+            delete unit._ambushStrike;
+            const _umbralReady = _atkFromInvisible && !!unitPassiveValue(unit, 'invisibleCrit') && unit._umbralRound !== (state.round || 0);
+
             if (unitHasStatus(unit, 'invisible')) {
                 clearStatus(unit, 'invisible');
                 addLog(`${unitDisplayName(unit)} breaks camouflage!`);
@@ -57380,7 +57672,12 @@
             }
             const evaded = _blindMiss ? true : (_atkArc === 'back' ? false : rollEvasion(target));
 
-            const isCrit = !evaded && rollCrit(unit);
+            // THE SPELL AUDIT Batch D — Umbral forces the crit; Foresight (`allyNoCritWithin` on a teammate of the
+            // target) wards it off entirely.
+            const _umbralCrit = _umbralReady && !evaded;   // a whiff does not spend the round's Umbral strike
+            if (_umbralCrit) unit._umbralRound = state.round || 0;
+            const isCrit = !evaded && (_umbralCrit || rollCrit(unit)) && !unitCritWarded(target);
+            if (_umbralCrit && isCrit) showFloatingTextForUnit(unit, '🌑 UMBRAL!', 'mult', { durationMs: 900 });
 
             // Press Turn: resolve outcome synchronously from the rolled result
             // and type tier; the AP math runs at the spend site below. Swinging
@@ -57558,7 +57855,8 @@
                         // Ray Gun: magic damage type (M.DEF soak, INT-axis
                         // bonuses); the mark is still consumed like a basic hit.
                         damageType: _rayGun ? 'magic' : 'physical',
-                        consumeMarked: true
+                        consumeMarked: true,
+                        fromInvisible: _atkFromInvisible   // THE SPELL AUDIT Batch D: Ambush's invisibleStrikeBonus
                     });
 
                     /* ⚡ Power Core (cyborg passive, plan §5.2): a landed basic
@@ -59071,6 +59369,9 @@
                 if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(occ) === 'colossal') {
                     return 'Too heavy to shove';
                 }
+                // THE SPELL AUDIT Batch D — Mountainborn (`immuneDisplace: ['terrain']`): raised ground cannot shove it aside.
+                const _tAnchor = unitResistsDisplace(occ, 'terrain');
+                if (_tAnchor) return `${_tAnchor.name}: the ground cannot shove them`;
                 let sdx = Math.sign(x - unit.x), sdy = Math.sign(y - unit.y);
                 if (sdx !== 0 && sdy !== 0) {
                     if (Math.abs(x - unit.x) >= Math.abs(y - unit.y)) sdy = 0; else sdx = 0;
@@ -61743,6 +62044,13 @@
             } else {
                 delete unit._sneakStrikeBonus;
             }
+            /* THE SPELL AUDIT Batch D — Ambush (`invisibleStrikeBonus`): a damaging spell cast out of Invisible marks its
+               hits (applyDamageToUnit reads the primitive flag); the next cast, a basic attack or the round end clears it. */
+            if (unitHasStatus(unit, 'invisible') && spellHasDamage(spell) && (unitPassiveSum(unit, 'invisibleStrikeBonus') || 0) > 0) {
+                unit._ambushStrike = true;
+            } else {
+                delete unit._ambushStrike;
+            }
 
             if (unitHasStatus(unit, 'invisible') && _kindMeta(spell).breaksStealth) {
                 clearStatus(unit, 'invisible');
@@ -62289,7 +62597,7 @@
                     x, y, owner: unit.player, casterUnitId: unit.id,
                     spellId: spell.id, spellName: 'Zombie',
                     zombie: true, hitsToKill: true, hp: _zHits, maxHp: _zHits,
-                    dmg: (spell.zombieDmg || 60) + Math.floor(spellPower * 0.5),
+                    dmg: (spell.zombieDmg || 60) + Math.floor(spellPower * 0.5) + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                     range: 1,
                 });
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
@@ -62337,7 +62645,7 @@
                     x, y, owner: unit.player, casterUnitId: unit.id,
                     spellId: spell.id, spellName: _sName,
                     summon: _sd.key || 'pet', hitsToKill: true, hp: _sHits, maxHp: _sHits,
-                    dmg: (_sd.dmg || 60) + Math.floor(spellPower * 0.5),
+                    dmg: (_sd.dmg || 60) + Math.floor(spellPower * 0.5) + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                     range: 1, move: _sd.move || 3, reveals: _sd.reveals || 0, armored: !!_sd.armored,
                 });
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
@@ -62541,7 +62849,7 @@
                     owner: unit.player,
                     casterUnitId: unit.id,
                     trapType: spell.trapType || 'spike',
-                    dmg: (spell.dmg || 0) + spellPower,
+                    dmg: (spell.dmg || 0) + spellPower + ((spell.dmg || 0) > 0 ? passiveDeployBonus(unit).dmg : 0),   // Batch D: Foreman
                     spellId: spell.id,
                     spellName: spell.name,
                     groupId: _gid, anchorX: _tfp.x, anchorY: _tfp.y, size: spell.trapSize || 1
@@ -63497,7 +63805,15 @@
                     addLog(`${unitDisplayName(target)} is far too heavy to drag!`);
                     showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                 }
-                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3);
+                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, 'pull');
+                // THE SPELL AUDIT Batch D — Windborne (`immuneDisplace: ['pull']`) holds; Event Horizon's `pullRider` lands.
+                const _pullAnchor = unitResistsDisplace(target, 'pull');
+                if (_pullAnchor && (spell.pullDistance || 3) > 0) {
+                    addLog(`${_pullAnchor.icon || '⚓'} ${unitDisplayName(target)}'s ${_pullAnchor.name} holds — the pull cannot move them!`);
+                    showFloatingTextForUnit(target, `${_pullAnchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 1000 });
+                }
+                const _pullRider = passivePullRider(unit, spell);
+                if (_pullRider && !target.dead) applyStatusPayload(target, { id: _pullRider.id, duration: _pullRider.duration || 1 }, `${_pullRider.name}: `, unit);
                 const pdx = Math.sign(unit.x - target.x);
                 const pdy = Math.sign(unit.y - target.y);
                 const _pullFromX = target.x, _pullFromY = target.y;
@@ -64362,7 +64678,7 @@
                         detonateDeployedObject({
                             x, y, z,
                             ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player,
-                            blastRadius: spell.blastRadius, blastDmg: spell.blastDmg,
+                            blastRadius: spell.blastRadius, blastDmg: spell.blastDmg + passiveDeployBonus(unit).dmg,   // Batch D: Foreman
                             statusEffects: spell.statusEffects || [],
                             spellId: spell.id, spellName: spell.name,
                             aoeMask: _spellMaskOf(spell) || undefined
@@ -64385,15 +64701,19 @@
                     const oldest = _ownedObjs.shift();
                     state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
                 }
+                // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +hp on an object with an HP bar (objectHp > 1;
+                // a 1-HP snare or decoy breaks to any hit), +dmg on a blast.
+                const _fmObj = passiveDeployBonus(unit);
+                const _fmObjHp = (spell.objectHp || 1) + ((spell.objectHp || 1) > 1 ? _fmObj.hp : 0);
                 const _deployedEntry = {
                     x, y, z,
                     ownerUnitId: unit.id,
                     ownerId: unit.id,
                     ownerPlayer: unit.player,
-                    hp: spell.objectHp || 1,
-                    maxHp: spell.objectHp || 1,
+                    hp: _fmObjHp,
+                    maxHp: _fmObjHp,
                     blastRadius: spell.blastRadius || 0,
-                    blastDmg: spell.blastDmg || 0,
+                    blastDmg: (spell.blastDmg || 0) + ((spell.blastDmg || 0) > 0 ? _fmObj.dmg : 0),
                     blocksMovement: spell.blocksMovement !== false,
                     drawsRangedAttack: !!spell.drawsRangedAttack,
                     detonateOnAttack: !!spell.detonateOnAttack,
@@ -66054,8 +66374,11 @@
                 playSfx('uiConfirm');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                const turretHp = spell.turretHp || 20;
-                const turretDmg = spell.turretDmg || 8;
+                // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +dmg always, +hp only on a real HP pool (a
+                // hitsToKill turret counts blows, not HP).
+                const _fmB = passiveDeployBonus(unit);
+                const turretHp = (spell.turretHp || 20) + (spell.hitsToKill ? 0 : _fmB.hp);
+                const turretDmg = (spell.turretDmg || 8) + _fmB.dmg;
                 // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                 const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
 
@@ -66370,8 +66693,10 @@
                 // descriptions ("path enemies take N … full damage to primary
                 // target") promise. Spells that define no dashDamage have no
                 // separate path value, so every tile takes `dmg` uniformly.
-                const dashPathDmg = spell.dashDamage || spell.dmg || 0;
-                const dashPrimaryDmg = spell.dmg || dashPathDmg;
+                // THE SPELL AUDIT Batch D — Pathfinder's `dashDamageMult` (product): every hit the dash deals along its path.
+                const _dashPMult = unitPassiveMult(unit, 'dashDamageMult') || 1;
+                const dashPathDmg = Math.round((spell.dashDamage || spell.dmg || 0) * _dashPMult);
+                const dashPrimaryDmg = Math.round((spell.dmg || 0) * _dashPMult) || dashPathDmg;
                 const dashSplitsDamage = (spell.dashDamage != null);
 
                 // Scale dash travel time with distance so long dashes glide
@@ -66679,7 +67004,8 @@
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
                     if (spell.drainPct && !unit.dead) {
-                        const healed = Math.floor(totalDmg * spell.drainPct);
+                        // THE SPELL AUDIT Batch D: the `lifeSapMult` hook (Bloodlust ×1.5) reaches the sky-drop drain too
+                        const healed = Math.floor(totalDmg * spell.drainPct * (unitPassiveMult(unit, 'lifeSapMult') || 1));
                         unit.hp = Math.min(unit.maxHp, unit.hp + healed);
                         showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 800 });
                     }
@@ -67954,6 +68280,8 @@
             const tiles = [];
             const tileSet = new Set();
             const _unitFlies = canFly(unit);
+            // THE SPELL AUDIT Batch D — Mountainborn's `ignoreClimbCost`: levels risen cost nothing (jump still gates steepness)
+            const _noClimbCost = typeof unitPassiveValue === 'function' && !!unitPassiveValue(unit, 'ignoreClimbCost');
             const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             const unitZ = unit.z ?? 0;
 
@@ -68145,7 +68473,7 @@
                            work — walkers may eat fall damage instead). Jump is
                            still the per-step STEEPNESS gate (getUnitJumpClimb);
                            move is the budget the whole climb draws from. */
-                        const _rise = Math.max(0, nz - curZ);
+                        const _rise = _noClimbCost ? 0 : Math.max(0, nz - curZ);
                         const nextCost = cur.cost
                             + Math.max(getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined), _rise);
                         if (nextCost > maxCost) { continue; }

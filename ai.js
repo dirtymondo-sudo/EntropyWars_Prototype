@@ -510,6 +510,15 @@
         if (sp && sp.bonusVsStatus && _bonusVsMatches(tg, sp.bonusVsStatus)) {
             offMult *= (sp.bonusVsStatus.mult || 1.5);                        // status combo
         }
+        // THE SPELL AUDIT Batch D — the family passives' strike multipliers (battle.js passiveStrikeMult: high ground,
+        // flank, finisher, ambush out of Invisible), so the CPU walks its Pack Tactics bruiser next to an ally.
+        if (typeof passiveStrikeMult === 'function') {
+            try {
+                offMult *= passiveStrikeMult(unit, tg, damageType, {
+                    srcH: myH, tgtH: tgH, fromInvisible: !!(g.unitHasStatus && g.unitHasStatus(unit, 'invisible'))
+                }).mult || 1;
+            } catch (e) {}
+        }
         offMult = Math.min(offMult, 3.0);                                     // MAX_OFFENSIVE_MULT
         let est = raw * offMult;
 
@@ -2504,7 +2513,9 @@
             ? getStatusApplyChance(source, target, effect) : (affinity === 'resist' ? 0.45 : 0.9);
         // Third Eye (the `debuffTurnsBonus` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
         const duration = (effect.duration || 1)
-            + ((typeof unitPassiveSum === 'function') ? (unitPassiveSum(source, 'debuffTurnsBonus') || 0) : 0);
+            + ((typeof unitPassiveSum === 'function') ? (unitPassiveSum(source, 'debuffTurnsBonus') || 0) : 0)
+            // THE SPELL AUDIT Batch D — the per-status `statusDurationBonus` (Aftershock / Chorus / Showmanship)
+            + ((typeof passiveStatusDurationBonus === 'function') ? (passiveStatusDurationBonus(source, effect.id) || 0) : 0);
         return probability * (ccDenialValue(g, source, target, effect.id, duration, v)
             + statusSetupValue(g, source, target, effect.id, v));
     }
