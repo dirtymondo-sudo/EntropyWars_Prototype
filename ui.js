@@ -1,3 +1,8 @@
+        /* THE ONE STAT-BAR COLOUR (the user 2026-10-01: "for the stat bars, get rid of the different colors. It looks random
+           and super confusing"): every stat bar (the inspect card, the codex dossier; party-builder.js PB_STAT_BAR_C and
+           map.js _HQ_STAT_BAR_C use the same ivory) draws in this one colour; the letter-grade node carries the colour.
+           HP / MP vitals keep their green / blue. */
+        var EW_STAT_BAR_C = '#e3dcc6';
         function builderIconMarkup(type) {
             const icons = {
                 hp: '♥',
@@ -3942,6 +3947,7 @@
                 ? '<div class="ins-affin">' + elemAffinityBoxHtml(unit.race, { own: _insOwn, seen: state._elemSeen, size: 'md', label: 'ELEMENTS' }) + '</div>'
                 : '';
 
+            // ONE BAR COLOUR (2026-10-01): every stat bar is EW_STAT_BAR_C; the grade node carries the colour.
             // FFT-style horizontal stat bar: length reads at a glance, exact
             // number at the end. Buffed/debuffed values tint green/red with a
             // white tick marking the unbuffed base on the bar.
@@ -3965,16 +3971,16 @@
             }
 
             const statBars =
-                statBar('ATK', effAtk, unit.atk, 110, '#e0705a', false, window.STAT_HELP?.atk, 'atk') +
-                statBar('M ATK', effInt, unit.intStat || 0, 110, '#62c4c9', false, window.STAT_HELP?.int, 'int') +
-                statBar('DEF', effDef, unit.def || 0, 110, '#7a9cc8', false, window.STAT_HELP?.def, 'def') +
-                statBar('M DEF', effMDef, unit.mdef || 0, 110, '#a98fd6', false, window.STAT_HELP?.mdef, 'mdef') +
-                statBar('MOV', effMov, unit.move, 6, '#86c47e', false, window.STAT_HELP?.move) +
-                statBar('RNG', effRng, unit.range, 8, '#e0b45a', false, window.STAT_HELP?.range) +
+                statBar('ATK', effAtk, unit.atk, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.atk, 'atk') +
+                statBar('M ATK', effInt, unit.intStat || 0, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.int, 'int') +
+                statBar('DEF', effDef, unit.def || 0, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.def, 'def') +
+                statBar('M DEF', effMDef, unit.mdef || 0, 110, EW_STAT_BAR_C, false, window.STAT_HELP?.mdef, 'mdef') +
+                statBar('MOV', effMov, unit.move, 6, EW_STAT_BAR_C, false, window.STAT_HELP?.move) +
+                statBar('RNG', effRng, unit.range, 8, EW_STAT_BAR_C, false, window.STAT_HELP?.range) +
                 // CRT/EVA are official stats (data.js formula, shared with the
                 // combat rolls) — hover the row for the full math.
-                statBar('CRT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, '#d9c06a', true, window.STAT_HELP?.crt) +
-                statBar('EVA', Math.round(getEvasionChance(unit) * 100), Math.round(getEvasionChance(unit) * 100), 100, '#b9bfd4', true, window.STAT_HELP?.eva);
+                statBar('CRT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, EW_STAT_BAR_C, true, window.STAT_HELP?.crt) +
+                statBar('EVA', Math.round(getEvasionChance(unit) * 100), Math.round(getEvasionChance(unit) * 100), 100, EW_STAT_BAR_C, true, window.STAT_HELP?.eva);
 
             const isAlly = unit.player === getViewerPlayer();
             const forecastNote = hpPreviewText || mpPreviewText;
@@ -8416,13 +8422,13 @@
                     <div class="cdx-stats-grid">
                         ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70', window.STAT_HELP?.hp, 'hp')}
                         ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898', window.STAT_HELP?.mp, 'mp')}
-                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050', window.STAT_HELP?.atk, 'atk')}
-                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', '#9080b8', window.STAT_HELP?.int, 'int')}
-                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060', window.STAT_HELP?.def, 'def')}
-                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', '#6f8fc0', window.STAT_HELP?.mdef, 'mdef')}
-                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050', window.STAT_HELP?.spd, 'spd')}
-                        ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', '#60b8d0', window.STAT_HELP?.move)}
-                        ${_codexBuildStatBar(stats.awr || 0, 105, 'AWR', '#b0b070', window.STAT_HELP?.awr, 'awr')}
+                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', EW_STAT_BAR_C, window.STAT_HELP?.atk, 'atk')}
+                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', EW_STAT_BAR_C, window.STAT_HELP?.int, 'int')}
+                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', EW_STAT_BAR_C, window.STAT_HELP?.def, 'def')}
+                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', EW_STAT_BAR_C, window.STAT_HELP?.mdef, 'mdef')}
+                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', EW_STAT_BAR_C, window.STAT_HELP?.spd, 'spd')}
+                        ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', EW_STAT_BAR_C, window.STAT_HELP?.move)}
+                        ${_codexBuildStatBar(stats.awr || 0, 105, 'AWR', EW_STAT_BAR_C, window.STAT_HELP?.awr, 'awr')}
                     </div>
                     <div class="cdx-stat-total">TOTAL STAT POINTS: ${total}</div>
                 </div>

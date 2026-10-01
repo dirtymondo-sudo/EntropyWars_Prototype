@@ -2199,6 +2199,7 @@
         /* THE GRADE NODE (2026-09-21): label · node · number · bar — `gradeKey`
            = the engine's stat id (data.js statGradeNodeHtml); a row without
            one (the vitals' "x / y" text) keeps the column empty. */
+        const _HQ_STAT_BAR_C = '#e3dcc6';   // ONE stat-bar colour (2026-10-01; the same ivory as ui.js EW_STAT_BAR_C); HP / MP / EXP keep theirs
         function _hqPauseBar(label, val, max, color, text, gradeKey) {
             const pct = Math.max(0, Math.min(100, max > 0 ? (val / max) * 100 : 0));
             const node = (gradeKey && typeof window.statGradeNodeHtml === 'function') ? window.statGradeNodeHtml(gradeKey, val, { size: 'lg', label }) : '<span class="ew-grade lg none"></span>';
@@ -2447,12 +2448,12 @@
             html += _hqPauseBar('MP', v.mp | 0, Math.max(1, v.mpMax | 0), '#2f9dff', `${v.mp} / ${v.mpMax}`);
             if (xp) html += _hqPauseBar('EXP', xp.into | 0, Math.max(1, xp.need | 0), '#ffd86a', xp.max ? 'MAX LEVEL' : `${xp.into} / ${xp.need} · NEXT IN ${xp.left}`);   // THE LEVELS
             if (u) {
-                html += _hqPauseBar('ATK', u.atk | 0, 100, '#ff6b4a', null, 'atk');
-                html += _hqPauseBar('M ATK', u.intStat | 0, 100, '#c77dff', null, 'int');
-                html += _hqPauseBar('DEF', u.def | 0, 100, '#4fa3ff', null, 'def');
-                html += _hqPauseBar('M DEF', u.mdef | 0, 100, '#7fd9dd', null, 'mdef');
-                html += _hqPauseBar('SPD', u.spd | 0, 100, '#f2c468', null, 'spd');
-                html += _hqPauseBar('AWR', u.awr | 0, 100, '#ffd75a', null, 'awr');
+                html += _hqPauseBar('ATK', u.atk | 0, 100, _HQ_STAT_BAR_C, null, 'atk');
+                html += _hqPauseBar('M ATK', u.intStat | 0, 100, _HQ_STAT_BAR_C, null, 'int');
+                html += _hqPauseBar('DEF', u.def | 0, 100, _HQ_STAT_BAR_C, null, 'def');
+                html += _hqPauseBar('M DEF', u.mdef | 0, 100, _HQ_STAT_BAR_C, null, 'mdef');
+                html += _hqPauseBar('SPD', u.spd | 0, 100, _HQ_STAT_BAR_C, null, 'spd');
+                html += _hqPauseBar('AWR', u.awr | 0, 100, _HQ_STAT_BAR_C, null, 'awr');
                 html += `<div class="hq-pp-diamonds"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
             }
             html += '</div>';
