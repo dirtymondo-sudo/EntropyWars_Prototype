@@ -2610,6 +2610,10 @@ const ThreePost = (function () {
 
     function resize(w, h) {
         if (!_ready || !_composer) return;
+        /* THE PERF PASS (2026-10-01): r128's EffectComposer keeps the pixel ratio it was BUILT with — a live Fast/Native
+           switch (or the perf lens's resolution) resized the canvas while every composer target (the scene, bloom, AA)
+           stayed at the boot ratio, so Fast saved nothing until a reload. The targets follow the renderer's ratio now. */
+        if (_renderer && _composer._pixelRatio !== _renderer.getPixelRatio()) _composer._pixelRatio = _renderer.getPixelRatio();
         _composer.setSize(w, h);
         if (_fxaaPass) {
             var pixelRatio = _renderer ? _renderer.getPixelRatio() : 1;

@@ -27525,18 +27525,26 @@ const ThreeRenderer = (function () {
        sway on a shared clock (_EW_WIND, a plain object every material references — the height fog's rule). The battle's rim trees
        never (the world's fog / dissolve own their onBeforeCompile). HQ_LIGHT_RULES.wind = { on, amp (m at the crown), speed }. */
     var _EW_WIND = { value: 0 };
-    function _ewWindHook(mat, modelH, ampLocal) {
+    /* THE PERF PASS (2026-10-01): the amplitude is WORLD units at the crown now, brought into the mesh's own units in the shader
+       (÷ the scale of the matrix that draws it — modelMatrix, × instanceMatrix when the tree is one copy of an InstancedMesh), so
+       every tree of a kind can share ONE leaf and ONE bark material and the instance pass can batch them (the phase reads the
+       copy's own world position, so a batched wood still sways out of step). _ew_windFn marks the hook the instance key accepts. */
+    function _ewWindHook(mat, modelH, ampWorld) {
         mat.onBeforeCompile = function (sh) {
             sh.uniforms.uEwWind = _EW_WIND;
             sh.uniforms.uEwWindH = { value: Math.max(0.001, modelH) };
-            sh.uniforms.uEwWindAmp = { value: ampLocal };
+            sh.uniforms.uEwWindAmp = { value: ampWorld };
             sh.vertexShader = 'uniform float uEwWind; uniform float uEwWindH; uniform float uEwWindAmp;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-                '#include <begin_vertex>\n float ewk = clamp(position.y / uEwWindH, 0.0, 1.0); ewk *= ewk;\n vec4 ewp = modelMatrix * vec4(position, 1.0);\n float ewph = uEwWind + ewp.x * 0.07 + ewp.z * 0.05;\n transformed.x += (sin(ewph) * 0.7 + sin(ewph * 2.3 + 1.1) * 0.3) * ewk * uEwWindAmp;\n transformed.z += cos(ewph * 0.8 + 0.6) * ewk * uEwWindAmp * 0.6;');
+                '#include <begin_vertex>\n float ewk = clamp(position.y / uEwWindH, 0.0, 1.0); ewk *= ewk;\n mat4 ewM = modelMatrix;\n#ifdef USE_INSTANCING\n ewM = modelMatrix * instanceMatrix;\n#endif\n vec4 ewp = ewM * vec4(position, 1.0);\n float ewA = uEwWindAmp / max(1e-4, length(ewM[0].xyz));\n float ewph = uEwWind + ewp.x * 0.07 + ewp.z * 0.05;\n transformed.x += (sin(ewph) * 0.7 + sin(ewph * 2.3 + 1.1) * 0.3) * ewk * ewA;\n transformed.z += cos(ewph * 0.8 + 0.6) * ewk * ewA * 0.6;');
         };
-        mat.customProgramCacheKey = function () { return 'ewWind'; };
+        mat.customProgramCacheKey = function () { return 'ewWind2'; };
         mat._ew_wind = true;
+        mat._ew_windFn = mat.onBeforeCompile;
         return mat;
     }
+    /* THE PERF PASS (2026-10-01): the HQ's tree materials, one per (model, leaf file, tint, wind) — every tree used to build its own
+       pair, so no two trees could ever batch. Shared (_ew_shared): _disposeR keeps them for the next room. */
+    var _nrTreeMats = {};
     function _nrTree(K, kind, o) {
         o = o || {};
         var ts = K.ts, g = new THREE.Group(), name = _FOLIAGE_MODEL_FOR_KEY[kind] || 'Tree_1';
@@ -27551,13 +27559,15 @@ const ThreeRenderer = (function () {
             /* THE WIND (5.1): the HQ's trees sway — the amplitude is metres at the crown, brought into the model's own units (the
                shader moves `transformed` before the scale); a world-rim tree (K._wdFog) keeps its own hooks */
             var WR = (K.hq && !K._wdFog && !_polishOff('wind', 'EW_HQ_NO_WIND')) ? (_hqLightRules().wind || null) : null;
-            var windAmp = (WR && WR.on !== false) ? ((WR.amp != null ? WR.amp : 0.055) * (K.ts / 1.75)) / s : 0;
+            var windAmp = (WR && WR.on !== false) ? ((WR.amp != null ? WR.amp : 0.055) * (K.ts / 1.75)) : 0;   // world units at the crown (the hook divides by the drawn scale)
+            var share = !!(K.hq && !K._wdFog);   // THE PERF PASS: an HQ tree shares its kind's pair (a world-rim tree takes the haze per tree)
+            var shared = function (k, make) { if (!share) return make(); var m = _nrTreeMats[k]; if (!m) { m = make(); m._ew_shared = true; _nrTreeMats[k] = m; } return m; };
             model.traverse(function (n) {
                 if (!n.isMesh) return;
                 var pick = function (sm) {
                     var nm = (sm && sm.name) || '';
-                    if (nm === 'Tree_Leaves') { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(lm, modelH, windAmp); return lm; }
-                    var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(bm, modelH, windAmp * 0.3); return bm;
+                    if (nm === 'Tree_Leaves') return shared('L|' + name + '|' + leafFile + '|' + (tint == null ? '' : tint) + '|' + windAmp, function () { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(lm, modelH, windAmp); return lm; });
+                    return shared('B|' + name + '|' + windAmp, function () { var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(bm, modelH, windAmp * 0.3); return bm; });
                 };
                 n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
                 n.castShadow = true; n.receiveShadow = true;
@@ -30807,6 +30817,7 @@ const ThreeRenderer = (function () {
         var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
         var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '') + ',' + (_hzMotion ? 'm:' + (_hzMotion.kind || 'x') + ':' + (_hzMotion.axis || 'x') : '') + ',' + _hqBattleRoomKey();   // THE ROOM ROUND THE FIELD (§10 stage 4): an encounter's room is part of the scenery
         if (_horizonGroup && _horizonKey === key) return;
+        _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _facilityNearGroup = null; _occFieldDrop();   // THE BLOCKER SET: the list dies with the group
         _horizonMats.length = 0;
@@ -33555,7 +33566,429 @@ const ThreeRenderer = (function () {
                  /* THE BLOCKER SET (step 5): the fade's list, and the LAST recompute's rays / candidate roots / a rolling ms */
                  occ: (typeof _occField !== 'undefined' && _occField) ? { roots: _occField.roots.length, merged: _occField.skipped, rays: _occField.rays, tests: _occField.tests, ms: +_occField.ms.toFixed(2) } : null };
     }
+    /* ══ THE PERF LENS (2026-10-01) ══
+       A dev overlay that reads what a frame costs and switches parts of it off, to find the heavy part. Opened with F3, with
+       ?perf in the URL, or from Settings > Performance > Perf Overlay (that row shows once F3 has been used on this device —
+       players never see it). While it is open the renderer's render / renderBufferDirect / shadowMap.render are wrapped (put
+       back when it closes, so a closed lens costs one falsy check a frame): every draw call is counted with its triangles and
+       filed by PASS — shadow (the depth maps), scene (the main look), extra (a second look at the scene: the reflector, the
+       pixel mask, the split panes), post (the composer's quads) — and by KIND — characters, props, terrain, environment,
+       particles/fx, other. A kind switched off is simply not drawn (its shadow neither); no game object's `visible` is
+       touched. Shadows / post / point lights / resolution are session-only overrides (nothing is saved). Times: frame (one
+       drawn frame to the next), CPU (the loop's own JS) of which submit (inside renderer.render: the draw calls' CPU) and anim
+       (the mixers), GPU (EXT_disjoint_timer_query_webgl2 when the browser exposes it). Copy puts a text snapshot on the
+       clipboard; ThreeRenderer.perfLens.snapshot() returns the same numbers as data. */
+    var _lens = null;
+    var _LENS_KINDS = ['chars', 'props', 'terrain', 'fog', 'env', 'fx', 'other'];
+    var _LENS_KIND_LABEL = { chars: 'Characters', props: 'Props', terrain: 'Terrain', fog: 'Fog grid', env: 'Environment', fx: 'Particles/FX', other: 'Other' };
+    var _LENS_PASSES = ['shadow', 'scene', 'extra', 'post'];
+    var _LENS_WIN_MS = 500, _LENS_CENSUS_MS = 1000;
+    function _lensFrameRec(t0, detail) {
+        var F = { t0: t0, cpu: 0, submit: 0, anim: 0, renders: 0, shadowRuns: 0, calls: 0, tris: 0, meshes: 0, skinned: 0, inst: 0, instances: 0, pass: {}, kind: {}, detail: detail ? new Map() : null };
+        _LENS_PASSES.forEach(function (p) { F.pass[p] = [0, 0]; });
+        _LENS_KINDS.forEach(function (k) { F.kind[k] = [0, 0]; });
+        return F;
+    }
+    function _lensMode() { return _hq ? 'walk' : active ? 'battle' : (_menu && _menuLive) ? 'menu' : 'idle'; }
+    function _lensScenes() {
+        var out = [];
+        if (_hq && _hq.scene) out.push(_hq.scene);
+        if (active && scene && out.indexOf(scene) < 0) out.push(scene);
+        if (_menu && _menuLive && _menu.scene && out.indexOf(_menu.scene) < 0) out.push(_menu.scene);
+        return out;
+    }
+    function _lensIsMain(sc) { return !!sc && ((sc === scene) || (_hq && sc === _hq.scene) || (_menu && sc === _menu.scene)); }
+    function _lensMainCam(sc) {
+        if (_hq && sc === _hq.scene) return _hq.camera;
+        if (_menu && sc === _menu.scene) return _menu.camera;
+        return (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+    }
+    /* the kind of a drawn object: the nearest tagged ancestor (the roots are tagged by the census), the room's own piece
+       flags, else what it looks like (additive / see-through-without-depth / points / sprites = fx) */
+    function _lensKind(o, L) {
+        if (o._ew_lensG === L.gen) return o._ew_lensK;
+        var k = _lensKindOf(o, L);
+        o._ew_lensG = L.gen; o._ew_lensK = k;
+        return k;
+    }
+    function _lensKindOf(o, L) {
+        if (o.isSkinnedMesh || o._ew_silhouette) return 'chars';
+        if (o._ew_instSrc && o._ew_instSrc !== o) return _lensKind(o._ew_instSrc, L);   // an instance batch: its copies' kind
+        for (var q = o; q; q = q.parent) {
+            if (q._ew_lensRoot) return q._ew_lensRoot;
+            if (q._ew_hqPart === 'fx') return 'fx';
+            if (q._ew_hqTerrain || q._ew_hqGround || q._ew_hqOuter || q._ew_hqWall || q._ew_occWall || q._ew_hqPart) return 'terrain';
+            if (q._ew_hqLot != null || q._ew_hqBackdrop) return 'env';
+            if (q._ew_hqTree) return 'props';
+            if (q.isScene) break;
+        }
+        var m = Array.isArray(o.material) ? o.material[0] : o.material;
+        if (o.isPoints || o.isSprite || o.isLine || (m && (m.blending === THREE.AdditiveBlending || (m.transparent && m.depthWrite === false)))) return 'fx';
+        return q && q.isScene ? 'env' : 'other';
+    }
+    /* THE CENSUS (every _LENS_CENSUS_MS): tag the known roots, re-file every object, count the scene */
+    function _lensCensus(L, now) {
+        L.gen++; L.censusAt = now;
+        var T = function (o, k) { if (o && o.isObject3D) o._ew_lensRoot = k; };
+        T(unitGroup, 'chars');
+        [terrainGroup, highlightGroup, _terrainDecoGroup, _liquidFlowGroup, wallGroup].forEach(function (g) { T(g, 'terrain'); });
+        T(fogGroup, 'fog');
+        [objectGroup, _nexusWallGroup, _nexusBarGroup, _facilityNearGroup].forEach(function (g) { T(g, 'props'); });
+        [projectileGroup, floatTextGroup, hitFxGroup, weatherGroup].forEach(function (g) { T(g, 'fx'); });
+        [_envGroup, _zwGroup, _horizonGroup, _rayGroup, _streetLampGroup, _arenaRuinsGroup, _skyMoon].forEach(function (g) { T(g, 'env'); });
+        var H = _hq;
+        if (H) {
+            var parts = [H];
+            if (H.stage && H.stage.parts) for (var id in H.stage.parts) { var E = H.stage.parts[id]; if (E && E.P) parts.push(E.P); }
+            parts.forEach(function (P) { T(P.shellGroup, 'terrain'); T(P.propGroup, 'props'); T(P.doorGroup, 'props'); T(P.charGroup, 'chars'); });
+            if (H.sky) { T(H.sky.dome, 'env'); T(H.sky.group, 'env'); T(H.sky.landmarks, 'env'); }
+            if (H.atmos) T(H.atmos.obj, 'fx');
+        }
+        var c = { objects: 0, meshes: 0, skinned: 0, instanced: 0, point: 0, spot: 0, dir: 0, hemi: 0, casters: [], lights: [] };
+        _lensScenes().forEach(function (sc) {
+            sc.traverse(function (o) {
+                c.objects++;
+                if (o.isMesh) { c.meshes++; if (o.isSkinnedMesh) c.skinned++; if (o.isInstancedMesh) c.instanced++; }
+                if (!o.isLight) return;
+                var on = true; for (var q = o; q; q = q.parent) if (!q.visible) { on = false; break; }
+                if (o.isPointLight || o.isSpotLight) c.lights.push(o);
+                if (!on) return;
+                if (o.isPointLight) c.point++; else if (o.isSpotLight) c.spot++; else if (o.isDirectionalLight) c.dir++; else if (o.isHemisphereLight) c.hemi++;
+                if (o.castShadow && renderer && renderer.shadowMap.enabled) {
+                    var ms = o.shadow && o.shadow.mapSize ? o.shadow.mapSize.width : 0;
+                    c.casters.push((o.isPointLight ? 'point ' : o.isSpotLight ? 'spot ' : 'dir ') + ms + (o.isPointLight ? '²×6' : '²'));
+                }
+            });
+        });
+        var rigs = 0;
+        if (_hq) rigs = (_hq.chars || []).filter(function (ch) { return ch && ch.entry && ch.entry.mixer; }).length;
+        else if (active) unitEntries.forEach(function (e) { if (e && e.mixer) rigs++; });
+        c.rigs = rigs;
+        L.lightList = c.lights; delete c.lights;
+        L.census = c;
+    }
+    function _lensRecompile() {
+        _lensScenes().forEach(function (sc) {
+            sc.traverse(function (o) {
+                if (!o.material) return;
+                var ms = Array.isArray(o.material) ? o.material : [o.material];
+                for (var i = 0; i < ms.length; i++) if (ms[i]) ms[i].needsUpdate = true;
+            });
+        });
+    }
+    /* the shadow override, held every frame (a setting or a room that re-arms the map is put back) */
+    function _lensEnforce(L) {
+        if (!renderer) return;
+        var sm = renderer.shadowMap;
+        if (!L.shadows) {
+            if (sm.enabled) { sm.enabled = false; L.shadowWas = true; _lensRecompile(); }
+        } else if (L.shadowWas) {
+            L.shadowWas = false; sm.enabled = true; sm.needsUpdate = true; _shadowsDirty = true; _lensRecompile();
+        }
+    }
+    function _lensHook(on) {
+        var L = _lens;
+        if (on) {
+            if (!L || L.orig || !renderer) return;
+            var R = renderer, info = R.info, o = { R: R, render: R.render, rbd: R.renderBufferDirect, sm: R.shadowMap.render };
+            L.orig = o;
+            R.render = function (sc, cam) {
+                var L2 = _lens, F = L2 && L2.cur;
+                if (!F) return o.render.apply(this, arguments);
+                var main = _lensIsMain(sc), prev = L2.pass;
+                L2.pass = !main ? 'post' : (sc.overrideMaterial ? 'extra' : (cam === _lensMainCam(sc) ? 'scene' : 'extra'));
+                var hid = null;
+                if (main && !L2.lights && L2.lightList) { hid = []; for (var i = 0; i < L2.lightList.length; i++) { var lt = L2.lightList[i]; if (lt.visible) { lt.visible = false; hid.push(lt); } } }
+                var t = performance.now();
+                L2.depth++;
+                try { return o.render.apply(this, arguments); }
+                finally {
+                    L2.depth--; L2.pass = prev;
+                    if (!L2.depth) { F.submit += performance.now() - t; F.renders++; }
+                    if (hid) for (var j = 0; j < hid.length; j++) hid[j].visible = true;
+                }
+            };
+            R.renderBufferDirect = function (camera, sc, geometry, material, object) {
+                var L2 = _lens, F = L2 && L2.cur;
+                if (!F) return o.rbd.apply(this, arguments);
+                var pass = L2.inShadow ? 'shadow' : L2.pass, kind = 'other';
+                if (pass !== 'post' && object) {
+                    kind = _lensKind(object, L2);
+                    if (!L2.show[kind] || (object._ew_silhouette && !L2.show.outline)) return;
+                }
+                var c0 = info.render.calls, t0 = info.render.triangles;
+                o.rbd.apply(this, arguments);
+                var dc = info.render.calls - c0, dt = info.render.triangles - t0;
+                F.calls += dc; F.tris += dt;
+                var P = F.pass[pass]; P[0] += dc; P[1] += dt;
+                if (pass !== 'post') { var K = F.kind[kind]; K[0] += dc; K[1] += dt; }
+                if (object && pass === 'scene' && object._ew_lensF !== L2.frameNo) {
+                    object._ew_lensF = L2.frameNo; F.meshes++;
+                    if (object.isSkinnedMesh) F.skinned++;
+                    if (object.isInstancedMesh) { F.inst++; F.instances += object.count; }
+                }
+                if (F.detail && object && pass !== 'post') { var d = F.detail.get(object); if (!d) F.detail.set(object, d = [0, 0, kind]); d[0] += dc; d[1] += dt; }
+            };
+            R.shadowMap.render = function () {
+                var L2 = _lens;
+                if (!L2 || !L2.cur) return o.sm.apply(this, arguments);
+                if (this.enabled && (this.autoUpdate || this.needsUpdate)) L2.cur.shadowRuns++;   // a depth pass that will draw (it clears needsUpdate after)
+                L2.inShadow++;
+                try { return o.sm.apply(this, arguments); } finally { L2.inShadow--; }
+            };
+        } else if (L && L.orig) {
+            var O = L.orig; L.orig = null;
+            O.R.render = O.render; O.R.renderBufferDirect = O.rbd; O.R.shadowMap.render = O.sm;
+        }
+    }
+    function _lensGpuInit(L) {
+        L.gpu = false;
+        try {
+            if (!renderer || !renderer.capabilities || !renderer.capabilities.isWebGL2) return;
+            var gl = renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+            if (ext) L.gpu = { gl: gl, ext: ext, q: [], active: null };
+        } catch (e) { L.gpu = false; }
+    }
+    function _lensGpuPoll(L) {
+        var G = L.gpu; if (!G) return;
+        var gl = G.gl;
+        try {
+            while (G.q.length) {
+                var it = G.q[0];
+                if (!gl.getQueryParameter(it.q, gl.QUERY_RESULT_AVAILABLE)) break;
+                var bad = gl.getParameter(G.ext.GPU_DISJOINT_EXT), ns = gl.getQueryParameter(it.q, gl.QUERY_RESULT);
+                gl.deleteQuery(it.q); G.q.shift();
+                if (!bad && it.drew) { L.acc.gpu += ns / 1e6; L.acc.gpuN++; }
+            }
+            while (G.q.length > 12) gl.deleteQuery(G.q.shift().q);
+        } catch (e) { L.gpu = false; }
+    }
+    /* the loops' frame edges: renderFrame / _hqFrameGuarded / _menuFrame (each runs its body between these) */
+    function _lensBegin(now) {
+        var L = _lens; if (!L) return;
+        if (L.cur) _lensEnd();
+        if (!renderer) return;
+        if (!L.orig) { _lensHook(true); _lensGpuInit(L); }
+        if (now - L.censusAt >= _LENS_CENSUS_MS) _lensCensus(L, now);
+        _lensEnforce(L);
+        L.frameNo++;
+        L.cur = _lensFrameRec(performance.now(), L.wantDetail);   // after the census: its walk is the lens's cost, not the game's
+        L.wantDetail = false;
+        var G = L.gpu;
+        if (G && !G.active) { try { var q = G.gl.createQuery(); G.gl.beginQuery(G.ext.TIME_ELAPSED_EXT, q); G.active = q; } catch (e) { L.gpu = false; } }
+    }
+    function _lensEnd() {
+        var L = _lens; if (!L || !L.cur) return;
+        var F = L.cur; L.cur = null;
+        var t1 = performance.now();
+        F.cpu = t1 - F.t0;
+        var G = L.gpu;
+        if (G && G.active) { try { G.gl.endQuery(G.ext.TIME_ELAPSED_EXT); G.q.push({ q: G.active, drew: F.renders > 0 }); } catch (e) { L.gpu = false; } G.active = null; }
+        _lensGpuPoll(L);
+        if (!F.renders) return;   // a capped / throttled tick that drew nothing is not a frame
+        var A = L.acc;
+        if (L.lastT0) { var iv = F.t0 - L.lastT0; if (iv > 0 && iv < 2000) { A.iv += iv; A.ivN++; if (iv > A.worst) A.worst = iv; } }
+        L.lastT0 = F.t0;
+        A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
+        A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
+        _LENS_PASSES.forEach(function (p) { A.pass[p][0] += F.pass[p][0]; A.pass[p][1] += F.pass[p][1]; });
+        _LENS_KINDS.forEach(function (k) { A.kind[k][0] += F.kind[k][0]; A.kind[k][1] += F.kind[k][1]; });
+        if (F.detail) L.detail = _lensTop(F.detail);
+        if (t1 - L.accT0 >= _LENS_WIN_MS) _lensPublish(L, t1);
+    }
+    function _lensAcc() {
+        var A = { n: 0, iv: 0, ivN: 0, worst: 0, cpu: 0, submit: 0, anim: 0, renders: 0, shadowRuns: 0, calls: 0, tris: 0, meshes: 0, skinned: 0, inst: 0, instances: 0, gpu: 0, gpuN: 0, pass: {}, kind: {} };
+        _LENS_PASSES.forEach(function (p) { A.pass[p] = [0, 0]; });
+        _LENS_KINDS.forEach(function (k) { A.kind[k] = [0, 0]; });
+        return A;
+    }
+    /* the heaviest objects of one sampled frame (every pass summed) */
+    function _lensTop(map) {
+        var rows = [];
+        map.forEach(function (d, o) { rows.push([o, d[0], d[1], d[2]]); });
+        rows.sort(function (a, b) { return b[2] - a[2]; });
+        return rows.slice(0, 6).map(function (r) {
+            var o = r[0], nm = '';
+            for (var q = o, i = 0; q && i < 4 && !nm; q = q.parent, i++) nm = q.name || '';
+            if (o.isInstancedMesh) nm = (nm || 'batch') + ' ×' + o.count;
+            return { name: (nm || o.type).slice(0, 28), kind: r[3], calls: r[1], tris: r[2], skinned: !!o.isSkinnedMesh };
+        });
+    }
+    function _lensPublish(L, t1) {
+        var A = L.acc, n = Math.max(1, A.n), span = t1 - L.accT0;
+        var avg = function (v) { return v / n; };
+        var S = {
+            mode: _lensMode(), fps: A.n * 1000 / Math.max(1, span), frameMs: A.ivN ? A.iv / A.ivN : 0, worstMs: A.worst,
+            cpuMs: avg(A.cpu), submitMs: avg(A.submit), animMs: avg(A.anim), gpuMs: A.gpuN ? A.gpu / A.gpuN : null, gpuOk: !!L.gpu,
+            renders: avg(A.renders), shadowRuns: avg(A.shadowRuns), calls: avg(A.calls), tris: avg(A.tris), meshes: avg(A.meshes), skinned: avg(A.skinned), instMeshes: avg(A.inst), instances: avg(A.instances),
+            pass: {}, kind: {}
+        };
+        _LENS_PASSES.forEach(function (p) { S.pass[p] = [avg(A.pass[p][0]), avg(A.pass[p][1])]; });
+        _LENS_KINDS.forEach(function (k) { S.kind[k] = [avg(A.kind[k][0]), avg(A.kind[k][1])]; });
+        L.worstHist.push(A.worst); if (L.worstHist.length > 4) L.worstHist.shift();
+        S.worst2s = Math.max.apply(null, L.worstHist);
+        var inf = renderer ? renderer.info : null;
+        S.geometries = inf ? inf.memory.geometries : 0; S.textures = inf ? inf.memory.textures : 0; S.programs = inf && inf.programs ? inf.programs.length : 0;
+        S.pixelRatio = renderer ? renderer.getPixelRatio() : 0; S.dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        var cv = renderer ? renderer.domElement : null;
+        S.canvas = cv ? [cv.width, cv.height, cv.clientWidth, cv.clientHeight] : [0, 0, 0, 0];
+        try { var pm = performance.memory; S.heap = pm ? [pm.usedJSHeapSize / 1048576, pm.jsHeapSizeLimit / 1048576] : null; } catch (e) { S.heap = null; }
+        S.census = L.census || null;
+        S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
+        S.top = L.detail || [];
+        S.overrides = { shadows: L.shadows, post: L.post, lights: L.lights, res: L.res, show: Object.assign({}, L.show) };
+        L.last = S;
+        L.acc = _lensAcc(); L.accT0 = t1; L.wantDetail = true;
+        _lensDraw(L);
+    }
+    /* ── the panel ── */
+    var _LENS_CSS = 'position:fixed;top:8px;left:8px;z-index:99990;width:356px;max-height:calc(100vh - 16px);overflow:auto;box-sizing:border-box;'
+        + 'padding:8px 10px;background:rgba(6,10,14,0.86);border:1px solid rgba(125,255,154,0.35);border-radius:4px;'
+        + "font:11px/1.38 ui-monospace,Menlo,Consolas,monospace;color:#cfe8d6;pointer-events:auto;user-select:text;";
+    function _lensFmtN(v) { return v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e4 ? Math.round(v / 1000) + 'K' : v >= 1000 ? (v / 1000).toFixed(1) + 'K' : String(Math.round(v)); }
+    function _lensMs(v) { return v == null ? 'n/a' : v.toFixed(1) + ' ms'; }
+    function _lensEsc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function _lensText(S) {
+        if (!S) return 'PERF LENS: waiting for a drawn frame';
+        var c = S.census || {}, L = [];
+        var pad = function (s, n) { s = String(s); while (s.length < n) s += ' '; return s; };
+        L.push('PERF LENS · ' + S.mode + ' · ' + new Date().toISOString().slice(0, 19) + 'Z');
+        L.push('FPS ' + S.fps.toFixed(1) + '  frame ' + _lensMs(S.frameMs) + '  worst ' + _lensMs(S.worst2s));
+        L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : 'n/a (no timer query)'));
+        L.push('Draw calls ' + Math.round(S.calls) + '  Triangles ' + _lensFmtN(S.tris) + '  renders ' + S.renders.toFixed(1));
+        L.push('  pass      calls     tris');
+        _LENS_PASSES.forEach(function (p) { L.push('  ' + pad(p, 9) + pad(Math.round(S.pass[p][0]), 10) + _lensFmtN(S.pass[p][1]) + (p === 'shadow' ? '   (' + S.shadowRuns.toFixed(1) + ' depth renders / frame)' : '')); });
+        L.push('  kind      calls     tris   (all passes)');
+        _LENS_KINDS.forEach(function (k) { L.push('  ' + pad(k, 9) + pad(Math.round(S.kind[k][0]), 10) + _lensFmtN(S.kind[k][1])); });
+        L.push('Meshes drawn ' + Math.round(S.meshes) + ' · skinned ' + Math.round(S.skinned) + ' · instanced ' + Math.round(S.instMeshes) + ' (' + Math.round(S.instances) + ' copies)');
+        L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
+        L.push('Lights point ' + (c.point || 0) + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0));
+        L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
+        L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
+        L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
+        L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
+        if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
+        if (S.top && S.top.length) {
+            L.push('Heaviest draws (one frame, all passes):');
+            S.top.forEach(function (r) { L.push('  ' + pad(r.name, 29) + pad(r.kind, 8) + pad(r.calls, 4) + _lensFmtN(r.tris)); });
+        }
+        var off = [];
+        if (!S.overrides.shadows) off.push('shadows'); if (!S.overrides.post) off.push('post'); if (!S.overrides.lights) off.push('point lights');
+        _LENS_KINDS.concat(['outline']).forEach(function (k) { if (!S.overrides.show[k]) off.push(k); });
+        L.push('Off: ' + (off.length ? off.join(', ') : 'nothing') + ' · resolution ' + (S.overrides.res ? S.overrides.res : 'game'));
+        return L.join('\n');
+    }
+    function _lensBtn(id, label, on) {
+        return '<button data-lens="' + id + '" style="margin:2px 3px 0 0;padding:2px 6px;font:inherit;font-size:10.5px;cursor:pointer;border-radius:3px;'
+            + 'border:1px solid ' + (on ? '#7dff9a' : '#555') + ';background:' + (on ? 'rgba(125,255,154,0.16)' : 'rgba(255,255,255,0.04)') + ';color:' + (on ? '#bfffd0' : '#888') + '">' + label + '</button>';
+    }
+    function _lensDraw(L) {
+        if (!L.el) return;
+        L.body.textContent = _lensText(L.last);
+        var t = '';
+        t += _lensBtn('shadows', 'Shadows', L.shadows) + _lensBtn('post', 'Post FX', L.post);
+        t += _lensBtn('chars', 'Characters', L.show.chars) + _lensBtn('props', 'Props', L.show.props) + _lensBtn('terrain', 'Terrain', L.show.terrain) + _lensBtn('fog', 'Fog grid', L.show.fog);
+        t += _lensBtn('env', 'Environment', L.show.env) + _lensBtn('fx', 'Particles', L.show.fx) + _lensBtn('other', 'Other', L.show.other);
+        t += _lensBtn('outline', 'Outlines/X-ray', L.show.outline) + _lensBtn('lights', 'Point lights', L.lights);
+        t += '<div style="margin-top:4px">Resolution ' + _lensBtn('res:0', 'Game', !L.res) + _lensBtn('res:1', '1.0', L.res === 1) + _lensBtn('res:1.5', '1.5', L.res === 1.5) + _lensBtn('res:native', 'Native', L.res === 'native') + '</div>';
+        if (L.tog.innerHTML !== t) L.tog.innerHTML = t;
+    }
+    function _lensClick(ev) {
+        var b = ev.target && ev.target.closest ? ev.target.closest('[data-lens]') : null;
+        if (!b || !_lens) return;
+        ev.preventDefault(); ev.stopPropagation();
+        try { b.blur(); } catch (e) {}
+        _lensSet(b.getAttribute('data-lens'));
+    }
+    function _lensSet(id, val) {
+        var L = _lens; if (!L) return;
+        if (id === 'copy') { _lensCopy(); return; }
+        if (id === 'close') { _lensClose(); return; }
+        if (id.indexOf('res:') === 0) { var r = id.slice(4); _lensRes(r === 'native' ? 'native' : (+r || 0)); }
+        else if (id === 'shadows') L.shadows = (val != null) ? !!val : !L.shadows;
+        else if (id === 'post') L.post = (val != null) ? !!val : !L.post;
+        else if (id === 'lights') L.lights = (val != null) ? !!val : !L.lights;
+        else if (L.show[id] != null) L.show[id] = (val != null) ? (val ? 1 : 0) : (L.show[id] ? 0 : 1);
+        _shadowsDirty = true;
+        if (renderer && renderer.shadowMap) renderer.shadowMap.needsUpdate = true;
+        _lensDraw(L);
+    }
+    /* resolution: Game = whatever the settings chose; 1.0 / 1.5 / Native = the device's own ratio, uncapped (session only) */
+    function _lensRes(v) {
+        var L = _lens; if (!L || !renderer) return;
+        if (L.gamePR == null) L.gamePR = renderer.getPixelRatio();
+        var pr = !v ? L.gamePR : (v === 'native' ? ((typeof window !== 'undefined' && window.devicePixelRatio) || 1) : v);
+        L.res = v || 0;
+        if (!v) L.gamePR = null;
+        renderer.setPixelRatio(pr);
+        try { window._ewPixelRatio = pr; } catch (e) {}
+        var el = renderer.domElement, w = el ? el.clientWidth : 0, h = el ? el.clientHeight : 0;
+        if (w > 0 && h > 0) { renderer.setSize(w, h); if (ThreePost && ThreePost.resize) ThreePost.resize(w, h); }
+    }
+    function _lensCopy() {
+        var txt = _lensText(_lens && _lens.last);
+        var done = function () { var b = _lens && _lens.el && _lens.el.querySelector('[data-lens="copy"]'); if (b) { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1200); } };
+        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done, function () { _lensCopyOld(txt); done(); }); return; } } catch (e) {}
+        _lensCopyOld(txt); done();
+    }
+    function _lensCopyOld(txt) {
+        try { var ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); } catch (e) {}
+    }
+    function _lensOpen() {
+        if (_lens || typeof document === 'undefined' || !document.body) return;
+        var L = _lens = {
+            el: null, body: null, tog: null, orig: null, gpu: null, cur: null, last: null, detail: null, census: null, lightList: null,
+            show: { chars: 1, props: 1, terrain: 1, fog: 1, env: 1, fx: 1, other: 1, outline: 1 }, shadows: true, post: true, lights: true, res: 0, gamePR: null, shadowWas: false,
+            gen: 1, censusAt: -1e9, frameNo: 0, inShadow: 0, pass: 'post', depth: 0, lastT0: 0, acc: _lensAcc(), accT0: performance.now(), wantDetail: true, worstHist: []
+        };
+        var el = document.createElement('div');
+        el.id = 'ewPerfLens'; el.style.cssText = _LENS_CSS;
+        el.innerHTML = '<div style="display:flex;gap:4px;justify-content:flex-end;margin-bottom:4px"><span style="flex:1;color:#7dff9a;letter-spacing:0.08em">PERF · F3</span>'
+            + _lensBtn('copy', 'Copy', true) + _lensBtn('close', 'Close', true) + '</div><pre style="margin:0;white-space:pre-wrap;font:inherit"></pre><div style="margin-top:6px"></div>';
+        L.el = el; L.body = el.querySelector('pre'); L.tog = el.lastChild;
+        el.addEventListener('click', _lensClick, true);
+        ['mousedown', 'pointerdown', 'wheel', 'touchstart'].forEach(function (t) { el.addEventListener(t, function (e) { e.stopPropagation(); }, false); });
+        document.body.appendChild(el);
+        _lensDraw(L);
+        try { localStorage.setItem('ew_perfLens', '1'); localStorage.setItem('ew_perfLensSeen', '1'); } catch (e) {}
+    }
+    function _lensClose() {
+        var L = _lens; if (!L) return;
+        if (L.cur) _lensEnd();
+        if (L.res) _lensRes(0);
+        L.shadows = true; _lensEnforce(L);
+        _lensHook(false);
+        try { if (L.gpu) { L.gpu.q.forEach(function (it) { L.gpu.gl.deleteQuery(it.q); }); } } catch (e) {}
+        if (L.el && L.el.parentNode) L.el.parentNode.removeChild(L.el);
+        _lens = null;
+        _shadowsDirty = true;
+        try { localStorage.setItem('ew_perfLens', '0'); } catch (e) {}
+    }
+    function _lensToggle(on) { if (on == null) on = !_lens; if (on) _lensOpen(); else _lensClose(); }
+    /* run one loop body inside the lens's frame edges */
+    function _lensRun(fn) {
+        _lensBegin(performance.now());
+        try { return fn(); } finally { _lensEnd(); }
+    }
+    if (typeof window !== 'undefined') {
+        window.addEventListener('keydown', function (e) {
+            if (e.key !== 'F3' || e.ctrlKey || e.altKey || e.metaKey) return;
+            e.preventDefault(); e.stopPropagation();
+            _lensToggle();
+        }, true);
+        var _lensBoot = function () {
+            var want = false;
+            try { want = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLens') === '1'; } catch (e) {}
+            if (want) _lensOpen();
+        };
+        if (typeof document !== 'undefined' && document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _lensBoot);
+        else setTimeout(_lensBoot, 0);
+    }
     function renderFrame() {
+        if (_lens) return _lensRun(_renderFrameBody);
+        return _renderFrameBody();
+    }
+    function _renderFrameBody() {
         if (!active || !renderer || !scene) return;
 
         /* §4.7 FPS cap — drift-free accumulator; skipped frames cost one
@@ -33760,7 +34193,8 @@ const ThreeRenderer = (function () {
 
         _syncEnemyRangePreview();
 
-        _updateAnimations();
+        if (_lens && _lens.cur) { var _lensA = performance.now(); _updateAnimations(); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
+        else _updateAnimations();
 
         if (ThreeVFX && ThreeVFX.tick) {
             var now = performance.now();
@@ -33784,6 +34218,7 @@ const ThreeRenderer = (function () {
         _updateBlizzardVortices();
         _updateSandstormVortices();
         _updateWeatherAmbience();
+        try { _fieldInstTick(_frameNow); } catch (e) {}   // THE PERF PASS: the room round the fight draws its repeated props as batches
 
         if (_parentEl) {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;
@@ -33844,7 +34279,7 @@ const ThreeRenderer = (function () {
                    are hidden for the duration (see showSplitscreen). */
                 _ssRenderFrame();
             } else {
-                if (ThreePost && ThreePost.isReady()) {
+                if (ThreePost && ThreePost.isReady() && !(_lens && !_lens.post)) {   // THE PERF LENS: post off = the scene straight to the screen
                     ThreePost.render(cam);
                 } else {
                     renderer.render(scene, cam);
@@ -34245,6 +34680,7 @@ const ThreeRenderer = (function () {
         _clearFloatTextTweens();
         if (_floatDomOverlay && _floatDomOverlay.parentElement) _floatDomOverlay.parentElement.removeChild(_floatDomOverlay);
         _floatDomOverlay = null;
+        _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null; _occFieldDrop();
         try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took
@@ -56161,13 +56597,51 @@ const ThreeRenderer = (function () {
         if (pl.y - y > HQ_FALL_MIN) { pl.air = true; pl.vy = 0; pl.jumpT = -1; }
         else pl.y = y;
     }
+    /* ══ THE PEOPLE OFF SCREEN (THE PERF PASS, 2026-10-01) ══
+       Every character mesh is built with frustumCulled = false (a skinned body's bind-pose sphere can miss its pose), and
+       every mixer ran every frame — so a crowd behind the camera, or in a part the portals hid, cost its full skinned draw
+       and its whole animation. In the walk a cast member (never the walker) now: culls against its geometry's sphere grown
+       by HQ_CHAR_CULL_PAD (shared geometry; the battle's clones keep frustumCulled off, so they never read it), and skips
+       its mixer while its own bounds are out of view or hidden — the skipped time is paid on the next frame it shows (capped),
+       so a loop picks up where it would have been. Off: window.EW_HQ_NO_CHAR_CULL = true. */
+    var HQ_CHAR_CULL_PAD = 1.6, _hqCharFr = null, _hqCharFrM = null, _hqCharSp = null, _hqCharBox = null;
+    function _hqCharCullOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_CHAR_CULL; }
+    function _hqCharCullSetup(e) {
+        var box = _hqCharBox || (_hqCharBox = new THREE.Box3()), c = new THREE.Vector3(), gp = new THREE.Vector3();
+        e.group.updateMatrixWorld(true);
+        e.group.traverse(function (n) {
+            if (!n.isSkinnedMesh || n._ew_silhouette || !n.geometry) return;
+            var g = n.geometry;
+            if (!g._ew_skinPad) { if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere) { g.boundingSphere.radius *= HQ_CHAR_CULL_PAD; g._ew_skinPad = true; } }
+            if (g._ew_skinPad) n.frustumCulled = true;
+        });
+        try { box.setFromObject(e.model); } catch (err) { box.makeEmpty(); }
+        if (box.isEmpty()) return;
+        box.getCenter(c); e.group.getWorldPosition(gp);
+        e._ew_viewC = c.sub(gp); e._ew_viewR = box.getSize(gp).length() * 0.5 * HQ_CHAR_CULL_PAD;
+    }
+    function _hqCharOnView(H, e) {
+        if (!e._ew_viewR || !_hqCharFr) return true;
+        for (var q = e.group; q; q = q.parent) { if (!q.visible) return false; if (q === H.scene) break; }
+        if (!q) return false;
+        var me = e.group.matrixWorld.elements, sp = _hqCharSp || (_hqCharSp = new THREE.Sphere());
+        sp.center.set(me[12] + e._ew_viewC.x, me[13] + e._ew_viewC.y, me[14] + e._ew_viewC.z); sp.radius = e._ew_viewR;
+        return _hqCharFr.intersectsSphere(sp);
+    }
     function _hqTickChars(dt) {
         var H = _hq;
+        var cullOn = !_hqCharCullOff() && H.camera;
+        if (cullOn) {
+            var fc = H.camera; fc.updateMatrixWorld();
+            _hqCharFr = _hqCharFr || new THREE.Frustum(); _hqCharFrM = _hqCharFrM || new THREE.Matrix4();
+            _hqCharFr.setFromProjectionMatrix(_hqCharFrM.multiplyMatrices(fc.projectionMatrix, fc.matrixWorldInverse));
+        }
         for (var i = 0; i < H.chars.length; i++) {
             var ch = H.chars[i], e = ch.entry;
             if (!e || !e.model) continue;
             if (!ch.cleaned && e._ew_modelAttached) {
                 e.group.traverse(function (n) { if (n._ew_silhouette) n.visible = false; });
+                if (ch.kind !== 'player' && !_hqCharCullOff()) { try { _hqCharCullSetup(e); } catch (err) {} }   // THE PEOPLE OFF SCREEN
                 ch.cleaned = true;
                 if (H.shadows) { try { _applyShadowFlags(e.group); } catch (err) {} }   // THE LIGHT PASS 2.1: a body casts and receives
                 if (ch.kind === 'player') { H.playerAttached = true; if (H.portal && H.portal.issued) { try { _hqGunAttach(); } catch (err) {} } }   // THE GATE: the card waits for this AND for every file to land (_hqFrame); DOOR DASH: an issued gun is strapped on (hidden) so the first dash has it in the hand
@@ -56243,7 +56717,10 @@ const ThreeRenderer = (function () {
                     if (bc && bc.duration && bLen > 0.05) ba.timeScale = bc.duration / bLen;
                 }
             }
-            e.mixer.update(dt);
+            /* THE PEOPLE OFF SCREEN: an unseen cast member's clock waits (capped), paid on the frame it shows */
+            if (cullOn && ch.kind !== 'player' && !_hqCharOnView(H, e)) { e._ew_mixDebt = Math.min(30, (e._ew_mixDebt || 0) + dt); continue; }
+            var mdt = dt + (e._ew_mixDebt || 0); e._ew_mixDebt = 0;
+            e.mixer.update(mdt);
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
         }
     }
@@ -57340,6 +57817,7 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H || !renderer) return;
         var t0 = performance.now();
         _perfTick(t0);
+        if (_lens) _lensBegin(t0);   // THE PERF LENS: the walk's frame edges
         /* THE READOUT IN THE WALK (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26): behind the FPS counter setting (Video), the
            building's frame counts its draw calls across EVERY render of the frame (renderer.info resets per render call,
            so the post chain's last quad would read as the whole frame) — the numbers the stage's budget is set against */
@@ -57347,6 +57825,7 @@ const ThreeRenderer = (function () {
         if (readout) { renderer.info.autoReset = false; renderer.info.reset(); }
         try { _hqFrameBody(H); }
         finally {
+            if (_lens) _lensEnd();
             if (readout) {
                 _hqFrameInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
                 renderer.info.autoReset = true;
@@ -57402,7 +57881,8 @@ const ThreeRenderer = (function () {
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
-        _hqTickChars(wdt);
+        if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
+        else _hqTickChars(wdt);
         if (!editing) _hqTickCamera(dt);
         else { try { H.opts.edit.tick(dt, H); } catch (e) { if (!H._editWarned) { H._editWarned = true; console.warn('[HQ] the editor tick', e); } } }
         _hqTickWorld(dt, now);
@@ -57419,7 +57899,7 @@ const ThreeRenderer = (function () {
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
-        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
+        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
         else renderer.render(H.scene, H.camera);
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
@@ -57454,15 +57934,18 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ms.length; i++) {
             var m = ms[i];
             if (!m || !m._ew_shared || m.isShaderMaterial || m.skinning || m.morphTargets) return null;
-            if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook) return null;   // a vertex hook that knows no instanceMatrix (the wind, a sway)
+            if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile && m.onBeforeCompile !== _hqAoHook && !(m._ew_windFn && m.onBeforeCompile === m._ew_windFn)) return null;   // a vertex hook that knows no instanceMatrix (a sway); THE PERF PASS: the wind knows it
             mk += m.uuid + ',';
         }
         for (var q = o.parent; q; q = q.parent) if (q._ew_noInstance || q.isBone) return null;
         return (g._ew_lodBase || g).uuid + '|' + mk + '|' + (o.castShadow ? 1 : 0) + (o.receiveShadow ? 1 : 0) + (o.frustumCulled ? 1 : 0) + (o._ew_pixelate ? 1 : 0) + '|' + (o.renderOrder || 0) + '|' + (o.customDepthMaterial ? o.customDepthMaterial.uuid : '') + (o.customDistanceMaterial ? o.customDistanceMaterial.uuid : '');
     }
     function _hqInstScan(H) {
-        var byKey = {}, n = 0;
-        [H.propGroup, H.shellGroup, H.doorGroup].forEach(function (G) {
+        var byKey = {}, n = 0, gs = [H.propGroup, H.shellGroup, H.doorGroup];
+        /* THE PERF PASS (2026-10-01): the drawn neighbours of the stage batch too (a part's own copies sit in its cells; a part
+           that leaves the stage zeroes its copies through the ancestor test, and the crossing rebuilds the pass) */
+        if (H.stage && H.stage.parts) for (var pid in H.stage.parts) { var PE = H.stage.parts[pid]; if (PE && PE.attached && PE.P) gs.push(PE.P.propGroup, PE.P.shellGroup, PE.P.doorGroup); }
+        gs.forEach(function (G) {
             if (!G || !G.parent) return;
             G.traverseVisible(function (o) { var k = _hqInstKey(o); if (!k) return; n++; (byKey[k] || (byKey[k] = [])).push(o); });
         });
@@ -57513,7 +57996,7 @@ const ThreeRenderer = (function () {
     /* batch what is drawing itself now (the first pass, then every file that lands after the gate): a kind counts its
        copies already batched toward instanceMin, so three late bins join the five already batched as a batch of their own */
     function _hqInstAdd(H, I) {
-        var RU = _hqInstRules(), cellU = RU.cell * _hqUnits();
+        var RU = _hqInstRules(), cellU = H.cellU || RU.cell * _hqUnits();   // THE PERF PASS: the battle's room batches per kind (H.cellU)
         if (H.shadows) [H.propGroup, H.doorGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // the shadow tick's own flags, now — a batch copies them once
         H.scene.updateMatrixWorld(true);
         var sc = _hqInstScan(H), wp = new THREE.Vector3(), added = 0;
@@ -57534,7 +58017,7 @@ const ThreeRenderer = (function () {
                 im.castShadow = m0.castShadow; im.receiveShadow = m0.receiveShadow; im.renderOrder = m0.renderOrder || 0; im.frustumCulled = m0.frustumCulled;
                 if (m0.customDepthMaterial) im.customDepthMaterial = m0.customDepthMaterial;
                 if (m0.customDistanceMaterial) im.customDistanceMaterial = m0.customDistanceMaterial;
-                im._ew_pixelate = !!m0._ew_pixelate; im._ew_shadowFlagged = true; im._ew_hqInst = true; im._ew_occSkip = true;
+                im._ew_pixelate = !!m0._ew_pixelate; im._ew_shadowFlagged = true; im._ew_hqInst = true; im._ew_occSkip = true; im._ew_instSrc = m0;   // _ew_instSrc: THE PERF LENS files a batch under its copies' kind
                 var rec = { im: im, copies: list, mat: m0.material, geoC: geo.boundingSphere.center.clone(), geoR: Math.max(geo.boundingSphere.radius || 0, 1e-3),
                             inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float32Array(list.length * 16), rel: new Uint8Array(list.length) };
                 _hqInstFit(rec);
@@ -57548,7 +58031,7 @@ const ThreeRenderer = (function () {
     }
     /* per frame (once — the reflectors and the pixel mask render the same scene): the copies' matrices, read back */
     function _hqInstSync(H, force) {
-        var I = H.inst; if (!I || _hq !== H) return;
+        var I = H.inst; if (!I || (!H.field && _hq !== H)) return;   // H.field: THE PERF PASS's battle record (_fieldInst*)
         if (!force && I.stamp === _hqInstStamp) return;
         I.stamp = _hqInstStamp;
         var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene;
@@ -57557,9 +58040,17 @@ const ThreeRenderer = (function () {
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
+                /* THE PERF PASS (2026-10-01): a copy handed back for a SWAPPED material (the occlusion fade's clone, a highlight)
+                   comes home once its own material is back and nobody hid it — the fight's fade used to leave every prop it ever
+                   ghosted drawing itself for the rest of the battle */
+                if (rec.rel[i] === 2 && o.material === rec.mat && o.visible && !o._ew_occOrig && !o._ew_fogOrig && o.parent) {
+                    rec.rel[i] = 0; o.visible = false; o._ew_instHidden = true; o._ew_noInstance = false; I.copies++;
+                    if (o.geometry && o.geometry._ew_lodBase) { o.geometry = o.geometry._ew_lodBase; o._ew_lodL = 0; }
+                }
                 if (rec.rel[i]) continue;
                 if (o.material !== rec.mat || o.visible) {   // tinted, faded, swapped, or shown by its owner: it draws itself from now on
-                    rec.rel[i] = 1; o._ew_instHidden = false; o._ew_noInstance = true; if (!o.visible && o.material !== rec.mat) o.visible = true;
+                    var swapped = o.material !== rec.mat && !o.visible;
+                    rec.rel[i] = swapped ? 2 : 1; o._ew_instHidden = false; o._ew_noInstance = true; if (swapped) o.visible = true;
                     e = Z; I.copies--;
                 } else {
                     var shown = true, q = o.parent;
@@ -57592,6 +58083,37 @@ const ThreeRenderer = (function () {
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;
         return { batches: I.batches, copies: I.copies, left: I.left, adds: I.adds };
+    }
+    /* ══ THE INSTANCE PASS IN THE FIGHT (THE PERF PASS, 2026-10-01) ══
+       The walk batched its repeated props, then _hqLeave handed the originals back and the battle drew the same room
+       (_hqBuildRoomInBattle: the hand-over, or the rebuild on a scratch record) one mesh per copy, every frame of every
+       fight. The same pass now runs on the battle's room group (_facilityNearGroup) from renderFrame: a record that looks
+       like a walk's (scene, propGroup, H.field) so _hqInstBuild / _hqInstAdd / _hqInstSync serve it unchanged; ONE batch
+       per kind (the field is small — H.cellU), built once the room has stood FIELD_INST_SETTLE_MS (the hand-over's files,
+       the first fade), re-run as files land. The fade / the canopy swap a copy's material: the copy draws itself while
+       ghosted and comes home after (the sync's swap release). Dropped with the scenery (_buildHorizonScenery / the clear).
+       Off: window.EW_FIELD_NO_INSTANCE = true (or EW_HQ_NO_INSTANCE). */
+    var _fieldInstH = null, FIELD_INST_SETTLE_MS = 1500;
+    function _fieldInstDrop() {
+        var H = _fieldInstH; _fieldInstH = null;
+        if (H) { try { _hqInstDrop(H); } catch (e) {} }
+    }
+    function _fieldInstTick(now) {
+        var off = _hqInstOff() || (typeof window !== 'undefined' && window.EW_FIELD_NO_INSTANCE);
+        if (off || !scene || !_facilityNearGroup || !_facilityNearGroup.parent) { if (_fieldInstH) _fieldInstDrop(); return; }
+        if (_fieldInstH && (_fieldInstH.propGroup !== _facilityNearGroup || _fieldInstH.scene !== scene)) _fieldInstDrop();
+        if (!_fieldInstH) _fieldInstH = { field: true, scene: scene, propGroup: _facilityNearGroup, shellGroup: null, doorGroup: null, inst: null, ready: true, cellU: 1e12, bornAt: now, _instTried: false };
+        var H = _fieldInstH;
+        _hqInstStamp++;
+        if (!H.inst) {
+            if (H._instTried || now - H.bornAt < FIELD_INST_SETTLE_MS) return;
+            H._instTried = true;
+            try { _hqInstBuild(H); } catch (e) { console.warn('[ThreeRenderer] the fight\'s instance pass failed — the room draws one by one', e); _fieldInstDrop(); }
+            return;
+        }
+        if (now - H.inst.scanAt < _hqInstRules().rescanMs) return;
+        H.inst.scanAt = now;
+        if (_hqInstScan(H).n !== H.inst.left) { try { _hqInstAdd(H, H.inst); } catch (e) { console.warn('[ThreeRenderer] the fight\'s instance pass failed — the room draws one by one', e); _fieldInstDrop(); } }
     }
     /* ══ THE LOD LEVELS (OPEN_WORLD_PLAN.md §5.9 / Phase 10, 2026-09-27) ══
        Every prop drew its full Meshy mesh to the fog. Now optimize-assets.js --lod bakes `<name>.lod1.glb` (~25 % of the
@@ -58158,7 +58680,10 @@ const ThreeRenderer = (function () {
             var mat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false, side: THREE.DoubleSide }); mat._ew_shared = true;
             _fieldPickGeo = { ts: ts, geo: geo, mat: mat };
         }
-        var grp = new THREE.Group(); grp.name = 'field_pick'; grp._ew_occSkip = true;
+        /* THE PERF PASS (2026-10-01): the group is HIDDEN — three r128's Raycaster ignores `visible` (screenToTile still lands on
+           every quad), while the renderer drops the whole group in one test. Drawn (colorWrite off) it cost one empty draw call
+           per cell, every frame of every field fight: ~1,200 calls on a 40 × 30 room. */
+        var grp = new THREE.Group(); grp.name = 'field_pick'; grp._ew_occSkip = true; grp.visible = false;
         for (var y = 0; y < G.H; y++) for (var x = 0; x < G.W; x++) {
             var top = G.yAt(x, y); if (top === null || top === undefined) continue;
             var m = new THREE.Mesh(_fieldPickGeo.geo, _fieldPickGeo.mat);
@@ -60196,7 +60721,7 @@ const ThreeRenderer = (function () {
     var _hqDissolveRec = null;
     function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; if (typeof _fieldDissolveReady === 'function' && !_fieldDissolveReady()) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} }
     function _hqRenderOnce(H) {
-        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
+        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
         else renderer.render(H.scene, H.camera);
     }
@@ -61218,6 +61743,10 @@ const ThreeRenderer = (function () {
         cam.lookAt(lx * U, ly * U, lz * U);
     }
     function _menuFrame() {
+        if (_lens) return _lensRun(_menuFrameBody);   // THE PERF LENS: the menu's frame edges
+        return _menuFrameBody();
+    }
+    function _menuFrameBody() {
         var M = _menu; if (!M || !_menuLive || !renderer) return;
         var host = M.host, w = host.clientWidth, h = host.clientHeight;
         if (!(w > 0 && h > 0)) return;              // the page is hidden (display:none) — nothing to draw
@@ -61243,7 +61772,7 @@ const ThreeRenderer = (function () {
             for (var l = 0; l < M.lamps.length; l++) { var lm = M.lamps[l]; lm.opacity = Math.max(0, (lm._ew_menuOp != null ? lm._ew_menuOp : (lm._ew_menuOp = lm.opacity)) * fl); }
             if (M.beam) M.beam.intensity = 0.9 * fl;
         }
-        var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST);
+        var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST) || (_lens && !_lens.post);
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
         else renderer.render(M.scene, M.camera);
     }
@@ -61520,6 +62049,17 @@ const ThreeRenderer = (function () {
             try { localStorage.setItem('ew_fpsCap', String(_perfSettings.fpsCap)); } catch (e) {}
         },
         getFpsCap: function () { return _perfSettings.fpsCap; },
+        /* THE PERF LENS (2026-10-01): the dev overlay — F3, ?perf, or Settings > Performance > Perf Overlay once unlocked.
+           set(id, on): 'shadows' | 'post' | 'lights' | 'chars' | 'props' | 'terrain' | 'env' | 'fx' | 'other' | 'outline' |
+           'res:0' (game) | 'res:1' | 'res:1.5' | 'res:native'. snapshot() = the last half-second's numbers; text() = Copy's text. */
+        perfLens: {
+            toggle: function (on) { _lensToggle(on); },
+            isOpen: function () { return !!_lens; },
+            unlocked: function () { try { return !!_lens || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) { return !!_lens; } },
+            set: function (id, on) { if (!_lens) _lensOpen(); _lensSet(String(id), on); },
+            snapshot: function () { return _lens ? _lens.last : null; },
+            text: function () { return _lensText(_lens && _lens.last); }
+        },
         setFpsCounter: function (on) {
             _perfSettings.fpsCounter = !!on;
             _fpsFrames = 0; _fpsWinStart = 0;
