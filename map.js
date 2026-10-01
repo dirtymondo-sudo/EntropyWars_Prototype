@@ -8411,6 +8411,10 @@
             const mode = window.EW_PERF_MODE || 'auto';
             const units3dOn = !window.EW_DISABLE_3D_UNITS;
             const seg = (v, label) => `<button class="pm-seg-btn${mode === v ? ' active' : ''}" onclick="window._ewApplyPerfPreset('${v}');${refreshJs}">${label}</button>`;
+            /* THE PERF LENS (2026-10-01): the dev overlay's switch — shown only on a device where F3 has opened it once */
+            const PL = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.perfLens) ? ThreeRenderer.perfLens : null;
+            const lensRow = (PL && PL.unlocked()) ? `
+                    <label class="pm-toggle"><input type="checkbox" ${PL.isOpen() ? 'checked' : ''} onchange="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.perfLens)ThreeRenderer.perfLens.toggle(this.checked);"><span class="pm-toggle-label">Perf Overlay</span><span class="pm-toggle-hint">dev readout: FPS, frame time, draw calls, triangles, toggles (F3)</span></label>` : '';
             return `
                 <div class="pm-set-row pm-setting-row" style="margin-top:10px">
                     <span class="pm-setting-label">Performance</span>
@@ -8422,7 +8426,7 @@
                     <span class="pm-toggle-hint">Auto picks Low on phones/tablets (this device: ${window.EW_MOBILE ? 'phone/tablet' : 'desktop'}). Low fixes crashes &amp; heat on mobile — sprite units, 1x resolution, shadows off, 30fps.</span>
                 </div>
                 <div class="pm-set-toggles" style="margin-top:8px">
-                    <label class="pm-toggle"><input type="checkbox" ${units3dOn ? 'checked' : ''} onchange="window._ewSetUnits3D(this.checked);"><span class="pm-toggle-label">3D Unit Models</span><span class="pm-toggle-hint">rigged characters — heavy on phones; off = pixel sprites</span></label>
+                    <label class="pm-toggle"><input type="checkbox" ${units3dOn ? 'checked' : ''} onchange="window._ewSetUnits3D(this.checked);"><span class="pm-toggle-label">3D Unit Models</span><span class="pm-toggle-hint">rigged characters — heavy on phones; off = pixel sprites</span></label>${lensRow}
                 </div>${window.EW_MOBILE ? window._buildScreenFitHTML(refreshJs) : ''}`;
         };
         /* THE PHONE FIT (2026-10-01): how far a phone's page is scaled down to fit the desktop layout (index.html reads
