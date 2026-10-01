@@ -51645,6 +51645,36 @@ const ThreeRenderer = (function () {
         }
         attach();
     }
+    /* THE CROWD CAP (2026-10-01, mondo: "way less people ... one NPC per model ... men in black as back up employees ...
+       cut it in half"): one budget per room (data.js hqRoomCrowdCap), taken in order — the spot natives, the roster draw,
+       the agents, the online operatives, the extras, the travellers. A race stands once per room; the men in black (the
+       backup employees) and a swarm's own race may repeat. The story cast never counts. */
+    function _hqRoomIdOf(room, fallback) {
+        var D = _hqData(), rooms = (D && D.rooms) || {};
+        if (fallback && rooms[fallback] === room) return fallback;
+        for (var k in rooms) if (rooms[k] === room) return k;
+        return fallback || 'central_egress';
+    }
+    function _hqCrowdLedger(room, opts) {
+        var rid = _hqRoomIdOf(room, opts && opts.room), planned = (room.agents || []).length + (room.npcSpots || []).length;
+        try { var pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(rid, opts && opts.profile, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; if (pop) planned += pop.n | 0; } catch (e) {}
+        var cap = (typeof hqRoomCrowdCap === 'function') ? hqRoomCrowdCap(rid, planned) : planned;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_CROWD_CAP) cap = 999;
+        var L = { room: rid, cap: cap, n: 0, races: {}, day: (typeof hqToday === 'function') ? hqToday() : '' };
+        L.left = function () { return Math.max(0, L.cap - L.n); };
+        L.has = function (rk) { return !!L.races[rk]; };
+        /* take a body: false = the room is full, or this race already stands here (dupOk: the backup employees, a swarm) */
+        L.take = function (rk, dupOk) {
+            if (L.n >= L.cap) return false;
+            if (rk && rk !== 'men in black' && !dupOk && L.races[rk]) return false;
+            if (rk) L.races[rk] = (L.races[rk] || 0) + 1;
+            L.n++;
+            return true;
+        };
+        /* ONE PER MODEL across the building: a roster race lives in one room a day */
+        L.home = function (rk) { if (typeof hqRosterHomeOf !== 'function' || (typeof window !== 'undefined' && window.EW_HQ_NO_CROWD_CAP)) return true; return hqRosterHomeOf(rk, L.day) === rid; };
+        return L;
+    }
     function _hqSpawnPopulation(room, opts) {
         var av = opts.avatar || {};
         var sp = room.spawn || { deg: 180, r: 15, level: 0, face: 0 };
@@ -51652,7 +51682,9 @@ const ThreeRenderer = (function () {
            2026-09-06) or a roster vessel / the agent in black */
         var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;   // (resolved under _hq3DOn — the population call lifts the board's sprite preference)
         if (!opts._stageNoPlayer) _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, appearance: av.appearance || null, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
-        (room.agents || []).forEach(function (ag, i) {
+        var crowd = _hqCrowdLedger(room, opts);
+        var spawnAgents = function () { (room.agents || []).forEach(function (ag, i) {
+            if (!crowd.take('men in black')) return;   // THE CROWD CAP: the backup employees fill what the room has left
             var g = ag.gender || ((i % 2) ? 'female' : 'male');
             /* an agent with a building pose (a seated clerk) borrows the MIB
                def with the cast's pose slots merged in (2026-09-06) */
@@ -51666,7 +51698,7 @@ const ThreeRenderer = (function () {
                 }
             }
             _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
-        });
+        }); };
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
         try {
@@ -51683,6 +51715,7 @@ const ThreeRenderer = (function () {
                 if (rk === (av.race || '') || rk === 'men in black') return;
                 if (typeof getRace3DModel !== 'function' || !walks(getRace3DModel(rk, 'male')) && !walks(getRace3DModel(rk, 'female'))) return;
                 if (unl.length && unl.indexOf(rk) < 0 && !(window._DEV_UNLOCK_ALL)) return;
+                if (!crowd.home(rk)) return;   // ONE PER MODEL: a roster race stands only in its home room today
                 owned.push(rk);
             });
             for (var i = owned.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = owned[i]; owned[i] = owned[j]; owned[j] = t; }
@@ -51704,6 +51737,7 @@ const ThreeRenderer = (function () {
                 var rh = spot.race;
                 if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours
                 if (spot.clone && av.race) {
+                    if (!crowd.take('clone')) return;
                     _hqSpawnCharacter({ id: 'hq-clone-' + si, kind: 'npc', race: av.race, gender: av.gender || 'male', appearance: av.appearance || undefined, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
                                         line: sayOf(spot), label: 'THE OTHER ONE', sub: 'YOU · ALREADY HERE' });
                     return;
@@ -51711,12 +51745,14 @@ const ThreeRenderer = (function () {
                 /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): a spot with `cast` stands that cast model (sprites.js DOOR_CAST_MODELS) — the
                    editor's PEOPLE tab places them; the story's own cast draw (hqCastInRoom) is untouched */
                 if (spot.cast && typeof getCastModel === 'function' && getCastModel(spot.cast)) {
+                    if (!crowd.take('cast:' + spot.cast)) return;
                     var cdef = getCastModel(spot.cast), cm = (typeof DOOR_CAST !== 'undefined' && DOOR_CAST[spot.cast]) || null;
                     _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: (cm && (cm.base || cm.race)) || 'men in black', gender: spot.gender || (cm && cm.gender) || 'male', def: cdef, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
                                         line: sayOf(spot), label: spot.label || (cm && cm.name) || String(spot.cast).toUpperCase(), sub: spot.sub || (cm && cm.title) || null, pose: spot.pose || null, spot: spot, spotIndex: si });
                     return;
                 }
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
+                    if (!crowd.take(rh)) return;   // THE CROWD CAP: full, or this race already stands here
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
                     _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), spot: spot, spotIndex: si });
@@ -51728,6 +51764,7 @@ const ThreeRenderer = (function () {
             for (var k = 0; k < n; k++) {
                 var rk2 = owned[k];
                 if (gone.indexOf('hq-npc-' + k) >= 0) continue;   // a roster draw beaten today (9.4 stage 2)
+                if (!crowd.take(rk2)) break;   // THE CROWD CAP
                 /* either gender when both are rigged, so the Nun and the Witch
                    (their own names, their own lines) turn up on break too */
                 var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
@@ -51735,6 +51772,7 @@ const ThreeRenderer = (function () {
                 _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: spots[k].x, z: spots[k].z, level: spots[k].level || 0, face: spots[k].face || 0, line: sayOf(spots[k]), spot: spots[k], spotIndex: (room.npcSpots || []).indexOf(spots[k]) });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
+        try { spawnAgents(); } catch (e) { console.warn('[HQ] agents skipped', e); }   // THE CROWD CAP: the men in black after the one-of-a-kind people
         /* THE OTHER OPERATIVES ON SHIFT (Room 86, 2026-09-11; plan §8's open
            question, answered): one D.O.O.R. agent per online player besides
            you (online.js `_ewOnlineCount`, the lobby's live counter) at the
@@ -51746,13 +51784,14 @@ const ThreeRenderer = (function () {
             if (typeof window !== 'undefined' && window.EW_HQ_ONLINE != null) onl = Math.max(0, window.EW_HQ_ONLINE | 0);
             for (var oi = 0; oi < Math.min(onl, os.length); oi++) {
                 var osp = os[oi];
+                if (!crowd.take('men in black')) break;
                 _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: (oi % 2) ? 'female' : 'male',
                                     deg: osp.deg, r: osp.r, x: osp.x, z: osp.z, level: osp.level || 0, face: osp.face || 0,
                                     label: 'OPERATIVE · ON SHIFT', sub: 'ONLINE · ANOTHER TERMINAL' });
             }
         } catch (e) { console.warn('[HQ] online operatives skipped', e); }
         /* THE ROUNDS (2026-09-19): the extras by the tags, the roaming spot natives, the patrols, the travellers */
-        try { _hqSpawnRounds(room, opts); } catch (e) { console.warn('[HQ] the rounds skipped', e); }
+        try { _hqSpawnRounds(room, Object.assign({}, opts, { _crowd: crowd })); } catch (e) { console.warn('[HQ] the rounds skipped', e); }
     }
 
     /* ── walkable query: returns the floor height (m) at (x,z) or null ────
@@ -52908,9 +52947,43 @@ const ThreeRenderer = (function () {
         rd.state = 'pause'; rd.until = now + _hqRoundsRange(rd.rng, R.pauseMs);
         rd.faceYaw = (st.face != null) ? _hqHeadingYaw(st.face) : ch.yaw;
     }
+    /* THE CLEAR ARRIVAL (2026-10-01, mondo: "there are always npcs right when I enter a new room/area and it blocks my
+       screen"): a door a walker comes in by is one AWAY from the officer when the room has one (6 m), never the door the
+       officer is standing in */
+    function _hqDoorsAwayFromPlayer(list) {
+        var pl = _hq && _hq.player; if (!pl || !list || !list.length) return list || [];
+        var far = list.filter(function (s) { return Math.hypot(s.x - pl.x, s.z - pl.z) > 6; });
+        return far.length ? far : list;
+    }
+    /* who stands where the officer lands: inside `radius`, in the corridor AHEAD (the view), or under the camera boom BEHIND.
+       A walker on its rounds steps out through a door and comes back later by another; anyone else (a posed clerk, a
+       spot native) is not in the room this visit. The story cast stays (its scenes are the user's). */
+    function _hqClearArrival() {
+        var H = _hq; if (!H || !H.player || !H.chars) return 0;
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_CLEAR) return 0;
+        var C = (typeof HQ_CROWD_RULES !== 'undefined' && HQ_CROWD_RULES.clear) || { radius: 2.8, ahead: 6, aheadHalfW: 1.3, behind: 4.2, behindHalfW: 1.1, dy: 2 };
+        var pl = H.player, yaw = (pl.targetYaw != null) ? pl.targetYaw : pl.yaw, fx = Math.sin(yaw || 0), fz = Math.cos(yaw || 0), now = performance.now(), n = 0;
+        H.clearAt = { x: pl.x, z: pl.z, t: now };
+        H.chars.forEach(function (ch) {
+            if (!ch || ch === pl || ch.kind === 'player' || ch.kind === 'cast' || ch.cast || ch.away) return;
+            if (Math.abs((ch.y || 0) - (pl.y || 0)) > C.dy) return;
+            var dx = ch.x - pl.x, dz = ch.z - pl.z, d = Math.hypot(dx, dz), f = dx * fx + dz * fz, lat = Math.abs(dx * fz - dz * fx);
+            var hit = d < C.radius || (f > 0 && f < C.ahead && lat < C.aheadHalfW) || (f <= 0 && f > -C.behind && lat < C.behindHalfW);
+            if (!hit) return;
+            try {
+                _hqRoundsSetVisible(ch, false);
+                if (ch.rounds) { var rd = ch.rounds; rd.state = 'away'; rd.until = now + 5000 + Math.random() * 7000; rd.path = null; rd.leftBy = null; }
+                else ch.cleared = true;   // not in the room this visit
+                n++;
+            } catch (e) {}
+        });
+        if (n) H.dirty = true;
+        return n;
+    }
     /* back in by a door: another door of the room when it has one, else the one it left by, else where it stands */
     function _hqRoundsReturn(ch, R, now) {
         var rd = ch.rounds, doors = _hqRoundsStops().filter(function (s) { return s.kind === 'door' && !(s.rec && HQ_DOOR_LOCKED[s.rec.state]); });
+        doors = _hqDoorsAwayFromPlayer(doors);   // THE CLEAR ARRIVAL: never back in by the door the officer stands at
         var others = doors.filter(function (s) { return s.doorId !== rd.leftBy; });
         var by = others.length ? others[Math.floor(rd.rng() * others.length)] : (doors.length ? doors[Math.floor(rd.rng() * doors.length)] : null);
         if (by) { ch.x = by.x; ch.z = by.z; ch.y = by.y; ch.visY = by.y; ch.yaw = ch.targetYaw = _hqHeadingYaw(by.face); _hqRoundsSwing(by.rec, 1600); }
@@ -52963,6 +53036,7 @@ const ThreeRenderer = (function () {
         H.rounds = H.rounds || [];
         if (_hqRoundsOff()) return;
         var roomId = opts.room || 'central_egress', prof = opts.profile, av = opts.avatar || {};
+        var crowd = opts._crowd || null;   // THE CROWD CAP (2026-10-01): the room's one budget, shared with _hqSpawnPopulation
         var R = _hqRoundsRules(), now = performance.now();
         _hqNavStart();   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
         var gone = [];
@@ -53010,6 +53084,17 @@ const ThreeRenderer = (function () {
                 if (gone.indexOf(d.id) >= 0) return;
                 var rk = d.race;
                 if (!walksRace(rk) || rk === av.race) { rk = pool.find(function (r) { return !used[r] && r !== av.race; }) || null; if (!rk) return; }
+                if (crowd) {
+                    /* THE CROWD CAP: a facility's roster race only in its home room (else a backup employee); a race once per room (a swarm's own race may repeat) */
+                    var dupOk = !!(d.group && pop.group && pop.group.id === d.group && pop.group.swarm && rk === pop.group.swarm.race);
+                    if (pop.kind === 'facility' && rk !== 'men in black' && !crowd.home(rk)) rk = 'men in black';
+                    if (!dupOk && rk !== 'men in black' && crowd.has(rk)) {
+                        var alt = pool.find(function (r) { return !crowd.has(r) && r !== av.race && (pop.kind !== 'facility' || crowd.home(r)); }) || null;
+                        rk = alt || (pop.kind === 'facility' ? 'men in black' : null);
+                        if (!rk) return;
+                    }
+                    if (!crowd.take(rk, dupOk)) return;
+                }
                 used[rk] = (used[rk] || 0) + 1;
                 var st = d.group ? (groupStops[d.group] || (groupStops[d.group] = stops[Math.floor(Math.random() * stops.length)])) : stops[Math.floor(Math.random() * stops.length)];
                 var line = null; try { if (room.lines && room.lines.length && Math.random() < 0.5) line = room.lines[Math.floor(Math.random() * room.lines.length)]; } catch (e) {}
@@ -53028,7 +53113,8 @@ const ThreeRenderer = (function () {
                 _loadUnitGLB(murl, function () {
                     if (_hq !== H) return;   // the room was left while the rig streamed
                     if (H.chars.some(function (c) { return c.id === d.id; })) return;
-                    var by = doorStops.length ? doorStops[Math.floor(Math.random() * doorStops.length)] : st;
+                    var dsA = _hqDoorsAwayFromPlayer(doorStops);   // THE CLEAR ARRIVAL
+                    var by = dsA.length ? dsA[Math.floor(Math.random() * dsA.length)] : st;
                     var ch = spawnAt(d.id, rk, g, by, { line: line, sub: sub, arriving: true, group: d.group || null, swarm: swarm });
                     if (ch && by.rec) _hqRoundsSwing(by.rec, 1600);
                 });
@@ -53040,7 +53126,10 @@ const ThreeRenderer = (function () {
             _hqTravellers = _hqTravellers.filter(function (t) { return t.to !== roomId && now - t.t < R.travelTtlMs; });
             arriving.forEach(function (t, i) {
                 if (!walksRace(t.race)) return;
+                if (crowd && !crowd.take(t.race)) return;   // THE CROWD CAP
                 var by = stops.find(function (s) { return s.kind === 'door' && s.doorId === t.at; }) || stops.find(function (s) { return s.kind === 'door'; }) || stops[0];
+                /* THE CLEAR ARRIVAL: the officer follows a walker through ITS door — the walker is already a few steps into the room, past the landing */
+                if (by && by.kind === 'door') { var farD = _hqDoorsAwayFromPlayer(stops.filter(function (s) { return s.kind !== 'door'; })); if (farD.length) by = farD[Math.floor(Math.random() * farD.length)]; }
                 if (!by) return;
                 var ch = spawnAt('hq-trav-' + i, t.race, genderOf(t.race, t.gender), by, { arriving: true, sub: 'JUST ARRIVED · FROM ' + String(((_hqData() || {}).rooms || {})[t.from] && ((_hqData() || {}).rooms || {})[t.from].label || t.from).toUpperCase() });
                 if (ch && by.rec) _hqRoundsSwing(by.rec, 1600);
@@ -55957,9 +56046,13 @@ const ThreeRenderer = (function () {
         }
         /* interaction prompt */
         var t = _hqFindTarget();
+        /* THE HUSH (2026-10-01, mondo: the E to talk prompt "ruins the new location animation"): no people prompt under the load card,
+           just after it, or while the arrival card plays (map.js hush) — doors and counters still answer */
+        var hushed = !!(H.hushUntil && now < H.hushUntil);
+        if (t && hushed && (t.kind === 'npc' || t.kind === 'agent' || t.kind === 'cast')) t = null;
         var key = t ? (t.kind + ':' + t.id) : '';
-        if (key !== H.targetKey) {
-            H.targetKey = key;
+        if (key !== H.targetKey || hushed !== !!H.promptHushed) {   // the hush's end re-asks the prompt (the ATTACK line reads it)
+            H.targetKey = key; H.promptHushed = hushed;
             if (H.opts.onPrompt) { try { H.opts.onPrompt(t); } catch (e) {} }
         }
         _hqTickDoors(dt, key);
@@ -59172,6 +59265,7 @@ const ThreeRenderer = (function () {
         /* the part's people, the light pass on its box */
         var p3 = _hq3DOn();
         try { if (!peopled) _hqSpawnPopulation(H.room, Object.assign({}, H.opts, { _stageNoPlayer: true })); } catch (e) { console.warn('[HQ stage] population', e); } finally { _hq3DOff(p3); }
+        try { if (!peopled) _hqClearArrival(); } catch (e) {}   // THE CLEAR ARRIVAL: the part's people spawned around the officer walking in
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
@@ -59656,6 +59750,9 @@ const ThreeRenderer = (function () {
         /* face the camera the way the spawn faces */
         var sp = room.spawn || { face: 0 };
         _hq.cam.yaw = _hqRad(sp.face || 0);
+        /* THE CLEAR ARRIVAL (2026-10-01): the spawn's view — deferred a tick, since a door arrival (map.js goTo right after this) clears its own landing instead */
+        (function (H0) { H0.clearPending = true; setTimeout(function () { if (_hq !== H0 || !H0.clearPending) return; H0.clearPending = false; try { _hqClearArrival(); } catch (e) {} }, 0); })(_hq);
+        _hq.hushUntil = performance.now() + 15000;   // THE HUSH: no people prompt under the load card (map.js sets the real end when it fades)
         _hqBindInput();
         /* THE ROOM'S LOOK (2026-09-17): shell.look is laid over the player's post settings while they stand here */
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(S.look, room.label)); } catch (e) {}
@@ -59983,6 +60080,7 @@ const ThreeRenderer = (function () {
         if (_hq.ride && _hq.ride.on) { _hq.ride.hd = pl.yaw; _hq.ride.stance = 0; _hq.ride.v = Math.max(-2.5, Math.min(_hq.ride.v, 2.5)); _hq.ride.grind = null; }   // SKATEBOARDING (9.8): through a door on the board, rolling
         if (carryAfter) _hqPortalRideExit(carryAfter, rideAfter);
         _hq.cam.yaw = _hqRad(face); _hq.cam.init = false;
+        if (faceAway) { _hq.clearPending = false; try { _hqClearArrival(); } catch (e) {} }   // THE CLEAR ARRIVAL (2026-10-01): an ARRIVAL (map.js lands you door-at-your-back) — nobody in the view where you land; the directory's GO inside the room keeps its people
         return true;
     }
     var _hqApi = {
@@ -60147,6 +60245,9 @@ const ThreeRenderer = (function () {
         focused: function () { return !!(_hq && _hq.focus && !_hq.focus.out); },
         refreshLamps: _hqRefreshLamps,
         goTo: _hqGoTo,
+        /* THE HUSH (2026-10-01): map.js hushes the people prompts for `ms` (the load card's fade, the arrival card) */
+        hush: function (ms) { if (!_hq) return false; _hq.hushUntil = performance.now() + Math.max(0, +ms || 0); return true; },
+        hushed: function () { return !!(_hq && _hq.hushUntil && performance.now() < _hq.hushUntil); },
         target: function () { return _hq ? _hqFindTarget() : null; },
         /* THE FINDS (9.1, 2026-09-15): drop a taken find in place with its burst (map.js _hqTakeFind, after the profile is saved) */
         takeFind: _hqTakeFind,

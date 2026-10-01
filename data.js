@@ -48973,6 +48973,53 @@ const HQ_POPULATION_RULES = {
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
     underworld: ['zombie', 'ghoul', 'gangster', 'homosapien', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
 };
+/* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
+   like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...
+   cut it in half"). The renderer spawns a room's people against ONE budget (hqRoomCrowdCap): half of what the room
+   plans (its agents + its spots + its extras), never more than one body per m2PerBody of floor, clamped min..max
+   (cityMax on a city street). Story cast never counts. Inside the budget a race stands ONCE per room (men in black
+   are the backup employees: they fill what is left, any number); a swarm's group may repeat its one race.
+   ONE PER MODEL across the building: a roster race (one you own) has ONE home room a day (hqRosterHomeOf) and turns up
+   nowhere else. THE CLEAR ARRIVAL: nobody stands where the walker lands, in the line of sight ahead or under the camera
+   boom behind; THE HUSH: no talk / attack prompt for hushMs after the load card fades or while the arrival card shows. */
+const HQ_CROWD_RULES = {
+    share: 0.5,            // the budget = this share of the room's planned people
+    m2PerBody: 20,         // never more than one body per this many m² of floor
+    min: 1, max: 4,        // the clamp (a room that plans nobody stays empty)
+    cityMax: 6,            // a Disaster City street
+    clear: { radius: 2.8, ahead: 6.0, aheadHalfW: 1.3, behind: 4.2, behindHalfW: 1.1, dy: 2.0 },   // metres around / ahead of / behind the landing
+    hushMs: 1800,          // the prompt hush after the load card is gone (the arrival card hushes its own length + 300 ms)
+};
+function hqRoomCrowdCap(roomId, planned) {
+    const R = HQ_CROWD_RULES, room = (DOOR_HQ.rooms || {})[roomId];
+    planned = Math.max(0, planned | 0);
+    if (!room || !planned) return 0;
+    const hub = (typeof hqHubOf === 'function') ? hqHubOf(roomId) : null;
+    const hi = (hub && (hub.id === 'city' || hub.id === 'underworld')) ? R.cityMax : R.max;
+    let n = Math.floor(planned * R.share);
+    let m2 = 0; try { m2 = hqRoomFloorM2(room, roomId); } catch (e) { m2 = 0; }
+    if (m2 > 0) n = Math.min(n, Math.floor(m2 / R.m2PerBody));
+    return Math.max(R.min, Math.min(hi, n));
+}
+/* ONE PER MODEL: the rooms a roster race may live in (no site, not a street, not the car), and the one it lives in today */
+let _hqRosterHomeCache = null;
+function hqRosterHomeRooms() {
+    const rooms = DOOR_HQ.rooms || {}, nRooms = Object.keys(rooms).length;   // the editor's world doc adds rooms after boot: the count keys the cache
+    if (_hqRosterHomeCache && _hqRosterHomeCache.nRooms === nRooms) return _hqRosterHomeCache;
+    _hqRosterHomeCache = Object.keys(rooms).filter(id => {
+        const r = rooms[id]; if (!r || id === 'car' || r.site || r.quiet) return false;
+        if (r.kind === 'bay' && r.corridor === false) return false;
+        const hub = (typeof hqHubOf === 'function') ? hqHubOf(id) : null;
+        if (hub && (hub.id === 'city' || hub.id === 'underworld')) return false;
+        return true;
+    }).sort();
+    _hqRosterHomeCache.nRooms = nRooms;
+    return _hqRosterHomeCache;
+}
+function hqRosterHomeOf(race, date) {
+    const list = hqRosterHomeRooms(); if (!list.length || !race) return null;
+    return list[hqHash((date || hqToday()) + '|' + race + '|home') % list.length];
+}
 /* THE RESIDENTS of a site, by the tags: the NATIVES (POINT_OF_ENTRY) first, then every race whose own
    RACE_PROFILES `biomes` tags meet the site's EW_MAP_META `biomes` (the most shared first — the terrain
    preference the roster already carries), then the natives of the sites that share a biome, then the
@@ -54951,7 +54998,7 @@ if (typeof window !== 'undefined') {
     window.hqGunDoorBoardFace = hqGunDoorBoardFace; window.hqGunCaptureRecord = hqGunCaptureRecord; window.hqGunCaptureChoices = hqGunCaptureChoices; window.hqGunCapturePlace = hqGunCapturePlace; window.hqGunCaptureRefund = hqGunCaptureRefund; window.hqGunDoorCarry = hqGunDoorCarry; window.hqGunDoorOpening = hqGunDoorOpening; window.hqGunDoorsAfterFight = hqGunDoorsAfterFight;   // THE ENGAGEMENT + THE CARRY-OVER (Phase 4)
     window.hqPortalPlace = hqPortalPlace; window.hqPortalClear = hqPortalClear; window.hqPortalLeaf = hqPortalLeaf; window.hqPortalNextSlot = hqPortalNextSlot; window.hqPortalTwin = hqPortalTwin; window.hqPortalSafeRoom = hqPortalSafeRoom; window.hqPortalDoorsIn = hqPortalDoorsIn;
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
-    window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)
+    window.HQ_CROWD_RULES = HQ_CROWD_RULES; window.hqRoomCrowdCap = hqRoomCrowdCap; window.hqRosterHomeOf = hqRosterHomeOf; window.hqRosterHomeRooms = hqRosterHomeRooms; window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
     window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqMarkerLaunch = hqMarkerLaunch; window.hqDefeatedRecord = hqDefeatedRecord; window.hqUnitDefeated = hqUnitDefeated; window.hqDefeatedMark = hqDefeatedMark; window.hqUnitBuyable = hqUnitBuyable; window.HQ_HEAL_ZONE = HQ_HEAL_ZONE; window.hqHealZoneRooms = hqHealZoneRooms; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
     window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)
