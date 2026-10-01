@@ -525,3 +525,6 @@ with a thread per zone for the swap and the checks.
   "one clear 8×8 patch" rule are retired; a fight takes the room's whole lattice up to 24 tiles a side (a 24×24 crop above),
   and a room of interest needs 48 seats in one region. E7's AUDIT 8×8 is now AUDIT FIELD (`hqPlanFieldSeats` replaces
   `hqPlanFightPatches`; `HQ_ZONE_TOOL_RULES.patchTiles` / `patchStep` retired). §4 lost its 8×8 patch and Path B bulge rows.
+- 2026-10-01: **THE PASSAGES** (mondo: thresholds that make sense): stairs, tunnels, trails and cloud roads you walk into
+  replace literal doors in the Woods, the Cavern, caves, Heaven and Göbekli; the HQ stair to the Woods is the way itself;
+  the Woods stair is a freestanding flight over the canopy; the stair landing room is gone. Notes: docs/notes/areas-complexes.md.
