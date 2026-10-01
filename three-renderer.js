@@ -7418,6 +7418,8 @@ const ThreeRenderer = (function () {
         'seed-heal':   (typeof HEALING_SEED_SPRITE_URL !== 'undefined') ? HEALING_SEED_SPRITE_URL : null,
         'seed-poison': (typeof POISON_SEED_SPRITE_URL  !== 'undefined') ? POISON_SEED_SPRITE_URL  : null,
         'seed-leech':  (typeof LEECH_SEED_SPRITE_URL   !== 'undefined') ? LEECH_SEED_SPRITE_URL   : null,
+        /* THE SPELL AUDIT Batch D: Bumper Crop's plain rim seeds wear the healing seed's sprite */
+        'seed-plain':  (typeof HEALING_SEED_SPRITE_URL !== 'undefined') ? HEALING_SEED_SPRITE_URL : null,
         'ward':        (typeof WARD_SPRITE_URL          !== 'undefined') ? WARD_SPRITE_URL          : null
     };
 

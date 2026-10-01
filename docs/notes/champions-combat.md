@@ -1127,3 +1127,13 @@ LIVE + 8 live halves of PARTIAL ones), 4 upgrades (Exploit: Marked, Frostbite's 
 Counterspell on Spellsteal only). battle.js now reads `cleanse` on warCry, `statusEffects` on selfHeal, `auraRadius` +
 `teamStatusEffects` on healAll (radius also in ai.js) and `groundsFlyers` on aoe (Meteor's flag was dead until now).
 TRAINING_PASSIVES no longer resets a moved row's family. Log + the rows left for Batch D: docs/spell-audit/BATCH_C_LOG.md.
+
+Batch D (engine) shipped 2026-10-01 — the plan is built. New row keys: `zoneTickDamage` / `zoneTickStatus` (damage
+zones ticked at round end, `_pushDamageZone`), `zoneCastDamage`, `aoeLifeDrain`, `mpDrain`, `executeBonusPct`,
+`statusIfTargetHas`, `selfStageBoost`, `stealBuffs`, `purgeFirst`, `stageIfBelowPct`, `stageHigherOf`, `timedStatBonus`
+(the Quickened status), `tauntEnemiesWithin`, `decoyTaunt` / `breakStatus`, `spawnDecoy` on buffs, `healOnSwap`,
+`healAdjacentDamage`, `bonusHitsPerAdjacentAlly`, `dashSweep`, `selfStatusAfter`, `throwAnyDirection`, `rimSeeds`,
+`shatterPrisms`, `pairPicks`, `needsLoS`, `selfPullOnly`, row-level `allyOnly`, `leaveTerrainRadius`, `trapHitsAll`,
+`summonDef.hitStatus` / `trailTerrain`, `snow_wall` terrain with `meltRounds`. Spells can crit (`critChance`). 27 new
+passive hook keys (see PASSIVE_HOOK_KEYS), 31 new upgrades incl. the `addStatus`, `set`, `weatherPatch` and
+`statusPayload` patch keys, upgrade `rows` pinning and the row field `upgradesBlock`. Log: docs/spell-audit/BATCH_D_LOG.md.
