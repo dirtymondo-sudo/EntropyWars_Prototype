@@ -7008,3 +7008,4 @@ html.ew-mobile .ui-dialog-card { max-height: calc(100dvh - 24px); }
 html.ew-mobile .hq-panel-card { max-height: calc(100dvh - 24px); }
 html.ew-mobile .sq-pick-panel { max-height: calc(100dvh - 20px); }
 html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
+@media (orientation: portrait) { html.ew-mobile .hqt-top { top: calc(env(safe-area-inset-top, 0px) + 150px); } }
