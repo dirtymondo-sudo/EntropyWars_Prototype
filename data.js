@@ -4601,7 +4601,7 @@ const SPELL_LIBRARY = [
 
 
     {
-        id: 'revive1',
+        id: 'revive1', upgradesBlock: ['upEfficient'],
         spellType: 'divine',
         element: 'light',
         name: 'Revive',
@@ -4885,7 +4885,7 @@ const SPELL_LIBRARY = [
         desc: 'Plants a seed on a Single Enemy: for 3 rounds it drains HP from the target each turn and heals the caster.'
     },
     {
-        id: 'trunkThrow',
+        id: 'trunkThrow', upgradesBlock: ['upBlast'],
         spellType: 'anomaly',
         element: 'nature',
         name: 'Trunk Throw',
@@ -4906,7 +4906,7 @@ const SPELL_LIBRARY = [
     },
 
     {
-        id: 'knifeThrow',
+        id: 'knifeThrow', upgradesBlock: ['upKnockback'],
         spellType: 'human',
         element: 'metal',
         name: 'Knife Throw',
@@ -5176,7 +5176,7 @@ const SPELL_LIBRARY = [
         desc: 'The grab that also hurts. Deals WEAK physical damage to a Single Enemy and Roots them for 2 rounds. Knocks flying targets out of the sky.'
     },
     {
-        id: 'rampage',
+        id: 'rampage', upgradesBlock: ['upFinisher'],
         spellType: 'human',
         name: 'Rampage',
         type: 'damage',
@@ -5235,7 +5235,7 @@ const SPELL_LIBRARY = [
         desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to targets with Rooted.'
     },
     {
-        id: 'headshot',
+        id: 'headshot', upgradesBlock: ['upBlast', 'upExtraTarget', 'upRicochet'],
         spellType: 'tech',
         element: 'metal',
         name: 'Take Aim',
@@ -5364,7 +5364,7 @@ const SPELL_LIBRARY = [
 
 
     {
-        id: 'empBurst',
+        id: 'empBurst', upgradesBlock: ['upWiden'],
         spellType: 'tech',
         element: 'lightning',
         name: 'EMP Burst',
@@ -5667,7 +5667,7 @@ const SPELL_LIBRARY = [
            Now a Manhattan DIAMOND, radius 2 — the waltz steps carry the
            blades two full tiles out in every cardinal direction. Damage
            trimmed 126→118 for the extra reach. */
-        id: 'bladeWaltz',
+        id: 'bladeWaltz', upgradesBlock: ['upWiden'],
         spellType: 'human',
         element: 'metal',
         name: 'Blade Waltz',
@@ -5703,7 +5703,7 @@ const SPELL_LIBRARY = [
           spellType: 'human', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 2,
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'The whip cracks — or the spirit roars — and they run. Deals MEDIUM magic damage to a Single Enemy and Fears them for a round: on its next activation it can only flee.' },
-        { id: 'raceElephant', name: 'Elephant', tier: 4, families: ['animalhandling'], cost: 100, apCost: 1,
+        { id: 'raceElephant', upgradesBlock: ['upDeploy'], name: 'Elephant', tier: 4, families: ['animalhandling'], cost: 100, apCost: 1,
           spellType: 'human', element: 'nature', type: 'utility', kind: 'summonUnit', range: 1, maxActivePerCaster: 1,
           summonDef: { key: 'elephant', name: 'Elephant', move: 3, dmg: 110, hits: 6 },
           desc: 'The big top\'s biggest act. Walks 3, hits for 110, takes six hits to put down. One per handler. Calls an Elephant to an adjacent tile; at the end of every round it walks toward the nearest enemy and strikes.' },
@@ -5711,7 +5711,7 @@ const SPELL_LIBRARY = [
           spellType: 'anomaly', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 1,
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Clamp and spin. MEDIUM physical damage, and the prey is not going anywhere. Roots a Single Enemy for 2 rounds.' },
-        { id: 'raceCocoon', name: 'Cocoon', tier: 4, families: ['arachnid'], cost: 100, apCost: 1, spellType: 'alien',
+        { id: 'raceCocoon', upgradesBlock: ['upBlast', 'upExtraTarget'], name: 'Cocoon', tier: 4, families: ['arachnid'], cost: 100, apCost: 1, spellType: 'alien',
           element: 'arcane', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
           statusEffects: [{ id: 'silence', duration: 1 }], bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'The silk closes over the mouth first. HEAVY arcane damage; a Rooted target is wrapped tight and takes half again. Silences a Single Enemy for a round.' },
@@ -5747,7 +5747,7 @@ const SPELL_LIBRARY = [
           spellType: 'anomaly', element: 'water', type: 'debuff', kind: 'debuff', range: 2,
           statusEffects: [{ id: 'root', duration: 2 }], statStageBoost: { def: -1 },
           desc: 'Two arms, then four. It is not going anywhere. Roots a Single Enemy for 2 rounds and lowers its DEF by 1 stage.' },
-        { id: 'raceEightfoldLash', name: 'Eightfold Lash', tier: 3, families: ['tentacleappendages'], cost: 75, apCost: 1,
+        { id: 'raceEightfoldLash', upgradesBlock: ['upRicochet', 'upExtraTarget', 'upBlast'], name: 'Eightfold Lash', tier: 3, families: ['tentacleappendages'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'water', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 2,
           hitDamages: [32, 32, 32, 32], bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'All of them at once. Deals WEAK magic damage to a Single Enemy across 4 hits. Deals bonus damage to Rooted targets.' },
@@ -5758,7 +5758,7 @@ const SPELL_LIBRARY = [
         { id: 'raceAntidote', name: 'Antidote', tier: 2, families: ['chemistry'], cost: 50, apCost: 1, spellType: 'tech',
           type: 'heal', kind: 'heal', range: 3, healAmt: 140, cleanse: 2,
           desc: 'Drink it before it stops fizzing. Restores a BIG amount of HP to a Single Ally and cleanses 2 debuffs.' },
-        { id: 'raceChainReaction', name: 'Chain Reaction', tier: 4, families: ['chemistry'], cost: 100, apCost: 1,
+        { id: 'raceChainReaction', upgradesBlock: ['upWiden'], name: 'Chain Reaction', tier: 4, families: ['chemistry'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'tech', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic',
           dmg: 140, range: 4, aoeRadius: 2, bonusVsStatus: { status: ['burn', 'poison'], mult: 1.5 },
           desc: 'One spark. The whole table goes. Deals HEAVY magic damage to every enemy in a 5×5 area. Deals bonus damage to targets with Burn or Poison.' },
@@ -5769,7 +5769,7 @@ const SPELL_LIBRARY = [
           cooldownRounds: 2, spellType: 'tech', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 150, range: 4,
           aoeRadius: 1, bonusVsStatus: { status: 'jammed', mult: 1.5 },
           desc: 'Fatal exception. Deals HEAVY magic damage to every enemy in a 3×3 area. Deals bonus damage to targets with Jammed.' },
-        { id: 'raceSlapLeather', name: 'Slap Leather', tier: 3, families: ['cowboyskills'], cost: 75, apCost: 1,
+        { id: 'raceSlapLeather', upgradesBlock: ['upLinger'], name: 'Slap Leather', tier: 3, families: ['cowboyskills'], cost: 75, apCost: 1,
           spellType: 'human', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 125,
           range: 4, statusEffects: [{ id: 'stagger', duration: 1 }], actedTargetBonus: 30,
           desc: 'Hand hovers, then it doesn\'t. MEDIUM physical damage to a Single Enemy — they flinch and lose an AP. Hits harder on anyone who already made their move.' },
@@ -5816,7 +5816,7 @@ const SPELL_LIBRARY = [
           element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Feed the fire what it wants. MEDIUM magic damage — a Burning target goes up like tinder.' },
-        { id: 'raceStrangeLoop', name: 'Strange Loop', tier: 2, families: ['fractal'], cost: 50, apCost: 1, cooldownRounds: 2,
+        { id: 'raceStrangeLoop', upgradesBlock: ['upLinger'], name: 'Strange Loop', tier: 2, families: ['fractal'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', element: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'The pattern closes on itself. They cannot find the way out. Deals WEAK magic damage to a Single Enemy within 4 tiles and Stuns them for a round.' },
@@ -5897,11 +5897,11 @@ const SPELL_LIBRARY = [
           spellType: 'human', type: 'damage', kind: 'barrage', range: 0, dmg: 100, damageType: 'physical',
           aoeRadius: 1, aoeOriginSelf: true, statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Everyone in reach. Deals MEDIUM physical damage to All Enemies in the 3×3 around you and Staggers each of them.' },
-        { id: 'racePressurePoint', name: 'Pressure Point', tier: 3, families: ['martialarts'], cost: 75, apCost: 1,
+        { id: 'racePressurePoint', upgradesBlock: ['upLinger'], name: 'Pressure Point', tier: 3, families: ['martialarts'], cost: 75, apCost: 1,
           cooldownRounds: 2, spellType: 'human', type: 'damage', kind: 'damage', range: 1, dmg: 100,
           damageType: 'physical', statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Two fingers. Lights out. Deals MEDIUM physical damage to an adjacent enemy and Stuns them for a round. Cooldown: 2 rounds.' },
-        { id: 'raceFullBurst', name: 'Full Burst', tier: 4, families: ['mecha'], cost: 100, apCost: 2, cooldownRounds: 2,
+        { id: 'raceFullBurst', upgradesBlock: ['upWiden'], name: 'Full Burst', tier: 4, families: ['mecha'], cost: 100, apCost: 2, cooldownRounds: 2,
           spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 150, damageType: 'physical', aoeRadius: 2,
           ignoresLineOfSight: true,
           desc: 'Every hardpoint on the frame, at once. Deals HEAVY physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
@@ -5912,7 +5912,7 @@ const SPELL_LIBRARY = [
           element: 'light', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
           teamStatusEffects: [{ id: 'regen', duration: 3 }], cleanse: 2,
           desc: 'One word, everyone breathing it. Every ally within 2 tiles gains Regen for 3 rounds and is cleansed of 2 debuffs.' },
-        { id: 'raceMirrorShard', name: 'Mirror Shard', tier: 1, families: ['mirrormagic'], cost: 25, apCost: 1,
+        { id: 'raceMirrorShard', upgradesBlock: ['upRicochet'], name: 'Mirror Shard', tier: 1, families: ['mirrormagic'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'arcane', type: 'damage', kind: 'ricochet', range: 4, dmg: 80,
           damageType: 'magic', bounceDamage: 40, bounceRadius: 2,
           desc: 'A sliver of the glass. It finds the next face too. Deals WEAK magic damage to a Single Enemy, then bounces to another enemy within 2 tiles for half.' },
@@ -5980,7 +5980,7 @@ const SPELL_LIBRARY = [
           spellType: 'unholy', element: 'poison', type: 'damage', kind: 'damage', range: 2, dmg: 90,
           damageType: 'physical', statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'The suit lashes out two tiles. The barbs stay in. Deals WEAK physical damage to a Single Enemy within 2 and Poisons it for 2 rounds.' },
-        { id: 'raceEverybodyUp', name: 'Everybody Up', tier: 4, families: ['teamwork'], cost: 100, apCost: 1,
+        { id: 'raceEverybodyUp', upgradesBlock: ['upWiden'], name: 'Everybody Up', tier: 4, families: ['teamwork'], cost: 100, apCost: 1,
           cooldownRounds: 3, spellType: 'human', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
           statStageBoost: { atk: 1, def: 1 }, cleanse: 99,
           desc: 'On three. Every ally within 2 tiles gains +1 ATK and +1 DEF stage and is cleansed of every debuff.' },
@@ -6012,7 +6012,7 @@ const SPELL_LIBRARY = [
           element: 'wind', type: 'damage', kind: 'linePush', range: 4, lineWidth: 1, dmg: 100, damageType: 'magic',
           pushDistance: 3,
           desc: 'One long breath down the row. MEDIUM magic damage to everything in the line, and all of it three tiles further from you.' },
-        { id: 'raceUpdraft', name: 'Updraft', tier: 2, families: ['wind'], cost: 50, apCost: 1, spellType: 'anomaly',
+        { id: 'raceUpdraft', upgradesBlock: ['upDeploy'], name: 'Updraft', tier: 2, families: ['wind'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'wind', type: 'utility', kind: 'buff', range: 3,
           statusEffects: [{ id: 'levitating', duration: 2 }],
           desc: 'Give them the sky. One ally is Levitating for 2 rounds — flight and the high-ground bonus.' },
@@ -6154,7 +6154,7 @@ const SHARED_LOW_GRAVITY = {
    equipped slot resolved (via SPELL_BY_ID) to the other. Single shared
    object — both races raise the Walls of Camelot. */
 const SHARED_WALLS_OF_CAMELOT = {
-    id: 'raceShieldWall', tier: 2, families: ['royalty'], spellType: 'human', element: 'earth', name: 'Walls of Camelot',
+    id: 'raceShieldWall', upgradesBlock: ['upWiden'], tier: 2, families: ['royalty'], spellType: 'human', element: 'earth', name: 'Walls of Camelot',
     type: 'utility', cost: 25, apCost: 1, range: 3,
     kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
     dmg: 60, damageType: 'physical',
@@ -6283,7 +6283,7 @@ const SHARED_SMOKE_SCREEN = {
    Black Hole — cosmic wraith + voidweaver: a 5×5 event horizon aoePull.
    Nebula — cosmic wraith + superhero: the star-cloud concealment field. */
 const SHARED_EGO_DEATH = {
-    id: 'sharedEgoDeath', spellType: 'alien', element: 'psychic', name: 'Ego Death',
+    id: 'sharedEgoDeath', upgradesBlock: ['upBlast'], spellType: 'alien', element: 'psychic', name: 'Ego Death',
     type: 'damage', tier: 4, families: ['psychadelic'], cost: 50, dmg: 180, range: 3, apCost: 2, cooldownRounds: 2,
     kind: 'damage', damageType: 'magic',
     statusEffects: [{ id: 'stun', duration: 1 }],
@@ -6291,7 +6291,7 @@ const SHARED_EGO_DEATH = {
 };
 
 const SHARED_BLACK_HOLE = {
-    id: 'sharedBlackHole', spellType: 'alien', element: 'shadow', name: 'Black Hole',
+    id: 'sharedBlackHole', upgradesBlock: ['upBlowback', 'upWiden'], spellType: 'alien', element: 'shadow', name: 'Black Hole',
     type: 'damage', tier: 4, families: ['cosmic'], cost: 100, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
     kind: 'aoePull', damageType: 'magic', aoeRadius: 2, pullToCenter: true,
     groundsFlyers: true,
@@ -6398,11 +6398,11 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 75, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 140,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        { id: 'racePhotonScatter', tier: 1, families: ['alientechnology'], spellType: 'divine', name: 'Photon Scatter',
+        { id: 'racePhotonScatter', upgradesBlock: ['upWiden'], tier: 1, families: ['alientechnology'], spellType: 'divine', name: 'Photon Scatter',
           type: 'damage', cost: 30, dmg: 80, range: 0,
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE).' },
-        { id: 'raceSupernova', spellType: 'divine', element: 'light', name: 'Supernova',
+        { id: 'raceSupernova', upgradesBlock: ['upWiden'], spellType: 'divine', element: 'light', name: 'Supernova',
           type: 'damage', cost: 75, dmg: 135, range: 0, apCost: 1, tier: 3,
           families: ['cosmic'],
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
@@ -6430,7 +6430,7 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'haunted', duration: 3 }],
           desc: 'A restless spirit sinks into a Single Enemy. Applies Haunted: 28 magic damage at the end of every round for 3 rounds, armor ignored. Boo hits Haunted targets harder.' },
-        { id: 'raceColdSpot', tier: 2, families: ['haunted'], element: 'ice', spellType: 'anomaly', name: 'Cold Spot',
+        { id: 'raceColdSpot', upgradesBlock: ['upWiden'], tier: 2, families: ['haunted'], element: 'ice', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'frozen', duration: 1 }],
@@ -6527,7 +6527,7 @@ const RACE_ABILITIES = {
            enemy into the realm (STATUS_DEFS shadowRealm on BOTH, partner
            ids crossed): invisible and untargetable to everyone else, immune
            to everything not from each other, nobody else can heal either. */
-        { id: 'raceShadowRealm', spellType: 'unholy', element: 'shadow', name: 'Shadow Realm',
+        { id: 'raceShadowRealm', upgradesBlock: ['upReach', 'upLinger'], spellType: 'unholy', element: 'shadow', name: 'Shadow Realm',
           type: 'debuff', tier: 4, cost: 55, range: 3, apCost: 2, cooldownRounds: 3,
           kind: 'shadowRealm',
           statusEffects: [{ id: 'shadowRealm', duration: 2 }],
@@ -6551,14 +6551,14 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'charm', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Charm.' },
-        { id: 'raceDrainingEmbrace', spellType: 'unholy', name: 'Draining Embrace',
+        { id: 'raceDrainingEmbrace', upgradesBlock: ['upExtraTarget'], spellType: 'unholy', name: 'Draining Embrace',
           type: 'damage', tier: 4, families: ['seduction'], cost: 35, dmg: 180, range: 2, apCost: 1,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.60,
           bonusVsStatus: { status: 'charm', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to a Single Enemy. Heals the caster for part of the damage dealt. Deals bonus damage to Charmed targets.' },
         /* 2026-07-23: Poison Swamp out, Sleep Paralysis in — she sits on
            your chest and you cannot move. */
-        { id: 'raceSleepParalysis', tier: 2, cooldownRounds: 2, families: ['astral'], spellType: 'unholy', element: 'shadow', name: 'Sleep Paralysis',
+        { id: 'raceSleepParalysis', upgradesBlock: ['upLinger'], tier: 2, cooldownRounds: 2, families: ['astral'], spellType: 'unholy', element: 'shadow', name: 'Sleep Paralysis',
           type: 'damage', cost: 50, dmg: 60, range: 3,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stun', duration: 1 }],
@@ -6602,7 +6602,7 @@ const RACE_ABILITIES = {
           kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
           desc: 'Feeds on a fallen unit\'s remains within 2 tiles — an ally\'s gravestone or an enemy\'s bones. Heals 35% of max HP and delays that unit\'s respawn by 2 rounds. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', tier: 2, families: ['zombie'], spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
-        { id: 'raceOutbreak', tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
+        { id: 'raceOutbreak', upgradesBlock: ['upWiden'], tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 2, zoneDuration: 3,
           zoneCastDamage: 80, damageType: 'physical',   // THE SPELL AUDIT Batch D: the hit on arrival
@@ -6630,7 +6630,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'A skull-shaped bolt of grave cold. Deals MEDIUM magic damage to a Single Enemy. Applies Slow.' },
-        { id: 'raceReassemble', tier: 2, teleportDistance: 3, families: ['bonedensity'], spellType: 'unholy', name: 'Reassemble',
+        { id: 'raceReassemble', upgradesBlock: ['upLinger'], tier: 2, teleportDistance: 3, families: ['bonedensity'], spellType: 'unholy', name: 'Reassemble',
           type: 'heal', cost: 25, range: 0, apCost: 1,
           kind: 'escape', selfHealPct: 0.2,
           desc: 'The bones come apart and put themselves back together somewhere else. Teleports up to 3 tiles and restores 20% of max HP.' },
@@ -6660,7 +6660,7 @@ const RACE_ABILITIES = {
            → _sigMeteorStorm3D: two dozen asteroid GLBs raining across the
            zone with fire trails, streakers across the sky, a crater burst on
            every landing) under the descent grammar's sky-watch camera. */
-        { id: 'raceProphecyOfDisaster', spellType: 'anomaly', name: 'Prophecy of Disaster',
+        { id: 'raceProphecyOfDisaster', upgradesBlock: ['upEfficient'], spellType: 'anomaly', name: 'Prophecy of Disaster',
           type: 'damage', tier: 4, families: ['mothman'], cost: 50, dmg: 160, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 1,
           groundsFlyers: true,
@@ -6702,7 +6702,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 100, range: 1,
           kind: 'lifeDrain', damageType: 'physical', drainPct: 0.30,
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Heals the caster for part of the damage dealt.' },
-        { id: 'raceFeralDive', tier: 3, families: ['beastabilities'], spellType: 'human', element: 'nature', name: 'Feral Dive',
+        { id: 'raceFeralDive', upgradesBlock: ['upBlast'], tier: 3, families: ['beastabilities'], spellType: 'human', element: 'nature', name: 'Feral Dive',
           type: 'damage', cost: 25, dmg: 125, range: 3, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
           desc: 'Leaps to a Single Enemy, dealing MEDIUM physical damage.' }
@@ -6742,7 +6742,7 @@ const RACE_ABILITIES = {
         /* 2026-08-12: reworked from a heal zone into the fairy's damage
            capstone — a ring-shaped blast (aoeShape 'ring': only the 16
            perimeter tiles of the 5×5, the inside is spared). */
-        { id: 'raceFaeRing', spellType: 'anomaly', element: 'nature', name: 'Fae Ring',
+        { id: 'raceFaeRing', upgradesBlock: ['upWiden'], spellType: 'anomaly', element: 'nature', name: 'Fae Ring',
           type: 'damage', cost: 55, dmg: 160, range: 4, apCost: 2, tier: 4,
           bonusVsStatus: { status: 'blind', mult: 1.5 },
           families: ['fae'],
@@ -6767,7 +6767,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
           desc: 'Swaps positions with the target unit.' },
-        { id: 'raceMimicry', spellType: 'anomaly', name: 'Mimicry',
+        { id: 'raceMimicry', upgradesBlock: ['upLinger'], spellType: 'anomaly', name: 'Mimicry',
           type: 'buff', tier: 4, cooldownRounds: 3, families: ['trickery'], cost: 20, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2, def: 2 },
@@ -6856,7 +6856,7 @@ const RACE_ABILITIES = {
           kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line and pushes them back. Deals bonus damage to Silenced targets.' },
-        { id: 'raceCallOfTheDeep', element: 'water', spellType: 'unholy', name: 'Call of the Deep',
+        { id: 'raceCallOfTheDeep', upgradesBlock: ['upBlast'], element: 'water', spellType: 'unholy', name: 'Call of the Deep',
           type: 'damage', tier: 3, families: ['water'], cost: 75, dmg: 135, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
@@ -6903,12 +6903,12 @@ const RACE_ABILITIES = {
           kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
           mpDrain: 30,   // THE SPELL AUDIT Batch D: the leak
           desc: 'The leak never closes. A Single Enemy is Jammed for 2 rounds and loses 30 MP.' },
-        { id: 'raceBlueScreen', tier: 3, cooldownRounds: 2, dmg: 80, damageType: 'magic', families: ['computerhacking'], spellType: 'tech', name: 'Blue Screen',
+        { id: 'raceBlueScreen', upgradesBlock: ['upBlast'], tier: 3, cooldownRounds: 2, dmg: 80, damageType: 'magic', families: ['computerhacking'], spellType: 'tech', name: 'Blue Screen',
           type: 'debuff', cost: 35, range: 4, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Fatal exception. Deals WEAK magic damage to a Single Enemy and Stuns them for a round.' },
-        { id: 'raceTimeRewind', spellType: 'tech', element: 'psychic', name: 'Paradox',
+        { id: 'raceTimeRewind', upgradesBlock: ['upBlast'], spellType: 'tech', element: 'psychic', name: 'Paradox',
           type: 'damage', tier: 4, bonusVsStatus: { status: ['slow', 'stagger'], mult: 1.5 }, families: ['temporal'], cost: 35, dmg: 180, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic',
           echoLastDealt: true,
@@ -6929,7 +6929,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 125, range: 4,
           kind: 'damage', damageType: 'magic',
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to Marked targets.' },
-        { id: 'raceSingularity', spellType: 'tech', name: 'Singularity',
+        { id: 'raceSingularity', upgradesBlock: ['upBlowback'], spellType: 'tech', name: 'Singularity',
           type: 'damage', cost: 60, dmg: 160, range: 4, apCost: 2, tier: 4,
           families: ['artificialintelligence'],
           kind: 'aoePull', damageType: 'magic', aoeRadius: 2, pullToCenter: true, cooldownRounds: 2,
@@ -6943,7 +6943,7 @@ const RACE_ABILITIES = {
         /* Robot capstone since the 2026-08-12 capstone pass (empBurst moved to
            the android/droid capstone slot only; robot borrows overclock for
            its ring 2 instead). */
-        { id: 'raceChassisSlam', spellType: 'tech', element: 'metal', name: 'Kill Mode',
+        { id: 'raceChassisSlam', upgradesBlock: ['upWiden'], spellType: 'tech', element: 'metal', name: 'Kill Mode',
           type: 'damage', tier: 3, cooldownRounds: 2, statusEffects: [{ id: 'stagger', duration: 1 }], families: ['robot'], cost: 75, dmg: 125, range: 0, apCost: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           desc: 'Weapons free. Deals MEDIUM physical damage to All Enemies around the caster (AOE).' },
@@ -7003,7 +7003,7 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM physical damage to a Single Enemy and stamps the ground flat where they stood. Deals bonus damage to Staggered targets.' },
     ],
     'catgirl': [
-        { id: 'raceNinefoldScratch', spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
+        { id: 'raceNinefoldScratch', upgradesBlock: ['upExtraTarget', 'upBlast'], spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', tier: 4, families: ['feline'], cost: 40, range: 1,
           kind: 'multiHit', damageType: 'physical',
           hitDamages: [20, 20, 20, 20, 20, 20, 20, 20, 20],
@@ -7035,7 +7035,7 @@ const RACE_ABILITIES = {
           kind: 'selfHeal', selfHealPct: 0.4, cleanse: 2,
           statStageBoost: { spd: 1 },
           desc: 'Restores 55% of the caster\'s max HP. Raises SPD by 1 stage.' },
-        { id: 'raceUnderdogSpirit', tier: 3, cleanse: 1, families: ['humangrit'], spellType: 'human', element: 'blood', name: 'Underdog Spirit',
+        { id: 'raceUnderdogSpirit', upgradesBlock: ['upLinger'], tier: 3, cleanse: 1, families: ['humangrit'], spellType: 'human', element: 'blood', name: 'Underdog Spirit',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2 },
@@ -7108,7 +7108,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
           desc: 'The hero cannot die yet. The next killing blow leaves the caster at 1 HP instead.' },
-        { id: 'raceToBeContinued', tier: 3, families: ['maincharacter'], spellType: 'human', element: 'metal', name: 'To Be Continued',
+        { id: 'raceToBeContinued', upgradesBlock: ['upBlast'], tier: 3, families: ['maincharacter'], spellType: 'human', element: 'metal', name: 'To Be Continued',
           type: 'damage', cost: 35, dmg: 135, range: 3, apCost: 1,
           kind: 'damage', damageType: 'physical',
           delayedMark: true, markDelayRounds: 1, requireVision: true,
@@ -7130,7 +7130,7 @@ const RACE_ABILITIES = {
           kind: 'warCry', auraRadius: 2,
           statStageBoost: { atk: 1, def: 1 },
           desc: 'Every ally within 2 tiles gains +1 ATK and +1 DEF stage.' },
-        { id: 'raceChivalry', tier: 1, families: ['knight'], spellType: 'human', element: 'light', name: 'Chivalry',
+        { id: 'raceChivalry', upgradesBlock: ['upLinger'], tier: 1, families: ['knight'], spellType: 'human', element: 'light', name: 'Chivalry',
           type: 'utility', cost: 15, apCost: 1, range: 4,
           kind: 'guard', cooldownRounds: 2,
           desc: 'Pledge to protect an ally. The next time that ally is targeted by an attack, you dash to their side and take the hit in their place.' },
@@ -7212,7 +7212,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'poison', duration: 3 }],
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Poison.' },
-        { id: 'raceCloneDecoy', tier: 2, families: ['unethicalscience'], spellType: 'tech', element: 'metal', name: 'Cloning Machine',
+        { id: 'raceCloneDecoy', upgradesBlock: ['upTurret'], tier: 2, families: ['unethicalscience'], spellType: 'tech', element: 'metal', name: 'Cloning Machine',
           type: 'utility', cost: 20, apCost: 1, range: 1,
           kind: 'deployObject',
           objectHp: 100, maxActivePerCaster: 1,
@@ -7226,7 +7226,7 @@ const RACE_ABILITIES = {
         SHARED_SHRINK_RAY,
         /* 2026-07-23: Free Energy left the Engineer school — only the Mad
            Scientist cracked zero-point energy. (Same id: VFX/saves intact.) */
-        { id: 'freeEnergy', tier: 2, families: ['advancedtechnology'], spellType: 'divine', element: 'lightning', name: 'Free Energy',
+        { id: 'freeEnergy', upgradesBlock: ['upEfficient'], tier: 2, families: ['advancedtechnology'], spellType: 'divine', element: 'lightning', name: 'Free Energy',
           type: 'heal', cost: 50, mpRestore: 40, range: 0,
           kind: 'manaRestoreAll',
           desc: 'Restores 40 MP to All Allies.' }
@@ -7241,12 +7241,12 @@ const RACE_ABILITIES = {
           projectileOverride: 'proj-bomb',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Light the fuse and lob a stick of dynamite up to 3 tiles. Deals MEDIUM physical damage to All Enemies in a 3×3 blast and Staggers them.' },
-        { id: 'raceWhistle', tier: 3, families: ['huntingskills'], spellType: 'human', element: 'nature', name: 'Whistle',
+        { id: 'raceWhistle', upgradesBlock: ['upTurret'], tier: 3, families: ['huntingskills'], spellType: 'human', element: 'nature', name: 'Whistle',
           type: 'utility', cost: 75, apCost: 1, range: 1,
           kind: 'summonUnit', maxActivePerCaster: 1,
           summonDef: { key: 'hound', name: 'Hound', move: 4, dmg: 60, hits: 3, reveals: 3 },
           desc: 'Two fingers, one whistle — the hound comes running to an adjacent tile. At the end of every round it runs 4 tiles toward the nearest enemy and bites for 60; anything invisible within 3 tiles of it is sniffed out. 3 hits to put it down. One hound per cowboy.' },
-        { id: 'raceFanTheHammer', tier: 1, aoeOriginSelf: true, families: ['cowboyskills'], spellType: 'human', element: 'metal', name: 'Fan the Hammer',
+        { id: 'raceFanTheHammer', upgradesBlock: ['upReach'], tier: 1, aoeOriginSelf: true, families: ['cowboyskills'], spellType: 'human', element: 'metal', name: 'Fan the Hammer',
           type: 'damage', cost: 25, dmg: 80, range: 0,
           kind: 'barrage', damageType: 'physical', aoeRadius: 1,
           projectileOverride: 'proj-bullet',
@@ -7315,7 +7315,7 @@ const RACE_ABILITIES = {
        MERGED into this one line spell (spell-tree audit §7.6); the old id
        aliases here via the legacy-alias table below. */
     'marksman': [
-        { id: 'raceSuppressiveFire', tier: 1, families: ['militarysupport'], spellType: 'human', element: 'metal', name: 'Suppressive Fire',
+        { id: 'raceSuppressiveFire', upgradesBlock: ['upBlast', 'upRicochet', 'upExtraTarget'], tier: 1, families: ['militarysupport'], spellType: 'human', element: 'metal', name: 'Suppressive Fire',
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           statusEffects: [{ id: 'slow', duration: 2 }],
@@ -7355,7 +7355,7 @@ const RACE_ABILITIES = {
         SHARED_SMITE,
         /* 2026-07-23: Exorcism is Priest/Nun-only now (was White Mage school).
            Same id — VFX, sounds and old loadouts keep working. */
-        { id: 'exorcism', spellType: 'divine', element: 'light', name: 'Exorcism',
+        { id: 'exorcism', upgradesBlock: ['upBlast'], spellType: 'divine', element: 'light', name: 'Exorcism',
           type: 'damage', tier: 3, families: ['biblestudy'], cost: 75, dmg: 135, range: 3,
           kind: 'damage', damageType: 'magic',
           unholyBonus: 80,
@@ -7374,7 +7374,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'grievous', duration: 2 }],
           desc: 'Put an adjacent enemy on the pavement and stomp. Deals MEDIUM physical damage to a Single Enemy and leaves a Grievous Wound — healing on them is halved for 2 rounds.' },
-        { id: 'raceDriveBy', tier: 2, dashDamage: 40, families: ['streetsmarts'], spellType: 'human', element: 'metal', name: 'Drive-By',
+        { id: 'raceDriveBy', upgradesBlock: ['upKnockback'], tier: 2, dashDamage: 40, families: ['streetsmarts'], spellType: 'human', element: 'metal', name: 'Drive-By',
           type: 'damage', cost: 30, dmg: 0, range: 3, apCost: 1,
           kind: 'dash', damageType: 'physical',
           afterShot: { dmg: 100, range: 3 },
@@ -7428,7 +7428,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'The baton comes off the belt. Deals WEAK physical damage to an adjacent enemy and Staggers them.' },
-        { id: 'racePoliceTaser', tier: 2, families: ['policetraining'], spellType: 'human', element: 'metal', name: 'Taser',
+        { id: 'racePoliceTaser', upgradesBlock: ['upBlast'], tier: 2, families: ['policetraining'], spellType: 'human', element: 'metal', name: 'Taser',
           type: 'damage', cost: 30, dmg: 70, range: 3, apCost: 1, cooldownRounds: 2,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stun', duration: 1 }],
@@ -7528,7 +7528,7 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statStageBoost: { def: -1, mdef: -1 },
           desc: 'The team\'s focus-fire call. Lowers a Single Enemy\'s DEF and M DEF by 1 stage and Marks them for 2 rounds.' },
-        { id: 'racePopStadiumShow', spellType: 'anomaly', element: 'sonic', name: 'Stadium Show',
+        { id: 'racePopStadiumShow', upgradesBlock: ['upWiden'], spellType: 'anomaly', element: 'sonic', name: 'Stadium Show',
           type: 'damage', cost: 85, dmg: 150, range: 3, aoeRadius: 2, apCost: 1, tier: 4, bonusVsStatus: { status: 'stagger', mult: 1.5 }, families: ['stagepresence'], cooldownRounds: 3,
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'charm', duration: 1 }],
@@ -7560,7 +7560,7 @@ const RACE_ABILITIES = {
           hitDamages: [26, 26, 26, 26],
           desc: 'Aces and eights, thrown edge-first. Four cards at a Single Enemy for WEAK magic damage each.' },
 
-        { id: 'raceDoubleDown', name: 'Double Down', tier: 3, families: ['gambling'], cost: 75, apCost: 1,
+        { id: 'raceDoubleDown', upgradesBlock: ['upReach', 'upLinger'], name: 'Double Down', tier: 3, families: ['gambling'], cost: 75, apCost: 1,
           spellType: 'anomaly', type: 'buff', kind: 'buff', range: 0, statStageBoost: { atk: 2, def: -1 },
           desc: 'Everything on the table. Raises the caster\'s ATK by 2 stages and lowers their DEF by 1 stage.' },
 ],
@@ -7638,7 +7638,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical', groundsFlyers: true, doorGun: true, dropTiles: 3,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Return to sender. Shoot a door at an enemy within 4 tiles: they go in, and a door opens three storeys over their head for them to fall out of. MEDIUM physical damage from the landing, flyers are grounded, the target is Staggered.' },
-        { id: 'raceTrapdoor', spellType: 'anomaly', element: 'psychic', name: 'Trapdoor',
+        { id: 'raceTrapdoor', upgradesBlock: ['upWiden'], spellType: 'anomaly', element: 'psychic', name: 'Trapdoor',
           type: 'utility', cost: 35, dmg: 60, range: 4, apCost: 1, tier: 3,
           families: ['trapmaking'],
           kind: 'placeTrap', trapType: 'trapdoor', trapSize: 2, maxActivePerCaster: 1, damageType: 'physical', doorGun: true,
@@ -7707,7 +7707,7 @@ const RACE_ABILITIES = {
           kind: 'warCry', auraRadius: 99,
           randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
           desc: 'Empowers All Allies nearby. Raises a random stat of every ally by 1 stage. Cooldown: 3 rounds.' },
-        { id: 'raceStarCrossed', tier: 1, families: ['fortunetelling'], spellType: 'anomaly', element: 'arcane', name: 'Star Crossed',
+        { id: 'raceStarCrossed', upgradesBlock: ['upLinger'], tier: 1, families: ['fortunetelling'], spellType: 'anomaly', element: 'arcane', name: 'Star Crossed',
           type: 'debuff', cost: 25, dmg: 70, range: 4, apCost: 1,
           kind: 'debuff', damageType: 'magic', zodiacReading: true,
           desc: 'Read the target\'s birth chart and turn their own stars against them. Magic damage plus an affliction by their zodiac: Fire signs burn, Earth signs are rooted and exposed, Air signs are silenced, Water signs grow drowsy. +50% damage if their sign rules the sky.' },
@@ -7738,7 +7738,7 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' },
         /* 2026-08-12: reworked from a tripod turret deploy into the UFO-swarm
            strike the name always promised (round 5×5-minus-corners AOE). */
-        { id: 'raceWarOfTheWorlds', spellType: 'alien', element: 'metal', name: 'War of the Worlds',
+        { id: 'raceWarOfTheWorlds', upgradesBlock: ['upWiden'], spellType: 'alien', element: 'metal', name: 'War of the Worlds',
           type: 'damage', tier: 4, cooldownRounds: 2, families: ['ufo'], cost: 55, range: 4, apCost: 2,
           kind: 'aoe', aoeRadius: 2, damageType: 'magic',
           zoneTickDamage: 100, zoneDuration: 2,   // THE SPELL AUDIT Batch D: the damage zone (battle.js _pushDamageZone)
@@ -7758,7 +7758,7 @@ const RACE_ABILITIES = {
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'Marks a zone. After 1 turn, deals MEDIUM magic damage to All Enemies inside (AOE). Deals bonus damage to Slowed targets.' },
-        { id: 'raceGravityWell', tier: 1, families: ['cosmic'], spellType: 'alien', element: 'arcane', name: 'Gravity Well',
+        { id: 'raceGravityWell', upgradesBlock: ['upBlowback'], tier: 1, families: ['cosmic'], spellType: 'alien', element: 'arcane', name: 'Gravity Well',
           type: 'damage', cost: 30, dmg: 80, range: 4,
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           groundsFlyers: true,
@@ -7827,7 +7827,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 20, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic', dmg: 100,
           desc: 'Deals MEDIUM magic damage to a Single Enemy.' },
-        { id: 'raceAbductionBeam', tier: 3, bonusVsStatus: { status: 'marked', mult: 1.5 }, families: ['ufo'], spellType: 'alien', element: 'light', name: 'Abduction Beam',
+        { id: 'raceAbductionBeam', upgradesBlock: ['upExtraTarget', 'upBlast'], tier: 3, bonusVsStatus: { status: 'marked', mult: 1.5 }, families: ['ufo'], spellType: 'alien', element: 'light', name: 'Abduction Beam',
           type: 'damage', cost: 30, dmg: 110, range: 4, apCost: 1,
           kind: 'skyThrow', damageType: 'magic', carryHeight: 5, dmgPerLevel: 25,
           throwRange: 3, collisionBonus: 50,
@@ -7846,7 +7846,7 @@ const RACE_ABILITIES = {
         SHARED_LOW_GRAVITY
     ],
     'mantid': [
-        { id: 'raceMandibleStrike', tier: 1, families: ['insectoid'], spellType: 'alien', name: 'Mandible Strike',
+        { id: 'raceMandibleStrike', upgradesBlock: ['upRicochet', 'upExtraTarget', 'upBlast'], tier: 1, families: ['insectoid'], spellType: 'alien', name: 'Mandible Strike',
           type: 'damage', cost: 25, range: 1,
           kind: 'multiHit', damageType: 'physical', hitDamages: [45, 45, 45],
           desc: 'Deals MEDIUM physical damage to a Single Enemy across 3 hits.' },
@@ -7854,7 +7854,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 0, apCost: 0, range: 0,
           kind: 'passive',
           desc: 'A shell that does not flinch: +8 DEF, and Stagger never takes hold.' },
-        { id: 'raceFractalNeedle', spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
+        { id: 'raceFractalNeedle', upgradesBlock: ['upBlast'], spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
           type: 'damage', tier: 4, families: ['fractal'], cost: 45, dmg: 170, range: 4,
           kind: 'splitBeam', damageType: 'magic',
           splitCount: 2, splitDmg: 84, splitRadius: 2,
@@ -7906,7 +7906,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 16, range: 4, apCost: 1,
           kind: 'placeMirror', maxActivePerCaster: 8, mirrorHp: 2,
           desc: 'Fold a laser-reflecting prism into being on an empty tile (up to 8) for just 1 AP. Folding never ends your turn or uses your spell slot, so you can fold another, Pulse Lattice, move or attack with the AP you have left. Beams auto-connect any of your prisms that share a row or column — enemies that path through a beam are seared, and enemies still standing in one at end of round take burn damage. A prism is sturdy glass: it takes two hits to shatter.' },
-        { id: 'raceTuneFrequency', tier: 3, families: ['prismlattice'], spellType: 'tech', element: 'arcane', name: 'Tune Frequency',
+        { id: 'raceTuneFrequency', upgradesBlock: ['upLinger'], tier: 3, families: ['prismlattice'], spellType: 'tech', element: 'arcane', name: 'Tune Frequency',
           type: 'utility', cost: 8, range: 0, apCost: 1, cooldownRounds: 1,
           kind: 'tuneFrequency',
           desc: 'Shift your whole lattice to the next light frequency — Infrared (fire, burns), Ultraviolet (arcane, shreds DEF), or Gamma (charged, slows) — changing what every one of your beams does. Only once per round.' },
@@ -7980,7 +7980,7 @@ const RACE_ABILITIES = {
            it, the moon SHATTERS, the shards rain on the landing) and by the
            CINE_SEQUENCES.raceRocketToss director (the sky watch, the freeze on
            the crack). The mechanics are the skyThrow's: grab, carry, hurl. */
-        { id: 'raceRocketToss', spellType: 'tech', name: 'To the Moon',
+        { id: 'raceRocketToss', upgradesBlock: ['upBlast', 'upExtraTarget'], spellType: 'tech', name: 'To the Moon',
           type: 'damage', tier: 4, families: ['cyberpunkweapons'], cost: 55, dmg: 150, range: 1, apCost: 1,
           kind: 'skyThrow', damageType: 'physical', carryHeight: 6, dmgPerLevel: 25,
           throwRange: 3, collisionBonus: 50,
@@ -8027,7 +8027,7 @@ const RACE_ABILITIES = {
         SHARED_SUMMON_BLOOD_RAIN
     ],
     'dreameater': [
-        { id: 'raceDreamSiphon', tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
+        { id: 'raceDreamSiphon', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -8053,7 +8053,7 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' }
     ],
     'fallen angel': [
-        { id: 'raceFallenGrace', tier: 1, families: ['fallenangel'], spellType: 'divine', name: 'Fallen Grace',
+        { id: 'raceFallenGrace', upgradesBlock: ['upWiden'], tier: 1, families: ['fallenangel'], spellType: 'divine', name: 'Fallen Grace',
           type: 'damage', cost: 35, dmg: 80, range: 4,
           kind: 'cross', damageType: 'magic', crossRadius: 1,
           statusEffects: [{ id: 'burn', duration: 1 }],
@@ -8128,7 +8128,7 @@ const RACE_ABILITIES = {
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 160,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
         SHARED_SMITE,
-        { id: 'raceWrathOfTheWatchers', spellType: 'divine', name: 'Wrath of the Watchers',
+        { id: 'raceWrathOfTheWatchers', upgradesBlock: ['upWiden'], spellType: 'divine', name: 'Wrath of the Watchers',
           type: 'damage', tier: 4, families: ['fallenangel'], cost: 60, dmg: 160, range: 4,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 1 }],
@@ -8232,7 +8232,7 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }],
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
-        { id: 'raceFreezeBreath', tier: 2, families: ['superheropowers'], spellType: 'alien', element: 'ice', name: 'Freeze Breath',
+        { id: 'raceFreezeBreath', upgradesBlock: ['upLinger'], tier: 2, families: ['superheropowers'], spellType: 'alien', element: 'ice', name: 'Freeze Breath',
           type: 'damage', cost: 25, dmg: 60, range: 2,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'frozen', duration: 1 }],
@@ -8322,7 +8322,7 @@ const RACE_ABILITIES = {
         /* §6.28 (Phase 5 wave A, 2026-09-08): Truth Bomb → Flat Earth (id
            kept) + the `flatten` deform mode (battle.js applyTerrainDeform):
            the 3×3 round the victim collapses to its LOWEST height. */
-        { id: 'raceTruthBomb', spellType: 'human', name: 'Flat Earth',
+        { id: 'raceTruthBomb', upgradesBlock: ['upBlast', 'upRicochet', 'upExtraTarget'], spellType: 'human', name: 'Flat Earth',
           type: 'damage', tier: 4, families: ['conspiracyknowledge'], cost: 55, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
           bonusVsStatus: { status: ['silence', 'poison'], mult: 1.5 },
@@ -8420,7 +8420,7 @@ const RACE_ABILITIES = {
            Atlantis deleted to make room). kind 'barrage' + hitsWetOnly: hits
            every enemy standing in water/deep water or the wet spread-flow at
            a pool's edge (battle.js _isWetTile), anywhere on the map. */
-        { id: 'racePoseidonsWrath', spellType: 'anomaly', element: 'water', name: 'Poseidon\'s Wrath',
+        { id: 'racePoseidonsWrath', upgradesBlock: ['upWiden', 'upBlast'], spellType: 'anomaly', element: 'water', name: 'Poseidon\'s Wrath',
           type: 'damage', tier: 4, families: ['deepsea'], cost: 100, dmg: 170, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'magic', aoeOriginSelf: true, aoeRadius: 99,
           hitsWetOnly: true, ignoresLineOfSight: true,
@@ -8432,7 +8432,7 @@ const RACE_ABILITIES = {
         /* §6.14 (Phase 5 wave A, 2026-09-08): Apex Charge → Stampede (id kept
            for VFX/saves); Tail Whip + Apex Roar are new; Jurassic Jaw gains
            the on-kill riders (battle.js _applyDamageSpellHit). */
-        _mkCharge({ id: 'raceApexCharge', tier: 3, dashDamage: 50, families: ['apexpredator'], spellType: 'anomaly', name: 'Stampede',
+        _mkCharge({ id: 'raceApexCharge', upgradesBlock: ['upBlast', 'upExtraTarget'], tier: 3, dashDamage: 50, families: ['apexpredator'], spellType: 'anomaly', name: 'Stampede',
           kind: 'dash', cost: 75, apCost: 2, statusEffects: _STAGGER_1,
           desc: 'Stampedes through the battlefield and ends up behind the target. Deals MEDIUM physical damage to the target, tramples every enemy on the path for WEAK damage, and Staggers everything it hits.', dmg: 130 }),
         { id: 'raceDinoTailWhip', tier: 1, families: ['apexpredator'], spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
@@ -8503,7 +8503,7 @@ const RACE_ABILITIES = {
           purgeBuffs: true,
           bonusVsStatus: { status: 'feared', mult: 1.5 },
           desc: 'Run the prey down. Charge up to 3 tiles and deal HEAVY physical damage to a Single Enemy, stripping every buff they carry. Deals bonus damage to Feared targets.' },
-        { id: 'raceGhoulishBite', tier: 1, families: ['ghoulish'], element: 'poison', spellType: 'unholy', name: 'Ghoulish Bite',
+        { id: 'raceGhoulishBite', upgradesBlock: ['upKnockback'], tier: 1, families: ['ghoulish'], element: 'poison', spellType: 'unholy', name: 'Ghoulish Bite',
           type: 'damage', cost: 25, dmg: 100, range: 1,
           kind: 'lifeDrain', damageType: 'physical', drainPct: 0.40,
           statusEffects: [{ id: 'poison', duration: 2 }],
@@ -8538,7 +8538,7 @@ const RACE_ABILITIES = {
 
     ],
     'kaiju': [
-        { id: 'raceCataclysmStomp', tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
+        { id: 'raceCataclysmStomp', upgradesBlock: ['upWiden'], tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
           type: 'damage', cost: 50, dmg: 100, range: 0, apCost: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -8630,7 +8630,7 @@ const RACE_ABILITIES = {
            happens on flat rotation maps. Reworked into the bruiser charge the
            kit wanted (Gore Charge / Bull Rush family) and it now APPLIES
            Frozen, so Frozen Punch's 1.5× rider finally has an in-kit setup. */
-        _mkCharge({ id: 'raceAvalancheStrike', spellType: 'anomaly', element: 'ice', name: 'Avalanche Strike',
+        _mkCharge({ id: 'raceAvalancheStrike', upgradesBlock: ['upBlast'], spellType: 'anomaly', element: 'ice', name: 'Avalanche Strike',
           tier: 4, cooldownRounds: 2, families: ['winter'], cost: 100, dmg: 180, range: 3, apCost: 1,
           statusEffects: [{ id: 'frozen', duration: 1 }],
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
@@ -8638,7 +8638,7 @@ const RACE_ABILITIES = {
         /* 2026-08-16 balance (stats18): at its ring-2 ladder price (50 MP)
            this was ~2 dmg/MP, bottom of the game — numbers raised to earn
            the slot. */
-        { id: 'raceIceSlide', tier: 2, spellType: 'anomaly', element: 'ice', name: 'Ice Slide',
+        { id: 'raceIceSlide', upgradesBlock: ['upBlast'], tier: 2, spellType: 'anomaly', element: 'ice', name: 'Ice Slide',
           type: 'damage', cost: 50, dmg: 130, range: 4, apCost: 1,
           kind: 'dash', damageType: 'physical', dashDamage: 70,
           leaveTerrain: 'ice',
@@ -8717,7 +8717,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Spit a glob of black ooze onto one tile. It oozes outward over the ground and downhill. Enemies caught in the slick are slowed.' },
         SHARED_POISON_SWAMP,
-        { id: 'raceToxicNova', tier: 3, families: ['ooze'], element: 'poison', spellType: 'unholy', name: 'Toxic Nova',
+        { id: 'raceToxicNova', upgradesBlock: ['upWiden'], tier: 3, families: ['ooze'], element: 'poison', spellType: 'unholy', name: 'Toxic Nova',
           type: 'damage', cost: 35, dmg: 125, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'poison', duration: 3 }],
@@ -8766,7 +8766,7 @@ const RACE_ABILITIES = {
           desc: 'Stand up into the combat platform: −3 SPD, +1 DEF and +2 M DEF stages, +2 RNG. Or fold back down.' },
 
         /* 2026-08-12: renamed from Missile Barrage (id kept for VFX/saves). */
-        { id: 'raceMissileBarrage', spellType: 'tech', name: 'Vehicular Manslaughter',
+        { id: 'raceMissileBarrage', upgradesBlock: ['upBlast', 'upWiden'], spellType: 'tech', name: 'Vehicular Manslaughter',
           type: 'damage', tier: 4, dashDamage: 160, families: ['drivingskills'], cost: 50, dmg: 160, range: 4, apCost: 1,
           kind: 'dash', damageType: 'physical',
           bonusVsStatus: { status: 'discord', mult: 1.5 },
@@ -8837,7 +8837,7 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 1 },
           shield: 96,   // THE SPELL AUDIT Batch D: the ki barrier (Fortify's number) — a buff row's shield
           desc: 'Breathe in. Hold. Raises the caster\'s ATK by 1 stage and wraps them in a 96-point ki barrier.' },
-        { id: 'raceKiWave', tier: 2, families: ['ki'], spellType: 'human', element: 'light', name: 'Ki Wave',
+        { id: 'raceKiWave', upgradesBlock: ['upGun'], tier: 2, families: ['ki'], spellType: 'human', element: 'light', name: 'Ki Wave',
           type: 'damage', cost: 35, dmg: 110, range: 5, apCost: 1,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           desc: 'Deals MEDIUM magic damage to All Enemies in a line.' },
@@ -8890,7 +8890,7 @@ const RACE_ABILITIES = {
     ],
 
     'minotaur': [
-        _mkCharge({ id: 'raceBullRush', spellType: 'human', name: 'Bull Rush',
+        _mkCharge({ id: 'raceBullRush', upgradesBlock: ['upBlast'], spellType: 'human', name: 'Bull Rush',
           kind: 'dash', tier: 4, dashDamage: 60, families: ['horns'], cost: 45, dmg: 170, range: 4,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
           desc: 'Dashes through the battlefield. Deals bonus damage to targets with Discord. The caster charges into melee first.' }),
@@ -8954,7 +8954,7 @@ const RACE_ABILITIES = {
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'discord', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies in a line. Lowers ATK by 2 stages and DEF by 1 stage.' },
-        { id: 'raceHypnoticPulse', tier: 3, noDamage: true, aoeRadius: 1, families: ['eyesight'], spellType: 'anomaly', name: 'Hypnotic Pulse',
+        { id: 'raceHypnoticPulse', upgradesBlock: ['upLinger'], tier: 3, noDamage: true, aoeRadius: 1, families: ['eyesight'], spellType: 'anomaly', name: 'Hypnotic Pulse',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'aoe',
           statusEffects: [{ id: 'stun', duration: 1 }],
@@ -9022,11 +9022,8 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Deals WEAK physical damage to a Single Enemy. Applies Burn.' },
-        { id: 'racePoisonArrow', tier: 1, families: ['archery'], spellType: 'human', element: 'poison', name: 'Poison Arrow',
-          type: 'damage', cost: 25, dmg: 80, range: 5,
-          kind: 'damage', damageType: 'physical',
-          statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Deals WEAK physical damage to a Single Enemy. Applies Poison.' },
+        /* THE SPELL AUDIT Batch D: Poison Arrow (racePoisonArrow) is gone — it is the Venom Coat upgrade now (Fire Arrow +
+           Venom Coat poisons; SPELL_UPGRADES.upVenomCoat). It was nobody's rung or learn-order entry. */
         /* §6.24 (Phase 5 wave A, 2026-09-08): Arrow Rain → Arrow Volley (id
            kept), range 4 → 6; Piercing Arrow twins Splitting Arrow at r3 —
            the first linePush with collision riders (battle.js _applyLineDamage
@@ -9040,7 +9037,7 @@ const RACE_ABILITIES = {
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
           collisionBonus: 60, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
           desc: 'A bodkin that carries its victim with it. Deals MEDIUM physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
-        { id: 'raceStealFromRich', tier: 2, families: ['thievery'], spellType: 'human', name: 'Steal from the Rich',
+        { id: 'raceStealFromRich', upgradesBlock: ['upLinger'], tier: 2, families: ['thievery'], spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 20, range: 3, apCost: 1,
           kind: 'debuff',
           statStageBoost: { atk: -1 },
@@ -9126,7 +9123,7 @@ const RACE_ABILITIES = {
           kind: 'heal', healAmt: 140,
           _sentaiColor: 'pink',
           desc: 'Restores a MEDIUM amount of HP to a Single Ally.' },
-        { id: 'sentaiTeamStrike', tier: 3, families: ['teamwork'], spellType: 'human', name: 'Team Strike',
+        { id: 'sentaiTeamStrike', upgradesBlock: ['upBlast'], tier: 3, families: ['teamwork'], spellType: 'human', name: 'Team Strike',
           type: 'damage', cost: 35, range: 1, apCost: 1,
           kind: 'multiHit', damageType: 'physical',
           hitDamages: [27, 27, 27, 27, 27],
@@ -9178,7 +9175,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 125, range: 3, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
           desc: 'Leaps to a Single Enemy, dealing MEDIUM physical damage.' },
-        { id: 'raceChooserOfSlain', spellType: 'divine', name: 'Chooser of the Slain',
+        { id: 'raceChooserOfSlain', upgradesBlock: ['upEfficient'], spellType: 'divine', name: 'Chooser of the Slain',
           type: 'heal', tier: 4, revivePct: 0.6, families: ['holydefense'], cost: 35, range: 4, apCost: 2,
           kind: 'revive', oneRevivePerUnitPerMatch: true,
           desc: 'Revives a fallen ally. Works once per unit per match.' },
@@ -9282,7 +9279,7 @@ for (const sp of DOOR_GUN_SPELLS) { sp._doorWheel = true; SPELL_BY_ID[sp.id] = s
    so no player can equip them until the user keeps one — POOLS in the library puts it on a race or job row, or
    DELETE drops it. Tier II = 2 SP / 50 MP (the ring ladder). */
 const SPELL_RIDER_EXAMPLES = [
-    { id: 'riderScatterShot', tier: 2, families: ['weaponstraining'], spellType: 'tech', element: 'metal', name: 'Scatter Shot',
+    { id: 'riderScatterShot', upgradesBlock: ['upExtraTarget'], tier: 2, families: ['weaponstraining'], spellType: 'tech', element: 'metal', name: 'Scatter Shot',
       type: 'damage', cost: 50, range: 4, apCost: 1, kind: 'damage', dmg: 64, damageType: 'physical',
       projectileOverride: 'proj-bullet',
       randomTargets: { count: 3, scope: 'enemies', distinct: true, mult: 1 },
@@ -19980,7 +19977,10 @@ const SPELL_FAMILIES = {
         color: '#a08cc8',
         kind: 'discipline',
         desc: 'Stoneform, gargoyle walls and golem skin: the body turned to rock.',
-        unique: null
+        unique: null,
+        /* THE SPELL AUDIT Batch D (F.g5, the family-scoped rule): no Lingering anywhere in the family — Petrify's Stun 3
+           would be three lost activations for 1 AP, a 3-round Stoneform would be unkillable. */
+        upgradesBlock: ['upLinger']
     },
     humangrit: {
         id: 'humangrit',
@@ -20246,6 +20246,9 @@ const SPELL_FAMILIES = {
    Which upgrades a spell ALLOWS: its explicit `upgrades: [ids]` when the list is non-empty (the library's toggles, the
    catalogue's lists); an EMPTY list means AUTO — every `auto` registry row that fits it (roles · families · requires);
    `upgradesAuto: false` on a row turns AUTO off (no upgrades at all). Passive rows never take upgrades.
+   THE SPELL AUDIT Batch D: `upgradesBlock: [ids]` on a row (or on a SPELL_FAMILIES row, for every spell of the family) takes
+   those upgrades out of AUTO and out of an explicit list — the plan's "do not let X take Y"; `rows: [ids]` on an upgrade
+   pins it to those rows.
    The loadout: meta.spellUpgrades = { spellId: [upgradeIds] } beside meta.customSpells (saves, party-config, the last
    party, the HQ record all carry `meta`). spellUpgradeVerdict says whether one more fits; treeLegalUpgrades is the repair
    (the online host's check, createUnit's too): walk the kit in order, keep each spell's allowed, affordable, uncapped
@@ -20259,18 +20262,50 @@ const SPELL_UPGRADE_FITS = {
                     && !d.aoeRadius && !aoeMaskValid(d.aoeMask) && !(Array.isArray(d.chainProfile) && d.chainProfile.length)
                     && !d.randomTargets && !d.splash && !d.pierce && !d.lineWidth },
     area:       { label: 'an area damage cast',        test: d => spellHasDamage(d) && (_UPG_AOE_KINDS.has(d.kind) && (d.aoeRadius > 0 || d.crossRadius > 0 || d.blastRadius > 0 || aoeMaskValid(d.aoeMask))) },
-    finisher:   { label: 'carries a status bonus',     test: d => !!(d.bonusVsStatus && d.bonusVsStatus.status) },
-    status:     { label: 'applies a status',           test: d => Array.isArray(d.statusEffects) && d.statusEffects.some(e => e && e.id && (e.duration | 0) > 0) },
+    /* THE SPELL AUDIT Batch D: a possess row's bonusVsStatus is an ACTIVATION count (Enthrall / Indoctrinate pre-bake ×2
+       on a Charmed target) — Exploit would make it 2.5, so the finisher fit skips the possess kind. */
+    finisher:   { label: 'carries a status bonus',     test: d => !!(d.bonusVsStatus && d.bonusVsStatus.status) && d.kind !== 'possess' },
+    /* …and the status fit reads an aura's teamStatusEffects too (Sermon, Mantra: Lingering stretches the aura's status). */
+    status:     { label: 'applies a status',           test: d => [d.statusEffects, d.teamStatusEffects].some(l => Array.isArray(l) && l.some(e => e && e.id && (e.duration | 0) > 0)) },
     push:       { label: 'knocks back',                test: d => (d.pushDistance | 0) > 0 || ((d.kind || 'damage') === 'damage' && spellHasDamage(d) && !d.aoeRadius && !aoeMaskValid(d.aoeMask)) },
     pull:       { label: 'pulls',                      test: d => (d.pullDistance | 0) > 0 },
     cost:       { label: 'costs 15 MP or more',        test: d => typeof d.cost === 'number' && d.cost >= 15 },
     ranged:     { label: 'reaches 2 tiles or more',    test: d => typeof d.range === 'number' && d.range >= 2 && d.range < 20 },
     cooldown:   { label: 'has a cooldown',             test: d => (d.cooldownRounds | 0) > 0 },
-    deployCap:  { label: 'has a deploy cap',           test: d => typeof d.maxActivePerCaster === 'number' && d.maxActivePerCaster >= 1 && d.maxActivePerCaster < 8 },
+    /* …a standing-door row counts: Surplus there raises the SHARED standing-door cap (DOOR_GUN_RULES.standingCap 2 → 3). */
+    deployCap:  { label: 'has a deploy cap',           test: d => (typeof d.maxActivePerCaster === 'number' && d.maxActivePerCaster >= 1 && d.maxActivePerCaster < 8) || d.kind === 'doorDeploy' },
     turret:     { label: 'deploys a turret',           test: d => d.kind === 'deployTurret' || (d.turretDmg | 0) > 0 },
     gun:        { label: 'a door-gun / gun row',       test: d => _upgGunDmg(d) > 0 || (d.bounces | 0) > 0 },
     heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 },
+    /* ── THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.4 / §6.5): the fits the new upgrade rows name. ── */
+    statusHit:  { label: 'a damage hit that lands statuses', test: d => spellHasDamage(d) && _UPG_STATUS_HIT_KINDS.has(d.kind || 'damage') },
+    foeStatus:  { label: 'lands a status on enemies',  test: d => SPELL_UPGRADE_FITS.statusHit.test(d) || d.kind === 'debuff'
+                    || (d.noDamage && _UPG_AOE_KINDS.has(d.kind)) || (d.kind === 'terrainCreate' && Array.isArray(d.statusEffects) && d.statusEffects.length > 0) },
+    directHit:  { label: 'a single damage hit',        test: d => (d.kind || 'damage') === 'damage' && spellHasDamage(d) && !(Array.isArray(d.chainProfile) && d.chainProfile.length) },
+    chain:      { label: 'a chain hit',                test: d => Array.isArray(d.chainProfile) && d.chainProfile.length > 0 },
+    critable:   { label: 'a hit that can crit',        test: d => spellHasDamage(d) && ['damage', 'tackle', 'multiHit', 'aoe', 'cross', 'aoePull'].includes(d.kind || 'damage') },
+    healOrShield: { label: 'heals or shields an ally', test: d => ['heal', 'shield', 'aoeShield', 'healAll', 'selfHeal'].includes(d.kind) },
+    shieldHp:   { label: 'grants a shield',            test: d => (d.shieldHp | 0) > 0 || (d.kind === 'shield' && (d.shield | 0) > 0) },
+    /* an area that is not a 5×5 yet — with or without damage (Purify, Sanctuary); Widen keeps testing damage (`area`) */
+    areaAny:    { label: 'an area under 5×5',          test: d => d.kind !== 'passive' && !d.noAoeGrow && (_UPG_AOE_KINDS.has(d.kind) || ['zoneHeal', 'cleanseArea', 'aoeShield'].includes(d.kind))
+                    && ((d.aoeRadius | 0) > 0 || aoeMaskValid(d.aoeMask)) && !_upgAreaIsFull5(d) },
+    areaGrow:   { label: 'an area damage cast under 5×5', test: d => SPELL_UPGRADE_FITS.area.test(d) && !_upgAreaIsFull5(d) },
+    tether:     { label: 'ropes (Tethered)',           test: d => Array.isArray(d.statusEffects) && d.statusEffects.some(e => e && e.id === 'tethered') },
+    stepTrap:   { label: 'a trap that springs underfoot', test: d => d.kind === 'deployObject' && !!d.detonateOnStep },
+    dashHit:    { label: 'a dash that hits',           test: d => (d.kind === 'dash' || d.kind === 'tackle') && spellHasDamage(d) },
+    detonable:  { label: 'deploys something that can blow', test: d => (d.kind === 'deployTurret' && !d.auraDebuff && !d.hitsToKill) || d.kind === 'deployObject' },
 };
+/* The kinds whose cast path lands the row's statusEffects on the units it hits (the addStatus upgrades need one). */
+const _UPG_STATUS_HIT_KINDS = new Set(['damage', 'tackle', 'multiHit', 'cross', 'lifeDrain', 'line', 'linePush', 'displacement', 'aoe', 'debuff', 'dash',
+    'barrage', 'pull', 'ricochet', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike', 'aoePull', 'delayed']);   // (splitBeam lands none)
+/* Does the row's area already cover a whole 5×5 (so a 5×5 patch adds nothing)? A drawn mask: every cell of the 5×5 is in
+   it. A radius: a plain square of reach 2+ (a cross, a diamond or a diagonal of reach 2 is not a 5×5 — Crusade grows). */
+function _upgAreaIsFull5(d) {
+    if (!d) return false;
+    if (aoeMaskValid(d.aoeMask)) { const k = new Set(d.aoeMask.map(o => o[0] + ',' + o[1])); return AOE_PRESETS['5x5'].every(o => k.has(o[0] + ',' + o[1])); }
+    if (d.kind === 'cross' || d.crossRadius != null || d.aoeShape || d.diamond || d.diagonal) return false;
+    return Math.max(d.aoeRadius | 0, d.blastRadius | 0) >= 2;
+}
 function _upgGunDmg(d) { return d ? ((d.laneDmg | 0) + (d.arrowDmg | 0) + (d.beamDmg | 0)) : 0; }
 /* THE SEED (§9 row 5, the user's list): +15 % dmg, ricochet, +1 target × 0.5, status bonus, knockback / blowback (pull), an
    AOE preset, −10 MP, +1 deployable, turret ×, gun × — plus +1 range and +1 status round (patch keys the plan already
@@ -20290,7 +20325,7 @@ const SPELL_UPGRADES = {
                     desc: '+1 pull tile.', patch: { pullDistance: 1 } },
     upBlast:      { id: 'upBlast',      name: 'Blast',        glyph: '✸', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'singleDmg', excl: 'spread', auto: true,
                     desc: 'A 3×3 burst round the victim: every enemy next to it takes half damage.', patch: { aoe: { preset: '3x3', mult: 0.5 } } },
-    upWiden:      { id: 'upWiden',      name: 'Widen',        glyph: '◎', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'area', excl: 'spread', auto: true,
+    upWiden:      { id: 'upWiden',      name: 'Widen',        glyph: '◎', sp: 2, roles: ['damage', 'damageEffect'], families: [], requires: 'areaGrow', excl: 'spread', auto: true,
                     desc: 'The area grows to a 5×5 square.', patch: { aoe: { preset: '5x5' } } },
     upEfficient:  { id: 'upEfficient',  name: 'Efficient',    glyph: '◇', sp: 1, roles: [], families: [], requires: 'cost', excl: null, auto: true,
                     desc: '−10 MP (never below 5).', patch: { costDelta: -10 } },
@@ -20299,7 +20334,7 @@ const SPELL_UPGRADES = {
     upLinger:     { id: 'upLinger',     name: 'Lingering',    glyph: '⧗', sp: 1, roles: ['damageEffect', 'effect'], families: [], requires: 'status', excl: null, auto: true,
                     desc: 'Its statuses last +1 round.', patch: { statusDuration: 1 } },
     upDeploy:     { id: 'upDeploy',     name: 'Surplus',      glyph: '⊕', sp: 1, roles: ['deploy'], families: [], requires: 'deployCap', excl: null, auto: true,
-                    desc: '+1 deployable active at once.', patch: { deployCapDelta: 1 } },
+                    desc: '+1 deployable active at once (on a door row: the shared standing-door cap 2 → 3).', patch: { deployCapDelta: 1 } },
     upTurret:     { id: 'upTurret',     name: 'Overclocked',  glyph: '⚙', sp: 2, roles: ['deploy'], families: [], requires: 'turret', excl: null, auto: true,
                     desc: 'The turret: +25 % damage, +25 % HP, +1 range.', patch: { turret: { dmgMult: 1.25, hpMult: 1.25, rangeDelta: 1 } } },
     upGun:        { id: 'upGun',        name: 'Hot Loads',    glyph: '⁍', sp: 1, roles: [], families: [], requires: 'gun', excl: null, auto: true,
@@ -20311,13 +20346,110 @@ const SPELL_UPGRADES = {
                     desc: 'Deals bonus damage to Marked targets (×1.5).', patch: { statusBonus: { status: 'marked', mult: 1.5 } } },
     upFrostbite:  { id: 'upFrostbite',  name: 'Frostbite',    glyph: '🧊', sp: 2, roles: ['damage', 'damageEffect'],
                     families: ['ice', 'winter', 'christmasspirit', 'haunted'], requires: 'dmg', excl: null, auto: true,
-                    desc: 'Deals bonus damage to Frozen targets (×1.5).', patch: { statusBonus: { status: 'frozen', mult: 1.5 } } },
+                    desc: 'Deals bonus damage to Frozen targets (×1.5, then +50) and thaws them.', patch: { statusBonus: { status: 'frozen', mult: 1.5, flat: 50, consume: true } } },
     upEncorePerformance: { id: 'upEncorePerformance', name: 'Encore Performance', glyph: '🎭', sp: 2, roles: [],
                     families: ['stagepresence'], requires: 'cooldown', excl: null, auto: true,
                     desc: '−1 round of cooldown.', patch: { cooldownDelta: -1 } },
     upCounterspell: { id: 'upCounterspell', name: 'Counterspell', glyph: '🌀', sp: 2, roles: [],
                     families: ['arcane'], requires: 'cooldown', excl: null, auto: false,
                     desc: 'Spellsteal\'s cooldown drops by 1 round.', patch: { cooldownDelta: -1 } },
+    /* ── THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.4 "New upgrade rows" + §6.5 "New upgrade patch / fit keys").
+       `rows: [ids]` (NEW, read by spellUpgradeFits) pins a one-row upgrade to its row — the F.g3 / F.g1 / F.g4 / F.g6 ones.
+       addStatus: the upgraded row also lands that status (a heal / shield row lands it on the ally). ── */
+    upGrievous:   { id: 'upGrievous',   name: 'Grievous',     glyph: '🩸', sp: 1, roles: [], families: ['dirtyfighting', 'ghoulish'],
+                    requires: 'statusHit', excl: null, auto: true,
+                    desc: 'The hit also applies Grievous (healing on them is halved) for 2 rounds.', patch: { addStatus: { id: 'grievous', duration: 2 } } },
+    upOvercharged:{ id: 'upOvercharged',name: 'Overcharged',  glyph: '🔌', sp: 1, roles: [], families: ['robot', 'cyberpunkweapons', 'artificialintelligence'],
+                    requires: 'statusHit', excl: null, auto: true,
+                    desc: 'The hit also Jams them for 1 round.', patch: { addStatus: { id: 'jammed', duration: 1 } } },
+    upVenomCoat:  { id: 'upVenomCoat',  name: 'Venom Coat',   glyph: '🐍', sp: 1, roles: [], families: ['beastabilities', 'insectoid', 'arachnid', 'ghoulish', 'feline', 'archery'],
+                    requires: 'statusHit', excl: null, auto: true,
+                    desc: 'The hit also Poisons them for 2 rounds.', patch: { addStatus: { id: 'poison', duration: 2 } } },
+    upIncendiary: { id: 'upIncendiary', name: 'Incendiary',   glyph: '🔥', sp: 1, roles: [], families: ['weaponstraining', 'archery', 'cyberpunkweapons', 'mecha'],
+                    requires: 'statusHit', excl: null, auto: true,
+                    desc: 'The shot rides fire: it also Burns them for 1 round.', patch: { addStatus: { id: 'burn', duration: 1 } } },
+    upConcussive: { id: 'upConcussive', name: 'Concussive',   glyph: '💫', sp: 2, roles: [], families: ['earth', 'titan', 'kaiju', 'dirtyfighting', 'horns', 'athleticism', 'militarysupport'],
+                    requires: 'statusHit', excl: null, auto: true,
+                    desc: 'The hit also Staggers them for 1 round.', patch: { addStatus: { id: 'stagger', duration: 1 } } },
+    upFairyFire:  { id: 'upFairyFire',  name: 'Fairy Fire',   glyph: '✨', sp: 1, roles: [], families: ['fae'],
+                    requires: 'area', excl: null, auto: true,
+                    desc: 'Every enemy in the area is also Blinded for 1 round.', patch: { addStatus: { id: 'blind', duration: 1 } } },
+    upSticky:     { id: 'upSticky',     name: 'Sticky',       glyph: '🫧', sp: 1, roles: [], families: ['ooze'],
+                    requires: 'foeStatus', excl: null, auto: true,
+                    desc: 'It also Goos what it touches for 1 round.', patch: { addStatus: { id: 'goo', duration: 1 } } },
+    upAnoint:     { id: 'upAnoint',     name: 'Anoint',       glyph: '🕊', sp: 1, roles: [], families: ['light', 'angelic', 'biblestudy', 'holydefense'],
+                    requires: 'healOrShield', excl: null, auto: true,
+                    desc: 'Every ally it heals or shields is also Blessed for 1 round.', patch: { addStatus: { id: 'blessed', duration: 1 } } },
+    upReinforced: { id: 'upReinforced', name: 'Reinforced',   glyph: '🛡', sp: 1, roles: [], families: ['holydefense', 'light', 'psychic'],
+                    requires: 'shieldHp', excl: null, auto: true,
+                    desc: '+60 shield.', patch: { shieldDelta: 60 } },
+    upSanctifiedGround: { id: 'upSanctifiedGround', name: 'Sanctified Ground', glyph: '⛪', sp: 2, roles: [], families: ['angelic'],
+                    rows: ['racePurify', 'raceSanctuary'], requires: 'areaAny', excl: 'spread', auto: true,
+                    desc: 'The area grows to a 5×5 square.', patch: { aoe: { preset: '5x5' } } },
+    upArmorPiercing: { id: 'upArmorPiercing', name: 'Armor-Piercing', glyph: '🎯', sp: 2, roles: [], families: ['weaponstraining'],
+                    requires: 'singleDmg', excl: null, auto: true,
+                    desc: 'The shot ignores DEF.', patch: { ignoreArmor: true } },
+    upSteadyRest: { id: 'upSteadyRest', name: 'Steady Rest',  glyph: '🧘', sp: 1, roles: [], families: ['marksmanship'],
+                    requires: 'singleDmg', excl: null, auto: true,
+                    desc: '+30 damage against a target that already acted this round.', patch: { actedTargetBonus: 30 } },
+    upLoadedDice: { id: 'upLoadedDice', name: 'Loaded Dice',  glyph: '🎲', sp: 1, roles: [], families: ['gambling'],
+                    requires: 'critable', excl: null, auto: true,
+                    desc: 'Each hit has a 15% chance to crit. The house always wins.', patch: { critChanceAdd: 0.15 } },
+    upBarbedRope: { id: 'upBarbedRope', name: 'Barbed Rope',  glyph: '🪢', sp: 1, roles: [], families: ['ropework'],
+                    requires: 'tether', excl: null, auto: true,
+                    desc: 'A Roped target takes 35 damage a tile dragged (was 20).', patch: { tetherDragDmg: 35 } },
+    upUndertowCharge: { id: 'upUndertowCharge', name: 'Undertow Charge', glyph: '🌊', sp: 1, roles: [], families: ['deepsea'],
+                    rows: ['raceDepthCharge'], requires: 'area', excl: null, auto: true,
+                    desc: 'The blast drags every enemy it hits 1 tile toward its centre.', patch: { pullToCenter: true } },
+    upTripwire:   { id: 'upTripwire',   name: 'Tripwire',     glyph: '🧵', sp: 1, roles: [], families: ['trapmaking'],
+                    requires: 'stepTrap', excl: null, auto: true,
+                    desc: 'The trap also springs on an enemy that steps next to it, not only onto it.', patch: { tripRadius: 1 } },
+    upTemperedGlass: { id: 'upTemperedGlass', name: 'Tempered Glass', glyph: '💠', sp: 1, roles: [], families: ['prismlattice'],
+                    rows: ['racePrismMirror'], requires: null, excl: null, auto: true,
+                    desc: 'Prisms take 3 hits to shatter (was 2).', patch: { set: { mirrorHp: 3 } } },
+    /* F.g3's one-row number changes ride the generic `set: { field: value }` patch. */
+    upSoulTax:    { id: 'upSoulTax',    name: 'Soul Tax',     glyph: '📜', sp: 2, roles: [], families: ['demonicabilities'],
+                    rows: ['raceVoidContract'], requires: null, excl: null, auto: true,
+                    desc: 'Heals the caster for 80% of the damage dealt (was 50%).', patch: { set: { drainPct: 0.8 } } },
+    upBloodPrice: { id: 'upBloodPrice', name: 'Blood Price',  glyph: '🐐', sp: 1, roles: [], families: ['blackmagic'],
+                    rows: ['raceBaphometsRite'], requires: null, excl: null, auto: true,
+                    desc: 'Pay 25% of your HP (was 15%) for 190 damage (was 160).', patch: { set: { selfDamagePct: 0.25, dmg: 190 } } },
+    upGraveRobber:{ id: 'upGraveRobber',name: 'Grave Robber', glyph: '⚰', sp: 1, roles: [], families: ['necromancy'],
+                    rows: ['raceRaiseDead'], requires: null, excl: null, auto: true,
+                    desc: 'The abomination takes 5 hits to destroy (was 3).', patch: { set: { zombieHits: 5 } } },
+    upCalcium:    { id: 'upCalcium',    name: 'Calcium',      glyph: '🦴', sp: 1, roles: [], families: ['bonedensity'],
+                    rows: ['raceReassemble'], requires: null, excl: null, auto: true,
+                    desc: 'Restores 40% of max HP and cleanses 1 debuff.', patch: { set: { selfHealPct: 0.4, cleanse: 1 } } },
+    upBottomless: { id: 'upBottomless', name: 'Bottomless',   glyph: '🍖', sp: 1, roles: [], families: ['ghoulish'],
+                    rows: ['raceCarrionFeast'], requires: 'cooldown', excl: null, auto: true,
+                    desc: 'No cooldown.', patch: { set: { cooldownRounds: 0 } } },
+    upRestless:   { id: 'upRestless',   name: 'Restless',     glyph: '👻', sp: 1, roles: [], families: ['haunted'],
+                    rows: ['raceHaunt'], requires: 'status', excl: null, auto: true,
+                    desc: 'When a Haunted target dies, Haunted jumps to its nearest ally for the rounds it had left.', patch: { statusPayload: { id: 'haunted', set: { restless: true } } } },
+    upNightfeeder:{ id: 'upNightfeeder',name: 'Nightfeeder',  glyph: '🦇', sp: 1, roles: [], families: ['vampiricabilties'],
+                    rows: ['raceBatSwarm'], requires: null, excl: null, auto: true,
+                    desc: 'While Blood Rain is falling, the swarm heals you for 45% of the damage it deals.', patch: { weatherPatch: { weather: 'bloodRain', patch: { set: { aoeLifeDrain: 0.45 } } } } },
+    upConductive: { id: 'upConductive', name: 'Conductive',   glyph: '⚡', sp: 1, roles: [], families: ['lightning'],
+                    requires: 'chain', excl: null, auto: true,
+                    desc: 'If the chain touches a Soaked enemy it jumps once more.', patch: { chainWetHops: 1 } },
+    upReprise:    { id: 'upReprise',    name: 'Reprise',      glyph: '🎶', sp: 2, roles: [], families: ['sonic'],
+                    rows: ['warCry'], requires: null, excl: null, auto: true,
+                    desc: 'Also grants an Encore (1 AP, act again) to the nearest ally in the aura who has finished acting.', patch: { encoreAlly: true } },
+    upHush:       { id: 'upHush',       name: 'Hush',         glyph: '🤫', sp: 1, roles: [], families: ['sonic', 'psychic', 'infernalcourt', 'politics', 'conspiracyknowledge'],
+                    requires: 'foeStatus', excl: null, auto: true,
+                    desc: 'An enemy it hits that is already Discorded is also Silenced for 1 round.', patch: { addStatus: { id: 'silence', duration: 1, ifTargetHas: 'discord', first: true } } },
+    upTidewater:  { id: 'upTidewater',  name: 'Tidewater',    glyph: '💧', sp: 1, roles: [], families: ['water', 'deepsea', 'jellyfish', 'piracy'],
+                    requires: 'directHit', excl: null, auto: true,
+                    desc: 'The target\'s tile turns to water for 2 rounds.', patch: { paintTerrain: { terrain: 'water', radius: 0, rounds: 2 } } },
+    upDaisyChain: { id: 'upDaisyChain', name: 'Daisy Chain',  glyph: '🔗', sp: 2, roles: [], families: ['lightning', 'robot', 'computerhacking', 'cyberpunkweapons'],
+                    requires: 'directHit', excl: null, auto: true,
+                    desc: 'A hit on a Jammed target arcs half its damage to every Jammed enemy next to it.', patch: { jammedArc: { mult: 0.5 } } },
+    upDetonate:   { id: 'upDetonate',   name: 'Detonate',     glyph: '💥', sp: 1, roles: [], families: ['engineering', 'advancedtechnology', 'spygear', 'prismlattice'],
+                    requires: 'detonable', excl: null, auto: true,
+                    desc: 'Cast it on one of your own deployables from this spell to blow it: a 3×3 blast for twice its remaining HP.', patch: { detonateOwn: true } },
+    upOverdrive:  { id: 'upOverdrive',  name: 'Overdrive',    glyph: '🏁', sp: 1, roles: [], families: ['athleticism', 'drivingskills', 'football', 'apexpredator'],
+                    requires: 'dashHit', excl: null, auto: true,
+                    desc: 'A kill on the dash refunds 1 AP.', patch: { onKillRefundAp: 1 } },
 };
 /* Does upgrade `up` (a row or id) make sense on def `d`? roles · families · requires. */
 function spellUpgradeFits(d, up) {
@@ -20325,16 +20457,31 @@ function spellUpgradeFits(d, up) {
     if (!d || !u || d.kind === 'passive' || d.kind === 'basicAttack') return false;
     if (Array.isArray(u.roles) && u.roles.length && !u.roles.includes(spellRoleOf(d))) return false;
     if (Array.isArray(u.families) && u.families.length && !u.families.some(f => spellFamiliesOf(d).includes(f))) return false;
+    // THE SPELL AUDIT Batch D: a one-row upgrade names its row(s) (Soul Tax → Devour Soul, Restless → Haunt …)
+    if (Array.isArray(u.rows) && u.rows.length && !u.rows.includes(d._base || d.id)) return false;
     if (u.requires) { const f = SPELL_UPGRADE_FITS[u.requires]; if (f && !f.test(d)) return false; }
     return true;
 }
-/* The upgrade ids a spell allows (§4.4): its explicit list, else AUTO (every `auto` row that fits), else none. */
+/* THE SPELL AUDIT Batch D: the upgrades a row refuses — its own `upgradesBlock: [ids]` plus every one of its families'
+   `upgradesBlock` (the family-scoped rule: Living Stone takes no Lingering). Taken out of AUTO and out of an explicit list. */
+function spellUpgradesBlocked(d) {
+    const out = new Set();
+    if (!d) return out;
+    for (const u of (Array.isArray(d.upgradesBlock) ? d.upgradesBlock : [])) if (typeof u === 'string') out.add(u);
+    for (const f of spellFamiliesOf(d)) {
+        const fam = SPELL_FAMILIES[f];
+        for (const u of ((fam && Array.isArray(fam.upgradesBlock)) ? fam.upgradesBlock : [])) if (typeof u === 'string') out.add(u);
+    }
+    return out;
+}
+/* The upgrade ids a spell allows (§4.4): its explicit list, else AUTO (every `auto` row that fits), else none — minus its blocks. */
 function spellAllowedUpgrades(spOrId) {
     const d = _spellOfIdOrDef(spOrId);
     if (!d || d.kind === 'passive' || d.kind === 'basicAttack') return [];
-    if (Array.isArray(d.upgrades) && d.upgrades.length) return d.upgrades.filter(u => !!SPELL_UPGRADES[u]);
+    const block = spellUpgradesBlocked(d);
+    if (Array.isArray(d.upgrades) && d.upgrades.length) return d.upgrades.filter(u => !!SPELL_UPGRADES[u] && !block.has(u));
     if (d.upgradesAuto === false) return [];
-    return Object.keys(SPELL_UPGRADES).filter(u => SPELL_UPGRADES[u] && SPELL_UPGRADES[u].auto !== false && spellUpgradeFits(d, u));
+    return Object.keys(SPELL_UPGRADES).filter(u => SPELL_UPGRADES[u] && SPELL_UPGRADES[u].auto !== false && !block.has(u) && spellUpgradeFits(d, u));
 }
 function spellUpgradeSp(upId) { const u = SPELL_UPGRADES[upId]; return u ? Math.max(0, Math.min(4, Math.round(Number(u.sp != null ? u.sp : 1)) || 0)) : 0; }
 /* A kit's upgrade map, sanitized to the ids a record can hold: { spellId: [upIds] } for spells in `ids` only. */
@@ -20483,20 +20630,86 @@ function _upgApplyPatch(d, patch) {
             case 'statusBonus': {
                 if (!v || typeof v !== 'object') break;
                 const cur = d.bonusVsStatus && d.bonusVsStatus.status ? d.bonusVsStatus : null;
-                if (cur) d.bonusVsStatus = { status: cur.status, mult: Math.round(((typeof v.mult === 'number' ? Math.max(cur.mult || 1.5, v.mult) : (cur.mult || 1.5) + (num(v.add) || 0.5))) * 100) / 100 };
+                /* THE SPELL AUDIT Batch D: a named status the row's finisher does not cover JOINS its list (Exploit: Marked on a
+                   Burn finisher pays on Burn or Marked) — it used to only re-price the old status. */
+                const curIds = cur ? [].concat(cur.status) : [];
+                if (cur && v.status && !curIds.includes(v.status)) d.bonusVsStatus = Object.assign({}, cur, { status: curIds.concat([v.status]), mult: Math.max(cur.mult || 1.5, num(v.mult) > 0 ? v.mult : 1.5) });
+                else if (cur) d.bonusVsStatus = Object.assign({}, cur, { mult: Math.round(((typeof v.mult === 'number' ? Math.max(cur.mult || 1.5, v.mult) : (cur.mult || 1.5) + (num(v.add) || 0.5))) * 100) / 100 });
                 else if (v.status) d.bonusVsStatus = { status: v.status, mult: num(v.mult) > 0 ? v.mult : 1.5 };
+                // Frostbite's other half: +flat on that status and the hit ends it (battle.js applyDamageToUnit reads `extra`)
+                if (d.bonusVsStatus && v.status && (num(v.flat) || v.consume)) d.bonusVsStatus.extra = { status: v.status, flat: Math.round(num(v.flat)), consume: !!v.consume };
                 break;
             }
-            case 'statusDuration':
-                if (Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => (e && (e.duration | 0) > 0) ? Object.assign({}, e, { duration: Math.max(1, (e.duration | 0) + Math.round(num(v))) }) : e);
+            case 'statusDuration': {
+                // …an aura's teamStatusEffects stretch too (the `status` fit reads them — Sermon, Mantra)
+                const bump = (l) => l.map(e => (e && (e.duration | 0) > 0) ? Object.assign({}, e, { duration: Math.max(1, (e.duration | 0) + Math.round(num(v))) }) : e);
+                if (Array.isArray(d.statusEffects)) d.statusEffects = bump(d.statusEffects);
+                if (Array.isArray(d.teamStatusEffects)) d.teamStatusEffects = bump(d.teamStatusEffects);
                 break;
+            }
+            /* ── THE SPELL AUDIT Batch D (§6.5 "New upgrade patch / fit keys") ── */
+            case 'addStatus': {
+                // { id, duration, …payload keys (ifTargetHas), first } — the row also lands this status; an aura heal (healAll)
+                // carries it in teamStatusEffects, every other row in statusEffects. Already there: the longer duration wins.
+                if (!v || typeof v !== 'object' || !v.id) break;
+                const key = d.kind === 'healAll' ? 'teamStatusEffects' : 'statusEffects';
+                const list = Array.isArray(d[key]) ? d[key].map(e => (e && typeof e === 'object') ? Object.assign({}, e) : e) : [];
+                const entry = Object.assign({}, v, { duration: Math.max(1, Math.round(num(v.duration) || 1)) });
+                delete entry.first;
+                const same = list.find(e => e && e.id === entry.id && (e.ifTargetHas || null) === (entry.ifTargetHas || null));
+                if (same) same.duration = Math.max(same.duration | 0, entry.duration);
+                else if (v.first) list.unshift(entry);
+                else list.push(entry);
+                d[key] = list;
+                break;
+            }
+            case 'statusPayload':
+                // { id, set: {…} } — merge payload keys into the row's entries of that status (Restless: { restless: true })
+                if (v && v.id && v.set && typeof v.set === 'object' && Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => (e && e.id === v.id) ? Object.assign({}, e, v.set) : e);
+                break;
+            case 'tetherDragDmg':
+                // Barbed Rope: the row's Tethered carries its own drag damage a tile (STATUS_DEFS.tethered.dragDamagePerTile is 20)
+                if (num(v) > 0) {
+                    d.tetherDragDmg = Math.round(num(v));
+                    if (Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => (e && e.id === 'tethered') ? Object.assign({}, e, { dragDamagePerTile: d.tetherDragDmg }) : e);
+                }
+                break;
+            case 'set':
+                // the generic one-row patch: { field: value } overwrites the field (Soul Tax drainPct 0.8, Grave Robber zombieHits 5)
+                if (v && typeof v === 'object') for (const f of Object.keys(v)) d[f] = (v[f] && typeof v[f] === 'object') ? JSON.parse(JSON.stringify(v[f])) : v[f];
+                break;
+            case 'weatherPatch':
+                // a patch that holds only while that weather is up (Nightfeeder: Blood Rain) — battle.js doSpell applies it at cast
+                if (v && typeof v === 'object' && v.weather && v.patch && typeof v.patch === 'object') d.weatherPatch = JSON.parse(JSON.stringify(v));
+                break;
+            case 'shieldDelta':
+                if (num(v)) {
+                    if ((d.shieldHp | 0) > 0) d.shieldHp = Math.max(1, Math.round(d.shieldHp + num(v)));
+                    else if ((d.shield | 0) > 0) d.shield = Math.max(1, Math.round(d.shield + num(v)));
+                }
+                break;
+            case 'ignoreArmor': if (v) d.ignoreArmor = true; break;
+            case 'actedTargetBonus': if (num(v) > 0) d.actedTargetBonus = Math.round((d.actedTargetBonus || 0) + num(v)); break;
+            case 'critChanceAdd': if (num(v) > 0) d.critChance = Math.min(1, Math.round(((d.critChance || 0) + num(v)) * 100) / 100); break;
+            case 'pullToCenter': if (v) d.pullToCenter = true; break;
+            case 'tripRadius': if (num(v) > 0) d.tripRadius = Math.max(d.tripRadius | 0, Math.min(2, Math.round(num(v)))); break;
+            case 'chainWetHops': if (num(v) > 0) d.chainWetHops = Math.min(3, (d.chainWetHops | 0) + Math.round(num(v))); break;
+            case 'encoreAlly': if (v) d.encoreAlly = true; break;
+            case 'paintTerrain': if (v && typeof v === 'object' && v.terrain && !d.paintTerrain) d.paintTerrain = Object.assign({}, v); break;
+            case 'jammedArc': if (v && typeof v === 'object') d.jammedArc = { mult: num(v.mult) > 0 ? v.mult : 0.5 }; break;
+            case 'detonateOwn': if (v) d.detonateOwn = true; break;
+            case 'onKillRefundAp': if (num(v) > 0) d.onKillRefundAp = Math.min(2, (d.onKillRefundAp | 0) + Math.round(num(v))); break;
             case 'statusChance':
                 if (Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => e ? Object.assign({}, e, { chance: Math.max(0, Math.min(1, (typeof e.chance === 'number' ? e.chance : 1) + num(v))) }) : e);
                 break;
             case 'elementRider':
                 if (typeof v === 'string' && v && !d.element) { d.element = v; if (Array.isArray(d.families) && !d.families.includes(v)) d.families = d.families.concat([v]); }
                 break;
-            case 'deployCapDelta': if (typeof d.maxActivePerCaster === 'number') d.maxActivePerCaster = Math.max(1, d.maxActivePerCaster + Math.round(num(v))); break;
+            case 'deployCapDelta':
+                if (typeof d.maxActivePerCaster === 'number') d.maxActivePerCaster = Math.max(1, d.maxActivePerCaster + Math.round(num(v)));
+                // THE SPELL AUDIT Batch D: on a standing-door row, Surplus raises the SHARED cap (battle.js doorGunPlace)
+                else if (d.kind === 'doorDeploy') d.standingCapDelta = (d.standingCapDelta | 0) + Math.round(num(v));
+                break;
             case 'turret':
                 if (v && typeof v === 'object') {
                     if (num(v.dmgMult) > 0) d.turretDmg = _upgScale(d.turretDmg, v.dmgMult);
@@ -20545,6 +20758,16 @@ function resolveUnitSpellDef(unit, baseDef, upIds) {
     if (!baseDef) return baseDef;
     const ups = Array.isArray(upIds) ? upIds : ((unit && unit.spellUpgrades && Array.isArray(unit.spellUpgrades[baseDef.id])) ? unit.spellUpgrades[baseDef.id] : []);
     return resolveSpellDef(baseDef, ups);
+}
+/* THE SPELL AUDIT Batch D: a weather-conditional patch (Nightfeeder) — the cast-time def while `weatherPatch.weather` is one
+   of the weather types up now; otherwise the def itself. battle.js doSpell calls it with state.activeWeather's types. */
+function spellWeatherResolved(d, weatherTypes) {
+    const wp = d && d.weatherPatch;
+    if (!wp || !wp.weather || !Array.isArray(weatherTypes) || !weatherTypes.includes(wp.weather)) return d;
+    const out = JSON.parse(JSON.stringify(d));
+    _upgApplyPatch(out, wp.patch);
+    out._weatherOn = wp.weather;
+    return out;
 }
 /* The upgrade rider normalisers (battle.js _applyDamageSpellHit reads them; a damage-kind row only, like Phase 3's riders). */
 function spellRicochetRiderOf(d) {
@@ -21328,6 +21551,7 @@ Object.assign(window, {
   SPELL_UPGRADE_MAX, SPELL_UPGRADE_FITS, spellUpgradeFits, spellAllowedUpgrades, spellUpgradeSp, spellUpgradesClean,
   spellUpgradesSpOf, spellUpgradeVerdict, treeLegalUpgrades, buildRandomUpgrades, resolveSpellDef, resolveUnitSpellDef,
   spellUpgradesLine, spellRicochetRiderOf, spellExtraTargetsOf, spellUpgradeLabel,
+  spellUpgradesBlocked, spellWeatherResolved,   // THE SPELL AUDIT Batch D
   spellTierDerived, spellRoleOf, spellRoleDerived, spellHasDamage, spellHasEffect, spellHasHeal, spellFamiliesOf,
   aoeMaskValid, aoeMaskTiles, aoeMaskBound, aoeMaskPresetOf, stampSpellSchema,
   spellReachableIds, spellLintContext, spellLint, spellLintAll, spellReport,

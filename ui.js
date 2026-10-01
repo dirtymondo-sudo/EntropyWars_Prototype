@@ -11305,7 +11305,7 @@
             const modeBtn = (m, lbl, help) => `<button class="slb2-tiny${mode === m ? ' on' : ''}" data-act="upMode" data-id="${_slbEsc(r.id)}" data-mode="${m}" title="${_slbEsc(help)}">${lbl}</button>`;
             return `<div class="slb2-group"><div class="slb2-group-h">THE MODE · ${allowed.length} ALLOWED</div>
                 <div class="slb2-togglerow">${modeBtn('auto', 'AUTO', 'every registry upgrade marked auto that fits this row (roles · families · requires)')}${modeBtn('custom', 'CUSTOM', 'only the upgrades ticked below (the row’s upgrades list)')}${modeBtn('none', 'NONE', 'this spell takes no upgrades')}</div>
-                <div class="slb2-field-h">${mode === 'auto' ? 'AUTO: the list is empty, so the rack offers every <code>auto</code> upgrade that fits this row. Ticking or unticking one below switches to CUSTOM with the rest kept.' : mode === 'custom' ? 'CUSTOM: the rack offers exactly the ticked upgrades (fit or not — an off-fit tick lints amber).' : 'NONE: <code>upgradesAuto: false</code> — the rack shows no ⚙ for this spell.'} At most ${(typeof SPELL_UPGRADE_MAX !== 'undefined') ? SPELL_UPGRADE_MAX : 2} per spell in a loadout; the spell then costs its tier + each upgrade's SP.</div></div>
+                <div class="slb2-field-h">${mode === 'auto' ? 'AUTO: the list is empty, so the rack offers every <code>auto</code> upgrade that fits this row. Ticking or unticking one below switches to CUSTOM with the rest kept.' : mode === 'custom' ? 'CUSTOM: the rack offers exactly the ticked upgrades (fit or not — an off-fit tick lints amber).' : 'NONE: <code>upgradesAuto: false</code> — the rack shows no ⚙ for this spell.'} At most ${(typeof SPELL_UPGRADE_MAX !== 'undefined') ? SPELL_UPGRADE_MAX : 2} per spell in a loadout; the spell then costs its tier + each upgrade's SP.${(typeof spellUpgradesBlocked === 'function' && spellUpgradesBlocked(d).size) ? ' BLOCKED (the row\u2019s <code>upgradesBlock</code> or its family\u2019s): ' + [...spellUpgradesBlocked(d)].map(u => _slbEsc((reg[u] && reg[u].name) || u)).join(', ') + ' \u2014 out of AUTO and out of a CUSTOM list.' : ''}</div></div>
             <div class="slb2-group"><div class="slb2-group-h">TRY · ${_slbEsc(d.name || r.id)}${tryIds.map(u => ' + ' + _slbEsc(reg[u].name || u)).join('')}</div>
                 <div class="slb2-field-h">${tried ? `= ${_slb2UpSummary(tried, d)} · <b>${trySp} SP</b>` : `${_slb2UpSummary(d, null) || '—'} · ${tier} SP — press TRY on up to two upgrades to see the resolved spell`}</div></div>
             <div class="slb2-group"><div class="slb2-group-h">THE REGISTRY · ${ids.length}</div>
@@ -11758,6 +11758,13 @@
             ['ricochet', 'json', '{ "radius": 2, "mult": 0.5 }'], ['statusBonus', 'json', '{ "status": "burn", "mult": 1.5 }'], ['statusDuration', 'num', 'status rounds + n'], ['statusChance', 'num', 'apply chance'],
             ['elementRider', 'text', 'an element id'], ['deployCapDelta', 'num', 'deploy cap + n'], ['turret', 'json', '{ "dmgMult", "hpMult", "rangeDelta" }'], ['gun', 'json', 'the gun rows\' knobs'],
             ['selfDamagePct', 'num', 'recoil + n'], ['drainPct', 'num', 'drain + n'], ['healMult', 'num', 'heal ×'],
+            /* THE SPELL AUDIT Batch D (§6.5): the new patch keys */
+            ['addStatus', 'json', '{ "id": "poison", "duration": 2 }'], ['set', 'json', '{ "field": value } (one-row numbers)'], ['shieldDelta', 'num', 'shield + n'],
+            ['ignoreArmor', 'json', 'true'], ['actedTargetBonus', 'num', '+n vs a unit that acted'], ['critChanceAdd', 'num', 'crit chance + n (0.15)'],
+            ['tetherDragDmg', 'num', 'rope drag a tile'], ['pullToCenter', 'json', 'true'], ['tripRadius', 'num', 'trap springs within n'],
+            ['statusPayload', 'json', '{ "id", "set": {…} }'], ['weatherPatch', 'json', '{ "weather", "patch": {…} }'], ['chainWetHops', 'num', '+n hops if Soaked'],
+            ['encoreAlly', 'json', 'true'], ['paintTerrain', 'json', '{ "terrain", "radius", "rounds" }'], ['jammedArc', 'json', '{ "mult": 0.5 }'],
+            ['detonateOwn', 'json', 'true'], ['onKillRefundAp', 'num', 'AP back on a kill'],
         ];
         function _slb2RenderUpgrades(main) {
             const reg = SPELL_UPGRADES;
