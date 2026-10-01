@@ -1450,8 +1450,8 @@
              <span class="ew-grade grade-a" style="--pct:89"><i>A</i></span>
            A round node: the GAUGE ring (a conic-gradient FROM THE BOTTOM,
            CLOCKWISE — the ring vitals' convention) over a dark track, a
-           gradient FACE per grade (F red · C amber · B teal · A green ·
-           S diamond blue / silver), the letter bold white on top. Sizes:
+           gradient FACE per grade (F red · C orange · B yellow · A green ·
+           S blue / silver, 2026-10-01), the letter bold white on top. Sizes:
            the bare node is the 22 px row node; `sm` 16 px (the battle
            quick stats); `lg` 30 px (the forge / the party sheet). The
            `.stat-grade` chip is gone — nothing draws a letter any other
@@ -1498,12 +1498,15 @@
         .ew-grade.sm { --gsz: 16px; margin: 0 1px; }
         .ew-grade.sm i { font-size: 9px; }
         .ew-grade.lg { --gsz: 30px; }
-        .ew-grade.grade-s { --gc: #9fe0ff; --gface: linear-gradient(135deg, #e8f6ff 0%, #7fd6ff 38%, #4e8cff 70%, #cfd8ff 100%); }
+        /* THE GRADE COLOURS (the user 2026-10-01: "F is red, C is orange, B is yellow, A is green, and S is Blue/Silver";
+           B used to be teal, as blue as S). One hue per letter, no cross-fades into other hues. */
+        .ew-grade.grade-s { --gc: #bfe0ff; --gface: linear-gradient(135deg, #f6f9ff 0%, #c4dcf4 30%, #6fa8ff 64%, #dfe8f4 100%); }
         .ew-grade.grade-s i { text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 0 5px rgba(20, 40, 120, 0.9), 0 0 1px #000; }
-        .ew-grade.grade-a { --gc: #3ddc84; --gface: linear-gradient(135deg, #3ddc84 0%, #1fb85e 48%, #2b7cff 100%); }
-        .ew-grade.grade-b { --gc: #4ecbe2; --gface: linear-gradient(135deg, #5be2f0 0%, #2fb6d8 50%, #3b62d6 100%); }
-        .ew-grade.grade-c { --gc: #f2c468; --gface: linear-gradient(135deg, #f2c468 0%, #d99a3a 48%, #8c62c8 100%); }
-        .ew-grade.grade-f { --gc: #ff5e5e; --gface: linear-gradient(135deg, #ff5e5e 0%, #d8244a 48%, #7a2cc4 100%); }
+        .ew-grade.grade-a { --gc: #3ddc84; --gface: linear-gradient(135deg, #63f0a0 0%, #2cc46a 50%, #12863f 100%); }
+        .ew-grade.grade-b { --gc: #ffd23f; --gface: linear-gradient(135deg, #ffe680 0%, #f4c41a 50%, #b58600 100%); }
+        .ew-grade.grade-b i { text-shadow: 0 1px 0 rgba(0, 0, 0, 0.95), 0 0 5px rgba(80, 50, 0, 0.95), 0 0 1px #000; }
+        .ew-grade.grade-c { --gc: #ff9838; --gface: linear-gradient(135deg, #ffb45e 0%, #f27c18 50%, #ad4c06 100%); }
+        .ew-grade.grade-f { --gc: #ff4a4a; --gface: linear-gradient(135deg, #ff7070 0%, #e02a2a 50%, #8c1212 100%); }
         /* an ungraded row keeps the column (the forge / the sheet) */
         .ew-grade.none { background: none; box-shadow: none; }
         .ew-grade.none::before { display: none; }

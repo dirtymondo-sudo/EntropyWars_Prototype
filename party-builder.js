@@ -468,6 +468,7 @@ const PB_TYPE_ORDER = ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly'];
    a glyph), a rounded bar, the value; the letter grade is a tiny ring. The
    NUMBERS still come from computeFullStats / statGrade — this table is
    paint only. ── */
+const PB_STAT_BAR_C = '#e3dcc6';   // the ONE stat-bar colour (the same ivory in ui.js EW_STAT_BAR_C and map.js)
 const PB_STAT_LOOK = {
   HP:   { c: '#2ed158', g: '♥' },   // ♥
   MP:   { c: '#2f9dff', g: '◆' },   // ◆
@@ -1084,7 +1085,10 @@ function GradeChip({ statKey, val }) {
 function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey, statKey }) {
   const pct = Math.min(100, (val / max) * 100);
   const look = PB_STAT_LOOK[statKey] || PB_STAT_LOOK[label] || { c: EW.inkMute, g: '●' };
-  let color = look.c, labelColor = EW.inkMute, valColor = EW.ink;
+  /* ONE BAR COLOUR (the user 2026-10-01: "for the stat bars, get rid of the different colors. It looks random and super
+     confusing") — every stat bar is the same ivory (EW_STAT_BAR_C, shared with ui.js / map.js); the grade node carries the
+     colour now. Zodiac ▲▼ still tints it green / red. */
+  let color = PB_STAT_BAR_C, labelColor = EW.inkMute, valColor = EW.ink;
   if (zodiacMod === 'up') { color = EW.good; labelColor = EW.good; valColor = EW.good; }
   if (zodiacMod === 'dn') { color = EW.bad; labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;

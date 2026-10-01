@@ -776,6 +776,15 @@ did the clear button for the spell slots?"
   one line (name + cost), party portraits shrink, notes hide; ≤940 px wide stacks hero / rack / panel / party.
 - Not touched: the HQ pause menu's party rack (map.js) still shows tier rows.
 
+## THE ONE BAR COLOUR + THE GRADE COLOURS (2026-10-01, token 20261001-spellpicker-02-cors)
+mondo: "for the stat bars, get rid of the different colors ... why is B and S both blue? F red, C orange, B yellow, A green,
+S Blue/Silver".
+- Every stat bar is one ivory `#e3dcc6`: ui.js `EW_STAT_BAR_C` (inspect card, codex dossier), party-builder.js
+  `PB_STAT_BAR_C` (forge pills; zodiac ▲▼ still tints green / red), map.js `_HQ_STAT_BAR_C` (pause-menu party sheet).
+  HP / MP / EXP keep their own colours. PB_STAT_LOOK now only gives the ungraded rows their glyph.
+- Grade faces live in styles-base.css `.ew-grade.grade-*` (the ONLY drawing path): F red, C orange, B yellow, A green,
+  S blue / silver. data.js STAT_GRADE_COLORS / STAT_GRADE_FACE still hold the old hues but nothing draws from them.
+
 ## THE MAP (ZONES_PLAN Z3, 2026-09-30, token 20260930-zones-04-cors)
 - Area sheet draws a LAYOUT room as its plan: data.js `hqRoomPlan(roomId)` / `hqRoomPlanModel(profile, roomId, hereSpace)`;
   map.js `_hqAreaPlans` (called after `_hqAreaLayout`, non-HQ areas only). Space node ids are `<room>~<space>`; `_hqMapTravel`
