@@ -909,3 +909,14 @@ R2: battle.js, data.js, map.js, three-renderer.js. mondo: the followers were "to
   lead's own cell) onto its seat. Engine positions are already final; it is the 3D flight only. 3D + visuals only.
   Kill-switch `window.EW_ENC_NO_DASH_IN`.
 - **Hand-back** — a win lands the lead on its end cell; nobody else is in the room.
+
+## THE FLOOR LINE — the action camera under the Astral islands (2026-10-01, token 20261001-astralcam-01-cors)
+mondo: "the action camera is all messed up and going underneath the map and not showing any characters in the astral realm"
+(a story encounter). Cause: a terrain field's engine levels are THE TIER RULE over the field's REFERENCE floor (data.js
+hqFieldRasterTerrain: `field.ref`, the median IN top in room metres), so level `base` (5) means "ref m". The renderer hung the
+room with room metre 0 on the base plane (three-renderer.js _hqBattleRoomMatrix, _fieldGround's floorY, the dress floorY, the
+ceiling). The Astral sea's islands stand 4–9 m over metre 0 (ref 5.8 m, ~3.3 tiles), so every body and island was DRAWN 3+ tiles
+over the levels the camera (_camGroundPx, the TPS pivot + flat floor), the fog and the elevation reads use: the action shots
+pivoted inside / under the island. Fix: `_hqBattleRoomFloorY(R, ts)` = base × level step − ref m × (ts / C), R.refM from the
+field record; the four floor-Y sites read it. Box and cave fields have no ref (0) and are unchanged. A whole-room median scan
+of the 70 terrain field rooms: only lookingglass_sea (5.8 m) and heaven_stair (0.8 m) sat more than 0.5 m off; both now line up.

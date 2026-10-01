@@ -57520,7 +57520,14 @@ const ThreeRenderer = (function () {
                 if (T) {
                     var entry = (run.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[run.fieldId] : null;
                     var base = (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES.base) || 5;
-                    R = { room: room, roomId: run.room, T: T, cave: cave, terrain: !!room.terrain, base: base, field: (entry && entry.field) ? entry.field : null };   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
+                    var fld = (entry && entry.field) ? entry.field : null;
+                    /* THE FLOOR LINE (2026-10-01, mondo: "the action camera is going underneath the map" in the Astral Realm): the engine's
+                       level `base` is the field's REFERENCE floor (data.js hqFieldRasterTerrain: field.ref, the median IN top in room metres;
+                       a box / cave field is 0), so the room is hung with ref m — not room metre 0 — on the base plane. The islands of a
+                       void room stand 4–9 m over room metre 0: drawn at base + 0 they rose 3 tiles over the levels the camera, the fog
+                       and every elevation read use, and the action shots sat inside / under the island. */
+                    var refM = (fld && isFinite(+fld.ref)) ? +fld.ref : 0;
+                    R = { room: room, roomId: run.room, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld };   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
                 }
             }
         } catch (e) { console.warn('[HQ→battle] the room could not be read', e); R = null; }
@@ -57530,9 +57537,11 @@ const ThreeRenderer = (function () {
     /* the scenery key's share: the room and the window it is drawn round ('' = no room) */
     function _hqBattleRoomKey() { var R = _hqBattleRoom(); return R ? ('hq:' + R.roomId + ':' + R.T.x0.toFixed(2) + ',' + R.T.z0.toFixed(2)) : ''; }
     /* the matrix: room metres (the HQ's U px per metre) → the battle's frame */
+    /* the battle-frame Y of room metre 0: the base plane less the reference floor (THE FLOOR LINE above) */
+    function _hqBattleRoomFloorY(R, ts) { return R.base * ts * ELEV_STEP_RATIO - (R.refM || 0) * ts / R.T.C; }
     function _hqBattleRoomMatrix(R, ts) {
-        var U = _hqUnits(), C = R.T.C, s = (ts / C) / U, elev = ts * ELEV_STEP_RATIO;
-        return new THREE.Matrix4().compose(new THREE.Vector3(-R.T.x0 * ts / C, R.base * elev, -R.T.z0 * ts / C), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
+        var U = _hqUnits(), C = R.T.C, s = (ts / C) / U;
+        return new THREE.Matrix4().compose(new THREE.Vector3(-R.T.x0 * ts / C, _hqBattleRoomFloorY(R, ts), -R.T.z0 * ts / C), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
     }
     /* a COVER cell (the field's raster: '2'..'9' = an IN cell a level or more up — a table, a crate, the landing) at a room point */
     function _hqBattleRoomCoverAt(R, xm, zm) {
@@ -57564,7 +57573,7 @@ const ThreeRenderer = (function () {
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
-        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: R.field.tops, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: R.base * elev,
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: R.field.tops, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -57696,7 +57705,7 @@ const ThreeRenderer = (function () {
         var st = _fieldGroundState || (_fieldGroundState = { s: s, prevFog: (typeof scene !== 'undefined' && scene) ? scene.fog : null, ceil: null });
         st.s = s;
         var open = !!(room.kind === 'box' && S.open && S.sky);
-        var floorY = R.base * ts * ELEV_STEP_RATIO;
+        var floorY = _hqBattleRoomFloorY(R, ts);
         /* THE RIG */
         try {
             var lg = new THREE.Group(); lg.name = 'hq_field_lights'; lg.applyMatrix4(M);
@@ -57774,7 +57783,7 @@ const ThreeRenderer = (function () {
     /* the ceiling piece(s) of a true-ground room: their materials cloned so the fade owns them */
     function _fieldCeilRegister(c, R, ts) {
         var st = _fieldGroundState || (_fieldGroundState = { s: ts / R.T.C, prevFog: (typeof scene !== 'undefined' && scene) ? scene.fog : null, ceil: null });
-        if (!st.ceil) st.ceil = { y: R.base * ts * ELEV_STEP_RATIO + (((R.room && R.room.shell && R.room.shell.h) || 3) * ts / R.T.C), mats: [], parts: [], op: -1 };
+        if (!st.ceil) st.ceil = { y: _hqBattleRoomFloorY(R, ts) + (((R.room && R.room.shell && R.room.shell.h) || 3) * ts / R.T.C), mats: [], parts: [], op: -1 };
         c.traverse(function (o) {
             if (!o.isMesh || !o.material) return;
             var ms = Array.isArray(o.material) ? o.material : [o.material];
