@@ -5667,6 +5667,7 @@
             let _pinchStartZoom = 1;
             let _twistStartAngle = 0;
             let _twistStartYaw = 0;
+            let _twistStartTilt = 50;
             let _touch1Active = false;
             let _touch1StartX = 0;
             let _touch1StartY = 0;
@@ -5723,13 +5724,22 @@
                 _pinchStartZoom = _panStartZoom;
                 _twistStartAngle = _getTouchAngle(e.touches[0], e.touches[1]);
                 _twistStartYaw = state.dioramaYawDeg ?? 0;
+                _twistStartTilt = state.dioramaTiltDeg ?? 50;
                 if (typeof camera !== 'undefined') camera._stop();
                 else if (typeof stopBoardCameraAnimation === 'function') stopBoardCameraAnimation();
             }
 
+            /* THE TOUCH CAMERA (2026-10-01): a finger that lands on the HUD (the Horologe, a panel, a button, a list) is
+               the HUD's — it scrolls / taps there and never drags the board under it */
+            const _touchOnHud = (e) => {
+                const t = e.target;
+                return !!(t && t.closest && t !== boardStageEl && t.tagName !== 'CANVAS'
+                    && t.closest('.hrlg-rig, .hrlg-panel, .hrlg-hub, .hrlg-crown, button, a, input, select, textarea, [role="button"], .ew-unitpanel, .ew-combatlog, .ew-scoreboard, .ew-matchmeta, .ew-party-dock, #ew-spell-descbar, #battleMinimap'));
+            };
             _boardWheelParent.addEventListener('touchstart', (e) => {
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;
                 if (state.thirdPersonCamera) return;
+                if (!_touch1Active && !_touchPanId && !_touch3Active && _touchOnHud(e)) return;
 
                 if (e.touches.length >= 3) {
                     e.preventDefault();
@@ -5822,6 +5832,19 @@
                     angleDelta = ((angleDelta % 360) + 540) % 360 - 180;
                     const newYaw = Math.round((_twistStartYaw + angleDelta) * 10) / 10;
                     const yawChanged = Math.abs(newYaw - (state.dioramaYawDeg ?? 0)) >= 0.5;
+
+                    /* THE TOUCH CAMERA (2026-10-01, mondo: "one finger drag for pan and two for rotate"): the pair's drag
+                       orbits the board the way the middle mouse button does (sideways turns, up / down tilts) while the
+                       pinch zooms and a twist turns too — one finger is the pan (below) */
+                    if (typeof camera !== 'undefined' && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                        const fk = window.EW_FIT_SCALE || 1;
+                        const orbitYaw = Math.round((_twistStartYaw + angleDelta + dx * 0.4 * fk) * 10) / 10;
+                        const orbitTilt = Math.round(Math.max(0, Math.min(170, _twistStartTilt + dy * 0.3 * fk)) * 10) / 10;
+                        state._userOrbiting = true;
+                        camera.snap({ _force: true, zoom: newZoom, yaw: orbitYaw, tilt: orbitTilt });
+                        if (typeof ThreeCamera !== 'undefined' && ThreeCamera.markUserInput) ThreeCamera.markUserInput();
+                        return;
+                    }
 
                     if (typeof camera !== 'undefined') {
 
@@ -5939,6 +5962,7 @@
                 }
 
                 if (_touchPanId && e.touches.length < 2) {
+                    state._userOrbiting = false;
                     if (typeof camera !== 'undefined') {
                         if (camera.zoom > 0.4) {
                             state.userZoomScale = camera.zoom;

@@ -7975,6 +7975,13 @@
             // a short/narrow phone screen shrinks hard instead of the old
             // width-only steps that left phone HUDs enormous.
             var base = Math.max(0.4, Math.min(1.35, Math.min(w / 1574, hh / 885)));
+            /* THE PHONE FIT (2026-10-01): on a phone the page is already scaled down to fit (index.html, EW_FIT_SCALE), so
+               the window-size rule above left the menu's blades ~16 real px tall — under a fingertip. A phone sizes the
+               menu for the finger instead (~0.72 of the desktop size on the glass), capped by the screen's height */
+            if (window.EW_MOBILE) {
+                var fk = window.EW_FIT_SCALE || 1;
+                base = Math.max(0.5, Math.min(1.35, 0.72 / fk, hh / 590));
+            }
             var s = Math.max(0.35, Math.min(2, base * window._getUIScalePref()));
             root.setProperty('--ew-ui-scale', s.toFixed(3));
             // Fixed panels (scoreboard / unit panel / combat log / minimap):
@@ -7982,6 +7989,7 @@
             // window can't comfortably fit them (--ew-hud-scale ≤ 1).
             var pref = Math.max(0.75, Math.min(1.25, window._getUIScalePref()));
             var hud = Math.max(0.45, Math.min(1, Math.min(w / 1500, hh / 760) * pref));
+            if (window.EW_MOBILE) hud = Math.max(hud, Math.min(1, 0.56 / (window.EW_FIT_SCALE || 1), hh / 700) * pref);   // a phone: readable on the glass
             root.setProperty('--ew-hud-scale', hud.toFixed(3));
         };
         window._setUIScalePref = function(v) {

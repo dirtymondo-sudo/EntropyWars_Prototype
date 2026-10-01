@@ -6926,3 +6926,86 @@ body.diorama-3d .tile-underpass.jump::before {
 #lobbyQueueSearching.is-found .lq-cancel { visibility: hidden; }
 @keyframes lqPing { 0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .lq-radar i, .lq-sweep { animation: none !important; } }
+
+/* ══ THE PHONE FIT + THE TOUCH CONTROLS (2026-10-01) ══ everything below is html.ew-mobile only (index.html: touch + a
+   coarse pointer or a phone UA), so the desktop never sees a line of it. index.html scales a phone's page to fit and sets
+   --ew-touch-k = 1 / that scale: `calc(Npx * var(--tk))` is N real px on the glass whatever the fit.
+   map.js _hqTouchControls builds #hqTouch (the walk's stick + buttons). */
+.hqt { display: none; }
+html.ew-mobile { --tk: var(--ew-touch-k, 1); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+html.ew-mobile body { -webkit-touch-callout: none; overscroll-behavior: none; }
+html.ew-mobile .hqt.on { display: block; position: absolute; inset: 0; z-index: 19; pointer-events: none; -webkit-user-select: none; user-select: none; }
+html.ew-mobile .hqt-surface { position: absolute; inset: 0; pointer-events: auto; touch-action: none; }
+/* the stick: resting faint at the bottom-left, it jumps under the thumb wherever the left side is touched */
+html.ew-mobile .hqt-stick { position: absolute; left: calc(env(safe-area-inset-left, 0px) + 96px * var(--tk)); top: calc(100% - env(safe-area-inset-bottom, 0px) - 104px * var(--tk));
+    width: calc(112px * var(--tk)); height: calc(112px * var(--tk)); margin: calc(-56px * var(--tk)) 0 0 calc(-56px * var(--tk)); border-radius: 50%;
+    border: calc(2px * var(--tk)) solid rgba(236,231,216,0.32); background: radial-gradient(circle, rgba(8,8,12,0.10) 0 40%, rgba(8,8,12,0.42) 72%, rgba(8,8,12,0.55));
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4); opacity: 0.38; pointer-events: none; transition: opacity 0.15s ease; }
+html.ew-mobile .hqt-stick.on { opacity: 1; transition: none; }
+html.ew-mobile .hqt-knob { position: absolute; left: 50%; top: 50%; width: calc(48px * var(--tk)); height: calc(48px * var(--tk)); border-radius: 50%; transform: translate(-50%, -50%);
+    background: radial-gradient(circle at 40% 35%, rgba(255,255,255,0.75), rgba(236,231,216,0.42) 60%, rgba(140,130,110,0.4)); box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+html.ew-mobile .hqt-stick.run { border-color: rgba(255,205,107,0.75); }
+html.ew-mobile .hqt-stick.run .hqt-knob { background: radial-gradient(circle at 40% 35%, #fff3cf, rgba(255,205,107,0.85) 60%, rgba(180,130,40,0.7)); }
+/* the buttons */
+html.ew-mobile .hqt-b { position: absolute; pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0;
+    border-radius: 50%; border: calc(1.5px * var(--tk)) solid rgba(236,231,216,0.42); background: rgba(8,8,12,0.52); color: #ece7d8;
+    font: 700 calc(10.5px * var(--tk)) / 1 'IBM Plex Mono', monospace; letter-spacing: 0.06em; text-shadow: 0 1px 2px #000; box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+    -webkit-user-select: none; user-select: none; cursor: pointer; transition: transform 0.06s ease, background 0.06s ease; }
+html.ew-mobile .hqt-b.down { background: rgba(255,205,107,0.38); border-color: rgba(255,205,107,0.9); transform: scale(0.93); }
+html.ew-mobile .hqt-b.off { display: none; }
+html.ew-mobile .hqt-pad { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 14px * var(--tk)); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px * var(--tk));
+    width: calc(236px * var(--tk)); height: calc(170px * var(--tk)); pointer-events: none; }
+html.ew-mobile .hqt-jump { right: 0; bottom: 0; width: calc(74px * var(--tk)); height: calc(74px * var(--tk)); font-size: calc(12px * var(--tk)); }
+html.ew-mobile .hqt-a { right: calc(6px * var(--tk)); bottom: calc(86px * var(--tk)); width: calc(64px * var(--tk)); height: calc(64px * var(--tk)); border-color: rgba(255,120,120,0.6); }
+html.ew-mobile .hqt-use { right: calc(86px * var(--tk)); bottom: calc(6px * var(--tk)); width: calc(64px * var(--tk)); height: calc(64px * var(--tk)); }
+html.ew-mobile .hqt-use.hot { border-color: rgba(255,205,107,0.95); box-shadow: 0 0 calc(14px * var(--tk)) rgba(255,205,107,0.45), 0 2px 10px rgba(0,0,0,0.45); color: #ffe3a1; }
+html.ew-mobile .hqt-dash { right: calc(82px * var(--tk)); bottom: calc(82px * var(--tk)); width: calc(52px * var(--tk)); height: calc(52px * var(--tk)); font-size: calc(9.5px * var(--tk)); }
+html.ew-mobile .hqt-bb { right: calc(160px * var(--tk)); bottom: calc(20px * var(--tk)); width: calc(56px * var(--tk)); height: calc(56px * var(--tk)); font-size: calc(9.5px * var(--tk)); border-color: rgba(120,190,255,0.65); }
+html.ew-mobile .hqt-top { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 12px * var(--tk)); top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; flex-direction: column; align-items: flex-end; gap: calc(7px * var(--tk)); pointer-events: none; }
+html.ew-mobile .hqt-top .hqt-b { position: relative; border-radius: calc(19px * var(--tk)); min-width: calc(62px * var(--tk)); height: calc(36px * var(--tk)); padding: 0 calc(12px * var(--tk)); font-size: calc(10px * var(--tk)); }
+html.ew-mobile .hqt-top .hqt-menu { min-width: calc(44px * var(--tk)); font-size: calc(17px * var(--tk)); }
+/* the walk on a phone: no keyboard hints, the prompt clear of the thumbs */
+html.ew-mobile #hqPage .hq-hints { display: none; }
+html.ew-mobile.ew-hq-touch #hqPage .hq-prompt { max-width: calc(100% - 2 * 150px * var(--tk)); }
+@media (orientation: portrait) {
+    html.ew-mobile.ew-hq-touch #hqPage .hq-prompt { bottom: calc(env(safe-area-inset-bottom, 0px) + 196px * var(--tk)); max-width: 92%; }
+    html.ew-mobile.ew-hq-touch #hqPage .hq-toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 262px * var(--tk)); }
+}
+/* the notch + the home bar: menus sit inside the safe area (the walk's 3D stays full bleed, its HUD steps in) */
+html.ew-mobile .title-page:not(#hqPage) { top: env(safe-area-inset-top, 0px); bottom: env(safe-area-inset-bottom, 0px); left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); }
+html.ew-mobile #hqPage .hq-strip { padding-left: calc(18px + env(safe-area-inset-left, 0px)); padding-right: calc(18px + env(safe-area-inset-right, 0px)); padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+html.ew-mobile #hqPage .hq-prompt { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+html.ew-mobile .hq-pause, html.ew-mobile .hq-panel, html.ew-mobile .hq-terminal, html.ew-mobile .pb-officer, html.ew-mobile .pause-overlay, html.ew-mobile .ui-dialog-overlay {
+    padding: calc(6px + env(safe-area-inset-top, 0px)) calc(6px + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) calc(6px + env(safe-area-inset-left, 0px)); box-sizing: border-box; }
+html.ew-mobile .hq-terminal, html.ew-mobile .pb-officer { padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+/* the terminal's CRT: a thinner bezel so the glass gets the room (its lists already scroll) */
+html.ew-mobile .ms-crt-bezel { padding: 8px 12px 24px; }
+html.ew-mobile .ms-crt-glass { inset: 8px 12px 24px; border-radius: 12px / 16px; }
+html.ew-mobile .ms-crt-screen { padding: 10px 14px 10px; }
+html.ew-mobile .ms-crt-label { bottom: 4px; }
+html.ew-mobile .ms-crt-brand, html.ew-mobile .ms-crt-led { bottom: 6px; }
+/* every scroller scrolls with the finger (momentum on iOS), no rubber-band out of the page */
+html.ew-mobile .ms-tty-list, html.ew-mobile .ms-tty-cards, html.ew-mobile .hq-panel-card, html.ew-mobile .hq-pause-body, html.ew-mobile .ui-dialog-card, html.ew-mobile .mm-buttons, html.ew-mobile .mm-settings-body { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+html.ew-mobile .hq-terminal .ms-crt { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); bottom: env(safe-area-inset-bottom, 0px); }
+/* portrait phone: the title's corner lines stack instead of running into each other; the menu's seal steps under the logo */
+@media (orientation: portrait) {
+    html.ew-mobile .door-title-seal { bottom: 34px; }
+    html.ew-mobile .door-title-seal span { white-space: normal; font-size: 9px; }
+    html.ew-mobile #titlePage .title-version-line { left: 18px; right: auto !important; text-align: left; }
+    html.ew-mobile .void-menu .door-menu-seal { top: auto; bottom: 12vh; width: 120px; opacity: 0.55; }
+    html.ew-mobile .void-menu .door-menu-seal span { display: none; }
+}
+/* the battle on a phone: the ☰ on the match plate is a real button, the plate clear of the notch */
+html.ew-mobile .ew-meta-plate > span:last-child { font-size: 24px !important; line-height: 1; padding: 6px 4px 6px 14px; margin: -8px -8px -8px 0; color: #ece7d8 !important; }
+html.ew-mobile .ew-matchmeta { right: calc(12px + env(safe-area-inset-right, 0px)) !important; }
+.ew-rotate-hint { display: none; }
+html.ew-mobile .ew-rotate-hint { display: block; position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 40%); transform: translateX(-50%); z-index: 20000; max-width: 86%; text-align: center;
+    padding: calc(10px * var(--tk)) calc(16px * var(--tk)); border-radius: calc(20px * var(--tk)); background: rgba(8,8,12,0.86); border: 1px solid rgba(255,205,107,0.6); color: #ffe3a1;
+    font: 600 calc(11px * var(--tk)) / 1.35 'IBM Plex Mono', monospace; letter-spacing: 0.12em; box-shadow: 0 4px 20px rgba(0,0,0,0.6); transition: opacity 0.5s ease; }
+html.ew-mobile .ew-rotate-hint.out { opacity: 0; }
+/* the vh boxes measured against the phone's tallest viewport (iOS bars hidden) — on a phone they measure the screen you see */
+html.ew-mobile .ui-dialog-card { max-height: calc(100dvh - 24px); }
+html.ew-mobile .hq-panel-card { max-height: calc(100dvh - 24px); }
+html.ew-mobile .sq-pick-panel { max-height: calc(100dvh - 20px); }
+html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
+@media (orientation: portrait) { html.ew-mobile .hqt-top { top: calc(env(safe-area-inset-top, 0px) + 150px); } }
