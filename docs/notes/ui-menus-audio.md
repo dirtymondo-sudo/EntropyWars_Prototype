@@ -731,7 +731,7 @@ ui.js SLB IDENTITY block: kits for the 23 families of the user's 2026-09-27 expo
 archetypes off race names; 68 new characters from the new families; the list of candidates for new races is in
 /mnt/project-files/spell-library/NEW_CHARACTERS.md.
 
-## ✦ THE FAMILY TABS (the jobs removal, 2026-09-27, token 20260927-spell-library-12-cors)
+## ✦ THE FAMILY TABS (the jobs removal, 2026-09-27, token 20260927-spell-library-12-cors) — SUPERSEDED by THE FAMILY COLUMNS below
 mondo: "Easy to read spell slots organized by family, maybe tabs for the families, with one section that shows the spell
 info for whichever one you have selected/hovered on." The forge TECHNIQUES rack (party-builder.js SpellTierPanel) is now:
 - **Head:** the loadout as seven slot cards 4 × 2 (`.pb-ls` with `--fam` = the family colour: disc, name on two lines,
@@ -749,6 +749,32 @@ info for whichever one you have selected/hovered on." The forge TECHNIQUES rack 
 - Job pickers are gone from the builder, the roster wall (no job pill), the MD delver page, the campaign creator
   (`#cccJobSelect`), the shop, the HQ pause menu, the dungeon picker and the secondary-job dialog. Role labels in the
   builder read the race's role (pbRoleLabel = CODEX_CLASS_LABELS[RACE_CLASS[race]]).
+
+## ✦ THE FAMILY COLUMNS (spell picker fix, 2026-10-01, token 20261001-spellpicker-01-cors) — replaces THE FAMILY TABS
+mondo: the info panel covered the spells and flickered on hover; "Each spell family should be a column so I can see every
+spell a unit has at one time. We dont need to show the tiers anywhere ... Get rid of the crt filter of scanlines ... Where
+did the clear button for the spell slots?"
+- **Cause of the flicker:** the technique panel sat in an `auto`-height grid row under the rack; a hovered spell's longer
+  info grew the row upward over the cards, the mouse left the card, the panel shrank, repeat.
+- **TECHNIQUES grid** (`.pb-body[data-tab="tech"][data-panel]`, styles-base.css "THE FAMILY COLUMNS"): columns
+  `rack | --pb-side-w`, rows `46fr 54fr auto`, areas `"tech stage" "tech panel" "party party"`. The hero has its own cell
+  (stageCx 0.5), the technique panel a FIXED cell under it that scrolls inside. No stats column on TECHNIQUES (they live
+  on GEAR / DOSSIER). Sticky notes ride the hero cell, smaller.
+- **The rack** (party-builder.js SpellTierPanel, `.pb-rack-cols`): tech bar (slots pips, SP meter, 🎲 RANDOM / ↺ DEFAULT /
+  ✕ CLEAR ALL in `.pb-tech-tools`; the bar wraps, it used to clip RST + CLR; "SLOTS FULL" hint), the loadout strip (7 slot
+  cards + ALWAYS READY, one row; a slot card shows its SP, ✕ on hover, click removes, ⚙ opens upgrades), then
+  `.pb-famcols`: one `.pb-famcol` per `pbRackCols(ctx)` = ctx.tabs minus BORROW unless Adaptable is on. Each column scrolls
+  on its own; the grid scrolls sideways when the glass is too narrow (min 136 px a column).
+- **The card** `.pb-sc`: category disc, name (2 lines), then the gold SP chip + MP / range / AOE / power, or its own refusal
+  (only SP / sealed; a full loadout or a full passive pair is said once in the bar). `.step` adds a gap where the cost goes up.
+- **No tiers in the builder UI:** slot numerals, `TIER n` rules, panel kicker / chips, tooltips and the borrow window
+  (its tier filter reads 1–4 SP) all show SP only. `pbTierOf` still drives costs and sorting.
+- **The glass:** `.ms-crt-forge` hides `.ms-crt-scan`, `.ms-crt-glare`, `.pb-crt-roll`, stops the screen flicker and the
+  heavy inset vignette. The type grade wash and the jolt stay.
+- Keys: ↑↓ walk a column, ←→ change column (pbTierGrid / pbTierStep are column-based); `,` `.` are gone with the tabs.
+- Small glass: ≤1400 px slot cards drop the disc; ≤1180 px the loadout is 4 × 2; ≤680 px tall (phone landscape) cards are
+  one line (name + cost), party portraits shrink, notes hide; ≤940 px wide stacks hero / rack / panel / party.
+- Not touched: the HQ pause menu's party rack (map.js) still shows tier rows.
 
 ## THE MAP (ZONES_PLAN Z3, 2026-09-30, token 20260930-zones-04-cors)
 - Area sheet draws a LAYOUT room as its plan: data.js `hqRoomPlan(roomId)` / `hqRoomPlanModel(profile, roomId, hereSpace)`;

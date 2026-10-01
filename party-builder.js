@@ -1321,7 +1321,7 @@ function buildSpellTooltip(sp, x, y) {
     h('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottom: `1px solid ${EW.panelEdge}`, paddingBottom: 6 } },
       h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 } },
         h('span', { style: { fontFamily: 'Cormorant SC, serif', fontSize: 15, letterSpacing: '0.06em', color: EW.ink, fontWeight: 600, lineHeight: 1.1 } }, sp.name),
-        h('span', { style: { fontSize: 9, color: EW.inkMute, letterSpacing: '0.04em' } }, [sp.school, sp.tier && ('Tier ' + sp.tier)].filter(Boolean).join('  ·  '))),
+        h('span', { style: { fontSize: 9, color: EW.inkMute, letterSpacing: '0.04em' } }, [sp.school, pbSpCost(sp) + ' SP'].filter(Boolean).join('  ·  '))),
       h('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 } },
         h('span', { style: { fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: catC, border: `1px solid ${catC}66`, background: `${catC}1a`, padding: '1px 6px' } }, spellCategoryLabel(cat)),
         // canonical TYPE badge (same chip as the blades / battle menu) —
@@ -1590,28 +1590,23 @@ function pbSpellVerdict(ctx, id) {
   return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups);
 }
 const PB_SOURCE_LABEL = { race: 'RACE', borrowRace: 'BORROWED', wheel: 'DOOR WHEEL', training: 'EVERY UNIT', gear: 'EVERY UNIT' };
-/* The keyboard's grid (THE FAMILY TABS): the open tab's cards two to a row (as drawn), then ＋ BROWSE on the BORROW tab,
-   then the ALWAYS READY foot (THE FINISHER, the basic attack). ↑ ↓ change row keeping the column (clamped), ← → walk the
-   row; , and . (or < >) change the tab. */
+/* The keyboard's grid (THE FAMILY COLUMNS, 2026-10-01): one list per column as drawn (BORROW ends with ＋ BROWSE), then the
+   ALWAYS READY pair (THE FINISHER, the basic attack). ↑ ↓ walk a column, ← → change column keeping the row (clamped). */
 function pbTierGrid(ctx, finisher) {
-  const grid = [];
-  const tab = ctx.tab;
-  const ids = tab ? tab.ids.slice() : [];
-  for (let i = 0; i < ids.length; i += 2) grid.push(ids.slice(i, i + 2));
-  if (tab && tab.kind === 'borrow' && ctx.borrows) grid.push(['B0']);
-  grid.push(finisher ? [PB_FIN_KEY, 'root'] : ['root']);
-  return grid;
+  const cols = pbRackCols(ctx).map(t => t.kind === 'borrow' ? t.ids.concat(['B0']) : t.ids.slice()).filter(c => c.length);
+  cols.push(finisher ? [PB_FIN_KEY, 'root'] : ['root']);
+  return cols;
 }
 function pbTierStep(ctx, key, dir, finisher) {
-  const grid = pbTierGrid(ctx, finisher);
-  let r = grid.findIndex(row => row.includes(key));
-  if (r < 0) return grid[0][0];
-  let c = grid[r].indexOf(key);
-  if (dir === 'left') c = Math.max(0, c - 1);
-  else if (dir === 'right') c = Math.min(grid[r].length - 1, c + 1);
-  else if (dir === 'up') { if (r > 0) { r -= 1; c = Math.min(c, grid[r].length - 1); } }
-  else if (dir === 'down') { if (r < grid.length - 1) { r += 1; c = Math.min(c, grid[r].length - 1); } }
-  return grid[r][c];
+  const cols = pbTierGrid(ctx, finisher);
+  let c = cols.findIndex(col => col.includes(key));
+  if (c < 0) return cols[0][0];
+  let r = cols[c].indexOf(key);
+  if (dir === 'up') r = Math.max(0, r - 1);
+  else if (dir === 'down') r = Math.min(cols[c].length - 1, r + 1);
+  else if (dir === 'left' && c > 0) { c -= 1; r = Math.min(r, cols[c].length - 1); }
+  else if (dir === 'right' && c < cols.length - 1) { c += 1; r = Math.min(r, cols[c].length - 1); }
+  return cols[c][r];
 }
 function pbNodeMeta(sp) {
   const m = [];
@@ -1667,8 +1662,16 @@ function pbAoeTiles(sp, big) {
   return h('span', { key: 'aoe', className: 'pb-aoe' + (big ? ' big' : ''), title: shape.label, style: { gridTemplateColumns: 'repeat(' + cols + ', var(--pb-aoe-cell))' } },
     ...cells.map((c, i) => h('i', { key: i, className: c === 'c' ? 'ctr' : (c ? '' : 'off') })));
 }
+/* THE FAMILY COLUMNS (the user, 2026-10-01: "Each spell family should be a column so I can see every spell a unit has at
+   one time. We dont need to show the tiers anywhere, they are redundant with the spell cost points."). The rack is the
+   loadout strip (seven slot cards + ALWAYS READY) over ONE COLUMN PER FAMILY, side by side: the race's families, then
+   TRAINING and GEAR (the universal passive rows), then BORROW while Adaptable is on. Every card wears its SP cost, never
+   a tier. The info panel lives in its own fixed cell beside the rack (never over it), so a hover can not move a card. */
+function pbRackCols(ctx) {
+  return ctx.tabs.filter(t => t.kind !== 'borrow' || ctx.borrows);
+}
 function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, onNodeHoverIn, onNodeHoverOut,
-                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen, onTab }) {
+                          selKey, hoverKey, onSelect, shakeKey, finisher, onUnequipSlot, onUpgradeOpen }) {
   const spellOf = (id) => (id && typeof window.getSpellById === 'function') ? window.getSpellById(id) : null;
   const colourOf = (sp) => {
     const cat = sp ? classifySpellLocal(sp) : null;
@@ -1678,89 +1681,74 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
   const famLook = (id) => { const f = ctx.famOf(id); const d = FAM[f] || {}; return { f, name: d.name || 'Unsorted', glyph: d.glyph || '◇', color: d.color || '#8a8270' }; };
   const eq = ctx.equipped;
   const spLeft = ctx.spMax - ctx.spUsed;
-  const tag = (t) => h('b', { className: 'pb-tc-cost', title: 'Tier ' + PB_TIER_NUM[t] + ' · costs ' + t + ' SP' }, t + ' SP');
   const upN = (id) => (ctx.ups && ctx.ups[id]) ? ctx.ups[id].length : 0;
-  const chip = (id) => {
+  const upSpOf = (id) => (upN(id) && typeof window.spellUpgradesSpOf === 'function') ? window.spellUpgradesSpOf(ctx.ups, id) : 0;
+  /* one spell card: the category disc · the name · its SP · one meta line (MP, range, AOE, power) or why it can't go on */
+  const card = (id, prevCost) => {
     const sp = spellOf(id);
-    const t = pbTierOf(id);
+    const cost = pbSpCost(id);
     const st8 = pbSpellState(ctx, id);
     const { nc, glyph } = colourOf(sp);
     const src = ctx.sourceOf[id] || 'race';
-    const cls = 'pb-tn pb-tc is-' + st8 + (t === 4 ? ' cap' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ' src-' + src + ' can';
-    const aoeTiles = pbAoeTiles(sp);
-    const why = st8 === 'sp' ? 'NEEDS ' + t + ' SP · ' + spLeft + ' LEFT' : st8 === 'slots' ? 'NO SLOT · ' + eq.length + '/' + ctx.cap : st8 === 'passives' ? ctx.pasMax + ' PASSIVES MAX' : st8 === 'sealed' ? 'SEALED' : null;
+    const isPas = !!(sp && sp.kind === 'passive');
+    const on = st8 === 'equipped';
+    // the card's own refusal (SP, sealed); a full loadout or a full passive pair is said ONCE, in the tech bar
+    const why = st8 === 'sp' ? 'ONLY ' + spLeft + ' SP LEFT' : st8 === 'sealed' ? 'SEALED IN THIS MODE' : null;
+    const whyAll = st8 === 'slots' ? 'all ' + ctx.cap + ' slots are full' : st8 === 'passives' ? ctx.pasMax + ' passives max' : null;
+    const meta = pbNodeMeta(sp).slice(0, 3);
     const bf = src === 'borrowRace' ? famLook(id) : null;   // a borrowed card names the family it came from
+    const n = upN(id);
+    const price = cost + upSpOf(id);
     return h('div', {
-      key: id, className: cls, style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
+      key: id, role: 'button', tabIndex: -1,
+      className: 'pb-sc is-' + st8 + (isPas ? ' pas' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + (prevCost != null && cost !== prevCost ? ' step' : '') + ' src-' + src,
+      style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
       onClick: () => { if (onSelect) onSelect(id); onSpellClick(id); },
       onMouseEnter: (e) => onNodeHoverIn(id, sp, e),
       onMouseLeave: () => onNodeHoverOut(id),
-      title: sp ? sp.name + ' — Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP' + (why ? ' · ' + why : '') : id,
+      title: (sp ? sp.name : id) + ' · ' + cost + ' SP' + (on ? ' · equipped · click to remove' : why ? ' · ' + why.toLowerCase() : whyAll ? ' · ' + whyAll : ' · click to equip'),
     },
-      h('span', { className: 'pb-tn-disc' }, st8 === 'sealed' ? '🔒' : (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
-      /* COMPACT (2026-09-24, mondo: "put 2 spells side by side"): the SP tag rides the name line, the badges under it,
-         the meta line ⟷ the AOE grid closes the card, a refusal replaces the meta. Two cards per row. */
-      h('span', { className: 'pb-tn-text' },
-        h('span', { className: 'pb-tc-top' },
-          h('span', { className: 'pb-tn-name' }, sp ? sp.name : id),
-          st8 === 'equipped' ? (() => {
-            // THE UPGRADES (Phase 5): an upgraded spell shows its whole price (tier + upgrades) and ⚙ n
-            const n = upN(id);
-            const upSp = n && typeof window.spellUpgradesSpOf === 'function' ? window.spellUpgradesSpOf(ctx.ups, id) : 0;
-            return h('b', { className: 'pb-tc-cost on', title: 'Equipped · ' + t + ' SP' + (n ? ' + ' + upSp + ' SP of upgrades' : '') }, '✓ ' + (t + upSp) + ' SP' + (n ? ' · ⚙' + n : ''));
-          })() : tag(t)),
-        h('span', { className: 'pb-tc-badges' }, ...pbSpellBadges(sp, 4),
-          src === 'wheel' ? h('i', { className: 'pb-tc-src' }, 'DOOR WHEEL') : null,
-          bf ? h('i', { className: 'pb-tc-src', style: { color: bf.color } }, bf.glyph + ' ' + bf.name.toUpperCase()) : null),
-        h('span', { className: 'pb-tc-bottom' },
-          why ? h('i', { className: 'pb-tc-why' }, why)
-            : h('span', { className: 'pb-tn-meta' },
-                ...pbNodeMeta(sp).filter(([tx]) => !(aoeTiles && /^AOE /.test(tx))).map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx))),
-          aoeTiles)));
+      h('span', { className: 'pb-sc-disc' }, st8 === 'sealed' ? '🔒' : isPas ? (sp.icon || '◈') : glyph),
+      h('span', { className: 'pb-sc-text' },
+        h('span', { className: 'pb-sc-name' }, sp ? sp.name : id),
+        /* the cost leads the line under the name (gold; filled when equipped, with its upgrades' SP and ⚙ n), then the
+           numbers (MP, range, AOE, power) or why it can't go on */
+        h('span', { className: 'pb-sc-meta' },
+          h('b', { className: 'pb-sc-cost' + (on ? ' on' : ''), title: on && n ? cost + ' SP + ' + (price - cost) + ' SP of upgrades' : cost + ' SP' },
+            String(on ? price : cost), h('small', null, ' SP'), on && n ? h('i', null, ' ⚙' + n) : null),
+          why ? h('i', { className: 'pb-sc-why' }, why) : null,
+          ...(why ? [] : [
+            bf ? h('em', { key: 'bf', style: { color: bf.color } }, bf.glyph + ' ' + bf.name) : null,
+            src === 'wheel' ? h('em', { key: 'wh' }, 'DOOR WHEEL') : null,
+            ...meta.map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx))]))));
   };
-  const borrowChip = () => h('div', {
-    key: 'B0', className: 'pb-tn pb-tc pb-tc-borrow is-socket can' + (selKey === 'B0' ? ' sel' : ''),
-    onClick: () => { if (onSelect) onSelect('B0'); onBorrow('B0'); },
-    onMouseEnter: (e) => onNodeHoverIn('B0', null, e),
-    onMouseLeave: () => onNodeHoverOut('B0'),
-    title: 'Browse the families other races carry — every tier, family by family',
-  },
-    h('span', { className: 'pb-tn-disc' }, '＋'),
-    h('span', { className: 'pb-tn-text' },
-      h('span', { className: 'pb-tn-name' }, 'Browse other families'),
-      h('span', { className: 'pb-tn-meta' }, h('em', null, ctx.borrowCount + ' SPELLS · FAMILY BY FAMILY'))));
-  /* THE LOADOUT — seven slot cards in pick order (a click unequips that one spell) + the basic attack in the eighth cell:
-     the category disc, the WHOLE name (two lines), then its family (glyph + name, the family colour on the card's edge),
-     the tier numeral, the ⚙ upgrades key. */
+  /* THE LOADOUT — seven slot cards in pick order + ALWAYS READY in the eighth cell. A slot card shows the category disc, the
+     whole name, its family and its SP; its ✕ (or a click anywhere on it) takes it off; its ⚙ opens the upgrades. */
   const loadout = h('div', { className: 'pb-loadout', 'aria-label': 'Equipped spells' },
     ...Array.from({ length: ctx.cap }).map((_, i) => {
       const id = eq[i];
-      if (!id) return h('div', { key: 'e' + i, className: 'pb-ls empty' }, h('i', null, String(i + 1)), h('small', null, 'EMPTY SLOT'));
+      if (!id) return h('div', { key: 'e' + i, className: 'pb-ls empty' }, h('i', null, String(i + 1)), h('small', null, 'EMPTY'));
       const sp = spellOf(id);
-      const t = pbTierOf(id);
+      const cost = pbSpCost(id) + upSpOf(id);
       const { nc, glyph } = colourOf(sp);
       const fl = famLook(id);
       const canUp = typeof window.spellAllowedUpgrades === 'function' && window.spellAllowedUpgrades(id).length;
       return h('div', { key: id, className: 'pb-ls' + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ((sp && sp.kind === 'passive') ? ' pas' : ''), style: { '--nc': nc, '--fam': fl.color },
         onClick: () => { if (onSelect) onSelect(id); onUnequipSlot(id); },
         onMouseEnter: (e) => onNodeHoverIn(id, sp, e), onMouseLeave: () => onNodeHoverOut(id),
-        title: (sp ? sp.name : id) + ' — ' + fl.name + ' · Tier ' + PB_TIER_NUM[t] + ' · ' + t + ' SP · click to unequip' },
+        title: (sp ? sp.name : id) + ' · ' + fl.name + ' · ' + cost + ' SP · click to remove' },
         h('span', { className: 'pb-ls-disc' }, (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
         h('span', { className: 'pb-ls-text' },
           h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
-          h('span', { className: 'pb-ls-fam' }, fl.glyph + ' ' + fl.name)),
-        /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the cell's ⚙ opens the spell's upgrades in the technique
-           panel below (selects it, never unequips); a lit ⚙n = n upgrades on */
+          h('span', { className: 'pb-ls-fam' }, h('b', { className: 'pb-ls-cost' }, cost + ' SP'), fl.glyph + ' ' + fl.name)),
         canUp
           ? h('button', { className: 'pb-ls-up' + (upN(id) ? ' on' : ''), type: 'button',
               title: 'Upgrades — ' + upN(id) + ' of ' + (window.SPELL_UPGRADE_MAX || 2) + ' on',
               onClick: (e) => { e.stopPropagation(); if (onSelect) onSelect(id); if (onUpgradeOpen) onUpgradeOpen(id); } },
               '⚙' + (upN(id) || ''))
           : null,
-        h('b', { className: 'pb-ls-tier' }, PB_TIER_NUM[t]));
+        h('span', { className: 'pb-ls-x', 'aria-hidden': 'true' }, '✕'));
     }),
-    /* ALWAYS READY (the eighth cell): the race's ☠ FINISHER over the ⚔ BASIC ATTACK — no slot, no SP; each half
-       selects / hovers into the technique panel like a slot card */
     h('div', { key: 'ready', className: 'pb-ls-ready', title: 'Always ready — no slot, no SP' },
       finisher ? (() => {
         const ft = String(finisher.type || 'anomaly').toLowerCase();
@@ -1776,46 +1764,31 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         onMouseEnter: (e) => onNodeHoverIn('root', null, e), onMouseLeave: () => onNodeHoverOut('root'),
         title: 'Basic Attack — always equipped, free' },
         h('i', null, '⚔'), h('span', null, 'Basic Attack'))));
-  /* THE TABS — one per family: its glyph, its name, how many of its spells are on (n/m) */
-  const tabBar = h('div', { className: 'pb-famtabs', role: 'tablist', 'aria-label': 'Spell families' },
-    ...ctx.tabs.map(t => h('button', { key: t.key, type: 'button', role: 'tab', 'aria-selected': ctx.tab === t,
-      className: 'pb-famtab k-' + t.kind + (ctx.tab === t ? ' on' : '') + (t.on ? ' has' : '') + (t.locked ? ' locked' : ''), style: { '--fam': t.color },
-      title: t.name + (t.desc ? ' — ' + t.desc : ''),
-      onClick: () => { if (onTab) onTab(t.key); } },
-      h('i', null, t.glyph),
-      h('span', null, t.name),
-      t.kind === 'borrow' ? (t.locked ? h('em', null, '🔒') : (t.on ? h('em', null, t.on) : null))
-        : h('em', null, t.on ? t.on + '/' + t.ids.length : t.ids.length))));
-  /* THE OPEN TAB — its name, its line, then its cards tier I → IV (a thin rule names each tier's price) */
-  const tab = ctx.tab;
-  const tierRuled = (ids) => {
-    const out = [];
-    let last = 0;
-    for (const id of ids) {
-      const t = pbTierOf(id);
-      if (t !== last) { out.push(h('div', { key: 'r' + t, className: 'pb-famrule' }, h('b', null, 'TIER ' + PB_TIER_NUM[t]), h('span', null, t + ' SP EACH'))); last = t; }
-      out.push(chip(id));
+  /* THE COLUMNS — one per family: its head (glyph · name · n on), then every card cheapest first */
+  const cols = pbRackCols(ctx);
+  const column = (t) => {
+    let prev = null;
+    const cards = t.ids.map(id => { const c = card(id, prev); prev = pbSpCost(id); return c; });
+    if (t.kind === 'borrow') {
+      cards.push(h('div', { key: 'B0', role: 'button', className: 'pb-sc pb-sc-browse' + (selKey === 'B0' ? ' sel' : ''),
+        onClick: () => { if (onSelect) onSelect('B0'); onBorrow('B0'); },
+        onMouseEnter: (e) => onNodeHoverIn('B0', null, e), onMouseLeave: () => onNodeHoverOut('B0'),
+        title: 'Browse the families other races carry' },
+        h('span', { className: 'pb-sc-disc' }, '＋'),
+        h('span', { className: 'pb-sc-text' }, h('span', { className: 'pb-sc-name' }, 'Browse other families'),
+          h('span', { className: 'pb-sc-meta' }, h('em', null, ctx.borrowCount + ' SPELLS')))));
     }
-    return out;
+    const kindTag = t.kind === 'training' || t.kind === 'gear' ? 'PASSIVES' : t.kind === 'borrow' ? 'ADAPTABLE' : null;
+    return h('section', { key: t.key, className: 'pb-famcol k-' + t.kind + (t.on ? ' has' : ''), 'data-family': t.fam || t.kind, style: { '--fam': t.color } },
+      h('header', { className: 'pb-famcol-head', title: t.name + (t.desc ? ' — ' + t.desc : '') },
+        h('i', null, t.glyph),
+        h('span', { className: 'pb-famcol-name' }, t.name, kindTag ? h('small', null, kindTag) : null),
+        h('em', null, t.kind === 'borrow' ? (t.on || 0) : (t.on || 0) + '/' + t.ids.length)),
+      h('div', { className: 'pb-famcol-list' }, ...cards));
   };
-  const body = !tab ? null : h('div', { className: 'pb-fambody', 'data-family': tab.fam || tab.kind, style: { '--fam': tab.color } },
-    h('div', { className: 'pb-famhead' },
-      h('b', null, tab.glyph),
-      h('span', { className: 'pb-famhead-name' }, tab.name),
-      h('span', { className: 'pb-famhead-desc' }, tab.desc || ''),
-      h('em', null, tab.kind === 'borrow' ? (tab.locked ? 'LOCKED' : tab.on + ' BORROWED') : tab.on + ' OF ' + tab.ids.length + ' ON')),
-    tab.kind === 'borrow'
-      ? h('div', { className: 'pb-tier-cells' },
-          ...(ctx.borrows ? tab.ids.map(chip).concat([borrowChip()]) : [h('div', { key: 'lock', className: 'pb-famlock' },
-            h('b', null, '🃏 ADAPTABLE'),
-            h('span', null, 'The Training passive that opens this tab: equip it and this unit may take spells from the families other races carry (in story mode, only the vessels you own).'),
-            h('button', { type: 'button', className: 'pb-pill-btn', onClick: () => { if (onTab) onTab('training'); } }, 'OPEN TRAINING'))]))
-      : h('div', { className: 'pb-tier-cells' }, ...tierRuled(tab.ids)));
-  /* The rack: a fixed head (the loadout + the tabs), the open family scrolling under it. The finisher and the basic
-     attack live in the loadout's eighth cell (ALWAYS READY), so there is no foot strip any more. */
-  return h('div', { className: 'pb-circuit pb-rack pb-rack-tabs' },
-    h('div', { className: 'pb-rack-head' }, loadout, tabBar),
-    h('div', { className: 'pb-rack-body' }, body));
+  return h('div', { className: 'pb-circuit pb-rack pb-rack-cols' },
+    h('div', { className: 'pb-rack-head' }, loadout),
+    h('div', { className: 'pb-famcols', style: { '--cols': cols.length } }, ...cols.map(column)));
 }
 
 /* ══ THE TECHNIQUE PANEL (plan §5.2 item 3) — under the rack: a category
@@ -1855,10 +1828,14 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     return h('div', { className: 'pb-technique empty' },
       h('div', { className: 'pb-technique-disc', style: { borderColor: 'rgba(255,255,255,0.18)', color: EW.inkDim } }, '◯'),
       h('div', { className: 'pb-technique-main' },
-        h('div', { className: 'pb-technique-kicker' }, 'THE RACK · ' + budget),
-        h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'Select a technique'),
-        h('div', { className: 'pb-technique-desc' }, 'Pick a family tab · HOVER a spell to read it here · CLICK to equip · CLICK it again (or its slot) to unequip · Tier I–IV cost 1–4 SP · 7 slots · ' + spMax + ' SP'),
-        h('div', { className: 'pb-technique-keys' }, h('kbd', null, ', .'), ' tab ', h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / unequip ', h('kbd', null, '⌫'), ' unequip ', h('kbd', null, 'SPACE'), ' replay')));
+        h('div', { className: 'pb-technique-kicker' }, budget),
+        h('div', { className: 'pb-technique-name', style: { color: EW.inkMute } }, 'Hover a spell to read it'),
+        h('ul', { className: 'pb-technique-how' },
+          h('li', null, h('b', null, 'Click'), ' a spell to equip it. Click it again, or its slot up top, to take it off.'),
+          h('li', null, 'The number on each spell is its cost. You have ', h('b', null, spMax + ' SP'), ' and ', h('b', null, slotCap + ' slots'), ' to spend.'),
+          h('li', null, 'At most ', h('b', null, (window.PASSIVE_SLOT_MAX || 2) + ' passives'), ' (Training and Gear).'),
+          h('li', null, 'Equipped spells with ', h('b', null, '⚙'), ' can be upgraded here once selected.')),
+        h('div', { className: 'pb-technique-keys' }, h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / remove ', h('kbd', null, '⌫'), ' remove ', h('kbd', null, 'SPACE'), ' preview')));
   }
   const { st8, key } = info;
   const sp = info.spD || info.sp;   // THE UPGRADES (Phase 5): an upgraded spell's numbers are its derived def's
@@ -1868,12 +1845,12 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   // the family names the card's home (THE FAMILY TABS, 2026-09-27); a borrowed / universal row adds where it came from
   const srcTxt = info.source && info.source !== 'race' ? PB_SOURCE_LABEL[info.source] : null;
   const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
-    : st8 === 'borrow' ? (info.tier ? 'TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP EACH · ADAPTABLE BORROWS' : 'EVERY TIER · 1–4 SP · ADAPTABLE BORROWS BY FAMILY')
-    : [info.fam ? info.fam.glyph + ' ' + info.fam.name.toUpperCase() : null, 'TIER ' + PB_TIER_NUM[info.tier], info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
+    : st8 === 'borrow' ? 'ADAPTABLE · BORROW FROM OTHER FAMILIES'
+    : [info.fam ? info.fam.glyph + ' ' + info.fam.name.toUpperCase() : null, info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
        st8 === 'equipped' ? 'EQUIPPED' : null].filter(Boolean).join(' · ');
-  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? (info.tier ? 'Borrow · Tier ' + PB_TIER_NUM[info.tier] : 'Borrow · any family') : (sp ? sp.name : '—');
+  const name = st8 === 'root' ? 'Basic Attack' : st8 === 'borrow' ? 'Borrow · any family' : (sp ? sp.name : '—');
   const desc = st8 === 'root' ? 'The vessel\'s plain strike — melee or ranged by reach. Every loadout carries it, free.'
-    : st8 === 'borrow' ? 'Adaptable is equipped: this unit may take techniques from the families other races carry. ' + info.count + (info.tier ? ' Tier ' + PB_TIER_NUM[info.tier] : '') + ' techniques to pick from' + (info.tier ? '.' : ', family by family.')
+    : st8 === 'borrow' ? 'Adaptable is equipped: this unit may take spells from the families other races carry. ' + info.count + ' spells to pick from, family by family.'
     : (sp ? (sp.desc || spellCategoryLabel(cat)) : '');
   const chips = [];
   if (sp) {
@@ -1884,16 +1861,16 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     if (sp.range != null) chips.push([sp.range === 0 ? 'SELF' : 'RNG ' + sp.range, EW.ink]);
     if (aoe) chips.push(['AOE ' + aoe, EW.ink]);
     if (pw) chips.push([pw.value + ' ' + pw.unit, pw.color]);
-    chips.push(['TIER ' + PB_TIER_NUM[info.tier] + ' · ' + info.cost + ' SP', EW.time]);
   }
   const effects = sp ? pbSpellEffects(sp) : [];
   let verb = null, verbCls = '', verbTitle = '';
-  if (st8 === 'equipped') { verb = 'UNEQUIP · +' + (info.cost + (info.upSp || 0)) + ' SP BACK'; verbCls = 'danger'; verbTitle = 'Remove it — only it (its upgrades go with it)'; }
+  if (st8 === 'equipped') { verb = 'REMOVE · +' + (info.cost + (info.upSp || 0)) + ' SP BACK'; verbCls = 'danger'; verbTitle = 'Remove it — only it (its upgrades go with it)'; }
   else if (st8 === 'ok') { verb = 'EQUIP · ' + info.cost + ' SP'; verbCls = 'primary'; verbTitle = 'Equip this technique'; }
   else if (st8 === 'sp') { verb = 'NEEDS ' + info.cost + ' SP · ' + (spMax - spUsed) + ' LEFT'; verbCls = 'off'; verbTitle = 'Unequip something to free SP'; }
   else if (st8 === 'slots') { verb = 'NO SLOT · ' + used + '/' + slotCap; verbCls = 'off'; verbTitle = 'All seven slots are full — unequip something first'; }
+  else if (st8 === 'passives') { verb = 'PASSIVES FULL · ' + (window.PASSIVE_SLOT_MAX || 2) + ' MAX'; verbCls = 'off'; verbTitle = 'Take a passive off first'; }
   else if (st8 === 'sealed') { verb = 'SEALED — CLASH RULES'; verbCls = 'off'; verbTitle = 'Not allowed in this mode'; }
-  else if (st8 === 'borrow') { verb = info.tier ? '＋ BROWSE TIER ' + PB_TIER_NUM[info.tier] : '＋ BROWSE THE FAMILIES'; verbCls = 'gold'; verbTitle = 'Open the pool'; }
+  else if (st8 === 'borrow') { verb = '＋ BROWSE THE FAMILIES'; verbCls = 'gold'; verbTitle = 'Open the pool'; }
   const canPreview = st8 !== 'borrow';
   /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): the spell's allowed upgrades as toggles — each its own SP price,
      at most 2 per spell, one of a kind per group; the refusal is data.js spellUpgradeVerdict's words. Off until equipped. */
@@ -2910,9 +2887,9 @@ function PartyBuilder(props) {
      one family tab at a time. unitTiers = pbTierCtx (the pool in parts, the tabs, the sealed set, the equipped list + its SP). */
   const useTree = !isArena && typeof window.unitSpellPoolParts === 'function';
   const unitUpsWish = st.partyMeta?.[player]?.[slot]?.spellUpgrades || null;   // THE UPGRADES (Phase 5): meta.spellUpgrades
-  const [rackTab, setRackTab] = React.useState(null);   // THE FAMILY TABS: the open tab's key (null = the first)
-  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, rackTab) : null,
-    [useTree, unitRace, clsName, customSpells, unitUpsWish, rackTab, _]);
+  // THE FAMILY COLUMNS (2026-10-01): every family is on screen at once, so there is no open tab any more
+  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, null) : null,
+    [useTree, unitRace, clsName, customSpells, unitUpsWish, _]);
   const [treeShake, setTreeShake] = React.useState(null);
   // THE BORROW window (an Adaptable kit): which tier's pool is open ('B0'–'B4' or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
@@ -2927,7 +2904,7 @@ function PartyBuilder(props) {
     if (treeNoteTimer.current) clearTimeout(treeNoteTimer.current);
     treeNoteTimer.current = setTimeout(() => setTreeNote(null), 1600);
   };
-  React.useEffect(() => { setFlSocketPick(null); setRackTab(null); }, [player, slot, clsName, unitRace]);
+  React.useEffect(() => { setFlSocketPick(null); }, [player, slot, clsName, unitRace]);
   React.useEffect(() => () => { if (treeNoteTimer.current) clearTimeout(treeNoteTimer.current); }, []);
   const treeShakeTimer = React.useRef(null);
   React.useEffect(() => { setTechSel(null); setTechHover(null); setPreviewState(null); }, [player, slot, clsName, unitRace]);
@@ -3230,13 +3207,6 @@ function PartyBuilder(props) {
       if (k === 'q' || k === 'Q' || k === '[') { e.preventDefault(); cycleTab(-1); }
       else if (k === 'e' || k === 'E' || k === ']') { e.preventDefault(); cycleTab(1); }
       else if (k >= '1' && k <= '4' && PB_TABS[+k - 1]) { e.preventDefault(); setTab(PB_TABS[+k - 1].id); }
-      else if (circuitKeys && (k === ',' || k === '<' || k === '.' || k === '>')) {   // THE FAMILY TABS: , . walk the tabs
-        e.preventDefault();
-        const tabs = unitTiers.tabs || [];
-        const at = Math.max(0, tabs.indexOf(unitTiers.tab));
-        const nx = tabs[(at + ((k === ',' || k === '<') ? -1 : 1) + tabs.length) % tabs.length];
-        if (nx) { setRackTab(nx.key); setTechSel(null); setTechHover(null); sfx('uiCursorMove'); }
-      }
       else if (circuitKeys && !e.shiftKey && (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight')) {
         e.preventDefault();
         const dir = k === 'ArrowUp' ? 'up' : k === 'ArrowDown' ? 'down' : k === 'ArrowLeft' ? 'left' : 'right';
@@ -3385,7 +3355,7 @@ function PartyBuilder(props) {
         h('small', { className: pipPend && spellSlotsUsed + pipPend > slotCap ? 'over' : '' },
           (pipPend ? (spellSlotsUsed + '+' + pipPend + '/' + slotCap) : pipDrop ? (spellSlotsUsed + '−' + pipDrop + '/' + slotCap) : (spellSlotsUsed + '/' + slotCap)) + ' SLOTS')),
       // THE SP METER (2026-09-24): one cell per Spell Point — spent · the hovered pick (+N) · the hovered unequip (−N)
-      useTree && h('span', { className: 'pb-sp' + (spUsedNow > spMax ? ' over' : ''), title: spUsedNow + ' of ' + spMax + ' Spell Points spent — Tier I–IV cost 1–4 SP' },
+      useTree && h('span', { className: 'pb-sp' + (spUsedNow > spMax ? ' over' : ''), title: spUsedNow + ' of ' + spMax + ' Spell Points spent — each spell costs the SP on its card' },
         h('b', null, 'SP'),
         h('span', { className: 'pb-sp-cells' },
           ...Array.from({ length: Math.max(spMax, spUsedNow) }).map((_, i) => h('i', { key: i,
@@ -3393,11 +3363,15 @@ function PartyBuilder(props) {
               : (spPend && i < spUsedNow + spPend ? ('pend' + (i >= spMax ? ' over' : '')) : '') }))),
         h('small', { className: spPend && spUsedNow + spPend > spMax ? 'over' : '' },
           spPend ? (spUsedNow + '+' + spPend + '/' + spMax) : spDrop ? (spUsedNow + '−' + spDrop + '/' + spMax) : (spUsedNow + '/' + spMax))),
-      treeNote ? h('span', { className: 'pb-tree-note', key: treeNote }, treeNote) : null,
+      treeNote ? h('span', { className: 'pb-tree-note', key: treeNote }, treeNote)
+        : (unitTiers && unitTiers.equipped.length >= unitTiers.cap) ? h('span', { className: 'pb-tech-hint' }, 'SLOTS FULL · CLICK AN EQUIPPED SPELL TO FREE ONE') : null,
       h('div', { style:{flex:1} }),
-      !isArena&&h('button',{onClick:randomizeSpells,className:'pb-mini',title:'Random legal loadout'},'RND'),
-      !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-mini',title:'Default loadout'},'RST'),
-      !isArena&&h('button',{onClick:clearAllSpells,className:'pb-mini danger',title:'Unequip everything'},'CLR')),
+      // the loadout tools (2026-10-01, the user: "Where did the clear button for the spell slots?" — the bar had run out of
+      // room and clipped RST + CLR; the bar wraps now and the three are spelled out)
+      !isArena&&h('span', { className: 'pb-tech-tools' },
+        h('button',{onClick:randomizeSpells,className:'pb-mini',title:'Random legal loadout'},'🎲 RANDOM'),
+        h('button',{onClick:resetCustomSpells,className:'pb-mini',title:'The default loadout for this race'},'↺ DEFAULT'),
+        h('button',{onClick:clearAllSpells,className:'pb-mini danger',disabled:!(customSpells||[]).length,title:'Take every spell off (empty all seven slots)'},'✕ CLEAR ALL'))),
     h('div', { className: 'pb-zone-body', style: { padding: '6px 4px 6px 2px' } },
 
       // ── equipped loadout: the flat-pool FALLBACK's slot rack (only when the
@@ -3429,13 +3403,12 @@ function PartyBuilder(props) {
 
       // ── THE RACK (THE FAMILY TABS, 2026-09-27): the loadout, the family tabs, the open family, ALWAYS READY ──
       useTree&&unitTiers&&h(React.Fragment, null,
-        h('div', { className: 'pb-circuit-scroll pb-circuit-tabs', onMouseLeave: treeNodeHoverOut },
+        h('div', { className: 'pb-circuit-scroll pb-circuit-cols', onMouseLeave: treeNodeHoverOut },
           h(SpellTierPanel, { ctx: unitTiers, fc, clsName,
             raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
             onSpellClick: tierSpellClick, onUnequipSlot: tierSpellClick,
             onUpgradeOpen: () => { setTechHover(null); sfx('uiCursorMove'); },
             onBorrow: (key) => { setFlSocketPick(flSocketPick === key ? null : key); sfx('uiCursorMove'); },
-            onTab: (k) => { setRackTab(k); setTechSel(null); setTechHover(null); sfx('uiCursorMove'); },
             onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut, shakeKey: treeShake,
             selKey: techSel, hoverKey: techHover, onSelect: (key) => { setTechSel(key); },
             finisher: unitFinisher })),
@@ -3503,7 +3476,7 @@ function PartyBuilder(props) {
       let title, sub, rows;
       {
         const bt = +String(flSocketPick).slice(1);   // 0 = every tier (the rack by family, Phase 7)
-        title = bt ? '＋ BORROW · TIER ' + PB_TIER_NUM[bt] : '＋ BORROW · BY FAMILY';
+        title = '＋ BORROW · BY FAMILY';
         sub = (bt ? bt + ' SP EACH' : '1–4 SP') + ' · ANY OTHER RACE\'S FAMILY · ' + spUsedNow + '/' + spMax + ' SP · ' + (customSpells || []).length + '/' + slotCap + ' SLOTS';
         const F = flSocketFilt;
         // a family's name finds its members too (the search box)
@@ -3544,9 +3517,9 @@ function PartyBuilder(props) {
           ...PB_SOCKET_SHAPES.map(sh => h('button', { key: sh.id, className: 'pb-pill-btn' + (F.shape === sh.id ? ' on' : ''),
             onClick: () => setF({ shape: F.shape === sh.id ? null : sh.id }), title: sh.title }, sh.label)),
           socketTiers.length > 1 ? h('span', { className: 'pb-wall-fsep' }) : null,
-          socketTiers.length > 1 ? h('span', { className: 'pb-wall-flabel' }, 'TIER') : null,
-          ...(socketTiers.length > 1 ? socketTiers : []).map(t => h('button', { key: t, className: 'pb-pill-btn' + (F.tier === t ? ' on' : ''),
-            onClick: () => setF({ tier: F.tier === t ? null : t }), title: 'Tier ' + t }, t)),
+          socketTiers.length > 1 ? h('span', { className: 'pb-wall-flabel' }, 'COST') : null,
+          ...(socketTiers.length > 1 ? socketTiers : []).map((t, ti) => h('button', { key: t, className: 'pb-pill-btn' + (F.tier === t ? ' on' : ''),
+            onClick: () => setF({ tier: F.tier === t ? null : t }), title: (ti + 1) + ' SP spells' }, (ti + 1) + ' SP')),
           h('span', { style: { flex: 1 } }),
           h('input', { className: 'pb-pill-input', placeholder: 'SEARCH…', value: F.q, onChange: e => setF({ q: e.target.value }), 'aria-label': 'Search the pool' }),
           filtOn ? h('button', { className: 'pb-pill-btn danger', onClick: () => setFlSocketFilt(PB_SOCKET_FILTER_EMPTY), title: 'Clear every filter' }, '✕ CLEAR') : null);
@@ -3595,7 +3568,7 @@ function PartyBuilder(props) {
               const sp = gid && typeof window.getSpellById === 'function' ? window.getSpellById(gid) : null;
               return h(EquipSlotBox, { key: 'pas' + gi, size:64, accent:fc,
                 filled: !!sp, icon: sp ? (sp.icon || '◈') : null,
-                label: sp ? sp.name : '', title: sp ? `${sp.name} — ${sp.desc || ''} · Tier ${pbTierOf(sp)} · ${pbSpCost(sp)} SP` : 'Equip gear or a passive in TECHNIQUES → ◈ PASSIVES (a slot + its SP)',
+                label: sp ? sp.name : '', title: sp ? `${sp.name} — ${sp.desc || ''} · ${pbSpCost(sp)} SP` : 'Equip gear or a passive in TECHNIQUES (the Training and Gear columns: a slot + its SP)',
                 onClick: () => { setTab('tech'); },
                 onClear: sp ? () => tierSpellClick(gid) : null });
             })));
@@ -3778,10 +3751,11 @@ function PartyBuilder(props) {
                     : '⌛ WAITING ON OPPONENT…'))
               : h('button', { className: 'ms-tty-btn primary', onClick: doStart, title: 'Seal the manifest and cross' }, h('b', null, 'SEAL YOUR FATE'), h('i', null, '↵')))));
 
-  const stageCx = pbTab === 'roster' ? 0.5 : PB_STAGE_CX;
-  // THE TECHNIQUE PANEL (2026-09-09 rev 8): its own cell UNDER the lanes, beside
-  // the party bar — the lanes get the full height, the description reads next
-  // to the portraits. Only on TECHNIQUES with a tree; otherwise the party bar spans.
+  // TECHNIQUES (THE FAMILY COLUMNS, 2026-10-01): the hero stands in its own cell beside the columns, centred
+  const stageCx = (pbTab === 'roster' || pbTab === 'tech') ? 0.5 : PB_STAGE_CX;
+  // THE TECHNIQUE PANEL: its own FIXED cell under the hero, right of the family columns (2026-10-01 — it used to sit in an
+  // auto-height row under the rack, so a hovered spell grew it over the cards it described and the hover flickered).
+  // Only on TECHNIQUES with a rack; its height never follows its content (it scrolls inside).
   const hasPanel = pbTab === 'tech' && !!(useTree && unitTiers);
   const panelZone = hasPanel ? h('div', { key: 'panel', className: 'pb-zone pb-zone-panel' },
     h(TechniquePanel, { info: techInfo, clsName, fc, spUsed: spUsedNow, spMax,
@@ -3864,7 +3838,8 @@ function PartyBuilder(props) {
         // Stage 5's sticky notes, stuck ON THE GLASS (2026-09-09 — the user: the bezel margin "shrinks the entire screen")
         (pbTab !== 'roster' && !(standalone && tbView === 'locker')) ? h(PbNotes, { notes: unitNotes, seed: unitRace + ':' + (identity.gender || ''), paper: notePaper, onOpen: () => { setNotesOpen(true); sfx('uiCursorMove'); } }) : null),
       pbTab === 'roster' ? quickCard : null),
-    pbTab !== 'roster' ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null,
+    // the stats sit on GEAR / DOSSIER; TECHNIQUES gives their width to the family columns (2026-10-01)
+    (pbTab !== 'roster' && pbTab !== 'tech') ? h('div', { key: 'stats', className: 'pb-zone pb-zone-stats' }, statsPanel) : null,
     panelZone,
     partyRow);
 
