@@ -1805,3 +1805,20 @@ Camelot's dungeon, the Cavern's gallery and Hell's pit are `plan` layouts (space
 walkable floor needs `over: true` (a plain deck is a height and cuts the floor under it in two); a flight's high end must sit
 0.7 m inside its tier and its forced band past the end must land on the tier, or the solver finds a floor sliver (a trap);
 wall props (`wall: 'n'` …) hang on the shell wall, so a plan that puts rock against that stretch hides them.
+
+## THE PASSAGES (2026-10-01, mondo: "too many literal doors in places it makes no sense")
+A link end or a room door whose way row carries `passage` is no door: it is a walk-through way that darkens with depth
+and changes room when you are `deep` metres in (three-renderer.js `_hqPassageWay` builds it, `_hqTickPassages` fades and
+fires `onEnterDoor`, `_hqGoTo` lands you `land` m inside the far end facing the room and fades up). Ways (data.js
+DOOR_HQ.ways): `tunnel` (rock mouth, an outcrop in open rooms), `trail` (a dirt road between trees, a signpost),
+`stairway` (a marble flight past an arch, `rise` 0.4), `cloud` (fades to white). A door/link end may override any
+passage key: `w h len deep rise land look fade tread runner spread pad inside`. `wall: 'free'` + `inside` lays the passage
+over the room's own terrain (the Woods stair). Wall passages cut the box wall, walk past the wall plane through hooks in
+`_hqSurface` / `_hqAirOK` / `_hqCamBlocked`, clear a lane in the treeline and carve the outer ground.
+- DOOR HQ → Woods: the stair in `woodstair` IS the way (no door at the top); climb past the arch into the dark.
+- The Woods stair (clearing): a freestanding marble flight with cheek walls (ramp `cheek: {h, t, key, head}` in
+  `_hqBuildBuiltStairs`) climbing 14 m past the canopy (`shell.forest.canopy` plants a crown ring out to 54 m); walking
+  off its top goes to DOOR HQ. The old stair landing room (site_prebuilt_fairy_forest_stair) is deleted.
+- Woods ⇄ Camelot: the trail link `woods_camelot` (the old spring pool seam was cut before this). Redwoods trail,
+  Dead Man's Cave tunnel, Cavern galleries, Göbekli ley/tell, Hell/Agartha/Hollow caves = tunnels; Heaven/Olympus/sky
+  castle/observatory = cloud; North Pole ⇄ Camelot = trail. The clearing's gen seed went 11 → 22 to keep its 8×8 arena.

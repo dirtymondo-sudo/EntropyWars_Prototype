@@ -41422,7 +41422,10 @@ const ThreeRenderer = (function () {
                 /* THE DOOR JOIN (Phase 2): a doorway into a room on the stage is CUT through the wall (the runs either side,
                    the wall over the opening); every other wall is the one slab it always was */
                 var cuts = (room.doors || []).map(function (d) {
-                    if (!d || d.wall !== ws[0]) return null;
+                    if (!d || d.wall !== ws[0] || d.hidden) return null;
+                    /* THE PASSAGES (2026-10-01): a tunnel / a stair past the wall is an opening its own width and height, at its own floor */
+                    var dP = _hqPassageSpec(d);
+                    if (dP && !dP.inside) { var pY = _hqDoorFloorY(room, d); return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dP.w / 2 + 0.03, bot: pY > 0.05 ? pY : 0, top: pY + dP.h + 0.03 }; }
                     var dj = _hqDoorJoinOf(d); if (!dj) return null;
                     return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dj.ow / 2 + 0.03, top: dj.oh + 0.03 };
                 }).filter(Boolean);
@@ -41442,6 +41445,7 @@ const ThreeRenderer = (function () {
                     G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, L / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), rn));
                 });
                 cuts.forEach(function (c) { if (H - c.top > 0.02) G.add(slab(c.top, H, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), (H - c.top) / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); });
+                cuts.forEach(function (c) { if (c.bot > 0.02) { var bt = Math.min(c.bot, H); G.add(slab(0, bt, -0.02, 0.04, _hqMat(texWall, 2 * c.half / (TR || 3.2), bt / (TR || 3.2), wallOpts), [c.at - c.half, c.at + c.half])); if (bt > S.dadoH) G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, 2 * c.half / (TR || 2.2), TR ? S.dadoH / TR : 1, dadoOpts), [c.at - c.half, c.at + c.half])); } });   // THE PASSAGES: the wall under a raised opening
                 var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
                 cutRun.forEach(function (rn) { G.add(slab(0, 0.08, 0.03, 0.05, trim, rn)); G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim, rn)); });
                 G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
@@ -42327,7 +42331,7 @@ const ThreeRenderer = (function () {
            clear of every door's lane (the panel stands on the shell wall; a trunk
            behind it would poke through the doorway) — so the clearing is a hole in
            a wood, not a field with a hedge. EW_PERF_LOW plants every other tree. */
-        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng);   // THE TREELINE (shared with the terrain rooms since 2026-09-17)
+        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng, G);   // THE TREELINE (shared with the terrain rooms since 2026-09-17)
         /* THE STALACTITES: over the open cells, seeded, never over a door lane's sill row — and never under an open sky (THE WOODS has no ceiling to hang them from) */
         var open = [];
         for (var sy = 1; sy < Hh - 1; sy++) for (var sx = 1; sx < W - 1; sx++) { var oc = info.cells[sy][sx]; if (!oc.rock && !inHole(sx, sy)) open.push([sx, sy]); }
@@ -42422,8 +42426,22 @@ const ThreeRenderer = (function () {
             var swell = 2.4 * sm(e / 22) - 7.0 * sm((e - 24) / 26);
             if (OO.flat) return edgeH;   // THE EDITOR (E0, 2026-09-29): `outer.flat` = the plain runs on flat to the fog (mondo's flat empty world: no roll, no rises)
             var k = sm(e / 2.5);
-            return edgeH * (1 - k) + (edgeH * oKeep + roll + swell + oLift * sm(e / 30)) * k;
+            var yy = edgeH * (1 - k) + (edgeH * oKeep + roll + swell + oLift * sm(e / 30)) * k;
+            /* THE PASSAGES (2026-10-01): the ground under a trail / a tunnel past the edge is its floor (and settles back either side) */
+            for (var pci = 0; pci < passC.length; pci++) {
+                var pc = passC[pci], pdx = x - pc.B.wx, pdz = z - pc.B.wz, pd = -(pdx * pc.B.nx + pdz * pc.B.nz), pl = Math.abs(pdx * pc.B.nz - pdz * pc.B.nx);
+                if (pd < -0.5 || pd > pc.P.len + 9 || pl > pc.P.w / 2 + 7) continue;
+                var wgt = (1 - sm((pl - (pc.P.w / 2 + 2.2)) / 4.5)) * (1 - sm((pd - pc.P.len - 2) / 6));
+                var fl = pc.y0 + pc.P.rise * Math.max(0, Math.min(pd, pc.P.len)) - (pc.P.roof ? 0.3 : 0.06);
+                yy = yy * (1 - wgt) + fl * wgt;
+            }
+            return yy;
         };
+        var passC = (room.doors || []).map(function (d) {
+            if (!d || d.hidden || !d.wall || d.wall === 'free') return null;
+            var P = _hqPassageSpec(d); if (!P || P.inside) return null;
+            return { P: P, B: _hqBoxWall(room, d.wall, d), y0: _hqDoorFloorY(room, d) };
+        }).filter(Boolean);
         _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
         var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = []; var aoO = new Float32Array(nx * nz); for (var ai = 0; ai < aoO.length; ai++) aoO[ai] = 1;
@@ -42483,14 +42501,42 @@ const ThreeRenderer = (function () {
         if (sliced) return it;
         while (!it.next().done) {}
     }
+    /* THE PASSAGES (2026-10-01): a trail out of an open room walks on between two rows of trees to the dark (a forest room's own
+       treeline stands behind them; a court's road out — Camelot's — gets its trees from here alone) */
+    function _hqPlantPassageTrees(room, plantTree) {
+        (room.doors || []).forEach(function (d) {
+            if (!d || d.hidden || !d.wall || d.wall === 'free') return;
+            var P = _hqPassageSpec(d); if (!P || P.look !== 'trail') return;
+            var B = _hqBoxWall(room, d.wall, d), ax = -B.nz, az = B.nx;   // along the wall
+            var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('trail|' + d.id) : 5);
+            var kinds = (room.shell && room.shell.forest && room.shell.forest.kinds) || ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'];
+            for (var dd = 0.8; dd < P.len + 6; dd += 2.1 + rng() * 0.6) [-1, 1].forEach(function (sd) {
+                for (var row = 0; row < 2; row++) {
+                    var lat = P.w / 2 + 1.1 + row * 2.0 + rng() * 0.8, dep = dd + (rng() - 0.5) * 0.9;
+                    var px = B.wx - B.nx * dep + ax * sd * lat, pz = B.wz - B.nz * dep + az * sd * lat;
+                    var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
+                    var fk = kinds[(rng() * kinds.length) | 0], fh = fk === 'tree_4' ? 3.6 + rng() * 1.2 : 2.4 + rng() * 1.1;
+                    plantTree(fk, fh, px, pz, gy * _hqUnits());
+                }
+            });
+        });
+    }
     /* the treeline of an open room (THE WOODS): rings of the foliage models on the apron past the shell, the door lanes kept clear */
-    function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng) {
+    function _hqPlantTreeline(room, S, halfX, halfZ, plantTree, rng, G) {
         var FR = S.forest, depth = FR.depth || 9, sp = FR.spacing || 2.6, r0 = FR.start || 1.4, rStep = FR.rows || 2.4;
         var kinds = FR.kinds || ['tree', 'tree', 'tree', 'tree_2', 'tree_3', 'tree_4', 'tree_5'];
         var lanes = (room.doors || []).filter(function (d) { return d.wall && d.wall !== 'free'; });
+        /* THE PASSAGES (2026-10-01): a trail runs on between the trees (its lane cleared only its own width, the rows either side
+           of it); a tunnel's outcrop has its whole shoulder */
+        var passLanes = lanes.map(function (d) { var P = _hqPassageSpec(d); if (!P || P.inside) return null; return { P: P, B: _hqBoxWall(room, d.wall, d) }; }).filter(Boolean);
         var inLane = function (px, pz, out) {
+            for (var pi = 0; pi < passLanes.length; pi++) {
+                var pp = passLanes[pi], pdx = px - pp.B.wx, pdz = pz - pp.B.wz, pd = -(pdx * pp.B.nx + pdz * pp.B.nz), plat = Math.abs(pdx * pp.B.nz - pdz * pp.B.nx);
+                if (pd > -1 && pd < pp.P.len + 3 && plat < pp.P.w / 2 + (pp.P.roof ? 6.5 : 0.9)) return true;
+            }
             if (out > 4.6) return false;
             return lanes.some(function (d) {
+                if (_hqPassageSpec(d)) return false;   // (its own corridor above)
                 var half = (d.wide ? 3.3 : 2.5) / 2 + 1.0;
                 if (d.wall === 'n') return pz < -halfZ && Math.abs(px - (d.x || 0)) < half;
                 if (d.wall === 's') return pz > halfZ && Math.abs(px - (d.x || 0)) < half;
@@ -42530,6 +42576,40 @@ const ThreeRenderer = (function () {
             }
         }
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] treeline: ' + planted + ' trees past the edge');
+        if (FR.canopy && G) { try { _hqPlantCanopy(room, halfX + depth - 0.5, halfZ + depth - 0.5, FR.canopy, G); } catch (e) { console.warn('[HQ] the canopy failed', e); } }
+    }
+    /* THE CANOPY (2026-10-01, mondo: the woods stair should "ascend past the tree line and when youre walking down it you can see a
+       lot of the woods"): past the treeline the forest runs on to the fog as crowns on trunks — two instanced meshes (one draw each),
+       never walked (the outer ground is past the room's edge), kept off the passages' corridors. `canopy: { to, step, color }` */
+    function _hqPlantCanopy(room, hx, hz, C, G) {
+        if (typeof THREE.InstancedMesh !== 'function') return;
+        var U = _hqUnits(), to = Math.min(C.to || 60, (room.terrain && room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M), st = C.step || 3.4;
+        var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('canopy|' + (room.label || '')) : 9);
+        var pass = (room.doors || []).map(function (d) { var P = (d && d.wall && d.wall !== 'free') ? _hqPassageSpec(d) : null; return P ? { P: P, B: _hqBoxWall(room, d.wall, d) } : null; }).filter(Boolean);
+        var spots = [];
+        for (var gz = -(hz + to); gz <= hz + to; gz += st) for (var gx = -(hx + to); gx <= hx + to; gx += st) {
+            var px = gx + (rng() - 0.5) * st * 0.9, pz = gz + (rng() - 0.5) * st * 0.9;
+            if (Math.abs(px) < hx && Math.abs(pz) < hz) continue;
+            var clear = true;
+            for (var i = 0; i < pass.length && clear; i++) { var q = pass[i], dx = px - q.B.wx, dz = pz - q.B.wz, dp = -(dx * q.B.nx + dz * q.B.nz), la = Math.abs(dx * q.B.nz - dz * q.B.nx); if (dp > -1 && dp < q.P.len + 5 && la < q.P.w / 2 + 4) clear = false; }
+            if (!clear) continue;
+            var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
+            spots.push([px, gy, pz, 2.3 + rng() * 1.5, 4.6 + rng() * 3.4, rng() * Math.PI * 2]);
+        }
+        if (!spots.length) return;
+        var crownM = new THREE.MeshPhongMaterial({ color: (C.color != null) ? C.color : 0x2c4a2a, shininess: 2, flatShading: true }); crownM.emissive = new THREE.Color(0x0a140a);
+        var trunkM = new THREE.MeshPhongMaterial({ color: 0x3a2c20, shininess: 2 });
+        var crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1 * U, 0), crownM, spots.length);
+        var trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16 * U, 0.26 * U, 1 * U, 5), trunkM, spots.length);
+        var o = new THREE.Object3D();
+        spots.forEach(function (sp, k) {
+            o.position.set(sp[0] * U, (sp[1] + sp[4]) * U, sp[2] * U); o.rotation.set(0, sp[5], 0); o.scale.set(sp[3], sp[3] * 1.15, sp[3]); o.updateMatrix(); crowns.setMatrixAt(k, o.matrix);
+            o.position.set(sp[0] * U, (sp[1] + sp[4] / 2) * U, sp[2] * U); o.scale.set(1, sp[4], 1); o.updateMatrix(); trunks.setMatrixAt(k, o.matrix);
+        });
+        crowns.instanceMatrix.needsUpdate = true; trunks.instanceMatrix.needsUpdate = true;
+        crowns.frustumCulled = false; trunks.frustumCulled = false;   // (the instances span the whole outer ground: the base geometry's sphere would cull them all)
+        crowns._ew_hqPart = 'canopy'; trunks._ew_hqPart = 'canopy';
+        G.add(crowns); G.add(trunks);
     }
     /* THE HALLS' STRIP LIGHTS (D.U.M.B., 2026-09-17): a fluorescent tube hung from the ceiling every `every` metres down
        every L-corridor and authored hall of a `halls` floor plan, and one over each generated room's centre — an emissive
@@ -42660,6 +42740,30 @@ const ThreeRenderer = (function () {
                         var rr = new THREE.Mesh(new THREE.BoxGeometry(runW * U, rise * U, 0.03 * U), runMat), rs = s0 - 0.015;
                         rr.position.set((f.x0 + ux * rs) * U, (top - rise / 2) * U + 0.3, (f.z0 + uz * rs) * U); rr.rotation.y = yaw; rr.renderOrder = 2; G.add(rr);
                     }
+                }
+            }
+            /* THE CHEEK WALLS (2026-10-01, mondo's woods stair: "they ascend past the tree line"): `cheek: { h, t, key, head }` — a parapet
+               either side stepping up with the treads (a wall to the walker: nobody walks off a 13 m flight), `head` closes the top end */
+            if (f.cheek) {
+                var CK = f.cheek, ct = CK.t || 0.35, chh = (CK.h != null) ? CK.h : 1.0, px = uz, pz = -ux;
+                var cheekMat = new THREE.MeshPhongMaterial({ map: _hzTex(CK.key || f.side || info.cliff) || null, color: (CK.color != null) ? CK.color : 0xffffff, shininess: 10 }); cheekMat.emissive = new THREE.Color(0x121212);
+                for (var ck = 0; ck < n; ck++) {
+                    var ctop = f.h0 + rise * ck + chh, cs0 = ck * depth, cs1 = (ck === n - 1) ? L + 0.25 : (ck + 1) * depth + 0.02, csm = (cs0 + cs1) / 2, cdd = cs1 - cs0, chh2 = Math.max(0.1, ctop - base);
+                    [-1, 1].forEach(function (sd) {
+                        var off = sd * (f.w / 2 + ct / 2), cg = new THREE.BoxGeometry(ct * U, chh2 * U, cdd * U); _hzBoxUV(cg, ct * U, chh2 * U, cdd * U, TM);
+                        var cm = new THREE.Mesh(cg, cheekMat); cm.position.set((f.x0 + ux * csm + px * off) * U, (base + chh2 / 2) * U + 0.3, (f.z0 + uz * csm + pz * off) * U); cm.rotation.y = yaw; cm.castShadow = true; cm.receiveShadow = true; G.add(cm);
+                    });
+                }
+                var midS = (L + 0.25) / 2;
+                [-1, 1].forEach(function (sd) {
+                    var off = sd * (f.w / 2 + ct / 2), bo = new THREE.Object3D(); bo.position.set((f.x0 + ux * midS + px * off) * U, base * U, (f.z0 + uz * midS + pz * off) * U); G.add(bo);
+                    _hq.blockers.push({ obj: bo, y: base, top: null, rad: midS, rect: { hw: ct / 2, hd: midS }, yaw: yaw, cheek: true });
+                });
+                if (CK.head) {
+                    var htop = Math.max(f.h0, f.h1) + chh, hg = new THREE.BoxGeometry((f.w + 2 * ct) * U, (htop - base) * U, ct * U); _hzBoxUV(hg, (f.w + 2 * ct) * U, (htop - base) * U, ct * U, TM);
+                    var hm = new THREE.Mesh(hg, cheekMat), hs = L + 0.25 + ct / 2; hm.position.set((f.x0 + ux * hs) * U, (base + (htop - base) / 2) * U + 0.3, (f.z0 + uz * hs) * U); hm.rotation.y = yaw; hm.castShadow = true; G.add(hm);
+                    var hb = new THREE.Object3D(); hb.position.set((f.x0 + ux * hs) * U, base * U, (f.z0 + uz * hs) * U); G.add(hb);
+                    _hq.blockers.push({ obj: hb, y: base, top: null, rad: f.w / 2 + ct, rect: { hw: f.w / 2 + ct, hd: ct / 2 }, yaw: yaw, cheek: true });
                 }
             }
         });
@@ -43486,7 +43590,8 @@ const ThreeRenderer = (function () {
         };
         for (var tki = 0, tks = info.thicket || []; tki < tks.length; tki++) { thicketOne(tks[tki]); if ((tki & 7) === 7 && _hqSliceDue()) yield; }
         if (_hqSliceDue()) yield;
-        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng);
+        if (TK && S.forest && S.open) _hqPlantTreeline(room, S, S.w / 2, S.d / 2, plantTree, rng, G);
+        if (TK && S.open) { try { _hqPlantPassageTrees(room, plantTree); } catch (e) { console.warn('[HQ] the trail trees failed', e); } }   // THE PASSAGES: the trees either side of a trail
         if (_hqSliceDue()) yield;
         /* ── DISASTER CITY (2026-09-17): the buildings on the lots + the fronts, the street lamps, the traffic, the circuit ── */
         _hqBuildCityEntrances(room, info, G, TK);
@@ -48419,6 +48524,11 @@ const ThreeRenderer = (function () {
            you approach (the tick), the press-in at 0.55 is the climb in. */
         hollowtree: function (U, ctx) { return _hqTreeWay(U, ctx, false); },
         deadtree: function (U, ctx) { return _hqTreeWay(U, ctx, true); },
+        /* THE PASSAGES (2026-10-01): walked into, never pressed — one builder, the look from the row (_hqPassageWay) */
+        tunnel: function (U, ctx) { return _hqPassageWay(U, ctx); },
+        trail: function (U, ctx) { return _hqPassageWay(U, ctx); },
+        stairway: function (U, ctx) { return _hqPassageWay(U, ctx); },
+        cloud: function (U, ctx) { return _hqPassageWay(U, ctx); },
         closet: function (U, ctx) {
             var g = new THREE.Group();
             var W = 1.0, H = 2.1, D = 0.7, T = 0.05;
@@ -48714,6 +48824,222 @@ const ThreeRenderer = (function () {
         var motion = { mode: 'way', ow: holeW, tick: function (k) { light.material.opacity = 0.16 + 0.62 * k; glow.material.opacity = 0.18 + 0.5 * k; glow.scale.setScalar((1.4 + 1.0 * k) * U); } };
         return { g: g, motion: motion, ow: holeW, oh: holeH, plateY: 2.6 };
     }
+    /* ══ THE PASSAGES (2026-10-01, mondo: "it should just be like a passage that fades to black to clearly signify it leads to a
+       new area that you can walk through. Like the entrance to dead man's cave should be a tunnel i can physically walk through
+       and walk far enough it takes me to the new area") ═══════════════════════════════════════════════════════════════════════
+       A way whose catalogue row (data.js DOOR_HQ.ways) carries `passage` is no door: a tunnel, a trail, a stair, a cloud bank you
+       WALK INTO. On a wall it runs on past the wall plane `len` m (the wall cut for it, its floor rising `rise` m per m), walked
+       like the room's own floor (_hqPassageSurface); on a `free` end it lies over the room's own ground (the Woods' stair: its
+       last flight). The screen darkens with the depth and at `deep` m the room changes (_hqTickPassages); the far end lands you
+       `land` m inside its own passage, walking out of the dark. No leaf, no frame, no prompt, no press-in. A door row's own
+       `passage` overrides the catalogue's (w, h, len, deep, rise, look, fade, wall, floor, tread, runner, land, pad). */
+    function _hqPassageSpec(door) {
+        if (!door || !door.way) return null;
+        var cat = ((_hqData() || {}).ways || {})[door.way];
+        if (!cat || !cat.passage) return null;
+        var P = {}, k;
+        for (k in cat.passage) P[k] = cat.passage[k];
+        if (door.passage && typeof door.passage === 'object') for (k in door.passage) P[k] = door.passage[k];
+        P.w = +P.w || cat.w || 3; P.h = +P.h || cat.h || 3;
+        P.len = +P.len || 10; P.deep = Math.min(+P.deep || P.len * 0.65, P.len - 0.6);
+        P.rise = +P.rise || 0;
+        P.inside = (P.inside != null) ? !!P.inside : door.wall === 'free';
+        P.land = (P.land != null) ? +P.land : Math.max(1.2, Math.min(P.deep - 1.4, P.deep * 0.55));
+        P.fade = (P.fade === 'white') ? 'white' : 'black';
+        P.look = P.look || 'rock';
+        P.roof = (P.look === 'rock' || P.look === 'hall');
+        return P;
+    }
+    /* a soft-edged card (the trail's dusk, the cloud's white): opaque low in the middle, gone at the sides and the top */
+    var _hqPassSoftTexC = null;
+    function _hqPassSoftTex() {
+        if (_hqPassSoftTexC) return _hqPassSoftTexC;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = 64; c.height = 64;
+        var x = c.getContext('2d'), img = x.createImageData(64, 64);
+        for (var j = 0; j < 64; j++) for (var i = 0; i < 64; i++) {
+            var u = Math.abs(i / 63 - 0.5) * 2, v = j / 63;   // v 0 = the top row
+            var a = Math.max(0, 1 - Math.pow(u, 2.2)) * Math.min(1, v * 1.6);
+            var o = (j * 64 + i) * 4; img.data[o] = img.data[o + 1] = img.data[o + 2] = 255; img.data[o + 3] = Math.round(255 * a);
+        }
+        x.putImageData(img, 0, 0);
+        _hqPassSoftTexC = new THREE.CanvasTexture(c); _hqPassSoftTexC.minFilter = THREE.LinearFilter; _hqPassSoftTexC.magFilter = THREE.LinearFilter;
+        return _hqPassSoftTexC;
+    }
+    function _hqPassageWay(U, ctx) {
+        var g = new THREE.Group(), door = ctx.door || {}, room = ctx.room || {}, S = room.shell || {}, T = room.terrain || {};
+        var P = _hqPassageSpec(door) || { w: 3, h: 3, len: 10, deep: 6.5, rise: 0, look: 'rock', fade: 'black', inside: false, land: 3.5, roof: true };
+        var W = P.w, H = P.h, L = P.len, look = P.look, SEG = 0.5, TS = 1.25 * U, T0 = 0.9;
+        var fy = function (d) { return P.rise * Math.max(0, d); };   // the floor `d` m in (metres over the mouth's)
+        var tex = function (k) { return (k && typeof _hzTex === 'function') ? (_hzTex(k) || null) : null; };
+        var mat = function (k, color, emis) { var m = new THREE.MeshPhongMaterial({ map: tex(k), color: (color != null) ? color : 0xffffff, shininess: 6 }); m.emissive = new THREE.Color((emis != null) ? emis : 0x0c0c0c); return m; };
+        var box = function (w, h, d, m, x, y, z, ry, rx) {
+            var geo = new THREE.BoxGeometry(w * U, h * U, d * U); if (typeof _hzBoxUV === 'function') _hzBoxUV(geo, w * U, h * U, d * U, TS);
+            var me = new THREE.Mesh(geo, m); me.position.set(x * U, y * U, z * U); if (ry) me.rotation.y = ry; if (rx) me.rotation.x = rx;
+            me.castShadow = true; me.receiveShadow = true; g.add(me); return me;
+        };
+        var scaleUV = function (geo, su, sv) { var uv = geo.attributes && geo.attributes.uv; if (!uv) return; for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv); uv.needsUpdate = true; };
+        var wallKey = P.wall || (look === 'hall' ? (S.wall || 'marble_2') : (T.cliff || S.wall || 'rock_wall_1'));
+        var wallCol = (P.wallColor != null) ? P.wallColor : ((look === 'hall' && S.wallColor != null) ? S.wallColor : 0xffffff);
+        var floorKey = P.floor || T.path || T.floor || S.floor || 'dirt_2';
+        var wallM = mat(wallKey, wallCol), floorM = mat(floorKey, (P.floorColor != null) ? P.floorColor : 0xffffff);
+        /* THE FLOOR past the wall (a free end stands on the room's own) */
+        if (!P.inside) {
+            if (P.rise !== 0) {
+                var treadM = mat(P.tread || floorKey, 0xffffff, 0x141414), runM = null, runW = (P.runner && P.runner.w) ? Math.min(W - 0.4, P.runner.w) : 0;
+                if (runW > 0) { runM = new THREE.MeshPhongMaterial({ color: (P.runner.color != null) ? P.runner.color : 0x2f58d0, shininess: 6 }); runM.emissive = new THREE.Color(runM.color).multiplyScalar(0.12); }
+                if (P.rise > 0) { box(W, 0.8, 0.62, treadM, 0, 0.02 - 0.4, 0.29); if (runM) { var r0 = new THREE.Mesh(new THREE.BoxGeometry(runW * U, 0.03 * U, 0.62 * U), runM); r0.position.set(0, 0.035 * U, 0.29 * U); r0.renderOrder = 2; g.add(r0); } }   // the sill over the room's last cell (its floor key showed as a strip)
+                for (var s = 0; s < L; s += SEG) {
+                    var top = fy(s + SEG / 2), hh = (P.rise > 0) ? top + 0.8 : 0.8;   // a rising tread down to the mouth's floor (the wall hides the rest), a falling one 0.8 m deep
+                    box(W, hh, SEG + 0.02, treadM, 0, top - hh / 2, -(s + SEG / 2));
+                    if (runM) { var rt = new THREE.Mesh(new THREE.BoxGeometry(runW * U, 0.03 * U, (SEG + 0.02) * U), runM); rt.position.set(0, (top + 0.015) * U, -(s + SEG / 2) * U); rt.renderOrder = 2; g.add(rt); }
+                }
+            } else if (P.roof) {
+                box(W + 0.2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.015, -(L / 2 + 0.2));
+            } else {
+                /* a trail / a cloud road: a strip on the ground the outer ground was carved to (_hqBuildOuterGround) */
+                var SL = L + 5, sg = new THREE.PlaneGeometry(W * U, SL * U); scaleUV(sg, W / 2.5, SL / 2.5);
+                var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip);
+            }
+        }
+        /* THE TUBE: the walls either side and the roof, stepping up with a rising floor */
+        if (P.roof && !P.inside) {
+            if (P.rise !== 0) {
+                for (var s2 = 0; s2 < L; s2 += SEG) {
+                    var f2 = fy(s2 + SEG / 2);
+                    [-1, 1].forEach(function (sd) { box(T0, H + 1.2, SEG + 0.02, wallM, sd * (W / 2 + T0 / 2), f2 - 0.6 + (H + 1.2) / 2, -(s2 + SEG / 2)); });
+                    box(W + 2 * T0, 0.7, SEG + 0.02, wallM, 0, f2 + H + 0.35, -(s2 + SEG / 2));
+                }
+            } else {
+                [-1, 1].forEach(function (sd) { box(T0, H + 1, L, wallM, sd * (W / 2 + T0 / 2), (H + 1) / 2 - 0.5, -L / 2); });
+                box(W + 2 * T0, 0.7, L, wallM, 0, H + 0.35, -L / 2);
+            }
+            box(W + 2 * T0, H + 1.6, 0.4, wallM, 0, fy(L) + H / 2, -(L + 0.2));   // the far end (behind the black)
+            /* a rock mouth in an OPEN room is an outcrop: the shoulders and the hill over the tunnel (a walled room's own wall is the face) */
+            if (look === 'rock' && S.open) {
+                var RW = 4.4, oD = L + 0.6, oz = -(oD / 2) + 0.15;
+                [-1, 1].forEach(function (sd) { box(RW, H + 3.2, oD, wallM, sd * (W / 2 + T0 + RW / 2 - 0.4), (H + 3.2) / 2 - 0.7, oz); });
+                box(W + 2 * (T0 + RW) - 0.8, 2.6, oD, wallM, 0, H + 0.7 + 1.3, oz);
+                var rng = _mulberry32((typeof hqHash === 'function') ? hqHash(String(door.id || 'tunnel')) : 7);
+                [[-1, 0.2], [1, 0.4], [-1, 0.9], [1, 1.1]].forEach(function (b, i) {
+                    var bs = 1.6 + rng() * 1.4;
+                    box(bs * 1.3, bs, bs, wallM, b[0] * (W / 2 + T0 + 0.6 + rng() * 1.2), bs * 0.32 + (i > 1 ? H + 0.8 : 0), -(0.2 + b[1] * 0.6), rng() * 1.2, (rng() - 0.5) * 0.4);
+                });
+            }
+            /* the HQ's own stair: an arch round the cut, in the room's trim */
+            if (look === 'hall') {
+                var trimM = mat(S.trim || 'gold', (S.dadoColor != null) ? S.dadoColor : 0xffffff, 0x1a1a1a);
+                [-1, 1].forEach(function (sd) { box(0.7, H + 0.7, 0.36, trimM, sd * (W / 2 + 0.35), (H + 0.7) / 2 - 0.2, 0.18); });
+                box(W + 1.4, 0.7, 0.36, trimM, 0, H + 0.35, 0.18);
+            }
+        }
+        /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
+        var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
+        for (var i = 0; i < n; i++) {
+            var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, Math.pow(t, 1.3));
+            var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
+            var cm = new THREE.MeshBasicMaterial({ color: fadeCol, transparent: true, opacity: soft ? Math.min(1, op * 1.15) : op, depthWrite: false, side: THREE.DoubleSide });
+            if (softT) cm.map = softT;
+            var card = new THREE.Mesh(new THREE.PlaneGeometry(cw * U, ch * U), cm);
+            card.position.set(0, (fy(dd) + ch / 2 - (P.roof ? 0.02 : 0.3)) * U, -dd * U); card.renderOrder = 3; g.add(card);
+        }
+        /* THE CLOUD's banks either side */
+        if (look === 'cloud') {
+            var puffM = new THREE.MeshPhongMaterial({ color: 0xf6f7fb, shininess: 2 }); puffM.emissive = new THREE.Color(0x3a3c44);
+            var prng = _mulberry32((typeof hqHash === 'function') ? hqHash(String(door.id || 'cloud')) : 11);
+            for (var c = 0; c < L + 3; c += 1.6) [-1, 1].forEach(function (sd) {
+                var r = 0.9 + prng() * 0.8, pm = new THREE.Mesh(new THREE.SphereGeometry(r * U, 10, 8), puffM);
+                pm.position.set(sd * (W / 2 + 0.5 + r * 0.6 + prng() * 0.6) * U, (fy(c) + r * 0.35) * U, -c * U); pm.scale.y = 0.62; g.add(pm);
+            });
+        }
+        return { g: g, motion: null, ow: W, oh: H, plateY: Math.min(H, 2.2), blockers: [] };
+    }
+    /* where (x, z) stands in a passage: `depth` m out past its mouth (− = the room's side), `lat` m off its centre line */
+    function _hqPassAt(p, x, z) {
+        var dx = x - p.box.wx, dz = z - p.box.wz;
+        return { depth: -(dx * p.box.nx + dz * p.box.nz), lat: Math.abs(dx * p.box.nz - dz * p.box.nx) };
+    }
+    function _hqPassFloor(p, depth) { return p.y0 + p.passage.rise * Math.max(0, depth); }
+    /* the walker's feet in a wall passage (undefined = not in one: the room decides; null = its side) */
+    function _hqPassageSurface(x, z, curY) {
+        var ps = _hq.passages; if (!ps || !ps.length) return undefined;
+        for (var i = 0; i < ps.length; i++) {
+            var p = ps[i], P = p.passage; if (P.inside) continue;
+            var a = _hqPassAt(p, x, z);
+            if (a.depth < -0.45 || a.depth > P.len || a.lat > P.w / 2 + 2.5) continue;
+            var f = _hqPassFloor(p, a.depth);
+            if (curY != null && Math.abs(curY - f) > 1.5) continue;
+            if (a.lat < P.w / 2 - HQ_BODY_R - 0.04) return f;
+            if (a.depth > 0.02) return null;   // the passage's sides
+        }
+        return undefined;
+    }
+    function _hqPassageAir(x, z, y) {
+        var ps = _hq.passages; if (!ps || !ps.length) return undefined;
+        for (var i = 0; i < ps.length; i++) {
+            var p = ps[i], P = p.passage; if (P.inside) continue;
+            var a = _hqPassAt(p, x, z);
+            if (a.depth < -0.45 || a.depth > P.len || a.lat > P.w / 2 + 2.5) continue;
+            var f = _hqPassFloor(p, a.depth);
+            if (y < f - 3 || y > f + P.h + 3) continue;
+            if (a.lat < P.w / 2 - HQ_BODY_R - 0.04) return y >= f - 0.05 && (!P.roof || y + 1.7 <= f + P.h);
+            if (a.depth > 0.02) return false;
+        }
+        return undefined;
+    }
+    /* the boom follows the walker into a passage: over its floor, under its roof, never into its sides */
+    function _hqPassageCam(px, pz, py) {
+        var ps = _hq.passages; if (!ps || !ps.length) return undefined;
+        for (var i = 0; i < ps.length; i++) {
+            var p = ps[i], P = p.passage; if (P.inside) continue;
+            var a = _hqPassAt(p, px, pz);
+            if (a.depth < -0.3 || a.depth > P.len || a.lat > P.w / 2 + 3) continue;
+            var f = _hqPassFloor(p, a.depth);
+            if (py < f - 2 || py > f + P.h + 8) continue;
+            if (a.lat < P.w / 2 - 0.2) return py < f + 0.24 || (P.roof && py > f + P.h - 0.2);
+            if (a.depth > 0.05) return true;
+        }
+        return undefined;
+    }
+    /* THE DARK and the crossing: the screen follows the deepest passage the walker stands in; at `deep` the room changes */
+    var _hqPassFadeEl = null, _hqPassArriveAt = 0, _hqPassCol = 'black', _hqPassHoldAt = 0;
+    function _hqPassFade(k, col) {
+        var host = _hq && _hq.opts && _hq.opts.host; if (!host || typeof document === 'undefined') return;
+        if (!_hqPassFadeEl) {
+            if (k <= 0.004) return;
+            _hqPassFadeEl = document.createElement('div'); _hqPassFadeEl.className = 'hq-pass-fade';
+            _hqPassFadeEl.style.cssText = 'position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;z-index:38;opacity:0;background:#000;';
+        }
+        if (_hqPassFadeEl.parentNode !== host) host.appendChild(_hqPassFadeEl);
+        var bg = (col === 'white') ? '#f4f6fa' : '#000';
+        if (_hqPassFadeEl._bg !== bg) { _hqPassFadeEl.style.background = bg; _hqPassFadeEl._bg = bg; }
+        var o = Math.max(0, Math.min(1, k)), s = (o < 0.004) ? '0' : o.toFixed(3);
+        if (_hqPassFadeEl._o !== s) { _hqPassFadeEl.style.opacity = s; _hqPassFadeEl._o = s; }
+    }
+    function _hqTickPassages() {
+        var H = _hq, pl = H && H.player; if (!pl) return;
+        var ps = H.passages || [], dark = 0, col = 'black', now = performance.now();
+        for (var i = 0; i < ps.length; i++) {
+            var p = ps[i], P = p.passage, a = _hqPassAt(p, pl.x, pl.z);
+            if (a.lat > P.w / 2 + 0.6 || a.depth < -1 || a.depth > P.len + 1) { if (H.passLatch === p.door.id) H.passLatch = null; continue; }
+            if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
+            var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
+            k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
+            if (k > dark) { dark = k; col = P.fade; }
+            if (a.depth >= P.deep) {
+                if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
+                    H.passLatch = p.door.id; _hqPassCol = P.fade; _hqPassHoldAt = now;
+                    try { H.opts.onEnterDoor({ kind: 'door', id: p.door.id, label: p.door.label, sub: p.door.sub, state: p.state, door: p.door, rec: p, passage: true }); } catch (e) { console.warn('[HQ] the passage failed', e); }
+                }
+            } else if (a.depth < P.deep - 1.2 && H.passLatch === p.door.id) H.passLatch = null;
+        }
+        /* held black from the crossing until the far room lands (or 4 s: the room did not change), then up out of it */
+        if (_hqPassHoldAt && now - _hqPassHoldAt < 4000) { dark = 1; col = _hqPassCol; }
+        else _hqPassHoldAt = 0;
+        var since = now - _hqPassArriveAt;
+        if (since >= 0 && since < 1100) { var ar = 1 - since / 1100; ar = ar * ar * (3 - 2 * ar); if (ar > dark) { dark = ar; col = _hqPassCol; } }
+        _hqPassFade(dark, col);
+    }
     /* THE STAGE (OPEN_WORLD_PLAN Phase 1): a link door standing on a joined span is no longer a door — the road runs on into
        the neighbour; only its gantry stands (data.js hqStageJoinedDoor) */
     function _hqStageJoined(room, door) {
@@ -48733,6 +49059,19 @@ const ThreeRenderer = (function () {
         var built = b(U, { room: room, door: door, free: !!(box && box.free), cat: W, wx: grp.position.x / U, wz: grp.position.z / U, yaw: grp.rotation.y, y0: y0 });   // THE ROAD (2026-09-17): the placed frame, for a builder that samples the ground
         grp.add(built.g);
         if (joined) { grp._ew_hqJoined = door.id; G.add(grp); return; }   // THE STAGE: the gantry alone — no plate, no record (nothing to press: you walk on)
+        /* THE PASSAGES (2026-10-01): no plate on a tunnel's dark or a stair's (a trail keeps its waymark post), never a target, never
+           pressed — a record the walker's surface, the boom, the dark and the crossing read (_hq.passages) */
+        var PS = _hqPassageSpec(door);
+        if (PS) {
+            G.add(grp);
+            if (PS.look === 'trail' && box && !box.free) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }
+            var prec = { door: door, group: grp, lens: null, glow: null, plate: null, plateEl: null, plateChip: null, state: 'open', level: level, Rw: Rw, y0: y0, wide: false, ow: PS.w, oh: PS.h, inward: inward, box: box, leaf: null, way: kind, motion: null, openT: 0,
+                         mouthY: null, wayOpen: true, passage: PS };
+            _hq.doors.push(prec);
+            if (box) (_hq.passages = _hq.passages || []).push(prec);
+            _hqLampApply(prec, _hqDoorState(door));
+            return;
+        }
         var ow = built.ow || W.w || 1.2, oh = built.oh || W.h || 2.2;
         var el = document.createElement('div');
         el.className = 'hq-plate hq-plate-way';
@@ -51983,6 +52322,7 @@ const ThreeRenderer = (function () {
             /* a box: inside the four walls, one level */
             /* THE STAGE (OPEN_WORLD_PLAN Phase 1): past the edge through a joined span, or over a drawn neighbour */
             if (_hq.stage) { var stY = _hqStageSurface(x, z, curY, ignoreBlockers); if (stY !== undefined) return stY; }
+            if (_hq.passages && _hq.passages.length) { var paY = _hqPassageSurface(x, z, curY); if (paY !== undefined) return paY; }   // THE PASSAGES: the tunnel past the wall is floor
             if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return null;
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return null;   // THE RETRO-FUTURIST KIT: the filleted corner is wall
             y = 0;
@@ -52164,6 +52504,7 @@ const ThreeRenderer = (function () {
         if (room.kind === 'box') {
             if (_hq.stage) { var isA = _hqStageIslandAt(_hq.stage, x, z); if (isA) { var okA = false; _hqStageAsk(_hq, isA.E, function () { okA = _hqAirOK(isA.q.x, isA.q.z, y - isA.ry); }); return okA; } }   // THE COAST: the air over an island is the island's
             if (_hq.stage) { var stA = _hqStageSurface(x, z, null, true); if (stA !== undefined) return stA !== null && y >= stA - 0.05; }   // THE STAGE: the air past the edge is the road's / the neighbour's
+            if (_hq.passages && _hq.passages.length) { var paA = _hqPassageAir(x, z, y); if (paA !== undefined) return paA && _hqAirClearOfBlockers(x, z, y); }   // THE PASSAGES: the air in the tunnel, never its rock
             if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return false;
             if (S.round > 0 && _hqInFillet(x, z, S, HQ_BODY_R + 0.08)) return false;   // THE RETRO-FUTURIST KIT: the filleted corner is wall in the air too
             /* the site board (plan 7.2): lava / deep water is never overflown; a pit's floor stays under the feet */
@@ -52224,6 +52565,7 @@ const ThreeRenderer = (function () {
     function _hqCamBlocked(px, pz, py) {
         var S = _hq.room.shell;
         var r = Math.hypot(px, pz);
+        if (_hq.room.kind === 'box' && _hq.passages && _hq.passages.length) { var paC = _hqPassageCam(px, pz, py); if (paC !== undefined) return paC; }   // THE PASSAGES: the boom follows into the tunnel
         if (_hqCamInDoorway(px, pz, py)) return true;
         if (_hq.room.kind === 'box') {
             if (_hq.stage) { var stC = _hqStageCam(px, pz, py); if (stC !== undefined) return stC; }   // THE STAGE: the boom over the road through the edge / a drawn neighbour
@@ -52286,6 +52628,7 @@ const ThreeRenderer = (function () {
             if (distV < bestD) { bestD = distV; best = { kind: 'vehicle', id: b.id, label: b.label, sub: b.sub, verb: 'BOARD', vehicle: b.kind }; }
         });
         _hq.doors.forEach(function (d) {
+            if (d.passage) return;   // THE PASSAGES (2026-10-01): walked into, never a prompt
             if (d.join && _hqJoinOn(_hq, d.join.nb)) return;   // THE DOOR JOIN (Phase 2): an open doorway into a room on the stage — nothing to press, you walk on
             if (d.portalSurf && d.portalSurf !== 'wall') {
                 /* THE DOOR GUN rev 2: a hatch under your feet / over your head — read it in 3D, not through a wall plane */
@@ -56110,6 +56453,7 @@ const ThreeRenderer = (function () {
         }
         _hqTickDoors(dt, key);
         _hqTickAutoEnter(t);
+        _hqTickPassages();   // THE PASSAGES (2026-10-01): the dark with the depth, the crossing at `deep`
         _hqPortalTickAim();   // THE DOOR GUN (9.5): the ghost follows the aim while it is drawn
         if (H.opts.onDebug && now - H.lastDebug > 250) {
             H.lastDebug = now;
@@ -59974,6 +60318,7 @@ const ThreeRenderer = (function () {
     }
     function _hqLeave(opts) {
         var H = _hq; if (!H) return;
+        try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
@@ -60072,6 +60417,18 @@ const ThreeRenderer = (function () {
             if (memW) { carryAfter = memW.out; rideAfter = memW.ride; if (memW.camDelta != null) face += memW.camDelta * 180 / Math.PI; }
             if (_hq.portal) _hq.portal.hold = { slot: d.portal, at: performance.now() };
         }
+        else if (d && d.passage && d.box) {
+            /* THE PASSAGES (2026-10-01): an arrival comes out of the dark — `land` m inside the far passage, facing the room (the screen
+               rises out of the black as you walk on); the directory's GO stands 1.6 m in front of its mouth, facing it */
+            var PL = d.passage, lm = faceAway ? -PL.land : 1.6;
+            var lpx = d.box.wx + d.box.nx * lm, lpz = d.box.wz + d.box.nz * lm, lpy = null;
+            if (!faceAway || PL.inside) { try { lpy = _hqSurface(lpx, lpz, faceAway ? _hqPassFloor(d, PL.land) : d.y0, true); } catch (e) { lpy = null; } }
+            if (lpy == null || !isFinite(lpy)) lpy = faceAway ? _hqPassFloor(d, PL.land) : d.y0;
+            spot = new THREE.Vector3(lpx * U, lpy * U, lpz * U);
+            var towardP = _hqHeadingOf(-d.box.nx, -d.box.nz);
+            face = faceAway ? towardP + 180 : towardP;
+            if (_hqPassHoldAt || faceAway) { _hqPassHoldAt = 0; _hqPassArriveAt = performance.now(); }
+        }
         else if (d && d.box) {
             /* a flat wall: 2.4 m in front of the panel, facing it (or away from it).
                THE LANDING (2026-09-15): it was 1.6 m — with the boom 3.6 m behind
@@ -60130,6 +60487,7 @@ const ThreeRenderer = (function () {
         /* THE TRANSITION (6.2, 2026-09-21): the door you came through is seen from inside — its leaf stands OPEN on arrival and
            swings shut behind you (the rounds' own swing, _hqTickDoors reads npcOpenUntil); a portal / a way / an unmeasured angle never */
         if (d && d.motion && !d.portal && !d.angle && !HQ_DOOR_LOCKED[d.state] && d.motion.mode !== 'way') { d.openT = 1; d.openApplied = -1; d.npcOpenUntil = performance.now() + 1100; }
+        if (_hqPassHoldAt) { _hqPassHoldAt = 0; _hqPassArriveAt = performance.now(); }   // THE PASSAGES: whatever door the crossing lands at, up out of the black
         pl.x = spot.x / U; pl.z = spot.z / U; pl.y = spot.y / U; pl.visY = pl.y;
         pl.air = false; pl.vy = 0; pl.jumpT = -1;
         pl.mvx = 0; pl.mvz = 0;

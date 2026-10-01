@@ -15723,21 +15723,6 @@ _MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_redwoods = function () {
     return M.finishDelta();
 };
 
-/* THE STAIRCASE — the wooden flights up to the landing and THE TOWER, the
-   quarter pipes, the banisters. */
-_MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_stair = function () {
-    const M = _mfAreaDelta({ name: 'THE WOODS · THE STAIRCASE', base: 'grass_2', seed: 8574,
-        tints: { grass_2: '#9fd48a', wood_planks: '#a88458', wood: '#8a6a48' },
-        desc: 'THE STAIRCASE — the wooden flights up to the landing and THE TOWER, the quarter pipes, the banisters' });
-    M.rect(3, 1, 4, 2, 'wood_planks');
-    M.step(0, 3, 'wood_planks'); M.block(0, 2, 'wood_planks'); M.block(0, 1, 'wood_planks', 3);   // the flights and THE TOWER
-    M.wall(1, 3, 'N', { h: 2, tex: 'wood', see: true }); M.wall(1, 2, 'W', { h: 2, tex: 'wood', see: true });   // the banisters
-    M.step(6, 2, 'wood'); M.step(6, 3, 'wood');              // the quarter pipes
-    M.treeL(7, 1, 'tree_2'); M.treeL(1, 1, 'tree_3');
-    M.symAll();
-    return M.finishDelta();
-};
-
 /* DEAD MAN'S CAVE — the storm drain: the channel you wade, the sump, the
    ledges, the culvert, the grate, the graffiti. */
 _MF_AREA_DELTA_BUILDERS.site_prebuilt_fairy_forest_deadmans = function () {
@@ -25292,6 +25277,16 @@ const DOOR_HQ = {
            three-renderer.js _hqWayBuilders.taxi) with its rear door on the kerb side; the roof light comes on and the door
            opens as you come up; getting in is the fade. One of DOOR HQ's two open exits at the start. No sound (mondo's rule). */
         taxi:        { verb: 'GET IN', sub: 'THE TAXI · THE BACK SEAT', w: 1.0, h: 1.4 },
+        /* THE PASSAGES (2026-10-01, mondo: "Just get rid of the doors that dont make thematic sense or that would be better as actual
+           environmentally appropriate passages"): no leaf, no frame, no prompt — a way you WALK INTO. `passage` = how far it runs past
+           the wall (`len` m), where the room changes (`deep` m in: the screen darkens on the way there), how it looks (`look`: rock = a
+           tunnel through the rock, hall = a stair on into the building, trail = a path on between the trees, cloud = a road of cloud)
+           and what it fades to. A door row's own `passage` overrides any of it (w, h, len, deep, rise, look, fade, wall, floor, tread,
+           runner, land, pad); a `free` end lies over the room's own ground (the Woods' stair). three-renderer.js _hqPassageWay. */
+        tunnel:      { verb: 'WALK IN', sub: 'THE TUNNEL · INTO THE DARK', w: 2.8, h: 3.0, passage: { len: 11, deep: 7.5, look: 'rock' } },
+        trail:       { verb: 'WALK ON', sub: 'THE TRAIL · KEEP WALKING', w: 2.4, h: 4.0, passage: { len: 15, deep: 10, look: 'trail' } },
+        stairway:    { verb: 'CLIMB', sub: 'THE STAIR · KEEP CLIMBING', w: 4.0, h: 5.0, passage: { len: 10, deep: 6, look: 'hall', rise: 0.4, pad: false } },
+        cloud:       { verb: 'WALK ON', sub: 'THE CLOUD · INTO THE WHITE', w: 3.6, h: 4.0, passage: { len: 14, deep: 9, look: 'cloud', fade: 'white' } },
     },
     /* Phase 9.3 pilot: ordinary, reversible doors between existing board
        rooms. Move the Derelict ends to its airlock when that room exists.
@@ -25410,7 +25405,7 @@ const DOOR_HQ = {
         /* antarctica_agartha — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* antarctica_northpole — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
         /* THE DIVINE STAIR */
-        { id: 'heaven_olympus', route: 'divine', leaf: 'leaf_frame_only',
+        { id: 'heaven_olympus', route: 'divine', way: 'cloud',   // THE PASSAGES (2026-10-01): a gate of cloud is a road of cloud you walk into, not a frame
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
           a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 6, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
           b: { site: 'prebuilt_olympus', part: 'summit', wall: 'w', z: -19, y: 3.0 },   // THE AREAS (2026-09-18): on THE SUMMIT; AREA CONTENT D3 (2026-09-19): ON THE HIGH TERRACE's west end — a door you climb to
@@ -25429,7 +25424,7 @@ const DOOR_HQ = {
            at the stair's foot, `leaf_frame_only` — "nobody has ever wanted to shut it"). */
         { id: 'observatory_stair', route: 'divine', way: 'telescope',
           a: { site: 'prebuilt_vatican', part: 'observatory', wall: 'free', x: 0, z: -2.5, face: 180, sub: 'THE TELESCOPE · THE STAIR IN THE SKY' },
-          b: { site: 'prebuilt_heaven', part: 'stair', wall: 's', x: 0, leaf: 'leaf_frame_only', sub: 'THE FOOT OF THE STAIR · BACK TO THE DOME' },
+          b: { site: 'prebuilt_heaven', part: 'stair', wall: 's', x: 0, way: 'cloud', sub: 'THE FOOT OF THE STAIR · BACK TO THE DOME' },   // THE PASSAGES (2026-10-01): down off the stair into the white
           why: 'the stair that only goes up hangs in the sky over the dome; the archive filed it as an optical effect and the telescope keeps being pointed at it, and whoever looks long enough is on the first step; the frame at its foot has no door in it because nobody has ever wanted to shut it', note: 'an optical effect', draft: true },
         /* THE BASES */
         { id: 'area51_dumb', route: 'bases', leaf: 'leaf_wired_double',
@@ -25503,10 +25498,25 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_bohemian_grove', part: 'grove', wall: 'e', z: 12, sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN TO THE LODGE' },
           b: { site: 'prebuilt_lodge', part: 'halls', wall: 'e', z: 14, sub: 'THE MEMBERS’ TUNNEL · UNDER THE FIELDS TO THE GROVE' },   // AREA CONTENT D3 (2026-09-19): behind the bar, 14 m from the painting (R3)
           why: 'there is no tunnel under the lawn to the Lodge; the members are very clear about that, and they come out of the Lodge\'s east wall smelling of redwood', note: 'there is no tunnel', draft: true },
-        { id: 'woods_stair', route: 'woods', leaf: 'leaf_exit',
-          a: { site: 'prebuilt_fairy_forest', part: 'stair', wall: 'n', x: -0.875, y: 3.5, sub: 'THE DOOR AT THE TOP · INTO THE BUILDING' },
-          b: { room: 'woodstair', wall: 'n', x: 0, y: 8.75, sub: 'THE WOODS · THE DOOR AT THE TOP OF THE STAIR' },   // LEVEL_DESIGN_PLAN §4 (2026-09-30): the grand stair off the main hall, not the fire stair
-          why: 'four wooden risers in a clearing, a landing, an EXIT door with nothing behind it; the door opens on the landing of the stair hall off the main hall', note: 'nobody built it', draft: true },
+        /* THE STAIR IS THE DOORWAY (2026-10-01, mondo: "The stairs to the woods in door hq is supposed to be the doorway itself. Climbing it
+           and going past a certain threshold should take you to the woods. I dont want to climb the stairs just to walk through a door"):
+           no door at either top. The hall's flight runs on through an arch in its north wall and up into the dark (a `stairway` passage);
+           the woods' marble flight in the north of the clearing climbs past the treeline into the dark (a `free` passage over its own
+           last treads). The buffer room the woods end used to open on (THE STAIRCASE) is gone. */
+        { id: 'woods_stair', route: 'woods', way: 'stairway',
+          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 8.2, z: -9.5, face: 180, y: 8.56, sub: 'THE STAIR · UP INTO THE BUILDING',
+               passage: { look: 'stair', w: 3.6, h: 4.5, len: 7, deep: 5, rise: 0.778, spread: 1.6, land: 3.2 } },
+          b: { room: 'woodstair', wall: 'n', x: 0, y: 11.4, sub: 'THE STAIR · UP INTO THE WOODS',
+               passage: { w: 7, h: 5.2, len: 10, deep: 6, rise: 0.4, tread: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 }, land: 3.6 } },
+          why: 'a white stair standing alone in the woods climbs past the trees into the dark and comes out at the top of the stair hall off the main hall', note: 'nobody built it', draft: true },
+        /* THE TRAIL TO CAMELOT (2026-10-01, mondo: "why is the "door" from camelot to the fairy forest like a diving pool thing?? that makes
+           no sense"): the spring's `pool` seam was cut long ago; the woods reach the kingdom on foot now — the clearing's pasture path runs on
+           west between the trees into the dark and comes out on the track outside the moat, west of the castle (ZONES_PLAN §3: the
+           forest leads to Camelot) */
+        { id: 'woods_camelot', route: 'woods', way: 'trail',
+          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'w', z: -4.4, sub: 'THE TRAIL · WEST TO CAMELOT' },
+          b: { site: 'prebuilt_camelot', part: 'ward', wall: 'w', z: -12, sub: 'THE TRAIL · INTO THE WOODS' },
+          why: 'the path west out of the clearing does not stop at the pasture; it goes on under the trees and comes out at the castle moat', note: 'on foot', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
           a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: 0, sub: 'THE GRATE · INTO THE TUNNEL' },
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
@@ -25540,7 +25550,7 @@ const DOOR_HQ = {
           why: 'a projector screen in the attic under the one bulb, and a reel of home movies nobody in the family remembers shooting; the static after the last reel is where the bad nights come from', note: 'the reel is your childhood', draft: true },
         /* THE LEY LINE */
         /* CAMELOT KINGDOM (2026-09-18): the North Pole is the kingdom's — the sleigh road ends at the outer ward's east gate; the Lodge left the ley line for the ranch the same day */
-        { id: 'northpole_camelot', route: 'kingdom', leaf: 'leaf_frame_only',
+        { id: 'northpole_camelot', route: 'kingdom', way: 'trail',   // THE PASSAGES (2026-10-01): the sleigh road is a road you walk, no frame at either end
           a: { site: 'prebuilt_northpole', part: 'village', wall: 'n', x: 14, y: 2.2, sub: 'THE SLEIGH ROAD · TO CAMELOT' },   // THE AREAS (2026-09-18): out of THE VILLAGE; AREA CONTENT D3 (2026-09-19): ON THE DRIFT — a door you climb to
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'e', z: 24, sub: 'THE EAST GATE · THE SLEIGH ROAD NORTH' },   // on the approach, outside the moat (the moat is never crossed but by the drawbridge)
           why: 'the crown\'s roads run north until the snow; the pole keeps the crown\'s workshop and the crown keeps the pole\'s road', note: 'the snow is the kingdom\'s too', draft: true },
@@ -25625,7 +25635,7 @@ const DOOR_HQ = {
           note: 'it never ran dry', draft: true },
         /* THE SKY BRIDGE (CAMELOT CASTLE, 2026-09-18): the castle in the sky and the stairway to heaven hang in the same sky — a plain frame on the
            castle's east wall opens at the foot of the stair (its west wall, by the long way's foot); the divine line gains a station */
-        { id: 'skycastle_stair', route: 'divine', leaf: 'leaf_frame_only',
+        { id: 'skycastle_stair', route: 'divine', way: 'cloud',   // THE PASSAGES (2026-10-01): the sky bridge runs on into the cloud
           a: { site: 'prebuilt_camelot', part: 'sky', wall: 'e', z: 8, sub: 'THE SKY BRIDGE · THE STAIR IN THE SAME SKY' },
           b: { site: 'prebuilt_heaven', part: 'stair', wall: 'w', z: 21, sub: 'THE SKY BRIDGE · A CASTLE IN THE SAME SKY' },
           why: 'a castle in the sky and a stair in the sky are in the same sky; the frame between them has no door because there is nothing to keep out up here',
@@ -25799,7 +25809,7 @@ const DOOR_HQ = {
         /* THE FOUR EXITS: the cave has several ways out, and each one is a
            door into a site that is already on the map. Every one is two-way
            — the same object at both ends (7.0), never a one-way drop. */
-        { id: 'cave_hell', route: 'undercroft', leaf: 'leaf_hell_arch',
+        { id: 'cave_hell', route: 'undercroft', way: 'tunnel',   // THE PASSAGES (2026-10-01): the fissure is a tunnel you walk down, not an arch
           a: { site: 'prebuilt_hollow_earth', part: 'vent', wall: 'n', x: 0, y: 1.75 },
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Hell's bypassed board onto THE PIT's east wall (a lane south of the inner sun's) */
           b: { site: 'prebuilt_hell', part: 'pit', wall: 'e', z: -3, sub: 'THE FISSURE · THE HOT GALLERY · UP' },
@@ -25811,7 +25821,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_dumb', part: 'sublevel7', wall: 'n', x: 0, sub: 'LEVEL −6 · THE BLAST DOOR · UP INTO THE ROCK' },
           why: 'the base has five sides above ground and the sixth is here: rock cut square, a blast door in it, and a camera that has not been dusted since it stopped working',
           note: 'LEVEL −6', draft: true },
-        { id: 'cave_agartha', route: 'undercroft', leaf: 'leaf_frame_only',
+        { id: 'cave_agartha', route: 'undercroft', way: 'tunnel',   // THE PASSAGES (2026-10-01): the adit runs on through the rock
           a: { site: 'prebuilt_hollow_earth', part: 'adit', wall: 's', x: 0 },
           b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'n', x: -5, y: 2.4 },   // THE AREAS (2026-09-18): the adit comes out in THE CRYSTAL CITY; AREA CONTENT D3 (2026-09-19): ON THE ADIT TERRACE — a door you climb to
           why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
@@ -25825,7 +25835,7 @@ const DOOR_HQ = {
           a: { site: 'prebuilt_hollow_earth', part: 'adit', wall: 'e', z: 0, sub: 'THE CRAWL · UNDER THE CRYSTAL LEDGE · TO THE MOUTH' },
           b: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 's', x: 0, sub: 'THE CRAWL · A HOLE IN THE SOUTH ROCK · TO THE ADIT' },
           why: 'a crawl a miner cut between the adit and the mouth so as not to walk the cavern twice a day; it is not on the survey because he was not on the payroll', note: 'not on the payroll', draft: true },
-        { id: 'cave_hollow', route: 'undercroft', leaf: 'leaf_frame_only',
+        { id: 'cave_hollow', route: 'undercroft', way: 'tunnel',   // THE PASSAGES (2026-10-01): the cave mouth is a tunnel out
           a: { site: 'prebuilt_hollow_earth', part: 'mouth', wall: 'e', z: -5.25, y: 1.75 },
           b: { site: 'prebuilt_hollow_earth', part: 'innersun', wall: 'n', x: -5, y: 2.2, sub: 'THE CRUST LEDGE · THE MOUTH' },   // THE AREAS (2026-09-18): the mouth opens on THE INNER SUN; AREA CONTENT D3 (2026-09-19): ON THE CRUST LEDGE — a door you climb to
           why: 'the cave mouth: the complex\'s own way in and out, opening on the inner sun with the whole country under it',
@@ -26035,7 +26045,7 @@ const DOOR_HQ = {
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'THE RECORDS WING',        sub: 'CODEX · DAILY TASKS', action: { room: 'recwing', at: 'egress' },
                   desc: 'The wing. Room 42 keeps the file — dossiers on the reading desk, the unfiled sites in the card catalogue, the service stair up to Room 360. Room 247 keeps the time: three requirements a day, the punch clock, and every clock in the building that disagrees with every other one.' },
                 /* THE STAIRCASE TO THE WOODS (LEVEL_DESIGN_PLAN §4, 2026-09-30): the free stretch at 255° (Room 1984's door until 2026-09-13) */
-                { id: 'woods',          deg: 255, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · THE DOOR AT THE TOP', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The door at the top of the stair opens on the Woods.' },
+                { id: 'woods',          deg: 255, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · UP INTO THE WOODS', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The stair climbs into the dark and comes out in the Woods.' },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
@@ -31151,7 +31161,7 @@ const DOOR_HQ = {
            the landing on the north wall, and the door to the Woods on the landing under the clock. ── */
         woodstair: {
             label: 'THE STAIRCASE TO THE WOODS',
-            sub: 'THE STAIR · THE DOOR AT THE TOP',
+            sub: 'THE STAIR · UP INTO THE WOODS',
             kind: 'box',
             shell: {
                 w: 30, d: 44, h: 18,
@@ -31164,26 +31174,19 @@ const DOOR_HQ = {
                 fog: { color: 0x0e2a1c, density: 0.006 },
                 plate: { x: -9, z: 21.5, y: 3.2 },
             },
-            /* THE FIELD: flat checker (no noise); THE STAIR a stair ramp (19 m for 8.75 m: nineteen 0.46 m treads, under the climb) that ends
-               0.7 m inside THE LANDING (a masonry platform along the north wall, 16 × 8.5 m); the parapets are rails; the runner is paint on the
-               floor and the path sheet on the treads */
+            /* THE FIELD: flat checker (no noise); THE STAIR (2026-10-01, mondo: "The stairs to the woods in door hq is supposed to be the
+               doorway itself"): one flight from the gold ring straight into the north wall (28.5 m for 11.4 m) and on through the arch in
+               it up into the dark — the link's `stairway` passage (woods_stair) is the rest of the flight; no landing, no door at the top.
+               Marble cheek walls step up either side; the runner is paint on the floor and the path sheet on the treads */
             terrain: {
                 floor: 'checkerboard_3', cliff: 'marble_light', path: 'marble_light',
                 noise: { amp: 0, scale: 6 }, crag: false,
                 features: [
-                    { k: 'ramp', x0: 0, z0: 6.5, x1: 0, z1: -13.0, w: 7, h0: 0, h1: 8.75, stairs: true, edge: 0.2,              // THE STAIR (built: white marble, the blue runner up the middle)
-                      built: true, key: 'marble_light', side: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 } },
-                    { k: 'plateau', x: 0, z: -17.5, w: 16, d: 8.5, h: 8.75, edge: 0.2 },                                // THE LANDING
-                    { k: 'rail', x0: -3.7, z0: 5.8, x1: -3.7, z1: -13.0 },                                               // the stair's parapets
-                    { k: 'rail', x0: 3.7, z0: 5.8, x1: 3.7, z1: -13.0 },
-                    { k: 'rail', x0: -7.8, z0: -13.4, x1: -3.8, z1: -13.4 },                                              // the landing's front, either side of the stair's head
-                    { k: 'rail', x0: 3.8, z0: -13.4, x1: 7.8, z1: -13.4 },
-                    { k: 'rail', x0: -7.8, z0: -13.4, x1: -7.8, z1: -21.6 },                                              // the landing's ends
-                    { k: 'rail', x0: 7.8, z0: -13.4, x1: 7.8, z1: -21.6 },
+                    { k: 'ramp', x0: 0, z0: 6.5, x1: 0, z1: -22.0, w: 7, h0: 0, h1: 11.4, stairs: true, edge: 0.2,              // THE STAIR (built: white marble, the blue runner up the middle)
+                      built: true, key: 'marble_light', side: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light' } },
                 ],
                 marks: [
                     { k: 'rect', x: 0, z: 14.6, w: 4.2, d: 16.2, color: 0x2f58d0 },                                      // THE RUNNER from the door to the stair's foot
-                    { k: 'rect', x: 0, z: -17.6, w: 4.2, d: 8.4, y: 8.75, color: 0x2f58d0 },                            // … and across the landing to the door
                     { k: 'ring', x: 0, z: 10, r: 11.2, w: 0.7, color: 0xd8b048 },                                         // THE GOLD RING
                     { k: 'ring', x: 0, z: 10, r: 12.2, w: 0.18, color: 0xd8b048 },
                     { k: 'ring', x: 0, z: 10, r: 10.3, w: 0.18, color: 0xd8b048 },
@@ -31201,10 +31204,9 @@ const DOOR_HQ = {
                 { key: 'greek_column',   x: -7.5, z: 17, h: 11 }, { key: 'greek_column', x: 7.5, z: 17, h: 11 },
                 { key: 'greek_column',   x: -7.5, z: 9.5, h: 11 }, { key: 'greek_column', x: 7.5, z: 9.5, h: 11 },
                 { key: 'greek_column',   x: -7.5, z: 2, h: 11 }, { key: 'greek_column', x: 7.5, z: 2, h: 11 },
-                /* THE CLOCK over the door at the top, the lamps and the braziers either side of it */
-                { key: 'wall_clock',     wall: 'n', x: 0, h: 5.2, mount: 13.4 },
-                { key: 'globe_lamp',     x: -5.6, z: -19.8, y: 8.75 }, { key: 'globe_lamp', x: 5.6, z: -19.8, y: 8.75 },
-                { key: 'brazier',        x: -6.4, z: -15, y: 8.75 }, { key: 'brazier', x: 6.4, z: -15, y: 8.75 },
+                /* THE CLOCK over the way back to the main hall (2026-10-01: the north wall is the arch now), the braziers at the stair's foot */
+                { key: 'wall_clock',     wall: 's', x: 0, h: 5.2, mount: 9.5 },
+                { key: 'brazier',        x: -5.2, z: 7.6 }, { key: 'brazier', x: 5.2, z: 7.6 },
                 /* THE WINDOWS high in the side walls (the green light) */
                 { key: 'stained_glass',  wall: 'w', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'w', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'w', z: -12, h: 5.0, mount: 10.5 },
                 { key: 'stained_glass',  wall: 'e', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: -12, h: 5.0, mount: 10.5 },
@@ -32389,11 +32391,11 @@ const DOOR_HQ = {
             },
             doors: [
                 /* OPEN WORLD Phase 4: the mouth's door FIRST — the floor plan's guarantee carves from the first door to every door the walker cannot reach (it was the well room's, on the floor; from a door on a tier the hot shelf's could be dropped off and never climbed to) */
-                { id: 'mouth', wall: 'e', z: 16.5, leaf: null,
+                { id: 'mouth', wall: 'e', z: 16.5, way: 'tunnel',   // THE PASSAGES (2026-10-01): walked through the rock, no frame
                   label: 'THE CAVE MOUTH', sub: 'OUT · ROOM 180',
                   action: { room: 'site_prebuilt_hollow_earth_mouth', at: 'gallery' },
                   desc: 'Over the plank bridge, on the east bank where the river goes under the wall: daylight, of a kind — the inner sun, which never sets and never quite rises either.' },
-                { id: 'vent', wall: 'n', x: 18.375, y: 3.5, leaf: 'leaf_hell_arch',
+                { id: 'vent', wall: 'n', x: 18.375, y: 3.5, way: 'tunnel',   // THE PASSAGES (2026-10-01): walked through the rock, no frame
                   label: 'THE FISSURE', sub: 'THE HOT SIDE · ROOM 666',
                   action: { room: 'site_prebuilt_hollow_earth_vent', at: 'gallery' },
                   desc: 'Up on the hot shelf, across the lava by the causeway: the warmth has a door in it.' },
@@ -32401,7 +32403,7 @@ const DOOR_HQ = {
                   label: 'LEVEL −6', sub: 'THE BASE’S SIXTH SIDE · ROOM 555',
                   action: { room: 'site_prebuilt_hollow_earth_blast', at: 'gallery' },
                   desc: 'On the high tier, the top of the cavern: the rock is cut square here, which rock does not do. Somebody finished the cut with a door.' },
-                { id: 'adit', wall: 's', x: 14.875, leaf: 'leaf_frame_only',
+                { id: 'adit', wall: 's', x: 14.875, way: 'tunnel',   // THE PASSAGES (2026-10-01): walked through the rock, no frame
                   label: 'THE CRYSTAL ADIT', sub: 'THE WARM LIGHT · ROOM 88',
                   action: { room: 'site_prebuilt_hollow_earth_adit', at: 'gallery' },
                   desc: 'Across the stream, on the far floor: a worked adit, squared and swept, with a light at the far end that is not a torch.' },
@@ -32480,7 +32482,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'gallery', wall: 's', x: 0, leaf: 'leaf_hell_arch',
+                { id: 'gallery', wall: 's', x: 0, way: 'tunnel',   // THE PASSAGES (2026-10-01): walked through the rock, no frame
                   label: 'THE CAVERN', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'vent' },
                   desc: 'Back onto the hot shelf, and down the long ramp into the cool of the cavern, which is what the cavern is for.' },
@@ -32601,7 +32603,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'gallery', wall: 'n', x: 0, leaf: 'leaf_frame_only',
+                { id: 'gallery', wall: 'n', x: 0, way: 'tunnel',   // THE PASSAGES (2026-10-01): walked through the rock, no frame
                   label: 'THE CAVERN', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'adit' },
                   desc: 'Back into the dark, which after this takes a minute.' },
@@ -32667,7 +32669,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'gallery', wall: 'w', z: -1.75, leaf: null,
+                { id: 'gallery', wall: 'w', z: -1.75, way: 'tunnel',   // THE PASSAGES (2026-10-01): walked through the rock, no frame
                   label: 'THE CAVERN', sub: 'BACK INTO THE CAVE',
                   action: { room: 'site_prebuilt_hollow_earth_gallery', at: 'mouth' },
                   desc: 'Back in. The cave is colder than the country and the country is warmer than it has any right to be.' },
@@ -33924,7 +33926,7 @@ const DOOR_HQ = {
             label: 'THE WOODS · THE CLEARING',
             sub: 'THE CROSSROADS · SEVEN PATHS · THE OLD TREE',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'clearing',
-            shell: hqWoodsShell({ w: 49, d: 38.5, plate: { x: 0, z: -18.6, y: 4.2 } }),
+            shell: hqWoodsShell({ w: 49, d: 38.5, plate: { x: 0, z: -18.6, y: 4.2 }, forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4, canopy: { to: 54 } } }),   // THE CANOPY (2026-10-01): the woods run on to the fog — what the stair's top looks out over
             /* THE FIELD (2026-09-17, the terrain rooms — 49 × 38.5 m): the path in
                from the forest is the hollow tree on the south wall; THE KNOLL in the
                north-west (a walkable rise, the trail's door under it); THE STREAM out
@@ -33937,11 +33939,10 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt_2',
                 noise: { amp: 0.2, scale: 6 },
-                gen: { kind: 'rooms', seed: 11, loops: 3 },                          // THE FLOOR PLAN (2026-09-17): clearings joined by winding paths through the thicket
+                gen: { kind: 'rooms', seed: 22, loops: 3 },                          // THE FLOOR PLAN (2026-09-17): clearings joined by winding paths through the thicket (seed 11 → 22 on 2026-10-01: the stair's door left the plan, and seed 22 keeps the clearing's 8×8 arena)
                 features: [
                     { k: 'hill', x: -13, z: -9, r: 8, h: 2.4 },                                              // THE KNOLL
                     { k: 'hill', x: 12, z: 12, r: 6, h: 1.0 },
-                    { k: 'dip', x: 9, z: -8, r: 4.5, h: 0.7 },
                     { k: 'ridge', pts: [[-24, 3.5], [-15, 13], [-6, 17.5]], w: 5.5, h: 1.3 },                 // the bank along the south-west
                     { k: 'plateau', x: 14.5, z: -12.5, w: 6.5, d: 5.5, rot: 15, h: 3.6, edge: 0.3 },        // THE CRAG (the tape's)
                     { k: 'stream', pts: [[24.5, -13], [21, -8], [19, -3], [18, 4], [14, 10], [8, 14], [-2, 16], [-9, 19.25]], w: 2.6, y: -0.25, depth: 0.55 },   // THE STREAM
@@ -33952,7 +33953,15 @@ const DOOR_HQ = {
                     /* AREA CONTENT D4 (2026-09-20): five trees on the eight doors' sightlines (R3 — the hub sees one door from any door) */
                     { k: 'tree', x: 18.0, z: 11.2, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
                     { k: 'tree', x: 5.0, z: 12.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.1, z: -8.0, kind: 'tree', h: 7.0, r: 0.8 },
-                    { k: 'rail', x0: 9.0, z0: -16.5, x1: 4.0, z1: -16.5 },                                    // a fence rail by the crag (the park rule's grind)
+                    { k: 'rail', x0: 12.5, z0: -17.0, x1: 17.5, z1: -17.0 },                                  // a fence rail behind the crag (the park rule's grind)
+                    /* THE STAIRCASE (2026-10-01, mondo: "those stairs should be one of the weenies of the woods, like they ascend past the tree
+                       line and when youre walking down it you can see a lot of the woods"): a white marble flight standing alone in the north of
+                       the clearing, 14 m up past the treeline, its cheek walls stepping up with it, the blue runner of the building's own stair
+                       up the middle. Its last flight climbs into the dark — the building's stair hall is past it (link woods_stair, a `free`
+                       passage over these treads: no door at the top) */
+                    { k: 'ramp', x0: 8.2, z0: 1.5, x1: 8.2, z1: -16.5, w: 3.6, h0: 0, h1: 14, stairs: true, edge: 0.2,
+                      built: true, key: 'marble_light', side: 'marble_light', runner: { w: 2.0, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light', head: true } },
+                    { k: 'path', pts: [[8, 6], [8.2, 2.6]], w: 1.8 },                                         // the crossroads' path to its foot
                     { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-8, -8], [-14, -17]], w: 1.8 },        // the path in, over the knoll to the trail
                     { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
                     { k: 'path', pts: [[-4, 0], [-14, -2], [-22, -4.4]], w: 1.6 },                            // to the pasture
@@ -33969,15 +33978,12 @@ const DOOR_HQ = {
                   label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420',
                   action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
                   desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' },
-                { id: 'stair', wall: 'n', x: 9.625, leaf: null,
-                  label: 'THE STAIRCASE', sub: 'A FLIGHT OF STAIRS · IN THE WOODS',
-                  action: { room: 'site_prebuilt_fairy_forest_stair', at: 'clearing' },
-                  desc: 'Past the crag, a clearing with a staircase in it. Nobody built it there. It is in good repair.' },
-                { id: 'redwoods', wall: 'e', z: -7.875, leaf: null,
+                /* THE PASSAGES (2026-10-01): the trail and the cave mouth are walked into (DOOR_HQ.ways trail / tunnel) — no frames in the trees */
+                { id: 'redwoods', wall: 'e', z: -7.875, way: 'trail',
                   label: 'THE REDWOOD TRAIL', sub: 'EAST · TOWARD THE GROVE',
                   action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
                   desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
-                { id: 'deadmans', wall: 'e', z: 9.625, leaf: null,
+                { id: 'deadmans', wall: 'e', z: 9.625, way: 'tunnel',
                   label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
                   desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
@@ -33990,12 +33996,11 @@ const DOOR_HQ = {
             props: [
                 { key: 'cave_torch',     x: 2.6, z: 17.6 },                                 // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
                 { key: 'cave_torch',     x: -6.125, z: -16.625 },
-                { key: 'cave_torch',     x: 11.375, z: -16.625 },
+                { key: 'cave_torch',     x: 11.0, z: 2.2 },                                   // (2026-10-01) at the stair's foot
                 { key: 'cave_torch',     x: 21.875, z: 6.125 },
                 { key: 'cave_torch',     x: -21.875, z: -0.875 },
                 { key: 'campfire',       x: -4.5, z: 6.0 },                                  // somebody's fire, and this week's
                 { key: 'signpost',       x: -1.0, z: 10.5, face: 30 },                       // THE SIGNPOST at the crossroads: seven arms, six of them right
-                { key: 'culvert_mouth',  wall: 'e', z: 13.2 },                               // the culvert in the crag beside the storm drain's mouth
                 { key: 'cardboard_boxes', x: -21.875, z: 12.25, face: 20 },                 // Facilities' rope, at the ritual path
                 { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
                 { key: 'floor_stain',    x: 2.625, z: -4.375 },
@@ -34043,7 +34048,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'w', z: -0.875, leaf: null,
+                { id: 'clearing', wall: 'w', z: -0.875, way: 'trail',   // THE PASSAGES (2026-10-01): the trail back, walked
                   label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
                   desc: 'Back west, where the trees are young enough to be trees.' },
@@ -34071,62 +34076,6 @@ const DOOR_HQ = {
                 '“The lantern.” “What lantern?” “Exactly.”',
             ],
             spawn: { x: -9.625, z: 0.875, face: 90 },
-        },
-        /* ── THE STAIRCASE — the lone flight in the woods: four wooden risers to a landing and a door with nothing behind it, which opens ── */
-        site_prebuilt_fairy_forest_stair: {
-            label: 'THE WOODS · THE STAIRCASE',
-            sub: 'A WOODEN FLIGHT · A LANDING · A DOOR',
-            kind: 'box', site: 'prebuilt_fairy_forest', part: 'stair',
-            shell: hqWoodsShell({ w: 21, d: 21, plate: { x: 0, z: -9.8, y: 5.6 }, floorColor: 0x66784a, mood: { light: 0xb0c4ff, ambient: 0.34 } }),
-            /* THE FIELD (2026-09-17): THE STAIRCASE — a wooden flight (a stair ramp, ten
-               metres, treads two samples deep) up to THE LANDING (3.5 m) the EXIT door
-               stands on, its banisters the rails; two quarter pipes on the floor for
-               the rider; THE TOWER (5 m) in the west — no stair to it, the tape on top. */
-            terrain: {
-                floor: 'grass_2', cliff: 'rock_wall_1', path: 'wood_planks',
-                noise: { amp: 0.16, scale: 5 },
-                gen: { kind: 'rooms', seed: 15 },
-                features: [
-                    { k: 'hill', x: 6, z: 2, r: 4, h: 0.6 },
-                    { k: 'ramp', x0: 0, z0: 6.0, x1: 0, z1: -4.0, w: 3.0, h0: 0, h1: 3.5, stairs: true },      // THE STAIRCASE
-                    { k: 'plateau', x: 0, z: -7.4, w: 8, d: 6.4, h: 3.5 },                                     // THE LANDING
-                    { k: 'plateau', x: -7, z: 4, r: 1.6, h: 5.0, edge: 0.3 },                                 // THE TOWER (the tape's)
-                    { k: 'rail', x0: 1.6, z0: 5.6, x1: 1.6, z1: -4.0 },                                        // the banisters
-                    { k: 'rail', x0: -1.6, z0: 5.6, x1: -1.6, z1: -4.0 },
-                    { k: 'rail', x0: 3.9, z0: -4.4, x1: 3.9, z1: -10.4 },                                      // the landing's east rail
-                    { k: 'rail', x0: -3.9, z0: -4.4, x1: -3.9, z1: -10.4 },
-                    { k: 'path', pts: [[0, 6.0], [0, -4.0]], w: 3.0 },
-                    { k: 'grove', n: 8, kinds: ['tree', 'tree_2', 'tree_3'], seed: 17 },
-                    { k: 'scatter', key: 'fern', n: 6, seed: 18 },
-                ],
-            },
-            doors: [
-                { id: 'clearing', wall: 's', x: -0.875, leaf: null,
-                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',
-                  action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'stair' },
-                  desc: 'Back past the crag. The stairs stay where they are, which is the most that can be said for them.' },
-            ],
-            counters: [],
-            props: [
-                { key: 'quarter_pipe',   x: 6.5, z: 7.0, face: 270 },                       // THE PARK: two pipes facing each other on the floor
-                { key: 'quarter_pipe',   x: 6.5, z: -1.5, face: 90 },
-                { key: 'cave_torch',     x: -7.875, z: 7.0 },
-                { key: 'cave_torch',     x: 7.0, z: 3.5 },
-                { key: 'cave_torch',     x: -5.25, z: -6.5 },
-                { key: 'lesson_sign',    x: 3.5, z: 4.0, face: 270, lesson: 'stair' },       // the plate at the foot: DO NOT USE THE STAIRS. USE THE STAIRS.
-                { key: 'paper_sheet',    x: -3.5, z: 3.5, y: 0.01, face: 250 },
-                { key: 'floor_stain',    x: 2.625, z: 2.625 },
-            ],
-            agents: [],
-            npcSpots: [{ x: 2.6, z: -7.0, face: 250, race: 'mothman' }],
-            onlineSpots: [],
-            lines: [
-                '“Who built the stairs?” “Nobody.” “Who maintains them?” “Also nobody. Look at the varnish.”',
-                '“Do not go up.” “Why not?” “The door at the top opens.” “Onto what?” “Onto the building. That is the problem.”',
-                '“Four steps.” “Four big ones.”',
-            ],
-
-            spawn: { x: -4.375, z: 7.0, face: 0 },
         },
         /* ── DEAD MAN'S CAVE — THE STORM DRAIN (2026-09-16, the user: "literally a sewer, a narrow hallway like the service corridors"): an ENCLOSED brick culvert under the crag, the channel down its middle, a sump chamber halfway, the grate onto THE TUNNEL at the far end ── */
         site_prebuilt_fairy_forest_deadmans: {
@@ -34184,7 +34133,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'w', z: 0, leaf: null,
+                { id: 'clearing', wall: 'w', z: 0, way: 'tunnel', passage: { h: 2.6, len: 9, deep: 6 },   // THE PASSAGES (2026-10-01): the culvert's mouth, walked out of
                   label: 'THE CLEARING', sub: 'BACK OUT · INTO THE TREES',
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
                   desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
@@ -35881,7 +35830,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'gates', wall: 'n', x: 0, y: 12, leaf: null,
+                { id: 'gates', wall: 'n', x: 0, y: 12, way: 'cloud',   // THE PASSAGES (2026-10-01): the top of the stair runs on into the white
                   label: 'THE CLOUD FIELDS', sub: 'THE TOP OF THE STAIR · ON TO THE GATE',
                   action: { room: 'site_prebuilt_heaven_gate', at: 'stair' },
                   desc: 'The last step. Past it the clouds are level, which after four flights reads as a kindness and is a queue.' },
@@ -35977,7 +35926,7 @@ const DOOR_HQ = {
             },
             /* the north wall at x 0, 1.75 m up on the dais, is THE BAY DOOR (siteRooms.entry, 2026-09-18): Room 777's hotel door — the board room is bypassed, the gate lands you here */
             doors: [
-                { id: 'stair', wall: 's', x: 0, leaf: null,
+                { id: 'stair', wall: 's', x: 0, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white
                   label: 'THE STAIRWAY', sub: 'DOWN · FOUR FLIGHTS · TO THE DOME',
                   action: { room: 'site_prebuilt_heaven_stair', at: 'gates' },
                   desc: 'The top of the stair, from above. It goes down from here, which the sign does not admit.' },
@@ -37834,7 +37783,7 @@ const DOOR_HQ = {
             },
             doors: [
                 /* the four stations are LINK doors (routes.ley, generated at load); the tell's is the same site's: a pair */
-                { id: 'tell', wall: 'n', x: -60, leaf: 'leaf_frame_only',
+                { id: 'tell', wall: 'n', x: -60, way: 'tunnel', passage: { h: 2.6, rise: 0.3 },   // THE PASSAGES (2026-10-01): the first mouth climbs up into the tell
                   label: 'GÖBEKLI TEPE', sub: 'THE FIRST MOUTH · UP INTO THE TELL',
                   action: { room: 'site_prebuilt_gobekli_tell', at: 'ley' },
                   desc: 'A frame in the rock with the oldest daylight in the world behind it. The tunnel is older than the frame; the frame is older than the temple.' },
@@ -38084,7 +38033,7 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'ley', wall: 'n', x: -10, leaf: 'leaf_frame_only',
+                { id: 'ley', wall: 'n', x: -10, way: 'tunnel', passage: { rise: -0.3 },   // THE PASSAGES (2026-10-01): the first mouth goes down into the line
                   label: 'THE LEY LINES', sub: 'THE FIRST MOUTH · DOWN THE LINE',
                   action: { room: 'site_prebuilt_gobekli_leylines', at: 'tell' },
                   desc: 'A frame in the side of the tell where the dig stopped digging. Whoever made the temple made it on top of this; whoever made this did not make the temple.' },
@@ -40747,6 +40696,7 @@ function hqLinkDoors(roomId) {
                (the well room's heads: THE GARDEN WELL · CLIMB UP) */
             sub: end.sub || (wear.way ? (wear.cat.sub || 'STEP THROUGH') : 'WALK THROUGH'), action: { room: to, at: other.door ? other.door : 'link_' + link.id } };   // the far end lands AT a docked end's own door
         if (wear.way) d.way = wear.way;
+        if (end.passage) d.passage = end.passage;   // THE PASSAGES (2026-10-01): an end's own tunnel / stair / trail shape
         if (link.secret || end.secret) { d.secret = true; d.leaf = null; d.label = 'A DRAUGHT'; d.sub = 'A DOOR THAT IS NOT ON A PLATE · ' + String(toRoom.label || to).toUpperCase(); }   // THE AREAS (2026-09-18): a DRAUGHT — a link that is a hidden passage at both ends (the renderer hangs a wall slab; the map shows it once both rooms are seen)
         if (end.verb) d.verb = String(end.verb);
         if (link.why) d.why = link.why;
@@ -41673,7 +41623,6 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              /* the woods' places (one shell): a sunlit green haze under the canopy */
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
-                             site_prebuilt_fairy_forest_stair: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              /* the Grove (old redwoods, a deeper green) and the ranch's corn fields (a dry, dusty haze) by day */
                              site_prebuilt_bohemian_grove_grove: { fog: 0x8aa088, tint: 0x9cbede, clouds: 0.3 },
@@ -47219,12 +47168,14 @@ function hqTerrainCompile(room, roomId) {
     (room.doors || []).forEach(d => {
         if (d.level) return;
         const wall = d.wall;
+        if (wall === 'free' && d.way && DOOR_HQ.ways && DOOR_HQ.ways[d.way] && DOOR_HQ.ways[d.way].passage) return;   // THE PASSAGES (2026-10-01): a free passage lies over the room's own ground (the Woods' stair) — nothing flattened
         if (wall === 'free') {   // a free way: a rect pad from the object to 1.2 m past its landing, turned to its face (a tongue the landing stands on)
             const f = (d.face || 0) * Math.PI / 180, cx = (d.x || 0) + Math.sin(f) * 1.5, cz = (d.z || 0) - Math.cos(f) * 1.5;
             doorPads.push({ door: d, x: cx, z: cz, w: R.padW, d: 4.8, rot: 180 + (d.face || 0), hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: d.z || 0 }, free: true }); return;
         }
         if (!wall) return;
         const wayCat = (d.way && DOOR_HQ.ways && DOOR_HQ.ways[d.way]) || null;
+        if (wayCat && wayCat.passage && (d.passage && d.passage.pad != null ? d.passage.pad : wayCat.passage.pad) === false) return;   // THE PASSAGES (2026-10-01): a stair that runs on into the wall keeps its flight — no landing flattened at its head
         const w = (wayCat && wayCat.pad) ? Math.max(R.padW, wayCat.pad) : (d.wide ? R.padW + 0.8 : R.padW);   // THE ROAD (2026-09-17): a way may ask for a wider landing (the whole street)
         if (wall === 'n') doorPads.push({ door: d, x: d.x || 0, z: -S.d / 2 + R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: -S.d / 2 + 1.2 } });
         else if (wall === 's') doorPads.push({ door: d, x: d.x || 0, z: S.d / 2 - R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: S.d / 2 - 1.2 } });
@@ -48039,7 +47990,6 @@ const HQ_TAPE_SHEET = {
     /* THE WOODS (9.3 stage 3, 2026-09-16): seven tapes re-homed — the garden's tree (the names are carved in THE OLD TREE now), and six sites' second tapes (Shasta's map on the tree, the ranch's mesa, the forest's lantern, the grove's fire, Babel's climb, Downtown's alley camera) — the hundred stays a hundred; a built site keeps at least one */
     site_prebuilt_fairy_forest_clearing: [['1618', 'A tree in the clearing. Two names carved in it. One is yours, the other is not yet.', 'parents'], ['THE RING', 'Toadstools in a circle. On the second pass, the circle is one wider.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18)
     site_prebuilt_fairy_forest_redwoods: [['THE LANTERN', 'A lantern moving between the redwoods at ankle height. It stops when watched.', 'evidence']],
-    site_prebuilt_fairy_forest_stair:    [['THE CLIMB', 'A staircase in the woods that keeps going. The landing is the fourth step every time.', 'evidence']],
     site_prebuilt_fairy_forest_deadmans: [['THE ALLEY CAMERA', 'A security feed of a storm drain. A door in the drain wall opens onto this building’s platform.', 'facility']],
     site_prebuilt_fairy_forest_ritual:   [['THE CREMATION OF CARE', 'Men in robes at a fire between the stones. One of them is on the Bureau’s wall.', 'facility']],
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): four tapes re-homed — Hell's FORM 666, Heaven's THE GATE, the Vatican's THE CONFESSIONAL
@@ -48398,7 +48348,6 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_skinwalker_fields:    { tape: { x: 18.0, z: -14.0 }, tape2: { x: 8.0, z: 12.0 } },   // THE AREAS (2026-09-18): the board's tape came onto the fields — by the track     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
     site_prebuilt_fairy_forest_clearing: { tape: { x: 14.5, z: -12.5 } },   // THE CRAG under the staircase's lane
     site_prebuilt_fairy_forest_redwoods: { tape: { x: 10.0, z: 6.0 } },     // THE STAND
-    site_prebuilt_fairy_forest_stair:   { tape: { x: -7.0, z: 4.0 } },      // THE TOWER
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the skull stack, the colossus's plinth, the stairway's pinnacle, the pillar of light — the door gun's four */
     site_prebuilt_vatican_catacombs: { tape: { x: -13.0, z: -9.0 } },
     site_prebuilt_hell_pit:          { tape: { x: -8.0, z: -12.0 } },   // THE PLINTH (second pass 2026-09-18: moved north-west, clear of the descent)
@@ -52320,7 +52269,7 @@ const HQ_ARENA_RULES = {
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101010101010101010101010111110101010101011111010101010101111101010101010111110101010101011111010101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":8,"base":"grass_rocky","open":1,"keys":["dirt_2","grass_rocky","grass_2"],"cells":"01010101111111241111111101010101111124240101010124111101111101012424011111010101241101110111010111110111011111011111011111011101"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"04041121211111110411112121111111211111212111112121212121212121211121212121211104212121212111110411111121211111111111112121111111"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":9,"oz":10,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","rock_wall_1"],"cells":"01010111111111111111011111111111111111012411241111111101112411241111110101111101111111010101011101011111011111241111111101111111"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":9,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"01111101010101011111110101010101010111010101010101010111010124010101011101240124010101111101011101010111111111011111010111010124"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":21,"oz":13,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"01010101010101010101010101010101010101010102020201010101010202020101010101020202010101010102020201010101010101140101010101010114"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":20,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
