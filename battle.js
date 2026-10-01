@@ -2426,16 +2426,7 @@
                 // swapOnHit half below still runs.
                 if (!unit._chargeHandledExternally) {
                 const fromX = unit.x, fromY = unit.y;
-                const adj = [
-                    { x: target.x - 1, y: target.y },
-                    { x: target.x + 1, y: target.y },
-                    { x: target.x, y: target.y - 1 },
-                    { x: target.x, y: target.y + 1 }
-                ];
-                adj.sort((a, b) =>
-                    (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
-                  - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
-                const landTile = adj.find(t => canOccupy(t.x, t.y));
+                const landTile = chargeLandingTile(unit, target);   // the preview reads the same tile
                 if (landTile) {
                     unit.x = landTile.x;
                     unit.y = landTile.y;
@@ -4608,7 +4599,7 @@
                 fromZ: target ? (target.z ?? 0) : 0,
                 x: target ? target.x : 0, y: target ? target.y : 0, z: target ? (target.z ?? 0) : 0,
                 moved: 0, steps: [], hitWall: false, hitUnits: [], bounces: 0,
-                slamDamage: 0, animMs: 0, chain: []
+                slamDamage: 0, animMs: 0, chain: [], simSlams: []
             };
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
             /* THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne): a forced slide an ENEMY drives (a reel-in with
@@ -4673,8 +4664,19 @@
                             });
                         }
                         res.slamDamage += crash;
+                    } else {
+                        /* the forecast reads the crash both ways (simSlams) and the chain the pin starts */
+                        res.simSlams.push({ unitId: occ.id, dmg: crash }, { unitId: target.id, dmg: crash });
                     }
                     if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
+                        if (simulate) {
+                            const sub = resolveForcedSlide(occ, vx, vy, tDist, {
+                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1
+                            });
+                            res.chain.push({ unit: occ, res: sub });
+                            if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
+                            if (sub.simSlams && sub.simSlams.length) res.simSlams = res.simSlams.concat(sub.simSlams);
+                        }
                         if (!simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
                                 byUnit: opts.byUnit, label: opts.label,
@@ -4726,6 +4728,8 @@
                     impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
                     _slideSlamDamage(target, slamDmg, info, opts);
                     res.slamDamage += slamDmg;
+                } else {
+                    res.simSlams.push({ unitId: target.id, dmg: slamDmg });
                 }
                 // Half-tile lunge INTO the wall face and back — sells the hit.
                 res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
@@ -31260,6 +31264,358 @@
             return { x: guardian.x, y: guardian.y, z: guardian.z ?? 0 };
         }
 
+        /* THE ONE HIT MATH (2026-10-01, combat clarity pass): every number between "the raw hit arrives" and "the
+           HP moves" — door rear rider, the capped offensive product (type × STAB, Bloodcraze, high ground, range,
+           the passives' strike mults, status combo, elemental combo + resonance, affinity), the marked rider, level
+           magnitude, armour and the flat soaks with the soak floor, the level gap, the ranged / status taken mults
+           and the shield. applyDamageToUnit runs it LIVE (callouts, logs, the marked / Frostbite consumption);
+           forecastHitOnUnit runs it with live = false — no side effects — so every damage preview in the game is
+           this exact pipeline, never a hand-kept copy. _affEl / _affinity come from the caller's early-outs. */
+        function _hitDamageMath(target, damage, opts, live, _affEl, _affinity) {
+            let finalDamage = Math.max(0, damage);
+            const sourceUnit = opts.sourceUnit || null;
+            const damageType = opts.damageType || 'physical';
+
+            /* 🚪 THE REAR ATTACK RIDER (DOOR_RACE_DESIGN §4): a door spell —
+               or ANY cast launched from a twin door under The Long Way Round —
+               "came through a door they did not know was there": the hit is
+               priced as a back attack (FACING_BACK_DMG_MULT), whatever the
+               victim faces. doSpell arms state._doorRearCast for the caster
+               and finishAction disarms it. */
+            if (sourceUnit && state._doorRearCast && state._doorRearCast.unitId === sourceUnit.id
+                && damageType !== 'dot' && finalDamage > 0 && isEnemyUnit(sourceUnit, target)) {
+                finalDamage = Math.round(finalDamage * getFacingDamageMult('back'));
+                if (live && !_skipVisuals()) showFloatingTextForUnit(target, '🚪 REAR', 'debuff', { durationMs: 800 });
+            }
+
+            /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
+               Every multiplicative bonus (STAB × matchup, high ground, range,
+               status combo, elemental combo/resonance) ACCUMULATES into one
+               product, capped at MAX_OFFENSIVE_MULT, and applies ONCE — before
+               armor. Two structural fixes over the old sequential version:
+               1. Multipliers no longer scale the post-armor number, so flat
+                  defense keeps its full value on exactly the big hits where
+                  it used to evaporate.
+               2. The stacked product can no longer compound past the cap
+                  (×1.625 STAB+weak × ×1.5 combo × ×1.25 resonance × … used
+                  to exceed ×5 and one-shot through full armor). */
+            let _offMult = 1;
+
+            // Surface the hidden math: small ×N callouts for every live
+            // multiplier so the player sees WHY a number came out big.
+            // Attacker-side results pop over the attacker, the matchup/
+            // victim-condition results pop over the target — spreads the
+            // visual load across both tiles.
+            const _multCallout = (u, txt, ms) => {
+                if (!live || damageType === 'dot' || _skipVisuals()) return;
+                // AOE / multi-target / barrage spam guard: applyDamage runs once
+                // per hit, so a 3-target spell would pop the same "⛰ HIGH
+                // GROUND!" (etc.) three times over the caster. One identical
+                // callout per unit per 1.5s is plenty (covers barrage pacing).
+                const _now = Date.now();
+                const _seen = (window._ewMultCalloutSeen = window._ewMultCalloutSeen || new Map());
+                const _key = u.id + '|' + txt;
+                if (_now - (_seen.get(_key) || 0) < 1500) return;
+                _seen.set(_key, _now);
+                showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
+            };
+            // Clean 2-decimal multiplier, trailing zeros stripped:
+            // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
+            const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
+
+            // Defender-side flat height soak (−5/step of height advantage) —
+            // applied at the ARMOR stage below so it stays truly flat instead
+            // of being scaled by the offensive product.
+            let _heightSoak = 0;
+
+            // Banes (and any item/effect with a fixed type matchup) pass an
+            // explicit override so effectiveness is judged by the EFFECT's type
+            // vs the target — never the thrower's own type. 'super' forces the
+            // super-effective note; 'neutral' suppresses the matchup note. The
+            // bonus damage is already baked in by the caller, so the type
+            // multiplier is held at 1 to avoid double-counting.
+            const typeEffectOverride = opts.typeEffect || null; // 'super' | 'neutral'
+            const typeNote = typeEffectOverride
+                ? (typeEffectOverride === 'super' ? "It's super effective!" : '')
+                : (sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '');
+            // The pure type matchup (STAB backed out) for THE HIT READ's
+            // number — set in the block below; a bane's forced 'super' is
+            // judged at the emit.
+            let _hrTypeEff = 1;
+            if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
+                // ATK/INT split: physical damage rides the ATK axis (Overclock,
+                // Inspired, Discord…); magic damage rides the INT axis (Dark
+                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/faction/
+                // streak bonuses apply to both.
+                // opts.noAtkBonus: a placed object's blast (a bomb) is typed and
+                // credited but never rides the placer's live ATK bonuses.
+                if (!opts.noAtkBonus) finalDamage += getEffectiveAttackBonus(sourceUnit, damageType === 'magic' ? 'magic' : 'physical');
+                const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
+                _offMult *= _typeMult;
+
+                // STAB and the type matchup are TWO SEPARATE mechanics that
+                // happen to multiply together — never show their blended
+                // product (a "×0.94 RESIST" reads as nonsense). The type
+                // matchup (weak/resist) is the ENEMY'S property → pops on the
+                // target. STAB stays a silent bonus (no callout — it's your
+                // own passive, not news).
+                if (!typeEffectOverride) {
+                    const _spellType = opts.spellType || null;
+                    const _hasStab = _spellType && (sourceUnit.types || []).includes(_spellType);
+                    const _stabMult = _hasStab
+                        ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+                    // Back out the pure matchup factor from the net multiplier
+                    // so it stays exact if the type-chart values ever change.
+                    const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
+                    _hrTypeEff = _effMult; // THE HIT READ's weak / resisted verdict
+                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
+                    else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
+                }
+                // 🩸 Bloodcraze (werewolf passive, plan §5.2): ×dmgMult vs a
+                // target at or under the HP threshold (measured pre-hit).
+                const _bcLow = (damageType !== 'dot' && typeof unitPassiveValue === 'function') ? unitPassiveValue(sourceUnit, 'lowHpBonus') : undefined;
+                if (_bcLow && _bcLow.dmgMult && (target.hp || 0) <= (target.maxHp || 1) * (_bcLow.threshold || 0.3)) {
+                    _offMult *= _bcLow.dmgMult;
+                    _multCallout(sourceUnit, `🩸 ${_fmtMult(_bcLow.dmgMult)} BLOODCRAZE!`, 1000);
+                }
+                // Zodiac is a whole-match buff — call it out once per round
+                // per unit, not on every single swing.
+                if (live && getZodiacBonus(sourceUnit).active && sourceUnit._zodiacCalloutRound !== state.round) {
+                    sourceUnit._zodiacCalloutRound = state.round;
+                    _multCallout(sourceUnit, '★ ZODIAC +10%', 900);
+                }
+
+                if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
+                    const srcH = getUnitStandingHeight(sourceUnit);
+                    const tgtH = getUnitStandingHeight(target);
+                    if (srcH > tgtH) {
+
+                        const heightAdv = srcH - tgtH;
+                        const _hgMult = 1 + DOWNHILL_DAMAGE_BONUS * heightAdv;
+                        _offMult *= _hgMult;
+                        _multCallout(sourceUnit, `⛰ HIGH GROUND! ×${_hgMult.toFixed(1)}`, 1100);
+                    } else if (tgtH > srcH) {
+
+                        const heightAdv = tgtH - srcH;
+                        _heightSoak = HIGH_GROUND_DEF_BONUS * heightAdv;
+                    }
+                }
+
+                // ── 🎯 RANGE FALLOFF (reworked 2026-08-15) ─────────────────
+                // Deterministic damage-by-distance: full damage at close
+                // range (dist 1), −10%/tile beyond, floored −20%. No bonus
+                // side and no Sniper inversion anymore. Skipped for DoT
+                // ticks and for indirect sources (turrets, traps, terrain
+                // reactions — opts.noRangeMult) where "distance to the
+                // caster" is meaningless.
+                if (damageType !== 'dot' && !opts.noRangeMult) {
+                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
+                    if (_rangeMult !== 1) {
+                        _offMult *= _rangeMult;
+                        // No callout: falloff hits nearly every ranged action,
+                        // so the "LONG SHOT" popup was pure noise. The forecast
+                        // previews (ui.js) still surface the multiplier.
+                    }
+                }
+
+                /* THE SPELL AUDIT Batch D — the family passives' strike multipliers, inside the capped product:
+                   Mountainborn `highGroundBonus`, Pack Tactics `flankBonus`, Hex Weaver `finisherBonus`, Ambush
+                   `invisibleStrikeBonus` (a basic attack passes opts.fromInvisible; a spell cast out of Invisible
+                   leaves sourceUnit._ambushStrike for its hits — doSpell sets / clears it). DoT ticks never ride it. */
+                if (damageType !== 'dot') {
+                    const _pH = (typeof getUnitStandingHeight === 'function');
+                    const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
+                        srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
+                        tgtH: _pH ? getUnitStandingHeight(target) : null,
+                        fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
+                    });
+                    if (_psm.mult !== 1) {
+                        _offMult *= _psm.mult;
+                        for (const _pl of _psm.parts) _multCallout(sourceUnit, _pl, 1000);
+                    }
+                }
+            }
+
+            // ── ⚗ STATUS-COMBO BONUS (2026-07-14 spell rework) ─────────────
+            // Some spells punish an existing ailment: a definition carrying
+            // spell.bonusVsStatus = { status: 'burn', mult: 1.5 } deals
+            // amplified damage while the target suffers that status (burn,
+            // poison, root, stun, slow, stagger, silence, discord…). The
+            // ailment is NOT consumed — apply it with one spell, then collapse
+            // on the afflicted target with the partner spell. Threaded per-hit
+            // as opts.bonusVsStatus by the spell resolvers.
+            const _bvs = opts.bonusVsStatus || null;
+            if (_bvs && _bvs.status && finalDamage > 0 && sourceUnit
+                && isEnemyUnit(sourceUnit, target) && bonusStatusMatches(target, _bvs.status)) {
+                const _bvsMult = _bvs.mult || 1.5;
+                _offMult *= _bvsMult;
+                const _bvsName = [].concat(_bvs.status)
+                    .filter(id => bonusStatusMatches(target, id))
+                    .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
+                    .join(' + ') || String(_bvs.status);
+                if (live && damageType !== 'dot' && !_skipVisuals()) {
+                    showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
+                }
+                if (live) addLog(`⚗ Combo! ${unitDisplayName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
+            }
+            /* THE SPELL AUDIT Batch D (Frostbite): bonusVsStatus.extra = { status, flat, consume } — the hit on that status
+               also deals +flat and ends it (data.js _upgApplyPatch 'statusBonus' writes it). */
+            const _bvsX = _bvs && _bvs.extra;
+            if (_bvsX && _bvsX.status && finalDamage > 0 && sourceUnit && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, _bvsX.status)) {
+                if (_bvsX.flat > 0) finalDamage += _bvsX.flat;
+                if (live && _bvsX.consume) {
+                    clearStatus(target, _bvsX.status);
+                    const _bvsXLabel = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_bvsX.status]?.label) || _bvsX.status;
+                    addLog(`${unitDisplayName(target)} is no longer ${_bvsXLabel}${_bvsX.flat > 0 ? ` — the break deals +${_bvsX.flat}` : ''}.`);
+                    if (damageType !== 'dot' && !_skipVisuals()) showFloatingTextForUnit(target, _bvsX.status === 'frozen' ? '🧊 THAW!' : '✂ BROKEN', 'mult', { durationMs: 1000 });
+                }
+            }
+
+            // ── ⚗️ ELEMENTAL COMBO LAYER (2026-07-13) ──────────────────────
+            // Element-aware interactions between the incoming hit, the
+            // victim's condition and the reigning zodiac. Callers pass
+            // opts.element ('lightning'|'fire'|'cold') — spell resolvers get
+            // it from classifySpellElement, conduction and elemental weather
+            // pass theirs explicitly. Post-hit halves (Overclock grant,
+            // flash-freeze, drying out) resolve after the damage lands below.
+            // 2026-07-16: folded into the capped offensive product (used to
+            // multiply the post-armor number, devaluing defense on big hits).
+            // opts.element is the explicit reaction-vocab pass; resolvers that
+            // only thread spellElement still combo via the canonical mapping
+            // (a fire-tagged dash dries a soaked target like any fireball).
+            const _comboEl = opts.element
+                || ({ fire: 'fire', lightning: 'lightning', ice: 'cold' })[opts.spellElement]
+                || null;
+            let _comboSupercharge = false;
+            if (_comboEl && finalDamage > 0) {
+                // ★ Zodiac resonance: the active sign's trine empowers its
+                // element for both teams (fire signs → fire, air → lightning,
+                // water → frost). Time the big elemental turn to the stars.
+                if (typeof getZodiacResonanceElement === 'function'
+                    && getZodiacResonanceElement() === _comboEl) {
+                    _offMult *= ZODIAC_RESONANCE_MULT;
+                    if (live && sourceUnit && sourceUnit._zResCalloutRound !== state.round) {
+                        sourceUnit._zResCalloutRound = state.round;
+                        showFloatingTextForUnit(sourceUnit, `★ RESONANCE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
+                        addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
+                    }
+                }
+                // The interaction table itself is pure (calcElementComboMult,
+                // see PURE DAMAGE MATH); only the callouts stay here.
+                const _cmb = calcElementComboMult(_comboEl, {
+                    soaked: _unitIsSoaked(target),
+                    tech: (target.types || []).includes('tech'),
+                });
+                if (_cmb.mult !== 1) _offMult *= _cmb.mult;
+                _comboSupercharge = _cmb.supercharge;
+                if (!live) { /* forecast: no callouts */ } else if (_cmb.note === 'shortCircuit') {
+                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SHORT CIRCUIT!', 'mult', { durationMs: 1100 });
+                } else if (_cmb.note === 'soakedShock') {
+                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
+                } else if (_cmb.note === 'soakedFire') {
+                    showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
+                }
+            }
+
+            // ── 🜂 ELEMENTAL AFFINITY LAYER (2026-09-01) ───────────────────
+            // weak ×1.5 / resist ×0.5 from RACE_ELEMENT_AFFINITY (immune and
+            // absorb short-circuited near the top). Rides the same capped
+            // offensive product as the type chart and the combo layer, so
+            // type × STAB × affinity × combo stays bounded at ×3 — and like
+            // the combo layer it is side-agnostic. The affinity is the
+            // TARGET's property, so both callouts pop over the target.
+            if (_affEl && finalDamage > 0 && (_affinity === 'weak' || _affinity === 'resist')) {
+                const _affRes = calcElementAffinityMult(_affinity);
+                _offMult *= _affRes.mult;
+                const _affIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '';
+                if (!live) { /* forecast: no callouts */ } else if (_affinity === 'weak') {
+                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
+                    addLog(`${_affIcon} ${unitDisplayName(target)} is weak to ${_affEl} — the hit lands ×${(+_affRes.mult.toFixed(2))} harder!`);
+                } else {
+                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
+                    addLog(`${_affIcon} ${unitDisplayName(target)} resists the ${_affEl} — the hit is blunted.`);
+                }
+            }
+
+            // Marked is a FLAT rider — added after the multiplier product
+            // (inside calcDamageResolution below) so its value on the card is
+            // its value on the hit. Only the status consumption lives here.
+            const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
+            let _markedBonus = 0;
+            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
+                _markedBonus = opts.markBonus ?? target.markBonus ?? 40;
+                if (live) {
+                clearStatus(target, 'marked');
+                target.markBonus = 0;
+                addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
+                }
+            }
+
+            // ── Level magnitude ────────────────────────────────────────────
+            // THE damage chokepoint. offenseScale() (data.js "LEVEL COMBAT
+            // MATH") resolves the accumulated flat damage in the VICTIM's
+            // magnitude space, applies the global time-to-kill pace, and then
+            // the classic-JRPG level-gap multiplier. Percent-of-max-HP and
+            // already-scaled callers pass opts.preScaled to opt out;
+            // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT),
+            // which resolve at gap 1 against their victim.
+            const _tgtLvl = getUnitLevel(target);
+            let _levelMult = null, _gapMult = null;
+            if (!opts.preScaled && typeof offenseScale === 'function') {
+                const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
+                    : (opts.scaleByTargetLevel ? _tgtLvl : 0);
+                if (_srcLvl >= 1) {
+                    /* THE SOAK ORDER (2026-09-21): the magnitude here, the gap AFTER the flat soaks (calcDamageResolution) */
+                    if (typeof offenseMagnitude === 'function' && typeof levelGapMult === 'function') {
+                        _levelMult = offenseMagnitude(_srcLvl, _tgtLvl);
+                        _gapMult = levelGapMult(_srcLvl, _tgtLvl);
+                    } else _levelMult = offenseScale(_srcLvl, _tgtLvl);
+                }
+            }
+            // Mitigation is stored in base magnitude, so bring it into the
+            // target's magnitude space at the SAME pace as the damage above —
+            // armour keeps exactly the share of a hit it always had.
+            const _defLs = (typeof defenseScale === 'function') ? defenseScale(_tgtLvl)
+                : ((typeof levelScale === 'function') ? levelScale(_tgtLvl) : 1);
+            const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
+            // Bulwark (passive row, the `damageSoak` hook, sum): a flat 8 shaved off
+            // every hit that respects armor — the tank shrugs off chip damage.
+            // THE JOBS REMOVAL (the user 2026-09-27): was the Tank job.
+            const _soakHook = opts.ignoreArmor ? 0 : (unitPassiveSum(target, 'damageSoak') || 0);
+            const _bulwarkSoak = _soakHook ? Math.round(_soakHook * _defLs) : 0;
+            const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
+
+            // Resolve cap → marked → level scale → armor/soaks → status
+            // multipliers → shield in ONE pure call (calcDamageResolution,
+            // see PURE DAMAGE MATH block) — the stage order and the cap/floor
+            // semantics are pinned there and in damage.test.js.
+            const _res = calcDamageResolution({
+                base: finalDamage,
+                offMult: _offMult, offCap: MAX_OFFENSIVE_MULT,
+                markedBonus: _markedBonus,
+                levelMult: _levelMult,
+                armor: effectiveArmor,
+                /* THE HEIGHT SOAK rides defenseScale like every other flat soak (it was 5 RAW per tier — half a level-5 hit) */
+                heightSoak: Math.round(_heightSoak * _defLs),
+                bulwarkSoak: _bulwarkSoak,
+                hourglassSoak: hourglassReduction,
+                soakFloor: opts.preScaled ? 0 : SOAK_FLOOR_SHARE,
+                gapMult: _gapMult,
+                rangedMult: (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target))
+                    ? getStatusRangedDamageTakenMultiplier(target) : null,
+                statusTakenMult: getStatusDamageTakenMultiplier(target)
+                    * (damageType === 'magic' ? getStatusMagicDamageTakenMultiplier(target) : 1),
+                shield: target.shield || 0,
+                shieldIgnore: Number(opts.shieldIgnore || 0),
+            });
+            finalDamage = _res.dmg;
+            return {
+                res: _res, finalDamage, sourceUnit, damageType, typeEffectOverride, typeNote,
+                hrTypeEff: _hrTypeEff, comboSupercharge: _comboSupercharge, comboEl: _comboEl,
+                offMult: _offMult, markedBonus: _markedBonus
+            };
+        }
+
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
@@ -31432,341 +31788,16 @@
                 return false;
             }
 
-            let finalDamage = Math.max(0, damage);
-            const sourceUnit = opts.sourceUnit || null;
-            const damageType = opts.damageType || 'physical';
-
-            /* 🚪 THE REAR ATTACK RIDER (DOOR_RACE_DESIGN §4): a door spell —
-               or ANY cast launched from a twin door under The Long Way Round —
-               "came through a door they did not know was there": the hit is
-               priced as a back attack (FACING_BACK_DMG_MULT), whatever the
-               victim faces. doSpell arms state._doorRearCast for the caster
-               and finishAction disarms it. */
-            if (sourceUnit && state._doorRearCast && state._doorRearCast.unitId === sourceUnit.id
-                && damageType !== 'dot' && finalDamage > 0 && isEnemyUnit(sourceUnit, target)) {
-                finalDamage = Math.round(finalDamage * getFacingDamageMult('back'));
-                if (!_skipVisuals()) showFloatingTextForUnit(target, '🚪 REAR', 'debuff', { durationMs: 800 });
-            }
-
-            /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
-               Every multiplicative bonus (STAB × matchup, high ground, range,
-               status combo, elemental combo/resonance) ACCUMULATES into one
-               product, capped at MAX_OFFENSIVE_MULT, and applies ONCE — before
-               armor. Two structural fixes over the old sequential version:
-               1. Multipliers no longer scale the post-armor number, so flat
-                  defense keeps its full value on exactly the big hits where
-                  it used to evaporate.
-               2. The stacked product can no longer compound past the cap
-                  (×1.625 STAB+weak × ×1.5 combo × ×1.25 resonance × … used
-                  to exceed ×5 and one-shot through full armor). */
-            let _offMult = 1;
-
-            // Surface the hidden math: small ×N callouts for every live
-            // multiplier so the player sees WHY a number came out big.
-            // Attacker-side results pop over the attacker, the matchup/
-            // victim-condition results pop over the target — spreads the
-            // visual load across both tiles.
-            const _multCallout = (u, txt, ms) => {
-                if (damageType === 'dot' || _skipVisuals()) return;
-                // AOE / multi-target / barrage spam guard: applyDamage runs once
-                // per hit, so a 3-target spell would pop the same "⛰ HIGH
-                // GROUND!" (etc.) three times over the caster. One identical
-                // callout per unit per 1.5s is plenty (covers barrage pacing).
-                const _now = Date.now();
-                const _seen = (window._ewMultCalloutSeen = window._ewMultCalloutSeen || new Map());
-                const _key = u.id + '|' + txt;
-                if (_now - (_seen.get(_key) || 0) < 1500) return;
-                _seen.set(_key, _now);
-                showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
-            };
-            // Clean 2-decimal multiplier, trailing zeros stripped:
-            // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
-            const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
-
-            // Defender-side flat height soak (−5/step of height advantage) —
-            // applied at the ARMOR stage below so it stays truly flat instead
-            // of being scaled by the offensive product.
-            let _heightSoak = 0;
-
-            // Banes (and any item/effect with a fixed type matchup) pass an
-            // explicit override so effectiveness is judged by the EFFECT's type
-            // vs the target — never the thrower's own type. 'super' forces the
-            // super-effective note; 'neutral' suppresses the matchup note. The
-            // bonus damage is already baked in by the caller, so the type
-            // multiplier is held at 1 to avoid double-counting.
-            const typeEffectOverride = opts.typeEffect || null; // 'super' | 'neutral'
-            const typeNote = typeEffectOverride
-                ? (typeEffectOverride === 'super' ? "It's super effective!" : '')
-                : (sourceUnit && isEnemyUnit(sourceUnit, target) ? getTypeCombatNote(sourceUnit, target, opts.spellType || null) : '');
-            // The pure type matchup (STAB backed out) for THE HIT READ's
-            // number — set in the block below; a bane's forced 'super' is
-            // judged at the emit.
-            let _hrTypeEff = 1;
-            if (sourceUnit && isEnemyUnit(sourceUnit, target)) {
-                // ATK/INT split: physical damage rides the ATK axis (Overclock,
-                // Inspired, Discord…); magic damage rides the INT axis (Dark
-                // Pact, Harmonize, Neuralyzer, Drowsy…). Environmental/faction/
-                // streak bonuses apply to both.
-                // opts.noAtkBonus: a placed object's blast (a bomb) is typed and
-                // credited but never rides the placer's live ATK bonuses.
-                if (!opts.noAtkBonus) finalDamage += getEffectiveAttackBonus(sourceUnit, damageType === 'magic' ? 'magic' : 'physical');
-                const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
-                _offMult *= _typeMult;
-
-                // STAB and the type matchup are TWO SEPARATE mechanics that
-                // happen to multiply together — never show their blended
-                // product (a "×0.94 RESIST" reads as nonsense). The type
-                // matchup (weak/resist) is the ENEMY'S property → pops on the
-                // target. STAB stays a silent bonus (no callout — it's your
-                // own passive, not news).
-                if (!typeEffectOverride) {
-                    const _spellType = opts.spellType || null;
-                    const _hasStab = _spellType && (sourceUnit.types || []).includes(_spellType);
-                    const _stabMult = _hasStab
-                        ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
-                    // Back out the pure matchup factor from the net multiplier
-                    // so it stays exact if the type-chart values ever change.
-                    const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
-                    _hrTypeEff = _effMult; // THE HIT READ's weak / resisted verdict
-                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
-                    else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
-                }
-                // 🩸 Bloodcraze (werewolf passive, plan §5.2): ×dmgMult vs a
-                // target at or under the HP threshold (measured pre-hit).
-                const _bcLow = (damageType !== 'dot' && typeof unitPassiveValue === 'function') ? unitPassiveValue(sourceUnit, 'lowHpBonus') : undefined;
-                if (_bcLow && _bcLow.dmgMult && (target.hp || 0) <= (target.maxHp || 1) * (_bcLow.threshold || 0.3)) {
-                    _offMult *= _bcLow.dmgMult;
-                    _multCallout(sourceUnit, `🩸 ${_fmtMult(_bcLow.dmgMult)} BLOODCRAZE!`, 1000);
-                }
-                // Zodiac is a whole-match buff — call it out once per round
-                // per unit, not on every single swing.
-                if (getZodiacBonus(sourceUnit).active && sourceUnit._zodiacCalloutRound !== state.round) {
-                    sourceUnit._zodiacCalloutRound = state.round;
-                    _multCallout(sourceUnit, '★ ZODIAC +10%', 900);
-                }
-
-                if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
-                    const srcH = getUnitStandingHeight(sourceUnit);
-                    const tgtH = getUnitStandingHeight(target);
-                    if (srcH > tgtH) {
-
-                        const heightAdv = srcH - tgtH;
-                        const _hgMult = 1 + DOWNHILL_DAMAGE_BONUS * heightAdv;
-                        _offMult *= _hgMult;
-                        _multCallout(sourceUnit, `⛰ HIGH GROUND! ×${_hgMult.toFixed(1)}`, 1100);
-                    } else if (tgtH > srcH) {
-
-                        const heightAdv = tgtH - srcH;
-                        _heightSoak = HIGH_GROUND_DEF_BONUS * heightAdv;
-                    }
-                }
-
-                // ── 🎯 RANGE FALLOFF (reworked 2026-08-15) ─────────────────
-                // Deterministic damage-by-distance: full damage at close
-                // range (dist 1), −10%/tile beyond, floored −20%. No bonus
-                // side and no Sniper inversion anymore. Skipped for DoT
-                // ticks and for indirect sources (turrets, traps, terrain
-                // reactions — opts.noRangeMult) where "distance to the
-                // caster" is meaningless.
-                if (damageType !== 'dot' && !opts.noRangeMult) {
-                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
-                    if (_rangeMult !== 1) {
-                        _offMult *= _rangeMult;
-                        // No callout: falloff hits nearly every ranged action,
-                        // so the "LONG SHOT" popup was pure noise. The forecast
-                        // previews (ui.js) still surface the multiplier.
-                    }
-                }
-
-                /* THE SPELL AUDIT Batch D — the family passives' strike multipliers, inside the capped product:
-                   Mountainborn `highGroundBonus`, Pack Tactics `flankBonus`, Hex Weaver `finisherBonus`, Ambush
-                   `invisibleStrikeBonus` (a basic attack passes opts.fromInvisible; a spell cast out of Invisible
-                   leaves sourceUnit._ambushStrike for its hits — doSpell sets / clears it). DoT ticks never ride it. */
-                if (damageType !== 'dot') {
-                    const _pH = (typeof getUnitStandingHeight === 'function');
-                    const _psm = passiveStrikeMult(sourceUnit, target, damageType, {
-                        srcH: _pH ? getUnitStandingHeight(sourceUnit) : null,
-                        tgtH: _pH ? getUnitStandingHeight(target) : null,
-                        fromInvisible: !!opts.fromInvisible || (!!sourceUnit._ambushStrike && !opts.noRangeMult)
-                    });
-                    if (_psm.mult !== 1) {
-                        _offMult *= _psm.mult;
-                        for (const _pl of _psm.parts) _multCallout(sourceUnit, _pl, 1000);
-                    }
-                }
-            }
-
-            // ── ⚗ STATUS-COMBO BONUS (2026-07-14 spell rework) ─────────────
-            // Some spells punish an existing ailment: a definition carrying
-            // spell.bonusVsStatus = { status: 'burn', mult: 1.5 } deals
-            // amplified damage while the target suffers that status (burn,
-            // poison, root, stun, slow, stagger, silence, discord…). The
-            // ailment is NOT consumed — apply it with one spell, then collapse
-            // on the afflicted target with the partner spell. Threaded per-hit
-            // as opts.bonusVsStatus by the spell resolvers.
-            const _bvs = opts.bonusVsStatus || null;
-            if (_bvs && _bvs.status && finalDamage > 0 && sourceUnit
-                && isEnemyUnit(sourceUnit, target) && bonusStatusMatches(target, _bvs.status)) {
-                const _bvsMult = _bvs.mult || 1.5;
-                _offMult *= _bvsMult;
-                const _bvsName = [].concat(_bvs.status)
-                    .filter(id => bonusStatusMatches(target, id))
-                    .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
-                    .join(' + ') || String(_bvs.status);
-                if (damageType !== 'dot' && !_skipVisuals()) {
-                    showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
-                }
-                addLog(`⚗ Combo! ${unitDisplayName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
-            }
-            /* THE SPELL AUDIT Batch D (Frostbite): bonusVsStatus.extra = { status, flat, consume } — the hit on that status
-               also deals +flat and ends it (data.js _upgApplyPatch 'statusBonus' writes it). */
-            const _bvsX = _bvs && _bvs.extra;
-            if (_bvsX && _bvsX.status && finalDamage > 0 && sourceUnit && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, _bvsX.status)) {
-                if (_bvsX.flat > 0) finalDamage += _bvsX.flat;
-                if (_bvsX.consume) {
-                    clearStatus(target, _bvsX.status);
-                    const _bvsXLabel = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_bvsX.status]?.label) || _bvsX.status;
-                    addLog(`${unitDisplayName(target)} is no longer ${_bvsXLabel}${_bvsX.flat > 0 ? ` — the break deals +${_bvsX.flat}` : ''}.`);
-                    if (damageType !== 'dot' && !_skipVisuals()) showFloatingTextForUnit(target, _bvsX.status === 'frozen' ? '🧊 THAW!' : '✂ BROKEN', 'mult', { durationMs: 1000 });
-                }
-            }
-
-            // ── ⚗️ ELEMENTAL COMBO LAYER (2026-07-13) ──────────────────────
-            // Element-aware interactions between the incoming hit, the
-            // victim's condition and the reigning zodiac. Callers pass
-            // opts.element ('lightning'|'fire'|'cold') — spell resolvers get
-            // it from classifySpellElement, conduction and elemental weather
-            // pass theirs explicitly. Post-hit halves (Overclock grant,
-            // flash-freeze, drying out) resolve after the damage lands below.
-            // 2026-07-16: folded into the capped offensive product (used to
-            // multiply the post-armor number, devaluing defense on big hits).
-            // opts.element is the explicit reaction-vocab pass; resolvers that
-            // only thread spellElement still combo via the canonical mapping
-            // (a fire-tagged dash dries a soaked target like any fireball).
-            const _comboEl = opts.element
-                || ({ fire: 'fire', lightning: 'lightning', ice: 'cold' })[opts.spellElement]
-                || null;
-            let _comboSupercharge = false;
-            if (_comboEl && finalDamage > 0) {
-                // ★ Zodiac resonance: the active sign's trine empowers its
-                // element for both teams (fire signs → fire, air → lightning,
-                // water → frost). Time the big elemental turn to the stars.
-                if (typeof getZodiacResonanceElement === 'function'
-                    && getZodiacResonanceElement() === _comboEl) {
-                    _offMult *= ZODIAC_RESONANCE_MULT;
-                    if (sourceUnit && sourceUnit._zResCalloutRound !== state.round) {
-                        sourceUnit._zResCalloutRound = state.round;
-                        showFloatingTextForUnit(sourceUnit, `★ RESONANCE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
-                        addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
-                    }
-                }
-                // The interaction table itself is pure (calcElementComboMult,
-                // see PURE DAMAGE MATH); only the callouts stay here.
-                const _cmb = calcElementComboMult(_comboEl, {
-                    soaked: _unitIsSoaked(target),
-                    tech: (target.types || []).includes('tech'),
-                });
-                if (_cmb.mult !== 1) _offMult *= _cmb.mult;
-                _comboSupercharge = _cmb.supercharge;
-                if (_cmb.note === 'shortCircuit') {
-                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SHORT CIRCUIT!', 'mult', { durationMs: 1100 });
-                } else if (_cmb.note === 'soakedShock') {
-                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
-                } else if (_cmb.note === 'soakedFire') {
-                    showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
-                }
-            }
-
-            // ── 🜂 ELEMENTAL AFFINITY LAYER (2026-09-01) ───────────────────
-            // weak ×1.5 / resist ×0.5 from RACE_ELEMENT_AFFINITY (immune and
-            // absorb short-circuited near the top). Rides the same capped
-            // offensive product as the type chart and the combo layer, so
-            // type × STAB × affinity × combo stays bounded at ×3 — and like
-            // the combo layer it is side-agnostic. The affinity is the
-            // TARGET's property, so both callouts pop over the target.
-            if (_affEl && finalDamage > 0 && (_affinity === 'weak' || _affinity === 'resist')) {
-                const _affRes = calcElementAffinityMult(_affinity);
-                _offMult *= _affRes.mult;
-                const _affIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '';
-                if (_affinity === 'weak') {
-                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
-                    addLog(`${_affIcon} ${unitDisplayName(target)} is weak to ${_affEl} — the hit lands ×${(+_affRes.mult.toFixed(2))} harder!`);
-                } else {
-                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
-                    addLog(`${_affIcon} ${unitDisplayName(target)} resists the ${_affEl} — the hit is blunted.`);
-                }
-            }
-
-            // Marked is a FLAT rider — added after the multiplier product
-            // (inside calcDamageResolution below) so its value on the card is
-            // its value on the hit. Only the status consumption lives here.
-            const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
-            let _markedBonus = 0;
-            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
-                _markedBonus = opts.markBonus ?? target.markBonus ?? 40;
-                clearStatus(target, 'marked');
-                target.markBonus = 0;
-                addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
-            }
-
-            // ── Level magnitude ────────────────────────────────────────────
-            // THE damage chokepoint. offenseScale() (data.js "LEVEL COMBAT
-            // MATH") resolves the accumulated flat damage in the VICTIM's
-            // magnitude space, applies the global time-to-kill pace, and then
-            // the classic-JRPG level-gap multiplier. Percent-of-max-HP and
-            // already-scaled callers pass opts.preScaled to opt out;
-            // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT),
-            // which resolve at gap 1 against their victim.
-            const _tgtLvl = getUnitLevel(target);
-            let _levelMult = null, _gapMult = null;
-            if (!opts.preScaled && typeof offenseScale === 'function') {
-                const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
-                    : (opts.scaleByTargetLevel ? _tgtLvl : 0);
-                if (_srcLvl >= 1) {
-                    /* THE SOAK ORDER (2026-09-21): the magnitude here, the gap AFTER the flat soaks (calcDamageResolution) */
-                    if (typeof offenseMagnitude === 'function' && typeof levelGapMult === 'function') {
-                        _levelMult = offenseMagnitude(_srcLvl, _tgtLvl);
-                        _gapMult = levelGapMult(_srcLvl, _tgtLvl);
-                    } else _levelMult = offenseScale(_srcLvl, _tgtLvl);
-                }
-            }
-            // Mitigation is stored in base magnitude, so bring it into the
-            // target's magnitude space at the SAME pace as the damage above —
-            // armour keeps exactly the share of a hit it always had.
-            const _defLs = (typeof defenseScale === 'function') ? defenseScale(_tgtLvl)
-                : ((typeof levelScale === 'function') ? levelScale(_tgtLvl) : 1);
-            const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
-            // Bulwark (passive row, the `damageSoak` hook, sum): a flat 8 shaved off
-            // every hit that respects armor — the tank shrugs off chip damage.
-            // THE JOBS REMOVAL (the user 2026-09-27): was the Tank job.
-            const _soakHook = opts.ignoreArmor ? 0 : (unitPassiveSum(target, 'damageSoak') || 0);
-            const _bulwarkSoak = _soakHook ? Math.round(_soakHook * _defLs) : 0;
-            const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
-
-            // Resolve cap → marked → level scale → armor/soaks → status
-            // multipliers → shield in ONE pure call (calcDamageResolution,
-            // see PURE DAMAGE MATH block) — the stage order and the cap/floor
-            // semantics are pinned there and in damage.test.js.
-            const _res = calcDamageResolution({
-                base: finalDamage,
-                offMult: _offMult, offCap: MAX_OFFENSIVE_MULT,
-                markedBonus: _markedBonus,
-                levelMult: _levelMult,
-                armor: effectiveArmor,
-                /* THE HEIGHT SOAK rides defenseScale like every other flat soak (it was 5 RAW per tier — half a level-5 hit) */
-                heightSoak: Math.round(_heightSoak * _defLs),
-                bulwarkSoak: _bulwarkSoak,
-                hourglassSoak: hourglassReduction,
-                soakFloor: opts.preScaled ? 0 : SOAK_FLOOR_SHARE,
-                gapMult: _gapMult,
-                rangedMult: (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target))
-                    ? getStatusRangedDamageTakenMultiplier(target) : null,
-                statusTakenMult: getStatusDamageTakenMultiplier(target)
-                    * (damageType === 'magic' ? getStatusMagicDamageTakenMultiplier(target) : 1),
-                shield: target.shield || 0,
-                shieldIgnore: Number(opts.shieldIgnore || 0),
-            });
-            finalDamage = _res.dmg;
+            const _hm = _hitDamageMath(target, damage, opts, true, _affEl, _affinity);
+            let finalDamage = _hm.finalDamage;
+            const sourceUnit = _hm.sourceUnit;
+            const damageType = _hm.damageType;
+            const typeEffectOverride = _hm.typeEffectOverride;
+            const typeNote = _hm.typeNote;
+            const _hrTypeEff = _hm.hrTypeEff;
+            const _comboSupercharge = _hm.comboSupercharge;
+            const _comboEl = _hm.comboEl;
+            const _res = _hm.res;
             /* THE BODY (2026-09-24): the blow that EMPTIES a shield and still
                lands reels the body back (flash kind 'guardBreak' → the
                renderer's hitStagger, UAL2 Idle_Shield_Break) */
@@ -32322,6 +32353,780 @@
 
             checkLastStand(target);
             return false;
+        }
+
+        /* ═══ THE FORECAST (2026-10-01, combat clarity pass) ═══════════════════════════════════════════════════════
+           ONE read-only prediction of what a cast will do, built from the engine's own pieces so the previews can
+           never drift from the resolution again:
+             forecastHitOnUnit(target, rawDamage, opts) — applyDamageToUnit's early-outs + _hitDamageMath with
+               live = false: the HP the hit would take (after shield), or why it takes none.
+             forecastSpellPlan(caster, spell, x, y, z, { castFrom }) — per kind, the same targets, the same raw
+               damage (mid roll, with the min / max of the variance window), the same hit options and the same
+               movement as doSpell: { hits: [{ unit, dmg, min, max, hits, lethal, blocked, heal, tags }],
+               moves: [{ unit, fromX, fromY, x, y, mode, slam }] }. Moves come from the engine's own pickers
+               (resolveForcedSlide simulate, escapeLandingTile, chargeLandingTile, …). Bodies are moved for the
+               duration of the read (an earlier victim's slide changes the next one's, as in the cast) and put back
+               before it returns. Viewer-local, no RNG draws, no logs, no state writes survive. */
+        function forecastHitOnUnit(target, damage, opts = {}) {
+            if (!target || target.dead || target._dying) return null;
+            const src = opts.sourceUnit || null;
+            if (target._guardedBy && damage > 0 && src && isEnemyUnit(src, target) && !opts._chivalryRedirected) {
+                const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
+                if (guardian && guardian.id !== target.id) {
+                    const g = forecastHitOnUnit(guardian, damage, Object.assign({}, opts, { _chivalryRedirected: true }));
+                    return g ? Object.assign({}, g, { dmg: 0, blocked: 'guarded', redirectedTo: guardian.id, redirectDmg: g.dmg }) : null;
+                }
+            }
+            const none = (why, extra) => Object.assign({ dmg: 0, raw: 0, absorbed: 0, blocked: why }, extra || {});
+            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return none('protected');
+            if (!opts._linkEcho && isUnitRealmShieldedFrom(target, src)) return none('realm');
+            if (!opts.spellElement && !opts.element && opts.damageType === 'physical' && src && typeof unitPassiveValue === 'function') {
+                const _per = unitPassiveValue(src, 'physicalElementRider');
+                if (_per && typeof SPELL_ELEMENTS !== 'undefined' && SPELL_ELEMENTS.includes(_per)) opts = Object.assign({}, opts, { spellElement: _per });
+            }
+            const _affEl = opts.spellElement || ({ fire: 'fire', lightning: 'lightning', cold: 'ice' })[opts.element] || null;
+            const _affinity = (_affEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _affEl) : null;
+            const _drinkEl = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'healedByElement') : undefined;
+            if (((_drinkEl && opts.element === _drinkEl) || _affinity === 'absorb') && damage > 0) {
+                return none('absorb', { heal: Math.min(Math.max(1, Math.round(damage)), Math.max(0, target.maxHp - target.hp)), element: _affEl });
+            }
+            if (_affinity === 'immune' && damage > 0) return none('immune', { element: _affEl });
+            const _immDT = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneDamageType') : undefined;
+            if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) return none('incorporeal');
+            const hm = _hitDamageMath(target, damage, opts, false, _affEl, _affinity);
+            let dmg = hm.finalDamage;
+            let indomitable = false;
+            if (dmg >= target.hp && unitHasStatus(target, 'indomitable')) { dmg = Math.max(0, target.hp - 1); indomitable = true; }
+            return {
+                dmg: Math.max(0, dmg), raw: hm.finalDamage + hm.res.absorbed, absorbed: hm.res.absorbed,
+                shieldLeft: hm.res.shieldLeft, blocked: null, indomitable, affinity: _affinity, element: _affEl,
+                typeNote: hm.typeNote, markedBonus: hm.markedBonus
+            };
+        }
+        window.forecastHitOnUnit = forecastHitOnUnit;
+
+        /* doSpell's spell power, in one place (doSpell reads it too). */
+        function spellPowerOf(unit, spell) {
+            return (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
+                + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getPassiveSpellPowerBonus(unit);
+        }
+        window.spellPowerOf = spellPowerOf;
+
+        /* Escape (Nimble Dodge, Eject!, Mist Form…): the open tile within teleportDistance (Manhattan) that lies
+           FURTHEST from the nearest enemy — the cast and the preview both call this. */
+        function escapeLandingTile(unit, spell) {
+            const dist = spell.teleportDistance || 2;
+            const candidates = [];
+            for (let dy = -dist; dy <= dist; dy++) {
+                for (let dx = -dist; dx <= dist; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nx = unit.x + dx, ny = unit.y + dy;
+                    if (Math.abs(dx) + Math.abs(dy) <= dist && isInside(nx, ny) && canOccupy(nx, ny)) candidates.push({ x: nx, y: ny });
+                }
+            }
+            if (!candidates.length) return null;
+            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            candidates.sort((a, b) => {
+                const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
+                const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
+                return bMin - aMin;
+            });
+            return candidates[0];
+        }
+        window.escapeLandingTile = escapeLandingTile;
+
+        /* A charge (chargeToTarget rows, Brave Charge…): the open tile beside the target nearest the caster. */
+        function chargeLandingTile(unit, target) {
+            const adj = [
+                { x: target.x - 1, y: target.y }, { x: target.x + 1, y: target.y },
+                { x: target.x, y: target.y - 1 }, { x: target.x, y: target.y + 1 }
+            ];
+            adj.sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+            return adj.find(t => canOccupy(t.x, t.y)) || null;
+        }
+        window.chargeLandingTile = chargeLandingTile;
+
+        /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
+           allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
+        function rallyPullPlan(unit) {
+            const knights = aliveUnitsFor(unit.player)
+                .filter(a => a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 1 && !unitHasStatus(a, 'root'))
+                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+            const taken = new Set(state.units.filter(u2 => !u2.dead).map(u2 => u2.x + ',' + u2.y));
+            const free = [];
+            const seen = new Set([unit.x + ',' + unit.y]);
+            const queue = [{ x: unit.x, y: unit.y }];
+            while (queue.length && free.length < knights.length + 4) {
+                const t = queue.shift();
+                for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+                    const nx = t.x + ddx, ny = t.y + ddy, nk = nx + ',' + ny;
+                    if (seen.has(nk)) continue;
+                    seen.add(nk);
+                    if (!isInside(nx, ny)) continue;
+                    queue.push({ x: nx, y: ny });
+                    if (taken.has(nk)) continue;
+                    if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) continue;
+                    if (state.turrets && state.turrets.some(tt => tt.x === nx && tt.y === ny && tt.hp > 0)) continue;
+                    free.push({ x: nx, y: ny });
+                }
+            }
+            const out = [];
+            for (const knight of knights) {
+                const dest = free.shift();
+                if (!dest) break;
+                out.push({ unit: knight, x: dest.x, y: dest.y });
+            }
+            return out;
+        }
+        window.rallyPullPlan = rallyPullPlan;
+
+        /* Dash: the body standing on the landing tile is knocked aside to the free tile (8 round) furthest from the
+           dash's start; with none free, every body on the path shifts back one tile. */
+        function dashShovePlan(unit, x, y, z) {
+            const occ = (unitAt(x, y, z) || unitAt(x, y));
+            if (!occ || occ.dead || occ.id === unit.id) return [];
+            const adj = [
+                { x: x + 1, y: y }, { x: x - 1, y: y }, { x: x, y: y + 1 }, { x: x, y: y - 1 },
+                { x: x + 1, y: y + 1 }, { x: x - 1, y: y - 1 }, { x: x + 1, y: y - 1 }, { x: x - 1, y: y + 1 }
+            ];
+            adj.sort((a, b) => (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)) - (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)));
+            const to = adj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+            if (to) return [{ unit: occ, x: to.x, y: to.y }];
+            const full = [{ x: unit.x, y: unit.y }, ...getLinePoints(unit.x, unit.y, x, y)];
+            const out = [];
+            for (let i = 1; i < full.length; i++) {
+                const o = unitAt(full[i].x, full[i].y);
+                if (o && !o.dead && o.id !== unit.id) out.push({ unit: o, x: full[i - 1].x, y: full[i - 1].y });
+            }
+            return out;
+        }
+        window.dashShovePlan = dashShovePlan;
+
+        /* A basic attack, the doAttack way: the 0.65 roll ±variance, Brute Force, Point Blank, the facing arc, then
+           the hit pipeline (the attack bonus is added there). Crit and dodge stay a gamble on purpose.
+           Returns { dmg, min, max, lethal, blocked } on the target's HP (after shield). */
+        function forecastBasicAttack(unit, target, opts = {}) {
+            if (!unit || !target || target.dead) return null;
+            const from = opts.castFrom;
+            const ox = unit.x, oy = unit.y, oz = unit.z;
+            const hp0 = target.hp, sh0 = target.shield;
+            try {
+                if (from) { unit.x = from.x; unit.y = from.y; if (from.z != null) unit.z = from.z; }
+                const rayGun = unitPassiveValue(unit, 'basicAttackMagic') === true;
+                const stat = rayGun ? pwrInt(unit) : pwrAtk(unit);
+                const base = Math.floor(stat * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit);
+                const bdm = unitPassiveMult(unit, 'basicDmgMult') || 1;
+                const pb = unitPassiveValue(unit, 'closeRangeBonus');
+                const d = (typeof distToTarget === 'function') ? distToTarget(unit.x, unit.y, target, unit.z) : (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y));
+                const pbOn = !!(pb && pb.mult && d <= (pb.within || 2));
+                const fm = getFacingDamageMult(unit._doorAttackOrigin ? 'back' : getAttackArc(unit, target));
+                const raw = (roll) => {
+                    let v = Math.max(24, base + roll);
+                    if (bdm !== 1) v = Math.floor(v * bdm);
+                    if (pbOn) v = Math.floor(v * pb.mult);
+                    if (fm !== 1) v = Math.floor(v * fm);
+                    return v;
+                };
+                const hopts = { sourceUnit: unit, damageType: rayGun ? 'magic' : 'physical', consumeMarked: true, fromInvisible: unitHasStatus(unit, 'invisible') };
+                const run = (roll) => { const f = forecastHitOnUnit(target, raw(roll), hopts); return f ? Math.min(f.dmg, Math.max(0, target.hp)) : 0; };
+                const f = forecastHitOnUnit(target, raw(0), hopts);
+                if (!f) return null;
+                const dmg = Math.min(f.dmg, Math.max(0, target.hp));
+                return { dmg, min: run(-SPELL_DMG_VARIANCE), max: run(SPELL_DMG_VARIANCE), lethal: dmg > 0 && dmg >= target.hp, blocked: f.blocked, heal: f.heal || 0 };
+            } catch (e) {
+                return null;
+            } finally {
+                unit.x = ox; unit.y = oy; unit.z = oz; target.hp = hp0; target.shield = sh0;
+            }
+        }
+        window.forecastBasicAttack = forecastBasicAttack;
+
+        const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
+            'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
+            'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed']);
+        function forecastSpellPlan(caster, spell, x, y, z, opts = {}) {
+            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false };
+            if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
+            plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'));
+            if (!plan.handled) return plan;
+            const undo = [];   // [unit, x, y, z] — every body the read moves, put back at the end
+            const moveTmp = (u, nx, ny) => {
+                undo.push([u, u.x, u.y, u.z]);
+                u.x = nx; u.y = ny;
+                if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(nx, ny, u.z);
+            };
+            const hpUndo = new Map();   // unit -> [hp, shield] while a sequence of hits runs
+            const _ambushWas = caster._ambushStrike;
+            try {
+                if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y)) {
+                    moveTmp(caster, opts.castFrom.x, opts.castFrom.y);
+                    if (opts.castFrom.z != null) caster.z = opts.castFrom.z;
+                }
+                if (unitHasStatus(caster, 'invisible') && spellHasDamage(spell) && (unitPassiveSum(caster, 'invisibleStrikeBonus') || 0) > 0) caster._ambushStrike = true;
+                else delete caster._ambushStrike;
+                _forecastSpellInto(plan, caster, spell, x, y, z, moveTmp, hpUndo);
+            } catch (e) {
+                if (typeof console !== 'undefined') console.warn('[forecast]', spell && spell.id, e);
+            } finally {
+                hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
+                for (let i = undo.length - 1; i >= 0; i--) { const r = undo[i]; r[0].x = r[1]; r[0].y = r[2]; r[0].z = r[3]; }
+                if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
+            }
+            for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
+            return plan;
+        }
+        window.forecastSpellPlan = forecastSpellPlan;
+
+        function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
+            const sp = spellPowerOf(unit, spell);
+            const kind = spell.kind;
+            if (isSpellSelfCast(spell)) { x = unit.x; y = unit.y; z = unit.z; }
+            const el = getSpellElement(spell), cel = classifySpellElement(spell);
+            const baseOpts = (dt, extra) => Object.assign({
+                sourceUnit: unit, allowMarkBonus: false, damageType: dt,
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                spellElement: el, element: cel
+            }, extra || {});
+            const entry = (u) => {
+                let h = plan.byId[u.id];
+                if (!h) { h = { unit: u, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[u.id] = h; plan.hits.push(h); }
+                return h;
+            };
+            const tag = (u, t) => { const h = entry(u); if (!h.tags.includes(t)) h.tags.push(t); };
+            /* One hit: raw at mid / lo / hi through the real pipeline, on the HP and shield the earlier hits of this
+               cast left (a multi-hit's second card meets the armour again, a broken shield stays broken). */
+            const hit = (u, mid, lo, hi, hopts, extra) => {
+                if (!u || u.dead || u._dying) return null;
+                if (!hpUndo.has(u)) hpUndo.set(u, [u.hp, u.shield]);
+                const h = entry(u);
+                let o = hopts;
+                if (h._markUsed) o = Object.assign({}, o, { allowMarkBonus: false });
+                const run = (raw) => forecastHitOnUnit(u, Math.max(0, raw), o);
+                const fm = run(mid);
+                if (!fm) return null;
+                const fl = (lo == null || lo === mid) ? fm : run(lo);
+                const fh = (hi == null || hi === mid) ? fm : run(hi);
+                const take = (f) => Math.min(f ? f.dmg : 0, Math.max(0, u.hp));
+                h.dmg += take(fm); h.min += take(fl); h.max += take(fh); h.hits++;
+                if (fm.blocked && !h.blocked) h.blocked = fm.blocked;
+                if (fm.heal) h.heal += fm.heal;
+                if (fm.indomitable) tag(u, 'indomitable');
+                if (fm.markedBonus) h._markUsed = true;
+                if (fm.redirectedTo != null) {
+                    const g = unitFromId(fm.redirectedTo);
+                    if (g) { const gh = entry(g); gh.dmg += fm.redirectDmg || 0; gh.min += fm.redirectDmg || 0; gh.max += fm.redirectDmg || 0; gh.hits++; tag(g, 'intercepts'); }
+                }
+                if (extra && extra.tag) tag(u, extra.tag);
+                u.shield = fm.shieldLeft != null ? fm.shieldLeft : u.shield;
+                u.hp = Math.max(0, u.hp - take(fm));
+                return fm;
+            };
+            /* raw for a variance-v roll with a floor: [mid, lo, hi] */
+            const rolled = (base, v, floor) => [Math.max(floor, base), Math.max(floor, base - v), Math.max(floor, base + v)];
+            const addMove = (u, toX, toY, mode, extra) => {
+                if (!u || (toX === u.x && toY === u.y)) return;
+                plan.moves.push(Object.assign({ unit: u, fromX: u.x, fromY: u.y, x: toX, y: toY, mode }, extra || {}));
+                moveTmp(u, toX, toY);
+            };
+            /* A forced slide with the engine's own physics (simulate): the landing, plus the slams it would take. */
+            const slide = (u, dx, dy, dist, sopts, mode) => {
+                if (!u || u.dead || !(dist > 0) || (!dx && !dy)) return null;
+                const r = resolveForcedSlide(u, dx, dy, dist, Object.assign({ simulate: true, byUnit: unit }, sopts || {}));
+                if (!r) return null;
+                if (r.moved > 0 || r.x !== u.x || r.y !== u.y) addMove(u, r.x, r.y, mode, { slam: !!(r.hitWall || r.hitUnits.length) });
+                else if (r.hitWall || r.hitUnits.length) tag(u, 'slam');
+                for (const s of (r.simSlams || [])) {
+                    const v = unitFromId(s.unitId);
+                    if (v) hit(v, s.dmg, s.dmg, s.dmg, { ignoreArmor: true, consumeMarked: false, sourceUnit: unit }, { tag: 'slam' });
+                }
+                for (const c of (r.chain || [])) {
+                    if (c.unit && c.res && (c.res.x !== c.unit.x || c.res.y !== c.unit.y)) addMove(c.unit, c.res.x, c.res.y, 'push');
+                }
+                return r;
+            };
+            const enemyAt = (tx, ty, tz) => {
+                const t = (tz != null ? (unitAt(tx, ty, tz) || unitAt(tx, ty)) : unitAt(tx, ty));
+                return (t && !t.dead && !isAllyUnit(t, unit)) ? t : null;
+            };
+            const grounded = (u) => { if (u && !u.dead && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) tag(u, 'grounded'); };
+
+            /* THE TARGETING RIDERS: random victims — every legal one could be drawn; each shows one shot's worth */
+            const rnd = kind === 'damage' ? spellRandomTargetsOf(spell) : null;
+            if (rnd) {
+                const hs = rnd.mult !== 1 ? Object.assign({}, spell, { dmg: Math.round((spell.dmg || 0) * rnd.mult) }) : spell;
+                for (const u of _randomTargetPool(unit, spell, rnd)) {
+                    const [m, l, hgh] = rolled((hs.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
+                    hit(u, m, l, hgh, baseOpts(spell.damageType || 'magic', { ignoreArmor: !!spell.ignoreArmor }), { tag: 'random' });
+                }
+                plan.notes.push('random');
+                return;
+            }
+
+            if (kind === 'damage' || kind === 'tackle') {
+                const target = enemyAt(x, y, z);
+                if (!target) return;
+                const dt = spell.damageType || 'magic';
+                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor });
+                /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
+                const chargeFirst = spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
+                    && target.id !== unit.id && !_isClashMode()
+                    && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
+                    && !(state.fogOfWar && typeof getViewerPlayer === 'function' && state.activePlayer !== getViewerPlayer());
+                const _clash = _isClashMode();
+                if (chargeFirst) {
+                    const lt = chargeLandingTile(unit, target);
+                    if (lt) addMove(unit, lt.x, lt.y, 'self');
+                }
+                if (spell.purgeFirst && target.shield) { if (!hpUndo.has(target)) hpUndo.set(target, [target.hp, target.shield]); target.shield = 0; }
+                if (spell.chainProfile && spell.chainProfile.length) {
+                    let prof = spell.chainProfile;
+                    if (spell.chainWetHops > 0) {
+                        const probe = calcChainTargets(target, aliveUnitsFor(enemyOf(unit.player)), prof.length, spell.chainRadius || 1);
+                        if (probe.some(u => u && (unitHasStatus(u, 'wet') || _unitIsSoaked(u)))) prof = prof.concat(Array(spell.chainWetHops).fill(prof[prof.length - 1]));
+                    }
+                    const chain = calcChainTargets(target, aliveUnitsFor(enemyOf(unit.player)), prof.length, spell.chainRadius || 1);
+                    chain.forEach((u, i) => { const d = calcFlatSpellDamage(prof[i], sp, 16); hit(u, d, d, d, hopts, i ? { tag: 'chain' } : null); });
+                } else {
+                    const riders = (b) => calcSpellHitRiders({
+                        base: b,
+                        echo: spell.echoLastDealt ? (target._lastHitDealt || 0) : null, echoCap: 500,
+                        actedBonus: (spell.actedTargetBonus && unitFinished(target)) ? spell.actedTargetBonus : 0,
+                        unholyBonus: (spell.unholyBonus && target.types && (target.types.includes('unholy') || target.types.includes('anomaly'))) ? spell.unholyBonus : 0,
+                        execMult: (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) ? 1 + spell.executeBonusPct : null,
+                        waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : null,
+                        sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null
+                    }).dmg;
+                    const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
+                    hit(target, riders(m), riders(l), riders(hgh), hopts);
+                    /* the splash round the victim, the upgrade riders (fork / bounce) */
+                    if (spell.splash && spellSplashOf(spell)) {
+                        const sm = spellSplashOf(spell).mult;
+                        for (const v of _splashVictims(unit, spell, target)) {
+                            const [a, b, c] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 16).map(n => Math.max(1, Math.round(n * sm)));
+                            hit(v, a, b, c, hopts, { tag: 'splash' });
+                        }
+                    }
+                    const ric = spellRicochetRiderOf(spell), ext = spellExtraTargetsOf(spell);
+                    if (ric) {
+                        const second = calcBounceTarget(target, state.units.filter(u => !u._dying && isEnemyUnit(u, unit) && !isUnitRealmShieldedFrom(u, unit)), ric.radius, target.id);
+                        if (second) { const [a, b, c] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 16).map(n => Math.max(1, Math.round(n * ric.mult))); hit(second, a, b, c, hopts, { tag: 'bounce' }); }
+                    }
+                    if (ext) {
+                        for (const v of _extraTargetVictims(unit, spell, target, ext.count)) {
+                            const [a, b, c] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 16).map(n => Math.max(1, Math.round(n * ext.mult)));
+                            hit(v, a, b, c, hopts, { tag: 'fork' });
+                        }
+                    }
+                }
+                /* _runPostEffects: the charge hop (when the strike came first), swapOnHit, the knockback, the tackle carry */
+                if (spell.chargeToTarget && !_clash) {
+                    if (!chargeFirst) { const lt = chargeLandingTile(unit, target); if (lt) addMove(unit, lt.x, lt.y, 'self'); }
+                    if (spell.swapOnHit && target.hp > 0) {
+                        const bx = target.x + Math.sign(target.x - unit.x), by = target.y + Math.sign(target.y - unit.y);
+                        if (isInside(bx, by) && canOccupy(bx, by)) {
+                            const ux = unit.x, uy = unit.y, tx0 = target.x, ty0 = target.y;
+                            addMove(unit, tx0, ty0, 'swap'); addMove(target, ux, uy, 'swap');
+                        }
+                    }
+                }
+                if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash && !spell.hinge) {
+                    const pdx = Math.sign(target.x - unit.x), pdy = Math.sign(target.y - unit.y);
+                    if (pdx || pdy) {
+                        const r = slide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), null, 'push');
+                        if (kind === 'tackle' && r) {
+                            if (r.moved > 0) {
+                                const rx = r.x - pdx, ry = r.y - pdy;
+                                if (isInside(rx, ry) && canOccupy(rx, ry) && !(rx === unit.x && ry === unit.y)) addMove(unit, rx, ry, 'self');
+                            }
+                            if ((r.hitWall || r.hitUnits.length) && spell.collisionBonus) {
+                                hit(target, spell.collisionBonus, spell.collisionBonus, spell.collisionBonus,
+                                    baseOpts(spell.damageType || 'physical', { ignoreArmor: true, consumeMarked: false, allowMarkBonus: undefined }), { tag: 'collision' });
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
+            if (kind === 'aoe' || kind === 'cross' || kind === 'aoePull') {
+                let cx = x, cy = y, area, base, v, mopts = {};
+                const water = (kind === 'aoe' && spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
+                if (kind === 'aoe') {
+                    area = getSpellAoeArea(spell, x, y);
+                    base = (spell.dmg || 0) + sp; v = 20;
+                    mopts = { groundAirborne: !!spell.groundsFlyers, statusOnly: spell.zoneTickDamage > 0 && !(spell.dmg > 0), pullCenter: spell.pullToCenter ? { x, y } : null };
+                } else if (kind === 'cross') {
+                    cx = spell.aoeOriginSelf ? unit.x : x; cy = spell.aoeOriginSelf ? unit.y : y;
+                    area = getCrossArea(spell, cx, cy);
+                    base = Math.max(32, (spell.dmg || 0) + sp); v = 12;
+                    mopts = { pushFromCenter: spell.pushDistance ? { x: cx, y: cy } : null };
+                } else {
+                    area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                    base = Math.max(32, (spell.dmg || 0) + sp); v = 10;
+                    mopts = { pullCenter: spell.pullToCenter ? { x, y } : null, groundAirborne: true };
+                }
+                plan.tiles = area;
+                const enemies = aliveUnitsFor(enemyOf(unit.player));
+                const clash = _isClashMode();
+                const canPullIn = !!(spell.pullToCenter && mopts.pullCenter && !clash);
+                const pullJobs = [];
+                const hopts = baseOpts(spell.damageType || 'magic');
+                for (const tile of area) {
+                    for (const t of enemies.filter(e => e.x === tile.x && e.y === tile.y && !e.dead)) {
+                        if (spell.noDamage || mopts.statusOnly) {
+                            tag(t, 'status');
+                            if (canPullIn && spell.pullDistance) pullJobs.push(t);
+                            continue;
+                        }
+                        const lo = Math.max(32, Math.floor((base - v) * water)), mid = Math.max(32, Math.floor(base * water)), hi = Math.max(32, Math.floor((base + v) * water));
+                        hit(t, mid, lo, hi, hopts);
+                        if (t.hp <= 0) continue;
+                        if (spell.pushDistance && mopts.pushFromCenter) {
+                            const pdx = Math.sign(t.x - mopts.pushFromCenter.x), pdy = Math.sign(t.y - mopts.pushFromCenter.y);
+                            if (pdx || pdy) slide(t, pdx, pdy, getUnitPushDistance(t, spell.pushDistance), null, 'push');
+                        }
+                        const anchor = (spell.pullToCenter && mopts.pullCenter) ? unitResistsDisplace(t, 'pull') : null;
+                        if (anchor) tag(t, 'anchored');
+                        if (canPullIn && spell.pullDistance && !anchor) pullJobs.push(t);
+                        else if (spell.pullToCenter && mopts.pullCenter && !anchor && !clash) {
+                            const nx = t.x + Math.sign(mopts.pullCenter.x - t.x), ny = t.y + Math.sign(mopts.pullCenter.y - t.y);
+                            if (isInside(nx, ny) && canOccupy(nx, ny)) addMove(t, nx, ny, 'pull');
+                        }
+                        if (mopts.groundAirborne) grounded(t);
+                    }
+                }
+                if (pullJobs.length && mopts.pullCenter) {
+                    const c = mopts.pullCenter, cheb = (u) => Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y));
+                    pullJobs.sort((a, b) => cheb(a) - cheb(b));
+                    for (const t of pullJobs) {
+                        const n = getUnitPushDistance(t, spell.pullDistance, 'pull');
+                        let px = t.x, py = t.y;
+                        for (let i = 0; i < n; i++) {
+                            if (Math.max(Math.abs(px - c.x), Math.abs(py - c.y)) <= 1) break;
+                            const nx = px + Math.sign(c.x - px), ny = py + Math.sign(c.y - py);
+                            if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(nx, ny)) break;
+                            px = nx; py = ny;
+                            const dm = (typeof doorAt === 'function') ? doorAt(nx, ny) : null;
+                            if (dm && dm.transit) break;
+                        }
+                        addMove(t, px, py, 'pull');
+                    }
+                }
+                return;
+            }
+
+            if (kind === 'line' || kind === 'linePush') {
+                const hd = lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y, z);
+                if (!hd) return;
+                const aim = { x, y, lineZ: lineBeamAimZ(x, y, z, unit.id) };
+                const passes = spell.boomerang ? 2 : 1;
+                const d = calcFlatSpellDamage(spell.dmg || 0, sp, 32);
+                const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined });
+                for (let p = 0; p < passes; p++) {
+                    const bp = lineBeamPlan(unit, spell, hd.dx, hd.dy, aim);
+                    if (p === 0) plan.tiles = bp.cells.map(c => ({ x: c.x, y: c.y }));
+                    for (const v of bp.victims) {
+                        if (v.dead || v.hp <= 0) continue;
+                        hit(v, d, Math.max(1, d - SPELL_DMG_VARIANCE), d + SPELL_DMG_VARIANCE, hopts, p ? { tag: 'return' } : null);
+                        if (kind === 'linePush' && v.hp > 0) {
+                            const r = slide(v, hd.dx, hd.dy, getUnitPushDistance(v, spell.pushDistance || 1), null, 'push');
+                            if (r && (r.hitWall || r.hitUnits.length) && spell.collisionBonus && v.hp > 0) {
+                                hit(v, spell.collisionBonus, spell.collisionBonus, spell.collisionBonus,
+                                    baseOpts(spell.damageType || 'physical', { ignoreArmor: true, consumeMarked: false, allowMarkBonus: undefined }), { tag: 'pinned' });
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
+            if (kind === 'multiHit') {
+                const target = enemyAt(x, y, z);
+                if (!target) return;
+                let hits = spell.hitDamages || [8, 8];
+                if (spell.bonusHitsPerAdjacentAlly) {
+                    const bh = spell.bonusHitsPerAdjacentAlly;
+                    const n = Math.min(bh.max || 3, state.units.filter(a => !a.dead && !a._dying && a.id !== unit.id
+                        && isAllyUnit(a, unit) && Math.max(Math.abs(a.x - target.x), Math.abs(a.y - target.y)) === 1).length);
+                    if (n > 0) hits = [...hits, ...Array(n).fill(bh.dmg || hits[0] || 20)];
+                }
+                const marked = unitHasStatus(target, 'marked');
+                hits.forEach((b, i) => {
+                    const d = calcMultiHitDamage({ base: b, markedBonus: (i === 1 && marked) ? (spell.markedSecondHitBonus || 0) : 0, spellPower: sp, hitCount: hits.length });
+                    hit(target, d, d, d, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined }));
+                });
+                return;
+            }
+
+            if (kind === 'ricochet') {
+                const first = enemyAt(x, y, z);
+                if (!first) return;
+                const dt = spell.damageType || 'physical';
+                const d = calcFlatSpellDamage(spell.dmg || 0, sp, 0);
+                hit(first, d, d, d, baseOpts(dt, { allowMarkBonus: undefined }));
+                const second = calcBounceTarget(first, state.units.filter(u => u.player !== unit.player), spell.bounceRadius || 2, first.id);
+                if (second) {
+                    const b = calcFlatSpellDamage(spell.bounceDamage || 8, sp, 0);
+                    hit(second, b, b, b, baseOpts(dt, { allowMarkBonus: undefined, element: undefined, shieldIgnore: spell.bounceShieldIgnore || 0 }), { tag: 'bounce' });
+                }
+                return;
+            }
+
+            if (kind === 'barrage') {
+                if (spell.noDamage) { for (const e of _barrageTargets(unit, spell)) tag(e, 'status'); return; }
+                const w = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
+                const b = (spell.dmg || 0) + sp;
+                for (const e of _barrageTargets(unit, spell)) {
+                    const f = (n) => Math.max(32, Math.floor(Math.max(0, n) * w));
+                    hit(e, f(b), f(b - SPELL_DMG_VARIANCE), f(b + SPELL_DMG_VARIANCE), baseOpts(spell.damageType || 'physical', { element: undefined }));
+                }
+                return;
+            }
+
+            if (kind === 'lifeDrain' || kind === 'possess') {
+                const target = enemyAt(x, y, z);
+                if (!target || (kind === 'possess' && !spell.dmg)) return;
+                const [m, l, hgh] = rolled((kind === 'lifeDrain' ? (spell.dmg || 144) : spell.dmg) + sp, SPELL_DMG_VARIANCE, 32);
+                hit(target, m, l, hgh, kind === 'lifeDrain'
+                    ? baseOpts('magic', { allowMarkBonus: undefined, element: undefined })
+                    : baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, bonusVsStatus: null, element: undefined }));
+                if (kind === 'lifeDrain' && unit.hp < unit.maxHp) {
+                    const raw = Math.max(1, Math.round(m * (spell.drainPct || 0.5) * (unitPassiveMult(unit, 'lifeSapMult') || 1)));
+                    const h = entry(unit); h.heal += Math.min(Math.round(raw * supportScale(getUnitLevel(unit), getUnitLevel(unit))), unit.maxHp - unit.hp);
+                }
+                return;
+            }
+
+            if (kind === 'splitBeam') {
+                const target = enemyAt(x, y, z);
+                if (!target) return;
+                const primary = Math.max(32, (spell.dmg || 0) + sp);
+                const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined });
+                const near = aliveUnitsFor(enemyOf(unit.player)).filter(e => e.id !== target.id && !e.dead
+                    && Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2))
+                    .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
+                hit(target, primary, primary, primary, hopts);
+                const sd = (spell.splitDmg || Math.floor(primary * 0.6)) + sp;
+                for (const e of near) hit(e, sd, sd, sd, hopts, { tag: 'split' });
+                return;
+            }
+
+            if (kind === 'displacement') {
+                let tx = x, ty = y, dir = null;
+                if (spell.throwAnyDirection) {
+                    const pk = _twoClickPick(spell);
+                    if (pk) { const ddx = Math.sign(x - pk.x), ddy = Math.sign(y - pk.y); if (ddx || ddy) dir = { dx: ddx, dy: ddy }; tx = pk.x; ty = pk.y; z = pk.z; }
+                }
+                const target = enemyAt(tx, ty, z);
+                if (!target) return;
+                const dx = dir ? dir.dx : (Math.sign(target.x - unit.x) || 1), dy = dir ? dir.dy : Math.sign(target.y - unit.y);
+                const r = slide(target, dx, dy, getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2), null, 'push');
+                const hitObs = !!(r && (r.hitWall || r.hitUnits.length));
+                const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32).map(n => n + (hitObs && spell.collisionBonus ? spell.collisionBonus : 0));
+                hit(target, m, l, hgh, baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined }));
+                return;
+            }
+
+            if (kind === 'pull' || (kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'))) {
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                const isGrapple = kind === 'utility';
+                if (isGrapple) {
+                    const selfOnly = !!spell.selfPullOnly;
+                    const allyAnchor = selfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
+                    if (!selfOnly && target && isEnemyUnit(target, unit)) {
+                        slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), getUnitPushDistance(target, 2), { stopBefore: { x: unit.x, y: unit.y } }, 'pull');
+                        grounded(target);
+                        const d = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + sp);
+                        hit(target, d, d, d, baseOpts('physical', { allowMarkBonus: undefined, element: undefined }));
+                    } else if (!target || allyAnchor) {
+                        let cx = unit.x, cy = unit.y;
+                        for (const p of _ewLineTiles(unit.x, unit.y, x, y)) {
+                            if (!isInside(p.x, p.y)) break;
+                            if (selfOnly && p.x === x && p.y === y) break;
+                            if (unitAt(p.x, p.y)) break;
+                            if (!isTerrainPassable(p.x, p.y)) break;
+                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(p.x, p.y)) break;
+                            cx = p.x; cy = p.y;
+                            if (p.x === x && p.y === y) break;
+                        }
+                        addMove(unit, cx, cy, 'self');
+                    }
+                    return;
+                }
+                const ally = !!spell.allyOnly;
+                if (!target || (ally ? (target.id === unit.id || !isAllyUnit(target, unit)) : isAllyUnit(target, unit))) return;
+                const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull');
+                const anchor = ally ? null : unitResistsDisplace(target, 'pull');
+                if (anchor) tag(target, 'anchored');
+                slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), n, { stopBefore: { x: unit.x, y: unit.y }, noFall: ally }, ally ? 'rescue' : 'pull');
+                if (!ally) grounded(target);
+                if (spell.dmg) {
+                    const d = Math.max(16, (spell.dmg || 0) + sp);
+                    hit(target, d, d, d, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
+                }
+                return;
+            }
+
+            if (kind === 'swap') {
+                const target = (unitAt(x, y, z) || unitAt(x, y));
+                const bad = spell.allyOnly ? (!target || target.id === unit.id || !isAllyUnit(target, unit)) : (!target || isAllyUnit(target, unit));
+                if (bad) return;
+                const ux = unit.x, uy = unit.y, tx0 = target.x, ty0 = target.y;
+                addMove(unit, tx0, ty0, 'swap'); addMove(target, ux, uy, 'swap');
+                return;
+            }
+
+            if (kind === 'escape') {
+                const lt = escapeLandingTile(unit, spell);
+                if (lt) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                return;
+            }
+
+            if (kind === 'teleport') {
+                const mover = state._teleportingUnit ? state._teleportingUnit : (spell.teleportAnyUnit ? null : unit);
+                if (!mover) { const pick = unitAt(x, y); if (pick) tag(pick, 'picked'); return; }
+                if ((x === mover.x && y === mover.y) || unitAt(x, y) || !isInside(x, y) || !isTerrainPassable(x, y)) return;
+                if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return;
+                if (Math.abs(unit.x - x) + Math.abs(unit.y - y) > getEffectiveSpellRange(unit, spell)) return;
+                addMove(mover, x, y, mover === unit ? 'self' : 'teleport', { blink: true });
+                if (spell.aoeOnArrival && spell.dmg && mover === unit) {
+                    const m = _spellMaskOf(spell), r = m ? Math.max(1, aoeMaskBound(m)) : (spell.aoeRadius || 1);
+                    const d = Math.max(1, spell.dmg + sp);
+                    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        if (!dx && !dy) continue;
+                        if (m && !m.some(o => o[0] === dx && o[1] === dy)) continue;
+                        const v = unitAt(x + dx, y + dy);
+                        if (v && !v.dead && isEnemyUnit(v, unit)) hit(v, d, d, d, baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined }));
+                    }
+                }
+                return;
+            }
+
+            if (kind === 'dash') {
+                const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
+                if (dist < 1 || dist > getEffectiveSpellRange(unit, spell) || !isInside(x, y) || !isTerrainPassable(x, y)) return;
+                const path = getLinePoints(unit.x, unit.y, x, y);
+                const pm = unitPassiveMult(unit, 'dashDamageMult') || 1;
+                const pathDmg = Math.round((spell.dashDamage || spell.dmg || 0) * pm);
+                const primDmg = Math.round(spell.dmg || 0) || pathDmg;
+                const split = spell.dashDamage != null;
+                const pts = [];
+                if (spell.dashSweep > 0) {
+                    const seen = new Set();
+                    for (const e of getHostileUnits(unit.player, unit)) {
+                        if (seen.has(e.id)) continue;
+                        if ([{ x: unit.x, y: unit.y }, ...path].some(pt => Math.max(Math.abs(e.x - pt.x), Math.abs(e.y - pt.y)) <= spell.dashSweep)) { seen.add(e.id); pts.push({ x: e.x, y: e.y }); }
+                    }
+                } else for (const pt of path) pts.push(pt);
+                plan.tiles = path.map(p => ({ x: p.x, y: p.y }));
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: true, element: undefined });
+                for (const pt of pts) {
+                    const v = unitAt(pt.x, pt.y);
+                    if (!v || v.dead || !isEnemyUnit(v, unit)) continue;
+                    const d = (split && pt.x === x && pt.y === y) ? primDmg : pathDmg;
+                    if (d > 0) hit(v, d, d, d, hopts);
+                }
+                for (const s of dashShovePlan(unit, x, y, z)) addMove(s.unit, s.x, s.y, 'push');
+                addMove(unit, x, y, 'self');
+                if (spell.afterShot) {
+                    const t = _afterShotTarget(unit, x, y, spell.afterShot.range || 3);
+                    if (t) { const d = (spell.afterShot.dmg || 0) + sp; hit(t, d, d, d, baseOpts(spell.afterShot.damageType || spell.damageType || 'physical', { allowMarkBonus: true, element: undefined }), { tag: 'afterShot' }); }
+                }
+                return;
+            }
+
+            if (kind === 'skyDrop' || kind === 'skySlam' || kind === 'leapStrike') {
+                const target = enemyAt(x, y, z);
+                if (!target) return;
+                const cz = getUnitStandingHeight(unit);
+                let total;
+                if (kind === 'leapStrike') {
+                    const tz = getUnitStandingHeight(target);
+                    if (cz <= tz) return;
+                    total = Math.max(16, (spell.dmg || 0) + sp + (cz - tz) * (spell.dmgPerLevel || 20));
+                } else {
+                    const carry = spell.carryHeight || (kind === 'skySlam' ? 5 : 4);
+                    total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (cz + carry) - getHeightAt(target.x, target.y)) * (spell.dmgPerLevel || 25));
+                }
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                hit(target, total, total, total, hopts);
+                if (kind !== 'skyDrop' && spell.aoeRadius && spell.aoeDmgPct) {
+                    const ad = Math.floor(total * spell.aoeDmgPct);
+                    const m = _spellMaskOf(spell), r = m ? Math.max(1, aoeMaskBound(m)) : spell.aoeRadius;
+                    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        if (!dx && !dy) continue;
+                        if (m && !m.some(o => o[0] === dx && o[1] === dy)) continue;
+                        const v = isInside(target.x + dx, target.y + dy) ? unitAt(target.x + dx, target.y + dy) : null;
+                        if (v && !v.dead && v.id !== target.id && isEnemyUnit(v, unit)) hit(v, ad, ad, ad, hopts, { tag: 'shockwave' });
+                    }
+                }
+                if (kind === 'skySlam') {
+                    const adj = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]].map(([a, b]) => ({ x: target.x + a, y: target.y + b }));
+                    const lt = adj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                    if (lt) addMove(unit, lt.x, lt.y, 'self');
+                } else if (kind === 'leapStrike') {
+                    const adj = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => ({ x: target.x + a, y: target.y + b }));
+                    const lt = adj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                    if (lt) addMove(unit, lt.x, lt.y, 'self');
+                }
+                return;
+            }
+
+            if (kind === 'skyThrow') {
+                if (!unit._skyThrowGrab) { const t = enemyAt(x, y, z); if (t) tag(t, 'grab'); return; }
+                const tt = state.units.find(u => u.id === unit._skyThrowGrab.id && !u.dead);
+                if (!tt) return;
+                const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
+                if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y)) return;
+                const total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) * (spell.dmgPerLevel || 25));
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const col = (unitAt(x, y, z) || unitAt(x, y));
+                if (col && !col.dead && col.id !== tt.id) {
+                    const cb = spell.collisionBonus || 50;
+                    hit(tt, total + cb, total + cb, total + cb, hopts);
+                    hit(col, cb, cb, cb, baseOpts('physical', { allowMarkBonus: undefined, element: undefined }), { tag: 'collision' });
+                    const pt = [{ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }].find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                    if (pt && col.hp > 0) addMove(col, pt.x, pt.y, 'push');
+                } else {
+                    hit(tt, total, total, total, hopts);
+                }
+                addMove(tt, x, y, 'thrown');
+                return;
+            }
+
+            if (kind === 'rallyPull') {
+                for (const r of rallyPullPlan(unit)) addMove(r.unit, r.x, r.y, 'rally');
+                return;
+            }
+
+            if (kind === 'bomb') {
+                const occ = unitAt(x, y);
+                const contact = occ && !occ.dead && isEnemyUnit(occ, unit) && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occ));
+                const m = _spellMaskOf(spell);
+                const area = m ? aoeMaskTiles(m, x, y, bw(), bh()) : getSquareArea(x, y, 1);
+                plan.tiles = area;
+                if (!contact) { plan.notes.push('armed'); return; }
+                const d = (spell.dmg || 0) + sp;
+                for (const t of area) {
+                    const v = unitAt(t.x, t.y);
+                    if (v && !v.dead && v.player !== unit.player) hit(v, d, d, d, { sourceUnit: unit, allowMarkBonus: false, noAtkBonus: true, spellType: spell.spellType || 'tech', spellElement: el || null });
+                }
+                return;
+            }
+
+            if (kind === 'delayed') {
+                const m = _spellMaskOf(spell);
+                const area = m ? aoeMaskTiles(m, x, y, bw(), bh()) : getSquareArea(x, y, spell.aoeRadius || 1);
+                plan.tiles = area;
+                plan.notes.push('delayed');
+                const d = (spell.dmg || 0) + sp;
+                for (const t of area) {
+                    const v = state.units.find(u => !u.dead && u.x === t.x && u.y === t.y && (spell.friendlyFire || u.player !== unit.player));
+                    if (v) hit(v, d, d, d, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: el || null }, { tag: 'delayed' });
+                }
+                return;
+            }
         }
 
         // Towers are static objectives — they never move from their placed position.
@@ -37927,6 +38732,13 @@
         function _drawSpellApproachShove(spell, target, castX, castY, targetY) {
             try {
                 if (!spell || !target) return;
+                /* THE FORECAST (2026-10-01): the engine's own read from the cast tile — every body the cast moves */
+                const _caster = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
+                if (_caster && typeof window.drawForecastMoves === 'function') {
+                    const plan = forecastSpellPlan(_caster, spell, target.x, target.y, target.z,
+                        { castFrom: (castX !== _caster.x || castY !== _caster.y) ? { x: castX, y: castY } : null });
+                    if (plan.handled) { window.drawForecastMoves(plan, _caster, 'spellApproachShove'); return; }
+                }
                 const shove = _predictSpellApproachShove(spell, target, castX, castY);
                 if (!shove) return;
                 // Arrow palette: purple = target being force-moved (push AND pull).
@@ -38181,7 +38993,8 @@
         // beams and self-origin blasts read the caster's position).
         function _spellApproachAoeTiles(spell, unit, castX, castY, tx, ty) {
             const isHeal = !!spell && ['heal', 'healAll', 'zoneHeal', 'selfHeal', 'revive', 'cleanse', 'cleanseArea'].includes(spell.kind);
-            const hi = isHeal ? 0x33ff33 : 0xff3333, lo = isHeal ? 0x22cc22 : 0xdd2222;
+            const _hit = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
+            const hi = isHeal ? 0x33ff33 : _hit, lo = isHeal ? 0x22cc22 : _hit;
             let fp = [];
             try {
                 if (spell && typeof getSpellAoeFootprint === 'function') {
@@ -38189,11 +39002,11 @@
                     fp = getSpellAoeFootprint(spell, tx, ty, pseudo) || [];
                 }
             } catch (e) { fp = []; }
-            if (!fp.length) return [{ x: tx, y: ty, color: hi, opacity: 0.6, cursor: true }];
+            if (!fp.length) return [{ x: tx, y: ty, color: hi, opacity: isHeal ? 0.6 : 0.92, cursor: true }];
             const hasCenter = fp.some(t => t.x === tx && t.y === ty);
             const tiles = fp.map(t => {
                 const c = t.x === tx && t.y === ty;
-                return { x: t.x, y: t.y, color: c ? hi : lo, opacity: c ? 0.6 : 0.5, cursor: c };
+                return { x: t.x, y: t.y, color: c ? hi : lo, opacity: isHeal ? (c ? 0.6 : 0.5) : (c ? 0.95 : 0.85), cursor: c };
             });
             if (!hasCenter) tiles.push({ x: tx, y: ty, color: hi, opacity: 0.0, cursor: true });
             return tiles;
@@ -52860,16 +53673,18 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 let rangeColor = 0xaa33ff;
                 const k = spell.kind;
+                /* THE CLARITY PASS (2026-10-01): a damage spell's REACH is amber — red is only ever the tiles it WILL hit */
+                const _reach = (window.EW_PREVIEW && window.EW_PREVIEW.reach) || 0xffa040;
                 if (['damage', 'aoe', 'barrage', 'multiHit', 'ricochet', 'bomb', 'delayed', 'line', 'linePush', 'splitBeam', 'cross', 'leapStrike', 'tackle'].includes(k)) {
-                    rangeColor = 0xff5544;
+                    rangeColor = _reach;
                 } else if (['heal', 'healAll', 'selfHeal', 'seedHeal', 'revive', 'cleanse'].includes(k)) {
                     rangeColor = 0x33cc55;
                 } else if (['buff', 'shield', 'aoeShield', 'warCry'].includes(k)) {
                     rangeColor = 0x4488ff;
                 } else if (['debuff', 'zoneDebuff', 'lifeDrain', 'leechSeed', 'seedPoison'].includes(k)) {
-                    // hostile drains/debuffs read as damage — red, matching the
-                    // armed-mode 'spell-range-dmg' wash (was magenta)
-                    rangeColor = 0xff5544;
+                    // hostile drains/debuffs read as damage reach — amber, matching
+                    // the armed-mode 'spell-range-dmg' lattice
+                    rangeColor = _reach;
                 }
                 ThreeRenderer.setOverlay('spellRange', rangeTiles, rangeColor, 0.45);
                 // 🗺️ Elemental damage spells: tint the tiles the spell can be
@@ -62749,8 +63564,7 @@
                 addLog(`${unitDisplayName(unit)} breaks camouflage!`);
             }
 
-            const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
-                + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getPassiveSpellPowerBonus(unit);
+            const spellPower = spellPowerOf(unit, spell);   // the forecast reads the same sum
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
@@ -65212,25 +66026,10 @@
 
                 const decoyX = unit.x, decoyY = unit.y;
 
-                const dist = spell.teleportDistance || 2;
-                const candidates = [];
-                for (let dy = -dist; dy <= dist; dy++) {
-                    for (let dx = -dist; dx <= dist; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        const nx = unit.x + dx, ny = unit.y + dy;
-                        if (Math.abs(dx) + Math.abs(dy) <= dist && isInside(nx, ny) && canOccupy(nx, ny)) {
-                            candidates.push({ x: nx, y: ny });
-                        }
-                    }
-                }
+                /* the landing comes from escapeLandingTile — the preview shows the same tile */
+                const _escLand = escapeLandingTile(unit, spell);
+                const candidates = _escLand ? [_escLand] : [];
                 if (candidates.length) {
-
-                    const enemies = aliveUnitsFor(enemyOf(unit.player));
-                    candidates.sort((a, b) => {
-                        const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
-                        const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
-                        return bMin - aMin;
-                    });
                     const _escFromX = unit.x, _escFromY = unit.y;
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
@@ -67558,39 +68357,13 @@
                 if (_rpVFX && _rpVFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) _rpVFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: 2 });
                 } else { _vfxBuff(unit.x, unit.y); }
-                const knights = aliveUnitsFor(unit.player)
-                    .filter(a => a.id !== unit.id
-                        && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 1
-                        && !unitHasStatus(a, 'root'))
-                    .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
-                                  - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
-                const _rpTaken = new Set(state.units.filter(u2 => !u2.dead).map(u2 => u2.x + ',' + u2.y));
-                const _rpFree = [];
-                const _rpSeen = new Set([unit.x + ',' + unit.y]);
-                const _rpQueue = [{ x: unit.x, y: unit.y }];
-                while (_rpQueue.length && _rpFree.length < knights.length + 4) {
-                    const t = _rpQueue.shift();
-                    for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-                        const nx = t.x + ddx, ny = t.y + ddy, nk = nx + ',' + ny;
-                        if (_rpSeen.has(nk)) continue;
-                        _rpSeen.add(nk);
-                        if (!isInside(nx, ny)) continue;
-                        _rpQueue.push({ x: nx, y: ny });
-                        if (_rpTaken.has(nk)) continue;
-                        if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) continue;
-                        if (state.turrets && state.turrets.some(tt => tt.x === nx && tt.y === ny && tt.hp > 0)) continue;
-                        _rpFree.push({ x: nx, y: ny });
-                    }
-                }
                 let _rpSummoned = 0;
-                for (const knight of knights) {
-                    const dest = _rpFree.shift();
-                    if (!dest) break;
+                for (const { unit: knight, x: _rpX, y: _rpY } of rallyPullPlan(unit)) {   // the preview reads the same plan
+                    const dest = { x: _rpX, y: _rpY };
                     knight.x = dest.x; knight.y = dest.y;
                     if (typeof nearestWalkableZ === 'function' && state.boardColumns?.length) {
                         knight.z = nearestWalkableZ(dest.x, dest.y, unit.z ?? 0);
                     }
-                    _rpTaken.add(dest.x + ',' + dest.y);
                     _vfxBuff(knight.x, knight.y);
                     showFloatingTextForUnit(knight, '⚔ Summoned', 'buff', { durationMs: 900 });
                     if (typeof _applyKnockbackHazard === 'function') _applyKnockbackHazard(knight);

@@ -6350,7 +6350,10 @@ function _predictTargetShove(spell, target, castX, castY) {
   if (!spell || !target) return null;
   const k = spell.kind;
   const isGrapple = spell.id === 'grapple' || spell.id === 'raceGrapple';
-  const isPull = k === 'pull' || k === 'aoePull' || !!spell.pullDistance || isGrapple;
+  /* an aoePull (Gravity Well, Dust Devil) drags bodies one step toward the AoE's CENTRE — the aimed body
+     stands on it and does not move (the forecast draws the ring's pulls) */
+  if (k === 'aoePull') return null;
+  const isPull = k === 'pull' || !!spell.pullDistance || isGrapple;
   const isPush = !isPull && (k === 'displacement' || k === 'linePush' || k === 'aoePush'
                   || !!spell.pushDistance || !!spell.displaceDistance);
   if (!isPull && !isPush) return null;
@@ -6476,7 +6479,7 @@ const _QA_SUP_KINDS = { heal:1, healAll:1, selfHeal:1, seedHeal:1, revive:1,
 function _showQuickActionRange(actingUnit, castX, castY, action) {
   if (!action || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
   const sp = action.spell;
-  let r = 0, color = 0xff3333; // basic attack reach = damage red (same palette as the arrows)
+  let r = 0, color = 0xffcc33; // basic attack reach = gold (the board's attack-range colour); red is only the hit
   if (action.id === 'attack' || action.id === 'combo') {
     r = (typeof getEffectiveRange === 'function') ? (getEffectiveRange(actingUnit) || 1) : (actingUnit.range || 1);
   } else if (sp) {
@@ -6484,7 +6487,7 @@ function _showQuickActionRange(actingUnit, castX, castY, action) {
     // strike arrow + swept footprint — a range field would just paint the map.
     if (sp.kind === 'line' || sp.kind === 'linePush') return;
     r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 0);
-    color = _QA_DMG_KINDS[sp.kind] ? 0xff3333 : _QA_SUP_KINDS[sp.kind] ? 0x33dd66 : 0xeeeeee;
+    color = _QA_DMG_KINDS[sp.kind] ? ((window.EW_PREVIEW && window.EW_PREVIEW.reach) || 0xffa040) : _QA_SUP_KINDS[sp.kind] ? 0x33dd66 : 0xeeeeee;
   } else {
     return;
   }
@@ -6524,6 +6527,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       comboPartnerId: (action && action.id === 'combo') ? (action._comboPartnerId ?? null) : null,
       // Potion rows (ally quick menu): forecast the item's heal the same way.
       itemKey: (action && action.itemKey) || null,
+      // Move-then-cast rows forecast from the tile they cast FROM (height, facing, reach all change)
+      castFrom: (mt && !mt._heightApproach && mt.x != null) ? { x: mt.x, y: mt.y, z: mt.z } : null,
     };
   }
   if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -6637,24 +6642,35 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   // support / white utility), measured from the actual cast tile.
   _showQuickActionRange(actingUnit, castX, castY, action);
 
-  ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
+  const _HIT = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
+  ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: _HIT, opacity: 0.9, cursor: true }], _HIT, 0.9);
+
+  /* THE FORECAST (2026-10-01, combat clarity pass): the hovered cast, read by the engine from the tile it is
+     cast FROM — the tiles it hits (crimson), every body it moves (arrow + hologram + landing plate) and the
+     same numbers the confirm step shows. Kinds the forecast does not read keep the footprint + shove guess. */
+  const _plan = (action && action.spell && typeof forecastSpellPlan === 'function')
+    ? forecastSpellPlan(actingUnit, action.spell, tx, ty, targetUnit.z,
+        { castFrom: (castX !== actingUnit.x || castY !== actingUnit.y) ? { x: castX, y: castY, z: (mt && mt.z != null) ? mt.z : undefined } : null })
+    : null;
 
   if (action && action.spell && typeof getSpellAoeFootprint === 'function') {
     const sp = action.spell;
     const hasAoe = sp.aoeRadius || sp.crossRadius || sp.kind === 'cross' || sp.kind === 'aoe'
                  || sp.kind === 'barrage' || sp.kind === 'aoePull' || sp.kind === 'aoePush'
+                 || sp.kind === 'line' || sp.kind === 'linePush' || sp.kind === 'bomb' || sp.kind === 'delayed'
                  || (typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask));
     if (hasAoe) {
-      const aoeTiles = getSpellAoeFootprint(sp, tx, ty, actingUnit);
+      const aoeTiles = (_plan && _plan.handled && _plan.tiles && _plan.tiles.length) ? _plan.tiles : getSpellAoeFootprint(sp, tx, ty, actingUnit);
       if (aoeTiles && aoeTiles.length > 0) {
-        const overlayTiles = aoeTiles.map(t => ({
-          x: t.x, y: t.y,
-          color: (t.x === tx && t.y === ty) ? 0xff4444 : 0xcc2222,
-          opacity: (t.x === tx && t.y === ty) ? 0.5 : 0.35,
-        }));
-        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, 0xff3333, 0.35);
+        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _HIT, opacity: (t.x === tx && t.y === ty) ? 0.95 : 0.85 }));
+        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, _HIT, 0.85);
       }
     }
+  }
+
+  if (_plan && _plan.handled) {
+    if (typeof window.drawForecastMoves === 'function') window.drawForecastMoves(_plan, actingUnit, 'actionPlanShove');
+    return;
   }
 
   // Displacement preview: show a ghost of the target where it will be shoved,

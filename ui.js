@@ -3011,8 +3011,9 @@
                   if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
                     _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                   } else {
-                    // red = damage: every tile the beam sweeps WILL be hit
-                    _hlCache.set(pk, 'spell-damage');
+                    // THE CLARITY PASS (2026-10-01): the 8 lanes are REACH (amber lattice) — the lane you aim
+                    // lights up as the crimson hit plate on hover (updateAoePreview), never all 8 at once
+                    _hlCache.set(pk, 'spell-range-dmg');
                   }
                 }
               }
@@ -3354,6 +3355,8 @@
 
             if (state.pendingTarget.mode === 'attack') {
                 if (target.dead || isAllyUnit(target, unit)) return null;
+                const _fa = forecastOnUnit(unit, target, null);
+                if (_fa) return { type: 'damage', amount: _fa.dmg, min: _fa.min, max: _fa.max, after: Math.max(0, target.hp - _fa.dmg), note: getTypeCombatNote(unit, target) };
                 const minRoll = -2;
                 const maxRoll = 2;
                 const _pvAtk = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'atk') : (unit.atk || 0);
@@ -3445,6 +3448,14 @@
                 const _pvElemNote = _pvAff === 'weak' ? `${_pvEl.toUpperCase()} WEAK ×1.5`
                     : _pvAff === 'resist' ? `${_pvEl.toUpperCase()} resisted ×0.5` : '';
                 const _pvNote = (typeNote) => [typeNote, _pvElemNote].filter(Boolean).join(' · ');
+                if (isEnemyUnit(unit, target)) {
+                    const _fs = forecastOnUnit(unit, target, spell);
+                    if (_fs && _fs.plan && _fs.plan.byId[target.id] && (_fs.dmg > 0 || _fs.blocked)) {
+                        const _bn = { absorb: `ABSORBS ${_pvEl || ''} — heals instead`, immune: `IMMUNE to ${_pvEl || ''}`, protected: 'PROTECTED', realm: 'out of reach', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' }[_fs.blocked];
+                        return { type: 'damage', amount: _fs.dmg, min: _fs.min, max: _fs.max, after: Math.max(0, target.hp - _fs.dmg), label: spell.name,
+                            note: _bn || _pvNote(getTypeCombatNote(unit, target, spell.spellType || null)) };
+                    }
+                }
                 const _pvNullHit = (_pvAff === 'immune' || _pvAff === 'absorb') ? {
                     type: 'damage',
                     amount: 0, min: 0, max: 0,
@@ -13957,7 +13968,7 @@
                 return getSquareArea(cx, cy, spell.aoeRadius || 1);
             }
             if (spell.kind === 'bomb') {
-                return getSquareArea(tx, ty, spell.blastRadius || 1);
+                return getSquareArea(tx, ty, 1);   // the blast is the mask or radius 1 (battle.js bomb branch) — blastRadius is the deployed object's
             }
             if (spell.kind === 'summonWeather') {
                 const r = spell.weatherTiles ? Math.floor(spell.weatherTiles[1] / 2) : 1;
@@ -13987,6 +13998,16 @@
             }
             if (spell.kind === 'line' || spell.kind === 'linePush') {
                 if (!casterUnit) return [];
+                /* the cast's own heading + beam (zigzag, lanes, the 3D pitch) — the sign of the aim lied off-axis */
+                if (typeof lineSpellHeadingTo === 'function' && typeof lineBeamPlan === 'function') {
+                    try {
+                        const _tu = unitAt(tx, ty);
+                        const hd = lineSpellHeadingTo(spell, casterUnit.x, casterUnit.y, casterUnit.z ?? null, tx, ty, _tu ? _tu.z : undefined);
+                        if (!hd) return [];
+                        const _aimZ = (typeof lineBeamAimZ === 'function') ? lineBeamAimZ(tx, ty, _tu ? _tu.z : undefined, casterUnit.id) : undefined;
+                        return lineBeamPlan(casterUnit, spell, hd.dx, hd.dy, { x: tx, y: ty, lineZ: _aimZ }).cells.map(c => ({ x: c.x, y: c.y }));
+                    } catch (e) { /* fall through to the flat read */ }
+                }
                 const dx = Math.sign(tx - casterUnit.x);
                 const dy = Math.sign(ty - casterUnit.y);
                 if (dx === 0 && dy === 0) return [];
@@ -14157,12 +14178,14 @@
                 const isHeal = ['heal', 'healAll'].includes(spell.kind);
 
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                    /* THE CLARITY PASS: every tile the cast WILL hit is the same loud crimson plate (the renderer's
+                       'aoe' style adds the inner frame); the aim tile carries the cursor brackets. */
                     const overlayTiles = footprint.map(t => {
                         const isCenter = (t.x === x && t.y === y);
                         return {
                             x: t.x, y: t.y,
-                            color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : (isCenter ? 0xff3333 : 0xcc2222),
-                            opacity: isCenter ? 0.55 : 0.38,
+                            color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
+                            opacity: isHeal ? (isCenter ? 0.55 : 0.38) : (isCenter ? 0.95 : 0.85),
                             cursor: isCenter   // yellow corner brackets on the impact tile
                         };
                     });
@@ -14174,10 +14197,12 @@
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     const isHealKind = ['heal', 'selfHeal', 'seedHeal', 'revive', 'cleanse'].includes(spell.kind);
                     const isBuffKind = ['buff', 'shield', 'aoeShield', 'warCry'].includes(spell.kind);
-                    let singleColor = 0xff3333;
+                    let singleColor = EW_PREVIEW.hit;
                     if (isHealKind) singleColor = 0x33ff33;
                     else if (isBuffKind) singleColor = 0x4488ff;
-                    ThreeRenderer.setOverlay('aoe', [{ x: x, y: y, color: singleColor, opacity: 0.45, cursor: true }], singleColor, 0.45);
+                    /* a cast that moves bodies and hurts nobody (teleport, swap, rally…) paints its aim as a move */
+                    else if (!spellHasDamage(spell) && ['teleport', 'swap', 'escape', 'rallyPull', 'dash'].includes(spell.kind)) singleColor = EW_PREVIEW.self;
+                    ThreeRenderer.setOverlay('aoe', [{ x: x, y: y, color: singleColor, opacity: singleColor === EW_PREVIEW.hit ? 0.9 : 0.5, cursor: true }], singleColor, 0.45);
                     _aoePreview3dActive = true;
                 }
             }
@@ -14274,10 +14299,12 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 const overlayTiles = tiles.map(t => {
                     const isCenter = (t.x === unit.x && t.y === unit.y) || _rndKeys.has(t.x + ',' + t.y);
+                    /* an escape hurts nobody — its tile is the caster's own move (blue); the landing plate comes from the forecast */
+                    if (kind === 'escape') return { x: t.x, y: t.y, color: EW_PREVIEW.self, opacity: 0.35 };
                     return {
                         x: t.x, y: t.y,
-                        color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : (isCenter ? 0xff3333 : 0xcc2222),
-                        opacity: isCenter ? 0.5 : (_rndRow ? 0.18 : 0.35)
+                        color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
+                        opacity: isCenter ? 0.9 : (_rndRow ? 0.3 : 0.8)
                     };
                 });
                 ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
@@ -14296,11 +14323,36 @@
                 ThreeRenderer.clearIntentBadges();
                 ThreeRenderer.clearArrows3D();
                 ThreeRenderer.clearGhostUnit();
+                ThreeRenderer.clearOverlay('spellLanding');
             }
         }
 
+        /* THE FORECAST (2026-10-01, combat clarity pass): every damage number the board shows reads the engine's
+           own read-only forecast (battle.js forecastSpellPlan / forecastBasicAttack — the real hit pipeline, the
+           real targets, the real movement). spell = null → basic attack. castFrom = the tile a move-then-cast
+           casts from. Returns { dmg, min, max, lethal, blocked, heal, plan } or null when the kind is not one the
+           forecast reads (the old estimators below answer then). */
+        function forecastOnUnit(attacker, target, spell, castFrom) {
+            if (!attacker || !target || target.dead) return null;
+            try {
+                if (!spell) {
+                    if (typeof forecastBasicAttack !== 'function') return null;
+                    const f = forecastBasicAttack(attacker, target, { castFrom: castFrom || null });
+                    return f ? Object.assign({ plan: null }, f) : null;
+                }
+                if (typeof forecastSpellPlan !== 'function') return null;
+                const plan = forecastSpellPlan(attacker, spell, target.x, target.y, target.z, { castFrom: castFrom || null });
+                if (!plan.handled) return null;
+                const h = plan.byId[target.id];
+                if (!h) return { dmg: 0, min: 0, max: 0, lethal: false, blocked: null, heal: 0, plan };
+                return { dmg: h.dmg, min: h.min, max: h.max, lethal: h.lethal, blocked: h.blocked, heal: h.heal, plan };
+            } catch (e) { return null; }
+        }
+        window.forecastOnUnit = forecastOnUnit;
+
         function _estimateSpellDamage(caster, target, spell) {
             if (!caster || !target || !spell) return 0;
+            if (isEnemyUnit(caster, target)) { const _fc = forecastOnUnit(caster, target, spell); if (_fc) return _fc.dmg; }
             // 🜂 Elemental affinity forecast (mirrors applyDamageToUnit): an
             // immune/absorb target takes nothing from this element — say so.
             const _esEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : null;
@@ -14471,9 +14523,10 @@
         /* Projected HP the target actually loses: the mid estimate run through
            the status damage-taken multipliers and the shield soak, clamped to
            current HP. spell=null → basic attack. Returns 0 for non-damage. */
-        function predictDamageToUnit(attacker, target, spell) {
+        function predictDamageToUnit(attacker, target, spell, castFrom) {
             if (!attacker || !target || target.dead) return 0;
             if (!isEnemyUnit(attacker, target)) return 0;
+            { const _fc = forecastOnUnit(attacker, target, spell || null, castFrom); if (_fc) return Math.min(_fc.dmg, Math.max(0, target.hp)); }
             if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
             let dmg = spell ? _estimateSpellDamage(attacker, target, spell)
                             : _estimateBasicAttackDamage(attacker, target);
@@ -14595,6 +14648,28 @@
            nameplate pass, so it memoizes on the action/target fingerprint. */
         let _dmgPreviewCacheKey = '';
         let _dmgPreviewCacheVal = null;
+        /* The HP-bar forecast for an aimed action: the aimed body first, then EVERY other body the cast reaches
+           (`all` — an AoE, a chain, a bounce, a slam into a neighbour) so each nameplate blinks its own slice. */
+        function _forecastPreviewVal(attacker, target, spell, castFrom) {
+            const fc = forecastOnUnit(attacker, target, spell || null, castFrom);
+            if (!fc) {
+                const dmg = predictDamageToUnit(attacker, target, spell, castFrom);
+                return dmg > 0 ? { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) } : null;
+            }
+            const all = [];
+            if (fc.plan) {
+                for (const h of fc.plan.hits) {
+                    if (h.unit.id === target.id || !(h.dmg > 0)) continue;
+                    all.push({ unitId: h.unit.id, dmg: h.dmg, lethal: !!h.lethal });
+                }
+            }
+            if (!(fc.dmg > 0) && !all.length) return null;
+            const main = { unitId: target.id, dmg: Math.max(0, fc.dmg), lethal: !!fc.lethal, min: fc.min, max: fc.max };
+            all.unshift({ unitId: main.unitId, dmg: main.dmg, lethal: main.lethal });
+            main.all = all;
+            return main;
+        }
+
         function getPendingDamagePreview() {
             // ── Spell-row hover forecast (quick-cast menus) ──
             // While the player hovers a castable row with a target unit
@@ -14617,6 +14692,7 @@
                     const key = ['hov', attacker.id, target.id,
                         (spell && spell.name) || (hov.isAttack ? 'atk' : '') || (hov.itemKey || ''),
                         hov.comboPartnerId != null ? 'cp' + hov.comboPartnerId : '',
+                        hov.castFrom ? 'cf' + hov.castFrom.x + ',' + hov.castFrom.y : '',
                         target.hp, target.shield || 0,
                         attacker.x, attacker.y, attacker.z ?? 0].join('|');
                     if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
@@ -14640,8 +14716,7 @@
                         const heal = _estimateSpellHeal(attacker, target, spell);
                         if (heal > 0) val = { unitId: target.id, heal: heal };
                     } else if ((spell || hov.isAttack) && target.id !== attacker.id) {
-                        const dmg = predictDamageToUnit(attacker, target, spell);
-                        if (dmg > 0) val = { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) };
+                        val = _forecastPreviewVal(attacker, target, spell, hov.castFrom || null);
                     }
                     _dmgPreviewCacheKey = key;
                     _dmgPreviewCacheVal = val;
@@ -14707,8 +14782,7 @@
                 const heal = _estimateSpellHeal(attacker, target, spell);
                 if (heal > 0) val = { unitId: target.id, heal: heal };
             } else if (target.id !== attacker.id) {
-                const dmg = predictDamageToUnit(attacker, target, spell);
-                if (dmg > 0) val = { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) };
+                val = _forecastPreviewVal(attacker, target, spell, null);
             }
             _dmgPreviewCacheKey = key;
             _dmgPreviewCacheVal = val;
@@ -14751,6 +14825,91 @@
             return labels;
         }
 
+        /* THE PREVIEW PALETTE (2026-10-01, combat clarity pass) — one colour per meaning, every preview path:
+             reach  → amber outline lattice (where the spell CAN go; quiet)
+             hit    → crimson solid plate with an inner frame (what WILL take damage; loud)
+             self   → blue: the caster's own move (arrow, hologram, landing plate)
+             forced → purple: any other body the cast moves (push, pull, throw, swap, rally) */
+        const EW_PREVIEW = { reach: 0xffa040, hit: 0xff2a2a, self: 0x3399ff, forced: 0xbb66ff };
+        window.EW_PREVIEW = EW_PREVIEW;
+
+        /* Every body a forecast plan moves: one arrow from where it stands to where it ENDS (a slide that rebounds,
+           a pin that is knocked on — the last move wins), a hologram on the landing tile and a landing plate in the
+           overlay `overlayName`. Teleports / escapes draw a straight dashed line (no travel). Viewer-local. */
+        function drawForecastMoves(plan, caster, overlayName) {
+            if (!plan || !plan.moves || !plan.moves.length) return;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+            const per = new Map();
+            for (const m of plan.moves) {
+                const p = per.get(m.unit.id);
+                if (p) { p.x = m.x; p.y = m.y; p.slam = p.slam || m.slam; p.blink = p.blink && !!(m.blink || m.escape); }
+                else per.set(m.unit.id, { unit: m.unit, fromX: m.fromX, fromY: m.fromY, x: m.x, y: m.y, mode: m.mode, slam: !!m.slam, blink: !!(m.blink || m.escape) });
+            }
+            const plates = [];
+            per.forEach(m => {
+                if (m.x === m.fromX && m.y === m.fromY) return;
+                const own = !!(caster && m.unit.id === caster.id);
+                const col = own ? EW_PREVIEW.self : EW_PREVIEW.forced;
+                let fromY, toY;
+                try { fromY = ThreeRenderer.tileTopY(m.fromX, m.fromY); toY = ThreeRenderer.tileTopY(m.x, m.y); } catch (e) {}
+                const arc = m.blink ? 0 : (m.mode === 'pull' || m.mode === 'rescue' ? 0.18 : (own ? 0.24 : 0.3));
+                ThreeRenderer.drawArrow3D(m.fromX, m.fromY, m.x, m.y, col, !!m.blink, fromY, toY, { arc: arc, flow: !m.blink });
+                if (toY != null) ThreeRenderer.showGhostUnit(m.unit, m.x, m.y, toY, { tag: 'fc:' + m.unit.id, color: col, opacity: 0.82 });
+                plates.push({ x: m.x, y: m.y, color: col, opacity: 0.62 });
+            });
+            if (plates.length && overlayName) ThreeRenderer.setOverlay(overlayName, plates, plates[0].color, 0.62);
+        }
+        window.drawForecastMoves = drawForecastMoves;
+
+        const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
+        const _FC_TAG_TEXT = { slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
+        const _FC_SECONDARY = { splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
+
+        /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
+           why it takes nothing, what the movement does to it, the matchup and the statuses it will carry. */
+        function _renderForecastBadges(caster, spell, plan) {
+            const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
+            const shown = new Set();
+            for (const h of plan.hits) {
+                const target = h.unit;
+                if (!target || target.dead) continue;
+                shown.add(target.id);
+                const badgeStack = [];
+                let yOff = 0;
+                const push = (html, cls, step) => { badgeStack.push({ html, cls, yOff }); yOff += step; };
+                if (h.blocked && !(h.dmg > 0)) push(_FC_BLOCK_TEXT[h.blocked] || String(h.blocked).toUpperCase(), 'intent-type-eff not-effective', 14);
+                if (h.dmg > 0) {
+                    const spread = (h.min !== h.max && h.min != null && h.max != null)
+                        ? `<span style="opacity:.72;font-size:0.72em;margin-left:3px">${h.min}–${h.max}</span>` : '';
+                    push(`−${h.dmg}${spread}`, 'intent-damage', 18);
+                    if (h.lethal) push('LETHAL', 'intent-kill', 14);
+                }
+                if (h.heal > 0) push(`+${h.heal}`, 'intent-heal', 18);
+                for (const t of h.tags) if (_FC_TAG_TEXT[t]) push(_FC_TAG_TEXT[t], 'intent-status intent-status-debuff', 14);
+                const primary = !h.tags.some(t => _FC_SECONDARY[t]);
+                if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
+                    const typeEff = _getTypeEffLabel(caster, target, spell);
+                    if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
+                    const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
+                    if (_iAff === 'weak') push(_SE_CIRCLE_HTML + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
+                    else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
+                }
+                if (isEnemyUnit(caster, target) && primary && !h.blocked) {
+                    for (const sl of _getStatusPreviewLabels(spell)) {
+                        if (sl.isDebuff) push(sl.text, 'intent-status intent-status-debuff', 14);
+                    }
+                }
+                _renderIntentBadges(target.x, target.y, badgeStack);
+            }
+            /* the caster's own riders (Nimble Dodge's Invisible, Eject!'s cleanse) read where it stands now */
+            if (caster && !shown.has(caster.id) && (spell.kind === 'escape' || isSpellSelfCast(spell))) {
+                const own = _getStatusPreviewLabels(spell).filter(sl => !sl.isDebuff).map(sl => sl.text);
+                if (spell.cleanse) own.push('CLEANSE');
+                if (spell.selfHealPct) own.push(`+${Math.round(spell.selfHealPct * 100)}% HP`);
+                if (own.length) _renderIntentBadges(caster.x, caster.y, own.map((t, i) => ({ html: t, cls: 'intent-status intent-status-buff', yOff: i * 14 })));
+            }
+        }
+
         function updateIntentPreview(x, y) {
             clearIntentPreview();
             if (state.actionMode !== 'spell' || state.devAutoSim) return;
@@ -14758,6 +14917,14 @@
             if (!caster || !boardEl) return;
             const spell = (caster.spells || []).find(s => s.name === state.selectedTool) || (caster._raceAbilities || []).find(s => s.name === state.selectedTool);
             if (!spell) return;
+
+            /* THE FORECAST: the engine's own read of this cast — numbers, victims and landings in one */
+            const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y) : null;
+            if (_plan && _plan.handled) {
+                _renderForecastBadges(caster, spell, _plan);
+                drawForecastMoves(_plan, caster, 'spellLanding');
+                return;
+            }
 
             const affectedTiles = _getIntentAffectedTiles(caster, spell, x, y);
             // THE SPLASH RIDER (Phase 3): the tiles round the victim forecast dmg × mult and no statuses (battle.js _applySplashDamage)

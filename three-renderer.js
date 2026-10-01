@@ -587,7 +587,8 @@ const ThreeRenderer = (function () {
         'attack':          0xffcc33,
         'attack enemy':    0xff2222,
         'spell-damage':    0xff3a3a,   /* strong red — tiles the spell WILL hit */
-        'spell-range-dmg': 0xff4444,   /* faint red  — where a damage spell can reach */
+        'spell-range-dmg': 0xffa040,   /* amber lattice — where a damage spell can reach (THE CLARITY PASS
+                                          2026-10-01: was a faint red the footprint red drowned in) */
         'heal-range':      0x33dd77,   /* faint green— where a support spell can reach */
         'spell-range':     0x8844ee,
         'spell-range-bg':  0x6633bb,
@@ -614,11 +615,13 @@ const ThreeRenderer = (function () {
                 AoE footprint (overlay styles below) — loudest, with hatching.
        Anything not listed falls back to 0.34 (the old uniform fill). */
     const HL_FILL = {
-        'spell-range':     0.36,
-        'spell-range-bg':  0.22,
-        'spell-range-dmg': 0.36,
-        'heal-range':      0.34,
-        'spell-damage':    0.62,
+        /* THE CLARITY PASS (2026-10-01): reach went back to a lattice (outline + a whisper of fill) and the hit
+           plate went solid, so the two tiers never read alike again */
+        'spell-range':     0.16,
+        'spell-range-bg':  0.10,
+        'spell-range-dmg': 0.12,
+        'heal-range':      0.16,
+        'spell-damage':    0.80,
         'attack':          0.36,
         'inspect':         0.32,
         /* in-range-but-unreachable move tile: a REAL red fill (not the old
@@ -635,9 +638,9 @@ const ThreeRenderer = (function () {
     const HL_OPACITY_MAP = {
         'move-edge':       0.72,
         'spell-range-bg':  0.62,
-        'spell-range-dmg': 0.80,
+        'spell-range-dmg': 0.74,
         'heal-range':      0.78,
-        'spell-damage':    0.88,
+        'spell-damage':    0.96,
         'attack enemy':    0.90
     };
 
@@ -657,9 +660,9 @@ const ThreeRenderer = (function () {
            "lattice" read: reach stays obvious without shouting. */
         'spell-range':  1.1,
         'spell-range-bg': 0.7,
-        'spell-range-dmg': 1.05,
+        'spell-range-dmg': 0.95,
         'heal-range':   0.95,
-        'spell-damage': 1.2,
+        'spell-damage': 1.45,
         'heal':         1.2,
         'inspect':      0.8,
         'move ally':    0.9,
@@ -686,6 +689,7 @@ const ThreeRenderer = (function () {
         'uniform float uFill;',
         'uniform float uBrackets;',
         'uniform float uHatch;',
+        'uniform float uInset;',
         'uniform int uDots;',
         'varying vec2 vUv;',
         '',
@@ -771,11 +775,17 @@ const ThreeRenderer = (function () {
         // the player tells move/strike/hazard/terrain apart at a glance.
         '  float fill = uFill * pulse;',
         '  float border = (borderHard * 1.35 + borderSoft) * uEdgeGlow * pulse;',
+        /* THE CLARITY PASS (2026-10-01): uInset → a static second frame inside the edge — the "this tile WILL be
+           hit" mark, so a damage footprint differs from a reach lattice by SHAPE as well as colour (no motion). */
+        '  float inset = 0.0;',
+        '  if (uInset > 0.0) {',
+        '    inset = (smoothstep(0.115, 0.135, edge) - smoothstep(0.165, 0.185, edge)) * uInset;',
+        '  }',
         '',
-        '  float alpha = (fill + border + brackets + hatch * 0.55 + dots) * uOpacity;',
+        '  float alpha = (fill + border + brackets + hatch * 0.55 + dots + inset) * uOpacity;',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
-        '  float bright = borderHard * uEdgeGlow * 0.42 + brackets * 0.30 + dots * 0.85;',
+        '  float bright = borderHard * uEdgeGlow * 0.42 + brackets * 0.30 + dots * 0.85 + inset * 0.6;',
         '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.55));',
         '  gl_FragColor = vec4(col, alpha);',
         '}'
@@ -795,6 +805,7 @@ const ThreeRenderer = (function () {
                 uFill:     { value: (st.fill !== undefined) ? st.fill : 0.34 },
                 uBrackets: { value: st.brackets || 0.0 },
                 uHatch:    { value: st.hatch || 0.0 },
+                uInset:    { value: st.inset || 0.0 },
                 uDots:     { value: dotCount || 0 }
             },
             vertexShader: _hlVertexShader,
@@ -10608,26 +10619,41 @@ const ThreeRenderer = (function () {
        the leading edge of the fill. Runs every frame (pendingTarget changes
        don't bump the unit serial, so _patchPlateStats can't carry this);
        the idle path is a single cheap null check. */
+    /* THE FORECAST (2026-10-01): an aimed cast blinks its slice on EVERY body it reaches (info.all — the AoE,
+       the chain, the slam into a neighbour), not just the aimed one. */
     var _dmgPrevUnitId = null;
+    var _dmgPrevIds = [];
+    function _clearDmgPreviewOn(id) {
+        var oldPo = _plateObjs.get(id);
+        var oldEl = (oldPo && oldPo.el) ? oldPo.el.querySelector('.tp-dmg-preview') : null;
+        if (oldEl) oldEl.remove();
+        var oldRet = _reticleOfUnit(id);
+        if (oldRet && oldRet.material.uniforms) {
+            oldRet.material.uniforms.uPrev.value = 0;
+            oldRet.material.uniforms.uPrevHeal.value = 0;
+        }
+    }
     function _updateDmgPreviewPlates() {
         var info = (typeof window.getPendingDamagePreview === 'function') ? window.getPendingDamagePreview() : null;
-        if (!info && _dmgPrevUnitId === null) return;
-        if (_dmgPrevUnitId !== null && (!info || info.unitId !== _dmgPrevUnitId)) {
-            var oldPo = _plateObjs.get(_dmgPrevUnitId);
-            var oldEl = (oldPo && oldPo.el) ? oldPo.el.querySelector('.tp-dmg-preview') : null;
-            if (oldEl) oldEl.remove();
-            var oldRet = _reticleOfUnit(_dmgPrevUnitId);
-            if (oldRet && oldRet.material.uniforms) {
-                oldRet.material.uniforms.uPrev.value = 0;
-                oldRet.material.uniforms.uPrevHeal.value = 0;
-            }
-            _dmgPrevUnitId = null;
+        if (!info && !_dmgPrevIds.length) return;
+        var entries = info ? (info.all && info.all.length ? info.all : [info]) : [];
+        var keep = {};
+        for (var k = 0; k < entries.length; k++) keep[entries[k].unitId] = true;
+        for (var p = 0; p < _dmgPrevIds.length; p++) {
+            if (!keep[_dmgPrevIds[p]]) _clearDmgPreviewOn(_dmgPrevIds[p]);
         }
-        if (!info) return;
+        _dmgPrevIds = [];
+        _dmgPrevUnitId = info ? info.unitId : null;
+        for (var e = 0; e < entries.length; e++) {
+            if (_paintDmgPreviewOn(entries[e])) _dmgPrevIds.push(entries[e].unitId);
+        }
+    }
+    function _paintDmgPreviewOn(info) {
         var u = null;
         for (var i = 0; i < (state.units || []).length; i++) {
             if (state.units[i].id === info.unitId) { u = state.units[i]; break; }
         }
+        var painted = false;
         /* Ring vitals carry the same forecast slice on the HP meter. */
         var ret = _reticleOfUnit(info.unitId);
         if (u && !u.dead && ret && ret.material.uniforms) {
@@ -10640,12 +10666,12 @@ const ThreeRenderer = (function () {
                 ret.material.uniforms.uPrevHeal.value = 0;
                 ret.material.uniforms.uPrev.value = Math.min(_rHp, _ringFrac(info.dmg || 0, _rMax));
             }
-            _dmgPrevUnitId = info.unitId;
+            painted = true;
         }
         var po = _plateObjs.get(info.unitId);
-        if (!u || u.dead || !po || !po.el) return;
+        if (!u || u.dead || !po || !po.el) return painted;
         var refs = _plateRefs(po);
-        if (!refs.hpBar) return;
+        if (!refs.hpBar) return painted;
         var el = refs.hpBar.querySelector('.tp-dmg-preview');
         if (!el) {
             el = document.createElement('div');
@@ -10671,7 +10697,7 @@ const ThreeRenderer = (function () {
             if (info.lethal) el.classList.add('dmg-preview-lethal');
             else el.classList.remove('dmg-preview-lethal');
         }
-        _dmgPrevUnitId = info.unitId;
+        return true;
     }
 
     function _patchPlateStats() {
@@ -14586,6 +14612,7 @@ const ThreeRenderer = (function () {
             /* 'selected' (teleport origin etc.) = the cursor language:
                yellow corner brackets, near-empty body. */
             if (matKey === 'selected') style.brackets = 1.0;
+            if (matKey === 'spell-damage') style.inset = 1.0;   // the hit mark
         }
 
         var mat = _makeHlMaterial(color, opacity, edgeGlow, dotCount, style);
@@ -14597,6 +14624,7 @@ const ThreeRenderer = (function () {
         mat._ew_dimmable = (matKey === 'spell-range' || matKey === 'spell-range-bg' ||
                             matKey === 'spell-range-dmg' || matKey === 'heal-range' ||
                             matKey === 'attack' || matKey === 'inspect' ||
+                            matKey.indexOf('attack enemy') === 0 ||   // candidates yield to the aimed footprint too
                             baseTok.indexOf('move') === 0);
         _hlMatCache.set(matKey, mat);
         return mat;
@@ -14716,27 +14744,34 @@ const ThreeRenderer = (function () {
        diagonal hatch stripes were removed 2026-07-11 (user request) — the
        uHatch shader dial still exists but nothing drives it anymore.
        Unlisted names keep the old generic look. */
+    /* THE CLARITY PASS (2026-10-01, the user: "not enough contrast between the spell range highlights and the
+       damage preview highlights"): two tiers that can never be confused —
+         HIT   (aoe / actionPlanAoe / actionPlanTarget / spellApproachTarget): solid plate + hard edge + the static
+               inner frame (inset), crimson; everything else dims to _HL_DIM_FOCUS while one is up.
+         REACH (spellRange / attackRange / actionPlanRange): outline lattice, a whisper of fill, amber for damage.
+         LANDING (spellLanding / actionPlanShove / spellApproachShove): a lit plate with a centre dot where a body
+               will END, blue for the caster, purple for anyone the cast moves. */
     var _OVERLAY_STYLE = {
-        'aoe':                 { fill: 0.60, edgeGlow: 1.15 },
+        'aoe':                 { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
         'telegraph':           { fill: 0.55, edgeGlow: 1.1 },
-        'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9 },
-        'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1 },
-        'spellApproachTarget': { fill: 0.68, edgeGlow: 1.2 }, /* the move+cast footprint: a solid plate */
-        /* THE SOLID PASS (2026-09-19): the range washes are plates now */
-        'spellRange':          { fill: 0.36, edgeGlow: 1.1 },
-        'attackRange':         { fill: 0.36, edgeGlow: 1.1 },
+        'actionPlanAoe':       { fill: 0.74, edgeGlow: 1.4, inset: 1.0 },
+        'actionPlanTarget':    { fill: 0.78, edgeGlow: 1.45, inset: 1.0 },
+        'spellApproachTarget': { fill: 0.78, edgeGlow: 1.45, inset: 1.0 }, /* the move+cast footprint: a solid plate */
+        'spellRange':          { fill: 0.12, edgeGlow: 1.0 },
+        'attackRange':         { fill: 0.12, edgeGlow: 1.0 },
         'spellRangeElem':      { fill: 0.42, edgeGlow: 0.9 },
+        'spellLanding':        { fill: 0.50, edgeGlow: 1.3, dots: 1 },
         'enemyRange':          { fill: 0.32, edgeGlow: 0.6 },
         /* stat-panel (ⓘ) reach + quick-cast blade-hover reach: quiet
            semi-transparent context washes under the loud target/AoE layer */
         'infoRange':           { fill: 0.30, edgeGlow: 1.0 },
-        'actionPlanRange':     { fill: 0.28, edgeGlow: 0.9 },
+        'actionPlanRange':     { fill: 0.10, edgeGlow: 0.9 },
         'weather':             { fill: 0.30, edgeGlow: 0.15 },
         'movePreview':         { fill: 0.30, edgeGlow: 0.9 },
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
         'spellApproachMove':   { fill: 0.30, edgeGlow: 0.9 },
-        'spellApproachShove':  { fill: 0.38, edgeGlow: 0.9 },
-        'actionPlanShove':     { fill: 0.38, edgeGlow: 0.9 }
+        'spellApproachShove':  { fill: 0.50, edgeGlow: 1.3, dots: 1 },
+        'actionPlanShove':     { fill: 0.50, edgeGlow: 1.3, dots: 1 }
     };
 
     /* Shared yellow-corner cursor material — stamped on top of whichever tile
@@ -14762,7 +14797,8 @@ const ThreeRenderer = (function () {
             var t = tiles[i];
             var tileColor = (t.color !== undefined) ? t.color : color;
             var tileOpacity = (t.opacity !== undefined) ? t.opacity : opacity;
-            var oMat = _makeHlMaterial(tileColor, tileOpacity, style.edgeGlow, 0, style);
+            var oMat = _makeHlMaterial(tileColor, tileOpacity, style.edgeGlow, style.dots || 0, style);
+            oMat._ew_baseOpacity = tileOpacity;
             var plane = _makeHlTile(t.x, t.y, oMat, 0.92, (name === 'aoe' ? 0.6 : 0.2), t.z);
             plane._ew_overlay = name;
             highlightGroup.add(plane);
@@ -14781,10 +14817,17 @@ const ThreeRenderer = (function () {
        context layers — range lattices, move tiles — drop to ~40% so the
        consequence owns the board. Eases in/out so it never pops. */
     var _hlFocusDim = 1.0;
+    var _HL_DIM_FOCUS = 0.28;   // THE CLARITY PASS (2026-10-01): was 0.4 — the reach must clearly step back
+    var _HIT_OVERLAYS = ['aoe', 'telegraph', 'actionPlanAoe', 'spellApproachTarget'];
+    /* reach layers drawn by setOverlay that do not pulse (the pulse loop dims spellRange / attackRange itself) */
+    var _DIM_OVERLAYS = { actionPlanRange: true, spellRangeElem: true, infoRange: true };
     function _updateHlFocusDim() {
-        var aoeUp = (_overlayMeshes['aoe'] && _overlayMeshes['aoe'].length) ||
-                    (_overlayMeshes['telegraph'] && _overlayMeshes['telegraph'].length);
-        var target = aoeUp ? 0.4 : 1.0;
+        var aoeUp = false;
+        for (var hi = 0; hi < _HIT_OVERLAYS.length; hi++) {
+            var hm = _overlayMeshes[_HIT_OVERLAYS[hi]];
+            if (hm && hm.length) { aoeUp = true; break; }
+        }
+        var target = aoeUp ? _HL_DIM_FOCUS : 1.0;
         _hlFocusDim += (target - _hlFocusDim) * 0.18;
         if (Math.abs(_hlFocusDim - target) < 0.01) _hlFocusDim = target;
         _hlMatCache.forEach(function(mat) {
@@ -14793,6 +14836,16 @@ const ThreeRenderer = (function () {
                 mat.uniforms.uOpacity.value = mat._ew_baseOpacity * _hlFocusDim;
             }
         });
+        for (var dn in _DIM_OVERLAYS) {
+            var dm = _overlayMeshes[dn];
+            if (!dm) continue;
+            for (var di = 0; di < dm.length; di++) {
+                var dmat = dm[di].material;
+                if (dmat && dmat._ew_baseOpacity !== undefined && dmat.uniforms && dmat.uniforms.uOpacity) {
+                    dmat.uniforms.uOpacity.value = dmat._ew_baseOpacity * _hlFocusDim;
+                }
+            }
+        }
     }
 
     function _updatePreviewOverlayPulse() {
