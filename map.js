@@ -8419,6 +8419,28 @@
                 </div>
                 <div class="pm-set-toggles" style="margin-top:8px">
                     <label class="pm-toggle"><input type="checkbox" ${units3dOn ? 'checked' : ''} onchange="window._ewSetUnits3D(this.checked);"><span class="pm-toggle-label">3D Unit Models</span><span class="pm-toggle-hint">rigged characters — heavy on phones; off = pixel sprites</span></label>
+                </div>${window.EW_MOBILE ? window._buildScreenFitHTML(refreshJs) : ''}`;
+        };
+        /* THE PHONE FIT (2026-10-01): how far a phone's page is scaled down to fit the desktop layout (index.html reads
+           ew_mobileFit). SMALL fits the most on the glass, LARGE the biggest text and buttons, OFF = the browser's own size.
+           Phones / tablets only — the row is never built on a desktop. */
+        window._ewSetScreenFit = function (v) {
+            try { localStorage.setItem('ew_mobileFit', v); } catch (e) {}
+            try { if (typeof window._ewApplyFit === 'function') window._ewApplyFit(); } catch (e) {}
+            setTimeout(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 120);
+        };
+        window._buildScreenFitHTML = function (refreshJs) {
+            const cur = window.EW_FIT_MODE || 'normal';
+            const seg = (v, label) => `<button class="pm-seg-btn${cur === v ? ' active' : ''}" onclick="window._ewSetScreenFit('${v}');${refreshJs}">${label}</button>`;
+            return `
+                <div class="pm-set-row pm-setting-row" style="margin-top:10px">
+                    <span class="pm-setting-label">Screen Fit</span>
+                    <div class="pm-seg-group">
+                        ${seg('small', 'Small')}${seg('normal', 'Normal')}${seg('large', 'Large')}${seg('off', 'Off')}
+                    </div>
+                </div>
+                <div class="pm-set-row" style="margin-top:2px">
+                    <span class="pm-toggle-hint">How much of the game fits on your screen. Small fits the most, Large makes text and buttons bigger.</span>
                 </div>`;
         };
 
@@ -22385,6 +22407,229 @@
             state.audioUnlocked = true;
             if (typeof syncMusicToState === 'function') syncMusicToState().catch(() => {});
         };
+
+        /* ══ THE TOUCH CONTROLS (2026-10-01, mondo: "mobile controls, like a joystick and maybe some buttons … especially for
+           the exploration mode") ══ phones / tablets only (window.EW_MOBILE, index.html), so the desktop walk never builds any of it.
+           In the walk: a floating THUMBSTICK on the left (push it to the rim to run), a ONE-FINGER DRAG anywhere else looks
+           around, TWO FINGERS pinch the camera in / out (and turn it with the midpoint), and a thumb cluster on the right:
+           USE (E), ATTACK / DOOR A (left click), DOOR B (right click), JUMP (SPACE), DASH (C), with a top row GUN (F), DOORS
+           (the middle-button wheel), BOARD (B), VIEW (V), MAP (M), MENU (P). Keys go in as the very key events the keyboard
+           sends (one rule set behind each verb); the stick, the look and the mouse buttons go through ThreeRenderer.hq.touch.
+           The layer hides itself (and lets go of every held key) whenever the walk pauses — panels, terminal, pause, battle. */
+        (function _hqTouchControls() {
+            if (typeof window === 'undefined' || !window.EW_MOBILE) return;
+            let root = null, stickEl = null, knobEl = null, btns = {}, shown = false, loop = 0;
+            const held = {};                     // key name → true while a button holds it down
+            let stick = null;                    // { id, ox, oy, ix, iy }
+            const looks = new Map();             // pointerId → { x, y }
+            let pinchD = 0;
+            const T = () => (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.touch) ? ThreeRenderer.hq.touch : null;
+            const fit = () => window.EW_FIT_SCALE || 1;            // layout px → real px
+            const KEYS = { space: ' ', esc: 'Escape' };
+            function sendKey(k, down) {
+                const key = KEYS[k] || k;
+                try { document.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { key: key, code: k === 'space' ? 'Space' : ('Key' + key.toUpperCase()), bubbles: true, cancelable: true })); } catch (e) {}
+            }
+            function buzz() { try { if (navigator.vibrate) navigator.vibrate(8); } catch (e) {} }
+            function build() {
+                const page = document.getElementById('hqPage'); if (!page) return false;
+                root = document.createElement('div');
+                root.id = 'hqTouch'; root.className = 'hqt'; root.setAttribute('aria-hidden', 'true');
+                root.innerHTML =
+                    '<div class="hqt-surface"></div>' +
+                    '<div class="hqt-stick"><i class="hqt-knob"></i></div>' +
+                    '<div class="hqt-top">' +
+                        '<button class="hqt-b hqt-s" data-k="f" data-n="gun">GUN</button>' +
+                        '<button class="hqt-b hqt-s" data-act="wheel" data-n="doors">DOORS</button>' +
+                        '<button class="hqt-b hqt-s" data-k="b" data-n="board">BOARD</button>' +
+                        '<button class="hqt-b hqt-s" data-k="v" data-n="view">VIEW</button>' +
+                        '<button class="hqt-b hqt-s" data-k="m" data-n="map">MAP</button>' +
+                        '<button class="hqt-b hqt-s hqt-menu" data-k="p" data-n="menu" aria-label="Menu">☰</button>' +
+                    '</div>' +
+                    '<div class="hqt-pad">' +
+                        '<button class="hqt-b hqt-use" data-k="e" data-n="use">USE</button>' +
+                        '<button class="hqt-b hqt-a" data-act="a" data-n="a">ATTACK</button>' +
+                        '<button class="hqt-b hqt-bb" data-act="b" data-n="b">DOOR B</button>' +
+                        '<button class="hqt-b hqt-jump" data-k="space" data-n="jump">JUMP</button>' +
+                        '<button class="hqt-b hqt-dash" data-k="c" data-n="dash">DASH</button>' +
+                    '</div>';
+                page.appendChild(root);
+                stickEl = root.querySelector('.hqt-stick'); knobEl = root.querySelector('.hqt-knob');
+                root.querySelectorAll('.hqt-b').forEach(b => { btns[b.dataset.n] = b; bindButton(b); });
+                const surf = root.querySelector('.hqt-surface');
+                surf.addEventListener('pointerdown', onDown, { passive: false });
+                surf.addEventListener('pointermove', onMove, { passive: false });
+                surf.addEventListener('pointerup', onUp);
+                surf.addEventListener('pointercancel', onUp);
+                surf.addEventListener('contextmenu', e => e.preventDefault());
+                return true;
+            }
+            /* ── the stick + the look ── */
+            function stickR() { return 56 / fit(); }                  // the base's radius: 56 real px
+            function onDown(e) {
+                e.preventDefault();
+                try { e.currentTarget.setPointerCapture(e.pointerId); } catch (er) {}
+                const W = window.innerWidth;
+                if (!stick && e.clientX < W * 0.42) {
+                    const R = stickR(), pad = R + 10 / fit();
+                    const ox = Math.max(pad, e.clientX), oy = Math.min(window.innerHeight - pad, Math.max(pad, e.clientY));
+                    stick = { id: e.pointerId, ox: ox, oy: oy, ix: 0, iy: 0 };
+                    stickEl.style.left = ox + 'px'; stickEl.style.top = oy + 'px';
+                    stickEl.classList.add('on'); knobEl.style.transform = 'translate(-50%,-50%)';
+                    stickTo(e.clientX, e.clientY);
+                    return;
+                }
+                looks.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                pinchD = 0;
+            }
+            function stickTo(x, y) {
+                const R = stickR();
+                let dx = x - stick.ox, dy = y - stick.oy, m = Math.hypot(dx, dy);
+                /* the base follows a thumb that wanders far past the rim (a floating stick) */
+                if (m > R * 1.5) { const k = (m - R * 1.5) / m; stick.ox += dx * k; stick.oy += dy * k; stickEl.style.left = stick.ox + 'px'; stickEl.style.top = stick.oy + 'px'; dx = x - stick.ox; dy = y - stick.oy; m = Math.hypot(dx, dy); }
+                const cl = Math.min(m, R), ux = m > 0 ? dx / m : 0, uy = m > 0 ? dy / m : 0;
+                knobEl.style.transform = 'translate(calc(-50% + ' + (ux * cl).toFixed(1) + 'px), calc(-50% + ' + (uy * cl).toFixed(1) + 'px))';
+                const mag = cl / R, dead = 0.14;
+                const run = mag > 0.9;
+                stickEl.classList.toggle('run', run);
+                const t = T();
+                if (mag < dead) { stick.ix = stick.iy = 0; if (t) t.pad(0, 0, false); return; }
+                stick.ix = ux * mag; stick.iy = uy * mag;
+                if (t) t.pad(stick.ix, stick.iy, run);
+            }
+            function onMove(e) {
+                if (stick && e.pointerId === stick.id) { e.preventDefault(); stickTo(e.clientX, e.clientY); return; }
+                const p = looks.get(e.pointerId); if (!p) return;
+                e.preventDefault();
+                const t = T(); if (!t) return;
+                const dx = e.clientX - p.x, dy = e.clientY - p.y;
+                p.x = e.clientX; p.y = e.clientY;
+                if (looks.size >= 2) {
+                    const pts = Array.from(looks.values()).slice(0, 2);
+                    const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+                    if (pinchD > 0 && d > 0) t.zoom(d / pinchD);
+                    pinchD = d;
+                    t.look(dx * fit() * 0.5, dy * fit() * 0.5);   // each finger carries half the turn
+                    return;
+                }
+                t.look(dx * fit(), dy * fit());
+            }
+            function onUp(e) {
+                if (stick && e.pointerId === stick.id) {
+                    stick = null; stickEl.classList.remove('on', 'run'); stickEl.style.left = stickEl.style.top = ''; knobEl.style.transform = '';
+                    const t = T(); if (t) t.pad(0, 0, false);
+                    return;
+                }
+                looks.delete(e.pointerId); pinchD = 0;
+            }
+            /* ── the buttons ── */
+            function bindButton(b) {
+                let last = null;
+                b.addEventListener('pointerdown', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    try { b.setPointerCapture(e.pointerId); } catch (er) {}
+                    b.classList.add('down'); buzz();
+                    last = { x: e.clientX, y: e.clientY, id: e.pointerId };
+                    const t = T(), st = t && t.status();
+                    if (b.dataset.k) { held[b.dataset.k] = true; sendKey(b.dataset.k, true); return; }
+                    const act = b.dataset.act;
+                    if (!t) return;
+                    if (act === 'wheel') { try { ThreeRenderer.hq.gunWheelOpen(); } catch (er) {} return; }
+                    if (st && st.ride && !st.drawn) { t.stick('down', act === 'b' ? 2 : 0); return; }
+                    t.fire(act);
+                }, { passive: false });
+                b.addEventListener('pointermove', e => {
+                    if (!last || e.pointerId !== last.id) return;
+                    const dx = (e.clientX - last.x) * fit() * 1.6, dy = (e.clientY - last.y) * fit() * 1.6;
+                    last.x = e.clientX; last.y = e.clientY;
+                    const t = T(); if (!t) return;
+                    if (b.dataset.act === 'wheel') t.look(dx, dy);
+                    else if (b.dataset.act) t.stick('move', 0, dx, dy);
+                });
+                const up = e => {
+                    if (!last) return;
+                    last = null; b.classList.remove('down');
+                    if (b.dataset.k) { if (held[b.dataset.k]) { held[b.dataset.k] = false; sendKey(b.dataset.k, false); } return; }
+                    const t = T(); if (!t) return;
+                    if (b.dataset.act === 'wheel') { try { ThreeRenderer.hq.gunWheelClose(e.type === 'pointerup'); } catch (er) {} return; }
+                    t.stick('up');
+                };
+                b.addEventListener('pointerup', up);
+                b.addEventListener('pointercancel', up);
+                b.addEventListener('contextmenu', e => e.preventDefault());
+            }
+            /* ── let go of everything (the walk paused, the page left) ── */
+            function release() {
+                if (stick) { stick = null; if (stickEl) { stickEl.classList.remove('on', 'run'); stickEl.style.left = stickEl.style.top = ''; knobEl.style.transform = ''; } }
+                looks.clear(); pinchD = 0;
+                const t = T(); if (t) { try { t.pad(0, 0, false); t.stick('up'); } catch (e) {} }
+                Object.keys(held).forEach(k => { if (held[k]) { held[k] = false; sendKey(k, false); } });
+                if (root) root.querySelectorAll('.hqt-b.down').forEach(b => b.classList.remove('down'));
+            }
+            function label(n, text, show) {
+                const b = btns[n]; if (!b) return;
+                if (text != null && b.textContent !== text) b.textContent = text;
+                const hide = show === false;
+                if (b.classList.contains('off') !== hide) b.classList.toggle('off', hide);
+            }
+            const visibleEl = id => { const el = document.getElementById(id); return !!(el && el.style.display !== 'none'); };
+            /* the prompt names the keyboard's keys — on a phone it names the buttons */
+            function promptWords() {
+                const el = document.getElementById('hqPrompt'); if (!el || el.style.display === 'none') return;
+                const i = el.querySelector('i'); if (!i) return;
+                const s = i.textContent, n = s.replace(/\[CLICK\]/g, '[ATTACK]').replace(/\[E\]/g, '[USE]');
+                if (n !== s) i.textContent = n;
+            }
+            function tick() {
+                let t = null, st = null, want = false;
+                try {
+                    t = T(); st = t && t.status();
+                    const page = document.getElementById('hqPage');
+                    const load = document.getElementById('hqLoad');
+                    want = !!(st && !st.paused && !st.edit && page && page.classList.contains('active') && (!load || load.classList.contains('done'))
+                        && typeof state !== 'undefined' && state.gameState === GS.HQ && state.phase !== 'battle'
+                        && !(typeof _hqSuspended !== 'undefined' && _hqSuspended));
+                } catch (e) { want = false; }
+                if (want && !root && !build()) want = false;
+                if (want !== shown) {
+                    shown = want;
+                    if (root) { root.classList.toggle('on', want); }
+                    document.documentElement.classList.toggle('ew-hq-touch', want);
+                    if (!want) release();
+                }
+                if (!want) return;
+                const ride = st.ride, drawn = st.drawn, standing = drawn && st.door && st.door !== 'threshold';
+                label('a', drawn ? (standing ? 'FIRE' : 'DOOR A') : (ride ? 'FLIP' : 'ATTACK'));
+                label('b', drawn ? (standing ? 'TURN' : 'DOOR B') : 'SPIN', drawn || ride);
+                label('jump', ride ? 'OLLIE' : (st.swim || st.helm) ? 'UP' : st.climb ? 'LET GO' : 'JUMP');
+                label('dash', st.swim ? 'DIVE' : st.helm ? 'DOWN' : 'DASH');
+                label('gun', drawn ? 'HOLSTER' : 'GUN', visibleEl('hqPortal'));
+                label('doors', null, drawn);
+                label('board', ride ? 'OFF BOARD' : 'BOARD', visibleEl('hqSkate') || ride);
+                label('view', st.fp ? '3RD' : '1ST');
+                if (btns.use) btns.use.classList.toggle('hot', visibleEl('hqPrompt'));
+                promptWords();
+            }
+            /* portrait in the walk or a fight: one quiet pill, once per visit, that the game plays best sideways */
+            let rotHinted = false;
+            function rotateHint() {
+                if (rotHinted) return;
+                let portrait = false;
+                try { portrait = window.matchMedia('(orientation: portrait)').matches; } catch (e) {}
+                const playing = shown || (typeof state !== 'undefined' && state.phase === 'battle');
+                if (!portrait || !playing) return;
+                rotHinted = true;
+                const el = document.createElement('div');
+                el.className = 'ew-rotate-hint';
+                el.textContent = '↻ TURN YOUR PHONE SIDEWAYS FOR THE BEST VIEW';
+                el.addEventListener('pointerdown', () => el.remove());
+                document.body.appendChild(el);
+                setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, 5000);
+            }
+            function start() { if (!loop) loop = setInterval(() => { tick(); try { rotateHint(); } catch (e) {} }, 150); }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+            document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+        })();
 
         window._goToMapEditor = function() { return window._goToEditor(); };   // THE EDITOR (EDITOR_PLAN E0): the menu's EDITOR button, the lift row
         /* the old 8×8 voxel editor (retired with the arenas in E7): the new editor's FILE menu opens it until then */

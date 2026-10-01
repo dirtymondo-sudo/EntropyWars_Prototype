@@ -813,3 +813,43 @@ pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the
   Commands RESUME · PARTY (your units: portrait, LV, HP/MP, statuses; bench + escaped) · MATCH (the scoreboard + awards)
   · STATUSES · SETTINGS (AUDIO · VIDEO · GAME [speed, auto, CPU difficulty] · CONTROLS) · FORFEIT. ↑↓ commands, ←→
   settings pages, ESC / P resume. The Strike Mode block (and `_ewStrikeRebind`) is gone from the shared controls page.
+
+## THE PHONE FIT + THE TOUCH CONTROLS (2026-10-01)
+
+mondo: "mobile controls, like a joystick and maybe some buttons … especially for the exploration mode … the menus are kind
+of impossible to navigate on mobile … one finger drag for pan and two for rotate … without changing how it is on desktop".
+Everything is gated on `window.EW_MOBILE` / `html.ew-mobile` (index.html: touch + a coarse pointer or a phone UA), so the
+desktop page, CSS and mouse / keyboard input are unchanged (the battle's touch gestures change for any touch screen).
+
+- **THE PHONE FIT** (index.html, right after the mobile detection). The UI is laid out for a desktop window; a phone's
+  390 px short side cropped every panel. On a touch device the viewport meta is rewritten to `width = deviceW / s,
+  initial = min = max-scale = s` with `s = min(1, shortSide / 540)` (screen.width/height, so ONE scale in both
+  orientations; iPhone 13 → s 0.722, layout 1169×541 landscape / 540×~920 portrait). The browser scales the page down;
+  css px stay css px, so taps, raycasts and the canvas all agree (no CSS zoom). Tablets (short side ≥ 540) are untouched.
+  `window.EW_FIT_SCALE` = s, `--ew-touch-k` = 1 / s (`calc(Npx * var(--tk))` = N real px on the glass). Settings >
+  Performance > **Screen Fit** (phones only, map.js `_buildScreenFitHTML` / `_ewSetScreenFit`): Small 600 · Normal 540 ·
+  Large 470 · Off; stored as `ew_mobileFit`, applied live (`window._ewApplyFit`).
+- **THE WALK** (map.js `_hqTouchControls`, three-renderer.js `ThreeRenderer.hq.touch`). `#hqTouch` inside #hqPage (z 19:
+  over the stage, under the strip / panels / pause). A floating thumbstick on the left 42% (analog: `touch.pad(ix, iy,
+  run)` feeds `H.pad` into `_hqTickWalker` for any-direction walking and mirrors W/A/S/D/SHIFT into `H.keys` for the ride,
+  helm, swim and climb; the rim (> 0.9) runs). A one-finger drag anywhere else looks (`touch.look`, mouse gain × the fit),
+  two fingers pinch the boom (`touch.zoom`, the wheel's 1.5–7.5 m) and turn with the midpoint. Right thumb: JUMP (SPACE),
+  USE (E; glows while the prompt is up), ATTACK / DOOR A / FIRE / FLIP, DOOR B / TURN / SPIN (`touch.fire('a'|'b')` = the
+  mouse buttons; on the board both are THE STICK via `touch.stick`), DASH (C; reads DIVE / DOWN in water / at a helm). Top
+  right column: GUN (F, only when issued), DOORS (the middle-button wheel: hold, drag, let go), BOARD (B, when issued), 1ST
+  / 3RD (V), MAP (M), ☰ (P). Key buttons send real `KeyboardEvent`s on document, so every rule behind a key stays the
+  keyboard's (F tap / hold recall included). The layer shows only when the walk runs (not paused, not editing, load done,
+  not in a battle, not suspended) and lets go of every held key when it hides. `#hqHints` is hidden on phones; the
+  prompt's `[CLICK]` / `[E]` read `[ATTACK]` / `[USE]`. A portrait walk / fight shows one "turn sideways" pill per visit.
+- **THE BATTLE CAMERA** (state.js touch handlers on `.map-center`). One finger = pan (as before). Two fingers = ORBIT now
+  (the pair's drag turns / tilts like the middle mouse button, the pinch zooms, a twist turns); three fingers still orbit.
+  A touch that starts on the HUD (Horologe, panels, buttons, lists) is the HUD's and never drags the board.
+- **THE BATTLE HUD on a phone** (ui.js `_applyUIScale`): `--ew-ui-scale` = min(0.72 / fit, h / 590) so the Horologe's
+  blades are finger-sized (desktop 0.61 rule left them ~16 real px); `--ew-hud-scale` floors at min(0.56 / fit, h / 700).
+  The ☰ on the match plate is a 24 px button.
+- **CSS** (styles-base.css tail, all `html.ew-mobile`): safe-area insets for title pages / overlays / the strip / the
+  terminal, a thin CRT bezel, `dvh` caps for dialogs / panels / pause cards, touch scrolling on the lists, portrait title
+  + main-menu seal fixes.
+- Not covered: the Mystery Dungeon hub walker (its own strike-mode input; `ThreeRenderer.hubFreeRoam.setPadInput` exists if
+  it is ever wanted) and the editor. Checked in the sandbox at iPhone 13 size (landscape + portrait): menus, terminal,
+  forge, HQ walk (stick walks 3.7 m, look turns, JUMP holds SPACE, ☰ pauses and hides the layer), battle start.

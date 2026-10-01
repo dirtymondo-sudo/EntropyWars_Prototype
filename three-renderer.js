@@ -55564,8 +55564,12 @@ const ThreeRenderer = (function () {
         var sx0 = pl.x, sz0 = pl.z, sy0 = pl.y;   // THE CARRY (rev 4): the frame's displacement is the walk's velocity
         var ix = H.paused ? 0 : (((k.d || k.right) ? 1 : 0) - ((k.a || k.left) ? 1 : 0));
         var iy = H.paused ? 0 : (((k.s || k.down) ? 1 : 0) - ((k.w || k.up) ? 1 : 0));
+        /* THE TOUCH PAD (2026-10-01): a phone's thumbstick walks in any direction, not 8 — its vector wins over the
+           keys it mirrors (the other frames — ride, helm, swim, climb — read those mirrored keys) */
+        var padRun = false;
+        if (H.pad && !H.paused && (H.pad.ix || H.pad.iy)) { ix = H.pad.ix; iy = H.pad.iy; padRun = !!H.pad.run; }
         var moving = !!(ix || iy);
-        var running = !!k.shift && moving;
+        var running = (!!k.shift || padRun) && moving;
         var mx = 0, mz = 0;
         if (!moving && !H.paused && _hqPortalSweep(dt, { x: pl.mvx || 0, y: pl.air ? pl.vy - HQ_GRAV * dt : 0, z: pl.mvz || 0 })) return;
         if (moving) {
@@ -60055,7 +60059,7 @@ const ThreeRenderer = (function () {
         setPaused: function (on) {
             if (!_hq) return;
             _hq.paused = !!on;
-            if (on) { _hq.keys = {}; _hq.drag = null; try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
+            if (on) { _hq.keys = {}; _hq.pad = null; _hq.padKeys = {}; _hq.drag = null; try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
             /* unpausing rode the closing click — recapture the aim when the
                browser allows it (hover-look covers it when not) */
             else _hqTryLock();
@@ -60064,7 +60068,7 @@ const ThreeRenderer = (function () {
            walk into a door that must wait for THE SURVEY (map.js: the next room's floor plan compiling in
            the worker) freezes the old room under the load card; a released lock would read as the ESC the
            browser ate (_hqOnLockChange) and open the pause menu on top of the card */
-        hold: function (on) { if (!_hq) return; _hq.paused = !!on; _hqRebuildAt = performance.now(); if (on) { _hq.keys = {}; _hq.drag = null; } },
+        hold: function (on) { if (!_hq) return; _hq.paused = !!on; _hqRebuildAt = performance.now(); if (on) { _hq.keys = {}; _hq.pad = null; _hq.padKeys = {}; _hq.drag = null; } },
         /* THE GATE (2026-09-20): the room's own file count for the load card — { total, done, pending, idle, ms, player } */
         gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : []; return p; },
         /* THE ARRIVAL WARM (2026-09-19): start the arrival room's downloads while the title / the menu / the
@@ -60180,6 +60184,65 @@ const ThreeRenderer = (function () {
         gunMuzzle: _hqGunMuzzle,
         /* THE ENCOUNTER (HQ plan 9.4, 2026-09-15 rev 16): throw a gesture by key ('1'..'4'), the native the gesture would land on */
         strike: _hqStrikeClick,
+        /* THE TOUCH CONTROLS (2026-10-01, map.js): a phone's thumbstick, look drag, pinch and the mouse buttons as buttons */
+        touch: {
+            /* the stick: ix right +, iy back + (the keys' axes), each -1..1; run = pushed to the rim. Mirrors W/A/S/D/SHIFT
+               into the keys so the ride, the helm, the swim and the climb steer by it too */
+            pad: function (ix, iy, run) {
+                var H = _hq; if (!H) return false;
+                var on = !!(ix || iy);
+                H.pad = on ? { ix: +ix || 0, iy: +iy || 0, run: !!run } : null;
+                var want = { w: on && iy < -0.38, s: on && iy > 0.38, a: on && ix < -0.38, d: on && ix > 0.38, shift: on && !!run };
+                var had = H.padKeys || {};
+                for (var kk in want) {
+                    if (want[kk] && !H.paused) { H.keys[kk] = true; had[kk] = true; }
+                    else if (had[kk]) { H.keys[kk] = false; had[kk] = false; }
+                }
+                H.padKeys = had;
+                return true;
+            },
+            /* a look drag in screen px (the hover-look's gain, a touch more) */
+            look: function (dx, dy) {
+                var H = _hq; if (!H || H.paused || _hqEditing(H)) return false;
+                if (H.gun && H.gun.wheel) { _hqGunWheelMove(dx || 0, dy || 0); return true; }
+                H.cam.yaw += (dx || 0) * 0.0062;
+                var lo = H.fp ? -1.25 : -1.15, hi = H.fp ? 1.25 : 0.85;
+                H.cam.pitch = Math.max(lo, Math.min(hi, H.cam.pitch - (dy || 0) * 0.0045));
+                H.lastDragAt = performance.now();
+                return true;
+            },
+            /* a pinch: f > 1 spreads the fingers (closer), f < 1 pinches (further) — the wheel's range */
+            zoom: function (f) {
+                var H = _hq; if (!H || H.paused || H.fp || !(f > 0)) return false;
+                H.cam.dist = Math.max(1.5, Math.min(7.5, H.cam.dist / f));
+                return true;
+            },
+            /* the mouse buttons: 'a' = LEFT (attack / door A / fire the standing door), 'b' = RIGHT (door B / turn it) */
+            fire: function (btn) {
+                var H = _hq; if (!H || H.paused || _hqEditing(H)) return false;
+                if (H.portal && H.portal.drawn) {
+                    if (H.gun && H.gun.door !== 'threshold') { if (btn === 'b') _hqGunDoorTurn(); else _hqGunDoorFire(); }
+                    else _hqPortalFire(btn === 'b' ? 'b' : 'a');
+                    return true;
+                }
+                if (btn !== 'b' && !(H.ride && H.ride.on)) { _hqStrikeClick(); return true; }
+                return false;
+            },
+            /* THE STICK on the board: down (0 flips / 2 spins), move (px), up */
+            stick: function (phase, btn, dx, dy) {
+                var H = _hq; if (!H || !(H.ride && H.ride.on)) return false;
+                if (phase === 'down') { if (H.paused) return false; _hqRideStickDown(btn === 2 ? 2 : 0); return true; }
+                if (phase === 'move') return !!(H.ride.stick && _hqRideStickMove(dx || 0, dy || 0));
+                _hqRideStickUp(); return true;
+            },
+            /* what the buttons show: { paused, drawn, door, ride, fp, swim, helm, climb } */
+            status: function () {
+                var H = _hq, pl = H && H.player; if (!H) return null;
+                return { paused: !!H.paused, edit: _hqEditing(H), drawn: !!(H.portal && H.portal.drawn), door: H.gun ? (H.gun.door || null) : null,
+                         ride: !!(H.ride && H.ride.on), fp: !!H.fp, swim: !!(pl && pl.swim), helm: !!(H.vehicle && H.vehicle.on), climb: !!(pl && pl.climb),
+                         wheel: !!(H.gun && H.gun.wheel) };
+            }
+        },
         encounterAim: function () { return _hq ? _hqEncounterAim() : null; },
         /* THE FIELD stage A (Delivery 6): the slide onto the cells before the cut, the eye as it stands now */
         encounterSnap: _hqEncounterSnap,

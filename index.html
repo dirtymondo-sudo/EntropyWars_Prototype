@@ -218,6 +218,45 @@
             document.documentElement.classList.add(window.EW_MOBILE ? 'ew-mobile' : 'ew-desktop');
             if (window.EW_PERF_LOW) document.documentElement.classList.add('ew-perf-low');
         } catch (e) {}
+        /* THE PHONE FIT (2026-10-01): every screen is laid out for a desktop window, so a phone's
+           390 px short side cropped the panels and blew the buttons up. On a touch device whose short
+           side is under EW_FIT_SHORT css px, the viewport is widened to that short side and the browser
+           scales the whole page down to fit (one scale in both orientations). Pointer maths stay in
+           css px, so taps, raycasts and the canvas all agree. Desktop and tablets never get here.
+           window.EW_FIT_SCALE = the page scale (1 = none); --ew-touch-k = 1 / scale, so touch controls
+           can size themselves in real finger px. ew_mobileFit (localStorage): 'small' | 'normal' |
+           'large' | 'off' (Settings > Display). */
+        (function () {
+            window.EW_FIT_SCALE = 1;
+            if (!window.EW_MOBILE) return;
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta) return;
+            var tail = ', user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content';
+            function apply() {
+                var fit = 'normal';
+                try { fit = localStorage.getItem('ew_mobileFit') || 'normal'; } catch (e) {}
+                var SHORT = { small: 600, normal: 540, large: 470, off: 0 }[fit];
+                if (SHORT === undefined) SHORT = 540;
+                window.EW_FIT_MODE = fit;
+                var sw = screen.width || 0, sh = screen.height || 0;
+                var shortSide = Math.min(sw, sh), longSide = Math.max(sw, sh);
+                var s = (SHORT && shortSide) ? Math.min(1, shortSide / SHORT) : 1;
+                s = Math.round(s * 1000) / 1000;
+                var land = false;
+                try { land = window.matchMedia('(orientation: landscape)').matches; } catch (e) {}
+                var devW = land ? longSide : shortSide;
+                var content = s < 1
+                    ? 'width=' + Math.round(devW / s) + ', initial-scale=' + s + ', minimum-scale=' + s + ', maximum-scale=' + s + tail
+                    : 'width=device-width, initial-scale=1.0, maximum-scale=1.0' + tail;
+                if (meta.getAttribute('content') !== content) meta.setAttribute('content', content);
+                window.EW_FIT_SCALE = s;
+                try { document.documentElement.style.setProperty('--ew-touch-k', (1 / s).toFixed(4)); } catch (e) {}
+            }
+            apply();
+            window._ewApplyFit = apply;   // Settings > Display > SCREEN FIT re-runs it after writing ew_mobileFit
+            window.addEventListener('orientationchange', function () { setTimeout(apply, 60); setTimeout(apply, 400); });
+            try { window.matchMedia('(orientation: landscape)').addEventListener('change', function () { apply(); }); } catch (e) {}
+        })();
         /* THE CDN CORS PROBE (2026-09-20): every WebGL texture and every GLB is a crossOrigin fetch of
            cdn.entropywars.net, and the bucket's CORS policy answers only for the origins it names — from any
            other host the browser blocks them all and the whole building renders BLACK with nothing in the
