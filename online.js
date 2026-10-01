@@ -565,6 +565,14 @@
                     if (!_gdPk) return _origDoSpell(unit, x, y, z);
                     _tcDoorPick = { x: _gdPk.x, y: _gdPk.y };
                 }
+                /* THE SPELL AUDIT Batch D: Twin Doors (deployPair + pairPicks) — the first mouth is a local tile pick
+                   (the engine's pick branch files state._spellPick1, nothing spent); the second click travels with it
+                   as pickX / pickY and the host seats it as its own first pick. */
+                if (_tcSpell && _tcSpell.kind === 'deployPair' && _tcSpell.pairPicks) {
+                    var _tdPk = (typeof _gunDoorPick === 'function') ? _gunDoorPick(_tcSpell) : null;
+                    if (!_tdPk || (_tdPk.x === x && _tdPk.y === y)) return _origDoSpell(unit, x, y, z);
+                    _tcDoorPick = { x: _tdPk.x, y: _tdPk.y };
+                }
                 /* 🚪 Knock Knock (DOOR_RACE_DESIGN, 2026-09-14): the door kind's
                    TILE pick is local UI like a two-click's first pick — a click
                    that is not a toggle (no door there) and has no pick yet runs

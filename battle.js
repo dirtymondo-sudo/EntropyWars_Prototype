@@ -1008,10 +1008,19 @@
            aim — it is cast on the caster (selfCast) and still reads as an attack (offensive, breaks stealth). The victims
            are the legal targets of the row WITHOUT the rider (_riderBaseDef), picked host-side in doSpell. */
         const _RANDOM_KIND_META = { minRange: 0, offensive: true, selfCast: true, breaksStealth: true, noStrikeLeap: true };
+        /* THE SPELL AUDIT Batch D: a row-level `allyOnly` (Tag In's swap, Rescue Line's pull, Miracle's swap) turns an
+           enemy-aimed kind into an ally aim — the target drum, the painter and the column resolver read this meta, the kind
+           branch reads the row. One cached meta per kind. */
+        const _ALLY_ROW_KIND_META = {};
         function _kindMeta(spell) {
             if (spell && spell.hinge) return _HINGE_KIND_META;
             if (spell && spell.randomTargets && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell)) return _RANDOM_KIND_META;
-            return SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
+            const _km0 = SPELL_KIND_META[spell?.kind] || { minRange: 1, offensive: true };
+            if (spell && spell.allyOnly && !_km0.allyOnly) {
+                return _ALLY_ROW_KIND_META[spell.kind] || (_ALLY_ROW_KIND_META[spell.kind] = Object.assign({}, _km0,
+                    { offensive: false, allyOnly: true, breaksStealth: false, fogExempt: true }));
+            }
+            return _km0;
         }
 
         /* Which TEAM does a tile-targeted AoE/zone spell actually serve?
@@ -2315,11 +2324,71 @@
             return { handled: false, target };
         }
 
+        /* ═══ THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.5) — the hit riders ═══════════════════════════════
+           purgeFirst        (Annihilation) every buff status (the statUp badge takes the positive stat stages with it,
+                             clearStatus) and the whole shield come off BEFORE the damage lands.
+           statusIfTargetHas (System Crash) { has: <status id | [ids]>, status: [{ id, duration }] } — a victim already
+                             carrying `has` when the hit lands also takes `status` (judged BEFORE the hit, so the hit's
+                             own statuses never count). Read by the single hit and by _applyAoeDamage.
+           stealBuffs        (Swipe) every buff status and positive stat stage the victim wears moves to the caster
+                             (Spellsteal's plumbing, for buffs) — after the hit, in _runPostEffects.
+           All host-side state on the units (ride the snapshot); the floats are relayed. */
+        function _purgeWardsBeforeHit(unit, spell, target) {
+            if (!target || target.dead) return 0;
+            const n = removeBuffs(target);
+            const sh = Math.max(0, target.shield || 0);
+            if (sh > 0) target.shield = 0;
+            if (n || sh) {
+                addLog(`${spell.name} unmakes ${unitDisplayName(target)}'s wards — ${n} buff${n !== 1 ? 's' : ''}${sh ? ` and a ${sh} HP shield` : ''} gone before the blow.`);
+                showFloatingTextForUnit(target, '✂ WARDS UNMADE', 'debuff', { durationMs: 1000 });
+            }
+            return n + (sh ? 1 : 0);
+        }
+        function _statusIfTargetHasArmed(spell, target) {
+            const r = spell && spell.statusIfTargetHas;
+            if (!r || !target || target.dead || !Array.isArray(r.status) || !r.status.length) return false;
+            return bonusStatusMatches(target, r.has);
+        }
+        function _applyStatusIfTargetHas(unit, spell, target) {
+            if (!target || target.dead) return;
+            applyStatusEffects(target, spell.statusIfTargetHas.status, `${spell.name}: `, unit);
+        }
+        function _stealBuffsFrom(thief, victim, spell) {
+            if (!thief || !victim || thief.dead || victim.dead) return 0;
+            /* the positive stages first (the statUp badge clear below would drop them) — perm entries stay put */
+            const stages = Array.isArray(victim.statStageMods)
+                ? victim.statStageMods.filter(m => m && !m.perm && (m.n || 0) > 0 && (m.left || 0) > 0).map(m => ({ stat: m.stat, n: m.n, left: m.left }))
+                : [];
+            const taken = [];
+            for (const key of Object.keys(STATUS_DEFS)) {
+                const def = STATUS_DEFS[key];
+                if (!def || def.kind !== 'buff') continue;
+                const v = Number((victim.status && victim.status[key]) || 0);
+                if (v <= 0) continue;
+                clearStatus(victim, key);
+                if (key === 'statUp' || key === 'statDown') continue;   // the ledger moves below
+                taken.push({ id: key, duration: v });
+            }
+            if (Array.isArray(victim.statStageMods)) _syncStatStageBadges(victim);
+            const label = `${spell.name}: `;
+            for (const p of taken) applyStatusPayload(thief, p, label, thief);
+            for (const s of stages) applyStatStageBoost(thief, { [s.stat]: s.n }, label, thief, { rounds: s.left });
+            const n = taken.length + stages.length;
+            if (n) {
+                addLog(`${unitDisplayName(thief)} lifts ${n} buff${n !== 1 ? 's' : ''} off ${unitDisplayName(victim)} — ${spell.name}!`);
+                showFloatingTextForUnit(victim, '✋ BUFFS LIFTED', 'debuff', { durationMs: 1000 });
+                showFloatingTextForUnit(thief, `✋ +${n} BUFF${n !== 1 ? 'S' : ''}`, 'buff', { durationMs: 1100 });
+            }
+            return n;
+        }
+
         // ═══════════════════════════════════════════════════════════════════
         // _runPostEffects() — dispatches post-impact effects based on
         // the spell definition and animation profile.
         // ═══════════════════════════════════════════════════════════════════
         function _runPostEffects(unit, spell, target) {
+            /* THE SPELL AUDIT Batch D: stealBuffs (Swipe) — the victim's buffs are the caster's now */
+            if (spell.stealBuffs && target && !target.dead && !unit.dead) _stealBuffsFrom(unit, target, spell);
             /* Phase 5 wave C (2026-09-08): purgeBuffs (Terror Pounce) strips
                every buff-kind status the victim wears; paintTerrain (Goo Shot)
                turns the struck tile into timed terrain. */
@@ -3820,6 +3889,19 @@
                     if (_cd && captureDoorTake(_cd, unit, via)) { fired++; return fired; }   // a held body reacts to nothing else (the void)
                 }
 
+                // ── T · THE TRANSIT DOORS (THE SPELL AUDIT Batch D: Twin Doors) ──
+                // A body knocked, blown or pulled onto an open transit mouth comes out of its twin (a walk is
+                // doorStepThrough's, at the end of the move; a teleport arrival never re-enters, so no ping-pong);
+                // the far mouth's tile then runs its own chain.
+                if (via !== 'move' && via !== 'teleport' && typeof doorAt === 'function') {
+                    const _tr = doorAt(unit.x, unit.y);
+                    if (_tr && _tr.transit && _tr.open && doorStepThrough(unit)) {
+                        fired++;
+                        resolveTileArrival(unit, { via: 'teleport' });
+                        return fired;
+                    }
+                }
+
                 // ── E · THE ZONES ───────────────────────────────────────────
                 fired += _chainZones(unit);
                 updateSmokeZoneCloak(unit);
@@ -4513,7 +4595,14 @@
                 const info = _slideStepInfo(target, cx, cy, cz, vx, vy);
                 if (opts.stopBefore && info.nx === opts.stopBefore.x && info.ny === opts.stopBefore.y) break;
 
-                if (info.kind === 'open') { stepTo(info.nx, info.ny, info.nz); continue; }
+                if (info.kind === 'open') {
+                    stepTo(info.nx, info.ny, info.nz);
+                    /* THE SPELL AUDIT Batch D: an open Twin Doors mouth swallows the slide — the body stops on it and
+                       the landing chain (resolveTileArrival step T) sends it out of the twin. */
+                    const _trD = (typeof doorAt === 'function') ? doorAt(cx, cy) : null;
+                    if (_trD && _trD.transit && _trD.open) break;
+                    continue;
+                }
                 if (info.kind === 'hole') break;   // fall short of the pit lip — nothing to slam
 
                 if (info.kind === 'unit') {
@@ -5276,6 +5365,10 @@
                 if (spell.statusFirst && spell.statusEffects && !target.dead) {
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                 }
+                /* THE SPELL AUDIT Batch D: purgeFirst (Annihilation) — every buff, every positive stat stage and the
+                   whole shield come off BEFORE the hit, so the damage lands on what is left. */
+                if (spell.purgeFirst && !target.dead) _purgeWardsBeforeHit(unit, spell, target);
+                const _sitHas = _statusIfTargetHasArmed(spell, target);
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -5287,6 +5380,7 @@
                         element: _spellEl
                     });
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, false);
+                if (_sitHas) _applyStatusIfTargetHas(unit, spell, target);
                 if (_execArmed && !target.dead) _applyExecuteRider(unit, target, spell);
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
                 _applyOnKillRiders(unit, target, spell);
@@ -5579,6 +5673,11 @@
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
             const _groundedThisBlast = [];
+            /* THE SPELL AUDIT Batch D: a `pullDistance` inward pull (Round Up) — the bodies to haul, run after the
+               loop nearest-first so the inner ring makes room; a noDamage area pulls too (it used to skip it). */
+            const _pullJobs = [];
+            const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
+                && !(typeof _isClashMode === 'function' && _isClashMode()));
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
                    blast hits EVERY enemy standing in the column, not just the
@@ -5594,6 +5693,7 @@
                         if (!target || target.dead) continue;
                         if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                         if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
+                        if (_canPullIn && spell.pullDistance && !target.dead) _pullJobs.push(target.id);
                         hitCount++;
                     }
                     continue;
@@ -5605,6 +5705,7 @@
                     // same stream discipline as computeSpellBase.
                     const dmg = calcAoeHitDamage(baseDmg, _vr, waterMult,
                         opts.minDmg || 32, _vr > 0 ? engineRng() : 0);
+                    const _aoeSitHas = _statusIfTargetHasArmed(spell, target);   // THE SPELL AUDIT Batch D (System Crash)
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         allowMarkBonus: false,
@@ -5614,6 +5715,7 @@
                         spellElement: getSpellElement(spell),
                         element: classifySpellElement(spell)
                     });
+                    if (_aoeSitHas) _applyStatusIfTargetHas(unit, spell, target);
 
                     // Cross-style push — 🎱 full slide physics: crash-through,
                     // wall/edge rebounds and bowling-pin chains included.
@@ -5630,7 +5732,9 @@
 
                     // AoePull-style pull toward center (Clash: damage only —
                     // nobody leaves their formation tile)
-                    if (!target.dead && spell.pullToCenter && opts.pullCenter
+                    if (!target.dead && _canPullIn && spell.pullDistance) {
+                        _pullJobs.push(target.id);
+                    } else if (!target.dead && spell.pullToCenter && opts.pullCenter
                         && !(typeof _isClashMode === 'function' && _isClashMode())) {
                         const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
                         const nx = target.x + pdx, ny = target.y + pdy;
@@ -5700,8 +5804,9 @@
                     }
                 }
 
-                // Leave terrain
-                if (spell.leaveTerrain) {
+                // Leave terrain — THE SPELL AUDIT Batch D: `leaveTerrainRadius` keeps it to the middle (Miasma's 3x3)
+                if (spell.leaveTerrain && !(spell.leaveTerrainRadius != null && opts.deformCenter
+                    && Math.max(Math.abs(tile.x - opts.deformCenter.x), Math.abs(tile.y - opts.deformCenter.y)) > spell.leaveTerrainRadius)) {
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
@@ -5727,6 +5832,7 @@
                 }
             }
 
+            if (_pullJobs.length) _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter);
             if (spell.leaveTerrain) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
@@ -5746,6 +5852,39 @@
                 followUnitFall(_groundedThisBlast[0]);
             }
             return hitCount;
+        }
+
+        /* THE SPELL AUDIT Batch D: the N-tile inward pull (Round Up's 2). Nearest body first; each takes up to
+           pullDistance steps (Heavy / anchored rules via getUnitPushDistance), re-aiming at the centre every step and
+           stopping beside it, at a blocked tile, or on a transit door mouth (Twin Doors). One path tween each, then
+           the landing hazards (resolveTileArrival — a transit door sends the body through). */
+        function _runAoePullJobs(unit, spell, ids, center) {
+            if (!center) return;
+            const cheb = (u) => Math.max(Math.abs(u.x - center.x), Math.abs(u.y - center.y));
+            const bodies = ids.map(id => unitFromId(id)).filter(u => u && !u.dead);
+            bodies.sort((a, b) => cheb(a) - cheb(b));
+            for (const t of bodies) {
+                const n = getUnitPushDistance(t, spell.pullDistance);
+                if (!(n > 0)) continue;
+                const fx = t.x, fy = t.y;
+                const steps = [];
+                for (let i = 0; i < n; i++) {
+                    if (cheb(t) <= 1) break;
+                    const nx = t.x + Math.sign(center.x - t.x), ny = t.y + Math.sign(center.y - t.y);
+                    if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
+                    if (typeof doorBlocksMove === 'function' && doorBlocksMove(nx, ny)) break;
+                    t.x = nx; t.y = ny;
+                    if (typeof nearestWalkableZ === 'function') t.z = nearestWalkableZ(nx, ny, t.z);
+                    steps.push({ x: nx, y: ny });
+                    const _dm = (typeof doorAt === 'function') ? doorAt(nx, ny) : null;
+                    if (_dm && _dm.transit) break;
+                }
+                if (!steps.length) continue;
+                addLog(`${unitDisplayName(t)} is hauled ${steps.length} tile${steps.length > 1 ? 's' : ''} in by ${spell.name}!`);
+                if (typeof animateDisplacementPath === 'function') animateDisplacementPath(t, fx, fy, steps, 120, { delayMs: actionMs(320), stagger: true });
+                else animateDisplacement(t, fx, fy, t.x, t.y, 180, { delayMs: actionMs(320), stagger: true });
+                _applyKnockbackHazard(t);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -7125,7 +7264,7 @@
             // 'delayed' (artillery / called-in strikes) is indirect fire that arcs over
             // terrain — exempt from line-of-sight so its range highlight (and the AI's
             // reach check) match doSpell, which also skips LOS for this kind.
-            const skipLOS = spell.kind === 'teleport' || spell.kind === 'delayed' || spell.ignoresLineOfSight === true || _skyGrab;
+            const skipLOS = (spell.kind === 'teleport' && !spell.needsLoS) || spell.kind === 'delayed' || spell.ignoresLineOfSight === true || _skyGrab;   // Batch D: a needsLoS teleport (Web Swing) is sight-checked
 
             const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
             const _km = _kindMeta(spell);
@@ -7431,7 +7570,8 @@
                     parts.push(`${stat.toUpperCase()} ${n > 0 ? 'maxed' : 'floored'}`);
                     continue;
                 }
-                let left = STAT_STAGE_DURATION;
+                // THE SPELL AUDIT Batch D: opts.rounds — a shorter / longer entry than the 3-round default (Land on Your Feet's 1)
+                let left = (opts && opts.rounds > 0) ? (opts.rounds | 0) : STAT_STAGE_DURATION;
                 // THE JOBS REMOVAL (the user 2026-09-27): Third Eye / Crescendo are passive rows now (were Psychic / Harbinger).
                 if (applied < 0 && isEnemy) left += (unitPassiveSum(sourceUnit, 'debuffTurnsBonus') || 0);    // Third Eye
                 if (applied > 0 && isAllyBuff) left += (unitPassiveSum(sourceUnit, 'buffTurnsBonus') || 0);   // Crescendo
@@ -7462,8 +7602,38 @@
         }
 
         function getStatusMoveDelta(unit) {
-            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.moveDelta || 0), 0);
+            return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.moveDelta || 0), 0)
+                + getTimedStatBonus(unit, 'move');
         }
+
+        /* THE SPELL AUDIT Batch D: timedStatBonus { move: N, rounds: R } — a flat stat bonus for R rounds (Updraft's
+           +1 MOV for 2). Entries ride the unit (unit.timedStatMods [{ stat, n, left }], JSON — the snapshot carries
+           them), tick down in _tickAllStatusDurations and clear on respawn. Only `move` is read today (through
+           getStatusMoveDelta, so every move-range path sees it). */
+        function getTimedStatBonus(unit, stat) {
+            if (!unit || !Array.isArray(unit.timedStatMods)) return 0;
+            let n = 0;
+            for (const m of unit.timedStatMods) if (m && m.stat === stat && (m.left || 0) > 0) n += (m.n || 0);
+            return n;
+        }
+        function applyTimedStatBonus(target, bonus, sourceLabel = '', sourceUnit = null) {
+            if (!target || target.dead || !bonus) return;
+            const rounds = Math.max(1, (bonus.rounds | 0) || 1);
+            const parts = [];
+            for (const stat of Object.keys(bonus)) {
+                if (stat === 'rounds') continue;
+                const n = bonus[stat] | 0;
+                if (!n) continue;
+                if (!Array.isArray(target.timedStatMods)) target.timedStatMods = [];
+                target.timedStatMods.push({ stat, n, left: rounds });
+                parts.push(`${n > 0 ? '+' : ''}${n} ${stat === 'move' ? 'MOV' : stat.toUpperCase()}`);
+            }
+            if (!parts.length) return;
+            addLog(`${sourceLabel}${unitDisplayName(target)} gains ${parts.join(', ')} for ${rounds} round${rounds !== 1 ? 's' : ''}.`);
+            if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, parts.join(' '), 'buff', { durationMs: 1100 });
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+        }
+        if (typeof window !== 'undefined') { window.getTimedStatBonus = getTimedStatBonus; window.applyTimedStatBonus = applyTimedStatBonus; }
 
         /* bonusVsStatus matcher (2026-08-10): `status` may be one id or a
            small list (e.g. Exorcism vs ['contract','hexed']) — any match
@@ -8844,7 +9014,37 @@
         }
 
         function _auraTreeName(type) {
+            if (type === 'plain') return 'Tree';   // THE SPELL AUDIT Batch D: Bumper Crop's plain wood
             return type === 'poison' ? 'Toxin Tree' : type === 'leech' ? 'Leech Tree' : 'Healing Tree';
+        }
+
+        /* THE SPELL AUDIT Batch D: rimSeeds (Bumper Crop) — a plain seed on every empty rim tile of the area
+           (Chebyshev ring at the area's reach), grass laid under each. A plain seed does nothing to a unit on it;
+           it sprouts at the next round end (growRounds 1) into an ordinary tree — blocks sight like any tree, and
+           counts as one of the planter's trees (Green Thumb / Trunk Throw read state.plantedTrees). */
+        function _plantRimSeeds(unit, spell, cx, cy) {
+            const r = _spellAoeReach(spell, spell.aoeRadius || 2);
+            if (!Array.isArray(state.plantedSeeds)) state.plantedSeeds = [];
+            let n = 0;
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                    const x = cx + dx, y = cy + dy;
+                    if (!_treeCanGrowAt(x, y)) continue;
+                    if (!isTerrainPassable(x, y)) continue;
+                    if (typeof doorAt === 'function' && doorAt(x, y)) continue;
+                    if (getTerrainAt(x, y) !== 'grass') setTerrainAt(x, y, 'grass');
+                    state.plantedSeeds.push({ x, y, z: getHeightAt(x, y), type: 'plain', growRounds: 1,
+                        owner: unit.player, casterUnitId: unit.id, growth: 0 });
+                    n++;
+                }
+            }
+            if (n) {
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+                addLog(`🌱 ${spell.name} sows ${n} seed${n !== 1 ? 's' : ''} around the edge — a wood by next round.`);
+            }
+            return n;
         }
 
         // A tile the grown tree can stand on: empty, unblocked, fertile ground.
@@ -8908,12 +9108,12 @@
             _ensureTreeState();
             if (getTerrainAt(gx, gy) !== 'grass') setTerrainAt(gx, gy, 'grass');
             setObjectAt(gx, gy, _auraTreeObjectFor(seed.type));
-            state.plantedTrees.push({ x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type });
+            state.plantedTrees.push({ x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
             _invalidateBoardGrid();
             state._treeTick = (state._treeTick || 0) + 1;
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             const caster = unitFromId(seed.casterUnitId);
-            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${unitDisplayName(caster)}'s grove strengthens` : ''}! Its aura pulses every round until it is destroyed.`);
+            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${unitDisplayName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : ' Its aura pulses every round until it is destroyed.'}`);
             if (state.phase === 'battle' && !_skipVisuals()) {
                 showFloatingTextAtTile(gx, gy, '🌳', 'heal', { durationMs: 1000 });
                 /* Reuse the Overgrowth signature grow-in (fired through the
@@ -9025,7 +9225,7 @@
                     if (droughtTiles.size > 0) {
                         state.plantedSeeds = state.plantedSeeds.filter(seed => {
                             if (droughtTiles.has(posKey(seed.x, seed.y))) {
-                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech'} Seed at ${coordLabel(seed.x, seed.y)}!`);
+                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
                                 return false;
                             }
                             return true;
@@ -9039,7 +9239,8 @@
                 for (const seed of state.plantedSeeds) {
                     const wet = _seedRainAt(seed.x, seed.y) || _seedBesideWater(seed.x, seed.y);
                     seed.growth = (seed.growth || 0) + 1;
-                    if (seed.growth >= (wet ? SEED_GROW_ROUNDS_WET : SEED_GROW_ROUNDS)) sprouting.push(seed);
+                    const _need = seed.growRounds > 0 ? seed.growRounds : (wet ? SEED_GROW_ROUNDS_WET : SEED_GROW_ROUNDS);   // Batch D: Bumper Crop's 1
+                    if (seed.growth >= _need) sprouting.push(seed);
                 }
                 if (sprouting.length) {
                     state.plantedSeeds = state.plantedSeeds.filter(s => !sprouting.includes(s));
@@ -9582,6 +9783,14 @@
                     // Legacy field from an old snapshot — inert since the
                     // 2026-08-29 ledger rework; drop it.
                     delete u.statStages;
+                }
+                // THE SPELL AUDIT Batch D: the timedStatBonus entries count down the same way.
+                if (Array.isArray(u.timedStatMods)) {
+                    for (const m of u.timedStatMods) m.left = (m.left || 0) - 1;
+                    const before = u.timedStatMods.length;
+                    u.timedStatMods = u.timedStatMods.filter(m => m && m.left > 0);
+                    if (u.timedStatMods.length < before) addLog(`${unitDisplayName(u)}'s bonus MOV wore off.`);
+                    if (!u.timedStatMods.length) delete u.timedStatMods;
                 }
             }
         }
@@ -24794,6 +25003,7 @@
                 u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
                 u.status = { spawnGuard: 1 };
                 delete u.statStageMods;   // fresh life — no carried stat stages
+                delete u.timedStatMods;   // THE SPELL AUDIT Batch D: nor timed stat bonuses
                 /* fresh life → drop Last Stand / kill-streak so the respawn
                    doesn't wear the crimson or golden aura (see map.js) */
                 if (typeof resetUnitPowerState === 'function') resetUnitPowerState(u);
@@ -31648,7 +31858,8 @@
                         sourceUnit: caster || undefined,   // the caster's kill, the caster's XP
                         noRangeMult: true,
                         scaleByTargetLevel: true,
-                        flashColor: 'hit'
+                        flashColor: 'hit',
+                        statusEffects: Array.isArray(s.turret.hitStatus) ? s.turret.hitStatus : undefined   // Batch D: Brood
                     });
                     if (typeof _balAddSpellEffect === 'function') {
                         const _applied = Math.max(0, _sHpBefore - Math.max(0, s.target.hp || 0));
@@ -31892,6 +32103,7 @@
             const k = spell.kind;
             if (k !== 'pulseLattice' && k !== 'tuneFrequency') return '';
             const owned = (state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0).length;
+            if (k === 'pulseLattice' && spell.shatterPrisms) return owned >= 1 ? '' : 'No prisms';   // Batch D: Shatter the Lattice
             if (k === 'pulseLattice') return owned >= 3 ? '' : (owned === 0 ? 'No prisms' : 'Need 3 prisms');
             return owned >= 1 ? '' : 'No prisms';   // tuneFrequency
         }
@@ -32102,6 +32314,41 @@
             playSfx('physicalAbility');
             checkWin();
             scheduleBoardRender();
+        }
+
+        /* THE SPELL AUDIT Batch D: shatterPrisms (Shatter the Lattice) — every standing prism the caster's side owns
+           blasts its own 3x3 in the CURRENT frequency (damage type, status, stage riders and dmgMult from
+           MIRROR_FREQS), then every one of them is gone. A body in two blasts is hit twice. Host-side; the prisms
+           leave state.mirrors (synced), the bursts go through the relayed VFX channel. */
+        function doShatterLattice(unit, spell, spellPower) {
+            const f = _mirrorFreqFor(unit.player);
+            const prisms = (state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0);
+            const dmg = Math.max(32, Math.floor(((spell.dmg || 80) + (spellPower || 0)) * (f.dmgMult || 1)));
+            const label = `${f.glyph} ${spell.name}: `;
+            const _fx = (typeof window !== 'undefined' && window.ThreeVFXEffects && state.phase === 'battle'
+                && typeof _skipVisuals === 'function' && !_skipVisuals()) ? window.ThreeVFXEffects : null;
+            let hits = 0;
+            for (const m of prisms) {
+                if (_fx && _fx.hasMapping('racePulseLattice', 'aura')) _fx.fire('aura', 'racePulseLattice', { tx: m.x, ty: m.y, aoeRadius: 1 });
+                else if (typeof playAoeRing === 'function') playAoeRing(m.x, m.y, 1, f.spellType, actionMs(550));
+                for (const e of state.units) {
+                    if (!e || e.dead || e._dying || e.player === unit.player) continue;
+                    if (Math.max(Math.abs(e.x - m.x), Math.abs(e.y - m.y)) > 1) continue;
+                    applyDamageToUnit(e, dmg, label, {
+                        sourceUnit: unit, damageType: 'magic', spellType: f.spellType,
+                        statusEffects: f.status ? [f.status] : null, allowMarkBonus: false, noRangeMult: true
+                    });
+                    if (f.stageBoost && !e.dead) applyStatStageBoost(e, f.stageBoost, label, unit);
+                    hits++;
+                }
+            }
+            const gone = new Set(prisms.map(m => m.id));
+            state.mirrors = (state.mirrors || []).filter(m => !gone.has(m.id));
+            addLog(`💥 ${unitDisplayName(unit)} shatters the lattice in ${f.label} — ${prisms.length} prism${prisms.length !== 1 ? 's' : ''} burst, ${hits} hit${hits !== 1 ? 's' : ''}.`, unit.player);
+            if (typeof shakeBoard === 'function') shakeBoard('normal');
+            checkWin();
+            scheduleBoardRender();
+            return hits;
         }
 
         if (typeof window !== 'undefined') {
@@ -32461,15 +32708,25 @@
             const r = state.round || 1;
             const keep = [];
             let reverted = 0, thawed = 0;
+            let melted = 0;
             for (const e of state._timedTerrain) {
                 if (r < e.expiresRound) { keep.push(e); continue; }
-                if (getTerrainAt(e.x, e.y) === e.terrain && e.prev && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[e.prev]) {
-                    setTerrainAt(e.x, e.y, e.prev);
+                /* THE SPELL AUDIT Batch D: a melt entry (Snow Fort) goes to `meltTo` and sinks back by `deform` */
+                const _to = e.meltTo || e.prev;
+                if (getTerrainAt(e.x, e.y) === e.terrain && _to && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[_to]) {
+                    if (e.deform) { applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid(); }
+                    setTerrainAt(e.x, e.y, _to);
+                    if (e.meltTo) { melted++; continue; }
                     reverted++;
                     if (e.terrain === 'ice') thawed++;
                 }
             }
             state._timedTerrain = keep;
+            if (melted) {
+                state._terrainVersion = (state._terrainVersion || 0) + 1;
+                addLog(`The snow wall melts away on ${melted} tile${melted !== 1 ? 's' : ''}.`);
+                scheduleBoardRender();
+            }
             if (reverted) {
                 state._terrainVersion = (state._terrainVersion || 0) + 1;
                 addLog(`The ${thawed === reverted ? 'ice thaws' : thawed ? 'ooze dries up and the ice thaws' : 'ooze dries up'} on ${reverted} tile${reverted !== 1 ? 's' : ''}.`);
@@ -53344,20 +53601,36 @@
                 if (_tdVFX && trap.spellId && _tdVFX.hasMapping(trap.spellId, 'impact') && !_skipVisuals()) _tdVFX.fire('impact', trap.spellId, { tx: trap.x, ty: trap.y });
                 else window._doorGeom('raceTrapdoor', trap.x, trap.y, {});
                 tiles.slice(1).forEach((t, i) => window._doorGeom('raceTrapdoor', t.x, t.y, { delay: 80 + i * 90 }));
-                applyDamageToUnit(victim, dmg, `${trap.spellName || 'Trapdoor'}: `, {
-                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
-                });
-                const _tdFromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
+                /* THE SPELL AUDIT Batch D: a hitAll trapdoor (Deathtrap) takes every grounded enemy of the owner
+                   standing on the footprint; each pays the hit and the fall. */
+                const _tdVictims = [victim];
+                if (trap.hitAll) {
+                    for (const u of state.units) {
+                        if (!u || u.dead || u.id === victim.id || u.player === trap.owner) continue;
+                        if (!tiles.some(t => t.x === u.x && t.y === u.y)) continue;
+                        if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                        _tdVictims.push(u);
+                    }
+                }
+                const _tdFromZs = _tdVictims.map(u => u.z ?? getBaseHeightAt(u.x, u.y));
+                for (const u of _tdVictims) {
+                    applyDamageToUnit(u, dmg, `${trap.spellName || 'Trapdoor'}: `, {
+                        sourceUnit: owner, damageType: 'physical', noRangeMult: true
+                    });
+                }
                 for (const t of tiles) applyTerrainDeform(t.x, t.y, 0, { centerDelta: -2, edgeDelta: 0 });
-                if (!victim.dead && typeof applyFallDamage === 'function') {
-                    applyFallDamage(victim, _tdFromZ, victim.z ?? 0, `${trap.spellName || 'Trapdoor'}: `, { byEnemy: true });
-                }
-                if (!victim.dead) {
-                    applyStatusEffects(victim, [{ id: 'stagger', duration: 1 }], `${trap.spellName || 'Trapdoor'}: `, owner);
-                    showFloatingTextForUnit(victim, '🚪 DROPPED!', 'debuff', { durationMs: 1100 });
-                }
+                const _tdStatus = (Array.isArray(trap.statusEffects) && trap.statusEffects.length) ? trap.statusEffects : [{ id: 'stagger', duration: 1 }];
+                _tdVictims.forEach((u, i) => {
+                    if (!u.dead && typeof applyFallDamage === 'function') {
+                        applyFallDamage(u, _tdFromZs[i], u.z ?? 0, `${trap.spellName || 'Trapdoor'}: `, { byEnemy: true });
+                    }
+                    if (!u.dead) {
+                        applyStatusEffects(u, _tdStatus, `${trap.spellName || 'Trapdoor'}: `, owner);
+                        showFloatingTextForUnit(u, '🚪 DROPPED!', 'debuff', { durationMs: 1100 });
+                    }
+                });
                 if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-                addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${unitDisplayName(victim)}!`);
+                addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : unitDisplayName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true
@@ -55422,6 +55695,7 @@
                 z: (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0,
                 open: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,
                 spellName: opts.spellName || 'Door', fixed: !!opts.fixed, placedRound: state.round || 0,
+                transit: !!opts.transit,   // THE SPELL AUDIT Batch D: Twin Doors — forced moves go through too
             });
             const a = mk(ax, ay, 'a'), b = mk(bx, by, 'b');
             _doors().push(a, b);   // read AFTER the cap loops — breakDoorPair reassigns state.doors
@@ -56540,7 +56814,7 @@
             const door = {
                 id, pairId: id, kind: 'standing', door: spell.door, x, y,
                 z: (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0,
-                open: true, fixed: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,
+                open: !def.shut, fixed: true, hp, maxHp: hp, owner: unit.player, ownerId: unit.id,   // Batch D: a Shut Door lands shut
                 spellId: spell.id, spellName: def.name, placedRound: state.round || 0, _seq: state._doorSeq,
                 faceX: f.faceX, faceY: f.faceY, actedRound: null, laneStamps: {},
             };
@@ -56714,6 +56988,7 @@
         function _gunDoorTurnWanted(door) {
             const def = _gunDoorDef(door);
             if (!def) return false;
+            if (!def.act) return false;   // THE SPELL AUDIT Batch D: the Shut Door has no act — nothing to do at THE DOORS' TURN
             if (def.act !== 'lanePush') return true;
             return standingDoorLaneTiles(door).some(t => {
                 const u = unitAt(t.x, t.y);
@@ -61243,7 +61518,15 @@
                away from you), a radius door one. The first click is remembered (state._spellPick1, tile: true) and spends
                nothing; from here (x, y) is the door's tile. A CPU / auto seat places in one call with its own face. */
             let _gunDoorAim = null;
-            if (spell.kind === 'doorDeploy') {
+            /* THE SPELL AUDIT Batch D: the Shut Door — a click on your OWN shut-type door within range opens / shuts it
+               (0 MP; the Keyholder's once-a-turn free toggle applies when the agent stands beside it). */
+            let _shutToggle = null;
+            if (spell.kind === 'doorDeploy' && typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[spell.door] && DOOR_GUN_DOORS[spell.door].shut) {
+                const _stD = doorAt(x, y);
+                if (_stD && _stD.kind === 'standing' && _stD.door === spell.door && _stD.owner === unit.player
+                    && Math.abs(unit.x - x) + Math.abs(unit.y - y) <= ((getEffectiveSpellRange(unit, spell) || spell.range || 4))) _shutToggle = _stD;
+            }
+            if (spell.kind === 'doorDeploy' && !_shutToggle) {
                 const _gdAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
                 _gunDoorAim = doorGunAimResolve(unit, spell, x, y, { auto: _gdAuto });
                 if (_gunDoorAim.error) {
@@ -61429,7 +61712,7 @@
                 // gate (like teleport). The AI's spell targeter already treats it this way;
                 // gating it here is what produced "Terrain blocks the spell path" on tiles
                 // the AI legitimately picked, wasting the unit's turn.
-                if (spell.kind !== 'teleport' && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && !_isSkyGrabCast && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
+                if ((spell.kind !== 'teleport' || spell.needsLoS) && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && !_isSkyGrabCast && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
                     if (!_silentReject) {
                         addLog('Terrain blocks the spell path.');
                         playErrorSfx();
@@ -61570,7 +61853,7 @@
             /* Sky-throw phase 2 (the throw click): the GRAB already paid the MP.
                Re-checking it here left a caster with less than the cost after the
                grab stuck on "Not enough MP" with the enemy hanging in the air. */
-            if (unit.mp < effectiveSpellCost && !(spell.kind === 'skyThrow' && unit._skyThrowGrab)) {
+            if (unit.mp < effectiveSpellCost && !(spell.kind === 'skyThrow' && unit._skyThrowGrab) && !_shutToggle) {
                 addLog(mpPenalty > 0 ? `Not enough MP. A status is increasing spell costs by ${mpPenalty}.` : 'Not enough MP.');
                 state._teleportingUnit = null;
                 playErrorSfx();
@@ -61608,6 +61891,39 @@
                 if (typeof renderIfDirty === 'function') renderIfDirty();
                 scheduleBoardRender();
                 return 0;
+            }
+
+            /* THE SPELL AUDIT Batch D: Twin Doors (deployPair + pairPicks) — TWO picks within range, both by click. The
+               first legal free tile is remembered (state._spellPick1, tile: true — the lane door's pick, so online.js
+               sends it as pickX / pickY); clicking it again drops it; the second places the pair. A CPU / auto seat
+               places the first mouth on the free tile beside itself nearest the click (_doorNearSpot). */
+            let _pairPick = null;
+            if (spell.kind === 'deployPair' && spell.pairPicks) {
+                const _ppAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _ppReach = getEffectiveSpellRange(unit, spell) || spell.range || 4;
+                const _ppOk = (tx, ty) => isInside(tx, ty) && doorTileFree(tx, ty) && (tx !== unit.x || ty !== unit.y)
+                    && Math.abs(unit.x - tx) + Math.abs(unit.y - ty) <= _ppReach;
+                const _pk = _ppAuto ? null : _gunDoorPick(spell);
+                if (!_ppOk(x, y)) {
+                    if (!_silentReject) { addLog(`${spell.name}: pick an empty tile within ${_ppReach}.`); playErrorSfx(); }
+                    return 0;
+                }
+                if (!_ppAuto && !_pk) {
+                    state._spellPick1 = { tile: true, id: null, spellId: spell.id, x, y };
+                    playSfx('uiConfirm');
+                    showFloatingTextAtTile(x, y, '🚪 ①', 'buff', { durationMs: 900 });
+                    addLog(`${spell.name}: the first door goes on ${coordLabel(x, y)} — now pick the second (click it again to cancel).`, unit.player);
+                    if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
+                    scheduleBoardRender();
+                    return 0;
+                }
+                if (_pk && _pk.x === x && _pk.y === y) { clearSpellPick(); return 0; }
+                _pairPick = _pk ? { x: _pk.x, y: _pk.y } : _doorNearSpot(unit, { x, y });
+                if (!_pairPick || !_ppOk(_pairPick.x, _pairPick.y) || (_pairPick.x === x && _pairPick.y === y)) {
+                    if (!_silentReject) { addLog(`${spell.name}: the first tile is no longer free.`); playErrorSfx(); }
+                    clearSpellPick();
+                    return 0;
+                }
             }
 
             /* ── Two-click casts (plan §5.3 link / transfer, wave B): the FIRST
@@ -62089,6 +62405,7 @@
                     }
                     applyStatusEffects(_bt, spell.statusEffects, `${spell.name}: `, unit);
                     if (spell.statStageBoost) applyStatStageBoost(_bt, spell.statStageBoost, `${spell.name}: `, unit);
+                    if (spell.timedStatBonus) applyTimedStatBonus(_bt, spell.timedStatBonus, `${spell.name}: `, unit);   // Batch D: Updraft
                     markDirty('hud');
                     renderIfDirty();
                 }, _buffResult.applyAt || 0);
@@ -62217,7 +62534,19 @@
                     const effectsToApply = spell.zodiacReading ? _zodiacEffects : spell.statusEffects;
                     if (effectsToApply) applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
                     if (_zodiacBoost) applyStatStageBoost(target, _zodiacBoost, `${spell.name}: `, unit);
+                    /* THE SPELL AUDIT Batch D: selfStageBoost (Steal from the Rich) — the caster takes the stages the
+                       target actually lost (none if the drop fizzled: Pure Negativity, Fermata, already floored). */
+                    const _ssbBefore = spell.selfStageBoost ? STAT_STAGE_KEYS.reduce((o, k) => (o[k] = getStatStageCount(target, k), o), {}) : null;
                     if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
+                    if (_ssbBefore && !unit.dead) {
+                        const _gain = {};
+                        for (const k of Object.keys(spell.selfStageBoost)) {
+                            const lost = Math.max(0, (_ssbBefore[k] || 0) - getStatStageCount(target, k));
+                            const g = Math.min(spell.selfStageBoost[k] || 0, lost);
+                            if (g > 0) _gain[k] = g;
+                        }
+                        if (Object.keys(_gain).length) applyStatStageBoost(unit, _gain, `${spell.name}: `, unit);
+                    }
 
                     // Anti-air debuffs (Anchor, Stasis Beam…) drag flyers down.
                     if (spell.groundsFlyers && !target.dead && typeof forceGroundUnit === 'function') {
@@ -62339,6 +62668,8 @@
                     summon: _sd.key || 'pet', hitsToKill: true, hp: _sHits, maxHp: _sHits,
                     dmg: (_sd.dmg || 60) + Math.floor(spellPower * 0.5),
                     range: 1, move: _sd.move || 3, reveals: _sd.reveals || 0, armored: !!_sd.armored,
+                    /* THE SPELL AUDIT Batch D: summonDef.hitStatus — the pet's bite carries a status (Brood's Poison 2) */
+                    hitStatus: _sd.hitStatus ? [].concat(_sd.hitStatus) : null,
                 });
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -62494,6 +62825,17 @@
                 }
                 addLog(`${unitDisplayName(unit)} tunes the lattice to ${_f.glyph} ${_f.label} — every beam now ${_f.verb}.`, unit.player);
                 scheduleBoardRender();
+            } else if (spell.kind === 'pulseLattice' && spell.shatterPrisms) {
+                /* THE SPELL AUDIT Batch D: Shatter the Lattice — any number of prisms, linked or not */
+                if (!(state.mirrors || []).some(m => m.owner === unit.player && m.hp > 0)) {
+                    if (!_silentReject) { addLog(`${spell.name}: you have no prisms standing.`); playErrorSfx(); }
+                    return 0;
+                }
+                playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
+                _spellFocusCamera(unit, unit.x, unit.y);
+                unit.mp -= effectiveSpellCost;
+                doShatterLattice(unit, spell, spellPower);
+                completionDelay = (typeof actionMs === 'function') ? actionMs(800) : 800;
             } else if (spell.kind === 'pulseLattice') {
                 const _pNet = computeMirrorNetwork(unit.player);
                 if (_pNet.count < 3) {
@@ -62544,7 +62886,11 @@
                     dmg: (spell.dmg || 0) + spellPower,
                     spellId: spell.id,
                     spellName: spell.name,
-                    groupId: _gid, anchorX: _tfp.x, anchorY: _tfp.y, size: spell.trapSize || 1
+                    groupId: _gid, anchorX: _tfp.x, anchorY: _tfp.y, size: spell.trapSize || 1,
+                    /* THE SPELL AUDIT Batch D (Deathtrap): the row's statuses replace the trapdoor's Stagger 1, and
+                       trapHitsAll drops EVERY enemy standing on the footprint, not just the one who sprang it. */
+                    statusEffects: spell.statusEffects || null,
+                    hitAll: !!spell.trapHitsAll
                 });
                 if (spell.doorGun) {
                     /* THE DOOR AGENT (rev 3): the trapdoor is SHOT out of the gun
@@ -62984,6 +63330,7 @@
                             groundAirborne: !!spell.groundsFlyers
                         });
                     if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
+                    if (spell.rimSeeds) _plantRimSeeds(unit, spell, x, y);   // THE SPELL AUDIT Batch D: Bumper Crop
                 }, timing.impactDelay);
             } else if (spell.kind === 'barrage') {
                 // Conditional barrages (hitsWetOnly — Poseidon's Wrath): reject
@@ -63457,9 +63804,17 @@
 
             else if (spell.kind === 'pull') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
-                if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target for pull.');
-                    playErrorSfx();
+                /* THE SPELL AUDIT Batch D: an `allyOnly` pull (Rescue Line) hauls a FRIENDLY unit toward the caster — no
+                   fall damage on the haul, and the row's `cleanse` strips that many debuffs when the rope bites. */
+                const _plAlly = !!spell.allyOnly;
+                const _plBad = _plAlly
+                    ? (!target || target.id === unit.id || !isAllyUnit(target, unit))
+                    : (!target || isAllyUnit(target, unit));
+                if (_plBad) {
+                    if (!_silentReject) {
+                        addLog(_plAlly ? `${spell.name}: choose a friendly unit to haul in.` : 'Invalid target for pull.');
+                        playErrorSfx();
+                    }
                     return 0;
                 }
                 focusUnitPanel(target.id);
@@ -63516,6 +63871,7 @@
                     byUnit: unit, label: `${spell.name}: `,
                     perStepMs: 120, delayMs: _yankDelayMs,
                     stopBefore: { x: unit.x, y: unit.y },
+                    noFall: _plAlly,
                     onStep: spell.pullThroughHazards ? ((sx, sy) => {
                         const terrain = getTerrainAt(sx, sy);
                         if (terrain === 'lava' || terrain === 'poison') {
@@ -63528,7 +63884,7 @@
                 const pulled = _pullSlide.moved;
                 const _pullSteps = _pullSlide.steps;
 
-                if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
+                if (!_plAlly && typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {   // a hauled ally keeps its wings
                     const _pullAirZ = target.z ?? 0;
                     const _pullGroundZ = getHeightAt(target.x, target.y);
                     /* Landing beat: when the victim actually moved, the drag
@@ -63579,6 +63935,16 @@
                         if (target.dead || target._dying) return;
                         applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     }, Math.max(0, _yankDelayMs || 0));
+                }
+                if (_plAlly && spell.cleanse) {
+                    /* the ally's debuffs come off now (host state); the float rides the yank */
+                    const _plDebuffs = getActiveStatusKeys(target).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
+                    const _plGone = _plDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse);
+                    for (const k of _plGone) clearStatus(target, k);
+                    if (_plGone.length) {
+                        addLog(`${spell.name} frees ${unitDisplayName(target)} of ${_plGone.map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`);
+                        window.setTimeout(() => { if (!target.dead) showFloatingTextForUnit(target, '✨ CLEANSED', 'heal', { durationMs: 900 }); }, Math.max(0, _yankDelayMs || 0));
+                    }
                 }
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
 
@@ -63672,9 +64038,15 @@
 
             else if (spell.kind === 'swap') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
-                if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target for swap.');
-                    playErrorSfx();
+                /* THE SPELL AUDIT Batch D: an `allyOnly` row (Tag In, Miracle) swaps with a friendly unit, never an enemy */
+                const _swBad = spell.allyOnly
+                    ? (!target || target.id === unit.id || !isAllyUnit(target, unit))
+                    : (!target || isAllyUnit(target, unit));
+                if (_swBad) {
+                    if (!_silentReject) {
+                        addLog(spell.allyOnly ? `${spell.name}: choose a friendly unit to swap with.` : 'Invalid target for swap.');
+                        playErrorSfx();
+                    }
                     return 0;
                 }
                 focusUnitPanel(target.id);
@@ -64185,7 +64557,7 @@
                 const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _apArea);
                 completionDelay = timing.completionDelay;
 
-                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'damage', timing.cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), timing.projectileDelay);
+                if (unit.x !== x || unit.y !== y) window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'damage', timing.cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), timing.projectileDelay);
 
                 const _apUseVfx3dAoe = (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aoe'));
@@ -64208,7 +64580,7 @@
                             groundAirborne: true,
                             deformCenter: { x, y }
                         });
-                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`);
+                    addLog(`${spell.name} ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`);
 
                     if (spell.leaveTerrain) {
                         for (const tile of area) {
@@ -64422,6 +64794,23 @@
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
                 }
+            }
+
+            else if (spell.kind === 'deployPair' && _pairPick) {
+                /* THE SPELL AUDIT Batch D: Twin Doors — the two picked mouths, a TRANSIT pair: a body knocked, blown,
+                   pulled or walked into one comes out of the other (resolveTileArrival step T). */
+                clearSpellPick();
+                playSfx('uiConfirm');
+                _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                placeDoorPair(unit, _pairPick.x, _pairPick.y, x, y, { spellName: spell.name, fixed: true, transit: true, perAgent: spell.maxActivePerCaster || 1 });
+                if (window._doorGeom) {
+                    window._doorGeom('raceDoorGun:shot', _pairPick.x, _pairPick.y, { fromX: unit.x, fromY: unit.y });
+                    window._doorGeom('raceDoorGun:shot', x, y, { fromX: unit.x, fromY: unit.y, delay: 140 });
+                }
+                addLog(`${unitDisplayName(unit)} opens ${spell.name} at ${coordLabel(_pairPick.x, _pairPick.y)} and ${coordLabel(x, y)} — whatever goes in one comes out the other.`);
+                scheduleBoardRender();
+                completionDelay = actionMs(450);
             }
 
             else if (spell.kind === 'deployPair') {
@@ -64997,6 +65386,7 @@
 
                     const convertedTiles = [];
                     const affectedTiles = [];
+                    const _tcPrev = {};   // THE SPELL AUDIT Batch D: each tile's terrain before a melting paint
                     const _seenAffected = new Set();
                     const _pushAffected = (tx, ty) => {
                         const ak = tx + ',' + ty;
@@ -65058,6 +65448,7 @@
                             ? getTerrainAt3D(tx, ty, pz) : getTerrainAt(tx, ty);
                         if (current === 'wall') return;
                         _pushAffected(tx, ty);
+                        if (spell.meltRounds && !_tcPrev[tx + ',' + ty]) _tcPrev[tx + ',' + ty] = current;   // Batch D: Snow Fort
                         /* THE SPELL-MADE MONUMENTS (2026-09-18): a wall spell
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
@@ -65260,6 +65651,21 @@
                         _invalidateBoardGrid();
                         scheduleBoardRender();
                     }
+                    /* THE SPELL AUDIT Batch D: meltRounds (Snow Fort) — the painted tiles are timed terrain: after N
+                       rounds _tickTimedTerrain turns each back (to `meltTo` when set — the puddle) and lowers it by the
+                       height the paint raised. Host-side state._timedTerrain; the terrain/height change rides the sync. */
+                    if (spell.meltRounds && affectedTiles.length > 0) {
+                        if (!state._timedTerrain) state._timedTerrain = [];
+                        const _mExp = (state.round || 1) + (spell.meltRounds | 0);
+                        const _mLift = (spell.terrainDeform && !spell.monument) ? (spell.terrainDeform.centerDelta || 0) : 0;
+                        for (const at of affectedTiles) {
+                            if (getTerrainAt(at.x, at.y) !== terrainType) continue;
+                            const ex = state._timedTerrain.find(e => e.x === at.x && e.y === at.y);
+                            if (ex) { ex.expiresRound = Math.max(ex.expiresRound, _mExp); ex.deform = (ex.deform || 0) - _mLift; continue; }
+                            state._timedTerrain.push({ x: at.x, y: at.y, prev: _tcPrev[at.x + ',' + at.y] || 'grass', terrain: terrainType,
+                                expiresRound: _mExp, owner: unit.player, meltTo: spell.meltTo || null, deform: _mLift ? -_mLift : 0 });
+                        }
+                    }
                     /* THE SPELL-MADE MONUMENTS (2026-09-18): one real piece per
                        affected tile through map.js placeSpellMonument (the ONE
                        live placer — it stamps the wall's collision and records
@@ -65298,7 +65704,23 @@
                 if (spell.id === 'grapple' || spell.id === 'raceGrapple') {
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
-                    if (target && isEnemyUnit(target, unit)) {
+                    /* THE SPELL AUDIT Batch D: selfPullOnly (Grapple) — the hook bites a wall, a standing door or an
+                       ALLY and reels the CASTER to the tile beside it; enemies are not a target and an open floor
+                       tile is not an anchor. */
+                    const _grSelfOnly = !!spell.selfPullOnly;
+                    const _grAllyAnchor = _grSelfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
+                    if (_grSelfOnly && target && !_grAllyAnchor) {
+                        if (!_silentReject) { addLog(`${spell.name} hooks a wall, a door or an ally — not ${target.id === unit.id ? 'yourself' : 'an enemy'}.`); playErrorSfx(); }
+                        return 0;
+                    }
+                    if (_grSelfOnly && !target) {
+                        const _grDoorHere = (typeof doorAt === 'function') ? doorAt(x, y) : null;
+                        if (isTerrainPassable(x, y) && !_grDoorHere && !objectBlocksLanding(x, y)) {
+                            if (!_silentReject) { addLog(`${spell.name} needs something to hook — a wall, a door or an ally.`); playErrorSfx(); }
+                            return 0;
+                        }
+                    }
+                    if (!_grSelfOnly && target && isEnemyUnit(target, unit)) {
 
                         panelFocusTarget = target;
                         focusUnitPanel(target.id);
@@ -65392,26 +65814,28 @@
                             }
                             scheduleBoardRender();
                         }, impactDelay);
-                    } else if (!target) {
+                    } else if (!target || _grAllyAnchor) {
 
                         // Reel the caster along the rope straight toward the CLICKED
                         // tile — land on it if the path is clear, or stop on the last
                         // clear tile before an obstacle (e.g. pulling up to a wall).
+                        // Batch D selfPullOnly: the anchor tile itself is never entered.
                         let moved = 0;
                         let cx = unit.x, cy = unit.y;
                         const _grPath = _ewLineTiles(unit.x, unit.y, x, y);
                         for (const _p of _grPath) {
                             if (!isInside(_p.x, _p.y)) break;
+                            if (_grSelfOnly && _p.x === x && _p.y === y) break;
                             if (unitAt(_p.x, _p.y)) break;
                             if (!isTerrainPassable(_p.x, _p.y)) break;
+                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(_p.x, _p.y)) break;
                             cx = _p.x;
                             cy = _p.y;
                             moved++;
                             if (_p.x === x && _p.y === y) break;
                         }
                         if (moved === 0) {
-                            addLog('No valid position to grapple toward.');
-                            playErrorSfx();
+                            if (!_silentReject) { addLog(_grSelfOnly ? `${spell.name}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.'); playErrorSfx(); }
                             return 0;
                         }
                         playSfx('uiConfirm');
@@ -65448,10 +65872,10 @@
                             }
                             scheduleBoardRender();
                         }, _grShootMs + actionMs(60));
-                        addLog(`${unitDisplayName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}.`);
+                        addLog(`${unitDisplayName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grAllyAnchor ? ` to ${unitDisplayName(target)}'s side` : ''}.`);
                         completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
                     } else {
-                        addLog('Choose an enemy to pull or an empty tile to grapple toward.');
+                        addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');
                         playErrorSfx();
                         return 0;
                     }
@@ -65649,11 +66073,26 @@
                         playErrorSfx();
                         return 0;
                     }
+                    /* THE SPELL AUDIT Batch D: `needsLoS` (Web Swing) — the line has to reach the landing: a teleport row
+                       that carries it is sight-checked like any cast (doSpell's own gate covers the one-click landing; this
+                       covers the second click). */
+                    if (spell.needsLoS && destDist >= 1
+                        && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0))) {
+                        if (!_silentReject) { addLog(`${spell.name}: you need a clear line to that tile.`); playErrorSfx(); }
+                        return 0;
+                    }
                     const tUnit = state._teleportingUnit;
                     state._teleportingUnit = null;
                     playSfx('teleport');
+                    const _tpFromX = tUnit.x, _tpFromY = tUnit.y, _tpFromZ = tUnit.z ?? 0;
 
-                    if (spell.doorGun) {
+                    if (spell.leap && tUnit === unit) {
+                        /* THE SPELL AUDIT Batch D: `leap` (Land on Your Feet) — the caster jumps the arc to the landing,
+                           any height up or down, and lands on its feet (a teleport never pays fall damage). The arc is
+                           relayed (online.js wraps animateJumpArc). */
+                        const _lpToZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
+                        if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, Math.max(actionMs(420), destDist * actionMs(140)));
+                    } else if (spell.doorGun) {
                         /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
                            at the agent's feet facing it, one at the landing facing back — in one, out the other
                            (Breaking and Entering's door; every beat through _doorGeom → relayed, RULE #2) */
@@ -65687,8 +66126,16 @@
                     // A grounded body lands on the destination's surface (its z used
                     // to stay the ORIGIN's — a plateau-to-floor blink read as airborne).
                     if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
-                    addLog(`${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+                    addLog(spell.leap && tUnit === unit
+                        ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
+                        : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
+                    /* THE SPELL AUDIT Batch D: `arrivalStageBoost` (+ `arrivalStageRounds`) — the mover's stat stages on
+                       landing (Land on Your Feet: +1 DEF for 1 round) */
+                    if (spell.arrivalStageBoost && !tUnit.dead) {
+                        applyStatStageBoost(tUnit, spell.arrivalStageBoost, `${spell.name}: `, unit,
+                            spell.arrivalStageRounds ? { rounds: spell.arrivalStageRounds } : {});
+                    }
 
                     if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
                         const _tpM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the landing tile)
@@ -66009,6 +66456,18 @@
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
                 completionDelay = actionMs(200) + flyMs + actionMs(500);
+            }
+
+            else if (spell.kind === 'doorDeploy' && _shutToggle) {
+                /* THE SPELL AUDIT Batch D: the Shut Door's toggle — no MP, the door's `open` rides the sync */
+                const _free = !!(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorFreeToggle'))
+                    && Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y)) <= 1 && unit._doorFreeRound !== (state.round || 0);
+                _spellFocusCamera(unit, x, y);
+                setDoorOpen(_shutToggle, !_shutToggle.open);
+                addLog(`🚪 ${unitDisplayName(unit)} ${_shutToggle.open ? 'opens' : 'shuts'} the ${spell.name} at ${coordLabel(x, y)}${_free ? ' — Keyholder, free' : ''}.`);
+                if (_free) { unit._doorFreeRound = state.round || 0; _doorFreeAction = true; }
+                completionDelay = actionMs(350);
+                scheduleBoardRender();
             }
 
             else if (spell.kind === 'doorDeploy') {

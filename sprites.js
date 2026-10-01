@@ -3720,6 +3720,7 @@ const TERRAIN_SPRITES = {
     // Castle Fortress (knight spell) — impassable-height wall wearing the
     // brick texture instead of raw mountain rock.
     castle_wall:      [`${_T}/bricks_2.png`],
+    snow_wall:        [`${_T}/ice.png`],   // THE SPELL AUDIT Batch D: Snow Fort reuses the ice texture
     wood_planks:      [`${_T}/wood_planks.png`],
     wood:             [`${_T}/wood.png`],
     rubble_1:         [`${_T}/rubble_1.png`],
