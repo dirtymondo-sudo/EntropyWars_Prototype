@@ -2265,6 +2265,7 @@
                         detonateDeployedObject(dobj, unit);
                     } else {
                         state._deployedObjects.splice(dobjIdx, 1);
+                        _onDecoyBroken(dobj, unit);   // THE SPELL AUDIT Batch D: Stuffed Double's Fear
                         addLog(`${unitDisplayName(unit)} casts ${spell.name} and destroys ${dobj.spellName || 'deployed object'} at ${coordLabel(x, y)}!`);
                         showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                         playSfx(spellLaunchSfx(spell));
@@ -2335,9 +2336,22 @@
            stealBuffs        (Swipe) every buff status and positive stat stage the victim wears moves to the caster
                              (Spellsteal's plumbing, for buffs) — after the hit, in _runPostEffects.
            All host-side state on the units (ride the snapshot); the floats are relayed. */
+        /* the unit's raised, timed stat stages leave its ledger (perm entries stay) — clearing the statUp badge alone
+           does not: _syncStatStageBadges would put it straight back. → how many entries went. */
+        function _dropRaisedStages(u) {
+            if (!u || !Array.isArray(u.statStageMods)) return 0;
+            const before = u.statStageMods.length;
+            u.statStageMods = u.statStageMods.filter(m => !m || m.perm || !((m.n || 0) > 0));
+            const gone = before - u.statStageMods.length;
+            if (gone) _syncStatStageBadges(u);
+            return gone;
+        }
+        /* buffs a thief cannot carry off: forms and states whose unit data stays behind (HP swaps, form flags, a stance) */
+        const _UNSTEALABLE_BUFFS = new Set(['wolfForm', 'stoneform', 'carForm', 'mechaForm', 'monster', 'castFromDoors',
+            'guarding', 'spawnGuard', 'statLock', 'siegeMode']);
         function _purgeWardsBeforeHit(unit, spell, target) {
             if (!target || target.dead) return 0;
-            const n = removeBuffs(target);
+            const n = removeBuffs(target) + _dropRaisedStages(target);
             const sh = Math.max(0, target.shield || 0);
             if (sh > 0) target.shield = 0;
             if (n || sh) {
@@ -2364,14 +2378,14 @@
             const taken = [];
             for (const key of Object.keys(STATUS_DEFS)) {
                 const def = STATUS_DEFS[key];
-                if (!def || def.kind !== 'buff') continue;
+                if (!def || def.kind !== 'buff' || _UNSTEALABLE_BUFFS.has(key) || def.form) continue;
                 const v = Number((victim.status && victim.status[key]) || 0);
                 if (v <= 0) continue;
                 clearStatus(victim, key);
                 if (key === 'statUp' || key === 'statDown') continue;   // the ledger moves below
                 taken.push({ id: key, duration: v });
             }
-            if (Array.isArray(victim.statStageMods)) _syncStatStageBadges(victim);
+            _dropRaisedStages(victim);
             const label = `${spell.name}: `;
             for (const p of taken) applyStatusPayload(thief, p, label, thief);
             for (const s of stages) applyStatStageBoost(thief, { [s.stat]: s.n }, label, thief, { rounds: s.left });
@@ -3912,7 +3926,7 @@
                 // A body knocked, blown or pulled onto an open transit mouth comes out of its twin (a walk is
                 // doorStepThrough's, at the end of the move; a teleport arrival never re-enters, so no ping-pong);
                 // the far mouth's tile then runs its own chain.
-                if (via !== 'move' && via !== 'teleport' && typeof doorAt === 'function') {
+                if (via !== 'move' && via !== 'teleport' && via !== 'self' && typeof doorAt === 'function') {
                     const _tr = doorAt(unit.x, unit.y);
                     if (_tr && _tr.transit && _tr.open && doorStepThrough(unit)) {
                         fired++;
@@ -5318,9 +5332,9 @@
 
         /* THE SPELL AUDIT Batch D (Loaded Dice): spells never crit — a row with `critChance` (0..1, the critChanceAdd patch)
            rolls each hit on the seeded stream and lands ×getCritMultiplier on a crit. Host-side; isCrit rides the hit opts. */
-        function _spellCritRoll(unit, spell, dmg) {
+        function _spellCritRoll(unit, spell, dmg, target) {
             const c = (spell && typeof spell.critChance === 'number') ? spell.critChance : 0;
-            if (!(c > 0) || !(dmg > 0) || engineRng() >= c) return { dmg, isCrit: false };
+            if (!(c > 0) || !(dmg > 0) || (target && unitCritWarded(target)) || engineRng() >= c) return { dmg, isCrit: false };   // Foresight wards spell crits too
             if (unit) unit._matchCrits = (unit._matchCrits || 0) + 1;
             return { dmg: Math.floor(dmg * getCritMultiplier(unit)), isCrit: true };
         }
@@ -5377,7 +5391,7 @@
                     const baseDamage = _chainProfile[idx];
                     const applyHit = () => {
                         if (!hopTarget || hopTarget.dead) return;
-                        const _hopCrit = _spellCritRoll(unit, spell, calcFlatSpellDamage(baseDamage, spellPower, 16));
+                        const _hopCrit = _spellCritRoll(unit, spell, calcFlatSpellDamage(baseDamage, spellPower, 16), hopTarget);
                         applyDamageToUnit(hopTarget, _hopCrit.dmg,
                             idx === 0
                                 ? `${unitDisplayName(unit)} casts ${spell.name}: `
@@ -5418,7 +5432,7 @@
                         ? 1.5 : null,
                     sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
                 });
-                const _hitCrit = _spellCritRoll(unit, spell, _riders.dmg);   // THE SPELL AUDIT Batch D: Loaded Dice
+                const _hitCrit = _spellCritRoll(unit, spell, _riders.dmg, target);   // THE SPELL AUDIT Batch D: Loaded Dice
                 const damage = _hitCrit.dmg;
                 const _wasJammed = !!spell.jammedArc && unitHasStatus(target, 'jammed');   // Daisy Chain judges before the hit
                 /* Phase 5 wave A (2026-09-08): executeBelowPct (Take Aim) is
@@ -5563,7 +5577,7 @@
 
         /* THE SPELL AUDIT Batch D — the decoy taunt (Stuffed Double, `decoyTaunt`). A unit Provoked by a DECOY carries
            `_tauntObjKey` ('x,y' of the object, plain data) instead of _tauntCasterId; this resolves the live decoy, or
-           null once it is gone. doAttack / doSpell bind single-target actions to it while it can be hit; ai.js reads it. */
+           null once it is gone. doAttack binds basic attacks to it while it can be hit (spells cannot target objects); ai.js reads it. */
         function getTauntDecoy(unit) {
             if (!unit || !unit._tauntObjKey || !unitHasStatus(unit, 'taunt')) return null;
             const o = (state._deployedObjects || []).find(d => d.hp > 0 && !d._detonated && (d.x + ',' + d.y) === unit._tauntObjKey);
@@ -5630,7 +5644,7 @@
             const hpB = enemy.hp;
             applyDamageToUnit(enemy, dmg, label, {
                 sourceUnit: (caster && !caster.dead) ? caster : undefined,
-                allowMarkBonus: false,
+                allowMarkBonus: false, noRangeMult: true,   // a zone tick is no ranged shot: no falloff, no flank / ambush riders
                 damageType: o.damageType || 'magic',
                 spellType: o.spellType || null,
                 spellElement: o.element || null
@@ -5756,7 +5770,7 @@
                         markedBonus: (idx === 1 && unitHasStatus(target, 'marked'))
                             ? (spell.markedSecondHitBonus || 0) : 0,
                         spellPower, hitCount: hits.length,
-                    }));   // THE SPELL AUDIT Batch D: Loaded Dice rolls every card
+                    }), target);   // THE SPELL AUDIT Batch D: Loaded Dice rolls every card
                     const dmg = _mhCrit.dmg;
                     applyDamageToUnit(target, dmg,
                         idx === 0
@@ -5895,6 +5909,10 @@
                         if (!target || target.dead) continue;
                         if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                         if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
+                        if (spell.pullToCenter && !target.dead) {   // Event Horizon's pullRider on a no-damage pull too
+                            const _pr0 = passivePullRider(unit, spell);
+                            if (_pr0) applyStatusPayload(target, { id: _pr0.id, duration: _pr0.duration || 1 }, `${_pr0.name}: `, unit);
+                        }
                         if (_canPullIn && spell.pullDistance && !target.dead) _pullJobs.push(target.id);
                         hitCount++;
                     }
@@ -5906,7 +5924,7 @@
                     // Draw from the seeded stream ONLY when variance is live —
                     // same stream discipline as computeSpellBase.
                     const _aoeCrit = _spellCritRoll(unit, spell, calcAoeHitDamage(baseDmg, _vr, waterMult,
-                        opts.minDmg || 32, _vr > 0 ? engineRng() : 0));   // THE SPELL AUDIT Batch D: Loaded Dice
+                        opts.minDmg || 32, _vr > 0 ? engineRng() : 0), target);   // THE SPELL AUDIT Batch D: Loaded Dice
                     const dmg = _aoeCrit.dmg;
                     const _aldHpB = target.hp;
                     const _aoeSitHas = _statusIfTargetHasArmed(spell, target);   // THE SPELL AUDIT Batch D (System Crash)
@@ -6565,6 +6583,7 @@
                             showFloatingTextAtTile(cx, cy, 'DESTROYED', 'damage');
                             const _lnIdx = state._deployedObjects.indexOf(_lnDObj);
                             if (_lnIdx >= 0) state._deployedObjects.splice(_lnIdx, 1);
+                            _onDecoyBroken(_lnDObj, unit);   // THE SPELL AUDIT Batch D: Stuffed Double's Fear
                         }
                     }
                 }
@@ -32141,7 +32160,7 @@
                 if (seedIdx >= 0) {
                     const destroyed = state.plantedSeeds[seedIdx];
                     state.plantedSeeds.splice(seedIdx, 1);
-                    const seedName = destroyed.type === 'heal' ? 'Healing' : destroyed.type === 'poison' ? 'Poison' : 'Leech';
+                    const seedName = destroyed.type === 'heal' ? 'Healing' : destroyed.type === 'poison' ? 'Poison' : destroyed.type === 'plain' ? 'Bumper Crop' : 'Leech';
                     addLog(`🌿💥 The attack destroys a ${seedName} Seed at ${coordLabel(target.x, target.y)}!`);
                     addEntropy(sourceUnit.player, ENTROPY_PTS.destructDeployable, 'seed', null);
                 }
@@ -50918,6 +50937,9 @@
             aliveUnitsFor, aliveUnitsOnFloor, enemyOf, unitDisplayName,
             getHostileUnits, isBossUnit, getBossOccupiedTiles,
             isAllyUnit, isEnemyUnit, _isFFA,
+            /* Provoke reads for ai.js (the taunter unit; THE SPELL AUDIT Batch D's decoy straw) */
+            getTauntTargeter: (u) => (typeof window.getTauntTargeter === 'function' ? window.getTauntTargeter(u) : null),
+            getTauntDecoy: (u) => (typeof window.getTauntDecoy === 'function' ? window.getTauntDecoy(u) : null),
             unitAt, canFly, isUnitAirborne, airborneUnitAt, getMinFlyingZ, getMaxFlyingZ,
             isFlightCrippled, forceGroundUnit,
             canFlyToSky, canDescendUnderground, canReturnToGround,
@@ -56099,7 +56121,20 @@
             const k = spell && spell.kind;
             if (k === 'doorDeploy') {   // 🚪 THE STANDING DOORS: the legal shot tiles; after a lane door's tile pick, its 8 lanes
                 const _pk = doorGunNeedsFacing(spell) ? _gunDoorPick(spell) : null;
-                return _pk ? doorGunFacingTiles(spell, _pk) : doorGunLegalTiles(unit, spell);
+                if (_pk) return doorGunFacingTiles(spell, _pk);
+                const _lt = doorGunLegalTiles(unit, spell);
+                /* THE SPELL AUDIT Batch D: a Shut Door row also lights the caster's own standing Shut Doors in range —
+                   clicking one opens / shuts it (doSpell's _shutToggle) */
+                if (typeof DOOR_GUN_DOORS !== 'undefined' && DOOR_GUN_DOORS[spell.door] && DOOR_GUN_DOORS[spell.door].shut) {
+                    const _sr = getEffectiveSpellRange(unit, spell) || spell.range || 4;
+                    const _out = Array.isArray(_lt) ? _lt.slice() : [];
+                    for (const d of _doors()) {
+                        if (d && d.kind === 'standing' && d.door === spell.door && d.owner === unit.player
+                            && Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _sr && !_out.some(t => t.x === d.x && t.y === d.y)) _out.push({ x: d.x, y: d.y });
+                    }
+                    return _out;
+                }
+                return _lt;
             }
             if (k !== 'door' && k !== 'doorSlam' && k !== 'doorDelivery' && k !== 'doorExit') return null;
             const out = [], seen = new Set();
@@ -58107,7 +58142,7 @@
                 const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && s.owner !== unit.player);
                 if (seedIdx >= 0) {
                     const seed = state.plantedSeeds[seedIdx];
-                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech';
+                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : 'Leech';
                     pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
@@ -64593,14 +64628,15 @@
                     addLog(`${unitDisplayName(target)} is far too heavy to drag!`);
                     showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                 }
-                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, 'pull');
+                // an ally haul (Rescue Line) is a rescue, not a pull: Windborne's anchor and Event Horizon's rider skip it
+                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3, _plAlly ? 'rescue' : 'pull');
                 // THE SPELL AUDIT Batch D — Windborne (`immuneDisplace: ['pull']`) holds; Event Horizon's `pullRider` lands.
-                const _pullAnchor = unitResistsDisplace(target, 'pull');
+                const _pullAnchor = _plAlly ? null : unitResistsDisplace(target, 'pull');
                 if (_pullAnchor && (spell.pullDistance || 3) > 0) {
                     addLog(`${_pullAnchor.icon || '⚓'} ${unitDisplayName(target)}'s ${_pullAnchor.name} holds — the pull cannot move them!`);
                     showFloatingTextForUnit(target, `${_pullAnchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 1000 });
                 }
-                const _pullRider = passivePullRider(unit, spell);
+                const _pullRider = _plAlly ? null : passivePullRider(unit, spell);
                 if (_pullRider && !target.dead) applyStatusPayload(target, { id: _pullRider.id, duration: _pullRider.duration || 1 }, `${_pullRider.name}: `, unit);
                 const pdx = Math.sign(unit.x - target.x);
                 const pdy = Math.sign(unit.y - target.y);
@@ -66404,6 +66440,7 @@
                                         showFloatingTextAtTile(ct.x, ct.y, 'DESTROYED', 'damage');
                                         const _tcIdx = state._deployedObjects.indexOf(_tcDObj);
                                         if (_tcIdx >= 0) state._deployedObjects.splice(_tcIdx, 1);
+                                        _onDecoyBroken(_tcDObj, unit);   // THE SPELL AUDIT Batch D: Stuffed Double's Fear
                                     }
                                 }
                             }
@@ -67681,10 +67718,11 @@
                 // descriptions ("path enemies take N … full damage to primary
                 // target") promise. Spells that define no dashDamage have no
                 // separate path value, so every tile takes `dmg` uniformly.
-                // THE SPELL AUDIT Batch D — Pathfinder's `dashDamageMult` (product): every hit the dash deals along its path.
+                // THE SPELL AUDIT Batch D — Pathfinder's `dashDamageMult` (product): the hits the dash deals along its path
+                // (the landing target keeps the row's own dmg).
                 const _dashPMult = unitPassiveMult(unit, 'dashDamageMult') || 1;
                 const dashPathDmg = Math.round((spell.dashDamage || spell.dmg || 0) * _dashPMult);
-                const dashPrimaryDmg = Math.round((spell.dmg || 0) * _dashPMult) || dashPathDmg;
+                const dashPrimaryDmg = Math.round(spell.dmg || 0) || dashPathDmg;
                 const dashSplitsDamage = (spell.dashDamage != null);
 
                 // Scale dash travel time with distance so long dashes glide
