@@ -1608,11 +1608,12 @@
                     onReady: () => {
                         if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                         loadReady = true;
-                        if (seamless) { try { seamless.fade(); } catch (e) {} return; }   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
+                        if (seamless) { try { ThreeRenderer.hq.hush((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800); } catch (e) {} try { seamless.fade(); } catch (e) {} return; }   // THE HUSH (2026-10-01): no people prompt as the held frame fades   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
                         const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
                         _hqLoadFadeTimer = setTimeout(() => {
                             if (loadGeneration !== _hqLoadGeneration) return;
                             _hqLoadFadeTimer = null;
+                            try { ThreeRenderer.hq.hush((walking ? 320 : 650) + ((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800)); } catch (e) {}   // THE HUSH (2026-10-01): no talk / attack prompt while the card fades and just after (the arrival card extends it)
                             const l = _hqEl('hqLoad');
                             if (l) {
                                 l.classList.add('done');
@@ -3247,7 +3248,8 @@
             const el = _hqEl('hqPrompt');
             if (!el) return;
             /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
-            if (!_hqPanelTarget && (!t || t.kind === 'npc') && _hqEncounterEnabled() && _hqEncounterRoomOkNow()) {
+            let hushed = false; try { hushed = !!(ThreeRenderer.hq.hushed && ThreeRenderer.hq.hushed()); } catch (e) {}   // THE HUSH (2026-10-01): no ATTACK prompt on arrival either
+            if (!hushed && !_hqPanelTarget && (!t || t.kind === 'npc') && _hqEncounterEnabled() && _hqEncounterRoomOkNow()) {
                 let aim = null;
                 try { if (!ThreeRenderer.hq.portalDrawn()) aim = ThreeRenderer.hq.encounterAim(); } catch (e) { aim = null; }
                 if (aim && (!t || t.id === aim.id)) {
@@ -4110,6 +4112,7 @@
             el.innerHTML = `<div class="hq-arrival-bar top"></div><div class="hq-arrival-bar bot"></div><div class="hq-arrival-title"><em>${A.no ? 'ROOM ' + _hqEsc(A.no) : 'FIRST ENTRY'}</em><b>${_hqEsc(A.label)}</b><span>${_hqEsc(A.where)}</span></div>`;
             el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); el.setAttribute('aria-hidden', 'false');
             let ms = 2900; try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ms = 1300; } catch (e) {}
+            try { ThreeRenderer.hq.hush(ms + 300); } catch (e) {}   // THE HUSH (2026-10-01, mondo: the E to talk prompt ruined the arrival card): no people prompt while it plays
             clearTimeout(_hqArrivalFire._t);
             _hqArrivalFire._t = setTimeout(() => { el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); }, ms);
         }

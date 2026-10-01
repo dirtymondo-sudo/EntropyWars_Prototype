@@ -1057,3 +1057,25 @@ generated (`terrain` has no `gen`, noise 0, `stalactites: false`): 56×56 box, h
   subway_front m 9.84 / w 2.9 / h 3.7, subway_cart m 10.33 / w 3.0 / h 3.7 (the GLBs measured: long along X, 3.7 m rail to
   roof). The `train_car` proc and catalogue row are deleted; a car standing in a room is the `subway_cart` catalogue row
   (`h: 3.7, turn: 90`, length along the row's z).
+
+## THE CROWD CAP + THE CLEAR ARRIVAL + THE HUSH (2026-10-01, token 20261001-crowd-01-cors)
+mondo: "way less people inside DOOR HQ ... reception ... 6 or 7 people ... one NPC per model and use the men in black as
+back up employees ... for all areas ... cut it in half ... always npcs right when I enter a new room/area and it blocks my
+screen ... the E to talk option ruins the new location animation."
+- data.js `HQ_CROWD_RULES` + `hqRoomCrowdCap(roomId, planned)`: a room's budget = floor(planned × 0.5) (planned = agents +
+  npcSpots + hqRoomPopulation n), ≤ floor(m² / 20), clamped 1..4 (6 on a city / underworld street). Reception 5 → 2,
+  cafeteria 8 → 4, the hall 14 → 4. The story cast (hqCastInRoom) never counts and is never cut.
+- three-renderer.js `_hqCrowdLedger` (one per `_hqSpawnPopulation` call, passed to `_hqSpawnRounds` as `opts._crowd`):
+  taken in order spot natives → roster draw → agents → online operatives → extras → travellers. A race stands ONCE per
+  room; men in black (the backup employees) and a swarm group's race may repeat. `EW_HQ_NO_CROWD_CAP` turns it off.
+- ONE PER MODEL: data.js `hqRosterHomeOf(race, day)` gives each roster race ONE home room a day among
+  `hqRosterHomeRooms()` (no site, no street, not the car / quiet rooms). A roster race appears only there; a facility
+  extra whose race lives elsewhere becomes a man in black.
+- THE CLEAR ARRIVAL `_hqClearArrival()`: after the spawn (deferred a tick), after a door arrival (`_hqGoTo` with
+  faceAway — the directory's in-room GO keeps its people) and after a stage part's people spawn on a crossing: anyone
+  (not the cast) within 2.8 m, in the 6 m × 2.6 m corridor ahead, or under the 4.2 m boom behind is gone — a roamer
+  steps out and returns 5-12 s later by a door ≥ 6 m from the officer (`_hqDoorsAwayFromPlayer`), anyone else is
+  hidden for the visit (`ch.cleared`). Streamed extras and travellers no longer come in by the officer's door.
+  `EW_HQ_NO_CLEAR` turns it off; distances in `HQ_CROWD_RULES.clear`.
+- THE HUSH: `hq.hush(ms)` / `hq.hushed()`; no npc / agent / cast prompt (and no ATTACK line) under the load card, for
+  `hushMs` 1800 after it fades, and while the arrival card plays (its length + 300 ms). Doors and counters still answer.
