@@ -556,6 +556,13 @@
                     var _tcClicked = (typeof unitAt === 'function') ? (unitAt(x, y, z) || unitAt(x, y)) : null;
                     if (!_tcPick || (_tcClicked && _tcClicked.id === _tcPick.id)) return _origDoSpell(unit, x, y, z);
                 }
+                /* THE SPELL AUDIT Batch D — THE TOSS (Horn Toss, throwAnyDirection): the victim pick is local UI (the
+                   engine only files state._spellPick1); the DIRECTION click travels with the victim as partnerId and
+                   the host seats it as its own pick. */
+                if (_tcSpell && _tcSpell.throwAnyDirection && _tcSpell.kind === 'displacement') {
+                    _tcPick = (typeof _twoClickPick === 'function') ? _twoClickPick(_tcSpell) : null;
+                    if (!_tcPick) return _origDoSpell(unit, x, y, z);
+                }
                 /* 🚪 THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN §3.2): a lane door's TILE pick is local UI — the
                    engine's pick branch runs here (it only files state._spellPick1, nothing is spent); the FACING click
                    travels with the tile as pickX / pickY and the host seats it as its own first pick. A radius door

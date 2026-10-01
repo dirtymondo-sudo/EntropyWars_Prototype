@@ -864,7 +864,16 @@
 
     // Value of buff stages on ally `tg`.
     function buffStageValue(g, unit, tg, spell, v) {
-        const boost = spell.statStageBoost || {};
+        let boost = spell.statStageBoost || {};
+        /* THE SPELL AUDIT D: the conditional stages — Hellfire Crown's stageHigherOf (the axis the target uses),
+           Sad Backstory's stageIfBelowPct (the bigger boost under the threshold) */
+        if (spell.stageHigherOf) {
+            const physKit = (tg.atk || 0) >= (tg.intStat || tg.int || 0);
+            boost = Object.assign({}, boost, { [physKit ? 'atk' : 'int']: spell.stageHigherOf.n || 1 });
+        }
+        if (spell.stageIfBelowPct && spell.stageIfBelowPct.boost && (tg.hp / (tg.maxHp || 1)) < (spell.stageIfBelowPct.pct || 0.5)) {
+            boost = spell.stageIfBelowPct.boost;
+        }
         const output = unitThreatOutput(g, tg, unit);
         let val = 0;
         const horizon = AI_TUNE.buffTurnsHorizon;
@@ -936,6 +945,8 @@
                 else priority -= 600;
             }
         }
+        // THE SPELL AUDIT D: Provoked by a decoy (Stuffed Double) — unit targets sink; the straw is scored in the object list
+        if (typeof g.getTauntDecoy === 'function' && g.getTauntDecoy(unit)) priority -= 400;
 
         // Acts-soon: denying a unit that moves before our next activation
         // is worth more than one that just went.
@@ -2009,6 +2020,9 @@
                 if (g.unitAt && g.unitAt(o.x, o.y)) continue;   // a unit there takes the hit instead
                 let s = 110 + (o.auraHeal ? 90 : 0) + (o.turretDmg ? 80 : 0);
                 if (o.detonateOnAttack && o.blastRadius > 0 && d <= (o.blastRadius || 1)) s = 0; // not in our own face
+                // THE SPELL AUDIT D: the engine binds a decoy-provoked blade to this straw — swing at it
+                const _tdO = (typeof g.getTauntDecoy === 'function') ? g.getTauntDecoy(unit) : null;
+                if (_tdO && _tdO === o) s += 800;
                 if (s > 0) out.push({ type: 'attack', target: { x: o.x, y: o.y }, score: s, _objectAttack: true });
             }
         }
@@ -2757,12 +2771,19 @@
             const area = getSpellAoeAreaAI(spell, cx, cy);
             const victims = v.visibleEnemies.filter(e => area.some(t => t.x === e.x && t.y === e.y) && !isProtected(g, e));
             if (!victims.length) return 0;
-            let s = 0, first = true;
+            /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
+               walk out); an area drain (aoeLifeDrain) adds the heal it buys the caster. */
+            const _zoneShim = spell.zoneTickDamage > 0
+                ? Object.assign({}, spell, { dmg: (spell.dmg || 0) + Math.round(spell.zoneTickDamage * Math.min(spell.zoneDuration || 1, 3) * 0.6) })
+                : spell;
+            let s = 0, first = true, _estSum = 0;
             for (const e of victims) {
-                const hit = scoreOffensiveHit(g, unit, e, spell, v, { splash: !first });
+                const hit = scoreOffensiveHit(g, unit, e, _zoneShim, v, { splash: !first });
                 s += hit.val;
+                _estSum += hit.est || 0;
                 first = false;
             }
+            if (spell.aoeLifeDrain > 0 && _estSum > 0) s += healValue(g, unit, unit, Math.min(_estSum * spell.aoeLifeDrain, unit.maxHp - unit.hp), v) * 0.6;
             return s;   // engine AoE never hits allies — no friendly-fire term
         }
 
@@ -3026,7 +3047,16 @@
         if (kind === 'heal' && target) {
             const amt = spell.healPct ? Math.floor((target.maxHp || 0) * spell.healPct)   // THE SPELL AUDIT B: Time Rewind heals a share of max HP
                 : (spell.healAmt != null ? spell.healAmt : (spell.heal || 24));
-            return healValue(g, unit, target, amt, v);
+            let _hs = healValue(g, unit, target, amt, v);
+            // THE SPELL AUDIT D: Divine Light also sears every enemy beside the healed ally
+            if (spell.healAdjacentDamage) {
+                const _hadShim = Object.assign({}, spell, { dmg: spell.healAdjacentDamage, kind: 'damage' });
+                for (const e of v.visibleEnemies) {
+                    if (Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) !== 1 || isProtected(g, e)) continue;
+                    _hs += scoreOffensiveHit(g, unit, e, _hadShim, v, { splash: true }).val * 0.8;
+                }
+            }
+            return _hs;
         }
         if (kind === 'healAll') {
             const allies = g.aliveUnitsFor(unit.player).filter(a => !spell.auraRadius   // THE SPELL AUDIT C: aura heals
@@ -3111,6 +3141,13 @@
                 if (!eff || !eff.id || eff.id === 'protect') continue;
                 s += 35;   // regen/haste-style friendly riders
             }
+            // THE SPELL AUDIT D: a buff row's barrier (Ki Charge), its taunt (Shield Maiden), its decoy (Mimicry)
+            if (spell.shield > 0) s += Math.min(spell.shield, (target.maxHp || 0) * 0.5) * 0.6;
+            if (spell.tauntEnemiesWithin) {
+                const _teR = spell.tauntEnemiesWithin.radius || 2;
+                s += 30 * v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= _teR).length;
+            }
+            if (spell.spawnDecoy) s += 40;
             // Buffs need a fight to matter.
             const threatened = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 10);
             if (!threatened) s *= 0.25;
@@ -3210,6 +3247,16 @@
                 s += flyersCaught * 90;
             }
             s *= Math.min(spell.zoneDuration || 1, 3) * 0.55;
+            // THE SPELL AUDIT D: Outbreak's on-cast hit (zoneCastDamage) — scored like an area hit, once
+            if (spell.zoneCastDamage > 0) {
+                const _zcShim = Object.assign({}, spell, { dmg: spell.zoneCastDamage, kind: 'aoe' });
+                let first = true;
+                for (const e of caught) {
+                    if (isProtected(g, e)) continue;
+                    s += scoreOffensiveHit(g, unit, e, _zcShim, v, { splash: !first }).val;
+                    first = false;
+                }
+            }
             if (v.enemyTower && v.enemyTower.hp > 0) {
                 const tDist = Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y);
                 if (tDist <= 3) s += 50;

@@ -347,6 +347,8 @@
             }
             if (p.actedBonus) dmg += p.actedBonus;
             if (p.unholyBonus) dmg += p.unholyBonus;
+            // THE SPELL AUDIT Batch D: executeBonusPct (Weigh the Heart) — ×(1 + pct) on a target under half HP
+            if (p.execMult != null) dmg = Math.floor(dmg * p.execMult);
             if (p.waterMult != null) dmg = Math.floor(dmg * p.waterMult);
             if (p.sneakMult != null) dmg = Math.floor(dmg * p.sneakMult);
             return { dmg, echoed, echoDmg };
@@ -5255,6 +5257,8 @@
                     unholyBonus: (spell.unholyBonus && target.types
                         && (target.types.includes('unholy') || target.types.includes('anomaly')))
                         ? spell.unholyBonus : 0,
+                    execMult: (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5)
+                        ? 1 + spell.executeBonusPct : null,
                     waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water')
                         ? 1.5 : null,
                     sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
@@ -5269,6 +5273,9 @@
                 }
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
                     addLog(`🗡️ ${unitDisplayName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
+                }
+                if (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) {
+                    addLog(`⚖️ ${spell.name}: ${unitDisplayName(target)} is under half HP — the hit lands ×${+(1 + spell.executeBonusPct).toFixed(2)}.`);
                 }
                 /* Phase 5 wave C (2026-09-08): statusFirst (Goo Shot) — the
                    status lands BEFORE the hit so its own damage multiplier
@@ -5349,6 +5356,122 @@
                     markDirty('hud', 'selectedUnit');
                 }
             }
+        }
+
+        /* THE SPELL AUDIT Batch D: spawnDecoy outside the escape kind (Mimicry) — the same Shed Skin decoy (a clone of
+           the caster, hp 1, blocks, draws attacks) on the free tile beside the caster farthest from the nearest enemy.
+           Cap 3 owned decoys, like escape. Plain data on state._deployedObjects (rides the snapshot). */
+        function _spawnCasterDecoy(unit, spell) {
+            if (!unit || unit.dead) return null;
+            const _foes = getHostileUnits(unit.player, unit);
+            const _near = (t) => _foes.reduce((m, e) => Math.min(m, Math.abs(e.x - t.x) + Math.abs(e.y - t.y)), 99);
+            const _cands = [];
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                const tx = unit.x + dx, ty = unit.y + dy;
+                if (!isInside(tx, ty) || !canOccupy(tx, ty)) continue;
+                if ((state._deployedObjects || []).some(o => o.hp > 0 && o.x === tx && o.y === ty)) continue;
+                _cands.push({ x: tx, y: ty });
+            }
+            if (!_cands.length) { addLog(`${spell ? spell.name : 'Decoy'}: no room beside ${unitDisplayName(unit)} for a decoy.`); return null; }
+            _cands.sort((a, b) => _near(b) - _near(a));
+            const at = _cands[0];
+            if (!state._deployedObjects) state._deployedObjects = [];
+            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+            while (_owned.length >= 3) {
+                const oldest = _owned.shift();
+                state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
+            }
+            const decoy = {
+                x: at.x, y: at.y,
+                z: (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(at.x, at.y, unit.z ?? 0) : undefined,
+                ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player,
+                hp: 1, maxHp: 1, blastRadius: 0, blastDmg: 0,
+                blocksMovement: true, drawsRangedAttack: true, drawsMeleeAttack: true, detonateOnAttack: false,
+                spellName: 'Decoy', isDecoy: true,
+                spriteUnit: { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX }
+            };
+            state._deployedObjects.push(decoy);
+            addLog(`${unitDisplayName(unit)} leaves a double at ${coordLabel(at.x, at.y)}.`, unit.player);
+            scheduleBoardRender();
+            return decoy;
+        }
+
+        /* THE SPELL AUDIT Batch D — the decoy taunt (Stuffed Double, `decoyTaunt`). A unit Provoked by a DECOY carries
+           `_tauntObjKey` ('x,y' of the object, plain data) instead of _tauntCasterId; this resolves the live decoy, or
+           null once it is gone. doAttack / doSpell bind single-target actions to it while it can be hit; ai.js reads it. */
+        function getTauntDecoy(unit) {
+            if (!unit || !unit._tauntObjKey || !unitHasStatus(unit, 'taunt')) return null;
+            const o = (state._deployedObjects || []).find(d => d.hp > 0 && !d._detonated && (d.x + ',' + d.y) === unit._tauntObjKey);
+            if (!o || o.ownerPlayer === unit.player) return null;
+            return o;
+        }
+        window.getTauntDecoy = getTauntDecoy;
+        /* A decoy carrying `breakStatus` (Stuffed Double's Fear) springs it on every enemy beside it when it is destroyed. */
+        function _onDecoyBroken(obj, byUnit) {
+            if (!obj || !Array.isArray(obj.breakStatus) || !obj.breakStatus.length || obj._breakSprung) return;
+            obj._breakSprung = true;
+            const src = obj.ownerUnitId ? unitFromId(obj.ownerUnitId) : null;
+            const foes = state.units.filter(u => !u.dead && !u._dying && u.player !== obj.ownerPlayer
+                && Math.max(Math.abs(u.x - obj.x), Math.abs(u.y - obj.y)) === 1);
+            for (const u of foes) {
+                for (const eff of obj.breakStatus) applyStatusPayload(u, { id: eff.id, duration: eff.duration || 1 }, `${obj.spellName || 'The decoy'} comes apart → `, (src && !src.dead) ? src : null);
+            }
+            if (foes.length) addLog(`${obj.spellName || 'The decoy'} comes apart — ${foes.length} ${foes.length === 1 ? 'enemy runs' : 'enemies run'}.`);
+        }
+
+        /* THE SPELL AUDIT Batch D — THE DAMAGE ZONE (zoneTickDamage). An area row (kind aoe) carrying zoneTickDamage
+           lays a debuff zone on its footprint for zoneDuration rounds: every enemy inside at the end of each round takes
+           zoneTickDamage + the caster's spell power (fixed at cast), of the row's damageType / element, then the row's
+           zoneTickStatus (Hall of Mirrors' Blind). It rides state._activeZones (drawn for both seats by the renderer's
+           zone overlay; the snapshot carries it) and processEndOfRoundZonesAndSeeds ticks it. */
+        function _pushDamageZone(unit, spell, x, y, spellPower) {
+            if (!unit || !spell || !(spell.zoneTickDamage > 0)) return null;
+            if (!state._activeZones) state._activeZones = [];
+            const zone = {
+                x, y,
+                radius: _spellAoeReach(spell, 1),
+                aoeMask: _spellMaskOf(spell) || undefined,
+                type: 'debuff',
+                ownerPlayer: unit.player,
+                casterUnitId: unit.id,
+                duration: spell.zoneDuration || 2,
+                statusEffects: Array.isArray(spell.zoneTickStatus) ? spell.zoneTickStatus : [],
+                allyStatusEffects: [],
+                tickDamage: Math.max(1, Math.round(spell.zoneTickDamage + (spellPower || 0))),
+                tickDamageType: spell.damageType || 'magic',
+                tickSpellType: spell.spellType || null,
+                tickElement: getSpellElement(spell) || null,
+                spellName: spell.name
+            };
+            state._activeZones.push(zone);
+            addLog(`${unitDisplayName(unit)} lays ${spell.name} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`);
+            scheduleBoardRender();
+            return zone;
+        }
+        /* THE SPELL AUDIT Batch D: timedStatBonus { move: n, rounds } — a flat MOV bonus for a few rounds, carried by
+           the `quickened` status (STATUS_DEFS: moveDelta +1, statChange) so it ticks, cleanses and syncs like any
+           status. One stack: a bigger move value is not modelled (no row asks for it). */
+        function _applyTimedStatBonus(target, tsb, label, src) {
+            if (!target || target.dead || !tsb) return false;
+            if ((tsb.move || 0) > 0 && STATUS_DEFS.quickened) {
+                return applyStatusPayload(target, { id: 'quickened', duration: tsb.rounds || 2 }, label || '', src || null);
+            }
+            return false;
+        }
+        /* One zone strike on one enemy (the cast hit of zoneCastDamage, or a round-end tick). */
+        function _zoneStrikeUnit(enemy, dmg, label, o) {
+            if (!enemy || enemy.dead || enemy._dying || !(dmg > 0)) return 0;
+            const caster = o.casterUnitId ? unitFromId(o.casterUnitId) : null;
+            const hpB = enemy.hp;
+            applyDamageToUnit(enemy, dmg, label, {
+                sourceUnit: (caster && !caster.dead) ? caster : undefined,
+                allowMarkBonus: false,
+                damageType: o.damageType || 'magic',
+                spellType: o.spellType || null,
+                spellElement: o.element || null
+            });
+            return Math.max(0, hpB - Math.max(0, enemy.hp));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -5578,6 +5701,7 @@
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
+            let _aoeDrainTotal = 0;   // THE SPELL AUDIT Batch D: aoeLifeDrain's pool (HP actually taken, every victim)
             const _groundedThisBlast = [];
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
@@ -5589,7 +5713,7 @@
                 /* THE SPELL AUDIT (2026-09-30): a `noDamage` area (Dragonfear, Hypnotic Pulse, Executive Order,
                    Curse of Misfortune) lands its statuses and stat stages on every enemy in it and deals nothing —
                    no hit roll, no turret/door/object chip. */
-                if (spell.noDamage) {
+                if (spell.noDamage || opts.statusOnly) {
                     for (const target of _tileTargets) {
                         if (!target || target.dead) continue;
                         if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
@@ -5605,6 +5729,7 @@
                     // same stream discipline as computeSpellBase.
                     const dmg = calcAoeHitDamage(baseDmg, _vr, waterMult,
                         opts.minDmg || 32, _vr > 0 ? engineRng() : 0);
+                    const _aldHpB = target.hp;
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         allowMarkBonus: false,
@@ -5614,6 +5739,7 @@
                         spellElement: getSpellElement(spell),
                         element: classifySpellElement(spell)
                     });
+                    _aoeDrainTotal += Math.max(0, _aldHpB - Math.max(0, target.hp));
 
                     // Cross-style push — 🎱 full slide physics: crash-through,
                     // wall/edge rebounds and bowling-pin chains included.
@@ -5696,6 +5822,7 @@
                             showFloatingTextAtTile(tile.x, tile.y, 'DESTROYED', 'damage');
                             const _aoeDIdx = state._deployedObjects.indexOf(_aoeDObj);
                             if (_aoeDIdx >= 0) state._deployedObjects.splice(_aoeDIdx, 1);
+                            _onDecoyBroken(_aoeDObj, unit);   // THE SPELL AUDIT Batch D: Stuffed Double's Fear
                         }
                     }
                 }
@@ -5738,6 +5865,16 @@
                 scheduleBoardRender();
             }
             triggerTerrainSpellReaction(unit, spell, tiles);
+            /* THE SPELL AUDIT Batch D: aoeLifeDrain (Bat Swarm 30%, Nightmare Pulse 25%) — the caster heals that share
+               of the TOTAL damage the area dealt across every victim (lifeSapMult rides it like drainPct). */
+            if (spell.aoeLifeDrain > 0 && _aoeDrainTotal > 0 && unit && !unit.dead) {
+                const _aldMult = spell.aoeLifeDrain * ((typeof unitPassiveMult === 'function' ? unitPassiveMult(unit, 'lifeSapMult') : 1) || 1);
+                const _aldHealed = applyHealingToUnit(unit, Math.max(1, Math.round(_aoeDrainTotal * _aldMult)), unit, { preScaled: true });
+                if (_aldHealed > 0) {
+                    addLog(`🩸 ${spell.name}: ${unitDisplayName(unit)} drinks ${_aldHealed} HP from the swarm's work.`);
+                    _vfxHeal(unit.x, unit.y, { soft: true });
+                }
+            }
             /* Camera rides the drop when the blast yanked exactly ONE unit
                out of the sky — with several grounded at once the wide group
                framing already has them all, and hopping between victims
@@ -7086,6 +7223,18 @@
             }
             /* THE DOOR WHEEL: Swing Door's reach is the legal HINGES (swingDoorHingeTiles) */
             if (unit && spell && spell.hinge) return swingDoorHingeTiles(unit, spell).map(t => ({ x: t.x, y: t.y }));
+            /* THE SPELL AUDIT Batch D: THE TOSS — after the victim is picked, the direction click may land on the victim
+               or any of the 8 tiles round it */
+            if (unit && spell && spell.throwAnyDirection && typeof _twoClickPick === 'function') {
+                const _thPk = _twoClickPick(spell);
+                if (_thPk) {
+                    const _thOut = [];
+                    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                        if (isInside(_thPk.x + dx, _thPk.y + dy)) _thOut.push({ x: _thPk.x + dx, y: _thPk.y + dy });
+                    }
+                    return _thOut;
+                }
+            }
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
             // range set and any confirm/hover path would wrongly say "out of range".
@@ -7194,6 +7343,21 @@
                 }
             }
             delete unit.status[key];
+            /* THE SPELL AUDIT Batch D: possessAfterStatus (Brainwash) — when a control status comes off by ANY path
+               (the activation count, the round tick, a cleanse), the body that walks home carries what the caster
+               left in it. onRemove has already handed the seat back, so the status lands on the right team. Death
+               skips it (releasePossession on a corpse). The list and the caster id are plain data on the unit. */
+            if (STATUS_DEFS[key]?.control && Array.isArray(unit._possessAfter)) {
+                const _paList = unit._possessAfter;
+                const _paSrc = unit._possessAfterSrcId ? unitFromId(unit._possessAfterSrcId) : null;
+                delete unit._possessAfter;
+                delete unit._possessAfterSrcId;
+                if (!unit.dead && !unit._dying) {
+                    for (const _pa of _paList) {
+                        if (_pa && _pa.id) applyStatusPayload(unit, { id: _pa.id, duration: _pa.duration || 1 }, 'The programming wears off → ', (_paSrc && !_paSrc.dead) ? _paSrc : null);
+                    }
+                }
+            }
             // Burn is the one status lava escalates — when it ends (expiry,
             // douse, cleanse), the lava escalation resets with it.
             if (key === 'burn') unit._lavaBurnStacks = 0;
@@ -7472,6 +7636,9 @@
             if (!target || !statusId) return false;
             if (Array.isArray(statusId)) return statusId.some(id => bonusStatusMatches(target, id));
             if (unitHasStatus(target, statusId)) return true;
+            /* THE SPELL AUDIT Batch D: a `wet` finisher (Depth Charge, Sting) pays on anything Soaked — the status OR a
+               grounded unit standing in water (_unitIsSoaked), the same test the lightning combo uses. */
+            if (statusId === 'wet' && _unitIsSoaked(target)) return true;
             // CHAMP REWORK Phase 4: a status that COUNTS AS others for the
             // payoff check (Corroded is Burn and Poison — STATUS_DEFS countsAs).
             return getActiveStatusKeys(target).some(k => {
@@ -7816,7 +7983,7 @@
             if (payload.id === 'contract' && sourceUnit) target._contractCasterId = sourceUnit.id;
             // 2026-07-17: taunt needs its challenger (forced targeting), hexed
             // its curse-layer (kill credit on hex procs).
-            if (payload.id === 'taunt' && sourceUnit) target._tauntCasterId = sourceUnit.id;
+            if (payload.id === 'taunt' && sourceUnit) { target._tauntCasterId = sourceUnit.id; delete target._tauntObjKey; }   // Batch D: a unit's taunt replaces a decoy's
             if (payload.id === 'hexed' && sourceUnit) target._hexCasterId = sourceUnit.id;
             // DOT appliers get credit for their ticks: poison/burn end-of-round
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
@@ -8130,6 +8297,7 @@
         function processEndOfRoundZonesAndSeeds(onDone) {
 
             const events = [];
+            let _zoneDamagedAny = false;   // THE SPELL AUDIT Batch D: a damage zone struck someone (checkWin below)
 
             _tickTimedTerrain();   // wave C: timed goo reverts on the round tick
 
@@ -8151,6 +8319,26 @@
                                     evt.didHeal = true; // applyHealingToUnit already showed the "+N" float
                                     addLog(`${zone.spellName} heals ${unitDisplayName(ally)} for ${healed} HP.`);
                                 }
+                                /* THE SPELL AUDIT Batch D: a heal zone's `cleanse` (Temporal Tide) — each ally inside sheds
+                                   that many debuffs at every round end. */
+                                if (zone.cleanse) {
+                                    const _zcDebuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
+                                    const _zcDrop = _zcDebuffs.slice(0, zone.cleanse === true ? 1 : zone.cleanse);
+                                    for (const k of _zcDrop) clearStatus(ally, k);
+                                    if (_zcDrop.length) addLog(`${zone.spellName} washes ${_zcDrop.map(k => STATUS_DEFS[k]?.label || k).join(', ')} off ${unitDisplayName(ally)}.`);
+                                }
+                            }
+                        }
+                        /* THE SPELL AUDIT Batch D: enemyStatusEffects on a heal zone (Temporal Tide's Slow) — every enemy
+                           inside at the round end takes them. */
+                        if (Array.isArray(zone.enemyStatusEffects) && zone.enemyStatusEffects.length) {
+                            const _zhCaster = zone.casterUnitId ? unitFromId(zone.casterUnitId) : null;
+                            for (const foe of state.units.filter(u => !u.dead && !u._dying && u.player !== zone.ownerPlayer)) {
+                                if (!area.some(t => t.x === foe.x && t.y === foe.y)) continue;
+                                for (const eff of zone.enemyStatusEffects) applyStatusPayload(foe, { id: eff.id, duration: eff.duration || 1 }, `${zone.spellName} → `, (_zhCaster && !_zhCaster.dead) ? _zhCaster : null);
+                                let evt = events.find(e => e.unit === foe);
+                                if (!evt) { evt = { unit: foe, msgs: [], floats: [] }; events.push(evt); }
+                                evt.msgs.push(`<span class="dlg-damage">🔮 ${zone.spellName} drags at ${unitDisplayName(foe)}</span>`);
                             }
                         }
                     } else if (zone.type === 'debuff') {
@@ -8177,13 +8365,25 @@
                             : null;
                         for (const enemy of enemies) {
                             if (area.some(t => t.x === enemy.x && t.y === enemy.y)) {
-                                for (const eff of (zone.statusEffects || [])) {
+                                // THE SPELL AUDIT Batch D: a damage zone (zoneTickDamage) strikes first, then its statuses
+                                let _ztDealt = 0;
+                                if (zone.tickDamage > 0) {
+                                    _ztDealt = _zoneStrikeUnit(enemy, zone.tickDamage, `${zone.spellName}: `, {
+                                        casterUnitId: zone.casterUnitId, damageType: zone.tickDamageType,
+                                        spellType: zone.tickSpellType, element: zone.tickElement });
+                                    _zoneDamagedAny = true;
+                                }
+                                if (!enemy.dead) for (const eff of (zone.statusEffects || [])) {
                                     applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `, _zoneCaster);
                                 }
                                 let evt = events.find(e => e.unit === enemy);
                                 if (!evt) { evt = { unit: enemy, msgs: [], floats: [] }; events.push(evt); }
-                                evt.msgs.push(`<span class="dlg-damage">🔮 ${zone.spellName} zone afflicts ${unitDisplayName(enemy)}</span>`);
-                                addLog(`${zone.spellName} zone affects ${unitDisplayName(enemy)}.`);
+                                evt.msgs.push(zone.tickDamage > 0
+                                    ? `<span class="dlg-damage">🔮 ${zone.spellName} deals ${_ztDealt} damage to ${unitDisplayName(enemy)}</span>`
+                                    : `<span class="dlg-damage">🔮 ${zone.spellName} zone afflicts ${unitDisplayName(enemy)}</span>`);
+                                addLog(zone.tickDamage > 0
+                                    ? `${zone.spellName} deals ${_ztDealt} damage to ${unitDisplayName(enemy)}.`
+                                    : `${zone.spellName} zone affects ${unitDisplayName(enemy)}.`);
                             }
                         }
                         }
@@ -8420,7 +8620,7 @@
             if (_skipVisuals()) {
                 // Fast path (auto-sim / quiet upkeep): resolve everything now.
                 for (const u of spawnHits) if (u && !u.dead) _applySpawnScorch(u);
-                if (spawnHits.length) checkWin();
+                if (spawnHits.length || _zoneDamagedAny) checkWin();
                 if (onDone) onDone();
                 return;
             }
@@ -9660,10 +9860,10 @@
                 const partner = unitFromId(target._boundToId);
                 if (partner && partner.id !== target.id && unitHasStatus(partner, 'soulBound')) {
                     const binderId = target._statusSrc && target._statusSrc.soulBound;
-                    const binder = binderId ? unitFromId(binderId) : null;
                     let pct = sbDef.linkEcho || 0.3;
-                    if (sbDef.linkEchoBoosted && binder && !binder.dead
-                        && typeof getStatStageCount === 'function' && getStatStageCount(binder, 'int') > 0) pct = sbDef.linkEchoBoosted;
+                    /* THE SPELL AUDIT Batch D: the boosted share keys off the demon's own Contract — 45% while either
+                       bound unit carries it (the old "binder's M ATK raised" clause had no carrier). */
+                    if (sbDef.linkEchoBoosted && (unitHasStatus(target, 'contract') || unitHasStatus(partner, 'contract'))) pct = sbDef.linkEchoBoosted;
                     _echo(partner, pct, binderId, 'Soul Bind', sbDef.icon || '⛓');
                 }
             }
@@ -9744,11 +9944,17 @@
             const n = Math.max(1, acts | 0);
             const dur = Math.max(n + 1, fx.duration || 0);
             // A fresh will replaces the old one (and hands any earlier seat back first).
+            delete target._possessAfter; delete target._possessAfterSrcId;   // a fresh will drops the old leftover
             releasePossession(target, { quiet: true });
             const ok = applyStatusPayload(target, { id: sid, duration: dur }, spell ? `${spell.name}: ` : '', caster);
             if (!ok || !unitHasStatus(target, sid)) return false;
             target._possessLeft = n;
             target._controllerPlayer = caster.player;
+            // THE SPELL AUDIT Batch D: what the possession leaves behind when it wears off (clearStatus applies it)
+            if (spell && Array.isArray(spell.possessAfterStatus) && spell.possessAfterStatus.length) {
+                target._possessAfter = spell.possessAfterStatus.map(e => ({ id: e.id, duration: e.duration || 1 }));
+                target._possessAfterSrcId = caster.id;
+            }
             if (target.player !== caster.player) {
                 target._origPlayer = target.player;
                 target.player = caster.player;
@@ -31605,6 +31811,8 @@
                                 if (nd < bestD) { bestD = nd; best = { x: nx, y: ny }; }
                             }
                             if (!best) break;
+                            // THE SPELL AUDIT Batch D: a summon with a trail (the Blob) slimes the tile it leaves
+                            if (turret.trailTerrain) _paintTimedTerrain(turret.x, turret.y, turret.trailTerrain, unitFromId(turret.casterUnitId) || null, null);
                             turret.x = best.x; turret.y = best.y;
                             moved = true;
                         }
@@ -52684,6 +52892,11 @@
                     // 🗺️ Elemental tile cast: an empty element-reactive tile in
                     // cast range is a legitimate free-aim target for an
                     // elemental damage spell (bolt the lake, torch the brush).
+                    // THE SPELL AUDIT Batch D: THE TOSS's direction click is a TILE beside the picked victim
+                    if (!isValidTarget && _etcSpell && _etcSpell.throwAnyDirection && _twoClickPick(_etcSpell)
+                        && getSpellRangeTiles(actingUnit, _etcSpell).some(t => t.x === x && t.y === y)) {
+                        isValidTarget = true;
+                    }
                     if (!isValidTarget && _etcSpell && !clickedUnit
                         && _elementalTileCastInfo(_etcSpell, x, y)
                         && getSpellRangeTiles(actingUnit, _etcSpell).some(t => t.x === x && t.y === y)) {
@@ -57046,6 +57259,18 @@
             // range, LOS clear). Towers/objects stay fair game, and if the
             // challenger is out of reach the taunt doesn't paralyze — it only
             // binds the blade while the challenge can actually be answered.
+            /* THE SPELL AUDIT Batch D: Provoked by a DECOY (Stuffed Double) — the blade is bound to the straw while it
+               can be hit from here; the decoy's own tile is always a legal swing. */
+            const _atkDecoy = getTauntDecoy(unit);
+            if (_atkDecoy && target && isEnemyUnit(unit, target) && !(x === _atkDecoy.x && y === _atkDecoy.y)) {
+                const _tdD = Math.abs(unit.x - _atkDecoy.x) + Math.abs(unit.y - _atkDecoy.y);
+                if (_tdD >= 1 && _tdD <= getEffectiveRange(unit)
+                    && !isRangeBlockedByTerrain(unit.x, unit.y, _atkDecoy.x, _atkDecoy.y, unit.z)) {
+                    addLog(`🗯 ${unitDisplayName(unit)} is provoked — only ${_atkDecoy.spellName || 'the decoy'} can be attacked!`);
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             const _atkTaunter = getTauntTargeter(unit);
             if (_atkTaunter && target && target.id !== _atkTaunter.id && isEnemyUnit(unit, target)) {
                 const _tntD = combatDist(unit.x, unit.y, unit.z ?? 0, _atkTaunter.x, _atkTaunter.y, _atkTaunter.z ?? 0);
@@ -57236,6 +57461,7 @@
                         showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                         playSfx('uiConfirm');
                         state._deployedObjects.splice(dObjIdx, 1);
+                        _onDecoyBroken(dObj, unit);   // THE SPELL AUDIT Batch D: Stuffed Double's Fear
                     }
                     spendAllAP(unit);   // attacking ends the turn
                     state.actionMode = null;
@@ -61257,6 +61483,26 @@
                 x = _gunDoorAim.x; y = _gunDoorAim.y; z = undefined;
             }
 
+            /* THE SPELL AUDIT Batch D — THE TOSS (Horn Toss, `throwAnyDirection`): a two-click displacement. The first
+               click picks the victim (filed in state._spellPick1 at the pick gate below, nothing spent); the second
+               click is ANY tile — the throw goes the way that tile lies from the victim (8 ways), and clicking the
+               victim again throws it straight away from the caster. From here (x, y) is the victim's tile again. A CPU /
+               auto seat throws in one call, away from itself. Online: the guest's first click is local, its second
+               travels with partnerId (online.js) and the host seats it as the pick. */
+            let _throwDir = null, _throwResolved = false;
+            if (spell.throwAnyDirection && spell.kind === 'displacement') {
+                const _thAuto = state.controllers?.[unit.player] === CTRL.AI || !!state.autoPlayers?.[unit.player];
+                const _thPk = _thAuto ? null : _twoClickPick(spell);
+                if (_thAuto) _throwResolved = true;
+                else if (_thPk) {
+                    const _thDx = Math.sign(x - _thPk.x), _thDy = Math.sign(y - _thPk.y);
+                    if (_thDx || _thDy) _throwDir = { dx: _thDx, dy: _thDy };
+                    x = _thPk.x; y = _thPk.y; z = _thPk.z;
+                    _throwResolved = true;
+                    clearSpellPick();
+                }
+            }
+
             // ── Blood Frenzy & friends: auto-lock onto the visible enemy with the least HP ──
             if (spell.autoTargetLowestHp) {
                 const _visEnemies = state.units.filter(u =>
@@ -61602,6 +61848,27 @@
                     playSfx('uiConfirm');
                     showFloatingTextAtTile(x, y, '🚪 ①', 'buff', { durationMs: 900 });
                     addLog(`${spell.name}: the door goes on ${coordLabel(x, y)} — now pick which way it faces (click a lane, or the tile again to face away from you).`, unit.player);
+                }
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
+                if (typeof renderIfDirty === 'function') renderIfDirty();
+                scheduleBoardRender();
+                return 0;
+            }
+
+            /* THE SPELL AUDIT Batch D: THE TOSS's first click — the victim is remembered (range / LOS / fog already
+               judged it above), nothing spent; the board now lights the 8 tiles round it for the direction click. */
+            if (spell.throwAnyDirection && spell.kind === 'displacement' && !_throwResolved) {
+                const _thT = unitAt(x, y, z) || unitAt(x, y);
+                if (!_thT || _thT.dead || !isEnemyUnit(_thT, unit)) {
+                    if (!_silentReject) { addLog(`${spell.name}: choose an enemy to throw.`); playErrorSfx(); }
+                    return 0;
+                }
+                state._spellPick1 = { id: _thT.id, spellId: spell.id, x: _thT.x, y: _thT.y };
+                if (!_silentReject) {
+                    playSfx('uiConfirm');
+                    showFloatingTextForUnit(_thT, `① ${spell.name.toUpperCase()}`, 'buff', { durationMs: 900 });
+                    addLog(`${spell.name}: ${unitDisplayName(_thT)} is caught — now click which way to throw it (a tile beside it), or click it again to throw it straight back.`, unit.player);
                 }
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                 if (typeof markDirty === 'function') markDirty('hud', 'board', 'selectedUnit');
@@ -62038,6 +62305,22 @@
                     // THE SPELL AUDIT Batch B: a heal row's own statusEffects land on the ally (Soothe's Regen)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_ht, spell.statusEffects, `${spell.name}: `, unit);
                     addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${healed} HP to ${unitDisplayName(_ht)}.`);
+                    /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — the light that mends the ally burns
+                       every enemy standing next to it (the 8 tiles round the ally): N + spell power, magic, the row's element. */
+                    if (spell.healAdjacentDamage && !_ht.dead) {
+                        const _hadDmg = calcFlatSpellDamage(spell.healAdjacentDamage, spellPower, 16);
+                        const _hadFoes = getHostileUnits(unit.player, unit).filter(e => !e._dying
+                            && Math.max(Math.abs(e.x - _ht.x), Math.abs(e.y - _ht.y)) === 1);
+                        for (const e of _hadFoes) {
+                            applyDamageToUnit(e, _hadDmg, `${spell.name} sears `, {
+                                sourceUnit: unit, allowMarkBonus: false,
+                                damageType: spell.damageType || 'magic',
+                                spellType: spell.spellType || null, spellElement: getSpellElement(spell),
+                                element: classifySpellElement(spell)
+                            });
+                        }
+                        if (_hadFoes.length) { addLog(`✨ ${spell.name} sears ${_hadFoes.length} ${_hadFoes.length === 1 ? 'enemy' : 'enemies'} beside ${unitDisplayName(_ht)}.`); checkWin(); }
+                    }
                     markDirty('hud');
                     renderIfDirty();
                 }, _healResult.applyAt || 0);
@@ -62088,7 +62371,47 @@
                         for (const k of _bcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_bt, k);
                     }
                     applyStatusEffects(_bt, spell.statusEffects, `${spell.name}: `, unit);
-                    if (spell.statStageBoost) applyStatStageBoost(_bt, spell.statStageBoost, `${spell.name}: `, unit);
+                    /* THE SPELL AUDIT Batch D — the buff row's conditional stages:
+                       stageIfBelowPct { pct, boost } (Sad Backstory): the boost REPLACES statStageBoost while the target
+                         is under pct of its max HP.
+                       stageHigherOf { stats, n } (Hellfire Crown): +n to whichever listed stat the target hits harder with. */
+                    let _bBoost = spell.statStageBoost || null;
+                    if (spell.stageIfBelowPct && spell.stageIfBelowPct.boost && _bt.maxHp > 0
+                        && (_bt.hp / _bt.maxHp) < (spell.stageIfBelowPct.pct || 0.5)) {
+                        _bBoost = spell.stageIfBelowPct.boost;
+                        addLog(`${spell.name}: ${unitDisplayName(_bt)} is under ${Math.round((spell.stageIfBelowPct.pct || 0.5) * 100)}% HP — the surge runs stronger.`);
+                    }
+                    if (spell.stageHigherOf) {
+                        const _shStats = (Array.isArray(spell.stageHigherOf.stats) && spell.stageHigherOf.stats.length) ? spell.stageHigherOf.stats : ['atk', 'int'];
+                        const _shVal = st => st === 'int' ? pwrInt(_bt) : st === 'atk' ? pwrAtk(_bt) : ((_bt[st] || 0));
+                        const _shPick = _shStats.reduce((b, st) => (_shVal(st) > _shVal(b) ? st : b), _shStats[0]);
+                        _bBoost = Object.assign({}, _bBoost || {}, { [_shPick]: spell.stageHigherOf.n || 1 });
+                    }
+                    if (_bBoost) applyStatStageBoost(_bt, _bBoost, `${spell.name}: `, unit);
+                    /* THE SPELL AUDIT Batch D: a buff row's `shield` (Ki Charge's ki barrier) — HP-space like the shield
+                       kind: supportScale'd to the recipient, capped at shieldCapPct (50%) of max HP. */
+                    if (spell.shield > 0) {
+                        const _bsCap = Math.ceil(_bt.maxHp * (spell.shieldCapPct || 0.5));
+                        const _bsBase = (typeof supportScale === 'function')
+                            ? Math.round(spell.shield * supportScale(getUnitLevel(_bt), getUnitLevel(unit))) : spell.shield;
+                        const _bsGain = Math.min(_bsBase, Math.max(0, _bsCap - (_bt.shield || 0)));
+                        if (_bsGain > 0) {
+                            _bt.shield = (_bt.shield || 0) + _bsGain;
+                            showFloatingTextForUnit(_bt, `+${_bsGain} 🛡`, 'heal');
+                            addLog(`${spell.name}: ${unitDisplayName(_bt)} gains a ${_bsGain} HP barrier.`);
+                        }
+                    }
+                    /* THE SPELL AUDIT Batch D: tauntEnemiesWithin { radius, duration } (Shield Maiden) — every enemy within
+                       radius of the target is Provoked toward it (the taunt status binds to its source unit). */
+                    if (spell.tauntEnemiesWithin && !_bt.dead) {
+                        const _teR = spell.tauntEnemiesWithin.radius || 2;
+                        const _teFoes = getHostileUnits(_bt.player, _bt).filter(e =>
+                            Math.abs(e.x - _bt.x) + Math.abs(e.y - _bt.y) <= _teR);
+                        for (const e of _teFoes) applyStatusPayload(e, { id: 'taunt', duration: spell.tauntEnemiesWithin.duration || 1 }, `${spell.name} → `, _bt);
+                        if (_teFoes.length) addLog(`🗯 ${unitDisplayName(_bt)} calls out ${_teFoes.length} ${_teFoes.length === 1 ? 'enemy' : 'enemies'} — they must face her.`);
+                    }
+                    // THE SPELL AUDIT Batch D: spawnDecoy on a buff row (Mimicry) — the Shed Skin decoy beside the caster
+                    if (spell.spawnDecoy && !unit.dead) _spawnCasterDecoy(unit, spell);
                     markDirty('hud');
                     renderIfDirty();
                 }, _buffResult.applyAt || 0);
@@ -62218,6 +62541,16 @@
                     if (effectsToApply) applyStatusEffects(target, effectsToApply, `${spell.name}: `, unit);
                     if (_zodiacBoost) applyStatStageBoost(target, _zodiacBoost, `${spell.name}: `, unit);
                     if (spell.statStageBoost) applyStatStageBoost(target, spell.statStageBoost, `${spell.name}: `, unit);
+                    /* THE SPELL AUDIT Batch D: mpDrain (Memory Leak) — the target loses N MP outright (never below 0). */
+                    if (spell.mpDrain > 0 && !target.dead) {
+                        const _mdLost = Math.min(Math.max(0, target.mp || 0), spell.mpDrain);
+                        if (_mdLost > 0) {
+                            target.mp -= _mdLost;
+                            showFloatingTextForUnit(target, `-${_mdLost} MP`, 'debuff', { durationMs: 1000 });
+                            addLog(`${spell.name}: ${unitDisplayName(target)} leaks ${_mdLost} MP.`);
+                            markDirty('teams', 'selectedUnit', 'hud');
+                        }
+                    }
 
                     // Anti-air debuffs (Anchor, Stasis Beam…) drag flyers down.
                     if (spell.groundsFlyers && !target.dead && typeof forceGroundUnit === 'function') {
@@ -62345,6 +62678,12 @@
                     if (state.phase === 'battle' && !_skipVisuals()) {
                         window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
                     }
+                }
+                /* THE SPELL AUDIT Batch D: summonDef.trailTerrain { terrain, rounds } (the Blob's ooze trail) — every
+                   tile the summon walks off turns to that terrain, timed (_paintTimedTerrain). */
+                if (_sd.trailTerrain && _sd.trailTerrain.terrain) {
+                    const _stT = state.turrets[state.turrets.length - 1];
+                    if (_stT) _stT.trailTerrain = { terrain: _sd.trailTerrain.terrain, radius: 0, rounds: _sd.trailTerrain.rounds || 3 };
                 }
                 showFloatingTextAtTile(x, y, `${_sd.key === 'hound' ? '🐕' : '🧟'} ${_sName.toUpperCase()}`, 'damage', { durationMs: 1200 });
                 addLog(`${unitDisplayName(unit)} calls ${_sName} to ${coordLabel(x, y)}! It hunts the nearest enemy at the end of every round — ${_sd.move || 3} tiles a round, ${_sHits} hits to destroy${_sd.armored ? ', physical blows count half' : ''}${_sd.reveals ? `, sniffs out invisible enemies within ${_sd.reveals}` : ''}.`, unit.player);
@@ -62692,11 +63031,24 @@
                 }
                 panelFocusTarget = target;
 
-                const hits = spell.hitDamages || [8, 8];
+                /* THE SPELL AUDIT Batch D: bonusHitsPerAdjacentAlly { dmg, max } (Team Strike) — one extra hit of dmg
+                   for every ally of the caster (the caster not counted) on the 8 tiles round the target, up to max. */
+                let _mhSpell = spell;
+                if (spell.bonusHitsPerAdjacentAlly) {
+                    const _bh = spell.bonusHitsPerAdjacentAlly;
+                    const _bhN = Math.min(_bh.max || 3, state.units.filter(a => !a.dead && !a._dying && a.id !== unit.id
+                        && isAllyUnit(a, unit) && Math.max(Math.abs(a.x - target.x), Math.abs(a.y - target.y)) === 1).length);
+                    if (_bhN > 0) {
+                        const _bhDmg = _bh.dmg || (spell.hitDamages && spell.hitDamages[0]) || 20;
+                        _mhSpell = Object.assign({}, spell, { hitDamages: [...(spell.hitDamages || [8, 8]), ...Array(_bhN).fill(_bhDmg)] });
+                        addLog(`${spell.name}: ${_bhN} ${_bhN === 1 ? 'ally joins' : 'allies join'} in — +${_bhN} hit${_bhN === 1 ? '' : 's'}.`);
+                    }
+                }
+                const hits = _mhSpell.hitDamages || [8, 8];
                 const hitGap = actionMs(340);
 
                 completionDelay = executeSpellAnimation(
-                    unit, spell, target, { x, y },
+                    unit, _mhSpell, target, { x, y },
                     effectiveSpellCost, spellPower, finishAction, spellApCost, {
                         damageResolver(ctx) {
                             _applyMultiHitDamage(ctx.unit, ctx.spell, ctx.target,
@@ -62972,6 +63324,8 @@
                     }, timing.impactDelay);
                 }
                 unit.mp -= effectiveSpellCost;
+                // THE SPELL AUDIT Batch D: a damage-zone row with no dmg of its own lands only its statuses on cast
+                const _aoeZoneOnly = spell.zoneTickDamage > 0 && !(spell.dmg > 0);
                 window.setTimeout(() => {
                     const area = getSpellAoeArea(spell, x, y);
                     const hitCount = _applyAoeDamage(unit, spell, area,
@@ -62981,9 +63335,11 @@
                             deformCenter: { x, y },
                             // THE SPELL AUDIT Batch C: an area row with
                             // groundsFlyers (Tempest, Meteor) slams flyers down.
-                            groundAirborne: !!spell.groundsFlyers
+                            groundAirborne: !!spell.groundsFlyers,
+                            statusOnly: _aoeZoneOnly
                         });
-                    if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
+                    if (spell.zoneTickDamage > 0) _pushDamageZone(unit, spell, x, y, spellPower);
+                    else if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
                 }, timing.impactDelay);
             } else if (spell.kind === 'barrage') {
                 // Conditional barrages (hitsWetOnly — Poseidon's Wrath): reject
@@ -63209,8 +63565,9 @@
                 window.setTimeout(() => {
                     let damage = computeSpellBase(spell, spellPower);
 
-                    const dx = Math.sign(target.x - unit.x) || 1;
-                    const dy = Math.sign(target.y - unit.y);
+                    // THE SPELL AUDIT Batch D: THE TOSS — the picked direction, else straight away from the caster
+                    const dx = _throwDir ? _throwDir.dx : (Math.sign(target.x - unit.x) || 1);
+                    const dy = _throwDir ? _throwDir.dy : Math.sign(target.y - unit.y);
                     // 2026-07-26: honor the pushDistance fallback (Body Check /
                     // Horn Toss author it) — displaceDistance still wins.
                     const dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2);
@@ -63704,6 +64061,15 @@
                     resolveTileArrival(target, { via: 'displaced' });
                     addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
                     showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
+                    /* THE SPELL AUDIT Batch D: healOnSwap (Miracle) — an ALLY that trades places with the caster is healed
+                       on arrival (a flat heal, scaled like any other). Enemies swapped are never healed. */
+                    if (spell.healOnSwap > 0 && isAllyUnit(target, unit) && !target.dead) {
+                        const _hosHealed = applyHealingToUnit(target, spell.healOnSwap + getHourglassPower(unit), unit);
+                        if (_hosHealed > 0) {
+                            addLog(`${spell.name}: ${unitDisplayName(target)} arrives healed for ${_hosHealed} HP.`);
+                            _vfxHeal(target.x, target.y, { soft: true });
+                        }
+                    }
 
                     if (!state.cameraDisabled && camera._cineShotId == null) {
                         stopBoardCameraAnimation();
@@ -64010,6 +64376,8 @@
                 if (_cbDelayed) corpse._respawnIn += _cbDelay;
                 const amt = Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35)));
                 const healed = applyHealingToUnit(unit, amt, unit, { preScaled: true });
+                // THE SPELL AUDIT Batch D: a corpse feed's statStageBoost lands on the feeder (Carrion Feast ATK +1)
+                if (spell.statStageBoost) applyStatStageBoost(unit, spell.statStageBoost, `${spell.name}: `, unit);
                 if (state.phase === 'battle' && !_skipVisuals()) {
                     const _cbVFX = window.ThreeVFXEffects;
                     if (_cbVFX && _cbVFX.hasMapping(spell.id, 'aura')) _cbVFX.fire('aura', spell.id, { tx: x, ty: y });
@@ -64404,7 +64772,8 @@
                     spellId: spell.id,
                     statusEffects: spell.statusEffects || [],
                     spellName: spell.name,
-                    aoeMask: _spellMaskOf(spell) || undefined       // Phase 2 mask: plain data, rides the snapshot
+                    aoeMask: _spellMaskOf(spell) || undefined,      // Phase 2 mask: plain data, rides the snapshot
+                    breakStatus: (Array.isArray(spell.breakStatus) && spell.breakStatus.length) ? spell.breakStatus : undefined   // Batch D: _onDecoyBroken
                 };
 
                 if (spell.drawsRangedAttack || spell.drawsMeleeAttack) {
@@ -64412,6 +64781,20 @@
                     _deployedEntry.spriteUnit = { cls: unit.cls, player: unit.player, race: unit.race, gender: unit.gender, equipment: unit.equipment, name: unit.name, types: unit.types || [], maxHp: unit.maxHp, maxMp: unit.maxMp, _xp: unit._xp || 0, _spriteFlipX: unit._spriteFlipX };
                 }
                 state._deployedObjects.push(_deployedEntry);
+                /* THE SPELL AUDIT Batch D: decoyTaunt { radius, duration } (Stuffed Double) — every enemy within radius of
+                   the decoy is Provoked toward IT: the taunt status, keyed to the object's tile (_tauntObjKey) instead of
+                   a unit, so getTauntDecoy binds their basic attacks to the straw while it stands. */
+                if (spell.decoyTaunt) {
+                    const _dtR = spell.decoyTaunt.radius || 2;
+                    const _dtFoes = getHostileUnits(unit.player, unit).filter(e => Math.abs(e.x - x) + Math.abs(e.y - y) <= _dtR);
+                    for (const e of _dtFoes) {
+                        if (applyStatusPayload(e, { id: 'taunt', duration: spell.decoyTaunt.duration || 2 }, `${spell.name} → `, unit) === true) {
+                            e._tauntCasterId = null;
+                            e._tauntObjKey = x + ',' + y;
+                        }
+                    }
+                    if (_dtFoes.length) addLog(`🗯 ${spell.name} draws the eye of ${_dtFoes.length} ${_dtFoes.length === 1 ? 'enemy' : 'enemies'}.`, unit.player);
+                }
                 /* Don't announce an ENEMY clone — naming it in the log defeats the
                    decoy. The viewer's own deploys (and all non-decoy deploys) still
                    log normally. */
@@ -64796,6 +65179,19 @@
                     }
                 }
                 addLog(`${unitDisplayName(unit)} creates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
+                   CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
+                if (spell.zoneCastDamage > 0) {
+                    const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                    const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
+                    const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
+                    for (const e of _zcFoes) {
+                        _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                            casterUnitId: unit.id, damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null, element: getSpellElement(spell) || null });
+                    }
+                    if (_zcFoes.length) checkWin();
+                }
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -64824,8 +65220,11 @@
                     aoeMask: _spellMaskOf(spell) || undefined,   // Phase 2 mask: the zone's footprint (_zoneTiles / _zoneCovers)
                     type: 'heal',
                     ownerPlayer: unit.player,
+                    casterUnitId: unit.id,
                     duration: spell.zoneDuration || 2,
                     healPerTurn: spell.healPerTurn || 48,
+                    cleanse: spell.cleanse || 0,                                        // Batch D: Temporal Tide
+                    enemyStatusEffects: Array.isArray(spell.enemyStatusEffects) ? spell.enemyStatusEffects : undefined,
                     spellName: spell.name
                 });
                 addLog(`${unitDisplayName(unit)} consecrates ${spell.name} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
@@ -66191,6 +66590,8 @@
                             ? spell.statStageBoost
                             : (ally.id === unit.id ? { atk: 1 } : { atk: 2 });
                         applyStatStageBoost(ally, boost, `${spell.name}: `, unit);
+                        // THE SPELL AUDIT Batch D: timedStatBonus { move, rounds } (Swarm Signal) rides the cry too
+                        if (spell.timedStatBonus) _applyTimedStatBonus(ally, spell.timedStatBonus, `${spell.name}: `, unit);
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, '🎵', 'buff');
@@ -66434,7 +66835,21 @@
                         _tryCrashThrough(unit, _cp.x, _cp.y, { byUnit: unit, charging: true });
                     }
 
-                    for (const pt of dashPath) {
+                    /* THE SPELL AUDIT Batch D: dashSweep N (Giant Stride) — the victims are every enemy within N tiles
+                       (the 8 round each step) of the path, not just the ones standing on it; each is hit once. */
+                    const _dashVictimPts = [];
+                    if (spell.dashSweep > 0) {
+                        const _dsR = spell.dashSweep;
+                        const _dsSeen = new Set();
+                        for (const e of getHostileUnits(unit.player, unit)) {
+                            if (_dsSeen.has(e.id)) continue;
+                            const _onPath = [{ x: casterStartX, y: casterStartY }, ...dashPath].some(pt => Math.max(Math.abs(e.x - pt.x), Math.abs(e.y - pt.y)) <= _dsR);
+                            if (_onPath) { _dsSeen.add(e.id); _dashVictimPts.push({ x: e.x, y: e.y }); }
+                        }
+                    } else {
+                        for (const pt of dashPath) _dashVictimPts.push(pt);
+                    }
+                    for (const pt of _dashVictimPts) {
                         const victim = unitAt(pt.x, pt.y);
                         if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
                             const isPrimaryTarget = (pt.x === x && pt.y === y);
@@ -66548,6 +66963,11 @@
                     }
                     animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the dash's landing
+                    /* THE SPELL AUDIT Batch D: selfStatusAfter (Shadow Infiltration's Invisible 1) — the caster takes these
+                       once the run lands (hit and fade); the cast already broke any earlier cloak in doSpell. */
+                    if (Array.isArray(spell.selfStatusAfter) && spell.selfStatusAfter.length && !unit.dead) {
+                        applyStatusEffects(unit, spell.selfStatusAfter, `${spell.name}: `, unit);
+                    }
                     if (dashHitCount > 0) {
                         addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
                     } else {
