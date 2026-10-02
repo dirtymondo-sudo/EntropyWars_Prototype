@@ -564,3 +564,6 @@ creator viewer's deprecated `THREE.Clock` is a two-line delta timer. BatchedMesh
 Sandbox check: probe_r186.js / probe_field_r186.js (the R1b probes with the mirror regex `three@0.186.1/(.+)` →
 the npm tarball; modules need no special content type) — REV 186, the fog patch in both chunks, no failed program in
 the rotunda, the city or a battle, rigs at the r147 scale. Details + the audit: RENDERER_PLAN.md §2 and §4.
+Hotfix the same day (index.html only): the `modulepreload` links must come AFTER the import map — a module fetch that
+starts first voids the map, and Firefox then refuses the bare `three` specifier (no window.THREE, every game script
+dead at parse, the raw party builder DOM showing with no title). Chromium tolerated it; the sandbox check missed it.

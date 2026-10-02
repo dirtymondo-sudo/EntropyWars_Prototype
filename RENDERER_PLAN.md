@@ -268,3 +268,9 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   chunks, the legacy-light patch hits all 7 anchors, no program with diagnostics in the rotunda, the city or the
   battle, no page error. Lesson, again: a `typeof x.oldName` guard fails SILENTLY on a rename — grep every
   `typeof` gate on a three.js method when bumping. BatchedMesh is R2b, after mondo's playtest.
+- 2026-10-02 R2 hotfix (index.html only): the two `modulepreload` links sat BEFORE the import map, and a module fetch
+  that starts before the map is parsed voids the map — Firefox then refused the bare `three` specifier in the shim and
+  the sky module, no `window.THREE` was ever set, every game script died at parse and the page showed the raw DOM
+  (the party builder's overlay) with no title. Chromium tolerated the order, so the sandbox check missed it. The
+  import map now comes first, the preloads after it. Lesson: nothing module-related (preload, module script) may
+  precede the import map, in any browser.
