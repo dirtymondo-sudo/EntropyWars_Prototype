@@ -15,7 +15,7 @@ const ThreePost = (function () {
     // User-controllable bloom (persisted, tuned via the pause-menu slider). The
     // day/night presets carry bloomStr 0, so without this floor bloom is
     // invisible. A strength of 0 turns bloom off entirely.
-    var BLOOM_USER_STRENGTH  = 0.3;    // default glow intensity (slider value) — THE HDR BLOOM (2026-09-22): only light sources cross now, so a real default is safe (was 0.05 — near-off, day maps washed out)
+    var BLOOM_USER_STRENGTH  = 0;      // default glow intensity (slider value) — OFF by default (2026-10-02, mondo: "it looks obnoxious"; was 0.3 since THE HDR BLOOM). The slider turns it on.
     var BLOOM_FACTORY = BLOOM_USER_STRENGTH;   // THE LOOK YIELDS (2026-09-17): the factory default — a scene look fills a setting only while it still reads this
     var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
     var BLOOM_USER_THRESHOLD = 0.72;   // higher → only the brightest surfaces bloom (less daytime over-bloom on map/spawn zones)
@@ -44,8 +44,8 @@ const ThreePost = (function () {
     function _bloomThrFor(ldrThr, base) { return _hdr ? _hdrEnc(BLOOM_HDR_LINEAR * Math.min(1, ldrThr / (base || ldrThr || 1))) : ldrThr; }
     function isHdrBloom() { return _hdr; }   // THE POST PASS 7.2 (2026-09-21): the building's bloom crosses only on emissive surfaces (a look's bloomThr / bloomRadius override)
     try {
-        // _v2 key: the default changed (1.0 → 0.35), so ignore stale saved values
-        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength_v3') : null;
+        // _v4 key (2026-10-02): the default changed to OFF, so stale saved values are ignored (_v2: 1.0 → 0.35; _v3: 0.35 → 0.3)
+        var _bloomSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_bloomStrength_v4') : null;
         if (_bloomSaved !== null) {
             var _bv = parseFloat(_bloomSaved);
             if (!isNaN(_bv)) BLOOM_USER_STRENGTH = Math.max(0, Math.min(BLOOM_MAX_STRENGTH, _bv));
@@ -1184,6 +1184,9 @@ const ThreePost = (function () {
     var _LK_FACTORY = { exposure: EXPOSURE_FACTORY, bloom: BLOOM_FACTORY, dof: DOF_FACTORY, nightMood: NIGHT_FACTORY };
     function _lkSame(a, b) { return (typeof a === 'number' && typeof b === 'number') ? Math.abs(a - b) < 1e-6 : a === b; }
     function _lkOwnNum(key, base) { return !_lkSame(base, _LK_FACTORY[key]); }
+    /* the bloom the player asked for: 0 (the default since 2026-10-02) is OFF everywhere — a scene look may raise a strength
+       the player set, never switch bloom on for them */
+    function _bloomUser() { return BLOOM_USER_STRENGTH > 0 ? _lkNum('bloom', BLOOM_USER_STRENGTH) : 0; }
     function _lkNum(key, base) { return (_look && typeof _look[key] === 'number' && !isNaN(_look[key]) && !_lkOwnNum(key, base)) ? _look[key] : base; }
     function _lkRetro() {
         if (!_look || !_look.retro) return _retro;
@@ -1473,7 +1476,7 @@ const ThreePost = (function () {
             _renderer.toneMappingExposure = (F ? 1 : _cur.exposure) * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
         if (_bloomPass) {
-            var _bu = _lkNum('bloom', BLOOM_USER_STRENGTH), _bloomOn = _bu > 0;
+            var _bu = _bloomUser(), _bloomOn = _bu > 0;
             _bloomPass.enabled = _bloomOn;
             if (_bloomOn) {
                 // floor the env grade (which is 0 by day/night) to the user level
@@ -2511,7 +2514,7 @@ const ThreePost = (function () {
         // Impact flash — decaying bloom kick over the steady user strength.
         if (_bloomPass && _bloomPass.enabled) {
             var _pulse = _bloomPulseCurrent(performance.now());
-            _bloomPass.strength = (_fieldLight ? Math.max(_lkNum('bloom', BLOOM_USER_STRENGTH), 0.42) : Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH))) + _pulse;
+            _bloomPass.strength = (_fieldLight ? Math.max(_bloomUser(), 0.42) : Math.max(_cur.bloomStr, _bloomUser())) + _pulse;
         }
 
         if (_cinematicPass && _cinematicPass.enabled) {
@@ -2588,7 +2591,7 @@ const ThreePost = (function () {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
                    look (`bloomThr`, default HQ_BLOOM_THRESHOLD: only the emissive surfaces — the neon, the torches, the ley
                    veins, the screens — cross it, a white wall never does), the radius too (`bloomRadius`), the strength the look's */
-                _bloomPass.strength = Math.max(_lkNum('bloom', BLOOM_USER_STRENGTH), 0.42);
+                _bloomPass.strength = Math.max(_bloomUser(), 0.42);
                 _bloomPass.threshold = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
                 _bloomPass.threshold = _bloomThrFor(_bloomPass.threshold, HQ_BLOOM_THRESHOLD);   // THE HDR BLOOM: the look's bar as a share of the default
                 _bloomPass.radius = (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS;
@@ -2651,12 +2654,12 @@ const ThreePost = (function () {
             var on = BLOOM_USER_STRENGTH > 0;
             _bloomPass.enabled = on;
             if (on) {
-                _bloomPass.strength  = Math.max(_cur.bloomStr, _lkNum('bloom', BLOOM_USER_STRENGTH));
+                _bloomPass.strength  = Math.max(_cur.bloomStr, _bloomUser());
                 _bloomPass.threshold = _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD);
                 _bloomPass.radius    = BLOOM_USER_RADIUS;
             }
         }
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v3', String(BLOOM_USER_STRENGTH)); } catch (e) {}
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v4', String(BLOOM_USER_STRENGTH)); } catch (e) {}
     }
 
     function getBloomStrength()    { return BLOOM_USER_STRENGTH; }
