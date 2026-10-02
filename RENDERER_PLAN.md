@@ -285,3 +285,15 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   while the dome's fog band only reaches below the horizon, so a pale strip stood across the frame on the night sky (worst
   on the antarctica toss; r147 rendered it the same, so not an r186 regression). three-renderer.js `_menuHorizonColor`
   fogs the ground to the dome's deep-space colour at the horizon instead; the far ridges and the igloo now sink into it.
+- 2026-10-02 R2b SKIPPED (mondo chose it): `BatchedMesh` saves draw calls only through `WEBGL_multi_draw`, which Firefox has
+  never shipped; without it three.js (WebGLRenderer, `isBatchedMesh` branch) issues one `drawElements` per instance, so on
+  mondo's Firefox it would draw MORE than the static batch's merged meshes do today. The merge pass (`HQ_BATCH`) stays.
+  R3 (KTX2) waits too: ASSET_MANIFEST.json on R2 is still empty (`files: {}`), so it needs mondo to run the optimizer
+  locally first. Next is R4.
+- 2026-10-02 R4 built: three-mesh-bvh@0.9.15 via the import map, loaded by its own module with a dynamic import (a CDN miss
+  leaves `window.EW_BVH_LIB` unset and every ray plain). three-renderer.js "THE BVH" wraps `Mesh.prototype.raycast`: lazy
+  trees (≥ 256 tris, a 60k-triangle build budget per 100 ms, a mesh that keeps costing slow rays builds anyway), INDIRECT
+  mode (the geometry's index is never reordered: the carve slices and the static batch read index ranges), stale-safe (a
+  position/index/draw-range/group change drops the tree; a second change marks the geometry live and it stays plain), never
+  skinned/morphing/partial-draw-range. Same hits as plain three in a node check (400 rays, 0 diffs), ~4× faster. The F3 lens
+  gains a "Pick (raycasts)" line. Off: `window.EW_NO_BVH`.
