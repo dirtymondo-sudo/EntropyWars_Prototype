@@ -1583,6 +1583,98 @@ const ThreeRenderer = (function () {
     }
     _asWireMeshopt();
     try { if (typeof window !== 'undefined' && typeof document !== 'undefined') _asManLoad(); } catch (e) {}
+    /* ══ THE BVH (RENDERER_PLAN.md R4, 2026-10-02) ══════════════════════════════════════════════════════════════════════════
+       three-mesh-bvh (index.html loads it as its own module, after the shim: a CDN miss leaves window.EW_BVH_LIB unset and
+       every ray exactly as before). Mesh.prototype.raycast is wrapped ONCE, so every Raycaster in the game — the camera's
+       occlusion fade (up to 25 rays per recompute against the board and the field's holders), the seat finder, the tower
+       pick, the editor's picks — tests a tree instead of every triangle of every mesh whose sphere it crosses. The hits
+       are the same objects at the same points (the library's raycast is built to match three's).
+       - LAZY: a geometry gets its tree the first time a ray reaches it with at least BVH_MIN_TRIS triangles, inside a
+         budget of BVH_BUDGET_TRIS triangles per BVH_BUDGET_MS window (a room's first glance never builds a city at once);
+         a mesh over the budget is still tested the old way, and builds anyway once it has cost BVH_FORCE_AFTER slow rays
+         (one build beats paying the slow ray every recompute).
+       - INDIRECT: the tree keeps its own triangle order and never rewrites the geometry's index (the terrain's carve
+         slices and the static batch read index ranges).
+       - STALE-SAFE: a tree remembers the position / index versions, the draw range and the group count it was built
+         from; any change drops it and the geometry is tested the old way until it rebuilds (a second change: it is a
+         live surface, and keeps the plain raycast).
+       - NEVER: skinned or morphing meshes (the tree would be the bind pose), a partial draw range, a geometry with no
+         plain 3-wide position. Instanced meshes ride along (three tests each copy through Mesh.prototype.raycast).
+       - The tree lives on the geometry (shared copies share it) and goes with it; disposing a geometry drops it.
+       Off: window.EW_NO_BVH. The F3 lens shows rays, their time and the trees. */
+    var BVH_MIN_TRIS = 256, BVH_BUDGET_TRIS = 60000, BVH_BUDGET_MS = 100, BVH_FORCE_AFTER = 6;
+    var _bvhStat = { rays: 0, ms: 0, trees: 0, tris: 0, buildMs: 0, slow: 0, fails: 0 }, _bvhWin = 0, _bvhSpent = 0, _bvhDepth = 0;
+    var _bvhSphere = null, _bvhRay = null, _bvhInv = null;
+    function _bvhLib() {
+        try { return (typeof window !== 'undefined' && !window.EW_NO_BVH && window.EW_BVH_LIB && window.EW_BVH_LIB.MeshBVH) ? window.EW_BVH_LIB : null; } catch (e) { return null; }
+    }
+    function _bvhTris(g) { var p = g.attributes.position; return ((g.index ? g.index.count : p.count) / 3) | 0; }
+    function _bvhSig(g) { var dr = g.drawRange; return g.attributes.position.version + ':' + (g.index ? g.index.version + ':' + g.index.count : '-') + ':' + g.attributes.position.count + ':' + dr.start + ':' + dr.count + ':' + g.groups.length; }
+    function _bvhGeoOk(g) {
+        if (!g || !g.isBufferGeometry || g._ew_bvhNo) return false;
+        var p = g.attributes.position; if (!p || p.itemSize !== 3) return false;
+        if (g.morphAttributes && g.morphAttributes.position && g.morphAttributes.position.length) return false;
+        var dr = g.drawRange; if (dr.start !== 0 || (dr.count !== Infinity && dr.count < (g.index ? g.index.count : p.count))) return false;
+        return true;
+    }
+    function _bvhDrop(g) { if (g && g.boundsTree) { g.boundsTree = null; g._ew_bvhSig = null; } }
+    /* the tree for this geometry, built now if the window's budget allows (or the mesh has cost enough slow rays) */
+    function _bvhTree(g, lib) {
+        if (g.boundsTree) {
+            if (g._ew_bvhSig === _bvhSig(g)) return g.boundsTree;
+            _bvhDrop(g);
+            if ((g._ew_bvhStale = (g._ew_bvhStale || 0) + 1) >= 2) { g._ew_bvhNo = true; return null; }   // it keeps changing (a live surface): the plain raycast for good
+        }
+        var n = _bvhTris(g); if (n < BVH_MIN_TRIS) return null;
+        var now = performance.now();
+        if (now - _bvhWin >= BVH_BUDGET_MS) { _bvhWin = now; _bvhSpent = 0; }
+        g._ew_bvhSlow = (g._ew_bvhSlow || 0) + 1;
+        if (_bvhSpent + n > BVH_BUDGET_TRIS && g._ew_bvhSlow < BVH_FORCE_AFTER) return null;
+        try {
+            var t0 = performance.now();
+            g.boundsTree = new lib.MeshBVH(g, { indirect: true });
+            g._ew_bvhSig = _bvhSig(g); g._ew_bvhSlow = 0;
+            _bvhSpent += n; _bvhStat.trees++; _bvhStat.tris += n; _bvhStat.buildMs += performance.now() - t0;
+            if (!g._ew_bvhHooked) {   // the tree goes with the geometry
+                g._ew_bvhHooked = true;
+                g.addEventListener('dispose', function () { _bvhDrop(g); });
+            }
+            return g.boundsTree;
+        } catch (e) {
+            g._ew_bvhNo = true; g.boundsTree = null; _bvhStat.fails++;
+            if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.warn('[BVH] no tree for a geometry — it keeps the plain raycast', e);
+            return null;
+        }
+    }
+    function _bvhInstall() {
+        if (typeof THREE === 'undefined' || !THREE.Mesh || THREE.Mesh.prototype._ew_bvhRaycast) return;
+        var M = THREE.Mesh.prototype, plain = M.raycast;
+        _bvhSphere = new THREE.Sphere(); _bvhRay = new THREE.Ray(); _bvhInv = new THREE.Matrix4();
+        M.raycast = function (raycaster, intersects) {
+            var lib = _bvhLib(), g = this.geometry;
+            if (!lib || this.isSkinnedMesh || (this.morphTargetInfluences && this.morphTargetInfluences.length) || !_bvhGeoOk(g) || this.material === undefined) return plain.call(this, raycaster, intersects);
+            /* three's own early out (the world sphere), before any tree is built or walked */
+            if (g.boundingSphere === null) g.computeBoundingSphere();
+            _bvhSphere.copy(g.boundingSphere).applyMatrix4(this.matrixWorld);
+            if (!raycaster.ray.intersectsSphere(_bvhSphere)) return;
+            var tree = _bvhTree(g, lib);
+            if (!tree) { _bvhStat.slow++; return plain.call(this, raycaster, intersects); }
+            tree.raycastObject3D(this, raycaster, intersects);
+        };
+        M._ew_bvhRaycast = plain;
+        /* the lens's numbers: every intersect call, timed at the outermost level */
+        var R = THREE.Raycaster.prototype;
+        ['intersectObject', 'intersectObjects'].forEach(function (k) {
+            var f = R[k]; if (typeof f !== 'function' || f._ew_bvhTimed) return;
+            var w = function () {
+                if (_bvhDepth) return f.apply(this, arguments);
+                _bvhDepth++; var t0 = performance.now();
+                try { return f.apply(this, arguments); } finally { _bvhDepth--; _bvhStat.rays++; _bvhStat.ms += performance.now() - t0; }
+            };
+            w._ew_bvhTimed = true; R[k] = w;
+        });
+    }
+    _bvhInstall();
     function _asAvailable() {
         try {
             if (typeof window === 'undefined' || window.EW_NO_ASSET_STORE || _asDead) return false;
@@ -33960,6 +34052,8 @@ const ThreeRenderer = (function () {
         S.why = L.why || [];
         S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
         S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
+        S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails };
+        _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // per window; the trees are the session's
         S.lampN = (_hq && _hq.stage) ? _hq.stage.lampN : null;
         S.overrides = { shadows: L.shadows, post: L.post, lights: L.lights, res: L.res, show: Object.assign({}, L.show) };
         L.last = S;
@@ -33992,6 +34086,7 @@ const ThreeRenderer = (function () {
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
+        if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off'));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
         if (S.why && S.why.length) {
@@ -34066,6 +34161,7 @@ const ThreeRenderer = (function () {
     }
     function _lensOpen() {
         if (_lens || typeof document === 'undefined' || !document.body) return;
+        _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // THE BVH: the pick numbers start with the lens
         var L = _lens = {
             el: null, body: null, tog: null, orig: null, gpu: null, cur: null, last: null, detail: null, census: null, lightList: null,
             show: { chars: 1, props: 1, terrain: 1, fog: 1, env: 1, fx: 1, other: 1, outline: 1 }, shadows: true, post: true, lights: true, res: 0, gamePR: null, shadowWas: false,
