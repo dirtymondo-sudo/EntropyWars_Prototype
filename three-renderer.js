@@ -1530,9 +1530,9 @@ const ThreeRenderer = (function () {
     }
     function _asManAdopt(j) {
         if (!j || typeof j !== 'object' || !j.files || typeof j.files !== 'object') { _asMan = null; return null; }
-        var n = 0, opt = 0;
-        for (var k in j.files) { n++; if (/\.opt\.glb$/i.test(k)) opt++; }
-        _asMan = { base: typeof j.base === 'string' && j.base ? j.base : AS_BASE, files: j.files, made: j.made || null, n: n, opt: opt };
+        var n = 0, opt = 0, ktx = 0;
+        for (var k in j.files) { n++; if (/\.opt\.glb$/i.test(k)) { opt++; if (j.files[k] && j.files[k][2] === 1) ktx++; } }
+        _asMan = { base: typeof j.base === 'string' && j.base ? j.base : AS_BASE, files: j.files, made: j.made || null, n: n, opt: opt, ktx: ktx };
         return _asMan;
     }
     /* the manifest, once per page: the preload index.html starts (its href carries the ?v= token) or the bare url */
@@ -1561,7 +1561,11 @@ const ThreeRenderer = (function () {
     function _asResolve(url) {
         if (!_asMan || !/\.glb([?#]|$)/i.test(url) || /\.opt\.glb([?#]|$)/i.test(url) || !_asMeshoptOk()) return url;
         var k = _asKey(url); if (k == null) return url;
-        if (!_asMan.files[k.replace(/\.glb$/i, '.opt.glb')]) return url;
+        var oe = _asMan.files[k.replace(/\.glb$/i, '.opt.glb')];
+        if (!oe) return url;
+        /* R3: a sibling with KTX2 textures only where they transcode (else the original, which always draws), and never for a
+           file whose textures the game reads back on the CPU (the creator's hair masks) */
+        if (oe[2] === 1 && (!_ktxLoader() || _ktxCpuRead[k])) return url;
         return String(url).replace(/\.glb([?#]|$)/i, '.opt.glb$1');
     }
     /* the url the network is asked for: the manifest's sha rides as ?h= (the edge's cache key; R2 ignores it) */
@@ -1575,12 +1579,75 @@ const ThreeRenderer = (function () {
             if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || THREE.GLTFLoader._ewMeshopt) return false;
             if (typeof MeshoptDecoder === 'undefined' || !MeshoptDecoder) return false;
             var G = THREE.GLTFLoader;
-            var W = function (manager) { var l = new G(manager); try { if (l.setMeshoptDecoder) l.setMeshoptDecoder(MeshoptDecoder); } catch (e) {} return l; };
+            var W = function (manager) {
+                var l = new G(manager);
+                try { if (l.setMeshoptDecoder) l.setMeshoptDecoder(MeshoptDecoder); } catch (e) {}
+                try { var kl = _asMan && _asMan.ktx ? _ktxLoader() : null; if (kl && l.setKTX2Loader) l.setKTX2Loader(kl); } catch (e) {}   // R3: KTX2 textures (only once the manifest lists any)
+                return l;
+            };
             W.prototype = G.prototype; W._ewMeshopt = true; W._ewInner = G;
             THREE.GLTFLoader = W;
             return true;
         } catch (e) { return false; }
     }
+    /* ══ THE KTX2 TEXTURES (RENDERER_PLAN.md R3, 2026-10-02) ══════════════════════════════════════════════════════════════
+       optimize-assets.js --ktx2 writes a `.opt.glb` whose textures are KTX2 / Basis Universal (KHR_texture_basisu), and the
+       manifest flags it ([bytes, sha, 1]). three's KTX2Loader (index.html loads it as its own module, window.EW_KTX2_LIB)
+       transcodes each one in a worker to the format this GPU samples compressed — BC1/BC3 (or BC7) on a desktop, ASTC or ETC2
+       on a phone — so a 2048 px texture costs ~2.8 MB of video memory instead of ~21 MB, mipmaps included.
+       - ONE loader for the page (its workers and the transcoder are shared), handed to every GLTFLoader by the wrapper above.
+       - SUPPORT is read once off a throwaway 1 px WebGL2 context (the formats are the GPU's, not the context's). The game's
+         colour textures are sRGB: an S3TC upload in sRGB needs WEBGL_compressed_texture_s3tc_srgb, and three draws nothing
+         without it, so a GPU that has S3TC but not its sRGB variant is told it has no S3TC (the transcoder then picks the next
+         format, at worst plain RGBA: correct, just not smaller).
+       - NO LOADER (the module missed, window.EW_NO_KTX2, no WebGL2, no Worker / WebAssembly) = a flagged sibling is never
+         asked for: the ORIGINAL .glb loads, exactly as before. A sibling that fails to parse falls back the same way the
+         meshopt ones do (THE ASSETS above).
+       - _ktxCpuRead: bucket paths whose textures the game draws into a canvas (the creator's hair masks): always the
+         original (a compressed texture has no pixels the CPU can read). */
+    var _ktx = { tried: false, loader: null, fmt: '', why: '' }, _ktxCpuRead = {};
+    function _ktxDetect() {
+        var cnv = document.createElement('canvas'); cnv.width = cnv.height = 1;
+        var gl = cnv.getContext('webgl2');
+        if (!gl) return null;
+        var has = {};
+        ['WEBGL_compressed_texture_astc', 'WEBGL_compressed_texture_etc1', 'WEBGL_compressed_texture_etc', 'WEBGL_compressed_texture_s3tc',
+         'WEBGL_compressed_texture_s3tc_srgb', 'EXT_texture_compression_bptc', 'WEBGL_compressed_texture_pvrtc', 'WEBKIT_WEBGL_compressed_texture_pvrtc'
+        ].forEach(function (n) { has[n] = gl.getExtension(n); });
+        try { var lc = gl.getExtension('WEBGL_lose_context'); if (lc) lc.loseContext(); } catch (e) {}
+        return { extensions: { has: function (n) { return !!has[n]; }, get: function (n) { return has[n] || null; } } };
+    }
+    function _ktxLoader() {
+        if (_ktx.loader) return _ktx.loader;
+        if (_ktx.tried) return null;
+        var lib = null;
+        try { lib = typeof window !== 'undefined' && !window.EW_NO_KTX2 ? window.EW_KTX2_LIB : null; } catch (e) {}
+        if (!lib || typeof lib.KTX2Loader !== 'function') return null;   // not here yet: asked again next time
+        _ktx.tried = true;
+        try {
+            if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') { _ktx.why = 'no Worker / WebAssembly'; return null; }
+            var fake = _ktxDetect();
+            if (!fake) { _ktx.why = 'no WebGL2'; return null; }
+            var kl = new lib.KTX2Loader();
+            kl.setWorkerLimit(2);
+            kl.detectSupport(fake);
+            var wc = kl.workerConfig || {};
+            if (wc.dxtSupported && !fake.extensions.has('WEBGL_compressed_texture_s3tc_srgb')) wc.dxtSupported = false;
+            _ktx.fmt = wc.astcSupported ? 'ASTC' : wc.bptcSupported ? 'BC7' : wc.etc2Supported ? 'ETC2' : wc.dxtSupported ? 'BC1/BC3' : wc.etc1Supported ? 'ETC1' : 'RGBA (uncompressed)';
+            _ktx.loader = kl;
+            return kl;
+        } catch (e) { _ktx.why = String(e && e.message || e); try { console.warn('[ThreeRenderer] KTX2 is off — the original textures', e); } catch (e2) {} return null; }
+    }
+    /* before a GLB resolves: when the manifest flags KTX2 siblings and the loader's module is still on its way, give it
+       (with the manifest's own wait, AS_MANIFEST_WAIT_MS) the chance to land so the first rooms don't take the originals */
+    function _ktxWait() {
+        if (!_asMan || !_asMan.ktx || _ktx.loader || _ktx.tried) return Promise.resolve();
+        var p = null; try { p = window.EW_KTX2_P; } catch (e) {}
+        if (!p || typeof p.then !== 'function') return Promise.resolve();
+        return Promise.race([p, new Promise(function (ok) { setTimeout(ok, AS_MANIFEST_WAIT_MS); })]).then(function () {}, function () {});
+    }
+    function _ktxNoCompress(url) { var k = _asKey(url); if (k != null) _ktxCpuRead[k] = 1; }
+    function _ktxStats() { return { loader: !!_ktx.loader, fmt: _ktx.fmt, off: _ktx.loader ? '' : (_ktx.why || (_ktx.tried ? 'failed' : 'not loaded')), files: _asMan ? _asMan.ktx || 0 : 0 }; }
     _asWireMeshopt();
     try { if (typeof window !== 'undefined' && typeof document !== 'undefined') _asManLoad(); } catch (e) {}
     /* ══ THE BVH (RENDERER_PLAN.md R4, 2026-10-02) ══════════════════════════════════════════════════════════════════════════
@@ -1780,7 +1847,7 @@ const ThreeRenderer = (function () {
         o = o || {};
         /* THE ASSETS (Phase 9): the manifest's optimized sibling when there is one; a sibling that fails (a missing
            upload, a decoder that won't start) falls back to the original once, and the page stops asking for siblings */
-        _asManReady().then(function () {
+        _asManReady().then(_ktxWait).then(function () {
             var u = o.noOpt ? url : _asResolve(url), opt = u !== url;
             var fail = function (e) {
                 if (!opt) { if (onError) onError(e); return; }
@@ -1810,7 +1877,7 @@ const ThreeRenderer = (function () {
         var ix = _asIndexLoad(), n = 0; for (var k in ix) n++;
         return { available: _asAvailable(), files: n, bytes: _asBytes, capBytes: AS_CAP_BYTES, hits: _asHits, misses: _asMisses, puts: _asPuts,
             persisted: _asQuota.persisted, quota: _asQuota.quota, usage: _asQuota.usage,
-            manifest: _asMan ? { files: _asMan.n, opt: _asMan.opt, made: _asMan.made } : null, optLoads: _asOptLoads, optFalls: _asOptFalls, meshopt: _asMeshoptOk() };
+            manifest: _asMan ? { files: _asMan.n, opt: _asMan.opt, made: _asMan.made } : null, optLoads: _asOptLoads, optFalls: _asOptFalls, meshopt: _asMeshoptOk(), ktx2: _ktxStats() };
     }
     /* the bytes of a url by the manifest (0 when it isn't listed) — DOWNLOAD THIS PLACE sizes a place with it */
     function _asBytesOf(url) { var e = _asManEntry(_asResolve(url)) || _asManEntry(url); return e ? +e[0] || 0 : 0; }
@@ -24221,7 +24288,7 @@ const ThreeRenderer = (function () {
             mats.forEach(function (mat) {
                 Object.keys(mat).forEach(function (key) {
                     var tex = mat[key], img = tex && tex.isTexture && tex.image;
-                    if (!img || Math.max(img.width || 0, img.height || 0) <= 512) return;
+                    if (!img || tex.isCompressedTexture || Math.max(img.width || 0, img.height || 0) <= 512) return;   // R3: KTX2 is small already (and no canvas can draw it)
                     var small = images.get(img);
                     if (!small) {
                         small = document.createElement('canvas');
@@ -24387,6 +24454,10 @@ const ThreeRenderer = (function () {
     function _mmTexBytes(t, seen) {
         if (!t || !t.isTexture || seen[t.uuid]) return 0;
         seen[t.uuid] = 1;
+        if (t.isCompressedTexture && t.mipmaps && t.mipmaps.length) {   // R3: a KTX2 texture's real bytes (its levels, as transcoded)
+            var cb = 0; for (var mi = 0; mi < t.mipmaps.length; mi++) { var md = t.mipmaps[mi] && t.mipmaps[mi].data; if (md && md.byteLength) cb += md.byteLength; }
+            if (cb) return cb;
+        }
         var im = t.image, w = (im && im.width) || 0, h = (im && im.height) || 0;
         if (!w || !h) return 0;
         return w * h * 4 * (t.generateMipmaps !== false ? 4 / 3 : 1);
@@ -34052,6 +34123,7 @@ const ThreeRenderer = (function () {
         S.why = L.why || [];
         S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
         S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
+        try { var ks = _ktxStats(); S.ktx2 = { st: ks, loads: _asOptLoads, falls: _asOptFalls }; } catch (e) {}
         S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails };
         _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // per window; the trees are the session's
         S.lampN = (_hq && _hq.stage) ? _hq.stage.lampN : null;
@@ -34086,6 +34158,7 @@ const ThreeRenderer = (function () {
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
+        if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off'));
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
@@ -36014,7 +36087,7 @@ const ThreeRenderer = (function () {
        so ANY hair colour tints it — the authored browns only ever tint darker.
        Cached per source texture + encoding; the source is never touched. */
     function _ccHairTexture(src, unmanaged) {
-        if (!src || !src.image) return null;
+        if (!src || !src.image || src.isCompressedTexture) return null;
         var key = src.uuid + '|' + (unmanaged ? 'L' : 'S');
         if (_ccHairTexCache[key]) return _ccHairTexCache[key];
         var img = src.image, w = img.width || img.naturalWidth || 512, h = img.height || img.naturalHeight || 512;
@@ -36042,6 +36115,7 @@ const ThreeRenderer = (function () {
        hooks). cb(root | null) — fires on failure too. */
     function _ccLoadHair(url, cb) {
         if (!url || typeof _loadUnitGLB !== 'function') { cb(null); return; }
+        _ktxNoCompress(url);   // R3: _ccHairTexture reads the hair's pixels into a grey mask — never the KTX2 sibling
         _loadUnitGLB(url, function (e) { cb(e && e.root ? e.root : null); });
         var e = _unitGlbCache[url];
         if (!e || e.root) return;

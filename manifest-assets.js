@@ -18,6 +18,8 @@
 //   - the store's size accounting reads `bytes` when the CDN sends no content-length;
 //   - DOWNLOAD THIS PLACE (the pause menu's settings) says how big a place is before it fetches it;
 //   - a prop whose `<name>.lod1.glb` (and `.lod2.glb`) is listed draws those levels far off (Phase 10, THE LOD LEVELS).
+//   - a `.opt.glb` whose textures are KTX2 (optimize-assets.js --ktx2, RENDERER_PLAN R3) gets a third field, 1:
+//     [bytes, sha, 1]. A browser that can't transcode KTX2 loads the original .glb instead of that .opt.glb.
 //
 // Repo-only tooling, zero dependencies.
 
@@ -44,6 +46,19 @@ function walk(dir, rel, out) {
     return out;
 }
 
+/* R3: does this GLB carry KHR_texture_basisu (KTX2 textures)? Reads only the JSON chunk */
+function glbUsesKtx2(file) {
+    try {
+        const fd = fs.openSync(file, 'r'), head = Buffer.alloc(20);
+        fs.readSync(fd, head, 0, 20, 0);
+        if (head.readUInt32LE(0) !== 0x46546C67 || head.readUInt32LE(16) !== 0x4E4F534A) { fs.closeSync(fd); return false; }
+        const json = Buffer.alloc(head.readUInt32LE(12));
+        fs.readSync(fd, json, 0, json.length, 20); fs.closeSync(fd);
+        const j = JSON.parse(json.toString('utf8'));
+        return (j.extensionsUsed || []).indexOf('KHR_texture_basisu') >= 0;
+    } catch (e) { return false; }
+}
+
 function sha12(file) { return crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 12); }
 
 function normPrefix(p) {
@@ -54,7 +69,11 @@ function normPrefix(p) {
 /* build the files table for one folder: { "<prefix><rel>": [bytes, sha] } */
 function scan(dir, prefix) {
     const files = {};
-    for (const f of walk(dir, '', [])) files[normPrefix(prefix) + f.r] = [f.bytes, sha12(f.p)];
+    for (const f of walk(dir, '', [])) {
+        const e = [f.bytes, sha12(f.p)];
+        if (/\.opt\.glb$/i.test(f.r) && glbUsesKtx2(f.p)) e.push(1);
+        files[normPrefix(prefix) + f.r] = e;
+    }
     return files;
 }
 
@@ -73,17 +92,17 @@ function build(files, prev, prefix, merge) {
 /* the numbers the tool prints (and the test reads): how many files, how many GLBs have an optimized sibling */
 function summary(man) {
     const keys = Object.keys(man.files || {});
-    let bytes = 0, glb = 0, opt = 0, saved = 0, lod = 0;
+    let bytes = 0, glb = 0, opt = 0, saved = 0, lod = 0, ktx2 = 0;
     for (const k of keys) {
         bytes += man.files[k][0];
         if (/\.lod\d\.glb$/i.test(k)) { lod++; continue; }   // THE LOD LEVELS (Phase 10): optimize-assets.js --lod
         if (/\.glb$/i.test(k) && !/\.opt\.glb$/i.test(k)) {
             glb++;
             const o = man.files[k.replace(/\.glb$/i, '.opt.glb')];
-            if (o) { opt++; saved += man.files[k][0] - o[0]; }
+            if (o) { opt++; saved += man.files[k][0] - o[0]; if (o[2] === 1) ktx2++; }
         }
     }
-    return { files: keys.length, bytes, glb, opt, saved, lod };
+    return { files: keys.length, bytes, glb, opt, saved, lod, ktx2 };
 }
 
 function main() {
@@ -100,9 +119,9 @@ function main() {
     const man = build(files, prev, prefix, merge);
     fs.writeFileSync(outFile, JSON.stringify(man) + '\n');
     const s = summary(man);
-    console.log(`manifest: ${outFile} · ${s.files} files, ${(s.bytes / 1073741824).toFixed(2)} GB · ${s.opt} of ${s.glb} GLB have a .opt.glb (saves ${(s.saved / 1048576).toFixed(0)} MB) · ${s.lod} LOD level file(s)`);
+    console.log(`manifest: ${outFile} · ${s.files} files, ${(s.bytes / 1073741824).toFixed(2)} GB · ${s.opt} of ${s.glb} GLB have a .opt.glb (saves ${(s.saved / 1048576).toFixed(0)} MB; ${s.ktx2} with KTX2 textures) · ${s.lod} LOD level file(s)`);
     console.log('next: `npm run deploy` (ASSET_MANIFEST.json rides the ?v= token like the scripts) and redeploy index.html on Render');
 }
 
 if (require.main === module) main();
-module.exports = { scan, build, summary, normPrefix, BASE };
+module.exports = { scan, build, summary, normPrefix, glbUsesKtx2, BASE };

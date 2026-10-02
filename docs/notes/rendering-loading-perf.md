@@ -579,3 +579,10 @@ styles-base.css `scrollbar-width: none` + the webkit twin, and `.mm-label` is `w
 pale strip across the dark sky, the ice ridges as lighter blocks inside it. `_menuHorizonColor(env, night)` = the dome's
 `deepLo` at that night plus the nebula's mean lift; the ground and `scene.background` fog to it. Same on r147 (checked with
 the reference probe), so a design seam, not an r186 regression.
+
+**R3 KTX2 textures (2026-10-02, RENDERER_PLAN §9):** `npm run optimize -- <dir> --ktx2` (needs `npm i --no-save ktx2-encoder@0.6`
+besides the usual gltf-transform deps) writes `.opt.glb` files whose textures are KHR_texture_basisu; `npm run manifest` marks
+them `[bytes, sha, 1]`. three-renderer.js "THE KTX2 TEXTURES" (`_ktxLoader`, `_ktxDetect`, `_ktxWait`, `_ktxCpuRead`) loads a
+flagged sibling only when the page's KTX2Loader is up and the GPU has a compressed format with an sRGB variant; else the
+original .glb. Off switch: `window.EW_NO_KTX2`. Anything that draws a GLB texture into a canvas must call `_ktxNoCompress(url)`
+before loading it (the creator hair does). F3 lens line "KTX2 textures".
