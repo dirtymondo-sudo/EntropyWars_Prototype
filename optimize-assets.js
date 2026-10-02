@@ -10,11 +10,16 @@
 //                                                  #   GLTFLoader + MeshoptDecoder and compare it to the original
 //     npm run optimize -- <dir> --lod              # ALSO bake the LOD levels (OPEN_WORLD_PLAN Phase 10):
 //                                                  #   <name>.lod1.glb + <name>.lod2.glb beside each prop GLB
+//     npm run optimize -- <dir> --ktx2             # the textures as KTX2 / Basis (RENDERER_PLAN R3) instead of WebP:
+//                                                  #   they stay compressed ON the GPU (4-8x less video memory)
+//     npm run optimize -- <dir> --ktx2 uastc       # every texture UASTC (sharper, ~5x bigger download than etc1s)
 //
 // Repo-only tooling: not a game file, never uploaded to R2. Needs (once, not saved in package.json so CI and
 // the server stay lean):
 //     npm i --no-save @gltf-transform/core@4 @gltf-transform/extensions@4 @gltf-transform/functions@4 meshoptimizer sharp
-// and, for --check, three@0.128.0 as well.
+// and, for --check, three@0.128.0 as well; for --ktx2, ktx2-encoder too (the Basis Universal encoder as WebAssembly, no
+// native tool to install):
+//     npm i --no-save ktx2-encoder@0.6
 //
 // What a file gets: dedup + prune, the animation resampled (lossless), the textures to WebP at most <size> px
 // (EXT_texture_webp), then meshopt (reorder + EXT_meshopt_compression on the FLOAT attributes). NOT done, on purpose:
@@ -31,6 +36,13 @@
 // full file's own materials (three-renderer.js THE LOD LEVELS), so a level costs no second texture in memory. A
 // level that doesn't drop at least LOD_MIN_DROP of the triangles above it is not written. The meshes keep their
 // names and their order (the game pairs level meshes with the full file's by both, and refuses a file that differs).
+//
+// THE KTX2 TEXTURES (--ktx2, RENDERER_PLAN R3, 2026-10-02): the .opt.glb's textures become KHR_texture_basisu (KTX2,
+// mipmaps baked in, sizes rounded to a multiple of 4). Colour slots (base colour, emissive, any *Color slot) are ETC1S at
+// the top quality, sRGB; data slots (normal, occlusion, metal/rough) are UASTC + zstd, linear (ETC1S smears normals).
+// `--ktx2 uastc` makes every slot UASTC. The game transcodes them in a worker to the GPU's own format (BC1/BC3/BC7 on a
+// Mac, ASTC/ETC2 on phones); a browser that can't (no transcoder, no sRGB variant of its format) loads the ORIGINAL
+// .glb, never the .opt.glb: manifest-assets.js flags a KTX2 .opt.glb (a third field, 1) so the game can tell.
 //
 // The game picks a `.opt.glb` up through ASSET_MANIFEST.json (manifest-assets.js): upload the .opt.glb files
 // beside the originals on R2, regenerate the manifest, deploy. The originals stay on R2 (the fallback).
@@ -62,7 +74,7 @@ function walk(p, out) {
 function mb(n) { return (n / 1048576).toFixed(n < 10485760 ? 2 : 1) + ' MB'; }
 
 function parseArgs(argv) {
-    const o = { inputs: [], out: null, size: 2048, force: false, dry: false, check: false, lod: false };
+    const o = { inputs: [], out: null, size: 2048, force: false, dry: false, check: false, lod: false, ktx2: null };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--out') o.out = argv[++i];
@@ -71,6 +83,7 @@ function parseArgs(argv) {
         else if (a === '--dry-run') o.dry = true;
         else if (a === '--check') o.check = true;
         else if (a === '--lod') o.lod = true;
+        else if (a === '--ktx2') o.ktx2 = /^(etc1s|uastc)$/i.test(argv[i + 1] || '') ? argv[++i].toLowerCase() : 'etc1s';
         else o.inputs.push(a);
     }
     return o;
@@ -82,6 +95,14 @@ function targetFor(src, root, out, namer) {
     if (!out) return namer(src);
     const rel = path.relative(root, src);
     return path.join(out, namer(rel));
+}
+
+async function loadKtx(D) {
+    try { D.ktx = await import('ktx2-encoder'); return D; }
+    catch (e) {
+        console.error('optimize: --ktx2 needs the Basis encoder (' + (e && e.message ? e.message.split('\n')[0] : e) + ').\nRun once:\n    npm i --no-save ktx2-encoder@0.6');
+        process.exit(1);
+    }
 }
 
 function loadDeps() {
@@ -99,11 +120,49 @@ function loadDeps() {
     }
 }
 
-async function optimizeOne(D, io, src, dst, size) {
+/* THE KTX2 TEXTURES (R3): the slots a texture fills (baseColorTexture, normalTexture, ...) */
+function texSlots(tex, root) {
+    return [...new Set(tex.getGraph().listParentEdges(tex).filter(e => e.getParent() !== root).map(e => e.getName()))];
+}
+const KTX_COLOR_SLOT = /color|emissive|diffuse/i, KTX_NORMAL_SLOT = /normal/i;
+/* every PNG / JPEG / WebP texture of doc → KTX2 (sharp decodes and fits it under `size`, a multiple of 4 each way) */
+async function ktx2Textures(D, doc, size, mode) {
+    const { sharp, ktx } = D;
+    let n = 0;
+    for (const tex of doc.getRoot().listTextures()) {
+        const mime = tex.getMimeType(), img = tex.getImage();
+        if (!img || !/^image\/(png|jpeg|webp)$/.test(mime)) continue;
+        const slots = texSlots(tex, doc.getRoot()), color = slots.some(s => KTX_COLOR_SLOT.test(s)), normal = !color && slots.some(s => KTX_NORMAL_SLOT.test(s));
+        const meta = await sharp(img).metadata();
+        let w = meta.width || 4, h = meta.height || 4;
+        const k = Math.min(1, size / Math.max(w, h));
+        w = Math.max(4, Math.round(w * k / 4) * 4); h = Math.max(4, Math.round(h * k / 4) * 4);
+        const raw = await sharp(img).resize(w, h, { fit: 'fill' }).ensureAlpha().raw().toBuffer();
+        const uastc = mode === 'uastc' || !color;
+        const opts = {
+            isUASTC: uastc, generateMipmap: true, enableDebug: false,
+            isPerceptual: color, isSetKTX2SRGBTransferFunc: color, isNormalMap: normal,
+            imageDecoder: async () => ({ data: new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength), width: w, height: h })
+        };
+        if (uastc) Object.assign(opts, { needSupercompression: true, enableRDO: true, rdoQualityLevel: 1.0, uastcLDRQualityLevel: 2 });
+        else Object.assign(opts, { qualityLevel: 255, compressionLevel: 2 });
+        const out = await ktx.encodeToKTX2(new Uint8Array(img), opts);
+        tex.setImage(new Uint8Array(out)).setMimeType('image/ktx2');
+        if (tex.getURI()) tex.setURI(tex.getURI().replace(/\.(png|jpe?g|webp)$/i, '') + '.ktx2');
+        n++;
+    }
+    if (n) doc.createExtension(D.ext.KHRTextureBasisu).setRequired(true);
+    return n;
+}
+
+async function optimizeOne(D, io, src, dst, size, ktx2) {
     const { fn, mo, sharp } = D;
     const doc = await io.read(src);
     const steps = [fn.dedup(), fn.prune({ keepLeaves: true, keepAttributes: true }), fn.resample()];
-    if (doc.getRoot().listTextures().length) steps.push(fn.textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [size, size] }));
+    if (doc.getRoot().listTextures().length) {
+        if (ktx2) await ktx2Textures(D, doc, size, ktx2);
+        else steps.push(fn.textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [size, size] }));
+    }
     /* meshopt WITHOUT quantizing: three r128 reads a normalized-int attribute raw on the CPU (BufferAttribute.getX,
        Vector3.fromBufferAttribute), so a quantized POSITION / skinWeight breaks every raycast, computeBoundingBox and
        the CPU-skinned bounds the renderer scales rigs by. Float attributes are compressed losslessly (reorder + the
@@ -172,10 +231,13 @@ function makeChecker() {
     /* Node has no <img>: a texture becomes an empty Texture (the geometry, the bones and the clips are what's compared) */
     THREE.TextureLoader.prototype.load = function (url, onLoad) { const t = new THREE.Texture(); if (onLoad) setTimeout(() => onLoad(t), 0); return t; };
     THREE.ImageBitmapLoader && (THREE.ImageBitmapLoader.prototype.load = THREE.TextureLoader.prototype.load);
+    /* a KTX2 texture (--ktx2) becomes an empty texture the same way */
+    const ktxStub = { load: THREE.TextureLoader.prototype.load, detectSupport() { return this; } };
     /* the loader's WebP probe (EXT_texture_webp) loads a 1-px image: every browser the game runs on decodes WebP */
     c.Image = function () { const im = this; im.height = 1; Object.defineProperty(im, 'src', { set() { setTimeout(() => im.onload && im.onload(), 0); } }); };
     const parse = buf => new Promise((ok, fail) => {
         const l = new THREE.GLTFLoader(); l.setMeshoptDecoder(c.MeshoptDecoder);
+        if (l.setKTX2Loader) l.setKTX2Loader(ktxStub);
         l.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), '', ok, fail);
     });
     /* the bounds the renderer measures: world positions, CPU-skinned for a rig (r128's own boneTransform) */
@@ -225,7 +287,7 @@ function makeChecker() {
 
 async function main() {
     const o = parseArgs(process.argv.slice(2));
-    if (!o.inputs.length) { console.error('usage: npm run optimize -- <dir-or-file> [...] [--out <mirror>] [--size 2048] [--force] [--dry-run] [--check] [--lod]'); process.exit(1); }
+    if (!o.inputs.length) { console.error('usage: npm run optimize -- <dir-or-file> [...] [--out <mirror>] [--size 2048] [--force] [--dry-run] [--check] [--lod] [--ktx2 [uastc]]'); process.exit(1); }
     const jobs = [];
     for (const inp of o.inputs) {
         const root = fs.statSync(inp).isDirectory() ? inp : path.dirname(inp);
@@ -233,9 +295,10 @@ async function main() {
     }
     if (!jobs.length) { console.log('optimize: no .glb files under ' + o.inputs.join(', ')); return; }
     const todo = jobs.filter(j => o.force || !fs.existsSync(j.dst) || fs.statSync(j.dst).mtimeMs < fs.statSync(j.src).mtimeMs);
-    console.log(`optimize: ${jobs.length} GLB, ${todo.length} to do (${jobs.length - todo.length} already have a newer .opt.glb)`);
+    console.log(`optimize: ${jobs.length} GLB, ${todo.length} to do (${jobs.length - todo.length} already have a newer .opt.glb)` + (o.ktx2 ? ` · textures as KTX2 (${o.ktx2 === 'uastc' ? 'all UASTC' : 'colour ETC1S, data UASTC'}; ~15 s per 2048 px texture)` : ''));
     if (o.dry) { todo.forEach(j => console.log('  ' + j.src + '  →  ' + j.dst)); if (o.lod) console.log('  (and the LOD levels of every prop: <name>.lod1.glb, <name>.lod2.glb)'); return; }
     const D = loadDeps();
+    if (o.ktx2) await loadKtx(D);
     await D.mo.MeshoptEncoder.ready; await D.mo.MeshoptDecoder.ready;
     const io = new D.core.NodeIO().registerExtensions(D.ext.ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': D.mo.MeshoptEncoder, 'meshopt.decoder': D.mo.MeshoptDecoder });
     const check = o.check ? makeChecker() : null;
@@ -244,7 +307,7 @@ async function main() {
     for (const j of todo) {
         const before = fs.statSync(j.src).size;
         let buf;
-        try { buf = await optimizeOne(D, io, j.src, j.dst, o.size); }
+        try { buf = await optimizeOne(D, io, j.src, j.dst, o.size, o.ktx2); }
         catch (e) { failed++; console.log(`  FAIL  ${j.src}: ${e && e.message ? e.message.split('\n')[0] : e}`); continue; }
         if (buf.length > before * (1 - MIN_GAIN)) {
             kept++; console.log(`  keep  ${mb(before).padStart(9)}  ${j.src}  (the result was ${mb(buf.length)}: not worth a second file)`);
@@ -292,4 +355,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { optName, lodName, isSource, isDerived, targetFor, parseArgs, walk, OPT_SUFFIX, LOD_RATIOS, LOD_MIN_TRIS, lodEligible, docTris };
+module.exports = { optName, lodName, isSource, isDerived, targetFor, parseArgs, walk, OPT_SUFFIX, LOD_RATIOS, LOD_MIN_TRIS, lodEligible, docTris, texSlots };

@@ -304,3 +304,18 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   of rows rebuilt their normal from the wrong neighbours and the floor occluded itself. The AO shader now takes its depth
   texel from gl_FragCoord and reads every depth at a texel centre (`uDRes`). Lesson: any pass that samples a NEAREST
   texture at a size ratio must snap to texel centres itself.
+- 2026-10-02 R3 built (GLB textures only). `optimize-assets.js --ktx2` writes the `.opt.glb` with KHR_texture_basisu textures
+  through `ktx2-encoder` (Basis Universal as WebAssembly: `npm i --no-save ktx2-encoder@0.6`, no native tool): colour slots ETC1S
+  quality 255 in sRGB, data slots (normal, ORM) UASTC + RDO + zstd, linear; `--ktx2 uastc` makes every slot UASTC. Mipmaps baked,
+  sizes rounded to a multiple of 4. `manifest-assets.js` flags such a file `[bytes, sha, 1]`. index.html loads three's
+  `KTX2Loader` as its own module (`window.EW_KTX2_LIB`, transcoder from the same jsdelivr release); three-renderer.js "THE KTX2
+  TEXTURES" makes one loader, reads support off a throwaway 1 px WebGL2 context, turns S3TC off when the GPU lacks its sRGB
+  variant (three draws nothing for an sRGB DXT upload without WEBGL_compressed_texture_s3tc_srgb), and only then lets
+  `_asResolve` pick a flagged sibling; no loader = the original .glb. The creator's hair GLBs never take the KTX2 sibling
+  (`_ccHairTexture` reads their pixels). `_mmTexBytes` counts a compressed texture's real level bytes; the mobile 512 px canvas
+  shrink skips them. F3 lens: a "KTX2 textures" line (format picked, files listed, loads, fallbacks). Measured on the female
+  demon (Meshy, one 2048 PNG): 7.47 MB → 1.12 MB file, ~21 MB → ~2.8 MB video memory (BC1), ETC1S 35.5 dB vs the PNG; a sandbox
+  render of both GLBs through the same r186 loaders matched at 45.8 dB with the same mean brightness (sRGB handled alike).
+  Standalone sheets (terrain, sprites, fabrics) stay PNG/WebP: the game reads many of them on the CPU (alpha picks, fabric
+  painter, horizon aspect) and loads them flipY; they are a later step if the MEM line still needs it. Encoding is ~15 s per
+  2048 px texture. mondo runs the optimizer + manifest + uploads; then checks F3 "KTX2 textures on (...)" and the MEM line.
