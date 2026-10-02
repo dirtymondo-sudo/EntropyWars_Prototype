@@ -281,3 +281,7 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   main menu" were not the renderer: the 15-door list overflows a short window and Firefox on a Mac with a mouse plugged
   in paints a classic scrollbar down the middle of the title scene — styles-base.css hides it (`scrollbar-width: none`)
   and keeps the labels on one line. The horizontal lines are the retro pass's scanlines, unchanged.
+- 2026-10-02 R2 follow-up 2 ("the grey horizontal bars"): the main menu's ground sheet fogged to the biome's pale haze
+  while the dome's fog band only reaches below the horizon, so a pale strip stood across the frame on the night sky (worst
+  on the antarctica toss; r147 rendered it the same, so not an r186 regression). three-renderer.js `_menuHorizonColor`
+  fogs the ground to the dome's deep-space colour at the horizon instead; the far ridges and the igloo now sink into it.

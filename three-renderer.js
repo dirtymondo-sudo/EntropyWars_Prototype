@@ -61646,6 +61646,15 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         return B.sky;
     }
+    /* THE HORIZON (2026-10-02, mondo: "the grey horizontal bars"): the ground sheet runs 350 m out and used to fog to the
+       biome's pale haze (B.fog[0]) while the dome's own fog band only reaches BELOW the horizon (uFogTop ≈ 0.04 with a
+       pow 1.6 falloff), so a pale strip stood on the dark night sky across the whole frame, the far ridges as lighter
+       blocks inside it. The ground now fogs to the dome's deep-space colour at the horizon (_envDomeFS deepLo at this
+       night plus the nebula's mean lift), so the ice runs out into the sky with no line. */
+    function _menuHorizonColor(env, night) {
+        var n = Math.max(0, Math.min(1, night || 0)), neb = (env && env.nebula != null) ? env.nebula : 0.5;
+        return new THREE.Color(0.060 - 0.038 * n + 0.05 * neb, 0.040 - 0.026 * n + 0.04 * neb, 0.092 - 0.044 * n + 0.07 * neb);
+    }
     function _menuBuild(host) {
         var biome = _menuBiomePick(), B = _MENU_BIOMES[biome];
         var U = _hqUnits();
@@ -61663,8 +61672,9 @@ const ThreeRenderer = (function () {
         };
         var sc = M.scene;
         var env = _menuSkyEnv(B);
-        sc.background = new THREE.Color((env.fog && env.fog.color != null) ? env.fog.color : 0x07070a);
-        sc.fog = new THREE.FogExp2(B.fog[0], B.fog[1]);
+        var hz = _menuHorizonColor(env, B.night);
+        sc.background = hz.clone();
+        sc.fog = new THREE.FogExp2(hz, B.fog[1]);     // B.fog[0], the pale haze, is history: see _menuHorizonColor
         sc.add(M.doorGroup);
         /* light: a dusk hemisphere, a low sun from behind the camera's left,
            and the light out of the doorway (driven by the open amount) */

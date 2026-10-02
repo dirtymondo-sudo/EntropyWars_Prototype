@@ -573,3 +573,9 @@ dead at parse, the raw party builder DOM showing with no title). Chromium tolera
 scene look's `bloomStr` nor the HQ floor (0.42) can switch it back on; the slider still raises it. The grey vertical bar
 on the main menu was Firefox's classic scrollbar on the overflowing `.mm-buttons` list (15 doors in a short window):
 styles-base.css `scrollbar-width: none` + the webkit twin, and `.mm-label` is `white-space: nowrap` (PLAY VS CPU wrapped).
+
+**R2 follow-up 2 (2026-10-02, "the grey horizontal bars"):** the menu scene's FogExp2 colour was the biome's pale haze
+(`B.fog[0]`), the dome's fog band (`uFogTop` 0.04, pow 1.6) never reaches the horizon, so the 350 m ground sheet ended in a
+pale strip across the dark sky, the ice ridges as lighter blocks inside it. `_menuHorizonColor(env, night)` = the dome's
+`deepLo` at that night plus the nebula's mean lift; the ground and `scene.background` fog to it. Same on r147 (checked with
+the reference probe), so a design seam, not an r186 regression.
