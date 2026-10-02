@@ -297,3 +297,10 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   position/index/draw-range/group change drops the tree; a second change marks the geometry live and it stays plain), never
   skinned/morphing/partial-draw-range. Same hits as plain three in a node check (400 rays, 0 diffs), ~4× faster. The F3 lens
   gains a "Pick (raycasts)" line. Off: `window.EW_NO_BVH`.
+- 2026-10-02 THE BANDS (mondo's Firefox, M1, after R2: grey stripes over every floor, menu and battle; Post FX off and then
+  Ambient Occlusion off cleared them; Chrome never showed them): three-post.js's AO renders at half size, so each AO pixel
+  centre sits on the corner of four depth texels read NEAREST, and the tie went to whichever row the uv rounding picked.
+  r148+ draws a full-screen pass as one big triangle (uv 0..2), and on his GPU that rounding drifts down the screen, so bands
+  of rows rebuilt their normal from the wrong neighbours and the floor occluded itself. The AO shader now takes its depth
+  texel from gl_FragCoord and reads every depth at a texel centre (`uDRes`). Lesson: any pass that samples a NEAREST
+  texture at a size ratio must snap to texel centres itself.

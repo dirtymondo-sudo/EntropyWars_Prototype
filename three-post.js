@@ -2150,24 +2150,26 @@ const ThreePost = (function () {
         return k;
     })();
     var _SsaoAoShader = {
-        uniforms: { tDepth: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uProj: { value: new THREE.Matrix4() }, uProjInv: { value: new THREE.Matrix4() },
+        uniforms: { tDepth: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uDRes: { value: new THREE.Vector2(1, 1) }, uProj: { value: new THREE.Matrix4() }, uProjInv: { value: new THREE.Matrix4() },
             uRadius: { value: 1.0 }, uBias: { value: 0.02 }, uStrength: { value: 0.85 }, uSamples: { value: 12 }, uKernel: { value: _SSAO_KERNEL } },
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
         fragmentShader: [
-            'uniform sampler2D tDepth; uniform vec2 uRes; uniform mat4 uProj; uniform mat4 uProjInv;',
+            'uniform sampler2D tDepth; uniform vec2 uRes; uniform vec2 uDRes; uniform mat4 uProj; uniform mat4 uProjInv;',
             'uniform float uRadius; uniform float uBias; uniform float uStrength; uniform float uSamples; uniform vec3 uKernel[16];',
             'varying vec2 vUv;',
-            'float rd(vec2 uv) { return texture2D(tDepth, uv).r; }',
+            '// every depth read lands on a texel CENTRE (THE BANDS, 2026-10-02): see the note on _SsaoPass',
+            'float rd(vec2 uv) { return texture2D(tDepth, (floor(uv * uDRes) + 0.5) / uDRes).r; }',
             'vec3 vp(vec2 uv, float d) { vec4 c = vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); vec4 v = uProjInv * c; return v.xyz / v.w; }',
             'void main() {',
-            '  float d = rd(vUv);',
+            '  vec2 uv0 = (floor(gl_FragCoord.xy * (uDRes / uRes)) + 0.5) / uDRes;',
+            '  float d = rd(uv0);',
             '  if (d >= 0.99995) { gl_FragColor = vec4(1.0); return; }',
-            '  vec3 p = vp(vUv, d);',
-            '  vec2 tx = 1.0 / uRes;',
+            '  vec3 p = vp(uv0, d);',
+            '  vec2 tx = 1.0 / uDRes;',
             '  // the normal off the depth: the neighbour on each axis that lies closer in depth (an edge never bends it)',
-            '  float dr = rd(vUv + vec2(tx.x, 0.0)), dl = rd(vUv - vec2(tx.x, 0.0)), du = rd(vUv + vec2(0.0, tx.y)), dd = rd(vUv - vec2(0.0, tx.y));',
-            '  vec3 px = (abs(dr - d) < abs(dl - d)) ? (vp(vUv + vec2(tx.x, 0.0), dr) - p) : (p - vp(vUv - vec2(tx.x, 0.0), dl));',
-            '  vec3 py = (abs(du - d) < abs(dd - d)) ? (vp(vUv + vec2(0.0, tx.y), du) - p) : (p - vp(vUv - vec2(0.0, tx.y), dd));',
+            '  float dr = rd(uv0 + vec2(tx.x, 0.0)), dl = rd(uv0 - vec2(tx.x, 0.0)), du = rd(uv0 + vec2(0.0, tx.y)), dd = rd(uv0 - vec2(0.0, tx.y));',
+            '  vec3 px = (abs(dr - d) < abs(dl - d)) ? (vp(uv0 + vec2(tx.x, 0.0), dr) - p) : (p - vp(uv0 - vec2(tx.x, 0.0), dl));',
+            '  vec3 py = (abs(du - d) < abs(dd - d)) ? (vp(uv0 + vec2(0.0, tx.y), du) - p) : (p - vp(uv0 - vec2(0.0, tx.y), dd));',
             '  vec3 n = normalize(cross(px, py));',
             '  if (dot(n, -p) < 0.0) n = -n;',
             '  float ang = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) * 6.2831853;',
@@ -2212,6 +2214,14 @@ const ThreePost = (function () {
             '}'
         ].join('\n')
     };
+    /* THE BANDS (2026-10-02, mondo's Firefox on an M1 after R2: thick grey stripes across every floor, menu and battle, gone with
+       Post FX off; Chrome never showed them). The AO target is HALF the depth's size, so every AO pixel's centre lies exactly on
+       the corner between four depth texels, and the depth is read NEAREST: which texel a tie picks is down to the rounding of the
+       interpolated uv. three's full-screen pass is now ONE big triangle (uv 0..2, r148+) instead of r128's two-triangle quad, and
+       on that GPU the rounding drifts slowly down the screen — whole bands of rows read the texel row below instead of the one
+       above, the normal rebuilt from the neighbours flips, and a flat floor occludes itself in stripes (a vertical door or the
+       cube barely changes depth row to row, so it stayed clean). The AO now works out its own depth texel from gl_FragCoord
+       (an exact integer) and reads every depth at a texel centre, so nothing is left to rounding. */
     /* RENDERER_PLAN R2 (2026-10-02): three's Pass is a real class in the module add-ons (r148+) — `THREE.Pass.call(this)` throws on
        one, so the pass is a class too. No composer loaded → null, and the SSAO check below already skips it. */
     var _SsaoPass = (typeof THREE !== 'undefined' && THREE.Pass) ? class extends THREE.Pass { constructor() {
@@ -2235,7 +2245,7 @@ const ThreePost = (function () {
             if (!this.rt) { this.rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false }); this.rw = w; this.rh = h; }
             else if (w !== this.rw || h !== this.rh) { this.rt.setSize(w, h); this.rw = w; this.rh = h; }
             var au = this.aoMat.uniforms;
-            au.tDepth.value = dt; au.uRes.value.set(w, h);
+            au.tDepth.value = dt; au.uRes.value.set(w, h); au.uDRes.value.set(readBuffer.width, readBuffer.height);
             au.uProj.value.copy(cam.projectionMatrix); au.uProjInv.value.copy(cam.projectionMatrixInverse);
             renderer.setRenderTarget(this.rt); renderer.clear(true, false, false);
             this.fsq.material = this.aoMat; this.fsq.render(renderer);
