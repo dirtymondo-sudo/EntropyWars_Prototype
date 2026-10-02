@@ -2899,9 +2899,14 @@
             justify-content: flex-start;
             overflow-y: auto;
             overflow-x: hidden;
+            /* the list overflows a short window (15 doors) and a classic (non-overlay) scrollbar — Firefox on a Mac
+               with a mouse plugged in — painted a grey bar down the middle of the title scene (2026-10-02): the
+               list still wheel-scrolls, the bar stays hidden */
+            scrollbar-width: none;
             padding-left: 1.2em;   /* room for the › hover marker */
             margin-left: -1.2em;
         }
+        .void-menu .mm-buttons::-webkit-scrollbar { display: none; }
         .void-menu .mm-btn {
             display: flex;
             align-items: baseline;
@@ -2934,6 +2939,7 @@
             font-weight: 600;
             letter-spacing: 0.12em;
             text-transform: uppercase;
+            white-space: nowrap;   /* PLAY VS CPU wrapped to two lines beside its (invisible) description */
             color: #b7b0ca;
             transition: color 0.16s ease, text-shadow 0.16s ease;
         }

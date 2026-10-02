@@ -567,3 +567,9 @@ the rotunda, the city or a battle, rigs at the r147 scale. Details + the audit: 
 Hotfix the same day (index.html only): the `modulepreload` links must come AFTER the import map — a module fetch that
 starts first voids the map, and Firefox then refuses the bare `three` specifier (no window.THREE, every game script
 dead at parse, the raw party builder DOM showing with no title). Chromium tolerated it; the sandbox check missed it.
+
+**R2 follow-up (2026-10-02, after mondo's playtest):** bloom OFF by default — three-post.js `BLOOM_USER_STRENGTH = 0`, pref key
+`ew_bloomStrength_v4` (the old key's 0.01 is ignored), and `_bloomUser()` returns 0 while the player has it off so neither a
+scene look's `bloomStr` nor the HQ floor (0.42) can switch it back on; the slider still raises it. The grey vertical bar
+on the main menu was Firefox's classic scrollbar on the overflowing `.mm-buttons` list (15 doors in a short window):
+styles-base.css `scrollbar-width: none` + the webkit twin, and `.mm-label` is `white-space: nowrap` (PLAY VS CPU wrapped).

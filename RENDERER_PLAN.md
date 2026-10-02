@@ -274,3 +274,10 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   (the party builder's overlay) with no title. Chromium tolerated the order, so the sandbox check missed it. The
   import map now comes first, the preloads after it. Lesson: nothing module-related (preload, module script) may
   precede the import map, in any browser.
+- 2026-10-02 R2 follow-up (mondo's playtest of R2: "it works now and it looks better"): bloom is OFF by default
+  (three-post.js `BLOOM_USER_STRENGTH = 0`, saved under a new `ew_bloomStrength_v4` key so the old stored 0.01 no longer
+  keeps the pass on, and `_bloomUser()` makes the player's OFF win over a scene look — before, a look's `bloomStr` or the
+  HQ floor of 0.42 overrode a tiny slider value, which is why 0.01 still glowed "bright as fuck"). The "weird lines on the
+  main menu" were not the renderer: the 15-door list overflows a short window and Firefox on a Mac with a mouse plugged
+  in paints a classic scrollbar down the middle of the title scene — styles-base.css hides it (`scrollbar-width: none`)
+  and keeps the labels on one line. The horizontal lines are the retro pass's scanlines, unchanged.
