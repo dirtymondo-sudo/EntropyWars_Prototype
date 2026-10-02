@@ -97,6 +97,22 @@ try/catch), GLTFLoader's `setMeshoptDecoder` (guarded). No `THREE.Geometry`, `Fa
   it includes must be re-verified against the target version; it has no `Geometry` use.
 - The `examples/js/` add-on URLs just change their version number: all ten files still ship in r147.
 
+**Found by mondo's first r147 playtest (2026-10-02, fixed in R1b):** the audit above diffed `THREE.*` names and the
+shader strings our hooks REPLACE; it did not diff the GLSL helpers our hooks CALL nor a method's semantics. Two
+slipped through:
+- `mapTexelToLinear()` is gone since r136 (an sRGB texture is decoded by the GPU, `SRGB8_ALPHA8`). The triplanar
+  terrain hook (`#include <map_fragment>` replacement, three-renderer.js ~42889) called it, so every field/city
+  ground program failed to compile: the ground vanished, the sky and bloom blew out the frame ("light and bloom
+  intense in the city"), and the invalid program drew with whatever was bound before it (the texture flicker).
+- `SkinnedMesh.boneTransform(index, target)` reads the vertex FROM `target` since r129 (r128 read it from the
+  geometry; r151+ names it `applyBoneTransform`). `_skinnedBBox` passed an unset target, every vertex skinned to
+  (0,0,0), the box collapsed, and the fit scale went to ~5000× with the model 130 m up ("the rigged models don't
+  show"; the sedan has no bones, so it was fine). Fix: `v.fromBufferAttribute(pos, i)` first, `applyBoneTransform`
+  when it exists.
+Lesson for R2: grep every GLSL identifier our shader strings call against the target version's chunks (the
+scratchpad script did that for FUNCTIONS; `mapTexelToLinear` was a per-material `#define`), and read the
+migration guide for every method the renderer calls on three objects, not only for removed names.
+
 **Breaks at r148-current (Phase R2 fixes):**
 - **r148 deleted `examples/js/`.** Add-ons exist only as ES modules (`examples/jsm/`). The game's 35
   scripts are classic scripts that read the `THREE` global. Fix without new files: index.html gets ONE
@@ -210,3 +226,11 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   chunks, all still in r147, so it is untouched. Offline load check (sandbox, r147 from npm, stand-in textures): the HQ
   rotunda with the post stack (bloom, SMAA, retro pass) and the field strike into a battle both run with no new console
   error or THREE warning; `THREE.REVISION` 147, the height-fog patch present in both chunks. mondo playtests before R2.
+- 2026-10-02 R1b (zip renderer/ENTROPY_WARS_R147B.zip, three-renderer.js only): mondo's playtest found the rigged
+  models missing, texture flicker and a blown-out city. Both causes are in §2 "Found by mondo's first r147
+  playtest": the terrain hook's `mapTexelToLinear` (program failed) and `boneTransform`'s new target-in semantics
+  (bounds collapsed, scale 5000×). Reproduced in the sandbox with the real CDN assets through the proxy (the
+  harness's NPM_MIRROR pointed at the scratchpad tarball, `VER=0.128.0|0.147.0`): r128 units at world scale 0.77,
+  r147 at 5364 before the fix; the triplanar program listed in `renderer.info.programs` with diagnostics. The
+  sandbox cannot show HQ NPC rigs (their GLBs time out behind the 60 s gate at ~2 fps), so the battle probe
+  (playtest_field_offline.js + CDN routes) is the rig check.
