@@ -2209,18 +2209,18 @@ const ThreePost = (function () {
             '}'
         ].join('\n')
     };
-    function _SsaoPass() {
-        THREE.Pass.call(this);
+    /* RENDERER_PLAN R2 (2026-10-02): three's Pass is a real class in the module add-ons (r148+) — `THREE.Pass.call(this)` throws on
+       one, so the pass is a class too. No composer loaded → null, and the SSAO check below already skips it. */
+    var _SsaoPass = (typeof THREE !== 'undefined' && THREE.Pass) ? class extends THREE.Pass { constructor() {
+        super();
         this.needsSwap = true; this.camera = null; this.rt = null; this.rw = 0; this.rh = 0; this.half = true;
         this.aoMat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_SsaoAoShader.uniforms), vertexShader: _SsaoAoShader.vertexShader, fragmentShader: _SsaoAoShader.fragmentShader, depthTest: false, depthWrite: false });
         this.aoMat.uniforms.uKernel.value = _SSAO_KERNEL;
         this.mixMat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_SsaoMixShader.uniforms), vertexShader: _SsaoMixShader.vertexShader, fragmentShader: _SsaoMixShader.fragmentShader, depthTest: false, depthWrite: false });
         this.fsq = new THREE.Pass.FullScreenQuad(this.aoMat);
     }
-    _SsaoPass.prototype = Object.assign(Object.create(THREE.Pass.prototype), {
-        constructor: _SsaoPass,
-        setSize: function (w, h) { this.fw = w; this.fh = h; },
-        render: function (renderer, writeBuffer, readBuffer) {
+        setSize(w, h) { this.fw = w; this.fh = h; }
+        render(renderer, writeBuffer, readBuffer) {
             var cam = this.camera, dt = readBuffer.depthTexture;
             var mu = this.mixMat.uniforms;
             if (!cam || !dt) {   // no depth to read: the colour passes through untouched
@@ -2240,9 +2240,9 @@ const ThreePost = (function () {
             mu.uTexel.value.set(1 / w, 1 / h); mu.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); mu.uOrtho.value = cam.isOrthographicCamera ? 1 : 0;
             renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); if (this.clear) renderer.clear();
             this.fsq.material = this.mixMat; this.fsq.render(renderer);
-        },
-        dispose: function () { if (this.rt) this.rt.dispose(); this.aoMat.dispose(); this.mixMat.dispose(); }
-    });
+        }
+        dispose() { if (this.rt) this.rt.dispose(); this.aoMat.dispose(); this.mixMat.dispose(); }
+    } : null;
     var _ssaoPass = null, _ssaoAvail = false;
     var _ssao = { scaleHq: 1, scaleBattle: 1 };
     function _ssaoRules() { return (typeof window !== 'undefined' && window.HQ_LIGHT_RULES && window.HQ_LIGHT_RULES.ssao) || {}; }
@@ -2313,8 +2313,11 @@ const ThreePost = (function () {
         // Sun shadows (the depth pass is skipped entirely at quality 'off').
         // PCFSoft = the soft-edged look; meshes opt in via castShadow/
         // receiveShadow flags set by the renderer after each rebuild.
+        // RENDERER_PLAN R2: the current three.js dropped PCFSoftShadowMap (its PCF now filters through a hardware shadow
+        // sampler, which IS the soft look) and warns + falls back to PCF itself; read the chunk so we pick PCF outright there.
         renderer.shadowMap.enabled = (_shadowQuality !== 'off');
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        var _pcfSoft = !!(THREE.PCFSoftShadowMap !== undefined && THREE.ShaderChunk && THREE.ShaderChunk.shadowmap_pars_fragment && THREE.ShaderChunk.shadowmap_pars_fragment.indexOf('SHADOWMAP_TYPE_PCF_SOFT') >= 0);
+        renderer.shadowMap.type = _pcfSoft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 
         _initLighting(scene);
 

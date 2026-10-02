@@ -1918,6 +1918,68 @@ const ThreeRenderer = (function () {
         } catch (e) { console.warn('[ThreeRenderer] the height fog patch failed', e); return false; }
     }
     _ewHeightFogPatch();
+
+    /* RENDERER_PLAN R2 (2026-10-02): r152 renamed a texture's `encoding` to `colorSpace` and the constants with it (the current
+       three.js has no sRGBEncoding at all). One pair of helpers reads / writes whichever spelling this three.js has, so every
+       site in the file stays one line and r147 keeps working from the same source. "Linear" means NOT sRGB-tagged: three's
+       untagged default (NoColorSpace) already decodes nothing, so it is left alone instead of forced to a re-upload. */
+    var _EW_CS = (typeof THREE !== 'undefined' && THREE.SRGBColorSpace !== undefined);
+    function _ewTexIsSRGB(tex) { return !!tex && (_EW_CS ? tex.colorSpace === THREE.SRGBColorSpace : tex.encoding === THREE.sRGBEncoding); }
+    /* tags the texture sRGB-encoded (srgb true) or linear (false); returns true when the tag CHANGED (the caller sets needsUpdate) */
+    function _ewTexSetSRGB(tex, srgb) {
+        if (!tex) return false;
+        if (_EW_CS) {
+            if (srgb) { if (tex.colorSpace === THREE.SRGBColorSpace) return false; tex.colorSpace = THREE.SRGBColorSpace; return true; }
+            if (tex.colorSpace !== THREE.SRGBColorSpace) return false; tex.colorSpace = THREE.LinearSRGBColorSpace; return true;
+        }
+        var enc = srgb ? THREE.sRGBEncoding : THREE.LinearEncoding;
+        if (tex.encoding === enc) return false; tex.encoding = enc; return true;
+    }
+    function _ewTexCSKey(tex) { return _EW_CS ? tex.colorSpace : tex.encoding; }
+
+    /* RENDERER_PLAN R2 (2026-10-02): r155 made lights "physically correct" by default and r165 removed the legacy switch — light
+       intensities lost their × π, and point / spot fall-off became inverse-square (decay 2, a pow4 cutoff) instead of r128's
+       linear ramp to `distance` with decay 1. Every light in the game (48 constructions here, more in three-post.js / three-vfx.js
+       / editor.js, HQ_LIGHT_RULES) was tuned on r128, so r128's maths is patched back into the light chunk ONCE at load — the
+       renderer only multiplies colour × intensity now; the π and the ramp live in GLSL — and PointLight / SpotLight default their
+       decay to 1 again (an explicit decay is kept). Revision-guarded: r147 still builds the legacy path itself. */
+    var _ewLegacyLightsPatched = false;
+    function _ewLegacyLightPatch() {
+        if (_ewLegacyLightsPatched || typeof THREE === 'undefined' || !THREE.ShaderChunk || !(parseInt(THREE.REVISION, 10) >= 155)) return false;
+        _ewLegacyLightsPatched = true;
+        try {
+            var SC = THREE.ShaderChunk, s = SC.lights_pars_begin || '';
+            if (s.indexOf('EW_LEGACY_LIGHTS') < 0) {
+                var hits = 0, sub = function (a, b) { if (s.indexOf(a) >= 0) { hits++; s = s.replace(a, b); } };
+                s = s.replace(/float getDistanceAttenuation\([^{]*\{[\s\S]*?\n\}/, function () {
+                    hits++;
+                    return 'float getDistanceAttenuation( const in float lightDistance, const in float cutoffDistance, const in float decayExponent ) {\n' +
+                        '\tif ( cutoffDistance > 0.0 && decayExponent > 0.0 ) {\n\t\treturn pow( saturate( - lightDistance / cutoffDistance + 1.0 ), decayExponent );\n\t}\n\treturn 1.0;\n}';
+                });
+                sub('vec3 irradiance = ambientLightColor;', 'vec3 irradiance = PI * ambientLightColor;');
+                sub('light.color = directionalLight.color;', 'light.color = PI * directionalLight.color;');
+                sub('light.color = pointLight.color;', 'light.color = PI * pointLight.color;');
+                sub('light.color = spotLight.color * spotAttenuation;', 'light.color = PI * spotLight.color * spotAttenuation;');
+                sub('vec3 irradiance = mix( hemiLight.groundColor, hemiLight.skyColor, hemiDiffuseWeight );', 'vec3 irradiance = PI * mix( hemiLight.groundColor, hemiLight.skyColor, hemiDiffuseWeight );');
+                sub('light.color = sunLight.color;', 'light.color = PI * sunLight.color;');   // r186's SunLight (unused here; kept consistent)
+                if (hits < 6) console.warn('[ThreeRenderer] the legacy light patch found only ' + hits + ' of its anchors in three.js ' + THREE.REVISION);
+                SC.lights_pars_begin = '// EW_LEGACY_LIGHTS\n' + s;
+                var lm = SC.lights_fragment_maps || '';   // r128 scaled a lightmap by π too (lightMapIntensity * scaleFactor)
+                if (lm.indexOf('lightMapTexel.rgb * lightMapIntensity;') >= 0) SC.lights_fragment_maps = lm.replace('lightMapTexel.rgb * lightMapIntensity;', 'lightMapTexel.rgb * lightMapIntensity * PI;');
+            }
+            var PL = THREE.PointLight, SL = THREE.SpotLight;
+            if (PL && !PL._ewLegacyDecay) {
+                THREE.PointLight = class extends PL { constructor(color, intensity, distance, decay) { super(color, intensity, distance, decay === undefined ? 1 : decay); } };
+                THREE.PointLight._ewLegacyDecay = true;
+            }
+            if (SL && !SL._ewLegacyDecay) {
+                THREE.SpotLight = class extends SL { constructor(color, intensity, distance, angle, penumbra, decay) { super(color, intensity, distance, angle, penumbra, decay === undefined ? 1 : decay); } };
+                THREE.SpotLight._ewLegacyDecay = true;
+            }
+            return true;
+        } catch (e) { console.warn('[ThreeRenderer] the legacy light patch failed', e); return false; }
+    }
+    _ewLegacyLightPatch();
     /* the ONE write: floor (world units), the fall-off height (world units), the share at the floor, the distance density (per unit) */
     function _ewHeightFogSet(floorY, h, amount, den) { _EW_HFOG.x = floorY || 0; _EW_HFOG.y = (h > 0) ? 1 / h : 1; _EW_HFOG.z = amount || 0; _EW_HFOG.w = den || 0; }
     /* ══ THE LIGHT PASS 2.3: THE ROOM-BOX AO (analytic ambient occlusion for a box room's shell + props) ══
@@ -2697,12 +2759,17 @@ const ThreeRenderer = (function () {
                 'void main() {'
             );
 
+            /* RENDERER_PLAN R2: the current three.js declares `vUv` only for anisotropy (every map reads its own `vMapUv`
+               since r151), so the hook carries its OWN uv varying — set right after <uv_vertex>, where `uv` is in scope. */
+            shader.vertexShader = shader.vertexShader.replace('void main() {', 'varying vec2 vEwUv;\nvoid main() {')
+                .replace('#include <uv_vertex>', '#include <uv_vertex>\nvEwUv = uv;');
+            shader.fragmentShader = shader.fragmentShader.replace('void main() {', 'varying vec2 vEwUv;\nvoid main() {');
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <color_fragment>',
                 '#include <color_fragment>\n' +
                 '{\n' +
-                '  vec4 w1 = texture2D(uWave1, vUv + uWaveOff1);\n' +
-                '  vec4 w2 = texture2D(uWave2, vUv + uWaveOff2);\n' +
+                '  vec4 w1 = texture2D(uWave1, vEwUv + uWaveOff1);\n' +
+                '  vec4 w2 = texture2D(uWave2, vEwUv + uWaveOff2);\n' +
                 '  diffuseColor.rgb = mix(diffuseColor.rgb, w1.rgb * uWaveTint, uWaveOp1 * w1.a);\n' +
                 '  diffuseColor.rgb = mix(diffuseColor.rgb, w2.rgb * uWaveTint, uWaveOp2 * w2.a);\n' +
                 '}\n'
@@ -12239,8 +12306,8 @@ const ThreeRenderer = (function () {
         var tmp = new THREE.Box3();
         root.traverse(function (n) {
             if (!n.isMesh || !n.geometry) return;
-            if (n.isSkinnedMesh && typeof n.boneTransform === 'function'
-                && n.geometry.attributes && n.geometry.attributes.position) {
+            if (n.isSkinnedMesh && (typeof n.applyBoneTransform === 'function' || typeof n.boneTransform === 'function')
+                && n.geometry.attributes && n.geometry.attributes.position) {   // R2: r151+ has only applyBoneTransform — an old gate here skipped the skinned path and the fit scale blew up (94×)
                 if (n.skeleton && n.skeleton.update) n.skeleton.update();
                 var pos = n.geometry.attributes.position;
                 // Sample stride keeps huge meshes cheap; bounds of a body mesh
@@ -12453,11 +12520,10 @@ const ThreeRenderer = (function () {
                 var src = Array.isArray(n.material) ? n.material : [n.material];
                 var out = src.map(function (sm) {
                     var tex = (sm && sm.map) ? sm.map : null;
-                    if (tex && tex.encoding !== THREE.LinearEncoding) {
+                    if (_ewTexSetSRGB(tex, false)) {
                         // Renderer output is linear like every other texture in
                         // the game — drop the glTF sRGB decode so the bake isn't
                         // darkened.
-                        tex.encoding = THREE.LinearEncoding;
                         tex.needsUpdate = true;
                     }
                     var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
@@ -31567,6 +31633,9 @@ const ThreeRenderer = (function () {
 
         var w = _parentEl.clientWidth || 960, h = _parentEl.clientHeight || 540;
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
+        /* RENDERER_PLAN R2: r152 made the default output sRGB; r128's was linear and this whole "unmanaged" pipeline relies on
+           it (textures tagged linear, three-post.js grades the linear target itself). Pin r128's output so the values stay. */
+        if (_EW_CS) renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
         /* Pixel ratio: saved pref (pause-menu Fast/Native) wins; otherwise low
            performance mode (mobile OOM guard) renders at 1x — every composer
            target and the drawing buffer scale with this, so it's the single
@@ -35484,7 +35553,6 @@ const ThreeRenderer = (function () {
         return uv;
     }
 
-    function _ccEncoding(unmanaged) { return unmanaged ? THREE.LinearEncoding : THREE.sRGBEncoding; }
     function _ccHex(hex) { var c = new THREE.Color(hex); return [c.r, c.g, c.b]; }
     function _ccLum(rgb) { return rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114; }
     function _ccCanvas(w, h) {
@@ -35551,7 +35619,7 @@ const ThreeRenderer = (function () {
             } catch (ex) { console.warn('[ThreeRenderer] fabric normalise failed (tainted canvas?):', url); }
             var tex = new THREE.CanvasTexture(cnv);
             tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-            tex.encoding = _ccEncoding(unmanaged);
+            _ewTexSetSRGB(tex, !unmanaged);
             tex.anisotropy = 4;
             var rep = 12;   // tiles per METRE of cloth (rev 5: the garment UVs are in metres — see THE CLOTH FRAME)
             if (typeof EW_FABRICS !== 'undefined') for (var fk in EW_FABRICS) { if (EW_FABRICS[fk].file && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fk) === url) { rep = EW_FABRICS[fk].repeat || rep; break; } }
@@ -35677,7 +35745,7 @@ const ThreeRenderer = (function () {
         g.putImageData(id, 0, 0);
         var tex = new THREE.CanvasTexture(cnv);
         tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.encoding = _ccEncoding(unmanaged);
+        _ewTexSetSRGB(tex, !unmanaged);
         tex.anisotropy = 4;
         var rep = (def && def.repeat) || 12;
         tex.repeat.set(rep, rep);
@@ -35867,7 +35935,7 @@ const ThreeRenderer = (function () {
         } catch (ex) { return null; }
         var tex = new THREE.CanvasTexture(cnv);
         tex.flipY = src.flipY; tex.wrapS = src.wrapS; tex.wrapT = src.wrapT;
-        tex.encoding = _ccEncoding(unmanaged);
+        _ewTexSetSRGB(tex, !unmanaged);
         tex.anisotropy = 4;
         tex._ew_shared = true;
         _ccHairTexCache[key] = tex;
@@ -36243,7 +36311,7 @@ const ThreeRenderer = (function () {
         var tex = new THREE.CanvasTexture(cnv);
         tex.wrapS = THREE.RepeatWrapping;  // the seam triangles read u in [1, 1.5]
         tex.flipY = false;                 // glTF UV convention (origin top-left)
-        tex.encoding = _ccEncoding(unmanaged);
+        _ewTexSetSRGB(tex, !unmanaged);
         tex.anisotropy = 4;
         tex._ew_shared = true;             // owned by the rig, not _disposeR
         return tex;
@@ -39473,7 +39541,7 @@ const ThreeRenderer = (function () {
             r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         } catch (e) { return null; }
         r.setClearColor(0x000000, 0);
-        r.outputEncoding = THREE.sRGBEncoding;
+        if (_EW_CS) r.outputColorSpace = THREE.SRGBColorSpace; else r.outputEncoding = THREE.sRGBEncoding;
         r.toneMapping = THREE.ACESFilmicToneMapping;
         r.toneMappingExposure = 1.05;
         // Mobile: the viewer is a SECOND WebGL context living alongside the
@@ -39537,7 +39605,7 @@ const ThreeRenderer = (function () {
         _cv = {
             renderer: r, canvas: cnv, scene: scene, cam: cam, stage: stage,
             blob: blob, circle: circle, circleMat: circleMat,
-            host: null, raf: 0, clock: new THREE.Clock(),
+            host: null, raf: 0, clock: { _t: 0, getDelta: function () { var n = performance.now(), d = this._t ? (n - this._t) / 1000 : 0; this._t = n; return d; } },   // R2: the current three.js deprecates THREE.Clock; only getDelta was used
             model: null, mixer: null, url: null,
             // view state — the model NEVER rotates on its own (owner call
             // 2026-07-26b): only the player's drag moves it. Default polar 0
@@ -39836,12 +39904,12 @@ const ThreeRenderer = (function () {
                 var out = src.map(function (sm) {
                     if (!sm) return sm;
                     var pbr = !!(sm.isMeshStandardMaterial || sm.isMeshPhysicalMaterial);
-                    var flip = !!(sm.map && sm.map.encoding !== THREE.sRGBEncoding);
+                    var flip = !!(sm.map && !_ewTexIsSRGB(sm.map));
                     if (!pbr && !flip) return sm;
                     var mat2 = sm.clone();
                     if (flip) {
                         var tex2 = sm.map.clone();
-                        tex2.encoding = THREE.sRGBEncoding;
+                        _ewTexSetSRGB(tex2, true);
                         tex2.needsUpdate = true;
                         mat2.map = tex2;
                         if (sm.emissiveMap === sm.map) mat2.emissiveMap = tex2;
@@ -41308,7 +41376,7 @@ const ThreeRenderer = (function () {
         var cached = _hqPropMatCache.get(sm.uuid);
         if (cached) return cached;
         var tex = sm.map || null;
-        if (tex && tex.encoding !== THREE.LinearEncoding) { tex.encoding = THREE.LinearEncoding; tex.needsUpdate = true; }
+        if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
@@ -59917,7 +59985,7 @@ const ThreeRenderer = (function () {
     }
     function _hqBatchTexKey(t) {
         if (!t) return '';
-        return [_hqBatchId(t.image), t.repeat.x, t.repeat.y, t.offset.x, t.offset.y, t.center.x, t.center.y, t.rotation, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, t.encoding, t.flipY, t.format, t.type, t.premultiplyAlpha, t.generateMipmaps, t.matrixAutoUpdate].join(',');
+        return [_hqBatchId(t.image), t.repeat.x, t.repeat.y, t.offset.x, t.offset.y, t.center.x, t.center.y, t.rotation, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, _ewTexCSKey(t), t.flipY, t.format, t.type, t.premultiplyAlpha, t.generateMipmaps, t.matrixAutoUpdate].join(',');
     }
     /* the look: two materials with one key draw the same */
     function _hqBatchMatKey(m) {

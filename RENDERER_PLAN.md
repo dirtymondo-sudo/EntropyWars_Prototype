@@ -158,25 +158,46 @@ mondo playtests: HQ height fog is there, shadows, bloom, SMAA, a rigged unit ani
 
 ## 4. Phase R2 — r147 → current (the module shim, one copy of three.js)
 
-1. index.html: the import map's version becomes the current release (pin the exact number the day R2
-   starts; it is r16x+ and newer than the sky shader's r160, so the sky shader is re-checked too). The
-   inline module shim imports `three`, `EffectComposer`, `RenderPass`, `ShaderPass`, `UnrealBloomPass`,
-   `SMAAPass`, `CopyShader`, `LuminosityHighPassShader`, `FXAAShader`, `SMAAShader`, `GLTFLoader`,
-   `OBJLoader`, `MeshoptDecoder`, `SkeletonUtils`, `CSS2DRenderer`, `CSS2DObject` and assigns them onto
-   `window.THREE` under the names the game uses; every game `<script src>` gets `defer`. The r128 and
-   r147 script tags go.
-2. three-renderer.js + three-post.js: `encoding` → `colorSpace` (12 sites); `ColorManagement.enabled =
-   false` at boot; the light helper (intensity × π, decay 1) at every PointLight/SpotLight construction;
-   `renderer.useLegacyLights` not referenced (it is gone).
-3. `THREE.MeshLine.js`: chunk names re-verified.
-4. The console sweep as in R1.
-5. `BatchedMesh` is now available: the static batch (`R.batchP`, the "why not merged" list in the F3
-   lens) gets a BatchedMesh path for props that differ in geometry but share a material. That is the
-   payoff of R2 and goes in as the same PR only if it is small; else it is R2b.
-6. Deliverable: index.html + three-renderer.js + three-post.js (+ MeshLine) in one zip.
+Built 2026-10-02 against three@0.186.1 (what shipped; the plan's wording before the build is in git):
 
-mondo playtests: the picture matches R1 (colours, light levels), the sky shader still runs, the F3 lens
-shows fewer draws downtown if step 5 landed.
+1. index.html: ONE import map (`three` → `build/three.module.js`, `three/addons/` → `examples/jsm/`, 0.186.1) and
+   ONE inline `<script type="module">` shim right where the r147 script tags were. It imports `three` plus
+   EffectComposer, Pass + FullScreenQuad, RenderPass, ShaderPass, UnrealBloomPass, SMAAPass, CopyShader,
+   LuminosityHighPassShader, FXAAShader, the three SMAA shaders, CSS2DRenderer + CSS2DObject, OBJLoader,
+   GLTFLoader, SkeletonUtils (the namespace) and MeshoptDecoder, copies the frozen namespace into a plain object
+   (`Object.assign({}, THREE)` — the game patches ShaderChunk and swaps PointLight on its copy), hangs the add-ons
+   on it under the examples/js names (`THREE.Pass.FullScreenQuad` included), sets `ColorManagement.enabled =
+   false`, and assigns `window.THREE` + `window.MeshoptDecoder`. Every classic `<script src>` after it carries
+   `defer` (a module script is deferred, so the shim runs first only if the game scripts are deferred too); the
+   three inline blocks that test for a deferred script's globals (the data.js fallback, the sprites.js fallbacks,
+   the first-launch profile hook) became `type="module"` so they keep running after the script they test. The
+   sky shader's own module now shares that one copy (it was a second, r160 copy). Two `modulepreload` links.
+2. three-renderer.js: `_ewTexSetSRGB` / `_ewTexIsSRGB` / `_ewTexCSKey` (after `_ewHeightFogPatch`) replace the
+   twelve `encoding` sites and work on both spellings; the board renderer pins `outputColorSpace =
+   LinearSRGBColorSpace` (r152's default is sRGB; r128's was linear and the whole pipeline assumes it), the
+   creator viewer `SRGBColorSpace`. `_ewLegacyLightPatch` (revision ≥ 155 only) rewrites `lights_pars_begin`
+   ONCE at load: `getDistanceAttenuation` back to r128's linear ramp, `PI *` on the ambient / hemisphere /
+   directional / point / spot (and sun) colours, `lightMapIntensity * PI`, and replaces `THREE.PointLight` /
+   `THREE.SpotLight` with subclasses whose decay defaults to 1 — so the per-light helper the plan first
+   described was not needed: no light construction changed. The r186 load check then found two more breaks the
+   static audit cannot see: the current three.js declares `vUv` only for anisotropy (every map reads its own
+   `vMapUv` since r151), so the water hook on MeshLambertMaterial (`uWave1/uWave2` after `<color_fragment>`)
+   failed to compile — it now carries its own `vEwUv` varying; and `_skinnedBBox` gated its skinned path on
+   `typeof n.boneTransform`, gone since r151, so every rig measured its naive box and the fit scale went 94× —
+   the gate accepts `applyBoneTransform`. The creator viewer's `THREE.Clock` (deprecated for `Timer`) became a
+   two-line delta timer.
+3. three-post.js: `_SsaoPass` is a class extending `THREE.Pass` (the module Pass is a class; `Pass.call(this)`
+   throws); `PCFSoftShadowMap` is gone in the current three.js (its PCF filters through a hardware shadow
+   sampler, which IS the soft look) — the shadow type reads the chunk for `SHADOWMAP_TYPE_PCF_SOFT` and picks
+   PCF outright when it is absent, instead of three's per-renderer warning + fallback. `readRenderTargetPixels`
+   still exists (the AE measure is untouched); SMAAPass ignores its old size arguments.
+4. `THREE.MeshLine.js`: its ten chunk names all exist in r186; untouched.
+5. `BatchedMesh` for the static batch: NOT in this PR (the plan said "only if small"). It is R2b, after mondo's
+   playtest of R2 — the batch path (`R.batchP`) and the F3 lens are the starting point.
+6. Deliverable: index.html (repo, Render) + three-renderer.js + three-post.js (the zip).
+
+mondo playtests: the picture matches R1 (colours, light levels, shadows), the sky shader still runs, the
+creator viewer, the water tiles and the rigs all look as before.
 
 ## 5. Phase R3 — KTX2 textures
 
@@ -234,3 +255,16 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   r147 at 5364 before the fix; the triplanar program listed in `renderer.info.programs` with diagnostics. The
   sandbox cannot show HQ NPC rigs (their GLBs time out behind the 60 s gate at ~2 fps), so the battle probe
   (playtest_field_offline.js + CDN routes) is the rig check.
+- 2026-10-02 R1b shipped WITHOUT a `?v=` bump (PR #47 left index.html alone), so the edge kept serving the R1
+  three-renderer.js and mondo saw "same exact issues". PR #48 bumped the token to `20261002-r147-02-cors`. Rule for
+  every phase: a changed R2 file always ships with a bumped index.html, even when index.html had nothing else to change.
+- 2026-10-02 R2 built against three@0.186.1 (zip renderer/ENTROPY_WARS_R186.zip = three-renderer.js + three-post.js;
+  index.html via the PR). What shipped is §4 above. The static audit (every `THREE.*` name, every removed prototype
+  method, every shader anchor our hooks replace, r147 vs r186) flagged only the encoding constants, `boneTransform`
+  and the `Pass` class; the sandbox load check with the real CDN assets (probe_r186.js rotunda + city,
+  probe_field_r186.js battle) found two more that no static check can: `vUv` undeclared in the water hook (the
+  current three.js declares it only for anisotropy) and the `typeof n.boneTransform` gate in `_skinnedBBox` (rigs
+  at fit scale 94× before, 0.75 after — r147 measured 0.77). After the fixes: REV 186, the height-fog patch in both
+  chunks, the legacy-light patch hits all 7 anchors, no program with diagnostics in the rotunda, the city or the
+  battle, no page error. Lesson, again: a `typeof x.oldName` guard fails SILENTLY on a rename — grep every
+  `typeof` gate on a three.js method when bumping. BatchedMesh is R2b, after mondo's playtest.

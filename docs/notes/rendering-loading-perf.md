@@ -539,3 +539,28 @@ and the invalid program drew with whatever was bound before it (the flicker). Dr
 `v.fromBufferAttribute(pos, i)` first and `applyBoneTransform` when it exists. Sandbox repro: the offline harness
 with CDN assets routed through the proxy (`route.fetch` + ACAO) and `VER=` picking the three.js tarball; battle
 units on r128 measure world scale 0.77, on r147 5364 before the fix. Details + the lesson: RENDERER_PLAN.md §2.
+
+## THE RENDERER PLAN R2 — three.js r147 → 0.186.1, the module shim (2026-10-02, zip renderer/ENTROPY_WARS_R186.zip)
+One copy of the current three.js, loaded as ES modules: index.html's import map (`three`, `three/addons/`) now
+points at 0.186.1 and an inline `<script type="module">` shim, where the r147 script tags were, imports three plus
+the add-ons the game uses (composer, Pass + FullScreenQuad, Render/Shader/UnrealBloom/SMAA passes, the shaders,
+CSS2D, OBJ/GLTF loaders, SkeletonUtils, MeshoptDecoder), copies the frozen namespace into a plain object, hangs the
+add-ons on it under the examples/js names (`THREE.Pass.FullScreenQuad` too), sets `ColorManagement.enabled = false`
+and assigns `window.THREE` / `window.MeshoptDecoder`. Every game `<script src>` carries `defer` (a module script is
+deferred, so the game scripts must be too, to keep running after it in document order); the three inline blocks that
+test a deferred script's globals (data.js fallback, sprites fallbacks, the first-launch profile hook) are modules now.
+The menu sky shader shares that copy (it was a second, r160 one). Rules for the look, all in three-renderer.js:
+`_ewTexSetSRGB` / `_ewTexIsSRGB` / `_ewTexCSKey` wrap `encoding` ↔ `colorSpace` (both spellings work, so the file
+still runs on r147); the board renderer pins `outputColorSpace = LinearSRGBColorSpace` (r152's default is sRGB), the
+creator viewer sRGB; `_ewLegacyLightPatch` (revision ≥ 155) puts r128's light maths back into `lights_pars_begin`
+ONCE at load (× π on every light colour, the linear fall-off ramp, lightmap × π) and swaps `THREE.PointLight` /
+`THREE.SpotLight` for subclasses whose decay defaults to 1 — no light construction changed. three-post.js: `_SsaoPass`
+is a class extending `THREE.Pass`; the shadow type reads the chunk for `SHADOWMAP_TYPE_PCF_SOFT` and picks PCF when
+it is gone (0.186.1 removed PCFSoft; its PCF samples a hardware shadow sampler = the soft look). Two breaks only the
+load check found: the current three.js declares `vUv` only for anisotropy (maps read `vMapUv`), so the water hook on
+MeshLambertMaterial carries its own `vEwUv` varying now; and `_skinnedBBox` gated on `typeof n.boneTransform` (gone
+since r151) — rigs fell to the naive box and the fit scale went 94×; the gate accepts `applyBoneTransform`. The
+creator viewer's deprecated `THREE.Clock` is a two-line delta timer. BatchedMesh for the static batch is R2b.
+Sandbox check: probe_r186.js / probe_field_r186.js (the R1b probes with the mirror regex `three@0.186.1/(.+)` →
+the npm tarball; modules need no special content type) — REV 186, the fog patch in both chunks, no failed program in
+the rotunda, the city or a battle, rigs at the r147 scale. Details + the audit: RENDERER_PLAN.md §2 and §4.
