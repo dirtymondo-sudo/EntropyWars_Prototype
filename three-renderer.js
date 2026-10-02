@@ -12247,7 +12247,11 @@ const ThreeRenderer = (function () {
                 // are set by many vertices, so sampling every 4th is safe.
                 var stride = pos.count > 20000 ? 4 : 1;
                 for (var i = 0; i < pos.count; i += stride) {
-                    n.boneTransform(i, v);
+                    /* r128's boneTransform read the vertex from the geometry itself; from r129 the TARGET carries the
+                       vertex in (and r151+ names it applyBoneTransform) — an unset target skinned (0,0,0) for every
+                       vertex, the box collapsed, and the fit scale exploded again (RENDERER_PLAN R1 fix 2). */
+                    v.fromBufferAttribute(pos, i);
+                    if (typeof n.applyBoneTransform === 'function') n.applyBoneTransform(i, v); else n.boneTransform(i, v);
                     v.applyMatrix4(n.matrixWorld);
                     box.expandByPoint(v);
                 }
@@ -42886,7 +42890,7 @@ const ThreeRenderer = (function () {
                 .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
             sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n texelColor = mapTexelToLinear( texelColor );\n diffuseColor *= texelColor;\n#endif')
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n vec4 cliffColor = texture2D( tCliff, triUy * 0.85 ) * triW.y + texture2D( tCliff, triUx * 0.85 ) * triW.x + texture2D( tCliff, triUz * 0.85 ) * triW.z;\n vec4 pathColor = texture2D( tPath, triUy * 1.15 ) * triW.y + texture2D( tPath, triUx * 1.15 ) * triW.x + texture2D( tPath, triUz * 1.15 ) * triW.z;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
         m.customProgramCacheKey = function () { return 'hqTerrainTri' + (palTex.length ? 'P' + palTex.length : ''); };

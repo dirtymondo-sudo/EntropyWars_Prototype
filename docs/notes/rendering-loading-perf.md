@@ -528,3 +528,14 @@ silently and dropped the HQ height fog. The audit script (r128 vs r147, every `T
 our `onBeforeCompile` hooks replace) found nothing else; `getInverse` / `RGBFormat` / `getMaxAnisotropy` were already
 guarded. The sandbox load check runs playtest_hq_offline.js with the mirror regexes pointed at `three@0.147.0`
 (`npm i --no-save three@0.147.0`): REV 147, fog patch in both chunks, the post stack renders.
+
+### R1b — the two r147 breaks the audit missed (2026-10-02, zip renderer/ENTROPY_WARS_R147B.zip)
+mondo's first r147 playtest: rigged models missing, textures flickering, the city blown out. (1) The triplanar
+terrain hook (`#include <map_fragment>` replacement) called `mapTexelToLinear()`, gone since r136 (the GPU decodes
+sRGB textures now): the ground program failed to compile, the ground vanished (the sky + bloom washed the frame),
+and the invalid program drew with whatever was bound before it (the flicker). Dropped the call. (2)
+`SkinnedMesh.boneTransform(index, target)` reads the vertex FROM `target` since r129 (r151+: `applyBoneTransform`);
+`_skinnedBBox` passed an unset target, the box collapsed and the fit scale went ~5000× (units 130 m up). Now
+`v.fromBufferAttribute(pos, i)` first and `applyBoneTransform` when it exists. Sandbox repro: the offline harness
+with CDN assets routed through the proxy (`route.fetch` + ACAO) and `VER=` picking the three.js tarball; battle
+units on r128 measure world scale 0.77, on r147 5364 before the fix. Details + the lesson: RENDERER_PLAN.md §2.
