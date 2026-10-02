@@ -319,3 +319,11 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   Standalone sheets (terrain, sprites, fabrics) stay PNG/WebP: the game reads many of them on the CPU (alpha picks, fabric
   painter, horizon aspect) and loads them flipY; they are a later step if the MEM line still needs it. Encoding is ~15 s per
   2048 px texture. mondo runs the optimizer + manifest + uploads; then checks F3 "KTX2 textures on (...)" and the MEM line.
+- 2026-10-02 R3 part 2 (mondo: no local copy of the bucket, and no re-sorting files into their folders): the optimizer gains
+  `--flat <dir> --root <mirror>`: every copy goes into ONE folder (`Assets/opt/<sha8 of the bucket path>_<name>.opt.glb`) with an
+  `alt.json` there; `manifest-assets.js` folds it into the manifest's `alt` map ({ original bucket path: copy's path }) and
+  `_asResolve` takes the copy from there when no sibling is listed (KTX2 rules unchanged). Claude baked the batch in the sandbox
+  from the CDN: every GLB the game names (sprites.js RACE_MODELS_3D model + library files, the HQ catalogue through
+  `hqCatalogueFilePath`, the literal URLs in the game scripts), minus the per-character `_Animation_*_withSkin.glb` clips (only
+  the fallback when the shared animation library fails). Normal maps went UASTC without RDO at ≤ 1024 px (RDO cost ~100 s a
+  texture); ORM ETC1S linear. mondo uploads the one folder + ASSET_MANIFEST.json.

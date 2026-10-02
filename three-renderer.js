@@ -1532,7 +1532,10 @@ const ThreeRenderer = (function () {
         if (!j || typeof j !== 'object' || !j.files || typeof j.files !== 'object') { _asMan = null; return null; }
         var n = 0, opt = 0, ktx = 0;
         for (var k in j.files) { n++; if (/\.opt\.glb$/i.test(k)) { opt++; if (j.files[k] && j.files[k][2] === 1) ktx++; } }
-        _asMan = { base: typeof j.base === 'string' && j.base ? j.base : AS_BASE, files: j.files, made: j.made || null, n: n, opt: opt, ktx: ktx };
+        /* R3: `alt` = { "<original bucket path>": "<its optimized copy's bucket path>" } — the copies Claude bakes in one flat
+           folder (Assets/opt/, optimize-assets.js --flat) instead of beside each original */
+        var alt = j.alt && typeof j.alt === 'object' ? j.alt : null;
+        _asMan = { base: typeof j.base === 'string' && j.base ? j.base : AS_BASE, files: j.files, alt: alt, made: j.made || null, n: n, opt: opt, ktx: ktx };
         return _asMan;
     }
     /* the manifest, once per page: the preload index.html starts (its href carries the ?v= token) or the bare url */
@@ -1561,11 +1564,13 @@ const ThreeRenderer = (function () {
     function _asResolve(url) {
         if (!_asMan || !/\.glb([?#]|$)/i.test(url) || /\.opt\.glb([?#]|$)/i.test(url) || !_asMeshoptOk()) return url;
         var k = _asKey(url); if (k == null) return url;
-        var oe = _asMan.files[k.replace(/\.glb$/i, '.opt.glb')];
+        var sib = k.replace(/\.glb$/i, '.opt.glb'), oe = _asMan.files[sib], ak = null;
+        if (!oe && _asMan.alt && _asMan.alt[k]) { ak = _asMan.alt[k]; oe = _asMan.files[ak]; }   // R3: the copy in the flat folder
         if (!oe) return url;
-        /* R3: a sibling with KTX2 textures only where they transcode (else the original, which always draws), and never for a
+        /* R3: a copy with KTX2 textures only where they transcode (else the original, which always draws), and never for a
            file whose textures the game reads back on the CPU (the creator's hair masks) */
         if (oe[2] === 1 && (!_ktxLoader() || _ktxCpuRead[k])) return url;
+        if (ak) return _asMan.base + ak.split('/').map(encodeURIComponent).join('/');
         return String(url).replace(/\.glb([?#]|$)/i, '.opt.glb$1');
     }
     /* the url the network is asked for: the manifest's sha rides as ?h= (the edge's cache key; R2 ignores it) */

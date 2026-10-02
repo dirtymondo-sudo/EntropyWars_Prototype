@@ -20,6 +20,9 @@
 //   - a prop whose `<name>.lod1.glb` (and `.lod2.glb`) is listed draws those levels far off (Phase 10, THE LOD LEVELS).
 //   - a `.opt.glb` whose textures are KTX2 (optimize-assets.js --ktx2, RENDERER_PLAN R3) gets a third field, 1:
 //     [bytes, sha, 1]. A browser that can't transcode KTX2 loads the original .glb instead of that .opt.glb.
+//   - an `alt.json` in the scanned folder (optimize-assets.js --flat: every copy in ONE folder, Assets/opt/) becomes the
+//     manifest's `alt` map { "<original bucket path>": "<copy's bucket path>" }: the game loads the copy in the original's
+//     place. alt.json itself is not listed.
 //
 // Repo-only tooling, zero dependencies.
 
@@ -41,7 +44,7 @@ function walk(dir, rel, out) {
         const p = path.join(dir, n), r = rel ? rel + '/' + n : n;
         const st = fs.statSync(p);
         if (st.isDirectory()) walk(p, r, out);
-        else if (KINDS.test(n)) out.push({ p, r, bytes: st.size });
+        else if (KINDS.test(n) && n !== 'alt.json') out.push({ p, r, bytes: st.size });
     }
     return out;
 }
@@ -77,7 +80,16 @@ function scan(dir, prefix) {
     return files;
 }
 
-function build(files, prev, prefix, merge) {
+/* every alt.json under dir (optimize-assets.js --flat), merged, keeping only copies the scan found */
+function scanAlt(dir, files) {
+    const alt = {};
+    const visit = d => { for (const n of fs.readdirSync(d)) { const p = path.join(d, n); if (fs.statSync(p).isDirectory()) visit(p); else if (n === 'alt.json') { try { Object.assign(alt, JSON.parse(fs.readFileSync(p, 'utf8'))); } catch (e) { console.warn('manifest: ' + p + ' does not parse'); } } } };
+    visit(dir);
+    for (const k of Object.keys(alt)) if (!files[alt[k]]) delete alt[k];
+    return alt;
+}
+
+function build(files, prev, prefix, merge, alt) {
     const out = {};
     if (merge && prev && prev.files) {
         const pf = normPrefix(prefix);
@@ -86,7 +98,11 @@ function build(files, prev, prefix, merge) {
     Object.assign(out, files);
     const sorted = {};
     for (const k of Object.keys(out).sort()) sorted[k] = out[k];
-    return { v: 1, made: new Date().toISOString(), base: BASE, files: sorted };
+    const A = Object.assign({}, merge && prev && prev.alt ? prev.alt : {}, alt || {});
+    for (const k of Object.keys(A)) if (!sorted[A[k]]) delete A[k];
+    const man = { v: 1, made: new Date().toISOString(), base: BASE, files: sorted };
+    if (Object.keys(A).length) man.alt = A;
+    return man;
 }
 
 /* the numbers the tool prints (and the test reads): how many files, how many GLBs have an optimized sibling */
@@ -96,6 +112,7 @@ function summary(man) {
     for (const k of keys) {
         bytes += man.files[k][0];
         if (/\.lod\d\.glb$/i.test(k)) { lod++; continue; }   // THE LOD LEVELS (Phase 10): optimize-assets.js --lod
+        if (/\.opt\.glb$/i.test(k) && Object.values(man.alt || {}).indexOf(k) >= 0) { opt++; if (man.files[k][2] === 1) ktx2++; continue; }   // a --flat copy
         if (/\.glb$/i.test(k) && !/\.opt\.glb$/i.test(k)) {
             glb++;
             const o = man.files[k.replace(/\.glb$/i, '.opt.glb')];
@@ -116,12 +133,12 @@ function main() {
     if (merge && fs.existsSync(outFile)) { try { prev = JSON.parse(fs.readFileSync(outFile, 'utf8')); } catch (e) { console.error('manifest: the old manifest does not parse; not merging'); process.exit(1); } }
     const files = scan(dirs[0], prefix);
     if (!Object.keys(files).length) { console.error('manifest: no asset files under ' + dirs[0]); process.exit(1); }
-    const man = build(files, prev, prefix, merge);
+    const man = build(files, prev, prefix, merge, scanAlt(dirs[0], files));
     fs.writeFileSync(outFile, JSON.stringify(man) + '\n');
     const s = summary(man);
-    console.log(`manifest: ${outFile} · ${s.files} files, ${(s.bytes / 1073741824).toFixed(2)} GB · ${s.opt} of ${s.glb} GLB have a .opt.glb (saves ${(s.saved / 1048576).toFixed(0)} MB; ${s.ktx2} with KTX2 textures) · ${s.lod} LOD level file(s)`);
+    console.log(`manifest: ${outFile} · ${s.files} files, ${(s.bytes / 1073741824).toFixed(2)} GB · ${man.alt ? Object.keys(man.alt).length + ' originals point at a copy in the flat folder · ' : ''}${s.opt} of ${s.glb} GLB have a .opt.glb (saves ${(s.saved / 1048576).toFixed(0)} MB; ${s.ktx2} with KTX2 textures) · ${s.lod} LOD level file(s)`);
     console.log('next: `npm run deploy` (ASSET_MANIFEST.json rides the ?v= token like the scripts) and redeploy index.html on Render');
 }
 
 if (require.main === module) main();
-module.exports = { scan, build, summary, normPrefix, glbUsesKtx2, BASE };
+module.exports = { scan, scanAlt, build, summary, normPrefix, glbUsesKtx2, BASE };

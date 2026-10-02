@@ -13,6 +13,10 @@
 //     npm run optimize -- <dir> --ktx2             # the textures as KTX2 / Basis (RENDERER_PLAN R3) instead of WebP:
 //                                                  #   they stay compressed ON the GPU (4-8x less video memory)
 //     npm run optimize -- <dir> --ktx2 uastc       # every texture UASTC (sharper, ~5x bigger download than etc1s)
+//     npm run optimize -- <mirror>/Assets --flat <mirror>/Assets/opt --root <mirror>
+//                                                  # every result in ONE folder (one upload), named <hash>_<name>.opt.glb,
+//                                                  #   plus alt.json there: { "<original bucket path>": "<copy's bucket path>" }
+//                                                  #   that manifest-assets.js folds into the manifest's `alt` map
 //
 // Repo-only tooling: not a game file, never uploaded to R2. Needs (once, not saved in package.json so CI and
 // the server stay lean):
@@ -39,8 +43,8 @@
 //
 // THE KTX2 TEXTURES (--ktx2, RENDERER_PLAN R3, 2026-10-02): the .opt.glb's textures become KHR_texture_basisu (KTX2,
 // mipmaps baked in, sizes rounded to a multiple of 4). Colour slots (base colour, emissive, any *Color slot) are ETC1S at
-// the top quality, sRGB; data slots (normal, occlusion, metal/rough) are UASTC + zstd, linear (ETC1S smears normals).
-// `--ktx2 uastc` makes every slot UASTC. The game transcodes them in a worker to the GPU's own format (BC1/BC3/BC7 on a
+// the top quality, sRGB; occlusion / metal-rough ETC1S linear; normal maps UASTC + zstd at most 1024 px, linear (ETC1S smears
+// normals; UASTC's RDO pass costs ~100 s a texture, so it is off). `--ktx2 uastc` makes every slot UASTC at full size. The game transcodes them in a worker to the GPU's own format (BC1/BC3/BC7 on a
 // Mac, ASTC/ETC2 on phones); a browser that can't (no transcoder, no sRGB variant of its format) loads the ORIGINAL
 // .glb, never the .opt.glb: manifest-assets.js flags a KTX2 .opt.glb (a third field, 1) so the game can tell.
 //
@@ -74,7 +78,7 @@ function walk(p, out) {
 function mb(n) { return (n / 1048576).toFixed(n < 10485760 ? 2 : 1) + ' MB'; }
 
 function parseArgs(argv) {
-    const o = { inputs: [], out: null, size: 2048, force: false, dry: false, check: false, lod: false, ktx2: null };
+    const o = { inputs: [], out: null, size: 2048, force: false, dry: false, check: false, lod: false, ktx2: null, flat: null, root: null };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--out') o.out = argv[++i];
@@ -83,10 +87,19 @@ function parseArgs(argv) {
         else if (a === '--dry-run') o.dry = true;
         else if (a === '--check') o.check = true;
         else if (a === '--lod') o.lod = true;
+        else if (a === '--flat') o.flat = argv[++i];
+        else if (a === '--root') o.root = argv[++i];
         else if (a === '--ktx2') o.ktx2 = /^(etc1s|uastc)$/i.test(argv[i + 1] || '') ? argv[++i].toLowerCase() : 'etc1s';
         else o.inputs.push(a);
     }
     return o;
+}
+
+/* --flat: the bucket path of a source (relative to the mirror root, forward slashes) and its copy's flat file name */
+function bucketKey(src, root) { return path.relative(path.resolve(root), path.resolve(src)).split(path.sep).join('/'); }
+function flatName(key) {
+    const h = require('crypto').createHash('sha1').update(key).digest('hex').slice(0, 8);
+    return h + '_' + path.basename(key).replace(/\.glb$/i, '').replace(/[^A-Za-z0-9._-]+/g, '_') + OPT_SUFFIX;
 }
 
 /* where a source's result goes: beside it, or at the same relative path under --out (namer: optName or a level's) */
@@ -124,7 +137,7 @@ function loadDeps() {
 function texSlots(tex, root) {
     return [...new Set(tex.getGraph().listParentEdges(tex).filter(e => e.getParent() !== root).map(e => e.getName()))];
 }
-const KTX_COLOR_SLOT = /color|emissive|diffuse/i, KTX_NORMAL_SLOT = /normal/i;
+const KTX_COLOR_SLOT = /color|emissive|diffuse/i, KTX_NORMAL_SLOT = /normal/i, KTX_NORMAL_MAX = 1024;
 /* every PNG / JPEG / WebP texture of doc → KTX2 (sharp decodes and fits it under `size`, a multiple of 4 each way) */
 async function ktx2Textures(D, doc, size, mode) {
     const { sharp, ktx } = D;
@@ -135,16 +148,16 @@ async function ktx2Textures(D, doc, size, mode) {
         const slots = texSlots(tex, doc.getRoot()), color = slots.some(s => KTX_COLOR_SLOT.test(s)), normal = !color && slots.some(s => KTX_NORMAL_SLOT.test(s));
         const meta = await sharp(img).metadata();
         let w = meta.width || 4, h = meta.height || 4;
-        const k = Math.min(1, size / Math.max(w, h));
+        const uastc = mode === 'uastc' || normal;
+        const k = Math.min(1, (uastc && mode !== 'uastc' ? Math.min(size, KTX_NORMAL_MAX) : size) / Math.max(w, h));
         w = Math.max(4, Math.round(w * k / 4) * 4); h = Math.max(4, Math.round(h * k / 4) * 4);
         const raw = await sharp(img).resize(w, h, { fit: 'fill' }).ensureAlpha().raw().toBuffer();
-        const uastc = mode === 'uastc' || !color;
         const opts = {
             isUASTC: uastc, generateMipmap: true, enableDebug: false,
             isPerceptual: color, isSetKTX2SRGBTransferFunc: color, isNormalMap: normal,
             imageDecoder: async () => ({ data: new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength), width: w, height: h })
         };
-        if (uastc) Object.assign(opts, { needSupercompression: true, enableRDO: true, rdoQualityLevel: 1.0, uastcLDRQualityLevel: 2 });
+        if (uastc) Object.assign(opts, { needSupercompression: true, uastcLDRQualityLevel: 1 });
         else Object.assign(opts, { qualityLevel: 255, compressionLevel: 2 });
         const out = await ktx.encodeToKTX2(new Uint8Array(img), opts);
         tex.setImage(new Uint8Array(out)).setMimeType('image/ktx2');
@@ -289,13 +302,29 @@ async function main() {
     const o = parseArgs(process.argv.slice(2));
     if (!o.inputs.length) { console.error('usage: npm run optimize -- <dir-or-file> [...] [--out <mirror>] [--size 2048] [--force] [--dry-run] [--check] [--lod] [--ktx2 [uastc]]'); process.exit(1); }
     const jobs = [];
+    if (o.flat && !o.root) { console.error('optimize: --flat needs --root <the mirror folder that holds Assets/>'); process.exit(1); }
     for (const inp of o.inputs) {
         const root = fs.statSync(inp).isDirectory() ? inp : path.dirname(inp);
-        for (const src of walk(inp, [])) jobs.push({ src, root, dst: targetFor(src, root, o.out) });
+        for (const src of walk(inp, [])) {
+            if (o.flat && path.resolve(src).startsWith(path.resolve(o.flat) + path.sep)) continue;   // never the copies themselves
+            const key = o.flat ? bucketKey(src, o.root) : null;
+            jobs.push({ src, root, key, dst: o.flat ? path.join(o.flat, flatName(key)) : targetFor(src, root, o.out) });
+        }
     }
+    const altFile = o.flat ? path.join(o.flat, 'alt.json') : null, alt = {};
+    if (altFile && fs.existsSync(altFile)) { try { Object.assign(alt, JSON.parse(fs.readFileSync(altFile, 'utf8'))); } catch (e) {} }
+    const flatPrefix = o.flat ? bucketKey(path.resolve(o.flat), path.resolve(o.root)) + '/' : '';
+    /* re-read before each write: several optimizer runs may share one --flat folder */
+    const saveAlt = () => {
+        if (!altFile) return;
+        fs.mkdirSync(o.flat, { recursive: true });
+        let cur = {}; try { cur = JSON.parse(fs.readFileSync(altFile, 'utf8')); } catch (e) {}
+        for (const j of jobs) if (j.key) { if (alt[j.key]) cur[j.key] = alt[j.key]; else delete cur[j.key]; }
+        fs.writeFileSync(altFile, JSON.stringify(cur, null, 1) + '\n');
+    };
     if (!jobs.length) { console.log('optimize: no .glb files under ' + o.inputs.join(', ')); return; }
     const todo = jobs.filter(j => o.force || !fs.existsSync(j.dst) || fs.statSync(j.dst).mtimeMs < fs.statSync(j.src).mtimeMs);
-    console.log(`optimize: ${jobs.length} GLB, ${todo.length} to do (${jobs.length - todo.length} already have a newer .opt.glb)` + (o.ktx2 ? ` · textures as KTX2 (${o.ktx2 === 'uastc' ? 'all UASTC' : 'colour ETC1S, data UASTC'}; ~15 s per 2048 px texture)` : ''));
+    console.log(`optimize: ${jobs.length} GLB, ${todo.length} to do (${jobs.length - todo.length} already have a newer .opt.glb)` + (o.ktx2 ? ` · textures as KTX2 (${o.ktx2 === 'uastc' ? 'all UASTC' : 'ETC1S, normal maps UASTC'}; ~15 s per 2048 px texture)` : ''));
     if (o.dry) { todo.forEach(j => console.log('  ' + j.src + '  →  ' + j.dst)); if (o.lod) console.log('  (and the LOD levels of every prop: <name>.lod1.glb, <name>.lod2.glb)'); return; }
     const D = loadDeps();
     if (o.ktx2) await loadKtx(D);
@@ -312,6 +341,7 @@ async function main() {
         if (buf.length > before * (1 - MIN_GAIN)) {
             kept++; console.log(`  keep  ${mb(before).padStart(9)}  ${j.src}  (the result was ${mb(buf.length)}: not worth a second file)`);
             try { if (fs.existsSync(j.dst)) fs.unlinkSync(j.dst); } catch (e) {}
+            if (j.key && alt[j.key]) { delete alt[j.key]; saveAlt(); }
             continue;
         }
         if (check) {
@@ -320,6 +350,7 @@ async function main() {
         }
         fs.mkdirSync(path.dirname(j.dst), { recursive: true });
         fs.writeFileSync(j.dst, buf);
+        if (j.key) { alt[j.key] = flatPrefix + path.basename(j.dst); saveAlt(); }
         wrote++; inB += before; outB += buf.length;
         console.log(`  ${mb(before).padStart(9)} → ${mb(buf.length).padStart(9)}  ×${(before / buf.length).toFixed(1).padEnd(5)} ${j.dst}`);
     }
@@ -355,4 +386,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { optName, lodName, isSource, isDerived, targetFor, parseArgs, walk, OPT_SUFFIX, LOD_RATIOS, LOD_MIN_TRIS, lodEligible, docTris, texSlots };
+module.exports = { flatName, bucketKey, optName, lodName, isSource, isDerived, targetFor, parseArgs, walk, OPT_SUFFIX, LOD_RATIOS, LOD_MIN_TRIS, lodEligible, docTris, texSlots };
