@@ -203,3 +203,10 @@ only if the lens shows the particle path as a cost; otherwise skipped.
 ## 9. The log
 
 - 2026-10-02: plan written; the audit in §2 run against r128 and r147 (Node, both packages).
+- 2026-10-02 R1 built (zip renderer/ENTROPY_WARS_R147.zip): index.html loads `three@0.147.0/build/three.min.js` and the
+  ten `examples/js` add-ons at 0.147.0 (jsdelivr; cdnjs stops before r147); three-renderer.js `_ewHeightFogPatch` reads
+  the fog varying's name off the chunk (`fogDepth` r128 / `vFogDepth` r129+) and warns if neither anchor bites;
+  `skinning: true` dropped from the creator material. THREE.MeshLine.js (our R2 copy) only includes fog + logdepth
+  chunks, all still in r147, so it is untouched. Offline load check (sandbox, r147 from npm, stand-in textures): the HQ
+  rotunda with the post stack (bloom, SMAA, retro pass) and the field strike into a battle both run with no new console
+  error or THREE warning; `THREE.REVISION` 147, the height-fog patch present in both chunks. mondo playtests before R2.

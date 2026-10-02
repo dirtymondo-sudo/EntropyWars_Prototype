@@ -517,3 +517,14 @@ Full entry: OPEN_WORLD_PLAN.md §12 "PHASE 11 SHIPPED". What a later thread need
   dropped file a stray clone still draws re-uploads from its arrays (three re-creates buffers), so a missed holder
   costs a hitch, not a black mesh. `_mmRead` = `hq.mem()` / `perf().mem`; `_mmLine` = the readout's MEM part.
 - Switches: `window.EW_NO_PORTALS`, `window.EW_NO_MEM_BUDGET`, `window.EW_MEM_MB`. Tests: hq-joins, asset-store.
+
+## THE RENDERER PLAN R1 — three.js r128 → r147 (2026-10-02, zip renderer/ENTROPY_WARS_R147.zip)
+RENDERER_PLAN.md is the plan of record for the three.js upgrade (R1 r147, R2 current + the module shim, R3-R7 the
+add-ons); its §9 is the log. R1: index.html's three.js + the ten `examples/js` add-ons move to 0.147.0 on jsdelivr
+(the last release that ships `examples/js`; the UMD `three.min.js` is gone from npm at r160, so R2 is the module
+shim). three-renderer.js `_ewHeightFogPatch` now reads the fog varying's name off `ShaderChunk.fog_vertex`
+(`fogDepth` in r128, `vFogDepth` from r129) and warns when no anchor bites — the r128 string would have no-op'ed
+silently and dropped the HQ height fog. The audit script (r128 vs r147, every `THREE.*` name + every shader string
+our `onBeforeCompile` hooks replace) found nothing else; `getInverse` / `RGBFormat` / `getMaxAnisotropy` were already
+guarded. The sandbox load check runs playtest_hq_offline.js with the mirror regexes pointed at `three@0.147.0`
+(`npm i --no-save three@0.147.0`): REV 147, fog patch in both chunks, the post stack renders.

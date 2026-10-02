@@ -1900,12 +1900,16 @@ const ThreeRenderer = (function () {
         _ewHFogPatched = true;
         try {
             var SC = THREE.ShaderChunk;
+            /* r128 names the fog varying `fogDepth`; r129+ names it `vFogDepth` (RENDERER_PLAN R1). Read the name
+               off the chunk so the patch keeps biting after a three.js bump instead of no-op'ing silently. */
+            var FD = SC.fog_vertex.indexOf('vFogDepth') >= 0 ? 'vFogDepth' : 'fogDepth';
             if (SC.fog_pars_vertex && SC.fog_vertex && SC.fog_pars_fragment && SC.fog_fragment && SC.fog_pars_vertex.indexOf('vEwFogY') < 0) {
-                SC.fog_pars_vertex = SC.fog_pars_vertex.replace('varying float fogDepth;', 'varying float fogDepth;\n\tvarying float vEwFogY;');
-                SC.fog_vertex = SC.fog_vertex.replace('fogDepth = - mvPosition.z;', 'fogDepth = - mvPosition.z;\n\tvec4 ewFogWp = vec4( position, 1.0 );\n\t#ifdef USE_INSTANCING\n\t\tewFogWp = instanceMatrix * ewFogWp;\n\t#endif\n\tvEwFogY = ( modelMatrix * ewFogWp ).y;');
-                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float fogDepth;', 'varying float fogDepth;\n\tvarying float vEwFogY;\n\tuniform vec4 uEwHFog;');
+                SC.fog_pars_vertex = SC.fog_pars_vertex.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;');
+                SC.fog_vertex = SC.fog_vertex.replace(FD + ' = - mvPosition.z;', FD + ' = - mvPosition.z;\n\tvec4 ewFogWp = vec4( position, 1.0 );\n\t#ifdef USE_INSTANCING\n\t\tewFogWp = instanceMatrix * ewFogWp;\n\t#endif\n\tvEwFogY = ( modelMatrix * ewFogWp ).y;');
+                SC.fog_pars_fragment = SC.fog_pars_fragment.replace('varying float ' + FD + ';', 'varying float ' + FD + ';\n\tvarying float vEwFogY;\n\tuniform vec4 uEwHFog;');
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
-                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * fogDepth ) );\n\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
+                    'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
+                if (SC.fog_pars_fragment.indexOf('vEwFogY') < 0 || SC.fog_vertex.indexOf('vEwFogY') < 0) console.warn('[ThreeRenderer] the height fog patch found no anchor in three.js ' + THREE.REVISION);
             }
             var lib = THREE.ShaderLib;
             for (var k in lib) if (lib[k] && lib[k].uniforms && lib[k].uniforms.fogColor) lib[k].uniforms.uEwHFog = { value: _EW_HFOG };
@@ -36247,7 +36251,7 @@ const ThreeRenderer = (function () {
         root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) targets.push(n); });
         var alive = true;
         function material(opts) {
-            var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, skinning: true, side: THREE.DoubleSide }, opts || {});
+            var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }, opts || {});
             var m;
             if (typeof window !== 'undefined' && window.EW_CC_DEBUG_UNLIT) {   // diagnostics: geometry / colour with no lighting
                 delete o.roughness; delete o.metalness; delete o.normalMap; delete o.normalScale;
