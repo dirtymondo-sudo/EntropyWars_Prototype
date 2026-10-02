@@ -327,3 +327,19 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   `hqCatalogueFilePath`, the literal URLs in the game scripts), minus the per-character `_Animation_*_withSkin.glb` clips (only
   the fallback when the shared animation library fails). Normal maps went UASTC without RDO at ≤ 1024 px (RDO cost ~100 s a
   texture); ORM ETC1S linear. mondo uploads the one folder + ASSET_MANIFEST.json.
+- 2026-10-02 R5 built: pmndrs `postprocessing@6.39.5` (index.html import map + its own module, `window.EW_PP_LIB`; a CDN miss,
+  `window.EW_OLD_POST` or localStorage `ew_post = 'classic'` keeps the old three.js chain, which is untouched). three-post.js
+  "THE PMNDRS CHAIN": RenderPass → the classic AO into its half-size target → PASS A (one shader: SMAA HIGH or FXAA + the AO
+  multiply + bloom + the tone map) → the two tilt-shift passes (board only) → PASS B (one shader: the cinematic grade + the
+  retro grade; the retro reads the cinematic at its snapped uv, which is what the two old passes did). The shaders are the old
+  ones turned into pmndrs effects at load (`_ppFn`), so the uniforms and every `ThreePost.set*` stay; the rest of the file
+  drives small stand-ins (`_bloomPass`, `_cinematicPass`, `_retroPass`, `_ssaoPass`...) whose state `_ppSync` reads each frame.
+  Pass A is rebuilt only when its effect set changes (AA mode, AO on/off, bloom on/off); no per-frame depth blit (everything
+  that reads depth runs before the first swap). Bloom is pmndrs' mipmap bloom (ADD, intensity = strength × 1.6), still OFF by
+  default. N8AO (`n8ao@2.0.1`) is a new Polish row "AO Quality: Classic / N8AO", fetched on first pick; intensity =
+  strength × 2.5, radius 2× the classic reach. F3 lens: a "Post" line (lib, full-screen passes last frame, AO, pass A's set).
+  Sandbox check (swiftshader, the rotunda): the new chain matches the old one at 41 dB with the same mean, the same auto
+  exposure reading (0.493 vs 0.495), no program diagnostics, no GL error; the board render path runs A + DoF H/V + B.
+  Found on the way: `_hdrSupported` has always returned false (`!THREE.NoToneMapping` is true, NoToneMapping = 0), so the HDR
+  bloom chain never ran on any machine; left as is (turning it on changes the look). Firefox: plain ES modules through the map,
+  nothing before the import map.

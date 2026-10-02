@@ -52518,6 +52518,8 @@ const HQ_POLISH_PREFS = [
     { key: 'ao',           label: 'Corner Shading',     hint: 'the room-box AO: corners, the floor under every prop, the terrain\'s gullies', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'ssao',         label: 'Ambient Occlusion',  hint: 'screen-space AO off the frame\'s own depth — the crease under everything', kind: 'toggle', def: true, scope: 'both', live: true },
     { key: 'ssaoStrength', label: 'AO Strength',        hint: 'how dark the creases go', kind: 'slider', def: 0.85, scope: 'both', live: true, needs: 'ssao' },
+    /* RENDERER_PLAN R5 (2026-10-02): N8AO = the pmndrs-era AO (n8ao, fetched on first pick; the classic AO runs until it lands) */
+    { key: 'ssaoMode',     label: 'AO Quality',         hint: 'Classic = the game\'s own AO; N8AO = softer, wider creases, a little heavier', kind: 'level', def: 0, levels: [[0, 'Classic'], [1, 'N8AO']], scope: 'both', live: true },
     { key: 'heightFog',    label: 'Height Fog',         hint: 'the mist that thickens toward the floor', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'shafts',       label: 'Light Shafts',       hint: 'the beams from a window, a skylight, a torch', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'atmos',        label: 'Atmosphere',         hint: 'dust, spores, fireflies, snow, rain — the count per room', kind: 'level', def: 1, levels: [[0, 'Off'], [0.5, 'Few'], [1, 'Normal'], [1.6, 'Full']], scope: 'hq', live: false },

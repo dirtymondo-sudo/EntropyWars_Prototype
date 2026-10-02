@@ -115,7 +115,7 @@ const ThreePost = (function () {
     function _aeMeasure(now) {
         if (!_aeEnabled() || !_composer || !_renderer) return;
         if (now - _ae.last < AE_INTERVAL_MS) return; _ae.last = now;
-        var src = _composer.readBuffer && _composer.readBuffer.texture; if (!src) return;
+        var src = _pp ? (_pp.lastIn && _pp.lastIn.texture) : (_composer.readBuffer && _composer.readBuffer.texture); if (!src) return;
         if (!_ae.rt) {
             _ae.rt = new THREE.WebGLRenderTarget(16, 16, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false });
             _ae.scene = new THREE.Scene(); _ae.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -2310,6 +2310,324 @@ const ThreePost = (function () {
     function getMotion() { return { amount: _motion.amt, want: _motion.want, cx: _motion.cx, cy: _motion.cy }; }
     /* THE POLISH SETTINGS: re-read every row the post owns (the sheet calls it after a change) */
     function polishApply() { _ssaoApply(_expCtx === 'hq' ? 'hq' : 'battle'); }
+    /* ── RENDERER_PLAN R5 — THE PMNDRS CHAIN (2026-10-02) ───────────────────────────────────────────────────────────────
+       The post stack on pmndrs `postprocessing` (index.html loads it as window.EW_PP_LIB). Same shaders, same uniforms, same
+       ThreePost.set* API: what changes is how many full-screen passes the frame costs, which is what a DPR 2 Mac pays for.
+         RenderPass → AO (half res, writes its own small target) → [N8AO, when the player picks it]
+         → PASS A: one shader = AA (SMAA / FXAA) + the AO multiply + bloom + the tone map
+         → the tilt-shift DoF (two passes, the battle board only)
+         → PASS B: one shader = the cinematic grade + the retro grade (the retro reads the cinematic at its snapped uv, which is
+           exactly what the old two passes did).
+       The old chain drew the AO mix, the tone map, the SMAA blend, the cinematic and the retro as five separate passes; here
+       they are two. The rest of this file still talks to `_bloomPass`, `_cinematicPass`, `_retroPass`, `_toneMapPass`,
+       `_ssaoPass`, `_fxaaPass`, `_smaaPass` — in this chain those are small stand-in objects whose `.enabled` and
+       `.material.uniforms` _ppSync() reads each frame (the uniforms ARE the effect's uniforms, shared objects). An effect is
+       never added or removed per frame (that recompiles): pass A is rebuilt only when its set changes (the AA mode, AO on/off,
+       bloom on/off); the cinematic and retro halves of pass B switch on a uniform.
+       No library (a CDN miss), an init error, `window.EW_OLD_POST` or localStorage ew_post = 'classic' → the old three.js
+       chain below, untouched. */
+    var _pp = null, _ppV2 = null;
+    function _ppWanted() {
+        if (typeof window === 'undefined' || !window.EW_PP_LIB || window.EW_OLD_POST) return false;
+        try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_post') === 'classic') return false; } catch (e) {}
+        return true;
+    }
+    var _PP_VS = 'varying vec2 vUv; void main() { vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+    /* a ShaderPass fragment shader → a function `vec4 fn(vec2 vUv)` that reads the effect pass's input buffer */
+    function _ppFn(src, fn) {
+        return src.replace(/uniform\s+sampler2D\s+tDiffuse\s*;/g, '')
+            .replace(/varying\s+vec2\s+vUv\s*;/g, '')
+            .replace(/\btDiffuse\b/g, 'inputBuffer')
+            .replace(/void\s+main\s*\(\s*\)\s*\{/, 'vec4 ' + fn + '(vec2 vUv) {')
+            .replace(/gl_FragColor\s*=\s*([^;]+);\s*return\s*;/g, 'return $1;')
+            .replace(/gl_FragColor\s*=\s*([^;]+);/g, 'return $1;');
+    }
+    function _ppMap(obj, skip) {
+        var m = new Map();
+        for (var k in obj) if (!skip || skip.indexOf(k) < 0) m.set(k, obj[k]);
+        return m;
+    }
+    /* the AO multiply, as an effect: the classic AO target, blurred 4 × 4 by depth, times the colour */
+    var _PP_AO_MIX_FS = [
+        'uniform sampler2D tAO; uniform sampler2D tDepth; uniform vec2 uTexel; uniform vec2 uNearFar; uniform float uOrtho; uniform float uAoOn;',
+        'float lin(float d) { if (uOrtho > 0.5) return d; float z = d * 2.0 - 1.0; return (2.0 * uNearFar.x * uNearFar.y) / (uNearFar.y + uNearFar.x - z * (uNearFar.y - uNearFar.x)); }',
+        'void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {',
+        '  if (uAoOn < 0.5) { outputColor = inputColor; return; }',
+        '  float dc = lin(texture2D(tDepth, uv).r);',
+        '  float sum = 0.0, wsum = 0.0;',
+        '  for (int j = -1; j <= 2; j++) for (int i = -1; i <= 2; i++) {',
+        '    vec2 o = (vec2(float(i), float(j)) - 0.5) * uTexel;',
+        '    float a = texture2D(tAO, uv + o).r;',
+        '    float dd = lin(texture2D(tDepth, uv + o).r);',
+        '    float w = 1.0 / (1.0 + abs(dd - dc) * 40.0 / max(dc, 0.001));',
+        '    sum += a * w; wsum += w;',
+        '  }',
+        '  float ao = (wsum > 0.0) ? sum / wsum : 1.0;',
+        '  outputColor = vec4(inputColor.rgb * ao, inputColor.a);',
+        '}'
+    ].join('\n');
+    /* the tone map, as an effect: _ToneMapShader's maths verbatim (decode, ACES / linear × exposure, re-encode) */
+    var _PP_TONE_FS = [
+        'uniform float uExposure; uniform float uMode;',
+        'vec3 dec(vec3 c){ return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c / 12.92, vec3(lessThanEqual(c, vec3(0.04045)))); }',
+        'vec3 enc(vec3 c){ return mix(1.055 * pow(max(c, 0.0), vec3(1.0 / 2.4)) - 0.055, c * 12.92, vec3(lessThanEqual(c, vec3(0.0031308)))); }',
+        'vec3 rrt(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }',
+        'vec3 aces(vec3 c){',
+        '  const mat3 inM = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777));',
+        '  const mat3 outM = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));',
+        '  c *= uExposure / 0.6; c = inM * c; c = rrt(c); c = outM * c; return clamp(c, 0.0, 1.0); }',
+        'void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {',
+        '  vec3 lin = dec(max(inputColor.rgb, 0.0));',
+        '  vec3 m = (uMode > 0.5) ? aces(lin) : clamp(lin * uExposure, 0.0, 1.0);',
+        '  outputColor = vec4(enc(m), inputColor.a);',
+        '}'
+    ].join('\n');
+    /* the cinematic + retro, as ONE convolution effect */
+    function _ppFrameFS() {
+        var cine = _ppFn(_CinematicShader.fragmentShader, 'cineAt');
+        var retro = _ppFn(_RetroShader.fragmentShader.replace(/texture2D\(\s*tDiffuse\s*,/g, 'ewSrc('), 'retroAt')
+            .replace(/uniform\s+vec2\s+uResolution\s*;/, '').replace(/uniform\s+float\s+uTime\s*;/, '');
+        return [
+            'uniform float uCineOn; uniform float uRetroOn;',
+            cine,
+            'vec4 ewSrc(vec2 p) { if (uCineOn > 0.5) return cineAt(p); return texture2D(inputBuffer, p); }',
+            retro,
+            'void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {',
+            '  if (uRetroOn > 0.5) outputColor = retroAt(uv);',
+            '  else if (uCineOn > 0.5) outputColor = cineAt(uv);',
+            '  else outputColor = inputColor;',
+            '}'
+        ].join('\n');
+    }
+    /* THE CLASSIC AO in the new chain: the same AO shader (THE BANDS fix included) into its own half-size target, off the
+       composer's stable depth; the multiply happens in pass A. `ctl` is the `_ssaoPass` stand-in the rest of the file drives. */
+    function _ppMakeAoPass(PP, ctl, mixU) {
+        var P = class extends PP.Pass {
+            constructor() {
+                super('EwSsaoPass');
+                this.needsSwap = false; this.needsDepthTexture = true; this.depth = null; this.rt = null; this.rw = 0; this.rh = 0;
+                this.aoMat = ctl.aoMat;
+                this.fullscreenMaterial = this.aoMat;
+            }
+            setDepthTexture(t) { this.depth = t; }
+            getDepthTexture() { return this.depth; }
+            render(renderer, inputBuffer) {
+                var cam = ctl.camera, dt = inputBuffer.depthTexture || this.depth;
+                if (!cam || !dt) { mixU.uAoOn.value = 0; return; }
+                var w = Math.max(2, Math.round(inputBuffer.width * (ctl.half ? 0.5 : 1))), h = Math.max(2, Math.round(inputBuffer.height * (ctl.half ? 0.5 : 1)));
+                if (!this.rt) { this.rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false }); this.rw = w; this.rh = h; }
+                else if (w !== this.rw || h !== this.rh) { this.rt.setSize(w, h); this.rw = w; this.rh = h; }
+                var au = this.aoMat.uniforms;
+                au.tDepth.value = dt; au.uRes.value.set(w, h); au.uDRes.value.set(inputBuffer.width, inputBuffer.height);
+                au.uProj.value.copy(cam.projectionMatrix); au.uProjInv.value.copy(cam.projectionMatrixInverse);
+                renderer.setRenderTarget(this.rt); renderer.clear(true, false, false);
+                renderer.render(this.scene, this.camera);
+                mixU.tAO.value = this.rt.texture; mixU.tDepth.value = dt; mixU.uAoOn.value = 1;
+                mixU.uTexel.value.set(1 / w, 1 / h); mixU.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); mixU.uOrtho.value = cam.isOrthographicCamera ? 1 : 0;
+            }
+            dispose() { if (this.rt) this.rt.dispose(); this.aoMat.dispose(); super.dispose(); }
+        };
+        return new P();
+    }
+    /* N8AO (the AO Quality row = N8AO): loaded on first ask through window.EW_LOAD_N8AO (index.html), slotted after the scene
+       render; until it arrives — or if it never does — the classic AO keeps running */
+    function _ssaoMode() {
+        if (typeof window !== 'undefined' && window.EW_N8AO === false) return 'classic';
+        return (+_polishGet('ssaoMode', 0) >= 0.5 || (typeof window !== 'undefined' && window.EW_N8AO === true)) ? 'n8ao' : 'classic';
+    }
+    function _ppN8Load() {
+        var P = _pp; if (!P || P.n8 || P.n8state) return;
+        if (typeof window === 'undefined' || typeof window.EW_LOAD_N8AO !== 'function') { P.n8state = 'none'; return; }
+        P.n8state = 'loading';
+        window.EW_LOAD_N8AO().then(function (mod) {
+            if (_pp !== P) return;
+            var ds = _renderer.getDrawingBufferSize(new THREE.Vector2());
+            var n8 = new mod.N8AOPostPass(P.renderPass.scene || _scene, P.renderPass.camera || new THREE.PerspectiveCamera(), ds.x, ds.y);
+            n8.autoDetectTransparency = false;
+            n8.configuration.transparencyAware = false;
+            n8.configuration.gammaCorrection = false;   // the buffer is pre-tone-map light; the tone map in pass A encodes
+            n8.configuration.halfRes = true;
+            n8.configuration.depthAwareUpsampling = true;
+            n8.configuration.screenSpaceRadius = false;
+            try { n8.setQualityMode('Medium'); } catch (e) {}
+            n8.enabled = false;
+            P.composer.addPass(n8, P.composer.passes.indexOf(P.renderPass) + 1);
+            if (P.composer.inputBuffer.depthTexture) n8.setDepthTexture(P.composer.inputBuffer.depthTexture);   // the scene's own depth (no blit, see _ppInit)
+            P.composer.autoRenderToScreen = false;
+            P.n8 = n8; P.n8state = 'ready';
+            console.log('[ThreePost] N8AO ready');
+        }).catch(function (e) { P.n8state = 'failed'; console.warn('[ThreePost] N8AO failed to load — the classic AO stays', e); });
+    }
+    function _ppSetSize() {
+        var P = _pp; if (!P || !_renderer) return;
+        if (!_ppV2) _ppV2 = new THREE.Vector2();
+        var ds = _renderer.getDrawingBufferSize(_ppV2), c = P.composer;
+        P.w = ds.x; P.h = ds.y;
+        c.inputBuffer.setSize(ds.x, ds.y); c.outputBuffer.setSize(ds.x, ds.y);
+        if (c.depthRenderTarget) c.depthRenderTarget.setSize(ds.x, ds.y);
+        for (var i = 0; i < c.passes.length; i++) c.passes[i].setSize(ds.x, ds.y);
+    }
+    /* pass A's effect list from the stand-ins; rebuilt (a new EffectPass in the same slot) only when the list changes */
+    function _ppPassA(force) {
+        var P = _pp, PP = P.lib, fx = P.fx;
+        var aa = _aaResolve(), aoClassic = !!(_ssaoPass && _ssaoPass.enabled) && !(P.n8 && _ssaoMode() === 'n8ao');
+        var bloom = !!(_bloomPass && _bloomPass.enabled), tone = !!_hdr;
+        var sig = aa + '|' + (aoClassic ? 1 : 0) + '|' + (bloom ? 1 : 0) + '|' + (tone ? 1 : 0);
+        P.aoClassic = aoClassic;
+        if (!force && sig === P.sigA) return;
+        var list = [];
+        if (aa === 'smaa') list.push(fx.smaa); else if (aa === 'fxaa') list.push(fx.fxaa);
+        if (aoClassic) list.push(fx.aoMix);
+        if (bloom) list.push(fx.bloom);
+        if (tone) list.push(fx.tone);
+        var old = P.passA, at = old ? P.composer.passes.indexOf(old) : -1;
+        var np = new PP.EffectPass(P.renderPass.camera || null);
+        np.setEffects(list);
+        if (old) { P.composer.removePass(old); old.setEffects([]); try { old.fullscreenMaterial.dispose(); } catch (e) {} }
+        P.composer.addPass(np, at >= 0 ? at : P.composer.passes.indexOf(P.dofH));
+        P.composer.autoRenderToScreen = false;
+        P.passA = np; P.sigA = sig;
+    }
+    function _ppSync() {
+        var P = _pp, fx = P.fx;
+        // the AO: classic pass / N8AO, by the player's AO Quality row
+        var aoOn = !!(_ssaoPass && _ssaoPass.enabled), wantN8 = aoOn && _ssaoMode() === 'n8ao';
+        if (wantN8 && !P.n8) _ppN8Load();
+        _ppPassA(false);
+        P.aoPass.enabled = aoOn && P.aoClassic;
+        if (P.n8) {
+            P.n8.enabled = aoOn && !P.aoClassic;
+            if (P.n8.enabled) {
+                var cam = _ssaoPass.camera || P.renderPass.camera, C = P.n8.configuration;
+                P.n8.scene = P.renderPass.scene;
+                if (cam && cam !== P.n8.camera) {
+                    var orthoWas = !!(P.n8.camera && P.n8.camera.isOrthographicCamera);
+                    P.n8.camera = cam;
+                    if (!!cam.isOrthographicCamera !== orthoWas) {   // N8AO bakes the projection kind into its shaders
+                        try { P.n8.configureAOPass(C.depthBufferType, cam.isOrthographicCamera); P.n8.configureDenoisePass(C.depthBufferType, cam.isOrthographicCamera); P.n8.configureEffectCompositer(C.depthBufferType, cam.isOrthographicCamera); } catch (e) {}
+                    }
+                }
+                // every write resets N8AO's frame history, so only a CHANGED value is written
+                var au = _ssaoPass.aoMat.uniforms, rad = au.uRadius.value, it = Math.max(0.5, au.uStrength.value * 2.5);
+                if (C.aoRadius !== rad * 2.0) C.aoRadius = rad * 2.0;
+                if (C.distanceFalloff !== rad * 0.6) C.distanceFalloff = rad * 0.6;
+                if (C.intensity !== it) C.intensity = it;
+            }
+        }
+        // the bloom: the stand-in's strength / threshold / radius onto the effect
+        if (_bloomPass && _bloomPass.enabled) {
+            fx.bloom.intensity = Math.max(0, _bloomPass.strength) * 1.6;
+            fx.bloom.luminanceMaterial.threshold = _bloomPass.threshold;
+            fx.bloom.mipmapBlurPass.radius = Math.max(0, Math.min(1, _bloomPass.radius));
+        }
+        // pass B: the two halves on a uniform; the auto exposure reads this pass's input, so it runs while that is live
+        var cineOn = !!(_cinematicPass && _cinematicPass.enabled), retroOn = !!(_retroPass && _retroPass.enabled);
+        P.frameU.uCineOn.value = cineOn ? 1 : 0; P.frameU.uRetroOn.value = retroOn ? 1 : 0;
+        P.passB.enabled = cineOn || retroOn || _aeEnabled();
+        // the last live pass draws to the screen
+        var ps = P.composer.passes, last = null;
+        for (var i = ps.length - 1; i >= 0; i--) if (ps[i].enabled) { last = ps[i]; break; }
+        for (var j = 0; j < ps.length; j++) { var want = (ps[j] === last); if (ps[j].renderToScreen !== want) ps[j].renderToScreen = want; }
+    }
+    function _ppRender() {
+        var P = _pp, r = _renderer;
+        if (!_ppV2) _ppV2 = new THREE.Vector2();
+        var ds = r.getDrawingBufferSize(_ppV2);
+        if (ds.x !== P.w || ds.y !== P.h) _ppSetSize();
+        _ppSync();
+        var now = performance.now(), dt = P.at ? Math.min(0.1, Math.max(0, (now - P.at) / 1000)) : 0.016; P.at = now;
+        var ac = r.autoClear; r.autoClear = false;
+        try { P.composer.render(dt); } finally { r.autoClear = ac; r.setRenderTarget(null); }
+        var n = 0, ps = P.composer.passes; for (var i = 0; i < ps.length; i++) if (ps[i].enabled && ps[i].needsSwap !== false) n++;
+        P.lastPasses = n;
+    }
+    function _ppInit(renderer, scene, w, h) {
+        var PP = window.EW_PP_LIB;
+        try {
+            _hdr = _hdrSupported(renderer);
+            var ac = renderer.autoClear;
+            var composer = new PP.EffectComposer(renderer, { depthBuffer: true, stencilBuffer: true, multisampling: 0, frameBufferType: _hdr ? THREE.HalfFloatType : THREE.UnsignedByteType });
+            renderer.autoClear = ac;   // the composer turns it off for good; the rest of the game draws with it on
+            composer.autoRenderToScreen = false;
+            var P = { lib: PP, composer: composer, fx: {}, sigA: null, at: 0, w: 0, h: 0, n8: null, n8state: null, lastIn: null };
+            var rp = new PP.RenderPass(scene, null);
+            rp.clearPass.overrideClearAlpha = 0;   // the old RenderPass's clearAlpha = 0
+            /* no per-frame depth copy: everything that reads depth (the AO, its multiply, N8AO) runs before the first buffer swap,
+               so it reads the scene buffer's own depth texture — the copy pmndrs makes into its "stable" target would be a full
+               depth + stencil blit every frame for nothing */
+            rp.needsDepthBlit = false;
+            composer.addPass(rp); P.renderPass = rp;
+            // the classic AO + its multiply
+            var mixU = { tAO: new THREE.Uniform(null), tDepth: new THREE.Uniform(null), uTexel: new THREE.Uniform(new THREE.Vector2(1, 1)), uNearFar: new THREE.Uniform(new THREE.Vector2(1, 1000)), uOrtho: new THREE.Uniform(0), uAoOn: new THREE.Uniform(0) };
+            P.fx.aoMix = new PP.Effect('EwAoMix', _PP_AO_MIX_FS, { blendFunction: PP.BlendFunction.SRC, uniforms: _ppMap(mixU) });
+            var aoMat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_SsaoAoShader.uniforms), vertexShader: _PP_VS, fragmentShader: _SsaoAoShader.fragmentShader, depthTest: false, depthWrite: false });
+            aoMat.uniforms.uKernel.value = _SSAO_KERNEL;
+            var ctl = { enabled: false, camera: null, half: true, aoMat: aoMat, setSize: function () {}, dispose: function () {} };
+            P.aoPass = _ppMakeAoPass(PP, ctl, mixU);
+            composer.addPass(P.aoPass);
+            _ssaoPass = ctl; _ssaoAvail = !!(renderer.capabilities && renderer.capabilities.isWebGL2); ctl.enabled = _ssaoAvail && _ssaoWanted();
+            // pass A's effects (made once; the pass picks from them)
+            P.fx.smaa = new PP.SMAAEffect({ preset: PP.SMAAPreset.HIGH, edgeDetectionMode: PP.EdgeDetectionMode.COLOR });
+            P.fx.fxaa = new PP.FXAAEffect();
+            P.fx.bloom = new PP.BloomEffect({ blendFunction: PP.BlendFunction.ADD, mipmapBlur: true, intensity: 1, luminanceThreshold: BLOOM_USER_THRESHOLD, luminanceSmoothing: 0.08, radius: 0.85 });
+            var toneU = { uExposure: new THREE.Uniform(1.0), uMode: new THREE.Uniform(1.0) };
+            P.fx.tone = new PP.Effect('EwToneMap', _PP_TONE_FS, { blendFunction: PP.BlendFunction.SRC, uniforms: _ppMap(toneU) });
+            // the DoF: the same two tilt-shift passes
+            function dof(dx, dy) {
+                var m = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_TiltShiftShader.uniforms), vertexShader: _PP_VS, fragmentShader: _TiltShiftShader.fragmentShader, depthTest: false, depthWrite: false });
+                m.uniforms.uResolution.value.set(w, h); m.uniforms.uDir.value.set(dx, dy);
+                var p = new PP.ShaderPass(m, 'tDiffuse'); p.material = m; return p;
+            }
+            P.dofH = dof(1, 0); P.dofV = dof(0, 1);
+            composer.addPass(P.dofH); composer.addPass(P.dofV);
+            // pass B: the cinematic + the retro
+            var cu = THREE.UniformsUtils.clone(_CinematicShader.uniforms), ru = THREE.UniformsUtils.clone(_RetroShader.uniforms);
+            ru.uResolution = cu.uResolution; ru.uTime = cu.uTime;   // one uniform each: both passes always wrote the same values
+            var frameU = { uCineOn: new THREE.Uniform(0), uRetroOn: new THREE.Uniform(0) };
+            var fm = _ppMap(cu, ['tDiffuse']); _ppMap(ru, ['tDiffuse', 'uResolution', 'uTime']).forEach(function (v, k) { fm.set(k, v); });
+            fm.set('uCineOn', frameU.uCineOn); fm.set('uRetroOn', frameU.uRetroOn);
+            P.fx.frame = new PP.Effect('EwFrame', _ppFrameFS(), { attributes: PP.EffectAttribute.CONVOLUTION, blendFunction: PP.BlendFunction.SRC, uniforms: fm });
+            P.frameU = frameU;
+            P.passB = new PP.EffectPass(null, P.fx.frame);
+            var _bRender = P.passB.render;
+            P.passB.render = function (r, inp, out, d, s) { P.lastIn = inp; return _bRender.call(this, r, inp, out, d, s); };
+            composer.addPass(P.passB);
+            composer.autoRenderToScreen = false;
+            // the stand-ins the rest of this file drives
+            _bloomPass = { enabled: BLOOM_USER_STRENGTH > 0, strength: BLOOM_USER_STRENGTH, threshold: BLOOM_USER_THRESHOLD, radius: BLOOM_USER_RADIUS };
+            _cinematicPass = { enabled: false, material: { uniforms: cu } };
+            _retroPass = { enabled: !!_lkRetro().enabled, material: { uniforms: ru } };
+            _fxaaPass = { enabled: false, material: { uniforms: { resolution: { value: new THREE.Vector2() } } } };
+            _smaaPass = { enabled: false, setSize: function () {} };
+            _dofPassH = P.dofH; _dofPassV = P.dofV;
+            cu.uResolution.value.set(w, h);
+            if (_hdr) {
+                var tm = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uExposure: toneU.uExposure, uMode: toneU.uMode }, vertexShader: _ToneMapShader.vertexShader, fragmentShader: _ToneMapShader.fragmentShader, depthTest: false, depthWrite: false });
+                _toneMapPass = { material: tm };   // renderDirect's blit (the splitscreen panes)
+                renderer.toneMapping = THREE.NoToneMapping;
+                _recompileSceneMaterials();
+            }
+            _pp = P; _composer = composer;
+            _ppPassA(true);
+            _ppSetSize();
+            _applyDofUniforms(); _aaApply(); _applyCinematicUniforms(); _applyRetroUniforms(); _applySceneFog(); _tmSync();
+            return true;
+        } catch (e) {
+            console.warn('[ThreePost] pmndrs postprocessing failed — falling back to the three.js chain', e);
+            try { if (_pp && _pp.composer) _pp.composer.dispose(); } catch (e2) {}
+            _pp = null; _composer = null; _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
+            _dofPassH = null; _dofPassV = null; _toneMapPass = null; _ssaoPass = null; _ssaoAvail = false;
+            renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
+            return false;
+        }
+    }
+    function getPostChain() {
+        if (_pp) {
+            return { lib: 'pmndrs', passes: _pp.lastPasses || 0, effectsA: _pp.sigA, ao: _pp.n8 && _pp.n8.enabled ? 'n8ao' : (_pp.aoPass.enabled ? 'classic' : 'off'), n8ao: _pp.n8state || 'idle' };
+        }
+        return { lib: _composer ? 'three' : 'none', passes: _composer ? _composer.passes.filter(function (p) { return p.enabled; }).length : 0 };
+    }
+
     function init(renderer, scene, w, h) {
         _renderer = renderer;
         _scene = scene;
@@ -2338,6 +2656,13 @@ const ThreePost = (function () {
         // passes: bloom alone owns eleven render targets. Both the board and
         // HQ already support direct rendering with lighting/tone mapping.
         if (typeof window !== 'undefined' && window.EW_PERF_LOW) return;
+
+        // RENDERER_PLAN R5: the pmndrs chain first; the three.js chain below is the fallback
+        if (_ppWanted() && _ppInit(renderer, scene, w, h)) {
+            _ready = true;
+            console.log('[ThreePost] initialized (pmndrs postprocessing) — AO + AA/bloom/tone in one pass + DoF + cinematic/retro in one pass, sun shadows (' + _shadowQuality + '), filmic tone (' + (_filmic ? 'on' : 'off') + ')');
+            return;
+        }
 
         if (!THREE.EffectComposer || !THREE.RenderPass || !THREE.UnrealBloomPass || !THREE.ShaderPass) {
             console.warn('[ThreePost] postprocessing classes not found — running without post-fx');
@@ -2549,14 +2874,14 @@ const ThreePost = (function () {
 
         _updateDofFocus(cam);
 
-        _composer.passes[0].camera = cam;
+        if (_pp) { _pp.renderPass.camera = cam; _pp.renderPass.scene = _scene; } else _composer.passes[0].camera = cam;
         if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
         /* THE FIELD LIGHT: no tilt-shift band over the room (the building never had one — a board plane to focus on is what it wants) */
         var _fdH = _dofPassH ? _dofPassH.enabled : false, _fdV = _dofPassV ? _dofPassV.enabled : false;
         if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = false; if (_dofPassV) _dofPassV.enabled = false; }
         try {
             _tmSync();
-            _composer.render();
+            if (_pp) _ppRender(); else _composer.render();
         } finally { if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = _fdH; if (_dofPassV) _dofPassV.enabled = _fdV; } }
     }
 
@@ -2572,7 +2897,7 @@ const ThreePost = (function () {
     function renderScene(scene, cam) {
         if (!scene || !cam || !_renderer) return;
         if (!_ready || !_composer) { _renderer.render(scene, cam); return; }
-        var rp = _composer.passes[0];
+        var rp = _pp ? _pp.renderPass : _composer.passes[0];
         var prevScene = rp.scene;
         var prevDofH = _dofPassH ? _dofPassH.enabled : false;
         var prevDofV = _dofPassV ? _dofPassV.enabled : false;
@@ -2609,7 +2934,7 @@ const ThreePost = (function () {
             var _aeNow = performance.now(); _aeTick(_aeNow);
             _renderer.toneMappingExposure = _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
             _tmSync();
-            _composer.render();
+            if (_pp) _ppRender(); else _composer.render();
             _aeMeasure(_aeNow);   // THE AUTO EXPOSURE (7.4): read the frame just drawn, every AE_INTERVAL_MS
         } finally {
             rp.scene = prevScene;
@@ -2629,8 +2954,11 @@ const ThreePost = (function () {
         /* THE PERF PASS (2026-10-01): r128's EffectComposer keeps the pixel ratio it was BUILT with — a live Fast/Native
            switch (or the perf lens's resolution) resized the canvas while every composer target (the scene, bloom, AA)
            stayed at the boot ratio, so Fast saved nothing until a reload. The targets follow the renderer's ratio now. */
-        if (_renderer && _composer._pixelRatio !== _renderer.getPixelRatio()) _composer._pixelRatio = _renderer.getPixelRatio();
-        _composer.setSize(w, h);
+        if (_pp) _ppSetSize();   // the drawing-buffer size; never the pmndrs setSize (it would resize the canvas itself)
+        else {
+            if (_renderer && _composer._pixelRatio !== _renderer.getPixelRatio()) _composer._pixelRatio = _renderer.getPixelRatio();
+            _composer.setSize(w, h);
+        }
         if (_fxaaPass) {
             var pixelRatio = _renderer ? _renderer.getPixelRatio() : 1;
             _fxaaPass.material.uniforms['resolution'].value.set(
@@ -2783,6 +3111,7 @@ const ThreePost = (function () {
         if (_composer) {
 
             if (_ssaoPass) { try { _ssaoPass.dispose(); } catch (e) {} _ssaoPass = null; }
+            if (_pp) { try { _pp.composer.dispose(); } catch (e) {} if (_toneMapPass && _toneMapPass.material) { try { _toneMapPass.material.dispose(); } catch (e) {} } _pp = null; }
             if (_composer.renderTarget1) _composer.renderTarget1.dispose();
             if (_composer.renderTarget2) _composer.renderTarget2.dispose();
         }
@@ -2796,7 +3125,7 @@ const ThreePost = (function () {
         _maskScanAt = 0;
 
         _composer = null;
-        _bloomPass = null;
+        _bloomPass = null; _cinematicPass = null; _retroPass = null; _smaaPass = null;
         _toneMapPass = null; if (_directRT) { _directRT.dispose(); _directRT = null; } _hdr = false;
         _fxaaPass = null;
         _dofPassH = null;
@@ -2935,6 +3264,7 @@ const ThreePost = (function () {
 
     return {
         init: init,
+        getPostChain: getPostChain,   // RENDERER_PLAN R5: { lib: 'pmndrs' | 'three', passes, effectsA, ao, n8ao } (the F3 lens)
         render: render,
         renderScene: renderScene,
         renderDirect: renderDirect,

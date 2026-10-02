@@ -586,3 +586,8 @@ them `[bytes, sha, 1]`. three-renderer.js "THE KTX2 TEXTURES" (`_ktxLoader`, `_k
 flagged sibling only when the page's KTX2Loader is up and the GPU has a compressed format with an sRGB variant; else the
 original .glb. Off switch: `window.EW_NO_KTX2`. Anything that draws a GLB texture into a canvas must call `_ktxNoCompress(url)`
 before loading it (the creator hair does). F3 lens line "KTX2 textures".
+
+**R5 pmndrs postprocessing (2026-10-02, RENDERER_PLAN §9):** three-post.js runs on pmndrs `postprocessing` when index.html's
+module sets `window.EW_PP_LIB` (else, or with `EW_OLD_POST` / localStorage `ew_post = 'classic'`, the old three.js chain).
+Two merged passes (A: AA + AO multiply + bloom + tone map; B: cinematic + retro) around the DoF. N8AO = Polish row
+`ssaoMode` (data.js). F3 "Post" line. `ThreePost.getPostChain()` reports the chain.
