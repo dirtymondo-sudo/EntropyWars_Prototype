@@ -304,8 +304,6 @@
          build). The module shim below puts the namespace plus the add-ons the game uses on window.THREE exactly where
          the r128 script tags used to, so every game script keeps its `THREE.*` globals. A module script runs deferred, in
          document order with the `defer` game scripts further down (that is why those carry `defer` now). -->
-    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js">
-    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.js">
     <script type="importmap">
         {
             "imports": {
@@ -314,6 +312,10 @@
             }
         }
     </script>
+    <!-- the preloads come AFTER the import map: a module fetch that starts before the map is parsed voids the map
+         (Firefox: "the specifier 'three' was a bare specifier, but was not remapped"; R2 hotfix, 2026-10-02) -->
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js">
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.js">
     <script type="module">
         import * as THREE from 'three';
         /* postprocessing: bloom + FXAA / SMAA (three-post.js) */
