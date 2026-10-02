@@ -26,7 +26,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/maps-terrain-battle.md` | Battle maps, moving maps, horizon, planets, sky. | Battle map work. |
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
 | `docs/notes/editor.md` | The in-game editor (EDITOR_PLAN.md): editor.js, world file, E0+. | Editor work. |
-| `docs/notes/rendering-loading-perf.md` | Polish passes, bloom, textures, loading/lanes, freezes, crashes. | Render / load / perf work. |
+| `docs/notes/rendering-loading-perf.md` | Polish passes, bloom, textures, loading/lanes, freezes, crashes. RENDERER_PLAN.md = the three.js r128→current upgrade + add-ons (R1-R7). | Render / load / perf work; before touching three.js versions. |
 
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
 The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
