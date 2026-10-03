@@ -621,3 +621,9 @@ is plain on purpose: W0 measures the frame only. Full list of what changed from 
 on a geometry dispose and keeps the dead buffer on file ("Buffer with '' label has been destroyed"). `_ewGpuSafeBuffers`
 leaves interleaved buffers to the GC and defers other destroys to the next frame's first render. F3's Renderer line
 counts uncaptured GPU errors. Drop it when three fixes WebGPUAttributeUtils.destroyAttribute.
+
+### W6 — the render bundles (2026-10-03, zip renderer/ENTROPY_WARS_W6_BUNDLES.zip)
+Downtown on WebGPU cost 12.7 ms CPU vs 6.0 classic (three's per-draw cost). three-renderer.js `_ewBunTick` flags the
+HQ's static groups as bundle groups in place (WebGPU backend only), re-records them from a per-frame signature, records
+unculled, runs bundles first in the pass, and bumps an epoch on every freed GPU resource. Full rules: WEBGPU_PLAN.md
+§10 "W6 built". `ThreeRenderer.bundles()`; off with `?ew_bundles=0`.
