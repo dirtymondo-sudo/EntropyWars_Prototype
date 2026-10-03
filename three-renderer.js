@@ -32159,8 +32159,12 @@ const ThreeRenderer = (function () {
            demoted to non-static — three checks each object again but still replays the recording — and a group whose
            structure churns (5 re-records in 2 s) draws the classic way for 5 s.
        A bundle is recorded UNCULLED (its pieces must be there when the camera turns); a point light's cube faces draw the
-       groups the classic, culled way. The bundles run FIRST in the pass (three runs them last, after the transparent
-       queue, which would paint the static walls over every glow and ghost drawn before them). Off: window.EW_NO_BUNDLES
+       groups the classic, culled way. The bundles run in the painter's order of a renderOrder-0 group: after the
+       backdrop (the env dome, wall and ground, the sky and horizon groups: negative renderOrder, no depth test, drawn
+       first so the room covers them) and before everything else at 0 and up and every transparent. three runs them
+       last, after the transparent queue, which painted the static walls over every glow and ghost; the first fix ran
+       them before everything, and the camera-centred ground painted over the hall's lower walls (W6 fix 1, mondo's
+       main hall, 2026-10-03). Off: window.EW_NO_BUNDLES
        or ?ew_bundles=0. Rooms need nothing baked: the signature follows whatever the room holds. */
     var _ewBun = { marked: [], epoch: 0, objs: 0, recs: 0, recDraws: 0, recRate: 0, rateAt: 0, rateN: 0, aid: 0, inRec: 0, setup: false };
     var _EW_BUN_TEX = ['map', 'emissiveMap', 'normalMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'specularMap', 'envMap', 'gradientMap', 'matcap'];
@@ -32169,18 +32173,41 @@ const ThreeRenderer = (function () {
     }
     function _ewBunMix(h, v) { return (Math.imul(h, 31) + (v | 0)) | 0; }
     function _ewBunAid(a) { return a._ew_aid || (a._ew_aid = ++_ewBun.aid); }
-    /* once per renderer: the bundles run first in the pass, and a bundle is recorded unculled */
+    /* once per renderer: the bundles wait for the backdrop, then run; a bundle is recorded unculled */
     function _ewBunSetup(r) {
         if (_ewBun.setup) return true;
         var B = r.backend;
         if (!B || !B.isWebGPUBackend || !B.beginBundle || !r._projectObject) return false;
         _ewBun.setup = true;
-        B.addBundle = function (renderContext, bundle) {
-            var d = this.get(renderContext), g = this.get(bundle).bundleGPU;
-            if (!g || !d.currentPass) return;
-            d.currentPass.executeBundles([g]);
+        /* three's _renderBundles comes before the opaque list: hold the bundles, run them where a renderOrder-0 group sorts
+           (painterSortStable: groupOrder, then renderOrder), and at the latest before the transparents / the pass's end */
+        var flush = function (rc) {
+            var d = rc && B.get(rc), P = d && d._ewPend;
+            if (!P || !P.length || !d.currentPass || d._currentPass) return;   // d._currentPass: a bundle is being recorded
+            d.currentPass.executeBundles(P); d._ewPend = [];
             d.currentSets = { attributes: {}, bindingGroups: [], pipeline: null, index: null };   // executeBundles clears the pass's bindings
         };
+        B.addBundle = function (renderContext, bundle) {
+            var d = this.get(renderContext), g = this.get(bundle).bundleGPU;
+            if (!g) return;
+            (d._ewPend || (d._ewPend = [])).push(g);
+        };
+        var fr = B.finishRender, br = B.beginRender;
+        B.beginRender = function (renderContext) { var d = this.get(renderContext); d._ewPend = []; return br.apply(this, arguments); };   // never a last pass's leftovers
+        B.finishRender = function (renderContext) { flush(renderContext); return fr.apply(this, arguments); };
+        var ro = r._renderObjects, rt = r._renderTransparents;
+        r._renderObjects = function (list) {
+            var rc = this._currentRenderContext, d = rc && !this._currentRenderBundle && B.get(rc);
+            if (!d || !d._ewPend || !d._ewPend.length) return ro.apply(this, arguments);
+            var k = 0, n = list.length;
+            while (k < n && (list[k].groupOrder < 0 || (list[k].groupOrder === 0 && list[k].renderOrder < 0))) k++;
+            if (k === 0) { flush(rc); return ro.apply(this, arguments); }
+            var a = Array.prototype.slice.call(arguments);
+            a[0] = list.slice(0, k); ro.apply(this, a);
+            flush(rc);
+            if (k < n) { a[0] = list.slice(k); ro.apply(this, a); }
+        };
+        r._renderTransparents = function () { if (!this._currentRenderBundle) flush(this._currentRenderContext); return rt.apply(this, arguments); };
         ['destroyTexture', 'destroyUniformBuffer', 'destroySampler'].forEach(function (k) {
             var f = B[k]; if (typeof f !== 'function') return;
             B[k] = function () { _ewBun.epoch++; return f.apply(this, arguments); };
