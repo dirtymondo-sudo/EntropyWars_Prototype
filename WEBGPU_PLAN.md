@@ -616,3 +616,10 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   and run where a renderOrder-0 group sorts (after the negative prefix of the opaque list, before the rest, at the
   latest before the transparents or the pass's end): `_ewBunSetup` wraps `_renderObjects`, `_renderTransparents`,
   `beginRender` / `finishRender`.
+- 2026-10-03: **W6 fix 2** (zip renderer/ENTROPY_WARS_W6_FIX2.zip). After fix 1 the hall's floor and lower walls were
+  still black (F3: 79 FPS, 16 calls). Real cause: the room warm-up calls `renderer.compile`, which on WebGPURenderer is
+  `compileAsync`, so the room's pipelines compile asynchronously. A bundle recorded while a pipeline is still pending
+  skips that draw (`Pipelines.isReady` false), and three never re-records a bundle by itself, so the skipped walls
+  stayed missing; classic draws just retry next frame. `_ewBunSetup` wraps `_pipelines.isReady`: a miss during a
+  recording (not a failed pipeline) flags the group, and `_ewBunTick` re-records it next frame until every pipeline is
+  ready (`why.cold` in `ThreeRenderer.bundles()`). Fix 1's order stays (it is the right painter's order anyway).

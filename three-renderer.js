@@ -32165,7 +32165,9 @@ const ThreeRenderer = (function () {
        last, after the transparent queue, which painted the static walls over every glow and ghost; the first fix ran
        them before everything, and the camera-centred ground painted over the hall's lower walls (W6 fix 1, mondo's
        main hall, 2026-10-03). Off: window.EW_NO_BUNDLES
-       or ?ew_bundles=0. Rooms need nothing baked: the signature follows whatever the room holds. */
+       or ?ew_bundles=0. A draw whose pipeline is still compiling is skipped by three, and a bundle recorded then lacked it
+       for good (the hall's floor and lower walls black, W6 fix 2): such a group re-records each frame until all of its
+       pipelines are ready. Rooms need nothing baked: the signature follows whatever the room holds. */
     var _ewBun = { marked: [], epoch: 0, objs: 0, recs: 0, recDraws: 0, recRate: 0, rateAt: 0, rateN: 0, aid: 0, inRec: 0, setup: false };
     var _EW_BUN_TEX = ['map', 'emissiveMap', 'normalMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'specularMap', 'envMap', 'gradientMap', 'matcap'];
     function _ewBunOff() {
@@ -32212,6 +32214,18 @@ const ThreeRenderer = (function () {
             var f = B[k]; if (typeof f !== 'function') return;
             B[k] = function () { _ewBun.epoch++; return f.apply(this, arguments); };
         });
+        /* a draw whose pipeline is still compiling (the room warm-up's renderer.compile is compileAsync here) is left out of
+           the recording; three never re-records a bundle on its own, so those walls stayed missing for good (W6 fix 2, the
+           main hall's black floor and lower walls, 2026-10-03): flag the group, and the tick re-records it next frame */
+        var PL = r._pipelines, ir = PL && PL.isReady;
+        if (ir) PL.isReady = function (ro) {
+            var ok = ir.apply(this, arguments), RB = r._currentRenderBundle;
+            if (!ok && RB && RB.bundleGroup) {
+                var pp = this.get(ro).pipeline, bad = pp && this.backend.get(pp).error;
+                if (!bad) RB.bundleGroup._ew_bunMiss = true;
+            }
+            return ok;
+        };
         var po = r._projectObject;
         r._projectObject = function (object) {
             if (object.isBundleGroup === true) { _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; } }
@@ -32301,7 +32315,8 @@ const ThreeRenderer = (function () {
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false };
             _ewBunWalk(g, S);
             objs += S.n;
-            var stat = !(S.dyn || st.dyn);
+            var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
+            g._ew_bunMiss = false;
             if (!g.isBundleGroup) {
                 g.isBundleGroup = true; g.version = (g.version | 0) + 1; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; st.times = [];
                 if (_ewBun.marked.indexOf(g) < 0) _ewBun.marked.push(g);
@@ -32322,6 +32337,7 @@ const ThreeRenderer = (function () {
                 st.why.lod++;
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
+            if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
         }
         _ewBun.objs = objs;
