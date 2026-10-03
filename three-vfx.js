@@ -1934,6 +1934,161 @@ const ThreeVFX = (function () {
         _bPQ.invert();
     }
 
+    /* ── THE QUARKS LAYER (RENDERER_PLAN R7b, 2026-10-03, experimental) ───
+       An OPTIONAL second particle layer on three.quarks, OVER the game's own
+       particles (which keep firing exactly as before): fire and explosion
+       spells add a quarks fire column, embers and a smoke plume where they
+       land. Off by default — the pause menu's "Spell FX Layer" row
+       (HQ_POLISH_PREFS quarksFx), or window.EW_QUARKS = true / false to
+       force it. The library (three.quarks + quarks.core, index.html import
+       map) is fetched on the first ask through window.EW_LOAD_QUARKS; until
+       it lands, or if it fails, a burst is simply skipped. Textures are the
+       game's own procedural sprites (flame, smoke-soft, ember). Sizes are in
+       the VFX px space spawn() uses (a tile = CONFIG.tileSize). three-plume
+       was looked at and left out: it simulates in WebGPU compute shaders
+       and runs only on three's WebGPURenderer, which cannot share the
+       game's WebGL canvas, depth or post stack. */
+    var _qk = { lib: null, state: 'idle', root: null, br: null, live: [], made: 0 };
+
+    function _qkWanted() {
+        if (typeof window === 'undefined') return false;
+        if (window.EW_QUARKS === false) return false;
+        if (window.EW_QUARKS === true) return true;
+        try { if (typeof window.hqPolishGet === 'function') return +window.hqPolishGet('quarksFx') >= 0.5; } catch (e) {}
+        return false;
+    }
+
+    function _qkLoad() {
+        if (_qk.state !== 'idle') return;
+        if (typeof window === 'undefined' || typeof window.EW_LOAD_QUARKS !== 'function') { _qk.state = 'none'; return; }
+        _qk.state = 'loading';
+        window.EW_LOAD_QUARKS().then(function (m) {
+            _qk.lib = m; _qk.state = 'ready';
+            console.log('[ThreeVFX] quarks layer ready');
+        }).catch(function (e) { _qk.state = 'failed'; console.warn('[ThreeVFX] three.quarks failed to load — the layer stays off', e); });
+    }
+
+    function _qkEnsureRoot() {
+        if (_qk.root || !_qk.lib || !_scene) return !!_qk.root;
+        _qk.root = new THREE.Group();
+        _qk.root.name = 'fxQuarks';
+        _qk.br = new _qk.lib.BatchedRenderer();
+        _qk.root.add(_qk.br);
+        _scene.add(_qk.root);
+        return true;
+    }
+
+    function _qkMat(sprite, add) {
+        return new THREE.MeshBasicMaterial({
+            map: _getSpriteTexture(sprite), transparent: true, depthWrite: false,
+            blending: add ? THREE.AdditiveBlending : THREE.NormalBlending,
+            side: THREE.DoubleSide,
+        });
+    }
+
+    /* one emitter: a quarks ParticleSystem at (x,y,z) VFX px, pointing up */
+    function _qkSystem(def, w) {
+        var Q = _qk.lib;
+        var ps = new Q.ParticleSystem(def);
+        ps.emitter.position.set(w.x, w.y, w.z);
+        ps.emitter.rotation.x = -Math.PI / 2;   // the cone emits along +Z; +Z turned to world up
+        _qk.root.add(ps.emitter);
+        _qk.br.addSystem(ps);
+        _qk.live.push(ps);
+        ps.addEventListener('destroy', function () {
+            var i = _qk.live.indexOf(ps); if (i >= 0) _qk.live.splice(i, 1);
+        });
+        _qk.made++;
+        return ps;
+    }
+
+    /* kind 'fire' = flame column + embers + smoke; 'smoke' = a smoke burst +
+       a flash of embers (explosions). s scales the whole thing (a wider AoE
+       lands a bigger fire). Returns true when it drew. */
+    function quarksBurst(kind, px, py, pz, s) {
+        if (!_initialized || !_qkWanted()) return false;
+        if (_qk.state === 'idle') _qkLoad();
+        if (_qk.state !== 'ready' || !_qkEnsureRoot()) return false;
+        var Q = _qk.lib, ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
+        s = Math.max(0.6, Math.min(3, s || 1));
+        var R = ts * s;
+        var w = _vfxToWorld(px, py, pz), at = { x: w.x, y: w.y, z: w.z };
+        var V3 = Q.Vector3, V4 = Q.Vector4, IV = Q.IntervalValue, CV = Q.ConstantValue;
+        var curve = function (a, b, c, d) { return new Q.PiecewiseBezier([[new Q.Bezier(a, b, c, d), 0]]); };
+        try {
+            if (kind === 'fire') {
+                _qkSystem({
+                    duration: 1.1, looping: false, autoDestroy: true, worldSpace: true,
+                    shape: new Q.ConeEmitter({ radius: R * 0.32, angle: 0.28, thickness: 1 }),
+                    startLife: new IV(0.45, 0.95), startSpeed: new IV(R * 0.9, R * 1.9), startSize: new IV(R * 0.35, R * 0.7),
+                    startRotation: new IV(0, Math.PI * 2),
+                    startColor: new Q.ConstantColor(new V4(1, 1, 1, 1)),
+                    emissionOverTime: new CV(70 * s),
+                    emissionBursts: [{ time: 0, count: new CV(Math.round(28 * s)), cycle: 1, interval: 0.01, probability: 1 }],
+                    behaviors: [
+                        new Q.ColorOverLife(new Q.Gradient(
+                            [[new V3(1.0, 0.95, 0.7), 0], [new V3(1.0, 0.55, 0.15), 0.35], [new V3(0.75, 0.16, 0.04), 0.75], [new V3(0.25, 0.05, 0.02), 1]],
+                            [[0, 0], [1, 0.08], [0.85, 0.5], [0, 1]])),
+                        new Q.SizeOverLife(curve(0.6, 1.1, 0.9, 0.2)),
+                        new Q.RotationOverLife(new IV(-1.5, 1.5)),
+                        new Q.ApplyForce(new V3(0, 1, 0), new CV(R * 1.4)),
+                        new Q.TurbulenceField(new V3(R * 0.6, R * 0.6, R * 0.6), 2, new V3(R * 1.2, R * 0.6, R * 1.2), new V3(0.4, 0.4, 0.4)),
+                    ],
+                    material: _qkMat('flame', true), renderMode: Q.RenderMode.BillBoard, renderOrder: 100.6,
+                }, at);
+            }
+            /* embers: small fast sparks thrown up and falling back */
+            _qkSystem({
+                duration: kind === 'fire' ? 1.0 : 0.25, looping: false, autoDestroy: true, worldSpace: true,
+                shape: new Q.ConeEmitter({ radius: R * 0.25, angle: kind === 'fire' ? 0.5 : 1.1, thickness: 1 }),
+                startLife: new IV(0.6, 1.4), startSpeed: new IV(R * 1.5, R * 3.4), startSize: new IV(R * 0.05, R * 0.11),
+                startColor: new Q.ConstantColor(new V4(1, 0.75, 0.35, 1)),
+                emissionOverTime: new CV(kind === 'fire' ? 30 * s : 0),
+                emissionBursts: [{ time: 0, count: new CV(Math.round(26 * s)), cycle: 1, interval: 0.01, probability: 1 }],
+                behaviors: [
+                    new Q.ApplyForce(new V3(0, -1, 0), new CV(R * 2.6)),
+                    new Q.ColorOverLife(new Q.Gradient([[new V3(1, 0.9, 0.6), 0], [new V3(1, 0.4, 0.1), 1]], [[1, 0], [1, 0.6], [0, 1]])),
+                    new Q.SizeOverLife(curve(1, 0.9, 0.6, 0.2)),
+                ],
+                material: _qkMat('ember', true), renderMode: Q.RenderMode.BillBoard, renderOrder: 100.7,
+            }, at);
+            /* smoke: slow grey puffs that rise, grow and thin out (drawn before the glow) */
+            _qkSystem({
+                duration: kind === 'fire' ? 1.3 : 0.35, looping: false, autoDestroy: true, worldSpace: true,
+                shape: new Q.ConeEmitter({ radius: R * 0.4, angle: kind === 'fire' ? 0.25 : 0.9, thickness: 1 }),
+                startLife: new IV(1.6, 2.8), startSpeed: new IV(R * 0.35, R * (kind === 'fire' ? 0.8 : 1.6)), startSize: new IV(R * 0.45, R * 0.85),
+                startRotation: new IV(0, Math.PI * 2),
+                startColor: new Q.ColorRange(new V4(0.22, 0.2, 0.19, 0.55), new V4(0.42, 0.4, 0.38, 0.55)),
+                emissionOverTime: new CV(kind === 'fire' ? 18 * s : 0),
+                emissionBursts: [{ time: kind === 'fire' ? 0.25 : 0, count: new CV(Math.round((kind === 'fire' ? 6 : 22) * s)), cycle: 1, interval: 0.01, probability: 1 }],
+                behaviors: [
+                    new Q.SizeOverLife(curve(0.7, 1.4, 2.0, 2.6)),
+                    new Q.ColorOverLife(new Q.Gradient([[new V3(1, 1, 1), 0], [new V3(1, 1, 1), 1]], [[0, 0], [1, 0.15], [0.6, 0.55], [0, 1]])),
+                    new Q.RotationOverLife(new IV(-0.6, 0.6)),
+                    new Q.ApplyForce(new V3(0, 1, 0), new CV(R * 0.35)),
+                    new Q.TurbulenceField(new V3(R, R, R), 2, new V3(R * 0.5, R * 0.2, R * 0.5), new V3(0.2, 0.2, 0.2)),
+                ],
+                material: _qkMat('smoke-soft', false), renderMode: Q.RenderMode.BillBoard, renderOrder: 99.5,
+            }, at);
+        } catch (e) {
+            console.warn('[ThreeVFX] quarks burst failed', e);
+            return false;
+        }
+        return true;
+    }
+
+    function _qkTick(dt) {
+        if (_qk.br && (_qk.live.length || _qk.br.batches.length)) {
+            try { _qk.br.update(dt); } catch (e) { console.warn('[ThreeVFX] quarks update failed — layer off', e); _qkStopAll(); _qk.state = 'failed'; }
+        }
+    }
+
+    function _qkStopAll() {
+        var all = _qk.live.slice();
+        for (var i = 0; i < all.length; i++) { try { all[i].dispose(); } catch (e) {} }
+        _qk.live.length = 0;
+    }
+
     /* ── 3D blood globs ──────────────────────────────────────────────────
        Blood spurts use REAL lumpy meshes with a glossy lit material instead
        of flat billboards, so they read as wet 3D liquid: they catch the
@@ -2103,6 +2258,7 @@ const ThreeVFX = (function () {
         }
 
         _initialized = true;
+        if (_qkWanted()) _qkLoad();   // the quarks layer is on: fetch the library now, not on the first fire spell
         console.log('[ThreeVFX] initialized (standard materials) — sprites=' + MAX_PARTICLES +
                     ' worldQ=' + MAX_WORLD_QUADS + ' quadBB=' + MAX_QUAD_BILLBOARDS + (_batched ? ' (batched)' : ''));
     }
@@ -2702,6 +2858,7 @@ const ThreeVFX = (function () {
         _rainTick(dt);
         _ambientTick(dt);
         _fxLightsTick(dt);
+        _qkTick(dt);
 
         if (window.ThreeVFXEffects && window.ThreeVFXEffects.tick) {
             window.ThreeVFXEffects.tick(dt);
@@ -3412,6 +3569,7 @@ const ThreeVFX = (function () {
         for (i = 0; i < _worldMeshPool.length; i++) if (_worldMeshPool[i].mesh) out.push(_worldMeshPool[i].mesh);
         for (i = 0; i < _quadMeshPool.length; i++) if (_quadMeshPool[i].mesh) out.push(_quadMeshPool[i].mesh);
         for (i = 0; i < _batchList.length; i++) out.push(_batchList[i].mesh);
+        if (_qk.root) out.push(_qk.root);
         for (i = 0; i < _globPool.length; i++) out.push(_globPool[i].mesh);
         for (i = 0; i < _rainDropMeshes.length; i++) out.push(_rainDropMeshes[i].mesh);
         for (i = 0; i < _rainSplashMeshes.length; i++) out.push(_rainSplashMeshes[i].mesh);
@@ -3470,6 +3628,7 @@ const ThreeVFX = (function () {
         _aliveCount = 0;
         _zoneAliveCount = 0;
         _batchFlush();                // nothing alive: every batch hides now, not at the next tick
+        _qkStopAll();
         for (var li = 0; li < _fxLights.length; li++) _fxLightIdle(_fxLights[li]);
         if (window.ThreeVFXEffects && window.ThreeVFXEffects.clear) {
             window.ThreeVFXEffects.clear();
@@ -3507,6 +3666,9 @@ const ThreeVFX = (function () {
             if (bm.dispose) bm.dispose();
         }
         _batchList = []; _batchGroups = {}; _batchShown = 0; _batched = false;
+        _qkStopAll();
+        if (_qk.root && _qk.root.parent) _qk.root.parent.remove(_qk.root);
+        _qk.root = null; _qk.br = null;
 
         for (var ri = 0; ri < _rainDropMeshes.length; ri++) {
             if (_scene) _scene.remove(_rainDropMeshes[ri].mesh);
@@ -3587,7 +3749,8 @@ const ThreeVFX = (function () {
     /* the F3 lens's Particles line: live particles drawn and the draws they took */
     function fxStats() {
         return { batched: _batched, live: _batched ? _batchStat.live : _aliveCount, draws: _batched ? _batchStat.draws : _aliveCount,
-                 groups: _batchList.length };
+                 groups: _batchList.length,
+                 quarks: { on: _qkWanted(), state: _qk.state, live: _qk.live.length, made: _qk.made } };
     }
 
     return { init: init, spawn: spawn, tick: tick, isActive: isActive, clear: clear, dispose: dispose,
@@ -3595,7 +3758,7 @@ const ThreeVFX = (function () {
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, flashLight: flashLight,
-             fxStats: fxStats, _diag: _diag, _getScene: _getScene };
+             fxStats: fxStats, quarksBurst: quarksBurst, _diag: _diag, _getScene: _getScene };
 })();
 
 window.ThreeVFX = ThreeVFX;

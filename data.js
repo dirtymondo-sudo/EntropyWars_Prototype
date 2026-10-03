@@ -52520,6 +52520,9 @@ const HQ_POLISH_PREFS = [
     { key: 'ssaoStrength', label: 'AO Strength',        hint: 'how dark the creases go', kind: 'slider', def: 0.85, scope: 'both', live: true, needs: 'ssao' },
     /* RENDERER_PLAN R5 (2026-10-02): N8AO = the pmndrs-era AO (n8ao, fetched on first pick; the classic AO runs until it lands) */
     { key: 'ssaoMode',     label: 'AO Quality',         hint: 'Classic = the game\'s own AO; N8AO = softer, wider creases, a little heavier', kind: 'level', def: 0, levels: [[0, 'Classic'], [1, 'N8AO']], scope: 'both', live: true },
+    /* RENDERER_PLAN R7b (2026-10-03): the experimental three.quarks layer — fire columns, embers and smoke over the game's own
+       particles on fire / explosion spells (three-vfx.js "THE QUARKS LAYER"; the library is fetched on first use) */
+    { key: 'quarksFx',     label: 'Spell FX Layer',     hint: 'experimental: three.quarks fire, embers and smoke on fire and explosion spells, on top of the usual particles', kind: 'level', def: 0, levels: [[0, 'Off'], [1, 'Quarks']], scope: 'both', live: true },
     { key: 'heightFog',    label: 'Height Fog',         hint: 'the mist that thickens toward the floor', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'shafts',       label: 'Light Shafts',       hint: 'the beams from a window, a skylight, a torch', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'atmos',        label: 'Atmosphere',         hint: 'dust, spores, fireflies, snow, rain — the count per room', kind: 'level', def: 1, levels: [[0, 'Off'], [0.5, 'Few'], [1, 'Normal'], [1.6, 'Full']], scope: 'hq', live: false },

@@ -378,3 +378,16 @@ that drive `ThreeVFX.spawn`. So R7 batches our own pools instead (three-vfx.js "
   three 0.186.1, a test scene with 77 particles across every pose: flashes, tinted embers, velocity sparks, ground rings, a beam, a
   y-locked pillar, a stretch streak): 85 draws → 15, 74.5 dB against the old path (identical to the eye); with 25 smoke puffs mixed
   in, 110 → 17 draws at 31 dB, the gap being only that a flash in front of smoke no longer interleaves with it per particle.
+- 2026-10-03 R7b (mondo: "an optional separate vfx quarks layer", and three-plume for smoke and fire). three-plume 0.1.1 is left out:
+  it simulates in TSL compute shaders and runs only on three's WebGPURenderer ("Plume is ESM-only and runs on three's WebGPU
+  renderer"), which cannot share the game's WebGL canvas, depth buffer or post stack; using it would mean an overlay canvas that
+  draws through every wall, or moving the whole renderer (and every GLSL hook) to WebGPU. three.quarks 0.17.1 (+ quarks.core, both
+  through the import map, fetched on first use via `window.EW_LOAD_QUARKS`) runs on WebGLRenderer. three-vfx.js "THE QUARKS LAYER":
+  `ThreeVFX.quarksBurst(kind, x, y, z, scale)` — 'fire' = a flame column (cone emitter, colour/size over life, updraft, turbulence)
+  + embers + a smoke plume; 'smoke' = a smoke burst + embers. Textures are the game's own procedural sprites (flame, ember,
+  smoke-soft). three-vfx-effects.js `_qkSpellLayer` calls it from `fire()` on impact / aoe / descent (after the fall) for a fire
+  theme (data.js element, else the name) or a blast by name; the game's own particles fire as before, the layer is on top. Off by
+  default: pause menu "Spell FX Layer" (HQ_POLISH_PREFS quarksFx), or `window.EW_QUARKS = true / false`. Rides fire(), so the guest's
+  relayed fire() draws it too when the guest has it on. F3 Particles line shows the layer's state and live systems. Sandbox check
+  (swiftshader, three 0.186.1 + quarks from npm): both kinds draw (3 batches for 5 systems), no program diagnostics, no GL error, every
+  system auto-destroys when done.
