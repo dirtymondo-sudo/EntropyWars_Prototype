@@ -231,9 +231,15 @@ been played for a while.
 
 ## 8. Phase R6 + R7 — troika text, three.quarks
 
-R6: nameplates and damage numbers become `troika-three-text` meshes; the CSS2D ones stay for the door
-labels and the editor until proven. Fonts: the game's existing UI font file from R2. R7: three.quarks
-only if the lens shows the particle path as a cost; otherwise skipped.
+R6 (as first written): nameplates and damage numbers become `troika-three-text` meshes; the CSS2D ones stay for the door
+labels and the editor until proven. **Changed when built (2026-10-03):** the scope flipped. The unit nameplates (portraits,
+HP/MP bars with CSS drain transitions, emoji badges, three layouts) and the damage numbers (canvas-painted gradients, sheen,
+crit stamp, type re-tint) are overlays BY DESIGN: they must sit on top of every sprite and wall. As in-scene SDF text they
+would be hidden behind units and lose the emoji and the painting. The labels that belong IN the scene are the HQ's door /
+way / portal / counter / trail plates (mondo: "ON the door at eye level"), which as CSS2D drew through walls (the stage hid a
+neighbour's plates for that) and needed a hand-made distance shrink. So R6 moves those. Fonts: the HQ plate fonts (Cormorant SC,
+IBM Plex Mono) as .woff from the fontsource npm packages on jsdelivr (no font files live on R2; troika reads ttf/otf/woff, not
+woff2). R7: three.quarks only if the lens shows the particle path as a cost; otherwise skipped.
 
 ---
 
@@ -343,3 +349,15 @@ only if the lens shows the particle path as a cost; otherwise skipped.
   Found on the way: `_hdrSupported` has always returned false (`!THREE.NoToneMapping` is true, NoToneMapping = 0), so the HDR
   bloom chain never ran on any machine; left as is (turning it on changes the look). Firefox: plain ES modules through the map,
   nothing before the import map.
+- 2026-10-03 R6 built (HQ plates, see §8 for the scope change): troika-three-text@0.52.5 (+ troika-three-utils, troika-worker-utils
+  0.52.0, webgl-sdf-generator, bidi-js) through the import map, loaded by its own module with a dynamic import (`window.EW_TEXT_LIB`;
+  a CDN miss = the CSS2D plates). three-renderer.js "THE GPU PLATES": `_hqPlateMake` builds every door / way / portal / counter /
+  trail plate as a group of troika Text rows (ROOM n, the name or '?', the sub line, the lamp chip) over a thin underline in the
+  kind's colour, the #hqPage plate look; one shared base material (one program), sizes in metres (name 9 cm, small lines 5 cm), fitted to the door's
+  width once the glyphs are laid out. Door, way and wall-portal plates lie flat on the door face; counter and flat-portal plates turn
+  to the eye (yaw only); the trail post's name is painted on its sign board. The distance fade stays (8-20 m), the --pk shrink goes
+  (perspective does it). Plates never take a ray (Text.raycast emptied), never batch (`_ew_text` in the batch's flag list), never
+  cast shadows, and the battle room drops them like the CSS2D ones. Off: `window.EW_NO_GPU_TEXT` or localStorage `ew_text = 'css'`.
+  F3 lens: a "Text (HQ plates)" line. Sandbox check (swiftshader, the Main Hall with the real CDN assets): 24 plates on the GPU, both
+  fonts loaded, every row laid out, no program diagnostics, no page error. Unit nameplates, damage numbers, the battle's tower /
+  door / nexus plates and the editor's labels stay DOM.

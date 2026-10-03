@@ -591,3 +591,11 @@ before loading it (the creator hair does). F3 lens line "KTX2 textures".
 module sets `window.EW_PP_LIB` (else, or with `EW_OLD_POST` / localStorage `ew_post = 'classic'`, the old three.js chain).
 Two merged passes (A: AA + AO multiply + bloom + tone map; B: cinematic + retro) around the DoF. N8AO = Polish row
 `ssaoMode` (data.js). F3 "Post" line. `ThreePost.getPostChain()` reports the chain.
+
+**R6 GPU text, HQ plates (2026-10-03, RENDERER_PLAN §8/§9):** the HQ's door / way / portal / counter / trail plates are
+troika-three-text rows in the scene when index.html's module sets `window.EW_TEXT_LIB` (else, or with `window.EW_NO_GPU_TEXT` /
+localStorage `ew_text = 'css'`, the CSS2D plates). three-renderer.js "THE GPU PLATES": `_hqPlateMake(cls, parts, o)` is the one
+builder (returns `{obj, el, chip, gpu}`); records carry `plateGpu` beside `plateEl`; `_hqGpuPlateSet` / `_hqGpuPlateChip` /
+`_hqGpuPlateShow` / `_hqGpuPlateOp` / `_hqGpuPlateFace` are the GPU side of the DOM writes. Anything new that labels a place IN
+the HQ should use `_hqPlateMake`. Unit nameplates and damage numbers stay DOM overlays on purpose (§8). F3 "Text (HQ plates)" line;
+`ThreeRenderer.hq.dev.hqText()` for probes.
