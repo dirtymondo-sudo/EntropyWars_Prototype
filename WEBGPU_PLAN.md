@@ -588,3 +588,24 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
     signatures alone (any backend) for the sandbox.
   - Known: a static see-through piece in a bundle now draws before the dynamic opaques (an NPC behind static glass
     is not tinted by it).
+- 2026-10-03: **W6 verdict** (mondo's Mac, Firefox, central_egress, WebGPU): bundles on 80.7 FPS / CPU 5.9 ms; bundles off
+  (`?ew_bundles=0`) 60.1 / 12.1. The node renderer now costs what the classic one does (6.0 ms): by §3, W1 next.
+- 2026-10-03: **W1 built** (zip renderer/ENTROPY_WARS_W1_MATERIALS.zip). Changed from the W1 text:
+  - No second factory per effect: the classic material stays the only one. three's node library turns it into a node
+    material once per build (`library.fromMaterial`), and `_ewNodeDress` (three-renderer.js) dresses that copy: it walks
+    the hook stack (a layer hook, horizon fog or dissolve, records `_ew_base` / `_ew_layer` on itself), picks the base
+    by identity (`_hqAoHook`, `_ewVColorEmissiveHook`) or by the `_ewNode` tag a factory leaves (`terrain`, `fluid`,
+    `wind`, `grass`, `kelp`; three-vfx.js `fxop`), then adds each layer. The shared `{value}` objects the GLSL hooks
+    read become node uniforms that read them every render (`_ewNodeRef`), so nothing ticks twice.
+  - A tagged material sets `ewNodeKey = 'ew' + id`: three's node build cache keys on every material property, so two
+    terrain rooms with one GLSL program get two node builds (else the second binds the first one's sheets). Identical
+    shader code still lands on one GPU program.
+  - Lights: the legacy light nodes (×π, r128's cutoff ramp) are registered over three's in `lightNodes`. Height fog: the
+    scene's FogExp2 node is replaced (`_nodes.updateFog`) by one with the floor term folded in.
+  - The sways offset after instancing (three's positionNode order), so a batched tree's offset is the crown's world
+    amplitude ÷ the mesh's own scale; the GLSL put it before the instance matrix. Same picture, the sway's direction no
+    longer turns with each copy.
+  - No transpiler: the GLSL bodies were short enough to write as TSL `Fn` by hand.
+  - Not in W1: the room looks' grade (night mood, vignette, the retro print) is the post stack, W3. Side by side in the
+    sandbox (WebGL 2 backend) the node picture is brighter than classic for that reason only; water, lava, terrain,
+    the woods' wind and kelp compiled and drew. `ThreeRenderer.nodeLayers()` counts what each layer dressed.

@@ -1741,6 +1741,7 @@ const ThreeVFX = (function () {
             alphaTest: 0.01, side: THREE.DoubleSide,
         });
         mat.onBeforeCompile = _batchHook;   // one function: every group shares one program
+        mat._ewNode = { k: 'fxop' };        // WEBGPU W1: three-renderer.js gives the node renderer the same per-instance opacity
         return mat;
     }
     /* the per-instance opacity: multiplied in before the alpha test, as the

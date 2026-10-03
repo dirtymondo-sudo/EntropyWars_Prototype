@@ -627,3 +627,10 @@ Downtown on WebGPU cost 12.7 ms CPU vs 6.0 classic (three's per-draw cost). thre
 HQ's static groups as bundle groups in place (WebGPU backend only), re-records them from a per-frame signature, records
 unculled, runs bundles first in the pass, and bumps an epoch on every freed GPU resource. Full rules: WEBGPU_PLAN.md
 §10 "W6 built". `ThreeRenderer.bundles()`; off with `?ew_bundles=0`.
+
+### W1 — the material layer (2026-10-03, zip renderer/ENTROPY_WARS_W1_MATERIALS.zip)
+The node renderer draws the GLSL hooks' effects: the legacy light levels, the height fog, the room-box AO, the terrain
+sheets, the fluid tops (waves, caustics, glints), the three sways, the creator's vertex-colour glow, the backdrop's horizon
+band, the world dissolve and the batched particles' opacity. three-renderer.js `_ewNodeDress` dresses the node copy of
+each hooked material (by hook identity or the factory's `_ewNode` tag; layer hooks carry `_ew_base` / `_ew_layer`).
+A new GLSL hook needs a dress here too or it draws plain on WebGPU. `ThreeRenderer.nodeLayers()`. The grade is W3.
