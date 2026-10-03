@@ -1016,6 +1016,109 @@ const ThreeVFXEffects = (function () {
         '}'
     ].join('\n');
 
+    /* WEBGPU_PLAN W2: TSL twins of this file's GLSL programs for the node renderer (the flame volume's raymarch, the energy
+       shell, the orb shell), registered with three-renderer.js once, before the first of them is made. The classic
+       material stays the one the effects write; the twin reads the same uniform objects. */
+    var _ewNodeDone = false;
+    function _ewNodeRegister() {
+        if (_ewNodeDone || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.nodeProgram) return;
+        _ewNodeDone = true;
+        ThreeRenderer.nodeProgram(_FLAME_FRAG, 'flame volume', function (m, obj, X) {
+            var T = X.T, u = m.uniforms, s = X.mat(m, obj), F = T.float, V2 = T.vec2, V3 = T.vec3, ss = T.smoothstep, one = F(1);
+            var Tm = X.u(u.uTime, 'float'), Sd = X.u(u.uSeed, 'float'), Vg = X.u(u.uVig, 'float'), CL = X.u(u.uCamLocal, 'vec3');
+            var A = function (a, n, i) { return a[n] !== undefined ? a[n] : a[i]; };
+            var hash = T.Fn(function (a) { return T.fract(T.sin(T.dot(A(a, 'p', 0), V3(127.1, 311.7, 74.7))).mul(43758.5453)); })
+                .setLayout({ name: 'ewFlHash', type: 'float', inputs: [{ name: 'p', type: 'vec3' }] });
+            var noise = T.Fn(function (a) {
+                var p = A(a, 'p', 0), i = T.floor(p).toVar(), f = T.fract(p).toVar(), w = f.mul(f).mul(F(3).sub(f.mul(2))).toVar();
+                var h = function (x, y, z) { return hash(i.add(V3(x, y, z))); };
+                return T.mix(T.mix(T.mix(h(0, 0, 0), h(1, 0, 0), w.x), T.mix(h(0, 1, 0), h(1, 1, 0), w.x), w.y),
+                             T.mix(T.mix(h(0, 0, 1), h(1, 0, 1), w.x), T.mix(h(0, 1, 1), h(1, 1, 1), w.x), w.y), w.z);
+            }).setLayout({ name: 'ewFlNoise', type: 'float', inputs: [{ name: 'p', type: 'vec3' }] });
+            var fbm = T.Fn(function (a) {
+                var p = V3(A(a, 'p', 0)).toVar(), v = F(0).toVar(), am = F(0.5).toVar();
+                T.Loop(3, function () { v.addAssign(am.mul(noise(p))); p.assign(p.mul(2.02).add(V3(1.7, 4.1, 8.3))); am.mulAssign(0.5); });
+                return v;
+            }).setLayout({ name: 'ewFlFbm', type: 'float', inputs: [{ name: 'p', type: 'vec3' }] });
+            var core = function (p, n, n2, t, ox, oy, h, w, ph) {
+                var v = p.y.add(0.5).div(h).toVar();
+                var sway = T.sin(t.mul(2.3).add(Sd).add(ph)).mul(0.1).mul(v);
+                var cx = p.x.sub(ox).add(sway).add(n.sub(0.5).mul(0.3).mul(v.add(0.25)));
+                var cz = p.z.sub(oy).add(n.sub(0.5).mul(0.22).mul(v.add(0.25)));
+                var prof = one.sub(v.mul(0.82)).mul(0.24).add(0.02).mul(w);
+                var cd = one.sub(T.length(V2(cx, cz)).div(prof));
+                var d = cd.add(n.sub(0.5).mul(1.25)).add(n2.sub(0.5).mul(0.4)).sub(v.mul(one.sub(n).mul(0.55).add(0.5)));
+                return v.greaterThanEqual(1).select(0, d);
+            };
+            s.fragmentNode = T.Fn(function () {
+                var ro = V3(CL).toVar(), rd = T.normalize(T.positionGeometry.sub(ro)).toVar(), inv = one.div(rd).toVar();
+                var tA = V3(-0.5).sub(ro).mul(inv), tB = V3(0.5).sub(ro).mul(inv), tMin = T.min(tA, tB).toVar(), tMax = T.max(tA, tB).toVar();
+                var t0 = T.max(T.max(T.max(tMin.x, tMin.y), tMin.z), 0).toVar(), t1 = T.min(T.min(tMax.x, tMax.y), tMax.z).toVar();
+                T.Discard(t1.lessThanEqual(t0));
+                var dt = t1.sub(t0).div(18).toVar();
+                var j = T.fract(T.sin(T.dot(T.screenCoordinate.xy, V2(12.9898, 78.233))).mul(43758.5453)).toVar();
+                var acc = V3(0).toVar(), accA = F(0).toVar();
+                T.Loop(18, function (o) {
+                    T.If(accA.greaterThan(0.97), function () { T.Break(); });
+                    var p = ro.add(rd.mul(t0.add(F(o.i).add(j).mul(dt)))).toVar();
+                    var n = fbm(V3(p.x.mul(5.2).add(Sd), p.y.mul(5.8).sub(Tm.mul(3)), p.z.mul(5.2).sub(Sd))).toVar();
+                    var n2 = noise(V3(p.x.mul(11).sub(Sd), p.y.mul(12).sub(Tm.mul(5.2)), p.z.mul(11).add(Sd))).toVar();
+                    var d = core(p, n, n2, Tm, -0.2, -0.12, 0.72, 0.85, 0).toVar();
+                    d.assign(T.max(d, core(p, n, n2, Tm, 0.03, 0.14, 1, 1, 9.2)));
+                    d.assign(T.max(d, core(p, n, n2, Tm, 0.22, -0.16, 0.62, 0.78, 17.5)));
+                    d.assign(T.max(d, core(p, n, n2, Tm, -0.05, -0.24, 0.55, 0.7, 27.9)));
+                    d.assign(T.clamp(d, 0, 1));
+                    T.If(d.greaterThanEqual(0.01), function () {
+                        var heat = T.clamp(d.mul(F(1.35).sub(p.y.add(0.5).mul(0.55))), 0, 1).toVar();
+                        var cc = ss(0.68, 0.98, heat);
+                        var c = V3(ss(0.02, 0.14, heat), T.min(1, ss(0.24, 0.62, heat).mul(0.72).add(cc.mul(0.28))), T.min(1, ss(0.6, 0.97, heat).mul(0.55).add(cc.mul(0.45))));
+                        var w = T.clamp(d.mul(dt).mul(7), 0, 1).mul(one.sub(accA)).toVar();
+                        acc.addAssign(c.mul(w).mul(1.6)); accA.addAssign(w);
+                    });
+                });
+                accA.assign(T.min(accA.mul(1.15), 1).mul(Vg));
+                T.Discard(accA.lessThan(0.015));
+                var col = T.min(acc.div(T.max(accA, 0.0001)), 1).add(acc.mul(0.25));
+                return T.vec4(T.min(col, 1), accA);
+            })();
+            return s;
+        });
+        var shellU = function (u, X) {
+            return { Tm: X.u(u.uTime, 'float'), C: X.u(u.uColor, 'vec3'), Hot: X.u(u.uHot, 'vec3'), S1: X.u(u.uScroll1, 'vec2'), S2: X.u(u.uScroll2, 'vec2'),
+                     K1: X.u(u.uScale1, 'float'), K2: X.u(u.uScale2, 'float'), Er: X.u(u.uErode, 'float'), Op: X.u(u.uOpacity, 'float'), Gn: X.u(u.uGain, 'float') };
+        };
+        ThreeRenderer.nodeProgram(_SIG_ENERGY_FS, 'energy shell', function (m, obj, X) {
+            var T = X.T, u = m.uniforms, s = X.mat(m, obj), K = shellU(u, X), nz = X.tex(u.uNoise), ss = T.smoothstep;
+            var Lo = X.u(u.uVFadeLo, 'float'), Hi = X.u(u.uVFadeHi, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv();
+                var n = T.clamp(nz(uv.mul(K.K1).add(K.S1.mul(K.Tm))).r.mul(nz(uv.mul(K.K2).add(K.S2.mul(K.Tm))).r).mul(2), 0, 1).toVar();
+                var a = ss(K.Er, K.Er.add(0.45), n).mul(ss(0, Lo, uv.y)).mul(T.float(1).sub(ss(Hi, 1, uv.y))).mul(K.Op).toVar();
+                T.Discard(a.lessThan(0.004));
+                return T.vec4(T.mix(K.C, K.Hot, T.pow(n, 2.2)).mul(K.Gn), a);
+            })();
+            return s;
+        });
+        ThreeRenderer.nodeProgram(_SIG_ORB_FS, 'orb shell', function (m, obj, X) {
+            var T = X.T, u = m.uniforms, s = X.mat(m, obj), K = shellU(u, X), nz = X.tex(u.uNoise), ss = T.smoothstep;
+            var RP = X.u(u.uRimPow, 'float'), RG = X.u(u.uRimGain, 'float'), Fi = X.u(u.uFill, 'float'), Sw = X.u(u.uSwirl, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv();
+                var n1 = nz(uv.mul(T.vec2(K.K1.mul(2), K.K1)).add(K.S1.mul(K.Tm))).r, n2 = nz(uv.mul(T.vec2(K.K2.mul(2), K.K2)).add(K.S2.mul(K.Tm))).r;
+                var n = T.clamp(n1.mul(n2).mul(2), 0, 1).mul(Sw).toVar();
+                var body = ss(K.Er, K.Er.add(0.45), n).toVar();
+                var ndv = T.abs(T.dot(T.normalize(T.normalView), T.positionViewDirection));
+                var rim = T.pow(T.float(1).sub(ndv), RP).toVar();
+                var a = rim.mul(RG).mul(body.mul(0.55).add(0.45)).add(body.mul(Fi.add(rim.mul(0.85))));
+                var al = T.clamp(a, 0, 1).mul(K.Op).toVar();
+                T.Discard(al.lessThan(0.004));
+                var col = T.mix(K.C, K.Hot, T.pow(n, 2.2)).add(K.Hot.mul(rim).mul(0.55));
+                return T.vec4(col.mul(K.Gn), al);
+            })();
+            return s;
+        });
+    }
+
     function _tileFlameGeoGet() {
         if (_tileFlameGeo) return _tileFlameGeo;
         var g = new THREE.BoxGeometry(1, 1, 1);
@@ -1027,6 +1130,7 @@ const ThreeVFXEffects = (function () {
     /* shared builder: one volumetric flame box. hScale/rScale size it
        relative to the standard burning-tile fire (ts wide, 1.4·ts tall). */
     function _buildFlameVolume(seed, hScale, rScale) {
+        _ewNodeRegister();
         var ts = _cfg().tileSize || 128;
         var group = new THREE.Group();
         var mat = new THREE.ShaderMaterial({
@@ -9194,7 +9298,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        cheap: one 256px texture, two samples per fragment.
        Uniform driving happens inside each effect's _sigRun tick via
        _sigEnergyTick(mat, elapsedMs [, erode]). */
+    var _SIG_ENERGY_FS = [
+        'uniform sampler2D uNoise;',
+        'uniform float uTime, uScale1, uScale2, uErode, uOpacity, uVFadeLo, uVFadeHi, uGain;',
+        'uniform vec2 uScroll1, uScroll2;',
+        'uniform vec3 uColor, uHot;',
+        'varying vec2 vUv;',
+        'void main() {',
+        '  float n1 = texture2D(uNoise, vUv * vec2(uScale1, uScale1) + uTime * uScroll1).r;',
+        '  float n2 = texture2D(uNoise, vUv * vec2(uScale2, uScale2) + uTime * uScroll2).r;',
+        '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0);',
+        /* wide smoothstep window: erosion edges stay feathered —
+           a tight window makes hard-rimmed holes (swiss cheese) */
+        '  float a = smoothstep(uErode, uErode + 0.45, n);',
+        /* end-fades along V so shells never end in a hard rim */
+        '  a *= smoothstep(0.0, uVFadeLo, vUv.y) * (1.0 - smoothstep(uVFadeHi, 1.0, vUv.y));',
+        '  vec3 col = mix(uColor, uHot, pow(n, 2.2));',
+        '  gl_FragColor = vec4(col * uGain, a * uOpacity);',
+        '  if (gl_FragColor.a < 0.004) discard;',
+        '}'
+    ].join('\n');
     function _sigEnergyMat(color, opts) {
+        _ewNodeRegister();
         opts = opts || {};
         var c = new THREE.Color(color != null ? color : 0x88bbff);
         var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
@@ -9221,26 +9346,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
                 '}'
             ].join('\n'),
-            fragmentShader: [
-                'uniform sampler2D uNoise;',
-                'uniform float uTime, uScale1, uScale2, uErode, uOpacity, uVFadeLo, uVFadeHi, uGain;',
-                'uniform vec2 uScroll1, uScroll2;',
-                'uniform vec3 uColor, uHot;',
-                'varying vec2 vUv;',
-                'void main() {',
-                '  float n1 = texture2D(uNoise, vUv * vec2(uScale1, uScale1) + uTime * uScroll1).r;',
-                '  float n2 = texture2D(uNoise, vUv * vec2(uScale2, uScale2) + uTime * uScroll2).r;',
-                '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0);',
-                /* wide smoothstep window: erosion edges stay feathered —
-                   a tight window makes hard-rimmed holes (swiss cheese) */
-                '  float a = smoothstep(uErode, uErode + 0.45, n);',
-                /* end-fades along V so shells never end in a hard rim */
-                '  a *= smoothstep(0.0, uVFadeLo, vUv.y) * (1.0 - smoothstep(uVFadeHi, 1.0, vUv.y));',
-                '  vec3 col = mix(uColor, uHot, pow(n, 2.2));',
-                '  gl_FragColor = vec4(col * uGain, a * uOpacity);',
-                '  if (gl_FragColor.a < 0.004) discard;',
-                '}'
-            ].join('\n'),
+            fragmentShader: _SIG_ENERGY_FS,
             transparent: true,
             depthWrite: false,
             side: THREE.DoubleSide,
@@ -10040,7 +10146,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        have no view-angle falloff, which is exactly what makes them read as
        flat discs). Uniform names match _sigEnergyMat so _sigEnergyTick
        drives uTime/uErode on this material too. */
+    var _SIG_ORB_FS = [
+        'uniform sampler2D uNoise;',
+        'uniform float uTime, uScale1, uScale2, uErode, uOpacity, uGain;',
+        'uniform float uRimPow, uRimGain, uFill, uSwirl;',
+        'uniform vec2 uScroll1, uScroll2;',
+        'uniform vec3 uColor, uHot;',
+        'varying vec2 vUv;',
+        'varying vec3 vN;',
+        'varying vec3 vV;',
+        'void main() {',
+        '  float n1 = texture2D(uNoise, vUv * vec2(uScale1 * 2.0, uScale1) + uTime * uScroll1).r;',
+        '  float n2 = texture2D(uNoise, vUv * vec2(uScale2 * 2.0, uScale2) + uTime * uScroll2).r;',
+        '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0) * uSwirl;',
+        /* wide feathered erosion window — see _sigEnergyMat */
+        '  float body = smoothstep(uErode, uErode + 0.45, n);',
+        '  float ndv = abs(dot(normalize(vN), normalize(vV)));',
+        '  float rim = pow(1.0 - ndv, uRimPow);',
+        /* rim breaks up as the noise erodes so death is a dissolve,
+           never a uniform fade-out */
+        '  float a = rim * uRimGain * (0.45 + 0.55 * body)',
+        '          + body * (uFill + rim * 0.85);',
+        '  vec3 col = mix(uColor, uHot, pow(n, 2.2)) + uHot * rim * 0.55;',
+        '  gl_FragColor = vec4(col * uGain, clamp(a, 0.0, 1.0) * uOpacity);',
+        '  if (gl_FragColor.a < 0.004) discard;',
+        '}'
+    ].join('\n');
     function _sigOrbShellMat(color, opts) {
+        _ewNodeRegister();
         opts = opts || {};
         var c = new THREE.Color(color != null ? color : 0x9a7cff);
         var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
@@ -10074,32 +10207,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 '  gl_Position = projectionMatrix * mv;',
                 '}'
             ].join('\n'),
-            fragmentShader: [
-                'uniform sampler2D uNoise;',
-                'uniform float uTime, uScale1, uScale2, uErode, uOpacity, uGain;',
-                'uniform float uRimPow, uRimGain, uFill, uSwirl;',
-                'uniform vec2 uScroll1, uScroll2;',
-                'uniform vec3 uColor, uHot;',
-                'varying vec2 vUv;',
-                'varying vec3 vN;',
-                'varying vec3 vV;',
-                'void main() {',
-                '  float n1 = texture2D(uNoise, vUv * vec2(uScale1 * 2.0, uScale1) + uTime * uScroll1).r;',
-                '  float n2 = texture2D(uNoise, vUv * vec2(uScale2 * 2.0, uScale2) + uTime * uScroll2).r;',
-                '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0) * uSwirl;',
-                /* wide feathered erosion window — see _sigEnergyMat */
-                '  float body = smoothstep(uErode, uErode + 0.45, n);',
-                '  float ndv = abs(dot(normalize(vN), normalize(vV)));',
-                '  float rim = pow(1.0 - ndv, uRimPow);',
-                /* rim breaks up as the noise erodes so death is a dissolve,
-                   never a uniform fade-out */
-                '  float a = rim * uRimGain * (0.45 + 0.55 * body)',
-                '          + body * (uFill + rim * 0.85);',
-                '  vec3 col = mix(uColor, uHot, pow(n, 2.2)) + uHot * rim * 0.55;',
-                '  gl_FragColor = vec4(col * uGain, clamp(a, 0.0, 1.0) * uOpacity);',
-                '  if (gl_FragColor.a < 0.004) discard;',
-                '}'
-            ].join('\n'),
+            fragmentShader: _SIG_ORB_FS,
             transparent: true,
             depthWrite: false,
             side: THREE.FrontSide,
@@ -39485,6 +39593,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     return {
 
+        /* WEBGPU_PLAN W2 (console, through ThreeRenderer.nodePrograms): one material of each GLSL program here */
+        nodeSamples: function () {
+            return [['flame volume', _buildFlameVolume(1, 1, 1).mats[0], new THREE.BoxGeometry(1, 1, 1)],
+                    ['energy shell', _sigEnergyMat(0x88bbff, { opacity: 1 })], ['orb shell', (function () { var o = _sigOrbShellMat(0x9a7cff); o.uniforms.uOpacity.value = 1; return o; })(), new THREE.SphereGeometry(0.5, 16, 12)]];
+        },
         projectile: projectile,
         beam: beam,
         aoe: aoe,

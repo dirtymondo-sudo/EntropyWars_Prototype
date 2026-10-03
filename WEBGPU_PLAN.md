@@ -623,3 +623,17 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   stayed missing; classic draws just retry next frame. `_ewBunSetup` wraps `_pipelines.isReady`: a miss during a
   recording (not a failed pipeline) flags the group, and `_ewBunTick` re-records it next frame until every pipeline is
   ready (`why.cold` in `ThreeRenderer.bundles()`). Fix 1's order stays (it is the right painter's order anyway).
+- 2026-10-03: **W2 the shader programs** (zip renderer/ENTROPY_WARS_W2.zip, supersedes the W6 fix 2 zip). Every
+  hand-written GLSL program the game draws now has a TSL twin (`Fn` only) that the node renderer swaps in, keyed by the
+  fragment source string (`_ewProgs`, three-renderer.js "THE NODE PROGRAMS"). The classic material stays the one the
+  game writes; the twin reads its uniform objects through reference nodes, so nothing upstream changed. Ported:
+  highlight, ring, reticle, the two x-ray twins, the two outlines (model outline extrudes in view space in
+  `vertexNode`), aura shells, the sky ground / wall / dome, rays, ray pools, ray motes, the HQ atmosphere points and
+  rain lines, the reflector (projective `uTexMat`, not `reflector()`, so the HQ's own mirror camera stays), ambient
+  points (three-vfx.js), the flame volume raymarch, the energy and orb shells (three-vfx-effects.js) and the MeshLine
+  bolts (three-lightning.js; the twin keeps meshline_vert's clip-space ribbon instead of `Line2NodeMaterial`, so
+  `THREE.MeshLine` stays). Points that draw sprites go through a per-Points instanced quad proxy
+  (`_ewPointProxy`) because WebGPU points are 1 px. Other files register with `ThreeRenderer.nodeProgram(fs, key,
+  fn)`. Console: `ThreeRenderer.nodePrograms()` builds one of each and returns `{name: twinned}` (all 21 true on the
+  sandbox's WebGL 2 backend); `nodeLayers()` counts `program <key>`. The menu backdrop's own renderer in index.html
+  is classic WebGL and was left as it is. A program without a twin still gets the old flat stand-in.

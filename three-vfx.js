@@ -3057,6 +3057,40 @@ const ThreeVFX = (function () {
         '}'
     ].join('\n');
 
+    /* WEBGPU_PLAN W2: the cloud's TSL twin for the node renderer (three-renderer.js draws a twin marked _ewSprite as a quad
+       per point; `position` arrives as aEwPos). Registered once, before the first cloud. */
+    var _ambNodeDone = false;
+    function _ambNodeRegister() {
+        if (_ambNodeDone || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.nodeProgram) return;
+        _ambNodeDone = true;
+        ThreeRenderer.nodeProgram(_AMB_FRAG, 'ambient', function (m, obj, X) {
+            var T = X.T, u = m.uniforms, s = X.mat(m, obj, 'PointsNodeMaterial'), ss = T.smoothstep;
+            var Tm = X.u(u.uTime, 'float'), Sc = X.u(u.uScale, 'float'), Bl = X.u(u.uBlink, 'float'), CA = X.u(u.uColorA, 'color'), CB = X.u(u.uColorB, 'color'),
+                Op = X.u(u.uOpacity, 'float'), De = X.u(u.uDensity, 'float');
+            var P = T.attribute('aEwPos', 'vec3'), ph = T.attribute('aPhase', 'float'), sp = T.attribute('aSpeed', 'float'), am = T.attribute('aAmp', 'vec3'),
+                sz = T.attribute('aSize', 'float'), vR = T.varying(T.attribute('aRand', 'float')), vB = T.varyingProperty('float', 'vEwAmbB');
+            var pos = T.Fn(function () {
+                var t = Tm.mul(sp).add(ph).toVar(), p = T.vec3(P).toVar();
+                p.x.addAssign(T.sin(t.mul(0.31)).mul(am.x).add(T.sin(t.mul(0.83).add(ph.mul(2.7))).mul(am.x).mul(0.35)));
+                p.y.addAssign(T.sin(t.mul(0.47).add(ph.mul(1.3))).mul(am.y));
+                p.z.addAssign(T.cos(t.mul(0.28)).mul(am.z).add(T.cos(t.mul(0.71).add(ph.mul(3.1))).mul(am.z).mul(0.3)));
+                var blink = ss(0.45, 0.95, T.sin(Tm.mul(T.fract(ph).mul(0.9).add(0.6)).add(ph.mul(7))).mul(0.5).add(0.5));
+                vB.assign(T.mix(1, blink, Bl));
+                return p;
+            })();
+            s.positionNode = pos; s.sizeAttenuation = false;
+            s.sizeNode = sz.mul(Sc).div(T.max(1, T.modelViewMatrix.mul(T.vec4(pos, 1)).z.negate())).div(T.screenDPR);
+            s.fragmentNode = T.Fn(function () {
+                T.Discard(vR.greaterThan(De));
+                var a = ss(1, 0.15, T.length(T.uv().sub(0.5)).mul(2)).mul(Op).mul(vB).toVar();
+                T.Discard(a.lessThan(0.004));
+                return T.vec4(T.mix(CA, CB, vR).mul(vB), a);
+            })();
+            s._ewSprite = true;
+            return s;
+        });
+    }
+
     function _ambDisposeCloud(cloud) {
         if (!cloud) return;
         if (_scene && cloud.points) _scene.remove(cloud.points);
@@ -3091,6 +3125,7 @@ const ThreeVFX = (function () {
             size[i] = ts * (opts.sizeLo + Math.random() * (opts.sizeHi - opts.sizeLo));
             rand[i] = Math.random();
         }
+        _ambNodeRegister();
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));

@@ -630,6 +630,14 @@ camera-centred env ground painted over the hall's lower walls), re-records a gro
 because its pipeline was still compiling (W6 fix 2: the warm-up's compile is compileAsync on WebGPU), and bumps an epoch on every freed GPU resource. Full rules: WEBGPU_PLAN.md
 §10 "W6 built". `ThreeRenderer.bundles()`; off with `?ew_bundles=0`.
 
+### W2 — the shader programs (2026-10-03, zip renderer/ENTROPY_WARS_W2.zip)
+Every hand-written GLSL program has a TSL twin the node renderer swaps in, keyed by its fragment source (three-renderer.js
+"THE NODE PROGRAMS", `_ewProgs`); the twin reads the classic material's own uniforms, so the game still writes the
+classic material. Other files register with `ThreeRenderer.nodeProgram(fs, key, fn)` (three-vfx.js ambient,
+three-vfx-effects.js flame / energy / orb, three-lightning.js MeshLine). Sprite Points draw through an instanced quad
+proxy (`_ewPointProxy`; WebGPU points are 1 px). A NEW ShaderMaterial needs a twin or it draws as a flat stand-in on
+WebGPU. Console: `ThreeRenderer.nodePrograms()`. Details: WEBGPU_PLAN.md §10 "W2".
+
 ### W1 — the material layer (2026-10-03, zip renderer/ENTROPY_WARS_W1_MATERIALS.zip)
 The node renderer draws the GLSL hooks' effects: the legacy light levels, the height fog, the room-box AO, the terrain
 sheets, the fluid tops (waves, caustics, glints), the three sways, the creator's vertex-colour glow, the backdrop's horizon
