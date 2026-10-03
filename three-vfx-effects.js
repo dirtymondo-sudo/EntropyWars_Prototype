@@ -3660,6 +3660,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE IMPACT RIPPLE: an ULTIMATE's hit bends the air (THE FEVER's
            one survivor — ultimates only, _crImpactRipple decides) */
         if (typeof _crImpactRipple === 'function') _crImpactRipple(intent, spellId, params || {});
+        /* THE QUARKS LAYER (R7b, opt-in): fire / explosion spells add a three.quarks fire + smoke burst where they land */
+        if (intent === 'impact' || intent === 'aoe' || intent === 'descent') _qkSpellLayer(spellId, intent, params || {}, effectDef);
 
         if (intent === 'descent')  { _fireDescent(spellId, params); return; }
         /* THE CAPSTONE PASS (2026-09-13): an aoe def may carry `geom3D:
@@ -3735,6 +3737,24 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 })(_zi);
             }
         }
+    }
+
+    /* which spells the quarks layer dresses: a fire theme (data.js element, else the name) = a fire column; a blast by
+       name = a smoke burst. A descent lands after its fall, so the burst waits for it. Rides fire(), so the guest's
+       own fire() (online.js relay) draws it too when the guest has the layer on. */
+    var _QK_BLAST = /explo|blast|bomb|grenade|nuke|nuclear|missile|rocket|detonat|mortar|artillery|airstrike|kaboom|boom/i;
+    function _qkSpellLayer(spellId, intent, params, effectDef) {
+        var V = window.ThreeVFX;
+        if (!V || !V.quarksBurst || params.tx == null || params.ty == null) return;
+        var kind = (_resolveTheme(null, spellId, '') === _THEME_MAP.fire) ? 'fire' : (_QK_BLAST.test(spellId) ? 'smoke' : null);
+        if (!kind) return;
+        var r = params.aoeRadius != null ? params.aoeRadius : (params.radius != null ? params.radius : (effectDef && effectDef.aoeRadius) || 0);
+        var tx = params.tx, ty = params.ty, scale = 1 + 0.45 * Math.max(0, Math.min(3, +r || 0));
+        var go = function () {
+            var c = tilePx(tx, ty);
+            V.quarksBurst(kind, c.x, c.y, unitSurfaceZ(tx, ty), scale);
+        };
+        if (intent === 'descent') _fxDelay(go, getDescentTotalMs(spellId)); else go();
     }
 
     function _fireUtility(effectId, params) {
