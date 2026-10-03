@@ -566,3 +566,25 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   `_ewGpuSafeBuffers`: interleaved buffers are left to the garbage collector; other freed buffers are destroyed at the next
   frame's first render. The Renderer line in F3 now counts uncaptured GPU errors and shows the first. Foyer readouts so far:
   node renderer on WebGL 2 67.6 FPS / CPU 3.9 ms vs the classic renderer's 69 / 3.4 (2026-10-02, post on), plain picture.
+- 2026-10-03: **W0 verdict** (mondo's Mac, Firefox, after fix 1). Foyer: webgpu 76.9 FPS / CPU 4.7 ms / 383 draws vs classic
+  61.5 / 3.3 / 355 (classic with post). central_egress (downtown), post off on both: classic 79.8 FPS / CPU 6.0 ms / 894
+  draws vs webgpu 52.6 / 12.7 ms / 953. The node renderer costs ~2x the CPU per draw: worse, so by §3 W6 moves first.
+- 2026-10-03: **W6 built** (zip renderer/ENTROPY_WARS_W6_BUNDLES.zip), out of order on purpose (§3), on the W0 stand-ins.
+  Changed from the W6 text:
+  - No BundleGroup objects are inserted: the HQ's own groups (each drawn part's shellGroup / propGroup / doorGroup and
+    the instance pass group) are flagged in place (`isBundleGroup`, `version`, `static` are all three reads), so no
+    game code sees a new parent. charGroup stays out.
+  - The "needsUpdate on attach / detach / move / light change" is a per-frame signature (`_ewBunTick`): structure
+    (visible tree, geometry + buffers, counts, materials + textures, shadow flags) re-records and counts as churn;
+    values (matrices, colour, opacity) re-record only while the group is static, and 5 in 2 s demote it to
+    non-static (three re-checks each object, still replayed); lamps + fog + the freed-resource epoch re-record every
+    group without counting; the game's LOD level swaps re-record at most once a second; a group whose tree churns 5
+    times in 2 s draws classic for 5 s.
+  - Bundles are recorded unculled (`_projectObject` wrap); a point light's six faces draw the groups classic and culled.
+  - three runs bundles at the END of the pass (after the transparent queue); `addBundle` is replaced so they run first.
+  - Every freed buffer / texture / uniform buffer bumps the epoch, so no bundle ever replays a destroyed resource.
+  - F3: the Renderer line names the bundles; their draws are NOT in "Draw calls". `ThreeRenderer.bundles()` lists each
+    group's re-records by cause. Off: `?ew_bundles=0` or `window.EW_NO_BUNDLES`; `window.EW_BUN_DRY` runs the
+    signatures alone (any backend) for the sandbox.
+  - Known: a static see-through piece in a bundle now draws before the dynamic opaques (an NPC behind static glass
+    is not tinted by it).

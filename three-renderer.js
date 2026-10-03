@@ -31821,6 +31821,8 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost;
+        if (_ewBun.marked.length) s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
+        else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
     }
@@ -31837,6 +31839,7 @@ const ThreeRenderer = (function () {
         if (!au || au._ewSafe) return;
         au._ewSafe = true;
         au.destroyAttribute = function (attribute) {
+            _ewBun.epoch++;   // THE RENDER BUNDLES: a bundle may hold this buffer — every bundle re-records
             if (attribute.isInterleavedBufferAttribute) { B.delete(attribute); return; }
             var d = B.has(attribute) ? B.get(attribute) : null;
             if (d && d.buffer) (r._ew_freeLater || (r._ew_freeLater = [])).push(d.buffer);
@@ -31848,6 +31851,162 @@ const ThreeRenderer = (function () {
         if (!q || !q.length) return;
         r._ew_freeLater = null;
         for (var i = 0; i < q.length; i++) { try { q[i].destroy(); } catch (e) {} }
+    }
+    /* ══ THE RENDER BUNDLES (WEBGPU_PLAN W6, 2026-10-03) ═════════════════════════════════════════════════════════════════
+       three's node renderer costs about twice WebGLRenderer's CPU per draw on mondo's Mac (downtown: 12.7 ms vs 6.0 ms for
+       ~950 draws). A render bundle records a group's draws once and the pass replays them in one call. Here, on the WebGPU
+       backend only, the HQ's static groups — every drawn part's shell, props and doors, and the instance pass — become
+       bundle groups IN PLACE (three only reads isBundleGroup / version / static; nothing is reparented), and each frame a
+       signature of what the group would draw decides whether the recording still holds:
+         · structure (re-record): visible tree, geometry + buffers, instance count, draw range, materials (id, version,
+           blend state, textures + versions), shadow flags, the lamps (the stage swaps which lamps are lit), and an epoch
+           that every freed buffer bumps (a bundle must never replay a destroyed buffer);
+         · values (re-record while the group is STATIC): world matrices, colour / emissive / opacity. A static bundle skips
+           three's per-object change check entirely; a group that keeps changing (a pulsing glow, a swinging door) is
+           demoted to non-static — three checks each object again but still replays the recording — and a group whose
+           structure churns (5 re-records in 2 s) draws the classic way for 5 s.
+       A bundle is recorded UNCULLED (its pieces must be there when the camera turns); a point light's cube faces draw the
+       groups the classic, culled way. The bundles run FIRST in the pass (three runs them last, after the transparent
+       queue, which would paint the static walls over every glow and ghost drawn before them). Off: window.EW_NO_BUNDLES
+       or ?ew_bundles=0. Rooms need nothing baked: the signature follows whatever the room holds. */
+    var _ewBun = { marked: [], epoch: 0, objs: 0, recs: 0, recDraws: 0, recRate: 0, rateAt: 0, rateN: 0, aid: 0, inRec: 0, setup: false };
+    var _EW_BUN_TEX = ['map', 'emissiveMap', 'normalMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'specularMap', 'envMap', 'gradientMap', 'matcap'];
+    function _ewBunOff() {
+        try { return !!window.EW_NO_BUNDLES || /[?&]ew_bundles=0\b/.test(location.search); } catch (e) { return false; }
+    }
+    function _ewBunMix(h, v) { return (Math.imul(h, 31) + (v | 0)) | 0; }
+    function _ewBunAid(a) { return a._ew_aid || (a._ew_aid = ++_ewBun.aid); }
+    /* once per renderer: the bundles run first in the pass, and a bundle is recorded unculled */
+    function _ewBunSetup(r) {
+        if (_ewBun.setup) return true;
+        var B = r.backend;
+        if (!B || !B.isWebGPUBackend || !B.beginBundle || !r._projectObject) return false;
+        _ewBun.setup = true;
+        B.addBundle = function (renderContext, bundle) {
+            var d = this.get(renderContext), g = this.get(bundle).bundleGPU;
+            if (!g || !d.currentPass) return;
+            d.currentPass.executeBundles([g]);
+            d.currentSets = { attributes: {}, bindingGroups: [], pipeline: null, index: null };   // executeBundles clears the pass's bindings
+        };
+        ['destroyTexture', 'destroyUniformBuffer', 'destroySampler'].forEach(function (k) {
+            var f = B[k]; if (typeof f !== 'function') return;
+            B[k] = function () { _ewBun.epoch++; return f.apply(this, arguments); };
+        });
+        var po = r._projectObject;
+        r._projectObject = function (object) {
+            if (object.isBundleGroup === true) { _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; } }
+            if (_ewBun.inRec > 0 && object.frustumCulled === true) { object.frustumCulled = false; try { return po.apply(this, arguments); } finally { object.frustumCulled = true; } }
+            return po.apply(this, arguments);
+        };
+        return true;
+    }
+    function _ewBunTargets(H) {
+        var out = [];
+        function add(g, nm) { if (g && g.isObject3D && out.indexOf(g) < 0) { out.push(g); g._ew_bunName = nm; } }
+        var here = (H.opts && H.opts.room) || 'room';
+        add(H.shellGroup, here + ' shell'); add(H.propGroup, here + ' props'); add(H.doorGroup, here + ' doors');
+        var st = H.stage;
+        if (st && st.parts) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P) { add(E.P.shellGroup, id + ' shell'); add(E.P.propGroup, id + ' props'); add(E.P.doorGroup, id + ' doors'); } }
+        if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
+        return out;
+    }
+    function _ewBunObj(o, S) {
+        var h = S.hs, v = S.hv, g = o.geometry, k;
+        h = _ewBunMix(h, o.id);
+        if (o.isSkinnedMesh) S.dyn = true;
+        if (g && o._ew_lodL != null) { S.hf = _ewBunMix(_ewBunMix(S.hf, o.id), g.id); g = null; }   // THE LOD LEVELS: a level swap re-records at most once a second (an old level draws meanwhile; a freed one bumps the epoch)
+        if (g) {
+            h = _ewBunMix(h, g.id);
+            var at = g.attributes;
+            for (k in at) { var a = at[k], ab = a.isInterleavedBufferAttribute ? a.data : a; h = _ewBunMix(h, _ewBunAid(ab)); h = _ewBunMix(h, ab.array ? ab.array.length : 0); }
+            if (g.index) { h = _ewBunMix(h, _ewBunAid(g.index)); h = _ewBunMix(h, g.index.array.length); }
+            h = _ewBunMix(h, g.drawRange.start); h = _ewBunMix(h, g.drawRange.count === Infinity ? -1 : g.drawRange.count); h = _ewBunMix(h, g.groups.length);
+        }
+        if (o.isInstancedMesh) h = _ewBunMix(h, o.count);
+        h = _ewBunMix(h, (o.castShadow ? 2 : 0) + (o.receiveShadow ? 1 : 0));
+        h = _ewBunMix(h, o.renderOrder | 0); h = _ewBunMix(h, o.layers.mask);
+        var ms = Array.isArray(o.material) ? o.material : [o.material];
+        for (var i = 0; i < ms.length; i++) {
+            var m = ms[i]; if (!m) continue;
+            h = _ewBunMix(h, m.id); h = _ewBunMix(h, m.version);
+            h = _ewBunMix(h, (m.visible ? 1 : 0) + (m.transparent ? 2 : 0) + (m.depthWrite ? 4 : 0) + (m.depthTest ? 8 : 0) + (m.side << 4) + (m.blending << 6));
+            for (var t = 0; t < _EW_BUN_TEX.length; t++) { var tx = m[_EW_BUN_TEX[t]]; if (tx && tx.isTexture) { h = _ewBunMix(h, tx.id); h = _ewBunMix(h, tx.version); } }
+            v = _ewBunMix(v, Math.round((m.opacity == null ? 1 : m.opacity) * 1000));
+            if (m.color && m.color.isColor) v = _ewBunMix(v, m.color.getHex());
+            if (m.emissive && m.emissive.isColor) v = _ewBunMix(v, m.emissive.getHex());
+            if (m.emissiveIntensity != null) v = _ewBunMix(v, Math.round(m.emissiveIntensity * 1000));
+        }
+        var e = o.matrixWorld.elements;
+        v = _ewBunMix(v, Math.round(e[0] * 1000)); v = _ewBunMix(v, Math.round(e[1] * 1000)); v = _ewBunMix(v, Math.round(e[2] * 1000));
+        v = _ewBunMix(v, Math.round(e[4] * 1000)); v = _ewBunMix(v, Math.round(e[5] * 1000)); v = _ewBunMix(v, Math.round(e[6] * 1000));
+        v = _ewBunMix(v, Math.round(e[8] * 1000)); v = _ewBunMix(v, Math.round(e[9] * 1000)); v = _ewBunMix(v, Math.round(e[10] * 1000));
+        v = _ewBunMix(v, Math.round(e[12] * 1000)); v = _ewBunMix(v, Math.round(e[13] * 1000)); v = _ewBunMix(v, Math.round(e[14] * 1000));
+        S.hs = h; S.hv = v; S.n++;
+    }
+    function _ewBunWalk(o, S) {
+        var ch = o.children;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i];
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
+            else if (c.isLight) S.hs = _ewBunMix(S.hs, c.id);
+            if (c.children.length) _ewBunWalk(c, S);
+        }
+    }
+    function _ewBunRelease(g) {
+        g.isBundleGroup = false; g.static = false;
+        var i = _ewBun.marked.indexOf(g); if (i >= 0) _ewBun.marked.splice(i, 1);
+    }
+    /* per frame, before the HQ scene's outer render */
+    function _ewBunTick(r, sc) {
+        var dry = false; try { dry = !!window.EW_BUN_DRY; } catch (e) {}   // console only: the signatures without the bundles (any backend)
+        if (_ewGpu !== 'webgpu' && !dry) return;
+        var H = _hq, now = performance.now(), i;
+        if (_ewBunOff() || !H || sc !== H.scene || (!dry && !_ewBunSetup(r))) {
+            if (_ewBunOff()) while (_ewBun.marked.length) _ewBunRelease(_ewBun.marked[0]);
+            return;
+        }
+        var T = _ewBunTargets(H);
+        for (i = _ewBun.marked.length - 1; i >= 0; i--) if (T.indexOf(_ewBun.marked[i]) < 0) _ewBunRelease(_ewBun.marked[i]);
+        /* what the whole scene shares: the lit lamps (the stage swaps them) and the freed-resource epoch */
+        var G = _ewBunMix(17, _ewBun.epoch), ls = r._ew_lights || [];
+        G = _ewBunMix(G, ls.length);
+        for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) { G = _ewBunMix(G, l.id); G = _ewBunMix(G, l.castShadow ? 1 : 0); } }
+        if (sc.fog) G = _ewBunMix(G, sc.fog.isFogExp2 ? 2 : 1);
+        if (sc.environment) G = _ewBunMix(G, sc.environment.id);
+        var objs = 0;
+        for (i = 0; i < T.length; i++) {
+            var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
+            if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
+            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false };
+            _ewBunWalk(g, S);
+            objs += S.n;
+            var stat = !(S.dyn || st.dyn);
+            if (!g.isBundleGroup) {
+                g.isBundleGroup = true; g.version = (g.version | 0) + 1; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; st.times = [];
+                if (_ewBun.marked.indexOf(g) < 0) _ewBun.marked.push(g);
+                _ewBun.recs++;
+            } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
+                st.why[st.hs !== S.hs ? 'tree' : 'values']++;
+                st.times.push(now);
+                while (st.times.length && now - st.times[0] > 2000) st.times.shift();
+                if (st.times.length >= 5) {
+                    if (stat && st.hs === S.hs) { st.dyn = true; stat = false; st.times = []; }   // only values keep moving: three checks them
+                    else { st.until = now + 5000; st.times = []; st.why.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                }
+                g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
+            } else if (st.G !== G) {   // the lamps / the epoch: every group re-records, and none of it counts as the group churning
+                st.why.scene++;
+                g.version++; st.G = G; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
+            } else if (st.hf !== S.hf && now - st.softAt > 1000) {
+                st.why.lod++;
+                g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
+            }
+            g.static = stat;
+        }
+        _ewBun.objs = objs;
+        _ewBun.last = T;
+        if (now - _ewBun.rateAt > 1000) { _ewBun.recRate = +((_ewBun.recs - _ewBun.rateN) * 1000 / Math.max(1, now - _ewBun.rateAt)).toFixed(1); _ewBun.rateN = _ewBun.recs; _ewBun.rateAt = now; }
     }
     /* frame draw calls on either renderer: the node renderer counts per frame in drawCalls (its `calls` is the render count) */
     function _ewInfoCalls(inf) { var r = inf && inf.render; return !r ? 0 : (r.drawCalls != null ? r.drawCalls : r.calls); }
@@ -31917,10 +32076,15 @@ const ThreeRenderer = (function () {
             if (!this.initialized) return;
             var shadowPass = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
             var outer = !depth && !shadowPass;
-            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); }
+            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewBunTick(this, sc); }
+            /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
+               way, frustum-culled per face, instead of replaying a bundle recorded unculled */
+            var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
+            if (unb) for (var ui = 0; ui < unb.length; ui++) unb[ui].isBundleGroup = false;
             depth++;
             try { return rawRender.apply(this, arguments); }
             finally {
+                if (unb) for (var uj = 0; uj < unb.length; uj++) unb[uj].isBundleGroup = true;
                 depth--;
                 if (outer) { this._ew_shadowFrame = false; if (this._ew_shadowLights && this.shadowMap.autoUpdate === false) this.shadowMap.needsUpdate = false; this._ew_shadowLights = false; }
             }
@@ -31931,9 +32095,11 @@ const ThreeRenderer = (function () {
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
         r.setRenderObjectFunction(function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
             if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
+            if (r._currentRenderBundle) _ewBun.recDraws++;
             if (r._ew_shadowFrame && lightsNode && lightsNode.getLights) {
                 r._ew_shadowFrame = false;
                 var ls = lightsNode.getLights(), auto = r.shadowMap.autoUpdate !== false, pulse = !!r.shadowMap.needsUpdate;
+                r._ew_lights = ls;
                 for (var i = 0; i < ls.length; i++) {
                     var l = ls[i];
                     if (!l || !l.castShadow || !l.shadow) continue;
@@ -62835,6 +63001,8 @@ const ThreeRenderer = (function () {
            'res:0' (game) | 'res:1' | 'res:1.5' | 'res:native'. snapshot() = the last half-second's numbers; text() = Copy's text. */
         /* WEBGPU_PLAN W0: which renderer draws the board (?ewdiag=1 and the F3 lens print it) */
         gpuStatus: function () { return _ewGpuStatus(); },
+        /* WEBGPU_PLAN W6: each bundled group — name, meshes, static, re-records by cause (tree / values / scene / lod), rests */
+        bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, why: st.why }; }); },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },
             isOpen: function () { return !!_lens; },
