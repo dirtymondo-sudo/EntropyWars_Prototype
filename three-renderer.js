@@ -32353,7 +32353,9 @@ const ThreeRenderer = (function () {
         SpriteMaterial: 1, ShadowMaterial: 1 };
     function _ewGpuStandIn(m, obj) {
         var s = _ewGpuStandIns.get(m);
-        if (s) return s;
+        if (s) { if (s._ewTwinOf && _ewProgSync(s, m)) s.needsUpdate = true; return s; }
+        s = _ewProgTwin(m, obj);   // W2: the program's TSL twin
+        if (s) { _ewGpuStandIns.set(m, s); return s; }
         var u = m.uniforms || {}, col = null;
         ['uColor', 'color', 'uCol', 'uTint', 'diffuse', 'uBaseColor', 'uGlow'].some(function (k) { var v = u[k] && u[k].value; if (v && v.isColor) { col = v; return true; } return false; });
         var o = { transparent: !!m.transparent, opacity: m.transparent ? 0.35 : 1, side: m.side, depthTest: m.depthTest, depthWrite: m.depthWrite,
@@ -32367,6 +32369,630 @@ const ThreeRenderer = (function () {
         s.name = 'ew_gpu_standin:' + (m.name || m.type);
         _ewGpuStandIns.set(m, s);
         return s;
+    }
+    /* ══ THE NODE PROGRAMS (WEBGPU_PLAN W2, 2026-10-03) ═══════════════════════════════════════════════════════════════════
+       A ShaderMaterial has no node form, so until W2 the node renderer drew each one as a flat stand-in. Here each GLSL
+       program the game builds gets a TSL twin, found by the program's own fragment shader string (no factory changes):
+       the twin is a basic node material with the classic one's depth / stencil / blend / side state, a fragmentNode (and
+       a positionNode or vertexNode where the GLSL moves vertices) built from the SAME uniform objects — each {value} is a
+       reference node that reads it every draw, so the game keeps writing the classic material and both renderers follow.
+       A program with no twin still draws as the stand-in. Fn only, never wgslFn / glslFn (the sandbox load check builds
+       the same graphs on the WebGL 2 backend). Skinning is automatic on a node material (the r128 skinning flag goes). */
+    var _ewProgs = null, _ewProgTex = new WeakMap(), _ewProgPh = null;
+    var _EW_PROG_STATE = ['transparent', 'opacity', 'side', 'depthTest', 'depthWrite', 'depthFunc', 'blending', 'blendSrc', 'blendDst',
+        'blendEquation', 'blendSrcAlpha', 'blendDstAlpha', 'blendEquationAlpha', 'premultipliedAlpha', 'stencilWrite', 'stencilRef', 'stencilFunc',
+        'stencilFuncMask', 'stencilWriteMask', 'stencilFail', 'stencilZFail', 'stencilZPass', 'polygonOffset', 'polygonOffsetFactor',
+        'polygonOffsetUnits', 'colorWrite', 'alphaToCoverage', 'toneMapped'];
+    /* a uniform {value} → a node that reads it every draw */
+    function _ewPU(o, type) { return _ewNodeU.T.reference('value', type, o); }
+    /* a sampler uniform → fn(uv) sampling whatever texture it holds this draw (a 1×1 white sheet while it holds none) */
+    function _ewPT(o) {
+        var T = _ewNodeU.T, b = _ewProgTex.get(o);
+        if (!_ewProgPh) { _ewProgPh = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); _ewProgPh.needsUpdate = true; }
+        if (!b) { b = T.texture(o.value || _ewProgPh); _ewProgTex.set(o, b); }
+        return function (uvn) {
+            var n = T.texture(b, uvn), up = n.update;
+            n.update = function (f) { var v = o.value || _ewProgPh; if (b.value !== v) b.value = v; if (up) return up.call(this, f); };
+            n.updateType = 'object';
+            return n;
+        };
+    }
+    function _ewProgMat(m, obj, cls) {
+        var G = _ewNodeU.G, C = (cls && G[cls]) || G.MeshBasicNodeMaterial, s = new C();
+        _ewProgSync(s, m);
+        s.fog = false; s.lights = false;
+        s.name = 'ew_node_prog:' + (m.name || m.type);
+        return s;
+    }
+    function _ewProgSync(s, m) {
+        var ch = false;
+        for (var i = 0; i < _EW_PROG_STATE.length; i++) { var k = _EW_PROG_STATE[i]; if (m[k] !== undefined && s[k] !== m[k]) { s[k] = m[k]; ch = true; } }
+        return ch;
+    }
+    function _ewProgsInit() {
+        if (_ewProgs) return _ewProgs;
+        _ewProgs = new Map();
+        var T = _ewNodeU.T, F = T.float, V2 = T.vec2, V3 = T.vec3, V4 = T.vec4, ss = T.smoothstep, one = F(1), WHITE = V3(1, 1, 1);
+        var reg = function (fs, key, fn) { if (typeof fs === 'string' && fs) _ewProgs.set(fs, { k: key, fn: fn }); };
+        var segDist = function (p, a, b) {
+            var pa = p.sub(a), ba = b.sub(a), h = T.clamp(T.dot(pa, ba).div(T.dot(ba, ba)), 0, 1);
+            return T.length(pa.sub(ba.mul(h)));
+        };
+        var arcIn = function (f, lo, hi) { return ss(lo.sub(0.004), lo.add(0.004), f).mul(one.sub(ss(hi.sub(0.004), hi.add(0.004), f))); };
+        /* the tile highlights */
+        reg(_hlFragmentShader, 'highlight', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Eg = _ewPU(u.uEdgeGlow, 'float'),
+                Fi = _ewPU(u.uFill, 'float'), Br = _ewPU(u.uBrackets, 'float'), Ha = _ewPU(u.uHatch, 'float'), In = _ewPU(u.uInset, 'float'), Do = _ewPU(u.uDots, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv(), x = uv.x, y = uv.y;
+                var edge = T.min(T.min(x, one.sub(x)), T.min(y, one.sub(y))).toVar();
+                var bHard = one.sub(ss(0.02, 0.055, edge)), bSoft = one.sub(ss(0, 0.16, edge)).mul(0.4);
+                var pulse = T.sin(Tm.mul(2.2)).mul(0.06).add(0.94);
+                var L = F(0.26), W = F(0.065), iL = F(0.74), iW = F(0.935);
+                var bTL = T.step(x, L).mul(T.step(y, W)).add(T.step(y, L).mul(T.step(x, W)));
+                var bTR = T.step(iL, x).mul(T.step(y, W)).add(T.step(y, L).mul(T.step(iW, x)));
+                var bBL = T.step(x, L).mul(T.step(iW, y)).add(T.step(iL, y).mul(T.step(x, W)));
+                var bBR = T.step(iL, x).mul(T.step(iW, y)).add(T.step(iL, y).mul(T.step(iW, x)));
+                var brackets = Br.greaterThan(0).select(T.min(bTL.add(bTR).add(bBL).add(bBR), 1).mul(Br).mul(T.sin(Tm.mul(3.4)).mul(0.15).add(0.85)), 0).toVar();
+                var sb = T.fract(x.add(y).mul(3).sub(Tm.mul(0.22)));
+                var hatch = Ha.greaterThan(0).select(ss(0.28, 0.4, sb).sub(ss(0.6, 0.72, sb)).mul(Ha), 0);
+                var dot = function (cx) {
+                    var d = T.distance(uv, V2(cx, 0.5));
+                    return one.sub(ss(0.05, 0.06, d)).add(one.sub(ss(0.067, 0.083, d)).mul(0.35));
+                };
+                var dots = Do.lessThan(0.5).select(0, Do.lessThan(1.5).select(dot(0.5), Do.lessThan(2.5).select(T.max(dot(0.37), dot(0.63)),
+                    T.max(T.max(dot(0.28), dot(0.5)), dot(0.72))))).toVar();
+                var fill = Fi.mul(pulse), border = bHard.mul(1.35).add(bSoft).mul(Eg).mul(pulse);
+                var inset = In.greaterThan(0).select(ss(0.115, 0.135, edge).sub(ss(0.165, 0.185, edge)).mul(In), 0).toVar();
+                var alpha = T.clamp(fill.add(border).add(brackets).add(hatch.mul(0.55)).add(dots).add(inset).mul(Op), 0, 1);
+                var bright = bHard.mul(Eg).mul(0.42).add(brackets.mul(0.3)).add(dots.mul(0.85)).add(inset.mul(0.6));
+                return V4(T.mix(C, WHITE, T.clamp(bright, 0, 0.55)), alpha);
+            })();
+            return s;
+        });
+        /* the rings */
+        reg(_ringFragmentShader, 'ring', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Ph = _ewPU(u.uPhase, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv(), pulse = T.sin(Tm.mul(3).add(Ph)).mul(0.15).add(0.85);
+                var radial = T.pow(T.max(one.sub(T.abs(uv.y.sub(0.5)).mul(2)), 0), 0.3).toVar();
+                var dash = T.sin(uv.x.mul(6.2832 * 6).sub(Tm.mul(2.5)).add(Ph)).mul(0.18).add(0.82);
+                return V4(T.mix(C, WHITE, radial.mul(0.5)), radial.mul(dash).mul(pulse).mul(Op));
+            })();
+            return s;
+        });
+        /* the team reticle (and the ring vitals) */
+        reg(_reticleFragmentShader, 'reticle', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Ph = _ewPU(u.uPhase, 'float'),
+                Me = _ewPU(u.uMeters, 'float'), Hp = _ewPU(u.uHp, 'float'), Mp = _ewPU(u.uMp, 'float'), Sh = _ewPU(u.uShield, 'float'),
+                Pv = _ewPU(u.uPrev, 'float'), PvH = _ewPU(u.uPrevHeal, 'float'), Rot = _ewPU(u.uMeterRot, 'float'),
+                HpC = _ewPU(u.uHpCol, 'color'), MpC = _ewPU(u.uMpCol, 'color');
+            s.fragmentNode = T.Fn(function () {
+                var p = T.uv().sub(0.5).mul(1.3).toVar(), d = T.length(p).toVar(), ang = T.atan(p.x, p.y).toVar();
+                var pulse = T.sin(Tm.mul(2.2).add(Ph)).mul(0.12).add(0.88).toVar();
+                var ch = T.min(segDist(p, V2(0, 0.6), V2(-0.105, 0.455)), segDist(p, V2(0, 0.6), V2(0.105, 0.455))).toVar();
+                var chCore = one.sub(ss(0.008, 0.022, ch)).toVar(), chGlow = T.exp(ch.mul(ch).mul(-420)).mul(0.5);
+                var ch2 = T.min(segDist(p, V2(0, 0.525), V2(-0.075, 0.425)), segDist(p, V2(0, 0.525), V2(0.075, 0.425)));
+                var ch2Core = one.sub(ss(0.006, 0.016, ch2)).mul(0.55).toVar();
+                var out = V4(0).toVar();
+                T.If(Me.greaterThan(0.5), function () {
+                    var frac = T.fract(Rot.sub(ang).div(6.2832).add(0.5)).toVar();
+                    var rd = T.abs(d.sub(0.42)).toVar();
+                    var hpBand = one.sub(ss(0.028, 0.038, rd)), hpOuter = one.sub(ss(0.036, 0.048, rd));
+                    var mrd = T.abs(d.sub(0.335)).toVar();
+                    var mpBand = one.sub(ss(0.019, 0.027, mrd)), mpOuter = one.sub(ss(0.026, 0.036, mrd));
+                    var hpFill = T.max(one.sub(ss(Hp.sub(0.004), Hp.add(0.004), frac)), T.step(0.999, Hp)).toVar();
+                    var shFill = arcIn(frac, Hp, T.min(1, Hp.add(Sh))).mul(T.step(0.001, Sh)).toVar();
+                    var mpFill = T.max(one.sub(ss(Mp.sub(0.004), Mp.add(0.004), frac)), T.step(0.999, Mp)).toVar();
+                    var blink = T.sin(Tm.mul(9)).mul(0.45).add(0.55);
+                    var prevMask = arcIn(frac, T.max(0, Hp.sub(Pv)), Hp).mul(T.step(0.001, Pv));
+                    var healMask = arcIn(frac, Hp, T.min(1, Hp.add(PvH))).mul(T.step(0.001, PvH));
+                    var track = V3(0.05, 0.05, 0.07), rim = V3(0.02, 0.02, 0.03);
+                    var hpC = T.mix(HpC, WHITE, one.sub(ss(0, 0.026, rd)).mul(0.22));
+                    var hpCol = T.mix(track, hpC, hpFill).toVar();
+                    hpCol.assign(T.mix(hpCol, V3(0.55, 0.82, 1), shFill.mul(0.9)));
+                    hpCol.assign(T.mix(hpCol, WHITE, prevMask.mul(blink)));
+                    hpCol.assign(T.mix(hpCol, V3(0.62, 1, 0.72), healMask.mul(blink).mul(0.85)));
+                    hpCol.assign(T.mix(rim, hpCol, hpBand));
+                    var mpC = T.mix(MpC, WHITE, one.sub(ss(0, 0.016, mrd)).mul(0.18));
+                    var mpCol = T.mix(rim, T.mix(track, mpC, mpFill), mpBand);
+                    var hpA = hpOuter.mul(T.mix(0.78, 1, T.max(hpFill, shFill))).mul(pulse.mul(0.06).add(0.94)).toVar();
+                    var mpA = mpOuter.mul(T.mix(0.74, 1, mpFill)).mul(pulse.mul(0.06).add(0.94)).toVar();
+                    var chA = T.min(chCore.add(chGlow.mul(pulse)).add(ch2Core), 1).toVar();
+                    var chCol = T.mix(C, WHITE, T.clamp(chCore.add(ch2Core), 0, 1).mul(0.45));
+                    var a = hpA.add(mpA).add(chA).toVar();
+                    var col = hpCol.mul(hpA).add(mpCol.mul(mpA)).add(chCol.mul(chA)).div(T.max(a, 0.0001));
+                    out.assign(V4(col, T.min(a, 1).mul(Op)));
+                }).Else(function () {
+                    var rd = T.abs(d.sub(0.42)).toVar();
+                    var core = one.sub(ss(0.006, 0.018, rd)), glow = T.exp(rd.mul(rd).mul(-520)).mul(0.42);
+                    var gap = ss(0.34, 0.58, T.abs(ang));
+                    var ring = core.mul(0.95).add(glow.mul(pulse)).mul(gap);
+                    var tickAng = T.min(T.abs(T.abs(ang).sub(1.5708)), F(3.1416).sub(T.abs(ang)));
+                    var tick = one.sub(ss(0.045, 0.085, tickAng)).mul(one.sub(ss(0.03, 0.052, rd))).mul(0.85);
+                    var chev = chCore.add(chGlow.mul(pulse)).add(ch2Core);
+                    var ad = T.abs(d.sub(0.345));
+                    var dash = T.step(0.45, T.fract(ang.mul(2.2282).sub(Tm.mul(0.25)).add(Ph)));
+                    var arc = one.sub(ss(0.004, 0.013, ad)).mul(dash).mul(0.28);
+                    var hot = T.clamp(core.mul(gap).add(chCore).add(ch2Core), 0, 1);
+                    out.assign(V4(T.mix(C, WHITE, hot.mul(0.45)), T.min(ring.add(tick).add(chev).add(arc).mul(Op), 1)));
+                });
+                return out;
+            })();
+            return s;
+        });
+        /* the x-ray twins (sprite cutout, model) */
+        reg(_silFragmentShader, 'xray', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), tx = _ewPT(u.uMap);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv();
+                T.Discard(tx(uv).a.lessThan(0.35));
+                var scan = T.sin(uv.y.mul(90).sub(Tm.mul(6))).mul(0.22).add(0.78), pulse = T.sin(Tm.mul(3)).mul(0.15).add(0.85);
+                return V4(T.mix(C.mul(scan), WHITE, 0.22), Op.mul(pulse));
+            })();
+            return s;
+        });
+        reg(_modelSilFragmentShader, 'xray model', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var scan = T.sin(T.screenCoordinate.y.mul(0.45).sub(Tm.mul(6))).mul(0.22).add(0.78), pulse = T.sin(Tm.mul(3)).mul(0.15).add(0.85);
+                return V4(T.mix(C.mul(scan), WHITE, 0.22), Op.mul(pulse));
+            })();
+            return s;
+        });
+        /* the team outlines (sprite halo, model hull) */
+        reg(_spriteOutlineFragmentShader, 'outline', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), tx = _ewPT(u.uMap);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tx = _ewPU(u.uTexel, 'vec2');
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv();
+                T.Discard(tx(uv).a.greaterThan(0.12));
+                var n = F(0).toVar(), dx = Tx.x, dy = Tx.y;
+                [[1, 0], [-1, 0], [0, 1], [0, -1], [0.707, 0.707], [-0.707, 0.707], [0.707, -0.707], [-0.707, -0.707]].forEach(function (o) {
+                    n.assign(T.max(n, tx(uv.add(V2(dx.mul(o[0]), dy.mul(o[1])))).a));
+                });
+                T.Discard(n.lessThan(0.5));
+                return V4(C, Op);
+            })();
+            return s;
+        });
+        reg(_modelOutlineFragmentShader, 'outline model', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Ow = _ewPU(u.uOutline, 'float');
+            s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(T.normalize(T.normalView).mul(Ow)), 1));
+            s.fragmentNode = V4(C, Op);
+            return s;
+        });
+        /* the power-aura shells */
+        reg(_AURA_FRAG, 'aura', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), nz = _ewPT(u.uNoise);
+            var Tm = _ewPU(u.uTime, 'float'), Wb = _ewPU(u.uWobble, 'float'), C = _ewPU(u.uColor, 'color'), Co = _ewPU(u.uCore, 'color'), Op = _ewPU(u.uOpacity, 'float');
+            s.positionNode = T.Fn(function () {
+                var p = T.positionLocal, uv = T.uv(), ang = T.atan(p.z, p.x);
+                var w = T.sin(ang.mul(3).add(uv.y.mul(8)).sub(Tm.mul(6.2))).mul(0.45)
+                    .add(T.sin(ang.mul(5).sub(uv.y.mul(13)).sub(Tm.mul(9.7))).mul(0.32))
+                    .add(T.sin(ang.mul(8).add(uv.y.mul(4)).add(Tm.mul(3.9))).mul(0.23));
+                var k = one.add(w.mul(Wb.mul(uv.y.mul(uv.y).mul(0.55).add(0.1))));
+                return V3(p.x.mul(k), p.y, p.z.mul(k));
+            })();
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv();
+                var n = nz(V2(uv.x.mul(2), uv.y.mul(1.15).sub(Tm.mul(0.55)))).r.mul(0.62).add(nz(V2(uv.x.mul(3).add(0.37), uv.y.mul(2.3).sub(Tm.mul(1.05)))).r.mul(0.55));
+                var flame = ss(uv.y.mul(0.55).add(0.3), uv.y.mul(0.55).add(0.62), n.add(one.sub(uv.y).mul(0.62)));
+                var body = flame.mul(one.sub(uv.y.mul(0.82))).toVar();
+                var col = T.mix(C, Co, T.clamp(body.mul(1.1).sub(0.55), 0, 1));
+                return V4(col.mul(body.mul(0.5).add(0.5)), body.mul(Op));
+            })();
+            return s;
+        });
+        /* THE FIRMAMENT (_envGroundFS / _envWallFS / _envDomeFS: the battle, HQ and menu sky; one uniform set, _envUni) */
+        var envLib = null;
+        var envFns = function () {
+            if (envLib) return envLib;
+            var A = function (a, n, i) { return a[n] !== undefined ? a[n] : a[i]; };
+            var h11 = T.Fn(function (a) { var p = T.fract(F(A(a, 'p', 0)).mul(0.1031)).toVar(); p.mulAssign(p.add(33.33)); p.mulAssign(p.add(p)); return T.fract(p); })
+                .setLayout({ name: 'ewH11', type: 'float', inputs: [{ name: 'p', type: 'float' }] });
+            var h21 = T.Fn(function (a) { var p = A(a, 'p', 0), p3 = T.fract(V3(p.x, p.y, p.x).mul(0.1031)).toVar(); p3.addAssign(T.dot(p3, p3.yzx.add(33.33))); return T.fract(p3.x.add(p3.y).mul(p3.z)); })
+                .setLayout({ name: 'ewH21', type: 'float', inputs: [{ name: 'p', type: 'vec2' }] });
+            var h22 = T.Fn(function (a) { var p = A(a, 'p', 0), p3 = T.fract(V3(p.x, p.y, p.x).mul(V3(0.1031, 0.1030, 0.0973))).toVar(); p3.addAssign(T.dot(p3, p3.yzx.add(33.33))); return T.fract(V2(p3.x, p3.x).add(p3.yz).mul(p3.zy)); })
+                .setLayout({ name: 'ewH22', type: 'vec2', inputs: [{ name: 'p', type: 'vec2' }] });
+            var vn = T.Fn(function (a) {
+                var p = A(a, 'p', 0), i = T.floor(p).toVar(), f = T.fract(p).toVar(); f.assign(f.mul(f).mul(F(3).sub(f.mul(2))));
+                var a0 = h21(i), b0 = h21(i.add(V2(1, 0))), c0 = h21(i.add(V2(0, 1))), d0 = h21(i.add(V2(1, 1)));
+                return T.mix(T.mix(a0, b0, f.x), T.mix(c0, d0, f.x), f.y);
+            }).setLayout({ name: 'ewVn', type: 'float', inputs: [{ name: 'p', type: 'vec2' }] });
+            var fbm = T.Fn(function (a) {
+                var p = V2(A(a, 'p', 0)).toVar(), v = F(0).toVar(), am = F(0.5).toVar();
+                T.Loop(5, function () { v.addAssign(am.mul(vn(p))); p.mulAssign(2.02); am.mulAssign(0.5); });
+                return v;
+            }).setLayout({ name: 'ewFbm5', type: 'float', inputs: [{ name: 'p', type: 'vec2' }] });
+            var E = _envUni, R = function (k, t) { return _ewPU(E[k], t); };
+            envLib = { h11: h11, h21: h21, h22: h22, fbm: fbm, R: R,
+                tm: function (col) { var c = col.div(col.add(0.6)); return T.pow(T.max(c, 0), V3(0.95)); },
+                lum: function (c) { return T.dot(c, V3(0.299, 0.587, 0.114)); } };
+            return envLib;
+        };
+        reg(_envGroundFS(), 'sky ground', function (m) {
+            var L = envFns(), R = L.R, fbm = L.fbm, s = _ewProgMat(m);
+            var Tm = R('uTime', 'float'), night = R('uDayNight', 'float'), Ev = R('uSkyEvent', 'float'), Amt = R('uSkyAmt', 'float'), Wt = R('uWeather', 'vec4'),
+                Oc = R('uOccult', 'float'), Ce = R('uCenter', 'vec3'), Dr = R('uDiscR', 'float'), Ti = R('uTile', 'float');
+            s.fragmentNode = T.Fn(function () {
+                var p = T.positionWorld.xz.toVar(), q = p.sub(Ce.xz), rr = T.length(q).toVar(), th = T.atan(q.y, q.x).toVar();
+                var big = fbm(p.div(Ti.mul(6))), grain = fbm(p.div(Ti.mul(0.55)));
+                var charC = T.mix(V3(0.028, 0.025, 0.032), V3(0.006, 0.006, 0.013), night), ashC = T.mix(V3(0.075, 0.068, 0.082), V3(0.020, 0.019, 0.030), night);
+                var col = T.mix(charC, ashC, T.clamp(big.mul(0.7).add(grain.mul(0.3)), 0, 1)).toVar();
+                var crk = fbm(p.div(Ti.mul(2.1)).add(V2(11.3, 4.7))).toVar();
+                var crack = ss(0.45, 0.5, crk).mul(ss(0.57, 0.51, crk));
+                var emberC = T.mix(V3(0.95, 0.34, 0.12), V3(0.42, 0.30, 0.92), night);
+                var pulse = T.sin(Tm.mul(0.6).add(crk.mul(32))).mul(0.4).add(0.6);
+                col.addAssign(emberC.mul(crack).mul(night.mul(0.45).add(0.22)).mul(pulse).mul(ss(0, Ti.mul(4), rr)));
+                var rn = rr.div(Ti).toVar();
+                var sigCol = T.mix(V3(0.45, 0.40, 0.82), V3(0.42, 0.62, 1.0), night);
+                var rings = ss(0.96, 1, T.abs(T.sin(rn.mul(0.5).sub(Tm.mul(0.05))))), spokes = ss(0.95, 1, T.abs(T.cos(th.mul(9)))), ros = ss(0.9, 1, T.abs(T.sin(th.mul(6).add(rn.mul(0.35)))));
+                col.addAssign(sigCol.mul(rings.mul(0.5).add(spokes.mul(0.16)).add(ros.mul(0.22))).mul(Oc).mul(ss(4, 16, rn)).mul(0.34));
+                col.addAssign(sigCol.mul(ss(Ti.mul(5), 0, T.abs(rr.sub(Dr.mul(0.45))))).mul(ss(0.85, 1, T.abs(T.cos(th.mul(6))))).mul(Oc).mul(0.25));
+                var haze = T.mix(V3(0.5, 0.6, 0.72), V3(0.02, 0.035, 0.085), night);
+                col.assign(T.mix(col, haze, ss(Dr.mul(0.14), Dr.mul(0.8), rr).mul(0.97)));
+                col.addAssign(T.mix(V3(0.45, 0.68, 0.92), V3(0.16, 0.34, 0.62), night).mul(ss(Dr.mul(0.86), Dr, rr)).mul(0.45));
+                col.assign(T.mix(col, col.mul(V3(1.3, 0.5, 0.45)).add(V3(0.05, 0, 0)), Wt.w.mul(0.4)));
+                col.assign(T.mix(col, col.mul(V3(1.15, 1, 0.75)), Wt.z.mul(0.35)));
+                col.assign(T.mix(col, V3(L.lum(col)), Wt.x.mul(0.3)));
+                var bloodM = T.step(0.5, Ev).mul(T.step(Ev, 1.5)).mul(Amt), ecl = T.step(1.5, Ev).mul(T.step(Ev, 2.5)).add(T.step(2.5, Ev)).mul(Amt);
+                col.assign(T.mix(col, col.mul(V3(1.4, 0.55, 0.5)).add(V3(0.04, 0, 0)), bloodM.mul(0.45)));
+                col.assign(T.mix(col, col.mul(V3(0.5, 0.5, 0.62)), ecl.mul(0.45)));
+                return V4(L.tm(col), 1);
+            })();
+            return s;
+        });
+        reg(_envWallFS(), 'sky wall', function (m) {
+            var L = envFns(), R = L.R, fbm = L.fbm, h11 = L.h11, h21 = L.h21, s = _ewProgMat(m), TAU = 6.28318530718;
+            var Tm = R('uTime', 'float'), night = R('uDayNight', 'float'), Ev = R('uSkyEvent', 'float'), Amt = R('uSkyAmt', 'float'), Wt = R('uWeather', 'vec4'),
+                Ce = R('uCenter', 'vec3'), Wh = R('uWallH', 'float');
+            var ridge = function (a) { return one.sub(T.abs(fbm(V2(a, 1.7)).mul(2).sub(1))); };
+            var glyph = function (p) {
+                var ring = ss(0.045, 0, T.abs(T.length(p.sub(V2(0, 0.16))).sub(0.11)));
+                var stem = ss(0.03, 0, T.abs(p.x)).mul(T.step(-0.2, p.y)).mul(T.step(p.y, 0.16));
+                var bar = ss(0.03, 0, T.abs(p.y)).mul(T.step(-0.14, p.x)).mul(T.step(p.x, 0.14));
+                return T.clamp(ring.add(stem).add(bar), 0, 1);
+            };
+            s.fragmentNode = T.Fn(function () {
+                var t = Tm, wp = T.positionWorld, q = wp.xz.sub(Ce.xz), a = T.atan(q.y, q.x).toVar(), hgt = T.clamp(wp.y.div(Wh), 0, 1).toVar();
+                var bloodM = T.step(0.5, Ev).mul(T.step(Ev, 1.5)).mul(Amt).toVar(), bsun = T.step(1.5, Ev).mul(T.step(Ev, 2.5)).mul(Amt), lun = T.step(2.5, Ev).mul(Amt);
+                var sunDir = T.normalize(V3(0.5, 0.4, -0.58)), moonDir = T.normalize(V3(-0.5, 0.4, 0.56));
+                var laz = T.mix(T.atan(sunDir.z, sunDir.x), T.atan(moonDir.z, moonDir.x), night).toVar();
+                var lc = T.mix(T.mix(V3(1, 0.85, 0.55), V3(0.55, 0.68, 0.95), night), V3(0.95, 0.25, 0.15), bloodM).toVar();
+                var sk = T.mix(V3(0.62, 0.74, 0.86), V3(0.06, 0.10, 0.20), night).toVar();
+                /* the city crest: 24 cells round the ring, a building in half of them */
+                var ac = a.mul(1 / TAU).add(0.5), idx = T.floor(ac.mul(24)).toVar(), fc = T.fract(ac.mul(24)).toVar();
+                var seed = h11(idx.mul(1.37).add(0.2)), kind = T.floor(h11(idx.mul(2.7).add(0.5)).mul(4)).toVar();
+                var d = T.abs(fc.sub(0.5)).toVar(), bw = h11(idx.mul(4.4)).mul(0.15).add(0.2).toVar(), bh = h11(idx.mul(3.1)).mul(0.21).add(0.17).toVar();
+                var st = T.clamp(F(0.5).sub(d).div(T.max(bw, 1e-3)), 0, 1);
+                var hZig = T.step(d, bw).mul(bh).mul(T.floor(st.mul(3)).div(3).mul(0.6).add(0.4));
+                var hTow = T.step(d, bw.mul(0.5)).mul(bh.mul(1.4).add(0.1));
+                var hDome = T.step(d, bw).mul(bh).mul(0.6).add(T.step(d, bw.mul(0.6)).mul(T.sqrt(T.max(0, one.sub(T.pow(d.div(bw.mul(0.6).add(1e-3)), 2))))).mul(0.14));
+                var hObe = T.step(d, 0.055).mul(bh.mul(0.7).add(0.24));
+                var cc = kind.lessThan(0.5).select(hZig, kind.lessThan(1.5).select(hTow, kind.lessThan(2.5).select(hDome, hObe))).toVar();
+                T.If(seed.lessThan(0.5), function () { kind.assign(-1); cc.assign(0); });
+                var mc = F(0.12).add(ridge(a.mul(1.3).add(2)).mul(0.26)).add(ridge(a.mul(2.9).add(9)).mul(0.12)).add(fbm(V2(a.mul(6), 3)).mul(0.05)).toVar();
+                var fm = ss(0.42, 0.55, fbm(V2(a.mul(3), 5))), fn = fbm(V2(a.mul(34), 4)), fn2 = fbm(V2(a.mul(82), 9));
+                var fcr = fm.mul(fn.mul(fn).mul(0.12).add(0.05).add(fn2.mul(0.03))).toVar();
+                var col = V3(0).toVar();
+                T.If(fcr.greaterThan(0.004).and(hgt.lessThanEqual(fcr)), function () {
+                    var up = T.clamp(hgt.div(T.max(fcr, 1e-3)), 0, 1);
+                    var canopy = T.mix(V3(0.06, 0.13, 0.09), V3(0.015, 0.04, 0.05), night).mul(fbm(V2(a.mul(110), hgt.mul(34))).mul(0.85).add(0.55));
+                    var bio = T.step(0.93, h21(T.floor(V2(a.mul(220), hgt.mul(150))))).mul(night.mul(0.6).add(0.4));
+                    col.assign(T.mix(sk.mul(0.85), canopy.add(V3(0.25, 0.7, 0.55).mul(bio).mul(0.5)), T.clamp(up.mul(1.9), 0.18, 1)));
+                }).ElseIf(kind.greaterThanEqual(0).and(hgt.lessThanEqual(cc)), function () {
+                    var up = T.clamp(hgt.div(T.max(cc, 1e-3)), 0, 1).toVar();
+                    var stone = T.mix(V3(0.16, 0.15, 0.2), V3(0.04, 0.045, 0.09), night).mul(T.sin(fc.mul(70)).mul(0.5).add(0.5).mul(0.22).add(0.85)).toVar();
+                    var face = T.cos(a.sub(laz)).mul(0.5).add(0.5);
+                    stone.addAssign(lc.mul(face).mul(0.1));
+                    var c = V3(stone).toVar();
+                    T.If(kind.lessThan(1.5), function () {
+                        var gx = T.floor(fc.mul(16)), gy = T.floor(up.mul(11)), wf = T.fract(V2(fc.mul(16), up.mul(11))).sub(0.5);
+                        var lit = T.step(0.45, h21(V2(gx, gy).add(T.floor(a.mul(5)))));
+                        var win = ss(0.34, 0.16, T.max(T.abs(wf.x), T.abs(wf.y)));
+                        var flick = T.sin(t.mul(3).add(h21(V2(gx, gy)).mul(30))).mul(0.3).add(0.7);
+                        c.addAssign(V3(1, 0.72, 0.34).mul(win.mul(lit).mul(flick)).mul(night.add(0.3)).mul(T.step(0.06, up)).mul(T.step(up, 0.95)));
+                    }).Else(function () {
+                        var gc = T.mix(V3(0.55, 0.45, 0.85), V3(0.55, 0.75, 1), night);
+                        var g = glyph(V2(fc.sub(0.5), up.sub(0.5)).mul(V2(3.2, 2.2))).mul(T.sin(t.mul(1.5).add(a.mul(3))).mul(0.4).add(0.6));
+                        c.addAssign(gc.mul(g).mul(night.mul(0.8).add(0.5)));
+                    });
+                    c.addAssign(sk.mul(ss(0.72, 1, up)).mul(0.32));
+                    col.assign(T.mix(sk.mul(0.85), c, T.clamp(up.mul(1.7), 0.16, 1)));
+                }).ElseIf(hgt.lessThanEqual(mc), function () {
+                    var up = T.clamp(hgt.div(T.max(mc, 1e-3)), 0, 1).toVar();
+                    var rock = T.mix(V3(0.11, 0.13, 0.19), V3(0.03, 0.05, 0.11), night).mul(fbm(V2(a.mul(55), hgt.mul(22))).mul(0.55).add(0.7));
+                    var face = T.cos(a.sub(laz)).mul(0.5).add(0.5).toVar();
+                    var snow = ss(F(0.55).sub(face.mul(0.12)), 0.82, up);
+                    var snowC = T.mix(V3(0.8, 0.88, 1), V3(0.26, 0.4, 0.64), night).add(lc.mul(face).mul(0.3));
+                    var c = T.mix(rock, snowC, snow).add(lc.mul(face).mul(0.07).mul(up.mul(0.6).add(0.4)));
+                    col.assign(T.mix(sk.mul(0.9), c, T.clamp(up.mul(1.7), 0.12, 1)));
+                }).Else(function () { T.Discard(); });
+                col.assign(T.mix(col, col.mul(V3(1.4, 0.5, 0.45)), bloodM.mul(0.5)));
+                col.assign(T.mix(col, col.mul(V3(0.55, 0.55, 0.65)), bsun.add(lun).mul(0.4)));
+                col.assign(T.mix(col, V3(L.lum(col)), Wt.x.mul(0.3)));
+                col.assign(T.mix(col, col.mul(V3(0.85, 0.95, 1.15)), Wt.y.mul(0.4)));
+                col.assign(T.mix(col, col.mul(V3(1.15, 1, 0.75)), Wt.z.mul(0.35)));
+                return V4(L.tm(col), 1);
+            })();
+            return s;
+        });
+        reg(_envDomeFS(), 'sky dome', function (m) {
+            var L = envFns(), R = L.R, fbm = L.fbm, h11 = L.h11, h21 = L.h21, h22 = L.h22, s = _ewProgMat(m), PI = Math.PI;
+            var Tm = R('uTime', 'float'), night = R('uDayNight', 'float'), Ev = R('uSkyEvent', 'float'), Amt = R('uSkyAmt', 'float'), Wt = R('uWeather', 'vec4'),
+                Oc = R('uOccult', 'float'), FogC = R('uFogColor', 'vec3'), FogA = R('uFogAmount', 'float'), FogT = R('uFogTop', 'float'), FogB = R('uFogBand', 'float'),
+                MTint = R('uMapTint', 'vec3'), MTintA = R('uMapTintAmt', 'float'), MStars = R('uMapStars', 'float'), MNeb = R('uMapNebula', 'float'),
+                Flow = R('uSkyFlow', 'float'), SunN = R('uSunNear', 'float'), MoonN = R('uMoonNear', 'float'), Yaw = R('uSkyYaw', 'float'), Lift = R('uSkyLift', 'float'),
+                Day = R('uSkyDay', 'float'), Clouds = R('uSkyClouds', 'float'), SunD = R('uSunDir', 'vec3'), MoonD = R('uMoonDir', 'vec3'), Clock = R('uSunClock', 'float'),
+                Dusk = R('uDusk', 'float'), MMesh = _ewPU(m.uniforms.uMoonMesh, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var t = Tm, rd0 = T.normalize(T.positionWorld.sub(T.cameraPosition)), cy = T.cos(Yaw), sy = T.sin(Yaw);
+                var rd = V3(rd0.x.mul(cy).sub(rd0.z.mul(sy)), rd0.y, rd0.x.mul(sy).add(rd0.z.mul(cy))).toVar();
+                var wStorm = Wt.x, wSnow = Wt.y, wSand = Wt.z, wBlood = Wt.w;
+                var bloodM = T.step(0.5, Ev).mul(T.step(Ev, 1.5)).mul(Amt).toVar(), bsun = T.step(1.5, Ev).mul(T.step(Ev, 2.5)).mul(Amt).toVar(), lun = T.step(2.5, Ev).mul(Amt).toVar();
+                var sunDir = T.normalize(T.mix(V3(T.sin(t.mul(0.05)).mul(0.03).add(0.5), 0.4, -0.58), SunD, Clock)).toVar();
+                var moonDir = T.normalize(T.mix(V3(-0.5, 0.4, T.sin(t.mul(0.04)).mul(0.03).add(0.56)), MoonD, Clock)).toVar();
+                var el = rd.y.toVar(), az = T.atan(rd.x, rd.z).toVar(), lat = T.asin(T.clamp(el, -1, 1)).div(PI * 0.5).toVar();
+                var sph = V2(az.div(PI), lat), nd = V2(az.div(PI), el).toVar();
+                var v = el.mul(0.5).add(0.5).toVar();
+                var deepLo = T.mix(V3(0.060, 0.040, 0.092), V3(0.022, 0.014, 0.048), night), deepMd = T.mix(V3(0.034, 0.034, 0.078), V3(0.012, 0.011, 0.030), night),
+                    deepHi = T.mix(V3(0.014, 0.024, 0.060), V3(0.004, 0.006, 0.020), night);
+                var col = T.mix(deepLo, deepMd, ss(0, 0.55, v)).toVar(); col.assign(T.mix(col, deepHi, ss(0.45, 1, v)));
+                var n1 = fbm(nd.mul(V2(2.4, 3)).add(V2(t.mul(0.004).add(Flow), Lift)));
+                var n2 = fbm(nd.mul(V2(5.5, 6.5)).sub(V2(t.mul(0.006).add(Flow.mul(1.35)), Lift.mul(1.35).add(0.4))));
+                var n3 = fbm(nd.mul(V2(11, 13)).add(V2(0, t.mul(0.003))));
+                var neb = T.pow(T.clamp(n1.mul(0.65).add(n2.mul(0.45)).add(n3.mul(0.2)).sub(0.34), 0, 1), 1.6);
+                var nebMag = T.mix(V3(0.46, 0.12, 0.52), V3(0.22, 0.05, 0.34), night), nebTeal = T.mix(V3(0.06, 0.30, 0.44), V3(0.03, 0.14, 0.26), night),
+                    nebGold = T.mix(V3(0.55, 0.30, 0.18), V3(0.30, 0.16, 0.10), night);
+                var mxA = fbm(nd.mul(1.6).add(7)), mxB = fbm(nd.mul(2.3).sub(3));
+                var nebCol = T.mix(T.mix(nebTeal, nebMag, ss(0.3, 0.7, mxA)), nebGold, ss(0.55, 0.85, mxB).mul(0.6));
+                col.addAssign(nebCol.mul(neb).mul(night.mul(0.5).add(0.95)).mul(MNeb));
+                var gb = T.dot(rd, T.normalize(V3(0.36, 0.52, -0.77))), band = T.exp(gb.mul(gb).mul(-9)).toVar();
+                var bandTex = fbm(nd.mul(V2(7, 3)).add(V2(5, 0)));
+                col.addAssign(T.mix(V3(0.30, 0.26, 0.40), V3(0.18, 0.16, 0.30), night).mul(band.mul(bandTex.mul(0.55).add(0.3))));
+                col.assign(T.mix(col, col.mul(V3(1.5, 0.42, 0.38)).add(V3(0.04, 0, 0)), bloodM.mul(0.55)));
+                col.assign(T.mix(col, col.mul(V3(0.45, 0.45, 0.6)), bsun.mul(0.5)));
+                col.assign(T.mix(col, col.mul(V3(0.55, 0.55, 0.7)), lun.mul(0.4)));
+                var starAcc = V3(0).toVar();
+                T.Loop(4, function (o) {
+                    var fl = F(o.i), sc = fl.mul(46).add(34);
+                    var uv = V2(sph.x.mul(sc).mul(1.9), lat.mul(sc)), g = T.floor(uv).toVar(), f = T.fract(uv).toVar();
+                    var h = h21(g.add(fl.mul(23.1))).toVar();
+                    T.If(h.greaterThan(F(0.92).sub(band.mul(0.1)).sub(fl.mul(0.012))), function () {
+                        var c = h22(g.add(fl.mul(4.3))), d = T.length(f.sub(c)).toVar();
+                        var sz = h11(h.mul(13.7)).mul(0.13).add(0.05), core = ss(sz, 0, d), halo = T.exp(d.mul(d).mul(-55)).mul(0.35);
+                        var tw = T.sin(t.mul(h11(h.mul(7.3)).mul(3.5).add(0.8)).add(h.mul(52))).mul(0.45).add(0.55);
+                        var mag = h11(h.mul(5.1)), bri = core.add(halo).mul(tw).mul(mag.mul(mag).mul(0.85).add(0.35));
+                        var sct = T.mix(V3(0.65, 0.78, 1), V3(1, 0.86, 0.62), h11(h.mul(9.9))).toVar();
+                        sct.assign(T.mix(sct, V3(1, 0.5, 0.45), T.step(0.97, h11(h.mul(3.3))).mul(0.7)));
+                        starAcc.addAssign(sct.mul(bri));
+                    });
+                });
+                col.addAssign(starAcc.mul(night.mul(0.5).add(1)).mul(one.sub(wStorm.mul(0.6))).mul(MStars));
+                var sa = T.acos(T.clamp(T.dot(rd, sunDir), -1, 1)).toVar(), sunVis = T.max(one.sub(night.mul(0.85)), SunN), sunR = SunN.mul(0.42).add(0.05).toVar();
+                var disc = ss(sunR, sunR.mul(0.8), sa).toVar();
+                var corona = T.exp(sa.mul(F(5).sub(SunN.mul(3.4))).negate()).mul(SunN.mul(1.4).add(0.8)).add(T.exp(sa.mul(-1.3)).mul(SunN.mul(0.55).add(0.18))).toVar();
+                var sunWarm = T.mix(T.mix(V3(1, 0.92, 0.7), V3(1, 0.66, 0.32), wSand), V3(1, 0.58, 0.22), SunN.mul(0.7));
+                var sunC = sunWarm.mul(disc).mul(3).add(sunWarm.mul(corona).mul(1.2));
+                var blackSunC = V3(2.5).mul(disc).negate().add(V3(1, 0.9, 0.7).mul(ss(sunR.mul(1.7), sunR.mul(1.05), T.abs(sa.sub(sunR.mul(1.25))))).mul(2.8)).add(V3(0.9, 0.7, 0.95).mul(corona).mul(0.5));
+                col.addAssign(T.mix(sunC.mul(sunVis), blackSunC, bsun));
+                var ma = T.acos(T.clamp(T.dot(rd, moonDir), -1, 1)).toVar(), moonVis = T.max(night.mul(0.65).add(0.35), MoonN);
+                var moonR = T.mix(0.06, 0.095, bloodM).add(MoonN.mul(0.42)).toVar();
+                var mdisc = ss(moonR, moonR.mul(0.85), ma), craters = fbm(rd.xy.sub(moonDir.xy).mul(F(42).div(MoonN.mul(6).add(1)))).toVar();
+                var moonGrey = V3(0.85, 0.88, 0.95).mul(craters.mul(0.3).add(0.8)), mGlow = T.exp(ma.mul(F(7).sub(MoonN.mul(5.2))).negate()).mul(MoonN.mul(0.5).add(0.4));
+                var mMesh = one.sub(MMesh);
+                var moonC = moonGrey.mul(mdisc).mul(1.6).mul(mMesh).add(moonGrey.mul(mGlow).mul(0.6));
+                var moonEv = V3(0.75, 0.12, 0.07).mul(craters.mul(0.5).add(0.7)).mul(mdisc).mul(2).mul(mMesh).add(V3(0.7, 0.12, 0.08).mul(T.exp(ma.mul(-3.5))).mul(0.8));
+                col.addAssign(T.mix(moonC.mul(moonVis), moonEv, T.max(bloodM, lun)));
+                col.addAssign(T.mix(V3(0.1, 0.08, 0.18), V3(0.3, 0.25, 0.45), night).mul(ss(0.85, 1, el)).mul(0.14).mul(Oc));
+                T.If(wStorm.greaterThan(0.01), function () {
+                    var cl = fbm(V2(az.mul(2.2).add(t.mul(0.05)).add(Flow.mul(5)), v.mul(3).sub(t.mul(0.02))));
+                    var cloud = T.mix(V3(0.16, 0.17, 0.22), V3(0.03, 0.035, 0.06), night);
+                    col.assign(T.mix(col, cloud, ss(0.7, 0.12, v).mul(ss(0.4, 0.7, cl)).mul(wStorm).mul(0.85)));
+                });
+                col.assign(T.mix(col, V3(L.lum(col)), wStorm.mul(0.25))); col.mulAssign(T.mix(1, 0.72, wStorm.mul(0.5)));
+                col.assign(T.mix(col, col.mul(V3(0.85, 0.95, 1.15)).add(V3(0.04, 0.06, 0.09)), wSnow.mul(0.4)));
+                col.assign(T.mix(col, col.mul(V3(1.18, 1, 0.74)).add(V3(0.05, 0.03, 0)), wSand.mul(0.35)));
+                col.assign(T.mix(col, col.mul(V3(1.3, 0.5, 0.45)).add(V3(0.05, 0, 0)), wBlood.mul(0.45)));
+                col.assign(T.mix(col, col.mul(V3(1.35, 0.85, 0.55)).add(V3(0.1, 0.04, 0)), SunN.mul(0.55)));
+                col.assign(T.mix(col, col.mul(V3(0.9, 0.92, 1.15)).add(V3(0.03, 0.03, 0.08)), MoonN.mul(0.35)));
+                col.assign(T.pow(T.max(col.div(col.add(0.6)), 0), V3(0.92)));
+                var dayK = T.clamp(Day, 0, 1).mul(one.sub(night.mul(0.9))).mul(one.sub(Amt.mul(0.7))).toVar();
+                T.If(dayK.greaterThan(0.001), function () {
+                    var h = T.clamp(el, -1, 1).toVar(), dcl = T.clamp(Clouds.add(wStorm.mul(0.85)), 0, 1).toVar();
+                    var dsky = T.mix(V3(0.58, 0.72, 0.92), V3(0.17, 0.42, 0.88), T.pow(ss(0, 1, h), 0.55)).toVar();
+                    dsky.assign(T.mix(V3(0.48, 0.56, 0.68), dsky, ss(-0.22, 0.02, h)));
+                    dsky.addAssign(V3(1, 0.97, 0.88).mul(ss(0.045, 0.03, sa)).mul(2.4).mul(one.sub(dcl.mul(0.8))));
+                    dsky.addAssign(V3(1, 0.9, 0.7).mul(T.exp(sa.mul(-4))).mul(0.55).mul(one.sub(dcl.mul(0.6))).add(V3(1, 0.95, 0.85).mul(T.exp(sa.mul(-1.4))).mul(0.12)));
+                    var cl = fbm(nd.mul(V2(3.2, 5)).add(V2(t.mul(0.006).add(Flow), 0))).add(fbm(nd.mul(V2(7, 11)).sub(V2(t.mul(0.004), 0.3))).mul(0.5)).toVar();
+                    var cover = ss(F(0.66).sub(dcl.mul(0.4)), F(0.96).sub(dcl.mul(0.34)), cl).mul(ss(-0.02, 0.12, h)).mul(T.step(0.001, dcl));
+                    var cloudC = T.mix(V3(0.8, 0.82, 0.88), V3(1), ss(0.55, 1, cl)).toVar();
+                    cloudC.assign(T.mix(cloudC, cloudC.mul(0.7), dcl.mul(0.55).mul(one.sub(ss(0.7, 1, cl)))));
+                    dsky.assign(T.mix(dsky, cloudC, cover.mul(0.92)));
+                    dsky.assign(T.mix(dsky, V3(L.lum(dsky)).mul(V3(0.92, 0.95, 1.02)), dcl.mul(0.45))); dsky.mulAssign(one.sub(wStorm.mul(0.3)));
+                    col.assign(T.mix(col, dsky, dayK));
+                });
+                T.If(Dusk.greaterThan(0.001), function () {
+                    var lowB = one.sub(ss(-0.06, 0.42, el));
+                    var toSun = T.pow(T.max(T.dot(T.normalize(V3(rd.x, 0, rd.z).add(1e-4)), T.normalize(V3(sunDir.x, 0, sunDir.z).add(1e-4))), 0), 2).mul(0.55).add(0.45);
+                    col.assign(T.mix(col, col.mul(V3(1.25, 0.82, 0.62)).add(V3(0.3, 0.12, 0.05).mul(toSun)), T.clamp(Dusk.mul(lowB).mul(0.85), 0, 1)));
+                });
+                T.If(MTintA.greaterThan(0.001), function () {
+                    var ml = L.lum(col);
+                    col.assign(T.mix(col, MTint.mul(ml.mul(1.1).add(0.45)), T.clamp(MTintA, 0, 1)));
+                });
+                T.If(FogA.greaterThan(0.001), function () {
+                    var fb = T.pow(one.sub(ss(FogT.sub(FogB), FogT, el)), 1.6);
+                    col.assign(T.mix(col, FogC, T.clamp(fb.mul(FogA), 0, 1)));
+                });
+                return V4(col, 1);
+            })();
+            return s;
+        });
+        /* THE GOD RAYS (_ensureRayShaders: the battle's shafts, the HQ's light_shaft rows): the prism, the pool, the motes */
+        _ensureRayShaders();
+        var rayU = function (u) { return { Tm: _ewPU(u.uTime, 'float'), C: _ewPU(u.uColor, 'color'), I: _ewPU(u.uIntensity, 'float'), Sd: _ewPU(u.uSeed, 'float') }; };
+        reg(_RAY_FS, 'ray', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), K = rayU(u), Hh = _ewPU(u.uH, 'float'), Ww = _ewPU(u.uW, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var pg = T.positionGeometry, lx = pg.x.div(Ww), ly = pg.y.div(Hh).add(0.5), lz = pg.z.div(Ww);
+                var r = T.length(V2(lx, lz)).mul(2).toVar();
+                var radial = T.pow(ss(1, 0, r), 1.6);
+                var vert = ss(0, 0.07, ly).mul(one.sub(ss(0.28, 0.95, ly).mul(0.92)));
+                var st = T.sin(lx.mul(16).add(K.Tm.mul(0.35)).add(K.Sd.mul(7))).mul(T.sin(lz.mul(13).sub(K.Tm.mul(0.22)).add(K.Sd.mul(3)))).mul(0.3).add(0.7);
+                var flick = T.sin(K.Tm.mul(0.9).add(K.Sd).add(ly.mul(5))).mul(0.14).add(0.86);
+                var a = radial.mul(vert).mul(st).mul(K.I).mul(flick).toVar();
+                T.Discard(a.lessThanEqual(0.002));
+                var col = K.C.mul(T.pow(ss(0.45, 0, r), 2).mul(0.7).add(1));
+                return V4(col.mul(a), a);
+            })();
+            return s;
+        });
+        reg(_RAY_POOL_FS, 'ray pool', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), K = rayU(u);
+            s.fragmentNode = T.Fn(function () {
+                var r = T.length(T.uv().mul(2).sub(1)).toVar();
+                var sh = T.sin(K.Tm.mul(1.3).add(K.Sd).add(r.mul(4))).mul(0.18).add(0.82);
+                var a = T.pow(ss(1, 0, r), 2.2).mul(K.I).mul(sh).mul(2.1).toVar();
+                T.Discard(a.lessThanEqual(0.002));
+                return V4(K.C.mul(a), a);
+            })();
+            return s;
+        });
+        reg(_RAY_MOTE_FS, 'ray motes', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m, null, 'PointsNodeMaterial'), K = rayU(u), Hh = _ewPU(u.uH, 'float'), Bd = _ewPU(u.uBand, 'float');
+            var P = T.attribute('aEwPos', 'vec3'), sp = T.attribute('aSpeed', 'float'), sz = T.attribute('aSize', 'float'), ph = T.attribute('aPhase', 'float');
+            var vA = T.varyingProperty('float', 'vEwMoteA');
+            var p = T.Fn(function () {
+                var yy = T.mod(P.y.sub(K.Tm.mul(sp)), Bd).toVar(), ny = yy.div(Bd).toVar();
+                vA.assign(ss(0, 0.12, ny).mul(ss(1, 0.78, ny)).mul(T.clamp(K.I.mul(2.6), 0, 0.85)));
+                return V3(P.x.add(T.sin(K.Tm.mul(0.55).add(ph)).mul(7)), yy.sub(Hh.mul(0.5)), P.z.add(T.cos(K.Tm.mul(0.48).add(ph.mul(1.7))).mul(7)));
+            })();
+            var mvz = T.modelViewMatrix.mul(V4(p, 1)).z;
+            s.positionNode = p; s.sizeAttenuation = false;
+            s.sizeNode = sz.mul(T.clamp(F(700).div(T.max(1, mvz.negate())), 0.3, 3)).div(T.screenDPR);
+            s.fragmentNode = T.Fn(function () {
+                var a = ss(1, 0.25, T.length(T.uv().sub(0.5)).mul(2)).mul(vA).toVar();
+                T.Discard(a.lessThanEqual(0.004));
+                return V4(K.C.mul(a), a);
+            })();
+            s._ewSprite = true;
+            return s;
+        });
+        /* THE HQ ATMOSPHERE (_hqAtmosShader: dust, spores, fireflies, embers, snow, ash as points; rain as streaks) */
+        [false, true].forEach(function (line) {
+            reg(_hqAtmosShader(line).fs, line ? 'atmos rain' : 'atmos', function (m) {
+                var u = m.uniforms, s = _ewProgMat(m, null, line ? 'LineBasicNodeMaterial' : 'PointsNodeMaterial');
+                var Tm = _ewPU(u.uTime, 'float'), Bx = _ewPU(u.uBox, 'vec4'), Mv = _ewPU(u.uMove, 'vec4'), Sz = _ewPU(u.uSize, 'float'), Tw = _ewPU(u.uTwinkle, 'float'),
+                    Fd = _ewPU(u.uFade, 'float'), Wr = _ewPU(u.uWrapXZ, 'float'), Sk = _ewPU(u.uStreak, 'float'), C = _ewPU(u.uColor, 'color'), Al = _ewPU(u.uAlpha, 'float'), Ad = _ewPU(u.uAdd, 'float');
+                var P0 = line ? T.positionGeometry : T.attribute('aEwPos', 'vec3'), Se = T.attribute('aSeed', 'vec3');
+                var vA = T.varyingProperty('float', 'vEwAtmosA');
+                var pos = T.Fn(function () {
+                    var p = V3(P0).toVar(), t = Tm.mul(Se.z), ph = Se.x;
+                    p.x.addAssign(T.sin(t.mul(0.7).add(ph)).mul(Mv.y).add(Tm.mul(Mv.z).mul(Se.z)));
+                    p.z.addAssign(T.cos(t.mul(0.53).add(ph.mul(1.7))).mul(Mv.y).add(Tm.mul(Mv.w).mul(Se.z)));
+                    p.y.addAssign(Tm.mul(Mv.x).mul(Se.z).add(T.sin(t.mul(0.4).add(ph)).mul(Mv.y).mul(0.4)));
+                    T.If(Wr.greaterThan(0.5), function () {
+                        p.x.assign(T.mod(p.x.add(Bx.x), Bx.x.mul(2)).sub(Bx.x)); p.z.assign(T.mod(p.z.add(Bx.y), Bx.y.mul(2)).sub(Bx.y));
+                    }).Else(function () {
+                        var d = p.xz.sub(P0.xz).toVar(), L = T.length(d).toVar(), cap = Mv.y.mul(2.5);
+                        T.If(L.greaterThan(cap.add(0.001)), function () { p.xz.assign(P0.xz.add(d.div(L).mul(cap))); });
+                    });
+                    var base = Wr.greaterThan(0.5).select(Bx.z, P0.y).toVar(), fy = T.mod(p.y.sub(base), Bx.w).toVar();
+                    p.y.assign(base.add(fy)); var ny = fy.div(Bx.w).toVar();
+                    var a = Fd.greaterThan(0.5).select(one.sub(ny), 1).mul(ss(0, 0.06, ny)).mul(ss(1, 0.94, ny)).toVar();
+                    T.If(Tw.greaterThan(0), function () { a.mulAssign(T.pow(T.sin(Tm.mul(Tw).mul(1.7).add(ph.mul(5))).mul(0.5).add(0.5), 3).mul(0.7).add(0.3)); });
+                    vA.assign(a);
+                    if (line) p.y.subAssign(Sk.mul(T.attribute('aEnd', 'float')));
+                    return p;
+                })();
+                s.positionNode = pos;
+                if (!line) {
+                    var mvz = T.modelViewMatrix.mul(V4(pos, 1)).z;
+                    s.sizeAttenuation = false;
+                    s.sizeNode = Sz.mul(Se.y).mul(T.clamp(F(600).div(T.max(1, mvz.negate())), 0.25, 3)).div(T.screenDPR);
+                    s._ewSprite = true;
+                }
+                s.fragmentNode = T.Fn(function () {
+                    var a = (line ? vA.mul(Al) : ss(1, 0.25, T.length(T.uv().sub(0.5)).mul(2)).mul(vA).mul(Al)).toVar();
+                    T.Discard(a.lessThan(0.004));
+                    return Ad.greaterThan(0.5).select(V4(C.mul(a), a), V4(C, a));
+                })();
+                return s;
+            });
+        });
+        /* THE REFLECTORS (_HQ_REFLECT_SHADER: the puddles, the barbershop mirror) */
+        reg(_HQ_REFLECT_SHADER.fs, 'reflector', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), tR = _ewPT(u.tRefl), tM = _ewPT(u.tMap);
+            var HasM = _ewPU(u.uHasMap, 'float'), Ti = _ewPU(u.uTint, 'color'), Gn = _ewPU(u.uGain, 'float'), Al = _ewPU(u.uAlpha, 'float'), TM = _ewPU(u.uTexMat, 'mat4'),
+                FC = _ewPU(u.uFogColor, 'color'), FD = _ewPU(u.uFogDensity, 'float');
+            s.fragmentNode = T.Fn(function () {
+                var wp = T.positionWorld, base = HasM.greaterThan(0.5).select(tM(T.uv()), V4(Ti, 1)).toVar();
+                var pr = TM.mul(V4(wp, 1)).toVar(), r = tR(pr.xy.div(pr.w));
+                var Vd = T.normalize(T.cameraPosition.sub(wp)), fr = T.pow(one.sub(T.clamp(T.dot(T.normalize(T.normalWorld), Vd), 0, 1)), 2);
+                var col = T.mix(base.rgb, r.rgb, Gn.mul(fr.mul(0.45).add(0.55))).toVar();
+                var dist = T.length(T.cameraPosition.sub(wp)), ff = one.sub(T.exp(FD.mul(FD).mul(dist).mul(dist).negate()));
+                col.assign(T.mix(col, FC, T.clamp(ff, 0, 1)));
+                return V4(col, base.a.mul(Al));
+            })();
+            return s;
+        });
+        /* the other scripts' programs (three-vfx.js, three-vfx-effects.js: ThreeRenderer.nodeProgram) */
+        _ewProgsExt.forEach(function (e) { reg(e.fs, e.k, function (m, obj) { return e.fn(m, obj, _ewProgCtx()); }); });
+        _ewProgsExt.length = 0;
+        return _ewProgs;
+    }
+    var _ewProgsExt = [];
+    function _ewProgCtx() { return { T: _ewNodeU.T, G: _ewNodeU.G, mat: _ewProgMat, u: _ewPU, tex: _ewPT }; }
+    /* a sized Points draw on the node renderer: WebGPU points are one pixel, so a twin marked _ewSprite draws as a quad per
+       point instead (three's own sprite path for PointsNodeMaterial) — a proxy mesh with the Points' world matrix whose
+       geometry is a quad + the Points' attributes as per-instance attributes (the same arrays; `position` → aEwPos), kept
+       in step with their versions. One proxy per Points object. */
+    var _ewPtQuad = null;
+    function _ewPointProxy(pts, geo, mat) {
+        var pos = geo && geo.attributes && geo.attributes.position; if (!pos) return null;
+        var P = pts._ewPx, k;
+        if (!P || P.src !== geo) {
+            if (!_ewPtQuad) _ewPtQuad = new THREE.PlaneGeometry(1, 1);
+            var g = new THREE.InstancedBufferGeometry();
+            g.setIndex(new THREE.BufferAttribute(_ewPtQuad.index.array.slice(), 1));
+            g.setAttribute('position', new THREE.BufferAttribute(_ewPtQuad.attributes.position.array.slice(), 3));
+            g.setAttribute('uv', new THREE.BufferAttribute(_ewPtQuad.attributes.uv.array.slice(), 2));
+            var at = [];
+            for (k in geo.attributes) {
+                var a = geo.attributes[k]; if (!a || a.isInterleavedBufferAttribute || !a.array) continue;
+                var ia = new THREE.InstancedBufferAttribute(a.array, a.itemSize, a.normalized); ia._ewSrc = a; ia._ewV = a.version;
+                g.setAttribute(k === 'position' ? 'aEwPos' : k, ia); at.push(ia);
+            }
+            var me = new THREE.Mesh(g, mat); me.matrixAutoUpdate = false; me.frustumCulled = false; me.name = 'ew_points:' + (pts.name || '');
+            if (P) P.mesh.geometry.dispose();
+            P = pts._ewPx = { src: geo, mesh: me, at: at };
+            geo.addEventListener('dispose', function () { if (pts._ewPx === P) { pts._ewPx = null; me.geometry.dispose(); } });
+        }
+        for (var i = 0; i < P.at.length; i++) {
+            var x = P.at[i], sa = x._ewSrc;
+            if (sa.version !== x._ewV) { x._ewV = sa.version; if (x.array !== sa.array) { x.array = sa.array; x.count = sa.count; } x.needsUpdate = true; }
+        }
+        var dr = geo.drawRange, n = Math.min(pos.count, dr.count === Infinity ? pos.count : dr.start + dr.count) - dr.start;
+        P.mesh.geometry.instanceCount = Math.max(0, n);
+        P.mesh.material = mat;
+        P.mesh.matrixWorld.copy(pts.matrixWorld);
+        return n > 0 ? P.mesh : null;
+    }
+    /* the classic program's TSL twin, or null (then the flat stand-in) */
+    function _ewProgTwin(m, obj) {
+        if (!_ewNodeU || !_ewNodeU.G || !m.fragmentShader) return null;
+        var P = _ewProgsInit(), E = P.get(m.fragmentShader);
+        if (!E) return null;
+        try { var s = E.fn(m, obj); if (s) { var C = _ewNodeU.dressed, k = 'program ' + E.k; C[k] = (C[k] || 0) + 1; s._ewTwinOf = m; } return s; }
+        catch (e) { console.warn('[ThreeRenderer] node program: kept the stand-in', e); return null; }
     }
     /* the board renderer: the node renderer when asked for and loaded, else the classic one */
     function _ewMakeBoardRenderer(cnv) {
@@ -32426,6 +33052,10 @@ const ThreeRenderer = (function () {
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
         r.setRenderObjectFunction(function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
             if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
+            if (material && material._ewSprite && object.isPoints) {   // W2: a sized point list draws as instanced quads
+                var px = _ewPointProxy(object, geometry, material); if (!px) return;
+                object = px; geometry = px.geometry; group = null;
+            }
             if (r._currentRenderBundle) _ewBun.recDraws++;
             if (r._ew_shadowFrame && lightsNode && lightsNode.getLights) {
                 r._ew_shadowFrame = false;
@@ -63336,7 +63966,48 @@ const ThreeRenderer = (function () {
         /* WEBGPU_PLAN W0: which renderer draws the board (?ewdiag=1 and the F3 lens print it) */
         gpuStatus: function () { return _ewGpuStatus(); },
         /* WEBGPU_PLAN W6: each bundled group — name, meshes, static, re-records by cause (tree / values / scene / lod), rests */
+        /* WEBGPU W2: another script's GLSL program gets a TSL twin — fn(material, object, ctx) → a node material ({T, G, mat, u, tex}) */
+        nodeProgram: function (fs, key, fn) { if (typeof fs !== 'string' || typeof fn !== 'function') return; if (_ewProgs) _ewProgs.set(fs, { k: key, fn: function (m, obj) { return fn(m, obj, _ewProgCtx()); } }); else _ewProgsExt.push({ fs: fs, k: key, fn: fn }); },
         nodeLayers: function () { return _ewNodeU ? Object.assign({}, _ewNodeU.dressed) : null; },   // WEBGPU W1: how many materials each layer dressed
+        /* WEBGPU W2 (console): build one material from each program factory, draw them once on the node renderer, and list
+           which twins came back (a TSL error is a console error from three) */
+        nodePrograms: function () {
+            if (!_ewGpu || !renderer || !_ewNodeU) return 'not on the node renderer';
+            var out = {}, mk = [['highlight', _makeHlMaterial(0x44aaff, 0.8, 1, 2, { brackets: 1, hatch: 1, inset: 1 })], ['ring', _makeRingMaterial(0xffaa00, 0.8, 0)],
+                ['reticle', _makeTeamReticleMaterial(0x14b4ff, 0, 0x44ff66)], ['xray', _makeSilhouetteMaterial(0x4db8ff, null)],
+                ['xray model', _makeModelSilhouetteMaterial(0x4db8ff, false)], ['outline', _makeSpriteOutlineMaterial(0xff3355, null, 0.01, 0.01)],
+                ['outline model', _makeModelOutlineMaterial(0xff3355, false, 128, 3)], ['aura', _makeAuraShellMat(0xff6600, 0xffffaa, 0.8, 1, 0.5)]];
+            if (_envGround) mk.push(['sky ground', _envGround.material], ['sky wall', _envWall.material], ['sky dome', _envDome.material]);
+            _ensureRayShaders();
+            var ru = { uTime: { value: 1 }, uColor: { value: new THREE.Color(0xfff0d2) }, uIntensity: { value: 0.5 }, uSeed: { value: 1 }, uH: { value: 2 }, uW: { value: 1.5 }, uBand: { value: 1 } };
+            var SM = function (vs, fs, u, o) { return new THREE.ShaderMaterial(Object.assign({ uniforms: u, vertexShader: vs, fragmentShader: fs, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }, o || {})); };
+            var pg = new THREE.BufferGeometry(), pa = new Float32Array(30); for (var q = 0; q < 30; q++) pa[q] = (Math.random() - 0.5);
+            pg.setAttribute('position', new THREE.BufferAttribute(pa, 3)); pg.setAttribute('aSpeed', new THREE.BufferAttribute(new Float32Array(10).fill(0.2), 1));
+            pg.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(10).fill(8), 1)); pg.setAttribute('aPhase', new THREE.BufferAttribute(new Float32Array(10).fill(1), 1));
+            pg.setAttribute('aSeed', new THREE.BufferAttribute(new Float32Array(30).fill(1), 3)); pg.setAttribute('aEnd', new THREE.BufferAttribute(new Float32Array(10), 1));
+            var au = { uTime: { value: 1 }, uColor: { value: new THREE.Color(0xffffff) }, uAlpha: { value: 1 }, uAdd: { value: 1 }, uBox: { value: new THREE.Vector4(1, 1, 0, 1) },
+                uMove: { value: new THREE.Vector4(0.1, 0.1, 0, 0) }, uSize: { value: 6 }, uTwinkle: { value: 1 }, uFade: { value: 0 }, uWrapXZ: { value: 1 }, uStreak: { value: 0.2 } };
+            var a0 = _hqAtmosShader(false), a1 = _hqAtmosShader(true), rt = new THREE.WebGLRenderTarget(32, 32);
+            mk.push(['ray', SM(_RAY_VS, _RAY_FS, ru, { side: THREE.DoubleSide }), new THREE.BoxGeometry(1, 2, 1)], ['ray pool', SM(_RAY_POOL_VS, _RAY_POOL_FS, ru), new THREE.CircleGeometry(0.5, 16)],
+                ['ray motes', SM(_RAY_MOTE_VS, _RAY_MOTE_FS, ru), pg, 'points'], ['atmos', SM(a0.vs, a0.fs, au), pg, 'points'], ['atmos rain', SM(a1.vs, a1.fs, au), pg, 'lines'],
+                ['reflector', _hqReflectMat(rt, null, 0.6, 1, 0x8899aa)]);
+            try { if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.nodeSamples) mk = mk.concat(ThreeVFXEffects.nodeSamples()); } catch (e) { out.vfxError = String(e && e.message || e); }
+            if (THREE.MeshLine && THREE.MeshLineMaterial) {
+                var ml = new THREE.MeshLine(), mg = new THREE.BufferGeometry();
+                mg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.5, -0.4, 0, 0, 0.3, 0, 0.5, -0.2, 0]), 3)); ml.setGeometry(mg);
+                mk.push(['meshline', new THREE.MeshLineMaterial({ color: new THREE.Color(0x99ccff), lineWidth: 0.1, resolution: new THREE.Vector2(512, 512), sizeAttenuation: 1 }), ml]);
+            }
+            var sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+            sc.background = new THREE.Color(0x101418);
+            cam.position.set(0, 0, 8);
+            mk.forEach(function (e, i) {
+                var gg = e[2] || new THREE.PlaneGeometry(1, 1), o = e[3] === 'points' ? new THREE.Points(gg, e[1]) : e[3] === 'lines' ? new THREE.LineSegments(gg, e[1]) : new THREE.Mesh(gg, e[1]);
+                o.position.set((i % 5) * 1.2 - 2.4, Math.floor(i / 5) * 1.2 - 1.8, 0); o.scale.setScalar(0.8); sc.add(o);
+                var tw = _ewGpuStandIn(e[1], o); out[e[0]] = !!(tw && tw._ewTwinOf);
+            });
+            try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
+            return out;
+        },
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, why: st.why }; }); },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },

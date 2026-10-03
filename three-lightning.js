@@ -74,6 +74,52 @@ const ThreeLightning = (function () {
     var _tmpPerp1 = null;
     var _tmpPerp2 = null;
 
+    /* WEBGPU_PLAN W2: the TSL twin of MeshLineMaterial (the bolt ribbons) for the node renderer. The vertex half
+       extrudes each ribbon vertex in clip space along the screen normal of its line like meshline_vert; the fragment half
+       is meshline_frag (map, alphaMap, dash, visibility). It reads the classic material's own uniforms. */
+    function _ewNodeRegister() {
+        var fs = THREE.ShaderChunk && THREE.ShaderChunk.meshline_frag;
+        if (!fs || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.nodeProgram) return;
+        ThreeRenderer.nodeProgram(fs, 'meshline', function (m, obj, X) {
+            var T = X.T, u = m.uniforms, s = X.mat(m, obj), F = T.float, V2 = T.vec2, V4 = T.vec4;
+            var U = function (k, t) { return X.u(u[k], t); };
+            var Res = U('resolution', 'vec2'), LW = U('lineWidth', 'float'), Col = U('color', 'color'), Op = U('opacity', 'float'), SA = U('sizeAttenuation', 'float');
+            var Map = X.tex(u.map), AMap = X.tex(u.alphaMap), Rep = U('repeat', 'vec2');
+            s.vertexNode = T.Fn(function () {
+                var P = T.cameraProjectionMatrix, M = P.mul(T.modelViewMatrix).toVar(), asp = Res.x.div(Res.y);
+                var fin = M.mul(V4(T.positionGeometry, 1)).toVar();
+                var fix = function (v) { return V2(v.x.div(v.w).mul(asp), v.y.div(v.w)); };
+                var cur = fix(fin).toVar(), prv = fix(M.mul(V4(T.attribute('previous', 'vec3'), 1))).toVar(), nxt = fix(M.mul(V4(T.attribute('next', 'vec3'), 1))).toVar();
+                var dir = V2(0).toVar();
+                T.If(T.length(nxt.sub(cur)).equal(0), function () { dir.assign(T.normalize(cur.sub(prv))); })
+                 .ElseIf(T.length(prv.sub(cur)).equal(0), function () { dir.assign(T.normalize(nxt.sub(cur))); })
+                 .Else(function () { dir.assign(T.normalize(T.normalize(cur.sub(prv)).add(T.normalize(nxt.sub(cur))))); });
+                var w = LW.mul(T.attribute('width', 'float'));
+                var nrm = V4(dir.y.negate().mul(w).mul(0.5), dir.x.mul(w).mul(0.5), 0, 1).toVar();
+                nrm.assign(P.transpose().mul(nrm));               /* GLSL: normal *= projectionMatrix (row vector) */
+                T.If(SA.equal(0), function () {
+                    var rp = P.transpose().mul(V4(Res, 0, 1));
+                    nrm.assign(V4(nrm.xy.mul(fin.w).div(rp.xy), nrm.zw));
+                });
+                return V4(fin.xy.add(nrm.xy.mul(T.attribute('side', 'float'))), fin.zw);
+            })();
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv().mul(Rep), cnt = T.attribute('counters', 'float');
+                var c = V4(Col, Op).toVar();
+                T.If(U('useMap', 'float').equal(1), function () { c.mulAssign(Map(uv)); });
+                T.If(U('useAlphaMap', 'float').equal(1), function () { c.a.mulAssign(AMap(uv).a); });
+                T.Discard(c.a.lessThan(U('alphaTest', 'float')));
+                T.If(U('useDash', 'float').equal(1), function () {
+                    var da = U('dashArray', 'float');
+                    c.a.mulAssign(T.ceil(T.mod(cnt.add(U('dashOffset', 'float')), da).sub(da.mul(U('dashRatio', 'float')))));
+                });
+                c.a.mulAssign(T.step(cnt, U('visibility', 'float')));
+                return c;
+            })();
+            return s;
+        });
+    }
+
     function init(scene) {
         if (!scene) {
             console.warn('[ThreeLightning] no scene provided');
@@ -91,6 +137,7 @@ const ThreeLightning = (function () {
             console.warn('[ThreeLightning] THREE.MeshLine not loaded — lightning bolts disabled');
             return;
         }
+        _ewNodeRegister();
         _scene = scene;
         _tmpV = new THREE.Vector3();
         _tmpDir = new THREE.Vector3();
