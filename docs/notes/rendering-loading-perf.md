@@ -615,3 +615,9 @@ three-renderer.js `_ewMakeBoardRenderer` builds a WebGPURenderer (`forceWebGL` f
 plain stand-ins in the render-object hook, copies the shadow pulse onto per-light flags, registers the legacy
 light classes. three-post.js: no post on the node renderer. F3 lens + `?ewdiag=1` name the backend. The picture
 is plain on purpose: W0 measures the frame only. Full list of what changed from the plan: WEBGPU_PLAN.md §10.
+
+### W0 fix 1 — the shared buffers (2026-10-03, zip renderer/ENTROPY_WARS_W0_FIX1.zip)
+`webgpu` froze on Firefox: three 0.186.1's WebGPU backend destroys an interleaved attribute's shared InterleavedBuffer
+on a geometry dispose and keeps the dead buffer on file ("Buffer with '' label has been destroyed"). `_ewGpuSafeBuffers`
+leaves interleaved buffers to the GC and defers other destroys to the next frame's first render. F3's Renderer line
+counts uncaptured GPU errors. Drop it when three fixes WebGPUAttributeUtils.destroyAttribute.

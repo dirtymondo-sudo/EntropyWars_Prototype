@@ -31821,7 +31821,33 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost;
+        if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
+    }
+    /* THE SHARED BUFFERS (W0 fix, 2026-10-03): three 0.186.1's WebGPU backend frees a vertex buffer the moment its geometry is
+       disposed. Two things break on that: an interleaved attribute's buffer is the InterleavedBuffer's, which GLTFLoader shares
+       between every primitive of a bufferView (the foyer: 19 meshes on 6 buffers), and the backend keeps the freed buffer on
+       file under the InterleavedBuffer, so every later draw of a sibling — or of the same geometry — is a draw on a destroyed
+       buffer and Firefox rejects the whole frame (the picture froze, the CSS2D door plates kept moving). The WebGL backend
+       forgets the InterleavedBuffer instead. Here: an interleaved buffer is never freed by a dispose (the garbage collector
+       frees it with its InterleavedBuffer); every other buffer is forgotten at once and destroyed at the next frame's first
+       render, after the frame that may still have drawn it is submitted. */
+    function _ewGpuSafeBuffers(r) {
+        var B = r.backend, au = B && B.isWebGPUBackend && B.attributeUtils;
+        if (!au || au._ewSafe) return;
+        au._ewSafe = true;
+        au.destroyAttribute = function (attribute) {
+            if (attribute.isInterleavedBufferAttribute) { B.delete(attribute); return; }
+            var d = B.has(attribute) ? B.get(attribute) : null;
+            if (d && d.buffer) (r._ew_freeLater || (r._ew_freeLater = [])).push(d.buffer);
+            B.delete(attribute);
+        };
+    }
+    function _ewGpuFreeLater(r) {
+        var q = r._ew_freeLater;
+        if (!q || !q.length) return;
+        r._ew_freeLater = null;
+        for (var i = 0; i < q.length; i++) { try { q[i].destroy(); } catch (e) {} }
     }
     /* frame draw calls on either renderer: the node renderer counts per frame in drawCalls (its `calls` is the render count) */
     function _ewInfoCalls(inf) { var r = inf && inf.render; return !r ? 0 : (r.drawCalls != null ? r.drawCalls : r.calls); }
@@ -31891,7 +31917,7 @@ const ThreeRenderer = (function () {
             if (!this.initialized) return;
             var shadowPass = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
             var outer = !depth && !shadowPass;
-            if (outer) this._ew_shadowFrame = true;
+            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); }
             depth++;
             try { return rawRender.apply(this, arguments); }
             finally {
@@ -31901,6 +31927,7 @@ const ThreeRenderer = (function () {
         };
         var rawClear = r.clear;
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
+        _ewGpuSafeBuffers(r);
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
         r.setRenderObjectFunction(function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
             if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
@@ -31933,6 +31960,14 @@ const ThreeRenderer = (function () {
         };
         r.init().then(function () {
             _ewGpuInfo.ready = true;
+            _ewGpuSafeBuffers(r);
+            try {
+                var dev = r.backend && r.backend.device;
+                if (dev && dev.addEventListener) dev.addEventListener('uncapturederror', function (ev) {
+                    _ewGpuInfo.errors = (_ewGpuInfo.errors || 0) + 1;
+                    if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = String(ev && ev.error && ev.error.message || ev).slice(0, 160);
+                });
+            } catch (e) {}
             console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName());
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}

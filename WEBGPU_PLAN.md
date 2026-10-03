@@ -557,3 +557,12 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   - Sandbox: the node renderer on its WebGL 2 backend ran the HQ foyer clean (~277 draws vs ~286 classic, KTX2
     ASTC, no page errors). The sandbox Chromium's SwiftShader WebGPU device dies ~16 s in with shadows and
     KTX2 off too, so the WebGPU backend itself is untested here; mondo's Mac is the measure.
+- 2026-10-03: **W0 fix 1** (zip renderer/ENTROPY_WARS_W0_FIX1.zip). mondo's first Firefox run on `webgpu` froze the picture
+  on the first camera move (the CSS2D door plates kept moving; F3 kept counting). Console: "In a draw command … Buffer with ''
+  label has been destroyed". Cause, in three 0.186.1's WebGPU backend: a geometry dispose frees its vertex buffers at once,
+  and for an interleaved attribute it frees the InterleavedBuffer's buffer (GLTFLoader shares one per bufferView: the foyer
+  has 19 meshes on 6) but keeps it on file, so every later draw of a sibling is on a destroyed buffer and Firefox rejects
+  the frame. The WebGL backend forgets the InterleavedBuffer instead, which is why `webgl2` moved. three-renderer.js
+  `_ewGpuSafeBuffers`: interleaved buffers are left to the garbage collector; other freed buffers are destroyed at the next
+  frame's first render. The Renderer line in F3 now counts uncaptured GPU errors and shows the first. Foyer readouts so far:
+  node renderer on WebGL 2 67.6 FPS / CPU 3.9 ms vs the classic renderer's 69 / 3.4 (2026-10-02, post on), plain picture.
