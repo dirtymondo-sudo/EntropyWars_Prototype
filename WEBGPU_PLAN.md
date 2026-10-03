@@ -609,3 +609,10 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   - Not in W1: the room looks' grade (night mood, vignette, the retro print) is the post stack, W3. Side by side in the
     sandbox (WebGL 2 backend) the node picture is brighter than classic for that reason only; water, lava, terrain,
     the woods' wind and kelp compiled and drew. `ThreeRenderer.nodeLayers()` counts what each layer dressed.
+- 2026-10-03: **W6 fix 1** (zip renderer/ENTROPY_WARS_W6_FIX1.zip). mondo, main hall on WebGPU after W1: the lower walls
+  black, "textures moving with my camera"; fine with `?ew_bundles=0`. Cause: W6 ran the bundles before everything in the
+  pass, so the camera-centred backdrop (env ground renderOrder -50, wall -60, dome -1000, sky / horizon groups; no depth
+  test, drawn first so the room covers it) painted over every bundled wall below the horizon. Now the bundles are held
+  and run where a renderOrder-0 group sorts (after the negative prefix of the opaque list, before the rest, at the
+  latest before the transparents or the pass's end): `_ewBunSetup` wraps `_renderObjects`, `_renderTransparents`,
+  `beginRender` / `finishRender`.
