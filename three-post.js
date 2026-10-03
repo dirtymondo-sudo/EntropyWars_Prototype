@@ -2647,7 +2647,7 @@ const ThreePost = (function () {
         // RENDERER_PLAN R2: the current three.js dropped PCFSoftShadowMap (its PCF now filters through a hardware shadow
         // sampler, which IS the soft look) and warns + falls back to PCF itself; read the chunk so we pick PCF outright there.
         renderer.shadowMap.enabled = (_shadowQuality !== 'off');
-        var _pcfSoft = !!(THREE.PCFSoftShadowMap !== undefined && THREE.ShaderChunk && THREE.ShaderChunk.shadowmap_pars_fragment && THREE.ShaderChunk.shadowmap_pars_fragment.indexOf('SHADOWMAP_TYPE_PCF_SOFT') >= 0);
+        var _pcfSoft = !renderer.isWebGPURenderer && !!(THREE.PCFSoftShadowMap !== undefined && THREE.ShaderChunk && THREE.ShaderChunk.shadowmap_pars_fragment && THREE.ShaderChunk.shadowmap_pars_fragment.indexOf('SHADOWMAP_TYPE_PCF_SOFT') >= 0);
         renderer.shadowMap.type = _pcfSoft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
 
         _initLighting(scene);
@@ -2656,6 +2656,9 @@ const ThreePost = (function () {
         // passes: bloom alone owns eleven render targets. Both the board and
         // HQ already support direct rendering with lighting/tone mapping.
         if (typeof window !== 'undefined' && window.EW_PERF_LOW) return;
+        /* WEBGPU_PLAN W0: both chains are WebGL-only (three's EffectComposer, pmndrs postprocessing); on the node renderer the
+           scene goes straight to the screen, tone-mapped by the renderer itself, until W3 builds the RenderPipeline chain */
+        if (renderer.isWebGPURenderer) { console.log('[ThreePost] node renderer (WEBGPU_PLAN W0): no post chain yet — direct render, sun shadows (' + _shadowQuality + ')'); return; }
 
         // RENDERER_PLAN R5: the pmndrs chain first; the three.js chain below is the fallback
         if (_ppWanted() && _ppInit(renderer, scene, w, h)) {

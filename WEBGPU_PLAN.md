@@ -534,3 +534,26 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
 - 2026-10-03: plan written; the inventory in §4 counted in main (three-renderer.js, three-post.js,
   three-vfx.js, three-vfx-effects.js, three-lightning.js, editor.js, index.html); three 0.186.1 source read
   from the npm package. Nothing built. W0 waits on mondo's go.
+- 2026-10-03: **W0 built** (zip renderer/ENTROPY_WARS_W0_SWITCH.zip). Changed when built:
+  - The import map stays static and first (Firefox rule). It gained `three/webgpu` + `three/tsl`; a classic
+    script after the shim reads `ew_gpu` (query, else localStorage; default `webgl`) and, only on `webgpu` /
+    `webgl2`, document-writes a module that imports `three/webgpu` into `window.THREE_GPU` and reads the
+    adapter info. `three.webgpu.js` shares `three.core.js` with the classic build, so the game's `THREE`
+    classes work with both renderers. On the node path troika plates and the quarks layer are off.
+  - Only the board renderer switches (`_ewMakeBoardRenderer` in three-renderer.js). The creator viewer, the
+    editor thumbnails and the menu sky stay on WebGLRenderer.
+  - No per-factory `_ewGpu` early-outs: one `setRenderObjectFunction` hook swaps every ShaderMaterial / unknown
+    material for a plain cached stand-in (its uniform colour, else grey; transparent ones at 0.35). The node
+    renderer ignores onBeforeCompile hooks on its own. Legacy-decay Point/SpotLight subclasses are registered
+    with `renderer.library.addLight`.
+  - The node renderer reads per-light `shadow.autoUpdate` / `needsUpdate`, not `renderer.shadowMap.*`; the hook
+    copies the game's shadow pulse onto the shadow lights on each frame's first draw, so shadow cost matches.
+  - No post on this path (three-post.js early-returns). Measure WebGL with post off (F3 lens toggle).
+  - F3 lens: a Renderer line; draws/triangles per pass from `info.render.drawCalls` (shadow draws counted once
+    per frame and subtracted from the draw that triggered them); GPU ms through `resolveTimestampsAsync` on
+    Chrome only (`trackTimestamp` never on Firefox). `?ewdiag=1` prints navigator.gpu, the mode asked, the
+    adapter and the board renderer's backend; `ThreeRenderer.gpuStatus()` from the console.
+  - KTX2 on the node path waits for `renderer.init()` and calls `detectSupport(renderer)`.
+  - Sandbox: the node renderer on its WebGL 2 backend ran the HQ foyer clean (~277 draws vs ~286 classic, KTX2
+    ASTC, no page errors). The sandbox Chromium's SwiftShader WebGPU device dies ~16 s in with shadows and
+    KTX2 off too, so the WebGPU backend itself is untested here; mondo's Mac is the measure.

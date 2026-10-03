@@ -605,3 +605,13 @@ three-vfx.js "THE BATCHED PARTICLES": the sprite / world / quad pools draw as In
 instead of one Sprite or Mesh (and one draw) per particle. Full write-up in RENDERER_PLAN.md §8 + §9. Off: `window.EW_NO_FX_BATCH`
 or localStorage `ew_fxbatch = 'off'` (reload). Anything that reaches into a pool entry's `.sprite` / `.mesh` / `.material` must
 guard: in batched mode the entries are bare `{ inUse }` slots.
+
+## THE WEBGPU SWITCH — WEBGPU_PLAN W0 (2026-10-03, zip renderer/ENTROPY_WARS_W0_SWITCH.zip)
+
+`?ew_gpu=webgpu | webgl2 | webgl` (sticks in localStorage `ew_gpu`; default webgl = nothing changes). On the
+two node modes index.html document-writes a module that loads `three/webgpu` into `window.THREE_GPU`, and
+three-renderer.js `_ewMakeBoardRenderer` builds a WebGPURenderer (`forceWebGL` for webgl2) for the board only.
+`_ewGpuCompat` stubs capabilities/extensions, guards render/clear until `init()`, swaps ShaderMaterials for
+plain stand-ins in the render-object hook, copies the shadow pulse onto per-light flags, registers the legacy
+light classes. three-post.js: no post on the node renderer. F3 lens + `?ewdiag=1` name the backend. The picture
+is plain on purpose: W0 measures the frame only. Full list of what changed from the plan: WEBGPU_PLAN.md §10.

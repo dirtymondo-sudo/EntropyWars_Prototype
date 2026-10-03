@@ -1631,13 +1631,17 @@ const ThreeRenderer = (function () {
         _ktx.tried = true;
         try {
             if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') { _ktx.why = 'no Worker / WebAssembly'; return null; }
-            var fake = _ktxDetect();
-            if (!fake) { _ktx.why = 'no WebGL2'; return null; }
+            /* WEBGPU_PLAN W0: on the node renderer the formats are the WebGPU device's (KTX2Loader reads renderer.hasFeature), so
+               wait for its init; the S3TC-sRGB guard is a WebGL-only gap (WebGPU's BC formats all have sRGB variants) */
+            var gpuR = (_ewGpu && renderer && renderer.isWebGPURenderer) ? renderer : null;
+            if (_ewGpu && (!gpuR || !_ewGpuInfo.ready)) { _ktx.tried = false; return null; }
+            var fake = gpuR ? null : _ktxDetect();
+            if (!gpuR && !fake) { _ktx.why = 'no WebGL2'; return null; }
             var kl = new lib.KTX2Loader();
             kl.setWorkerLimit(2);
-            kl.detectSupport(fake);
+            kl.detectSupport(gpuR || fake);
             var wc = kl.workerConfig || {};
-            if (wc.dxtSupported && !fake.extensions.has('WEBGL_compressed_texture_s3tc_srgb')) wc.dxtSupported = false;
+            if (!gpuR && wc.dxtSupported && !fake.extensions.has('WEBGL_compressed_texture_s3tc_srgb')) wc.dxtSupported = false;
             _ktx.fmt = wc.astcSupported ? 'ASTC' : wc.bptcSupported ? 'BC7' : wc.etc2Supported ? 'ETC2' : wc.dxtSupported ? 'BC1/BC3' : wc.etc1Supported ? 'ETC1' : 'RGBA (uncompressed)';
             _ktx.loader = kl;
             return kl;
@@ -31784,6 +31788,159 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ══ THE WEBGPU SWITCH (WEBGPU_PLAN.md W0, 2026-10-03) ══════════════════════════════════════════════════════════════════
+       index.html reads ?ew_gpu= / localStorage ew_gpu into window.EW_GPU_MODE and, on 'webgpu' / 'webgl2', loads three's
+       node renderer onto window.THREE_GPU (three.webgpu.js shares three.core.js with the shim's copy, so every THREE class the
+       game builds is the class the node renderer draws). init() then makes the BOARD renderer (battle, HQ walk, menu scene,
+       editor view) a WebGPURenderer — 'webgl2' forces its WebGL 2 backend — and everything else stays as it was: the creator
+       viewer, the editor thumbnails and the menu sky keep their own WebGLRenderer contexts.
+       W0 wants the FRAME, not the picture: the node renderer ignores every onBeforeCompile hook (the material draws plain),
+       has no ShaderMaterial (each one draws through a cached plain stand-in, _ewGpuStandIn), and three-post.js keeps its
+       composer off (ThreePost.init stops after the lights, as EW_PERF_LOW does). What it must keep is the COST shape:
+       - the shadow pass pulses like WebGL's (renderer.shadowMap.autoUpdate = false + needsUpdate): the node renderer reads
+         those flags per light, so every draw's first object copies them onto the frame's shadow-casting lights;
+       - the game's legacy-decay PointLight / SpotLight subclasses are registered with the node library (it looks lights up by
+         constructor, so the subclasses would otherwise draw no light at all);
+       - render() before the async init() is a no-op (the node renderer throws there); setAnimationLoop already waits for it.
+       The F3 lens reads this path too: per-draw counts through setRenderObjectFunction, GPU ms through three's timestamp
+       queries — never on Firefox (its wgpu loses the device on timestampWrites), and only once F3 has been used on the device.
+       Off: ?ew_gpu=webgl (the default). ThreeRenderer.gpuStatus() / ?ewdiag=1 name the backend that really runs. */
+    var _ewGpu = '';                 // '' = classic WebGLRenderer; 'webgpu' | 'webgl2' = the node renderer (the mode asked for)
+    var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '' };
+    var _ewGpuDraw = null;           // the F3 lens's per-draw counter on the node renderer (set while the lens is open)
+    var _ewGpuStandIns = new WeakMap();
+    function _ewGpuBackendName() {
+        if (!renderer) return 'not created yet (asked ' + ((typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl') + ')';
+        if (!_ewGpu) return 'WebGL (classic WebGLRenderer)';
+        if (!renderer || !_ewGpuInfo.ready) return 'node renderer (' + _ewGpu + ', initialising)';
+        var b = renderer.backend;
+        return (b && b.isWebGPUBackend ? 'WebGPU' : 'WebGL 2') + ' (WebGPURenderer, asked ' + _ewGpu + ')';
+    }
+    function _ewGpuStatus() {
+        var s = _ewGpuBackendName();
+        if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
+        if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
+        if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost;
+        return s;
+    }
+    /* frame draw calls on either renderer: the node renderer counts per frame in drawCalls (its `calls` is the render count) */
+    function _ewInfoCalls(inf) { var r = inf && inf.render; return !r ? 0 : (r.drawCalls != null ? r.drawCalls : r.calls); }
+    /* a ShaderMaterial (or any material the node library cannot translate) → a plain one with the same depth / stencil /
+       side / blend state, so the draw still happens and still costs what a draw costs */
+    var _EW_GPU_NODE_TYPES = { MeshBasicMaterial: 1, MeshLambertMaterial: 1, MeshPhongMaterial: 1, MeshStandardMaterial: 1, MeshPhysicalMaterial: 1,
+        MeshToonMaterial: 1, MeshMatcapMaterial: 1, MeshNormalMaterial: 1, LineBasicMaterial: 1, LineDashedMaterial: 1, PointsMaterial: 1,
+        SpriteMaterial: 1, ShadowMaterial: 1 };
+    function _ewGpuStandIn(m, obj) {
+        var s = _ewGpuStandIns.get(m);
+        if (s) return s;
+        var u = m.uniforms || {}, col = null;
+        ['uColor', 'color', 'uCol', 'uTint', 'diffuse', 'uBaseColor', 'uGlow'].some(function (k) { var v = u[k] && u[k].value; if (v && v.isColor) { col = v; return true; } return false; });
+        var o = { transparent: !!m.transparent, opacity: m.transparent ? 0.35 : 1, side: m.side, depthTest: m.depthTest, depthWrite: m.depthWrite,
+                  blending: m.blending === THREE.AdditiveBlending ? THREE.AdditiveBlending : THREE.NormalBlending, color: col ? col.getHex() : 0x8a8f99 };
+        if (obj && obj.isPoints) { o.size = 1; o.sizeAttenuation = false; s = new THREE.PointsMaterial(o); }
+        else if (obj && obj.isLine) s = new THREE.LineBasicMaterial(o);
+        else if (obj && obj.isSprite) s = new THREE.SpriteMaterial(o);
+        else s = new THREE.MeshBasicMaterial(o);
+        ['depthFunc', 'stencilWrite', 'stencilRef', 'stencilFunc', 'stencilFuncMask', 'stencilWriteMask', 'stencilFail', 'stencilZFail', 'stencilZPass',
+         'polygonOffset', 'polygonOffsetFactor', 'polygonOffsetUnits', 'colorWrite'].forEach(function (k) { if (m[k] !== undefined) s[k] = m[k]; });
+        s.name = 'ew_gpu_standin:' + (m.name || m.type);
+        _ewGpuStandIns.set(m, s);
+        return s;
+    }
+    /* the board renderer: the node renderer when asked for and loaded, else the classic one */
+    function _ewMakeBoardRenderer(cnv) {
+        var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
+        _ewGpuInfo.asked = mode;
+        var G = (typeof window !== 'undefined') ? window.THREE_GPU : null;
+        if (mode === 'webgpu' || mode === 'webgl2') {
+            if (G && typeof G.WebGPURenderer === 'function') {
+                try {
+                    var opts = { canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance', forceWebGL: mode === 'webgl2' };
+                    var ff = /Firefox\//.test(navigator.userAgent || '');
+                    var lensUser = false;
+                    try { lensUser = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) {}
+                    if (!ff && lensUser) opts.trackTimestamp = true;   // Firefox's wgpu invalidates the device on timestampWrites
+                    var r = new G.WebGPURenderer(opts);
+                    _ewGpu = mode;
+                    _ewGpuCompat(r, G);
+                    return r;
+                } catch (e) { _ewGpu = ''; _ewGpuInfo.why = 'WebGPURenderer threw: ' + (e && e.message || e); console.warn('[ThreeRenderer] WebGPURenderer failed — the classic renderer', e); }
+            } else _ewGpuInfo.why = 'three.webgpu.js did not load';
+            if (_ewGpuInfo.why) console.warn('[ThreeRenderer] ew_gpu=' + mode + ' asked, but ' + _ewGpuInfo.why + ' — drawing with the classic WebGLRenderer');
+        }
+        return new THREE.WebGLRenderer({ canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance' });
+    }
+    function _ewGpuCompat(r, G) {
+        /* the members the game reads off a WebGLRenderer that the node renderer has no copy of (every reader already guards
+           a missing extension; isWebGL2 false keeps the lens's raw-GL timer and three-post's half-float probes away) */
+        r.capabilities = { isWebGL2: false, getMaxAnisotropy: function () { return 16; }, maxTextures: 16, precision: 'highp', logarithmicDepthBuffer: false };
+        r.extensions = { get: function () { return null; }, has: function () { return false; } };
+        /* the game's legacy-decay light subclasses (_ewLegacyLightPatch) — the node library finds lights by constructor */
+        try {
+            var lib = r.library;
+            if (lib && lib.addLight) {
+                if (THREE.PointLight !== G.PointLight && G.PointLightNode && !lib.getLightNodeClass(THREE.PointLight)) lib.addLight(G.PointLightNode, THREE.PointLight);
+                if (THREE.SpotLight !== G.SpotLight && G.SpotLightNode && !lib.getLightNodeClass(THREE.SpotLight)) lib.addLight(G.SpotLightNode, THREE.SpotLight);
+            }
+        } catch (e) { console.warn('[ThreeRenderer] node renderer: could not register the legacy lights', e); }
+        /* render(): a no-op until init() resolves; the outermost call (not a shadow depth pass) clears the shadow pulse the way
+           WebGLShadowMap does after the first render that drew it */
+        var rawRender = r.render, depth = 0;
+        r._ew_shadowLights = false;
+        r.render = function (sc, cam) {
+            if (!this.initialized) return;
+            var shadowPass = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
+            var outer = !depth && !shadowPass;
+            if (outer) this._ew_shadowFrame = true;
+            depth++;
+            try { return rawRender.apply(this, arguments); }
+            finally {
+                depth--;
+                if (outer) { this._ew_shadowFrame = false; if (this._ew_shadowLights && this.shadowMap.autoUpdate === false) this.shadowMap.needsUpdate = false; this._ew_shadowLights = false; }
+            }
+        };
+        var rawClear = r.clear;
+        r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
+        /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
+        r.setRenderObjectFunction(function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
+            if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
+            if (r._ew_shadowFrame && lightsNode && lightsNode.getLights) {
+                r._ew_shadowFrame = false;
+                var ls = lightsNode.getLights(), auto = r.shadowMap.autoUpdate !== false, pulse = !!r.shadowMap.needsUpdate;
+                for (var i = 0; i < ls.length; i++) {
+                    var l = ls[i];
+                    if (!l || !l.castShadow || !l.shadow) continue;
+                    r._ew_shadowLights = true;
+                    l.shadow.autoUpdate = auto;
+                    if (pulse) l.shadow.needsUpdate = true;
+                }
+            }
+            if (_ewGpuDraw) return _ewGpuDraw(r, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+            return r.renderObject(object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+        });
+        /* GPU timestamps: resolved once a frame (the lens reads the value; without the lens they are only drained) */
+        var rawLoop = r.setAnimationLoop;
+        r.setAnimationLoop = function (cb) {
+            var self = this;
+            return rawLoop.call(this, cb ? function (t, x) {
+                try { cb(t, x); }
+                finally { if (self.backend && self.backend.trackTimestamp && !(_lens && _lens.gpu)) { try { self.resolveTimestampsAsync('render'); } catch (e) {} } }
+            } : null);
+        };
+        r.onDeviceLost = function (info) {
+            _ewGpuInfo.lost = (info && (info.message || info.reason)) || 'unknown';
+            console.error('THREE.WebGPURenderer: device lost — ' + _ewGpuInfo.lost + ' (reload; ?ew_gpu=webgl draws with the classic renderer)');
+        };
+        r.init().then(function () {
+            _ewGpuInfo.ready = true;
+            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName());
+            _shadowsDirty = true;
+            try { r.shadowMap.needsUpdate = true; } catch (e) {}
+        }, function (e) {
+            _ewGpuInfo.why = 'init() failed: ' + (e && e.message || e);
+            console.error('THREE.WebGPURenderer: init failed — ' + (e && e.message || e) + ' (?ew_gpu=webgl draws with the classic renderer)');
+        });
+    }
     function init() {
         if (initialized) return;
         _parentEl = document.querySelector('.map-center');
@@ -31800,7 +31957,7 @@ const ThreeRenderer = (function () {
         try { _parentEl.style.touchAction = 'none'; } catch (e) {}
 
         var w = _parentEl.clientWidth || 960, h = _parentEl.clientHeight || 540;
-        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
+        renderer = _ewMakeBoardRenderer(canvas);   // WEBGPU_PLAN W0: the node renderer on ?ew_gpu=webgpu / webgl2, else WebGLRenderer
         /* RENDERER_PLAN R2: r152 made the default output sRGB; r128's was linear and this whole "unmanaged" pipeline relies on
            it (textures tagged linear, three-post.js grades the linear target itself). Pin r128's output so the values stay. */
         if (_EW_CS) renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -33801,7 +33958,7 @@ const ThreeRenderer = (function () {
     function _perfRead() {
         var inf = (renderer && renderer.info) ? renderer.info : null, r = inf ? inf.render : null, m = inf ? inf.memory : null;
         return { fps: _perfFrameMs > 0 ? +(1000 / _perfFrameMs).toFixed(1) : 0, ms: +_perfFrameMs.toFixed(2),
-                 calls: r ? r.calls : 0, triangles: r ? r.triangles : 0, points: r ? r.points : 0, lines: r ? r.lines : 0,
+                 calls: r ? _ewInfoCalls(inf) : 0, triangles: r ? r.triangles : 0, points: r ? r.points : 0, lines: r ? r.lines : 0,
                  geometries: m ? m.geometries : 0, textures: m ? m.textures : 0, programs: inf && inf.programs ? inf.programs.length : 0,
                  field: _fieldGroundLive(), hq: !!_hq, room: _fieldRoomStats,
                  /* the walk's last WHOLE frame (every pass summed) while the counter is on — OPEN_WORLD_PLAN.md Phase 0 */
@@ -33974,8 +34131,75 @@ const ThreeRenderer = (function () {
         })();
         return (kind || 'terrain') + ': ' + w;
     }
+    /* WEBGPU_PLAN W0: the node renderer has no renderBufferDirect / shadowMap.render to wrap — its draws come through
+       setRenderObjectFunction (_ewGpuCompat hands each one to _ewGpuDraw while the lens is open) and its shadow depth passes
+       are render() calls with the light's shadow material as the scene override */
+    function _lensGpuDraw(R, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
+        var L2 = _lens, F = L2 && L2.cur;
+        if (!F) return R.renderObject(object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+        var pass = L2.inShadow ? 'shadow' : L2.pass, kind = 'other';
+        if (pass !== 'post' && object) {
+            kind = _lensKind(object, L2);
+            if (!L2.show[kind] || (object._ew_silhouette && !L2.show.outline)) return;
+        }
+        var ri = R.info.render, c0 = ri.drawCalls, t0 = ri.triangles, s0 = F.pass.shadow[0], u0 = F.pass.shadow[1];
+        R.renderObject(object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+        /* the frame's shadow depth passes run INSIDE its first draw (a node update): theirs are counted by the render wrapper */
+        var dc = ri.drawCalls - c0 - (F.pass.shadow[0] - s0), dt = ri.triangles - t0 - (F.pass.shadow[1] - u0);
+        F.calls += dc; F.tris += dt;
+        var P = F.pass[pass]; P[0] += dc; P[1] += dt;
+        if (pass !== 'post') { var K = F.kind[kind]; K[0] += dc; K[1] += dt; }
+        if (object && pass === 'scene' && object._ew_lensF !== L2.frameNo) {
+            object._ew_lensF = L2.frameNo; F.meshes++;
+            if (object.isSkinnedMesh) F.skinned++;
+            if (object.isInstancedMesh) { F.inst++; F.instances += object.count; }
+        }
+        if (F.detail && object && pass !== 'post') { var d = F.detail.get(object); if (!d) F.detail.set(object, d = [0, 0, kind]); d[0] += dc; d[1] += dt; }
+        if (F.detail && object && pass === 'scene' && !object.isInstancedMesh) { var wy = null; try { wy = _lensWhy(object, kind); } catch (e) {} if (wy) F.why[wy] = (F.why[wy] || 0) + dc; }
+    }
     function _lensHook(on) {
         var L = _lens;
+        if (on && renderer && renderer.isWebGPURenderer) {
+            if (!L || L.orig) return;
+            var GR = renderer, go = { R: GR, render: GR.render, gpu: true };
+            L.orig = go;
+            GR.render = function (sc, cam) {
+                var L2 = _lens, F = L2 && L2.cur;
+                if (!F) return go.render.apply(this, arguments);
+                var shadow = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
+                if (shadow) {   // one depth pass per light (six for a point light's cube): count the FRAME once, as WebGL's lens does
+                    if (F._ewShadowSeen !== true) { F._ewShadowSeen = true; F.shadowRuns++; }
+                    /* ShadowNode swaps in its own render-object function for the pass, so the draws are counted here as a block */
+                    var sri = this.info.render, sc0 = sri.drawCalls, st0 = sri.triangles;
+                    L2.inShadow++;
+                    try { return go.render.apply(this, arguments); }
+                    finally {
+                        L2.inShadow--;
+                        var sdc = sri.drawCalls - sc0, sdt = sri.triangles - st0;
+                        F.calls += sdc; F.tris += sdt; F.pass.shadow[0] += sdc; F.pass.shadow[1] += sdt;
+                    }
+                }
+                var main = _lensIsMain(sc), prev = L2.pass;
+                L2.pass = !main ? 'post' : (sc.overrideMaterial ? 'extra' : (cam === _lensMainCam(sc) ? 'scene' : 'extra'));
+                var hid = null;
+                if (main && L2.lights !== true && L2.lightList) hid = _lensLampCap(L2, cam);
+                var t = performance.now();
+                L2.depth++;
+                try { return go.render.apply(this, arguments); }
+                finally {
+                    L2.depth--; L2.pass = prev;
+                    if (!L2.depth) { F.submit += performance.now() - t; F.renders++; }
+                    if (hid) for (var j = 0; j < hid.length; j++) hid[j].visible = true;
+                }
+            };
+            _ewGpuDraw = _lensGpuDraw;
+            return;
+        }
+        if (!on && L && L.orig && L.orig.gpu) {
+            var GO = L.orig; L.orig = null;
+            GO.R.render = GO.render; _ewGpuDraw = null;
+            return;
+        }
         if (on) {
             if (!L || L.orig || !renderer) return;
             var R = renderer, info = R.info, o = { R: R, render: R.render, rbd: R.renderBufferDirect, sm: R.shadowMap.render };
@@ -34032,6 +34256,10 @@ const ThreeRenderer = (function () {
     }
     function _lensGpuInit(L) {
         L.gpu = false;
+        if (renderer && renderer.isWebGPURenderer) {   // WEBGPU_PLAN W0: three's timestamp queries (off on Firefox, see _ewMakeBoardRenderer)
+            if (renderer.backend && renderer.backend.trackTimestamp) L.gpu = { node: true };
+            return;
+        }
         try {
             if (!renderer || !renderer.capabilities || !renderer.capabilities.isWebGL2) return;
             var gl = renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
@@ -34064,7 +34292,7 @@ const ThreeRenderer = (function () {
         L.cur = _lensFrameRec(performance.now(), L.wantDetail);   // after the census: its walk is the lens's cost, not the game's
         L.wantDetail = false;
         var G = L.gpu;
-        if (G && !G.active) { try { var q = G.gl.createQuery(); G.gl.beginQuery(G.ext.TIME_ELAPSED_EXT, q); G.active = q; } catch (e) { L.gpu = false; } }
+        if (G && !G.node && !G.active) { try { var q = G.gl.createQuery(); G.gl.beginQuery(G.ext.TIME_ELAPSED_EXT, q); G.active = q; } catch (e) { L.gpu = false; } }
     }
     function _lensEnd() {
         var L = _lens; if (!L || !L.cur) return;
@@ -34072,8 +34300,12 @@ const ThreeRenderer = (function () {
         var t1 = performance.now();
         F.cpu = t1 - F.t0;
         var G = L.gpu;
+        if (G && G.node) {   // WEBGPU_PLAN W0: the frame's render-pass time, resolved by three (ms since the last resolve = this frame)
+            if (F.renders > 0) { try { renderer.resolveTimestampsAsync('render').then(function (ms) { var L3 = _lens; if (L3 && ms > 0 && ms < 1000) { L3.acc.gpu += ms; L3.acc.gpuN++; } }, function () {}); } catch (e) { L.gpu = false; } }
+        } else {
         if (G && G.active) { try { G.gl.endQuery(G.ext.TIME_ELAPSED_EXT); G.q.push({ q: G.active, drew: F.renders > 0 }); } catch (e) { L.gpu = false; } G.active = null; }
         _lensGpuPoll(L);
+        }
         if (!F.renders) return;   // a capped / throttled tick that drew nothing is not a frame
         var A = L.acc;
         if (L.lastT0) { var iv = F.t0 - L.lastT0; if (iv > 0 && iv < 2000) { A.iv += iv; A.ivN++; if (iv > A.worst) A.worst = iv; } }
@@ -34117,6 +34349,7 @@ const ThreeRenderer = (function () {
         L.worstHist.push(A.worst); if (L.worstHist.length > 4) L.worstHist.shift();
         S.worst2s = Math.max.apply(null, L.worstHist);
         var inf = renderer ? renderer.info : null;
+        S.backend = _ewGpuStatus();
         S.geometries = inf ? inf.memory.geometries : 0; S.textures = inf ? inf.memory.textures : 0; S.programs = inf && inf.programs ? inf.programs.length : 0;
         S.pixelRatio = renderer ? renderer.getPixelRatio() : 0; S.dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
         var cv = renderer ? renderer.domElement : null;
@@ -34150,8 +34383,9 @@ const ThreeRenderer = (function () {
         var c = S.census || {}, L = [];
         var pad = function (s, n) { s = String(s); while (s.length < n) s += ' '; return s; };
         L.push('PERF LENS · ' + S.mode + (S.room ? ' · ' + S.room : '') + ' · ' + new Date().toISOString().slice(0, 19) + 'Z');
+        if (S.backend) L.push('Renderer ' + S.backend);   // WEBGPU_PLAN W0
         L.push('FPS ' + S.fps.toFixed(1) + '  frame ' + _lensMs(S.frameMs) + '  worst ' + _lensMs(S.worst2s));
-        L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : 'n/a (no timer query)'));
+        L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : (_ewGpu ? 'n/a (no timestamp query' + (/Firefox\//.test(navigator.userAgent || '') ? ' on Firefox' : '') + ')' : 'n/a (no timer query)')));
         L.push('Draw calls ' + Math.round(S.calls) + '  Triangles ' + _lensFmtN(S.tris) + '  renders ' + S.renders.toFixed(1));
         L.push('  pass      calls     tris');
         _LENS_PASSES.forEach(function (p) { L.push('  ' + pad(p, 9) + pad(Math.round(S.pass[p][0]), 10) + _lensFmtN(S.pass[p][1]) + (p === 'shadow' ? '   (' + S.shadowRuns.toFixed(1) + ' depth renders / frame)' : '')); });
@@ -58290,7 +58524,7 @@ const ThreeRenderer = (function () {
         finally {
             if (_lens) _lensEnd();
             if (readout) {
-                _hqFrameInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
+                _hqFrameInfo = { calls: _ewInfoCalls(renderer.info), tris: renderer.info.render.triangles };
                 renderer.info.autoReset = true;
                 if (_hq === H) { var fe = _ensureFpsEl(); if (fe.style.display !== 'block') fe.style.display = 'block'; _tickFpsCounter(t0, _hqFrameInfo); }
             } else _hqFrameInfo = null;
@@ -62564,6 +62798,8 @@ const ThreeRenderer = (function () {
         /* THE PERF LENS (2026-10-01): the dev overlay — F3, ?perf, or Settings > Performance > Perf Overlay once unlocked.
            set(id, on): 'shadows' | 'post' | 'lights' | 'chars' | 'props' | 'terrain' | 'env' | 'fx' | 'other' | 'outline' |
            'res:0' (game) | 'res:1' | 'res:1.5' | 'res:native'. snapshot() = the last half-second's numbers; text() = Copy's text. */
+        /* WEBGPU_PLAN W0: which renderer draws the board (?ewdiag=1 and the F3 lens print it) */
+        gpuStatus: function () { return _ewGpuStatus(); },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },
             isOpen: function () { return !!_lens; },
