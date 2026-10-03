@@ -34132,6 +34132,7 @@ const ThreeRenderer = (function () {
         S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails };
         _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // per window; the trees are the session's
         S.lampN = (_hq && _hq.stage) ? _hq.stage.lampN : null;
+        try { S.text = _hqTextStats(); } catch (e) { S.text = null; }
         S.overrides = { shadows: L.shadows, post: L.post, lights: L.lights, res: L.res, show: Object.assign({}, L.show) };
         L.last = S;
         L.acc = _lensAcc(); L.accT0 = t1; L.wantDetail = true;
@@ -34166,6 +34167,7 @@ const ThreeRenderer = (function () {
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
         try { var _pc = (typeof ThreePost !== 'undefined' && ThreePost.getPostChain) ? ThreePost.getPostChain() : null; if (_pc) L.push('Post ' + _pc.lib + ' · ' + _pc.passes + ' passes' + (_pc.lib === 'pmndrs' ? ' · AO ' + _pc.ao + (_pc.n8ao !== 'idle' ? ' (N8AO ' + _pc.n8ao + ')' : '') + ' · A[' + _pc.effectsA + ']' : '')); } catch (e) {}   // R5
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off'));
+        if (S.text) L.push('Text (HQ plates) ' + (S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
         if (S.why && S.why.length) {
@@ -41686,6 +41688,7 @@ const ThreeRenderer = (function () {
             l.plateChip.className = 'hq-lamp-chip st-' + st;
             l.plateChip.textContent = HQ_LAMP_LABEL[st] || st;
         }
+        if (l.plateGpu && l.plateGpu.chip) _hqGpuPlateChip(l.plateGpu, st);   // R6
     }
     function _hqDoorState(door) {
         try {
@@ -41711,7 +41714,155 @@ const ThreeRenderer = (function () {
     }
     function _hqPlateHtml(door) {
         var P = _hqPlateFor(door);
-        return (P.no ? '<em>ROOM ' + P.no + '</em>' : '') + '<b' + (P.known ? '' : ' class="hq-plate-unknown"') + '>' + P.label + '</b>';
+        return _hqPlatePartsHtml({ no: P.no, label: P.label, known: P.known });
+    }
+    /* a plate's lines as data: { no, label, known, sub } (sub null = no line) */
+    function _hqPlatePartsHtml(pa) {
+        return (pa.no ? '<em>ROOM ' + pa.no + '</em>' : '') + '<b' + (pa.known === false ? ' class="hq-plate-unknown"' : '') + '>' + pa.label + '</b>'
+            + (pa.sub != null ? '<span>' + pa.sub + '</span>' : '');
+    }
+    /* THE GPU PLATES (RENDERER_PLAN R6, 2026-10-03): the door / way / portal / counter / trail plates are troika-three-text meshes
+       IN the scene (index.html loads the lib as window.EW_TEXT_LIB): on the door's face, hidden by a wall like the door itself,
+       fogged, smaller with distance by perspective (no --pk shrink). A CSS2D plate drew through every wall (_hqStageCssShow hid a
+       neighbour's for that). Counter and flat-portal plates turn to face the eye (yaw only); door, way and wall-portal plates stay
+       flat on the door. No lib (a CDN miss), window.EW_NO_GPU_TEXT or localStorage ew_text = 'css' → the CSS2D plates as before.
+       The unit nameplates, the damage numbers and the battle plates stay DOM overlays (they sit on top of everything on purpose).
+       The fonts are the HQ's own (Cormorant SC, IBM Plex Mono) as .woff from the fontsource packages: troika reads ttf/otf/woff. */
+    var HQ_TEXT_FONTS = {
+        title: 'https://cdn.jsdelivr.net/npm/@fontsource/cormorant-sc@5.3.0/files/cormorant-sc-latin-700-normal.woff',
+        mono: 'https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/files/ibm-plex-mono-latin-500-normal.woff'
+    };
+    /* sizes in metres (the font size = the em); lineH = a row's height in ems; bar = the underline's height */
+    var HQ_TEXT = { label: 0.09, unknown: 0.2, em: 0.055, sub: 0.05, chip: 0.05, lineH: 1.12, gap: 0.01, bar: 0.012, pad: 0.06, maxW: 1.1 };
+    /* the #hqPage plate look (styles-base.css): ink + muted ink, the underline's colour per kind */
+    var HQ_TEXT_TONE = {
+        door:    { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
+        way:     { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: 0xcfe4ff, barOp: 0.6 },
+        counter: { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: 0x7fd9dd, barOp: 0.6 },
+        battle:  { ink: 0xffd39a, mute: 0xb8c1ee, bar: 0xffb020, barOp: 0.85 },
+        portal:  { ink: 0x9fe8ff, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
+        portal_a: { ink: 0x7fd0ff, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
+        portal_b: { ink: 0xffc389, mute: 0xb8c1ee, bar: 0xf0d060, barOp: 0.55 },
+        sign:    { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: null }
+    };
+    var HQ_TEXT_CHIP = { open: 0x39ff6a, stabilized: 0x39ff6a, unstable: 0xffb020, clearance: 0xff4a4a, codered: 0xff4a4a, sealed: 0x8a8a8a, off: 0x8a8a8a };
+    function _hqTextOn() {
+        if (typeof window === 'undefined' || !window.EW_TEXT_LIB || !window.EW_TEXT_LIB.Text || window.EW_NO_GPU_TEXT) return false;
+        try { if (window.localStorage && localStorage.getItem('ew_text') === 'css') return false; } catch (e) {}
+        return true;
+    }
+    /* one base material for every plate's text: one program (troika derives its SDF material from it; the derived ones inherit
+       _ew_shared, so _disposeR leaves them for the next room) */
+    var _hqTextMat = null, _hqTextBarGeo = null, _hqTextV = null, _hqTextQ = null, _hqTextQ2 = null, _hqTextUp = null;
+    function _hqTextBase() {
+        if (!_hqTextMat) { _hqTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.FrontSide }); _hqTextMat._ew_shared = true; }
+        return _hqTextMat;
+    }
+    function _hqNoRay() {}
+    function _hqGpuText(P) {
+        var t = new window.EW_TEXT_LIB.Text();
+        t.material = _hqTextBase();
+        t.anchorX = 'center'; t.anchorY = 'bottom'; t.textAlign = 'center'; t.whiteSpace = 'nowrap';
+        t.outlineWidth = '4%'; t.outlineBlur = '22%'; t.outlineColor = 0x000000;   // the CSS text-shadow
+        t.raycast = _hqNoRay; t.castShadow = false; t.receiveShadow = false; t._ew_text = 1;
+        P.inner.add(t);
+        return t;
+    }
+    /* parts: { no, label, known, sub }; o: { tone, chip (a lamp state or null), bill, k (scale), op (base opacity), maxW (m) } */
+    function _hqGpuPlate(parts, o) {
+        var g = new THREE.Group(), inner = new THREE.Group();
+        g.name = 'hq_plate'; g._ew_text = 1; inner._ew_text = 1; g.add(inner);
+        var P = { g: g, inner: inner, t: {}, bar: null, parts: parts, chip: o.chip || null, o: o, tone: HQ_TEXT_TONE[o.tone] || HQ_TEXT_TONE.door, op: -1, hidden: false, seq: 0 };
+        if (P.tone.bar != null) {
+            if (!_hqTextBarGeo) { _hqTextBarGeo = new THREE.PlaneGeometry(1, 1); _hqTextBarGeo.translate(0, 0.5, 0); _hqTextBarGeo._ew_shared = true; }
+            P.bar = new THREE.Mesh(_hqTextBarGeo, new THREE.MeshBasicMaterial({ color: P.tone.bar, transparent: true, opacity: P.tone.barOp, depthWrite: false, side: THREE.FrontSide }));
+            P.bar.raycast = _hqNoRay; P.bar._ew_text = 1; P.bar.visible = false; inner.add(P.bar);
+        }
+        _hqGpuPlateLayout(P);
+        return P;
+    }
+    /* the rows, bottom up (the CSS column reversed): the underline, the lamp chip, the sub line, the name, ROOM n */
+    function _hqGpuPlateLayout(P) {
+        var U = _hqUnits(), T = HQ_TEXT, k = P.o.k || 1, pa = P.parts || {}, rows = [], used = {};
+        if (P.chip) rows.push({ key: 'chip', text: HQ_LAMP_LABEL[P.chip] || String(P.chip), font: 'mono', size: T.chip, sp: 0.2, color: HQ_TEXT_CHIP[P.chip] || 0x8a8a8a });
+        if (pa.sub) rows.push({ key: 'sub', text: String(pa.sub), font: 'mono', size: T.sub, sp: 0.22, color: P.tone.mute });
+        var unk = pa.known === false;
+        rows.push({ key: 'label', text: String(pa.label == null ? '' : pa.label), font: 'title', size: unk ? T.unknown : T.label, sp: unk ? 0 : 0.14, color: P.tone.ink, op: unk ? 0.8 : 1 });
+        if (pa.no) rows.push({ key: 'em', text: 'ROOM ' + pa.no, font: 'title', size: T.em, sp: 0.28, color: P.tone.mute });
+        var y = P.bar ? (T.bar + T.gap) * U * k : 0;
+        rows.forEach(function (r) {
+            var t = P.t[r.key] || (P.t[r.key] = _hqGpuText(P));
+            t.text = r.text; t.font = HQ_TEXT_FONTS[r.font]; t.fontSize = r.size * U * k; t.letterSpacing = r.sp; t.color = r.color;
+            t._ew_op = r.op || 1; t.position.y = y; t.visible = true; used[r.key] = 1;
+            y += (r.size * T.lineH + T.gap) * U * k;
+        });
+        for (var key in P.t) if (!used[key]) P.t[key].visible = false;
+        P.op = -1;
+        /* the underline's width and the fit to the door wait for the glyphs (troika lays out in a worker) */
+        var seq = ++P.seq, pending = 0;
+        var done = function () { if (--pending > 0 || seq !== P.seq) return; _hqGpuPlateMeasure(P); };
+        for (var key2 in used) { pending++; P.t[key2].sync(done); }
+    }
+    function _hqGpuPlateMeasure(P) {
+        var U = _hqUnits(), T = HQ_TEXT, k = P.o.k || 1, w = 0;
+        for (var key in P.t) {
+            var t = P.t[key], inf = t.visible && t.textRenderInfo;
+            if (inf && inf.blockBounds) w = Math.max(w, inf.blockBounds[2] - inf.blockBounds[0]);
+        }
+        if (!(w > 0)) return;
+        var maxW = (P.o.maxW || T.maxW) * U, fit = Math.min(1, maxW / (w + T.pad * U * k));
+        P.inner.scale.setScalar(fit);
+        if (P.bar) { P.bar.scale.set(w + T.pad * U * k, T.bar * U * k, 1); P.bar.visible = true; }
+        if (_hq) _hq.dirty = true;
+    }
+    function _hqGpuPlateSet(P, parts) { P.parts = parts; _hqGpuPlateLayout(P); }
+    function _hqGpuPlateChip(P, st) { if (P.chip === st) return; P.chip = st; _hqGpuPlateLayout(P); }
+    function _hqGpuPlateShow(P, on) { P.hidden = !on; _hqGpuPlateOp(P, on ? 1 : 0); P.op = -1; }
+    /* the fade with distance (the CSS2D plate's opacity): the text's fill + halo and the underline */
+    function _hqGpuPlateOp(P, op) {
+        if (P.hidden) op = 0;
+        op = Math.round(op * (P.o.op || 1) * 100) / 100;
+        if (op === P.op) return;
+        P.op = op;
+        P.inner.visible = op > 0.01;
+        for (var key in P.t) { var t = P.t[key], a = op * (t._ew_op || 1); t.fillOpacity = a; t.outlineOpacity = a * 0.85; }
+        if (P.bar) P.bar.material.opacity = P.tone.barOp * op;
+    }
+    /* a counter / flat-portal plate turns to the eye (yaw only, in its parent's frame) */
+    function _hqGpuPlateFace(P, cam) {
+        if (!P.o.bill || !cam || !P.inner.visible || !P.g.parent) return;
+        var v = _hqTextV || (_hqTextV = new THREE.Vector3()), q = _hqTextQ || (_hqTextQ = new THREE.Quaternion()),
+            q2 = _hqTextQ2 || (_hqTextQ2 = new THREE.Quaternion()), up = _hqTextUp || (_hqTextUp = new THREE.Vector3(0, 1, 0));
+        P.g.getWorldPosition(v);
+        q.setFromAxisAngle(up, Math.atan2(cam.position.x - v.x, cam.position.z - v.z));
+        P.g.getWorldQuaternion(q2).invert();
+        P.inner.quaternion.copy(q2.multiply(q));
+    }
+    /* a plate for a door / way / portal / counter / trail: the GPU plate when the lib is here, else the CSS2D one.
+       cls = the CSS2D plate's class; o as _hqGpuPlate (o.chip true/state = a lamp chip, o.css = the DOM plate's inline style).
+       → { obj (add it where the CSS2D plate went), el + chip (the DOM plate) or gpu (the GPU one) } */
+    function _hqPlateMake(cls, parts, o) {
+        o = o || {};
+        if (_hqTextOn()) {
+            try {
+                var P = _hqGpuPlate(parts, Object.assign({}, o, { chip: (o.chip && o.chip !== true) ? o.chip : (o.chip ? 'open' : null) }));
+                return { obj: P.g, el: null, chip: null, gpu: P };
+            } catch (e) { console.warn('[HQ] GPU plate failed — CSS2D plate instead', e); }
+        }
+        var el = document.createElement('div');
+        el.className = cls;
+        el.innerHTML = _hqPlatePartsHtml(parts);
+        var chip = null;
+        if (o.chip) { chip = document.createElement('i'); el.appendChild(chip); }
+        if (o.css) for (var ck in o.css) el.style[ck] = o.css[ck];
+        return { obj: new THREE.CSS2DObject(el), el: el, chip: chip, gpu: null };
+    }
+    /* the F3 lens's "Text" line: plates on the GPU vs CSS2D in the room you are in */
+    function _hqTextStats() {
+        if (!_hq) return null;
+        var gpu = 0, css = 0, recs = (_hq.doors || []).concat(_hq.counters || []);
+        for (var i = 0; i < recs.length; i++) { if (recs[i].plateGpu) gpu++; else if (recs[i].plateEl) css++; }
+        return { lib: !!(typeof window !== 'undefined' && window.EW_TEXT_LIB), on: _hqTextOn(), gpu: gpu, css: css };
     }
     /* THE SUSPICIOUS ANGLE (2026-09-21): has the protractor found this draught? (data.js hqAngleFound on the profile) */
     function _hqAngleFound(door) {
@@ -41747,6 +41898,7 @@ const ThreeRenderer = (function () {
             d.angle = false;
             if (d.glimmer) { d.glimmer.dead = true; try { d.group.remove(d.glimmer.g); } catch (e) {} d.glimmer = null; }
             if (d.plateEl) { d.plateEl.innerHTML = _hqPlateHtml(d.door); if (d.plateChip) d.plateEl.appendChild(d.plateChip); d.plateEl.style.display = ''; }
+            if (d.plateGpu) { var _pf = _hqPlateFor(d.door); _hqGpuPlateSet(d.plateGpu, { no: _pf.no, label: _pf.label, known: _pf.known }); _hqGpuPlateShow(d.plateGpu, true); }   // R6
             _hq.dirty = true;
             return true;
         }
@@ -49814,12 +49966,9 @@ const ThreeRenderer = (function () {
             return;
         }
         var ow = built.ow || W.w || 1.2, oh = built.oh || W.h || 2.2;
-        var el = document.createElement('div');
-        el.className = 'hq-plate hq-plate-way';
-        var chip = document.createElement('i');
-        el.innerHTML = _hqPlateHtml(door);   // THE UNDISCOVERED DOOR (2026-09-21)
-        el.appendChild(chip);
-        var plate = new THREE.CSS2DObject(el);
+        var _pf = _hqPlateFor(door);   // THE UNDISCOVERED DOOR (2026-09-21)
+        var pm = _hqPlateMake('hq-plate hq-plate-way', { no: _pf.no, label: _pf.label, known: _pf.known }, { tone: 'way', chip: true, maxW: Math.max(0.6, ow * 0.92) });   // R6: the GPU plate, else CSS2D
+        var el = pm.el, chip = pm.chip, plate = pm.obj;
         var plateY = Math.min(built.plateY || (oh + 0.4), HQ_PLATE_EYE);   // ON THE DOOR (mondo 2026-09-29): at eye level, never over the head
         if (room.kind === 'box') plateY = Math.min(plateY, S.h - 0.12);
         plate.position.set(0, plateY * U, 0.3 * U);
@@ -49836,7 +49985,7 @@ const ThreeRenderer = (function () {
             var ob = new THREE.Group(); ob.position.set(bwx * U, y0 * U, bwz * U);
             _hq.blockers.push({ obj: ob, y: y0, top: bl.top || null, rad: bl.r || 0.5, way: kind });
         });
-        var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0,
+        var rec = { door: door, group: grp, lens: null, glow: null, plate: plate, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: Rw, y0: y0, wide: !!door.wide, ow: ow, oh: oh, inward: inward, box: box, leaf: null, way: kind, motion: built.motion || null, openT: 0,
                     mouthY: (built.mouthY != null) ? built.mouthY : null, wayOpen: !!W.open };   // THE DEEP (2026-09-18): a way entered by being IN it (_hqSeaWayCheck) says where its mouth is
         _hq.doors.push(rec);
         _hqLampApply(rec, _hqDoorState(door));
@@ -49860,9 +50009,12 @@ const ThreeRenderer = (function () {
         grp._ew_hqJoined = door.id;
         G.add(grp);
         if (typeof THREE.CSS2DObject === 'function' && door.label) {
-            var el = document.createElement('div'); el.className = 'hq-plate hq-plate-way';
-            el.innerHTML = _hqPlateHtml(door); el.style.fontSize = '10px'; el.style.opacity = '0.85';   // the room's name once stood in, else '?'
-            var pl = new THREE.CSS2DObject(el); pl.position.set(-0.3 * U, 1.72 * U, 0.1 * U); grp.add(pl);
+            var _pf = _hqPlateFor(door);   // the room's name once stood in, else '?'
+            var pm = _hqPlateMake('hq-plate hq-plate-way', { no: _pf.no, label: _pf.label, known: _pf.known }, { tone: 'sign', k: 0.8, op: 0.85, maxW: 0.72, css: { fontSize: '10px', opacity: '0.85' } });
+            /* R6: the GPU plate is painted ON the sign's face (centred on the board); the CSS2D one floats over it */
+            if (pm.gpu) pm.obj.position.set(-0.3 * U, (1.42 - (_pf.no ? 0.075 : 0.045)) * U, (0.08 + 0.025) * U);
+            else pm.obj.position.set(-0.3 * U, 1.72 * U, 0.1 * U);
+            grp.add(pm.obj);
         }
     }
     function _hqBuildDoors(room) {
@@ -50066,19 +50218,17 @@ const ThreeRenderer = (function () {
             grp.add(leafGroup);
             /* the nameplate ON the door, at eye level (mondo 2026-09-29: "players don't look up" — over the panel it left the frame
                when standing right in front of the door) */
-            var el = document.createElement('div');
-            el.className = 'hq-plate';
-            var chip = document.createElement('i');
-            el.innerHTML = _hqPlateHtml(door);   // THE UNDISCOVERED DOOR (2026-09-21): the room's name once stood in, else '?'; never the sub
-            el.appendChild(chip);
-            if (secret && !found) el.style.display = 'none';
+            var _pf = _hqPlateFor(door);   // THE UNDISCOVERED DOOR (2026-09-21): the room's name once stood in, else '?'; never the sub
+            var pm = _hqPlateMake('hq-plate', { no: _pf.no, label: _pf.label, known: _pf.known }, { tone: 'door', chip: true, maxW: Math.max(0.6, ow * 0.92) });   // R6: the GPU plate, else CSS2D
+            var el = pm.el, chip = pm.chip;
+            if (secret && !found) { if (el) el.style.display = 'none'; if (pm.gpu) _hqGpuPlateShow(pm.gpu, false); }
             var glimmer = (secret && !found) ? _hqAngleGlimmer(grp, U, oh, pd) : null;
-            var plate = new THREE.CSS2DObject(el);
-            plate.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, (pd / 2 + 0.03) * U);
+            var plate = pm.obj;
+            plate.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, (pd / 2 + (pm.gpu ? 0.04 : 0.03)) * U);
             grp.add(plate);
             if (box && typeof door.wall === 'string' && door.wall !== 'free') grp._ew_hqWall = door.wall;   // THE ROOM ROUND THE FIELD: a door fades with its wall
             G.add(grp);
-            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
+            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0, angle: !!(secret && !found), glimmer: glimmer };
             var dj = box ? _hqDoorJoinOf(door) : null;
             if (dj) { rec.join = dj; rec.joinBack = back; rec.leafG = leafGroup; rec.oh = oh; rec.pd = pd; _hqDoorSleeve(grp, dj, ow, oh, pd, wallMat, capMat, U); }   // THE DOOR JOIN (Phase 2); the leaf + the recess for THE PORTALS (G1)
             if (motion && motion.clips) {
@@ -50155,15 +50305,13 @@ const ThreeRenderer = (function () {
                 grp.position.copy(_hqPolarW(c.deg, c.r, y0));
                 plateY = 1.7;
             }
-            var el = document.createElement('div');
-            el.className = 'hq-plate hq-plate-counter' + (marker ? ' hq-plate-battle' : '');
             var cNo = _hqPlateNo(c);
-            el.innerHTML = (cNo ? '<em>ROOM ' + cNo + '</em>' : '') + '<b>' + c.label + '</b><span>' + (c.sub || '') + '</span>';
-            var plate = new THREE.CSS2DObject(el);
+            var pm = _hqPlateMake('hq-plate hq-plate-counter' + (marker ? ' hq-plate-battle' : ''), { no: cNo, label: c.label, sub: c.sub || '' }, { tone: marker ? 'battle' : 'counter', bill: true, maxW: 1.6 });   // R6: the GPU plate (turns to the eye), else CSS2D
+            var plate = pm.obj;
             plate.position.set(0, plateY * U, 0);
             grp.add(plate);
             G.add(grp);
-            _hq.counters.push({ counter: c, group: grp, level: level, plateEl: el, x: null, z: null, marker: marker });
+            _hq.counters.push({ counter: c, group: grp, level: level, plateEl: pm.el, plateGpu: pm.gpu, x: null, z: null, marker: marker });
         });
     }
     /* THE BATTLE MARKER (2026-09-12): the glowing beacon every playable
@@ -51808,21 +51956,17 @@ const ThreeRenderer = (function () {
         }
         grp.add(leafGroup);
         /* the plate (CSS2D) — on the face of a standing door at eye level, off the mouth of a flat one */
-        var el = document.createElement('div');
-        el.className = 'hq-plate hq-plate-portal hq-plate-portal-' + slot;
-        var chip = document.createElement('i');
         var label = ((typeof window !== 'undefined' && window.HQ_PORTAL_RULES && window.HQ_PORTAL_RULES.labels) || {})[slot] || ('THRESHOLD ' + slot.toUpperCase());
         var subTxt = 'PORTABLE · DOOR ISSUE · ' + (surf === 'ceiling' ? 'CEILING' : surf === 'wall' ? 'WALL' : 'FLOOR');
-        el.innerHTML = '<b>' + label + '</b><span>' + subTxt + '</span>';
-        el.appendChild(chip);
-        var plateObj = new THREE.CSS2DObject(el);
+        var pm = _hqPlateMake('hq-plate hq-plate-portal hq-plate-portal-' + slot, { label: label, sub: subTxt }, { tone: HQ_TEXT_TONE['portal_' + slot] ? 'portal_' + slot : 'portal', chip: true, bill: flat, maxW: flat ? 1.6 : Math.max(0.6, ow * 0.92) });   // R6: the GPU plate, else CSS2D
+        var el = pm.el, chip = pm.chip, plateObj = pm.obj;
         if (flat) plateObj.position.set(0, oh / 2 * U, 0.45 * U);
-        else plateObj.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, 0.3 * U);
+        else plateObj.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, (pm.gpu ? 0.12 : 0.3) * U);
         grp.add(plateObj);
         H.doorGroup.add(grp);
         var door = { id: 'portal:' + slot, label: label, sub: subTxt, wall: 'free', x: spec.x, z: spec.z, face: spec.face, surf: surf, portal: slot, verb: 'STEP THROUGH', action: { portal: slot }, leaf: leafKey };
         var level = (S && S.wallH) ? _hqLevelOf(S, y0) : 0;   // THE THIRD RING (2026-09-16)
-        var rec = { door: door, group: grp, lens: null, glow: glow, plate: plateObj, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: 0, y0: y0, wide: wide, ow: ow, oh: oh, inward: false, box: box, leaf: leafKey, motion: motion, openT: 0, portal: slot,
+        var rec = { door: door, group: grp, lens: null, glow: glow, plate: plateObj, plateEl: el, plateChip: chip, plateGpu: pm.gpu, state: 'open', level: level, Rw: 0, y0: y0, wide: wide, ow: ow, oh: oh, inward: false, box: box, leaf: leafKey, motion: motion, openT: 0, portal: slot,
                    portalSurf: surf, px: spec.x, py: hitY, pz: spec.z, nx: (surf === 'wall' ? box.nx : 0), ny: (surf === 'ceiling' ? -1 : surf === 'floor' ? 1 : 0), nz: (surf === 'wall' ? box.nz : 0) };
         H.doors.push(rec);
         H.portal.placed[slot] = rec;
@@ -57210,12 +57354,12 @@ const ThreeRenderer = (function () {
             var wp = d.group.position;
             var cx = H.camera.position.x, cz = H.camera.position.z;
             var dist = Math.hypot(wp.x - cx, wp.z - cz) / _hqUnits();
-            if (d.plateEl) _hqPlateDist(d.plateEl, dist, d);   // THE PROP PASS 5.6: a plate fades AND shrinks with distance
+            if (d.plateEl || d.plateGpu) _hqPlateDist(d.plateEl, dist, d);   // THE PROP PASS 5.6: a plate fades AND shrinks with distance
         }
         for (var ci = 0; ci < H.counters.length; ci++) {
             var cc = H.counters[ci];
             var dd = Math.hypot(cc.group.position.x - H.camera.position.x, cc.group.position.z - H.camera.position.z) / _hqUnits();
-            if (cc.plateEl) _hqPlateDist(cc.plateEl, dd, cc);
+            if (cc.plateEl || cc.plateGpu) _hqPlateDist(cc.plateEl, dd, cc);
             if (cc.marker) {
                 cc.marker.icon.rotation.y += dt * 1.3;
                 cc.marker.icon.position.y = (cc.marker.y + Math.sin(now * 0.0021) * 0.11) * _hqUnits();
@@ -57497,6 +57641,12 @@ const ThreeRenderer = (function () {
     var HQ_PLATE_FADE = { near: 8, far: 20, scaleAt: 3.4, min: 0.62, max: 1.12 };
     function _hqPlateDist(el, dist, rec) {
         var F = HQ_PLATE_FADE;
+        if (rec && rec.plateGpu) {   // R6: the GPU plate fades; perspective does the shrink
+            var gop = _polishOff('plateFade', 'EW_HQ_NO_PLATE_FADE') ? 1 : Math.max(0, Math.min(1, 1 - (dist - F.near) / (F.far - F.near)));
+            _hqGpuPlateOp(rec.plateGpu, gop);
+            _hqGpuPlateFace(rec.plateGpu, _hq && _hq.camera);
+            return;
+        }
         if (_polishOff('plateFade', 'EW_HQ_NO_PLATE_FADE')) { if (rec._pop !== '1') { rec._pop = '1'; el.style.opacity = '1'; } if (rec._pk !== '1') { rec._pk = '1'; try { el.style.setProperty('--pk', '1'); } catch (e) {} } return; }
         var op = Math.max(0, Math.min(1, 1 - (dist - F.near) / (F.far - F.near))).toFixed(2);
         if (rec._pop !== op) { rec._pop = op; el.style.opacity = op; }
@@ -59314,11 +59464,11 @@ const ThreeRenderer = (function () {
         var take = function (src, isProp) {
             src.children.slice().forEach(function (c) {
                 src.remove(c);
-                var out = !!(c.isCSS2DObject || (c._ew_hqPart && drop[c._ew_hqPart]) || c._ew_hqMarker);
+                var out = !!(c.isCSS2DObject || c._ew_text || (c._ew_hqPart && drop[c._ew_hqPart]) || c._ew_hqMarker);
                 if (!out && !trueGround && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(R, c.position.x / U, c.position.z / U)) out = true;   // the column stands for it
                 if (!out) { var far = farOf(c); if (far) { out = true; if (far === 2) culledScenery++; else culledProps++; } }
                 if (out) { dropped++; try { _disposeR(c); } catch (e) {} return; }
-                var plates = []; c.traverse(function (o) { if (o.isCSS2DObject) plates.push(o); });
+                var plates = []; c.traverse(function (o) { if (o.isCSS2DObject || (o.name === 'hq_plate' && o._ew_text)) plates.push(o); });   // R6: the GPU plates too
                 plates.forEach(function (o) { if (o.parent) o.parent.remove(o); });
                 if (trueGround && c._ew_hqPart === 'ceil') { var ch = holder('hq_ceil'); ch.add(c); g.add(ch); _fieldCeilRegister(c, R, ts); kept++; return; }
                 if (c._ew_hqWall) wallOf(c._ew_hqWall).add(c);
@@ -60007,7 +60157,7 @@ const ThreeRenderer = (function () {
         for (var fp = 0; fp < P.fxPulse.length; fp++) { var fx = P.fxPulse[fp]; fx.mat.opacity = Math.max(0, fx.baseOp + Math.sin(now * 0.001 * fx.spd + fx.phase) * fx.opAmp); }
         var plates = P.doors.concat(P.counters);
         for (var i = 0; i < plates.length; i++) {
-            var d = plates[i]; if (!d.plateEl || !d.group) continue;
+            var d = plates[i]; if (!(d.plateEl || d.plateGpu) || !d.group) continue;
             d.group.getWorldPosition(v);
             _hqPlateDist(d.plateEl, Math.hypot(v.x - cam.x, v.z - cam.z) / U, d);
         }
@@ -60149,7 +60299,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -61681,6 +61831,7 @@ const ThreeRenderer = (function () {
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqInst: function () { return _hqInstStats(_hq); },
+            hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
