@@ -239,7 +239,11 @@ would be hidden behind units and lose the emoji and the painting. The labels tha
 way / portal / counter / trail plates (mondo: "ON the door at eye level"), which as CSS2D drew through walls (the stage hid a
 neighbour's plates for that) and needed a hand-made distance shrink. So R6 moves those. Fonts: the HQ plate fonts (Cormorant SC,
 IBM Plex Mono) as .woff from the fontsource npm packages on jsdelivr (no font files live on R2; troika reads ttf/otf/woff, not
-woff2). R7: three.quarks only if the lens shows the particle path as a cost; otherwise skipped.
+woff2). R7: three.quarks only if the lens shows the particle path as a cost; otherwise skipped. **Changed when built
+(2026-10-03):** the cost was there, but not where quarks helps. Every live particle was its own Sprite / Mesh with its own
+material, so one draw call each (pools: 512 sprites + 256 world quads + 256 billboard quads); a big spell drew a few hundred. What
+quarks would bring is its batched renderer; its emitter system would mean rewriting the ~40k lines of recipes in three-vfx-effects.js
+that drive `ThreeVFX.spawn`. So R7 batches our own pools instead (three-vfx.js "THE BATCHED PARTICLES"); no library added.
 
 ---
 
@@ -361,3 +365,16 @@ woff2). R7: three.quarks only if the lens shows the particle path as a cost; oth
   F3 lens: a "Text (HQ plates)" line. Sandbox check (swiftshader, the Main Hall with the real CDN assets): 24 plates on the GPU, both
   fonts loaded, every row laid out, no program diagnostics, no page error. Unit nameplates, damage numbers, the battle's tower /
   door / nexus plates and the editor's labels stay DOM.
+- 2026-10-03 R7 built (our own batch, see §8 for why not three.quarks). mondo's foyer readout (fx 7 calls) could not show spells: the
+  foyer has none. Reading three-vfx.js did: a particle = a Sprite or Mesh with its own material = a draw. three-vfx.js "THE BATCHED
+  PARTICLES": the sprite, world and quad pools draw through `InstancedMesh` groups, one per (pool, blend, texture), created on first
+  use; `_batchFlush()` at the end of `tick` writes each live particle's matrix (the Sprite billboard rebuilt on the CPU from the
+  camera's axes in the pools' parent space, rotation, the velocity spark's stretch and centre shift; the world decal's flat pose; the
+  quad's beam / y-locked / camera facing, stretchVel), colour (tint / atlas white / sprite colour) and opacity (a per-instance
+  attribute multiplied in before the alpha test). Normal-blend groups sort back to front and draw before their pool's additive groups
+  (renderOrder + 0.5). Globs (lit 3D blood) and the rain pools stay plain meshes. Instancing is core WebGL2, no multi-draw, so it
+  batches on Firefox (unlike BatchedMesh, R2b). F3 lens: a "Particles" line (live, draws, kinds seen). Off (reload):
+  `window.EW_NO_FX_BATCH` or localStorage `ew_fxbatch = 'off'` = the old per-particle objects, untouched. Sandbox check (swiftshader,
+  three 0.186.1, a test scene with 77 particles across every pose: flashes, tinted embers, velocity sparks, ground rings, a beam, a
+  y-locked pillar, a stretch streak): 85 draws → 15, 74.5 dB against the old path (identical to the eye); with 25 smoke puffs mixed
+  in, 110 → 17 draws at 31 dB, the gap being only that a flash in front of smoke no longer interleaves with it per particle.
