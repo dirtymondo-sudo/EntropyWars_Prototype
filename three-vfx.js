@@ -1690,6 +1690,250 @@ const ThreeVFX = (function () {
         return pool;
     }
 
+    /* ── THE BATCHED PARTICLES (RENDERER_PLAN R7, 2026-10-03) ────────────
+       Every live particle used to be its own Sprite / Mesh with its own
+       material, so each one was a draw call: a big spell put a few hundred
+       on screen at once (the pools hold 512 sprites + 256 world quads + 256
+       billboard quads). Now the sprite, world and quad pools draw through
+       InstancedMesh batches, one per (pool, blend, texture): a spell's few
+       hundred particles land in the handful of draws its sprite kinds need.
+       The simulation, the recipes and every spawn() option are untouched —
+       the pools keep their slots for the bookkeeping, and _batchFlush()
+       (end of tick) writes each live particle's matrix, colour and opacity
+       into its group, exactly the pose the per-particle writers gave it
+       (the Sprite billboard rebuilt on the CPU: camera right/up, rotation,
+       the velocity spark's centre shift). Normal-blend groups (smoke, dust,
+       blood) sort their instances back to front and draw before the
+       additive groups of their pool (a group cannot interleave particle by
+       particle, so a flash is never dimmed by the smoke around it); groups
+       of one blend sort among each other by their centres. Globs (lit 3D blood, 64) and the rain pools
+       stay plain meshes. Instancing is core WebGL2 (no multi-draw), so it
+       batches on Firefox too. Off (needs a reload): window.EW_NO_FX_BATCH
+       or localStorage ew_fxbatch = 'off' → the old per-particle objects. */
+    var _batched = false;
+    var _batchGroups = {};      // key → group
+    var _batchList = [];        // the groups, in creation order
+    var _batchShown = 0;        // groups drawn last flush
+    var _batchStat = { live: 0, draws: 0 };
+    var _bM = null, _bQ = null, _bQ2 = null, _bS = null, _bP = null, _bE = null;
+    var _bCamQ = null, _bCamP = null, _bFwd = null, _bRight = null, _bUp = null, _bInv = null, _bPQ = null;
+    var _BATCH_CAP = { s: MAX_PARTICLES, w: MAX_WORLD_QUADS, q: MAX_QUAD_BILLBOARDS };
+    var _BATCH_ORDER = { s: 100, w: 101, q: 102 };
+
+    function _batchWanted() {
+        if (typeof window === 'undefined' || typeof THREE === 'undefined' || !THREE.InstancedMesh || !THREE.InstancedBufferAttribute) return false;
+        if (window.EW_NO_FX_BATCH) return false;
+        try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_fxbatch') === 'off') return false; } catch (e) {}
+        return true;
+    }
+
+    function _createBatchSlots(count) {
+        var pool = [];
+        for (var i = 0; i < count; i++) pool.push({ inUse: false });
+        return pool;
+    }
+
+    function _batchMaterial(tex, add) {
+        var mat = new THREE.MeshBasicMaterial({
+            map: tex || null, color: 0xffffff, transparent: true,
+            depthWrite: false, depthTest: true,
+            blending: add ? THREE.AdditiveBlending : THREE.NormalBlending,
+            alphaTest: 0.01, side: THREE.DoubleSide,
+        });
+        mat.onBeforeCompile = _batchHook;   // one function: every group shares one program
+        return mat;
+    }
+    /* the per-instance opacity: multiplied in before the alpha test, as the
+       Sprite's material.opacity was */
+    function _batchHook(sh) {
+        sh.vertexShader = sh.vertexShader
+            .replace('#include <common>', '#include <common>\nattribute float aEwOp;\nvarying float vEwOp;')
+            .replace('#include <begin_vertex>', '#include <begin_vertex>\nvEwOp = aEwOp;');
+        sh.fragmentShader = sh.fragmentShader
+            .replace('#include <common>', '#include <common>\nvarying float vEwOp;')
+            .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vEwOp;');
+    }
+
+    function _batchGroup(type, add, tex) {
+        var key = type + (add ? '+' : '-') + (tex ? tex.uuid : 'none');
+        var g = _batchGroups[key];
+        if (g) return g;
+        var cap = _BATCH_CAP[type];
+        var geo = new THREE.BufferGeometry();
+        geo.setIndex(_sharedPlaneGeo.index);
+        geo.setAttribute('position', _sharedPlaneGeo.attributes.position);
+        geo.setAttribute('normal', _sharedPlaneGeo.attributes.normal);
+        geo.setAttribute('uv', _sharedPlaneGeo.attributes.uv);
+        var op = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
+        op.setUsage(THREE.DynamicDrawUsage);
+        geo.setAttribute('aEwOp', op);
+        var mesh = new THREE.InstancedMesh(geo, _batchMaterial(tex, add), cap);
+        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
+        mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+        mesh.count = 0;
+        mesh.visible = false;
+        mesh.frustumCulled = false;
+        mesh.renderOrder = _BATCH_ORDER[type] + (add ? 0.5 : 0);   // glow after the smoke of its own pool: a group can't interleave per particle
+        mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e6);   // sorting reads the centre (set each flush)
+        mesh.raycast = function () {};
+        mesh.name = 'fxBatch:' + key;
+        mesh._ew_fxBatch = true;
+        if (_scene) _scene.add(mesh);
+        g = { key: key, type: type, add: add, mesh: mesh, op: op, list: [], n: 0 };
+        _batchGroups[key] = g;
+        _batchList.push(g);
+        return g;
+    }
+
+    function _batchTint(p, arr, i3) {
+        var r, gg, b;
+        if (p._tint) { r = p._tint.r; gg = p._tint.g; b = p._tint.b; }
+        else if (_gradientDefs[p.sprite] || _imageDefs[p.sprite]) { r = 1; gg = 1; b = 1; }
+        else { r = p._color.r; gg = p._color.g; b = p._color.b; }
+        arr[i3] = r; arr[i3 + 1] = gg; arr[i3 + 2] = b;
+    }
+
+    /* one particle's local matrix → the group's instanceMatrix at slot i (the
+       per-particle writers' pose, in the pools' parent space) */
+    function _batchPose(p, t, arr, i16) {
+        var w = _vfxToWorld(p.x, p.y, p.z), e;
+        if (p.poolType === 'sprite') {
+            var sz = _lerp(p.size0, p.size1, t), sx = sz, sy = sz, rot = 0, cx = 0.5;
+            var vs = false;
+            if (p._velSpark && !_craftOff()) {
+                var sxv = p.vx * _bRight.x + p.vz * _bRight.y + p.vy * _bRight.z;
+                var syv = p.vx * _bUp.x + p.vz * _bUp.y + p.vy * _bUp.z;
+                var spd = Math.sqrt(sxv * sxv + syv * syv);
+                var a = 1 + (spd - VS_DEADZONE) * VS_K;
+                if (a > 1.02) {
+                    if (a > VS_MAX) a = VS_MAX;
+                    sx = sz * Math.pow(a, 0.6); sy = sz * Math.pow(a, -0.4);
+                    rot = Math.atan2(syv, sxv);
+                    cx = 0.5 + VS_LEAD * (1 - 1 / a);
+                    vs = true;
+                }
+            }
+            if (!vs && (p._spriteRot || p._spriteSpin)) rot = (p._spriteRot + p._spriteSpin * (p.life / 1000)) * 0.017453293;
+            _bQ.copy(_bCamQ);
+            if (rot) _bQ.multiply(_bQ2.setFromAxisAngle(_bE.set(0, 0, 1), rot));
+            _bM.compose(_bP.set(w.x, w.y, w.z), _bQ, _bS.set(sx, sy, 1));
+            e = _bM.elements;
+            if (cx !== 0.5) { var k = -(cx - 0.5); e[12] += e[0] * k; e[13] += e[1] * k; e[14] += e[2] * k; }
+        } else if (p.poolType === 'world') {
+            var sw, sh;
+            if (p.w0 || p.h0) { sw = _lerp(p.w0, p.w1, t); sh = _lerp(p.h0, p.h1, t); }
+            else { sw = _lerp(p.size0, p.size1, t); sh = sw; }
+            var rz = (p._spriteRot || p._spriteSpin) ? (p._spriteRot + p._spriteSpin * (p.life / 1000)) * Math.PI / 180 : 0;
+            _tmpEuler.set(-Math.PI / 2, 0, rz, 'XYZ');
+            _bQ.setFromEuler(_tmpEuler);
+            _bM.compose(_bP.set(w.x, w.y + 0.5, w.z), _bQ, _bS.set(sw, sh, 1));
+            e = _bM.elements;
+        } else {
+            var cw = _lerp(p.w0, p.w1, t), ch = _lerp(p.h0, p.h1, t);
+            if (p._stretchVel > 0) {
+                var sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
+                cw = Math.max(cw, Math.min(sp * p._stretchVel, cw * 8));
+            }
+            if (p._beamYawDeg != null) {
+                _tmpEuler.set((p._beamPitchDeg || 0) * Math.PI / 180, -p._beamYawDeg * Math.PI / 180, 0, 'YXZ');
+                _bQ.setFromEuler(_tmpEuler);
+            } else if (p.mode === 'y-locked') {
+                if (_bFwd.lengthSq() > 0) _bQ.setFromAxisAngle(_bE.set(0, 1, 0), Math.atan2(_bFwd.x, _bFwd.z));
+                else _bQ.identity();
+            } else {
+                _bQ.copy(_bCamQ);
+            }
+            if (p._spriteRot || p._spriteSpin) {
+                _bQ.multiply(_bQ2.setFromAxisAngle(_bE.set(0, 0, 1), (p._spriteRot + p._spriteSpin * (p.life / 1000)) * Math.PI / 180));
+            }
+            _bM.compose(_bP.set(w.x, w.y, w.z), _bQ, _bS.set(cw, ch, 1));
+            e = _bM.elements;
+        }
+        for (var j = 0; j < 16; j++) arr[i16 + j] = e[j];
+    }
+
+    function _batchFlush() {
+        if (!_batched) return;
+        var i, g;
+        for (i = 0; i < _batchList.length; i++) { _batchList[i].list.length = 0; }
+        var live = 0;
+        if (_aliveCount > 0 && _scene) {
+            if (!_bM) {
+                _bM = new THREE.Matrix4(); _bInv = new THREE.Matrix4(); _bQ = new THREE.Quaternion(); _bQ2 = new THREE.Quaternion();
+                _bCamQ = new THREE.Quaternion(); _bPQ = new THREE.Quaternion(); _bS = new THREE.Vector3(); _bP = new THREE.Vector3();
+                _bE = new THREE.Vector3(); _bCamP = new THREE.Vector3(); _bFwd = new THREE.Vector3(); _bRight = new THREE.Vector3(); _bUp = new THREE.Vector3();
+            }
+            /* the camera in the pools' parent space: its rotation, position, and right / up / back axes */
+            var cam = _vfxCam();
+            _scene.updateWorldMatrix(true, false);
+            _bInv.copy(_scene.matrixWorld).invert();
+            if (cam) {
+                cam.updateWorldMatrix(true, false);
+                var ce = cam.matrixWorld.elements;
+                _bRight.set(ce[0], ce[1], ce[2]); _bUp.set(ce[4], ce[5], ce[6]);   // world axes (the spark streak reads world velocity)
+                _bScenePQ();
+                cam.getWorldQuaternion(_bCamQ); _bCamQ.premultiply(_bPQ);
+                _bCamP.setFromMatrixPosition(cam.matrixWorld).applyMatrix4(_bInv);
+                _bFwd.set(-ce[8], -ce[9], -ce[10]).transformDirection(_bInv);
+            } else {
+                _bCamQ.identity(); _bCamP.set(0, 0, 0); _bFwd.set(0, 0, 0); _bRight.set(1, 0, 0); _bUp.set(0, 1, 0);
+            }
+            for (i = 0; i < _particles.length; i++) {
+                var p = _particles[i];
+                if (!p.alive || p.poolType === 'glob' || !p.poolType) continue;
+                var t = Math.min(1, p.life / p.ml);
+                var op = _lerp(p.opacity0, p.opacity1, t);
+                if (!(op > 0.001)) continue;
+                var type = p.poolType === 'sprite' ? 's' : (p.poolType === 'world' ? 'w' : 'q');
+                g = _batchGroup(type, p._blend === 'add', _getSpriteTexture(p.sprite));
+                if (g.list.length >= _BATCH_CAP[type]) continue;
+                p._bOp = op; p._bT = t;
+                if (!g.add) {
+                    var w = _vfxToWorld(p.x, p.y, p.z);
+                    p._bD = (w.x - _bCamP.x) * _bFwd.x + (w.y - _bCamP.y) * _bFwd.y + (w.z - _bCamP.z) * _bFwd.z;
+                }
+                g.list.push(p);
+                live++;
+            }
+        }
+        var shown = 0;
+        for (i = 0; i < _batchList.length; i++) {
+            g = _batchList[i];
+            var n = g.list.length, mesh = g.mesh;
+            if (!n) {
+                if (mesh.visible) { mesh.visible = false; mesh.count = 0; }
+                continue;
+            }
+            if (!g.add && n > 1) g.list.sort(_batchFarFirst);
+            var mArr = mesh.instanceMatrix.array, cArr = mesh.instanceColor.array, oArr = g.op.array;
+            var mx = 0, my = 0, mz = 0;
+            for (var k = 0; k < n; k++) {
+                var q = g.list[k];
+                _batchPose(q, q._bT, mArr, k * 16);
+                mx += mArr[k * 16 + 12]; my += mArr[k * 16 + 13]; mz += mArr[k * 16 + 14];
+                _batchTint(q, cArr, k * 3);
+                oArr[k] = q._bOp;
+            }
+            mesh.boundingSphere.center.set(mx / n, my / n, mz / n);
+            mesh.count = n;
+            mesh.instanceMatrix.clearUpdateRanges(); mesh.instanceMatrix.addUpdateRange(0, n * 16); mesh.instanceMatrix.needsUpdate = true;
+            mesh.instanceColor.clearUpdateRanges(); mesh.instanceColor.addUpdateRange(0, n * 3); mesh.instanceColor.needsUpdate = true;
+            g.op.clearUpdateRanges(); g.op.addUpdateRange(0, n); g.op.needsUpdate = true;
+            mesh.visible = true;
+            shown++;
+            g.list.length = 0;
+        }
+        _batchShown = shown;
+        _batchStat.live = live; _batchStat.draws = shown;
+    }
+    function _batchFarFirst(a, b) { return b._bD - a._bD; }
+    /* the inverse of the pools' parent's world rotation (identity on a board scene) */
+    function _bScenePQ() {
+        _scene.getWorldQuaternion(_bPQ);
+        _bPQ.invert();
+    }
+
     /* ── 3D blood globs ──────────────────────────────────────────────────
        Blood spurts use REAL lumpy meshes with a glossy lit material instead
        of flat billboards, so they read as wet 3D liquid: they catch the
@@ -1774,6 +2018,7 @@ const ThreeVFX = (function () {
     }
 
     function _hideSprite(entry) {
+        if (!entry.sprite) { entry.inUse = false; return; }   // a batch slot
         entry.sprite.visible = false;
         entry.sprite.position.set(0, -99999, 0);
         entry.material.opacity = 0;
@@ -1781,6 +2026,7 @@ const ThreeVFX = (function () {
     }
 
     function _hideMesh(entry) {
+        if (!entry.mesh) { entry.inUse = false; return; }     // a batch slot
         entry.mesh.visible = false;
         entry.mesh.position.set(0, -99999, 0);
         entry.material.opacity = 0;
@@ -1811,9 +2057,16 @@ const ThreeVFX = (function () {
 
         _buildAtlas();
 
-        _spritePool = _createSpritePool(MAX_PARTICLES);
-        _worldMeshPool = _createMeshPool(MAX_WORLD_QUADS, 101);
-        _quadMeshPool  = _createMeshPool(MAX_QUAD_BILLBOARDS, 102);
+        _batched = _batchWanted();
+        if (_batched) {
+            _spritePool = _createBatchSlots(MAX_PARTICLES);
+            _worldMeshPool = _createBatchSlots(MAX_WORLD_QUADS);
+            _quadMeshPool  = _createBatchSlots(MAX_QUAD_BILLBOARDS);
+        } else {
+            _spritePool = _createSpritePool(MAX_PARTICLES);
+            _worldMeshPool = _createMeshPool(MAX_WORLD_QUADS, 101);
+            _quadMeshPool  = _createMeshPool(MAX_QUAD_BILLBOARDS, 102);
+        }
         _buildGlobGeos();
         _globPool = _createGlobPool(MAX_BLOOD_GLOBS);
         _buildFxLights();
@@ -1851,7 +2104,7 @@ const ThreeVFX = (function () {
 
         _initialized = true;
         console.log('[ThreeVFX] initialized (standard materials) — sprites=' + MAX_PARTICLES +
-                    ' worldQ=' + MAX_WORLD_QUADS + ' quadBB=' + MAX_QUAD_BILLBOARDS);
+                    ' worldQ=' + MAX_WORLD_QUADS + ' quadBB=' + MAX_QUAD_BILLBOARDS + (_batched ? ' (batched)' : ''));
     }
 
     function _claim() {
@@ -2201,6 +2454,7 @@ const ThreeVFX = (function () {
     }
 
     function _setupMaterial(p) {
+        if (_batched && p.poolType !== 'glob') return;   // the batch reads the sprite's texture + blend at flush
         var tex = _getSpriteTexture(p.sprite);
         var isAdd = (p._blend === 'add');
         var blending = isAdd ? THREE.AdditiveBlending : THREE.NormalBlending;
@@ -2232,6 +2486,7 @@ const ThreeVFX = (function () {
     function _lerp(a, b, t) { return a + (b - a) * t; }
 
     function _writeParticle(p) {
+        if (_batched && p.poolType !== 'glob') return;   // posed by _batchFlush
         if (p.poolType === 'sprite') _writeSprite(p);
         else if (p.poolType === 'world') _writeWorldMesh(p);
         else if (p.poolType === 'quad') _writeQuadMesh(p);
@@ -2452,7 +2707,7 @@ const ThreeVFX = (function () {
             window.ThreeVFXEffects.tick(dt);
         }
 
-        if (_aliveCount === 0) return;
+        if (_aliveCount === 0) { if (_batchShown) _batchFlush(); return; }
 
         for (var i = 0; i < _particles.length; i++) {
             var p = _particles[i];
@@ -2544,7 +2799,7 @@ const ThreeVFX = (function () {
                     var newSpr = p._animFrames[p._animIdx];
                     p.sprite = newSpr;
                     p._uvRect = _getUvRect(newSpr);
-                    var newTex = _getSpriteTexture(newSpr);
+                    var newTex = _batched ? null : _getSpriteTexture(newSpr);
                     if (newTex) {
                         if (p.poolType === 'sprite' && _spritePool[p.slotIdx]) {
                             _spritePool[p.slotIdx].material.map = newTex;
@@ -2568,6 +2823,7 @@ const ThreeVFX = (function () {
                 if (cb) try { cb(); } catch (e) {  }
             }
         }
+        _batchFlush();
     }
 
     // ── Ambient atmosphere: dust motes (day) + fireflies (night) ────────
@@ -3152,9 +3408,10 @@ const ThreeVFX = (function () {
        the pools here and the board adopts them at its init(scene). */
     function _pooledObjects() {
         var out = [], i;
-        for (i = 0; i < _spritePool.length; i++) out.push(_spritePool[i].sprite);
-        for (i = 0; i < _worldMeshPool.length; i++) out.push(_worldMeshPool[i].mesh);
-        for (i = 0; i < _quadMeshPool.length; i++) out.push(_quadMeshPool[i].mesh);
+        for (i = 0; i < _spritePool.length; i++) if (_spritePool[i].sprite) out.push(_spritePool[i].sprite);
+        for (i = 0; i < _worldMeshPool.length; i++) if (_worldMeshPool[i].mesh) out.push(_worldMeshPool[i].mesh);
+        for (i = 0; i < _quadMeshPool.length; i++) if (_quadMeshPool[i].mesh) out.push(_quadMeshPool[i].mesh);
+        for (i = 0; i < _batchList.length; i++) out.push(_batchList[i].mesh);
         for (i = 0; i < _globPool.length; i++) out.push(_globPool[i].mesh);
         for (i = 0; i < _rainDropMeshes.length; i++) out.push(_rainDropMeshes[i].mesh);
         for (i = 0; i < _rainSplashMeshes.length; i++) out.push(_rainSplashMeshes[i].mesh);
@@ -3212,6 +3469,7 @@ const ThreeVFX = (function () {
         }
         _aliveCount = 0;
         _zoneAliveCount = 0;
+        _batchFlush();                // nothing alive: every batch hides now, not at the next tick
         for (var li = 0; li < _fxLights.length; li++) _fxLightIdle(_fxLights[li]);
         if (window.ThreeVFXEffects && window.ThreeVFXEffects.clear) {
             window.ThreeVFXEffects.clear();
@@ -3221,22 +3479,34 @@ const ThreeVFX = (function () {
     function dispose() {
 
         for (var i = 0; i < _spritePool.length; i++) {
+            if (!_spritePool[i].sprite) continue;
             if (_scene) _scene.remove(_spritePool[i].sprite);
             _spritePool[i].material.dispose();
         }
         _spritePool = [];
 
         for (var j = 0; j < _worldMeshPool.length; j++) {
+            if (!_worldMeshPool[j].mesh) continue;
             if (_scene) _scene.remove(_worldMeshPool[j].mesh);
             _worldMeshPool[j].material.dispose();
         }
         _worldMeshPool = [];
 
         for (var k = 0; k < _quadMeshPool.length; k++) {
+            if (!_quadMeshPool[k].mesh) continue;
             if (_scene) _scene.remove(_quadMeshPool[k].mesh);
             _quadMeshPool[k].material.dispose();
         }
         _quadMeshPool = [];
+
+        for (var bg = 0; bg < _batchList.length; bg++) {
+            var bm = _batchList[bg].mesh;
+            if (bm.parent) bm.parent.remove(bm);
+            bm.material.dispose();
+            bm.geometry.dispose();   // its own aEwOp only; the shared plane's attributes go with _sharedPlaneGeo below
+            if (bm.dispose) bm.dispose();
+        }
+        _batchList = []; _batchGroups = {}; _batchShown = 0; _batched = false;
 
         for (var ri = 0; ri < _rainDropMeshes.length; ri++) {
             if (_scene) _scene.remove(_rainDropMeshes[ri].mesh);
@@ -3298,7 +3568,7 @@ const ThreeVFX = (function () {
             console.log('Test particle pos:', testP.x, testP.y, testP.z);
             var w = _vfxToWorld(testP.x, testP.y, testP.z);
             console.log('Test particle world pos:', w.x, w.y, w.z);
-            if (testP.poolType === 'sprite') {
+            if (testP.poolType === 'sprite' && _spritePool[testP.slotIdx].sprite) {
                 var entry = _spritePool[testP.slotIdx];
                 console.log('Sprite visible:', entry.sprite.visible);
                 console.log('Sprite position:', entry.sprite.position.x, entry.sprite.position.y, entry.sprite.position.z);
@@ -3314,12 +3584,18 @@ const ThreeVFX = (function () {
 
     function _getScene() { return _scene; }
 
+    /* the F3 lens's Particles line: live particles drawn and the draws they took */
+    function fxStats() {
+        return { batched: _batched, live: _batched ? _batchStat.live : _aliveCount, draws: _batched ? _batchStat.draws : _aliveCount,
+                 groups: _batchList.length };
+    }
+
     return { init: init, spawn: spawn, tick: tick, isActive: isActive, clear: clear, dispose: dispose,
              attach: attach, detach: detach, isAttached: isAttached,
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, flashLight: flashLight,
-             _diag: _diag, _getScene: _getScene };
+             fxStats: fxStats, _diag: _diag, _getScene: _getScene };
 })();
 
 window.ThreeVFX = ThreeVFX;

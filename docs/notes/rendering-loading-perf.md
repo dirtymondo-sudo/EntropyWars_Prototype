@@ -599,3 +599,9 @@ builder (returns `{obj, el, chip, gpu}`); records carry `plateGpu` beside `plate
 `_hqGpuPlateShow` / `_hqGpuPlateOp` / `_hqGpuPlateFace` are the GPU side of the DOM writes. Anything new that labels a place IN
 the HQ should use `_hqPlateMake`. Unit nameplates and damage numbers stay DOM overlays on purpose (§8). F3 "Text (HQ plates)" line;
 `ThreeRenderer.hq.dev.hqText()` for probes.
+
+## THE RENDERER PLAN R7 — the batched particles (2026-10-03, zip renderer/ENTROPY_WARS_R7_PARTICLES.zip)
+three-vfx.js "THE BATCHED PARTICLES": the sprite / world / quad pools draw as InstancedMesh groups (one per pool, blend, texture)
+instead of one Sprite or Mesh (and one draw) per particle. Full write-up in RENDERER_PLAN.md §8 + §9. Off: `window.EW_NO_FX_BATCH`
+or localStorage `ew_fxbatch = 'off'` (reload). Anything that reaches into a pool entry's `.sprite` / `.mesh` / `.material` must
+guard: in batched mode the entries are bare `{ inUse }` slots.
