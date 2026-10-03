@@ -3024,6 +3024,10 @@ const ThreeRenderer = (function () {
 
         mat._ew_fluidTop = true;
         mat._ew_fluidType = terrainKey;
+        /* WEBGPU W1: the same surface for the node renderer (_ewNodeFluid) */
+        var v3 = function (g) { var n = String(g).replace(/^\s*vec3/, '').match(/-?[\d.]+/g).map(Number); return n.length > 2 ? [n[0], n[1], n[2]] : [n[0], n[0], n[0]]; };
+        _ewNodeTag(mat, { k: 'fluid', w1: waveTex1, w2: waveTex2, off1: off1, off2: off2, op1: waveOp.op1, op2: waveOp.op2, tint: waveTint,
+            water: isWater, deep: isDeep, cs: +caustStr, ce: +caustEmis, gs: +glintStr, cd: v3(caustDiffC), cec: v3(caustEmisC), gc: v3(glintColC), hue: v3(hueShiftC) });
 
         return mat;
     }
@@ -5995,6 +5999,7 @@ const ThreeRenderer = (function () {
             _grassBladeMat.customProgramCacheKey = function () { return 'ew_grass_wind'; };
             /* shared across every tuft — keep it alive across deco rebuilds */
             _grassBladeMat._ew_shared = true;
+            _ewNodeTag(_grassBladeMat, { k: 'grass' });   // WEBGPU W1
         }
         return _grassBladeMat;
     }
@@ -23944,6 +23949,7 @@ const ThreeRenderer = (function () {
                     '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uHzFogColor, clamp(hzBand, 0.0, 0.95));\n' +
                     '  }');
         };
+        mat.onBeforeCompile._ew_base = _prevOBC; mat.onBeforeCompile._ew_layer = { k: 'hzfog' };   // WEBGPU W1: a layer over the hook below it
         mat.needsUpdate = true;
     }
 
@@ -27786,6 +27792,7 @@ const ThreeRenderer = (function () {
         mat.customProgramCacheKey = function () { return 'ewWind2'; };
         mat._ew_wind = true;
         mat._ew_windFn = mat.onBeforeCompile;
+        _ewNodeTag(mat, { k: 'wind', h: Math.max(0.001, modelH), amp: ampWorld });   // WEBGPU W1
         return mat;
     }
     /* THE PERF PASS (2026-10-01): the HQ's tree materials, one per (model, leaf file, tint, wind) — every tree used to build its own
@@ -30505,6 +30512,7 @@ const ThreeRenderer = (function () {
                     '    float wdF = smoothstep(uWdR0, uWdR1, wdT);\n' +
                     '    gl_FragColor.rgb = mix(gl_FragColor.rgb, uWdFog, wdF * uWdFogAmt); }');
         };
+        mat.onBeforeCompile._ew_base = prev; mat.onBeforeCompile._ew_layer = { k: 'dissolve', own: own }; mat.ewNodeKey = 'ew' + mat.id;   // WEBGPU W1 (own radii: its own node build)
         mat.needsUpdate = true;
         _wd.mats.push(mat);
         return mat;
@@ -31852,6 +31860,291 @@ const ThreeRenderer = (function () {
         r._ew_freeLater = null;
         for (var i = 0; i < q.length; i++) { try { q[i].destroy(); } catch (e) {} }
     }
+    /* ══ THE NODE LAYER (WEBGPU_PLAN W1, 2026-10-03) ══════════════════════════════════════════════════════════════════════
+       The node renderer ignores ShaderChunk patches and onBeforeCompile, so on its path each classic effect is rebuilt
+       in TSL (Fn only, never wgslFn / glslFn: the same graph compiles to WGSL and to GLSL on the WebGL 2 backend):
+         · the legacy lights (_ewLegacyLightPatch): a node class per light type — × π on every light, r128's linear
+           ramp pow(saturate(1 - d / distance), decay) for point and spot — registered for the game's classes;
+         · the height fog (_ewHeightFogPatch): the scene's FogExp2 node is swapped for FogExp2 × the floor term;
+         · the hooked materials: three turns a classic material into a node material once per build
+           (library.fromMaterial); _ewNodeDress adds the hook's effect to that node material — the base hook by identity
+           (_hqAoHook, _ewVColorEmissiveHook) or by the factory's _ewNode tag, then each layer hook (horizon fog,
+           dissolve: they record _ew_base / _ew_layer on themselves). The classic material stays the one the game holds
+           and writes. A NEW GLSL HOOK NEEDS A DRESS HERE, or it draws plain on WebGPU.
+       Uniforms the GLSL read from shared plain objects are node uniforms that read them: _ewNodeTick once a frame
+       (_EW_HFOG, _HQ_AO, the fluid clock), _ewNodeRef every render (the rest). */
+    var _ewNodeU = null;   // the node uniforms, made once the node library is here
+    function _ewNodeLights(r, G) {
+        var lib = r.library, T = G.TSL;
+        if (!lib || !lib.lightNodes || !T || !G.PointLightNode) return;
+        var PI = Math.PI;
+        var ramp = function (dist, cutoff, decay) {   // r128's getDistanceAttenuation (decay 1 by default: the game's subclasses)
+            return cutoff.greaterThan(0).and(decay.greaterThan(0)).select(T.saturate(dist.div(cutoff).oneMinus()).pow(decay), T.float(1));
+        };
+        class EwAmbientLightNode extends G.AmbientLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); } }
+        class EwDirectionalLightNode extends G.DirectionalLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); } }
+        class EwHemisphereLightNode extends G.HemisphereLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); this.groundColorNode.value.multiplyScalar(PI); } }
+        class EwPointLightNode extends G.PointLightNode {
+            update(f) { super.update(f); this.color.multiplyScalar(PI); }
+            setupDirect(builder) {
+                var lv = this.getLightVector(builder);
+                return { lightDirection: lv.normalize(), lightColor: this.colorNode.mul(ramp(lv.length(), this.cutoffDistanceNode, this.decayExponentNode)) };
+            }
+        }
+        class EwSpotLightNode extends G.SpotLightNode {
+            update(f) { super.update(f); this.color.multiplyScalar(PI); }
+            setupDirect(builder) {
+                var lv = this.getLightVector(builder), dir = lv.normalize();
+                var spot = this.getSpotAttenuation(builder, dir.dot(T.lightTargetDirection(this.light)));
+                return { lightDirection: dir, lightColor: this.colorNode.mul(spot).mul(ramp(lv.length(), this.cutoffDistanceNode, this.decayExponentNode)) };
+            }
+        }
+        var L = lib.lightNodes, set = function (cls, node) { if (cls) L.set(cls, node); };
+        set(G.AmbientLight, EwAmbientLightNode); set(G.DirectionalLight, EwDirectionalLightNode); set(G.HemisphereLight, EwHemisphereLightNode);
+        set(G.PointLight, EwPointLightNode); set(THREE.PointLight, EwPointLightNode);
+        set(G.SpotLight, EwSpotLightNode); set(THREE.SpotLight, EwSpotLightNode);
+    }
+    function _ewNodeLayer(r, G) {
+        var T = G.TSL;
+        if (!T || !r._nodes || !r.library) return;
+        var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
+        var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
+        _ewNodeU = { T: T, G: G, hfog: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), fflow: F(new THREE.Vector2()), dressed: {} };
+        _ewNodeTick();
+        /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
+        var N = r._nodes, uf = N.updateFog, fogs = new WeakMap();
+        N.updateFog = function (scene) {
+            uf.call(this, scene);
+            var f = scene.fog; if (!f || !f.isFogExp2) return;
+            var fn = fogs.get(f);
+            if (!fn) {
+                var col = T.reference('color', 'color', f).setGroup(T.renderGroup), den = T.reference('density', 'float', f).setGroup(T.renderGroup);
+                var H = _ewNodeU.hfog, vz = T.positionView.z.negate();
+                var base = den.mul(den).mul(vz).mul(vz).negate().exp().oneMinus();
+                var hf = H.z.mul(T.max(T.positionWorld.y.sub(H.x), 0).mul(H.y).negate().exp()).mul(H.w.mul(vz).negate().exp().oneMinus());
+                fn = T.fog(col, T.clamp(T.float(1).sub(base.oneMinus().mul(hf.oneMinus())), 0, 1));
+                fogs.set(f, fn);
+            }
+            this.get(scene).fogNode = fn;
+        };
+        /* the hooked materials */
+        var lib = r.library, fm = lib.fromMaterial;
+        lib.fromMaterial = function (material) {
+            var nm = fm.call(this, material);
+            if (nm && nm !== material) { try { _ewNodeDress(nm, material); } catch (e) { console.warn('[ThreeRenderer] node layer: ' + material.type + ' kept plain', e); } }
+            return nm;
+        };
+    }
+    /* once a frame, before the outer render: the shared plain objects → the node uniforms */
+    function _ewNodeTick() {
+        var U = _ewNodeU; if (!U) return;
+        U.hfog.value.set(_EW_HFOG.x, _EW_HFOG.y, _EW_HFOG.z, _EW_HFOG.w);
+        U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
+        U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
+        U.ftime.value = _fluidTimeUniform.value; U.ftile.value = _fluidTileUniform.value;
+        if (_fluidFlowUniform.value) U.fflow.value.copy(_fluidFlowUniform.value);
+    }
+    /* a node material's diffuse colour × f(), after three's own (colour, map, vertex colour, opacity, alpha test) */
+    function _ewNodeDiffuseMul(nm, factorFn) {
+        var base = Object.getPrototypeOf(nm).setupDiffuseColor;
+        nm.setupDiffuseColor = function (builder) { base.call(this, builder); _ewNodeU.T.diffuseColor.rgb.mulAssign(factorFn()); };
+    }
+    /* THE ROOM-BOX AO (_hqAoHook) */
+    var _ewNodeAoFn = null;
+    function _ewNodeAo() {
+        if (_ewNodeAoFn) return _ewNodeAoFn;
+        var T = _ewNodeU.T, A = _ewNodeU.ao, A2 = _ewNodeU.ao2;
+        _ewNodeAoFn = T.Fn(function () {
+            var wp = T.positionWorld, n = T.abs(T.normalize(T.normalWorld)), R = T.max(A2.x, 0.001), one = T.float(1);
+            var fx = one.sub(T.smoothstep(0, R, A.x.sub(T.abs(wp.x.sub(A2.z)))));
+            var fz = one.sub(T.smoothstep(0, R, A.y.sub(T.abs(wp.z.sub(A2.w)))));
+            var fy = one.sub(T.smoothstep(0, R, wp.y.sub(A2.y)));
+            var fc = one.sub(T.smoothstep(0, R, A.z.sub(wp.y)));
+            var ao = one.sub(A.w.mul(fx.mul(n.x.oneMinus()).add(fz.mul(n.z.oneMinus())).add(fy.mul(n.y.oneMinus())).add(fc.mul(n.y.oneMinus()).mul(0.6))));
+            return A.w.greaterThan(0).select(T.clamp(ao, 0.3, 1), one);
+        });
+        return _ewNodeAoFn;
+    }
+    /* a hooked material whose shader needs its own data (textures, numbers) carries it here for the node renderer. ewNodeKey
+       is a plain string property, so three's node cache key (every material property) gives the material its own build —
+       two terrain rooms share one GLSL program but must not share one node build (it would bind the first room's sheets);
+       identical shader code still shares one GPU program. The classic renderer ignores both. */
+    function _ewNodeTag(m, D) { m._ewNode = D; m.ewNodeKey = 'ew' + m.id; return m; }
+    /* THE TERRAIN SHEETS (_hqTerrainMat): triplanar floor / cliff / path, the painted sheets, the baked AO */
+    function _ewNodeTerrain(nm, m, D) {
+        var T = _ewNodeU.T;
+        if (!m.map || !m.map.isTexture) return;
+        var map = m.map, TM = T.float(D.TM), pal = D.pal || [];
+        var texel = T.Fn(function (builder) {
+            var wp = T.positionWorld, w = T.abs(T.normalize(T.normalWorldGeometry)).toVar();
+            w.assign(w.mul(w).mul(w).mul(w)); w.divAssign(w.x.add(w.y).add(w.z).add(0.0001));
+            var uy = wp.xz.div(TM), ux = wp.zy.div(TM), uz = wp.xy.div(TM);
+            var tri = function (t, s) { return T.texture(t, uy.mul(s)).mul(w.y).add(T.texture(t, ux.mul(s)).mul(w.x)).add(T.texture(t, uz.mul(s)).mul(w.z)); };
+            var c = tri(map, 1).toVar();
+            var cliff = tri(D.cliff || map, 0.85), path = tri(D.path || map, 1.15);
+            if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
+                var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
+                var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
+                pal.forEach(function (t, i) { pc.addAssign(T.texture(t, uy).mul(W[i])); pw.addAssign(W[i]); });
+                T.If(pw.greaterThan(0.001), function () { c.assign(T.mix(c, pc.div(pw), T.clamp(pw, 0, 1))); });
+            }
+            var bl = T.attribute('aBlend', 'vec2');
+            c.assign(T.mix(c, path, bl.y));
+            c.assign(T.mix(c, cliff.mul(T.vec4(0.92, 0.92, 0.92, 1)), bl.x));
+            c.rgb.mulAssign(T.attribute('aAO', 'float'));
+            return c;
+        })();
+        nm.colorNode = T.vec4(T.materialReference('color', 'color'), 1).mul(texel);
+        nm.emissiveNode = T.materialEmissive.mul(texel.rgb);
+    }
+    /* THE FLUID TOPS (_buildFluidTopMat): the two scrolling wave sheets, and on water the caustic web, the glints, the swell */
+    function _ewNodeFluid(nm, m, D) {
+        var U = _ewNodeU, T = U.T, V = function (a) { return T.vec3(a[0], a[1], a[2]); };
+        var W = null;
+        if (D.water) {
+            W = T.Fn(function () {
+                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar();
+                var q = T.mod(p.mul(3.14159265), 6.2831853).sub(250).toVar(), I = T.vec2(q).toVar(), ca = T.float(1).toVar();
+                T.Loop(4, function (o) {
+                    var tt = t.mul(T.float(1).sub(T.float(3.5).div(T.float(o.i).add(1)))).toVar();
+                    I.assign(q.add(T.vec2(T.cos(tt.sub(I.x)).add(T.sin(tt.add(I.y))), T.sin(tt.sub(I.y)).add(T.cos(tt.add(I.x))))));
+                    ca.addAssign(T.float(1).div(T.length(T.vec2(q.x.div(T.sin(I.x.add(tt)).div(0.005)), q.y.div(T.cos(I.y.add(tt)).div(0.005))))));
+                });
+                ca.divAssign(4); ca.assign(T.float(1.17).sub(T.pow(ca, 1.4)));
+                var caust = T.pow(T.clamp(T.abs(ca), 0, 1), 8);
+                var g = T.sin(p.x.mul(23).add(t.mul(3.1))).mul(T.sin(p.y.mul(19).sub(t.mul(2.7)))).mul(T.sin(p.x.add(p.y).mul(31).add(t.mul(4.3))));
+                var swell = T.sin(t.mul(0.7).add(p.x.add(p.y).mul(0.4))).mul(0.5).add(0.5);
+                return T.vec3(caust, T.smoothstep(0.992, 0.999, g), swell);
+            })();
+        }
+        var tint = T.uniform(D.tint), base = Object.getPrototypeOf(nm).setupDiffuseColor;
+        var o1 = D.w1 ? T.uniform(D.off1) : null, o2 = D.w2 ? T.uniform(D.off2) : null;
+        nm.setupDiffuseColor = function (builder) {
+            base.call(this, builder);
+            var dc = T.diffuseColor;
+            if (D.w1) { var a = T.texture(D.w1, T.uv().add(o1)); dc.rgb.assign(T.mix(dc.rgb, a.rgb.mul(tint), a.a.mul(D.op1))); }
+            if (D.w2) { var b = T.texture(D.w2, T.uv().add(o2)); dc.rgb.assign(T.mix(dc.rgb, b.rgb.mul(tint), b.a.mul(D.op2))); }
+            if (!W) return;
+            dc.rgb.addAssign(V(D.cd).mul(W.x.mul(D.cs)));
+            dc.rgb.mulAssign(W.z.mul(0.09).add(0.95));
+            dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(V(D.hue)), T.sin(U.ftime.mul(0.45)).mul(0.2).add(0.25)));
+            if (D.deep) dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(T.vec3(0.45, 0.62, 1.25)), 0.5));
+        };
+        if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
+    }
+    /* a {value} object the classic hooks share → one node uniform that reads it every render */
+    var _ewNodeRefs = new Map();
+    function _ewNodeRef(o, init) {
+        var n = _ewNodeRefs.get(o);
+        if (!n) { n = _ewNodeU.T.uniform(init != null ? init : o.value).setGroup(_ewNodeU.T.renderGroup).onRenderUpdate(function () { return o.value; }); _ewNodeRefs.set(o, n); }
+        return n;
+    }
+    /* THE SWAYS: the grass blades, the trees' wind, the kelp — a vertex offset in the mesh's own units (after instancing,
+       so a batched wood's offset is the crown's world amplitude ÷ the mesh's own scale, never the copy's) */
+    function _ewNodeSway(nm, D) {
+        var T = _ewNodeU.T, P = T.positionLocal, G = T.positionGeometry;
+        if (D.k === 'grass') {
+            var gt = _ewNodeRef(_grassWindTime), bend = T.attribute('aBend', 'float');
+            nm.positionNode = T.Fn(function () {
+                var wp = T.modelWorldMatrix.mul(T.vec4(P, 1)), ph = wp.x.mul(0.013).add(wp.z.mul(0.021)).toVar();
+                var sw = T.sin(gt.mul(1.6).add(ph)).mul(0.65).add(T.sin(gt.mul(3.3).add(ph.mul(2.7)).add(1.57)).mul(0.35));
+                var sz = T.sin(gt.mul(1.1).add(ph.mul(1.7)).add(0.8)).mul(0.6).add(T.sin(gt.mul(2.6).add(ph)).mul(0.4)).mul(0.6);
+                return P.add(T.vec3(sw.mul(bend), 0, sz.mul(bend)));
+            })();
+        } else if (D.k === 'wind') {
+            var wt = _ewNodeRef(_EW_WIND);
+            nm.positionNode = T.Fn(function () {
+                var k = T.clamp(G.y.div(D.h), 0, 1).toVar(); k.assign(k.mul(k));
+                var wp = T.modelWorldMatrix.mul(T.vec4(P, 1)), A = T.float(D.amp).div(T.max(1e-4, T.modelScale.x));
+                var ph = wt.add(wp.x.mul(0.07)).add(wp.z.mul(0.05)).toVar();
+                var dx = T.sin(ph).mul(0.7).add(T.sin(ph.mul(2.3).add(1.1)).mul(0.3)).mul(k).mul(A);
+                var dz = T.cos(ph.mul(0.8).add(0.6)).mul(k).mul(A).mul(0.6);
+                return P.add(T.vec3(dx, 0, dz));
+            })();
+        } else if (D.k === 'kelp') {
+            var kt = _ewNodeRef(D.t);
+            nm.positionNode = T.Fn(function () {
+                var uv = T.uv(), kw = uv.y.mul(uv.y), kp = kt.mul(1.25).add(G.x.mul(0.013)).add(G.z.mul(0.011)).toVar();
+                return P.add(T.vec3(T.sin(kp).mul(kw).mul(D.ax), 0, T.cos(kp.mul(0.8).add(1.3)).mul(kw).mul(D.az)));
+            })();
+        }
+    }
+    /* THE OUTPUT LAYERS (after three's fog, like the GLSL after <dithering_fragment>): the backdrop's horizon band, the world dissolve */
+    var _ewNodeNoise = null;
+    function _ewNodeFbm() {
+        if (_ewNodeNoise) return _ewNodeNoise;
+        var T = _ewNodeU.T;
+        var hash = T.Fn(function (a) { var p3 = T.fract(T.vec3(a[0].x, a[0].y, a[0].x).mul(0.1031)).toVar(); p3.addAssign(T.dot(p3, p3.yzx.add(33.33))); return T.fract(p3.x.add(p3.y).mul(p3.z)); });
+        var noise = T.Fn(function (a) {
+            var p = a[0], i = T.floor(p), f = T.fract(p).toVar(); f.assign(f.mul(f).mul(T.float(3).sub(f.mul(2))));
+            var A = hash(i), B = hash(i.add(T.vec2(1, 0))), C = hash(i.add(T.vec2(0, 1))), Dd = hash(i.add(T.vec2(1, 1)));
+            return T.mix(T.mix(A, B, f.x), T.mix(C, Dd, f.x), f.y);
+        });
+        _ewNodeNoise = T.Fn(function (a) {
+            var p = T.vec2(a[0]).toVar(), v = T.float(0).toVar(), am = T.float(0.5).toVar();
+            T.Loop(4, function () { v.addAssign(am.mul(noise(p))); p.mulAssign(2.03); am.mulAssign(0.5); });
+            return v;
+        });
+        return _ewNodeNoise;
+    }
+    function _ewNodeOutLayer(nm, L) {
+        var T = _ewNodeU.T, base = nm.setupOutput;
+        if (L.k === 'hzfog') {
+            if (!_envUni) return;
+            var col = _ewNodeRef(_envUni.uFogColor), top = _ewNodeRef(_envUni.uFogTop), band = _ewNodeRef(_envUni.uFogBand), amt = _ewNodeRef(_envUni.uFogAmount);
+            nm.setupOutput = function (builder, out) {
+                var o = base.call(this, builder, out);
+                return T.Fn(function () {
+                    var c = T.vec4(o).toVar();
+                    T.If(amt.greaterThan(0.001), function () {
+                        var el = T.normalize(T.positionWorld.sub(T.cameraPosition)).y;
+                        var hb = T.pow(T.smoothstep(top.sub(band), top, el).oneMinus(), 1.6).mul(amt);
+                        c.rgb.assign(T.mix(c.rgb, col, T.clamp(hb, 0, 0.95)));
+                    });
+                    return c;
+                })();
+            };
+        } else if (L.k === 'dissolve') {
+            var U = _wdEnsureUni(), R = _ewNodeRef, own = L.own, fbm = _ewNodeFbm();
+            var wc = R(U.uWdC), stab = R(U.uWdStab), keep = R(U.uWdKeep), tile = R(U.uWdTile), glow = R(U.uWdGlow), time = R(U.uWdTime), famt = R(U.uWdFogAmt);
+            var fogc = _envUni ? R(_envUni.uFogColor) : T.vec3(0.2, 0.25, 0.3);
+            var r0 = R(own.uWdR0), r1 = R(own.uWdR1), mode = R(own.uWdMode), dis = R(own.uWdDissolve);
+            nm.setupOutput = function (builder, out) {
+                var o = base.call(this, builder, out);
+                return T.Fn(function () {
+                    var c = T.vec4(o).toVar(), wp = T.positionWorld, d = T.length(wp.xz.sub(wc.xz)).toVar();
+                    T.If(dis.greaterThan(0.5).and(stab.lessThan(0.999)), function () {
+                        var n = fbm(wp.xz.div(tile.mul(2.4))).sub(0.5).toVar();
+                        var over = d.sub(keep.add(n.mul(tile).mul(6))).toVar();
+                        T.If(over.greaterThan(0), function () { T.Discard(); });
+                        var rim = T.smoothstep(tile.mul(-1.1), 0, over);
+                        var fl = T.sin(time.mul(5).add(n.mul(60))).mul(0.3).add(0.7);
+                        var cr = fbm(wp.xz.div(tile.mul(0.8)).add(7.3)).toVar();
+                        var vein = T.smoothstep(0.49, 0.52, cr).mul(T.smoothstep(0.58, 0.55, cr));
+                        var crack = stab.oneMinus().mul(T.smoothstep(keep.mul(0.25), keep, d));
+                        c.rgb.assign(T.mix(c.rgb, glow.mul(1.6).mul(fl), T.max(rim.mul(0.92), vein.mul(crack).mul(0.85))));
+                    });
+                    var t = mode.greaterThan(0.5).select(wp.y, d);
+                    c.rgb.assign(T.mix(c.rgb, fogc, T.smoothstep(r0, r1, t).mul(famt)));
+                    return c;
+                })();
+            };
+        }
+    }
+    /* the classic hook stack → the node material: the base hook (by identity or its _ewNode tag), then each layer over it */
+    function _ewNodeDress(nm, m) {
+        var h = m.onBeforeCompile, layers = [], C = _ewNodeU.dressed;
+        while (h && h._ew_layer) { layers.push(h._ew_layer); C[h._ew_layer.k] = (C[h._ew_layer.k] || 0) + 1; h = h._ew_base; }
+        var D = m._ewNode, kk = h === _hqAoHook ? 'ao' : h === _ewVColorEmissiveHook ? 'vcolor' : D ? D.k : null;
+        if (kk) C[kk] = (C[kk] || 0) + 1;
+        if (h === _hqAoHook) _ewNodeDiffuseMul(nm, _ewNodeAo());
+        else if (h === _ewVColorEmissiveHook) { if (m.vertexColors) nm.emissiveNode = _ewNodeU.T.materialEmissive.mul(_ewNodeU.T.vertexColor().rgb); }
+        else if (D && D.k === 'terrain') _ewNodeTerrain(nm, m, D);
+        else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
+        else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
+        else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
+        for (var i = layers.length - 1; i >= 0; i--) _ewNodeOutLayer(nm, layers[i]);
+    }
     /* ══ THE RENDER BUNDLES (WEBGPU_PLAN W6, 2026-10-03) ═════════════════════════════════════════════════════════════════
        three's node renderer costs about twice WebGLRenderer's CPU per draw on mondo's Mac (downtown: 12.7 ms vs 6.0 ms for
        ~950 draws). A render bundle records a group's draws once and the pass replays them in one call. Here, on the WebGPU
@@ -32061,13 +32354,8 @@ const ThreeRenderer = (function () {
         r.capabilities = { isWebGL2: false, getMaxAnisotropy: function () { return 16; }, maxTextures: 16, precision: 'highp', logarithmicDepthBuffer: false };
         r.extensions = { get: function () { return null; }, has: function () { return false; } };
         /* the game's legacy-decay light subclasses (_ewLegacyLightPatch) — the node library finds lights by constructor */
-        try {
-            var lib = r.library;
-            if (lib && lib.addLight) {
-                if (THREE.PointLight !== G.PointLight && G.PointLightNode && !lib.getLightNodeClass(THREE.PointLight)) lib.addLight(G.PointLightNode, THREE.PointLight);
-                if (THREE.SpotLight !== G.SpotLight && G.SpotLightNode && !lib.getLightNodeClass(THREE.SpotLight)) lib.addLight(G.SpotLightNode, THREE.SpotLight);
-            }
-        } catch (e) { console.warn('[ThreeRenderer] node renderer: could not register the legacy lights', e); }
+        try { _ewNodeLights(r, G); }
+        catch (e) { console.warn('[ThreeRenderer] node renderer: could not register the legacy lights', e); }
         /* render(): a no-op until init() resolves; the outermost call (not a shadow depth pass) clears the shadow pulse the way
            WebGLShadowMap does after the first render that drew it */
         var rawRender = r.render, depth = 0;
@@ -32076,7 +32364,7 @@ const ThreeRenderer = (function () {
             if (!this.initialized) return;
             var shadowPass = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
             var outer = !depth && !shadowPass;
-            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewBunTick(this, sc); }
+            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewBunTick(this, sc); }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -32127,6 +32415,7 @@ const ThreeRenderer = (function () {
         r.init().then(function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
+            try { _ewNodeLayer(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the material layer failed — the picture stays plain', e); }
             try {
                 var dev = r.backend && r.backend.device;
                 if (dev && dev.addEventListener) dev.addEventListener('uncapturederror', function (ev) {
@@ -43726,6 +44015,7 @@ const ThreeRenderer = (function () {
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
         m.customProgramCacheKey = function () { return 'hqTerrainTri' + (palTex.length ? 'P' + palTex.length : ''); };
+        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -56242,6 +56532,7 @@ const ThreeRenderer = (function () {
                 '#include <begin_vertex>\n float kw = uv.y * uv.y; float kp = uKelpT * 1.25 + position.x * 0.013 + position.z * 0.011;\n transformed.x += sin(kp) * kw * ' + (0.38 * U).toFixed(3) + ';\n transformed.z += cos(kp * 0.8 + 1.3) * kw * ' + (0.22 * U).toFixed(3) + ';');
         };
         m.customProgramCacheKey = function () { return 'hqKelp'; };
+        _ewNodeTag(m, { k: 'kelp', t: uT, ax: 0.38 * U, az: 0.22 * U });   // WEBGPU W1
         if (H) { H.seaFx = H.seaFx || {}; H.seaFx.kelpMat = m; H.tickers.push(function (dt, now) { uT.value = now * 0.001; }); }
         return m;
     }
@@ -63002,6 +63293,7 @@ const ThreeRenderer = (function () {
         /* WEBGPU_PLAN W0: which renderer draws the board (?ewdiag=1 and the F3 lens print it) */
         gpuStatus: function () { return _ewGpuStatus(); },
         /* WEBGPU_PLAN W6: each bundled group — name, meshes, static, re-records by cause (tree / values / scene / lod), rests */
+        nodeLayers: function () { return _ewNodeU ? Object.assign({}, _ewNodeU.dressed) : null; },   // WEBGPU W1: how many materials each layer dressed
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, why: st.why }; }); },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },
