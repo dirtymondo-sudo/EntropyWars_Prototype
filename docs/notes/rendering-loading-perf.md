@@ -688,7 +688,7 @@ _hqModelUrl and the held-prop loader); the near settings' snag / dead tree / hol
 WAYS (hollowtree / deadtree) keep their procedural trunk with the hole (no GLB over it); the four Meshy files are gone from _MISC_GLB.
 
 ## NO LIGHT BOX (2026-10-04, mondo: "lets get rid of this light box thing around the cube ... it looks like shit")
-- `_buildTowerCube`: the translucent BackSide glow shell (1.25x box) round the Arena cube is gone (and its spin in `_updateTowerCubes`).
+- The cube glow shell went in PR #92 (other thread); this note covers the shafts.
 - `_buildLightRays`: the battle god-ray box shafts + floor pools + motes are no longer built (it clears any old group and returns).
 - `_hqLightShaft` returns null: DOOR_HQ.lightShafts rows and the `light_shaft` catalogue prop draw nothing (same box beam).
 - Don't bring any of these back.

@@ -5922,7 +5922,6 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
         var cube = new THREE.Mesh(geo, mat);
 
-        /* NO LIGHT BOX (mondo 2026-10-04, "looks like shit"): the translucent glow shell round the cube is gone */
         var g = new THREE.Group();
         g.add(cube);
         g.position.set(x * ts + ts / 2, topY + floatH, y * ts + ts / 2);
