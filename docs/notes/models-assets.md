@@ -271,3 +271,24 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
 - **The far shells**: data.js `hqFarParts` / `hqFarShell` / `hqFarColor`, three-renderer.js `_hqFarTick` (HQ_WORLD_RULES `farHaze`,
   `farMinM`, `farMax`, `farTris`), map.js `farWarm` (the survey compiles a far part behind everything). `ThreeRenderer.hq.far()`;
   off `window.EW_HQ_NO_FAR`. Test for all three: hq-lod.test.js.
+
+## THE METRO PACK (2026-10-04, mondo's upload)
+- R2 `Assets/Metro_PSX/Models/Metro.glb` (4.2 MB, the whole PSX metro kit in ONE file; the .dae/.fbx beside it are unused) +
+  `Assets/Metro_PSX/Textures/` (the same sheets, loose).
+- THE SPLIT is at load time, no baked per-piece files: a catalogue row `base: 'metro', file: 'Metro.glb', node: '<node>[,<node>…]'`
+  loads `<url>#<nodes>`; three-renderer.js `_loadMiscModel` fetches the file once (cached under its plain url) and `_miscPiece`
+  clones the named nodes with their place in the file baked in (a composite like the car keeps its layout). Node names are
+  GLTFLoader's sanitised ones (`seats.001` → `seats001`; the matcher sanitises both sides). The room warm and the disk store
+  see the plain file url. Glass (glTF transmission, no sheet) becomes a faint see-through tint in `_hqPropMatPick`.
+- Every piece faces −Z in the file → rows carry `turn: 180`. Rows (data.js HQ_CATALOGUE_METRO, editor group "Metro"):
+  metro_bench (Chair), metro_bin, metro_vending, metro_ticket_machine, metro_gate, metro_map, metro_poster_1..8, metro_light,
+  metro_column, metro_car (shell + seats + rails + doors + glass, 16.3 m), metro_car_open (minus the −X flank's middle door pair).
+- Unused pieces in the file: the station shells St / St_01..03, Stairs, Stairs_01, Railing, Estruc, Frame, Door_A.
+- Textures: sprites.js adds `urban:MetroTiles / MetroFloor / MetroTactile / MetroWallTile / MetroWhiteTile / MetroConcrete /
+  MetroRails / MetroMetal` (family MetroPSX). The `track_bed` proc wears MetroRails (one plane, the sleepers painted; the 49
+  sleeper boxes are gone), `platform_edge` the tactile sheet.
+- THE TRAIN way: on a FREE end (THE TUNNEL, Downtown's platform, Cyberpunk's station) one metro car (_HQ_METRO_TRAIN), sunk
+  0.98 m so its floor is level with the platform, the middle door pair = the way's sliding leaves wearing the file's `Door`
+  piece. A wall end keeps the Meshy front car. Streets' freight siding + the tram keep `subway_cart`.
+- Dressed: `tunnel` (HQ), `site_prebuilt_downtown_subway`, the running tunnels' depot (two metro_car) + ghost station.
+- Kill-switch: `window.EW_NO_METRO_PACK = true` (the old train, ballast and tactile strip; the placed rows still draw).

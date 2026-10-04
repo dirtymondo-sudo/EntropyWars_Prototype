@@ -3980,6 +3980,20 @@ const URBAN_TEX_FAMILIES = {
 };
 const URBAN_TEXTURES = {};
 Object.keys(URBAN_TEX_FAMILIES).forEach(fam => URBAN_TEX_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }));
+/* THE METRO PACK (2026-10-04, mondo's upload): the PSX metro sheets on R2 Assets/Metro_PSX/Textures/, worn as `urban:Metro<Name>`
+   by a shell / a prop like any urban sheet (their own family, MetroPSX, which no random city pick names) */
+const _TMETRO = 'https://cdn.entropywars.net/Assets/Metro_PSX/Textures';
+Object.assign(URBAN_TEXTURES, {
+    MetroTiles: `${_TMETRO}/Tiles.png`,             // dark grey square tiles (the platform's floor in the pack)
+    MetroFloor: `${_TMETRO}/Floor.png`,             // dark flecked terrazzo
+    MetroTactile: `${_TMETRO}/TactilePaving.png`,   // the yellow tactile strip
+    MetroWallTile: `${_TMETRO}/tile_tile.jpg`,      // small white wall tiles
+    MetroWhiteTile: `${_TMETRO}/P10.jpg`,           // big white square tiles
+    MetroConcrete: `${_TMETRO}/ConcreteBare.png`,   // bare concrete (the vault overhead)
+    MetroRails: `${_TMETRO}/road_rails.jpg`,        // ballast, sleepers and rails (the track bed)
+    MetroMetal: `${_TMETRO}/metal.jpg`,
+});
+URBAN_TEX_FAMILIES.MetroPSX = Object.keys(URBAN_TEXTURES).filter(n => /^Metro/.test(n));   // the editor's texture list shows them as one family
 function urbanTexUrl(name) { return URBAN_TEXTURES[name] || null; }
 function urbanTexKey(name) { return 'urban:' + name; }
 /* a seeded pick from a family: `rng` a 0..1 function (or a number in 0..1), `filter` a predicate / a RegExp on the name */
