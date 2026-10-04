@@ -31270,8 +31270,10 @@ const DOOR_HQ = {
             shell: {
                 w: 8, d: 36, h: 4,
                 wallH: 4, dadoH: 1.6,
-                floor: 'tilefloor', wall: 'tilefloor_2', dado: 'tilefloor', trim: 'gunmetal', ceiling: 'concrete',
-                floorColor: 0xa8a49a, wallColor: 0xd8d4c8, dadoColor: 0x8a6a3a, ceilColor: 0x5a5854,
+                /* THE METRO PACK (2026-10-04): mondo's PSX metro sheets — the terrazzo floor, small white tiles up the walls over a
+                   dark tiled dado, bare concrete overhead */
+                floor: 'urban:MetroFloor', wall: 'urban:MetroWallTile', dado: 'urban:MetroTiles', trim: 'gunmetal', ceiling: 'urban:MetroConcrete',
+                floorColor: 0xd8d8d8, wallColor: 0xf0eee8, dadoColor: 0xc8c8c8, ceilColor: 0x8a8a8a,
                 pipes: true,
                 strips: false,
                 lights: [],
@@ -31299,13 +31301,22 @@ const DOOR_HQ = {
             ],
             props: [
                 { key: 'track_bed',      x: -2.8, z: 0, face: 0 },
-                /* the train_car prop is retired (2026-09-15): THE TRAIN is the `train` way on the track (links.tunnel_cyberpunk) — it arrives */
+                /* the train_car prop is retired (2026-09-15): THE TRAIN is the `train` way on the track (links.tunnel_cyberpunk) — it arrives
+                   (THE METRO PACK, 2026-10-04: the pack's metro car, three-renderer.js _HQ_METRO_TRAIN) */
                 { key: 'platform_edge',  x: -1.2, z: 0, face: 0 },
                 { key: 'departures_board', wall: 'n', x: 0, mount: 2.4 },
-                { key: 'tube_map',       wall: 'e', z: -4, mount: 1.1 }, { key: 'tube_map', wall: 'e', z: 6, mount: 1.1 },
-                { key: 'park_bench',     x: 2.4, z: -10, face: 270 }, { key: 'park_bench', x: 2.4, z: 0, face: 270 }, { key: 'park_bench', x: 2.4, z: 10, face: 270 },
-                { key: 'vending_machine', wall: 'e', z: -12 },
-                { key: 'trash_bin',      x: 3.4, z: -8.4, face: 270 }, { key: 'trash_bin', x: 3.4, z: 8.4, face: 270 },
+                /* THE METRO PACK (2026-10-04): the platform dressed in mondo's PSX metro kit — the bench frames, the bins, the
+                   machines, the map, two tiled columns down the middle, the fluorescents in a line overhead, the posters on the
+                   track wall across the rails (the train covers the middle of it) */
+                { key: 'tube_map',       wall: 'e', z: -4, mount: 1.1 }, { key: 'metro_map', wall: 'e', z: 6 },
+                { key: 'metro_bench',    x: 3.45, z: -10.5, face: 270 }, { key: 'metro_bench', x: 3.45, z: 0, face: 270 }, { key: 'metro_bench', x: 3.45, z: 8.2, face: 270 },
+                { key: 'metro_ticket_machine', wall: 'e', z: -15 },
+                { key: 'metro_vending',  wall: 'e', z: -13 },
+                { key: 'metro_bin',      x: 3.5, z: -3, face: 270 }, { key: 'metro_bin', x: 3.5, z: 3, face: 270 },
+                { key: 'metro_column',   x: 1.6, z: -10 }, { key: 'metro_column', x: 1.6, z: -2 },
+                { key: 'metro_poster_1', wall: 'w', z: -15, mount: 1.4 }, { key: 'metro_poster_5', wall: 'w', z: -12.5, mount: 1.4 },
+                { key: 'metro_poster_2', wall: 'w', z: -10, mount: 1.4 }, { key: 'metro_poster_6', wall: 'w', z: -7.5, mount: 1.4 },
+                { key: 'metro_poster_3', wall: 'w', z: -5, mount: 1.4 }, { key: 'metro_poster_7', wall: 'w', z: 16, mount: 1.4 },
                 { key: 'wall_clock',     wall: 'e', z: 0, mount: 3.0 },
                 { key: 'wall_clock',     wall: 'e', z: 14, mount: 3.0 },
                 { key: 'notice_board',   wall: 'e', z: -8 },
@@ -31316,9 +31327,10 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      wall: 'e', z: 12, mount: 3.2 },
                 { key: 'railing_1m',     x: 1.2, z: -16.6, face: 0 }, { key: 'railing_1m', x: 1.2, z: 16.6, face: 0 },   // THE PARK RULE: the rails at the platform ends
                 { key: 'riser_1',        x: 3.0, z: 4.0, face: 90, rect: false },                                          // … and the step (the platform's raised end)
-                { key: 'flicker_tube',   x: 0.8, z: -12, ceil: true, face: 0 },
+                { key: 'metro_light',    x: 0.8, z: -16, ceil: true }, { key: 'metro_light', x: 0.8, z: -12, ceil: true }, { key: 'metro_light', x: 0.8, z: -8, ceil: true },
+                { key: 'metro_light',    x: 0.8, z: 0, ceil: true },   { key: 'metro_light', x: 0.8, z: 8, ceil: true },   { key: 'metro_light', x: 0.8, z: 12, ceil: true },
+                { key: 'metro_light',    x: 0.8, z: 16, ceil: true },
                 { key: 'bare_bulb',      x: 0.8, z: -4, ceil: true }, { key: 'bare_bulb', x: 0.8, z: 4, ceil: true },
-                { key: 'flicker_tube',   x: 0.8, z: 12, ceil: true, face: 0 },
             ],
             agents: [
                 { x: 1.6, z: -2.4, face: 270, pose: 'hqPhone', gender: 'male', label: 'THE CONDUCTOR', reach: 2.4,
@@ -33801,8 +33813,10 @@ const DOOR_HQ = {
             shell: {
                 w: 8, d: 30, h: 4,
                 wallH: 4, dadoH: 1.6,
-                floor: 'urban:TileGeneric3b', wall: 'urban:TileSubway1a', dado: 'urban:TileSubway1a', trim: 'gunmetal', ceiling: 'urban:MetalSubwayGrill1a',   // THE URBAN PACK (2026-09-17): the banded subway tile up every wall, the slate floor, the grills overhead
-                floorColor: 0xb8b4ac, wallColor: 0xe0dcd0, dadoColor: 0xe0dcd0, ceilColor: 0x8a8a90, ceilTile: 1.75,
+                /* THE METRO PACK (2026-10-04): mondo's PSX metro sheets (was the urban pack's banded subway tile): the dark tiled
+                   floor, small white tiles over a dark tiled dado, the grills overhead */
+                floor: 'urban:MetroTiles', wall: 'urban:MetroWallTile', dado: 'urban:MetroTiles', trim: 'gunmetal', ceiling: 'urban:MetalSubwayGrill1a',
+                floorColor: 0xd8d8d8, wallColor: 0xf0eee8, dadoColor: 0xc0c0c0, ceilColor: 0x8a8a90, ceilTile: 1.75,
                 pipes: true,
                 strips: false,
                 lights: [],
@@ -33824,17 +33838,26 @@ const DOOR_HQ = {
             props: [
                 { key: 'track_bed',         x: -2.8, z: 0, face: 0 },                          // THE TRACK — the train stands on it (the `train` way, DOOR_HQ.links subway_downtown)
                 { key: 'platform_edge',     x: -1.2, z: 0, face: 0 },
-                { key: 'turnstile',         x: 0.8, z: 10.5, face: 0 },                        // THE GATES, at the foot of the stair
-                { key: 'turnstile',         x: 1.8, z: 10.5, face: 0 },
-                { key: 'turnstile',         x: 2.8, z: 10.5, face: 0 },
+                /* THE METRO PACK (2026-10-04): the fare gates, benches, bins, machines, map, columns, fluorescents and the posters
+                   across the track are mondo's PSX metro kit */
+                { key: 'metro_gate',        x: 0.6, z: 10.5 },                                 // THE GATES, at the foot of the stair (the way through at x 1.5, under the lobby stair)
+                { key: 'metro_gate',        x: 2.4, z: 10.5 },
+                { key: 'metro_gate',        x: 3.5, z: 10.5 },
                 { key: 'ticket_booth',      x: 1.5, z: -4, face: 0 },                          // AREA CONTENT D4 (2026-09-20): THE BOOTH on the platform (the street stair does not see the train — R3)
                 { key: 'ticket_booth',      x: -0.4, z: -8, face: 90 },                        // … and the closed one at the platform's edge (the tunnel's end does not see the train)
                 { key: 'departures_board',  wall: 'n', x: -2.4, mount: 2.4 },                  // every line, DELAYED (over the track since the street stair took x 2.2, 2026-09-17)
                 { key: 'tube_map',          wall: 'e', z: -6, mount: 1.1 },
-                { key: 'park_bench',        x: 2.4, z: -6, face: 270 },
-                { key: 'park_bench',        x: 2.4, z: 4, face: 270 },
-                { key: 'trash_bin',         x: 3.4, z: -2, face: 270 },
-                { key: 'vending_machine',   wall: 'e', z: 7 },
+                { key: 'metro_map',         wall: 'e', z: -12 },
+                { key: 'metro_bench',       x: 3.45, z: -6, face: 270 },
+                { key: 'metro_bench',       x: 3.45, z: 3, face: 270 },
+                { key: 'metro_bin',         x: 3.5, z: -1.2, face: 270 },
+                { key: 'metro_vending',     wall: 'e', z: 6.4 },
+                { key: 'metro_ticket_machine', wall: 'e', z: 8.4 },
+                { key: 'metro_column',      x: 1.6, z: -11 }, { key: 'metro_column', x: 1.6, z: -0.5 },
+                { key: 'metro_poster_4',    wall: 'w', z: -13, mount: 1.4 }, { key: 'metro_poster_8', wall: 'w', z: -10.5, mount: 1.4 },
+                { key: 'metro_poster_2',    wall: 'w', z: -8, mount: 1.4 },  { key: 'metro_poster_5', wall: 'w', z: 13.5, mount: 1.4 },
+                { key: 'metro_light',       x: 0.8, z: -12, ceil: true }, { key: 'metro_light', x: 0.8, z: -6, ceil: true },
+                { key: 'metro_light',       x: 0.8, z: 6, ceil: true },   { key: 'metro_light', x: 0.8, z: 12, ceil: true },
                 { key: 'wall_clock',        wall: 'e', z: 0, mount: 3.0 },                     // the platform clock; it agrees with the lobby's
                 { key: 'notice_board',      wall: 'e', z: -10 },
                 { key: 'security_camera',   wall: 'n', x: 2.5, mount: 3.4 },
@@ -33842,9 +33865,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',        x: 1.2, z: -13.6, face: 0 },                       // THE PARK RULE: the rail at the platform's end …
                 { key: 'railing_1m',        x: 2.2, z: -13.6, face: 0 },
                 { key: 'riser_1',           x: 3.0, z: -8.0, face: 90, rect: false },          // … and the step (the platform's raised end)
-                { key: 'flicker_tube',      x: 0.8, z: -10, ceil: true, face: 0 },
                 { key: 'bare_bulb',         x: 0.8, z: 0, ceil: true },
-                { key: 'flicker_tube',      x: 0.8, z: 10, ceil: true, face: 0 },
                 { key: 'floor_stain',       x: 2.6, z: -4 },
                 { key: 'paper_sheet',       x: 2.0, z: 8, y: 0.01, face: 20 },                 // the timetable; the same amount of late
                 { key: 'wet_floor_sign',    x: 3.2, z: 12.6, face: 30 },
@@ -38570,8 +38591,8 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE DEPOT: two cars on their beds, one lit — the headlight at the end of the hall is the near weenie from the hatch */
-                { key: 'track_bed',       x: -6, z: -38, face: 90 }, { key: 'subway_cart', x: -6, z: -38, face: 90 },
-                { key: 'track_bed',       x: 8, z: -41.5, face: 90 }, { key: 'subway_cart', x: 8, z: -41.5, face: 90 },
+                { key: 'track_bed',       x: -6, z: -38, face: 90 }, { key: 'metro_car', x: -6, z: -38, face: 90 },          // THE METRO PACK (2026-10-04): the pack's metro cars (16.3 m)
+                { key: 'track_bed',       x: 6.8, z: -41.5, face: 90 }, { key: 'metro_car', x: 6.8, z: -41.5, face: 90 },
                 { key: 'bare_bulb',       x: -6, z: -34, ceil: true }, { key: 'bare_bulb', x: 10, z: -34, ceil: true },
                 { key: 'quarter_pipe',    x: 12, z: -37.4, face: 180 },                                                          // THE PARK RULE's ramp in the depot
                 { key: 'riser_1',         x: -8, z: -33.2, face: 0, rect: false },
@@ -38584,12 +38605,16 @@ const DOOR_HQ = {
                 { key: 'warning_tape',    x: 0, z: -2.6, face: 0 },
                 { key: 'railing_1m',      x: 2, z: 5, face: 45 },                                                           // THE PARK RULE's catalogue rail by the gantry
                 /* THE GHOST STATION: the benches on the platform, the gates, the board, the map */
-                { key: 'park_bench',      x: -3, z: 36.4, face: 0 }, { key: 'park_bench', x: 3, z: 36.4, face: 0 },
-                { key: 'turnstile',       x: -1, z: 39.6, face: 0 }, { key: 'turnstile', x: 1, z: 39.6, face: 0 },
+                /* THE METRO PACK (2026-10-04): the ghost station in mondo's PSX metro kit */
+                { key: 'metro_bench',     x: -3, z: 36.4, face: 0 }, { key: 'metro_bench', x: 3, z: 36.4, face: 0 },
+                { key: 'metro_gate',      x: -1.2, z: 39.6 }, { key: 'metro_gate', x: 1.2, z: 39.6 },
                 { key: 'departures_board', x: 0, z: 37.6, face: 0, mount: 2.4 },
                 { key: 'tube_map',        x: 12.5, z: 39.5, face: 270, mount: 1.1 },
+                { key: 'metro_map',       x: -12.5, z: 39.5, face: 90, mount: 0.9 },
+                { key: 'metro_vending',   x: -5.5, z: 37.5, face: 0 },
+                { key: 'metro_light',     x: -4, z: 36, ceil: true }, { key: 'metro_light', x: 4, z: 36, ceil: true },
                 { key: 'bare_bulb',       x: 0, z: 32, ceil: true },
-                { key: 'trash_bin',       x: 11.6, z: 36, face: 270 },
+                { key: 'metro_bin',       x: 11.6, z: 36, face: 270 },
                 { key: 'wet_floor_sign',  x: -11.5, z: 39, face: 30 },
                 /* the tunnel */
                 { key: 'bare_bulb',       x: -40, z: -27, ceil: true }, { key: 'bare_bulb', x: 40, z: 27, ceil: true },
@@ -44614,13 +44639,42 @@ const HQ_CATALOGUE_WEAPONS = {
     tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
     cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
 };
+/* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
+   a row names its piece(s) in `node` (the file's node names; a comma list is a composite that keeps the file's layout) and the
+   renderer cuts it out of the one download (three-renderer.js _miscPiece). Every piece faces −Z in the file, so `turn: 180`
+   stands its front to +Z like every catalogue model. Sizes are the file's own, measured (the car 23.4 file units long at 16.3 m). */
+const _METRO_CAR = 'subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.002,Door.003,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012';
+const HQ_CATALOGUE_METRO = {
+    metro_bench:          { file: 'Metro.glb', base: 'metro', node: 'Chair',           span: 2.0, turn: 180, foot: 0.5, rect: { hw: 1.0, hd: 0.25 }, block: true },   // three seats on one frame
+    metro_bin:            { file: 'Metro.glb', base: 'metro', node: 'trash_can',       h: 0.95, turn: 180, foot: 0.4, block: true },
+    metro_vending:        { file: 'Metro.glb', base: 'metro', node: 'Vending_machine', h: 2.0,  turn: 180, foot: 0.6, wall: true, block: true },
+    metro_ticket_machine: { file: 'Metro.glb', base: 'metro', node: 'ticket_machine',  h: 2.0,  turn: 180, foot: 0.45, wall: true, block: true },
+    metro_gate:           { file: 'Metro.glb', base: 'metro', node: 'automatic_ticket_gate', h: 1.1, foot: 0.3, block: true },   // one fare gate cabinet (its flap rides with it); the way through runs along z
+    metro_map:            { file: 'Metro.glb', base: 'metro', node: 'metro_map',       h: 1.5,  turn: 180, foot: 0, wall: true, mount: 0.9 },
+    metro_poster_1:       { file: 'Metro.glb', base: 'metro', node: 'Poster_01',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_2:       { file: 'Metro.glb', base: 'metro', node: 'Poster_02',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_3:       { file: 'Metro.glb', base: 'metro', node: 'Poster_03',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_4:       { file: 'Metro.glb', base: 'metro', node: 'Poster_04',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_5:       { file: 'Metro.glb', base: 'metro', node: 'Poster_05',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_6:       { file: 'Metro.glb', base: 'metro', node: 'Poster_06',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_7:       { file: 'Metro.glb', base: 'metro', node: 'Poster_07',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_poster_8:       { file: 'Metro.glb', base: 'metro', node: 'Poster_08',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
+    metro_light:          { file: 'Metro.glb', base: 'metro', node: 'light',           span: 1.9, foot: 0, ceil: true },   // the ceiling fluorescent (self-lit sheet; the bulbs still carry the room's light)
+    metro_column:         { file: 'Metro.glb', base: 'metro', node: 'Column',          h: 4.0,  foot: 0.5, block: true },   // tiled, floor to a 4 m ceiling
+    /* the car: the shell + its seats, rails, doors and windows, long along z (no turn), its floor 0.98 m over the rail */
+    metro_car:            { file: 'Metro.glb', base: 'metro', node: _METRO_CAR,        span: 16.3, foot: 1.4, rect: { hw: 1.35, hd: 8.15 }, block: true },
+    /* … without its platform-side middle door pair: the `train` way slides its own leaves there (three-renderer.js _HQ_METRO_TRAIN) */
+    metro_car_open:       { file: 'Metro.glb', base: 'metro', node: 'subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012', span: 16.3, foot: 1.4, rect: { hw: 1.35, hd: 8.15 }, block: true, palette: false },
+};
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
+[HQ_CATALOGUE_METRO].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
+        ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -44641,7 +44695,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -44731,7 +44785,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,

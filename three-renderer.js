@@ -24336,6 +24336,12 @@ const ThreeRenderer = (function () {
     // fills it once the mesh arrives, flipping _objectsDirty to re-render.
     var _R2_MISC = 'https://cdn.entropywars.net/Assets/misc/';
     var _R2_WEAPONS = 'https://cdn.entropywars.net/Assets/weapons/';   // 2026-09-22: a catalogue row with `base: 'weapons'` reads the spell-prop bucket (the F22 on the flight line — the same file the Air Support spell flies)
+    /* THE METRO PACK (2026-10-04, mondo's upload): ONE GLB holds the whole PSX metro kit (the car, its seats and doors, the
+       benches, the gates, the machines, the posters, the station shells). A catalogue row with `base: 'metro'` names its
+       pieces in `node` ('Chair', or a comma list for a composite like the car) and loads `<file>#<nodes>` through the misc
+       loader, which fetches the file ONCE and cuts each piece out of it (_miscPiece). Kill-switch: window.EW_NO_METRO_PACK. */
+    var _R2_METRO = 'https://cdn.entropywars.net/Assets/Metro_PSX/';
+    function _metroPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_METRO_PACK); }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -24383,6 +24389,27 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* THE METRO PACK: a piece of a many-model file — the named nodes (GLTFLoader's sanitised names: 'seats.001' is 'seats001'),
+       each cloned with its place in the file baked in (so a composite keeps its layout), in one group with its own box. A node
+       inside another picked node rides with its parent. null = no such node. */
+    function _miscPiece(root, names) {
+        var san = function (n) { return String(n || '').replace(/\s/g, '_').replace(/[\[\]\.:\/]/g, ''); };
+        var want = {}; names.forEach(function (n) { want[san(n)] = 1; });
+        root.updateMatrixWorld(true);
+        var picked = [];
+        root.traverse(function (n) { if (n !== root && want[san(n.name)]) picked.push(n); });
+        picked = picked.filter(function (n) { for (var q = n.parent; q && q !== root; q = q.parent) if (picked.indexOf(q) >= 0) return false; return true; });
+        if (!picked.length) return null;
+        var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), g = new THREE.Group(), m = new THREE.Matrix4();
+        picked.forEach(function (n) {
+            var c = n.clone(true);
+            m.multiplyMatrices(inv, n.matrixWorld).decompose(c.position, c.quaternion, c.scale);
+            g.add(c);
+        });
+        g.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
+        g._ew_bbox = new THREE.Box3().setFromObject(g);
+        return g;
+    }
     function _loadMiscModel(url, isGLB, cb, opts) {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
         var e = _miscModelCache[url];
@@ -24391,7 +24418,31 @@ const ThreeRenderer = (function () {
             if (e.failed) return;
             e.cbs.push(cb);
             _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
-            if (!bg) _bgPromote(url);   // a real request for a file the warm queued starts it now
+            if (!bg) _bgPromote(e._ewPiece || url);   // a real request for a file the warm queued starts it now
+            return;
+        }
+        /* THE METRO PACK: `<file>#<node>[,<node>…]` = pieces of one file — the file loads (and is cached) once under its own
+           url, and the piece is cut from it when it lands. Never dropped on its own (the file's entry is the one the memory
+           budget weighs); a dropped / failed file forgets its unfinished pieces (a later request starts again). */
+        var hashAt = (typeof url === 'string') ? url.indexOf('#') : -1;
+        if (hashAt > 0) {
+            var baseUrl = url.slice(0, hashAt), names = decodeURIComponent(url.slice(hashAt + 1)).split(',');
+            var be = _miscModelCache[baseUrl];
+            if (be && be.failed) return;
+            var pe = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], _ewOneFile: true, _ewPiece: baseUrl };
+            _loadMiscModel(baseUrl, isGLB, function (root) {
+                if (_miscModelCache[url] !== pe) return;
+                var piece = null;
+                try { piece = _miscPiece(root, names); } catch (x) { piece = null; }
+                pe.loading = false;
+                if (!piece) { pe.failed = true; pe.cbs.length = 0; console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
+                pe.root = piece; pe.at = Date.now();
+                var cbs = pe.cbs.splice(0);
+                for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
+                _objectsDirty = true;
+            }, opts);
+            be = _miscModelCache[baseUrl];
+            if (be && !be.root) { (be.pieces || (be.pieces = [])).push(url); pe._alRec = be._alRec; }
             return;
         }
         e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
@@ -24402,7 +24453,7 @@ const ThreeRenderer = (function () {
             _compactMobileModelTextures(obj);
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
-            e.root = obj; e.loading = false; e.at = Date.now();
+            e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null;
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
@@ -24410,8 +24461,9 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
-        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); }
-        function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); _oneFileNotify(e, true); }
+        function _forgetPieces() { (e.pieces || []).forEach(function (pu) { var p = _miscModelCache[pu]; if (p && !p.root) delete _miscModelCache[pu]; }); e.pieces = null; }   // THE METRO PACK
+        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); _forgetPieces(); }
+        function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); _oneFileNotify(e, true); _forgetPieces(); }
         _scheduleModelLoad(function (done) {
         function loaded(res) { try { _onLoad(res); } finally { done(); } }
         function failed() { try { _onErr(); } finally { done(); } }
@@ -24587,13 +24639,14 @@ const ThreeRenderer = (function () {
         geos.forEach(function (g) { try { g.dispose(); } catch (x) {} });
         mats.forEach(function (m) { try { m.dispose(); } catch (x) {} });
         delete _miscModelCache[url];
+        for (var pu in _miscModelCache) { if (_miscModelCache[pu] && _miscModelCache[pu]._ewPiece === url) delete _miscModelCache[pu]; }   // THE METRO PACK: its pieces go with it
         _mmEvicted++; _mmFreed += e.bytes || 0;
         return e.bytes || 0;
     }
     /* the sums: { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
     function _mmRead() {
         var seen = {}, mb = 0, n = 0, rb = 0, rn = 0;
-        for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
+        for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root || e._ewPiece) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
         for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
                  evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff() };
@@ -24629,7 +24682,7 @@ const ThreeRenderer = (function () {
         opts = opts || {};
         var g = new THREE.Group();
         g._ew_mm = url;   // THE FILE TRACKER: which file this instance waits on (a stage part tells its near props from its far ones by it)
-        var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd(url, g);   // THE NEAR FIRST: where the file is wanted
+        var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd((typeof url === 'string' && url.indexOf('#') > 0) ? url.slice(0, url.indexOf('#')) : url, g);   // THE NEAR FIRST: where the file is wanted
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             var bb = root._ew_bbox;
@@ -25053,6 +25106,11 @@ const ThreeRenderer = (function () {
     // crane's jib, the skateboard's length — MODEL_INDEX), so the whole
     // batch wears `yaw: Math.PI / 2` now (−X → +Z). A nose that lands
     // BACKWARD (the front was +X) is `-Math.PI / 2` on that row.
+    /* THE METRO PACK's car on a platform's track (the `train` way, a free end): the composite `metro_car_open` fitted to `len` m
+       long. Measured off Metro.glb (the car 23.39 × 5.33 × 3.83 file units, the rail at 0.07, its floor and door sills at 1.47,
+       each door leaf 0.87 × 2.48): at 16.3 m it stands 3.71 m from rail to roof and 2.67 m wide, its floor 0.98 m up (`sink`
+       lowers it to the platform), the doorway 1.21 × 1.73 m. `headY` = the headlamp's height over the rail. */
+    var _HQ_METRO_TRAIN = { len: 16.3, h: 3.71, w: 2.67, sink: 0.98, doorW: 1.21, doorH: 1.73, headY: 2.2 };
     var _VEHICLE_KIT = {
         suv:          { m: 4.9, yaw: Math.PI / 2, foot: 1.2, w: 2.0, h: 1.8, color: 0x141416, lift: 0.22 },
         cadillac:     { m: 5.6, yaw: Math.PI / 2, foot: 1.3, w: 2.0, h: 1.4, color: 0x101012, lift: 0.22 },
@@ -43631,6 +43689,14 @@ const ThreeRenderer = (function () {
         var cached = _hqPropMatCache.get(sm.uuid);
         if (cached) return cached;
         var tex = sm.map || null;
+        /* THE METRO PACK: a GLASS pane (glTF transmission, no sheet — the train's windows, the booth's) is a faint see-through
+           tint, never the opaque white sheet a Lambert with no map would draw */
+        if (!tex && sm.transmission > 0) {
+            var gm = new THREE.MeshLambertMaterial({ color: 0x8fb0c0, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide });
+            gm._ew_shared = true;
+            _hqPropMatCache.set(sm.uuid, gm);
+            return gm;
+        }
         if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
@@ -43738,6 +43804,7 @@ const ThreeRenderer = (function () {
            Assets/misc/ bucket (the moving-maps batch — the pocket watch in the
            clock room) instead of the D.O.O.R. kit folder */
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
+        if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
         return D.assets.models + encodeURIComponent(entry.file);
     }
@@ -50659,9 +50726,21 @@ const ThreeRenderer = (function () {
         track_bed: function (U) {
             var g = new THREE.Group();
             var L = 34;
-            var ballast = _hqBox(2.4, 0.04, L, _hqMat('concrete', 1, 8, { color: 0x4a4846, shininess: 2 })); ballast.position.y = 0.02 * U; g.add(ballast);
-            var tie = _hqMat('wood', 1, 1, { color: 0x3a2e24 });
-            for (var i = 0; i < L / 0.7; i++) { var t = _hqBox(2.0, 0.05, 0.2, tie); t.position.set(0, 0.045 * U, (-L / 2 + 0.35 + i * 0.7) * U); g.add(t); }
+            /* THE METRO PACK (2026-10-04): the pack's ballast-and-sleepers sheet (road_rails.jpg — the rails run across the sheet,
+               0.445 of its height apart, so one sheet is 3.24 m across the bed and 4.24 m along it) laid with its painted rails
+               under the steel ones; one plane instead of 49 sleepers. The old ballast + sleepers without the pack. */
+            var bedMat = (_metroPackOn() && typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES.MetroRails) ? _hqMat('urban:MetroRails', 1, 1, { color: 0xd0d0d0, shininess: 2 }) : null;
+            if (bedMat && bedMat.map) {
+                var bg = new THREE.PlaneGeometry(2.4 * U, L * U, 1, 1); bg.rotateX(-Math.PI / 2);
+                var bp = bg.attributes.position, buv = bg.attributes.uv;
+                for (var bi = 0; bi < bp.count; bi++) buv.setXY(bi, (bp.getZ(bi) / U) / 4.24, 0.4725 + (bp.getX(bi) / U) / 3.24);
+                buv.needsUpdate = true;
+                var bed = new THREE.Mesh(bg, bedMat); bed.position.y = 0.012 * U; bed.receiveShadow = true; g.add(bed);
+            } else {
+                var ballast = _hqBox(2.4, 0.04, L, _hqMat('concrete', 1, 8, { color: 0x4a4846, shininess: 2 })); ballast.position.y = 0.02 * U; g.add(ballast);
+                var tie = _hqMat('wood', 1, 1, { color: 0x3a2e24 });
+                for (var i = 0; i < L / 0.7; i++) { var t = _hqBox(2.0, 0.05, 0.2, tie); t.position.set(0, 0.045 * U, (-L / 2 + 0.35 + i * 0.7) * U); g.add(t); }
+            }
             var rail = _hqMat(null, 1, 1, { color: 0x8a8e94, shininess: 120, specular: 0xffffff });
             [-0.72, 0.72].forEach(function (rx) { var r = _hqBox(0.06, 0.08, L, rail); r.position.set(rx * U, 0.1 * U, 0); g.add(r); });
             return g;
@@ -50670,7 +50749,11 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var L = 34;
             var line = _hqBox(0.12, 0.005, L, _hqBasic(0xf2d21a)); line.position.set(0, 0.0125 * U, 0); g.add(line);
-            var tact = _hqBox(0.4, 0.01, L, _hqMat('tilefloor', 1, 8, { color: 0xc8b8a0 })); tact.position.set(0.3 * U, 0.005 * U, 0); g.add(tact);
+            /* THE METRO PACK: the pack's yellow tactile paving (a 0.6 m sheet), 0.6 m wide behind the line */
+            var tactPack = _metroPackOn() && typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES.MetroTactile;
+            var tact = tactPack ? _hqBox(0.6, 0.01, L, _hqMat('urban:MetroTactile', 1, L / 0.6, { color: 0xffffff, shininess: 4 }))
+                                : _hqBox(0.4, 0.01, L, _hqMat('tilefloor', 1, 8, { color: 0xc8b8a0 }));
+            tact.position.set((tactPack ? 0.4 : 0.3) * U, 0.005 * U, 0); g.add(tact);
             return g;
         },
         /* train_car (the procedural subway car) DELETED in ZONES_PLAN Z2 (2026-09-30): every placed car is the Meshy `subway_cart` (MODEL_INDEX §9) */
@@ -51405,7 +51488,16 @@ const ThreeRenderer = (function () {
             /* the cars at their real size (Z2): CL / CC = the front car's and the cart's length off the kit, D = the body's width;
                the front car's rear door (x 0) stays 3 m from its tail, the cart trails 0.4 m behind it */
             var VK = _VEHICLE_KIT, CL = VK.subway_front.m, CC = VK.subway_cart.m, D = VK.subway_front.w, CH = VK.subway_front.h;
-            var W = 1.4, H = 2.1, zBack = ctx.free ? -D : -(D - 0.9), xF = 3.0 - CL / 2, xC = 3.0 + 0.4 + CC / 2, nose = -(CL - 3.0);
+            /* THE METRO PACK (2026-10-04): a FREE end (the platforms: THE TUNNEL, Downtown's, Cyberpunk's station) stands mondo's
+               PSX metro car instead — ONE car, its middle door pair (the platform side's, cut from the composite: `metro_car_open`)
+               at x 0, so the sliding leaves below ARE its doors. The car is sunk to its floor (MT.sink) so the doorway is level
+               with the platform, as a real platform is built. A WALL end keeps the Meshy front car (a 16 m car would run through
+               the next lane's door). Off: window.EW_NO_METRO_PACK. */
+            var MT = (ctx.free && _metroPackOn()) ? _HQ_METRO_TRAIN : null;
+            var mCat = MT && (typeof _hqData === 'function') && _hqData() && _hqData().catalogue ? _hqData().catalogue.metro_car_open : null;
+            if (!mCat || typeof THREE.GLTFLoader !== 'function') MT = null;
+            if (MT) { CL = MT.len; D = MT.w; CH = MT.h - MT.sink; }
+            var W = MT ? MT.doorW : 1.4, H = MT ? MT.doorH : 2.1, zBack = ctx.free ? -D : -(D - 0.9), xF = MT ? 0 : 3.0 - CL / 2, xC = 3.0 + 0.4 + CC / 2, nose = MT ? -CL / 2 : -(CL - 3.0);
             var steel = _hqMat('aluminium', 4, 1, { color: 0xb8bcc0, shininess: 70 });
             var dark = _hqMat('gunmetal', 1, 1, { color: 0x2a2a2e, shininess: 30 });
             var conc = _hqMat('concrete', 2, 1, { color: 0x8a8884, shininess: 2 });
@@ -51434,7 +51526,14 @@ const ThreeRenderer = (function () {
                rest of the train is in the tunnel — so the body (x −6.8..3 at the real size, Z2) never
                crosses the next lane's door (Cyberpunk's Strip door at x −5 is
                5 m from this lane; a full train would have run through it). */
-            var cars = ctx.free ? [[xF, 'subway_front', true], [xC, 'subway_cart', false]] : [[xF, 'subway_front', true]];
+            var cars = MT ? [] : ctx.free ? [[xF, 'subway_front', true], [xC, 'subway_cart', false]] : [[xF, 'subway_front', true]];
+            if (MT) {
+                /* the composite is long along its own Z (the file's layout): a quarter turn lays it along the track (local X), its
+                   door side (the file's −X flank) to the platform (+Z) */
+                var mcar = new THREE.Group(), mturn = new THREE.Group(); mturn.rotation.y = Math.PI / 2; mcar.add(mturn);
+                mturn.add(_miscModelInstance(_hqModelUrl(mCat), true, CL * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function (mg) { mg.traverse(function (n) { if (n.isMesh) n.castShadow = true; }); if (_hq) _hq.dirty = true; } }));
+                mcar.position.set(0, -MT.sink * U, zc * U); tr.add(mcar);
+            }
             /* the kit fits in board tiles: one 1.75 m tile in the building's units (the taxi's rule), so each car is its real length —
                without it the cars were fitted to the battle's tile and came out at about half size (Z2, mondo) */
             var prevTs = _hzKitTs;
@@ -51447,15 +51546,26 @@ const ThreeRenderer = (function () {
             } finally { _hzKitTs = prevTs; }
             /* the doorway at x 0: a lit opening in the flank, two leaves that slide apart */
             var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), _hqBasic(0xfff0c0, { transparent: true, opacity: 0.35, depthWrite: false }));
-            glow.position.set(0, (H / 2) * U, (zBack + D - 0.02) * U); g.add(glow);
+            glow.position.set(0, (H / 2) * U, (zBack + D - (MT ? 0.3 : 0.02)) * U); g.add(glow);
             var mouth = _hzGlowSprite(1.8 * U, 0xffe8b0, 0.2, 0.0, 0.0, 0.0); mouth.position.set(0, (H * 0.55) * U, (zBack + D + 0.3) * U); g.add(mouth);
-            var leafL = _hqBox(W / 2 + 0.02, H, 0.05, steel), leafR = _hqBox(W / 2 + 0.02, H, 0.05, steel);
-            var zl = (zBack + D + 0.03) * U;
+            /* the leaves: the car's own door sheet (the file's `Door` material — the pack's leaf) on the metro car, the steel box otherwise */
+            var leafMat = steel;
+            var leafL = _hqBox(W / 2 + 0.02, H, 0.05, leafMat), leafR = _hqBox(W / 2 + 0.02, H, 0.05, leafMat);
+            var zl = (zBack + D + (MT ? -0.12 : 0.03)) * U;   // the metro car's leaves just inside its skin: they slide behind the body panels
             leafL.position.set(-(W / 4) * U, (H / 2) * U, zl); leafR.position.set((W / 4) * U, (H / 2) * U, zl); g.add(leafL, leafR);
-            var head = new THREE.Mesh(new THREE.CircleGeometry(0.22 * U, 12), _hqBasic(0xfff8e0)); head.position.set((nose - 0.06) * U, 1.0 * U, zc * U); head.rotation.y = -Math.PI / 2; tr.add(head);
-            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set((nose - 0.4) * U, 1.0 * U, zc * U); tr.add(beam);
+            if (MT) {
+                /* the pack's own door leaves (the file's `Door` piece) over the boxes once they land, so the doors that slide are the car's */
+                [leafL, leafR].forEach(function (lf, li) {
+                    lf.material = _hqMat(null, 1, 1, { color: 0xa8acb0, shininess: 50 });
+                    var dl = _miscModelInstance(_hqModelUrl({ base: 'metro', file: mCat.file, node: 'Door' }), true, H * U, { fit: 'height', matPick: _hqPropMatPick, onDone: function () { lf.material.visible = false; if (_hq) _hq.dirty = true; } });
+                    dl.rotation.y = -Math.PI / 2; if (li) dl.scale.z = -1;   // the right leaf is the left one mirrored (the file's own pair) lf.add(dl); dl.position.y = -(H / 2) * U;
+                });
+            }
+            var headY = MT ? MT.headY - MT.sink : 1.0;
+            var head = new THREE.Mesh(new THREE.CircleGeometry(0.22 * U, 12), _hqBasic(0xfff8e0)); head.position.set((nose - 0.06) * U, headY * U, zc * U); head.rotation.y = -Math.PI / 2; tr.add(head);
+            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set((nose - 0.4) * U, headY * U, zc * U); tr.add(beam);
             var motion = { mode: 'way', ow: W, tick: function (k) {
-                leafL.position.x = (-(W / 4) - 0.72 * k) * U; leafR.position.x = ((W / 4) + 0.72 * k) * U;
+                leafL.position.x = (-(W / 4) - (MT ? W / 2 : 0.72) * k) * U; leafR.position.x = ((W / 4) + (MT ? W / 2 : 0.72) * k) * U;
                 glow.material.opacity = 0.35 + 0.5 * k; mouth.material.opacity = 0.2 + 0.5 * k;
             } };
             /* THE ARRIVAL: from 26 m up the line (local +X — the tunnel's north end, the street's east), nose first, braking to the mark; the headlight's beam dies at the stop */
@@ -51468,7 +51578,7 @@ const ThreeRenderer = (function () {
             };
             if (_hq) _hq.tickers.push(function (dt, now) { g._ew_arrive(now); });
             var blockers = [];
-            for (var bx = nose; bx <= (ctx.free ? xC + CC / 2 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: CH });
+            for (var bx = nose; bx <= (MT ? CL / 2 : ctx.free ? xC + CC / 2 : 3); bx += 1.5) blockers.push({ x: bx, z: zc, r: D / 2, top: CH });
             return { g: g, motion: motion, ow: W, oh: H, plateY: H + 1.2, blockers: blockers };
         },
         /* THE TAXI (ZONES_PLAN Z1, 2026-09-29): DOOR HQ's rank in the garage ⇄ Disaster City's kerb. The traffic's taxi GLB
@@ -62346,7 +62456,7 @@ const ThreeRenderer = (function () {
         o = o || {};
         var D = _hqData(), room = D && D.rooms ? D.rooms[roomId] : null, out = [], seen = {};
         if (!room || !D.catalogue) return out;
-        function add(url, lane) { if (url && !seen[url]) { seen[url] = 1; out.push({ url: url, lane: lane }); } }
+        function add(url, lane) { if (url && url.indexOf('#') > 0) url = url.slice(0, url.indexOf('#')); if (url && !seen[url]) { seen[url] = 1; out.push({ url: url, lane: lane }); } }   // THE METRO PACK: a piece warms its whole file
         function cat(c) { if (c && c.pack && typeof _carPackOn === 'function' && _carPackOn()) { _carPackUrls(c.pack).forEach(function (u) { add(u, 'm'); }); return; } if (c && c.file) add(_hqModelUrl(c), 'm'); }   // THE CAR PACK: the pool's OBJs, never the Meshy file it stands in for
         (room.doors || []).forEach(function (d) { if (d && d.leaf) cat(D.catalogue[d.leaf]); });
         (room.props || []).forEach(function (p) { if (p && p.key) cat(D.catalogue[p.key]); });
