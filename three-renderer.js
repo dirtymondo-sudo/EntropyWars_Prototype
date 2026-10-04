@@ -5922,21 +5922,12 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
         var cube = new THREE.Mesh(geo, mat);
 
-        /* inner glow shell */
-        var glowMat = new THREE.MeshBasicMaterial({
-            color: tint, transparent: true, opacity: 0.15,
-            side: THREE.BackSide, depthWrite: false
-        });
-        var glow = new THREE.Mesh(new THREE.BoxGeometry(cubeSize * 1.25, cubeSize * 1.25, cubeSize * 1.25), glowMat);
-
         var g = new THREE.Group();
         g.add(cube);
-        g.add(glow);
         g.position.set(x * ts + ts / 2, topY + floatH, y * ts + ts / 2);
         g._ew_towerCube = true;
         g._ew_towerOwner = owner;
         g._ew_cubeInner = cube;
-        g._ew_cubeGlow = glow;
 
         /* ── Tower health bar (CSS2DObject, same style as unit plates) ── */
         _ensurePlateStyles();
@@ -5983,9 +5974,6 @@ const ThreeRenderer = (function () {
             /* Spin on Y and wobble on X */
             tc._ew_cubeInner.rotation.y = now * 0.8 + i * 1.5;
             tc._ew_cubeInner.rotation.x = Math.sin(now * 0.6 + i * 2.0) * 0.35;
-            /* Glow counter-rotates slowly */
-            tc._ew_cubeGlow.rotation.y = -now * 0.3 + i;
-            tc._ew_cubeGlow.rotation.z = now * 0.2;
             /* Gentle float bob */
             var bob = Math.sin(now * 1.2 + i * 3.14) * (CONFIG.tileSize || BASE_TILE) * 0.06;
             tc.position.y = tc._ew_baseY + bob;
