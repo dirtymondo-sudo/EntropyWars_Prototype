@@ -349,7 +349,8 @@ other-engine question (RENDERER_PLAN §0 stands).
 
 ## 6. The phases
 
-One PR per phase; mondo plays each on his Mac in Firefox (and once in Chrome for the GPU timings). W0-W5 are
+One PR per phase; mondo plays each on his Mac in Firefox (and once in Chrome for the GPU timings). Order since
+2026-10-04 (mondo): W0-W4, W5a (battle and spell performance), W6-W13, then W5 (the flip) LAST. W0-W5 are
 the port and must keep the picture; W6+ are the payoff, each behind a Settings row and the F3 lens.
 
 ### W0 — The switch and the measure (go/no-go)
@@ -413,15 +414,14 @@ exposure; `device.lost`; the editor thumbnails and snapshots; the creator viewer
 clipping planes in the editor and the carve. Playtest: the Main Hall plates, the creator, the editor, a KTX2
 room with the F3 "KTX2 textures" line, and `?ewdiag=1` from Firefox.
 
-### W5 — The flip
+### W5a — Battle and spell performance (2026-10-04, before the flip)
 
-`ew_gpu` defaults to `webgpu` when `navigator.gpu` exists, `webgl2` (the node renderer's fallback) otherwise;
-`?ew_gpu=webgl` keeps the classic renderer for comparison. After mondo has played it for a while and says so:
-the classic path goes (one import map, no document.write, no EffectComposer / pmndrs / n8ao / troika /
-quarks / MeshLine in index.html; the `_ewGpu` branches collapse; three-post.js loses the two WebGL chains);
-CLAUDE.md gets the rules (no `onBeforeCompile`, no `ShaderMaterial`, TSL `Fn` only, no native `wgslFn` /
-`glslFn`, `forceWebGL` is the fallback, never `trackTimestamp` on Firefox); RENDERER_PLAN.md gets a pointer.
-The `?v=` bump as always.
+mondo: "there are major performance issues with the battles and spells. dont want to switch until that is fixed".
+So the flip moves to the END of the plan (after W13) and this phase comes first. Cause and fix in §10 (the light
+rig, the kept shaders, the shared instancing shader). Measure: F3 "Shader builds X/s · new pipelines Y/s" reads
+0/s in a steady battle and settles back to 0/s after a spell. Off: `?ew_lightrig=0` / `EW_NO_LIGHT_RIG`,
+`?ew_keep=0` / `EW_NO_SHADER_KEEP`. Still open after W5a, by mondo's readout: render bundles for the battle board
+(today they wrap the HQ only), and the ShaderMaterial / MeshLine twins of a spell that still build once per cast.
 
 ### W6 — Render bundles
 
@@ -471,6 +471,16 @@ measured again with the F3 shadow line.
 ### W13 — Depth and motion
 
 `reversedDepthBuffer`, `MotionBlur` on spell cameras (velocity MRT from W8), `dof()` on the board.
+
+### W5 — The flip (moved last on 2026-10-04: after battle and spell performance, and after W13)
+
+`ew_gpu` defaults to `webgpu` when `navigator.gpu` exists, `webgl2` (the node renderer's fallback) otherwise;
+`?ew_gpu=webgl` keeps the classic renderer for comparison. After mondo has played it for a while and says so:
+the classic path goes (one import map, no document.write, no EffectComposer / pmndrs / n8ao / troika /
+quarks / MeshLine in index.html; the `_ewGpu` branches collapse; three-post.js loses the two WebGL chains);
+CLAUDE.md gets the rules (no `onBeforeCompile`, no `ShaderMaterial`, TSL `Fn` only, no native `wgslFn` /
+`glslFn`, `forceWebGL` is the fallback, never `trackTimestamp` on Firefox); RENDERER_PLAN.md gets a pointer.
+The `?v=` bump as always.
 
 ---
 
@@ -722,3 +732,30 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   `WebGLRenderer` (they stay on the classic build until W5 removes it). Sandbox (`?ew_gpu=webgl2`): lobby plates draw
   as canvas planes (24 on the GPU, 0 CSS2D), the barbershop mirror renders (gain 0.9, no throw), 2-3 clip materials
   dressed, a by-hand rebuild keeps drawing with the chain rebuilt, no errors. Next: W5 (the flip) when mondo says so.
+- 2026-10-04: **Plan order changed (mondo):** W5 (the flip) moves to the end, after W13; battle and spell performance
+  (W5a) comes first. "dont want to switch until that is fixed".
+- 2026-10-04: **W5a battle and spell performance** (zip renderer/ENTROPY_WARS_W5A_PERF.zip: three-renderer.js; token
+  20261004-gpu5a-01-cors). Node renderer only; classic WebGL untouched. Measured in the sandbox on `?ew_gpu=webgl2`
+  (same node builder and pipeline cache as WebGPU). (1) **The cause:** three's node renderer bakes every light's id
+  (and castShadow) into each render object's cache key (`LightsNode.customCacheKey`). ThreePost.rebuildUnitLights
+  destroys and re-creates the unit PointLights on every unit rebuild (a move, a hit, a turn), and the FX flash pool
+  turns lights on and off; each new id changed every lit material's key, the old render objects were disposed, their
+  node states hit zero use and three dropped them, so the next frame built every material again (NodeBuilder, then a
+  pipeline). A steady battle built ~50 node shaders a frame (537 builds, 108 new pipelines in 10 frames). (2) **The
+  light rig** (`_ewRigTick`, three-renderer.js "THE LIGHT RIG"): every non-shadow PointLight in the scene is taken off
+  the camera's layers (`layers.mask = 0`, restored on release) and copied each outer frame onto a fixed set of rig
+  lamps (grown in steps of 4, at most 64; spares at intensity 0). The lamp ids never change, so the key never changes;
+  the lighting math is the same light (same class, world position, colour, intensity, distance, decay: checked lamp
+  by lamp in a battle). Shadow-casting lights keep their own (their shadow maps are per light). The spell void stage
+  leaves the rig group in place. F3 "Lights point ... · rig X/Y". (3) **The kept shaders** ("THE KEPT SHADERS",
+  `_ewKeepSetup`): a node state, pipeline or program at zero use now waits in an LRU (384 / 256 / 512) instead of
+  being dropped, so a material that comes back (a spell's second cast, a unit leaving and returning) reuses its
+  build. (4) **One instancing shader:** an InstancedMesh small enough for a uniform buffer got a buffer named after
+  its node id, so every particle pool (R7 batches) compiled its own vertex shader and pipeline; the builder now gets
+  a zero uniform limit for InstancedMesh, which takes three's instanced-attribute path and shares one shader (26 FX
+  vertex programs to 1). Results: steady battle 0 builds and 0 new pipelines a frame (39 frames in the window that
+  drew 10); first spell cast of a session 142 builds / 53 pipelines / ~695 ms of builds to 34 / 3 / ~222 ms; a
+  repeat cast ~15 builds / 2-3 pipelines to 9 / 0 (the 9 are ShaderMaterial and MeshLine twins with unique node
+  ids). F3 new line "Shader builds X/s · new pipelines Y/s (session a / b) · kept b/p/g". Off: `?ew_lightrig=0`,
+  `?ew_keep=0`. Next: mondo's F3 in a battle and during a spell on `?ew_gpu=webgpu` decides between battle bundles
+  and the twin builds.
