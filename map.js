@@ -16088,6 +16088,9 @@
             'atlantis_pillar',
             'totem_pole',
             'federation_beacon',
+            // 2026-10-04 — the retro tree pack's pine + sapling (⚠ keep data.js MF_OID mirrored)
+            'tree_pine',
+            'tree_sapling',
         ];
         const ME_OBJECT_TO_ID = {};
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
@@ -16116,7 +16119,7 @@
         const ME_OBJECT_CATS = [
             { label: '⚙ Game Mode', keys: ['tower_cube','church','shop','nexus','nexus_cave','nexus_sky'], isGameMode: true },
             { label: 'Nature', keys: ['tree','rock','grass_tuft','ruins','mountain_top','beanstalk','well','cave_entrance','poison_seed'] },
-            { label: 'Trees', keys: ['tree','tree_2','tree_3','tree_4','tree_5','tree_6'] },
+            { label: 'Trees', keys: ['tree','tree_2','tree_3','tree_4','tree_pine','tree_sapling','tree_5','tree_6'] },   // the retro tree pack (2026-10-04)
             { label: 'Rocks', keys: ['rock'] },
             { label: 'Barriers', keys: ['barrier_1','barrier_2','barrier_3','barrier_4','barrier_5'] },
             { label: 'Columns', keys: ['column_1','column_2','column_3','column_4'] },
@@ -16589,7 +16592,7 @@
 
         function _meEmptyObjGrid(h,w){ return Array.from({length:h},()=>Array.from({length:w},()=>[])); }
         function _meObjEntry(oid,ax,ay,rot,fx,fy,leaf){ const e={oid:oid||0,alignX:ax||'center',alignY:ay||'bottom',rot:rot||0,flipX:!!fx,flipY:!!fy}; if(leaf)e.leaf=leaf; return e; }
-        function _meIsTreeKey(key){ return key==='tree'||key==='tree_2'||key==='tree_3'||key==='tree_4'||key==='tree_5'||key==='tree_6'; }
+        function _meIsTreeKey(key){ return key==='tree'||key==='tree_2'||key==='tree_3'||key==='tree_4'||key==='tree_5'||key==='tree_6'||key==='tree_pine'||key==='tree_sapling'; }
         function _meDeserializeObjects(data,h,w){
             if(!data.objects) return _meEmptyObjGrid(h,w);
             const g=[];

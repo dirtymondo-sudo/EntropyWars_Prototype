@@ -67261,7 +67261,7 @@
                     // same mapping the underworld fossilization uses), and
                     // planted seeds, traps, bombs and wards are destroyed.
                     if (spell.witherTrees && affectedTiles.length > 0) {
-                        const _wtDead = { tree: 'tree_5', tree_2: 'tree_5', tree_3: 'tree_6', tree_4: 'tree_6' };
+                        const _wtDead = { tree: 'tree_5', tree_2: 'tree_5', tree_3: 'tree_6', tree_4: 'tree_6', tree_pine: 'tree_5', tree_sapling: 'tree_5' };
                         let _wtWithered = 0, _wtCleared = 0, _wtWardGone = false;
                         for (const at of affectedTiles) {
                             const _wtObj = (typeof getObjectAt === 'function') ? getObjectAt(at.x, at.y) : null;

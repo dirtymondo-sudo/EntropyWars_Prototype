@@ -2614,7 +2614,7 @@ const ThreeRenderer = (function () {
     function _isBuildingKey(key) { return _BUILDING_PRISM_KEYS.has(key); }
 
     var _TREE_KEYS = new Set([
-        'tree', 'tree_2', 'tree_3', 'tree_4', 'tree_5', 'tree_6'
+        'tree', 'tree_2', 'tree_3', 'tree_4', 'tree_5', 'tree_6', 'tree_pine', 'tree_sapling'
     ]);
     function _isTreeKey(key) { return _TREE_KEYS.has(key); }
 
@@ -5373,7 +5373,10 @@ const ThreeRenderer = (function () {
         tree_4: 'rt:tree_rt_2',
         tree_5: 'rt:dead_tree_rt_2',
         tree_6: 'rt:dead_tree_rt_1',
-        pine:   'rt:tree_rt_1'
+        pine:   'rt:tree_rt_1',
+        pine_2: 'rt:small_tree_rt_1',
+        tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
+        tree_sapling: 'rt:small_tree_rt_1'
     };
     function _foliageIsGlb(name) { return typeof name === 'string' && name.slice(0, 3) === 'rt:'; }
     function _foliageUrl(name) { return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj'; }
