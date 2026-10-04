@@ -25093,7 +25093,7 @@ const ThreeRenderer = (function () {
        length / width in its own units (the blob shadow is sized off them before the file lands), `m` = the real length in
        metres the car is fitted to, `tex` = the texture's stem (`<tex>_<paint>.png`; '' = the plain `<tex>.png`), `snow` =
        the paints with snow on (car 1 only). The look of each: 1 a seventies estate, 2 a boxy eighties saloon, 3 a hatchback,
-       4 a minivan, 5 a big American saloon (also the taxi and the police car), 6 a rusted shell with no wheels, 7 a 1920s
+       4 a minivan, 5 a big American saloon (its taxi and police paints wear their own models, Car5_Taxi.obj / Car5_Police.obj), 6 a rusted shell with no wheels, 7 a 1920s
        tourer, 8 a step van. Kill-switch: window.EW_NO_CAR_PACK (back to the Meshy files). */
     var _CAR_PACK_BASE = 'https://cdn.entropywars.net/Assets/vehicles/';
     var _CAR_PACK = {
@@ -25112,18 +25112,21 @@ const ThreeRenderer = (function () {
         suv:    { snowy: true, rows: [[1, ['', 'blue', 'gray', 'red']], [3, ['', 'red', 'yellow']], [4, ['', 'grey']]] },
         sedan:  { snowy: true, rows: [[2, ['', 'red', 'black']], [5, ['', 'grey', 'green']]] },
         taxi:   { rows: [[5, ['taxi']]] },
-        police: { rows: [[5, ['police']]] },
+        police: { rows: [[5, ['police', 'police_la']]] },
         van:    { rows: [[8, ['', 'grey', 'purple']]] },
         old:    { rows: [[7, ['', 'grey', 'red', 'green', 'black', 'brown']]] },
         wreck:  { rows: [[6, ['']]] }
     };
-    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (n) { var C = _CAR_PACK[n]; _CAR_PACK_POOLS['car0' + n] = { snowy: n === 1, rows: [[n, C.paints.concat(n === 5 ? ['taxi', 'police'] : [])]] }; });
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (n) { var C = _CAR_PACK[n]; _CAR_PACK_POOLS['car0' + n] = { snowy: n === 1, rows: [[n, C.paints.concat(n === 5 ? ['taxi', 'police', 'police_la'] : [])]] }; });
+    /* car 5's taxi and police paints have their OWN models in Car 05/ (the roof sign, the light bar — the same frame as Car5.obj) */
+    function _carPackObj(car, paint) { if (car === 5 && paint === 'taxi') return 'Car5_Taxi.obj'; if (car === 5 && /^police/.test(paint || '')) return 'Car5_Police.obj'; return _CAR_PACK[car].obj; }
     function _carPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_CAR_PACK) && typeof THREE.OBJLoader === 'function'; }
     function _carPackUrl(C, file) { return _CAR_PACK_BASE + encodeURIComponent(C.dir) + '/' + file; }
     /* every OBJ a pool can draw (a room's warm-up list) */
     function _carPackUrls(pool) {
         var P = _CAR_PACK_POOLS[pool]; if (!P) return [];
-        var out = P.rows.map(function (r) { return _carPackUrl(_CAR_PACK[r[0]], _CAR_PACK[r[0]].obj); });
+        var out = [];
+        P.rows.forEach(function (r) { r[1].forEach(function (pt) { var u = _carPackUrl(_CAR_PACK[r[0]], _carPackObj(r[0], pt)); if (out.indexOf(u) < 0) out.push(u); }); });
         if (P.snowy) out.push(_carPackUrl(_CAR_PACK[1], _CAR_PACK[1].obj));
         return out;
     }
@@ -25133,7 +25136,7 @@ const ThreeRenderer = (function () {
         if (snow && P.snowy) { var S = _CAR_PACK[1].snow; return { car: 1, paint: S[Math.floor(r() * S.length) % S.length] }; }
         var row = P.rows[Math.floor(r() * P.rows.length) % P.rows.length], paints = row[1];
         var pick = paints[Math.floor(r() * paints.length) % paints.length];
-        if (paint != null) { var C = _CAR_PACK[row[0]]; if (C.paints.indexOf(paint) >= 0 || (C.snow && C.snow.indexOf(paint) >= 0) || (row[0] === 5 && (paint === 'taxi' || paint === 'police'))) pick = paint; }
+        if (paint != null) { var C = _CAR_PACK[row[0]]; if (C.paints.indexOf(paint) >= 0 || (C.snow && C.snow.indexOf(paint) >= 0) || (row[0] === 5 && (paint === 'taxi' || paint === 'police' || paint === 'police_la'))) pick = paint; }
         return { car: row[0], paint: pick };
     }
     /* ONE texture and ONE material per paint, shared by every car in it (one shader, the bundles and the batch see the
@@ -25171,7 +25174,7 @@ const ThreeRenderer = (function () {
         o = o || {};
         var pk = _carPackPick(pool, o.rng, o.snow, o.paint), C = _CAR_PACK[pk.car];
         var lenM = ((o.metres != null) ? o.metres : C.m) * (o.scale || 1), mat = _carPackMat(C, pk.paint, o.hq ? 'hq' : (o.lift || 0));
-        var g = _miscModelInstance(_carPackUrl(C, C.obj), false, lenM * perM, {
+        var g = _miscModelInstance(_carPackUrl(C, _carPackObj(pk.car, pk.paint)), false, lenM * perM, {
             fit: 'span', matPick: function () { return mat; },
             onDone: function (grp, s, bb) {
                 grp.traverse(function (n) { if (n.isMesh && n !== sh) { n.castShadow = o.cast !== false; n.receiveShadow = true; } });
