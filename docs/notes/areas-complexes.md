@@ -1822,3 +1822,22 @@ over the room's own terrain (the Woods stair). Wall passages cut the box wall, w
 - Woods ⇄ Camelot: the trail link `woods_camelot` (the old spring pool seam was cut before this). Redwoods trail,
   Dead Man's Cave tunnel, Cavern galleries, Göbekli ley/tell, Hell/Agartha/Hollow caves = tunnels; Heaven/Olympus/sky
   castle/observatory = cloud; North Pole ⇄ Camelot = trail. The clearing's gen seed went 11 → 22 to keep its 8×8 arena.
+
+## THE RETRO TREE PACK (2026-10-04)
+mondo uploaded `Assets/foilage/retrotreepack/GLB/` (dead_tree_rt_1/2, small_tree_rt_1, tree_rt_1, tree_rt_2, tree_rt_2_1,
+tree_rt_3, tree_rt_4; the `Low Res/` PNGs are the same textures, already embedded in each GLB) and asked for the woods and
+similar areas to be fully surrounded by trees so the map edge never shows.
+- A tree model name `rt:<file>` is a pack GLB (three-renderer.js `_foliageUrl`, `_foliageBakeGlb` bakes the GLB's Z-up node
+  rotation into the geometry so the wind hook reads y as up; `_foliageGlbMat` = Lambert, the file's texture tagged linear,
+  cards alphaTest 0.5, two-sided). Each file is ~100 tris (crossed cards on a trunk).
+- data.js HQ_TREE_KINDS: tree = tree_rt_2_1 (birch), tree_2 = tree_rt_3 (spruce), tree_3 = tree_rt_4 (oak), tree_4 = tree_rt_2
+  (tall birch), tree_5 = dead_tree_rt_2, tree_6 = dead_tree_rt_1, pine = tree_rt_1, pine_2 = small_tree_rt_1. tree_7 … tree_20
+  stay the old OBJs (editor palette). HQ_TREE_KINDS now overrides every key of the renderer's `_FOLIAGE_MODEL_FOR_KEY`.
+  The battle board trees, the battle world rim, the HQ treeline / thicket / terrain trees all draw the pack through this map.
+- THE CANOPY now runs for EVERY room with `shell.forest` (was the clearing only; `forest.canopy: false` opts out): pack trees
+  from the treeline out to the outer ground's end, 6-10.5 m tall, the forest's own kinds, one InstancedMesh per model piece,
+  no shadows, nearest rows first, capped at HQ_CANOPY_MAX (3200; half under EW_PERF_LOW), skipping passages and staged
+  neighbours. Needs a terrain room with an outer ground. Waits for the files (no timeout); a failed file falls back to the
+  old icosahedron crowns (`_hqCanopyStandIn`). Switch: `window.EW_HQ_NO_CANOPY = true` then re-enter.
+- Forest rooms: the clearing, redwoods, ritual, Skinwalker fields, Shasta slopes, Bohemian Grove, haunted grounds, North
+  Pole village, Camelot ward. Load-checked the clearing (sandbox): ~2200 canopy trees in 11 draws, no errors.
