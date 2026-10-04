@@ -253,6 +253,39 @@ const _HERO_RACE_SPRITES = {
   'politician': `${_S}/Races/maincharacters/president.png`,
 };
 
+// 2026-10-04 — mondo's own 2D sprites (single-frame, 128px tall) in Assets/Sprites/character_sprites/.
+// One file per race; hippie has one per gender. These win over every older/borrowed sheet.
+const _CS = `${_S}/character_sprites`;
+const _CHARACTER_SPRITES = {
+  'astronaut': `${_CS}/astronaut.png`,
+  'bee queen': `${_CS}/beequeen.png`,
+  'clown': `${_CS}/clown.png`,
+  'crystal guardian': `${_CS}/crystalguardian.png`,
+  'cult leader': `${_CS}/cultleader.png`,
+  'deep sea fish': `${_CS}/deepseacreature.png`,
+  'firefighter': `${_CS}/firefighter.png`,
+  'goblin': `${_CS}/gremlin.png`,
+  'ice queen': `${_CS}/icequeen.png`,
+  'jack o lantern': `${_CS}/jackolantern.png`,
+  'jellyfish': `${_CS}/jellyfish.png`,
+  'kaiju': `${_CS}/kaiju.png`,
+  'krampus': `${_CS}/krampus.png`,
+  'mushroom girl': `${_CS}/mushroomgirl.png`,
+  'police officer': `${_CS}/policeofficer.png`,
+  'professor': `${_CS}/professor.png`,
+  'rabbit': `${_CS}/rabbit.png`,
+  'ringmaster': `${_CS}/ringmaster.png`,
+  'sharkman': `${_CS}/sharkman.png`,
+  'sheriff': `${_CS}/sheriff.png`,
+  'sidekick': `${_CS}/sidekick.png`,
+  'starfish': `${_CS}/starfish.png`,
+  'tree person': `${_CS}/treeperson.png`,
+  'luchador': `${_CS}/wrestler.png`,
+};
+const _CHARACTER_SPRITES_GENDERED = {
+  'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
+};
+
 const _SINGLE_FILE_RACES = {
   'barbarella': 'barbarella.png',
   'gangster': 'gangster_male.png',   // 2026-09-10 — Races/gangster/, male-only race
@@ -299,6 +332,11 @@ const FOOTBALL_SPRITE = `${_S}/football.png`;
 function getR2RaceSpriteUrl(race, gender, cls) {
   if (!race) return null;
   if (_HERO_RACE_SPRITES[race]) return _HERO_RACE_SPRITES[race];
+  if (_CHARACTER_SPRITES_GENDERED[race]) {
+    const set = _CHARACTER_SPRITES_GENDERED[race];
+    return set[gender] || set.male || set.female;
+  }
+  if (_CHARACTER_SPRITES[race]) return _CHARACTER_SPRITES[race];
 
   if (_SINGLE_FILE_RACES[race]) {
     const rules = RACE_PATH_RULES[race];
@@ -3204,31 +3242,31 @@ const RACE_SPRITES = {
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
   'nun': `${_S}/homosapien.png`,
   'door agent': `${_S}/homosapien.png`,
-  'police officer': `${_S}/homosapien.png`,   // 2026-09-21 — 2D borrows the human sheet (his own art is the GLB)
-  'jellyfish': `${_S}/kraken.png`,            // 2026-09-21 — 2D borrows the kraken's sheet (his own art is the GLB)
-  'cult leader': `${_S}/homosapien.png`,      // 2026-09-21
+  'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
+  'jellyfish': `${_S}/character_sprites/jellyfish.png`,   // 2026-10-04 — his own sprite
+  'cult leader': `${_S}/character_sprites/cultleader.png`,   // 2026-10-04 — his own sprite
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
-  'starfish': `${_S}/kraken.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'ringmaster': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'bee queen': `${_S}/antperson.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'professor': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'deep sea fish': `${_S}/kraken.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'clown': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'starfish': `${_S}/character_sprites/starfish.png`,   // 2026-10-04 — his own sprite
+  'ringmaster': `${_S}/character_sprites/ringmaster.png`,   // 2026-10-04 — his own sprite
+  'bee queen': `${_S}/character_sprites/beequeen.png`,   // 2026-10-04 — his own sprite
+  'professor': `${_S}/character_sprites/professor.png`,   // 2026-10-04 — his own sprite
+  'deep sea fish': `${_S}/character_sprites/deepseacreature.png`,   // 2026-10-04 — his own sprite
+  'clown': `${_S}/character_sprites/clown.png`,   // 2026-10-04 — his own sprite
   'bunny girl': `${_S}/catgirl.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'sharkman': `${_S}/kraken.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'crystal guardian': `${_S}/golem.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'jack o lantern': `${_S}/scarecrow.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'sidekick': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'mushroom girl': `${_S}/fairy.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'tree person': `${_S}/bigfoot.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'sheriff': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'astronaut': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'krampus': `${_S}/goatman.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'rabbit': `${_S}/catgirl.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'luchador': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'firefighter': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'goblin': `${_S}/gnome.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
-  'hippie': `${_S}/homosapien.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'sharkman': `${_S}/character_sprites/sharkman.png`,   // 2026-10-04 — his own sprite
+  'crystal guardian': `${_S}/character_sprites/crystalguardian.png`,   // 2026-10-04 — his own sprite
+  'jack o lantern': `${_S}/character_sprites/jackolantern.png`,   // 2026-10-04 — his own sprite
+  'sidekick': `${_S}/character_sprites/sidekick.png`,   // 2026-10-04 — his own sprite
+  'mushroom girl': `${_S}/character_sprites/mushroomgirl.png`,   // 2026-10-04 — his own sprite
+  'tree person': `${_S}/character_sprites/treeperson.png`,   // 2026-10-04 — his own sprite
+  'sheriff': `${_S}/character_sprites/sheriff.png`,   // 2026-10-04 — his own sprite
+  'astronaut': `${_S}/character_sprites/astronaut.png`,   // 2026-10-04 — his own sprite
+  'krampus': `${_S}/character_sprites/krampus.png`,   // 2026-10-04 — his own sprite
+  'rabbit': `${_S}/character_sprites/rabbit.png`,   // 2026-10-04 — his own sprite
+  'luchador': `${_S}/character_sprites/wrestler.png`,   // 2026-10-04 — his own sprite
+  'firefighter': `${_S}/character_sprites/firefighter.png`,   // 2026-10-04 — his own sprite
+  'goblin': `${_S}/character_sprites/gremlin.png`,   // 2026-10-04 — his own sprite
+  'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
@@ -3276,7 +3314,7 @@ const RACE_SPRITES = {
   'dragon': `${_S}/dragon.png`,
   'ghoul': `${_S}/ghoul.png`,
   'gnome': `${_S}/gnome.png`,
-  'kaiju': `${_S}/kaiju.png`,
+  'kaiju': `${_S}/character_sprites/kaiju.png`,   // 2026-10-04 — his own sprite
   'kraken': `${_S}/kraken.png`,
   'loch ness monster': `${_S}/loch_ness_monster.png`,
   'yeti': `${_S}/yeti.png`,
@@ -3285,7 +3323,7 @@ const RACE_SPRITES = {
   'black goo': `${_S}/black_goo.png`,
   'golem': `${_S}/golem.png`,
   'honda civic': `${_S}/honda_civic.png`,
-  'ice queen': `${_S}/ice_queen.png`,
+  'ice queen': `${_S}/character_sprites/icequeen.png`,   // 2026-10-04 — his own sprite
   'juggernaut': `${_S}/juggernaut.png`,
   'ki fighter': `${_S}/ki_fighter.png`,
   'king arthur': `${_S}/king_arthur.png`,
