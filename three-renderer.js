@@ -11526,7 +11526,7 @@ const ThreeRenderer = (function () {
         inner.position.set(p[0] * pxm, p[1] * pxm, p[2] * pxm);
         inner.rotation.set(r[0] * Math.PI / 180, r[1] * Math.PI / 180, r[2] * Math.PI / 180);
         var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * pxm;
-        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);
+        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g) { g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } }); } });
         if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X
@@ -24959,16 +24959,12 @@ const ThreeRenderer = (function () {
         brick_arch:    'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',
         campfire:      'Meshy_AI_a_campfire_ring_0916235856_texture.glb',
         culvert:       'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',
-        dead_snag:     'Meshy_AI_a_dead_snag_0916235650_texture.glb',
-        dead_hollow:   'Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb',
         fallen_log:    'Meshy_AI_a_fallen_log_0916235700_texture.glb',
         fern:          'Meshy_AI_a_fern_0916235806_texture.glb',
-        pine:          'Meshy_AI_a_pine_with_canopy_0916235640_texture.glb',
         footbridge:    'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',
         menhir:        'Meshy_AI_a_standing_stone_0916235906_texture.glb',
         drain_grate:   'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',
         stump:         'Meshy_AI_a_stump_0916235717_texture.glb',
-        hollow_tree:   'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb',
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to
            Assets/misc/ — MODEL_INDEX.md §3g): the basilica (two pews, the podium, the
            throne, the cross, the stained glass, the holy carpet, the confessional,
@@ -28883,7 +28879,7 @@ const ThreeRenderer = (function () {
         for (var fi = 0; fi < 10; fi++) { var fa = rng() * Math.PI * 2, fr = ts * (0.9 + rng() * 2.4); var fx = K.CX + Math.cos(fa) * fr * 1.5, fz = K.CZ + Math.sin(fa) * fr; if (fx > K.BX0 - 0.6 * ts && fx < K.BX1 + 0.6 * ts && fz > K.BZ0 - 0.6 * ts && fz < K.BZ1 + 0.6 * ts) continue; _nrProp(K, function (r) { return _hzMiscKit('fern', { metres: 0.6 + r() * 0.3, rng: r, foot: 0, low: 'skip' }); }, fx, fz, { ry: rng() * 6.3 }); }
         _nrProp(K, function (r) { return _hzMiscKit('stump', { metres: 0.6, rng: r, foot: 0.4, low: 'skip' }); }, K.BX1 + 1.4 * ts, K.BZ1 + 1.2 * ts, { ry: rng() * 6.3 });
         _nrProp(K, function (r) { return _hzMiscKit('fallen_log', { metres: 3.4, fit: 'span', rng: r, foot: 0.5, low: 'skip' }); }, K.BX0 - 1.4 * ts, K.BZ0 - 1.3 * ts, { ry: 0.6 });
-        _nrProp(K, function (r) { return _hzMiscKit('hollow_tree', { metres: 6.0, rng: r, foot: 0.7, low: 'skip' }); }, K.CX - 3.2 * ts, K.BZ0 - 2.4 * ts, { ry: Math.PI });
+        _nrProp(K, function () { return _nrTree(K, 'tree', { h: 6.0 / 1.75 }); }, K.CX - 3.2 * ts, K.BZ0 - 2.4 * ts, { ry: Math.PI });   // NO MESHY TREES: the retro pack's tree
     };
     /* MOON — Tranquility: regolith, craters, the lander and its flag, the
        rover tracks, the black monolith, the Earth in the sky (far roster). */
@@ -29082,8 +29078,10 @@ const ThreeRenderer = (function () {
         });
         _nrSign(K, 'hh_sign', ['THE HAUNTED HOUSE', 'FOR SALE · SINCE 1888'], 2.4 * ts, 1.0 * ts, K.CX + 2.4 * ts, K.fy + 1.1 * ts, K.Z0 + 1.4 * ts, 0, { sizes: [92, 44], bg: '#1a1216', border: '#8a7a60', color: '#e8dcc0' });
         /* THE WOODS BATCH (2026-09-17): the dead trees of the garden — a snag, THE DEAD TREE with the hole (the woods' garden gate), stumps */
-        _nrProp(K, function (r) { return _hzMiscKit('dead_snag', { metres: 4.4, rng: r, foot: 0.4, low: 'skip' }); }, K.BX0 - 1.5 * ts, K.BZ1 + 1.4 * ts, { ry: rng() * 6.3 });
-        _nrProp(K, function (r) { return _hzMiscKit('dead_hollow', { metres: 5.0, rng: r, foot: 0.6, low: 'skip' }); }, K.CX - 1.4 * ts, K.BZ0 - 2.6 * ts, { ry: Math.PI });
+        /* NO MESHY TREES (2026-10-04, mondo: "i dont even want to use that meshy tree anywhere in the game"): the snag and the
+           dead tree are the retro pack's dead trees */
+        _nrProp(K, function () { return _nrTree(K, 'tree_5', { h: 4.4 / 1.75 }); }, K.BX0 - 1.5 * ts, K.BZ1 + 1.4 * ts, { ry: rng() * 6.3 });
+        _nrProp(K, function () { return _nrTree(K, 'tree_6', { h: 5.0 / 1.75 }); }, K.CX - 1.4 * ts, K.BZ0 - 2.6 * ts, { ry: Math.PI });
         _nrProp(K, function (r) { return _hzMiscKit('stump', { metres: 0.55, rng: r, foot: 0.4, low: 'skip' }); }, K.BX1 + 1.2 * ts, K.BZ1 + 1.8 * ts, { ry: 1.2 });
     };
     /* THE LODGE (Room 33) — the temple interior: damask walls over an oak
@@ -43828,6 +43826,7 @@ const ThreeRenderer = (function () {
            Assets/misc/ bucket (the moving-maps batch — the pocket watch in the
            clock room) instead of the D.O.O.R. kit folder */
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
+        if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
         return D.assets.models + encodeURIComponent(entry.file);
@@ -52138,7 +52137,7 @@ const ThreeRenderer = (function () {
         var glow = _hzGlowSprite(1.4 * U, dead ? 0xc8c0ff : 0xa0ffc8, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.05 * U, (zc + R * 1.1) * U); g.add(glow);
         /* the user's GLB, hole to +Z (the catalogue's rot turns it), the stand-in hidden when it lands */
         var cat = (typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {})[dead ? 'hollow_dead_tree' : 'hollow_tree']) : null;
-        if (cat && cat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
+        if (cat && cat.file && cat.base !== 'rt' && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
             var inst = _miscModelInstance(_hqModelUrl(cat), true, (cat.h || H) * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { stand.visible = false; } });
             inst.position.set(0, 0, zc * U); inst.rotation.y = ((cat.rot || 0) * Math.PI / 180); g.add(inst);
         }

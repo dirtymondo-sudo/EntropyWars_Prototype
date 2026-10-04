@@ -24428,11 +24428,13 @@ const DOOR_HQ = {
         greek_column:      { file: 'Meshy_AI_greek_column_0727195651_texture.glb',                 base: 'misc', h: 3.6, foot: 0.45, block: true },   // THE DIVINE STAIR (2026-09-17): the board's greekcol monument standing in heaven (the same file)
         campfire:          { file: 'Meshy_AI_a_campfire_ring_0916235856_texture.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
         culvert_mouth:     { file: 'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',              base: 'misc', h: 2.6, foot: 0, mount: 0 },
-        dead_snag:         { file: 'Meshy_AI_a_dead_snag_0916235650_texture.glb',                  base: 'misc', h: 4.6, foot: 0.4, block: true },
-        hollow_dead_tree:  { file: 'Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb', base: 'misc', h: 5.0, foot: 0.6, block: true, rot: 0 },
+        /* NO MESHY TREES (2026-10-04, mondo): the four Meshy trees are the retro pack's (base 'rt' = Assets/foilage/retrotreepack/GLB/);
+           the hollow / dead tree WAYS keep their own trunk with the hole (three-renderer.js _hqTreeWay) */
+        dead_snag:         { file: 'dead_tree_rt_2.glb', base: 'rt', h: 4.6, foot: 0.4, block: true },
+        hollow_dead_tree:  { file: 'dead_tree_rt_1.glb', base: 'rt', h: 5.0, foot: 0.6, block: true, rot: 0 },
         fallen_log:        { file: 'Meshy_AI_a_fallen_log_0916235700_texture.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
         fern:              { file: 'Meshy_AI_a_fern_0916235806_texture.glb',                       base: 'misc', h: 0.75, foot: 0 },
-        pine:              { file: 'Meshy_AI_a_pine_with_canopy_0916235640_texture.glb',           base: 'misc', h: 6.5, foot: 0.45, block: true },
+        pine:              { file: 'tree_rt_1.glb', base: 'rt', h: 6.5, foot: 0.45, block: true },
         footbridge:        { file: 'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',           base: 'misc', span: 4.4, foot: 0 },
         menhir:            { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', h: 2.6, foot: 0.5, block: true },
         /* THE LEY LINES (2026-09-18 — the ancient sites): the board's own pieces standing in the rooms (the same-thing rule, MODEL_INDEX §9) — the moving-maps
@@ -24446,7 +24448,7 @@ const DOOR_HQ = {
         cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
         stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
-        hollow_tree:       { file: 'Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb',           base: 'misc', h: 6.0, foot: 0.7, block: true, rot: 0 },
+        hollow_tree:       { file: 'tree_rt_2_1.glb', base: 'rt', h: 6.0, foot: 0.7, block: true, rot: 0 },
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3g): the
            basilica's furniture (pews of two kinds, the podium, the cathedra, the cross, the windows, the carpet, the
            confessional, the chancel screens), the archive's cases, the cortile's façade and palace wings and arcade,
