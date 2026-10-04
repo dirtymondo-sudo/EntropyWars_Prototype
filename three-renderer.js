@@ -32542,8 +32542,15 @@ const ThreeRenderer = (function () {
             return out;
         };
         var po = r._projectObject;
-        r._projectObject = function (object) {
-            if (object.isBundleGroup === true) { _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; } }
+        r._projectObject = function (object, camera) {
+            if (object.isBundleGroup === true) {
+                /* a side render (the post's model mask: two layer passes into one target, one camera) would replay the first
+                   pass's recording in the second — it draws the group the classic way */
+                if (this._ew_sideRender) { object.isBundleGroup = false; try { return po.apply(this, arguments); } finally { object.isBundleGroup = true; } }
+                /* THE FIELD BUNDLES: a piece of the battle's room off the main camera is not drawn (a recording is unculled) */
+                if (object._ew_bunSph && camera && camera === _ewBun.cullCam && !_ewBunSeen(object._ew_bunSph, camera)) return;
+                _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; }
+            }
             if (_ewBun.inRec > 0 && object.frustumCulled === true) { object.frustumCulled = false; try { return po.apply(this, arguments); } finally { object.frustumCulled = true; } }
             return po.apply(this, arguments);
         };
@@ -32558,6 +32565,37 @@ const ThreeRenderer = (function () {
         if (st && st.parts) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P) { add(E.P.shellGroup, id + ' shell'); add(E.P.propGroup, id + ' props'); add(E.P.doorGroup, id + ' doors'); } }
         if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
         return out;
+    }
+    /* THE FIELD BUNDLES (W5a round 5, 2026-10-04): the battle's room (_hqBuildRoomInBattle: the facility group's holders, one
+       per wall / piece, plus the fight's instance pass) was drawn mesh by mesh every frame — the walk's bundles never reached
+       a fight (the tick only knew the walk's scene). Each holder is its own bundle: the occlusion fade swaps one holder's
+       materials, so only that holder re-records; a static holder off the main camera is skipped whole (its world sphere) */
+    function _ewBunFieldTargets() {
+        var F = _facilityNearGroup, out = [], ch = F.children;
+        for (var i = 0; i < ch.length; i++) { var c = ch[i]; if (c && !c.isMesh && !c.isLine && !c.isPoints && !c.isSprite && c.children.length) { out.push(c); if (!c._ew_bunName) { c._ew_bunName = 'room ' + (c.name || 'piece'); c._ew_bunCull = true; } } }
+        var I = _fieldInstH && _fieldInstH.inst;
+        if (I && I.group && I.group.parent) { out.push(I.group); I.group._ew_bunName = 'room instances'; }
+        return out;
+    }
+    var _ewBunFr = null, _ewBunFrM = null, _ewBunSphV = null;
+    function _ewBunSeen(sp, cam) {
+        if (!_ewBunFr) { _ewBunFr = new THREE.Frustum(); _ewBunFrM = new THREE.Matrix4(); }
+        if (_ewBun.cullF !== _ewBun.frame) {
+            _ewBun.cullF = _ewBun.frame;
+            _ewBunFrM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+            _ewBunFr.setFromProjectionMatrix(_ewBunFrM, cam.coordinateSystem);
+        }
+        return _ewBunFr.intersectsSphere(sp);
+    }
+    function _ewBunSphere(g) {
+        try {
+            g.updateWorldMatrix(true, true);   // a piece placed since the last frame's matrix update
+            var b = new THREE.Box3().setFromObject(g);
+            if (b.isEmpty()) return null;
+            var sp = b.getBoundingSphere(new THREE.Sphere());
+            sp.radius = sp.radius * 1.1 + 1;
+            return sp;
+        } catch (e) { return null; }
     }
     /* a geometry's and a material's share of the signature, once per tick however many meshes share them (W5a: the check
        walked every attribute and 13 texture slots per MESH, 3351 meshes a frame in mondo's battle room) */
@@ -32607,27 +32645,30 @@ const ThreeRenderer = (function () {
             var c = ch[i];
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
-            else if (c.isLight) S.hs = _ewBunMix(S.hs, c.id);
+            else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
             if (c.children.length) _ewBunWalk(c, S);
         }
     }
     function _ewBunRelease(g) {
-        g.isBundleGroup = false; g.static = false;
+        g.isBundleGroup = false; g.static = false; g._ew_bunSph = null;
         var i = _ewBun.marked.indexOf(g); if (i >= 0) _ewBun.marked.splice(i, 1);
     }
     /* per frame, before the HQ scene's outer render */
-    function _ewBunTick(r, sc) {
+    function _ewBunTick(r, sc, cam) {
         var dry = false; try { dry = !!window.EW_BUN_DRY; } catch (e) {}   // console only: the signatures without the bundles (any backend)
         if (_ewGpu !== 'webgpu' && !dry) return;
         var H = _hq, now = performance.now(), i;
-        if (_ewBunOff() || !H || sc !== H.scene || (!dry && !_ewBunSetup(r))) {
+        var walk = !!(H && sc === H.scene), field = !walk && !!(sc && sc === scene && _facilityNearGroup && _facilityNearGroup.parent);
+        if (_ewBunOff() || !(walk || field) || (!dry && !_ewBunSetup(r))) {
             if (_ewBunOff()) while (_ewBun.marked.length) _ewBunRelease(_ewBun.marked[0]);
             return;
         }
         var t0 = performance.now(), W = _ewBun.why;
         _ewBun.frame = (_ewBun.frame | 0) + 1;
-        var T = _ewBunTargets(H);
-        for (i = _ewBun.marked.length - 1; i >= 0; i--) if (T.indexOf(_ewBun.marked[i]) < 0) _ewBunRelease(_ewBun.marked[i]);
+        var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
+        _ewBun.cullCam = field ? (cam || null) : null;
+        for (i = 0; i < T.length; i++) T[i]._ew_bunT = FR;
+        for (i = _ewBun.marked.length - 1; i >= 0; i--) if (_ewBun.marked[i]._ew_bunT !== FR) _ewBunRelease(_ewBun.marked[i]);
         /* what the whole scene shares: the lit lamps (the stage swaps them) and the freed-resource epoch */
         var LG = 17, ls = r._ew_lights || [];
         LG = _ewBunMix(LG, ls.length);
@@ -32644,8 +32685,9 @@ const ThreeRenderer = (function () {
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
             var shown = true; for (var q = g; q; q = q.parent) { if (q.visible === false) { shown = false; break; } if (q === sc) break; if (!q.parent) shown = false; }
             if (!shown) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
-            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, noV: !!st.dyn };
+            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn };
             _ewBunWalk(g, S);
+            var v0 = g.version;
             objs += S.n;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
             g._ew_bunMiss = false;
@@ -32671,6 +32713,10 @@ const ThreeRenderer = (function () {
             }
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
+            /* THE FIELD BUNDLES: the sphere a held-still piece is culled by, measured again at each recording (never one that
+               holds a light: a culled lamp would change the frame's light set, and every material would rebuild) */
+            if (g._ew_bunCull && stat && !S.lit && g.isBundleGroup) { if (!g._ew_bunSph || g.version !== v0) g._ew_bunSph = _ewBunSphere(g); }
+            else g._ew_bunSph = null;
         }
         _ewBun.objs = objs;
         _ewBun.last = T;
@@ -33425,7 +33471,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); _ewBunTick(this, sc); }
+            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); _ewBunTick(this, sc, cam); }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;

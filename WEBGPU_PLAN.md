@@ -802,3 +802,14 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   material (`frame.material`, OBJECT update per render object). A uniform object shared under two names is ambiguous and
   that twin is not shared. Off: `?ew_twinshare=0` / `window.EW_NO_TWIN_SHARE`. Sandbox after: 61 builds in 60 s, no page
   errors, P1/P2 rings keep their own colours.
+- 2026-10-04: **W5a round 5, THE FIELD BUNDLES** (zip renderer/ENTROPY_WARS_W5A_FIELD.zip: three-renderer.js, on top of the
+  tree thread's PRs #76/#77; token 20261004-gpu5a-05-cors). mondo's F3 after the shared twins: shader builds 0, CPU 39 to
+  15.4 ms, FPS 18.6 to 36.5 (Downtown arena). His "bundles 4 groups, 3352 meshes, check 2.45 ms" was the WALK's line left
+  over: `_ewBunTick` only knew the HQ scene, so a fight's room (`_hqBuildRoomInBattle`: the facility group's holders + the
+  fight's instance pass) drew mesh by mesh. Now each holder of `_facilityNearGroup` is its own bundle (the occlusion fade
+  swaps one holder's materials, so only that holder re-records) plus `room instances`; a static holder with no light has
+  a world sphere (measured at each recording) and is skipped whole when off the main camera. A side render (the post's
+  two-layer model mask, one camera, one target) draws bundle groups the classic way, since it would replay its first
+  pass in the second. Sandbox (Downtown arena, `?ew_gpu=webgl2`, EW_BUN_DRY): 347 holders / 752 meshes, re-records 0/s
+  once loaded, ~10-50% of holders off camera, no on-screen mesh culled. Not yet: the ~100 two-triangle draws in his
+  "Mesh" group (the move tiles, one draw each).
