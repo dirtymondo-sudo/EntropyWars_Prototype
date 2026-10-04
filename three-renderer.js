@@ -23585,12 +23585,13 @@ const ThreeRenderer = (function () {
                 var ra = ri / 180 * Math.PI * 2;
                 rimPts.push(new THREE.Vector3(Math.sin(ra) * rimR, rimY, -Math.cos(ra) * rimR));
             }
+            rimPts.push(rimPts[0].clone());   // closed by hand: a Line, not a LineLoop (WebGPURenderer draws no LineLoop — WEBGPU_PLAN W3)
             var rimGeo = new THREE.BufferGeometry().setFromPoints(rimPts);
             _zwRimMat = new THREE.LineBasicMaterial({
                 color: 0x8090c8, transparent: true, opacity: 0.08,
                 blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
             });
-            var rim = new THREE.LineLoop(rimGeo, _zwRimMat);
+            var rim = new THREE.Line(rimGeo, _zwRimMat);
             rim.renderOrder = -997; rim.frustumCulled = false;
             _zwGroup.add(rim);
 
@@ -31869,6 +31870,26 @@ const ThreeRenderer = (function () {
             B.delete(attribute);
         };
     }
+    /* WEBGPU_PLAN W3 (2026-10-04): three 0.186.1 loses an interleaved geometry's attributes after a dispose. Geometries
+       .updateAttribute skips an interleaved attribute whose buffer was already touched this call, and its attributeCall map
+       outlives the dispose, so after one only the FIRST attribute is uploaded again; the rest are left with no buffer and
+       every draw of that geometry fails ("no buffer is bound to enabled attribute"). Every Sprite shares one interleaved
+       quad, so one disposed sprite took every light halo in the HQ with it. An interleaved attribute the renderer holds
+       no record of is uploaded on the spot. */
+    function _ewGpuInterleaveFix(r) {
+        var GM = r._geometries, A = GM && GM.attributes;
+        if (!GM || GM._ewIlv || !A || typeof A.has !== 'function' || !GM.attributeCall) return;
+        GM._ewIlv = true;
+        var ua = GM.updateAttribute;
+        GM.updateAttribute = function (attribute, type) {
+            if (attribute && attribute.isInterleavedBufferAttribute && !this.attributes.has(attribute)) {
+                this.attributes.update(attribute, type);
+                this.attributeCall.set(attribute, this.info.render.calls);
+                return;
+            }
+            return ua.call(this, attribute, type);
+        };
+    }
     function _ewGpuFreeLater(r) {
         var q = r._ew_freeLater;
         if (!q || !q.length) return;
@@ -33061,22 +33082,32 @@ const ThreeRenderer = (function () {
         catch (e) { console.warn('[ThreeRenderer] node renderer: could not register the legacy lights', e); }
         /* render(): a no-op until init() resolves; the outermost call (not a shadow depth pass) clears the shadow pulse the way
            WebGLShadowMap does after the first render that drew it */
-        var rawRender = r.render, depth = 0;
+        var rawRender = r.render, depth = 0, ewDraw = null;
         r._ew_shadowLights = false;
         r.render = function (sc, cam) {
             if (!this.initialized) return;
             var shadowPass = !!(sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial);
-            var outer = !depth && !shadowPass;
+            /* WEBGPU_PLAN W3: a QuadMesh is a full-screen pass (the post chain, a node's own target, a blur) — the frame's scene
+               renders INSIDE the chain's first one, so it neither counts as a level nor is the frame; a side render (the post's
+               model mask) is drawn before the frame and is not it either */
+            var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
+            var outer = !depth && !shadowPass && !quad && !side;
             if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewBunTick(this, sc); }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
             if (unb) for (var ui = 0; ui < unb.length; ui++) unb[ui].isBundleGroup = false;
-            depth++;
+            /* WEBGPU_PLAN W3: three's node effects (RTTNode, SMAANode, the blurs) clear the draw hook while they run
+               (resetRendererState), so the scene the chain's pass renders inside them would draw without it: no shader twins,
+               no point proxies, no shadow pulse, no lens counts. A scene render that finds the hook cleared puts it back */
+            var rearm = !quad && !shadowPass && ewDraw && this._renderObjectFunction === null;
+            if (rearm) this._renderObjectFunction = ewDraw;
+            if (!quad) depth++;
             try { return rawRender.apply(this, arguments); }
             finally {
+                if (rearm) this._renderObjectFunction = null;
                 if (unb) for (var uj = 0; uj < unb.length; uj++) unb[uj].isBundleGroup = true;
-                depth--;
+                if (!quad) depth--;
                 if (outer) { this._ew_shadowFrame = false; if (this._ew_shadowLights && this.shadowMap.autoUpdate === false) this.shadowMap.needsUpdate = false; this._ew_shadowLights = false; }
             }
         };
@@ -33084,7 +33115,7 @@ const ThreeRenderer = (function () {
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
         _ewGpuSafeBuffers(r);
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
-        r.setRenderObjectFunction(function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
+        r.setRenderObjectFunction(ewDraw = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
             if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
             if (material && material._ewSprite && object.isPoints) {   // W2: a sized point list draws as instanced quads
                 var px = _ewPointProxy(object, geometry, material); if (!px) return;
@@ -33122,6 +33153,7 @@ const ThreeRenderer = (function () {
         r.init().then(function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
+            _ewGpuInterleaveFix(r);
             try { _ewNodeLayer(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the material layer failed — the picture stays plain', e); }
             try {
                 var dev = r.backend && r.backend.device;
@@ -35596,7 +35628,7 @@ const ThreeRenderer = (function () {
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
-        try { var _pc = (typeof ThreePost !== 'undefined' && ThreePost.getPostChain) ? ThreePost.getPostChain() : null; if (_pc) L.push('Post ' + _pc.lib + ' · ' + _pc.passes + ' passes' + (_pc.lib === 'pmndrs' ? ' · AO ' + _pc.ao + (_pc.n8ao !== 'idle' ? ' (N8AO ' + _pc.n8ao + ')' : '') + ' · A[' + _pc.effectsA + ']' : '')); } catch (e) {}   // R5
+        try { var _pc = (typeof ThreePost !== 'undefined' && ThreePost.getPostChain) ? ThreePost.getPostChain() : null; if (_pc) L.push('Post ' + _pc.lib + ' · ' + _pc.passes + ' passes' + ((_pc.lib === 'pmndrs' || _pc.lib === 'node') ? ' · AO ' + _pc.ao + (_pc.n8ao !== 'idle' ? ' (N8AO ' + _pc.n8ao + ')' : '') + ' · A[' + _pc.effectsA + ']' : '')); } catch (e) {}   // R5
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off'));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
@@ -61687,7 +61719,10 @@ const ThreeRenderer = (function () {
                 for (var k = 0; k < ms.length; k++) { var m = ms[k]; if (!m) continue; var key = m.uuid + tag; if (W.seen[key]) continue; W.seen[key] = 1; fresh = true; W.mats++; var tl = []; _hqWarmTexOf(m, tl); tl.forEach(function (t) { if (!W.tseen[t.uuid]) { W.tseen[t.uuid] = 1; W.texs.push(t); } }); }
                 if (!fresh) continue;
                 W.fake._list = [o];
-                renderer.compile(W.fake, H.camera);
+                /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
+                var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
+                if (_wt) renderer.setRenderTarget(_wt);
+                try { renderer.compile(W.fake, H.camera); } finally { if (_wt) renderer.setRenderTarget(_wp); }
                 n++;
                 if (_alNow() >= end) break;
             }

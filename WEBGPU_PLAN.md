@@ -651,3 +651,35 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   renderer is now one the classic WebGL contexts can upload too (`_ktxLoader` ANDs the device's formats with a WebGL 2
   probe): Firefox on a Mac offers ASTC on WebGPU but not on WebGL, so the character viewer behind the party builder's hero
   stage drew every unit black. The ?ewdiag build line now reads the real script token.
+- 2026-10-04: **W3 the post stack** (zip renderer/ENTROPY_WARS_W3_POST.zip: three-post.js + three-renderer.js, token
+  20261004-gpu3-01-cors). three-post.js "WEBGPU_PLAN W3 — THE NODE CHAIN" builds the post on three's `RenderPipeline`
+  when the board renderer is the node renderer: the add-ons (`BloomNode`, `FXAANode`, `SMAANode`, `GTAONode`) load by
+  dynamic import, then one pipeline per shape `aa|ao|BDF` (cached; `ThreePost.getPostChain()` → `lib: 'node'`,
+  `effectsA` the key, `pipelines` the count). Order: scene pass (half float, no stencil) → AO → + bloom → tone map →
+  AA → tilt-shift H/V → the frame → canvas, `outputColorTransform` off. The rest of three-post.js drives stand-ins
+  with the classic shapes (`_bloomPass`, `_cinematicPass.material.uniforms`, `_retroPass`, `_ssaoPass.aoMat.uniforms`,
+  `_dofPassH/V`, `_toneMapPass`), so every `set*`, the scene looks, the night grade and the drama dims write the same
+  objects as before and the node graph reads them through reference nodes. Ported as TSL `Fn`: the classic SSAO (16
+  kernel taps, the depth-aware 4×4 blur), the tone map (r128 ACES, the GLSL `mat3` column order), the 9-tap tilt-shift,
+  the Cinematic + Retro frame (one graph; motion blur inside a uniform `If`; the pixel mask still renders through
+  `_renderPixelMask`). Auto exposure reads 16×16 back with `readRenderTargetPixelsAsync` (rows padded to 256 bytes on
+  WebGPU). `renderDirect` (split screen, side panes) renders each pane to a half-float target and tone-blits it into
+  its viewport. The room warm-up compiles into the scene pass's target (`ThreePost.warmTarget()`) so its pipelines
+  match the frame's formats. Differences from the plan as written: **no TRAA** (it needs the velocity MRT, which W8
+  builds); the "N8AO" AO row draws GTAO on this path and keeps the classic depth-aware blur (the Settings label still
+  says N8AO); bloom reads the raw scene the way the pmndrs chain did; AA runs after the tone map; the scene pass has no
+  stencil (WebGPU cannot sample a depth-stencil texture with aspect "all"), so the outlines stay as on W2; lighting
+  sync now runs on the node path too. Fixed on the way, found by the load check: (1) three's node effects
+  (`RTTNode`, `SMAANode`, the blurs) call `resetRendererState`, which clears the render-object hook, and the scene
+  pass renders INSIDE them, so every shader twin, point proxy and the shadow pulse were skipped inside the chain
+  ("Material ShaderMaterial is not compatible"); `_ewGpuCompat`'s render wrapper re-arms the hook for a scene render
+  that finds it cleared, and QuadMesh / side renders no longer count as the frame's outer render. (2) A three 0.186.1
+  bug on both backends: `Geometries.updateAttribute` keeps its per-call map across a geometry dispose, so after one
+  only the FIRST attribute of an interleaved geometry is uploaded again and every later draw fails ("no buffer is
+  bound to enabled attribute"); every Sprite shares one interleaved quad, so one disposed sprite hid every light halo
+  in the HQ (true since W0). `_ewGpuInterleaveFix` uploads an interleaved attribute the renderer holds no record of on
+  the spot; drop it when three fixes Geometries. (3) A local `var _ng` (the night grade) in `render()` shadowed the
+  chain and crashed every battle frame; renamed. (4) The zodiac wheel rim was the game's one `LineLoop`, which the
+  node renderer refuses; it is a closed `Line` now (same picture on both). Sandbox check (`?ew_gpu=webgl2`): HQ lobby
+  matches `?ew_gpu=webgl` side by side (halos, AO, grade), the bloom / FXAA / SMAA / retro / GTAO variants build with
+  no errors, a battle builds `smaa|classic|-DF` with the DoF band. Next: W4.
