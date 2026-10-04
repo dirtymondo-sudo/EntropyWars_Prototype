@@ -5922,21 +5922,13 @@ const ThreeRenderer = (function () {
         var geo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
         var cube = new THREE.Mesh(geo, mat);
 
-        /* inner glow shell */
-        var glowMat = new THREE.MeshBasicMaterial({
-            color: tint, transparent: true, opacity: 0.15,
-            side: THREE.BackSide, depthWrite: false
-        });
-        var glow = new THREE.Mesh(new THREE.BoxGeometry(cubeSize * 1.25, cubeSize * 1.25, cubeSize * 1.25), glowMat);
-
+        /* NO LIGHT BOX (mondo 2026-10-04, "looks like shit"): the translucent glow shell round the cube is gone */
         var g = new THREE.Group();
         g.add(cube);
-        g.add(glow);
         g.position.set(x * ts + ts / 2, topY + floatH, y * ts + ts / 2);
         g._ew_towerCube = true;
         g._ew_towerOwner = owner;
         g._ew_cubeInner = cube;
-        g._ew_cubeGlow = glow;
 
         /* ── Tower health bar (CSS2DObject, same style as unit plates) ── */
         _ensurePlateStyles();
@@ -5983,9 +5975,6 @@ const ThreeRenderer = (function () {
             /* Spin on Y and wobble on X */
             tc._ew_cubeInner.rotation.y = now * 0.8 + i * 1.5;
             tc._ew_cubeInner.rotation.x = Math.sin(now * 0.6 + i * 2.0) * 0.35;
-            /* Glow counter-rotates slowly */
-            tc._ew_cubeGlow.rotation.y = -now * 0.3 + i;
-            tc._ew_cubeGlow.rotation.z = now * 0.2;
             /* Gentle float bob */
             var bob = Math.sin(now * 1.2 + i * 3.14) * (CONFIG.tileSize || BASE_TILE) * 0.06;
             tc.position.y = tc._ew_baseY + bob;
@@ -31938,6 +31927,11 @@ const ThreeRenderer = (function () {
     }
 
     function _buildLightRays() {
+        /* NO LIGHT BOX (mondo 2026-10-04): the god-ray shafts are boxes that read as a lit translucent box (and a bright floor
+           pool) on the board; they are gone from every battle. */
+        if (_rayGroup) { scene && scene.remove(_rayGroup); _disposeR(_rayGroup); _rayGroup = null; }
+        _rayShafts.length = 0; _rayKey = '';
+        return;
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
@@ -60275,6 +60269,7 @@ const ThreeRenderer = (function () {
     var HQ_SHAFT_UW = 2.6;
     var HQ_SHAFT_GAIN = 2.2;   /* a room's beam over a dark stand-in wall read as nothing at the battle's 0.3 — the board's rays land on a lit field */
     function _hqLightShaft(U, p) {
+        return null;   /* NO LIGHT BOX (mondo 2026-10-04): the same box beam as the battle's shafts; room rows and light_shaft props draw nothing */
         if (typeof _ensureRayShaders !== 'function') return null;
         _ensureRayShaders();
         var H = _hq, h = (p.h || 6) * U, w = (p.w || 2.2) * U, tilt = _hqRad(p.tilt || 0), dir = _hqRad(p.dir || 0);
