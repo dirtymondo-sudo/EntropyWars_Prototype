@@ -781,3 +781,15 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   props 196 -> 100). New F3 block "Own draw calls by group" names the groups that still cost draws (a bundled group's
   leftovers read "(outside its bundle)"). Still open: the per-draw CPU of three's node renderer (#30560) on what is left;
   the battle board is not bundled (its pieces are mostly backdrop or transparent overlays with their own sort order).
+- 2026-10-04: **W5a fix 3, the battle freeze** (zip renderer/ENTROPY_WARS_W5A_FREEZE.zip: three-renderer.js; token
+  20261004-gpu5a-03-cors). mondo: "screen freezes but the battle still goes on and i can see the name plates moving";
+  F3 "post 0" (the chain's quads never drew). Reproduced in a sandbox AI battle (`?ew_gpu=webgl2`, GTAO on): page error
+  "Cannot read properties of null (reading 'complete')" in three's Textures.updateTexture, every frame. `startHitEffect`
+  clones the hit sheet and flags the clone for upload; while the sheet is still loading the clone has version 1 and a
+  null image, which three's node renderer dereferences (WebGL skips it). The scene pass runs inside the post chain's
+  first quad draw, so the throw left render() mid-frame and nothing reached the canvas while the game and its DOM went
+  on. Fixes: the spark is skipped until its sheet has a picture; THE DRAW GUARD in the render-object function catches a
+  throw in one draw, skips that draw and lets the frame finish (`?ewdiag` / F3 "skipped draws N (first: ...)", one
+  console warning per object). Sandbox after: no page errors, post 9 draws. Still open: the W2 twins (each new
+  ShaderMaterial / MeshLine instance builds its own node shader: ~4-6 builds/s in an AI battle, the CPU of mondo's 39 ms
+  frames).
