@@ -793,3 +793,12 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   console warning per object). Sandbox after: no page errors, post 9 draws. Still open: the W2 twins (each new
   ShaderMaterial / MeshLine instance builds its own node shader: ~4-6 builds/s in an AI battle, the CPU of mondo's 39 ms
   frames).
+- 2026-10-04: **W5a round 4, THE SHARED TWINS** (zip renderer/ENTROPY_WARS_W5A_TWINS.zip: three-renderer.js; token
+  20261004-gpu5a-04-cors). Each W2 twin built a fresh TSL graph, and a fresh graph is a fresh node build + pipeline, so
+  every new tile highlight, outline, MeshLine bolt or skinned ShaderMaterial copy compiled its own shader (sandbox AI
+  battle: 716 builds in 60 s). Now `_ewProgTwin` keys a twin by factory + vertex shader hash + defines + uniform names +
+  object kind; later twins with the same key reuse the first twin's node properties. Uniform reads stay per material:
+  `_ewPU` / `_ewPT` read `twin._ewu_<name>` (a getter onto that material's own `uniforms[name].value`) from the drawn
+  material (`frame.material`, OBJECT update per render object). A uniform object shared under two names is ambiguous and
+  that twin is not shared. Off: `?ew_twinshare=0` / `window.EW_NO_TWIN_SHARE`. Sandbox after: 61 builds in 60 s, no page
+  errors, P1/P2 rings keep their own colours.

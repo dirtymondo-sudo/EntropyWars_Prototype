@@ -32679,22 +32679,49 @@ const ThreeRenderer = (function () {
         'blendEquation', 'blendSrcAlpha', 'blendDstAlpha', 'blendEquationAlpha', 'premultipliedAlpha', 'stencilWrite', 'stencilRef', 'stencilFunc',
         'stencilFuncMask', 'stencilWriteMask', 'stencilFail', 'stencilZFail', 'stencilZPass', 'polygonOffset', 'polygonOffsetFactor',
         'polygonOffsetUnits', 'colorWrite', 'alphaToCoverage', 'toneMapped'];
+    /* THE SHARED TWINS (W5a, 2026-10-04): every twin used to read the uniform OBJECTS of the classic material it was made
+       from, so every new highlight / ring / outline / bolt material made its own node graph and three built a shader for
+       each (mondo's battle: ~5 builds a second, his 39 ms frames). A uniform is now read BY NAME off the material being
+       drawn (each twin carries `_ewu_<name>` getters onto its classic material's uniforms), so twins of one program with
+       the same uniforms and defines can share one graph, and three builds it once. A uniform object a program shares under
+       two names reads as before (the object itself). Off: ?ew_twinshare=0 (reload). */
+    var _ewPUName = new WeakMap(), _EW_PU_AMBIG = '\u0000', _ewProgShare = new Map();
+    function _ewTwinShareOff() { try { return !!window.EW_NO_TWIN_SHARE || /[?&]ew_twinshare=0\b/.test(location.search); } catch (e) { return false; } }
     /* a uniform {value} → a node that reads it every draw */
-    function _ewPU(o, type) { return _ewNodeU.T.reference('value', type, o); }
+    function _ewPU(o, type) {
+        var k = o ? _ewPUName.get(o) : null;
+        if (!k || k === _EW_PU_AMBIG) return _ewNodeU.T.reference('value', type, o);
+        var key = '_ewu_' + k, px = { m: null };   // the drawn twin's value by name, else this object's own (a global uniform)
+        Object.defineProperty(px, 'value', { get: function () { var tw = px.m; return (tw && key in tw) ? tw[key] : o.value; } });
+        var n = _ewNodeU.T.reference('value', type, px), up = n.update;
+        n.update = function (f) { px.m = f ? f.material : null; return up.apply(this, arguments); };
+        return n;
+    }
     /* a sampler uniform → fn(uv) sampling whatever texture it holds this draw (a 1×1 white sheet while it holds none) */
     function _ewPT(o) {
         var T = _ewNodeU.T, b = _ewProgTex.get(o);
         if (!_ewProgPh) { _ewProgPh = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); _ewProgPh.needsUpdate = true; }
         if (!b) { b = T.texture(o.value || _ewProgPh); _ewProgTex.set(o, b); }
+        var k = _ewPUName.get(o); if (k === _EW_PU_AMBIG) k = null;
+        var key = k ? '_ewu_' + k : null;
         return function (uvn) {
             var n = T.texture(b, uvn), up = n.update;
-            n.update = function (f) { var v = o.value || _ewProgPh; if (b.value !== v) b.value = v; if (up) return up.call(this, f); };
+            n.update = function (f) {
+                var tw = f && f.material, v = (key && tw && key in tw) ? tw[key] : o.value;   // THE SHARED TWINS: the drawn material's sheet
+                v = v || _ewProgPh; if (b.value !== v) b.value = v; if (up) return up.call(this, f);
+            };
             n.updateType = 'object';
             return n;
         };
     }
     function _ewProgMat(m, obj, cls) {
         var G = _ewNodeU.G, C = (cls && G[cls]) || G.MeshBasicNodeMaterial, s = new C();
+        if (!_ewTwinShareOff() && m.uniforms) Object.keys(m.uniforms).forEach(function (k) {   // THE SHARED TWINS: the names, and the getters
+            var o = m.uniforms[k]; if (!o || typeof o !== 'object') return;
+            var had = _ewPUName.get(o);
+            if (had === undefined) _ewPUName.set(o, k); else if (had !== k) _ewPUName.set(o, _EW_PU_AMBIG);
+            Object.defineProperty(s, '_ewu_' + k, { configurable: true, enumerable: false, get: function () { var x = m.uniforms[k]; return x ? x.value : undefined; } });
+        });
         _ewProgSync(s, m);
         s.fog = false; s.lights = false;
         s.name = 'ew_node_prog:' + (m.name || m.type);
@@ -33282,12 +33309,33 @@ const ThreeRenderer = (function () {
         P.mesh.matrixWorld.copy(pts.matrixWorld);
         return n > 0 ? P.mesh : null;
     }
+    /* THE SHARED TWINS: the first twin of a (program, vertex source, defines, uniform names, object kind) gives its node
+       graph to every later one; each still reads its own material's uniforms (by name, above) */
+    function _ewTwinShare(E, s, m, obj) {
+        var un = m.uniforms ? Object.keys(m.uniforms).sort() : [];
+        for (var i = 0; i < un.length; i++) if (_ewPUName.get(m.uniforms[un[i]]) === _EW_PU_AMBIG) return;   // read by object: not shareable
+        var vs = m.vertexShader || '', vh = 0; for (var j = 0; j < vs.length; j++) vh = (Math.imul(vh, 31) + vs.charCodeAt(j)) | 0;
+        var kind = obj ? ((obj.isSkinnedMesh ? 'S' : '') + (obj.isInstancedMesh ? 'I' : '') + (obj.isPoints ? 'P' : '') + (obj.isLine ? 'L' : '') + (obj.isSprite ? 'R' : '')) : '';
+        var sig = E.k + '|' + vs.length + ':' + vh + '|' + JSON.stringify(m.defines || {}) + '|' + un.join(',') + '|' + kind + '|' + s.type;
+        var Sh = _ewProgShare.get(sig), p;
+        if (Sh) { for (p in Sh.nodes) s[p] = Sh.nodes[p]; Sh.n++; return; }
+        Sh = { nodes: {}, n: 1 };
+        for (p in s) { if (Object.prototype.hasOwnProperty.call(s, p) && s[p] && s[p].isNode) Sh.nodes[p] = s[p]; }
+        _ewProgShare.set(sig, Sh);
+    }
     /* the classic program's TSL twin, or null (then the flat stand-in) */
     function _ewProgTwin(m, obj) {
         if (!_ewNodeU || !_ewNodeU.G || !m.fragmentShader) return null;
         var P = _ewProgsInit(), E = P.get(m.fragmentShader);
         if (!E) return null;
-        try { var s = E.fn(m, obj); if (s) { var C = _ewNodeU.dressed, k = 'program ' + E.k; C[k] = (C[k] || 0) + 1; s._ewTwinOf = m; } return s; }
+        try {
+            var s = E.fn(m, obj);
+            if (s) {
+                var C = _ewNodeU.dressed, k = 'program ' + E.k; C[k] = (C[k] || 0) + 1; s._ewTwinOf = m;
+                if (!_ewTwinShareOff()) _ewTwinShare(E, s, m, obj);
+            }
+            return s;
+        }
         catch (e) { console.warn('[ThreeRenderer] node program: kept the stand-in', e); return null; }
     }
     /* the board renderer: the node renderer when asked for and loaded, else the classic one */
