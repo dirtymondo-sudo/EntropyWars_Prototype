@@ -31926,6 +31926,11 @@ const ThreeRenderer = (function () {
     }
 
     function _buildLightRays() {
+        /* NO LIGHT BOX (mondo 2026-10-04): the god-ray shafts are boxes that read as a lit translucent box (and a bright floor
+           pool) on the board; they are gone from every battle. */
+        if (_rayGroup) { scene && scene.remove(_rayGroup); _disposeR(_rayGroup); _rayGroup = null; }
+        _rayShafts.length = 0; _rayKey = '';
+        return;
         if (!scene || typeof THREE === 'undefined') return;
         var ts = CONFIG.tileSize || BASE_TILE;
         var _bw = (typeof bw === 'function') ? bw() : 16;
@@ -60263,6 +60268,7 @@ const ThreeRenderer = (function () {
     var HQ_SHAFT_UW = 2.6;
     var HQ_SHAFT_GAIN = 2.2;   /* a room's beam over a dark stand-in wall read as nothing at the battle's 0.3 — the board's rays land on a lit field */
     function _hqLightShaft(U, p) {
+        return null;   /* NO LIGHT BOX (mondo 2026-10-04): the same box beam as the battle's shafts; room rows and light_shaft props draw nothing */
         if (typeof _ensureRayShaders !== 'function') return null;
         _ensureRayShaders();
         var H = _hq, h = (p.h || 6) * U, w = (p.w || 2.2) * U, tilt = _hqRad(p.tilt || 0), dir = _hqRad(p.dir || 0);
