@@ -1705,10 +1705,10 @@ const ThreePost = (function () {
     function setFilmicTone(enabled) {
         _filmic = !!enabled;
         if (_renderer) {
-            if (!_hdr) _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;   // THE HDR BLOOM: the tone map pass reads _filmic itself
+            if (!_hdr && !_ng) _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;   // (the node chain tone-maps itself: _ngTone)   // THE HDR BLOOM: the tone map pass reads _filmic itself
             _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
         }
-        if (!_hdr) _recompileSceneMaterials();
+        if (!_hdr && !_ng) _recompileSceneMaterials();
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_filmicTone', _filmic ? '1' : '0'); } catch (e) {}
     }
     function isFilmicTone() { return _filmic; }
@@ -2698,7 +2698,7 @@ const ThreePost = (function () {
         // the classic AO (THE BANDS fix kept: every depth read lands on a texel centre), into its own target
         P.aoTex = T.rtt(_ngAoFrag(P), null, null, { resolutionScale: 0.5 });
         P.aoTex.name = 'ew ao';
-        _hdr = true;   // the scene pass is half float: the bloom thresholds read as THE HDR BLOOM's (_bloomThrFor)
+        _hdr = false;   // the classic look is the LDR one (see _ngTone): the bloom thresholds read as the classic chain's
         renderer.toneMapping = THREE.NoToneMapping;   // the chain tone-maps; the renderer must not do it again on its own
         _pp = null; _ng = P; _composer = P;
         _applyDofUniforms(); _aaApply(); _applyCinematicUniforms(); _applyRetroUniforms(); _applySceneFog(); _tmSync();
@@ -2781,20 +2781,18 @@ const ThreePost = (function () {
             return T.select(wsum.greaterThan(0), sum.div(wsum), F(1));
         })();
     }
-    /* the tone map (_ToneMapShader verbatim): the target holds sRGB-encoded light — decode, ACES / linear × exposure, encode */
+    /* the tone map of a classic render straight into the canvas (renderDirect's panes): what three does INSIDE every material
+       there — renderer.toneMapping ACES / linear × the exposure on the raw colour, output linear (no sRGB decode / encode).
+       The chain itself draws no tone map (see _ngBuild). The GLSL mat3 column order. */
     function _ngTone(P, c) {
-        var T = P.T, F = T.float, V3 = T.vec3, U = P.U.tone;
+        var T = P.T, V3 = T.vec3, U = P.U.tone;
         var uE = _ngR(P, U.uExposure, 'float'), uM = _ngR(P, U.uMode, 'float');
         var m3 = function (a, b, d, v) { return a.mul(v.x).add(b.mul(v.y)).add(d.mul(v.z)); };   // GLSL mat3(a, b, d) * v
-        var lin0 = T.max(c.rgb, V3(0));
-        var lin = T.mix(T.pow(lin0.add(0.055).div(1.055), V3(2.4)), lin0.div(12.92), T.step(lin0, V3(0.04045)));
+        var lin = T.max(c.rgb, V3(0));
         var a = m3(V3(0.59719, 0.07600, 0.02840), V3(0.35458, 0.90834, 0.13383), V3(0.04823, 0.01566, 0.83777), lin.mul(uE.div(0.6)));
         var ra = a.mul(a.add(0.0245786)).sub(0.000090537), rb = a.mul(a.mul(0.983729).add(0.4329510)).add(0.238081);
         var aces = T.clamp(m3(V3(1.60475, -0.10208, -0.00327), V3(-0.53108, 1.10813, -0.07276), V3(-0.07367, -0.00605, 1.07602), ra.div(rb)), 0, 1);
-        var m = T.select(uM.greaterThan(0.5), aces, T.clamp(lin.mul(uE), 0, 1));
-        var mz = T.max(m, V3(0));
-        var enc = T.mix(T.pow(mz, V3(1 / 2.4)).mul(1.055).sub(0.055), m.mul(12.92), T.step(m, V3(0.0031308)));
-        return T.vec4(enc, c.a);
+        return T.vec4(T.select(uM.greaterThan(0.5), aces, T.clamp(lin.mul(uE), 0, 1)), c.a);
     }
     /* one tilt-shift pass (_TiltShiftShader): blur grows with the distance from the focus line (screen v, 0 = the bottom) */
     function _ngDof(P, src, U) {
@@ -2930,6 +2928,12 @@ const ThreePost = (function () {
     }
     function _ngBuild(o) {
         var P = _ng, T = P.T, made = [], passes = 1;
+        /* NO tone map in the chain: that is the classic look. The classic chain's scene renders into the composer's target, and
+           three r153+ applies renderer.toneMapping only to a render into the CANVAS (WebGLRenderer: "_currentRenderTarget ===
+           null"), so with Post FX on the classic frame has never been tone-mapped since the R1 upgrade (and its HDR chain never
+           runs: _hdrSupported reads !THREE.NoToneMapping, which is 0). Tone-mapping here made the menu's darks black and its
+           lights hot ("the whole scene is too dark", 2026-10-04). renderDirect's panes do draw to the canvas there: _ngDirect
+           keeps _ngTone. */
         var col = P.sceneTex, lit = col;
         if (o.ao !== 'off') {
             var aoT = P.aoTex;
@@ -2947,7 +2951,7 @@ const ThreePost = (function () {
             lit = T.vec4(lit.rgb.add(bl.rgb), lit.a);
             passes += 11;
         }
-        var ldr = _ngTone(P, lit);
+        var ldr = lit;
         if (o.aa === 'smaa') { ldr = P.mods.smaa.smaa(ldr); made.push(ldr); passes += 4; }
         else if (o.aa === 'fxaa') { ldr = P.mods.fxaa.fxaa(ldr); made.push(ldr); passes += 2; }
         if (o.dof) {
@@ -2973,6 +2977,12 @@ const ThreePost = (function () {
         P.cam = cam;
         P.sp.scene = sc; P.sp.camera = cam;
         P.uDRes.value.set(Math.max(1, ds.x), Math.max(1, ds.y));
+        /* the CSS-px resolution the frame / DoF / FXAA uniforms read: resize() skips while the chain is still loading (the
+           menu sized the canvas then), which left the retro pixel grid at the boot size (blocks too big: "too pixelated") */
+        if (!P.css) P.css = new THREE.Vector2();
+        r.getSize(P.css);
+        var cr = P.U.cu.uResolution.value;
+        if (P.css.x > 0 && P.css.y > 0 && (cr.x !== P.css.x || cr.y !== P.css.y)) resize(P.css.x, P.css.y);
         var sc2 = half ? 0.5 : 1;
         if (P.aoTex.getResolutionScale() !== sc2) P.aoTex.setResolutionScale(sc2);
         P.uARes.value.set(Math.max(1, Math.floor(ds.x * sc2)), Math.max(1, Math.floor(ds.y * sc2)));

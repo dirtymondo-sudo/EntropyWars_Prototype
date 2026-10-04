@@ -31990,8 +31990,10 @@ const ThreeRenderer = (function () {
     function _ewNodeAo() {
         if (_ewNodeAoFn) return _ewNodeAoFn;
         var T = _ewNodeU.T, A = _ewNodeU.ao, A2 = _ewNodeU.ao2;
+        /* the geometry normal, as the GLSL (mat3(modelMatrix) * objectNormal): normalWorld here, inside setupDiffuseColor,
+           builds three's once-only lit normal before the lighting does, and the sun / spots then lit nothing (W3 fix 1) */
         _ewNodeAoFn = T.Fn(function () {
-            var wp = T.positionWorld, n = T.abs(T.normalize(T.normalWorld)), R = T.max(A2.x, 0.001), one = T.float(1);
+            var wp = T.positionWorld, n = T.abs(T.normalize(T.normalWorldGeometry)), R = T.max(A2.x, 0.001), one = T.float(1);
             var fx = one.sub(T.smoothstep(0, R, A.x.sub(T.abs(wp.x.sub(A2.z)))));
             var fz = one.sub(T.smoothstep(0, R, A.y.sub(T.abs(wp.z.sub(A2.w)))));
             var fy = one.sub(T.smoothstep(0, R, wp.y.sub(A2.y)));
