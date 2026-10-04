@@ -1954,6 +1954,8 @@ const ThreeVFX = (function () {
     function _qkWanted() {
         if (typeof window === 'undefined') return false;
         if (window.EW_QUARKS === false) return false;
+        /* WEBGPU_PLAN W4: three.quarks draws with GLSL materials, which the node renderer cannot (the Settings row is hidden there) */
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isNodeRenderer && ThreeRenderer.isNodeRenderer()) return false; } catch (e) {}
         if (window.EW_QUARKS === true) return true;
         try { if (typeof window.hqPolishGet === 'function') return +window.hqPolishGet('quarksFx') >= 0.5; } catch (e) {}
         return false;

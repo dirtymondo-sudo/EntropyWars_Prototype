@@ -31844,7 +31844,7 @@ const ThreeRenderer = (function () {
         var s = _ewGpuBackendName();
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
-        if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost;
+        if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
         else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
@@ -31945,7 +31945,8 @@ const ThreeRenderer = (function () {
         if (!T || !r._nodes || !r.library) return;
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
-        _ewNodeU = { T: T, G: G, hfog: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), fflow: F(new THREE.Vector2()), dressed: {} };
+        /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
+        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), fflow: F(new THREE.Vector2()), dressed: {} };
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
         var N = r._nodes, uf = N.updateFog, fogs = new WeakMap();
@@ -32182,6 +32183,30 @@ const ThreeRenderer = (function () {
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
         for (var i = layers.length - 1; i >= 0; i--) _ewNodeOutLayer(nm, layers[i]);
+        if (m.clippingPlanes && m.clippingPlanes.length) { C.clip = (C.clip || 0) + 1; _ewNodeClip(nm, m); }
+    }
+    /* THE CLIP PLANES (WEBGPU_PLAN W4, 2026-10-04): three's node renderer clips only through a ClippingGroup, while the game
+       sets the classic API. A material's own clippingPlanes (the elevator halves, the pocket doors, the editor's level band)
+       become discards here: a fragment goes where the classic one did, on the negative side of a plane, in world space.
+       Each plane is read off the classic material at every draw, so moving a Plane moves the cut. Only materials that carry
+       planes pay for it (a discard costs the early depth test). The renderer's planes (a reflector's mirrored draw) go
+       through a ClippingGroup instead: _hqTickReflectors. */
+    function _ewNodeClip(nm, m) {
+        var T = _ewNodeU.T, n = m.clippingPlanes.length, P = [];
+        for (var i = 0; i < n; i++) (function (i) {
+            var v = new THREE.Vector4(0, 0, 0, 1);
+            P.push(T.uniform(v).onObjectUpdate(function () {
+                var p = m.clippingPlanes && m.clippingPlanes[i];
+                return p ? v.set(p.normal.x, p.normal.y, p.normal.z, p.constant) : v.set(0, 0, 0, 1);   // a missing plane clips nothing
+            }));
+        })(i);
+        var base = nm.setupDiffuseColor;   // the other dresses' (they set it on the instance first)
+        nm.setupDiffuseColor = function (builder) {
+            base.call(this, builder);
+            var wp = T.positionWorld, out = null;
+            for (var j = 0; j < P.length; j++) { var c = wp.dot(P[j].xyz).add(P[j].w).lessThan(0); out = out ? out.or(c) : c; }
+            if (out) T.Discard(out);
+        };
     }
     /* ══ THE RENDER BUNDLES (WEBGPU_PLAN W6, 2026-10-03) ═════════════════════════════════════════════════════════════════
        three's node renderer costs about twice WebGLRenderer's CPU per draw on mondo's Mac (downtown: 12.7 ms vs 6.0 ms for
@@ -33143,6 +33168,7 @@ const ThreeRenderer = (function () {
         var rawLoop = r.setAnimationLoop;
         r.setAnimationLoop = function (cb) {
             var self = this;
+            this._ew_loopCb = cb || null;   // W4: a rebuilt renderer takes the frame loop over
             return rawLoop.call(this, cb ? function (t, x) {
                 try { cb(t, x); }
                 finally { if (self.backend && self.backend.trackTimestamp && !(_lens && _lens.gpu)) { try { self.resolveTimestampsAsync('render'); } catch (e) {} } }
@@ -33150,7 +33176,11 @@ const ThreeRenderer = (function () {
         };
         r.onDeviceLost = function (info) {
             _ewGpuInfo.lost = (info && (info.message || info.reason)) || 'unknown';
-            console.error('THREE.WebGPURenderer: device lost — ' + _ewGpuInfo.lost + ' (reload; ?ew_gpu=webgl draws with the classic renderer)');
+            var gpu = !!(info && info.api === 'WebGPU');
+            console.error('THREE.WebGPURenderer: device lost — ' + _ewGpuInfo.lost + (gpu ? ' (rebuilding the renderer)' : ' (waiting for the browser to restore the context)'));
+            this._isDeviceLost = true;
+            var self = this;
+            if (gpu) setTimeout(function () { _ewGpuRebuild(self); }, 0);   // out of three's promise callback
         };
         r.init().then(function () {
             _ewGpuInfo.ready = true;
@@ -33171,6 +33201,42 @@ const ThreeRenderer = (function () {
             _ewGpuInfo.why = 'init() failed: ' + (e && e.message || e);
             console.error('THREE.WebGPURenderer: init failed — ' + (e && e.message || e) + ' (?ew_gpu=webgl draws with the classic renderer)');
         });
+    }
+    /* THE LOST DEVICE (WEBGPU_PLAN W4, 2026-10-04). A WebGPU device can be lost (a driver reset, the GPU process restarting,
+       waking from sleep); three then refuses every draw and the board stays black. The board renderer is rebuilt on the same
+       canvas with a new device: the scenes, materials, geometry and textures are plain objects that the new renderer uploads
+       again on its first frames; the post chain drops its pipelines (ThreePost.swapRenderer); the frame loop moves over; the
+       bundles set up again. Three rebuilds a session at most (a device that keeps dying is a broken GPU: ?ew_gpu=webgl). The
+       old renderer is not disposed: its dispose would fire 'dispose' on the shared textures and free the new copies. The WebGL
+       2 backend waits for the browser's own context restore. Console: ThreeRenderer.gpuRebuild() runs it by hand. */
+    function _ewGpuRebuild(old) {
+        if (!old || old !== renderer || old._ew_dead || !canvas) return false;
+        var n = _ewGpuInfo.rebuilds = (_ewGpuInfo.rebuilds || 0) + 1;
+        if (n > 3) { console.error('[ThreeRenderer] the GPU device was lost ' + n + ' times — not rebuilding again (reload, or ?ew_gpu=webgl for the classic renderer)'); return false; }
+        old._ew_dead = true;
+        var cb = old._ew_loopCb || null;
+        try { old.setAnimationLoop(null); } catch (e) {}
+        if (_lens) { try { _lensClose(); } catch (e) {} }
+        var r = null, mode = _ewGpu;
+        try { r = _ewMakeBoardRenderer(canvas); } catch (e) { r = null; }
+        if (!r || !r.isWebGPURenderer) {   // a canvas that held a WebGPU context cannot give a WebGL one
+            console.error('[ThreeRenderer] could not rebuild the node renderer — reload the page');
+            _ewGpu = mode; if (cb) try { old.setAnimationLoop(cb); } catch (e) {}
+            return false;
+        }
+        _ewGpuInfo.ready = false;
+        if (_EW_CS) r.outputColorSpace = old.outputColorSpace;
+        r.setPixelRatio(old.getPixelRatio());
+        var sz = old.getSize(new THREE.Vector2()); r.setSize(sz.x, sz.y, false);
+        r.shadowMap.autoUpdate = false; r.shadowMap.needsUpdate = true;
+        r.autoClear = old.autoClear;
+        renderer = r;
+        _ewBun.setup = false; _ewBun.epoch++;
+        try { if (ThreePost && ThreePost.swapRenderer) ThreePost.swapRenderer(r); } catch (e) { console.warn('[ThreeRenderer] post swap failed', e); }
+        _shadowsDirty = true;
+        if (cb) r.setAnimationLoop(cb);
+        console.warn('[ThreeRenderer] board renderer rebuilt after a lost device (' + n + ' of 3 this session)');
+        return true;
     }
     function init() {
         if (initialized) return;
@@ -35632,7 +35698,7 @@ const ThreeRenderer = (function () {
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
         try { var _pc = (typeof ThreePost !== 'undefined' && ThreePost.getPostChain) ? ThreePost.getPostChain() : null; if (_pc) L.push('Post ' + _pc.lib + ' · ' + _pc.passes + ' passes' + ((_pc.lib === 'pmndrs' || _pc.lib === 'node') ? ' · AO ' + _pc.ao + (_pc.n8ao !== 'idle' ? ' (N8AO ' + _pc.n8ao + ')' : '') + ' · A[' + _pc.effectsA + ']' : '')); } catch (e) {}   // R5
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off'));
-        if (S.text) L.push('Text (HQ plates) ' + (S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
+        if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
@@ -43212,11 +43278,18 @@ const ThreeRenderer = (function () {
         sign:    { ink: 0xf4f4f8, mute: 0xb8c1ee, bar: null }
     };
     var HQ_TEXT_CHIP = { open: 0x39ff6a, stabilized: 0x39ff6a, unstable: 0xffb020, clearance: 0xff4a4a, codered: 0xff4a4a, sealed: 0x8a8a8a, off: 0x8a8a8a };
-    function _hqTextOn() {
-        if (typeof window === 'undefined' || !window.EW_TEXT_LIB || !window.EW_TEXT_LIB.Text || window.EW_NO_GPU_TEXT) return false;
-        try { if (window.localStorage && localStorage.getItem('ew_text') === 'css') return false; } catch (e) {}
-        return true;
+    /* the CSS2D kill switch for every in-scene plate (troika and the canvas ones alike) */
+    function _hqTextCss() {
+        if (typeof window === 'undefined' || window.EW_NO_GPU_TEXT) return true;
+        try { if (window.localStorage && localStorage.getItem('ew_text') === 'css') return true; } catch (e) {}
+        return false;
     }
+    function _hqTextOn() {
+        if (typeof window === 'undefined' || !window.EW_TEXT_LIB || !window.EW_TEXT_LIB.Text || _hqTextCss()) return false;
+        return !_hqCvOn();   // troika's glyphs are GLSL injected through onBeforeCompile: the node renderer cannot draw them
+    }
+    /* WEBGPU_PLAN W4: the plates on the node renderer are canvas-painted planes (below) */
+    function _hqCvOn() { return !!_ewGpu && !!renderer && !!renderer.isWebGPURenderer && !_hqTextCss() && typeof document !== 'undefined'; }
     /* one base material for every plate's text: one program (troika derives its SDF material from it; the derived ones inherit
        _ew_shared, so _disposeR leaves them for the next room) */
     var _hqTextMat = null, _hqTextBarGeo = null, _hqTextV = null, _hqTextQ = null, _hqTextQ2 = null, _hqTextUp = null;
@@ -43248,13 +43321,18 @@ const ThreeRenderer = (function () {
         return P;
     }
     /* the rows, bottom up (the CSS column reversed): the underline, the lamp chip, the sub line, the name, ROOM n */
-    function _hqGpuPlateLayout(P) {
-        var U = _hqUnits(), T = HQ_TEXT, k = P.o.k || 1, pa = P.parts || {}, rows = [], used = {};
+    function _hqPlateRows(P) {
+        var T = HQ_TEXT, pa = P.parts || {}, rows = [];
         if (P.chip) rows.push({ key: 'chip', text: HQ_LAMP_LABEL[P.chip] || String(P.chip), font: 'mono', size: T.chip, sp: 0.2, color: HQ_TEXT_CHIP[P.chip] || 0x8a8a8a });
         if (pa.sub) rows.push({ key: 'sub', text: String(pa.sub), font: 'mono', size: T.sub, sp: 0.22, color: P.tone.mute });
         var unk = pa.known === false;
         rows.push({ key: 'label', text: String(pa.label == null ? '' : pa.label), font: 'title', size: unk ? T.unknown : T.label, sp: unk ? 0 : 0.14, color: P.tone.ink, op: unk ? 0.8 : 1 });
         if (pa.no) rows.push({ key: 'em', text: 'ROOM ' + pa.no, font: 'title', size: T.em, sp: 0.28, color: P.tone.mute });
+        return rows;
+    }
+    function _hqGpuPlateLayout(P) {
+        if (P.cv) { _hqCvPaint(P); return; }
+        var U = _hqUnits(), T = HQ_TEXT, k = P.o.k || 1, rows = _hqPlateRows(P), used = {};
         var y = P.bar ? (T.bar + T.gap) * U * k : 0;
         rows.forEach(function (r) {
             var t = P.t[r.key] || (P.t[r.key] = _hqGpuText(P));
@@ -43291,6 +43369,7 @@ const ThreeRenderer = (function () {
         if (op === P.op) return;
         P.op = op;
         P.inner.visible = op > 0.01;
+        if (P.cv) { if (P.mesh) P.mesh.material.opacity = op; return; }
         for (var key in P.t) { var t = P.t[key], a = op * (t._ew_op || 1); t.fillOpacity = a; t.outlineOpacity = a * 0.85; }
         if (P.bar) P.bar.material.opacity = P.tone.barOp * op;
     }
@@ -43304,12 +43383,94 @@ const ThreeRenderer = (function () {
         P.g.getWorldQuaternion(q2).invert();
         P.inner.quaternion.copy(q2.multiply(q));
     }
+    /* THE CANVAS PLATES (WEBGPU_PLAN W4, 2026-10-04): on the node renderer a plate is ONE plane whose rows are painted into a
+       CanvasTexture — the troika plate's rows, sizes, tones, halo and underline, in the two fonts the DOM plates load (Cormorant
+       SC 700, IBM Plex Mono 500). It sits where the troika plate sat, so it is hidden by walls and fogged the same way, and it
+       fades through its material's opacity. A plate repaints when its rows change and once the web font has loaded; the
+       texture is freed with the plate's material. ew_text = 'css' / EW_NO_GPU_TEXT → the CSS2D plates, as on WebGL. */
+    var HQ_CV_FONT = { title: ['700', '"Cormorant SC", serif'], mono: ['500', '"IBM Plex Mono", monospace'] };
+    var HQ_CV_PPM = 420;   // canvas px per plate metre (the label row ≈ 38 px tall)
+    var _hqCvGeo = null;
+    function _hqCvPlate(parts, o) {
+        var g = new THREE.Group(), inner = new THREE.Group();
+        g.name = 'hq_plate'; g._ew_text = 1; inner._ew_text = 1; g.add(inner);
+        var P = { g: g, inner: inner, t: {}, bar: null, parts: parts, chip: o.chip || null, o: o, tone: HQ_TEXT_TONE[o.tone] || HQ_TEXT_TONE.door, op: -1, hidden: false, seq: 0, cv: true, mesh: null, tex: null, cvs: null };
+        if (!_hqCvGeo) { _hqCvGeo = new THREE.PlaneGeometry(1, 1); _hqCvGeo.translate(0, 0.5, 0); _hqCvGeo._ew_shared = true; }
+        var mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.FrontSide, opacity: 1 });
+        mat.addEventListener('dispose', function () { if (P.tex) { P.tex.dispose(); P.tex = null; } });
+        P.mesh = new THREE.Mesh(_hqCvGeo, mat);
+        P.mesh.raycast = _hqNoRay; P.mesh.castShadow = false; P.mesh.receiveShadow = false; P.mesh._ew_text = 1; P.mesh.visible = false;
+        inner.add(P.mesh);
+        _hqCvPaint(P);
+        return P;
+    }
+    function _hqCvFont(r, px) { var f = HQ_CV_FONT[r.font] || HQ_CV_FONT.title; return f[0] + ' ' + px.toFixed(1) + 'px ' + f[1]; }
+    /* a row's width with its letter spacing (em) — drawn glyph by glyph, so no canvas letterSpacing support is needed */
+    function _hqCvRowW(c, text, gap) { var w = 0; for (var i = 0; i < text.length; i++) w += c.measureText(text[i]).width + (i ? gap : 0); return w; }
+    function _hqCvRowDraw(c, text, x0, y, gap, stroke) {
+        var x = x0;
+        for (var i = 0; i < text.length; i++) { if (stroke) c.strokeText(text[i], x, y); else c.fillText(text[i], x, y); x += c.measureText(text[i]).width + gap; }
+    }
+    function _hqCvHex(h, a) { return 'rgba(' + ((h >> 16) & 255) + ',' + ((h >> 8) & 255) + ',' + (h & 255) + ',' + a + ')'; }
+    function _hqCvPaint(P) {
+        var U = _hqUnits(), T = HQ_TEXT, k = P.o.k || 1, rows = _hqPlateRows(P), ppm = HQ_CV_PPM, seq = ++P.seq;
+        var cv = document.createElement('canvas'), c = cv.getContext('2d');
+        if (!c) return;
+        /* the rows in plate metres (bottom up, the troika stack): the underline, then each row's line box */
+        var hasBar = P.tone.bar != null, w = 0, y = hasBar ? T.bar + T.gap : 0, lay = [], wait = [];
+        rows.forEach(function (r) {
+            var px = r.size * ppm, font = _hqCvFont(r, px);
+            try { if (document.fonts && !document.fonts.check(font)) wait.push(font); } catch (e) {}
+            c.font = font;
+            var rw = _hqCvRowW(c, r.text, r.sp * px) / ppm;
+            lay.push({ r: r, px: px, font: font, y: y, w: rw });
+            w = Math.max(w, rw);
+            y += r.size * T.lineH + T.gap;
+        });
+        var top = y, barW = w + T.pad, mg = 0.06;   // a margin for the halo
+        var Wm = Math.max(barW, w) + 2 * mg, Hm = top + 2 * mg;
+        cv.width = Math.min(2048, Math.max(4, Math.ceil(Wm * ppm))); cv.height = Math.min(1024, Math.max(4, Math.ceil(Hm * ppm)));
+        var sx = cv.width / Wm, sy = cv.height / Hm, cx = cv.width / 2, by = cv.height - mg * sy;   // the plate's anchor: bottom centre
+        c.textBaseline = 'bottom'; c.lineJoin = 'round';
+        if (hasBar) { c.fillStyle = _hqCvHex(P.tone.bar, P.tone.barOp); c.fillRect(cx - barW * sx / 2, by - T.bar * sy, barW * sx, T.bar * sy); }
+        lay.forEach(function (L) {
+            var r = L.r, a = r.op || 1, x0 = cx - L.w * sx / 2, yb = by - L.y * sy - L.px * 0.06, gap = r.sp * L.px;
+            c.font = L.font;
+            c.save();   // the CSS text-shadow / troika's outline + blur: a soft black halo under the fill
+            c.strokeStyle = 'rgba(0,0,0,' + (0.85 * a) + ')'; c.lineWidth = Math.max(1, 0.08 * L.px);
+            c.shadowColor = 'rgba(0,0,0,' + (0.85 * a) + ')'; c.shadowBlur = 0.22 * L.px;
+            _hqCvRowDraw(c, r.text, x0, yb, gap, true);
+            c.restore();
+            c.fillStyle = _hqCvHex(r.color, a);
+            _hqCvRowDraw(c, r.text, x0, yb, gap, false);
+        });
+        var old = P.tex, tex = new THREE.CanvasTexture(cv);
+        tex.anisotropy = 4;
+        P.tex = tex; P.cvs = cv;
+        var m = P.mesh.material; m.map = tex; m.needsUpdate = true;
+        if (old) old.dispose();
+        P.mesh.scale.set(Wm * U * k, Hm * U * k, 1);
+        P.mesh.position.y = -mg * U * k;
+        P.mesh.visible = true;
+        P.inner.scale.setScalar(Math.min(1, (P.o.maxW || T.maxW) / ((w + T.pad) * k)));
+        P.op = -1;
+        if (_hq) _hq.dirty = true;
+        /* a font still loading: paint again once it is here (the first paint used the fallback face) */
+        if (wait.length && document.fonts && document.fonts.load) {
+            Promise.all(wait.map(function (f) { return document.fonts.load(f); })).then(function () { if (seq === P.seq && P.mesh && P.mesh.parent) _hqCvPaint(P); }, function () {});
+        }
+    }
     /* a plate for a door / way / portal / counter / trail: the GPU plate when the lib is here, else the CSS2D one.
        cls = the CSS2D plate's class; o as _hqGpuPlate (o.chip true/state = a lamp chip, o.css = the DOM plate's inline style).
        → { obj (add it where the CSS2D plate went), el + chip (the DOM plate) or gpu (the GPU one) } */
     function _hqPlateMake(cls, parts, o) {
         o = o || {};
-        if (_hqTextOn()) {
+        if (_hqCvOn()) {
+            try {
+                var C = _hqCvPlate(parts, Object.assign({}, o, { chip: (o.chip && o.chip !== true) ? o.chip : (o.chip ? 'open' : null) }));
+                return { obj: C.g, el: null, chip: null, gpu: C };
+            } catch (e) { console.warn('[HQ] canvas plate failed — CSS2D plate instead', e); }
+        } else if (_hqTextOn()) {
             try {
                 var P = _hqGpuPlate(parts, Object.assign({}, o, { chip: (o.chip && o.chip !== true) ? o.chip : (o.chip ? 'open' : null) }));
                 return { obj: P.g, el: null, chip: null, gpu: P };
@@ -43328,7 +43489,7 @@ const ThreeRenderer = (function () {
         if (!_hq) return null;
         var gpu = 0, css = 0, recs = (_hq.doors || []).concat(_hq.counters || []);
         for (var i = 0; i < recs.length; i++) { if (recs[i].plateGpu) gpu++; else if (recs[i].plateEl) css++; }
-        return { lib: !!(typeof window !== 'undefined' && window.EW_TEXT_LIB), on: _hqTextOn(), gpu: gpu, css: css };
+        return { lib: !!(typeof window !== 'undefined' && window.EW_TEXT_LIB), on: _hqTextOn(), cv: _hqCvOn(), gpu: gpu, css: css };
     }
     /* THE SUSPICIOUS ANGLE (2026-09-21): has the protractor found this draught? (data.js hqAngleFound on the profile) */
     function _hqAngleFound(door) {
@@ -59692,16 +59853,22 @@ const ThreeRenderer = (function () {
             /* the mirrored draw: the surfaces hidden, the far side clipped, the shadow pulse kept, the target restored */
             var prevT = renderer.getRenderTarget(), prevClip = renderer.clippingPlanes, prevShadow = renderer.shadowMap ? renderer.shadowMap.needsUpdate : false, prevAuto = renderer.autoClear;
             r.targets.forEach(function (t) { t._ew_reflHide = t.visible; t.visible = false; });
+            /* WEBGPU_PLAN W4: the node renderer has no renderer.clippingPlanes — the scene's children draw inside a ClippingGroup
+               for this one render (the array is lent, no child is reparented: their parent and world matrices stay the scene's) */
+            var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
             try {
                 var cp = r.cp.copy(r.plane); cp.constant -= 0.02 * _hqUnits();
-                renderer.clippingPlanes = [cp];
+                if (CG) { CG.clippingPlanes = [cp]; kids = H.scene.children; CG.children = kids; CG.parent = H.scene; H.scene.children = [CG]; }
+                else renderer.clippingPlanes = [cp];
                 if (renderer.shadowMap) renderer.shadowMap.needsUpdate = false;
                 renderer.setRenderTarget(r.rt); renderer.autoClear = true; renderer.clear();
                 renderer.render(H.scene, mc); r.drawn++;
             } catch (e) { r.mats.forEach(function (m) { m.uniforms.uGain.value = 0; }); }
             finally {
+                if (kids) { H.scene.children = kids; CG.children = []; CG.parent = null; }
                 r.targets.forEach(function (t) { t.visible = (t._ew_reflHide !== false); });
-                renderer.clippingPlanes = prevClip; renderer.setRenderTarget(prevT); renderer.autoClear = prevAuto;
+                if (!CG) renderer.clippingPlanes = prevClip;
+                renderer.setRenderTarget(prevT); renderer.autoClear = prevAuto;
                 if (renderer.shadowMap) renderer.shadowMap.needsUpdate = prevShadow;
             }
         }
@@ -63303,6 +63470,7 @@ const ThreeRenderer = (function () {
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqInst: function () { return _hqInstStats(_hq); },
             hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
+            reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
@@ -64036,6 +64204,9 @@ const ThreeRenderer = (function () {
            'res:0' (game) | 'res:1' | 'res:1.5' | 'res:native'. snapshot() = the last half-second's numbers; text() = Copy's text. */
         /* WEBGPU_PLAN W0: which renderer draws the board (?ewdiag=1 and the F3 lens print it) */
         gpuStatus: function () { return _ewGpuStatus(); },
+        /* WEBGPU_PLAN W4 (console): rebuild the node renderer as after a lost device (the lost-device path, by hand) */
+        gpuRebuild: function () { return (_ewGpu && renderer && renderer.isWebGPURenderer) ? _ewGpuRebuild(renderer) : 'not on the node renderer'; },
+        isNodeRenderer: function () { return !!(_ewGpu && renderer && renderer.isWebGPURenderer); },
         /* WEBGPU_PLAN W6: each bundled group — name, meshes, static, re-records by cause (tree / values / scene / lod), rests */
         /* WEBGPU W2: another script's GLSL program gets a TSL twin — fn(material, object, ctx) → a node material ({T, G, mat, u, tex}) */
         nodeProgram: function (fs, key, fn) { if (typeof fs !== 'string' || typeof fn !== 'function') return; if (_ewProgs) _ewProgs.set(fs, { k: key, fn: function (m, obj) { return fn(m, obj, _ewProgCtx()); } }); else _ewProgsExt.push({ fs: fs, k: key, fn: fn }); },

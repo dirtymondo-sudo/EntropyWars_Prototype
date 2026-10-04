@@ -697,3 +697,28 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   material (HQ walls, floors, props: the menu ground and door frame) the sun and spot lights added nothing and the sky
   light read its ground colour. It reads `normalWorldGeometry` now (what the GLSL reads: `mat3(modelMatrix) *
   objectNormal`). After: desert menu floor / frame / leaf / sky equal to classic within one level, full post on.
+- 2026-10-04: **W4 the libraries, the lens and the edges** (zip renderer/ENTROPY_WARS_W4.zip: three-renderer.js,
+  three-post.js, three-vfx.js, ui.js; token 20261004-gpu4-01-cors). Already done in earlier phases and only checked
+  here: KTX2 on the node renderer (W6 fix 3: the device's formats ANDed with a WebGL 2 probe), the lens's GPU timings
+  (W0: `trackTimestamp` off on Firefox), the room warm-up (three's `compile` IS `compileAsync` on the node renderer,
+  W3 points it at the scene pass's target), the async auto exposure and the split-screen pane blit (W3), the snapshots
+  (`_fieldSnapshot`, the creator photo) read back in the same task. New: (1) **the canvas plates**: on the node renderer
+  every HQ plate (door, way, portal, counter, sign) is one plane whose rows `_hqCvPaint` paints into a `CanvasTexture`
+  (the troika plate's rows, sizes, tones, halo and underline; Cormorant SC 700 + IBM Plex Mono 500, the DOM fonts,
+  repainted once `document.fonts` has them); troika is never used there (its glyphs are GLSL). index.html no longer
+  sets `EW_NO_GPU_TEXT` on the node modes (W0 forced the CSS2D plates there); `ew_text = 'css'` is still the kill switch.
+  F3 "Text (HQ plates) canvas (node renderer)". (2) **The clip planes**: three's node renderer clips only through a
+  `ClippingGroup`. A material's own `clippingPlanes` (the elevator halves, the pocket doors, the editor's level band)
+  become discards in `_ewNodeClip` (dressed only on materials that carry planes; each plane read off the material at
+  every draw); the reflector's mirrored draw lends the scene's children to a `ClippingGroup` for that one render
+  instead of `renderer.clippingPlanes`. (3) **The lost device**: `onDeviceLost` (WebGPU backend) rebuilds the board
+  renderer on the same canvas (`_ewGpuRebuild`: a new device, the frame loop moved over, the bundles set up again,
+  `ThreePost.swapRenderer` drops the chain's pipelines, the exposure readback and the pane blit); three times a session
+  at most; the old renderer is not disposed (its dispose would free the shared textures' new copies); the WebGL 2
+  backend waits for the browser's context restore. `ThreeRenderer.gpuRebuild()` runs it by hand; `?ewdiag` / F3 print
+  "DEVICE LOST ... (rebuilt n×)". `_ewNodeU` now survives a rebuild. (4) The Settings: on the node renderer the "Spell
+  FX Layer" row is hidden (three-vfx.js `_qkWanted` is false there too) and the AO Quality row reads Classic / GTAO.
+  Not in W4: the editor's thumbnail renderer, the character viewer and the main-menu firmament still make their own
+  `WebGLRenderer` (they stay on the classic build until W5 removes it). Sandbox (`?ew_gpu=webgl2`): lobby plates draw
+  as canvas planes (24 on the GPU, 0 CSS2D), the barbershop mirror renders (gain 0.9, no throw), 2-3 clip materials
+  dressed, a by-hand rebuild keeps drawing with the chain rebuilt, no errors. Next: W5 (the flip) when mondo says so.
