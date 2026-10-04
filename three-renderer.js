@@ -24026,25 +24026,40 @@ const ThreeRenderer = (function () {
     function _applyHorizonFog() {
         _horizonFogDirty = false;
         if (!_horizonGroup) return;
-        _horizonGroup.traverse(function (o) {
-            if (!o.material) return;
-            var ms = Array.isArray(o.material) ? o.material : [o.material];
-            for (var i = 0; i < ms.length; i++) {
-                var m = ms[i];
-                if (!m) continue;
-                /* D.O.O.R. facility near-scenery (the Training Room enclosure,
-                   the Holo Sim apron) is NOT far backdrop: it stands right at
-                   the board's rim, BELOW the horizon line, so the altitude
-                   fog would dissolve the whole room into the fog colour (it
-                   did — the retro fog is on by default, uFogAmount ≈ 0.98,
-                   and "all the outer stuff" read as 5% ghosts). It keeps the
-                   ordinary scene.fog like the board instead (tagged by
-                   _hzRunNearBuilder). */
-                if (m._ew_hzNear) continue;
-                if (m.fog !== false) { m.fog = false; m.needsUpdate = true; }  // backdrop never uses uniform distance fog
-                _injectHorizonFog(m);   // per-fragment altitude fog (covers async misc models too)
+        /* THE NEAR ROOTS (2026-10-04, mondo: the Haunted House arena's shrubs, rock pillar, sign post, trees and stump drew
+           as flat green silhouettes): the near setting (_hzRunNearBuilder) and the battle's room (_hqBuildRoomInBattle) tag
+           their materials _ew_hzNear ONCE, when they are built — but their GLBs (the room's Meshy props and doors, the retro
+           trees, the setting's _hzMiscKit snags and stumps) land later with fresh materials, and the next dirty pass gave
+           those the altitude fog below. The battle camera looks DOWN on them, so the band read full (the retro fog's
+           uFogAmount is ~0.98) and each one drew as 95% fog colour, on WebGL and WebGPU alike. A group flagged
+           _ew_hzNearRoot is near scenery for good: whatever lands in it later is tagged here instead of fogged. */
+        (function walk(o, near) {
+            if (o._ew_hzNearRoot) near = true;
+            if (o.material) _hzFogMaterials(o, near);
+            for (var c = 0; c < o.children.length; c++) walk(o.children[c], near);
+        })(_horizonGroup, false);
+    }
+    function _hzFogMaterials(o, near) {
+        var ms = Array.isArray(o.material) ? o.material : [o.material];
+        for (var i = 0; i < ms.length; i++) {
+            var m = ms[i];
+            if (!m) continue;
+            if (near && !m._ew_hzNear) {
+                m._ew_hzNear = true;
+                if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
             }
-        });
+            /* D.O.O.R. facility near-scenery (the Training Room enclosure,
+               the Holo Sim apron) is NOT far backdrop: it stands right at
+               the board's rim, BELOW the horizon line, so the altitude
+               fog would dissolve the whole room into the fog colour (it
+               did — the retro fog is on by default, uFogAmount ≈ 0.98,
+               and "all the outer stuff" read as 5% ghosts). It keeps the
+               ordinary scene.fog like the board instead (tagged by
+               _hzRunNearBuilder). */
+            if (m._ew_hzNear) continue;
+            if (m.fog !== false) { m.fog = false; m.needsUpdate = true; }  // backdrop never uses uniform distance fog
+            _injectHorizonFog(m);   // per-fragment altitude fog (covers async misc models too)
+        }
     }
 
     // "Actual fog" that keeps the sky: the cosmic dome (_envDome) stays visible,
@@ -29850,6 +29865,7 @@ const ThreeRenderer = (function () {
     function _hzRunNearBuilder(nearBuild, ctx) {
         var g = new THREE.Group();
         g.name = 'facilityNear';
+        g._ew_hzNearRoot = true;   // its late GLBs stay near scenery too (_applyHorizonFog)
         try { nearBuild(g, ctx); } catch (e) { console.error('[scenery] near builder failed', e); }
         /* Occlusion opt-in (the Training Room): every direct child is one
            occluder for the line-of-sight fade — see _facilityNearGroup. */
@@ -50136,9 +50152,13 @@ const ThreeRenderer = (function () {
            blockers in room coordinates. */
         garden_ring: function (U) {
             var g = new THREE.Group();
-            var path = new THREE.Mesh(new THREE.RingGeometry(4.6 * U, 6.2 * U, 48), _hqMat('cobblestone', 8, 1, { color: 0xc8c0b0, shininess: 4 }));
+            /* the stones lie square (2026-10-04, mondo: "the texture is all stretched"): a RingGeometry's UVs span its whole
+               diameter, so an 8 × 1 repeat drew each stone 8× long across the ring — the UVs are the ground's own metres now */
+            var cob = _hqMat('cobblestone', 1, 1, { color: 0xc8c0b0, shininess: 4 });
+            var flatUV = function (geo) { var p = geo.attributes.position, uv = geo.attributes.uv; for (var i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / (1.2 * U), p.getY(i) / (1.2 * U)); uv.needsUpdate = true; return geo; };
+            var path = new THREE.Mesh(flatUV(new THREE.RingGeometry(4.6 * U, 6.2 * U, 48)), cob);
             path.rotation.x = -Math.PI / 2; path.position.y = 0.006 * U; g.add(path);
-            var inner = new THREE.Mesh(new THREE.RingGeometry(1.7 * U, 2.4 * U, 40), _hqMat('cobblestone', 4, 1, { color: 0xc8c0b0, shininess: 4 }));
+            var inner = new THREE.Mesh(flatUV(new THREE.RingGeometry(1.7 * U, 2.4 * U, 40)), cob);
             inner.rotation.x = -Math.PI / 2; inner.position.y = 0.006 * U; g.add(inner);
             [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { var spoke = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.4 * U), _hqMat('cobblestone', 1, 2, { color: 0xc8c0b0, shininess: 4 })); spoke.rotation.x = -Math.PI / 2; spoke.rotation.z = a; spoke.position.set(Math.sin(a) * 3.5 * U, 0.007 * U, -Math.cos(a) * 3.5 * U); g.add(spoke); });
             var hedge = _hqMat('leaves_2', 2, 1, { color: 0x5a7a3a, shininess: 4 });
@@ -61932,7 +61952,7 @@ const ThreeRenderer = (function () {
         });
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
-        else { _facilityNearGroup = g; _horizonGroup.add(g); }
+        else { _facilityNearGroup = g; g._ew_hzNearRoot = true; _horizonGroup.add(g); }   // _ew_hzNearRoot: the room's late GLBs stay near scenery (_applyHorizonFog)
         if (trueGround) _fieldGroundDress(R, room, M, ts);
         /* THE SKY ONCE (SEAMLESS_FIELD_PLAN §8.1 item 3 / §8.4, 2026-09-22): a field never builds the site's far roster (hqFieldLayout
            says scenery 'none' for every field) — an OPEN room's own floaters + landmarks are handed over under a matrix holder in the

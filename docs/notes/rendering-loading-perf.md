@@ -670,3 +670,15 @@ material planes). A lost WebGPU device rebuilds the board renderer in place (`_e
 max 3 a session; console `ThreeRenderer.gpuRebuild()`). The quarks row is hidden on the node renderer; the AO row
 reads GTAO there. Sandbox trap: at ~2 fps with the proxy, a room's textures can take 30+ s, so its walls read black in
 an early shot on BOTH branches; wait before comparing.
+
+## THE NEAR ROOTS — the green props in the battle's room (2026-10-04, zip haunted-props/ENTROPY_WARS_HAUNTED_PROPS.zip)
+mondo (Haunted House arena, WebGPU): the shrubs, rock pillar, sign post, trees and stump drew as flat green silhouettes, the
+rim props too. Cause (both renderers): the battle's room (`_hqBuildRoomInBattle`) and the near setting (`_hzRunNearBuilder`)
+sit in `_horizonGroup` and tagged their materials `_ew_hzNear` once, at build. GLBs that landed later (the room's Meshy props
+and doors, the retro trees, `_hzMiscKit` snags/stumps) came with fresh untagged materials, and the next `_applyHorizonFog`
+pass gave them the altitude fog meant for the far roster. Seen from the battle camera (looking down) its band is full, so
+each drew as 95% of the retro fog colour (green preset 0x2f4d3f). Fix: both groups carry `_ew_hzNearRoot`; `_applyHorizonFog`
+walks the tree and tags anything under such a root as near instead of fogging it. Same delivery: `garden_ring` (Room 1618 and
+the haunted grounds) set its cobblestone UVs to ground metres (1.2 m a stone) — a RingGeometry's UVs span its diameter, so
+the old 8 × 1 repeat stretched every stone. Latent, not fixed: the hzfog hook's closure has one toString for every base hook,
+so on the node renderer two hzfog materials over different bases can share a build (three's cache key strings functions).
