@@ -682,3 +682,7 @@ walks the tree and tags anything under such a root as near instead of fogging it
 the haunted grounds) set its cobblestone UVs to ground metres (1.2 m a stone) — a RingGeometry's UVs span its diameter, so
 the old 8 × 1 repeat stretched every stone. Latent, not fixed: the hzfog hook's closure has one toString for every base hook,
 so on the node renderer two hzfog materials over different bases can share a build (three's cache key strings functions).
+NO MESHY TREES (same day, mondo: "i dont even want to use that meshy tree anywhere in the game"): the catalogue rows dead_snag,
+hollow_dead_tree, pine and hollow_tree are retro-pack files now (`base: 'rt'` = Assets/foilage/retrotreepack/GLB/, read by
+_hqModelUrl and the held-prop loader); the near settings' snag / dead tree / hollow tree are `_nrTree` retro trees; the tree
+WAYS (hollowtree / deadtree) keep their procedural trunk with the hole (no GLB over it); the four Meshy files are gone from _MISC_GLB.
