@@ -10396,6 +10396,11 @@
 
             if (typeof _terrainChunkCache !== 'undefined') _terrainChunkCache.clear();
 
+            /* THE SKINS (2026-10-04): every surface the engine repaints mid-fight (a spell, a spreading spring, a melt) is
+               noted, so a battle drawn on its room's true ground (three-renderer.js _fieldSkinBuild) sheets exactly these
+               cells in their new terrain. Plain state: it rides the state-sync to the guest; initMap clears it. */
+            (state.paintedTiles || (state.paintedTiles = {}))[x + ',' + y] = 1;
+
             /* 🌊 A tile that stops being liquid stops being a spring (terraform
                purge, obsidian quench, rubble…) — keep the overflow registry in
                lockstep with the terrain it annotates. */
@@ -11879,6 +11884,7 @@
         function initMap(fullBoard, reserved) {
             const w = bw(), h = bh();
             const board = fullBoard;
+            state.paintedTiles = {};   // THE SKINS: a fresh board has no painted surfaces (setTerrainAt notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so
