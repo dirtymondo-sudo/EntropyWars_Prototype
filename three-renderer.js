@@ -25092,20 +25092,21 @@ const ThreeRenderer = (function () {
        in the sandbox): every car is centred, Y up, its NOSE AT +Z (no pre-turn), about 6 units long. `L` / `W` = the OBJ's
        length / width in its own units (the blob shadow is sized off them before the file lands), `m` = the real length in
        metres the car is fitted to, `tex` = the texture's stem (`<tex>_<paint>.png`; '' = the plain `<tex>.png`), `snow` =
-       the paints with snow on (car 1 only). The look of each: 1 a seventies estate, 2 a boxy eighties saloon, 3 a hatchback,
+       the paints with snow on (car 1 only). `hl` / `tl` = a headlamp's / a tail lamp's [|x|, y] in the OBJ's units (MEASURED off front
+       and back views of every model; the wreck has none), the lamps sitting on the nose / tail faces. The look of each: 1 a seventies estate, 2 a boxy eighties saloon, 3 a hatchback,
        4 a minivan, 5 a big American saloon (its taxi and police paints wear their own models, Car5_Taxi.obj / Car5_Police.obj), 6 a rusted shell with no wheels, 7 a 1920s
        tourer, 8 a step van. Kill-switch: window.EW_NO_CAR_PACK (back to the Meshy files). */
     var _CAR_PACK_BASE = 'https://cdn.entropywars.net/Assets/vehicles/';
     var _CAR_PACK = {
-        1: { dir: 'Car 01', obj: 'Car.obj',  tex: 'car',  m: 4.1, L: 6.15, W: 2.56, paints: ['', 'blue', 'gray', 'red'],
+        1: { dir: 'Car 01', obj: 'Car.obj',  tex: 'car',  m: 4.1, L: 6.15, W: 2.56, hl: [0.83, 0.92], tl: [0.93, 1.05], paints: ['', 'blue', 'gray', 'red'],
              snow: ['snow', 'snow_blue', 'snow_gray', 'snow_red', 'snowcovered', 'snowcovered_blue', 'snowcovered_gray', 'snowcovered_red'] },
-        2: { dir: 'Car 02', obj: 'Car2.obj', tex: 'car2', m: 4.7, L: 6.54, W: 2.90, paints: ['', 'red', 'black'] },
-        3: { dir: 'Car 03', obj: 'Car3.obj', tex: 'car3', m: 3.8, L: 5.61, W: 2.64, paints: ['', 'red', 'yellow'] },
-        4: { dir: 'Car 04', obj: 'Car4.obj', tex: 'car4', m: 4.8, L: 6.30, W: 3.40, paints: ['', 'grey', 'lightgrey', 'lightorange'] },
-        5: { dir: 'Car 05', obj: 'Car5.obj', tex: 'car5', m: 5.3, L: 7.37, W: 2.78, paints: ['', 'grey', 'green'] },   // + 'taxi', 'police'
+        2: { dir: 'Car 02', obj: 'Car2.obj', tex: 'car2', m: 4.7, L: 6.54, W: 2.90, hl: [0.83, 1.03], tl: [0.92, 1.15], paints: ['', 'red', 'black'] },
+        3: { dir: 'Car 03', obj: 'Car3.obj', tex: 'car3', m: 3.8, L: 5.61, W: 2.64, hl: [0.79, 0.99], tl: [0.68, 1.05], paints: ['', 'red', 'yellow'] },
+        4: { dir: 'Car 04', obj: 'Car4.obj', tex: 'car4', m: 4.8, L: 6.30, W: 3.40, hl: [0.93, 1.15], tl: [1.27, 1.37], paints: ['', 'grey', 'lightgrey', 'lightorange'] },
+        5: { dir: 'Car 05', obj: 'Car5.obj', tex: 'car5', m: 5.3, L: 7.37, W: 2.78, hl: [1.0, 0.99], tl: [0.93, 1.03], paints: ['', 'grey', 'green'] },   // + 'taxi', 'police'
         6: { dir: 'Car 06', obj: 'Car6.obj', tex: 'car6', m: 4.5, L: 6.36, W: 2.48, paints: [''] },
-        7: { dir: 'Car 07', obj: 'Car7.obj', tex: 'car7', m: 4.0, L: 5.78, W: 2.42, paints: ['', 'grey', 'red', 'green', 'black', 'brown'] },
-        8: { dir: 'Car 08', obj: 'Car8.obj', tex: 'Car8', m: 6.2, L: 6.89, W: 3.16, paints: ['', 'grey', 'purple', 'mail'] }
+        7: { dir: 'Car 07', obj: 'Car7.obj', tex: 'car7', m: 4.0, L: 5.78, W: 2.42, hl: [0.58, 1.46], tl: [1.01, 1.31], paints: ['', 'grey', 'red', 'green', 'black', 'brown'] },
+        8: { dir: 'Car 08', obj: 'Car8.obj', tex: 'Car8', m: 6.2, L: 6.89, W: 3.16, hl: [1.0, 1.03], tl: [1.16, 0.82], paints: ['', 'grey', 'purple', 'mail'] }
     };
     /* a pool = [car, [paints]] rows; a snowy room swaps a GENERIC pool (`snowy: true`) for car 1 in its snow paints */
     var _CAR_PACK_POOLS = {
@@ -25185,6 +25186,8 @@ const ThreeRenderer = (function () {
         sh.scale.set(C.W * 0.66 * k, 1, C.L * 0.86 * k); sh.position.y = 0.02 * perM;
         g.add(sh);
         g._ew_lenM = lenM; g._ew_carPack = pk.car + (pk.paint ? '_' + pk.paint : '');
+        /* the lamps in world units off this car's own measured spots (the traffic hangs its glows there); null = no lamps (the wreck) */
+        g._ew_lamps = C.hl ? { hx: C.hl[0] * k, hy: (C.hl[1] + 0.04) * k, hz: C.L / 2 * k + 0.04 * perM, tx: C.tl[0] * k, ty: (C.tl[1] + 0.04) * k, tz: -(C.L / 2 * k + 0.04 * perM) } : null;
         return g;
     }
     /* a room row's own dice: seeded off its spot, so a parked car keeps its paint every visit and on both screens */
@@ -25228,7 +25231,7 @@ const ThreeRenderer = (function () {
         if (V.pack && _carPackOn() && !lowSkip) {
             var pg = _carPackModel(V.pack, _hzKitTile() / 1.75, { rng: o.rng, snow: o.snow, paint: o.paint, metres: o.metres, lift: (o.lift != null) ? o.lift : V.lift, cast: o.cast !== false, onDone: o.onDone });
             var pv = pg;
-            if (o.yaw) { pv = new THREE.Group(); pv.add(pg); pg.rotation.y = o.yaw; pv._ew_lenM = pg._ew_lenM; }   // the caller's extra turn, inside the group
+            if (o.yaw) { pv = new THREE.Group(); pv.add(pg); pg.rotation.y = o.yaw; pv._ew_lenM = pg._ew_lenM; pv._ew_lamps = null; }   // the caller's extra turn, inside the group
             pv._ew_footM = (o.foot != null) ? o.foot : V.foot; pv._ew_vehicle = kind;
             return _hzVehicleBeacon(V, o, pv);
         }
@@ -47677,12 +47680,56 @@ const ThreeRenderer = (function () {
         });
     }
     /* ── NPC TRAFFIC ── */
+    /* THE TURN (2026-10-04 — mondo: "they just instantly rotate 90 degrees"): a route's corner is ROUNDED — within `r` of a
+       bend the car runs a quadratic curve from r before the corner to r after it (control point = the corner), so its
+       heading sweeps through the turn instead of snapping. r = HQ_TRAFFIC_TURN_R m, at most 45 % of either leg. A loop's
+       closing corner (its first point) is rounded too; an open route's two ends are not corners. `turn` (0..1) = how
+       sharp the bend under the car is (the tick slows for it). The lane offset rides the curve's own normal. */
+    var HQ_TRAFFIC_TURN_R = 7;
+    function _hqRouteCorner(car, k) {
+        var pts = car.pts, cum = car.cum, n = pts.length - 1;   // n segments; a loop's pts end on its first point
+        var inI, outI;
+        if (k > 0 && k < n) { inI = k - 1; outI = k; }
+        else if (car.loop && (k === 0 || k === n)) { inI = n - 1; outI = 0; }
+        else return null;
+        var A = pts[inI], B = pts[inI + 1], C = pts[outI + 1], P = pts[outI];
+        var Lin = cum[inI + 1] - cum[inI], Lout = cum[outI + 1] - cum[outI];
+        if (Lin < 1e-6 || Lout < 1e-6) return null;
+        var din = [(B[0] - A[0]) / Lin, (B[1] - A[1]) / Lin], dout = [(C[0] - P[0]) / Lout, (C[1] - P[1]) / Lout];
+        var dot = din[0] * dout[0] + din[1] * dout[1]; if (dot > 0.9995) return null;   // straight on: no corner
+        var r = Math.min(HQ_TRAFFIC_TURN_R, Lin * 0.45, Lout * 0.45);
+        return { V: B, din: din, dout: dout, r: r, sharp: Math.min(1, (1 - dot) / 2 * 2) };
+    }
     function _hqRoutePose(car, s) {
-        var pts = car.pts, cum = car.cum, i = 0;
+        var pts = car.pts, cum = car.cum, i = 0, L = cum[cum.length - 1], nSeg = pts.length - 1;
         while (i + 2 < cum.length && cum[i + 1] <= s) i++;
-        var a = pts[i], b = pts[i + 1], segL = Math.max(1e-6, cum[i + 1] - cum[i]), t = Math.max(0, Math.min(1, (s - cum[i]) / segL));
+        var cs = car._corners || (car._corners = []);
+        /* the corner the car is in (the one at this segment's end, or at its start) */
+        var pick = null, u = 0;
+        for (var e = 0; e < 2 && !pick; e++) {
+            var k = i + (e === 0 ? 1 : 0);
+            if (cs[k] === undefined) cs[k] = _hqRouteCorner(car, k);
+            var Cn = cs[k]; if (!Cn) continue;
+            var sv = cum[k], du = s - sv;
+            if (car.loop && k === nSeg && du < -L / 2) du += L;
+            if (car.loop && k === 0 && du > L / 2) du -= L;
+            if (Math.abs(du) <= Cn.r) { pick = Cn; u = du; }
+        }
+        if (!pick && car.loop && (i === 0 || i === nSeg - 1)) {   // a loop's closing corner, from either side of the seam
+            var kc = (i === 0) ? nSeg : 0; if (cs[kc] === undefined) cs[kc] = _hqRouteCorner(car, kc);
+            var Cc = cs[kc]; if (Cc) { var duc = s - cum[kc]; if (duc > L / 2) duc -= L; if (duc < -L / 2) duc += L; if (Math.abs(duc) <= Cc.r) { pick = Cc; u = duc; } }
+        }
+        if (pick) {
+            var t = (u + pick.r) / (2 * pick.r), r = pick.r, V = pick.V, a0 = (1 - t) * (1 - t), a1 = 2 * (1 - t) * t, a2 = t * t;
+            var x = a0 * (V[0] - pick.din[0] * r) + a1 * V[0] + a2 * (V[0] + pick.dout[0] * r);
+            var z = a0 * (V[1] - pick.din[1] * r) + a1 * V[1] + a2 * (V[1] + pick.dout[1] * r);
+            var tx = (1 - t) * pick.din[0] + t * pick.dout[0], tz = (1 - t) * pick.din[1] + t * pick.dout[1], tl = Math.hypot(tx, tz) || 1;
+            tx /= tl; tz /= tl;
+            return { x: x + (-tz) * car.lane, z: z + tx * car.lane, dx: tx, dz: tz, turn: pick.sharp };
+        }
+        var a = pts[i], b = pts[i + 1], segL = Math.max(1e-6, cum[i + 1] - cum[i]), tt = Math.max(0, Math.min(1, (s - cum[i]) / segL));
         var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
-        return { x: a[0] + (b[0] - a[0]) * t + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * t + dx * car.lane, dx: dx, dz: dz };
+        return { x: a[0] + (b[0] - a[0]) * tt + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * tt + dx * car.lane, dx: dx, dz: dz, turn: 0 };
     }
     function _hqBuildTraffic(room, info, G, TM, rng) {
         var U = _hqUnits(), H = _hq, routes = info.traffic || [];
@@ -47700,7 +47747,9 @@ const ThreeRenderer = (function () {
                     var V = (typeof _VEHICLE_KIT !== 'undefined' && _VEHICLE_KIT[kind]) ? _VEHICLE_KIT[kind] : null;
                     var g = (typeof _hzVehicle === 'function') ? _hzVehicle(kind, { foot: 0, beacon: (kind === 'copcar' || kind === 'ambulance' || kind === 'firetruck'), rng: rng, low: 'skip', snow: _carPackSnowy(room) }) : new THREE.Group();
                     var len = g._ew_lenM || (V ? V.m : 4.6);   // THE CAR PACK: the car's own drawn length
-                    [-0.6, 0.6].forEach(function (hx) { var hl = _hzGlowSprite(0.5 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(hx * U, 0.7 * U, (len / 2 + 0.1) * U); g.add(hl); var tl = _hzGlowSprite(0.3 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(hx * U, 0.75 * U, -(len / 2 + 0.05) * U); g.add(tl); });
+                    /* the lamps: a pack car's own measured spots (THE CAR PACK, g._ew_lamps — world units), else the old guess */
+                    var Lp = (g._ew_lamps !== undefined) ? g._ew_lamps : { hx: 0.6 * U, hy: 0.7 * U, hz: (len / 2 + 0.1) * U, tx: 0.6 * U, ty: 0.75 * U, tz: -(len / 2 + 0.05) * U };
+                    if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     g._ew_hqCar = kind; G.add(g);
                     cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0 });
                 }
@@ -47722,6 +47771,11 @@ const ThreeRenderer = (function () {
             var gap = Infinity, leadLength = car.len;
             for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) { gap = d; leadLength = cars[j].len; } }
             var need = (car.len + leadLength) / 2 + 2.5;
+            /* THE TURN: brake into a bend (looked for a car-length ahead), pull away after it — the speed eases, never snaps */
+            var tAhead = Math.max(_hqRoutePose(car, car.s).turn || 0, _hqRoutePose(car, (car.s + car.len + 3) % car.L).turn || 0);
+            var vWant = car.v * (1 - 0.5 * tAhead);
+            car.vNow = (car.vNow == null) ? vWant : car.vNow + (vWant - car.vNow) * Math.min(1, dt * 2.2);
+            adv = car.vNow * dt;
             if (gap - adv < need) adv = Math.max(0, gap - need);
             // Yield to pedestrians and skaters along the upcoming path, including a bend
             // or an open route's respawn. Sampling avoids driving through someone on a turn.
