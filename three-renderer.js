@@ -21665,6 +21665,9 @@ const ThreeRenderer = (function () {
         var tex = getTexture(sheet.url);
         if (!tex) return;
 
+        /* the sheet still loading: no spark (a clone flagged for upload with no picture threw in the node renderer and
+           froze the frame — THE DRAW GUARD; WebGL drew nothing for it either until the sheet landed) */
+        if (!tex.image) return;
         var frameTex = tex.clone();
         frameTex.needsUpdate = true;
 
@@ -31833,7 +31836,14 @@ const ThreeRenderer = (function () {
        queries — never on Firefox (its wgpu loses the device on timestampWrites), and only once F3 has been used on the device.
        Off: ?ew_gpu=webgl (the default). ThreeRenderer.gpuStatus() / ?ewdiag=1 name the backend that really runs. */
     var _ewGpu = '';                 // '' = classic WebGLRenderer; 'webgpu' | 'webgl2' = the node renderer (the mode asked for)
-    var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '' };
+    var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '', drawErrs: 0, drawErr: '' };
+    var _ewGpuDrawErrSeen = new WeakSet();
+    function _ewGpuDrawErr(e, o, m) {
+        _ewGpuInfo.drawErrs++;
+        var what = ((o && (o.name || o.type)) || '?') + ' / ' + ((m && (m.name || m.type)) || '?') + ': ' + String((e && e.message) || e).slice(0, 120);
+        if (!_ewGpuInfo.drawErr) _ewGpuInfo.drawErr = what;
+        if (o && !_ewGpuDrawErrSeen.has(o)) { _ewGpuDrawErrSeen.add(o); try { console.warn('[ThreeRenderer] node renderer: a draw failed and was skipped (' + what + ')', e); } catch (x) {} }
+    }
     var _ewGpuDraw = null;           // the F3 lens's per-draw counter on the node renderer (set while the lens is open)
     var _ewGpuStandIns = new WeakMap();
     function _ewGpuBackendName() {
@@ -31855,6 +31865,7 @@ const ThreeRenderer = (function () {
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame';
         }
         else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
+        if (_ewGpuInfo.drawErrs) s += ' · skipped draws ' + _ewGpuInfo.drawErrs + ' (first: ' + _ewGpuInfo.drawErr + ')';
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
     }
@@ -33364,8 +33375,15 @@ const ThreeRenderer = (function () {
                     if (pulse) l.shadow.needsUpdate = true;
                 }
             }
-            if (_ewGpuDraw) return _ewGpuDraw(r, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
-            return r.renderObject(object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+            /* THE DRAW GUARD (W5a, 2026-10-04, mondo: "screen freezes but the battle still goes on"): a throw inside one
+               draw left three's render() mid-frame, so nothing reached the canvas while the game and its DOM went on. A
+               texture flagged for upload with no picture yet (a hit spark cloned from a sheet still loading) throws in
+               three's node renderer (WebGL just skips it); the scene pass runs inside the post chain's first quad, so one
+               bad mesh took the whole frame. Now that one draw is skipped and the frame goes on; ?ewdiag / F3 name it. */
+            try {
+                if (_ewGpuDraw) return _ewGpuDraw(r, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+                return r.renderObject(object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+            } catch (e) { _ewGpuDrawErr(e, object, material); }
         });
         /* GPU timestamps: resolved once a frame (the lens reads the value; without the lens they are only drained) */
         var rawLoop = r.setAnimationLoop;
