@@ -3682,16 +3682,20 @@ function PartyBuilder(props) {
         h(PbElementRing, { race: unitRace })),
 ));
 
-  // ROSTER's quick read under the hero: name · race · role · types · four pills · CONFIRM
+  // ROSTER's quick read under the hero: name · race · role · types · four pills · CONFIRM.
+  // It follows the hovered wall tile (stageEntry) like the hero does: that vessel's own types and base stats, no gear
+  // deltas or zodiac arrows (those belong to the slot's unit); back to the selected unit when the hover ends.
+  const qTypes = stageEntry ? (stageEntry.types || []) : unitTypes;
+  const qStats = stageEntry ? computeFullStats(stageEntry.race, stageEntry.cls, null, []).final : fullStats;
   const quickCard = h('div', { className: 'pb-stage-card' },
     h('div', { style:{ display:'flex', alignItems:'baseline', gap:8, minWidth:0 } },
       h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, fontWeight:600, color:'#f1e9cf', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 } }, stageEntry ? stageLabel : unitName),
       h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.14em', flexShrink:0, textTransform:'uppercase' } }, pbRoleLabel(stageEntry ? stageEntry.race : unitRace))),
-    h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' } }, ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9}))),
+    h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexWrap:'wrap' } }, ...qTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:9}))),
     h('div', { style:{ display:'flex', flexDirection:'column', gap:2 } },
       ['HP','ATK','DEF','SPD'].map(k => {
-        const mapped = STAT_MAP[k], val = fullStats[mapped]??0;
-        return h(StatBar, { key:k, label:k, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:statDeltas[mapped]??0, gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
+        const mapped = STAT_MAP[k], val = qStats[mapped]??0;
+        return h(StatBar, { key:k, label:k, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:stageEntry ? null : zMod(mapped), delta:stageEntry ? 0 : (statDeltas[mapped]??0), gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
       })),
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 
