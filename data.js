@@ -24508,10 +24508,10 @@ const DOOR_HQ = {
            the rest are TARGETS. `city_bin` is the OUTDOOR bin (the kerbs), `mall_bin` the indoor one (the mall, the casino). */
         city_bin:          { file: 'Meshy_AI_a_city_bin_0917065144_texture.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
         mall_bin:          { file: 'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',            base: 'misc', h: 0.9, foot: 0.3, block: true },
-        crashed_car:       { file: 'Meshy_AI_a_crashed_car_0917065033_texture.glb',               base: 'misc', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
-        crashed_car_2:     { file: 'Meshy_AI_a_crashed_car_2_0917065052_texture.glb',             base: 'misc', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
-        car_taxi:          { file: 'Meshy_AI_a_city_taxi_0917065634_texture.glb',                 base: 'misc', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true, turn: 90 },
-        car_truck:         { file: 'Meshy_AI_a_truck_0917065131_texture.glb',                     base: 'misc', span: 8.0, foot: 2.0, rect: { hw: 1.3, hd: 4.0 }, block: true, vehicle: true, turn: 90 },
+        crashed_car:       { file: 'Meshy_AI_a_crashed_car_0917065033_texture.glb',               base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
+        crashed_car_2:     { file: 'Meshy_AI_a_crashed_car_2_0917065052_texture.glb',             base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
+        car_taxi:          { file: 'Meshy_AI_a_city_taxi_0917065634_texture.glb',                 base: 'misc', pack: 'taxi', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true, turn: 90 },
+        car_truck:         { file: 'Meshy_AI_a_truck_0917065131_texture.glb',                     base: 'misc', pack: 'van', span: 8.0, foot: 2.0, rect: { hw: 1.3, hd: 4.0 }, block: true, vehicle: true, turn: 90 },
         time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
         street_drain:      { file: 'Meshy_AI_a_round_street_drain__0917064638_texture.glb',       base: 'misc', span: 1.3, foot: 0 },                       // the `gutter` way's grate; a manhole on the road
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
@@ -24566,9 +24566,22 @@ const DOOR_HQ = {
            (every long piece this project measured — MODEL_INDEX); the placer turns the
            instance +90° so the nose is +Z and `face` means what it says. A nose that
            lands backward = `turn: -90` on that row (RULE #1c: unseen). */
-        car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true, turn: 90 },
-        car_cadillac:      { file: 'Meshy_AI_a_black_cadillac_0915195323_texture.glb',  base: 'misc', span: 5.6, foot: 1.3, rect: { hw: 1.0, hd: 2.8 },  block: true, vehicle: true, turn: 90 },
-        car_cop:           { file: 'Meshy_AI_a_cop_car_0915195443_texture.glb',         base: 'misc', span: 5.0, foot: 1.2, rect: { hw: 0.95, hd: 2.5 }, block: true, vehicle: true, turn: 90, glow: { y: 1.6, size: 1.2, color: 0xff3040 } },
+        /* THE CAR PACK (2026-10-04 — mondo's eight low-poly cars on R2 Assets/vehicles/, three-renderer.js _CAR_PACK): a row's
+           `pack` (a _CAR_PACK_POOLS pool) draws the pack's car in place of its Meshy `file` (kept as the fallback when
+           window.EW_NO_CAR_PACK is set). The pack's nose is +Z, so `turn` is skipped for it; the car is fitted to its own real
+           length (× the editor's resize). A placed row may name `paint` ('red', 'grey', 'taxi', 'snow_red', …); else the paint
+           is picked off the row's spot. The car_pack_N rows are the cars one by one for the editor. */
+        car_pack_1:        { pack: 'car01', span: 4.1, foot: 1.1, rect: { hw: 0.9, hd: 2.05 }, block: true, vehicle: true },   // a seventies estate (+ snow paints)
+        car_pack_2:        { pack: 'car02', span: 4.7, foot: 1.2, rect: { hw: 0.95, hd: 2.35 }, block: true, vehicle: true },  // a boxy saloon
+        car_pack_3:        { pack: 'car03', span: 3.8, foot: 1.0, rect: { hw: 0.9, hd: 1.9 }, block: true, vehicle: true },    // a hatchback
+        car_pack_4:        { pack: 'car04', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true },    // a minivan
+        car_pack_5:        { pack: 'car05', span: 5.3, foot: 1.3, rect: { hw: 1.0, hd: 2.65 }, block: true, vehicle: true },   // a big saloon (paints: taxi, police)
+        car_pack_6:        { pack: 'car06', span: 4.5, foot: 1.1, rect: { hw: 0.95, hd: 2.25 }, block: true, vehicle: true },  // a rusted shell
+        car_pack_7:        { pack: 'car07', span: 4.0, foot: 1.1, rect: { hw: 0.9, hd: 2.0 }, block: true, vehicle: true },    // a 1920s tourer
+        car_pack_8:        { pack: 'car08', span: 6.2, foot: 1.6, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true },   // a step van
+        car_suv:           { file: 'Meshy_AI_a_black_SUV_0915195508_texture.glb',       base: 'misc', pack: 'suv', span: 4.9, foot: 1.2, rect: { hw: 1.0, hd: 2.45 }, block: true, vehicle: true, turn: 90 },
+        car_cadillac:      { file: 'Meshy_AI_a_black_cadillac_0915195323_texture.glb',  base: 'misc', pack: 'sedan', span: 5.6, foot: 1.3, rect: { hw: 1.0, hd: 2.8 },  block: true, vehicle: true, turn: 90 },
+        car_cop:           { file: 'Meshy_AI_a_cop_car_0915195443_texture.glb',         base: 'misc', pack: 'police', span: 5.0, foot: 1.2, rect: { hw: 0.95, hd: 2.5 }, block: true, vehicle: true, turn: 90, glow: { y: 1.6, size: 1.2, color: 0xff3040 } },
         car_cyber:         { file: 'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',   base: 'misc', span: 4.6, foot: 1.1, rect: { hw: 1.0, hd: 2.3 },  block: true, vehicle: true, turn: 90, glow: { y: 0.4, size: 2.0, color: 0xff3ad8 } },
         car_ambulance:     { file: 'Meshy_AI_an_ambulance_0915195334_texture.glb',      base: 'misc', span: 6.2, foot: 1.5, rect: { hw: 1.15, hd: 3.1 }, block: true, vehicle: true, turn: 90, glow: { y: 2.5, size: 1.2, color: 0xff3040 } },
         fire_truck:        { file: 'Meshy_AI_a_fire_truck_0915195407_texture.glb',      base: 'misc', span: 9.0, foot: 2.2, rect: { hw: 1.25, hd: 4.5 }, block: true, vehicle: true, turn: 90 },   // 3.4 m tall — the works' warehouse, never P1's 2.8 m
@@ -44636,10 +44649,10 @@ function hqPalette(o) {
     o = o || {};
     const C = DOOR_HQ.catalogue || {}, out = { models: [], people: [], trees: [], doors: [], lights: [], markers: [] };
     Object.keys(C).sort().forEach(k => {
-        const c = C[k]; if (!c || (!c.file && !c.proc)) return;
+        const c = C[k]; if (!c || (!c.file && !c.proc && !c.pack)) return;
         if (c.leaf) { out.doors.push({ id: 'leaf:' + k, label: k.replace(/^leaf_/, '').replace(/_/g, ' '), sub: 'door leaf' + (c.open ? ' · ' + c.open : '') + (c.wide ? ' · wide' : ''), group: 'Door leaves', list: 'doors', row: { wall: 'free', leaf: k }, thumb: { kind: 'prop', key: k } }); return; }
         const size = c.h ? c.h + ' m tall' : c.span ? c.span + ' m across' : '';
-        const e = { id: 'prop:' + k, label: k.replace(/_/g, ' '), sub: (c.proc ? 'built' : (c.base || 'door')) + (size ? ' · ' + size : '') + (c.light ? ' · light' : ''), group: hqPaletteGroup(k, c), list: 'props', row: { key: k }, thumb: { kind: 'prop', key: k } };
+        const e = { id: 'prop:' + k, label: k.replace(/_/g, ' '), sub: (c.pack ? 'car pack' : c.proc ? 'built' : (c.base || 'door')) + (size ? ' · ' + size : '') + (c.light ? ' · light' : ''), group: hqPaletteGroup(k, c), list: 'props', row: { key: k }, thumb: { kind: 'prop', key: k } };
         if (c.light || c.glow) out.lights.push(Object.assign({}, e, { id: 'light:' + k, group: c.light ? (c.light.night ? 'Lamps (on at night)' : 'Lights') : 'Glows (no light)' }));
         out.models.push(e);
     });
