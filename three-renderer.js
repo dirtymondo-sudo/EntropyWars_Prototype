@@ -1642,6 +1642,21 @@ const ThreeRenderer = (function () {
             kl.detectSupport(gpuR || fake);
             var wc = kl.workerConfig || {};
             if (!gpuR && wc.dxtSupported && !fake.extensions.has('WEBGL_compressed_texture_s3tc_srgb')) wc.dxtSupported = false;
+            /* WEBGPU_PLAN W2 fix: the models (and their KTX2 textures) are shared with the classic WebGL contexts that never
+               moved (the character viewer behind the party builder's hero stage, the editor thumbnails, the creator), so the
+               transcode target must be one THOSE can upload too, not just the WebGPU device's (Firefox on a Mac: WebGPU offers
+               ASTC, its WebGL does not → every 3D unit in the party builder drew black) */
+            if (gpuR) {
+                var gl2 = _ktxDetect(), H = function (n) { return !!(gl2 && gl2.extensions.has(n)); };
+                if (gl2) {
+                    wc.astcSupported = wc.astcSupported && H('WEBGL_compressed_texture_astc');
+                    wc.bptcSupported = wc.bptcSupported && H('EXT_texture_compression_bptc');
+                    wc.etc2Supported = wc.etc2Supported && H('WEBGL_compressed_texture_etc');
+                    wc.etc1Supported = wc.etc1Supported && (H('WEBGL_compressed_texture_etc1') || H('WEBGL_compressed_texture_etc'));
+                    wc.dxtSupported = wc.dxtSupported && H('WEBGL_compressed_texture_s3tc') && H('WEBGL_compressed_texture_s3tc_srgb');
+                    wc.pvrtcSupported = wc.pvrtcSupported && (H('WEBGL_compressed_texture_pvrtc') || H('WEBKIT_WEBGL_compressed_texture_pvrtc'));
+                }
+            }
             _ktx.fmt = wc.astcSupported ? 'ASTC' : wc.bptcSupported ? 'BC7' : wc.etc2Supported ? 'ETC2' : wc.dxtSupported ? 'BC1/BC3' : wc.etc1Supported ? 'ETC1' : 'RGBA (uncompressed)';
             _ktx.loader = kl;
             return kl;
@@ -32225,6 +32240,25 @@ const ThreeRenderer = (function () {
                 if (!bad) RB.bundleGroup._ew_bunMiss = true;
             }
             return ok;
+        };
+        /* W6 fix 3 (2026-10-04, the walls glued to the camera, black where they stood): a render inside a render clears
+           three's `_currentRenderBundle`. The shadow maps draw from the first lit object's updateBefore, i.e. INSIDE the first
+           bundle's recording, and three's _renderBundle sets _currentRenderBundle = null when that nested render's own bundles
+           are done — so every object recorded after the shadow pass went into the GPU bundle but not into three's list for it
+           (renderObjects / renderObject.bundle). Those objects were never refreshed again: a material drawn by nothing else
+           (the static batch's merged walls) kept the first frame's camera and lights in its shared uniforms and replayed
+           glued to the view, and the isReady wrapper above never saw their misses. Here a nested render starts with no current
+           bundle and hands the outer one back when it returns. */
+        var rs = r._renderScene;
+        if (rs) r._renderScene = function () {
+            var prev = this._currentRenderBundle; this._currentRenderBundle = null;
+            try { return rs.apply(this, arguments); } finally { this._currentRenderBundle = prev; }
+        };
+        var rb = r._renderBundle;
+        if (rb) r._renderBundle = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
+            var out = rb.apply(this, arguments);
+            try { var g = bundle.bundleGroup, bd = this.backend.get(this._bundles.get(g, bundle.camera, this._currentRenderContext)); if (g._ew_bun && bd.renderObjects) g._ew_bun.recN = bd.renderObjects.length; } catch (e) {}
+            return out;
         };
         var po = r._projectObject;
         r._projectObject = function (object) {
@@ -64008,7 +64042,7 @@ const ThreeRenderer = (function () {
             try { renderer.render(sc, cam); } catch (e) { out.error = String(e && e.message || e); }
             return out;
         },
-        bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, why: st.why }; }); },
+        bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },
             isOpen: function () { return !!_lens; },

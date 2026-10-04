@@ -637,3 +637,17 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   fn)`. Console: `ThreeRenderer.nodePrograms()` builds one of each and returns `{name: twinned}` (all 21 true on the
   sandbox's WebGL 2 backend); `nodeLayers()` counts `program <key>`. The menu backdrop's own renderer in index.html
   is classic WebGL and was left as it is. A program without a twin still gets the old flat stand-in.
+- 2026-10-04: **W6 fix 3** (zip renderer/ENTROPY_WARS_W6_FIX3.zip, three-renderer.js only). The real cause of the hall on
+  WebGPU (lower walls black, "textures moving with my camera", fine with `?ew_bundles=0`; fixes 1 and 2 were real but not
+  it). three's shadow maps draw from the first lit object's `updateBefore`, i.e. as a nested `render` INSIDE the first
+  bundle's recording, and `_renderBundle` ends by setting `_currentRenderBundle = null`, so once the nested render's own
+  bundles were done the outer recording went on with no current bundle: every object recorded after the shadow pass
+  landed in the GPU bundle but not in three's `renderObjects` list for it (the sandbox count: the shell bundle registered
+  1 of its 146 meshes). Those objects were never refreshed again, so a material drawn by nothing else — the static
+  batch's merged walls — kept the first frame's camera and lights in its shared uniforms and replayed glued to the view;
+  the floor, the first object, was fine; and fix 2's miss flag never saw their pending pipelines ("0 re-records/s").
+  `_ewBunSetup` now wraps `_renderScene`: a nested render starts with no current bundle and hands the outer one back.
+  `ThreeRenderer.bundles()` reports `recorded` (three's count) per group. Same zip: the KTX2 transcode target on the node
+  renderer is now one the classic WebGL contexts can upload too (`_ktxLoader` ANDs the device's formats with a WebGL 2
+  probe): Firefox on a Mac offers ASTC on WebGPU but not on WebGL, so the character viewer behind the party builder's hero
+  stage drew every unit black. The ?ewdiag build line now reads the real script token.
