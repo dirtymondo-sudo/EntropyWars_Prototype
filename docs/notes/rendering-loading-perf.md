@@ -661,3 +661,12 @@ the chain no longer tone-maps (classic WebGLRenderer r153+ tone-maps only straig
 look never had it; `_hdrSupported` was always false since `NoToneMapping` is 0); and a node dress must not read
 `normalWorld` / `normalView` inside `setupDiffuseColor`: it builds three's once-only lit normal early and the direct
 lights go dark on that material. Use `normalWorldGeometry` there (the `_hqAoHook` twin did this to every HQ wall and floor).
+
+### W4 — the libraries and the edges (2026-10-04, zip renderer/ENTROPY_WARS_W4.zip)
+On the node renderer the HQ plates are canvas-painted planes (`_hqCvPlate` / `_hqCvPaint`, same rows as the troika
+plate, fonts from `document.fonts`); troika is WebGL-only. Clip planes: a material's `clippingPlanes` become discards
+(`_ewNodeClip`), the reflector's mirrored draw uses a `ClippingGroup` (node three ignores `renderer.clippingPlanes` and
+material planes). A lost WebGPU device rebuilds the board renderer in place (`_ewGpuRebuild`, `ThreePost.swapRenderer`,
+max 3 a session; console `ThreeRenderer.gpuRebuild()`). The quarks row is hidden on the node renderer; the AO row
+reads GTAO there. Sandbox trap: at ~2 fps with the proxy, a room's textures can take 30+ s, so its walls read black in
+an early shot on BOTH branches; wait before comparing.

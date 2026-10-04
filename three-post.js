@@ -3064,6 +3064,27 @@ const ThreePost = (function () {
         return { lib: _composer ? 'three' : 'none', passes: _composer ? _composer.passes.filter(function (p) { return p.enabled; }).length : 0 };
     }
 
+    /* WEBGPU_PLAN W4: the board renderer was rebuilt (three-renderer.js, after a lost WebGPU device) on the same canvas and
+       scene. The node chain's graphs, stand-ins and targets hold no GPU state and stay; its RenderPipelines, the exposure
+       readback and the pane blit are rebuilt on first use (an old device's readback would never come back). */
+    function swapRenderer(renderer) {
+        if (!renderer || renderer === _renderer) return;
+        var old = _renderer;
+        _renderer = renderer;
+        renderer.shadowMap.enabled = (_shadowQuality !== 'off');
+        renderer.shadowMap.type = THREE.PCFShadowMap;
+        renderer.setClearColor(0x000000, 0);
+        renderer.toneMappingExposure = old ? old.toneMappingExposure : renderer.toneMappingExposure;
+        if (_ng) { _ng.pipes = {}; _ng.sig = null; _ng.cur = null; _ng.frameIn = null; _ng.ae = null; _ng.direct = null; renderer.toneMapping = THREE.NoToneMapping; }
+        else {
+            renderer.toneMapping = old ? old.toneMapping : THREE.LinearToneMapping;
+            if (renderer.isWebGPURenderer && _scene && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {   // the chain never came up on the old one
+                var sz = renderer.getSize(new THREE.Vector2());
+                _ngStart(renderer, _scene, sz.x || 960, sz.y || 540);
+            }
+        }
+        console.log('[ThreePost] board renderer swapped — the node post chain rebuilds its pipelines');
+    }
     function init(renderer, scene, w, h) {
         _renderer = renderer;
         _scene = scene;
@@ -3711,6 +3732,7 @@ const ThreePost = (function () {
 
     return {
         init: init,
+        swapRenderer: swapRenderer,   // WEBGPU_PLAN W4: a rebuilt board renderer (device lost)
         getPostChain: getPostChain,   // RENDERER_PLAN R5: { lib: 'pmndrs' | 'three', passes, effectsA, ao, n8ao } (the F3 lens)
         render: render,
         renderScene: renderScene,
