@@ -667,7 +667,7 @@ unchanged. HQ-only, never online. API: `ThreeRenderer.hq.dash()` / `dashing()`. 
 ## THE CAR PACK (2026-10-04, thread "Car pack")
 mondo's eight low-poly cars on R2 `Assets/vehicles/Car 01` … `Car 08` (Car 01 = `Car.obj` + `car*.png`; Car N = `CarN.obj` +
 `carN*.png`, Car 08's textures are `Car8*.png`). Paints found on R2: 1 '' blue gray red + snow_* / snowcovered_*; 2 '' red black;
-3 '' red yellow; 4 '' grey lightgrey lightorange; 5 '' grey green taxi police police_la (taxi + police wear Car5_Taxi.obj / Car5_Police.obj); 6 ''; 7 '' grey red green black brown; 8 '' grey purple. Measured: every
+3 '' red yellow; 4 '' grey lightgrey lightorange; 5 '' grey green taxi police police_la (taxi + police wear Car5_Taxi.obj / Car5_Police.obj); 6 ''; 7 '' grey red green black brown; 8 '' grey purple mail. Measured: every
 OBJ is centred, Y up, NOSE +Z, ~6 units long, one mesh / one material, wheels painted into the body (the pack's `Wheel/` OBJ is
 unused). `Shadow (3D)/car_shadow.png` is drawn as a blob plane under each car. `Sound effects/` is mondo's (no SFX work).
 - three-renderer.js `_CAR_PACK` (the cars, real lengths), `_CAR_PACK_POOLS` (suv / sedan / taxi / police / van / old / wreck /
