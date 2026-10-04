@@ -25068,8 +25068,134 @@ const ThreeRenderer = (function () {
         subway_cart:  { m: 10.33, yaw: Math.PI / 2, foot: 3.0, w: 3.0, h: 3.7, color: 0xb8bcc0, lift: 0.2 },
         /* DISASTER CITY, THE SECOND PASS (2026-09-17): the taxi and the delivery truck join the traffic (targets, unmeasured) */
         taxi:         { m: 4.8, yaw: Math.PI / 2, foot: 1.2, w: 1.9, h: 1.5, color: 0xf2c11a, lift: 0.22 },
-        truck:        { m: 8.0, yaw: Math.PI / 2, foot: 2.0, w: 2.5, h: 3.4, color: 0x3a4048, lift: 0.18 }
+        truck:        { m: 8.0, yaw: Math.PI / 2, foot: 2.0, w: 2.5, h: 3.4, color: 0x3a4048, lift: 0.18 },
+        /* THE CAR PACK (2026-10-04 — mondo's eight low-poly cars, R2 Assets/vehicles/): the rows above with a `pack` draw the
+           pack's cars (_CAR_PACK_POOLS) instead of their Meshy file, which stays the fallback (window.EW_NO_CAR_PACK). These
+           rows exist only as the pack: the 1920s car, the rusted shell, and each car by number. */
+        oldcar:       { m: 4.0, yaw: 0, foot: 1.1, w: 1.7, h: 1.9, color: 0x1a1a1e, lift: 0.22, pack: 'old' },
+        wreck:        { m: 4.5, yaw: 0, foot: 1.1, w: 1.8, h: 1.2, color: 0x6a3a24, lift: 0.18, pack: 'wreck' },
+        car01:        { m: 4.1, yaw: 0, foot: 1.1, w: 1.7, h: 1.4, color: 0x3a5a2a, lift: 0.22, pack: 'car01' },
+        car02:        { m: 4.7, yaw: 0, foot: 1.2, w: 1.8, h: 1.4, color: 0x1a1e4a, lift: 0.22, pack: 'car02' },
+        car03:        { m: 3.8, yaw: 0, foot: 1.0, w: 1.7, h: 1.4, color: 0x1e4a32, lift: 0.22, pack: 'car03' },
+        car04:        { m: 4.8, yaw: 0, foot: 1.2, w: 2.0, h: 1.9, color: 0x2a4a8a, lift: 0.22, pack: 'car04' },
+        car05:        { m: 5.3, yaw: 0, foot: 1.3, w: 1.9, h: 1.4, color: 0x7a2a1a, lift: 0.22, pack: 'car05' },
+        car06:        { m: 4.5, yaw: 0, foot: 1.1, w: 1.8, h: 1.2, color: 0x6a3a24, lift: 0.18, pack: 'car06' },
+        car07:        { m: 4.0, yaw: 0, foot: 1.1, w: 1.7, h: 1.9, color: 0x2a4a8a, lift: 0.22, pack: 'car07' },
+        car08:        { m: 6.2, yaw: 0, foot: 1.6, w: 2.2, h: 2.8, color: 0xd8d8d8, lift: 0.18, pack: 'car08' }
     };
+    /* the everyday cars of the Meshy batch are the pack now: the SUV and the Cadillac a pool each, the taxi and the cop car
+       car 5 in its own taxi / police paint, the delivery truck car 8 (the step van) */
+    _VEHICLE_KIT.suv.pack = 'suv'; _VEHICLE_KIT.cadillac.pack = 'sedan'; _VEHICLE_KIT.taxi.pack = 'taxi'; _VEHICLE_KIT.copcar.pack = 'police'; _VEHICLE_KIT.truck.pack = 'van';
+    /* ── THE CAR PACK (2026-10-04) ─────────────────────────────────────────
+       mondo's pack on R2 Assets/vehicles/Car 01 … Car 08: one OBJ each (one mesh, one material, the wheels painted into the
+       body — the pack's separate Wheel.obj is not needed) + a 128 px texture per paint. MEASURED (the OBJs parsed and drawn
+       in the sandbox): every car is centred, Y up, its NOSE AT +Z (no pre-turn), about 6 units long. `L` / `W` = the OBJ's
+       length / width in its own units (the blob shadow is sized off them before the file lands), `m` = the real length in
+       metres the car is fitted to, `tex` = the texture's stem (`<tex>_<paint>.png`; '' = the plain `<tex>.png`), `snow` =
+       the paints with snow on (car 1 only). The look of each: 1 a seventies estate, 2 a boxy eighties saloon, 3 a hatchback,
+       4 a minivan, 5 a big American saloon (also the taxi and the police car), 6 a rusted shell with no wheels, 7 a 1920s
+       tourer, 8 a step van. Kill-switch: window.EW_NO_CAR_PACK (back to the Meshy files). */
+    var _CAR_PACK_BASE = 'https://cdn.entropywars.net/Assets/vehicles/';
+    var _CAR_PACK = {
+        1: { dir: 'Car 01', obj: 'Car.obj',  tex: 'car',  m: 4.1, L: 6.15, W: 2.56, paints: ['', 'blue', 'gray', 'red'],
+             snow: ['snow', 'snow_blue', 'snow_gray', 'snow_red', 'snowcovered', 'snowcovered_blue', 'snowcovered_gray', 'snowcovered_red'] },
+        2: { dir: 'Car 02', obj: 'Car2.obj', tex: 'car2', m: 4.7, L: 6.54, W: 2.90, paints: ['', 'red', 'black'] },
+        3: { dir: 'Car 03', obj: 'Car3.obj', tex: 'car3', m: 3.8, L: 5.61, W: 2.64, paints: ['', 'red', 'yellow'] },
+        4: { dir: 'Car 04', obj: 'Car4.obj', tex: 'car4', m: 4.8, L: 6.30, W: 3.40, paints: ['', 'grey'] },
+        5: { dir: 'Car 05', obj: 'Car5.obj', tex: 'car5', m: 5.3, L: 7.37, W: 2.78, paints: ['', 'grey', 'green'] },   // + 'taxi', 'police'
+        6: { dir: 'Car 06', obj: 'Car6.obj', tex: 'car6', m: 4.5, L: 6.36, W: 2.48, paints: [''] },
+        7: { dir: 'Car 07', obj: 'Car7.obj', tex: 'car7', m: 4.0, L: 5.78, W: 2.42, paints: ['', 'grey', 'red', 'green', 'black', 'brown'] },
+        8: { dir: 'Car 08', obj: 'Car8.obj', tex: 'Car8', m: 6.2, L: 6.89, W: 3.16, paints: ['', 'grey', 'purple'] }
+    };
+    /* a pool = [car, [paints]] rows; a snowy room swaps a GENERIC pool (`snowy: true`) for car 1 in its snow paints */
+    var _CAR_PACK_POOLS = {
+        suv:    { snowy: true, rows: [[1, ['', 'blue', 'gray', 'red']], [3, ['', 'red', 'yellow']], [4, ['', 'grey']]] },
+        sedan:  { snowy: true, rows: [[2, ['', 'red', 'black']], [5, ['', 'grey', 'green']]] },
+        taxi:   { rows: [[5, ['taxi']]] },
+        police: { rows: [[5, ['police']]] },
+        van:    { rows: [[8, ['', 'grey', 'purple']]] },
+        old:    { rows: [[7, ['', 'grey', 'red', 'green', 'black', 'brown']]] },
+        wreck:  { rows: [[6, ['']]] }
+    };
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach(function (n) { var C = _CAR_PACK[n]; _CAR_PACK_POOLS['car0' + n] = { snowy: n === 1, rows: [[n, C.paints.concat(n === 5 ? ['taxi', 'police'] : [])]] }; });
+    function _carPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_CAR_PACK) && typeof THREE.OBJLoader === 'function'; }
+    function _carPackUrl(C, file) { return _CAR_PACK_BASE + encodeURIComponent(C.dir) + '/' + file; }
+    /* every OBJ a pool can draw (a room's warm-up list) */
+    function _carPackUrls(pool) {
+        var P = _CAR_PACK_POOLS[pool]; if (!P) return [];
+        var out = P.rows.map(function (r) { return _carPackUrl(_CAR_PACK[r[0]], _CAR_PACK[r[0]].obj); });
+        if (P.snowy) out.push(_carPackUrl(_CAR_PACK[1], _CAR_PACK[1].obj));
+        return out;
+    }
+    /* { car, paint } off the pool: `snow` = a snowy room, `paint` = a row's own pick (`p.paint`, kept when the car has it) */
+    function _carPackPick(pool, rng, snow, paint) {
+        var P = _CAR_PACK_POOLS[pool] || _CAR_PACK_POOLS.sedan, r = rng || Math.random;
+        if (snow && P.snowy) { var S = _CAR_PACK[1].snow; return { car: 1, paint: S[Math.floor(r() * S.length) % S.length] }; }
+        var row = P.rows[Math.floor(r() * P.rows.length) % P.rows.length], paints = row[1];
+        var pick = paints[Math.floor(r() * paints.length) % paints.length];
+        if (paint != null) { var C = _CAR_PACK[row[0]]; if (C.paints.indexOf(paint) >= 0 || (C.snow && C.snow.indexOf(paint) >= 0) || (row[0] === 5 && (paint === 'taxi' || paint === 'police'))) pick = paint; }
+        return { car: row[0], paint: pick };
+    }
+    /* ONE texture and ONE material per paint, shared by every car in it (one shader, the bundles and the batch see the
+       same material). `hq` = the room's prop rule (_hqPropMatPick: a Lambert with the room's contact AO); else the
+       board's self-lit lift (_hzPropLitLiftPick). The texture stays linear like every prop's (the game's output is linear). */
+    var _carPackMatCache = {};
+    function _carPackMat(C, paint, mode) {
+        var url = _carPackUrl(C, C.tex + (paint ? '_' + paint : '') + '.png'), k = url + '|' + mode;
+        if (_carPackMatCache[k]) return _carPackMatCache[k];
+        var tex = _miscTex(url);
+        tex.magFilter = THREE.NearestFilter;   // the pack's 128 px paint, crisp like the PS1 it is drawn for
+        var m = new THREE.MeshLambertMaterial({ map: tex, side: THREE.FrontSide });
+        if (mode === 'hq') { if (typeof _hqAoHook === 'function') m.onBeforeCompile = _hqAoHook; }
+        else if (mode > 0) { m.emissive = new THREE.Color(mode, mode, mode); m.emissiveMap = tex; }
+        m._ew_shared = true;
+        return (_carPackMatCache[k] = m);
+    }
+    /* the pack's blob shadow (Shadow (3D)/car_shadow.png — the pack's own quad, drawn as a plane): one geometry, one material */
+    var _carPackShadowGeo = null, _carPackShadowMat = null;
+    function _carPackShadow() {
+        if (!_carPackShadowGeo) {
+            _carPackShadowGeo = new THREE.PlaneGeometry(1, 1); _carPackShadowGeo.rotateX(-Math.PI / 2); _carPackShadowGeo._ew_shared = true;
+            var t = _miscTex(_CAR_PACK_BASE + encodeURIComponent('Shadow (3D)') + '/car_shadow.png');
+            _carPackShadowMat = new THREE.MeshBasicMaterial({ map: t, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+            _carPackShadowMat._ew_shared = true;
+        }
+        var m = new THREE.Mesh(_carPackShadowGeo, _carPackShadowMat);
+        m.castShadow = false; m.receiveShadow = false; m.renderOrder = 1;
+        return m;
+    }
+    /* a pack car, nose +Z, base on y = 0. `perM` = world units per metre (the board's ts / 1.75, the room's U). o: rng,
+       snow, paint, metres (its length — else the car's own `m`), scale (× the length: the editor's resize), hq (the room's
+       material rule) or lift (the board's), cast, onDone(grp, s, bb). The group carries `_ew_lenM` (the length drawn). */
+    function _carPackModel(pool, perM, o) {
+        o = o || {};
+        var pk = _carPackPick(pool, o.rng, o.snow, o.paint), C = _CAR_PACK[pk.car];
+        var lenM = ((o.metres != null) ? o.metres : C.m) * (o.scale || 1), mat = _carPackMat(C, pk.paint, o.hq ? 'hq' : (o.lift || 0));
+        var g = _miscModelInstance(_carPackUrl(C, C.obj), false, lenM * perM, {
+            fit: 'span', matPick: function () { return mat; },
+            onDone: function (grp, s, bb) {
+                grp.traverse(function (n) { if (n.isMesh && n !== sh) { n.castShadow = o.cast !== false; n.receiveShadow = true; } });
+                if (o.onDone) o.onDone(grp, s, bb);
+            }
+        });
+        var sh = _carPackShadow(), k = lenM * perM / C.L;
+        sh.scale.set(C.W * 0.66 * k, 1, C.L * 0.86 * k); sh.position.y = 0.02 * perM;
+        g.add(sh);
+        g._ew_lenM = lenM; g._ew_carPack = pk.car + (pk.paint ? '_' + pk.paint : '');
+        return g;
+    }
+    /* a room row's own dice: seeded off its spot, so a parked car keeps its paint every visit and on both screens */
+    function _carPackRng(p) {
+        var h = (((Math.round((p && p.x || 0) * 10) * 73856093) ^ (Math.round((p && p.z || 0) * 10) * 19349663) ^ (Math.round((p && p.deg || 0) * 10) * 83492791)) >>> 0) || 1;
+        return function () { h = (Math.imul(h, 1664525) + 1013904223) >>> 0; return h / 4294967296; };
+    }
+    /* a snowy room (the North Pole, Antarctica, a winter look): the generic cars wear car 1's snow paints */
+    function _carPackSnowy(room) {
+        if (!room) return false;
+        var env = room.env || {}, look = env.look;
+        var tag = [room.id, room.site, room.zone, typeof look === 'string' ? look : (look && look.name), env.weather].filter(function (x) { return typeof x === 'string'; }).join(' ');
+        return /northpole|north_pole|polar|antarctic|arctic|snow|winter|frozen|blizzard/i.test(tag);
+    }
     /* the stand-in: a lit box on four dark wheels, nose +Z, in the kit's colour */
     function _hzVehicleProc(kind) {
         var V = _VEHICLE_KIT[kind] || _VEHICLE_KIT.suv, ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE), k = ts / 1.75;
@@ -25093,6 +25219,16 @@ const ThreeRenderer = (function () {
     function _hzVehicle(kind, o) {
         o = o || {};
         var V = _VEHICLE_KIT[kind]; if (!V) return new THREE.Group();
+        /* THE CAR PACK: a `pack` row draws the pack's car (a pack-only row with the pack off / EW_PERF_LOW's skip falls to
+           _hzMiscKit, which has no file for it and hands back the stand-in box) */
+        var lowSkip = typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip';
+        if (V.pack && _carPackOn() && !lowSkip) {
+            var pg = _carPackModel(V.pack, _hzKitTile() / 1.75, { rng: o.rng, snow: o.snow, paint: o.paint, metres: o.metres, lift: (o.lift != null) ? o.lift : V.lift, cast: o.cast !== false, onDone: o.onDone });
+            var pv = pg;
+            if (o.yaw) { pv = new THREE.Group(); pv.add(pg); pg.rotation.y = o.yaw; pv._ew_lenM = pg._ew_lenM; }   // the caller's extra turn, inside the group
+            pv._ew_footM = (o.foot != null) ? o.foot : V.foot; pv._ew_vehicle = kind;
+            return _hzVehicleBeacon(V, o, pv);
+        }
         var g = _hzMiscKit(kind, {
             metres: (o.metres != null) ? o.metres : V.m, fit: 'span', yaw: (V.yaw || 0) + (o.yaw || 0),
             lift: (o.lift != null) ? o.lift : V.lift, cast: o.cast !== false, foot: (o.foot != null) ? o.foot : V.foot,
@@ -25101,6 +25237,10 @@ const ThreeRenderer = (function () {
             onDone: o.onDone
         });
         g._ew_footM = (o.foot != null) ? o.foot : V.foot; g._ew_vehicle = kind;
+        _hzVehicleBeacon(V, o, g);
+        return g;
+    }
+    function _hzVehicleBeacon(V, o, g) {
         /* the emergency beacon: a slow red-blue pulse over the roof, on the board only (a room hangs its own lights) */
         if (V.beacon && o.beacon !== false && typeof _hzGlowSprite === 'function') {
             var ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE), k = ts / 1.75;
@@ -28965,7 +29105,7 @@ const ThreeRenderer = (function () {
         /* the utility boxes on the curbs (the user's GLB, 2026-09-13): the casinos' power */
         [[K.BX0 - 1.4 * ts, K.CZ - 1.2 * ts], [K.BX1 + 1.4 * ts, K.CZ + 1.2 * ts]].forEach(function (p) { _nrProp(K, function (rng) { return _hzDoorKitGLB('utility_box', { metres: 1.35, foot: 0.45, rng: rng }); }, p[0], p[1], {}); });
         /* THE VEHICLE BATCH (2026-09-15): the black Cadillac cruising the north road, the cop car parked at the chapel's kerb */
-        _nrProp(K, function (rng) { return _hzVehicle('cadillac', { rng: rng }); }, K.CX - 2.2 * ts, K.BZ0 - 2.3 * ts, { ry: Math.PI / 2 });
+        _nrProp(K, function (rng) { return _hzVehicle('oldcar', { rng: rng, paint: 'black' }); }, K.CX - 2.2 * ts, K.BZ0 - 2.3 * ts, { ry: Math.PI / 2 });   // THE CAR PACK: the 1920s tourer in black
         _nrProp(K, function (rng) { return _hzVehicle('copcar', { rng: rng }); }, K.BX1 + 1.4 * ts, K.BZ0 - 1.0 * ts, { ry: 0.15 });
         /* the chapel: a white house with a steeple, on the north-east corner */
         var cx = K.BX1 + 2.6 * ts, cz = K.BZ0 - 2.6 * ts;
@@ -47555,8 +47695,8 @@ const ThreeRenderer = (function () {
                 for (var c = 0; c < n; c++) {
                     var kind = rt.kinds[c % rt.kinds.length];
                     var V = (typeof _VEHICLE_KIT !== 'undefined' && _VEHICLE_KIT[kind]) ? _VEHICLE_KIT[kind] : null;
-                    var g = (typeof _hzVehicle === 'function') ? _hzVehicle(kind, { foot: 0, beacon: (kind === 'copcar' || kind === 'ambulance' || kind === 'firetruck'), rng: rng, low: 'skip' }) : new THREE.Group();
-                    var len = V ? V.m : 4.6;
+                    var g = (typeof _hzVehicle === 'function') ? _hzVehicle(kind, { foot: 0, beacon: (kind === 'copcar' || kind === 'ambulance' || kind === 'firetruck'), rng: rng, low: 'skip', snow: _carPackSnowy(room) }) : new THREE.Group();
+                    var len = g._ew_lenM || (V ? V.m : 4.6);   // THE CAR PACK: the car's own drawn length
                     [-0.6, 0.6].forEach(function (hx) { var hl = _hzGlowSprite(0.5 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(hx * U, 0.7 * U, (len / 2 + 0.1) * U); g.add(hl); var tl = _hzGlowSprite(0.3 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(hx * U, 0.75 * U, -(len / 2 + 0.05) * U); g.add(tl); });
                     g._ew_hqCar = kind; G.add(g);
                     cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0 });
@@ -51297,7 +51437,7 @@ const ThreeRenderer = (function () {
             /* the kit fits in board tiles: one 1.75 m tile in the building's units, so the cab is its 4.8 m (the city lots' rule) */
             var prevTs = _hzKitTs, cab;
             _hzKitTs = 1.75 * U;
-            try { cab = (typeof _hzVehicle === 'function') ? _hzVehicle('taxi', { yaw: -Math.PI / 2, beacon: false, fallback: procCab }) : procCab(); }
+            try { cab = (typeof _hzVehicle === 'function') ? _hzVehicle('taxi', { yaw: -Math.PI / 2, beacon: false, metres: M, fallback: procCab }) : procCab(); }
             finally { _hzKitTs = prevTs; }
             cab.position.set(xc * U, 0, zc * U); g.add(cab);
             /* the roof light's glow (faint until you come up; the cab's own sign is on the model) and the headlights (low, always on) */
@@ -52565,7 +52705,7 @@ const ThreeRenderer = (function () {
         _hq.tabletops = [];
         var placeOne = function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
             var cat = D.catalogue[p.key];
-            if (!cat || (!cat.file && !cat.proc)) return;
+            if (!cat || (!cat.file && !cat.proc && !(cat.pack && _carPackOn()))) return;   // THE CAR PACK: a pack-only row needs the pack
             var level = p.level || 0, y0 = _hqLevelY(S, level);
             /* THE CAVE (rev 11): a floor prop stands on its cell — a torch on the terrace, a cot in a sunken cell */
             var pY = p.y;   // the prop's own lift over the ground under it (a desk top, a sheet of paper)
@@ -52662,7 +52802,7 @@ const ThreeRenderer = (function () {
                into a cabinet and walking out through the wall of props) */
             var blk = null;
             if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
-            var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
+            var instO = {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
@@ -52681,7 +52821,7 @@ const ThreeRenderer = (function () {
                     /* THE FRONT OFF THE MESH: `front: 'back' | 'open'` is measured, `turn` (degrees) is a known pre-turn — both turn the INSTANCE (centred on its own x / z), so the placement yaw keeps its meaning */
                     var turned = 0;
                     if (cat.front && !cat.lay) { try { turned = _hqAutoFrontYaw(g, cat.front); } catch (e) { turned = 0; } }
-                    if (cat.turn) turned += _hqRad(cat.turn);
+                    if (cat.turn && !packed) turned += _hqRad(cat.turn);   // THE CAR PACK: the pack's nose is already +Z
                     if (turned) g.rotation.y = turned;
                     var quarter = Math.abs(Math.round(turned / (Math.PI / 2))) % 2 === 1;
                     if (onWall) {
@@ -52695,7 +52835,12 @@ const ThreeRenderer = (function () {
                     if (blk && !cat.lay) blk.top = y + (bb.max.y - bb.min.y) * s / U;
                     if (_hq) { _hq.dirty = true; _hqSeatLater(); }
                 }
-            });
+            };
+            /* THE CAR PACK (2026-10-04): a catalogue car with a `pack` pool draws mondo's car pack (a paint picked off the row's
+               spot, so a room looks the same every visit; `p.paint` names one; snow paints in a snowy room) */
+            var packed = !!(cat.pack && typeof _carPackOn === 'function' && _carPackOn());
+            var inst = packed ? _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng(p), snow: _carPackSnowy(room), paint: p.paint, scale: fs, onDone: instO.onDone })
+                              : _miscModelInstance(_hqModelUrl(cat), true, target, instO);
             grp.add(inst);
             if (cat.glow) {
                 var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4);
@@ -62145,7 +62290,7 @@ const ThreeRenderer = (function () {
         var D = _hqData(), room = D && D.rooms ? D.rooms[roomId] : null, out = [], seen = {};
         if (!room || !D.catalogue) return out;
         function add(url, lane) { if (url && !seen[url]) { seen[url] = 1; out.push({ url: url, lane: lane }); } }
-        function cat(c) { if (c && c.file) add(_hqModelUrl(c), 'm'); }
+        function cat(c) { if (c && c.pack && typeof _carPackOn === 'function' && _carPackOn()) { _carPackUrls(c.pack).forEach(function (u) { add(u, 'm'); }); return; } if (c && c.file) add(_hqModelUrl(c), 'm'); }   // THE CAR PACK: the pool's OBJs, never the Meshy file it stands in for
         (room.doors || []).forEach(function (d) { if (d && d.leaf) cat(D.catalogue[d.leaf]); });
         (room.props || []).forEach(function (p) { if (p && p.key) cat(D.catalogue[p.key]); });
         cat(D.catalogue.door_gun);
@@ -63657,6 +63802,7 @@ const ThreeRenderer = (function () {
             if (!cat) { cb(null); return; }
             try {
                 if (cat.proc) { var pg = _hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }); cb(pg || null); return; }
+                if (cat.pack && _carPackOn()) { var pdone = false, pinst = _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng({ x: 0, z: 0 }), onDone: function () { if (!pdone) { pdone = true; cb(pinst); } } }); setTimeout(function () { if (!pdone) { pdone = true; cb(null); } }, 20000); return; }   // THE CAR PACK
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
                 var fitSpan = cat.span != null && cat.h == null, done = false;
                 var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,

@@ -663,3 +663,19 @@ second door. Cooldown `dash.cooldownMs` (800). `_hqDashCan` refuses on the board
 seated, in the slide, with the wheel open, and without the issued gun (C then says NOT ISSUED; a double-tap stays
 silent) — so C keeps diving / descending (the key falls through to `H.keys.c`). The battle row `raceDoorDash` is
 unchanged. HQ-only, never online. API: `ThreeRenderer.hq.dash()` / `dashing()`. Test: hq-gun.test.js "Door Dash".
+
+## THE CAR PACK (2026-10-04, thread "Car pack")
+mondo's eight low-poly cars on R2 `Assets/vehicles/Car 01` … `Car 08` (Car 01 = `Car.obj` + `car*.png`; Car N = `CarN.obj` +
+`carN*.png`, Car 08's textures are `Car8*.png`). Paints found on R2: 1 '' blue gray red + snow_* / snowcovered_*; 2 '' red black;
+3 '' red yellow; 4 '' grey; 5 '' grey green taxi police; 6 ''; 7 '' grey red green black brown; 8 '' grey purple. Measured: every
+OBJ is centred, Y up, NOSE +Z, ~6 units long, one mesh / one material, wheels painted into the body (the pack's `Wheel/` OBJ is
+unused). `Shadow (3D)/car_shadow.png` is drawn as a blob plane under each car. `Sound effects/` is mondo's (no SFX work).
+- three-renderer.js `_CAR_PACK` (the cars, real lengths), `_CAR_PACK_POOLS` (suv / sedan / taxi / police / van / old / wreck /
+  car01..car08), `_carPackModel(pool, unitsPerMetre, o)` (one shared material per paint), `_carPackSnowy(room)`.
+- `_VEHICLE_KIT` rows suv, cadillac, taxi, copcar, truck carry `pack` → every `_hzVehicle` caller (HQ traffic, battle backdrops,
+  the garage taxi, the spells' `ThreeRenderer.vehicle`) draws the pack. New kit kinds: oldcar, wreck, car01..car08. Kept Meshy:
+  cybercar, ambulance, firetruck, schoolbus, subway. The Honda Civic sedan (parked_car, the race, the spells) is untouched.
+- data.js catalogue: car_suv / car_cadillac / car_cop / car_taxi / car_truck / crashed_car(_2) gained `pack`; new rows
+  car_pack_1..8 (editor palette, Vehicles). A row may set `paint`; else the paint is seeded off the row's spot.
+- Snowy rooms (id/look matching northpole/polar/antarctic/snow/winter) put the generic pools on car 1's snow paints.
+- Kill-switch: `window.EW_NO_CAR_PACK = true` → the Meshy files again.
