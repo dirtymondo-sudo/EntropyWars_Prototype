@@ -25105,7 +25105,7 @@ const ThreeRenderer = (function () {
         5: { dir: 'Car 05', obj: 'Car5.obj', tex: 'car5', m: 5.3, L: 7.37, W: 2.78, paints: ['', 'grey', 'green'] },   // + 'taxi', 'police'
         6: { dir: 'Car 06', obj: 'Car6.obj', tex: 'car6', m: 4.5, L: 6.36, W: 2.48, paints: [''] },
         7: { dir: 'Car 07', obj: 'Car7.obj', tex: 'car7', m: 4.0, L: 5.78, W: 2.42, paints: ['', 'grey', 'red', 'green', 'black', 'brown'] },
-        8: { dir: 'Car 08', obj: 'Car8.obj', tex: 'Car8', m: 6.2, L: 6.89, W: 3.16, paints: ['', 'grey', 'purple'] }
+        8: { dir: 'Car 08', obj: 'Car8.obj', tex: 'Car8', m: 6.2, L: 6.89, W: 3.16, paints: ['', 'grey', 'purple', 'mail'] }
     };
     /* a pool = [car, [paints]] rows; a snowy room swaps a GENERIC pool (`snowy: true`) for car 1 in its snow paints */
     var _CAR_PACK_POOLS = {
@@ -25113,7 +25113,7 @@ const ThreeRenderer = (function () {
         sedan:  { snowy: true, rows: [[2, ['', 'red', 'black']], [5, ['', 'grey', 'green']]] },
         taxi:   { rows: [[5, ['taxi']]] },
         police: { rows: [[5, ['police', 'police_la']]] },
-        van:    { rows: [[8, ['', 'grey', 'purple']]] },
+        van:    { rows: [[8, ['', 'grey', 'purple', 'mail']]] },
         old:    { rows: [[7, ['', 'grey', 'red', 'green', 'black', 'brown']]] },
         wreck:  { rows: [[6, ['']]] }
     };
