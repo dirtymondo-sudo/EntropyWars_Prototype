@@ -31896,6 +31896,156 @@ const ThreeRenderer = (function () {
         r._ew_freeLater = null;
         for (var i = 0; i < q.length; i++) { try { q[i].destroy(); } catch (e) {} }
     }
+    /* ══ THE LIGHT RIG (WEBGPU_PLAN W5a, 2026-10-04: battle + spell performance on the node renderer) ═══════════════════
+       three's node renderer bakes the scene's light LIST into every shader: LightsNode's cache key is each light's id and
+       castShadow, and a render object whose key moved throws its node build away and builds again (NodeBuilder, the
+       bindings, a pipeline lookup: milliseconds each). The board made its unit lights new on every unit change
+       (ThreePost.rebuildUnitLights from rebuildUnits), auras and the key pickup add and drop lights, the HQ stage swaps
+       lamps — and each new id rebuilt EVERY material in the scene, the unlit ones too (sandbox battle, nothing cast: ~50
+       node builds a frame; a spell, many more). Classic WebGL keys its programs on the light COUNT only and never noticed.
+       Here, on the node renderer only, the scene's plain point lights (no shadow) draw through a fixed rig: once a frame,
+       before the scene render, each lit one's world position / colour / intensity / range / decay is copied into a rig
+       lamp that never changes, and the game's light itself leaves three's light list (layer mask 0; the original mask is
+       kept in _ew_rigMask and still decides which cameras it lights). The rig only grows — to the most shown point lights
+       the scene has had (dark ones count: ThreeVFX's flash pool waits at intensity 0), in steps of 4, the spares at
+       intensity 0 — so a scene's shaders build once. Shadow-casting point
+       lights and every other light type stay real. Off: window.EW_NO_LIGHT_RIG or ?ew_lightrig=0. */
+    var _EW_RIG_STEP = 4, _EW_RIG_MAX = 64, _ewRigV = null, _ewRigM = null;
+    function _ewRigOff() {
+        try { return !!window.EW_NO_LIGHT_RIG || /[?&]ew_lightrig=0\b/.test(location.search); } catch (e) { return false; }
+    }
+    function _ewRigWalk(o, R, mask) {
+        var ch = o.children;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i];
+            if (c.visible === false || c === R.group) continue;
+            if (c.isPointLight) {
+                if (c.castShadow) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } }   // a caster stays real
+                else {
+                    if (c.layers.mask !== 0 || c._ew_rigMask == null) { c._ew_rigMask = c.layers.mask; c.layers.mask = 0; }   // a mask the game set since is the new original
+                    if ((c._ew_rigMask & mask) !== 0 && R.src.length < _EW_RIG_MAX) R.src.push(c);   // a dark one too: the flash pool's lights sit at 0 until a spell, and the rig must already have room for them
+                }
+            }
+            if (c.children.length) _ewRigWalk(c, R, mask);
+        }
+    }
+    function _ewRigRelease(sc) {
+        var R = sc.userData.ewRig;
+        sc.traverse(function (c) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } });
+        if (R) { sc.remove(R.group); sc.userData.ewRig = null; }
+    }
+    function _ewRigTick(sc, cam) {
+        if (!sc || !sc.isScene || !cam) return;
+        var R = sc.userData.ewRig;
+        if (_ewRigOff()) { if (R) _ewRigRelease(sc); return; }
+        if (!R) {
+            var g = new THREE.Group(); g.name = 'ew light rig'; g._ew_rig = true;
+            sc.add(g);
+            R = sc.userData.ewRig = { group: g, lamps: [], src: [], grows: 0 };
+        }
+        if (R.group.parent !== sc) sc.add(R.group);   // a scene clear dropped it
+        R.src.length = 0;
+        _ewRigWalk(sc, R, cam.layers.mask);
+        var n = R.src.length, L = R.lamps, i;
+        if (n > L.length) {
+            var want = Math.min(_EW_RIG_MAX, Math.ceil(n / _EW_RIG_STEP) * _EW_RIG_STEP);
+            while (L.length < want) {
+                var lp = new THREE.PointLight(0x000000, 0, 1, 2);
+                lp.name = 'ew rig lamp'; lp._ew_rigLamp = true; lp.castShadow = false;
+                R.group.add(lp); L.push(lp);
+            }
+            R.grows++;
+        }
+        var v = _ewRigV || (_ewRigV = new THREE.Vector3()), inv = null;
+        if (!_ewRigIdentity(sc.matrixWorld)) inv = (_ewRigM || (_ewRigM = new THREE.Matrix4())).copy(sc.matrixWorld).invert();
+        for (i = 0; i < L.length; i++) {
+            var d = L[i], s = R.src[i];
+            if (s) {
+                s.getWorldPosition(v); if (inv) v.applyMatrix4(inv);
+                d.position.copy(v); d.color.copy(s.color); d.intensity = s.intensity; d.distance = s.distance; d.decay = s.decay;
+            } else if (d.intensity !== 0) { d.intensity = 0; d.distance = 1; }
+        }
+        R.n = n;
+    }
+    function _ewRigIdentity(m) {
+        var e = m.elements;
+        return e[0] === 1 && e[5] === 1 && e[10] === 1 && e[15] === 1 && e[12] === 0 && e[13] === 0 && e[14] === 0 && e[1] === 0 && e[2] === 0 && e[4] === 0 && e[6] === 0 && e[8] === 0 && e[9] === 0;
+    }
+    /* ══ THE KEPT SHADERS (WEBGPU_PLAN W5a, 2026-10-04: a spell's hitches on the node renderer) ══════════════════════════
+       (1) Instancing. three r186 reads an InstancedMesh's matrices from a uniform buffer named after the node's id whenever
+       they fit (count × 64 bytes within the backend's uniform limit), so EVERY InstancedMesh compiled its own vertex shader
+       and its own pipeline: the R7 particle batches (one per pool, blend and sheet — a first spell in the sandbox: 26 of
+       them at once), the HQ instance pass, the contact discs. An InstancedMesh's build reads the limit as 0 here, and three
+       takes its other path, the matrices as instanced attributes (what WebGLRenderer does): one shader serves them all.
+       (2) The kept builds. three throws a node build, its pipeline and its programs away the moment the last object using
+       them goes (a spell's meshes and rings live for a second), so the next cast of that spell built and compiled them
+       again (sandbox: ~15 node builds and 2-3 pipelines a cast). A build / pipeline / program nobody uses now stays in
+       three's caches — the newest 384 builds, 256 pipelines, 512 programs — and one with the same key is taken back free.
+       (3) The F3 counts: node builds and new pipelines (a steady frame shows 0 of both). Off: window.EW_NO_SHADER_KEEP or
+       ?ew_keep=0 (reload). */
+    var _ewKeep = { builds: 0, pipes: 0, reused: 0, kept: { b: [], p: [], g: [] }, at: 0, b0: 0, p0: 0, rateB: 0, rateP: 0 };
+    var _EW_KEEP_CAP = { b: 384, p: 256, g: 512 };
+    function _ewKeepOff() {
+        try { return !!window.EW_NO_SHADER_KEEP || /[?&]ew_keep=0\b/.test(location.search); } catch (e) { return false; }
+    }
+    function _ewKeepPush(kind, item, drop) {
+        var L = _ewKeep.kept[kind];
+        L.push({ it: item, drop: drop });
+        while (L.length > _EW_KEEP_CAP[kind]) { var o = L.shift(); try { o.drop(); } catch (e) {} }
+    }
+    function _ewKeepSetup(r) {
+        if (r._ew_keep) return;
+        r._ew_keep = true;
+        var zero = function () { return 0; };
+        var dbg = r.debug, N = r._nodes, P = r._pipelines, B = r.backend, off = _ewKeepOff();
+        if (dbg) {
+            var nb = dbg.onNodeBuilderCreated || null;
+            dbg.onNodeBuilderCreated = function (b, ro) {
+                _ewKeep.builds++;
+                if (!off && ro && ro.object && ro.object.isInstancedMesh) b.getUniformBufferLimit = zero;
+                if (nb) nb.apply(this, arguments);
+            };
+        }
+        if (B && B.createRenderPipeline) {
+            var crp = B.createRenderPipeline;
+            B.createRenderPipeline = function () { _ewKeep.pipes++; return crp.apply(this, arguments); };
+        }
+        if (off) return;
+        var NP = N && Object.getPrototypeOf(N), DM = NP && Object.getPrototypeOf(NP);
+        if (N && N.nodeBuilderCache && DM && DM.delete) N.delete = function (object) {
+            if (!object || !object.isRenderObject) return NP.delete.call(this, object);
+            var st = this.get(object).nodeBuilderState, self = this;
+            if (st !== undefined) {
+                st.usedTimes--;
+                if (st.usedTimes === 0) {
+                    var key = this.getForRenderCacheKey(object);
+                    _ewKeepPush('b', st, function () { if (st.usedTimes === 0 && self.nodeBuilderCache.get(key) === st) self.nodeBuilderCache.delete(key); });
+                }
+            }
+            return DM.delete.call(this, object);
+        };
+        if (P && P._releasePipeline && P._releaseProgram) {
+            var rp = P._releasePipeline, rg = P._releaseProgram;
+            P._releasePipeline = function (pl) {
+                var self = this;
+                _ewKeepPush('p', pl, function () { if (pl.usedTimes === 0 && self.caches.get(pl.cacheKey) === pl) rp.call(self, pl); });
+            };
+            P._releaseProgram = function (pg) {
+                var self = this;
+                _ewKeepPush('g', pg, function () { if (pg.usedTimes === 0 && self.programs[pg.stage] && self.programs[pg.stage].get(pg.code) === pg) rg.call(self, pg); });
+            };
+        }
+    }
+    function _ewKeepStats() {
+        var now = performance.now(), K = _ewKeep;
+        if (!K.at) { K.at = now; K.b0 = K.builds; K.p0 = K.pipes; }
+        else if (now - K.at > 1000) {
+            var dt = (now - K.at) / 1000;
+            K.rateB = (K.builds - K.b0) / dt; K.rateP = (K.pipes - K.p0) / dt;
+            K.at = now; K.b0 = K.builds; K.p0 = K.pipes;
+        }
+        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.length + '/' + K.kept.p.length + '/' + K.kept.g.length, off: _ewKeepOff() };
+    }
     /* ══ THE NODE LAYER (WEBGPU_PLAN W1, 2026-10-03) ══════════════════════════════════════════════════════════════════════
        The node renderer ignores ShaderChunk patches and onBeforeCompile, so on its path each classic effect is rebuilt
        in TSL (Fn only, never wgslFn / glslFn: the same graph compiles to WGSL and to GLSL on the WebGL 2 backend):
@@ -33119,7 +33269,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewBunTick(this, sc); }
+            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); _ewBunTick(this, sc); }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -33186,6 +33336,7 @@ const ThreeRenderer = (function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
             _ewGpuInterleaveFix(r);
+            try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
             try { _ewNodeLayer(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the material layer failed — the picture stays plain', e); }
             try {
                 var dev = r.backend && r.backend.device;
@@ -35349,6 +35500,7 @@ const ThreeRenderer = (function () {
                 c.objects++;
                 if (o.isMesh) { c.meshes++; if (o.isSkinnedMesh) c.skinned++; if (o.isInstancedMesh) c.instanced++; }
                 if (!o.isLight) return;
+                if (o._ew_rigLamp) { if (o.intensity > 0) c.rig = (c.rig || 0) + 1; c.rigN = (c.rigN || 0) + 1; return; }   // THE LIGHT RIG: the game's lights are counted, not the copies
                 var on = true; for (var q = o; q; q = q.parent) if (!q.visible) { on = false; break; }
                 if (o.isPointLight || o.isSpotLight) c.lights.push(o);
                 if (!on) return;
@@ -35662,6 +35814,7 @@ const ThreeRenderer = (function () {
         S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails };
         _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // per window; the trees are the session's
         S.lampN = (_hq && _hq.stage) ? _hq.stage.lampN : null;
+        S.keep = (_ewGpu && renderer && renderer._ew_keep) ? _ewKeepStats() : null;
         try { S.text = _hqTextStats(); } catch (e) { S.text = null; }
         S.overrides = { shadows: L.shadows, post: L.post, lights: L.lights, res: L.res, show: Object.assign({}, L.show) };
         L.last = S;
@@ -35690,9 +35843,10 @@ const ThreeRenderer = (function () {
         _LENS_KINDS.forEach(function (k) { L.push('  ' + pad(k, 9) + pad(Math.round(S.kind[k][0]), 10) + _lensFmtN(S.kind[k][1])); });
         L.push('Meshes drawn ' + Math.round(S.meshes) + ' · skinned ' + Math.round(S.skinned) + ' · instanced ' + Math.round(S.instMeshes) + ' (' + Math.round(S.instances) + ' copies)');
         L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
-        L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0));
+        L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0) + (c.rigN ? ' · rig ' + (c.rig || 0) + '/' + c.rigN : ''));
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
+        if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : ''));
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
@@ -42544,7 +42698,7 @@ const ThreeRenderer = (function () {
         var hidden = [];
         for (var i = 0; i < scene.children.length; i++) {
             var ch = scene.children[i];
-            if (ch === unitGroup || ch.isLight) continue;
+            if (ch === unitGroup || ch.isLight || ch._ew_rig) continue;   // THE LIGHT RIG holds the copies of the lights: its set must not change mid-cast
             if (ch.visible) { hidden.push(ch); ch.visible = false; }
         }
         /* …and every unit that isn't in the scene. */
