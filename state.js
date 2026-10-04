@@ -5352,36 +5352,90 @@
                 return { tx: 0, ty: 0, zoom: 1 };
             }
 
+            /* THE BATTLE MOUSE (2026-10-04, mondo): in a battle LEFT-drag pans and
+               RIGHT-drag orbits (what the middle button did); middle-drag and
+               right-drag pan are gone there. A plain left click still selects:
+               the pan only arms once the pointer travels past BATTLE_PAN_DRAG_PX,
+               and the click that follows a real drag is swallowed. A left press
+               on the active unit's own tile is the drag-to-move gesture, never a
+               pan. The map editor keeps right-drag pan + middle-drag orbit. */
+            const BATTLE_PAN_DRAG_PX = 6;
+            let _panArmed = false;           // left button down in a battle, not yet past the drag threshold
+            let _swallowClickUntil = 0;
+            let _panBtn = 2, _tiltBtn = 1;   // the button that started the live drag, so its release always ends it
+            function _panPanButton() { return state.phase === 'battle' ? 0 : 2; }
+            function _panOrbitButton() { return state.phase === 'battle' ? 2 : 1; }
+            function _panBegin(e) {
+                _panActive = true;
+                state._userPanning = true;
+                _panStartX = e.clientX;
+                _panStartY = e.clientY;
+                if (typeof camera !== 'undefined') {
+                    const ts = CONFIG.tileSize || BASE_TILE;
+                    const gap = CONFIG.tileGap ?? 0;
+                    const pad = CONFIG.boardPadding ?? 2;
+                    _panStartFocalPx = pad + camera.x * (ts + gap) + ts / 2;
+                    _panStartFocalPy = pad + camera.y * (ts + gap) + ts / 2;
+                    _panStartZoom = camera.zoom;
+                    _panStartCamX = camera.x;
+                    _panStartCamY = camera.y;
+                } else {
+                    const t = _getPanTransform();
+                    _panStartTx = t.tx;
+                    _panStartTy = t.ty;
+                    _panStartZoom = t.zoom;
+                }
+                if (typeof camera !== 'undefined') camera._stop();
+                else if (typeof stopBoardCameraAnimation === 'function') stopBoardCameraAnimation();
+            }
+            window.addEventListener('click', (e) => {
+                if (e.button === 0 && performance.now() < _swallowClickUntil) {
+                    _swallowClickUntil = 0;
+                    e.preventDefault(); e.stopImmediatePropagation();
+                }
+            }, true);
+
             _boardWheelParent.addEventListener('mousedown', (e) => {
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;
                 if (state.thirdPersonCamera) return;
-
-                if (e.button === 2) {
-                    e.preventDefault();
-                    _panActive = true;
-                    _panMoved = false;
-                    state._userPanning = true;
-                    _panStartT = performance.now();
+                if (document.pointerLockElement) return;
+                if (e.button !== _panPanButton()) return;
+                _panMoved = false;
+                _panStartT = performance.now();
+                _panBtn = e.button;
+                if (state.phase === 'battle') {
+                    // the canvas mousedown (a child, so it ran first) may have
+                    // started a drag-to-move of the active unit — that owns the drag
+                    if (typeof window._ewDragMoveActive === 'function' && window._ewDragMoveActive()) return;
+                    // only a press on the battlefield itself pans, never one on a HUD piece
+                    const t = e.target;
+                    if (!(t && (t.tagName === 'CANVAS' || (t.closest && t.closest('#boardStage'))))) return;
+                    _panArmed = true;
                     _panStartX = e.clientX;
                     _panStartY = e.clientY;
-                    if (typeof camera !== 'undefined') {
-                        const ts = CONFIG.tileSize || BASE_TILE;
-                        const gap = CONFIG.tileGap ?? 0;
-                        const pad = CONFIG.boardPadding ?? 2;
-                        _panStartFocalPx = pad + camera.x * (ts + gap) + ts / 2;
-                        _panStartFocalPy = pad + camera.y * (ts + gap) + ts / 2;
-                        _panStartZoom = camera.zoom;
-                        _panStartCamX = camera.x;
-                        _panStartCamY = camera.y;
-                    } else {
-                        const t = _getPanTransform();
-                        _panStartTx = t.tx;
-                        _panStartTy = t.ty;
-                        _panStartZoom = t.zoom;
-                    }
-                    if (typeof camera !== 'undefined') camera._stop();
-                    else if (typeof stopBoardCameraAnimation === 'function') stopBoardCameraAnimation();
+                    return;
                 }
+                e.preventDefault();
+                _panMoved = false;
+                _panBegin(e);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!_panArmed) return;
+                if (!(e.buttons & 1) || state.phase !== 'battle' || state.thirdPersonCamera) { _panArmed = false; return; }
+                if (Math.abs(e.clientX - _panStartX) <= BATTLE_PAN_DRAG_PX && Math.abs(e.clientY - _panStartY) <= BATTLE_PAN_DRAG_PX) return;
+                _panArmed = false;
+                // start from HERE so the camera doesn't jump the threshold's worth
+                _panBegin(e);
+                _panMoved = true;
+                if (typeof isFollowCamMode === 'function' && isFollowCamMode()
+                    && typeof setCameraMode === 'function') {
+                    setCameraMode('tactical', { silent: true });
+                    if (typeof window._ewToast === 'function') window._ewToast('🗺 TACTICAL CAMERA', 1100);
+                }
+            });
+            document.addEventListener('mouseup', (e) => {
+                if (e.button === 0) _panArmed = false;
             });
 
             document.addEventListener('mousemove', (e) => {
@@ -5443,8 +5497,10 @@
 
             document.addEventListener('mouseup', (e) => {
                 if (!_panActive) return;
+                if (e.button !== _panBtn) return;
                 _panActive = false;
                 state._userPanning = false;
+                if (e.button === 0 && _panMoved) _swallowClickUntil = performance.now() + 300;
 
                 if (_panMoved && state._deferredTurnPanUnitId) {
                     const defId = state._deferredTurnPanUnitId;
@@ -5461,23 +5517,6 @@
                         });
                     }
                 }
-
-                // A clean single right-CLICK on the board (no drag, quick
-                // release) mirrors the action-menu BACK button: step out of the
-                // open submenu / target-aim mode. Routed through
-                // handleBackAction(), which can never end the turn (unlike the
-                // crown, which doubles as END TURN at the root menu) — and only
-                // when there is actually something to back out of, so a stray
-                // right-click at the root menu does nothing at all.
-                if (e.button === 2 && !_panMoved && state.phase === 'battle'
-                    && (performance.now() - _panStartT) < 450
-                    && typeof handleBackAction === 'function') {
-                    const backable = (state.actionMenuView && state.actionMenuView !== 'root')
-                        || state.actionMode || state.selectedTool || state.pendingTarget
-                        || state._enemyActionTargetId || state._tileActionTarget
-                        || state.showUnitInfo;
-                    if (backable) handleBackAction();
-                }
             });
 
             let _tiltActive = false;
@@ -5490,12 +5529,18 @@
                 if (state.phase === 'battle' || state.phase === 'editor') e.preventDefault();
             });
 
+            let _tiltMoved = false;
+            let _tiltStartT = 0;
             _boardWheelParent.addEventListener('mousedown', (e) => {
-                if (e.button !== 1) return;
                 if (state.thirdPersonCamera) return;
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;
+                if (e.button !== _panOrbitButton()) return;
+                if (document.pointerLockElement) return;
                 e.preventDefault();
                 _tiltActive = true;
+                _tiltMoved = false;
+                _tiltStartT = performance.now();
+                _tiltBtn = e.button;
 
                 // Mark the camera as user-held so a unit activating mid-drag
                 // defers its pan (selectUnit → _deferredTurnPanUnitId) instead
@@ -5503,7 +5548,7 @@
                 state._userPanning = true;
                 // An ORBIT (not a pan): the third-person turn shot keeps its
                 // rig so the player orbits around their character — only a
-                // real reposition (right-drag pan) detaches it.
+                // real reposition (the pan drag) detaches it.
                 state._userOrbiting = true;
                 _tiltStartX = e.clientX;
                 _tiltStartY = e.clientY;
@@ -5516,6 +5561,7 @@
                 if (!_tiltActive) return;
                 const dx = e.clientX - _tiltStartX;
                 const dy = e.clientY - _tiltStartY;
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _tiltMoved = true;
                 // Clamp pitch to [top-down .. craned up into the sky]. 0° is
                 // straight down, 90° is dead-level at the horizon, and past 90°
                 // the gaze pitches UP at the sky dome (the camera rides the
@@ -5532,11 +5578,28 @@
             });
 
             document.addEventListener('mouseup', (e) => {
-                if (e.button !== 1) return;
                 if (!_tiltActive) return;
+                if (e.button !== _tiltBtn) return;
                 _tiltActive = false;
                 state._userPanning = false;
                 state._userOrbiting = false;
+
+                // A clean single right-CLICK on the board (no drag, quick
+                // release) mirrors the action-menu BACK button: step out of the
+                // open submenu / target-aim mode. Routed through
+                // handleBackAction(), which can never end the turn (unlike the
+                // crown, which doubles as END TURN at the root menu) — and only
+                // when there is actually something to back out of, so a stray
+                // right-click at the root menu does nothing at all.
+                if (e.button === 2 && !_tiltMoved && state.phase === 'battle'
+                    && (performance.now() - _tiltStartT) < 450
+                    && typeof handleBackAction === 'function') {
+                    const backable = (state.actionMenuView && state.actionMenuView !== 'root')
+                        || state.actionMode || state.selectedTool || state.pendingTarget
+                        || state._enemyActionTargetId || state._tileActionTarget
+                        || state.showUnitInfo;
+                    if (backable) handleBackAction();
+                }
 
                 // A unit's turn started while the camera was held — pan to it
                 // now so the player isn't left staring at the wrong place.

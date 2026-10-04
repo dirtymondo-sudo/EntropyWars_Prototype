@@ -3239,6 +3239,8 @@
         let _dragMoveOrigin = null;
         let _dragMoveTarget = null;
         let _editorDragPainting = false;
+        // state.js's battle left-drag pan asks this so a drag-to-move of the active unit never pans the camera
+        window._ewDragMoveActive = () => _dragMoveActive;
         /* Shared by mouseup AND touchend — a finger lift must commit the same
            things a button release does (drag-to-move, editor drag-painting),
            otherwise touch players silently lose both gestures. A plain tap is
@@ -7848,7 +7850,7 @@
             return `
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Camera</div>
-                    <div style="font-size:10px;color:var(--muted);line-height:1.5">The camera is automatic: your turn opens over your unit's shoulder, picking Move/tiles switches to the overhead tactical view, choosing a target (Tab cycles them) looks at that enemy from your unit's shoulder, and actions play out with the third-person action camera. Press C to cycle the Standard / Close / Far view presets. Pan (RMB) or orbit (MMB) any time — the camera never dips below the map, so craning past the horizon shows the sky.</div>
+                    <div style="font-size:10px;color:var(--muted);line-height:1.5">The camera is automatic: your turn opens over your unit's shoulder, picking Move/tiles switches to the overhead tactical view, choosing a target (Tab cycles them) looks at that enemy from your unit's shoulder, and actions play out with the third-person action camera. Press C to cycle the Standard / Close / Far view presets. Left-drag to pan or right-drag to orbit any time (a plain left click still selects, a plain right click backs out) — the camera never dips below the map, so craning past the horizon shows the sky.</div>
                 </div>
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Gamepad</div>
@@ -7880,8 +7882,8 @@
                         <div class="pm-keybind"><span class="pm-keybind-action">End Turn (×2)</span><kbd class="pm-kbd">SPACE</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Camera Mode</span><kbd class="pm-kbd">C</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Cycle Target</span><kbd class="pm-kbd">TAB</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Orbit Camera</span><kbd class="pm-kbd">MID-DRAG</kbd></div>
-                        <div class="pm-keybind"><span class="pm-keybind-action">Pan Camera</span><kbd class="pm-kbd">R-DRAG</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Orbit Camera</span><kbd class="pm-kbd">R-DRAG</kbd></div>
+                        <div class="pm-keybind"><span class="pm-keybind-action">Pan Camera</span><kbd class="pm-kbd">L-DRAG</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Zoom</span><kbd class="pm-kbd">SCROLL</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Pause</span><kbd class="pm-kbd">ESC · P</kbd></div>
                     </div>
