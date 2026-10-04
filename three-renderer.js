@@ -9752,13 +9752,15 @@ const ThreeRenderer = (function () {
             var ti;
             for (ti = 0; ti < tiles.length; ti++) tileSet[tiles[ti].x + ',' + tiles[ti].y] = true;
 
+            /* W5a: every zone piece below is one flat plane, so forceSinglePass — three draws a transparent DoubleSide
+               material twice (back faces, then front) and a plane cannot cover itself: same picture, half the draws */
             /* ── floor wash: one tinted plane per tile on ITS OWN top ── */
             for (ti = 0; ti < tiles.length; ti++) {
                 var ft = tiles[ti];
                 if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
                 var washMat = new THREE.MeshBasicMaterial({
                     color: color, transparent: true, opacity: 0.16,
-                    depthWrite: false, side: THREE.DoubleSide,
+                    depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
                 });
                 _nexusLineMats.push(washMat);
@@ -9804,7 +9806,7 @@ const ThreeRenderer = (function () {
                 /* rim line — extended one thickness so corners join cleanly */
                 var lineMat = new THREE.MeshBasicMaterial({
                     color: color, transparent: true, opacity: 0.95,
-                    depthWrite: false, side: THREE.DoubleSide
+                    depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true
                 });
                 _nexusLineMats.push(lineMat);
                 var line = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? ts + lineT : lineT, horiz ? lineT : ts + lineT), lineMat);
@@ -9815,7 +9817,7 @@ const ThreeRenderer = (function () {
                 /* soft halo hugging the line */
                 var haloMat = new THREE.MeshBasicMaterial({
                     color: color, transparent: true, opacity: 0.22,
-                    depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+                    depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending
                 });
                 _nexusLineMats.push(haloMat);
                 var halo = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? ts * 1.05 : lineT * 4.5, horiz ? lineT * 4.5 : ts * 1.05), haloMat);
@@ -9826,7 +9828,7 @@ const ThreeRenderer = (function () {
                 /* curtain — the short glowing wall standing on the edge */
                 var curMat = new THREE.MeshBasicMaterial({
                     map: curtainTex, transparent: true, depthWrite: false,
-                    side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending,
                     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
                 });
                 curMat._ew_nexusBaseColor = color;
@@ -9848,7 +9850,7 @@ const ThreeRenderer = (function () {
                         var skBot = Math.min(yIn, yOut) + 0.1;
                         var skirtMat = new THREE.MeshBasicMaterial({
                             color: color, transparent: true, opacity: 0.6,
-                            map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide,
+                            map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                             polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
                         });
                         _nexusLineMats.push(skirtMat);
@@ -9876,7 +9878,7 @@ const ThreeRenderer = (function () {
                     var sTop = Math.max(ya, yb) + 0.2, sBot = Math.min(ya, yb) + 0.1;
                     var seamMat = new THREE.MeshBasicMaterial({
                         color: color, transparent: true, opacity: 0.35,
-                        map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide,
+                        map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                         polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
                     });
                     _nexusLineMats.push(seamMat);
@@ -23622,7 +23624,7 @@ const ThreeRenderer = (function () {
                 var neb = new THREE.Sprite(nebMat);
                 neb.position.copy(cd);
                 neb.scale.set(_ZW_SPREAD * 3.4, _ZW_SPREAD * 3.4, 1);
-                neb.renderOrder = -995; neb.frustumCulled = false;
+                neb.renderOrder = -995; neb.frustumCulled = true; neb.visible = false;   // W5a: culled like any sprite (it was drawn every frame, most of the time behind the battle camera); hidden while its haze is 0
                 _zwGroup.add(neb);
 
                 /* connecting lines: one geometry per sign so setDrawRange can
@@ -23640,7 +23642,7 @@ const ThreeRenderer = (function () {
                     side: THREE.DoubleSide
                 });
                 var glowMesh = new THREE.Mesh(glowGeo, glowMat);
-                glowMesh.renderOrder = -993; glowMesh.frustumCulled = false;
+                glowMesh.renderOrder = -993; glowMesh.frustumCulled = true;
                 _zwGroup.add(glowMesh);
 
                 var lineBuf = _zwBuildLinkQuads(starDirs, lk, 0.0038);
@@ -23653,7 +23655,7 @@ const ThreeRenderer = (function () {
                     side: THREE.DoubleSide
                 });
                 var lineMesh = new THREE.Mesh(lineGeo, lineMat);
-                lineMesh.renderOrder = -992; lineMesh.frustumCulled = false;
+                lineMesh.renderOrder = -992; lineMesh.frustumCulled = true;
                 _zwGroup.add(lineMesh);
 
                 /* stars — each gets its OWN material so it can carry a colour
@@ -23677,7 +23679,7 @@ const ThreeRenderer = (function () {
                         ph: (i * 2.3 + sk * 1.7) % 6.28, dim: dimC, hot: hotC, halo: null
                     };
                     spr.scale.set(bs, bs, 1);
-                    spr.renderOrder = -990; spr.frustumCulled = false;
+                    spr.renderOrder = -990; spr.frustumCulled = true;
                     _zwGroup.add(spr);
                     stars.push(spr);
                     if (bright >= 0.6) {
@@ -23688,7 +23690,7 @@ const ThreeRenderer = (function () {
                         var halo = new THREE.Sprite(hMat);
                         halo.position.copy(starDirs[sk]);
                         halo.scale.set(bs * 3.8, bs * 3.8, 1);
-                        halo.renderOrder = -994; halo.frustumCulled = false;
+                        halo.renderOrder = -994; halo.frustumCulled = true;
                         _zwGroup.add(halo);
                         spr.userData.halo = halo;
                     }
@@ -23702,7 +23704,7 @@ const ThreeRenderer = (function () {
                 var dot = new THREE.Sprite(dotMat);
                 dot.position.set(Math.sin(a) * rimR, rimY, -Math.cos(a) * rimR);
                 dot.scale.set(0.02, 0.02, 1);
-                dot.renderOrder = -991; dot.frustumCulled = false;
+                dot.renderOrder = -991; dot.frustumCulled = true;
                 _zwGroup.add(dot);
 
                 /* zodiac glyph watermark hanging under the constellation */
@@ -23713,13 +23715,13 @@ const ThreeRenderer = (function () {
                 var glyph = new THREE.Sprite(glyphMat);
                 glyph.position.copy(cd).addScaledVector(up, -_ZW_SPREAD * 0.62).normalize();
                 glyph.scale.set(0.15, 0.15, 1);
-                glyph.renderOrder = -996; glyph.frustumCulled = false;
+                glyph.renderOrder = -996; glyph.frustumCulled = true;
                 _zwGroup.add(glyph);
 
                 _zwSigns.push({
                     key: signKey, lineGeo: lineGeo, lineMat: lineMat,
                     glowGeo: glowGeo, glowMat: glowMat, linkCount: lk.length,
-                    stars: stars, dotMat: dotMat, glyphMat: glyphMat, nebMat: nebMat, act: 0
+                    stars: stars, dotMat: dotMat, glyphMat: glyphMat, nebMat: nebMat, neb: neb, act: 0
                 });
             }
 
@@ -23814,6 +23816,7 @@ const ThreeRenderer = (function () {
 
             /* nebula haze breathes gently behind the blessed sign only */
             sg.nebMat.opacity = 0.16 * a2 * vis * (0.82 + 0.18 * Math.sin(tSec * 0.5 + i * 1.9));
+            if (sg.neb) sg.neb.visible = sg.nebMat.opacity > 0.002;   // an idle sign's haze is 0: no draw for it
 
             /* per-star twinkle + colour: every star shimmers faintly at idle;
                during the reveal's draw phase the blessed sign's stars IGNITE
@@ -31845,7 +31848,12 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
-        if (_ewBun.marked.length) s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
+        if (_ewBun.marked.length) {
+            s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
+            var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
+            if (ws.length) s += ' (' + ws.join(', ') + ')';
+            s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame';
+        }
         else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
         if (_ewGpuInfo.errors) s += ' · GPU errors ' + _ewGpuInfo.errors + ' (first: ' + _ewGpuInfo.firstError + ')';
         return s;
@@ -32381,7 +32389,8 @@ const ThreeRenderer = (function () {
        or ?ew_bundles=0. A draw whose pipeline is still compiling is skipped by three, and a bundle recorded then lacked it
        for good (the hall's floor and lower walls black, W6 fix 2): such a group re-records each frame until all of its
        pipelines are ready. Rooms need nothing baked: the signature follows whatever the room holds. */
-    var _ewBun = { marked: [], epoch: 0, objs: 0, recs: 0, recDraws: 0, recRate: 0, rateAt: 0, rateN: 0, aid: 0, inRec: 0, setup: false };
+    var _ewBun = { marked: [], epoch: 0, objs: 0, recs: 0, recDraws: 0, recRate: 0, rateAt: 0, rateN: 0, aid: 0, inRec: 0, setup: false,
+        used: new WeakSet(), frees: 0, lampG: 0, why: { tree: 0, values: 0, frees: 0, lamps: 0, lod: 0, cold: 0, rests: 0 }, whyRate: null, whyAt: 0, whyN: null, ms: 0, msN: 0, msAvg: 0 };
     var _EW_BUN_TEX = ['map', 'emissiveMap', 'normalMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'specularMap', 'envMap', 'gradientMap', 'matcap'];
     function _ewBunOff() {
         try { return !!window.EW_NO_BUNDLES || /[?&]ew_bundles=0\b/.test(location.search); } catch (e) { return false; }
@@ -32423,9 +32432,13 @@ const ThreeRenderer = (function () {
             if (k < n) { a[0] = list.slice(k); ro.apply(this, a); }
         };
         r._renderTransparents = function () { if (!this._currentRenderBundle) flush(this._currentRenderContext); return rt.apply(this, arguments); };
+        /* the epoch moves only when a freed buffer / texture / sampler is one a recording holds (W5a, 2026-10-04). It moved
+           on EVERY free before, and a battle frees all the time (a unit's ring, the move tiles, a spell's meshes: each
+           render object that goes frees its uniform buffers), so every bundled group re-recorded thousands of meshes
+           several times a second — mondo's battle: 4.9 re-records/s and the frame drops with them */
         ['destroyTexture', 'destroyUniformBuffer', 'destroySampler'].forEach(function (k) {
             var f = B[k]; if (typeof f !== 'function') return;
-            B[k] = function () { _ewBun.epoch++; return f.apply(this, arguments); };
+            B[k] = function (res) { if (res && _ewBun.used.has(res)) { _ewBun.epoch++; _ewBun.frees++; } return f.apply(this, arguments); };
         });
         /* a draw whose pipeline is still compiling (the room warm-up's renderer.compile is compileAsync here) is left out of
            the recording; three never re-records a bundle on its own, so those walls stayed missing for good (W6 fix 2, the
@@ -32455,7 +32468,22 @@ const ThreeRenderer = (function () {
         var rb = r._renderBundle;
         if (rb) r._renderBundle = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
             var out = rb.apply(this, arguments);
-            try { var g = bundle.bundleGroup, bd = this.backend.get(this._bundles.get(g, bundle.camera, this._currentRenderContext)); if (g._ew_bun && bd.renderObjects) g._ew_bun.recN = bd.renderObjects.length; } catch (e) {}
+            try {
+                var g = bundle.bundleGroup, bd = this.backend.get(this._bundles.get(g, bundle.camera, this._currentRenderContext)), ros = bd.renderObjects;
+                if (g._ew_bun && ros) {
+                    g._ew_bun.recN = ros.length;
+                    if (bd._ewUsedV !== bd.version) {   // a new recording: what it holds (the epoch watches these)
+                        bd._ewUsedV = bd.version;
+                        for (var i = 0; i < ros.length; i++) {
+                            var bgs = ros[i].getBindings();
+                            for (var j = 0; j < bgs.length; j++) {
+                                var bs = bgs[j].bindings;
+                                for (var k = 0; k < bs.length; k++) { var b = bs[k]; _ewBun.used.add(b); if (b.texture && b.texture.isTexture) _ewBun.used.add(b.texture); }
+                            }
+                        }
+                    }
+                }
+            } catch (e) {}
             return out;
         };
         var po = r._projectObject;
@@ -32476,32 +32504,41 @@ const ThreeRenderer = (function () {
         if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
         return out;
     }
+    /* a geometry's and a material's share of the signature, once per tick however many meshes share them (W5a: the check
+       walked every attribute and 13 texture slots per MESH, 3351 meshes a frame in mondo's battle room) */
+    function _ewBunGeo(g, F) {
+        if (g._ew_bunF === F) return g._ew_bunH;
+        var h = g.id, at = g.attributes, k;
+        for (k in at) { var a = at[k], ab = a.isInterleavedBufferAttribute ? a.data : a; h = _ewBunMix(h, _ewBunAid(ab)); h = _ewBunMix(h, ab.array ? ab.array.length : 0); }
+        if (g.index) { h = _ewBunMix(h, _ewBunAid(g.index)); h = _ewBunMix(h, g.index.array.length); }
+        h = _ewBunMix(h, g.drawRange.start); h = _ewBunMix(h, g.drawRange.count === Infinity ? -1 : g.drawRange.count); h = _ewBunMix(h, g.groups.length);
+        g._ew_bunF = F; g._ew_bunH = h;
+        return h;
+    }
+    function _ewBunMat(m, F) {
+        if (m._ew_bunF === F) return;
+        var h = _ewBunMix(m.id, m.version), v = 0;
+        h = _ewBunMix(h, (m.visible ? 1 : 0) + (m.transparent ? 2 : 0) + (m.depthWrite ? 4 : 0) + (m.depthTest ? 8 : 0) + (m.side << 4) + (m.blending << 6));
+        for (var t = 0; t < _EW_BUN_TEX.length; t++) { var tx = m[_EW_BUN_TEX[t]]; if (tx && tx.isTexture) { h = _ewBunMix(h, tx.id); h = _ewBunMix(h, tx.version); } }
+        v = _ewBunMix(v, Math.round((m.opacity == null ? 1 : m.opacity) * 1000));
+        if (m.color && m.color.isColor) v = _ewBunMix(v, m.color.getHex());
+        if (m.emissive && m.emissive.isColor) v = _ewBunMix(v, m.emissive.getHex());
+        if (m.emissiveIntensity != null) v = _ewBunMix(v, Math.round(m.emissiveIntensity * 1000));
+        m._ew_bunF = F; m._ew_bunHs = h; m._ew_bunHv = v;
+    }
     function _ewBunObj(o, S) {
-        var h = S.hs, v = S.hv, g = o.geometry, k;
+        var h = S.hs, v = S.hv, g = o.geometry, F = _ewBun.frame;
         h = _ewBunMix(h, o.id);
         if (o.isSkinnedMesh) S.dyn = true;
         if (g && o._ew_lodL != null) { S.hf = _ewBunMix(_ewBunMix(S.hf, o.id), g.id); g = null; }   // THE LOD LEVELS: a level swap re-records at most once a second (an old level draws meanwhile; a freed one bumps the epoch)
-        if (g) {
-            h = _ewBunMix(h, g.id);
-            var at = g.attributes;
-            for (k in at) { var a = at[k], ab = a.isInterleavedBufferAttribute ? a.data : a; h = _ewBunMix(h, _ewBunAid(ab)); h = _ewBunMix(h, ab.array ? ab.array.length : 0); }
-            if (g.index) { h = _ewBunMix(h, _ewBunAid(g.index)); h = _ewBunMix(h, g.index.array.length); }
-            h = _ewBunMix(h, g.drawRange.start); h = _ewBunMix(h, g.drawRange.count === Infinity ? -1 : g.drawRange.count); h = _ewBunMix(h, g.groups.length);
-        }
+        if (g) h = _ewBunMix(h, _ewBunGeo(g, F));
         if (o.isInstancedMesh) h = _ewBunMix(h, o.count);
         h = _ewBunMix(h, (o.castShadow ? 2 : 0) + (o.receiveShadow ? 1 : 0));
         h = _ewBunMix(h, o.renderOrder | 0); h = _ewBunMix(h, o.layers.mask);
-        var ms = Array.isArray(o.material) ? o.material : [o.material];
-        for (var i = 0; i < ms.length; i++) {
-            var m = ms[i]; if (!m) continue;
-            h = _ewBunMix(h, m.id); h = _ewBunMix(h, m.version);
-            h = _ewBunMix(h, (m.visible ? 1 : 0) + (m.transparent ? 2 : 0) + (m.depthWrite ? 4 : 0) + (m.depthTest ? 8 : 0) + (m.side << 4) + (m.blending << 6));
-            for (var t = 0; t < _EW_BUN_TEX.length; t++) { var tx = m[_EW_BUN_TEX[t]]; if (tx && tx.isTexture) { h = _ewBunMix(h, tx.id); h = _ewBunMix(h, tx.version); } }
-            v = _ewBunMix(v, Math.round((m.opacity == null ? 1 : m.opacity) * 1000));
-            if (m.color && m.color.isColor) v = _ewBunMix(v, m.color.getHex());
-            if (m.emissive && m.emissive.isColor) v = _ewBunMix(v, m.emissive.getHex());
-            if (m.emissiveIntensity != null) v = _ewBunMix(v, Math.round(m.emissiveIntensity * 1000));
-        }
+        var ms = o.material;
+        if (Array.isArray(ms)) { for (var i = 0; i < ms.length; i++) { var m = ms[i]; if (!m) continue; _ewBunMat(m, F); h = _ewBunMix(h, m._ew_bunHs); v = _ewBunMix(v, m._ew_bunHv); } }
+        else if (ms) { _ewBunMat(ms, F); h = _ewBunMix(h, ms._ew_bunHs); v = _ewBunMix(v, ms._ew_bunHv); }
+        if (S.noV) { S.hs = h; S.n++; return; }   // a demoted group: three checks its values itself, the matrices are not read
         var e = o.matrixWorld.elements;
         v = _ewBunMix(v, Math.round(e[0] * 1000)); v = _ewBunMix(v, Math.round(e[1] * 1000)); v = _ewBunMix(v, Math.round(e[2] * 1000));
         v = _ewBunMix(v, Math.round(e[4] * 1000)); v = _ewBunMix(v, Math.round(e[5] * 1000)); v = _ewBunMix(v, Math.round(e[6] * 1000));
@@ -32532,19 +32569,27 @@ const ThreeRenderer = (function () {
             if (_ewBunOff()) while (_ewBun.marked.length) _ewBunRelease(_ewBun.marked[0]);
             return;
         }
+        var t0 = performance.now(), W = _ewBun.why;
+        _ewBun.frame = (_ewBun.frame | 0) + 1;
         var T = _ewBunTargets(H);
         for (i = _ewBun.marked.length - 1; i >= 0; i--) if (T.indexOf(_ewBun.marked[i]) < 0) _ewBunRelease(_ewBun.marked[i]);
         /* what the whole scene shares: the lit lamps (the stage swaps them) and the freed-resource epoch */
-        var G = _ewBunMix(17, _ewBun.epoch), ls = r._ew_lights || [];
-        G = _ewBunMix(G, ls.length);
-        for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) { G = _ewBunMix(G, l.id); G = _ewBunMix(G, l.castShadow ? 1 : 0); } }
-        if (sc.fog) G = _ewBunMix(G, sc.fog.isFogExp2 ? 2 : 1);
-        if (sc.environment) G = _ewBunMix(G, sc.environment.id);
+        var LG = 17, ls = r._ew_lights || [];
+        LG = _ewBunMix(LG, ls.length);
+        for (i = 0; i < ls.length; i++) { var l = ls[i]; if (l) { LG = _ewBunMix(LG, l.id); LG = _ewBunMix(LG, l.castShadow ? 1 : 0); } }
+        if (sc.fog) LG = _ewBunMix(LG, sc.fog.isFogExp2 ? 2 : 1);
+        if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
+        var lampMoved = LG !== _ewBun.lampG; _ewBun.lampG = LG;
+        var G = _ewBunMix(LG, _ewBun.epoch);
         var objs = 0;
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
-            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false };
+            /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
+               bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
+            var shown = true; for (var q = g; q; q = q.parent) { if (q.visible === false) { shown = false; break; } if (q === sc) break; if (!q.parent) shown = false; }
+            if (!shown) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
+            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, noV: !!st.dyn };
             _ewBunWalk(g, S);
             objs += S.n;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
@@ -32554,27 +32599,35 @@ const ThreeRenderer = (function () {
                 if (_ewBun.marked.indexOf(g) < 0) _ewBun.marked.push(g);
                 _ewBun.recs++;
             } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
-                st.why[st.hs !== S.hs ? 'tree' : 'values']++;
+                st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
                 st.times.push(now);
                 while (st.times.length && now - st.times[0] > 2000) st.times.shift();
                 if (st.times.length >= 5) {
                     if (stat && st.hs === S.hs) { st.dyn = true; stat = false; st.times = []; }   // only values keep moving: three checks them
-                    else { st.until = now + 5000; st.times = []; st.why.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    else { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G) {   // the lamps / the epoch: every group re-records, and none of it counts as the group churning
-                st.why.scene++;
+                st.why.scene++; W[lampMoved ? 'lamps' : 'frees']++;
                 g.version++; st.G = G; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.hf !== S.hf && now - st.softAt > 1000) {
-                st.why.lod++;
+                st.why.lod++; W.lod++;
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
-            if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
+            if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
         }
         _ewBun.objs = objs;
         _ewBun.last = T;
-        if (now - _ewBun.rateAt > 1000) { _ewBun.recRate = +((_ewBun.recs - _ewBun.rateN) * 1000 / Math.max(1, now - _ewBun.rateAt)).toFixed(1); _ewBun.rateN = _ewBun.recs; _ewBun.rateAt = now; }
+        _ewBun.ms += performance.now() - t0; _ewBun.msN++;
+        if (now - _ewBun.rateAt > 1000) {
+            var span = Math.max(1, now - _ewBun.rateAt);
+            _ewBun.recRate = +((_ewBun.recs - _ewBun.rateN) * 1000 / span).toFixed(1); _ewBun.rateN = _ewBun.recs; _ewBun.rateAt = now;
+            var wn = _ewBun.whyN || {}, wr = {};   // the re-records by cause, per second over the last second
+            for (var wk in W) { var d = W[wk] - (wn[wk] || 0); if (d > 0) wr[wk] = +(d * 1000 / span).toFixed(1); }
+            _ewBun.whyRate = wr; _ewBun.whyN = Object.assign({}, W);
+            _ewBun.msAvg = _ewBun.msN ? _ewBun.ms / _ewBun.msN : 0; _ewBun.ms = 0; _ewBun.msN = 0;
+        }
     }
     /* frame draw calls on either renderer: the node renderer counts per frame in drawCalls (its `calls` is the render count) */
     function _ewInfoCalls(inf) { var r = inf && inf.render; return !r ? 0 : (r.drawCalls != null ? r.drawCalls : r.calls); }
@@ -35591,10 +35644,13 @@ const ThreeRenderer = (function () {
             kind = _lensKind(object, L2);
             if (!L2.show[kind] || (object._ew_silhouette && !L2.show.outline)) return;
         }
-        var ri = R.info.render, c0 = ri.drawCalls, t0 = ri.triangles, s0 = F.pass.shadow[0], u0 = F.pass.shadow[1];
+        var ri = R.info.render, c0 = ri.drawCalls, t0 = ri.triangles, f0 = F.calls, g0 = F.tris;
         R.renderObject(object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
-        /* the frame's shadow depth passes run INSIDE its first draw (a node update): theirs are counted by the render wrapper */
-        var dc = ri.drawCalls - c0 - (F.pass.shadow[0] - s0), dt = ri.triangles - t0 - (F.pass.shadow[1] - u0);
+        /* renders run INSIDE a draw (a node's update): the frame's shadow depth passes inside its first draw, and the post
+           chain's scene pass inside the chain's first quad. Theirs were counted where they ran (F.calls moved meanwhile);
+           only the rest is this draw's. Before W5a the scene pass was counted twice, once as "post" (mondo's battle: post 513
+           calls, the real chain is 7 quads) */
+        var dc = ri.drawCalls - c0 - (F.calls - f0), dt = ri.triangles - t0 - (F.tris - g0);
         F.calls += dc; F.tris += dt;
         var P = F.pass[pass]; P[0] += dc; P[1] += dt;
         if (pass !== 'post') { var K = F.kind[kind]; K[0] += dc; K[1] += dt; }
@@ -35743,6 +35799,19 @@ const ThreeRenderer = (function () {
         var G = L.gpu;
         if (G && !G.node && !G.active) { try { var q = G.gl.createQuery(); G.gl.beginQuery(G.ext.TIME_ELAPSED_EXT, q); G.active = q; } catch (e) { L.gpu = false; } }
     }
+    /* W5a: the frame's own draws (bundles replay outside this count) by the group under the scene they hang from, so the
+       next thing to bundle or merge has a name */
+    function _lensRoots(D) {
+        var by = {};
+        D.forEach(function (d, o) {
+            var q = o, top = o, sub = null, bun = null;
+            for (; q && !q.isScene; q = q.parent) { sub = (top !== q) ? top : sub; top = q; if (q._ew_bunName && !bun) bun = q._ew_bunName; }
+            var lb = function (x) { return x.name || x._ew_bunName || (x._ew_lensRoot ? x._ew_lensRoot + ' group' : x.type); };
+            var k = bun ? bun + ' (outside its bundle)' : lb(top) + (sub && sub !== o ? ' / ' + lb(sub) : '');
+            var e = by[k] || (by[k] = [0, 0]); e[0] += d[0]; e[1] += d[1];
+        });
+        return Object.keys(by).map(function (k) { return [k, by[k][0], by[k][1]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8);
+    }
     function _lensEnd() {
         var L = _lens; if (!L || !L.cur) return;
         var F = L.cur; L.cur = null;
@@ -35763,6 +35832,7 @@ const ThreeRenderer = (function () {
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         _LENS_PASSES.forEach(function (p) { A.pass[p][0] += F.pass[p][0]; A.pass[p][1] += F.pass[p][1]; });
         _LENS_KINDS.forEach(function (k) { A.kind[k][0] += F.kind[k][0]; A.kind[k][1] += F.kind[k][1]; });
+        if (F.detail) { try { L.roots = _lensRoots(F.detail); } catch (e) { L.roots = null; } }
         if (F.detail) { L.detail = _lensTop(F.detail); L.why = Object.keys(F.why).map(function (k) { return [k, F.why[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8); }
         if (t1 - L.accT0 >= _LENS_WIN_MS) _lensPublish(L, t1);
     }
@@ -35806,7 +35876,7 @@ const ThreeRenderer = (function () {
         try { var pm = performance.memory; S.heap = pm ? [pm.usedJSHeapSize / 1048576, pm.jsHeapSizeLimit / 1048576] : null; } catch (e) { S.heap = null; }
         S.census = L.census || null;
         S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
-        S.top = L.detail || [];
+        S.top = L.detail || []; S.roots = L.roots || null;
         S.why = L.why || [];
         S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
         S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
@@ -35859,6 +35929,10 @@ const ThreeRenderer = (function () {
         if (S.why && S.why.length) {
             L.push('Own draw calls, why not merged (scene pass, one frame):');
             S.why.forEach(function (r) { L.push('  ' + pad(r[1], 6) + r[0]); });
+        }
+        if (S.roots && S.roots.length) {
+            L.push('Own draw calls by group (one frame, all passes but post):');
+            S.roots.forEach(function (r) { L.push('  ' + pad(r[1], 6) + pad(_lensFmtN(r[2]), 8) + r[0]); });
         }
         if (S.top && S.top.length) {
             L.push('Heaviest draws (one frame, all passes):');

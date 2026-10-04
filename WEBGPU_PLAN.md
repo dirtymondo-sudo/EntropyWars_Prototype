@@ -759,3 +759,25 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   ids). F3 new line "Shader builds X/s · new pipelines Y/s (session a / b) · kept b/p/g". Off: `?ew_lightrig=0`,
   `?ew_keep=0`. Next: mondo's F3 in a battle and during a spell on `?ew_gpu=webgpu` decides between battle bundles
   and the twin builds.
+- 2026-10-04: **W5a round 2** (zip renderer/ENTROPY_WARS_W5A_PERF2.zip: three-renderer.js; token 20261004-gpu5a-02-cors).
+  mondo after round 1: "better and playable now but there are still frame drops and the frame rate aint as good as
+  webgl" (battle F3: 43.7 FPS, CPU 12.1 ms, 1069 draws: scene 506, post 513, env 296, props 182; bundles 4 groups / 3351
+  meshes, 4.9 re-records/s; Shader builds 0/s). (1) **The lens counted the scene twice:** on the node renderer the post
+  chain's scene pass runs inside the chain's first quad draw, and `_lensGpuDraw` gave that quad every draw made inside it
+  ("post 513" = the scene's 506 + 7 quads). A draw is now only what is left after the renders nested in it counted
+  themselves: his frame was ~560 draws, not 1069. (2) **The re-records:** the bundles' freed-resource epoch moved on
+  EVERY destroyed uniform buffer / texture / sampler, and a battle frees all the time (each render object that goes frees
+  its buffers), so every bundled group re-recorded its meshes several times a second: the frame drops. The epoch now moves
+  only for resources a recording holds (`_ewBun.used`, filled from each new recording's render objects' bindings).
+  (3) **The check:** a geometry's and a material's share of the signature are hashed once per tick, not once per mesh;
+  a demoted (non-static) group skips the matrices; a group the frame does not draw (hidden, or under a hidden parent) is
+  neither checked nor bundled. F3 "bundles ..." now says the re-records by cause per second (tree, values, frees, lamps,
+  lod, cold, rests) and the check's ms per frame. (4) **The sky wheel:** the zodiac constellation wheel (12 signs: stars,
+  halos, dots, glyphs, nebulae, link lines, ~220 draws) had `frustumCulled = false` on every piece and drew every frame
+  behind the battle camera; now culled like anything else (checked: no on-screen sprite culled over 24 camera
+  directions; the wheel sits inside the camera's far plane) and an idle nebula (opacity 0) is hidden. (5) **The zone
+  walls:** the nexus / zone pieces are flat transparent DoubleSide planes, which three draws twice (back, then front):
+  `forceSinglePass` halves them with the same picture. Sandbox arena battle: scene pass 959 -> 654 draws (env 319 -> 109,
+  props 196 -> 100). New F3 block "Own draw calls by group" names the groups that still cost draws (a bundled group's
+  leftovers read "(outside its bundle)"). Still open: the per-draw CPU of three's node renderer (#30560) on what is left;
+  the battle board is not bundled (its pieces are mostly backdrop or transparent overlays with their own sort order).
