@@ -1961,6 +1961,27 @@ const OBJECT_RULES = {
         healMultiplier: 1,
         gameHeight: 2,
     },
+    /* THE RETRO TREE PACK (2026-10-04): the pack's pine and sapling as board trees (the map editor's Trees tab; `tree_` so every /^tree/ rule — cover, fire, the forest-adapted — counts them) */
+    tree_pine: {
+        label: 'Pine',
+        short: 'PIN',
+        passable: false,
+        blocksLanding: true,
+        blocksRanged: true,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 2,
+    },
+    tree_sapling: {
+        label: 'Sapling',
+        short: 'SAP',
+        passable: false,
+        blocksLanding: true,
+        blocksRanged: true,
+        moveCostAdd: 0,
+        healMultiplier: 1,
+        gameHeight: 2,
+    },
     ruins: {
         label: 'Ruins',
         short: 'RNS',
@@ -12716,7 +12737,8 @@ const MF_OID = (() => {
         'ancient_building','abandoned_building_1','abandoned_building_2','stairs','pathway_1','pathway_2','stairs_2','lamp_post','lamp_post_2','grass_tuft',
         'rock','torch','traffic_light',
         // 2026-07-08 — append-only mirror of map.js ME_OBJECT_IDS (spell props)
-        'gravestone','bone_pile','bone_wall','atlantis_pillar','totem_pole','federation_beacon'];
+        'gravestone','bone_pile','bone_wall','atlantis_pillar','totem_pole','federation_beacon',
+        'tree_pine','tree_sapling'];   // 2026-10-04 — the retro tree pack's board trees (mirror of map.js ME_OBJECT_IDS)
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();
@@ -44492,9 +44514,10 @@ if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanI
    and `pine` draw the pack — tree a birch, tree_2 a spruce, tree_3 the broad oak, tree_4 the tall birch, tree_5 / tree_6 the
    bare ones, pine the small pine, pine_2 the sapling. tree_7 … tree_20 stay the old OBJs for the editor. */
 const HQ_TREE_KINDS = {
-    tree:    { model: 'rt:tree_rt_2_1' },  tree_2:  { model: 'rt:tree_rt_3' },  tree_3:  { model: 'rt:tree_rt_4' },  tree_4:  { model: 'rt:tree_rt_2', tall: true },
-    tree_5:  { model: 'rt:dead_tree_rt_2', dead: true },                     tree_6:  { model: 'rt:dead_tree_rt_1', dead: true },
-    pine:    { model: 'rt:tree_rt_1' },    pine_2:  { model: 'rt:small_tree_rt_1' },
+    tree:    { model: 'rt:tree_rt_2_1', name: 'birch' },  tree_2:  { model: 'rt:tree_rt_3', name: 'spruce' },  tree_3:  { model: 'rt:tree_rt_4', name: 'oak' },
+    tree_4:  { model: 'rt:tree_rt_2', name: 'tall birch', tall: true },
+    tree_5:  { model: 'rt:dead_tree_rt_2', name: 'bare tree', dead: true },  tree_6:  { model: 'rt:dead_tree_rt_1', name: 'big bare tree', dead: true },
+    pine:    { model: 'rt:tree_rt_1', name: 'pine' },    pine_2:  { model: 'rt:small_tree_rt_1', name: 'sapling' },
     tree_7:  { model: 'Tree_2' },      tree_8:  { model: 'Tree_4' },      tree_9:  { model: 'Tree_5' },      tree_10: { model: 'Tree_7' },
     tree_11: { model: 'Tree_8' },      tree_12: { model: 'Tree_10' },
     tree_13: { model: 'DeadTree_1', dead: true },  tree_14: { model: 'DeadTree_3', dead: true },  tree_15: { model: 'DeadTree_4', dead: true },
@@ -44626,7 +44649,8 @@ function hqPalette(o) {
     });
     Object.keys(HQ_TREE_KINDS).forEach(k => {
         const T = HQ_TREE_KINDS[k];
-        out.trees.push({ id: 'tree:' + k, label: k.replace('_', ' '), sub: T.model + (T.dead ? ' · bare' : ''), group: T.dead ? 'Bare trees' : 'Trees', list: 'terrain.features', row: { k: 'tree', kind: k }, thumb: { kind: 'tree', key: k } });
+        const rt = String(T.model).slice(0, 3) === 'rt:';   // THE RETRO TREE PACK (2026-10-04): mondo's pack first, the old OBJs after
+        out.trees.push({ id: 'tree:' + k, label: k.replace('_', ' '), sub: (rt ? T.name : T.model) + (T.dead ? ' · bare' : ''), group: rt ? 'Retro tree pack' : (T.dead ? 'Bare trees (old)' : 'Trees (old)'), list: 'terrain.features', row: { k: 'tree', kind: k }, thumb: { kind: 'tree', key: k } });
     });
     out.trees.push({ id: 'grove', label: 'grove', sub: 'trees in a disc · kinds, n, seed', group: 'Groups', list: 'terrain.features', row: { k: 'grove', r: 8, n: 10, kinds: ['tree', 'tree_2', 'tree_3'], seed: 1 }, thumb: null });
     out.trees.push({ id: 'scatter', label: 'scatter', sub: 'props in a disc · key, n, seed', group: 'Groups', list: 'terrain.features', row: { k: 'scatter', key: 'fern', r: 6, n: 8, seed: 1 }, thumb: null });
@@ -45191,7 +45215,7 @@ const HQ_TERRAIN_GEN = {
        The door guarantee still cuts a corridor to a door no drawn space reaches (a door is never a trap); the editor says so.
        `keep: true` (FREEZE writes it) opens the ground round the room's features, props and people as the generators do. */
     plan:  { look: 'walls', wallH: 4.0, edge: 0.3, jitter: 0, topNoise: 0, solidPad: 0.3, wallT: 0.5, wallKey: null, simplify: 0.5, wallInner: 0.75, rim: 0.6, minOpen: 0, minDegree: 0,
-             treeGap: 1.55, treeIn: 0.85, spacing: 2.3, depth: 7, maxTrees: 700, treeTop: 5.5, treeH: [4.2, 6.4], kinds: ['tree', 'tree_2', 'tree_3', 'tree_7', 'tree_8', 'tree_9', 'tree_4'],
+             treeGap: 1.55, treeIn: 0.85, spacing: 2.3, depth: 7, maxTrees: 700, treeTop: 5.5, treeH: [4.2, 6.4], kinds: ['tree', 'tree_2', 'tree_3', 'pine', 'tree_2', 'pine', 'tree_4'],
              rockH: 3.2, rockEdge: 0.9, rockJitter: 0.3, rockTopNoise: 0.45 },
     forceGrow: 0.8, corridorW: 2.6, rim: 1.2, pathGrow: 1.1, minOpen: 0.28, maxOpen: 0.82, minIsland: 2.2,
 };

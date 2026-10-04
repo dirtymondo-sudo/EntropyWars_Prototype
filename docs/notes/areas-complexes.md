@@ -1841,3 +1841,9 @@ similar areas to be fully surrounded by trees so the map edge never shows.
   old icosahedron crowns (`_hqCanopyStandIn`). Switch: `window.EW_HQ_NO_CANOPY = true` then re-enter.
 - Forest rooms: the clearing, redwoods, ritual, Skinwalker fields, Shasta slopes, Bohemian Grove, haunted grounds, North
   Pole village, Camelot ward. Load-checked the clearing (sandbox): ~2200 canopy trees in 11 draws, no errors.
+- The editors (2026-10-04, mondo: "and add them to the map editor"): the HQ editor's TREES tab groups the pack first
+  ("Retro tree pack", named birch / spruce / oak / tall birch / pine / sapling / bare tree / big bare tree; the old OBJs under
+  "Trees (old)"). The battle map editor (map.js) Trees tab gains `tree_pine` + `tree_sapling` (object ids 60 / 61, appended to
+  ME_OBJECT_IDS and mirrored in data.js MF_OID; board defs in data.js; picture = the pack's Low Res PNG in sprites.js). The
+  board keys start `tree_` so every /^tree/ rule (cover, fire, forest-adapted, wither → tree_5) counts them. The plan layout's
+  TREES look defaults to pack kinds (tree, tree_2, tree_3, pine, tree_4) instead of tree_7-9.

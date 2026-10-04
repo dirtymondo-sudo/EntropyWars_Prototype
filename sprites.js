@@ -3567,6 +3567,9 @@ const OBJECT_SPRITES = {
     tree_4:       { url: `${_O}/tree_4.png` },
     tree_5:       { url: `${_O}/tree_5.png` },
     tree_6:       { url: `${_O}/tree_6.png` },
+    /* THE RETRO TREE PACK (2026-10-04): the pack's own card art (its Low Res folder) is the palette / 2D picture */
+    tree_pine:    { url: 'https://cdn.entropywars.net/Assets/foilage/retrotreepack/Low%20Res/tree_rt_1.png' },
+    tree_sapling: { url: 'https://cdn.entropywars.net/Assets/foilage/retrotreepack/Low%20Res/small_tree_rt_1.png' },
     tower_cube: { url: 'https://cdn.entropywars.net/Assets/Sprites/dragon-green.png' },
     /* Cosmetic grass tuft — rendered in-game as 3D billboard blades by
        _buildGrassTuft3D (three-renderer.js). The url is only the editor palette
