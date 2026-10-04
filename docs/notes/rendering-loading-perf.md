@@ -648,7 +648,7 @@ A new GLSL hook needs a dress here too or it draws plain on WebGPU. `ThreeRender
 ### W3 — the post stack (2026-10-04, zip renderer/ENTROPY_WARS_W3_POST.zip)
 three-post.js "WEBGPU_PLAN W3 — THE NODE CHAIN": on the node renderer the post is one three `RenderPipeline` per shape
 (`aa|ao|BDF`, cached): scene pass → AO (the classic SSAO ported, or GTAO for the "N8AO" row) → bloom (`BloomNode`, off
-by default) → the classic tone map (decode → ACES / linear × exposure → encode, tone mapping OFF on the renderer) →
+by default) → (no tone map: the classic post never tone-mapped, W3 fix 1) →
 SMAA / FXAA → tilt-shift DoF → the Cinematic / Retro frame (one TSL `Fn`, model-only mask) → canvas. The rest of the
 file drives stand-ins with the old shapes (`_bloomPass`, `_cinematicPass.material.uniforms`, ...), so every set* still
 works. Auto exposure reads back async; `renderDirect` tone-blits per pane. Two traps found on the way: three's node
@@ -656,3 +656,8 @@ effects clear the render-object hook while they run (three-renderer.js re-arms i
 shader twins / point proxies / shadow pulse inside the chain), and three 0.186.1 re-uploads only the FIRST attribute of
 an interleaved geometry after a dispose (`_ewGpuInterleaveFix`; every Sprite shares one quad, so one disposed sprite hid
 every light halo). No TRAA yet (W8 brings the velocity pass). `?ew_gpu=webgl` stays the reference look.
+W3 fix 1 (main menu too pixelated + too dark): the retro grid now follows the canvas size once the chain has loaded;
+the chain no longer tone-maps (classic WebGLRenderer r153+ tone-maps only straight to the canvas, so the classic post
+look never had it; `_hdrSupported` was always false since `NoToneMapping` is 0); and a node dress must not read
+`normalWorld` / `normalView` inside `setupDiffuseColor`: it builds three's once-only lit normal early and the direct
+lights go dark on that material. Use `normalWorldGeometry` there (the `_hqAoHook` twin did this to every HQ wall and floor).

@@ -683,3 +683,17 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   node renderer refuses; it is a closed `Line` now (same picture on both). Sandbox check (`?ew_gpu=webgl2`): HQ lobby
   matches `?ew_gpu=webgl` side by side (halos, AO, grade), the bloom / FXAA / SMAA / retro / GTAO variants build with
   no errors, a battle builds `smaa|classic|-DF` with the DoF band. Next: W4.
+- 2026-10-04: **W3 fix 1, the main menu** (zip renderer/ENTROPY_WARS_W3_FIX1.zip: three-post.js + three-renderer.js,
+  token 20261004-gpu3-02-cors). mondo: the car, the door and the sky pyramids too pixelated, the whole scene too dark.
+  Three causes, each measured against `?ew_gpu=webgl` on the desert menu: (1) the retro grid is `uResolution /
+  uPixelSize` with `uResolution` in CSS px, and `resize()` skips while the chain is still loading, so it stayed at the
+  boot size (960×540 on a 1100×700 canvas: blockier cells); `_ngRender` now resizes when the canvas size and the grid
+  size differ. (2) The tone map in the chain had no classic twin: WebGLRenderer r153+ tone-maps only when it draws to the
+  canvas, and the classic post draws into the composer's target, so the classic look has NEVER been tone mapped (and
+  three-post.js `_hdrSupported` was always false: `!THREE.NoToneMapping` is `!0`). The node chain dropped that step
+  (`_hdr = false`, `_ngTone` kept only for `_ngDirect`); the lamp-lit door leaf went 102 → 72, classic 72. (3) The
+  room-box AO dress (`_ewNodeAo`, the `_hqAoHook` twin) read `normalWorld` inside `setupDiffuseColor`; that builds
+  three's once-only `normalView` before the lighting does and the lit normal came out wrong, so on every `_hqAoHook`
+  material (HQ walls, floors, props: the menu ground and door frame) the sun and spot lights added nothing and the sky
+  light read its ground colour. It reads `normalWorldGeometry` now (what the GLSL reads: `mat3(modelMatrix) *
+  objectNormal`). After: desert menu floor / frame / leaf / sky equal to classic within one level, full post on.
