@@ -644,3 +644,15 @@ sheets, the fluid tops (waves, caustics, glints), the three sways, the creator's
 band, the world dissolve and the batched particles' opacity. three-renderer.js `_ewNodeDress` dresses the node copy of
 each hooked material (by hook identity or the factory's `_ewNode` tag; layer hooks carry `_ew_base` / `_ew_layer`).
 A new GLSL hook needs a dress here too or it draws plain on WebGPU. `ThreeRenderer.nodeLayers()`. The grade is W3.
+
+### W3 — the post stack (2026-10-04, zip renderer/ENTROPY_WARS_W3_POST.zip)
+three-post.js "WEBGPU_PLAN W3 — THE NODE CHAIN": on the node renderer the post is one three `RenderPipeline` per shape
+(`aa|ao|BDF`, cached): scene pass → AO (the classic SSAO ported, or GTAO for the "N8AO" row) → bloom (`BloomNode`, off
+by default) → the classic tone map (decode → ACES / linear × exposure → encode, tone mapping OFF on the renderer) →
+SMAA / FXAA → tilt-shift DoF → the Cinematic / Retro frame (one TSL `Fn`, model-only mask) → canvas. The rest of the
+file drives stand-ins with the old shapes (`_bloomPass`, `_cinematicPass.material.uniforms`, ...), so every set* still
+works. Auto exposure reads back async; `renderDirect` tone-blits per pane. Two traps found on the way: three's node
+effects clear the render-object hook while they run (three-renderer.js re-arms it for the nested scene render, or no
+shader twins / point proxies / shadow pulse inside the chain), and three 0.186.1 re-uploads only the FIRST attribute of
+an interleaved geometry after a dispose (`_ewGpuInterleaveFix`; every Sprite shares one quad, so one disposed sprite hid
+every light halo). No TRAA yet (W8 brings the velocity pass). `?ew_gpu=webgl` stays the reference look.

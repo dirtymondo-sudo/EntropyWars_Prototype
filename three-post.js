@@ -115,6 +115,7 @@ const ThreePost = (function () {
     function _aeMeasure(now) {
         if (!_aeEnabled() || !_composer || !_renderer) return;
         if (now - _ae.last < AE_INTERVAL_MS) return; _ae.last = now;
+        if (_ng) { _ngAeMeasure(); return; }   // WEBGPU_PLAN W3: the node renderer reads back asynchronously
         var src = _pp ? (_pp.lastIn && _pp.lastIn.texture) : (_composer.readBuffer && _composer.readBuffer.texture); if (!src) return;
         if (!_ae.rt) {
             _ae.rt = new THREE.WebGLRenderTarget(16, 16, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false });
@@ -1105,7 +1106,7 @@ const ThreePost = (function () {
             var w = Math.max(2, Math.round(_maskVec.x * 0.5));
             var h = Math.max(2, Math.round(_maskVec.y * 0.5));
             if (!_maskRT) {
-                _maskRT = new THREE.WebGLRenderTarget(w, h, {
+                _maskRT = new (_renderer.isWebGPURenderer ? THREE.RenderTarget : THREE.WebGLRenderTarget)(w, h, {
                     minFilter: THREE.NearestFilter,
                     magFilter: THREE.NearestFilter,
                     format: THREE.RGBAFormat,
@@ -1138,6 +1139,7 @@ const ThreePost = (function () {
 
             _renderer.setRenderTarget(_maskRT);
             _renderer.autoClear = false;
+            _renderer._ew_sideRender = true;   // WEBGPU_PLAN W3: not the frame's scene render (three-renderer.js _ewGpuCompat)
             if (_renderer.shadowMap) _renderer.shadowMap.needsUpdate = false;
             _renderer.setClearColor(0x000000, 1);
             _renderer.clear(true, true, false);
@@ -1156,8 +1158,10 @@ const ThreePost = (function () {
             _renderer.setClearColor(_maskClearCol, prevAlpha);
             _renderer.autoClear = prevAutoClear;
             if (_renderer.shadowMap) _renderer.shadowMap.needsUpdate = prevShadowNeeds;
+            _renderer._ew_sideRender = false;
             return true;
         } catch (e) {
+            if (_renderer) _renderer._ew_sideRender = false;
             try { console.warn('[ThreePost] pixel mask pass failed — falling back to full-screen pixelate', e); } catch (e2) {}
             return false;
         }
@@ -1538,6 +1542,7 @@ const ThreePost = (function () {
        the same rect. Without HDR it is a plain renderer.render. rect = { x, y, w, h } in CSS px, y from the BOTTOM. */
     function renderDirect(scene, cam, rect) {
         if (!_renderer || !scene || !cam) return;
+        if (_ng) { _ngDirect(scene, cam, rect); return; }   // WEBGPU_PLAN W3
         if (!_hdr || !_toneMapPass) { _renderer.render(scene, cam); return; }
         var size = _renderer.getDrawingBufferSize(new THREE.Vector2()), pr = _renderer.getPixelRatio();
         if (!_directRT || _directRT.width !== size.x || _directRT.height !== size.y) {
@@ -2621,7 +2626,428 @@ const ThreePost = (function () {
             return false;
         }
     }
+    /* ── WEBGPU_PLAN W3 — THE NODE CHAIN (2026-10-04) ───────────────────────────────────────────────────────────────────
+       The post stack on the node renderer (?ew_gpu=webgpu / webgl2): neither chain above runs there (EffectComposer and
+       pmndrs are WebGL only), so the picture went straight to the screen, tone-mapped by three's own ACES and with no room
+       grade. This is three's RenderPipeline doing what the pmndrs chain does, from the same stand-ins and uniform objects:
+         pass(scene) → the classic AO (half res, its own target) → AO multiply + bloom (three's BloomNode, off the raw scene
+         as pmndrs reads it) + the tone map (decode · ACES / linear × exposure · encode, _ToneMapShader's maths)
+         → SMAA / FXAA (three's nodes; after the tone map, in the LDR they were made for)
+         → the tilt-shift DoF (two passes, the battle board only)
+         → the frame: the cinematic grade + the retro grade in one pass (the retro reads the cinematic at its snapped uv).
+       Every part is TSL Fn only (WEBGPU_PLAN rule), so the WebGL 2 backend compiles the same shaders. A node pipeline is
+       built per SET of parts (AA mode · AO kind · bloom · DoF · frame) and cached, so a toggle never rebuilds one twice;
+       the cinematic / retro halves switch on a uniform, as pmndrs's pass B did. The AO Quality row's second level (N8AO,
+       WebGL only) is three's GTAO here, through the same depth-aware blur. The shaders are written in GL screen space
+       (y up, as the classic GLSL was) and sample with the y flipped, so every uniform the rest of this file writes (spot
+       pools, ripple, motion centre, focus line) means what it always meant. Off: window.EW_NO_NODE_POST (dev). */
+    var _ng = null, _ngV2 = null;
+    var _NG_ADDONS = { bloom: 'three/addons/tsl/display/BloomNode.js', fxaa: 'three/addons/tsl/display/FXAANode.js',
+        smaa: 'three/addons/tsl/display/SMAANode.js', gtao: 'three/addons/tsl/display/GTAONode.js' };
+    function _ngStart(renderer, scene, w, h) {
+        var G = (typeof window !== 'undefined') ? window.THREE_GPU : null;
+        if (!G || !G.TSL || typeof G.RenderPipeline !== 'function') { console.warn('[ThreePost] node renderer without three/webgpu\'s RenderPipeline — direct render, no post'); return; }
+        if (window.EW_NO_NODE_POST) { console.log('[ThreePost] node post chain off (EW_NO_NODE_POST) — direct render'); return; }
+        var mods = {};
+        var loads = Object.keys(_NG_ADDONS).map(function (k) {
+            return import(_NG_ADDONS[k]).then(function (m) { mods[k] = m; }, function (e) { console.warn('[ThreePost] node post chain: ' + k + ' did not load', e); });
+        });
+        Promise.all([renderer.init()].concat(loads)).then(function () {
+            if (_renderer !== renderer || _ng) return;   // disposed (or rebuilt) meanwhile
+            try { _ngInit(renderer, scene, w, h, G, mods); }
+            catch (e) { console.warn('[ThreePost] the node post chain failed — direct render, no post', e); _ngDrop(); }
+        }, function (e) { console.warn('[ThreePost] node post chain: renderer.init() failed', e); });
+    }
+    function _ngInit(renderer, scene, w, h, G, mods) {
+        var T = G.TSL;
+        var P = { G: G, T: T, mods: mods, pipes: {}, sig: null, cur: null, rp: { scene: scene, camera: null }, cam: null, frameIn: null, lastPasses: 0, ae: null, direct: null };
+        // the stand-ins the rest of this file drives (the shapes the pmndrs chain leaves), and their uniform objects
+        var cu = THREE.UniformsUtils.clone(_CinematicShader.uniforms), ru = THREE.UniformsUtils.clone(_RetroShader.uniforms);
+        ru.uResolution = cu.uResolution; ru.uTime = cu.uTime;   // one uniform each: both passes always wrote the same values
+        var aoU = THREE.UniformsUtils.clone(_SsaoAoShader.uniforms); aoU.uKernel.value = _SSAO_KERNEL;
+        var dofHU = THREE.UniformsUtils.clone(_TiltShiftShader.uniforms), dofVU = THREE.UniformsUtils.clone(_TiltShiftShader.uniforms);
+        dofHU.uDir.value.set(1, 0); dofVU.uDir.value.set(0, 1); dofHU.uResolution.value.set(w, h); dofVU.uResolution.value.set(w, h);
+        var toneU = { tDiffuse: { value: null }, uExposure: { value: 1.0 }, uMode: { value: 1.0 } };
+        _bloomPass = { enabled: BLOOM_USER_STRENGTH > 0, strength: BLOOM_USER_STRENGTH, threshold: BLOOM_USER_THRESHOLD, radius: BLOOM_USER_RADIUS };
+        _cinematicPass = { enabled: false, material: { uniforms: cu } };
+        _retroPass = { enabled: !!_lkRetro().enabled, material: { uniforms: ru } };
+        _fxaaPass = { enabled: false, material: { uniforms: { resolution: { value: new THREE.Vector2() } } } };
+        _smaaPass = { enabled: false, setSize: function () {} };
+        _dofPassH = { enabled: false, material: { uniforms: dofHU } }; _dofPassV = { enabled: false, material: { uniforms: dofVU } };
+        _ssaoPass = { enabled: false, camera: null, half: true, aoMat: { uniforms: aoU }, setSize: function () {}, dispose: function () {} };
+        _ssaoAvail = true; _ssaoPass.enabled = _ssaoWanted();
+        _toneMapPass = { material: { uniforms: toneU } };
+        cu.uResolution.value.set(w, h);
+        P.U = { cu: cu, ru: ru, ao: aoU, dofH: dofHU, dofV: dofVU, tone: toneU };
+        P.cineOn = T.uniform(0); P.retroOn = T.uniform(0);
+        P.bS = T.uniform(0); P.bR = T.uniform(0); P.bT = T.uniform(1);
+        P.ph = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); P.ph.needsUpdate = true;
+        P.maskTex = T.texture(P.ph);
+        // the camera the AO reads (its projection after the renderer has set its coordinate system, i.e. at the AO's draw)
+        P.m4p = new THREE.Matrix4(); P.m4i = new THREE.Matrix4();
+        P.uProj = T.uniform(P.m4p).onRenderUpdate(function () { return P.cam ? P.cam.projectionMatrix : P.m4p; });
+        P.uProjInv = T.uniform(P.m4i).onRenderUpdate(function () { return P.cam ? P.cam.projectionMatrixInverse : P.m4i; });
+        P.uNear = T.uniform(0.1).onRenderUpdate(function () { return P.cam ? (P.cam.near || 0.1) : 0.1; });
+        P.uFar = T.uniform(1000).onRenderUpdate(function () { return P.cam ? (P.cam.far || 1000) : 1000; });
+        P.uOrtho = T.uniform(0).onRenderUpdate(function () { return (P.cam && P.cam.isOrthographicCamera) ? 1 : 0; });
+        P.uDRes = T.uniform(new THREE.Vector2(1, 1)); P.uARes = T.uniform(new THREE.Vector2(1, 1));
+        // the scene pass: colour (half float, as the pmndrs frame buffer) + depth; scene / camera are set per frame
+        P.sp = T.pass(scene, new THREE.PerspectiveCamera());
+        P.sp.name = 'ew scene';
+        P.sceneTex = P.sp.getTextureNode('output'); P.depthTex = P.sp.getTextureNode('depth');
+        // the classic AO (THE BANDS fix kept: every depth read lands on a texel centre), into its own target
+        P.aoTex = T.rtt(_ngAoFrag(P), null, null, { resolutionScale: 0.5 });
+        P.aoTex.name = 'ew ao';
+        _hdr = true;   // the scene pass is half float: the bloom thresholds read as THE HDR BLOOM's (_bloomThrFor)
+        renderer.toneMapping = THREE.NoToneMapping;   // the chain tone-maps; the renderer must not do it again on its own
+        _pp = null; _ng = P; _composer = P;
+        _applyDofUniforms(); _aaApply(); _applyCinematicUniforms(); _applyRetroUniforms(); _applySceneFog(); _tmSync();
+        console.log('[ThreePost] node post chain ready (WEBGPU_PLAN W3) — AO + bloom + tone + ' + _aaResolve().toUpperCase() + ' + DoF + cinematic/retro, on three\'s RenderPipeline' +
+            (mods.bloom ? '' : ' (no BloomNode)') + (mods.smaa ? '' : ' (no SMAA)') + (mods.gtao ? '' : ' (no GTAO)'));
+    }
+    function _ngDrop() {
+        var P = _ng; _ng = null;
+        if (P) {
+            for (var k in P.pipes) { var e = P.pipes[k]; try { e.pipe.dispose(); } catch (x) {} (e.made || []).forEach(function (n) { try { if (n && n.dispose) n.dispose(); } catch (x) {} }); }
+            try { P.sp.dispose(); } catch (x) {} try { P.aoTex.dispose(); } catch (x) {}
+            if (P.ae) { try { P.ae.rt.dispose(); P.ae.mat.dispose(); } catch (x) {} }
+            if (P.direct) { try { P.direct.rt.dispose(); P.direct.mat.dispose(); } catch (x) {} }
+        }
+        if (_composer === P) _composer = null;
+        _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
+        _dofPassH = null; _dofPassV = null; _toneMapPass = null; _ssaoPass = null; _ssaoAvail = false; _hdr = false;
+        if (_renderer) _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
+    }
+    /* uniform object {value} → a node reading it each draw */
+    function _ngR(P, o, type) { return P.T.reference('value', type, o); }
+    /* a smoothstep that also runs edges high → low (GLSL tolerates it; WGSL leaves it undefined) */
+    function _ngSS(T, e0, e1, x) { var t = T.clamp(x.sub(e0).div(e1.sub(e0)), 0, 1); return t.mul(t).mul(T.float(3).sub(t.mul(2))); }
+    /* the classic AO shader (_SsaoAoShader) in TSL: depth → view position + a normal off the closer neighbours, a 16-vector
+       hemisphere kernel turned by interleaved-gradient noise; branch-free (samples stay in uniform control flow) */
+    function _ngAoFrag(P) {
+        var T = P.T, U = P.U.ao, F = T.float, V2 = T.vec2, V3 = T.vec3;
+        var uR = _ngR(P, U.uRadius, 'float'), uB = _ngR(P, U.uBias, 'float'), uS = _ngR(P, U.uStrength, 'float'), uN = _ngR(P, U.uSamples, 'float');
+        var kern = T.uniformArray(_SSAO_KERNEL, 'vec3');
+        return T.Fn(function () {
+            var dRes = P.uDRes, aRes = P.uARes;
+            var rd = function (q) { return P.depthTex.sample(T.floor(q.mul(dRes)).add(0.5).div(dRes)).r; };
+            var vp = function (q, d) { return T.getViewPosition(q, d, P.uProjInv); };
+            var uv0 = T.floor(T.floor(T.screenCoordinate.xy).mul(dRes.div(aRes))).add(0.5).div(dRes).toVar();
+            var d = rd(uv0).toVar();
+            var p = vp(uv0, d).toVar();
+            var tx = F(1).div(dRes);
+            var ox = V2(tx.x, 0), oy = V2(0, tx.y);
+            var dr = rd(uv0.add(ox)), dl = rd(uv0.sub(ox)), du = rd(uv0.add(oy)), dd = rd(uv0.sub(oy));
+            var px = T.select(T.abs(dr.sub(d)).lessThan(T.abs(dl.sub(d))), vp(uv0.add(ox), dr).sub(p), p.sub(vp(uv0.sub(ox), dl)));
+            var py = T.select(T.abs(du.sub(d)).lessThan(T.abs(dd.sub(d))), vp(uv0.add(oy), du).sub(p), p.sub(vp(uv0.sub(oy), dd)));
+            var n = T.normalize(T.cross(px, py)).toVar();
+            n.assign(T.select(T.dot(n, p.negate()).lessThan(0), n.negate(), n));
+            var ang = T.fract(F(52.9829189).mul(T.fract(T.dot(T.screenCoordinate.xy, V2(0.06711056, 0.00583715))))).mul(6.2831853);
+            var rv = V3(T.cos(ang), T.sin(ang), 0);
+            var t = T.normalize(rv.sub(n.mul(T.dot(rv, n)))).toVar(), b = T.cross(n, t).toVar();
+            var occ = F(0).toVar(), cnt = F(0).toVar();
+            T.Loop(16, function (o) {
+                T.If(F(o.i).greaterThanEqual(uN), function () { T.Break(); });
+                var k = kern.element(o.i);
+                var sp = p.add(t.mul(k.x).add(b.mul(k.y)).add(n.mul(k.z)).mul(uR)).toVar();
+                var suv = T.getScreenPosition(sp, P.uProj).toVar();
+                var inb = T.step(0, suv.x).mul(T.step(suv.x, 1)).mul(T.step(0, suv.y)).mul(T.step(suv.y, 1));
+                var sq = T.clamp(suv, V2(0), V2(1));
+                var sz = vp(sq, rd(sq)).z;
+                var rc = T.smoothstep(0, 1, uR.div(T.max(0.0001, T.abs(p.z.sub(sz)))));
+                occ.addAssign(inb.mul(T.step(sp.z.add(uB.mul(uR)), sz)).mul(rc));
+                cnt.addAssign(1);
+            });
+            var ao = T.clamp(F(1).sub(occ.div(T.max(1, cnt)).mul(uS)), 0, 1);
+            var a = T.select(d.greaterThanEqual(0.99995), F(1), ao);
+            return T.vec4(a, a, a, 1);
+        })();
+    }
+    /* the AO multiply: an AO texture blurred 4 × 4 by linear depth (the classic mix), × the colour */
+    function _ngAoMix(P, aoTex) {
+        var T = P.T, F = T.float, V2 = T.vec2;
+        return T.Fn(function () {
+            var u = T.uv();
+            var lin = function (d) { return T.select(P.uOrtho.greaterThan(0.5), d, T.perspectiveDepthToViewZ(d, P.uNear, P.uFar).negate()); };
+            var texel = F(1).div(P.uARes);
+            var dc = lin(P.depthTex.sample(u).r).toVar();
+            var sum = F(0).toVar(), wsum = F(0).toVar();
+            for (var j = -1; j <= 2; j++) for (var i = -1; i <= 2; i++) {
+                var o = V2(i - 0.5, j - 0.5).mul(texel), q = u.add(o);
+                var a = aoTex.sample(q).r, dd = lin(P.depthTex.sample(q).r);
+                var wgt = F(1).div(F(1).add(T.abs(dd.sub(dc)).mul(40).div(T.max(dc, 0.001))));
+                sum.addAssign(a.mul(wgt)); wsum.addAssign(wgt);
+            }
+            return T.select(wsum.greaterThan(0), sum.div(wsum), F(1));
+        })();
+    }
+    /* the tone map (_ToneMapShader verbatim): the target holds sRGB-encoded light — decode, ACES / linear × exposure, encode */
+    function _ngTone(P, c) {
+        var T = P.T, F = T.float, V3 = T.vec3, U = P.U.tone;
+        var uE = _ngR(P, U.uExposure, 'float'), uM = _ngR(P, U.uMode, 'float');
+        var m3 = function (a, b, d, v) { return a.mul(v.x).add(b.mul(v.y)).add(d.mul(v.z)); };   // GLSL mat3(a, b, d) * v
+        var lin0 = T.max(c.rgb, V3(0));
+        var lin = T.mix(T.pow(lin0.add(0.055).div(1.055), V3(2.4)), lin0.div(12.92), T.step(lin0, V3(0.04045)));
+        var a = m3(V3(0.59719, 0.07600, 0.02840), V3(0.35458, 0.90834, 0.13383), V3(0.04823, 0.01566, 0.83777), lin.mul(uE.div(0.6)));
+        var ra = a.mul(a.add(0.0245786)).sub(0.000090537), rb = a.mul(a.mul(0.983729).add(0.4329510)).add(0.238081);
+        var aces = T.clamp(m3(V3(1.60475, -0.10208, -0.00327), V3(-0.53108, 1.10813, -0.07276), V3(-0.07367, -0.00605, 1.07602), ra.div(rb)), 0, 1);
+        var m = T.select(uM.greaterThan(0.5), aces, T.clamp(lin.mul(uE), 0, 1));
+        var mz = T.max(m, V3(0));
+        var enc = T.mix(T.pow(mz, V3(1 / 2.4)).mul(1.055).sub(0.055), m.mul(12.92), T.step(m, V3(0.0031308)));
+        return T.vec4(enc, c.a);
+    }
+    /* one tilt-shift pass (_TiltShiftShader): blur grows with the distance from the focus line (screen v, 0 = the bottom) */
+    function _ngDof(P, src, U) {
+        var T = P.T, F = T.float, tex = T.convertToTexture(src);
+        var uRes = _ngR(P, U.uResolution, 'vec2'), uDir = _ngR(P, U.uDir, 'vec2'), uFo = _ngR(P, U.uFocus, 'float'),
+            uBa = _ngR(P, U.uBand, 'float'), uFe = _ngR(P, U.uFeather, 'float'), uAm = _ngR(P, U.uAmount, 'float');
+        return { tex: tex, node: T.Fn(function () {
+            var u = T.uv(), dist = T.abs(F(1).sub(u.y).sub(uFo));
+            var f = T.clamp(dist.sub(uBa).div(T.max(uFe, 0.001)), 0, 1);
+            var r = uAm.mul(f).mul(f);
+            var st = uDir.div(uRes).mul(r).toVar();
+            var c0 = tex.sample(u).toVar();
+            var c = c0.mul(0.2270);
+            var W = [0.1946, 0.1216, 0.0541, 0.0162];
+            for (var k = 0; k < 4; k++) c = c.add(tex.sample(u.add(st.mul(k + 1))).add(tex.sample(u.sub(st.mul(k + 1)))).mul(W[k]));
+            return T.select(r.lessThan(0.05), c0, c);
+        })() };
+    }
+    /* the frame: _CinematicShader + _RetroShader as one pass, in GL screen space (y up) with the sample flipped */
+    function _ngFrame(P, tex) {
+        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, V4 = T.vec4, cu = P.U.cu, ru = P.U.ru;
+        var f = function (o) { return _ngR(P, o, 'float'); };
+        var uRes = _ngR(P, cu.uResolution, 'vec2'), uTime = f(cu.uTime), uScA = f(cu.uScanlineAlpha), uScS = f(cu.uScanlineScale), uChS = f(cu.uChromaShift),
+            uVS = f(cu.uVignetteSize), uVSo = f(cu.uVignetteSoft), uVA = f(cu.uVignetteAmount), uCrt = f(cu.uCrtAmount), uCurv = f(cu.uCurvature),
+            uNG = f(cu.uNightGrade), uNT = _ngR(P, cu.uNightTint, 'vec3'), uSD = f(cu.uSpotDim), uSA = _ngR(P, cu.uSpotA, 'vec3'), uSB = _ngR(P, cu.uSpotB, 'vec3'),
+            uSSo = f(cu.uSpotSoft), uSL = f(cu.uSpotLift), uTrip = f(cu.uTrip), uHue = f(cu.uHue), uWarp = f(cu.uWarp), uChR = f(cu.uChromaRadial),
+            uGT = _ngR(P, cu.uGradeTint, 'vec3'), uGTA = f(cu.uGradeTintAmt), uMo = f(cu.uMotion), uMoC = _ngR(P, cu.uMotionCenter, 'vec2'), uRip = _ngR(P, cu.uRipple, 'vec4');
+        var uPx = f(ru.uPixelSize), uLv = f(ru.uLevels), uDS = f(ru.uDitherStrength), uDSc = f(ru.uDitherScale), uTi = _ngR(P, ru.uTint, 'vec3'),
+            uTA = f(ru.uTintAmount), uSat = f(ru.uSaturation), uLIO = _ngR(P, ru.uLevelsInOut, 'vec2'), uGr = f(ru.uGrain), uMM = f(ru.uMaskMode);
+        var LUM = V3(0.299, 0.587, 0.114);
+        var S = function (p) { return tex.sample(V2(p.x, F(1).sub(p.y))); };
+        var M = function (p) { return P.maskTex.sample(V2(p.x, F(1).sub(p.y))); };
+        var fetchC = function (p) {   // 6.4 MOTION BLUR: eight taps back along the ray from the blur centre
+            var res = S(p).toVar();
+            T.If(uMo.greaterThanEqual(0.001), function () {
+                var dm = p.sub(uMoC).mul(uMo.mul(0.14)).toVar(), acc = V4(0).toVar();
+                for (var i = 0; i < 8; i++) acc.addAssign(S(T.clamp(p.sub(dm.mul(i / 7)), V2(0.001), V2(0.999))));
+                res.assign(acc.mul(0.125));
+            });
+            return res;
+        };
+        var spotMask = function (q, s, asp) {
+            var dl = T.length(q.sub(s.xy).mul(asp));
+            return T.select(s.z.lessThanEqual(0), F(0), F(1).sub(T.smoothstep(s.z, s.z.mul(F(1).add(uSSo)), dl)));
+        };
+        var cineAt = function (vUv) {
+            var cc = vUv.mul(2).sub(1), cv = cc.mul(F(1).add(uCurv.mul(T.dot(cc, cc)))).div(F(1).add(uCurv.mul(2))).mul(0.5).add(0.5);
+            var uv = T.select(uCurv.lessThan(0.001).or(uCrt.lessThan(0.001)), vUv, cv).toVar();
+            // the spell warp: the frame breathes / melts
+            var wt = uTime.mul(2.1);
+            var wv = V2(T.sin(uv.y.mul(11).add(wt)).mul(0.65).add(T.sin(uv.y.mul(27).sub(wt.mul(1.7))).mul(0.35)),
+                T.cos(uv.x.mul(13).sub(wt.mul(1.3))).mul(0.65).add(T.cos(uv.x.mul(21).add(wt.mul(2.2))).mul(0.35))).mul(uWarp);
+            uv.assign(T.select(uWarp.greaterThan(0.00001), T.clamp(uv.add(wv), V2(0.0005), V2(0.9995)), uv));
+            // the impact ripple: a thin ring of refraction racing out of the hit
+            var rasp = V2(uRes.x.div(T.max(1, uRes.y)), 1), rdv = uv.sub(uRip.xy).mul(rasp), rl = T.length(rdv), rr = rl.sub(uRip.z);
+            var rr2 = rr.add(0.03), band = T.exp(rr.mul(rr).mul(-1400)).sub(T.exp(rr2.mul(rr2).mul(-1400)).mul(0.5));
+            var ruv = T.clamp(uv.sub(rdv.div(T.max(rl, 0.0001)).div(rasp).mul(band).mul(uRip.w)), V2(0.0005), V2(0.9995));
+            uv.assign(T.select(uRip.w.greaterThan(0.00001), ruv, uv));
+            var oob = uv.x.lessThan(0).or(uv.x.greaterThan(1)).or(uv.y.lessThan(0)).or(uv.y.greaterThan(1));
+            // the CRT look (chroma + scanlines + flicker) and the spell's radial aberration
+            var pxs = uChS.mul(uCrt).div(uRes.x), ab = uv.sub(0.5).mul(uChR.mul(2).div(uRes.x)).toVar();
+            var r = fetchC(V2(uv.x.sub(pxs), uv.y).sub(ab)).r;
+            var center = fetchC(uv);
+            var b = fetchC(V2(uv.x.add(pxs), uv.y).add(ab)).b;
+            var g = center.g.toVar();
+            T.If(uChR.greaterThan(0.01), function () { g.assign(fetchC(uv.add(V2(ab.y.negate(), ab.x).mul(0.6))).g); });
+            var col = V3(r, g, b).toVar();
+            // the psychedelic grade: cycling hue + saturation blowout (zero trip = the colour untouched)
+            var k = V3(0.57735027), ha = uHue.mul(6.2831853), ca = T.cos(ha), sa = T.sin(ha);
+            var hc = col.mul(ca).add(T.cross(k, col).mul(sa)).add(k.mul(T.dot(k, col)).mul(F(1).sub(ca))).toVar();
+            hc.assign(T.mix(V3(T.dot(hc, LUM)), hc, F(1).add(uTrip.mul(1.3))));
+            hc.assign(T.mix(hc, hc.mul(hc).mul(2), uTrip.mul(0.18)));
+            col.assign(T.mix(col, hc, uTrip));
+            col.assign(T.mix(col, col.mul(uGT), uGTA));   // the archetype colour push
+            var asp = V2(uRes.x.div(T.max(uRes.y, 1)), 1);
+            var spot = T.select(uSD.greaterThan(0.001), T.max(spotMask(uv, uSA, asp), spotMask(uv, uSB, asp)), F(0)).toVar();
+            var sl = T.pow(T.sin(uv.y.mul(uRes.y).mul(uScS).mul(3.14159)).mul(0.5).add(0.5), 1.2);
+            col.mulAssign(F(1).sub(uScA.mul(uCrt).mul(F(1).sub(sl))));
+            col.mulAssign(F(1).sub(uCrt.mul(0.006).mul(T.sin(uTime.mul(8.3)))));
+            // the night grade: cool tint + desaturate + crushed shadows; the pools stay lit (zero = untouched)
+            var ng = T.clamp(uNG, 0, 1).mul(F(1).sub(uSL.mul(spot)));
+            col.assign(T.mix(col, V3(T.dot(col, LUM)), ng.mul(0.35)));
+            col.mulAssign(T.mix(V3(1), uNT, ng));
+            col.assign(T.mix(col, col.mul(col).mul(V3(3).sub(col.mul(2))), ng.mul(0.30)));
+            // the vignette (independent of the CRT look); the night grade closes the corners in further
+            var vc = uv.sub(0.5), vig = _ngSS(T, uVS, uVS.sub(uVSo), T.dot(vc, vc));
+            col.mulAssign(T.mix(F(1), vig, T.clamp(uVA.add(uNG.mul(0.35)), 0, 1)));
+            // the world drops away, the spell does not: hot pixels and the pools keep their light
+            var slum = T.dot(col, LUM), keep = T.max(spot, T.smoothstep(0.45, 0.95, slum));
+            col.assign(T.mix(V3(slum), col, T.mix(F(1).sub(uSD.mul(0.45)), F(1), keep)));
+            col.mulAssign(T.mix(F(1).sub(uSD), F(1), keep));
+            return T.select(oob, V4(0, 0, 0, 1), V4(col, center.a));
+        };
+        var m2 = function (a, b) { return a.mul(2).add(b.mul(3)).sub(a.mul(b).mul(4)); };   // the 2 × 2 Bayer cell: 0 2 / 3 1
+        var retroAt = function (vUv) {
+            var uv = vUv.toVar();
+            T.If(uPx.greaterThan(1), function () {
+                var cells = uRes.div(uPx), snapped = T.floor(vUv.mul(cells)).add(0.5).div(cells);
+                var mk = T.max(M(snapped).r, M(vUv).r);
+                uv.assign(T.select(uMM.greaterThan(0.5), T.mix(vUv, snapped, T.step(0.35, mk)), snapped));
+            });
+            var src = S(uv).toVar();
+            T.If(P.cineOn.greaterThan(0.5), function () { src.assign(cineAt(uv)); });
+            var c = T.clamp(src.rgb.sub(uLIO.x).div(T.max(0.001, uLIO.y.sub(uLIO.x))), 0, 1).toVar();   // the grade: levels, saturation, tint
+            c.assign(T.mix(V3(T.dot(c, LUM)), c, uSat));
+            c.assign(T.mix(c, c.mul(uTi), uTA));
+            var dc = T.floor(uv.mul(uRes).div(T.max(1, uDSc)));   // ordered dither + quantize (cells ride the snapped grid)
+            var bay = m2(T.mod(dc.x, 2), T.mod(dc.y, 2)).mul(4).add(m2(T.mod(T.floor(dc.x.mul(0.5)), 2), T.mod(T.floor(dc.y.mul(0.5)), 2))).div(16);
+            c.addAssign(bay.sub(0.5).mul(uDS.div(uLv)));
+            c.assign(T.floor(c.mul(uLv).add(0.5)).div(uLv));
+            var hp = uv.mul(uRes).add(T.fract(uTime));   // a little animated grain over the static dither
+            c.addAssign(T.fract(T.sin(T.dot(hp, V2(127.1, 311.7))).mul(43758.5453)).sub(0.5).mul(uGr));
+            return V4(T.clamp(c, 0, 1), 1);
+        };
+        return T.Fn(function () {
+            var u = T.uv(), vUv = V2(u.x, F(1).sub(u.y));
+            var out = S(vUv).toVar();
+            T.If(P.retroOn.greaterThan(0.5), function () { out.assign(retroAt(vUv)); })
+                .ElseIf(P.cineOn.greaterThan(0.5), function () { out.assign(cineAt(vUv)); });
+            return out;
+        })();
+    }
+    /* the set of parts this frame wants; a pipeline per set, built once */
+    function _ngSig(cam) {
+        var P = _ng, aa = _aaResolve();
+        if (aa === 'smaa' && !P.mods.smaa) aa = P.mods.fxaa ? 'fxaa' : 'off';
+        if (aa === 'fxaa' && !P.mods.fxaa) aa = 'off';
+        var ao = (_ssaoPass && _ssaoPass.enabled) ? ((_ssaoMode() === 'n8ao' && P.mods.gtao && cam && cam.isPerspectiveCamera) ? 'gtao' : 'classic') : 'off';
+        var bloom = !!(_bloomPass && _bloomPass.enabled && P.mods.bloom), dof = !!(_dofPassH && _dofPassH.enabled);
+        var frame = !!((_cinematicPass && _cinematicPass.enabled) || (_retroPass && _retroPass.enabled) || _aeEnabled());
+        return { aa: aa, ao: ao, bloom: bloom, dof: dof, frame: frame, cam: ao === 'gtao' ? cam : null,
+            key: aa + '|' + ao + (ao === 'gtao' ? ':' + cam.uuid : '') + '|' + (bloom ? 'B' : '-') + (dof ? 'D' : '-') + (frame ? 'F' : '-') };
+    }
+    function _ngBuild(o) {
+        var P = _ng, T = P.T, made = [], passes = 1;
+        var col = P.sceneTex, lit = col;
+        if (o.ao !== 'off') {
+            var aoT = P.aoTex;
+            if (o.ao === 'gtao') {
+                var g = P.mods.gtao.ao(P.depthTex, null, o.cam);
+                g.resolutionScale = 0.5; made.push(g);
+                aoT = g.getTextureNode(); o.gtao = g;
+            }
+            var aoF = _ngAoMix(P, aoT);
+            lit = T.vec4(col.rgb.mul(o.ao === 'gtao' ? T.mix(T.float(1), aoF, T.clamp(_ngR(P, P.U.ao.uStrength, 'float'), 0, 1)) : aoF), col.a);
+            passes++;
+        }
+        if (o.bloom) {
+            var bl = P.mods.bloom.bloom(col, P.bS, P.bR, P.bT); made.push(bl);
+            lit = T.vec4(lit.rgb.add(bl.rgb), lit.a);
+            passes += 11;
+        }
+        var ldr = _ngTone(P, lit);
+        if (o.aa === 'smaa') { ldr = P.mods.smaa.smaa(ldr); made.push(ldr); passes += 4; }
+        else if (o.aa === 'fxaa') { ldr = P.mods.fxaa.fxaa(ldr); made.push(ldr); passes += 2; }
+        if (o.dof) {
+            var dh = _ngDof(P, ldr, P.U.dofH); made.push(dh.tex);
+            var dv = _ngDof(P, dh.node, P.U.dofV); made.push(dv.tex);
+            ldr = dv.node; passes += 2;
+        }
+        var frameIn = null;
+        if (o.frame) {
+            frameIn = T.convertToTexture(ldr); if (frameIn !== ldr) { made.push(frameIn); passes++; }
+            ldr = _ngFrame(P, frameIn);
+        }
+        var pipe = new P.G.RenderPipeline(_renderer);
+        pipe.outputColorTransform = false;   // the tone map + the encode are the chain's own (the board's output stays linear)
+        pipe.outputNode = ldr;
+        return { pipe: pipe, made: made, frameIn: frameIn, gtao: o.gtao || null, passes: passes };
+    }
+    function _ngRender() {
+        var P = _ng, r = _renderer, sc = P.rp.scene, cam = P.rp.camera;
+        if (!sc || !cam) return;
+        if (!_ngV2) _ngV2 = new THREE.Vector2();
+        var ds = r.getDrawingBufferSize(_ngV2), half = !(_ssaoPass && _ssaoPass.half === false);
+        P.cam = cam;
+        P.sp.scene = sc; P.sp.camera = cam;
+        P.uDRes.value.set(Math.max(1, ds.x), Math.max(1, ds.y));
+        var sc2 = half ? 0.5 : 1;
+        if (P.aoTex.getResolutionScale() !== sc2) P.aoTex.setResolutionScale(sc2);
+        P.uARes.value.set(Math.max(1, Math.floor(ds.x * sc2)), Math.max(1, Math.floor(ds.y * sc2)));
+        var o = _ngSig(cam), e = P.pipes[o.key];
+        if (!e) { e = P.pipes[o.key] = _ngBuild(o); console.log('[ThreePost] node post chain: built [' + o.key + ']'); }
+        P.sig = o.key; P.cur = e; P.frameIn = e.frameIn; P.lastPasses = e.passes;
+        if (e.gtao) {   // GTAO: the AO radius in the context's own world units (setSsaoScale), as the classic one
+            var au = P.U.ao; e.gtao.radius.value = au.uRadius.value; e.gtao.thickness.value = au.uRadius.value; e.gtao.samples.value = Math.max(4, Math.min(16, au.uSamples.value | 0));
+            if (o.ao === 'gtao') P.uARes.value.set(Math.max(1, Math.round(ds.x * 0.5)), Math.max(1, Math.round(ds.y * 0.5)));
+        }
+        if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
+        P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
+        P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
+        var mt = P.U.ru.tMask.value; P.maskTex.value = mt || P.ph;
+        var ac = r.autoClear;
+        try { e.pipe.render(); } finally { r.autoClear = ac; }
+    }
+    /* THE AUTO EXPOSURE on the node renderer: the frame's input (before the grades) down to 16 × 16 by one draw, read back
+       without stalling (readRenderTargetPixelsAsync) — the gain follows one read later, which the ease never notices */
+    function _ngAeMeasure() {
+        var P = _ng, A = P.ae, src = P.frameIn && P.frameIn.value;
+        if (!src || (A && A.busy)) return false;
+        var T = P.T, G = P.G;
+        if (!A) {
+            A = P.ae = { busy: false, rt: new G.RenderTarget(16, 16, { depthBuffer: false }), mat: new G.NodeMaterial(), src: T.texture(src) };
+            A.mat.fragmentNode = T.Fn(function () {
+                var u = T.uv(), c = T.vec3(0).toVar();
+                for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) c.addAssign(A.src.sample(u.add(T.vec2((i - 1.5) * 0.0125, (j - 1.5) * 0.0125))).rgb);
+                return T.vec4(c.div(16), 1);
+            })();
+            A.quad = new G.QuadMesh(A.mat);
+        }
+        A.src.value = src;
+        var r = _renderer, prevRT = r.getRenderTarget(), prevAuto = r.autoClear;
+        try { r.setRenderTarget(A.rt); r.autoClear = true; A.quad.render(r); }
+        catch (e) { AE_ON = false; return false; }
+        finally { r.setRenderTarget(prevRT); r.autoClear = prevAuto; }
+        A.busy = true;
+        r.readRenderTargetPixelsAsync(A.rt, 0, 0, 16, 16).then(function (b) {
+            A.busy = false;
+            if (!b || b.length < 64) return;
+            var stride = b.length >= 1024 ? Math.round((b.length - 64) / 15) : 64;   // WebGPU pads each row to 256 bytes
+            var sum = 0, wsum = 0;
+            for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) {
+                var i = y * stride + x * 4, lum = (0.2126 * b[i] + 0.7152 * b[i + 1] + 0.0722 * b[i + 2]) / 255;
+                var w = 1 - 0.6 * Math.hypot(x / 15 - 0.5, y / 15 - 0.5) / 0.707;
+                sum += lum * w; wsum += w;
+            }
+            _ae.lum = wsum ? sum / wsum : AE_TARGET;
+            _ae.target = Math.max(AE_MIN, Math.min(AE_MAX, Math.pow(AE_TARGET / Math.max(0.03, _ae.lum), 0.55)));
+        }, function () { A.busy = false; });
+        return true;
+    }
+    /* renderDirect on the node renderer: the pane into its own half-float target, then the tone map into the caller's
+       viewport / scissor (the canvas is drawn with no tone mapping of its own while the chain is up) */
+    function _ngDirect(scene, cam, rect) {
+        var P = _ng, r = _renderer, T = P.T, G = P.G, pr = r.getPixelRatio();
+        var size = r.getDrawingBufferSize(new THREE.Vector2());
+        var R2 = rect || { x: 0, y: 0, w: size.x / pr, h: size.y / pr };
+        var w = Math.max(1, Math.round(R2.w * pr)), h = Math.max(1, Math.round(R2.h * pr)), D = P.direct;
+        if (!D) {
+            D = P.direct = { rt: new G.RenderTarget(w, h, { type: THREE.HalfFloatType }), mat: new G.NodeMaterial() };
+            D.tex = T.texture(D.rt.texture);
+            D.mat.fragmentNode = _ngTone(P, D.tex);
+            D.quad = new G.QuadMesh(D.mat);
+        } else if (D.rt.width !== w || D.rt.height !== h) D.rt.setSize(w, h);
+        var prevRT = r.getRenderTarget();
+        try { r.setRenderTarget(D.rt); r.render(scene, cam); } finally { r.setRenderTarget(prevRT); }
+        _tmSync();
+        D.quad.render(r);
+    }
+    /* the warm-up compiles into the scene pass's target, so its pipelines are the ones the frame draws with */
+    function warmTarget() { return _ng ? _ng.sp.renderTarget : null; }
     function getPostChain() {
+        if (_ng) return { lib: 'node', passes: _ng.lastPasses || 0, effectsA: _ng.sig, ao: _ng.cur ? (_ng.cur.gtao ? 'gtao' : (_ng.sig && _ng.sig.indexOf('|classic|') >= 0 ? 'classic' : 'off')) : 'off', n8ao: 'idle', pipelines: Object.keys(_ng.pipes).length };
         if (_pp) {
             return { lib: 'pmndrs', passes: _pp.lastPasses || 0, effectsA: _pp.sigA, ao: _pp.n8 && _pp.n8.enabled ? 'n8ao' : (_pp.aoPass.enabled ? 'classic' : 'off'), n8ao: _pp.n8state || 'idle' };
         }
@@ -2656,9 +3082,15 @@ const ThreePost = (function () {
         // passes: bloom alone owns eleven render targets. Both the board and
         // HQ already support direct rendering with lighting/tone mapping.
         if (typeof window !== 'undefined' && window.EW_PERF_LOW) return;
-        /* WEBGPU_PLAN W0: both chains are WebGL-only (three's EffectComposer, pmndrs postprocessing); on the node renderer the
-           scene goes straight to the screen, tone-mapped by the renderer itself, until W3 builds the RenderPipeline chain */
-        if (renderer.isWebGPURenderer) { console.log('[ThreePost] node renderer (WEBGPU_PLAN W0): no post chain yet — direct render, sun shadows (' + _shadowQuality + ')'); return; }
+        /* WEBGPU_PLAN W3: both chains below are WebGL-only (three's EffectComposer, pmndrs postprocessing); the node renderer
+           gets the RenderPipeline chain (_ngStart) once its add-on nodes load. Until then — or if they never do — render() /
+           renderScene() draw straight to the screen (tone-mapped by the renderer itself) but still run the lights' sync. */
+        if (renderer.isWebGPURenderer) {
+            _ready = true;
+            console.log('[ThreePost] node renderer: building the node post chain (WEBGPU_PLAN W3) — direct render until it is up, sun shadows (' + _shadowQuality + ')');
+            _ngStart(renderer, scene, w, h);
+            return;
+        }
 
         // RENDERER_PLAN R5: the pmndrs chain first; the three.js chain below is the fallback
         if (_ppWanted() && _ppInit(renderer, scene, w, h)) {
@@ -2825,16 +3257,16 @@ const ThreePost = (function () {
         var _mb = _motionTick(_nowMs);   // 6.4: a battle never feeds it, so it decays to 0 here
         var _rip = _rippleTick(cam, _nowMs);
         if (_cinematicPass) {
-            var _ng = _nightF * _lkNum('nightMood', _nightMood) * 0.85;
-            if (_fieldLight) _ng = 0;   // THE FIELD LIGHT: the room wears no night grade
-            if (_dim > 0) _ng = Math.max(_ng, _dim * 0.92);
+            var _nGr = _nightF * _lkNum('nightMood', _nightMood) * 0.85;   // (not _ng: a var here would shadow the node chain in all of render())
+            if (_fieldLight) _nGr = 0;   // THE FIELD LIGHT: the room wears no night grade
+            if (_dim > 0) _nGr = Math.max(_nGr, _dim * 0.92);
             // A spotlit beat carries its own darkness in the grade (the pools
             // lift out of it), so it feeds the night grade too — that's what
             // drains and crushes the world OUTSIDE the pools.
-            if (_spotOn) _ng = Math.max(_ng, _grade.dim * _gk * 0.85);
-            _cinematicPass.material.uniforms['uNightGrade'].value = _ng;
+            if (_spotOn) _nGr = Math.max(_nGr, _grade.dim * _gk * 0.85);
+            _cinematicPass.material.uniforms['uNightGrade'].value = _nGr;
             var _lc = _lkCin();
-            _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _ng > 0.001
+            _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _nGr > 0.001
                 || _gk > 0.001 || _kick > 0.01 || _mb > 0.001);
             if (_rip > 0.00001) _cinematicPass.enabled = true;   // a live impact ripple needs the pass too
         }
@@ -2877,14 +3309,14 @@ const ThreePost = (function () {
 
         _updateDofFocus(cam);
 
-        if (_pp) { _pp.renderPass.camera = cam; _pp.renderPass.scene = _scene; } else _composer.passes[0].camera = cam;
+        if (_ng) { _ng.rp.camera = cam; _ng.rp.scene = _scene; } else if (_pp) { _pp.renderPass.camera = cam; _pp.renderPass.scene = _scene; } else _composer.passes[0].camera = cam;
         if (_ssaoPass) { _ssaoPass.camera = cam; _ssaoApply('battle'); }
         /* THE FIELD LIGHT: no tilt-shift band over the room (the building never had one — a board plane to focus on is what it wants) */
         var _fdH = _dofPassH ? _dofPassH.enabled : false, _fdV = _dofPassV ? _dofPassV.enabled : false;
         if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = false; if (_dofPassV) _dofPassV.enabled = false; }
         try {
             _tmSync();
-            if (_pp) _ppRender(); else _composer.render();
+            if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
         } finally { if (_fieldLight) { if (_dofPassH) _dofPassH.enabled = _fdH; if (_dofPassV) _dofPassV.enabled = _fdV; } }
     }
 
@@ -2900,7 +3332,7 @@ const ThreePost = (function () {
     function renderScene(scene, cam) {
         if (!scene || !cam || !_renderer) return;
         if (!_ready || !_composer) { _renderer.render(scene, cam); return; }
-        var rp = _pp ? _pp.renderPass : _composer.passes[0];
+        var rp = _ng ? _ng.rp : _pp ? _pp.renderPass : _composer.passes[0];
         var prevScene = rp.scene;
         var prevDofH = _dofPassH ? _dofPassH.enabled : false;
         var prevDofV = _dofPassV ? _dofPassV.enabled : false;
@@ -2937,7 +3369,7 @@ const ThreePost = (function () {
             var _aeNow = performance.now(); _aeTick(_aeNow);
             _renderer.toneMappingExposure = _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
             _tmSync();
-            if (_pp) _ppRender(); else _composer.render();
+            if (_ng) _ngRender(); else if (_pp) _ppRender(); else _composer.render();
             _aeMeasure(_aeNow);   // THE AUTO EXPOSURE (7.4): read the frame just drawn, every AE_INTERVAL_MS
         } finally {
             rp.scene = prevScene;
@@ -2957,7 +3389,8 @@ const ThreePost = (function () {
         /* THE PERF PASS (2026-10-01): r128's EffectComposer keeps the pixel ratio it was BUILT with — a live Fast/Native
            switch (or the perf lens's resolution) resized the canvas while every composer target (the scene, bloom, AA)
            stayed at the boot ratio, so Fast saved nothing until a reload. The targets follow the renderer's ratio now. */
-        if (_pp) _ppSetSize();   // the drawing-buffer size; never the pmndrs setSize (it would resize the canvas itself)
+        if (_ng) { /* the node chain's targets follow the drawing buffer by themselves */ }
+        else if (_pp) _ppSetSize();   // the drawing-buffer size; never the pmndrs setSize (it would resize the canvas itself)
         else {
             if (_renderer && _composer._pixelRatio !== _renderer.getPixelRatio()) _composer._pixelRatio = _renderer.getPixelRatio();
             _composer.setSize(w, h);
@@ -3111,6 +3544,7 @@ const ThreePost = (function () {
         _sunLight = null; _hemiLight = null; _ambientLight = null;
         _lastCycle = null;
 
+        if (_ng) _ngDrop();   // WEBGPU_PLAN W3: the node chain's pipelines, targets and nodes
         if (_composer) {
 
             if (_ssaoPass) { try { _ssaoPass.dispose(); } catch (e) {} _ssaoPass = null; }
@@ -3271,6 +3705,7 @@ const ThreePost = (function () {
         render: render,
         renderScene: renderScene,
         renderDirect: renderDirect,
+        warmTarget: warmTarget,   // WEBGPU_PLAN W3: the target the room warm-up compiles into (the node chain's scene pass), else null
         isHdrBloom: isHdrBloom,
         resize: resize,
         setBloom: setBloom,
