@@ -888,3 +888,11 @@ desktop page, CSS and mouse / keyboard input are unchanged (the battle's touch g
 - Not covered: the Mystery Dungeon hub walker (its own strike-mode input; `ThreeRenderer.hubFreeRoam.setPadInput` exists if
   it is ever wanted) and the editor. Checked in the sandbox at iPhone 13 size (landscape + portrait): menus, terminal,
   forge, HQ walk (stick walks 3.7 m, look turns, JUMP holds SPACE, ☰ pauses and hides the layer), battle start.
+
+### THE BATTLE MOUSE (2026-10-04, mondo)
+In a battle: LEFT-drag pans, RIGHT-drag orbits (the old middle-drag job), a plain right click still backs out
+(handleBackAction), a plain left click still selects. Middle-drag and right-drag pan are gone in battle; the map editor
+keeps right-drag pan + middle-drag orbit. state.js: the left pan arms on mousedown over the canvas/#boardStage and only
+starts past BATTLE_PAN_DRAG_PX (6 px); the click after a real drag is swallowed by a window capture listener. A press on
+the active unit's tile that starts drag-to-move (ui.js window._ewDragMoveActive) never pans. Hints: hud.js hints bar,
+ui.js pause-menu keybinds + camera help. Touch and exploration untouched.

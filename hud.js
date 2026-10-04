@@ -8644,8 +8644,8 @@ function ControlHints({ st }) {
       add(h(KeyCap, { k: 'WASD' }), 'MOVE');
       add(h(KeyCap, { k: 'SPACE' }), 'END TURN');
     }
-    add(h(KeyCap, { k: 'MMB' }), 'ORBIT');
-    add(h(KeyCap, { k: 'RMB' }), 'PAN');
+    add(h(KeyCap, { k: 'L-DRAG' }), 'PAN');
+    add(h(KeyCap, { k: 'R-DRAG' }), 'ORBIT');
   }
 
   return h('div', { className: 'ew-hints-bar' }, hints);
