@@ -33493,6 +33493,21 @@ const ThreeRenderer = (function () {
         var rawClear = r.clear;
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
         _ewGpuSafeBuffers(r);
+        /* THE SHARED SHADOW DEPTH (W5a, 2026-10-04, mondo: "the transition from exploration to battle is still really laggy"):
+           three's node shadow pass gives every material that has a map its own depth colour node (the map's alpha, a
+           reference node per material), so every textured caster built its own shadow shader the first time the key light
+           drew it — ~110 builds (and their pipelines) in the first battle frames of a room. The alpha only matters when the
+           material cuts out (alphaTest) or blends: the rest share the one plain depth material, as WebGL's shadow map did
+           (it takes the map only with alphaTest > 0). Off: ?ew_shadowshare=0 (reload). */
+        var gsn = r._getShadowNodes, shOff = false;
+        try { shOff = /[?&]ew_shadowshare=0\b/.test(location.search); } catch (e) {}
+        if (typeof gsn === 'function' && !shOff) r._getShadowNodes = function (m) {
+            var c = gsn.apply(this, arguments);
+            if (!c || !c.colorNode || m.alphaTest > 0 || m.transparent || m.alphaToCoverage || (m.castShadowNode && m.castShadowNode.isNode) ||
+                (m.colorNode && m.colorNode.isNode) || (m.maskShadowNode && m.maskShadowNode.isNode) || (m.maskNode && m.maskNode.isNode)) return c;
+            if (!c._ewPlain) c._ewPlain = { version: c.version, colorNode: null, depthNode: c.depthNode, positionNode: c.positionNode };
+            return c._ewPlain;
+        };
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
         r.setRenderObjectFunction(ewDraw = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
             if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
