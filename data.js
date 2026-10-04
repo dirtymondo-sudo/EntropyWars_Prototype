@@ -44488,9 +44488,13 @@ if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanI
 /* THE TREE KINDS: a `tree` row's `kind` → the foliage OBJ it draws (three-renderer.js _nrTree). tree … tree_6 are the board's six;
    tree_7 … tree_20 are the other fourteen models in the same folder, which nothing drew before E2. `dead` = a bare model (no
    canopy: the smaller default height, the branch stand-in while it loads). */
+/* THE RETRO TREE PACK (2026-10-04, mondo's upload): `rt:<file>` = Assets/foilage/retrotreepack/GLB/<file>.glb. The board's six
+   and `pine` draw the pack — tree a birch, tree_2 a spruce, tree_3 the broad oak, tree_4 the tall birch, tree_5 / tree_6 the
+   bare ones, pine the small pine, pine_2 the sapling. tree_7 … tree_20 stay the old OBJs for the editor. */
 const HQ_TREE_KINDS = {
-    tree:    { model: 'Tree_1' },      tree_2:  { model: 'Tree_3' },      tree_3:  { model: 'Tree_6' },      tree_4:  { model: 'Tree_9', tall: true },
-    tree_5:  { model: 'DeadTree_2', dead: true },                          tree_6:  { model: 'DeadTree_5', dead: true },
+    tree:    { model: 'rt:tree_rt_2_1' },  tree_2:  { model: 'rt:tree_rt_3' },  tree_3:  { model: 'rt:tree_rt_4' },  tree_4:  { model: 'rt:tree_rt_2', tall: true },
+    tree_5:  { model: 'rt:dead_tree_rt_2', dead: true },                     tree_6:  { model: 'rt:dead_tree_rt_1', dead: true },
+    pine:    { model: 'rt:tree_rt_1' },    pine_2:  { model: 'rt:small_tree_rt_1' },
     tree_7:  { model: 'Tree_2' },      tree_8:  { model: 'Tree_4' },      tree_9:  { model: 'Tree_5' },      tree_10: { model: 'Tree_7' },
     tree_11: { model: 'Tree_8' },      tree_12: { model: 'Tree_10' },
     tree_13: { model: 'DeadTree_1', dead: true },  tree_14: { model: 'DeadTree_3', dead: true },  tree_15: { model: 'DeadTree_4', dead: true },

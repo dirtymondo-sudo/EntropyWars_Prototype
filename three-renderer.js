@@ -5361,18 +5361,25 @@ const ThreeRenderer = (function () {
     var _FOLIAGE_TERRAIN_TEX = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
 
     /* Map the 6 logical tree keys onto distinct bucket models so a forest reads
-       as a varied mix of full-canopy and bare trees. Tweak to experiment. */
+       as a varied mix of full-canopy and bare trees. Tweak to experiment.
+       THE RETRO TREE PACK (2026-10-04, mondo's upload): a name `rt:<file>` is a GLB in Assets/foilage/retrotreepack/GLB/
+       (crossed alpha-cut cards on a trunk, ~100 tris, the textures inside the file); the six board keys and `pine` draw
+       them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
+    var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
     var _FOLIAGE_MODEL_FOR_KEY = {
-        tree:   'Tree_1',
-        tree_2: 'Tree_3',
-        tree_3: 'Tree_6',
-        tree_4: 'Tree_9',
-        tree_5: 'DeadTree_2',
-        tree_6: 'DeadTree_5'
+        tree:   'rt:tree_rt_2_1',
+        tree_2: 'rt:tree_rt_3',
+        tree_3: 'rt:tree_rt_4',
+        tree_4: 'rt:tree_rt_2',
+        tree_5: 'rt:dead_tree_rt_2',
+        tree_6: 'rt:dead_tree_rt_1',
+        pine:   'rt:tree_rt_1'
     };
+    function _foliageIsGlb(name) { return typeof name === 'string' && name.slice(0, 3) === 'rt:'; }
+    function _foliageUrl(name) { return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj'; }
     /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): data.js HQ_TREE_KINDS names the other fourteen OBJs in the folder (tree_7 …
        tree_20) for the editor's TREES tab; a key the board already maps keeps its model */
-    if (typeof HQ_TREE_KINDS !== 'undefined') Object.keys(HQ_TREE_KINDS).forEach(function (k) { if (!_FOLIAGE_MODEL_FOR_KEY[k] && HQ_TREE_KINDS[k].model) _FOLIAGE_MODEL_FOR_KEY[k] = HQ_TREE_KINDS[k].model; });
+    if (typeof HQ_TREE_KINDS !== 'undefined') Object.keys(HQ_TREE_KINDS).forEach(function (k) { if (HQ_TREE_KINDS[k].model) _FOLIAGE_MODEL_FOR_KEY[k] = HQ_TREE_KINDS[k].model; });
     function _foliageDead(kind) { return (typeof hqTreeDead === 'function') ? hqTreeDead(kind) : (kind === 'tree_5' || kind === 'tree_6'); }
     /* Pixel sprite wrapped on the trunk/branches (Bark material group). */
     var _FOLIAGE_BARK_TEX = 'wood.png';
@@ -5412,6 +5419,33 @@ const ThreeRenderer = (function () {
         return t;
     }
 
+    /* THE RETRO TREE PACK: the GLB's one node stands its Z-up mesh upright with a rotation — baked into the geometry here
+       (each primitive one mesh straight under the root, y up, its own material kept as the source the callers re-wrap),
+       so the wind hook's crown weight (position.y / the model's height) reads the tree's own height */
+    function _foliageBakeGlb(scene) {
+        var root = new THREE.Group();
+        scene.updateMatrixWorld(true);
+        scene.traverse(function (n) {
+            if (!n.isMesh || !n.geometry) return;
+            var geo = n.geometry.clone(); geo.applyMatrix4(n.matrixWorld);
+            var m = new THREE.Mesh(geo, n.material); m.name = n.name;
+            root.add(m);
+        });
+        root._ew_glb = true;
+        return root;
+    }
+    /* a retro-pack source material → its leaf / bark role (the cards are the alpha-cut ones) */
+    function _foliageGlbLeaf(sm) { return !!sm && ((sm.alphaTest || 0) > 0 || !!sm.transparent); }
+    /* the Lambert a retro-pack source material is drawn in (the game's linear output, like _hqPropMatPick): the file's own
+       texture, the cards cut at 0.5 and two-sided; `tint` multiplies */
+    function _foliageGlbMat(sm, tint) {
+        var tex = (sm && sm.map) || null;
+        if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+        var leaf = _foliageGlbLeaf(sm);
+        var m = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide, alphaTest: leaf ? 0.5 : 0 });
+        if (tint != null) m.color.setHex(tint);
+        return m;
+    }
     function _normalizeFoliageModel(root) {
         /* Mark every child geometry shared so _disposeR keeps it alive across the
            clones placed on the board. */
@@ -5428,13 +5462,15 @@ const ThreeRenderer = (function () {
         var entry = _foliageModelCache[name];
         if (entry) { if (entry.loading) _alJoin(entry._alRec); return entry.obj; }   // THE ASSET LEDGER: still streaming → the open gate waits
         entry = _foliageModelCache[name] = { obj: null, loading: true, failed: false };
-        if (typeof THREE.OBJLoader !== 'function') { entry.loading = false; entry.failed = true; return null; }
-        var rec = entry._alRec = _alTrack('foliage', _FOLIAGE_OBJ_BASE + name + '.obj');
+        var glb = _foliageIsGlb(name);   // THE RETRO TREE PACK
+        if (typeof (glb ? THREE.GLTFLoader : THREE.OBJLoader) !== 'function') { entry.loading = false; entry.failed = true; return null; }
+        var rec = entry._alRec = _alTrack('foliage', _foliageUrl(name));
         function attempt(reqUrl, retried) {
             try {
-                _asObj(   // THE ASSET STORE (2026-09-20)
+                (glb ? _asGltf : _asObj)(   // THE ASSET STORE (2026-09-20)
                     reqUrl,
                     function(root) {
+                        if (glb) root = _foliageBakeGlb(root.scene || (root.scenes && root.scenes[0]));
                         _normalizeFoliageModel(root);
                         entry.obj = root; entry.loading = false;
                         _objectsDirty = true;   /* re-render so the model swaps in */
@@ -5450,7 +5486,7 @@ const ThreeRenderer = (function () {
                 );
             } catch (e) { entry.loading = false; entry.failed = true; rec.settle(false); }
         }
-        attempt(_FOLIAGE_OBJ_BASE + name + '.obj', false);
+        attempt(_foliageUrl(name), false);
         return null;
     }
 
@@ -5492,6 +5528,7 @@ const ThreeRenderer = (function () {
            Tree_Leaves group gets the canopy sprite and the Bark group gets the
            wood sprite — checking node.material.name alone would miss the leaves. */
         function _pickFoliageMat(srcMat) {
+            if (src._ew_glb) return _evTintMat(_foliageGlbMat(srcMat, null), _foliageGlbLeaf(srcMat) ? 'tree' : 'wood');   // THE RETRO TREE PACK: the file's own cards + bark
             var mname = (srcMat && srcMat.name) || '';
             if (mname === 'Tree_Leaves') {
                 return _evTintMat(new THREE.MeshLambertMaterial({
@@ -27838,6 +27875,10 @@ const ThreeRenderer = (function () {
                 if (!n.isMesh) return;
                 var pick = function (sm) {
                     var nm = (sm && sm.name) || '';
+                    if (src._ew_glb) {   // THE RETRO TREE PACK: the file's own card / bark texture, one shared pair per (model, material, tint, wind)
+                        var lf = _foliageGlbLeaf(sm);
+                        return shared('R|' + name + '|' + nm + '|' + (tint == null ? '' : tint) + '|' + windAmp, function () { var rm = _foliageGlbMat(sm, lf ? tint : null); rm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(rm, modelH, lf ? windAmp : windAmp * 0.3); return rm; });
+                    }
                     if (nm === 'Tree_Leaves') return shared('L|' + name + '|' + leafFile + '|' + (tint == null ? '' : tint) + '|' + windAmp, function () { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(lm, modelH, windAmp); return lm; });
                     return shared('B|' + name + '|' + windAmp, function () { var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; if (windAmp > 0) _ewWindHook(bm, modelH, windAmp * 0.3); return bm; });
                 };
@@ -45325,38 +45366,104 @@ const ThreeRenderer = (function () {
             }
         }
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] treeline: ' + planted + ' trees past the edge');
-        if (FR.canopy && G) { try { _hqPlantCanopy(room, halfX + depth - 0.5, halfZ + depth - 0.5, FR.canopy, G); } catch (e) { console.warn('[HQ] the canopy failed', e); } }
+        /* THE RETRO TREE PACK (2026-10-04): every forest runs on to the fog now (the canopy was the clearing's alone); `canopy: false` keeps a ring only */
+        var CAN = (FR.canopy === false) ? null : (FR.canopy || {});
+        if (CAN && G) { try { _hqPlantCanopy(room, halfX + depth - 0.5, halfZ + depth - 0.5, CAN, G, kinds, nbRects.length ? inNb : null); } catch (e) { console.warn('[HQ] the canopy failed', e); } }
     }
     /* THE CANOPY (2026-10-01, mondo: the woods stair should "ascend past the tree line and when youre walking down it you can see a
        lot of the woods"): past the treeline the forest runs on to the fog as crowns on trunks — two instanced meshes (one draw each),
        never walked (the outer ground is past the room's edge), kept off the passages' corridors. `canopy: { to, step, color }` */
-    function _hqPlantCanopy(room, hx, hz, C, G) {
+    function _hqPlantCanopy(room, hx, hz, C, G, kinds, inNb) {
         if (typeof THREE.InstancedMesh !== 'function') return;
+        if (!room.terrain || room.terrain.outer === false) return;   // (no outer ground past the edge to stand on)
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_CANOPY) return;   // (the switch to compare the frame without it; re-enter the room)
         var U = _hqUnits(), to = Math.min(C.to || 60, (room.terrain && room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M), st = C.step || 3.4;
         var rng = _mulberry32((typeof hqHash === 'function') ? hqHash('canopy|' + (room.label || '')) : 9);
         var pass = (room.doors || []).map(function (d) { var P = (d && d.wall && d.wall !== 'free') ? _hqPassageSpec(d) : null; return P ? { P: P, B: _hqBoxWall(room, d.wall, d) } : null; }).filter(Boolean);
+        /* THE RETRO TREE PACK (2026-10-04, mondo: "the woods or similar areas should be completely surrounded by trees, i
+           shouldn't be able to see the edge of the map"): the canopy is the pack's own trees now, the forest's kinds, tall,
+           every few metres from the treeline out to the outer ground's end — a wall of trunks and cards the fog closes over.
+           Capped (HQ_CANOPY_MAX trees): a big field spaces them wider. One InstancedMesh per model piece (≤ 16 draws). */
+        var area = 4 * (hx + to) * (hz + to) - 4 * hx * hz;
+        var cap = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? HQ_CANOPY_MAX / 2 : HQ_CANOPY_MAX;
+        if (area / (st * st) > cap) st = Math.sqrt(area / cap);
+        var ks = (C.kinds && C.kinds.length) ? C.kinds : (kinds && kinds.length) ? kinds : ['tree', 'tree_2', 'tree_3', 'tree_4', 'pine'];
         var spots = [];
         for (var gz = -(hz + to); gz <= hz + to; gz += st) for (var gx = -(hx + to); gx <= hx + to; gx += st) {
-            var px = gx + (rng() - 0.5) * st * 0.9, pz = gz + (rng() - 0.5) * st * 0.9;
+            var px = gx + (rng() - 0.5) * st * 0.9, pz = gz + (rng() - 0.5) * st * 0.9, kr = rng(), hr = rng(), yr = rng();
             if (Math.abs(px) < hx && Math.abs(pz) < hz) continue;
             var clear = true;
             for (var i = 0; i < pass.length && clear; i++) { var q = pass[i], dx = px - q.B.wx, dz = pz - q.B.wz, dp = -(dx * q.B.nx + dz * q.B.nz), la = Math.abs(dx * q.B.nz - dz * q.B.nx); if (dp > -1 && dp < q.P.len + 5 && la < q.P.w / 2 + 4) clear = false; }
             if (!clear) continue;
+            if (inNb && inNb(px, pz)) continue;
             var gy = _hqTerrainGround(px, pz); if (gy == null) gy = 0;
-            spots.push([px, gy, pz, 2.3 + rng() * 1.5, 4.6 + rng() * 3.4, rng() * Math.PI * 2]);
+            var kind = ks[(kr * ks.length) | 0], dead = _foliageDead(kind);
+            spots.push({ x: px, y: gy, z: pz, h: dead ? 6.0 + hr * 3.0 : 6.5 + hr * 4.0, yaw: yr * Math.PI * 2, kind: kind, d: Math.max(Math.abs(px) - hx, Math.abs(pz) - hz) });
         }
         if (!spots.length) return;
+        spots.sort(function (a, b) { return a.d - b.d; });   // the near rows draw first (the depth test then turns the far ones away)
+        var byName = {}, names = [];
+        spots.forEach(function (sp) {
+            var nm = _FOLIAGE_MODEL_FOR_KEY[sp.kind];
+            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3';
+            if (!byName[nm]) { byName[nm] = []; names.push(nm); }
+            byName[nm].push(sp);
+        });
+        names.forEach(function (nm) { _loadFoliageModel(nm); });   // the room's gate waits for the files (the asset ledger)
+        var H0 = _hq;
+        var build = function () {
+            if (!_hq || _hq !== H0) return;   // the room left while the files streamed
+            var waiting = names.some(function (nm) { var e = _foliageModelCache[nm]; return e && e.loading; });
+            if (waiting) { setTimeout(build, 250); return; }   // (a slow lane: the files are still streaming — the room leaving ends the wait)
+            var lost = [];
+            names.forEach(function (nm) {
+                var e = _foliageModelCache[nm], src = e && e.obj;
+                if (!src || !src._ew_bbox) { lost.push.apply(lost, byName[nm]); return; }
+                _hqCanopyModel(nm, src, byName[nm], G, U);
+            });
+            if (lost.length) _hqCanopyStandIn(lost, C, G, U);
+            if (_hq) _hq.dirty = true;
+        };
+        build();
+    }
+    var HQ_CANOPY_MAX = 3200;
+    /* one retro-pack model's share of the canopy: each of its pieces an InstancedMesh over the shared geometry, in an
+       un-hooked Lambert of the file's own texture (no wind, no shadow: it is the far wood) */
+    function _hqCanopyModel(nm, src, list, G, U) {
+        var bb = src._ew_bbox, mh = (bb.max.y - bb.min.y) || 1, cx = (bb.min.x + bb.max.x) * 0.5, cz = (bb.min.z + bb.max.z) * 0.5;
+        var M = new THREE.Matrix4(), T0 = new THREE.Matrix4().makeTranslation(-cx, -bb.min.y, -cz), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+        src.children.forEach(function (piece) {
+            if (!piece.isMesh) return;
+            var sm = piece.material, key = 'C|' + nm + '|' + ((sm && sm.name) || piece.name);
+            var mat = _nrTreeMats[key];
+            if (!mat) { mat = _foliageGlbMat(sm, null); mat._ew_shared = true; _nrTreeMats[key] = mat; }
+            var im = new THREE.InstancedMesh(piece.geometry, mat, list.length);
+            list.forEach(function (sp, k) {
+                var s = sp.h * U / mh;
+                Q.setFromAxisAngle(Y, sp.yaw); P.set(sp.x * U, sp.y * U, sp.z * U); S.set(s, s, s);
+                M.compose(P, Q, S).multiply(T0); im.setMatrixAt(k, M);
+            });
+            im.instanceMatrix.needsUpdate = true;
+            im.frustumCulled = false;   // (the instances span the whole outer ground: the base geometry's sphere would cull them all)
+            im.castShadow = false; im.receiveShadow = false;
+            im._ew_hqPart = 'canopy';
+            G.add(im);
+        });
+    }
+    /* the canopy where a pack file never landed: the old crowns on trunks (two instanced meshes) */
+    function _hqCanopyStandIn(spots, C, G, U) {
         var crownM = new THREE.MeshPhongMaterial({ color: (C.color != null) ? C.color : 0x2c4a2a, shininess: 2, flatShading: true }); crownM.emissive = new THREE.Color(0x0a140a);
         var trunkM = new THREE.MeshPhongMaterial({ color: 0x3a2c20, shininess: 2 });
         var crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1 * U, 0), crownM, spots.length);
         var trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16 * U, 0.26 * U, 1 * U, 5), trunkM, spots.length);
         var o = new THREE.Object3D();
         spots.forEach(function (sp, k) {
-            o.position.set(sp[0] * U, (sp[1] + sp[4]) * U, sp[2] * U); o.rotation.set(0, sp[5], 0); o.scale.set(sp[3], sp[3] * 1.15, sp[3]); o.updateMatrix(); crowns.setMatrixAt(k, o.matrix);
-            o.position.set(sp[0] * U, (sp[1] + sp[4] / 2) * U, sp[2] * U); o.scale.set(1, sp[4], 1); o.updateMatrix(); trunks.setMatrixAt(k, o.matrix);
+            var r = 1.6 + sp.h * 0.18, th = sp.h * 0.62;
+            o.position.set(sp.x * U, (sp.y + th) * U, sp.z * U); o.rotation.set(0, sp.yaw, 0); o.scale.set(r, r * 1.15, r); o.updateMatrix(); crowns.setMatrixAt(k, o.matrix);
+            o.position.set(sp.x * U, (sp.y + th / 2) * U, sp.z * U); o.scale.set(1, th, 1); o.updateMatrix(); trunks.setMatrixAt(k, o.matrix);
         });
         crowns.instanceMatrix.needsUpdate = true; trunks.instanceMatrix.needsUpdate = true;
-        crowns.frustumCulled = false; trunks.frustumCulled = false;   // (the instances span the whole outer ground: the base geometry's sphere would cull them all)
+        crowns.frustumCulled = false; trunks.frustumCulled = false;
         crowns._ew_hqPart = 'canopy'; trunks._ew_hqPart = 'canopy';
         G.add(crowns); G.add(trunks);
     }
@@ -63435,7 +63542,7 @@ const ThreeRenderer = (function () {
                 var src = _loadFoliageModel(name), e = _foliageModelCache[name];
                 if (src && src._ew_bbox) {
                     var bark = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT), leaf = _getFoliagePixelTex('leaves.png', _FOLIAGE_LEAF_REPEAT), m = src.clone(true);
-                    m.traverse(function (n) { if (!n.isMesh) return; var pick = function (sm) { return (sm && sm.name === 'Tree_Leaves') ? new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: bark }); }; n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); });
+                    m.traverse(function (n) { if (!n.isMesh) return; var pick = function (sm) { if (src._ew_glb) return _foliageGlbMat(sm, null); return (sm && sm.name === 'Tree_Leaves') ? new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: bark }); }; n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); });
                     cb(m); return;
                 }
                 if ((e && e.failed) || Date.now() - t0 > 20000) { cb(null); return; }
