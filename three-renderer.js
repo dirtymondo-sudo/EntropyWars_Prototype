@@ -11701,6 +11701,14 @@ const ThreeRenderer = (function () {
         _mqJobs = keep;
         return n;
     }
+    /* THE LEFT ROOM'S FILES (2026-10-04, the metro pack): leaving a room cleared its spots, so its unstarted scene jobs
+       (props, door leaves, NPC rigs) read as "no spot" and sorted to the HEAD of the scene lane, in front of every prop of
+       the room the walker had just entered. A few room changes stacked ~70 files there and the platform's Metro.glb never
+       started. Now they fall to the background lane: a request from the new room promotes its file again (_bgPromote),
+       and the next leave forgets the rest like any warm. The rig lane (0) is untouched. */
+    function _mqDemoteQueued() {
+        for (var i = 0; i < _mqJobs.length; i++) { var j = _mqJobs[i]; if (!j.started && j.pri === 1) { j.pri = 2; j.d = null; } }
+    }
     /* Legacy names the older lane sites still call — all routed into the one queue. */
     function _rigLaneCount() { var n = 0; for (var k in _rigLaneLive) n++; return n; }
     function _rigLaneFlush() { _mqPump(); }
@@ -52165,7 +52173,8 @@ const ThreeRenderer = (function () {
         var W = P.w, H = P.h, L = P.len, look = P.look, SEG = 0.5, TS = 1.25 * U, T0 = 0.9;
         var fy = function (d) { return P.rise * Math.max(0, d); };   // the floor `d` m in (metres over the mouth's)
         var tex = function (k) { return (k && typeof _hzTex === 'function') ? (_hzTex(k) || null) : null; };
-        var mat = function (k, color, emis) { var m = new THREE.MeshPhongMaterial({ map: tex(k), color: (color != null) ? color : 0xffffff, shininess: 6 }); m.emissive = new THREE.Color((emis != null) ? emis : 0x0c0c0c); return m; };
+        var lift = (+P.lift > 0) ? Math.min(1, +P.lift) : 0;   // THE METRO PACK's STAIR: `lift` = a self-lit floor under its sheets (an unlit tube reads black from the room)
+        var mat = function (k, color, emis) { var m = new THREE.MeshPhongMaterial({ map: tex(k), color: (color != null) ? color : 0xffffff, shininess: 6 }); m.emissive = new THREE.Color((emis != null) ? emis : 0x0c0c0c); if (lift && m.map) { m.emissive.setScalar(lift); m.emissiveMap = m.map; } return m; };
         var box = function (w, h, d, m, x, y, z, ry, rx) {
             var geo = new THREE.BoxGeometry(w * U, h * U, d * U); if (typeof _hzBoxUV === 'function') _hzBoxUV(geo, w * U, h * U, d * U, TS);
             var me = new THREE.Mesh(geo, m); me.position.set(x * U, y * U, z * U); if (ry) me.rotation.y = ry; if (rx) me.rotation.x = rx;
@@ -52182,10 +52191,32 @@ const ThreeRenderer = (function () {
                 var treadM = mat(P.tread || floorKey, 0xffffff, 0x141414), runM = null, runW = (P.runner && P.runner.w) ? Math.min(W - 0.4, P.runner.w) : 0;
                 if (runW > 0) { runM = new THREE.MeshPhongMaterial({ color: (P.runner.color != null) ? P.runner.color : 0x2f58d0, shininess: 6 }); runM.emissive = new THREE.Color(runM.color).multiplyScalar(0.12); }
                 if (P.rise > 0) { box(W, 0.8, 0.62, treadM, 0, 0.02 - 0.4, 0.29); if (runM) { var r0 = new THREE.Mesh(new THREE.BoxGeometry(runW * U, 0.03 * U, 0.62 * U), runM); r0.position.set(0, 0.035 * U, 0.29 * U); r0.renderOrder = 2; g.add(r0); } }   // the sill over the room's last cell (its floor key showed as a strip)
+                var treads = [];
                 for (var s = 0; s < L; s += SEG) {
                     var top = fy(s + SEG / 2), hh = (P.rise > 0) ? top + 0.8 : 0.8;   // a rising tread down to the mouth's floor (the wall hides the rest), a falling one 0.8 m deep
-                    box(W, hh, SEG + 0.02, treadM, 0, top - hh / 2, -(s + SEG / 2));
+                    treads.push(box(W, hh, SEG + 0.02, treadM, 0, top - hh / 2, -(s + SEG / 2)));
                     if (runM) { var rt = new THREE.Mesh(new THREE.BoxGeometry(runW * U, 0.03 * U, (SEG + 0.02) * U), runM); rt.position.set(0, (top + 0.015) * U, -(s + SEG / 2) * U); rt.renderOrder = 2; g.add(rt); }
+                }
+                /* THE METRO PACK's STAIR (2026-10-04): `model: '<catalogue key>'` lays a modelled flight over the treads (the kit's
+                   Stairs_01: its run along the file's +x climbs to its high end), stretched to the passage's width, run and drop; the
+                   box treads hide once it lands (they stay if the file fails). The walker still stands on fy (the steps sit on it). */
+                var mCat = (P.model && typeof _metroPackOn === 'function' && _metroPackOn()) ? ((_hqData() || {}).catalogue || {})[P.model] : null;
+                if (mCat && mCat.file) {
+                    var drop = Math.abs(P.rise) * L, hold = new THREE.Group();
+                    hold.rotation.y = (P.rise < 0) ? -Math.PI / 2 : Math.PI / 2;   // the high end at the mouth going down, at the far end going up
+                    hold.position.set(0, (P.rise < 0 ? -drop : 0) * U, -(L / 2) * U);
+                    var stairPick = function (n, mm) {
+                        var b = _hqPropMatPick(n, mm) || mm;
+                        if (!lift || !b || !b.emissive || !b.map) return b;
+                        var c = b.clone(); c.emissive = new THREE.Color(lift, lift, lift); c.emissiveMap = c.map; return c;
+                    };
+                    hold.add(_miscModelInstance(_hqModelUrl(mCat), true, drop * U, { matPick: stairPick, onDone: function (mg, sc, bb) {
+                        var ex = (bb.max.x - bb.min.x) || 1, ez = (bb.max.z - bb.min.z) || 1;
+                        mg.scale.set((L * U) / (ex * sc), 1, (W * U) / (ez * sc));
+                        mg.traverse(function (n) { if (n.isMesh) { n.receiveShadow = true; n.castShadow = false; } });
+                        treads.forEach(function (t) { t.visible = false; });
+                    } }));
+                    g.add(hold);
                 }
             } else if (P.roof) {
                 box(W + 0.2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.015, -(L / 2 + 0.2));
@@ -52221,7 +52252,7 @@ const ThreeRenderer = (function () {
             }
             /* the HQ's own stair: an arch round the cut, in the room's trim */
             if (look === 'hall') {
-                var trimM = mat(S.trim || 'gold', (S.dadoColor != null) ? S.dadoColor : 0xffffff, 0x1a1a1a);
+                var trimM = mat(P.trim || S.trim || 'gold', (P.trim || S.dadoColor == null) ? 0xffffff : S.dadoColor, 0x1a1a1a);
                 [-1, 1].forEach(function (sd) { box(0.7, H + 0.7, 0.36, trimM, sd * (W / 2 + 0.35), (H + 0.7) / 2 - 0.2, 0.18); });
                 box(W + 1.4, 0.7, 0.36, trimM, 0, H + 0.35, 0.18);
             }
@@ -63773,6 +63804,7 @@ const ThreeRenderer = (function () {
         _hqFrameInfo = null; if (_fpsEl && !active) _fpsEl.style.display = 'none';   // the walk's readout leaves with the walk (the battle's activate shows its own)
         try { if (H.gate) H.gate.close(); } catch (e) {}
         try { _mqDropQueued(2); } catch (e) {}   // THE ASSET LEDGER: this room's unstarted background jobs (its population, a warm) are forgotten with it
+        try { _mqDemoteQueued(); } catch (e) {}   // THE LEFT ROOM'S FILES: its unstarted scene jobs fall behind the next room's
         _mqSpots = {};   // THE NEAR FIRST: the room's spots leave with it (the battle's files keep their request order)
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the room's look leaves with the room
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('battle'); } catch (e) {}   // THE TWO BRIGHTNESSES: the battle's / the menu's value, eased

@@ -33829,7 +33829,9 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_downtown_lobby', at: 'subway' },
                   desc: 'The stair up into the tower\'s lobby. The tower comes down every year; the stair has never once been touched, and neither has the platform. The train has.' },
                 /* DISASTER CITY (2026-09-17): THE METRO — the platform's other stair, up onto the streets */
-                { id: 'street', wall: 'n', x: 2.2, leaf: 'leaf_frame_only',
+                /* THE METRO PACK's STAIR (2026-10-04): no door — the kit's flight climbs out of the platform's north wall into the dark */
+                { id: 'street', wall: 'n', x: 2.2, way: 'stairway',
+                  passage: { model: 'metro_stairs', w: 3.0, h: 3.4, len: 10, deep: 6.5, rise: 0.55, land: 3.2, wall: 'urban:MetroWallTile', trim: 'urban:MetroConcrete', lift: 0.3 },
                   label: 'THE STREETS', sub: 'THE STAIR UP · DISASTER CITY',
                   action: { room: 'site_prebuilt_downtown_streets', at: 'metro' },
                   desc: 'The other stair, up onto the street under a sign for every line. The tower comes down on the other stair. This one has a handrail.' },
@@ -33853,18 +33855,16 @@ const DOOR_HQ = {
                 { key: 'metro_bin',         x: 3.5, z: -1.2, face: 270 },
                 { key: 'metro_vending',     wall: 'e', z: 6.4 },
                 { key: 'metro_ticket_machine', wall: 'e', z: 8.4 },
-                { key: 'metro_column',      x: 1.6, z: -11 }, { key: 'metro_column', x: 1.6, z: -0.5 },
+                { key: 'metro_column',      x: 0.2, z: -10 }, { key: 'metro_column', x: 1.6, z: -0.5 },   // (the first off the stair's mouth, 2026-10-04)
                 { key: 'metro_poster_4',    wall: 'w', z: -13, mount: 1.4 }, { key: 'metro_poster_8', wall: 'w', z: -10.5, mount: 1.4 },
                 { key: 'metro_poster_2',    wall: 'w', z: -8, mount: 1.4 },  { key: 'metro_poster_5', wall: 'w', z: 13.5, mount: 1.4 },
                 { key: 'metro_light',       x: 0.8, z: -12, ceil: true }, { key: 'metro_light', x: 0.8, z: -6, ceil: true },
                 { key: 'metro_light',       x: 0.8, z: 6, ceil: true },   { key: 'metro_light', x: 0.8, z: 12, ceil: true },
                 { key: 'wall_clock',        wall: 'e', z: 0, mount: 3.0 },                     // the platform clock; it agrees with the lobby's
                 { key: 'notice_board',      wall: 'e', z: -10 },
-                { key: 'security_camera',   wall: 'n', x: 2.5, mount: 3.4 },
+                { key: 'security_camera',   wall: 'n', x: -0.6, mount: 3.4 },                 // (off the stair's mouth, 2026-10-04)
                 { key: 'exit_sign',         wall: 's', x: 1.5, mount: 3.2 },
-                { key: 'railing_1m',        x: 1.2, z: -13.6, face: 0 },                       // THE PARK RULE: the rail at the platform's end …
-                { key: 'railing_1m',        x: 2.2, z: -13.6, face: 0 },
-                { key: 'riser_1',           x: 3.0, z: -8.0, face: 90, rect: false },          // … and the step (the platform's raised end)
+                { key: 'riser_1',           x: 3.0, z: -8.0, face: 90, rect: false },          // the step (the platform's raised end; its rails stood in the stair's mouth, cut 2026-10-04)
                 { key: 'bare_bulb',         x: 0.8, z: 0, ceil: true },
                 { key: 'floor_stain',       x: 2.6, z: -4 },
                 { key: 'paper_sheet',       x: 2.0, z: 8, y: 0.01, face: 20 },                 // the timetable; the same amount of late
@@ -34493,7 +34493,9 @@ const DOOR_HQ = {
                   label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL',
                   action: { room: 'site_prebuilt_downtown_mall', at: 'street' },
                   desc: 'The mall\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },
-                { id: 'metro', wall: 'n', x: 12, leaf: 'leaf_frame_only',
+                /* THE METRO PACK's STAIR (2026-10-04): no door — the kit's flight goes down through the north wall into the dark */
+                { id: 'metro', wall: 'n', x: 12, way: 'stairway',
+                  passage: { model: 'metro_stairs', w: 3.6, h: 3.6, len: 10, deep: 6.5, rise: -0.55, land: 3.2, wall: 'urban:MetroWallTile', wallColor: 0xf0eee8, trim: 'urban:MetroConcrete', lift: 0.3 },
                   label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM',
                   action: { room: 'site_prebuilt_downtown_subway', at: 'street' },
                   desc: 'A stair down under a sign for every line. The platform under the tower has never once been touched; this is the other way onto it.' },
@@ -44661,6 +44663,11 @@ const HQ_CATALOGUE_METRO = {
     metro_poster_8:       { file: 'Metro.glb', base: 'metro', node: 'Poster_08',       h: 1.35, turn: 180, foot: 0, wall: true, mount: 1.2 },
     metro_light:          { file: 'Metro.glb', base: 'metro', node: 'light',           span: 1.9, foot: 0, ceil: true },   // the ceiling fluorescent (self-lit sheet; the bulbs still carry the room's light)
     metro_column:         { file: 'Metro.glb', base: 'metro', node: 'Column',          h: 4.0,  foot: 0.5, block: true },   // tiled, floor to a 4 m ceiling
+    /* THE STAIR (2026-10-04, mondo: "why not use the stairs?"): the kit's straight flight (10.4 m run, 5.7 m rise, 4.9 m wide, its
+       treads only) is what a `stairway` passage with `model: 'metro_stairs'` walks on (three-renderer.js _hqPassageWay); the
+       railing is the kit's U of balustrade round a stair mouth (the editor's) */
+    metro_stairs:         { file: 'Metro.glb', base: 'metro', node: 'Stairs_01',       span: 10.4, palette: false },
+    metro_stair_rail:     { file: 'Metro.glb', base: 'metro', node: 'Railing',         span: 9.9,  turn: 90, rect: { hw: 2.6, hd: 4.95 } },
     /* the car: the shell + its seats, rails, doors and windows, long along z (no turn), its floor 0.98 m over the rail */
     metro_car:            { file: 'Metro.glb', base: 'metro', node: _METRO_CAR,        span: 16.3, foot: 1.4, rect: { hw: 1.35, hd: 8.15 }, block: true },
     /* … without its platform-side middle door pair: the `train` way slides its own leaves there (three-renderer.js _HQ_METRO_TRAIN) */
