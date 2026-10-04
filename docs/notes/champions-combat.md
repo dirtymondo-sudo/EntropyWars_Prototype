@@ -1137,3 +1137,11 @@ zones ticked at round end, `_pushDamageZone`), `zoneCastDamage`, `aoeLifeDrain`,
 `summonDef.hitStatus` / `trailTerrain`, `snow_wall` terrain with `meltRounds`. Spells can crit (`critChance`). 27 new
 passive hook keys (see PASSIVE_HOOK_KEYS), 31 new upgrades incl. the `addStatus`, `set`, `weatherPatch` and
 `statusPayload` patch keys, upgrade `rows` pinning and the row field `upgradesBlock`. Log: docs/spell-audit/BATCH_D_LOG.md.
+
+## 2026-10-04 — mondo's own 2D character sprites
+Single-frame PNGs (~56-92 × 128) at R2 `Assets/Sprites/character_sprites/<file>.png`, wired in sprites.js
+`_CHARACTER_SPRITES` (+ `_CHARACTER_SPRITES_GENDERED` for hippie m/f), checked first in `getR2RaceSpriteUrl` after the
+hero sprites, and mirrored in `RACE_SPRITES`. File → race where the names differ: beequeen → bee queen,
+deepseacreature → deep sea fish, gremlin → goblin, wrestler → luchador, crystalguardian/cultleader/icequeen/
+jackolantern/mushroomgirl/policeofficer/treeperson → the spaced race keys. They replace the older ice queen + kaiju
+sprites and every borrowed sheet. bunny girl has no file yet (still borrows catgirl). Portraits: he uploads later.
