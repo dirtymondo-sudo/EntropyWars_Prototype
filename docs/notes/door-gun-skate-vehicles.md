@@ -679,3 +679,8 @@ unused). `Shadow (3D)/car_shadow.png` is drawn as a blob plane under each car. `
   car_pack_1..8 (editor palette, Vehicles). A row may set `paint`; else the paint is seeded off the row's spot.
 - Snowy rooms (id/look matching northpole/polar/antarctic/snow/winter) put the generic pools on car 1's snow paints.
 - Kill-switch: `window.EW_NO_CAR_PACK = true` → the Meshy files again.
+- THE TURN (2026-10-04, mondo: cars "instantly rotate 90 degrees"): `_hqRoutePose` rounds every route corner (a loop's
+  closing one too) with a quadratic curve r = HQ_TRAFFIC_TURN_R (7 m, ≤ 45 % of either leg); the pose's `turn` (0..1)
+  makes `_hqTickTraffic` ease the car down to half speed into a bend and back up after (car.vNow).
+- THE LAMPS: `_CAR_PACK[n].hl / .tl` = measured headlamp / tail lamp [|x|, y] in OBJ units; `_carPackModel` exposes
+  `g._ew_lamps` (world units) and the traffic hangs its glows there (the wreck has none).
