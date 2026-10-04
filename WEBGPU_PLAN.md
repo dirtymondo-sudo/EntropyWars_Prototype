@@ -813,3 +813,12 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   pass in the second. Sandbox (Downtown arena, `?ew_gpu=webgl2`, EW_BUN_DRY): 347 holders / 752 meshes, re-records 0/s
   once loaded, ~10-50% of holders off camera, no on-screen mesh culled. Not yet: the ~100 two-triangle draws in his
   "Mesh" group (the move tiles, one draw each).
+- 2026-10-04: **W5a round 6, THE SHARED SHADOW DEPTH** (zip renderer/ENTROPY_WARS_W5A_SHADOW.zip: three-renderer.js; token
+  20261004-gpu5a-06-cors). mondo: "the transition from exploration to battle is still really laggy/low frame rate with
+  webgpu". Sandbox Downtown arena start, per-frame builds: 175 node builds (830 ms) + 28 pipelines in the first battle
+  seconds, 107 of the builds `ShadowMaterial` = three's `_getShadowNodes` gives every caster whose material has a `map`
+  its own depth colour node (`reference('map', material).a`), so each textured caster built its own shadow shader the
+  first time the key light drew it. The alpha only matters for a cut-out (alphaTest) or a blend, as in WebGL's shadow map
+  (map only with alphaTest > 0): the rest now share the plain depth material (`r._getShadowNodes` wrapper; off
+  `?ew_shadowshare=0`). Sandbox after: 65 builds, 21 pipelines; the first battle frame still builds the fight's own
+  ~45 materials (units, rings, post).
