@@ -627,7 +627,7 @@ Downtown on WebGPU cost 12.7 ms CPU vs 6.0 classic (three's per-draw cost). thre
 HQ's static groups as bundle groups in place (WebGPU backend only), re-records them from a per-frame signature, records
 unculled, runs bundles after the backdrop (negative renderOrder) and before everything else (W6 fix 1: run first, the
 camera-centred env ground painted over the hall's lower walls), re-records a group whose recording skipped a draw
-because its pipeline was still compiling (W6 fix 2: the warm-up's compile is compileAsync on WebGPU), and bumps an epoch on every freed GPU resource. Full rules: WEBGPU_PLAN.md
+because its pipeline was still compiling (W6 fix 2: the warm-up's compile is compileAsync on WebGPU), bumps an epoch on every freed GPU resource, and keeps three's bundle bookkeeping across a nested render (W6 fix 3: the shadow pass renders inside the first recording and cleared it, so the static batch's walls replayed with the first frame's camera). Full rules: WEBGPU_PLAN.md
 §10 "W6 built". `ThreeRenderer.bundles()`; off with `?ew_bundles=0`.
 
 ### W2 — the shader programs (2026-10-03, zip renderer/ENTROPY_WARS_W2.zip)
