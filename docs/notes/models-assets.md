@@ -283,7 +283,7 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
 - Every piece faces −Z in the file → rows carry `turn: 180`. Rows (data.js HQ_CATALOGUE_METRO, editor group "Metro"):
   metro_bench (Chair), metro_bin, metro_vending, metro_ticket_machine, metro_gate, metro_map, metro_poster_1..8, metro_light,
   metro_column, metro_car (shell + seats + rails + doors + glass, 16.3 m), metro_car_open (minus the −X flank's middle door pair).
-- Unused pieces in the file: the station shells St / St_01..03, Stairs, Stairs_01, Railing, Estruc, Frame, Door_A.
+- Unused pieces in the file: the station shells St / St_01..03, Stairs (the lower landing), Estruc, Frame, Door_A.
 - Textures: sprites.js adds `urban:MetroTiles / MetroFloor / MetroTactile / MetroWallTile / MetroWhiteTile / MetroConcrete /
   MetroRails / MetroMetal` (family MetroPSX). The `track_bed` proc wears MetroRails (one plane, the sleepers painted; the 49
   sleeper boxes are gone), `platform_edge` the tactile sheet.
@@ -292,3 +292,15 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
   piece. A wall end keeps the Meshy front car. Streets' freight siding + the tram keep `subway_cart`.
 - Dressed: `tunnel` (HQ), `site_prebuilt_downtown_subway`, the running tunnels' depot (two metro_car) + ghost station.
 - Kill-switch: `window.EW_NO_METRO_PACK = true` (the old train, ballast and tactile strip; the placed rows still draw).
+- FIX 1 (2026-10-04, mondo: "i dont see them in the game at all. and why not use the stairs?"):
+  - CAUSE: the model queue. `_hqLeave` cleared `_mqSpots`, so the LEFT room's unstarted scene jobs (props, door leaves, NPC rigs)
+    read as "no spot" (d −1) and sorted to the head of the scene lane, ahead of every spotted prop of the new room. One room
+    change stacked ~70 files in front of Metro.glb (probe: 0 pieces after 100 s). `_mqDemoteQueued` (called in `_hqLeave`) now
+    drops them to the background lane; a request from the new room promotes its file back (`_bgPromote`). Probe after: all filled.
+  - THE STAIRS: rows `metro_stairs` (Stairs_01, the kit's straight flight: 10.4 m run, 5.7 m rise, treads only) and
+    `metro_stair_rail` (Railing, the U balustrade, editor only). A passage key `model: '<catalogue key>'` (three-renderer.js
+    `_hqPassageWay`) lays that flight over the box treads, stretched to w × len × |rise|·len; the treads hide once it lands.
+    `lift` = a self-lit floor under the tube's sheets (an unlit tube reads black); `trim` overrides the hall arch's sheet.
+  - The platform's `street` door and the streets' `metro` door are now `stairway` passages (no door): up at rise 0.55, down at
+    −0.55, len 10, MetroWallTile walls, MetroConcrete arch. Moved off the platform's stair mouth: the column, the camera, the
+    two rails (cut).
