@@ -33362,18 +33362,43 @@ const DOOR_HQ = {
                     { k: 'pool', x: 0, z: 0, r: 3.4, y: 0, depth: 0.4 },                                                                          // THE FOUNTAIN (waded; the timer is in the chapel)
                     { k: 'plateau', x: 29, z: 28.5, w: 10, d: 7, h: 2.4, edge: 0.35 },                                                             // THE VALET DECK (in the south-east block, off the back lane)
                     { k: 'ramp', x0: 17.6, z0: 26.5, x1: 24.7, z1: 26.5, w: 3.6, h0: 0, h1: 2.4 },                                                  // the valet's ramp up to it (its last 0.7 m inside the deck)
-                    { k: 'rail', x0: 24.5, z0: 25.4, x1: 33.6, z1: 25.4 }, { k: 'rail', x0: 33.6, z0: 25.4, x1: 33.6, z1: 31.6 },                    // the deck's edge rail (the grind)
+                    { k: 'rail', x0: 18.0, z0: 28.0, x1: 24.0, z1: 28.0 },                                                                         // a railing down the ramp's side
+                    { k: 'rail', x0: 25.6, z0: 25.8, x1: 28.6, z1: 25.8 },                                                                          // the deck's edge rail (the grind), open at the stair
+                    /* the upper deck (2026-10-05): 4.8 m over the east end of the block, a steel stair up from the valet deck, a stair down to the back lane */
+                    { k: 'plateau', x: 40.6, z: 28.55, w: 14, d: 6.3, h: 4.8, edge: 0.3 },
+                    { k: 'ramp', x0: 29.1, z0: 26.8, x1: 34.7, z1: 26.8, w: 2.4, h0: 2.4, h1: 4.8, stairs: true, model: 'steel', edge: 0.2 },
+                    { k: 'ramp', x0: 45.2, z0: 15.0, x1: 45.2, z1: 26.1, w: 3.6, h0: 0, h1: 4.8, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', pts: [[45.2, 15.4, 0.17], [45.2, 25.7, 4.63]], model: 'pipe', block: false },                                     // its centre handrail
+                    { k: 'rail', x0: 34.4, z0: 26.2, x1: 43.0, z1: 26.2 },                                                                          // the upper deck's edge, open at the stair
+                    { k: 'rail', x0: 34.4, z0: 28.4, x1: 34.4, z1: 30.6 },                                                                          // over the valet deck
                     { k: 'plateau', x: -30, z: 11.5, w: 7, d: 5, h: 4.5, edge: 0.3 },                                                              // THE MARQUEE ROOF (the tape's; the door gun's) — flush with the back lane's south sidewalk
                     { k: 'path', pts: [[0, -6], [0, 6]], w: 21 },                                                                                  // THE PLAZA is pavement
                     { k: 'path', pts: [[-10, -32], [-10, -20]], w: 6 },                                                                            // THE CHAPEL's forecourt (the north wall, x −10)
                     { k: 'path', pts: [[-22, 20], [-22, 32]], w: 6 },                                                                              // the bay door's street (the south wall, x −22 — Phase 5 gave x 0 to the highway)
-                    /* THE BACK-LOT ROOFTOPS (AREA CONTENT D2, 2026-09-19): two low roofs in the outer blocks behind the back lane, each up ONE fire escape off the lane's sidewalk, a rail along its edge */
-                    { k: 'plateau', x: -28, z: -29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                             // THE MOTEL ROOF (north)
+                    /* THE BACK-LOT ROOFTOPS (AREA CONTENT D2, 2026-09-19): low roofs in the outer blocks behind the back lane, a rail along each edge */
+                    /* the north roofs (2026-10-05): one run at 4.2 m from the west block to the east cross street — a stair up from the lane's
+                       west corner, the fire escape, a walkway over the west cross street, a walkway over the chapel's forecourt ending at a
+                       2.4 m gap to the centre roofs (a rail across it), a stair down into the east cross street */
+                    { k: 'plateau', x: -35.3, z: -29.6, w: 24.6, d: 4.2, h: 4.2, edge: 0.3 },                                                          // THE MOTEL ROOF (north)
                     { k: 'climb', x: -28, z: -27.5, face: 0, look: 'fireescape' },                                                                     // its fire escape off the north lane's sidewalk
-                    { k: 'rail', x0: -32.8, z0: -27.9, x1: -23.2, z1: -27.9 },                                                                          // the roof's edge (the grind)
+                    { k: 'ramp', x0: -46, z0: -18.6, x1: -46, z1: -28.2, w: 2.6, h0: 0, h1: 4.2, stairs: true, model: 'precast', edge: 0.2 },
+                    { k: 'path', pts: [[-46, -17.4], [-41.5, -17.4]], w: 2.6 },                                                                     // the stair's foot to the lane's sidewalk
+                    { k: 'rail', x0: -44.0, z0: -28.3, x1: -29.2, z1: -28.3 }, { k: 'rail', x0: -26.8, z0: -28.3, x1: -23.6, z1: -28.3 },                                                                          // the roof's edge (the grind)
+                    { k: 'bridge', x0: -23.7, z0: -29.6, x1: -15.3, z1: -29.6, w: 2.6, y: 4.2 },                                                       // over the west cross street
+                    { k: 'plateau', x: -14.45, z: -29.6, w: 3.1, d: 4.2, h: 4.2, edge: 0.3 },
+                    { k: 'bridge', x0: -13.6, z0: -29.6, x1: -9.0, z1: -29.6, w: 2.6, y: 4.2 },                                                        // over the chapel's forecourt, to the gap
+                    { k: 'rail', x0: -9.3, z0: -29.6, x1: -6.3, z1: -29.6, y: 4.2, model: 'pipe', block: false },                                    // across the gap
+                    { k: 'plateau', x: 4.1, z: -29.6, w: 21.4, d: 4.2, h: 4.2, edge: 0.3 },                                                            // the centre roofs
+                    { k: 'rail', x0: -6.0, z0: -28.3, x1: 13.6, z1: -28.3 },
+                    { k: 'ramp', x0: 23.6, z0: -29.6, x1: 14.1, z1: -29.6, w: 2.8, h0: 0, h1: 4.2, stairs: true, model: 'precast', edge: 0.2 },
                     { k: 'plateau', x: -10, z: 29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                              // THE LAUNDRY ROOF (south)
                     { k: 'climb', x: -10, z: 27.5, face: 180, look: 'fireescape' },
-                    { k: 'rail', x0: -14.8, z0: 27.9, x1: -5.2, z1: 27.9 },
+                    { k: 'rail', x0: -14.2, z0: 28.3, x1: -11.2, z1: 28.3 }, { k: 'rail', x0: -8.8, z0: 28.3, x1: -5.8, z1: 28.3 },
+                    /* curved skate rails round the back lane's outer corners */
+                    { k: 'rail', arc: { x: -36, z: -20, r: 4.6, a0: 275, a1: 355 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 36, z: -20, r: 4.6, a0: 5, a1: 85 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 36, z: 20, r: 4.6, a0: 95, a1: 175 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: -36, z: 20, r: 4.6, a0: 185, a1: 265 }, model: 'pipe', block: false },
                     { k: 'scatter', key: 'city_bin', n: 8, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 4, seed: 4 },
                     { k: 'scatter', key: 'hot_dog_stand', n: 2, seed: 61, r0: 0.9 },                              // THE 2026-09-22 BATCH: two vendors on the boulevard's kerbs
@@ -33404,7 +33429,7 @@ const DOOR_HQ = {
                 { key: 'car_suv',         x: -34, z: 5.2, face: 270 },
                 { key: 'bus_shelter',     x: 8.5, z: -8.8, face: 0 },                          // the boulevard's stop (the opening to the road)
                 { key: 'brazier',         x: -40.5, z: 26.0 },                                 // the back lane's barrel fire (the room's own light)
-                { key: 'railing_1m',      x: 29, z: 28.5, face: 0 },                           // THE PARK RULE's catalogue rail on the valet deck (the terrain's rails are the grind)
+                { key: 'railing_1m',      x: 29, z: 29.8, face: 0 },                           // THE PARK RULE's catalogue rail on the valet deck (the terrain's rails are the grind)
                 { key: 'quarter_pipe',    x: 31.5, z: 30.4, face: 180 },                       // the deck's quarter pipe (SKATEBOARDING 9.8)
                 { key: 'quarter_pipe',    x: -8, z: 8.5, face: 0 },                            // and one on the plaza's south edge
                 { key: 'riser_2',         x: 18, z: 9.2, face: 90 },                           // a loading dock's riser on the boulevard's south sidewalk
