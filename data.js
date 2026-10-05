@@ -38899,10 +38899,24 @@ const DOOR_HQ = {
                     { k: 'pool', x: 6, z: 2, r: 4.8, y: -0.3, depth: 0.6 },                                                     // THE FLOOD (waded)
                     { k: 'pool', x: -17.5, z: -12, r: 2.2, y: -0.3, depth: 1.8, key: 'deep_water' },                           // THE SUMP (never entered)
                     { k: 'stream', pts: [[-8, 16], [6, 16], [6, 6]], w: 1.4, y: -0.3, depth: 0.55 },                            // the seep into the flood
-                    /* THE PUMP LEDGE (1.4) on the chamber's west side, up its stair */
-                    { k: 'plateau', x: -23.5, z: -14, w: 3, d: 8, h: 1.4, edge: 0.15 },
-                    { k: 'ramp', x0: -17.2, z0: -17.2, x1: -22.7, z1: -17.2, w: 2.2, h0: 0, h1: 1.4, stairs: true, edge: 0.15, built: true, key: 'bricks_2' },
-                    { k: 'rail', x0: -21.9, z0: -15.8, x1: -21.9, z1: -10.4 },
+                    /* the upper level (1.4): THE PUMP LEDGE round the chamber's west and north sides (the rope ladder lands on it), down a
+                       timber flight; a skate rail laid across the sump to THE LONG DRIFT, the drift, THE CHIMNEY chamber and the adit (up a
+                       ladder at the drift's mouth, down a flight to the flood from the drift and from the chimney chamber) */
+                    { k: 'plateau', x: -24.25, z: -14.5, w: 4.5, d: 10, h: 1.4, edge: 0.15 },
+                    { k: 'plateau', x: -22, z: -19.75, w: 9, d: 5.5, h: 1.4, edge: 0.15 },
+                    { k: 'ramp', x0: -15.1, z0: -18.25, x1: -18.2, z1: -18.25, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'rail', x0: -21.85, z0: -16.8, x1: -21.85, z1: -14.3, y: 1.4, model: 'ranch' }, { k: 'rail', x0: -21.85, z0: -12.7, x1: -21.85, z1: -9.7, y: 1.4, model: 'ranch' },
+                    { k: 'rail', x0: -21.9, z0: -16.85, x1: -18.3, z1: -16.85, y: 1.4, model: 'ranch' },
+                    { k: 'rail', x0: -22.6, z0: -13.5, x1: -13.8, z1: -13.5, y: 1.4, model: 'pipe', block: false },                // across the sump
+                    { k: 'plateau', x: -0.05, z: -14.1, w: 29.1, d: 3.8, h: 1.4, edge: 0.15 },                                   // THE LONG DRIFT
+                    { k: 'plateau', x: -4, z: -17.0, w: 3.6, d: 3.0, h: 1.4, edge: 0.15 },
+                    { k: 'climb', x: -14.3, z: -15.0, face: 90, look: 'ladder' },
+                    { k: 'ramp', x0: -4, z0: -9.8, x1: -4, z1: -12.9, w: 3, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'rail', pts: [[-3, -13.7, 1.4], [-3, -12.9, 1.4], [-3, -9.8, 0], [-3, -9.0, 0]], model: 'pipe', block: false },
+                    { k: 'plateau', x: 18, z: -14, w: 9, d: 9, h: 1.4, edge: 0.15 },                                            // THE CHIMNEY chamber
+                    { k: 'plateau', x: 26.25, z: -12, w: 9.5, d: 4, h: 1.4, edge: 0.15 },                                       // the adit
+                    { k: 'ramp', x0: 18, z0: -7.1, x1: 18, z1: -10.2, w: 3, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'rail', arc: { x: 6, z: 2, r: 6.2, a0: 300, a1: 420 }, model: 'pipe', block: false },                   // round the flood
                     { k: 'wall', x0: -10, z0: -13.2, x1: -6, z1: -13.2, h: 0.6, t: 0.5, key: 'bricks_2' },                     // THE SLEEPER WALL (the grind) along the drift
                     { k: 'plateau', x: 19.5, z: -15.5, r: 1.3, h: 3.9, edge: 0.15 },                                           // THE CHIMNEY (the tape — the door gun's; daylight down it)
                     { k: 'path', pts: [[-20, -9], [-20, 0], [-29, 0]], w: 1.4 }, { k: 'path', pts: [[-14, -14], [14, -14]], w: 1.4 },   // the boards
@@ -38922,7 +38936,7 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'cave_torch',      x: -22, z: -16 }, { key: 'cave_torch', x: 2, z: -13.5 }, { key: 'cave_torch', x: 18.5, z: -4 }, { key: 'cave_torch', x: -6, z: 13.5 },
+                { key: 'cave_torch',      x: -23.4, z: -16 }, { key: 'cave_torch', x: 2, z: -13.5 }, { key: 'cave_torch', x: 18.5, z: -4 }, { key: 'cave_torch', x: -6, z: 13.5 },
                 { key: 'brazier',         x: -4, z: -14.5 },
                 { key: 'bare_bulb',       x: 16, z: -10, ceil: true },                                                          // daylight down THE CHIMNEY — the one bright thing
                 { key: 'railing_1m',      x: -14, z: -10.6, face: 0 },                                                          // THE PARK RULE's catalogue rail on the pump ledge
