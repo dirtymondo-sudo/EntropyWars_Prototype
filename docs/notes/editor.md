@@ -427,3 +427,21 @@ to edit it, clicking on an object does absolutely nothing".
 - **Quick check (scratch Playwright, real bucket assets):** the Cafeteria from the library: 92 proxies (was 4), a click picks the
   serving line, a drag makes Room 2 (from cafeteria) and moves it 1 m, R / = work, W / SPACE / SHIFT fly, E locks the pointer and the
   mouse turns the eye, a MODELS tile goes in slot 1, RIGHT click places it, undo goes back to the game room. No page errors.
+
+## THE SHAPES (2026-10-05, token 20261005-edshapes-01-cors)
+mondo: "take inspiration from minecraft and minecraft building mods that let you place shapes and terraform quickly and easily".
+A SHAPES palette tab (between BUILD and LAYOUT) of WorldEdit-style stamps, DRAWS rows `how: 'stamp'` with a `form`:
+- **disc** (drag from the middle out): HILL (bell, `hard` = a dome), MOUNTAIN (peak, `hard` = a straight cone), VOLCANO (cone
+  with a crater from 0.3 R in, the floor at 0.55 H), MESA / PIT (SET the ground to press height ± HEIGHT inside R, a smooth
+  skirt of max(1, 0.3 R) outside it), BOWL (an upside-down hill), ROUND WALL (a `kit` row, `hqRingWalls` at r, h = wall height,
+  t, n = round(2πr / 2.5) clamped 8-64, the wall sheet).
+- **rect** (corner to corner): BLOCK UP / BLOCK DOWN / LEVEL (SET to press height + H / − H / = press height; smooth skirt
+  1-4 m outside the box).
+- **line** (end to end): RIDGE / TRENCH (a bell across, half-width SIZE / 2; `hard` = sheer sides).
+- A click (or RIGHT click, or a drag under 0.5 m) stamps one SIZE big where it lands (a line's click runs 3 × SIZE across the
+  view). `[` `]` change SIZE. Options: shapeR (SIZE), shapeH (HEIGHT / depth), shapeEdge (smooth | hard), OPT_FIELDS per tool.
+- `stampAt(tool, a, p)` builds the whole delta grid the same way strokeStart does (decode terrain.hmap onto the lattice, edit a
+  copy, `hqGridEncode('i16')`) and commits ONE `terrain.hmap` step; the room rebuilds. In a game room the first stamp makes the
+  copy (own()), the next one lands. A room with no terrain (indoor) gets a toast. `stampShow` = the preview (the ring for a disc,
+  a box for a block, a bar for a line), ringUpdate draws `ED._disc` for stamps too.
+- Quick check: w_room1 and a fairy forest copy: hill, mesa, trench, block and round wall each one undo step, no page errors.

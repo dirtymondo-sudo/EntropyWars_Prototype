@@ -270,7 +270,9 @@
                 /* E5: the layout */
                 planLook: 'walls', hallW: 2.6,
                 /* E6: the size a placed tree / model takes (treeSize m tall, 0 = the game's own; treeVary = ±20 %; propX = × the catalogue) */
-                treeSize: 0, treeVary: true, propX: 1 },
+                treeSize: 0, treeVary: true, propX: 1,
+                /* THE SHAPES: SIZE = a disc's radius / a line's width / a click's half side, HEIGHT, the edge */
+                shapeR: 8, shapeH: 4, shapeEdge: 'smooth' },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
         audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, FIELD (was 8×8) auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
@@ -827,6 +829,21 @@
         lhall:    { label: 'HALLWAY', how: 'course', tab: 'layout', tip: 'Click along it, from room to room; ENTER ends it (ESC drops it, BACKSPACE takes a point back). In a forest it is a dirt path.' },
         lamp:     { label: '+ LAMP', how: 'click', tab: 'sky', tip: 'Click where a lamp goes: a lamp mast outdoors (lit at night), a ceiling fluorescent indoors. The SKY tab lists them.' },   // E6
         stream:   { label: 'STREAM', how: 'course', tab: 'ground', tip: 'Click along its course; ENTER ends it (ESC drops it): a stream, its level just under the lowest ground along it.' },
+        /* THE SHAPES (2026-10-05, mondo: "take inspiration from minecraft and minecraft building mods that let you place shapes and terraform
+           quickly and easily"): WorldEdit's sphere / cylinder / cone / box, stamped into the ground in one go. Drag from the middle out (a
+           line: from end to end, a block: corner to corner), or just click for one SIZE big; each is ONE undo step on terrain.hmap */
+        hill:     { label: 'HILL', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round hill HEIGHT m high.' },
+        mountain: { label: 'MOUNTAIN', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a peak HEIGHT m high.' },
+        volcano:  { label: 'VOLCANO', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a cone HEIGHT m high with a crater in its top.' },
+        mesa:     { label: 'MESA', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round flat top HEIGHT m over where you pressed (a cylinder).' },
+        bowl:     { label: 'BOWL', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round hollow HEIGHT m deep.' },
+        pit:      { label: 'PIT', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round hole with a flat floor HEIGHT m down (a cylinder).' },
+        boxup:    { label: 'BLOCK UP', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): a flat-topped block of ground HEIGHT m over where you pressed.' },
+        boxdown:  { label: 'BLOCK DOWN', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): a flat-floored hole HEIGHT m down.' },
+        level:    { label: 'LEVEL', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): the ground goes flat at the height where you pressed (a pad to build on).' },
+        sridge:   { label: 'RIDGE', how: 'stamp', form: 'line', tab: 'shapes', tip: 'Drag from end to end (or click): a ridge HEIGHT m high, SIZE m wide.' },
+        trench:   { label: 'TRENCH', how: 'stamp', form: 'line', tab: 'shapes', tip: 'Drag from end to end (or click): a trench HEIGHT m deep, SIZE m wide.' },
+        ringwall: { label: 'ROUND WALL', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a ring of walls (a tower, a pen) WALL HEIGHT m high.' },
     };
     function drawSet(tool) {
         drawPreview(null);
@@ -870,6 +887,7 @@
             var S0 = ED.stroke; drawPreview(S0 && S0.tool === 'gramp' && S0.a ? [segPv(S0.a, p, 2 * O.brushR, Math.min(S0.a.y, g) - 0.05, Math.max(S0.a.y, g) + 0.05)] : null);
             ED._drawInfo = S0 && S0.tool === 'gramp' && S0.a ? rampInfo(S0.a, p) : ''; return;
         }
+        if (how === 'stamp') { stampShow(D, p, g); return; }
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
         if (a && how === 'chain') out.push(segPv(a, p, O.wallT, g, g + O.wallH));
         if (a && how === 'line') out.push(segPv(a, p, 2, g, g + Math.max(0.3, O.height)));
@@ -898,6 +916,7 @@
         var D = ED.draw, p = drawPt(e.clientX, e.clientY, e); if (!D || !p) return;
         var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
         if (how === 'rect' || how === 'line' || how === 'disc') { D.a = p; D.b = p; return; }
+        if (how === 'stamp') { D.a = { x: p.x, z: p.z, y: ground(p.x, p.z) }; return; }
         if (how === 'brush') strokeStart(e);
     }
     function drawUp(e) {
@@ -908,6 +927,7 @@
         if (how === 'brush') { strokeEnd(e); return; }
         if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); if (D.tool === 'lhall') D.a = p; drawShow(p); } return; }   // (a hallway's SHIFT keeps 45° from its last point)
         if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); return; }
+        if (how === 'stamp') { var sa = D.a; D.a = null; drawPreview(null); ED._disc = null; ED._drawInfo = ''; if (p) stampAt(D.tool, sa, p); return; }
         if (how === 'click') {   // a shape from the ADD list, dropped where clicked
             var c = rayGround(e.clientX, e.clientY); if (!c) return;
             if (D.entry) { palDrop(D, c); return; }   // E2: a palette tile
@@ -968,6 +988,7 @@
             if (k === 'backspace') { D.pts.pop(); D.a = D.pts[D.pts.length - 1] || null; drawShow(ED.cursor ? { x: ED.cursor.x, z: ED.cursor.z } : D.a); return true; }
             if (k === 'enter' || k === 'escape') { var hp = D.pts; D.pts = null; D.a = null; drawPreview(null); if (k === 'enter') { if (hp.length > 1) layoutAdd([{ k: 'hall', pts: hp.map(function (q) { return [Core.snap(q.x, 0.01), Core.snap(q.z, 0.01)]; }), w: Math.max(0.6, ED.opts.hallW) }], 'hallway'); else toast('A HALLWAY NEEDS TWO POINTS AT LEAST'); } return true; }
         }
+        if (DRAWS[D.tool] && DRAWS[D.tool].how === 'stamp' && (k === '[' || k === ']')) { ED.opts.shapeR = Math.max(1, Math.min(80, Math.round(ED.opts.shapeR * (k === ']' ? 1.25 : 0.8) * 2) / 2)); saveOpts(); toast('SIZE ' + ED.opts.shapeR + ' m', 900); panels(); if (ED.cursor) drawShow({ x: ED.cursor.x, z: ED.cursor.z }); return true; }
         if (DRAWS[D.tool] && DRAWS[D.tool].how === 'brush' && (k === '[' || k === ']')) { ED.opts.brushR = Math.max(0.5, Math.min(60, Math.round(ED.opts.brushR * (k === ']' ? 1.25 : 0.8) * 4) / 4)); saveOpts(); toast('BRUSH ' + ED.opts.brushR + ' m', 900); panels(); return true; }
         if (k === 'escape' || k === 'enter') { if (D.a) { D.a = null; D.chain0 = null; drawPreview(null); } else drawSet(null); return true; }
         return false;
@@ -1114,12 +1135,88 @@
         if (!gh && !T.hmap) { reloadSoon(); return; }
         commit([{ path: base.concat(['hmap']), before: T.hmap ? Core.clone(T.hmap) : undefined, after: gh || undefined }], label);
     }
+    /* ══ THE SHAPES (2026-10-05): WorldEdit's stamps. One press-drag-release (or one click at SIZE) writes the whole shape into
+       terrain.hmap as ONE undo step, the same grid the brushes paint (a ROUND WALL is a kit row instead). What a drag means: a
+       round shape from its middle out, a block corner to corner, a ridge end to end; a click stamps one SIZE big where it lands
+       (a ridge's click runs across the view). A shape's height is measured from the ground where the press began ═══ */
+    function stampGeom(tool, a, p) {   // → { form, x, z, r } | { form, x0, x1, z0, z1 } | { form, a, b, w }; a = the press (may be null)
+        var f = DRAWS[tool].form, O = ED.opts, R0 = Math.max(1, +O.shapeR || 8), drag = a && p ? Math.hypot(p.x - a.x, p.z - a.z) : 0, click = drag < 0.5;
+        if (click) a = p;
+        if (f === 'disc') return { form: f, x: a.x, z: a.z, r: click ? R0 : Math.round(drag * 4) / 4 };
+        if (f === 'rect') return click ? { form: f, x0: a.x - R0, x1: a.x + R0, z0: a.z - R0, z1: a.z + R0 } : Object.assign({ form: f }, rectOf(a, p));
+        if (click) { var yw = ED.cam.yaw || 0, L = 1.5 * R0; return { form: f, a: { x: a.x - Math.cos(yw) * L, z: a.z - Math.sin(yw) * L }, b: { x: a.x + Math.cos(yw) * L, z: a.z + Math.sin(yw) * L }, w: R0 }; }
+        return { form: f, a: a, b: p, w: R0 };
+    }
+    function stampShow(D, p, g) {
+        var G = stampGeom(D.tool, D.a, p), H = D.tool === 'ringwall' ? ED.opts.wallH : Math.max(0.1, +ED.opts.shapeH || 4), y0 = D.a ? D.a.y : g, out = [];
+        ED._disc = null;
+        if (G.form === 'disc') { ED._disc = { x: G.x, z: G.z, r: G.r }; ED._drawInfo = 'radius ' + G.r.toFixed(2) + ' m'; drawPreview([{ cx: G.x, cz: G.z, w: 0.3, L: 0.3, y0: y0, y1: y0 + H }]); return; }
+        if (G.form === 'rect') {
+            var lo = D.tool === 'boxdown' ? y0 - H : D.tool === 'level' ? y0 - 0.05 : y0, hi = D.tool === 'boxdown' ? y0 : D.tool === 'level' ? y0 + 0.05 : y0 + H;
+            out.push({ cx: (G.x0 + G.x1) / 2, cz: (G.z0 + G.z1) / 2, w: G.x1 - G.x0, L: G.z1 - G.z0, y0: lo, y1: hi });
+            ED._drawInfo = (G.x1 - G.x0).toFixed(2) + ' × ' + (G.z1 - G.z0).toFixed(2) + ' m';
+        } else { out.push(segPv(G.a, G.b, G.w, D.tool === 'trench' ? y0 - H : y0, D.tool === 'trench' ? y0 : y0 + H)); ED._drawInfo = Math.hypot(G.b.x - G.a.x, G.b.z - G.a.z).toFixed(2) + ' m long'; }
+        drawPreview(out);
+    }
+    function sstep(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+    function stampAt(tool, a, p) {
+        var G = stampGeom(tool, a, p), O = ED.opts, label = DRAWS[tool].label.toLowerCase();
+        if (tool === 'ringwall') {
+            if (!(G.r >= 1)) { toast('A ROUND WALL NEEDS 1 M OF RADIUS AT LEAST'); return; }
+            var n = Math.max(8, Math.min(64, Math.round(2 * Math.PI * G.r / 2.5)));
+            drawRows([{ k: 'kit', fn: 'hqRingWalls', args: { r: G.r, h: Math.max(0.3, +O.wallH || 3), t: Math.max(0.1, +O.wallT || 0.25), n: n, a0: 0, a1: 360, skip: [], key: O.wallKey || null }, x: Core.snap(G.x, 0.01), z: Core.snap(G.z, 0.01), yaw: 0 }], label);
+            return;
+        }
+        if (ED.mode === 'library') { own(); return; }   // the copy builds first; the next stamp lands in it
+        if (ED.mode !== 'world' || !editable()) { toast('THE SHAPES WORK IN YOUR OWN ROOMS (not a prefab)'); return; }
+        var r = room(), info = termInfo();
+        if (!r || !ED.ready) { toast('THE ROOM IS STILL BUILDING'); return; }
+        if (!r.terrain || !info) { toast('THIS ROOM HAS NO GROUND TO SHAPE (an indoor room)'); return; }
+        var H = Math.max(0.1, +O.shapeH || 4), hard = O.shapeEdge === 'hard', y0 = a && a.y != null ? a.y : ground(p.x, p.z);
+        var res = info.res, nx = info.nx, nz = info.nz, n0 = nx * nz;
+        var dec = r.terrain.hmap && W.hqGridDecode ? W.hqGridDecode(r.terrain.hmap) : null, D0 = new Float32Array(n0);
+        if (dec) for (var jj = 0; jj < nz; jj++) for (var ii = 0; ii < nx; ii++) D0[jj * nx + ii] = W.hqGridHeightAt(dec, info.x0 + ii * res, info.z0 + jj * res);
+        var Dw = new Float32Array(D0), any = false;
+        /* the reach: the shape's box, plus the smooth skirt of the shapes that SET a height (a mesa, a pit, a block) */
+        var setForm = tool === 'mesa' || tool === 'pit' || G.form === 'rect', skirt = 0, bx;
+        if (G.form === 'disc') { if (setForm && !hard) skirt = Math.max(1, 0.3 * G.r); bx = [G.x - G.r - skirt, G.x + G.r + skirt, G.z - G.r - skirt, G.z + G.r + skirt]; }
+        else if (G.form === 'rect') { if (!hard) skirt = Math.max(1, Math.min(4, 0.25 * Math.min(G.x1 - G.x0, G.z1 - G.z0, 16))); bx = [G.x0 - skirt, G.x1 + skirt, G.z0 - skirt, G.z1 + skirt]; }
+        else { var hw = G.w / 2; bx = [Math.min(G.a.x, G.b.x) - hw, Math.max(G.a.x, G.b.x) + hw, Math.min(G.a.z, G.b.z) - hw, Math.max(G.a.z, G.b.z) + hw]; }
+        if (G.form === 'disc' && !(G.r >= 0.5)) { toast('DRAG FROM THE MIDDLE OUT'); return; }
+        if (G.form === 'rect' && (G.x1 - G.x0 < 0.5 || G.z1 - G.z0 < 0.5)) { toast('DRAG CORNER TO CORNER'); return; }
+        var i0 = Math.max(0, Math.floor((bx[0] - info.x0) / res)), i1 = Math.min(nx - 1, Math.ceil((bx[1] - info.x0) / res));
+        var j0 = Math.max(0, Math.floor((bx[2] - info.z0) / res)), j1 = Math.min(nz - 1, Math.ceil((bx[3] - info.z0) / res));
+        var bell = function (d) { return d >= 1 ? 0 : hard ? Math.sqrt(1 - d * d) : 0.5 + 0.5 * Math.cos(Math.PI * d); };
+        for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+            var x = info.x0 + i * res, z = info.z0 + j * res, k = j * nx + i, h = info.H[k] + Dw[k] - D0[k], add = 0, tgt = null, w = 1;
+            if (G.form === 'disc') {
+                var dist = Math.hypot(x - G.x, z - G.z), d = dist / G.r;
+                if (tool === 'hill' || tool === 'bowl') { add = (tool === 'bowl' ? -H : H) * bell(d); }
+                else if (tool === 'mountain') { if (d < 1) add = H * (hard ? 1 - d : Math.pow(1 - d, 1.6) * (0.6 + 0.4 * sstep((1 - d) * 3))); }
+                else if (tool === 'volcano') { if (d < 1) { var f = d >= 0.3 ? (1 - d) / 0.7 : 1 - 0.45 * Math.pow(1 - d / 0.3, hard ? 0.5 : 2); if (d >= 0.3 && !hard) f = sstep(f) * 0.5 + f * 0.5; add = H * f; } }
+                else { tgt = tool === 'mesa' ? y0 + H : y0 - H; w = dist <= G.r ? 1 : skirt > 0 ? sstep(1 - (dist - G.r) / skirt) : 0; }
+            } else if (G.form === 'rect') {
+                var ox = Math.max(G.x0 - x, 0, x - G.x1), oz = Math.max(G.z0 - z, 0, z - G.z1), od = Math.hypot(ox, oz);
+                tgt = tool === 'boxup' ? y0 + H : tool === 'boxdown' ? y0 - H : y0; w = od <= 1e-6 ? 1 : skirt > 0 ? sstep(1 - od / skirt) : 0;
+            } else {
+                var dx = G.b.x - G.a.x, dz = G.b.z - G.a.z, LL = dx * dx + dz * dz, t = LL > 1e-6 ? Math.max(0, Math.min(1, ((x - G.a.x) * dx + (z - G.a.z) * dz) / LL)) : 0;
+                var v = Math.hypot(x - (G.a.x + dx * t), z - (G.a.z + dz * t)) / (G.w / 2);
+                add = (tool === 'trench' ? -H : H) * (hard ? (v < 1 ? 1 : 0) : bell(v));
+            }
+            if (tgt != null) { if (w <= 0) continue; add = (tgt - h) * w; }
+            if (Math.abs(add) < 1e-4) continue;
+            Dw[k] += add; any = true;
+        }
+        if (!any) { toast('THAT SHAPE IS OFF THE GROUND (past the room\'s edge)'); return; }
+        var gh = W.hqGridEncode('i16', Dw, nx, nz, info.x0, info.z0, res), T = r.terrain;
+        commit([{ path: basePath().concat(['terrain', 'hmap']), before: T.hmap ? Core.clone(T.hmap) : undefined, after: gh || undefined }], label);
+    }
     /* the ring: the brush's reach on the ground under the cursor (or a pond's rim while it is dragged) */
     function ringUpdate() {
         var RG = ED.ring; if (!RG) return;
         var D = ED.draw, how = D && DRAWS[D.tool] ? DRAWS[D.tool].how : null, c = ED.cursor, at = null, rad = 0;
         if (how === 'brush' && c && (ED.mouse.in || ED.stroke)) { at = c; rad = +ED.opts.brushR || 4; }
-        else if (how === 'disc' && ED._disc && ED._disc.r > 0.05) { at = ED._disc; rad = ED._disc.r; }
+        else if ((how === 'disc' || how === 'stamp') && ED._disc && ED._disc.r > 0.05) { at = ED._disc; rad = ED._disc.r; }
         if (!at) { RG.visible = false; return; }
         var P = RG.geometry.attributes.position, u = U();
         for (var i = 0; i <= 64; i++) { var an = i / 64 * Math.PI * 2, x = at.x + Math.cos(an) * rad, z = at.z + Math.sin(an) * rad; P.setXYZ(i, x * u, (ground(x, z) + 0.08) * u + 0.3, z * u); }
@@ -1442,7 +1539,7 @@
         var D = ED.draw;
         if (D) {
             var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
-            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || D.tool === 'paint') { drawUp(e); return; }
+            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || how === 'stamp' || D.tool === 'paint') { if (how === 'stamp') D.a = null; drawUp(e); return; }
             toast((DRAWS[D.tool] ? DRAWS[D.tool].label : 'THIS TOOL') + ' DRAWS WITH THE LEFT BUTTON (hold and drag)', 1800); return;
         }
         if (!ED.sel.length) { toast('NOTHING IN HAND · pick a tile (1-9 or the palette) or click a thing, then RIGHT click places it', 2600); return; }
@@ -2584,7 +2681,13 @@
         stream: [['streamW', 'Width (m)'], ['waterDepth', 'Depth (m)'], ['waterKey', 'Liquid', 'liquid']],
         /* E5 */
         lhall: [['hallW', 'Hallway width (m)']],
+        /* THE SHAPES */
+        ringwall: [['shapeR', 'Size: radius on a click (m) · [ ]'], ['wallH', 'Wall height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Sheet', 1]],
     };
+    ['hill', 'mountain', 'volcano', 'mesa', 'bowl', 'pit', 'boxup', 'boxdown', 'level', 'sridge', 'trench'].forEach(function (k) {
+        OPT_FIELDS[k] = [['shapeR', DRAWS[k].form === 'line' ? 'Size: width (m) · [ ]' : DRAWS[k].form === 'rect' ? 'Size: half side on a click (m) · [ ]' : 'Size: radius on a click (m) · [ ]']]
+            .concat(k === 'level' ? [] : [['shapeH', k === 'bowl' || k === 'pit' || k === 'boxdown' || k === 'trench' ? 'Depth (m)' : 'Height (m)']]).concat([['shapeEdge', 'Edge', 'edge']]);
+    });
     function buildHtml(tab) {
         var D = ED.draw, h = '<div class="ed-palb">';
         tab = tab || 'build';
@@ -2596,7 +2699,7 @@
             var F = OPT_FIELDS[D.tool] || [];
             if (F.length) h += '<div class="ed-form" data-scope="opts">' + F.map(function (f) {
                 var v = ED.opts[f[0]];
-                if (f[2] === 'fall' || f[2] === 'liquid') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava']]; return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
+                if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava']]; return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
                 if (f[2] === 'leaf') return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlLeaf"></label>';
                 if (f[2]) return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlTex"><button class="ed-btn ed-texb" data-otex="' + f[0] + '" title="Pick a texture"' + texSwatchStyle(v) + '>…</button></label>';
                 return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="number" step="any" data-o="' + f[0] + '" value="' + esc(v) + '"></label>';
@@ -2807,7 +2910,7 @@
         shellPut('lights', ls, 'lamp');
     }
 
-    var PAL_TABS = [['build', 'BUILD'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
+    var PAL_TABS = [['build', 'BUILD'], ['shapes', 'SHAPES'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
     var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
     ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
     function palData() {
@@ -2836,18 +2939,18 @@
         if (!editable() && ED.mode !== 'library') { B.innerHTML = ''; return; }
         var tab = ED.opts.tab || 'build';
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
-        if (tab === 'build' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
+        if (tab === 'build' || tab === 'shapes' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
         else if (tab === 'sky') h += skyHtml();   // E6
         else if (tab === 'leads') h += leadsHtml();   // E7
         else h += sizeStrip(tab) + '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
         h += '</div>';
         /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
            room reloads is not lost to a rebuilt button */
-        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
+        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'shapes' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
         B._h = h; B.innerHTML = h;
         B.querySelectorAll('[data-psz]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-psz').split(':'); if (v[0] === 'vary') ED.opts.treeVary = !ED.opts.treeVary; else ED.opts[v[0]] = +v[1]; saveOpts(); palette(); }; });
         B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
-        if (tab === 'build' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
+        if (tab === 'build' || tab === 'shapes' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
         if (tab === 'sky') { paletteWire(B); skyWire(B); return; }   // E6
         if (tab === 'leads') { leadsWire(B); return; }   // E7
         $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
