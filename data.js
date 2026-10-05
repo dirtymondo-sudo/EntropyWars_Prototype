@@ -34643,8 +34643,8 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 29, z: 24.5, w: 38, d: 15, h: 4.6, edge: 0.35 },                                         // the south gallery, east
                     { k: 'plateau', x: 41, z: 0, w: 14, d: 36, h: 4.6, edge: 0.35 },                                            // THE EAST BRIDGE (the food court) — joins the two east galleries
                     /* THE WAYS UP: two escalators at the west end (fitted GLBs over a smooth hidden ramp), two stairs at the east */
-                    { k: 'ramp', x0: -40, z0: -8.3, x1: -40, z1: -17.7, w: 2.4, h0: 0, h1: 4.6, escalator: true, edge: 0 },        // THE NORTH ESCALATOR (its top 0.7 m inside the gallery)
-                    { k: 'ramp', x0: -40, z0: 8.3, x1: -40, z1: 17.7, w: 2.4, h0: 0, h1: 4.6, escalator: true, edge: 0 },          // THE SOUTH ESCALATOR
+                    { k: 'ramp', x0: -40, z0: -9.73, x1: -40, z1: -17.7, w: 2.0, h0: 0, h1: 4.6, escalator: true, edge: 0 },       // THE NORTH ESCALATOR (its top 0.7 m inside the gallery; the stairs pack's escalator: 30°, 2 m wide — the run is the rise / tan 30°)
+                    { k: 'ramp', x0: -40, z0: 9.73, x1: -40, z1: 17.7, w: 2.0, h0: 0, h1: 4.6, escalator: true, edge: 0 },         // THE SOUTH ESCALATOR
                     { k: 'ramp', x0: 28, z0: -5.7, x1: 28, z1: -17.7, w: 3.2, h0: 0, h1: 4.6, stairs: true, edge: 0.2 },            // THE NORTH STAIR (12 m: twelve treads of 0.38 — a stair's last tread must stand within a climb of the tier before the tier's own edge overtakes it)
                     { k: 'ramp', x0: 28, z0: 5.7, x1: 28, z1: 17.7, w: 3.2, h0: 0, h1: 4.6, stairs: true, edge: 0.2 },              // THE SOUTH STAIR
                     /* THE LIPS: a grind rail along every balcony edge (the park rule's rails — the rider's) */
@@ -44733,6 +44733,118 @@ const HQ_CATALOGUE_METRO = {
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 [HQ_CATALOGUE_METRO].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
+/* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
+   these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
+     pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
+             labels are geometry too, never cut). Every piece is cut out of the one download by its BOX (file units) — three-renderer.js
+             _spSoup — and the box is all a row needs to name it.
+     grate — R2 Assets/stairs/stairs.glb: one textured steel-grating flight with its handrails (metres).
+     metro — the metro kit's own flight (Metro.glb, node Stairs_01; the metro pack's file).
+   A FLIGHT is fitted to any rise, run and width (three-renderer.js _spFlightGeo): its steps are cut into three — the foot (the first
+   few risers), one middle step and the head (the last few risers + the top lip) — and the middle step is repeated, so a 0.5 m kerb
+   and an 11 m grand stair are the same model with its own riser height (never one model stretched until a step is knee-high); across,
+   the outer bands (a stringer, a skirting) keep their thickness and the middle widens. A RAILING is cut the same way at its posts
+   (the first post, one bay, the last post) and repeated along any run, sheared down a slope (the posts stay plumb) or bent round an
+   arc. Measured here once: `n` risers of `r` × `g` (rise × going, file units), `face` = the first riser's face along the rise axis
+   from the foot, `floor` = the floor's height, `up` = the axis the flight rises along (the pack's all rise toward −Z), `x` = the
+   width's span across. A railing: `b` = its first post, `P` = one bay, `t` = its last post (along +X from box[0]), `top` = its rail's
+   top (the grind height), `foot` = the ground line (a curb below it is sunk). */
+const HQ_STAIR_PACK = {
+    files: { pack: 'Assets/stairs/stairs_railings.glb', grate: 'Assets/stairs/stairs.glb', metro: 'Assets/Metro_PSX/Models/Metro.glb' },
+    unit: { pack: 0.3048, grate: 1, metro: 1 },
+    flights: {
+        /* the pack's straight flights (each family's single flight, rising toward −Z from its +Z end) */
+        concrete:    { file: 'pack', box: [-202.08, -0.05, -686.38, -198.76, 12.46, -673.35], up: '-z', foot: -673.368, x: [-202.062, -198.781], n: 18, r: 0.6907, g: 0.7218, face: 0.0002, floor: 0, band: 0, solid: true,  look: 'stone', label: 'Concrete' },        // UK insitu concrete, 150 mm waist
+        precast:     { file: 'pack', box: [-193.02, -0.05, -635.97, -189.70, 13.15, -615.91], up: '-z', foot: -615.932, x: [-193.0, -189.719],   n: 24, r: 0.5468, g: 0.8235, face: 0,      floor: 0, band: 0, solid: true,  look: 'stone', label: 'Precast' },
+        external:    { file: 'pack', box: [-273.44, -0.05, -634.90, -270.12, 13.03, -615.91], up: '-z', foot: -615.932, x: [-273.419, -270.138], n: 23, r: 0.5468, g: 0.8202, face: 0.0856, floor: 0, band: 0, solid: true,  look: 'stone', label: 'External steps' },
+        steel_pan:   { file: 'pack', box: [-218.21, -0.05, -693.76, -214.79, 13.22, -673.35], up: '-z', foot: -673.368, x: [-218.187, -214.808], n: 22, r: 0.5706, g: 0.9186, face: 0.1249, floor: 0, band: 0.25, solid: false, look: 'steel', label: 'Steel pan' },
+        fire_escape: { file: 'pack', box: [-257.41, -0.05, -636.29, -253.99, 13.24, -615.91], up: '-z', foot: -615.932, x: [-257.392, -254.013], n: 22, r: 0.5706, g: 0.9186, face: 0.125,  floor: 0, band: 0.25, solid: false, look: 'steel', label: 'Fire escape' },
+        open_riser:  { file: 'pack', box: [-186.06, -0.05, -686.46, -182.64, 12.46, -673.35], up: '-z', foot: -673.368, x: [-186.035, -182.656], n: 18, r: 0.6907, g: 0.7218, face: 0.0822, floor: 0, band: 0.3, solid: false, look: 'wood',  label: 'Open riser' },
+        saddled_l:   { file: 'pack', box: [-225.26, -0.05, -629.09, -221.81, 13.05, -615.91], up: '-z', foot: -615.932, x: [-225.24, -221.828],  n: 18, r: 0.6907, g: 0.7207, face: 0.1516, floor: 0, band: 0.3, solid: false, look: 'wood',  label: 'Saddled (left)' },
+        saddled_r:   { file: 'pack', box: [-209.22, -0.05, -629.09, -205.77, 13.05, -615.91], up: '-z', foot: -615.932, x: [-209.197, -205.785], n: 18, r: 0.6907, g: 0.7207, face: 0.1516, floor: 0, band: 0.3, solid: false, look: 'wood',  label: 'Saddled (right)' },
+        carriage:    { file: 'pack', box: [-241.34, -0.05, -629.03, -237.92, 12.46, -615.91], up: '-z', foot: -615.932, x: [-241.316, -237.937], n: 18, r: 0.6907, g: 0.7218, face: 0.0823, floor: 0, band: 0, solid: false, look: 'wood',  label: 'Central carriage' },
+        glass:       { file: 'pack', box: [-169.93, -0.05, -693.76, -166.61, 12.58, -673.43], up: '-z', foot: -673.45,  x: [-169.91, -166.629],  n: 22, r: 0.5706, g: 0.9186, face: 0.0823, floor: 0, band: 0.1, solid: false, look: 'glass', label: 'Glass treads' },
+        short_open:  { file: 'pack', box: [-247.31, -0.05, -650.98, -243.89, 4.86, -644.44],   up: '-z', foot: -644.456, x: [-247.286, -243.906], n: 7,  r: 0.6908, g: 0.9167, face: 0.0819, floor: 0, band: 0, solid: false, look: 'wood',  label: 'Short open flight' },
+        /* the grating flight with its own handrails (textured: drawn in its own materials) */
+        grate:       { file: 'grate', box: [-0.75, -0.25, 0.15, 0.87, 2.40, 3.23], up: '-z', foot: 3.191, x: [-0.699, 0.818], n: 17, r: 0.1244, g: 0.1689, face: 0.073, floor: -0.174, band: 0.06, solid: false, own: true, look: 'steel', label: 'Steel grating', handrail: 0.95 },
+        /* the metro kit's flight (rising toward +X; drawn in the kit's own tiles) */
+        metro:       { file: 'metro', node: 'Stairs_01', up: '+x', foot: 17.89, x: [73.76, 78.64], n: 41, r: 0.13966, g: 0.2378, face: 0.002, floor: 5.587, band: 0, solid: true, own: true, look: 'stone', label: 'Metro tiles' },
+    },
+    /* the escalators (rising toward +Z): `pitch` = the step line's foot (z where it meets the lower floor), `tan` its incline,
+       `top` the upper floor, `cut` = the run [from, to] inside which a step repeats (`P` along z, `dy` up), `hand` = the handrails'
+       offset either side of the centre and their height over the pitch line (the grind) */
+    escalators: {
+        escalator:      { file: 'pack', box: [-253.01, -1.02, -721.93, -246.41, 18.16, -679.27], cx: -249.71, w: 6.56, pitch: -714.06, tan: 0.5774, top: 14.75, plate: 0.65, cut: [-706.5, -693.43], P: 1.307, dy: 0.7546, hand: { x: 2.75, h: 3.3 } },
+    },
+    /* the balustrades and fences (each a row along +X of box[0]) */
+    railings: {
+        two_rail:     { box: [-396.83, -0.05, -735.66, -367.59, 3.53, -735.37], b: 0.513, P: 4.0247, t: 28.686, top: 3.511, foot: 0, look: 'steel', label: 'Two-rail' },
+        three_rail:   { box: [-396.83, -0.45, -717.75, -367.60, 3.47, -717.46], b: 0.127, P: 4.1456, t: 24.96,  top: 3.445, foot: 0, look: 'steel', label: 'Three-rail' },
+        four_rail:    { box: [-396.83, -0.05, -700.27, -367.59, 3.63, -699.90], b: 0.82,  P: 3.937,  t: 28.379, top: 3.609, foot: 0, look: 'steel', label: 'Four-rail' },
+        multi_rail:   { box: [-396.83, -0.45, -753.19, -367.60, 3.47, -752.89], b: 0.127, P: 4.1456, t: 24.96,  top: 3.445, foot: 0, look: 'steel', label: 'Multi-rail' },
+        post_rail:    { box: [-396.83, -0.05, -691.40, -367.59, 3.05, -691.06], b: 0.156, P: 4.1268, t: 29.044, top: 3.03,  foot: 0, look: 'steel', label: 'Post and rail' },
+        guard:        { box: [-396.83, -0.86, -748.14, -367.59, 3.52, -744.24], b: 0.515, P: 4.0242, t: 28.684, top: 3.497, foot: 0, look: 'steel', label: 'Guard rail on a kerb' },
+        cable:        { box: [-396.87, -0.05, -771.05, -367.55, 3.09, -770.85], b: 2.96,  P: 5.84,   t: 26.32,  top: 3.068, foot: 0, look: 'steel', label: 'Cable' },
+        cross:        { box: [-396.83, -0.05, -779.91, -367.59, 3.69, -779.71], b: 0.033, P: 2.6545, t: 29.167, top: 3.666, foot: 0, look: 'steel', label: 'Cross-braced' },
+        bars:         { box: [-396.83, -0.05, -762.18, -367.59, 2.97, -762.01], b: 0.041, P: 3.2808, t: 26.288, top: 2.953, foot: 0, look: 'steel', label: 'Bars' },
+        panel_b:      { box: [-396.84, -0.05, -709.04, -367.59, 3.14, -708.84], b: 0.007, P: 2.4333, t: 29.206, top: 3.117, foot: 0, look: 'steel', label: 'Panels' },
+        double:       { box: [-313.50, -0.05, -681.25, -284.26, 1.56, -680.73], b: 2.79,  P: 3.937,  t: 26.41,  top: 1.542, foot: 0, look: 'steel', label: 'Low double rail' },
+        pipe:         { box: [-313.50, -0.05, -700.47, -284.26, 1.33, -698.60], b: 2.641, P: 5.9055, t: 26.263, top: 1.312, foot: 0, look: 'steel', label: 'Pipe rail' },
+        parapet:      { box: [-313.50, -0.05, -690.67, -284.26, 2.48, -689.16], b: 3.0,   P: 3.0,    t: 27.0,   top: 2.461, foot: 0, look: 'stone', label: 'Parapet' },
+        balusters:    { box: [-230.16, -0.05, -779.91, -200.93, 2.97, -779.74], b: 0.324, P: 3.244,  t: 26.276, top: 2.953, foot: 0, look: 'steel', label: 'Balusters' },
+        balusters_b:  { box: [-230.20, -0.05, -762.21, -200.89, 3.63, -762.01], b: 0.033, P: 3.074,  t: 27.699, top: 3.609, foot: 0, look: 'steel', label: 'Tall balusters' },
+        balusters_d:  { box: [-230.16, -0.05, -735.65, -200.93, 3.03, -735.43], b: 0.164, P: 3.281,  t: 26.412, top: 3.01,  foot: 0, look: 'steel', label: 'Balusters with a rail' },
+        bars_curb:    { box: [-230.16, -0.23, -753.65, -200.93, 3.63, -752.66], b: 0.328, P: 3.281,  t: 26.576, top: 3.609, foot: 0, look: 'steel', label: 'Bars on a kerb' },
+        glass:        { box: [-271.83, -0.99, -771.25, -242.59, 3.66, -770.74], b: 0.656, P: 5.5774, t: 28.543, top: 3.642, foot: 0, look: 'glass', label: 'Glass' },
+        glass_panels: { box: [-271.87, -0.12, -762.41, -242.55, 3.63, -761.92], b: 0.041, P: 3.2444, t: 29.24,  top: 3.609, foot: 0, look: 'glass', label: 'Glass panels' },
+        panel:        { box: [-271.83, -0.68, -779.91, -242.55, 2.83, -779.71], b: 4.757, P: 6.5617, t: 24.44,  top: 2.811, foot: 0, look: 'steel', label: 'Solid panel' },
+        handrail:     { box: [-188.50, 2.60, -779.99, -159.26, 3.03, -779.68], b: 2.789, P: 3.937,  t: 26.411, top: 3.01,  foot: 0, look: 'steel', wall: true, label: 'Wall handrail' },
+        wall_handrail:{ box: [-188.50, 3.03, -771.28, -159.26, 3.47, -770.95], b: 0.82,  P: 3.937,  t: 28.38,  top: 3.445, foot: 0, look: 'steel', wall: true, label: 'Wall handrail (high)' },
+        panel_fence:  { box: [-355.20, -0.05, -779.91, -325.89, 4.45, -779.54], b: 0.197, P: 5.8399, t: 23.557, top: 4.429, foot: 0, look: 'stone', label: 'Panel fence' },
+        wire_fence:   { box: [-355.17, -0.05, -771.05, -325.93, 4.61, -770.69], b: 0.164, P: 5.8399, t: 23.524, top: 4.593, foot: 0, look: 'steel', label: 'Wire fence' },
+        cable_fence:  { box: [-355.17, -0.05, -762.10, -325.93, 4.12, -761.93], b: 0.066, P: 5.8399, t: 23.426, top: 4.101, foot: 0, look: 'steel', label: 'Cable fence' },
+        spear:        { box: [-355.17, 0.14, -735.74, -325.93, 4.86, -735.48],  b: 0.328, P: 2.9526, t: 26.901, top: 4.836, foot: 0.164, look: 'steel', label: 'Spear fence' },
+        wood_fence:   { box: [-355.17, -0.05, -744.58, -325.93, 5.93, -744.11], b: 0.71,  P: 3.946,  t: 24.386, top: 5.906, foot: 0, look: 'wood',  label: 'Board fence' },
+        ranch:        { box: [-355.17, -0.05, -691.41, -325.93, 3.47, -691.04], b: 5.09,  P: 4.757,  t: 24.118, top: 3.445, foot: 0, look: 'wood',  label: 'Ranch fence' },
+    },
+};
+/* THE KINDS a room names (`model` on a stair ramp, `model` on a rail row): the flight / railing + the railing a flight wears + its sheets.
+   A flight's railing is drawn either side (a row's `rails: false | 'l' | 'r'` keeps one side or none), every railing is a grind
+   (the skateboard locks to its top — down a flight too) and a wall to the walker. */
+const HQ_STAIR_KINDS = {
+    concrete:    { flight: 'concrete',    rail: 'balusters_b',     tread: 'concrete',          side: 'concrete' },
+    precast:     { flight: 'precast',     rail: 'bars_curb',  tread: 'concrete',          side: 'concrete' },
+    external:    { flight: 'external',    rail: 'parapet',    tread: 'concrete',          side: 'concrete' },
+    steel:       { flight: 'steel_pan',   rail: 'cross',   tread: 'metal',             side: 'metal' },
+    fire_escape: { flight: 'fire_escape', rail: 'balusters_b',     tread: 'metal',             side: 'metal' },
+    grate:       { flight: 'grate',       rail: null,           tread: null,                side: 'metal' },    // its own handrails (a grind each)
+    metro:       { flight: 'metro',       rail: 'glass_panels', tread: null,                side: 'urban:MetroConcrete' },
+    wood:        { flight: 'saddled_l',   rail: 'ranch',  tread: 'wood_planks',       side: 'wood' },
+    open_riser:  { flight: 'open_riser',  rail: 'cable',        tread: 'wood_planks',       side: 'metal' },
+    carriage:    { flight: 'carriage',    rail: 'glass',        tread: 'wood_planks',       side: 'metal' },
+    glass:       { flight: 'glass',       rail: 'glass',        tread: null,                side: 'metal' },
+    forest:      { flight: 'saddled_r',   rail: 'ranch',        tread: 'wood_planks',       side: 'wood' },     // the Woods' timber flight
+    garden:      { flight: 'short_open',  rail: 'ranch',        tread: 'wood_planks',       side: 'wood' },
+    stone:       { flight: 'precast',     rail: 'parapet',      tread: null,                side: null },       // in the room's own sheets (its path, its cliff)
+};
+const HQ_STAIR_RULES = {
+    riser: 0.18,            // the riser a fitted flight aims for (m) — the step count is the rise over it
+    minSteps: 2, maxSteps: 90,
+    railH: 0.98,            // a railing's rail over the pitch line / the ground (m) — every railing is fitted to it (the grind height)
+    railIn: 0.06,           // a flight's railing stands this far in from its edge
+    blockT: 0.12,           // the railing's wall to the walker: its thickness (m) …
+    blockSeg: 1.2,          // … cut into pieces this long down a slope (each its own top)
+    kind: 'concrete',       // a stair ramp naming no `model` and no room default
+    rail: 'balusters_b',    // a rail row naming no `model` (fitted to its own height: `h`, else railH) …
+    railLow: 'pipe',        // … and one under 0.7 m (a skate rail)
+    /* a room naming no kind (`terrain.stairs`) takes its site's (a forest room — shell.forest — the timber flight), else `kind` */
+    siteKinds: {
+        forest: ['prebuilt_fairy_forest', 'prebuilt_bohemian_grove', 'prebuilt_shasta', 'prebuilt_northpole'],
+        stone:  ['prebuilt_stonehenge', 'prebuilt_gobekli', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_olympus', 'prebuilt_technoticlan', 'prebuilt_atlantis', 'prebuilt_agartha',
+                 'prebuilt_hollow_earth', 'prebuilt_camelot', 'prebuilt_vatican', 'prebuilt_hell', 'prebuilt_mars', 'prebuilt_moon', 'prebuilt_haunted', 'prebuilt_lookingglass', 'prebuilt_lodge', 'prebuilt_bermuda'],
+        steel:  ['prebuilt_derelict', 'prebuilt_revenge', 'prebuilt_area51', 'prebuilt_antarctica'],
+    },
+};
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
     folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
@@ -47333,6 +47445,23 @@ function hqTerrainBoardMarks(boards) {
     });
     return out;
 }
+/* THE STAIRS PACK (2026-10-05): the kind a flight is drawn as — its own `model`, else the room's `terrain.stairs`, else the rules' default */
+function hqStairKind(f, room) {
+    const K = (typeof HQ_STAIR_KINDS !== 'undefined') ? HQ_STAIR_KINDS : {};
+    if (f && f.model && K[f.model]) return f.model;
+    const T = room && room.terrain;
+    if (T && T.stairs && K[T.stairs]) return T.stairs;
+    const SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : null; if (!SR) return null;
+    if (room && room.shell && room.shell.forest && K.forest) return 'forest';
+    const site = room && room.site, SK = SR.siteKinds || {};
+    for (const k of Object.keys(SK)) if (site && SK[k].indexOf(site) >= 0 && K[k]) return k;
+    return K[SR.kind] ? SR.kind : null;
+}
+/* a railing piece's point at fraction t (0 → 1): along its segment, or round its arc */
+function _hqRailPoint(sg, t) {
+    if (sg.arc) { const a = (sg.arc.a0 + (sg.arc.a1 - sg.arc.a0) * t) * Math.PI / 180; return [sg.arc.x + Math.sin(a) * sg.arc.r, sg.arc.z - Math.cos(a) * sg.arc.r]; }
+    return [sg.x0 + (sg.x1 - sg.x0) * t, sg.z0 + (sg.z1 - sg.z0) * t];
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
     const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
@@ -47532,7 +47661,7 @@ function hqTerrainCompile(room, roomId) {
                       masonry (a tread and a riser per compiled step, the sides down to the floor, an optional carpet `runner: { w, color }`) —
                       the field keeps the steps for the walker, the renderer cuts the field away under the flight (three-renderer.js
                       _hqBuildBuiltStairs). `key` = the treads' sheet (else the path sheet), `side` = the flanks' (else the cliff sheet). */
-                   builts: F.filter(f => f.k === 'ramp' && f.stairs && f.built && !f.float),
+                   builts: F.filter(f => f.k === 'ramp' && f.stairs && !f.float),   // THE STAIRS PACK (2026-10-05): every flight (built or not) is drawn from the pack (three-renderer.js _hqBuildBuiltStairs)
                    /* THE VOID (LEVEL_DESIGN_PLAN §5, 2026-09-30 — mondo: "the astral realm to have floating platforms that you have to jump
                       across"): `terrain.void: { lip?, fall?, glow?, glowY? }` makes the room's own floor EMPTY SPACE — every sample under
                       `lip` m (the base floor, the islands stand on tiers above it) is the void (hqTerrainVoidAt): the walker never stands
@@ -47643,9 +47772,102 @@ function hqTerrainCompile(room, roomId) {
         else if (w.rail === 'front' && w.front) { const o = (w.t || 0.35) / 2 - 0.02; info.rails.push({ x0: w.x0 + w.front[0] * o, z0: w.z0 + w.front[1] * o, x1: w.x1 + w.front[0] * o, z1: w.z1 + w.front[1] * o, y: top, wall: true, ledge: true }); }
         else if (w.rail !== false) info.rails.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, y: top, wall: true });
     });
+    /* THE RAILINGS (THE STAIRS PACK, 2026-10-05): a `rail` row is a run of the pack's balustrade (`model`: a HQ_STAIR_PACK railing, else
+       HQ_STAIR_RULES.rail / railLow fitted to the row's own `h`) that follows the ground — its ends stand on the ground under them (a rail down a slope slopes), or on an
+       absolute ground line: `y` (both ends: a rail laid across a gap between two tiers, over nothing), `y0` / `y1` (each end). `pts` =
+       a polyline ([x, z] or [x, z, y]), `arc: { x, z, r, a0, a1 }` = a curve round (x, z) (degrees clockwise from north, a0 → a1).
+       Every piece is a grind (its top, the pieces of one row chained so a grind runs on round a corner) and, unless `block: false`
+       (the pipe rail and the low double rail default to false: a skate rail stands free), a wall to the walker. A flight of stairs
+       wears its kind's railing either side (hqStairRailings). */
+    const SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : null;
+    info.railings = [];
+    const pushRun = (row, segs, model, block, tag, topOver) => {
+        const kd = (model && typeof HQ_STAIR_PACK !== 'undefined') ? HQ_STAIR_PACK.railings[model] : null;
+        const topM = (topOver != null) ? topOver : kd ? kd.top * HQ_STAIR_PACK.unit.pack : ((row && row.h != null) ? row.h : 0.98);
+        let prev = null;
+        segs.forEach(sg => {
+            const grind = Object.assign({ x0: sg.x0, z0: sg.z0, x1: sg.x1, z1: sg.z1, y0: sg.g0 + topM, y1: sg.g1 + topM, y: Math.max(sg.g0, sg.g1) + topM, rail: true }, tag || {});
+            if (sg.arc) Object.assign(grind, { arc: true, cx: sg.arc.x, cz: sg.arc.z, r: sg.arc.r, a0: sg.arc.a0, a1: sg.arc.a1 });
+            if (prev) { prev.next = grind; grind.prev = prev; }
+            prev = grind; info.rails.push(grind);
+            if (kd) info.railings.push(Object.assign({ model, top: topM }, sg, tag || {}));
+            if (!block || !SR) return;
+            /* the wall: short pieces down a slope (one top each), hung over the ground when the run stands on a tier or a bridge */
+            const pieces = sg.arc ? Math.max(2, Math.ceil(Math.abs(sg.arc.a1 - sg.arc.a0) * Math.PI / 180 * sg.arc.r / SR.blockSeg)) : Math.max(1, Math.ceil(Math.hypot(sg.x1 - sg.x0, sg.z1 - sg.z0) / SR.blockSeg));
+            for (let i = 0; i < pieces; i++) {
+                const a = _hqRailPoint(sg, i / pieces), b = _hqRailPoint(sg, (i + 1) / pieces);
+                const g0 = sg.g0 + (sg.g1 - sg.g0) * i / pieces, g1 = sg.g0 + (sg.g1 - sg.g0) * (i + 1) / pieces, foot = Math.min(g0, g1), ground = Math.min(hAt(a[0], a[1]), hAt(b[0], b[1]));
+                const w = { x0: a[0], z0: a[1], x1: b[0], z1: b[1], t: SR.blockT, base: ground - 0.3, top: Math.max(g0, g1) + topM, h: topM, key: null, ghost: true, railing: true };
+                if (foot > ground + 0.45) { w.base = foot - 0.05; w.hung = true; }
+                info.walls.push(w);
+            }
+        });
+    };
     rails.forEach(r => {
-        const y = (hAt(r.x0, r.z0) + hAt(r.x1, r.z1)) / 2 + (r.h != null ? r.h : 0.98);
-        info.rails.push({ x0: r.x0, z0: r.z0, x1: r.x1, z1: r.z1, y, rail: true });
+        /* a row naming no model wears the rule's railing (a low one, under 0.7 m, the pipe rail) at its own height, and stays a grind only
+           (no wall) as it always was */
+        const own = (r.model && typeof HQ_STAIR_PACK !== 'undefined' && HQ_STAIR_PACK.railings[r.model]) ? r.model : null;
+        const rh = (typeof r.h === 'number') ? r.h : (SR ? SR.railH : 0.98);
+        const model = own || (SR && typeof HQ_STAIR_PACK !== 'undefined' ? (rh < 0.7 ? SR.railLow : SR.rail) : null);
+        const block = (r.block != null) ? !!r.block : (!!own && own !== 'pipe' && own !== 'double');
+        const gy = (px, pz, own) => (typeof own === 'number') ? own : (typeof r.y === 'number') ? r.y : hAt(px, pz);
+        let segs = [];
+        if (r.arc && isFinite(r.arc.r)) {
+            const A = r.arc, a0 = +A.a0 || 0, a1 = (A.a1 != null) ? +A.a1 : a0 + 90, ax = +A.x || 0, az = +A.z || 0;
+            const n = Math.max(1, Math.ceil(Math.abs(a1 - a0) / 30));   // pieces of ≤ 30° (each its own ground line)
+            for (let i = 0; i < n; i++) {
+                const b0 = a0 + (a1 - a0) * i / n, b1 = a0 + (a1 - a0) * (i + 1) / n, rd = Math.PI / 180;
+                const p0 = [ax + Math.sin(b0 * rd) * A.r, az - Math.cos(b0 * rd) * A.r], p1 = [ax + Math.sin(b1 * rd) * A.r, az - Math.cos(b1 * rd) * A.r];
+                const g0 = (typeof r.y0 === 'number' && typeof r.y1 === 'number') ? r.y0 + (r.y1 - r.y0) * i / n : gy(p0[0], p0[1]);
+                const g1 = (typeof r.y0 === 'number' && typeof r.y1 === 'number') ? r.y0 + (r.y1 - r.y0) * (i + 1) / n : gy(p1[0], p1[1]);
+                segs.push({ x0: p0[0], z0: p0[1], x1: p1[0], z1: p1[1], g0, g1, arc: { x: ax, z: az, r: A.r, a0: b0, a1: b1 } });
+            }
+        } else if (Array.isArray(r.pts) && r.pts.length > 1) {
+            for (let i = 0; i + 1 < r.pts.length; i++) {
+                const a = r.pts[i], b = r.pts[i + 1];
+                segs.push({ x0: a[0], z0: a[1], x1: b[0], z1: b[1], g0: gy(a[0], a[1], a[2]), g1: gy(b[0], b[1], b[2]) });
+            }
+        } else {
+            segs.push({ x0: r.x0, z0: r.z0, x1: r.x1, z1: r.z1, g0: gy(r.x0, r.z0, r.y0), g1: gy(r.x1, r.z1, r.y1) });
+        }
+        pushRun(model ? null : r, segs, model, block, null, own ? null : rh);
+    });
+    /* the flights' railings (either side unless `rails: false | 'l' | 'r'`; a cheeked flight has its parapets — their tops the grind) */
+    (info.builts || []).forEach(f => {
+        const kind = hqStairKind(f, room), kd = kind && HQ_STAIR_KINDS[kind];
+        const rk = (f.railing !== undefined) ? f.railing : (kd ? kd.rail : null);
+        const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, px = uz, pz = -ux;
+        if (f.cheek) {
+            const ch = (f.cheek.h != null) ? f.cheek.h : 1.0, off = f.w / 2 + (f.cheek.t || 0.35) / 2;
+            [-1, 1].forEach(sd => info.rails.push({ x0: f.x0 + px * off * sd, z0: f.z0 + pz * off * sd, x1: f.x1 + px * off * sd, z1: f.z1 + pz * off * sd, y0: f.h0 + ch, y1: f.h1 + ch, y: Math.max(f.h0, f.h1) + ch, wall: true, ledge: true, stair: true }));
+            return;
+        }
+        const fl = kd && typeof HQ_STAIR_PACK !== 'undefined' ? HQ_STAIR_PACK.flights[kd.flight] : null;
+        if (!rk && fl && fl.handrail && f.rails !== false && SR) {   // a flight with its own handrails (the grating): a grind and a wall each side, nothing more drawn
+            const offH = f.w / 2 - (fl.band || 0) * (HQ_STAIR_PACK.unit[fl.file] || 1) / 2;
+            [-1, 1].forEach(sd => pushRun(null, [{ x0: f.x0 + px * offH * sd, z0: f.z0 + pz * offH * sd, x1: f.x1 + px * offH * sd, z1: f.z1 + pz * offH * sd, g0: f.h0, g1: f.h1 }], null, true, { stair: true, side: sd }, fl.handrail));
+            return;
+        }
+        if (f.rails === false || !rk || !SR) return;
+        const off = f.w / 2 - SR.railIn;
+        [-1, 1].forEach(sd => {
+            if ((f.rails === 'l' && sd > 0) || (f.rails === 'r' && sd < 0)) return;
+            pushRun(null, [{ x0: f.x0 + px * off * sd, z0: f.z0 + pz * off * sd, x1: f.x1 + px * off * sd, z1: f.z1 + pz * off * sd, g0: f.h0, g1: f.h1 }], rk, true, { stair: true, side: sd });
+        });
+    });
+    /* the escalators' handrails: a grind each side (the bottom landing's flat, the incline, the top's flat — one chained run) and a wall */
+    F.filter(f => f.k === 'ramp' && f.escalator).forEach(f => {
+        const E = (typeof HQ_STAIR_PACK !== 'undefined') ? HQ_STAIR_PACK.escalators[f.model || 'escalator'] : null; if (!E) return;
+        const u = HQ_STAIR_PACK.unit.pack, dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, px = uz, pz = -ux;
+        const sx = f.w / (E.w * u), off = E.hand.x * u * sx, hh = E.hand.h * u - 0.1, flat = 1.1;   // (the drawn escalator stands 0.1 m sunk: three-renderer.js _spEscalatorFit)
+        [-1, 1].forEach(sd => {
+            const ox = px * off * sd, oz = pz * off * sd;
+            pushRun(null, [
+                { x0: f.x0 - ux * flat + ox, z0: f.z0 - uz * flat + oz, x1: f.x0 + ox, z1: f.z0 + oz, g0: f.h0, g1: f.h0 },
+                { x0: f.x0 + ox, z0: f.z0 + oz, x1: f.x1 + ox, z1: f.z1 + oz, g0: f.h0, g1: f.h1 },
+                { x0: f.x1 + ox, z0: f.z1 + oz, x1: f.x1 + ux * flat + ox, z1: f.z1 + uz * flat + oz, g0: f.h1, g1: f.h1 },
+            ], null, true, { escalator: true, side: sd }, hh);
+        });
     });
     /* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19): every climb row on the FINAL field — its foot on the ground it stands on (or its own y0),
        its head on the tier it reaches (y1 clamped to the ground at the head's landing, so the mount is a step); a row whose head is

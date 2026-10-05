@@ -1890,3 +1890,9 @@ Tunnel mouths: `_hqPassageWay`'s roofed tube had its wall ends and roof lip exac
 every tunnel mouth in a walled room, e.g. Dead Man's Cave's drain). The tube now starts 6 cm behind the wall line.
 Graffiti: Dead Man's Cave's and the sewers' graffiti panels stood mid-floor after the L4 layouts (read mirrored from behind: the "RM 13"
 on the floor); re-hung flat on the drawn brick, and the panel is one-sided.
+
+## STAIRS PASS (2026-10-05, thread "stairs, railings and verticality") — the running list
+Engine + catalogue: docs/notes/models-assets.md "THE STAIRS PACK". Every stair ramp in the game is drawn as a pack flight from batch 1
+(kind: the row's `model`, else the room's `terrain.stairs`, else timber in a forest room, else HQ_STAIR_RULES.siteKinds by site — stone / steel — else `concrete`); every rail row as a pack railing. Rooms redesigned (verticality, stairs
+instead of ramps, upper sections, gap jumps, curved / sloped / gap-crossing railings):
+- Batch 1 (engine): THE MALL escalators swapped for the pack's (no layout change yet).

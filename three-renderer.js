@@ -45852,6 +45852,350 @@ const ThreeRenderer = (function () {
            sky — the map builder's floating staircase in the room's own kit.
        Nothing new for the walker, the camera or the tests to read.
        ═══════════════════════════════════════════════════════════════════════ */
+    /* ═══ THE STAIRS PACK (2026-10-05, mondo: "No procedural stairs, only use from these stairs and the metro stairs ... figure out their
+       dimensions and how to make them work and fit in the game") ═══
+       data.js HQ_STAIR_PACK names every piece by its box in one of three files (the pack's sample sheet, the grating flight, the metro
+       kit). A piece is cut out of its file ONCE into a TRIANGLE SOUP in its own frame (metres; X across, centred; Y up from its floor;
+       Z along its rise / its run from its foot) — _spSoup — and every fitted copy is made from that soup:
+         a FLIGHT (_spFlightFit): the steps cut at the middle of a tread into the foot (the first few risers), ONE middle step and the
+           head (the last few risers + the top lip); the middle step repeated until the flight has rise / HQ_STAIR_RULES.riser risers,
+           the whole scaled to the run and the rise (a riser stays a riser at every height), the outer bands across (a stringer, a
+           skirting) kept at their own thickness while the middle widens; laid so the walker's smooth slope runs through the middle of
+           every riser (the feet are never more than half a riser off a tread).
+         a RAILING (_spRailFit): the same cut at its posts (its first post, one bay, its last post), the bay repeated along any run,
+           sheared down a slope (the posts stay plumb) or bent round an arc. One merged mesh per railing model per room.
+         an ESCALATOR (_spEscalatorFit): cut inside its incline, one step repeated to the rise; its landings kept.
+       The pack is untextured (flat greys and a blue glass): its faces wear the room's sheets — a tread (an up face) the flight's `key`
+       / the kind's tread sheet, the rest its `side` — box-mapped in metres; the grating flight and the metro flight keep their own
+       textured materials; the blue glass is glass. Nothing is drawn until the file lands (no stand-in). Kill-switch:
+       window.EW_NO_STAIRS_PACK (the flights keep the solid wedge under them; no railing is drawn). */
+    var _spSoupCache = {};
+    function _spPack() { return (typeof HQ_STAIR_PACK !== 'undefined') ? HQ_STAIR_PACK : null; }
+    function _spOn() { return !!_spPack() && !(typeof window !== 'undefined' && window.EW_NO_STAIRS_PACK); }
+    function _spFileUrl(fk) { return 'https://cdn.entropywars.net/' + _spPack().files[fk || 'pack']; }
+    /* the soup of one piece: { P, N, UV|null, M (a material index per triangle), mats, own } — null when nothing is in its box */
+    function _spExtract(root, spec, frame, unit) {
+        var san = function (n) { return String(n || '').replace(/\s/g, '_').replace(/[\[\]\.:\/]/g, ''); };
+        var want = spec.node ? san(spec.node) : null, box = spec.box || null;
+        root.updateMatrixWorld(true);
+        var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), m = new THREE.Matrix4(), nm = new THREE.Matrix3();
+        var P = [], N = [], UV = [], M = [], mats = [], anyUV = false, va = new THREE.Vector3(), na = new THREE.Vector3(), bb = new THREE.Box3();
+        var up = frame.up, f0 = frame.foot, c0 = frame.c, fl = frame.floor || 0;
+        /* the file frame → the piece's (`up` = the axis it rises / runs along); a turn, never a mirror, so no winding flips here */
+        var loc = function (x, y, z, out) {
+            var X, Z;
+            if (up === '-z') { X = -(x - c0); Z = f0 - z; } else if (up === '+z') { X = x - c0; Z = z - f0; } else { X = -(z - c0); Z = x - f0; }   // '+x'
+            out.push(X * unit, (y - fl) * unit, Z * unit);
+        };
+        var locN = function (x, y, z, out) { if (up === '-z') out.push(-x, y, -z); else if (up === '+z') out.push(x, y, z); else out.push(-z, y, x); };
+        var named = function (o) { for (var q = o; q && q !== root; q = q.parent) if (san(q.name) === want) return true; return false; };
+        var tp = [0, 0, 0, 0, 0, 0, 0, 0, 0], tn = [0, 0, 0, 0, 0, 0, 0, 0, 0], ids = [0, 0, 0];
+        root.traverse(function (o) {
+            if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+            if (want && !named(o)) return;
+            m.multiplyMatrices(inv, o.matrixWorld);
+            var g = o.geometry;
+            if (box) {   // a mesh wholly outside the box is skipped unread (the sheet is one big file)
+                if (!g.boundingBox) g.computeBoundingBox();
+                bb.copy(g.boundingBox).applyMatrix4(m);
+                if (bb.max.x < box[0] || bb.min.x > box[3] || bb.max.y < box[1] || bb.min.y > box[4] || bb.max.z < box[2] || bb.min.z > box[5]) return;
+            }
+            nm.getNormalMatrix(m);
+            var flip = m.determinant() < 0, pos = g.attributes.position, nor = g.attributes.normal, uv = g.attributes.uv, idx = g.index;
+            var count = idx ? idx.count : pos.count, groups = (g.groups && g.groups.length) ? g.groups : [{ start: 0, count: count, materialIndex: 0 }];
+            groups.forEach(function (gr) {
+                var mat = Array.isArray(o.material) ? o.material[gr.materialIndex || 0] : o.material, mi = -1;
+                var end = Math.min(count, gr.start + gr.count);
+                for (var t = gr.start; t + 2 < end; t += 3) {
+                    ids[0] = idx ? idx.getX(t) : t; ids[1] = idx ? idx.getX(t + 1) : t + 1; ids[2] = idx ? idx.getX(t + 2) : t + 2;
+                    if (flip) { var sw = ids[1]; ids[1] = ids[2]; ids[2] = sw; }
+                    var cx = 0, cy = 0, cz = 0, q;
+                    for (q = 0; q < 3; q++) { va.fromBufferAttribute(pos, ids[q]).applyMatrix4(m); tp[q * 3] = va.x; tp[q * 3 + 1] = va.y; tp[q * 3 + 2] = va.z; cx += va.x; cy += va.y; cz += va.z; }
+                    cx /= 3; cy /= 3; cz /= 3;
+                    if (box && (cx < box[0] || cx > box[3] || cy < box[1] || cy > box[4] || cz < box[2] || cz > box[5])) continue;
+                    if (nor) { for (q = 0; q < 3; q++) { na.fromBufferAttribute(nor, ids[q]).applyMatrix3(nm).normalize(); tn[q * 3] = na.x; tn[q * 3 + 1] = na.y; tn[q * 3 + 2] = na.z; } }
+                    else {   // a face normal
+                        var ax = tp[3] - tp[0], ay = tp[4] - tp[1], az = tp[5] - tp[2], bx = tp[6] - tp[0], by = tp[7] - tp[1], bz = tp[8] - tp[2];
+                        var fx = ay * bz - az * by, fy = az * bx - ax * bz, fz = ax * by - ay * bx, fl2 = Math.hypot(fx, fy, fz) || 1;
+                        for (q = 0; q < 3; q++) { tn[q * 3] = fx / fl2; tn[q * 3 + 1] = fy / fl2; tn[q * 3 + 2] = fz / fl2; }
+                    }
+                    if (mi < 0) { mi = mats.indexOf(mat); if (mi < 0) { mi = mats.length; mats.push(mat); } }
+                    for (q = 0; q < 3; q++) {
+                        loc(tp[q * 3], tp[q * 3 + 1], tp[q * 3 + 2], P); locN(tn[q * 3], tn[q * 3 + 1], tn[q * 3 + 2], N);
+                        if (uv) { UV.push(uv.getX(ids[q]), uv.getY(ids[q])); anyUV = true; } else UV.push(0, 0);
+                    }
+                    M.push(mi);
+                }
+            });
+        });
+        if (!M.length) return null;
+        if (spec.own) mats.forEach(function (mt) { if (mt) mt._ew_shared = true; });   // the file's own materials: a room's teardown never disposes them
+        return { P: new Float32Array(P), N: new Float32Array(N), UV: anyUV ? new Float32Array(UV) : null, M: M, mats: mats, own: !!spec.own };
+    }
+    /* the soup of a named piece (kind 'flight' | 'rail' | 'esc') once its file is in: cb(soup | null) — never called when the file fails.
+       `spot` (the room's group) files the download near-first (_mqSpotAdd) */
+    function _spSoup(kind, key, cb, spot) {
+        var SP = _spPack(); if (!SP) return;
+        var ck = kind + ':' + key;
+        if (_spSoupCache[ck] !== undefined) { cb(_spSoupCache[ck]); return; }
+        var spec = kind === 'flight' ? SP.flights[key] : kind === 'esc' ? SP.escalators[key] : SP.railings[key];
+        if (!spec) { cb(null); return; }
+        var fk = spec.file || 'pack', frame, url = _spFileUrl(fk);
+        if (kind === 'flight') frame = { up: spec.up, foot: spec.foot, c: (spec.x[0] + spec.x[1]) / 2, floor: spec.floor || 0 };
+        else if (kind === 'esc') frame = { up: '+z', foot: spec.pitch, c: spec.cx, floor: 0 };
+        else frame = { up: '+x', foot: spec.box[0], c: (spec.box[2] + spec.box[5]) / 2, floor: spec.foot || 0 };
+        if (spot) { try { _mqSpotAdd(url, spot); } catch (e) {} }
+        _loadMiscModel(url, true, function (root) {
+            if (_spSoupCache[ck] === undefined) {
+                var s = null;
+                try { s = _spExtract(root, spec, frame, SP.unit[fk] || 1); } catch (e) { console.warn('[stairs] the piece failed to cut', ck, e); s = null; }
+                _spSoupCache[ck] = s;
+            }
+            cb(_spSoupCache[ck]);
+        });
+    }
+    /* one slab of a soup: every triangle clipped to lo ≤ Z < hi, moved by (dz, dy), appended to `out` */
+    function _spSlab(S, lo, hi, dz, dy, out) {
+        var P = S.P, N = S.N, U = S.UV, nT = S.M.length;
+        var clip = function (poly, c, keepAbove) {
+            var res = [];
+            for (var i = 0; i < poly.length; i++) {
+                var a = poly[i], b = poly[(i + 1) % poly.length], da = keepAbove ? a[2] - c : c - a[2], db = keepAbove ? b[2] - c : c - b[2];
+                if (da >= 0) res.push(a);
+                if ((da >= 0) !== (db >= 0)) {
+                    var t = da / (da - db), v = [];
+                    for (var q = 0; q < 8; q++) v.push(a[q] + (b[q] - a[q]) * t);
+                    var nl = Math.hypot(v[3], v[4], v[5]) || 1; v[3] /= nl; v[4] /= nl; v[5] /= nl;
+                    res.push(v);
+                }
+            }
+            return res;
+        };
+        for (var t = 0; t < nT; t++) {
+            var o = t * 9, z0 = P[o + 2], z1 = P[o + 5], z2 = P[o + 8];
+            var mn = Math.min(z0, z1, z2), mx = Math.max(z0, z1, z2);
+            if (mx < lo || mn >= hi) continue;
+            var poly = [], q;
+            for (q = 0; q < 3; q++) poly.push([P[o + q * 3], P[o + q * 3 + 1], P[o + q * 3 + 2], N[o + q * 3], N[o + q * 3 + 1], N[o + q * 3 + 2], U ? U[t * 6 + q * 2] : 0, U ? U[t * 6 + q * 2 + 1] : 0]);
+            if (mn < lo) poly = clip(poly, lo, true);
+            if (poly.length >= 3 && mx >= hi) poly = clip(poly, hi, false);
+            for (var k = 1; k + 1 < poly.length; k++) {
+                var tri = [poly[0], poly[k], poly[k + 1]];
+                for (q = 0; q < 3; q++) { var v = tri[q]; out.P.push(v[0], v[1] + dy, v[2] + dz); out.N.push(v[3], v[4], v[5]); out.UV.push(v[6], v[7]); }
+                out.M.push(S.M[t]);
+            }
+        }
+    }
+    /* the foot (Z < b) + `count` copies of the middle [b, b + p) + the head (Z ≥ t), the head moved on by the middles it gained or lost
+       (`nat` = the middles the piece has of its own between b and t); each copy also rises dy */
+    function _spAssemble(S, b, p, t, nat, count, dy) {
+        var out = { P: [], N: [], UV: [], M: [], mats: S.mats, own: S.own };
+        _spSlab(S, -1e9, b, 0, 0, out);
+        for (var j = 0; j < count; j++) _spSlab(S, b, b + p, j * p, j * dy, out);
+        _spSlab(S, t, 1e9, (count - nat) * p, (count - nat) * dy, out);
+        return out;
+    }
+    /* THE FLIGHT, fitted: width W, rise R (> 0), run L (m) → { A (the assembled soup), fn / fnN (local → the flight's frame, metres), N (risers) }
+       — the flight's frame: X across (centred), Y up from its foot, Z up the run; the walker's slope y = R·Z/L passes through every riser's middle */
+    function _spFlightFit(S, spec, W, R, L) {
+        var SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : { riser: 0.18, minSteps: 2, maxSteps: 90 };
+        var unit = _spPack().unit[spec.file] || 1, r = spec.r * unit, g = spec.g * unit, n = spec.n, face = spec.face * unit;
+        var N = Math.max(SR.minSteps, Math.min(SR.maxSteps, Math.round(R / SR.riser)));
+        var b = Math.max(1, Math.min(3, Math.floor(N / 2), n - 2)), t = Math.max(1, Math.min(3, N - b, n - 1 - b)), mids = Math.max(0, N - b - t);
+        var c = function (k) { return face + (k + 0.5) * g; };   // the middle of tread k (the one on top of riser k)
+        var A = _spAssemble(S, c(b - 1), g, c(n - 1 - t), n - b - t, mids, r);
+        var Nb = b + mids + t, sy = (R / Nb) / r, sz = (L / Nb) / g, zOff = 0.5 * L / Nb - face * sz;
+        var hw0 = Math.abs(spec.x[1] - spec.x[0]) * unit / 2, band = Math.min(hw0 * 0.45, (spec.band || 0) * unit), hw = W / 2;
+        var sx = Math.max(0.05, (hw - band) / Math.max(0.01, hw0 - band));
+        var fx = function (x) { var ax = Math.abs(x); if (band > 0 && ax > hw0 - band) return (x < 0 ? -1 : 1) * (hw - (hw0 - ax)); return x * sx; };
+        /* up: the pitch line (through the risers' middles, flat past either end) is scaled to the rise; a point within a riser of it (the
+           steps) scales with it, anything further (a handrail over it, a stringer's depth under it) keeps its own distance */
+        var Rn = Nb * r, pn = function (z) { return Math.max(0, Math.min(Rn, (z - face) * r / g + 0.5 * r)); };
+        var fy = function (y, z) { var p = pn(z), d = y - p, ad = Math.abs(d); return p * sy + (ad <= r ? d * sy : (d < 0 ? -1 : 1) * (r * sy + ad - r)); };
+        return { A: A, N: Nb, fn: function (x, y, z) { return [fx(x), fy(y, z), z * sz + zOff]; }, fnN: function (x, y, z) { return [x / sx, y / sy, z / sz]; } };
+    }
+    /* THE RAILING, fitted along a run of `len` m (the soup's Z) → { A, scale } (bays repeated, the whole squeezed onto the run) */
+    function _spRailFit(S, spec, len) {
+        var unit = _spPack().unit.pack, b = spec.b * unit, p = spec.P * unit, t = spec.t * unit, L0 = (spec.box[3] - spec.box[0]) * unit;
+        var nat = Math.max(1, Math.round((t - b) / p)), tail = L0 - (b + nat * p);
+        var count = Math.max(1, Math.round((len - b - tail) / p));
+        var A = _spAssemble(S, b, p, b + nat * p, nat, count, 0);
+        return { A: A, scale: len / Math.max(0.05, b + count * p + tail) };
+    }
+    /* THE ESCALATOR, fitted: rise R, run L, width W → { A, fn, fnN } — its frame: X across, Y up from the lower floor, Z from the incline's
+       foot up the run (the landings past either end of 0 … L) */
+    function _spEscalatorFit(S, E, W, R, L) {
+        var u = _spPack().unit.pack, b = (E.cut[0] - E.pitch) * u, t = (E.cut[1] - E.pitch) * u, p = E.P * u, dy = E.dy * u;
+        var nat = Math.max(1, Math.round((t - b) / p)), Rn0 = E.top * u;
+        var count = Math.max(1, nat + Math.round((R - Rn0) / dy));
+        var A = _spAssemble(S, b, p, b + nat * p, nat, count, dy);
+        var Rn = Rn0 + (count - nat) * dy, Ln = Rn / E.tan, sy = R / Rn, sz = L / Ln, sx = W / (E.w * u);
+        return { A: A, fn: function (x, y, z) { return [x * sx, y * sy - 0.1, z * sz]; }, fnN: function (x, y, z) { return [x / sx, y / sy, z / sz]; } };
+    }
+    /* the glass, and a sheet material per (sheet, look) — made per room build */
+    function _spGlass() {
+        var m = new THREE.MeshPhongMaterial({ color: 0x9fc8d6, transparent: true, opacity: 0.3, shininess: 90, specular: 0x667788, depthWrite: false, side: THREE.DoubleSide });
+        m.emissive = new THREE.Color(0x0c1216); return m;
+    }
+    function _spSheet(key, look, tint) {
+        var tex = key ? _hzTex(key) : null;
+        var col = tex ? 0xffffff : (look === 'wood' ? 0x7a5634 : look === 'stone' ? 0xb8b4ac : 0x8d939a);
+        var mt = new THREE.MeshPhongMaterial({ map: tex || null, color: col, shininess: look === 'steel' ? 60 : 12, specular: look === 'steel' ? 0x444448 : 0x111111, side: THREE.DoubleSide });
+        if (tint != null) mt.color.multiply(new THREE.Color(tint));
+        mt.emissive = new THREE.Color(0x121212); return mt;
+    }
+    function _spIsGlass(mat) { var c = mat && mat.color; return !!mat && ((mat.transparent && mat.opacity < 0.9) || (!!c && c.b > c.r + 0.25 && c.g > c.r + 0.1)); }
+    /* a fitted soup into the role buckets (world units): fnW(x, y, z) → [x, y, z] metres in the room, fnWN(nx, ny, nz, z) the normal's
+       turn; role(A, t) → a bucket key; an own piece keeps its UVs, every other face is box-mapped in metres (texK per metre) in the
+       piece's own frame (a sheet runs along a flight) */
+    function _spEmit(A, fnW, fnWN, role, texK, U, B) {
+        var nT = A.M.length, own = A.own && A.UV && A.UV.length;
+        for (var t = 0; t < nT; t++) {
+            var rk = role(A, t), bk = B[rk] || (B[rk] = { P: [], N: [], UV: [] }), o = t * 9, q;
+            var fx = A.N[o] + A.N[o + 3] + A.N[o + 6], fy = A.N[o + 1] + A.N[o + 4] + A.N[o + 7], fz = A.N[o + 2] + A.N[o + 5] + A.N[o + 8];
+            var ax = Math.abs(fx), ay = Math.abs(fy), az = Math.abs(fz);
+            for (q = 0; q < 3; q++) {
+                var lx = A.P[o + q * 3], ly = A.P[o + q * 3 + 1], lz = A.P[o + q * 3 + 2], w = fnW(lx, ly, lz), nn = fnWN(A.N[o + q * 3], A.N[o + q * 3 + 1], A.N[o + q * 3 + 2], lz);
+                var nl = Math.hypot(nn[0], nn[1], nn[2]) || 1;
+                bk.P.push(w[0] * U, w[1] * U + 0.3, w[2] * U); bk.N.push(nn[0] / nl, nn[1] / nl, nn[2] / nl);
+                if (own) bk.UV.push(A.UV[t * 6 + q * 2], A.UV[t * 6 + q * 2 + 1]);
+                else if (ay >= ax && ay >= az) bk.UV.push(lx * texK, lz * texK);
+                else if (ax >= az) bk.UV.push(lz * texK, ly * texK);
+                else bk.UV.push(lx * texK, ly * texK);
+            }
+        }
+    }
+    /* the buckets → one mesh per role under G; mats(rk) → its material */
+    function _spFlush(B, G, mats, tag) {
+        Object.keys(B).forEach(function (rk) {
+            var bk = B[rk]; if (!bk.P.length) return;
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(bk.P, 3));
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(bk.N, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(bk.UV, 2));
+            geo.computeBoundingSphere(); geo.computeBoundingBox();
+            var mat = mats(rk), m = new THREE.Mesh(geo, mat);
+            m.castShadow = !mat.transparent; m.receiveShadow = true; m.renderOrder = mat.transparent ? 3 : 1; m._ew_pixelate = true; m[tag] = true;
+            G.add(m);
+        });
+    }
+    /* a piece's frame on the ground: the foot (fx, fz) and the way up (ux, uz) → world metres; local X across = (uz, −ux) (the builders' +X) */
+    function _spFrameFns(fx, fz, ux, uz, y0, fit) {
+        var px = uz, pz = -ux;
+        return {
+            P: function (x, y, z) { var q = fit.fn(x, y, z); return [fx + px * q[0] + ux * q[2], y0 + q[1], fz + pz * q[0] + uz * q[2]]; },
+            N: function (x, y, z) { var q = fit.fnN(x, y, z); return [px * q[0] + ux * q[2], q[1], pz * q[0] + uz * q[2]]; },
+        };
+    }
+    /* THE FLIGHTS: every stair ramp (info.builts) drawn as its kind's pack flight, over the solid wedge _hqBuildBuiltStairs lays under it */
+    function _spBuildFlights(room, info, G, TM, U) {
+        if (!_spOn()) return;
+        var SP = _spPack(), K = (typeof HQ_STAIR_KINDS !== 'undefined') ? HQ_STAIR_KINDS : {}, S = room.shell || {};
+        var texK = U / TM * HZ_TEX_DENSITY, byFlight = {};
+        (info.builts || []).forEach(function (f) {
+            if (Math.abs(f.h1 - f.h0) < 0.12) return;
+            var kind = (typeof hqStairKind === 'function') ? hqStairKind(f, room) : null, kd = kind ? K[kind] : null, fk = kd ? kd.flight : null;
+            if (!fk || !SP.flights[fk]) return;
+            (byFlight[fk] || (byFlight[fk] = [])).push({ f: f, kd: kd });
+        });
+        Object.keys(byFlight).forEach(function (fk) {
+            var spec = SP.flights[fk];
+            _spSoup('flight', fk, function (soup) {
+                if (!soup) return;
+                var B = {}, mats = {};
+                byFlight[fk].forEach(function (it) {
+                    var f = it.f, kd = it.kd, up = f.h1 >= f.h0;
+                    var x0 = up ? f.x0 : f.x1, z0 = up ? f.z0 : f.z1, x1 = up ? f.x1 : f.x0, z1 = up ? f.z1 : f.z0, lo = Math.min(f.h0, f.h1), R = Math.abs(f.h1 - f.h0);
+                    var L = Math.hypot(x1 - x0, z1 - z0) || 1, ux = (x1 - x0) / L, uz = (z1 - z0) / L;
+                    var fit = _spFlightFit(soup, spec, f.w, R, L), fr = _spFrameFns(x0, z0, ux, uz, lo, fit);
+                    var tread = f.key || kd.tread || info.path, side = f.side || kd.side || info.cliff, tint = (S.floorColor != null && !f.key) ? S.floorColor : null;
+                    var tk = 'tread|' + tread + '|' + tint, sk = 'side|' + side;
+                    if (!mats[tk]) mats[tk] = _spSheet(tread, spec.look, tint);
+                    if (!mats[sk]) mats[sk] = _spSheet(side, spec.look);
+                    _spEmit(fit.A, fr.P, fr.N, function (A, t) {
+                        var mi = A.M[t], mat = A.mats[mi];
+                        if (_spIsGlass(mat)) return 'glass';
+                        if (A.own) { var ok = 'own|' + mi; if (!mats[ok]) mats[ok] = mat; return ok; }
+                        return (A.N[t * 9 + 1] + A.N[t * 9 + 4] + A.N[t * 9 + 7] > 1.8) ? tk : sk;
+                    }, texK, U, B);
+                });
+                _spFlush(B, G, function (rk) { return rk === 'glass' ? (mats.glass || (mats.glass = _spGlass())) : mats[rk]; }, '_ew_hqStairs');
+                _objectsDirty = true;
+            }, G);
+        });
+    }
+    /* THE RAILINGS: info.railings (data.js hqTerrainCompile — a rail row's runs, a flight's two sides), one merged mesh per model and role */
+    function _spBuildRailings(room, info, G, TM, U) {
+        var list = info.railings || [], SP = _spPack(); if (!list.length) return;
+        if (!_spOn()) return;
+        var byModel = {};
+        list.forEach(function (r) { if (r.model && SP.railings[r.model]) (byModel[r.model] || (byModel[r.model] = [])).push(r); });
+        var texK = U / TM * HZ_TEX_DENSITY;
+        Object.keys(byModel).forEach(function (mk) {
+            var spec = SP.railings[mk];
+            _spSoup('rail', mk, function (soup) {
+                if (!soup) return;
+                var B = {}, mats = {}, ys0 = spec.top * SP.unit.pack, D2R = Math.PI / 180, glassy = spec.look === 'glass';
+                byModel[mk].forEach(function (r) {
+                    var arc = r.arc, len = arc ? Math.abs(arc.a1 - arc.a0) * D2R * arc.r : Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
+                    if (len < 0.2) return;
+                    var fit = _spRailFit(soup, spec, len), ys = (r.top || ys0) / ys0, sc = fit.scale;
+                    var ux = (r.x1 - r.x0) / len, uz = (r.z1 - r.z0) / len, sg = arc ? ((arc.a1 >= arc.a0) ? 1 : -1) : 1;
+                    var at = function (z) { var k = Math.max(0, Math.min(1, z * sc / len)); return { k: k, a: arc ? (arc.a0 + (arc.a1 - arc.a0) * k) * D2R : 0 }; };
+                    var P = function (x, y, z) {
+                        var s = at(z), gy = r.g0 + (r.g1 - r.g0) * s.k;
+                        if (arc) { var rr = arc.r + x * sg; return [arc.x + Math.sin(s.a) * rr, gy + y * ys, arc.z - Math.cos(s.a) * rr]; }
+                        return [r.x0 + ux * z * sc + uz * x, gy + y * ys, r.z0 + uz * z * sc - ux * x];
+                    };
+                    var Nf = function (x, y, z, lz) {
+                        if (arc) { var a = at(lz).a, tx = sg * Math.cos(a), tz = sg * Math.sin(a); return [tz * x + tx * z, y, -tx * x + tz * z]; }
+                        return [uz * x + ux * z, y, -ux * x + uz * z];
+                    };
+                    _spEmit(fit.A, P, Nf, function (A, t) { return (_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body'; }, texK, U, B);
+                });
+                _spFlush(B, G, function (rk) {
+                    if (rk === 'glass') return mats.glass || (mats.glass = _spGlass());
+                    return mats.body || (mats.body = _spSheet(spec.look === 'wood' ? 'wood' : spec.look === 'stone' ? 'concrete' : null, spec.look));
+                }, '_ew_hqRailing');
+                _objectsDirty = true;
+            }, G);
+        });
+    }
+    /* a glass balustrade's pane: the sheet draws its panes in the frame's grey — a big face turned across the run */
+    function _spPane(A, t) {
+        var o = t * 9, P = A.P, nx = Math.abs(A.N[o] + A.N[o + 3] + A.N[o + 6]) / 3; if (nx < 0.85) return false;
+        var ay = P[o + 4] - P[o + 1], az = P[o + 5] - P[o + 2], by = P[o + 7] - P[o + 1], bz = P[o + 8] - P[o + 2];
+        return Math.abs(ay * bz - az * by) / 2 > 0.02;
+    }
+    /* THE ESCALATORS (mondo: "Use the escalators in this pack instead of the meshy escalators in the mall"): every `escalator` ramp is the
+       pack's escalator, fitted to its rise, run and width (its handrails are grinds: data.js hqTerrainCompile) */
+    function _spBuildEscalators(room, info, G, TM, U) {
+        if (!_spOn()) return;
+        var fs = (room.terrain.features || []).filter(function (f) { return f.k === 'ramp' && f.escalator && Math.abs(f.h1 - f.h0) > 0.3; }); if (!fs.length) return;
+        var texK = U / TM * HZ_TEX_DENSITY, SP = _spPack(), byKey = {};
+        fs.forEach(function (f) { var k = (f.model && SP.escalators[f.model]) ? f.model : 'escalator'; (byKey[k] || (byKey[k] = [])).push(f); });
+        Object.keys(byKey).forEach(function (ek) {
+            var E = SP.escalators[ek];
+            _spSoup('esc', ek, function (soup) {
+                if (!soup) return;
+                var B = {}, mats = {};
+                byKey[ek].forEach(function (f) {
+                    var up = f.h1 >= f.h0, x0 = up ? f.x0 : f.x1, z0 = up ? f.z0 : f.z1, x1 = up ? f.x1 : f.x0, z1 = up ? f.z1 : f.z0;
+                    var L = Math.hypot(x1 - x0, z1 - z0) || 1, ux = (x1 - x0) / L, uz = (z1 - z0) / L;
+                    var fit = _spEscalatorFit(soup, E, f.w, Math.abs(f.h1 - f.h0), L), fr = _spFrameFns(x0, z0, ux, uz, Math.min(f.h0, f.h1), fit);
+                    _spEmit(fit.A, fr.P, fr.N, function (A, t) {
+                        if (_spIsGlass(A.mats[A.M[t]])) return 'glass';
+                        return (A.N[t * 9 + 1] + A.N[t * 9 + 4] + A.N[t * 9 + 7] > 1.8) ? 'tread' : 'body';
+                    }, texK, U, B);
+                });
+                _spFlush(B, G, function (rk) {
+                    if (rk === 'glass') return mats.glass || (mats.glass = _spGlass());
+                    return mats[rk] || (mats[rk] = _spSheet('metal', 'steel', rk === 'tread' ? 0xb0b0b4 : null));
+                }, '_ew_hqEscalator');
+                _objectsDirty = true;
+            }, G);
+        });
+    }
     /* THE BUILT RAMP (2026-10-05, mondo: "wtf are these bullshit stairs ... either make a smooth ramp or use a stairs prop"): a `built: true`
        stair ramp was masonry, one block per 0.5 m step — the chunky stepped blocks all over the game. The field no longer steps any ramp
        (data.js hqTerrainCompile: only a floating flight keeps its treads), so a built flight is now ONE SOLID SLOPE: a wedge from the
@@ -45908,9 +46252,14 @@ const ThreeRenderer = (function () {
             var base = Math.min(f.h0, f.h1, (typeof f.foot === 'number') ? f.foot : Infinity) - 0.05, Lt = L + 0.25;   // `foot` (the editor's MODULAR STAIRS on an upper floor): the mass drawn down to it
             /* a frame at the flight's foot, turned down its run: every piece below is built in it */
             var F = new THREE.Group(); F.position.set(f.x0 * U, 0, f.z0 * U); F.rotation.y = yaw; G.add(F);
-            var slope = new THREE.Mesh(_hqSlopePrismGeo(f.w, 0, L, Lt, f.h0, f.h1, 0, base, U, TM), [treadMat, sideMat]);
+            /* THE STAIRS PACK (2026-10-05): a flight the pack draws (_spBuildFlights) keeps this wedge as its mass, its top sunk half a riser
+               under the walker's slope so every step stands proud of it (the steps' inner corners lie half a riser under the slope) */
+            var packed = _spOn() && Math.abs(f.h1 - f.h0) >= 0.12 && (function () { var kd = (typeof HQ_STAIR_KINDS !== 'undefined' && typeof hqStairKind === 'function') ? HQ_STAIR_KINDS[hqStairKind(f, room)] : null; return !!(kd && kd.flight && HQ_STAIR_PACK.flights[kd.flight]); })();
+            var SRr = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : { riser: 0.18, minSteps: 2, maxSteps: 90 }, Rr = Math.abs(f.h1 - f.h0);
+            var sink = packed ? -(0.5 * Rr / Math.max(SRr.minSteps, Math.min(SRr.maxSteps, Math.round(Rr / SRr.riser))) + 0.02) : 0;
+            var slope = new THREE.Mesh(_hqSlopePrismGeo(f.w * (packed ? 0.96 : 1), 0, L, Lt, f.h0, f.h1, sink, base, U, TM), [packed ? sideMat : treadMat, sideMat]);
             slope.castShadow = true; slope.receiveShadow = true; slope.renderOrder = 1; F.add(slope);
-            var runW = (f.runner && f.runner.w) ? Math.min(f.w - 0.2, f.runner.w) : 0;
+            var runW = (f.runner && f.runner.w && !packed) ? Math.min(f.w - 0.2, f.runner.w) : 0;
             if (runW > 0) {
                 var runMat = new THREE.MeshPhongMaterial({ color: (f.runner.color != null) ? f.runner.color : 0x3558d8, shininess: 6 }); runMat.emissive = new THREE.Color(runMat.color).multiplyScalar(0.12);
                 var rt = new THREE.Mesh(_hqSlopePrismGeo(runW, 0, L, Lt, f.h0, f.h1, 0.03, Math.min(f.h0, f.h1) + 0.005, U, TM), [runMat, runMat]); rt.renderOrder = 2; F.add(rt);
@@ -45937,6 +46286,7 @@ const ThreeRenderer = (function () {
                 }
             }
         });
+        try { _spBuildFlights(room, info, G, TM, U); } catch (e) { console.warn('[HQ] the stairs pack flights failed', e); }
     }
     function _hqBuildFloats(room, info, G, TM, rng, floats) {
         var U = _hqUnits(), S = room.shell, res = info.res;
@@ -46963,7 +47313,7 @@ const ThreeRenderer = (function () {
                     if (din > -(edge + res * 1.2) && din < edge + res * 0.75) return true;
                 } else {
                     var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
-                    if (f.built) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true; continue; }
+                    if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
                     if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true;
                 }
             }
@@ -47134,15 +47484,8 @@ const ThreeRenderer = (function () {
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
         if (info.genPlan && info.gen && info.gen.kind === 'ley') { try { _hqBuildLeyVeins(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the ley veins failed', e); } }   // THE LEY LINES (2026-09-18): the walls light themselves
         if (_hqSliceDue()) yield;
-        /* ── THE RAILS: posts and a bar along the ground ── */
-        info.rails.filter(function (r) { return r.rail; }).forEach(function (r) {
-            var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0), yaw = Math.atan2(r.x1 - r.x0, r.z1 - r.z0);
-            var g = new THREE.Group(); g.position.set((r.x0 + r.x1) / 2 * U, 0, (r.z0 + r.z1) / 2 * U); g.rotation.y = yaw;
-            var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, L * U, 8), new THREE.MeshPhongMaterial({ color: 0x8a8f94, shininess: 60 })); bar.rotation.x = Math.PI / 2; bar.position.y = r.y * U; g.add(bar);
-            var n = Math.max(2, Math.round(L / 1.6));
-            for (var pk = 0; pk < n; pk++) { var t = n === 1 ? 0.5 : pk / (n - 1); var wx = r.x0 + (r.x1 - r.x0) * t, wz = r.z0 + (r.z1 - r.z0) * t, gy = hqTerrainHeight(info, wx, wz); var post = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.04 * U, (r.y - gy) * U, 6), bar.material); post.position.set(0, (gy + (r.y - gy) / 2) * U, (t - 0.5) * L * U); g.add(post); }
-            G.add(g);
-        });
+        /* ── THE RAILINGS (THE STAIRS PACK, 2026-10-05): the pack's balustrades along every rail row and up every flight ── */
+        try { _spBuildRailings(room, info, G, TM, U); } catch (e) { console.warn('[HQ] the railings failed', e); }
         _hq.rails.push.apply(_hq.rails, info.rails);
         /* ── THE RAMPS on the park register (a rise taken at speed is a hop) ── */
         (room.terrain.features || []).forEach(function (f) {
@@ -47800,7 +48143,7 @@ const ThreeRenderer = (function () {
        floor to a metre over the treads — that hides the skirt and reads as the machine's own side panel. Local frame: +Z the
        low end, −Z the top (the builder's). */
     function _hqEscalatorBalustrades(group, f, U) {
-        var len = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), rise = f.h1 - f.h0, hw = f.w / 2 + 0.55, th = 0.12, over = 1.0, under = 0.25;
+        var len = Math.hypot(f.x1 - f.x0, f.z1 - f.z0), rise = f.h1 - f.h0, hw = f.w / 2 + 0.06, th = 0.08, over = 0.2, under = 0.25;   // THE STAIRS PACK: tight to the pack escalator's own truss, under its glass
         var mat = new THREE.MeshPhongMaterial({ color: 0x7a7e86, shininess: 55, specular: 0x333338, side: THREE.DoubleSide }); mat.emissive = new THREE.Color(0x0e0e10);
         var pos = [], idx = [], uv = [];
         var v = function (x, y, z) { pos.push(x * U, y * U, z * U); uv.push(z / 1.75, y / 1.75); return pos.length / 3 - 1; };
@@ -47823,35 +48166,19 @@ const ThreeRenderer = (function () {
         var m = new THREE.Mesh(g, mat); m._ew_hqBalustrade = true; m.castShadow = false; group.add(m);
         return m;
     }
-    /* The escalator replaces the visible terrain ramp. Its measured GLB has
-       +Z at the low end, -Z at the top, and flat landings at both ends.
-       A fitted metal stair remains visible if the model is unavailable. */
+    /* THE ESCALATORS (THE STAIRS PACK, 2026-10-05 — mondo: "Use the escalators in this pack instead of the meshy escalators in the mall"):
+       the pack's escalator, fitted to the ramp (_spBuildEscalators), over the side panels that hide the field's skirt. Nothing else is
+       drawn: no stand-in while the file streams. */
     function _hqBuildEscalators(room, info, G, TM) {
         if (!(room.terrain.features || []).some(function (f) { return f.escalator; })) return;
-        var U = _hqUnits(), prevTs = _hzKitTs; _hzKitTs = TM;
-        try { (room.terrain.features || []).forEach(function (f) {
+        var U = _hqUnits();
+        (room.terrain.features || []).forEach(function (f) {
             if (!f.escalator) return;
-            var dx = f.x1 - f.x0, dz = f.z1 - f.z0, len = Math.hypot(dx, dz), rise = f.h1 - f.h0;
+            var dx = f.x1 - f.x0, dz = f.z1 - f.z0;
             var group = new THREE.Group(); group.position.set((f.x0 + f.x1) / 2 * U, f.h0 * U + 0.3, (f.z0 + f.z1) / 2 * U); group.rotation.y = Math.atan2(-dx, -dz); G.add(group);
-            var fallback = new THREE.Group(); group.add(fallback);
-            try { _hqEscalatorBalustrades(group, f, U); } catch (e) { console.warn('[HQ] the balustrades failed', e); }   // THE THIRD PASS (2026-09-17): the side panels over the field's skirt
-            var metal = new THREE.MeshPhongMaterial({ color: 0x666b70, shininess: 70 }), edge = new THREE.MeshBasicMaterial({ color: 0xd7b74a });
-            var n = Math.ceil(rise / 0.15);
-            for (var i = 0; i < n; i++) {
-                var h = rise * (i + 1) / n, z = len / 2 - len * (i + 0.5) / n;
-                var step = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, h * U, len / n * U), metal); step.position.set(0, h / 2 * U, z * U); fallback.add(step);
-                var stripe = new THREE.Mesh(new THREE.BoxGeometry(f.w * U, 0.012 * U, 0.025 * U), edge); stripe.position.set(0, h * U, (z + len / n / 2 - 0.02) * U); fallback.add(stripe);
-            }
-            [-1, 0, 1].forEach(function (side) {
-                var rail = new THREE.Mesh(new THREE.BoxGeometry(0.08 * U, 0.1 * U, Math.hypot(len, rise) * U), metal);
-                rail.position.set(side * (f.w / 2 - 0.04) * U, (rise / 2 + 0.85) * U, 0); rail.rotation.x = Math.atan2(rise, len); fallback.add(rail);
-            });
-            var kit = _hzMiscKit('escalator', { metres: 1, fit: 'span', lift: 0.12, foot: 0, low: 'skip', onDone: function (grp, scale, bb) {
-                grp.scale.set(f.w * U / ((bb.max.x - bb.min.x) * scale), rise * U / (0.56 * scale), (len / 0.66) * U / ((bb.max.z - bb.min.z) * scale));
-                grp.position.y = -0.035 * rise / 0.56 * U;
-                fallback.visible = false;
-            } }); group.add(kit);
-        }); } finally { _hzKitTs = prevTs; }
+            try { _hqEscalatorBalustrades(group, f, U); } catch (e) { console.warn('[HQ] the balustrades failed', e); }
+        });
+        try { _spBuildEscalators(room, info, G, TM, U); } catch (e) { console.warn('[HQ] the pack escalators failed', e); }
     }
     /* THE ROAD TILES (DISASTER CITY, THE SECOND PASS, 2026-09-17): the user's straight road + quarter-turn GLBs (1 × 1
        squares; the straight one's dashes along its Z, kerbs on its X sides; the turn joins two adjacent edges round a
@@ -57458,9 +57785,10 @@ const ThreeRenderer = (function () {
     function _hqRailLen(r) { return r.arc ? _hqRad(Math.abs(r.a1 - r.a0)) * r.r : Math.hypot(r.x1 - r.x0, r.z1 - r.z0); }
     /* the point + unit tangent `s` metres along the run (an arc runs a0 → a1) */
     function _hqRailAt(r, s) {
-        if (r.arc) {
-            var sg = (r.a1 >= r.a0) ? 1 : -1, a = _hqRad(r.a0 + sg * (s / Math.max(0.001, r.r)) * 180 / Math.PI);
-            return { x: Math.sin(a) * r.r, z: -Math.cos(a) * r.r, y: r.y, tx: sg * Math.cos(a), tz: sg * Math.sin(a) };
+        if (r.arc) {   /* THE STAIRS PACK (2026-10-05): an arc round its own centre (cx, cz; the room's centre when it names none), sloped y0 → y1 when it has them (a curved railing down a slope) */
+            var sg = (r.a1 >= r.a0) ? 1 : -1, a = _hqRad(r.a0 + sg * (s / Math.max(0.001, r.r)) * 180 / Math.PI), aL = _hqRailLen(r) || 0.001;
+            var ay = (r.y0 != null && r.y1 != null) ? r.y0 + (r.y1 - r.y0) * Math.max(0, Math.min(1, s / aL)) : r.y;
+            return { x: (r.cx || 0) + Math.sin(a) * r.r, z: (r.cz || 0) - Math.cos(a) * r.r, y: ay, tx: sg * Math.cos(a), tz: sg * Math.sin(a) };
         }
         var L = _hqRailLen(r) || 0.001, tx = (r.x1 - r.x0) / L, tz = (r.z1 - r.z0) / L, k = s / L;
         var y = (r.y0 != null && r.y1 != null) ? r.y0 + (r.y1 - r.y0) * k : r.y;
@@ -57470,7 +57798,7 @@ const ThreeRenderer = (function () {
     function _hqRailNearest(r, x, z) {
         var s;
         if (r.arc) {
-            var lo = Math.min(r.a0, r.a1), hi = Math.max(r.a0, r.a1), deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI), best = null;
+            var lo = Math.min(r.a0, r.a1), hi = Math.max(r.a0, r.a1), deg = _hqNormDeg(Math.atan2(x - (r.cx || 0), -(z - (r.cz || 0))) * 180 / Math.PI), best = null;
             [deg - 360, deg, deg + 360].forEach(function (d) {
                 var c = Math.max(lo, Math.min(hi, d)), off = Math.abs(c - d);
                 if (best === null || off < best.off) best = { d: c, off: off };
@@ -57896,6 +58224,10 @@ const ThreeRenderer = (function () {
             if (_hqPortalSweep(dt, { x: railDir.tx * g.dir * R.v, y: 0, z: railDir.tz * g.dir * R.v })) return;
             g.t += dt; g.pts += (TR.grind.perSec || 0) * dt;
             R.v *= Math.pow(S.grindFriction, dt * 60);
+            /* THE STAIRS PACK (2026-10-05, mondo: "I should be able to grind down stairs too, especially ones with railing like the escalator"):
+               a sloped rail (a flight's railing, an escalator's handrail, a railing down a slope) pulls the rider down it — faster going down,
+               slower going up (a climb that stalls drops off) */
+            if (g.rail.y0 != null && g.rail.y1 != null && L > 0.01) { var slp = (g.rail.y1 - g.rail.y0) / L; R.v = Math.max(0, R.v - g.dir * slp * HQ_GRAV * 0.55 * dt); }
             g.s += g.dir * R.v * dt;
             g.drift += (Math.random() - 0.5) * 3.0 * dt; g.drift = Math.max(-S.grindDrift, Math.min(S.grindDrift, g.drift));
             R.bal += g.drift * dt + ((k.d ? 1 : 0) - (k.a ? 1 : 0)) * 1.4 * dt;
@@ -58164,7 +58496,7 @@ const ThreeRenderer = (function () {
                     R.bal = 0; R.trick = null; R.queue = []; R.flip = R.roll = R.deckRoll = R.deckSpin = 0; R.grab = false;
                     R.stance = 0; R.spinAcc = 0; R.vert = null; R.launchKind = null; R.lipT = 9;
                     pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.x = p.x; pl.z = p.z; pl.y = p.y + 0.02;
-                    var gl = snap.rail.gallery ? 'BANISTER GRIND' : snap.rail.arc ? 'RING GRIND' : snap.rail.bridge ? 'ROPE GRIND' : '50-50 GRIND';
+                    var gl = snap.rail.escalator ? 'ESCALATOR GRIND' : snap.rail.stair ? 'HANDRAIL GRIND' : snap.rail.gallery ? 'BANISTER GRIND' : snap.rail.arc ? 'RING GRIND' : snap.rail.bridge ? 'ROPE GRIND' : '50-50 GRIND';
                     _hqRideComboAdd(R, gl, TR.grind.pts || 0);
                     _hqRideEmit({ kind: 'grindstart', rail: gl, rope: !!snap.rail.bridge });
                     if (pl.entry) pl.entry._ew_hqLandAt = performance.now();

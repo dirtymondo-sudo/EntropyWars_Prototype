@@ -197,9 +197,10 @@
         /* ── THE ADD LIST: the compiler's row kinds (EDITOR_PLAN §4.2) with the row each places at (x, z) ── */
         var KINDS = [
             { id: 'wall', label: 'Wall', row: function (x, z) { return { k: 'wall', x0: x - 2, z0: z, x1: x + 2, z1: z, h: 3, t: 0.35, key: 'urban:ConcreteStriped2c' }; } },
-            { id: 'rail', label: 'Rail (grind)', row: function (x, z) { return { k: 'rail', x0: x - 2, z0: z, x1: x + 2, z1: z }; } },
+            { id: 'rail', label: 'Railing (grind)', row: function (x, z) { return { k: 'rail', x0: x - 2, z0: z, x1: x + 2, z1: z, model: 'balusters_b' }; } },   // THE STAIRS PACK: `model` = a HQ_STAIR_PACK railing
+            { id: 'railarc', label: 'Curved railing (grind)', row: function (x, z) { return { k: 'rail', arc: { x: x, z: z + 4, r: 4, a0: 135, a1: 225 }, model: 'balusters_b' }; } },
             { id: 'ramp', label: 'Ramp', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 3, x1: x, z1: z - 3, w: 3, h0: 0, h1: 2 }; } },
-            { id: 'stairs', label: 'Solid ramp (built, with sides)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 3, x1: x, z1: z - 3, w: 2, h0: 0, h1: 2, stairs: true, built: true }; } },   // 2026-10-05: no stepped stairs anywhere — a smooth solid ramp
+            { id: 'stairs', label: 'Stairs (the stairs pack)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 3, x1: x, z1: z - 3, w: 2, h0: 0, h1: 2, stairs: true, built: true, model: 'concrete' }; } },   // 2026-10-05: no stepped stairs anywhere — a smooth solid ramp
             { id: 'kicker', label: 'Kicker (skate)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 1.3, x1: x, z1: z - 1.3, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true }; } },
             { id: 'spiral', label: 'Spiral ramp', row: function (x, z) { return { k: 'spiral', x: x, z: z, r0: 2, r1: 4, a0: 0, a1: 270, h0: 0, h1: 4 }; } },
             { id: 'deck', label: 'Deck (raised floor)', row: function (x, z) { return { k: 'deck', x0: x - 3, z0: z, x1: x + 3, z1: z, w: 2, y: 2 }; } },
@@ -264,7 +265,7 @@
         reloadTimer: null, saveTimer: null, statusAt: 0, flags: null, hook: null, ready: false,
         /* E1: the draw tool ({ tool, a, chain, preview }), its options, the prefab being edited */
         draw: null, pfId: null,
-        opts: { wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3, tab: 'build', doorLeaf: 'leaf_office',
+        opts: { stairKind: 'concrete', wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3, tab: 'build', doorLeaf: 'leaf_office',
                 /* E3: the ground brushes, the paint, the water */
                 brushR: 4, brushS: 0.5, brushFall: 'smooth', terraceH: 1, cliffH: 3, setH: 0, paintKey: '', paintErase: false, waterKey: 'water', waterDepth: 0.8, streamW: 2.4,
                 /* E5: the layout */
@@ -968,7 +969,7 @@
             var L = Math.hypot(p.x - a.x, p.z - a.z); if (L < 0.5) return;
             var g0 = ground(a.x, a.z), h1 = Math.max(0.2, O.height), stairs = D.tool === 'stairs';
             if (stairs && L < 2.2 * (h1 - g0) - 0.01) toast('STAIRS THAT STEEP ARE REFUSED BY THE WALKER · make them at least ' + (2.2 * (h1 - g0)).toFixed(1) + ' m long', 5000);
-            var rr = { k: 'ramp', x0: a.x, z0: a.z, x1: p.x, z1: p.z, w: 2, h0: Core.snap(g0, 0.01), h1: h1 }; if (stairs) { rr.stairs = true; rr.built = true; }
+            var rr = { k: 'ramp', x0: a.x, z0: a.z, x1: p.x, z1: p.z, w: 2, h0: Core.snap(g0, 0.01), h1: h1 }; if (stairs) { rr.stairs = true; rr.built = true; if (O.stairKind) rr.model = O.stairKind; }
             drawRows([rr], stairs ? 'stairs' : 'ramp');
             return;
         }
@@ -1239,6 +1240,7 @@
             var mx = (ci + 0.5) * C, mz = (cj + 0.5) * C, fx0 = ux ? (ux > 0 ? ci * C : (ci + 1) * C) : mx, fz0 = uz ? (uz > 0 ? cj * C : (cj + 1) * C) : mz;
             var st = { k: 'ramp', x0: R4(fx0), z0: R4(fz0), x1: R4(fx0 + ux * run), z1: R4(fz0 + uz * run), w: Math.min(2, C * 0.6), h0: R4(h0), h1: R4(top), stairs: true, built: true, foot: R4(b), bld: bld };
             if (O.floorKey) st.key = O.floorKey;
+            if (O.stairKind) st.model = O.stairKind;   // THE STAIRS PACK: the flight drawn over it
             rows.push(st); pv.push(segPv({ x: st.x0, z: st.z0 }, { x: st.x1, z: st.z1 }, st.w, b, top));
             return { rows: rows, pv: pv, info: 'stairs ' + run + ' m run · ' + rs.toFixed(1) + ' m up' };
         }
@@ -2785,7 +2787,7 @@
         wall: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
         room: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
         slab: [['height', 'Floor height (m, absolute)'], ['floorKey', 'Floor sheet', 1]],
-        stairs: [['height', 'Top height (m, absolute)']],
+        stairs: [['height', 'Top height (m, absolute)'], ['stairKind', 'Stairs (the pack)', 'stairkind']],
         ramp: [['height', 'Top height (m, absolute)']],
         building: [['storeys', 'Storeys']],
         doorway: [['doorLeaf', 'Leaf', 'leaf']],
@@ -2811,7 +2813,7 @@
     var MOD_GRID = [['modS', 'Floor (0 = ground) · [ ]'], ['modC', 'Cell (m)'], ['modH', 'Floor height (m)']];
     OPT_FIELDS.mfloor = MOD_GRID.concat([['floorKey', 'Sheet', 1]]);
     OPT_FIELDS.mwall = MOD_GRID.concat([['wallT', 'Thickness (m)'], ['wallKey', 'Sheet', 1], ['wallKeyIn', 'Inside sheet', 1]]);
-    OPT_FIELDS.mstairs = MOD_GRID.concat([['floorKey', 'Sheet', 1]]);
+    OPT_FIELDS.mstairs = MOD_GRID.concat([['stairKind', 'Stairs (the pack)', 'stairkind'], ['floorKey', 'Sheet', 1]]);
     OPT_FIELDS.mroof = MOD_GRID.concat([['roofH', 'Roof rise (m)'], ['roofKey', 'Roof sheet', 1], ['floorKey', 'Ceiling sheet', 1]]);
     ['hill', 'mountain', 'volcano', 'mesa', 'bowl', 'pit', 'boxup', 'boxdown', 'level', 'sridge', 'trench'].forEach(function (k) {
         OPT_FIELDS[k] = [['shapeR', DRAWS[k].form === 'line' ? 'Size: width (m) · [ ]' : DRAWS[k].form === 'rect' ? 'Size: half side on a click (m) · [ ]' : 'Size: radius on a click (m) · [ ]']]
@@ -2829,6 +2831,8 @@
             if (F.length) h += '<div class="ed-form" data-scope="opts">' + F.map(function (f) {
                 var v = ED.opts[f[0]];
                 if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava']]; return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
+                /* THE STAIRS PACK (2026-10-05): a stair kind (data.js HQ_STAIR_KINDS — the flight, its railing, its sheets) */
+                if (f[2] === 'stairkind') { var SK = W.HQ_STAIR_KINDS || (typeof HQ_STAIR_KINDS !== 'undefined' ? HQ_STAIR_KINDS : {}); return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + Object.keys(SK).map(function (k) { return '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + k.replace(/_/g, ' ') + '</option>'; }).join('') + '</select></label>'; }
                 if (f[2] === 'leaf') return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlLeaf"></label>';
                 if (f[2]) return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlTex"><button class="ed-btn ed-texb" data-otex="' + f[0] + '" title="Pick a texture"' + texSwatchStyle(v) + '>…</button></label>';
                 return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="number" step="any" data-o="' + f[0] + '" value="' + esc(v) + '"></label>';
