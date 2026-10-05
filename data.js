@@ -43475,34 +43475,49 @@ const HQ_AREA_SPECS = {
             { k: 'space', x: 22, z: 14, w: 14, d: 18 },                                                // THE CRYSTAL FOREST
             { k: 'hall', pts: [[7.5, 13], [15.5, 13]], w: 3 }, { k: 'hall', pts: [[22, -1.5], [22, 5.5]], w: 3 }, { k: 'hall', pts: [[33, 6], [28.5, 6]], w: 3 },
             { k: 'hall', pts: [[16, 21.5], [4, 21.5]], w: 3 },
-            /* THE LAKE and its bridge (both banks); THE PIER's wall along the south bank (the grind); THE SPIRE's foot (6.2, the tape — the door gun's) over the lake's west bank */
+            /* THE LAKE and its bridge (both banks, a skate rail along it); THE PIER's wall along the south bank (a ledge, the grind); THE SPIRE's foot (6.2, the tape — the door gun's) over the lake's west bank */
             { k: 'pool', x: 16, z: -11, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },
             { k: 'deck', x0: 6.5, z0: -11, x1: 25.5, z1: -11, w: 2.4, y: 0.3 },
-            { k: 'wall', x0: 10, z0: -3.2, x1: 20, z1: -3.2, h: 0.8, t: 0.5, key: 'marble_light' },
+            { k: 'rail', x0: 8.5, z0: -12.0, x1: 23.5, z1: -12.0, y: 0.3, model: 'pipe', block: false },
+            { k: 'wall', x0: 10, z0: -3.2, x1: 20, z1: -3.2, h: 0.55, t: 0.5, key: 'marble_light' },
             { k: 'plateau', x: 6, z: -16, r: 2.6, h: 6.2, edge: 0.15 },
-            /* THE LOWER TERRACE (1.6) up its stair from the east or the vine on its south face; THE UPPER TERRACE (3.6) up its stair or the rope on its south face */
-            { k: 'plateau', x: -23, z: -11.5, w: 16, d: 15, h: 1.6, edge: 0.15 },
-            { k: 'ramp', x0: -10.5, z0: -7, x1: -15.6, z1: -7, w: 2.8, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            /* a curved skate rail round the plaza's fountain, open on the four sides */
+            { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 25, a1: 65 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 115, a1: 155 }, model: 'pipe', block: false },
+            { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 205, a1: 245 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 295, a1: 335 }, model: 'pipe', block: false },
+            /* THE TERRACES, one upper district: THE LOWER TERRACE (1.6) up its stair from the east or the vine on its south face; THE UPPER TERRACE (3.6) up its stair or the rope on its south face;
+               THE GALLERY east from it to THE BALCONY (3.6) in two spans with a 2.5 m gap (a rail across it); the balcony down a stair to THE ADIT TERRACE (2.4) or its ladder; glass railings on every edge */
+            { k: 'plateau', x: -23.5, z: -11.75, w: 17, d: 15.5, h: 1.6, edge: 0.15 },
+            { k: 'ramp', x0: -10.5, z0: -7, x1: -15.6, z1: -7, w: 2.8, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
             { k: 'climb', x: -18, z: -4.3, face: 0, look: 'vine' },
-            { k: 'plateau', x: -27.5, z: -15, w: 7, d: 8, h: 3.6, edge: 0.15 },
-            { k: 'ramp', x0: -18.5, z0: -17, x1: -24.6, z1: -17, w: 2.4, h0: 1.6, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'plateau', x: -28, z: -15.25, w: 8, d: 8.5, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: -18.5, z0: -17, x1: -24.6, z1: -17, w: 2.4, h0: 1.6, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
             { k: 'climb', x: -29, z: -11.3, face: 0, look: 'rope' },
-            /* THE GALLERY: a level span from the upper terrace east to THE BALCONY (3.6) — the bridge layer over the lower terrace —; the balcony's ladder up from the ground */
-            { k: 'plateau', x: -10.5, z: -13, w: 5, d: 6, h: 3.6, edge: 0.15 }, { k: 'deck', x0: -25.2, z0: -13, x1: -12.3, z1: -13, w: 2.4, y: 3.6, over: true },
+            { k: 'plateau', x: -10.5, z: -14.25, w: 5, d: 8.5, h: 3.6, edge: 0.15 },                                              // the balcony
+            { k: 'deck', x0: -25.2, z0: -13, x1: -20, z1: -13, w: 2.4, y: 3.6, over: true }, { k: 'deck', x0: -17.5, z0: -13, x1: -12.3, z1: -13, w: 2.4, y: 3.6, over: true },
+            { k: 'rail', x0: -20.3, z0: -13, x1: -17.2, z1: -13, y: 3.6, model: 'pipe', block: false },                                // across the gallery's gap
             { k: 'climb', x: -10.5, z: -10.3, face: 0, look: 'ladder' },
-            /* THE ADIT TERRACE (2.4) against the north wall — the cave's adit stands ON it (a door you climb to): a stair from the south, the hand-holds up its south face */
-            { k: 'plateau', x: -5.5, z: -25, w: 13, d: 6, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: -5, z0: -15.8, x1: -5, z1: -22.6, w: 2.8, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
-            { k: 'climb', x: -9.5, z: -22.3, face: 0, look: 'wall' },
-            /* THE CRYSTAL FOREST (3.0): a stair from the plaza, a vine up its north face */
+            { k: 'ramp', x0: -10.5, z0: -22.6, x1: -10.5, z1: -17.8, w: 2.4, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'rail', x0: -15.3, z0: -18.7, x1: -15.3, z1: -8.6, model: 'glass' }, { k: 'rail', x0: -15.3, z0: -5.4, x1: -15.3, z1: -4.3, model: 'glass' },
+            { k: 'rail', x0: -30.7, z0: -4.3, x1: -19, z1: -4.3, model: 'glass' }, { k: 'rail', x0: -17, z0: -4.3, x1: -15.3, z1: -4.3, model: 'glass' },
+            { k: 'rail', x0: -24.3, z0: -15.6, x1: -24.3, z1: -14.4, model: 'glass' }, { k: 'rail', x0: -30.7, z0: -11.3, x1: -29.8, z1: -11.3, model: 'glass' }, { k: 'rail', x0: -28.2, z0: -11.3, x1: -24.3, z1: -11.3, model: 'glass' },
+            { k: 'rail', x0: -12.7, z0: -18.2, x1: -12.7, z1: -14.4, model: 'glass' }, { k: 'rail', x0: -12.7, z0: -11.6, x1: -12.7, z1: -10.3, model: 'glass' },
+            { k: 'rail', x0: -12.7, z0: -10.3, x1: -11.3, z1: -10.3, model: 'glass' }, { k: 'rail', x0: -9.7, z0: -10.3, x1: -8.3, z1: -10.3, model: 'glass' }, { k: 'rail', x0: -8.3, z0: -18.2, x1: -8.3, z1: -10.3, model: 'glass' },
+            /* THE ADIT TERRACE (2.4) against the north wall — the cave's adit stands ON it (a door you climb to): a stair from the south (a centre handrail), the stair up to the balcony, the hand-holds up its south face */
+            { k: 'plateau', x: -5.5, z: -25, w: 15, d: 6, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: -5, z0: -15.8, x1: -5, z1: -22.6, w: 2.8, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'rail', pts: [[-5, -16.0, 0.07], [-5, -22.3, 2.3]], model: 'pipe', block: false },                                    // its centre handrail
+            { k: 'climb', x: -1.5, z: -22.3, face: 0, look: 'wall' },
+            { k: 'rail', x0: -9.1, z0: -22.3, x1: -6.6, z1: -22.3, model: 'glass' }, { k: 'rail', x0: -3.4, z0: -22.3, x1: -2.4, z1: -22.3, model: 'glass' }, { k: 'rail', x0: -0.6, z0: -22.3, x1: 0.7, z1: -22.3, model: 'glass' },
+            /* THE CRYSTAL FOREST (3.0): a stair from the plaza, a vine up its north face, glass railings round it */
             { k: 'plateau', x: 20, z: 15, w: 10, d: 10, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 9, z0: 13, x1: 15.6, z1: 13, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'ramp', x0: 9, z0: 13, x1: 15.6, z1: 13, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
             { k: 'climb', x: 20, z: 10.3, face: 180, look: 'vine' },
+            { k: 'rail', x0: 15.3, z0: 10.3, x1: 15.3, z1: 11.6, model: 'glass' }, { k: 'rail', x0: 15.3, z0: 14.4, x1: 15.3, z1: 19.7, model: 'glass' }, { k: 'rail', x0: 15.3, z0: 19.7, x1: 24.7, z1: 19.7, model: 'glass' },
+            { k: 'rail', x0: 15.3, z0: 10.3, x1: 19, z1: 10.3, model: 'glass' }, { k: 'rail', x0: 21, z0: 10.3, x1: 24.7, z1: 10.3, model: 'glass' }, { k: 'rail', x0: 24.7, z0: 10.3, x1: 24.7, z1: 19.7, model: 'glass' },
             { k: 'rail', x0: -29.5, z0: -2.3, x1: -21.5, z1: -2.3 },
             { k: 'scatter', key: 'crystal_cluster', n: 10, seed: 5 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'greek_column', n: 4, seed: 8 }, { k: 'scatter', key: 'menhir', n: 3, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 12 },
         ],
-        props: [{ key: 'railing_1m', x: -15.4, z: -10, face: 90, y: 1.6 }, { key: 'railing_1m', x: -26.5, z: -11.3, face: 0, y: 3.6 }, { key: 'railing_1m', x: -2, z: -22.3, face: 0, y: 2.4 }, { key: 'railing_1m', x: 15.4, z: 16.5, face: 90, y: 3.0 },
-                { key: 'riser_1', x: 5, z: 12 }, { key: 'crystal_cluster', x: 6, z: -16, y: 6.2 }, { key: 'fountain', x: 0, z: 3 }, { key: 'crystal_cluster', x: 22, z: 12, y: 3.0 }, { key: 'crystal_cluster', x: 18, z: 16, y: 3.0 }, { key: 'crystal_cluster', x: 21, z: 17, y: 3.0 },
+        props: [{ key: 'riser_1', x: 5, z: 12 }, { key: 'crystal_cluster', x: 6, z: -16, y: 6.2 }, { key: 'fountain', x: 0, z: 3 }, { key: 'crystal_cluster', x: 22, z: 12, y: 3.0 }, { key: 'crystal_cluster', x: 18, z: 16, y: 3.0 }, { key: 'crystal_cluster', x: 21, z: 17, y: 3.0 },
                 { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 4, z: 12, face: 0 }, { key: 'garden_ring', x: -5.5, z: 3 }, { key: 'garden_ring', x: 5.5, z: 3 }, { key: 'planter', x: -3.5, z: 21 }, { key: 'planter', x: 3.5, z: 25 },
                 { key: 'lectern', x: -28, z: -14, y: 3.6, face: 180 }, { key: 'brass_telescope', x: -29.5, z: -12.5, y: 3.6, face: 0 }, { key: 'brazier', x: -22, z: -5, y: 1.6 }, { key: 'brazier', x: -30, z: -5, y: 1.6 }, { key: 'sea_chest', x: -10.5, z: -14, y: 3.6 },
                 { key: 'stone_altar', x: -5, z: -26, y: 2.4 }, { key: 'brazier', x: -9, z: -24, y: 2.4 }, { key: 'brazier', x: -1, z: -24, y: 2.4 }, { key: 'candle_ring', x: -18, z: -8, y: 1.6 },
