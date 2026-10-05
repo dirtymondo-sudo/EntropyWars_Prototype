@@ -301,12 +301,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Caveat:wght@500;700&family=Cinzel:wght@700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+SC:wght@500;600;700&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20261005-lavaflow-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20261005-lavaflow-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20261005-lavaflow-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20261005-lavaflow-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20261005-daisflicker-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20261005-daisflicker-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20261005-daisflicker-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20261005-daisflicker-01-cors">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20261005-lavaflow-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20261005-daisflicker-01-cors">
     <!-- Three.js (RENDERER_PLAN R2, 2026-10-02): ONE copy of the current release for the board renderer AND the menu sky
          shader, loaded as ES modules through this import map (r148 dropped the classic examples/js add-ons, r160 the UMD
          build). The module shim below puts the namespace plus the add-ons the game uses on window.THREE exactly where
@@ -441,8 +441,8 @@
             .catch(function (e) { console.warn('[TEXT] troika-three-text did not load — the HQ plates stay CSS2D', e); });
     </script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script defer src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20261005-lavaflow-01-cors"></script>
-    <link rel="preload" id="ew-asset-manifest" as="fetch" crossorigin="anonymous" href="https://cdn.entropywars.net/ASSET_MANIFEST.json?v=20261005-lavaflow-01-cors">
+    <script defer src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20261005-daisflicker-01-cors"></script>
+    <link rel="preload" id="ew-asset-manifest" as="fetch" crossorigin="anonymous" href="https://cdn.entropywars.net/ASSET_MANIFEST.json?v=20261005-daisflicker-01-cors">
 
     <style>
         #menuBgCanvas {
@@ -804,7 +804,7 @@
                 <div class="door-ident-skip">CLICK TO SKIP</div>
             </div>
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20261005-lavaflow-01-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20261005-daisflicker-01-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -1558,24 +1558,24 @@
 
     <!-- External dependencies -->
     <script defer src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script defer src="https://cdn.entropywars.net/sprites.js?v=20261005-lavaflow-01-cors"></script>
-    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '?v=20261005-lavaflow-01-cors'.slice(3);   /* the shared script token (RULE #1b bumps keep this line in step) */</script>
+    <script defer src="https://cdn.entropywars.net/sprites.js?v=20261005-daisflicker-01-cors"></script>
+    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '?v=20261005-daisflicker-01-cors'.slice(3);   /* the shared script token (RULE #1b bumps keep this line in step) */</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
     <script>
       // THE EDITOR (EDITOR_PLAN.md E0, 2026-09-29): editor.js loads only when the editor opens (map.js _goToEditor), never for play.
-      window.EW_EDITOR_URL = 'https://cdn.entropywars.net/editor.js?v=20261005-lavaflow-01-cors';
+      window.EW_EDITOR_URL = 'https://cdn.entropywars.net/editor.js?v=20261005-daisflicker-01-cors';
       // THE WORLD FILE: the published world's id (deploy.js --world writes it). Empty = the game reads no world file.
       window._EW_WORLD_ID = '';
     </script>
-    <script defer src="https://cdn.entropywars.net/data.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/data.js?v=20261005-daisflicker-01-cors"></script>
     <script type="module">
       // Fallback: if local data.js didn't load, try CDN (a module: it runs deferred, AFTER data.js above — RENDERER_PLAN R2)
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20261005-lavaflow-01-cors';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20261005-daisflicker-01-cors';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1733,23 +1733,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script defer src="https://cdn.entropywars.net/react.production.min.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/react-dom.production.min.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/react.production.min.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/react-dom.production.min.js?v=20261005-daisflicker-01-cors"></script>
 
     <!-- Game modules -->
-    <script defer src="https://cdn.entropywars.net/state.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/audio.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/map.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/state.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/audio.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/map.js?v=20261005-daisflicker-01-cors"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script defer src="https://cdn.entropywars.net/three-camera.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/battle.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-post.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-renderer.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-vfx.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-lightning.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-vfx-effects.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/ui.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/profile.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-camera.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/battle.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-post.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-renderer.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-vfx.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-lightning.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-vfx-effects.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/ui.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/profile.js?v=20261005-daisflicker-01-cors"></script>
     <script type="module">
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     // (a module script: it runs deferred, after profile.js above — RENDERER_PLAN R2)
@@ -1780,14 +1780,14 @@
         }
     })();
     </script>
-    <script defer src="https://cdn.entropywars.net/party-builder.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/match-select.js?v=20261005-lavaflow-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/online.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/party-builder.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/match-select.js?v=20261005-daisflicker-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/online.js?v=20261005-daisflicker-01-cors"></script>
     <!-- AI v4 (2026-08-15): ONE unified brain — the ainew.js overlay was
          merged into ai.js and deleted. Do not re-add an ainew.js tag. -->
-    <script defer src="https://cdn.entropywars.net/ai.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/ai.js?v=20261005-daisflicker-01-cors"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script defer src="https://cdn.entropywars.net/hud.js?v=20261005-lavaflow-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/hud.js?v=20261005-daisflicker-01-cors"></script>
 
     <!-- ── Menu Background: Rising Motes (canvas 2D) ──
          Same mood as the battle loading screen: black, drifting embers rising.
