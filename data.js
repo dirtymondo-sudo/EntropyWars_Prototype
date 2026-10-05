@@ -43370,18 +43370,11 @@ const HQ_AREA_SPECS = {
             /* THE CANAL (waded, straight through its culverts) and its two planks — the causeway's at the pyramid's stair, the west one in the observatory's yard */
             { k: 'stream', pts: [[-34, -3], [30, -3]], w: 3.4, depth: 0.7, key: 'water' },
             { k: 'deck', x0: 14, z0: 0.8, x1: 14, z1: -5.4, w: 3.0, y: 0.25 }, { k: 'deck', x0: -27, z0: -0.4, x1: -27, z1: -5.6, w: 1.8, y: 0.3 },
-            /* the plaza's terrace (2.5) along its north side, up a wide stair from the plaza; its west end a separate ledge across a 2.5 m gap (a rail across it, a ladder down) */
-            { k: 'plateau', x: 11.7, z: 8.25, w: 8.6, d: 4.5, h: 2.5, edge: 0.15 },
-            { k: 'ramp', x0: 11.5, z0: 15.6, x1: 11.5, z1: 9.8, w: 3.6, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
-            { k: 'rail', pts: [[11.5, 15.4, 0.08], [11.5, 10.0, 2.42]], model: 'pipe', block: false },                                  // its centre handrail
-            { k: 'plateau', x: 1.55, z: 8.25, w: 6.7, d: 4.5, h: 2.5, edge: 0.15 },
-            { k: 'rail', x0: 4.6, z0: 8.25, x1: 7.7, z1: 8.25, y: 2.5, model: 'pipe', block: false },                                 // across the gap
-            { k: 'climb', x: 3.6, z: 10.2, face: 0, look: 'ladder' },
-            { k: 'rail', x0: 7.6, z0: 10.3, x1: 9.6, z1: 10.3, model: 'parapet' }, { k: 'rail', x0: 13.4, z0: 10.3, x1: 15.8, z1: 10.3, model: 'parapet' },
-            { k: 'rail', x0: -1.6, z0: 10.3, x1: 2.6, z1: 10.3, model: 'parapet' },
-            { k: 'wall', x0: 6, z0: 19.5, x1: 12, z1: 19.5, h: 0.5, t: 0.6, key: 'bricks_3' },                                       // a low ledge (the grind)
-            /* THE CAUSEWAY: a raised span (2.5) from the plaza's terrace north over the canal to the pyramid's forecourt (the bridge layer — the plank still crosses under it) */
-            { k: 'bridge', x0: 14, z0: 7.0, x1: 14, z1: -7.4, w: 3.0, y: 2.5 },
+            /* THE CAUSEWAY (2.5): a stair up the causeway's hall from the plaza, then a raised span north to the pyramid's forecourt in two parts — a 2.5 m gap over the canal
+               (a rail across it) — the bridge layer (the plank still crosses under it) */
+            { k: 'ramp', x0: 14, z0: 6.6, x1: 14, z1: 0.9, w: 3.0, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone', rails: false },   // (the hall's walls either side)
+            { k: 'bridge', x0: 14, z0: 1.6, x1: 14, z1: -1.2, w: 3.0, y: 2.5 }, { k: 'bridge', x0: 14, z0: -3.7, x1: 14, z1: -7.4, w: 3.0, y: 2.5 },
+            { k: 'rail', x0: 14, z0: -0.9, x1: 14, z1: -4.0, y: 2.5, model: 'pipe', block: false },                                   // across the gap
             /* THE PYRAMID: tier 1 (2.5) and its forecourt up a flight either side from the court (or over the causeway), tier 2 (5.0) up THE GREAT STAIR from the forecourt or THE OTHER STAIR on the west flank, the hand-holds up both east faces, THE TEMPLE (7.5, the tape — the door gun's) */
             { k: 'plateau', x: 14, z: -22, w: 26, d: 18, h: 2.5, edge: 0.15 }, { k: 'plateau', x: 14, z: -21, w: 12, d: 10, h: 5.0, edge: 0.15 }, { k: 'plateau', x: 14, z: -21, w: 6, d: 5, h: 7.5, edge: 0.15 },
             { k: 'plateau', x: 14, z: -10.05, w: 11, d: 7.1, h: 2.5, edge: 0.15 },                                                    // the forecourt
@@ -43439,7 +43432,7 @@ const HQ_AREA_SPECS = {
                 { key: 'cardboard_boxes', x: -15, z: 5.5, y: 3.0 }, { key: 'sea_chest', x: -10.5, z: 2, y: 3.0 }, { key: 'planter', x: -16, z: 2, y: 3.0 },
                 { key: 'ritual_circle', x: -29, z: -16, y: 4.2 }, { key: 'brass_telescope', x: -30, z: -17.5, y: 4.2, face: 0 }, { key: 'sea_chest', x: -27.5, z: -15, y: 4.2 },
                 { key: 'obelisk', x: -8, z: -27, y: 2.0 }, { key: 'signpost', x: 3, z: 14 }, { key: 'signpost', x: -6, z: -8 }, { key: 'campfire', x: 2, z: 11 }, { key: 'campfire', x: -24, z: 11 },
-                { key: 'park_bench', x: 0.5, z: 8.5, y: 2.5, face: 180 }, { key: 'lesson_sign', x: 7, z: 13, face: 180, lesson: 'climb' }, { key: 'stone_altar', x: -21.5, z: 22.5 }, { key: 'cave_stone', x: 29, z: -22 }, { key: 'palm_tree', x: 28.5, z: 16 }, { key: 'palm_tree', x: 31, z: 26 }],
+                { key: 'park_bench', x: 5, z: 9, face: 180 }, { key: 'lesson_sign', x: 10.5, z: 9, face: 180, lesson: 'climb' }, { key: 'stone_altar', x: -21.5, z: 22.5 }, { key: 'cave_stone', x: 29, z: -22 }, { key: 'palm_tree', x: 28.5, z: 16 }, { key: 'palm_tree', x: 31, z: 26 }],
         npcSpots: [{ x: 0, z: 13, face: 40, race: 'annunaki', say: '“The calendar did not end. It was turned over.”' }, { x: 15, z: 17, face: 250, race: 'reptilian', say: '“The ball court is not a game. The losing side knows that.”' },
                    { x: -29, z: -14, y: 4.2, face: 180, race: 'annunaki', say: '“Venus rises there. Every eight years it is exactly where the wall says, and every eight years somebody is surprised.”' }],
         lines: ['“Which stair is the other stair?” “Both of them.”'] },
