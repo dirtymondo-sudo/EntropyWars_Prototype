@@ -34308,7 +34308,14 @@ const DOOR_HQ = {
                     { k: 'hill', x: 0, z: 0, r: 8.5, h: 1.1 },                                                // THE MOUND
                     { k: 'ridge', pts: [[7.4, 0], [5.2, 5.2], [0, 7.4], [-5.2, 5.2], [-7.4, 0], [-5.2, -5.2], [0, -7.4], [5.2, -5.2], [7.4, 0]], w: 2.0, h: -0.45 },   // the ditch
                     { k: 'plateau', x: 0, z: -6.3, r: 1.3, h: 2.4, edge: 0.3 },                                // THE ALTAR STONE (the tape's)
-                    { k: 'rail', x0: -6.5, z0: 3.9, x1: -3.5, z1: 3.9 },                                       // the mound's rail
+                    { k: 'rail', x0: -4.5, z0: 3.9, x1: -2.2, z1: 3.9, model: 'ranch' },                     // the mound's rail
+                    /* the west ledge (2026-10-05): a 2.2 m rock ledge over the circle, up a timber stair from the north, a ladder down its east
+                       face; a curved fence along the ditch's north-east */
+                    { k: 'plateau', x: -6.6, z: 3.5, w: 3.0, d: 5.0, h: 2.2, edge: 0.3 },
+                    { k: 'ramp', x0: -6.6, z0: -3.3, x1: -6.6, z1: 1.7, w: 2.0, h0: 0, h1: 2.2, stairs: true, model: 'forest', edge: 0.2 },
+                    { k: 'climb', x: -4.9, z: 5.0, face: 270, look: 'ladder' },
+                    { k: 'rail', x0: -7.9, z0: 1.2, x1: -7.9, z1: 5.8, model: 'ranch' }, { k: 'rail', x0: -7.9, z0: 5.8, x1: -5.4, z1: 5.8, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 8.4, a0: 15, a1: 60 }, model: 'ranch' },
                     { k: 'path', pts: [[8.5, -0.9], [3, -0.9], [0, -3], [-0.9, -8.5]], w: 1.4 },
                     { k: 'grove', n: 8, kinds: ['tree_5', 'tree_6', 'tree'], seed: 19 },
                     { k: 'scatter', key: 'fern', n: 5, seed: 20 },
