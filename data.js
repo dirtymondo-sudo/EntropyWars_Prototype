@@ -37549,9 +37549,16 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[3.5, 10], [3.5, 11.2]], w: 2.2 },
                     /* the rooms' pieces */
                     { k: 'plateau', x: -14.5, z: -8.5, w: 17, d: 3, h: 2.8, edge: 0.15 },                               // THE GANTRY along the vat hall's north wall
-                    { k: 'ramp', x0: -20, z0: -1, x1: -20, z1: -7.2, w: 2.2, h0: 0, h1: 2.8, stairs: true, edge: 0.15, built: true, key: 'urban:RubberNonSlip4a' },
-                    { k: 'rail', x0: -18.8, z0: -6.9, x1: -6.2, z1: -6.9 },
+                    { k: 'ramp', x0: -20, z0: -1, x1: -20, z1: -7.2, w: 2.2, h0: 0, h1: 2.8, stairs: true, model: 'grate' },
+                    { k: 'rail', x0: -18.8, z0: -6.9, x1: -16.7, z1: -6.9, model: 'balusters_b' }, { k: 'rail', x0: -14.3, z0: -6.9, x1: -6.2, z1: -6.9, model: 'balusters_b' },
+                    /* 2026-10-05 (the stairs pass): a bridge off THE GANTRY south over the vats to a gallery along the south wall at 2.8, and a
+                       steel flight from the gallery back down by the spawn (the loop: up the grating, across, down) */
+                    { k: 'deck', x0: -15.5, z0: -7.2, x1: -15.5, z1: 7.2, w: 2, y: 2.8, over: true },
+                    { k: 'plateau', x: -19.25, z: 9.75, w: 9.5, d: 5.5, h: 2.8, edge: 0.15 },
+                    { k: 'ramp', x0: -8.8, z0: 8.7, x1: -15.2, z1: 8.7, w: 2.2, h0: 0, h1: 2.8, stairs: true, model: 'steel' },
+                    { k: 'rail', x0: -22.8, z0: 7.2, x1: -16.7, z1: 7.2, model: 'balusters_b' },
                     { k: 'plateau', x: 2, z: 6, r: 1.5, h: 4.4, edge: 0.15 },                                           // THE VAT STACK (the tape — the door gun's)
+                    { k: 'rail', arc: { x: 2, z: 6, r: 2.4, a0: 0, a1: 180 }, model: 'pipe', block: false },              // a pipe bent round it
                     { k: 'wall', x0: 14, z0: 5.8, x1: 22, z1: 5.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' },   // the disposal bay's kerb (a grind)
                     { k: 'path', pts: [[26, -2], [-8, -2]], w: 1.8 },
                     { k: 'path', pts: [[12, -2], [12, 8], [18, 8]], w: 1.8 },
