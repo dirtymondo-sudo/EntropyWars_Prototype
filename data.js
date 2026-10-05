@@ -34204,10 +34204,10 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'graffiti_wall',  x: -11.375, z: -2.5, face: 180 },                  // THE PAINT: on the culvert's north wall, the sump's back wall, the south wall
-                { key: 'graffiti_wall',  x: 5.0, z: -4.9, face: 180 },
-                { key: 'graffiti_wall',  x: 11.375, z: 4.9, face: 0 },
-                { key: 'graffiti_wall',  x: -4.375, z: 4.9, face: 0 },
+                { key: 'graffiti_wall',  x: -10.38, z: -3.25, face: 270 },                  // THE PAINT, flat on the drain's brick (2026-10-05: re-hung on the L4 layout's walls — they stood mid-floor and read mirrored from behind)
+                { key: 'graffiti_wall',  x: 2.5, z: -9.25, face: 180 },
+                { key: 'graffiti_wall',  x: 10.75, z: 4.9, face: 90 },
+                { key: 'graffiti_wall',  x: -5.25, z: 3.65, face: 90 },
                 { key: 'drain_grate',    x: -16.5, z: -3.8, face: 0, mount: 0.4 },                   // the grates in the brick: the Works' side of the wall
                 { key: 'drain_grate',    x: 8, z: -12.5, face: 0, mount: 0.4 },
                 { key: 'bare_bulb',      x: -8.75, z: 0 },                                  // the bulbs: the Works' power, nobody's bill
@@ -38466,7 +38466,7 @@ const DOOR_HQ = {
                 /* THE JUNCTION: the gallery's catalogue rails, the paint, the light over the confluence */
                 { key: 'railing_1m',      x: 1.4, z: -5.4, face: 0 }, { key: 'railing_1m', x: 6.6, z: -5.4, face: 0 },     // THE PARK RULE's rail on the gallery
                 { key: 'bare_bulb',       x: 0, z: -4, ceil: true }, { key: 'bare_bulb', x: 0, z: 8, ceil: true },
-                { key: 'graffiti_wall',   x: -11, z: 5.4, face: 90 } /* 2026-09-18: off the culvert's channel (it stood in the waded stream) */, { key: 'graffiti_wall', x: 5, z: 10.5, face: 0 },
+                { key: 'graffiti_wall',   x: -11, z: 3.25, face: 180 } /* 2026-10-05: flat on the brick (they stood off the walls, read mirrored from behind) */, { key: 'graffiti_wall', x: 5.75, z: 10.5, face: 270 },
                 { key: 'drain_grate',     x: -5, z: -10.5, face: 0, mount: 0.4 },
                 { key: 'warning_tape',    x: 7, z: -6.2, face: 0 },
                 { key: 'traffic_barrel',  x: 7.5, z: 7.5, face: 30 },
@@ -38480,7 +38480,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',     x: -42, z: 16.5 },
                 /* THE CISTERN: the plank, the light, the paint */
                 { key: 'bare_bulb',       x: 24, z: 14, ceil: true },
-                { key: 'graffiti_wall',   x: 30.5, z: 24, face: 270 },
+                { key: 'graffiti_wall',   x: 31.25, z: 24, face: 270 },
                 { key: 'wet_floor_sign',  x: 23, z: 29, face: 300 },
                 /* THE OUTFALL: the light down the shaft, the paint, the barrel */
                 { key: 'bare_bulb',       x: 55, z: -18, ceil: true },                                                            // over THE OUTFALL SHAFT — the one lit thing at the end of the main culvert
@@ -47332,8 +47332,8 @@ function hqTerrainCompile(room, roomId) {
             case 'plateau': case 'ramp': case 'spiral': standing.push(f); break;   // THE ROUND PIECES (2026-09-26): a `spiral` is a ramp round a centre
             case 'deck': if (f.over) { bridges.push(f); break; } standing.push(f); decks.push(f); break;   // `over: true` = a bridge (below)
             case 'bridge': bridges.push(f); break;   // THE BRIDGE LAYER (2026-09-19): a deck OVER walked ground — a layer, never a height
-            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8 }); break;
-            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: f.y, key: f.key || 'water', depth: f.depth || 0.6 }); break;
+            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8, bank: f.bank }); break;
+            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: f.y, key: f.key || 'water', depth: f.depth || 0.6, bank: f.bank }); break;   // `bank`: the carve's (three-renderer.js _hqWaterOwners floods the surface over it)
             case 'wall': walls.push(f); break;
             case 'rail': rails.push(f); break;
             case 'path': paths.push(f); break;

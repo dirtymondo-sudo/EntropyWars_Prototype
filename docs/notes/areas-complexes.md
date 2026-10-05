@@ -1873,3 +1873,20 @@ steps) keeps treads. `built: true` flights draw as ONE solid wedge (three-render
 `key`, flanks in `side`, runner and cheek parapets slope with it. The editor's Stairs tool places a solid smooth ramp (built). Arenas
 re-baked (camelot, mars picks moved). Untouched: metro_stairs passages, the rotunda's curved flights, stadium seat rows, legacy voxel
 battle-map 1-tile staircases.
+
+## THE WATER (2026-10-05, mondo: water flickers, doesn't touch the edges, gets him stuck; "the only place the water doesnt do this is the deep")
+Walk-mode pools and streams (terrain `pool` / `stream` rows) were a disc per pool and a mitred ribbon per stream at one height. Where
+two met (Dead Man's Cave's sump over its channel, the sewers' pools on their channels, the gallery's and the workings' streams) two
+sheets lay at the same depth: the z-fight flicker. A sheet cut at the outline (+0.25 m) also stopped short of the carved bank, leaving a
+dry strip of sunk ground between the water and the wall. Now (three-renderer.js `_hqWaterOwners` / `_hqWaterGeoms`, called from
+`_hqBuildTerrain`) each liquid is ONE surface drawn per grid cell, like THE DEEP's sea: every node is owned by one liquid (later row
+wins where outlines meet), and a contained liquid floods over the ground under its surface, through its bank, past it only onto ground
+at its bed (a door's sill pad), max `HQ_WATER_REACH` m. The field hides the surface where the ground is higher, so the shore is the
+ground's own line. A liquid standing proud of its ground keeps outline + 0.25 m. data.js fluids now carry `bank`. The walker's reads
+(hqTerrainFluidAt) are unchanged.
+Stuck: a jump that landed in water too deep to wade (a sump, a canal, lava) stood on the bed where every step and jump is refused.
+The walker now returns to the last ground it stood on (`pl._landSafe`, the void's `_hqVoidReturn`).
+Tunnel mouths: `_hqPassageWay`'s roofed tube had its wall ends and roof lip exactly in the room wall's plane (z-fight ring round
+every tunnel mouth in a walled room, e.g. Dead Man's Cave's drain). The tube now starts 6 cm behind the wall line.
+Graffiti: Dead Man's Cave's and the sewers' graffiti panels stood mid-floor after the L4 layouts (read mirrored from behind: the "RM 13"
+on the floor); re-hung flat on the drawn brick, and the panel is one-sided.
