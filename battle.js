@@ -61015,6 +61015,10 @@
                     }
 
                     modified.push({ x: tx, y: ty, oldH, newH });
+                    /* THE PATCH (2026-10-05): the cell's height before its first deform — three-renderer.js _deltaPatchBuild sheets
+                       the moved cells of a tile board as one ground, not a tile pattern. Plain state: rides the state-sync. */
+                    const _dTiles = state.deformedTiles || (state.deformedTiles = {}), _dKey = tx + ',' + ty;
+                    if (!(_dKey in _dTiles)) _dTiles[_dKey] = oldH;
                 }
             }
 
