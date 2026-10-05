@@ -1326,7 +1326,7 @@
             let rec = null;
             try { rec = _hqParty(); } catch (e) { rec = null; }
             const mem = rec && Array.isArray(rec.members) ? rec.members.slice(0, (window.HQ_PARTY_RULES && HQ_PARTY_RULES.shift) || 4) : [];
-            if (!mem.length) { el.innerHTML = ''; el.style.display = 'none'; _hqDockHints(); return; }
+            if (!mem.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
             el.style.display = '';
             el.innerHTML = mem.map((m, i) => {
                 const v = _hqPauseVitals(m, null);
@@ -1350,12 +1350,6 @@
                     + (i === 0 ? `<span class="hq-dock-tag"><b>${_hqEsc(name)}</b><em>${v.down ? 'DOWN' : full ? 'HP FULL' : `HP ${v.hp} / ${v.hpMax}`}</em></span>` : '')
                     + `</div>`;
             }).join('');
-            _hqDockHints();
-        }
-        /* the key hints share the bottom-left: they start to the right of the dock */
-        function _hqDockHints() {
-            const h = _hqEl('hqHints'), d = _hqEl('hqDock'); if (!h) return;
-            requestAnimationFrame(() => { try { const w = (d && d.style.display !== 'none') ? d.offsetWidth : 0; h.style.left = w ? (w + 36) + 'px' : ''; } catch (e) {} });
         }
         function _hqFillStrip(profile) {
             try {
@@ -4021,7 +4015,7 @@
                 case 'on':
                     if (h) h.classList.add('skate');
                     _hqSkateSfx('skatePush', 0.5);
-                    _hqToast('<b>ON THE BOARD</b><span>WASD RIDES WHERE THE KEYS POINT, LIKE WALKING (A KEY AGAINST THE ROLL BRAKES) · MOUSE = CAMERA · SPACE JUMP (HOLD IT FOR A BIGGER ONE) · IN THE AIR: WASD STEERS · HOLD A MOUSE BUTTON + FLICK = TRICKS (LEFT FLIPS · RIGHT SPINS / GRABS) · LAND ON A RAIL TO GRIND · B OFF</span>', 4200);
+                    _hqToast('<b>ON THE BOARD</b><span>HOLD A MOUSE BUTTON + FLICK = TRICKS · B OFF</span>', 4200);
                     _hqFillStrip(_hqProfile());
                     break;
                 case 'off':
@@ -4156,7 +4150,7 @@
             if (h) { h.classList.toggle('climb', !!ev.on); if (ev.on) h.classList.remove('climbnear'); }
             if (ev.on) {
                 _hqSkateSfx('skatePush', 0.22);
-                if (!_hqClimbToasted) { _hqClimbToasted = true; _hqToast('<b>ON THE ' + String(ev.look || 'ladder').toUpperCase() + '</b><span>W UP · S DOWN · SPACE LETS GO · THE TOP HANDS YOU ONTO THE LEDGE</span>', 3200); }
+                if (!_hqClimbToasted) { _hqClimbToasted = true; _hqToast('<b>ON THE ' + String(ev.look || 'ladder').toUpperCase() + '</b><span>SPACE LETS GO</span>', 3200); }
             } else if (ev.why === 'top') _hqSkateSfx('skateOllie', 0.2);
         }
         let _hqSeaToasted = { swim: false, dive: false, boat: false, sub: false };
@@ -4168,19 +4162,19 @@
                     if (h) h.classList.toggle('swim', !!ev.on);
                     if (ev.on) {
                         _hqSkateSfx(ev.under ? 'seaDive' : 'seaSurface', 0.4);
-                        if (!_hqSeaToasted.swim) { _hqSeaToasted.swim = true; _hqToast(ev.under ? '<b>UNDER THE SEA</b><span>WASD SWIM WHERE YOU LOOK · SPACE UP · C DOWN · SHIFT FASTER · THE UPWELLING GOES UP</span>' : '<b>IN THE WATER</b><span>WASD SWIM · SHIFT FASTER · C DIVE · THE SHALLOWS GIVE YOU BACK</span>', 3400); }
+                        if (!_hqSeaToasted.swim) { _hqSeaToasted.swim = true; _hqToast(ev.under ? '<b>UNDER THE SEA</b><span>SPACE UP · C DOWN · SHIFT FASTER</span>' : '<b>IN THE WATER</b><span>C DIVE · SHIFT FASTER</span>', 3400); }
                     }
                     break;
                 case 'dive':
                     _hqSkateSfx('seaDive', 0.45);
-                    if (!_hqSeaToasted.dive) { _hqSeaToasted.dive = true; _hqToast('<b>DIVING</b><span>W SWIMS WHERE YOU LOOK · SPACE UP · C DOWN · LET GO AND YOU RISE</span>', 2800); }
+                    if (!_hqSeaToasted.dive) { _hqSeaToasted.dive = true; _hqToast('<b>DIVING</b><span>SPACE UP · C DOWN</span>', 2800); }
                     break;
                 case 'surface': _hqSkateSfx('seaSurface', 0.4); break;
                 case 'board': {
                     if (h) h.classList.add('helm');
                     _hqSkateSfx('seaBoard', 0.5);
                     const k = ev.vehicle === 'sub' ? 'sub' : 'boat';
-                    if (!_hqSeaToasted[k]) { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>W / S DRIVE · A / D STEER · SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>W / S SAIL · A / D THE TILLER · PAST THE RED BUOYS IS THE MAELSTROM · E STEPS OFF</span>', 3600); }
+                    if (!_hqSeaToasted[k]) { _hqSeaToasted[k] = true; _hqToast(k === 'sub' ? '<b>THE BATHYSCAPHE</b><span>SPACE UP · C DOWN · E LEAVES IT</span>' : '<b>THE SKIFF</b><span>E STEPS OFF</span>', 3600); }
                     _hqFillStrip(_hqProfile());
                     break;
                 }
