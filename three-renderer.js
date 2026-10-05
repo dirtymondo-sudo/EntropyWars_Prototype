@@ -5331,8 +5331,7 @@ const ThreeRenderer = (function () {
             blending: THREE.AdditiveBlending, depthWrite: false,
         });
         var corona = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.20, 10, 8), coronaMat);
-        corona.position.y = ts * 0.655;
-        g.add(corona);
+        corona.position.y = ts * 0.655;   /* NO LIGHT BOX (mondo 2026-10-05): the additive glow shell is not added */
         g.rotation.y = (x * 7 + y * 13) % 6;
         g.scale.setScalar(1.3);   /* stand about unit-height so it reads on the board */
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
@@ -7232,8 +7231,7 @@ const ThreeRenderer = (function () {
             var glowCrystal = new THREE.Mesh(geo, glowMat);
             glowCrystal.position.copy(crystal.position);
             glowCrystal.rotation.copy(crystal.rotation);
-            glowCrystal.scale.set(1.15, 1.05, 1.15);
-            g.add(glowCrystal);
+            glowCrystal.scale.set(1.15, 1.05, 1.15);   /* NO LIGHT BOX (mondo 2026-10-05): the additive shell is not added */
         }
 
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
@@ -8402,7 +8400,7 @@ const ThreeRenderer = (function () {
         }
         /* healing shimmer rising off the totem */
         var aura = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.14, ts * 0.3, 8, 1, true), _deployGlowMat(0x66ff88, 0.22));
-        aura.position.y = ts * 0.92; g.add(aura);
+        aura.position.y = ts * 0.92;   /* NO LIGHT BOX (mondo 2026-10-05): the shimmer cone is not added */
         return _deployFinish(g, x, y, 1.3);
     }
 
@@ -8523,7 +8521,7 @@ const ThreeRenderer = (function () {
         var ankhStem = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.1, ts * 0.03), goldMat);
         ankhStem.position.y = ts * 0.845; g.add(ankhStem);
         /* the doorway itself: a sheet of underworld dusk */
-        var voidMat = _deployGlowMat(0x9a68ff, 0.4);
+        var voidMat = new THREE.MeshBasicMaterial({ color: 0x0c0718, side: THREE.DoubleSide });   /* NO LIGHT BOX (mondo 2026-10-05): a dark doorway, not a lit sheet */
         var portal = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.62), voidMat);
         portal.position.y = ts * 0.37; g.add(portal);
         return _deployFinish(g, x, y, 1.25);
@@ -8586,17 +8584,15 @@ const ThreeRenderer = (function () {
             });
             var glowV = _deployGlowMat(0x7a33ff, 0.22);
             var glowP = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.6, oh * 1.25), glowV);
-            glowP.position.set(0, oh / 2, -0.03 * ts); g.add(glowP);
+            glowP.position.set(0, oh / 2, -0.03 * ts);   /* NO LIGHT BOX (mondo 2026-10-05): not added */
         } else {
             var shimMat = _deployGlowMat(0x5ce0d0, 0.08);
             var shim = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), shimMat);
-            shim.position.set(0, oh / 2, 0); g.add(shim);
+            shim.position.set(0, oh / 2, 0);   /* NO LIGHT BOX (mondo 2026-10-05): not added */
         }
         /* (no standing PointLight: a new light changes the scene's light count and recompiles every lit shader — the
            real light rides the pooled VFX flash lights in the take / open / seal recipes instead) */
-        var floorMat = _deployGlowMat(held ? 0x7a33ff : lampCol, held ? 0.3 : 0.16);
-        var floor = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.4, ts * 0.9), floorMat);
-        floor.rotation.x = -Math.PI / 2; floor.position.set(0, ts * 0.012, 0); g.add(floor);
+        /* NO LIGHT BOX (mondo 2026-10-05): no floor light pool */
         /* THE PLATE (the tower plate's markup + the hold pips) */
         try {
             if (typeof document === 'undefined' || !THREE.CSS2DObject) return;
@@ -8654,7 +8650,7 @@ const ThreeRenderer = (function () {
         var pane = (d.door === 'maw' || d.door === 'laser')
             /* the void / the neon night: a dark pane (normal blending — additive black would be nothing) */
             ? new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), new THREE.MeshBasicMaterial({ color: new THREE.Color(d.door === 'maw' ? 0x05020c : paneCol), transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false }))
-            : new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), _deployGlowMat(paneCol, d.door === 'light' ? 0.42 : d.door === 'hell' ? 0.34 : 0.22));
+            : new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), new THREE.MeshBasicMaterial({ color: new THREE.Color(paneCol).multiplyScalar(0.3), transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false }));   /* NO LIGHT BOX (mondo 2026-10-05): a dark tinted pane, not an additive lit one */
         pane.position.set(0, oh / 2, 0.004 * ts); g.add(pane);
         /* Phase 2's apertures (the destinations): each one's place, alive in the opening (onBeforeRender ticks — no
            standing light, no per-frame allocation) */
@@ -8670,7 +8666,7 @@ const ThreeRenderer = (function () {
                 g.add(fl);
             });
             var lip = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.3, ts * 0.9), _deployGlowMat(0xff5a2a, 0.2));
-            lip.rotation.x = -Math.PI / 2; lip.position.set(0, ts * 0.014, ts * 0.5); g.add(lip);
+            lip.rotation.x = -Math.PI / 2; lip.position.set(0, ts * 0.014, ts * 0.5);   /* NO LIGHT BOX (mondo 2026-10-05): no floor glow */
         } else if (d.door === 'frost') {
             /* rime on the pane + ice shards growing off the sill, snow motes drifting down the opening */
             var shardMat = _deployGlowMat(0xbfefff, 0.5);
@@ -8708,13 +8704,7 @@ const ThreeRenderer = (function () {
             g.add(scan);
         } else if (d.door === 'light') {
             /* the pearly gate: god-rays fanning out of the opening, breathing */
-            var rayMat = _deployGlowMat(0xfff1b0, 0.22);
-            [-0.3, -0.1, 0.1, 0.3].forEach(function (rx, ri) {
-                var ray = new THREE.Mesh(new THREE.PlaneGeometry(ow * 0.12, oh * 1.1), rayMat);
-                ray.position.set(ow * rx, oh * 0.55, ts * 0.12); ray.rotation.z = rx * 0.6; ray._ph = ri;
-                ray.onBeforeRender = function () { this.scale.set(1, 0.85 + 0.2 * Math.sin(_now() * 1.7 + this._ph), 1); };
-                g.add(ray);
-            });
+            /* NO LIGHT BOX (mondo 2026-10-05): the god-ray planes are gone */
             var halo = new THREE.Mesh(new THREE.RingGeometry(ow * 0.2, ow * 0.26, 24), _deployGlowMat(0xffffff, 0.5));
             halo.position.set(0, oh * 0.8, 0.02 * ts); g.add(halo);
         }
@@ -8727,7 +8717,7 @@ const ThreeRenderer = (function () {
             });
             /* the wind's mouth: a pale fan on the floor in front of the face */
             var fan = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.3, ts * 0.9), _deployGlowMat(0xcfe8ff, 0.14));
-            fan.rotation.x = -Math.PI / 2; fan.position.set(0, ts * 0.014, ts * 0.5); g.add(fan);
+            fan.rotation.x = -Math.PI / 2; fan.position.set(0, ts * 0.014, ts * 0.5);   /* NO LIGHT BOX (mondo 2026-10-05): no floor glow */
         } else if (d.door === 'archers') {
             /* two arrows nocked in the lamps, pointing out of the opening */
             var shaftMat = new THREE.MeshLambertMaterial({ color: 0x8a6a3c });
@@ -8741,8 +8731,7 @@ const ThreeRenderer = (function () {
                 ar.position.set(ai * (ow / 2 + jw / 2), oh * 0.55, ts * 0.1); g.add(ar);
             }
         }
-        var floor = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.4, ts * 0.9), _deployGlowMat(col, 0.16));
-        floor.rotation.x = -Math.PI / 2; floor.position.set(0, ts * 0.012, 0); g.add(floor);
+        /* NO LIGHT BOX (mondo 2026-10-05): no floor light pool */
         /* THE PLATE (the tower plate's markup): the door's name and its hits */
         try {
             if (typeof document === 'undefined' || !THREE.CSS2DObject) return;
@@ -8935,9 +8924,7 @@ const ThreeRenderer = (function () {
         } else if (stand) {
             _standingDoorDress(g, d, { ts: ts, ow: ow, oh: oh, jw: jw, lh: lh, pd: pd });
         } else if (d.open) {
-            var veilMat = _deployGlowMat(0xfff0cc, 0.16);
-            var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat);
-            veil.position.set(0, oh / 2, -0.02 * ts); g.add(veil);
+            /* NO LIGHT BOX (mondo 2026-10-05): no lit veil in the open doorway */
         } else if (mode === 'none') {
             var paneMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(d.owner === 1 ? 0x1c2846 : 0x461c1c), transparent: true, opacity: 0.92, side: THREE.DoubleSide });
             var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), paneMat);
@@ -25693,9 +25680,8 @@ const ThreeRenderer = (function () {
             // a faint shimmering veil filling the arch — a dream-portal to nowhere
             var veilMat = _hzGlowMat(0xb38cff, 0.14);
             var veil = new THREE.Mesh(new THREE.PlaneGeometry(gap, h * 0.92), veilMat);
-            veil.position.set(0, h * 0.5, 0);
-            g.add(veil);
-            _hzPulse(veilMat, veil, 0.07, 0.03, 0.25 + rng() * 0.35);
+            veil.position.set(0, h * 0.5, 0);   /* NO LIGHT BOX (mondo 2026-10-05): no lit veil in the arch */
+            rng();
         } else {
             var stub = _hzBox(gap * 0.55, pw * 1.0, pw, ts, _hzGeoMat(tex, 0xb8ad90));
             stub.position.set(gap * 0.18, h + pw * 0.45, 0);
@@ -25769,8 +25755,7 @@ const ThreeRenderer = (function () {
             var glowMat = _hzGlowMat(0xbfd4ff, 0.20);
             var glow = new THREE.Mesh(geo, glowMat);
             glow.position.copy(m.position); glow.rotation.copy(m.rotation);
-            glow.scale.set(1.16, 1.04, 1.16);
-            g.add(glow);
+            glow.scale.set(1.16, 1.04, 1.16);   /* NO LIGHT BOX (mondo 2026-10-05): the additive shell is not added */
             _hzPulse(glowMat, null, 0.12, 0, 0.4 + rng() * 0.6);
         }
         // a soft pooled glow at the base where the shards erupt
@@ -26038,8 +26023,8 @@ const ThreeRenderer = (function () {
         lintel.position.y = h + pw * 0.05; g.add(lintel);
         var veilMat = _hzGlowMat(0xfff3c8, 0.20);
         var veil = new THREE.Mesh(new THREE.PlaneGeometry(gap, h * 0.94), veilMat);
-        veil.position.set(0, h * 0.5, 0); g.add(veil);
-        _hzPulse(veilMat, veil, 0.10, 0.02, 0.25 + rng() * 0.3);
+        veil.position.set(0, h * 0.5, 0);   /* NO LIGHT BOX (mondo 2026-10-05): no lit veil in the gate */
+        rng();
         var crown = _hzGlowCore(ts * 0.7, 0xffe9a8, 0xffcf66);
         crown.position.y = h + pw * 0.9; g.add(crown);
         return g;
@@ -26073,6 +26058,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var h = ts * (16 + rng() * 8), r = ts * (0.7 + rng() * 0.4);
+        return g;   /* NO LIGHT BOX (mondo 2026-10-05): the pillar of light into the sky is gone (empty group) */
         var beamMat = _hzGlowMat(0xfff6d6, 0.16);
         var beam = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r, h, 16, 1, true), beamMat);
         beam.position.y = h * 0.5; g.add(beam);
@@ -26432,9 +26418,7 @@ const ThreeRenderer = (function () {
             g.add(craft);
         }
         var beamMat = _hzGlowMat(0xa0ffd0, 0.14);
-        var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, lift + ts * 0.4, 10, 1, true), beamMat);
-        _hzAt(g, beam, 0, (lift + ts * 0.4) / 2, 0);
-        _hzPulse(beamMat, null, 0.10, 0, 0.5);
+        /* NO LIGHT BOX (mondo 2026-10-05): no tractor-beam cone */
         return g;
     }
 
@@ -26447,9 +26431,7 @@ const ThreeRenderer = (function () {
         var g = _hzMiscKit('saucer_lg', { tiles: 3.8, fit: 'span', rng: rng, cast: true, lift: 0.18, foot: 1.9, fallback: _hzSaucer });
         if (g._ew_kit !== 'saucer_lg') return g;
         var beamMat = _hzGlowMat(0xa0ffd0, 0.12);
-        var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, ts * 0.9, 10, 1, true), beamMat);
-        _hzAt(g, beam, 0, ts * 0.45, 0);
-        _hzPulse(beamMat, null, 0.10, 0, 0.5);
+        /* NO LIGHT BOX (mondo 2026-10-05): no glow cone under the landed saucer */
         var dome = _hzGlowSprite(ts * 0.9, 0x9adcff, 0.35, 0.12, 0.06, 0.6 + rng() * 0.4); dome.position.y = ts * 1.9; g.add(dome);
         return g;
     }
@@ -26518,8 +26500,7 @@ const ThreeRenderer = (function () {
         (function () { var _gc = _hzGlowCore(ts * 1.6, 0xffe9b0, 0xff9c50); _gc.position.y = lift; g.add(_gc); })();
         // the shaft of daylight it pours onto the cavern floor
         var beamMat = _hzGlowMat(0xffe6b0, 0.10);
-        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.5, ts * 1.1, lift, 10, 1, true), beamMat);
-        _hzAt(g, beam, 0, lift / 2, 0);
+        /* NO LIGHT BOX (mondo 2026-10-05): no shaft of daylight */
         return g;
     }
 
@@ -26585,8 +26566,7 @@ const ThreeRenderer = (function () {
         var plinth = _hzBox(ts * 0.9, ts * 0.4, ts * 0.9, ts, _hzGeoMat(_hzTex('metal'), 0x4a505c));
         _hzAt(g, plinth, 0, ts * 0.2, 0);
         var beamMat = _hzGlowMat(0x35e0ff, 0.12);
-        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.4, lift, 8, 1, true), beamMat);
-        _hzAt(g, beam, 0, ts * 0.4 + lift / 2, 0);
+        /* NO LIGHT BOX (mondo 2026-10-05): no projector beam */
         return g;
     }
 
@@ -26734,9 +26714,7 @@ const ThreeRenderer = (function () {
         _hzAt(g, _hzCyl(ts * 0.12, ts * 0.16, ts * 0.9, 6, ts, grey()), 0, ts * 1.35, 0);                 // the small body
         _hzAt(g, _hzCyl(ts * 0.7, ts * 0.8, ts * 0.35, 10, ts, steel()), 0, ts * 0.35 + H + ts * 0.17, 0);
         var glowMat = _hzGlowMat(0x59e8c8, 0.30);
-        var glow = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.6, ts * 0.6, H * 0.9, 10, 1, true), glowMat);
-        _hzAt(g, glow, 0, ts * 0.35 + H / 2, 0);
-        _hzPulse(glowMat, null, 0.12, 0, 0.45);
+        /* NO LIGHT BOX (mondo 2026-10-05): no glow shell round the tube */
         return g;
     }
 
@@ -26921,8 +26899,7 @@ const ThreeRenderer = (function () {
             var poolMat = _hzGlowMat(rng() < 0.5 ? 0xffb84a : 0xff4433, 0.5);
             var pool = new THREE.Mesh(new THREE.CircleGeometry(Rg * 1.15, 20), poolMat);
             pool.rotation.x = -Math.PI / 2;
-            pool.position.y = 2;
-            gg.add(pool);
+            pool.position.y = 2;   /* NO LIGHT BOX (mondo 2026-10-05): no floor glow pool */
             _hzPulse(poolMat, pool, 0.32, 0.14, 0.8);
             return gg;
         }
@@ -27057,9 +27034,8 @@ const ThreeRenderer = (function () {
         }
         // light spilling from the open pages
         var pgGlow = _hzGlowMat(glowCol, 0.4);
-        var shaft = new THREE.Mesh(new THREE.ConeGeometry(W * 0.5, ts * 1.6, 8, 1, true), pgGlow);
-        _hzAt(g, shaft, 0, lift + ts * 0.9, 0);
-        _hzPulse(pgGlow, null, 0.15, 0, 0.4 + rng() * 0.3);
+        /* NO LIGHT BOX (mondo 2026-10-05): no cone of light off the pages */
+        rng();
         var core = _hzGlowCore(ts * 0.3, glowCol, glowCol);
         core.position.y = lift + ts * 0.28; g.add(core);
         // drifting rune motes rising off the page
@@ -27092,9 +27068,8 @@ const ThreeRenderer = (function () {
         _hzAt(g, tunnel, 0, tunR * 0.02, -R - tunLen * 0.28, Math.PI / 2, 0, Math.PI / 2);
         // the doorway, warm with hearth-light — someone is home
         var doorMat = _hzGlowMat(0xffb868, 0.55);
-        var door = new THREE.Mesh(new THREE.CircleGeometry(tunR * 0.8, 12, 0, Math.PI), doorMat);
-        _hzAt(g, door, 0, 0, -R - tunLen * 0.78);
-        _hzPulse(doorMat, null, 0.2, 0, 0.35 + rng() * 0.3);
+        /* NO LIGHT BOX (mondo 2026-10-05): no lit sheet in the doorway */
+        rng();
         // smoke-hole glow at the crown
         var crown = _hzGlowCore(ts * 0.14, 0xffd9a0, 0xffb868);
         crown.position.y = R * 0.85; g.add(crown);
@@ -27136,9 +27111,8 @@ const ThreeRenderer = (function () {
         _hzAt(g, heart, 0, cy, 0);
         // dawn light through the glass (glow disc floating just behind)
         var beamMat = _hzGlowMat(0xffe9b8, 0.28);
-        var beam = new THREE.Mesh(new THREE.CircleGeometry(R * 1.05, 20), beamMat);
-        _hzAt(g, beam, 0, cy, ts * 0.12);
-        _hzPulse(beamMat, null, 0.10, 0, 0.25 + rng() * 0.2);
+        /* NO LIGHT BOX (mondo 2026-10-05): no glow disc behind the glass */
+        rng();
         return g;
     }
 
@@ -27607,8 +27581,7 @@ const ThreeRenderer = (function () {
         [[0, 0], [bw, 0], [0, bh], [bw, bh]].forEach(function (c) {
             var bm = _hzGlowMat(0x35e0ff, 0.10);
             var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.18, ts * 9, 8, 1, true), bm);
-            beam.position.set(c[0] * ts, y + ts * 4.5, c[1] * ts); group.add(beam);
-            _hzPulse(bm, null, 0.05, 0, 0.5 + Math.random() * 0.4);
+            beam.position.set(c[0] * ts, y + ts * 4.5, c[1] * ts);   /* NO LIGHT BOX (mondo 2026-10-05): the corner beams are not added */
         });
     }
     // ════════════════════════════════════════════════════════════════════
@@ -28677,7 +28650,7 @@ const ThreeRenderer = (function () {
         _nrProp(K, function (rng) { return _hzVehicle('cybercar', { rng: rng }); }, K.BX1 + 1.35 * ts, K.CZ + 0.6 * ts, { ry: Math.PI });
         _nrProp(K, function (rng) { return _hzVehicle('copcar', { rng: rng }); }, K.CX - 1.6 * ts, K.BZ0 - 1.3 * ts, { ry: Math.PI / 2 + 0.3 });
         var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xff6ad8, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.03, 0, 0.8);
+        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ);   /* NO LIGHT BOX (mondo 2026-10-05): no additive floor sheen */
     };
     /* CAMELOT — the bailey: a moat around the courtyard, the curtain wall with
        its towers on the far bank, drawbridges at both gates, braziers. */
@@ -29192,11 +29165,11 @@ const ThreeRenderer = (function () {
             var px = K.BX0 - 7.5 * ts, pz = K.BZ1 + 7.5 * ts;
             _nrProp(K, _hzModelPyramid, px, pz, { s: 0.4, wall: false });
             _nrProp(K, _hzObelisk, px + 3.2 * ts, pz - 3.2 * ts, { s: 0.35, wall: false });
-            var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.25 * ts, 0.5 * ts, 30 * ts, 8, 1, true), K.glow(0xf8f8ff, 0.16)); beam.position.set(px, fy + 18 * ts, pz); K.add(beam); _hzPulse(beam.material, null, 0.06, 0, 2.4);
+            /* NO LIGHT BOX (mondo 2026-10-05): the sky beam off the pyramid is gone */
         }
         _nrSign(K, 'strip_n', ['THE STRIP', 'ROOM 21 · OPEN 24 H'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, fy + 1.2 * ts, K.Z0 + 1.0 * ts, 0, { sizes: [96, 42], bg: '#1a0820', border: '#ff3ad8', color: '#ffe0f8' });
         var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xff6ad8, transparent: true, opacity: 0.04, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.03, 0, 0.9);
+        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, fy + 1.2, K.CZ);   /* NO LIGHT BOX (mondo 2026-10-05): no additive floor sheen */
     };
     /* DOWNTOWN (Room 1954) — the Cyberpunk block recipe in daylight concrete:
        office blocks with dark windows on every flank, one tower COLLAPSED
@@ -29950,8 +29923,8 @@ const ThreeRenderer = (function () {
         /* the light in the opening */
         var veilMat = _hzGlowMat(p[2], 0.5);
         var veil = new THREE.Mesh(new THREE.PlaneGeometry(w, h), veilMat);
-        veil.position.set(0, h / 2, -d * 0.3); g.add(veil);
-        _hzPulse(veilMat, veil, 0.14, 0.02, 0.3 + rng() * 0.5);
+        veil.position.set(0, h / 2, -d * 0.3);   /* NO LIGHT BOX (mondo 2026-10-05): no lit veil in the opening */
+        rng();
         if (rng() >= 0.2) {
             /* the leaf, ajar on the left jamb, swung toward the viewer */
             var pivot = new THREE.Group(); pivot.position.set(-(w / 2 - jw * 0.1), 0, d * 0.35); g.add(pivot);
@@ -29967,11 +29940,8 @@ const ThreeRenderer = (function () {
         var beamMat = _hzGlowMat(p[2], 0.10);
         var beam = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.5, beamLen), beamMat);
         beam.position.set(0, h * 0.5, h * 0.7);
-        beam.rotation.x = Math.atan2(-1.4, 1);
-        g.add(beam);
-        _hzPulse(beamMat, null, 0.04, 0, 0.25 + rng() * 0.4);
-        var core = _hzGlowCore(w * 0.22, p[2], p[2]);
-        core.position.set(0, h * 0.5, d * 0.1); g.add(core);
+        beam.rotation.x = Math.atan2(-1.4, 1);   /* NO LIGHT BOX (mondo 2026-10-05): no light wedge out of the opening, no glow in the gap */
+        rng();
         if (rng() < 0.16) g.rotation.z = Math.PI;
         return g;
     }
@@ -30080,8 +30050,7 @@ const ThreeRenderer = (function () {
         var beam = new THREE.Group(); beam.position.y = ts * 0.7 + h + ts * 0.25;
         var bm = new THREE.Mesh(new THREE.PlaneGeometry(ts * 9, ts * 0.5), beamMat); bm.position.x = ts * 4.5; beam.add(bm);
         var bm2 = bm.clone(); bm2.rotation.x = Math.PI / 2; beam.add(bm2);
-        g.add(beam);
-        _horizonFloaters.push({ obj: beam, baseY: beam.position.y, amp: 0, spd: 0, phase: 0, spin: 0.012 + rng() * 0.01 });   // the lamp turns
+        rng();   /* NO LIGHT BOX (mondo 2026-10-05): the turning searchlight planes are not added (the rng draw keeps the horizon seed) */
         return g;
     }
     /* a ghost ship on the horizon — 2026-09-12: the user's ghost-ship-wreck GLB
@@ -37420,39 +37389,9 @@ const ThreeRenderer = (function () {
                 D.add(caseM);
             }
         } catch (e) {}
-        /* the light from the other side: a veil in the opening, a halo behind
-           it, a wedge falling onto the apron and the pool it makes there —
-           all additive, all driven by the open amount (+ a flare per walker) */
-        var veilMat = _hzGlowMat(0xfff0cc, 0);
-        var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat);
-        veil.position.set(0, oh / 2, 0.06 * ts); D.add(veil);
-        rec.veil = veilMat;
-        var halo = _hzGlowSprite(oh * 1.7, 0xfff0cc, 0, 0, 0, 0);
-        halo.position.set(0, oh * 0.5, 0.12 * ts); D.add(halo);
-        rec.halo = halo.material;
-        var poolMat = new THREE.MeshBasicMaterial({ map: _hzGlowTexture(), color: new THREE.Color(0xfff0cc), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
-        var pool = new THREE.Mesh(new THREE.PlaneGeometry(ow * 3.2, 2.2 * ts), poolMat);
-        pool.rotation.x = -Math.PI / 2; pool.position.set(0, 1.2, -1.0 * ts); D.add(pool);
-        rec.pool = poolMat;
-        var wedgeLen = Math.hypot(1.5 * ts, oh);
-        var wedgeMat = _hzGlowMat(0xfff0cc, 0);
-        var wedge = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.5, wedgeLen), wedgeMat);
-        wedge.rotation.x = Math.atan2(-1.5 * ts, oh);
-        wedge.position.set(0, oh / 2, -0.75 * ts); D.add(wedge);
-        rec.wedge = wedgeMat;
-        /* the tell before it opens: light in the cracks and under the door */
-        function _leak(w, h, x, y, z) {
-            var lm = _hzGlowMat(0xfff0cc, 0);
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lm);
-            m.position.set(x, y, z); D.add(m); rec.leaks.push(lm);
-            return m;
-        }
-        if (rec.motion.mode !== 'none') {
-            _leak(0.035 * ts, oh - 0.03 * ts, -(ow / 2 - 0.012 * ts), oh / 2, 0.02 * ts);
-            _leak(0.035 * ts, oh - 0.03 * ts, (ow / 2 - 0.012 * ts), oh / 2, 0.02 * ts);
-            var under = _leak(ow * 1.1, 0.26 * ts, 0, 0.9, -0.16 * ts);
-            under.rotation.x = -Math.PI / 2;
-        }
+        /* NO LIGHT BOX (mondo 2026-10-05, "they look like absolute shit"): the additive veil in the opening, the halo
+           behind it, the wedge onto the apron, its floor pool and the crack/under-door leaks are gone from the battle
+           intro's crossing AND the main menu door (same builder). The menu keeps its real PointLight. Never bring back. */
         /* the leaf: a procedural panel at once (the intro never waits), the
            catalogue GLB fitted into the same rig when it lands (hot from the
            loading screen — introCineWarm — after a visit to the building) */
@@ -37674,16 +37613,6 @@ const ThreeRenderer = (function () {
             else if (mo.mode === 'spin' && mo.carrier) mo.carrier.rotation.y += k * dt * 3.4;
             while (d.revealIdx < d.starts.length && now >= d.starts[d.revealIdx]) { d.flash = 1; d.revealIdx++; }
             d.flash = Math.max(0, (d.flash || 0) - dt * 2.8);
-            var F = _introFadeK;
-            var breathe = 0.85 + 0.15 * Math.sin(now * 0.005 + i);
-            d.veil.opacity = Math.min(1, (k * 0.8 + d.flash * 0.35) * breathe) * F;
-            d.halo.opacity = (k * 0.55 + d.flash * 0.3) * F;
-            d.pool.opacity = (k * 0.5 + d.flash * 0.25) * F;
-            d.wedge.opacity = (k * 0.12 + d.flash * 0.06) * F;
-            var sealAt = d.closeAt + d.closeMs + 350;
-            var leak = now >= sealAt ? Math.max(0, 1 - (now - sealAt) / 600) : 1;
-            var leakOp = (1 - k) * (0.30 + 0.18 * Math.sin(now * 0.007 + i * 2)) * leak * F;
-            for (var L = 0; L < d.leaks.length; L++) d.leaks[L].opacity = leakOp;
         }
     }
 
@@ -43208,7 +43137,7 @@ const ThreeRenderer = (function () {
         var discs = [];
         var ts = CONFIG.tileSize || BASE_TILE;
         var glowCol = null;
-        try { glowCol = opts.glow ? new THREE.Color(opts.glow) : null; } catch (e) { glowCol = null; }
+        /* NO LIGHT BOX (mondo 2026-10-05): no additive floor light pool under each actor; the contact shadow + the PointLight stay */
         (opts.actors || []).forEach(function (uid) {
             var e = unitEntries.get(uid);
             if (!e || !e.group) return;
@@ -44272,8 +44201,7 @@ const ThreeRenderer = (function () {
             rod.position.y = (cy + cs / 2 + rodH / 2) * U;
             G.add(rod);
             var cg = _hzGlowSprite(cs * 2.6 * U, 0x5fb4bb, 0.10, 0.05, 0.03, 0.2);
-            cg.position.y = cy * U;
-            G.add(cg);
+            cg.position.y = cy * U;   /* NO LIGHT BOX (mondo 2026-10-05): the glow round the HQ cube is not added */
         }
         /* mezzanine railing: posts (instanced) + two rail arcs, gaps at the stair landings */
         var railR = MZ.inner + 0.28, railH = 1.05;
@@ -46081,6 +46009,7 @@ const ThreeRenderer = (function () {
     /* THE VOID's glow (LEVEL_DESIGN_PLAN §5): a wide soft disc far under the islands in the void's colour, and a second, fainter and
        lower, so the fall has somewhere to look — never a floor (nothing stands on it, the walker returns before it) */
     function _hqBuildVoidGlow(room, info, G) {
+        return;   /* NO LIGHT BOX (mondo 2026-10-05): the huge additive floor glow planes under the void islands are gone */
         var U = _hqUnits(), V = info.void, S = room.shell || {};
         var cv = document.createElement('canvas'); cv.width = cv.height = 256;
         var cx = cv.getContext('2d'), gr = cx.createRadialGradient(128, 128, 4, 128, 128, 128);
@@ -48145,8 +48074,8 @@ const ThreeRenderer = (function () {
             var top = isles[isles.length - 1], gx = top[0] * s, gy = (top[1] + 4) * s, gz = top[2] * s;
             [[-4, 0], [4, 0]].forEach(function (q) { var post = _hqBox(1.2 * s, 12 * s, 1.2 * s, gold); post.position.set((gx + q[0] * s) * U, (gy + 6 * s) * U, gz * U); g.add(post); });
             var lintel = _hqBox(10.4 * s, 1.6 * s, 1.4 * s, gold); lintel.position.set(gx * U, (gy + 12.6 * s) * U, gz * U); g.add(lintel);
-            var light = _hzGlowSprite(22 * s * U, 0xfff2c8, 0.75, 0.15, 0.06, 0.6); light.position.set(gx * U, (gy + 7 * s) * U, (gz - 1.5 * s) * U); g.add(light);
-            var halo = _hzGlowSprite(60 * s * U, 0xffe8b0, 0.22, 0.0, 0.0, 0.0); halo.position.set(gx * U, (gy + 8 * s) * U, (gz - 4 * s) * U); g.add(halo);
+            var light = _hzGlowSprite(22 * s * U, 0xfff2c8, 0.75, 0.15, 0.06, 0.6); light.position.set(gx * U, (gy + 7 * s) * U, (gz - 1.5 * s) * U);
+            var halo = _hzGlowSprite(60 * s * U, 0xffe8b0, 0.22, 0.0, 0.0, 0.0); halo.position.set(gx * U, (gy + 8 * s) * U, (gz - 4 * s) * U);   /* NO LIGHT BOX (mondo 2026-10-05) */
             return g;
         },
     };
@@ -49616,7 +49545,7 @@ const ThreeRenderer = (function () {
             var portal = _hqBox(W + 0.6, 0.4, 0.4, _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 10 })); portal.position.set(0, (RISE + 2.4) * U, -(L / 2 + 0.2) * U); g.add(portal);
             [-1, 1].forEach(function (s) { var post = _hqBox(0.3, 2.6, 0.4, _hqMat(null, 1, 1, { color: 0x2a2a2e, shininess: 10 })); post.position.set(s * (W / 2 + 0.15) * U, (RISE + 1.1) * U, -(L / 2 + 0.2) * U); g.add(post); });
             var day = new THREE.Mesh(new THREE.PlaneGeometry(W * U, 2.4 * U), _hqBasic(0xfff1c0, { fog: false })); day.position.set(0, (RISE + 1.0) * U, -(L / 2 + 0.05) * U); g.add(day);
-            var haze = _hzGlowSprite(6.5 * U, 0xfff1c0, 0.35, 0.05, 0.02, 0.3); haze.position.set(0, (RISE + 1.0) * U, -(L / 2 - 0.6) * U); g.add(haze);
+            var haze = _hzGlowSprite(6.5 * U, 0xfff1c0, 0.35, 0.05, 0.02, 0.3); haze.position.set(0, (RISE + 1.0) * U, -(L / 2 - 0.6) * U);   /* NO LIGHT BOX (mondo 2026-10-05): no haze glow in the opening */
             /* the barrier arm across the foot, a post at each end */
             var post2 = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 });
             [-1, 1].forEach(function (s) { var p = _hqBox(0.2, 1.0, 0.2, post2); p.position.set(s * (W / 2 + 0.3) * U, 0.5 * U, (L / 2 + 0.3) * U); g.add(p); });
@@ -51414,9 +51343,9 @@ const ThreeRenderer = (function () {
             var cornice = _hqBox(W + 0.12, 0.09, D + 0.08, wood); cornice.position.set(0, (H + 0.045) * U, (D / 2 + 0.03) * U); g.add(cornice);
             /* the light at the back: the back panel glows cold, a lamp post
                stands in it with a warm point, snow lies before the doors */
-            var cold = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * T - 0.02) * U, (H - 0.2) * U), _hqBasic(0xbfd8ff, { transparent: true, opacity: 0.35, depthWrite: false }));
+            var cold = new THREE.Mesh(new THREE.PlaneGeometry((W - 2 * T - 0.02) * U, (H - 0.2) * U), _hqBasic(0x07090c));   /* NO LIGHT BOX (mondo 2026-10-05): a dark back, no lit sheet or glow */
             cold.position.set(0, (H / 2 - 0.02) * U, (T + 0.015) * U); g.add(cold);
-            var glow = _hzGlowSprite(1.6 * U, 0xcfe4ff, 0.25, 0.0, 0.0, 0.0); glow.position.set(0, (H * 0.55) * U, (T + 0.12) * U); g.add(glow);
+            var glow = _hzGlowSprite(1.6 * U, 0xcfe4ff, 0.25, 0.0, 0.0, 0.0); glow.position.set(0, (H * 0.55) * U, (T + 0.12) * U);
             var post = _hqBox(0.05, 1.5, 0.05, _hqMat(null, 1, 1, { color: 0x1c1c22, shininess: 30 })); post.position.set(0.32 * U, 0.85 * U, (T + 0.08) * U); g.add(post);
             var lamp = new THREE.Mesh(new THREE.BoxGeometry(0.12 * U, 0.16 * U, 0.12 * U), _hqBasic(0xfff1c8)); lamp.position.set(0.32 * U, 1.66 * U, (T + 0.08) * U); g.add(lamp);
             var lampGlow = _hzGlowSprite(0.6 * U, 0xffe0a0, 0.55, 0.0, 0.0, 0.0); lampGlow.position.copy(lamp.position); g.add(lampGlow);
@@ -51467,8 +51396,8 @@ const ThreeRenderer = (function () {
             var inner = new THREE.Mesh(new THREE.CylinderGeometry(RI * U, RI * U, (HH + m(0.6)) * U, 24, 1, true), stoneIn); inner.material.side = THREE.BackSide; inner.position.set(0, (HH / 2 - m(0.3)) * U, zc * U); stand.add(inner);
             var lip = new THREE.Mesh(new THREE.RingGeometry(RI * U, (R + m(0.02)) * U, 28), stone); lip.rotation.x = -Math.PI / 2; lip.position.set(0, (HH + 0.001) * U, zc * U); stand.add(lip);
             var shaft = new THREE.Mesh(new THREE.CircleGeometry((RI - m(0.01)) * U, 24), _hqBasic(0x061a1c)); shaft.rotation.x = -Math.PI / 2; shaft.position.set(0, (HH - m(0.55)) * U, zc * U); g.add(shaft);
-            var light = new THREE.Mesh(new THREE.CircleGeometry((RI - m(0.02)) * U, 24), _hqBasic(0x6af0d0, { transparent: true, opacity: 0.18, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, (HH - m(0.54)) * U, zc * U); light.renderOrder = 2; g.add(light);
-            var glow = _hzGlowSprite(m(1.3) * U, 0x9affe4, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (HH + m(0.1)) * U, zc * U); g.add(glow);
+            var light = new THREE.Mesh(new THREE.CircleGeometry((RI - m(0.02)) * U, 24), _hqBasic(0x6af0d0, { transparent: true, opacity: 0.18, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, (HH - m(0.54)) * U, zc * U); light.renderOrder = 2;   /* NO LIGHT BOX (mondo 2026-10-05): no lit disc / glow down the well */
+            var glow = _hzGlowSprite(m(1.3) * U, 0x9affe4, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (HH + m(0.1)) * U, zc * U);
             /* the frame: two uprights beside the ring (the walker steps between them), the beam, the windlass */
             [-1, 1].forEach(function (sg) {
                 var up = _hqBox(m(0.09), m(1.95), m(0.09), wood); up.position.set(sg * (R + m(0.02)) * U, m(0.975) * U, zc * U); stand.add(up);
@@ -51573,9 +51502,9 @@ const ThreeRenderer = (function () {
                 });
             } finally { _hzKitTs = prevTs; }
             /* the doorway at x 0: a lit opening in the flank, two leaves that slide apart */
-            var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), _hqBasic(0xfff0c0, { transparent: true, opacity: 0.35, depthWrite: false }));
+            var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), _hqBasic(0x07090c));   /* NO LIGHT BOX (mondo 2026-10-05): a dark doorway, no lit sheet or glow */
             glow.position.set(0, (H / 2) * U, (zBack + D - (MT ? 0.3 : 0.02)) * U); g.add(glow);
-            var mouth = _hzGlowSprite(1.8 * U, 0xffe8b0, 0.2, 0.0, 0.0, 0.0); mouth.position.set(0, (H * 0.55) * U, (zBack + D + 0.3) * U); g.add(mouth);
+            var mouth = _hzGlowSprite(1.8 * U, 0xffe8b0, 0.2, 0.0, 0.0, 0.0); mouth.position.set(0, (H * 0.55) * U, (zBack + D + 0.3) * U);
             /* the leaves: the car's own door sheet (the file's `Door` material — the pack's leaf) on the metro car, the steel box otherwise */
             var leafMat = steel;
             var leafL = _hqBox(W / 2 + 0.02, H, 0.05, leafMat), leafR = _hqBox(W / 2 + 0.02, H, 0.05, leafMat);
@@ -51591,7 +51520,7 @@ const ThreeRenderer = (function () {
             }
             var headY = MT ? MT.headY - MT.sink : 1.0;
             var head = new THREE.Mesh(new THREE.CircleGeometry(0.22 * U, 12), _hqBasic(0xfff8e0)); head.position.set((nose - 0.06) * U, headY * U, zc * U); head.rotation.y = -Math.PI / 2; tr.add(head);
-            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set((nose - 0.4) * U, headY * U, zc * U); tr.add(beam);
+            var beam = _hzGlowSprite(2.4 * U, 0xfff4d0, 0.45, 0.0, 0.0, 0.0); beam.position.set((nose - 0.4) * U, headY * U, zc * U);   /* NO LIGHT BOX (mondo 2026-10-05): no headlight glow */
             var motion = { mode: 'way', ow: W, tick: function (k) {
                 leafL.position.x = (-(W / 4) - (MT ? W / 2 : 0.72) * k) * U; leafR.position.x = ((W / 4) + (MT ? W / 2 : 0.72) * k) * U;
                 glow.material.opacity = 0.35 + 0.5 * k; mouth.material.opacity = 0.2 + 0.5 * k;
@@ -51642,8 +51571,8 @@ const ThreeRenderer = (function () {
             });
             /* the rear door's opening: the dome light spilling out of the back seat */
             var glow = new THREE.Mesh(new THREE.PlaneGeometry(W * U, 1.0 * U), _hqBasic(0xffe8b0, { transparent: true, opacity: 0.0, depthWrite: false }));
-            glow.position.set(0, 1.05 * U, 0.03 * U); g.add(glow);
-            var spill = _hzGlowSprite(1.4 * U, 0xffe0a0, 0.0, 0.0, 0.0, 0.0); spill.position.set(0, 1.0 * U, 0.35 * U); g.add(spill);
+            glow.position.set(0, 1.05 * U, 0.03 * U);   /* NO LIGHT BOX (mondo 2026-10-05): no dome-light spill sheet / glow */
+            var spill = _hzGlowSprite(1.4 * U, 0xffe0a0, 0.0, 0.0, 0.0, 0.0); spill.position.set(0, 1.0 * U, 0.35 * U);
             var motion = { mode: 'way', ow: W, tick: function (k) {
                 glow.material.opacity = 0.45 * k; spill.material.opacity = 0.5 * k;
                 roofGlow.material.opacity = 0.1 + 0.6 * k;
@@ -51684,7 +51613,7 @@ const ThreeRenderer = (function () {
                under a sky, and a cold glow in the middle of it */
             var sky = new THREE.Mesh(new THREE.PlaneGeometry(W * U, (H * 0.55) * U), _hqBasic(0xbfd6f4)); sky.position.set(0, (y0 + T + H * 0.725) * U, 0.035 * U); g.add(sky);
             var floor = new THREE.Mesh(new THREE.PlaneGeometry(W * U, (H * 0.45) * U), _hqMat('checkerboard', 1, 1, { color: 0xe8e2d4, shininess: 40, specular: 0x666666 })); floor.position.set(0, (y0 + T + H * 0.225) * U, 0.035 * U); g.add(floor);
-            var glow = _hzGlowSprite(1.1 * U, 0xd8ecff, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, (y0 + T + H * 0.55) * U, 0.12 * U); g.add(glow);
+            var glow = _hzGlowSprite(1.1 * U, 0xd8ecff, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, (y0 + T + H * 0.55) * U, 0.12 * U);   /* NO LIGHT BOX (mondo 2026-10-05) */
             var ripple = new THREE.Mesh(new THREE.TorusGeometry(0.2 * U, 0.008 * U, 6, 28), _hqBasic(0xffffff, { transparent: true, opacity: 0.0, depthWrite: false }));
             ripple.position.set(0, (y0 + T + H * 0.5) * U, 0.045 * U); ripple.scale.setScalar(0.01); g.add(ripple);
             var motion = { mode: 'way', ow: W, tick: function (k) {
@@ -51714,7 +51643,7 @@ const ThreeRenderer = (function () {
             var inner = new THREE.Mesh(new THREE.CylinderGeometry((W / 2) * 1.02 * U, (W / 2) * 1.02 * U, 0.5 * U, 4, 1, true), tile);
             inner.material.side = THREE.BackSide; inner.rotation.y = Math.PI / 4; inner.position.set(0, -0.15 * U, zc * U); g.add(inner);
             var deep = new THREE.Mesh(new THREE.PlaneGeometry(W * U, W * U), _hqBasic(0x0a2a44)); deep.rotation.x = -Math.PI / 2; deep.position.set(0, -0.36 * U, zc * U); g.add(deep);
-            var light = new THREE.Mesh(new THREE.CircleGeometry((W * 0.3) * U, 20), _hqBasic(0x7fe8ff, { transparent: true, opacity: 0.25, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, -0.35 * U, zc * U); light.renderOrder = 2; g.add(light);
+            var light = new THREE.Mesh(new THREE.CircleGeometry((W * 0.3) * U, 20), _hqBasic(0x7fe8ff, { transparent: true, opacity: 0.25, depthWrite: false })); light.rotation.x = -Math.PI / 2; light.position.set(0, -0.35 * U, zc * U); light.renderOrder = 2;   /* NO LIGHT BOX (mondo 2026-10-05): no floor light pool */
             var water = new THREE.Mesh(new THREE.PlaneGeometry(W * U, W * U), _hqBasic(0x3fb0d8, { transparent: true, opacity: 0.62, depthWrite: false }));
             water.rotation.x = -Math.PI / 2; water.position.set(0, 0.04 * U, zc * U); water.renderOrder = 3; g.add(water);
             var glow = _hzGlowSprite(1.6 * U, 0x9ff0ff, 0.15, 0.0, 0.0, 0.0); glow.position.set(0, 0.25 * U, zc * U); g.add(glow);
@@ -51754,7 +51683,7 @@ const ThreeRenderer = (function () {
             peak.rotation.y = Math.PI / 4; peak.scale.z = 0.12; peak.position.set(0.05 * U, (y0 + H * 0.28 + H * 0.31) * U, 0.01 * U); cv.add(peak);
             var snow = new THREE.Mesh(new THREE.CylinderGeometry(0.001 * U, (W * 0.11) * U, (H * 0.19) * U, 4), _hqBasic(0xf4f6fa)); snow.rotation.y = Math.PI / 4; snow.scale.z = 0.12; snow.position.set(0.05 * U, (y0 + H * 0.28 + H * 0.525) * U, 0.014 * U); cv.add(snow);
             var city = _hzGlowSprite(0.42 * U, 0xffe4a0, 0.5, 0.0, 0.0, 0.0); city.position.set(0.18 * U, (y0 + H * 0.48) * U, 0.03 * U); cv.add(city);
-            var spill = _hzGlowSprite(1.7 * U, 0xffe8b8, 0.0, 0.0, 0.0, 0.0); spill.position.set(0, (y0 + H / 2) * U, 0.2 * U); g.add(spill);
+            var spill = _hzGlowSprite(1.7 * U, 0xffe8b8, 0.0, 0.0, 0.0, 0.0); spill.position.set(0, (y0 + H / 2) * U, 0.2 * U);   /* NO LIGHT BOX (mondo 2026-10-05): no spill glow */
             /* the brass plate under the frame */
             var plaque = _hqBox(0.4, 0.08, 0.02, gold); plaque.position.set(0, (y0 - T - 0.09) * U, 0.03 * U); g.add(plaque);
             var motion = { mode: 'way', ow: W, tick: function (k) {
@@ -51822,7 +51751,7 @@ const ThreeRenderer = (function () {
             /* the shape: a black hole in the static with a rim of signal; it grows as the way opens */
             var hole = new THREE.Mesh(new THREE.CircleGeometry((W / 2) * U, 24), _hqBasic(0x020206)); hole.position.set(0, -(SH / 2 + 0.05) * U, D * 0.4 * U); hole.scale.setScalar(0.12); sheet.add(hole);
             var rim = new THREE.Mesh(new THREE.TorusGeometry((W / 2) * U, 0.012 * U, 6, 32), _hqBasic(0x9fd8ff, { transparent: true, opacity: 0.3, depthWrite: false })); rim.position.set(0, -(SH / 2 + 0.05) * U, D * 0.5 * U); rim.scale.setScalar(0.12); sheet.add(rim);
-            var glow = _hzGlowSprite(1.4 * U, 0xbfe4ff, 0.12, 0.0, 0.0, 0.0); glow.position.set(0, (yTop - SH / 2) * U, 0.3 * U); g.add(glow);
+            var glow = _hzGlowSprite(1.4 * U, 0xbfe4ff, 0.12, 0.0, 0.0, 0.0); glow.position.set(0, (yTop - SH / 2) * U, 0.3 * U);   /* NO LIGHT BOX (mondo 2026-10-05) */
             var motion = { mode: 'way', ow: W, tick: function (k) {
                 hole.scale.setScalar(0.12 + 0.88 * k); rim.scale.setScalar(0.12 + 0.9 * k); rim.material.opacity = 0.3 + 0.6 * k; glow.material.opacity = 0.12 + 0.5 * k;
             } };
@@ -51862,8 +51791,8 @@ const ThreeRenderer = (function () {
             var sill = _hqBox(W + 2 * T, 0.03, D, wood); sill.position.set(0, 0.015 * U, (D / 2) * U); g.add(sill);
             var shelf = _hqBox(W, 0.03, D - 0.1, wood); shelf.position.set(0, (H - 0.35) * U, (D / 2) * U); g.add(shelf);
             /* no back wall: the other room's light where the panel should be */
-            var warm = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.02) * U, (H - 0.04) * U), _hqBasic(0xffd9a0, { transparent: true, opacity: 0.4, depthWrite: false })); warm.position.set(0, (H / 2) * U, 0.02 * U); g.add(warm);
-            var glow = _hzGlowSprite(1.4 * U, 0xffe0b0, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (H * 0.55) * U, 0.15 * U); g.add(glow);
+            var warm = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.02) * U, (H - 0.04) * U), _hqBasic(0x07090c)); warm.position.set(0, (H / 2) * U, 0.02 * U); g.add(warm);   /* NO LIGHT BOX (mondo 2026-10-05): a dark back, no lit sheet or glow */
+            var glow = _hzGlowSprite(1.4 * U, 0xffe0b0, 0.2, 0.0, 0.0, 0.0); glow.position.set(0, (H * 0.55) * U, 0.15 * U);
             var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.06) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (H - 0.5) * U, (D * 0.45) * U); g.add(rail);
             [0x6a5a4a, 0x3a4a6a, 0x8a3a3a].forEach(function (c, i) {
                 var coat = _hqBox(0.22, 0.9, 0.06, _hqMat('oxblood', 1, 2, { color: c, shininess: 4 })); coat.position.set((-0.28 + i * 0.28) * U, (H - 0.5 - 0.47) * U, (D * 0.45) * U); coat.rotation.y = (i % 2 ? 0.1 : -0.08); g.add(coat);
@@ -51950,8 +51879,8 @@ const ThreeRenderer = (function () {
             var disc = new THREE.Mesh(new THREE.RingGeometry(0.35 * U, 1.05 * U, 32, 3), brass); disc.position.set(0, 1.25 * U, -0.95 * U); g.add(disc);
             var spokes = new THREE.Group(); spokes.position.copy(disc.position); g.add(spokes);
             for (var sk = 0; sk < 6; sk++) { var spoke = _hqBox(0.05, 1.9, 0.03, dark); spoke.rotation.z = sk * Math.PI / 6; spokes.add(spoke); }
-            var light = new THREE.Mesh(new THREE.CircleGeometry(0.34 * U, 20), _hqBasic(0xbfe8ff, { transparent: true, opacity: 0.25, depthWrite: false })); light.position.set(0, 1.25 * U, -0.93 * U); light.renderOrder = 2; g.add(light);
-            var glow = _hzGlowSprite(1.6 * U, 0x9fd8ff, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.25 * U, -0.6 * U); g.add(glow);
+            var light = new THREE.Mesh(new THREE.CircleGeometry(0.34 * U, 20), _hqBasic(0x07090c)); light.position.set(0, 1.25 * U, -0.93 * U); light.renderOrder = 2; g.add(light);   /* NO LIGHT BOX (mondo 2026-10-05): a dark disc, no lit disc or glow */
+            var glow = _hzGlowSprite(1.6 * U, 0x9fd8ff, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.25 * U, -0.6 * U);
             var plate = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.16 * U), _hqBasic(0x1a1612)); plate.position.set(0, 1.9 * U, -0.32 * U); g.add(plate);
             cage.push(ringT, ringB, cap, col, dial, lever, knob, seat, plate);
             /* DISASTER CITY, THE SECOND PASS (2026-09-17): the user's retro time machine GLB (catalogue `time_machine`) stands in for the brass cage once it lands — the disc and its light stay behind it */
@@ -52044,7 +51973,7 @@ const ThreeRenderer = (function () {
             var box = _hqBox(1.7, 0.46, 0.55, conc); box.position.set(0, 0.23 * U, -0.36 * U); g.add(box);
             var lip = _hqBox(1.8, 0.06, 0.62, conc); lip.position.set(0, 0.49 * U, -0.36 * U); g.add(lip);
             var slot = new THREE.Mesh(new THREE.PlaneGeometry(W * U, 0.24 * U), _hqBasic(0x05070a)); slot.position.set(0, 0.2 * U, -0.083 * U); g.add(slot);
-            var inner = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.2) * U, 0.16 * U), _hqBasic(0x8ff0a8, { transparent: true, opacity: 0.12, depthWrite: false })); inner.position.set(0, 0.2 * U, -0.078 * U); inner.renderOrder = 2; g.add(inner);
+            var inner = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.2) * U, 0.16 * U), _hqBasic(0x8ff0a8, { transparent: true, opacity: 0.12, depthWrite: false })); inner.position.set(0, 0.2 * U, -0.078 * U); inner.renderOrder = 2;   /* NO LIGHT BOX (mondo 2026-10-05) */
             /* the grate in the road in front: the frame, the bars, the dark under them */
             var under = new THREE.Mesh(new THREE.PlaneGeometry(1.3 * U, 0.9 * U), _hqBasic(0x05070a)); under.rotation.x = -Math.PI / 2; under.position.set(0, 0.005 * U, 0.42 * U); g.add(under);
             for (var b = 0; b < 7; b++) { var bar = _hqBox(0.06, 0.05, 0.86, iron); bar.position.set((-0.54 + b * 0.18) * U, 0.03 * U, 0.42 * U); g.add(bar); }
@@ -52058,7 +51987,7 @@ const ThreeRenderer = (function () {
                 var sdInst = _miscModelInstance(_hqModelUrl(sdCat), true, (sdCat.span || 1.3) * U, { fit: 'span', matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { grateBits.forEach(function (m) { m.visible = false; }); under.visible = false; } });
                 sdInst.position.set(0, 0.006 * U, 0.42 * U); g.add(sdInst);
             }
-            var glow = _hzGlowSprite(0.9 * U, 0x8ff0a8, 0.14, 0.0, 0.0, 0.0); glow.position.set(0, 0.16 * U, 0.1 * U); g.add(glow);
+            var glow = _hzGlowSprite(0.9 * U, 0x8ff0a8, 0.14, 0.0, 0.0, 0.0); glow.position.set(0, 0.16 * U, 0.1 * U);
             var sign = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.16 * U), _hqBasic(0xe8e4d8)); sign.position.set(0, 0.36 * U, -0.082 * U); g.add(sign);   // NO DUMPING · DRAINS TO THE DRAIN
             var motion = { mode: 'way', ow: W, tick: function (k) { inner.material.opacity = 0.12 + 0.7 * k; glow.material.opacity = 0.14 + 0.6 * k; glow.scale.setScalar((0.9 + 1.2 * k) * U); under.material.opacity = 1; } };
             if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((0.9 + 0.06 * Math.sin(now * 0.0031)) * U); });
@@ -52104,8 +52033,8 @@ const ThreeRenderer = (function () {
             if (typeof _hqRayTex === 'function') { var rt = _hqRayTex(); if (rt) sm.map = rt; }
             if (typeof THREE.AdditiveBlending !== 'undefined') sm.blending = THREE.AdditiveBlending;
             var shaft = new THREE.Mesh(new THREE.CylinderGeometry((W / 2 - 0.6) * U, (W / 2 - 1.0) * U, H8 * U, 20, 1, true), sm);
-            shaft.position.y = (H8 / 2) * U; shaft.renderOrder = 3; g.add(shaft);
-            var base = _hzGlowSprite(3.0 * U, 0x9ff0ff, 0.35, 0.1, 0.05, 0.9); base.position.y = 0.4 * U; g.add(base);
+            shaft.position.y = (H8 / 2) * U; shaft.renderOrder = 3;   /* NO LIGHT BOX (mondo 2026-10-05): no shaft of light or base glow; the bubbles stay */
+            var base = _hzGlowSprite(3.0 * U, 0x9ff0ff, 0.35, 0.1, 0.05, 0.9); base.position.y = 0.4 * U;
             var bubbles = [];
             for (var b = 0; b < 40; b++) { var bs = _hzGlowSprite((0.1 + (b % 4) * 0.05) * U, 0xdfffff, 0.6, 0, 0, 0); bs.userData = { t: b / 40, a: b * 0.9, r: 0.2 + (b % 5) * 0.32 }; bubbles.push(bs); g.add(bs); }
             var spd = { v: 1 };
@@ -52134,8 +52063,8 @@ const ThreeRenderer = (function () {
         /* THE HOLE: a dark recess in the trunk's front with the other side's light in it */
         var hole = new THREE.Mesh(new THREE.PlaneGeometry(holeW * U, holeH * U), _hqBasic(0x060a08)); hole.position.set(0, (0.12 + holeH / 2) * U, (zc + R * 0.98) * U); g.add(hole);
         var light = new THREE.Mesh(new THREE.PlaneGeometry((holeW - 0.16) * U, (holeH - 0.16) * U), _hqBasic(dead ? 0xd8d0ff : 0xbfffd0, { transparent: true, opacity: 0.16, depthWrite: false }));
-        light.position.set(0, (0.12 + holeH / 2) * U, (zc + R * 0.99 + 0.012) * U); light.renderOrder = 2; g.add(light);
-        var glow = _hzGlowSprite(1.4 * U, dead ? 0xc8c0ff : 0xa0ffc8, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.05 * U, (zc + R * 1.1) * U); g.add(glow);
+        light.position.set(0, (0.12 + holeH / 2) * U, (zc + R * 0.99 + 0.012) * U); light.renderOrder = 2;   /* NO LIGHT BOX (mondo 2026-10-05): the hole stays dark */
+        var glow = _hzGlowSprite(1.4 * U, dead ? 0xc8c0ff : 0xa0ffc8, 0.18, 0.0, 0.0, 0.0); glow.position.set(0, 1.05 * U, (zc + R * 1.1) * U);
         /* the user's GLB, hole to +Z (the catalogue's rot turns it), the stand-in hidden when it lands */
         var cat = (typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {})[dead ? 'hollow_dead_tree' : 'hollow_tree']) : null;
         if (cat && cat.file && cat.base !== 'rt' && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
@@ -52779,7 +52708,7 @@ const ThreeRenderer = (function () {
         var disc = new THREE.Mesh(new THREE.CircleGeometry(0.5 * U, 40), _hzGlowMat(0xffb020, 0.14));
         disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02 * U; disc.renderOrder = 2; g.add(disc);
         var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.16 * U, 2.0 * U, 14, 1, true), _hzGlowMat(0xffc860, 0.16));
-        beam.position.y = 1.0 * U; beam.renderOrder = 2; g.add(beam);
+        beam.position.y = 1.0 * U; beam.renderOrder = 2;   /* NO LIGHT BOX (mondo 2026-10-05): no column of light */
         var icon = new THREE.Group(); icon.position.y = 1.45 * U;
         var gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.26 * U, 0), new THREE.MeshPhongMaterial({ color: 0xffd060, emissive: 0xff9a10, emissiveIntensity: 0.9, shininess: 90, specular: 0xffffff, transparent: true, opacity: 0.92 }));
         icon.add(gem);
@@ -52806,7 +52735,7 @@ const ThreeRenderer = (function () {
         var disc = new THREE.Mesh(new THREE.CircleGeometry(0.9 * U, 48), _hzGlowMat(0x5fe090, 0.12));
         disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02 * U; disc.renderOrder = 2; g.add(disc);
         var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, 0.95 * U, 2.4 * U, 18, 1, true), _hzGlowMat(0x9fffc0, 0.09));
-        beam.position.y = 1.2 * U; beam.renderOrder = 2; g.add(beam);
+        beam.position.y = 1.2 * U; beam.renderOrder = 2;   /* NO LIGHT BOX (mondo 2026-10-05): no column of light; the PointLight stays */
         var icon = new THREE.Group(); icon.position.y = 1.7 * U;
         var cm = new THREE.MeshPhongMaterial({ color: 0xd8ffe8, emissive: 0x40e080, emissiveIntensity: 0.9, shininess: 80, transparent: true, opacity: 0.92 });
         var barV = new THREE.Mesh(new THREE.BoxGeometry(0.14 * U, 0.5 * U, 0.14 * U), cm); icon.add(barV);
@@ -54233,7 +54162,7 @@ const ThreeRenderer = (function () {
             var fill = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.3, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
             var grp = new THREE.Group();
             grp.add(_hqGunFrame(ow, oh, mat, U));
-            var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), fill); pane.position.set(0, oh / 2 * U, 0); grp.add(pane);
+            /* NO LIGHT BOX (mondo 2026-10-05): no lit pane in the dash door's opening */
             grp.position.set(x * U, y * U, z * U); grp.rotation.y = yaw; grp.scale.set(1, 0.01, 1);
             H.propGroup.add(grp);
             var t0 = performance.now(), gone = false;
@@ -54340,7 +54269,7 @@ const ThreeRenderer = (function () {
            read that says A from B across a room (and the hole you fall into) */
         var apMat = new THREE.MeshBasicMaterial({ color: slotHex, transparent: true, opacity: flat ? 0.3 : 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
         var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), apMat);
-        pane.position.set(0, oh / 2 * U, 0.015 * U); grp.add(pane);
+        pane.position.set(0, oh / 2 * U, 0.015 * U);   /* NO LIGHT BOX (mondo 2026-10-05): the lit pane filling the opening is not added; the rim ring keeps A/B */
         /* D3b: THE SHAPE — A a circle, B a square (RingGeometry with four segments, turned a quarter);
            the jamb lamps' caps follow (a ball / a cube), so a monochrome read tells the pair apart */
         var shape = (_hqPortalRules().shapes || {})[slot] || (slot === 'b' ? 'square' : 'circle');
@@ -54377,7 +54306,7 @@ const ThreeRenderer = (function () {
         var capGeo = (shape === 'square') ? new THREE.BoxGeometry(0.09 * U, 0.09 * U, 0.09 * U) : new THREE.SphereGeometry(0.055 * U, 10, 8);
         [lampL, lampR].forEach(function (lp) { var c1 = new THREE.Mesh(capGeo, slotMat); c1.position.set(lp.position.x, (oh * 0.9 + 0.06) * U, lp.position.z); grp.add(c1); var c2 = c1.clone(); c2.position.y = (oh * 0.1 - 0.06) * U; grp.add(c2); });
         var glow = _hzGlowSprite(1.4 * U, slotHex, 0.35, 0.12, 0.1, 1.4); glow.position.set(0, (flat ? oh / 2 : 0.25) * U, 0.35 * U);
-        grp.add(lampL, lampR, glow);
+        grp.add(lampL, lampR);   /* NO LIGHT BOX (mondo 2026-10-05): the glow at the mouth is not added */
         /* the leaf: the catalogue GLB on a swing pivot, opening out of the mouth (+Z) like every room door */
         var leafGroup = new THREE.Group(); leafGroup.position.set(0, 0, 0);
         var motion = null;
@@ -54892,8 +54821,8 @@ const ThreeRenderer = (function () {
         var body = new THREE.Group(); grp.add(body);
         body.add(_hqGunFrame(ow, oh, frameMat, U));
         var sill = _hqBox(ow + 0.6, 0.05, 0.5, frameMat); sill.position.set(0, 0.025 * U, 0); body.add(sill);
-        var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), glowMat); pane.position.set(0, oh / 2 * U, 0); body.add(pane);
-        var lamp = _hzGlowSprite(1.6 * U, hex, 0.4, 0.1, 0.08, 1.2); lamp.position.set(0, oh * 0.5 * U, 0.35 * U); body.add(lamp);
+        var pane = new THREE.Mesh(new THREE.PlaneGeometry(ow * U, oh * U), glowMat); pane.position.set(0, oh / 2 * U, 0);   /* NO LIGHT BOX (mondo 2026-10-05): the lit pane + glow in the opening are not added */
+        var lamp = _hzGlowSprite(1.6 * U, hex, 0.4, 0.1, 0.08, 1.2); lamp.position.set(0, oh * 0.5 * U, 0.35 * U);
         try {
             var tex = _hzTextTex('hq_gun_door_' + row.key + (row.label ? ':' + row.label : ''), [String(row.label || def.name || row.key).toUpperCase()], { w: 512, h: 96, color: '#f2efe6', pad: 0.14, weight: 'bold', font: '"Courier New", Courier, monospace' });
             if (tex) {
@@ -54924,7 +54853,7 @@ const ThreeRenderer = (function () {
             fx.dot = _hzGlowSprite(0.5 * U, hex, 0.8, 0.2, 0.2, 9); grp.add(fx.dot);
         } else if (def.act === 'laneLight' && !(typeof window !== 'undefined' && window.EW_HQ_NO_GUN_LIGHT)) {
             var cone = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, L.halfW * 1.6 * U, L.len * U, 20, 1, true), new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.08, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
-            cone.rotation.x = Math.PI / 2 - 0.12; cone.position.set(0, 1.2 * U, (0.2 + L.len / 2) * U); grp.add(cone);
+            cone.rotation.x = Math.PI / 2 - 0.12; cone.position.set(0, 1.2 * U, (0.2 + L.len / 2) * U);   /* NO LIGHT BOX (mondo 2026-10-05): the fake cone is not added; the real SpotLight below lights the lane */
             try {
                 var sl = new THREE.SpotLight(hex, 1.6, (L.len + 3) * U, 0.5, 0.6, 1);
                 var dir = _hqGunLane(row.key, row.face);
@@ -58285,7 +58214,8 @@ const ThreeRenderer = (function () {
             m.userData.ph = rng() * 6.28; m.userData.sp = 0.05 + rng() * 0.08;
             rays.add(m);
         }
-        rays.visible = false; sc.add(rays); fx.rays = rays; fx.rayH = rayH;
+        /* NO LIGHT BOX (mondo 2026-10-05): the underwater god-ray planes are not shown (fx.rays stays null) */
+        rays = null; fx.rayH = rayH;
         /* MARINE SNOW: a Points cloud in a cube round the camera */
         var N = 700, pos = new Float32Array(N * 3);
         for (var j = 0; j < N; j++) { pos[j * 3] = (rng() - 0.5) * 60 * U; pos[j * 3 + 1] = (rng() - 0.5) * 30 * U; pos[j * 3 + 2] = (rng() - 0.5) * 60 * U; }
@@ -58340,11 +58270,11 @@ const ThreeRenderer = (function () {
             if (fx.rays) fx.rays.visible = under; if (fx.snow) fx.snow.visible = under;
             _hqSeaEmit({ kind: 'under', on: under });
         }
-        if (under && fx.rays) {
+        if (under) {
             var q = 12 * U, cx = Math.round(cam.position.x / q) * q, cz = Math.round(cam.position.z / q) * q;
-            fx.rays.position.set(cx, (wyC - fx.rayH / 2 + 0.2) * U, cz);
+            if (fx.rays) fx.rays.position.set(cx, (wyC - fx.rayH / 2 + 0.2) * U, cz);
             var t = now * 0.001;
-            for (var i = 0; i < fx.rays.children.length; i++) { var r = fx.rays.children[i]; r.rotation.y += dt * 0.04 * ((i % 2) ? 1 : -1); r.material.opacity = 0.08 + 0.05 * Math.sin(t * r.userData.sp * 4 + r.userData.ph); }
+            if (fx.rays) for (var i = 0; i < fx.rays.children.length; i++) { var r = fx.rays.children[i]; r.rotation.y += dt * 0.04 * ((i % 2) ? 1 : -1); r.material.opacity = 0.08 + 0.05 * Math.sin(t * r.userData.sp * 4 + r.userData.ph); }
             if (fx.snow) { fx.snow.position.set(cx, Math.round(cam.position.y / q) * q, cz); fx.snow.rotation.y += dt * 0.01; }
         }
         /* the bubbles: a diver breathes, the bathyscaphe vents */
@@ -58411,7 +58341,7 @@ const ThreeRenderer = (function () {
             var coneMat = new THREE.MeshBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
             [-0.62, 0.62].forEach(function (x) {
                 var lamp = _hzGlowSprite(0.5 * U, 0xdfffff, 0.75, 0.1, 0.05, 1.1); lamp.position.set(x * U, 0.95 * U, 2.6 * U); g.add(lamp);
-                var cone = new THREE.Mesh(new THREE.ConeGeometry(2.4 * U, 12 * U, 14, 1, true), coneMat); cone.rotation.x = -Math.PI / 2; cone.position.set(x * U, 0.95 * U, (2.6 + 6) * U); g.add(cone);
+                /* NO LIGHT BOX (mondo 2026-10-05): no headlamp beam cone */
             });
             if (_hq) _hq.tickers.push(function (dt) { var V = _hq && _hq.vehicle; var on = V && V.on && V.rec && V.rec.grp && g.parent && V.rec.grp === g.parent; screw.rotation.z += dt * (on ? (2 + Math.abs(V.v) * 1.5) : 0.4); });
             return g;
@@ -58432,8 +58362,7 @@ const ThreeRenderer = (function () {
             var beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
             var beams = new THREE.Group(); beams.position.y = (0.8 + h + 0.7) * U;
             [0, Math.PI].forEach(function (a) { var b = new THREE.Mesh(new THREE.ConeGeometry(2.2 * U, 34 * U, 10, 1, true), beamMat); b.rotation.z = Math.PI / 2; b.rotation.y = a; b.position.set(Math.cos(a) * 17 * U, 0, Math.sin(a) * 17 * U); var piv = new THREE.Group(); piv.rotation.y = a; piv.add(b); b.position.set(17 * U, 0, 0); beams.add(piv); });
-            g.add(beams);
-            if (_hq) _hq.tickers.push(function (dt) { beams.rotation.y += dt * 0.55; });
+            /* NO LIGHT BOX (mondo 2026-10-05): the turning beam cones are not added */
             return g;
         },
         /* a channel buoy: a red can on a float, a lamp on top */
@@ -58559,9 +58488,8 @@ const ThreeRenderer = (function () {
             var dome = new THREE.Mesh(new THREE.SphereGeometry((R + 0.2) * U, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), marble); dome.position.y = H * U; dome.scale.y = 0.62; g.add(dome);
             var lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.9 * U, 1.1 * U, 1.2 * U, 10), gold); lantern.position.y = (H + (R + 0.2) * 0.62 + 0.5) * U; g.add(lantern);
             var glow = new THREE.Mesh(new THREE.SphereGeometry((R - 0.6) * U, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide, fog: false }));
-            glow.position.y = H * U; glow.scale.y = 0.6; g.add(glow);
+            glow.position.y = H * U; glow.scale.y = 0.6;   /* NO LIGHT BOX (mondo 2026-10-05): the additive glow shell inside the dome is not added */
             var seed = (_hqProcSeed++) * 0.6;
-            if (_hq) _hq.tickers.push(function (dt, now) { glow.material.opacity = 0.14 + 0.05 * Math.sin(now * 0.0013 + seed); });
             return g;
         },
     });
@@ -64694,13 +64622,6 @@ const ThreeRenderer = (function () {
         }
         else if (mo.mode === 'spin' && mo.carrier) mo.carrier.rotation.y = k * Math.PI * 0.5;
         var breathe = 0.85 + 0.15 * Math.sin(now * 0.004), fl = M.flash || 0;
-        var LM = (M.cfg.lightMul != null) ? M.cfg.lightMul : 1;   // the ice blows out under the full spill
-        d.veil.opacity = Math.min(1, (k * 0.8 + fl * 0.35) * breathe);
-        d.halo.opacity = (k * 0.55 + fl * 0.3) * LM;
-        d.pool.opacity = (k * 0.5 + fl * 0.25) * LM;
-        d.wedge.opacity = (k * 0.12 + fl * 0.06) * LM;
-        var leakOp = (1 - k) * (0.30 + 0.18 * Math.sin(now * 0.006));
-        for (var L = 0; L < d.leaks.length; L++) d.leaks[L].opacity = leakOp;
         if (M.doorLight) M.doorLight.intensity = 0.16 + (k * 1.5 + fl * 0.8) * breathe;
     }
     function _menuState(M) { return M.swing ? (M.swing.to === 1 ? 'opening' : 'closing') : (M.target === 1 ? 'open' : 'closed'); }

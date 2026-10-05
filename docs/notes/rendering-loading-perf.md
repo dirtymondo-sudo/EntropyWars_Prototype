@@ -701,3 +701,18 @@ geometries.updateForRender for a static bundle (three.webgpu.js NodeMaterialObse
 never uploaded. Fix: every attribute/index `version` is now part of the VALUES hash (_ewBunGeo → g._ew_bunV, mixed into hv
 by _ewBunObj): a static group re-records once, a group whose buffers keep moving is demoted to non-static (three's own check
 uploads them). WebGL was never affected. Token 20261005-arenafloor-01-cors.
+
+## NO LIGHT BOX, THE WHOLE GAME (2026-10-05, mondo: "get rid of all of those lights in the game, they look like absolute shit")
+Every fake light volume (additive/see-through shafts, beams, cones, wedges, veils in openings, glow shells, floor light pools)
+is gone from three-renderer.js; grep `NO LIGHT BOX (mondo 2026-10-05)` for each site. Real PointLight/SpotLight objects and
+spell VFX stay. Sites: the battle intro crossing + main menu door (`_introBuildDoor`: veil, halo, wedge, pool, leaks);
+battle door deployables (`_buildDoor3D` veil, `_captureDoorDress` glow/shim/floor, `_standingDoorDress` lit pane -> dark
+tinted pane, god rays, hell lip, gust fan, floor), grave gate sheet -> dark, tesla corona, healing totem cone, crystal shells;
+horizon/setting props (`_hzLoneDoor` veil+wedge+core, `_hzGateway`/`_hzGoldGate` veils, `_hzLightPillar` empty, saucer cones,
+inner-sun shaft, holo pyramid/apron beams, tome cone, Luxor sky beam, cyberpunk/strip wet sheens, grin-skull pool, igloo door,
+rose-window disc, crystal shard shells, grey tube shell, horizon lighthouse planes); HQ (`_hqSeaArm` god rays, submarine
+cones, lighthouse cones, temple dome shell, gun-door pane+glow+lane cone (SpotLight kept), Threshold portal pane+mouth glow
+(rim kept), dash-door pane, upwelling shaft, battle marker / heal zone columns, way openings (wardrobe, closet, train,
+timemachine = dark backs; taxi, well, pool, gutter, tree hole, mirror, painting, screen = sheet/glow not added), void-island
+floor glow, cine-void actor pools, HQ cube glow, heaven-stair gate glow, garage-ramp haze). Kept: sanctuary/nexus zone
+walls (gameplay markers), action tile glow (attack/spell), derelict engine exhaust plumes, small bulb halos. Never bring back.
