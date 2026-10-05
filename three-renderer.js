@@ -46622,6 +46622,100 @@ const ThreeRenderer = (function () {
        it calls a sliced builder (_hqBuildTerrain, _hqPlaceProps) so the builder hands back its iterator */
     var _hqSliceEnd = 0, _hqSliceAsk = false;
     function _hqSliceDue() { return _hqSliceEnd > 0 && _alNow() >= _hqSliceEnd; }
+    /* THE WATER (2026-10-05, mondo: "weird water flickering ... it doesnt even look good or touch the edges ... the only place the
+       water doesnt do this is the deep"): a room's pools and streams are drawn the way THE DEEP draws its sea — ONE surface per
+       liquid, every grid cell of it drawn once. A disc per pool and a ribbon per stream laid two sheets at one height over the same
+       ground wherever they met (the drain's sump over its channel, a river's reaches over each other): the z-fight. And a sheet cut
+       at the outline stopped short of the carved bank, a dry strip of sunk ground between the water and the wall. Now each grid node
+       is owned by one liquid (its own outline first, the later row winning where two meet: the authored order, as the carve), and a
+       CONTAINED liquid (its surface at or under the ground round its bank) floods on over the ground under its surface: through the
+       carved bank, and past it only where the ground lies down at the bed (a door's sill pad laid at the channel's bed), never more
+       than HQ_WATER_REACH m out. The field hides the surface wherever the ground stands higher, so the shore is the ground's own line.
+       A liquid that stands proud of its ground (a lava sheet over a floor) keeps the old outline + 0.25 m. Returns null, or
+       { own: Int16Array (the fluid index per node, −1 dry) }. */
+    var HQ_WATER_REACH = 3.0;
+    function _hqWaterOwners(info) {
+        var F = info.fluids || [], H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
+        if (!F.length || !H) return null;
+        var own = new Int16Array(nx * nz), q = [], eps = 0.002, S = info.S || {}, sea = info.sea;
+        for (var o = 0; o < own.length; o++) own[o] = -1;
+        var limX = info.closed ? S.w / 2 : Infinity, limZ = info.closed ? S.d / 2 : Infinity;   // a closed box: never past its walls (the passages' mouths)
+        var din = function (f, px, pz) { return f.kind === 'pool' ? (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r) : f.w / 2 - _hqTPolyDist(px, pz, f.pts).d; };
+        var inAny = function (px, pz) { for (var a = 0; a < F.length; a++) if (din(F[a], px, pz) > -0.05) return true; return false; };
+        var grid = function (px, pz) { return px > x0 && pz > z0 && px < x0 + (nx - 1) * res && pz < z0 + (nz - 1) * res && Math.abs(px) < limX && Math.abs(pz) < limZ; };
+        var mode = F.map(function (f) {
+            var bank = (f.bank != null) ? f.bank : 0.9, out = bank + 0.35, pts = [], hi = 0, n = 0;
+            if (f.kind === 'pool') {
+                var rot = (f.rot || 0) * Math.PI / 180, c = Math.cos(rot), s = Math.sin(rot), rx = f.r + out, rz = (f.rz || f.r) + out;
+                for (var a = 0; a < 24; a++) { var t = a / 24 * Math.PI * 2, u = Math.cos(t) * rx, v = Math.sin(t) * rz; pts.push([f.x + u * c - v * s, f.z + u * s + v * c]); }
+            } else {
+                for (var si = 0; si + 1 < f.pts.length; si++) {
+                    var p0 = f.pts[si], p1 = f.pts[si + 1], dx = p1[0] - p0[0], dz = p1[1] - p0[1], L = Math.hypot(dx, dz) || 1, m = f.w / 2 + out;
+                    for (var d = 0.5; d < L; d += 1) { var px = p0[0] + dx * d / L, pz = p0[1] + dz * d / L; pts.push([px - dz / L * m, pz + dx / L * m], [px + dz / L * m, pz - dx / L * m]); }
+                }
+            }
+            pts.forEach(function (p) { if (!grid(p[0], p[1]) || inAny(p[0], p[1])) return; n++; if (hqTerrainHeight(info, p[0], p[1]) >= f.y - 0.15) hi++; });
+            return (n === 0 || hi / n >= 0.7) ? 'flood' : 'outline';
+        });
+        F.forEach(function (f, fi) {
+            if (sea && Math.abs(f.y - sea.y) < 0.02) return;   // under the sea's own surface: one sheet at that height
+            var grow = (mode[fi] === 'flood') ? 0 : 0.25, bx0, bx1, bz0, bz1;
+            if (f.kind === 'pool') { var e = Math.max(f.r, f.rz || f.r) + grow; bx0 = f.x - e; bx1 = f.x + e; bz0 = f.z - e; bz1 = f.z + e; }
+            else { bx0 = bz0 = Infinity; bx1 = bz1 = -Infinity; f.pts.forEach(function (p) { bx0 = Math.min(bx0, p[0]); bx1 = Math.max(bx1, p[0]); bz0 = Math.min(bz0, p[1]); bz1 = Math.max(bz1, p[1]); }); var hw = f.w / 2 + grow; bx0 -= hw; bx1 += hw; bz0 -= hw; bz1 += hw; }
+            var i0 = Math.max(0, Math.floor((bx0 - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((bx1 - x0) / res)), j0 = Math.max(0, Math.floor((bz0 - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((bz1 - z0) / res));
+            for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+                var k = j * nx + i, px = x0 + i * res, pz = z0 + j * res;
+                if (Math.abs(px) > limX || Math.abs(pz) > limZ || H[k] >= f.y + eps || din(f, px, pz) < -grow) continue;
+                if (own[k] < 0 && mode[fi] === 'flood') q.push(k);
+                own[k] = fi;
+            }
+        });
+        var N = [1, -1, nx, -nx];
+        for (var head = 0; head < q.length; head++) {
+            var k0 = q[head], fi0 = own[k0], f0 = F[fi0], bank0 = (f0.bank != null) ? f0.bank : 0.9, bed0 = f0.y - (f0.depth || 0.6);
+            for (var ni = 0; ni < 4; ni++) {
+                var kk = k0 + N[ni]; if (kk < 0 || kk >= own.length || own[kk] >= 0) continue;
+                if ((ni < 2) && Math.floor(kk / nx) !== Math.floor(k0 / nx)) continue;   // no wrap along a row
+                var ii = kk % nx, jj = (kk - ii) / nx, qx = x0 + ii * res, qz = z0 + jj * res, h = H[kk];
+                if (Math.abs(qx) > limX || Math.abs(qz) > limZ || h >= f0.y + eps) continue;
+                var dd = din(f0, qx, qz);
+                if (dd < -(bank0 + HQ_WATER_REACH)) continue;
+                if (dd < -bank0 && h > bed0 + 0.15) continue;   // past the bank: only ground laid down at the bed
+                own[kk] = fi0; q.push(kk);
+            }
+        }
+        return { own: own, mode: mode };
+    }
+    /* the surface's geometry per liquid key: a quad per cell any of whose corners the liquid owns (the corner most of them name),
+       at that liquid's height, uv in world tiles (the field's own rule, so the sheet's waves never seam between cells) */
+    function _hqWaterGeoms(info, own, U, TM) {
+        var F = info.fluids, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, out = {};
+        var seen = new Uint8Array(nx * nz);   // a cell by its low corner
+        for (var k = 0; k < own.length; k++) {
+            if (own[k] < 0) continue;
+            var i = k % nx, j = (k - i) / nx;
+            for (var cj = j - 1; cj <= j; cj++) for (var ci = i - 1; ci <= i; ci++) {
+                if (ci < 0 || cj < 0 || ci >= nx - 1 || cj >= nz - 1) continue;
+                var c = cj * nx + ci; if (seen[c]) continue; seen[c] = 1;
+                var cs = [c, c + 1, c + nx, c + nx + 1], best = -1, bestN = 0;
+                for (var a = 0; a < 4; a++) { var oa = own[cs[a]]; if (oa < 0) continue; var na = 0; for (var b = 0; b < 4; b++) if (own[cs[b]] === oa) na++; if (na > bestN || (na === bestN && oa > best)) { best = oa; bestN = na; } }
+                if (best < 0) continue;
+                var f = F[best], B = out[f.key] || (out[f.key] = { p: [], u: [], i: [], vmap: new Map() });
+                var vid = [];
+                for (var vy = 0; vy < 2; vy++) for (var vx = 0; vx < 2; vx++) {
+                    var node = (cj + vy) * nx + ci + vx, vk = node * 1024 + best, v = B.vmap.get(vk);
+                    if (v === undefined) {
+                        v = B.p.length / 3; B.vmap.set(vk, v);
+                        var px = x0 + (ci + vx) * res, pz = z0 + (cj + vy) * res;
+                        B.p.push(px * U, f.y * U + 0.4, pz * U); B.u.push(px * U / TM, pz * U / TM);
+                    }
+                    vid.push(v);
+                }
+                B.i.push(vid[0], vid[2], vid[1], vid[1], vid[2], vid[3]);
+            }
+        }
+        return out;
+    }
     function _hqBuildTerrain(room) {
         /* THE SLICE (OPEN_WORLD_PLAN §5.9 / Phase 11, 2026-09-27): the build is a generator — a room's own build (the card up)
            runs it to the end here; a stage neighbour (asked with _hqSliceAsk) gets the iterator and _hqStageBuildSlice resumes
@@ -46745,34 +46839,23 @@ const ThreeRenderer = (function () {
             fluidMats[key] = fm; return fm;
         };
         var lavaCx = 0, lavaCz = 0, lavaN = 0, lavaY = 0;
+        /* the lava's glow and its light (the surfaces themselves: THE WATER below — one per liquid, drawn once) */
         info.fluids.forEach(function (f) {
-            var mesh;
-            if (f.kind === 'pool') {
-                var cg = new THREE.CircleGeometry(f.r * U, 40);
-                mesh = new THREE.Mesh(cg, fluidMatFor(f.key)); mesh.rotation.x = -Math.PI / 2;
-                if (f.rz && f.rz !== f.r) mesh.scale.y = f.rz / f.r;
-                mesh.rotation.z = -((f.rot || 0) * Math.PI / 180);
-                mesh.position.set(f.x * U, f.y * U + 0.4, f.z * U);
-                _hzTileUV(cg, 2 * f.r * U, 2 * f.r * U, TM);
-                if (f.key === 'lava') { lavaCx += f.x; lavaCz += f.z; lavaN++; lavaY = f.y; var lg = _hzGlowSprite(1.4 * f.r * U, 0xff7a30, 0.3, 0, 0, 0); lg.position.set(f.x * U, (f.y + 0.25) * U, f.z * U); G.add(lg); pulse(lg.material, 0.14, 0.8); }
-            } else {
-                var pts = f.pts, hw = f.w / 2 + 0.25, vp = [], vu = [], vi = [], along = 0;
-                for (var pi = 0; pi < pts.length; pi++) {
-                    var p0 = pts[Math.max(0, pi - 1)], p1 = pts[pi], p2 = pts[Math.min(pts.length - 1, pi + 1)];
-                    var dx = p2[0] - p0[0], dz = p2[1] - p0[1], L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
-                    if (pi > 0) along += Math.hypot(p1[0] - pts[pi - 1][0], p1[1] - pts[pi - 1][1]);
-                    var nxv = -dz * hw, nzv = dx * hw;
-                    vp.push((p1[0] + nxv) * U, f.y * U + 0.4, (p1[1] + nzv) * U, (p1[0] - nxv) * U, f.y * U + 0.4, (p1[1] - nzv) * U);
-                    vu.push(0, along * U / TM, f.w * U / TM, along * U / TM);
-                    if (pi > 0) { var b0 = (pi - 1) * 2; vi.push(b0, b0 + 2, b0 + 1, b0 + 1, b0 + 2, b0 + 3); }
-                }
-                var sg = new THREE.BufferGeometry();
-                sg.setAttribute('position', new THREE.Float32BufferAttribute(vp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(vu, 2)); sg.setIndex(vi); sg.computeVertexNormals();
-                mesh = new THREE.Mesh(sg, fluidMatFor(f.key)); mesh.material.side = THREE.DoubleSide;
-                if (f.key === 'lava') { lavaN++; lavaCx += pts[0][0]; lavaCz += pts[0][1]; lavaY = f.y; }
-            }
-            mesh.renderOrder = 2; G.add(mesh);
+            if (f.key !== 'lava') return;
+            if (f.kind === 'pool') { lavaCx += f.x; lavaCz += f.z; lavaN++; lavaY = f.y; var lg = _hzGlowSprite(1.4 * f.r * U, 0xff7a30, 0.3, 0, 0, 0); lg.position.set(f.x * U, (f.y + 0.25) * U, f.z * U); G.add(lg); pulse(lg.material, 0.14, 0.8); }
+            else { lavaN++; lavaCx += f.pts[0][0]; lavaCz += f.pts[0][1]; lavaY = f.y; }
         });
+        try {
+            var wOwn = _hqWaterOwners(info), wGeo = wOwn ? _hqWaterGeoms(info, wOwn.own, U, TM) : {};
+            Object.keys(wGeo).forEach(function (key) {
+                var B = wGeo[key]; if (!B.i.length) return;
+                var nrm = new Float32Array(B.p.length); for (var ni = 1; ni < nrm.length; ni += 3) nrm[ni] = 1;
+                var wg = new THREE.BufferGeometry();
+                wg.setAttribute('position', new THREE.Float32BufferAttribute(B.p, 3)); wg.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); wg.setAttribute('uv', new THREE.Float32BufferAttribute(B.u, 2));
+                wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
+                var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
+            });
+        } catch (e) { console.warn('[HQ] the water failed', e); }
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
            DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
         if (info.sea) {
@@ -50104,7 +50187,7 @@ const ThreeRenderer = (function () {
                 x.strokeStyle = COLS[Math.floor(rng() * COLS.length)]; x.lineWidth = 6; x.beginPath(); x.moveTo(60, 280); x.lineTo(200, 280); x.lineTo(180, 262); x.moveTo(200, 280); x.lineTo(180, 298); x.stroke();
                 tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter; _hzFacTexCache[key] = tex;
             }
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(2.2 * U, 1.4 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.94, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, side: THREE.DoubleSide }));
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(2.2 * U, 1.4 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.94, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));   // one-sided (2026-10-05): from behind, a panel off its wall read as mirrored tags ("RM 13" backwards)
             m.position.set(0, 1.05 * U, 0.03 * U); g.add(m);
             return g;
         },
@@ -52426,15 +52509,20 @@ const ThreeRenderer = (function () {
         }
         /* THE TUBE: the walls either side and the roof, stepping up with a rising floor */
         if (P.roof && !P.inside && !mouthR) {
+            /* THE FLICKER (2026-10-05, mondo: "this entrance is flickering"): the tube's front faces (its walls' ends, the roof's
+               lip) stood exactly in the room wall's own plane round the cut (the shell slab's inside face is the wall line) — two
+               faces at one depth, the z-fight in a ring round every tunnel mouth in a walled room. The tube starts RS m behind the
+               line, past the slab's back (it is 0.04 thick), so the wall alone is the face; the cut shows the tube's inside */
+            var RS = 0.06;
             if (P.rise !== 0) {
                 for (var s2 = 0; s2 < L; s2 += SEG) {
                     var f2 = fy(s2 + SEG / 2);
-                    [-1, 1].forEach(function (sd) { box(T0, H + 1.2, SEG + 0.02, wallM, sd * (W / 2 + T0 / 2), f2 - 0.6 + (H + 1.2) / 2, -(s2 + SEG / 2)); });
-                    box(W + 2 * T0, 0.7, SEG + 0.02, wallM, 0, f2 + H + 0.35, -(s2 + SEG / 2));
+                    [-1, 1].forEach(function (sd) { box(T0, H + 1.2, SEG + 0.02, wallM, sd * (W / 2 + T0 / 2), f2 - 0.6 + (H + 1.2) / 2, -(s2 + SEG / 2 + RS + 0.01)); });
+                    box(W + 2 * T0, 0.7, SEG + 0.02, wallM, 0, f2 + H + 0.35, -(s2 + SEG / 2 + RS + 0.01));
                 }
             } else {
-                [-1, 1].forEach(function (sd) { box(T0, H + 1, L, wallM, sd * (W / 2 + T0 / 2), (H + 1) / 2 - 0.5, -L / 2); });
-                box(W + 2 * T0, 0.7, L, wallM, 0, H + 0.35, -L / 2);
+                [-1, 1].forEach(function (sd) { box(T0, H + 1, L, wallM, sd * (W / 2 + T0 / 2), (H + 1) / 2 - 0.5, -(L / 2 + RS)); });
+                box(W + 2 * T0, 0.7, L, wallM, 0, H + 0.35, -(L / 2 + RS));
             }
             box(W + 2 * T0, H + 1.6, 0.4, wallM, 0, fy(L) + H / 2, -(L + 0.2));   // the far end (behind the black)
             /* a rock mouth in an OPEN room is an outcrop: the shoulders and the hill over the tunnel (a walled room's own wall is the face) */
@@ -59636,11 +59724,19 @@ const ThreeRenderer = (function () {
                 var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
                 if (bf !== null && bf > land) land = bf;
                 if (_hq.terrain && _hq.terrain.void && (bf === null || bf < land) && hqTerrainVoidAt(_hq.terrain, pl.x, pl.z)) land = -Infinity;   // THE VOID: nothing under the feet
+                /* THE DEEP WATER (2026-10-05, mondo: "im always getting stuck in the water"): a jump that came down in water too deep
+                   to wade (the drain's sump, a canal, a lava pool) used to land on its BED — where every step and every jump is refused
+                   (hqTerrainFeet / hqTerrainAir), so the walker stood there for good. The body that reaches such a surface comes back
+                   on the last ground it stood on, the void's own return */
+                if (_hq.terrain && typeof hqTerrainFluidAt === 'function' && (bf === null || bf < ny)) {
+                    var dw = hqTerrainFluidAt(_hq.terrain, pl.x, pl.z);
+                    if (dw && !dw.sea && ny <= dw.y && (dw.key !== 'water' || dw.y - hqTerrainHeight(_hq.terrain, pl.x, pl.z) > _hq.terrain.rules.wadeMax)) { _hqVoidReturn(pl, pl._landSafe, dw.key === 'lava' ? 0xff7a30 : 0x2a6a8a); return; }
+                }
                 if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
             }
             pl.y = ny;
             if (_hq.terrain && _hq.terrain.void && pl.y < _hq.terrain.void.fall) { _hqVoidReturn(pl); return; }
-        } else if (!pl.air && _hq.terrain && _hq.terrain.void && !H.paused) pl._voidSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId };   // THE VOID: the last ground stood on
+        } else if (!pl.air && _hq.terrain && !H.paused) { pl._landSafe = { x: pl.x, z: pl.z, y: pl.y, yaw: pl.yaw, rid: _hq.terrain.roomId }; if (_hq.terrain.void) pl._voidSafe = pl._landSafe; }   // THE VOID / THE DEEP WATER: the last ground stood on
         pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 14));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         if (pl._hopped) pl._hopped = false;   // a hop set the velocity itself — the jump across the room is not a speed
@@ -59662,8 +59758,9 @@ const ThreeRenderer = (function () {
     /* THE VOID (LEVEL_DESIGN_PLAN §5): a body fallen past the room's `void.fall` comes back on the last ground it stood on — a quick
        fade to the void's colour and back, no damage, the camera following (the jump is the only way off an island: hqTerrainFeet
        never lets the walker step onto the void, so the spot is the takeoff) */
-    function _hqVoidReturn(pl) {
-        var sp = pl._voidSafe, V = (_hq.terrain && _hq.terrain.void) || {};
+    function _hqVoidReturn(pl, spIn, glowIn) {
+        var sp = (spIn !== undefined) ? spIn : pl._voidSafe, V = (_hq.terrain && _hq.terrain.void) || {};
+        if (glowIn != null) V = { glow: glowIn };
         if (sp && sp.rid !== _hq.terrain.roomId) sp = null;
         if (!sp) { var rm = (_hq.terrain && _hq.terrain.room) || {}; var s0 = rm.spawn || { x: 0, z: 0 }; sp = { x: s0.x, z: s0.z, y: hqTerrainFeet(_hq.terrain, s0.x, s0.z, null) || 0, yaw: pl.yaw }; }
         pl.x = sp.x; pl.z = sp.z; pl.y = sp.y + 0.02; pl.visY = pl.y; pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.mvx = 0; pl.mvz = 0; pl.velX = pl.velY = pl.velZ = 0;
