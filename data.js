@@ -37734,12 +37734,28 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[5, 12], [8, 12]], w: 2.4 },                      // behind the keypad
                     { k: 'hall', pts: [[-14, 10], [-14, 13]], w: 2.6 },
                     /* the rooms' pieces */
-                    { k: 'plateau', x: -20, z: -6.5, w: 10, d: 7, h: 2.6, edge: 0.15 },                                  // THE LOFT over the great room's west end
-                    { k: 'ramp', x0: -9, z0: -6, x1: -15.7, z1: -6, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'urban:TileMarble1b' },
-                    { k: 'rail', x0: -14.6, z0: -8.6, x1: -14.6, z1: -3.4 },
+                    { k: 'plateau', x: -20.5, z: -7, w: 11, d: 8, h: 2.6, edge: 0.15 },                                  // THE LOFT over the great room's west end
+                    { k: 'ramp', x0: -9, z0: -6, x1: -15.7, z1: -6, w: 2.4, h0: 0, h1: 2.6, stairs: true, model: 'carriage' },
+                    { k: 'rail', x0: -15.2, z0: -9.8, x1: -15.2, z1: -7.4, model: 'glass' }, { k: 'rail', x0: -15.2, z0: -4.6, x1: -15.2, z1: -3.2, model: 'glass' },
+                    /* 2026-10-05 (the stairs pass): a bridge off THE LOFT south over the great room to a mezzanine at 2.6 along its south-west
+                       wall, a flight back down off it; a sunk seating pit round the couch (steps at either end); THE CELLAR sunk 1.2 m under
+                       hall A's mouth, down a flight, its step split either side of it */
+                    { k: 'rail', x0: -24.8, z0: -3.2, x1: -21.2, z1: -3.2, model: 'glass' }, { k: 'rail', x0: -18.8, z0: -3.2, x1: -15.2, z1: -3.2, model: 'glass' },
+                    { k: 'deck', x0: -20, z0: -3.2, x1: -20, z1: 6.2, w: 2, y: 2.6, over: true },
+                    { k: 'plateau', x: -20.5, z: 9, w: 11, d: 6, h: 2.6, edge: 0.15 },   // (drawn 1 m into the walls)
+                    { k: 'ramp', x0: -16.2, z0: -0.6, x1: -16.2, z1: 5.3, w: 2.2, h0: 0, h1: 2.6, stairs: true, model: 'carriage' },
+                    { k: 'rail', x0: -24.8, z0: 6.2, x1: -21.2, z1: 6.2, model: 'glass' }, { k: 'rail', x0: -18.8, z0: 6.2, x1: -17.5, z1: 6.2, model: 'glass' },
+                    { k: 'rail', x0: -15.2, z0: 6.2, x1: -15.2, z1: 9.8, model: 'glass' },
+                    { k: 'plateau', x: -8, z: 1, w: 8, d: 7, h: -0.9, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: -10.5, z0: 0, x1: -12.7, z1: 0, w: 2.2, h0: -0.9, h1: 0, stairs: true, model: 'carriage' },
+                    { k: 'ramp', x0: -5.5, z0: 0, x1: -3.3, z1: 0, w: 2.2, h0: -0.9, h1: 0, stairs: true, model: 'carriage' },
+                    { k: 'rail', x0: -11.8, z0: 4.7, x1: -4.2, z1: 4.7, model: 'pipe', block: false },
+                    { k: 'plateau', x: 12, z: 10.5, w: 24, d: 11, h: -1.2, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: 14, z0: 7.9, x1: 14, z1: 4.3, w: 2.4, h0: -1.2, h1: 0, stairs: true, model: 'carriage' },
                     { k: 'pool', x: 14, z: -9, r: 5.5, rz: 3.2, y: 0, depth: 0.9 },                                     // THE POOL (waded, warm)
                     { k: 'plateau', x: 20, z: 9, r: 1.4, h: 3.8, edge: 0.15 },                                          // THE SAFE STACK in the cellar (the tape — the door gun's)
-                    { k: 'wall', x0: 8, z0: 4.5, x1: 22, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' },         // the cellar's step (a grind)
+                    { k: 'rail', arc: { x: 20, z: 9, r: 2.4, a0: 180, a1: 360 }, model: 'pipe', block: false },           // a pipe bent round it
+                    { k: 'wall', x0: 8, z0: 4.5, x1: 12.6, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' }, { k: 'wall', x0: 15.4, z0: 4.5, x1: 22, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' },   // the cellar's step (a grind)
                     { k: 'path', pts: [[-28, -2], [-13, -2], [-13, 0], [4, 0], [14, 0], [14, -4]], w: 2.0 },                        // the marble runner from the lift
                     { k: 'path', pts: [[14, 0], [14, 6]], w: 2.0 },
                 ],
@@ -37757,7 +37773,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE GREAT ROOM: the windows that are screens, the couch, the throne, the sound system */
-                { key: 'false_window',    x: -24.6, z: 2, face: 90, mount: 1.0 }, { key: 'false_window', x: -24.6, z: 6, face: 90, mount: 1.0 }, { key: 'false_window', x: -8, z: -9.6, face: 0, mount: 1.0 },   // free-standing on the plan walls (the near weenie: daylight eighty metres down)
+                { key: 'false_window',    x: -24.6, z: 1, face: 90, mount: 1.0 }, { key: 'false_window', x: -24.6, z: 4.5, face: 90, mount: 1.0 }, { key: 'false_window', x: -8, z: -9.6, face: 0, mount: 1.0 },   // free-standing on the plan walls (the near weenie: daylight eighty metres down)
                 { key: 'curved_couch',    x: -8, z: 3, face: 180 }, { key: 'rug_round', x: -8, z: 0.5 }, { key: 'coffee_table', x: -8, z: -1 }, { key: 'tube_tv', x: -8, z: -1, y: 0.45, face: 180 },
                 { key: 'royal_throne',    x: -3, z: 6, face: 270 },
                 { key: 'retro_speakers',  x: -4, z: -8.5, face: 0 }, { key: 'retro_radio', x: -2.6, z: -8.5, y: 0.0, face: 0 },
