@@ -34143,8 +34143,17 @@ const DOOR_HQ = {
                     { k: 'stream', pts: [[-3, -10.5], [-2.6, -3], [-3.6, 4], [-3, 10.5]], w: 2.6, y: -0.3, depth: 0.7 },   // THE CREEK
                     { k: 'deck', x0: -6.2, z0: -0.9, x1: 0.2, z1: -0.9, w: 1.4, y: 0.15 },                   // THE PLANK, past both banks
                     { k: 'plateau', x: 10, z: 6, r: 2.4, h: 2.2, edge: 0.35 },                                // THE STAND
-                    { k: 'rail', x0: -6.2, z0: -2.2, x1: -2.4, z1: -2.2 },                                    // the plank's landing rail
-                    { k: 'path', pts: [[-11.6, -0.9], [-6, -0.9], [0, -0.9], [6, 0], [11.6, -0.9]], w: 1.5 },
+                    { k: 'rail', x0: -6.2, z0: -2.2, x1: -2.4, z1: -2.2, model: 'ranch' },                    // the plank's landing rail
+                    /* the root terrace (2026-10-05): a 2.6 m rock ledge on the hummock up a timber stair off the trail, a ranch rail round its
+                       rim, and across a 2.6 m gap over the gully (a rail across it) the west deck, a ladder down to the trail */
+                    { k: 'plateau', x: 9.3, z: -4.8, r: 3.3, h: 2.6, edge: 0.3 },
+                    { k: 'ramp', x0: 10.3, z0: 2.5, x1: 10.3, z1: -2.4, w: 2.2, h0: 0, h1: 2.6, stairs: true, model: 'forest', edge: 0.2 },
+                    { k: 'rail', arc: { x: 9.3, z: -4.8, r: 3.0, a0: -40, a1: 135 }, model: 'ranch' },
+                    { k: 'plateau', x: 1.6, z: -4.3, w: 4.0, d: 4.4, h: 2.6, edge: 0.3 },                                     // the west deck
+                    { k: 'rail', x0: 3.8, z0: -4.3, x1: 5.9, z1: -4.3, y: 2.6, model: 'pipe', block: false },                 // across the gap
+                    { k: 'climb', x: 1.6, z: -1.9, face: 0, look: 'ladder' },
+                    { k: 'rail', x0: -0.2, z0: -6.3, x1: -0.2, z1: -2.3, model: 'ranch' },
+                    { k: 'path', pts: [[-11.6, -0.9], [-6, -0.9], [0, -0.9], [6, 0], [10.3, 2.9]], w: 1.5 },
                     { k: 'grove', n: 12, kinds: ['tree_4'], h: 7.0, seed: 8 },
                     { k: 'grove', n: 9, kinds: ['tree', 'tree_3', 'tree_5'], seed: 9 },
                     { k: 'scatter', key: 'fern', n: 12, seed: 10 },
@@ -34166,14 +34175,14 @@ const DOOR_HQ = {
             props: [
                 { key: 'cave_torch',     x: -10.5, z: 4.375 },                              // the lantern trail: three stakes, one of them moving when not watched
                 { key: 'cave_torch',     x: 3.5, z: -7.0 },
-                { key: 'cave_torch',     x: 10.5, z: 3.0 },
-                { key: 'candle_ring',    x: 8.75, z: -5.25, y: 0.0 },
+                { key: 'cave_torch',     x: 12.4, z: 2.8 },
+                { key: 'candle_ring',    x: 8.75, z: -5.25, y: 2.6 },                       // on the root terrace
                 { key: 'paper_sheet',    x: -5.25, z: 7.0, y: 0.01, face: 110 },
                 { key: 'floor_stain',    x: 1.5, z: 3.5 },
             ],
 
             agents: [],
-            npcSpots: [{ x: 1.4, z: -6.6, face: 200, race: 'fairy' }, { x: -8.75, z: 5.25, face: 60, race: 'gnome' }],
+            npcSpots: [{ x: 1.6, z: -7.8, face: 200, race: 'fairy' }, { x: -8.75, z: 5.25, face: 60, race: 'gnome' }],
             onlineSpots: [],
             lines: [
                 '“How old is that one?” “Older than the Bureau.” “How do you know?” “It said so.”',
