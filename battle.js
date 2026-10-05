@@ -22905,6 +22905,33 @@
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
             return Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
         }
+        /* THE TILE-PICK FIT (2026-10-05): the zoom that shows `halfTiles` tiles on every side of the focal at
+           TILE_PICK_TILT, measured on the REAL 3D lens (ThreeCamera: dist = baseDist / zoom, perspective FOV). The
+           row formula above is the old 2D board's maths; on the 3D camera its "N rows" frame about 2N, so the Move /
+           free-aim framings built from it (max(20 rows, range*2+4) at the overhead pitch) pulled back to roughly
+           twice the reach — "zooms out way too much when I click Move". The near screen edge binds at a steep
+           pitch, so that is solved exactly; the 2D fallback keeps the row formula. */
+        function _tilePickFitZoom(halfTiles) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const half = Math.max(3.5, halfTiles || 0) * ts;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()
+                    && typeof ThreeCamera !== 'undefined' && ThreeCamera.getBaseDist) {
+                    const bd = ThreeCamera.getBaseDist();
+                    const f = (ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360;
+                    const t = TILE_PICK_TILT * Math.PI / 180;
+                    const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+                    const aspect = (cam3 && cam3.aspect) || (16 / 9);
+                    // ground reach from the focal, per unit of eye distance: toward the near edge, the far edge, the sides
+                    const near = Math.sin(t) + Math.cos(t) * Math.tan(f - t);
+                    const far = Math.cos(t) * Math.tan(Math.min(t + f, 1.45)) - Math.sin(t);
+                    const side = Math.tan(f) * aspect;
+                    const k = Math.min(near, far, side);
+                    if (bd > 0 && k > 0.05) return Math.max(0.15, Math.min(10.0, bd * k / half));
+                }
+            } catch (e) {}
+            return _zoomForVisibleTilesAtTilt(Math.max(7, 2 * half / ts), TILE_PICK_TILT);
+        }
         function getDefaultZoomAtTilt(tiltDeg) {
             const targetTiles = _framingBoardTiles() + 4;
             const z = Math.max(_zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, tiltDeg),
@@ -52655,7 +52682,6 @@
                         camera._cineShotId = null;
                         camera._releaseCineSubject(420);
                         const range = spell?.range || 3;
-                        const rangeRows = range * 2 + 1;
                         // Fit the spell's range rings and nothing more; only
                         // zoom OUT if the current view doesn't already show
                         // them — same rule as the Move framing. Computed for
@@ -52664,11 +52690,8 @@
                         // craned action-shot pitch into a much tighter "fit",
                         // so arming a spell right after a cast kept close-up
                         // magnification on the overhead view.
-                        const _fitZ = Math.max(
-                            _zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, TILE_PICK_TILT),
-                            _zoomForVisibleTilesAtTilt(rangeRows + 2, TILE_PICK_TILT));
-                        const zoom = Math.min(camera.zoom || _fitZ,
-                            Math.max(_fitZ, getDefaultZoomAtTilt(TILE_PICK_TILT)));
+                        const _fitZ = _tilePickFitZoom(range + 1.5);
+                        const zoom = Math.min(camera.zoom || _fitZ, _fitZ);
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
                             // Same over-the-map overhead as the Move framing.
@@ -53778,6 +53801,8 @@
                 camera._preCineView = null;
                 camera._cineShotId = null;
                 camera._releaseCineSubject(420);
+                // a spell shot's frame guard (PR #99) never outlives it into the board read
+                if (typeof _cineGuardEnd === 'function') _cineGuardEnd();
                 const _mvRange = mode === 'build' ? 2 : Math.max(2, (typeof getEffectiveMove === 'function'
                     ? (getEffectiveMove(unit) || 0) : 0) || 4);
                 // Fit the whole move range and nothing more; only zoom OUT
@@ -53787,11 +53812,11 @@
                 // in by hand every single time. Computed for the DESTINATION
                 // pitch (TILE_PICK_TILT, set below) — the live-tilt version
                 // resolved a leftover action-shot crane into a too-tight fit.
-                const _mvFitZ = Math.max(
-                    _zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, TILE_PICK_TILT),
-                    _zoomForVisibleTilesAtTilt(_mvRange * 2 + 4, TILE_PICK_TILT));
-                const _mvZoom = Math.min(camera.zoom || _mvFitZ,
-                    Math.max(_mvFitZ, getDefaultZoomAtTilt(TILE_PICK_TILT)));
+                // Sized on the real 3D lens (_tilePickFitZoom): the reach plus
+                // a tile and a half of margin. A closer view zooms out to it,
+                // a view already showing it is kept.
+                const _mvFitZ = _tilePickFitZoom(_mvRange + 1.5);
+                const _mvZoom = Math.min(camera.zoom || _mvFitZ, _mvFitZ);
                 camera.moveTo({
                     x: unit.x, y: unit.y,
                     // Over-the-map overhead. The old getTacticalTilt() was the
