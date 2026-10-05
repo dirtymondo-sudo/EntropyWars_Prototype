@@ -37429,7 +37429,11 @@ const ThreeRenderer = (function () {
         /* the landing: a threshold slab on an apron, a floating slab in the void */
         var daisH = kit ? 0.06 * ts : 0.42 * ts, daisR = Math.max(ow * 1.15, 1.05 * ts);
         var dais = new THREE.Mesh(new THREE.CylinderGeometry(daisR, daisR * (kit ? 1 : 0.86), daisH, 22), sillMat);
-        dais.position.set(0, -daisH / 2 + 0.6, 0); dais.receiveShadow = true; D.add(dais);
+        /* DAIS FLICKER (mondo 2026-10-05): the dais top used to land EXACTLY on another surface — +0.6 is where the
+           Training Room's hazard plate sits in front of each door (no kit), and on a kit apron (top = fy - 0.6) it is
+           the board's tile tops wherever the disc overhangs the rim. Two coplanar faces z-fought all intro. Lift it a
+           clear 0.02 tile above both so it always wins the depth test. */
+        dais.position.set(0, -daisH / 2 + 0.6 + 0.02 * ts, 0); dais.receiveShadow = true; D.add(dais);
         /* jambs, lintel, cap, sill */
         var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jL);
         var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jR);
