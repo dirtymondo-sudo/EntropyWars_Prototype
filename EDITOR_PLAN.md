@@ -803,3 +803,5 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   drag, RIGHT place, MIDDLE take in hand), a 1-9 hotbar. Details: docs/notes/editor.md "THE CREATIVE CONTROLS".
 - 2026-10-05: **THE SHAPES** (WorldEdit-style stamps on a SHAPES tab: hill, mountain, volcano, mesa, bowl, pit, block up/down,
   level, ridge, trench, round wall; drag or one click, each one undo step on terrain.hmap). Details: docs/notes/editor.md "THE SHAPES".
+- 2026-10-05: **THE MODULAR KIT** (a MODULAR tab: floor, wall, door, window, stairs, roof on a cell grid, floor by floor; walls on
+  upper floors via a wall `y0`, the slab walker now meets walls). Details: docs/notes/editor.md "THE MODULAR KIT".

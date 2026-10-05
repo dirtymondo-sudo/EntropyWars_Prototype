@@ -44492,6 +44492,7 @@ function hqOpeningPieces(w, ops) {
     const gaps = ops.map(o => { const ow = Math.max(0.3, +o.w || R.doorW), m = (o._mirrored ? L - (+o.at || 0) : (+o.at || 0)); return { a: Math.max(0, m - ow / 2), b: Math.min(L, m + ow / 2), o }; })
         .filter(g => g.b - g.a > 0.1).sort((p, q) => p.a - q.a);
     const out = []; let n = 0;
+    const abs = typeof w.y0 === 'number' && typeof w.y === 'number', fy = abs ? w.y0 + (w.bld && w.bld.s > 0 ? 0.28 : 0) : 0;   // (a kit wall's foot sits in its floor slab)
     const base = Object.assign({}, w); delete base.id; delete base.gaps; delete base.from;
     const piece = (s0, s1, extra) => {
         if (s1 - s0 < R.minPiece) return;
@@ -44507,14 +44508,20 @@ function hqOpeningPieces(w, ops) {
         const o = g.o, oh = Math.max(0.5, +o.h || R.doorH), sill = Math.max(0, +o.sill || 0);
         const mid0 = g.a + t / 2, mid1 = g.b - t / 2, over = { rail: false };
         if (mid1 - mid0 >= R.minPiece) {
+            if (abs) {   // THE MODULAR KIT: a wall with an absolute foot (an upper floor) — its sill, lintel and pane measured from that foot
+                if (sill > 0.05) piece(mid0, mid1, Object.assign({ y: _hqR4(fy + sill) }, over));
+                piece(mid0, mid1, Object.assign({ y0: _hqR4(fy + sill + oh) }, over));
+                if (o.glaze) piece(mid0, mid1, { y0: _hqR4(fy + sill), y: _hqR4(fy + sill + oh), glass: true, t: R.glassT, key: null, keyIn: null, rail: false });
+            } else {
             if (sill > 0.05) piece(mid0, mid1, Object.assign({ h: sill }, over));
             piece(mid0, mid1, Object.assign({ lift: sill + oh }, over));
             if (o.glaze) piece(mid0, mid1, { lift: sill, h: sill + oh, glass: true, t: R.glassT, key: null, keyIn: null, rail: false });
+            }
         }
         s = g.b;
     });
     piece(s === 0 ? 0 : s + t / 2, L);
-    return out.filter(p => !(p.lift > 0) || (typeof p.y === 'number' ? p.y : p.h) - p.lift > 0.05);
+    return out.filter(p => abs ? p.y - p.y0 > 0.05 : (!(p.lift > 0) || (typeof p.y === 'number' ? p.y : p.h) - p.lift > 0.05));
 }
 /* a texbuilding row → what the compiler walks (four ghost walls on its faces, their tops the parapet's; a plateau for the roof,
    set in from the faces so its blended edge never shows past the drawn building) */
@@ -47623,6 +47630,9 @@ function hqTerrainCompile(room, roomId) {
         const row = { x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, t: w.t || 0.35, base: gmin - 0.3, top, h: w.h, key: w.key || null };
         /* a HUNG wall (a lintel, a pane): its bottom `lift` m over the ground — the walker passes under it (hqTerrainWallAt's band) */
         if (w.lift > 0) { row.base = gmax + w.lift; row.hung = true; if (row.top - row.base < 0.05) return; }
+        /* THE MODULAR KIT (2026-10-05, the editor's upper floors and roofs): `y0` = the wall's ABSOLUTE foot — over the ground it hangs
+           (the walker below passes under it, hqTerrainWallAt's band), at or under it the wall stands on the ground as ever */
+        else if (typeof w.y0 === 'number') { if (w.y0 > gmax + 0.05) { row.base = w.y0; row.hung = true; } else row.base = Math.min(w.y0, gmin - 0.3); if (row.top - row.base < 0.05) return; }
         if (w.keyIn) row.keyIn = w.keyIn; if (w.glass) row.glass = true; if (w.id != null) row.id = w.id; if (w.from) row.from = w.from;
         /* THE STANDS (2026-09-26): a TIER wall is a row of seating (its top a tread the walker steps up, 0.42 a row); `front` = the unit
            normal toward the pitch (the seats face it), `seat` = the seats' colour (hex) — three-renderer.js draws them; `rail: false` =
@@ -47881,13 +47891,14 @@ function _hqTWallIndex(info) {
 /* THE SHAPES (E1): a HUNG wall (a lintel, a pane — `hung`, its `base` over the ground) counts only for a body whose vertical band
    [lo, hi] meets it; a query with no band (a prop's spot, the field's raster, the solver's walkable test) never meets one, so a
    doorway is open to everything that walks through it */
-function hqTerrainWallAt(info, x, z, pad, lo, hi) {
+function hqTerrainWallAt(info, x, z, pad, lo, hi, minTop) {   // `minTop`: only a wall standing higher than it (THE MODULAR KIT's slab walker)
     if (!info.walls.length && !(info.gen && info.gen.wallSlack > 0 && info.planWalls && info.planWalls.length)) return null;
     const ix = _hqTWallIndex(info), b = ix.map.get(Math.floor(x / ix.cell) + ':' + Math.floor(z / ix.cell));
     if (!b) return null;
     let band = null;   // a PLAN wall counts only inside the slack band (the mask used to refuse it there) — never on floor the mask has always allowed, so no room loses a route it had
     for (const w of b) {
         if (w.hung && (lo == null || hi == null || hi <= w.base || lo >= w.top)) continue;
+        if (minTop != null && !(w.top > minTop)) continue;
         if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d > w.t / 2 + (pad || 0)) continue;
         if (w.plan) { if (band === null) band = hqTerrainMaskAt(info, x, z) < (info.gen.solidPad || 0); if (!band) continue; }
         return w;
@@ -47921,7 +47932,17 @@ function hqTerrainFeet(info, x, z, curY) {
     const R = info.rules;
     if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return null;
     /* THE BRIDGE LAYER (2026-09-19): a walker arriving near a bridge's top stands ON it — over whatever lies below (a street, a mass, a river) */
-    if (info.bridges && info.bridges.length) { const b = hqTerrainBridgeFor(info, x, z, curY); if (b) return b.y; }
+    if (info.bridges && info.bridges.length) {
+        const b = hqTerrainBridgeFor(info, x, z, curY);
+        /* (the ground risen over the slab — a flight of stairs built on a floor — is the surface there, not the slab under it) */
+        if (b && !(hqTerrainHeight(info, x, z) > b.y + 0.02)) {
+            /* THE MODULAR KIT (2026-10-05): a wall standing up through the slab (an upper floor's walls) stops the walker on it as it
+               does on the ground — one whose top is within a climb of the slab is stepped over, as ever */
+            const wb = hqTerrainWallAt(info, x, z, R.bodyR, b.y, b.y + R.headroom, b.y + R.climb);
+            if (wb && !wb.plan) return null;
+            return b.y;
+        }
+    }
     if (info.void && hqTerrainVoidAt(info, x, z)) return null;   // THE VOID: nothing to stand on
     if (hqTerrainSolidAt(info, x, z, 0)) return null;   // a city block is a mass: never stood in
     const g = hqTerrainHeight(info, x, z);

@@ -445,3 +445,23 @@ A SHAPES palette tab (between BUILD and LAYOUT) of WorldEdit-style stamps, DRAWS
   copy (own()), the next one lands. A room with no terrain (indoor) gets a toast. `stampShow` = the preview (the ring for a disc,
   a box for a block, a bar for a line), ringUpdate draws `ED._disc` for stamps too.
 - Quick check: w_room1 and a fairy forest copy: hill, mesa, trench, block and round wall each one undo step, no page errors.
+
+## THE MODULAR KIT (2026-10-05, token 20261005-edmodular-01-cors)
+mondo: "need a modular way to make buildings". A MODULAR palette tab: FLOOR, WALL, DOOR, WINDOW, STAIRS, ROOF that snap to a
+cell grid (opts.modC, 4 m, lines at multiples of it from the room's middle) and stack by floor (opts.modS; `[` `]` = the floor
+below / above; with the LEVEL band on, it follows the floor). Floor height opts.modH (3.5 m). Each piece row carries
+`bld: { b, s }`: b = its building's ground-floor height, taken from the nearest kit piece within 60 m, else the ground (0.25 m
+steps) where the first piece goes; s = its floor. Upper floors aim on the floor's own plane (modPt), not the ground.
+- FLOOR = a plain `bridge` slab over the dragged cells (the ground floor's top b + 0.06, 0.2 thick; upper floors b + s·H, 0.28).
+- WALL = one `wall` row per cell edge (a drag runs along the dominant grid line), `y` = its absolute top, on upper floors `y0`
+  = its foot (in the slab). An edge that already has a wall on that floor is skipped.
+- DOOR / WINDOW = the old openingAt; on a kit wall (`bld`) the gap goes in the middle of its cell.
+- STAIRS = a built `ramp` (stairs + built) from this floor to the next, 2.25 m of run per metre of rise rounded up to cells,
+  2 m wide on the cell's middle line, `foot` = b (three-renderer.js _hqBuildBuiltStairs draws the mass down to it).
+- ROOF = a ceiling slab (0.4 m overhang) on the floor's top + two `tier` wall prisms (`quad` + `slopeTop`, `y0` = the top)
+  rising opts.roofH to a ridge along the long side, the roof sheet opts.roofKey (urban:MetalCorrugatedPainted1a).
+Engine (data.js): a wall's `y0` (an absolute foot; over the ground it is HUNG); hqOpeningPieces measures sill / lintel / pane
+from `y0` on such a wall; hqTerrainFeet: a walker on a slab is stopped by a wall standing higher than a climb over it
+(hqTerrainWallAt's new `minTop`; plan walls left as they were), and where the ground rises over the slab (a stair on a floor)
+the ground is the surface. Quick check: a two-floor 12 × 8 m house; the upper walls stop the walker on the slab, the stairs
+walk 0 → 1.75 → 3.4, the roof draws, no page errors.

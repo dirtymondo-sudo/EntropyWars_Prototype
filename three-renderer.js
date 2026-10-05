@@ -45905,7 +45905,7 @@ const ThreeRenderer = (function () {
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.side || info.cliff) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
-            var base = Math.min(f.h0, f.h1) - 0.05, Lt = L + 0.25;
+            var base = Math.min(f.h0, f.h1, (typeof f.foot === 'number') ? f.foot : Infinity) - 0.05, Lt = L + 0.25;   // `foot` (the editor's MODULAR STAIRS on an upper floor): the mass drawn down to it
             /* a frame at the flight's foot, turned down its run: every piece below is built in it */
             var F = new THREE.Group(); F.position.set(f.x0 * U, 0, f.z0 * U); F.rotation.y = yaw; G.add(F);
             var slope = new THREE.Mesh(_hqSlopePrismGeo(f.w, 0, L, Lt, f.h0, f.h1, 0, base, U, TM), [treadMat, sideMat]);
