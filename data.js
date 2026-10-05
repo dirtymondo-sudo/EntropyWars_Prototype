@@ -47781,7 +47781,7 @@ function hqTerrainCompile(room, roomId) {
        wears its kind's railing either side (hqStairRailings). */
     const SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : null;
     info.railings = [];
-    const pushRun = (row, segs, model, block, tag, topOver) => {
+    const pushRun = (row, segs, model, block, tag, topOver, out) => {
         const kd = (model && typeof HQ_STAIR_PACK !== 'undefined') ? HQ_STAIR_PACK.railings[model] : null;
         const topM = (topOver != null) ? topOver : kd ? kd.top * HQ_STAIR_PACK.unit.pack : ((row && row.h != null) ? row.h : 0.98);
         let prev = null;
@@ -47799,6 +47799,10 @@ function hqTerrainCompile(room, roomId) {
                 const g0 = sg.g0 + (sg.g1 - sg.g0) * i / pieces, g1 = sg.g0 + (sg.g1 - sg.g0) * (i + 1) / pieces, foot = Math.min(g0, g1), ground = Math.min(hAt(a[0], a[1]), hAt(b[0], b[1]));
                 const w = { x0: a[0], z0: a[1], x1: b[0], z1: b[1], t: SR.blockT, base: ground - 0.3, top: Math.max(g0, g1) + topM, h: topM, key: null, ghost: true, railing: true };
                 if (foot > ground + 0.45) { w.base = foot - 0.05; w.hung = true; }
+                /* a flight's railing walls only where the drop beside it is more than the walker jumps back up: where the ground outside
+                   stands within a jump of the flight (its low end, a flight cut into a bank) the walker steps on and off as before (a wall
+                   there can pen it in a pocket whose only way out was the flight) */
+                if (out) { const mx = (a[0] + b[0]) / 2 + out[0] * 0.45, mz = (a[1] + b[1]) / 2 + out[1] * 0.45; if (hAt(mx, mz) > Math.min(g0, g1) - R.jump) continue; }
                 info.walls.push(w);
             }
         });
@@ -47852,7 +47856,10 @@ function hqTerrainCompile(room, roomId) {
         const off = f.w / 2 - SR.railIn;
         [-1, 1].forEach(sd => {
             if ((f.rails === 'l' && sd > 0) || (f.rails === 'r' && sd < 0)) return;
-            pushRun(null, [{ x0: f.x0 + px * off * sd, z0: f.z0 + pz * off * sd, x1: f.x1 + px * off * sd, z1: f.z1 + pz * off * sd, g0: f.h0, g1: f.h1 }], rk, true, { stair: true, side: sd });
+            /* no railing on a side that stands against higher ground the whole way (a wall, a bank, a tier beside the flight) */
+            let low = 0; for (let k = 1; k <= 4; k++) { const t = k / 5, ox = f.x0 + (f.x1 - f.x0) * t + px * (off + 0.45) * sd, oz = f.z0 + (f.z1 - f.z0) * t + pz * (off + 0.45) * sd; if (hAt(ox, oz) < f.h0 + (f.h1 - f.h0) * t - 0.3) low++; }
+            if (!low) return;
+            pushRun(null, [{ x0: f.x0 + px * off * sd, z0: f.z0 + pz * off * sd, x1: f.x1 + px * off * sd, z1: f.z1 + pz * off * sd, g0: f.h0, g1: f.h1 }], rk, true, { stair: true, side: sd }, null, [px * sd, pz * sd]);
         });
     });
     /* the escalators' handrails: a grind each side (the bottom landing's flat, the incline, the top's flat — one chained run) and a wall */
