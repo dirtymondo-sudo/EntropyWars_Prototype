@@ -37038,8 +37038,21 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -7, z0: 3.9, x1: -7, z1: 4.1, y: 1.2, t: 0.3, key: 'concrete' },               // the barrier's post (the arm is the tape)
                     /* THE WATCHTOWER (west): a concrete block you climb by its stair, the rail round its top */
                     { k: 'wall', x0: -22, z0: 8, x1: -18, z1: 8, y: 4.5, t: 4.0, key: 'concrete' },
-                    { k: 'ramp', x0: -20, z0: 19.9, x1: -20, z1: 9.9, w: 2.2, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },   // from the inside (L 10 ≥ 2.2 × 4.5; ends at the top's edge — a wall block's top is flat to its face)
-                    { k: 'rail', x0: -21.8, z0: 6.2, x1: -18.2, z1: 6.2 },
+                    { k: 'ramp', x0: -20, z0: 19.9, x1: -20, z1: 9.9, w: 2.2, h0: 0, h1: 4.5, stairs: true, model: 'steel', edge: 0.2 },   // from the inside (L 10 ≥ 2.2 × 4.5; ends at the top's edge — a wall block's top is flat to its face)
+                    { k: 'rail', pts: [[-21.7, 9.6], [-21.7, 6.3], [-18.3, 6.3], [-18.3, 9.6]], y: 4.5, model: 'balusters_b' },
+                    /* THE WALL WALKS behind the fence: the west walk (1.6 m, the fence a parapet on it) up two concrete flights, past the
+                       watchtower's north face; the east walk (2.2 m) up a steel flight, a step up onto the guard post's roof; a pipe rail
+                       from the west walk over the road to the post's roof */
+                    { k: 'plateau', x: -19.2, z: 5.9, w: 19.6, d: 3, h: 1.6, edge: 0.15 },
+                    { k: 'ramp', x0: -27.5, z0: 11, x1: -27.5, z1: 6.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: -10.9, z0: 11, x1: -10.9, z1: 6.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'rail', pts: [[-10.9, 11.4, 0], [-10.9, 6.7, 1.6]], model: 'pipe', block: false },
+                    { k: 'rail', x0: -26.1, z0: 7.05, x1: -22.2, z1: 7.05, model: 'balusters_b' },
+                    { k: 'rail', x0: -17.8, z0: 7.05, x1: -12.3, z1: 7.05, model: 'balusters_b' },
+                    { k: 'plateau', x: 21.3, z: 5.9, w: 16.6, d: 3, h: 2.2, edge: 0.15 },
+                    { k: 'ramp', x0: 27.8, z0: 12.6, x1: 27.8, z1: 6.7, w: 2.4, h0: 0, h1: 2.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: 13.9, z0: 7.05, x1: 26.4, z1: 7.05, model: 'balusters_b' },
+                    { k: 'rail', pts: [[-9.9, 4.75, 1.6], [9.5, 4.75, 3.0]], model: 'pipe', block: false },
                     { k: 'wall', x0: -6.6, z0: -12, x1: -6.6, z1: -2, h: 0.45, t: 0.3, key: 'urban:ConcreteStriped2a' },   // the kerb of the turn-back lane (the grind)
                     { k: 'scatter', key: 'traffic_cone', n: 5, seed: 71 },
                 ],
@@ -37065,7 +37078,7 @@ const DOOR_HQ = {
                 { key: 'security_camera', x: 12.6, z: 1.3, face: 200, mount: 2.4 },
                 { key: 'steel_table',     x: 11, z: 4.2, face: 270 }, { key: 'crt_terminal', x: 11, z: 4.2, y: 0.76, face: 270 },
                 { key: 'folding_chair',   x: 11.6, z: 3, face: 270 },
-                { key: 'flood_mast',      x: -9, z: 8 }, { key: 'flood_mast', x: 16, z: 8 },
+                { key: 'flood_mast',      x: -8.2, z: 9.5 }, { key: 'flood_mast', x: 16, z: 9 },
                 { key: 'railing_1m',      x: -20, z: 6.4, face: 0 },
                 { key: 'car_suv',         x: 18, z: 12, face: 90 }, { key: 'car_cop', x: 22, z: 12, face: 90 },
                 { key: 'traffic_barrel',  x: -6, z: -3 }, { key: 'traffic_barrel', x: -6.4, z: -8 },
