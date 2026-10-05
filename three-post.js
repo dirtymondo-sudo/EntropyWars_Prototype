@@ -3049,10 +3049,10 @@ const ThreePost = (function () {
             D.mat.fragmentNode = _ngTone(P, D.tex);
             D.quad = new G.QuadMesh(D.mat);
         } else if (D.rt.width !== w || D.rt.height !== h) D.rt.setSize(w, h);
-        var prevRT = r.getRenderTarget();
-        try { r.setRenderTarget(D.rt); r.render(scene, cam); } finally { r.setRenderTarget(prevRT); }
+        var prevRT = r.getRenderTarget(), prevAuto = r.autoClear;
+        try { r.setRenderTarget(D.rt); r.autoClear = true; r.render(scene, cam); } finally { r.setRenderTarget(prevRT); r.autoClear = prevAuto; }
         _tmSync();
-        D.quad.render(r);
+        D.quad.render(r);   // the splitscreen draws its panes with autoClear off: a cleared blit would wipe the panes before it
     }
     /* the warm-up compiles into the scene pass's target, so its pipelines are the ones the frame draws with */
     function warmTarget() { return _ng ? _ng.sp.renderTarget : null; }
