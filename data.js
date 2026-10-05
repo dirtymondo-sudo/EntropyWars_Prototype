@@ -35847,27 +35847,27 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 0, z: -2, r: 6.5, h: 1.2, edge: 0.15 },                                       // THE DAIS (a marble drum, crisp: LEVEL_DESIGN_PLAN L1)
                     { k: 'ramp', x0: 0, z0: 7.7, x1: 0, z1: 3.8, w: 3.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15,
                       built: true, key: 'marble_light', side: 'marble_2' },                                        // its steps
-                    { k: 'plateau', x: -10, z: -4, w: 4, d: 16, h: 3.0, edge: 0.15 },                                  // the west terrace
-                    { k: 'plateau', x: 10, z: -4, w: 4, d: 16, h: 3.0, edge: 0.15 },                                   // the east terrace
+                    { k: 'plateau', x: -9.8, z: -4, w: 4.4, d: 16, h: 3.0, edge: 0.15 },                                  // the west terrace
+                    { k: 'plateau', x: 9.8, z: -4, w: 4.4, d: 16, h: 3.0, edge: 0.15 },                                   // the east terrace
                     { k: 'bridge', x0: -9, z0: -11, x1: 9, z1: -11, w: 1.8, y: 3.0, thick: 0.4, plain: true, key: 'marble_light' },   // the walkway along the north parapet
-                    { k: 'ramp', x0: -10, z0: 11.5, x1: -10, z1: 3.3, w: 3.2, h0: 0, h1: 3.0, stairs: true, edge: 0.15,
-                      built: true, key: 'marble_light', side: 'marble_2' },                                        // the west stair, off the floor
-                    { k: 'rail', pts: [[-10, 11.1, 0.15], [-10, 3.7, 2.85]], model: 'pipe', block: false },          // its centre handrail
-                    { k: 'ramp', x0: 4.4, z0: -2, x1: 8.7, z1: -2, w: 2.4, h0: 1.2, h1: 3.0, stairs: true, edge: 0.15,
+                    { k: 'ramp', x0: -10, z0: 11.5, x1: -10, z1: 2.8, w: 3.2, h0: 0, h1: 3.0, stairs: true, rails: 'l', edge: 0.15,
+                      built: true, key: 'marble_light', side: 'marble_2' },                                        // the west stair, off the floor (its railing on the open side)
+                    { k: 'rail', pts: [[-10, 11.1, 0.14], [-10, 3.4, 2.79]], model: 'pipe', block: false },          // its centre handrail
+                    { k: 'ramp', x0: 4.4, z0: -2, x1: 8.3, z1: -2, w: 2.4, h0: 1.2, h1: 3.0, stairs: true, edge: 0.15,
                       built: true, key: 'marble_light', side: 'marble_2' },                                        // the east flight, off the dais
-                    { k: 'rail', pts: [[-8.3, -2, 3.0], [-5.6, -2, 1.2]], model: 'pipe', block: false },              // a grind rail off the west terrace down onto the dais
-                    /* the dais's balustrade (a curve round the rim) */
-                    { k: 'rail', arc: { x: 0, z: -2, r: 6.1, a0: 110, a1: 160 }, model: 'balusters_b' },
-                    { k: 'rail', arc: { x: 0, z: -2, r: 6.1, a0: 200, a1: 252 }, model: 'balusters_b' },
-                    { k: 'rail', arc: { x: 0, z: -2, r: 6.1, a0: 288, a1: 430 }, model: 'balusters_b' },
-                    /* the upper level's edges: along the parapet, the walkway's open side, the terraces' inner edges */
-                    { k: 'rail', pts: [[-11.85, 3.9], [-11.85, -11.85], [11.85, -11.85], [11.85, 3.9]], y: 3.0, model: 'balusters_b' },
-                    { k: 'rail', x0: -8.1, z0: -10.1, x1: 8.1, z1: -10.1, y: 3.0, model: 'balusters_b' },
-                    { k: 'rail', x0: -8.25, z0: -9.8, x1: -8.25, z1: -3.2, model: 'balusters_b' },
-                    { k: 'rail', x0: -8.25, z0: -0.8, x1: -8.25, z1: 2.4, model: 'balusters_b' },
-                    { k: 'rail', x0: 8.25, z0: -9.8, x1: 8.25, z1: -3.4, model: 'balusters_b' },
-                    { k: 'rail', x0: 8.25, z0: -0.6, x1: 8.25, z1: 3.75, model: 'balusters_b' },
-                    { k: 'rail', x0: 8.4, z0: 3.75, x1: 11.8, z1: 3.75, model: 'balusters_b' },
+                    { k: 'rail', pts: [[-7.9, -2, 3.0], [-5.6, -2, 1.2]], model: 'pipe', block: false },              // a grind rail off the west terrace down onto the dais
+                    /* the dais's balustrade (a curve round the rim; a grind, stepped through like the old one) */
+                    { k: 'rail', arc: { x: 0, z: -2, r: 6.1, a0: 101, a1: 165 }, model: 'parapet', block: false },
+                    { k: 'rail', arc: { x: 0, z: -2, r: 6.1, a0: 195, a1: 252 }, model: 'parapet', block: false },
+                    { k: 'rail', arc: { x: 0, z: -2, r: 6.1, a0: 288, a1: 439 }, model: 'parapet', block: false },
+                    /* the upper level's edges: along the parapet, the walkway's open side (walls); the terraces' inner edges (grinds) */
+                    { k: 'rail', pts: [[-11.85, 3.5], [-11.85, -11.85], [11.85, -11.85], [11.85, 3.5]], y: 3.0, model: 'parapet' },
+                    { k: 'rail', x0: -7.7, z0: -10.1, x1: 7.7, z1: -10.1, y: 3.0, model: 'parapet' },
+                    { k: 'rail', x0: -7.85, z0: -10.1, x1: -7.85, z1: -3.2, model: 'parapet', block: false },
+                    { k: 'rail', x0: -7.85, z0: -0.8, x1: -7.85, z1: 3.3, model: 'parapet', block: false },
+                    { k: 'rail', x0: 7.85, z0: -9.8, x1: 7.85, z1: -3.4, model: 'parapet', block: false },
+                    { k: 'rail', x0: 7.85, z0: -0.6, x1: 7.85, z1: 3.75, model: 'parapet', block: false },
+                    { k: 'rail', x0: 8.0, z0: 3.75, x1: 11.8, z1: 3.75, model: 'parapet', block: false },
                     { k: 'wall', x0: 3.5, z0: 10.2, x1: 8.5, z1: 10.2, h: 0.5, t: 0.6, key: 'marble_2' },             // a ledge on the floor
                     { k: 'path', pts: [[0, 11], [0, 7.7]], w: 2.0 },                                                 // the stair door to the steps
                     { k: 'path', pts: [[0, 4.1], [0, -2.5]], w: 1.6 },                                               // up to the telescope
