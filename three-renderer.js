@@ -65077,6 +65077,18 @@ const ThreeRenderer = (function () {
             var hr = (e && e.modelDef && e.modelDef.heightRatio) || 1;
             return ts * UNIT_SPRITE_SIZE_RATIO * hr;
         },
+        /* The unit's RENDERED feet position in world space (mid-tween, mid-
+           knockback, at its flight height) — the action camera's frame guard
+           (battle.js _cineGuardPoints) keeps these bodies on screen. Fills
+           `out` ([x, y, z]); false when the unit has no live model. */
+        getUnitWorldPos: function (uid, out) {
+            var e = _getUnitEntry(uid);
+            if (!e || !e.group || e.group.visible === false) return false;
+            var p = e.group.position;
+            if (!isFinite(p.x + p.y + p.z)) return false;
+            out[0] = p.x; out[1] = p.y; out[2] = p.z;
+            return true;
+        },
 
         /* §4 performance pass — Video-settings hooks + shadow gate */
         markShadowsDirty,

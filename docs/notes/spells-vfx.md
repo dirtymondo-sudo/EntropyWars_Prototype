@@ -1241,3 +1241,33 @@ mondo: range and damage tiles were the same red; Eject / Nimble Dodge showed no 
   - the caster's own move is blue;
   - any other moved body is purple.
   Focus dim is 0.28 (was 0.4) while 'aoe' / 'actionPlanAoe' / 'spellApproachTarget' / 'telegraph' is up. 'attack enemy' candidates and the actionPlanRange / spellRangeElem / infoRange overlays dim too.
+
+## THE FRAME GUARD — the action camera never loses a body (2026-10-05)
+mondo: "the action cam completely misses the target" (Call of the Deep on a flyer; widespread: AoEs, flyers, casters and
+targets at different heights, AoEs hitting units other than the clicked one). Root causes found:
+- Inside the TPS cine rig (`camera._cineTps`) the pivot is `ground under camera._tpsSubject + camera._tpsHeadLift`
+  (three-camera.js sync). **`elevZ` passed to `_cineBeatMove` / `_cineHardCut` is IGNORED there** — every "lean the focal
+  toward the caster's height" in the action shots was dead code. Height in the rig = `_tpsHeadLift` (or `liftPx`).
+- Many callers pass a bare `{x, y}` tile as the target (terrainCreate = Call of the Deep, zones, sky drops). `_unitElevZ`
+  of a bare tile is the ground, so every beat framed the floor under a flyer.
+- The AoE wide cut fitted frameTiles only (no heights, enemies only, and only when the caller passed them).
+- Director primitives anchor at tiles with ground lifts (`cineLowTile` liftPx 0.4 tile, god shots, side dollies...).
+The fix:
+- **three-camera.js `_frameGuardSolve`**: while `camera._frameGuard` is set, after the beat's eye/look target is composed
+  and before damping, it finds the smallest slide (screen right/up) + dolly back (bisection; all constraints linear) that
+  puts every guarded point inside the letterbox (|ndc x| ≤ 0.86, |ndc y| ≤ 0.70), eye kept over the rig floor; a gaze
+  that can't (looking up, floor-bound) is levelled to a gentle down-look first. Already-framed shots are untouched.
+  `ThreeCamera.frameGuardState()` = what it did last frame.
+- **battle.js `_cineArmFrameGuard`** (after `_cineHardCut`): phases — `cast` (the caster, chest→crown, until the cut),
+  `travel` (nothing: bullet rides / sky watches keep their freedom), `hit` (every hit unit, shins→HP bar top, from
+  max(cut, impact − 280 ms) to the shot end), `all` (tactical pan: caster + hits). Points are the RENDERED bodies
+  (`ThreeRenderer.getUnitWorldPos`, new). Hit list = cast-commit forecast (`_cineNoteCast` now runs `forecastSpellPlan`
+  at doSpell's commit, first shot of the cast only) + the shot's target/extraTargets/frameTiles + **every unit a
+  damage/heal/status number pops on during the shot** (`_cineGuardNoteHit`, called from the floating-text layer).
+  Armed in the offensive shot (both branches), support rig, self hero shot, dash cam and detonation cinematic.
+  The stock pair reverse cut + OTS drift set `keepCaster`.
+- `playOffensiveActionCamera` resolves a bare tile with a visible unit on it to that unit (before anything else).
+- The AoE wide cut frames all hit units with their real heights (pivot `liftPx` at the group's vertical middle).
+- The pair reverse cut leans the TPS pivot (not elevZ) toward the caster's height; `cineLowTile` rises to a raised body.
+- Online: `opts.frameUnitIds` (written back by the host) rides the `offensive` camera event; the guest's live hits come
+  off the relayed floating numbers. Probe: `_ewFrameGuard()` in the console.

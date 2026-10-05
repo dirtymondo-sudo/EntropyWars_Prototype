@@ -11559,6 +11559,9 @@
                     if (state.fogOfWar && state.activePlayer !== _viewer && !_isTileVisibleToViewer(x, y)) return;
                 }
             }
+            /* THE FRAME GUARD: a number on a unit during a live spell shot →
+               that unit stays in frame for the rest of the shot. */
+            if (_cineGuard) _cineGuardNoteHit(x, y, kind, opts);
 
             /* Record juice (plan §5.2 #1): a damage number that beats the
                VIEWER's own Biggest Hit board grows, glows and kicks the
@@ -26534,6 +26537,161 @@
             camera._apply();
         }
 
+        /* ═══ THE FRAME GUARD (2026-10-05) ═══════════════════════════════════
+           "The action camera completely misses the target" — a flyer framed at
+           the empty ground under it, an AoE that hit units nobody aimed at, a
+           caster up a ledge cut out of the reverse shot. Every beat composes
+           its frame from TILE maths (a bare {x, y} target, a ground-level lift,
+           frameTiles without heights), so the 150-odd director/family beats
+           each had their own way to lose a body. This is the one fix under all
+           of them: while a spell shot is live it publishes the bodies that
+           MUST be on screen — through the cast the caster, from the hit on
+           every unit the spell actually hits (the cast-commit forecast, the
+           shot's own targets, and every unit a damage/heal/status number pops
+           on during the shot) — and ThreeCamera.sync (three-camera.js
+           _frameGuardSolve) corrects whatever frame the beat composed with the
+           least slide + dolly that puts each REAL rendered body (feet to the
+           top of the HP bar, at its flight height, mid-knockback) inside the
+           letterbox. A frame that already shows them all is untouched.
+           Host and guest each arm it from the same relayed shot (frameUnitIds
+           rides the camera event), and the live hits come off the floating
+           numbers both sides draw, so the guest's camera keeps the same
+           bodies in frame (RULE #2). Enemies the viewer can't see (fog,
+           concealment) are never guarded. */
+        let _cineGuard = null;
+        const _CINE_GUARD_HIT_KINDS = new Set(['damage', 'crit', 'overkill', 'dodge', 'protect-block',
+            'heal', 'revive', 'debuff', 'status', 'record', 'record-near', 'mp', 'mana']);
+        const _cineGuardPos = [0, 0, 0];
+        /* The guarded span of a body. A VICTIM: shins to the top of the HP
+           bar (the hit reaction and its number). The CASTER: chest to the
+           crown — the close hero shots crop the legs on purpose, and only a
+           caster genuinely out of frame is worth correcting. */
+        function _cineGuardUnitPts(u, out, asCaster) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let ok = false;
+            try {
+                ok = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos
+                    && ThreeRenderer.getUnitWorldPos(u.id, _cineGuardPos));
+            } catch (e) { ok = false; }
+            if (!ok) {
+                if (u.dead && !u._dying) return;
+                _cineGuardPos[0] = u.x * ts + ts / 2;
+                _cineGuardPos[1] = (typeof unitElevationZ === 'function') ? (unitElevationZ(u) || 0) : 0;
+                _cineGuardPos[2] = u.y * ts + ts / 2;
+            }
+            let h = ts * 0.95;
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight) {
+                    h = ThreeRenderer.getUnitVisualHeight(u.id) || h;
+                }
+            } catch (e) {}
+            const lo = asCaster ? h * 0.45 : h * 0.12;
+            const hi = asCaster ? h : h + ts * 0.35;
+            out.push([_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2]]);
+            out.push([_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2]]);
+        }
+        function _cineGuardLive(G) {
+            if (!G || state.phase !== 'battle' || state.cameraDisabled) return false;
+            if (performance.now() > G.until) return false;
+            if (G.cine ? camera._cineShotId !== G.seq : G.seq !== boardCameraSequenceId) return false;
+            return true;
+        }
+        function _cineGuardEnd(G) {
+            const g = G || _cineGuard;
+            if (!g) return;
+            for (const t of g.timers) clearTimeout(t);
+            g.timers.length = 0;
+            if (_cineGuard === g) _cineGuard = null;
+            if (camera._frameGuard === g.api) camera._frameGuard = null;
+        }
+        function _cineGuardPoints(G) {
+            if (!_cineGuardLive(G)) { _cineGuardEnd(G); return null; }
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return null;
+            const pts = [];
+            const add = (id, asCaster) => {
+                if (id == null) return;
+                const u = (state.units || []).find(x => x.id === id);
+                if (!u || !_cineActorVisible(u)) return;
+                _cineGuardUnitPts(u, pts, asCaster);
+            };
+            const all = G.phase === 'all';
+            if (G.phase === 'cast' || all || (G.phase === 'hit' && G.keepCaster)) add(G.casterId, true);
+            if (G.phase === 'hit' || all) G.hit.forEach(id => add(id, false));
+            return pts.length ? pts : null;
+        }
+        /* o: { seq, cine (false = the tactical pan, keyed to the board camera
+           sequence), caster, victimIds, castUntilMs (the caster is guarded
+           until here), hitFromMs (the victims from here), totalMs, keepCaster,
+           all (caster + victims for the whole shot) } */
+        function _cineArmFrameGuard(o) {
+            _cineGuardEnd();
+            if (!o || state.cameraDisabled || _skipVisuals()) return null;
+            const casterId = o.caster ? o.caster.id : null;
+            const G = {
+                seq: o.seq, cine: o.cine !== false, casterId,
+                hit: new Set((o.victimIds || []).filter(id => id != null && id !== casterId)),
+                phase: o.all ? 'all' : 'cast', keepCaster: !!o.keepCaster,
+                until: performance.now() + Math.max(0, o.totalMs || 0) + actionMs(150),
+                timers: []
+            };
+            G.api = { points: () => _cineGuardPoints(G) };
+            if (!o.all) {
+                const castUntil = Math.max(0, o.castUntilMs || 0);
+                const hitFrom = Math.max(castUntil, o.hitFromMs ?? castUntil);
+                G.timers.push(setTimeout(() => { if (G.phase === 'cast') G.phase = 'travel'; }, castUntil));
+                G.timers.push(setTimeout(() => { G.phase = 'hit'; }, hitFrom));
+            }
+            _cineGuard = G;
+            camera._frameGuard = G.api;
+            return G;
+        }
+        /* A number popped on a unit during the live shot: that unit was hit,
+           so it is in frame from now on — a splash, a chain, a ricochet, the
+           friendly fire nobody aimed at (called from the floating-text layer,
+           which the guest also runs off the host's relayed numbers). */
+        function _cineGuardNoteHit(x, y, kind, opts) {
+            const G = _cineGuard;
+            if (!G || !_cineGuardLive(G)) return;
+            if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.id === G.casterId) return;
+            G.hit.add(u.id);
+            if (G.phase !== 'all') G.phase = 'hit';
+        }
+        /* The bodies a shot is about: the relayed list when the host sent one
+           (the guest frames exactly what the host does), else the shot's own
+           target / extra targets / frame tiles, plus — on the cast's FIRST
+           shot — every unit the cast-commit forecast says the spell reaches. */
+        function _cineShotVictimIds(sourceUnit, target, opts) {
+            const cid = sourceUnit ? sourceUnit.id : null;
+            const ids = new Set();
+            if (Array.isArray(opts.frameUnitIds)) {
+                for (const id of opts.frameUnitIds) if (id != null && id !== cid) ids.add(id);
+                return [...ids];
+            }
+            const add = (u) => { if (u && u.id != null && u.id !== cid && !u.dead) ids.add(u.id); };
+            if (target && target.id != null) add(target);
+            if (Array.isArray(opts.extraTargets)) opts.extraTargets.forEach(add);
+            if (Array.isArray(opts.frameTiles) && typeof unitAt === 'function') {
+                for (const t of opts.frameTiles) if (t) add(unitAt(t.x, t.y));
+            }
+            const c = _cineCastCtx;
+            if (c && c.hitIds && !c.guardUsed && c.casterId === cid && performance.now() - c.at < 6000) {
+                c.guardUsed = true;
+                for (const id of c.hitIds) if (id !== cid) ids.add(id);
+            }
+            return [...ids];
+        }
+        /* Probe (console): what the guard holds and what the camera did with it. */
+        window._ewFrameGuard = () => {
+            const G = _cineGuard;
+            return {
+                live: !!(G && _cineGuardLive(G)), phase: G ? G.phase : null,
+                caster: G ? G.casterId : null, hit: G ? [...G.hit] : [],
+                solve: (typeof ThreeCamera !== 'undefined' && ThreeCamera.frameGuardState) ? ThreeCamera.frameGuardState() : null
+            };
+        };
+
         // ═══════════════════════════════════════════════════════════════════
         // _playCineActionShot() — THE standard spell shot. ONE rig for every
         // damaging cast (meteors and sky-strikes included — the per-spell
@@ -26744,23 +26902,44 @@
                     // reacting. Zoom fits the whole spread (plus headroom for
                     // sprites and their floating HP bars), never wider than
                     // needed, so a tight two-target hit keeps the close feel.
-                    const _ft = shotOpts.frameTiles;
-                    if (_ft && _ft.length >= 2) {
+                    /* The group is every unit the spell HITS (the frame
+                       guard's list — the forecast, the shot's own targets),
+                       not only the caller's frameTiles: an AoE whose caller
+                       passed one target still gets the wide cut when it
+                       catches three. */
+                    const _victims = (shotOpts.victimIds || [])
+                        .map(id => (state.units || []).find(u => u.id === id))
+                        .filter(u => u && !u.dead && !u._dying && u.id !== sourceUnit.id && _cineActorVisible(u));
+                    const _ft = (shotOpts.frameTiles || []).concat(_victims.map(u => ({ x: u.x, y: u.y, u })));
+                    if ((shotOpts.frameTiles && shotOpts.frameTiles.length >= 2) || _victims.length >= 2) {
                         let _minX = Infinity, _maxX = -Infinity, _minY = Infinity, _maxY = -Infinity;
+                        /* …and their REAL heights: the feet of the lowest
+                           body to the HP bar of the highest. A flyer in the
+                           blast used to sit above a frame pivoted at a
+                           shoulder over the ground. */
+                        let _lowPx = Infinity, _highPx = -Infinity;
                         for (const p of _ft) {
                             if (p.x < _minX) _minX = p.x;
                             if (p.x > _maxX) _maxX = p.x;
                             if (p.y < _minY) _minY = p.y;
                             if (p.y > _maxY) _maxY = p.y;
+                            const _feet = p.u ? (unitElevationZ(p.u) || 0)
+                                : ((typeof window._camGroundPx === 'function') ? window._camGroundPx(Math.round(p.x), Math.round(p.y)) : 0);
+                            const _top = _feet + (p.u ? _tpsShoulderLift(p.u) / 0.8 + ts * 0.35 : ts);
+                            if (_feet < _lowPx) _lowPx = _feet;
+                            if (_top > _highPx) _highPx = _top;
                         }
                         const _wcx = (_minX + _maxX) / 2, _wcy = (_minY + _maxY) / 2;
                         const _span = Math.max(_maxX - _minX, _maxY - _minY);
+                        const _vSpan = Math.max(0, (_highPx - _lowPx) / ts);
                         const _tiltWide = CINE_HIT_TILT - 8;
                         const _zoomWide = Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                            _tpsZoomFitTiles((_span + 3.0) * 0.5, _span + 3.0));
+                            _tpsZoomFitTiles(Math.max((_span + 3.0) * 0.5, _vSpan + 1.6), _span + 3.0));
                         const _gPx = (typeof window._camGroundPx === 'function')
                             ? window._camGroundPx(Math.round(_wcx), Math.round(_wcy)) : 0;
-                        _cineTpsAnchor({ x: _wcx, y: _wcy }, null);
+                        // pivot at the group's vertical middle (lift is measured from the centre's ground)
+                        _cineTpsAnchor({ x: _wcx, y: _wcy }, null,
+                            { liftPx: Math.max(ts * 0.5, (_lowPx + _highPx) / 2 - _gPx) });
                         camera._cineShotTarget = { x: Math.round(_wcx), y: Math.round(_wcy), id: null };
                         _cineHardCut({
                             x: _wcx, y: _wcy,
@@ -26792,6 +26971,8 @@
                         if (_isGun && shotOpts.spellId
                             && typeof CINE_SEQUENCES !== 'undefined'
                             && CINE_SEQUENCES[shotOpts.spellId]) return;
+                        // both actors stay on screen the whole exchange — the guard holds the caster too
+                        if (_cineGuard && _cineGuard.seq === sequenceId) _cineGuard.keepCaster = true;
                         _cineBeatMove({
                             x: tx - dirx * 0.18, y: ty - diry * 0.18,
                             zoom: _castZoom * 1.12,
@@ -26818,6 +26999,18 @@
                     // victim at the caster) and the zoom widened just enough
                     // to fit both. Long casts keep the tight victim close-up.
                     const _pairShot = len <= 4.2;
+                    if (_pairShot) {
+                        /* The lean toward the caster's height has to move the
+                           TPS PIVOT — the rig ignores elevZ — or a caster on a
+                           ledge (or a flyer firing down) sat outside the
+                           reverse cut. Up to halfway for a tall gap. */
+                        if (Math.abs(tgtPx - casterPx) > ts * 0.5) {
+                            const _lean = Math.min(0.5, 0.22 + _vGapTiles * 0.07);
+                            camera._tpsHeadLift = Math.max(ts * 0.3,
+                                (camera._tpsHeadLift || ts * 0.8) + (casterPx - tgtPx) * _lean);
+                        }
+                        if (_cineGuard && _cineGuard.seq === sequenceId) _cineGuard.keepCaster = true;
+                    }
                     // Pair fit includes the pair's ELEVATION gap (vertical
                     // span) as well as the horizontal one — a caster firing
                     // down from a ledge used to resolve above the top of the
@@ -28299,7 +28492,15 @@
             if (typeof window._camGroundPx === 'function') {
                 px = window._camGroundPx(Math.round(tile.x), Math.round(tile.y)) || 0;
             }
-            if (!_cineTpsAnchor({ x: tile.x, y: tile.y }, (tile.id != null ? tile : null), { liftPx: ts * 0.4 })) return false;
+            /* A body held up off that floor (a flyer, a unit on a roof over
+               the tile's ground) is the shot: the lens rises to it instead of
+               staring at the floor beneath it (Call of the Deep on a flyer). */
+            const _body = (tile.id != null) ? tile
+                : ((typeof unitAt === 'function') ? unitAt(Math.round(tile.x), Math.round(tile.y)) : null);
+            const _raised = !!(_body && !_body.dead && _cineActorVisible(_body)
+                && (unitElevationZ(_body) || 0) - px > ts * 0.6);
+            if (!(_raised ? _cineTpsAnchor(_body, _body)
+                : _cineTpsAnchor({ x: tile.x, y: tile.y }, (tile.id != null ? tile : null), { liftPx: ts * 0.4 }))) return false;
             const framing = {
                 x: tile.x, y: tile.y,
                 zoom: _tpsZoomForBoomTiles(opts.dist ?? 2.8),
@@ -30641,9 +30842,25 @@
            Stale contexts are ignored — a camera call more than a beat after
            the cast that set it belongs to something else. */
         let _cineCastCtx = null;
-        function _cineNoteCast(unit, spell) {
+        function _cineNoteCast(unit, spell, x, y, z) {
             if (!spell || !spell.id) { _cineCastCtx = null; return; }
             _cineCastCtx = { spellId: spell.id, casterId: unit ? unit.id : null, at: performance.now() };
+            /* THE FRAME GUARD: who this cast will actually hit, read off the
+               engine's own forecast HERE — the commit point, before anything
+               resolves (later the board is already mid-cast). The cast's
+               first action shot keeps every one of them in frame. */
+            if (unit && Number.isFinite(x) && Number.isFinite(y) && !_skipVisuals()
+                && typeof forecastSpellPlan === 'function') {
+                try {
+                    const plan = forecastSpellPlan(unit, spell, x, y, z);
+                    if (plan && plan.handled) {
+                        const ids = [];
+                        for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !ids.includes(h.unit.id)) ids.push(h.unit.id);
+                        for (const m of plan.moves) if (m && m.unit && m.unit.id !== unit.id && !ids.includes(m.unit.id)) ids.push(m.unit.id);
+                        _cineCastCtx.hitIds = ids;
+                    }
+                } catch (e) {}
+            }
         }
         function _cineCurrentSpellId(sourceUnit) {
             const c = _cineCastCtx;
@@ -30766,6 +30983,10 @@
             }, totalMs + actionMs(300));
 
             showActionCamChrome({ name: ds.spellName || 'Detonation', heavy: true, totalMs });
+            /* THE FRAME GUARD: no caster on screen here — every unit the blast's
+               numbers pop on is held in the blast frame (a flyer over ground zero). */
+            _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: null, victimIds: [],
+                castUntilMs: inboundMs, hitFromMs: inboundMs, totalMs });
 
             const groundPx = (typeof window._camGroundPx === 'function')
                 ? window._camGroundPx(Math.round(ds.x), Math.round(ds.y)) : 0;
@@ -30978,6 +31199,10 @@
             const yawChase = Math.atan2(-dirx, -diry) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET * 0.6;
 
             showActionCamChrome({ name: opts.attackName || '', heavy: true, totalMs });
+            /* THE FRAME GUARD: the charger the whole run, and whoever the
+               charge hits from the moment their number pops. */
+            if (unit) _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit, victimIds: [],
+                keepCaster: true, castUntilMs: totalMs, hitFromMs: totalMs, totalMs });
 
             // ── BEAT 1 — THE BRACE: low front ¾, looking back at the charger.
             _cineBeatMove({
@@ -31057,6 +31282,24 @@
                (the guest re-resolves the same bespoke sequence locally). */
             const _cineSpellIdForShot = opts.spellId || _cineCurrentSpellId(sourceUnit);
             if (_cineSpellIdForShot && !opts.spellId) opts.spellId = _cineSpellIdForShot;
+
+            /* A bare {x, y} tile with a body standing (or FLYING) on it is
+               that body. Tile-targeted casts (Call of the Deep, every
+               terrain / zone / sky-drop caller) pass the tile, and every beat
+               then framed the GROUND under a flyer — the camera aimed at the
+               empty water while the target hung above the frame. Resolved
+               the same way on the guest (the relay carries the tile). */
+            if (target.id == null && Number.isFinite(target.x) && Number.isFinite(target.y)
+                && typeof unitAt === 'function') {
+                const _onTile = unitAt(Math.round(target.x), Math.round(target.y));
+                if (_onTile && !_onTile.dead && _onTile.id !== sourceUnit.id && _cineActorVisible(_onTile)) {
+                    target = _onTile;
+                }
+            }
+            /* THE FRAME GUARD: every body this shot must keep on screen —
+               written back so online.js relays the host's exact list. */
+            const _shotVictimIds = _cineShotVictimIds(sourceUnit, target, opts);
+            if (!Array.isArray(opts.frameUnitIds)) opts.frameUnitIds = _shotVictimIds;
 
             if (!opts._noCinematic) {
                 playCinematicAttack(sourceUnit, target, opts);
@@ -31187,7 +31430,19 @@
                       holdAfterLaunchMs: opts.holdAfterLaunchMs,
                       // The descent def's own clock (release + fall) for the
                       // flyover / sky-fall directors (2026-09-13).
-                      descentCam: opts.descentCam };
+                      descentCam: opts.descentCam,
+                      // THE FRAME GUARD's bodies — the wide hit cut frames
+                      // them with their real heights.
+                      victimIds: _shotVictimIds };
+                /* THE FRAME GUARD: the caster through the cast beat, every
+                   unit hit from just before the impact to the end of the shot
+                   (descent spells keep their sky watch until the body lands). */
+                const _gCut = _cineCutMs(timings, _shotOpts);
+                const _gImpact = _impactMs ?? (timings.sourceHold + timings.travelMs + actionMs(60));
+                _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: sourceUnit,
+                    victimIds: _shotVictimIds, castUntilMs: _gCut,
+                    hitFromMs: Math.max(_gCut, _gImpact - actionMs(280)),
+                    totalMs: Math.max(timings.totalMs, _gImpact + actionMs(600)) });
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId, _shotOpts);
                 /* SPELL CINEMATICS — layer the spell's own sequence (or, for
                    the ~375 spells without one, its family treatment) over the
@@ -31222,6 +31477,10 @@
                     elevZ: actionElevZ,
                     _fogAllowed: _fogPassthrough || undefined
                 });
+                /* THE FRAME GUARD on the tactical pan too: the attacker and
+                   everyone hit stay on screen at the player's zoom. */
+                _cineArmFrameGuard({ seq: sequenceId, cine: false, caster: sourceUnit,
+                    victimIds: _shotVictimIds, all: true, totalMs: timings.totalMs });
             }
 
             // The busy release gets its OWN timer: boardCameraResetTimer is a
@@ -62657,6 +62916,11 @@
                 if (_cineShotOwned(sequenceId)) return;   // the director composes the rest
                 _selfPush();
             }, actionMs(440) + CINE_CLAIM_GRACE_MS);
+            /* THE FRAME GUARD: the caster the whole shot; a nova / war cry /
+               mass heal adds every unit its numbers pop on. */
+            const _selfTotal = Math.max(actionMs(1900), _selfHold + actionMs(200));
+            _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit, victimIds: [],
+                keepCaster: true, castUntilMs: _selfTotal, hitFromMs: _selfTotal, totalMs: _selfTotal });
             if (opts.spellName) {
                 showActionCamChrome({ name: opts.spellName, heavy: _selfHeal,
                     tallyKind: _selfHeal ? 'heal' : undefined,
@@ -62851,6 +63115,11 @@
                 if (_cineShotOwned(sequenceId)) return;   // the director composes beat 2 itself
                 _supBeat2();
             }, _supCutMs + CINE_CLAIM_GRACE_MS);
+            /* THE FRAME GUARD: the giver through the cast, the receiver (and
+               anyone else the gift lands on) from the cut to the end. */
+            _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit,
+                victimIds: (target.id != null) ? [target.id] : [],
+                castUntilMs: _supCutMs, hitFromMs: _supCutMs, totalMs });
 
             if (opts.spellName) {
                 // Heals wear the full letterbox + TOTAL HEALED readout; other
@@ -63558,7 +63827,7 @@
                playOffensiveActionCamera call sites downstream can resolve the
                bespoke sequence / family treatment without each threading the
                id through (SPELL_CINEMATICS.md). */
-            _cineNoteCast(unit, spell);
+            _cineNoteCast(unit, spell, x, y, z);
 
             /* Cinematic staging (wind-up → burst → exhale). Fired HERE, at the
                universal cast-commit point, so every one of the ~60 spell kinds
