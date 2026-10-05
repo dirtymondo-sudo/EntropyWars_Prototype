@@ -32410,20 +32410,25 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[23.5, 7.5], [23.5, -7]], w: 3 },                       // the long ramp's cut up the east wall
                     /* THE TIERS (the room's as they were) */
                     { k: 'plateau', x: -14, z: 4, w: 18, d: 9, h: 1.75, edge: 0.2 },                                  // THE TERRACE
-                    { k: 'ramp', x0: -16, z0: 12.6, x1: -16, z1: 8.2, w: 3.2, h0: 0, h1: 1.75, stairs: true },        // up from the way in
-                    { k: 'ramp', x0: -1.4, z0: 5, x1: -5.4, z1: 5, w: 3.0, h0: 0, h1: 1.75, stairs: true },           // up from the hall
+                    { k: 'ramp', x0: -16, z0: 12.6, x1: -16, z1: 8.2, w: 3.2, h0: 0, h1: 1.75, stairs: true, model: 'wood' },        // up from the way in (timber)
+                    { k: 'ramp', x0: -1.4, z0: 5, x1: -5.4, z1: 5, w: 3.0, h0: 0, h1: 1.75, stairs: true, model: 'wood' },           // up from the hall (timber)
                     { k: 'pool', x: -10, z: 3, r: 2.6, y: 1.45, depth: 0.7 },                                        // THE POOL on the terrace
                     { k: 'plateau', x: -20.5, z: -9, w: 11, d: 9, h: 3.5, edge: 0.2 },                               // THE WEST SHELF
                     { k: 'ramp', x0: -18, z0: -0.2, x1: -18, z1: -4.9, w: 2.4, h0: 1.75, h1: 3.5, stairs: true },     // the causeway from the terrace
                     { k: 'plateau', x: -15, z: -17.5, w: 16, d: 7, h: 5.25, edge: 0.2 },                             // THE HIGH TIER (LEVEL −6's door)
-                    { k: 'ramp', x0: -19, z0: -11, x1: -19, z1: -14.4, w: 2.4, h0: 3.5, h1: 5.25, stairs: true },     // up from the shelf
+                    { k: 'ramp', x0: -19, z0: -11, x1: -19, z1: -14.4, w: 2.4, h0: 3.5, h1: 5.25, stairs: true, model: 'fire_escape' },     // up from the shelf (steel, the base's)
                     { k: 'plateau', x: -1, z: -16, r: 3.2, h: 3.5, edge: 0.2 },                                      // THE SPUR
                     { k: 'ramp', x0: -7.3, z0: -16.5, x1: -3.8, z1: -16.3, w: 1.8, h0: 5.25, h1: 3.5, stairs: true }, // down onto it
                     { k: 'plateau', x: 18, z: -13, w: 16, d: 12, h: 3.5, edge: 0.2 },                                // THE HOT SHELF
                     { k: 'deck', x0: 2.0, z0: -15.2, x1: 10.4, z1: -13.4, w: 1.6, y: 3.5, over: true },               // THE ROPE BRIDGE over the north chamber (the walker passes under)
                     { k: 'pool', x: 15, z: -12.5, r: 3.0, y: 3.2, depth: 0.9, key: 'lava' },                         // THE LAVA LAKE
+                    { k: 'rail', arc: { x: 15, z: -12.5, r: 4.0, a0: 290, a1: 430 }, y: 3.5, model: 'bars_curb', block: false }, { k: 'rail', arc: { x: 15, z: -12.5, r: 4.0, a0: 110, a1: 250 }, y: 3.5, model: 'bars_curb', block: false },   // a curved rail round it (a grind; open at the causeway's ends)
+                    /* the steel mine stair up from the north chamber onto the hot shelf; a rail along the shelf's west edge between it and the rope bridge */
+                    { k: 'ramp', x0: 3.0, z0: -8.4, x1: 10.7, z1: -8.4, w: 2.0, h0: 0, h1: 3.5, stairs: true, model: 'fire_escape' },
+                    { k: 'rail', x0: 10.15, z0: -12.4, x1: 10.15, z1: -9.6, y: 3.5, model: 'bars_curb' },
                     { k: 'deck', x0: 10.4, z0: -12.5, x1: 19.6, z1: -12.5, w: 1.6, y: 3.56, rails: false },           // the obsidian causeway
-                    { k: 'ramp', x0: 23.5, z0: 4.5, x1: 23.5, z1: -7.7, w: 3.0, h0: 0, h1: 3.5, stairs: true },       // THE LONG RAMP up the east wall
+                    { k: 'ramp', x0: 23.5, z0: 4.5, x1: 23.5, z1: -7.7, w: 3.0, h0: 0, h1: 3.5, stairs: true, model: 'fire_escape' },       // THE LONG RAMP up the east wall (a steel mine stair)
+                    { k: 'rail', pts: [[23.5, 4.1, 0.11], [23.5, -7.3, 3.39]], model: 'pipe', block: false },                // its centre handrail
                     { k: 'stream', pts: [[25.5, 11.5], [21.6, 12]], w: 3.2, y: -0.3, depth: 1.6 },                        // THE RIVER (deep)…
                     { k: 'stream', pts: [[21.4, 12.05], [17.6, 13.2]], w: 3.2, y: -0.3, depth: 0.5, bank: 1.8 },      // …THE FORD: a shallow reach between the deep ones, waded
                     { k: 'stream', pts: [[17.4, 13.3], [13.8, 15], [11.5, 19.5]], w: 3.2, y: -0.3, depth: 1.6 },
