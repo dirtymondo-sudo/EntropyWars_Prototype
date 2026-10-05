@@ -38009,6 +38009,81 @@
         }
         window.findAoeCastCenterForTarget = findAoeCastCenterForTarget;
 
+        /* THE OFF-CENTRE AIM (2026-10-05, mondo: "it doesnt show aoes that can hit them ... its just the center tile
+           isnt on them"). A tile-aimed AoE (aoe / aoePull / a tile-aimed cross, any drawn mask, rings too) can catch a
+           unit from any legal centre whose footprint covers it, not only from a centre ON it. Given the unit the
+           player wants hit at (tx, ty), pick the legal centre (getSpellRangeTiles: range + LOS + fog, read from
+           opts.castFrom when the cast follows a move) whose footprint covers it and catches the most other enemies,
+           then the fewest allies, then sits nearest the victim. Only enemies the caster's side can see count, so
+           the pick never leaks a fogged body. Returns {x, y} or null. Shared by the quick-cast menu, its hover
+           preview and its executor (hud.js), so the row, the preview and the cast use the same tile. */
+        function isTileAoeSpell(spell) {
+            if (!spell || spell.aoeOriginSelf || isSpellSelfCast(spell)) return false;
+            return spell.kind === 'aoe' || spell.kind === 'aoePull' || spell.kind === 'cross';
+        }
+        function _tileAoeArea(spell, cx, cy) {
+            if (spell.kind === 'cross') return getCrossArea(spell, cx, cy);
+            if (spell.kind === 'aoePull') return _spellMaskTiles(spell, cx, cy) || getSquareArea(cx, cy, spell.aoeRadius || 1);
+            return getSpellAoeArea(spell, cx, cy);
+        }
+        /* The HUD rebuilds the quick menu on every render and the move search asks once per reachable tile, so
+           answers are kept for a short window keyed by everything the pick reads (bodies, terrain, fog). */
+        const _aoeAimMemo = new Map();
+        let _aoeAimMemoAt = 0;
+        function findBestAoeAimForTarget(unit, spell, tx, ty, opts = {}) {
+            if (!unit || !spell || !isTileAoeSpell(spell)) return null;
+            const cf = opts.castFrom;
+            const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+            if (now - _aoeAimMemoAt > 300 || _aoeAimMemo.size > 600) { _aoeAimMemo.clear(); _aoeAimMemoAt = now; }
+            let sig = '';
+            for (const u of state.units) if (u && !u.dead && !u._dying) sig += u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? 0) + ';';
+            const mk = [unit.id, spell.id || spell.name, tx, ty, cf ? cf.x + ',' + cf.y + ',' + (cf.z ?? '') : '-',
+                state._terrainVersion || 0, state.fogOfWar ? 1 : 0, sig].join('|');
+            if (_aoeAimMemo.has(mk)) return _aoeAimMemo.get(mk);
+            const res = _findBestAoeAim(unit, spell, tx, ty, cf);
+            _aoeAimMemo.set(mk, res);
+            return res;
+        }
+        function _findBestAoeAim(unit, spell, tx, ty, cf) {
+            const ox = unit.x, oy = unit.y, oz = unit.z;
+            const moved = !!(cf && cf.x != null && (cf.x !== unit.x || cf.y !== unit.y || (cf.z != null && cf.z !== unit.z)));
+            let cands = [];
+            try {
+                if (moved) { unit.x = cf.x; unit.y = cf.y; if (cf.z != null) unit.z = cf.z; }
+                cands = getSpellRangeTiles(unit, spell) || [];
+            } catch (e) { cands = []; }
+            finally { if (moved) { unit.x = ox; unit.y = oy; unit.z = oz; } }
+            if (!cands.length) return null;
+            const vis = (state.fogOfWar && typeof computeVisibleTiles === 'function') ? computeVisibleTiles(unit.player) : null;
+            const enemyKeys = new Set(), allyKeys = new Set();
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying) continue;
+                const k = u.x + ',' + u.y;
+                if (isEnemyUnit(u, unit)) { if (!vis || vis.has(posKey(u.x, u.y))) enemyKeys.add(k); }
+                else allyKeys.add(k);
+            }
+            const seen = new Set();
+            let best = null, bestScore = -Infinity;
+            for (const c of cands) {
+                const ck = c.x + ',' + c.y;
+                if (seen.has(ck)) continue;
+                seen.add(ck);
+                const area = _tileAoeArea(spell, c.x, c.y);
+                if (!area.some(a => a.x === tx && a.y === ty)) continue;
+                let foes = 0, friends = 0;
+                for (const a of area) {
+                    const k = a.x + ',' + a.y;
+                    if (enemyKeys.has(k)) foes++;
+                    else if (allyKeys.has(k)) friends++;
+                }
+                const score = foes * 1000 - friends * 10 - (Math.abs(c.x - tx) + Math.abs(c.y - ty)) * 0.1;
+                if (score > bestScore) { bestScore = score; best = { x: c.x, y: c.y, z: c.z, foes }; }
+            }
+            return best;
+        }
+        window.isTileAoeSpell = isTileAoeSpell;
+        window.findBestAoeAimForTarget = findBestAoeAimForTarget;
+
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
             const kind = spell.kind;
@@ -54104,7 +54179,7 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearOverlay) {
                 for (const ov of ['spellApproachMove', 'spellApproachTarget', 'spellApproachShove',
                                   'movePreview', 'actionPlanTarget', 'actionPlanAoe', 'actionPlanShove',
-                                  'actionPlanRange', 'moveHoverDest', 'enemyRange']) {
+                                  'actionPlanRange', 'actionPlanChain', 'moveHoverDest', 'enemyRange']) {
                     ThreeRenderer.clearOverlay(ov);
                 }
                 if (ThreeRenderer.clearArrows3D) ThreeRenderer.clearArrows3D();

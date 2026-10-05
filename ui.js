@@ -14073,18 +14073,23 @@
             updateAoePreview(_lastAoePreviewX, _lastAoePreviewY);
         };
 
-        function updateAoePreview(x, y) {
-            _lastAoePreviewX = x; _lastAoePreviewY = y;
-            _lastAoePreviewTool = state.selectedTool || null;
-            if (state.actionMode !== 'spell') { clearAoePreview(); clearIntentPreview(); return; }
-            const unit = getSelectedUnit();
+        /* ov = { unit, spell }: paint a spell that is NOT armed (the tile quick menu's hovered row, hud.js) with the
+           same footprint + forecast the armed cast shows. Without ov it reads the armed tool as always. */
+        function updateAoePreview(x, y, ov) {
+            if (ov && (!ov.unit || !ov.spell)) ov = null;
+            if (!ov) {
+                _lastAoePreviewX = x; _lastAoePreviewY = y;
+                _lastAoePreviewTool = state.selectedTool || null;
+            }
+            if (!ov && state.actionMode !== 'spell') { clearAoePreview(); clearIntentPreview(); return; }
+            const unit = ov ? ov.unit : getSelectedUnit();
             if (!unit) { clearAoePreview(); clearIntentPreview(); return; }
-            const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+            const spell = ov ? ov.spell : ((unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool));
             if (!spell) { clearAoePreview(); clearIntentPreview(); return; }
 
             if (isSpellSelfCast(spell)) {
-                if (_aoePreviewTiles.length === 0 && !_aoePreview3dActive) showSelfCastAoePreview(unit, spell);
-                updateIntentPreview(unit.x, unit.y);
+                if (ov || (_aoePreviewTiles.length === 0 && !_aoePreview3dActive)) showSelfCastAoePreview(unit, spell);
+                updateIntentPreview(unit.x, unit.y, ov);
                 return;
             }
             clearAoePreview();
@@ -14102,7 +14107,7 @@
                     ThreeRenderer.setOverlay('aoe', tiles, 0xff3333, 0.35);
                     _aoePreview3dActive = true;
                 }
-                updateIntentPreview(x, y);
+                updateIntentPreview(x, y, ov);
                 return;
             }
 
@@ -14140,7 +14145,7 @@
                     ThreeRenderer.setOverlay('aoe', tiles, col, 0.3);
                     _aoePreview3dActive = true;
                 }
-                updateIntentPreview(x, y);
+                updateIntentPreview(x, y, ov);
                 return;
             }
 
@@ -14168,7 +14173,7 @@
                     ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.3);
                     _aoePreview3dActive = true;
                 }
-                updateIntentPreview(x, y);
+                updateIntentPreview(x, y, ov);
                 return;
             }
             // Damage spells that repaint the ground they hit (leaveTerrain,
@@ -14218,7 +14223,7 @@
                 }
             }
 
-            updateIntentPreview(x, y);
+            updateIntentPreview(x, y, ov);
         }
 
         let _aoePreview3dActive = false;
@@ -14335,6 +14340,7 @@
                 ThreeRenderer.clearArrows3D();
                 ThreeRenderer.clearGhostUnit();
                 ThreeRenderer.clearOverlay('spellLanding');
+                ThreeRenderer.clearOverlay('spellChain');
             }
         }
 
@@ -14343,7 +14349,7 @@
            real targets, the real movement). spell = null → basic attack. castFrom = the tile a move-then-cast
            casts from. Returns { dmg, min, max, lethal, blocked, heal, plan } or null when the kind is not one the
            forecast reads (the old estimators below answer then). */
-        function forecastOnUnit(attacker, target, spell, castFrom) {
+        function forecastOnUnit(attacker, target, spell, castFrom, aim) {
             if (!attacker || !target || target.dead) return null;
             try {
                 if (!spell) {
@@ -14352,7 +14358,10 @@
                     return f ? Object.assign({ plan: null }, f) : null;
                 }
                 if (typeof forecastSpellPlan !== 'function') return null;
-                const plan = forecastSpellPlan(attacker, spell, target.x, target.y, target.z, { castFrom: castFrom || null });
+                /* aim = an off-centre AoE centre (the quick menu's best aim) — the unit is read from the cast there */
+                const plan = (aim && aim.x != null)
+                    ? forecastSpellPlan(attacker, spell, aim.x, aim.y, undefined, { castFrom: castFrom || null })
+                    : forecastSpellPlan(attacker, spell, target.x, target.y, target.z, { castFrom: castFrom || null });
                 if (!plan.handled) return null;
                 const h = plan.byId[target.id];
                 if (!h) return { dmg: 0, min: 0, max: 0, lethal: false, blocked: null, heal: 0, plan };
@@ -14661,8 +14670,8 @@
         let _dmgPreviewCacheVal = null;
         /* The HP-bar forecast for an aimed action: the aimed body first, then EVERY other body the cast reaches
            (`all` — an AoE, a chain, a bounce, a slam into a neighbour) so each nameplate blinks its own slice. */
-        function _forecastPreviewVal(attacker, target, spell, castFrom) {
-            const fc = forecastOnUnit(attacker, target, spell || null, castFrom);
+        function _forecastPreviewVal(attacker, target, spell, castFrom, aim) {
+            const fc = forecastOnUnit(attacker, target, spell || null, castFrom, aim);
             if (!fc) {
                 const dmg = predictDamageToUnit(attacker, target, spell, castFrom);
                 return dmg > 0 ? { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) } : null;
@@ -14704,6 +14713,7 @@
                         (spell && spell.name) || (hov.isAttack ? 'atk' : '') || (hov.itemKey || ''),
                         hov.comboPartnerId != null ? 'cp' + hov.comboPartnerId : '',
                         hov.castFrom ? 'cf' + hov.castFrom.x + ',' + hov.castFrom.y : '',
+                        hov.aim ? 'aim' + hov.aim.x + ',' + hov.aim.y : '',
                         target.hp, target.shield || 0,
                         attacker.x, attacker.y, attacker.z ?? 0].join('|');
                     if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
@@ -14727,7 +14737,7 @@
                         const heal = _estimateSpellHeal(attacker, target, spell);
                         if (heal > 0) val = { unitId: target.id, heal: heal };
                     } else if ((spell || hov.isAttack) && target.id !== attacker.id) {
-                        val = _forecastPreviewVal(attacker, target, spell, hov.castFrom || null);
+                        val = _forecastPreviewVal(attacker, target, spell, hov.castFrom || null, spell ? (hov.aim || null) : null);
                     }
                     _dmgPreviewCacheKey = key;
                     _dmgPreviewCacheVal = val;
@@ -14872,12 +14882,45 @@
         }
         window.drawForecastMoves = drawForecastMoves;
 
+        /* THE CHAIN HITS (2026-10-05, mondo: "i need to see ricochet damage like who will get hit with ricochet in the
+           spell preview"): every body the forecast hits OFF the footprint (a ricochet / upgrade bounce, a chain hop,
+           a fork, a split, a splash) gets the same crimson hit plate as the footprint, and the hop is drawn as a
+           crimson arrow from the body it leaves (chains hop victim to victim; bounces, forks and splits leave the
+           first victim). Their numbers ride the forecast badges with a RICOCHET / CHAIN / FORK tag. Viewer-local. */
+        const _FC_HOP_TAGS = { bounce: 1, chain: 1, fork: 1, split: 1, splash: 1 };
+        function drawForecastChain(plan, caster, aimX, aimY, overlayName) {
+            if (!plan || !plan.hits || !plan.hits.length) return;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+            const onFoot = new Set((plan.tiles || []).map(t => t.x + ',' + t.y));
+            onFoot.add(aimX + ',' + aimY);
+            const hops = plan.hits.filter(h => h.unit && !h.unit.dead && h.tags && h.tags.some(t => _FC_HOP_TAGS[t]));
+            if (!hops.length) return;
+            const first = plan.hits.find(h => h.unit && !(h.tags || []).some(t => _FC_HOP_TAGS[t])) || null;
+            const HIT = EW_PREVIEW.hit;
+            const plates = [];
+            const uY = (u) => { try { return ThreeRenderer.unitSurfaceY(u); } catch (e) { return undefined; } };
+            let prev = first ? first.unit : null;
+            for (const h of hops) {
+                const u = h.unit;
+                if (!onFoot.has(u.x + ',' + u.y)) plates.push({ x: u.x, y: u.y, color: HIT, opacity: 0.85 });
+                const isChain = h.tags.includes('chain');
+                const from = isChain ? prev : (first ? first.unit : null);
+                if (from && from.id !== u.id && !h.tags.includes('splash')) {
+                    try { ThreeRenderer.drawArrow3D(from.x, from.y, u.x, u.y, HIT, false, uY(from), uY(u), { arc: 0.28, flow: true }); } catch (e) {}
+                }
+                if (isChain) prev = u;
+            }
+            if (plates.length && overlayName) ThreeRenderer.setOverlay(overlayName, plates, HIT, 0.85);
+        }
+        window.drawForecastChain = drawForecastChain;
+
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
+        const _FC_TAG_TEXT = { bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', pinned: '💥 PINNED', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1' };
         const _FC_SECONDARY = { splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, intercepts: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
            why it takes nothing, what the movement does to it, the matchup and the statuses it will carry. */
+        window._renderForecastBadges = function (caster, spell, plan) { if (caster && spell && plan) _renderForecastBadges(caster, spell, plan); };
         function _renderForecastBadges(caster, spell, plan) {
             const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
             const shown = new Set();
@@ -14921,12 +14964,13 @@
             }
         }
 
-        function updateIntentPreview(x, y) {
+        function updateIntentPreview(x, y, ov) {
             clearIntentPreview();
-            if (state.actionMode !== 'spell' || state.devAutoSim) return;
-            const caster = getSelectedUnit();
+            if (ov && (!ov.unit || !ov.spell)) ov = null;
+            if ((!ov && state.actionMode !== 'spell') || state.devAutoSim) return;
+            const caster = ov ? ov.unit : getSelectedUnit();
             if (!caster || !boardEl) return;
-            const spell = (caster.spells || []).find(s => s.name === state.selectedTool) || (caster._raceAbilities || []).find(s => s.name === state.selectedTool);
+            const spell = ov ? ov.spell : ((caster.spells || []).find(s => s.name === state.selectedTool) || (caster._raceAbilities || []).find(s => s.name === state.selectedTool));
             if (!spell) return;
 
             /* THE FORECAST: the engine's own read of this cast — numbers, victims and landings in one */
@@ -14934,6 +14978,7 @@
             if (_plan && _plan.handled) {
                 _renderForecastBadges(caster, spell, _plan);
                 drawForecastMoves(_plan, caster, 'spellLanding');
+                drawForecastChain(_plan, caster, x, y, 'spellChain');
                 return;
             }
 
