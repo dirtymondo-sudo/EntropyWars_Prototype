@@ -16385,8 +16385,8 @@ const HQ_ROOM_LOOKS = {
     /* THE RETRO-FUTURIST PASS (2026-09-21): the mall is a 1960s terminal now — the dream preset, the grain down, no night, the bloom on the saucers */
     mall: { name: 'THE MALL', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.3, grain: 0.022, tintAmount: 0.3, levels: 28 }, cin: { vignette: true, vigAmount: 0.22, vigSize: 0.62 }, nightMood: 0.0, bloom: 0.34, dof: 0 },
     /* CYBERPUNK CITY (2026-09-17): the reskin's print — the rain-slick night, magenta / cyan in the puddles, bloomed, a hard vignette */
-    /* THE STRIP (2026-09-17): the boulevard's print — the neon night, warmer than the grid's, bloomed, a soft vignette */
-    strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.4, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42, bloomThr: 0.6, bloomRadius: 0.62, lens: { chroma: 1.6 } },
+    /* THE STRIP (2026-09-17): the boulevard's print — the neon night, warmer than the grid's, bloomed, a soft vignette. NO PURPLE (mondo 2026-10-05, "why is the strip purple"): a light amber grade, not the dream rose */
+    strip: { name: 'THE STRIP', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.4, grain: 0.03, tintAmount: 0.2, levels: 24 }, cin: { vignette: true, vigAmount: 0.4, vigSize: 0.5 }, nightMood: 0.7, bloom: 0.42, bloomThr: 0.6, bloomRadius: 0.62, lens: { chroma: 1.6 } },
     neon: { name: 'CYBERPUNK CITY', retro: { enabled: true, preset: 'dream', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.45, levels: 24 }, cin: { vignette: true, vigAmount: 0.5, vigSize: 0.46 }, nightMood: 0.9, bloom: 0.55, bloomThr: 0.58, bloomRadius: 0.66, lens: { chroma: 2.2 } },
     /* D.U.M.B. (2026-09-17 — complex candidate #5): the base under the base — the security camera's print: cold fluorescent teal-white, hard dither, a tight vignette, red in the shadows; the war room darker and greener (the board's glow); the bunker warm (his tungsten); the ring blue under the beam */
     garage: { name: 'THE GARAGE', retro: { enabled: true, preset: 'amber', pixelSize: 1, ditherStrength: 0.42, grain: 0.035, tintAmount: 0.35, levels: 22 }, cin: { vignette: true, vigAmount: 0.45, vigSize: 0.5 }, nightMood: 0.35, bloom: 0.22 },   // THE ROUND GARAGE (2026-09-20): sodium light, a little grain, the amber grade
@@ -16654,7 +16654,7 @@ const EW_MAP_META = [
       biomes: ['urban', 'neon_city'], deltaPad: 'urban_street', near: 'strip',
       desc: '16×16 prebuilt, 6v6 — the boulevard at night: the Strip down the middle with its median and sidewalks, fountain plazas, the wedding chapel and the storefronts (roof-walkable), palms, the marquees, the Luxor\'s obelisk',
       env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 20, h: 8, lights: [0xff3ad8, 0x35e0ff, 0xffd34a] }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }], fogTop: 0.16 },
-             tint: 0x2a1030, tintAmt: 0.5, stars: 0.6, nebula: 0.9, fog: { color: 0xa040c0, amount: 0.45, top: 0.09, band: 0.5 }, scenery: 'city', ambience: 'ambNight' } },
+             tint: 0x10131c, tintAmt: 0.5, stars: 0.25, nebula: 0, fog: { color: 0x262a34, amount: 0.4, top: 0.09, band: 0.5 }, scenery: 'city', ambience: 'ambNight' } },   // NO PURPLE (mondo 2026-10-05)
     { id: 'prebuilt_downtown', label: 'Downtown', w: 16, h: 16, teamSize: 6, tier: 1, base: 'concrete_floor',
       biomes: ['urban', 'stadium'], deltaPad: 'urban_street', near: 'downtown',
       desc: '16×16 prebuilt, 6v6 — the monster-movie downtown in daylight: the avenue and the cross street, roof-walkable blocks, the rubble where something walked through, the collapsed tower as a ramp of debris, a dumpster in every alley',
@@ -23922,7 +23922,7 @@ function hqCityShell(o) {
     /* THE STRIP (2026-09-17): `strip: true` = the Strip's own night (its EW_MAP_META row's magenta tint and fog, the marquees' mood, the strip look) — a neon city with the city's sidewalks */
     const strip = !!o.strip; delete o.strip;
     const sky = strip
-        ? { night: 1, tint: 0x2a1030, tintAmt: 0.5, stars: 0.6, nebula: 0.9, fog: { color: 0xa040c0, amount: 0.45, top: 0.09, band: 0.5, density: 0.018 }, scenery: 'city', density: 0.6 }
+        ? { night: 1, tint: 0x10131c, tintAmt: 0.5, stars: 0.25, nebula: 0, fog: { color: 0x262a34, amount: 0.4, top: 0.09, band: 0.5, density: 0.016 }, scenery: 'city', density: 0.6 }   // NO PURPLE (mondo 2026-10-05): a city night, blue-black over the neon, not a magenta haze
         : neon
         ? { night: 1, tint: 0x1a0f33, tintAmt: 0.5, stars: 0.7, nebula: 1.3, fog: { color: 0x3a1a5a, amount: 0.55, top: 0.1, band: 0.55, density: 0.02 }, scenery: 'city', density: 0.6 }
         : { night: 0, tint: 0x9fc4e8, tintAmt: 0.25, stars: 0.05, nebula: 0.2, day: 1, clouds: 0.3, fog: { color: 0xc8d8ea, amount: 0.55, top: 0.1, band: 0.5, density: 0.016 }, scenery: 'city', density: 0.5 };
@@ -23931,9 +23931,9 @@ function hqCityShell(o) {
         open: true, edge: 'open',
         floor: 'urban_street', wall: 'concrete', dado: 'concrete', trim: 'gunmetal', ceiling: 'concrete',
         apron: 'urban_street', skirt: 'concrete', apronColor: 0x8a8c90,
-        floorColor: strip ? 0xb8b0c0 : neon ? 0xb4b4d0 : 0xa8a8a4, wallColor: strip ? 0x9a8a9c : neon ? 0x8a86a0 : 0xa8a8a4, dadoColor: strip ? 0x7a6a7c : neon ? 0x6a6478 : 0x8a8480,   // THE URBAN PACK (2026-09-17): the asphalt sheet is dark already — the tint lifts it (the neon city's floor was black)
+        floorColor: strip ? 0xb0aea8 : neon ? 0xb4b4d0 : 0xa8a8a4, wallColor: strip ? 0x9c968e : neon ? 0x8a86a0 : 0xa8a8a4, dadoColor: strip ? 0x7a766e : neon ? 0x6a6478 : 0x8a8480,   // THE URBAN PACK (2026-09-17): the asphalt sheet is dark already — the tint lifts it (the neon city's floor was black)
         pipes: false, strips: false, lights: [],
-        mood: strip ? { lamp: 0xff3ad8, glow: 0xff60e0, strip: 0x35e0ff, light: 0xffd0f0, ambient: 0.46, night: 1 } : neon ? { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, ambient: 0.44, night: 1 } : { light: 0xe8ecf4, ambient: 0.5 },
+        mood: strip ? { lamp: 0xff3ad8, glow: 0xffc860, strip: 0x35e0ff, light: 0xffe4c0, ambient: 0.46, night: 1 } : neon ? { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, ambient: 0.44, night: 1 } : { light: 0xe8ecf4, ambient: 0.5 },
         sky: sky,
         plate: { x: 0, z: -9.8, y: 4.4 },
         look: strip ? HQ_ROOM_LOOKS.strip : neon ? HQ_ROOM_LOOKS.neon : HQ_ROOM_LOOKS.city,
