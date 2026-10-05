@@ -250,17 +250,18 @@
                         try { _qmVisible = computeVisibleTiles(state.activePlayer).has(posKey(x, y)); } catch (e) {}
                     }
 
-                    if (state.actionMode === 'move' && _qmVisible && actingUnit
-                        && _qmUnit && !_qmUnit.dead && _qmUnit.id !== actingUnit.id
-                        && state._clickedUnitId === _qmUnit.id) {
-                        /* move mode, clicked a unit SPRITE → engine parity:
-                           drop the mode and open that unit's quick menu (the
-                           engine's own helper — pure viewer-local UI) */
-                        if (typeof _exitModeAndShowUnitMenu === 'function') {
-                            _exitModeAndShowUnitMenu(actingUnit, _qmUnit);
-                            return;
-                        }
-                        focusUnitPanel(_qmUnit.id);
+                    const _qmTarget = (state.actionMode === 'move' && _qmVisible && actingUnit
+                        && typeof window._moveClickMenuTarget === 'function')
+                        ? window._moveClickMenuTarget(actingUnit, x, y, _qmUnit) : null;
+                    if (_qmTarget) {
+                        /* move mode, clicked a unit or the Cube → engine parity:
+                           drop the mode and open that target's quick menu (the
+                           engine's own helpers — pure viewer-local UI) */
+                        if (_qmTarget.unit && typeof _exitModeAndShowUnitMenu === 'function'
+                            && _exitModeAndShowUnitMenu(actingUnit, _qmTarget.unit)) return;
+                        if (_qmTarget.tile && typeof window._exitModeAndShowTileMenu === 'function'
+                            && window._exitModeAndShowTileMenu(actingUnit, x, y, z)) return;
+                        if (_qmTarget.unit) focusUnitPanel(_qmTarget.unit.id);
                     } else if (clickedUnit) {
                         focusUnitPanel(clickedUnit.id);
                     }
@@ -1143,6 +1144,12 @@
                        the first victim while the host got the wide group cut. */
                     if (opts.frameTiles && opts.frameTiles.length) {
                         camEvt.frameTiles = opts.frameTiles.map(function(t) { return { x: t.x, y: t.y }; });
+                    }
+                    /* THE FRAME GUARD: every unit the host's shot keeps on
+                       screen (battle.js writes the list back onto opts) — the
+                       guest's camera guards the same bodies. */
+                    if (Array.isArray(opts.frameUnitIds) && opts.frameUnitIds.length) {
+                        camEvt.frameUnitIds = opts.frameUnitIds.filter(function(id) { return id != null; });
                     }
                     if (opts.extraTargets && opts.extraTargets.length) {
                         camEvt.extraTargetIds = opts.extraTargets
@@ -3995,6 +4002,7 @@
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
                                 if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
+                                if (Array.isArray(camEvt.frameUnitIds) && camEvt.frameUnitIds.length) camOpts.frameUnitIds = camEvt.frameUnitIds;
                                 if (camEvt.extraTargetIds && camEvt.extraTargetIds.length
                                     && typeof window.unitFromId === 'function') {
                                     var _ets = [];
