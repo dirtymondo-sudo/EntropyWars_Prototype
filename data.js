@@ -44109,27 +44109,36 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[23, 9], [23, 11]], w: 2.6 },                                            // THE BAR ⇄ side room 1
             /* THE WEST GALLERY (2.2) against the sanctum's west wall: the stair up its south end, a ladder on its east face, the bell rope on its north end */
             { k: 'plateau', x: -8, z: -11, w: 6, d: 10, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: -8, z0: -3.0, x1: -8, z1: -6.7, w: 2.4, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'ramp', x0: -8, z0: -3.0, x1: -8, z1: -6.7, w: 2.4, h0: 0, h1: 2.2, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
             { k: 'climb', x: -5.3, z: -14, face: 270, look: 'ladder' }, { k: 'climb', x: -8, z: -15.7, face: 180, look: 'rope' },
             /* THE ORGAN LOFT (2.2) against the east wall: THE MINSTRELS' WALK from the gallery (a level span, the bridge layer), a ladder on its north face, the organ's pipe on its south */
             { k: 'plateau', x: 8, z: -11, w: 6, d: 10, h: 2.2, edge: 0.15 }, { k: 'bridge', x0: -5.7, z0: -9, x1: 5.7, z1: -9, w: 2.0, y: 2.2 },
-            { k: 'climb', x: 8, z: -15.7, face: 180, look: 'ladder' }, { k: 'climb', x: 8, z: -6.3, face: 0, look: 'pipe' },
+            { k: 'climb', x: 8, z: -15.7, face: 180, look: 'ladder' }, { k: 'climb', x: 6.3, z: -6.3, face: 0, look: 'pipe' },
+            /* the loft's own timber stair up from the sanctum floor (the way round: up the gallery, over the walk, down the loft) */
+            { k: 'ramp', x0: 9.4, z0: -1.4, x1: 9.4, z1: -6.7, w: 2.2, h0: 0, h1: 2.2, stairs: true, model: 'wood', edge: 0.15 },
+            /* the walk's railings, the loft's west rail, a pipe laid across from gallery to loft (the grind over the gap), a pipe round the table */
+            { k: 'rail', x0: -5.2, z0: -9.9, x1: 5.2, z1: -9.9, y: 2.2, model: 'balusters_b' }, { k: 'rail', x0: -5.2, z0: -8.1, x1: 5.2, z1: -8.1, y: 2.2, model: 'balusters_b' },
+            { k: 'rail', x0: 5.25, z0: -15.75, x1: 5.25, z1: -13.75, y: 2.2, model: 'balusters_b' },
+            { k: 'rail', x0: -5.5, z0: -12.25, x1: 5.5, z1: -12.25, y: 2.2, model: 'pipe', block: false },
+            { k: 'rail', arc: { x: 0, z: -6, r: 2.4, a0: 210, a1: 510 }, model: 'pipe', block: false },
             /* THE HIGH TABLE (3.9, the tape — the door gun's; 1.7 m over the galleries, out of a jump's reach) */
             { k: 'plateau', x: 0, z: -15, w: 4, d: 3, h: 3.9, edge: 0.15 },
             /* THE SCREEN across the sanctum's mouth */
             { k: 'wall', x0: -3, z0: -3, x1: 3, z1: -3, h: 2.2, t: 0.3, key: 'wood' },
             /* THE MEZZANINE (2.6) over the bar's north end: the stair up its west end (along the bar's west wall), a ladder on its south face, the panelling's hand-holds on its east */
             { k: 'plateau', x: 17, z: -4.5, w: 9, d: 5, h: 2.6, edge: 0.15 },
-            { k: 'ramp', x0: 13.7, z0: 3.6, x1: 13.7, z1: -2.7, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'ramp', x0: 13.7, z0: 3.6, x1: 13.7, z1: -2.7, w: 2.4, h0: 0, h1: 2.6, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
+            { k: 'rail', x0: 16.75, z0: -2.25, x1: 18.75, z1: -2.25, y: 2.6, model: 'balusters_b' },                            // the mezzanine's rail
             { k: 'climb', x: 19.5, z: -2.3, face: 0, look: 'ladder' }, { k: 'climb', x: 21.2, z: -4.5, face: 270, look: 'wall' },
             { k: 'wall', x0: 15.5, z0: 6, x1: 21.5, z1: 6, h: 1.1, t: 0.4, key: 'wood' },                            // THE BAR (the grind)
             /* THE STACKS (2.4) along the library's south wall: the stair up its west end, the library ladder on its north face, a pipe at its east end */
             { k: 'plateau', x: -21, z: 12.5, w: 12, d: 3, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: -25.9, z0: 5, x1: -25.9, z1: 11.7, w: 2.2, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'ramp', x0: -25.9, z0: 5, x1: -25.9, z1: 11.7, w: 2.2, h0: 0, h1: 2.4, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
             { k: 'climb', x: -19, z: 11.3, face: 180, look: 'ladder' }, { k: 'climb', x: -15.3, z: 12.5, face: 270, look: 'pipe' },
             /* THE WINE CELLAR (−1.6, sunk: a built retaining edge) and the built stair down into it from the east leg */
             { k: 'plateau', x: 18.5, z: -14.6, w: 9, d: 7.6, h: -1.6, edge: 0.15, sink: true },
-            { k: 'ramp', x0: 24, z0: -12, x1: 17.5, z1: -12, w: 2.4, h0: 0, h1: -1.6, stairs: true, built: true, edge: 0.15, key: 'wood' },
+            { k: 'ramp', x0: 24, z0: -12, x1: 17.5, z1: -12, w: 2.4, h0: 0, h1: -1.6, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
+            { k: 'rail', x0: -4, z0: 9, x1: -4, z1: 18, model: 'pipe', block: false },                                                  // a skate rail in THE HALLS
             { k: 'scatter', key: 'office_chair', n: 4, seed: 33 }, { k: 'scatter', key: 'potted_plant', n: 4, seed: 3 },
         ],
         props: [{ key: 'railing_1m', x: -5, z: -11.5, face: 90, y: 2.2 }, { key: 'railing_1m', x: 5, z: -13, face: 90, y: 2.2 }, { key: 'railing_1m', x: 16, z: -2, face: 180, y: 2.6 }, { key: 'railing_1m', x: -22, z: 11, face: 0, y: 2.4 }, { key: 'riser_1', x: 5, z: 17 },
