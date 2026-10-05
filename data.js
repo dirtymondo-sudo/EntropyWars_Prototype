@@ -34240,10 +34240,16 @@ const DOOR_HQ = {
                     { k: 'stream', pts: [[-20.5, 0], [20.5, 0]], w: 1.6, y: -0.3, depth: 0.55 },                        // THE CHANNEL
                     { k: 'pool', x: 2, z: 0, r: 2.0, y: -0.3, depth: 1.5, key: 'deep_water' },                          // THE SUMP
                     { k: 'stream', pts: [[5, 13.5], [5, 1]], w: 1.0, y: -0.3, depth: 0.45 },                            // the creek down the pipe
-                    /* THE LEDGE on the sump's north side, up its steps */
-                    { k: 'plateau', x: 1, z: -5.5, w: 7, d: 3, h: 1.0, edge: 0.15 },
-                    { k: 'ramp', x0: 6.6, z0: -5.5, x1: 3.9, z1: -5.5, w: 2.0, h0: 0, h1: 1.0, stairs: true, edge: 0.15, built: true, key: 'concrete' },
-                    { k: 'rail', x0: -2.3, z0: -4.1, x1: 3.6, z1: -4.1 },
+                    /* THE LEDGE on the sump's north side (2026-10-05: an upper level — the ledge in two parts with a 2.3 m gap between them, a
+                       rail across it; side chamber 2 raised with it; concrete steps up from the sump and up the east hall) */
+                    { k: 'plateau', x: -0.5, z: -6.75, w: 5, d: 4.5, h: 1.0, edge: 0.15 },
+                    { k: 'plateau', x: 6.3, z: -6.75, w: 4.0, d: 4.5, h: 1.0, edge: 0.15 },
+                    { k: 'plateau', x: 8, z: -11, w: 8, d: 5, h: 1.0, edge: 0.15 },                                  // side chamber 2, up
+                    { k: 'ramp', x0: -2.0, z0: -2.2, x1: -2.0, z1: -5.2, w: 2.0, h0: 0, h1: 1.0, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: 9.8, z0: -6.4, x1: 9.8, z1: -9.2, w: 2.2, h0: 0, h1: 1.0, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'rail', x0: 2.2, z0: -6.75, x1: 4.1, z1: -6.75, y: 1.0, model: 'pipe', block: false },              // across the gap
+                    { k: 'rail', x0: -0.8, z0: -4.6, x1: 1.8, z1: -4.6, model: 'balusters_b' }, { k: 'rail', x0: 4.5, z0: -4.6, x1: 8.1, z1: -4.6, model: 'balusters_b' },
+                    { k: 'rail', arc: { x: 2, z: 0, r: 3.2, a0: -55, a1: 55 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 2, z: 0, r: 3.2, a0: 125, a1: 235 }, model: 'pipe', block: false },   // a skate rail round the sump
                 ],
             },
             doors: [
@@ -34263,7 +34269,7 @@ const DOOR_HQ = {
                 { key: 'graffiti_wall',  x: 10.75, z: 4.9, face: 90 },
                 { key: 'graffiti_wall',  x: -5.25, z: 3.65, face: 90 },
                 { key: 'drain_grate',    x: -16.5, z: -3.8, face: 0, mount: 0.4 },                   // the grates in the brick: the Works' side of the wall
-                { key: 'drain_grate',    x: 8, z: -12.5, face: 0, mount: 0.4 },
+                { key: 'drain_grate',    x: 8, z: -12.5, face: 0, mount: 1.4 },
                 { key: 'bare_bulb',      x: -8.75, z: 0 },                                  // the bulbs: the Works' power, nobody's bill
                 { key: 'bare_bulb',      x: 1, z: -2.5 },
                 { key: 'bare_bulb',      x: 10.5, z: 0 },
@@ -34272,7 +34278,7 @@ const DOOR_HQ = {
                 { key: 'pipe_run',       x: -12.25, z: -4.9, face: 0 },
                 { key: 'pipe_run',       x: 12.25, z: 4.9, face: 0 },
                 { key: 'floor_drain',    x: 4.5, z: 4.5 },
-                { key: 'cardboard_boxes', x: 7.5, z: -3.9, face: 15 },                      // somebody's things on the ledge, dry
+                { key: 'cardboard_boxes', x: 7.2, z: -6.6, face: 15 },                      // somebody's things on the ledge, dry
                 { key: 'wet_floor_sign', x: -13.125, z: -0.6, face: 30 },
                 { key: 'floor_stain',    x: 0.875, z: 4.4 },
                 { key: 'paper_sheet',    x: 7.0, z: -0.6, y: 0.01, face: 140 },            // a tag on a form: the Department's motto, crossed out, corrected
