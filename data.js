@@ -52484,7 +52484,7 @@ const HQ_ARENA_RULES = {
     label: 'Arena',
     /* the sites that keep their Δ board whatever fits (mondo 2026-09-30: "keep the looking glass delta map, for that one there needs
        to be a chessboard in the looking glass explorable area" — the garden's own chessboard, THE BOARD below) */
-    keep: ['prebuilt_lookingglass'],
+    keep: ['prebuilt_lookingglass', 'prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is 64 pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
@@ -52508,7 +52508,6 @@ const HQ_ARENA_RULES = {
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":6,"oz":11,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010111110101010101011111010101010101111101010101010111110101010101011111010101010101111101010101010111110101010101011111010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":16,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01011111010101010101111101010101140111110101010114011111011414141401111101010114010111110101010101011111010101010101111101010101"},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_leylines","ox":36,"oz":72,"base":"bricks_1","open":0,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":21,"oz":16,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101011414010101010101141401010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101011401010101010101140101010101010114010101010101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":14,"oz":14,"base":"marble_light","open":1,"keys":["marble_light","wood_planks"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101011111010101010101111101010101010111110101010101011111010101"},
