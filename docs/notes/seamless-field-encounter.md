@@ -948,3 +948,7 @@ too. Strata tops are solid (only the fringe fades); dry skins fade a little insi
 `_fieldPatchSheetMat` (`_hzTex`, a repeating sheet: the tile cache's texture clamps). Liquids stay one continuous solid
 sheet with per-cell UVs (their base sheet clamps; flow/caustics/lava are world space already). Strata side faces got
 world-space UVs too. Δ boards are untouched (voxel tiles by design). Kill-switch `window.EW_NO_FIELD_PATCH`.
+Δ boards too (same day, Göbekli Tepe's arena is its Δ again): battle.js `applyTerrainDeform` notes each moved cell's
+pre-deform height in `state.deformedTiles` (cleared by map.js `initMap`, rides the state-sync); three-renderer.js
+`_deltaPatchBuild` (end of `rebuildTerrain`'s tile path) lays one patch per run of moved cells on the column tops
+(`_fieldPatchSheetMat` of the top terrain, 2-tile repeat, fringe onto same-level tiles). Skipped on natural-terrain maps.

@@ -4197,6 +4197,8 @@ const ThreeRenderer = (function () {
             }
         }
 
+        try { _deltaPatchBuild(ts, elevStep, _bw, _bh); } catch (e) { console.warn('[terrain] the deform patch failed', e); }   // THE PATCH on a tile board
+
         _lastBoardW = _bw; _lastBoardH = _bh;
         _lastBuiltTileSize = ts;
         _lastTerrainVersion = state._terrainVersion || 0;
@@ -62543,6 +62545,49 @@ const ThreeRenderer = (function () {
         }
         var sx = 0, sy = 0; run.forEach(function (c) { sx += c.x + 0.5; sy += c.y + 0.5; });
         return { x: sx / run.length, y: sy / run.length };
+    }
+    /* THE PATCH on a tile board (Δ maps — Göbekli Tepe's arena, 2026-10-05): the columns a terrain spell raised or dug
+       (battle.js applyTerrainDeform notes each in state.deformedTiles with its height before the first change) wear one
+       world-space sheet of their top terrain per run, laid on the column tops, spreading from the run's centre (a dig's
+       lowest cell) and fading onto the tiles beside it at the same level with the dirt-path edge. The voxel boxes stay
+       under it (picking, sides, the merge); a cell put back to its old height drops out. Not on natural-terrain maps
+       (their tops are a rolling field, not flat). Plain state, so the guest's state-sync draws the same. */
+    var _deltaPatchGroup = null;
+    function _deltaPatchBuild(ts, elevStep, bw, bh) {
+        if (_deltaPatchGroup) { if (_deltaPatchGroup.parent) _deltaPatchGroup.parent.remove(_deltaPatchGroup); _clearGroup(_deltaPatchGroup); _deltaPatchGroup = null; }
+        if (typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH) return 0;
+        var D = (typeof state !== 'undefined' && state) ? state.deformedTiles : null;
+        if (!D || !terrainGroup || _naturalTerrainActive() || typeof getBaseHeightAt !== 'function' || typeof getTerrainAt !== 'function') return 0;
+        var ground = function (k) { return !!k && k.indexOf('void') !== 0 && k !== 'lava' && !_FLUID_TERRAIN_SET[k] && k !== 'wall' && k !== 'barrier_passage'; };
+        var yOf = function (x, y) {
+            if (x < 0 || y < 0 || x >= bw || y >= bh) return null;
+            if (!ground(getTerrainAt(x, y))) return null;
+            return getBaseHeightAt(x, y) * elevStep;
+        };
+        var byKey = {}, n = 0;
+        for (var dk in D) {
+            var pc = dk.indexOf(','), x = +dk.slice(0, pc), y = +dk.slice(pc + 1);
+            if (!(x >= 0 && y >= 0 && x < bw && y < bh)) continue;
+            var h = getBaseHeightAt(x, y); if (h === D[dk]) continue;   // put back: the tile's own top shows
+            var k = getTerrainAt(x, y); if (!ground(k)) continue;
+            (byKey[k] || (byKey[k] = [])).push({ x: x, y: y, low: h < D[dk] });
+        }
+        var G = { W: bw, H: bh, ts: ts, elev: elevStep }, grp = null;
+        Object.keys(byKey).forEach(function (k) {
+            var core = _fieldPatchSheetMat(k); if (!core) return;
+            var fade = _fieldPatchFadeMat(core, 'delta|' + k) || core;
+            _fieldPatchRuns(byKey[k]).forEach(function (run) {
+                var low = run.some(function (c) { return c.low; });
+                var geo = _fieldPatchGeo(G, run, yOf, { lift: Math.max(0.6, ts * 0.008), solid: true, origin: _fieldPatchOrigin(run, yOf, low), rep: 2 * ts });
+                if (!geo) return;
+                var m = new THREE.Mesh(geo, [core, fade]);
+                m.raycast = function () {}; m.name = 'delta_deform_patch'; m.receiveShadow = true; m.castShadow = false; m.renderOrder = 1;
+                if (!grp) { grp = new THREE.Group(); grp.name = 'delta_deform_patches'; }
+                grp.add(m); n++;
+            });
+        });
+        if (grp) { terrainGroup.add(grp); _deltaPatchGroup = grp; }
+        return n;
     }
     function _fieldStrataBuild(ts) {
         var G = _fieldGround(); if (!G || !G.levels || !terrainGroup || typeof THREE === 'undefined') return 0;
