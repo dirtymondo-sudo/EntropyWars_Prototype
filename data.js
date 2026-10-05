@@ -38710,7 +38710,7 @@ const DOOR_HQ = {
                     /* THE CATWALK (2.2) along the guardroom's east side: up a flight from the gallery; its south end across a gap (the
                        rail laid over it), down its ladder */
                     { k: 'ramp', x0: 3.8, z0: -2.9, x1: 8.2, z1: -2.9, w: 2.2, h0: 1.4, h1: 2.2, stairs: true, model: 'steel', rails: 'l', edge: 0.15 },
-                    { k: 'plateau', x: 8.75, z: -2.3, w: 2.5, d: 3.4, h: 2.2, edge: 0.15 },
+                    { k: 'plateau', x: 10.0, z: -2.3, w: 5.0, d: 3.4, h: 2.2, edge: 0.15 },
                     { k: 'plateau', x: 8.75, z: 2.5, w: 2.5, d: 2.0, h: 2.2, edge: 0.15 },
                     { k: 'rail', x0: 8.75, z0: -0.8, x1: 8.75, z1: 1.7, y: 2.2, model: 'pipe', block: false },
                     { k: 'climb', x: 7.8, z: 2.5, face: 90, look: 'ladder' },
