@@ -45406,7 +45406,7 @@
         // while models were still streaming in and the first seconds of the
         // match stuttered. The screen still dismisses the moment every warmer
         // settles, so fast connections never see the difference.
-        const LS_MAX_WAIT_MS = 45000;
+        const LS_MAX_WAIT_MS = 90000;   // the hang guard only (a hung file settles in the ledger at 60 s); the first-ever load pulls the spell library
         const LS_HINT_CYCLE_MS = 9500;   // slow enough to actually read the lore
         /* Online: after OUR assets settle, how long to hold the loading screen
            for the opponent's 'match-ready' before proceeding anyway. Generous
@@ -45616,10 +45616,17 @@
                 }
             } catch (e) { _lsGate = null; }
 
-            // THE MATCH WARM (2026-09-20, the loading pass): the weapon / projectile GLBs are no longer
-            // warmed at boot (330 MB behind the title screen). Here — and only here — warm the props the
-            // two parties' BASIC ATTACKS deliver (a bullet, an arrow, a football: ≤ 15 MB, fire-and-forget,
-            // the bolt sprite stands in), and finish() starts the slow drip of the rest under the match.
+            // THE SPELL LIBRARY (NO STAND-INS, 2026-10-05 — mondo: "wtf is the point of a loading screen if we're not
+            // loading the stuff the game and the player needs??"): every procedural stand-in is gone, so the card now
+            // LOADS every spell prop + the misc models the spells clone (ThreeVFXEffects.warmSpellLibrary — capped
+            // sheets, one file per thing, disk-cached by the asset store after the first time) and waits for them.
+            prog.spell = [0, 0];
+            try {
+                if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmSpellLibrary === 'function') {
+                    warmers.push(window.ThreeVFXEffects.warmSpellLibrary((d, t) => { prog.spell = [d, t]; }));
+                }
+            } catch (e) {}
+            // the basic attacks' projectile sheets / models (the renderer's own projectile warm)
             try {
                 const wk = new Set(), pk = new Set();
                 for (const u of (state.units || [])) {
@@ -45630,7 +45637,6 @@
                     else if (dv.kind === 'arrow') wk.add('arrow');
                     if (dv.proj) pk.add(dv.proj);
                 }
-                if (wk.size && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.warmWeapons === 'function') window.ThreeVFXEffects.warmWeapons(Array.from(wk));
                 if (pk.size && typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.warmProjectileModels === 'function') ThreeRenderer.warmProjectileModels(Array.from(pk));
             } catch (e) {}
 
@@ -45958,6 +45964,7 @@
                 let maxPct = 0;   // monotonic — totals can grow as warmers report in
                 const paintProgress = () => {
                     try { if (_lsGate) { const gp = _lsGate.progress(); prog.gate = [gp.done, gp.total]; } } catch (e) {}
+                    statusLabel.textContent = (prog.spell && prog.spell[1] && prog.spell[0] < prog.spell[1]) ? 'LOADING SPELLS' : 'NOW LOADING';
                     const done = prog.model[0] + prog.img[0] + prog.tex[0] + prog.music[0] + prog.gate[0];
                     const total = Math.max(1, prog.model[1] + prog.img[1] + prog.tex[1] + prog.music[1] + prog.gate[1]);
                     maxPct = Math.max(maxPct, Math.min(100, Math.round((done / total) * 100)));

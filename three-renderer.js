@@ -2497,9 +2497,8 @@ const ThreeRenderer = (function () {
     };
 
     /* Real 3D models for select projectiles — Meshy GLBs on R2
-       /Assets/weapons (2026-07-13). The PNG in _PROJ_SPRITES above stays as
-       the fallback while the GLB loads (first throw of a session may still
-       be the sprite; the cache is warmed below and on first use).
+       /Assets/weapons (2026-07-13). NO STAND-INS (2026-10-05): the PNG never
+       stands in — the loading card loads the file (warmProjectileModels).
        lenTiles = model length along the flight axis in tile units;
        spin = spiral rate (rad/s) around the flight axis.
        Kill-switch: window.EW_DISABLE_WEAPON_GLB = true. */
@@ -2523,7 +2522,7 @@ const ThreeRenderer = (function () {
         var n = 0;
         (keys || []).forEach(function (k) {
             var d = _PROJ_MODELS[k]; if (!d) return;
-            n++; try { _loadMiscModel(d.url, true, function () {}, { bg: true }); } catch (e) {}
+            n++; try { _loadMiscModel(d.url, true, function () {}); } catch (e) {}   // a real request: the loading card's gate waits for it
         });
         return n;
     }
@@ -5784,7 +5783,11 @@ const ThreeRenderer = (function () {
         g.add(collar);
         /* THE 2026-09-22 BATCH: the user's yellow pole (Assets/misc/) stands in for the galvanized one once it lands — fitted to the
            pole's height so the mast arm still leaves its top; the arm and the three-lamp head are the proc's (the head is the point) */
-        if (typeof _hzMiscKit === 'function') { try { g.add(_hzMiscKit('yellow_pole', { tiles: poleH / ts, fit: 'height', lit: true, low: 'skip', onDone: function () { pole.visible = false; collar.visible = false; } })); } catch (e) {} }
+        if (typeof _hzMiscKit === 'function' && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
+            /* NO STAND-INS (2026-10-05): the galvanized proc pole never shows while the yellow pole streams */
+            pole.visible = false; collar.visible = false;
+            try { g.add(_hzMiscKit('yellow_pole', { tiles: poleH / ts, fit: 'height', lit: true, low: 'skip' })); } catch (e) {}
+        }
 
         /* mast arm reaching out over the road (local -Z = the facing) —
            a leaned riser off the pole top, then the horizontal reach */
@@ -8175,66 +8178,14 @@ const ThreeRenderer = (function () {
             g2._ew_deployable = true;
             return g2;
         }
-        return _buildBonePileProcedural3D(x, y, seed);
+        /* NO STAND-INS (2026-10-05): no procedural pile — an empty marker until the bone GLBs land (their load dirties
+           the objects, the pile rebuilds with the real bones) */
+        var e0 = new THREE.Group();
+        e0.position.set(x * tsG + tsG / 2, tileTopY(x, y), y * tsG + tsG / 2);
+        e0._ew_deployable = true;
+        return e0;
     }
 
-    /* The pre-2026-07-25 procedural pile — kept as the streaming fallback. */
-    function _buildBonePileProcedural3D(x, y, seed) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var topY = tileTopY(x, y);
-        var rng = _graveRng(seed);
-        var tex = _getBoneTexture();
-        var boneMat = tex
-            ? new THREE.MeshLambertMaterial({ map: tex })
-            : new THREE.MeshLambertMaterial({ color: 0xe8e2d0 });
-        var g = new THREE.Group();
-
-        var boneCount = 5 + Math.floor(rng() * 3);
-        for (var i = 0; i < boneCount; i++) {
-            var len = ts * (0.22 + rng() * 0.16);
-            var rad = ts * (0.028 + rng() * 0.014);
-            var bone = new THREE.Group();
-            var shaft = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, len, 6), boneMat);
-            bone.add(shaft);
-            /* Knuckle knobs on both ends make a cylinder read as a bone. */
-            for (var e = -1; e <= 1; e += 2) {
-                var knob = new THREE.Mesh(new THREE.SphereGeometry(rad * 1.7, 6, 5), boneMat);
-                knob.position.y = e * len / 2;
-                bone.add(knob);
-            }
-            /* Lay it nearly flat, random heading, scattered around the tile. */
-            bone.rotation.z = Math.PI / 2 + (rng() - 0.5) * 0.5;
-            bone.rotation.y = rng() * Math.PI * 2;
-            bone.position.set(
-                (rng() - 0.5) * ts * 0.55,
-                rad * 2 + rng() * ts * 0.05,
-                (rng() - 0.5) * ts * 0.55
-            );
-            g.add(bone);
-        }
-
-        /* Skull: cranium + jaw + dark eye sockets, tipped at a random angle. */
-        var skull = new THREE.Group();
-        var craniumR = ts * 0.095;
-        skull.add(new THREE.Mesh(new THREE.SphereGeometry(craniumR, 8, 7), boneMat));
-        var jaw = new THREE.Mesh(new THREE.BoxGeometry(craniumR * 1.15, craniumR * 0.8, craniumR * 1.05), boneMat);
-        jaw.position.set(0, -craniumR * 0.55, craniumR * 0.25);
-        skull.add(jaw);
-        var socketMat = new THREE.MeshBasicMaterial({ color: 0x181410 });
-        for (var s = -1; s <= 1; s += 2) {
-            var socket = new THREE.Mesh(new THREE.SphereGeometry(craniumR * 0.28, 5, 4), socketMat);
-            socket.position.set(s * craniumR * 0.38, -craniumR * 0.05, craniumR * 0.82);
-            skull.add(socket);
-        }
-        skull.position.set((rng() - 0.5) * ts * 0.3, craniumR * 1.15, (rng() - 0.5) * ts * 0.3);
-        skull.rotation.y = rng() * Math.PI * 2;
-        skull.rotation.z = (rng() - 0.5) * 0.6;
-        g.add(skull);
-
-        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
-        g._ew_deployable = true;
-        return g;
-    }
 
     /* Ally grave: rock-textured headstone (slab + rounded cap on a plinth)
        with little cross-plane flowers in front. */
@@ -11459,10 +11410,10 @@ const ThreeRenderer = (function () {
        on that skeleton.
 
        Integration contract with the sprite pipeline:
-       - On the very first build (GLB still downloading) the normal sprite
-         slab is built as a loading placeholder; _attachUnitModel swaps it
-         out the moment the model arrives. Once cached, rebuilds resolve
-         synchronously and skip the placeholder entirely.
+       - NO STAND-INS (2026-10-05): on the very first build (GLB still
+         downloading) NOTHING but the pick pillar is built; _attachUnitModel
+         adds the model the moment it arrives. Once cached, rebuilds resolve
+         synchronously. Only a model that failed for good draws the 2D sheet.
        - The model lives in a wrapper Group flagged _ew_facingSprite, so the
          gameplay-facing pass (_updateUnitFacing) yaws it exactly like a
          sprite slab. Team rings, facing wedge, plates, tweens (walk/lunge/
@@ -11773,6 +11724,7 @@ const ThreeRenderer = (function () {
                 e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e);
                 _ewAssetFailed('model', requestUrl, false);
                 rec.settle(false);
+                try { invalidateUnits(); } catch (_e) {}   // NO STAND-INS: a unit waiting on this model rebuilds with its 2D sheet
             }, { rec: rec });
           } catch (ex) { done(); e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); }
           }, url, false, function () {
@@ -11886,6 +11838,10 @@ const ThreeRenderer = (function () {
     function _unitModelReady(def) {
         var e = _unitGlbCache[def.model];
         return !!(e && e.root);
+    }
+    function _unitModelFailed(def) {
+        var e = _unitGlbCache[def.model];
+        return !!(e && e.failed);
     }
 
     /* ── Shared animation library retargeting (UAL / MAL → Meshy rigs) ──
@@ -13352,10 +13308,8 @@ const ThreeRenderer = (function () {
         var silhouetteMesh = null;
         var outlineMeshes = [];
 
-        // Rigged 3D model race (RACE_MODELS_3D)? Once the GLB is cached the
-        // sprite pipeline below is skipped entirely; on the very first build
-        // the sprite slab still goes up as a loading placeholder and
-        // _attachUnitModel swaps it out when the model arrives.
+        // Rigged 3D model race (RACE_MODELS_3D)? The sprite pipeline below is
+        // skipped entirely unless the GLB failed for good (no loading slab).
         var _m3dDef = (typeof getRace3DModel === 'function'
                        && typeof THREE.GLTFLoader === 'function')
             ? getRace3DModel(unit.race, unit.gender || 'male', unit.appearance) : null;
@@ -13368,6 +13322,11 @@ const ThreeRenderer = (function () {
             _m3dDef = (_m3dDef.overrideForms && _m3dDef.overrideForms[unit._spriteOverride]) || null;
         }
         var _m3dReady = _m3dDef && _unitModelReady(_m3dDef);
+        /* NO STAND-INS (2026-10-05, the user: "i want those completely deleted from the game, never shown again"): a 3D
+           race whose GLB is still on its way gets NO sprite slab — the unit is the pick pillar alone until the model
+           lands (_loadUnitGLB invalidates the units then; the battle loading screen loads every party's model first).
+           Only a model that FAILED for good falls back to the race's own 2D sheet. */
+        var _m3dPending = !!(_m3dDef && !_m3dReady && !_unitModelFailed(_m3dDef));
 
         if (_isVampireBatForm(unit)) {
             var swarm = _buildBatSwarmGroup(unit, ts);
@@ -13377,8 +13336,8 @@ const ThreeRenderer = (function () {
 
             spriteMesh = swarm.children.length > 0 ? swarm.children[0] : null;
             _m3dDef = null;
-        } else if (_m3dReady) {
-            // Model attaches synchronously from cache in _attachUnitModel below.
+        } else if (_m3dReady || _m3dPending) {
+            // Model attaches synchronously from cache in _attachUnitModel below (or when its GLB lands).
             group._ew_spriteW = ts * 0.7;
         } else {
 
@@ -19592,8 +19551,6 @@ const ThreeRenderer = (function () {
        GLB is cached (keyFxWarm pre-warms it at battle start). Fog gating is
        the CALLER's job (battle.js playKeySecuredFx is viewer-local). */
     var _keyFxList = [];
-    var _keyFxGeo = null;          // cached procedural-key geometry parts
-    var _keyFxMat = null;
     var _keyFxModelUrl;
     function _keyFxUrl() {
         if (_keyFxModelUrl !== undefined) return _keyFxModelUrl;
@@ -19607,30 +19564,6 @@ const ThreeRenderer = (function () {
     function keyFxWarm() {
         var u = _keyFxUrl();
         if (u) _loadMiscModel(u, true, function () {});
-    }
-    function _keyFxProceduralKey(ts) {
-        if (!_keyFxMat) _keyFxMat = new THREE.MeshLambertMaterial({ color: 0xffc84a, emissive: 0x8a5c12 });
-        if (!_keyFxGeo) {
-            _keyFxGeo = {
-                bow: new THREE.TorusGeometry(1, 0.32, 6, 10),
-                shaft: new THREE.CylinderGeometry(0.28, 0.28, 3.0, 6),
-                tooth: new THREE.BoxGeometry(0.85, 0.3, 0.3),
-            };
-        }
-        var s = ts * 0.11;                       // torus radius in world units
-        var g = new THREE.Group();
-        var bow = new THREE.Mesh(_keyFxGeo.bow, _keyFxMat);
-        bow.position.y = s * 2.6;
-        var shaft = new THREE.Mesh(_keyFxGeo.shaft, _keyFxMat);
-        shaft.position.y = s * 0.2;
-        var t1 = new THREE.Mesh(_keyFxGeo.tooth, _keyFxMat);
-        t1.position.set(s * 0.55, -s * 0.75, 0);
-        var t2 = new THREE.Mesh(_keyFxGeo.tooth, _keyFxMat);
-        t2.position.set(s * 0.55, -s * 1.25, 0);
-        g.add(bow, shaft, t1, t2);
-        g.scale.setScalar(s);
-        g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
-        return g;
     }
     /* VFX-space helpers (board pixels incl. padding — _spawnGroundPuff's convention) */
     function _keyFxVfxXY(tx, ty) {
@@ -19709,8 +19642,7 @@ const ThreeRenderer = (function () {
                 }
             }));
         } else {
-            if (url) keyFxWarm();                 // GLB from the 2nd pickup on
-            holder.add(_keyFxProceduralKey(ts));
+            if (url) keyFxWarm();                 // NO STAND-INS (2026-10-05): no procedural key — the light and ring alone until the GLB is hot
         }
         var light = new THREE.PointLight(0xffd070, 0, ts * 3.4);
         light.position.set(0, ts * 0.25, 0);
@@ -20893,6 +20825,11 @@ const ThreeRenderer = (function () {
                 isModel = true;
             } else {
                 try { _loadMiscModel(modelDef.url, true, function () {}); } catch (e) {}
+                /* NO STAND-INS (2026-10-05): no flat sheet for a modelled projectile — an empty carrier flies (the
+                   impact still lands; the loading card loads both files) */
+                fadeMats = []; spinner = new THREE.Group();
+                mesh = new THREE.Group(); mesh.rotation.order = 'YXZ'; mesh.add(spinner);
+                isModel = true;
             }
         }
 
@@ -24414,28 +24351,40 @@ const ThreeRenderer = (function () {
     // root (with a cached _ew_bbox) is ready; ignored on failure.
     function _compactMobileModelTextures(root) {
         if (typeof window === 'undefined' || !window.EW_PERF_LOW) return;
-        var images = new Map();
+        _capModelTextures(root, 512);
+    }
+    /* THE TEXTURE CAP (NO STAND-INS, 2026-10-05): every sheet of a model drawn down to `cap` px on its long side, in place
+       (the textures keep their objects — every clone sharing them shrinks with them; the full-size bitmap is closed). The
+       spell library is held in memory for the whole match now (the loading card loads it all), and a Meshy prop ships four
+       2048² sheets: the spells' props are capped at 512 / 1024 (three-vfx-effects.js _WPN_TEX_CAP), the misc models they
+       clone at 1024. Idempotent (a sheet at or under the cap, or a KTX2 one, is left alone). */
+    function _capModelTextures(root, cap) {
+        if (!root || !(cap > 0) || typeof document === 'undefined') return;
+        var images = new Map(), olds = [];
         root.traverse(function (node) {
             var mats = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : [];
             mats.forEach(function (mat) {
                 Object.keys(mat).forEach(function (key) {
                     var tex = mat[key], img = tex && tex.isTexture && tex.image;
-                    if (!img || tex.isCompressedTexture || Math.max(img.width || 0, img.height || 0) <= 512) return;   // R3: KTX2 is small already (and no canvas can draw it)
+                    if (!img || tex.isCompressedTexture || Math.max(img.width || 0, img.height || 0) <= cap) return;   // R3: KTX2 is small already (and no canvas can draw it)
                     var small = images.get(img);
                     if (!small) {
                         small = document.createElement('canvas');
-                        var scale = 512 / Math.max(img.width, img.height);
+                        var scale = cap / Math.max(img.width, img.height);
                         small.width = Math.max(1, Math.round(img.width * scale));
                         small.height = Math.max(1, Math.round(img.height * scale));
                         var ctx = small.getContext('2d');
                         if (!ctx) return;
                         ctx.drawImage(img, 0, 0, small.width, small.height);
                         images.set(img, small);
+                        olds.push(img);
                     }
                     tex.image = small; tex.needsUpdate = true;
                 });
             });
         });
+        /* the full-size bitmaps go now (an ImageBitmap holds its decoded pixels until closed) */
+        olds.forEach(function (im) { try { if (typeof im.close === 'function') im.close(); } catch (e) {} });
     }
 
     /* THE METRO PACK: a piece of a many-model file — the named nodes (GLTFLoader's sanitised names: 'seats.001' is 'seats001'),
@@ -24556,10 +24505,12 @@ const ThreeRenderer = (function () {
     }
     function _oneFileGltf(url, onLoad, onError, o) {
         var me = _miscModelCache[url];
+        var cap = (o && o.texCap) || 0;
+        if (me && me.root && cap) { try { _capModelTextures(me.root, cap); } catch (e) {} }
         if (me && me.root) { onLoad({ scene: me.root, scenes: [me.root], _ewOneFile: true }); me._ewOneFile = true; me.at = Date.now(); return; }   // THE MEMORY BUDGET (G1): the spells hold it now — never dropped
         if (me && me.loading) {
             me._ewOneFile = true;
-            me.cbs.push(function (root) { onLoad({ scene: root, scenes: [root], _ewOneFile: true }); });
+            me.cbs.push(function (root) { if (cap) { try { _capModelTextures(root, cap); } catch (e) {} } onLoad({ scene: root, scenes: [root], _ewOneFile: true }); });
             (me.xcbs || (me.xcbs = [])).push(function (dropped) {
                 if (dropped) _oneFileGltf(url, onLoad, onError, o);
                 else if (onError) onError(new Error('[ThreeRenderer] the shared model failed: ' + url));
@@ -24574,6 +24525,7 @@ const ThreeRenderer = (function () {
             if (root && _miscModelCache[url] === e) {
                 try {
                     _compactMobileModelTextures(root);
+                    if (cap) _capModelTextures(root, cap);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                     root._ew_bbox = new THREE.Box3().setFromObject(root);
                     e.root = root; e.loading = false; e.at = Date.now();
@@ -25304,22 +25256,6 @@ const ThreeRenderer = (function () {
         var tag = [room.id, room.site, room.zone, typeof look === 'string' ? look : (look && look.name), env.weather].filter(function (x) { return typeof x === 'string'; }).join(' ');
         return /northpole|north_pole|polar|antarctic|arctic|snow|winter|frozen|blizzard/i.test(tag);
     }
-    /* the stand-in: a lit box on four dark wheels, nose +Z, in the kit's colour */
-    function _hzVehicleProc(kind) {
-        var V = _VEHICLE_KIT[kind] || _VEHICLE_KIT.suv, ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE), k = ts / 1.75;
-        var g = new THREE.Group();
-        var body = new THREE.Mesh(new THREE.BoxGeometry(V.w * k, V.h * 0.62 * k, V.m * k), _hzLit(null, V.color));
-        body.position.y = (0.35 + V.h * 0.31) * k; g.add(body);
-        var cab = new THREE.Mesh(new THREE.BoxGeometry(V.w * 0.92 * k, V.h * 0.36 * k, V.m * 0.55 * k), _hzLit(null, 0x30343a));
-        cab.position.set(0, (0.35 + V.h * 0.62 + V.h * 0.18) * k, -V.m * 0.05 * k); g.add(cab);
-        var wheel = new THREE.CylinderGeometry(0.34 * k, 0.34 * k, 0.24 * k, 10), rub = _hzLit(null, 0x141414);
-        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
-            var w = new THREE.Mesh(wheel, rub); w.rotation.z = Math.PI / 2;
-            w.position.set(q[0] * (V.w / 2) * k, 0.34 * k, q[1] * V.m * 0.32 * k); g.add(w);
-        });
-        if (V.beacon) { var b = new THREE.Mesh(new THREE.BoxGeometry(V.w * 0.7 * k, 0.16 * k, 0.3 * k), new THREE.MeshBasicMaterial({ color: 0xff3030 })); b.position.set(0, (0.35 + V.h) * k + 0.08 * k, 0); g.add(b); }
-        return g;
-    }
     // `o`: rng, yaw (an extra turn ON TOP of the kit's — the caller's
     // rotation.y is the usual way), lift, cast, low ('skip' = scenery),
     // foot override, metres override, beacon: false (no light — the site
@@ -25328,7 +25264,7 @@ const ThreeRenderer = (function () {
         o = o || {};
         var V = _VEHICLE_KIT[kind]; if (!V) return new THREE.Group();
         /* THE CAR PACK: a `pack` row draws the pack's car (a pack-only row with the pack off / EW_PERF_LOW's skip falls to
-           _hzMiscKit, which has no file for it and hands back the stand-in box) */
+           _hzMiscKit, which has no file for it and hands back an empty group — never a stand-in box) */
         var lowSkip = typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip';
         if (V.pack && _carPackOn() && !lowSkip) {
             var pg = _carPackModel(V.pack, _hzKitTile() / 1.75, { rng: o.rng, snow: o.snow, paint: o.paint, metres: o.metres, lift: (o.lift != null) ? o.lift : V.lift, cast: o.cast !== false, onDone: o.onDone });
@@ -25341,7 +25277,7 @@ const ThreeRenderer = (function () {
             metres: (o.metres != null) ? o.metres : V.m, fit: 'span', yaw: (V.yaw || 0) + (o.yaw || 0),
             lift: (o.lift != null) ? o.lift : V.lift, cast: o.cast !== false, foot: (o.foot != null) ? o.foot : V.foot,
             rng: o.rng, low: o.low, repeat: o.repeat,
-            fallback: o.fallback || function () { return _hzVehicleProc(kind); },
+            fallback: o.fallback || null,   // NO STAND-INS (2026-10-05): no box-on-wheels — no file, no vehicle
             onDone: o.onDone
         });
         g._ew_footM = (o.foot != null) ? o.foot : V.foot; g._ew_vehicle = kind;
@@ -25511,6 +25447,21 @@ const ThreeRenderer = (function () {
     // getMiscModelClone). Unlike _miscModelInstance this never fills in later:
     // a spell needs its prop NOW or not at all, so it returns null (and kicks
     // off the download for next time) until the shared root is cached.
+    /* NO STAND-INS (2026-10-05): the spells' misc models, loaded on the loading card (three-vfx-effects.js warmSpellLibrary)
+       and HELD for the match — each is pinned like a weapon file (`_ewOneFile`: the memory budget never drops it, a cast
+       never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
+    function _warmMiscModels(keys) {
+        var out = [];
+        (keys || []).forEach(function (key) {
+            var file = _MISC_GLB[key];
+            if (!file || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
+            var url = _R2_MISC + file;
+            var pin = function (root) { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; try { _capModelTextures(root, 1024); } catch (x) {} };
+            _loadMiscModel(url, true, pin);
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
     function _getMiscModelClone(key, target, align) {
         var file = _MISC_GLB[key];
         if (!file || typeof THREE === 'undefined') return null;
@@ -26460,9 +26411,9 @@ const ThreeRenderer = (function () {
                 fit: 'span', matPick: _hzPropLitLiftPick(SF.lift || 0),
                 onDone: function (grp) {
                     grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
-                    procHull.forEach(function (m) { m.visible = false; });
                 }
             });
+            procHull.forEach(function (m) { m.visible = false; });   // NO STAND-INS (2026-10-05): never shown while the GLB streams
             g.add(craft);
         }
         var beamMat = _hzGlowMat(0xa0ffd0, 0.14);
@@ -26951,58 +26902,7 @@ const ThreeRenderer = (function () {
             _hzPulse(poolMat, pool, 0.32, 0.14, 0.8);
             return gg;
         }
-        var g = new THREE.Group();
-        var bone = function (c) { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), c || 0xd8cdb4); };
-        var R = ts * (1.4 + rng() * 0.9);                        // cranium radius
-        var laughing = rng() < 0.5;                              // grin wide … or scream
-        var cy = R * 0.72;                                       // buried to the cheekbones
-        var cranium = new THREE.Mesh(new THREE.SphereGeometry(R, 14, 10), bone());
-        cranium.scale.set(1, 0.92, 1.08);
-        _hzAt(g, cranium, 0, cy, 0);
-        // brow ridge shading the sockets
-        var brow = _hzBox(R * 1.5, R * 0.22, R * 0.3, ts, bone(0xcfc4aa));
-        _hzAt(g, brow, 0, cy + R * 0.18, -R * 0.82);
-        // eye sockets: dark hollows with an ember burning deep inside
-        var socketMat = _hzGeoMat(null, 0x14100c);
-        var emberCol = laughing ? 0xffb84a : 0xff4433;
-        for (var side = -1; side <= 1; side += 2) {
-            var socket = new THREE.Mesh(new THREE.SphereGeometry(R * 0.26, 8, 6), socketMat);
-            socket.scale.z = 0.5;
-            _hzAt(g, socket, side * R * 0.38, cy + R * 0.05, -R * 0.86);
-            var emberMat = _hzGlowMat(emberCol, 0.85);
-            var ember = new THREE.Mesh(new THREE.SphereGeometry(R * 0.09, 6, 5), emberMat);
-            _hzAt(g, ember, side * R * 0.38, cy + R * 0.05, -R * 0.9);
-            _hzPulse(emberMat, ember, 0.35, 0.12, laughing ? 1.6 : 0.5);
-        }
-        // nasal hollow
-        var nose = new THREE.Mesh(new THREE.ConeGeometry(R * 0.12, R * 0.26, 5), socketMat);
-        _hzAt(g, nose, 0, cy - R * 0.18, -R * 0.94, 0, 0, -Math.PI / 2.2);
-        // upper teeth row curving with the jawline
-        var nT = 7;
-        for (var t = 0; t < nT; t++) {
-            var a = (-0.5 + t / (nT - 1)) * 1.15;
-            var tooth = _hzBox(R * 0.13, R * 0.22, R * 0.1, ts, bone(0xe8e0cc));
-            _hzAt(g, tooth, Math.sin(a) * R * 0.72, cy - R * 0.5, -Math.cos(a) * R * 0.86, -a);
-        }
-        // the lower jaw lies fallen in front — agape mid-laugh, or torn wide
-        var jawDrop = laughing ? R * 0.55 : R * 0.95;
-        var jaw = new THREE.Group();
-        var jawArcGeo = new THREE.TorusGeometry(R * 0.66, R * 0.14, 7, 12, Math.PI);
-        _hzTileUV(jawArcGeo, R * 4, ts, ts);
-        var jawArc = new THREE.Mesh(jawArcGeo, bone(0xccc0a6));
-        jawArc.rotation.x = -Math.PI / 2;
-        jaw.add(jawArc);
-        for (var jt = 0; jt < 5; jt++) {
-            var ja = (-0.5 + jt / 4) * 1.0;
-            var jtooth = _hzBox(R * 0.11, R * 0.18, R * 0.09, ts, bone(0xe8e0cc));
-            jtooth.position.set(Math.sin(ja) * R * 0.62, R * 0.12, -Math.cos(ja) * R * 0.62);
-            jtooth.rotation.y = -ja;
-            jaw.add(jtooth);
-        }
-        jaw.position.set((rng() - 0.5) * R * 0.3, R * 0.14, -R * 0.9 - jawDrop);
-        jaw.rotation.y = (rng() - 0.5) * 0.5;
-        g.add(jaw);
-        return g;
+        return new THREE.Group();   // NO STAND-INS (2026-10-05): no procedural skull — the GLB or nothing
     }
 
     // ── Unholy wastes: a heap of living flesh, all eyes and teeth ──
@@ -28055,21 +27955,7 @@ const ThreeRenderer = (function () {
             }
         });
     }
-    /* Trees: the board's own foliage OBJs when loaded (swapped in as they
-       arrive — _nrPending), a procedural trunk + canopy meanwhile. */
-    function _nrTreeProc(K, kind, o) {
-        var ts = K.ts, g = new THREE.Group(), v = _TREE_VARIANTS[kind] || _TREE_VARIANTS.tree, dead = _foliageDead(kind);
-        var trunkH = ts * 1.3 * v.trunkHMul * (o.s || 1), r = ts * 0.55 * v.canopyRMul * (o.s || 1);
-        var trunk = K.cyl(ts * 0.06, ts * 0.13, trunkH, 7, K.mat('wood', v.trunkColor)); trunk.position.y = trunkH / 2; g.add(K.lit(trunk, true));
-        if (!dead) {
-            var cm = K.mat(o.leaf || 'leaves', o.tint == null ? 0xffffff : o.tint);
-            var cg = new THREE.SphereGeometry(r, 9, 7); _nrUV(cg, 2, 1.4);
-            var can = new THREE.Mesh(cg, cm); can.scale.set(1, v.canopySquish, 1); can.position.y = trunkH * 0.9; g.add(K.lit(can, true));
-        } else {
-            for (var i = 0; i < 3; i++) { var br = K.cyl(ts * 0.03, ts * 0.06, trunkH * 0.6, 5, K.mat('wood', v.trunkColor)); br.position.set(0, trunkH * 0.85, 0); br.rotation.set((K.rng() - 0.5) * 1.2, i * 2.1, 0.5 + K.rng() * 0.5); g.add(br); }
-        }
-        return g;
-    }
+    /* Trees: the board's own foliage files, added as they arrive (_nrPending) — never a procedural stand-in. */
     /* THE PROP PASS 5.1 — THE WIND (PREMIUM_POLISH_PLAN, 2026-09-21): the foliage sways in the vertex shader — every tree the HQ
        plants (a treeline, a grove, a thicket, the board's own) takes ONE hook on its leaf + bark materials: a crown-weighted
        sway on a shared clock (_EW_WIND, a plain object every material references — the height fog's rule). The battle's rim trees
@@ -28099,7 +27985,7 @@ const ThreeRenderer = (function () {
     function _nrTree(K, kind, o) {
         o = o || {};
         var ts = K.ts, g = new THREE.Group(), name = _FOLIAGE_MODEL_FOR_KEY[kind] || 'Tree_1';
-        var proc = _nrTreeProc(K, kind, o); g.add(proc);
+        /* NO STAND-INS (2026-10-05): no cylinder-and-ball tree while the foliage file streams — the spot is empty until it lands */
         var target = ts * (o.h || 1.9) * (0.85 + K.rng() * 0.45);
         var leafFile = (o.leaf || 'leaves') + '.png';
         var tint = o.tint;
@@ -28131,7 +28017,7 @@ const ThreeRenderer = (function () {
             model.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
             model.rotation.y = K.rng() * Math.PI * 2;
             _nrInjectWorld(K, model);   // a world-rim tree (K._wdFog) joins the haze + the dissolve
-            g.remove(proc); _disposeR(proc); g.add(model); _objectsDirty = true;
+            g.add(model); _objectsDirty = true;
         };
         var src = _loadFoliageModel(name);
         if (src && src._ew_bbox) fill(src);
@@ -37472,9 +37358,8 @@ const ThreeRenderer = (function () {
         /* NO LIGHT BOX (mondo 2026-10-05, "they look like absolute shit"): the additive veil in the opening, the halo
            behind it, the wedge onto the apron, its floor pool and the crack/under-door leaks are gone from the battle
            intro's crossing AND the main menu door (same builder). The menu keeps its real PointLight. Never bring back. */
-        /* the leaf: a procedural panel at once (the intro never waits), the
-           catalogue GLB fitted into the same rig when it lands (hot from the
-           loading screen — introCineWarm — after a visit to the building) */
+        /* the leaf: the catalogue GLB fitted into the rig when it lands (hot
+           from the loading screen — introCineWarm); never a procedural panel */
         var mo = rec.motion;
         var leafRoot = new THREE.Group();
         if (mo.mode === 'swing') {
@@ -37488,7 +37373,9 @@ const ThreeRenderer = (function () {
         }
         mo.leafRoot = leafRoot;
         var ph = null;
-        if (mo.mode !== 'none') {
+        /* NO STAND-INS (2026-10-05, mondo): no procedural oxblood panel — the opening waits for the catalogue leaf (the
+           loading screen warms it: introCineWarm; the menu's gate holds for it) */
+        if (false) {
             var phMat = _reg(hqOk ? _hqMat('oxblood', 1, 2, { color: 0xc8aaa0, shininess: 12 }) : _hzLit(null, 0x6a3a3a));
             rec.leafMats.push(phMat);
             ph = new THREE.Group();
@@ -43758,6 +43645,8 @@ const ThreeRenderer = (function () {
             }
         });
         inst.rotation.y = _hqRad((cat.rot || 0) + (cat.turn || 0) + (o.turn || 0));
+        /* NO STAND-INS (2026-10-05): the proc pieces never show while the file streams — hidden now, not on landing */
+        (o.hide || []).forEach(function (m) { if (m) m.visible = false; });
         return inst;
     }
     /* THE ONE MODEL (SPELL_DIRECTOR_PLAN §5 Phase 3 / §12 "DOOR HQ procs that should draw the spells' model", 2026-09-24 —
@@ -43828,6 +43717,7 @@ const ThreeRenderer = (function () {
             }
         });
         inst._ew_oneModel = url;
+        (o.hide || []).forEach(function (m) { if (m) m.visible = false; });   // NO STAND-INS (2026-10-05): hidden from the start
         return inst;
     }
     function _hqModelUrl(entry) {
@@ -45796,7 +45686,7 @@ const ThreeRenderer = (function () {
                 if (!src || !src._ew_bbox) { lost.push.apply(lost, byName[nm]); return; }
                 _hqCanopyModel(nm, src, byName[nm], G, U);
             });
-            if (lost.length) _hqCanopyStandIn(lost, C, G, U);
+            /* NO STAND-INS (2026-10-05): a spot whose foliage file failed stays empty (no icosahedron crowns) */
             if (_hq) _hq.dirty = true;
         };
         build();
@@ -45824,23 +45714,6 @@ const ThreeRenderer = (function () {
             im._ew_hqPart = 'canopy';
             G.add(im);
         });
-    }
-    /* the canopy where a pack file never landed: the old crowns on trunks (two instanced meshes) */
-    function _hqCanopyStandIn(spots, C, G, U) {
-        var crownM = new THREE.MeshPhongMaterial({ color: (C.color != null) ? C.color : 0x2c4a2a, shininess: 2, flatShading: true }); crownM.emissive = new THREE.Color(0x0a140a);
-        var trunkM = new THREE.MeshPhongMaterial({ color: 0x3a2c20, shininess: 2 });
-        var crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1 * U, 0), crownM, spots.length);
-        var trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16 * U, 0.26 * U, 1 * U, 5), trunkM, spots.length);
-        var o = new THREE.Object3D();
-        spots.forEach(function (sp, k) {
-            var r = 1.6 + sp.h * 0.18, th = sp.h * 0.62;
-            o.position.set(sp.x * U, (sp.y + th) * U, sp.z * U); o.rotation.set(0, sp.yaw, 0); o.scale.set(r, r * 1.15, r); o.updateMatrix(); crowns.setMatrixAt(k, o.matrix);
-            o.position.set(sp.x * U, (sp.y + th / 2) * U, sp.z * U); o.scale.set(1, th, 1); o.updateMatrix(); trunks.setMatrixAt(k, o.matrix);
-        });
-        crowns.instanceMatrix.needsUpdate = true; trunks.instanceMatrix.needsUpdate = true;
-        crowns.frustumCulled = false; trunks.frustumCulled = false;
-        crowns._ew_hqPart = 'canopy'; trunks._ew_hqPart = 'canopy';
-        G.add(crowns); G.add(trunks);
     }
     /* THE HALLS' STRIP LIGHTS (D.U.M.B., 2026-09-17): a fluorescent tube hung from the ceiling every `every` metres down
        every L-corridor and authored hall of a `halls` floor plan, and one over each generated room's centre — an emissive
@@ -47504,6 +47377,7 @@ const ThreeRenderer = (function () {
                     if (kitOn) {
                         var su = _hzMiscKit('storefront_unit', { metres: L - 0.3, fit: 'span', yaw: 0, lift: 0.14, cast: false, low: 'skip', foot: 0, onDone: function (grp, scale, bb) { /* +Z is the measured shop front; recess its full depth behind the facade. */ grp.position.z = 0.06 * U - (bb.max.z - bb.min.z) * scale / 2; grp.scale.y = (signY - signH / 2) * U / ((bb.max.y - bb.min.y) * scale); glass.visible = false; mull.visible = false; dr.visible = false; drF.visible = false; if (sh) sh.visible = false; } });
                         su.position.set(0, 0, 0.06 * U); g.add(su);
+                        if (!(typeof window !== 'undefined' && window.EW_PERF_LOW)) { glass.visible = false; mull.visible = false; dr.visible = false; drF.visible = false; if (sh) sh.visible = false; }   // NO STAND-INS (2026-10-05)
                     }
                 } else if (lot.low) {
                     /* a LOW lot's ground floor: the run of windows, the door, the lintel, the user's storefront GLB over them once it lands */
@@ -47517,6 +47391,7 @@ const ThreeRenderer = (function () {
                     if (kitOn && f.main) {
                         var sf = _hzMiscKit('storefront', { metres: Math.min(L - 0.3, 8), fit: 'span', yaw: Math.PI / 2, lift: 0.12, cast: false, low: 'skip', foot: 0, onDone: function () { lowBits.forEach(function (m) { m.visible = false; }); } });
                         sf.position.set(0, 0, 0.06 * U); g.add(sf);
+                        if (!(typeof window !== 'undefined' && window.EW_PERF_LOW)) lowBits.forEach(function (m) { m.visible = false; });   // NO STAND-INS (2026-10-05)
                     }
                 } else {
                     /* a prism lot: the sprite's own ground floor shows — an awning now and then, a shop sign on some */
@@ -50805,11 +50680,11 @@ const ThreeRenderer = (function () {
                 var wm = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
                 if (wm > 0) gg.scale.x = targetW / wm;
                 gg.scale.z = Math.min(1, gg.scale.x);
-                stand.visible = false;   // the kit landed — the stand-in goes
                 if (_hq) _hq.dirty = true;
             }
         });
         g.add(lg);
+        stand.visible = false;   // NO STAND-INS (2026-10-05): the panel never shows while the leaf streams
         return g;
     }
     Object.assign(_hqProcBuilders, {
@@ -51948,6 +51823,7 @@ const ThreeRenderer = (function () {
                 [leafL, leafR].forEach(function (lf, li) {
                     lf.material = _hqMat(null, 1, 1, { color: 0xa8acb0, shininess: 50 });
                     var dl = _miscModelInstance(_hqModelUrl({ base: 'metro', file: mCat.file, node: 'Door' }), true, H * U, { fit: 'height', matPick: _hqPropMatPick, onDone: function () { lf.material.visible = false; if (_hq) _hq.dirty = true; } });
+                    lf.material.visible = false;   // NO STAND-INS (2026-10-05): the box leaf never shows while the pack's Door streams
                     dl.rotation.y = -Math.PI / 2; if (li) dl.scale.z = -1;   // the right leaf is the left one mirrored (the file's own pair) lf.add(dl); dl.position.y = -(H / 2) * U;
                 });
             }
@@ -52275,6 +52151,7 @@ const ThreeRenderer = (function () {
             if (cat && cat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
                 var inst = _miscModelInstance(_hqModelUrl(cat), true, (cat.h || 2.0) * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { stand.visible = false; tube.visible = false; hood.visible = false; eye.visible = false; } });
                 inst.rotation.y = ((cat.rot || 0) * Math.PI / 180); g.add(inst);
+                stand.visible = false; tube.visible = false; hood.visible = false; eye.visible = false;   // NO STAND-INS (2026-10-05)
             }
             var motion = { mode: 'way', ow: W, tick: function (k) { piv.rotation.x = 0.62 + 0.28 * k; glow.material.opacity = 0.2 + 0.7 * k; glow.scale.setScalar((0.5 + 1.2 * k) * U); lens.material.opacity = 0.35 + 0.5 * k; } };
             if (_hq) _hq.tickers.push(function (dt, now) { glow.scale.setScalar((0.5 + 0.06 * Math.sin(now * 0.0031)) * U); });
@@ -52321,6 +52198,7 @@ const ThreeRenderer = (function () {
             if (tmCat && tmCat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
                 var tmInst = _miscModelInstance(_hqModelUrl(tmCat), true, (tmCat.h || 2.4) * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { cage.forEach(function (m) { m.visible = false; }); } });
                 tmInst.rotation.y = ((tmCat.rot || 0) * Math.PI / 180); tmInst.position.set(0, 0, -0.15 * U); g.add(tmInst);
+                cage.forEach(function (m) { m.visible = false; });   // NO STAND-INS (2026-10-05)
             }
             var spun = 0;
             var motion = { mode: 'way', ow: W, tick: function (k) { spun += 0.0; disc.rotation.z = k * 9.0; spokes.rotation.z = -k * 9.0; light.material.opacity = 0.25 + 0.7 * k; glow.material.opacity = 0.18 + 0.7 * k; glow.scale.setScalar((1.6 + 1.4 * k) * U); dial.material.opacity = 1; } };
@@ -52499,6 +52377,7 @@ const ThreeRenderer = (function () {
         if (cat && cat.file && cat.base !== 'rt' && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
             var inst = _miscModelInstance(_hqModelUrl(cat), true, (cat.h || H) * U, { matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { stand.visible = false; } });
             inst.position.set(0, 0, zc * U); inst.rotation.y = ((cat.rot || 0) * Math.PI / 180); g.add(inst);
+            stand.visible = false;   // NO STAND-INS (2026-10-05)
         }
         var motion = { mode: 'way', ow: holeW, tick: function (k) { light.material.opacity = 0.16 + 0.62 * k; glow.material.opacity = 0.18 + 0.5 * k; glow.scale.setScalar((1.4 + 1.0 * k) * U); } };
         return { g: g, motion: motion, ow: holeW, oh: holeH, plateY: 2.6 };
@@ -52598,6 +52477,7 @@ const ThreeRenderer = (function () {
                         treads.forEach(function (t) { t.visible = false; });
                     } }));
                     g.add(hold);
+                    treads.forEach(function (t) { t.visible = false; });   // NO STAND-INS (2026-10-05): the box treads never show
                 }
             } else if (P.roof) {
                 box(W + 0.2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.015, -(L / 2 + 0.2));
@@ -58159,6 +58039,7 @@ const ThreeRenderer = (function () {
             var piv = new THREE.Group(); piv.rotation.y = Math.PI / 2;   // the GLB's length runs along X; the rider's forward is +Z
             piv.add(_miscModelInstance(url, true, 0.84 * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { proc.visible = false; if (_hq) _hq.dirty = true; } }));
             g.add(piv);
+            proc.visible = false;   // NO STAND-INS (2026-10-05)
         }
         var spark = _hzGlowSprite(0.55 * U, 0xffc65a, 0.9, 0.2, 0.1, 1.0); spark.position.y = 0.05 * U; spark.visible = false; g.add(spark); R.spark = spark;
         g.rotation.order = 'YXZ';
@@ -58794,6 +58675,7 @@ const ThreeRenderer = (function () {
                 var piv = new THREE.Group(); piv.rotation.y = Math.PI / 2;   // the GLB's length runs along X (the misc rule); the helm's forward is +Z
                 piv.add(_miscModelInstance(url, true, 4.6 * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { proc.visible = false; if (_hq) _hq.dirty = true; } }));
                 g.add(piv);
+                proc.visible = false;   // NO STAND-INS (2026-10-05)
             }
             var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.06 * U, 3.4 * U, 8), wood); mast.position.set(0, 2.1 * U, 0.4 * U); g.add(mast);
             var boom = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, 2.6 * U, 8), wood); boom.rotation.x = Math.PI / 2; boom.position.set(0, 1.25 * U, -0.8 * U); g.add(boom);
@@ -59034,8 +58916,8 @@ const ThreeRenderer = (function () {
            replaced by the floating eyeball already in the esoteric sky background"): the ball IS the sky's eyeball OBJ (the
            same file, the same material rule — _hzEyeballPick). It rides INSIDE the ball, so track() still turns it and the
            lids still blink over it. Its gaze is MEASURED on load (the cornea's centre minus the ball's centre, swung onto
-           +Z) — no hand-set facing to get wrong. The procedural white / iris / pupil stay the fallback until it lands, and
-           for good if the file has no cornea to aim by. EW_PERF_LOW keeps the procedural eye (no download). */
+           +Z) — no hand-set facing to get wrong. NO STAND-INS (2026-10-05): the procedural white / iris / pupil are hidden
+           from the start (never a loading ball). EW_PERF_LOW keeps the procedural eye (no download). */
         if (typeof _miscModelInstance === 'function' && typeof _R2_MISC !== 'undefined' &&
             !(typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_PROC_EYES))) {
             var model = _miscModelInstance(_R2_MISC + 'eyeball/eyeball.obj', false, R * 2, {
@@ -59065,6 +58947,7 @@ const ThreeRenderer = (function () {
                 }
             });
             ball.add(model);
+            white.visible = false; iris.visible = false; pupil.visible = false;   // NO STAND-INS (2026-10-05): the OBJ or nothing
         }
         var tgt = new THREE.Vector3(), tmpW = new THREE.Vector3(), tmpL = new THREE.Vector3();
         return { g: g, ball: ball, iris: iris, lids: [top, bot],
@@ -65148,8 +65031,8 @@ const ThreeRenderer = (function () {
     }
     /* The threshold: the crossing's own builder on a flat "apron" at y=0,
        turned to face the camera. The leaf GLB is fitted synchronously when
-       it is hot in the misc-model cache; otherwise the procedural stand-in
-       stands in and the door is rebuilt the frame the GLB lands. */
+       it is hot in the misc-model cache; otherwise the frame stands empty (no
+       stand-in leaf) and the door is rebuilt the frame the GLB lands. */
     function _menuBuildDoor(M) {
         var B = M.cfg, ts = M.ts, U = M.U;
         if (M.door) { M.door.dead = true; M.doorGroup.remove(M.door.group); _disposeR(M.door.group); M.door = null; }
@@ -65476,6 +65359,7 @@ const ThreeRenderer = (function () {
 
         /* Match-start asset gate (battle.js loading screen, ROADMAP §3.1) */
         preloadUnitModels,
+        warmMiscModels: _warmMiscModels,
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
         /* THE BACKGROUND LANE (2026-09-20): another module's warm (three-vfx-effects.js's weapon props)
