@@ -34642,17 +34642,42 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -29, z: 24.5, w: 38, d: 15, h: 4.6, edge: 0.35 },                                        // the south gallery, west
                     { k: 'plateau', x: 29, z: 24.5, w: 38, d: 15, h: 4.6, edge: 0.35 },                                         // the south gallery, east
                     { k: 'plateau', x: 41, z: 0, w: 14, d: 36, h: 4.6, edge: 0.35 },                                            // THE EAST BRIDGE (the food court) — joins the two east galleries
-                    /* THE WAYS UP: two escalators at the west end (fitted GLBs over a smooth hidden ramp), two stairs at the east */
+                    /* THE WAYS UP: two escalators at the west end (fitted GLBs over a smooth hidden ramp), two stairs at the east, two at the west */
                     { k: 'ramp', x0: -40, z0: -9.73, x1: -40, z1: -17.7, w: 2.0, h0: 0, h1: 4.6, escalator: true, edge: 0 },       // THE NORTH ESCALATOR (its top 0.7 m inside the gallery; the stairs pack's escalator: 30°, 2 m wide — the run is the rise / tan 30°)
                     { k: 'ramp', x0: -40, z0: 9.73, x1: -40, z1: 17.7, w: 2.0, h0: 0, h1: 4.6, escalator: true, edge: 0 },         // THE SOUTH ESCALATOR
-                    { k: 'ramp', x0: 28, z0: -5.7, x1: 28, z1: -17.7, w: 3.2, h0: 0, h1: 4.6, stairs: true, edge: 0.2 },            // THE NORTH STAIR (12 m: twelve treads of 0.38 — a stair's last tread must stand within a climb of the tier before the tier's own edge overtakes it)
-                    { k: 'ramp', x0: 28, z0: 5.7, x1: 28, z1: 17.7, w: 3.2, h0: 0, h1: 4.6, stairs: true, edge: 0.2 },              // THE SOUTH STAIR
-                    /* THE LIPS: a grind rail along every balcony edge (the park rule's rails — the rider's) */
-                    { k: 'rail', x0: -47, z0: -16.5, x1: -11, z1: -16.5 }, { k: 'rail', x0: 11, z0: -16.5, x1: 33.5, z1: -16.5 },
-                    { k: 'rail', x0: -47, z0: 16.5, x1: -11, z1: 16.5 }, { k: 'rail', x0: 11, z0: 16.5, x1: 33.5, z1: 16.5 },
+                    { k: 'ramp', x0: 28, z0: -5.7, x1: 28, z1: -17.7, w: 5.0, h0: 0, h1: 4.6, stairs: true, model: 'glass', edge: 0.2 },   // THE NORTH STAIR (12 m: a stair's last tread must stand within a climb of the tier before the tier's own edge overtakes it)
+                    { k: 'rail', x0: 28, z0: -6.1, x1: 28, z1: -17.2, y0: 0.15, y1: 4.41, model: 'pipe', block: false },              // its centre handrail
+                    { k: 'ramp', x0: 28, z0: 5.7, x1: 28, z1: 17.7, w: 5.0, h0: 0, h1: 4.6, stairs: true, model: 'glass', edge: 0.2 },     // THE SOUTH STAIR
+                    { k: 'rail', x0: 28, z0: 6.1, x1: 28, z1: 17.2, y0: 0.15, y1: 4.41, model: 'pipe', block: false },
+                    /* the west stairs (2026-10-05): a wide flight up to each west gallery, a handrail down the middle */
+                    { k: 'ramp', x0: -18, z0: -6.2, x1: -18, z1: -17.7, w: 4.4, h0: 0, h1: 4.6, stairs: true, model: 'precast', edge: 0.2 },
+                    { k: 'rail', x0: -18, z0: -6.6, x1: -18, z1: -17.2, y0: 0.16, y1: 4.40, model: 'pipe', block: false },
+                    { k: 'ramp', x0: -18, z0: 6.2, x1: -18, z1: 17.7, w: 4.4, h0: 0, h1: 4.6, stairs: true, model: 'precast', edge: 0.2 },
+                    { k: 'rail', x0: -18, z0: 6.6, x1: -18, z1: 17.2, y0: 0.16, y1: 4.40, model: 'pipe', block: false },
+                    /* the north wing's tongues (2026-10-05): each gallery end runs out over the wing to a 3 m gap above the closet's passage
+                       (the flight tube lands on their south edge); two rails across the gap */
+                    { k: 'plateau', x: -6.15, z: -24.5, w: 9.7, d: 5.8, h: 4.6, edge: 0.2 },
+                    { k: 'plateau', x: 6.15, z: -24.5, w: 9.7, d: 5.8, h: 4.6, edge: 0.2 },
+                    { k: 'rail', x0: -3.4, z0: -23.6, x1: 3.4, z1: -23.6, y: 4.6, model: 'pipe', block: false },
+                    { k: 'rail', x0: -3.4, z0: -25.6, x1: 3.4, z1: -25.6, y: 4.6, model: 'double', block: false },
+                    /* the top level (2026-10-05): a catwalk at 8.4 m over the east concourse, a stair up from each east gallery, a 2.6 m gap
+                       in the middle with a rail across it */
+                    { k: 'ramp', x0: 32.4, z0: -29.9, x1: 32.4, z1: -21.6, w: 2.4, h0: 4.6, h1: 8.4, stairs: true, model: 'fire_escape', edge: 0.2 },
+                    { k: 'ramp', x0: 32.4, z0: 29.9, x1: 32.4, z1: 21.6, w: 2.4, h0: 4.6, h1: 8.4, stairs: true, model: 'fire_escape', edge: 0.2 },
+                    { k: 'bridge', x0: 32.4, z0: -22.3, x1: 32.4, z1: -1.3, w: 2.4, y: 8.4 },
+                    { k: 'bridge', x0: 32.4, z0: 1.3, x1: 32.4, z1: 22.3, w: 2.4, y: 8.4 },
+                    { k: 'rail', x0: 32.4, z0: -3.0, x1: 32.4, z1: 3.0, y: 8.4, model: 'pipe', block: false },
+                    /* THE LIPS: a grind rail along every balcony edge (the park rule's rails — the rider's), open at each stair's head */
+                    { k: 'rail', x0: -47, z0: -16.5, x1: -20.6, z1: -16.5 }, { k: 'rail', x0: -15.4, z0: -16.5, x1: -11, z1: -16.5 },
+                    { k: 'rail', x0: 11, z0: -16.5, x1: 25.1, z1: -16.5 }, { k: 'rail', x0: 30.9, z0: -16.5, x1: 33.5, z1: -16.5 },
+                    { k: 'rail', x0: -47, z0: 16.5, x1: -20.6, z1: 16.5 }, { k: 'rail', x0: -15.4, z0: 16.5, x1: -11, z1: 16.5 },
+                    { k: 'rail', x0: 11, z0: 16.5, x1: 25.1, z1: 16.5 }, { k: 'rail', x0: 30.9, z0: 16.5, x1: 33.5, z1: 16.5 },
                     { k: 'rail', x0: 34.5, z0: -16.5, x1: 34.5, z1: 16.5 },
-                    { k: 'rail', x0: -11.5, z0: -31, x1: -11.5, z1: -17.5 }, { k: 'rail', x0: 11.5, z0: -31, x1: 11.5, z1: -17.5 },   // the north wing's balcony ends
+                    { k: 'rail', pts: [[-11.5, -31], [-11.5, -27], [-2.6, -27]] }, { k: 'rail', pts: [[11.5, -31], [11.5, -27], [2.6, -27]] },   // the north wing's balcony ends, round the tongues
                     { k: 'rail', x0: -11.5, z0: 17.5, x1: -11.5, z1: 31 }, { k: 'rail', x0: 11.5, z0: 17.5, x1: 11.5, z1: 31 },       // the entrance hall's
+                    /* a curved skate rail round the fountain, open on the runners */
+                    { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 22, a1: 68 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 112, a1: 158 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 202, a1: 248 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 292, a1: 338 }, model: 'pipe', block: false },
                     /* THE GROUND FLOOR: the fountain, the fun box, the grind ledges */
                     { k: 'pool', x: 0, z: 0, r: 3.0, y: 0, depth: 0.4 },                                                          // THE FOUNTAIN (pennies, waded)
                     { k: 'plateau', x: 14, z: 0, w: 6, d: 4.4, h: 0.9, edge: 0.2 },                                                // THE FUN BOX (a table the rider clears)
