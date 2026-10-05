@@ -1914,3 +1914,30 @@ instead of ramps, upper sections, gap jumps, curved / sloped / gap-crossing rail
     holding cells (north half at 1.4), old workings (1.4 ledges), CERN ring (catwalks, raised control room).
   - Gotcha: a blocking railing hung over open lower ground reads as a false trap (the cell under it takes the railing's top) — make
     such railings `block: false`.
+- Batch 3 (stone sites, realms, the Woods), one commit per room:
+  - Vatican: catacombs (tomb tier at 1.6, loculi ledge at 3.2 with a high passage and a railed gap to the cistern ledge), basilica
+    (rood loft bridge joining the galleries into a ring, raised apse with a curved balustrade, organ loft gap), archive (L gallery
+    with a spur over the stacks, three ways up), cortile (terrace + north cloister walk one 2.4 level, gap over the west garden),
+    observatory (roof terraces at 3.0 joined by a walkway, still a rooftop).
+  - Camelot: ward (breaches in the wall-walk to jump, a north rampart at 6, parapets round), hall (west gallery, two walks across,
+    one with a gap), keep (east gallery looping to the battlements, a rail across the hall), dungeon (stepped cells, upper route to
+    the cistern, workshop loft), sky (east route to a piece beside the keep across a gap). Lodge: all flights wood, organ loft
+    stair. Atlantis temple: stepped terraces round the dais, a gap on the back terrace (one water surface unchanged).
+  - Giza: raised causeway (1.8) with an arm to a pier across a gap onto the pyramid, dig scaffolds over three courts, flights up the
+    east face. Babel: round terraces, flights set in from the rim, walkway and platforms with a gap. Göbekli (keeps its own arena
+    map): round court with a lookout on the tell top, spoil heap step + scaffold across a gap. Stonehenge: the bank a raised ring at
+    1.8 in five lengths (gaps at the lanes with curved rails), avenue banks with a gap. Hand-drawn plan gotcha: a stair forces the
+    ground open 3 m past its head and an outer bank's height adds on top, so outer banks can't take flights.
+  - Temple city (causeway from its hall over the canal with a gap, forecourt, ball-court gallery; the plaza stays flat — it is the PvP arena window), crystal city (terraces one district, glass
+    railings, gallery gap), Olympus (raised colonnade walk, loft stair), North Pole (timber walkway along the north wall, workshop
+    loft stair).
+  - Haunted grounds (porch balcony wings, bridges to the coach house roof and an upper terrace deck, upper plot, churchyard walk with
+    a gap to the crypt roof), Looking Glass library (gallery ring round the reading room, galleries either side of the nave with a
+    jump across), Hollow Earth gallery (mine stairs on built parts, upper loop), Mars (second flight up the pyramid top), Moon
+    (pad steps, dish stair).
+  - Woods (no doors, exits and culverts untouched): fairy clearing (knoll ledge, lookout and bank terrace with gaps), redwoods (root
+    terrace + west deck across the gully), Dead Man's Cave (split sump ledge with a gap), ritual (west ledge), Bohemian Grove (log
+    bridge, second treehouse across a gap, stage ramp → wood stairs), Shasta (shelf trail steps, north ledge across a gap),
+    woodstair (side galleries, lighting unchanged).
+  - Solver note: hqTerrainPockets' `lost` counts blocking railing tops as ground and does not count jumps; every gap side also has a
+    stair or ladder.
