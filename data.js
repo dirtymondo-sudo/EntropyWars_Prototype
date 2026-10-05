@@ -34040,7 +34040,23 @@ const DOOR_HQ = {
                     /* AREA CONTENT D4 (2026-09-20): five trees on the eight doors' sightlines (R3 — the hub sees one door from any door) */
                     { k: 'tree', x: 18.4, z: 12.9, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
                     { k: 'tree', x: 5.0, z: 12.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.1, z: -8.0, kind: 'tree', h: 7.0, r: 0.8 },
-                    { k: 'rail', x0: 12.5, z0: -17.0, x1: 17.5, z1: -17.0 },                                  // a fence rail behind the crag (the park rule's grind)
+                    { k: 'rail', x0: 12.5, z0: -17.0, x1: 17.5, z1: -17.0, model: 'ranch' },                  // a fence rail behind the crag (the park rule's grind)
+                    /* the knoll's ledge (2026-10-05): a 3.4 m rock ledge on the knoll, up a timber stair from the clearing (a handrail down its
+                       middle), a 2 m gap north (a rail across it) to the lookout, a ladder down the lookout's east face to the path */
+                    { k: 'plateau', x: -11, z: -10, w: 6, d: 6, h: 3.4, edge: 0.3 },
+                    { k: 'ramp', x0: -10.4, z0: 0.2, x1: -10.4, z1: -7.7, w: 3.0, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
+                    { k: 'rail', pts: [[-10.4, -0.2, 0.17], [-10.4, -7.3, 3.23]], model: 'pipe', block: false },          // its centre handrail
+                    { k: 'plateau', x: -12, z: -16.5, w: 5, d: 3, h: 3.4, edge: 0.3 },                                         // the lookout
+                    { k: 'rail', x0: -11.6, z0: -12.6, x1: -11.6, z1: -15.4, y: 3.4, model: 'pipe', block: false },            // across the gap
+                    { k: 'climb', x: -9.3, z: -16.5, face: 270, look: 'ladder' },
+                    { k: 'rail', x0: -13.8, z0: -12.8, x1: -13.8, z1: -8.4, model: 'ranch' },
+                    /* the bank terrace: a 2.4 m ledge a 1.5 m gap down off the ledge's south-west corner (a rail down across it), a ladder up from the path */
+                    { k: 'plateau', x: -15.3, z: -2.75, w: 5.8, d: 5.5, h: 2.4, edge: 0.3 },
+                    { k: 'rail', x0: -13.2, z0: -7.4, x1: -13.2, z1: -5.1, y0: 3.4, y1: 2.4, model: 'pipe', block: false },
+                    { k: 'rail', x0: -17.9, z0: -5.2, x1: -17.9, z1: -0.6, model: 'ranch' },
+                    { k: 'climb', x: -14.6, z: 0.2, face: 0, look: 'ladder' },                                                 // its ladder off the path
+                    { k: 'rail', x0: -14.3, z0: -17.8, x1: -9.7, z1: -17.8, model: 'ranch' },
+                    { k: 'rail', arc: { x: 3.0, z: 3.2, r: 3.6, a0: 200, a1: 340 }, model: 'ranch', block: false },               // a curved fence round the old tree
                     /* THE STAIRCASE (2026-10-01, mondo: "those stairs should be one of the weenies of the woods, like they ascend past the tree
                        line and when youre walking down it you can see a lot of the woods"): a white marble flight standing alone in the north of
                        the clearing, 14 m up past the treeline, its cheek walls stepping up with it, the blue runner of the building's own stair
@@ -34049,9 +34065,9 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 8.2, z0: 1.5, x1: 8.2, z1: -16.5, w: 3.6, h0: 0, h1: 14, stairs: true, edge: 0.2,
                       built: true, key: 'marble_light', side: 'marble_light', runner: { w: 2.0, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light', head: true } },
                     { k: 'path', pts: [[8, 6], [8.2, 2.6]], w: 1.8 },                                         // the crossroads' path to its foot
-                    { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-8, -8], [-14, -17]], w: 1.8 },        // the path in, over the knoll to the trail
+                    { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-5.6, -3.2], [-6.5, -6], [-6.5, -13], [-8.6, -16.5]], w: 1.8 },   // the path in, past the knoll to the lookout's ladder
                     { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
-                    { k: 'path', pts: [[-4, 0], [-14, -2], [-22, -4.4]], w: 1.6 },                            // to the pasture
+                    { k: 'path', pts: [[-4, 0], [-7.5, -0.7], [-12, 1.2], [-17, 1.6], [-20.5, 0], [-22, -4.4]], w: 1.6 },   // to the pasture, under the bank terrace
                     { k: 'path', pts: [[-1, 8], [-10, 10], [-22, 9.6]], w: 1.6 },                             // to the ritual ground
                     { k: 'path', pts: [[8, 6], [12, 9], [14.2, 9.3]], w: 1.6 },                               // to the stream; its arm runs on into the storm drain
                     { k: 'grove', n: 26, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 4 },
