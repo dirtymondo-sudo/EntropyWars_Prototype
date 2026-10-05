@@ -37623,10 +37623,29 @@ const DOOR_HQ = {
                 features: [
                     { k: 'plateau', x: 0, z: -13, w: 44, d: 6, h: 3.0, edge: 0.35 },                                    // THE NORTH GALLERY — THE BIG BOARD's floor
                     { k: 'plateau', x: 0, z: 13, w: 44, d: 6, h: 3.0, edge: 0.35 },                                     // THE SOUTH GALLERY
-                    { k: 'ramp', x0: -16, z0: -4, x1: -16, z1: -10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },
-                    { k: 'ramp', x0: 16, z0: 4, x1: 16, z1: 10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },
-                    { k: 'rail', x0: -13, z0: -10.4, x1: 20, z1: -10.4 },
-                    { k: 'rail', x0: -20, z0: 10.4, x1: 13, z1: 10.4 },
+                    { k: 'ramp', x0: -16, z0: -4, x1: -16, z1: -10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2, model: 'precast' },
+                    { k: 'ramp', x0: 16, z0: 4, x1: 16, z1: 10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2, model: 'precast' },
+                    { k: 'rail', x0: -14.5, z0: -10.4, x1: -1.4, z1: -10.4, model: 'balusters_b' }, { k: 'rail', x0: 1.4, z0: -10.4, x1: 21.6, z1: -10.4, model: 'balusters_b' },
+                    { k: 'rail', x0: -21.6, z0: 10.4, x1: -1.4, z1: 10.4, model: 'balusters_b' }, { k: 'rail', x0: 1.4, z0: 10.4, x1: 14.5, z1: 10.4, model: 'balusters_b' },
+                    /* 2026-10-05 (the stairs pass): THE PIT sunk 1.2 m round the table, a flight down at either end, a pipe along its north lip and a
+                       railing on the rest; a bridge across the room between the galleries at 3.0; a perch at 6.0 on each gallery's west end, up a
+                       steel flight, a high bridge from the north one that stops 2.5 m short of the south one (a jump, a pipe across it) */
+                    { k: 'plateau', x: 0, z: 0, w: 20, d: 8, h: -1.2, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: -7.7, z0: 0, x1: -10.7, z1: 0, w: 2.4, h0: -1.2, h1: 0, stairs: true, model: 'concrete' },
+                    { k: 'ramp', x0: 7.7, z0: 0, x1: 10.7, z1: 0, w: 2.4, h0: -1.2, h1: 0, stairs: true, model: 'concrete' },
+                    { k: 'rail', x0: -9.8, z0: -4.2, x1: 9.8, z1: -4.2, model: 'pipe', block: false },
+                    { k: 'rail', x0: -9.8, z0: 4.2, x1: 9.8, z1: 4.2, model: 'glass' },
+                    { k: 'rail', x0: -10.2, z0: -3.8, x1: -10.2, z1: -1.5, model: 'glass' }, { k: 'rail', x0: -10.2, z0: 1.5, x1: -10.2, z1: 3.8, model: 'glass' },
+                    { k: 'rail', x0: 10.2, z0: -3.8, x1: 10.2, z1: -1.5, model: 'glass' }, { k: 'rail', x0: 10.2, z0: 1.5, x1: 10.2, z1: 3.8, model: 'glass' },
+                    { k: 'deck', x0: 0, z0: -10.2, x1: 0, z1: 10.2, w: 2.4, y: 3.0, over: true },
+                    { k: 'plateau', x: -19, z: -14, w: 8, d: 4, h: 6.0, edge: 0.15 },
+                    { k: 'ramp', x0: -8, z0: -13.5, x1: -15.7, z1: -13.5, w: 2.4, h0: 3.0, h1: 6.0, stairs: true, model: 'steel' },
+                    { k: 'plateau', x: -19, z: 14, w: 8, d: 4, h: 6.0, edge: 0.15 },
+                    { k: 'ramp', x0: -8, z0: 13.5, x1: -15.7, z1: 13.5, w: 2.4, h0: 3.0, h1: 6.0, stairs: true, model: 'steel' },
+                    { k: 'deck', x0: -19, z0: -12.2, x1: -19, z1: 9.5, w: 2.4, y: 6.0, over: true },
+                    { k: 'rail', x0: -19, z0: 9.2, x1: -19, z1: 12.3, y: 6.0, model: 'pipe', block: false },
+                    { k: 'rail', x0: -21.8, z0: -12.2, x1: -20.4, z1: -12.2, model: 'balusters_b' }, { k: 'rail', x0: -17.6, z0: -12.2, x1: -15.2, z1: -12.2, model: 'balusters_b' },
+                    { k: 'rail', x0: -21.8, z0: 12.2, x1: -20.4, z1: 12.2, model: 'balusters_b' }, { k: 'rail', x0: -17.6, z0: 12.2, x1: -15.2, z1: 12.2, model: 'balusters_b' },
                     { k: 'plateau', x: 19, z: 0, r: 1.5, h: 5.5, edge: 0.3 },                                           // THE PROJECTION BOOTH (the tape — the door gun's)
                     { k: 'path', pts: [[0, -10], [0, 10]], w: 2.6 },
                 ],
@@ -37662,8 +37681,8 @@ const DOOR_HQ = {
                 { key: 'evac_button',     wall: 'e', z: 4, mount: 1.2 },
                 { key: 'security_camera', wall: 'e', z: -6, mount: 3.6 },
                 { key: 'nameplate',       wall: 'w', z: -3, mount: 1.55 },
-                { key: 'water_cooler',    wall: 's', x: -18 },
-                { key: 'trash_bin',       x: 8, z: 4, face: 270 },
+                { key: 'water_cooler',    wall: 's', x: -11 },
+                { key: 'trash_bin',       x: 12, z: 5, face: 270 },
                 { key: 'floor_stain',     x: -8, z: 5 },
             ],
             agents: [],
