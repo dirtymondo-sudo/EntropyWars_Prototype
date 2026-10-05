@@ -319,3 +319,13 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
 - DEAD MAN'S CAVE: the clearing's `deadmans` door passage is `mouth: 'culvert_mouth'` (Meshy_AI_a_culvert_mouth, the
   concrete pipe with the half grate): `_hqPassageWay` stands the pipe as the whole tube (no box tube, no rock outcrop),
   9.5 m across, its centre 2.2 m up so the grate hangs over the walker's head, grate end into the dark; lane w 2.4.
+
+## THE WOODS' CULVERTS AT THE END OF A STREAM (2026-10-05, mondo)
+- mondo: the Redwood Trail still had a block tube for its sewer entrance, and the drain mouths should sit at the end of a stream the
+  way trails lead to the other areas. Both Woods mouths into DEAD MAN'S CAVE are now the `culvert_mouth` GLB with `water: true`:
+  the Clearing's `deadmans` (a new stream arm off THE STREAM runs east into it; the crag path stops at the stream, the sightline
+  tree moved to 18.4, 12.9 off the arm) and the Redwood Trail's `culvert` (moved to x −3, where THE CREEK meets the north wall).
+- three-renderer.js `_hqPassWater`: a passage with a modelled mouth and `water: true` runs the room's stream surface on into the bore
+  (the room's fluid material, the room water's height less 4 cm, as wide as the bore at that height, 0.7 m back into the room).
+- data.js `hqTerrainDoorY`: a pad in a wadeable water stream has its sill at the wader's feet (surface − wade), not the bed, so the
+  pipe's floor meets the walker. Also nudged: Downtown streets' docks gutter (−0.9 → −0.55), the sewers' Strip link (−0.9 → −0.85).

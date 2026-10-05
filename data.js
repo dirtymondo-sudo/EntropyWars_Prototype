@@ -34004,12 +34004,13 @@ const DOOR_HQ = {
                     { k: 'ridge', pts: [[-24, 3.5], [-15, 13], [-6, 17.5]], w: 5.5, h: 1.3 },                 // the bank along the south-west
                     { k: 'plateau', x: 14.5, z: -12.5, w: 6.5, d: 5.5, rot: 15, h: 3.6, edge: 0.3 },        // THE CRAG (the tape's)
                     { k: 'stream', pts: [[24.5, -13], [21, -8], [19, -3], [18, 4], [14, 10], [8, 14], [-2, 16], [-9, 19.25]], w: 2.6, y: -0.25, depth: 0.55 },   // THE STREAM
+                    { k: 'stream', pts: [[14.4, 9.6], [17, 10.2], [20, 10.3], [22.5, 9.9], [25, 9.625]], w: 2.4, y: -0.25, depth: 0.55 },   // (2026-10-05, mondo) THE STREAM's arm east into DEAD MAN'S CAVE's culvert mouth (the way there, as a trail is elsewhere)
                     { k: 'deck', x0: 13.6, z0: 4.3, x1: 19.4, z1: 8.2, w: 1.6, y: 0.2 },                     // THE PLANK over it, past both banks
                     { k: 'tree', x: 3.0, z: 2.0, kind: 'tree_4', h: 7.5, r: 0.9 },                            // THE OLD TREE
                     { k: 'tree', x: 4.6, z: 3.8, kind: 'tree_4', h: 6.5, r: 0.8 },
                     { k: 'tree', x: 1.6, z: 4.4, kind: 'tree_4', h: 6.0, r: 0.75 },
                     /* AREA CONTENT D4 (2026-09-20): five trees on the eight doors' sightlines (R3 — the hub sees one door from any door) */
-                    { k: 'tree', x: 18.0, z: 11.2, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: 18.4, z: 12.9, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
                     { k: 'tree', x: 5.0, z: 12.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.1, z: -8.0, kind: 'tree', h: 7.0, r: 0.8 },
                     { k: 'rail', x0: 12.5, z0: -17.0, x1: 17.5, z1: -17.0 },                                  // a fence rail behind the crag (the park rule's grind)
                     /* THE STAIRCASE (2026-10-01, mondo: "those stairs should be one of the weenies of the woods, like they ascend past the tree
@@ -34024,7 +34025,7 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
                     { k: 'path', pts: [[-4, 0], [-14, -2], [-22, -4.4]], w: 1.6 },                            // to the pasture
                     { k: 'path', pts: [[-1, 8], [-10, 10], [-22, 9.6]], w: 1.6 },                             // to the ritual ground
-                    { k: 'path', pts: [[8, 6], [12, 9], [22, 9.6]], w: 1.6 },                                 // to the crag and the storm drain
+                    { k: 'path', pts: [[8, 6], [12, 9], [14.2, 9.3]], w: 1.6 },                               // to the stream; its arm runs on into the storm drain
                     { k: 'grove', n: 26, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 4 },
                     { k: 'scatter', key: 'fern', n: 18, seed: 5 },
                     { k: 'scatter', key: 'stump', n: 4, seed: 6 },
@@ -34042,7 +34043,7 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
                   desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
                 { id: 'deadmans', wall: 'e', z: 9.625, way: 'tunnel',
-                  passage: { w: 2.4, len: 9, deep: 6.5, mouth: 'culvert_mouth', mouthD: 9.5, mouthY: 2.2 },   // 2026-10-05 (mondo): the Meshy culvert mouth is the way in (three-renderer.js _hqPassageWay), no block outcrop
+                  passage: { w: 2.4, len: 9, deep: 6.5, mouth: 'culvert_mouth', mouthD: 9.5, mouthY: 2.2, water: true },   // 2026-10-05 (mondo): the Meshy culvert mouth is the way in (three-renderer.js _hqPassageWay), no block outcrop; the stream's arm runs into it
                   label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
                   desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
@@ -34113,7 +34114,7 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
                   desc: 'Back west, where the trees are young enough to be trees.' },
                 /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT — the creek goes into a pipe under the bank; the pipe is the storm drain (R4) */
-                { id: 'culvert', wall: 'n', x: 0, secret: true, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, label: 'DEAD MAN’S CAVE', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',   // NO DOORS IN THE WOODS (2026-10-05): the pipe mouth in the bank, walked into
+                { id: 'culvert', wall: 'n', x: -3, secret: true, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6.5, mouth: 'culvert_mouth', mouthD: 9.5, mouthY: 2.2, water: true }, label: 'DEAD MAN’S CAVE', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',   // NO DOORS IN THE WOODS (2026-10-05): the pipe mouth in the bank, walked into; (2026-10-05, mondo) the culvert mouth GLB at the creek's end, not a block outcrop beside it
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'culvert' },
                   desc: 'The creek goes into the bank and does not come out. The pipe it goes into is big enough, if you do not mind the dark.', draft: true },
             ],
@@ -47972,6 +47973,10 @@ function hqTerrainDoorY(room, door) {
            SWIMMER floats — the surface less the draft (the pad itself stays on the sea floor, so the spot stays a swim) */
         const sea = info.sea, R = info.rules || HQ_TERRAIN_RULES;
         if (sea && !sea.under && sea.y - p.h > R.wadeMax) return Math.round((sea.y - R.swimDraft) * 1000) / 1000;
+        /* THE STREAM INTO THE CULVERT (2026-10-05, mondo: the drain mouths sit at the end of a stream): a pad in a wadeable stream has
+           its sill where the wader's feet are (the surface less the wade, hqTerrainFeet's rule), not on the bed under the water */
+        const q = p.lane || p, fl = hqTerrainFluidAt(info, q.x, q.z);
+        if (fl && !fl.sea && fl.key === 'water' && fl.y - p.h <= R.wadeMax) return Math.round(Math.max(p.h, fl.y - R.wade) * 1000) / 1000;
         return Math.round(p.h * 1000) / 1000;
     }
     return 0;
