@@ -52527,6 +52527,11 @@ const ThreeRenderer = (function () {
             g.add(mHold);
             box(mouthR * 2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.01, -(L / 2 + 0.2));   // the floor out to the bore (the ground never shows in the pipe)
             box(W + 2 * T0, H + 1.6, 0.4, wallM, 0, fy(L) + H / 2, -(L + 0.2));   // the far end (behind the black)
+            /* THE STREAM INTO THE CULVERT (2026-10-05, mondo: "these sewer/dead man's cave entrances are obviously supposed to have the
+               streams of water flowing into them"): `water: true` — the room's stream reaches the mouth (its pad wades, data.js
+               hqTerrainDoorY), and its surface runs on into the bore to the dark: one sheet in the room's own fluid material, at the
+               room water's height (a hair under it where the two overlap at the wall), as wide as the bore at that height */
+            if (P.water) { try { _hqPassWater(g, ctx, mouthR, MY, L, U); } catch (e) { console.warn('[HQ] the culvert water failed', e); } }
         }
         /* THE TUBE: the walls either side and the roof, stepping up with a rising floor */
         if (P.roof && !P.inside && !mouthR) {
@@ -52585,6 +52590,27 @@ const ThreeRenderer = (function () {
             });
         }
         return { g: g, motion: null, ow: W, oh: H, plateY: Math.min(H, 2.2), blockers: [] };
+    }
+    var _hqPassWaterMats = {};
+    function _hqPassWater(g, ctx, R, MY, L, U) {
+        var info = (_hq && _hq.terrain) || (ctx.room && ctx.room._terrainInfo) || null;
+        if (!info || typeof hqTerrainFluidAt !== 'function') return;
+        var s = Math.sin(ctx.yaw || 0), c = Math.cos(ctx.yaw || 0), fl = null;
+        for (var d = 0.6; d <= 3.2 && !fl; d += 0.65) { var f = hqTerrainFluidAt(info, ctx.wx + s * d, ctx.wz + c * d); if (f && !f.sea) fl = f; }   // the room's water just inside the mouth (the group's +z is the room)
+        if (!fl) return;
+        var wy = fl.y - (ctx.y0 || 0), dy = MY - wy;   // the surface in the pipe's frame (metres over its floor), the centre over it
+        if (dy >= R - 0.1) return;   // under the bore's floor: nothing to see
+        var cw = 2 * Math.sqrt(R * R - dy * dy) - 0.12, IN = 0.7, len = L + 0.3 + IN, key = fl.key || 'water';
+        var mat = _hqPassWaterMats[key];
+        if (!mat) { try { mat = _buildFluidTopMat(key); } catch (e) { mat = null; } if (!mat) return; _hqPassWaterMats[key] = mat; }
+        var geo = new THREE.PlaneGeometry(cw * U, len * U);
+        var TMw = (info._TM || (info.tile || 2.5) * U), uv = geo.attributes.uv;
+        for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * cw * U / TMw, uv.getY(i) * len * U / TMw);
+        uv.needsUpdate = true;
+        var m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2;
+        m.position.set(0, wy * U + 0.4 - 0.04 * U, -(len / 2 - IN) * U);   // the room's sheet is drawn at y * U + 0.4 (_hqWaterGeoms)
+        m.renderOrder = 2; m.receiveShadow = true; m.castShadow = false; m.name = 'hq:water:culvert'; m._ew_hqWater = true;
+        g.add(m);
     }
     /* where (x, z) stands in a passage: `depth` m out past its mouth (− = the room's side), `lat` m off its centre line */
     function _hqPassAt(p, x, z) {
