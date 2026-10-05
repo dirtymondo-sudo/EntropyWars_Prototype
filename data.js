@@ -43944,17 +43944,33 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: -21.5, z: 0, w: 21, d: 12, h: 1.0, edge: 0.15 },
             { k: 'ramp', x0: -8.4, z0: 0, x1: -11.6, z1: 0, w: 3.0, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'climb', x: -18, z: 5.7, face: 0, look: 'wall' },
-            { k: 'plateau', x: -25, z: 2, r: 3, h: 3.4, edge: 0.15 }, { k: 'climb', x: -22.3, z: 2, face: 270, look: 'ladder' },
+            { k: 'plateau', x: -25, z: 2, r: 3, h: 3.4, edge: 0.15 }, { k: 'climb', x: -25, z: -0.7, face: 180, look: 'ladder' },
+            { k: 'ramp', x0: -17.4, z0: 2, x1: -22.7, z1: 2, w: 2.4, h0: 1.0, h1: 3.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: 'r' },   // the loft's stair off the deck (its railing on the south side)
+            { k: 'rail', arc: { x: -25, z: 2, r: 2.7, a0: 118, a1: 340 }, model: 'ranch' },   // round the loft's rim (the stair and the ladder left open)
+            { k: 'ramp', x0: -15, z0: -8.6, x1: -15, z1: -5.3, w: 2.6, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },     // the back steps from the sledge yard's hall
+            { k: 'rail', x0: -31.7, z0: 5.7, x1: -19, z1: 5.7, model: 'ranch' }, { k: 'rail', x0: -17, z0: 5.7, x1: -11.3, z1: 5.7, model: 'ranch' },
+            { k: 'rail', x0: -31.7, z0: -5.7, x1: -16.4, z1: -5.7, model: 'ranch' }, { k: 'rail', x0: -13.6, z0: -5.7, x1: -11.3, z1: -5.7, model: 'ranch' },
             /* THE FROZEN LAKE (a wade) and two floes to hop; THE ICE WALL between the plaza's hall and the drift (the grind) */
             { k: 'pool', x: 19, z: 1, r: 7, rz: 5, depth: 0.5, key: 'water', bank: 1.0 },
             { k: 'plateau', x: 14.5, z: 1, r: 1.6, h: 0.5, edge: 0.15, float: true }, { k: 'plateau', x: 19, z: -1, r: 1.6, h: 0.9, edge: 0.15, float: true },
+            { k: 'rail', arc: { x: 19, z: 1, r: 6.6, a0: 100, a1: 158 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 19, z: 1, r: 6.6, a0: 202, a1: 250 }, model: 'pipe', block: false },   // skate rails round the lake's south shore
             { k: 'wall', x0: 1, z0: -10, x1: 9, z1: -10, h: 3.2, t: 0.8, key: 'ice_1' },
             /* THE DRIFT (2.2) up its stair — the sleigh road's door stands on it; THE POLE's cairn (6.2, the tape) off its west edge, seen from the drift */
             { k: 'plateau', x: 14, z: -20, w: 14, d: 10, h: 2.2, edge: 0.15 },
             { k: 'ramp', x0: 14, z0: -9.5, x1: 14, z1: -15.7, w: 3.0, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', pts: [[14, -9.7, 0.07], [14, -15.4, 2.1]], model: 'pipe', block: false },                                  // its centre handrail
             { k: 'climb', x: 20.7, z: -18, face: 270, look: 'rope' },
             { k: 'plateau', x: 3, z: -17, r: 3.2, h: 6.2, edge: 0.15 },
-            { k: 'rail', x0: 8, z0: -15.6, x1: 20, z1: -15.6 },
+            { k: 'rail', x0: 7.3, z0: -15.3, x1: 12.4, z1: -15.3, model: 'ranch' }, { k: 'rail', x0: 15.6, z0: -15.3, x1: 20.7, z1: -15.3, model: 'ranch' },
+            /* THE WALKWAY (2.2): the drift's level carried west along the north wall behind the cairn (a 2.5 m gap from the drift, a rail across it) and through the hall to the sledge
+               yard — a stair down into the yard by the cairn, a stair down into the sledge yard at its west end */
+            { k: 'plateau', x: -0.25, z: -23.25, w: 9.5, d: 4.5, h: 2.2, edge: 0.15 },
+            { k: 'rail', x0: 4.2, z0: -23, x1: 7.3, z1: -23, y: 2.2, model: 'pipe', block: false },                                    // across the gap
+            { k: 'plateau', x: -6, z: -20, w: 10, d: 3.2, h: 2.2, edge: 0.15 },
+            { k: 'ramp', x0: -2.5, z0: -14.0, x1: -2.5, z1: -19.1, w: 2.4, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -15.4, z0: -20, x1: -10.3, z1: -20, w: 2.6, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: false },   // (the hall's walls either side)
+            { k: 'rail', x0: -0.8, z0: -21.3, x1: 4.2, z1: -21.3, model: 'ranch' }, { k: 'rail', x0: -1.3, z0: -20.9, x1: -1.3, z1: -18.7, model: 'ranch' },
+            { k: 'rail', x0: -10.7, z0: -18.7, x1: -3.8, z1: -18.7, model: 'ranch' },
             /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank */
             { k: 'hill', x: -20, z: -16, r: 7, h: 2.0 },
             { k: 'plateau', x: -24, z: -19, r: 4, h: 4.0, edge: 0.15 }, { k: 'climb', x: -20.3, z: -19, face: 270, look: 'rope' },
@@ -43966,7 +43982,7 @@ const HQ_AREA_SPECS = {
             { k: 'grove', x: -13, z: 18.5, r: 5, n: 5, kinds: ['pine'] }, { k: 'grove', x: 22, z: -10.5, r: 2, n: 2, kinds: ['pine'] },
             { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 1.0 }, { key: 'railing_1m', x: 12, z: -15.6, face: 0, y: 2.2 }, { key: 'riser_1', x: 6, z: 9 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
+        props: [{ key: 'riser_1', x: 6, z: 9 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
                 { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 25, z: 16, y: 1.3 }, { key: 'signpost', x: -2, z: 2 },
                 { key: 'cardboard_boxes', x: 29, z: -22 }, { key: 'cardboard_box', x: 29.5, z: -20 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 11, z: -5, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
