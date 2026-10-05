@@ -36928,9 +36928,26 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, -32], [0, 10]], w: 10 },                                                      // THE GATE ROAD (Phase 5: in from the gate, the north edge x 0)
                     { k: 'path', pts: [[18, 31], [18, 10]], w: 5 },                                                      // the taxiway from the hangar's big door
                     { k: 'path', pts: [[-30, 31], [-30, 10]], w: 4 },                                                    // the yard gate's lane
-                    { k: 'plateau', x: -10, z: -16, r: 3.2, h: 4.5, edge: 0.35 },                                        // THE TOWER
-                    { k: 'ramp', x0: -10, z0: -3, x1: -10, z1: -13.5, w: 2.4, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },  // its stair (L ≥ 2.2 × h, ends 0.7 m inside)
-                    { k: 'rail', x0: -12, z0: -13, x1: -8, z1: -13 },                                                    // the tower's rim (the grind)
+                    /* THE TOWER: its deck (3 m) up a fire escape from the south, the cab (6 m) up a ladder from the deck, a rail round the cab;
+                       a gantry east from the deck over the gate road, a 2.5 m gap (a pipe rail across it) to the raised east apron (3 m) and
+                       its steel stair down to the runway side */
+                    { k: 'plateau', x: -11.25, z: -16, w: 14.5, d: 10, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: -10, z: -16, r: 3.2, h: 6.0, edge: 0.15 },                                        // the cab
+                    { k: 'ramp', x0: -16, z0: -3.5, x1: -16, z1: -11.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
+                    { k: 'rail', pts: [[-16, -3.1, 0], [-16, -11.7, 3.0]], model: 'pipe', block: false },
+                    { k: 'climb', x: -13.5, z: -16, face: 90, look: 'ladder' },
+                    { k: 'rail', arc: { x: -10, z: -16, r: 2.85, a0: 300, a1: 600 }, model: 'balusters_b' },
+                    { k: 'rail', x0: -14.6, z0: -11.35, x1: -4.4, z1: -11.35, model: 'balusters_b' },
+                    { k: 'rail', x0: -18.1, z0: -20.65, x1: -4.4, z1: -20.65, model: 'balusters_b' },
+                    { k: 'rail', x0: -4.35, z0: -20.6, x1: -4.35, z1: -17.6, model: 'balusters_b' },
+                    { k: 'rail', x0: -4.35, z0: -14.4, x1: -4.35, z1: -11.4, model: 'balusters_b' },
+                    { k: 'bridge', x0: -4.7, z0: -16, x1: 9.5, z1: -16, w: 2.6, y: 3.0, key: 'urban:MetalSubwayGrill1a' },
+                    { k: 'rail', x0: 9.1, z0: -16, x1: 12.6, z1: -16, y: 3.0, model: 'pipe', block: false },            // across the gap
+                    { k: 'plateau', x: 19, z: -12.5, w: 14, d: 9, h: 3.0, edge: 0.15 },                                 // the east apron
+                    { k: 'ramp', x0: 24.4, z0: -1.8, x1: 24.4, z1: -8.7, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: 12.4, z0: -16.65, x1: 25.6, z1: -16.65, model: 'balusters_b' },
+                    { k: 'rail', x0: 25.65, z0: -16.6, x1: 25.65, z1: -10.2, model: 'balusters_b' },
+                    { k: 'rail', x0: 12.4, z0: -8.35, x1: 22.8, z1: -8.35, model: 'pipe' },                            // the apron's front ledge (a grind)
                     { k: 'plateau', x: -8, z: -17.5, r: 0.8, h: 8.0, edge: 0.25 },                                       // THE MAST on the tower (the tape — the door gun's)
                     { k: 'wall', x0: -40, z0: -8, x1: -28, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },                   // the revetments
                     { k: 'wall', x0: 28, z0: -8, x1: 40, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },
@@ -36965,7 +36982,7 @@ const DOOR_HQ = {
                 /* THE TOWER: the beacon on it, the rail; the mast stands beside it, unclimbed */
                 { key: 'floating_orb',    x: -11.6, z: -15.2, face: 0 },                                                 // THE BEACON (the near weenie: the light on the tower that is not a light)
                 { key: 'flood_mast',      x: -40, z: 2 }, { key: 'flood_mast', x: 40, z: 16 }, { key: 'flood_mast', x: 6, z: -26 }, { key: 'flood_mast', x: 6, z: 28 },   // the floodlights round the aprons
-                { key: 'railing_1m',      x: -10, z: -13.2, face: 0 },
+                { key: 'railing_1m',      x: -10, z: -13.5, face: 0 },
                 /* THE APRONS: the crew bus, the shelter, the fire truck, the truck, the wreck in its pen */
                 { key: 'school_bus',      x: -20, z: 24, face: 0 },
                 { key: 'bus_shelter',     x: -26, z: 27, face: 0 },
