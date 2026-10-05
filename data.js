@@ -35522,14 +35522,35 @@ const DOOR_HQ = {
                 floor: 'wood_planks', cliff: 'wood', path: 'carpet_2',
                 noise: { amp: 0, scale: 4 }, crag: false,
                 features: [
-                    { k: 'bridge', x0: -15, z0: -15.3, x1: 15, z1: -15.3, w: 5.4, y: 4.0, thick: 0.4, plain: true, key: 'wood_planks' },   // THE GALLERY (a slab, not a tier: the floor goes on under it)
-                    { k: 'ramp', x0: 13.6, z0: 0.6, x1: 13.6, z1: -13.3, w: 2.8, h0: 0, h1: 4.0, stairs: true, edge: 0.2,
+                    /* the stairs pass (2026-10-05): the gallery is an L now, along the north wall and down the west wall over the end
+                       cases, with a spur south over the middle stacks. Up: the east stair to the gallery's east end (a 2.5 m gap to jump,
+                       a rail across it), the carriage stair in the middle of the stacks up to the spur, the west stair at the far end of
+                       the west gallery. Balusters along every open edge. */
+                    { k: 'bridge', x0: -15, z0: -15.3, x1: 6.5, z1: -15.3, w: 5.4, y: 4.0, thick: 0.4, plain: true, key: 'wood_planks' },   // THE GALLERY (a slab, not a tier: the floor goes on under it)
+                    { k: 'bridge', x0: 9, z0: -15.3, x1: 15, z1: -15.3, w: 5.4, y: 4.0, thick: 0.4, plain: true, key: 'wood_planks' },     // its east end, past the gap
+                    { k: 'bridge', x0: -13.5, z0: -14, x1: -13.5, z1: 3.0, w: 3.0, y: 4.0, thick: 0.4, plain: true, key: 'wood_planks' },  // the west gallery, over the end cases
+                    { k: 'bridge', x0: 0, z0: -14, x1: 0, z1: -1.0, w: 2.6, y: 4.0, thick: 0.4, plain: true, key: 'wood_planks' },        // the spur over the middle stacks
+                    { k: 'ramp', x0: 13.6, z0: 0.6, x1: 13.6, z1: -13.3, w: 2.8, h0: 0, h1: 4.0, stairs: true, model: 'wood', railing: 'balusters_b', edge: 0.2,
                       built: true, key: 'wood_planks', side: 'wood', runner: { w: 1.6, color: 0x6a2a2a } },                          // THE STAIR (its top 0.7 m under the slab's mouth)
-                    { k: 'wall', x0: -15, z0: -12.7, x1: 12.1, z1: -12.7, lift: 4.0, y: 5.05, t: 0.22, key: 'wood' },                       // the gallery's parapet (hung: the floor passes under it)
-                    { k: 'wall', x0: -12.25, z0: -12.95, x1: -11.75, z1: -12.95, t: 0.5, y: 3.6, key: 'wood', rail: false },                 // its posts
+                    { k: 'ramp', x0: 0, z0: 7.6, x1: 0, z1: -1.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, model: 'carriage', railing: 'balusters_d', edge: 0.2,
+                      key: 'wood_planks', side: 'wood' },                                                                              // the carriage stair up to the spur
+                    { k: 'ramp', x0: -13.8, z0: 12.0, x1: -13.8, z1: 2.3, w: 2.4, h0: 0, h1: 4.0, stairs: true, model: 'wood', railing: 'balusters_b', edge: 0.2,
+                      built: true, key: 'wood_planks', side: 'wood' },                                                               // the west stair, off the end of the west gallery
+                    /* the balusters (on the slabs: their ground line is the gallery's floor) */
+                    { k: 'rail', x0: -11.85, z0: -12.75, x1: -1.45, z1: -12.75, y: 4.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 1.45, z0: -12.75, x1: 6.4, z1: -12.75, y: 4.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 9.1, z0: -12.75, x1: 12.0, z1: -12.75, y: 4.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -11.85, z0: -12.6, x1: -11.85, z1: 2.9, y: 4.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -1.15, z0: -12.6, x1: -1.15, z1: -1.1, y: 4.0, model: 'balusters_d' },
+                    { k: 'rail', x0: 1.15, z0: -12.6, x1: 1.15, z1: -1.1, y: 4.0, model: 'balusters_d' },
+                    { k: 'rail', x0: 6.4, z0: -15.3, x1: 9.1, z1: -15.3, y: 4.0, model: 'pipe', block: false },                         // across the gap
+                    { k: 'wall', x0: -12.25, z0: -12.95, x1: -11.75, z1: -12.95, t: 0.5, y: 3.6, key: 'wood', rail: false },                 // the gallery's posts
                     { k: 'wall', x0: -6.25, z0: -12.95, x1: -5.75, z1: -12.95, t: 0.5, y: 3.6, key: 'wood', rail: false },
                     { k: 'wall', x0: -0.25, z0: -12.95, x1: 0.25, z1: -12.95, t: 0.5, y: 3.6, key: 'wood', rail: false },
                     { k: 'wall', x0: 5.75, z0: -12.95, x1: 6.25, z1: -12.95, t: 0.5, y: 3.6, key: 'wood', rail: false },
+                    /* on the floor: a curved skate rail round the reading desk, a straight one down the reading room */
+                    { k: 'rail', arc: { x: 7.5, z: 4.5, r: 2.6, a0: 200, a1: 340 }, model: 'pipe', block: false },
+                    { k: 'rail', x0: 4.6, z0: -10.5, x1: 4.6, z1: -1.5, model: 'pipe', block: false },
                     /* THE STACKS are the cases themselves (props, block: true): two rows back to back per range, no terrain core (a core hid them) */
                     { k: 'path', pts: [[-4.35, 17.5], [-4.35, -12.4]], w: 1.5 },                                    // the cross aisle's runner
                     { k: 'path', pts: [[14.5, 10], [7.5, 10], [7.5, 0.6], [12.2, 0.6]], w: 1.5 },                    // the nave door through the reading room to the stair
@@ -35573,16 +35594,12 @@ const DOOR_HQ = {
                 { key: 'library_shelf_full', x: -10.58, z: 0.87, face: 180, h: 3 },
                 { key: 'library_shelf_full', x: -6.82, z: -0.07, face: 0, h: 3 },
                 { key: 'library_shelf_full', x: -6.82, z: 0.87, face: 180, h: 3 },
-                { key: 'library_shelf_full', x: -12.46, z: 4.53, face: 0, h: 3 },
-                { key: 'library_shelf_full', x: -12.46, z: 5.47, face: 180, h: 3 },
                 { key: 'library_shelf_full', x: -10.58, z: 4.53, face: 0, h: 3 },
                 { key: 'library_shelf_full', x: -10.58, z: 5.47, face: 180, h: 3 },
                 { key: 'library_shelf_full', x: -8.7, z: 4.53, face: 0, h: 3 },
                 { key: 'library_shelf_full', x: -8.7, z: 5.47, face: 180, h: 3 },
                 { key: 'library_shelf_full', x: -6.82, z: 4.53, face: 0, h: 3 },
                 { key: 'library_shelf_full', x: -6.82, z: 5.47, face: 180, h: 3 },
-                { key: 'library_shelf_full', x: -12.46, z: 9.13, face: 0, h: 3 },
-                { key: 'library_shelf_full', x: -12.46, z: 10.07, face: 180, h: 3 },
                 { key: 'library_shelf_full', x: -10.58, z: 9.13, face: 0, h: 3 },
                 { key: 'library_shelf_full', x: -10.58, z: 10.07, face: 180, h: 3 },
                 { key: 'library_shelf_full', x: -8.7, z: 9.13, face: 0, h: 3 },
@@ -35626,14 +35643,14 @@ const DOOR_HQ = {
                 { key: 'library_shelf',  wall: 'n', x: 6 },
                 { key: 'library_shelf',  wall: 'n', x: 10 },
                 { key: 'library_shelf',  wall: 'w', z: -6.5 },                                   // the cases along the west wall
-                { key: 'library_shelf',  wall: 'w', z: 2.7 },
+                { key: 'library_shelf',  wall: 'w', z: -1.5 },
                 { key: 'library_shelf',  wall: 's', x: 4 },
                 { key: 'library_shelf_full', x: -6, z: -16.8, y: 4.0, face: 180 },              // on the gallery
-                { key: 'library_shelf_full', x: 6, z: -16.8, y: 4.0, face: 180 },
+                { key: 'library_shelf_full', x: 3.5, z: -16.8, y: 4.0, face: 180 },
                 { key: 'lectern',        x: 7.5, z: 4.5, face: 270 },                            // THE READING ROOM's book
                 { key: 'conference_table', x: 7.5, z: -3.5, face: 90 },                          // the reading tables
                 { key: 'conference_table', x: 7.5, z: 12.5, face: 90 },
-                { key: 'candle_ring',    x: 5.5, z: 6.5 },
+                { key: 'candle_ring',    x: 5.0, z: 8.0 },
                 { key: 'candle_ring',    x: -8, z: -16, y: 4.0 },
                 { key: 'brazier',        x: -4.35, z: 16.6 },
                 { key: 'brazier',        x: 10.5, z: 15.5 },
