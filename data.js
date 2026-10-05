@@ -43727,10 +43727,13 @@ const HQ_AREA_SPECS = {
             { k: 'bridge', x0: -12.7, z0: 2, x1: 11.7, z1: 2, w: 2.4, y: 3.2 },
             /* THE CRATERS */
             { k: 'dip', x: -8, z: -10, r: 6, h: -1.6 }, { k: 'dip', x: 31, z: -9, r: 3.5, h: -1.2 }, { k: 'dip', x: 26, z: 20, r: 4.5, h: -1.4 },
-            /* THE PYRAMID: the lower tier (2.4) up THE GREAT STAIR on its south face or the hand-holds on its east; the upper tier (4.8) up a ladder on its west face or the hand-holds on its east */
+            /* THE PYRAMID: the lower tier (2.4) up THE GREAT STAIR on its south face or the hand-holds on its east; the upper tier (4.8) up the second flight
+               off the landing, a ladder on its west face or the hand-holds on its east; a handrail down the middle of both flights */
             { k: 'plateau', x: 18, z: -20, w: 14, d: 12, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 18, z0: -7.5, x1: 18, z1: -14.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
             { k: 'climb', x: 24.7, z: -20, face: 270, look: 'wall' },
-            { k: 'plateau', x: 18, z: -20, w: 7, d: 6, h: 4.8, edge: 0.4 }, { k: 'climb', x: 14.8, z: -20, face: 90, look: 'ladder' }, { k: 'climb', x: 21.2, z: -20, face: 270, look: 'wall' },
+            { k: 'plateau', x: 18, z: -22, w: 7, d: 4, h: 4.8, edge: 0.4 }, { k: 'climb', x: 14.8, z: -22, face: 90, look: 'ladder' }, { k: 'climb', x: 21.2, z: -22, face: 270, look: 'wall' },
+            { k: 'ramp', x0: 18, z0: -15.8, x1: 18, z1: -20.7, w: 2.8, h0: 2.4, h1: 4.8, stairs: true },
+            { k: 'rail', pts: [[18, -7.9, 0.13], [18, -14.3, 2.27]], model: 'pipe', block: false }, { k: 'rail', pts: [[18, -16.2, 2.6], [18, -20.3, 4.6]], model: 'pipe', block: false },
             /* THE ROVER BAY's mesa (2.6) on the north wall — the collar stands ON it: a stair up its east end, the hand-holds on its south face, a rope on its west */
             { k: 'plateau', x: -5, z: -27, w: 16, d: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: 10.3, z0: -27.5, x1: 2.3, z1: -27.5, w: 2.6, h0: 0, h1: 2.6, stairs: true },
             { k: 'climb', x: -8, z: -24.3, face: 0, look: 'wall' }, { k: 'climb', x: -12.7, z: -27, face: 90, look: 'rope' },
@@ -43756,9 +43759,9 @@ const HQ_AREA_SPECS = {
                 { key: 'flood_mast', x: 12, z: -29.5 }, { key: 'traffic_cone', x: 11, z: -25.5 }, { key: 'traffic_cone', x: 8, z: -25.5 },
                 /* THE PYRAMID's camp and the canyon floor */
                 { key: 'signpost', x: 14, z: -6 }, { key: 'campfire', x: 8, z: 12 }, { key: 'mars_rover', x: 5, z: 12, face: 220 }, { key: 'signpost', x: -3, z: 14 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
-                { key: 'cave_stone', x: 18, z: -20, y: 4.8 }, { key: 'flood_mast', x: 26, z: -26 }, { key: 'cardboard_boxes', x: 24, z: -17, y: 2.4 }, { key: 'folding_chair', x: 22, z: -24, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 12, z: -13 },
+                { key: 'cave_stone', x: 18, z: -22.8, y: 4.8 }, { key: 'flood_mast', x: 26, z: -26 }, { key: 'cardboard_boxes', x: 24, z: -17, y: 2.4 }, { key: 'folding_chair', x: 22, z: -24, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 12, z: -13 },
                 { key: 'cave_stone', x: -28, z: -10 }, { key: 'cave_stone', x: -30, z: -20 }, { key: 'cinder_block', x: -32, z: 18 }, { key: 'traffic_cone', x: -2, z: -26 }, { key: 'cave_stone', x: 30, z: 14 }],
-        npcSpots: [{ x: 3, z: 6, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 18, z: -20, y: 4.8, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' },
+        npcSpots: [{ x: 3, z: 6, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 18.5, z: -22, y: 4.8, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' },
                    { x: -22, z: 5, y: 3.2, face: 90, race: 'grey', say: '“The face is a face from up here. From the ground it is a hill. From orbit it is a face again. Pick one.”' },
                    { x: -30, z: -12, face: 60, race: 'martian', say: '“The mouth goes to the Moon. Do not ask which side.”' }],
         lines: ['“The dust is finer on the far side.” “Of what?”'] },
@@ -43775,12 +43778,13 @@ const HQ_AREA_SPECS = {
         features: [
             /* THE BIG CRATER (a bowl the walker drops into and climbs out of) and THE SMALL CRATER */
             { k: 'dip', x: 17, z: 2, r: 9, h: -2.4 }, { k: 'dip', x: -20, z: -17, r: 4.5, h: -1.4 },
-            /* THE LANDING PAD (1.3): a ramp from the west, a ladder on its south face — THE LANDER stands on it */
-            { k: 'plateau', x: -2, z: -4, r: 4.2, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -12, z0: -4, x1: -5.5, z1: -4, w: 2.8, h0: 0, h1: 1.3 }, { k: 'climb', x: -2, z: -0.1, face: 0, look: 'ladder' },
+            /* THE LANDING PAD (1.3): the steps up from the west, a ladder on its south face — THE LANDER stands on it */
+            { k: 'plateau', x: -2, z: -4, r: 4.2, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -10.0, z0: -4, x1: -5.5, z1: -4, w: 2.8, h0: 0, h1: 1.3, stairs: true, model: 'concrete' }, { k: 'climb', x: -2, z: -0.1, face: 0, look: 'ladder' },
             /* THE BOULDER SHELF (1.4): a ramp from the east, the hand-holds on its north face — THE HABITAT stands on it */
             { k: 'plateau', x: -18, z: 10, r: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -6, z0: 10, x1: -12.7, z1: 10, w: 3.0, h0: 0, h1: 1.4 }, { k: 'climb', x: -18, z: 4.3, face: 180, look: 'wall' },
-            /* THE DISH's platform (3.4): a ladder on its north face, a chain on its east */
+            /* THE DISH's platform (3.4): a steel stair up its south side, a ladder on its north face, a chain on its east */
             { k: 'plateau', x: -25, z: -6, r: 3, h: 3.4, edge: 0.35 }, { k: 'climb', x: -25, z: -8.7, face: 180, look: 'ladder' }, { k: 'climb', x: -22.3, z: -6, face: 270, look: 'chain' },
+            { k: 'ramp', x0: -25, z0: 4.2, x1: -25, z1: -3.3, w: 2.0, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
             /* THE TERRACE (2.4) on the north wall — the collar stands ON it: the stair up its south face, a ladder on its east end, a rope on its west */
             { k: 'plateau', x: -5, z: -25, w: 14, d: 6, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -13.5, x1: -5, z1: -22.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
             { k: 'climb', x: 1.7, z: -25, face: 270, look: 'ladder' }, { k: 'climb', x: -11.7, z: -25, face: 90, look: 'rope' },
