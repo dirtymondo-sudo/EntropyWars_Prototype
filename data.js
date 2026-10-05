@@ -38544,7 +38544,7 @@ const DOOR_HQ = {
                structure is meant"): a LAYOUT — the city round the tower's foot is a town of brick (`look: 'walls'`, 5 m: the houses and
                the yard walls are the solid, never rubble banks). The scaffold-plank barn door (the bay door) opens on its own square
                south; hall A runs north to THE TOWER's foot (a 4 m walk round it and the north apron where THE SPIRAL starts). THE
-               TOWER is four crisp square tiers of brick (64 m at the foot, 3.5 m a tier) with THE SPIRAL — a built flight on each face
+               TOWER is four crisp round tiers of brick (64 m across at the foot, 3.5 m a tier) with THE SPIRAL — a built flight on each face
                in turn: up the north face onto tier 1, along the east ledge onto tier 2, up the south ledge onto tier 3, along the west
                ledge onto THE UNFINISHED TOP (14 m), where THE CRANE stands and THE LOAD it never lifted hangs 4 m over the top (the
                tape — the door gun's, from the top). West of the square, room 3 (a brick stack) and hall C to THE KILN's yard (the kiln
@@ -38576,22 +38576,45 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[50, 19.5], [50, 34], [20, 34], [20, 44], [8.5, 44]], w: 3.4 },   // hall B: room 2 back round to the square (loop 2)
                     { k: 'hall', pts: [[34, 35.5], [34, 40.5]], w: 3 },                  // to side room 1
                     { k: 'hall', pts: [[-35.5, -44], [-42.5, -44]], w: 3 },              // to side room 2
-                    /* THE TOWER: four crisp tiers and THE SPIRAL's four built flights */
-                    { k: 'plateau', x: 0, z: -8, w: 64, d: 64, h: 3.5, edge: 0.15 },                                              // THE TOWER, tier 1
-                    { k: 'plateau', x: 0, z: -8, w: 46, d: 46, h: 7.0, edge: 0.15 },                                              // tier 2
-                    { k: 'plateau', x: 0, z: -8, w: 28, d: 28, h: 10.5, edge: 0.15 },                                             // tier 3
-                    { k: 'plateau', x: 0, z: -8, w: 10, d: 10, h: 14.0, edge: 0.15 },                                             // THE UNFINISHED TOP
-                    { k: 'ramp', x0: 0, z0: -47.5, x1: 0, z1: -39.6, w: 2.6, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },          // THE SPIRAL: up the north face
-                    { k: 'ramp', x0: 31.5, z0: -8, x1: 22.6, z1: -8, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },        // along the east ledge onto tier 2
-                    { k: 'ramp', x0: 0, z0: 14.5, x1: 0, z1: 5.6, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },          // up the south ledge onto tier 3
-                    { k: 'ramp', x0: -13.5, z0: -8, x1: -4.6, z1: -8, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },     // along the west ledge onto the top
+                    /* THE TOWER: four crisp round tiers and THE SPIRAL's four built flights (the stairs pass, 2026-10-05: round terraces, each
+                       flight's foot 3-4 m in from the ledge's rim, parapets round every rim with gaps to drop through) */
+                    { k: 'plateau', x: 0, z: -8, r: 32, h: 3.5, edge: 0.15 },                                                     // THE TOWER, tier 1
+                    { k: 'plateau', x: 0, z: -8, r: 23, h: 7.0, edge: 0.15 },                                                     // tier 2
+                    { k: 'plateau', x: 0, z: -8, r: 14, h: 10.5, edge: 0.15 },                                                    // tier 3
+                    { k: 'plateau', x: 0, z: -8, r: 5.5, h: 14.0, edge: 0.15 },                                                   // THE UNFINISHED TOP
+                    { k: 'ramp', x0: 0, z0: -47.5, x1: 0, z1: -39.6, w: 4, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },            // THE SPIRAL: up the north face
+                    { k: 'rail', pts: [[0, -47.1, 0.18], [0, -40.0, 3.32]], model: 'pipe', block: false },                        // its centre handrail
+                    { k: 'ramp', x0: 27.9, z0: -8, x1: 22.1, z1: -8, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },        // along the east ledge onto tier 2
+                    { k: 'ramp', x0: 0, z0: 10.9, x1: 0, z1: 5.1, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },          // up the south ledge onto tier 3
+                    { k: 'ramp', x0: -10.4, z0: -8, x1: -4.6, z1: -8, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },     // along the west ledge onto the top
+                    { k: 'rail', arc: { x: 0, z: -8, r: 32.1, a0: 6, a1: 114 }, y: 3.5, model: 'parapet' },                       // tier 1's rim (gaps: the north flight, the east walkway, the south, the west gap)
+                    { k: 'rail', arc: { x: 0, z: -8, r: 32.1, a0: 126, a1: 165 }, y: 3.5, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 32.1, a0: 195, a1: 274 }, y: 3.5, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 32.1, a0: 291, a1: 354 }, y: 3.5, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 23.1, a0: 15, a1: 83 }, y: 7.0, model: 'parapet' },                       // tier 2's rim
+                    { k: 'rail', arc: { x: 0, z: -8, r: 23.1, a0: 97, a1: 210 }, y: 7.0, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 23.1, a0: 240, a1: 345 }, y: 7.0, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 14.1, a0: 10, a1: 45 }, y: 10.5, model: 'parapet' },                      // tier 3's rim
+                    { k: 'rail', arc: { x: 0, z: -8, r: 14.1, a0: 75, a1: 170 }, y: 10.5, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 14.1, a0: 190, a1: 350 }, y: 10.5, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: -8, r: 5.6, a0: 288, a1: 432 }, y: 14.0, model: 'parapet' },                     // the top's rim
+                    { k: 'rail', arc: { x: 0, z: -8, r: 28.5, a0: 150, a1: 210 }, y: 3.5, model: 'pipe', block: false },          // tier 1's south ledge rail (the grind)
+                    /* the east walkway: tier 1 over the foot and the hall onto a platform in room 2, a flight down */
+                    { k: 'bridge', x0: 27.0, z0: 8, x1: 42.7, z1: 8, w: 2.4, y: 3.5 },
+                    { k: 'plateau', x: 44.5, z: 7.5, w: 5, d: 7, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: 51.9, z0: 7, x1: 46.1, z1: 7, w: 2.6, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    /* the west platform: room 1 up a flight, through the hall to a 2.8 m gap off tier 1 (a rail across it) */
+                    { k: 'plateau', x: -42.7, z: -18.5, w: 4.6, d: 11, h: 3.5, edge: 0.15 },
+                    { k: 'plateau', x: -39.2, z: -15, w: 10.4, d: 3.4, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: -50.0, z0: -22.8, x1: -44.1, z1: -22.8, w: 2.4, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'rail', x0: -34.3, z0: -15, x1: -30.6, z1: -15, y: 3.5, model: 'pipe', block: false },                    // across the gap
+                    { k: 'rail', x0: -45, z0: -12.9, x1: -40.4, z1: -12.9, y: 3.5, model: 'parapet' },
                     { k: 'plateau', x: 3, z: -5.5, r: 1.0, h: 18.0, edge: 0.15 },                                                 // THE LOAD (the tape — the door gun's, from the top)
                     { k: 'plateau', x: -50, z: 20, r: 4.2, h: 2.6, edge: 0.15 },                                                  // THE KILN
                     { k: 'plateau', x: -50, z: 20, r: 0.9, h: 6.4, edge: 0.15 },                                                  // its chimney
                     { k: 'wall', x0: -46, z0: -21, x1: -46, z1: -9, h: 1.0, t: 1.2, key: 'bricks_1' },                            // THE BRICK STACKS (the grinds)
                     { k: 'wall', x0: 44, z0: 12, x1: 56, z1: 12, h: 1.0, t: 1.2, key: 'bricks_1' },
                     { k: 'wall', x0: -26, z0: 44, x1: -14, z1: 44, h: 1.0, t: 1.2, key: 'bricks_1' },
-                    { k: 'rail', x0: -20, z0: 20, x1: 20, z1: 20 },                                                                // tier 1's south ledge rail (the grind)
                     { k: 'path', pts: [[0, 53], [0, 42], [5, 40], [5, 26]], w: 3.0 },                                             // from the barn door to the foot
                     { k: 'path', pts: [[5, 26], [34, 26], [34, -47], [0, -47]], w: 2.6 },                                         // round the foot to the north stair
                     { k: 'path', pts: [[0, -47], [-10, -51]], w: 2.4 },                                                            // to the foundation shaft
