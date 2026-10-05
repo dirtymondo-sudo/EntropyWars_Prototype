@@ -43617,24 +43617,33 @@ const HQ_AREA_SPECS = {
         features: [
             { k: 'hill', x: 0, z: -14, r: 16, h: 2.2 },                                                            // the mountain's flank rising north (short of the meadow)
             /* THE SHELF (3.6) up the trail, THE LOOKOUT (6.4) up its ladder, the hand-holds on the shelf's south face = the second way up */
-            { k: 'plateau', x: 16, z: -4, r: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 16, z0: 9, x1: 16, z1: 3.3, w: 2.6, h0: 0, h1: 3.6 },
+            { k: 'plateau', x: 16, z: -4, r: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 16, z0: 11.2, x1: 16, z1: 3.3, w: 2.6, h0: 0, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
             { k: 'plateau', x: 22, z: -10, r: 3, h: 6.4, edge: 0.4 }, { k: 'climb', x: 19.6, z: -10, face: 90, look: 'ladder' },
             { k: 'climb', x: 10.5, z: 2.0, face: 0, look: 'wall' },   // on the shelf's south rim (a climb's line stands ≤ 0.3 m off its mass — the head scan breaks on the first flat step)
-            { k: 'rail', x0: 10, z0: -10.5, x1: 19, z1: -10.5 },
+            /* (2026-10-05) a ranch rail round the shelf's rim (open at the trail's steps, the hand-holds, the ridge steps and the lookout),
+               the ridge steps up from the flank path onto the shelf's west rim */
+            { k: 'rail', arc: { x: 16, z: -4, r: 7.8, a0: -45, a1: 15 }, model: 'ranch' }, { k: 'rail', arc: { x: 16, z: -4, r: 7.8, a0: 75, a1: 165 }, model: 'ranch' }, { k: 'rail', arc: { x: 16, z: -4, r: 7.8, a0: 235, a1: 290 }, model: 'ranch' },
+            { k: 'ramp', x0: 4.4, z0: -8.5, x1: 10.1, z1: -8.5, w: 2.2, h0: 1.35, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
             /* THE FALLS' pool under THE SADDLE (2.4) — a stair up its east flank, a rope up its south face; THE CRAG (4.8) off it by a rope; THE SUMMIT (7.2, the tape) on THE SNOWLINE (4.4, the frame's door) */
             { k: 'pool', x: -1, z: -6, r: 3.2, depth: 0.9, key: 'water', bank: 1.0 },
-            { k: 'plateau', x: -12, z: -12, r: 7.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -7, z0: -0.5, x1: -7, z1: -6.2, w: 2.6, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: -12, z: -12, r: 7.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -7, z0: -0.5, x1: -7, z1: -6.2, w: 2.6, h0: 0, h1: 2.4, stairs: true, model: 'forest', edge: 0.2 },
             { k: 'climb', x: -14.5, z: -5.2, face: 0, look: 'rope' },
             { k: 'plateau', x: -22, z: -13, r: 4.2, h: 4.8, edge: 0.4 }, { k: 'climb', x: -18.4, z: -12, face: 270, look: 'rope' },
-            { k: 'plateau', x: -9, z: -26.5, w: 18, d: 7, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -6, z0: -15.5, x1: -6, z1: -23.7, w: 2.8, h0: 2.4, h1: 4.4, stairs: true },
+            { k: 'plateau', x: -9, z: -26.5, w: 18, d: 7, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -6, z0: -15.5, x1: -6, z1: -23.7, w: 2.8, h0: 2.4, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
             { k: 'climb', x: -0.1, z: -27, face: 270, look: 'rope' },
             { k: 'plateau', x: -14, z: -21, r: 3.8, h: 7.2, edge: 0.4 },
-            { k: 'rail', x0: -16, z0: -23.5, x1: -3, z1: -23.5 },
+            { k: 'rail', x0: -16, z0: -23.2, x1: -7.6, z1: -23.2, model: 'ranch' }, { k: 'rail', x0: -4.4, z0: -23.2, x1: -0.4, z1: -23.2, model: 'ranch' },   // (open at the stair's head)
+            /* THE NORTH LEDGE (2026-10-05): a 4.4 m rock ledge a 2.5 m gap east of the snowline (a rail across it, the rope's foot under it),
+               up a long timber stair from the north-east hollow */
+            { k: 'plateau', x: 4.75, z: -26, w: 4.5, d: 5, h: 4.4, edge: 0.4 },
+            { k: 'ramp', x0: 17.5, z0: -26, x1: 6.3, z1: -26, w: 2.4, h0: 0, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', x0: 0.2, z0: -25.0, x1: 2.3, z1: -25.0, y: 4.4, model: 'pipe', block: false },
+            { k: 'rail', x0: 2.8, z0: -28.2, x1: 6.8, z1: -28.2, model: 'ranch' },
             /* THE CREEK off the falls (waded) and the plank over it by the meadow; the corral wall the rider grinds */
             { k: 'stream', pts: [[-3, -2.5], [-9, 6], [-6, 14], [-11, 27]], w: 2.2, depth: 0.6, key: 'water' },
             { k: 'deck', x0: -11.5, z0: 17, x1: -3.5, z1: 17, w: 1.6, y: 0.35 },
             { k: 'wall', x0: 4, z0: 19, x1: 13, z1: 19, h: 0.9, t: 0.5, key: 'wood' },
-            { k: 'path', pts: [[0, 12], [16, 12], [16, 9.5]], w: 2.4 }, { k: 'path', pts: [[0, 12], [-7, 6], [-7, 0]], w: 2.6 }, { k: 'path', pts: [[0, 12], [6, -2], [2, -22], [1.2, -27]], w: 2.2 },
+            { k: 'path', pts: [[0, 12], [16, 12], [16, 11.4]], w: 2.4 }, { k: 'path', pts: [[0, 12], [-7, 6], [-7, 0]], w: 2.6 }, { k: 'path', pts: [[0, 12], [6, -2], [2, -22], [1.2, -27]], w: 2.2 },
             { k: 'path', pts: [[-7, 6], [-20, 8], [-28.5, 8]], w: 2.4 }, { k: 'path', pts: [[-1, 12], [-12, 22]], w: 2.0 },
             { k: 'grove', x: -20, z: 22, r: 8, n: 7, kinds: ['pine', 'pine', 'tree_2'] }, { k: 'grove', x: 24, z: 20, r: 7, n: 6, kinds: ['pine', 'tree_2'] }, { k: 'grove', x: 8, z: -18, r: 7, n: 5, kinds: ['pine'] },
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 }, { k: 'scatter', key: 'stump', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 4 }, { k: 'scatter', key: 'dead_snag', n: 3, seed: 6 },
