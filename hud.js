@@ -5959,6 +5959,16 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
     }
 
+    /* THE OFF-CENTRE AIM (2026-10-05, mondo): a tile-aimed AoE catches this enemy from ANY legal centre whose
+       footprint covers it, not only from a centre on it. Pick the best one (battle.js findBestAoeAimForTarget:
+       the most enemies, then the fewest allies); the row, its hover preview and the cast all use it. */
+    const _tileAoe = typeof isTileAoeSpell === 'function' && typeof findBestAoeAimForTarget === 'function' && isTileAoeSpell(sp);
+    let aoeAim = null;
+    if (_tileAoe && _fogSees) {
+      aoeAim = findBestAoeAimForTarget(actingUnit, sp, tx, ty);
+      if (aoeAim) inSpellRange = true;
+    }
+
     const canCast = canAfford && tierOk && inSpellRange;
 
     let spMoveTile = null;
@@ -6062,7 +6072,36 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           ? findSpellApproachTile(actingUnit, sp, tx, ty, targetUnit.z)
           : findMoveIntoRange(spRange, spellApCost);
       }
+      /* A tile AoE out of reach from here: when no approach puts a centre ON the enemy, step (or jump) to the
+         tile from which an off-centre centre still catches it — the most enemies first, then the shortest walk. */
+      if (!spMoveTile && _tileAoe && _fogSees && typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+          && (unitAP - 1) >= spellApCost) {
+        const cand = [];
+        if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) < 1) {
+          try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff && !t._jump)); } catch (e) {}
+        }
+        if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+          try { cand.push(...getJumpTiles(actingUnit).map(t => ({ x: t.x, y: t.y, z: t.z, _jumpVerb: true }))); } catch (e) {}
+        }
+        let best = null, bestFoes = -1, bestWalk = Infinity;
+        for (const t of cand) {
+          if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+          if (t.x === tx && t.y === ty) continue;
+          const aim = findBestAoeAimForTarget(actingUnit, sp, tx, ty, { castFrom: { x: t.x, y: t.y, z: t.z } });
+          if (!aim) continue;
+          const walk = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
+          if ((aim.foes || 0) > bestFoes || ((aim.foes || 0) === bestFoes && walk < bestWalk)) {
+            bestFoes = aim.foes || 0; bestWalk = walk;
+            best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb };
+          }
+        }
+        spMoveTile = best;
+      }
       if (spMoveTile && (unitAP - spMoveTile.moveCost) < spellApCost) spMoveTile = null;
+      if (spMoveTile && _tileAoe && _fogSees) {
+        aoeAim = spMoveTile._heightApproach ? null
+          : findBestAoeAimForTarget(actingUnit, sp, tx, ty, { castFrom: { x: spMoveTile.x, y: spMoveTile.y, z: spMoveTile.z } });
+      }
     }
 
     let dmgEstimate = null;
@@ -6080,6 +6119,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         apCost: spellApCost,
         mpCost: mpCost,
         moveTile: canCast ? null : spMoveTile,
+        // the off-centre AoE centre + the tile it is cast from (see THE OFF-CENTRE AIM above)
+        aim: aoeAim ? { x: aoeAim.x, y: aoeAim.y } : null,
+        aimFrom: aoeAim ? (canCast ? { x: actingUnit.x, y: actingUnit.y } : { x: spMoveTile.x, y: spMoveTile.y }) : null,
         preview: dmgEstimate ? { type: 'damage', amount: dmgEstimate } : null,
         powerLabel: powerLabel,
         // Matchup note only for damaging casts — a debuff can't be
@@ -6423,6 +6465,8 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearOverlay('actionPlanAoe');
   ThreeRenderer.clearOverlay('actionPlanShove');
   ThreeRenderer.clearOverlay('actionPlanRange');
+  ThreeRenderer.clearOverlay('actionPlanChain');
+  if (ThreeRenderer.clearIntentBadges) ThreeRenderer.clearIntentBadges();
 }
 
 /* ── TILE-MENU "MOVE TOWARDS" HOVER (2026-07-22) ──────────────────────
@@ -6536,14 +6580,19 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       itemKey: (action && action.itemKey) || null,
       // Move-then-cast rows forecast from the tile they cast FROM (height, facing, reach all change)
       castFrom: (mt && !mt._heightApproach && mt.x != null) ? { x: mt.x, y: mt.y, z: mt.z } : null,
+      // Off-centre AoE rows forecast the cast at the centre they will really use
+      aim: (action && action.aim) ? { x: action.aim.x, y: action.aim.y } : null,
     };
   }
   if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
   const tx = targetUnit.x, ty = targetUnit.y;
+  // THE OFF-CENTRE AIM: an AoE row aimed beside the enemy previews (arrow, footprint, forecast) from that centre
+  const _aim = (action && action.aim && action.spell) ? action.aim : null;
+  const ax = _aim ? _aim.x : tx, ay = _aim ? _aim.y : ty;
 
   const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
 
-  const targetY = ThreeRenderer.unitSurfaceY(targetUnit);
+  const targetY = _aim && (ax !== tx || ay !== ty) ? ThreeRenderer.tileTopY(ax, ay) : ThreeRenderer.unitSurfaceY(targetUnit);
 
   // Team-tinted hologram + a colour for the strike arrow that matches the action.
   const ghostTint = (typeof getFactionColor === 'function')
@@ -6638,11 +6687,11 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85 });
 
     // Arced strike arrow lobbing from the move destination onto the target.
-    ThreeRenderer.drawArrow3D(mt.x, mt.y, tx, ty, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
+    ThreeRenderer.drawArrow3D(mt.x, mt.y, ax, ay, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
   } else {
 
     // Arced strike arrow straight from the unit's current tile onto the target.
-    ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
+    ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, ax, ay, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
   }
 
   // Quiet reach field under the loud target/AoE layer (red damage / green
@@ -6650,13 +6699,15 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   _showQuickActionRange(actingUnit, castX, castY, action);
 
   const _HIT = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
-  ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: _HIT, opacity: 0.9, cursor: true }], _HIT, 0.9);
+  ThreeRenderer.setOverlay('actionPlanTarget', (ax !== tx || ay !== ty)
+    ? [{ x: tx, y: ty, color: _HIT, opacity: 0.9 }, { x: ax, y: ay, color: _HIT, opacity: 0.9, cursor: true }]
+    : [{ x: tx, y: ty, color: _HIT, opacity: 0.9, cursor: true }], _HIT, 0.9);
 
   /* THE FORECAST (2026-10-01, combat clarity pass): the hovered cast, read by the engine from the tile it is
      cast FROM — the tiles it hits (crimson), every body it moves (arrow + hologram + landing plate) and the
      same numbers the confirm step shows. Kinds the forecast does not read keep the footprint + shove guess. */
   const _plan = (action && action.spell && typeof forecastSpellPlan === 'function')
-    ? forecastSpellPlan(actingUnit, action.spell, tx, ty, targetUnit.z,
+    ? forecastSpellPlan(actingUnit, action.spell, ax, ay, _aim ? undefined : targetUnit.z,
         { castFrom: (castX !== actingUnit.x || castY !== actingUnit.y) ? { x: castX, y: castY, z: (mt && mt.z != null) ? mt.z : undefined } : null })
     : null;
 
@@ -6667,9 +6718,9 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
                  || sp.kind === 'line' || sp.kind === 'linePush' || sp.kind === 'bomb' || sp.kind === 'delayed'
                  || (typeof aoeMaskValid === 'function' && aoeMaskValid(sp.aoeMask));
     if (hasAoe) {
-      const aoeTiles = (_plan && _plan.handled && _plan.tiles && _plan.tiles.length) ? _plan.tiles : getSpellAoeFootprint(sp, tx, ty, actingUnit);
+      const aoeTiles = (_plan && _plan.handled && _plan.tiles && _plan.tiles.length) ? _plan.tiles : getSpellAoeFootprint(sp, ax, ay, actingUnit);
       if (aoeTiles && aoeTiles.length > 0) {
-        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _HIT, opacity: (t.x === tx && t.y === ty) ? 0.95 : 0.85 }));
+        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _HIT, opacity: (t.x === ax && t.y === ay) ? 0.95 : 0.85 }));
         ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, _HIT, 0.85);
       }
     }
@@ -6677,6 +6728,9 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
 
   if (_plan && _plan.handled) {
     if (typeof window.drawForecastMoves === 'function') window.drawForecastMoves(_plan, actingUnit, 'actionPlanShove');
+    // ricochet / chain / fork / splash victims: their plates, the hop arrows and every body's numbers on the board
+    if (typeof window.drawForecastChain === 'function') window.drawForecastChain(_plan, actingUnit, ax, ay, 'actionPlanChain');
+    if (typeof window._renderForecastBadges === 'function') window._renderForecastBadges(actingUnit, action.spell, _plan);
     return;
   }
 
@@ -6959,7 +7013,15 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       // after any move-then-cast walk above). Aiming at the enemy themselves
       // would put them in the ring's hole and guarantee a miss.
       let _aimX = tx, _aimY = ty, _aimZ = tz;
-      if ((spell.aoeShape === 'ring' || _hudMaskIsHollow(spell)) && typeof findAoeCastCenterForTarget === 'function') {
+      if (a.aim && typeof findBestAoeAimForTarget === 'function') {
+        // THE OFF-CENTRE AIM: the row's own centre when we cast from the tile it was picked for (a guest's walk may
+        // not have synced yet: keep it), else re-pick from where the caster really stands.
+        const _guest = !!(window._NET && window._NET.online && window._NET.role === 'guest');
+        const _same = !a.aimFrom || (a.aimFrom.x === actingUnit.x && a.aimFrom.y === actingUnit.y);
+        const _ra = (_same || _guest) ? null : findBestAoeAimForTarget(actingUnit, spell, tx, ty);
+        const _use = _ra || a.aim;
+        _aimX = _use.x; _aimY = _use.y; _aimZ = undefined;
+      } else if ((spell.aoeShape === 'ring' || _hudMaskIsHollow(spell)) && typeof findAoeCastCenterForTarget === 'function') {
         const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
         if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
       }
@@ -7727,6 +7789,13 @@ function _hrlgTileBlades(actingUnit, st) {
         if (a.spell) showSpellTooltip(a.spell, e);
         else if (isObjAtk) showSpellTooltip(objCard, e);
         if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
+        // THE TILE-MENU SPELL HOVER (2026-10-05, mondo: "if its an aoe it doesnt show its aoe preview when i hover
+        // on it"): a spell row paints exactly what the armed cast on this tile would: footprint, hit plates,
+        // forecast numbers, landings, ricochet hops (ui.js updateAoePreview with the row's spell).
+        if (a.spell && a.available && !isApproach && typeof updateAoePreview === 'function') {
+          try { updateAoePreview(tx, ty, { unit: actingUnit, spell: a.spell }); } catch (e) { /* cosmetic */ }
+          if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+        }
         // Approach arrow + ghost on the step tile, the target tile marked —
         // the engine's own move-then-act preview (battle.js).
         if (isApproach && a.available && typeof _drawSpellApproachPreview === 'function') {
@@ -7738,6 +7807,7 @@ function _hrlgTileBlades(actingUnit, st) {
         hideSpellTooltip();
         if (a.id === 'moveTowards') _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
+        if (a.spell && !isApproach && typeof clearAoePreview === 'function' && state.actionMode !== 'spell') clearAoePreview();
       },
     };
   });
