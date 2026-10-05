@@ -17,9 +17,11 @@
             --vic-panel-w: clamp(320px, 31vw, 460px);
             --vic-bar-h: 66px;
             --vic-ink: var(--ew-ink, #eef1ff);
-            --vic-mute: var(--ew-mute, #a9b0c8);
-            --vic-dim: var(--ew-dim, #7a8199);
-            --vic-gold: var(--ew-sel, #ffd75e);
+            --vic-mute: var(--ew-ink-mute, #b7bee8);
+            --vic-dim: var(--ew-ink-dim, #7079b8);
+            /* THE HUD THEME PASS (2026-10-05): the debrief's accent is the HUD's frame
+               (silver on Classic Blue), never a hard gold — see the pass below */
+            --vic-gold: var(--ew-plate-edge, #d9dceb);
             --vic-edge: var(--ew-plate-edge, rgba(214, 222, 255, 0.55));
             --vic-plate: var(--ew-plate-bg, linear-gradient(180deg, #16188e, #050632 70%, #010214));
             --vic-row: var(--ew-row-bg, rgba(10, 14, 60, 0.55));
@@ -642,6 +644,135 @@
         .vic-bottom button.warn:hover, .vic-bottom #mainMenuBtn:hover { color: var(--vic-ink); }
         .vic-bottom button.enc-return { padding: 12px 40px; font-size: 13px; }
 
+        /* ══════════ THE HUD THEME PASS (2026-10-05) ══════════
+           The user: "get rid of the ai slop gold and dark color scheme for the
+           post match info, we already have a theme for HUDs". The debrief panel,
+           its cards, the plates at the stage's foot and the command bar wear the
+           battle HUD's material — the hud.js THE COLOUR PASS tokens (--ew-plate-*,
+           --ew-row-*, --ew-head-*, --ew-ink*) — so whichever HUD theme the player
+           picked (Classic Blue, Void, Onyx, Leather, Parchment, Glass) restyles the
+           debrief with the battle. No hard gold, no near-black: the plate is the
+           Horologe's plate, a card is a HUD row, a caption is a HUD head, the
+           selected tab / the primary button are the HUD's selected row. Data tints
+           (the tier colour of an achievement, P1/P2, the XP bar's blue) stay. */
+        .result-overlay .vic-debrief {
+            background: var(--ew-plate-scan, none), var(--ew-plate-bg);
+            border-left: 1px solid var(--ew-plate-edge);
+            box-shadow: inset 0 0 0 1px var(--ew-plate-seam, transparent), inset 0 0 0 2px var(--ew-plate-rim, transparent),
+                inset 0 3px 0 var(--ew-plate-lip, transparent), var(--ew-drop, -18px 0 48px rgba(0, 0, 0, 0.55));
+            color: var(--ew-ink);
+        }
+        .result-overlay .vic-debrief-head { background: var(--ew-head-bg); border-bottom: 1px solid var(--ew-plate-edge); padding-bottom: 0; }
+        .result-overlay .vic-debrief-title { color: var(--ew-head-ink); text-shadow: var(--ew-tshadow, none); }
+        .result-overlay .vic-tabs { border-bottom: 0; }
+        .result-overlay .vic-tab { color: var(--ew-ink-dim); border-bottom-color: transparent; text-shadow: var(--ew-tshadow, none); }
+        .result-overlay .vic-tab:hover { color: var(--ew-ink); }
+        .result-overlay .vic-tab.on {
+            color: var(--ew-ink); background: var(--ew-row-sel-bg);
+            border-bottom-color: var(--ew-plate-edge); text-shadow: var(--ew-tshadow, none);
+        }
+        .result-overlay .vic-debrief-hint { color: var(--ew-ink-dim); }
+        .result-overlay .vic-sheet { scrollbar-color: var(--ew-row-edge) transparent; }
+        /* every card is one HUD row; its caption is a HUD head */
+        .result-overlay .vic-card,
+        .result-overlay .vic-pay-card, .result-overlay .vic-xp-card, .result-overlay .vic-drop-card,
+        .result-overlay .vic-cap-card, .result-overlay .vic-mvp-card, .result-overlay .vic-mvp-card.enemy,
+        .result-overlay .vic-awards > .vic-achievements:not(.vic-card), .result-overlay .vic-stats-table {
+            background: var(--ew-row-bg);
+            border: 1px solid var(--ew-row-edge);
+            box-shadow: inset 0 1px 0 var(--ew-row-lip, transparent), var(--ew-drop, 0 6px 18px rgba(0, 0, 0, 0.3));
+        }
+        .result-overlay .vic-card-cap, .result-overlay .vic-ach-title,
+        .result-overlay .vic-pay-card .vic-card-cap, .result-overlay .vic-xp-card .vic-card-cap,
+        .result-overlay .vic-drop-card .vic-card-cap, .result-overlay .vic-cap-card .vic-card-cap,
+        .result-overlay .vic-mvp-card .vic-card-cap { color: var(--ew-head-ink); text-shadow: var(--ew-tshadow, none); }
+        .result-overlay .vic-mvp-card.enemy .vic-card-cap { color: var(--vic-p2); }
+        /* HAZARD PAY: the total in the HUD's ink, the ledger on the row's hairlines */
+        .result-overlay .vic-pay-total { color: var(--ew-ink); text-shadow: var(--ew-tshadow, none); }
+        .result-overlay .vic-pay-row { color: var(--ew-ink-mute); border-bottom-color: var(--ew-hair); }
+        .result-overlay .vic-pay-row b { color: var(--ew-ink); }
+        .result-overlay .vic-pay-row.cap { color: var(--ew-ink-dim); }
+        .result-overlay .vic-pay-wallet, .result-overlay .vic-pay-wallet.offline { color: var(--ew-ink-mute); }
+        .result-overlay .vic-pay-wallet.set { color: var(--ew-ink); }
+        /* EXPERIENCE / SPOILS / CAPTURES: the gold highlights become the HUD's ink */
+        .result-overlay .vic-xp-pool, .result-overlay .vic-xp-lvl-no, .result-overlay .vic-xp-milestone,
+        .result-overlay .vic-xp-row.you .vic-xp-name::after, .result-overlay .vic-drop-name em,
+        .result-overlay .vic-cap-row.bounty .vic-cap-dest { color: var(--ew-ink); text-shadow: var(--ew-tshadow, none); }
+        .result-overlay .vic-xp-row { background: var(--ew-row-sel-bg); border-color: var(--ew-hair); }
+        .result-overlay .vic-xp-row.leveled { border-color: var(--ew-plate-edge); }
+        .result-overlay .vic-xp-lv { color: var(--ew-ink); background: var(--ew-row-sel-bg); border-color: var(--ew-row-edge); }
+        .result-overlay .vic-drop-row, .result-overlay .vic-cap-row { background: var(--ew-row-sel-bg); border-color: var(--ew-hair); }
+        .result-overlay .vic-drop-name { color: var(--ew-ink); }
+        .result-overlay .vic-drop-from, .result-overlay .vic-drop-none { color: var(--ew-ink-mute); }
+        /* ACHIEVEMENTS / RECORDS / ALMOST THERE (the shared §6.2 rows) — on the debrief only */
+        .result-overlay .ach-card, .result-overlay .rec-broken-row {
+            background: var(--ew-row-sel-bg);
+            border-color: var(--ew-row-edge);
+        }
+        .result-overlay .ach-card { border-left-color: var(--ach-tint, var(--ew-plate-edge)); }
+        .result-overlay .rec-broken-row { border-left-color: var(--ew-plate-edge); }
+        .result-overlay .rec-broken-icon { filter: none; }
+        .result-overlay .ach-card-name, .result-overlay .rec-broken-name { color: var(--ew-ink); }
+        .result-overlay .ach-card-desc, .result-overlay .rec-broken-desc,
+        .result-overlay .rec-broken-vals, .result-overlay .ach-near-count, .result-overlay .ach-panel-link { color: var(--ew-ink-mute); }
+        .result-overlay .ach-near-label { color: var(--ew-ink); }
+        .result-overlay .ach-near-bar { background: var(--ew-dead-bg, rgba(0, 0, 0, 0.4)); }
+        .result-overlay .ach-card-reward, .result-overlay .vic-ach-item {
+            color: var(--ew-ink); background: var(--ew-head-bg); border-color: var(--ew-row-edge);
+        }
+        .result-overlay .rec-broken-new { color: var(--ew-ink); }
+        .result-overlay .rec-broken-new.rec-broken-done { text-shadow: var(--ew-tshadow, none); }
+        .result-overlay .vic-career-ach-bar { background: var(--ew-dead-bg, rgba(0, 0, 0, 0.4)); }
+        .result-overlay .vic-career-ach-fill { background: var(--ew-plate-edge); }
+        /* HONOURS: the MVP card's portrait ring + the gold award row */
+        .result-overlay .vic-mvp-card-port, .result-overlay .vic-mvp-port { box-shadow: none; }
+        .result-overlay .vic-award { background: var(--ew-row-sel-bg); }
+        .result-overlay .vic-award.gold { background: var(--ew-row-sel-bg); border-left-color: var(--ew-plate-edge); }
+        .result-overlay .vic-award.gold .vic-award-name { color: var(--ew-ink); }
+        .result-overlay .vic-award-stat { color: var(--ew-ink); }
+        .result-overlay .vic-stats-table .stat-best { color: var(--ew-ink); text-decoration: underline; text-underline-offset: 2px; }
+        .result-overlay .vic-stats-table caption, .result-overlay .vic-stats-table th { color: var(--ew-head-ink); }
+        .result-overlay .vic-stats-table th { border-bottom-color: var(--ew-row-edge); }
+        .result-overlay .vic-stats-table td { border-bottom-color: var(--ew-hair); }
+        /* THE MVP PLATE at the stage's foot is the Horologe's plate */
+        .result-overlay .vic-mvp-tag {
+            background: var(--ew-plate-scan, none), var(--ew-plate-bg);
+            border-color: var(--ew-plate-edge);
+            box-shadow: inset 0 0 0 1px var(--ew-plate-seam, transparent), inset 0 0 0 2px var(--ew-plate-rim, transparent),
+                inset 0 3px 0 var(--ew-plate-lip, transparent), var(--ew-drop, 0 10px 30px rgba(0, 0, 0, 0.55));
+        }
+        .result-overlay .vic-mvp-tag::before { box-shadow: none; }
+        .result-overlay .vic-mvp-label { color: var(--ew-head-ink); }
+        /* THE COMMAND BAR: a HUD plate; each button a HUD row, the primary the selected row */
+        .result-overlay .vic-bottom {
+            background: var(--ew-plate-scan, none), var(--ew-plate-bg);
+            border-top: 1px solid var(--ew-plate-edge);
+            box-shadow: inset 0 0 0 1px var(--ew-plate-seam, transparent), inset 0 3px 0 var(--ew-plate-lip, transparent);
+        }
+        .result-overlay .vic-bottom button {
+            border-radius: 6px;
+            color: var(--ew-ink); background: var(--ew-row-bg);
+            border: 1px solid var(--ew-row-edge);
+            box-shadow: inset 0 1px 0 var(--ew-row-lip, transparent);
+            text-shadow: var(--ew-tshadow, none);
+        }
+        .result-overlay .vic-bottom button:hover {
+            background: var(--ew-row-sel-bg); border-color: var(--ew-plate-edge);
+            box-shadow: inset 0 1px 0 var(--ew-row-lip, transparent);
+        }
+        .result-overlay .vic-bottom button.primary,
+        .result-overlay.defeat .vic-bottom button.primary {
+            color: var(--ew-ink); background: var(--ew-row-sel-bg);
+            border: 2px solid var(--ew-plate-edge);
+            box-shadow: inset 0 1px 0 var(--ew-row-lip, transparent), var(--ew-drop, none);
+        }
+        .result-overlay .vic-bottom button.primary:hover,
+        .result-overlay.defeat .vic-bottom button.primary:hover {
+            background: var(--ew-row-sel-bg); filter: brightness(1.18);
+            box-shadow: inset 0 1px 0 var(--ew-row-lip, transparent), var(--ew-drop, none);
+        }
+        .result-overlay .vic-bottom button.warn, .result-overlay .vic-bottom #mainMenuBtn { color: var(--ew-ink-mute); }
+        .result-overlay .vic-bottom button.warn:hover, .result-overlay .vic-bottom #mainMenuBtn:hover { color: var(--ew-ink); }
         /* ════════════════════════════════════════════════════
            3D STAGE MODE (.result-overlay.vic-3d)
            The live Three.js battlefield IS the backdrop: the overlay goes
