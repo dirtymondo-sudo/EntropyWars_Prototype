@@ -35231,6 +35231,8 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[17, -3.5], [17, 0]], w: 2.4 },                 // ossuary ⇄ warm wall (the loop)
                     { k: 'space', x: 11.5, z: 12.375, w: 9, d: 6.75 },                 // THE TOMBS
                     { k: 'hall', pts: [[14, 7.5], [14, 9]], w: 2.4 },
+                    { k: 'hall', pts: [[4.75, 12.4], [7, 12.4]], w: 2.4 },             // the landing ⇄ the tombs
+                    { k: 'hall', pts: [[-0.5, -14.6], [6, -14.6]], w: 2.2 },           // the cistern ⇄ the ossuary, high
                     { k: 'plateau', x: 0, z: 13.9, w: 10.5, d: 5.7, h: 3.2, edge: 0.15 },                                         // the landing's floor (the door's sill)
                     { k: 'ramp', x0: -4.05, z0: 13.4, x1: -12.6, z1: 13.4, w: 3.2, h0: 3.2, h1: 1.6, stairs: true, edge: 0.15,
                       built: true, key: 'dungeon', side: 'bricks_2' },                                                           // THE DESCENT, first flight
@@ -35240,8 +35242,29 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 12.5, z: -10.875, w: 13.5, d: 9.75, h: 1.75, edge: 0.15 },                                // THE OSSUARY SHELF (a brick dais)
                     { k: 'ramp', x0: 8, z0: -1.2, x1: 8, z1: -6.7, w: 3.2, h0: 0, h1: 1.75, stairs: true, edge: 0.15,
                       built: true, key: 'dungeon', side: 'bricks_2' },                                                           // its flight (0.7 m inside the dais)
-                    { k: 'wall', x0: 8.5, z0: 11, x1: 13.5, z1: 11, h: 0.9, t: 0.9, key: 'marble' },                             // the sarcophagus rows (the park rule's grind)
-                    { k: 'wall', x0: 8.5, z0: 13.8, x1: 13.5, z1: 13.8, h: 0.9, t: 0.9, key: 'marble' },
+                    /* the stairs pass (2026-10-05): stepped crypt levels. THE TOMBS a tier (1.6) off the landing's east side, down a
+                       flight from the landing and on down a flight to the warm wall (a loop back round to the gallery); over the shelf
+                       the loculi ledge (3.2) along the ossuary's north wall, up a flight, and on west through the wall at that height to
+                       a ledge in the cistern across a 2.5 m gap (a rail across it); a ladder up to it from the cistern floor */
+                    { k: 'plateau', x: 11.5, z: 12.375, w: 9, d: 6.75, h: 1.6, edge: 0.15 },                                     // THE TOMBS
+                    { k: 'ramp', x0: 7.9, z0: 12.4, x1: 4.2, z1: 12.4, w: 2.4, h0: 1.6, h1: 3.2, stairs: true, edge: 0.15,
+                      built: true, key: 'dungeon', side: 'bricks_2' },                                                           // the landing down to the tombs
+                    { k: 'ramp', x0: 14, z0: 5.7, x1: 14, z1: 9.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, edge: 0.15,
+                      built: true, key: 'dungeon', side: 'bricks_2' },                                                           // the tombs down to the warm wall
+                    { k: 'plateau', x: 12.625, z: -14.4, w: 13.25, d: 2.75, h: 3.2, edge: 0.15 },                                // the loculi ledge
+                    { k: 'ramp', x0: 17.5, z0: -9.2, x1: 17.5, z1: -13.7, w: 2.4, h0: 1.75, h1: 3.2, stairs: true, rails: 'r', edge: 0.15,
+                      built: true, key: 'dungeon', side: 'bricks_2' },                                                           // its flight, off the shelf (a railing on its open side)
+                    { k: 'plateau', x: 3.0, z: -14.6, w: 7.0, d: 2.2, h: 3.2, edge: 0.15 },                                      // the passage west through the wall
+                    { k: 'plateau', x: -4.75, z: -14.6, w: 3.5, d: 2.3, h: 3.2, edge: 0.15 },                                    // the cistern's ledge
+                    { k: 'rail', x0: -3.2, z0: -14.6, x1: -0.3, z1: -14.6, y: 3.2, model: 'pipe', block: false },                // across the gap
+                    { k: 'climb', x: -5.0, z: -13.75, face: 0, look: 'ladder' },                                                 // up from the cistern floor
+                    { k: 'rail', x0: -6.4, z0: -13.6, x1: -5.45, z1: -13.6, model: 'parapet' },                                  // the ledges' edges
+                    { k: 'rail', x0: -4.55, z0: -13.6, x1: -3.1, z1: -13.6, model: 'parapet' },
+                    { k: 'rail', x0: 6.4, z0: -13.15, x1: 16.1, z1: -13.15, model: 'parapet' },
+                    { k: 'rail', x0: 9.8, z0: -6.15, x1: 15.6, z1: -6.15, model: 'parapet' },
+                    { k: 'rail', pts: [[-14.15, 10.7, 1.55], [-14.15, 2.3, 0.05]], model: 'pipe', block: false },               // a handrail down the middle of the second flight
+                    { k: 'wall', x0: 9.5, z0: 11, x1: 14.5, z1: 11, h: 0.9, t: 0.9, key: 'marble' },                             // the sarcophagus rows (the park rule's grind)
+                    { k: 'wall', x0: 9.5, z0: 13.8, x1: 14.5, z1: 13.8, h: 0.9, t: 0.9, key: 'marble' },
                     { k: 'path', pts: [[-15.6, 1.5], [12, 1.5]], w: 1.4 },                                                       // the gallery's cobbles
                     { k: 'scatter', key: 'cave_stone', n: 6, seed: 1 },                                                          // the rubble
                 ],
@@ -35260,11 +35283,11 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 { key: 'candle_ring',    x: -12.5, z: 12.0 },                                   // the candles: the half-landing, the way in, the chapel, the shelf
-                { key: 'candle_ring',    x: 15.5, z: 6.5 },
+                { key: 'candle_ring',    x: 17.8, z: 6.8 },
                 { key: 'candle_ring',    x: -6.4, z: 8.2 },
                 { key: 'candle_ring',    x: 8.0, z: -9.0 },
                 { key: 'wall_torch',     wall: 's', x: -3.5, mount: 5.0 },                       // over the landing (the wall prop's mount is from the box floor — 3.2 m of tier under it)
-                { key: 'wall_torch',     wall: 'n', x: 9.0, mount: 3.4 },
+                { key: 'wall_torch',     wall: 'n', x: 9.0, mount: 5.0 },
                 { key: 'ship_lantern',   x: 0, z: 1.5, ceil: true },                             // a lantern on a chain at the gallery's crossroads
                 { key: 'ship_lantern',   x: 10, z: -8, ceil: true },                             // and one over the loculi
                 { key: 'cell_bars',      wall: 'e', z: -9.0, mount: 1.75 },                                    // the sealed loculi
@@ -35283,15 +35306,15 @@ const DOOR_HQ = {
                 { key: 'skull_pile',     x: -17.8, z: -14.4 },
                 { key: 'skull_pile',     x: -16.6, z: -6.8 },
                 { key: 'skull_pile',     x: -10.2, z: -14.6 },
-                { key: 'sarcophagus',    x: 9.6, z: 11, face: 90 },                              // the tombs on the two low rows
-                { key: 'sarcophagus',    x: 12.4, z: 11, face: 90 },
-                { key: 'sarcophagus',    x: 9.6, z: 13.8, face: 90 },
-                { key: 'sarcophagus',    x: 12.4, z: 13.8, face: 90 },
+                { key: 'sarcophagus',    x: 10.6, z: 11, face: 90 },                             // the tombs on the two low rows
+                { key: 'sarcophagus',    x: 13.4, z: 11, face: 90 },
+                { key: 'sarcophagus',    x: 10.6, z: 13.8, face: 90 },
+                { key: 'sarcophagus',    x: 13.4, z: 13.8, face: 90 },
                 { key: 'catacomb_wall',  wall: 'n', x: -14 },                                     // the bone walls
                 { key: 'catacomb_wall',  wall: 'w', z: -12 },
-                { key: 'catacomb_wall',  wall: 's', x: 11.5 },
+                { key: 'catacomb_wall',  wall: 's', x: 11.5, mount: 1.6 },
                 { key: 'confessional_booth', x: 3.3, z: 14.3, face: 270 },                        // THE CONFESSIONAL (the tape's namesake) on the landing, at the top of the descent
-                { key: 'wooden_cross',   wall: 'n', x: -3.5, mount: 1.0 },                         // under the crypt's vault
+                { key: 'wooden_cross',   wall: 'n', x: -1.75, mount: 1.0 },                         // under the crypt's vault
                 { key: 'brazier',        x: 13, z: 1 },
             ],
             agents: [],
