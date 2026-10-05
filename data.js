@@ -43850,15 +43850,27 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: -14, z0: -25.5, x1: -14, z1: -19.5, w: 1.4, y: 0.35 },
             { k: 'deck', x0: -2, z0: -3, x1: 3, z1: -6.5, w: 1.6, y: 0.3 },
             /* THE STAGE (1.4) across the water: the ramp from the east, a vine on its south face */
-            { k: 'plateau', x: 8, z: -21, w: 14, d: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: 22, z0: -21, x1: 14.3, z1: -21, w: 2.8, h0: 0, h1: 1.4 }, { k: 'climb', x: 6, z: -18.3, face: 0, look: 'vine' },
+            { k: 'plateau', x: 8, z: -21, w: 14, d: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: 18.0, z0: -21, x1: 14.3, z1: -21, w: 2.8, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.2 }, { k: 'climb', x: 6, z: -18.3, face: 0, look: 'vine' },
+            { k: 'rail', x0: 1.5, z0: -18.3, x1: 5.0, z1: -18.3, model: 'ranch' }, { k: 'rail', x0: 9.2, z0: -18.3, x1: 14.6, z1: -18.3, model: 'ranch' },   // the stage's front rail (open at the vine and the lectern)
             /* THE MOUND (2.6): the stair up its south side, a vine on its east face, a rope on its north; THE OWL (6.4, the tape) on it */
-            { k: 'plateau', x: -18, z: -12, r: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -18, z0: -0.5, x1: -18, z1: -6.7, w: 2.6, h0: 0, h1: 2.6, stairs: true },
+            { k: 'plateau', x: -18, z: -12, r: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -18, z0: -0.5, x1: -18, z1: -6.7, w: 3.4, h0: 0, h1: 2.6, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', pts: [[-18, -0.9, 0.17], [-18, -6.3, 2.43]], model: 'pipe', block: false },   // its centre handrail
+            /* a ranch rail round the mound's rim, open at the stair, the vine, the rope and the log bridge */
+            { k: 'rail', arc: { x: -18, z: -12, r: 5.75, a0: 20, a1: 70 }, model: 'ranch' }, { k: 'rail', arc: { x: -18, z: -12, r: 5.75, a0: 110, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: -18, z: -12, r: 5.75, a0: 250, a1: 340 }, model: 'ranch' },
             { k: 'climb', x: -12.3, z: -12, face: 270, look: 'vine' }, { k: 'climb', x: -18, z: -17.7, face: 180, look: 'rope' },
             { k: 'plateau', x: -18, z: -13, r: 2.4, h: 6.4, edge: 0.4 },
             /* THE WEST TERRACE (2.2) on the west wall — the owl's gate stands ON it: the stair from the north, a rope on its south face */
-            { k: 'plateau', x: -29.5, z: 0, w: 7, d: 10, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -29.5, z0: -12, x1: -29.5, z1: -4.3, w: 2.6, h0: 0, h1: 2.2, stairs: true }, { k: 'climb', x: -29.5, z: 4.7, face: 0, look: 'rope' },
+            { k: 'plateau', x: -29.5, z: 0, w: 7, d: 10, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -29.5, z0: -12, x1: -29.5, z1: -4.3, w: 2.6, h0: 0, h1: 2.2, stairs: true, model: 'forest', edge: 0.2 }, { k: 'climb', x: -29.5, z: 4.7, face: 0, look: 'rope' },
+            /* THE LOG BRIDGE (2026-10-05): from the mound's south-west rim over the lawn to the terrace's north-east corner, ranch rails either side */
+            { k: 'bridge', x0: -22.1, z0: -8.4, x1: -26.4, z1: -4.6, w: 1.8, y: 2.4, key: 'wood_planks', rails: false },
+            { k: 'rail', x0: -22.7, z0: -9.0, x1: -26.9, z1: -5.3, y: 2.4, model: 'ranch' }, { k: 'rail', x0: -21.5, z0: -7.8, x1: -25.8, z1: -3.9, y: 2.4, model: 'ranch' },
+            { k: 'rail', x0: -32.6, z0: -4.6, x1: -32.6, z1: 4.0, model: 'ranch' },
             /* THE TREEHOUSE (3.4) round the old redwood: a ladder on its west face, a vine on its south */
             { k: 'plateau', x: 22, z: 12, r: 2.2, h: 3.4, edge: 0.35 }, { k: 'tree', x: 22, z: 12, kind: 'tree_3', h: 9, r: 0.5 }, { k: 'climb', x: 20.1, z: 12, face: 90, look: 'ladder' }, { k: 'climb', x: 22, z: 13.9, face: 0, look: 'vine' },
+            /* the second treehouse (2026-10-05) a 2 m gap north of it (a rail across), up a timber stair from the west */
+            { k: 'plateau', x: 21.8, z: 6.0, r: 1.9, h: 3.4, edge: 0.35 }, { k: 'tree', x: 22.3, z: 5.5, kind: 'tree_3', h: 9, r: 0.5 },
+            { k: 'ramp', x0: 12.8, z0: 6.0, x1: 20.6, z1: 6.0, w: 2.0, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', x0: 22.0, z0: 9.9, x1: 22.0, z1: 7.8, y: 3.4, model: 'pipe', block: false },
             /* THE HOLLOW east of the lake, THE FENCE along the lawn (the grind) */
             { k: 'dip', x: 24, z: 0, r: 3.5, h: -1.2 },
             { k: 'wall', x0: -2, z0: 2, x1: 14, z1: 2, h: 0.9, t: 0.4, key: 'wood' },
@@ -43879,7 +43891,7 @@ const HQ_AREA_SPECS = {
                 { key: 'park_bench', x: 4, z: 12, face: 180 }, { key: 'park_bench', x: -6, z: 4, face: 0 }, { key: 'park_bench', x: 14, z: 12, face: 270 }, { key: 'park_bench', x: -24, z: 8, face: 90 },
                 /* THE CAMP east of the lawn: the members' tents */
                 { key: 'camping_tent', x: 20, z: 22, face: 200 }, { key: 'camping_tent', x: 26, z: 20, face: 230 }, { key: 'camping_tent', x: 24, z: 26, face: 180 }, { key: 'campfire', x: 22, z: 20 }, { key: 'carnival_tent', x: -15, z: 15, face: 90 }, { key: 'cardboard_boxes', x: 28, z: 24 }, { key: 'sea_chest', x: 18, z: 25 },
-                { key: 'ticket_booth', x: 4, z: 24, face: 180 }, { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: -12, z: 4 }, { key: 'signpost', x: 20, z: 6 }, { key: 'lesson_sign', x: 6, z: 14, face: 180, lesson: 'climb' },
+                { key: 'ticket_booth', x: 4, z: 24, face: 180 }, { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: -12, z: 4 }, { key: 'signpost', x: 11.4, z: 4.2 }, { key: 'lesson_sign', x: 6, z: 14, face: 180, lesson: 'climb' },
                 /* THE TREEHOUSE, THE DOCK, the creek */
                 { key: 'brass_telescope', x: 23.5, z: 11, y: 3.4, face: 180 }, { key: 'sea_chest', x: 20.8, z: 13.2, y: 3.4 }, { key: 'wooden_cross', x: -12, z: -22 }, { key: 'stump', x: -16, z: -27 }, { key: 'fallen_log', x: 26, z: -2 },
                 { key: 'cave_stone', x: -28, z: -20 }, { key: 'cave_stone', x: 30, z: -14 }, { key: 'campfire', x: -26, z: 12 }, { key: 'signpost', x: 29, z: 10 }],
