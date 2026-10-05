@@ -31224,6 +31224,16 @@ const DOOR_HQ = {
                 features: [
                     { k: 'ramp', x0: 0, z0: 6.5, x1: 0, z1: -22.0, w: 7, h0: 0, h1: 11.4, stairs: true, edge: 0.2,              // THE STAIR (built: white marble, the blue runner up the middle)
                       built: true, key: 'marble_light', side: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light' } },
+                    { k: 'rail', pts: [[-2.7, 6.1, 0.16], [-2.7, -21.5, 11.2]], model: 'pipe', block: false },        // a handrail either side of the runner
+                    { k: 'rail', pts: [[2.7, 6.1, 0.16], [2.7, -21.5, 11.2]], model: 'pipe', block: false },
+                    /* THE GALLERIES (2026-10-05): a 3.4 m marble gallery down each side wall, up a flight off the ring's edge, balusters along
+                       the front; a curved skate rail round the ring's south side */
+                    { k: 'plateau', x: -12.5, z: -10, w: 5, d: 22, h: 3.4, edge: 0.15 },
+                    { k: 'plateau', x: 12.5, z: -10, w: 5, d: 22, h: 3.4, edge: 0.15 },
+                    { k: 'ramp', x0: -12.5, z0: 8.5, x1: -12.5, z1: 0.3, w: 2.4, h0: 0, h1: 3.4, stairs: true, model: 'stone', edge: 0.15 },
+                    { k: 'ramp', x0: 12.5, z0: 8.5, x1: 12.5, z1: 0.3, w: 2.4, h0: 0, h1: 3.4, stairs: true, model: 'stone', edge: 0.15 },
+                    { k: 'rail', x0: -10.15, z0: -20.8, x1: -10.15, z1: 0.85, model: 'balusters_b' }, { k: 'rail', x0: 10.15, z0: -20.8, x1: 10.15, z1: 0.85, model: 'balusters_b' },
+                    { k: 'rail', arc: { x: 0, z: 10, r: 13, a0: 100, a1: 150 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 10, r: 13, a0: 210, a1: 260 }, model: 'pipe', block: false },
                 ],
                 marks: [
                     { k: 'rect', x: 0, z: 14.6, w: 4.2, d: 16.2, color: 0x2f58d0 },                                      // THE RUNNER from the door to the stair's foot
@@ -31252,8 +31262,8 @@ const DOOR_HQ = {
                 { key: 'stained_glass',  wall: 'e', z: 12, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: 0, h: 5.0, mount: 10.5 }, { key: 'stained_glass', wall: 'e', z: -12, h: 5.0, mount: 10.5 },
                 /* the lamps round the ring on the floor */
                 { key: 'globe_lamp',     x: -11.5, z: 18 }, { key: 'globe_lamp', x: 11.5, z: 18 },
-                { key: 'globe_lamp',     x: -12, z: 4 }, { key: 'globe_lamp', x: 12, z: 4 },
-                { key: 'gclock',         x: -12.5, z: -8, face: 90 },                                                   // a grandfather clock by the west wall (the reference's standing clock)
+                { key: 'globe_lamp',     x: -9.4, z: 3.6 }, { key: 'globe_lamp', x: 9.4, z: 3.6 },
+                { key: 'gclock',         x: -12.5, z: -8, y: 3.4, face: 90 },                                                   // a grandfather clock by the west wall (the reference's standing clock)
                 { key: 'banner',         wall: 'w', z: -18, mount: 6.0 }, { key: 'banner', wall: 'e', z: -18, mount: 6.0 },
             ],
             agents: [],
