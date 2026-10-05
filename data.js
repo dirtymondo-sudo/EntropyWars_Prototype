@@ -37741,10 +37741,29 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[25, 25], [31.5, 31.5]], w: 2.6 },               // service room 2
                     { k: 'hall', pts: [[-25, 25], [-31.5, 31.5]], w: 2.6 },             // service room 3
                     { k: 'hall', pts: [[-25, -25], [-31.5, -31.5]], w: 2.6 },           // service room 4
-                    /* THE GANTRY over the detector, up its built stair */
+                    /* THE GANTRY over the detector, up its stair; THE CATWALKS (3.2) round the hall's north, east and south walls over the
+                       racks and over the ring, down a second flight to a landing in the south-west corner; a skate rail laid across the
+                       hall from the gantry to the landing, a curved rail round the beam dump */
                     { k: 'plateau', x: 42, z: -6, w: 6, d: 6, h: 3.2, edge: 0.15 },
-                    { k: 'ramp', x0: 42, z0: 4.2, x1: 42, z1: -3.7, w: 2.4, h0: 0, h1: 3.2, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2d' },   // L 7.9 ≥ 2.2 × h; ends 0.7 m inside
-                    { k: 'rail', x0: 39.4, z0: -8.6, x1: 39.4, z1: -3.4 },
+                    { k: 'ramp', x0: 42, z0: 4.2, x1: 42, z1: -3.7, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },   // L 7.9 ≥ 2.2 × h; ends 0.7 m inside
+                    { k: 'rail', x0: 39.15, z0: -8.8, x1: 39.15, z1: -3.2, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 39.2, z0: -3.15, x1: 40.7, z1: -3.15, y: 3.2, model: 'glass' }, { k: 'rail', x0: 43.3, z0: -3.15, x1: 44.8, z1: -3.15, y: 3.2, model: 'glass' },
+                    { k: 'plateau', x: 25.85, z: 11.1, w: 4.7, d: 5.4, h: 3.2, edge: 0.15 },                                   // the landing
+                    { k: 'ramp', x0: 26.4, z0: 1.6, x1: 26.4, z1: 9.1, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: 25.5, z0: -10.5, x1: 49, z1: -10.5, w: 3, y: 3.2, rails: false },                        // the north catwalk
+                    { k: 'bridge', x0: 47.5, z0: -12, x1: 47.5, z1: 12, w: 3, y: 3.2, rails: false },                           // the east catwalk
+                    { k: 'bridge', x0: 27, z0: 10.5, x1: 49, z1: 10.5, w: 3, y: 3.2, rails: false },                            // the south catwalk
+                    { k: 'rail', x0: 25.6, z0: -9.15, x1: 38.9, z1: -9.15, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 46.15, z0: -8.9, x1: 46.15, z1: 8.9, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 27.6, z0: 9.15, x1: 45.9, z1: 9.15, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 39.6, z0: -3.6, x1: 26.6, z1: 9.0, y: 3.2, model: 'pipe', block: false },                  // across the hall
+                    { k: 'rail', arc: { x: 34, z: 8, r: 2.6, a0: 90, a1: 270 }, model: 'pipe', block: false },                   // round the beam dump
+                    /* THE CONTROL ROOM and its service bay raised (1.2), up a short flight in each doorway */
+                    { k: 'plateau', x: 1, z: -45.4, w: 19, d: 8.2, h: 1.2, edge: 0.15 },
+                    { k: 'plateau', x: -13.25, z: -45.25, w: 6.5, d: 7.5, h: 1.2, edge: 0.15 },
+                    { k: 'plateau', x: -9.25, z: -47.3, w: 3.5, d: 3.4, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: -6.8, z0: -39.4, x1: -6.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
+                    { k: 'ramp', x0: 8.8, z0: -39.4, x1: 8.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
                     { k: 'plateau', x: 34, z: 8, r: 1.5, h: 4.2, edge: 0.15 },                                          // THE BEAM DUMP (the tape — the door gun's)
                     { k: 'wall', x0: -4, z0: -41.8, x1: 4, z1: -41.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
                     { k: 'path', pts: [[0, 49], [0, 38]], w: 2.0 }, { k: 'path', pts: [[-49, 0], [-38, 0]], w: 2.0 },
