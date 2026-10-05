@@ -25555,11 +25555,11 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'w', z: -12, sub: 'THE TRAIL · INTO THE WOODS' },
           why: 'the path west out of the clearing does not stop at the pasture; it goes on under the trees and comes out at the castle moat', note: 'on foot', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
-          a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: 0, sub: 'THE GRATE · INTO THE TUNNEL' },
+          a: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'e', z: 0, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: 'THE DRAIN · INTO THE TUNNEL' },   // NO DOORS IN THE WOODS (2026-10-05): the culvert runs on, walked
           b: { room: 'tunnel', wall: 'e', z: -6, sub: 'THE STORM DRAIN · INTO THE WOODS' },
           why: 'the storm drain in the crag runs the wrong way: the water comes out of the platform wall and into the woods, and the grate between them was welded shut, and then it was not', note: 'the fourth station', draft: true },
         { id: 'woods_ritual', route: 'woods', leaf: 'leaf_hell_arch', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
-          a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'n', x: -0.875, sub: 'THE CIRCLE · ROOM 333' },
+          a: { site: 'prebuilt_fairy_forest', part: 'ritual', wall: 'n', x: -0.875, way: 'trail', sub: 'THE CIRCLE · ROOM 333' },   // NO DOORS IN THE WOODS (2026-10-05): the woods end is a trail; Room 333's end keeps the arch
           b: { room: 'ritual', wall: 'e', z: 0, sub: 'THE CIRCLE · THE RITUAL GROUND' },
           why: 'the chalk circle in Room 333 and the circle between the stones are one circle drawn from two sides; step over the line indoors and you are outdoors, downwind of the candles', note: 'one circle, two sides', draft: true },
         /* THE DEAD TREE'S OTHER SIDE (2026-09-17): the dead tree on the ritual ground — its hole looks onto the Looking-Glass's marble */
@@ -25740,7 +25740,7 @@ const DOOR_HQ = {
           note: 'out of order', draft: true },
         { id: 'streets_drain', route: 'sewers', way: 'gutter',
           a: { site: 'prebuilt_downtown', part: 'streets', wall: 'free', x: 46.2, z: 14, face: 270, sub: 'THE GUTTER · DOWN INTO THE STORM DRAIN' },
-          b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'n', x: -13, leaf: 'leaf_cell', sub: 'THE CULVERT · UP TO THE STREET', verb: 'CLIMB UP' },
+          b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 'n', x: -13, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: 'THE CULVERT · UP TO THE STREET' },   // NO DOORS IN THE WOODS (2026-10-05): the drain runs on, walked
           why: 'every gutter in the city drains into the same culvert, and the culvert is the one under the woods; the water knows the way and the Department followed it',
           note: 'the gutter', draft: true },
         /* THE UNDERWORLD (HQ plan 9.3 stage 10 — THE COMPLEX CANDIDATES #3, 2026-09-18): the sewers and the running tunnels under
@@ -25770,7 +25770,7 @@ const DOOR_HQ = {
           note: 'the lower street', draft: true },
         { id: 'sewers_drain', route: 'sewers', leaf: 'leaf_cell', secret: true,   // AREA CONTENT D4 (2026-09-20): a DRAUGHT — the drain's second earned exit
           a: { site: 'prebuilt_downtown', part: 'sewers', wall: 'e', z: -12, sub: 'THE OUTFALL GRATE · INTO THE STORM DRAIN' },
-          b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 's', x: -10, sub: 'THE CULVERT\'S GRATE · INTO THE SEWERS' },
+          b: { site: 'prebuilt_fairy_forest', part: 'deadmans', wall: 's', x: -10, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: 'THE CULVERT · INTO THE SEWERS' },   // NO DOORS IN THE WOODS (2026-10-05): the culvert runs on, walked
           why: 'the outfall does not go up; it goes sideways through a grate into the storm drain under the woods, which is where every gutter was draining all along',
           note: 'the same culvert', draft: true },
         { id: 'tunnels_works', route: 'subway', leaf: 'leaf_frame_only',
@@ -34046,8 +34046,9 @@ const DOOR_HQ = {
                   label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
                   desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
-                { id: 'ritual', wall: 'w', z: 9.625, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'THE STONES · THE FIRE',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE — the stones are not on the way to anywhere (was THE RITUAL GROUND)
+                /* NO DOORS IN THE WOODS (2026-10-05, mondo: "No door! trail/dirt path to the next area for the woods"): the gap in the hedge is a trail you walk on */
+                { id: 'ritual', wall: 'w', z: 9.625, way: 'trail', secret: true,
+                  label: 'THE RITUAL GROUND', sub: 'THE STONES · THE FIRE',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE — the stones are not on the way to anywhere (was THE RITUAL GROUND)
                   action: { room: 'site_prebuilt_fairy_forest_ritual', at: 'clearing' },
                   desc: 'Candle smoke on the wind, from the west. The stones are older than the candles and the candles are recent.' },
             ],
@@ -34112,7 +34113,7 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'redwoods' },
                   desc: 'Back west, where the trees are young enough to be trees.' },
                 /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT — the creek goes into a pipe under the bank; the pipe is the storm drain (R4) */
-                { id: 'culvert', wall: 'n', x: 0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',
+                { id: 'culvert', wall: 'n', x: 0, secret: true, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, label: 'DEAD MAN’S CAVE', sub: 'THE CULVERT · WHERE THE CREEK GOES UNDER',   // NO DOORS IN THE WOODS (2026-10-05): the pipe mouth in the bank, walked into
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'culvert' },
                   desc: 'The creek goes into the bank and does not come out. The pipe it goes into is big enough, if you do not mind the dark.', draft: true },
             ],
@@ -34197,7 +34198,7 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'deadmans' },
                   desc: 'Back out of the mouth into the trees, where the paint stops and the water keeps going.' },
                 /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE CULVERT's other end (R4) */
-                { id: 'culvert', wall: 's', x: 5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CULVERT · OUT UNDER THE REDWOODS',
+                { id: 'culvert', wall: 's', x: 5, secret: true, way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, label: 'THE REDWOOD TRAIL', sub: 'THE CULVERT · OUT UNDER THE REDWOODS',   // NO DOORS IN THE WOODS (2026-10-05): the pipe, walked
                   action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'culvert' },
                   desc: 'A pipe in the south wall with daylight at the far end of it and the creek coming down it. The redwoods are up there.', draft: true },
             ],
@@ -34260,8 +34261,8 @@ const DOOR_HQ = {
                 ],
             },
             doors: [
-                { id: 'clearing', wall: 'e', z: -0.875, leaf: null, secret: true,
-                  label: 'A DRAUGHT', sub: 'BACK TO THE CROSSROADS',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE (was THE CLEARING)
+                { id: 'clearing', wall: 'e', z: -0.875, way: 'trail', secret: true,   // NO DOORS IN THE WOODS (2026-10-05): the trail back east
+                  label: 'THE CLEARING', sub: 'BACK TO THE CROSSROADS',   // AREA CONTENT D4 (2026-09-20): THE GAP IN THE HEDGE (was THE CLEARING)
                   action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'ritual' },
                   desc: 'Back east, downwind of the candles.' },
             ],
@@ -42566,6 +42567,26 @@ function hqRefreshComplexLinks() {
         const r = DOOR_HQ.rooms[id];
         r.doors = (r.doors || []).filter(d => !d.link).concat(hqLinkDoors(id));
     });
+    hqWoodsNoDoors();
+}
+/* NO DOORS IN THE WOODS (2026-10-05, mondo: "how many times do i have to tell you that they should be trails leading to the next
+   area?? ... No door! trail/dirt path to the next area for the woods"): every way out of an OUTDOOR Woods room (site
+   prebuilt_fairy_forest under the forest shell: the clearing, the redwoods, the ritual ground) is a passage. A wall door or a link
+   end there that wears a leaf (or nothing: a draught's wall slab) walks as a TRAIL; its own way (the hollow tree, the dead tree,
+   the stair, a trail, a tunnel) stays. Run on every link refresh, so a door added later can never stand in the trees again. */
+function hqWoodsTrailRoom(room) {
+    return !!(room && room.site === 'prebuilt_fairy_forest' && room.part && room.shell && room.shell.open && room.shell.forest);
+}
+function hqWoodsNoDoors() {
+    const rooms = DOOR_HQ.rooms || {};
+    for (const rid in rooms) {
+        const r = rooms[rid];
+        if (!hqWoodsTrailRoom(r)) continue;
+        (r.doors || []).forEach(d => {
+            if (!d || d.level || d.way || ['n', 's', 'e', 'w'].indexOf(d.wall) < 0) return;
+            d.way = 'trail'; d.leaf = null;
+        });
+    }
 }
 /* ── THE PLATE READS THE ROOM THROUGH THE DOOR (2026-09-18) ───────────────
    The user: "a lot of the rooms are starting to be mislabeled while exploring
@@ -47343,7 +47364,8 @@ function hqTerrainCompile(room, roomId) {
         if (!wall) return;
         const wayCat = (d.way && DOOR_HQ.ways && DOOR_HQ.ways[d.way]) || null;
         if (wayCat && wayCat.passage && (d.passage && d.passage.pad != null ? d.passage.pad : wayCat.passage.pad) === false) return;   // THE PASSAGES (2026-10-01): a stair that runs on into the wall keeps its flight — no landing flattened at its head
-        const w = (wayCat && wayCat.pad) ? Math.max(R.padW, wayCat.pad) : (d.wide ? R.padW + 0.8 : R.padW);   // THE ROAD (2026-09-17): a way may ask for a wider landing (the whole street)
+        let w = (wayCat && wayCat.pad) ? Math.max(R.padW, wayCat.pad) : (d.wide ? R.padW + 0.8 : R.padW);   // THE ROAD (2026-09-17): a way may ask for a wider landing (the whole street)
+        if (wayCat && wayCat.passage) w = Math.max(w, ((d.passage && +d.passage.w) || +wayCat.passage.w || +wayCat.w || 2.4) + 1.6);   // THE SILL (2026-10-05): a passage's landing is wider than its mouth (a narrow pad let the rock rise inside the tunnel's sides)
         if (wall === 'n') doorPads.push({ door: d, x: d.x || 0, z: -S.d / 2 + R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: -S.d / 2 + 1.2 } });
         else if (wall === 's') doorPads.push({ door: d, x: d.x || 0, z: S.d / 2 - R.padD / 2, w, d: R.padD, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: d.x || 0, z: S.d / 2 - 1.2 } });
         else if (wall === 'e') doorPads.push({ door: d, x: S.w / 2 - R.padD / 2, z: d.z || 0, w: R.padD, d: w, rot: 0, hAt: (typeof d.y === 'number') ? d.y : null, lane: { x: S.w / 2 - 1.2, z: d.z || 0 } });
@@ -47472,7 +47494,7 @@ function hqTerrainCompile(room, roomId) {
         let h = hPads(px, pz, hBefore(px, pz));
         if (stitch.length) h = hStitch(px, pz, h);
         if (sinks.length) h = hSink(px, pz, h);
-        if (closed) { const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz)); if (din < R.rim && h < base) h = base; }
+        if (closed) { const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz)); if (din < R.rim && h < base && !inLane(px, pz, R.padEdge)) h = base; }   // THE SILL (2026-10-05): never over a door's sunk sill (the drain's mouth stood 0.85 m under the rim)
         return h;
     };
     /* ── sample the grid ── */
@@ -47548,6 +47570,28 @@ function hqTerrainCompile(room, roomId) {
             extra.push(st.side === 'n' ? { x0: -hw, z0: -hd, x1: hw, z1: -hd, w } : st.side === 's' ? { x0: -hw, z0: hd, x1: hw, z1: hd, w }
                      : st.side === 'e' ? { x0: hw, z0: -hd, x1: hw, z1: hd, w } : { x0: -hw, z0: -hd, x1: -hw, z1: hd, w }); });
         genUse = Object.assign({}, planGen, { open: (planGen.open || []).concat(extra), mouths: extra });
+    }
+    /* THE SILL (2026-10-05, mondo: "the terrain is covering the bottom of these doors"): a plan's rise starts 0.2 m past the
+       last open cell, and past the wall everything is solid — so the bank / the rock climbed THROUGH every wall door's opening
+       (up to a metre over its sill at the wall plane). Every wall door / way is a MOUTH now: open from inside its pad to past
+       the field's end, the opening's width plus a metre, so the ground runs level out under the opening and the bank stands
+       either side of it. A plan whose solid is a MASS (no rise: the city, halls, ley, a drawn plan in walls) has nothing to cut. */
+    if (genUse && doorPads.length) {
+        const gk = genUse.kind, handG = gk === 'plan', lookG = handG ? (genUse.look || 'walls') : null;
+        const mass = gk === 'city' || gk === 'halls' || gk === 'ley' || (handG && lookG !== 'rock' && lookG !== 'trees');
+        if (!mass) {
+            const hw = S.w / 2, hd = S.d / 2, inD = 1.5, outD = roam + 2.5;
+            const dm = [];
+            doorPads.forEach(p => {
+                const d = p.door; if (p.free || !d || ['n', 's', 'e', 'w'].indexOf(d.wall) < 0) return;
+                const wc = (d.way && DOOR_HQ.ways) ? DOOR_HQ.ways[d.way] : null;
+                const ow = (d.passage && +d.passage.w) || (wc && wc.passage && +wc.passage.w) || (wc && +wc.w) || (d.wide ? 2.2 : 1.2);
+                const w = Math.max(2.4, ow + 1.0), t = (d.wall === 'n' || d.wall === 's') ? (d.x || 0) : (d.z || 0);
+                dm.push(d.wall === 'n' ? { x0: t, z0: -hd + inD, x1: t, z1: -hd - outD, w } : d.wall === 's' ? { x0: t, z0: hd - inD, x1: t, z1: hd + outD, w }
+                      : d.wall === 'e' ? { x0: hw - inD, z0: t, x1: hw + outD, z1: t, w } : { x0: -hw + inD, z0: t, x1: -hw - outD, z1: t, w });
+            });
+            if (dm.length) genUse = Object.assign({}, genUse, { mouths: (genUse.mouths || []).concat(dm) });
+        }
     }
     if (planGen) { try { _hqTGenerate(info, room, roomId, genUse, doorPads, F); } catch (e) { console.warn('[terrain] the floor plan failed', roomId, e); } }
     else {

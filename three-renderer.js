@@ -52469,6 +52469,9 @@ const ThreeRenderer = (function () {
         var fy = function (d) { return P.rise * Math.max(0, d); };   // the floor `d` m in (metres over the mouth's)
         var tex = function (k) { return (k && typeof _hzTex === 'function') ? (_hzTex(k) || null) : null; };
         var lift = (+P.lift > 0) ? Math.min(1, +P.lift) : 0;   // THE METRO PACK's STAIR: `lift` = a self-lit floor under its sheets (an unlit tube reads black from the room)
+        /* A PATH INTO DARKNESS, NOT A BLACK SCREEN (2026-10-05, mondo: "i didnt mean literal darkness"): a roofed passage (the HQ's stair
+           to the Woods, a tunnel) is dimly self-lit so its treads and walls read all the way up into the gloom */
+        if (!lift && P.roof && P.fade !== 'white') lift = (look === 'hall') ? 0.22 : 0.14;
         var mat = function (k, color, emis) { var m = new THREE.MeshPhongMaterial({ map: tex(k), color: (color != null) ? color : 0xffffff, shininess: 6 }); m.emissive = new THREE.Color((emis != null) ? emis : 0x0c0c0c); if (lift && m.map) { m.emissive.setScalar(lift); m.emissiveMap = m.map; } return m; };
         var box = function (w, h, d, m, x, y, z, ry, rx) {
             var geo = new THREE.BoxGeometry(w * U, h * U, d * U); if (typeof _hzBoxUV === 'function') _hzBoxUV(geo, w * U, h * U, d * U, TS);
@@ -52575,7 +52578,7 @@ const ThreeRenderer = (function () {
         /* THE DARK: cards across the way, deepening to solid at the end (soft-edged in the open, square in a tube) */
         var fadeCol = (P.fade === 'white') ? 0xf4f6fa : 0x000000, soft = !P.roof, n = 7, d0 = Math.max(0.6, P.deep * 0.3), softT = soft ? _hqPassSoftTex() : null;
         for (var i = 0; i < n; i++) {
-            var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, Math.pow(t, 1.3));
+            var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, 0.7 * Math.pow(t, 2.2));   // (2026-10-05) a dusk that deepens, the way still seen: only the far end is solid
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
             if (mouthR) { cw = mouthR * 2 + 0.2; ch = (+P.mouthY || 2.2) + mouthR + 0.1; }   // the modelled mouth: the card fills the bore (the pipe hides its corners)
             var cm = new THREE.MeshBasicMaterial({ color: fadeCol, transparent: true, opacity: soft ? Math.min(1, op * 1.15) : op, depthWrite: false, side: THREE.DoubleSide });
@@ -52665,6 +52668,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(pl.y - _hqPassFloor(p, a.depth)) > 2.5) continue;
             var d0 = P.deep * 0.25, k = (a.depth - d0) / Math.max(0.5, P.deep - d0);
             k = k < 0 ? 0 : k > 1 ? 1 : k; k = k * k * (3 - 2 * k);
+            k *= 0.45;   // A PATH INTO DARKNESS (2026-10-05, mondo: "i have to walk forward in an all black screen"): the walk in dims the view; only the crossing itself blinks to black
             if (k > dark) { dark = k; col = P.fade; }
             if (a.depth >= P.deep) {
                 if (H.passLatch !== p.door.id && !H.paused && H.opts.onEnterDoor && !HQ_DOOR_LOCKED[p.state]) {
@@ -52677,7 +52681,7 @@ const ThreeRenderer = (function () {
         if (_hqPassHoldAt && now - _hqPassHoldAt < 4000) { dark = 1; col = _hqPassCol; }
         else _hqPassHoldAt = 0;
         var since = now - _hqPassArriveAt;
-        if (since >= 0 && since < 1100) { var ar = 1 - since / 1100; ar = ar * ar * (3 - 2 * ar); if (ar > dark) { dark = ar; col = _hqPassCol; } }
+        if (since >= 0 && since < 700) { var ar = 1 - since / 700; ar = ar * ar * (3 - 2 * ar); if (ar > dark) { dark = ar; col = _hqPassCol; } }
         _hqPassFade(dark, col);
     }
     /* THE STAGE (OPEN_WORLD_PLAN Phase 1): a link door standing on a joined span is no longer a door — the road runs on into
@@ -52704,7 +52708,7 @@ const ThreeRenderer = (function () {
         var PS = _hqPassageSpec(door);
         if (PS) {
             G.add(grp);
-            if (PS.look === 'trail' && box && !box.free) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }
+            if (PS.look === 'trail' && box && !box.free && !door.secret) { try { _hqBuildTrailPost(room, door, y0); } catch (e) {} }
             var prec = { door: door, group: grp, lens: null, glow: null, plate: null, plateEl: null, plateChip: null, state: 'open', level: level, Rw: Rw, y0: y0, wide: false, ow: PS.w, oh: PS.h, inward: inward, box: box, leaf: null, way: kind, motion: null, openT: 0,
                          mouthY: null, wayOpen: true, passage: PS };
             _hq.doors.push(prec);
@@ -64390,10 +64394,13 @@ const ThreeRenderer = (function () {
         else if (d && d.passage && d.box) {
             /* THE PASSAGES (2026-10-01): an arrival comes out of the dark — `land` m inside the far passage, facing the room (the screen
                rises out of the black as you walk on); the directory's GO stands 1.6 m in front of its mouth, facing it */
-            var PL = d.passage, lm = faceAway ? -PL.land : 1.6;
+            /* (2026-10-05, mondo: "when i come out the other side my screen is still all black"): an arrival used to land `land` m INSIDE
+               the far passage — the boom 3.6 m behind it stood deeper still, behind every dark card, and the view stayed black until you had
+               walked out. Now the arrival stands just out of the mouth in the room, facing it; the boom sits at the passage's light end */
+            var PL = d.passage, lm = faceAway ? 0.9 : 1.6;
             var lpx = d.box.wx + d.box.nx * lm, lpz = d.box.wz + d.box.nz * lm, lpy = null;
-            if (!faceAway || PL.inside) { try { lpy = _hqSurface(lpx, lpz, faceAway ? _hqPassFloor(d, PL.land) : d.y0, true); } catch (e) { lpy = null; } }
-            if (lpy == null || !isFinite(lpy)) lpy = faceAway ? _hqPassFloor(d, PL.land) : d.y0;
+            try { lpy = _hqSurface(lpx, lpz, d.y0, true); } catch (e) { lpy = null; }
+            if (lpy == null || !isFinite(lpy)) lpy = d.y0;
             spot = new THREE.Vector3(lpx * U, lpy * U, lpz * U);
             var towardP = _hqHeadingOf(-d.box.nx, -d.box.nz);
             face = faceAway ? towardP + 180 : towardP;

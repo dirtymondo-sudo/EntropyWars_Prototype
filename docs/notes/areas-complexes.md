@@ -1823,6 +1823,23 @@ over the room's own terrain (the Woods stair). Wall passages cut the box wall, w
   Dead Man's Cave tunnel, Cavern galleries, Göbekli ley/tell, Hell/Agartha/Hollow caves = tunnels; Heaven/Olympus/sky
   castle/observatory = cloud; North Pole ⇄ Camelot = trail. The clearing's gen seed went 11 → 22 to keep its 8×8 arena.
 
+## NO DOORS IN THE WOODS + THE SILL + THE DIM PATH (2026-10-05)
+mondo: "why the fuck are there still doors like this in the woods? ... trail/dirt path to the next area"; "the terrain is covering
+the bottom of these doors"; the stair walk "an all black screen ... when i come out the other side my screen is still all black".
+- PR #42 missed the secret exits: clearing ⇄ ritual ground (a DRAUGHT, `leaf: null` = a black wall slab), the redwoods ⇄ Dead
+  Man's Cave culvert, the ritual ground's end of `woods_ritual`. Now trails (ritual) and tunnels (the culvert, and Dead Man's
+  Cave's ends of woods_sewer / streets_drain / sewers_drain). Secret stays secret (map), a secret trail gets no signpost.
+- THE RULE: data.js `hqWoodsNoDoors()` (run at the end of every hqRefreshComplexLinks) turns any wall door / link end with no
+  `way` in an outdoor Woods room (`hqWoodsTrailRoom`: site prebuilt_fairy_forest, open forest shell) into a trail. The user's
+  tree ways (hollow tree, dead tree) and the stair keep their own way.
+- THE SILL (hqTerrainCompile): every wall door is a plan `mouth` (open past the wall, the opening + 1 m wide) unless the plan's
+  solid is a mass; the closed-room rim clamp skips door lanes; a passage's pad is its width + 1.6 m. 99 of 332 wall doors had
+  ground over the sill at the wall plane; 4 left (the HQ stair's own flight, two hollow-earth tunnel flanks).
+- THE DIM PATH (three-renderer.js passages): the walk in dims the screen to 45% (was black at `deep`); only the crossing blinks
+  black; the dark cards are a deepening dusk (only the far card is solid); roofed passages are self-lit (`lift` 0.22 hall, 0.14
+  rock). Arrivals land 0.9 m out of the far mouth in the room (they used to land `land` m inside it, with the boom behind every
+  dark card = a black screen until you walked out); the fade-up is 0.7 s. Arenas re-baked.
+
 ## THE RETRO TREE PACK (2026-10-04)
 mondo uploaded `Assets/foilage/retrotreepack/GLB/` (dead_tree_rt_1/2, small_tree_rt_1, tree_rt_1, tree_rt_2, tree_rt_2_1,
 tree_rt_3, tree_rt_4; the `Low Res/` PNGs are the same textures, already embedded in each GLB) and asked for the woods and
