@@ -39581,6 +39581,30 @@ const DOOR_HQ = {
                     { k: 'pool', x: 0, z: 8, r: 5, y: -0.3, depth: 0.7 },                                                        // THE ORACLE POOL (waded)
                     { k: 'plateau', x: 0, z: 8, r: 1.3, h: 5.5, edge: 0.3 },                                                     // THE ORACLE (the tape) — after the pool: it rises out of it
                     { k: 'rail', x0: -6.6, z0: -12.6, x1: -3.0, z1: -12.6 }, { k: 'rail', x0: 3.0, z0: -12.6, x1: 6.6, z1: -12.6 },
+                    /* THE TERRACES stepped round the dais: the side terraces (2.4) behind the colonnades, each up a flight from the floor and a
+                       flight from the dais; the back terrace (3.6) in two halves over the dais, each up a flight from its side terrace, a 2.8 m
+                       gap between them over the dais's alcove (1.2) with a pipe rail laid across it; parapets on the inner edges */
+                    { k: 'plateau', x: -14.5, z: -11, w: 7, d: 14, h: 2.4, edge: 0.2 }, { k: 'plateau', x: 14.5, z: -11, w: 7, d: 14, h: 2.4, edge: 0.2 },
+                    { k: 'plateau', x: -6.425, z: -15.5, w: 10.35, d: 5, h: 3.6, edge: 0.15 }, { k: 'plateau', x: 6.425, z: -15.5, w: 10.35, d: 5, h: 3.6, edge: 0.15 },
+                    { k: 'plateau', x: 0, z: -15.25, w: 3.2, d: 5.5, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: -13, z0: 1.3, x1: -13, z1: -4.7, w: 2.62, h0: 0, h1: 2.4, stairs: true, rails: false, edge: 0.2 },
+                    { k: 'ramp', x0: 13, z0: 1.3, x1: 13, z1: -4.7, w: 2.62, h0: 0, h1: 2.4, stairs: true, rails: false, edge: 0.2 },
+                    { k: 'ramp', x0: -6.4, z0: -9, x1: -11.7, z1: -9, w: 2.62, h0: 1.2, h1: 2.4, stairs: true, rails: false, edge: 0.2 },
+                    { k: 'ramp', x0: 6.4, z0: -9, x1: 11.7, z1: -9, w: 2.62, h0: 1.2, h1: 2.4, stairs: true, rails: false, edge: 0.2 },
+                    /* those four flights' parapets as grinds only (free to step off) */
+                    { k: 'rail', x0: -14.25, z0: 1.3, x1: -14.25, z1: -4.7, y0: 0, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: -11.75, z0: 1.3, x1: -11.75, z1: -4.7, y0: 0, y1: 2.4, model: 'parapet', block: false },
+                    { k: 'rail', x0: 14.25, z0: 1.3, x1: 14.25, z1: -4.7, y0: 0, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: 11.75, z0: 1.3, x1: 11.75, z1: -4.7, y0: 0, y1: 2.4, model: 'parapet', block: false },
+                    { k: 'rail', x0: -6.4, z0: -10.25, x1: -11.7, z1: -10.25, y0: 1.2, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: -6.4, z0: -7.75, x1: -11.7, z1: -7.75, y0: 1.2, y1: 2.4, model: 'parapet', block: false },
+                    { k: 'rail', x0: 6.4, z0: -10.25, x1: 11.7, z1: -10.25, y0: 1.2, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: 6.4, z0: -7.75, x1: 11.7, z1: -7.75, y0: 1.2, y1: 2.4, model: 'parapet', block: false },
+                    { k: 'ramp', x0: -13.5, z0: -15.5, x1: -10.3, z1: -15.5, w: 2.62, h0: 2.4, h1: 3.6, stairs: true, edge: 0.2 },
+                    { k: 'ramp', x0: 13.5, z0: -15.5, x1: 10.3, z1: -15.5, w: 2.62, h0: 2.4, h1: 3.6, stairs: true, edge: 0.2 },
+                    { k: 'rail', x0: -2.25, z0: -15.75, x1: 2.25, z1: -15.75, y: 3.6, model: 'pipe', block: false },
+                    { k: 'rail', x0: -11.25, z0: -12.75, x1: -11.25, z1: -10.25, y: 2.4, model: 'parapet' }, { k: 'rail', x0: -11.25, z0: -7.25, x1: -11.25, z1: -4.75, y: 2.4, model: 'parapet' },
+                    { k: 'rail', x0: 11.25, z0: -12.75, x1: 11.25, z1: -10.25, y: 2.4, model: 'parapet' }, { k: 'rail', x0: 11.25, z0: -7.25, x1: 11.25, z1: -4.75, y: 2.4, model: 'parapet' },
+                    { k: 'rail', x0: -10.75, z0: -13.25, x1: -1.75, z1: -13.25, y: 3.6, model: 'parapet' }, { k: 'rail', x0: 1.75, z0: -13.25, x1: 10.75, z1: -13.25, y: 3.6, model: 'parapet' },
+                    /* skate rails: round the oracle pool, down the middle of the dais stair */
+                    { k: 'rail', arc: { x: 0, z: 8, r: 5.6, a0: 30, a1: 330 }, model: 'pipe', block: false },
+                    { k: 'rail', x0: 0, z0: 1.25, x1: 0, z1: -5.25, model: 'pipe', block: false },
                     { k: 'wall', x0: -12, z0: 2, x1: -12, z1: 12, h: 0.5, t: 0.5, key: 'marble_light' },                          // the bench wall (a grind)
                 ],
             },
@@ -39600,7 +39624,7 @@ const DOOR_HQ = {
                 { key: 'royal_throne',    x: 0, z: -11, face: 0 },                                                               // on the dais (the front measured off the mesh)
                 { key: 'brazier',         x: -5, z: -6.5 }, { key: 'brazier', x: 5, z: -6.5 },                                    // the dais's fires
                 { key: 'brazier',         x: -7, z: 14.5 }, { key: 'brazier', x: 7, z: 14.5 },                                    // the pool's
-                { key: 'crystal_cluster', x: -13, z: -14 }, { key: 'crystal_cluster', x: 13, z: -14 },
+                { key: 'crystal_cluster', x: -16, z: -16.5 }, { key: 'crystal_cluster', x: 16, z: -16.5 },
                 { key: 'greek_column',    x: -10, z: -12 }, { key: 'greek_column', x: 10, z: -12 },                               // the colonnade
                 { key: 'greek_column',    x: -10, z: -4 }, { key: 'greek_column', x: 10, z: -4 },
                 { key: 'greek_column',    x: -10, z: 4 }, { key: 'greek_column', x: 10, z: 4 },
