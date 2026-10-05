@@ -40738,6 +40738,80 @@
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
                 }
+                /* THE FRAME (2026-10-05 — the user: "there is too much empty space beneath the
+                   team, they are halfway off the screen"): the moveTo above only sets the
+                   ANGLE; the frame itself is solved every frame by the camera's frame guard
+                   (three-camera.js _frameGuardSolve, centre mode) from the REAL rendered
+                   bodies — feet to crown at their flight height, a body's girth around it,
+                   so a kaiju or a flyer is framed like anyone else — fitted and centred in
+                   the stage the overlay leaves open: under the head (kicker · title · facts),
+                   left of the debrief panel (or above it on a narrow screen), over the
+                   command bar. Any team size; the drift's yaw/tilt sway is re-solved live. */
+                if (typeof camera !== 'undefined' && camera) {
+                    const _pos = [0, 0, 0];
+                    let _rect = null, _rectAt = 0;
+                    const _stageRect = () => {
+                        const now = performance.now();
+                        if (_rect && now - _rectAt < 300) return _rect;
+                        _rectAt = now;
+                        const cv = document.getElementById('threeCanvas');
+                        const cr = cv ? cv.getBoundingClientRect() : null;
+                        if (!cr || cr.width < 50 || cr.height < 50) return (_rect = null);
+                        let l = cr.left, r = cr.right, t = cr.top, b = cr.bottom;
+                        const box = (id) => { const e = document.getElementById(id); if (!e || e.offsetParent === null) return null; const q = e.getBoundingClientRect(); return (q.width > 0 && q.height > 0) ? q : null; };
+                        const db = box('vicDebrief');
+                        if (db) {
+                            if (db.top > cr.top + cr.height * 0.3) b = Math.min(b, db.top);   // narrow: the panel is the lower half
+                            else r = Math.min(r, db.left);
+                        }
+                        const bar = box('vicBottom');
+                        if (bar) b = Math.min(b, bar.top);
+                        const head = document.querySelector('#resultOverlay .vic-title-wrap');
+                        if (head) {
+                            const hq = head.getBoundingClientRect();
+                            if (hq.height > 0) t = Math.max(t, hq.bottom + 8);
+                        }
+                        /* a breath of air inside the open stage, more at the sides (the
+                           MVP plate and the stamp sit in its lower corners) */
+                        const w = r - l, h = b - t;
+                        if (w < 80 || h < 80) return (_rect = null);
+                        l += w * 0.10; r -= w * 0.10; t += h * 0.06; b -= h * 0.08;
+                        _rect = { l: (l - cr.left) / cr.width, r: (r - cr.left) / cr.width,
+                                  t: (t - cr.top) / cr.height, b: (b - cr.top) / cr.height };
+                        return _rect;
+                    };
+                    P.guard = {
+                        center: true,
+                        rect: _stageRect,
+                        points: () => {
+                            if (_podiumState !== P) return null;
+                            const ts = CONFIG.tileSize || BASE_TILE;
+                            const pts = [];
+                            for (const s of P.saved) {
+                                const u = s.u;
+                                let ok = false;
+                                try { ok = !!(ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, _pos)); } catch (e) { ok = false; }
+                                if (!ok) {
+                                    _pos[0] = u.x * ts + ts / 2;
+                                    _pos[1] = (typeof unitElevationZ === 'function') ? (unitElevationZ(u) || 0) : 0;
+                                    _pos[2] = u.y * ts + ts / 2;
+                                }
+                                let hgt = ts;
+                                try { if (ThreeRenderer.getUnitVisualHeight) hgt = ThreeRenderer.getUnitVisualHeight(u.id) || hgt; } catch (e) {}
+                                /* a pose (the cheer, the jump) reaches above the rest height; a
+                                   short party still gets a body-and-a-half of headroom */
+                                const top = Math.max(hgt * 1.15, ts * 1.5);
+                                const g = Math.max(ts * 0.35, hgt * 0.32);
+                                for (const yy of [_pos[1], _pos[1] + top]) {
+                                    pts.push([_pos[0] - g, yy, _pos[2]], [_pos[0] + g, yy, _pos[2]],
+                                             [_pos[0], yy, _pos[2] - g], [_pos[0], yy, _pos[2] + g]);
+                                }
+                            }
+                            return pts.length ? pts : null;
+                        }
+                    };
+                    camera._frameGuard = P.guard;
+                }
                 const t0 = performance.now();
                 P.driftTimer = setTimeout(() => {
                     const drift = () => {
@@ -40818,6 +40892,7 @@
             const ps = _podiumState;
             if (!ps) return;
             _podiumState = null;
+            try { if (ps.guard && typeof camera !== 'undefined' && camera && camera._frameGuard === ps.guard) camera._frameGuard = null; } catch (e) {}
             if (ps.raf) cancelAnimationFrame(ps.raf);
             if (ps.driftTimer) clearTimeout(ps.driftTimer);
             if (ps.pulseTimer) clearTimeout(ps.pulseTimer);

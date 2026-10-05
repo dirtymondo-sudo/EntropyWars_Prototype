@@ -150,7 +150,13 @@ const ThreeCamera = (function () {
        bisection and (sx, sy) the in-box value nearest 0 (the least slide —
        the director's composition moves as little as it can).
        Returns 0 = already framed, null = no answer along d. */
-    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, tanH, tanV, zMin) {
+    /* W = the window in tan units along r / u: [xa, xb, ya, yb] (x ∈ [xa·z, xb·z],
+       y ∈ [ya·z, yb·z]) — symmetric for the action cam, a sub-rectangle of the
+       canvas for THE DEBRIEF's stage. center: dolly IN as well as out (the
+       tightest D that fits) and put the bodies in the MIDDLE of the window
+       instead of the least slide — a composition, not a correction. */
+    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center) {
+        const xa = W[0], xb = W[1], ya = W[2], yb = W[3];
         const n = pts.length;
         const X = new Array(n), Y = new Array(n), Z = new Array(n);
         let fits = true, zLow = Infinity;
@@ -162,19 +168,18 @@ const ThreeCamera = (function () {
             const y = vx * B.ux + vy * B.uy + vz * B.uz;
             X[i] = x; Y[i] = y; Z[i] = z;
             if (z < zLow) zLow = z;
-            if (z < zMin || Math.abs(x) > z * tanH || Math.abs(y) > z * tanV) fits = false;
+            if (z < zMin || x < z * xa || x > z * xb || y < z * ya || y > z * yb) fits = false;
         }
-        if (fits) return 0;
+        if (fits && !center) return 0;
         const box = function (D) {
             let xLo = -Infinity, xHi = Infinity, yLo = -Infinity, yHi = Infinity;
             for (let i = 0; i < n; i++) {
                 const zz = Z[i] + D;
                 if (zz < zMin) return null;
-                const hw = zz * tanH, hh = zz * tanV;
-                if (X[i] - hw > xLo) xLo = X[i] - hw;
-                if (X[i] + hw < xHi) xHi = X[i] + hw;
-                if (Y[i] - hh > yLo) yLo = Y[i] - hh;
-                if (Y[i] + hh < yHi) yHi = Y[i] + hh;
+                if (X[i] - zz * xb > xLo) xLo = X[i] - zz * xb;
+                if (X[i] - zz * xa < xHi) xHi = X[i] - zz * xa;
+                if (Y[i] - zz * yb > yLo) yLo = Y[i] - zz * yb;
+                if (Y[i] - zz * ya < yHi) yHi = Y[i] - zz * ya;
             }
             if (B.uy > 1e-3) {
                 const fl = (floorY - ey + D * dy) / B.uy;   // eye y after = ey + sy·uy − D·dy ≥ floorY
@@ -183,7 +188,7 @@ const ThreeCamera = (function () {
             if (xLo > xHi || yLo > yHi) return null;
             return [xLo, xHi, yLo, yHi];
         };
-        let lo = Math.max(0, zMin - zLow), hi = tileSize * 60;
+        let lo = center ? (zMin - zLow) : Math.max(0, zMin - zLow), hi = tileSize * 60;
         if (!box(hi)) return null;
         if (box(lo)) hi = lo;
         else {
@@ -197,8 +202,8 @@ const ThreeCamera = (function () {
         let b = box(D);
         if (!b) { D = hi; b = box(D); }
         if (!b) return null;
-        const sx = Math.min(b[1], Math.max(b[0], 0));
-        const sy = Math.min(b[3], Math.max(b[2], 0));
+        const sx = center ? (b[0] + b[1]) / 2 : Math.min(b[1], Math.max(b[0], 0));
+        const sy = center ? (b[2] + b[3]) / 2 : Math.min(b[3], Math.max(b[2], 0));
         return { sx: sx, sy: sy, D: D };
     }
     function _frameGuardSolve(cam, ex, ey, ez, lx, ly, lz, floorY) {
@@ -208,7 +213,19 @@ const ThreeCamera = (function () {
         if (!pts || !pts.length || !threeCamera) { _frameGuardLast = null; return null; }
         const tv = Math.tan((threeCamera.fov || FOV) * DEG2RAD / 2);
         const aspect = threeCamera.aspect || (16 / 9);
-        const tanH = tv * aspect * FG_MARGIN_H, tanV = tv * FG_MARGIN_V;
+        let W = [-tv * aspect * FG_MARGIN_H, tv * aspect * FG_MARGIN_H, -tv * FG_MARGIN_V, tv * FG_MARGIN_V];
+        /* THE DEBRIEF (2026-10-05): the guard may name a WINDOW — the part of the
+           canvas the bodies belong in, as fractions {l, r, t, b} (0,0 = top-left)
+           — and ask to be CENTRED in it (the result screen frames the party in the
+           stage left of the debrief panel, under the title, over the command bar) */
+        let center = false;
+        let rect = null;
+        try { rect = (typeof cam._frameGuard.rect === 'function') ? cam._frameGuard.rect() : null; } catch (e) { rect = null; }
+        if (rect && rect.r - rect.l > 0.05 && rect.b - rect.t > 0.05) {
+            const th = tv * aspect;
+            W = [th * (2 * rect.l - 1), th * (2 * rect.r - 1), tv * (1 - 2 * rect.b), tv * (1 - 2 * rect.t)];
+            center = !!cam._frameGuard.center;
+        }
         const zMin = tileSize * 0.8;
         const yawRad = (cam.yaw || 0) * DEG2RAD;
         let dx = lx - ex, dy = ly - ey, dz = lz - ez;
@@ -216,7 +233,7 @@ const ThreeCamera = (function () {
         if (!(dl > 1e-6)) return null;
         dx /= dl; dy /= dl; dz /= dl;
         let B = _fgBasis(dx, dy, dz, yawRad);
-        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, tanH, tanV, zMin);
+        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center);
         if (res === 0) { _frameGuardLast = { n: pts.length, framed: true }; return null; }
         let reaimed = false;
         if (!res) {
@@ -230,7 +247,7 @@ const ThreeCamera = (function () {
             dx = hx * hs; dy = ndy; dz = hz * hs;
             B = _fgBasis(dx, dy, dz, yawRad);
             reaimed = true;
-            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, tanH, tanV, zMin);
+            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center);
             if (res === 0) res = { sx: 0, sy: 0, D: 0 };
             if (!res) { _frameGuardLast = { n: pts.length, framed: false, failed: true }; return null; }
         }
