@@ -801,3 +801,5 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   absolutely nothing" on a game room). Game rooms pick (their rows had no ids) and the first change edits his copy of the room;
   W A S D / SPACE / SHIFT fly without holding a button, E or a click on empty ground = mouse look with a crosshair (LEFT pick and
   drag, RIGHT place, MIDDLE take in hand), a 1-9 hotbar. Details: docs/notes/editor.md "THE CREATIVE CONTROLS".
+- 2026-10-05: **THE SHAPES** (WorldEdit-style stamps on a SHAPES tab: hill, mountain, volcano, mesa, bowl, pit, block up/down,
+  level, ridge, trench, round wall; drag or one click, each one undo step on terrain.hmap). Details: docs/notes/editor.md "THE SHAPES".
