@@ -62396,6 +62396,154 @@ const ThreeRenderer = (function () {
         try { if (_facilityNearGroup) _facilityNearGroup.traverse(function (o) { if (o._ew_hqProp && o._ew_sinkBase != null) o.position.y = o._ew_sinkBase; }); } catch (e) {}
         _fieldDeformCache.key = null; _fieldDeformCache.plan = null;
     }
+    /* ══ THE PATCH (2026-10-05, mondo: "each tile has the same texture pattern so it looks stupid/unrealistic. it should stem
+       from the middle or lowest deformed tile and spread out and use the edge blending like for dirt paths") ══
+       The strata tops and the skins were one 0–1 quad per cell, so a crater, a raised mound or a flooded patch printed the
+       same sheet in every tile like a chessboard. Now every run of same-surface cells is ONE mesh: its UVs are world space
+       (one sheet across the whole patch, at the room's own floor scale, its origin at the patch's centre — a dig's at its
+       lowest cell — so the pattern spreads out from there), and where the patch meets the ground at its own level it fades
+       out over FIELD_PATCH_BAND tiles with the same noisy edge the room's dirt paths have (_hqBuildTerrain's pathW: full
+       inside, a falloff of about 0.7 m past the edge), in vertex alpha — no shader hook, so the node renderer (WebGPU)
+       draws the same blend. A strata top is solid (only its fringe on the ground beside it fades); a skin lies on the
+       room's floor, so it fades in a little inside its own edge too. Kill-switch window.EW_NO_FIELD_PATCH (the old quads). */
+    var FIELD_PATCH_SEGS = 4, FIELD_PATCH_BAND = 0.75, FIELD_PATCH_INSET = 0.2, FIELD_PATCH_NOISE = 0.22;
+    /* the sheet's repeat in battle px: the terrain room's own floor tile (info.tile metres), else two cells */
+    function _fieldPatchRep(G) {
+        var tm = 0;
+        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf && +inf.tile; } catch (e) { tm = 0; } }
+        var rep = (tm > 0) ? tm * G.s : 2 * G.ts;
+        return Math.max(G.ts, Math.min(6 * G.ts, rep));
+    }
+    /* cells: [{x, y}] of one surface; yOf(x, y) → the top (battle px) or null; o: { lift, solid, origin: {x, y} (tiles), rep (px),
+       fringe: false to draw no fade onto the neighbours }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
+    function _fieldPatchGeo(G, cells, yOf, o) {
+        if (!cells.length) return null;
+        var ts = G.ts, S = FIELD_PATCH_SEGS, in_ = {}, i, c;
+        for (i = 0; i < cells.length; i++) in_[cells[i].x + ',' + cells[i].y] = true;
+        var has = function (x, y) { return !!in_[x + ',' + y]; };
+        var ox = (o.origin ? o.origin.x : 0) * ts, oz = (o.origin ? o.origin.y : 0) * ts, rep = o.rep || ts * 2, lift = o.lift || 0;
+        var seed = ((o.origin ? o.origin.x * 73 + o.origin.y * 151 : 0) | 0) + 11;
+        var nse = function (u, v) { return (typeof _hqTNoise === 'function') ? _hqTNoise(u, v, 0.9, seed) : Math.sin(u * 3.1 + v * 1.7) * Math.cos(v * 2.3 - u * 0.9); };
+        var sq = function (u, v, x, y) { var dx = Math.max(x - u, 0, u - x - 1), dy = Math.max(y - v, 0, v - y - 1); return Math.sqrt(dx * dx + dy * dy); };
+        /* the signed distance (tiles) from the patch's edge: + outside (to the nearest patch cell), − inside (to the nearest cell not in it) */
+        var sd = function (u, v, cx, cy) {
+            var best = 9, inside = has(cx, cy), R = inside ? 1 : 2;
+            for (var dy = -R; dy <= R; dy++) for (var dx = -R; dx <= R; dx++) {
+                var nx = cx + dx, ny = cy + dy;
+                if (inside ? has(nx, ny) : !has(nx, ny)) continue;
+                if (inside && (nx < 0 || ny < 0 || nx >= G.W || ny >= G.H)) continue;   // the board's edge is not an edge of the patch
+                var d = sq(u, v, nx, ny); if (d < best) best = d;
+            }
+            return inside ? -best : best;
+        };
+        var alphaAt = function (u, v, cx, cy, solidCell) {
+            if (solidCell) return 1;
+            var t = sd(u, v, cx, cy) + nse(u, v) * FIELD_PATCH_NOISE;
+            t = (t + FIELD_PATCH_INSET) / (FIELD_PATCH_BAND + FIELD_PATCH_INSET); t = t < 0 ? 0 : t > 1 ? 1 : t;
+            return 1 - t * t * (3 - 2 * t);
+        };
+        /* the fringe: a neighbour not in the patch, at the level of a patch cell beside it (a step down / a wall face needs none) */
+        var fringe = [], seen = {}, near = 0.3 * G.elev;
+        if (o.fringe !== false) {
+            for (i = 0; i < cells.length; i++) {
+                c = cells[i]; var cy0 = yOf(c.x, c.y); if (cy0 === null || cy0 === undefined) continue;
+                for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+                    var fx = c.x + dx, fy = c.y + dy, fk = fx + ',' + fy;
+                    if ((!dx && !dy) || has(fx, fy) || seen[fk] || fx < 0 || fy < 0 || fx >= G.W || fy >= G.H) continue;
+                    var fyy = yOf(fx, fy); if (fyy === null || fyy === undefined || Math.abs(fyy - cy0) > near) continue;
+                    seen[fk] = true; fringe.push({ x: fx, y: fy });
+                }
+            }
+        }
+        var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+        var quadCell = function (cx, cy, top, solidCell) {
+            var v0 = nV, a = [], any = false;
+            for (var j = 0; j <= S; j++) for (var k = 0; k <= S; k++) {
+                var u = cx + k / S, v = cy + j / S, wx = u * ts, wz = v * ts;
+                var al = alphaAt(u, v, cx, cy, solidCell); a.push(al); if (al > 0.01) any = true;
+                pos.push(wx, top + lift, wz); nrm.push(0, 1, 0);
+                if (o.cellUV) uv.push(k / S, 1 - j / S);   // a liquid's sheets: one per cell (its base sheet clamps), its flow and caustics are world space already
+                else uv.push((wx - ox) / rep + 0.5, 0.5 - (wz - oz) / rep);
+                col.push(1, 1, 1, al);
+                nV++;
+            }
+            if (!any) { pos.length -= (S + 1) * (S + 1) * 3; nrm.length = pos.length; uv.length -= (S + 1) * (S + 1) * 2; col.length -= (S + 1) * (S + 1) * 4; nV = v0; return 0; }
+            for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
+                var p = v0 + j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
+                if (!solidCell && a[p - v0] < 0.01 && a[q - v0] < 0.01 && a[r - v0] < 0.01 && a[s2 - v0] < 0.01) continue;
+                idx.push(p, r, q, q, r, s2);
+            }
+            return 1;
+        };
+        for (i = 0; i < cells.length; i++) { c = cells[i]; var t0 = yOf(c.x, c.y); if (t0 !== null && t0 !== undefined) quadCell(c.x, c.y, t0, !!o.solid); }
+        var coreN = idx.length;
+        for (i = 0; i < fringe.length; i++) { c = fringe[i]; quadCell(c.x, c.y, yOf(c.x, c.y), false); }
+        if (!idx.length) return null;
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+        geo.setIndex(idx);
+        if (coreN) geo.addGroup(0, coreN, 0);
+        if (idx.length > coreN) geo.addGroup(coreN, idx.length - coreN, 1);
+        geo.computeBoundingSphere(); geo.computeBoundingBox();
+        return geo;
+    }
+    /* a dry skin's sheet: the terrain's top texture as a REPEATING sheet (_hzTex; the tile cache's copy clamps at 0–1), self-lit like the strata */
+    var _fieldPatchSheetMats = {};
+    function _fieldPatchSheetMat(key) {
+        if (_fieldPatchSheetMats[key] !== undefined) return _fieldPatchSheetMats[key];
+        var tex = _hzTex(key), m = null;
+        if (tex) {
+            m = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff });
+            var em = _EMISSIVE_TERRAIN[key];
+            if (em) { m.emissive = new THREE.Color(em.color); m.emissiveMap = tex; m.emissiveIntensity = em.intensity; }
+            else m.emissive = new THREE.Color(0x111111);
+            _evTintMat(m, key); m._ew_shared = true;
+        } else { var bm = buildBoxMaterials(key, null); m = bm && bm[2]; }
+        _fieldPatchSheetMats[key] = m;
+        return m;
+    }
+    /* a patch's faded twin of a material: the same sheet, alpha from the vertices, drawn over the floor without writing depth */
+    var _fieldPatchFadeMats = {};
+    function _fieldPatchFadeMat(mat, key) {
+        if (!mat) return null;
+        var mk = key + '|' + mat.id;
+        if (_fieldPatchFadeMats[mk]) return _fieldPatchFadeMats[mk];
+        var f = mat.clone();
+        f.vertexColors = true; f.transparent = true; f.depthWrite = false;
+        f.polygonOffset = true; f.polygonOffsetFactor = -2; f.polygonOffsetUnits = -2;
+        if (mat._ewNode) _ewNodeTag(f, mat._ewNode);
+        f._ew_shared = true;
+        _fieldPatchFadeMats[mk] = f;
+        return f;
+    }
+    /* group cells by 4-connected runs (one patch each, so each spreads from its own centre) */
+    function _fieldPatchRuns(cells) {
+        var at = {}, done = {}, out = [];
+        cells.forEach(function (c) { at[c.x + ',' + c.y] = c; });
+        cells.forEach(function (c) {
+            var k0 = c.x + ',' + c.y; if (done[k0]) return;
+            var run = [], st = [c]; done[k0] = true;
+            while (st.length) {
+                var q = st.pop(); run.push(q);
+                [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var k = (q.x + d[0]) + ',' + (q.y + d[1]); if (at[k] && !done[k]) { done[k] = true; st.push(at[k]); } });
+            }
+            out.push(run);
+        });
+        return out;
+    }
+    /* the run's centre (tiles), or its lowest cell's centre when it was dug (low: true) */
+    function _fieldPatchOrigin(run, yOf, low) {
+        if (low) {
+            var best = null, by = Infinity;
+            run.forEach(function (c) { var y = yOf(c.x, c.y); if (y !== null && y !== undefined && y < by) { by = y; best = c; } });
+            if (best) return { x: best.x + 0.5, y: best.y + 0.5 };
+        }
+        var sx = 0, sy = 0; run.forEach(function (c) { sx += c.x + 0.5; sy += c.y + 0.5; });
+        return { x: sx / run.length, y: sy / run.length };
+    }
     function _fieldStrataBuild(ts) {
         var G = _fieldGround(); if (!G || !G.levels || !terrainGroup || typeof THREE === 'undefined') return 0;
         var elev = G.elev;
@@ -62412,7 +62560,23 @@ const ThreeRenderer = (function () {
             return _fieldStrataMats[key];
         };
         var grp = new THREE.Group(); grp.name = 'field_strata'; grp._ew_fieldStrata = true;
-        plan.tops.forEach(function (c) {
+        var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), rep = patchOn ? _fieldPatchRep(G) : ts;
+        if (patchOn) {
+            /* THE PATCH: the raised tops (the room's floor) and the dug ones (the bed) — one world-space sheet per run */
+            var topOf = {}; plan.tops.forEach(function (c) { topOf[c.x + ',' + c.y] = c.top; });
+            var yTop = function (x, y) { var t = topOf[x + ',' + y]; return (t !== undefined) ? t : G.yAt(x, y); };
+            [true, false].forEach(function (up) {
+                var cells = plan.tops.filter(function (c) { return up ? c.delta > 0 : !(c.delta > 0); });
+                if (!cells.length) return;
+                var key = up ? floorKey : bed.floor, core = matOf(key), fade = _fieldPatchFadeMat(core, 'strata|' + key);
+                _fieldPatchRuns(cells).forEach(function (run) {
+                    var geo = _fieldPatchGeo(G, run, yTop, { lift: 0.4, solid: true, origin: _fieldPatchOrigin(run, yTop, !up), rep: rep });
+                    if (!geo) return;
+                    var m = new THREE.Mesh(geo, [core, fade || core]);
+                    m.receiveShadow = true; m._ew_fieldStrata = true; m.name = 'field_strata_patch'; grp.add(m);
+                });
+            });
+        } else plan.tops.forEach(function (c) {
             var quadGeo = new THREE.PlaneGeometry(ts, ts); quadGeo.rotateX(-Math.PI / 2);
             var m = new THREE.Mesh(quadGeo, matOf(c.delta > 0 ? floorKey : bed.floor));
             m.position.set(c.x * ts + ts / 2, c.top + 0.4, c.y * ts + ts / 2); m.receiveShadow = true; m._ew_fieldStrata = true; grp.add(m);
@@ -62420,7 +62584,17 @@ const ThreeRenderer = (function () {
         plan.faces.forEach(function (f) {
             var h = f.y1 - f.y0; if (!(h > 0.5)) return;
             var geo = new THREE.PlaneGeometry(ts, h);
-            try { var uv = geo.attributes.uv; for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / ts)); } catch (e) {}   // the sheet tiles by height
+            if (patchOn) {
+                /* THE PATCH: the face's sheet in world space too — along the wall by its world x / z, down it by its height */
+                try {
+                    var uvw = geo.attributes.uv, pw = geo.attributes.position, fcx = f.x * ts + ts / 2, fcz = f.y * ts + ts / 2, fcy = (f.y0 + f.y1) / 2;
+                    for (var wi = 0; wi < uvw.count; wi++) {
+                        var lx = pw.getX(wi), ly = pw.getY(wi);
+                        var along = f.side === 's' ? fcx + lx : f.side === 'n' ? fcx - lx : f.side === 'e' ? fcz - lx : fcz + lx;
+                        uvw.setXY(wi, along / rep, (fcy + ly) / rep);
+                    }
+                } catch (e) {}
+            } else try { var uv = geo.attributes.uv; for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / ts)); } catch (e) {}   // the sheet tiles by height
             var m = new THREE.Mesh(geo, matOf(bed.side)); m.material.side = THREE.DoubleSide;
             var cx = f.x * ts + ts / 2, cz = f.y * ts + ts / 2, cy = (f.y0 + f.y1) / 2;
             if (f.side === 'e') { m.position.set(cx + ts / 2, cy, cz); m.rotation.y = Math.PI / 2; }
@@ -62465,6 +62639,7 @@ const ThreeRenderer = (function () {
             return m;
         };
         var grp = null, n = 0;
+        var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null;
         for (var pk in painted) {
             var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
             if (!(x >= 0 && y >= 0 && x < G.W && y < G.H)) continue;
@@ -62476,6 +62651,7 @@ const ThreeRenderer = (function () {
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
+            if (byKey) { (byKey[k] || (byKey[k] = [])).push({ x: x, y: y }); n++; if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y }); continue; }   // THE PATCH: drawn below, a run at a time
             var mesh = new THREE.Mesh(_fieldSkinGeo.geo, mat);
             /* over the room's floor and over a strata top (+0.4): a liquid a little higher, its sheet drawn after the floor */
             mesh.position.set(x * ts + ts / 2, top + (fluid ? 0.9 : 0.7), y * ts + ts / 2);
@@ -62484,6 +62660,27 @@ const ThreeRenderer = (function () {
             if (fluid) mesh.renderOrder = 2;
             grp.add(mesh); n++;
             if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y });
+        }
+        /* THE PATCH: each run of one new surface is one sheet in world space, spreading from the run's centre (from its lowest
+           cell when the ground there was dug); a dry one fades into the room's floor round its edge like a dirt path, a liquid
+           keeps its shore (one continuous surface, no fade: water and lava stand in their own pool) */
+        if (byKey) {
+            var rep = _fieldPatchRep(G), yOf = function (x, y) { return G.yAt(x, y); };
+            Object.keys(byKey).forEach(function (k) {
+                var fluid = !!_FLUID_TERRAIN_SET[k], mat = fluid ? matOf(k) : _fieldPatchSheetMat(k); if (!mat) return;
+                var fade = fluid ? mat : _fieldPatchFadeMat(mat, 'skin|' + k);
+                if (!fade) return;
+                _fieldPatchRuns(byKey[k]).forEach(function (run) {
+                    var low = run.some(function (c) { return G.deltaAt(c.x, c.y) < 0; });
+                    var geo = _fieldPatchGeo(G, run, yOf, { lift: fluid ? 0.9 : 0.7, solid: fluid, fringe: !fluid, cellUV: fluid, origin: _fieldPatchOrigin(run, yOf, low), rep: rep });
+                    if (!geo) return;
+                    var mesh = new THREE.Mesh(geo, [fade, fade]);
+                    mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k; mesh.name = 'field_skin_patch';
+                    mesh.castShadow = false; mesh.receiveShadow = !fluid;
+                    mesh.renderOrder = fluid ? 2 : 1;
+                    grp.add(mesh);
+                });
+            });
         }
         if (grp) { terrainGroup.add(grp); _shadowsDirty = true; }
         return n;

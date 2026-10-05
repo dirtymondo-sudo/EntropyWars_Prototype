@@ -933,3 +933,18 @@ painted cell's real top when its terrain is no longer the field's built tid (`en
 liquids use the animated fluid top (`_buildFluidTopMat`, which has the WebGPU twin), lava also feeds
 `rebuildLavaLights`, anything else its terrain's top texture. Kill-switch `window.EW_NO_FIELD_SKINS`.
 Classic (non-room) maps were never affected: their tile meshes rebuild on the terrain fingerprint.
+
+## THE PATCH (2026-10-05) — spell-changed ground is one sheet, not a chessboard
+mondo (Göbekli Tepe arena screenshot): "each tile has the same texture pattern so it looks stupid/unrealistic. it should
+stem from the middle or lowest deformed tile and spread out and use the edge blending like for dirt paths."
+Root cause: THE STRATA tops (`_fieldStrataBuild`) and THE SKINS (`_fieldSkinBuild`) drew one 0–1 UV quad per cell.
+Fix (three-renderer.js "THE PATCH", above `_fieldStrataBuild`): cells of one surface are grouped into 4-connected runs
+(`_fieldPatchRuns`), each run is ONE mesh (`_fieldPatchGeo`, 4×4 segments a cell) with world-space UVs at the room's
+floor scale (`_fieldPatchRep`: terrain room `info.tile` m, else 2 cells), origin at the run's centre (a dug run: its
+lowest cell, `_fieldPatchOrigin`). Where the run meets ground at its own level it fades out over `FIELD_PATCH_BAND`
+(0.75 tile, noisy edge from `_hqTNoise`, the dirt paths' falloff) in VERTEX ALPHA (a 4-wide `color` attribute +
+`vertexColors` on a transparent twin, `_fieldPatchFadeMat`) — no onBeforeCompile, so WebGPU's node materials draw it
+too. Strata tops are solid (only the fringe fades); dry skins fade a little inside their own edge too and use
+`_fieldPatchSheetMat` (`_hzTex`, a repeating sheet: the tile cache's texture clamps). Liquids stay one continuous solid
+sheet with per-cell UVs (their base sheet clamps; flow/caustics/lava are world space already). Strata side faces got
+world-space UVs too. Δ boards are untouched (voxel tiles by design). Kill-switch `window.EW_NO_FIELD_PATCH`.
