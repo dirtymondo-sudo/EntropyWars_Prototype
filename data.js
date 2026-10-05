@@ -42801,6 +42801,11 @@ function hqAreaSky(meta, A) {
     sky.fog = Object.assign({}, env.fog || {}, { density: (A.fogD != null) ? A.fogD : 0.022 });
     if (A.landmarks && A.landmarks.length) sky.landmarks = A.landmarks.map(l => Object.assign({}, l));
     delete sky.motion;   // the building is still (the renderer zeroes it anyway)
+    /* THE VOYAGE (2026-10-05, mondo: "it needs to be a spaceship, similar to the flying dutchman map but flying through space"): an area
+       wearing `voyage` (true, or rows over the site's own env.motion) is a vessel UNDER WAY — the walk streams the sky's far roster past
+       along the motion's axis (three-renderer.js _hqBuildSky / _hqTickSky) and a fight on its field keeps the site's motion and far
+       roster (hqFieldLayout `voyage`), so the room stands still and the space streams past it, the Dutchman's rule */
+    if (A.voyage && env.motion) sky.voyage = Object.assign({}, env.motion, (typeof A.voyage === 'object') ? A.voyage : {});
     return sky;
 }
 function _hqAreaHex(s, dflt) { if (typeof s === 'number') return s; if (typeof s === 'string' && /^#[0-9a-f]{6}$/i.test(s)) return parseInt(s.slice(1), 16); return dflt; }
@@ -42832,7 +42837,7 @@ function hqAreaRoom(mapId, A) {
     ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
     const gen = A.gen ? Object.assign({}, A.gen) : null;
     if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
-    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, { features: features });
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, A.float ? { float: JSON.parse(JSON.stringify(A.float)) } : {}, { features: features });   // A.float: THE FLOATING GROUND (three-renderer.js _hqFieldFloats — a rock underside, or THE HULL)
     const label = String(meta.label || id).toUpperCase();
     const room = {
         label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
@@ -43914,6 +43919,14 @@ const HQ_AREA_SPECS = {
         parti: 'The back of a dead ship is a road from the breach at the stern to the airlock at the bow, and the airlock is up a tower because the ship was built for people who could climb.', typology: 'corridor',
         floor: 'aluminium', cliff: 'gunmetal', path: 'metal_2', floorColor: 0x8e98a2, cliffColor: 0x5a6068,
         noise: { amp: 0, scale: 9 }, crag: false,   // LEVEL_DESIGN_PLAN L3: a hull plate, not a hillside (the rooms gen's 3 m banks went)
+        /* THE SHIP UNDER WAY (2026-10-05, mondo: "why is the spaceship deck / battle map like a landscape? it needs to be a spaceship,
+           similar to the flying dutchman map but flying through space"): the plate ran on past its edge as open ground to the fog
+           (the outer ground of every open terrain room) and the arena cut of it lost the Δ's starship and its motion. Now the deck is
+           a FLOATING ground (no outer ground) on THE HULL (three-renderer.js _hqBuildHull: the plate's skirt and bulwark, the
+           fuselage under it, bow east, the engines burning astern, the nacelles, the bridge on the nose), and THE VOYAGE streams the
+           wreckage roster past it on the walk and in every fight on the deck (the arena included) — faster every round in a fight. */
+        float: { hull: { depth: 3.2, beam: 0.84, height: 7.5, stern: 6, nose: 30 } },
+        voyage: true,
         plaza: { x: 0, z: 6 },
         features: [
             { k: 'wall', x0: -26, z0: -2, x1: -13.5, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: -8.5, z0: -2, x1: -3.8, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: 1.4, z0: -2, x1: 6, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false },                                      // THE DORSAL FIN's root
@@ -52300,7 +52313,8 @@ function hqFieldLayout(site, baseKey, opts) {
     /* THE SEAMLESS FIELD, delivery 2 (2026-09-22): a TERRAIN room draws its own ground to the fog round the window (three-renderer.js
        _hqBuildRoomInBattle runs _hqBuildTerrain on the scratch record — the field, the outer ground, the treeline, the water) — so no
        near builder, no motion, THE WORLD inert; an OPEN room keeps the site's sky and far roster over it, a CLOSED one is a dark ceiling */
-    if (env && opts.terrain) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; if (!opts.open) { env.stars = 0; env.nebula = 0; delete env.density; } }   // THE SKY ONCE (delivery 5): the far roster is never built for a field — an OPEN room keeps its stars / day / tint, and the battle hangs the ROOM's own floaters + landmarks (three-renderer.js _hqBuildRoomInBattle)
+    if (env && opts.terrain && opts.voyage && opts.open && env.motion) { delete env.near; env.world = { kind: 'room' }; }   // THE VOYAGE (2026-10-05): a vessel under way keeps the site's motion and far roster — the room stands still, the space streams past it (the Dutchman's rule)
+    else if (env && opts.terrain) { delete env.near; delete env.motion; env.world = { kind: 'room' }; env.scenery = 'none'; if (!opts.open) { env.stars = 0; env.nebula = 0; delete env.density; } }   // THE SKY ONCE (delivery 5): the far roster is never built for a field — an OPEN room keeps its stars / day / tint, and the battle hangs the ROOM's own floaters + landmarks (three-renderer.js _hqBuildRoomInBattle)
     /* THE SEAMLESS FIELD rev 3 (2026-09-22, the user: "I don't want the lighting to change"): the field wears the ROOM's grade
        (shell.look — the battle's _applyEnvLook reads env.look), and a CLOSED room's dome is painted the room's own fog colour
        (the far wall fades into that colour on the walk; beyond the walls the eye sees the same dark, never the site's stars) */
@@ -52318,7 +52332,7 @@ function hqFieldRegister(roomId, ox, oz, opts) {
     const room = DOOR_HQ.rooms[roomId], sh = (room && room.shell) || {};
     const closedDome = (!sh.open) ? ((sh.fog && sh.fog.color != null) ? sh.fog.color : 0x0d0e12) : null;   // _hqEnter's closed-room fog (the default 0x0d0e12)
     const layout = hqFieldLayout(site, entry.base, { box: !!entry.field.box, cave: !!entry.field.cave, terrain: !!entry.field.terrain, open: !!entry.field.open,
-                                                    look: (sh.look && typeof sh.look === 'object') ? sh.look : null, dome: closedDome, H: FH });
+                                                    look: (sh.look && typeof sh.look === 'object') ? sh.look : null, dome: closedDome, H: FH, voyage: !!(sh.sky && sh.sky.voyage) });
     if (typeof MAP_LAYOUT_PRESETS !== 'undefined') MAP_LAYOUT_PRESETS[id] = layout;
     const siteMeta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
     const meta = { id, label: (room.label || roomId) + ' · ' + HQ_FIELD_RULES.label, w: FW, h: FH, teamSize: HQ_FIELD_RULES.teamSize, tier: (siteMeta && siteMeta.tier) || 3,
@@ -52479,7 +52493,7 @@ function hqArenaUpgrade(mapId, opts) {
     const closedDome = (!sh.open) ? ((sh.fog && sh.fog.color != null) ? sh.fog.color : 0x0d0e12) : null;
     if (typeof MAP_LAYOUT_PRESETS !== 'undefined') {
         MAP_LAYOUT_PRESETS[id] = hqFieldLayout(a.site, e.base, { box: !!e.field.box, cave: !!e.field.cave, terrain: !!e.field.terrain, open: !!e.field.open,
-                                                              look: (sh.look && typeof sh.look === 'object') ? sh.look : null, dome: closedDome });
+                                                              look: (sh.look && typeof sh.look === 'object') ? sh.look : null, dome: closedDome, voyage: !!(sh.sky && sh.sky.voyage) });
     }
     return true;
 }

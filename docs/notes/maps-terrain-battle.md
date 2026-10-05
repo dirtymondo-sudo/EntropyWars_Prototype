@@ -390,3 +390,32 @@ and the D.U.M.B. east, the underworld under the city, the deep off the coast, th
 the ice along the bottom) — nothing on the woods ⇄ estate line. Screenshotted offline (the test harness's SVG under
 headless chromium — no animation, no label plan); hq-map.test.js green. UNSEEN LIVE (RULE #1c): the pop landing in
 place, the plan's offsets on the crowded sheets, the octilinear lines over the new slots.
+
+## THE SHIP UNDER WAY — the Spaceship deck is a starship flying through space (2026-10-05, token 20261005-spaceship-01-cors)
+
+R2 files: data.js, three-renderer.js. Repo: index.html (token), docs.
+
+mondo: "why is the spaceship deck / battle map like a landscape? it needs to be a spaceship, similar to the flying dutchman map
+but flying through space". WHY: since E8 the Spaceship's PvP map is the 8×8 arena cut of THE DECK (`site_prebuilt_derelict_deck`,
+an HQ_AREA_SPECS terrain room), and a fight on a terrain room draws the room "to the fog": the open terrain room's OUTER GROUND
+(the plate run on past its edge, rising into low hills under the fog) — a landscape — while hqFieldLayout dropped the Δ's
+starship (`near: 'derelict'`) and its `motion`. The Dutchman never had this: its rooms are seas, so it kept its Δ.
+
+- **THE HULL** (three-renderer.js `_hqBuildHull`, called from `_hqBuildTerrain` when `terrain.float.hull` is set; data.js
+  hqAreaRoom now passes an area spec's `float`): the deck is a FLOATING ground (no outer ground) and under it hangs a starship
+  in room metres — the skirt down the field's own rim to a belly plate, a 0.75 m bulwark on the rim (cut at every door on a
+  wall), the fuselage lofted along +x (bow east, stern west: the motion's axis), three engine bells with plumes astern, a nacelle
+  on a pylon each side, the bridge on the nose with lit windows and a mast, light strips, blinking running lights. One merged
+  mesh per material (~8 draws + 5 sprites). Group `hqHull`, `_ew_hqPart: 'underside'` (the battle radius keeps it). Keys on
+  the spec: `float: { hull: { depth, beam, height, stern, nose } }`.
+- **THE VOYAGE** (data.js hqAreaSky `voyage` → `shell.sky.voyage` = the site's env.motion): the walk lays the sky's far roster
+  along the travel band and streams it past (three-renderer.js `_hqBuildSky` / `_hqTickSky`, own rng — still rooms unchanged),
+  the nebula flows (uSkyFlow), 36 dust streaks race by beside the hull. In a fight, hqFieldLayout `voyage` keeps the site's
+  `motion` + far roster (`scenery: 'wreckage'`) for an open terrain field (the arena and the story encounters on the deck), so
+  the room stands still and the space streams past, faster every round — the Dutchman's rule. `_hqBuildRoomInBattle` does not
+  hand the walk's sky over on top of it; `_hzPlaceStream` / the motes keep clear of the room's hull (`_hqBattleRoomKeepLat`).
+- The arena window is unchanged (the float changes no height): hqArenaUpgrade still fits (checked headlessly). No relay needed:
+  the guest reads the same layout and state.round drives the speed.
+- Checked: the Spaceship Arena TDM and the walk on the deck in WebGL (scratch Playwright, no errors). WebGPU could not run in
+  the sandbox's Chromium (three 0.186's texture-view `swizzle` is unsupported there — every frame throws with or without this
+  change); the hull uses only Phong / additive Basic / Sprite / CanvasTexture, all already on the WebGPU path.
