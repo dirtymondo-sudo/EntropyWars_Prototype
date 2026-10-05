@@ -34072,7 +34072,7 @@ const DOOR_HQ = {
                        the clearing, 14 m up past the treeline, its cheek walls stepping up with it, the blue runner of the building's own stair
                        up the middle. Its last flight climbs into the dark — the building's stair hall is past it (link woods_stair, a `free`
                        passage over these treads: no door at the top) */
-                    { k: 'ramp', x0: 8.2, z0: 1.5, x1: 8.2, z1: -16.5, w: 3.6, h0: 0, h1: 14, stairs: true, edge: 0.2,
+                    { k: 'ramp', x0: 8.2, z0: 1.5, x1: 8.2, z1: -16.5, w: 3.6, h0: 0, h1: 14, stairs: true, edge: 0.2, model: 'concrete',   // (the building's own flight, not the woods' timber)
                       built: true, key: 'marble_light', side: 'marble_light', runner: { w: 2.0, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light', head: true } },
                     { k: 'path', pts: [[8, 6], [8.2, 2.6]], w: 1.8 },                                         // the crossroads' path to its foot
                     { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-5.6, -3.2], [-6.5, -6], [-6.5, -13], [-8.6, -16.5]], w: 1.8 },   // the path in, past the knoll to the lookout's ladder
