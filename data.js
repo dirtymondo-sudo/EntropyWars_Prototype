@@ -38286,7 +38286,7 @@ const DOOR_HQ = {
                     { k: 'space', x: 12, z: -14, w: 15, d: 15, round: true },            // ENCLOSURE B
                     { k: 'space', x: -4, z: 14, w: 15, d: 15, round: true },             // ENCLOSURE C
                     { k: 'space', x: 18, z: 8, w: 15, d: 15, round: true },              // ENCLOSURE D
-                    { k: 'space', x: 1, z: -1, w: 10, d: 8 },                            // THE TELL's top, between the four
+                    { k: 'space', x: 1, z: -1, w: 13, d: 13, round: true },              // THE TELL's top, between the four (a round court round its lookout)
                     { k: 'space', x: 0, z: 38, w: 14, d: 12 },                           // the oldest doorway's space (the bay door)
                     { k: 'space', x: -30, z: 26, w: 22, d: 20 },                         // THE DIG (the spoil heap, the crates, the fire)
                     { k: 'space', x: -10, z: -38, w: 10, d: 11 },                        // the ley's mouth
@@ -38340,6 +38340,28 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -30, z: 23, w: 12, d: 6, h: 1.4, edge: 0.15 },                                             // THE DIG's spoil heap
                     { k: 'ramp', x0: -30, z0: 31, x1: -30, z1: 25.3, w: 2.4, h0: 0, h1: 1.4, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
                     { k: 'rail', x0: -35.5, z0: 20.6, x1: -24.5, z1: 20.6 },                                                       // the heap's rail (the grind)
+                    /* the stairs pass (2026-10-05): the spoil heap's west end a second step (2.8 m) up a timber flight, a scaffold tower
+                       across a 2.5 m gap south of it (a rail across, a ladder down) */
+                    { k: 'plateau', x: -33.75, z: 23, w: 4.5, d: 6, h: 2.8, edge: 0.15 },
+                    { k: 'ramp', x0: -30.0, z0: 22.5, x1: -32.4, z1: 22.5, w: 2.2, h0: 1.4, h1: 2.8, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'plateau', x: -34.5, z: 30, w: 3, d: 3, h: 2.8, edge: 0.15 },
+                    { k: 'rail', x0: -34.5, z0: 25.7, x1: -34.5, z1: 28.8, y: 2.8, model: 'pipe', block: false },
+                    { k: 'climb', x: -35.7, z: 30, face: 90, look: 'ladder' },
+                    /* THE TELL's top: a round lookout 2.4 m up, a stone flight from the north hall and one from C, a curved parapet round it */
+                    { k: 'plateau', x: 1, z: -1, r: 4, h: 2.4, edge: 0.15 },
+                    { k: 'ramp', x0: 1, z0: -8.5, x1: 1, z1: -4.1, w: 2.4, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: 0, z0: 6.4, x1: 0, z1: 1.95, w: 2.4, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'rail', arc: { x: 1, z: -1, r: 4.1, a0: 20, a1: 75 }, y: 2.4, model: 'parapet' }, { k: 'rail', arc: { x: 1, z: -1, r: 4.1, a0: 105, a1: 160 }, y: 2.4, model: 'parapet' },
+                    { k: 'rail', arc: { x: 1, z: -1, r: 4.1, a0: 218, a1: 260 }, y: 2.4, model: 'parapet' }, { k: 'rail', arc: { x: 1, z: -1, r: 4.1, a0: 285, a1: 340 }, y: 2.4, model: 'parapet' },
+                    /* curved skate rails round each enclosure's ring wall, open at the halls and the stairs */
+                    { k: 'rail', arc: { x: -16, z: -8, r: 6, a0: 45, a1: 135 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: -16, z: -8, r: 6, a0: 195, a1: 255 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: -16, z: -8, r: 6, a0: 285, a1: 315 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 12, z: -14, r: 6, a0: 50, a1: 110 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 12, z: -14, r: 6, a0: 140, a1: 255 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 12, z: -14, r: 6, a0: 285, a1: 315 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: -4, z: 14, r: 6, a0: 50, a1: 75 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: -4, z: 14, r: 6, a0: 105, a1: 165 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: -4, z: 14, r: 6, a0: 195, a1: 255 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: -4, z: 14, r: 6, a0: 285, a1: 380 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 18, z: 8, r: 6, a0: 20, a1: 130 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 18, z: 8, r: 6, a0: 165, a1: 195 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 18, z: 8, r: 6, a0: 235, a1: 340 }, model: 'pipe', block: false },
                     { k: 'plateau', x: -27.15, z: -30, w: 17.7, d: 3.4, h: -1.0, sink: true, edge: 0.15 },                         // TRENCH I, sunk
                     { k: 'plateau', x: -20, z: -26.9, w: 3.4, d: 8.2, h: -1.0, sink: true, edge: 0.15 },
                     { k: 'ramp', x0: -20, z0: -22.6, x1: -20, z1: -26.6, w: 2.6, h0: 0, h1: -1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair down
@@ -38372,7 +38394,7 @@ const DOOR_HQ = {
                 { key: 't_pillar',       x: 16.4, z: 8, face: 90, h: 4.6 },                                                          // D's other great pillar (THE SENTINEL is the tier beside it)
                 { key: 't_pillar',       x: 18, z: 3.8, face: 0, h: 3.0 }, { key: 't_pillar', x: 14.2, z: 10.5, face: 60, h: 3.0 }, { key: 't_pillar', x: 21.5, z: 11.5, face: 300, h: 3.0 },
                 /* THE DIG: the crates, the fire, the rail, the signs, the forms */
-                { key: 'cardboard_boxes', x: -36, z: 30, face: 20 }, { key: 'cardboard_boxes', x: -24, z: 31, face: 340 },
+                { key: 'cardboard_boxes', x: -38.5, z: 31, face: 20 }, { key: 'cardboard_boxes', x: -24, z: 31, face: 340 },
                 { key: 'campfire',       x: -21, z: 26 },
                 { key: 'railing_1m',     x: -30, z: 20.2, face: 0 },
                 { key: 'signpost',       x: -25, z: 34.5 }, { key: 'signpost', x: 4, z: 38 },
