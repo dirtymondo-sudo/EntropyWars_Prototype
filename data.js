@@ -28953,8 +28953,18 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -12.374, z0: 12.374, x1: -12.902, z1: 11.823, y: 5.092, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.04, 5.145], slopeTop: [5.04, 5.145], tier: true, quad: [[-12.092, 12.092], [-12.607, 11.553], [-13.197, 12.093], [-12.657, 12.657]], parapet: true },
                     { k: 'wall', x0: -12.902, z0: 11.823, x1: -13.406, z1: 11.249, y: 5.197, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.145, 5.25], slopeTop: [5.145, 5.25], tier: true, quad: [[-12.607, 11.553], [-13.099, 10.992], [-13.712, 11.506], [-13.197, 12.093]], parapet: true },
                     { k: 'wall', x0: -13.86, z0: 11.32, x1: -21.38, z1: 17.46, y: 4.2, t: 0.6, key: 'concrete', rail: false },
-                    /* THE DECK (4.2): one round slab from the ramp's top (230°) round the north to its end over the ramp's foot (130°), out to the drum's jambs; a rail on its inner edge */
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 230, a1: 490 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck' },
+                    /* THE DECK (4.2): one round slab from the ramp's top (230°) round the north to its end over the ramp's foot (130°), out to the drum's jambs; a rail on its inner edge,
+                       open where the two stairs from the plaza land (330° and 30°) */
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 230, a1: 324.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 324.5, a1: 335.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_stair_w' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 335.5, a1: 384.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck_mid' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 384.5, a1: 395.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_stair_e' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 395.5, a1: 490 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck_e2' },
+                    /* the stairs from the plaza up to the deck (people take these; the ramp is for the cars), a free-standing pipe handrail down the middle of each */
+                    { k: 'ramp', x0: -4.25, z0: -7.361, x1: -9.35, z1: -16.195, w: 3.4, h0: 0, h1: 4.2, stairs: true, model: 'concrete', edge: 0.01 },
+                    { k: 'ramp', x0: 4.25, z0: -7.361, x1: 9.35, z1: -16.195, w: 3.4, h0: 0, h1: 4.2, stairs: true, model: 'concrete', edge: 0.01 },
+                    { k: 'rail', x0: -4.5, z0: -7.794, x1: -9.2, z1: -15.935, y0: 0.21, y1: 4.08, model: 'pipe', block: false },
+                    { k: 'rail', x0: 4.5, z0: -7.794, x1: 9.2, z1: -15.935, y0: 0.21, y1: 4.08, model: 'pipe', block: false },
                     /* …and in the drum's openings the deck runs on to the doors' wall (a walker on a bridge walks over a wall, so the deck stops INSIDE the drum everywhere else) */
                     { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 353.8, a1: 366.2 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_n' },
                     { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 76.3, a1: 103.7 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_e' },
@@ -28973,7 +28983,8 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: -11.6, z0: 0, x1: -9.0, z1: 0, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                           // THE KICKER (west)
                     { k: 'ramp', x0: 11.6, z0: 0, x1: 9.0, z1: 0, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                             // THE KICKER (east)
                     { k: 'wall', x0: -11.4, z0: 7.0, x1: -6.6, z1: 10.8, y: 0.4, t: 1.6, key: 'urban:ConcreteStriped2a', rail: 'front', front: [0.621, -0.784] },   // THE MANUAL PAD (a ledge on its island side)
-                    { k: 'rail', x0: 7.0, z0: -10.5, x1: 11.0, z1: -7.0 },                                                            // THE HANDRAIL
+                    { k: 'rail', x0: 9.5, z0: -8.5, x1: 12.5, z1: -5.0 },                                                             // THE HANDRAIL (moved off the east stair's foot)
+                    { k: 'rail', arc: { x: 0, z: 0, r: 20.4, a0: 284, a1: 316 }, model: 'pipe', block: false },                      // a curved pipe rail along the lower lane, under the deck
                 ],
             },
             doors: [
@@ -29052,7 +29063,7 @@ const DOOR_HQ = {
             ],
             npcSpots: [
                 { x: -4.5, z: 10.5, face: 160 },      // by the south quarter pipe, watching the island
-                { x: 8.2, z: -14.2, face: 0 },        // by the handrail
+                { x: 13.2, z: -9.0, face: 300 },      // by the handrail
             ],
             onlineSpots: [
                 { x: -12.0, z: -12.0, face: 45 },
@@ -33362,18 +33373,43 @@ const DOOR_HQ = {
                     { k: 'pool', x: 0, z: 0, r: 3.4, y: 0, depth: 0.4 },                                                                          // THE FOUNTAIN (waded; the timer is in the chapel)
                     { k: 'plateau', x: 29, z: 28.5, w: 10, d: 7, h: 2.4, edge: 0.35 },                                                             // THE VALET DECK (in the south-east block, off the back lane)
                     { k: 'ramp', x0: 17.6, z0: 26.5, x1: 24.7, z1: 26.5, w: 3.6, h0: 0, h1: 2.4 },                                                  // the valet's ramp up to it (its last 0.7 m inside the deck)
-                    { k: 'rail', x0: 24.5, z0: 25.4, x1: 33.6, z1: 25.4 }, { k: 'rail', x0: 33.6, z0: 25.4, x1: 33.6, z1: 31.6 },                    // the deck's edge rail (the grind)
+                    { k: 'rail', x0: 18.0, z0: 28.0, x1: 24.0, z1: 28.0 },                                                                         // a railing down the ramp's side
+                    { k: 'rail', x0: 25.6, z0: 25.8, x1: 28.6, z1: 25.8 },                                                                          // the deck's edge rail (the grind), open at the stair
+                    /* the upper deck (2026-10-05): 4.8 m over the east end of the block, a steel stair up from the valet deck, a stair down to the back lane */
+                    { k: 'plateau', x: 40.6, z: 28.55, w: 14, d: 6.3, h: 4.8, edge: 0.3 },
+                    { k: 'ramp', x0: 29.1, z0: 26.8, x1: 34.7, z1: 26.8, w: 2.4, h0: 2.4, h1: 4.8, stairs: true, model: 'steel', edge: 0.2 },
+                    { k: 'ramp', x0: 45.2, z0: 15.0, x1: 45.2, z1: 26.1, w: 3.6, h0: 0, h1: 4.8, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', pts: [[45.2, 15.4, 0.17], [45.2, 25.7, 4.63]], model: 'pipe', block: false },                                     // its centre handrail
+                    { k: 'rail', x0: 34.4, z0: 26.2, x1: 43.0, z1: 26.2 },                                                                          // the upper deck's edge, open at the stair
+                    { k: 'rail', x0: 34.4, z0: 28.4, x1: 34.4, z1: 30.6 },                                                                          // over the valet deck
                     { k: 'plateau', x: -30, z: 11.5, w: 7, d: 5, h: 4.5, edge: 0.3 },                                                              // THE MARQUEE ROOF (the tape's; the door gun's) — flush with the back lane's south sidewalk
                     { k: 'path', pts: [[0, -6], [0, 6]], w: 21 },                                                                                  // THE PLAZA is pavement
                     { k: 'path', pts: [[-10, -32], [-10, -20]], w: 6 },                                                                            // THE CHAPEL's forecourt (the north wall, x −10)
                     { k: 'path', pts: [[-22, 20], [-22, 32]], w: 6 },                                                                              // the bay door's street (the south wall, x −22 — Phase 5 gave x 0 to the highway)
-                    /* THE BACK-LOT ROOFTOPS (AREA CONTENT D2, 2026-09-19): two low roofs in the outer blocks behind the back lane, each up ONE fire escape off the lane's sidewalk, a rail along its edge */
-                    { k: 'plateau', x: -28, z: -29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                             // THE MOTEL ROOF (north)
+                    /* THE BACK-LOT ROOFTOPS (AREA CONTENT D2, 2026-09-19): low roofs in the outer blocks behind the back lane, a rail along each edge */
+                    /* the north roofs (2026-10-05): one run at 4.2 m from the west block to the east cross street — a stair up from the lane's
+                       west corner, the fire escape, a walkway over the west cross street, a walkway over the chapel's forecourt ending at a
+                       2.4 m gap to the centre roofs (a rail across it), a stair down into the east cross street */
+                    { k: 'plateau', x: -35.3, z: -29.6, w: 24.6, d: 4.2, h: 4.2, edge: 0.3 },                                                          // THE MOTEL ROOF (north)
                     { k: 'climb', x: -28, z: -27.5, face: 0, look: 'fireescape' },                                                                     // its fire escape off the north lane's sidewalk
-                    { k: 'rail', x0: -32.8, z0: -27.9, x1: -23.2, z1: -27.9 },                                                                          // the roof's edge (the grind)
+                    { k: 'ramp', x0: -46, z0: -18.6, x1: -46, z1: -28.2, w: 2.6, h0: 0, h1: 4.2, stairs: true, model: 'precast', edge: 0.2 },
+                    { k: 'path', pts: [[-46, -17.4], [-41.5, -17.4]], w: 2.6 },                                                                     // the stair's foot to the lane's sidewalk
+                    { k: 'rail', x0: -44.0, z0: -28.3, x1: -29.2, z1: -28.3 }, { k: 'rail', x0: -26.8, z0: -28.3, x1: -23.6, z1: -28.3 },                                                                          // the roof's edge (the grind)
+                    { k: 'bridge', x0: -23.7, z0: -29.6, x1: -15.3, z1: -29.6, w: 2.6, y: 4.2 },                                                       // over the west cross street
+                    { k: 'plateau', x: -14.45, z: -29.6, w: 3.1, d: 4.2, h: 4.2, edge: 0.3 },
+                    { k: 'bridge', x0: -13.6, z0: -29.6, x1: -9.0, z1: -29.6, w: 2.6, y: 4.2 },                                                        // over the chapel's forecourt, to the gap
+                    { k: 'rail', x0: -9.3, z0: -29.6, x1: -6.3, z1: -29.6, y: 4.2, model: 'pipe', block: false },                                    // across the gap
+                    { k: 'plateau', x: 4.1, z: -29.6, w: 21.4, d: 4.2, h: 4.2, edge: 0.3 },                                                            // the centre roofs
+                    { k: 'rail', x0: -6.0, z0: -28.3, x1: 13.6, z1: -28.3 },
+                    { k: 'ramp', x0: 23.6, z0: -29.6, x1: 14.1, z1: -29.6, w: 2.8, h0: 0, h1: 4.2, stairs: true, model: 'precast', edge: 0.2 },
                     { k: 'plateau', x: -10, z: 29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                              // THE LAUNDRY ROOF (south)
                     { k: 'climb', x: -10, z: 27.5, face: 180, look: 'fireescape' },
-                    { k: 'rail', x0: -14.8, z0: 27.9, x1: -5.2, z1: 27.9 },
+                    { k: 'rail', x0: -14.2, z0: 28.3, x1: -11.2, z1: 28.3 }, { k: 'rail', x0: -8.8, z0: 28.3, x1: -5.8, z1: 28.3 },
+                    /* curved skate rails round the back lane's outer corners */
+                    { k: 'rail', arc: { x: -36, z: -20, r: 4.6, a0: 275, a1: 355 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 36, z: -20, r: 4.6, a0: 5, a1: 85 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 36, z: 20, r: 4.6, a0: 95, a1: 175 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: -36, z: 20, r: 4.6, a0: 185, a1: 265 }, model: 'pipe', block: false },
                     { k: 'scatter', key: 'city_bin', n: 8, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 4, seed: 4 },
                     { k: 'scatter', key: 'hot_dog_stand', n: 2, seed: 61, r0: 0.9 },                              // THE 2026-09-22 BATCH: two vendors on the boulevard's kerbs
@@ -33404,7 +33440,7 @@ const DOOR_HQ = {
                 { key: 'car_suv',         x: -34, z: 5.2, face: 270 },
                 { key: 'bus_shelter',     x: 8.5, z: -8.8, face: 0 },                          // the boulevard's stop (the opening to the road)
                 { key: 'brazier',         x: -40.5, z: 26.0 },                                 // the back lane's barrel fire (the room's own light)
-                { key: 'railing_1m',      x: 29, z: 28.5, face: 0 },                           // THE PARK RULE's catalogue rail on the valet deck (the terrain's rails are the grind)
+                { key: 'railing_1m',      x: 29, z: 29.8, face: 0 },                           // THE PARK RULE's catalogue rail on the valet deck (the terrain's rails are the grind)
                 { key: 'quarter_pipe',    x: 31.5, z: 30.4, face: 180 },                       // the deck's quarter pipe (SKATEBOARDING 9.8)
                 { key: 'quarter_pipe',    x: -8, z: 8.5, face: 0 },                            // and one on the plaza's south edge
                 { key: 'riser_2',         x: 18, z: 9.2, face: 90 },                           // a loading dock's riser on the boulevard's south sidewalk
@@ -34404,7 +34440,8 @@ const DOOR_HQ = {
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
                     { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.9 → 3.0)
-                    { k: 'rail', x0: 22.6, z0: -20.6, x1: 29.6, z1: -20.6 }, { k: 'rail', x0: 29.6, z0: -20.6, x1: 29.6, z1: -9.4 }, { k: 'rail', x0: 18.4, z0: -9.4, x1: 29.6, z1: -9.4 },   // (the north rail starts east of THE OVERPASS's mouth — D2b)
+                    { k: 'rail', x0: 14.3, z0: -13.3, x1: 18.3, z1: -13.3 },                                                          // a railing down the car ramp's side
+                    { k: 'rail', x0: 22.6, z0: -20.2, x1: 29.2, z1: -20.2 }, { k: 'rail', x0: 29.2, z0: -20.2, x1: 29.2, z1: -9.8 }, { k: 'rail', x0: 18.8, z0: -9.8, x1: 29.2, z1: -9.8 },   // (the north rail starts east of THE OVERPASS's mouth — D2b)
                     /* ═══ THE OVERPASS (AREA CONTENT D2b — THE BRIDGE LAYER, 2026-09-19): the parking deck's roof crosses THE AVENUE at 3 m on a
                        `bridge` row — a SECOND SURFACE over the walked street (data.js hqTerrainBridges): the avenue's traffic and walkers pass under
                        it, the walker on it looks down on both. It lands on THE WEST LANDING, a 3 m tier in the north-west block's corner, whose
@@ -34455,6 +34492,27 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 22, z0: 74, x1: 22, z1: 84.5, w: 4, h0: 0, h1: 3.2, stairs: true },                              // THE GANTRY STAIR up to the crane's platform
                     { k: 'plateau', x: 22, z: 86.4, w: 8, d: 4, h: 3.2, edge: 0.3 },                                                  // THE CRANE PLATFORM (a 3.2 m tier at the quay's edge — the view up the avenue)
                     { k: 'rail', x0: 18.6, z0: 86.6, x1: 25.4, z1: 86.6 },                                                            // its rail (the grind)
+                    { k: 'rail', pts: [[22, 74.4, 0.12], [22, 84.1, 3.08]], model: 'pipe', block: false },                            // the gantry stair's centre handrail
+                    /* the canal terrace (2026-10-05): a 3 m promenade along the open yard north of the canal, in three parts — the west part up a
+                       stair along its front and a 2.5 m gap (a rail across it) to the middle part, the middle part up a wide stair off the ring
+                       road's bend and over the avenue on a walkway to the east part, the east part up a stair along its front */
+                    { k: 'plateau', x: -27.65, z: 40.3, w: 12.7, d: 4.2, h: 3.0, edge: 0.3 },
+                    { k: 'plateau', x: -32, z: 37.2, w: 4, d: 3.4, h: 3.0, edge: 0.3 },                                              // its landing
+                    { k: 'ramp', x0: -23.6, z0: 36.9, x1: -30.7, z1: 36.9, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', x0: -21.6, z0: 40.3, x1: -18.5, z1: 40.3, y: 3.0, model: 'pipe', block: false },                     // across the gap
+                    { k: 'plateau', x: -13.75, z: 40.3, w: 10.1, d: 4.2, h: 3.0, edge: 0.3 },
+                    { k: 'ramp', x0: -13.75, z0: 31.7, x1: -13.75, z1: 38.9, w: 4.0, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', pts: [[-13.75, 32.1, 0.17], [-13.75, 38.5, 2.83]], model: 'pipe', block: false },                   // its centre handrail
+                    { k: 'bridge', x0: -9.4, z0: 40.3, x1: 9.4, z1: 40.3, w: 3.2, y: 3.0 },                                          // over the avenue
+                    { k: 'plateau', x: 21.35, z: 40.4, w: 25.3, d: 4.0, h: 3.0, edge: 0.3 },
+                    { k: 'plateau', x: 31.8, z: 37.5, w: 4.4, d: 3.0, h: 3.0, edge: 0.3 },                                             // its landing
+                    { k: 'ramp', x0: 23.3, z0: 37.1, x1: 30.3, z1: 37.1, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', x0: -33.2, z0: 41.6, x1: -22.1, z1: 41.6 }, { k: 'rail', x0: -29.4, z0: 39.0, x1: -22.1, z1: 39.0 }, { k: 'rail', x0: -33.2, z0: 36.0, x1: -31.2, z1: 36.0 },
+                    { k: 'rail', x0: -18.4, z0: 41.6, x1: -9.1, z1: 41.6 }, { k: 'rail', x0: -18.4, z0: 39.0, x1: -16.2, z1: 39.0 }, { k: 'rail', x0: -11.3, z0: 39.0, x1: -9.1, z1: 39.0 },
+                    { k: 'rail', x0: 9.1, z0: 41.6, x1: 33.2, z1: 41.6 }, { k: 'rail', x0: 9.1, z0: 39.2, x1: 29.2, z1: 39.2 }, { k: 'rail', x0: 30.8, z0: 36.5, x1: 33.2, z1: 36.5 },
+                    /* a curved skate rail round the plaza's fountain, open on the four crossings */
+                    { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 20, a1: 70 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 110, a1: 160 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 200, a1: 250 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 290, a1: 340 }, model: 'pipe', block: false },
                     { k: 'wall', x0: -100, z0: 70.5, x1: -84, z1: 70.5, h: 1.2, t: 0.3, key: 'urban:ConcreteStriped1c' },             // THE QUAY WALL (a low wall between the waterfront and the flooded quay — hopped, grindable)
                     { k: 'wall', x0: -14, z0: 72.2, x1: -14, z1: 86, h: 1.9, t: 0.3, key: 'urban:MetalCorrugatedPainted1a' },           // THE CUSTOMS FENCE across the quay (R3: the mall's door does not see the bay's and the manhole down one open apron; the way round is the waterfront's kerb)
                     { k: 'scatter', key: 'cave_stone', n: 7, x: -20, z: -14, r: 5, seed: 2 },                                       // THE COLLAPSE's rubble
@@ -34642,17 +34700,42 @@ const DOOR_HQ = {
                     { k: 'plateau', x: -29, z: 24.5, w: 38, d: 15, h: 4.6, edge: 0.35 },                                        // the south gallery, west
                     { k: 'plateau', x: 29, z: 24.5, w: 38, d: 15, h: 4.6, edge: 0.35 },                                         // the south gallery, east
                     { k: 'plateau', x: 41, z: 0, w: 14, d: 36, h: 4.6, edge: 0.35 },                                            // THE EAST BRIDGE (the food court) — joins the two east galleries
-                    /* THE WAYS UP: two escalators at the west end (fitted GLBs over a smooth hidden ramp), two stairs at the east */
+                    /* THE WAYS UP: two escalators at the west end (fitted GLBs over a smooth hidden ramp), two stairs at the east, two at the west */
                     { k: 'ramp', x0: -40, z0: -9.73, x1: -40, z1: -17.7, w: 2.0, h0: 0, h1: 4.6, escalator: true, edge: 0 },       // THE NORTH ESCALATOR (its top 0.7 m inside the gallery; the stairs pack's escalator: 30°, 2 m wide — the run is the rise / tan 30°)
                     { k: 'ramp', x0: -40, z0: 9.73, x1: -40, z1: 17.7, w: 2.0, h0: 0, h1: 4.6, escalator: true, edge: 0 },         // THE SOUTH ESCALATOR
-                    { k: 'ramp', x0: 28, z0: -5.7, x1: 28, z1: -17.7, w: 3.2, h0: 0, h1: 4.6, stairs: true, edge: 0.2 },            // THE NORTH STAIR (12 m: twelve treads of 0.38 — a stair's last tread must stand within a climb of the tier before the tier's own edge overtakes it)
-                    { k: 'ramp', x0: 28, z0: 5.7, x1: 28, z1: 17.7, w: 3.2, h0: 0, h1: 4.6, stairs: true, edge: 0.2 },              // THE SOUTH STAIR
-                    /* THE LIPS: a grind rail along every balcony edge (the park rule's rails — the rider's) */
-                    { k: 'rail', x0: -47, z0: -16.5, x1: -11, z1: -16.5 }, { k: 'rail', x0: 11, z0: -16.5, x1: 33.5, z1: -16.5 },
-                    { k: 'rail', x0: -47, z0: 16.5, x1: -11, z1: 16.5 }, { k: 'rail', x0: 11, z0: 16.5, x1: 33.5, z1: 16.5 },
+                    { k: 'ramp', x0: 28, z0: -5.7, x1: 28, z1: -17.7, w: 5.0, h0: 0, h1: 4.6, stairs: true, model: 'glass', edge: 0.2 },   // THE NORTH STAIR (12 m: a stair's last tread must stand within a climb of the tier before the tier's own edge overtakes it)
+                    { k: 'rail', x0: 28, z0: -6.1, x1: 28, z1: -17.2, y0: 0.15, y1: 4.41, model: 'pipe', block: false },              // its centre handrail
+                    { k: 'ramp', x0: 28, z0: 5.7, x1: 28, z1: 17.7, w: 5.0, h0: 0, h1: 4.6, stairs: true, model: 'glass', edge: 0.2 },     // THE SOUTH STAIR
+                    { k: 'rail', x0: 28, z0: 6.1, x1: 28, z1: 17.2, y0: 0.15, y1: 4.41, model: 'pipe', block: false },
+                    /* the west stairs (2026-10-05): a wide flight up to each west gallery, a handrail down the middle */
+                    { k: 'ramp', x0: -18, z0: -6.2, x1: -18, z1: -17.7, w: 4.4, h0: 0, h1: 4.6, stairs: true, model: 'precast', edge: 0.2 },
+                    { k: 'rail', x0: -18, z0: -6.6, x1: -18, z1: -17.2, y0: 0.16, y1: 4.40, model: 'pipe', block: false },
+                    { k: 'ramp', x0: -18, z0: 6.2, x1: -18, z1: 17.7, w: 4.4, h0: 0, h1: 4.6, stairs: true, model: 'precast', edge: 0.2 },
+                    { k: 'rail', x0: -18, z0: 6.6, x1: -18, z1: 17.2, y0: 0.16, y1: 4.40, model: 'pipe', block: false },
+                    /* the north wing's tongues (2026-10-05): each gallery end runs out over the wing to a 3 m gap above the closet's passage
+                       (the flight tube lands on their south edge); two rails across the gap */
+                    { k: 'plateau', x: -6.15, z: -24.5, w: 9.7, d: 5.8, h: 4.6, edge: 0.2 },
+                    { k: 'plateau', x: 6.15, z: -24.5, w: 9.7, d: 5.8, h: 4.6, edge: 0.2 },
+                    { k: 'rail', x0: -3.4, z0: -23.6, x1: 3.4, z1: -23.6, y: 4.6, model: 'pipe', block: false },
+                    { k: 'rail', x0: -3.4, z0: -25.6, x1: 3.4, z1: -25.6, y: 4.6, model: 'double', block: false },
+                    /* the top level (2026-10-05): a catwalk at 8.4 m over the east concourse, a stair up from each east gallery, a 2.6 m gap
+                       in the middle with a rail across it */
+                    { k: 'ramp', x0: 32.4, z0: -29.9, x1: 32.4, z1: -21.6, w: 2.4, h0: 4.6, h1: 8.4, stairs: true, model: 'fire_escape', edge: 0.2 },
+                    { k: 'ramp', x0: 32.4, z0: 29.9, x1: 32.4, z1: 21.6, w: 2.4, h0: 4.6, h1: 8.4, stairs: true, model: 'fire_escape', edge: 0.2 },
+                    { k: 'bridge', x0: 32.4, z0: -22.3, x1: 32.4, z1: -1.3, w: 2.4, y: 8.4 },
+                    { k: 'bridge', x0: 32.4, z0: 1.3, x1: 32.4, z1: 22.3, w: 2.4, y: 8.4 },
+                    { k: 'rail', x0: 32.4, z0: -3.0, x1: 32.4, z1: 3.0, y: 8.4, model: 'pipe', block: false },
+                    /* THE LIPS: a grind rail along every balcony edge (the park rule's rails — the rider's), open at each stair's head */
+                    { k: 'rail', x0: -47, z0: -16.5, x1: -20.6, z1: -16.5 }, { k: 'rail', x0: -15.4, z0: -16.5, x1: -11, z1: -16.5 },
+                    { k: 'rail', x0: 11, z0: -16.5, x1: 25.1, z1: -16.5 }, { k: 'rail', x0: 30.9, z0: -16.5, x1: 33.5, z1: -16.5 },
+                    { k: 'rail', x0: -47, z0: 16.5, x1: -20.6, z1: 16.5 }, { k: 'rail', x0: -15.4, z0: 16.5, x1: -11, z1: 16.5 },
+                    { k: 'rail', x0: 11, z0: 16.5, x1: 25.1, z1: 16.5 }, { k: 'rail', x0: 30.9, z0: 16.5, x1: 33.5, z1: 16.5 },
                     { k: 'rail', x0: 34.5, z0: -16.5, x1: 34.5, z1: 16.5 },
-                    { k: 'rail', x0: -11.5, z0: -31, x1: -11.5, z1: -17.5 }, { k: 'rail', x0: 11.5, z0: -31, x1: 11.5, z1: -17.5 },   // the north wing's balcony ends
+                    { k: 'rail', pts: [[-11.5, -31], [-11.5, -27], [-2.6, -27]] }, { k: 'rail', pts: [[11.5, -31], [11.5, -27], [2.6, -27]] },   // the north wing's balcony ends, round the tongues
                     { k: 'rail', x0: -11.5, z0: 17.5, x1: -11.5, z1: 31 }, { k: 'rail', x0: 11.5, z0: 17.5, x1: 11.5, z1: 31 },       // the entrance hall's
+                    /* a curved skate rail round the fountain, open on the runners */
+                    { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 22, a1: 68 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 112, a1: 158 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 202, a1: 248 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 4.3, a0: 292, a1: 338 }, model: 'pipe', block: false },
                     /* THE GROUND FLOOR: the fountain, the fun box, the grind ledges */
                     { k: 'pool', x: 0, z: 0, r: 3.0, y: 0, depth: 0.4 },                                                          // THE FOUNTAIN (pennies, waded)
                     { k: 'plateau', x: 14, z: 0, w: 6, d: 4.4, h: 0.9, edge: 0.2 },                                                // THE FUN BOX (a table the rider clears)
@@ -34889,8 +34972,11 @@ const DOOR_HQ = {
                        open: [{ x: 0, z: 0, r: 11 }] },                                                                                                          // THE HOLO-PLAZA
                 features: [
                     { k: 'hill', x: 0, z: 0, r: 4.2, h: 0.6, open: true },                                                            // THE HOLO-PLAZA's mound under the projector
+                    { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 20, a1: 70 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 110, a1: 160 }, model: 'pipe', block: false },   // curved pipe rails round the mound, open at the four streets
+                    { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 200, a1: 250 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 290, a1: 340 }, model: 'pipe', block: false },
                     { k: 'plateau', x: 22, z: -13, w: 12, d: 10, h: 4.5, edge: 0.35 },                                                 // THE SKYWAY (a deck inside the north-east block)
                     { k: 'ramp', x0: 10.5, z0: -13, x1: 16.7, z1: -13, w: 4.0, h0: 0, h1: 4.5 },                                       // the car ramp up to it (its last 0.7 m inside the deck's rect — THE RAMP RULE)
+                    { k: 'rail', x0: 10.6, z0: -14.75, x1: 16.2, z1: -14.75, y0: 0.07, y1: 4.13, model: 'pipe', block: false }, { k: 'rail', x0: 10.6, z0: -11.25, x1: 16.2, z1: -11.25, y0: 0.07, y1: 4.13, model: 'pipe', block: false },   // pipe rails down the car ramp's sides
                     { k: 'rail', x0: 16.4, z0: -18.6, x1: 27.6, z1: -18.6 }, { k: 'rail', x0: 27.6, z0: -18.6, x1: 27.6, z1: -7.4 }, { k: 'rail', x0: 16.4, z0: -7.4, x1: 27.6, z1: -7.4 },   // the deck's rails (the grind)
                     { k: 'plateau', x: -26, z: -13, w: 7, d: 7, h: 5.0, edge: 0.3 },                                                   // THE BILLBOARD ROOF (the tape's; the door gun's) — flush with the loop's west sidewalk
                     { k: 'pool', x: -22, z: 0, r: 3.4, y: 0, depth: 0.35 },                                                           // THE PUDDLE (the rain pooled on the cross street; waded)
@@ -34910,31 +34996,45 @@ const DOOR_HQ = {
                     { k: 'deck', x0: -32.6, z0: -47, x1: -27.4, z1: -47, w: 1.8, y: 10.5, gangway: true },                                          // THE GANGWAY A1 ⇄ A2 (across the yard)
                     { k: 'deck', x0: 25.4, z0: -47, x1: 30.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY B1 ⇄ B2
                     { k: 'deck', x0: 63.4, z0: -47, x1: 68.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY E1 ⇄ E2
+                    /* the roofs joined end to end: bridges over the west alley, the boulevard and the east alley (one rooftop run from x −80 to 84) */
+                    { k: 'bridge', x0: -58.6, z0: -43.5, x1: -45.4, z1: -43.5, w: 2.4, y: 10.5, key: 'metal', id: 'roof_w_a1' },
+                    { k: 'bridge', x0: -12.6, z0: -43.5, x1: 12.6, z1: -43.5, w: 3.0, y: 10.5, key: 'metal', id: 'roof_a2_b1' },
+                    { k: 'bridge', x0: 39.4, z0: -43.5, x1: 48.6, z1: -43.5, w: 2.4, y: 10.5, key: 'metal', id: 'roof_b2_e1' },
+                    /* pipe rails across the three yards beside the gangways (a `pts` row: it opens nothing in the plan under it) */
+                    { k: 'rail', pts: [[-32.6, -44.0], [-27.4, -44.0]], y: 10.5, model: 'pipe', block: false },
+                    { k: 'rail', pts: [[25.4, -44.0], [30.6, -44.0]], y: 10.5, model: 'pipe', block: false },
+                    { k: 'rail', pts: [[63.4, -44.0], [68.6, -44.0]], y: 10.5, model: 'pipe', block: false },
                     /* THE FIRE ESCAPES: a landing at 5.25, two ladders each — in the alleys */
                     { k: 'plateau', x: -57.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK W's landing (its east flank, the west alley)
-                    { k: 'climb', x: -56.3, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: -58.0, z: -47.6, face: 270, look: 'fireescape' },
+                    { k: 'plateau', x: -54.7, z: -48, w: 3.4, d: 4, h: 5.25, edge: 0.15 },                                            // …widened into the alley for the stair
+                    { k: 'ramp', x0: -53.7, z0: -35.5, x1: -53.7, z1: -46.7, w: 1.4, h0: 0, h1: 5.25, stairs: true, model: 'fire_escape', edge: 0.1 },   // the fire escape's stair up the alley
+                    { k: 'climb', x: -58.0, z: -47.6, face: 270, look: 'fireescape' },
                     { k: 'plateau', x: -46.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK A1's landing (its west flank, the west alley)
                     { k: 'climb', x: -47.7, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: -46.0, z: -47.6, face: 90, look: 'fireescape' },
                     { k: 'plateau', x: 40.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK B2's landing (its east flank, the east alley)
                     { k: 'climb', x: 41.7, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: 40.0, z: -47.6, face: 270, look: 'fireescape' },
                     { k: 'plateau', x: 47.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK E1's landing (its west flank, the east alley)
-                    { k: 'climb', x: 46.3, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: 48.0, z: -47.6, face: 90, look: 'fireescape' },
+                    { k: 'plateau', x: 46.4, z: -48, w: 3.2, d: 4, h: 5.25, edge: 0.15 },                                             // …widened into the alley for the stair
+                    { k: 'ramp', x0: 45.5, z0: -35.5, x1: 45.5, z1: -46.7, w: 1.4, h0: 0, h1: 5.25, stairs: true, model: 'fire_escape', edge: 0.1 },     // the fire escape's stair up the alley
+                    { k: 'climb', x: 48.0, z: -47.6, face: 90, look: 'fireescape' },
                     { k: 'rail', x0: -78.4, z0: -50.4, x1: -59.6, z1: -50.4 }, { k: 'rail', x0: -44.4, z0: -50.4, x1: -33.6, z1: -50.4 }, { k: 'rail', x0: -26.4, z0: -50.4, x1: -13.6, z1: -50.4 }, { k: 'rail', x0: 13.6, z0: -50.4, x1: 24.4, z1: -50.4 }, { k: 'rail', x0: 31.6, z0: -50.4, x1: 38.4, z1: -50.4 }, { k: 'rail', x0: 49.6, z0: -50.4, x1: 62.4, z1: -50.4 }, { k: 'rail', x0: 69.6, z0: -50.4, x1: 82.4, z1: -50.4 },   // the roofs' back parapets (the grind — 1.6 m inside the edge, one per roof: a rail across a yard gap opens the yard)
                     /* ── THE UNDERCITY (D2): the sunk tier, its ramp road, the steps, the drains, the overlook ── */
                     { k: 'plateau', x: 0, z: 64, w: 196, d: 40, h: -4, sink: true, edge: 0.35 },                                        // THE CUT — four metres down, a retaining wall the walker drops off and never climbs
                     { k: 'ramp', x0: 0, z0: 42, x1: 0, z1: 56, w: 10, h0: 0, h1: -4 },                                                  // THE RAMP ROAD (the boulevard's own incline; the cars take it)
+                    { k: 'rail', x0: -4.75, z0: 44.3, x1: -4.75, z1: 55.6, model: 'bars_curb' }, { k: 'rail', x0: 4.75, z0: 44.3, x1: 4.75, z1: 55.6, model: 'bars_curb' },   // railings down its sides over the cut
                     { k: 'path', pts: [[-42, 22], [-44, 31], [-44, 40]], w: 4 },                                                         // the west steps' approach off the siding's end
-                    { k: 'ramp', x0: -44, z0: 40, x1: -44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true },                                 // THE WEST STEPS down
+                    { k: 'ramp', x0: -44, z0: 40, x1: -44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true, model: 'grate' },                                 // THE WEST STEPS down
                     { k: 'path', pts: [[-44, 49], [-44, 62]], w: 4 },                                                                   // to the lower cross
                     { k: 'path', pts: [[40, 28], [44, 31], [44, 40]], w: 4 },                                                            // the east steps' approach off the loop's south-east corner
-                    { k: 'ramp', x0: 44, z0: 40, x1: 44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true },                                   // THE EAST STEPS down
+                    { k: 'ramp', x0: 44, z0: 40, x1: 44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true, model: 'grate' },                                   // THE EAST STEPS down
                     { k: 'path', pts: [[44, 49], [44, 62]], w: 4 },
                     { k: 'path', pts: [[-20, 27], [-20, 44]], w: 3.5 }, { k: 'path', pts: [[-20, 44], [-20, 62]], w: 3.5 },            // THE WEST DRAIN's alleys (above and below the wall)
                     { k: 'climb', x: -20, z: 44, face: 0, look: 'pipe' },                                                              // THE WEST DRAIN — a pipe down the retaining wall
                     { k: 'path', pts: [[20, 27], [20, 44]], w: 3.5 }, { k: 'path', pts: [[20, 44], [20, 62]], w: 3.5 },                // THE EAST DRAIN's alleys
                     { k: 'climb', x: 20, z: 44, face: 0, look: 'pipe' },                                                               // THE EAST DRAIN
                     { k: 'path', pts: [[40, 37], [52, 37]], w: 4 },                                                                     // the overlook's side street off the loop's east leg
-                    { k: 'ramp', x0: 52, z0: 37, x1: 62.7, z1: 37, w: 4, h0: 0, h1: 3.0 },                                              // up to THE OVERLOOK (its last 0.7 m inside the tier)
+                    { k: 'ramp', x0: 52, z0: 37, x1: 62.7, z1: 37, w: 4, h0: 0, h1: 3.0, stairs: true, model: 'glass', edge: 0.1 },     // the stairs up to THE OVERLOOK (its last 0.7 m inside the tier)
+                    { k: 'rail', x0: 52.6, z0: 37, x1: 62.1, z1: 37, y0: 0.17, y1: 2.83, model: 'pipe', block: false },                // a pipe handrail down the middle
                     { k: 'plateau', x: 70, z: 37, w: 16, d: 12, h: 3.0, edge: 0.35 },                                                  // THE OVERLOOK — seven metres over the lower cross
                     { k: 'rail', x0: 63.6, z0: 41.4, x1: 67.6, z1: 41.4 }, { k: 'rail', x0: 72.4, z0: 41.4, x1: 76.4, z1: 41.4 }, { k: 'rail', x0: 76.4, z0: 41.4, x1: 76.4, z1: 32.6 },   // (the drop-side rail parts round THE OVERLOOK SPAN's mouth — D2b)
                     /* ═══ THE OVERLOOK SPAN (AREA CONTENT D2b — THE BRIDGE LAYER, 2026-09-19): the overlook no longer only LOOKS seven metres down —
@@ -35020,7 +35120,7 @@ const DOOR_HQ = {
                 { x: -44.0, z: 10.0, face: 60, race: 'conspiracy theorist', say: ['“The noodle bar has a back room.” “Every noodle bar has a back room.” “This one has a year in it.”'] },
                 { x: -40.0, z: -2.0, face: 90, race: 'catgirl', say: ['“Waiting for the train.” “It came an hour ago.” “Then I am waiting for the next one.”'] },   // at the station
                 /* THE STACKS (D2) */
-                { x: -52.0, z: -36.0, face: 0, race: 'zombie', say: ['“The fire escape.” “Where does it go?” “Up. Then across. Then nowhere. Then down.”'] },
+                { x: -51.2, z: -32.5, face: 0, race: 'zombie', say: ['“The fire escape.” “Where does it go?” “Up. Then across. Then nowhere. Then down.”'] },
                 { x: 44.0, z: -60.0, face: 180, race: 'catgirl', say: ['“Every roof is joined to the next.” “All of them?” “Every second one. Mind the gap.”'] },
                 /* THE UNDERCITY (D2) */
                 { x: -8.0, z: 70.0, face: 0, race: 'ghoul', say: ['“The city is up the ramp.” “Which city?” “The one that is on top of this one.”'] },
@@ -36715,24 +36815,37 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[27.2, -15], [29.3, -15]], w: 2.6 },             // workshop 1
                     { k: 'hall', pts: [[-16, 16.2], [-16, 18.3]], w: 2.6 },             // side room 3
                     { k: 'hall', pts: [[16, 16.2], [16, 18.3]], w: 2.6 },               // workshop 2
-                    /* THE RIG (the saucer stands on it) and its stair */
+                    /* THE RIG (the saucer stands on it), its stair from the east, its rail round the west side */
                     { k: 'plateau', x: -12, z: -2, r: 6.5, h: 1.2, edge: 0.15 },
-                    { k: 'ramp', x0: -12, z0: 7, x1: -12, z1: 3.8, w: 2.4, h0: 0, h1: 1.2, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped1b' },   // ends 0.7 m inside the tier (THE RAMP RULE)
-                    /* THE CATWALK along the floor's north wall, its long built stair along the same wall from the east */
+                    { k: 'ramp', x0: -2.4, z0: -2, x1: -6.2, z1: -2, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', arc: { x: -12, z: -2, r: 6.1, a0: 210, a1: 330 }, model: 'balusters_b' },
+                    /* the upper level at 5.5 m: THE CATWALK along the north wall (its steel stair from the east), the west gantry and the
+                       cross gantry over the floor (the floor runs on under them), the grate stair down the east wall; a 2.5 m gap between
+                       the catwalk and the west gantry (a jump, a pipe rail across it) */
                     { k: 'plateau', x: -10, z: -12.5, w: 20, d: 3, h: 5.5, edge: 0.15 },
-                    { k: 'ramp', x0: 13.3, z0: -12.6, x1: -0.7, z1: -12.6, w: 2.4, h0: 0, h1: 5.5, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped1b' },   // L 14 ≥ 2.2 × h
-                    { k: 'rail', x0: -18, z0: -10.7, x1: -1, z1: -10.7 },                                               // the catwalk's rail (the grind)
+                    { k: 'ramp', x0: 13.3, z0: -12.6, x1: -0.7, z1: -12.6, w: 2.4, h0: 0, h1: 5.5, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: -16, z0: -11.3, x1: -1.2, z1: -11.3, model: 'balusters_b' },                       // the catwalk's edge (open at the gap end)
+                    { k: 'bridge', x0: -18.6, z0: -8.5, x1: -18.6, z1: 1.7, w: 2.6, y: 5.5, key: 'urban:MetalSubwayGrill1a' },   // the west gantry
+                    { k: 'bridge', x0: -19.9, z0: -5, x1: 20.3, z1: -5, w: 2.6, y: 5.5, key: 'urban:MetalSubwayGrill1a' },      // the cross gantry
+                    { k: 'rail', x0: -18.6, z0: -11.4, x1: -18.6, z1: -8.1, y: 5.5, model: 'pipe', block: false },      // across the gap
+                    { k: 'ramp', x0: 19.6, z0: 8.0, x1: 19.6, z1: -4.3, w: 2.4, h0: 0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },   // the east stair up to the cross gantry
+                    /* THE SOUTH DECK (3 m): the grate stair down from the west gantry, the steel stair down to the floor (a pipe rail down its middle) */
+                    { k: 'plateau', x: -14.75, z: 8.3, w: 10.5, d: 3.4, h: 3.0, edge: 0.15 },
+                    { k: 'ramp', x0: -18.6, z0: 7.3, x1: -18.6, z1: 1.0, w: 2.4, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
+                    { k: 'ramp', x0: -2.6, z0: 8.2, x1: -10.2, z1: 8.2, w: 3.2, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', pts: [[-2.2, 8.2, 0], [-10.2, 8.2, 3.0]], model: 'pipe', block: false },
+                    { k: 'rail', x0: -16.9, z0: 6.9, x1: -10.6, z1: 6.9, model: 'balusters_b' },                        // the deck's north edge
                     { k: 'plateau', x: 8, z: 6, r: 1.3, h: 8.0, edge: 0.15 },                                           // THE CRANE HOOK (the tape — the door gun's)
                     { k: 'wall', x0: 3, z0: 9.4, x1: 14, z1: 9.4, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb the trucks park against
-                    { k: 'path', pts: [[0, 23], [0, 12], [0, 0], [-12, 0]], w: 2.6 },                                   // the painted lane door → rig
+                    { k: 'path', pts: [[0, 23], [0, 12], [0, -2], [-2.4, -2]], w: 2.6 },                                // the painted lane door → rig
                     { k: 'path', pts: [[26, 10.5], [33.2, 10.5]], w: 2.2 },                                             // the floor lift's lane
                     { k: 'path', pts: [[18, -23], [18, -8]], w: 3.0 },                                                  // the big door's lane
                     { k: 'path', pts: [[-35, -12], [-31, -12]], w: 2.0 },                                               // the white rooms' lane
                     /* AREA CONTENT D4 (2026-09-20): THE FREIGHT GANTRY — the tunnel's door (links.area51_dumb.a) stands 3 m up on the east
-                       wall of the floor lift's room, up a built stair from the south (R4: a door you climb to) */
+                       wall of the floor lift's room, up a stair from the south (R4: a door you climb to) */
                     { k: 'plateau', x: 32, z: -1, w: 6, d: 8, h: 3.0, edge: 0.15 },
-                    { k: 'ramp', x0: 33.2, z0: 9.5, x1: 33.2, z1: 2.3, w: 2.4, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped1b' },   // L 7.2 ≥ 2.2 × 3; ends 0.7 m inside
-                    { k: 'rail', x0: 29.4, z0: 3.3, x1: 31.6, z1: 3.3 },
+                    { k: 'ramp', x0: 33.2, z0: 9.5, x1: 33.2, z1: 2.3, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },   // L 7.2 ≥ 2.2 × 3; ends 0.7 m inside
+                    { k: 'rail', x0: 29.4, z0: 3.3, x1: 31.6, z1: 3.3, model: 'balusters_b' },
                 ],
             },
             doors: [
@@ -36761,15 +36874,15 @@ const DOOR_HQ = {
                 /* THE FLOOR: the desk under the catwalk, the trucks, the tanks, the clutter */
                 { key: 'steel_table',     x: 2, z: -10, face: 0 }, { key: 'crt_terminal', x: 2, z: -10, y: 0.76, face: 0 }, { key: 'paper_sheet', x: 2.6, z: -9.7, y: 0.76, face: 30 },
                 { key: 'computer_chair_grey', x: 2, z: -8.8, face: 0 },
-                { key: 'fire_truck',      x: 16, z: 4.6, face: 90 },
+                { key: 'fire_truck',      x: 13, z: 1.5, face: 90 },
                 { key: 'car_truck',       x: 6, z: 8, face: 270 },
                 { key: 'iso_tank',        x: -31, z: 6, face: 90 }, { key: 'iso_tank', x: -31, z: 8.6, face: 90 },       // the specimen tanks in side room 2 (the vent behind them)
-                { key: 'quarter_pipe',    x: -16, z: 8.4, face: 0 },                                                   // THE PARK RULE's ramp
-                { key: 'traffic_cone',    x: 2.4, z: 8.8 }, { key: 'traffic_cone', x: 14.6, z: 8.8 }, { key: 'traffic_cone', x: 12, z: 2 },
+                { key: 'quarter_pipe',    x: -4, z: 4.4, face: 0 },                                                   // THE PARK RULE's ramp
+                { key: 'traffic_cone',    x: 2.4, z: 8.8 }, { key: 'traffic_cone', x: 14.6, z: 8.8 }, { key: 'traffic_cone', x: 15, z: 4 },
                 { key: 'traffic_barrel',  x: 13, z: -2, face: 30 },
                 { key: 'cardboard_boxes', x: -33, z: -7, face: 20 },
-                { key: 'floor_stain',     x: -18, z: 8 },
-                { key: 'evac_button',     x: 21.6, z: 6, face: 270, mount: 1.2 },
+                { key: 'floor_stain',     x: -15, z: -9 },
+                { key: 'evac_button',     x: 21.6, z: -9, face: 270, mount: 1.2 },
                 { key: 'security_camera', x: 21.6, z: -13.6, face: 225, mount: 2.55 },
                 { key: 'bare_bulb',       x: -20, z: -6, ceil: true }, { key: 'bare_bulb', x: -4, z: 6, ceil: true }, { key: 'bare_bulb', x: 10, z: -8, ceil: true },
                 { key: 'bare_bulb',       x: 24, z: 0, ceil: true }, { key: 'bare_bulb', x: -20, z: 8, ceil: true },
@@ -36824,10 +36937,15 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[13, 1.8], [13, 11.5], [-0.2, 11.5]], w: 2.6 },  // hall C: the station → past cell B → the dayroom
                     { k: 'hall', pts: [[12, -13.9], [12, -9.2]], w: 2.4 },              // the storm drain's grate (off the station)
                     { k: 'hall', pts: [[0.5, -9.8], [0.5, -7.1]], w: 1.8 },             // side room 2's doorway
-                    /* THE OBSERVATION DECK over the dayroom's north side, up a built stair */
+                    /* THE OBSERVATION DECK (2.2 m) over the dayroom's north side and the step-up landing (1.1 m) east of it: a flight from the
+                       dayroom up to the landing, a flight from the landing up to the deck; the deck's glass rail over the dayroom */
                     { k: 'plateau', x: -11, z: 1, w: 8, d: 3, h: 2.2, edge: 0.15 },
-                    { k: 'ramp', x0: -2.8, z0: 1, x1: -7.7, z1: 1, w: 2.2, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'urban:TileGeneric1a' },   // L 4.9 ≥ 2.2 × h; ends 0.7 m inside
-                    { k: 'rail', x0: -14, z0: 2.8, x1: -8, z1: 2.8 },
+                    { k: 'plateau', x: -4, z: 1, w: 5, d: 3, h: 1.1, edge: 0.15 },
+                    { k: 'ramp', x0: -3.8, z0: 5.6, x1: -3.8, z1: 1.8, w: 2.2, h0: 0, h1: 1.1, stairs: true, model: 'precast', edge: 0.15 },
+                    { k: 'ramp', x0: -5.0, z0: 1, x1: -7.7, z1: 1, w: 2.2, h0: 1.1, h1: 2.2, stairs: true, model: 'precast', edge: 0.15 },
+                    { k: 'rail', x0: -14.6, z0: 2.2, x1: -7.4, z1: 2.2, model: 'glass' },
+                    { k: 'rail', x0: -1.8, z0: -0.2, x1: -1.8, z1: 2.2, model: 'bars_curb' },
+                    { k: 'rail', x0: -14, z0: 12, x1: -4, z1: 12, model: 'pipe', block: false },                                    // a skate rail along the dayroom's south side
                     { k: 'plateau', x: 6, z: 0, r: 1.2, h: 3.8, edge: 0.15 },                                           // THE CAGE (the tape — the door gun's)
                     { k: 'wall', x0: -16, z0: 8.2, x1: -4, z1: 8.2, h: 0.45, t: 0.4, key: 'urban:TileGeneric1a' },      // the dayroom's half wall (a grind)
                     { k: 'path', pts: [[21, -12], [18.5, -12], [18.5, -6], [12, -6]], w: 1.8 },                        // the rubber lane door → station
@@ -36865,7 +36983,7 @@ const DOOR_HQ = {
                 { key: 'molded_chair',    x: -15, z: 3.4, face: 150 }, { key: 'molded_chair', x: -11, z: 3.4, face: 210 }, { key: 'molded_chair', x: -15, z: 6.6, face: 30 }, { key: 'molded_chair', x: -11, z: 6.6, face: 330 },
                 { key: 'rug_round',       x: -13, z: 5 },
                 { key: 'potted_plant',    x: -4.4, z: 7.6 },
-                { key: 'cot',             x: -4, z: 4.6, face: 0 },
+                { key: 'cot',             x: -1.4, z: 9.6, face: 0 },
                 { key: 'railing_1m',      x: -10, z: 2.2, face: 0 },                                                    // THE PARK RULE's catalogue rail on the deck
                 { key: 'observation_window', x: -10, z: 2.4, face: 180, mount: 1.0 },                                  // the deck's window over the dayroom, free-standing
                 /* THE STATION: the desk, the clipboard, the clock that is right twice a day */
@@ -36910,9 +37028,26 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, -32], [0, 10]], w: 10 },                                                      // THE GATE ROAD (Phase 5: in from the gate, the north edge x 0)
                     { k: 'path', pts: [[18, 31], [18, 10]], w: 5 },                                                      // the taxiway from the hangar's big door
                     { k: 'path', pts: [[-30, 31], [-30, 10]], w: 4 },                                                    // the yard gate's lane
-                    { k: 'plateau', x: -10, z: -16, r: 3.2, h: 4.5, edge: 0.35 },                                        // THE TOWER
-                    { k: 'ramp', x0: -10, z0: -3, x1: -10, z1: -13.5, w: 2.4, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },  // its stair (L ≥ 2.2 × h, ends 0.7 m inside)
-                    { k: 'rail', x0: -12, z0: -13, x1: -8, z1: -13 },                                                    // the tower's rim (the grind)
+                    /* THE TOWER: its deck (3 m) up a fire escape from the south, the cab (6 m) up a ladder from the deck, a rail round the cab;
+                       a gantry east from the deck over the gate road, a 2.5 m gap (a pipe rail across it) to the raised east apron (3 m) and
+                       its steel stair down to the runway side */
+                    { k: 'plateau', x: -11.25, z: -16, w: 14.5, d: 10, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: -10, z: -16, r: 3.2, h: 6.0, edge: 0.15 },                                        // the cab
+                    { k: 'ramp', x0: -16, z0: -3.5, x1: -16, z1: -11.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
+                    { k: 'rail', pts: [[-16, -3.1, 0], [-16, -11.7, 3.0]], model: 'pipe', block: false },
+                    { k: 'climb', x: -13.5, z: -16, face: 90, look: 'ladder' },
+                    { k: 'rail', arc: { x: -10, z: -16, r: 2.85, a0: 300, a1: 600 }, model: 'balusters_b' },
+                    { k: 'rail', x0: -14.6, z0: -11.35, x1: -4.4, z1: -11.35, model: 'balusters_b' },
+                    { k: 'rail', x0: -18.1, z0: -20.65, x1: -4.4, z1: -20.65, model: 'balusters_b' },
+                    { k: 'rail', x0: -4.35, z0: -20.6, x1: -4.35, z1: -17.6, model: 'balusters_b' },
+                    { k: 'rail', x0: -4.35, z0: -14.4, x1: -4.35, z1: -11.4, model: 'balusters_b' },
+                    { k: 'bridge', x0: -4.7, z0: -16, x1: 9.5, z1: -16, w: 2.6, y: 3.0, key: 'urban:MetalSubwayGrill1a' },
+                    { k: 'rail', x0: 9.1, z0: -16, x1: 12.6, z1: -16, y: 3.0, model: 'pipe', block: false },            // across the gap
+                    { k: 'plateau', x: 19, z: -12.5, w: 14, d: 9, h: 3.0, edge: 0.15 },                                 // the east apron
+                    { k: 'ramp', x0: 24.4, z0: -1.8, x1: 24.4, z1: -8.7, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: 12.4, z0: -16.65, x1: 25.6, z1: -16.65, model: 'balusters_b' },
+                    { k: 'rail', x0: 25.65, z0: -16.6, x1: 25.65, z1: -10.2, model: 'balusters_b' },
+                    { k: 'rail', x0: 12.4, z0: -8.35, x1: 22.8, z1: -8.35, model: 'pipe' },                            // the apron's front ledge (a grind)
                     { k: 'plateau', x: -8, z: -17.5, r: 0.8, h: 8.0, edge: 0.25 },                                       // THE MAST on the tower (the tape — the door gun's)
                     { k: 'wall', x0: -40, z0: -8, x1: -28, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },                   // the revetments
                     { k: 'wall', x0: 28, z0: -8, x1: 40, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },
@@ -36947,7 +37082,7 @@ const DOOR_HQ = {
                 /* THE TOWER: the beacon on it, the rail; the mast stands beside it, unclimbed */
                 { key: 'floating_orb',    x: -11.6, z: -15.2, face: 0 },                                                 // THE BEACON (the near weenie: the light on the tower that is not a light)
                 { key: 'flood_mast',      x: -40, z: 2 }, { key: 'flood_mast', x: 40, z: 16 }, { key: 'flood_mast', x: 6, z: -26 }, { key: 'flood_mast', x: 6, z: 28 },   // the floodlights round the aprons
-                { key: 'railing_1m',      x: -10, z: -13.2, face: 0 },
+                { key: 'railing_1m',      x: -10, z: -13.5, face: 0 },
                 /* THE APRONS: the crew bus, the shelter, the fire truck, the truck, the wreck in its pen */
                 { key: 'school_bus',      x: -20, z: 24, face: 0 },
                 { key: 'bus_shelter',     x: -26, z: 27, face: 0 },
@@ -37003,8 +37138,21 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -7, z0: 3.9, x1: -7, z1: 4.1, y: 1.2, t: 0.3, key: 'concrete' },               // the barrier's post (the arm is the tape)
                     /* THE WATCHTOWER (west): a concrete block you climb by its stair, the rail round its top */
                     { k: 'wall', x0: -22, z0: 8, x1: -18, z1: 8, y: 4.5, t: 4.0, key: 'concrete' },
-                    { k: 'ramp', x0: -20, z0: 19.9, x1: -20, z1: 9.9, w: 2.2, h0: 0, h1: 4.5, stairs: true, edge: 0.2 },   // from the inside (L 10 ≥ 2.2 × 4.5; ends at the top's edge — a wall block's top is flat to its face)
-                    { k: 'rail', x0: -21.8, z0: 6.2, x1: -18.2, z1: 6.2 },
+                    { k: 'ramp', x0: -20, z0: 19.9, x1: -20, z1: 9.9, w: 2.2, h0: 0, h1: 4.5, stairs: true, model: 'steel', edge: 0.2 },   // from the inside (L 10 ≥ 2.2 × 4.5; ends at the top's edge — a wall block's top is flat to its face)
+                    { k: 'rail', pts: [[-21.7, 9.6], [-21.7, 6.3], [-18.3, 6.3], [-18.3, 9.6]], y: 4.5, model: 'balusters_b' },
+                    /* THE WALL WALKS behind the fence: the west walk (1.6 m, the fence a parapet on it) up two concrete flights, past the
+                       watchtower's north face; the east walk (2.2 m) up a steel flight, a step up onto the guard post's roof; a pipe rail
+                       from the west walk over the road to the post's roof */
+                    { k: 'plateau', x: -19.2, z: 5.9, w: 19.6, d: 3, h: 1.6, edge: 0.15 },
+                    { k: 'ramp', x0: -27.5, z0: 11, x1: -27.5, z1: 6.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: -10.9, z0: 11, x1: -10.9, z1: 6.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'rail', pts: [[-10.9, 11.4, 0], [-10.9, 6.7, 1.6]], model: 'pipe', block: false },
+                    { k: 'rail', x0: -26.1, z0: 7.05, x1: -22.2, z1: 7.05, model: 'balusters_b' },
+                    { k: 'rail', x0: -17.8, z0: 7.05, x1: -12.3, z1: 7.05, model: 'balusters_b' },
+                    { k: 'plateau', x: 21.3, z: 5.9, w: 16.6, d: 3, h: 2.2, edge: 0.15 },
+                    { k: 'ramp', x0: 27.8, z0: 12.6, x1: 27.8, z1: 6.7, w: 2.4, h0: 0, h1: 2.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: 13.9, z0: 7.05, x1: 26.4, z1: 7.05, model: 'balusters_b' },
+                    { k: 'rail', pts: [[-9.9, 4.75, 1.6], [9.5, 4.75, 3.0]], model: 'pipe', block: false },
                     { k: 'wall', x0: -6.6, z0: -12, x1: -6.6, z1: -2, h: 0.45, t: 0.3, key: 'urban:ConcreteStriped2a' },   // the kerb of the turn-back lane (the grind)
                     { k: 'scatter', key: 'traffic_cone', n: 5, seed: 71 },
                 ],
@@ -37030,7 +37178,7 @@ const DOOR_HQ = {
                 { key: 'security_camera', x: 12.6, z: 1.3, face: 200, mount: 2.4 },
                 { key: 'steel_table',     x: 11, z: 4.2, face: 270 }, { key: 'crt_terminal', x: 11, z: 4.2, y: 0.76, face: 270 },
                 { key: 'folding_chair',   x: 11.6, z: 3, face: 270 },
-                { key: 'flood_mast',      x: -9, z: 8 }, { key: 'flood_mast', x: 16, z: 8 },
+                { key: 'flood_mast',      x: -8.2, z: 9.5 }, { key: 'flood_mast', x: 16, z: 9 },
                 { key: 'railing_1m',      x: -20, z: 6.4, face: 0 },
                 { key: 'car_suv',         x: 18, z: 12, face: 90 }, { key: 'car_cop', x: 22, z: 12, face: 90 },
                 { key: 'traffic_barrel',  x: -6, z: -3 }, { key: 'traffic_barrel', x: -6.4, z: -8 },
@@ -37132,14 +37280,22 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[15, -8], [15, 7]], w: 3 },                      // the east passage (hall ⇄ bays)
                     { k: 'hall', pts: [[20, 0], [15, 0]], w: 3 },                       // … THE EAST GANTRY's room off it
                     { k: 'hall', pts: [[-13, 16], [-9, 16]], w: 3 },                    // side room 1 ⇄ the bays
-                    { k: 'hall', pts: [[21, 14], [26, 14]], w: 3 },                     // the bays ⇄ side room 2
+                    { k: 'hall', pts: [[18, 14], [26, 14]], w: 4.4 },                   // the bays ⇄ side room 2 (its stair)
+                    { k: 'hall', pts: [[28, 4], [28, 11]], w: 3 },                      // THE EAST GANTRY ⇄ side room 2 (at 2.6)
+                    { k: 'hall', pts: [[-27, -8], [-27, -4]], w: 4 },                   // the hall ⇄ THE WEST GANTRY (the gap under the jump)
                     /* THE PLATFORM along the hall's north side, in two halves: the gap between them is the stair door's (the wired
                        double door behind the platform, at floor level) */
                     { k: 'plateau', x: -15.25, z: -16, w: 25.5, d: 6, h: 1.0, edge: 0.15 },   // (drawn 1 m into the walls so its lip is the wall's, not a sliver of floor)
                     { k: 'plateau', x: 15.25, z: -16, w: 25.5, d: 6, h: 1.0, edge: 0.15 },
                     { k: 'ramp', x0: -10, z0: -8.5, x1: -10, z1: -13.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // the west stair up to it (ends 0.7 m inside the tier — THE RAMP RULE)
                     { k: 'ramp', x0: 10, z0: -8.5, x1: 10, z1: -13.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },     // the east stair
-                    { k: 'rail', x0: -24, z0: -13.5, x1: -11.6, z1: -13.5 }, { k: 'rail', x0: 11.6, z0: -13.5, x1: 24, z1: -13.5 },   // the platform's edge rail (the grind)
+                    { k: 'rail', x0: -18.6, z0: -13.5, x1: -11.6, z1: -13.5 }, { k: 'rail', x0: 11.6, z0: -13.5, x1: 24, z1: -13.5 },   // the platform's edge rail (the grind)
+                    /* THE WEST DECK (2026-10-05, the stairs pass): the hall's west end at 2.6, up a steel flight off the platform; a 3 m
+                       gap south of it to THE WEST GANTRY (a jump, a pipe across it to grind), a railing on its open edges */
+                    { k: 'plateau', x: -24, z: -14.5, w: 10, d: 11, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: -14.6, z0: -16.2, x1: -19.7, z1: -16.2, w: 2.4, h0: 1.0, h1: 2.6, stairs: true, model: 'fire_escape' },
+                    { k: 'rail', pts: [[-24.6, -9.3], [-19.3, -9.3], [-19.3, -12.8]], model: 'balusters_b' },
+                    { k: 'rail', x0: -27, z0: -9.6, x1: -27, z1: -5.4, y: 2.6, model: 'pipe', block: false },
                     { k: 'plateau', x: -8, z: 6, r: 1.5, h: 4.4, edge: 0.15 },                                         // THE SIGNAL GANTRY (the tape — the door gun's)
                     { k: 'wall', x0: 2, z0: 16, x1: 12, z1: 16, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb ledge the cars park against
                     { k: 'path', pts: [[0, 17], [0, 12], [-3, 12], [-3, -0.5], [3, -0.5], [3, -10], [0, -10], [0, -17]], w: 2.2 },   // the painted lane lift → tram
@@ -37152,6 +37308,15 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 28.5, z: 0, w: 7, d: 12, h: 2.6, edge: 0.15 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
                     { k: 'ramp', x0: 19.8, z0: 0, x1: 25.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     { k: 'rail', x0: -30.6, z0: -4.4, x1: -27.6, z1: -4.4 }, { k: 'rail', x0: 27.6, z0: -4.4, x1: 30.6, z1: -4.4 },   // the gantries' side rails (the grind)
+                    /* THE EAST LEVEL (2026-10-05, the stairs pass): side room 2 raised to 2.6 and joined to THE EAST GANTRY by a passage at
+                       2.6; a wide flight up from the bays with a free pipe handrail down its middle (the loop: bays, up, the gantry, its stair, the east passage) */
+                    { k: 'plateau', x: 28.5, z: 13.5, w: 8, d: 9, h: 2.6, edge: 0.15 },
+                    { k: 'plateau', x: 28, z: 7.5, w: 5, d: 5, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: 18.6, z0: 14, x1: 25.2, z1: 14, w: 4.4, h0: 0, h1: 2.6, stairs: true, model: 'precast' },
+                    { k: 'rail', pts: [[19.1, 14, 0.2], [24.5, 14, 2.32]], model: 'pipe', block: false },
+                    /* the bays' skate rails: a low double rail, and a pipe bent round THE SIGNAL GANTRY */
+                    { k: 'rail', x0: 14, z0: 9.4, x1: 20, z1: 9.4, model: 'double', block: false },
+                    { k: 'rail', arc: { x: -8, z: 6, r: 2.4, a0: 90, a1: 270 }, model: 'pipe', block: false },
                     /* (L6: the D4 parapets are gone — each gantry's own room keeps its door out of sight of the floor now (R3); a rail on the lip either side of the stair's mouth) */
                     { k: 'rail', x0: -25.5, z0: -4.6, x1: -25.5, z1: -1.6 }, { k: 'rail', x0: -25.5, z0: 1.6, x1: -25.5, z1: 4.6 },
                     { k: 'rail', x0: 25.5, z0: -4.6, x1: 25.5, z1: -1.6 }, { k: 'rail', x0: 25.5, z0: 1.6, x1: 25.5, z1: 4.6 },
@@ -37172,7 +37337,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',      x: -6, z: -13.6, face: 0 }, { key: 'railing_1m', x: 6, z: -13.6, face: 0 },   // THE PARK RULE's catalogue rail on the platform
                 { key: 'bare_bulb',       x: -14, z: -8, ceil: true }, { key: 'bare_bulb', x: 14, z: -8, ceil: true }, { key: 'bare_bulb', x: 0, z: 10, ceil: true }, { key: 'bare_bulb', x: 0, z: -14, ceil: true },
                 { key: 'evac_button',     x: 26.4, z: -10, face: 270, mount: 1.2 },                                    // on the hall's east wall, free-standing (a plan wall)
-                { key: 'radiation_sign',  x: -26.4, z: -10, face: 90, mount: 1.7 },
+                { key: 'radiation_sign',  x: -26.4, z: -15, face: 90, mount: 1.7 },   // on THE WEST DECK
                 /* THE BAYS: the black cars, the tools, the ramp nobody takes */
                 { key: 'car_suv',         x: 6, z: 11, face: 0 }, { key: 'car_cop', x: 12, z: 11, face: 0 },
                 { key: 'quarter_pipe',    x: -5, z: 16.5, face: 0 },                                                  // THE PARK RULE's ramp, against the bays' south side
@@ -37257,15 +37422,38 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-8.5, -29], [-10.5, -29]], w: 2 },
                     /* THE TOWER at the hub's centre (the tape — the door gun's; the near weenie) */
                     { k: 'plateau', x: 0, z: 0, r: 1.7, h: 6.5, edge: 0.15 },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 3.0, a0: 20, a1: 160 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 3.0, a0: 200, a1: 340 }, model: 'pipe', block: false },   // the pipes bent round the tower
                     /* CHAMBER 01 · THE DROP: the 3.5 m tier along its north wall and its stair (the tier drawn 1 m into the walls: its lip is the wall's) */
                     { k: 'plateau', x: -25, z: -30, w: 22, d: 8, h: 3.5, edge: 0.15 },
-                    { k: 'ramp', x0: -31, z0: -17.6, x1: -31, z1: -26.7, w: 2.4, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // ends 0.7 m inside the tier
-                    { k: 'rail', x0: -28.6, z0: -26.6, x1: -17, z1: -26.6 },
+                    { k: 'ramp', x0: -20, z0: -17.6, x1: -20, z1: -26.7, w: 4, h0: 0, h1: 3.5, stairs: true, model: 'concrete' },   // ends 0.7 m inside the tier
+                    { k: 'rail', pts: [[-20, -18.1, 0.19], [-20, -26.0, 3.23]], model: 'pipe', block: false },                         // the free handrail down its middle
+                    { k: 'rail', x0: -26, z0: -26.3, x1: -22.3, z1: -26.3, model: 'balusters_b' }, { k: 'rail', x0: -17.7, z0: -26.3, x1: -14.6, z1: -26.3, model: 'balusters_b' },   // the tier's lip (open at its west end: the drop)
+                    /* 2026-10-05 (the stairs pass): the perch at 5.5 on the tier's west end, out over the floor, up a steel flight off the tier */
+                    { k: 'plateau', x: -32.5, z: -28, w: 7, d: 14, h: 5.5, edge: 0.15 },
+                    { k: 'ramp', x0: -23, z0: -31, x1: -29.7, z1: -31, w: 2.4, h0: 3.5, h1: 5.5, stairs: true, model: 'steel' },
+                    { k: 'rail', x0: -28.8, z0: -32.9, x1: -28.8, z1: -32.4, model: 'balusters_b' }, { k: 'rail', x0: -28.8, z0: -29.6, x1: -28.8, z1: -21.4, model: 'balusters_b' },
+                    /* side room 3 raised to the tier (a passage off it), a drop into the vent, a ladder back up */
+                    { k: 'hall', pts: [[-15.5, -29], [-13, -29]], w: 3 },
+                    { k: 'plateau', x: -12, z: -29, w: 4.6, d: 5, h: 3.5, edge: 0.15 },
+                    { k: 'climb', x: -9.7, z: -29, face: 270, look: 'ladder' },
                     /* CHAMBER 02 · THE CATWALK: two 4 m towers against its north wall, the plank between them, one stair up */
                     { k: 'plateau', x: 18, z: -29, w: 8, d: 10, h: 4.0, edge: 0.15 },
                     { k: 'plateau', x: 32, z: -29, w: 8, d: 10, h: 4.0, edge: 0.15 },
                     { k: 'deck', x0: 21.6, z0: -29, x1: 28.4, z1: -29, w: 1.6, y: 4.0, over: true },   // over: the walker passes under it
-                    { k: 'ramp', x0: 18, z0: -17.1, x1: 18, z1: -24.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'ramp', x0: 18, z0: -17.1, x1: 18, z1: -24.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, model: 'steel' },
+                    /* 2026-10-05 (the stairs pass): railings on the towers, a pipe across the gap beside the plank; the far tower steps down
+                       east to THE VAULT GANTRY's landing (3.0), and a passage west from the near one ends on a ledge over room A */
+                    { k: 'rail', x0: 15.2, z0: -24.3, x1: 16.5, z1: -24.3, model: 'balusters_b' }, { k: 'rail', x0: 19.5, z0: -24.3, x1: 21.7, z1: -24.3, model: 'balusters_b' },
+                    { k: 'rail', x0: 21.7, z0: -24.3, x1: 21.7, z1: -25.6, model: 'balusters_b' }, { k: 'rail', x0: 21.7, z0: -27.2, x1: 21.7, z1: -28.0, model: 'balusters_b' }, { k: 'rail', x0: 21.7, z0: -30.0, x1: 21.7, z1: -33.8, model: 'balusters_b' },
+                    { k: 'rail', x0: 28.3, z0: -24.3, x1: 28.3, z1: -25.6, model: 'balusters_b' }, { k: 'rail', x0: 28.3, z0: -27.2, x1: 28.3, z1: -28.0, model: 'balusters_b' }, { k: 'rail', x0: 28.3, z0: -30.0, x1: 28.3, z1: -33.8, model: 'balusters_b' },
+                    { k: 'rail', x0: 28.3, z0: -24.3, x1: 34.8, z1: -24.3, model: 'balusters_b' },
+                    { k: 'rail', x0: 21.4, z0: -26.4, x1: 28.6, z1: -26.4, y: 4.0, model: 'pipe', block: false },
+                    { k: 'hall', pts: [[34, -26], [40, -26]], w: 3 },
+                    { k: 'plateau', x: 37.5, z: -26, w: 5, d: 4.2, h: 3.0, edge: 0.15 },   // (wider than the passage: no floor slot beside the flight)
+                    { k: 'ramp', x0: 38.8, z0: -26, x1: 35.3, z1: -26, w: 2.4, h0: 3.0, h1: 4.0, stairs: true, model: 'steel' },
+                    { k: 'hall', pts: [[15, -31], [3, -31]], w: 2.5 },
+                    { k: 'plateau', x: 8.5, z: -31, w: 13, d: 3.6, h: 4.0, edge: 0.15 },
+                    { k: 'rail', x0: 2.2, z0: -29.6, x1: 4.8, z1: -29.6, model: 'balusters_b' },
                     /* AREA CONTENT D4 (2026-09-20): THE VAULT GANTRY — the war room's vault door stands 3 m up on the east wall (its far side is
                        the war room's south gallery at 3.0), now in its own room at the east spoke's end: the stair climbs north to a landing,
                        the landing turns east onto the gantry (R4: a door you climb to) */
@@ -37273,14 +37461,33 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 40, z: -25.5, w: 5, d: 7, h: 3.0, edge: 0.15 },   // the stair's landing (turns east onto the gantry)
                     { k: 'ramp', x0: 39.75, z0: -12.5, x1: 39.75, z1: -23.2, w: 4, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     /* CHAMBER 03 · THE PIT: the bowl (walked down, climbed out) and the grind ledge on its lip */
-                    { k: 'dip', x: -25, z: 25, r: 6, h: 2.2 },
+                    /* 2026-10-05 (the stairs pass): the pit is sunk 2.4 m, a stair down its east side, a ladder out its west, a railing round
+                       its south lip; a gallery at 2.6 along the south wall up a fire escape, a passage east off it to a ledge over room B */
+                    { k: 'plateau', x: -25, z: 23.2, r: 4.2, h: -2.4, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: -25.6, z0: 23.2, x1: -20.1, z1: 23.2, w: 2.4, h0: -2.4, h1: 0, stairs: true, model: 'concrete' },
+                    { k: 'climb', x: -29.2, z: 23.2, face: 270, look: 'ladder' },
+                    { k: 'rail', arc: { x: -25, z: 23.2, r: 4.5, a0: 110, a1: 250 }, model: 'balusters_b' },
                     { k: 'wall', x0: -32, z0: 17.8, x1: -18, z1: 17.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
+                    { k: 'plateau', x: -25, z: 31.5, w: 22, d: 5, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: -33.3, z0: 23.3, x1: -33.3, z1: 29.7, w: 2.4, h0: 0, h1: 2.6, stairs: true, model: 'fire_escape' },
+                    { k: 'rail', x0: -31.8, z0: 28.8, x1: -15.3, z1: 28.8, model: 'balusters_b' },
+                    { k: 'hall', pts: [[-15.5, 31.5], [-3.5, 31.5]], w: 2.5 },
+                    { k: 'plateau', x: -8.75, z: 31.5, w: 12.5, d: 3.6, h: 2.6, edge: 0.15 },
+                    { k: 'rail', x0: -4.8, z0: 30.1, x1: -2.7, z1: 30.1, model: 'balusters_b' },
                     /* CHAMBER 04 · OBSERVATION: the 2.4 m deck along its east side behind the windows, its stair, its rail; AREA CONTENT D4
                        (2026-09-20): the deck runs on east through a passage into room F — the bunker's hotel door stands ON it (R4) */
                     { k: 'plateau', x: 31.5, z: 24, w: 9, d: 20, h: 2.4, edge: 0.15 },
                     { k: 'plateau', x: 42, z: 18, w: 13, d: 12, h: 2.4, edge: 0.15 },   // overlaps the deck by half a metre (two abutting rects leave a seam)
-                    { k: 'ramp', x0: 19, z0: 24, x1: 27.7, z1: 24, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
-                    { k: 'rail', x0: 27.5, z0: 16, x1: 27.5, z1: 22.4 }, { k: 'rail', x0: 27.5, z0: 25.6, x1: 27.5, z1: 32 },
+                    { k: 'ramp', x0: 20.5, z0: 24, x1: 27.7, z1: 24, w: 2.6, h0: 0, h1: 2.4, stairs: true, model: 'concrete' },
+                    { k: 'rail', x0: 27.5, z0: 17.8, x1: 27.5, z1: 22.4, model: 'balusters_b' }, { k: 'rail', x0: 27.5, z0: 25.6, x1: 27.5, z1: 30.4, model: 'balusters_b' },
+                    /* 2026-10-05 (the stairs pass): the catwalk ring at 2.4 — a walk down the west wall (a ladder up its face), a bridge along the
+                       north wall over the passage, one along the south wall that stops 2.5 m short of the deck (a jump, a pipe across it) */
+                    { k: 'plateau', x: 16, z: 24, w: 3, d: 20, h: 2.4, edge: 0.15 },
+                    { k: 'deck', x0: 17.3, z0: 16.4, x1: 27.2, z1: 16.4, w: 2.2, y: 2.4, over: true },
+                    { k: 'deck', x0: 17.3, z0: 31.8, x1: 24.5, z1: 31.8, w: 2.2, y: 2.4, over: true },
+                    { k: 'rail', x0: 24.2, z0: 31.8, x1: 27.4, z1: 31.8, y: 2.4, model: 'pipe', block: false },
+                    { k: 'climb', x: 17.5, z: 24, face: 270, look: 'ladder' },
+                    { k: 'rail', x0: 17.3, z0: 17.8, x1: 17.3, z1: 22.9, model: 'balusters_b' }, { k: 'rail', x0: 17.3, z0: 25.1, x1: 17.3, z1: 30.4, model: 'balusters_b' },
                     /* the painted lanes off the hub */
                     { k: 'path', pts: [[0, 33], [0, 19], [-6, 19], [-6, 13]], w: 2.4 },
                     { k: 'path', pts: [[-13, 0], [-41, 0]], w: 2.0 },
@@ -37389,12 +37596,19 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-2, 14], [4, 14], [4, 11.5], [6, 11.5]], w: 2.6 },   // hall C: side room 2 ⇄ booth
                     /* the rooms' pieces */
                     { k: 'plateau', x: 13, z: 9, w: 6, d: 4, h: 1.2, edge: 0.15 },                                      // THE BOOTH's step (the observers' floor)
-                    { k: 'ramp', x0: 6.5, z0: 9, x1: 10.7, z1: 9, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'urban:TileGeneric2b' },
-                    { k: 'rail', x0: 10.4, z0: 7.4, x1: 10.4, z1: 10.6 },
+                    { k: 'ramp', x0: 6.5, z0: 9, x1: 10.7, z1: 9, w: 2.2, h0: 0, h1: 1.2, stairs: true, model: 'glass' },
+                    { k: 'rail', x0: 10.3, z0: 7.25, x1: 15.8, z1: 7.25, model: 'glass' },                               // the step's open side
                     { k: 'plateau', x: -18, z: -5, r: 1.4, h: 3.6, edge: 0.15 },                                        // THE DREAM TOWER (the tape — the door gun's)
+                    { k: 'rail', arc: { x: -18, z: -5, r: 2.4, a0: 0, a1: 180 }, model: 'pipe', block: false },           // a pipe bent round it
                     /* AREA CONTENT D4 (2026-09-20): THE SCREEN'S DAIS — the ward's screen stands 1.2 m up at its corridor's end, seen from the ward floor before it is reached (R5) */
                     { k: 'plateau', x: -10, z: -15.25, w: 5, d: 5.5, h: 1.2, edge: 0.15 },
-                    { k: 'ramp', x0: -10, z0: -9.5, x1: -10, z1: -13.2, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'urban:TileGeneric2b' },
+                    { k: 'ramp', x0: -10, z0: -9.5, x1: -10, z1: -13.2, w: 2.6, h0: 0, h1: 1.2, stairs: true, model: 'precast' },
+                    /* 2026-10-05 (the stairs pass): THE RANGE's south side is a stage at 1.2 — up a flight off hall A, down a flight at its east end
+                       into the range, a railing along its edge with a gap to step off */
+                    { k: 'plateau', x: 12, z: -4.25, w: 15, d: 4.5, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: 12, z0: 0.9, x1: 12, z1: -2.7, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'glass' },
+                    { k: 'ramp', x0: 17.5, z0: -10.0, x1: 17.5, z1: -5.8, w: 2.2, h0: 0, h1: 1.2, stairs: true, model: 'glass' },
+                    { k: 'rail', x0: 5.2, z0: -6.3, x1: 8.0, z1: -6.3, model: 'glass' }, { k: 'rail', x0: 10.5, z0: -6.3, x1: 16.2, z1: -6.3, model: 'glass' },
                     { k: 'path', pts: [[22, 2], [12, 2], [12, -4]], w: 1.8 },                                           // the rubber lane door → range
                     { k: 'path', pts: [[12, 2], [-6, 2]], w: 1.8 },
                 ],
@@ -37421,8 +37635,8 @@ const DOOR_HQ = {
                 { key: 'security_camera', x: -0.6, z: -5.6, face: 225, mount: 2.55 },
                 /* THE RANGE: the object on its table, the spoons, the chair the subject sits in */
                 { key: 'floating_orb',    x: 14, z: -10, face: 0 },                                                      // THE OBJECT (the near weenie: the one lit thing down the lane)
-                { key: 'steel_table',     x: 9, z: -8, face: 0 }, { key: 'coffee_mug', x: 8.6, z: -8.2, y: 0.76 }, { key: 'stapler', x: 9.6, z: -7.6, y: 0.76, face: 30 },
-                { key: 'computer_chair_grey', x: 9, z: -6.7, face: 0 },
+                { key: 'steel_table',     x: 9, z: -9.2, face: 0 }, { key: 'coffee_mug', x: 8.6, z: -9.4, y: 0.76 }, { key: 'stapler', x: 9.6, z: -8.8, y: 0.76, face: 30 },
+                { key: 'computer_chair_grey', x: 9, z: -7.9, face: 0 },
                 { key: 'chalkboard',      x: 12, z: -13.6, face: 0, mount: 0.95 },                                       // the scores, free-standing on the range's north wall
                 { key: 'bare_bulb',       x: 16, z: -6, ceil: true },
                 /* THE BOOTH: the observers' desk up the step */
@@ -37483,9 +37697,16 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[3.5, 10], [3.5, 11.2]], w: 2.2 },
                     /* the rooms' pieces */
                     { k: 'plateau', x: -14.5, z: -8.5, w: 17, d: 3, h: 2.8, edge: 0.15 },                               // THE GANTRY along the vat hall's north wall
-                    { k: 'ramp', x0: -20, z0: -1, x1: -20, z1: -7.2, w: 2.2, h0: 0, h1: 2.8, stairs: true, edge: 0.15, built: true, key: 'urban:RubberNonSlip4a' },
-                    { k: 'rail', x0: -18.8, z0: -6.9, x1: -6.2, z1: -6.9 },
+                    { k: 'ramp', x0: -20, z0: -1, x1: -20, z1: -7.2, w: 2.2, h0: 0, h1: 2.8, stairs: true, model: 'grate' },
+                    { k: 'rail', x0: -18.8, z0: -6.9, x1: -16.7, z1: -6.9, model: 'balusters_b' }, { k: 'rail', x0: -14.3, z0: -6.9, x1: -6.2, z1: -6.9, model: 'balusters_b' },
+                    /* 2026-10-05 (the stairs pass): a bridge off THE GANTRY south over the vats to a gallery along the south wall at 2.8, and a
+                       steel flight from the gallery back down by the spawn (the loop: up the grating, across, down) */
+                    { k: 'deck', x0: -15.5, z0: -7.2, x1: -15.5, z1: 7.2, w: 2, y: 2.8, over: true },
+                    { k: 'plateau', x: -19.25, z: 9.75, w: 9.5, d: 5.5, h: 2.8, edge: 0.15 },
+                    { k: 'ramp', x0: -8.8, z0: 8.7, x1: -15.2, z1: 8.7, w: 2.2, h0: 0, h1: 2.8, stairs: true, model: 'steel' },
+                    { k: 'rail', x0: -22.8, z0: 7.2, x1: -16.7, z1: 7.2, model: 'balusters_b' },
                     { k: 'plateau', x: 2, z: 6, r: 1.5, h: 4.4, edge: 0.15 },                                           // THE VAT STACK (the tape — the door gun's)
+                    { k: 'rail', arc: { x: 2, z: 6, r: 2.4, a0: 0, a1: 180 }, model: 'pipe', block: false },              // a pipe bent round it
                     { k: 'wall', x0: 14, z0: 5.8, x1: 22, z1: 5.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' },   // the disposal bay's kerb (a grind)
                     { k: 'path', pts: [[26, -2], [-8, -2]], w: 1.8 },
                     { k: 'path', pts: [[12, -2], [12, 8], [18, 8]], w: 1.8 },
@@ -37550,10 +37771,29 @@ const DOOR_HQ = {
                 features: [
                     { k: 'plateau', x: 0, z: -13, w: 44, d: 6, h: 3.0, edge: 0.35 },                                    // THE NORTH GALLERY — THE BIG BOARD's floor
                     { k: 'plateau', x: 0, z: 13, w: 44, d: 6, h: 3.0, edge: 0.35 },                                     // THE SOUTH GALLERY
-                    { k: 'ramp', x0: -16, z0: -4, x1: -16, z1: -10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },
-                    { k: 'ramp', x0: 16, z0: 4, x1: 16, z1: 10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2 },
-                    { k: 'rail', x0: -13, z0: -10.4, x1: 20, z1: -10.4 },
-                    { k: 'rail', x0: -20, z0: 10.4, x1: 13, z1: 10.4 },
+                    { k: 'ramp', x0: -16, z0: -4, x1: -16, z1: -10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2, model: 'precast' },
+                    { k: 'ramp', x0: 16, z0: 4, x1: 16, z1: 10.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, edge: 0.2, model: 'precast' },
+                    { k: 'rail', x0: -14.5, z0: -10.4, x1: -1.4, z1: -10.4, model: 'balusters_b' }, { k: 'rail', x0: 1.4, z0: -10.4, x1: 21.6, z1: -10.4, model: 'balusters_b' },
+                    { k: 'rail', x0: -21.6, z0: 10.4, x1: -1.4, z1: 10.4, model: 'balusters_b' }, { k: 'rail', x0: 1.4, z0: 10.4, x1: 14.5, z1: 10.4, model: 'balusters_b' },
+                    /* 2026-10-05 (the stairs pass): THE PIT sunk 1.2 m round the table, a flight down at either end, a pipe along its north lip and a
+                       railing on the rest; a bridge across the room between the galleries at 3.0; a perch at 6.0 on each gallery's west end, up a
+                       steel flight, a high bridge from the north one that stops 2.5 m short of the south one (a jump, a pipe across it) */
+                    { k: 'plateau', x: 0, z: 0, w: 20, d: 8, h: -1.2, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: -7.7, z0: 0, x1: -10.7, z1: 0, w: 2.4, h0: -1.2, h1: 0, stairs: true, model: 'concrete' },
+                    { k: 'ramp', x0: 7.7, z0: 0, x1: 10.7, z1: 0, w: 2.4, h0: -1.2, h1: 0, stairs: true, model: 'concrete' },
+                    { k: 'rail', x0: -9.8, z0: -4.2, x1: 9.8, z1: -4.2, model: 'pipe', block: false },
+                    { k: 'rail', x0: -9.8, z0: 4.2, x1: 9.8, z1: 4.2, model: 'glass' },
+                    { k: 'rail', x0: -10.2, z0: -3.8, x1: -10.2, z1: -1.5, model: 'glass' }, { k: 'rail', x0: -10.2, z0: 1.5, x1: -10.2, z1: 3.8, model: 'glass' },
+                    { k: 'rail', x0: 10.2, z0: -3.8, x1: 10.2, z1: -1.5, model: 'glass' }, { k: 'rail', x0: 10.2, z0: 1.5, x1: 10.2, z1: 3.8, model: 'glass' },
+                    { k: 'deck', x0: 0, z0: -10.2, x1: 0, z1: 10.2, w: 2.4, y: 3.0, over: true },
+                    { k: 'plateau', x: -19, z: -14, w: 8, d: 4, h: 6.0, edge: 0.15 },
+                    { k: 'ramp', x0: -8, z0: -13.5, x1: -15.7, z1: -13.5, w: 2.4, h0: 3.0, h1: 6.0, stairs: true, model: 'steel' },
+                    { k: 'plateau', x: -19, z: 14, w: 8, d: 4, h: 6.0, edge: 0.15 },
+                    { k: 'ramp', x0: -8, z0: 13.5, x1: -15.7, z1: 13.5, w: 2.4, h0: 3.0, h1: 6.0, stairs: true, model: 'steel' },
+                    { k: 'deck', x0: -19, z0: -12.2, x1: -19, z1: 9.5, w: 2.4, y: 6.0, over: true },
+                    { k: 'rail', x0: -19, z0: 9.2, x1: -19, z1: 12.3, y: 6.0, model: 'pipe', block: false },
+                    { k: 'rail', x0: -21.8, z0: -12.2, x1: -20.4, z1: -12.2, model: 'balusters_b' }, { k: 'rail', x0: -17.6, z0: -12.2, x1: -15.2, z1: -12.2, model: 'balusters_b' },
+                    { k: 'rail', x0: -21.8, z0: 12.2, x1: -20.4, z1: 12.2, model: 'balusters_b' }, { k: 'rail', x0: -17.6, z0: 12.2, x1: -15.2, z1: 12.2, model: 'balusters_b' },
                     { k: 'plateau', x: 19, z: 0, r: 1.5, h: 5.5, edge: 0.3 },                                           // THE PROJECTION BOOTH (the tape — the door gun's)
                     { k: 'path', pts: [[0, -10], [0, 10]], w: 2.6 },
                 ],
@@ -37589,8 +37829,8 @@ const DOOR_HQ = {
                 { key: 'evac_button',     wall: 'e', z: 4, mount: 1.2 },
                 { key: 'security_camera', wall: 'e', z: -6, mount: 3.6 },
                 { key: 'nameplate',       wall: 'w', z: -3, mount: 1.55 },
-                { key: 'water_cooler',    wall: 's', x: -18 },
-                { key: 'trash_bin',       x: 8, z: 4, face: 270 },
+                { key: 'water_cooler',    wall: 's', x: -11 },
+                { key: 'trash_bin',       x: 12, z: 5, face: 270 },
                 { key: 'floor_stain',     x: -8, z: 5 },
             ],
             agents: [],
@@ -37642,12 +37882,28 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[5, 12], [8, 12]], w: 2.4 },                      // behind the keypad
                     { k: 'hall', pts: [[-14, 10], [-14, 13]], w: 2.6 },
                     /* the rooms' pieces */
-                    { k: 'plateau', x: -20, z: -6.5, w: 10, d: 7, h: 2.6, edge: 0.15 },                                  // THE LOFT over the great room's west end
-                    { k: 'ramp', x0: -9, z0: -6, x1: -15.7, z1: -6, w: 2.4, h0: 0, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'urban:TileMarble1b' },
-                    { k: 'rail', x0: -14.6, z0: -8.6, x1: -14.6, z1: -3.4 },
+                    { k: 'plateau', x: -20.5, z: -7, w: 11, d: 8, h: 2.6, edge: 0.15 },                                  // THE LOFT over the great room's west end
+                    { k: 'ramp', x0: -9, z0: -6, x1: -15.7, z1: -6, w: 2.4, h0: 0, h1: 2.6, stairs: true, model: 'carriage' },
+                    { k: 'rail', x0: -15.2, z0: -9.8, x1: -15.2, z1: -7.4, model: 'glass' }, { k: 'rail', x0: -15.2, z0: -4.6, x1: -15.2, z1: -3.2, model: 'glass' },
+                    /* 2026-10-05 (the stairs pass): a bridge off THE LOFT south over the great room to a mezzanine at 2.6 along its south-west
+                       wall, a flight back down off it; a sunk seating pit round the couch (steps at either end); THE CELLAR sunk 1.2 m under
+                       hall A's mouth, down a flight, its step split either side of it */
+                    { k: 'rail', x0: -24.8, z0: -3.2, x1: -21.2, z1: -3.2, model: 'glass' }, { k: 'rail', x0: -18.8, z0: -3.2, x1: -15.2, z1: -3.2, model: 'glass' },
+                    { k: 'deck', x0: -20, z0: -3.2, x1: -20, z1: 6.2, w: 2, y: 2.6, over: true },
+                    { k: 'plateau', x: -20.5, z: 9, w: 11, d: 6, h: 2.6, edge: 0.15 },   // (drawn 1 m into the walls)
+                    { k: 'ramp', x0: -16.2, z0: -0.6, x1: -16.2, z1: 5.3, w: 2.2, h0: 0, h1: 2.6, stairs: true, model: 'carriage' },
+                    { k: 'rail', x0: -24.8, z0: 6.2, x1: -21.2, z1: 6.2, model: 'glass' }, { k: 'rail', x0: -18.8, z0: 6.2, x1: -17.5, z1: 6.2, model: 'glass' },
+                    { k: 'rail', x0: -15.2, z0: 6.2, x1: -15.2, z1: 9.8, model: 'glass' },
+                    { k: 'plateau', x: -8, z: 1, w: 8, d: 7, h: -0.9, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: -10.5, z0: 0, x1: -12.7, z1: 0, w: 2.2, h0: -0.9, h1: 0, stairs: true, model: 'carriage' },
+                    { k: 'ramp', x0: -5.5, z0: 0, x1: -3.3, z1: 0, w: 2.2, h0: -0.9, h1: 0, stairs: true, model: 'carriage' },
+                    { k: 'rail', x0: -11.8, z0: 4.7, x1: -4.2, z1: 4.7, model: 'pipe', block: false },
+                    { k: 'plateau', x: 12, z: 10.5, w: 24, d: 11, h: -1.2, sink: true, edge: 0.15 },
+                    { k: 'ramp', x0: 14, z0: 7.9, x1: 14, z1: 4.3, w: 2.4, h0: -1.2, h1: 0, stairs: true, model: 'carriage' },
                     { k: 'pool', x: 14, z: -9, r: 5.5, rz: 3.2, y: 0, depth: 0.9 },                                     // THE POOL (waded, warm)
                     { k: 'plateau', x: 20, z: 9, r: 1.4, h: 3.8, edge: 0.15 },                                          // THE SAFE STACK in the cellar (the tape — the door gun's)
-                    { k: 'wall', x0: 8, z0: 4.5, x1: 22, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' },         // the cellar's step (a grind)
+                    { k: 'rail', arc: { x: 20, z: 9, r: 2.4, a0: 180, a1: 360 }, model: 'pipe', block: false },           // a pipe bent round it
+                    { k: 'wall', x0: 8, z0: 4.5, x1: 12.6, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' }, { k: 'wall', x0: 15.4, z0: 4.5, x1: 22, z1: 4.5, h: 0.45, t: 0.4, key: 'urban:TileMarble1d' },   // the cellar's step (a grind)
                     { k: 'path', pts: [[-28, -2], [-13, -2], [-13, 0], [4, 0], [14, 0], [14, -4]], w: 2.0 },                        // the marble runner from the lift
                     { k: 'path', pts: [[14, 0], [14, 6]], w: 2.0 },
                 ],
@@ -37665,7 +37921,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE GREAT ROOM: the windows that are screens, the couch, the throne, the sound system */
-                { key: 'false_window',    x: -24.6, z: 2, face: 90, mount: 1.0 }, { key: 'false_window', x: -24.6, z: 6, face: 90, mount: 1.0 }, { key: 'false_window', x: -8, z: -9.6, face: 0, mount: 1.0 },   // free-standing on the plan walls (the near weenie: daylight eighty metres down)
+                { key: 'false_window',    x: -24.6, z: 1, face: 90, mount: 1.0 }, { key: 'false_window', x: -24.6, z: 4.5, face: 90, mount: 1.0 }, { key: 'false_window', x: -8, z: -9.6, face: 0, mount: 1.0 },   // free-standing on the plan walls (the near weenie: daylight eighty metres down)
                 { key: 'curved_couch',    x: -8, z: 3, face: 180 }, { key: 'rug_round', x: -8, z: 0.5 }, { key: 'coffee_table', x: -8, z: -1 }, { key: 'tube_tv', x: -8, z: -1, y: 0.45, face: 180 },
                 { key: 'royal_throne',    x: -3, z: 6, face: 270 },
                 { key: 'retro_speakers',  x: -4, z: -8.5, face: 0 }, { key: 'retro_radio', x: -2.6, z: -8.5, y: 0.0, face: 0 },
@@ -37741,10 +37997,29 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[25, 25], [31.5, 31.5]], w: 2.6 },               // service room 2
                     { k: 'hall', pts: [[-25, 25], [-31.5, 31.5]], w: 2.6 },             // service room 3
                     { k: 'hall', pts: [[-25, -25], [-31.5, -31.5]], w: 2.6 },           // service room 4
-                    /* THE GANTRY over the detector, up its built stair */
+                    /* THE GANTRY over the detector, up its stair; THE CATWALKS (3.2) round the hall's north, east and south walls over the
+                       racks and over the ring, down a second flight to a landing in the south-west corner; a skate rail laid across the
+                       hall from the gantry to the landing, a curved rail round the beam dump */
                     { k: 'plateau', x: 42, z: -6, w: 6, d: 6, h: 3.2, edge: 0.15 },
-                    { k: 'ramp', x0: 42, z0: 4.2, x1: 42, z1: -3.7, w: 2.4, h0: 0, h1: 3.2, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2d' },   // L 7.9 ≥ 2.2 × h; ends 0.7 m inside
-                    { k: 'rail', x0: 39.4, z0: -8.6, x1: 39.4, z1: -3.4 },
+                    { k: 'ramp', x0: 42, z0: 4.2, x1: 42, z1: -3.7, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },   // L 7.9 ≥ 2.2 × h; ends 0.7 m inside
+                    { k: 'rail', x0: 39.15, z0: -8.8, x1: 39.15, z1: -3.2, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 39.2, z0: -3.15, x1: 40.7, z1: -3.15, y: 3.2, model: 'glass' }, { k: 'rail', x0: 43.3, z0: -3.15, x1: 44.8, z1: -3.15, y: 3.2, model: 'glass' },
+                    { k: 'plateau', x: 25.85, z: 11.1, w: 4.7, d: 5.4, h: 3.2, edge: 0.15 },                                   // the landing
+                    { k: 'ramp', x0: 26.4, z0: 1.6, x1: 26.4, z1: 9.1, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: 25.5, z0: -10.5, x1: 49, z1: -10.5, w: 3, y: 3.2, rails: false },                        // the north catwalk
+                    { k: 'bridge', x0: 47.5, z0: -12, x1: 47.5, z1: 12, w: 3, y: 3.2, rails: false },                           // the east catwalk
+                    { k: 'bridge', x0: 27, z0: 10.5, x1: 49, z1: 10.5, w: 3, y: 3.2, rails: false },                            // the south catwalk
+                    { k: 'rail', x0: 25.6, z0: -9.15, x1: 38.9, z1: -9.15, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 46.15, z0: -8.9, x1: 46.15, z1: 8.9, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 27.6, z0: 9.15, x1: 45.9, z1: 9.15, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 39.6, z0: -3.6, x1: 26.6, z1: 9.0, y: 3.2, model: 'pipe', block: false },                  // across the hall
+                    { k: 'rail', arc: { x: 34, z: 8, r: 2.6, a0: 90, a1: 270 }, model: 'pipe', block: false },                   // round the beam dump
+                    /* THE CONTROL ROOM and its service bay raised (1.2), up a short flight in each doorway */
+                    { k: 'plateau', x: 1, z: -45.4, w: 19, d: 8.2, h: 1.2, edge: 0.15 },
+                    { k: 'plateau', x: -13.25, z: -45.25, w: 6.5, d: 7.5, h: 1.2, edge: 0.15 },
+                    { k: 'plateau', x: -9.25, z: -47.3, w: 3.5, d: 3.4, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: -6.8, z0: -39.4, x1: -6.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
+                    { k: 'ramp', x0: 8.8, z0: -39.4, x1: 8.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
                     { k: 'plateau', x: 34, z: 8, r: 1.5, h: 4.2, edge: 0.15 },                                          // THE BEAM DUMP (the tape — the door gun's)
                     { k: 'wall', x0: -4, z0: -41.8, x1: 4, z1: -41.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
                     { k: 'path', pts: [[0, 49], [0, 38]], w: 2.0 }, { k: 'path', pts: [[-49, 0], [-38, 0]], w: 2.0 },
@@ -38426,6 +38701,7 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[20, -42], [20, -30]], w: 3.4 },
                     { k: 'hall', pts: [[24, -22], [24, -12]], w: 3.4 },
                     { k: 'hall', pts: [[15, -26], [6, -26], [6, -20], [-4, -20]], w: 3.4 },
+                    { k: 'hall', pts: [[6, -20], [6, -8]], w: 3 },                                       // the hall down to the gallery
                     { k: 'hall', pts: [[-10, 42], [-10, 32]], w: 3.4 },
                     { k: 'hall', pts: [[-17, 28], [-24, 28], [-24, 20]], w: 3.4 },
                     { k: 'hall', pts: [[-7, 28], [4, 28], [4, 8]], w: 3.4 },
@@ -38443,13 +38719,47 @@ const DOOR_HQ = {
                     { k: 'pool', x: 48, z: -12, r: 3.0, y: -0.3, depth: 0.6 },                                               // THE OUTFALL basin (waded)
                     { k: 'pool', x: 24, z: 20, r: 3.8, y: -0.3, depth: 1.8, key: 'deep_water' },                             // THE CISTERN (never entered; its banks go round)
                     { k: 'deck', x0: 24, z0: 25.2, x1: 24, z1: 14.8, w: 1.6, y: 0.05 },                                      // THE PLANK across it
-                    /* THE INSPECTION GALLERY on the junction's north wall, up its stair */
-                    { k: 'plateau', x: 4, z: -6.5, w: 8, d: 3, h: 1.6, edge: 0.15 },
-                    { k: 'ramp', x0: 4, z0: -0.6, x1: 4, z1: -5.7, w: 2.4, h0: 0, h1: 1.6, stairs: true, edge: 0.15, built: true, key: 'urban:ConcreteStriped2a' },
-                    { k: 'rail', x0: 0.2, z0: -5.1, x1: 2.6, z1: -5.1 }, { k: 'rail', x0: 5.4, z0: -5.1, x1: 7.8, z1: -5.1 },
                     /* THE PUMP GANTRY: the pumping station's bulkhead stands 1.6 m up at the feeder's head, up a flight */
                     { k: 'plateau', x: -20, z: -39, w: 8, d: 5, h: 1.6, edge: 0.15 },
-                    { k: 'ramp', x0: -20, z0: -30.2, x1: -20, z1: -37.2, w: 3.4, h0: 0, h1: 1.6, stairs: true, edge: 0.15, built: true, key: 'urban:ConcreteStriped2a' },
+                    { k: 'ramp', x0: -20, z0: -30.2, x1: -20, z1: -37.2, w: 3.4, h0: 0, h1: 1.6, stairs: true, model: 'grate', edge: 0.15 },
+                    /* the upper levels (1.6). North-west: the cross drain, side room 1 and the drain door, down a flight into the pump
+                       room and a grating down to the feeder */
+                    { k: 'plateau', x: -39.15, z: -9, w: 42.7, d: 6.4, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: -40, z: -7.65, w: 4.4, d: 32.7, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: -40, z: -28, w: 11, d: 9, h: 1.6, edge: 0.15 },
+                    { k: 'ramp', x0: -40, z0: 12.6, x1: -40, z1: 8.0, w: 3.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'rail', pts: [[-40, 7.2, 1.6], [-40, 8.0, 1.6], [-40, 12.6, 0], [-40, 13.6, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: -20, z0: -16.0, x1: -20, z1: -11.5, w: 3.4, h0: 0, h1: 1.6, stairs: true, model: 'grate', edge: 0.15 },
+                    /* north-east: side room 3, the undercity's culvert, the branch and the hall down to THE GALLERY on the junction's
+                       north-east corner; a grating down to the feeder, a flight down to the main culvert, the gallery's stair */
+                    { k: 'plateau', x: 20.35, z: -26.1, w: 11.7, d: 8.8, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 20, z: -36, w: 4.4, d: 13, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 9.65, z: -26, w: 11.7, d: 4.4, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 6.25, z: -17.9, w: 3.9, d: 20.6, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 2.95, z: -20, w: 3.7, d: 4.4, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 7.5, z: -6.25, w: 6, d: 4.5, h: 1.6, edge: 0.15 },                                    // THE GALLERY
+                    { k: 'ramp', x0: -1.8, z0: -20, x1: 1.8, z1: -20, w: 3.4, h0: 0, h1: 1.6, stairs: true, model: 'grate', edge: 0.15 },
+                    { k: 'ramp', x0: 24, z0: -17.7, x1: 24, z1: -22.7, w: 3.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: 1.0, z0: -6.7, x1: 5.5, z1: -6.7, w: 2.6, h0: 0, h1: 1.6, stairs: true, model: 'precast', rails: 'l', edge: 0.15 },
+                    { k: 'rail', pts: [[0.2, -6.7, 0], [1.0, -6.7, 0], [5.5, -6.7, 1.6], [6.3, -6.7, 1.6]], model: 'pipe', block: false },
+                    { k: 'rail', x0: 4.6, z0: -4.15, x1: 8.0, z1: -4.15, y: 1.6, model: 'bars_curb' },                        // the gallery's edge
+                    { k: 'rail', x0: 4.65, z0: -5.3, x1: 4.65, z1: -4.3, y: 1.6, model: 'bars_curb' },
+                    /* east: the cistern's hall, the east culvert and side room 5, the cistern's two ledges (a skate rail laid across the
+                       cistern between them), the flight down into the outfall */
+                    { k: 'plateau', x: 39.35, z: 20, w: 17.7, d: 4.4, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 52.15, z: 14, w: 16.7, d: 4.4, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 46, z: 9.1, w: 4.4, d: 26.2, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 52, z: 20.5, w: 4.4, d: 14, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 52, z: 31, w: 11, d: 9, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 17.5, z: 17.5, w: 3, d: 8, h: 1.6, edge: 0.15 },
+                    { k: 'plateau', x: 30.5, z: 20, w: 3, d: 13, h: 1.6, edge: 0.15 },
+                    { k: 'ramp', x0: 17.8, z0: 25.2, x1: 17.8, z1: 20.8, w: 2.2, h0: 0, h1: 1.6, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: 18.85, z0: 14.1, x1: 18.85, z1: 15.8, y: 1.6, model: 'bars_curb' }, { k: 'rail', x0: 18.85, z0: 17.2, x1: 18.85, z1: 20.6, y: 1.6, model: 'bars_curb' },
+                    { k: 'rail', x0: 29.15, z0: 14.1, x1: 29.15, z1: 15.8, y: 1.6, model: 'bars_curb' }, { k: 'rail', x0: 29.15, z0: 17.2, x1: 29.15, z1: 25.9, y: 1.6, model: 'bars_curb' },
+                    { k: 'rail', x0: 17.6, z0: 16.5, x1: 30.4, z1: 16.5, y: 1.6, model: 'pipe', block: false },                // across the cistern
+                    { k: 'ramp', x0: 46, z0: -7.8, x1: 46, z1: -3.3, w: 3.4, h0: 0, h1: 1.6, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'rail', pts: [[46, -2.5, 1.6], [46, -3.3, 1.6], [46, -7.8, 0], [46, -8.8, 0]], model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 48, z: -12, r: 4.6, a0: 300, a1: 375 }, model: 'pipe', block: false },                // round the outfall basin
                     /* THE OUTFALL SHAFT (the tape — the door gun's; lit from above) */
                     { k: 'plateau', x: 51.5, z: -15.5, r: 1.6, h: 4.4, edge: 0.15 },
                     { k: 'scatter', key: 'cinder_block', n: 5, x: -4, z: 3, r: 5, seed: 5 },
@@ -38476,8 +38786,8 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* THE JUNCTION: the gallery's catalogue rails, the paint, the light over the confluence */
-                { key: 'railing_1m',      x: 1.4, z: -5.4, face: 0 }, { key: 'railing_1m', x: 6.6, z: -5.4, face: 0 },     // THE PARK RULE's rail on the gallery
+                /* THE JUNCTION: the catalogue rails by the gallery's stair, the paint, the light over the confluence */
+                { key: 'railing_1m',      x: 2.5, z: -3.0, face: 0 }, { key: 'railing_1m', x: 3.5, z: -3.0, face: 0 },     // THE PARK RULE's rail by the gallery's stair
                 { key: 'bare_bulb',       x: 0, z: -4, ceil: true }, { key: 'bare_bulb', x: 0, z: 8, ceil: true },
                 { key: 'graffiti_wall',   x: -11, z: 3.25, face: 180 } /* 2026-10-05: flat on the brick (they stood off the walls, read mirrored from behind) */, { key: 'graffiti_wall', x: 5.75, z: 10.5, face: 270 },
                 { key: 'drain_grate',     x: -5, z: -10.5, face: 0, mount: 0.4 },
@@ -38512,7 +38822,7 @@ const DOOR_HQ = {
             npcSpots: [
                 { x: -38.8, z: 16.2 /* 2026-09-18: off the channel */, face: 90, race: 'ghoul', say: ['“Storm drain.” “Sewer.” “What is the difference?” “Which way it smells.”', '“The pumps run all night.” “For who?” “The water. Somebody has to.”'] },
                 { x: 7.5, z: -7.5, face: 200, race: 'gangster', say: ['“Nobody comes down here.” “You are down here.” “I am nobody. It is a job.”'] },
-                { x: 46, z: -5, face: 230, race: 'zombie', say: ['“Light.” “That is the outfall.” “Where does it go?” “Up.” “Up where?” “Up.”'] },
+                { x: 44, z: -7.5, face: 230, race: 'zombie', say: ['“Light.” “That is the outfall.” “Where does it go?” “Up.” “Up where?” “Up.”'] },
                 { x: 25, z: 31, face: 270, race: 'conspiracy theorist', say: ['“Every gutter in the city drains into this culvert.” “That is what a sewer is.” “That is what they WANT a sewer to be.”'] },
             ],
             onlineSpots: [],
@@ -38574,7 +38884,7 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-47, -4], [-36, -4], [-36, 10]], w: 3 },
                     { k: 'hall', pts: [[-36, 2], [-26, 2]], w: 3 },
                     { k: 'hall', pts: [[22, -27], [22, -16]], w: 3 },
-                    { k: 'hall', pts: [[3, -12], [16, -12]], w: 3 },
+                    { k: 'hall', pts: [[3, -14], [16, -14]], w: 3 },
                     { k: 'hall', pts: [[22, -8], [22, 4], [30, 4], [30, 10]], w: 3 },
                     { k: 'hall', pts: [[35, 14], [47, 14]], w: 3 },
                     { k: 'hall', pts: [[28, -12], [40, -12], [40, -5]], w: 3 },
@@ -38588,14 +38898,58 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -0.75, z0: 6.5, x1: -0.75, z1: 26, h: 0.14, t: 0.12, key: 'metal' },   { k: 'wall', x0: 0.75, z0: 6.5, x1: 0.75, z1: 26, h: 0.14, t: 0.12, key: 'metal' },
                     /* THE GHOST STATION: the platform on the loop's south leg, its two stairs, its edge rail */
                     { k: 'plateau', x: 0, z: 36, w: 14, d: 4, h: 1.0, edge: 0.15 },
-                    { k: 'ramp', x0: -10.5, z0: 36, x1: -6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.15, built: true, key: 'urban:TileSubway4a' },
-                    { k: 'ramp', x0: 10.5, z0: 36, x1: 6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.15, built: true, key: 'urban:TileSubway4a' },
+                    { k: 'ramp', x0: -10.5, z0: 36, x1: -6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, model: 'metro', edge: 0.15 },
+                    { k: 'ramp', x0: 10.5, z0: 36, x1: 6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, model: 'metro', edge: 0.15 },
                     { k: 'rail', x0: -6, z0: 34.3, x1: 6, z1: 34.3 },
                     /* THE CROSSING: THE SIGNAL GANTRY (the tape — the door gun's; the near weenie of the crossover) */
                     { k: 'plateau', x: 3.5, z: 3.5, r: 1.4, h: 5.2, edge: 0.15 },
                     /* THE WORKS' PLATFORM: the track to the building's platform leaves from a 1.8 m platform, up a flight (R4) */
                     { k: 'plateau', x: -57, z: -16, w: 6, d: 5, h: 1.8, edge: 0.15 },
-                    { k: 'ramp', x0: -57, z0: -7.4, x1: -57, z1: -14.2, w: 2.4, h0: 0, h1: 1.8, stairs: true, edge: 0.15, built: true, key: 'urban:ConcreteStriped2a' },
+                    { k: 'ramp', x0: -57, z0: -7.4, x1: -57, z1: -14.2, w: 2.4, h0: 0, h1: 1.8, stairs: true, model: 'concrete', edge: 0.15 },
+                    /* THE HATCH'S STAIR: the sewers' frame at the top of a grating flight (1.8) */
+                    { k: 'plateau', x: 24, z: -46.75, w: 4, d: 3.5, h: 1.8, edge: 0.15 },
+                    { k: 'ramp', x0: 24, z0: -41.0, x1: 24, z1: -45.7, w: 3.4, h0: 0, h1: 1.8, stairs: true, model: 'grate', edge: 0.15 },
+                    /* the maintenance level (2.4): every passage and side room between the tracks, up a flight from each track it
+                       meets; a footbridge over the crossover joins the two halves */
+                    { k: 'plateau', x: -26, z: -14, w: 11, d: 9, h: 2.4, edge: 0.15 },                                          // side room 2
+                    { k: 'plateau', x: -26, z: -19.45, w: 4, d: 3.9, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -12.0, z: -14, w: 19, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -26, z: -3.75, w: 4, d: 12.5, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -25, z: 2, w: 25, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -14, z: 4.25, w: 4, d: 8.5, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -14, z: 12, w: 11, d: 9, h: 2.4, edge: 0.15 },                                           // side room 3
+                    { k: 'plateau', x: -8.35, z: 12, w: 2.3, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -36, z: 14, w: 9, d: 9, h: 2.4, edge: 0.15 },                                            // side room 4
+                    { k: 'plateau', x: -36, z: 2, w: 4, d: 16, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -38, z: -4, w: 8, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 22, z: -12, w: 13, d: 9, h: 2.4, edge: 0.15 },                                           // side room 5
+                    { k: 'plateau', x: 22, z: -18.7, w: 4, d: 5.4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 9.25, z: -14, w: 13.5, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 35, z: -12, w: 14, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 40, z: -8.75, w: 4, d: 10.5, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 40, z: -2, w: 9, d: 7, h: 2.4, edge: 0.15 },                                             // side room 7
+                    { k: 'plateau', x: 22, z: -1, w: 4, d: 14, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 26, z: 4, w: 12, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 30, z: 6, w: 4, d: 8, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 30, z: 14, w: 11, d: 9, h: 2.4, edge: 0.15 },                                            // side room 6
+                    { k: 'plateau', x: 38.5, z: 14, w: 7, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 18.5, z: 18, w: 17, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 12, z: 15.7, w: 4, d: 8.6, h: 2.4, edge: 0.15 },
+                    { k: 'ramp', x0: -26, z0: -26.0, x1: -26, z1: -20.7, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'metro', edge: 0.15 },
+                    { k: 'rail', pts: [[-26, -19.9, 2.4], [-26, -20.7, 2.4], [-26, -26.0, 0], [-26, -27.0, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: -2.6, z0: 12, x1: -7.9, z1: 12, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'ramp', x0: -46.6, z0: -4, x1: -41.3, z1: -4, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: 22, z0: -26.0, x1: 22, z1: -20.7, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'metro', edge: 0.15 },
+                    { k: 'rail', pts: [[22, -19.9, 2.4], [22, -20.7, 2.4], [22, -26.0, 0], [22, -27.0, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: 46.6, z0: 14, x1: 41.3, z1: 14, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: 12, z0: 6.8, x1: 12, z1: 12.1, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: -4.5, z0: -14, x1: 4.5, z1: -14, w: 3, y: 2.4, rails: false },                                // the footbridge over the crossover
+                    { k: 'rail', x0: -2.6, z0: -15.4, x1: 2.6, z1: -15.4, y: 2.4, model: 'bars_curb' }, { k: 'rail', x0: -2.6, z0: -12.6, x1: 2.6, z1: -12.6, y: 2.4, model: 'bars_curb' },
+                    /* the rails round the loop's four corners (low, the track rails' height) */
+                    { k: 'rail', arc: { x: 47, z: -27, r: 2.25, a0: 0, a1: 90 }, h: 0.14 },    { k: 'rail', arc: { x: 47, z: -27, r: 3.75, a0: 0, a1: 90 }, h: 0.14 },
+                    { k: 'rail', arc: { x: 47, z: 27, r: 2.25, a0: 90, a1: 180 }, h: 0.14 },   { k: 'rail', arc: { x: 47, z: 27, r: 3.75, a0: 90, a1: 180 }, h: 0.14 },
+                    { k: 'rail', arc: { x: -47, z: 27, r: 2.25, a0: 180, a1: 270 }, h: 0.14 }, { k: 'rail', arc: { x: -47, z: 27, r: 3.75, a0: 180, a1: 270 }, h: 0.14 },
+                    { k: 'rail', arc: { x: -47, z: -27, r: 2.25, a0: 270, a1: 360 }, h: 0.14 },{ k: 'rail', arc: { x: -47, z: -27, r: 3.75, a0: 270, a1: 360 }, h: 0.14 },
                     /* THE DEPOT: the kerb ledge along the pit (the grind) */
                     { k: 'wall', x0: -14, z0: -44.2, x1: 0, z1: -44.2, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
                     { k: 'scatter', key: 'cinder_block', n: 5, x: 0, z: -40, r: 10, seed: 8 },
@@ -38638,7 +38992,7 @@ const DOOR_HQ = {
                 /* the tunnel */
                 { key: 'bare_bulb',       x: -40, z: -27, ceil: true }, { key: 'bare_bulb', x: 40, z: 27, ceil: true },
                 { key: 'traffic_barrel',  x: -48, z: 20, face: 300 },
-                { key: 'warning_tape',    x: 24, z: -43.6, face: 0 },
+                { key: 'warning_tape',    x: 24, z: -40.4, face: 0 },
             ],
             agents: [],
             npcSpots: [
@@ -38693,11 +39047,29 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-14, 17], [12, 17]], w: 2.6 },                                   // the back passage
                     { k: 'space', x: 0, z: 21.5, w: 8, d: 5 },                                           // side room 3 (a dead end)
                     { k: 'hall', pts: [[0, 18], [0, 19.5]], w: 2 },
-                    /* THE CATWALK along the guardroom's east side, up its stair */
-                    { k: 'plateau', x: 8, z: -1, w: 3, d: 6, h: 2.2, edge: 0.15 },
-                    { k: 'ramp', x0: 1.2, z0: -1, x1: 7.2, z1: -1, w: 2.4, h0: 0, h1: 2.2, stairs: true, edge: 0.15, built: true, key: 'urban:TileSubway2c' },
-                    { k: 'rail', x0: 6.6, z0: -3.8, x1: 6.6, z1: -2.4 }, { k: 'rail', x0: 6.6, z0: 0.4, x1: 6.6, z1: 1.8 },
+                    /* the upper level (1.4): the corridor, the cells, side rooms 1 and 2, the stair hall and the gallery along the
+                       guardroom's north wall; the guardroom, the tank, the property room and the back passage are the lower level */
+                    { k: 'plateau', x: 0, z: -15.35, w: 66, d: 12.7, h: 1.4, edge: 0.15 },                                      // the corridor and the cells
+                    { k: 'plateau', x: 0, z: -6.0, w: 3.2, d: 8.4, h: 1.4, edge: 0.15 },                                         // the stair hall
+                    { k: 'plateau', x: 2.95, z: -2.9, w: 3.1, d: 2.2, h: 1.4, edge: 0.15 },                                      // the gallery
+                    { k: 'plateau', x: -26, z: -4.35, w: 6.4, d: 10.9, h: 1.4, edge: 0.15 },                                     // side room 1
+                    { k: 'plateau', x: 25.9, z: -4.35, w: 7.0, d: 10.9, h: 1.4, edge: 0.15 },                                    // side room 2
+                    /* THE STAIR DOWN into the guardroom (a skate rail down its middle); the flights down from side rooms 1 and 2 */
+                    { k: 'ramp', x0: 0, z0: 2.3, x1: 0, z1: -2.5, w: 2.6, h0: 0, h1: 1.4, stairs: true, model: 'precast', edge: 0.15 },
+                    { k: 'rail', pts: [[0, -3.3, 1.4], [0, -2.5, 1.4], [0, 2.3, 0], [0, 3.3, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: -26, z0: 4.6, x1: -26, z1: 0.4, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'precast', rails: false, edge: 0.15 },
+                    { k: 'ramp', x0: 23, z0: 4.6, x1: 23, z1: 0.4, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'precast', rails: false, edge: 0.15 },
+                    { k: 'rail', x0: 1.4, z0: -1.95, x1: 3.8, z1: -1.95, y: 1.4, model: 'bars_curb' },                           // the gallery's edge
+                    { k: 'rail', x0: -1.45, z0: -3.9, x1: -1.45, z1: -2.6, y: 1.4, model: 'bars_curb' },                         // the stair hall's west edge
+                    /* THE CATWALK (2.2) along the guardroom's east side: up a flight from the gallery; its south end across a gap (the
+                       rail laid over it), down its ladder */
+                    { k: 'ramp', x0: 3.8, z0: -2.9, x1: 8.2, z1: -2.9, w: 2.2, h0: 1.4, h1: 2.2, stairs: true, model: 'steel', rails: 'l', edge: 0.15 },
+                    { k: 'plateau', x: 10.0, z: -2.3, w: 5.0, d: 3.4, h: 2.2, edge: 0.15 },
+                    { k: 'plateau', x: 8.75, z: 2.5, w: 2.5, d: 2.0, h: 2.2, edge: 0.15 },
+                    { k: 'rail', x0: 8.75, z0: -0.8, x1: 8.75, z1: 1.7, y: 2.2, model: 'pipe', block: false },
+                    { k: 'climb', x: 7.8, z: 2.5, face: 90, look: 'ladder' },
                     { k: 'plateau', x: -6, z: -2, r: 1.2, h: 3.6, edge: 0.15 },                                                  // THE VENT STACK (the tape — the door gun's)
+                    { k: 'rail', arc: { x: -6, z: -2, r: 2.0, a0: 120, a1: 300 }, model: 'pipe', block: false },                 // the curved skate rail round the stack
                     { k: 'wall', x0: -8, z0: 6.5, x1: -1, z1: 6.5, h: 0.9, t: 0.6, key: 'urban:TileSubway2c' },                   // THE BOOKING COUNTER (the rider's ledge)
                     { k: 'path', pts: [[-31, -11], [31, -11]], w: 1.6 },                                                          // the corridor's rubber runner
                 ],
@@ -38723,9 +39095,9 @@ const DOOR_HQ = {
                 { key: 'bare_bulb',       x: -13.5, z: -11, ceil: true }, { key: 'bare_bulb', x: 13.5, z: -11, ceil: true },
                 { key: 'fire_extinguisher', x: -16, z: -12.3, face: 0 },
                 { key: 'floor_drain',     x: 0, z: -10.2 },
-                /* THE GUARDROOM: the desk under the catwalk's stair, the stack, the counter */
-                { key: 'steel_table',     x: -1, z: -1.5, face: 0 }, { key: 'crt_terminal', x: -1, z: -1.5, y: 0.76, face: 0 }, { key: 'desk_lamp', x: 0, z: -1.7, y: 0.76, face: 180 },
-                { key: 'folding_chair',   x: -1, z: 0.2, face: 180 },
+                /* THE GUARDROOM: the desk by the stack, the stair, the counter */
+                { key: 'steel_table',     x: -3.6, z: 0.4, face: 0 }, { key: 'crt_terminal', x: -3.6, z: 0.4, y: 0.76, face: 0 }, { key: 'desk_lamp', x: -2.6, z: 0.2, y: 0.76, face: 180 },
+                { key: 'folding_chair',   x: -3.6, z: 2.0, face: 180 },
                 { key: 'clipboard',       x: -9.9, z: 0, face: 90, mount: 1.45 },
                 { key: 'breaker_panel',   x: -9.9, z: 5, face: 90, mount: 1.25 },
                 { key: 'security_camera', x: -9.9, z: -3.5, face: 45, mount: 2.55 },
@@ -38750,7 +39122,7 @@ const DOOR_HQ = {
                 { x: -13.5, z: -16.8, face: 0, race: 'gangster', say: ['“Lawyer.” “You have not been charged.” “Then I am not here.”', '“How long?” “Since the musical.” “Which musical?” “The one with the number.”'] },
                 { x: 13.5, z: -16.8, face: 0, race: 'politician', say: ['“I was elected.” “To what?” “This cell, apparently. It was a landslide.”'] },
                 { x: -20.5, z: 15.6, face: 0, race: 'zombie', say: ['“Drunk.” “On what?” “Tank.” “That is the room.” “Then the room.”'] },
-                { x: -1, z: 2.2, face: 180, race: 'men in black', say: ['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”', '“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”'] },
+                { x: -3.6, z: 3.2, face: 180, race: 'men in black', say: ['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”', '“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -38802,10 +39174,24 @@ const DOOR_HQ = {
                     { k: 'pool', x: 6, z: 2, r: 4.8, y: -0.3, depth: 0.6 },                                                     // THE FLOOD (waded)
                     { k: 'pool', x: -17.5, z: -12, r: 2.2, y: -0.3, depth: 1.8, key: 'deep_water' },                           // THE SUMP (never entered)
                     { k: 'stream', pts: [[-8, 16], [6, 16], [6, 6]], w: 1.4, y: -0.3, depth: 0.55 },                            // the seep into the flood
-                    /* THE PUMP LEDGE (1.4) on the chamber's west side, up its stair */
-                    { k: 'plateau', x: -23.5, z: -14, w: 3, d: 8, h: 1.4, edge: 0.15 },
-                    { k: 'ramp', x0: -17.2, z0: -17.2, x1: -22.7, z1: -17.2, w: 2.2, h0: 0, h1: 1.4, stairs: true, edge: 0.15, built: true, key: 'bricks_2' },
-                    { k: 'rail', x0: -21.9, z0: -15.8, x1: -21.9, z1: -10.4 },
+                    /* the upper level (1.4): THE PUMP LEDGE round the chamber's west and north sides (the rope ladder lands on it), down a
+                       timber flight; a skate rail laid across the sump to THE LONG DRIFT, the drift, THE CHIMNEY chamber and the adit (up a
+                       ladder at the drift's mouth, down a flight to the flood from the drift and from the chimney chamber) */
+                    { k: 'plateau', x: -24.25, z: -14.5, w: 4.5, d: 10, h: 1.4, edge: 0.15 },
+                    { k: 'plateau', x: -22, z: -19.75, w: 9, d: 5.5, h: 1.4, edge: 0.15 },
+                    { k: 'ramp', x0: -15.1, z0: -18.25, x1: -18.2, z1: -18.25, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'rail', x0: -21.85, z0: -16.8, x1: -21.85, z1: -14.3, y: 1.4, model: 'ranch' }, { k: 'rail', x0: -21.85, z0: -12.7, x1: -21.85, z1: -9.7, y: 1.4, model: 'ranch' },
+                    { k: 'rail', x0: -21.9, z0: -16.85, x1: -18.3, z1: -16.85, y: 1.4, model: 'ranch' },
+                    { k: 'rail', x0: -22.6, z0: -13.5, x1: -13.8, z1: -13.5, y: 1.4, model: 'pipe', block: false },                // across the sump
+                    { k: 'plateau', x: -0.05, z: -14.1, w: 29.1, d: 3.8, h: 1.4, edge: 0.15 },                                   // THE LONG DRIFT
+                    { k: 'plateau', x: -4, z: -17.0, w: 3.6, d: 3.0, h: 1.4, edge: 0.15 },
+                    { k: 'climb', x: -14.3, z: -15.0, face: 90, look: 'ladder' },
+                    { k: 'ramp', x0: -4, z0: -9.8, x1: -4, z1: -12.9, w: 3, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'rail', pts: [[-3, -13.7, 1.4], [-3, -12.9, 1.4], [-3, -9.8, 0], [-3, -9.0, 0]], model: 'pipe', block: false },
+                    { k: 'plateau', x: 18, z: -14, w: 9, d: 9, h: 1.4, edge: 0.15 },                                            // THE CHIMNEY chamber
+                    { k: 'plateau', x: 26.25, z: -12, w: 9.5, d: 4, h: 1.4, edge: 0.15 },                                       // the adit
+                    { k: 'ramp', x0: 18, z0: -7.1, x1: 18, z1: -10.2, w: 3, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.15 },
+                    { k: 'rail', arc: { x: 6, z: 2, r: 6.2, a0: 300, a1: 420 }, model: 'pipe', block: false },                   // round the flood
                     { k: 'wall', x0: -10, z0: -13.2, x1: -6, z1: -13.2, h: 0.6, t: 0.5, key: 'bricks_2' },                     // THE SLEEPER WALL (the grind) along the drift
                     { k: 'plateau', x: 19.5, z: -15.5, r: 1.3, h: 3.9, edge: 0.15 },                                           // THE CHIMNEY (the tape — the door gun's; daylight down it)
                     { k: 'path', pts: [[-20, -9], [-20, 0], [-29, 0]], w: 1.4 }, { k: 'path', pts: [[-14, -14], [14, -14]], w: 1.4 },   // the boards
@@ -38825,7 +39211,7 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'cave_torch',      x: -22, z: -16 }, { key: 'cave_torch', x: 2, z: -13.5 }, { key: 'cave_torch', x: 18.5, z: -4 }, { key: 'cave_torch', x: -6, z: 13.5 },
+                { key: 'cave_torch',      x: -23.4, z: -16 }, { key: 'cave_torch', x: 2, z: -13.5 }, { key: 'cave_torch', x: 18.5, z: -4 }, { key: 'cave_torch', x: -6, z: 13.5 },
                 { key: 'brazier',         x: -4, z: -14.5 },
                 { key: 'bare_bulb',       x: 16, z: -10, ceil: true },                                                          // daylight down THE CHIMNEY — the one bright thing
                 { key: 'railing_1m',      x: -14, z: -10.6, face: 0 },                                                          // THE PARK RULE's catalogue rail on the pump ledge
@@ -38974,17 +39360,66 @@ const DOOR_HQ = {
             shell: hqSeaShell({ w: 220, d: 110, plate: { x: 8, z: -52.5, y: 3.6 } }),
             terrain: {
                 floor: 'desert', cliff: 'urban:ConcreteStriped2a', path: 'wood_planks',
-                base: -6, res: 1.0, noise: { amp: 0.3, scale: 20 }, crag: false,
+                base: -6, res: 0.5, noise: { amp: 0.3, scale: 20 }, crag: false,
                 sea: { y: -0.4, key: 'water' },
                 outer: { m: 60 },
                 features: [
                     { k: 'deck', x0: 8, z0: -54.6, x1: 8, z1: -23, w: 4, y: 0 },                                          // THE LONG PIER (the avenue, run on out over the water)
                     { k: 'deck', x0: -4, z0: -21, x1: 20, z1: -21, w: 4, y: 0 },                                            // its T-HEAD
-                    { k: 'rail', x0: 5.7, z0: -53, x1: 5.7, z1: -24 },                                                     // the pier's rail (the grind)
-                    { k: 'ramp', x0: 1, z0: -43.4, x1: 1, z1: -54.3, w: 3, h0: -1.6, h1: 0, stairs: true, edge: 0.2 },    // THE WATER STEPS (the way out of the water, beside the pier)
+                    { k: 'rail', x0: 5.7, z0: -41.6, x1: 5.7, z1: -24 },                                                   // the pier's rail (the grind)
                     { k: 'ramp', x0: 88, z0: -54.5, x1: 88, z1: -27, w: 8, h0: 0, h1: -2.6, edge: 0.3 },                      // THE SLIPWAY (down into the water)
                     { k: 'ridge', pts: [[-88, -53], [-84, -17], [-68, 9], [-46, 21]], w: 9, h: 7.4 },                 // THE BREAKWATER (a rubble mole: its crest a metre over the water)
                     { k: 'plateau', x: -44, z: 22, r: 4.2, h: 1.4, edge: 0.4 },                                               // its head (THE HARBOUR LIGHT stands on it)
+                    /* a flat walk along the mole's crest (1.4) out to the light, a short stair up to it from the quay */
+                    { k: 'deck', x0: -88, z0: -54.5, x1: -84, z1: -17, w: 2.6, y: 1.4 },
+                    { k: 'deck', x0: -84, z0: -17, x1: -68, z1: 9, w: 2.6, y: 1.4 },
+                    { k: 'deck', x0: -68, z0: 9, x1: -46, z1: 21, w: 2.6, y: 1.4 },
+                    { k: 'plateau', x: -84, z: -17, r: 1.5, h: 1.4, edge: 0.1 }, { k: 'plateau', x: -68, z: 9, r: 1.5, h: 1.4, edge: 0.1 },
+                    { k: 'ramp', x0: -82.2, z0: -47.5, x1: -86.9, z1: -47.5, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'external', edge: 0.1 },
+                    /* the quay (0) along the north edge, from the mole's root to the slipway (after the mole, so the mole's root stays its own height) */
+                    { k: 'plateau', x: -5.75, z: -48.25, w: 180.5, d: 13.5, h: 0, edge: 0.15 },
+                    /* the wharves (3.0) along the back of the quay: two in the west with a gap between them, one in the east */
+                    { k: 'plateau', x: -54, z: -52, w: 24, d: 6, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: -26.75, z: -52, w: 25.5, d: 6, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: 47, z: -52, w: 46, d: 6, h: 3.0, edge: 0.15 },
+                    /* the stairs up to the wharves (a pipe handrail down the middle of the two by the pier) */
+                    { k: 'ramp', x0: -75, z0: -52, x1: -65.3, z1: -52, w: 3.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'ramp', x0: -4.5, z0: -52, x1: -14.7, z1: -52, w: 4.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'ramp', x0: 14.5, z0: -52, x1: 24.7, z1: -52, w: 4.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'ramp', x0: 79.5, z0: -52, x1: 69.3, z1: -52, w: 3.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'rail', x0: -5.0, z0: -52, x1: -14.2, z1: -52, y0: 0.15, y1: 2.85, model: 'pipe', block: false },
+                    { k: 'rail', x0: 15.0, z0: -52, x1: 24.2, z1: -52, y0: 0.15, y1: 2.85, model: 'pipe', block: false },
+                    /* the wharves' front railings (open in places to drop off), a pipe rail across the gap between the west two */
+                    { k: 'rail', x0: -65.6, z0: -49.25, x1: -56, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -52, z0: -49.25, x1: -42.4, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -39.1, z0: -49.25, x1: -31, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -27, z0: -49.25, x1: -14.4, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 24.4, z0: -49.25, x1: 28.3, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 31.7, z0: -49.25, x1: 44, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 48, z0: -49.25, x1: 69.6, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -42.6, z0: -51.5, x1: -38.9, z1: -51.5, y: 3.0, model: 'pipe', block: false },
+                    /* the gantry (3.0): from the east wharf out over the water and west to a steel stair down onto the T-head (its railings a grind only: a wall hung over open ground trips the solver) */
+                    { k: 'bridge', x0: 30, z0: -49.5, x1: 30, z1: -32.5, w: 3, y: 3.0, thick: 0.3, rails: false, key: 'metal', id: 'gantry_n' },
+                    { k: 'bridge', x0: 31.5, z0: -31, x1: 10.5, z1: -31, w: 3, y: 3.0, thick: 0.3, rails: false, key: 'metal', id: 'gantry_w' },
+                    { k: 'ramp', x0: 12, z0: -22.6, x1: 12, z1: -30.3, w: 3, h0: 0, h1: 3.0, stairs: true, model: 'grate', edge: 0.1 },
+                    { k: 'rail', pts: [[31.35, -48.9], [31.35, -29.65], [13.6, -29.65]], y: 3.0, model: 'balusters_b', block: false },
+                    { k: 'rail', pts: [[28.65, -48.9], [28.65, -32.35], [10.65, -32.35], [10.65, -29.65]], y: 3.0, model: 'balusters_b', block: false },
+                    /* the water steps (the ways out of the water): beside the pier, west, east, and off the T-head */
+                    { k: 'ramp', x0: 1, z0: -31.5, x1: 1, z1: -42.4, w: 4, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    { k: 'ramp', x0: -50, z0: -31.5, x1: -50, z1: -42.4, w: 4, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    { k: 'ramp', x0: 50, z0: -31.5, x1: 50, z1: -42.4, w: 4, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    { k: 'ramp', x0: 2, z0: -11.5, x1: 2, z1: -19.6, w: 3, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    /* the quay's edge: a parapet, open at the water steps, the pier and the mole */
+                    { k: 'rail', x0: -82, z0: -41.85, x1: -52.3, z1: -41.85, y: 0, model: 'parapet' },
+                    { k: 'rail', x0: -47.7, z0: -41.85, x1: -1.3, z1: -41.85, y: 0, model: 'parapet' },
+                    { k: 'rail', x0: 10.3, z0: -41.85, x1: 47.7, z1: -41.85, y: 0, model: 'parapet' },
+                    { k: 'rail', x0: 52.3, z0: -41.85, x1: 83.6, z1: -41.85, y: 0, model: 'parapet' },
+                    /* the slipway's pipe rails, down its slope into the water; a flat pipe rail and a ledge on the quay; a round railing on the light's head */
+                    { k: 'rail', x0: 84.6, z0: -54.2, x1: 84.6, z1: -46, model: 'pipe', block: false },
+                    { k: 'rail', x0: 91.4, z0: -54.2, x1: 91.4, z1: -46, model: 'pipe', block: false },
+                    { k: 'rail', x0: -30, z0: -45.5, x1: -18, z1: -45.5, y: 0, model: 'pipe', block: false },
+                    { k: 'wall', x0: 34, z0: -45.5, x1: 46, z1: -45.5, h: 0.45, t: 0.6, key: 'urban:ConcreteStriped2a' },
+                    { k: 'rail', arc: { x: -44, z: 22, r: 3.85, a0: 322, a1: 634 }, y: 1.4, model: 'balusters_b' },
                     { k: 'scatter', key: 'cave_stone', n: 16, x: -72, z: -9, r: 22, seed: 31 },                             // the mole's boulders
                     { k: 'scatter', key: 'kelp', n: 22, x: -66, z: -1, r: 20, seed: 32, sea: true },                         // the kelp in the mole's lee
                     { k: 'scatter', key: 'coral_fan', n: 10, x: 80, z: -5, r: 14, seed: 33, sea: true },                     // the slip's reef
@@ -42939,7 +43374,8 @@ const HQ_AREA_SPECS = {
             ...hqStandBowl({ hx: 25.5, hz: 48.9, rc: 10, rows: 14, rise: 0.42, tread: 0.85, lead: 0.3, concourse: 4, facade: 1.0, facadeH: 4.2, fasciaH: 1.1, cornerN: 6,
                 key: 'concrete_floor', facadeKey: 'concrete', fasciaKey: 'concrete',
                 seats: { w: 0xb02a2a, nw: 0xb02a2a, sw: 0xb02a2a, e: 0x2a4ab0, ne: 0x2a4ab0, se: 0x2a4ab0, n: 0xd8b030, s: 0xd8b030 },
-                tunnels: [{ side: 'n', at: 0, w: 11, hc: 4.4 }, { side: 's', at: 0, w: 7, hc: 3.0 }, { side: 'e', at: 12, w: 4, hc: 2.6 }],
+                tunnels: [{ side: 'n', at: 0, w: 11, hc: 4.4 }, { side: 's', at: 0, w: 7, hc: 3.0 }, { side: 'e', at: 12, w: 4, hc: 2.6 },
+                          { side: 'w', at: 33.5, w: 4.4, hc: 6.1 }, { side: 'e', at: -33.5, w: 4.4, hc: 6.1 }],   // the last two: slots for the stairs up through the stands (the facade carries on over them)
                 aisles: [{ side: 'w', at: -30 }, { side: 'w', at: -18 }, { side: 'w', at: -6 }, { side: 'w', at: 6 }, { side: 'w', at: 18 }, { side: 'w', at: 30 },
                          { side: 'e', at: -30 }, { side: 'e', at: -18 }, { side: 'e', at: -6 }, { side: 'e', at: 6 }, { side: 'e', at: 18 }, { side: 'e', at: 30 },
                          { side: 'n', at: -11 }, { side: 'n', at: 11 }, { side: 's', at: -9 }, { side: 's', at: 9 },
@@ -42950,10 +43386,57 @@ const HQ_AREA_SPECS = {
                             { side: 'n', at: -11, w: 2 }, { side: 'n', at: 11, w: 2 }, { side: 's', at: -9, w: 2 }, { side: 's', at: 9, w: 2 }] }),
             /* THE PRESS BOX: a glazed block hung over the west stand's top rows and the concourse (the walker passes under it; its roof is the tape's) */
             { k: 'bridge', x0: -39.0, z0: -9, x1: -39.0, z1: 9, w: 5.4, y: 11.2, thick: 2.6, plain: true, rails: false, key: 'concrete', glaze: 0xffe2a8, id: 'pressbox' },
+            /* the stairs up through the stands (west and east, in their slots): from the sideline to the concourse, the concourse floor carried across each slot, a low rail down the middle */
+            { k: 'ramp', x0: -24.5, z0: 33.5, x1: -38.4, z1: 33.5, w: 4.0, h0: 0, h1: 6.3, stairs: true, model: 'concrete', edge: 0.05 },
+            { k: 'plateau', x: -39.7, z: 33.5, w: 4.0, d: 5.0, h: 6.3, edge: 0.05 },
+            { k: 'rail', x0: -25.1, z0: 33.5, x1: -37.1, z1: 33.5, y0: 0.27, y1: 5.71, model: 'double', block: false },
+            { k: 'ramp', x0: 24.5, z0: -33.5, x1: 38.4, z1: -33.5, w: 4.0, h0: 0, h1: 6.3, stairs: true, model: 'concrete', edge: 0.05 },
+            { k: 'plateau', x: 39.7, z: -33.5, w: 4.0, d: 5.0, h: 6.3, edge: 0.05 },
+            { k: 'rail', x0: 25.1, z0: -33.5, x1: 37.1, z1: -33.5, y0: 0.27, y1: 5.71, model: 'double', block: false },
+            /* pipe rails across the three tunnels' mouths, from row end to row end */
+            { k: 'rail', x0: -6.2, z0: -55.575, x1: 6.2, z1: -55.575, y: 3.36, model: 'pipe', block: false },
+            { k: 'rail', x0: -4.2, z0: 53.025, x1: 4.2, z1: 53.025, y: 2.1, model: 'pipe', block: false },
+            { k: 'rail', x0: 30.475, z0: 9.3, x1: 30.475, z1: 14.7, y: 2.52, model: 'pipe', block: false },
+            /* the rim walk (10.5): a deck round the top of the facade and over the back of the concourse, open at the press box and the scoreboard;
+               ladders up from the concourse, a glass railing along its inner edge (a grind only: drop off it onto the concourse) */
+            { k: 'bridge', x0: -15.5, z0: -64.9, x1: 15.5, z1: -64.9, w: 2.4, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_n' },
+            { k: 'bridge', x0: 41.5, z0: -38.9, x1: 41.5, z1: 38.9, w: 2.4, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_e' },
+            { k: 'bridge', x0: 15.5, z0: 64.9, x1: 7.0, z1: 64.9, w: 2.4, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_se' },
+            { k: 'bridge', x0: -7.0, z0: 64.9, x1: -15.5, z1: 64.9, w: 2.4, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_sw' },
+            { k: 'bridge', x0: -41.5, z0: 38.9, x1: -41.5, z1: 13, w: 2.4, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_ws' },
+            { k: 'bridge', x0: -41.5, z0: -13, x1: -41.5, z1: -38.9, w: 2.4, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_wn' },
+            { k: 'bridge', arc: { x: 15.5, z: -38.9, r0: 24.8, r1: 27.2, a0: 0, a1: 90 }, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_ne_c' },
+            { k: 'bridge', arc: { x: 15.5, z: 38.9, r0: 24.8, r1: 27.2, a0: 90, a1: 180 }, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_se_c' },
+            { k: 'bridge', arc: { x: -15.5, z: 38.9, r0: 24.8, r1: 27.2, a0: 180, a1: 270 }, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_sw_c' },
+            { k: 'bridge', arc: { x: -15.5, z: -38.9, r0: 24.8, r1: 27.2, a0: 270, a1: 360 }, y: 10.5, thick: 0.3, rails: false, key: 'concrete_floor', id: 'rim_nw_c' },
+            { k: 'rail', x0: -15.5, z0: -63.85, x1: 15.5, z1: -63.85, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', x0: 40.45, z0: -38.9, x1: 40.45, z1: 38.9, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', x0: 15.5, z0: 63.85, x1: 7.0, z1: 63.85, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', x0: -7.0, z0: 63.85, x1: -15.5, z1: 63.85, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', x0: -40.45, z0: 38.9, x1: -40.45, z1: 13, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', x0: -40.45, z0: -13, x1: -40.45, z1: -38.9, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', arc: { x: 15.5, z: -38.9, r: 24.95, a0: 0, a1: 90 }, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', arc: { x: 15.5, z: 38.9, r: 24.95, a0: 90, a1: 180 }, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', arc: { x: -15.5, z: 38.9, r: 24.95, a0: 180, a1: 270 }, y: 10.5, model: 'glass', block: false },
+            { k: 'rail', arc: { x: -15.5, z: -38.9, r: 24.95, a0: 270, a1: 360 }, y: 10.5, model: 'glass', block: false },
+            /* the roof's corners outside the facade stand at 10.5 under the walker too (the bowl draws them filled; these are their floors) */
+            { k: 'wall', x0: 15.50, z0: -71.90, x1: 24.04, z1: -70.78, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 24.04, z0: -70.78, x1: 32.00, z1: -67.48, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 32.00, z0: -67.48, x1: 38.83, z1: -62.23, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: 38.83, z0: -62.23, x1: 44.08, z1: -55.40, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 44.08, z0: -55.40, x1: 47.38, z1: -47.44, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 47.38, z0: -47.44, x1: 48.50, z1: -38.90, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: 48.50, z0: 38.90, x1: 47.38, z1: 47.44, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 47.38, z0: 47.44, x1: 44.08, z1: 55.40, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 44.08, z0: 55.40, x1: 38.83, z1: 62.23, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: 38.83, z0: 62.23, x1: 32.00, z1: 67.48, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 32.00, z0: 67.48, x1: 24.04, z1: 70.78, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: 24.04, z0: 70.78, x1: 15.50, z1: 71.90, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: -15.50, z0: 71.90, x1: -24.04, z1: 70.78, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -24.04, z0: 70.78, x1: -32.00, z1: 67.48, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -32.00, z0: 67.48, x1: -38.83, z1: 62.23, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: -38.83, z0: 62.23, x1: -44.08, z1: 55.40, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -44.08, z0: 55.40, x1: -47.38, z1: 47.44, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -47.38, z0: 47.44, x1: -48.50, z1: 38.90, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: -48.50, z0: -38.90, x1: -47.38, z1: -47.44, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -47.38, z0: -47.44, x1: -44.08, z1: -55.40, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -44.08, z0: -55.40, x1: -38.83, z1: -62.23, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'wall', x0: -38.83, z0: -62.23, x1: -32.00, z1: -67.48, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -32.00, z0: -67.48, x1: -24.04, z1: -70.78, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -24.04, z0: -70.78, x1: -15.50, z1: -71.90, y: 10.5, t: 12, ghost: true, rail: false },
+            { k: 'climb', x: -9, z: -63.7, face: 0, look: 'ladder', y0: 6.3, y1: 10.5 },
+            { k: 'climb', x: 40.3, z: 0, face: 90, look: 'ladder', y0: 6.3, y1: 10.5 },
+            { k: 'climb', x: -10, z: 63.7, face: 180, look: 'ladder', y0: 6.3, y1: 10.5 },
+            { k: 'climb', x: -40.3, z: -28, face: 270, look: 'ladder', y0: 6.3, y1: 10.5 },
+            { k: 'climb', x: -40.3, z: 28, face: 270, look: 'ladder', y0: 6.3, y1: 10.5 },
         ],
         props: [{ key: 'field_goal_post', x: 0, z: -43.9, face: 0 }, { key: 'field_goal_post', x: 0, z: 43.9, face: 180 },   // THE 2026-09-22 BATCH: on the end lines
                 { key: 'scoreboard', x: 0, z: 63.4, y: 6.3, face: 0 },
-                { key: 'flood_mast', x: -32.6, z: -56.0, y: 6.3, face: 135 }, { key: 'flood_mast', x: 32.6, z: -56.0, y: 6.3, face: 225 }, { key: 'flood_mast', x: -32.6, z: 56.0, y: 6.3, face: 45 }, { key: 'flood_mast', x: 32.6, z: 56.0, y: 6.3, face: 315 },
+                { key: 'flood_mast', x: -35.16, z: -58.56, y: 10.5, face: 135 }, { key: 'flood_mast', x: 35.16, z: -58.56, y: 10.5, face: 225 }, { key: 'flood_mast', x: -35.16, z: 58.56, y: 10.5, face: 45 }, { key: 'flood_mast', x: 35.16, z: 58.56, y: 10.5, face: 315 },   // on the roof's corners, clear of the rim walk
                 /* the benches on the sidelines, the skate's quarter pipes against the fascia between the aisles */
                 { key: 'park_bench', x: -23.4, z: -9, face: 90 }, { key: 'park_bench', x: -23.4, z: -3, face: 90 }, { key: 'park_bench', x: -23.4, z: 3, face: 90 }, { key: 'park_bench', x: -23.4, z: 9, face: 90 },
                 { key: 'park_bench', x: 23.4, z: -9, face: 270 }, { key: 'park_bench', x: 23.4, z: -1, face: 270 }, { key: 'park_bench', x: 23.4, z: 8, face: 270 },
@@ -43157,12 +43640,24 @@ const HQ_AREA_SPECS = {
             { k: 'space', x: 11.5, z: -22, w: 43, d: 10 },                                                // THE HULL's court (the collar, the ice wall, the drill rig)
             { k: 'space', x: -22.5, z: -20, w: 21, d: 12 },                                               // THE ICE SHELF's yard
             { k: 'hall', pts: [[-12.5, -20], [-9.5, -20]], w: 3 }, { k: 'hall', pts: [[-12.5, -25], [-9.5, -25]], w: 2.6 },
-            /* THE DECK the huts stand on (1.2): the stair from the plaza, a ladder on its north face, the hand-holds up its south */
-            { k: 'plateau', x: -20, z: 2, w: 16, d: 8, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: -9, z0: 2.5, x1: -12.6, z1: 2.5, w: 2.8, h0: 0, h1: 1.2, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
-            { k: 'climb', x: -20, z: -1.7, face: 180, look: 'ladder' }, { k: 'climb', x: -20, z: 5.7, face: 0, look: 'wall' },
-            /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south */
+            /* THE DECK the huts stand on: a module on stilts (2.4) — the steel stair from the plaza up the west hall (a pipe rail down
+               it), a ladder on its north face, the hand-holds up its south; a walkway north from it through the hall to the mast's plinth
+               (a jump up onto it) */
+            { k: 'bridge', x0: -26.6, z0: 2, x1: -12.5, z1: 2, w: 8, y: 2.4, key: 'metal' },
+            { k: 'ramp', x0: -7.0, z0: 2.5, x1: -13.2, z1: 2.5, w: 2.8, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', pts: [[-6.6, 2.5, 0], [-13.2, 2.5, 2.4]], model: 'pipe', block: false },
+            { k: 'climb', x: -20, z: -1.7, y1: 2.4, face: 180, look: 'ladder' }, { k: 'climb', x: -20, z: 5.7, y1: 2.4, face: 0, look: 'wall' },
+            { k: 'bridge', x0: -23.2, z0: 5.4, x1: -23.2, z1: 14.2, w: 1.8, y: 2.4, key: 'metal' },
+            /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south, a rail round its top */
             { k: 'plateau', x: -25, z: 16, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -25, z: 14.1, face: 180, look: 'ladder' }, { k: 'climb', x: -25, z: 17.9, face: 0, look: 'chain' },
+            { k: 'rail', arc: { x: -25, z: 16, r: 1.85, a0: 70, a1: 165 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25, z: 16, r: 1.85, a0: 195, a1: 340 }, model: 'balusters_b' },
+            /* THE EAST MODULE on stilts (2.4) over the ridges' yard: the steel stair up from the plaza, the walkway east through the hall
+               over the melt pool, a 2.5 m gap (a pipe rail across it), the steel stair down to the yard */
+            { k: 'ramp', x0: 0, z0: 5, x1: 6.9, z1: 5, w: 2.2, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'bridge', x0: 6.2, z0: 5, x1: 18, z1: 5, w: 2.2, y: 2.4, key: 'metal' },
+            { k: 'rail', x0: 17.6, z0: 5, x1: 20.9, z1: 5, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: 20.5, z0: 4, x1: 29.2, z1: 4, w: 6, y: 2.4, key: 'metal' },
+            { k: 'ramp', x0: 27.0, z0: 11.6, x1: 27.0, z1: 6.3, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
             /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) in the east yard */
             { k: 'pool', x: 16, z: 3, r: 3, depth: 0.6, key: 'water', bank: 0.8 },
             { k: 'wall', x0: 13, z0: 12, x1: 25, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 21, x1: 28, z1: 13, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
@@ -43171,11 +43666,12 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: 2, z0: -7.6, x1: 2, z1: -14.6, w: 2.2, y: 0.2 },
             /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side (behind the ice wall), a ladder on its west face */
             { k: 'plateau', x: 0, z: -25, w: 16, d: 6, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, model: 'steel', edge: 0.15, key: 'marble_light' },
+            { k: 'rail', x0: -7.6, z0: -22.35, x1: 3.8, z1: -22.35, model: 'balusters_b' },
             { k: 'climb', x: -7.7, z: -25, face: 90, look: 'ladder' },
             /* THE ICE SHELF (4.0): the long stair from the east, a rope down its south face */
             { k: 'plateau', x: -28, z: -20, w: 10, d: 8, h: 4.0, edge: 0.15 },
-            { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true, built: true, model: 'grate', edge: 0.15, key: 'marble_light' },
             { k: 'climb', x: -28, z: -16.3, face: 0, look: 'rope' },
             /* THE ICE WALL (6.0, the tape — the door gun's) and THE DRILL RIG (2.2) east of it — a chain up its south face, a ladder on its west */
             { k: 'plateau', x: 19, z: -21.5, w: 14, d: 4, h: 6.0, edge: 0.15 },
@@ -43183,9 +43679,9 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: -27, z0: 7.8, x1: -22.5, z1: 7.8 },
             { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 1.2 }, { key: 'railing_1m', x: 5, z: -22.3, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.3, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
-                { key: 'cot', x: -19, z: 2, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 1.2, face: 90 }, { key: 'sea_chest', x: -22, z: 5.3, y: 1.2 }, { key: 'steel_table', x: -16, z: 4.5, y: 1.2 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 1.96 },
-                { key: 'retro_radio', x: -16, z: 3.7, y: 1.96 }, { key: 'folding_chair', x: -16.8, z: 5.4, y: 1.2, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 1.2 }, { key: 'cardboard_boxes', x: -13.5, z: -1.2, y: 1.2 },
+        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 5, z: -22.3, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.3, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
+                { key: 'cot', x: -19, z: 2, y: 2.4, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 2.4, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 2.4, face: 90 }, { key: 'sea_chest', x: -22, z: 5.3, y: 2.4 }, { key: 'steel_table', x: -16, z: 4.5, y: 2.4 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 3.16 },
+                { key: 'retro_radio', x: -16, z: 3.7, y: 3.16 }, { key: 'folding_chair', x: -16.8, z: 5.4, y: 2.4, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 2.4 }, { key: 'cardboard_boxes', x: -13.5, z: -1.2, y: 2.4 },
                 { key: 'flood_mast', x: -25, z: 16, y: 3.2 }, { key: 'boiler', x: -29, z: 14 }, { key: 'traffic_barrel', x: -20, z: 21 }, { key: 'traffic_barrel', x: -21, z: 22 }, { key: 'laundry_cart', x: -6.5, z: 9.5 },
                 { key: 'signpost', x: 3, z: 12 }, { key: 'signpost', x: 4, z: -18 }, { key: 'campfire', x: -28, z: 21.5 }, { key: 'campfire', x: 6, z: -19 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
                 { key: 'car_truck', x: 14, z: 17, face: 90 }, { key: 'car_suv', x: 15, z: 22, face: 60 }, { key: 'flood_mast', x: 28.5, z: 22.5 }, { key: 'flood_mast', x: -30, z: -25 }, { key: 'flood_mast', x: 24, z: -26 },
@@ -43193,7 +43689,7 @@ const HQ_AREA_SPECS = {
                 { key: 'sea_chest', x: 3, z: -26, y: 3.0 }, { key: 'lone_gun', x: -3, z: -26, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 4, z: -6.5 }, { key: 'traffic_cone', x: 0.5, z: -15.5 }, { key: 'traffic_cone', x: 3.5, z: -15.5 },
                 { key: 'cave_stone', x: 13, z: -21.5, y: 6.0 }, { key: 'cardboard_boxes', x: 28.5, z: -1 }, { key: 'cinder_block', x: -14, z: 23 }],
         npcSpots: [{ x: -3, z: 12, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 4, z: -20, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
-                   { x: -18, z: 4, y: 1.2, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
+                   { x: -18, z: 4, y: 2.4, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
     /* ROOM 14179 · MOUNT SHASTA · THE SLOPES (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the mountain climbs from THE MEADOW at
        the bay door to THE SNOWLINE at the woods' frame (a door you climb to), THE SHELF up a trail with THE LOOKOUT's ladder on it, THE SADDLE
@@ -43965,18 +44461,41 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 6 },
         features: [
             { k: 'wall', x0: -26, z0: -2, x1: -13.5, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: -8.5, z0: -2, x1: -3.8, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: 1.4, z0: -2, x1: 6, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false },                                      // THE DORSAL FIN's root
-            /* THE AIRLOCK TOWER (3.2): the airlock stands ON it — the companion stair, the ladder on its east face, the pipe run up its west */
-            { k: 'plateau', x: -6, z: -21.5, w: 14, d: 7, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -2, z0: -11.2, x1: -2, z1: -18.7, w: 2.8, h0: 0, h1: 3.2, stairs: true },
+            /* THE AIRLOCK TOWER (3.2): the airlock stands ON it — the companion stair, the ladder on its east face, the pipe run up its west,
+               the steel stair up from the bridge's roof; rails round its edges */
+            { k: 'plateau', x: -6, z: -21.5, w: 14, d: 7, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -2, z0: -11.2, x1: -2, z1: -18.7, w: 2.8, h0: 0, h1: 3.2, stairs: true, model: 'steel' },
             { k: 'climb', x: 0.7, z: -21.5, face: 270, look: 'ladder' }, { k: 'climb', x: -12.7, z: -21.5, face: 90, look: 'pipe' },
-            /* THE BRIDGE'S ROOF (1.6) up its stair, or the pipe run on its west end */
-            { k: 'plateau', x: -18, z: -12, w: 12, d: 8, h: 1.6, edge: 0.15 }, { k: 'ramp', x0: -18, z0: -4.8, x1: -18, z1: -8.7, w: 3.0, h0: 0, h1: 1.6, stairs: true },
-            { k: 'climb', x: -23.7, z: -12, face: 90, look: 'pipe' },
+            { k: 'ramp', x0: -11, z0: -13.4, x1: -11, z1: -18.7, w: 2.2, h0: 2.0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: -9.7, z0: -18.35, x1: -3.6, z1: -18.35, model: 'balusters_b' }, { k: 'rail', x0: -0.4, z0: -18.35, x1: 0.6, z1: -18.35, model: 'balusters_b' },
+            { k: 'rail', x0: 0.65, z0: -24.6, x1: 0.65, z1: -22.6, model: 'balusters_b' }, { k: 'rail', x0: 0.65, z0: -20.4, x1: 0.65, z1: -18.4, model: 'balusters_b' },
+            { k: 'rail', x0: -12.65, z0: -24.6, x1: -12.65, z1: -22.6, model: 'balusters_b' }, { k: 'rail', x0: -12.65, z0: -20.4, x1: -12.65, z1: -18.4, model: 'balusters_b' },
+            /* THE BRIDGE'S ROOF (2.0) up its steel stair from the dorsal fin, or the pipe run on its west end; rails round its edges */
+            { k: 'plateau', x: -17.5, z: -11.5, w: 17, d: 9, h: 2.0, edge: 0.15 }, { k: 'ramp', x0: -18, z0: -3.9, x1: -18, z1: -7.7, w: 3.0, h0: 0, h1: 2.0, stairs: true, model: 'steel' },
+            { k: 'rail', pts: [[-18, -3.5, 0], [-18, -7.7, 2.0]], model: 'pipe', block: false },
+            { k: 'climb', x: -25.7, z: -12, face: 90, look: 'pipe' },
+            { k: 'rail', x0: -25.6, z0: -7.35, x1: -19.8, z1: -7.35, model: 'balusters_b' }, { k: 'rail', x0: -16.2, z0: -7.35, x1: -9.4, z1: -7.35, model: 'balusters_b' },
+            { k: 'rail', x0: -25.6, z0: -15.65, x1: -12.3, z1: -15.65, model: 'balusters_b' }, { k: 'rail', x0: -9.35, z0: -15.6, x1: -9.35, z1: -7.4, model: 'balusters_b' },
+            { k: 'rail', x0: -25.65, z0: -15.6, x1: -25.65, z1: -13, model: 'balusters_b' }, { k: 'rail', x0: -25.65, z0: -11, x1: -25.65, z1: -7.4, model: 'balusters_b' },
             /* THE NACELLE (5.4, the tape — the door gun's) on the starboard side */
             { k: 'plateau', x: 18, z: -12, w: 8, d: 16, h: 5.4, edge: 0.15 },
-            /* THE SENSOR MAST's platform (2.4) aft of the nacelle: a ladder, a chain */
-            { k: 'plateau', x: 22, z: 12, r: 2.6, h: 2.4, edge: 0.15 }, { k: 'climb', x: 22, z: 9.7, face: 180, look: 'ladder' }, { k: 'climb', x: 19.7, z: 12, face: 90, look: 'chain' },
-            /* THE ENGINE BELL (4.2) at the stern: a chain up its face, the pipe run round its side */
-            { k: 'plateau', x: -25, z: 18, r: 3.2, h: 4.2, edge: 0.15 }, { k: 'climb', x: -22.1, z: 18, face: 270, look: 'chain' }, { k: 'climb', x: -25, z: 15.1, face: 180, look: 'pipe' },
+            /* THE UPPER DECKS (2.4) forward: the mid deck up its steel stair from the dorsal plate, a 2.5 m gap (a pipe rail across it) to
+               the fore deck (its own steel stair at the bow); THE SENSOR MAST's platform (4.2) on the fore deck: a ladder, a chain */
+            { k: 'plateau', x: 9.75, z: 9.5, w: 11.5, d: 6, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 10, z0: 0.3, x1: 10, z1: 7.2, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: 4.4, z0: 6.85, x1: 8.6, z1: 6.85, model: 'balusters_b' }, { k: 'rail', x0: 11.4, z0: 6.85, x1: 15.1, z1: 6.85, model: 'balusters_b' },
+            { k: 'rail', x0: 4.4, z0: 12.15, x1: 15.1, z1: 12.15, model: 'balusters_b' }, { k: 'rail', x0: 4.35, z0: 6.9, x1: 4.35, z1: 12.1, model: 'balusters_b' },
+            { k: 'rail', x0: 15.1, z0: 9, x1: 18.4, z1: 9, y: 2.4, model: 'pipe', block: false },
+            { k: 'plateau', x: 23.75, z: 13.75, w: 11.5, d: 14.5, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 28, z0: 0.8, x1: 28, z1: 7.2, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: 18.35, z0: 11.5, x1: 18.35, z1: 20.6, model: 'balusters_b' }, { k: 'rail', x0: 18.4, z0: 6.85, x1: 26.6, z1: 6.85, model: 'balusters_b' },
+            { k: 'rail', x0: 18.4, z0: 20.65, x1: 29.1, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 29.15, z0: 6.9, x1: 29.15, z1: 20.6, model: 'balusters_b' },
+            { k: 'plateau', x: 22, z: 12, r: 2.6, h: 4.2, edge: 0.15 }, { k: 'climb', x: 22, z: 9.7, face: 180, look: 'ladder' }, { k: 'climb', x: 19.7, z: 12, face: 90, look: 'chain' },
+            { k: 'rail', arc: { x: 22, z: 12, r: 2.3, a0: 20, a1: 250 }, model: 'balusters_b' },
+            /* THE ENGINE BELL (4.2) at the stern: the grate stair up from the east, a chain up its south face, the pipe run round its side */
+            { k: 'plateau', x: -25, z: 18, r: 3.2, h: 4.2, edge: 0.15 }, { k: 'climb', x: -25, z: 20.9, face: 0, look: 'chain' }, { k: 'climb', x: -25, z: 15.1, face: 180, look: 'pipe' },
+            { k: 'ramp', x0: -12.5, z0: 18, x1: -22.5, z1: 18, w: 2.4, h0: 0, h1: 4.2, stairs: true, model: 'grate', edge: 0.15 },
+            { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 25, a1: 62 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 118, a1: 160 }, model: 'balusters_b' },
+            { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 200, a1: 340 }, model: 'balusters_b' },
             /* THE BREACH — a hole in the plate — and THE GANGWAY across it (the walker passes under) */
             { k: 'dip', x: -16, z: 8, r: 6, h: -2.4 },
             { k: 'deck', x0: -24.5, z0: 8, x1: -7.5, z1: 8, w: 2.0, y: 0.3, over: true },
@@ -43989,14 +44508,14 @@ const HQ_AREA_SPECS = {
         doors: [{ id: 'airlock', wall: 'n', x: -6, y: 3.2, leaf: 'leaf_bulkhead', wide: true, label: 'THE SPACESHIP · THE AIRLOCK', sub: 'THE AIRLOCK · GO IN',
                   action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
                   desc: 'The dorsal airlock, up its tower. It cycles on its own, which the manual says it cannot.' }],
-        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 1.6 }, { key: 'riser_1', x: 8, z: 4 },
-                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 4, z: 10, face: 0 }, { key: 'steel_table', x: -4, z: 16, face: 0 }, { key: 'crt_terminal', x: 4, z: 10, y: 0.76 },
+        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 8, z: 4 },
+                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 6, z: 10, face: 0 }, { key: 'steel_table', x: -4, z: 16, face: 0 }, { key: 'crt_terminal', x: 6, z: 10, y: 3.16 },
                 { key: 'lunar_lander', x: -27, z: -22 }, { key: 'mars_rover', x: 12, z: 22, face: 90 }, { key: 'robot_arm', x: -10, z: 16, face: 0 }, { key: 'robot_arm', x: 20, z: 20, face: 180 },
                 { key: 'pipe_run', x: 0, z: -6 }, { key: 'pipe_run', x: 14, z: 2 }, { key: 'pipe_run', x: -8, z: 22 },
                 { key: 'flood_mast', x: 28, z: -22 }, { key: 'flood_mast', x: -28, z: 4 }, { key: 'flood_mast', x: 26, z: 23 },
-                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 22, z: 12, y: 2.4 }, { key: 'globe_lamp', x: -6, z: 12 }, { key: 'globe_lamp', x: 16, z: 8 },
-                { key: 'sea_chest', x: -12, z: -20, y: 3.2 }, { key: 'sea_chest', x: -24, z: 22 }, { key: 'wet_floor_sign', x: 0, z: 0 }, { key: 'broom', x: -3, z: 14 }, { key: 'mop_bucket', x: -3, z: 13 }],
-        npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 1.6, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
+                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 22, z: 12, y: 4.2 }, { key: 'globe_lamp', x: -6, z: 12 }, { key: 'globe_lamp', x: 16, z: 8 },
+                { key: 'sea_chest', x: -12, z: -20, y: 3.2 }, { key: 'sea_chest', x: -28, z: 23 }, { key: 'wet_floor_sign', x: 0, z: 0 }, { key: 'broom', x: -3, z: 14 }, { key: 'mop_bucket', x: -3, z: 13 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 2.0, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
                    { x: -11, z: -20, y: 3.2, face: 90, race: 'droid', say: '“The airlock is up the tower because the builders could climb. The crew could not. You can see how that went.”' }],
         lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
     /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK (AREA CONTENT D3, 2026-09-19): the weather deck in the storm, bow east — THE QUARTERDECK
@@ -44023,26 +44542,50 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: 0, z: 0, w: 63, d: 51, h: 0, edge: 0.15 },
             /* THE QUARTERDECK (2.4, the stern west): the built stair up from the waist, a rope on its north face, a ladder on its south */
             { k: 'plateau', x: -22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', pts: [[-8.1, 0, 0], [-16.7, 0, 2.4]], model: 'pipe', block: false },
+            { k: 'rail', x0: -16.35, z0: -16.6, x1: -16.35, z1: -15.5, model: 'ranch' }, { k: 'rail', x0: -16.35, z0: -12.9, x1: -16.35, z1: -1.6, model: 'ranch' },   // the break of the quarterdeck
+            { k: 'rail', x0: -16.35, z0: 1.6, x1: -16.35, z1: 11.9, model: 'ranch' },
+            { k: 'rail', x0: -27.6, z0: -16.65, x1: -23, z1: -16.65, model: 'ranch' }, { k: 'rail', x0: -21, z0: -16.65, x1: -16.4, z1: -16.65, model: 'ranch' },
+            { k: 'rail', x0: -23.8, z0: 16.65, x1: -23, z1: 16.65, model: 'ranch' },
             { k: 'climb', x: -22, z: -16.7, face: 180, look: 'rope' }, { k: 'climb', x: -22, z: 16.7, face: 0, look: 'ladder' },
             /* THE POOP (4.4) over the quarterdeck's stern — the skylight draught stands ON it: the built stair up from the quarterdeck, the stern lantern's chain on its north face */
             { k: 'plateau', x: -27.75, z: 0, w: 7.5, d: 20, h: 4.4, edge: 0.15 },   // L6: to the hull's stern edge (it stood out over the sea)
-            { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', x0: -24.35, z0: -9.6, x1: -24.35, z1: 9.6, model: 'ranch' }, { k: 'rail', x0: -31.1, z0: 9.65, x1: -27.4, z1: 9.65, model: 'ranch' },
+            { k: 'rail', x0: -31.1, z0: -9.65, x1: -30.2, z1: -9.65, model: 'ranch' }, { k: 'rail', x0: -27.8, z0: -9.65, x1: -24.4, z1: -9.65, model: 'ranch' },
             { k: 'climb', x: -29, z: -9.7, face: 180, look: 'chain' },
             /* THE FORECASTLE (2.4, the bow east): the built stair up from the waist, a rope on its south face, a ladder on its north */
             { k: 'plateau', x: 22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', x0: 16.35, z0: -16.6, x1: 16.35, z1: -1.6, model: 'ranch' }, { k: 'rail', x0: 16.35, z0: 1.6, x1: 16.35, z1: 12.6, model: 'ranch' },   // the break of the forecastle
+            { k: 'rail', x0: 16.35, z0: 15.4, x1: 16.35, z1: 16.6, model: 'ranch' },
+            { k: 'rail', x0: 16.4, z0: -16.65, x1: 21, z1: -16.65, model: 'ranch' }, { k: 'rail', x0: 23, z0: -16.65, x1: 27.6, z1: -16.65, model: 'ranch' },
+            { k: 'rail', x0: 16.4, z0: 16.65, x1: 21, z1: 16.65, model: 'ranch' }, { k: 'rail', x0: 23, z0: 16.65, x1: 27.6, z1: 16.65, model: 'ranch' },
             { k: 'climb', x: 22, z: 16.7, face: 0, look: 'rope' }, { k: 'climb', x: 22, z: -16.7, face: 180, look: 'ladder' },
             /* THE BOWSPRIT PLATFORM (3.6) on the forecastle's bow: the built stair up from the forecastle, a chain on its north face */
             { k: 'plateau', x: 27, z: 0, w: 6, d: 8, h: 3.6, edge: 0.15 },
-            { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', x0: 24.35, z0: -3.6, x1: 24.35, z1: -1.4, model: 'ranch' }, { k: 'rail', x0: 24.35, z0: 1.4, x1: 24.35, z1: 3.6, model: 'ranch' },
+            { k: 'rail', x0: 24.4, z0: 3.65, x1: 29.6, z1: 3.65, model: 'ranch' }, { k: 'rail', x0: 24.4, z0: -3.65, x1: 26, z1: -3.65, model: 'ranch' }, { k: 'rail', x0: 28, z0: -3.65, x1: 29.6, z1: -3.65, model: 'ranch' },
             { k: 'climb', x: 27, z: -3.7, face: 180, look: 'chain' },
             /* THE BOAT DECK (2.4) off the starboard bulwark, a rope on its west face; THE GANGWAY from the forecastle to it (a level span, the bridge layer) */
             { k: 'plateau', x: 8, z: 14, w: 8, d: 6, h: 2.4, edge: 0.15 }, { k: 'climb', x: 4.3, z: 14, face: 90, look: 'rope' },
             { k: 'bridge', x0: 16.7, z0: 14, x1: 11.3, z1: 14, w: 2.2, y: 2.4 },
+            { k: 'rail', x0: 4.4, z0: 11.35, x1: 11.6, z1: 11.35, model: 'ranch' }, { k: 'rail', x0: 4.4, z0: 16.65, x1: 11.6, z1: 16.65, model: 'ranch' },
+            { k: 'rail', x0: 11.65, z0: 11.4, x1: 11.65, z1: 12.6, model: 'ranch' }, { k: 'rail', x0: 11.65, z0: 15.4, x1: 11.65, z1: 16.6, model: 'ranch' },
+            /* THE UPPER WALKS (2.4) along the waist: the starboard walk from the quarterdeck to a 2.5 m gap off the boat deck; the port
+               gangway off the quarterdeck, a 2.5 m gap, the port walk and its stair down to the waist; a pipe rail across each gap */
+            { k: 'bridge', x0: -16.7, z0: 14.6, x1: 1.5, z1: 14.6, w: 4.8, y: 2.4 },
+            { k: 'rail', x0: 1.1, z0: 16.0, x1: 4.4, z1: 16.0, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: -16.7, z0: -14, x1: -9.5, z1: -14, w: 2.2, y: 2.4 },
+            { k: 'rail', x0: -9.9, z0: -14, x1: -6.6, z1: -14, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: -7, z0: -14.6, x1: 2, z1: -14.6, w: 4.8, y: 2.4 },
+            { k: 'ramp', x0: 8.5, z0: -14.6, x1: 1.3, z1: -14.6, w: 2.2, h0: 0, h1: 2.4, stairs: true, model: 'wood', edge: 0.15 },
             /* THE MAINMAST: THE CROSSTREES (4.6) up the ratlines — a rope on its south face, a chain on its north — under THE MAINTOP (8.4, the tape — the door gun's) */
             { k: 'plateau', x: 0, z: -4, r: 3.2, h: 4.6, edge: 0.15 }, { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.15 },
             { k: 'climb', x: 0, z: -1.1, face: 0, look: 'rope' }, { k: 'climb', x: 0, z: -6.9, face: 180, look: 'chain' },
+            { k: 'rail', arc: { x: 0, z: -4, r: 2.85, a0: 20, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: 0, z: -4, r: 2.85, a0: 200, a1: 340 }, model: 'ranch' },   // the crosstrees' rail
             { k: 'plateau', x: -22, z: 6, r: 1.4, h: 7.0, edge: 0.15 },   // THE MIZZEN on the quarterdeck (a mast, nothing climbs it): the skylight is not seen from the way in (R3)
             /* THE HATCH GRATINGS: the main hatch and the fore hatch, coamings on the waist (a step up) */
             { k: 'plateau', x: -7, z: -10, w: 4, d: 3, h: 0.35, edge: 0.15 }, { k: 'plateau', x: 7, z: -10, w: 4, d: 3, h: 0.35, edge: 0.15 },
@@ -44071,7 +44614,7 @@ const HQ_AREA_SPECS = {
                   desc: 'A pane of the poop that is not caulked. It lifts, and under it is the great cabin, and the log is open on the table below you. Nobody has ever climbed in this way. The captain has climbed out.' }],
         props: [{ key: 'railing_1m', x: -16, z: 16.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: 16, z: -16.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: -26, z: 9.7, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 8 },
                 /* THE WAIST: the guns run out both sides, the hatch gratings, the hands' hammocks */
-                { key: 'ship_cannon', x: 6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -13, z: 16.5, face: 180 }, { key: 'ship_cannon', x: 13, z: -16.5, face: 0 }, { key: 'ship_cannon', x: 6, z: -16.5, face: 0 }, { key: 'ship_cannon', x: -13, z: -16.5, face: 0 },
+                { key: 'ship_cannon', x: 6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -13, z: 16.5, face: 180 }, { key: 'ship_cannon', x: 13, z: -16.5, face: 0 }, { key: 'ship_cannon', x: 10, z: -16.5, face: 0 }, { key: 'ship_cannon', x: -13, z: -16.5, face: 0 },
                 { key: 'cot', x: -6, z: 9, face: 90 }, { key: 'cot', x: -6, z: 12, face: 90 }, { key: 'cardboard_boxes', x: 12, z: 8 }, { key: 'cave_torch', x: -3, z: 17 }, { key: 'cave_torch', x: 3, z: 17 }, { key: 'cave_torch', x: -10, z: -17 }, { key: 'cave_torch', x: 3, z: -17 }, { key: 'lesson_sign', x: 4, z: 6, face: 200, lesson: 'climb' },
                 { key: 'stocks', x: 12, z: -8, face: 180 }, { key: 'skull_pile', x: -13, z: -12 },
                 /* THE QUARTERDECK and THE POOP: the helm, the log at the lectern, the stern lantern */
@@ -47781,7 +48324,7 @@ function hqTerrainCompile(room, roomId) {
        wears its kind's railing either side (hqStairRailings). */
     const SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : null;
     info.railings = [];
-    const pushRun = (row, segs, model, block, tag, topOver) => {
+    const pushRun = (row, segs, model, block, tag, topOver, out) => {
         const kd = (model && typeof HQ_STAIR_PACK !== 'undefined') ? HQ_STAIR_PACK.railings[model] : null;
         const topM = (topOver != null) ? topOver : kd ? kd.top * HQ_STAIR_PACK.unit.pack : ((row && row.h != null) ? row.h : 0.98);
         let prev = null;
@@ -47799,6 +48342,10 @@ function hqTerrainCompile(room, roomId) {
                 const g0 = sg.g0 + (sg.g1 - sg.g0) * i / pieces, g1 = sg.g0 + (sg.g1 - sg.g0) * (i + 1) / pieces, foot = Math.min(g0, g1), ground = Math.min(hAt(a[0], a[1]), hAt(b[0], b[1]));
                 const w = { x0: a[0], z0: a[1], x1: b[0], z1: b[1], t: SR.blockT, base: ground - 0.3, top: Math.max(g0, g1) + topM, h: topM, key: null, ghost: true, railing: true };
                 if (foot > ground + 0.45) { w.base = foot - 0.05; w.hung = true; }
+                /* a flight's railing walls only where the drop beside it is more than the walker jumps back up: where the ground outside
+                   stands within a jump of the flight (its low end, a flight cut into a bank) the walker steps on and off as before (a wall
+                   there can pen it in a pocket whose only way out was the flight) */
+                if (out) { const mx = (a[0] + b[0]) / 2 + out[0] * 0.45, mz = (a[1] + b[1]) / 2 + out[1] * 0.45; if (hAt(mx, mz) > Math.min(g0, g1) - R.jump) continue; }
                 info.walls.push(w);
             }
         });
@@ -47852,7 +48399,10 @@ function hqTerrainCompile(room, roomId) {
         const off = f.w / 2 - SR.railIn;
         [-1, 1].forEach(sd => {
             if ((f.rails === 'l' && sd > 0) || (f.rails === 'r' && sd < 0)) return;
-            pushRun(null, [{ x0: f.x0 + px * off * sd, z0: f.z0 + pz * off * sd, x1: f.x1 + px * off * sd, z1: f.z1 + pz * off * sd, g0: f.h0, g1: f.h1 }], rk, true, { stair: true, side: sd });
+            /* no railing on a side that stands against higher ground the whole way (a wall, a bank, a tier beside the flight) */
+            let low = 0; for (let k = 1; k <= 4; k++) { const t = k / 5, ox = f.x0 + (f.x1 - f.x0) * t + px * (off + 0.45) * sd, oz = f.z0 + (f.z1 - f.z0) * t + pz * (off + 0.45) * sd; if (hAt(ox, oz) < f.h0 + (f.h1 - f.h0) * t - 0.3) low++; }
+            if (!low) return;
+            pushRun(null, [{ x0: f.x0 + px * off * sd, z0: f.z0 + pz * off * sd, x1: f.x1 + px * off * sd, z1: f.z1 + pz * off * sd, g0: f.h0, g1: f.h1 }], rk, true, { stair: true, side: sd }, null, [px * sd, pz * sd]);
         });
     });
     /* the escalators' handrails: a grind each side (the bottom landing's flat, the incline, the top's flat — one chained run) and a wall */
@@ -52735,14 +53285,14 @@ const HQ_ARENA_RULES = {
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":20,"oz":1,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","dirt"],"cells":"01010101010101010101010101010101020201010101010102020201010101010202020101010101141401010101010101010101010101012121212121212121"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":50,"oz":39,"base":"desert","open":1,"keys":["desert"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":55,"oz":44,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":54,"oz":32,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101011515152121212101020203010101010101010101010101010101010101010101010101"},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":54,"oz":32,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010203031111111101020203010101010101010101010101010101010101010101010101"},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":20,"oz":34,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":1,"base":"marble_light","open":0,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010102020201010101010202020101010101020202010101010104020201010101010101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":30,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"01010101010101010111010101010101011111111101010101010101111111110101010101011111010101010101040401010101010104040101010101010404"},
         prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"01010101010111110101010101011111010101010101111124240101010111112424010101011111012401010101111101240101010111110101010101011111"},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":19,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101140101010101010114010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"02010101010101010201010101010101020202010101010102020201010101010202020101010101020201010101010102010101010101010101010101010101"},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101010101010101010101010111110101010101011111010101010101111101010101010111110101010101011111010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010202010101010101030301010111110101010101011111010101010101111101010101010111110101010101011111010101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":8,"base":"grass_rocky","open":1,"keys":["dirt_2","grass_rocky","grass_2"],"cells":"01010101111111241111111101010101111124240101010124111101111101012424011111010101241101110111010111110111011111011111011111011101"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"04041121211111110411112121111111211111212111112121212121212121211121212121211104212121212111110411111121211111111111112121111111"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":9,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"01111101010101011111110101010101010111010101010101010111010124010101011101240124010101111101011101010111111111011111010111010124"},
@@ -52752,7 +53302,7 @@ const HQ_ARENA_RULES = {
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":6,"oz":11,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010111110101010101011111010101010101111101010101010111110101010101011111010101010101111101010101010111110101010101011111010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":16,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01011111010101010101111101010101140111110101010114011111011414141401111101010114010111110101010101011111010101010101111101010101"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":21,"oz":16,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101011414010101010101141401010101010101010101010101010101010101010101010101"},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101011401010101010101140101010101010114010101010101010101010101010101010101010101010101"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":23,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":14,"oz":14,"base":"marble_light","open":1,"keys":["marble_light","wood_planks"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101011111010101010101111101010101010111110101010101011111010101"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":9,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101011111010101010101011101010102020201110202021212020111010202011111011101010101011111111101110101011111111111"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":4,"oz":9,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101010101010101010101"},
