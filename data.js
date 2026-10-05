@@ -43205,12 +43205,24 @@ const HQ_AREA_SPECS = {
             { k: 'space', x: 11.5, z: -22, w: 43, d: 10 },                                                // THE HULL's court (the collar, the ice wall, the drill rig)
             { k: 'space', x: -22.5, z: -20, w: 21, d: 12 },                                               // THE ICE SHELF's yard
             { k: 'hall', pts: [[-12.5, -20], [-9.5, -20]], w: 3 }, { k: 'hall', pts: [[-12.5, -25], [-9.5, -25]], w: 2.6 },
-            /* THE DECK the huts stand on (1.2): the stair from the plaza, a ladder on its north face, the hand-holds up its south */
-            { k: 'plateau', x: -20, z: 2, w: 16, d: 8, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: -9, z0: 2.5, x1: -12.6, z1: 2.5, w: 2.8, h0: 0, h1: 1.2, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
-            { k: 'climb', x: -20, z: -1.7, face: 180, look: 'ladder' }, { k: 'climb', x: -20, z: 5.7, face: 0, look: 'wall' },
-            /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south */
+            /* THE DECK the huts stand on: a module on stilts (2.4) — the steel stair from the plaza up the west hall (a pipe rail down
+               it), a ladder on its north face, the hand-holds up its south; a walkway north from it through the hall to the mast's plinth
+               (a jump up onto it) */
+            { k: 'bridge', x0: -26.6, z0: 2, x1: -12.5, z1: 2, w: 8, y: 2.4, key: 'metal' },
+            { k: 'ramp', x0: -7.0, z0: 2.5, x1: -13.2, z1: 2.5, w: 2.8, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', pts: [[-6.6, 2.5, 0], [-13.2, 2.5, 2.4]], model: 'pipe', block: false },
+            { k: 'climb', x: -20, z: -1.7, y1: 2.4, face: 180, look: 'ladder' }, { k: 'climb', x: -20, z: 5.7, y1: 2.4, face: 0, look: 'wall' },
+            { k: 'bridge', x0: -23.2, z0: 5.4, x1: -23.2, z1: 14.2, w: 1.8, y: 2.4, key: 'metal' },
+            /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south, a rail round its top */
             { k: 'plateau', x: -25, z: 16, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -25, z: 14.1, face: 180, look: 'ladder' }, { k: 'climb', x: -25, z: 17.9, face: 0, look: 'chain' },
+            { k: 'rail', arc: { x: -25, z: 16, r: 1.85, a0: 70, a1: 165 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25, z: 16, r: 1.85, a0: 195, a1: 340 }, model: 'balusters_b' },
+            /* THE EAST MODULE on stilts (2.4) over the ridges' yard: the steel stair up from the plaza, the walkway east through the hall
+               over the melt pool, a 2.5 m gap (a pipe rail across it), the steel stair down to the yard */
+            { k: 'ramp', x0: 0, z0: 5, x1: 6.9, z1: 5, w: 2.2, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'bridge', x0: 6.2, z0: 5, x1: 18, z1: 5, w: 2.2, y: 2.4, key: 'metal' },
+            { k: 'rail', x0: 17.6, z0: 5, x1: 20.9, z1: 5, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: 20.5, z0: 4, x1: 29.2, z1: 4, w: 6, y: 2.4, key: 'metal' },
+            { k: 'ramp', x0: 27.0, z0: 11.6, x1: 27.0, z1: 6.3, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
             /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) in the east yard */
             { k: 'pool', x: 16, z: 3, r: 3, depth: 0.6, key: 'water', bank: 0.8 },
             { k: 'wall', x0: 13, z0: 12, x1: 25, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 21, x1: 28, z1: 13, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
@@ -43219,11 +43231,12 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: 2, z0: -7.6, x1: 2, z1: -14.6, w: 2.2, y: 0.2 },
             /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side (behind the ice wall), a ladder on its west face */
             { k: 'plateau', x: 0, z: -25, w: 16, d: 6, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, model: 'steel', edge: 0.15, key: 'marble_light' },
+            { k: 'rail', x0: -7.6, z0: -22.35, x1: 3.8, z1: -22.35, model: 'balusters_b' },
             { k: 'climb', x: -7.7, z: -25, face: 90, look: 'ladder' },
             /* THE ICE SHELF (4.0): the long stair from the east, a rope down its south face */
             { k: 'plateau', x: -28, z: -20, w: 10, d: 8, h: 4.0, edge: 0.15 },
-            { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true, built: true, edge: 0.15, key: 'marble_light' },
+            { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true, built: true, model: 'grate', edge: 0.15, key: 'marble_light' },
             { k: 'climb', x: -28, z: -16.3, face: 0, look: 'rope' },
             /* THE ICE WALL (6.0, the tape — the door gun's) and THE DRILL RIG (2.2) east of it — a chain up its south face, a ladder on its west */
             { k: 'plateau', x: 19, z: -21.5, w: 14, d: 4, h: 6.0, edge: 0.15 },
@@ -43231,9 +43244,9 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: -27, z0: 7.8, x1: -22.5, z1: 7.8 },
             { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 1.2 }, { key: 'railing_1m', x: 5, z: -22.3, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.3, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
-                { key: 'cot', x: -19, z: 2, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 1.2, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 1.2, face: 90 }, { key: 'sea_chest', x: -22, z: 5.3, y: 1.2 }, { key: 'steel_table', x: -16, z: 4.5, y: 1.2 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 1.96 },
-                { key: 'retro_radio', x: -16, z: 3.7, y: 1.96 }, { key: 'folding_chair', x: -16.8, z: 5.4, y: 1.2, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 1.2 }, { key: 'cardboard_boxes', x: -13.5, z: -1.2, y: 1.2 },
+        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 5, z: -22.3, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.3, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
+                { key: 'cot', x: -19, z: 2, y: 2.4, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 2.4, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 2.4, face: 90 }, { key: 'sea_chest', x: -22, z: 5.3, y: 2.4 }, { key: 'steel_table', x: -16, z: 4.5, y: 2.4 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 3.16 },
+                { key: 'retro_radio', x: -16, z: 3.7, y: 3.16 }, { key: 'folding_chair', x: -16.8, z: 5.4, y: 2.4, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 2.4 }, { key: 'cardboard_boxes', x: -13.5, z: -1.2, y: 2.4 },
                 { key: 'flood_mast', x: -25, z: 16, y: 3.2 }, { key: 'boiler', x: -29, z: 14 }, { key: 'traffic_barrel', x: -20, z: 21 }, { key: 'traffic_barrel', x: -21, z: 22 }, { key: 'laundry_cart', x: -6.5, z: 9.5 },
                 { key: 'signpost', x: 3, z: 12 }, { key: 'signpost', x: 4, z: -18 }, { key: 'campfire', x: -28, z: 21.5 }, { key: 'campfire', x: 6, z: -19 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
                 { key: 'car_truck', x: 14, z: 17, face: 90 }, { key: 'car_suv', x: 15, z: 22, face: 60 }, { key: 'flood_mast', x: 28.5, z: 22.5 }, { key: 'flood_mast', x: -30, z: -25 }, { key: 'flood_mast', x: 24, z: -26 },
@@ -43241,7 +43254,7 @@ const HQ_AREA_SPECS = {
                 { key: 'sea_chest', x: 3, z: -26, y: 3.0 }, { key: 'lone_gun', x: -3, z: -26, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 4, z: -6.5 }, { key: 'traffic_cone', x: 0.5, z: -15.5 }, { key: 'traffic_cone', x: 3.5, z: -15.5 },
                 { key: 'cave_stone', x: 13, z: -21.5, y: 6.0 }, { key: 'cardboard_boxes', x: 28.5, z: -1 }, { key: 'cinder_block', x: -14, z: 23 }],
         npcSpots: [{ x: -3, z: 12, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 4, z: -20, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
-                   { x: -18, z: 4, y: 1.2, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
+                   { x: -18, z: 4, y: 2.4, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
     /* ROOM 14179 · MOUNT SHASTA · THE SLOPES (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the mountain climbs from THE MEADOW at
        the bay door to THE SNOWLINE at the woods' frame (a door you climb to), THE SHELF up a trail with THE LOOKOUT's ladder on it, THE SADDLE
