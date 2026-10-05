@@ -2861,6 +2861,26 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* THE MOVING LAVA (2026-10-05, mondo: "the lava is not moving like the water or the poison tiles are"): water and the
+       tinted bogs carry the caustic web, glints and swell below, all driven by the shared fluid clock — lava had only the two
+       scrolling wave sheets, and its first sheet is lava.png scrolled over lava.png, which barely reads; on WebGPU those
+       sheet offsets are per-object uniforms a static render bundle never refreshes, so lava in a bundled room stood still
+       outright. Lava now gets its own surface on the same clock (world space, one sheet across tiles): a slow warped flow
+       of glowing channels between darker crust, and a pulse. _ewNodeFluid carries the same maths for the node renderer. */
+    var _EW_LAVA_GLSL =
+        '{\n' +
+        '  float ewT = uFluidTime;\n' +
+        '  vec2 ewP = (vEwWorldPos.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
+        '  vec2 ewQ = ewP * 1.7 + vec2(sin(ewP.y * 1.3 + ewT * 0.35), cos(ewP.x * 1.1 - ewT * 0.3)) * 0.6 + vec2(ewT * 0.12, ewT * 0.08);\n' +
+        '  float ewN = sin(ewQ.x * 2.3 + sin(ewQ.y * 1.7 + ewT * 0.5)) * sin(ewQ.y * 2.1 + sin(ewQ.x * 1.9 - ewT * 0.4));\n' +
+        '  float ewVein = smoothstep(0.55, 0.95, 1.0 - abs(ewN));\n' +
+        '  float ewCrust = smoothstep(0.2, 0.7, abs(ewN));\n' +
+        '  float ewPulse = 0.5 + 0.5 * sin(ewT * 1.3 + (ewP.x - ewP.y) * 0.8);\n' +
+        '  diffuseColor.rgb *= (0.8 + 0.25 * ewPulse) * (1.0 - 0.3 * ewCrust);\n' +
+        '  diffuseColor.rgb += vec3(1.0, 0.45, 0.08) * (ewVein * 0.35);\n' +
+        '  totalEmissiveRadiance += vec3(1.0, 0.38, 0.05) * (ewVein * (0.55 + 0.35 * ewPulse));\n' +
+        '}\n';
+
     function _buildFluidTopMat(terrainKey) {
         /* Tinted liquids (poison bogs / black ooze / oil) ride the WATER
            textures with a material tint — see _LIQUID_STYLES. */
@@ -2958,7 +2978,7 @@ const ThreeRenderer = (function () {
                 '}\n'
             );
 
-            if (isWater) {
+            if (isWater || isLava) {
                 shader.uniforms.uFluidTime = _fluidTimeUniform;
                 shader.uniforms.uFluidTile = _fluidTileUniform;
                 if (!_fluidFlowUniform.value) _fluidFlowUniform.value = new THREE.Vector2(0, 0);
@@ -2991,7 +3011,11 @@ const ThreeRenderer = (function () {
                    totalEmissiveRadiance are live; emissive additions bypass the
                    Lambert lighting so glints stay bright enough to cross the
                    bloom threshold (~0.72). */
-                shader.fragmentShader = shader.fragmentShader.replace(
+                if (isLava) shader.fragmentShader = shader.fragmentShader.replace(
+                    '#include <emissivemap_fragment>',
+                    '#include <emissivemap_fragment>\n' + _EW_LAVA_GLSL
+                );
+                else shader.fragmentShader = shader.fragmentShader.replace(
                     '#include <emissivemap_fragment>',
                     '#include <emissivemap_fragment>\n' +
                     '{\n' +
@@ -3042,7 +3066,7 @@ const ThreeRenderer = (function () {
         /* WEBGPU W1: the same surface for the node renderer (_ewNodeFluid) */
         var v3 = function (g) { var n = String(g).replace(/^\s*vec3/, '').match(/-?[\d.]+/g).map(Number); return n.length > 2 ? [n[0], n[1], n[2]] : [n[0], n[0], n[0]]; };
         _ewNodeTag(mat, { k: 'fluid', w1: waveTex1, w2: waveTex2, off1: off1, off2: off2, op1: waveOp.op1, op2: waveOp.op2, tint: waveTint,
-            water: isWater, deep: isDeep, cs: +caustStr, ce: +caustEmis, gs: +glintStr, cd: v3(caustDiffC), cec: v3(caustEmisC), gc: v3(glintColC), hue: v3(hueShiftC) });
+            water: isWater, deep: isDeep, lava: isLava, drift: _FLUID_DRIFT_3D[terrainKey] || null, cs: +caustStr, ce: +caustEmis, gs: +glintStr, cd: v3(caustDiffC), cec: v3(caustEmisC), gc: v3(glintColC), hue: v3(hueShiftC) });
 
         return mat;
     }
@@ -32491,19 +32515,40 @@ const ThreeRenderer = (function () {
                 return T.vec3(caust, T.smoothstep(0.992, 0.999, g), swell);
             })();
         }
+        /* THE MOVING LAVA (see _EW_LAVA_GLSL): the flow, the crust, the pulse on the shared render-group clock */
+        var LV = null;
+        if (D.lava) {
+            LV = T.Fn(function () {
+                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar();
+                var q = p.mul(1.7).add(T.vec2(T.sin(p.y.mul(1.3).add(t.mul(0.35))), T.cos(p.x.mul(1.1).sub(t.mul(0.3)))).mul(0.6)).add(T.vec2(t.mul(0.12), t.mul(0.08))).toVar();
+                var n = T.sin(q.x.mul(2.3).add(T.sin(q.y.mul(1.7).add(t.mul(0.5))))).mul(T.sin(q.y.mul(2.1).add(T.sin(q.x.mul(1.9).sub(t.mul(0.4)))))).toVar();
+                var vein = T.smoothstep(0.55, 0.95, T.float(1).sub(T.abs(n)));
+                var crust = T.smoothstep(0.2, 0.7, T.abs(n));
+                var pulse = T.sin(t.mul(1.3).add(p.x.sub(p.y).mul(0.8))).mul(0.5).add(0.5);
+                return T.vec3(vein, crust, pulse);
+            })();
+        }
         var tint = T.uniform(D.tint), base = Object.getPrototypeOf(nm).setupDiffuseColor;
-        var o1 = D.w1 ? T.uniform(D.off1) : null, o2 = D.w2 ? T.uniform(D.off2) : null;
+        /* the sheets' scroll from the shared clock (the CPU's own drift × time): a per-object offset uniform is never refreshed
+           inside a static render bundle, so the sheets froze in every bundled room */
+        var dr = D.drift, scroll = function (dx, dy) { return T.fract(T.vec2(U.ftime.mul(dx), U.ftime.mul(dy))); };
+        var o1 = D.w1 ? (dr ? scroll(dr.l1dx, dr.l1dy) : T.uniform(D.off1)) : null, o2 = D.w2 ? (dr ? scroll(dr.l2dx, dr.l2dy) : T.uniform(D.off2)) : null;
         nm.setupDiffuseColor = function (builder) {
             base.call(this, builder);
             var dc = T.diffuseColor;
             if (D.w1) { var a = T.texture(D.w1, T.uv().add(o1)); dc.rgb.assign(T.mix(dc.rgb, a.rgb.mul(tint), a.a.mul(D.op1))); }
             if (D.w2) { var b = T.texture(D.w2, T.uv().add(o2)); dc.rgb.assign(T.mix(dc.rgb, b.rgb.mul(tint), b.a.mul(D.op2))); }
+            if (LV) {
+                dc.rgb.mulAssign(LV.z.mul(0.25).add(0.8).mul(T.float(1).sub(LV.y.mul(0.3))));
+                dc.rgb.addAssign(T.vec3(1.0, 0.45, 0.08).mul(LV.x.mul(0.35)));
+            }
             if (!W) return;
             dc.rgb.addAssign(V(D.cd).mul(W.x.mul(D.cs)));
             dc.rgb.mulAssign(W.z.mul(0.09).add(0.95));
             dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(V(D.hue)), T.sin(U.ftime.mul(0.45)).mul(0.2).add(0.25)));
             if (D.deep) dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(T.vec3(0.45, 0.62, 1.25)), 0.5));
         };
+        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.38, 0.05).mul(LV.x.mul(LV.z.mul(0.35).add(0.55))));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
