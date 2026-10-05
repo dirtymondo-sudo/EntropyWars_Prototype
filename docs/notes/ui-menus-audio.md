@@ -906,3 +906,20 @@ left-drag pan was NOT involved (it only swallows the click that follows a >6 px 
 `_exitModeAndShowUnitMenu` / `_exitModeAndShowTileMenu` drop the mode and set the same anchors the no-mode click sets
 (`_enemyActionTargetId` for any other unit, ally or enemy; `_tileActionTarget` for object tiles). Fogged tiles never
 open a menu. Empty tiles still hold the mode. online.js guest wrapper uses the same helpers (viewer-local UI).
+
+## THE QUICK-CAST AIM + PREVIEWS (2026-10-05, mondo)
+"it doesnt show aoes that can hit them ... its just the center tile isnt on them", "i need to see ricochet damage",
+"if its an aoe it doesnt show its aoe preview when i hover on it in the tile quick action menu".
+- battle.js `isTileAoeSpell` (aoe / aoePull / tile-aimed cross) + `findBestAoeAimForTarget(unit, spell, tx, ty,
+  {castFrom})`: legal centres from getSpellRangeTiles whose footprint covers the clicked unit; most visible enemies,
+  then fewest allies, then nearest the victim. Memoized ~300 ms (the HUD rebuilds the menu every render).
+- hud.js `_computeEnemyActions`: tile AoEs use it for in-range rows and for a MOVE→CAST search over walk/jump tiles
+  when no approach puts a centre on the enemy. Rows carry `aim` + `aimFrom`; `_fireEnemyAction` casts at `aim`
+  (re-picks if the caster ended elsewhere; a guest keeps the row's aim). Hover preview + nameplate forecast read the
+  same aim (`_hoverActionForecast.aim` → ui.js forecastOnUnit 5th arg).
+- ui.js `drawForecastChain`: forecast hits tagged bounce / chain / fork / split / splash get a crimson plate off the
+  footprint (overlays `spellChain` normal aim, `actionPlanChain` quick menu; styles in three-renderer.js) and a
+  crimson hop arrow; badges carry ↪ RICOCHET / ⚡ CHAIN / ⑂ FORK tags. The quick-menu hover now also renders the
+  forecast badges (cleared in `_clearMoveArrowPreview`).
+- Tile quick menu spell rows: hover calls `updateAoePreview(tx, ty, {unit, spell})` (new `ov` arg, also on
+  updateIntentPreview) = the armed cast's footprint + forecast; hover-out clears it.
