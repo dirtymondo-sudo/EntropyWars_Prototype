@@ -27349,11 +27349,13 @@ const ThreeRenderer = (function () {
         /* seams + corner lights on the grid, and the four scorch stars */
         add(_hzBoardSeams(ctx, 0xd6ecff, 0.42, 1.0, 0.9));
         /* multiply decals on the floor: four scorch stars + two corner cracks.
+           premultipliedAlpha ON: three r186 (WebGL and WebGPU) refuses
+           MultiplyBlending without it and draws the plate opaque white.
            toneMapped OFF — the exposure grade would pull the plate's white
            below 1.0 and the whole square would show as a dark patch */
         var decal = function (tex, size, x, y, rot) {
             if (!tex) return;
-            var mat = new THREE.MeshBasicMaterial({ map: tex, blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false });
+            var mat = new THREE.MeshBasicMaterial({ map: tex, blending: THREE.MultiplyBlending, premultipliedAlpha: true, transparent: true, depthWrite: false, fog: false });
             mat.toneMapped = false;
             var m = new THREE.Mesh(new THREE.PlaneGeometry(size * ts, size * ts), mat);
             m.rotation.x = -Math.PI / 2; m.rotation.z = rot;
@@ -44943,7 +44945,7 @@ const ThreeRenderer = (function () {
            positions are the board's own (in cells, 0..8) */
         var decal = function (tex, sizeCells, cx, cy, rot) {
             if (!tex) return;
-            var dm = new THREE.MeshBasicMaterial({ map: tex, blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false });
+            var dm = new THREE.MeshBasicMaterial({ map: tex, blending: THREE.MultiplyBlending, premultipliedAlpha: true, transparent: true, depthWrite: false, fog: false });
             dm.toneMapped = false;
             var q = new THREE.Mesh(new THREE.PlaneGeometry(sizeCells * CM, sizeCells * CM), dm);
             q.rotation.x = -Math.PI / 2; q.rotation.z = rot;
