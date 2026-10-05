@@ -45872,57 +45872,86 @@ const ThreeRenderer = (function () {
            sky — the map builder's floating staircase in the room's own kit.
        Nothing new for the walker, the camera or the tests to read.
        ═══════════════════════════════════════════════════════════════════════ */
-    /* THE BUILT STAIR (LEVEL_DESIGN_PLAN §4, 2026-09-30 — the staircase to the Woods): a `built: true` stair ramp drawn as masonry — one
-       block per compiled step (the same treads the field carries: 2 × res deep, h0 + rise · k / n), each block standing on the flight's
-       foot height so the flanks are solid to the floor, the treads in `key` (else the path sheet), the flanks and risers in `side` (else
-       the cliff sheet), and a carpet `runner: { w, color }` laid up the treads and the risers. The field under the flight is cut away
-       (_hqBuildTerrain's index loop); the walker still walks the field's steps. */
+    /* THE BUILT RAMP (2026-10-05, mondo: "wtf are these bullshit stairs ... either make a smooth ramp or use a stairs prop"): a `built: true`
+       stair ramp was masonry, one block per 0.5 m step — the chunky stepped blocks all over the game. The field no longer steps any ramp
+       (data.js hqTerrainCompile: only a floating flight keeps its treads), so a built flight is now ONE SOLID SLOPE: a wedge from the
+       flight's foot height h0 to h1 (and 0.25 m flat past the top into the tier), the slope in `key` (else the path sheet), the two flanks
+       and the ends in `side` (else the cliff sheet), standing on the flight's low end so the flanks are solid to the floor; a carpet
+       `runner: { w, color }` lies up the slope; `cheek` parapets slope with it. The field under it is cut away (_hqBuildTerrain's index
+       loop); the walker walks the field's own smooth slope, which is the same surface. */
+    /* one sloped prism in the flight's local frame (x across, centred on xOff; z along the run, 0 → L, flat on to Lt; y up, metres):
+       the top from h0 + lift to h1 + lift, the bottom at base. Group 0 = the top, group 1 = the flanks, the ends and the bottom. */
+    function _hqSlopePrismGeo(w, xOff, L, Lt, h0, h1, lift, base, U, ts) {
+        var hx = w / 2, P = [], N = [], UV = [], top = [], rest = [], k = U / ts * HZ_TEX_DENSITY;
+        var ht = function (z) { return h0 + (h1 - h0) * Math.min(1, z / L) + lift; };
+        var zs = (Lt > L + 1e-3) ? [0, L, Lt] : [0, L];
+        var V = function (x, y, z) { return [(x + xOff) * U, y * U + 0.3, z * U]; };
+        var tri = function (list, a, b, c, ua, ub, uc) { list.push([a, b, c, ua, ub, uc]); };
+        var triR = function (list, a, b, c, ua, ub, uc) { list.push([a, c, b, ua, uc, ub]); };   // the same triangle wound the other way (outward)
+        /* the top: a quad per run segment, its v along the slope */
+        var vAcc = 0;
+        for (var i = 0; i + 1 < zs.length; i++) {
+            var za = zs[i], zb = zs[i + 1], ya = ht(za), yb = ht(zb), sl = Math.hypot(zb - za, yb - ya), va = vAcc, vb = vAcc + sl; vAcc = vb;
+            triR(top, V(-hx, ya, za), V(hx, ya, za), V(hx, yb, zb), [-hx, va], [hx, va], [hx, vb]);
+            triR(top, V(-hx, ya, za), V(hx, yb, zb), V(-hx, yb, zb), [-hx, va], [hx, vb], [-hx, vb]);
+        }
+        /* the flanks: a quad per segment down to the base, each side wound outward */
+        for (var j = 0; j + 1 < zs.length; j++) {
+            var z0 = zs[j], z1 = zs[j + 1], y0 = ht(z0), y1 = ht(z1);
+            triR(rest, V(hx, base, z0), V(hx, base, z1), V(hx, y1, z1), [z0, base], [z1, base], [z1, y1]);
+            triR(rest, V(hx, base, z0), V(hx, y1, z1), V(hx, y0, z0), [z0, base], [z1, y1], [z0, y0]);
+            triR(rest, V(-hx, base, z1), V(-hx, base, z0), V(-hx, y0, z0), [z1, base], [z0, base], [z0, y0]);
+            triR(rest, V(-hx, base, z1), V(-hx, y0, z0), V(-hx, y1, z1), [z1, base], [z0, y0], [z1, y1]);
+        }
+        /* the ends: the foot (z 0, facing −z) and the head (z Lt, facing +z) */
+        var yF = ht(0), yH = ht(zs[zs.length - 1]), zH = zs[zs.length - 1];
+        tri(rest, V(hx, base, 0), V(-hx, base, 0), V(-hx, yF, 0), [hx, base], [-hx, base], [-hx, yF]);
+        tri(rest, V(hx, base, 0), V(-hx, yF, 0), V(hx, yF, 0), [hx, base], [-hx, yF], [hx, yF]);
+        tri(rest, V(-hx, base, zH), V(hx, base, zH), V(hx, yH, zH), [-hx, base], [hx, base], [hx, yH]);
+        tri(rest, V(-hx, base, zH), V(hx, yH, zH), V(-hx, yH, zH), [-hx, base], [hx, yH], [-hx, yH]);
+        var push = function (list) { list.forEach(function (t) { for (var q = 0; q < 3; q++) { P.push(t[q][0], t[q][1], t[q][2]); UV.push(t[q + 3][0] * k, t[q + 3][1] * k); } }); };
+        push(top); push(rest);
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+        geo.computeVertexNormals();
+        geo.addGroup(0, top.length * 3, 0); geo.addGroup(top.length * 3, rest.length * 3, 1);
+        return geo;
+    }
     function _hqBuildBuiltStairs(room, info, G, TM) {
-        var U = _hqUnits(), res = info.res, S = room.shell || {};
+        var U = _hqUnits(), S = room.shell || {};
         (info.builts || []).forEach(function (f) {
             var treadMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.key || info.path) || null, color: 0xffffff, shininess: 16 }); treadMat.emissive = new THREE.Color(0x141414);
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.side || info.cliff) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
-            var n = Math.max(1, Math.round(L / res)), rise = (f.h1 - f.h0) / n, depth = L / n, base = Math.min(f.h0, f.h1) - 0.05;
-            var runW = (f.runner && f.runner.w) ? Math.min(f.w - 0.2, f.runner.w) : 0, runMat = null;
-            if (runW > 0) { runMat = new THREE.MeshPhongMaterial({ color: (f.runner.color != null) ? f.runner.color : 0x3558d8, shininess: 6 }); runMat.emissive = new THREE.Color(runMat.color).multiplyScalar(0.12); }
-            for (var k = 0; k < n; k++) {
-                var top = f.h0 + rise * k; if (rise > 0 && top - base < 0.06) continue;
-                var s0 = k * depth, s1 = (k === n - 1) ? L + 0.25 : (k + 1) * depth + 0.02, sm = (s0 + s1) / 2, dd = s1 - s0, hh = Math.max(0.06, top - base);
-                var cx = f.x0 + ux * sm, cz = f.z0 + uz * sm;
-                var geo = new THREE.BoxGeometry(f.w * U, hh * U, dd * U); _hzBoxUV(geo, f.w * U, hh * U, dd * U, TM);
-                var blk = new THREE.Mesh(geo, [sideMat, sideMat, treadMat, sideMat, sideMat, sideMat]);
-                blk.position.set(cx * U, (base + hh / 2) * U + 0.3, cz * U); blk.rotation.y = yaw; blk.castShadow = true; blk.receiveShadow = true; blk.renderOrder = 1; G.add(blk);
-                if (runMat) {
-                    var rt = new THREE.Mesh(new THREE.BoxGeometry(runW * U, 0.03 * U, dd * U), runMat);
-                    rt.position.set(cx * U, (top + 0.015) * U + 0.3, cz * U); rt.rotation.y = yaw; rt.renderOrder = 2; G.add(rt);
-                    if (k > 0 && rise > 0) {   // the riser's face toward the flight's foot
-                        var rr = new THREE.Mesh(new THREE.BoxGeometry(runW * U, rise * U, 0.03 * U), runMat), rs = s0 - 0.015;
-                        rr.position.set((f.x0 + ux * rs) * U, (top - rise / 2) * U + 0.3, (f.z0 + uz * rs) * U); rr.rotation.y = yaw; rr.renderOrder = 2; G.add(rr);
-                    }
-                }
+            var base = Math.min(f.h0, f.h1) - 0.05, Lt = L + 0.25;
+            /* a frame at the flight's foot, turned down its run: every piece below is built in it */
+            var F = new THREE.Group(); F.position.set(f.x0 * U, 0, f.z0 * U); F.rotation.y = yaw; G.add(F);
+            var slope = new THREE.Mesh(_hqSlopePrismGeo(f.w, 0, L, Lt, f.h0, f.h1, 0, base, U, TM), [treadMat, sideMat]);
+            slope.castShadow = true; slope.receiveShadow = true; slope.renderOrder = 1; F.add(slope);
+            var runW = (f.runner && f.runner.w) ? Math.min(f.w - 0.2, f.runner.w) : 0;
+            if (runW > 0) {
+                var runMat = new THREE.MeshPhongMaterial({ color: (f.runner.color != null) ? f.runner.color : 0x3558d8, shininess: 6 }); runMat.emissive = new THREE.Color(runMat.color).multiplyScalar(0.12);
+                var rt = new THREE.Mesh(_hqSlopePrismGeo(runW, 0, L, Lt, f.h0, f.h1, 0.03, Math.min(f.h0, f.h1) + 0.005, U, TM), [runMat, runMat]); rt.renderOrder = 2; F.add(rt);
             }
             /* THE CHEEK WALLS (2026-10-01, mondo's woods stair: "they ascend past the tree line"): `cheek: { h, t, key, head }` — a parapet
-               either side stepping up with the treads (a wall to the walker: nobody walks off a 13 m flight), `head` closes the top end */
+               either side sloping up with the run (a wall to the walker: nobody walks off a 13 m flight), `head` closes the top end */
             if (f.cheek) {
                 var CK = f.cheek, ct = CK.t || 0.35, chh = (CK.h != null) ? CK.h : 1.0, px = uz, pz = -ux;
                 var cheekMat = new THREE.MeshPhongMaterial({ map: _hzTex(CK.key || f.side || info.cliff) || null, color: (CK.color != null) ? CK.color : 0xffffff, shininess: 10 }); cheekMat.emissive = new THREE.Color(0x121212);
-                for (var ck = 0; ck < n; ck++) {
-                    var ctop = f.h0 + rise * ck + chh, cs0 = ck * depth, cs1 = (ck === n - 1) ? L + 0.25 : (ck + 1) * depth + 0.02, csm = (cs0 + cs1) / 2, cdd = cs1 - cs0, chh2 = Math.max(0.1, ctop - base);
-                    [-1, 1].forEach(function (sd) {
-                        var off = sd * (f.w / 2 + ct / 2), cg = new THREE.BoxGeometry(ct * U, chh2 * U, cdd * U); _hzBoxUV(cg, ct * U, chh2 * U, cdd * U, TM);
-                        var cm = new THREE.Mesh(cg, cheekMat); cm.position.set((f.x0 + ux * csm + px * off) * U, (base + chh2 / 2) * U + 0.3, (f.z0 + uz * csm + pz * off) * U); cm.rotation.y = yaw; cm.castShadow = true; cm.receiveShadow = true; G.add(cm);
-                    });
-                }
-                var midS = (L + 0.25) / 2;
+                [-1, 1].forEach(function (sd) {
+                    var cm = new THREE.Mesh(_hqSlopePrismGeo(ct, sd * (f.w / 2 + ct / 2), L, Lt, f.h0, f.h1, chh, base, U, TM), [cheekMat, cheekMat]);
+                    cm.castShadow = true; cm.receiveShadow = true; F.add(cm);
+                });
+                var midS = Lt / 2;
                 [-1, 1].forEach(function (sd) {
                     var off = sd * (f.w / 2 + ct / 2), bo = new THREE.Object3D(); bo.position.set((f.x0 + ux * midS + px * off) * U, base * U, (f.z0 + uz * midS + pz * off) * U); G.add(bo);
                     _hq.blockers.push({ obj: bo, y: base, top: null, rad: midS, rect: { hw: ct / 2, hd: midS }, yaw: yaw, cheek: true });
                 });
                 if (CK.head) {
                     var htop = Math.max(f.h0, f.h1) + chh, hg = new THREE.BoxGeometry((f.w + 2 * ct) * U, (htop - base) * U, ct * U); _hzBoxUV(hg, (f.w + 2 * ct) * U, (htop - base) * U, ct * U, TM);
-                    var hm = new THREE.Mesh(hg, cheekMat), hs = L + 0.25 + ct / 2; hm.position.set((f.x0 + ux * hs) * U, (base + (htop - base) / 2) * U + 0.3, (f.z0 + uz * hs) * U); hm.rotation.y = yaw; hm.castShadow = true; G.add(hm);
+                    var hm = new THREE.Mesh(hg, cheekMat), hs = Lt + ct / 2; hm.position.set((f.x0 + ux * hs) * U, (base + (htop - base) / 2) * U + 0.3, (f.z0 + uz * hs) * U); hm.rotation.y = yaw; hm.castShadow = true; G.add(hm);
                     var hb = new THREE.Object3D(); hb.position.set((f.x0 + ux * hs) * U, base * U, (f.z0 + uz * hs) * U); G.add(hb);
                     _hq.blockers.push({ obj: hb, y: base, top: null, rad: f.w / 2 + ct, rect: { hw: f.w / 2 + ct, hd: ct / 2 }, yaw: yaw, cheek: true });
                 }
