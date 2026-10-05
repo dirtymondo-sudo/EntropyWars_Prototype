@@ -1847,3 +1847,12 @@ similar areas to be fully surrounded by trees so the map edge never shows.
   ME_OBJECT_IDS and mirrored in data.js MF_OID; board defs in data.js; picture = the pack's Low Res PNG in sprites.js). The
   board keys start `tree_` so every /^tree/ rule (cover, fire, forest-adapted, wither → tree_5) counts them. The plan layout's
   TREES look defaults to pack kinds (tree, tree_2, tree_3, pine, tree_4) instead of tree_7-9.
+
+## NO STEPPED STAIRS (2026-10-05)
+mondo: "either make a smooth ramp or use a stairs prop ... Delete and replace every single one". Every terrain `ramp` wearing
+`stairs: true` (158 rows, plus hqHelixRamp / editor rows) used to quantise the field into 1 m (built: 0.5 m) treads drawn as chunky
+blocks. Now data.js hqTerrainCompile gives every flight a smooth slope h0 → h1; only a `float: true` flight (the Divine Stair's cloud
+steps) keeps treads. `built: true` flights draw as ONE solid wedge (three-renderer.js _hqSlopePrismGeo / _hqBuildBuiltStairs): slope in
+`key`, flanks in `side`, runner and cheek parapets slope with it. The editor's Stairs tool places a solid smooth ramp (built). Arenas
+re-baked (camelot, mars picks moved). Untouched: metro_stairs passages, the rotunda's curved flights, stadium seat rows, legacy voxel
+battle-map 1-tile staircases.
