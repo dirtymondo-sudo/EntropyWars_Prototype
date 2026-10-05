@@ -44107,26 +44107,50 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: 0, z: 0, w: 63, d: 51, h: 0, edge: 0.15 },
             /* THE QUARTERDECK (2.4, the stern west): the built stair up from the waist, a rope on its north face, a ladder on its south */
             { k: 'plateau', x: -22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -8.5, z0: 0, x1: -16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', pts: [[-8.1, 0, 0], [-16.7, 0, 2.4]], model: 'pipe', block: false },
+            { k: 'rail', x0: -16.35, z0: -16.6, x1: -16.35, z1: -15.5, model: 'ranch' }, { k: 'rail', x0: -16.35, z0: -12.9, x1: -16.35, z1: -1.6, model: 'ranch' },   // the break of the quarterdeck
+            { k: 'rail', x0: -16.35, z0: 1.6, x1: -16.35, z1: 11.9, model: 'ranch' },
+            { k: 'rail', x0: -27.6, z0: -16.65, x1: -23, z1: -16.65, model: 'ranch' }, { k: 'rail', x0: -21, z0: -16.65, x1: -16.4, z1: -16.65, model: 'ranch' },
+            { k: 'rail', x0: -23.8, z0: 16.65, x1: -23, z1: 16.65, model: 'ranch' },
             { k: 'climb', x: -22, z: -16.7, face: 180, look: 'rope' }, { k: 'climb', x: -22, z: 16.7, face: 0, look: 'ladder' },
             /* THE POOP (4.4) over the quarterdeck's stern — the skylight draught stands ON it: the built stair up from the quarterdeck, the stern lantern's chain on its north face */
             { k: 'plateau', x: -27.75, z: 0, w: 7.5, d: 20, h: 4.4, edge: 0.15 },   // L6: to the hull's stern edge (it stood out over the sea)
-            { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -26, z0: 16.4, x1: -26, z1: 9.3, w: 2.4, h0: 2.4, h1: 4.4, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', x0: -24.35, z0: -9.6, x1: -24.35, z1: 9.6, model: 'ranch' }, { k: 'rail', x0: -31.1, z0: 9.65, x1: -27.4, z1: 9.65, model: 'ranch' },
+            { k: 'rail', x0: -31.1, z0: -9.65, x1: -30.2, z1: -9.65, model: 'ranch' }, { k: 'rail', x0: -27.8, z0: -9.65, x1: -24.4, z1: -9.65, model: 'ranch' },
             { k: 'climb', x: -29, z: -9.7, face: 180, look: 'chain' },
             /* THE FORECASTLE (2.4, the bow east): the built stair up from the waist, a rope on its south face, a ladder on its north */
             { k: 'plateau', x: 22, z: 0, w: 12, d: 34, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: 8.5, z0: 0, x1: 16.7, z1: 0, w: 2.6, h0: 0, h1: 2.4, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', x0: 16.35, z0: -16.6, x1: 16.35, z1: -1.6, model: 'ranch' }, { k: 'rail', x0: 16.35, z0: 1.6, x1: 16.35, z1: 12.6, model: 'ranch' },   // the break of the forecastle
+            { k: 'rail', x0: 16.35, z0: 15.4, x1: 16.35, z1: 16.6, model: 'ranch' },
+            { k: 'rail', x0: 16.4, z0: -16.65, x1: 21, z1: -16.65, model: 'ranch' }, { k: 'rail', x0: 23, z0: -16.65, x1: 27.6, z1: -16.65, model: 'ranch' },
+            { k: 'rail', x0: 16.4, z0: 16.65, x1: 21, z1: 16.65, model: 'ranch' }, { k: 'rail', x0: 23, z0: 16.65, x1: 27.6, z1: 16.65, model: 'ranch' },
             { k: 'climb', x: 22, z: 16.7, face: 0, look: 'rope' }, { k: 'climb', x: 22, z: -16.7, face: 180, look: 'ladder' },
             /* THE BOWSPRIT PLATFORM (3.6) on the forecastle's bow: the built stair up from the forecastle, a chain on its north face */
             { k: 'plateau', x: 27, z: 0, w: 6, d: 8, h: 3.6, edge: 0.15 },
-            { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: 19.5, z0: 0, x1: 24.7, z1: 0, w: 2.2, h0: 2.4, h1: 3.6, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', x0: 24.35, z0: -3.6, x1: 24.35, z1: -1.4, model: 'ranch' }, { k: 'rail', x0: 24.35, z0: 1.4, x1: 24.35, z1: 3.6, model: 'ranch' },
+            { k: 'rail', x0: 24.4, z0: 3.65, x1: 29.6, z1: 3.65, model: 'ranch' }, { k: 'rail', x0: 24.4, z0: -3.65, x1: 26, z1: -3.65, model: 'ranch' }, { k: 'rail', x0: 28, z0: -3.65, x1: 29.6, z1: -3.65, model: 'ranch' },
             { k: 'climb', x: 27, z: -3.7, face: 180, look: 'chain' },
             /* THE BOAT DECK (2.4) off the starboard bulwark, a rope on its west face; THE GANGWAY from the forecastle to it (a level span, the bridge layer) */
             { k: 'plateau', x: 8, z: 14, w: 8, d: 6, h: 2.4, edge: 0.15 }, { k: 'climb', x: 4.3, z: 14, face: 90, look: 'rope' },
             { k: 'bridge', x0: 16.7, z0: 14, x1: 11.3, z1: 14, w: 2.2, y: 2.4 },
+            { k: 'rail', x0: 4.4, z0: 11.35, x1: 11.6, z1: 11.35, model: 'ranch' }, { k: 'rail', x0: 4.4, z0: 16.65, x1: 11.6, z1: 16.65, model: 'ranch' },
+            { k: 'rail', x0: 11.65, z0: 11.4, x1: 11.65, z1: 12.6, model: 'ranch' }, { k: 'rail', x0: 11.65, z0: 15.4, x1: 11.65, z1: 16.6, model: 'ranch' },
+            /* THE UPPER WALKS (2.4) along the waist: the starboard walk from the quarterdeck to a 2.5 m gap off the boat deck; the port
+               gangway off the quarterdeck, a 2.5 m gap, the port walk and its stair down to the waist; a pipe rail across each gap */
+            { k: 'bridge', x0: -16.7, z0: 14.6, x1: 1.5, z1: 14.6, w: 4.8, y: 2.4 },
+            { k: 'rail', x0: 1.1, z0: 16.0, x1: 4.4, z1: 16.0, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: -16.7, z0: -14, x1: -9.5, z1: -14, w: 2.2, y: 2.4 },
+            { k: 'rail', x0: -9.9, z0: -14, x1: -6.6, z1: -14, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: -7, z0: -14.6, x1: 2, z1: -14.6, w: 4.8, y: 2.4 },
+            { k: 'ramp', x0: 8.5, z0: -14.6, x1: 1.3, z1: -14.6, w: 2.2, h0: 0, h1: 2.4, stairs: true, model: 'wood', edge: 0.15 },
             /* THE MAINMAST: THE CROSSTREES (4.6) up the ratlines — a rope on its south face, a chain on its north — under THE MAINTOP (8.4, the tape — the door gun's) */
             { k: 'plateau', x: 0, z: -4, r: 3.2, h: 4.6, edge: 0.15 }, { k: 'plateau', x: 0, z: -4, r: 1.8, h: 8.4, edge: 0.15 },
             { k: 'climb', x: 0, z: -1.1, face: 0, look: 'rope' }, { k: 'climb', x: 0, z: -6.9, face: 180, look: 'chain' },
+            { k: 'rail', arc: { x: 0, z: -4, r: 2.85, a0: 20, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: 0, z: -4, r: 2.85, a0: 200, a1: 340 }, model: 'ranch' },   // the crosstrees' rail
             { k: 'plateau', x: -22, z: 6, r: 1.4, h: 7.0, edge: 0.15 },   // THE MIZZEN on the quarterdeck (a mast, nothing climbs it): the skylight is not seen from the way in (R3)
             /* THE HATCH GRATINGS: the main hatch and the fore hatch, coamings on the waist (a step up) */
             { k: 'plateau', x: -7, z: -10, w: 4, d: 3, h: 0.35, edge: 0.15 }, { k: 'plateau', x: 7, z: -10, w: 4, d: 3, h: 0.35, edge: 0.15 },
@@ -44155,7 +44179,7 @@ const HQ_AREA_SPECS = {
                   desc: 'A pane of the poop that is not caulked. It lifts, and under it is the great cabin, and the log is open on the table below you. Nobody has ever climbed in this way. The captain has climbed out.' }],
         props: [{ key: 'railing_1m', x: -16, z: 16.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: 16, z: -16.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: -26, z: 9.7, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 8 },
                 /* THE WAIST: the guns run out both sides, the hatch gratings, the hands' hammocks */
-                { key: 'ship_cannon', x: 6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -13, z: 16.5, face: 180 }, { key: 'ship_cannon', x: 13, z: -16.5, face: 0 }, { key: 'ship_cannon', x: 6, z: -16.5, face: 0 }, { key: 'ship_cannon', x: -13, z: -16.5, face: 0 },
+                { key: 'ship_cannon', x: 6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -6, z: 16.5, face: 180 }, { key: 'ship_cannon', x: -13, z: 16.5, face: 180 }, { key: 'ship_cannon', x: 13, z: -16.5, face: 0 }, { key: 'ship_cannon', x: 10, z: -16.5, face: 0 }, { key: 'ship_cannon', x: -13, z: -16.5, face: 0 },
                 { key: 'cot', x: -6, z: 9, face: 90 }, { key: 'cot', x: -6, z: 12, face: 90 }, { key: 'cardboard_boxes', x: 12, z: 8 }, { key: 'cave_torch', x: -3, z: 17 }, { key: 'cave_torch', x: 3, z: 17 }, { key: 'cave_torch', x: -10, z: -17 }, { key: 'cave_torch', x: 3, z: -17 }, { key: 'lesson_sign', x: 4, z: 6, face: 200, lesson: 'climb' },
                 { key: 'stocks', x: 12, z: -8, face: 180 }, { key: 'skull_pile', x: -13, z: -12 },
                 /* THE QUARTERDECK and THE POOP: the helm, the log at the lectern, the stern lantern */
