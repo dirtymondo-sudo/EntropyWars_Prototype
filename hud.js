@@ -2984,7 +2984,14 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
   // and _setSpellDescBase no-ops when the spell hasn't changed).
   const selSpell = selBlade && selBlade.spell ? selBlade.spell : null;
   if (typeof _setSpellDescBase === 'function') _setSpellDescBase(selSpell);
-  useEffect(() => () => { if (typeof _setSpellDescBase === 'function') _setSpellDescBase(null); }, []);
+  // A new unit or a different menu view replaces the rows without a
+  // mouseleave — drop any hover override the old rows left behind. Leaving
+  // the menu clears both the base and the hover.
+  useEffect(() => { if (typeof hideSpellTooltip === 'function') hideSpellTooltip(); }, [unitKey, viewKey]);
+  useEffect(() => () => {
+    if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
+    if (typeof _setSpellDescBase === 'function') _setSpellDescBase(null);
+  }, []);
 
   // ↑/↓ move the cursor; hard stops at both ends with a physical "bump".
   const cycle = (dir) => {
@@ -8387,6 +8394,20 @@ let _descBarEl = null;
 let _descBarBase = null;    // spell of the currently selected blade
 let _descBarHover = null;   // hover override (cleared on mouse-out)
 let _descBarShown;          // last spell actually rendered (no-op guard)
+// Who owns the hover override. A row that unmounts under the cursor (turn
+// ends, ESC out of ABILITIES, the menu swaps units) never fires mouseleave,
+// so hideSpellTooltip never ran and the hovered spell stuck on the bar into
+// other units' turns. The override is dropped once its row leaves the DOM
+// or the acting unit changes.
+let _descBarHoverEl = null;
+let _descBarHoverUnit = null;
+
+function _descBarActiveUnitId() {
+  try {
+    if (typeof state !== 'undefined' && state && state._blitzActiveUnitId != null) return state._blitzActiveUnitId;
+  } catch (e) {}
+  return null;
+}
 
 function _ensureDescBarEl() {
   if (_descBarEl && document.body.contains(_descBarEl)) return _descBarEl;
@@ -8397,6 +8418,10 @@ function _ensureDescBarEl() {
 }
 
 function _renderSpellDescBar() {
+  if (_descBarHover && ((_descBarHoverEl && !_descBarHoverEl.isConnected)
+      || _descBarHoverUnit !== _descBarActiveUnitId())) {
+    _descBarHover = null; _descBarHoverEl = null;
+  }
   const sp = _descBarHover || _descBarBase;
   // cheap no-op: called every HUD render. Combos arrive as a FRESH object
   // per render (getComboForUnits spreads the registry entry), so identity
@@ -8538,13 +8563,17 @@ function _setSpellDescBase(sp) {
 
 function showSpellTooltip(sp, evt) {
   _descBarHover = sp || null;
+  const _t = evt && evt.target;
+  _descBarHoverEl = (_t && _t.nodeType === 1)
+    ? ((_t.closest && _t.closest('.hrlg-blade')) || _t) : null;
+  _descBarHoverUnit = _descBarActiveUnitId();
   _renderSpellDescBar();
 }
 
 function moveSpellTooltip(evt) { /* bar is fixed — nothing tracks the mouse */ }
 
 function hideSpellTooltip() {
-  _descBarHover = null;
+  _descBarHover = null; _descBarHoverEl = null;
   _renderSpellDescBar();
 }
 
@@ -8717,7 +8746,7 @@ function unmountReactHUD() {
   if (el) el.remove();
   _removeHudHideStyles();
   // battle over → drop the spell description bar with the rest of the HUD
-  _descBarBase = null; _descBarHover = null;
+  _descBarBase = null; _descBarHover = null; _descBarHoverEl = null;
   _renderSpellDescBar();
 }
 
