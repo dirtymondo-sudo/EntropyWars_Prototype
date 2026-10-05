@@ -1026,8 +1026,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
 /* ── LIVE 3D HERO — the character-creator stage ─────────────────────
    Mounts the shared EWCharViewer (three-renderer.js) into a host div:
    the vessel's rigged GLB with its retargeted idle, drag to orbit,
-   wheel to zoom, double-click to reset. The flat sprite renders
-   underneath as the loading frame and stays for sprite-only vessels. */
+   wheel to zoom, double-click to reset. The flat sprite renders only
+   for sprite-only vessels (never as a loading frame). */
 function HeroViewer3D({ race, gender, cls, faction, focus, appearance }) {
   const hostRef = React.useRef(null);
   const accent = getFactionColor(faction);
@@ -1055,7 +1055,9 @@ function HeroViewer3D({ race, gender, cls, faction, focus, appearance }) {
     appearance ? h('div', { className: 'pb-creator-load-error', role: 'alert' },
       h('p', null, 'The base model could not load.'),
       h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.retryCharacter() }, 'RETRY')) : null,
-    h('div', { className: 'pb-hero3d-fallback' },
+    // NO STAND-INS (2026-10-05): a 3D vessel shows nothing until its model is live; the flat sheet is only
+    // the art of a sprite-only vessel (no loading frame under the model any more)
+    supported ? null : h('div', { className: 'pb-hero3d-fallback' },
       h(Sprite, { race, gender, cls, size: '100%', glow: faction, style: { width: '100%', height: '97%' } })),
     supported ? h('div', { className: 'pb-hero3d-hint' }, '⟲ DRAG · ⌕ SCROLL · ✕2 RESET') : null);
 }
@@ -2957,6 +2959,43 @@ function PartyBuilder(props) {
       if (gradeTimer.current) { clearTimeout(gradeTimer.current); gradeTimer.current = 0; }
     };
   }, []);
+  /* NO STAND-INS (2026-10-05, mondo: "can we not have all the spells and their props loaded and ready to show?"): the
+     builder loads the WHOLE spell library the moment it opens (ThreeVFXEffects.warmSpellLibrary — the same promise the
+     battle's loading card waits on, so nothing is fetched twice) and every vessel model on both rosters
+     (ThreeRenderer.preloadUnitModels — the stage and the board share its cache). A preview asked for before the library
+     has landed WAITS for it (the note says LOADING SPELLS) instead of playing with props missing; a hover just skips. */
+  const [libProg, setLibProg] = React.useState(() => {
+    const p = window.ThreeVFXEffects && window.ThreeVFXEffects.spellLibraryProgress ? window.ThreeVFXEffects.spellLibraryProgress() : null;
+    return p ? { d: p.done, t: p.total, ok: !!p.finished } : { d: 0, t: 0, ok: false };
+  });
+  const libOkRef = React.useRef(libProg.ok);
+  React.useEffect(() => {
+    let alive = true;
+    const fx = window.ThreeVFXEffects;
+    if (!fx || typeof fx.warmSpellLibrary !== 'function') { libOkRef.current = true; setLibProg({ d: 0, t: 0, ok: true }); return undefined; }
+    fx.warmSpellLibrary((d, t) => { if (alive) setLibProg(prev => (prev.d === d && prev.t === t) ? prev : { d, t, ok: prev.ok }); })
+      .then(() => { libOkRef.current = true; if (alive) setLibProg(prev => ({ d: prev.t, t: prev.t, ok: true })); });
+    return () => { alive = false; };
+  }, []);
+  React.useEffect(() => {
+    try {
+      if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.preloadUnitModels !== 'function' || typeof window.resolveIdentityForBuild !== 'function') return;
+      const units = [];
+      [1, 2].forEach(pn => (st.partyBuilds && st.partyBuilds[pn] || []).forEach((cn, i) => {
+        const mt = (st.partyMeta && st.partyMeta[pn] && st.partyMeta[pn][i]) || {};
+        const id = window.resolveIdentityForBuild(cn, mt) || {};
+        if (id.race) units.push({ race: id.race, gender: id.gender || mt.gender || 'male', appearance: mt.appearance || null });
+      }));
+      if (units.length) ThreeRenderer.preloadUnitModels(units);
+    } catch (e) {}
+  }, [JSON.stringify(st.partyBuilds || null), JSON.stringify(st.partyMeta || null)]);
+  const libWait = (fire, opts) => {
+    if (libOkRef.current) { fire(); return; }
+    if (opts && opts.hover) return;
+    const fx = window.ThreeVFXEffects;
+    pbNote('LOADING SPELLS ' + (libProg.t ? (libProg.d + ' / ' + libProg.t) : '…'));
+    fx.warmSpellLibrary().then(() => { libOkRef.current = true; fire(); });
+  };
   /* MOVE PREVIEW triggers (plan §5.2 item 6). previewOff: the pause-menu
      Animation toggle or the kill-switch. pbPreview(spOrNull, opts): null =
      the basic attack (root). Hover = after a 180 ms debounce and only when
@@ -2994,8 +3033,8 @@ function PartyBuilder(props) {
       if (!ms && !opts.hover) pbNote(cv.hasClips && cv.hasClips() ? 'NO CLIP FOR THIS TECHNIQUE' : 'NO PREVIEW · SPRITE VESSEL');
       if (ms && opts.equip) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx('crtOn', { volume: 0.3 }); } catch (e) {} }
     };
-    if (opts.hover) previewHoverTimer.current = setTimeout(() => { previewHoverTimer.current = 0; fire(); }, 180);
-    else fire();
+    if (opts.hover) previewHoverTimer.current = setTimeout(() => { previewHoverTimer.current = 0; libWait(fire, opts); }, 180);
+    else libWait(fire, opts);
   };
   /* THE FINISHER's preview (2026-09-19): the execution on the stage —
      EWCharViewer.previewFinisher (the charged cast + VFX3D.stage.finisher).

@@ -716,3 +716,20 @@ cones, lighthouse cones, temple dome shell, gun-door pane+glow+lane cone (SpotLi
 timemachine = dark backs; taxi, well, pool, gutter, tree hole, mirror, painting, screen = sheet/glow not added), void-island
 floor glow, cine-void actor pools, HQ cube glow, heaven-stair gate glow, garage-ramp haze). Kept: sanctuary/nexus zone
 walls (gameplay markers), action tile glow (attack/spell), derelict engine exhaust plumes, small bulb halos. Never bring back.
+
+## NO STAND-INS (2026-10-05, mondo)
+mondo: fallback models/geometry "look like absolute shit ... completely deleted from the game, never shown again. i would
+rather the spells load without a model". Cause: spell props loaded only on first cast (the battle card warmed only
+basic-attack props, the party builder warmed nothing), so `_wpnInstance` returned null and the procedural stand-in drew.
+- three-vfx-effects.js: every load-time procedural prop (swords, guns, UFO, cannon, arrows, rocks, cars, moon, missiles,
+  mushrooms, crowns, gates, clouds, jets...) is gone; a missing model draws nothing (empty Group). Kept: finisher
+  choreography bodies (capsule victims), glows/particles/debris. `warmSpellLibrary(onProgress)` loads all `_WPN_MODELS`,
+  the spell misc GLBs (`TR.warmMiscModels`, pinned), the sedan and terrain sheets once; textures capped at 512 (1024 for
+  big props) via the new `texCap` on `TR.assetGltf` / `_capModelTextures` to keep M1 memory sane.
+- battle.js: the loading card waits on warmSpellLibrary (label LOADING SPELLS), LS_MAX_WAIT_MS 90 s.
+- party-builder.js: warms the library + every roster vessel on open; a clicked preview waits for it, hover skips.
+  HeroViewer3D shows the 2D fallback only for vessels with no 3D model.
+- three-renderer.js: units draw nothing (no sprite slab) while their GLB loads; a final load failure rebuilds with the
+  2D sheet. HQ/board procedural stand-ins hide at once or were deleted (intro door panel, bone pile, grin skull, key,
+  nr tree, canopy stand-in, vehicle proc). Modelled projectiles fly as an empty carrier until loaded.
+Leftovers: cultist summon placeholder (no GLB exists), PERF_LOW scenery kits, encounter fights have no loading card.

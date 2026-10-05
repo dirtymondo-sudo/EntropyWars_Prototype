@@ -4430,12 +4430,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         jet.setFade(opJ);
                         abMat.opacity = opJ * (0.5 + 0.35 * Math.sin(elJ * 0.05));
                     });
-                } else {
+                } else if ((fo.sprite || 'f22') !== 'f22') {
+                    /* a craft with no GLB flies as its own sheet; the F-22 is the GLB or nothing
+                       (NO STAND-INS, 2026-10-05: the loading screen loads it) */
                     _spawn({
                         x: startX, y: startY, z: flyZ,
                         vx: fVx, vy: fVy, vz: 0,
                         mode: 'world',
-                        sprite: fo.sprite || 'f22',
+                        sprite: fo.sprite,
                         ml: flyMs,
                         w0: spriteW, w1: spriteW,
                         h0: spriteH, h1: spriteH,
@@ -4479,7 +4481,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                the def as the cold-cache fallback). */
             var defToSpawn = descentDef;
             var wantsWarhead = false;
-            if (descentDef.layers && _wpnReady('missile')) {
+            if (descentDef.layers) {   /* NO STAND-INS (2026-10-05): the missile sheet never stands in for the GLB */
                 for (var wi = 0; wi < descentDef.layers.length; wi++) {
                     var lsp = descentDef.layers[wi].sprite;
                     if (lsp === 'missile' || lsp === 'nuclear-missile') { wantsWarhead = true; break; }
@@ -5427,7 +5429,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                                 exMat2.opacity = 0.5 + 0.35 * Math.sin(elM * 0.06);
                             });
                         }
-                        if (!glbShell) _spawn({
+                        if (!glbShell && (m.sprite || 'missile') !== 'missile') _spawn({   /* NO STAND-INS: the missile is the GLB or nothing */
                             x: casterPx.x, y: casterPx.y, z: startZ,
                             vx: vxMs, vy: vyMs, vz: vzInit,
                             mode: 'billboard',
@@ -6840,32 +6842,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            cratered moon was the stand-in — a moon falling on the board read
            wrong once TO THE MOON put the real one in the sky). */
         try { var _astRock = _finRockBody(2, { glbOnly: true }); if (_astRock) rock = _astRock.group; } catch (e) { rock = null; }
-        try {
-            if (!rock && window.ThreeRenderer && ThreeRenderer.getMiscModelClone) {
-                rock = ThreeRenderer.getMiscModelClone('moon', 2, 'center');   // 2 units tall = radius-1 sphere
-            }
-        } catch (e) { rock = null; }
-        if (!rock) {
-            var rockGeo = new THREE.IcosahedronGeometry(1, 1);
-            var posAttr = rockGeo.getAttribute('position');
-            for (var vi = 0; vi < posAttr.count; vi++) {
-                var vx = posAttr.getX(vi);
-                var vy = posAttr.getY(vi);
-                var vz = posAttr.getZ(vi);
-                var noise = 1 + 0.2 * Math.sin(vx * 8.1 + vy * 12.3) * Math.cos(vz * 6.2 + vx * 4.1);
-                posAttr.setXYZ(vi, vx * noise, vy * noise, vz * noise);
-            }
-            posAttr.needsUpdate = true;
-            rockGeo.computeVertexNormals();
-
-            var rockTex = _getRocks4Texture();
-            var matRock = new THREE.MeshBasicMaterial({
-                map: rockTex,
-                transparent: false,
-                depthWrite: true,
-            });
-            rock = new THREE.Mesh(rockGeo, matRock);
-        }
+        /* NO STAND-INS (2026-10-05): no moon, no icosahedron — the asteroid GLB or an empty holder (the glow still falls) */
+        if (!rock) rock = new THREE.Group();
         rock.scale.set(0.01, 0.01, 0.01);
         rock.position.set(wp.x, startZ, wp.z);
         rock.renderOrder = 160;
@@ -7249,10 +7227,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE ROCKS (2026-09-18): a real asteroid GLB when the cache has one
            (never for coal) — a Group normalized to 2 units across and centre-
            pivoted, so the same scale / spin / arc drives it unchanged. The
-           icosahedron above stays the cold-cache fallback. */
+           icosahedron above is coal's own lump only. */
         if (!isCoal) {
             var _glbRock = _finRockBody(2, { glbOnly: true, key: opts.spellId === 'raceStoneThrow' ? 'asteroid2' : 'asteroid' });
-            if (_glbRock) { baseGeo.dispose(); matRock.dispose(); rock = _glbRock.group; }
+            /* NO STAND-INS (2026-10-05): the asteroid GLB or nothing (an empty holder keeps the arc + trail) */
+            baseGeo.dispose(); matRock.dispose();
+            rock = _glbRock ? _glbRock.group : new THREE.Group();
         }
         rock.scale.set(rockRadius, rockRadius, rockRadius);
         var emberMat = null;
@@ -10738,7 +10718,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (rec) rec.settle(false);
                 try { console.warn('[VFX] weapon GLB failed to load:', def.file || def.url || reqUrl); } catch (e2) {}
             };
-            if (_viaStore) TR.assetGltf(reqUrl, _onGltf, _onFail, { rec: rec });
+            if (_viaStore) TR.assetGltf(reqUrl, _onGltf, _onFail, { rec: rec, texCap: _WPN_TEX_CAP[key] || _WPN_TEX_CAP_DEFAULT });
             else new THREE.GLTFLoader().load(reqUrl, _onGltf, undefined, _onFail);
           } catch (ex) { e.loading = false; e.failed = true; e.queued = false; _done(); if (rec) rec.settle(false); }
         }
@@ -10878,6 +10858,71 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _wpnDripTimer = setTimeout(tick, step);
         return _wpnDripQueue.length;
     }
+
+    /* ═══ THE SPELL LIBRARY WARM (NO STAND-INS, 2026-10-05) ═══════════════════════════════════════════════════════════════
+       mondo: "can we not have all the spells and their props loaded and ready to show? wtf is the point of a loading screen if
+       we're not loading the stuff the game and the player needs??" Every procedural stand-in is gone (a prop that has not
+       landed draws NOTHING), so the props must be in memory BEFORE a spell can fire: warmSpellLibrary() loads every
+       _WPN_MODELS file (the weapons, the bones, the candles, the tarot, the rocks, the UFO, the cannon, the catalogue door
+       leaves + the pen), the misc-bucket models the spells clone (the cars, the wreck, the moon, the tank, the mushrooms, the
+       pine, the gate, the statue, the clouds, the tentacles), the spell sedan and the pixel cladding sheets — through the
+       same caches the casts read (one file = one parse = one root, the misc cache shared per URL). Every file is on the
+       asset ledger (the battle card's gate counts it), never the background lane. Called by the battle's loading card and
+       the party builder (before the stage shows a preview). The promise resolves once every file has landed or failed
+       (never rejects); onProgress(done, total) reports as they settle.
+       MEMORY (mondo's M1): Meshy props ship FOUR 2048² sheets each (~85 MB of GPU each at full size, 29 props ≈ 2.5 GB):
+       a spell prop is a few hundred pixels on screen, so its sheets are drawn down to _WPN_TEX_CAP (512, 1024 for the big
+       craft) the moment the file parses — the full-size bitmaps are released — and the library costs ~250 MB at most. */
+    var _WPN_TEX_CAP_DEFAULT = 512;
+    var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024 };
+    var _SPELL_MISC_KEYS = ['moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
+                            'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2'];
+    var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
+                          'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
+    var _spellWarm = null;   // { p, done, total, cbs }
+    function _spellLibWarm(onProgress) {
+        if (_spellWarm) {
+            if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
+            return _spellWarm.p;
+        }
+        var W = _spellWarm = { p: null, done: 0, total: 0, cbs: typeof onProgress === 'function' ? [onProgress] : [], finished: false };
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        var checks = [];
+        /* the props: every _WPN_MODELS row (catalogue rows included — the door leaves, the pen) */
+        try { _doorFxLeafKey(); } catch (e) {}
+        if (!_wpnGlbOff()) {
+            Object.keys(_WPN_MODELS).forEach(function (k) {
+                var e = _wpnLoad(k);   // a real request: never the background lane (an earlier bg warm is promoted)
+                if (e) checks.push(function () { return !e.loading; });
+            });
+        }
+        /* the misc models the spells clone (ThreeRenderer.getMiscModelClone's cache) + the sedan */
+        if (TR && typeof TR.warmMiscModels === 'function') {
+            try { TR.warmMiscModels(_SPELL_MISC_KEYS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        try { if (TR && typeof TR.sedan === 'function') TR.sedan({ metres: 4.4 }); } catch (e) {}
+        /* the pixel cladding + the projectile sheets (tiny, but a black frame on first use otherwise) */
+        try {
+            _SPELL_TERRAIN.forEach(function (f) { _sigTerrainTex(f, 1, 1); });
+            _getBoulderTexture(); _getRocks4Texture(); _getIceTexture(); _getWoodTexture();
+        } catch (e) {}
+        W.total = checks.length;
+        W.p = new Promise(function (res) {
+            var tick = function () {
+                var n = 0;
+                for (var i = 0; i < checks.length; i++) { try { if (checks[i]()) n++; } catch (e) { n++; } }
+                if (n !== W.done || !W.reported) {
+                    W.done = n; W.reported = true;
+                    for (var j = 0; j < W.cbs.length; j++) { try { W.cbs[j](n, W.total); } catch (e) {} }
+                }
+                if (n >= checks.length) { W.finished = true; W.cbs.length = 0; res({ done: n, total: W.total }); return; }
+                setTimeout(tick, 150);
+            };
+            tick();
+        });
+        return W.p;
+    }
+    function _spellLibProgress() { return _spellWarm ? { done: _spellWarm.done, total: _spellWarm.total, finished: !!_spellWarm.finished } : null; }
 
     /* ═══════════ 2026-07-25 WEAPON GLB BATCH 2 — candles, bones, tarot,
        cross, sleigh, fist, bullet, missile, shotgun, sniper. Every helper
@@ -11083,11 +11128,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_canSpawn()) return false;
         var ts = _cfg().tileSize || 128;
         var burning = !!opts.burning;
-        if (!_wpnReady('cross')) {
-            _sigLightPillar3D(tx, ty, {
-                color: burning ? 0xff7744 : 0xffedb0, ms: 900, height: 700 });
-            return false;
-        }
+        if (!_wpnReady('cross')) return false;   /* NO STAND-INS (2026-10-05): the cross GLB or nothing */
         var wp = _worldPos(tx, ty);
         var h = ts * 1.9 * (opts.scale != null ? opts.scale : 1.2);
         var inst = _wpnInstance('cross', h, { tint: opts.tint });
@@ -11164,8 +11205,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ── A REALLY GOOD PUNCH — the Meshy fist, three units tall, cocks back
        in the sky and drives the target into the dirt. Speed lines, shock
-       ring, dust, one frame of white. Falls back to the stone-golem fist
-       while the GLB streams. */
+       ring, dust, one frame of white. Nothing while the GLB streams (the
+       loading screen loads it). */
     /* 2026-08-15: was a sky-drop ground-pound; punches now read as PUNCHES —
        the fist rides the caster→target line horizontally at torso height
        (opts.fromTx/fromTy aim it; unknown caster → random side). opts.arc
@@ -11173,12 +11214,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigGlbFist3D(tx, ty, opts) {
         opts = opts || {};
         if (!_canSpawn()) return;
-        if (!_wpnReady('fist')) { _sigStandFist3D(tx, ty, opts); return; }
+        if (!_wpnReady('fist')) return;   /* NO STAND-INS (2026-10-05): the fist GLB or nothing */
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var h = ts * 1.05 * (opts.scale != null ? opts.scale : 1);
         var inst = _wpnInstance('fist', h, { tint: opts.tint });
-        if (!inst) { _sigStandFist3D(tx, ty, opts); return; }
+        if (!inst) return;
         var g = new THREE.Group();
         g.position.set(wp.x, wp.y, wp.z);
         /* local +Z = punch travel direction (caster → target) */
@@ -11280,28 +11321,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.position.set(wp.x, wp.y, wp.z);
         g.rotation.y = Math.random() * Math.PI * 2;
 
-        /* the skull prop: real GLB when cached, procedural cranium fallback */
+        /* the skull prop: the GLB or nothing (NO STAND-INS, 2026-10-05) */
         var prop = new THREE.Group();
-        var sockMat = new THREE.MeshBasicMaterial({
-            color: 0x181410, transparent: true, opacity: 0.95, depthWrite: false });
         var inst = _wpnReady('skull') ? _wpnInstance('skull', ts * 1.05) : null;
         if (inst) {
             prop.add(inst.group);
             inst.group.rotation.x = 0.5;             /* crown leads the dive */
-        } else {
-            var sR = ts * 0.42;
-            var cran = new THREE.Mesh(new THREE.SphereGeometry(sR, 10, 8), boneMat);
-            cran.scale.set(1, 0.94, 1.06);
-            prop.add(cran);
-            var jaw = new THREE.Mesh(new THREE.BoxGeometry(sR * 1.1, sR * 0.6, sR * 0.95), boneMat);
-            jaw.position.set(0, -sR * 0.55, sR * 0.18);
-            prop.add(jaw);
-            for (var e0 = -1; e0 <= 1; e0 += 2) {
-                var sock = new THREE.Mesh(new THREE.SphereGeometry(sR * 0.22, 6, 5), sockMat);
-                sock.position.set(e0 * sR * 0.36, sR * 0.04, sR * 0.82);
-                prop.add(sock);
-            }
-            prop.rotation.x = 0.5;
         }
         g.add(prop);
 
@@ -11381,7 +11406,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 }
             }
             boneMat.opacity = f * 0.95;
-            sockMat.opacity = f * 0.95;
             if (inst) inst.setFade(f);
         });
     }
@@ -11714,10 +11738,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        grip) so every caller swaps free. A glow shell in the spell's colour
        carries the old fuller's glowBoost; a hologram goes additive + tinted.
        ghost(mat) builds an afterimage of the same model (the slash combo's
-       lagging blades). The procedural blade stays the fallback while the
-       GLB streams, and for opts.procedural. */
+       lagging blades). No procedural blade any more (NO STAND-INS,
+       2026-10-05): _sigBuildSword hands back an empty holder until it lands. */
     function _sigSwordMeshy(opts) {
-        if (opts.procedural || !_wpnReady('sword')) return null;
+        if (!_wpnReady('sword')) return null;
         var len = opts.len || 260;
         var L = len * 1.27;                       /* tip → pommel, as the procedural's */
         function framed(inst) {
@@ -11777,162 +11801,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     function _sigBuildSword(opts) {
         opts = opts || {};
-        if (typeof _sigSwordMeshy === 'function') {
-            var meshy = _sigSwordMeshy(opts);
-            if (meshy) return meshy;
-        }
+        var meshy = _sigSwordMeshy(opts);
+        if (meshy) return meshy;
+        /* NO STAND-INS (2026-10-05, the user: "i would rather the spells load without a model than with those shitty
+           blocky simplistic versions"): the procedural blade is GONE. The master sword GLB or an empty holder (the
+           callers' glow, streaks and sparks still play; the loading screen loads the sword first). */
         var len = opts.len || 260;
-        var half = len * 0.052;              /* slim semi-realistic blade */
-        var group = new THREE.Group();
-
-        /* blade profile: needle tip → long sweep out → widest at ~58% →
-           gentle taper back in → shoulder notch → ricasso into the guard */
-        var shape = new THREE.Shape();
-        shape.moveTo(0, 0);
-        shape.quadraticCurveTo(half * 0.5, len * 0.09, half * 0.86, len * 0.26);
-        shape.quadraticCurveTo(half * 1.06, len * 0.58, half * 0.88, len * 0.93);
-        shape.lineTo(half * 0.52, len * 0.955);
-        shape.lineTo(half * 0.52, len);
-        shape.lineTo(-half * 0.52, len);
-        shape.lineTo(-half * 0.52, len * 0.955);
-        shape.lineTo(-half * 0.88, len * 0.93);
-        shape.quadraticCurveTo(-half * 1.06, len * 0.58, -half * 0.86, len * 0.26);
-        shape.quadraticCurveTo(-half * 0.5, len * 0.09, 0, 0);
-        var bladeGeo = new THREE.ExtrudeGeometry(shape, {
-            depth: half * 0.30, bevelEnabled: true, curveSegments: 8,
-            bevelThickness: half * 0.30, bevelSize: half * 0.34, bevelSegments: 2,
-        });
-        bladeGeo.translate(0, 0, -half * 0.15);
-        var bladePx = _cfg().tileSize || 128;
-        _sigScaleUVs(bladeGeo, 1 / bladePx, 1 / bladePx, 0.5 - (half / bladePx), 0);
-
-        var bladeMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(opts.bladeColor != null ? opts.bladeColor : 0xdfe7f2),
-            transparent: true, opacity: 1, depthWrite: true,
-        });
-        if (opts.hologram) {
-            bladeMat.blending = THREE.AdditiveBlending;
-            bladeMat.depthWrite = false;
-        } else {
-            /* pixel-sprite blade cladding (metal/gold/obsidian/... terrain) */
-            bladeMat.map = _sigTerrainTex(opts.bladeTex || 'metal.png', 1, 1);
-        }
-        var blade = new THREE.Mesh(bladeGeo, bladeMat);
-        blade.renderOrder = 160;
-        group.add(blade);
-
-        /* tight additive shell hugging the blade = edge glow (no longer a
-           fat 2.4x balloon — reads as a honed, humming edge) */
-        var glowMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
-        var glowShell = new THREE.Mesh(bladeGeo.clone(), glowMat);
-        glowShell.scale.set(1.14, 1.015, 1.7);
-        glowShell.renderOrder = 159;
-        group.add(glowShell);
-
-        /* energy fuller — a thin glowing groove up the middle of both faces,
-           plus a strip of runic script that brightens with glowBoost */
-        var fullerMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
-        var runeMat = _sigMat(0xffffff, { map: _sigRuneStripTex() });
-        for (var bf = 0; bf < 2; bf++) {
-            var zf = (bf === 0 ? 1 : -1) * half * 0.52;
-            var fuller = new THREE.Mesh(new THREE.PlaneGeometry(half * 0.28, len * 0.66), fullerMat);
-            fuller.position.set(0, len * 0.52, zf);
-            if (bf === 1) fuller.rotation.y = Math.PI;
-            fuller.renderOrder = 161;
-            group.add(fuller);
-            var runes = new THREE.Mesh(new THREE.PlaneGeometry(half * 0.9, len * 0.5), runeMat);
-            runes.position.set(0, len * 0.55, zf * 1.04);
-            if (bf === 1) runes.rotation.y = Math.PI;
-            runes.renderOrder = 162;
-            group.add(runes);
-        }
-
-        var metalColor = opts.guardColor != null ? opts.guardColor : 0xc9a227;
-        var guardMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(metalColor),
-            transparent: true, opacity: 1, depthWrite: true,
-        });
-        if (!opts.hologram) guardMat.map = _sigTerrainTex(opts.guardTex || 'metal.png', 1, 1);
-        /* stitched-leather wrapped grip (real leather sprite) */
-        var wrapMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(opts.gripColor != null ? opts.gripColor : 0xb9a88f),
-            transparent: true, opacity: 1, depthWrite: true,
-        });
-        if (!opts.hologram) wrapMat.map = _sigTerrainTex('leather.png', 1, 1);
-
-        /* swept crossguard: hub block + two down-swept quillons with tips */
-        var hubGeo = new THREE.BoxGeometry(half * 1.5, len * 0.045, half * 0.9);
-        _sigScaleUVs(hubGeo, 0.5, 0.5, 0.25, 0.25);
-        var hub = new THREE.Mesh(hubGeo, guardMat);
-        hub.position.y = len * 1.005; hub.renderOrder = 160;
-        group.add(hub);
-        for (var q = 0; q < 2; q++) {
-            var sgn = q === 0 ? 1 : -1;
-            var quGeo = new THREE.BoxGeometry(half * 2.3, len * 0.028, half * 0.42);
-            _sigScaleUVs(quGeo, 0.5, 0.5, 0.25, 0.25);
-            var qu = new THREE.Mesh(quGeo, guardMat);
-            qu.position.set(sgn * half * 1.75, len * 0.99, 0);
-            qu.rotation.z = sgn * -0.34;      /* swept down toward the blade */
-            qu.renderOrder = 160;
-            group.add(qu);
-            var tipGeo = new THREE.SphereGeometry(half * 0.26, 8, 6);
-            _sigScaleUVs(tipGeo, 0.5, 0.5, 0.25, 0.25);
-            var qtip = new THREE.Mesh(tipGeo, guardMat);
-            qtip.position.set(sgn * half * 2.85, len * 0.99 - half * 1.0 * 0.34, 0);
-            qtip.renderOrder = 160;
-            group.add(qtip);
-        }
-
-        /* two-hand grip with wrap rings */
-        var gripGeo = new THREE.CylinderGeometry(half * 0.30, half * 0.36, len * 0.20, 10);
-        _sigScaleUVs(gripGeo, 0.5, 0.5, 0.25, 0.25);
-        var grip = new THREE.Mesh(gripGeo, wrapMat);
-        grip.position.y = len * 1.115; grip.renderOrder = 160;
-        group.add(grip);
-        for (var wr = 0; wr < 3; wr++) {
-            var ringGeo = new THREE.TorusGeometry(half * 0.36, half * 0.075, 6, 12);
-            _sigScaleUVs(ringGeo, 0.5, 0.5, 0.25, 0.25);
-            var ring = new THREE.Mesh(ringGeo, guardMat);
-            ring.rotation.x = Math.PI / 2;
-            ring.position.y = len * (1.055 + wr * 0.055);
-            ring.renderOrder = 160;
-            group.add(ring);
-        }
-
-        /* faceted counterweight pommel + spike */
-        var pomGeo = new THREE.SphereGeometry(half * 0.5, 6, 5);
-        _sigScaleUVs(pomGeo, 0.5, 0.5, 0.25, 0.25);
-        var pommel = new THREE.Mesh(pomGeo, guardMat);
-        pommel.position.y = len * 1.235; pommel.renderOrder = 160;
-        group.add(pommel);
-        var spikeGeo = new THREE.ConeGeometry(half * 0.24, half * 0.9, 6);
-        _sigScaleUVs(spikeGeo, 0.5, 0.5, 0.25, 0.25);
-        var spike = new THREE.Mesh(spikeGeo, guardMat);
-        spike.position.y = len * 1.235 + half * 0.85;
-        spike.renderOrder = 160;
-        group.add(spike);
-
-        /* guard gem — soul core, front and back */
-        var gemMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0x88bbff);
-        for (var gz = 0; gz < 2; gz++) {
-            var gem = new THREE.Mesh(new THREE.SphereGeometry(half * 0.34, 8, 8), gemMat);
-            gem.position.set(0, len * 1.005, (gz === 0 ? 1 : -1) * half * 0.62);
-            gem.renderOrder = 162;
-            group.add(gem);
-        }
-
-        var holoBase = opts.hologram ? 0.42 : 1;
-        function setFade(f, glowBoost) {
-            bladeMat.opacity = holoBase * f;
-            glowMat.opacity = (0.30 + 0.42 * (glowBoost || 0)) * f;
-            fullerMat.opacity = (0.5 + 0.5 * (glowBoost || 0)) * f;
-            runeMat.opacity = (0.35 + 0.6 * (glowBoost || 0)) * f;
-            guardMat.opacity = (opts.hologram ? 0.5 : 1) * f;
-            wrapMat.opacity = (opts.hologram ? 0.4 : 1) * f;
-            gemMat.opacity = (0.75 + 0.25 * (glowBoost || 0)) * f;
-        }
-        setFade(0);
-        return { group: group, setFade: setFade, hiltY: len * 1.15, bladeGeo: bladeGeo };
+        return { group: new THREE.Group(), setFade: function () {}, hiltY: len * 1.27 * 0.86, empty: true,
+                 ghost: function () { return new THREE.Group(); } };
     }
 
     /* ── HERO: "stand summon" greatsword — materializes over the target
@@ -13065,9 +12941,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tw = _worldPos(toTx, toTy);
         var ts = fw.ts;
 
-        /* the carriage's three materials are made only on the procedural
-           path (a material no mesh wears is one _sigDisposeGroup never sees) */
-        var ironMat = null, woodMat = null, brassMat = null;
 
         var root = new THREE.Group();
         root.position.set(fw.x, fw.y, fw.z);
@@ -13085,8 +12958,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         /* 2026-09-12 GLB-first: the iron-cannon model is the gun when cached
            (it rides in `root`, so the scale-in, the recoil and the fade drive
-           both builds alike; the muzzle anchor sits at its mouth); the
-           carriage below is the cold-cache fallback. */
+           both builds alike; the muzzle anchor sits at its mouth). */
         var muzzle = new THREE.Object3D();
         var inst = _wpnReady('cannon') ? _wpnInstance('cannon', ts * 1.05) : null;
         if (inst) {
@@ -13097,45 +12969,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             root.add(muzzle);
             inst.setFade(0);
         } else {
-        ironMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gunmetal.png', 1, 1),
-            color: new THREE.Color(0x9299a4),      /* darkened gunmetal = cast iron */
-            transparent: true, opacity: 0, depthWrite: true,
-        });
-        woodMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('wood_planks.png', 1, 1),
-            color: new THREE.Color(0x9a744c),
-            transparent: true, opacity: 0, depthWrite: true,
-        });
-        brassMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gold.png', 1, 1),
-            color: new THREE.Color(0xd9b25e),
-            transparent: true, opacity: 0, depthWrite: true,
-        });
-        /* barrel assembly pivots at the trunnions for elevation */
-        var barrel = new THREE.Group();
-        barrel.position.y = ts * 0.16;
-        barrel.add(m(new THREE.SphereGeometry(ts * 0.075, 8, 7), ironMat, 0, 0, -ts * 0.34));                    /* cascabel */
-        barrel.add(m(new THREE.CylinderGeometry(ts * 0.105, ts * 0.125, ts * 0.5, 12), ironMat, 0, 0, -ts * 0.04, Math.PI / 2));
-        barrel.add(m(new THREE.CylinderGeometry(ts * 0.082, ts * 0.10, ts * 0.42, 12), ironMat, 0, 0, ts * 0.40, Math.PI / 2));
-        barrel.add(m(new THREE.TorusGeometry(ts * 0.092, ts * 0.022, 8, 16), brassMat, 0, 0, ts * 0.585));       /* muzzle ring */
-        barrel.add(m(new THREE.TorusGeometry(ts * 0.122, ts * 0.02, 8, 16), brassMat, 0, 0, -ts * 0.235));       /* breech ring */
-        barrel.add(m(new THREE.CylinderGeometry(ts * 0.03, ts * 0.03, ts * 0.36, 8), ironMat, 0, 0, -ts * 0.02, 0, 0, Math.PI / 2)); /* trunnion */
-        muzzle.position.set(0, 0, ts * 0.62);
-        barrel.add(muzzle);
-        barrel.rotation.x = -(opts.elev != null ? opts.elev : 0.30);
-        root.add(barrel);
-        /* carriage: cheeks, axle, wheels */
-        root.add(m(new THREE.BoxGeometry(ts * 0.055, ts * 0.20, ts * 0.5), woodMat, -ts * 0.135, ts * 0.06, -ts * 0.04));
-        root.add(m(new THREE.BoxGeometry(ts * 0.055, ts * 0.20, ts * 0.5), woodMat, ts * 0.135, ts * 0.06, -ts * 0.04));
-        root.add(m(new THREE.BoxGeometry(ts * 0.22, ts * 0.05, ts * 0.4), woodMat, 0, ts * 0.0, -ts * 0.05));
-        root.add(m(new THREE.CylinderGeometry(ts * 0.028, ts * 0.028, ts * 0.5, 8), ironMat, 0, ts * 0.02, ts * 0.10, 0, 0, Math.PI / 2));
-        for (var wsd = 0; wsd < 2; wsd++) {
-            var wx = (wsd === 0 ? -1 : 1) * ts * 0.245;
-            root.add(m(new THREE.CylinderGeometry(ts * 0.145, ts * 0.145, ts * 0.045, 12), woodMat, wx, ts * 0.02, ts * 0.10, 0, 0, Math.PI / 2));
-            root.add(m(new THREE.TorusGeometry(ts * 0.145, ts * 0.018, 8, 16), ironMat, wx, ts * 0.02, ts * 0.10, 0, Math.PI / 2));
-            root.add(m(new THREE.SphereGeometry(ts * 0.035, 8, 6), brassMat, wx, ts * 0.02, ts * 0.10));
-        }
+            /* NO STAND-INS (2026-10-05): no procedural carriage — the ball still flies from the muzzle's place */
+            muzzle.position.set(0, ts * 0.52, ts * 0.50);
+            root.add(muzzle);
         }
         /* the cannonball */
         var ballMat = new THREE.MeshBasicMaterial({
@@ -13198,7 +13034,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el >= total - fadeMs) {
                 vis = Math.max(0, 1 - (el - (total - fadeMs)) / fadeMs);
             }
-            if (ironMat) { ironMat.opacity = vis; woodMat.opacity = vis; brassMat.opacity = vis; }
             if (inst) inst.setFade(vis);
 
             /* burning fuse sparks at the breech */
@@ -13306,8 +13141,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* Meshy GLB firearms: revolver / pistol / plasma (2026-07-13), and
            since 2026-07-25 the shotgun + sniper rifle are real models too —
            the full spectral arsenal. Muzzle sits at the +Z tip like the
-           procedural guns, so the rig's recoil/flash/tracer code is
-           unchanged. Falls through to procedural while the GLB loads. */
+           old procedural guns did, so the rig's recoil/flash/tracer code is
+           unchanged. */
         var GLB_GUN_LEN = { revolver: 0.85, pistol: 0.75, plasma: 1.05,
                             shotgun: 1.15, sniper: 1.45 };
         if (GLB_GUN_LEN[kind] && _wpnReady(kind)) {
@@ -13323,102 +13158,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                          drum: null, pump: null, lens: null, pumpBaseZ: 0, steelMat: null };
             }
         }
-        /* procedural fallback shapes for the GLB-first kinds */
-        if (kind === 'pistol') kind = 'revolver';
-        else if (kind === 'plasma') kind = 'shotgun';
-        var steelMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gunmetal.png', 1, 1),
-            color: new THREE.Color(0xdfe4ec), transparent: true, opacity: 0, depthWrite: true,
-        });
-        var woodMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('wood.png', 1, 1),
-            color: new THREE.Color(0x6e4a2e), transparent: true, opacity: 0, depthWrite: true,
-        });
-        var brassMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gold.png', 1, 1),
-            color: new THREE.Color(0xd9b25e), transparent: true, opacity: 0, depthWrite: true,
-        });
-        var gun = new THREE.Group();
-        function m2(geo, mat, x, y, z, rx, ry, rz) {
-            var mm = new THREE.Mesh(geo, mat);
-            mm.position.set(x, y, z);
-            mm.rotation.set(rx || 0, ry || 0, rz || 0);
-            mm.renderOrder = 160;
-            gun.add(mm);
-            return mm;
-        }
-        var muzzleZ, drum = null, pump = null, lens = null;
-        if (kind === 'revolver') {
-            muzzleZ = ts * 0.74;
-            m2(new THREE.CylinderGeometry(ts * 0.042, ts * 0.045, ts * 0.62, 10), steelMat, 0, ts * 0.055, ts * 0.42, Math.PI / 2);
-            m2(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 0.44, 8), steelMat, 0, ts * 0.005, ts * 0.36, Math.PI / 2);
-            m2(new THREE.BoxGeometry(ts * 0.02, ts * 0.045, ts * 0.02), steelMat, 0, ts * 0.105, ts * 0.70);
-            m2(new THREE.BoxGeometry(ts * 0.075, ts * 0.13, ts * 0.28), steelMat, 0, ts * 0.02, ts * 0.02);
-            drum = m2(new THREE.CylinderGeometry(ts * 0.082, ts * 0.082, ts * 0.17, 12), steelMat, 0, ts * 0.045, ts * 0.10, Math.PI / 2);
-            for (var ch = 0; ch < 6; ch++) {
-                var ca = ch * Math.PI / 3;
-                var bore = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.018, ts * 0.175, 6),
-                    new THREE.MeshBasicMaterial({ color: 0x14161a, transparent: true, opacity: 0, depthWrite: true }));
-                bore.position.set(Math.cos(ca) * ts * 0.05, ts * 0.045 + Math.sin(ca) * ts * 0.05, ts * 0.10);
-                bore.rotation.x = Math.PI / 2;
-                bore.renderOrder = 161;
-                gun.add(bore);
-                bore._ew_isBore = true;
-            }
-            m2(new THREE.BoxGeometry(ts * 0.055, ts * 0.03, ts * 0.24), steelMat, 0, ts * 0.115, ts * 0.06);
-            m2(new THREE.BoxGeometry(ts * 0.03, ts * 0.07, ts * 0.035), brassMat, 0, ts * 0.10, -ts * 0.135, -0.6);
-            m2(new THREE.BoxGeometry(ts * 0.06, ts * 0.20, ts * 0.10), woodMat, 0, -ts * 0.115, -ts * 0.135, 0.42);
-            var tg = m2(new THREE.TorusGeometry(ts * 0.045, ts * 0.011, 6, 12), brassMat, 0, -ts * 0.055, ts * 0.02, 0, Math.PI / 2);
-            tg.renderOrder = 160;
-        } else if (kind === 'shotgun') {
-            muzzleZ = ts * 0.95;
-            m2(new THREE.CylinderGeometry(ts * 0.036, ts * 0.038, ts * 0.95, 10), steelMat, 0, ts * 0.05, ts * 0.45, Math.PI / 2);
-            m2(new THREE.CylinderGeometry(ts * 0.028, ts * 0.028, ts * 0.72, 8), steelMat, 0, -ts * 0.012, ts * 0.36, Math.PI / 2);
-            m2(new THREE.SphereGeometry(ts * 0.012, 6, 5), brassMat, 0, ts * 0.09, ts * 0.92);
-            pump = m2(new THREE.CylinderGeometry(ts * 0.052, ts * 0.052, ts * 0.24, 10), woodMat, 0, ts * 0.015, ts * 0.42, Math.PI / 2);
-            m2(new THREE.BoxGeometry(ts * 0.075, ts * 0.115, ts * 0.32), steelMat, 0, ts * 0.02, -ts * 0.05);
-            m2(new THREE.PlaneGeometry(ts * 0.10, ts * 0.05), brassMat, ts * 0.039, ts * 0.03, -ts * 0.02, 0, Math.PI / 2);
-            m2(new THREE.BoxGeometry(ts * 0.06, ts * 0.11, ts * 0.34), woodMat, 0, -ts * 0.035, -ts * 0.36, 0.16);
-            var tg2 = m2(new THREE.TorusGeometry(ts * 0.045, ts * 0.011, 6, 12), brassMat, 0, -ts * 0.05, -ts * 0.10, 0, Math.PI / 2);
-            tg2.renderOrder = 160;
-        } else { /* sniper */
-            muzzleZ = ts * 1.25;
-            m2(new THREE.CylinderGeometry(ts * 0.026, ts * 0.030, ts * 1.15, 10), steelMat, 0, ts * 0.03, ts * 0.62, Math.PI / 2);
-            m2(new THREE.CylinderGeometry(ts * 0.042, ts * 0.042, ts * 0.11, 8), steelMat, 0, ts * 0.03, ts * 1.19, Math.PI / 2);
-            m2(new THREE.BoxGeometry(ts * 0.065, ts * 0.10, ts * 0.40), steelMat, 0, ts * 0.015, -ts * 0.02);
-            /* scope */
-            m2(new THREE.CylinderGeometry(ts * 0.042, ts * 0.042, ts * 0.34, 10), steelMat, 0, ts * 0.125, ts * 0.04, Math.PI / 2);
-            m2(new THREE.TorusGeometry(ts * 0.046, ts * 0.012, 6, 12), steelMat, 0, ts * 0.125, ts * 0.215);
-            m2(new THREE.BoxGeometry(ts * 0.022, ts * 0.05, ts * 0.03), steelMat, 0, ts * 0.075, ts * 0.10);
-            m2(new THREE.BoxGeometry(ts * 0.022, ts * 0.05, ts * 0.03), steelMat, 0, ts * 0.075, -ts * 0.03);
-            lens = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.035, 10), _sigMat(0x77e0ff));
-            lens.position.set(0, ts * 0.125, ts * 0.222);
-            lens.renderOrder = 162;
-            gun.add(lens);
-            /* bolt handle */
-            m2(new THREE.CylinderGeometry(ts * 0.010, ts * 0.010, ts * 0.07, 6), steelMat, ts * 0.055, ts * 0.04, -ts * 0.08, 0, 0, Math.PI / 2);
-            m2(new THREE.SphereGeometry(ts * 0.018, 6, 5), brassMat, ts * 0.095, ts * 0.04, -ts * 0.08);
-            /* stock + cheek riser */
-            m2(new THREE.BoxGeometry(ts * 0.055, ts * 0.10, ts * 0.36), woodMat, 0, -ts * 0.025, -ts * 0.38, 0.14);
-            m2(new THREE.BoxGeometry(ts * 0.05, ts * 0.045, ts * 0.16), woodMat, 0, ts * 0.055, -ts * 0.33);
-            /* bipod */
-            m2(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.30, 6), steelMat, ts * 0.05, -ts * 0.10, ts * 0.75, 0.35, 0, 0.5);
-            m2(new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.30, 6), steelMat, -ts * 0.05, -ts * 0.10, ts * 0.75, 0.35, 0, -0.5);
-        }
-        var muzzle = new THREE.Object3D();
-        muzzle.position.set(0, kind === 'sniper' ? ts * 0.03 : ts * 0.05, muzzleZ);
-        gun.add(muzzle);
-
-        function setFade(f) {
-            steelMat.opacity = f; woodMat.opacity = f; brassMat.opacity = f;
-            gun.traverse(function (o) {
-                if (o._ew_isBore) o.material.opacity = f;
-            });
-            if (lens) lens.material.opacity = 0.6 * f;
-        }
-        setFade(0);
-        return { group: gun, setFade: setFade, muzzle: muzzle, drum: drum, pump: pump, lens: lens,
-                 pumpBaseZ: pump ? pump.position.z : 0, steelMat: steelMat };
+        /* NO STAND-INS (2026-10-05): the procedural guns are GONE — an empty holder with the muzzle where the GLB's
+           would sit (the tracer and the flash still leave from it; the loading screen loads every gun) */
+        var holder = new THREE.Group();
+        var hMuzzle = new THREE.Object3D();
+        hMuzzle.position.set(0, ts * 0.04, ts * (GLB_GUN_LEN[kind] || 1) * 0.55);
+        holder.add(hMuzzle);
+        return { group: holder, setFade: function () {}, muzzle: hMuzzle,
+                 drum: null, pump: null, lens: null, pumpBaseZ: 0, steelMat: null, empty: true };
     }
 
     function _sigGunRig3D(kind, fromTx, fromTy, toTx, toTy, opts) {
@@ -13760,43 +13507,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         aim.add(limbGlow);
         var glowMat = limbGlow.material;
 
-        /* the arrow: real GLB, or a procedural shaft while it loads */
+        /* the arrow: the GLB or nothing (NO STAND-INS, 2026-10-05) */
         var arrowG = new THREE.Group();
         var arrowInst = _wpnReady('arrow') ? _wpnInstance('arrow', ts * 0.95) : null;
-        var arrowMats = [];
-        if (arrowInst) {
-            arrowG.add(arrowInst.group);
-        } else {
-            var shaftMat = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex('wood.png', 1, 1),
-                color: new THREE.Color(0x9a7a4c), transparent: true, opacity: 0, depthWrite: true,
-            });
-            arrowMats.push(shaftMat);
-            var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.014, ts * 0.014, ts * 0.8, 6), shaftMat);
-            shaft.rotation.x = Math.PI / 2;
-            arrowG.add(shaft);
-            var headMat = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex('metal.png', 1, 1),
-                color: new THREE.Color(0xd0d6e0), transparent: true, opacity: 0, depthWrite: true,
-            });
-            arrowMats.push(headMat);
-            var head = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.035, ts * 0.12, 6), headMat);
-            head.rotation.x = Math.PI / 2;
-            head.position.z = ts * 0.45;
-            arrowG.add(head);
-            var flMat = _sigMat(color);
-            arrowMats.push(flMat);
-            for (var fl = 0; fl < 2; fl++) {
-                var fletch = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.07, ts * 0.16), flMat);
-                fletch.position.z = -ts * 0.34;
-                fletch.rotation.z = fl * Math.PI / 2;
-                arrowG.add(fletch);
-            }
-        }
-        function arrowFade(f) {
-            if (arrowInst) { arrowInst.setFade(f); return; }
-            for (var i = 0; i < arrowMats.length; i++) arrowMats[i].opacity = f;
-        }
+        if (arrowInst) arrowG.add(arrowInst.group);
+        function arrowFade(f) { if (arrowInst) arrowInst.setFade(f); }
         aim.add(arrowG);
 
         var matMs = 100, drawMs = 260;
@@ -13877,17 +13592,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var useGlb = _wpnReady('arrow');
         var count = 7 + R * 5;
         var arrows = [];
-        var shaftMat = null, headMat = null;
-        if (!useGlb) {
-            shaftMat = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex('wood.png', 1, 1),
-                color: new THREE.Color(0x9a7a4c), transparent: true, opacity: 1, depthWrite: true,
-            });
-            headMat = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex('metal.png', 1, 1),
-                color: new THREE.Color(0xd0d6e0), transparent: true, opacity: 1, depthWrite: true,
-            });
-        }
         for (var i = 0; i < count; i++) {
             /* random tile in the Manhattan diamond + sub-tile jitter */
             var dx = Math.round(rn(-R, R));
@@ -13901,16 +13605,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var inst = _wpnInstance('arrow', ts * 0.9);
                 if (inst) { holder.add(inst.group); setF = inst.setFade; }
             }
-            if (!setF) {
-                var sh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.013, ts * 0.013, ts * 0.75, 5), shaftMat);
-                sh.rotation.x = Math.PI / 2;
-                holder.add(sh);
-                var hd = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.032, ts * 0.11, 5), headMat);
-                hd.rotation.x = Math.PI / 2;
-                hd.position.z = ts * 0.42;
-                holder.add(hd);
-                setF = null;   /* fallback fades via the two shared mats */
-            }
+            /* NO STAND-INS (2026-10-05): no GLB → an empty holder (the landing dust still kicks) */
             /* point the shaft straight down (+Z → -Y) with a little scatter */
             holder.rotation.x = Math.PI / 2 + rn(-0.14, 0.14);
             holder.rotation.z = rn(-0.14, 0.14);
@@ -13927,7 +13622,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = 420 + 170 + holdMs + fadeMs;
         _sigRunOwned(g, total, function (el) {
             var groupF = el > total - fadeMs ? Math.max(0, (total - el) / fadeMs) : 1;
-            if (shaftMat) { shaftMat.opacity = groupF; headMat.opacity = groupF; }
             for (var i = 0; i < arrows.length; i++) {
                 var a = arrows[i];
                 var lt = el - a.delay;
@@ -13970,28 +13664,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.position.set(wp.x, wp.y, wp.z);
         var potH = ts * 0.72;
         var pot = _wpnReady('cauldron') ? _wpnInstance('cauldron', potH) : null;
-        var potMat = null;
-        if (pot) {
+        if (pot) {   /* the cauldron GLB or nothing (NO STAND-INS, 2026-10-05) */
             pot.group.position.y = potH * 0.5;   /* centered instance → sit on the tile */
             g.add(pot.group);
-        } else {
-            /* fallback: squat iron pot on three stub legs */
-            potMat = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex('obsidian.png', 1, 1),
-                color: new THREE.Color(0x3a3a42), transparent: true, opacity: 0, depthWrite: true,
-            });
-            var body = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.32, 12, 9), potMat);
-            body.scale.y = 0.8; body.position.y = ts * 0.30;
-            g.add(body);
-            var rim = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.25, ts * 0.045, 8, 16), potMat);
-            rim.rotation.x = Math.PI / 2; rim.position.y = ts * 0.52;
-            g.add(rim);
-            for (var L = 0; L < 3; L++) {
-                var leg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.028, ts * 0.038, ts * 0.14, 6), potMat);
-                var la = L * 2.1;
-                leg.position.set(Math.cos(la) * ts * 0.19, ts * 0.07, Math.sin(la) * ts * 0.19);
-                g.add(leg);
-            }
         }
         /* glowing brew surface just under the rim */
         var brewMat = _sigMat(coreColor, { map: _sigGlowTex() });
@@ -14020,7 +13695,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } else {
                 op = 1 - (el - inMs - holdMs) / fadeMs;
             }
-            if (pot) pot.setFade(op); else potMat.opacity = op;
+            if (pot) pot.setFade(op);
             brewMat.opacity = op * (0.5 + 0.3 * Math.sin(el * 0.008));
             /* bubbles popping off the brew */
             bubbleAcc += dt;
@@ -14501,8 +14176,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var group = new THREE.Group();
 
         /* GLB-first (2026-08-15): the misc-bucket Triangle UFO is the hull
-           when cached; the procedural lathe saucer below stays the cold-
-           cache fallback. The running-light ring + under-glow are kept as
+           when cached. The running-light ring + under-glow are kept as
            procedural accents around the model, and hullMat becomes a proxy
            whose .opacity writes drive the GLB's fade — so the three flight
            rigs (_sigUFO3D / _sigUFOHold3D / _sigUFOFleet3D) animate both
@@ -14543,61 +14217,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
-        var pts = [
-            new THREE.Vector2(0.0, -0.16),
-            new THREE.Vector2(0.35, -0.14),
-            new THREE.Vector2(0.75, -0.08),
-            new THREE.Vector2(1.0, 0.0),
-            new THREE.Vector2(0.78, 0.10),
-            new THREE.Vector2(0.45, 0.16),
-            new THREE.Vector2(0.0, 0.18),
-        ];
-        /* riveted-steel pixel cladding — the same metal sprite the turrets
-           wear, so the saucer sits in the board's art style */
-        var hullMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0xd0d4dc), map: _sigTerrainTex('metal.png', 3, 1),
-            transparent: true, opacity: 1, depthWrite: true,
-        });
-        var hull = new THREE.Mesh(new THREE.LatheGeometry(pts, 40), hullMat);
-        hull.renderOrder = 160;
-        group.add(hull);
-
-        var rimMat = _sigMat(0x9adcff);
-        var rim = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.03, 8, 48), rimMat);
-        rim.rotation.x = Math.PI / 2;
-        rim.renderOrder = 161;
-        group.add(rim);
-
-        var domeMat = _sigMat(0x9adcff);
-        var dome = new THREE.Mesh(
-            new THREE.SphereGeometry(0.34, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
-        dome.position.y = 0.14;
-        dome.renderOrder = 162;
-        group.add(dome);
-
-        var lights = [];
-        for (var i = 0; i < 10; i++) {
-            var lm = _sigMat(0xaaffcc);
-            var lite = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), lm);
-            var a = i * Math.PI * 2 / 10;
-            lite.position.set(Math.cos(a) * 0.88, -0.02, Math.sin(a) * 0.88);
-            lite.renderOrder = 162;
-            group.add(lite);
-            lights.push(lm);
-        }
-
-        var glowMat = _sigMat(0x66ff99, { map: _sigGlowTex() });
-        var glow = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), glowMat);
-        glow.rotation.x = -Math.PI / 2;
-        glow.position.y = -0.17;
-        glow.scale.set(0.8, 0.8, 0.8);
-        glow.renderOrder = 159;
-        group.add(glow);
-
+        /* NO STAND-INS (2026-10-05): the procedural lathe saucer is GONE — no GLB yet = an empty holder with the
+           same contract (the loading screen loads the UFO) */
         group.scale.set(radiusPx, radiusPx, radiusPx);
         return {
-            group: group, lights: lights,
-            hullMat: hullMat, rimMat: rimMat, domeMat: domeMat, glowMat: glowMat,
+            group: group, lights: [], empty: true,
+            hullMat: { opacity: 0 }, rimMat: { opacity: 0 }, domeMat: { opacity: 0 }, glowMat: { opacity: 0 },
         };
     }
 
@@ -15327,35 +14952,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var skulls = opts.skulls != null ? opts.skulls : 3;
         for (var i = 0; i < n; i++) {
             var piece = new THREE.Group();
-            /* 2026-07-25: hail the REAL femur/ulna/skull GLBs when they're
-               cached; the procedural knuckle-rods below are the fallback */
+            /* 2026-07-25: hail the REAL femur/ulna/skull GLBs; NO STAND-INS (2026-10-05): no knuckle-rods — no GLB, no bone */
             var glbBone = _wpnBonePiece(ts, i < skulls);
-            if (glbBone) {
-                piece.add(glbBone.group);
-                glbInsts.push(glbBone);
-            } else if (i < skulls) {
-                /* mini skull: cranium + jaw + eye sockets */
-                var sR = ts * (0.09 + Math.random() * 0.05);
-                piece.add(new THREE.Mesh(new THREE.SphereGeometry(sR, 8, 6), boneMat));
-                var jaw = new THREE.Mesh(new THREE.BoxGeometry(sR * 1.1, sR * 0.7, sR * 1.0), boneMat);
-                jaw.position.set(0, -sR * 0.55, sR * 0.2);
-                piece.add(jaw);
-                for (var e2 = -1; e2 <= 1; e2 += 2) {
-                    var sock = new THREE.Mesh(new THREE.SphereGeometry(sR * 0.24, 5, 4), sockMat);
-                    sock.position.set(e2 * sR * 0.38, sR * 0.02, sR * 0.8);
-                    piece.add(sock);
-                }
-            } else {
-                /* knuckled bone rod */
-                var len = ts * (0.18 + Math.random() * 0.16);
-                var rad = ts * (0.024 + Math.random() * 0.012);
-                piece.add(new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, len, 6), boneMat));
-                for (var k = -1; k <= 1; k += 2) {
-                    var knob = new THREE.Mesh(new THREE.SphereGeometry(rad * 1.7, 6, 5), boneMat);
-                    knob.position.y = k * len / 2;
-                    piece.add(knob);
-                }
-            }
+            if (!glbBone) continue;
+            piece.add(glbBone.group);
+            glbInsts.push(glbBone);
             var ang = Math.random() * Math.PI * 2;
             var rr = Math.sqrt(Math.random()) * R;
             var p = {
@@ -15492,28 +15093,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group();
         var baseY = wp.y + ts * 0.5;
         g.position.set(wp.x, baseY, wp.z);
-        /* the REAL orb — Meshy crystal-ball GLB (2026-07-13). The procedural
-           brass stand + glass sphere survive only as the fallback while the
-           model loads / when weapon GLBs are disabled. */
+        /* the REAL orb — Meshy crystal-ball GLB (2026-07-13), or nothing (NO STAND-INS, 2026-10-05) */
         var orb = _wpnReady('crystalBall') ? _wpnInstance('crystalBall', ts * 0.85) : null;
-        var standMat = null, glassMat = null;
-        if (orb) {
-            g.add(orb.group);
-        } else {
-            /* brass stand */
-            standMat = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex('gold.png', 1, 1), color: new THREE.Color(0xc8a850),
-                transparent: true, opacity: 0, depthWrite: true,
-            });
-            var stand = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.55, R * 0.8, R * 0.5, 10), standMat);
-            stand.position.y = -R * 1.05;
-            g.add(stand);
-            /* the glass */
-            glassMat = _sigMat(0xaee6ff);
-            var glass = new THREE.Mesh(new THREE.SphereGeometry(R, 18, 14), glassMat);
-            glass.renderOrder = 161;
-            g.add(glass);
-        }
+        if (orb) g.add(orb.group);
         /* the vision fog inside — tipped toward the diorama camera */
         var fogMat = _sigMat(0xc79bff, { map: _sigGlowTex() });
         var fog = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.7, R * 1.7), fogMat);
@@ -15536,9 +15118,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (orb) {
                 orb.setFade(op);
                 orb.group.rotation.y += 0.006;   /* the vision slowly turns */
-            } else {
-                glassMat.opacity = op * 0.38;
-                standMat.opacity = op * 0.9;
             }
             fog.rotation.z += 0.02;
             var nearFlash = Math.max(0, 1 - Math.abs(el - flashAt) / 220);
@@ -25550,7 +25129,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                      opening along the face, dust kicked up tile by tile,
                      a cold light at the mouth (x.only = one body's tile: the
                      chain's short gust). ARCHERS — three arrows (the Meshy
-                     `arrow`, a procedural shaft while it streams) loosed from
+                     `arrow`, only its trail while it streams) loosed from
                      the opening one after another, arcing onto the target,
                      each landing a spark burst + a light (x.miss: a puff at
                      the lamps, nobody in reach)
@@ -25635,19 +25214,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var useGlb = _wpnReady('arrow');
         if (!useGlb) { try { _wpnLoad('arrow'); } catch (e) {} }
         var g = new THREE.Group();
-        var shaftMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9a7a4c), transparent: true, opacity: 1 });
-        var headMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xd0d6e0), transparent: true, opacity: 1 });
         var trailMat = _sigMat(col);
         var arrows = [];
         for (var i = 0; i < n; i++) {
             var holder = new THREE.Group(), setF = null;
             if (useGlb) { var inst = _wpnInstance('arrow', ts * 0.7); if (inst) { holder.add(inst.group); setF = inst.setFade; } }
-            if (!setF) {
-                var sh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.6, 5), shaftMat);
-                sh.rotation.x = Math.PI / 2; holder.add(sh);
-                var hd = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.1, 5), headMat);
-                hd.rotation.x = Math.PI / 2; hd.position.z = ts * 0.34; holder.add(hd);
-            }
+            /* NO STAND-INS (2026-10-05): no procedural shaft — the GLB arrow or just its trail */
             var tr = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.04, ts * 0.5), trailMat);
             tr.rotation.x = Math.PI / 2; tr.position.z = -ts * 0.4; holder.add(tr);
             holder.visible = false; g.add(holder);
@@ -27141,13 +26713,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        its own and the guest would get the moon twice), the descent intent
        (the storm def's `storm: true`), the bolt intent (the trick shot).
        THE ROCKS: every falling / thrown rock is the D.O.O.R. kit's asteroid
-       GLB through _finRockBody (the icosahedron is the cold-cache fallback).
+       GLB through _finRockBody (an empty holder until it lands — no stand-in).
        Ownership: every group through _sigRunOwned, every timer through
        _fxDelay, sprites' geometry is Three's (never disposed). */
 
     /* a rock body: { group, glb, setFade } — the asteroid GLB normalized to
-       `diam` across and centre-pivoted, else a jostled icosahedron in the
-       boulder sheet (o.glbOnly → null instead of the fallback) */
+       `diam` across and centre-pivoted, else an empty holder (o.glbOnly →
+       null) */
     function _finRockBody(diam, o) {
         o = o || {};
         var key = o.key || (Math.random() < 0.5 ? 'asteroid' : 'asteroid2');
@@ -27159,21 +26731,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) { inst = null; }
         if (inst) { inst.setFade(1); return { group: inst.group, glb: true, setFade: inst.setFade }; }
         if (o.glbOnly) return null;
-        var geo = new THREE.IcosahedronGeometry(diam * 0.5, 1);
-        var pa = geo.getAttribute('position');
-        for (var i = 0; i < pa.count; i++) {
-            var vx = pa.getX(i), vy = pa.getY(i), vz = pa.getZ(i);
-            var nz = 1 + 0.22 * Math.sin(vx * 7.1 + vy * 10.3) * Math.cos(vz * 6.4 + vx * 3.7);
-            pa.setXYZ(i, vx * nz, vy * nz, vz * nz);
-        }
-        pa.needsUpdate = true;
-        geo.computeVertexNormals();
-        var mat = new THREE.MeshBasicMaterial({ map: _getBoulderTexture(), transparent: true, opacity: 1, depthWrite: true });
-        var mesh = new THREE.Mesh(geo, mat);
-        mesh.renderOrder = 160;
-        var g = new THREE.Group();
-        g.add(mesh);
-        return { group: g, glb: false, setFade: function (f) { mat.opacity = f; } };
+        /* NO STAND-INS (2026-10-05): the icosahedron rock is GONE — no asteroid yet = an empty holder (the trail,
+           glow and landing still play; the loading screen loads both asteroids) */
+        return { group: new THREE.Group(), glb: false, empty: true, setFade: function () {} };
     }
     function _finSprite(color, tex, size, order) {
         var sp = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -27378,11 +26938,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) { moon = null; }
         if (moon) {
             moon.traverse(function (n) { if (n.isMesh && n.material) { n.material.transparent = true; n.material.opacity = 0; moonMats.push(n.material); } });
-        } else {
-            var mm = new THREE.MeshBasicMaterial({ map: _getRocks4Texture(), color: new THREE.Color(0xd8d8d0), transparent: true, opacity: 0 });
-            moon = new THREE.Mesh(new THREE.SphereGeometry(diam * 0.5, 20, 14), mm);
-            moonMats.push(mm);
-        }
+        } else moon = new THREE.Group();   /* NO STAND-INS (2026-10-05): the moon GLB or nothing */
         var g = new THREE.Group();
         g.position.set(apex.x, apex.y, apex.z);
         g.add(moon);
@@ -27952,12 +27508,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var carG = new THREE.Group();
         if (sedan) { car = sedan; car.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); carG.add(car); }
         else if (car) { car.rotation.y = Math.PI / 2; car.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); carG.add(car); }   /* Meshy: long on X, nose −X → nose to local +Z */
-        else {
-            var body = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.42, carLen), _finBasic(0x3a86c8)); body.position.y = ts * 0.32; carG.add(body);
-            var cab = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, ts * 0.32, carLen * 0.5), _finBasic(0x9fd0ff)); cab.position.set(0, ts * 0.68, -ts * 0.1); carG.add(cab);
-            var wm = _finBasic(0x111111);
-            for (var w = 0; w < 4; w++) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.16, ts * 0.12, 12), wm); wh.rotation.z = Math.PI / 2; wh.position.set(w % 2 ? ts * 0.48 : -ts * 0.48, ts * 0.16, w < 2 ? carLen * 0.32 : -carLen * 0.32); carG.add(wh); }
-        }
+        /* NO STAND-INS (2026-10-05): no procedural box car — no model loaded = no car */
         /* THE ONE MODEL: the car lands as the building's crashed car (the
            misc `crashed_car`, the chicane's wreck) — swapped in on impact,
            only when the car itself was the Meshy one (one look, not two) */
@@ -28358,18 +27909,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hookAt = o.hookAt != null ? o.hookAt : 900, hitAt = o.hitAt != null ? o.hitAt : hookAt + 1900;
         var sailLen = (o.sailTiles || 22) * ts, hullLen = ts * 5.5, keelY = ts * 2.2;
         var g = new THREE.Group();
-        /* the ship: the wreck GLB (nose −X → turned to local +Z = the bow), else planks */
+        /* the ship: the wreck GLB (nose −X → turned to local +Z = the bow) */
         var ship = new THREE.Group(), glb = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('wreck', hullLen, 'center'); } catch (e) { glb = null; }
         if (glb) { glb.rotation.y = Math.PI / 2; glb.traverse(function (n) { if (n.isMesh && n.material) n.material.transparent = true; }); glb.position.y = ts * 0.9; ship.add(glb); }
-        else {
-            var wood = _finBasic(0x3a2618), sail = _finBasic(0x111318, { opacity: 0.92, side: THREE.DoubleSide });
-            var hull = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.6, ts * 1.1, hullLen), wood); hull.position.y = ts * 0.55; ship.add(hull);
-            var bow = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.8, ts * 1.6, 4), wood); bow.rotation.x = Math.PI / 2; bow.rotation.y = Math.PI / 4; bow.position.set(0, ts * 0.55, hullLen / 2 + ts * 0.7); ship.add(bow);
-            var mast = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.08, ts * 4.2, 8), wood); mast.position.y = ts * 3.1; ship.add(mast);
-            var sl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 2.4, ts * 2.2), sail); sl.position.set(0, ts * 3.4, ts * 0.05); ship.add(sl);
-            var flag = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 0.4), _finBasic(0xffffff, { map: _finTextTex('☠', { ink: '#ffffff', bg: '#101010', w: 256, h: 160, fontPx: 120 }), side: THREE.DoubleSide, depthWrite: false })); flag.position.set(ts * 0.36, ts * 5.1, 0); ship.add(flag);
-        }
+        /* NO STAND-INS (2026-10-05): no plank ship — the wreck GLB or nothing */
         var yaw = Math.atan2(-ux, -uz);   // the bow points from the victim toward the caster (local +Z)
         ship.rotation.y = yaw; g.add(ship);
         /* the rope + the body */
@@ -28645,16 +28189,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group();
         var chrome = _finBasic(0xdfe6ee), red = _finBasic(0xff2a2a, { additive: true });
         var pen = new THREE.Group();
-        var tube = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 0.5, 10), chrome); pen.add(tube);
         var capm = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 8, 6), red); capm.position.y = ts * 0.28; pen.add(capm);
         /* THE ONE MODEL: the pen is the office pen off the HQ desks (the
-           catalogue's `pen`, _crCatKey); the chrome tube is its fallback
-           while it streams. The red bulb stays at the tip — it is the flash. */
+           catalogue's `pen`, _crCatKey), or no pen (NO STAND-INS, 2026-10-05).
+           The red bulb stays at the tip — it is the flash. */
         var penKey = (typeof _crCatKey === 'function' && !_crOff()) ? _crCatKey('pen') : null;
         var penM = (penKey && _wpnReady(penKey)) ? _wpnInstance(penKey, ts * 0.5) : null;
         if (penM) {
             var penHold = new THREE.Group(); penHold.rotation.x = -Math.PI / 2;   // the long axis (+Z) stands up +Y like the tube
-            penHold.add(penM.group); pen.add(penHold); tube.visible = false;
+            penHold.add(penM.group); pen.add(penHold);
             penM.setFade(1);
         }
         pen.position.set(wpC.x, wpC.y + ts * 0.6, wpC.z); pen.rotation.z = 0.6; g.add(pen);
@@ -28666,12 +28209,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var carG = new THREE.Group(), car = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
         if (car) { car.rotation.y = Math.PI / 2; car.traverse(function (n) { if (n.isMesh && n.material) { n.material = n.material.clone(); n.material.transparent = true; if (n.material.color) n.material.color.multiplyScalar(0.35); } }); carG.add(car); }
-        else {
-            var black = _finBasic(0x0c0c10), glass = _finBasic(0x2a2a30);
-            var bd = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.4, ts * 2.1), black); bd.position.y = ts * 0.32; carG.add(bd);
-            var cab = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, ts * 0.3, ts * 1.0), glass); cab.position.set(0, ts * 0.66, -ts * 0.05); carG.add(cab);
-            for (var w = 0; w < 4; w++) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.16, ts * 0.12, 12), black); wh.rotation.z = Math.PI / 2; wh.position.set(w % 2 ? ts * 0.48 : -ts * 0.48, ts * 0.16, w < 2 ? ts * 0.7 : -ts * 0.7); carG.add(wh); }
-        }
+        /* NO STAND-INS (2026-10-05): no procedural box sedan */
         var lamp = _finBasic(0xfff4c0, { additive: true });
         for (var hl = 0; hl < 2; hl++) { var lm = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.07, 8, 6), lamp); lm.position.set(hl ? ts * 0.3 : -ts * 0.3, ts * 0.36, ts * 1.02); carG.add(lm); }
         var boot = new THREE.Group(); boot.position.set(0, ts * 0.52, -ts * 0.55);
@@ -29281,12 +28819,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < N; i++) {
             var a = i / N * Math.PI * 2, m = null;
             try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) m = ThreeRenderer.getMiscModelClone(i % 2 ? 'mushroom2' : 'mushroom', ts * 0.7, 'bottom'); } catch (e) { m = null; }
-            if (!m) {
-                m = new THREE.Group();
-                var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.09, ts * 0.5, 8), _finBasic(0xf2e8d0)); stem.position.y = ts * 0.25; m.add(stem);
-                var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.24, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), _finBasic(0xd83a2a)); cap.position.y = ts * 0.5; m.add(cap);
-                for (var d = 0; d < 3; d++) { var dot = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.04, 6, 4), _finBasic(0xffffff)); dot.position.set(Math.cos(d * 2.1) * ts * 0.15, ts * 0.62, Math.sin(d * 2.1) * ts * 0.15); m.add(dot); }
-            }
+            if (!m) m = new THREE.Group();   /* NO STAND-INS (2026-10-05): the mushroom GLB or nothing */
             m.position.set(Math.cos(a) * ts * 1.35, 0, Math.sin(a) * ts * 1.35); m.rotation.y = Math.random() * Math.PI * 2; m.scale.setScalar(0.01); m.visible = false; g.add(m); caps.push(m);
         }
         /* the dancing lights */
@@ -29609,7 +29142,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = -3; i <= 3; i++) {
             var t = null;
             try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) t = ThreeRenderer.getMiscModelClone('pine', ts * rn(2.2, 3.0), 'bottom'); } catch (e) { t = null; }
-            if (!t) { t = new THREE.Group(); var trunk = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.08, ts * 0.12, ts * 1.0, 6), _finBasic(0x3a2a1a)); trunk.position.y = ts * 0.5; t.add(trunk); var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.55, ts * 1.8, 8), _finBasic(0x14301c)); cone.position.y = ts * 1.8; t.add(cone); }
+            if (!t) t = new THREE.Group();   /* NO STAND-INS (2026-10-05): the pine GLB or nothing */
             t.position.set(ux * TD - uz * i * ts * 1.1 + rn(-ts * 0.2, ts * 0.2), 0, uz * TD + ux * i * ts * 1.1 + rn(-ts * 0.2, ts * 0.2));
             t.rotation.y = Math.random() * Math.PI * 2; t.scale.set(1, 0.01, 1); t.visible = false; g.add(t); trees.push(t);
         }
@@ -30857,9 +30390,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var moon = new THREE.Group(); var glb = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) glb = ThreeRenderer.getMiscModelClone('moon', MOON_D, 'center'); } catch (e) { glb = null; }
         var moonMat = _finBasic(0xc8ccd8);
-        var ball = new THREE.Mesh(new THREE.SphereGeometry(MOON_D / 2, 22, 16), moonMat);
-        if (glb) { moon.add(glb); ball.visible = false; }
-        moon.add(ball);
+        if (glb) moon.add(glb);   /* NO STAND-INS (2026-10-05): the moon GLB or nothing (no grey ball) */
         var glow = _finSprite(SILVER, _sigGlowTex(), MOON_D * 2.2, 150); glow.material.opacity = 0; moon.add(glow);
         moon.position.set(ux * ts * 1.5, ts * 40, uz * ts * 1.5); g.add(moon);
         var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 1.6, ts * 8, 20, 1, true), _finBasic(SILVER, { additive: true, opacity: 0, side: THREE.DoubleSide })); beam.position.set(ux * ts * 0.4, ts * 4, uz * ts * 0.4); beam.rotation.x = Math.PI; g.add(beam);
@@ -31509,7 +31040,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var sea = new THREE.Mesh(new THREE.PlaneGeometry(ts * 14, ts * 9), _finBasic(SEA, { opacity: 0, side: THREE.DoubleSide })); sea.rotation.x = -Math.PI / 2; sea.position.set(ux * ts * 5.2, ts * 0.05, uz * ts * 5.2); sea.rotation.z = -Math.atan2(uz, ux); g.add(sea);
         var shore = new THREE.Mesh(new THREE.PlaneGeometry(ts * 9, ts * 0.3), _finBasic(FOAM, { additive: true, opacity: 0, side: THREE.DoubleSide })); shore.rotation.x = -Math.PI / 2; shore.position.set(ux * ts * 0.75, ts * 0.06, uz * ts * 0.75); shore.rotation.z = -Math.atan2(uz, ux) + Math.PI / 2; g.add(shore);
         var rocks = [], rockPos = [new THREE.Vector3(ux * ts * 2.6, 0, uz * ts * 2.6), new THREE.Vector3(ux * ts * 3.4 + px * ts * 1.3, 0, uz * ts * 3.4 + pz * ts * 1.3), new THREE.Vector3(ux * ts * 3.2 - px * ts * 1.4, 0, uz * ts * 3.2 - pz * ts * 1.4)];
-        for (var r = 0; r < 3; r++) { var rb = _finRockBody(ts * (r === 0 ? 1.2 : 0.9), { key: r % 2 ? 'asteroid2' : 'asteroid' }); var rg = rb ? rb.group : new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.5, 0), _finBasic(0x2a2a30)); rg.position.copy(rockPos[r]); rg.position.y = -ts * 1.2; rg.rotation.set(rn(0, 1), rn(0, 3), rn(0, 1)); g.add(rg); rocks.push({ g: rg, h: r === 0 ? ts * 0.55 : ts * 0.35 }); }
+        for (var r = 0; r < 3; r++) { var rb = _finRockBody(ts * (r === 0 ? 1.2 : 0.9), { key: r % 2 ? 'asteroid2' : 'asteroid' }); var rg = rb.group; rg.position.copy(rockPos[r]); rg.position.y = -ts * 1.2; rg.rotation.set(rn(0, 1), rn(0, 3), rn(0, 1)); g.add(rg); rocks.push({ g: rg, h: r === 0 ? ts * 0.55 : ts * 0.35 }); }
         var notes = [];
         for (var n = 0; n < 7; n++) { var nt = _finTextSprite(n % 2 ? '♪' : '♫', { ink: '#ff9ae8', font: 'Georgia, serif', fontPx: 170, spriteW: ts * 0.5, opacity: 0, w: 256, h: 256 }); nt.visible = false; g.add(nt); notes.push({ s: nt, at: songAt + n * 180, ph: rn(0, 9), r: rn(ts * 0.35, ts * 0.6) }); }
         var wave = new THREE.Mesh(new THREE.SphereGeometry(ts * 2.6, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), _finBasic(0x1a4a78, { opacity: 0, side: THREE.DoubleSide })); wave.scale.set(1.6, 1.4, 0.55); wave.position.set(ux * ts * 5.6, -ts * 0.4, uz * ts * 5.6); wave.rotation.y = Math.atan2(ux, uz); g.add(wave);
@@ -31865,7 +31396,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var eye = _finSprite(EYE, _sigGlowTex(), ts * 0.7, 158); eye.position.set(0, ts * 1.05, ts * 0.06); cave.add(eye);
         var pupil = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.11, 12), _finBasic(0x050403)); pupil.position.set(0, ts * 1.05, ts * 0.08); pupil.visible = false; cave.add(pupil);
         /* the rock */
-        var rb = _finRockBody(ts * 1.5, {}), rock = rb ? rb.group : new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.75, 0), _finBasic(0x2a2420));
+        var rb = _finRockBody(ts * 1.5, {}), rock = rb.group;
         var rockHome = new THREE.Vector3(cavePos.x + ux * ts * 0.3, ts * 2.5, cavePos.z + uz * ts * 0.3);
         rock.position.copy(rockHome); rock.visible = false; g.add(rock);
         var card = _finTextSprite('WHO DID THIS TO YOU?', { ink: '#ffd060', font: 'Georgia, serif', fontPx: 50, spriteW: ts * 2.6, opacity: 0 }); card.position.set(cavePos.x, ts * 3.4, cavePos.z); g.add(card);
@@ -31955,7 +31486,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dot = _finSprite(0xff3030, _sigGlowTex(), ts * 0.32, 159); dot.position.y = ts * 0.9; g.add(dot);
         var sat = _finTextSprite('🛰 ORBIT ACHIEVED · 400 KM', { ink: '#4fd8ff', font: 'monospace', fontPx: 40, spriteW: ts * 2.8, opacity: 0 }); sat.position.set(0, ts * 3.6, 0); g.add(sat);
         /* the meteor */
-        var rb = _finRockBody(ts * 1.1, {}), rock = rb ? rb.group : new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.55, 0), _finBasic(0x2a2420));
+        var rb = _finRockBody(ts * 1.1, {}), rock = rb.group;
         var shell = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.8, 14, 10), _finBasic(FIRE, { additive: true, opacity: 0.55 })); rock.add(shell);
         var shellGlow = _finSprite(0xffe0b0, _sigGlowTex(), ts * 2.4, 158); shellGlow.material.opacity = 0.7; rock.add(shellGlow);
         rock.position.y = ts * 14; rock.visible = false; g.add(rock);
@@ -32037,7 +31568,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var glow = _finSprite(RED, _sigGlowTex(), R * 3.2, 157); glow.material.opacity = 0.5; portal.add(glow);
         var crown = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) crown = ThreeRenderer.getMiscModelClone('demon_statue', ts * 1.4, 'bottom'); } catch (e) { crown = null; }
-        if (!crown) { crown = new THREE.Group(); var mask = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 10, 8), _finBasic(DARK)); crown.add(mask); for (var h = 0; h < 2; h++) { var horn = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 6), _finBasic(0x3a0a12)); horn.position.set((h ? 1 : -1) * ts * 0.22, ts * 0.4, 0); horn.rotation.z = (h ? -1 : 1) * 0.5; crown.add(horn); } }
+        if (!crown) crown = new THREE.Group();   /* NO STAND-INS (2026-10-05): the demon statue GLB or nothing */
         crown.position.set(0, ts * 0.2, -R); crown.traverse(function (n) { if (n.isMesh && n.material && n.material.color) { n.userData._finBase = n.material.color.clone(); } }); portal.add(crown);
         var crownEyes = [];
         for (var ce = 0; ce < 2; ce++) { var cs = _finSprite(RED, _sigGlowTex(), ts * 0.18, 159); cs.position.set((ce ? 1 : -1) * ts * 0.12, ts * 0.9, -R + ts * 0.25); cs.material.opacity = 0.9; portal.add(cs); crownEyes.push(cs); }
@@ -32306,11 +31837,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var halo = new THREE.Mesh(new THREE.RingGeometry(ts * 1.6, ts * 2.0, 40), _finBasic(LIGHT, { additive: true, opacity: 0, side: THREE.DoubleSide })); halo.rotation.x = Math.PI / 2; halo.position.y = TOP + ts * 0.6; g.add(halo);
         var gate = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) gate = ThreeRenderer.getMiscModelClone('pearly_gate', ts * 2.0, 'bottom'); } catch (e) { gate = null; }
-        if (!gate) { gate = new THREE.Group(); var gm = _finBasic(0xfff8e0); for (var p = 0; p < 2; p++) { var post = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.08, ts * 0.1, ts * 1.6, 8), gm); post.position.set((p ? 1 : -1) * ts * 0.7, ts * 0.8, 0); gate.add(post); } var bar = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.7, ts * 0.06, 8, 24, Math.PI), gm); bar.position.y = ts * 1.6; gate.add(bar); for (var b = 0; b < 7; b++) { var bb = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 1.2, 5), gm); bb.position.set(-ts * 0.6 + b * ts * 0.2, ts * 0.7, 0); gate.add(bb); } }
+        if (!gate) gate = new THREE.Group();   /* NO STAND-INS (2026-10-05): the pearly gate GLB or nothing */
         gate.position.set(0, TOP + ts * 0.1, -ts * 1.0); gate.visible = false; g.add(gate);
         var gateGlow = _finSprite(LIGHT, _sigGlowTex(), ts * 3.6, 157); gateGlow.position.set(0, TOP + ts * 0.9, -ts * 1.0); g.add(gateGlow);
         var clouds = [];
-        for (var cl = 0; cl < 6; cl++) { var cm = null; try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) cm = ThreeRenderer.getMiscModelClone('white_cloud', ts * rn(1.2, 2.0), 'center'); } catch (e) { cm = null; } if (!cm) { cm = new THREE.Group(); for (var q = 0; q < 4; q++) { var puff = new THREE.Mesh(new THREE.SphereGeometry(ts * rn(0.25, 0.45), 10, 8), _finBasic(0xffffff, { opacity: 0.9 })); puff.position.set(rn(-ts * 0.5, ts * 0.5), rn(-ts * 0.1, ts * 0.15), rn(-ts * 0.3, ts * 0.3)); cm.add(puff); } } var ca = cl * Math.PI / 3 + rn(-0.3, 0.3); cm.position.set(Math.cos(ca) * ts * rn(1.6, 2.6), TOP - ts * rn(1.5, 3.5), Math.sin(ca) * ts * rn(1.6, 2.6)); cm.visible = false; g.add(cm); clouds.push({ m: cm, ph: rn(0, 9) }); }
+        for (var cl = 0; cl < 6; cl++) { var cm = null; try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) cm = ThreeRenderer.getMiscModelClone('white_cloud', ts * rn(1.2, 2.0), 'center'); } catch (e) { cm = null; } if (!cm) cm = new THREE.Group(); var ca = cl * Math.PI / 3 + rn(-0.3, 0.3); cm.position.set(Math.cos(ca) * ts * rn(1.6, 2.6), TOP - ts * rn(1.5, 3.5), Math.sin(ca) * ts * rn(1.6, 2.6)); cm.visible = false; g.add(cm); clouds.push({ m: cm, ph: rn(0, 9) }); }
         var wings = [], wingMat = _finBasic(0x0a0206, { side: THREE.DoubleSide, opacity: 0 });
         for (var w = 0; w < 2; w++) { var wing = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.1, ts * 0.55), wingMat); wing.position.set((w ? 1 : -1) * ts * 0.6, ts * 0.6, -ts * 0.1); wing.visible = false; body.add(wing); wings.push(wing); }
         var trail = _finSprite(LIGHT, _sigGlowTex(), ts * 1.4, 158); trail.material.opacity = 0; g.add(trail);
@@ -32645,7 +32176,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var foamPlane = new THREE.Mesh(new THREE.CircleGeometry(ts * 4.5, 32), _finBasic(FOAM, { opacity: 0, depthWrite: false })); foamPlane.rotation.x = -Math.PI / 2; foamPlane.position.y = ts * 0.08; g.add(foamPlane);
         /* the mermaid on her rock */
         var rockPos = new THREE.Vector3(px * ts * 2.6 + ux * ts * 1.6, 0, pz * ts * 2.6 + uz * ts * 1.6);
-        var rb = _finRockBody(ts * 1.1, {}), rock = rb ? rb.group : new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.55, 0), _finBasic(0x3a4048));
+        var rb = _finRockBody(ts * 1.1, {}), rock = rb.group;
         rock.position.copy(rockPos); rock.position.y = ts * 0.35; g.add(rock);
         var mer = new THREE.Group(); mer.position.set(rockPos.x, ts * 0.75, rockPos.z); mer.rotation.y = Math.atan2(-rockPos.x, -rockPos.z); g.add(mer);
         mer.add(_finBodyMesh(ts, 0x3ad8c0));
@@ -32988,8 +32519,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE SAME-THING RULE (MODEL_INDEX §9, 2026-09-24): Air Support flies
        the F-22 — the SAME Meshy jet the flyover and Area 51 use
        (_WPN_MODELS.jet, nose on +Z), with the two afterburner glows hung
-       at its tail. The procedural jet below is only its fallback while the
-       GLB streams in (the match drip warms 'jet' early). */
+       at its tail. No procedural jet (the loading screen loads 'jet'). */
     function _finJetMeshy(ts, color) {
         var inst = _wpnReady('jet') ? _wpnInstance('jet', ts * 2.0) : null;
         if (!inst) return _finJet(ts, color);
@@ -33002,25 +32532,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         return { group: g, burners: burners, fin: null, meshy: true };
     }
-    /* a procedural strike jet: fuselage along local +Z (the nose), swept
-       wings, a tail fin, two afterburner glows — the fallback for the F-22
-       above while its GLB streams */
+    /* NO STAND-INS (2026-10-05): the procedural strike jet is GONE — no F-22 yet = an empty holder with the two
+       afterburner glows only */
     function _finJet(ts, color) {
-        var g = new THREE.Group();
-        var m = _finBasic(color != null ? color : 0x4a5560), dark = _finBasic(0x1c2228);
-        var fus = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.09, ts * 0.13, ts * 1.6, 10), m); fus.rotation.x = Math.PI / 2; g.add(fus);
-        var nose = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.09, ts * 0.36, 10), m); nose.rotation.x = Math.PI / 2; nose.position.z = ts * 0.98; g.add(nose);
-        var canopy = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 8, 6), _finBasic(0x9fd8ff, { opacity: 0.85 })); canopy.scale.set(1, 0.7, 1.8); canopy.position.set(0, ts * 0.1, ts * 0.42); g.add(canopy);
-        var wingGeo = new THREE.BufferGeometry();
-        var W = ts * 0.95, wv = new Float32Array([0, 0, ts * 0.3, W, 0, -ts * 0.45, 0, 0, -ts * 0.4, 0, 0, ts * 0.3, 0, 0, -ts * 0.4, -W, 0, -ts * 0.45]);
-        wingGeo.setAttribute('position', new THREE.BufferAttribute(wv, 3)); wingGeo.computeVertexNormals();
-        var wing = new THREE.Mesh(wingGeo, _finBasic(color != null ? color : 0x4a5560, { side: THREE.DoubleSide })); wing.position.y = -ts * 0.02; g.add(wing);
-        var fin = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.03, ts * 0.34, ts * 0.34), dark); fin.position.set(0, ts * 0.22, -ts * 0.62); fin.rotation.x = -0.5; g.add(fin);
-        var tails = [];
-        for (var t = 0; t < 2; t++) { var tp = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.36, ts * 0.02, ts * 0.22), dark); tp.position.set(t ? ts * 0.2 : -ts * 0.2, 0, -ts * 0.66); g.add(tp); tails.push(tp); }
-        var burners = [];
+        var g = new THREE.Group(), burners = [];
         for (var b = 0; b < 2; b++) { var bg = _finSprite(0xffa040, _sigGlowTex(), ts * 0.34, 160); bg.position.set(b ? ts * 0.07 : -ts * 0.07, 0, -ts * 0.86); bg.material.opacity = 0.9; g.add(bg); burners.push(bg); }
-        return { group: g, burners: burners, fin: fin };
+        return { group: g, burners: burners, fin: null, empty: true };
     }
 
     /* ── HEAT DEATH (cosmic wraith) ─────────────────────────────────────
@@ -34117,7 +33634,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var p = 0; p < NPK; p++) { var pa = (p / NPK) * Math.PI * 2; var gap = Math.abs(Math.cos(pa - yaw)) > 0.94 ? true : false; if (gap) continue; var pk = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.42, ts * 0.03), _finBasic(PICKET)); pk.position.set(Math.cos(pa) * ts * 3.1, ts * 0.21, Math.sin(pa) * ts * 3.1); pk.rotation.y = -pa; garden.add(pk); }
         var flowers = [];
         for (var fl = 0; fl < 14; fl++) { var fa = rn(0, Math.PI * 2), fr = ts * rn(1.1, 2.7); var stalk = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.32, 5), _finBasic(0x2f6a2a)); stalk.position.set(Math.cos(fa) * fr, ts * 0.16, Math.sin(fa) * fr); garden.add(stalk); var bloom = _finSprite([0xff6ab0, 0xffd75a, 0xffffff, 0xff8a3a][fl % 4], _sigGlowTex(), ts * 0.28, 159); bloom.material.opacity = 1; bloom.material.blending = THREE.NormalBlending; bloom.position.set(Math.cos(fa) * fr, ts * 0.36, Math.sin(fa) * fr); garden.add(bloom); flowers.push({ s: stalk, b: bloom, a: fa, r: fr }); }
-        for (var m = 0; m < 3; m++) { var mush = null; try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) mush = ThreeRenderer.getMiscModelClone(m % 2 ? 'mushroom2' : 'mushroom', ts * 0.5, 'bottom'); } catch (e) { mush = null; } if (!mush) { mush = new THREE.Group(); var st = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.06, ts * 0.22, 8), _finBasic(0xe8dcc0)); st.position.y = ts * 0.11; mush.add(st); var cp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.14, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), _finBasic(RED)); cp.position.y = ts * 0.22; mush.add(cp); } var ma = 1.2 + m * 2.0; mush.position.set(Math.cos(ma) * ts * 2.2, 0, Math.sin(ma) * ts * 2.2); garden.add(mush); }
+        for (var m = 0; m < 3; m++) { var mush = null; try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) mush = ThreeRenderer.getMiscModelClone(m % 2 ? 'mushroom2' : 'mushroom', ts * 0.5, 'bottom'); } catch (e) { mush = null; } if (!mush) mush = new THREE.Group(); var ma = 1.2 + m * 2.0; mush.position.set(Math.cos(ma) * ts * 2.2, 0, Math.sin(ma) * ts * 2.2); garden.add(mush); }
         var bath = new THREE.Group(); bath.position.set(Math.cos(yaw + 2.2) * ts * 1.8, 0, Math.sin(yaw + 2.2) * ts * 1.8); garden.add(bath);
         var ped = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.1, ts * 0.5, 8), _finBasic(0xb8b8b0)); ped.position.y = ts * 0.25; bath.add(ped);
         var bowl = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.12, ts * 0.1, 12), _finBasic(0xb8b8b0)); bowl.position.y = ts * 0.55; bath.add(bowl);
@@ -35691,13 +35208,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var car = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
         var carG = new THREE.Group(); g.add(carG);
-        if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }
-        else {
-            var bodyM = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.6, ts * 0.42, ts * 0.7), _finBasic(0x0e0e14)); bodyM.position.y = ts * 0.4; carG.add(bodyM);
-            var cab = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, ts * 0.32, ts * 0.62), _finBasic(0x1a1a22)); cab.position.set(-ts * 0.1, ts * 0.77, 0); carG.add(cab);
-            for (var w = 0; w < 4; w++) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.14, ts * 0.1, 10), _finBasic(0x222222)); wh.rotation.x = Math.PI / 2; wh.position.set((w < 2 ? 1 : -1) * ts * 0.5, ts * 0.14, (w % 2 ? 1 : -1) * ts * 0.36); carG.add(wh); }
-            for (var h = -1; h <= 1; h += 2) { var hl = _finSprite(0xfff0c0, _sigGlowTex(), ts * 0.22, 162); hl.material.opacity = 0.8; hl.position.set(ts * 0.82, ts * 0.4, h * ts * 0.25); carG.add(hl); }
-        }
+        if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }   /* NO STAND-INS (2026-10-05): no box car */
         var muzzles = []; for (var m = 0; m < 4; m++) { var mz = _finSprite(0xffe090, _sigGlowTex(), ts * 0.42, 163); mz.material.opacity = 0; mz.position.set(-ts * 0.5 + m * ts * 0.3, ts * 0.72, ts * 0.38); carG.add(mz); muzzles.push({ s: mz, t: 0 }); }
         var body = _finBodyMesh(ts); g.add(body);
         var casings = [];
@@ -35837,14 +35348,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var car = null;
         try { if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('copcar', ts * 0.78, 'center'); } catch (e) { car = null; }
         var carG = new THREE.Group(); g.add(carG);
-        if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }
-        else {
-            var bodyM = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.7, ts * 0.42, ts * 0.72), _finBasic(0xf0f0f4)); bodyM.position.y = ts * 0.4; carG.add(bodyM);
-            var cab = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.86, ts * 0.32, ts * 0.64), _finBasic(0x14141a)); cab.position.set(-ts * 0.08, ts * 0.77, 0); carG.add(cab);
-            var doors = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.3, ts * 0.74), _finBasic(0x14141a)); doors.position.set(-ts * 0.1, ts * 0.4, 0); carG.add(doors);
-            for (var w = 0; w < 4; w++) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.14, ts * 0.14, ts * 0.1, 10), _finBasic(0x222222)); wh.rotation.x = Math.PI / 2; wh.position.set((w < 2 ? 1 : -1) * ts * 0.52, ts * 0.14, (w % 2 ? 1 : -1) * ts * 0.37); carG.add(wh); }
-            for (var h = -1; h <= 1; h += 2) { var hl = _finSprite(0xfff0c0, _sigGlowTex(), ts * 0.22, 162); hl.material.opacity = 0.8; hl.position.set(ts * 0.86, ts * 0.4, h * ts * 0.25); carG.add(hl); }
-        }
+        if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }   /* NO STAND-INS (2026-10-05): no box cop car */
         /* the light bar: two lamps that strobe against each other + the spot */
         var bar = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.5, ts * 0.06, ts * 0.16), _finBasic(0x101014)); bar.position.set(-ts * 0.05, ts * 0.98, 0); carG.add(bar);
         var lamps = [];
@@ -39874,6 +39378,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* THE MATCH WARM (2026-09-20): the loading screen's weapon warm + the in-match drip */
         warmWeapons: _wpnWarm,
+        warmSpellLibrary: _spellLibWarm,          // NO STAND-INS (2026-10-05): every spell prop + model in memory, a promise
+        spellLibraryProgress: _spellLibProgress,
         warmWeaponsDrip: _wpnDrip,
         stopWeaponDrip: _wpnDripStop,
         weaponKeys: function () { return Object.keys(_WPN_MODELS); },
