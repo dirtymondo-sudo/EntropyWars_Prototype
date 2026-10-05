@@ -35371,24 +35371,40 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 0, z: -19, w: 30, d: 10, h: 0.9, edge: 0.15 },                             // THE CHANCEL
                     { k: 'ramp', x0: 0, z0: -12.3, x1: 0, z1: -14.7, w: 6, h0: 0, h1: 0.9, stairs: true, edge: 0.15,
                       built: true, key: 'marble_light', side: 'marble_2', runner: { w: 3.0, color: 0x8a1c1c } },     // THE ALTAR STEPS
+                    { k: 'rail', pts: [[-2.1, -12.5, 0.08], [-2.1, -14.5, 0.83]], model: 'pipe', block: false },   // handrails either side of the runner
+                    { k: 'rail', pts: [[2.1, -12.5, 0.08], [2.1, -14.5, 0.83]], model: 'pipe', block: false },
                     /* THE GALLERIES: slabs (the floor goes on under them), the U joined over the door */
                     { k: 'bridge', x0: -15.75, z0: -13.3, x1: -15.75, z1: 26, w: 4.5, y: 4.6, thick: 0.5, plain: true, key: 'marble_light' },   // THE WEST GALLERY
                     { k: 'bridge', x0: 15.75, z0: -13.3, x1: 15.75, z1: 26, w: 4.5, y: 4.6, thick: 0.5, plain: true, key: 'marble_light' },     // THE EAST GALLERY
-                    { k: 'bridge', x0: -18, z0: 23.75, x1: 18, z1: 23.75, w: 4.5, y: 4.6, thick: 0.5, plain: true, key: 'marble_light' },     // THE ORGAN LOFT over the door
+                    { k: 'bridge', x0: -18, z0: 23.75, x1: -1.4, z1: 23.75, w: 4.5, y: 4.6, thick: 0.5, plain: true, key: 'marble_light' },   // THE ORGAN LOFT over the door (a gap in its middle, a rail across)
+                    { k: 'bridge', x0: 1.4, z0: 23.75, x1: 18, z1: 23.75, w: 4.5, y: 4.6, thick: 0.5, plain: true, key: 'marble_light' },
+                    { k: 'rail', x0: -1.6, z0: 23.75, x1: 1.6, z1: 23.75, y: 4.6, model: 'pipe', block: false },
+                    /* the stairs pass (2026-10-05): the rood loft across the nave on the rood screen joins the two galleries at their north
+                       ends (the U is a ring now), the apse a tier up behind the chancel round the cathedra, up its own steps */
+                    { k: 'bridge', x0: -14, z0: -11.4, x1: 14, z1: -11.4, w: 2.5, y: 4.6, thick: 0.5, plain: true, key: 'marble_light' },     // the rood loft
+                    { k: 'plateau', x: 0, z: -26, r: 6.5, h: 2.0, edge: 0.15 },                                                    // the apse
+                    { k: 'ramp', x0: 0, z0: -16.8, x1: 0, z1: -20.2, w: 4, h0: 0.9, h1: 2.0, stairs: true, edge: 0.15,
+                      built: true, key: 'marble_light', side: 'marble_2', runner: { w: 2.0, color: 0x8a1c1c } },                    // its steps
+                    { k: 'rail', pts: [[0, -17.1, 1.0], [0, -19.9, 1.9]], model: 'pipe', block: false },                          // their centre handrail
+                    { k: 'rail', arc: { x: 0, z: -26, r: 6.2, a0: 92, a1: 158 }, model: 'balusters_b' },                          // the apse's curved balustrade
+                    { k: 'rail', arc: { x: 0, z: -26, r: 6.2, a0: 202, a1: 268 }, model: 'balusters_b' },
                     { k: 'ramp', x0: -15, z0: -22.5, x1: -15, z1: -12.6, w: 3, h0: 0.9, h1: 4.6, stairs: true, edge: 0.15,
                       built: true, key: 'marble_light', side: 'marble_2' },                                           // the west stair, from the back of the chancel up to the gallery (its top 0.7 m under the slab)
                     { k: 'ramp', x0: 15, z0: -22.5, x1: 15, z1: -12.6, w: 3, h0: 0.9, h1: 4.6, stairs: true, edge: 0.15,
                       built: true, key: 'marble_light', side: 'marble_2' },                                           // the east stair
                     /* the parapets (hung walls: the aisles pass under them) */
-                    { k: 'wall', x0: -13.6, z0: -12.6, x1: -13.6, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
-                    { k: 'wall', x0: 13.6, z0: -12.6, x1: 13.6, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
-                    { k: 'wall', x0: -13.6, z0: 21.6, x1: 13.6, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
+                    { k: 'wall', x0: -13.6, z0: -10.0, x1: -13.6, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
+                    { k: 'wall', x0: 13.6, z0: -10.0, x1: 13.6, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
+                    { k: 'wall', x0: -13.6, z0: 21.6, x1: -1.4, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
+                    { k: 'wall', x0: 1.4, z0: 21.6, x1: 13.6, z1: 21.6, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
+                    { k: 'wall', x0: -13.45, z0: -12.5, x1: 13.45, z1: -12.5, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },     // the rood loft's parapets
+                    { k: 'wall', x0: -13.45, z0: -10.3, x1: 13.45, z1: -10.3, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
                     { k: 'wall', x0: -18, z0: -13.45, x1: -16.5, z1: -13.45, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },   // the galleries' north ends, beside the stair heads
                     { k: 'wall', x0: 16.5, z0: -13.45, x1: 18, z1: -13.45, lift: 4.6, y: 5.65, t: 0.3, key: 'marble_light' },
                     { k: 'wall', x0: -11, z0: -13.0, x1: -4.5, z1: -13.0, h: 0.55, t: 0.3, key: 'marble' },        // THE ALTAR RAIL (a step; the park rule's grind)
                     { k: 'wall', x0: 4.5, z0: -13.0, x1: 11, z1: -13.0, h: 0.55, t: 0.3, key: 'marble' },
                     /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE ROOD SCREEN — a carved screen across the chancel's east half (the crypt door sees the nave's doors no more, R3) */
-                    { k: 'wall', x0: -9.5, z0: -11.4, x1: 9.5, z1: -11.4, h: 4.2, t: 0.6, key: 'marble' },   // the chancel is entered round its ends (x ±9.5..±12.75)
+                    { k: 'wall', x0: -9.5, z0: -11.4, x1: 9.5, z1: -11.4, h: 4.1, t: 0.6, key: 'marble' },   // the chancel is entered round its ends (x ±9.5..±12.75); the rood loft sits on it
                     { k: 'path', pts: [[0, 25], [0, -12.3]], w: 3.0 },                                             // THE AISLE
                     { k: 'path', pts: [[-11, -18], [11, -18]], w: 2.0 },                                           // across the chancel
                 ],
