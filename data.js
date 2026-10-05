@@ -43692,6 +43692,7 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[25, 11], [25, 21]], w: 3 },                                    // the walk up to the forge
             { k: 'space', x: -27.5, z: 15.5, w: 5, d: 7 },                                       // side room 1 (a dead end)
             { k: 'hall', pts: [[-27, 18], [-27, 21]], w: 3 },
+            { k: 'hall', pts: [[-17, 15.5], [-17, 20.5]], w: 3 },                              // the lower court's walk onto the colonnade
             /* THE THRONE DAIS (3.0): the stair up its front, the carved flank's hand-holds up its east side */
             { k: 'plateau', x: 0, z: -14, w: 12, d: 8, h: 3.0, edge: 0.15 },
             { k: 'ramp', x0: 0, z0: -4.5, x1: 0, z1: -10.7, w: 3.2, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
@@ -43699,18 +43700,24 @@ const HQ_AREA_SPECS = {
             { k: 'wall', x0: -6.3, z0: -9.95, x1: -1.8, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 1.8, z0: -9.95, x1: 6.3, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false },   // its marble faces, flush with the top (the stair and the hand-holds between)
             { k: 'wall', x0: -6.3, z0: -18.05, x1: 6.3, z1: -18.05, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -6.05, z0: -18.05, x1: -6.05, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
             { k: 'wall', x0: 6.05, z0: -18.05, x1: 6.05, z1: -15.9, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 6.05, z0: -14.1, x1: 6.05, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
+            { k: 'rail', x0: -5.75, z0: -10.3, x1: -1.8, z1: -10.3, model: 'balusters_b' }, { k: 'rail', x0: 1.8, z0: -10.3, x1: 5.75, z1: -10.3, model: 'balusters_b' },   // its balustrade (the bridge's mouth, the hand-holds and the stair left open)
+            { k: 'rail', x0: -5.75, z0: -15.5, x1: -5.75, z1: -10.3, model: 'balusters_b' }, { k: 'rail', x0: -3.8, z0: -17.75, x1: 5.75, z1: -17.75, model: 'balusters_b' },
+            { k: 'rail', x0: 5.75, z0: -17.75, x1: 5.75, z1: -15.9, model: 'balusters_b' }, { k: 'rail', x0: 5.75, z0: -14.1, x1: 5.75, z1: -10.3, model: 'balusters_b' },
             /* THE HIGH TERRACE (3.0) against the west wall — the gate of cloud stands on it; a stair up from the west court, a cloud bridge over from the dais */
             { k: 'plateau', x: -22.1, z: -19.5, w: 18.2, d: 10.2, h: 3.0, edge: 0.15 },
             { k: 'ramp', x0: -17, z0: -9.5, x1: -17, z1: -15.1, w: 3.0, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
             { k: 'deck', x0: -5.3, z0: -17, x1: -13.1, z1: -17, w: 2.4, y: 3.0, over: true },
-            { k: 'rail', x0: -9, z0: -15.6, x1: -1, z1: -15.6 },
             /* THE LIGHTNING SPIRE (6.6, the tape — the door gun's) in the west court, seen from the terrace */
             { k: 'plateau', x: -20, z: -4, r: 2.8, h: 6.6, edge: 0.15 },
             /* THE FORGE (lava, never entered) under THE ANVIL TERRACE (2.2) up its stair; THE LOFT (5.0) up Hephaestus's chain */
             { k: 'pool', x: 20, z: -1.2, r: 4.2, depth: 0.55, key: 'lava', bank: 1.0 },   // against the room's north wall, under the anvil terrace; a shallow bed under a sheet the walker never enters (the canal rule: a deep bank leaves a ledge = a rescue scar)
             { k: 'plateau', x: 22.25, z: -15.5, w: 12.5, d: 17.6, h: 2.2, edge: 0.15 },
             { k: 'ramp', x0: 12.6, z0: -13, x1: 16.6, z1: -13, w: 2.8, h0: 0, h1: 2.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'plateau', x: 24, z: -20.5, r: 3, h: 5.0, edge: 0.15 }, { k: 'climb', x: 24, z: -17.6, face: 0, look: 'chain' },
+            { k: 'plateau', x: 24, z: -20.5, r: 3, h: 5.0, edge: 0.15 }, { k: 'climb', x: 21.3, z: -20.5, face: 90, look: 'chain' },
+            { k: 'ramp', x0: 24, z0: -12.0, x1: 24, z1: -18.2, w: 2.6, h0: 2.2, h1: 5.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE LOFT's stair from the anvil terrace
+            { k: 'rail', arc: { x: 24, z: -20.5, r: 2.7, a0: 30, a1: 150 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 24, z: -20.5, r: 2.7, a0: 210, a1: 252 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 24, z: -20.5, r: 2.7, a0: 288, a1: 320 }, model: 'balusters_b' },   // (open on the north wall's side)
+            { k: 'rail', x0: 16.3, z0: -24, x1: 16.3, z1: -14.6, model: 'balusters_b' }, { k: 'rail', x0: 16.3, z0: -11.4, x1: 16.3, z1: -7, model: 'balusters_b' },   // the anvil terrace's balustrade
+            { k: 'rail', arc: { x: 20, z: -1.2, r: 5.4, a0: 100, a1: 152 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 20, z: -1.2, r: 5.4, a0: 208, a1: 260 }, model: 'pipe', block: false },   // skate rails round the lava, either side of its lip
             { k: 'wall', x0: 15.95, z0: -24.3, x1: 15.95, z1: -14.6, y: 2.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 15.95, z0: -11.4, x1: 15.95, z1: -6.7, y: 2.2, t: 0.5, key: 'marble_light', rail: false },   // its marble face on the stair's strip
             /* THE LOWER COURT (1.2) up its stair — or a rope over its lip from the west court; the stepping clouds (float) up hall A to the dais's west side */
             { k: 'plateau', x: -17, z: 10, w: 12.2, d: 12.2, h: 1.2, edge: 0.15 },
@@ -43718,14 +43725,21 @@ const HQ_AREA_SPECS = {
             { k: 'climb', x: -16, z: 4.2, face: 180, look: 'rope' },
             { k: 'wall', x0: -23.1, z0: 3.85, x1: -16.9, z1: 3.85, y: 1.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -15.1, z0: 3.85, x1: -13.8, z1: 3.85, y: 1.2, t: 0.5, key: 'marble_light', rail: false },   // its marble lip on the west court (the rope between)
             { k: 'plateau', x: -9, z: -2, r: 1.7, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -10.5, z: -6, r: 1.7, h: 2.0, edge: 0.3, float: true }, { k: 'plateau', x: -9.5, z: -10, r: 1.7, h: 3.0, edge: 0.3, float: true },
+            { k: 'rail', x0: -8.2, z0: -10.6, x1: -5.4, z1: -10.6, y: 3.0, model: 'pipe', block: false },                              // across the last cloud's gap to the dais
+            /* THE COLONNADE WALK (1.2): the colonnade's west half raised to the lower court's level, joined to it by its walk; a stair down at its east end (a centre handrail) and one down into side room 1 */
+            { k: 'plateau', x: -16.5, z: 22, w: 26, d: 4.4, h: 1.2, edge: 0.15 },
+            { k: 'plateau', x: -17, z: 18, w: 3.4, d: 5.2, h: 1.2, edge: 0.15 },
+            { k: 'ramp', x0: -1.0, z0: 22, x1: -4.2, z1: 22, w: 3.0, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'rail', pts: [[-1.2, 22, 0.07], [-4.0, 22, 1.13]], model: 'pipe', block: false },                                      // its centre handrail
+            { k: 'ramp', x0: -27, z0: 17.5, x1: -27, z1: 20.5, w: 2.6, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
             { k: 'wall', x0: 16, z0: 4.6, x1: 24, z1: 4.6, h: 1.0, t: 0.6, key: 'marble_light' },                  // the balustrade on the lava's lip (the grind)
             { k: 'path', pts: [[0, 22], [0, -4]], w: 3.2 }, { k: 'path', pts: [[-27, 22], [24, 22]], w: 2.2 },
             { k: 'scatter', key: 'white_cloud', n: 4, seed: 4 }, { k: 'scatter', key: 'garden_ring', n: 5, seed: 7 }, { k: 'scatter', key: 'armour_stand', n: 4, seed: 9 }, { k: 'scatter', key: 'brazier', n: 3, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -16, z: 15.6, face: 0, y: 1.2 }, { key: 'railing_1m', x: -14, z: -15.6, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 },
+        props: [{ key: 'railing_1m', x: -14, z: -15.6, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 },
                 { key: 'angel_statue', x: -20, z: -4, y: 6.6 }, { key: 'stone_altar', x: 21, z: -13, y: 2.2 }, { key: 'lectern', x: -3, z: -15, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: -1 }, { key: 'armour_stand', x: 24, z: -20.5, y: 5.0 }, { key: 'park_bench', x: -16, z: 10, y: 1.2, face: 180 },
                 /* the colonnade's columns (on its north side) and the court's */
-                { key: 'greek_column', x: -21, z: 20.6 }, { key: 'greek_column', x: -15, z: 20.6 }, { key: 'greek_column', x: -9, z: 20.6 }, { key: 'greek_column', x: -4, z: 20.6 },
+                { key: 'greek_column', x: -21, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -14, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -9, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -5.5, z: 20.6, y: 1.2 },
                 { key: 'greek_column', x: 4, z: 20.6 }, { key: 'greek_column', x: 10, z: 20.6 }, { key: 'greek_column', x: 16, z: 20.6 }, { key: 'greek_column', x: 21, z: 20.6 },
                 { key: 'greek_column', x: -8, z: 12 }, { key: 'greek_column', x: 8, z: 12 }, { key: 'greek_column', x: -8, z: -4 }, { key: 'greek_column', x: 8, z: -4 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
