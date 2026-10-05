@@ -37349,7 +37349,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 28.3, z0: -24.3, x1: 34.8, z1: -24.3, model: 'balusters_b' },
                     { k: 'rail', x0: 21.4, z0: -26.4, x1: 28.6, z1: -26.4, y: 4.0, model: 'pipe', block: false },
                     { k: 'hall', pts: [[34, -26], [40, -26]], w: 3 },
-                    { k: 'plateau', x: 37.5, z: -26, w: 4, d: 3, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: 37.5, z: -26, w: 5, d: 4.2, h: 3.0, edge: 0.15 },   // (wider than the passage: no floor slot beside the flight)
                     { k: 'ramp', x0: 38.8, z0: -26, x1: 35.3, z1: -26, w: 2.4, h0: 3.0, h1: 4.0, stairs: true, model: 'steel' },
                     { k: 'hall', pts: [[15, -31], [3, -31]], w: 2.5 },
                     { k: 'plateau', x: 8.5, z: -31, w: 13, d: 3.6, h: 4.0, edge: 0.15 },
