@@ -1145,6 +1145,12 @@
                     if (opts.frameTiles && opts.frameTiles.length) {
                         camEvt.frameTiles = opts.frameTiles.map(function(t) { return { x: t.x, y: t.y }; });
                     }
+                    /* THE FRAME GUARD: every unit the host's shot keeps on
+                       screen (battle.js writes the list back onto opts) — the
+                       guest's camera guards the same bodies. */
+                    if (Array.isArray(opts.frameUnitIds) && opts.frameUnitIds.length) {
+                        camEvt.frameUnitIds = opts.frameUnitIds.filter(function(id) { return id != null; });
+                    }
                     if (opts.extraTargets && opts.extraTargets.length) {
                         camEvt.extraTargetIds = opts.extraTargets
                             .map(function(u) { return u && u.id; })
@@ -3996,6 +4002,7 @@
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
                                 if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
+                                if (Array.isArray(camEvt.frameUnitIds) && camEvt.frameUnitIds.length) camOpts.frameUnitIds = camEvt.frameUnitIds;
                                 if (camEvt.extraTargetIds && camEvt.extraTargetIds.length
                                     && typeof window.unitFromId === 'function') {
                                     var _ets = [];

@@ -126,6 +126,125 @@ const ThreeCamera = (function () {
         return (Number.isFinite(h) && h > 0 ? h : 0) * tileSize * ELEV_STEP_RATIO;
     }
 
+    /* ══ THE FRAME GUARD (2026-10-05) — see sync() ══
+       cam._frameGuard.points() → [[x, y, z], …] in world units: the bodies
+       that must be on screen this frame (null = nothing to guard). The
+       margins keep each body inside the action cam's letterbox (9% bars top
+       and bottom) with a little air at the sides. */
+    const FG_MARGIN_H = 0.86;
+    const FG_MARGIN_V = 0.70;
+    let _frameGuardLast = null;
+    function _fgBasis(dx, dy, dz, yawRad) {
+        /* r = screen right (horizontal: d × world-up), u = screen up (r × d).
+           A straight-down gaze has no d × up; the yaw gives the right axis. */
+        let rx = -dz, rz = dx;
+        let rl = Math.hypot(rx, rz);
+        if (rl < 1e-4) { rx = Math.cos(yawRad); rz = -Math.sin(yawRad); rl = 1; }
+        rx /= rl; rz /= rl;
+        return { rx: rx, rz: rz, ux: -rz * dy, uy: rz * dx - rx * dz, uz: rx * dy };
+    }
+    /* The smallest correction for view direction d: slide (sx along r, sy
+       along u) + dolly back D, so every point sits inside the margins and
+       the eye stays above floorY. Every constraint is linear in (sx, sy) for
+       a fixed D, and widening D only widens the feasible box, so D is a
+       bisection and (sx, sy) the in-box value nearest 0 (the least slide —
+       the director's composition moves as little as it can).
+       Returns 0 = already framed, null = no answer along d. */
+    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, tanH, tanV, zMin) {
+        const n = pts.length;
+        const X = new Array(n), Y = new Array(n), Z = new Array(n);
+        let fits = true, zLow = Infinity;
+        for (let i = 0; i < n; i++) {
+            const p = pts[i];
+            const vx = p[0] - ex, vy = p[1] - ey, vz = p[2] - ez;
+            const z = vx * dx + vy * dy + vz * dz;
+            const x = vx * B.rx + vz * B.rz;
+            const y = vx * B.ux + vy * B.uy + vz * B.uz;
+            X[i] = x; Y[i] = y; Z[i] = z;
+            if (z < zLow) zLow = z;
+            if (z < zMin || Math.abs(x) > z * tanH || Math.abs(y) > z * tanV) fits = false;
+        }
+        if (fits) return 0;
+        const box = function (D) {
+            let xLo = -Infinity, xHi = Infinity, yLo = -Infinity, yHi = Infinity;
+            for (let i = 0; i < n; i++) {
+                const zz = Z[i] + D;
+                if (zz < zMin) return null;
+                const hw = zz * tanH, hh = zz * tanV;
+                if (X[i] - hw > xLo) xLo = X[i] - hw;
+                if (X[i] + hw < xHi) xHi = X[i] + hw;
+                if (Y[i] - hh > yLo) yLo = Y[i] - hh;
+                if (Y[i] + hh < yHi) yHi = Y[i] + hh;
+            }
+            if (B.uy > 1e-3) {
+                const fl = (floorY - ey + D * dy) / B.uy;   // eye y after = ey + sy·uy − D·dy ≥ floorY
+                if (fl > yLo) yLo = fl;
+            }
+            if (xLo > xHi || yLo > yHi) return null;
+            return [xLo, xHi, yLo, yHi];
+        };
+        let lo = Math.max(0, zMin - zLow), hi = tileSize * 60;
+        if (!box(hi)) return null;
+        if (box(lo)) hi = lo;
+        else {
+            for (let k = 0; k < 22; k++) {
+                const mid = (lo + hi) / 2;
+                if (box(mid)) hi = mid; else lo = mid;
+            }
+        }
+        /* a breath of slack past the exact fit, so a body never sits ON the margin */
+        let D = hi + tileSize * 0.2;
+        let b = box(D);
+        if (!b) { D = hi; b = box(D); }
+        if (!b) return null;
+        const sx = Math.min(b[1], Math.max(b[0], 0));
+        const sy = Math.min(b[3], Math.max(b[2], 0));
+        return { sx: sx, sy: sy, D: D };
+    }
+    function _frameGuardSolve(cam, ex, ey, ez, lx, ly, lz, floorY) {
+        let pts = null;
+        try { pts = (cam._frameGuard && typeof cam._frameGuard.points === 'function') ? cam._frameGuard.points() : null; }
+        catch (e) { pts = null; }
+        if (!pts || !pts.length || !threeCamera) { _frameGuardLast = null; return null; }
+        const tv = Math.tan((threeCamera.fov || FOV) * DEG2RAD / 2);
+        const aspect = threeCamera.aspect || (16 / 9);
+        const tanH = tv * aspect * FG_MARGIN_H, tanV = tv * FG_MARGIN_V;
+        const zMin = tileSize * 0.8;
+        const yawRad = (cam.yaw || 0) * DEG2RAD;
+        let dx = lx - ex, dy = ly - ey, dz = lz - ez;
+        const dl = Math.hypot(dx, dy, dz);
+        if (!(dl > 1e-6)) return null;
+        dx /= dl; dy /= dl; dz /= dl;
+        let B = _fgBasis(dx, dy, dz, yawRad);
+        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, tanH, tanV, zMin);
+        if (res === 0) { _frameGuardLast = { n: pts.length, framed: true }; return null; }
+        let reaimed = false;
+        if (!res) {
+            /* No answer along this gaze — a lens looking UP whose dolly back
+               would sink the eye under the floor. Level the gaze to a gentle
+               downward look on the same heading and solve again. */
+            const h = Math.hypot(dx, dz);
+            const hx = h > 1e-4 ? dx / h : -Math.sin(yawRad);
+            const hz = h > 1e-4 ? dz / h : -Math.cos(yawRad);
+            const ndy = -0.3, hs = Math.sqrt(1 - ndy * ndy);
+            dx = hx * hs; dy = ndy; dz = hz * hs;
+            B = _fgBasis(dx, dy, dz, yawRad);
+            reaimed = true;
+            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, tanH, tanV, zMin);
+            if (res === 0) res = { sx: 0, sy: 0, D: 0 };
+            if (!res) { _frameGuardLast = { n: pts.length, framed: false, failed: true }; return null; }
+        }
+        const ox = res.sx * B.rx + res.sy * B.ux;
+        const oy = res.sy * B.uy;
+        const oz = res.sx * B.rz + res.sy * B.uz;
+        const bx = ex + ox, by = ey + oy, bz = ez + oz;
+        _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed };
+        return [bx - dx * res.D, by - dy * res.D, bz - dz * res.D,
+                bx + dx * dl, by + dy * dl, bz + dz * dl];
+    }
+    /* probe: what the guard did on the last frame */
+    function frameGuardState() { return _frameGuardLast; }
+
     function sync(cam) {
         if (!threeCamera) return;
 
@@ -481,6 +600,27 @@ const ThreeCamera = (function () {
             targetLookY = focalY;
             targetLookZ = focalZ;
         }
+        /* ══ THE FRAME GUARD (2026-10-05) ══
+           While a spell's action shot is live, battle.js publishes
+           cam._frameGuard: the units that MUST be on screen right now (the
+           caster through the cast, every unit the spell actually hits from
+           the impact on), as their REAL rendered bodies — feet to the top of
+           the HP bar, flight height included. Whatever beat a director or a
+           family composed, this solves the smallest correction that puts
+           every one of them inside the frame (inside the letterbox): a
+           sideways/vertical slide first, a dolly back only as far as needed,
+           the view direction never changed. A frame that already shows them
+           all is left untouched, so every shot keeps its look and only a shot
+           that would have lost a body is fixed. */
+        if (cam._frameGuard && !handHeld) {
+            const g = _frameGuardSolve(cam, targetPosX, targetPosY, targetPosZ,
+                targetLookX, targetLookY, targetLookZ, floorY);
+            if (g) {
+                targetPosX = g[0]; targetPosY = g[1]; targetPosZ = g[2];
+                targetLookX = g[3]; targetLookY = g[4]; targetLookZ = g[5];
+            }
+        } else _frameGuardLast = null;
+
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
         _lastSyncTime = now;
@@ -837,6 +977,7 @@ const ThreeCamera = (function () {
         snapImmediate,
         seedPose,
         seedState,
+        frameGuardState,
         FOV,
         NEAR,
         FAR
