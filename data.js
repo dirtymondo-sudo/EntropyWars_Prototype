@@ -38464,7 +38464,33 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -26, z0: -45, x1: -10, z1: -45 },                                                             // … and east
                     { k: 'plateau', x: 14, z: -44, w: 12, d: 2.6, h: -1.0, sink: true, edge: 0.15 },                              // TRENCH I, sunk
                     { k: 'plateau', x: 16, z: 43, w: 9, d: 2.6, h: -1.0, sink: true, edge: 0.15 },                                // TRENCH II, sunk
-                    { k: 'path', pts: [[0, 58], [0, 26], [18, 26]], w: 3.2 },                                                     // THE CAUSEWAY, from the door to the sphinx's paws
+                    /* the stairs pass (2026-10-05): THE CAUSEWAY raised 1.8 m (up a wide flight from the door's court, down a flight to the
+                       paws), its west arm north over room 1 to a pier across a 2 m gap and a flight onto the pyramid's tier 1 */
+                    { k: 'plateau', x: 0, z: 32.25, w: 5, d: 17.5, h: 1.8, edge: 0.15 },
+                    { k: 'plateau', x: -10.75, z: 26, w: 43.5, d: 5, h: 1.8, edge: 0.15 },
+                    { k: 'ramp', x0: 0, z0: 45.5, x1: 0, z1: 40.3, w: 5, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'rail', pts: [[0, 45.1, 0.14], [0, 40.7, 1.66]], model: 'pipe', block: false },                          // its centre handrail
+                    { k: 'ramp', x0: 15.5, z0: 26, x1: 10.3, z1: 26, w: 3, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'plateau', x: -30, z: 21.5, w: 4, d: 6, h: 1.8, edge: 0.15 },                                            // the west arm
+                    { k: 'plateau', x: -30, z: 14.25, w: 4, d: 4.5, h: 1.8, edge: 0.15 },                                         // the pier
+                    { k: 'rail', x0: -30, z0: 16.2, x1: -30, z1: 18.8, y: 1.8, model: 'pipe', block: false },                      // across the gap
+                    { k: 'ramp', x0: -30, z0: 12.1, x1: -30, z1: 9.3, w: 2.6, h0: 1.8, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'rail', x0: -31.8, z0: 18.7, x1: -31.8, z1: 23.6, model: 'parapet' }, { k: 'rail', x0: -28.2, z0: 18.7, x1: -28.2, z1: 23.6, model: 'parapet' },
+                    { k: 'rail', x0: -28.2, z0: 23.7, x1: -22, z1: 23.7, model: 'parapet' },
+                    { k: 'rail', arc: { x: -36, z: 17, r: 2.2, a0: 180, a1: 360 }, model: 'pipe', block: false },                  // round the obelisks' feet
+                    { k: 'rail', arc: { x: -24, z: 17, r: 2.2, a0: 0, a1: 180 }, model: 'pipe', block: false },
+                    /* THE GREAT PYRAMID's east face: three flights tier 1 to the top */
+                    { k: 'ramp', x0: -0.5, z0: -20, x1: -8.7, z1: -20, w: 2.6, h0: 3.5, h1: 7.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'ramp', x0: -8.5, z0: -20, x1: -16.7, z1: -20, w: 2.6, h0: 7.0, h1: 10.5, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    { k: 'ramp', x0: -16.5, z0: -20, x1: -24.7, z1: -20, w: 2.6, h0: 10.5, h1: 14.0, stairs: true, built: true, edge: 0.15, key: 'bricks_1' },
+                    /* THE DIG's scaffold: tier 1 east over hall C to a tower, south to a second (a ladder up it), east over hall D onto KHAFRE */
+                    { k: 'bridge', x0: -0.7, z0: -40, x1: 19.7, z1: -40, w: 2.4, y: 3.5 },
+                    { k: 'plateau', x: 20.75, z: -40, w: 3.5, d: 3.5, h: 3.5, edge: 0.15 },
+                    { k: 'bridge', x0: 20.75, z0: -39.0, x1: 20.75, z1: -31.0, w: 2.4, y: 3.5 },
+                    { k: 'plateau', x: 20.75, z: -30, w: 3.5, d: 3.5, h: 3.5, edge: 0.15 },
+                    { k: 'climb', x: 19.3, z: -30, face: 90, look: 'ladder' },
+                    { k: 'bridge', x0: 21.8, z0: -30, x1: 29.7, z1: -30, w: 2.4, y: 3.5 },
+                    { k: 'path', pts: [[0, 58], [0, 26], [18, 26]], w: 3.2 },                                                   // THE CAUSEWAY, from the door to the sphinx's paws
                     { k: 'path', pts: [[0, 26], [-30, 26], [-30, 12]], w: 3.2 },                                                  // … and to the pyramid's south foot
                     { k: 'path', pts: [[-30, 12], [-62, 12], [-62, -54], [-30, -54]], w: 2.6 },                                   // round the pyramid to the north stair
                     { k: 'path', pts: [[-30, -54], [-10, -54], [-10, -58]], w: 2.4 },                                             // to the robbers' tunnel
