@@ -36721,7 +36721,20 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: -5.6, z0: -8, x1: 4.7, z1: -8, w: 3, h0: 6.5, h1: 10.0, stairs: true, float: true },      // FLIGHT C, across the gap
                     { k: 'plateau', x: 10, z: -12, w: 12, d: 12, h: 10.0, float: true },                                      // THE KEEP IN THE AIR (x 4..16, z −18..−6)
                     { k: 'plateau', x: 14, z: -16, r: 1.3, h: 14.0, edge: 0.3, float: true },                                 // THE SPIRE off its corner (the tape — the door gun's)
-                    { k: 'rail', x0: 8.6, z0: 4, x1: 8.6, z1: 12 },                                                          // the court's east rim (the grind)
+                    { k: 'rail', x0: 8.6, z0: 6.8, x1: 8.6, z1: 12 },                                                        // the court's east rim (the grind)
+                    /* THE WAY ROUND: a floating flight east from the court to a landing (6.5), a flight north from it to the east piece (10)
+                       that stands 2 m off the keep's east side (a jump across, a pipe rail laid over the gap); parapets on the outer
+                       edges, a pipe round the fountain and one down flight A */
+                    { k: 'ramp', x0: 8.4, z0: 5, x1: 18.7, z1: 5, w: 3, h0: 3.0, h1: 6.5, stairs: true, float: true },
+                    { k: 'plateau', x: 22, z: 5, w: 8, d: 8, h: 6.5, edge: 0.15, float: true },
+                    { k: 'ramp', x0: 22, z0: 3.0, x1: 22, z1: -4.7, w: 3, h0: 6.5, h1: 10.0, stairs: true, float: true },
+                    { k: 'plateau', x: 21.75, z: -9, w: 7.5, d: 10, h: 10.0, edge: 0.15, float: true },
+                    { k: 'rail', x0: 15.4, z0: -10, x1: 19.1, z1: -10, y: 10, model: 'pipe', block: false },
+                    { k: 'rail', x0: 25.25, z0: -13.25, x1: 25.25, z1: -4.75, y: 10, model: 'parapet' },
+                    { k: 'rail', x0: 18.45, z0: -13.75, x1: 25.25, z1: -13.75, y: 10, model: 'parapet' },
+                    { k: 'rail', x0: 25.75, z0: 1.25, x1: 25.75, z1: 8.75, y: 6.5, model: 'parapet' },
+                    { k: 'rail', arc: { x: 0, z: 8, r: 2.6, a0: 20, a1: 340 }, y: 3, model: 'pipe', block: false },
+                    { k: 'rail', x0: 0, z0: 20.25, x1: 0, z1: 12.75, model: 'pipe', block: false },
                     { k: 'rail', x0: -18.6, z0: -9, x1: -18.6, z1: 1 },                                                      // the bailey's west rim
                     { k: 'rail', x0: 4.5, z0: -17.6, x1: 12, z1: -17.6 },                                                    // the keep's north rim
                     { k: 'path', pts: [[0, 25], [0, 20.5]], w: 2.0 },                                                        // the battlements' door onto the deck
