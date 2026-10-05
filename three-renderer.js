@@ -32820,13 +32820,19 @@ const ThreeRenderer = (function () {
     }
     /* a geometry's and a material's share of the signature, once per tick however many meshes share them (W5a: the check
        walked every attribute and 13 texture slots per MESH, 3351 meshes a frame in mondo's battle room) */
+    /* THE CONTENTS (2026-10-05, mondo: "in the battle arena my unit is at lower elevation but the floor is still drawn above
+       them"): a dig DEFORMS the room's floor in place (_fieldDeformMesh: new vertex positions, needsUpdate) — same geometry,
+       same buffers, so the structure hash held, the group stayed STATIC, and a static bundle never runs three's
+       geometries.updateForRender: the new positions were never uploaded and the floor stood flat over the unit in the pit.
+       Every attribute's (and the index's) version is now a VALUE: a static group re-records (the upload runs), and a group
+       whose buffers keep moving is demoted to non-static, where three's own per-object check uploads them. */
     function _ewBunGeo(g, F) {
         if (g._ew_bunF === F) return g._ew_bunH;
-        var h = g.id, at = g.attributes, k;
-        for (k in at) { var a = at[k], ab = a.isInterleavedBufferAttribute ? a.data : a; h = _ewBunMix(h, _ewBunAid(ab)); h = _ewBunMix(h, ab.array ? ab.array.length : 0); }
-        if (g.index) { h = _ewBunMix(h, _ewBunAid(g.index)); h = _ewBunMix(h, g.index.array.length); }
+        var h = g.id, v = 0, at = g.attributes, k;
+        for (k in at) { var a = at[k], ab = a.isInterleavedBufferAttribute ? a.data : a; h = _ewBunMix(h, _ewBunAid(ab)); h = _ewBunMix(h, ab.array ? ab.array.length : 0); v = _ewBunMix(v, ab.version | 0); }
+        if (g.index) { h = _ewBunMix(h, _ewBunAid(g.index)); h = _ewBunMix(h, g.index.array.length); v = _ewBunMix(v, g.index.version | 0); }
         h = _ewBunMix(h, g.drawRange.start); h = _ewBunMix(h, g.drawRange.count === Infinity ? -1 : g.drawRange.count); h = _ewBunMix(h, g.groups.length);
-        g._ew_bunF = F; g._ew_bunH = h;
+        g._ew_bunF = F; g._ew_bunH = h; g._ew_bunV = v;
         return h;
     }
     function _ewBunMat(m, F) {
@@ -32845,7 +32851,7 @@ const ThreeRenderer = (function () {
         h = _ewBunMix(h, o.id);
         if (o.isSkinnedMesh) S.dyn = true;
         if (g && o._ew_lodL != null) { S.hf = _ewBunMix(_ewBunMix(S.hf, o.id), g.id); g = null; }   // THE LOD LEVELS: a level swap re-records at most once a second (an old level draws meanwhile; a freed one bumps the epoch)
-        if (g) h = _ewBunMix(h, _ewBunGeo(g, F));
+        if (g) { h = _ewBunMix(h, _ewBunGeo(g, F)); v = _ewBunMix(v, g._ew_bunV | 0); }   // THE CONTENTS: a buffer rewritten in place re-records
         if (o.isInstancedMesh) h = _ewBunMix(h, o.count);
         h = _ewBunMix(h, (o.castShadow ? 2 : 0) + (o.receiveShadow ? 1 : 0));
         h = _ewBunMix(h, o.renderOrder | 0); h = _ewBunMix(h, o.layers.mask);

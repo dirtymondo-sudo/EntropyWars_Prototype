@@ -692,3 +692,12 @@ WAYS (hollowtree / deadtree) keep their procedural trunk with the hole (no GLB o
 - `_buildLightRays`: the battle god-ray box shafts + floor pools + motes are no longer built (it clears any old group and returns).
 - `_hqLightShaft` returns null: DOOR_HQ.lightShafts rows and the `light_shaft` catalogue prop draw nothing (same box beam).
 - Don't bring any of these back.
+
+## THE BUNDLE CONTENTS FIX (2026-10-05, arena floor over a dug unit)
+mondo: "in the battle arena my unit is at lower elevation but the floor is still drawn above them". On WebGPU (ew_gpu=webgpu)
+the field bundles (W5a round 5) replay the room's floor; a dig deforms that floor IN PLACE (_fieldDeformMesh writes new
+positions + needsUpdate), so _ewBunGeo's structure hash (ids + lengths) held, the group stayed `static`, and three skips
+geometries.updateForRender for a static bundle (three.webgpu.js NodeMaterialObserver.needsRefresh) — the new vertices were
+never uploaded. Fix: every attribute/index `version` is now part of the VALUES hash (_ewBunGeo → g._ew_bunV, mixed into hv
+by _ewBunObj): a static group re-records once, a group whose buffers keep moving is demoted to non-static (three's own check
+uploads them). WebGL was never affected. Token 20261005-arenafloor-01-cors.
