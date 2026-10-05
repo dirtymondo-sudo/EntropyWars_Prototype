@@ -10901,6 +10901,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try { TR.warmMiscModels(_SPELL_MISC_KEYS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         try { if (TR && typeof TR.sedan === 'function') TR.sedan({ metres: 4.4 }); } catch (e) {}
+        /* the summons that wear a rig (the cult leader's Gathering → the user's cult member GLB) */
+        if (TR && typeof TR.warmSummonModels === 'function') {
+            try { TR.warmSummonModels().forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
         /* the pixel cladding + the projectile sheets (tiny, but a black frame on first use otherwise) */
         try {
             _SPELL_TERRAIN.forEach(function (f) { _sigTerrainTex(f, 1, 1); });

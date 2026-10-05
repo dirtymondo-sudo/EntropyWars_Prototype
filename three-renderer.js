@@ -4962,33 +4962,54 @@ const ThreeRenderer = (function () {
        creation is the flesh abomination re-dressed (grey-green skin, neck
        bolts, a stitched seam); the hound is a low box-kit quadruped —
        placeholders until the owner's models land (plan §9.6). */
+    function _cultSummonDef() {
+        return (typeof getCastModel === 'function') ? getCastModel('cult1') : null;
+    }
+    function _warmSummonModels() {
+        var def = _cultSummonDef();
+        if (!def || !def.model) return [];
+        _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
+        return [function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; }];
+    }
+    function _cultSummonAttach(cg, ts) {
+        var def = _cultSummonDef();
+        if (!def || !def.model) return;
+        _loadUnitGLB(def.model, function (entry) {
+            if (!entry || !entry.root) return;
+            var m = _cloneUnitModel(entry.root);
+            m.traverse(function (n) {
+                if (!n.isMesh) return;
+                if (n.geometry) n.geometry._ew_shared = true;   // the cached root owns the geometry — a turret rebuild must not dispose it
+                if (n.material) n.material = Array.isArray(n.material) ? n.material.map(function (mt) { return mt.clone(); }) : n.material.clone();
+                n.castShadow = true; n.frustumCulled = false;
+            });
+            var bb = entry.bbox || _skinnedBBox(entry.root);
+            var h = Math.max(0.001, bb.max.y - bb.min.y);
+            var sc = (ts * 0.78 * (def.heightRatio || 1)) / h;
+            m.scale.setScalar(sc);
+            m.position.y = -bb.min.y * sc;
+            var inner = new THREE.Group();
+            inner.rotation.y = def.yawOffset || 0;
+            inner.add(m);
+            cg.add(inner);
+            var pose = function (clip) {
+                if (!clip) return;
+                try { var mx = new THREE.AnimationMixer(m); mx.clipAction(clip).play(); mx.update(0); mx.stopAllAction(); } catch (e) {}
+            };
+            if (_animLibActive(def)) _animLibBakeForModel(def, entry, function (baked) { pose(baked && baked.idle); });
+        });
+    }
+
     function _buildSummon3D(turret) {
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
-        /* THE CULT MEMBER (2026-09-21, the cult leader's capstone The Gathering — summonDef key 'cultist'): a robed
-           figure, hood up, a candle in each hand — the procedural stand-in for the user's cult member rigs (the cast
-           models cult1–5 stand in the Grove; a skinned clone of one on the board is the next pass). */
+        /* THE CULT MEMBER (2026-09-21, the cult leader's capstone The Gathering — summonDef key 'cultist').
+           NO STAND-INS (2026-10-05, mondo): the procedural robe/hood/candle figure is deleted. The summon wears the
+           user's own cult member rig (sprites.js DOOR_CAST_MODELS.cult1, R2 Races/cultmember/), skinned-cloned and
+           posed on the first frame of its idle; until the GLB lands the summon draws nothing. The spell library warm
+           (ThreeVFXEffects.warmSpellLibrary → warmSummonModels) loads it with the rest of the spells. */
         if (turret.summon === 'cultist') {
             var cg = new THREE.Group();
-            var robe = new THREE.MeshLambertMaterial({ color: 0x4a1020 });
-            var robeDark = new THREE.MeshLambertMaterial({ color: 0x2a0810 });
-            var skin = new THREE.MeshLambertMaterial({ color: 0xd8b8a0 });
-            var wax = new THREE.MeshLambertMaterial({ color: 0xf2e6c8 });
-            var body = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.19, ts * 0.62, 12, 1, true), robe);
-            body.position.set(0, ts * 0.31, 0); body.material.side = THREE.DoubleSide; cg.add(body);
-            var shoulders = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.13, 10, 8), robe);
-            shoulders.position.set(0, ts * 0.58, 0); shoulders.scale.set(1, 0.6, 0.8); cg.add(shoulders);
-            var face = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 10, 8), skin);
-            face.position.set(0, ts * 0.7, -ts * 0.02); cg.add(face);
-            var hood = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.1, 10, 8, Math.PI * 0.75, Math.PI * 1.5, 0, Math.PI * 0.75), robeDark);
-            hood.material.side = THREE.DoubleSide; hood.position.set(0, ts * 0.71, 0); cg.add(hood);
-            for (var cs = -1; cs <= 1; cs += 2) {
-                var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.035, ts * 0.045, ts * 0.26, 8), robe);
-                arm.position.set(cs * ts * 0.16, ts * 0.5, -ts * 0.06); arm.rotation.z = cs * 0.55; arm.rotation.x = -0.5; cg.add(arm);
-                var candle = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.014, ts * 0.014, ts * 0.09, 6), wax);
-                candle.position.set(cs * ts * 0.22, ts * 0.46, -ts * 0.16); cg.add(candle);
-                var flame = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.016, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffc040, fog: false }));
-                flame.position.set(cs * ts * 0.22, ts * 0.52, -ts * 0.16); flame.scale.y = 1.6; cg.add(flame);
-            }
+            _cultSummonAttach(cg, ts);
             if (turret.facingAngle != null) cg.rotation.y = -turret.facingAngle + Math.PI / 2;
             cg.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
             cg._ew_turretId = turret.id;
@@ -65360,6 +65381,7 @@ const ThreeRenderer = (function () {
         /* Match-start asset gate (battle.js loading screen, ROADMAP §3.1) */
         preloadUnitModels,
         warmMiscModels: _warmMiscModels,
+        warmSummonModels: _warmSummonModels,
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
         /* THE BACKGROUND LANE (2026-09-20): another module's warm (three-vfx-effects.js's weapon props)
