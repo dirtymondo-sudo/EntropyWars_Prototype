@@ -1896,3 +1896,21 @@ Engine + catalogue: docs/notes/models-assets.md "THE STAIRS PACK". Every stair r
 (kind: the row's `model`, else the room's `terrain.stairs`, else timber in a forest room, else HQ_STAIR_RULES.siteKinds by site — stone / steel — else `concrete`); every rail row as a pack railing. Rooms redesigned (verticality, stairs
 instead of ramps, upper sections, gap jumps, curved / sloped / gap-crossing railings):
 - Batch 1 (engine): THE MALL escalators swapped for the pack's (no layout change yet).
+- Batch 2 (urban / man-made), one commit per room (git log --grep for the room name):
+  - Mall: stairs, tongues with a jump gap, a top catwalk, handrails, curved rails. Strip: north roof run with walkways, a gap and
+    stairs, an upper parking deck, curved kerb rails. Downtown: the canal terrace (stairs, a gap, a walkway over the avenue), plaza
+    fountain curved rail.
+  - Cyberpunk streets: the seven stack roofs (10.5) joined into one rooftop run by bridges over the alleys and the boulevard; fire
+    escape stairs up stacks W and E1 to 5.25 landings; overlook ramp → glass stair; undercity steps → grate; curved rails round the
+    holo-plaza. City-plan gotcha: a `rail` row with x0..x1 forces the ground open under it — over masses write rails as `pts`.
+  - Harbour: a quay at 0 along the north edge (fixed the old sea trap: nothing joined the door to the water), three wharves at 3.0
+    with a 2.5 m gap, a steel gantry bridge over the water down to the T-head, stone water steps a swimmer can climb out of, the mole
+    crest walk to the lighthouse (curved railing round its head). `res` 1.0 → 0.5.
+  - Stadium bowl (HQ_AREA_SPECS.prebuilt_stadium): two more tunnel slots with concrete flights sideline → concourse (6.3); a rim walk
+    at 10.5 round the facade top (ladders up; the concourse is a wall row and cannot hold a flight); pipe rails across the tunnel
+    mouths; the flood masts on the roof corners. Garage: two concrete stairs plaza → deck (4.2) with centre pipe handrails.
+  - Area 51 (gate, flight line, hangar, ward), Antarctica station, derelict deck, Revenge deck, D.U.M.B. (bunker, war room, clone
+    vats, dream lab, sub-level 7, motor pool), sewers (three upper districts at 1.6), running tunnels (maintenance level at 2.4),
+    holding cells (north half at 1.4), old workings (1.4 ledges), CERN ring (catwalks, raised control room).
+  - Gotcha: a blocking railing hung over open lower ground reads as a false trap (the cell under it takes the railing's top) — make
+    such railings `block: false`.
