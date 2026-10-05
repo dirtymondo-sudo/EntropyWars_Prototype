@@ -1928,7 +1928,7 @@ instead of ramps, upper sections, gap jumps, curved / sloped / gap-crossing rail
     map): round court with a lookout on the tell top, spoil heap step + scaffold across a gap. Stonehenge: the bank a raised ring at
     1.8 in five lengths (gaps at the lanes with curved rails), avenue banks with a gap. Hand-drawn plan gotcha: a stair forces the
     ground open 3 m past its head and an outer bank's height adds on top, so outer banks can't take flights.
-  - Temple city (terrace, causeway over the canal, forecourt, ball-court gallery), crystal city (terraces one district, glass
+  - Temple city (causeway from its hall over the canal with a gap, forecourt, ball-court gallery; the plaza stays flat — it is the PvP arena window), crystal city (terraces one district, glass
     railings, gallery gap), Olympus (raised colonnade walk, loft stair), North Pole (timber walkway along the north wall, workshop
     loft stair).
   - Haunted grounds (porch balcony wings, bridges to the coach house roof and an upper terrace deck, upper plot, churchyard walk with
