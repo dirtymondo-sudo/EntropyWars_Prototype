@@ -44831,14 +44831,14 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: 5.3, z0: -24.55, x1: 7.0, z1: -24.55, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 3.35, z0: -27.9, x1: 3.35, z1: -25.2, y: 3.6, model: 'balusters_b' },
             { k: 'bridge', x0: -6.4, z0: -26.0, x1: -17.7, z1: -26.0, w: 1.8, y: 3.6 },
             { k: 'bridge', x0: 6.4, z0: -26.0, x1: 19.7, z1: -26.0, w: 1.8, y: 3.6 },
-            /* THE FAMILY PLOT (0.8) up its steps, the upper plot (2.0) up a second flight, its stair down north into the coach house's yard */
+            /* THE FAMILY PLOT (0.8) up its steps, the upper plot (2.0) along its west side up a second flight (a grind rail on its lip), its stair down
+               north into the coach house's yard (the plot's middle stays level: the arena) */
             { k: 'plateau', x: -18, z: -6, r: 6, h: 0.8, edge: 0.15 },
             { k: 'ramp', x0: -8.6, z0: -6, x1: -12.7, z1: -6, w: 2.4, h0: 0, h1: 0.8, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'plateau', x: -20.5, z: -8.5, w: 7, d: 5, h: 2.0, edge: 0.15 },
-            { k: 'ramp', x0: -19.0, z0: -3.4, x1: -19.0, z1: -6.7, w: 2.0, h0: 0.8, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: -19.5, z0: -15.0, x1: -19.5, z1: -10.3, w: 2.0, h0: 0, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'rail', x0: -23.85, z0: -10.85, x1: -23.85, z1: -6.15, y: 2.0, model: 'parapet' }, { k: 'rail', x0: -23.85, z0: -10.85, x1: -20.6, z1: -10.85, y: 2.0, model: 'parapet' },
-            { k: 'rail', x0: -18.4, z0: -10.85, x1: -17.15, z1: -10.85, y: 2.0, model: 'parapet' }, { k: 'rail', x0: -17.15, z0: -10.85, x1: -17.15, z1: -6.15, y: 2.0, model: 'parapet' },
+            { k: 'plateau', x: -24.25, z: -9.875, w: 6.1, d: 5.65, h: 2.0, edge: 0.15 },
+            { k: 'ramp', x0: -19.6, z0: -8.0, x1: -21.9, z1: -8.0, w: 1.8, h0: 0.8, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: -25.6, z0: -16.6, x1: -25.6, z1: -12.0, w: 1.8, h0: 0, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: -21.4, z0: -12.0, x1: -21.4, z1: -9.1, y: 2.0, model: 'pipe', block: false },
             /* THE CRYPT (2.6): the mausoleum block — the ivy up its west face, a 2.5 m gap east to the churchyard walk (two rails across it); the churchyard wall (the grind) with its gate onto the lawn */
             { k: 'plateau', x: 18, z: 0, w: 8, d: 8, h: 2.6, edge: 0.15 }, { k: 'climb', x: 14.3, z: 0, face: 90, look: 'vine' },
             { k: 'wall', x0: 13.7, z0: -4.05, x1: 22.3, z1: -4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 13.7, z0: 4.05, x1: 22.3, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
@@ -44887,7 +44887,7 @@ const HQ_AREA_SPECS = {
                   action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
                   desc: 'The front door at the top of the porch steps. It is open a crack. It was not, a moment ago.' }],
         props: [{ key: 'railing_1m', x: -6.2, z: -20.4, face: 0, y: 1.6 }, { key: 'railing_1m', x: 12.3, z: 14, face: 90, y: 0.6 }, { key: 'railing_1m', x: -22, z: -18.6, face: 0, y: 3.6 }, { key: 'riser_1', x: 5, z: 12 },
-                { key: 'hollow_dead_tree', x: -22, z: -8.5, y: 2.0, face: 120 }, { key: 'angel_statue', x: -16, z: -8, y: 0.8, face: 90 },
+                { key: 'hollow_dead_tree', x: -24.6, z: -9.5, y: 2.0, face: 120 }, { key: 'angel_statue', x: -16, z: -8, y: 0.8, face: 90 },
                 { key: 'sarcophagus', x: 18, z: 6, face: 90 }, { key: 'sarcophagus', x: 26.3, z: 0, y: 2.6, face: 0 }, { key: 'demon_statue', x: 18, z: 0, y: 2.6, face: 180 },
                 { key: 'cave_torch', x: -6.5, z: -19 }, { key: 'cave_torch', x: 6.5, z: -19 }, { key: 'cave_torch', x: 14, z: 8 }, { key: 'cave_torch', x: -22, z: 14 },
                 { key: 'planter', x: -4.5, z: -17 }, { key: 'planter', x: 4.5, z: -17 }, { key: 'garden_tree', x: -24.5, z: 15.5 }, { key: 'garden_tree', x: 10, z: 24 }, { key: 'hollow_tree', x: 24, z: 20 },
