@@ -250,17 +250,18 @@
                         try { _qmVisible = computeVisibleTiles(state.activePlayer).has(posKey(x, y)); } catch (e) {}
                     }
 
-                    if (state.actionMode === 'move' && _qmVisible && actingUnit
-                        && _qmUnit && !_qmUnit.dead && _qmUnit.id !== actingUnit.id
-                        && state._clickedUnitId === _qmUnit.id) {
-                        /* move mode, clicked a unit SPRITE → engine parity:
-                           drop the mode and open that unit's quick menu (the
-                           engine's own helper — pure viewer-local UI) */
-                        if (typeof _exitModeAndShowUnitMenu === 'function') {
-                            _exitModeAndShowUnitMenu(actingUnit, _qmUnit);
-                            return;
-                        }
-                        focusUnitPanel(_qmUnit.id);
+                    const _qmTarget = (state.actionMode === 'move' && _qmVisible && actingUnit
+                        && typeof window._moveClickMenuTarget === 'function')
+                        ? window._moveClickMenuTarget(actingUnit, x, y, _qmUnit) : null;
+                    if (_qmTarget) {
+                        /* move mode, clicked a unit or the Cube → engine parity:
+                           drop the mode and open that target's quick menu (the
+                           engine's own helpers — pure viewer-local UI) */
+                        if (_qmTarget.unit && typeof _exitModeAndShowUnitMenu === 'function'
+                            && _exitModeAndShowUnitMenu(actingUnit, _qmTarget.unit)) return;
+                        if (_qmTarget.tile && typeof window._exitModeAndShowTileMenu === 'function'
+                            && window._exitModeAndShowTileMenu(actingUnit, x, y, z)) return;
+                        if (_qmTarget.unit) focusUnitPanel(_qmTarget.unit.id);
                     } else if (clickedUnit) {
                         focusUnitPanel(clickedUnit.id);
                     }

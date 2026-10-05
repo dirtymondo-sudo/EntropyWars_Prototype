@@ -896,3 +896,13 @@ keeps right-drag pan + middle-drag orbit. state.js: the left pan arms on mousedo
 starts past BATTLE_PAN_DRAG_PX (6 px); the click after a real drag is swallowed by a window capture listener. A press on
 the active unit's tile that starts drag-to-move (ui.js window._ewDragMoveActive) never pans. Hints: hud.js hints bar,
 ui.js pause-menu keybinds + camera help. Touch and exploration untouched.
+
+## MOVE MODE → QUICK MENU (2026-10-05)
+mondo: clicking the Cube or another unit while Move is armed must open its quick action menu. Root cause: the
+2026-09-19 "MODE HOLDS" rule in battle.js clickTile answered a unit-sprite click in move mode with "Pick a highlighted
+tile" (and an occupied tile with "That tile is occupied"); the Cube tile fell through to move-towards/doMove. PR #94's
+left-drag pan was NOT involved (it only swallows the click that follows a >6 px drag). Now `_moveClickMenuTarget`
+(battle.js) picks a unit (its sprite, or its tile when that tile is no legal landing) or a Cube/turret tile, and
+`_exitModeAndShowUnitMenu` / `_exitModeAndShowTileMenu` drop the mode and set the same anchors the no-mode click sets
+(`_enemyActionTargetId` for any other unit, ally or enemy; `_tileActionTarget` for object tiles). Fogged tiles never
+open a menu. Empty tiles still hold the mode. online.js guest wrapper uses the same helpers (viewer-local UI).
