@@ -419,3 +419,24 @@ starship (`near: 'derelict'`) and its `motion`. The Dutchman never had this: its
 - Checked: the Spaceship Arena TDM and the walk on the deck in WebGL (scratch Playwright, no errors). WebGPU could not run in
   the sandbox's Chromium (three 0.186's texture-view `swizzle` is unsupported there — every frame throws with or without this
   change); the hull uses only Phong / additive Basic / Sprite / CanvasTexture, all already on the WebGPU path.
+
+## THE ROOF OVER THE CITY (2026-10-05) — the Vatican observatory
+mondo: "why is the vatican observatory a landscape? it should be like the top of the vatican building looking out over
+vatican/italian city." The observatory (data.js `site_prebuilt_vatican_observatory`) was an open terrain room: its field ran on
+past the parapet as outer ground to the fog, and its own 8×8 Δ played on the site's plain (rim city + hills).
+- **The walk + its field fights**: `terrain.float: { roof: { depth: 30, lower: 7, cityR: 125 } }` — a floating field (no outer
+  ground) and three-renderer.js `_hqBuildRooftop` → `_vrRoofCity` under it (called from `_hqBuildTerrain` beside the hull, so
+  `_hqBuildRoomInBattle` gets it too). Built in metres in a frame (u, ox/oy/oz): THE TOWER under the terrace (cornice, one row of
+  tall windows), THE BASILICA's body round its foot `lower` m down (flat travertine roof, cornice, window rows, the façade's giant
+  columns on the south, angel statues along its top), THE DOME (vatican_dome GLB, 44 m) off the roof to the west, THE PIAZZA south
+  of the façade (paving ellipse, obelisk, two colonnade arms of greek columns), THE CITY on the street `depth` m down (Italian
+  building 1/2, a church in ~6 % of the cells, on a jittered 26 m grid out to cityR, kept off the body and the piazza) and a
+  cobbled ground disc out under the fog. Each GLB = one InstancedMesh per piece (`_vrInstances`, Lambert + a self-lit lift; the
+  cache's geometry flagged `_ew_shared`); nothing drawn until the file lands. Windows: dark glass panes, ~20 % lit warm (opaque
+  Basic, no additive). Shell: `fogD: 0.013` (hqVaticanShell's new option) and `heightFog: { floor: -30, h: 9, amount: 0.3 }`
+  (the mist lies in the streets, not on the terrace).
+- **The room's Δ board**: a room may carry `deltaEnv` (merged over its area Δ env by data.js `_mfAreaDeltaEnv`); the observatory's
+  is `{ near: 'vatican_roof', world: { kind: 'void', root: false } }` — `_NR_BUILDERS.vatican_roof` lays a marble apron with a
+  parapet round the 8×8 and runs `_vrRoofCity` under it (u = ts / 1.75).
+- The Vatican's PvP arena is cut from the basilica (HQ_ARENA_RULES.picks), so no re-bake was needed. Visual only: the guest
+  builds the same scenery from data (no relay).
