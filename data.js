@@ -38693,11 +38693,29 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-14, 17], [12, 17]], w: 2.6 },                                   // the back passage
                     { k: 'space', x: 0, z: 21.5, w: 8, d: 5 },                                           // side room 3 (a dead end)
                     { k: 'hall', pts: [[0, 18], [0, 19.5]], w: 2 },
-                    /* THE CATWALK along the guardroom's east side, up its stair */
-                    { k: 'plateau', x: 8, z: -1, w: 3, d: 6, h: 2.2, edge: 0.15 },
-                    { k: 'ramp', x0: 1.2, z0: -1, x1: 7.2, z1: -1, w: 2.4, h0: 0, h1: 2.2, stairs: true, edge: 0.15, built: true, key: 'urban:TileSubway2c' },
-                    { k: 'rail', x0: 6.6, z0: -3.8, x1: 6.6, z1: -2.4 }, { k: 'rail', x0: 6.6, z0: 0.4, x1: 6.6, z1: 1.8 },
+                    /* the upper level (1.4): the corridor, the cells, side rooms 1 and 2, the stair hall and the gallery along the
+                       guardroom's north wall; the guardroom, the tank, the property room and the back passage are the lower level */
+                    { k: 'plateau', x: 0, z: -15.35, w: 66, d: 12.7, h: 1.4, edge: 0.15 },                                      // the corridor and the cells
+                    { k: 'plateau', x: 0, z: -6.0, w: 3.2, d: 8.4, h: 1.4, edge: 0.15 },                                         // the stair hall
+                    { k: 'plateau', x: 2.95, z: -2.9, w: 3.1, d: 2.2, h: 1.4, edge: 0.15 },                                      // the gallery
+                    { k: 'plateau', x: -26, z: -4.35, w: 6.4, d: 10.9, h: 1.4, edge: 0.15 },                                     // side room 1
+                    { k: 'plateau', x: 25.9, z: -4.35, w: 7.0, d: 10.9, h: 1.4, edge: 0.15 },                                    // side room 2
+                    /* THE STAIR DOWN into the guardroom (a skate rail down its middle); the flights down from side rooms 1 and 2 */
+                    { k: 'ramp', x0: 0, z0: 2.3, x1: 0, z1: -2.5, w: 2.6, h0: 0, h1: 1.4, stairs: true, model: 'precast', edge: 0.15 },
+                    { k: 'rail', pts: [[0, -3.3, 1.4], [0, -2.5, 1.4], [0, 2.3, 0], [0, 3.3, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: -26, z0: 4.6, x1: -26, z1: 0.4, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'precast', rails: false, edge: 0.15 },
+                    { k: 'ramp', x0: 23, z0: 4.6, x1: 23, z1: 0.4, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'precast', rails: false, edge: 0.15 },
+                    { k: 'rail', x0: 1.4, z0: -1.95, x1: 3.8, z1: -1.95, y: 1.4, model: 'bars_curb' },                           // the gallery's edge
+                    { k: 'rail', x0: -1.45, z0: -3.9, x1: -1.45, z1: -2.6, y: 1.4, model: 'bars_curb' },                         // the stair hall's west edge
+                    /* THE CATWALK (2.2) along the guardroom's east side: up a flight from the gallery; its south end across a gap (the
+                       rail laid over it), down its ladder */
+                    { k: 'ramp', x0: 3.8, z0: -2.9, x1: 8.2, z1: -2.9, w: 2.2, h0: 1.4, h1: 2.2, stairs: true, model: 'steel', rails: 'l', edge: 0.15 },
+                    { k: 'plateau', x: 8.75, z: -2.3, w: 2.5, d: 3.4, h: 2.2, edge: 0.15 },
+                    { k: 'plateau', x: 8.75, z: 2.5, w: 2.5, d: 2.0, h: 2.2, edge: 0.15 },
+                    { k: 'rail', x0: 8.75, z0: -0.8, x1: 8.75, z1: 1.7, y: 2.2, model: 'pipe', block: false },
+                    { k: 'climb', x: 7.8, z: 2.5, face: 90, look: 'ladder' },
                     { k: 'plateau', x: -6, z: -2, r: 1.2, h: 3.6, edge: 0.15 },                                                  // THE VENT STACK (the tape — the door gun's)
+                    { k: 'rail', arc: { x: -6, z: -2, r: 2.0, a0: 120, a1: 300 }, model: 'pipe', block: false },                 // the curved skate rail round the stack
                     { k: 'wall', x0: -8, z0: 6.5, x1: -1, z1: 6.5, h: 0.9, t: 0.6, key: 'urban:TileSubway2c' },                   // THE BOOKING COUNTER (the rider's ledge)
                     { k: 'path', pts: [[-31, -11], [31, -11]], w: 1.6 },                                                          // the corridor's rubber runner
                 ],
@@ -38723,9 +38741,9 @@ const DOOR_HQ = {
                 { key: 'bare_bulb',       x: -13.5, z: -11, ceil: true }, { key: 'bare_bulb', x: 13.5, z: -11, ceil: true },
                 { key: 'fire_extinguisher', x: -16, z: -12.3, face: 0 },
                 { key: 'floor_drain',     x: 0, z: -10.2 },
-                /* THE GUARDROOM: the desk under the catwalk's stair, the stack, the counter */
-                { key: 'steel_table',     x: -1, z: -1.5, face: 0 }, { key: 'crt_terminal', x: -1, z: -1.5, y: 0.76, face: 0 }, { key: 'desk_lamp', x: 0, z: -1.7, y: 0.76, face: 180 },
-                { key: 'folding_chair',   x: -1, z: 0.2, face: 180 },
+                /* THE GUARDROOM: the desk by the stack, the stair, the counter */
+                { key: 'steel_table',     x: -3.6, z: 0.4, face: 0 }, { key: 'crt_terminal', x: -3.6, z: 0.4, y: 0.76, face: 0 }, { key: 'desk_lamp', x: -2.6, z: 0.2, y: 0.76, face: 180 },
+                { key: 'folding_chair',   x: -3.6, z: 2.0, face: 180 },
                 { key: 'clipboard',       x: -9.9, z: 0, face: 90, mount: 1.45 },
                 { key: 'breaker_panel',   x: -9.9, z: 5, face: 90, mount: 1.25 },
                 { key: 'security_camera', x: -9.9, z: -3.5, face: 45, mount: 2.55 },
@@ -38750,7 +38768,7 @@ const DOOR_HQ = {
                 { x: -13.5, z: -16.8, face: 0, race: 'gangster', say: ['“Lawyer.” “You have not been charged.” “Then I am not here.”', '“How long?” “Since the musical.” “Which musical?” “The one with the number.”'] },
                 { x: 13.5, z: -16.8, face: 0, race: 'politician', say: ['“I was elected.” “To what?” “This cell, apparently. It was a landslide.”'] },
                 { x: -20.5, z: 15.6, face: 0, race: 'zombie', say: ['“Drunk.” “On what?” “Tank.” “That is the room.” “Then the room.”'] },
-                { x: -1, z: 2.2, face: 180, race: 'men in black', say: ['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”', '“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”'] },
+                { x: -3.6, z: 3.2, face: 180, race: 'men in black', say: ['“Six cells, two occupied.” “Who is in the other four?” “Nobody we have charged.”', '“The drain is a door.” “Every drain is a door.” “Not every door is a drain. Do not go in the tank.”'] },
             ],
             onlineSpots: [],
             lines: [
