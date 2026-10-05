@@ -34900,8 +34900,11 @@ const DOOR_HQ = {
                        open: [{ x: 0, z: 0, r: 11 }] },                                                                                                          // THE HOLO-PLAZA
                 features: [
                     { k: 'hill', x: 0, z: 0, r: 4.2, h: 0.6, open: true },                                                            // THE HOLO-PLAZA's mound under the projector
+                    { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 20, a1: 70 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 110, a1: 160 }, model: 'pipe', block: false },   // curved pipe rails round the mound, open at the four streets
+                    { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 200, a1: 250 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 5.6, a0: 290, a1: 340 }, model: 'pipe', block: false },
                     { k: 'plateau', x: 22, z: -13, w: 12, d: 10, h: 4.5, edge: 0.35 },                                                 // THE SKYWAY (a deck inside the north-east block)
                     { k: 'ramp', x0: 10.5, z0: -13, x1: 16.7, z1: -13, w: 4.0, h0: 0, h1: 4.5 },                                       // the car ramp up to it (its last 0.7 m inside the deck's rect — THE RAMP RULE)
+                    { k: 'rail', x0: 10.6, z0: -14.75, x1: 16.2, z1: -14.75, y0: 0.07, y1: 4.13, model: 'pipe', block: false }, { k: 'rail', x0: 10.6, z0: -11.25, x1: 16.2, z1: -11.25, y0: 0.07, y1: 4.13, model: 'pipe', block: false },   // pipe rails down the car ramp's sides
                     { k: 'rail', x0: 16.4, z0: -18.6, x1: 27.6, z1: -18.6 }, { k: 'rail', x0: 27.6, z0: -18.6, x1: 27.6, z1: -7.4 }, { k: 'rail', x0: 16.4, z0: -7.4, x1: 27.6, z1: -7.4 },   // the deck's rails (the grind)
                     { k: 'plateau', x: -26, z: -13, w: 7, d: 7, h: 5.0, edge: 0.3 },                                                   // THE BILLBOARD ROOF (the tape's; the door gun's) — flush with the loop's west sidewalk
                     { k: 'pool', x: -22, z: 0, r: 3.4, y: 0, depth: 0.35 },                                                           // THE PUDDLE (the rain pooled on the cross street; waded)
@@ -34921,31 +34924,45 @@ const DOOR_HQ = {
                     { k: 'deck', x0: -32.6, z0: -47, x1: -27.4, z1: -47, w: 1.8, y: 10.5, gangway: true },                                          // THE GANGWAY A1 ⇄ A2 (across the yard)
                     { k: 'deck', x0: 25.4, z0: -47, x1: 30.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY B1 ⇄ B2
                     { k: 'deck', x0: 63.4, z0: -47, x1: 68.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY E1 ⇄ E2
+                    /* the roofs joined end to end: bridges over the west alley, the boulevard and the east alley (one rooftop run from x −80 to 84) */
+                    { k: 'bridge', x0: -58.6, z0: -43.5, x1: -45.4, z1: -43.5, w: 2.4, y: 10.5, key: 'metal', id: 'roof_w_a1' },
+                    { k: 'bridge', x0: -12.6, z0: -43.5, x1: 12.6, z1: -43.5, w: 3.0, y: 10.5, key: 'metal', id: 'roof_a2_b1' },
+                    { k: 'bridge', x0: 39.4, z0: -43.5, x1: 48.6, z1: -43.5, w: 2.4, y: 10.5, key: 'metal', id: 'roof_b2_e1' },
+                    /* pipe rails across the three yards beside the gangways (a `pts` row: it opens nothing in the plan under it) */
+                    { k: 'rail', pts: [[-32.6, -44.0], [-27.4, -44.0]], y: 10.5, model: 'pipe', block: false },
+                    { k: 'rail', pts: [[25.4, -44.0], [30.6, -44.0]], y: 10.5, model: 'pipe', block: false },
+                    { k: 'rail', pts: [[63.4, -44.0], [68.6, -44.0]], y: 10.5, model: 'pipe', block: false },
                     /* THE FIRE ESCAPES: a landing at 5.25, two ladders each — in the alleys */
                     { k: 'plateau', x: -57.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK W's landing (its east flank, the west alley)
-                    { k: 'climb', x: -56.3, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: -58.0, z: -47.6, face: 270, look: 'fireescape' },
+                    { k: 'plateau', x: -54.7, z: -48, w: 3.4, d: 4, h: 5.25, edge: 0.15 },                                            // …widened into the alley for the stair
+                    { k: 'ramp', x0: -53.7, z0: -35.5, x1: -53.7, z1: -46.7, w: 1.4, h0: 0, h1: 5.25, stairs: true, model: 'fire_escape', edge: 0.1 },   // the fire escape's stair up the alley
+                    { k: 'climb', x: -58.0, z: -47.6, face: 270, look: 'fireescape' },
                     { k: 'plateau', x: -46.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK A1's landing (its west flank, the west alley)
                     { k: 'climb', x: -47.7, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: -46.0, z: -47.6, face: 90, look: 'fireescape' },
                     { k: 'plateau', x: 40.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK B2's landing (its east flank, the east alley)
                     { k: 'climb', x: 41.7, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: 40.0, z: -47.6, face: 270, look: 'fireescape' },
                     { k: 'plateau', x: 47.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK E1's landing (its west flank, the east alley)
-                    { k: 'climb', x: 46.3, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: 48.0, z: -47.6, face: 90, look: 'fireescape' },
+                    { k: 'plateau', x: 46.4, z: -48, w: 3.2, d: 4, h: 5.25, edge: 0.15 },                                             // …widened into the alley for the stair
+                    { k: 'ramp', x0: 45.5, z0: -35.5, x1: 45.5, z1: -46.7, w: 1.4, h0: 0, h1: 5.25, stairs: true, model: 'fire_escape', edge: 0.1 },     // the fire escape's stair up the alley
+                    { k: 'climb', x: 48.0, z: -47.6, face: 90, look: 'fireescape' },
                     { k: 'rail', x0: -78.4, z0: -50.4, x1: -59.6, z1: -50.4 }, { k: 'rail', x0: -44.4, z0: -50.4, x1: -33.6, z1: -50.4 }, { k: 'rail', x0: -26.4, z0: -50.4, x1: -13.6, z1: -50.4 }, { k: 'rail', x0: 13.6, z0: -50.4, x1: 24.4, z1: -50.4 }, { k: 'rail', x0: 31.6, z0: -50.4, x1: 38.4, z1: -50.4 }, { k: 'rail', x0: 49.6, z0: -50.4, x1: 62.4, z1: -50.4 }, { k: 'rail', x0: 69.6, z0: -50.4, x1: 82.4, z1: -50.4 },   // the roofs' back parapets (the grind — 1.6 m inside the edge, one per roof: a rail across a yard gap opens the yard)
                     /* ── THE UNDERCITY (D2): the sunk tier, its ramp road, the steps, the drains, the overlook ── */
                     { k: 'plateau', x: 0, z: 64, w: 196, d: 40, h: -4, sink: true, edge: 0.35 },                                        // THE CUT — four metres down, a retaining wall the walker drops off and never climbs
                     { k: 'ramp', x0: 0, z0: 42, x1: 0, z1: 56, w: 10, h0: 0, h1: -4 },                                                  // THE RAMP ROAD (the boulevard's own incline; the cars take it)
+                    { k: 'rail', x0: -4.75, z0: 44.3, x1: -4.75, z1: 55.6, model: 'bars_curb' }, { k: 'rail', x0: 4.75, z0: 44.3, x1: 4.75, z1: 55.6, model: 'bars_curb' },   // railings down its sides over the cut
                     { k: 'path', pts: [[-42, 22], [-44, 31], [-44, 40]], w: 4 },                                                         // the west steps' approach off the siding's end
-                    { k: 'ramp', x0: -44, z0: 40, x1: -44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true },                                 // THE WEST STEPS down
+                    { k: 'ramp', x0: -44, z0: 40, x1: -44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true, model: 'grate' },                                 // THE WEST STEPS down
                     { k: 'path', pts: [[-44, 49], [-44, 62]], w: 4 },                                                                   // to the lower cross
                     { k: 'path', pts: [[40, 28], [44, 31], [44, 40]], w: 4 },                                                            // the east steps' approach off the loop's south-east corner
-                    { k: 'ramp', x0: 44, z0: 40, x1: 44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true },                                   // THE EAST STEPS down
+                    { k: 'ramp', x0: 44, z0: 40, x1: 44, z1: 49, w: 3, h0: 0, h1: -4, stairs: true, model: 'grate' },                                   // THE EAST STEPS down
                     { k: 'path', pts: [[44, 49], [44, 62]], w: 4 },
                     { k: 'path', pts: [[-20, 27], [-20, 44]], w: 3.5 }, { k: 'path', pts: [[-20, 44], [-20, 62]], w: 3.5 },            // THE WEST DRAIN's alleys (above and below the wall)
                     { k: 'climb', x: -20, z: 44, face: 0, look: 'pipe' },                                                              // THE WEST DRAIN — a pipe down the retaining wall
                     { k: 'path', pts: [[20, 27], [20, 44]], w: 3.5 }, { k: 'path', pts: [[20, 44], [20, 62]], w: 3.5 },                // THE EAST DRAIN's alleys
                     { k: 'climb', x: 20, z: 44, face: 0, look: 'pipe' },                                                               // THE EAST DRAIN
                     { k: 'path', pts: [[40, 37], [52, 37]], w: 4 },                                                                     // the overlook's side street off the loop's east leg
-                    { k: 'ramp', x0: 52, z0: 37, x1: 62.7, z1: 37, w: 4, h0: 0, h1: 3.0 },                                              // up to THE OVERLOOK (its last 0.7 m inside the tier)
+                    { k: 'ramp', x0: 52, z0: 37, x1: 62.7, z1: 37, w: 4, h0: 0, h1: 3.0, stairs: true, model: 'glass', edge: 0.1 },     // the stairs up to THE OVERLOOK (its last 0.7 m inside the tier)
+                    { k: 'rail', x0: 52.6, z0: 37, x1: 62.1, z1: 37, y0: 0.17, y1: 2.83, model: 'pipe', block: false },                // a pipe handrail down the middle
                     { k: 'plateau', x: 70, z: 37, w: 16, d: 12, h: 3.0, edge: 0.35 },                                                  // THE OVERLOOK — seven metres over the lower cross
                     { k: 'rail', x0: 63.6, z0: 41.4, x1: 67.6, z1: 41.4 }, { k: 'rail', x0: 72.4, z0: 41.4, x1: 76.4, z1: 41.4 }, { k: 'rail', x0: 76.4, z0: 41.4, x1: 76.4, z1: 32.6 },   // (the drop-side rail parts round THE OVERLOOK SPAN's mouth — D2b)
                     /* ═══ THE OVERLOOK SPAN (AREA CONTENT D2b — THE BRIDGE LAYER, 2026-09-19): the overlook no longer only LOOKS seven metres down —
@@ -35031,7 +35048,7 @@ const DOOR_HQ = {
                 { x: -44.0, z: 10.0, face: 60, race: 'conspiracy theorist', say: ['“The noodle bar has a back room.” “Every noodle bar has a back room.” “This one has a year in it.”'] },
                 { x: -40.0, z: -2.0, face: 90, race: 'catgirl', say: ['“Waiting for the train.” “It came an hour ago.” “Then I am waiting for the next one.”'] },   // at the station
                 /* THE STACKS (D2) */
-                { x: -52.0, z: -36.0, face: 0, race: 'zombie', say: ['“The fire escape.” “Where does it go?” “Up. Then across. Then nowhere. Then down.”'] },
+                { x: -51.2, z: -32.5, face: 0, race: 'zombie', say: ['“The fire escape.” “Where does it go?” “Up. Then across. Then nowhere. Then down.”'] },
                 { x: 44.0, z: -60.0, face: 180, race: 'catgirl', say: ['“Every roof is joined to the next.” “All of them?” “Every second one. Mind the gap.”'] },
                 /* THE UNDERCITY (D2) */
                 { x: -8.0, z: 70.0, face: 0, race: 'ghoul', say: ['“The city is up the ramp.” “Which city?” “The one that is on top of this one.”'] },
