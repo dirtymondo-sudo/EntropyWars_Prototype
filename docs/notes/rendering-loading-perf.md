@@ -732,4 +732,5 @@ basic-attack props, the party builder warmed nothing), so `_wpnInstance` returne
 - three-renderer.js: units draw nothing (no sprite slab) while their GLB loads; a final load failure rebuilds with the
   2D sheet. HQ/board procedural stand-ins hide at once or were deleted (intro door panel, bone pile, grin skull, key,
   nr tree, canopy stand-in, vehicle proc). Modelled projectiles fly as an empty carrier until loaded.
-Leftovers: cultist summon placeholder (no GLB exists), PERF_LOW scenery kits, encounter fights have no loading card.
+Cultist summon (follow-up): the procedural robed figure is deleted; it wears the cult1 cast rig (posed on idle frame 0), warmed by warmSpellLibrary via TR.warmSummonModels.
+Leftovers: PERF_LOW scenery kits, encounter fights have no loading card.
