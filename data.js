@@ -28953,8 +28953,18 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -12.374, z0: 12.374, x1: -12.902, z1: 11.823, y: 5.092, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.04, 5.145], slopeTop: [5.04, 5.145], tier: true, quad: [[-12.092, 12.092], [-12.607, 11.553], [-13.197, 12.093], [-12.657, 12.657]], parapet: true },
                     { k: 'wall', x0: -12.902, z0: 11.823, x1: -13.406, z1: 11.249, y: 5.197, t: 0.8, key: 'urban:ConcreteStriped2c', rail: [5.145, 5.25], slopeTop: [5.145, 5.25], tier: true, quad: [[-12.607, 11.553], [-13.099, 10.992], [-13.712, 11.506], [-13.197, 12.093]], parapet: true },
                     { k: 'wall', x0: -13.86, z0: 11.32, x1: -21.38, z1: 17.46, y: 4.2, t: 0.6, key: 'concrete', rail: false },
-                    /* THE DECK (4.2): one round slab from the ramp's top (230°) round the north to its end over the ramp's foot (130°), out to the drum's jambs; a rail on its inner edge */
-                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 230, a1: 490 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck' },
+                    /* THE DECK (4.2): one round slab from the ramp's top (230°) round the north to its end over the ramp's foot (130°), out to the drum's jambs; a rail on its inner edge,
+                       open where the two stairs from the plaza land (330° and 30°) */
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 230, a1: 324.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 324.5, a1: 335.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_stair_w' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 335.5, a1: 384.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck_mid' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 384.5, a1: 395.5 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_stair_e' },
+                    { k: 'bridge', arc: { x: 0, z: 0, r0: 18, r1: 27.5, a0: 395.5, a1: 490 }, drawR1: 27.8, y: 4.2, thick: 0.45, rails: 'inner', key: 'concrete_floor', id: 'deck_e2' },
+                    /* the stairs from the plaza up to the deck (people take these; the ramp is for the cars), a free-standing pipe handrail down the middle of each */
+                    { k: 'ramp', x0: -4.25, z0: -7.361, x1: -9.35, z1: -16.195, w: 3.4, h0: 0, h1: 4.2, stairs: true, model: 'concrete', edge: 0.01 },
+                    { k: 'ramp', x0: 4.25, z0: -7.361, x1: 9.35, z1: -16.195, w: 3.4, h0: 0, h1: 4.2, stairs: true, model: 'concrete', edge: 0.01 },
+                    { k: 'rail', x0: -4.5, z0: -7.794, x1: -9.2, z1: -15.935, y0: 0.21, y1: 4.08, model: 'pipe', block: false },
+                    { k: 'rail', x0: 4.5, z0: -7.794, x1: 9.2, z1: -15.935, y0: 0.21, y1: 4.08, model: 'pipe', block: false },
                     /* …and in the drum's openings the deck runs on to the doors' wall (a walker on a bridge walks over a wall, so the deck stops INSIDE the drum everywhere else) */
                     { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 353.8, a1: 366.2 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_n' },
                     { k: 'bridge', arc: { x: 0, z: 0, r0: 27.2, r1: 29.2, a0: 76.3, a1: 103.7 }, drawR0: 27.5, y: 4.2, thick: 0.45, rails: false, key: 'concrete_floor', id: 'deck_e' },
@@ -28973,7 +28983,8 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: -11.6, z0: 0, x1: -9.0, z1: 0, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                           // THE KICKER (west)
                     { k: 'ramp', x0: 11.6, z0: 0, x1: 9.0, z1: 0, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true },                             // THE KICKER (east)
                     { k: 'wall', x0: -11.4, z0: 7.0, x1: -6.6, z1: 10.8, y: 0.4, t: 1.6, key: 'urban:ConcreteStriped2a', rail: 'front', front: [0.621, -0.784] },   // THE MANUAL PAD (a ledge on its island side)
-                    { k: 'rail', x0: 7.0, z0: -10.5, x1: 11.0, z1: -7.0 },                                                            // THE HANDRAIL
+                    { k: 'rail', x0: 9.5, z0: -8.5, x1: 12.5, z1: -5.0 },                                                             // THE HANDRAIL (moved off the east stair's foot)
+                    { k: 'rail', arc: { x: 0, z: 0, r: 20.4, a0: 284, a1: 316 }, model: 'pipe', block: false },                      // a curved pipe rail along the lower lane, under the deck
                 ],
             },
             doors: [
@@ -29052,7 +29063,7 @@ const DOOR_HQ = {
             ],
             npcSpots: [
                 { x: -4.5, z: 10.5, face: 160 },      // by the south quarter pipe, watching the island
-                { x: 8.2, z: -14.2, face: 0 },        // by the handrail
+                { x: 13.2, z: -9.0, face: 300 },      // by the handrail
             ],
             onlineSpots: [
                 { x: -12.0, z: -12.0, face: 45 },
