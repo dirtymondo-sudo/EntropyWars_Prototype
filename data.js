@@ -38191,6 +38191,29 @@ const DOOR_HQ = {
                     /* THE EARTHWORK (the one allowed): the bank and the ditch, low */
                     { k: 'ridge', pts: [[24.0, 0.0], [23.5, 4.7], [22.2, 9.2], [20.0, 13.3], [17.0, 17.0], [13.3, 20.0], [9.2, 22.2], [4.7, 23.5], [0.0, 24.0], [-4.7, 23.5], [-9.2, 22.2], [-13.3, 20.0], [-17.0, 17.0], [-20.0, 13.3], [-22.2, 9.2], [-23.5, 4.7], [-24.0, 0.0], [-23.5, -4.7], [-22.2, -9.2], [-20.0, -13.3], [-17.0, -17.0], [-13.3, -20.0], [-9.2, -22.2], [-4.7, -23.5], [-0.0, -24.0], [4.7, -23.5], [9.2, -22.2], [13.3, -20.0], [17.0, -17.0], [20.0, -13.3], [22.2, -9.2], [23.5, -4.7], [24.0, -0.0]], w: 5, h: 0.9, open: true },                                                     // THE BANK
                     { k: 'ridge', pts: [[20.5, 0.0], [20.1, 4.0], [18.9, 7.8], [17.0, 11.4], [14.5, 14.5], [11.4, 17.0], [7.8, 18.9], [4.0, 20.1], [0.0, 20.5], [-4.0, 20.1], [-7.8, 18.9], [-11.4, 17.0], [-14.5, 14.5], [-17.0, 11.4], [-18.9, 7.8], [-20.1, 4.0], [-20.5, 0.0], [-20.1, -4.0], [-18.9, -7.8], [-17.0, -11.4], [-14.5, -14.5], [-11.4, -17.0], [-7.8, -18.9], [-4.0, -20.1], [-0.0, -20.5], [4.0, -20.1], [7.8, -18.9], [11.4, -17.0], [14.5, -14.5], [17.0, -11.4], [18.9, -7.8], [20.1, -4.0], [20.5, -0.0]], w: 3.4, h: -0.7, open: true },                                                 // THE DITCH
+                    /* the stairs pass (2026-10-05): THE BANK raised 1.8 m as a crisp ring in five lengths, broken at the lanes (a 2.5 m gap
+                       at hall A and at hall C, a rail across each), a stone flight up from the ditch onto each, a board fence on the
+                       outer rim; the avenue's two banks raised the same, from the ring out toward the heel stone (a gap between them, rails across) */
+                    { k: 'spiral', x: 0, z: 0, r0: 22, r1: 26, a0: 73, a1: 167.5, h0: 1.8, h1: 1.8, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 22, r1: 26, a0: 173.3, a1: 260, h0: 1.8, h1: 1.8, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 22, r1: 26, a0: 265.6, a1: 305, h0: 1.8, h1: 1.8, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 22, r1: 26, a0: 336, a1: 392, h0: 1.8, h1: 1.8, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 22, r1: 26, a0: 37, a1: 57, h0: 1.8, h1: 1.8, edge: 0.15 },
+                    { k: 'ramp', x0: 16.11, z0: 9.3, x1: 19.83, z1: 11.45, w: 2.4, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: -10.67, z0: 15.24, x1: -13.13, z1: 18.76, w: 2.4, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: -17.97, z0: -4.81, x1: -22.12, z1: -5.93, w: 2.4, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: 0.0, z0: -18.6, x1: 0.0, z1: -22.9, w: 2.4, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 24, a0: 166.5, a1: 174.3 }, y: 1.8, model: 'pipe', block: false },   // across hall A's gap
+                    { k: 'rail', arc: { x: 0, z: 0, r: 24, a0: 259, a1: 266.6 }, y: 1.8, model: 'pipe', block: false },     // across hall C's gap
+                    { k: 'rail', arc: { x: 0, z: 0, r: 25.95, a0: 73, a1: 167.5 }, y: 1.8, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 25.95, a0: 173.3, a1: 260 }, y: 1.8, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 25.95, a0: 265.6, a1: 305 }, y: 1.8, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 25.95, a0: 336, a1: 386 }, y: 1.8, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 25.95, a0: 44, a1: 57 }, y: 1.8, model: 'ranch' },
+                    { k: 'plateau', x: 17.62, z: -29.53, w: 18.5, d: 3.0, rot: -52.1, h: 1.8, edge: 0.15 },
+                    { k: 'plateau', x: 21.13, z: -24.27, w: 14.5, d: 3.0, rot: -52.1, h: 1.8, edge: 0.15 },
+                    { k: 'ramp', x0: 14.25, z0: -11.96, x1: 17.54, z1: -14.72, w: 2.4, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'rail', x0: 16.50, z0: -25.66, x1: 18.87, z1: -23.81, y: 1.8, model: 'pipe', block: false }, { k: 'rail', x0: 20.18, z0: -30.39, x1: 22.55, z1: -28.55, y: 1.8, model: 'pipe', block: false },   // across the avenue
                     /* THE BARROWS: kerbed drums with crisp sides (built, never banks), each up a built stair */
                     { k: 'plateau', x: -38, z: 22, r: 7, h: 1.8, edge: 0.15 },                                                   // THE KING BARROW
                     { k: 'ramp', x0: -38, z0: 33.4, x1: -38, z1: 28.3, w: 2.6, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair (was the chalk cut)
@@ -38236,10 +38259,10 @@ const DOOR_HQ = {
                 /* the plain: the fires, the rail, the signs */
                 { key: 'campfire',       x: -6, z: 26 },
                 { key: 'railing_1m',     x: -14, z: 35.8, face: 0 },
-                { key: 'signpost',       x: 3, z: 40 }, { key: 'signpost', x: 24, z: -30 },
+                { key: 'signpost',       x: 3, z: 40 }, { key: 'signpost', x: 21.8, z: -31.7 },
                 { key: 'brazier',        x: -13.5, z: -45 }, { key: 'brazier', x: -6.5, z: -45 },
                 { key: 'sea_chest',      x: -34, z: 20, face: 120 },
-                { key: 'paper_sheet',    x: -2, z: 22, y: 0.01, face: 60 },
+                { key: 'paper_sheet',    x: -2.5, z: 17.8, y: 0.01, face: 60 },
             ],
             agents: [],
             npcSpots: [
