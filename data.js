@@ -38609,7 +38609,7 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-47, -4], [-36, -4], [-36, 10]], w: 3 },
                     { k: 'hall', pts: [[-36, 2], [-26, 2]], w: 3 },
                     { k: 'hall', pts: [[22, -27], [22, -16]], w: 3 },
-                    { k: 'hall', pts: [[3, -12], [16, -12]], w: 3 },
+                    { k: 'hall', pts: [[3, -14], [16, -14]], w: 3 },
                     { k: 'hall', pts: [[22, -8], [22, 4], [30, 4], [30, 10]], w: 3 },
                     { k: 'hall', pts: [[35, 14], [47, 14]], w: 3 },
                     { k: 'hall', pts: [[28, -12], [40, -12], [40, -5]], w: 3 },
@@ -38623,14 +38623,58 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -0.75, z0: 6.5, x1: -0.75, z1: 26, h: 0.14, t: 0.12, key: 'metal' },   { k: 'wall', x0: 0.75, z0: 6.5, x1: 0.75, z1: 26, h: 0.14, t: 0.12, key: 'metal' },
                     /* THE GHOST STATION: the platform on the loop's south leg, its two stairs, its edge rail */
                     { k: 'plateau', x: 0, z: 36, w: 14, d: 4, h: 1.0, edge: 0.15 },
-                    { k: 'ramp', x0: -10.5, z0: 36, x1: -6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.15, built: true, key: 'urban:TileSubway4a' },
-                    { k: 'ramp', x0: 10.5, z0: 36, x1: 6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, edge: 0.15, built: true, key: 'urban:TileSubway4a' },
+                    { k: 'ramp', x0: -10.5, z0: 36, x1: -6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, model: 'metro', edge: 0.15 },
+                    { k: 'ramp', x0: 10.5, z0: 36, x1: 6.3, z1: 36, w: 2.4, h0: 0, h1: 1.0, stairs: true, model: 'metro', edge: 0.15 },
                     { k: 'rail', x0: -6, z0: 34.3, x1: 6, z1: 34.3 },
                     /* THE CROSSING: THE SIGNAL GANTRY (the tape — the door gun's; the near weenie of the crossover) */
                     { k: 'plateau', x: 3.5, z: 3.5, r: 1.4, h: 5.2, edge: 0.15 },
                     /* THE WORKS' PLATFORM: the track to the building's platform leaves from a 1.8 m platform, up a flight (R4) */
                     { k: 'plateau', x: -57, z: -16, w: 6, d: 5, h: 1.8, edge: 0.15 },
-                    { k: 'ramp', x0: -57, z0: -7.4, x1: -57, z1: -14.2, w: 2.4, h0: 0, h1: 1.8, stairs: true, edge: 0.15, built: true, key: 'urban:ConcreteStriped2a' },
+                    { k: 'ramp', x0: -57, z0: -7.4, x1: -57, z1: -14.2, w: 2.4, h0: 0, h1: 1.8, stairs: true, model: 'concrete', edge: 0.15 },
+                    /* THE HATCH'S STAIR: the sewers' frame at the top of a grating flight (1.8) */
+                    { k: 'plateau', x: 24, z: -46.75, w: 4, d: 3.5, h: 1.8, edge: 0.15 },
+                    { k: 'ramp', x0: 24, z0: -41.0, x1: 24, z1: -45.7, w: 3.4, h0: 0, h1: 1.8, stairs: true, model: 'grate', edge: 0.15 },
+                    /* the maintenance level (2.4): every passage and side room between the tracks, up a flight from each track it
+                       meets; a footbridge over the crossover joins the two halves */
+                    { k: 'plateau', x: -26, z: -14, w: 11, d: 9, h: 2.4, edge: 0.15 },                                          // side room 2
+                    { k: 'plateau', x: -26, z: -19.45, w: 4, d: 3.9, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -12.0, z: -14, w: 19, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -26, z: -3.75, w: 4, d: 12.5, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -25, z: 2, w: 25, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -14, z: 4.25, w: 4, d: 8.5, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -14, z: 12, w: 11, d: 9, h: 2.4, edge: 0.15 },                                           // side room 3
+                    { k: 'plateau', x: -8.35, z: 12, w: 2.3, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -36, z: 14, w: 9, d: 9, h: 2.4, edge: 0.15 },                                            // side room 4
+                    { k: 'plateau', x: -36, z: 2, w: 4, d: 16, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: -38, z: -4, w: 8, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 22, z: -12, w: 13, d: 9, h: 2.4, edge: 0.15 },                                           // side room 5
+                    { k: 'plateau', x: 22, z: -18.7, w: 4, d: 5.4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 9.25, z: -14, w: 13.5, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 35, z: -12, w: 14, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 40, z: -8.75, w: 4, d: 10.5, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 40, z: -2, w: 9, d: 7, h: 2.4, edge: 0.15 },                                             // side room 7
+                    { k: 'plateau', x: 22, z: -1, w: 4, d: 14, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 26, z: 4, w: 12, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 30, z: 6, w: 4, d: 8, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 30, z: 14, w: 11, d: 9, h: 2.4, edge: 0.15 },                                            // side room 6
+                    { k: 'plateau', x: 38.5, z: 14, w: 7, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 18.5, z: 18, w: 17, d: 4, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 12, z: 15.7, w: 4, d: 8.6, h: 2.4, edge: 0.15 },
+                    { k: 'ramp', x0: -26, z0: -26.0, x1: -26, z1: -20.7, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'metro', edge: 0.15 },
+                    { k: 'rail', pts: [[-26, -19.9, 2.4], [-26, -20.7, 2.4], [-26, -26.0, 0], [-26, -27.0, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: -2.6, z0: 12, x1: -7.9, z1: 12, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'ramp', x0: -46.6, z0: -4, x1: -41.3, z1: -4, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: 22, z0: -26.0, x1: 22, z1: -20.7, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'metro', edge: 0.15 },
+                    { k: 'rail', pts: [[22, -19.9, 2.4], [22, -20.7, 2.4], [22, -26.0, 0], [22, -27.0, 0]], model: 'pipe', block: false },
+                    { k: 'ramp', x0: 46.6, z0: 14, x1: 41.3, z1: 14, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'concrete', edge: 0.15 },
+                    { k: 'ramp', x0: 12, z0: 6.8, x1: 12, z1: 12.1, w: 3, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: -4.5, z0: -14, x1: 4.5, z1: -14, w: 3, y: 2.4, rails: false },                                // the footbridge over the crossover
+                    { k: 'rail', x0: -2.6, z0: -15.4, x1: 2.6, z1: -15.4, y: 2.4, model: 'bars_curb' }, { k: 'rail', x0: -2.6, z0: -12.6, x1: 2.6, z1: -12.6, y: 2.4, model: 'bars_curb' },
+                    /* the rails round the loop's four corners (low, the track rails' height) */
+                    { k: 'rail', arc: { x: 47, z: -27, r: 2.25, a0: 0, a1: 90 }, h: 0.14 },    { k: 'rail', arc: { x: 47, z: -27, r: 3.75, a0: 0, a1: 90 }, h: 0.14 },
+                    { k: 'rail', arc: { x: 47, z: 27, r: 2.25, a0: 90, a1: 180 }, h: 0.14 },   { k: 'rail', arc: { x: 47, z: 27, r: 3.75, a0: 90, a1: 180 }, h: 0.14 },
+                    { k: 'rail', arc: { x: -47, z: 27, r: 2.25, a0: 180, a1: 270 }, h: 0.14 }, { k: 'rail', arc: { x: -47, z: 27, r: 3.75, a0: 180, a1: 270 }, h: 0.14 },
+                    { k: 'rail', arc: { x: -47, z: -27, r: 2.25, a0: 270, a1: 360 }, h: 0.14 },{ k: 'rail', arc: { x: -47, z: -27, r: 3.75, a0: 270, a1: 360 }, h: 0.14 },
                     /* THE DEPOT: the kerb ledge along the pit (the grind) */
                     { k: 'wall', x0: -14, z0: -44.2, x1: 0, z1: -44.2, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
                     { k: 'scatter', key: 'cinder_block', n: 5, x: 0, z: -40, r: 10, seed: 8 },
@@ -38673,7 +38717,7 @@ const DOOR_HQ = {
                 /* the tunnel */
                 { key: 'bare_bulb',       x: -40, z: -27, ceil: true }, { key: 'bare_bulb', x: 40, z: 27, ceil: true },
                 { key: 'traffic_barrel',  x: -48, z: 20, face: 300 },
-                { key: 'warning_tape',    x: 24, z: -43.6, face: 0 },
+                { key: 'warning_tape',    x: 24, z: -40.4, face: 0 },
             ],
             agents: [],
             npcSpots: [
