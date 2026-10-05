@@ -34429,7 +34429,8 @@ const DOOR_HQ = {
                     { k: 'pool', x: 0, z: 0, r: 3.2, y: 0, depth: 0.45 },                                                         // THE FOUNTAIN (waded)
                     { k: 'plateau', x: 24, z: -15, w: 12, d: 12, h: 3.0, edge: 0.35 },                                              // THE PARKING DECK's roof (inside the north-east block)
                     { k: 'ramp', x0: 14.0, z0: -15, x1: 18.5, z1: -15, w: 4.0, h0: 0, h1: 3.0 },                                    // the car ramp up to it (an incline the walker climbs, a launch at speed; its last 0.5 m inside the deck's rect, where it is 2.9 → 3.0)
-                    { k: 'rail', x0: 22.6, z0: -20.6, x1: 29.6, z1: -20.6 }, { k: 'rail', x0: 29.6, z0: -20.6, x1: 29.6, z1: -9.4 }, { k: 'rail', x0: 18.4, z0: -9.4, x1: 29.6, z1: -9.4 },   // (the north rail starts east of THE OVERPASS's mouth — D2b)
+                    { k: 'rail', x0: 14.3, z0: -13.3, x1: 18.3, z1: -13.3 },                                                          // a railing down the car ramp's side
+                    { k: 'rail', x0: 22.6, z0: -20.2, x1: 29.2, z1: -20.2 }, { k: 'rail', x0: 29.2, z0: -20.2, x1: 29.2, z1: -9.8 }, { k: 'rail', x0: 18.8, z0: -9.8, x1: 29.2, z1: -9.8 },   // (the north rail starts east of THE OVERPASS's mouth — D2b)
                     /* ═══ THE OVERPASS (AREA CONTENT D2b — THE BRIDGE LAYER, 2026-09-19): the parking deck's roof crosses THE AVENUE at 3 m on a
                        `bridge` row — a SECOND SURFACE over the walked street (data.js hqTerrainBridges): the avenue's traffic and walkers pass under
                        it, the walker on it looks down on both. It lands on THE WEST LANDING, a 3 m tier in the north-west block's corner, whose
@@ -34480,6 +34481,27 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 22, z0: 74, x1: 22, z1: 84.5, w: 4, h0: 0, h1: 3.2, stairs: true },                              // THE GANTRY STAIR up to the crane's platform
                     { k: 'plateau', x: 22, z: 86.4, w: 8, d: 4, h: 3.2, edge: 0.3 },                                                  // THE CRANE PLATFORM (a 3.2 m tier at the quay's edge — the view up the avenue)
                     { k: 'rail', x0: 18.6, z0: 86.6, x1: 25.4, z1: 86.6 },                                                            // its rail (the grind)
+                    { k: 'rail', pts: [[22, 74.4, 0.12], [22, 84.1, 3.08]], model: 'pipe', block: false },                            // the gantry stair's centre handrail
+                    /* the canal terrace (2026-10-05): a 3 m promenade along the open yard north of the canal, in three parts — the west part up a
+                       stair along its front and a 2.5 m gap (a rail across it) to the middle part, the middle part up a wide stair off the ring
+                       road's bend and over the avenue on a walkway to the east part, the east part up a stair along its front */
+                    { k: 'plateau', x: -27.65, z: 40.3, w: 12.7, d: 4.2, h: 3.0, edge: 0.3 },
+                    { k: 'plateau', x: -32, z: 37.2, w: 4, d: 3.4, h: 3.0, edge: 0.3 },                                              // its landing
+                    { k: 'ramp', x0: -23.6, z0: 36.9, x1: -30.7, z1: 36.9, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', x0: -21.6, z0: 40.3, x1: -18.5, z1: 40.3, y: 3.0, model: 'pipe', block: false },                     // across the gap
+                    { k: 'plateau', x: -13.75, z: 40.3, w: 10.1, d: 4.2, h: 3.0, edge: 0.3 },
+                    { k: 'ramp', x0: -13.75, z0: 31.7, x1: -13.75, z1: 38.9, w: 4.0, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', pts: [[-13.75, 32.1, 0.17], [-13.75, 38.5, 2.83]], model: 'pipe', block: false },                   // its centre handrail
+                    { k: 'bridge', x0: -9.4, z0: 40.3, x1: 9.4, z1: 40.3, w: 3.2, y: 3.0 },                                          // over the avenue
+                    { k: 'plateau', x: 21.35, z: 40.4, w: 25.3, d: 4.0, h: 3.0, edge: 0.3 },
+                    { k: 'plateau', x: 31.8, z: 37.5, w: 4.4, d: 3.0, h: 3.0, edge: 0.3 },                                             // its landing
+                    { k: 'ramp', x0: 23.3, z0: 37.1, x1: 30.3, z1: 37.1, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.2 },
+                    { k: 'rail', x0: -33.2, z0: 41.6, x1: -22.1, z1: 41.6 }, { k: 'rail', x0: -29.4, z0: 39.0, x1: -22.1, z1: 39.0 }, { k: 'rail', x0: -33.2, z0: 36.0, x1: -31.2, z1: 36.0 },
+                    { k: 'rail', x0: -18.4, z0: 41.6, x1: -9.1, z1: 41.6 }, { k: 'rail', x0: -18.4, z0: 39.0, x1: -16.2, z1: 39.0 }, { k: 'rail', x0: -11.3, z0: 39.0, x1: -9.1, z1: 39.0 },
+                    { k: 'rail', x0: 9.1, z0: 41.6, x1: 33.2, z1: 41.6 }, { k: 'rail', x0: 9.1, z0: 39.2, x1: 29.2, z1: 39.2 }, { k: 'rail', x0: 30.8, z0: 36.5, x1: 33.2, z1: 36.5 },
+                    /* a curved skate rail round the plaza's fountain, open on the four crossings */
+                    { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 20, a1: 70 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 110, a1: 160 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 200, a1: 250 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 6.2, a0: 290, a1: 340 }, model: 'pipe', block: false },
                     { k: 'wall', x0: -100, z0: 70.5, x1: -84, z1: 70.5, h: 1.2, t: 0.3, key: 'urban:ConcreteStriped1c' },             // THE QUAY WALL (a low wall between the waterfront and the flooded quay — hopped, grindable)
                     { k: 'wall', x0: -14, z0: 72.2, x1: -14, z1: 86, h: 1.9, t: 0.3, key: 'urban:MetalCorrugatedPainted1a' },           // THE CUSTOMS FENCE across the quay (R3: the mall's door does not see the bay's and the manhole down one open apron; the way round is the waterfront's kerb)
                     { k: 'scatter', key: 'cave_stone', n: 7, x: -20, z: -14, r: 5, seed: 2 },                                       // THE COLLAPSE's rubble
