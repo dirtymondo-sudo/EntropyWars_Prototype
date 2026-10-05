@@ -35724,11 +35724,30 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[8.5, 6], [8.5, 3.2]], w: 2.2 },                                      // the east garden's loop
                     { k: 'space', x: 14, z: 11.5, w: 4, d: 3.5 },                                            // a dead end (the bench)
                     { k: 'hall', pts: [[12.5, 11.5], [12, 11.5]], w: 2.2 },
-                    { k: 'plateau', x: 0, z: -13.5, w: 27, d: 8, h: 1.2, edge: 0.15 },                       // THE TERRACE's floor
-                    { k: 'ramp', x0: 0, z0: -6.1, x1: 0, z1: -10.2, w: 5, h0: 0, h1: 1.2, stairs: true, edge: 0.15,
-                      built: true, key: 'marble_light', side: 'marble_light' },                             // its four steps
-                    { k: 'rail', x0: -11, z0: -10.4, x1: -3.2, z1: -10.4 },                                  // the terrace balustrade (the park rule's grind)
-                    { k: 'rail', x0: 3.2, z0: -10.4, x1: 11, z1: -10.4 },
+                    /* the stairs pass (2026-10-05): the terrace and the north side of the cloister walk are one raised level (2.4 m) that
+                       runs on down the west and east walks; down: the wide flight into the fountain's court, the west walk's stair (past a
+                       2.5 m gap over the west garden's mouth, a rail across it), the east walk's stair; up from the east garden's
+                       north arm, a ladder. The ground walks run on round the south. */
+                    { k: 'plateau', x: 0, z: -13.5, w: 27, d: 8, h: 2.4, edge: 0.15 },                       // THE TERRACE's floor
+                    { k: 'plateau', x: 0, z: -8.5, w: 36.8, d: 2.8, h: 2.4, edge: 0.15 },                    // the north walk
+                    { k: 'plateau', x: -17, z: -7.3, w: 2.8, d: 5.2, h: 2.4, edge: 0.15 },                   // the west walk, to the gap
+                    { k: 'plateau', x: -17, z: -0.85, w: 2.8, d: 2.7, h: 2.4, edge: 0.15 },                  // past the gap
+                    { k: 'plateau', x: 17, z: -6.45, w: 2.8, d: 6.9, h: 2.4, edge: 0.15 },                   // the east walk
+                    { k: 'ramp', x0: 0, z0: -2.6, x1: 0, z1: -7.8, w: 5, h0: 0, h1: 2.4, stairs: true, edge: 0.15,
+                      built: true, key: 'marble_light', side: 'marble_light' },                             // the terrace steps
+                    { k: 'rail', pts: [[0, -2.9, 0.14], [0, -7.5, 2.26]], model: 'pipe', block: false },     // their centre handrail
+                    { k: 'ramp', x0: -17, z0: 5.1, x1: -17, z1: -0.2, w: 2.6, h0: 0, h1: 2.4, stairs: true, edge: 0.15,
+                      built: true, key: 'marble_light', side: 'marble_light' },                             // the west walk's stair
+                    { k: 'ramp', x0: 17, z0: 1.6, x1: 17, z1: -3.7, w: 2.6, h0: 0, h1: 2.4, stairs: true, edge: 0.15,
+                      built: true, key: 'marble_light', side: 'marble_light' },                             // the east walk's stair
+                    { k: 'rail', x0: -17, z0: -4.9, x1: -17, z1: -2.0, y: 2.4, model: 'pipe', block: false },  // across the gap
+                    { k: 'climb', x: 13, z: -7.4, face: 0, look: 'ladder' },                                 // the ladder up from the east garden
+                    { k: 'rail', x0: -15.45, z0: -7.25, x1: -2.6, z1: -7.25, model: 'parapet' },             // the balustrade along the raised walk's edge
+                    { k: 'rail', x0: 2.6, z0: -7.25, x1: 12.2, z1: -7.25, model: 'parapet' },
+                    { k: 'rail', x0: 13.8, z0: -7.25, x1: 15.45, z1: -7.25, model: 'parapet' },
+                    /* a curved skate rail round the fountain, open on the four ways in */
+                    { k: 'rail', arc: { x: 0, z: 1, r: 3.4, a0: 25, a1: 65 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 1, r: 3.4, a0: 115, a1: 155 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 1, r: 3.4, a0: 205, a1: 245 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 1, r: 3.4, a0: 295, a1: 335 }, model: 'pipe', block: false },
                     { k: 'scatter', key: 'potted_plant', n: 6, seed: 2 },
                 ],
             },
