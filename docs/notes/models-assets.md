@@ -329,3 +329,30 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
   (the room's fluid material, the room water's height less 4 cm, as wide as the bore at that height, 0.7 m back into the room).
 - data.js `hqTerrainDoorY`: a pad in a wadeable water stream has its sill at the wader's feet (surface − wade), not the bed, so the
   pipe's floor meets the walker. Also nudged: Downtown streets' docks gutter (−0.9 → −0.55), the sewers' Strip link (−0.9 → −0.85).
+
+## THE STAIRS PACK (2026-10-05, thread "stairs, railings and verticality")
+mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from these stairs and the metro
+stairs ... figure out their dimensions and how to make them work and fit in the game ... Make sure all stairs are walkable and
+railings are grindable. I should be able to grind down stairs too, especially ones with railing like the escalator."
+- Files (R2): `Assets/stairs/stairs_railings.glb` (31 MB sample sheet, feet, untextured greys + a blue BLEND glass; every family laid
+  out on one floor, labels are geometry too), `Assets/stairs/stairs.glb` (one textured steel-grating flight with handrails, metres),
+  the metro kit's `Stairs_01` node (Metro.glb). Catalogue: data.js `HQ_STAIR_PACK` (each piece = a box in its file + measured
+  risers `n`/`r`/`g`/`face`, railings `b`/`P`/`t`/`top`), `HQ_STAIR_KINDS` (a kind = flight + railing + tread/side sheets),
+  `HQ_STAIR_RULES` (riser 0.18 m, rail defaults `balusters_b` / low `pipe`).
+- Fitting (three-renderer.js `_sp*`, before `_hqSlopePrismGeo`): a piece is cut out once into a triangle soup (`_spSoup`, by box
+  centroid; a mesh outside the box is skipped by its bounds), then SLICE-REPEAT: flights cut at mid-tread into foot / one middle
+  step / head, the middle repeated to round(rise / 0.18) risers, the pitch line scaled to rise × run (points within a riser of it
+  scale, handrails and stringer depth keep their own offset), outer `band` keeps its thickness across; railings cut at posts, bays
+  repeated, sheared down slopes (posts plumb) or bent round arcs; the escalator cut inside its incline (`cut`), one step repeated.
+  The walker's smooth slope passes through every riser's middle. One merged mesh per (piece, role) per room.
+- Walkable: the field keeps the smooth slope (the walker); every non-float stair ramp is now in `info.builts`, its field cut away,
+  its wedge drawn sunk half a riser under the slope as the flight's mass, the pack flight over it.
+- Grindable: compile pushes `info.railings` (drawn) + a grind per run (sloped y0→y1, arcs with centre cx/cz, chained prev/next) +
+  ghost walls (blockT 0.12) unless `block:false` (model-less rows stay grind-only). Flights wear their kind's railing both sides
+  (`rails: false|'l'|'r'`), the grating its own handrails (grinds only), escalators a 3-piece handrail grind each side. The grind
+  pulls the rider down a slope (`_hqTickRideStep`, 0.55 g × slope); labels HANDRAIL GRIND / ESCALATOR GRIND.
+- Mall escalators: the pack's (30°, 2 m wide; rows shortened to run = rise / tan 30°). Meshy escalator + fallback steps deleted.
+- Editor: STAIRS tools take a `Stairs (the pack)` kind (`model` on the row); ADD list Railing / Curved railing with a `model`.
+- Kill-switch: `window.EW_NO_STAIRS_PACK` (wedges only, no railings drawn). Perf: ornate railings are heavy (two_rail 2.7k tris/m,
+  post_rail 3.4k/m); defaults use light ones (balusters_b 0.18k/m, bars_curb 0.37k/m, glass 0.09k/m, ranch 0.06k/m).
+- Rooms redone with stairs/levels: running list in docs/notes/areas-complexes.md "STAIRS PASS".
