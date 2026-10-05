@@ -5940,6 +5940,31 @@ body.diorama-3d .tile-underpass.jump::before {
 /* ── THE HINTS: quiet ink, no dots ── */
 #hqPage .hq-hints { left: 18px; bottom: 12px; gap: 6px 12px; font-size: 8px; letter-spacing: 0.18em; color: var(--hq-ink-mute); opacity: 0.8; text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,0.85); }
 #hqPage .hq-hints span::before { content: ''; margin: 0; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--hq-sel); margin-right: 7px; vertical-align: 1px; opacity: 0.8; }
+/* THE HEALTH DOCK (2026-10-05): the first shift in the bottom-left corner, the battle party dock's round portraits
+   (hud.js PartyPortrait: HP outer ring, MP inner, both from 6 o'clock clockwise). The lead is the big one and wears its
+   name + HP beside it; the key hints start to its right (map.js _hqDockHints). */
+.hq-dock { position: absolute; left: 18px; bottom: 12px; z-index: 20; display: flex; align-items: flex-end; gap: 6px; pointer-events: auto; font-family: 'IBM Plex Mono', monospace; }
+.hq-dock-pp { position: relative; display: flex; align-items: center; gap: 8px; }
+.hq-dock-pp svg { width: 52px; height: 52px; flex: none; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.75)); }
+.hq-dock-pp.lead svg { width: 76px; height: 76px; }
+.hq-dock-pp.lead { margin-right: 4px; }
+.hq-dock-track { fill: none; stroke: #0b0a12; stroke-width: 6; }
+.hq-dock-track.mp { stroke-width: 4; }
+.hq-dock-arc { stroke-linecap: butt; transform-box: view-box; transform-origin: 50% 50%; transition: stroke-dasharray 0.45s cubic-bezier(0.22,1,0.36,1); }
+.hq-dock-arc.hp { stroke-width: 5; filter: drop-shadow(0 0 3px rgba(46,209,88,0.75)); }
+.hq-dock-pp.low .hq-dock-arc.hp { filter: drop-shadow(0 0 3px rgba(255,74,74,0.8)); }
+.hq-dock-arc.mp { stroke-width: 3.2; filter: drop-shadow(0 0 3px rgba(47,157,255,0.75)); }
+.hq-dock-bezel { fill: #0d0b15; stroke: #55506a; stroke-width: 1; opacity: 0.95; }
+.hq-dock-disc { fill: #100e19; }
+.hq-dock-skull { font-size: 30px; fill: #e8e4d8; paint-order: stroke; stroke: #000; stroke-width: 2px; }
+.hq-dock-pp.down image { filter: grayscale(1) brightness(0.45); }
+.hq-dock-pp.low .hq-dock-arc.hp { animation: hqDockLow 0.9s ease-in-out infinite; }
+@keyframes hqDockLow { 50% { opacity: 0.45; } }
+.hq-dock-tag { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; padding: 4px 12px 4px 10px; border-radius: var(--hq-r-pill, 999px); background: var(--hq-plate-scan, none), var(--hq-plate-bg, rgba(5,5,8,0.85)); border: 1px solid var(--hq-plate-edge, rgba(255,255,255,0.2)); box-shadow: var(--hq-frame, none); }
+.hq-dock-tag b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.12em; line-height: 1; color: var(--hq-ink, #f4f4f8); text-shadow: var(--hq-tshadow, none); }
+.hq-dock-tag em { font-style: normal; font-size: 9px; letter-spacing: 0.2em; color: #2ed158; }
+.hq-dock-pp.low .hq-dock-tag em { color: #ff4a4a; }
+.hq-dock-pp.down .hq-dock-tag em { color: #ff4a4a; }
 /* ── THE PROMPT / THE TOAST / THE TRICK LINE: plates, rounded, bevelled ── */
 #hqPage .hq-ollie { border-color: var(--hq-row-edge); background: var(--hq-plate-bg); }
 #hqPage .hq-ollie.max { border-color: var(--hq-sel); }
@@ -7073,6 +7098,7 @@ html.ew-mobile .hqt-top .hqt-b { position: relative; border-radius: calc(19px * 
 html.ew-mobile .hqt-top .hqt-menu { min-width: calc(44px * var(--tk)); font-size: calc(17px * var(--tk)); }
 /* the walk on a phone: no keyboard hints, the prompt clear of the thumbs */
 html.ew-mobile #hqPage .hq-hints { display: none; }
+html.ew-mobile.ew-hq-touch #hqPage .hq-dock { bottom: calc(env(safe-area-inset-bottom, 0px) + 176px * var(--tk)); left: calc(env(safe-area-inset-left, 0px) + 14px * var(--tk)); pointer-events: none; }
 html.ew-mobile.ew-hq-touch #hqPage .hq-prompt { max-width: calc(100% - 2 * 150px * var(--tk)); }
 @media (orientation: portrait) {
     html.ew-mobile.ew-hq-touch #hqPage .hq-prompt { bottom: calc(env(safe-area-inset-bottom, 0px) + 196px * var(--tk)); max-width: 92%; }
