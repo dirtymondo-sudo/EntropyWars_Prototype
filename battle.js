@@ -54056,28 +54056,78 @@
                 return true;
             }
 
-            if (clickedUnit.player !== actingUnit.player) {
-                state._tileActionTarget = null;
-                state._enemyActionTargetId = clickedUnit.id;
-                focusUnitPanel(clickedUnit.id);
-                // Opening a target's quick-action menu swings the caster's
-                // over-the-shoulder view onto them — same shot the target
-                // drum uses, so the menu is always ABOUT the unit on screen.
-                _tpsTargetShot(actingUnit, clickedUnit);
-                playSfx('uiCursorFocus');
-                markDirty('board', 'selectedUnit', 'hud');
-                renderIfDirty();
-                return true;
-            }
-
+            /* ANY other living unit, enemy OR ally, opens its quick menu: the
+               same anchor the no-mode click sets (the HUD picks the offensive
+               playbook vs the ally quick-cast list by team). */
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = clickedUnit.id;
             focusUnitPanel(clickedUnit.id);
-            state._enemyActionTargetId = null;
-            state._tileActionTarget = { x: clickedUnit.x, y: clickedUnit.y, z: clickedUnit.z };
+            // Opening a target's quick-action menu swings the caster's
+            // over-the-shoulder view onto them — same shot the target
+            // drum uses, so the menu is always ABOUT the unit on screen.
+            _tpsTargetShot(actingUnit, clickedUnit);
             playSfx('uiCursorFocus');
             markDirty('board', 'selectedUnit', 'hud');
             renderIfDirty();
             return true;
         }
+
+        /* Same exit for an OBJECT tile (the Cube, a turret / summon): drop the
+           armed mode and open that tile's quick menu, exactly what the click
+           does with no mode armed. */
+        function _exitModeAndShowTileMenu(actingUnit, x, y, z) {
+            const canControl = !state.autoPlayers?.[state.activePlayer]
+                && actingUnit.player === state.activePlayer
+                && canUnitAct(actingUnit) && !state.winner;
+            if (!canControl) return false;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.comboPartner = null;
+            state._actionExecuting = false;
+            clearAoePreview();
+            clearHoveredTarget();
+            state._enemyActionTargetId = null;
+            state._tileActionTarget = { x, y, z };
+            playSfx('uiCursorFocus');
+            markDirty('board', 'selectedUnit', 'hud');
+            renderIfDirty();
+            return true;
+        }
+
+        /* MOVE MODE → QUICK MENU (2026-10-05, mondo: "if im clicking on the
+           cube or another unit from the move action, it needs to bring up its
+           quick action menu"). A unit or the Cube is never a move destination,
+           so the click opens that target's quick menu instead of a beep.
+           Returns { unit } / { tile } / null (null = a normal move click).
+           A click on the GROUND under a flyer stays a move when that tile is
+           a legal landing; only the sprite itself (or an occupied tile you
+           can't land on) opens the menu. */
+        function _moveClickMenuTarget(actingUnit, x, y, clickedUnit) {
+            if (!actingUnit) return null;
+            // fog: never open a menu for (and so reveal) something in the murk
+            if (state.fogOfWar && !computeVisibleTiles(state.activePlayer).has(posKey(x, y))) return null;
+            if (clickedUnit && !clickedUnit.dead && !clickedUnit._dying && clickedUnit.id !== actingUnit.id) {
+                if (state._clickedUnitId === clickedUnit.id) return { unit: clickedUnit };
+                const _landable = getMoveTiles(actingUnit).some(t => t.x === x && t.y === y)
+                    || (typeof getJumpTiles === 'function' && getJumpTiles(actingUnit).some(t => t.x === x && t.y === y));
+                if (!_landable) return { unit: clickedUnit };
+                return null;
+            }
+            if (!clickedUnit) {
+                if (state.towers) {
+                    for (const p of [1, 2]) {
+                        const tw = state.towers[p];
+                        if (tw && tw.hp > 0 && tw.x === x && tw.y === y) return { tile: true };
+                    }
+                }
+                if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return { tile: true };
+            }
+            return null;
+        }
+        window._moveClickMenuTarget = _moveClickMenuTarget;
+        window._exitModeAndShowTileMenu = _exitModeAndShowTileMenu;
 
         /* THE ONE WAY to run an action while state._actionExecuting is armed.
            Every path that sets _actionExecuting = true and then fires a
@@ -54517,20 +54567,17 @@
                     return;
                 }
 
-                /* Only intercept click if the user physically clicked on a unit sprite
-                   (not the tile beneath an airborne unit). _clickedUnitId is set by the
-                   renderer when screenToUnit detects a sprite hit. */
-                const _directlyClickedUnit = state._clickedUnitId && clickedUnit &&
-                    clickedUnit.id === state._clickedUnitId;
-                if (_directlyClickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id) {
-                    /* THE MODE HOLDS (2026-09-19): a unit is not a move
-                       destination — say so and keep the move range up (it used
-                       to drop the mode and open that unit's menu). */
-                    state._actionExecuting = false;
-                    addLog('Pick a highlighted tile to move to.', actingUnit.player);
-                    playErrorSfx();
-                    scheduleBoardRender();
-                    return false;
+                /* A unit or the Cube → its quick menu (2026-10-05, mondo),
+                   replacing the 2026-09-19 "MODE HOLDS" beep that answered
+                   these clicks with "Pick a highlighted tile". Empty tiles
+                   still hold the mode (a miss is a beep, not an exit). */
+                {
+                    const _mt = _moveClickMenuTarget(actingUnit, x, y, clickedUnit);
+                    if (_mt) {
+                        state._actionExecuting = false;
+                        if (_mt.unit && _exitModeAndShowUnitMenu(actingUnit, _mt.unit)) return;
+                        if (_mt.tile && _exitModeAndShowTileMenu(actingUnit, x, y, state._clickedZ)) return;
+                    }
                 }
 
                 /* A failed doMove/doJump returns false WITHOUT resetting
