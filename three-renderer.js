@@ -24901,7 +24901,6 @@ const ThreeRenderer = (function () {
         time_machine:    'Meshy_AI_a_retro_time_machine_0917064610_texture.glb', // the `timemachine` way's model (over the brass cage)
         road_straight:   'Meshy_AI_a_straight_city_road_0917064651_texture.glb', // the road tiles laid along every street (_hqBuildRoadTiles)
         road_turn:       'Meshy_AI_a_road_turn_quarter_0917065230_texture.glb',
-        street_drain:    'Meshy_AI_a_round_street_drain__0917064638_texture.glb', // the `gutter` way's grate; manholes
         escalator:       'Meshy_AI_an_escalator_0917064623_texture.glb',        // THE MEZZANINE's escalator (the catalogue row)
         bus_shelter:     'Meshy_AI_bus_shelter_0917064913_texture.glb',
         cinder_block:    'Meshy_AI_cinder_block_0917064959_texture.glb',
@@ -50832,6 +50831,21 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* the trefoil on a yellow plate */
+        /* THE MANHOLE (2026-10-05, mondo: the urban pack's manhole cover, not the Meshy drain GLB): the pack's DecalManholeCover
+           sheet laid flat on the ground, `p.r` m across the radius (0.45 by default) */
+        manhole: function (U, p) {
+            var g = new THREE.Group(), r = (p && +p.r > 0) ? +p.r : 0.45;
+            var m = _hqManholeDisc(U, r); if (m) g.add(m);
+            return g;
+        },
+        /* THE SAFETY SIGN (2026-10-05): one of the urban pack's sign sheets on a thin grey back, hung on a wall (`p.sign` = the
+           sheet's name; a family name — SignDanger, SignCaution… — picks one of its own by the prop's place) */
+        safety_sign: function (U, p) {
+            var g = new THREE.Group(), name = (p && p.sign) || 'SignCaution1c';
+            if (typeof URBAN_TEX_FAMILIES !== 'undefined' && URBAN_TEX_FAMILIES[name] && typeof urbanTexPick === 'function') name = urbanTexPick(name, _mulberry32(((p && (p.x * 73 + p.z * 31)) * 1000 | 0) >>> 0)) || name;
+            var pl = _hqSafetyPlate(U, name, p && p.w); if (pl) { pl.position.y = 0.3 * U; g.add(pl); }
+            return g;
+        },
         radiation_sign: function (U) {
             var g = new THREE.Group();
             var plate = _hqBox(0.6, 0.6, 0.02, _hqBasic(0xf2d21a)); plate.position.y = 0.3 * U; g.add(plate);
@@ -52316,13 +52330,9 @@ const ThreeRenderer = (function () {
             var f1 = _hqBox(1.36, 0.06, 0.06, iron); f1.position.set(0, 0.03 * U, -0.02 * U); g.add(f1);
             var f2 = _hqBox(1.36, 0.06, 0.06, iron); f2.position.set(0, 0.03 * U, 0.86 * U); g.add(f2);
             var stain = new THREE.Mesh(new THREE.CircleGeometry(0.9 * U, 18), _hqBasic(0x30363a, { transparent: true, opacity: 0.35, depthWrite: false })); stain.rotation.x = -Math.PI / 2; stain.position.set(0, 0.012 * U, 0.5 * U); stain.renderOrder = 1; g.add(stain);
-            /* DISASTER CITY, THE SECOND PASS (2026-09-17): the user's round street drain GLB (catalogue `street_drain`) lies over the procedural grate once it lands */
-            var sdCat = (typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {}).street_drain) : null;
-            if (sdCat && sdCat.file && typeof _miscModelInstance === 'function' && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
-                var grateBits = g.children.filter(function (m) { return m.material === iron; });
-                var sdInst = _miscModelInstance(_hqModelUrl(sdCat), true, (sdCat.span || 1.3) * U, { fit: 'span', matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined, onDone: function () { grateBits.forEach(function (m) { m.visible = false; }); under.visible = false; } });
-                sdInst.position.set(0, 0.006 * U, 0.42 * U); g.add(sdInst);
-            }
+            /* THE MANHOLE (2026-10-05, mondo): the urban pack's manhole cover lies in the road in front of the inlet (the Meshy drain GLB is gone) — the cover over the grate's dark, the bars hidden */
+            var mhDisc = _hqManholeDisc(U, 0.55);
+            if (mhDisc) { g.children.filter(function (m) { return m.material === iron; }).forEach(function (m) { m.visible = false; }); under.visible = false; mhDisc.position.set(0, 0.012 * U, 0.42 * U); g.add(mhDisc); }
             var glow = _hzGlowSprite(0.9 * U, 0x8ff0a8, 0.14, 0.0, 0.0, 0.0); glow.position.set(0, 0.16 * U, 0.1 * U);
             var sign = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * U, 0.16 * U), _hqBasic(0xe8e4d8)); sign.position.set(0, 0.36 * U, -0.082 * U); g.add(sign);   // NO DUMPING · DRAINS TO THE DRAIN
             var motion = { mode: 'way', ow: W, tick: function (k) { inner.material.opacity = 0.12 + 0.7 * k; glow.material.opacity = 0.14 + 0.6 * k; glow.scale.setScalar((0.9 + 1.2 * k) * U); under.material.opacity = 1; } };
@@ -52511,8 +52521,28 @@ const ThreeRenderer = (function () {
                 var strip = new THREE.Mesh(sg, floorM); strip.rotation.x = -Math.PI / 2; strip.position.set(0, 0.05 * U, -(SL / 2 - 0.4) * U); strip.receiveShadow = true; strip.renderOrder = 1; g.add(strip);
             }
         }
+        /* THE MODELLED MOUTH (2026-10-05, mondo: Dead Man's Cave's way in is the Meshy culvert mouth, not a block outcrop):
+           `mouth: '<catalogue key>'` stands the file's concrete pipe as the whole tube — its axis down the way, its grate
+           end (the file's +z) at the far end, its centre `mouthY` m over the floor (the grate's half-ring hangs from the
+           centre up, so the walker passes under it), `mouthD` m across. The box tube, the roof and the outcrop are not
+           built; the dark cards are sized to the pipe's bore. The walker's lane is the passage's own `w`. */
+        var mouthCat = (P.mouth && typeof _hqData === 'function') ? (((_hqData() || {}).catalogue || {})[P.mouth]) : null, mouthR = 0;
+        if (mouthCat && mouthCat.file && typeof _miscModelInstance === 'function' && !P.inside) {
+            var MD = +P.mouthD || 9.5, MY = (P.mouthY != null) ? +P.mouthY : 2.2, mHold = new THREE.Group();
+            mouthR = MD * 0.27;   // the bore (measured on the file: 0.27 of its outer diameter)
+            mHold.rotation.y = Math.PI;   // the grate end into the dark
+            mHold.position.set(0, (MY - MD / 2) * U, 0);
+            mHold.add(_miscModelInstance(_hqModelUrl(mouthCat), true, MD * U, { matPick: _hqPropMatPick, onDone: function (mg, sc, bb) {
+                var ez = ((bb.max.z - bb.min.z) || 1) * sc;
+                mg.position.z = (ez / U / 2 - 0.1) * U;   // the mouth's lip 0.1 m out of the wall line, the pipe back into the bank
+                mg.traverse(function (n) { if (n.isMesh) { n.receiveShadow = true; n.castShadow = true; } });
+            } }));
+            g.add(mHold);
+            box(mouthR * 2, 0.5, L + 0.4, floorM, 0, -0.25 + 0.01, -(L / 2 + 0.2));   // the floor out to the bore (the ground never shows in the pipe)
+            box(W + 2 * T0, H + 1.6, 0.4, wallM, 0, fy(L) + H / 2, -(L + 0.2));   // the far end (behind the black)
+        }
         /* THE TUBE: the walls either side and the roof, stepping up with a rising floor */
-        if (P.roof && !P.inside) {
+        if (P.roof && !P.inside && !mouthR) {
             if (P.rise !== 0) {
                 for (var s2 = 0; s2 < L; s2 += SEG) {
                     var f2 = fy(s2 + SEG / 2);
@@ -52547,6 +52577,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < n; i++) {
             var t = (i + 1) / n, dd = d0 + (L - 0.15 - d0) * t, op = (i === n - 1) ? 1 : Math.min(1, Math.pow(t, 1.3));
             var cw = P.roof ? W + 0.04 : W + ((P.spread != null) ? +P.spread : 3.2), ch = P.roof ? H + 0.1 : H + 2.5;
+            if (mouthR) { cw = mouthR * 2 + 0.2; ch = (+P.mouthY || 2.2) + mouthR + 0.1; }   // the modelled mouth: the card fills the bore (the pipe hides its corners)
             var cm = new THREE.MeshBasicMaterial({ color: fadeCol, transparent: true, opacity: soft ? Math.min(1, op * 1.15) : op, depthWrite: false, side: THREE.DoubleSide });
             if (softT) cm.map = softT;
             var card = new THREE.Mesh(new THREE.PlaneGeometry(cw * U, ch * U), cm);
@@ -60791,6 +60822,119 @@ const ThreeRenderer = (function () {
         }
         return (y == null) ? 0 : y;
     }
+    /* THE MANHOLE + THE SAFETY SIGNS (2026-10-05): the urban pack's sheets as world pieces */
+    var _hqManholeMat = null;
+    function _hqManholeDisc(U, r) {
+        if (typeof _hzTex !== 'function') return null;
+        if (!_hqManholeMat) {
+            var tex = _hzTex('urban:DecalManholeCover'); if (!tex) return null;
+            _hqManholeMat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
+        }
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2 * U, r * 2 * U), _hqManholeMat);
+        m.rotation.x = -Math.PI / 2; m.position.y = 0.012 * U; m.renderOrder = 2; m.receiveShadow = true; m.castShadow = false;
+        return m;
+    }
+    /* the sheets' own proportions (h / w, measured on R2) and widths in m: a landscape plate 0.8, a portrait or square one 0.5 */
+    var _HQ_SIGN_AR = { SignCaution: 64 / 96, SignDanger: 64 / 96, SignHazard1: 72 / 48, SignHazard2: 1, SignProhibited: 1, SignProtective: 96 / 64 };
+    var _hqSignMats = {};
+    function _hqSafetyPlate(U, name, wM) {
+        if (typeof _hzTex !== 'function') return null;
+        var fam = String(name).replace(/[0-9].*$/, ''), ar = _HQ_SIGN_AR[String(name).replace(/[a-z]$/, '')] || _HQ_SIGN_AR[fam] || 1;
+        var pw = +wM || (ar < 1 ? 0.8 : 0.5);
+        var mat = _hqSignMats[name];
+        if (!mat) {
+            var tex = _hzTex('urban:' + name); if (!tex) return null;
+            mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.2 }); mat.emissive = new THREE.Color(0x202020); mat.emissiveMap = tex;
+            _hqSignMats[name] = mat;
+        }
+        var grp = new THREE.Group();
+        var plate = new THREE.Mesh(new THREE.PlaneGeometry(pw * U, pw * ar * U), mat); plate.position.z = 0.012 * U; plate.renderOrder = 2; grp.add(plate);
+        if (!_hqSignMats._back) { _hqSignMats._back = new THREE.MeshLambertMaterial({ color: 0x4a4e54 }); }
+        var back = new THREE.Mesh(new THREE.BoxGeometry(pw * 0.98 * U, pw * ar * 0.98 * U, 0.012 * U), _hqSignMats._back); back.position.z = 0.005 * U; grp.add(back);
+        grp.traverse(function (n) { if (n.isMesh) { n.castShadow = false; n.receiveShadow = true; n._ew_pixelate = true; } });
+        return grp;
+    }
+    /* THE SAFETY SIGNS PASS (data.js HQ_SAFETY_SIGNS): the room's set hung on its walls — a terrain room's field walls on their
+       open face, a box room's shell walls — clear of the doors, the passages, the spawn and the wall props, seeded by the room id */
+    function _hqBuildSafetySigns(room) {
+        var H = _hq, W = (typeof window !== 'undefined') ? window : {};
+        if (!H || H.ghost || W.EW_HQ_NO_SAFETY_SIGNS) return 0;
+        var RULES = (typeof HQ_SAFETY_SIGNS !== 'undefined') ? HQ_SAFETY_SIGNS : (W.HQ_SAFETY_SIGNS || null); if (!RULES || !RULES.rooms) return 0;
+        var roomId = (H.opts && H.opts.room) || room.id, row = RULES.rooms[roomId]; if (!row) return 0;
+        var set = (RULES.sets || {})[row.set]; if (!set || !set.length) return 0;
+        var D = _hqData(), U = _hqUnits(), S = room.shell || {}, info = room.terrain ? H.terrain : null;
+        var rng = _mulberry32((typeof hqHash === 'function' ? hqHash('signs:' + roomId) : 977) >>> 0);
+        var hSign = RULES.h || 1.6, doorM = RULES.doorM || 3.2, endM = RULES.endM || 1.0, gapM = RULES.gapM || 5.5;
+        /* what a sign keeps clear of: the doors (their landings), the passages' mouths, the spawn, the props on or by a wall */
+        var keepOut = [];
+        (H.doors || []).forEach(function (d) { if (d && d.box) keepOut.push({ x: d.box.wx, z: d.box.wz, r: doorM + (d.door && d.door.wide ? 1 : 0) }); });
+        (room.doors || []).forEach(function (d) { if (!d || !d.wall) return; try { var b = _hqBoxWall(room, d.wall, d); keepOut.push({ x: b.wx, z: b.wz, r: doorM + (d.wide ? 1 : 0) }); } catch (e) {} });
+        if (room.spawn) keepOut.push({ x: +room.spawn.x || 0, z: +room.spawn.z || 0, r: RULES.spawnM || 2.6 });
+        (H.props || []).forEach(function (pr) {
+            if (!pr || !pr.grp) return;
+            var cat = D && D.catalogue ? D.catalogue[pr.key] : null, wp = pr.grp.position;   // room metres × U (a prop stands in the room's own group)
+            var tall = cat && (cat.wall || cat.mount || (cat.h || 0) > 1.2);
+            keepOut.push({ x: wp.x / U, z: wp.z / U, r: tall ? 1.3 : 0.6 });
+        });
+        /* the candidate walls: { x0, z0, x1, z1, nx, nz (the face's normal, into the room), base, top, off (the face's distance from the line) } */
+        var cands = [];
+        if (info && (info.walls || info.planWalls)) {
+            (info.walls || []).concat(info.planWalls || []).forEach(function (w) {
+                if (!w || w.ghost || w.tier || w.glass || w.yard) return;
+                var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0); if (L < (RULES.minLen || 2.4)) return;
+                if ((w.top - w.base) < (RULES.minH || 2.2) + 0.3) return;
+                var dx = (w.x1 - w.x0) / L, dz = (w.z1 - w.z0) / L, mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2, px = -dz, pz = dx, off = (w.t || 0.3) / 2 + 0.02;
+                var openA = (typeof hqTerrainOpenAt === 'function') ? hqTerrainOpenAt(info, mx + px * (off + 0.45), mz + pz * (off + 0.45)) : true;
+                var openB = (typeof hqTerrainOpenAt === 'function') ? hqTerrainOpenAt(info, mx - px * (off + 0.45), mz - pz * (off + 0.45)) : true;
+                if (!info.maskD) { if (px * -mx + pz * -mz < 0) { px = -px; pz = -pz; } }   // no plan mask: the face toward the room's middle
+                else if (openA && openB) { if (rng() < 0.5) { px = -px; pz = -pz; } }
+                else if (openB && !openA) { px = -px; pz = -pz; }
+                else if (!openA && !openB) return;
+                cands.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, L: L, dx: dx, dz: dz, nx: px, nz: pz, off: off, base: w.base + 0.3, top: w.top });
+            });
+        }
+        if (S.w && S.d && !S.open && !(info && info.maskD) && S.edge !== 'open' && S.edge !== 'low') {   // a closed box's own four walls (a plan room's stand behind its fill)
+            var hw = S.w / 2, hd = S.d / 2, wallH = S.wallH || S.h || 3;
+            if (wallH >= (RULES.minH || 2.2)) [
+                { x0: -hw, z0: -hd, x1: hw, z1: -hd, nx: 0, nz: 1 }, { x0: hw, z0: hd, x1: -hw, z1: hd, nx: 0, nz: -1 },
+                { x0: hw, z0: -hd, x1: hw, z1: hd, nx: -1, nz: 0 }, { x0: -hw, z0: hd, x1: -hw, z1: -hd, nx: 1, nz: 0 },
+            ].forEach(function (c) { var L = Math.hypot(c.x1 - c.x0, c.z1 - c.z0); c.L = L; c.dx = (c.x1 - c.x0) / L; c.dz = (c.z1 - c.z0) / L; c.off = 0.07; c.base = 0; c.minBot = (S.dadoH || 0) + 0.18; c.top = wallH; cands.push(c); });
+        }
+        if (!cands.length) return 0;
+        /* the spots: along every candidate every ~2 m (clear of its ends), shuffled by the seed, kept when clear */
+        var spots = [];
+        cands.forEach(function (c) {
+            var usable = c.L - 2 * endM; if (usable <= 0.2) return;
+            var n = Math.max(1, Math.floor(usable / 2));
+            for (var i = 0; i < n; i++) {
+                var a = endM + usable * (n === 1 ? 0.5 : (i + 0.5) / n), x = c.x0 + c.dx * a + c.nx * c.off, z = c.z0 + c.dz * a + c.nz * c.off;
+                spots.push({ c: c, x: x, z: z, k: rng() });
+            }
+        });
+        spots.sort(function (a, b) { return a.k - b.k; });
+        var placed = [], max = Math.max(0, row.n || 4), si = Math.floor(rng() * set.length);
+        for (var q = 0; q < spots.length && placed.length < max; q++) {
+            var sp = spots[q], bad = false;
+            for (var k = 0; k < keepOut.length && !bad; k++) { var ko = keepOut[k]; if (Math.hypot(sp.x - ko.x, sp.z - ko.z) < ko.r) bad = true; }
+            for (var k2 = 0; k2 < placed.length && !bad; k2++) if (Math.hypot(sp.x - placed[k2].x, sp.z - placed[k2].z) < gapM) bad = true;
+            /* the passages: a mouth's lane stays bare */
+            (H.passages || []).forEach(function (ps) { if (!bad && ps && ps.box && Math.hypot(sp.x - ps.box.wx, sp.z - ps.box.wz) < doorM + 1) bad = true; });
+            if (bad) continue;
+            var gy = sp.c.base;
+            if (info && typeof hqTerrainHeight === 'function') { try { gy = hqTerrainHeight(info, sp.x + sp.c.nx * 0.5, sp.z + sp.c.nz * 0.5); } catch (e) {} }
+            var cy = gy + hSign; if (cy + 0.5 > sp.c.top) cy = sp.c.top - 0.55; if (cy < gy + 1.1) continue;
+            var name = set[(si + placed.length) % set.length];
+            if (sp.c.minBot) { var nAr = _HQ_SIGN_AR[String(name).replace(/[a-z]$/, '')] || _HQ_SIGN_AR[String(name).replace(/[0-9].*$/, '')] || 1, nH = (nAr < 1 ? 0.8 : 0.5) * nAr; if (cy - nH / 2 < gy + sp.c.minBot) cy = gy + sp.c.minBot + nH / 2; if (cy + nH / 2 > sp.c.top - 0.15) continue; }   // over the dado's trim
+            var pl = _hqSafetyPlate(U, name); if (!pl) continue;
+            pl.position.set(sp.x * U, cy * U + (info ? 0.3 : 0), sp.z * U); pl.rotation.y = Math.atan2(sp.c.nx, sp.c.nz);   // (a terrain field stands 0.3 over the room's zero)
+            pl.traverse(function (n) { if (n.isMesh) { n._ew_hqPart = 'fx'; n._ew_shadowFlagged = true; } });
+            (H.propGroup || H.shellGroup).add(pl);
+            placed.push({ x: sp.x, z: sp.z, nx: sp.c.nx, nz: sp.c.nz, sign: name });
+        }
+        H.safetySigns = placed.length; if (W.EW_HQ_DEBUG) W._ewSafetySigns = placed;
+        if (W.EW_HQ_DEBUG) console.log('[HQ] safety signs', roomId, placed.length, 'of', max, 'from', spots.length, 'spots');
+        return placed.length;
+    }
     function _hqBuildDecals(room) {
         var H = _hq, W = (typeof window !== 'undefined') ? window : {};
         if (!H || H.ghost || _polishOff('decals', 'EW_HQ_NO_DECALS') || typeof document === 'undefined') return 0;
@@ -62395,7 +62539,7 @@ const ThreeRenderer = (function () {
         function (room) { _hqBuildDoors(room); _hqBuildCounters(room); },
         function (room) { _hqSliceAsk = true; return _hqPlaceProps(room); },
         function (room) { _hqBuildClimbs(room); _hqPlaceFinds(room); },
-        function (room) { try { _hqPlaceLightShafts(room); } catch (e) {} try { _hqBuildDecals(room); } catch (e) {} try { _hqShadowFlags(room); } catch (e) {} },
+        function (room) { try { _hqPlaceLightShafts(room); } catch (e) {} try { _hqBuildDecals(room); } catch (e) {} try { _hqBuildSafetySigns(room); } catch (e) {} try { _hqShadowFlags(room); } catch (e) {} },
         /* Phase 2 (THE DOOR JOIN): a closed room's own lamps, and — HQ_STAGE_RULES.nbPeople 'interior' — its cast, so the ward is
            lit and staffed through its open door (an outdoor part's crowd still comes out at the crossing) */
         function (room) {
@@ -63975,6 +64119,7 @@ const ThreeRenderer = (function () {
         try { _hqPlaceLightShafts(room); } catch (e) { console.warn('[HQ] the light shafts failed', e); }
         try { _hqBuildAtmos(room); } catch (e) { console.warn('[HQ] the atmosphere failed', e); }
         try { _hqBuildDecals(room); } catch (e) { console.warn('[HQ] the decals failed', e); }   // THE PROP PASS 5.5
+        try { _hqBuildSafetySigns(room); } catch (e) { console.warn('[HQ] the safety signs failed', e); }   // 2026-10-05: the urban pack's signs in the industrial rooms (HQ_SAFETY_SIGNS)
         try { _hqBuildReflectors(room); } catch (e) { console.warn('[HQ] the reflectors failed', e); }   // THE THIRD PASS 5.4: the puddles, the barbershop mirror
         try { _hqClockArm(_hq); } catch (e) { console.warn('[HQ] the world clock failed', e); }   // THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): after the light rig — the hour owns a clocked room's sun
         /* face the camera the way the spawn faces */
