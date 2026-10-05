@@ -1809,7 +1809,7 @@
            An overlay on the HQ page: the room the renderer builds IS the viewport. body.ed-on while it is open;
            body.ed-playing hides it for PLAY HERE (the player's HUD comes back).
            ══════════════════════════════════════════════════ */
-        body.ed-on:not(.ed-playing) #hqStrip, body.ed-on:not(.ed-playing) #hqHints, body.ed-on:not(.ed-playing) #hqPrompt,
+        body.ed-on:not(.ed-playing) #hqStrip, body.ed-on:not(.ed-playing) #hqHints, body.ed-on:not(.ed-playing) #hqDock, body.ed-on:not(.ed-playing) #hqPrompt,
         body.ed-on:not(.ed-playing) #hqArrival, body.ed-on:not(.ed-playing) #hqToast, body.ed-on:not(.ed-playing) #hqLoad,
         body.ed-on:not(.ed-playing) #hqWheel, body.ed-on:not(.ed-playing) #hqTrick, body.ed-on:not(.ed-playing) #hqOllie { display: none !important; }
         .ed-root { position: fixed; inset: 0; z-index: 9000; pointer-events: none; font: 12px/1.35 'JetBrains Mono', 'IBM Plex Mono', monospace; color: #dfe6ee; }

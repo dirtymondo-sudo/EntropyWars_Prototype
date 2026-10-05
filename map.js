@@ -1311,19 +1311,62 @@
             _hqStripFlashT = setTimeout(() => { try { if (state.gameState === GS.HQ) _hqFillStrip(_hqProfile()); } catch (e) {} }, (ms || HQ_STRIP_FLASH_MS) + 50);
         }
         function _hqStripPillLive(key) { return (_hqStripFlashAt[key] || 0) > performance.now(); }
+        /* THE HEALTH DOCK (2026-10-05, the user: "a health bar on the exploration HUD like the circular party icons in battle";
+           keys + areas cleared off the strip, hazard pay top right, the area top left, health in a bottom corner): the FIRST
+           SHIFT as round portraits in the bottom-left corner, HP on the outer ring and MP inside it, both filling from 6
+           o'clock clockwise (hud.js PartyPortrait's geometry and colours). The lead (slot 1, the body you walk as) is the big
+           one. Reads the carried vitals (data.js hqPartyVitals) without building units; re-filled with the strip and on
+           every pause-menu close. Local only, nothing relayed (the party is local). */
+        function _hqDockArc(r, pct, stroke, cls) {
+            const len = Math.max(0, Math.min(100, pct));
+            return `<circle class="${cls}" cx="50" cy="50" r="${r}" pathLength="100" fill="none" stroke="${stroke}" style="stroke-dasharray:${len.toFixed(2)} 100;transform:rotate(90deg)"/>`;
+        }
+        function _hqFillDock() {
+            const el = _hqEl('hqDock'); if (!el) return;
+            let rec = null;
+            try { rec = _hqParty(); } catch (e) { rec = null; }
+            const mem = rec && Array.isArray(rec.members) ? rec.members.slice(0, (window.HQ_PARTY_RULES && HQ_PARTY_RULES.shift) || 4) : [];
+            if (!mem.length) { el.innerHTML = ''; el.style.display = 'none'; _hqDockHints(); return; }
+            el.style.display = '';
+            el.innerHTML = mem.map((m, i) => {
+                const v = _hqPauseVitals(m, null);
+                const full = !(v.hpMax > 0);
+                const hpPct = v.down ? 0 : Math.max(0, Math.min(100, (v.pct || 0) * 100));
+                const mpPct = v.down ? 0 : Math.max(0, Math.min(100, (v.mpPct || 0) * 100));
+                const po = _hqPausePortrait(m, null);
+                const name = _hqMemberName(m);
+                const tip = name + (v.down ? ' · DOWN' : (full ? ' · FULL' : ` · HP ${v.hp} / ${v.hpMax}` + (v.mpMax > 0 ? ` · MP ${v.mp} / ${v.mpMax}` : '')));
+                const low = !v.down && hpPct <= 30;
+                const cid = 'hqDockClip' + i;
+                return `<div class="hq-dock-pp${i === 0 ? ' lead' : ''}${v.down ? ' down' : ''}${low ? ' low' : ''}" title="${_hqEsc(tip)}">`
+                    + `<svg viewBox="0 0 100 100"><defs><clipPath id="${cid}"><circle cx="50" cy="50" r="30.5"/></clipPath></defs>`
+                    + `<circle class="hq-dock-track" cx="50" cy="50" r="43"/><circle class="hq-dock-track mp" cx="50" cy="50" r="36.5"/>`
+                    + _hqDockArc(43, hpPct, low ? '#ff4a4a' : '#2ed158', 'hq-dock-arc hp')
+                    + (v.mpMax > 0 || full ? _hqDockArc(36.5, mpPct, '#2f9dff', 'hq-dock-arc mp') : '')
+                    + `<circle class="hq-dock-bezel" cx="50" cy="50" r="31.7"/>`
+                    + `<g clip-path="url(#${cid})"><circle class="hq-dock-disc" cx="50" cy="50" r="30.5"/>`
+                    + (po ? `<image href="${_hqEsc(po.url)}" x="19.5" y="19.5" width="61" height="61" preserveAspectRatio="${po.kind === 'sprite' ? 'xMidYMax meet' : 'xMidYMid slice'}"/>` : '')
+                    + `</g>${v.down ? '<text x="50" y="60" text-anchor="middle" class="hq-dock-skull">☠</text>' : ''}</svg>`
+                    + (i === 0 ? `<span class="hq-dock-tag"><b>${_hqEsc(name)}</b><em>${v.down ? 'DOWN' : full ? 'HP FULL' : `HP ${v.hp} / ${v.hpMax}`}</em></span>` : '')
+                    + `</div>`;
+            }).join('');
+            _hqDockHints();
+        }
+        /* the key hints share the bottom-left: they start to the right of the dock */
+        function _hqDockHints() {
+            const h = _hqEl('hqHints'), d = _hqEl('hqDock'); if (!h) return;
+            requestAnimationFrame(() => { try { const w = (d && d.style.display !== 'none') ? d.offsetWidth : 0; h.style.left = w ? (w + 36) + 'px' : ''; } catch (e) {} });
+        }
         function _hqFillStrip(profile) {
             try {
-                const off = _hqEl('hqOfficer');
-                if (off) {
-                    const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
-                    const name = (profile && profile.username) || 'UNFILED';
-                    off.innerHTML = `<b>${_hqEsc(name)}</b><span>CLEARANCE L${cl.level} · ${_hqEsc(cl.title)}</span>`;
-                }
+                /* THE HEALTH DOCK (2026-10-05, the user): the strip is the area (top left) and the hazard pay (top right) only —
+                   the officer pill, STABILIZED (areas cleared) and KEYS are off it; the pause menu's OFFICER sheet keeps every count */
                 const w = _hqEl('hqWallet');
                 if (w) {
                     const gold = (profile && profile.account && profile.account.gold) || 0;
                     w.textContent = '💰 ' + gold.toLocaleString() + ' Hazard Pay';
                 }
+                _hqFillDock();
                 /* THE HQ HUD PASS (2026-09-16, the user's rule): the room you stand in IS the
                    title in the corner — no second box with its name anywhere on the screen.
                    The building's name and the room's number ride the sub-line under it. */
@@ -1332,19 +1375,6 @@
                 if (rt && room) rt.textContent = String(room.label || _hqCurRoom || '').toUpperCase();
                 const rn = _hqEl('hqRoomName');
                 if (rn && room) { rn.innerHTML = _hqEsc('D.O.O.R. HEADQUARTERS · ' + ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + String(room.sub || '').toUpperCase()) + '<span id="hqClockTag"></span>'; _hqClockTag(); }   // THE WORLD CLOCK (Phase 3): the hour rides the sub-line in a clocked room
-                const ms = _hqEl('hqMastery');
-                if (ms) {
-                    const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
-                    ms.innerHTML = mc ? `STABILIZED <b>${mc.mastered}</b> / ${mc.total}` : '';
-                    ms.title = 'Thresholds won by every win condition (green bay lamps)';
-                }
-                /* Keys (plan 3.2): every hourglass ever secured + Department grants */
-                const ks = _hqEl('hqKeys');
-                if (ks) {
-                    const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
-                    ks.innerHTML = k ? `KEYS <b>${k.keys}</b>` : '';
-                    ks.title = k ? `Keys secured: ${k.pickups} recovered in the field${k.issued ? ` + ${k.issued} issued by the Department` : ''}. Restricted doors ask for rank AND Keys.` : '';
-                }
                 /* FORM 365 (plan 7.9 / Room 247): the day's three lines, mirrored on the strip */
                 const fp = _hqEl('hqForm365');
                 if (fp) {
