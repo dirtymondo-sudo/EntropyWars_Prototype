@@ -39847,8 +39847,8 @@ const DOOR_HQ = {
             shell: hqUnthoughtShell({ w: 140, d: 100 }),
             /* THE FIELD (140 × 100 × 4.6 m): a `ley` plan — three straight STACKS (THE NAVE from the sea's frame on the west wall to
                the ward's screen on the east, THE CROSS, THE SPINE), forks at ley angles that end in READING NOOKS, a chamber
-               wherever two stacks cross; THE READING ROOM (sunk half a metre round a long table), THE GALLERY (2 m, up its stair,
-               a rail), THE LOW STACK (a grind), THE CARD CATALOGUE with THE TOP SHELF (3.4 m under a 4.6 m ceiling — the tape,
+               wherever two stacks cross; THE READING ROOM (sunk half a metre round a long table), THE GALLERY RING (2.4 m round the reading room), THE GALLERY and the north gallery either side of the nave
+               (up their stairs, a jump across the nave), THE LOW STACK (a grind), THE CARD CATALOGUE with THE TOP SHELF (3.4 m under a 4.6 m ceiling — the tape,
                the door gun's from the floor). The plan walls are the shelves (the wood sheet) and light themselves (the ley veins). */
             terrain: {
                 floor: 'carpet_3', cliff: 'wood', path: 'carpet',
@@ -39857,14 +39857,29 @@ const DOOR_HQ = {
                        lines: [{ id: 'nave', pts: [[-68, 20], [68, 0]], w: 3.2 },                                              // THE NAVE: the sea's frame → the ward's screen
                                { id: 'cross', pts: [[-20, -48], [30, 48]], w: 2.8 },                                            // THE CROSS
                                { id: 'spine', pts: [[-60, -40], [60, 40]], w: 2.6 }],                                           // THE SPINE
-                       chambers: [{ id: 'reading', x: 0, z: 10, r: 9.5 }, { id: 'catalogue', x: -40, z: -20, r: 7.5 }] },
+                       chambers: [{ id: 'reading', x: 0, z: 10, r: 14 }, { id: 'catalogue', x: -40, z: -20, r: 7.5 }] },
                 features: [
                     { k: 'dip', x: 0, z: 10, r: 9, h: 0.5, open: true },                                                     // THE READING ROOM, sunk
-                    { k: 'plateau', x: 20, z: 12, w: 12, d: 6, h: 2.0, edge: 0.35 },                                        // THE GALLERY
-                    { k: 'ramp', x0: 8, z0: 12, x1: 14.7, z1: 12, w: 2.4, h0: 0, h1: 2.0, stairs: true },                      // its stair (up to the rect, 0.7 m in)
-                    { k: 'rail', x0: 14.6, z0: 9.5, x1: 25.4, z1: 9.5 },
+                    /* THE GALLERY RING (2.4) round the reading room: two arcs and a round bridge over the nave's west mouth (the hub at the
+                       north-east, where the nave, the cross and the spine come in, stays open); a stair down into the reading room off each arc */
+                    { k: 'spiral', x: 0, z: 10, r0: 11, r1: 13.6, a0: 122, a1: 250, h0: 2.4, h1: 2.4, edge: 0.2 },
+                    { k: 'spiral', x: 0, z: 10, r0: 11, r1: 13.6, a0: 274, a1: 336, h0: 2.4, h1: 2.4, edge: 0.2 },
+                    { k: 'bridge', arc: { x: 0, z: 10, r0: 11, r1: 13.6, a0: 248, a1: 276 }, y: 2.4 },
+                    { k: 'ramp', x0: -3.44, z0: 14.92, x1: -6.77, z1: 19.67, w: 3.2, h0: -0.13, h1: 2.4, stairs: true, edge: 0.15, model: 'carriage', railing: 'balusters_b' },
+                    { k: 'rail', pts: [[-3.67, 15.24, 0.05], [-6.54, 19.34, 2.22]], model: 'pipe', block: false },                // its centre handrail
+                    { k: 'ramp', x0: -5.2, z0: 7.0, x1: -10.22, z1: 4.1, w: 2.4, h0: -0.13, h1: 2.4, stairs: true, edge: 0.15, model: 'carriage', railing: 'balusters_b' },
+                    { k: 'rail', arc: { x: 0, z: 10, r: 11.15, a0: 122, a1: 207 }, y: 2.4, model: 'balusters_b' }, { k: 'rail', arc: { x: 0, z: 10, r: 11.15, a0: 223, a1: 250 }, y: 2.4, model: 'balusters_b' },
+                    { k: 'rail', arc: { x: 0, z: 10, r: 11.15, a0: 274, a1: 292 }, y: 2.4, model: 'balusters_b' }, { k: 'rail', arc: { x: 0, z: 10, r: 11.15, a0: 308, a1: 336 }, y: 2.4, model: 'balusters_b' },
+                    /* THE GALLERY (2.4) along the nave's south side, up its stair from the reading room, a bridge to the ring; across the nave
+                       (a jump, two rails over it) the north gallery (2.4), its stair down west into the hub */
+                    { k: 'plateau', x: 20.84, z: 12.8, w: 14, d: 9, h: 2.4, edge: 0.15, rot: -8.37 },
+                    { k: 'ramp', x0: 8, z0: 12, x1: 14.7, z1: 12, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'carriage', railing: 'balusters_b' },
+                    { k: 'bridge', x0: 10.08, z0: 17.05, x1: 15.5, z1: 15.3, w: 2.0, y: 2.4 },
+                    { k: 'plateau', x: 19.45, z: 3.3, w: 8, d: 5, h: 2.4, edge: 0.15, rot: -8.37 },
+                    { k: 'ramp', x0: 10.71, z0: 4.38, x1: 16.15, z1: 3.58, w: 2.0, h0: 0, h1: 2.4, stairs: true, model: 'carriage', railing: 'balusters_b' },
+                    { k: 'rail', x0: 17.74, z0: 5.57, x1: 18.26, z1: 9.13, y: 2.4, model: 'pipe', block: false }, { k: 'rail', x0: 21.74, z0: 4.98, x1: 22.26, z1: 8.55, y: 2.4, model: 'pipe', block: false },
                     { k: 'plateau', x: -40, z: -20, r: 1.1, h: 3.4, edge: 0.3 },                                            // THE TOP SHELF (the tape — the door gun's)
-                    { k: 'wall', x0: -10, z0: 2, x1: 10, z1: 2, h: 0.45, t: 0.6, key: 'wood' },                              // THE LOW STACK (a grind)
+                    { k: 'wall', x0: -6.5, z0: 2, x1: 6.5, z1: 2, h: 0.45, t: 0.6, key: 'wood' },                            // THE LOW STACK (a grind)
                     /* AREA CONTENT D4 (2026-09-20): THE SCREEN'S DAIS — the ward's screen stands 1.2 m up at the nave's east end, seen down the nave before it is reached (R5) */
                     { k: 'plateau', x: 66, z: 0.6, w: 4, d: 5, h: 1.2, edge: 0.3 },
                     { k: 'ramp', x0: 60.5, z0: 0.8, x1: 64.7, z1: 0.8, w: 2.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15 },
@@ -39893,8 +39908,8 @@ const DOOR_HQ = {
                 /* THE CARD CATALOGUE round the top shelf; the gallery's reader */
                 { key: 'floating_orb',   x: -40, z: -16 },
                 { key: 'library_shelf_full', x: -44.5, z: -22, face: 90 }, { key: 'library_shelf_full', x: -35.5, z: -22, face: 270 }, { key: 'library_shelf', x: -40, z: -25.5, face: 0 },
-                { key: 'dream_eye',      x: 22, z: 13, y: 2.0 },                                                             // the reader on the gallery: it reads you
-                { key: 'park_bench',     x: 18, z: 13.5, y: 2.0, face: 180 },
+                { key: 'dream_eye',      x: 22, z: 13, y: 2.4 },                                                             // the reader on the gallery: it reads you
+                { key: 'park_bench',     x: 18, z: 13.5, y: 2.4, face: 180 },
                 { key: 'door_stack',     x: -62, z: 24, face: 80 },                                                          // the doors not yet written
                 { key: 'signpost',       x: -64, z: 17 },
             ],
@@ -39902,7 +39917,7 @@ const DOOR_HQ = {
             npcSpots: [
                 { x: -2, z: 14, y: -0.5, face: 0, race: 'telepath', say: ['“Shh.” “I did not say anything.” “You were reading. Out loud. It is not written yet; you were reading ahead.”'] },
                 { x: -40, z: -24, face: 0, race: 'watcher', say: ['“The catalogue.” “Of what?” “Everything not yet thought of. It is alphabetical. It is longer than the room.”', '“The top shelf.” “What is on it?” “The one nobody will. Do not shoot at it; that is what the gun is for.”'] },
-                { x: 21, z: 14, y: 2.0, face: 180, race: 'mad scientist', say: ['“I came for one idea.” “Which?” “The one I was going to have. Somebody has it out.”'] },
+                { x: 21, z: 14, y: 2.4, face: 180, race: 'mad scientist', say: ['“I came for one idea.” “Which?” “The one I was going to have. Somebody has it out.”'] },
                 { x: 20.6, z: 30, face: 200, race: 'fortune teller', say: ['“Every fork ends in a nook.” “Why?” “So the idea has somewhere to sit while it waits for you.”'] },
             ],
             onlineSpots: [],
