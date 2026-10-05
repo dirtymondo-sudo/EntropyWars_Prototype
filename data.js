@@ -38985,17 +38985,66 @@ const DOOR_HQ = {
             shell: hqSeaShell({ w: 220, d: 110, plate: { x: 8, z: -52.5, y: 3.6 } }),
             terrain: {
                 floor: 'desert', cliff: 'urban:ConcreteStriped2a', path: 'wood_planks',
-                base: -6, res: 1.0, noise: { amp: 0.3, scale: 20 }, crag: false,
+                base: -6, res: 0.5, noise: { amp: 0.3, scale: 20 }, crag: false,
                 sea: { y: -0.4, key: 'water' },
                 outer: { m: 60 },
                 features: [
                     { k: 'deck', x0: 8, z0: -54.6, x1: 8, z1: -23, w: 4, y: 0 },                                          // THE LONG PIER (the avenue, run on out over the water)
                     { k: 'deck', x0: -4, z0: -21, x1: 20, z1: -21, w: 4, y: 0 },                                            // its T-HEAD
-                    { k: 'rail', x0: 5.7, z0: -53, x1: 5.7, z1: -24 },                                                     // the pier's rail (the grind)
-                    { k: 'ramp', x0: 1, z0: -43.4, x1: 1, z1: -54.3, w: 3, h0: -1.6, h1: 0, stairs: true, edge: 0.2 },    // THE WATER STEPS (the way out of the water, beside the pier)
+                    { k: 'rail', x0: 5.7, z0: -41.6, x1: 5.7, z1: -24 },                                                   // the pier's rail (the grind)
                     { k: 'ramp', x0: 88, z0: -54.5, x1: 88, z1: -27, w: 8, h0: 0, h1: -2.6, edge: 0.3 },                      // THE SLIPWAY (down into the water)
                     { k: 'ridge', pts: [[-88, -53], [-84, -17], [-68, 9], [-46, 21]], w: 9, h: 7.4 },                 // THE BREAKWATER (a rubble mole: its crest a metre over the water)
                     { k: 'plateau', x: -44, z: 22, r: 4.2, h: 1.4, edge: 0.4 },                                               // its head (THE HARBOUR LIGHT stands on it)
+                    /* a flat walk along the mole's crest (1.4) out to the light, a short stair up to it from the quay */
+                    { k: 'deck', x0: -88, z0: -54.5, x1: -84, z1: -17, w: 2.6, y: 1.4 },
+                    { k: 'deck', x0: -84, z0: -17, x1: -68, z1: 9, w: 2.6, y: 1.4 },
+                    { k: 'deck', x0: -68, z0: 9, x1: -46, z1: 21, w: 2.6, y: 1.4 },
+                    { k: 'plateau', x: -84, z: -17, r: 1.5, h: 1.4, edge: 0.1 }, { k: 'plateau', x: -68, z: 9, r: 1.5, h: 1.4, edge: 0.1 },
+                    { k: 'ramp', x0: -82.2, z0: -47.5, x1: -86.9, z1: -47.5, w: 2.4, h0: 0, h1: 1.4, stairs: true, model: 'external', edge: 0.1 },
+                    /* the quay (0) along the north edge, from the mole's root to the slipway (after the mole, so the mole's root stays its own height) */
+                    { k: 'plateau', x: -5.75, z: -48.25, w: 180.5, d: 13.5, h: 0, edge: 0.15 },
+                    /* the wharves (3.0) along the back of the quay: two in the west with a gap between them, one in the east */
+                    { k: 'plateau', x: -54, z: -52, w: 24, d: 6, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: -26.75, z: -52, w: 25.5, d: 6, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: 47, z: -52, w: 46, d: 6, h: 3.0, edge: 0.15 },
+                    /* the stairs up to the wharves (a pipe handrail down the middle of the two by the pier) */
+                    { k: 'ramp', x0: -75, z0: -52, x1: -65.3, z1: -52, w: 3.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'ramp', x0: -4.5, z0: -52, x1: -14.7, z1: -52, w: 4.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'ramp', x0: 14.5, z0: -52, x1: 24.7, z1: -52, w: 4.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'ramp', x0: 79.5, z0: -52, x1: 69.3, z1: -52, w: 3.4, h0: 0, h1: 3.0, stairs: true, model: 'concrete', edge: 0.1 },
+                    { k: 'rail', x0: -5.0, z0: -52, x1: -14.2, z1: -52, y0: 0.15, y1: 2.85, model: 'pipe', block: false },
+                    { k: 'rail', x0: 15.0, z0: -52, x1: 24.2, z1: -52, y0: 0.15, y1: 2.85, model: 'pipe', block: false },
+                    /* the wharves' front railings (open in places to drop off), a pipe rail across the gap between the west two */
+                    { k: 'rail', x0: -65.6, z0: -49.25, x1: -56, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -52, z0: -49.25, x1: -42.4, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -39.1, z0: -49.25, x1: -31, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -27, z0: -49.25, x1: -14.4, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 24.4, z0: -49.25, x1: 28.3, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 31.7, z0: -49.25, x1: 44, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: 48, z0: -49.25, x1: 69.6, z1: -49.25, y: 3.0, model: 'balusters_b' },
+                    { k: 'rail', x0: -42.6, z0: -51.5, x1: -38.9, z1: -51.5, y: 3.0, model: 'pipe', block: false },
+                    /* the gantry (3.0): from the east wharf out over the water and west to a steel stair down onto the T-head (its railings a grind only: a wall hung over open ground trips the solver) */
+                    { k: 'bridge', x0: 30, z0: -49.5, x1: 30, z1: -32.5, w: 3, y: 3.0, thick: 0.3, rails: false, key: 'metal', id: 'gantry_n' },
+                    { k: 'bridge', x0: 31.5, z0: -31, x1: 10.5, z1: -31, w: 3, y: 3.0, thick: 0.3, rails: false, key: 'metal', id: 'gantry_w' },
+                    { k: 'ramp', x0: 12, z0: -22.6, x1: 12, z1: -30.3, w: 3, h0: 0, h1: 3.0, stairs: true, model: 'grate', edge: 0.1 },
+                    { k: 'rail', pts: [[31.35, -48.9], [31.35, -29.65], [13.6, -29.65]], y: 3.0, model: 'balusters_b', block: false },
+                    { k: 'rail', pts: [[28.65, -48.9], [28.65, -32.35], [10.65, -32.35], [10.65, -29.65]], y: 3.0, model: 'balusters_b', block: false },
+                    /* the water steps (the ways out of the water): beside the pier, west, east, and off the T-head */
+                    { k: 'ramp', x0: 1, z0: -31.5, x1: 1, z1: -42.4, w: 4, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    { k: 'ramp', x0: -50, z0: -31.5, x1: -50, z1: -42.4, w: 4, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    { k: 'ramp', x0: 50, z0: -31.5, x1: 50, z1: -42.4, w: 4, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    { k: 'ramp', x0: 2, z0: -11.5, x1: 2, z1: -19.6, w: 3, h0: -2.6, h1: 0, stairs: true, model: 'external', edge: 0.1 },
+                    /* the quay's edge: a parapet, open at the water steps, the pier and the mole */
+                    { k: 'rail', x0: -82, z0: -41.85, x1: -52.3, z1: -41.85, y: 0, model: 'parapet' },
+                    { k: 'rail', x0: -47.7, z0: -41.85, x1: -1.3, z1: -41.85, y: 0, model: 'parapet' },
+                    { k: 'rail', x0: 10.3, z0: -41.85, x1: 47.7, z1: -41.85, y: 0, model: 'parapet' },
+                    { k: 'rail', x0: 52.3, z0: -41.85, x1: 83.6, z1: -41.85, y: 0, model: 'parapet' },
+                    /* the slipway's pipe rails, down its slope into the water; a flat pipe rail and a ledge on the quay; a round railing on the light's head */
+                    { k: 'rail', x0: 84.6, z0: -54.2, x1: 84.6, z1: -46, model: 'pipe', block: false },
+                    { k: 'rail', x0: 91.4, z0: -54.2, x1: 91.4, z1: -46, model: 'pipe', block: false },
+                    { k: 'rail', x0: -30, z0: -45.5, x1: -18, z1: -45.5, y: 0, model: 'pipe', block: false },
+                    { k: 'wall', x0: 34, z0: -45.5, x1: 46, z1: -45.5, h: 0.45, t: 0.6, key: 'urban:ConcreteStriped2a' },
+                    { k: 'rail', arc: { x: -44, z: 22, r: 3.85, a0: 322, a1: 634 }, y: 1.4, model: 'balusters_b' },
                     { k: 'scatter', key: 'cave_stone', n: 16, x: -72, z: -9, r: 22, seed: 31 },                             // the mole's boulders
                     { k: 'scatter', key: 'kelp', n: 22, x: -66, z: -1, r: 20, seed: 32, sea: true },                         // the kelp in the mole's lee
                     { k: 'scatter', key: 'coral_fan', n: 10, x: 80, z: -5, r: 14, seed: 33, sea: true },                     // the slip's reef
