@@ -304,3 +304,18 @@ Full log: OPEN_WORLD_PLAN.md §12 "PHASE 10". The short of it:
   - The platform's `street` door and the streets' `metro` door are now `stairway` passages (no door): up at rise 0.55, down at
     −0.55, len 10, MetroWallTile walls, MetroConcrete arch. Moved off the platform's stair mouth: the column, the camera, the
     two rails (cut).
+
+## THE MANHOLE, THE SAFETY SIGNS, DEAD MAN'S CAVE'S MOUTH (2026-10-05, mondo)
+- The Meshy round street drain GLB is gone everywhere. Catalogue `street_drain` is now `proc: 'manhole'` (the urban pack's
+  `DecalManholeCover` sheet laid flat, three-renderer.js `_hqManholeDisc`); the `gutter` way lays the same cover over its
+  grate (the bars hidden). The road markings' manholes were already the sheet.
+- THE SAFETY SIGNS: data.js `HQ_SAFETY_SIGNS` (sets of urban Sign* sheets + a per-room `{ set, n }`); three-renderer.js
+  `_hqBuildSafetySigns` hangs them after the decals: a terrain room on its field's walls (plan walls on their open face), a
+  closed box room on its shell walls; never within `doorM` of a door / passage mouth, by the spawn, or over a prop; seeded by
+  the room id. Rooms: the D.U.M.B. parts, CERN, Area 51 hangar + ward, the spaceship's four parts, the sewers, the running
+  tunnels, the subway, the cells, Dead Man's Cave, the Antarctic station, HQ tunnel / garage / boiler / server. Kill-switch
+  `window.EW_HQ_NO_SAFETY_SIGNS`. A hand-placed sign: catalogue-free proc `safety_sign` (`p.sign` = sheet or family).
+  Blank sheets (SignCaution1a, SignDanger1a, SignHazard1a) are never picked.
+- DEAD MAN'S CAVE: the clearing's `deadmans` door passage is `mouth: 'culvert_mouth'` (Meshy_AI_a_culvert_mouth, the
+  concrete pipe with the half grate): `_hqPassageWay` stands the pipe as the whole tube (no box tube, no rock outcrop),
+  9.5 m across, its centre 2.2 m up so the grate hangs over the walker's head, grate end into the dark; lane w 2.4.

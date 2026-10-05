@@ -24515,7 +24515,7 @@ const DOOR_HQ = {
         car_taxi:          { file: 'Meshy_AI_a_city_taxi_0917065634_texture.glb',                 base: 'misc', pack: 'taxi', span: 4.8, foot: 1.2, rect: { hw: 1.0, hd: 2.4 }, block: true, vehicle: true, turn: 90 },
         car_truck:         { file: 'Meshy_AI_a_truck_0917065131_texture.glb',                     base: 'misc', pack: 'van', span: 8.0, foot: 2.0, rect: { hw: 1.3, hd: 4.0 }, block: true, vehicle: true, turn: 90 },
         time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
-        street_drain:      { file: 'Meshy_AI_a_round_street_drain__0917064638_texture.glb',       base: 'misc', span: 1.3, foot: 0 },                       // the `gutter` way's grate; a manhole on the road
+        street_drain:      { proc: 'manhole', h: 0.01, foot: 0 },                                                                                         // a manhole on the road: the urban pack's DecalManholeCover laid flat (2026-10-05, mondo: no Meshy drain GLB)
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
         bus_shelter:       { file: 'Meshy_AI_bus_shelter_0917064913_texture.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
@@ -34042,6 +34042,7 @@ const DOOR_HQ = {
                   action: { room: 'site_prebuilt_fairy_forest_redwoods', at: 'clearing' },
                   desc: 'The trees get taller as you go. By the creek they are older than the Department, and they know it.' },
                 { id: 'deadmans', wall: 'e', z: 9.625, way: 'tunnel',
+                  passage: { w: 2.4, len: 9, deep: 6.5, mouth: 'culvert_mouth', mouthD: 9.5, mouthY: 2.2 },   // 2026-10-05 (mondo): the Meshy culvert mouth is the way in (three-renderer.js _hqPassageWay), no block outcrop
                   label: 'DEAD MAN’S CAVE', sub: 'THE CRAG · THE STORM DRAIN',
                   action: { room: 'site_prebuilt_fairy_forest_deadmans', at: 'clearing' },
                   desc: 'A crag with a culvert mouth in it and paint on the brick. Water comes out of it that did not go in.' },
@@ -44848,6 +44849,55 @@ const HQ_DECAL_RULES = {
     ],
     door: { kind: 'wear', r: 0.95, inM: 0.75 },   // the worn floor just inside every door's landing
 };
+/* THE SAFETY SIGNS (2026-10-05, mondo: "use the safety signs more, not just in the city"): the urban pack's sign sheets
+   (sprites.js URBAN_TEX_FAMILIES Sign*) hung on the walls of the industrial rooms — three-renderer.js _hqBuildSafetySigns.
+   A terrain room hangs them on its field's walls (the plan's traced walls and the `wall` rows), on the open face; a plain box
+   room on its shell's four walls. Never within `doorM` m of a door or a passage mouth, never by the spawn, never over a wall
+   prop, `gapM` m apart. A room row: { set, n } — `set` names one of `sets` (the sheets that make sense there), `n` the most
+   it hangs. Seeded by the room id (the same signs in the same places every visit). Cosmetic, viewer-local (RULE #2). */
+const HQ_SAFETY_SIGNS = {
+    h: 1.6, doorM: 3.2, spawnM: 2.6, gapM: 5.5, endM: 1.0, minLen: 2.4, minH: 2.2,
+    sets: {
+        power:   ['SignDanger1b', 'SignCaution1e', 'SignHazard2a', 'SignCaution1f', 'SignProtective1b', 'SignProhibited1c', 'SignProhibited1b'],
+        lab:     ['SignProtective1c', 'SignProtective1b', 'SignHazard2b', 'SignCaution1f', 'SignProhibited1c', 'SignProhibited1b', 'SignCaution1e'],
+        works:   ['SignHazard1b', 'SignHazard1c', 'SignProtective1a', 'SignProtective1d', 'SignCaution1c', 'SignDanger1f', 'SignProhibited1b', 'SignCaution1b'],
+        drain:   ['SignDanger1c', 'SignCaution1d', 'SignCaution1c', 'SignHazard2b', 'SignDanger1f', 'SignProtective1d', 'SignProhibited1b'],
+        metro:   ['SignDanger1b', 'SignCaution1c', 'SignCaution1e', 'SignHazard2a', 'SignProhibited1b', 'SignDanger1d'],
+        ship:    ['SignDanger1f', 'SignCaution1e', 'SignHazard2a', 'SignDanger1b', 'SignCaution1d', 'SignProtective1b', 'SignCaution1f', 'SignDanger1c'],
+        hold:    ['SignDanger1e', 'SignDanger1f', 'SignHazard1b', 'SignProtective1a', 'SignCaution1c', 'SignHazard2b'],
+        bunker:  ['SignDanger1e', 'SignProhibited1b', 'SignCaution1f', 'SignHazard2b', 'SignDanger1c', 'SignProhibited1a'],
+        ward:    ['SignProhibited1b', 'SignCaution1c', 'SignProtective1c', 'SignCaution1f'],
+        cells:   ['SignProhibited1b', 'SignProhibited1a', 'SignCaution1c', 'SignCaution1f'],
+        station: ['SignProtective1c', 'SignCaution1c', 'SignHazard1b', 'SignDanger1f', 'SignCaution1e', 'SignProtective1d'],
+    },
+    rooms: {
+        /* THE D.U.M.B. */
+        site_prebuilt_dumb_motorpool:   { set: 'works', n: 9 },
+        site_prebuilt_dumb_sublevel7:   { set: 'power', n: 8 },
+        site_prebuilt_dumb_dreamlab:    { set: 'lab', n: 7 },
+        site_prebuilt_dumb_clonevats:   { set: 'lab', n: 7 },
+        site_prebuilt_dumb_warroom:     { set: 'bunker', n: 6 },
+        site_prebuilt_dumb_bunker:      { set: 'bunker', n: 8 },
+        site_prebuilt_cern_ring:        { set: 'power', n: 10 },
+        /* AREA 51 */
+        site_prebuilt_area51_hangar:    { set: 'works', n: 10 },
+        site_prebuilt_area51_ward:      { set: 'ward', n: 4 },
+        /* THE SPACESHIP */
+        site_prebuilt_derelict_airlock: { set: 'ship', n: 3 },
+        site_prebuilt_derelict_hold:    { set: 'hold', n: 5 },
+        site_prebuilt_derelict_bridge:  { set: 'ship', n: 3 },
+        site_prebuilt_derelict_deck:    { set: 'ship', n: 6 },
+        /* THE SEWERS, THE METRO, THE UNDERCITY */
+        site_prebuilt_downtown_sewers:  { set: 'drain', n: 9 },
+        site_prebuilt_downtown_tunnels: { set: 'metro', n: 9 },
+        site_prebuilt_downtown_subway:  { set: 'metro', n: 4 },
+        site_prebuilt_downtown_cells:   { set: 'cells', n: 5 },
+        site_prebuilt_fairy_forest_deadmans: { set: 'drain', n: 4 },
+        site_prebuilt_antarctica_station:    { set: 'station', n: 8 },
+        /* DOOR HQ's back of house */
+        tunnel: { set: 'metro', n: 5 }, garage: { set: 'works', n: 8 }, boiler: { set: 'power', n: 3 }, server: { set: 'power', n: 3 },
+    },
+};
 DOOR_HQ.decals = {
     garage: [ { kind: 'oil', x: 0, z: -15.5, r: 1.7, rot: 20 }, { kind: 'oil', x: 13.5, z: 7, r: 1.4, rot: 70 }, { kind: 'oil', x: -12, z: 9.5, r: 1.2 } ],
     interrogation: [ { kind: 'blood', x: 0.9, z: 0.8, r: 1.1, rot: 35 } ],
@@ -55143,7 +55193,7 @@ if (typeof window !== 'undefined') {
     window.hqFieldWindow = hqFieldWindow; window.hqFieldFrame = hqFieldFrame; window.hqFieldBuild = hqFieldBuild; window.hqFieldFixedCells = hqFieldFixedCells; window.hqFieldFixedAt = hqFieldFixedAt; window.hqFieldLayout = hqFieldLayout; window.hqFieldRegister = hqFieldRegister;
     window.hqFieldTierOf = hqFieldTierOf; window.hqFieldGroundOn = hqFieldGroundOn; window.hqFieldBedFor = hqFieldBedFor; window.hqFieldStrataOn = hqFieldStrataOn; window.hqFieldBoxInfo = hqFieldBoxInfo; window.hqFieldGallery = hqFieldGallery; window.hqFieldLattice = hqFieldLattice; window.hqFieldBoxStep = hqFieldBoxStep; window.hqFieldBoxTile = hqFieldBoxTile; window.hqFieldNearestWalk = hqFieldNearestWalk;
     /* SKATEBOARDING (HQ plan 9.8 stage 1, 2026-09-15) */
-    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_POLISH_PREFS = HQ_POLISH_PREFS; window.hqPolishGet = hqPolishGet; window.hqPolishSet = hqPolishSet; window.hqPolishAll = hqPolishAll; window.hqPolishReset = hqPolishReset; window.hqPolishRow = hqPolishRow; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
+    window.HQ_SKATE_RULES = HQ_SKATE_RULES; window.HQ_LIGHT_RULES = HQ_LIGHT_RULES; window.HQ_POLISH_PREFS = HQ_POLISH_PREFS; window.hqPolishGet = hqPolishGet; window.hqPolishSet = hqPolishSet; window.hqPolishAll = hqPolishAll; window.hqPolishReset = hqPolishReset; window.hqPolishRow = hqPolishRow; window.HQ_ATMOS_SITES = HQ_ATMOS_SITES; window.HQ_DECAL_RULES = HQ_DECAL_RULES; window.HQ_SAFETY_SIGNS = HQ_SAFETY_SIGNS; window.hqRoomAtmos = hqRoomAtmos; window.hqRoomArrival = hqRoomArrival; window.HQ_KICKABLE = HQ_KICKABLE; window.hqPropKickable = hqPropKickable; window.hqRoomFogHalfAt = hqRoomFogHalfAt; window.hqSkateStatus = hqSkateStatus; window.hqSkateRecord = hqSkateRecord; window.hqSkateBank = hqSkateBank; window.hqSkateScore = hqSkateScore; window.hqSkateIssueFree = hqSkateIssueFree;
     window.hqLinkRoom = hqLinkRoom;
     window.hqLinkDoors = hqLinkDoors;
     window.hqLinkEndOk = hqLinkEndOk;
