@@ -3575,10 +3575,12 @@ const ThreeRenderer = (function () {
             _clearGroup(terrainGroup); tileMeshes.clear();
             _fieldPickBuild(ts);   // THE CLICKS: an invisible quad per IN cell at its real top — screenToTile raycasts terrainGroup, and there was nothing in it
             try { _fieldStrataBuild(ts); } catch (e) { console.warn('[HQ→battle] the strata failed', e); }   // THE STRATA: a column only where the engine dug or built
+            var _skinLava = [];
+            try { _fieldSkinBuild(ts, _skinLava); } catch (e) { console.warn('[HQ→battle] the skins failed', e); }   // THE SKINS: a sheet only where a spell changed the ground
             _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
             _lastTerrainVersion = state._terrainVersion || 0; _lastHeightVersion = state._heightVersion || 0; _lastVoxelVersion = state._voxelVersion || 0;
             _objectsDirty = true; _lavaMeshCache = null; _canopyMeshCache = null;
-            if (ThreePost && ThreePost.rebuildLavaLights) ThreePost.rebuildLavaLights([], tileTopY, ts);
+            if (ThreePost && ThreePost.rebuildLavaLights) ThreePost.rebuildLavaLights(_skinLava, tileTopY, ts);
             if (ThreePost && ThreePost.setShadowFrame) { var _fgW = _bw * ts, _fgH = _bh * ts; ThreePost.setShadowFrame(_fgW / 2, _fgH / 2, Math.sqrt(_fgW * _fgW + _fgH * _fgH) / 2 + ts * 3); }
             _rebuildMergedTerrain();
             _shadowsDirty = true;
@@ -61311,7 +61313,8 @@ const ThreeRenderer = (function () {
                        void room stand 4–9 m over room metre 0: drawn at base + 0 they rose 3 tiles over the levels the camera, the fog
                        and every elevation read use, and the action shots sat inside / under the island. */
                     var refM = (fld && isFinite(+fld.ref)) ? +fld.ref : 0;
-                    R = { room: room, roomId: run.room, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld };   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
+                    R = { room: room, roomId: run.room, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld,
+                          grid: (entry && Array.isArray(entry.grid)) ? entry.grid : null };   // THE SKINS: the surface each cell was built with (tids)   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
                 }
             }
         } catch (e) { console.warn('[HQ→battle] the room could not be read', e); R = null; }
@@ -61808,6 +61811,61 @@ const ThreeRenderer = (function () {
         terrainGroup.add(grp);
         _shadowsDirty = true;
         return plan.tops.length;
+    }
+    /* ══ THE SKINS (2026-10-04, mondo: "great flood said it converted some tiles to water but nothing on the map changed") ══
+       On the true ground no column is drawn: the room IS the ground, and the strata above only answer a HEIGHT change. A
+       spell that changes a cell's SURFACE (Great Flood / any terrainCreate, Freeze, Melt, Scorch, rubble, a planted lawn,
+       a bridge, the liquid springs spreading) moved state.boardTerrain and the eye saw nothing — every arena and every
+       exploration fight. Now a cell map.js setTerrainAt repainted (state.paintedTiles) whose terrain is no longer the one
+       the field was built with (entry.grid, the tids map.js loaded the board from) wears a sheet of its new terrain at its
+       real top: liquids the battle's animated
+       fluid surface (water, deep water, lava, the bogs, oil), lava with its glow lights; anything else its terrain's top
+       texture. The engine's rules already read the new terrain; this is only the picture. Rebuilt with the terrain
+       version, so a melt / an expiry / a guest's state-sync takes the sheet away again. Kill-switch window.EW_NO_FIELD_SKINS. */
+    var _fieldSkinMats = {}, _fieldSkinGeo = null;
+    function _fieldSkinBuild(ts, lavaOut) {
+        if (typeof window !== 'undefined' && window.EW_NO_FIELD_SKINS) return 0;
+        var G = _fieldGround(); if (!G || !G.R || !terrainGroup || typeof THREE === 'undefined') return 0;
+        var cur = (typeof state !== 'undefined' && state) ? state.boardTerrain : null, painted = cur ? state.paintedTiles : null;
+        if (!cur || !painted) return 0;
+        var grid = G.R.grid, ids = (typeof ME_TERRAIN_IDS !== 'undefined') ? ME_TERRAIN_IDS : null;
+        if (!_fieldSkinGeo || _fieldSkinGeo.ts !== ts) {
+            var geo = new THREE.PlaneGeometry(ts, ts); geo.rotateX(-Math.PI / 2); geo._ew_shared = true;
+            _fieldSkinGeo = { ts: ts, geo: geo };
+        }
+        var matOf = function (key) {
+            var mk = key + '|' + ts;
+            if (_fieldSkinMats[mk]) return _fieldSkinMats[mk];
+            var m = null;
+            if (_FLUID_TERRAIN_SET[key]) { try { m = _buildFluidTopMat(key); } catch (e) { m = null; } }
+            if (!m) { var bm = buildBoxMaterials(key, null); m = bm && bm[2]; }
+            if (m) m._ew_shared = true;
+            _fieldSkinMats[mk] = m;
+            return m;
+        };
+        var grp = null, n = 0;
+        for (var pk in painted) {
+            var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
+            if (!(x >= 0 && y >= 0 && x < G.W && y < G.H)) continue;
+            var k = cur[y] && cur[y][x]; if (!k || k.indexOf('void') === 0) continue;
+            /* painted back to what the room was built with (a melt, an expiry): the room's own floor shows, no sheet */
+            var gr = grid && grid[y], tid = gr ? (gr[x] | 0) : 0;
+            if (tid && ids && k === (ids[tid] || 'grass')) continue;   // map.js's own tid → key (generateTerrainBoard)
+            var top = G.yAt(x, y); if (top === null || top === undefined) continue;
+            var mat = matOf(k); if (!mat) continue;
+            var fluid = !!_FLUID_TERRAIN_SET[k];
+            if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
+            var mesh = new THREE.Mesh(_fieldSkinGeo.geo, mat);
+            /* over the room's floor and over a strata top (+0.4): a liquid a little higher, its sheet drawn after the floor */
+            mesh.position.set(x * ts + ts / 2, top + (fluid ? 0.9 : 0.7), y * ts + ts / 2);
+            mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k;
+            mesh.castShadow = false; mesh.receiveShadow = !fluid;
+            if (fluid) mesh.renderOrder = 2;
+            grp.add(mesh); n++;
+            if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y });
+        }
+        if (grp) { terrainGroup.add(grp); _shadowsDirty = true; }
+        return n;
     }
     /* activate(): the dome snap, the crossfade gate, the held swoop */
     function _fieldGroundArm() {

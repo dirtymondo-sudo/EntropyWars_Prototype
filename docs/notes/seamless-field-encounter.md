@@ -920,3 +920,16 @@ over the levels the camera (_camGroundPx, the TPS pivot + flat floor), the fog a
 pivoted inside / under the island. Fix: `_hqBattleRoomFloorY(R, ts)` = base × level step − ref m × (ts / C), R.refM from the
 field record; the four floor-Y sites read it. Box and cave fields have no ref (0) and are unchanged. A whole-room median scan
 of the 70 terrain field rooms: only lookingglass_sea (5.8 m) and heaven_stair (0.8 m) sat more than 0.5 m off; both now line up.
+
+## THE SKINS (2026-10-04) — painted terrain shows on the true ground
+mondo: "i used great flood in a battle, it said it converted some tiles to water but nothing on the map changed."
+Root cause: every arena and exploration fight stands on its room's TRUE GROUND (three-renderer.js `_fieldGround`);
+`rebuildTerrain`'s field branch builds no tile columns, only the invisible pick quads and THE STRATA (columns where a
+HEIGHT moved). A terrain-type change (any `setTerrainAt`: terrainCreate floods/lava, freeze, melt, scorch, rubble,
+seeds' grass, bridges, spreading springs) changed the engine's state and the rules, but nothing was drawn.
+Fix: map.js `setTerrainAt` notes each repainted cell in `state.paintedTiles` (cleared by `initMap`, rides the
+state-sync to the guest). three-renderer.js `_fieldSkinBuild` (called from the field branch) puts a sheet at each
+painted cell's real top when its terrain is no longer the field's built tid (`entry.grid` via ME_TERRAIN_IDS):
+liquids use the animated fluid top (`_buildFluidTopMat`, which has the WebGPU twin), lava also feeds
+`rebuildLavaLights`, anything else its terrain's top texture. Kill-switch `window.EW_NO_FIELD_SKINS`.
+Classic (non-room) maps were never affected: their tile meshes rebuild on the terrain fingerprint.
