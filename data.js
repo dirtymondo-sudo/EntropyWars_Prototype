@@ -44026,18 +44026,41 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 6 },
         features: [
             { k: 'wall', x0: -26, z0: -2, x1: -13.5, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: -8.5, z0: -2, x1: -3.8, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: 1.4, z0: -2, x1: 6, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false },                                      // THE DORSAL FIN's root
-            /* THE AIRLOCK TOWER (3.2): the airlock stands ON it — the companion stair, the ladder on its east face, the pipe run up its west */
-            { k: 'plateau', x: -6, z: -21.5, w: 14, d: 7, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -2, z0: -11.2, x1: -2, z1: -18.7, w: 2.8, h0: 0, h1: 3.2, stairs: true },
+            /* THE AIRLOCK TOWER (3.2): the airlock stands ON it — the companion stair, the ladder on its east face, the pipe run up its west,
+               the steel stair up from the bridge's roof; rails round its edges */
+            { k: 'plateau', x: -6, z: -21.5, w: 14, d: 7, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -2, z0: -11.2, x1: -2, z1: -18.7, w: 2.8, h0: 0, h1: 3.2, stairs: true, model: 'steel' },
             { k: 'climb', x: 0.7, z: -21.5, face: 270, look: 'ladder' }, { k: 'climb', x: -12.7, z: -21.5, face: 90, look: 'pipe' },
-            /* THE BRIDGE'S ROOF (1.6) up its stair, or the pipe run on its west end */
-            { k: 'plateau', x: -18, z: -12, w: 12, d: 8, h: 1.6, edge: 0.15 }, { k: 'ramp', x0: -18, z0: -4.8, x1: -18, z1: -8.7, w: 3.0, h0: 0, h1: 1.6, stairs: true },
-            { k: 'climb', x: -23.7, z: -12, face: 90, look: 'pipe' },
+            { k: 'ramp', x0: -11, z0: -13.4, x1: -11, z1: -18.7, w: 2.2, h0: 2.0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: -9.7, z0: -18.35, x1: -3.6, z1: -18.35, model: 'balusters_b' }, { k: 'rail', x0: -0.4, z0: -18.35, x1: 0.6, z1: -18.35, model: 'balusters_b' },
+            { k: 'rail', x0: 0.65, z0: -24.6, x1: 0.65, z1: -22.6, model: 'balusters_b' }, { k: 'rail', x0: 0.65, z0: -20.4, x1: 0.65, z1: -18.4, model: 'balusters_b' },
+            { k: 'rail', x0: -12.65, z0: -24.6, x1: -12.65, z1: -22.6, model: 'balusters_b' }, { k: 'rail', x0: -12.65, z0: -20.4, x1: -12.65, z1: -18.4, model: 'balusters_b' },
+            /* THE BRIDGE'S ROOF (2.0) up its steel stair from the dorsal fin, or the pipe run on its west end; rails round its edges */
+            { k: 'plateau', x: -17.5, z: -11.5, w: 17, d: 9, h: 2.0, edge: 0.15 }, { k: 'ramp', x0: -18, z0: -3.9, x1: -18, z1: -7.7, w: 3.0, h0: 0, h1: 2.0, stairs: true, model: 'steel' },
+            { k: 'rail', pts: [[-18, -3.5, 0], [-18, -7.7, 2.0]], model: 'pipe', block: false },
+            { k: 'climb', x: -25.7, z: -12, face: 90, look: 'pipe' },
+            { k: 'rail', x0: -25.6, z0: -7.35, x1: -19.8, z1: -7.35, model: 'balusters_b' }, { k: 'rail', x0: -16.2, z0: -7.35, x1: -9.4, z1: -7.35, model: 'balusters_b' },
+            { k: 'rail', x0: -25.6, z0: -15.65, x1: -12.3, z1: -15.65, model: 'balusters_b' }, { k: 'rail', x0: -9.35, z0: -15.6, x1: -9.35, z1: -7.4, model: 'balusters_b' },
+            { k: 'rail', x0: -25.65, z0: -15.6, x1: -25.65, z1: -13, model: 'balusters_b' }, { k: 'rail', x0: -25.65, z0: -11, x1: -25.65, z1: -7.4, model: 'balusters_b' },
             /* THE NACELLE (5.4, the tape — the door gun's) on the starboard side */
             { k: 'plateau', x: 18, z: -12, w: 8, d: 16, h: 5.4, edge: 0.15 },
-            /* THE SENSOR MAST's platform (2.4) aft of the nacelle: a ladder, a chain */
-            { k: 'plateau', x: 22, z: 12, r: 2.6, h: 2.4, edge: 0.15 }, { k: 'climb', x: 22, z: 9.7, face: 180, look: 'ladder' }, { k: 'climb', x: 19.7, z: 12, face: 90, look: 'chain' },
-            /* THE ENGINE BELL (4.2) at the stern: a chain up its face, the pipe run round its side */
-            { k: 'plateau', x: -25, z: 18, r: 3.2, h: 4.2, edge: 0.15 }, { k: 'climb', x: -22.1, z: 18, face: 270, look: 'chain' }, { k: 'climb', x: -25, z: 15.1, face: 180, look: 'pipe' },
+            /* THE UPPER DECKS (2.4) forward: the mid deck up its steel stair from the dorsal plate, a 2.5 m gap (a pipe rail across it) to
+               the fore deck (its own steel stair at the bow); THE SENSOR MAST's platform (4.2) on the fore deck: a ladder, a chain */
+            { k: 'plateau', x: 9.75, z: 9.5, w: 11.5, d: 6, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 10, z0: 0.3, x1: 10, z1: 7.2, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: 4.4, z0: 6.85, x1: 8.6, z1: 6.85, model: 'balusters_b' }, { k: 'rail', x0: 11.4, z0: 6.85, x1: 15.1, z1: 6.85, model: 'balusters_b' },
+            { k: 'rail', x0: 4.4, z0: 12.15, x1: 15.1, z1: 12.15, model: 'balusters_b' }, { k: 'rail', x0: 4.35, z0: 6.9, x1: 4.35, z1: 12.1, model: 'balusters_b' },
+            { k: 'rail', x0: 15.1, z0: 9, x1: 18.4, z1: 9, y: 2.4, model: 'pipe', block: false },
+            { k: 'plateau', x: 23.75, z: 13.75, w: 11.5, d: 14.5, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 28, z0: 0.8, x1: 28, z1: 7.2, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: 18.35, z0: 11.5, x1: 18.35, z1: 20.6, model: 'balusters_b' }, { k: 'rail', x0: 18.4, z0: 6.85, x1: 26.6, z1: 6.85, model: 'balusters_b' },
+            { k: 'rail', x0: 18.4, z0: 20.65, x1: 29.1, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 29.15, z0: 6.9, x1: 29.15, z1: 20.6, model: 'balusters_b' },
+            { k: 'plateau', x: 22, z: 12, r: 2.6, h: 4.2, edge: 0.15 }, { k: 'climb', x: 22, z: 9.7, face: 180, look: 'ladder' }, { k: 'climb', x: 19.7, z: 12, face: 90, look: 'chain' },
+            { k: 'rail', arc: { x: 22, z: 12, r: 2.3, a0: 20, a1: 250 }, model: 'balusters_b' },
+            /* THE ENGINE BELL (4.2) at the stern: the grate stair up from the east, a chain up its south face, the pipe run round its side */
+            { k: 'plateau', x: -25, z: 18, r: 3.2, h: 4.2, edge: 0.15 }, { k: 'climb', x: -25, z: 20.9, face: 0, look: 'chain' }, { k: 'climb', x: -25, z: 15.1, face: 180, look: 'pipe' },
+            { k: 'ramp', x0: -12.5, z0: 18, x1: -22.5, z1: 18, w: 2.4, h0: 0, h1: 4.2, stairs: true, model: 'grate', edge: 0.15 },
+            { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 25, a1: 62 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 118, a1: 160 }, model: 'balusters_b' },
+            { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 200, a1: 340 }, model: 'balusters_b' },
             /* THE BREACH — a hole in the plate — and THE GANGWAY across it (the walker passes under) */
             { k: 'dip', x: -16, z: 8, r: 6, h: -2.4 },
             { k: 'deck', x0: -24.5, z0: 8, x1: -7.5, z1: 8, w: 2.0, y: 0.3, over: true },
@@ -44050,14 +44073,14 @@ const HQ_AREA_SPECS = {
         doors: [{ id: 'airlock', wall: 'n', x: -6, y: 3.2, leaf: 'leaf_bulkhead', wide: true, label: 'THE SPACESHIP · THE AIRLOCK', sub: 'THE AIRLOCK · GO IN',
                   action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
                   desc: 'The dorsal airlock, up its tower. It cycles on its own, which the manual says it cannot.' }],
-        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 1.6 }, { key: 'riser_1', x: 8, z: 4 },
-                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 4, z: 10, face: 0 }, { key: 'steel_table', x: -4, z: 16, face: 0 }, { key: 'crt_terminal', x: 4, z: 10, y: 0.76 },
+        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 8, z: 4 },
+                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 6, z: 10, face: 0 }, { key: 'steel_table', x: -4, z: 16, face: 0 }, { key: 'crt_terminal', x: 6, z: 10, y: 3.16 },
                 { key: 'lunar_lander', x: -27, z: -22 }, { key: 'mars_rover', x: 12, z: 22, face: 90 }, { key: 'robot_arm', x: -10, z: 16, face: 0 }, { key: 'robot_arm', x: 20, z: 20, face: 180 },
                 { key: 'pipe_run', x: 0, z: -6 }, { key: 'pipe_run', x: 14, z: 2 }, { key: 'pipe_run', x: -8, z: 22 },
                 { key: 'flood_mast', x: 28, z: -22 }, { key: 'flood_mast', x: -28, z: 4 }, { key: 'flood_mast', x: 26, z: 23 },
-                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 22, z: 12, y: 2.4 }, { key: 'globe_lamp', x: -6, z: 12 }, { key: 'globe_lamp', x: 16, z: 8 },
-                { key: 'sea_chest', x: -12, z: -20, y: 3.2 }, { key: 'sea_chest', x: -24, z: 22 }, { key: 'wet_floor_sign', x: 0, z: 0 }, { key: 'broom', x: -3, z: 14 }, { key: 'mop_bucket', x: -3, z: 13 }],
-        npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 1.6, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
+                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 22, z: 12, y: 4.2 }, { key: 'globe_lamp', x: -6, z: 12 }, { key: 'globe_lamp', x: 16, z: 8 },
+                { key: 'sea_chest', x: -12, z: -20, y: 3.2 }, { key: 'sea_chest', x: -28, z: 23 }, { key: 'wet_floor_sign', x: 0, z: 0 }, { key: 'broom', x: -3, z: 14 }, { key: 'mop_bucket', x: -3, z: 13 }],
+        npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 2.0, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
                    { x: -11, z: -20, y: 3.2, face: 90, race: 'droid', say: '“The airlock is up the tower because the builders could climb. The crew could not. You can see how that went.”' }],
         lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
     /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK (AREA CONTENT D3, 2026-09-19): the weather deck in the storm, bow east — THE QUARTERDECK
