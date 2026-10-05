@@ -465,3 +465,18 @@ from `y0` on such a wall; hqTerrainFeet: a walker on a slab is stopped by a wall
 (hqTerrainWallAt's new `minTop`; plan walls left as they were), and where the ground rises over the slab (a stair on a floor)
 the ground is the surface. Quick check: a two-floor 12 × 8 m house; the upper walls stop the walker on the slab, the stairs
 walk 0 → 1.75 → 3.4, the roof draws, no page errors.
+
+## THE STAIRS PACK IN THE EDITOR (2026-10-05, thread "stairs, railings and verticality")
+mondo: "make sure those stairs and railings and anything else you added are incorporated into the editor".
+- BUILD: STAIRS takes the pack kind (empty = the room's own), a railing model over the kind's own, the sides (both / left / right /
+  none) and a centre handrail (a `pipe` rail row, `block: false`, on the flight's own [x, z, y] ground line). ESCALATOR: drag the way
+  it climbs, the run is rise / tan 30°, w 2. RAILING: a chain of rail rows (model, WALL or GRIND ONLY = `block: false`, SPAN END TO END
+  = y0 / y1 at the ground under each end: a rail across a gap). CURVED RAILING: drag from the curve's middle out; ARC° centred on the
+  release bearing. MODULAR STAIRS takes the railing + sides too.
+- ADD: skate rail (pipe, grind only), rail across a gap (`y`, grind only), escalator; the stairs row no longer forces concrete.
+- Inspector: `model` lists the stair kinds on a ramp row and the railing models on a rail row (`railing` too); a stair row always
+  shows model / railing / rails, a rail row model / block; emptying model / railing / rails (or ticking rails / block back on) drops
+  the key (the default). THE GROUND shows `terrain.stairs` (the room's kind). Notes on each row say what the fields do.
+- Core: a curved railing is picked by a box per ≤ 30° piece and anchored at its arc's middle; its radius scales; a pts / y / y0 / y1
+  railing is boxed at its own heights; a vertical move lifts a rail's [x, z, y] points (data.js hqRowPlace too, for prefabs placed
+  with `y`); a mirror swaps a one-sided flight's `rails` l ↔ r.

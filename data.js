@@ -45516,6 +45516,7 @@ function hqRowPlace(row, P) {
         if (Array.isArray(r.slopeTop)) r.slopeTop = [r.slopeTop[1], r.slopeTop[0]];
     }
     if ((mx || mz) && r.k === 'opening' && typeof r.at === 'number') r._mirrored = !r._mirrored;   // measured from the other end once its wall swapped
+    if ((mx || mz) && r.k === 'ramp' && (r.rails === 'l' || r.rails === 'r')) r.rails = r.rails === 'l' ? 'r' : 'l';   // THE STAIRS PACK: a one-sided flight's railing stays on the same wall
     /* a placement inside a placement: its turn and its mirror compose with this one's (M_x R(y) = R(−y) M_x; M_z = R(180) M_x) */
     if (r.k === 'prefab' || r.k === 'kit') {
         r.yaw = ang(r.yaw);
@@ -45524,6 +45525,7 @@ function hqRowPlace(row, P) {
     if (dy) {
         ['y', 'h0', 'h1', 'y0', 'y1'].forEach(k => { if (typeof r[k] === 'number') r[k] = _hqR4(r[k] + dy); });
         if (r.k === 'plateau' && typeof r.h === 'number') r.h = _hqR4(r.h + dy);
+        if (r.k === 'rail' && Array.isArray(r.pts)) r.pts = r.pts.map(v => Array.isArray(v) && typeof v[2] === 'number' ? [v[0], v[1], _hqR4(v[2] + dy)].concat(v.slice(3)) : v);   // a railing's [x, z, y] ground line
         if (Array.isArray(r.rail)) r.rail = r.rail.map(v => _hqR4(v + dy));
         if (Array.isArray(r.slopeTop)) r.slopeTop = r.slopeTop.map(v => _hqR4(v + dy));
     }

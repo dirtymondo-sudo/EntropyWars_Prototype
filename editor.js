@@ -105,6 +105,7 @@
             if (isFinite(row.x0) && isFinite(row.x1)) return { x: (row.x0 + row.x1) / 2, z: ((+row.z0 || 0) + (+row.z1 || 0)) / 2 };
             var P = Array.isArray(row.pts) ? row.pts : (Array.isArray(row.quad) ? row.quad : null);
             if (P && P.length) { var sx = 0, sz = 0; P.forEach(function (q) { sx += +q[0] || 0; sz += +q[1] || 0; }); return { x: sx / P.length, z: sz / P.length }; }
+            if (row.arc && typeof row.arc === 'object' && isFinite(row.arc.x) && isFinite(row.arc.z)) { var am = ((+row.arc.a0 || 0) + (+row.arc.a1 || 0)) / 2 * Math.PI / 180, ar = +row.arc.r || 0; return { x: +row.arc.x + Math.sin(am) * ar, z: +row.arc.z - Math.cos(am) * ar }; }   // a curved railing: the middle of its arc
             if (isFinite(row.x)) return { x: +row.x, z: 0 };
             if (isFinite(row.z)) return { x: 0, z: +row.z };
             return { x: 0, z: 0 };
@@ -131,10 +132,12 @@
             if (rot && !t.axis && r.arc && typeof r.arc === 'object') { var ac = mv(+r.arc.x || 0, +r.arc.z || 0); r.arc.x = ac[0]; r.arc.z = ac[1]; r.arc.a0 = R4((+r.arc.a0 || 0) + t.rot); r.arc.a1 = R4((+r.arc.a1 || 0) + t.rot); }
             else if (!t.axis && r.arc && typeof r.arc === 'object' && (t.dx || t.dz)) { r.arc.x = R4((+r.arc.x || 0) + (t.dx || 0)); r.arc.z = R4((+r.arc.z || 0) + (t.dz || 0)); }
             if (t.dy) YS.forEach(function (k) { if (isFinite(r[k])) r[k] = R4(+r[k] + t.dy); });
+            if (t.dy && r.k === 'rail' && Array.isArray(r.pts)) r.pts = r.pts.map(function (q) { return Array.isArray(q) && isFinite(q[2]) ? [q[0], q[1], R4(+q[2] + t.dy)].concat(q.slice(3)) : q; });   // a railing's [x, z, y] ground line
             if (t.dy && r.key && !isFinite(row.y) && !r.k) r.y = R4(t.dy);   // a prop lifted off the ground
             if (sx !== 1 || sy !== 1 || sz !== 1) {
                 var sxz = (sx + sz) / 2;
                 ['r', 'rz', 'r0', 'r1'].forEach(function (k) { if (isFinite(r[k])) r[k] = R4(Math.max(0.05, r[k] * sxz)); });
+                if (r.arc && typeof r.arc === 'object' && isFinite(r.arc.r)) r.arc.r = R4(Math.max(0.3, r.arc.r * sxz));   // a curved railing's radius
                 if (isFinite(r.w) && r.k === 'opening') r.w = R4(Math.max(0.3, r.w * sx));
                 else if (isFinite(r.w)) r.w = R4(Math.max(0.05, r.w * (isFinite(r.d) ? sx : sxz)));
                 if (isFinite(r.d)) r.d = R4(Math.max(0.05, r.d * sz));
@@ -164,16 +167,27 @@
             if (seg) {
                 var gm = Math.max(g(row.x0, row.z0), g(row.x1, row.z1), g((row.x0 + row.x1) / 2, (row.z0 + row.z1) / 2)), gn = Math.min(g(row.x0, row.z0), g(row.x1, row.z1));
                 if (k === 'wall') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.t, 0.35), isFinite(row.y0) ? +row.y0 : gn - 0.1, isFinite(row.y) ? row.y : gm + num(row.h, 3)));
-                else if (k === 'rail') out.push(segBox(row.x0, row.z0, row.x1, row.z1, 0.3, gn, gm + num(row.h, 0.98)));
+                else if (k === 'rail') { var ry0 = isFinite(row.y0) ? +row.y0 : isFinite(row.y) ? +row.y : gn, ry1 = isFinite(row.y1) ? +row.y1 : isFinite(row.y) ? +row.y : gm; out.push(segBox(row.x0, row.z0, row.x1, row.z1, 0.3, Math.min(ry0, ry1), Math.max(ry0, ry1) + num(row.h, 0.98))); }
                 else if (k === 'ramp') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 2), Math.min(gn, num(row.h0, 0), num(row.h1, 0)), Math.max(num(row.h0, 0), num(row.h1, 0)) + 0.15));
                 else if (k === 'deck' || k === 'bridge') { var yb = num(row.y, gm); out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 2), yb - Math.max(0.3, num(row.thick, 0.3)), yb + 0.15)); }
                 else out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 0.5), gn, gm + 1));
+                return out;
+            }
+            if (k === 'rail' && row.arc && typeof row.arc === 'object') {   // THE STAIRS PACK: a curved railing, a box per ≤ 30° piece
+                var A = row.arc, aa0 = +A.a0 || 0, aa1 = +A.a1 || 0, ar = Math.max(0.3, num(A.r, 4)), an = Math.max(1, Math.ceil(Math.abs(aa1 - aa0) / 30));
+                var apt = function (deg) { var q = deg * Math.PI / 180; return [num(A.x, 0) + Math.sin(q) * ar, num(A.z, 0) - Math.cos(q) * ar]; };
+                for (var ai = 0; ai < an; ai++) {
+                    var pa = apt(aa0 + (aa1 - aa0) * ai / an), pb = apt(aa0 + (aa1 - aa0) * (ai + 1) / an);
+                    var ya = isFinite(row.y) ? +row.y : Math.min(g(pa[0], pa[1]), g(pb[0], pb[1])), yb = isFinite(row.y) ? +row.y : Math.max(g(pa[0], pa[1]), g(pb[0], pb[1]));
+                    out.push(segBox(pa[0], pa[1], pb[0], pb[1], 0.3, ya, yb + num(row.h, 0.98)));
+                }
                 return out;
             }
             var pts = Array.isArray(row.pts) ? row.pts : null;
             if (pts && pts.length > 1) {
                 for (var i = 0; i + 1 < pts.length; i++) {
                     var a = pts[i], b = pts[i + 1], ga = Math.min(g(a[0], a[1]), g(b[0], b[1])), gb = Math.max(g(a[0], a[1]), g(b[0], b[1]));
+                    if (k === 'rail') { var pya = isFinite(a[2]) ? +a[2] : g(a[0], a[1]), pyb = isFinite(b[2]) ? +b[2] : g(b[0], b[1]); out.push(segBox(a[0], a[1], b[0], b[1], 0.3, Math.min(pya, pyb), Math.max(pya, pyb) + num(row.h, 0.98))); continue; }   // a railing on its own ground line
                     if (k === 'ridge') out.push(segBox(a[0], a[1], b[0], b[1], num(row.w, 4), ga - 0.1, gb + Math.max(0.3, num(row.h, 1))));
                     else if (k === 'stream') out.push(segBox(a[0], a[1], b[0], b[1], num(row.w, 2), num(row.y, 0) - num(row.depth, 0.6), num(row.y, 0) + 0.15));
                     else out.push(segBox(a[0], a[1], b[0], b[1], num(row.w, 1.5), ga - 0.05, gb + 0.15));
@@ -199,8 +213,11 @@
             { id: 'wall', label: 'Wall', row: function (x, z) { return { k: 'wall', x0: x - 2, z0: z, x1: x + 2, z1: z, h: 3, t: 0.35, key: 'urban:ConcreteStriped2c' }; } },
             { id: 'rail', label: 'Railing (grind)', row: function (x, z) { return { k: 'rail', x0: x - 2, z0: z, x1: x + 2, z1: z, model: 'balusters_b' }; } },   // THE STAIRS PACK: `model` = a HQ_STAIR_PACK railing
             { id: 'railarc', label: 'Curved railing (grind)', row: function (x, z) { return { k: 'rail', arc: { x: x, z: z + 4, r: 4, a0: 135, a1: 225 }, model: 'balusters_b' }; } },
+            { id: 'skaterail', label: 'Skate rail (free-standing pipe, grind only)', row: function (x, z) { return { k: 'rail', x0: x - 3, z0: z, x1: x + 3, z1: z, model: 'pipe', block: false }; } },
+            { id: 'gaprail', label: 'Rail across a gap (at y, grind only)', row: function (x, z) { return { k: 'rail', x0: x - 2, z0: z, x1: x + 2, z1: z, y: 2, model: 'pipe', block: false }; } },   // `y` = its ground line, standing over nothing
+            { id: 'escalator', label: 'Escalator (the stairs pack, 30°)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 4, x1: x, z1: z + 4 - 4.6 / Math.tan(Math.PI / 6), w: 2, h0: 0, h1: 4.6, escalator: true, edge: 0 }; } },
             { id: 'ramp', label: 'Ramp', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 3, x1: x, z1: z - 3, w: 3, h0: 0, h1: 2 }; } },
-            { id: 'stairs', label: 'Stairs (the stairs pack)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 3, x1: x, z1: z - 3, w: 2, h0: 0, h1: 2, stairs: true, built: true, model: 'concrete' }; } },   // 2026-10-05: no stepped stairs anywhere — a smooth solid ramp
+            { id: 'stairs', label: 'Stairs (the stairs pack)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 3, x1: x, z1: z - 3, w: 2, h0: 0, h1: 2, stairs: true, built: true }; } },   // 2026-10-05: no stepped stairs anywhere — a smooth solid ramp
             { id: 'kicker', label: 'Kicker (skate)', row: function (x, z) { return { k: 'ramp', x0: x, z0: z + 1.3, x1: x, z1: z - 1.3, w: 2.6, h0: 0, h1: 0.9, edge: 0.01, kicker: true }; } },
             { id: 'spiral', label: 'Spiral ramp', row: function (x, z) { return { k: 'spiral', x: x, z: z, r0: 2, r1: 4, a0: 0, a1: 270, h0: 0, h1: 4 }; } },
             { id: 'deck', label: 'Deck (raised floor)', row: function (x, z) { return { k: 'deck', x0: x - 3, z0: z, x1: x + 3, z1: z, w: 2, y: 2 }; } },
@@ -238,6 +255,9 @@
             if (row.k === 'bridge' && row.plain) return 'floor slab · y ' + row.y;
             if (row.k === 'space') return (row.label ? row.label + ' · ' : '') + (row.round ? 'round room' : 'room') + ' · ' + (+row.w || 6) + ' × ' + (+row.d || +row.w || 6) + ' m';   // E5: the layout
             if (row.k === 'hall') return (row.label ? row.label + ' · ' : '') + 'hallway · ' + (+row.w || 2.6) + ' m wide';
+            if (row.k === 'ramp' && row.escalator) return 'escalator · ' + (+row.h1 || 0) + ' m';   // THE STAIRS PACK
+            if (row.k === 'ramp' && row.stairs) return 'stairs' + (row.model ? ' · ' + row.model : '') + ' · ' + (+row.h0 || 0) + ' → ' + (+row.h1 || 0) + ' m';
+            if (row.k === 'rail') return (row.arc ? 'curved railing' : row.block === false && (row.y != null || row.y0 != null) ? 'rail across a gap' : row.block === false ? 'skate rail' : 'railing') + ' · ' + (row.model || 'balusters_b');
             if (row.k) return row.k + (row.kicker ? ' (kicker)' : row.stairs ? ' (stairs)' : '') + (row.key ? ' · ' + row.key : '') + (row.kind ? ' · ' + row.kind : '') + (row.look ? ' · ' + row.look : '');
             return list;
         }
@@ -265,7 +285,7 @@
         reloadTimer: null, saveTimer: null, statusAt: 0, flags: null, hook: null, ready: false,
         /* E1: the draw tool ({ tool, a, chain, preview }), its options, the prefab being edited */
         draw: null, pfId: null,
-        opts: { stairKind: 'concrete', wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3, tab: 'build', doorLeaf: 'leaf_office',
+        opts: { stairKind: '', stairRailing: '', stairRails: 'both', stairHand: 'no', railModel: 'balusters_b', railGrind: 'wall', railSpan: 'ground', railArc: 90, wallH: 3, wallT: 0.25, wallKey: 'urban:ConcreteStriped2c', wallKeyIn: 'urban:PlasterWallPainted1a', height: 3, floorKey: 'urban:ConcreteStriped1b', storeys: 3, tab: 'build', doorLeaf: 'leaf_office',
                 /* E3: the ground brushes, the paint, the water */
                 brushR: 4, brushS: 0.5, brushFall: 'smooth', terraceH: 1, cliffH: 3, setH: 0, paintKey: '', paintErase: false, waterKey: 'water', waterDepth: 0.8, streamW: 2.4,
                 /* E5: the layout */
@@ -808,6 +828,10 @@
         slab:     { label: 'FLOOR', how: 'rect', tip: 'Drag a rectangle: a floor slab at HEIGHT (walk on it and under it).' },
         stairs:   { label: 'STAIRS', how: 'line', tip: 'Drag from the foot to the head: stairs up to HEIGHT.' },
         ramp:     { label: 'RAMP', how: 'line', tip: 'Drag from the foot to the head: a ramp up to HEIGHT.' },
+        /* THE STAIRS PACK (2026-10-05): the escalator and the railings (every railing is a grind; a WALL one also stops the walker) */
+        escalator: { label: 'ESCALATOR', how: 'line', tip: 'Drag the way it climbs: an escalator (the stairs pack, 30°) from the ground up to HEIGHT; the rise sets its length. Its head wants to end ~0.7 m inside the floor it reaches.' },
+        railing:  { label: 'RAILING', how: 'chain', tip: 'Click the start, click each corner: a railing (a grind) on the ground; ENTER / ESC ends the run. SPAN END TO END runs each piece straight between the heights at its two ends: a rail across a gap between two levels.' },
+        railarc:  { label: 'CURVED RAILING', how: 'disc', tip: 'Drag from the middle of the curve out to where the railing goes: a curved railing ARC° round that middle, centred where you let go.' },
         building: { label: 'BUILDING', how: 'rect', tip: 'Drag a rectangle: a textured building of STOREYS floors.' },
         door:     { label: 'DOOR GAP', how: 'wall', tip: 'Click on a wall: a door-sized gap with a lintel.' },
         window:   { label: 'WINDOW', how: 'wall', tip: 'Click on a wall: a window (a sill, glass, a lintel).' },
@@ -903,7 +927,8 @@
         if (how === 'stamp') { stampShow(D, p, g); return; }
         if (how === 'mod') { modShow(D); return; }
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
-        if (a && how === 'chain') out.push(segPv(a, p, O.wallT, g, g + O.wallH));
+        if (a && how === 'chain') { if (D.tool === 'railing') { var ga = ground(a.x, a.z); out.push(segPv(a, p, 0.15, Math.min(ga, g), Math.max(ga, g) + 1)); } else out.push(segPv(a, p, O.wallT, g, g + O.wallH)); }
+        if (a && D.tool === 'railarc') railArcRow(a, p).forEach(function (q) { out.push(q); });   // the curve, piece by piece
         if (a && how === 'line') out.push(segPv(a, p, 2, g, g + Math.max(0.3, O.height)));
         var cw = D.tool === 'lhall' ? O.hallW : O.streamW;
         if (how === 'course' && D.pts && D.pts.length) { for (var ci = 0; ci + 1 < D.pts.length; ci++) out.push(segPv(D.pts[ci], D.pts[ci + 1], cw, ground(D.pts[ci].x, D.pts[ci].z) - 0.1, ground(D.pts[ci].x, D.pts[ci].z) + 0.1)); out.push(segPv(D.pts[D.pts.length - 1], p, cw, g - 0.1, g + 0.1)); }
@@ -918,6 +943,34 @@
         var st = $('edStatus'); if (st && a) { var span = Math.hypot(p.x - a.x, p.z - a.z); ED._drawInfo = (how === 'rect' ? (Math.abs(p.x - a.x)).toFixed(2) + ' × ' + (Math.abs(p.z - a.z)).toFixed(2) + ' m' : span.toFixed(2) + ' m'); } else ED._drawInfo = '';
     }
     function wallRow(a, b) { var O = ED.opts, r = { k: 'wall', x0: a.x, z0: a.z, x1: b.x, z1: b.z, h: O.wallH, t: O.wallT, key: O.wallKey || null }; if (O.wallKeyIn && O.wallKeyIn !== O.wallKey) r.keyIn = O.wallKeyIn; return r; }
+    /* THE STAIRS PACK (2026-10-05): the kinds and the railing models the game has (data.js HQ_STAIR_KINDS / HQ_STAIR_PACK) */
+    function stairKinds() { try { return Object.keys(W.HQ_STAIR_KINDS || (typeof HQ_STAIR_KINDS !== 'undefined' ? HQ_STAIR_KINDS : {})); } catch (e) { return []; } }
+    function railModels() { try { var P = W.HQ_STAIR_PACK || (typeof HQ_STAIR_PACK !== 'undefined' ? HQ_STAIR_PACK : null); return P && P.railings ? Object.keys(P.railings) : []; } catch (e) { return []; } }
+    /* a stair row's railing: the model over the kind's own, the sides it stands on */
+    function stairRailOpts(r) { var O = ED.opts; if (O.stairRailing) r.railing = O.stairRailing; if (O.stairRails === 'none') r.rails = false; else if (O.stairRails === 'l' || O.stairRails === 'r') r.rails = O.stairRails; return r; }
+    /* a free-standing pipe down the middle of a flight, on its own ground line (the flight's slope), 0.3 m in from each end */
+    function stairHandRow(f) {
+        var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, t0 = Math.min(0.3, L / 4) / L, t1 = 1 - t0, R2 = function (v) { return Math.round(v * 100) / 100; };
+        var at = function (t) { return [R2(f.x0 + dx * t), R2(f.z0 + dz * t), R2(f.h0 + (f.h1 - f.h0) * t)]; };
+        return { k: 'rail', pts: [at(t0), at(t1)], model: 'pipe', block: false };
+    }
+    /* a railing piece a → b: on the ground, or (SPAN END TO END) straight between the heights at its ends */
+    function railRow(a, b) {
+        var O = ED.opts, r = { k: 'rail', x0: a.x, z0: a.z, x1: b.x, z1: b.z, model: O.railModel || 'balusters_b' };
+        if (O.railGrind === 'grind') r.block = false;
+        if (O.railSpan === 'ends') { r.y0 = Core.snap(ground(a.x, a.z), 0.01); r.y1 = Core.snap(ground(b.x, b.z), 0.01); }
+        return r;
+    }
+    /* a curved railing round c: ARC° centred on the bearing to p (degrees clockwise from north); `row` = the row, else its preview boxes */
+    function railArcRow(c, p, row) {
+        var O = ED.opts, r = Math.hypot(p.x - c.x, p.z - c.z); if (r < 0.5) return row ? null : [];
+        var mid = Math.atan2(p.x - c.x, -(p.z - c.z)) * 180 / Math.PI, half = Math.max(5, Math.min(360, +O.railArc || 90)) / 2, R2 = function (v) { return Math.round(v * 100) / 100; };
+        var A = { x: R2(c.x), z: R2(c.z), r: R2(r), a0: R2(mid - half), a1: R2(mid + half) };
+        if (row) { var out = { k: 'rail', arc: A, model: O.railModel || 'balusters_b' }; if (O.railGrind === 'grind') out.block = false; return out; }
+        var pv = [], n = Math.max(2, Math.ceil(2 * half / 15)), pt = function (d) { var q = d * Math.PI / 180; return { x: A.x + Math.sin(q) * r, z: A.z - Math.cos(q) * r }; };
+        for (var i = 0; i < n; i++) { var u = pt(A.a0 + 2 * half * i / n), v = pt(A.a0 + 2 * half * (i + 1) / n), gu = ground(u.x, u.z); pv.push(segPv(u, v, 0.15, gu, gu + 1)); }
+        return pv;
+    }
     /* one finished piece → rows, as ONE undo step */
     function drawRows(rows, label) {
         if (!own()) return;
@@ -941,7 +994,7 @@
         if (D.tool === 'paint') { paintAt(e); return; }
         if (how === 'brush') { strokeEnd(e); return; }
         if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); if (D.tool === 'lhall') D.a = p; drawShow(p); } return; }   // (a hallway's SHIFT keeps 45° from its last point)
-        if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); return; }
+        if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) { if (D.tool === 'railarc') { var ra = railArcRow(a0, p, true); if (ra) drawRows([ra], 'curved railing'); } else poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); } return; }
         if (how === 'mod') { var ma = D.a, mp = modPt(e.clientX, e.clientY); D.a = null; drawPreview(null); ED._drawInfo = ''; if (mp) modAt(D.tool, ma, mp); return; }
         if (how === 'stamp') { var sa = D.a; D.a = null; drawPreview(null); ED._disc = null; ED._drawInfo = ''; if (p) stampAt(D.tool, sa, p); return; }
         if (how === 'click') {   // a shape from the ADD list, dropped where clicked
@@ -958,9 +1011,9 @@
         if (how === 'chain') {
             if (!D.a) { D.a = p; D.chain0 = p; drawShow(p); return; }
             if (Math.hypot(p.x - D.a.x, p.z - D.a.z) < 0.2) return;
-            drawRows([wallRow(D.a, p)], 'wall');
+            if (D.tool === 'railing') drawRows([railRow(D.a, p)], 'railing'); else drawRows([wallRow(D.a, p)], 'wall');
             var closed = D.chain0 && Math.hypot(p.x - D.chain0.x, p.z - D.chain0.z) < 0.01;
-            if (closed) { D.a = null; D.chain0 = null; drawPreview(null); toast('WALL RUN CLOSED', 1200); } else D.a = p;
+            if (closed) { D.a = null; D.chain0 = null; drawPreview(null); toast(D.tool === 'railing' ? 'RAILING RUN CLOSED' : 'WALL RUN CLOSED', 1200); } else D.a = p;
             return;
         }
         if (!D.a) return;
@@ -968,9 +1021,15 @@
         if (how === 'line') {
             var L = Math.hypot(p.x - a.x, p.z - a.z); if (L < 0.5) return;
             var g0 = ground(a.x, a.z), h1 = Math.max(0.2, O.height), stairs = D.tool === 'stairs';
+            if (D.tool === 'escalator') {   // THE STAIRS PACK: 30°, so the rise sets the run (the drag sets the way it climbs)
+                var rise = h1 - g0; if (rise < 0.6) { toast('AN ESCALATOR CLIMBS · set HEIGHT over the ground where it starts', 4000); return; }
+                var run = rise / Math.tan(Math.PI / 6), ux = (p.x - a.x) / L, uz = (p.z - a.z) / L;
+                drawRows([{ k: 'ramp', x0: a.x, z0: a.z, x1: Core.snap(a.x + ux * run, 0.01), z1: Core.snap(a.z + uz * run, 0.01), w: 2, h0: Core.snap(g0, 0.01), h1: h1, escalator: true, edge: 0 }], 'escalator');
+                return;
+            }
             if (stairs && L < 2.2 * (h1 - g0) - 0.01) toast('STAIRS THAT STEEP ARE REFUSED BY THE WALKER · make them at least ' + (2.2 * (h1 - g0)).toFixed(1) + ' m long', 5000);
-            var rr = { k: 'ramp', x0: a.x, z0: a.z, x1: p.x, z1: p.z, w: 2, h0: Core.snap(g0, 0.01), h1: h1 }; if (stairs) { rr.stairs = true; rr.built = true; if (O.stairKind) rr.model = O.stairKind; }
-            drawRows([rr], stairs ? 'stairs' : 'ramp');
+            var rr = { k: 'ramp', x0: a.x, z0: a.z, x1: p.x, z1: p.z, w: 2, h0: Core.snap(g0, 0.01), h1: h1 }; if (stairs) { rr.stairs = true; rr.built = true; if (O.stairKind) rr.model = O.stairKind; stairRailOpts(rr); }
+            drawRows(stairs && O.stairHand === 'yes' ? [rr, stairHandRow(rr)] : [rr], stairs ? 'stairs' : 'ramp');
             return;
         }
         var R = rectOf(a, p), w = R.x1 - R.x0, d = R.z1 - R.z0; if (w < 0.5 || d < 0.5) return;
@@ -1241,6 +1300,7 @@
             var st = { k: 'ramp', x0: R4(fx0), z0: R4(fz0), x1: R4(fx0 + ux * run), z1: R4(fz0 + uz * run), w: Math.min(2, C * 0.6), h0: R4(h0), h1: R4(top), stairs: true, built: true, foot: R4(b), bld: bld };
             if (O.floorKey) st.key = O.floorKey;
             if (O.stairKind) st.model = O.stairKind;   // THE STAIRS PACK: the flight drawn over it
+            stairRailOpts(st);
             rows.push(st); pv.push(segPv({ x: st.x0, z: st.z0 }, { x: st.x1, z: st.z1 }, st.w, b, top));
             return { rows: rows, pv: pv, info: 'stairs ' + run + ' m run · ' + rs.toFixed(1) + ' m up' };
         }
@@ -2787,8 +2847,11 @@
         wall: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
         room: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
         slab: [['height', 'Floor height (m, absolute)'], ['floorKey', 'Floor sheet', 1]],
-        stairs: [['height', 'Top height (m, absolute)'], ['stairKind', 'Stairs (the pack)', 'stairkind']],
+        stairs: [['height', 'Top height (m, absolute)'], ['stairKind', 'Stairs (the pack)', 'stairkind'], ['stairRailing', 'Railing', 'railing0'], ['stairRails', 'Railing sides', [['both', 'both sides'], ['l', 'left only'], ['r', 'right only'], ['none', 'none']]], ['stairHand', 'Centre handrail (a skate pipe)', [['no', 'no'], ['yes', 'yes']]]],
         ramp: [['height', 'Top height (m, absolute)']],
+        escalator: [['height', 'Top height (m, absolute)']],
+        railing: [['railModel', 'Railing (the pack)', 'railing'], ['railGrind', 'The walker', [['wall', 'stops at it (a wall + a grind)'], ['grind', 'steps through it (a grind only)']]], ['railSpan', 'Span', [['ground', 'follows the ground'], ['ends', 'end to end (across a gap)']]]],
+        railarc: [['railModel', 'Railing (the pack)', 'railing'], ['railGrind', 'The walker', [['wall', 'stops at it (a wall + a grind)'], ['grind', 'steps through it (a grind only)']]], ['railArc', 'Arc (°)']],
         building: [['storeys', 'Storeys']],
         doorway: [['doorLeaf', 'Leaf', 'leaf']],
         /* E3 */
@@ -2813,7 +2876,7 @@
     var MOD_GRID = [['modS', 'Floor (0 = ground) · [ ]'], ['modC', 'Cell (m)'], ['modH', 'Floor height (m)']];
     OPT_FIELDS.mfloor = MOD_GRID.concat([['floorKey', 'Sheet', 1]]);
     OPT_FIELDS.mwall = MOD_GRID.concat([['wallT', 'Thickness (m)'], ['wallKey', 'Sheet', 1], ['wallKeyIn', 'Inside sheet', 1]]);
-    OPT_FIELDS.mstairs = MOD_GRID.concat([['stairKind', 'Stairs (the pack)', 'stairkind'], ['floorKey', 'Sheet', 1]]);
+    OPT_FIELDS.mstairs = MOD_GRID.concat([['stairKind', 'Stairs (the pack)', 'stairkind'], ['stairRailing', 'Railing', 'railing0'], ['stairRails', 'Railing sides', OPT_FIELDS.stairs[3][2]], ['floorKey', 'Sheet', 1]]);
     OPT_FIELDS.mroof = MOD_GRID.concat([['roofH', 'Roof rise (m)'], ['roofKey', 'Roof sheet', 1], ['floorKey', 'Ceiling sheet', 1]]);
     ['hill', 'mountain', 'volcano', 'mesa', 'bowl', 'pit', 'boxup', 'boxdown', 'level', 'sridge', 'trench'].forEach(function (k) {
         OPT_FIELDS[k] = [['shapeR', DRAWS[k].form === 'line' ? 'Size: width (m) · [ ]' : DRAWS[k].form === 'rect' ? 'Size: half side on a click (m) · [ ]' : 'Size: radius on a click (m) · [ ]']]
@@ -2832,7 +2895,11 @@
                 var v = ED.opts[f[0]];
                 if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava']]; return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
                 /* THE STAIRS PACK (2026-10-05): a stair kind (data.js HQ_STAIR_KINDS — the flight, its railing, its sheets) */
-                if (f[2] === 'stairkind') { var SK = W.HQ_STAIR_KINDS || (typeof HQ_STAIR_KINDS !== 'undefined' ? HQ_STAIR_KINDS : {}); return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + Object.keys(SK).map(function (k) { return '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + k.replace(/_/g, ' ') + '</option>'; }).join('') + '</select></label>'; }
+                if (f[2] === 'stairkind' || f[2] === 'railing' || f[2] === 'railing0' || Array.isArray(f[2])) {
+                    var ch = Array.isArray(f[2]) ? f[2] : f[2] === 'stairkind' ? [['', 'the room\'s own']].concat(stairKinds().map(function (k) { return [k, k.replace(/_/g, ' ')]; }))
+                        : (f[2] === 'railing0' ? [['', 'the kind\'s own']] : []).concat(railModels().map(function (k) { return [k, k.replace(/_/g, ' ')]; }));
+                    return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ch.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+                }
                 if (f[2] === 'leaf') return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlLeaf"></label>';
                 if (f[2]) return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlTex"><button class="ed-btn ed-texb" data-otex="' + f[0] + '" title="Pick a texture"' + texSwatchStyle(v) + '>…</button></label>';
                 return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="number" step="any" data-o="' + f[0] + '" value="' + esc(v) + '"></label>';
@@ -3546,17 +3613,21 @@
             /* E2: the palette's registries */
             ['Race:races', 'Cast:cast', 'Pose:poses'].map(function (x) { var p = x.split(':'), P = palData(), src = p[1] === 'races' ? P.people.filter(function (e) { return e.row.race; }).map(function (e) { return e.row.race; }) : p[1] === 'cast' ? P.people.filter(function (e) { return e.row.cast; }).map(function (e) { return e.row.cast; }) : P.people.filter(function (e) { return e.row.pose; }).map(function (e) { return e.row.pose; }); return '<datalist id="edDl' + p[0] + '">' + src.map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>'; }).join('') +
             '<datalist id="edDlTree">' + Object.keys(W.HQ_TREE_KINDS || {}).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
-            '<datalist id="edDlWay">' + Object.keys(DOOR_HQ.ways || {}).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>';
+            '<datalist id="edDlWay">' + Object.keys(DOOR_HQ.ways || {}).map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
+            /* THE STAIRS PACK: a flight's kind, a railing's model */
+            '<datalist id="edDlStairKind">' + stairKinds().map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>' +
+            '<datalist id="edDlRailing">' + railModels().map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>';
         $('edRoot').appendChild(d);
     }
-    function fieldHtml(key, val, list) {
+    function fieldHtml(key, val, list, row) {
         var id = 'edF_' + key.replace(/[^a-z0-9_]/gi, '_');
         var tex = TEX_KEYS.indexOf(key) >= 0 && !(key === 'key' && list && list !== 'terrain.features' && list !== 'terrain.marks');
         if (tex && (typeof val === 'string' || val == null)) return '<label class="ed-f"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="str" value="' + esc(val || '') + '" list="edDlTex" id="' + id + '"><button class="ed-btn ed-texb" data-tex="' + esc(key) + '" title="Pick a texture"' + texSwatchStyle(val) + '>…</button></label>';
         if (typeof val === 'boolean') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="checkbox" data-k="' + esc(key) + '" data-t="bool"' + (val ? ' checked' : '') + '></label>';
         if (typeof val === 'number') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="number" step="any" data-k="' + esc(key) + '" data-t="num" value="' + esc(val) + '"></label>';
         if (typeof val === 'string') {
-            var dl = key === 'key' && list === 'props' ? 'edDlProp' : key === 'leaf' ? 'edDlLeaf' : key === 'look' ? 'edDlLook' : key === 'race' ? 'edDlRace' : key === 'cast' ? 'edDlCast' : key === 'pose' ? 'edDlPose' : key === 'way' ? 'edDlWay' : (key === 'kind' && list === 'terrain.features') ? 'edDlTree' : '';
+            var dl = key === 'model' && row && row.k === 'ramp' ? 'edDlStairKind' : (key === 'model' && row && row.k === 'rail') || key === 'railing' ? 'edDlRailing' : (key === 'stairs' && list === 'terrain') ? 'edDlStairKind' :
+                key === 'key' && list === 'props' ? 'edDlProp' : key === 'leaf' ? 'edDlLeaf' : key === 'look' ? 'edDlLook' : key === 'race' ? 'edDlRace' : key === 'cast' ? 'edDlCast' : key === 'pose' ? 'edDlPose' : key === 'way' ? 'edDlWay' : (key === 'kind' && list === 'terrain.features') ? 'edDlTree' : '';
             return '<label class="ed-f"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="str" value="' + esc(val) + '"' + (dl ? ' list="' + dl + '"' : '') + ' id="' + id + '"></label>';
         }
         return '<label class="ed-f ed-fj"><span>' + esc(key) + '</span><textarea data-k="' + esc(key) + '" data-t="json" rows="' + Math.min(8, 1 + Math.ceil(JSON.stringify(val).length / 38)) + '">' + esc(JSON.stringify(val)) + '</textarea></label>';
@@ -3583,7 +3654,8 @@
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             h += '<div class="ed-sub">THE SHELL</div><div class="ed-form" data-scope="shell">' + shellKeys.map(function (k) { return fieldHtml(k, S[k]); }).join('') + '</div>';
             if (r.terrain) {
-                h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + fieldHtml('floor', String(T.floor || '')) + fieldHtml('cliff', String(T.cliff || '')) + fieldHtml('path', String(T.path || '')) + fieldHtml('base', +T.base || 0) + '</div>';
+                h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + fieldHtml('floor', String(T.floor || '')) + fieldHtml('cliff', String(T.cliff || '')) + fieldHtml('path', String(T.path || '')) + fieldHtml('base', +T.base || 0) + fieldHtml('stairs', String(T.stairs || ''), 'terrain') + '</div>';
+                h += '<div class="ed-note">stairs = the stairs pack kind every flight here is drawn as unless it names its own (empty: timber in a forest, the site\'s own, else concrete).</div>';
                 /* E3: the sea (one water level over the whole room), the floating ground (no ground round it, a rock underside), the grids */
                 var sea = T.sea || null, fl = T.float || null;
                 h += '<div class="ed-form" data-scope="ground">' + fieldHtml('sea', !!sea) + (sea ? fieldHtml('seaY', +sea.y || 0) + fieldHtml('seaKey', String(sea.key || 'water')) + fieldHtml('seaUnder', !!sea.under) : '') +
@@ -3612,8 +3684,11 @@
             h += '<div class="ed-form" data-scope="row">';
             var keys = Object.keys(row).filter(function (k) { return k !== 'id' && k.charAt(0) !== '_'; });
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
-            keys.forEach(function (k) { h += fieldHtml(k, row[k], x.list); });
+            keys.forEach(function (k) { h += fieldHtml(k, row[k], x.list, row); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
+            /* THE STAIRS PACK: the fields a flight / a railing takes, shown even when the row leaves them out */
+            if (x.list === 'terrain.features' && row.k === 'ramp' && row.stairs) { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('railing' in row)) h += fieldHtml('railing', '', x.list, row); if (!('rails' in row)) h += fieldHtml('rails', true, x.list, row); }
+            if (x.list === 'terrain.features' && row.k === 'rail') { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('block' in row)) h += fieldHtml('block', true, x.list, row); }
             h += '</div>';
             if (!ro) {
                 h += '<div class="ed-addf"><input type="text" id="edNewK" placeholder="field"><input type="text" id="edNewV" placeholder="value (JSON)"><button class="ed-btn" id="edNewAdd">+ FIELD</button></div>';
@@ -3624,6 +3699,9 @@
                 if (row.k === 'wall') h += '<div class="ed-note">key = the outside sheet, keyIn = the inside (the right-hand face walking start → end). BUILD → DOOR GAP / WINDOW cuts an opening.</div>';
                 if (row.k === 'opening') h += '<div class="ed-note">An opening in wall ' + esc(row.wall) + ', at = metres from the wall\'s start (MOVE slides it). sill 0 = a door gap; glaze = glass.</div>';
                 if (row.k === 'tree' || row.k === 'grove') h += '<div class="ed-note">h is in ground tiles (1.75 m each); SIZE above is in metres. r = the trunk the walker bumps into. face = which way it turns (R).</div>';
+                if (row.k === 'ramp' && row.stairs) h += '<div class="ed-note">Stairs from the stairs pack, fitted to their rise, run and width (0.18 m risers). model = the kind (concrete, precast, steel, fire escape, grate, metro, wood, glass, forest, stone …; empty = the room\'s own) · railing = a railing model over the kind\'s own · rails = false (none), l or r (one side) · the head wants to end ~0.7 m inside the level it climbs to, the run at least 1.8 × the rise.</div>';
+                if (row.k === 'ramp' && row.escalator) h += '<div class="ed-note">An escalator from the stairs pack (30°: the run is the rise ÷ 0.577). Its handrails are grinds.</div>';
+                if (row.k === 'rail') h += '<div class="ed-note">A railing from the stairs pack, and a grind. model = the railing (pipe is a 0.4 m skate rail) · block = false: the walker steps through it (a grind only: use it across a gap and on skate rails) · y = its ground line for the whole run (a rail across a gap, standing over nothing), y0 / y1 per end · pts [[x, z, y], …] a polyline, arc { x, z, r, a0, a1 } a curve (degrees clockwise from north).</div>';
                 if (row.k === 'kit') h += '<div class="ed-note">A kit: the game\'s ' + esc(row.fn) + ' builder; args are its form (metres, degrees, about its own 0, 0).</div>';
                 h += '<div class="ed-sub">RAW</div><textarea class="ed-raw" id="edRaw" rows="6">' + esc(JSON.stringify(row, null, 1)) + '</textarea><button class="ed-btn" id="edRawApply">APPLY RAW</button>';
             }
@@ -3687,7 +3765,9 @@
         if (scope === 'row') {
             var h = ED.sel.map(selRow).filter(Boolean)[0]; if (!h) return false;
             var after = Core.clone(h.row);
-            if (v === '' && t === 'str' && TEX_KEYS.indexOf(k) >= 0) delete after[k]; else after[k] = v;
+            if (v === '' && t === 'str' && (TEX_KEYS.indexOf(k) >= 0 || ((k === 'model' || k === 'railing' || k === 'rails') && (after.k === 'ramp' || after.k === 'rail')))) delete after[k];
+            else if (t === 'bool' && ((k === 'rails' && v && after.k === 'ramp') || (k === 'block' && v && after.k === 'rail'))) delete after[k];   // the default: both sides / a wall
+            else after[k] = v;
             rowReplace(h, after, k);
             return true;
         }
@@ -3781,7 +3861,7 @@
             ['R · SHIFT R', 'turn the pick 45° · back'], ['- · =', 'the pick smaller · bigger (SHIFT: a bigger step); the inspector\'s SIZE takes metres'],
             ['C', 'hide / show the roofs and ceilings (the top bar\'s HIDE ROOFS; its number = the cut in metres over the floor)'], ['T', 'the gizmo: SIZE / MOVE (the top bar: MOVE · TURN · SIZE)'], ['[ · ]', 'turn the pick by the angle snap'],
             ['F · Home · G', 'frame the pick · to the spawn · the grid'], ['DEL · CTRL D', 'delete · duplicate'],
-            ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head · DOOR GAP, WINDOW: click a wall'],
+            ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head (STAIRS: the pack kind, its railing, the sides, a centre handrail) · ESCALATOR: drag the way it climbs · RAILING: click the corners (a grind; WALL stops the walker, GRIND ONLY lets the walker through; END TO END spans a gap) · CURVED RAILING: drag from the curve\'s middle out · DOOR GAP, WINDOW: click a wall'],
             ['SHIFT while drawing', 'lock the line to 45° steps (ends snap to wall ends within 0.6 m, else to the grid)'], ['V · Esc', 'back to SELECT · end the run / drop the pick'], ['CTRL Z · CTRL Y · CTRL S', 'undo · redo · save (it autosaves anyway)'],
             ['The palette tabs (left)', 'MODELS · PEOPLE · TREES · DOORS · LIGHTS · MARKERS · TEXTURES · KITS: click a tile, then click on the ground (again for more copies; it faces you). ESC or V stops. The armed tile again stops too'],
             ['DOOR (BUILD or DOORS)', 'click a wall you drew (a gap is cut, the door stands in it) or the ground; then pick the room it leads to and where you arrive (a new door back, its spawn, or one of its doors)'],
