@@ -44183,8 +44183,8 @@ const HQ_AREA_SPECS = {
         /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): an estate's grounds between pine hedges, no banks. The gate at the south
            (the bay door) opens on the drive: up to its round, then the carriage loop (two drives either side of a hedge island,
            so the gate never sees the front door) to the forecourt under THE PORCH (its steps; the ivy up its west corner). Off
-           the forecourt: the coach house's yard (its roof up the ladder or the rope; a dead end) and, east, the terrace's room
-           (THE TERRACE up its stair); off the west drive THE FAMILY PLOT up its steps (a dead end); off the east drive the
+           the forecourt: the coach house's yard (its roof up the ladder or the rope, or over the west bridge off the balcony) and, east, the terrace's room
+           (THE TERRACE up its stair); off the west drive THE FAMILY PLOT up its steps (the upper plot's stair down into the coach house's yard); off the east drive the
            churchyard with THE CRYPT (a built block, the ivy up its west face), its brick wall with a gate onto THE GAZEBO's
            lawn; west of the round the pond garden (THE FOOTBRIDGE onto the round, THE TREEHOUSE). Loops: the carriage loop;
            gate ⇄ lawn ⇄ churchyard ⇄ east drive ⇄ round ⇄ gate; forecourt ⇄ terrace ⇄ churchyard ⇄ east drive ⇄ forecourt;
@@ -44199,10 +44199,11 @@ const HQ_AREA_SPECS = {
             { k: 'space', x: 0, z: 8, w: 14, d: 14, round: true },                              // the drive's round
             { k: 'hall', pts: [[0, 14], [0, 21]], w: 4 },                                       // the drive down to the gate
             { k: 'space', x: 0, z: 23, w: 10, d: 6 },                                           // the gate (the bay door)
-            { k: 'space', x: -17.5, z: -5.5, w: 15, d: 13 },                                    // THE FAMILY PLOT (a dead end)
+            { k: 'space', x: -17.5, z: -5.5, w: 15, d: 13 },                                    // THE FAMILY PLOT
             { k: 'hall', pts: [[-7, -6], [-10.5, -6]], w: 2.6 },
-            { k: 'space', x: -19.5, z: -20.25, w: 15, d: 11.5 },                                // the coach house's yard (a dead end)
+            { k: 'space', x: -19.5, z: -21, w: 15, d: 13 },                                     // the coach house's yard
             { k: 'hall', pts: [[-12.5, -16], [-7.5, -16]], w: 3 },
+            { k: 'hall', pts: [[-16, -26], [-8.5, -26]], w: 2.4 },                              // under the west bridge
             { k: 'space', x: -17.5, z: 14, w: 17, d: 20 },                                      // the pond garden (THE POND, THE TREEHOUSE)
             { k: 'hall', pts: [[-9.5, 12], [-5, 12]], w: 2.4 },                                 // THE FOOTBRIDGE's landing on the round
             { k: 'hall', pts: [[-9.5, 22], [-4.5, 22]], w: 3 },
@@ -44210,49 +44211,83 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[6.5, 0], [9.5, 0]], w: 3 },
             { k: 'space', x: 18, z: 17, w: 18, d: 16 },                                         // THE GAZEBO's lawn (the churchyard wall between)
             { k: 'hall', pts: [[4.5, 22], [9.5, 22]], w: 3 },
-            { k: 'space', x: 20.5, z: -19, w: 19, d: 14 },                                      // THE TERRACE's room
+            { k: 'space', x: 20.5, z: -20, w: 19, d: 15 },                                     // THE TERRACE's room
             { k: 'hall', pts: [[7.5, -16], [11.5, -16]], w: 3 },
             { k: 'hall', pts: [[14, -12.5], [14, -8.5]], w: 3 },
-            /* THE PORCH (1.6) under the front door: the steps up from the forecourt, the ivy up its west corner */
+            { k: 'hall', pts: [[8.5, -26], [11.5, -26]], w: 2.4 },                              // under the east bridge
+            /* THE PORCH (1.6) under the front door: the timber steps up from the forecourt (a handrail down the middle), the ivy up its west side */
             { k: 'plateau', x: 0, z: -24, w: 14.2, d: 8.2, h: 1.6, edge: 0.15 },
-            { k: 'ramp', x0: 0, z0: -15.8, x1: 0, z1: -20.7, w: 3.0, h0: 0, h1: 1.6, stairs: true, edge: 0.15, built: true, key: 'wood', side: 'wood' },
-            { k: 'climb', x: -6.7, z: -24, face: 90, look: 'vine' },
-            /* THE FAMILY PLOT (0.8) up its steps */
+            { k: 'ramp', x0: 0, z0: -15.8, x1: 0, z1: -20.7, w: 3.0, h0: 0, h1: 1.6, stairs: true, edge: 0.15, built: true, model: 'wood', key: 'wood', side: 'wood' },
+            { k: 'rail', pts: [[0, -16.2, 0.13], [0, -20.3, 1.47]], model: 'pipe', block: false },
+            { k: 'climb', x: -6.7, z: -22.2, face: 90, look: 'vine' },
+            { k: 'rail', x0: 1.75, z0: -20.05, x1: 3.05, z1: -20.05, y: 1.6, model: 'balusters_b' }, { k: 'rail', x0: 5.35, z0: -20.05, x1: 7.0, z1: -20.05, y: 1.6, model: 'balusters_b' },
+            /* THE BALCONY (3.6) either side of the front door: a timber stair up each wing off the porch, a bridge off each wing over the hedge —
+               west to the coach house roof, east to the terrace's upper deck */
+            { k: 'plateau', x: -5.15, z: -26.25, w: 3.9, d: 3.7, h: 3.6, edge: 0.15 }, { k: 'plateau', x: 5.15, z: -26.25, w: 3.9, d: 3.7, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: -4.2, z0: -20.5, x1: -4.2, z1: -25.1, w: 2.0, h0: 1.6, h1: 3.6, stairs: true, edge: 0.15, model: 'wood' },
+            { k: 'ramp', x0: 4.2, z0: -20.5, x1: 4.2, z1: -25.1, w: 2.0, h0: 1.6, h1: 3.6, stairs: true, edge: 0.15, model: 'wood' },
+            { k: 'rail', x0: -7.0, z0: -24.55, x1: -5.3, z1: -24.55, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: -3.35, z0: -27.9, x1: -3.35, z1: -25.2, y: 3.6, model: 'balusters_b' },
+            { k: 'rail', x0: 5.3, z0: -24.55, x1: 7.0, z1: -24.55, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 3.35, z0: -27.9, x1: 3.35, z1: -25.2, y: 3.6, model: 'balusters_b' },
+            { k: 'bridge', x0: -6.4, z0: -26.0, x1: -17.7, z1: -26.0, w: 1.8, y: 3.6 },
+            { k: 'bridge', x0: 6.4, z0: -26.0, x1: 19.7, z1: -26.0, w: 1.8, y: 3.6 },
+            /* THE FAMILY PLOT (0.8) up its steps, the upper plot (2.0) up a second flight, its stair down north into the coach house's yard */
             { k: 'plateau', x: -18, z: -6, r: 6, h: 0.8, edge: 0.15 },
             { k: 'ramp', x0: -8.6, z0: -6, x1: -12.7, z1: -6, w: 2.4, h0: 0, h1: 0.8, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            /* THE CRYPT (2.6): the mausoleum block — the ivy up its west face; the churchyard wall (the grind) with its gate onto the lawn */
+            { k: 'plateau', x: -20.5, z: -8.5, w: 7, d: 5, h: 2.0, edge: 0.15 },
+            { k: 'ramp', x0: -19.0, z0: -3.4, x1: -19.0, z1: -6.7, w: 2.0, h0: 0.8, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: -19.5, z0: -15.0, x1: -19.5, z1: -10.3, w: 2.0, h0: 0, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: -23.85, z0: -10.85, x1: -23.85, z1: -6.15, y: 2.0, model: 'parapet' }, { k: 'rail', x0: -23.85, z0: -10.85, x1: -20.6, z1: -10.85, y: 2.0, model: 'parapet' },
+            { k: 'rail', x0: -18.4, z0: -10.85, x1: -17.15, z1: -10.85, y: 2.0, model: 'parapet' }, { k: 'rail', x0: -17.15, z0: -10.85, x1: -17.15, z1: -6.15, y: 2.0, model: 'parapet' },
+            /* THE CRYPT (2.6): the mausoleum block — the ivy up its west face, a 2.5 m gap east to the churchyard walk (two rails across it); the churchyard wall (the grind) with its gate onto the lawn */
             { k: 'plateau', x: 18, z: 0, w: 8, d: 8, h: 2.6, edge: 0.15 }, { k: 'climb', x: 14.3, z: 0, face: 90, look: 'vine' },
             { k: 'wall', x0: 13.7, z0: -4.05, x1: 22.3, z1: -4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 13.7, z0: 4.05, x1: 22.3, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
             { k: 'wall', x0: 13.95, z0: -4.05, x1: 13.95, z1: -0.9, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 13.95, z0: 0.9, x1: 13.95, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // (the ivy between)
             { k: 'wall', x0: 22.05, z0: -4.05, x1: 22.05, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },
-            { k: 'wall', x0: 9, z0: 9, x1: 14, z1: 9, h: 1.2, t: 0.6, key: 'bricks_2' }, { k: 'wall', x0: 18, z0: 9, x1: 28, z1: 9, h: 1.2, t: 0.6, key: 'bricks_2' },
-            /* THE GAZEBO: the deck (0.6) up two steps round the roof (5.6, the tape — the door gun's) */
+            { k: 'wall', x0: 9, z0: 9, x1: 14, z1: 9, h: 1.2, t: 0.6, key: 'bricks_2' }, { k: 'wall', x0: 18, z0: 9, x1: 24.6, z1: 9, h: 1.2, t: 0.6, key: 'bricks_2' },
+            { k: 'rail', x0: 21.7, z0: -2, x1: 24.9, z1: -2, y: 2.6, model: 'pipe', block: false }, { k: 'rail', x0: 21.7, z0: 2, x1: 24.9, z1: 2, y: 2.6, model: 'pipe', block: false },
+            /* THE CHURCHYARD WALK (2.6) along the east side: a stair up north onto the terrace, a stair down south onto the lawn (a handrail down its middle) */
+            { k: 'plateau', x: 26.25, z: 0.25, w: 3.5, d: 16.5, h: 2.6, edge: 0.15 },
+            { k: 'ramp', x0: 26.2, z0: -13.7, x1: 26.2, z1: -8.7, w: 2.0, h0: 1.4, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: 26.2, z0: 14.3, x1: 26.2, z1: 7.8, w: 3.0, h0: 0, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', pts: [[26.2, 8.2, 2.44], [26.2, 13.9, 0.16]], model: 'pipe', block: false },
+            { k: 'rail', x0: 24.65, z0: -7.9, x1: 24.65, z1: -3.6, y: 2.6, model: 'parapet' }, { k: 'rail', x0: 24.65, z0: 3.6, x1: 24.65, z1: 7.0, y: 2.6, model: 'parapet' },
+            /* THE GAZEBO: the deck (0.6) up two steps round the roof (5.6, the tape — the door gun's), a balustrade round the deck (open to the gate and the steps) */
             { k: 'plateau', x: 16, z: 14, r: 4.5, h: 0.6, edge: 0.15 },
             { k: 'ramp', x0: 16, z0: 21.0, x1: 16, z1: 17.8, w: 2.4, h0: 0, h1: 0.6, stairs: true, edge: 0.15, built: true, key: 'wood', side: 'wood' },
             { k: 'plateau', x: 16, z: 14, r: 3.0, h: 5.6, edge: 0.15 },
-            /* THE TERRACE (1.4) along the east side: a stair, the hand-holds up its south face, the balustrade on it (the grind) */
-            { k: 'plateau', x: 24.6, z: -19.6, w: 11.2, d: 13.2, h: 1.4, edge: 0.15 },
+            { k: 'rail', arc: { x: 16, z: 14, r: 4.3, a0: 200, a1: 335 }, y: 0.6, model: 'balusters_b' }, { k: 'rail', arc: { x: 16, z: 14, r: 4.3, a0: 25, a1: 160 }, y: 0.6, model: 'balusters_b' },
+            /* THE TERRACE (1.4) along the east side: a stair, the hand-holds up its west face, the balustrade on it (the grind); its upper deck (3.6) up a stair along the east */
+            { k: 'plateau', x: 24.6, z: -19.1, w: 11.2, d: 14.2, h: 1.4, edge: 0.15 },
             { k: 'ramp', x0: 12.6, z0: -19, x1: 19.7, z1: -19, w: 2.6, h0: 0, h1: 1.4, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'climb', x: 24, z: -13.3, face: 0, look: 'wall' },
-            { k: 'wall', x0: 20, z0: -15.0, x1: 28, z1: -15.0, h: 0.9, t: 0.4, key: 'bricks_2' },
-            /* THE COACH HOUSE roof (3.6) in its yard: the ladder on its east end, the rope down its south face */
-            { k: 'plateau', x: -22.2, z: -22.1, w: 10.4, d: 8.2, h: 3.6, edge: 0.15 }, { k: 'climb', x: -17.3, z: -22, face: 270, look: 'ladder' }, { k: 'climb', x: -22, z: -18.3, face: 0, look: 'rope' },
-            { k: 'wall', x0: -16.95, z0: -26.2, x1: -16.95, z1: -22.9, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -16.95, z0: -21.1, x1: -16.95, z1: -17.7, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
+            { k: 'climb', x: 19.3, z: -14.2, face: 90, look: 'wall' },
+            { k: 'wall', x0: 20, z0: -15.0, x1: 24.6, z1: -15.0, h: 0.9, t: 0.4, key: 'bricks_2' },
+            { k: 'plateau', x: 24.6, z: -24.65, w: 11.2, d: 5.3, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: 28.6, z0: -17.4, x1: 28.6, z1: -22.7, w: 2.2, h0: 1.4, h1: 3.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: 19.15, z0: -22.15, x1: 27.3, z1: -22.15, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 19.15, z0: -22.15, x1: 19.15, z1: -24.9, y: 3.6, model: 'balusters_b' },
+            /* THE COACH HOUSE roof (3.6) in its yard: the ladder on its east end, the rope down its south face, the west bridge onto its north end */
+            { k: 'plateau', x: -22.2, z: -22.65, w: 10.4, d: 9.3, h: 3.6, edge: 0.15 }, { k: 'climb', x: -17.3, z: -22, face: 270, look: 'ladder' }, { k: 'climb', x: -22, z: -18.3, face: 0, look: 'rope' },
+            { k: 'wall', x0: -16.95, z0: -24.9, x1: -16.95, z1: -22.9, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -16.95, z0: -21.1, x1: -16.95, z1: -17.7, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
             { k: 'wall', x0: -27.4, z0: -17.95, x1: -22.9, z1: -17.95, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -21.1, z0: -17.95, x1: -16.7, z1: -17.95, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },
-            /* THE TREEHOUSE (3.2) in the old oak in the pond garden: a ladder and a rope */
-            { k: 'plateau', x: -22, z: 18, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -20.1, z: 18, face: 270, look: 'ladder' }, { k: 'climb', x: -22, z: 19.9, face: 0, look: 'rope' },
-            /* THE POND with THE FOOTBRIDGE */
+            /* THE POND with THE FOOTBRIDGE, a curved rail round its north side */
             { k: 'pool', x: -14, z: 12, r: 4, depth: 0.6, key: 'water', bank: 0.8 },
             { k: 'deck', x0: -19.6, z0: 12, x1: -8.4, z1: 12, w: 1.6, y: 0.4 },
+            { k: 'rail', arc: { x: -14, z: 12, r: 5.2, a0: 285, a1: 435 }, model: 'pipe', block: false },
+            /* THE TREEHOUSE (3.2) in the old oak in the pond garden: a ladder and a rope; a bridge east to the lookout (3.2), its timber stair down onto the drive */
+            { k: 'plateau', x: -22, z: 18, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -20.1, z: 18, face: 270, look: 'ladder' }, { k: 'climb', x: -22, z: 19.9, face: 0, look: 'rope' },
+            { k: 'plateau', x: -12, z: 19.5, w: 4, d: 4, h: 3.2, edge: 0.15 },
+            { k: 'bridge', x0: -20.5, z0: 18.5, x1: -13.3, z1: 18.5, w: 1.6, y: 3.2 },
+            { k: 'ramp', x0: -3.3, z0: 19, x1: -10.7, z1: 19, w: 1.8, h0: 0, h1: 3.2, stairs: true, edge: 0.15, model: 'wood' },
+            { k: 'rail', x0: -13.9, z0: 21.35, x1: -10.1, z1: 21.35, y: 3.2, model: 'ranch' }, { k: 'rail', x0: -13.85, z0: 19.4, x1: -13.85, z1: 21.35, y: 3.2, model: 'ranch' },
+            { k: 'rail', x0: -13.9, z0: 17.65, x1: -10.1, z1: 17.65, y: 3.2, model: 'ranch' },
             { k: 'scatter', key: 'menhir', n: 8, seed: 13 }, { k: 'scatter', key: 'dead_snag', n: 5, seed: 4 }, { k: 'scatter', key: 'stump', n: 4, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 9 },
             { k: 'scatter', key: 'cave_stone', n: 4, seed: 3 }, { k: 'scatter', key: 'garden_ring', n: 3, seed: 7 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 5 },
         ],
         doors: [{ id: 'house', wall: 'n', x: 0, y: 1.6, leaf: 'leaf_wooden', label: 'THE HAUNTED HOUSE · THE HALL', sub: 'THE FRONT DOOR · GO IN',
                   action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
                   desc: 'The front door at the top of the porch steps. It is open a crack. It was not, a moment ago.' }],
-        props: [{ key: 'railing_1m', x: -4, z: -20.6, face: 0, y: 1.6 }, { key: 'railing_1m', x: 12.3, z: 14, face: 90, y: 0.6 }, { key: 'railing_1m', x: -22, z: -18.6, face: 0, y: 3.6 }, { key: 'riser_1', x: 5, z: 12 },
-                { key: 'hollow_dead_tree', x: -20, z: -6, y: 0.8, face: 120 }, { key: 'angel_statue', x: -16, z: -8, y: 0.8, face: 90 },
-                { key: 'sarcophagus', x: 18, z: 6, face: 90 }, { key: 'sarcophagus', x: 26, z: 0, face: 0 }, { key: 'demon_statue', x: 18, z: 0, y: 2.6, face: 180 },
+        props: [{ key: 'railing_1m', x: -6.2, z: -20.4, face: 0, y: 1.6 }, { key: 'railing_1m', x: 12.3, z: 14, face: 90, y: 0.6 }, { key: 'railing_1m', x: -22, z: -18.6, face: 0, y: 3.6 }, { key: 'riser_1', x: 5, z: 12 },
+                { key: 'hollow_dead_tree', x: -22, z: -8.5, y: 2.0, face: 120 }, { key: 'angel_statue', x: -16, z: -8, y: 0.8, face: 90 },
+                { key: 'sarcophagus', x: 18, z: 6, face: 90 }, { key: 'sarcophagus', x: 26.3, z: 0, y: 2.6, face: 0 }, { key: 'demon_statue', x: 18, z: 0, y: 2.6, face: 180 },
                 { key: 'cave_torch', x: -6.5, z: -19 }, { key: 'cave_torch', x: 6.5, z: -19 }, { key: 'cave_torch', x: 14, z: 8 }, { key: 'cave_torch', x: -22, z: 14 },
                 { key: 'planter', x: -4.5, z: -17 }, { key: 'planter', x: 4.5, z: -17 }, { key: 'garden_tree', x: -24.5, z: 15.5 }, { key: 'garden_tree', x: 10, z: 24 }, { key: 'hollow_tree', x: 24, z: 20 },
                 { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 12, z: 20, face: 180 }, { key: 'signpost', x: 3, z: 12 }, { key: 'stocks', x: 10, z: 2, face: 180 },
