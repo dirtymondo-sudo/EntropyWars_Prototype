@@ -19070,6 +19070,25 @@ const ThreeRenderer = (function () {
         var t = Math.min(1, (performance.now() - _ss.t0) / _ss.durationMs);
         var k = _ssEase(t);
 
+        /* THE NODE PANES (2026-10-05, "one side of the split screen is completely blank"): on the node renderer a draw with
+           autoClear opens its pass with loadOp 'clear', which wipes the WHOLE canvas whatever the scissor (WebGL's clear
+           honors the scissor), so each pane erased the ones drawn before it and only the last survived. There the canvas
+           is cleared once up front and the panes draw with autoClear off; its viewport / scissor origin is top-left. */
+        var node = !!renderer.isWebGPURenderer, prevAuto = renderer.autoClear, prevBg = null;
+        if (node) {
+            if (scene.background && scene.background.isColor) {   // a colour background forces the clear too: it becomes the one up-front clear
+                prevBg = scene.background;
+                var pcc = renderer.getClearColor(new THREE.Color()), pca = renderer.getClearAlpha();
+                renderer.setClearColor(prevBg, 1);
+                scene.background = null;
+            }
+            renderer.setScissorTest(false);
+            renderer.setViewport(0, 0, w, h);
+            renderer.clear();
+            if (prevBg) renderer.setClearColor(pcc, pca);
+            renderer.autoClear = false;
+        }
+        try {
         renderer.setScissorTest(true);
         for (var i = 0; i < _ss.panes.length; i++) {
             var p = _ss.panes[i], r = rects[i];
@@ -19099,12 +19118,15 @@ const ThreeRenderer = (function () {
             /* Sprites must face THIS pane's camera while it draws. */
             _aimBillboardsAt(p.lastEye.x, p.lastEye.z);
 
-            var glY = h - r.y - r.h;   // GL viewport origin is bottom-left
+            var glY = node ? r.y : h - r.y - r.h;   // GL viewport origin is bottom-left; the node renderer's is top-left
             renderer.setViewport(r.x, glY, r.w, r.h);
             renderer.setScissor(r.x, glY, r.w, r.h);
             // THE HDR BLOOM (2026-09-22): the materials render linear under the composer — a pane drawn straight to the canvas goes through the tone map
             if (typeof ThreePost !== 'undefined' && ThreePost.renderDirect) ThreePost.renderDirect(scene, p.cam, { x: r.x, y: glY, w: r.w, h: r.h });
             else renderer.render(scene, p.cam);
+        }
+        } finally {
+            if (node) { renderer.autoClear = prevAuto; if (prevBg) scene.background = prevBg; }
         }
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, w, h);
