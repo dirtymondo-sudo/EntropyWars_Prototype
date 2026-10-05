@@ -1271,3 +1271,12 @@ The fix:
 - The pair reverse cut leans the TPS pivot (not elevZ) toward the caster's height; `cineLowTile` rises to a raised body.
 - Online: `opts.frameUnitIds` (written back by the host) rides the `offensive` camera event; the guest's live hits come
   off the relayed floating numbers. Probe: `_ewFrameGuard()` in the console.
+
+## THE MOVING LAVA (2026-10-05)
+mondo: "the lava is not moving like the water or the poison tiles are". Cause: `_buildFluidTopMat` gave water and the
+tinted bogs the caustic web / glints / swell on the shared fluid clock, but lava only the two scrolling wave sheets (sheet 1
+is lava.png scrolled over lava.png, barely visible). On WebGPU the sheet offsets were per-object uniforms, which a static
+render bundle never refreshes, so lava in a bundled room stood still. Fix: lava gets its own world-space flow on the clock
+(`_EW_LAVA_GLSL` + the `D.lava` branch of `_ewNodeFluid`: warped glowing channels, crust, pulse, emissive), and the node
+twin scrolls every liquid's sheets from `U.ftime` × `_FLUID_DRIFT_3D` instead of the per-object offset uniform.
+Covers map lava (tile boxes, HQ room sheets) and spell lava (the field skins).
