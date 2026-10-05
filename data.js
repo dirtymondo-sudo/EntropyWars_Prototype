@@ -45073,7 +45073,7 @@ hqCaveFitRooms();
                                                           the walker drops off and cannot climb (edge = the
                                                           cliff's run, 0.35 m; a wider edge is a bank it can)
        ramp    { x0, z0, x1, z1, w, h0, h1, edge?, stairs? }  an incline from h0 to h1 along the line
-                                                          (stairs: true = the samples are treads, 2 cells each)
+                                                          (stairs: true = a flight: still a smooth slope; +built = a solid wedge)
        deck    { x0, z0, x1, z1, w, y }        a plank bridge: a flat deck at y over whatever is under it
      WATER (set: the ground is TAKEN DOWN to the bed, the sheet drawn at y):
        pool    { x, z, r, y, depth, key?, bank? }          a pond (key water | deep_water | lava)
@@ -47339,7 +47339,11 @@ function hqTerrainCompile(room, roomId) {
                 const L = _hqTRamp(px, pz, f), edge = (f.edge != null) ? f.edge : 0.35;
                 if (L.t < -0.02 || L.t > 1.02 || Math.abs(L.v) > f.w / 2) continue;
                 let t = Math.max(0, Math.min(1, L.t));
-                if (f.stairs) { const tread = f.built ? res : 2 * res, n = Math.max(1, Math.round(L.L / tread)); t = Math.min(1, Math.floor(t * n + 0.001) / n); }   // a BUILT flight (LEVEL_DESIGN_PLAN L1): a tread per cell, so no grid step skips a riser (the solver's climb)
+                /* NO STEPPED STAIRS (2026-10-05, mondo: "wtf are these bullshit stairs ... either make a smooth ramp or use a stairs prop"):
+                   a `stairs` ramp no longer quantises the field into 1 m blocks — every flight (built or not) is a smooth slope h0 → h1, the
+                   built ones drawn as a solid wedge (three-renderer.js _hqBuildBuiltStairs). Only a FLOATING flight (THE DIVINE STAIR's
+                   separate cloud steps) keeps its treads, since its steps are drawn as separate slabs hung in the air. */
+                if (f.stairs && f.float) { const n = Math.max(1, Math.round(L.L / (2 * res))); t = Math.min(1, Math.floor(t * n + 0.001) / n); }
                 let fh = f.h0 + (f.h1 - f.h0) * t;
                 const side = f.w / 2 - Math.abs(L.v); if (side < edge) fh = fh * _hqTSmooth(side / edge) + h * (1 - _hqTSmooth(side / edge));
                 if (fh > h) h = fh;
@@ -52377,12 +52381,12 @@ const HQ_ARENA_RULES = {
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":20,"oz":1,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","dirt"],"cells":"01010101010101010101010101010101020201010101010102020201010101010202020101010101141401010101010101010101010101012121212121212121"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":50,"oz":39,"base":"desert","open":1,"keys":["desert"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":55,"oz":44,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":54,"oz":32,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101011414142121212101020202010101010101010101010101010101010101010101010101"},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":54,"oz":32,"base":"grass_2","open":1,"keys":["grass_2","rock_wall_1","cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101011515152121212101020203010101010101010101010101010101010101010101010101"},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":20,"oz":34,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":1,"base":"marble_light","open":0,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010102020201010101010202020101010101020202010101010104020201010101010101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":30,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"01010101010101010111010101010101011111111101010101010101111111110101010101011111010101010101040401010101010104040101010101010404"},
         prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"01010101010111110101010101011111010101010101111124240101010111112424010101011111012401010101111101240101010111110101010101011111"},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":19,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101140101010101010114010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"02010101010101010201010101010101020202010101010102020201010101010202020101010101020201010101010102010101010101010101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101010101010101010101010111110101010101011111010101010101111101010101010111110101010101011111010101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":8,"base":"grass_rocky","open":1,"keys":["dirt_2","grass_rocky","grass_2"],"cells":"01010101111111241111111101010101111124240101010124111101111101012424011111010101241101110111010111110111011111011111011111011101"},
