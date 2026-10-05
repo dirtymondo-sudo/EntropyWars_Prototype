@@ -393,3 +393,37 @@ replace the delta maps"; "dont delete the voxel editor yet". Replaces §5.10's m
   tinted as the Δ, the rim path moved outside it, the riser / lesson sign / signpost moved off it.
 - NOT done: the voxel editor (kept, mondo's word); the Δ builders (still run for the sites without an arena and as the tints /
   layout source); the HQ panels' "CROSS ▸ Δ" wording.
+
+## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
+
+R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls
+like in minecraft creative mode … why the fuck do i have to hold down right click to move around … i loaded a map from the game to try
+to edit it, clicking on an object does absolutely nothing".
+
+- **The dead click (root cause):** a library (game) room's rows carry no `id` (only his rooms get `hqWorldDocRowIds`), and the pick
+  proxies are built only for rows with an id, so not one prop picked; the palette was also hidden in the library. Now `enterRoom`
+  gives a library room's rows ids NOT ENUMERABLE (`libIds`: the game's room object never carries them into a JSON copy or the survey),
+  proxies only take the room's own props (identity or id), and the palette shows.
+- **A game room edits as his copy:** `own()` is the guard every action calls (was `editable()`): in the library it copies the room
+  (`hqWorldDocCopyRoom`), overwrites the copy's row ids with the library's (doors keep their own) so the pick stays the pick, keeps
+  the eye, and lands the change on the copy. The step carries `lib`: undoing it goes back to the game room. A game room he already
+  copied opens as his copy (`copyOf`: `edit.from`; the library pick, `?edit=`, the pause menu's EDIT). A brush press only makes the
+  copy (the next press brushes: the field is rebuilding); a grab started on a game room waits for the copy (`_down.wait`) then drags.
+  COPY INTO WORLD / MAKE MY COPY = `own()`. The inspector edits a game room's fields (the first change copies).
+- **The fly (`tick`, `flyDown`):** W A S D level with the ground wherever the eye looks (arrows too), SPACE up, SHIFT down (not while
+  SHIFT is busy: SHIFT + a key or click, a piece's 45° lock, a brush stroke), W W = sprint ×3; eased velocity `ED.vel`. Q / E no
+  longer fly; W / E no longer switch the gizmo (top bar buttons; T toggles SIZE).
+- **Mouse look (`ED.look`, `lookSet`, `lookUi`):** E or a click on empty ground with nothing picked = pointer lock + crosshair (`#edCross`,
+  `body.ed-look`, the panels dim, the gizmo `enabled = false`); E or ESC frees it (`onLockChange` follows the browser's ESC;
+  `pointerlockerror` / a refused promise drop it with a toast). While looking every click works at the view's middle (`ptr(e)`):
+  LEFT pick / hold + turn = grab (`_down.mv` counts mouse travel), RIGHT = place (`placeAt`: the armed tile or click tool, else
+  `duplicateSel(point)` = a copy of the pick there), MIDDLE = take in hand (`pickBlock`), wheel = fly speed. Flying moves the
+  aimed grab / ghost (`hover` from `tick`). A modal or a menu frees the mouse.
+- **With the cursor:** as before (pick, drag, gizmo, draw tools) plus RIGHT click = place (`ED.rmbAt`, under 5 px of turn), RIGHT
+  drag = turn the eye (pointer lock while held), MIDDLE pan, wheel dolly.
+- **The hotbar (`#edHot`, `hotPush` / `hotUse` / `hotUi`, localStorage `ew_editor_hot`):** nine slots; a BUILD / GROUND / LAYOUT tool or
+  a palette tile picked from the panels goes in the first empty slot, else the slot in use; 1-9 arm a slot (`palFind` resolves a tile
+  across the tabs), 0 / V = the empty hand.
+- **Quick check (scratch Playwright, real bucket assets):** the Cafeteria from the library: 92 proxies (was 4), a click picks the
+  serving line, a drag makes Room 2 (from cafeteria) and moves it 1 m, R / = work, W / SPACE / SHIFT fly, E locks the pointer and the
+  mouse turns the eye, a MODELS tile goes in slot 1, RIGHT click places it, undo goes back to the game room. No page errors.

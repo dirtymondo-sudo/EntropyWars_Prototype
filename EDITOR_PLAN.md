@@ -797,3 +797,7 @@ Nothing else: no art, no models, no textures, no names. Names are his to type in
   33 of 38 sites have one; Heaven, Hell, the Backrooms, the Revenge and Bermuda keep their Δ. The complex parts' Δ boards leave
   the match-select list. Checked headlessly (all 33 rebuild level for level) + a quick launch on two arenas. Details:
   docs/notes/editor.md "E8".
+- 2026-10-05: **THE CREATIVE CONTROLS** (mondo: "simple controls like in minecraft creative mode", "clicking on an object does
+  absolutely nothing" on a game room). Game rooms pick (their rows had no ids) and the first change edits his copy of the room;
+  W A S D / SPACE / SHIFT fly without holding a button, E or a click on empty ground = mouse look with a crosshair (LEFT pick and
+  drag, RIGHT place, MIDDLE take in hand), a 1-9 hotbar. Details: docs/notes/editor.md "THE CREATIVE CONTROLS".

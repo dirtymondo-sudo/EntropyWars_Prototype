@@ -276,6 +276,10 @@
         audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, FIELD (was 8×8) auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
         /* E6: THE ROOFS (C): off = the ceilings and roofs hidden and everything `h` m over the floor cut away, so he sees in */
         roof: { off: false, h: 3 }, roofHidden: [], grab: null,
+        /* THE CREATIVE CONTROLS (2026-10-05, mondo: "like in minecraft creative mode … why the fuck do i have to hold down right click
+           to move around"): `look` = the mouse is captured and turns the eye (a click on the view, E or ESC frees it), `vel` = the fly's
+           eased velocity (m/s), `hot` = the hotbar (1-9: the tools and tiles last used) */
+        look: false, vel: { x: 0, y: 0, z: 0 }, sprint: false, wTap: 0, hot: [], hotI: -1,
     };
     var PF_ROOM = '__ed_prefab';   // the room the editor lays a prefab out in while it is edited (never saved, never exported)
     var U = function () { return (ED.view && ED.view.units) || (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.units) || 73; };
@@ -394,7 +398,7 @@
         saveSoon();
         ED.sel = ED.sel.filter(selRow);
         if (ids.indexOf(ED.roomId) >= 0 && !(o && o.noReload)) reloadSoon();
-        if (ED.mode === 'world' && ED.roomId && !ED.doc.rooms[ED.roomId]) { var first = Object.keys(ED.doc.rooms)[0]; if (first) enterRoom(first, 'world'); }
+        if (ED.mode === 'world' && ED.roomId && !ED.doc.rooms[ED.roomId]) { if (step.lib && DOOR_HQ.rooms[step.lib]) { enterRoom(step.lib, 'library', { keepCam: true }); panels(); return; } var first = Object.keys(ED.doc.rooms)[0]; if (first) enterRoom(first, 'world'); }
         panels();
     }
     function undo() { var s = ED.undo.pop(); if (!s) return; try { Core.stepUndo(ED.doc, s); } catch (e) { toast('UNDO FAILED · ' + e.message); return; } ED.redo.push(s); afterStep(s); toast('UNDO · ' + s.label, 1200); }
@@ -429,7 +433,7 @@
         return 'r' + (max + 1);
     }
     function addRow(list, row, label, o) {
-        if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return null; }
+        if (!own()) return null;
         if (ED.mode === 'prefab' && list !== 'terrain.features' && list !== 'props') { toast('A PREFAB HOLDS SHAPES AND PROPS ONLY'); return null; }
         var step = [], n = ensureList(list, step);
         row = Core.clone(row); if (row.id == null) row.id = nextId(room());
@@ -439,11 +443,11 @@
         return row;
     }
     function replaceRows(pairs, label, o) {   // pairs = [{ list, i, before, after }]
-        if (!editable() || !pairs.length) return;
+        if (!pairs.length || !own()) return;
         commit(pairs.map(function (p) { return { path: rowPath(p.list, p.i), before: p.before, after: p.after }; }), label, o);
     }
     function deleteSel() {
-        if (!editable() || !ED.sel.length) return;
+        if (!ED.sel.length || !own()) return;
         var hits = ED.sel.map(selRow).filter(function (h) { return h && h.list !== 'spawn'; });
         hits.sort(function (a, b) { return a.list === b.list ? b.i - a.i : (a.list < b.list ? -1 : 1); });   // highest index first: the undo re-inserts in reverse
         var step = [], gone = {};
@@ -457,20 +461,23 @@
         ED.sel = [];
         commit(step, 'delete ' + hits.length);
     }
-    function duplicateSel() {
-        if (!editable() || !ED.sel.length) return;
+    function duplicateSel(to) {   // to = a ground point: the copy's anchor lands there (RIGHT click places a copy of the pick)
+        if (to && W.Event && to instanceof W.Event) to = null;   // a button's click passes its event
+        if (!ED.sel.length || !own()) return;
         var hits = ED.sel.map(selRow).filter(function (h) { return h && h.list !== 'spawn' && h.list !== 'doors'; });
-        if (!hits.length) return;
+        if (!hits.length) { if (to) toast('THE SPAWN AND DOORS ARE NOT COPIED (a door: the DOOR tool)', 2000); return; }
+        var off = { dx: Math.max(ED.snap, 1), dz: Math.max(ED.snap, 1) };
+        if (to) { var an = Core.rowAnchor(hits[0].row), sn = Math.max(0.25, ED.snap || 0); off = { dx: Core.snap(to.x, sn) - an.x, dz: Core.snap(to.z, sn) - an.z }; }
         var step = [], r = room(), max = +nextId(r).slice(1) - 1, sel = [];
         var ends = {};
         hits.forEach(function (h) {
             if (ends[h.list] == null) ends[h.list] = (listOf(r, h.list) || []).length;
-            var copy = Core.rowTransform(h.row, { dx: Math.max(ED.snap, 1), dz: Math.max(ED.snap, 1), px: 0, pz: 0 });
+            var copy = Core.rowTransform(h.row, { dx: off.dx, dz: off.dz, px: 0, pz: 0 });
             copy.id = 'r' + (++max);
             step.push({ path: rowPath(h.list, ends[h.list]++), before: undefined, after: copy });
             sel.push({ list: h.list, id: copy.id });
         });
-        commit(step, 'duplicate ' + hits.length);
+        commit(step, (to ? 'place a copy of ' : 'duplicate ') + hits.length);
         ED.sel = sel; gizmoAttach(); panels();
     }
 
@@ -481,6 +488,7 @@
         var prevRoom = ED.roomId, prevMode = ED.mode;
         ED.mode = mode || (W.hqWorldDocIsOwn(id) && ED.doc.rooms[id] ? 'world' : 'library');
         ED.roomId = id; ED.libRoom = ED.mode === 'library' ? id : null;
+        if (ED.mode === 'library') libIds(DOOR_HQ.rooms[id]);   // a game room picks like one of his (its rows had no ids: nothing picked)
         if (prevRoom !== id || prevMode !== ED.mode) { ED.sel = []; if (!o.keepCam) camHome(o.at); }
         ED.ready = false;
         ED.hook.play = false;
@@ -488,7 +496,7 @@
         ED.stroke = null; ED.auditRes = {};
         var ok = W._hqEditEnter({ room: id, edit: ED.hook, onReady: function () { ED.ready = true; rebuildProxies(); ED.roofHidden = []; roofHide(); bandClip(); auditSoon(); status(); }, onEscape: null });
         if (!ok) { toast('THE ROOM DID NOT BUILD · ' + id, 5000); return false; }
-        if (!ED.rmb) lookLock(false);   // THE POINTER: a lock the walk carried back from PLAY HERE goes
+        if (!ED.rmb && !ED.look) lookLock(false);   // THE POINTER: a lock the walk carried back from PLAY HERE goes (flying keeps it)
         overlayBuild();
         panels();
         return true;
@@ -567,7 +575,8 @@
             ED.group.add(grp);
             ED.proxies.push({ obj: grp, own: true, sel: grp.userData.edSel });
         });
-        (V.props || []).forEach(function (p) { if (p.row && p.row.id && p.grp && objInBand(p.grp)) { p.grp.userData.edSel = { list: 'props', id: p.row.id }; ED.proxies.push({ obj: p.grp, own: false, sel: p.grp.userData.edSel }); } });
+        var mine = new Set(), mineId = new Set(); (listOf(r, 'props') || []).forEach(function (q) { if (q) { mine.add(q); if (q.id != null) mineId.add(String(q.id)); } });
+        (V.props || []).forEach(function (p) { if (p.row && p.row.id != null && (mine.has(p.row) || mineId.has(String(p.row.id))) && p.grp && objInBand(p.grp)) { p.grp.userData.edSel = { list: 'props', id: p.row.id }; ED.proxies.push({ obj: p.grp, own: false, sel: p.grp.userData.edSel }); } });
         (V.doors || []).forEach(function (d) { if (d.door && d.door.id && d.group && objInBand(d.group) && (r.doors || []).some(function (x) { return x && x.id === d.door.id; })) { d.group.userData.edSel = { list: 'doors', id: d.door.id }; ED.proxies.push({ obj: d.group, own: false, sel: d.group.userData.edSel }); } });
         if (ED.spawnObj) ED.proxies.push({ obj: ED.spawnObj, own: false, sel: { list: 'spawn' } });
         /* E2: the people's spots, the agents, the online spots and the signs, as posts */
@@ -689,14 +698,27 @@
         gizmoAttach();
     }
 
-    /* ── THE FLY CAMERA: RIGHT MOUSE held = look + W A S D Q E; the arrows always; wheel = speed (held) / dolly; ALT + LEFT orbits,
-       MIDDLE pans. The editor's own eye (the walker stands still; the player never has it — R6) ── */
+    /* ── THE FLY (2026-10-05, Minecraft's creative flight; mondo: "why the fuck do i have to hold down right click to move around"):
+       W A S D (or the arrows) fly level with the ground wherever the eye looks, SPACE up, SHIFT down, W twice quickly = sprint (×3 until
+       W is let go); the eye eases in and out. The mouse turns the eye while it is captured (`look`: a click on empty ground or E; E or
+       ESC frees it) or while the RIGHT button is held. Wheel = fly speed while looking, a dolly otherwise. ALT + LEFT orbits, MIDDLE
+       pans. The editor's own eye (the walker stands still; the player never has it — R6) ── */
+    function flyDown() {   // SHIFT = down, unless it is busy: SHIFT + a key or a click, the 45° lock of a piece being drawn, a brush's flip
+        var k = ED.keys, D = ED.draw;
+        if (!k.shift || k.shiftUsed || ED.stroke) return false;
+        return !(D && (D.a || (D.pts && D.pts.length)));
+    }
     function tick(dt, H) {
         if (!ED.open || ED.playing) return;
-        var c = ED.cam, k = ED.keys, fly = ED.rmb, sp = c.speed * (k.shift ? 3 : 1) * (k.ctrl ? 0.25 : 1);
-        var fx = Math.sin(c.yaw) * Math.cos(c.pitch), fy = Math.sin(c.pitch), fz = -Math.cos(c.yaw) * Math.cos(c.pitch), rx = Math.cos(c.yaw), rz = Math.sin(c.yaw);
-        var mf = ((fly && k.w) || k.up ? 1 : 0) - ((fly && k.s) || k.down ? 1 : 0), mr = ((fly && k.d) || k.right ? 1 : 0) - ((fly && k.a) || k.left ? 1 : 0), mu = ((fly && k.e) || k.pgup ? 1 : 0) - ((fly && k.q) || k.pgdn ? 1 : 0);
-        c.x += (fx * mf + rx * mr) * sp * dt; c.y += (fy * mf + mu) * sp * dt; c.z += (fz * mf + rz * mr) * sp * dt;
+        var c = ED.cam, k = ED.keys, V = ED.vel, t = Math.min(0.25, dt);
+        if (!(k.w || k.up)) ED.sprint = false;
+        var sp = c.speed * (ED.sprint ? 3 : 1), rx = Math.cos(c.yaw), rz = Math.sin(c.yaw);
+        var mf = (k.w || k.up ? 1 : 0) - (k.s || k.down ? 1 : 0), mr = (k.d || k.right ? 1 : 0) - (k.a || k.left ? 1 : 0), mu = (k.space || k.pgup ? 1 : 0) - (flyDown() || k.pgdn ? 1 : 0);
+        var n = Math.hypot(mf, mr) || 1, ease = Math.min(1, t * 10);
+        V.x += ((rz * mf + rx * mr) / n * sp - V.x) * ease; V.z += ((-rx * mf + rz * mr) / n * sp - V.z) * ease; V.y += (mu * sp - V.y) * ease;
+        if (Math.abs(V.x) + Math.abs(V.y) + Math.abs(V.z) < 0.01) V.x = V.y = V.z = 0;
+        var moving = !!(V.x || V.y || V.z);
+        c.x += V.x * t; c.y += V.y * t; c.z += V.z * t;
         var cam = H.camera, u = U();
         cam.position.set(c.x * u, c.y * u, c.z * u);
         cam.rotation.order = 'YXZ'; cam.rotation.set(c.pitch, -c.yaw, 0);
@@ -708,6 +730,8 @@
             if (pl.entry && pl.entry.group) pl.entry.group.visible = false;
             if (ED.mode === 'world' && !H.stage) { var g = ground(c.x, c.z); pl.x = c.x; pl.z = c.z; pl.y = g; pl.visY = g; }
         }
+        /* the crosshair while the mouse is captured: the point every click works at; flying moves what it is aiming (a grab, a ghost) */
+        if (ED.look && lockedNow()) { var ce = ptr(null); ED.mouse.x = ce.clientX; ED.mouse.y = ce.clientY; ED.mouse.in = true; if (moving) hover(ce); }
         for (var i = 0; i < ED.boxes.length; i++) ED.boxes[i].update();
         var now = performance.now();
         /* E3: a brush held on the ground works every frame (the cursor re-read each frame: the ground under it is moving) */
@@ -809,7 +833,7 @@
         if (ED.stroke) strokeEnd();
         ED.draw = tool ? { tool: tool, a: null, chain0: null, b: null, pts: null } : null;
         if (tool) { select(null); if (DRAWS[tool]) toast(DRAWS[tool].tip, 3200); }
-        panels();
+        panels(); hotUi();
     }
     /* a ground point under the mouse, snapped: to a wall's end within 0.6 m (walls join), else to the grid (SNAP, 0.25 m at least);
        SHIFT from an anchor locks the direction to 45° steps */
@@ -864,7 +888,7 @@
     function wallRow(a, b) { var O = ED.opts, r = { k: 'wall', x0: a.x, z0: a.z, x1: b.x, z1: b.z, h: O.wallH, t: O.wallT, key: O.wallKey || null }; if (O.wallKeyIn && O.wallKeyIn !== O.wallKey) r.keyIn = O.wallKeyIn; return r; }
     /* one finished piece → rows, as ONE undo step */
     function drawRows(rows, label) {
-        if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return; }
+        if (!own()) return;
         var step = [], n = ensureList('terrain.features', step), r = room(), max = +nextId(r).slice(1) - 1;
         rows.forEach(function (row, i) { row.id = 'r' + (++max); step.push({ path: rowPath('terrain.features', n + i), before: undefined, after: row }); });
         commit(step, label);
@@ -977,7 +1001,8 @@
     }
     function strokeStart(e) {
         var D = ED.draw; if (!D) return;
-        if (ED.mode !== 'world' || !editable()) { toast('THE GROUND BRUSHES WORK IN YOUR OWN ROOMS (not a prefab, not the library)'); return; }
+        if (ED.mode === 'library') { own(); return; }   // the copy builds first; the next press brushes it
+        if (ED.mode !== 'world' || !editable()) { toast('THE GROUND BRUSHES WORK IN YOUR OWN ROOMS (not a prefab)'); return; }
         var r = room(), info = termInfo();
         if (!r || !r.terrain || !info || !ED.ready) { toast('THE ROOM IS STILL BUILDING'); return; }
         var c = rayGround(e.clientX, e.clientY); if (!c) return;
@@ -1143,6 +1168,7 @@
         commit([{ path: basePath().concat(['terrain', 'paint']), before: Core.clone(P), after: pal.length ? after : undefined }], 'remove sheet ' + key);
     }
     function groundClear(which) {
+        if (ED.mode === 'library' && room() && room().terrain && room().terrain[which] && !own()) return;
         var r = room(); if (!r || !r.terrain || !editable() || !r.terrain[which]) { toast('NOTHING TO CLEAR'); return; }
         var T = r.terrain, after;
         if (which === 'paint') after = (T.paint.pal && T.paint.pal.length) ? { pal: T.paint.pal.slice() } : undefined;
@@ -1306,15 +1332,34 @@
         toast('CLICK ON A WALL (a wall you drew — a building\'s block takes no opening)', 2500);
     }
 
-    /* ══ INPUT (the editor's own; the room's handlers stand down while `edit` is on) ════════════════════════════════════ */
-    var KEYMAP = { arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right', pageup: 'pgup', pagedown: 'pgdn' };
+    /* ══ INPUT (the editor's own; the room's handlers stand down while `edit` is on) ════════════════════════════════════
+       THE CREATIVE CONTROLS (2026-10-05, mondo: "need to make the editor more intuative and simple controls like in minecraft
+       creative mode … none of it makes any fucking sense"). Two ways to hold the mouse, one set of keys:
+         FLYING (the mouse captured, a crosshair; a click on empty ground or E starts it, E or ESC ends it): the mouse turns the eye,
+           LEFT picks what the crosshair is on (hold and turn = drag it over the ground), RIGHT places (the armed tile, else a copy of
+           the pick), MIDDLE takes the thing in hand (picks it: RIGHT then stamps copies), the wheel sets the fly speed.
+         THE CURSOR (the panels, the gizmo): LEFT picks / drags / draws at the cursor, RIGHT click places, RIGHT drag turns the eye,
+           MIDDLE drag pans, the wheel dollies.
+       Always: W A S D fly, SPACE up, SHIFT down, W W sprint; 1-9 the hotbar (the tools and tiles last used), 0 / V the empty hand. */
+    var KEYMAP = { arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right', pageup: 'pgup', pagedown: 'pgdn', ' ': 'space' };
+    var MOVE_KEYS = ['w', 'a', 's', 'd', 'space', 'up', 'down', 'left', 'right', 'pgup', 'pgdn'];
     function typing(e) { var t = e.target; return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)); }
+    function lockedNow() { return !!(ED.view && document.pointerLockElement === ED.view.canvas); }
+    /* the point a mouse action works at: the cursor, or the middle of the view (the crosshair) while flying */
+    function ptr(e) {
+        if (e && !(ED.look && lockedNow())) return e;
+        var cv = ED.view && ED.view.canvas, rc = cv ? cv.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+        return { clientX: rc.left + rc.width / 2, clientY: rc.top + rc.height / 2, shiftKey: !!(e && e.shiftKey), altKey: !!(e && e.altKey), ctrlKey: !!(e && e.ctrlKey), metaKey: !!(e && e.metaKey),
+                 button: e ? e.button : 0, target: cv, preventDefault: function () { try { if (e) e.preventDefault(); } catch (x) {} } };
+    }
     function onKeyDown(e) {
         if (!ED.open || ED.playing) return;
         if ($('edModal') && $('edModal').style.display !== 'none') { if (e.key === 'Escape') { modalClose(); e.preventDefault(); } return; }
         if (typing(e)) return;
         if (e.target && e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) e.preventDefault();   // a focused panel button never re-fires on SPACE / ENTER
         var key = (e.key || '').toLowerCase(), k = KEYMAP[key] || key;
+        if (k === 'shift') { if (!e.repeat) ED.keys.shiftUsed = false; ED.keys.shift = true; return; }
+        if (e.shiftKey) ED.keys.shiftUsed = true;   // SHIFT + a key belongs to that key (SHIFT R turns back), not to the fly's down
         if (drawKey(k)) { e.preventDefault(); return; }
         ED.keys.shift = e.shiftKey; ED.keys.ctrl = e.ctrlKey || e.metaKey;
         var mod = e.ctrlKey || e.metaKey;
@@ -1323,20 +1368,22 @@
         if (mod && k === 's') { e.preventDefault(); saveNow().then(function (ok) { if (ok) toast('SAVED · ' + ED.project); }); return; }
         if (mod && k === 'd') { e.preventDefault(); duplicateSel(); return; }
         if (mod) return;
-        if (['w', 'a', 's', 'd', 'q', 'e', 'up', 'down', 'left', 'right', 'pgup', 'pgdn'].indexOf(k) >= 0) {
-            ED.keys[k] = true;
-            if (!ED.rmb && KEYMAP[key] == null && ['w', 'e'].indexOf(k) >= 0) { tcMode(k === 'w' ? 'translate' : 'rotate'); }
-            if (KEYMAP[key]) e.preventDefault();
+        if (MOVE_KEYS.indexOf(k) >= 0) {
+            if (k === 'w' && !ED.keys.w && !e.repeat) { var now = performance.now(); if (now - ED.wTap < 320) ED.sprint = true; ED.wTap = now; }   // W W = sprint (Minecraft's)
+            ED.keys[k] = true; e.preventDefault();
             return;
         }
+        if (k === 'e') { lookSet(!ED.look); return; }
+        if (/^[1-9]$/.test(k)) { hotUse(+k - 1); return; }
+        if (k === '0') { drawSet(null); return; }
         /* E6 (mondo, 2026-09-29: "click on an object and be able to move it and rotate it. Like R to rotate 45 degrees at a time"):
            R turns the pick 45° clockwise, SHIFT R back; - / = size it (SHIFT: a bigger step); T is the gizmo's SIZE; C hides the roofs */
         if (k === 'r') { turnSel(e.shiftKey ? -45 : 45); return; }
-        if (k === 't') { tcMode('scale'); return; }
+        if (k === 't') { tcMode(ED.tool === 'scale' ? 'translate' : 'scale'); return; }
         if (k === '-' || k === '_') { sizeSel(1 / (k === '_' ? 1.25 : 1.1)); return; }
         if (k === '=' || k === '+') { sizeSel(k === '+' ? 1.25 : 1.1); return; }
         if (k === 'c') { roofSet({ off: !ED.roof.off }); return; }
-        if (k === 'escape') { select(null); return; }
+        if (k === 'escape') { if (ED.look) { lookSet(false); return; } select(null); return; }
         if (k === 'v') { drawSet(null); return; }
         if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); return; }
         if (k === 'f') { frameSel(); return; }
@@ -1351,40 +1398,90 @@
         if (!ED.open) return;
         var key = (e.key || '').toLowerCase(), k = KEYMAP[key] || key;
         ED.keys[k] = false; ED.keys.shift = e.shiftKey; ED.keys.ctrl = e.ctrlKey || e.metaKey;
+        if (k === 'shift') ED.keys.shiftUsed = false;
     }
-    function onBlur() { if (ED.grab) grabEnd(); ED.keys = {}; ED.rmb = false; ED.mmb = false; ED.orbit = null; lookLock(false); if (ED.stroke) strokeEnd(); }
+    function onBlur() { if (ED.grab) grabEnd(); ED.keys = {}; ED.vel.x = ED.vel.y = ED.vel.z = 0; ED.rmb = false; ED.mmb = false; ED.orbit = null; ED.look = false; lookLock(false); lookUi(); if (ED.stroke) strokeEnd(); }
     /* THE POINTER (E1, 2026-09-29 — mondo: "clicking in the entry fields takes control of my pointer and I have to press escape"):
-       the editor holds the pointer ONLY while the RIGHT button is held over the 3D view (the fly look), and gives it back on the
-       release. Any other lock that lands while the editor is open (a late request from a room re-entering, the walk's lock carried
-       back from PLAY HERE) is released at once, so a click on a field, a menu or the view never loses the mouse. */
+       the editor holds the pointer only while FLYING (a click on empty ground in the view, or E) or while the RIGHT button is held over
+       the 3D view, and gives it back on E, ESC or the release. A panel field, a menu or a modal never takes it; any other lock that
+       lands while the editor is open (a late request from a room re-entering, the walk's lock carried back from PLAY HERE) is let go. */
     function lookLock(on) {
         var cv = ED.view && ED.view.canvas;
         try {
-            if (on) { if (cv && document.pointerLockElement !== cv && cv.requestPointerLock) { var p = cv.requestPointerLock(); if (p && typeof p.catch === 'function') p.catch(function () {}); } }
+            if (on) { if (cv && document.pointerLockElement !== cv && cv.requestPointerLock) { var p = cv.requestPointerLock(); if (p && typeof p.catch === 'function') p.catch(lockRefused); } }
             else if (document.pointerLockElement) document.exitPointerLock();
         } catch (e) {}
     }
+    function lockRefused() { if (ED.look && !lockedNow()) { ED.look = false; lookUi(); toast('THE BROWSER KEPT THE MOUSE · click the view (or E) again to fly', 2600); } }
     function onLockChange() {
         if (!ED.open || ED.playing) return;
-        if (document.pointerLockElement && !ED.rmb) { try { document.exitPointerLock(); } catch (e) {} }
+        var locked = lockedNow();
+        if (!locked) { if (ED.look) { ED.look = false; ED.keys = {}; lookUi(); } if (ED.grab && !ED.rmb) grabEnd(); return; }   // ESC (the browser's own) freed it
+        if (!ED.look && !ED.rmb) { try { document.exitPointerLock(); } catch (e) {} }
+        lookUi();
+    }
+    /* FLYING on / off (E, a click on empty ground; ESC or E ends it) */
+    function lookSet(on) {
+        on = !!on && !!ED.view && !ED.playing;
+        if (on && $('edModal') && $('edModal').style.display !== 'none') return;
+        ED.look = on;
+        if (on) { var m = $('edMenu'); if (m) m.style.display = 'none'; if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); lookLock(true); }
+        else if (!ED.rmb) lookLock(false);
+        lookUi();
+    }
+    function lookUi() {
+        var on = !!(ED.look && ED.open && !ED.playing);
+        document.body.classList.toggle('ed-look', on);
+        if (ED.tc) ED.tc.enabled = !on;   // the gizmo is a cursor tool: while flying, LEFT held on a thing drags it
+        var h = $('edHint'); if (!h) return;
+        h.innerHTML = on ? '<b>E</b> or <b>ESC</b> frees the mouse · <b>LEFT</b> pick (hold to drag) · <b>RIGHT</b> place · <b>MIDDLE</b> take in hand · <b>WHEEL</b> speed ' + ED.cam.speed.toFixed(0) + ' m/s'
+                         : '<b>W A S D</b> fly · <b>SPACE</b> up · <b>SHIFT</b> down · <b>E</b> or a click on empty ground = mouse look · <b>RIGHT</b> click places · <b>H</b> all keys';
+    }
+    /* RIGHT = place (Minecraft): the armed tile or tool where the crosshair / cursor is; nothing armed = a copy of the pick there */
+    function placeAt(e) {
+        var D = ED.draw;
+        if (D) {
+            var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
+            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || D.tool === 'paint') { drawUp(e); return; }
+            toast((DRAWS[D.tool] ? DRAWS[D.tool].label : 'THIS TOOL') + ' DRAWS WITH THE LEFT BUTTON (hold and drag)', 1800); return;
+        }
+        if (!ED.sel.length) { toast('NOTHING IN HAND · pick a tile (1-9 or the palette) or click a thing, then RIGHT click places it', 2600); return; }
+        var c = rayGround(e.clientX, e.clientY); if (!c) return;
+        duplicateSel(c);
+    }
+    /* MIDDLE while flying = take the thing under the crosshair in hand (it is picked: RIGHT stamps copies, R turns, DEL deletes) */
+    function pickBlock(e) {
+        var hit = pickAt(e.clientX, e.clientY);
+        if (!hit) { toast('NOTHING THERE', 900); return; }
+        drawSet(null); select(hit.list, hit.id);
+        var h = selRow(ED.sel[0]); toast('IN HAND · ' + (h ? Core.rowLabel(h.list, h.row) : '') + ' · RIGHT click places copies', 1800);
     }
     var _down = null;
-    function onMouseDown(e) {
-        if (!ED.open || ED.playing || !ED.view || e.target !== ED.view.canvas) return;
-        ED.last.x = e.clientX; ED.last.y = e.clientY;
-        if (e.button === 2) { ED.rmb = true; e.preventDefault(); lookLock(true); return; }
-        if (e.button === 1) { ED.mmb = true; e.preventDefault(); return; }
-        if (e.button === 0 && e.altKey) { var o = ED.sel.map(selRow).filter(Boolean)[0], a = o ? Core.rowAnchor(o.row) : spot(); ED.orbit = { x: a.x, z: a.z, y: ground(a.x, a.z) }; e.preventDefault(); return; }
-        if (e.button === 0) {
-            _down = { x: e.clientX, y: e.clientY, tc: !!(ED.tc && ED.tc.axis) }; if (ED.draw) { e.preventDefault(); drawDown(e); return; }
-            /* E6: THE GRAB — press on a thing and drag it: it follows the cursor over the ground (the grid snap). A thing you can see
-               (a prop, a door, a person's post, the spawn) grabs at once; a shape's box only when it is already picked */
-            if (!_down.tc && editable() && ED.pivot) { var gh = pickAt(e.clientX, e.clientY); if (gh && (gh.list !== 'terrain.features' || isSel(gh.list, gh.id))) _down.grab = gh; }
+    function onMouseDown(e0) {
+        if (!ED.open || ED.playing || !ED.view || e0.target !== ED.view.canvas) return;
+        var fly = ED.look && lockedNow(), e = ptr(e0);
+        if (e0.shiftKey) ED.keys.shiftUsed = true;
+        ED.last.x = e0.clientX; ED.last.y = e0.clientY;
+        if (fly) {
+            if (e0.button === 2) { e0.preventDefault(); placeAt(e); return; }
+            if (e0.button === 1) { e0.preventDefault(); pickBlock(e); return; }
+        } else {
+            if (e0.button === 2) { ED.rmb = true; ED.rmbMove = 0; ED.rmbAt = { clientX: e0.clientX, clientY: e0.clientY, shiftKey: e0.shiftKey, button: 2, target: e0.target }; e0.preventDefault(); lookLock(true); return; }
+            if (e0.button === 1) { ED.mmb = true; e0.preventDefault(); return; }
+            if (e0.button === 0 && e0.altKey) { var o = ED.sel.map(selRow).filter(Boolean)[0], a = o ? Core.rowAnchor(o.row) : spot(); ED.orbit = { x: a.x, z: a.z, y: ground(a.x, a.z) }; e0.preventDefault(); return; }
+        }
+        if (e0.button === 0) {
+            _down = { x: e.clientX, y: e.clientY, mv: 0, fly: fly, tc: !fly && !!(ED.tc && ED.tc.axis) }; if (ED.draw) { e0.preventDefault(); drawDown(e); return; }
+            /* E6: THE GRAB — press on a thing and drag it: it follows the cursor (or the crosshair) over the ground (the grid snap). A
+               thing you can see (a prop, a door, a person's post, the spawn) grabs at once; a shape's box only when it is already picked */
+            if (!_down.tc && (editable() || ED.mode === 'library') && ED.pivot) { var gh = pickAt(e.clientX, e.clientY); if (gh && (gh.list !== 'terrain.features' || isSel(gh.list, gh.id))) _down.grab = gh; }
         }
     }
     function grabStart(d, e) {
-        var gh = d.grab; d.grab = null;
+        var gh = d.grab;
         if (!isSel(gh.list, gh.id)) select(gh.list, gh.id, e.shiftKey);
+        if (ED.mode === 'library') { if (!own()) { d.grab = null; return; } d.wait = true; return; }   // a game room: the copy builds first, then the drag goes on
+        d.grab = null; d.wait = false;
         if (!ED.sel.length || !ED.pivot || !ED.tc || !ED.tc.object) return;
         var g0 = rayGround(d.x, d.y); if (!g0) return;
         dragStart(); ED.grab = { g0: g0, p0: ED.pivot.position.clone() }; ED.tcDragging = true;
@@ -1397,17 +1494,37 @@
         dragMove();
     }
     function grabEnd() { if (!ED.grab) return; ED.grab = null; var t = ED.tool; ED.tool = 'translate'; dragEnd(); ED.tool = t; ED.tcDragging = false; }
-    function onMouseMove(e) {
-        if (!ED.open || ED.playing) return;
-        var locked = !!(ED.view && document.pointerLockElement === ED.view.canvas);
-        var dx = locked ? (e.movementX || 0) : e.clientX - ED.last.x, dy = locked ? (e.movementY || 0) : e.clientY - ED.last.y;
-        if (locked) { if (ED.rmb) { var c0 = ED.cam; c0.yaw += dx * 0.0042; c0.pitch = Math.max(-1.55, Math.min(1.55, c0.pitch - dy * 0.0042)); } return; }
-        ED.last.x = e.clientX; ED.last.y = e.clientY;
-        ED.mouse.x = e.clientX; ED.mouse.y = e.clientY; ED.mouse.in = !!(ED.view && e.target === ED.view.canvas);
-        if (_down && _down.grab && Math.hypot(e.clientX - _down.x, e.clientY - _down.y) > 4) grabStart(_down, e);   // E6: the grab
+    /* what the cursor / the crosshair is over: a grab follows it, a draw tool's ghost shows there */
+    function hover(e) {
+        if (_down && _down.grab && (_down.fly ? _down.mv > 6 : Math.hypot(e.clientX - _down.x, e.clientY - _down.y) > 4)) {
+            if (!_down.wait) grabStart(_down, e);
+            if (_down && _down.wait && ED.ready && ED.mode !== 'library') { _down.wait = false; if (_down.fly) { _down.x = e.clientX; _down.y = e.clientY; } grabStart(_down, e); }   // the copy stands: the drag starts here
+        }
         if (ED.grab) { grabMove(e); return; }
+        if (ED.draw && ED.mouse.in) {
+            var D = ED.draw, how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
+            if (how === 'doorway' || (how === 'click' && (D.entry || D.row) && D.tool !== 'paint')) placeShow(rayGround(e.clientX, e.clientY));
+            else drawShow(how === 'click' || how === 'wall' ? null : drawPt(e.clientX, e.clientY, e));
+        }
+    }
+    function turnEye(dx, dy) { var c = ED.cam; c.yaw += dx * 0.0042; c.pitch = Math.max(-1.55, Math.min(1.55, c.pitch - dy * 0.0042)); }
+    function onMouseMove(e0) {
+        if (!ED.open || ED.playing) return;
+        var locked = lockedNow();
+        var dx = locked ? (e0.movementX || 0) : e0.clientX - ED.last.x, dy = locked ? (e0.movementY || 0) : e0.clientY - ED.last.y;
+        if (ED.rmb) ED.rmbMove = (ED.rmbMove || 0) + Math.abs(dx) + Math.abs(dy);
+        if (locked) {
+            if (ED.look || ED.rmb) turnEye(dx, dy);
+            if (!ED.look) return;   // the right-button look: the cursor waits where it was
+            if (_down) _down.mv += Math.abs(dx) + Math.abs(dy);
+            var e = ptr(e0); ED.mouse.x = e.clientX; ED.mouse.y = e.clientY; ED.mouse.in = true;
+            hover(e); return;
+        }
+        ED.last.x = e0.clientX; ED.last.y = e0.clientY;
+        ED.mouse.x = e0.clientX; ED.mouse.y = e0.clientY; ED.mouse.in = !!(ED.view && e0.target === ED.view.canvas);
+        if (_down) _down.mv += Math.abs(dx) + Math.abs(dy);
         var c = ED.cam;
-        if (ED.rmb) { c.yaw += dx * 0.0042; c.pitch = Math.max(-1.55, Math.min(1.55, c.pitch - dy * 0.0042)); return; }
+        if (ED.rmb) { turnEye(dx, dy); return; }
         if (ED.mmb) { var sp = Math.max(0.02, Math.abs(c.y) * 0.0025 + 0.02); c.x -= (Math.cos(c.yaw) * dx) * sp; c.z -= (Math.sin(c.yaw) * dx) * sp; c.y += dy * sp; return; }
         if (ED.orbit) {
             var O = ED.orbit, vx = c.x - O.x, vz = c.z - O.z, vy = c.y - O.y, R = Math.max(1, Math.hypot(vx, vy, vz));
@@ -1415,45 +1532,89 @@
             c.x = O.x + Math.sin(yaw) * Math.cos(el) * R; c.z = O.z - Math.cos(yaw) * Math.cos(el) * R; c.y = O.y + Math.sin(el) * R;
             c.yaw = Math.atan2(O.x - c.x, -(O.z - c.z)); c.pitch = Math.atan2(O.y - c.y, Math.hypot(O.x - c.x, O.z - c.z));
         }
-        if (ED.draw && ED.mouse.in) {
-            var D = ED.draw, how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
-            if (how === 'doorway' || (how === 'click' && (D.entry || D.row) && D.tool !== 'paint')) placeShow(rayGround(e.clientX, e.clientY));
-            else drawShow(how === 'click' || how === 'wall' ? null : drawPt(e.clientX, e.clientY, e));
-        }
+        hover(e0);
     }
-    function onMouseUp(e) {
+    function onMouseUp(e0) {
         if (!ED.open || ED.playing) return;
-        if (e.button === 2) { ED.rmb = false; lookLock(false); }
-        if (e.button === 1) ED.mmb = false;
-        if (e.button === 0) {
+        var e = ptr(e0);
+        if (e0.button === 2 && ED.rmb) {
+            ED.rmb = false; if (!ED.look) lookLock(false);
+            var at = ED.rmbAt; ED.rmbAt = null;
+            if (at && (ED.rmbMove || 0) < 5) placeAt(at);   // a RIGHT click (no turn) places
+            return;
+        }
+        if (e0.button === 1) ED.mmb = false;
+        if (e0.button === 0) {
             ED.orbit = null;
             if (ED.grab) { _down = null; grabEnd(); return; }   // E6: the grab lands (one undo step)
-            if (ED.stroke && !(ED.view && e.target === ED.view.canvas)) { _down = null; strokeEnd(e); return; }   // E3: a stroke let go off the view still ends
+            if (ED.stroke && !(ED.view && e0.target === ED.view.canvas)) { _down = null; strokeEnd(e); return; }   // E3: a stroke let go off the view still ends
             var d = _down; _down = null;
-            if (ED.draw && d && !d.tc && ED.view && e.target === ED.view.canvas) { drawUp(e); return; }
-            if (!d || d.tc || ED.tcDragging || !ED.view || e.target !== ED.view.canvas) return;
-            if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
+            if (d && d.wait) return;   // a game room's copy still building under a drag: the drag is dropped
+            if (ED.draw && d && !d.tc && ED.view && e0.target === ED.view.canvas) { drawUp(e); return; }
+            if (!d || d.tc || ED.tcDragging || !ED.view || e0.target !== ED.view.canvas) return;
+            if (d.fly ? d.mv > 6 : Math.hypot(e.clientX - d.x, e.clientY - d.y) > 4) return;
             var hit = pickAt(e.clientX, e.clientY);
-            if (hit) select(hit.list, hit.id, e.shiftKey); else if (!e.shiftKey) select(null);
+            if (hit) select(hit.list, hit.id, e.shiftKey);
+            else if (!e.shiftKey) { if (ED.sel.length || d.fly) select(null); else lookSet(true); }   // empty ground: drop the pick; nothing to drop = fly (Minecraft's click into the game)
         }
     }
     function onWheel(e) {
         if (!ED.open || ED.playing || !ED.view || e.target !== ED.view.canvas) return;
         e.preventDefault();
         var c = ED.cam;
-        if (ED.rmb) { c.speed = Math.max(1, Math.min(200, c.speed * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); toast('FLY SPEED ' + c.speed.toFixed(1) + ' m/s', 900); return; }
+        if (ED.rmb || ED.look) { c.speed = Math.max(1, Math.min(200, c.speed * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); toast('FLY SPEED ' + c.speed.toFixed(1) + ' m/s', 900); lookUi(); return; }
         var m = (e.deltaY < 0 ? 1 : -1) * Math.max(1, c.speed * 0.25);
         c.x += Math.sin(c.yaw) * Math.cos(c.pitch) * m; c.y += Math.sin(c.pitch) * m; c.z += -Math.cos(c.yaw) * Math.cos(c.pitch) * m;
     }
     function onContext(e) { if (ED.open && !ED.playing && ED.view && e.target === ED.view.canvas) e.preventDefault(); }
+    function onLockError() { lockRefused(); }
     function bind(on) {
         var f = on ? 'addEventListener' : 'removeEventListener';
         window[f]('keydown', onKeyDown, true); window[f]('keyup', onKeyUp, true); window[f]('blur', onBlur);
         window[f]('mousedown', onMouseDown, true); window[f]('mousemove', onMouseMove); window[f]('mouseup', onMouseUp, true);
         window[f]('wheel', onWheel, { passive: false }); window[f]('contextmenu', onContext, true);
-        document[f]('pointerlockchange', onLockChange);
+        document[f]('pointerlockchange', onLockChange); document[f]('pointerlockerror', onLockError);
+    }
+    /* THE HOTBAR (Minecraft's): nine slots holding the tools and tiles he used last; 1-9 takes one up again, 0 / V = the empty hand
+       (SELECT). A tool or tile picked from the panels goes in the first empty slot, else in the slot in use. Kept in this browser. */
+    function hotKeyOf(it) { return it ? (it.t === 'draw' ? 'draw:' + it.tool : 'pal:' + it.id) : ''; }
+    function hotSave() { try { localStorage.setItem('ew_editor_hot', JSON.stringify(ED.hot.map(function (q) { return q ? { t: q.t, tool: q.tool, id: q.id, label: q.label } : null; }))); } catch (e) {} }
+    function hotLoad() { try { var a = JSON.parse(localStorage.getItem('ew_editor_hot') || 'null'); if (Array.isArray(a)) ED.hot = a.slice(0, 9).map(function (q) { return q && (q.tool || q.id) ? q : null; }); } catch (e) {} }
+    function hotPush(it) {
+        var key = hotKeyOf(it), i;
+        for (i = 0; i < 9; i++) if (hotKeyOf(ED.hot[i]) === key) { ED.hotI = i; hotUi(); return; }
+        for (i = 0; i < 9; i++) if (!ED.hot[i]) break;
+        if (i >= 9) i = ED.hotI >= 0 ? ED.hotI : 0;
+        ED.hot[i] = it; ED.hotI = i; hotSave(); hotUi();
+    }
+    /* a palette entry by its id, across the tabs */
+    function palFind(id) {
+        var P = palData(), tabs = Object.keys(P).concat(['textures', 'kits']);
+        for (var t = 0; t < tabs.length; t++) { var L = tabs[t] === 'textures' || tabs[t] === 'kits' ? palEntries(tabs[t]) : P[tabs[t]]; if (!Array.isArray(L)) continue; for (var i = 0; i < L.length; i++) if (L[i] && L[i].id === id) return L[i]; }
+        return null;
+    }
+    function hotUse(i) {
+        var it = ED.hot[i]; ED.hotI = i;
+        if (!it) { drawSet(null); hotUi(); return; }
+        if (it.t === 'draw') { if (!(ED.draw && ED.draw.tool === it.tool)) drawSet(it.tool); hotUi(); return; }
+        var e = palFind(it.id);
+        if (!e) { toast('THAT TILE IS NOT IN THIS GAME ANY MORE', 1600); ED.hot[i] = null; hotSave(); hotUi(); return; }
+        var D = ED.draw; if (!(D && ((D.entry && D.entry.id === e.id) || (D.key && e.tex === D.key)))) palPick(e);
+        hotUi();
+    }
+    function hotUi() {
+        var B = $('edHot'); if (!B) return;
+        var D = ED.draw, cur = D ? (D.entry ? 'pal:' + D.entry.id : D.entry0 ? 'pal:' + D.entry0.id : D.key ? 'pal:tex:' + D.key : DRAWS[D.tool] ? 'draw:' + D.tool : '') : '';
+        var h = '';
+        for (var i = 0; i < 9; i++) {
+            var it = ED.hot[i], on = it ? hotKeyOf(it) === cur : (!D && ED.hotI === i);
+            h += '<button class="ed-hs' + (on ? ' on' : '') + (it ? '' : ' empty') + '" data-hot="' + i + '" title="' + esc(it ? it.label : 'empty: the hand (SELECT)') + '"><i>' + (i + 1) + '</i>' + esc(it ? it.label : '') + '</button>';
+        }
+        if (B._h === h) return; B._h = h; B.innerHTML = h;
+        B.querySelectorAll('[data-hot]').forEach(function (b) { b.onclick = function () { hotUse(+b.getAttribute('data-hot')); }; });
     }
     function turnSel(deg) {
+        if (ED.sel.length && !own()) return;
         var hits = ED.sel.map(selRow).filter(Boolean); if (!editable()) return;
         if (!hits.length) { toast('CLICK A THING FIRST, THEN R TURNS IT', 1600); return; }
         var a = Core.rowAnchor(hits[0].row), step = [], live = true;
@@ -1494,6 +1655,7 @@
         var an = Core.rowAnchor(row); return Core.rowTransform(row, { sx: f, sy: f, sz: f, px: an.x, pz: an.z });
     }
     function sizeSel(f, label) {
+        if (ED.sel.length && !own()) return;
         var hits = ED.sel.map(selRow).filter(Boolean); if (!editable()) return;
         if (!hits.length) { toast('CLICK A THING FIRST, THEN - / = SIZE IT', 1600); return; }
         var pairs = [];
@@ -1585,14 +1747,47 @@
         enterRoom(id, 'world');
         toast('DUPLICATED AS ' + r.label.toUpperCase() + ' (its doors stay with the original)');
     }
-    function copyIntoWorld() {
-        if (ED.mode !== 'library' || !ED.roomId) return;
+    function copyIntoWorld() { if (ED.mode === 'library' && ED.roomId) own(); }   // the game room becomes his copy (the same as its first change)
+    /* A GAME ROOM IS EDITED AS YOUR COPY (2026-10-05, mondo: "i loaded a map from the game to try to edit it, clicking on an object
+       does absolutely nothing"). The library's rows had no ids, so not one of them picked. Now a library room's rows get ids the moment
+       it opens (NOT enumerable: the game's own room object never carries them into a JSON copy or the survey), every tool works in it,
+       and the first change copies it into his world (COPY INTO WORLD, at once, keeping the eye and the pick: the copy takes the same
+       ids) and lands on the copy. The game's room is not touched; his copy goes live with the swap, like every room of his. */
+    function libIds(r) {
+        if (!r) return;
+        var used = {}, max = 0, lists = (W.HQ_WORLD_DOC_RULES && W.HQ_WORLD_DOC_RULES.rowLists) || LISTS;
+        lists.forEach(function (p) { (listOf(r, p) || []).forEach(function (x) { if (x && x.id != null) { used[String(x.id)] = 1; var m = /^r(\d+)$/.exec(String(x.id)); if (m) max = Math.max(max, +m[1]); } }); });
+        lists.forEach(function (p) { (listOf(r, p) || []).forEach(function (x) {
+            if (!x || typeof x !== 'object' || x.id != null) return;
+            var id; do { id = 'r' + (++max); } while (used[id]);
+            used[id] = 1; try { Object.defineProperty(x, 'id', { value: id, enumerable: false, configurable: true, writable: true }); } catch (e) {}
+        }); });
+    }
+    /* his copy of a game room, if he made one (the copy remembers where it came from) */
+    function copyOf(src) { var R = (ED.doc && ED.doc.rooms) || {}; for (var k in R) if (R[k] && R[k].edit && R[k].edit.from === src) return k; return null; }
+    /* → true when the view can be edited now (a library room becomes his copy first) */
+    function own() {
+        if (ED.mode !== 'library') return editable();
+        var src = ED.roomId; if (!src || !ED.doc) return false;
+        var mine = copyOf(src);
+        if (mine) { toast('YOU HAVE A COPY OF THIS ROOM ALREADY · ' + String(ED.doc.rooms[mine].label || mine).toUpperCase() + ' · editing that one', 4000); enterRoom(mine, 'world', { keepCam: true }); return false; }
         var keep = {}; Object.keys(ED.doc.rooms).forEach(function (k) { keep[k] = 1; });
-        var id = W.hqWorldDocNextRoomId(ED.doc), c = W.hqWorldDocCopyRoom(ED.roomId, id, keep);
-        if (!c) { toast('THAT ROOM CANNOT BE COPIED'); return; }
-        commit([{ path: ['rooms', id], before: undefined, after: c.room }], 'copy ' + ED.roomId);
+        var id = W.hqWorldDocNextRoomId(ED.doc), c = W.hqWorldDocCopyRoom(src, id, keep), lib = DOOR_HQ.rooms[src];
+        if (!c) { toast('THAT ROOM CANNOT BE COPIED'); return false; }
+        /* the copy keeps the library's row ids (the doors keep their own), so what is picked stays picked */
+        ((W.HQ_WORLD_DOC_RULES && W.HQ_WORLD_DOC_RULES.rowLists) || LISTS).forEach(function (p) {
+            if (p === 'doors') return;
+            var A = listOf(lib, p), B = listOf(c.room, p); if (!A || !B || A.length !== B.length) return;
+            for (var i = 0; i < A.length; i++) if (A[i] && B[i] && A[i].id != null) B[i].id = String(A[i].id);
+        });
+        var name = String((lib && lib.label) || src);
+        var sel = ED.sel.slice(), step = [{ path: ['rooms', id], before: undefined, after: c.room }];
+        step.lib = src;   // its undo goes back to the game's room
+        commit(step, 'edit ' + name.toLowerCase());
         enterRoom(id, 'world', { keepCam: true });
-        toast('COPIED INTO YOUR WORLD AS ' + c.room.label.toUpperCase() + (c.dropped ? ' · ' + c.dropped + ' door(s) that led outside your world were left out' : ''), 5000);
+        ED.sel = sel.filter(function (q) { return !!selRow(q); }); gizmoAttach(); panels();
+        toast('EDITING YOUR COPY OF ' + name.toUpperCase() + ' (' + String(c.room.label).toUpperCase() + ') · the game\'s room stays as it is until your world goes live' + (c.dropped ? ' · ' + c.dropped + ' door(s) to rooms outside your world were left out' : ''), 6000);
+        return editable();
     }
     function setStart() {
         if (!editable()) return;
@@ -1712,7 +1907,10 @@
             var r = R[k], S = r.shell || {};
             return { label: String(r.label || k), sub: k + ' · ' + roomSize(r) + (r.terrain ? ' · terrain' : '') + (r.terrain && r.terrain.gen ? ' (generated)' : '') + ' · ' + (r.props || []).length + ' props', value: k };
         }).sort(function (a, b) { return a.label < b.label ? -1 : 1; });
-        pick('THE LIBRARY · a built-in room to look at (COPY INTO WORLD makes it yours)', items, function (k) { enterRoom(k, 'library'); toast('LIBRARY · READ ONLY · COPY INTO WORLD (top bar) makes it a room of yours', 4000); });
+        pick('THE LIBRARY · a game room to look at or edit (your first change makes it your own copy)', items, function (k) {
+            var mine = copyOf(k); if (mine) { enterRoom(mine, 'world'); toast('YOUR COPY OF ' + String(DOOR_HQ.rooms[k].label || k).toUpperCase() + ' · ' + String(ED.doc.rooms[mine].label || mine).toUpperCase(), 3500); return; }
+            enterRoom(k, 'library'); toast('GAME ROOM · click things to pick them; the first change makes it your own copy', 4000);
+        });
     }
 
     /* ══ THE ADD LIST (E0; E1 / E2 make these the real tools) ═══════════════════════════════════════════════════════════ */
@@ -1784,7 +1982,7 @@
         if (ED.mode === 'prefab' && ED.pfId === id) leavePrefab();
         commit([{ path: ['prefabs', id], before: Core.clone(ED.doc.prefabs[id]), after: undefined }], 'delete prefab');
     }
-    function placeRow(row, label, list) { if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return; } drawSet('place'); ED.draw.row = row; ED.draw.label = label; ED.draw.list = list || 'terrain.features'; toast('CLICK ON THE GROUND to place ' + label + ' · ESC cancels', 4000); }
+    function placeRow(row, label, list) { if (!own()) return; drawSet('place'); ED.draw.row = row; ED.draw.label = label; ED.draw.list = list || 'terrain.features'; toast('CLICK ON THE GROUND to place ' + label + ' · ESC cancels', 4000); }
     function addPrefab() {
         var ids = Object.keys(ED.doc.prefabs).filter(function (id) { return !(ED.mode === 'prefab' && id === ED.pfId); });
         if (!ids.length) { toast('NO PREFABS YET · pick rows then EDIT → SAVE SELECTION AS PREFAB, or PREFABS → + NEW'); return; }
@@ -1815,6 +2013,7 @@
     /* ══ ARRAY + MIRROR (E1): copies of the pick in a row / round a centre; a mirror flips the pick about its anchor ═════════ */
     function selAnchor(hits) { var sx = 0, sz = 0; hits.forEach(function (h) { var a = Core.rowAnchor(h.row); sx += a.x || 0; sz += a.z || 0; }); return { x: sx / hits.length, z: sz / hits.length }; }
     function pickRows() {
+        if (ED.sel.length && !own()) return null;
         var hits = ED.sel.map(selRow).filter(function (h) { return h && (h.list === 'terrain.features' || h.list === 'props'); });
         if (!hits.length || !editable()) { toast('PICK SHAPES / PROPS FIRST'); return null; }
         return hits;
@@ -1891,7 +2090,7 @@
     function layoutGenNew(look) { var g = { kind: 'plan', look: look || ED.opts.planLook || 'walls' }; if (g.look === 'walls' && ED.opts.wallKey) g.wallKey = ED.opts.wallKey; return g; }
     /* drawn layout pieces → rows, as ONE undo step (the room's first piece also gives it its layout; a generated plan is replaced) */
     function layoutAdd(rows, label) {
-        if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return; }
+        if (!own()) return;
         var r = room(), step = [];
         if (ED.mode !== 'prefab') {
             if (!r.terrain) { toast('THIS ROOM HAS NO GROUND TO LAY OUT'); return; }
@@ -1941,6 +2140,7 @@
     }
     /* FREEZE (§5.8): a generated plan (clearings + paths, rooms + corridors) → layout rows */
     function layoutFreeze() {
+        if (ED.mode === 'library') own();
         if (!editable() || ED.mode === 'prefab') return;
         var r = room(), g = r.terrain && r.terrain.gen, info = termInfo(), fz = null;
         try { fz = W.hqPlanFreeze ? W.hqPlanFreeze(info, g) : null; } catch (e) { fz = null; }
@@ -2408,7 +2608,7 @@
     }
     function texSwatchStyle(key) { var u = key && texUrl(key); return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
     function paletteWire(L) {
-        L.querySelectorAll('[data-draw]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-draw'); drawSet(t || null); }; });
+        L.querySelectorAll('[data-draw]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-draw'); drawSet(t || null); if (t && DRAWS[t]) hotPush({ t: 'draw', tool: t, label: DRAWS[t].label }); }; });
         L.querySelectorAll('[data-o]').forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-o'); ED.opts[k] = el.type === 'number' ? (isFinite(parseFloat(el.value)) ? parseFloat(el.value) : ED.opts[k]) : el.value.trim(); saveOpts(); }; });
         L.querySelectorAll('[data-otex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-otex'); texPick(ED.opts[k], function (v) { ED.opts[k] = v; saveOpts(); panels(); }); }; });
         groundWire(L);
@@ -2451,6 +2651,7 @@
     function skySetIn(o, path, v) { for (var i = 0; i < path.length - 1; i++) { if (o[path[i]] == null || typeof o[path[i]] !== 'object') o[path[i]] = {}; o = o[path[i]]; } if (v === undefined) delete o[path[path.length - 1]]; else o[path[path.length - 1]] = v; }
     /* one shell key (its top: sky, rig, mood, fog, look, atmos, lights, open) before → after = ONE undo step */
     function shellPut(top, after, label, live) {
+        if (!own()) return;
         var S = room() && room().shell; if (!S || !editable()) return;
         var before = (ED._skB && ED._skB.top === top) ? ED._skB.v : (S[top] === undefined ? undefined : Core.clone(S[top]));
         ED._skB = null;
@@ -2599,6 +2800,7 @@
         var ck = $('edClockH'); if (ck) ck.oninput = function () { var v = parseFloat(ck.value); clockPreview(v); var b = $('edClockV'); if (b) b.textContent = clockTxt(v); };
     }
     function lampAt(c) {
+        if (!own()) return;
         var r = room(), S = r && r.shell; if (!S || !c || !editable()) return;
         var sn = Math.max(0.25, ED.snap || 0), ls = Core.clone(S.lights || []);
         ls.push({ x: Core.snap(c.x, sn), z: Core.snap(c.z, sn) });
@@ -2631,7 +2833,7 @@
         var B = $('edPalBox'); if (!B) return;
         var ae = document.activeElement;
         if (ae && B.contains(ae) && ae.id === 'edPalQ') { palMark(); return; }   // typing in the search: the body only
-        if (!editable()) { B.innerHTML = ''; return; }
+        if (!editable() && ED.mode !== 'library') { B.innerHTML = ''; return; }
         var tab = ED.opts.tab || 'build';
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
         if (tab === 'build' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
@@ -2714,15 +2916,16 @@
     /* a tile → its tool */
     function palPick(e) {
         if (!e) return;
-        if (!editable()) { toast('THE LIBRARY IS READ ONLY · COPY INTO WORLD first'); return; }
+        if (!own()) return;
         var D = ED.draw;
         if (D && ((D.entry && D.entry.id === e.id) || (D.key && e.tex === D.key))) { drawSet(null); return; }   // the armed tile again = stop
-        if (e.tex) { drawSet('paint'); ED.draw.key = e.tex; toast('PAINT ' + e.tex + ' · click a face (a wall\'s side, a floor, a block) · ESC stops', 3500); palMark(); return; }
-        if (e.kit) { var F = W.HQ_KIT_FORMS[e.kit]; placeRow({ k: 'kit', fn: e.kit, args: Core.clone(F.args), yaw: 0 }, F.label); return; }
-        if (e.pf) { placeRow({ k: 'prefab', pf: e.pf, yaw: 0 }, e.label); return; }
+        if (e.tex) { drawSet('paint'); ED.draw.key = e.tex; hotPush({ t: 'pal', id: e.id, label: e.label }); toast('PAINT ' + e.tex + ' · click a face (a wall\'s side, a floor, a block) · ESC stops', 3500); palMark(); return; }
+        if (e.kit) { var F = W.HQ_KIT_FORMS[e.kit]; placeRow({ k: 'kit', fn: e.kit, args: Core.clone(F.args), yaw: 0 }, F.label); if (ED.draw) { ED.draw.entry0 = e; hotPush({ t: 'pal', id: e.id, label: e.label }); } return; }
+        if (e.pf) { placeRow({ k: 'prefab', pf: e.pf, yaw: 0 }, e.label); if (ED.draw) { ED.draw.entry0 = e; hotPush({ t: 'pal', id: e.id, label: e.label }); } return; }
         if (ED.mode === 'prefab' && e.list !== 'terrain.features' && e.list !== 'props') { toast('A PREFAB HOLDS SHAPES AND PROPS ONLY'); return; }
-        if (e.list === 'doors') { drawSet('doorway'); ED.draw.entry = e; toast('DOOR · ' + e.label + ' · click a wall you drew, or the ground · ESC cancels', 4000); palMark(); return; }
+        if (e.list === 'doors') { drawSet('doorway'); ED.draw.entry = e; hotPush({ t: 'pal', id: e.id, label: e.label }); toast('DOOR · ' + e.label + ' · click a wall you drew, or the ground · ESC cancels', 4000); palMark(); return; }
         drawSet('place'); ED.draw.entry = e; ED.draw.repeat = e.list !== 'spawn';
+        if (e.list !== 'spawn') hotPush({ t: 'pal', id: e.id, label: e.label });
         toast(e.list === 'spawn' ? 'CLICK WHERE THE WALKER ARRIVES (facing away from you)' : ('PLACE ' + e.label.toUpperCase() + ' · click on the ground, again for more · ESC stops'), 3200);
         palMark();
     }
@@ -2809,6 +3012,7 @@
     /* the far room's doors path + its next index, creating the list in the step when it is absent */
     function farDoors(step, to, far, extra) { if (!far.doors) step.push({ path: ['rooms', to, 'doors'], before: undefined, after: [] }); return (far.doors || []).length + (extra || 0); }
     function doorWrite(sp, ent, v) {
+        own();
         if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; }
         var r = room(), step = [], n0 = +nextId(r).slice(1), openId = sp.wallId ? 'r' + n0 : null, mineId = 'r' + (n0 + (sp.wallId ? 1 : 0));
         var to = v.to, fresh = null;
@@ -2972,7 +3176,7 @@
         EDIT: [['Undo  (Ctrl Z)', undo], ['Redo  (Ctrl Y)', redo], null, ['Duplicate  (Ctrl D)', duplicateSel], ['Delete  (Del)', deleteSel], ['Turn −' + '15°  ([)', function () { turnSel(-(ED.rotSnap || 15)); }], ['Turn +15°  (])', function () { turnSel(ED.rotSnap || 15); }], null,
                ['Array… (copies in a row / round)', arraySel], ['Mirror east–west', function () { mirrorSel('x'); }], ['Mirror north–south', function () { mirrorSel('z'); }], null,
                ['Save selection as prefab', selToPrefab], ['Bake the prefab / kit into rows', bakeSel], null, ['Deselect  (Esc)', function () { select(null); }]],
-        ADD: function () { return [['Prefab…', addPrefab], ['Kit (the game\'s builders)…', addKit], ['Prop (the catalogue)…', addProp], ['Door…  (click a wall or the ground)', function () { if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; } drawSet('doorway'); }], null].concat(Core.KINDS.map(function (K) { return [K.label, function () { addShape(K.id); }]; })); },   // the draw tools live on the BUILD palette
+        ADD: function () { return [['Prefab…', addPrefab], ['Kit (the game\'s builders)…', addKit], ['Prop (the catalogue)…', addProp], ['Door…  (click a wall or the ground)', function () { own(); if (!editable() || ED.mode !== 'world') { toast('DOORS GO IN ROOMS OF YOUR WORLD'); return; } drawSet('doorway'); }], null].concat(Core.KINDS.map(function (K) { return [K.label, function () { addShape(K.id); }]; })); },   // the draw tools live on the BUILD palette
         ROOM: [['New room (flat, empty)…', newRoom], ['Duplicate this room', duplicateRoom], ['Delete this room', deleteRoom], ['The world starts here', setStart], ['This room as a prefab', roomToPrefab], null, ['New prefab (empty)', newPrefab], null, ['The library (built-in rooms)…', library], ['Copy this library room into the world', copyIntoWorld]],
         VIEW: [['Grid  (G)', function () { ED.grid = !ED.grid; if (ED.gridObj) ED.gridObj.visible = ED.grid; }], ['Frame the selection  (F)', frameSel], ['To the spawn  (Home)', camHome], ['Reload the room', function () { enterRoom(ED.roomId, ED.mode, { keepCam: true }); }], null,
                ['The level band on / off  (L)', function () { bandSet({ on: !ED.band.on }); }], ['The level band up a floor  (Shift L)', function () { bandStep(1); }], ['The level band down a floor', function () { bandStep(-1); }], null,
@@ -2990,7 +3194,8 @@
             '<div class="ed-left" id="edLeft"><div id="edPalBox"></div><div id="edOutl"></div></div><div class="ed-right" id="edRight"></div>' +
             '<div class="ed-status" id="edStatus"></div><div class="ed-menu" id="edMenu" style="display:none"></div>' +
             '<div class="ed-modal" id="edModal" style="display:none"><div class="ed-card" id="edCard"></div></div>' +
-            '<div class="ed-toast" id="edToast" style="display:none"></div><div class="ed-playtag" id="edPlayTag">PLAY HERE · ESC back to the editor</div>';
+            '<div class="ed-toast" id="edToast" style="display:none"></div><div class="ed-playtag" id="edPlayTag">PLAY HERE · ESC back to the editor</div>' +
+            '<div class="ed-cross" id="edCross"></div><div class="ed-hint" id="edHint"></div><div class="ed-hot" id="edHot"></div>';
         document.body.appendChild(root);
         var menus = $('edMenus');
         Object.keys(MENUS).forEach(function (name) {
@@ -3000,6 +3205,7 @@
         document.addEventListener('mousedown', function (e) { var m = $('edMenu'); if (m && m.style.display !== 'none' && !m.contains(e.target)) m.style.display = 'none'; }, true);
     }
     function menuOpen(name, btn) {
+        if (ED.look) lookSet(false);
         var m = $('edMenu'), items = typeof MENUS[name] === 'function' ? MENUS[name]() : MENUS[name];
         m.innerHTML = '';
         items.forEach(function (it) {
@@ -3013,7 +3219,7 @@
     function toolsBar() {
         var t = $('edTools'); if (!t) return;
         var snaps = [0, 0.25, 0.5, 1, 1.75], rs = [0, 5, 15, 45, 90];
-        t.innerHTML = ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE (W) · or drag the thing itself', rotate: 'TURN (E) · R turns 45°, SHIFT R back', scale: 'SIZE (T) · - / = size the pick' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') +
+        t.innerHTML = ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE · or drag the thing itself', rotate: 'TURN · R turns 45°, SHIFT R back', scale: 'SIZE (T) · - / = size the pick' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') +
             '<label class="ed-lab">SNAP <select id="edSnap">' + snaps.map(function (s) { return '<option value="' + s + '"' + (s === ED.snap ? ' selected' : '') + '>' + (s ? s + ' m' : 'off') + '</option>'; }).join('') + '</select></label>' +
             '<label class="ed-lab"><select id="edRSnap">' + rs.map(function (s) { return '<option value="' + s + '"' + (s === ED.rotSnap ? ' selected' : '') + '>' + (s ? s + '°' : 'free') + '</option>'; }).join('') + '</select></label>' +
             /* E6: the roofs */
@@ -3024,11 +3230,11 @@
             '<input type="number" step="0.5" id="edBandY0" value="' + ED.band.y0 + '" style="width:52px" title="the band\'s bottom (m)"><input type="number" step="0.5" id="edBandY1" value="' + ED.band.y1 + '" style="width:52px" title="the band\'s top (m)">' +
             '<button class="ed-btn" id="edBandDn" title="The band down a floor">▼</button><button class="ed-btn" id="edBandUp" title="The band up a floor (Shift L)">▲</button>' +
             '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The battle field a fight at the cursor would take: the whole room, or its 24 × 24 crop (yellow = cover)'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', 'FIELD', 'Each room of the layout: enough battle seats in one region (green), too few (red), bigger than a 24 × 24 fight (amber)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
-            (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="Make this built-in room a room of yours">COPY INTO WORLD</button>' : '');
+            (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="Make your own copy of this game room now (your first change does it anyway)">MAKE MY COPY</button>' : '');
         t.querySelectorAll('[data-tool]').forEach(function (b) { b.onclick = function () { tcMode(b.getAttribute('data-tool')); }; });
         $('edSnap').onchange = function () { ED.snap = +this.value; tcMode(ED.tool); };
         $('edRSnap').onchange = function () { ED.rotSnap = +this.value; tcMode(ED.tool); };
-        if ($('edCopy')) $('edCopy').onclick = copyIntoWorld;
+        if ($('edCopy')) $('edCopy').onclick = function () { own(); };
         $('edRoof').onclick = function () { roofSet({ off: !ED.roof.off }); };
         if ($('edRoofH')) $('edRoofH').onchange = function () { var v = parseFloat(this.value); if (isFinite(v)) roofSet({ h: v }); };
         $('edBand').onchange = function () { bandSet({ on: this.checked }); };
@@ -3057,7 +3263,7 @@
         loose.forEach(function (id) { h += roomBtn(id, null); });
         h += '<button class="ed-row ed-add" data-act="newroom">+ NEW ROOM</button><button class="ed-row ed-add" data-act="newzone" title="A group of your rooms: one place on the world map">+ NEW ZONE</button></div>';
         h = h + prefabsHtml();
-        if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">LIBRARY · READ ONLY</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
+        if (ED.mode === 'library') h += '<div class="ed-sec"><div class="ed-hd">GAME ROOM · your first change makes your copy</div><div class="ed-note">' + esc((room() || {}).label || ED.roomId) + '<br>' + esc(ED.roomId) + '</div></div>';
         var r = room();
         if (r) {
             var groups = [['terrain.features', 'SHAPES'], ['props', 'PROPS'], ['doors', 'DOORS'], ['counters', 'SIGNS'], ['npcSpots', 'PEOPLE'], ['agents', 'AGENTS'], ['onlineSpots', 'ONLINE SPOTS']];
@@ -3123,7 +3329,7 @@
         var P = $('edRight'); if (!P) return;
         datalists();
         var r = room(); if (!r) { P.innerHTML = ''; return; }
-        var ro = !editable();
+        var lib = ED.mode === 'library', ro = !editable() && !lib;   // a game room edits like his own: the first change makes it his copy
         var hits = ED.sel.map(selRow).filter(Boolean);
         var h = '';
         if (!hits.length && ED.mode === 'prefab') {
@@ -3134,7 +3340,7 @@
             h += '<div class="ed-note">A prefab holds shapes and props. Draw them with BUILD (left), or ADD. Every room that places it changes with it.</div>';
         } else if (!hits.length) {
             var S = r.shell || {}, T = r.terrain || {};
-            h += '<div class="ed-hd">' + (ro ? 'LIBRARY ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (ro ? ' · read only' : '') + '</div>';
+            h += '<div class="ed-hd">' + (lib ? 'GAME ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (lib ? ' · the first change you make edits your own copy of it (the game\'s room is not touched)' : ro ? ' · read only' : '') + '</div>';
             h += '<div class="ed-form" data-scope="room">' + fieldHtml('label', String(r.label || '')) + fieldHtml('sub', String(r.sub || '')) + '</div>';
             if (!ro && ED.mode === 'world') h += zoneSiteHtml(r);   // E7
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
@@ -3152,7 +3358,7 @@
             }
             h += '<div class="ed-sub">THE SKY AND THE LIGHT (the SKY tab, left, edits them)</div><div class="ed-form" data-scope="shell">' + fieldHtml('sky', S.sky || null) + fieldHtml('mood', S.mood || null) + '</div>';
             if (r.edit) h += '<div class="ed-sub">NOTES</div><div class="ed-form" data-scope="edit"><label class="ed-f ed-fj"><textarea data-k="notes" data-t="str" rows="3">' + esc(r.edit.notes || '') + '</textarea></label></div>';
-            if (!ro) h += '<div class="ed-acts"><button class="ed-btn" data-a="dup">DUPLICATE ROOM</button><button class="ed-btn" data-a="start">WORLD STARTS HERE</button><button class="ed-btn ed-danger" data-a="del">DELETE ROOM</button></div>';
+            if (!ro && !lib) h += '<div class="ed-acts"><button class="ed-btn" data-a="dup">DUPLICATE ROOM</button><button class="ed-btn" data-a="start">WORLD STARTS HERE</button><button class="ed-btn ed-danger" data-a="del">DELETE ROOM</button></div>';
             else h += '<div class="ed-acts"><button class="ed-btn ed-copy" data-a="copy">COPY INTO WORLD</button></div>';
             h += '<div class="ed-sub">BUILD</div><div class="ed-note">BUILD (left) draws walls, rooms, floors, stairs, buildings, door gaps and windows on the ground. ADD (top bar) puts a shape, a prefab, a kit, a prop or a door at the cursor. Click a thing to pick it; SHIFT + click adds to the pick. Drag a thing to move it; R turns it 45° (SHIFT R back); - / = size it. C (or HIDE ROOFS, top bar) takes the roofs and ceilings off so you can see in.</div>';
         } else if (hits.length > 1) {
@@ -3216,8 +3422,8 @@
         P.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { sizeSel(+b.getAttribute('data-sz')); }; });
         P.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { turnSel(+b.getAttribute('data-turn')); }; });
         if ($('edSizeV')) $('edSizeV').onchange = function () { var h0 = hits[0], z0 = h0 && sizeOf(h0), v = parseFloat(this.value); if (z0 && isFinite(v) && v > 0 && Math.abs(v - z0.v) > 1e-3) sizeSel(v / z0.v, 'size ' + v + ' m'); };
-        act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', copyIntoWorld);
-        act('dupr', duplicateSel); act('delr', deleteSel); act('array', arraySel); act('mirx', function () { mirrorSel('x'); }); act('mirz', function () { mirrorSel('z'); });
+        act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', function () { own(); });
+        act('dupr', function () { duplicateSel(); }); act('delr', deleteSel); act('array', arraySel); act('mirx', function () { mirrorSel('x'); }); act('mirz', function () { mirrorSel('z'); });
         act('topf', selToPrefab); act('bake', bakeSel); act('pfedit', function () { if (hits[0] && hits[0].row.pf) enterPrefab(hits[0].row.pf); }); act('pfdone', leavePrefab); act('pfdel', function () { deletePrefab(ED.pfId); }); act('target', function () { if (hits[0]) doorRetarget(hits[0]); }); act('follow', function () { if (hits[0]) doorFollow(hits[0]); });
         if ($('edNewAdd')) $('edNewAdd').onclick = function () {
             var k = ($('edNewK').value || '').trim(), vs = $('edNewV').value; if (!k || !hits[0]) return;
@@ -3238,6 +3444,7 @@
     function fieldCommit(el) {
         var k = el.getAttribute('data-k'), t = el.getAttribute('data-t'), scope = el.closest('[data-scope]').getAttribute('data-scope'), v;
         if (t !== 'bool' && el.value === el.defaultValue) return false;   // nothing changed: no undo step
+        if (ED.mode === 'library' && !own()) return false;   // a game room: the change goes to his copy
         if (t === 'bool') v = !!el.checked; else if (t === 'num') { v = parseFloat(el.value); if (!isFinite(v)) { toast('NOT A NUMBER'); return false; } }
         else if (t === 'json') { try { v = JSON.parse(el.value); } catch (e) { toast('NOT JSON · ' + e.message); return false; } } else v = el.value;
         el.defaultValue = el.value;
@@ -3296,7 +3503,7 @@
     }
     function banner() {
         var b = $('edBanner'); if (!b) return;
-        if (ED.mode === 'library') { b.style.display = ''; b.innerHTML = 'LIBRARY · ' + esc((room() || {}).label || ED.roomId) + ' · READ ONLY — <button class="ed-btn ed-copy" id="edBanCopy">COPY INTO WORLD</button> <button class="ed-btn" id="edBanBack">BACK TO MY WORLD</button>'; $('edBanCopy').onclick = copyIntoWorld; $('edBanBack').onclick = function () { enterRoom((ED.doc.start && ED.doc.rooms[ED.doc.start.room]) ? ED.doc.start.room : Object.keys(ED.doc.rooms)[0], 'world'); }; }
+        if (ED.mode === 'library') { b.style.display = ''; b.innerHTML = 'GAME ROOM · ' + esc((room() || {}).label || ED.roomId) + ' · edit away: your first change makes it your own copy — <button class="ed-btn ed-copy" id="edBanCopy">MAKE MY COPY NOW</button> <button class="ed-btn" id="edBanBack">BACK TO MY WORLD</button>'; $('edBanCopy').onclick = function () { own(); }; $('edBanBack').onclick = function () { enterRoom((ED.doc.start && ED.doc.rooms[ED.doc.start.room]) ? ED.doc.start.room : Object.keys(ED.doc.rooms)[0], 'world'); }; }
         else if (ED.mode === 'prefab' && ED.doc.prefabs[ED.pfId]) { b.style.display = ''; b.innerHTML = 'PREFAB · ' + esc(ED.doc.prefabs[ED.pfId].label || ED.pfId) + ' · placed ' + prefabUses(ED.pfId) + '× · every placement follows these edits — <button class="ed-btn ed-copy" id="edBanDone">DONE</button>'; $('edBanDone').onclick = leavePrefab; }
         else b.style.display = 'none';
     }
@@ -3304,7 +3511,7 @@
     function panels0() { try { ED.doorBad = (ED.doc && W.hqWorldDocDoorCheck) ? W.hqWorldDocDoorCheck(ED.doc) : []; } catch (e) { ED.doorBad = []; } toolsBar(); palette(); outliner(); inspector(); banner(); status(); }
 
     /* ── the pick list and the small form (plain DOM) ── */
-    function modalOpen(html) { var m = $('edModal'); $('edCard').style.width = ''; $('edCard').innerHTML = html; m.style.display = ''; }
+    function modalOpen(html) { if (ED.look) lookSet(false); var m = $('edModal'); $('edCard').style.width = ''; $('edCard').innerHTML = html; m.style.display = ''; }
     function modalClose() { var m = $('edModal'); if (m) m.style.display = 'none'; }
     function pick(title, items, onPick) {
         modalOpen('<div class="ed-hd">' + esc(title) + '</div><input type="text" class="ed-search" id="edSearch" placeholder="search…"><div class="ed-list" id="edList"></div><div class="ed-acts"><button class="ed-btn" id="edCancel">CANCEL</button></div>');
@@ -3330,10 +3537,13 @@
     }
     function help() {
         modalOpen('<div class="ed-hd">THE KEYS</div><div class="ed-help">' + [
-            ['RIGHT MOUSE held', 'look; with W A S D fly, Q E down / up, SHIFT fast, CTRL slow, wheel = fly speed'],
-            ['Arrows · PgUp PgDn', 'fly without the mouse'], ['Wheel', 'dolly forward / back'], ['ALT + LEFT drag', 'orbit the pick'], ['MIDDLE drag', 'pan'],
-            ['LEFT click', 'pick (SHIFT adds) · the gizmo moves it'], ['LEFT drag on a thing', 'move it over the ground (the grid snap)'], ['R · SHIFT R', 'turn the pick 45° · back'], ['- · =', 'the pick smaller · bigger (SHIFT: a bigger step); the inspector\'s SIZE takes metres'],
-            ['C', 'hide / show the roofs and ceilings (the top bar\'s HIDE ROOFS; its number = the cut in metres over the floor)'], ['W · E · T', 'the gizmo: MOVE · TURN · SIZE'], ['[ · ]', 'turn the pick by the angle snap'],
+            ['W A S D · SPACE · SHIFT', 'fly (like Minecraft\'s creative mode): level with the ground wherever you look · up · down. W twice quickly = sprint. The arrows and PgUp / PgDn fly too'],
+            ['E · a click on empty ground', 'MOUSE LOOK: the mouse turns the view, a crosshair in the middle (E or ESC gives the mouse back for the panels)'],
+            ['While looking', 'LEFT pick what the crosshair is on (hold and turn to drag it) · RIGHT place the tool / tile in hand (nothing armed: a copy of the pick) · MIDDLE take the thing in hand · wheel = fly speed'],
+            ['1 – 9 · 0', 'the hotbar (bottom): the tools and tiles you used last · 0 or V = the empty hand (pick and drag)'],
+            ['With the cursor', 'LEFT click pick (SHIFT adds) · LEFT drag a thing to move it · RIGHT click place · RIGHT drag turn the view · MIDDLE drag pan · wheel dolly · ALT + LEFT drag orbit the pick'],
+            ['R · SHIFT R', 'turn the pick 45° · back'], ['- · =', 'the pick smaller · bigger (SHIFT: a bigger step); the inspector\'s SIZE takes metres'],
+            ['C', 'hide / show the roofs and ceilings (the top bar\'s HIDE ROOFS; its number = the cut in metres over the floor)'], ['T', 'the gizmo: SIZE / MOVE (the top bar: MOVE · TURN · SIZE)'], ['[ · ]', 'turn the pick by the angle snap'],
             ['F · Home · G', 'frame the pick · to the spawn · the grid'], ['DEL · CTRL D', 'delete · duplicate'],
             ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head · DOOR GAP, WINDOW: click a wall'],
             ['SHIFT while drawing', 'lock the line to 45° steps (ends snap to wall ends within 0.6 m, else to the grid)'], ['V · Esc', 'back to SELECT · end the run / drop the pick'], ['CTRL Z · CTRL Y · CTRL S', 'undo · redo · save (it autosaves anyway)'],
@@ -3349,9 +3559,10 @@
             ['A door\'s FLAGS', 'SECRET (a draught, both ends) · ONE WAY (no door back) · LOCKED (clearance, Keys)'],
             ['LEADS TO (left tab)', 'your rooms and the doors between them: dashed = secret, an arrow = one way, red = nowhere; click a room to go there; OPEN BIG'],
             ['AUDIT SIGHT · FIELD', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · FIELD: enough battle seats in each room (green), too few (red), bigger than a 24 × 24 fight (amber)'],
-            ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'drop the pick'],
+            ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'give the mouse back · drop the pick'],
+            ['A game room (ROOM → THE LIBRARY, or EDIT in the pause menu)', 'picks and edits like yours: the first change makes it your own copy (the game\'s room is not touched until your world goes live)'],
         ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
-        '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a built-in room to look at or copy. FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
+        '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a game room to look at or edit (as your copy). FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
         $('edCancel').onclick = modalClose;
     }
 
@@ -3359,7 +3570,7 @@
     function open(opts) {
         opts = opts || {};
         if (typeof DOOR_HQ === 'undefined' || typeof W.hqWorldDocNew !== 'function' || typeof W._hqEditEnter !== 'function') { alert('The editor needs data.js / map.js from the same delivery (hqWorldDoc*, _hqEditEnter).'); return; }
-        build(); loadOpts();
+        build(); loadOpts(); hotLoad(); hotUi(); ED.look = false; ED.keys = {}; lookUi();
         try { var bo = JSON.parse(localStorage.getItem('ew_editor_band') || 'null'); if (bo && isFinite(bo.y0) && isFinite(bo.y1)) { ED.band.y0 = +bo.y0; ED.band.y1 = +bo.y1; ED.band.on = !!bo.on; } } catch (e) {}
         try { var rfo = JSON.parse(localStorage.getItem('ew_editor_roof') || 'null'); if (rfo) { ED.roof.off = !!rfo.off; if (isFinite(rfo.h)) ED.roof.h = +rfo.h; } } catch (e) {}
         try { var ao = JSON.parse(localStorage.getItem('ew_editor_audit') || 'null'); if (ao) ['walls', 'pockets', 'fight', 'sight', 'patch'].forEach(function (k) { ED.audit[k] = !!ao[k]; }); } catch (e) {}
@@ -3374,6 +3585,7 @@
             var want = opts.room && DOOR_HQ.rooms[opts.room] ? opts.room : null;
             var at = opts.at || null;
             if (want && ED.doc.rooms[want]) enterRoom(want, 'world', { at: at });
+            else if (want && copyOf(want)) enterRoom(copyOf(want), 'world', { at: at });   // he edited this game room already: his copy
             else if (want) enterRoom(want, 'library', { at: at });
             else enterRoom(ED.roomId && ED.doc.rooms[ED.roomId] ? ED.roomId : ED.doc.start.room, 'world', { keepCam: !!ED.roomId });
         };
@@ -3389,7 +3601,7 @@
         if (ED.draw) { ED.draw = null; drawPreview(null); }
         bandClipOff(); roofShow(); if (ED.clockH != null) clockPreview(null); clearTimeout(ED.auditTimer);
         saveCam(); saveNow();
-        ED.open = false; ED.playing = false;
+        ED.open = false; ED.playing = false; ED.look = false; lookLock(false); lookUi();
         bind(false);
         if (ED.tc) { try { ED.tc.detach(); ED.tc.dispose(); } catch (e) {} ED.tc = null; }
         ED.view = null; ED.group = null; ED.proxies = []; ED.boxes = [];
