@@ -163,7 +163,7 @@
             var seg = isFinite(row.x0) && isFinite(row.x1) && isFinite(row.z0) && isFinite(row.z1);
             if (seg) {
                 var gm = Math.max(g(row.x0, row.z0), g(row.x1, row.z1), g((row.x0 + row.x1) / 2, (row.z0 + row.z1) / 2)), gn = Math.min(g(row.x0, row.z0), g(row.x1, row.z1));
-                if (k === 'wall') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.t, 0.35), gn - 0.1, isFinite(row.y) ? row.y : gm + num(row.h, 3)));
+                if (k === 'wall') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.t, 0.35), isFinite(row.y0) ? +row.y0 : gn - 0.1, isFinite(row.y) ? row.y : gm + num(row.h, 3)));
                 else if (k === 'rail') out.push(segBox(row.x0, row.z0, row.x1, row.z1, 0.3, gn, gm + num(row.h, 0.98)));
                 else if (k === 'ramp') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 2), Math.min(gn, num(row.h0, 0), num(row.h1, 0)), Math.max(num(row.h0, 0), num(row.h1, 0)) + 0.15));
                 else if (k === 'deck' || k === 'bridge') { var yb = num(row.y, gm); out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 2), yb - Math.max(0.3, num(row.thick, 0.3)), yb + 0.15)); }
@@ -272,7 +272,9 @@
                 /* E6: the size a placed tree / model takes (treeSize m tall, 0 = the game's own; treeVary = ±20 %; propX = × the catalogue) */
                 treeSize: 0, treeVary: true, propX: 1,
                 /* THE SHAPES: SIZE = a disc's radius / a line's width / a click's half side, HEIGHT, the edge */
-                shapeR: 8, shapeH: 4, shapeEdge: 'smooth' },
+                shapeR: 8, shapeH: 4, shapeEdge: 'smooth',
+                /* THE MODULAR KIT: the cell, the floor's height, the floor being built, the roof's rise and sheet */
+                modC: 4, modH: 3.5, modS: 0, roofH: 2, roofKey: 'urban:MetalCorrugatedPainted1a' },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
         audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, FIELD (was 8×8) auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
@@ -844,6 +846,16 @@
         sridge:   { label: 'RIDGE', how: 'stamp', form: 'line', tab: 'shapes', tip: 'Drag from end to end (or click): a ridge HEIGHT m high, SIZE m wide.' },
         trench:   { label: 'TRENCH', how: 'stamp', form: 'line', tab: 'shapes', tip: 'Drag from end to end (or click): a trench HEIGHT m deep, SIZE m wide.' },
         ringwall: { label: 'ROUND WALL', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a ring of walls (a tower, a pen) WALL HEIGHT m high.' },
+        /* THE MODULAR KIT (2026-10-05, mondo: "need a modular way to make buildings"): pieces that snap to a CELL grid and stack by
+           FLOOR ([ ] change the floor) — one wall row per cell edge, one slab per floor drag, a built stair one floor high, a gable
+           roof on a ceiling slab. Each piece carries `bld: { b, s }` (its building's ground-floor height, its floor), so the next
+           piece near it lines up with it */
+        mfloor:   { label: 'FLOOR', how: 'mod', tab: 'modular', tip: 'Click a cell (or drag over cells): a floor slab on this floor. [ ] = the floor below / above.' },
+        mwall:    { label: 'WALL', how: 'mod', tab: 'modular', tip: 'Click near a cell edge (or drag along the grid): a wall one floor high on each cell edge. [ ] = the floor below / above.' },
+        mdoor:    { label: 'DOOR', how: 'wall', tab: 'modular', tip: 'Click on a wall: a door gap in the middle of that cell\'s wall.' },
+        mwin:     { label: 'WINDOW', how: 'wall', tab: 'modular', tip: 'Click on a wall: a window in the middle of that cell\'s wall.' },
+        mstairs:  { label: 'STAIRS', how: 'mod', tab: 'modular', tip: 'Drag the way they climb (or click: they climb the way you look): a solid flight from this floor to the next. Leave the floor above them open.' },
+        mroof:    { label: 'ROOF', how: 'mod', tab: 'modular', tip: 'Click a cell (or drag over cells): a gable roof on top of this floor, its ridge along the long side.' },
     };
     function drawSet(tool) {
         drawPreview(null);
@@ -888,6 +900,7 @@
             ED._drawInfo = S0 && S0.tool === 'gramp' && S0.a ? rampInfo(S0.a, p) : ''; return;
         }
         if (how === 'stamp') { stampShow(D, p, g); return; }
+        if (how === 'mod') { modShow(D); return; }
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
         if (a && how === 'chain') out.push(segPv(a, p, O.wallT, g, g + O.wallH));
         if (a && how === 'line') out.push(segPv(a, p, 2, g, g + Math.max(0.3, O.height)));
@@ -917,6 +930,7 @@
         var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
         if (how === 'rect' || how === 'line' || how === 'disc') { D.a = p; D.b = p; return; }
         if (how === 'stamp') { D.a = { x: p.x, z: p.z, y: ground(p.x, p.z) }; return; }
+        if (how === 'mod') { D.a = modPt(e.clientX, e.clientY); return; }
         if (how === 'brush') strokeStart(e);
     }
     function drawUp(e) {
@@ -927,6 +941,7 @@
         if (how === 'brush') { strokeEnd(e); return; }
         if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); if (D.tool === 'lhall') D.a = p; drawShow(p); } return; }   // (a hallway's SHIFT keeps 45° from its last point)
         if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); return; }
+        if (how === 'mod') { var ma = D.a, mp = modPt(e.clientX, e.clientY); D.a = null; drawPreview(null); ED._drawInfo = ''; if (mp) modAt(D.tool, ma, mp); return; }
         if (how === 'stamp') { var sa = D.a; D.a = null; drawPreview(null); ED._disc = null; ED._drawInfo = ''; if (p) stampAt(D.tool, sa, p); return; }
         if (how === 'click') {   // a shape from the ADD list, dropped where clicked
             var c = rayGround(e.clientX, e.clientY); if (!c) return;
@@ -937,7 +952,7 @@
             drawSet(null); if (row) addRow(D.list || 'terrain.features', row, D.label);
             return;
         }
-        if (how === 'wall') { openingAt(e, D.tool === 'window'); return; }
+        if (how === 'wall') { openingAt(e, D.tool === 'window' || D.tool === 'mwin'); return; }
         if (!p) return;
         if (how === 'chain') {
             if (!D.a) { D.a = p; D.chain0 = p; drawShow(p); return; }
@@ -988,6 +1003,7 @@
             if (k === 'backspace') { D.pts.pop(); D.a = D.pts[D.pts.length - 1] || null; drawShow(ED.cursor ? { x: ED.cursor.x, z: ED.cursor.z } : D.a); return true; }
             if (k === 'enter' || k === 'escape') { var hp = D.pts; D.pts = null; D.a = null; drawPreview(null); if (k === 'enter') { if (hp.length > 1) layoutAdd([{ k: 'hall', pts: hp.map(function (q) { return [Core.snap(q.x, 0.01), Core.snap(q.z, 0.01)]; }), w: Math.max(0.6, ED.opts.hallW) }], 'hallway'); else toast('A HALLWAY NEEDS TWO POINTS AT LEAST'); } return true; }
         }
+        if (DRAWS[D.tool] && DRAWS[D.tool].how === 'mod' && (k === '[' || k === ']')) { modFloor(k === ']' ? 1 : -1); return true; }
         if (DRAWS[D.tool] && DRAWS[D.tool].how === 'stamp' && (k === '[' || k === ']')) { ED.opts.shapeR = Math.max(1, Math.min(80, Math.round(ED.opts.shapeR * (k === ']' ? 1.25 : 0.8) * 2) / 2)); saveOpts(); toast('SIZE ' + ED.opts.shapeR + ' m', 900); panels(); if (ED.cursor) drawShow({ x: ED.cursor.x, z: ED.cursor.z }); return true; }
         if (DRAWS[D.tool] && DRAWS[D.tool].how === 'brush' && (k === '[' || k === ']')) { ED.opts.brushR = Math.max(0.5, Math.min(60, Math.round(ED.opts.brushR * (k === ']' ? 1.25 : 0.8) * 4) / 4)); saveOpts(); toast('BRUSH ' + ED.opts.brushR + ' m', 900); panels(); return true; }
         if (k === 'escape' || k === 'enter') { if (D.a) { D.a = null; D.chain0 = null; drawPreview(null); } else drawSet(null); return true; }
@@ -1134,6 +1150,112 @@
         var gh = W.hqGridEncode('i16', S.Dw, info.nx, info.nz, info.x0, info.z0, info.res);
         if (!gh && !T.hmap) { reloadSoon(); return; }
         commit([{ path: base.concat(['hmap']), before: T.hmap ? Core.clone(T.hmap) : undefined, after: gh || undefined }], label);
+    }
+    /* ══ THE MODULAR KIT (2026-10-05): building blocks on a grid of CELLS (opts.modC, from the room's middle), FLOOR by FLOOR (opts.modS,
+       opts.modH high). A building's ground floor height `b` comes from the nearest kit piece within 60 m (so every piece of one
+       building lines up), else from the ground where the first one goes. What each piece is (data.js THE MODULAR KIT):
+         FLOOR  = a plain `bridge` slab over the cells, its top on the floor (the ground floor's 6 cm over b)
+         WALL   = a `wall` row per cell edge, `y` its absolute top, `y0` its foot on an upper floor (a hung wall)
+         STAIRS = a built `ramp` one floor high, `foot` = b (its mass drawn down to the ground floor), 2.2 m of run per metre of rise
+         ROOF   = a ceiling slab + two sloped `tier` prisms (`quad` + `slopeTop`), the ridge along the long side ═══ */
+    function modBase(x, z) {
+        var best = 60, b = null;
+        (listOf(room(), 'terrain.features') || []).forEach(function (f) {
+            if (!f || !f.bld || !isFinite(f.bld.b)) return; var a = Core.rowAnchor(f), d = a ? Math.hypot(a.x - x, a.z - z) : Infinity;
+            if (d < best) { best = d; b = +f.bld.b; }
+        });
+        return b != null ? b : Math.round(ground(x, z) * 4) / 4;
+    }
+    function modFy(b, s) { return s > 0 ? b + s * Math.max(2, +ED.opts.modH || 3.5) : b + 0.06; }
+    /* the point under the mouse ON this floor (the ground floor: the ground; above it, the floor's own plane) */
+    function modPt(mx, my) {
+        var c = rayGround(mx, my), s = Math.max(0, Math.round(+ED.opts.modS || 0));
+        var r = rayFrom(mx, my); if (!r) return null;
+        var b = modBase(c ? c.x : ED.cam.x, c ? c.z : ED.cam.z);
+        if (s > 0) { var u = U(), v = new THREE.Vector3(), pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -modFy(b, s) * u); if (r.ray.intersectPlane(pl, v)) c = { x: v.x / u, z: v.z / u }; }
+        if (!c) return null;
+        b = modBase(c.x, c.z);
+        return { x: c.x, z: c.z, b: b, s: s };
+    }
+    function modFloor(dir) {
+        var O = ED.opts; O.modS = Math.max(0, Math.min(20, Math.round(+O.modS || 0) + dir)); saveOpts();
+        var b = ED.cursor ? modBase(ED.cursor.x, ED.cursor.z) : 0, H = Math.max(2, +O.modH || 3.5);
+        if (ED.band.on) bandSet({ y0: Math.round((b + O.modS * H - 0.5) * 100) / 100, y1: Math.round((b + (O.modS + 1) * H - 0.3) * 100) / 100 });
+        toast(O.modS ? 'FLOOR ' + O.modS + ' (' + (O.modS * H).toFixed(1) + ' m up) · L shows only this floor' : 'GROUND FLOOR', 1400); panels();
+    }
+    /* a piece's plan: the rows it writes and the preview boxes */
+    function modPlan(tool, a, p) {
+        var O = ED.opts, C = Math.max(1, +O.modC || 4), H = Math.max(2, +O.modH || 3.5), s = p.s, b = (a || p).b, fy = modFy(b, s), top = b + (s + 1) * H;
+        var bld = { b: b, s: s }, rows = [], pv = [], R4 = function (v) { return Math.round(v * 1000) / 1000; };
+        var cell = function (q) { return { i: Math.floor(q.x / C), j: Math.floor(q.z / C) }; };
+        if (tool === 'mfloor' || tool === 'mroof') {
+            var c0 = cell(a || p), c1 = cell(p), X0 = Math.min(c0.i, c1.i) * C, X1 = (Math.max(c0.i, c1.i) + 1) * C, Z0 = Math.min(c0.j, c1.j) * C, Z1 = (Math.max(c0.j, c1.j) + 1) * C;
+            var slab = function (x0, x1, z0, z1, y, th, key) {
+                var r = (x1 - x0 >= z1 - z0) ? { k: 'bridge', x0: R4(x0), z0: R4((z0 + z1) / 2), x1: R4(x1), z1: R4((z0 + z1) / 2), w: R4(z1 - z0) } : { k: 'bridge', x0: R4((x0 + x1) / 2), z0: R4(z0), x1: R4((x0 + x1) / 2), z1: R4(z1), w: R4(x1 - x0) };
+                Object.assign(r, { y: R4(y), thick: th, plain: true, rails: false, bld: bld }); if (key) r.key = key; return r;
+            };
+            if (tool === 'mfloor') {
+                rows.push(slab(X0, X1, Z0, Z1, fy, s > 0 ? 0.28 : 0.2, O.floorKey));
+                pv.push({ cx: (X0 + X1) / 2, cz: (Z0 + Z1) / 2, w: X1 - X0, L: Z1 - Z0, y0: fy - 0.28, y1: fy });
+                return { rows: rows, pv: pv, info: 'floor ' + (X1 - X0) + ' × ' + (Z1 - Z0) + ' m' };
+            }
+            var ov = 0.4, rise = Math.max(0.3, +O.roofH || 2), alongX = X1 - X0 >= Z1 - Z0, ea = top + 0.15, ri = top + rise;
+            var x0 = X0 - ov, x1 = X1 + ov, z0 = Z0 - ov, z1 = Z1 + ov;
+            rows.push(slab(x0, x1, z0, z1, top, 0.28, O.floorKey));
+            var half = function (q, cx0, cz0, cx1, cz1, t) { var r = { k: 'wall', x0: R4(cx0), z0: R4(cz0), x1: R4(cx1), z1: R4(cz1), t: R4(t), h: rise, y: R4(ri), y0: R4(top), slopeTop: [R4(ea), R4(ri)], quad: q.map(function (v) { return [R4(v[0]), R4(v[1])]; }), tier: true, rail: false, bld: bld }; if (O.roofKey) r.key = O.roofKey; return r; };
+            if (alongX) { var zr = (z0 + z1) / 2;
+                rows.push(half([[x0, z0], [x0, zr], [x1, zr], [x1, z0]], x0, (z0 + zr) / 2, x1, (z0 + zr) / 2, zr - z0));
+                rows.push(half([[x0, z1], [x0, zr], [x1, zr], [x1, z1]], x0, (z1 + zr) / 2, x1, (z1 + zr) / 2, z1 - zr));
+            } else { var xr = (x0 + x1) / 2;
+                rows.push(half([[x0, z0], [xr, z0], [xr, z1], [x0, z1]], (x0 + xr) / 2, z0, (x0 + xr) / 2, z1, xr - x0));
+                rows.push(half([[x1, z0], [xr, z0], [xr, z1], [x1, z1]], (x1 + xr) / 2, z0, (x1 + xr) / 2, z1, x1 - xr));
+            }
+            pv.push({ cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, w: x1 - x0, L: z1 - z0, y0: top - 0.28, y1: ri });
+            return { rows: rows, pv: pv, info: 'roof ' + (X1 - X0) + ' × ' + (Z1 - Z0) + ' m' };
+        }
+        if (tool === 'mwall') {
+            var segs = [], n0 = { i: Math.round((a || p).x / C), j: Math.round((a || p).z / C) }, n1 = { i: Math.round(p.x / C), j: Math.round(p.z / C) };
+            if (!a || (n0.i === n1.i && n0.j === n1.j)) {   // a click: the cell edge nearest the point
+                var fx = p.x / C, fz = p.z / C, dx = Math.abs(fx - Math.round(fx)), dz = Math.abs(fz - Math.round(fz));
+                if (dx < dz) segs.push([Math.round(fx), Math.floor(fz), Math.round(fx), Math.floor(fz) + 1]); else segs.push([Math.floor(fx), Math.round(fz), Math.floor(fx) + 1, Math.round(fz)]);
+            } else if (Math.abs(n1.i - n0.i) >= Math.abs(n1.j - n0.j)) { var di = n1.i > n0.i ? 1 : -1; for (var i = n0.i; i !== n1.i; i += di) segs.push([i, n0.j, i + di, n0.j]); }
+            else { var dj = n1.j > n0.j ? 1 : -1; for (var j = n0.j; j !== n1.j; j += dj) segs.push([n0.i, j, n0.i, j + dj]); }
+            var have = (listOf(room(), 'terrain.features') || []).filter(function (f) { return f && f.k === 'wall' && f.bld && f.bld.s === s; });
+            segs.forEach(function (g) {
+                var x0 = g[0] * C, z0 = g[1] * C, x1 = g[2] * C, z1 = g[3] * C;
+                if (have.some(function (f) { return (Math.hypot(f.x0 - x0, f.z0 - z0) < 0.01 && Math.hypot(f.x1 - x1, f.z1 - z1) < 0.01) || (Math.hypot(f.x0 - x1, f.z0 - z1) < 0.01 && Math.hypot(f.x1 - x0, f.z1 - z0) < 0.01); })) return;   // that edge has its wall
+                var r = { k: 'wall', x0: x0, z0: z0, x1: x1, z1: z1, h: H, t: Math.max(0.1, +O.wallT || 0.25), y: R4(top), rail: false, bld: bld };
+                if (s > 0) r.y0 = R4(fy - 0.28);
+                if (O.wallKey) r.key = O.wallKey; if (O.wallKeyIn && O.wallKeyIn !== O.wallKey) r.keyIn = O.wallKeyIn;
+                rows.push(r); pv.push(segPv({ x: x0, z: z0 }, { x: x1, z: z1 }, r.t, s > 0 ? fy - 0.28 : fy - 0.06, top));
+            });
+            return { rows: rows, pv: pv, info: rows.length + ' wall' + (rows.length === 1 ? '' : 's') };
+        }
+        if (tool === 'mstairs') {
+            var ux = 0, uz = 0, q = a || p, ddx = a ? p.x - a.x : 0, ddz = a ? p.z - a.z : 0;
+            if (Math.hypot(ddx, ddz) < 0.5) { var yw = ED.cam.yaw || 0; ddx = Math.sin(yw); ddz = -Math.cos(yw); }
+            if (Math.abs(ddx) >= Math.abs(ddz)) ux = ddx > 0 ? 1 : -1; else uz = ddz > 0 ? 1 : -1;
+            var h0 = s > 0 ? fy : b, rs = top - h0, run = Math.ceil(2.25 * rs / C) * C, ci = Math.floor(q.x / C), cj = Math.floor(q.z / C);
+            var mx = (ci + 0.5) * C, mz = (cj + 0.5) * C, fx0 = ux ? (ux > 0 ? ci * C : (ci + 1) * C) : mx, fz0 = uz ? (uz > 0 ? cj * C : (cj + 1) * C) : mz;
+            var st = { k: 'ramp', x0: R4(fx0), z0: R4(fz0), x1: R4(fx0 + ux * run), z1: R4(fz0 + uz * run), w: Math.min(2, C * 0.6), h0: R4(h0), h1: R4(top), stairs: true, built: true, foot: R4(b), bld: bld };
+            if (O.floorKey) st.key = O.floorKey;
+            rows.push(st); pv.push(segPv({ x: st.x0, z: st.z0 }, { x: st.x1, z: st.z1 }, st.w, b, top));
+            return { rows: rows, pv: pv, info: 'stairs ' + run + ' m run · ' + rs.toFixed(1) + ' m up' };
+        }
+        return { rows: rows, pv: pv, info: '' };
+    }
+    function modShow(D, e) {
+        if (!D) return;
+        var p = e ? modPt(e.clientX, e.clientY) : (ED.mouse && ED.mouse.in ? modPt(ED.mouse.x, ED.mouse.y) : null);
+        if (!p) { drawPreview(null); return; }
+        var P = modPlan(D.tool, D.a, p);
+        drawPreview(P.pv); ED._drawInfo = (p.s ? 'FLOOR ' + p.s : 'GROUND FLOOR') + ' · ' + P.info;
+    }
+    function modAt(tool, a, p) {
+        if (!own()) return;
+        var P = modPlan(tool, a, p);
+        if (!P.rows.length) { toast(tool === 'mwall' ? 'THAT EDGE HAS ITS WALL' : 'NOTHING TO PLACE', 1200); return; }
+        drawRows(P.rows, DRAWS[tool].label.toLowerCase());
     }
     /* ══ THE SHAPES (2026-10-05): WorldEdit's stamps. One press-drag-release (or one click at SIZE) writes the whole shape into
        terrain.hmap as ONE undo step, the same grid the brushes paint (a ROUND WALL is a kit row instead). What a drag means: a
@@ -1421,6 +1543,7 @@
             var w = h.row, u = U(), pt = hits[i].point, px = pt.x / u, pz = pt.z / u, L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0);
             var at = Core.snap(Math.max(0, Math.min(L, ((px - w.x0) * (w.x1 - w.x0) + (pz - w.z0) * (w.z1 - w.z0)) / (L || 1))), 0.25);
             var S = W.HQ_SHAPE_RULES || {}, ow = win ? (S.winW || 1.4) : (S.doorW || 1.2);
+            if (w.bld) { var mc = Math.max(1, +ED.opts.modC || 4); at = L <= mc + 0.01 ? L / 2 : Math.min(L - mc / 2, Math.floor(at / mc) * mc + mc / 2); }   // THE MODULAR KIT: the cell's middle
             at = Math.max(ow / 2, Math.min(L - ow / 2, at));
             var row = win ? { k: 'opening', wall: w.id, at: at, w: ow, h: S.winH || 1.2, sill: S.winSill || 0.9, glaze: true } : { k: 'opening', wall: w.id, at: at, w: ow, h: S.doorH || 2.2, sill: 0 };
             drawRows([row], win ? 'window' : 'door gap');
@@ -1539,7 +1662,7 @@
         var D = ED.draw;
         if (D) {
             var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
-            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || how === 'stamp' || D.tool === 'paint') { if (how === 'stamp') D.a = null; drawUp(e); return; }
+            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || how === 'stamp' || how === 'mod' || D.tool === 'paint') { if (how === 'stamp' || how === 'mod') D.a = null; drawUp(e); return; }
             toast((DRAWS[D.tool] ? DRAWS[D.tool].label : 'THIS TOOL') + ' DRAWS WITH THE LEFT BUTTON (hold and drag)', 1800); return;
         }
         if (!ED.sel.length) { toast('NOTHING IN HAND · pick a tile (1-9 or the palette) or click a thing, then RIGHT click places it', 2600); return; }
@@ -1601,6 +1724,7 @@
         if (ED.draw && ED.mouse.in) {
             var D = ED.draw, how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
             if (how === 'doorway' || (how === 'click' && (D.entry || D.row) && D.tool !== 'paint')) placeShow(rayGround(e.clientX, e.clientY));
+            else if (how === 'mod') modShow(ED.draw, e);
             else drawShow(how === 'click' || how === 'wall' ? null : drawPt(e.clientX, e.clientY, e));
         }
     }
@@ -2684,6 +2808,11 @@
         /* THE SHAPES */
         ringwall: [['shapeR', 'Size: radius on a click (m) · [ ]'], ['wallH', 'Wall height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Sheet', 1]],
     };
+    var MOD_GRID = [['modS', 'Floor (0 = ground) · [ ]'], ['modC', 'Cell (m)'], ['modH', 'Floor height (m)']];
+    OPT_FIELDS.mfloor = MOD_GRID.concat([['floorKey', 'Sheet', 1]]);
+    OPT_FIELDS.mwall = MOD_GRID.concat([['wallT', 'Thickness (m)'], ['wallKey', 'Sheet', 1], ['wallKeyIn', 'Inside sheet', 1]]);
+    OPT_FIELDS.mstairs = MOD_GRID.concat([['floorKey', 'Sheet', 1]]);
+    OPT_FIELDS.mroof = MOD_GRID.concat([['roofH', 'Roof rise (m)'], ['roofKey', 'Roof sheet', 1], ['floorKey', 'Ceiling sheet', 1]]);
     ['hill', 'mountain', 'volcano', 'mesa', 'bowl', 'pit', 'boxup', 'boxdown', 'level', 'sridge', 'trench'].forEach(function (k) {
         OPT_FIELDS[k] = [['shapeR', DRAWS[k].form === 'line' ? 'Size: width (m) · [ ]' : DRAWS[k].form === 'rect' ? 'Size: half side on a click (m) · [ ]' : 'Size: radius on a click (m) · [ ]']]
             .concat(k === 'level' ? [] : [['shapeH', k === 'bowl' || k === 'pit' || k === 'boxdown' || k === 'trench' ? 'Depth (m)' : 'Height (m)']]).concat([['shapeEdge', 'Edge', 'edge']]);
@@ -2910,7 +3039,7 @@
         shellPut('lights', ls, 'lamp');
     }
 
-    var PAL_TABS = [['build', 'BUILD'], ['shapes', 'SHAPES'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
+    var PAL_TABS = [['build', 'BUILD'], ['shapes', 'SHAPES'], ['modular', 'MODULAR'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
     var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
     ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
     function palData() {
@@ -2939,18 +3068,18 @@
         if (!editable() && ED.mode !== 'library') { B.innerHTML = ''; return; }
         var tab = ED.opts.tab || 'build';
         var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
-        if (tab === 'build' || tab === 'shapes' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
+        if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
         else if (tab === 'sky') h += skyHtml();   // E6
         else if (tab === 'leads') h += leadsHtml();   // E7
         else h += sizeStrip(tab) + '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
         h += '</div>';
         /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
            room reloads is not lost to a rebuilt button */
-        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'shapes' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
+        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
         B._h = h; B.innerHTML = h;
         B.querySelectorAll('[data-psz]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-psz').split(':'); if (v[0] === 'vary') ED.opts.treeVary = !ED.opts.treeVary; else ED.opts[v[0]] = +v[1]; saveOpts(); palette(); }; });
         B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
-        if (tab === 'build' || tab === 'shapes' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
+        if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
         if (tab === 'sky') { paletteWire(B); skyWire(B); return; }   // E6
         if (tab === 'leads') { leadsWire(B); return; }   // E7
         $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
@@ -3653,6 +3782,8 @@
             ['The palette tabs (left)', 'MODELS · PEOPLE · TREES · DOORS · LIGHTS · MARKERS · TEXTURES · KITS: click a tile, then click on the ground (again for more copies; it faces you). ESC or V stops. The armed tile again stops too'],
             ['DOOR (BUILD or DOORS)', 'click a wall you drew (a gap is cut, the door stands in it) or the ground; then pick the room it leads to and where you arrive (a new door back, its spawn, or one of its doors)'],
             ['TEXTURES', 'click a sheet, then a face: a wall\'s outside / inside, a floor, a block; the open ground = the room\'s floor'],
+            ['SHAPES (left)', 'HILL, MOUNTAIN, VOLCANO, MESA, BOWL, PIT, BLOCK UP / DOWN, LEVEL, RIDGE, TRENCH, ROUND WALL: drag to size, or click (or RIGHT click) for one SIZE · [ ] size'],
+            ['MODULAR (left)', 'FLOOR, WALL, DOOR, WINDOW, STAIRS, ROOF snap to the cell grid · [ ] = the floor below / above · L shows only that floor · DOOR / WINDOW: click a wall'],
             ['GROUND (left)', 'RAISE, LOWER, SMOOTH, FLATTEN, TERRACE, CLIFF, SET: hold the left mouse over the ground ([ ] size the brush, SHIFT turns RAISE into LOWER) · RAMP: drag foot → head · PAINT: pick a sheet (+ SHEET), then paint (8 sheets a room) · POOL: drag middle → rim · STREAM: click its course, ENTER ends it'],
             ['PLATFORM · DECK (BUILD)', 'drag a rectangle: a floating platform / a railed deck at HEIGHT'],
             ['L · Shift L', 'the level band on / off · up a floor (the top bar: its bottom, its top, ▼ ▲): only what overlaps it picks, everything above it is cut away'],
