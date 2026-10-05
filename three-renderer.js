@@ -28874,6 +28874,20 @@ const ThreeRenderer = (function () {
         _nrProp(K, _hzCenser, K.BX0 - 1.1 * ts, K.BZ0 - 1.4 * ts, { s: 0.6 }); _nrProp(K, _hzCenser, K.BX1 + 1.1 * ts, K.BZ0 - 1.4 * ts, { s: 0.6 });
         var ob = _hzPropGLB('obelisk3d', 3.4 * ts); ob.position.set(K.CX, K.fy, K.BZ1 + 3.0 * ts); K.add(ob);
     };
+    /* THE ROOF OVER THE CITY (2026-10-05): the observatory's own board (data.js DOOR_HQ room `deltaEnv`) — the terrace's marble
+       round the 8×8, its parapet at the rim, and the Vatican and the city under it (_vrRoofCity, the walk's same build); the
+       world row is a void with no root, so nothing but the building stands under the board */
+    _NR_BUILDERS.vatican_roof = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 2.0, gap: 0 }), ts = K.ts, u = ts / 1.75;
+        if (K.hq) return;
+        _nrApron(K, { tex: 'marble', color: 0xc8c4c8, deep: true, skirt: 'marble_light', skirtColor: 0xd8ccb0 });
+        var top = K.fy - 0.6, pm = K.mat('marble_light', 0xe8e4dc), ph = 0.95 * u, pt = 0.4 * u;   // the apron's top (_nrApron's)
+        [[K.X0, K.X1, K.Z0, K.Z0 + pt], [K.X0, K.X1, K.Z1 - pt, K.Z1], [K.X0, K.X0 + pt, K.Z0 + pt, K.Z1 - pt], [K.X1 - pt, K.X1, K.Z0 + pt, K.Z1 - pt]].forEach(function (r) {
+            var m = K.box(r[1] - r[0], ph, r[3] - r[2], pm); m.position.set((r[0] + r[1]) / 2, top + ph / 2, (r[2] + r[3]) / 2); K.add(K.lit(m, true));
+        });
+        _vrRoofCity(group, { u: u, ox: 0, oy: top, oz: 0, TM: ts, rng: K.rng, depth: 30, lower: 7, cityR: 125,
+                             x0: K.X0 / u, x1: K.X1 / u, z0: K.Z0 / u, z1: K.Z1 / u, wallTop: -top / u });
+    };
     /* BOHEMIAN GROVE — the clearing: a wall of redwoods, the Owl, the altar
        fire, the lantern trail, the creek. */
     _NR_BUILDERS.bohemian_grove = function (group, ctx) {
@@ -46250,6 +46264,159 @@ const ThreeRenderer = (function () {
         });
         G.add(hull);
     }
+    /* THE ROOF OVER THE CITY (2026-10-05, mondo: "why is the vatican observatory a landscape? it should be like the top of the
+       vatican building looking out over vatican/italian city"): the observatory's field ran on past its parapet as open ground
+       to the fog. Now it is a FLOATING room (no outer ground) whose `terrain.float` carries `roof`: the field is the top of a
+       building, and _vrRoofCity builds the rest of the Vatican and the city under it — THE TOWER (the terrace's own block,
+       its cornice, its tall windows), THE BASILICA's body round its foot a storey down (a flat travertine roof, its cornice,
+       the window rows, the giant columns of the façade, the statues along the façade's top), THE DOME rising off that roof
+       to the west, THE PIAZZA in front of the façade (its paving, the obelisk, the colonnade's two arms) and THE CITY round
+       it all on the street far below (the Italian buildings, a church here and there, the cobbled ground out under the fog).
+       Every piece is the user's own Assets/misc/ GLB or the existing sheets; each GLB is ONE InstancedMesh per piece (a
+       handful of draws for the whole city), nothing stands in for a file that has not landed. The same build hangs under the
+       room on the walk and round a fight on its field (_hqBuildRoomInBattle runs _hqBuildTerrain), and round the room's own
+       8×8 board (_NR_BUILDERS.vatican_roof). Metres in a frame: `u` world units a metre, (ox, oy, oz) the frame's origin in
+       world units (oy = the terrace floor), the terrace block x0..x1 × z0..z1, its walls from `wallTop` (≤ 0) down; `roof`
+       keys: depth (the street under the floor, m; 30), lower (the basilica's roof under the floor, m; 7), cityR (m; 125). */
+    var _VR_FILES = {
+        b1: 'Meshy_AI_Italian_building_0917035900_texture.glb', b2: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',
+        church: 'Meshy_AI_catholic_church_building_0917035753_texture.glb', angel: 'Meshy_AI_angel_statue_0917035332_texture.glb',
+        dome: 'Meshy_AI_the_Vatican_dome_0917061915_texture.glb', column: 'Meshy_AI_greek_column_0727195651_texture.glb',
+        obelisk: 'Meshy_AI_obelisk_0727195707_texture.glb'
+    };
+    /* one file's copies as InstancedMeshes: rows { x, y, z (world units, the base's centre), yaw, size (world units), fit } */
+    function _vrInstances(G, file, rows, lift) {
+        if (!rows.length || typeof _loadMiscModel !== 'function') return;
+        _loadMiscModel(_R2_MISC + encodeURIComponent(file), true, function (root) {
+            if (!root || !root._ew_bbox) return;   // NO STAND-INS: a file that failed stays empty
+            var bb = root._ew_bbox, ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+            var T0 = new THREE.Matrix4().makeTranslation(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+            var M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), Yx = new THREE.Vector3(0, 1, 0);
+            root.updateMatrixWorld(true);
+            var inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+            root.traverse(function (piece) {
+                if (!piece.isMesh || !piece.geometry) return;
+                var rel = new THREE.Matrix4().multiplyMatrices(inv, piece.matrixWorld);
+                var sm = Array.isArray(piece.material) ? piece.material[0] : piece.material, map = (sm && sm.map) || null;
+                var mat = new THREE.MeshLambertMaterial({ map: map, side: THREE.FrontSide });
+                mat.emissive = new THREE.Color(lift, lift, lift); if (map) mat.emissiveMap = map;   // a self-lit lift: the night key alone leaves a façade black
+                piece.geometry._ew_shared = true;   // the cache owns it (a room's leave must not drop the file under the next visit)
+                var im = new THREE.InstancedMesh(piece.geometry, mat, rows.length);
+                rows.forEach(function (r, k) {
+                    var s = r.size / ((r.fit === 'span') ? Math.max(ex, ez) : ey);
+                    Q.setFromAxisAngle(Yx, r.yaw || 0); P.set(r.x, r.y, r.z); S.set(s, s, s);
+                    M.compose(P, Q, S).multiply(T0).multiply(rel); im.setMatrixAt(k, M);
+                });
+                im.instanceMatrix.needsUpdate = true;
+                if (im.computeBoundingSphere) { im.computeBoundingSphere(); im.computeBoundingBox(); } else im.frustumCulled = false;
+                im.castShadow = false; im.receiveShadow = false; im._ew_pixelate = true; im._ew_occSkip = true; im._ew_hqPart = 'underside';
+                G.add(im);
+            });
+            if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
+            _objectsDirty = true;
+        });
+    }
+    function _vrRoofCity(G, o) {
+        var u = o.u, rng = o.rng || Math.random, TM = o.TM || 1.75 * u;
+        var depth = Math.max(12, +o.depth || 30), lower = Math.min(depth - 6, Math.max(3, +o.lower || 7)), cityR = Math.max(60, +o.cityR || 125);
+        var X = function (m) { return o.ox + m * u; }, Yw = function (m) { return o.oy + m * u; }, Z = function (m) { return o.oz + m * u; };
+        var x0 = o.x0, x1 = o.x1, z0 = o.z0, z1 = o.z1, top = Math.min(0, o.wallTop || 0), xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
+        var root = new THREE.Group(); root.name = 'vrRoofCity'; root._ew_hqPart = 'underside';
+        var lit = function (key, col, lift, shin) {
+            var tex = key ? _hzTex(key) : null, m = new THREE.MeshPhongMaterial({ map: tex || null, color: col, shininess: shin || 6, side: THREE.FrontSide });
+            m.emissive = new THREE.Color(col).multiplyScalar(lift || 0.16); if (tex) m.emissiveMap = tex;
+            return m;
+        };
+        var stoneMat = lit('marble_light', 0xd8ccb0, 0.18), roofMat = lit('marble', 0xb4ac9c, 0.12), trimMat = lit('marble_light', 0xece4d0, 0.2);
+        var add = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; m._ew_occSkip = true; m._ew_hqPart = 'underside'; m.receiveShadow = true; root.add(m); return m; };
+        var box = function (bx0, bx1, by0, by1, bz0, bz1, mat) {   // metres in the frame
+            var w = (bx1 - bx0) * u, h = (by1 - by0) * u, d = (bz1 - bz0) * u, g = new THREE.BoxGeometry(w, h, d);
+            _hzBoxUV(g, w, h, d, TM * HZ_TEX_DENSITY);
+            g.translate(X((bx0 + bx1) / 2), Yw((by0 + by1) / 2), Z((bz0 + bz1) / 2));
+            return g;
+        };
+        var merge = function (list, mat) { if (list.length) add(_hqHullMerge(list), mat); };
+        /* THE BLOCKS: the tower under the terrace, the basilica's body round its foot */
+        var bx0 = x0 - 46, bx1 = x1 + 10, bz0 = z0 - 16, bz1 = z1 + 6;
+        var stone = [], trims = [], darks = [], lights = [];
+        stone.push(box(x0, x1, -lower - 0.5, top, z0, z1));
+        trims.push(box(x0 - 0.45, x1 + 0.45, top - 0.75, top - 0.02, z0 - 0.45, z1 + 0.45));                 // the tower's cornice
+        trims.push(box(x0 - 0.2, x1 + 0.2, -lower + 0.4, -lower + 1.0, z0 - 0.2, z1 + 0.2));                  // its base course on the roof
+        var body = box(bx0, bx1, -depth, -lower, bz0, bz1); add(body, [stoneMat, stoneMat, roofMat, roofMat, stoneMat, stoneMat]);
+        trims.push(box(bx0 - 0.7, bx1 + 0.7, -lower - 1.1, -lower + 0.35, bz0 - 0.7, bz1 + 0.7));             // the body's cornice and its parapet lip
+        trims.push(box(bx0 - 0.5, bx1 + 0.5, -depth, -depth + 2.2, bz0 - 0.5, bz1 + 0.5));                    // the plinth on the street
+        /* the windows: tall dark panes (a share lit warm) on every face, the tower's one row, the body's rows */
+        var pane = function (fx, fz, nx, nz, ym, w, h) {   // a pane on a face: (fx, fz) its foot on the wall, (nx, nz) the outward normal
+            var g = new THREE.PlaneGeometry(w * u, h * u);
+            g.rotateY(Math.atan2(nx, nz)); g.translate(X(fx + nx * 0.04), Yw(ym), Z(fz + nz * 0.04));
+            (rng() < 0.2 ? lights : darks).push(g);
+        };
+        var rowsOn = function (ax0, ax1, az0, az1, ys, step, w, h, skip) {
+            [[ax0, az0, ax1, az0, 0, -1], [ax0, az1, ax1, az1, 0, 1], [ax0, az0, ax0, az1, -1, 0], [ax1, az0, ax1, az1, 1, 0]].forEach(function (f) {
+                var L = Math.hypot(f[2] - f[0], f[3] - f[1]), n = Math.floor((L - 4) / step);
+                for (var k = 0; k <= n; k++) {
+                    var t = (2 + (L - 4 - n * step) / 2 + k * step) / L, px = f[0] + (f[2] - f[0]) * t, pz = f[1] + (f[3] - f[1]) * t;
+                    if (skip && skip(px, pz, f)) continue;
+                    ys.forEach(function (y) { pane(px, pz, f[4], f[5], y, w, h); });
+                }
+            });
+        };
+        if (-lower + 1.2 < top - 1.6) rowsOn(x0, x1, z0, z1, [(top - 0.9 - lower + 1.0) / 2], 3.2, 1.2, Math.min(3.0, Math.max(1.2, (top - 0.9) - (-lower + 1.0) - 1.2)));
+        var ys = []; for (var yy = -lower - 4; yy > -depth + 4.5; yy -= 5) ys.push(yy);
+        var colStep = 6.5, facadeSkip = function (px, pz, f) { return f[5] === 1; };   // the façade wears the columns instead
+        rowsOn(bx0, bx1, bz0, bz1, ys, 4.2, 1.5, 2.6, facadeSkip);
+        merge(stone, stoneMat); merge(trims, trimMat);
+        merge(darks, new THREE.MeshPhongMaterial({ color: 0x1c2028, shininess: 70, specular: 0x30343c }));
+        merge(lights, new THREE.MeshBasicMaterial({ color: 0xffcf86 }));
+        /* THE PIAZZA in front of the façade, THE CITY's ground round everything */
+        var groundMat = lit('cobblestone', 0x8c8478, 0.1), pavMat = lit('cobblestone_2', 0xc4bcaa, 0.12);
+        var disc = function (rx, rz, cx, cz, yM, mat, seg) {
+            var g = new THREE.CircleGeometry(1, seg || 64), p = g.getAttribute('position'), uvA = g.getAttribute('uv');
+            for (var i = 0; i < p.count; i++) { var px = p.getX(i) * rx * u, pz = p.getY(i) * rz * u; p.setXY(i, px, pz); uvA.setXY(i, px / TM, pz / TM); }
+            g.rotateX(-Math.PI / 2); g.translate(X(cx), Yw(yM), Z(cz));
+            var m = add(g, mat); m.receiveShadow = true; return m;
+        };
+        disc(cityR * 3.4, cityR * 3.4, xc, zc, -depth, groundMat, 72);
+        var pcx = (bx0 + bx1) / 2, rx = 46, rz = 34, pcz = bz1 + 10 + rz;
+        disc(rx + 6, rz + 6, pcx, pcz, -depth + 0.04, pavMat, 72);
+        /* THE GLBS: the dome, the façade's columns, its statues, the obelisk, the colonnade, the city */
+        var at = function (xm, ym, zm, yaw, sizeM, fit) { return { x: X(xm), y: Yw(ym), z: Z(zm), yaw: yaw || 0, size: sizeM * u, fit: fit || 'height' }; };
+        _vrInstances(root, _VR_FILES.dome, [at(bx0 + 22, -lower, (bz0 + bz1) / 2 - 2, 0, 44)], 0.16);
+        var cols = [], angels = [];
+        var colH = depth - lower - 1.2;
+        for (var cxm = bx0 + 4; cxm <= bx1 - 3.9; cxm += colStep) cols.push(at(cxm, -depth + 2.2, bz1 + 1.4, 0, colH - 2.2));
+        for (var axm = bx0 + 3; axm <= bx1 - 2.9; axm += 6) angels.push(at(axm, -lower + 0.35, bz1 - 0.5, 0, 4.2));
+        /* the colonnade: two arms round the piazza's sides, a row of columns each */
+        for (var side = -1; side <= 1; side += 2) for (var k = 0; k < 12; k++) {
+            var an = (-62 + k * (124 / 11)) * Math.PI / 180;
+            cols.push(at(pcx + side * Math.cos(an) * (rx + 3), -depth, pcz + Math.sin(an) * (rz + 3), 0, 13));
+        }
+        _vrInstances(root, _VR_FILES.column, cols, 0.18);
+        _vrInstances(root, _VR_FILES.angel, angels, 0.2);
+        _vrInstances(root, _VR_FILES.obelisk, [at(pcx, -depth, pcz, 0, 25)], 0.16);
+        var city = { b1: [], b2: [], church: [] }, cell = 26, n = Math.ceil(cityR / cell);
+        var keep = function (px, pz, pad) {
+            if (px > bx0 - pad && px < bx1 + pad && pz > bz0 - pad && pz < bz1 + pad) return true;
+            var ex2 = (px - pcx) / (rx + pad + 4), ez2 = (pz - pcz) / (rz + pad + 4); return ex2 * ex2 + ez2 * ez2 < 1;
+        };
+        for (var gi = -n; gi <= n; gi++) for (var gj = -n; gj <= n; gj++) {
+            var cxp = xc + gi * cell + (rng() - 0.5) * 4, czp = zc + gj * cell + (rng() - 0.5) * 4;
+            if (Math.hypot(cxp - xc, czp - zc) > cityR || keep(cxp, czp, 14) || rng() < 0.1) continue;
+            var pick = rng(), kind = pick < 0.06 ? 'church' : (pick < 0.53 ? 'b1' : 'b2');
+            var size = kind === 'church' ? 24 + rng() * 6 : 15 + rng() * 6;
+            city[kind].push(at(cxp, -depth, czp, Math.floor(rng() * 4) * Math.PI / 2 + (rng() - 0.5) * 0.12, size, 'span'));
+        }
+        _vrInstances(root, _VR_FILES.b1, city.b1, 0.22);
+        _vrInstances(root, _VR_FILES.b2, city.b2, 0.22);
+        _vrInstances(root, _VR_FILES.church, city.church, 0.2);
+        G.add(root);
+        return root;
+    }
+    function _hqBuildRooftop(room, info, G, TM, rng, rf) {
+        var U = _hqUnits(), res = info.res;
+        _vrRoofCity(G, { u: U, ox: 0, oy: 0.3, oz: 0, TM: TM, rng: rng, depth: rf.depth, lower: rf.lower, cityR: rf.cityR,
+                         x0: info.x0, x1: info.x0 + (info.nx - 1) * res, z0: info.z0, z1: info.z0 + (info.nz - 1) * res, wallTop: -0.04 });
+    }
     /* THE BRIDGE LAYER (2026-09-19): the slabs over the field — see the call site in _hqBuildTerrain */
     function _hqBuildBridges(room, info, G, TM, U) {
         var S = room.shell || {};
@@ -46845,6 +47012,7 @@ const ThreeRenderer = (function () {
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
         if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
+        else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
         else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
         else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }

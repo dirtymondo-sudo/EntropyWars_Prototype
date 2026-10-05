@@ -16309,6 +16309,7 @@ function _mfAreaDeltaEnv(site, room) {
     if (!open) { env.world = { kind: 'room' }; env.scenery = 'none'; env.stars = 0; env.nebula = 0; delete env.density; }
     else { env.world = Object.assign({}, env.world || {}, { kind: (env.world && env.world.kind) || 'plain' }); delete env.world.sea; }   // a sea world wants the moat sheet a setting lays — there is none here
     if (room && room.shell && room.shell.look && !env.look) env.look = room.shell.look;
+    if (room && room.deltaEnv) Object.keys(room.deltaEnv).forEach(k => { env[k] = JSON.parse(JSON.stringify(room.deltaEnv[k])); });   // a part's own setting round its board (the observatory's roof, 2026-10-05)
     return env;
 }
 /* file every area board: PREBUILT_MAPS + MAP_LAYOUT_PRESETS under `<roomId>_delta`, an EW_MAP_META row wearing `area` + `site`
@@ -23887,10 +23888,12 @@ function hqVaticanShell(o) {
     o = Object.assign({}, o || {});
     const night = !!o.night; delete o.night;
     const landmarks = o.landmarks || null; delete o.landmarks;
+    const fogD = (o.fogD != null) ? +o.fogD : null; delete o.fogD;   // THE ROOF OVER THE CITY (2026-10-05): the observatory sees further (the city under it)
     const sky = night
         ? { night: 1, tint: 0x384068, tintAmt: 0.42, stars: 1.0, nebula: 0.3, fog: { color: 0x141a2c, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'divine', density: 0.6 }
         : { night: 0, tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5, density: 0.022 }, scenery: 'divine', density: 0.8 };
     if (landmarks) sky.landmarks = landmarks;
+    if (fogD != null) sky.fog.density = fogD;
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.1,
         open: true, edge: 'low',
@@ -35671,8 +35674,13 @@ const DOOR_HQ = {
             label: 'THE DIVINE STAIR · THE OBSERVATORY',
             sub: 'THE TOP OF THE DOME · THE TELESCOPE · THE STAIR IN THE SKY',
             kind: 'box', site: 'prebuilt_vatican', part: 'observatory',
-            shell: hqVaticanShell({ w: 24, d: 24, night: true, plate: { x: 0, z: -10.5, y: 4.0 },
+            shell: hqVaticanShell({ w: 24, d: 24, night: true, plate: { x: 0, z: -10.5, y: 4.0 }, fogD: 0.013,
+                heightFog: { floor: -30, h: 9, amount: 0.3 },   // the mist lies in the streets far below, not on the terrace
                 landmarks: [{ kind: 'stairway', id: 'stairway', deg: 0, dist: 0.62, s: 1.0, y: 0.34 }] }),   // THE STAIRWAY IN THE SKY, due north, hung a third of the way up the disc
+            /* THE ROOF OVER THE CITY (2026-10-05, mondo: "why is the vatican observatory a landscape? it should be like the top of the
+               vatican building looking out over vatican/italian city"): its own board is the terrace too (three-renderer.js
+               _NR_BUILDERS.vatican_roof — the building and the city under the 8×8, no ground, no root) */
+            deltaEnv: { near: 'vatican_roof', world: { kind: 'void', root: false } },
             /* THE FIELD: the dome stair on the south wall; THE DAIS (1.2 m) up four
                steps, its balustrade, THE TELESCOPE at its heart (the way — its eyepiece
                to the south, the tube aimed north at the stair); THE FINIAL in the
@@ -35680,6 +35688,10 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'marble', cliff: 'marble_light', path: 'marble_2',
                 noise: { amp: 0.02, scale: 4 },
+                /* THE ROOF OVER THE CITY (2026-10-05): the field is the top of the building — no ground runs on past the parapet; under
+                   it the tower, the basilica's roof a storey down with its statues and THE DOME, the piazza with the obelisk and the
+                   colonnade, and the city on the street 30 m below (three-renderer.js _hqBuildRooftop / _vrRoofCity) */
+                float: { roof: { depth: 30, lower: 7, cityR: 125 } },
                 features: [
                     { k: 'plateau', x: 0, z: -2, r: 6.5, h: 1.2, edge: 0.15 },                                       // THE DAIS (a marble drum, crisp: LEVEL_DESIGN_PLAN L1)
                     { k: 'ramp', x0: 0, z0: 7.7, x1: 0, z1: 3.8, w: 3.2, h0: 0, h1: 1.2, stairs: true, edge: 0.15,
