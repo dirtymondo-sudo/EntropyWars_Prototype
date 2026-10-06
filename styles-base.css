@@ -7142,3 +7142,9 @@ html.ew-mobile .hq-panel-card { max-height: calc(100dvh - 24px); }
 html.ew-mobile .sq-pick-panel { max-height: calc(100dvh - 20px); }
 html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 @media (orientation: portrait) { html.ew-mobile .hqt-top { top: calc(env(safe-area-inset-top, 0px) + 150px); } }
+
+/* THE MAP SHOT (2026-10-06): the selected site's picture behind the tube's text (three-camera.js EWCine.mapShotUrl —
+   this browser's own MAP SHOT, else R2 Assets/MapShots/<site>.jpg); none = the plain phosphor black */
+.ms-crt-shot { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.35s; pointer-events: none; filter: saturate(0.85) contrast(1.05); }
+.ms-crt-shot.on { opacity: 0.42; }
+.ms-crt-shot::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 85% 75% at 50% 45%, rgba(4,4,3,0.35) 0%, rgba(4,4,3,0.75) 100%); }

@@ -931,3 +931,28 @@ mondo: clicking an equipped spell to see its upgrades unequipped it (and dropped
 real button (styles-base.css .pb-ls-x lost pointer-events:none) that removes in one click. Passives / gear / training cards
 share the same card, so they follow it. The HQ pause rack (map.js) lists every equipped spell's upgrades at once, so it
 keeps its one-click toggle.
+
+## THE CINEMATIC CAMERA + THE MAP SHOTS (2026-10-06, token 20261006-cinecam-01-cors)
+mondo: "a cinematic cam mode where i can move the camera around the map and take screenshots or screen record ... a
+screenshot of each map or arena so in the map select it can show the location in the background ... a cinematic pan ...
+eventually ... cutscenes". Built in, no Theatre.js: its timeline editor (@theatre/studio) is AGPL, stalled since 2023 and
+React-heavy; a keyframe path on three's own CatmullRomCurve3 does the pans and zooms and is the cutscene format.
+- Code: three-camera.js `EWCine` (window.EWCine). three-renderer.js hands it the camera just before the draw
+  (renderFrame after ThreeCamera.sync; _hqFrame in place of _hqTickCamera) and calls `EWCine.after(canvas)` right after the
+  draw. In the building `_hqEditing(H)` is also true while it is on (`_hqCine()`): the walker stands, the room's keys and
+  mouse stand down, a lost lock is never the walker's ESC.
+- Open: CAMERA in either pause menu (map.js _HQ_PAUSE_CMDS, ui.js _pauseCmds) or F8. Leave: F8, ESC with the mouse free, EXIT.
+- Fly = the editor's creative keys (WASD/arrows, SPACE up, SHIFT down, click or E captures the mouse, wheel = speed);
+  Z / X lens. P photo (PNG, canvas size), M map shot, R record, K add key, BACKSPACE undo key, ENTER play path.
+  The panel (buttons, SPEED / LENS sliders, SECONDS PER KEY) shows only while the mouse is free. No hint text.
+- HUD: every page layer over the canvas (the canvas's ancestors' siblings) gets opacity 0 while on; stills and video read
+  the canvas only.
+- Stills/video read the canvas right after the draw through a 2D mirror (WebGL and WebGPU alike). Video = MediaRecorder on
+  the mirror's captureStream(60), ≤1920 px long side, 16 Mbps, silent, MP4 if the browser records it else WebM.
+- Path: keys {p:[x,y,z] METRES (world / unit; battle unit = tileSize/2), yaw, pitch, fov, s = seconds to the next key};
+  localStorage `ew_cine_path:<hq|battle>:<room or mode>`; COPY PATH = the JSON; `EWCine.play(path, {record, onEnd})` flies
+  it (one ease-in-out over the whole flight). Story cutscenes should call that.
+- MAP SHOT: 1600×900 JPEG (centre crop) named `<site>.jpg` (hqSiteId: an arena and its full site share one). Saved to
+  IndexedDB `ew_mapshots` (this browser's map select shows it at once) and downloaded; mondo uploads it to R2
+  `Assets/MapShots/<site>.jpg` so every player sees it. match-select.js `MapShot` = `.ms-crt-shot` inside the tube's
+  glass at 0.42 opacity (styles-base.css), fetched with the ?v= token; none = nothing drawn.

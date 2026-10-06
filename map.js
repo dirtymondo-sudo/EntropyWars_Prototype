@@ -2090,6 +2090,7 @@
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
+            { id: 'camera',    label: 'CAMERA',    sub: 'CINEMATIC · PHOTOS · VIDEO' },   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
             { id: 'edit',      label: 'EDIT',      sub: 'THIS ROOM IN THE EDITOR' },   // THE EDITOR (EDITOR_PLAN §5.1, E0)
             { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
         ];
@@ -2945,6 +2946,12 @@
             const P = _hqPause; if (!P) return;
             if (id === 'resume') { window._hqClosePause(); return; }
             if (id === 'exit') { _hqPauseDrop(); window._hqExitToMenu(); return; }
+            if (id === 'camera') {   /* THE CINEMATIC CAMERA: the free eye starts where the walk's camera stands (the room keeps running under it) */
+                if (!window.EWCine) return;
+                window.EWCine.enter({ force: true });
+                window._hqClosePause();
+                return;
+            }
             if (id === 'edit') {   /* THE EDITOR (E0): this room, from where the walker stands (a built-in room opens in the LIBRARY) */
                 let at = null; try { const ps = ThreeRenderer.hq.pos(); if (ps) at = { x: ps.x, z: ps.z, y: ps.y }; } catch (e) {}
                 _hqPauseDrop(); _hqSuspended = false;

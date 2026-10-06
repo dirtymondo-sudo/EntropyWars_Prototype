@@ -36676,6 +36676,8 @@ const ThreeRenderer = (function () {
             }
         }
         var cam = ThreeCamera.getCamera();
+        /* THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine): the free eye takes the board's camera after every sync */
+        if (cam && window.EWCine) { try { var _cs = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : ''; window.EWCine.frame(cam, { kind: 'battle', unit: (CONFIG.tileSize || BASE_TILE) / 2, key: _cs, site: (typeof window.hqSiteId === 'function') ? window.hqSiteId(_cs) : _cs.replace(/_delta$/, '') }); } catch (e) {} }
         if (cam) {
             /* Keep the hover pick glued to the cursor while the ENGINE moves the
                camera (blitz pans, cinematics, wheel zoom) and the mouse doesn't. */
@@ -36727,6 +36729,7 @@ const ThreeRenderer = (function () {
 
                 if (css2dRenderer) css2dRenderer.render(scene, cam);
                 _scalePlates(cam);
+                if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's held frame fades over this, the battle's first (rev 3: once the party's rigs stand, or the hold's cap — _fieldDissolveReady)
             }
         }
@@ -57456,7 +57459,10 @@ const ThreeRenderer = (function () {
        viewport — the same builders, lights, sky and post the player gets (R2, R7), but the walker stands still, the room's
        keys and mouse are the editor's (editor.js binds its own) and its fly camera is the eye. `edit.play = true` is PLAY
        HERE: the game's own input and walker take over until the editor clears it. The player's game never sets `edit`. */
-    function _hqEditing(H) { var ed = H && H.opts && H.opts.edit; return !!(ed && !ed.play && typeof ed.tick === 'function'); }
+    function _hqEditing(H) { var ed = H && H.opts && H.opts.edit; return !!(ed && !ed.play && typeof ed.tick === 'function') || _hqCine(); }
+    /* THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine): while its free eye flies the walker stands still and the room's
+       keys and mouse stand down, exactly as under the editor */
+    function _hqCine() { return !!(typeof window !== 'undefined' && window.EWCine && window.EWCine.on); }
     /* request the lock without console noise: newer Chrome returns a promise
        that REJECTS when there is no fresh gesture or the pointer is already
        held — an unhandled rejection per keypress otherwise */
@@ -62073,7 +62079,9 @@ const ThreeRenderer = (function () {
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
+        if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
         if (!editing) _hqTickCamera(dt);
+        else if (_hqCine()) { /* the free eye was placed above */ }
         else { try { H.opts.edit.tick(dt, H); } catch (e) { if (!H._editWarned) { H._editWarned = true; console.warn('[HQ] the editor tick', e); } } }
         _hqTickWorld(dt, now);
         if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
@@ -62093,6 +62101,7 @@ const ThreeRenderer = (function () {
         if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
         else renderer.render(H.scene, H.camera);
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
+        if (_hqCine()) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
     }
     /* ══ THE INSTANCE PASS (OPEN_WORLD_PLAN.md Phase 0, 2026-09-26) ══
        A room's catalogue props are clones of a few Meshy files: every copy shares its GEOMETRY (the misc cache, _ew_shared)

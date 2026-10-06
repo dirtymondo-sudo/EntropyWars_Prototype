@@ -179,6 +179,22 @@ function MapPreview({ mp, size, mini }) {
   );
 }
 
+/* THE MAP SHOT (2026-10-06): the selected site's picture behind the tube's text — the cinematic camera's MAP SHOT
+   (three-camera.js EWCine.mapShotUrl: this browser's own, else R2 Assets/MapShots/<site>.jpg); no picture = nothing drawn */
+function MapShot({ mp }) {
+  const site = mp ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(mp.modeId) : String(mp.modeId || '').replace(/_delta$/, '')) : '';
+  const [shot, setShot] = useState({ site: '', url: null });
+  useEffect(() => {
+    let live = true;
+    const C = window.EWCine;
+    if (!site || !C || typeof C.mapShotUrl !== 'function') { setShot({ site: site, url: null }); return; }
+    C.mapShotUrl(site).then(url => { if (live) setShot({ site: site, url: url || null }); }, () => { if (live) setShot({ site: site, url: null }); });
+    return () => { live = false; };
+  }, [site]);
+  const on = !!(shot.url && shot.site === site);
+  return h('div', { className: 'ms-crt-shot' + (on ? ' on' : ''), style: on ? { backgroundImage: 'url("' + shot.url + '")' } : undefined });
+}
+
 /* ── the parts ─────────────────────────────────────────────────────── */
 function ModeRow({ m, selected, onClick }) {
   return h('div', { className: 'ms-tty-row' + (selected ? ' sel' : '') + (m.locked ? ' locked' : ''), onClick: onClick },
@@ -770,6 +786,7 @@ function MatchSelect(props) {
   return h('div', { className: 'ms-crt ms-crt-' + frame + ' ms-crt-' + variant },
     h('div', { className: 'ms-crt-bezel' },
       h('div', { className: 'ms-crt-glass' },
+        h(MapShot, { mp: mp }),
         h('div', { className: 'ms-crt-screen' }, h('div', { className: 'ms-tty' }, head, body, foot)),
         h('div', { className: 'ms-crt-scan' }),
         h('div', { className: 'ms-crt-glare' })

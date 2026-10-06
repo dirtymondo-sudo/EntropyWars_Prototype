@@ -6791,6 +6791,7 @@
                 cmds.push({ id: 'match', label: 'MATCH', sub: 'SCORE · STATS · AWARDS' });
             }
             cmds.push({ id: 'library', label: 'STATUSES', sub: 'EVERY EFFECT IN THE GAME' });
+            if (!inEditor && window.EWCine) cmds.push({ id: 'camera', label: 'CAMERA', sub: 'CINEMATIC · PHOTOS · VIDEO' });   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
             cmds.push({ id: 'settings', label: 'SETTINGS', sub: 'AUDIO · VIDEO · CONTROLS' });
             if (!inEditor) cmds.push({ id: 'forfeit', label: 'FORFEIT', sub: 'COUNTS AS A LOSS', danger: true });
             return cmds;
@@ -6907,6 +6908,7 @@
         function _pauseSelect(id) {
             if (id === 'resume') { closePauseMenu(); return; }
             if (id === 'forfeit') { closePauseMenu(); document.getElementById('forfeitBtn')?.click(); return; }
+            if (id === 'camera') { closePauseMenu(); if (window.EWCine) window.EWCine.enter({ force: true }); return; }
             _pauseTab = id;
             _pauseCursor = Math.max(0, _pauseCmds().findIndex(c => c.id === id));
             try { playSfx('uiButtonConfirm'); } catch (e) {}
