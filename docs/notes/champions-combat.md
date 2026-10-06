@@ -1166,3 +1166,17 @@ now also orb of light, telepath, kraken, loch ness monster, king kong, ai, tree 
 juggernaut, mech, golem). Every reader (getEffectiveMove → getMoveTiles / AI / HUD, createUnit's stored move,
 the party builder) goes through moveFromSpd, so story, VS-CPU and online (host builds, guest reads the same data.js)
 agree. The fallbacks in battle.js / party-builder.js mirror the table.
+
+## THE BASIC ATTACK FLOOR (2026-10-06, mondo: "a basic attack does like 1 damage ... raise the floor to like 25 ... and the ceiling a bit too")
+battle.js constants (next to SOAK_FLOOR_SHARE, mirrored on window for ai.js / hud.js / ui.js):
+- BASIC_ATTACK_COEF 0.75 (was 0.65) and BASIC_ATTACK_MIN_RAW 30 (was 24): the swing is max(MIN_RAW, floor(ATK × COEF)) ± 8.
+  Every basic roll reads them: doAttack, the real-time `_hitBasic`, the Cube / turret swings, forecastBasicAttack,
+  ai.js's oracle + Cube estimate, the HUD move-then-attack row, ui.js's fallback estimator. ~+15-20% on a typical hit.
+- BASIC_FLOOR_SHARE 0.35 + BASIC_FLOOR_MIN 25: calcDamageResolution stage 7 (after the status taken mults, before
+  the shield) lifts a hit flagged `opts.basicAttack` to max(0.35 × base × levelMult, 25 × levelScale(victim level)).
+  So it is the same slice of an HP bar at every level (25 of ~910 at the cap, ~2 of ~70 at level 8). Shields still
+  absorb it, Indomitable still holds at 1 HP, immune / incorporeal / Protected still blank it (early-outs).
+- Flagged hits: the doAttack swing, its counter, the pincer follow-up, the Echo Band echo, the real-time swing and
+  forecastBasicAttack (so every preview carries the floor through the one hit math). Spells never get it.
+- Examples at the cap (PvP): worst (ATK 66 vs DEF 156, resisted, 3 tiles out, 2 tiers uphill, Bulwark, Guarded,
+  low roll) 6 → 25; typical (ATK 140 vs DEF 112) 119 → 144; best (crit + back + capped ×3) 1209 → 1398.
