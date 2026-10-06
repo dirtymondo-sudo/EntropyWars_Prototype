@@ -17514,8 +17514,25 @@
                 </div>
                 <h3>The bands (BASE values)</h3>
                 <table class="rce-table rce-gtable"><thead><tr><th>STAT</th><th>S ≥</th><th>A ≥</th><th>B ≥</th><th>C ≥</th><th>F</th><th>THE ROSTER</th><th>AT LEVEL ${cap()}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it. SPD also sets movement: ${typeof MOVE_SPD_BANDS !== 'undefined' ? 'SPD up to ' + MOVE_SPD_BANDS[0] + ' walks 1 tile, up to ' + MOVE_SPD_BANDS[1] + ' walks 2, up to ' + MOVE_SPD_BANDS[2] + ' walks 3, up to ' + MOVE_SPD_BANDS[3] + ' walks 4, above walks 5' : ''} (one SPD letter = one tile, so moving the SPD bands moves the tiles).</div>
+                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it.</div>
+                ${moveBlock()}
             </div>`;
+        }
+
+        /* ── MOVE TILES: how far each SPD walks (data.js MOVE_SPD_RULE; mondo 2026-10-06: "let me change the bands like everything
+           else in the editor") — FOLLOW SPD LETTERS ties the tiles to the SPD grade bands, else type the SPD for each tile ── */
+        function moveBlock() {
+            const from = moveSpdFrom(), follow = MOVE_SPD_RULE.follow, ed = Object.keys(M().doc.move || {}).length > 0;
+            const cnt = [0, 0, 0, 0, 0];
+            races().forEach(r => { cnt[moveFromSpd(base(r, 'spd')) - 1]++; });
+            const bar = cnt.map((n, i) => `<span class="rce-gbar g-${['f', 'c', 'b', 'a', 's'][i]}" style="flex:${n || 0.001}" title="${i + 1} tile${i ? 's' : ''}: ${n} races">${n ? (i + 1) + ' · ' + n : ''}</span>`).join('');
+            return `<h3>Move tiles from SPD</h3>
+                <table class="rce-table rce-gtable"><thead><tr><th></th><th>1 TILE</th><th>2 TILES ≥</th><th>3 TILES ≥</th><th>4 TILES ≥</th><th>5 TILES ≥</th><th>THE ROSTER</th><th></th></tr></thead><tbody>
+                <tr class="${ed ? 'ed' : ''}"><td><b>MOV</b></td><td class="slb2-dim">below ${from[0]}</td>
+                ${from.map((v, i) => `<td><input class="rce-in" type="number" min="1" value="${v}" data-f="moveFrom" data-i="${i}"${follow ? ' disabled title="turn FOLLOW SPD LETTERS off to type your own"' : ` title="the lowest SPD that walks ${i + 2} tiles"`}></td>`).join('')}
+                <td style="min-width:240px"><div class="rce-gdist">${bar}</div></td>
+                <td><button class="slb2-tiny${follow ? ' on' : ''}" data-act="moveFollow" title="tiles follow the SPD letters: F 1 · C 2 · B 3 · A 4 · S 5">FOLLOW SPD LETTERS</button>${ed ? ' <button class="slb2-tiny" data-act="moveReset">RESET</button>' : ''}</td></tr></tbody></table>
+                <div class="slb2-hint">${follow ? 'The tiles follow the SPD letters, so editing the SPD row above moves them too. Turn FOLLOW SPD LETTERS off to set each tile yourself.' : 'Each number is the lowest SPD that walks that many tiles. Each must be higher than the one before it.'} 5 tiles is the most any unit walks.</div>`;
         }
 
         /* ── LEVELS: the curve + any race at any level ── */
@@ -17758,6 +17775,8 @@
                     M().setGlobal('grades', v, b);
                 });
                 else if (a === 'bandReset') W(() => { delete M().doc.grades[v]; });
+                else if (a === 'moveFollow') W(() => { const on = !MOVE_SPD_RULE.follow; M().setGlobal('move', 'follow', on); if (!on) M().setGlobal('move', 'from', moveSpdFrom().slice()); });
+                else if (a === 'moveReset') W(() => { M().doc.move = {}; });
                 else if (a === 'calcKind') { R.calc.kind = v; render(); }
             });
             const onField = ev => {
@@ -17787,6 +17806,7 @@
                 else if (f === 'band') W(() => { const b = STAT_GRADE_BANDS[k].slice(); b[+el.dataset.i] = Math.round(+val || 0); M().setGlobal('grades', k, b); });
                 else if (f === 'curve') W(() => M().setGlobal('curve', k, Math.max(0, +val || 0) / (+el.dataset.scale || 1)));
                 else if (f === 'gain') W(() => M().setGlobal('gains', k, Math.round(+val || 0)));
+                else if (f === 'moveFrom') W(() => { const fr = MOVE_SPD_RULE.from.slice(); fr[+el.dataset.i] = Math.max(1, Math.round(+val || 1)); M().setGlobal('move', 'from', fr); M().setGlobal('move', 'follow', false); });
                 else if (f === 'zodiac') W(() => M().setZodiac(el.dataset.z, el.dataset.p, k, Math.round(+val || 0)));
                 else if (f === 'notes') { M().doc.notes = val; M().save(); }
             };

@@ -1225,3 +1225,6 @@ when the damage math moves. UNSEEN LIVE (RULE #1c): Firefox drag and drop on the
   units born under the sign, added in computeUnitStats(race, cls, zodiac) (map.js createUnit) and shown in the party builder.
   Race editor ZODIAC tab edits it through EWRaceMods doc.zodiac (export/import/prune/undo like race rows).
 - Race editor shows each race's portrait (RACE_PORTRAITS), else its 2D sprite; a failed image removes itself.
+- Follow-up (same day, mondo: "let me change the bands like everything else in the editor"): MOVE_SPD_RULE {follow, from}
+  in data.js; the GRADES tab has a MOVE TILES row (FOLLOW SPD LETTERS toggle, or type the SPD for 2/3/4/5 tiles), stored
+  as EWRaceMods doc.move like the other global groups.
