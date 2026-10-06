@@ -54048,6 +54048,22 @@ function hqArenaRun(mapId) {
         } catch (err) { console.error('[ARENA] the pick failed — the Δ stands', site, err); }
     });
 })();
+/* THE ONLINE PVP POOL (mondo 2026-10-06: "why is online pvp using the old voxel maps and not the new arena maps? why are they
+   doing maps that are anything other than 8x8?"): online PvP (Quick Play's server draw and the friendly room's draw) deals ONLY
+   these — every site whose `<site>_delta` became its arena, plus the kept sites' own 8×8 boards (HQ_ARENA_RULES.keep). Never a
+   full launch map, an area part's Δ, a facility, or a site that still wears its old voxel Δ. server.js reads this at boot. */
+function hqArenaPvpPool() {
+    if (typeof EW_MAP_META === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return [];
+    const S = HQ_ARENA_RULES.size, keep = HQ_ARENA_RULES.keep || [];
+    return EW_MAP_META.filter(m => {
+        if (!m || !m.isDelta || m.area || m.facility) return false;
+        const e = PREBUILT_MAPS[m.id];
+        if (!e || (e.w | 0) !== S || (e.h | 0) !== S) return false;
+        const site = String(m.id).replace(/_delta$/, '');
+        return !!m.arena || keep.includes(site);
+    }).map(m => m.id);
+}
+if (typeof window !== 'undefined') window.hqArenaPvpPool = hqArenaPvpPool;
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
    `state`, nothing relayed (RULE #2). This is the ONE table the rider reads
