@@ -62458,7 +62458,7 @@ const ThreeRenderer = (function () {
        point lights in the battle (every light recompiles every material once). */
     var HQ_BATTLE_ROOM_LIGHTS = 4;
     var _hqBattleRoomCache = { key: null, R: null };
-    /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): a PvP arena is an 8×8 cut of its site's room (data.js hqArenaRun) — the room
+    /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): a PvP arena is a 12×12 cut of its site's room (data.js hqArenaRun) — the room
        stands round it exactly as round an encounter's field. LATCHED at activate(): the arena whose full field was attached
        before the fight (map.js surveys the room first); a survey that lands mid-fight waits for the next one, so the board
        never swaps under a battle. The same read on the host and the guest (activeGameMode is the match's map on both). */

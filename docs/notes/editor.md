@@ -409,6 +409,20 @@ than 8x8?" Three causes, all fixed:
   `arena-check` / `arena-ready`, skipped by the replay recorder), at most 45 s.
 Rerun bake-arenas.js after a site room changes; the pool follows the picks on the next server boot.
 
+### E8 follow-up — every arena is 12×12 (2026-10-06, token 20261006-arenas12-01-cors)
+mondo: "Let's make all arena maps 12x12 instead of 8x8. Make whatever changes necessary to the maps to achieve this".
+- data.js `HQ_ARENA_SIZE = 12` drives HQ_ARENA_RULES.size and HQ_FIELD_RULES.size. `hqArenaHouse(S)` centres the house tiles:
+  spawns x 4..7 on rows 0 / 11, egress rows 1 / 10, the 2×2 nexus at 5..6 (on an 8 it gives the old 2..5 / 3..4).
+  `_mfDeltaNew({ S })` builds a bigger Δ; the two kept boards (Göbekli Tepe's TELL, the Looking-Glass garden) were re-authored at 12.
+- bake-arenas.js: the strict open-ground pass first (obstacles 18 of 144), then THE WALLED CUT for a site with no open window:
+  the room's own walls / buildings stand inside the window as solid cells (drawn as the room, as an encounter draws them),
+  a walkable pocket no spawn reaches counts with them, `wallMax` 48 in all, no walkable cell over `topMax` 3 levels; house tiles
+  still clear, flat and joined. `node bake-arenas.js prebuilt_<site> …` bakes only those sites.
+- Rooms opened for it: THE HALLS (the Lodge's entry) 14 × 15 → 22 × 22 m (its umbrella stand + plant moved to the corners); the
+  Woods clearing (Fairy Forest) gained `gen.open` disc { x 0, z 10, r 10.5 } round the crossroads.
+- Result: 31 site arenas + the 2 kept boards, all 12×12, = the online pool (33). Hell, Revenge, Bermuda still have no arena
+  (they keep their 8×8 voxel Δ and stay out of PvP, as before). Facility boards (Training Room, Holo Sim) stay 8×8.
+
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
 R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls

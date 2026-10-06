@@ -4456,7 +4456,7 @@
             return reg;
         }
         window._hqFieldRegister = _hqFieldRegister;
-        /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): a PvP arena is an 8×8 cut of its site's room (data.js hqArenaUpgrade) — the room's
+        /* THE ARENAS (EDITOR_PLAN E8, 2026-09-30): a PvP arena is a 12×12 cut of its site's room (data.js hqArenaUpgrade) — the room's
            floor plan is surveyed off the main thread (the worker above), then the arena's full field is attached so the battle draws
            the room round the board. A promise, or null when nothing is needed (not an arena, already full, no worker — the caller
            compiles under its card). A record that lands while a fight is on ITS map waits for the next launch (the renderer latches
@@ -8901,7 +8901,7 @@
         /* ── 2026-07 map overhaul ────────────────────────────────────────────
            The picker list is GENERATED from the MapForge roster (data.js
            EW_MAP_META): full launch maps first (tier order), then Custom Map,
-           then the 8×8 Δ boards (hand-authored in data.js DELTA FORGE).
+           then the arenas (12×12 since 2026-10-06) and the 8×8 Δ boards (hand-authored in data.js DELTA FORGE).
            Thumbnails render live from PREBUILT_MAPS.grid as before. */
         const MS_MAP_LIST = (() => {
             const list = [];
@@ -8918,7 +8918,7 @@
             meta.filter(m => m.isDelta).forEach(m => {
                 /* THE ARENAS (E8, 2026-09-30): a site's Δ became its arena (data.js HQ_ARENA_RULES) — `arena` labels it; a complex
                    part's own Δ (`area`) stays registered for the HQ encounter fallback but the console never lists it */
-                list.push({ modeId: m.id, name: m.label, size: m.arena ? '8×8 ARENA' : '8×8 Δ', team: m.teamSize, floors: false, w: 8, h: 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes });
+                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? ' ARENA' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes });
             });
             return list;
         })();
