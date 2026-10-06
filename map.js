@@ -2544,10 +2544,10 @@
                 html += pas.length ? '<div class="hq-pp-passives">' + pas.map(p => `<div class="hq-pp-passive"><b>${p.icon ? p.icon + ' ' : ''}${_hqEsc(p.name || p.id)}</b><p>${_hqEsc(p.desc || '')}</p></div>`).join('') + '</div>' : `<p class="hq-panel-note">None.</p>`;
             }
             /* GEAR (THE GEAR MERGE, SPELL_LIBRARY_PLAN.md Phase 4): the equipped passive / gear rows of the member's kit — they sit
-               in the spell slots (◈ PASSIVES in ABILITIES), at most 2 */
+               in the spell slots (◈ PASSIVES in ABILITIES), no cap of their own since 2026-10-06 */
             const _kitIds = (typeof window.hqPartySpellIds === 'function') ? window.hqPartySpellIds(m) : [];
-            const gear = _kitIds.filter(id => typeof spellIsPassive === 'function' && spellIsPassive(id)).map(id => { const d = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null; return { icon: (d && d.icon) || '◈', label: (d && d.name) || id, desc: (d && d.desc) || '', sp: (typeof spellSpCost === 'function') ? spellSpCost(id) : 1 }; });
-            html += `<div class="hq-pp-sec"><b>GEAR</b><span>${gear.length} / ${(typeof PASSIVE_SLOT_MAX !== 'undefined') ? PASSIVE_SLOT_MAX : 2} · IN THE SPELL SLOTS</span></div>`;
+            const gear = _kitIds.filter(id => typeof spellIsPassive === 'function' && spellIsPassive(id)).map(id => { const d = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null; const _lv = (typeof passiveLevelOfUps === 'function' && m.meta && m.meta.spellUpgrades) ? passiveLevelOfUps(m.meta.spellUpgrades[id]) : 0; return { icon: (d && d.icon) || '◈', label: ((d && d.name) || id) + (_lv ? ' +' + _lv : ''), desc: (d && d.desc) || '', sp: ((typeof spellSpCost === 'function') ? spellSpCost(id) : 1) + _lv }; });
+            html += `<div class="hq-pp-sec"><b>GEAR</b><span>${gear.length} · IN THE SPELL SLOTS</span></div>`;
             html += gear.length ? '<div class="hq-pp-gear">' + gear.map(g => `<div class="hq-pp-gear-row" title="${_hqEsc(g.desc)}"><i>${_hqEsc(g.icon)} ${g.sp} SP</i><b>${_hqEsc(g.label)}</b><span>${_hqEsc(g.desc)}</span></div>`).join('') + '</div>' : `<p class="hq-panel-note">Nothing equipped — gear and passives are picked under ABILITIES (◈ PASSIVES).</p>`;
             const items = (m.loadout && m.loadout.items) || (u && u.items) || {};
             const carried = Object.keys(items).filter(k => items[k] > 0);
@@ -2588,7 +2588,7 @@
         function _hqRackFold() { try { return (window.localStorage && window.localStorage.getItem('ew_rack_group')) === 'tier' ? 'tier' : 'family'; } catch (e) { return 'family'; } }
         function _hqRackFoldSet(v) { try { if (window.localStorage) window.localStorage.setItem('ew_rack_group', v === 'tier' ? 'tier' : 'family'); } catch (e) {} }
         function _hqPauseSpellDesc(sp) { if (!sp) return ''; let d = sp.desc || ''; if (!d) { try { d = (typeof describeSpell === 'function') ? describeSpell(sp) : ''; } catch (e) {} } return d; }
-        const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', passives: '2 PASSIVES MAX · UNEQUIP ONE', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
+        const _HQ_CIRC_ST_NOTE = { equipped: 'EQUIPPED · CLICK TO UNEQUIP', ok: 'CLICK TO EQUIP', slots: 'NO SLOT · UNEQUIP SOMETHING', sp: 'NOT ENOUGH SP · UNEQUIP SOMETHING', needs: 'TAKE +1 FIRST', sealed: 'SEALED · NOT ALLOWED IN THIS MODE' };
         const _HQ_CIRC_SRC = { race: '', borrowRace: 'BORROWED · RACE', wheel: 'DOOR WHEEL', gear: 'GEAR' };   // (the jobs removal 2026-09-27: no job / borrowJob source)   // THE DOOR WHEEL (DOOR_GUN_PLAN §2.4)
         /* THE LOOK PASS (2026-09-24, mondo — the builder's rack and this one read alike): the battle spell menu's
            badges (hud.js _hrlgSpellBadges — type, element glyph, statuses) + its AOE footprint (hud.js _hrlgSpellShape),
@@ -2645,7 +2645,7 @@
             const sp = (upOn.length && typeof resolveSpellDef === 'function') ? resolveSpellDef(row.sp, upOn) : row.sp;
             const cat = (sp && sp.kind === 'passive') ? { g: sp.icon || '◈', c: '#d9d2b8' } : sp ? (_HQ_CAT[sp.type] || _HQ_CAT.utility) : { g: '·', c: '#8a8270' };
             const aoe = _hqAoeTilesHtml(sp);
-            const verdict = st === 'equipped' ? ('✓ EQUIPPED' + (upOn.length ? ' · ⚙' + upOn.length : '')) : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'passives' ? '2 PASSIVES MAX' : st === 'sealed' ? 'SEALED' : '';
+            const verdict = st === 'equipped' ? ('✓ EQUIPPED' + (upOn.length ? ' · ⚙' + upOn.length : '')) : st === 'ok' ? `+${cost} SP` : st === 'slots' ? 'NO SLOT' : st === 'sp' ? `NEEDS ${cost} SP` : st === 'sealed' ? 'SEALED' : '';
             const src = _HQ_CIRC_SRC[row.source] || '';
             const title = `${sp ? (sp.name || id) : id} — ${_HQ_CIRC_ST_NOTE[st] || ''}${sp ? ' — ' + _hqPauseSpellDesc(sp) : ''}`;
             return `<button type="button" class="hq-circ-node st-${st}${src ? ' borrowed' : ''}" data-party-act="node:${_hqEsc(m.id)}:${_hqEsc(id)}"${st === 'sealed' ? ' disabled' : ''} title="${_hqEsc(title)}" style="--cc:${cat.c}">`
@@ -2663,7 +2663,7 @@
             let html = `<div class="hq-circ">`;
             html += `<div class="hq-circ-bar"><b>SPELLS</b><span class="hq-circ-sp" title="Spell Points: Tier I–IV costs 1–4">${Array.from({ length: spMax }, (_, i) => `<i${i < spUsed ? ' class="on"' : ''}></i>`).join('')}</span><span class="hq-circ-count">SP ${spUsed} / ${spMax}</span><span class="hq-circ-count">${C.used} / ${C.cap} SLOTS</span>`
                 + `<span class="hq-circ-tools"><button class="hq-btn hq-btn-xs" data-party-act="spelldef:${_hqEsc(m.id)}" title="The race's default kit, trimmed to the budget">DEFAULTS</button><button class="hq-btn hq-btn-xs" data-party-act="spellrnd:${_hqEsc(m.id)}">RANDOM</button><button class="hq-btn hq-btn-xs danger" data-party-act="spellclr:${_hqEsc(m.id)}"${C.used ? '' : ' disabled'}>CLEAR</button><button class="hq-btn hq-btn-sm" data-party-act="circuit:${_hqEsc(m.id)}">◂ DONE</button></span></div>`;
-            html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · AT MOST ${(C.passives && C.passives.max) || 2} PASSIVES / GEAR${C.borrows ? ' · ADAPTABLE: BORROWS ANY OTHER RACE\'S ABILITY' : ''}</p>`;
+            html += `<p class="hq-circ-note">ANY ABILITY, ANY TIER · TIER I–IV COSTS 1–4 SP · ${C.cap} SLOTS · ${spMax} SP · PASSIVES / GEAR: NO CAP, +1 / +2 IN ⚙ UPGRADES${C.borrows ? ' · ADAPTABLE: BORROWS ANY OTHER RACE\'S ABILITY' : ''}</p>`;
             if (C.unplaced.length) html += `<p class="hq-circ-note bad">${C.unplaced.length} ABILIT${C.unplaced.length === 1 ? 'Y' : 'IES'} ON THE RECORD NO LONGER FIT THIS UNIT (${_hqEsc(C.unplaced.join(', '))}) — THEY ARE DROPPED AT THE NEXT WRITE</p>`;
             html += _hqPauseFinisherHtml(m);
             /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the FOLD — a row per family (the default; C.families,
@@ -2685,9 +2685,9 @@
                 if (!T.rows.length && !T.borrow) html += `<span class="hq-circ-none">NOTHING AT THIS TIER</span>`;
                 html += `</div></div>`;
             });
-            /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): passive / gear rows under the tiers — a slot + their tier's SP each, at most 2 */
+            /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): passive / gear rows under the tiers — a slot + their tier's SP each, no cap (2026-10-06) */
             if (C.passives && C.passives.rows.length) {
-                html += `<div class="hq-circ-tier-row tpas"><div class="hq-circ-head"><b>◈ PASSIVES</b><i>${C.passives.used} / ${C.passives.max}</i></div><div class="hq-circ-row-nodes">`;
+                html += `<div class="hq-circ-tier-row tpas"><div class="hq-circ-head"><b>◈ PASSIVES</b><i>${C.passives.used} EQUIPPED</i></div><div class="hq-circ-row-nodes">`;
                 C.passives.rows.forEach(row => { html += _hqPauseCircuitNodeHtml(m, row, C); });
                 html += `</div></div>`;
             }
@@ -15704,7 +15704,7 @@
 
             /* ── THE PASSIVES + THE GEAR MERGE (SPELL_LIBRARY_PLAN.md §6.4, Phase 4) ──────────────────────
                A passive / gear row rides the loadout's spell ids (treeLegalSubset priced it, capped it at
-               PASSIVE_SLOT_MAX), but it is never cast: it leaves unit.spells for unit.passiveRows (ids — they
+               nothing since 2026-10-06), but it is never cast: it leaves unit.spells for unit.passiveRows (ids — they
                ride the snapshot, so the guest's getUnitPassives reads the same rows; RULE #2). A unit that
                never took the custom-kit path above (a sandbox / fallback build) still wearing an old
                `equipment` pair gets those gear rows directly, capped. unit.equipment is re-derived as the
@@ -15722,6 +15722,17 @@
                     for (const gid of (gearMigrateIds([], loadout.equipment) || [])) if (_pasIds.length < _cap && typeof getSpellById === 'function' && getSpellById(gid)) _pasIds.push(gid);
                 }
                 newUnit.passiveRows = _pasIds;
+                /* THE PASSIVE LEVELS (the user 2026-10-06): the kit's +1 / +2 on a passive row (the same meta.spellUpgrades
+                   map and the same repair as the spell upgrades below) → unit.passiveLevels { rowId: 1|2 }; getUnitPassives
+                   reads each row's raised hooks through it. Ids + numbers, so it rides the snapshot (RULE #2). */
+                newUnit.passiveLevels = {};
+                {
+                    const _plWish = identityOverride && identityOverride.spellUpgrades;
+                    if (_pasIds.length && _plWish && typeof _plWish === 'object' && typeof treeLegalUpgrades === 'function' && typeof passiveLevelOfUps === 'function' && Array.isArray(newUnit._spellSlots) && newUnit._spellSlots.length) {
+                        const _pl = treeLegalUpgrades(newUnit.race, template.cls, newUnit._spellSlots, _plWish);
+                        for (const _pid of _pasIds) { const _L = passiveLevelOfUps(_pl[_pid]); if (_L) newUnit.passiveLevels[_pid] = _L; }
+                    }
+                }
                 if (typeof passiveRowsEquipmentMirror === 'function') newUnit.equipment = Object.assign({}, newUnit.equipment || {}, passiveRowsEquipmentMirror(_pasIds));
                 /* THE JOBS REMOVAL (the user 2026-09-27): the old job stat kickers are TRAINING passive hooks now
                    (passiveWarpath / passiveBulwark armor 5, passiveArcaneSurge spellPower 8, passiveGrace healBonus 24,

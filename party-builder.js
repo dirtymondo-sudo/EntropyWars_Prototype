@@ -699,10 +699,10 @@ function computeStats(race, cls) {
 }
 /* `equipment` = the loadout's spell ids since THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): the equipped passive rows'
    `statBonus` hooks (data.js passiveIdsStatBonus); an old { accessory1, accessory2 } object still reads the retired table. */
-function computeFullStats(race, cls, secJob, equipment) {
+function computeFullStats(race, cls, secJob, equipment, ups) {
   const base = computeStats(race, cls);
   const secB = { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };   // THE JOBS REMOVAL (2026-09-27): no second job
-  const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment)
+  const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment, ups)   // ups: a passive row's +1 / +2 (2026-10-06)
     : (equipment && !Array.isArray(equipment) && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
   const delta = {};
   const final = {};
@@ -1525,7 +1525,8 @@ function pbUpgradeRows(ctx, id) {
   const reg = window.SPELL_UPGRADES || {};
   const on = (ctx.ups && ctx.ups[id]) || [];
   return window.spellAllowedUpgrades(id).map(u => {
-    const row = reg[u] || {};
+    // a passive's +1 / +2 names this row's own numbers (data.js spellUpgradeDescFor)
+    const row = Object.assign({}, reg[u] || {}, typeof window.spellUpgradeDescFor === 'function' ? { desc: window.spellUpgradeDescFor(id, u) } : {});
     if (on.includes(u)) return { id: u, row, st8: 'on', note: 'ON · CLICK TO REMOVE · +' + window.spellUpgradeSp(u) + ' SP BACK' };
     const v = window.spellUpgradeVerdict(ctx.race, ctx.cls, ctx.equipped, ctx.ups, id, u);
     return { id: u, row, st8: v.ok ? 'ok' : v.reason, note: v.note };
@@ -1578,7 +1579,7 @@ function pbTierCtx(race, cls, equipped, upsWish, tabWish) {
   const tab = tabs.find(t => t.key === tabWish) || tabs[0];
   const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
   return { race, cls, parts, pool, sourceOf, famOf, tabs, tab, borrowCount: parts.borrowRace.length, passives, sealed, equipped: eq, borrows, isFreelancer: borrows, ups,
-    pasMax: typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2, pasUsed: eq.filter(isPas).length,
+    pasUsed: eq.filter(isPas).length,   // no passive cap since 2026-10-06
     cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq, ups) };
 }
 /* equipped · ok · sp · slots · sealed · dup/pool (never drawn) */
@@ -1698,9 +1699,9 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     const src = ctx.sourceOf[id] || 'race';
     const isPas = !!(sp && sp.kind === 'passive');
     const on = st8 === 'equipped';
-    // the card's own refusal (SP, sealed); a full loadout or a full passive pair is said ONCE, in the tech bar
+    // the card's own refusal (SP, sealed); a full loadout is said ONCE, in the tech bar
     const why = st8 === 'sp' ? 'ONLY ' + spLeft + ' SP LEFT' : st8 === 'sealed' ? 'SEALED IN THIS MODE' : null;
-    const whyAll = st8 === 'slots' ? 'all ' + ctx.cap + ' slots are full' : st8 === 'passives' ? ctx.pasMax + ' passives max' : null;
+    const whyAll = st8 === 'slots' ? 'all ' + ctx.cap + ' slots are full' : null;
     const meta = pbNodeMeta(sp).slice(0, 3);
     const bf = src === 'borrowRace' ? famLook(id) : null;   // a borrowed card names the family it came from
     const n = upN(id);
@@ -1839,8 +1840,8 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
         h('ul', { className: 'pb-technique-how' },
           h('li', null, h('b', null, 'Click'), ' a spell to equip it. Click it again, or its slot up top, to take it off.'),
           h('li', null, 'The number on each spell is its cost. You have ', h('b', null, spMax + ' SP'), ' and ', h('b', null, slotCap + ' slots'), ' to spend.'),
-          h('li', null, 'At most ', h('b', null, (window.PASSIVE_SLOT_MAX || 2) + ' passives'), ' (Training and Gear).'),
-          h('li', null, 'Equipped spells with ', h('b', null, '⚙'), ' can be upgraded here once selected.')),
+          h('li', null, h('b', null, 'Passives'), ' (Training and Gear) have no cap: a slot and their SP each.'),
+          h('li', null, 'Equipped spells and passives with ', h('b', null, '⚙'), ' can be upgraded here once selected (a passive takes +1, then +2).')),
         h('div', { className: 'pb-technique-keys' }, h('kbd', null, '↑↓←→'), ' walk ', h('kbd', null, 'ENTER'), ' equip / remove ', h('kbd', null, '⌫'), ' remove ', h('kbd', null, 'SPACE'), ' preview')));
   }
   const { st8, key } = info;
@@ -1874,7 +1875,6 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   else if (st8 === 'ok') { verb = 'EQUIP · ' + info.cost + ' SP'; verbCls = 'primary'; verbTitle = 'Equip this technique'; }
   else if (st8 === 'sp') { verb = 'NEEDS ' + info.cost + ' SP · ' + (spMax - spUsed) + ' LEFT'; verbCls = 'off'; verbTitle = 'Unequip something to free SP'; }
   else if (st8 === 'slots') { verb = 'NO SLOT · ' + used + '/' + slotCap; verbCls = 'off'; verbTitle = 'All seven slots are full — unequip something first'; }
-  else if (st8 === 'passives') { verb = 'PASSIVES FULL · ' + (window.PASSIVE_SLOT_MAX || 2) + ' MAX'; verbCls = 'off'; verbTitle = 'Take a passive off first'; }
   else if (st8 === 'sealed') { verb = 'SEALED — CLASH RULES'; verbCls = 'off'; verbTitle = 'Not allowed in this mode'; }
   else if (st8 === 'borrow') { verb = '＋ BROWSE THE FAMILIES'; verbCls = 'gold'; verbTitle = 'Open the pool'; }
   const canPreview = st8 !== 'borrow';
@@ -2758,7 +2758,7 @@ function PartyBuilder(props) {
     }
   }
   /* THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): an old save's two accessories become GEAR passive rows in the kit
-     (after its own picks; the rack's repair prices them and keeps at most 2 passives), and the retired slots empty. */
+     (after its own picks; the rack's repair prices them), and the retired slots empty. */
   if ((unitEquipment.accessory1 || unitEquipment.accessory2) && typeof window.gearMigrateIds === 'function') {
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
@@ -2768,7 +2768,7 @@ function PartyBuilder(props) {
     customSpells = mig;
     unitEquipment.accessory1 = null; unitEquipment.accessory2 = null;
   }
-  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || []);
+  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || [], pbEffUps(unitRace, clsName, customSpells || [], st.partyMeta?.[player]?.[slot]?.spellUpgrades));
   const learnedSpells = getLearnedSpells(clsName, customSpells);
   const zodiacNature = typeof window.ZODIAC_NATURES !== 'undefined' ? window.ZODIAC_NATURES[identity.zodiac || 'aries'] : null;
   const unitItems = unitLoadout.items || {};
@@ -3101,7 +3101,7 @@ function PartyBuilder(props) {
     const cur = (eff[spellId] || []).slice();
     const row = (window.SPELL_UPGRADES || {})[upId] || {};
     if (cur.includes(upId)) {
-      eff[spellId] = cur.filter(u => u !== upId);
+      eff[spellId] = cur.filter(u => u !== upId && !((window.SPELL_UPGRADES || {})[u] && window.SPELL_UPGRADES[u].after === upId));   // +1 off takes +2 with it
       if (!eff[spellId].length) delete eff[spellId];
       flashTreeNote('UPGRADE OFF · ' + String(row.name || upId).toUpperCase() + ' · +' + window.spellUpgradeSp(upId) + ' SP BACK');
     } else {
@@ -3599,10 +3599,11 @@ function PartyBuilder(props) {
     h('div', { className: 'pb-zone-body pb-gear' },
       h('button', { className: 'ms-tty-btn primary', onClick: () => setCreatorOpen(true) }, 'CHARACTER CREATOR'),
       /* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4): gear is a passive row in the spell slots now — these boxes SHOW the
-         equipped passive / gear rows (at most 2); a click opens TECHNIQUES, where the ◈ PASSIVES row equips them. */
+         equipped passive / gear rows (no cap since 2026-10-06: one more empty box than are on, up to the slots); a click opens TECHNIQUES. */
       (() => {
         const pasIds = (customSpells || []).filter(id => typeof window.spellIsPassive === 'function' && window.spellIsPassive(id));
-        const pasMax = typeof window.PASSIVE_SLOT_MAX === 'number' ? window.PASSIVE_SLOT_MAX : 2;
+        const _slots = typeof window.SPELL_SLOT_MAX === 'number' ? window.SPELL_SLOT_MAX : 7;
+        const pasMax = Math.min(_slots, Math.max(2, pasIds.length + 1));
         return h('div', { className: 'pb-gear-row' },
           h('div', { className: 'pb-gear-label' }, 'GEAR', h('small', null, 'PASSIVES · IN THE RACK')),
           h('div', { className: 'pb-gear-slots' },

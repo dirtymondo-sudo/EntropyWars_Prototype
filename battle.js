@@ -7791,7 +7791,7 @@
                 // getEffectiveArmor, which the AI calls per candidate)
                 const _rows = (typeof unitPassiveRowIds === 'function') ? unitPassiveRowIds(h) : [];
                 if (!_rows.length) continue;
-                for (const p of _rows.map(id => (typeof passiveRowWrap === 'function') ? passiveRowWrap(id) : null)) {
+                for (const p of _rows.map(id => (typeof passiveRowWrap === 'function') ? passiveRowWrap(id, (typeof unitPassiveLevel === 'function') ? unitPassiveLevel(h, id) : 0) : null)) {
                     const v = p && p[key];
                     if (v === undefined || v === null || v === false) continue;
                     const r = +radiusOf(v) || 0;

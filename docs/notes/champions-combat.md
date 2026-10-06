@@ -1145,3 +1145,15 @@ hero sprites, and mirrored in `RACE_SPRITES`. File → race where the names diff
 deepseacreature → deep sea fish, gremlin → goblin, wrestler → luchador, crystalguardian/cultleader/icequeen/
 jackolantern/mushroomgirl/policeofficer/treeperson → the spaced race keys. They replace the older ice queen + kaiju
 sprites and every borrowed sheet. bunny girl has no file yet (still borrows catgirl). Portraits: he uploads later.
+
+## THE PASSIVE CAP REMOVED + THE PASSIVE LEVELS (2026-10-06)
+mondo: "Get rid of the limit on number of passives, gear, and training i can equip and add 1-2 upgrades to all of them".
+- No passive cap: spellAddVerdict / isTreeLoadoutLegal / treeLegalSubset / buildTreeLegalLoadout no longer count passive
+  rows. A passive still takes a slot (7) and its tier SP (16). PASSIVE_SLOT_MAX = SPELL_SLOT_MAX, kept only for old readers.
+- Every passive / gear / training row takes SPELL_UPGRADES `upPassive1` (+1) then `upPassive2` (+2, `after: 'upPassive1'`),
+  1 SP each, through the existing ⚙ upgrade toggles (party builder technique panel, HQ pause rack) and meta.spellUpgrades.
+- data.js passiveHooksAtLevel(hooks, L): amounts ×(1+0.5L), multipliers' bonus part the same, fractions the same (cap 1),
+  tile / round / stage counts +L, stagePerRounds `every` −L, grantSpell MP −25 %/level; negatives, lists, strings, flags stay.
+  A row with nothing to raise (Martyr's Talisman, Adaptable, Umbral, Live Wire) gets +20 max HP a level.
+- createUnit writes unit.passiveLevels { rowId: L } (rides the snapshot); getUnitPassives / battle.js aura holders call
+  passiveRowWrap(id, level). passiveLevelDiff / spellUpgradeDescFor print the "AWR 28 → 42" line on the toggle.
