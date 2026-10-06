@@ -123,7 +123,7 @@ const FLYING_ALTITUDE_CONFIG = {
 };
 
 /* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4, 2026-09-26): the two accessory slots are RETIRED — every accessory is a
-   passive row in the GEAR family (GEAR_PASSIVES, equipped in the spell slots, at most 2 passive rows of the 7). This table
+   passive row in the GEAR family (GEAR_PASSIVES, equipped in the spell slots, no cap of their own since 2026-10-06). This table
    stays as the LABELS of the retired ids (an old save's `equipment`, the display mirror unit.equipment); nothing equips
    from it. Spelunking Gear was dropped (nothing read it). */
 const EQUIPMENT_SLOTS = ['accessory1', 'accessory2'];
@@ -3518,10 +3518,10 @@ function getUnitPassives(unit) {
         if (def && out.indexOf(def) === -1) out.push(def);
     }
     /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4): the EQUIPPED passive rows (gear + family passives) after the
-       inherent ones — MAX_UNIT_PASSIVES caps the inherent only; PASSIVE_SLOT_MAX caps the rows in the loadout. Each row
+       inherent ones — MAX_UNIT_PASSIVES caps the inherent only (the rows have no cap since 2026-10-06). Each row
        is wrapped with its hooks at top level, so every hook key reads through unitPassiveValue unchanged. */
     for (const id of unitPassiveRowIds(unit)) {
-        const w = passiveRowWrap(id);
+        const w = passiveRowWrap(id, unitPassiveLevel(unit, id));
         if (w && out.indexOf(w) === -1) out.push(w);
     }
     return out;
@@ -18850,8 +18850,7 @@ function spellAddVerdict(race, cls, ids, id, poolSet, ups) {
     if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID))).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
     if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
     if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
-    // THE PASSIVE CAP (Phase 4, the user 2026-09-25): at most PASSIVE_SLOT_MAX passive / gear rows among the slots
-    if (spellIsPassive(id) && passiveRowCount(eq) >= PASSIVE_SLOT_MAX) return Object.assign(out, { reason: 'passives', note: PASSIVE_SLOT_MAX + ' PASSIVES MAX · UNEQUIP ONE' });
+    // THE PASSIVE CAP is gone (the user 2026-10-06): passive / gear / training rows only need a slot and their SP
     if (used + need > SPELL_SP_MAX) return Object.assign(out, { reason: 'sp', note: 'NOT ENOUGH SP · ' + used + '/' + SPELL_SP_MAX + ' USED · NEEDS ' + need + ' · FREE ' + (used + need - SPELL_SP_MAX) + ' MORE' });
     return Object.assign(out, { ok: true, reason: 'ok', note: 'EQUIP · ' + need + ' SP' });
 }
@@ -18889,7 +18888,6 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
         for (const k of Object.keys(ups)) if (Array.isArray(ups[k]) && ups[k].length && !clean[k]) return false;   // an upgrade on a spell that is not equipped
         if (JSON.stringify(treeLegalUpgrades(race, cls, ids, clean)) !== JSON.stringify(clean)) return false;
     }
-    if (passiveRowCount(ids) > PASSIVE_SLOT_MAX) return false;
     const pool = new Set(unitSpellPool(race, cls, ids));
     for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
     return true;
@@ -18907,22 +18905,19 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
     const walk = (borrow) => {
         const pool = new Set(unitSpellPool(race, cls, borrow ? [ADAPTABLE_ROW_ID] : []));
         const out = [];
-        let sp = 0, pas = 0;
+        let sp = 0;
         for (const id of wish) {
             if (out.length >= cap) break;
             if (!id || out.includes(id) || !pool.has(id) || _spellSealed(id)) continue;
             const c = spellSpCost(id);
             if (sp + c > SPELL_SP_MAX) continue;
-            const isPas = spellIsPassive(id);
-            if (isPas && pas >= PASSIVE_SLOT_MAX) continue;   // THE PASSIVE CAP — the third passive row is skipped (earlier picks win)
-            out.push(id);
+            out.push(id);   // no passive cap since 2026-10-06 — passives only need a slot and their SP
             sp += c;
-            if (isPas) pas++;
         }
         return out;
     };
     /* ADAPTABLE (THE JOBS REMOVAL, 2026-09-27): a borrowed pick is legal only while the Adaptable row survives the walk —
-       when the walk drops the row (slots / SP / the passive cap), walk again without the borrow window. */
+       when the walk drops the row (slots / SP), walk again without the borrow window. */
     if (loadoutBorrows(wish)) {
         const out = walk(true);
         if (loadoutBorrows(out)) return out;
@@ -18947,8 +18942,7 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
         const picks = [];
         let sp = 0;
         while (picks.length < cap) {
-            const pasFull = passiveRowCount(picks) >= PASSIVE_SLOT_MAX;
-            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= SPELL_SP_MAX && !(pasFull && spellIsPassive(id)));
+            const opts = weighted.filter(([id]) => !picks.includes(id) && sp + spellSpCost(id) <= SPELL_SP_MAX);
             if (!opts.length) break;
             let total = 0;
             for (const o of opts) total += o[1];
@@ -18981,14 +18975,16 @@ function _flTierOf(sp) { return spellTierNumeral(sp); }
    upgrades in Phase 5, families-as-pools in Phase 7. What Phase 0 changes for the running game is one thing —
    spellTierOf reads the row's numeric `tier` first (above).
    THE RULINGS (the user, 2026-09-25): tiers and costs are the user's to set per row; passives and equipment are one
-   kind of row equipped in the spell slots, AT MOST 2 of the 7 (PASSIVE_SLOT_MAX — enforced in Phase 4); today's 17
+   kind of row equipped in the spell slots (the 2-of-7 cap of Phase 4 was lifted 2026-10-06); today's 17
    accessories are UNIVERSAL — the GEAR family every pool carries, priced tier I by default. */
-const PASSIVE_SLOT_MAX = 2;   // passive / equipment rows among the 7 slots (enforced since Phase 4: spellAddVerdict / isTreeLoadoutLegal / treeLegalSubset)
+/* THE PASSIVE CAP REMOVED (the user 2026-10-06: "get rid of the limit on number of passives, gear, and training i can
+   equip"): a passive row needs only a free slot and its SP, so the most a kit can hold is every slot. Kept as a
+   number (= the slot count) for readers that still print it; nothing refuses a passive on it any more. */
+const PASSIVE_SLOT_MAX = SPELL_SLOT_MAX;
 
 /* ══ THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5 / §6.4, Phase 4, 2026-09-26) ═══════════════════════════════════════════
-   A passive row is a SPELL_BY_ID row with `kind: 'passive'`: it takes a slot, costs its tier in SP, at most
-   PASSIVE_SLOT_MAX of them per loadout (spellAddVerdict 'passives' · isTreeLoadoutLegal · treeLegalSubset skips the
-   third), and its effect lives in `hooks: { <hook key>: value }` — PASSIVE_HOOK_KEYS below is the catalogue the
+   A passive row is a SPELL_BY_ID row with `kind: 'passive'`: it takes a slot, costs its tier in SP (no cap of its own
+   since 2026-10-06; levels +1 / +2 below, THE PASSIVE LEVELS), and its effect lives in `hooks: { <hook key>: value }` — PASSIVE_HOOK_KEYS below is the catalogue the
    library's hook editor offers. On the board the row is NOT a spell: createUnit moves it out of unit.spells into
    unit.passiveRows (ids), and getUnitPassives appends passiveRowWrap(id) after the race's inherent passives. ── */
 function spellIsPassive(spOrId) {
@@ -19020,14 +19016,18 @@ function unitPassiveRowIds(unit) {
 /* a passive row as a PASSIVE_DEFS-shaped entry: { id, icon, name, desc, …hooks } — cached per row object, rebuilt when
    the library replaces the row's hooks / name / desc (EWSpellMods writes a field as a new value, never in place) */
 const _passiveWrapCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
-function passiveRowWrap(spOrId) {
+function passiveRowWrap(spOrId, level) {
     const sp = _spellOfIdOrDef(spOrId);
     if (!sp || sp.kind !== 'passive') return null;
-    const c = _passiveWrapCache && _passiveWrapCache.get(sp);
+    // THE PASSIVE LEVELS (2026-10-06): one cached wrap per level; a levelled row reads its raised hooks
+    const lv = Math.max(0, Math.min(PASSIVE_LEVEL_MAX, level | 0));
+    let byLv = _passiveWrapCache && _passiveWrapCache.get(sp);
+    if (!byLv) { byLv = {}; if (_passiveWrapCache) _passiveWrapCache.set(sp, byLv); }
+    const c = byLv[lv];
     if (c && c.hooks === sp.hooks && c.name === sp.name && c.desc === sp.desc && c.icon === sp.icon) return c.wrap;
-    const hooks = (sp.hooks && typeof sp.hooks === 'object') ? sp.hooks : {};
-    const wrap = Object.assign({}, hooks, { id: sp.id, icon: sp.icon || '◈', name: sp.name || sp.id, desc: sp.desc || '', _row: true, _gear: !!sp._gear, tier: sp.tier });
-    if (_passiveWrapCache) _passiveWrapCache.set(sp, { hooks: sp.hooks, name: sp.name, desc: sp.desc, icon: sp.icon, wrap });
+    const hooks = passiveHooksAtLevel(sp.hooks, lv);
+    const wrap = Object.assign({}, hooks, { id: sp.id, icon: sp.icon || '◈', name: (sp.name || sp.id) + (lv ? ' +' + lv : ''), desc: sp.desc || '', _row: true, _gear: !!sp._gear, tier: sp.tier, level: lv });
+    byLv[lv] = { hooks: sp.hooks, name: sp.name, desc: sp.desc, icon: sp.icon, wrap };
     return wrap;
 }
 /* the retired accessory ids an old save carries (meta / loadout `equipment`) → their gear rows, appended AFTER the save's
@@ -19068,8 +19068,8 @@ function _sumStatBonus(list) {
     return b;
 }
 function unitPassiveStatBonus(unit) { return _sumStatBonus(getUnitPassives(unit)); }
-function passiveIdsStatBonus(ids) {
-    return _sumStatBonus((ids || []).map(id => passiveRowWrap(id)).filter(Boolean));
+function passiveIdsStatBonus(ids, ups) {
+    return _sumStatBonus((ids || []).map(id => passiveRowWrap(id, passiveLevelOfUps(ups && ups[id]))).filter(Boolean));
 }
 /* THE HOOK CATALOGUE — every key a passive (inherent or row) may carry, its value's shape, and where the engine reads it.
    The library's HOOKS editor lists these; the keys below `// Phase 4` are the new ones (the user's list + the eight
@@ -19172,6 +19172,92 @@ const PASSIVE_HOOK_KEYS = {
     weatherStatusImmune:   { type: 'object', example: { blizzard: ['blind'] }, reads: 'weather strikes (state.js)', desc: 'statuses this weather never lands on it' },
     noIceSlide:            { type: 'bool',   example: true, reads: '_resolveIceSlide', desc: 'never slides on ice' },
 };
+/* ══ THE PASSIVE LEVELS (the user 2026-10-06: "add 1-2 upgrades to all of them") ═════════════════════════════════════
+   Every passive / gear / training row takes two upgrades, +1 and +2 (SPELL_UPGRADES upPassive1 / upPassive2: the same
+   ⚙ upgrade toggles, the same meta.spellUpgrades map, each paid in SP). A row at level L reads its hooks through
+   passiveHooksAtLevel: amounts ×(1 + 0.5·L) (so +1 = ×1.5, +2 = ×2), multipliers grow their bonus part the same way,
+   chances / fractions the same (capped at 1), tile / round / stage counts +L, an "every N rounds" −L. Drawbacks
+   (a negative stat, a cost multiplier above 1), lists, strings and flags stay as they are. A row with nothing to raise
+   (Martyr's Talisman, Adaptable, Umbral, Live Wire) gets +PASSIVE_LEVEL_FLAT_HP max HP a level instead.
+   createUnit writes unit.passiveLevels = { rowId: L } (ids + numbers — it rides the snapshot, RULE #2). */
+const PASSIVE_LEVEL_MAX = 2;
+const PASSIVE_LEVEL_FLAT_HP = 20;
+const _PLV_COUNT = new Set(['rangeBonus', 'basicAttackRangeBonus', 'healRangeBonus', 'inspectBonus', 'debuffTurnsBonus', 'buffTurnsBonus',
+    'teleportMpDiscount', 'turretRangeBonus', 'dashRangeBonus', 'revealInvisibleWithin', 'revealTrapsWithin', 'allyNoCritWithin', 'scannerCap',
+    'move', 'build', 'duration', 'cleanse', 'statusDurationBonus', 'killStage', 'familyRangeBonus']);
+const _PLV_MULT = new Set(['critMult', 'basicDmgMult', 'healMult', 'lifeSapMult', 'repairMult', 'dashDamageMult', 'oppAttackMult', 'dmgMult', 'mult']);
+const _PLV_FRAC = new Set(['counterChance', 'counterAtkPct', 'oppAttackChance', 'basicAttackLifesteal', 'mpFromMagicDamage', 'basicEcho',
+    'lashAtkPct', 'invisibleStrikeBonus', 'flankBonus', 'highGroundBonus', 'bonus']);
+const _PLV_KEEP = new Set(['basicAttackRange', 'spellCostMult', 'within', 'threshold', 'id', 'status', 'family', 'damageType', 'terrain', 'rounds']);
+function _plvNum(key, v, L, f, path) {
+    if (_PLV_KEEP.has(key)) return v;
+    if (key === 'pct' && path.includes('healOnceBelowPct')) return v;   // the HP line it fires under stays; healPct grows
+    if (path.includes('stagePerRounds')) return key === 'every' ? Math.max(1, v - L) : v;   // the stage comes sooner, never bigger
+    if (key === 'targetableWithin') return Math.max(1, v - L);
+    if (key === 'respawnMult') return v < 1 ? Math.max(0.1, Math.round((1 - (1 - v) * f) * 100) / 100) : v;
+    if (key === 'cost') return Math.max(0, Math.round(v * (1 - 0.25 * L)));   // grantSpell's MP price drops a quarter a level
+    if (/Stages$/.test(key) || path.includes('statusStageRider') || _PLV_COUNT.has(key) || path.includes('statusDurationBonus') || path.includes('killStage') || path.includes('familyRangeBonus')) {
+        return v < 0 ? v - L : (v > 0 ? v + L : v);
+    }
+    if (v < 0) return v;   // a drawback stays
+    if (_PLV_MULT.has(key)) return v > 1 ? Math.round((1 + (v - 1) * f) * 1000) / 1000 : v;
+    if (_PLV_FRAC.has(key) || (v > 0 && v < 1)) return Math.min(1, Math.round(v * f * 1000) / 1000);
+    return Math.round(v * f);
+}
+function _plvWalk(v, key, L, f, path) {
+    if (typeof v === 'number' && isFinite(v)) return _plvNum(key, v, L, f, path);
+    if (Array.isArray(v) || !v || typeof v !== 'object') return v;
+    const o = {};
+    for (const k of Object.keys(v)) o[k] = _plvWalk(v[k], k, L, f, path.concat(key));
+    return o;
+}
+/* the row's hooks at level L (0 = the hooks themselves) */
+function passiveHooksAtLevel(hooks, L) {
+    const lv = Math.max(0, Math.min(PASSIVE_LEVEL_MAX, L | 0));
+    const h = (hooks && typeof hooks === 'object') ? hooks : {};
+    if (!lv) return h;
+    const out = _plvWalk(h, '', lv, 1 + 0.5 * lv, []);
+    if (JSON.stringify(out) === JSON.stringify(h)) out.statBonus = Object.assign({}, out.statBonus || {}, { hp: ((out.statBonus && out.statBonus.hp) || 0) + PASSIVE_LEVEL_FLAT_HP * lv });
+    return out;
+}
+/* what level L changes on a row, in plain words for the ⚙ toggle: "AWR 28 → 42 · ARMOR 5 → 8" */
+function passiveLevelDiff(spOrId, L) {
+    const sp = _spellOfIdOrDef(spOrId);
+    if (!sp || sp.kind !== 'passive') return '';
+    const a = passiveHooksAtLevel(sp.hooks, Math.max(0, (L | 0) - 1)), b = passiveHooksAtLevel(sp.hooks, L);
+    const out = [];
+    const fmt = (x) => (typeof x === 'number' && x > 0 && x < 1) ? Math.round(x * 100) + '%' : String(x);
+    const WORD = { statBonus: '', int: 'M ATK', healOnceBelowPct: 'LOW-HP', healPct: 'HEAL', purgeDebuff: '', lashAtkPct: 'LASH (ATK)', grantSpell: 'SPELL',
+        cost: 'MP', stagePerRounds: 'STAGE', every: 'EVERY N ROUNDS', statusDurationBonus: '+ROUNDS', statusStageRider: 'STAGES', finisherBonus: 'FINISHER',
+        physicalHitStatus: 'ON-HIT STATUS', terrainHitStatus: 'ON-HIT STATUS', critMult: 'CRIT ×', basicDmgMult: 'BASIC DMG ×', healMult: 'HEAL ×',
+        lifeSapMult: 'DRAIN HEAL ×', repairMult: 'REPAIR ×', dashDamageMult: 'DASH DMG ×' };
+    const word = (k) => (k in WORD) ? WORD[k] : String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toUpperCase();
+    const walk = (x, y, label) => {
+        if (typeof y === 'number') { if (x !== y) out.push(label.trim() + ' ' + fmt(x === undefined ? 0 : x) + ' → ' + fmt(y)); return; }
+        if (!y || typeof y !== 'object' || Array.isArray(y)) return;
+        for (const k of Object.keys(y)) walk(x && typeof x === 'object' ? x[k] : undefined, y[k], (label + ' ' + word(k)).replace(/\s+/g, ' '));
+    };
+    walk(a, b, '');
+    return out.join(' · ');
+}
+/* an upgrade's line for ONE row: a passive level names the row's own numbers ("AWR 28 → 42"), else the upgrade's desc */
+function spellUpgradeDescFor(spOrId, upId) {
+    const u = SPELL_UPGRADES[upId];
+    if (!u) return '';
+    if (u.passiveLevel) { const t = passiveLevelDiff(spOrId, u.passiveLevel); return t ? t + '.' : u.desc; }
+    return u.desc || '';
+}
+/* the unit's level on one row (unit.passiveLevels — createUnit writes it from the kit's upgrades) */
+function unitPassiveLevel(unit, id) {
+    const m = unit && unit.passiveLevels;
+    return (m && typeof m === 'object' && m[id] > 0) ? Math.min(PASSIVE_LEVEL_MAX, m[id] | 0) : 0;
+}
+/* a kit's upgrade list on one row → its level (the count of +1 / +2 that are on) */
+function passiveLevelOfUps(list) {
+    let n = 0;
+    for (const u of (Array.isArray(list) ? list : [])) if (SPELL_UPGRADES[u] && SPELL_UPGRADES[u].passiveLevel) n++;
+    return Math.min(PASSIVE_LEVEL_MAX, n);
+}
 /* the passive-row lint (spellLint): unknown hook keys, a passive without hooks */
 function passiveHookLint(d) {
     const hits = [];
@@ -19354,9 +19440,9 @@ const SPELL_FAMILIES = {
         unique: null
     },
     /* THE GEAR POOL (the user, 2026-09-25): today's 17 accessories become passive rows here in Phase 4 — universal, tier I by default. */
-    gear:      { id: 'gear',      name: 'Gear',      glyph: '◈', color: '#d9d2b8', kind: 'support', desc: 'Equipment as passive rows: the universal accessories every unit may carry (at most 2 passive / gear rows among the 7 slots).', unique: null, universal: true },
+    gear:      { id: 'gear',      name: 'Gear',      glyph: '◈', color: '#d9d2b8', kind: 'support', desc: 'Equipment as passive rows: the universal accessories every unit may carry; no cap beyond the 7 slots and the SP, each takes +1 / +2.', unique: null, universal: true },
     /* THE TRAINING (THE JOBS REMOVAL, the user 2026-09-27): the 13 old job passives, universal like GEAR, 1 SP each. */
-    training:  { id: 'training',  name: 'Training',  glyph: '✦', color: '#c9b27a', kind: 'support', desc: 'Edges any unit can train: 1 SP each, at most 2 passive or gear rows among the 7 slots.', unique: null, universal: true },
+    training:  { id: 'training',  name: 'Training',  glyph: '✦', color: '#c9b27a', kind: 'support', desc: 'Edges any unit can train: 1 SP each; no cap beyond the 7 slots and the SP, each takes +1 / +2.', unique: null, universal: true },
     /* THE DOOR WHEEL: the Door Agent's own family — the standing doors (DOOR_GUN_SPELLS), never borrowable. */
     doors:     {
         id: 'doors',
@@ -20531,10 +20617,18 @@ const SPELL_UPGRADES = {
     upOverdrive:  { id: 'upOverdrive',  name: 'Overdrive',    glyph: '🏁', sp: 1, roles: [], families: ['athleticism', 'drivingskills', 'football', 'apexpredator'],
                     requires: 'dashHit', excl: null, auto: true,
                     desc: 'A kill on the dash refunds 1 AP.', patch: { onKillRefundAp: 1 } },
+    /* THE PASSIVE LEVELS (the user 2026-10-06): every passive / gear / training row takes +1 then +2 (passiveHooksAtLevel
+       raises its numbers; the ⚙ toggle prints the row's own before → after via passiveLevelDiff). `after` = the upgrade
+       that must already be on. No patch: createUnit reads the level into unit.passiveLevels. */
+    upPassive1:   { id: 'upPassive1',   name: '+1',           glyph: '▲', sp: 1, roles: [], families: [], requires: null, excl: null, auto: true, passiveLevel: 1,
+                    desc: 'One level up: its numbers ×1.5, its tile / round / stage counts +1.', patch: {} },
+    upPassive2:   { id: 'upPassive2',   name: '+2',           glyph: '▲▲', sp: 1, roles: [], families: [], requires: null, excl: null, auto: true, passiveLevel: 2, after: 'upPassive1',
+                    desc: 'Two levels up (needs +1): its numbers ×2, its tile / round / stage counts +2.', patch: {} },
 };
 /* Does upgrade `up` (a row or id) make sense on def `d`? roles · families · requires. */
 function spellUpgradeFits(d, up) {
     const u = typeof up === 'string' ? SPELL_UPGRADES[up] : up;
+    if (u && u.passiveLevel) return !!d && d.kind === 'passive';   // THE PASSIVE LEVELS: +1 / +2 fit every passive row, nothing else
     if (!d || !u || d.kind === 'passive' || d.kind === 'basicAttack') return false;
     if (Array.isArray(u.roles) && u.roles.length && !u.roles.includes(spellRoleOf(d))) return false;
     if (Array.isArray(u.families) && u.families.length && !u.families.some(f => spellFamiliesOf(d).includes(f))) return false;
@@ -20558,7 +20652,8 @@ function spellUpgradesBlocked(d) {
 /* The upgrade ids a spell allows (§4.4): its explicit list, else AUTO (every `auto` row that fits), else none — minus its blocks. */
 function spellAllowedUpgrades(spOrId) {
     const d = _spellOfIdOrDef(spOrId);
-    if (!d || d.kind === 'passive' || d.kind === 'basicAttack') return [];
+    if (d && d.kind === 'passive') return Object.keys(SPELL_UPGRADES).filter(u => SPELL_UPGRADES[u] && SPELL_UPGRADES[u].passiveLevel);   // +1, +2
+    if (!d || d.kind === 'basicAttack') return [];
     const block = spellUpgradesBlocked(d);
     if (Array.isArray(d.upgrades) && d.upgrades.length) return d.upgrades.filter(u => !!SPELL_UPGRADES[u] && !block.has(u));
     if (d.upgradesAuto === false) return [];
@@ -20593,6 +20688,7 @@ function spellUpgradeVerdict(race, cls, ids, ups, spellId, upId) {
     if (!eq.includes(spellId)) return Object.assign(out, { reason: 'unequipped', note: 'EQUIP THE SPELL FIRST' });
     if (cur.includes(upId)) return Object.assign(out, { reason: 'dup', note: 'ALREADY ON' });
     if (!spellAllowedUpgrades(spellId).includes(upId)) return Object.assign(out, { reason: 'notAllowed', note: 'THIS SPELL DOES NOT TAKE IT' });
+    if (u.after && !cur.includes(u.after)) return Object.assign(out, { reason: 'needs', note: 'TAKE ' + String((SPELL_UPGRADES[u.after] && SPELL_UPGRADES[u.after].name) || u.after) + ' FIRST' });
     if (cur.length >= SPELL_UPGRADE_MAX) return Object.assign(out, { reason: 'cap', note: SPELL_UPGRADE_MAX + ' UPGRADES MAX · REMOVE ONE' });
     if (u.excl && cur.some(o => SPELL_UPGRADES[o] && SPELL_UPGRADES[o].excl === u.excl)) {
         const o = cur.find(x => SPELL_UPGRADES[x] && SPELL_UPGRADES[x].excl === u.excl);
@@ -20609,7 +20705,8 @@ function treeLegalUpgrades(race, cls, ids, ups) {
     if (!ups || typeof ups !== 'object') return out;
     let sp = loadoutSpUsed(eq);
     for (const id of eq) {
-        const want = Array.isArray(ups[id]) ? ups[id] : [];
+        const lvOf = (u) => (SPELL_UPGRADES[u] && SPELL_UPGRADES[u].passiveLevel) || 0;
+        const want = Array.isArray(ups[id]) ? ups[id].slice().sort((a, b) => lvOf(a) - lvOf(b)) : [];   // +1 before +2
         if (!want.length) continue;
         const allowed = spellAllowedUpgrades(id);
         const keep = [];
@@ -20617,6 +20714,7 @@ function treeLegalUpgrades(race, cls, ids, ups) {
             if (typeof u !== 'string' || keep.includes(u) || !allowed.includes(u)) continue;
             if (keep.length >= SPELL_UPGRADE_MAX) break;
             const row = SPELL_UPGRADES[u];
+            if (row.after && !keep.includes(row.after)) continue;   // +2 needs +1
             if (row.excl && keep.some(o => SPELL_UPGRADES[o].excl === row.excl)) continue;
             const c = spellUpgradeSp(u);
             if (sp + c > SPELL_SP_MAX) continue;
@@ -20630,7 +20728,7 @@ function treeLegalUpgrades(race, cls, ids, ups) {
    up, never more than SPELL_UPGRADE_MAX per spell. `rng` optional. */
 function buildRandomUpgrades(race, cls, ids, rng) {
     const rand = (typeof rng === 'function') ? rng : Math.random;
-    const eq = (ids || []).filter(id => id && !spellIsPassive(id));
+    const eq = (ids || []).filter(Boolean);   // passive rows too (+1 / +2, 2026-10-06)
     const ups = {};
     for (let guard = 0; guard < 24; guard++) {
         const opts = [];
@@ -20827,6 +20925,7 @@ function resolveSpellDef(base, upIds) {
     if (!list.length) return base;
     const d = JSON.parse(JSON.stringify(base));
     for (const u of list) _upgApplyPatch(d, SPELL_UPGRADES[u].patch);
+    if (d.kind === 'passive' && passiveLevelOfUps(list)) d.hooks = passiveHooksAtLevel(base.hooks, passiveLevelOfUps(list));   // THE PASSIVE LEVELS
     d._base = base.id;
     d._ups = list.slice();
     d._upSp = list.reduce((n, u) => n + spellUpgradeSp(u), 0);
@@ -21640,7 +21739,7 @@ Object.assign(window, {
   /* THE PASSIVES + THE GEAR MERGE (Phase 4) */
   GEAR_PASSIVES, GEAR_ID_OF_ACCESSORY, PASSIVE_HOOK_KEYS, spellIsPassive, passiveRowCount, universalPassiveIds,
   unitPassiveRowIds, passiveRowWrap, gearMigrateIds, passiveRowsEquipmentMirror, unitHasGear, unitPassiveStatBonus,
-  passiveIdsStatBonus, passiveHookLint,
+  passiveIdsStatBonus, passiveHookLint, PASSIVE_LEVEL_MAX, passiveHooksAtLevel, passiveLevelDiff, unitPassiveLevel, passiveLevelOfUps, spellUpgradeDescFor,
   /* an Adaptable kit borrows other races' families (THE JOBS REMOVAL, 2026-09-27) */
   flRacePool, _flTierOf, treeRingOfSpell,
 });
@@ -51836,7 +51935,7 @@ function hqPartyNormMember(m, r) {
     if (!m.loadout.items || typeof m.loadout.items !== 'object') m.loadout.items = {};
     if (!m.loadout.equipment || typeof m.loadout.equipment !== 'object') m.loadout.equipment = {};
     /* THE GEAR MERGE (SPELL_LIBRARY_PLAN.md Phase 4): a member filed with the retired accessory slots carries them into the
-       kit as GEAR passive rows (after its own picks; the forge's repair prices them and keeps at most 2 passives) */
+       kit as GEAR passive rows (after its own picks; the forge's repair prices them) */
     if (m.loadout.equipment.accessory1 || m.loadout.equipment.accessory2) {
         const own = (Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : m.loadout.spells;
         let ids = gearMigrateIds(own, m.loadout.equipment) || [];
@@ -52131,10 +52230,10 @@ function hqPartyTreeCircuit(m) {
         tiers.push({ tier: t, numeral: SPELL_TIER_NUMERALS[t], cost: SPELL_TIER_SP[t], rows, borrow: borrowKey, borrowCount: borrowKey ? parts.borrowRace.filter(id => spellTierOf(id) === t).length : 0 });
     }
     /* ◈ THE PASSIVES (SPELL_LIBRARY_PLAN.md Phase 4): the passive / gear rows, out of the tier rows — the unit's own first, then
-       the universal GEAR + TRAINING; each priced by its tier; at most PASSIVE_SLOT_MAX equipped */
+       the universal GEAR + TRAINING; each priced by its tier; no cap of their own (2026-10-06) */
     const pasRows = own.concat(borrowed).filter(([id]) => spellIsPassive(id)).concat(gear.filter(id => !own.some(([o]) => o === id)).map(id => [id, 'gear']))
         .map(([id, source]) => ({ id, sp: spOf(id), st: hqPartySpellState(T, id, poolSet), source, cost: spellSpCost(id) }));
-    const passives = { rows: pasRows, used: passiveRowCount(equipped), max: PASSIVE_SLOT_MAX };
+    const passives = { rows: pasRows, used: passiveRowCount(equipped), max: null };   // no passive cap since 2026-10-06
     /* THE RACK BY FAMILY (SPELL_LIBRARY_PLAN.md §9 row 7, Phase 7): the same rows folded by family (spellFamilyGroups — the
        race's families first, then a borrowed row's family), each chip still priced by its tier; an Adaptable kit's one
        ＋ BORROW key 'B0' opens the picker over every tier, family by family. The pause menu shows either fold. */
@@ -52146,13 +52245,14 @@ function hqPartyTreeCircuit(m) {
     const dropped = equipped.filter(id => !poolSet.has(id));
     /* ⚙ THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5): every equipped spell that takes upgrades, with each allowed upgrade's
        state (on · ok · the verdict's reason) — the rack's ⚙ section */
-    const upgrades = equipped.filter(id => !spellIsPassive(id) && spellAllowedUpgrades(id).length).map(id => {
+    const upgrades = equipped.filter(id => spellAllowedUpgrades(id).length).map(id => {   // passive rows too: +1 / +2 (2026-10-06)
         const on = (T.ups && T.ups[id]) || [];
+        const rowOf = (u) => Object.assign({}, SPELL_UPGRADES[u], { desc: spellUpgradeDescFor(id, u) });
         return { id, sp: spOf(id), on: on.slice(), upSp: spellUpgradesSpOf(T.ups, id), derived: on.length ? resolveSpellDef(spOf(id), on) : null,
             rows: spellAllowedUpgrades(id).map(u => {
-                if (on.includes(u)) return { id: u, row: SPELL_UPGRADES[u], st: 'on', cost: spellUpgradeSp(u), note: 'ON · CLICK TO REMOVE' };
+                if (on.includes(u)) return { id: u, row: rowOf(u), st: 'on', cost: spellUpgradeSp(u), note: 'ON · CLICK TO REMOVE' };
                 const v = spellUpgradeVerdict(T.race, T.cls, equipped, T.ups, id, u);
-                return { id: u, row: SPELL_UPGRADES[u], st: v.ok ? 'ok' : v.reason, cost: spellUpgradeSp(u), note: v.note };
+                return { id: u, row: rowOf(u), st: v.ok ? 'ok' : v.reason, cost: spellUpgradeSp(u), note: v.note };
             }) };
     });
     return { tiers, families, borrowAll, passives, upgrades, ups: T.ups, upMax: SPELL_UPGRADE_MAX, equipped: equipped.slice(), used: equipped.length, cap, spUsed: T.spUsed, spMax: T.spMax, borrows: T.borrows, isFreelancer: T.borrows, unplaced: dropped, race: T.race, cls: T.cls };
@@ -52256,7 +52356,7 @@ function hqPartyUpgradeClick(profile, memberId, spellId, upId) {
     const cur = ups[spellId] || [];
     let note;
     if (cur.includes(upId)) {
-        ups[spellId] = cur.filter(x => x !== upId);
+        ups[spellId] = cur.filter(x => x !== upId && !(SPELL_UPGRADES[x] && SPELL_UPGRADES[x].after === upId));   // +1 off takes +2 with it
         if (!ups[spellId].length) delete ups[spellId];
         note = 'UPGRADE OFF · ' + String(u.name || upId).toUpperCase() + ' · +' + spellUpgradeSp(upId) + ' SP BACK';
     } else {

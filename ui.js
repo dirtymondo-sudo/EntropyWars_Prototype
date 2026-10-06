@@ -10472,7 +10472,7 @@
         function _slb2PassiveBar() {
             return `<div class="slb2-pasbar">
                 <div class="slb2-seg"><button class="slb2-segb${_slbPasSection === 'family' ? ' on' : ''}" data-act="pasSection" data-sec="family">FAMILY PASSIVES · rows in a slot</button><button class="slb2-segb${_slbPasSection === 'inherent' ? ' on' : ''}" data-act="pasSection" data-sec="inherent">INHERENT · fixed per race</button></div>
-                <span class="slb2-hint">A family passive is a row with kind <b>passive</b>: it takes a slot, costs its tier in SP (the tier is editable — the ＋ / − in the header), and its HOOKS carry the effect (EFFECTS tab; the same keys the inherent passives use). The ${typeof universalPassiveIds === 'function' ? universalPassiveIds().length : 16} old accessories are <b>GEAR</b> rows — a universal family, so every unit can equip them. At most ${typeof PASSIVE_SLOT_MAX !== 'undefined' ? PASSIVE_SLOT_MAX : 2} passive rows (gear included) of the 7 slots; they equip in the rack's ◈ PASSIVES row.</span>
+                <span class="slb2-hint">A family passive is a row with kind <b>passive</b>: it takes a slot, costs its tier in SP (the tier is editable — the ＋ / − in the header), and its HOOKS carry the effect (EFFECTS tab; the same keys the inherent passives use). The ${typeof universalPassiveIds === 'function' ? universalPassiveIds().length : 16} old accessories are <b>GEAR</b> rows — a universal family, so every unit can equip them. No cap on passive rows (gear included) beyond the 7 slots and the SP; each takes +1 / +2; they equip in the rack's ◈ PASSIVES row.</span>
             </div>`;
         }
         function _slb2RenderWindow(force) {
@@ -12197,7 +12197,7 @@
                     tier: 1, families: ['gear'], upgrades: [], desc: t[3], _home: { lib: true } }, JSON.parse(JSON.stringify(t[2])));
                 _slb2Mutate(`＋ ${id} created`, () => { _slb2Doc().added[id] = row; });
                 _slb2SelectNew(id);
-                _slbToast(`＋ ${id} — a passive row: set its HOOKS on the EFFECTS tab; it equips in the rack's ◈ PASSIVES row (at most ${typeof PASSIVE_SLOT_MAX !== 'undefined' ? PASSIVE_SLOT_MAX : 2} per loadout)`);
+                _slbToast(`＋ ${id} — a passive row: set its HOOKS on the EFFECTS tab; it equips in the rack's ◈ PASSIVES row (no cap per loadout; +1 / +2 in the rack's ⚙ upgrades)`);
             });
         }
         function _slb2CreateFamily() {
