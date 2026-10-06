@@ -695,3 +695,10 @@ nothing). **THE CAPTURE** pays the capturer a kill live at the seal (`captureDoo
 **THE HEAL** (the call made for the user): `HQ_LEVEL_RULES.levelHealBattle` false — a level-up in battle adds only the level's
 HP / MP growth (the _recomputeStatsForLevel delta), the full heal waits for the debrief (`levelHeal`, as before). **OLD LEDGERS**:
 `hqPartyNormMember` re-seats a member without `xpCurve` 2 at its stored level's new threshold (keeps the level, loses the bar).
+
+## THE FAINTED LEAD (2026-10-06)
+mondo: a grey in slot 1 at 0 HP was still the walker. Cause: `hqPartyLead` = `members[0]` with no DOWN check, and the
+commit (`hqPartyAfterMatch`) never reordered. Fix (data.js `hqPartyDownBack`, run on every `hqPartyRecord` read, in the
+commit and in `hqPartySwap`): when slot 1 is DOWN and anyone is fit, the fit keep their order at the front and the down
+drop to the back in theirs. Whole party down = untouched (loss / ward flow). The commit sets `leadChanged`, the return
+toast says "X LEADS THE PARTY"; a swap of a DOWN member into slot 1 is refused (`reason: 'down'`).

@@ -2034,6 +2034,7 @@
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
                         const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
+                            + ((pr && pr.leadChanged && !encRes.escLoss && pr.lead) ? ` · ${_hqEsc(String(pr.lead).toUpperCase())} LEADS THE PARTY` : '')   // THE FAINTED LEAD (2026-10-06): slot 1 went down, the first fit member walks
                             + ((pr && pr.leveled) ? ` · ${pr.leveled} LEVELLED UP · THE PARTY IS LV ${pr.partyLevel}` : '')   // THE LEVELS (2026-09-21)
                             + ((pr && pr.drops && pr.drops.total) ? ` · ${pr.drops.total} ITEM${pr.drops.total === 1 ? '' : 'S'} DROPPED · IN THE BAG` : '')   // THE SPOILS (2026-09-23)
                             + (() => {   // 🚪 THE CAPTURES (CAPTURE_PLAN.md Phase 4): who joined, who went on the roster, the bounty
@@ -2805,7 +2806,7 @@
                     say(r.leadChanged ? `<b>SWAPPED</b> ${nameOf(r.lead)} IS THE LEAD — YOU WALK THE BUILDING AS THEM` : `<b>SWAPPED</b> THE ORDER IS THE SHIFT`); try { playSfx('uiButtonConfirm'); } catch (e) {}
                     if (r.leadChanged) { try { if (typeof window._hqRefreshAvatar === 'function') window._hqRefreshAvatar(); } catch (e) {} }   // THE LEAD (2026-09-23): slot 1 is the walker — the rig swaps in place under the pause menu
                 }
-                else say(`<b>NO</b> ${r && r.reason === 'you' ? 'YOU LEAD THE FIRST SHIFT' : 'THAT SWAP IS NOT ALLOWED'}`, true);
+                else say(`<b>NO</b> ${r && r.reason === 'you' ? 'YOU LEAD THE FIRST SHIFT' : r && r.reason === 'down' ? 'A DOWN UNIT CANNOT LEAD — HEAL THEM FIRST' : 'THAT SWAP IS NOT ALLOWED'}`, true);
             }
             else if (verb === 'cast') {
                 const m = rec.members.find(x => x.id === a); if (!m) return;
