@@ -1941,3 +1941,13 @@ instead of ramps, upper sections, gap jumps, curved / sloped / gap-crossing rail
     woodstair (side galleries, lighting unchanged).
   - Solver note: hqTerrainPockets' `lost` counts blocking railing tops as ground and does not count jumps; every gap side also has a
     stair or ladder.
+
+### THE YARDS OPEN (2026-10-06, Disaster City invisible alleys)
+mondo: gaps between Downtown's buildings looked like alleys (darker ground) but were invisible walls. Root cause: a `city`
+plan's walker solid was the whole BLOCK mask (`solidMass`), and the buildings (info.lots) never covered all of it; the
+alley carve / slit-closing pass (2026-09-22) only fixed some runs (Downtown: 22 slits it failed to close, ~5000 m2 of
+bare mass). Now `_hqTGenerate` opens every mass cell no lot covers (inside the rim band) right after THE INFILL, keeps a
+cell open only if the walker reaches it from the old open ground by small steps (a roof-drop pocket closes again), and
+sets `info.yard`; three-renderer.js paints yard cells with the path (pavement) sheet instead of the dark cliff sheet.
+Walker solid = the lots (buildings) + the rim + real walls. `gen.yardsOpen: false` keeps the old mass. Applies to every
+non-podium city: Downtown, the Strip, Cyberpunk (the mall has `podium`).
