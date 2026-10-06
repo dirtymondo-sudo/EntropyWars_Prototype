@@ -19778,8 +19778,8 @@
                store is a fresh {} on every load, so the saved-achievements
                check below never trips and one trigger-happy achievement
                ("Last Stand") could toast + chip itself once per trigger. */
-            state._matchAchievements = state._matchAchievements || [];
-            if (state._matchAchievements.includes(id)) return;
+            const _ach = _matchAchList();
+            if (_ach.includes(id)) return;
             const achievements = loadAchievements();
             if (achievements[id]) return;
             achievements[id] = {
@@ -19791,7 +19791,20 @@
             showAchievementToast(id);
             _steamAssertFeat(id);   // Steam build only — mid-match overlay toast
 
-            state._matchAchievements.push(id);
+            _ach.push(id);
+        }
+
+        /* The one-shot feats THIS viewer unlocked this match. Per-viewer (the
+           online sync skips it), so it resets itself when the match identity
+           (matchNumber:startTime) changes — the online guest never runs the
+           host's match-boot reset, and a rematch kept the old list. */
+        function _matchAchList() {
+            const key = (state.matchNumber || 0) + ':' + (state.startTime || 0);
+            if (state._matchAchievementsKey !== key || !Array.isArray(state._matchAchievements)) {
+                state._matchAchievements = [];
+                state._matchAchievementsKey = key;
+            }
+            return state._matchAchievements;
         }
 
         function showAchievementToast(id) {
@@ -41458,7 +41471,7 @@
                     </div>`;
             }
             let achHtml = '';
-            const matchAchs = [...new Set(state._matchAchievements || [])];
+            const matchAchs = [...new Set(_matchAchList())];
             if (matchAchs.length > 0) {
                 achHtml += '<div class="vic-card vic-achievements"><div class="vic-card-cap">🏆 UNLOCKED THIS MATCH</div><div class="vic-ach-grid">';
                 for (const id of matchAchs) {
