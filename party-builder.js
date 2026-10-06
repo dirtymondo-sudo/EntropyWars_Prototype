@@ -712,9 +712,9 @@ function computeFullStats(race, cls, secJob, equipment, ups) {
     delta[k] = d;
     final[k] = Math.max(k==='awr'||k==='spd'?1:0, b + d);
   }
-  // MOV derives from SPD (2026-08-29 rework: 1 tile per 20 SPD, cap 5);
+  // MOV derives from SPD (2026-08-29 rework: SPD 1-25 → 1 tile, then 1 tile per 20 SPD, cap 5);
   // gear MOV (jetpack) is a flat tile bonus on top of the band.
-  const bandOf = sp => (typeof window.moveFromSpd === 'function') ? window.moveFromSpd(sp) : Math.max(1, Math.min(5, Math.ceil(Math.max(1, sp) / 20)));
+  const bandOf = sp => (typeof window.moveFromSpd === 'function') ? window.moveFromSpd(sp) : (sp <= 25 ? 1 : Math.min(5, Math.ceil(sp / 20)));
   final.move = bandOf(final.spd) + (eqB.move || 0) + (secB.move || 0);
   delta.move = final.move - bandOf(base.spd || 1);
   final.range = base.range || 1;
