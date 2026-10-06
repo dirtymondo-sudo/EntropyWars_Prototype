@@ -598,7 +598,7 @@
             const floorMoveBonus = getSectionBuffs(unit).move || 0;
             const bandMove = (typeof moveFromSpd === 'function')
                 ? moveFromSpd(getEffectiveSpd(unit))
-                : Math.max(1, Math.min(MOVE_TILE_CAP, Math.ceil(getEffectiveSpd(unit) / 20)));
+                : (getEffectiveSpd(unit) <= 25 ? 1 : Math.min(MOVE_TILE_CAP, Math.ceil(getEffectiveSpd(unit) / 20)));
             const base = Math.max(1, bandMove + (unit._equipMoveBonus || 0) + getHourglassMoveBonus(unit) + getStatusMoveDelta(unit) + (getTerrainPreferenceModifier(unit).move || 0) + weatherMod + floorMoveBonus);
             let total = Math.max(1, Math.round(base * getZodiacBonus(unit).mult));
             return Math.min(MOVE_TILE_CAP, total);
