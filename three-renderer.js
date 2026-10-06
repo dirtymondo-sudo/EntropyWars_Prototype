@@ -27594,6 +27594,13 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
         uv.needsUpdate = true;
     }
+    /* a sphere's UVs re-sized for the scale its mesh wears (2026-10-06): a hill / mound stretched 1.9× wide and squashed
+       to a third kept the round sphere's sheet count, so its grain smeared sideways; the turn and the meridian are
+       measured at the scale */
+    function _nrSquashUV(geo, sc) {
+        var h = (sc.x + sc.z) / 2;
+        _nrUV(geo, h, Math.sqrt((h * h + sc.y * sc.y) / 2));
+    }
     /* box UVs at ONE texture per tile (the board's density), per face */
     function _nrBoxUV(geo, w, h, d, ts, dens) {
         var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
@@ -28134,7 +28141,7 @@ const ThreeRenderer = (function () {
             var r = ts * ((o.r || 1.4) * (0.7 + rng() * 0.7));
             if (K.inCrater(x, z, r)) return;
             var geo = new THREE.SphereGeometry(r, 12, 8); _nrUV(geo, r / ts * 6, r / ts * 3);
-            var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.6, (o.flat || 0.35) * (0.7 + rng() * 0.6), 1 + rng() * 0.6);
+            var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.6, (o.flat || 0.35) * (0.7 + rng() * 0.6), 1 + rng() * 0.6); _nrSquashUV(geo, m.scale);
             m.position.set(x + (rng() - 0.5) * ts, K.fy - r * 0.15, z + (rng() - 0.5) * ts); m.rotation.y = rng() * 6;
             K.add(K.lit(m, true));
         }, { skipLanes: o.skipLanes !== false, corners: true, only: o.only });
@@ -30814,7 +30821,7 @@ const ThreeRenderer = (function () {
                 var r = ts * (s.r || 4) * (0.6 + rng() * 0.9);
                 r = Math.min(r, (rr - ((K._wdMinD || 0) + 1) * ts) / 1.9); if (r < ts * 0.6) return;   // a hill never rolls back over the shore
                 var geo = new THREE.SphereGeometry(r, 14, 9); _nrUV(geo, r / ts * 3, r / ts * 1.5);
-                var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.9, (s.flat || 0.3) * (0.7 + rng() * 0.6), 1 + rng() * 0.9);
+                var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.9, (s.flat || 0.3) * (0.7 + rng() * 0.6), 1 + rng() * 0.9); _nrSquashUV(geo, m.scale);
                 m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - r * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
             });
         },
@@ -43380,6 +43387,7 @@ const ThreeRenderer = (function () {
             });
             _hqTexByUrl[url] = t;
         }
+        t._ew_hqName = name;   // THE WORLD-SCALE UVs (2026-10-06): _hqWorldUV reads which sheet a mesh wears
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(ru || 1, rv || 1);
         t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -43607,6 +43615,70 @@ const ThreeRenderer = (function () {
     function _hqBox(w, h, d, mat) {
         var U = _hqUnits();
         return new THREE.Mesh(new THREE.BoxGeometry(w * U, h * U, d * U), mat);
+    }
+    /* THE WORLD-SCALE UVs (2026-10-06, mondo: "the big grey mountain in the background of the mars map ... the texture
+       is stretched way too much"). three's primitives carry 0..1 UVs whatever their size and _hqMat's repeat is a fixed
+       count, so a 60 m cone wearing 'mountain' at 6×4 got ONE rock sheet per ~55 m round and ~20 m up (and every other
+       big textured cone / sphere / box on the horizon the same, each at its own wrong scale). The battle map's builders
+       never had it (_nrUV sizes every primitive by the tile); the HQ horizon's did. This rewrites a group's textured
+       cone / cylinder / sphere / box UVs to metres: one sheet per `tile` m whatever the sheet's own repeat (divided out),
+       the count round a full turn kept whole so the wrap has no seam. A pointed cone unwraps FLAT (the developable
+       sector: no stretch anywhere, no pinch at the summit) with its one seam turned to the back (the root's −z, away
+       from the room). Scaled meshes (squashed cloud puffs, dunes) are measured at their scale; a shared geometry is
+       copied first. GLB meshes keep their own UVs. `tileOf(name)` → metres overrides the table. */
+    var _HQ_WUV_TILE = { mountain: 9, mountain_2: 9, mars: 9, mars_2: 9, rocks_1: 7, rocks_3: 7, rocks_5: 7, marble_light: 8, castle_wall: 4, bricks_2: 3, concrete: 4, cloud: 28, cloud_2: 28, cloud_thick: 28 };
+    var _hqWuvSrc = new WeakMap();   // geometry → its own 0..1 UVs (a copy, so a shared geometry re-scales from the source)
+    function _hqWorldUV(root, tileOf) {
+        if (!root) return root;
+        var U = _hqUnits();
+        root.traverse(function (m) {
+            if (!m.isMesh || !m.geometry || !m.material || Array.isArray(m.material)) return;
+            var map = m.material.map, name = map && map._ew_hqName; if (!name) return;
+            var g = m.geometry, P = g.parameters, T = g.type, uv = g.attributes && g.attributes.uv;
+            if (!P || !uv || !(T === 'ConeGeometry' || T === 'CylinderGeometry' || T === 'SphereGeometry' || T === 'BoxGeometry')) return;
+            var src = _hqWuvSrc.get(g);
+            if (g._ew_wuvOwner && g._ew_wuvOwner !== m) { var c = g.clone(); c.parameters = Object.assign({}, P); m.geometry = g = c; uv = g.attributes.uv; }
+            if (!src) src = new Float32Array(uv.array);
+            _hqWuvSrc.set(g, src); g._ew_wuvOwner = m;
+            var sx = 1, sy = 1, sz = 1, ry = 0;
+            for (var o = m; o; o = o.parent) { sx *= Math.abs(o.scale.x); sy *= Math.abs(o.scale.y); sz *= Math.abs(o.scale.z); ry += o.rotation.y; if (o === root) break; }
+            var tile = ((tileOf && tileOf(name)) || _HQ_WUV_TILE[name] || 6) * U;
+            var ru = map.repeat.x || 1, rv = map.repeat.y || 1, n = uv.count, i;
+            var setS = function (i0, i1, fu, fv) { for (var k = i0; k < i1 && k < n; k++) uv.setXY(k, src[k * 2] * fu / ru, src[k * 2 + 1] * fv / rv); };
+            if (T === 'ConeGeometry' || T === 'CylinderGeometry') {
+                var rt = (T === 'ConeGeometry') ? 0 : P.radiusTop, rb = P.radiusBottom != null ? P.radiusBottom : P.radius;
+                var rs = P.radialSegments || 8, hs = P.heightSegments || 1, tl = P.thetaLength != null ? P.thetaLength : Math.PI * 2;
+                var sh = (sx + sz) / 2, rtW = rt * sh, rbW = rb * sh, hW = P.height * sy, L = Math.hypot(hW, rbW - rtW), nT = (rs + 1) * (hs + 1);
+                var full = Math.abs(tl - Math.PI * 2) < 1e-4;
+                if (full && rtW < rbW * 0.5) {
+                    /* the flat unwrap: a point at radius r lies r/rb of the way from the apex along the slant; the turn opens to a sector of 2π·rb/Lb */
+                    var Lb = L * rbW / (rbW - rtW), kA = rbW / Lb;
+                    for (i = 0; i < nT && i < n; i++) {
+                        var ix = i % (rs + 1), iy = Math.floor(i / (rs + 1)), r = (rt + (rb - rt) * iy / hs) * sh, d = Lb * r / rbW, a = (ix / rs - 0.5) * Math.PI * 2 * kA;
+                        uv.setXY(i, d * Math.sin(a) / tile / ru, (Lb - d * Math.cos(a)) / tile / rv);
+                    }
+                    m.rotation.y += Math.PI - ry;   // the seam (θ = 0, the geometry's +z) turned to the root's back; a cone looks the same from every side
+                } else {
+                    var arc = tl * (rtW + rbW) / 2 / tile;
+                    setS(0, nT, full ? Math.max(1, Math.round(arc)) : Math.max(0.25, arc), L / tile);
+                }
+                /* the caps: planar 0..1 across the diameter */
+                var pos = g.attributes.position;
+                for (i = nT; i < n; i++) { var cr = 2 * (pos.getY(i) > 0 ? rtW : rbW) / tile; uv.setXY(i, (src[i * 2] - 0.5) * cr / ru, (src[i * 2 + 1] - 0.5) * cr / rv); }
+            } else if (T === 'SphereGeometry') {
+                var R0 = P.radius, rE = R0 * Math.sqrt((sx * sx + sz * sz) / 2), rM = R0 * Math.sqrt((((sx + sz) / 2) * ((sx + sz) / 2) + sy * sy) / 2);
+                var pl = P.phiLength != null ? P.phiLength : Math.PI * 2, thl = P.thetaLength != null ? P.thetaLength : Math.PI;
+                var round = Math.abs(pl - Math.PI * 2) < 1e-4, au = pl * rE / tile;
+                setS(0, n, round ? Math.max(1, Math.round(au)) : Math.max(0.25, au), Math.max(0.25, thl * rM / tile));
+            } else {
+                /* a box, per face (three's order: ±x, ±y, ±z) */
+                var W = P.width * sx, H = P.height * sy, D = P.depth * sz, ws = P.widthSegments || 1, hsB = P.heightSegments || 1, ds = P.depthSegments || 1;
+                var faces = [[D, H, ds, hsB], [D, H, ds, hsB], [W, D, ws, ds], [W, D, ws, ds], [W, H, ws, hsB], [W, H, ws, hsB]], at = 0;
+                faces.forEach(function (f) { var c = (f[2] + 1) * (f[3] + 1); setS(at, at + c, f[0] / tile, f[1] / tile); at += c; });
+            }
+            uv.needsUpdate = true;
+        });
+        return root;
     }
 
     /* The square-spiral glyph on the cube's faces (drawn once). */
@@ -48774,11 +48846,13 @@ const ThreeRenderer = (function () {
         peak: function (U, o, rng) {
             var g = new THREE.Group(), s = o.s || 1;
             var h = 46 * s, r = 40 * s;
-            var rock = _hqMat('mountain', 6, 4, { color: 0x8892a6, shininess: 2, specular: 0x080808 });
+            /* `tex` / `color` dress it in the land's own rock (Olympus Mons wears Mars's red rock), `snow: false` drops the cap and the cloud (2026-10-06) */
+            var rock = _hqMat(o.tex || 'mountain', 6, 4, { color: (o.color != null) ? o.color : 0x8892a6, shininess: 2, specular: 0x080808 });
             var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
             var cone = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, 11), rock); cone.position.y = h * U / 2; g.add(cone);
             var sh = new THREE.Mesh(new THREE.ConeGeometry(r * 0.72 * U, h * 0.58 * U, 9), rock); sh.position.set(r * 0.55 * U, h * 0.29 * U, r * 0.2 * U); g.add(sh);
             var sh2 = new THREE.Mesh(new THREE.ConeGeometry(r * 0.5 * U, h * 0.42 * U, 8), rock); sh2.position.set(-r * 0.62 * U, h * 0.21 * U, -r * 0.1 * U); g.add(sh2);
+            if (o.snow === false) return g;
             var cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.43 * U + 0.4 * U, h * 0.43 * U, 11), snow); cap.position.y = (h - h * 0.43 / 2) * U + 0.3 * U; g.add(cap);
             /* the lenticular over the summit — the mountain's own cloud (the far roster's builder, hung still) */
             try { var len = _hzLenticular(rng || Math.random); if (len) { len.position.set(0, (h + 9 * s) * U, 0); len.scale.multiplyScalar(0.9); g.add(len); } } catch (e) {}
@@ -48870,6 +48944,7 @@ const ThreeRenderer = (function () {
             var build = _hqLandmarkBuilders[l.kind]; if (!build) return;
             var m = null; try { m = build(U, l, rng); } catch (e) { console.warn('[HQ] landmark failed', l.kind, e); }
             if (!m) return;
+            try { _hqWorldUV(m); } catch (e) { console.warn('[HQ] landmark UVs', l.kind, e); }   // THE WORLD-SCALE UVs: one rock sheet per ~9 m, never one per 55
             var a = (l.deg || 0) * Math.PI / 180, rad = discR * ((l.dist != null) ? l.dist : 0.9);
             var x = Math.sin(a) * rad, z = -Math.cos(a) * rad, y = ((l.y != null) ? l.y : -0.03) * discR;
             m.position.set(x, y, z);
@@ -65999,7 +66074,7 @@ const ThreeRenderer = (function () {
                 var rx = 6 + rng() * 15, ry = 0.9 + rng() * 2.6, rz = 4 + rng() * 11;
                 var dn = new THREE.Mesh(dg, dm);
                 dn.scale.set(rx * U, ry * U, rz * U); dn.position.set(x * U, -0.2 * ry * U, z * U); dn.rotation.y = rng() * Math.PI;
-                dn.receiveShadow = true; sc.add(dn);
+                dn.receiveShadow = true; _hqWorldUV(dn, function () { return 700 / B.floorRepeat; }); sc.add(dn);   // the sand's own grain (a shared unit sphere at 6×3 stretched one sheet over a whole dune)
             }
         }
         if (B.ice) {
@@ -66014,10 +66089,10 @@ const ThreeRenderer = (function () {
                 var bl = 3 + rng() * 10, bh = 0.6 + rng() * 2.2, bd = 0.6 + rng() * 1.2;
                 var rb = new THREE.Mesh(new THREE.BoxGeometry(bl * U, bh * U, bd * U), im);
                 rb.position.set(rxp * U, (bh / 2 - 0.15) * U, rzp * U); rb.rotation.y = rng() * Math.PI; rb.rotation.z = (rng() - 0.5) * 0.25;
-                rb.castShadow = true; rb.receiveShadow = true; sc.add(rb);
+                rb.castShadow = true; rb.receiveShadow = true; _hqWorldUV(rb, function () { return 700 / B.floorRepeat; }); sc.add(rb);
                 var dr = new THREE.Mesh(sg, sm);
                 dr.scale.set((4 + rng() * 9) * U, (0.5 + rng() * 1.2) * U, (3 + rng() * 6) * U);
-                dr.position.set((rxp + (rng() - 0.5) * 6) * U, -0.25 * U, (rzp + (rng() - 0.5) * 6) * U); dr.receiveShadow = true; sc.add(dr);
+                dr.position.set((rxp + (rng() - 0.5) * 6) * U, -0.25 * U, (rzp + (rng() - 0.5) * 6) * U); dr.receiveShadow = true; _hqWorldUV(dr, function () { return 700 / B.floorRepeat; }); sc.add(dr);
             }
             try { var ig = _hzIgloo(rng); ig.position.set(-24 * U, 0, 46 * U); ig.rotation.y = 0.6; sc.add(ig); } catch (e) {}
             try { var wb = _hzWhalebones(rng); wb.position.set(27 * U, 0, 38 * U); wb.rotation.y = -0.4; sc.add(wb); } catch (e) {}

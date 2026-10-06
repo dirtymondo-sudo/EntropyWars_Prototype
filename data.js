@@ -44878,7 +44878,7 @@ const HQ_AREA_SPECS = {
         floor: 'moon_2', cliff: 'mars_2', path: 'moon_2', floorColor: 0xc88a5a, cliffColor: 0xa86048,
         gen: { kind: 'rooms', seed: 4, loops: 3, rMin: 8, rMax: 14, wallH: 2.6, thicket: false, open: [{ x: -22, z: -15, r: 8 }, { x: -31, z: -14, r: 5 }, { x: -24, z: -1.5, r: 4.5 }] }, noise: { amp: 0.2, scale: 7 },   // the third open circle: the strip between the west mesa's north cliff and a rock bank was a pocket (a rescue ramp) — forced open
         plaza: { x: 0, z: 8 },
-        landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, label: 'OLYMPUS MONS' }],
+        landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, tex: 'mars_2', color: 0xa86048, snow: false, label: 'OLYMPUS MONS' }],
         features: [
             /* THE WEST MESA (3.2): the long ramp up its south side, a rope on its east face, the hand-holds on its north — THE BASE CAMP stands on it */
             { k: 'plateau', x: -20, z: 6, w: 16, d: 10, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: -20, z0: 19, x1: -20, z1: 10.3, w: 3.0, h0: 0, h1: 3.2 },
