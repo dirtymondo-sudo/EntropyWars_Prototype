@@ -161,7 +161,7 @@
             var num = function (v, d) { return isFinite(v) ? +v : d; };
             /* E1: a prefab / kit placement is picked by the boxes of the rows it expands to (the editor hands the expansion in) */
             if ((k === 'prefab' || k === 'kit') && expand) { (expand(row) || []).forEach(function (r2) { if (r2 && r2.k !== 'prefab' && r2.k !== 'kit') rowShape(r2, ground).forEach(function (b) { out.push(b); }); }); if (!out.length && isFinite(row.x) && isFinite(row.z)) out.push(rectBox(+row.x, +row.z, 2, 2, 0, g(+row.x, +row.z), g(+row.x, +row.z) + 2)); return out; }
-            if (k === 'texbuilding' && isFinite(row.x) && isFinite(row.z)) { var gb = isFinite(row.y) ? +row.y : g(+row.x, +row.z); out.push(rectBox(+row.x, +row.z, num(row.w, 8), num(row.d, 8), row.rot, gb, gb + Math.max(1, Math.round(num(row.storeys, 2))) * 3.5 + 0.45)); return out; }
+            if (k === 'texbuilding' && isFinite(row.x) && isFinite(row.z)) { var gb = isFinite(row.y) ? +row.y : (typeof hqTexBuildingGround === 'function' ? hqTexBuildingGround(row, g) : g(+row.x, +row.z)); out.push(rectBox(+row.x, +row.z, num(row.w, 8), num(row.d, 8), row.rot, gb, gb + Math.max(1, Math.round(num(row.storeys, 2))) * 3.5 + 0.45)); return out; }
             if (k === 'opening') return out;   // the editor boxes it on its wall
             var seg = isFinite(row.x0) && isFinite(row.x1) && isFinite(row.z0) && isFinite(row.z1);
             if (seg) {

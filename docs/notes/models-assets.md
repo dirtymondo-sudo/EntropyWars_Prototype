@@ -356,3 +356,31 @@ railings are grindable. I should be able to grind down stairs too, especially on
 - Kill-switch: `window.EW_NO_STAIRS_PACK` (wedges only, no railings drawn). Perf: ornate railings are heavy (two_rail 2.7k tris/m,
   post_rail 3.4k/m); defaults use light ones (balusters_b 0.18k/m, bars_curb 0.37k/m, glass 0.09k/m, ranch 0.06k/m).
 - Rooms redone with stairs/levels: running list in docs/notes/areas-complexes.md "STAIRS PASS".
+
+## THE REAL COLLISION (2026-10-06, thread "mesh collision")
+mondo: "when i add a building in the editor, it raises the terrain underneath it and places the building on top ... The collisions
+seem to work fine for the cardboard boxes and traffic cones, so why can you not do the same for buildings? Or stairs? ... i fall
+right off [stairs / bridges] if i am not walking completely straight down the center ... Why do some of the buildings in downtown
+not have roofs?"
+- MESH COLLIDERS (three-renderer.js `HQ_MC`, `_mcFor` / `_mcBuild` / `_mcFeet` / `_mcSolid` / `_mcTopUnder`): every placed floor
+  prop that blocked (catalogue `foot`/`rect`) and every other standing model ≥ 0.8 m across and 0.3 m tall gets a collider from its
+  own triangles once its GLB (or proc) is in: 0.25 m columns over its footprint, each the solid spans [y0, y1] its geometry fills
+  (sampled every 0.15 m, gaps under 0.3 m merged). Walker: the highest span top within a step (0.62) whose column leaves 1.75 m
+  headroom is the floor; a span in the body disc above max(feet, the feet before the move) + step and under the head is a wall
+  (so you walk off an edge from up top, and are stopped by a facade from below). Jumps land on span tops (`_hqBlockerFloor`), the
+  airborne body never enters a span, line of sight passes arches. Built off a queue 5 ms per 16 ms tick, cached per model + fit
+  (copies share it), the catalogue footprint standing in until it lands; the NPC lattice re-reads the cells under it.
+  Never: wall / ceiling / flipped / kickable / tabletop props, laid rugs, skate ramps and rails, vehicles, the compiler's scatter.
+  Opt-out per row or catalogue entry: `mesh: false`. Kill-switch: `window.EW_HQ_NO_MESH_COLLISION`. `EW_HQ_DEBUG` logs each build.
+- THE EXACT SURFACES (data.js `_hqTExactList` / `_hqTExactTop`, `info.exact`): the 0.5 m field blended a ramp's last 0.35 m each side
+  inside its own width, so a 3 m flight walked as ~1.7 m. Every pack stair flight, every field `deck` and every `bld` plateau is read
+  exactly now (hqTerrainHeight / hqTerrainSlope), edge to edge of what is drawn.
+- TEXTURED BUILDINGS: the editor's BUILDING (`texbuilding`) was a PLATEAU the building's height plus ghost walls, and the renderer
+  stood the building on the field under its middle — the plateau's top — while the roof quads faced DOWN (culled from above). Now:
+  ghost walls + a hidden roof bridge slab (`hide: true`), the field untouched, the building on the lowest ground under it (rows
+  without `y`: `texbOf`, lifted in hqTerrainCompile; `hqTexBuildingGround`). Roof and parapet tops wound to face up — this was the
+  downtown buildings without roofs (every textured lot in every city).
+- BUILDING TIERS: a `plateau` wearing `bld: { style }` is drawn as a flat-roofed textured building at its own height (`h`, cells
+  stretched; no parapet), its field rise starting `HQ_BLD_INSET` (0.6 m) inside the walls, the walk on its exact box. Converted:
+  Cyberpunk's seven STACKS + the billboard roof, Downtown's rooftop / east yards / warehouse roofs, the Strip's marquee, motel,
+  centre, laundry roofs. Decks with car ramps (parking deck, valet deck, skyway) and fire-escape landings stay field tiers.

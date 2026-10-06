@@ -46780,6 +46780,7 @@ const ThreeRenderer = (function () {
         _hq.blockers = _hq.blockers || [];
         var keyMats = {};
         info.bridges.forEach(function (b) {
+            if (b.hide) return;   // THE REAL COLLISION (2026-10-06): a texbuilding's roof slab — walked, the building draws its own roof
             var keyMat = b.key ? (keyMats[b.key] || (keyMats[b.key] = new THREE.MeshPhongMaterial({ map: _hzTex(b.key) || null, color: 0xffffff, shininess: 8 }))) : topMat;
             /* THE ROUND PIECES (2026-09-26): an ARC bridge is one ring-sector slab (the garage's deck) — _hqBuildArcBridge */
             if (b.arc) { try { _hqBuildArcBridge(b, G, TM, U, keyMat, sideMat, steel); } catch (e) { console.warn('[HQ] an arc bridge failed', b.id, e); } return; }
@@ -47722,7 +47723,7 @@ const ThreeRenderer = (function () {
     }
     /* one textured building on a lot: the box's four faces as cell grids, the roof, the parapet, the plant */
     function _hqTexBuilding(lot, info, batch, rng, gen, U) {
-        var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = st * HQ_TEXB.storey;
+        var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = (lot.h > 0) ? lot.h : st * HQ_TEXB.storey, CY = H / rows;   // `h` (THE BUILDING TIERS): a set roof height, the cells stretched to it
         var c = Math.cos(lot.rot || 0), s = Math.sin(lot.rot || 0), base = lot.base || 0;
         var hw = (lot.w - 0.12) / 2, hd = (lot.d - 0.12) / 2, out = HQ_TEXB.outset;
         /* the lot frame: local +x along the face, +z toward the street (as data.js rectOf) */
@@ -47755,7 +47756,7 @@ const ThreeRenderer = (function () {
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
                 if (!cell || !cell.key) continue;
-                var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * C, y1 = y0 + C;
+                var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY;
                 var uRep = cell.tall ? 2 : 1, kind = (cell === P.win || cell === P.ground) ? 'glass' : 'wall';
                 batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, 0], [uRep, 0], [uRep, 1], [0, 1]]);
                 if (over && over.key) {
@@ -47768,17 +47769,23 @@ const ThreeRenderer = (function () {
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
                 }
             }
+            if (lot.flat) return;   // THE BUILDING TIERS: a walked roof has no parapet (its rails, bridges and stairs meet the edge)
             /* the parapet's outer face in the wall's sheet (the top row's, if any) */
             var pk = (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
             var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
             batch.add(pk, null, 'wall', [W(px0, H, pz0), W(px1, H, pz1), W(px1, H + ph, pz1), W(px0, H + ph, pz0)], [[0, 0.7], [F.L / C, 0.7], [F.L / C, 0.7 + ph / C], [0, 0.7 + ph / C]]);
         });
         /* the roof (inside the parapet) + the parapet's top and inner lip */
+        /* THE ROOF FACES UP (2026-10-06, mondo: "why do some of the buildings in downtown not have roofs?"): the roof and the parapet's
+           top were wound clockwise seen from above, so their faces pointed DOWN and the front-face cull dropped them from every view
+           from above — every textured building (the editor's BUILDING, a share of every city's lots) stood open-topped. Wound
+           anticlockwise from above now (the walls were always right). */
         var rk = P.roof || 'urban:ConcreteUnderTiles1', ph2 = HQ_TEXB.parapet, t = 0.22;
-        batch.add(rk, null, 'wall', [W(-hw, H + 0.02, -hd), W(hw, H + 0.02, -hd), W(hw, H + 0.02, hd), W(-hw, H + 0.02, hd)], [[0, 0], [2 * hw / C, 0], [2 * hw / C, 2 * hd / C], [0, 2 * hd / C]]);
+        batch.add(rk, null, 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);
+        if (lot.flat) return { H: H, plan: P };
         [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
             var ex = e[2] - e[0], ez = e[3] - e[1], L = Math.hypot(ex, ez) || 1, nx = ez / L, nz = -ex / L;   // inward normal of this parapet run (ccw box → left-hand)
-            batch.add(rk, null, 'wall', [W(e[0], H + ph2, e[1]), W(e[2], H + ph2, e[3]), W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[0] - nx * t, H + ph2, e[1] - nz * t)], [[0, 0], [L / C, 0], [L / C, t / C], [0, t / C]]);
+            batch.add(rk, null, 'wall', [W(e[0] - nx * t, H + ph2, e[1] - nz * t), W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[2], H + ph2, e[3]), W(e[0], H + ph2, e[1])], [[0, t / C], [L / C, t / C], [L / C, 0], [0, 0]]);
             batch.add(rk, null, 'wall', [W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[0] - nx * t, H + ph2, e[1] - nz * t), W(e[0] - nx * t, H, e[1] - nz * t), W(e[2] - nx * t, H, e[3] - nz * t)], [[0, 0], [L / C, 0], [L / C, ph2 / C], [0, ph2 / C]]);
         });
         return { H: H + ph2, plan: P };
@@ -47788,12 +47795,12 @@ const ThreeRenderer = (function () {
        (the lot's +z) turned by the row's `rot` (degrees clockwise → the lot frame's radians, anticlockwise) */
     function _hqBuildTexRows(info, G, U) {
         if (typeof URBAN_TEXTURES === 'undefined' || typeof urbanTexPick !== 'function') return 0;
-        var batch = _hqTexBatch(G, U, false), n = 0;
+        var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0 };
-            _hqTexBuilding(lot, info, batch, rng, {}, U); n++;
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat };
+            _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
         return n;
@@ -53725,6 +53732,17 @@ const ThreeRenderer = (function () {
         if (_hqSeatTimer) return;
         _hqSeatTimer = setTimeout(function () { _hqSeatTimer = 0; try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); } }, 120);
     }
+    /* THE REAL COLLISION (2026-10-06): which placed prop gets a mesh collider — every floor prop that blocks today (its footprint is
+       replaced by its real shape) and every other standing model big enough to walk on or bump into (a footbridge, a stair, a
+       building); never a wall / ceiling / flipped / kicked / tabletop piece, a laid rug, a skate ramp or rail (their own surfaces),
+       a boarded vehicle, the scatter's plants, or a catalogue row wearing `mesh: false` */
+    var _HQ_MC_SOFT = /grass|flower|fern|weed|vine|moss|leaf|leaves|ivy|cobweb|puddle|rug|carpet|decal|shadow|glow|beam|smoke|fog|cloud|curtain|banner|flag|rope|chain|cable|wire|bush|shrub|reed|mushroom|petal|cattail|lily|kelp|coral|seaweed/i;
+    function _hqMcWants(p, cat, blk, onWall, onCeil, flip, kick, tabletop, mount) {
+        if (onWall || onCeil || flip || kick || tabletop || mount || cat.lay || cat.mesh === false || p.mesh === false || cat.rail || cat.ramp || cat.vehicle || cat.leaf || cat.float || cat.hover) return false;
+        if (blk) return true;
+        if (p.y > 0.5 || p.scatter) return false;   // a hung piece; the compiler's scatter (plants, litter, a prefab's dressing)
+        return !_HQ_MC_SOFT.test(String(p.key || ''));
+    }
     function _hqPlaceProps(room) {
         var sliced = _hqSliceAsk; _hqSliceAsk = false;
         if (typeof window !== 'undefined' && window.EW_HQ_NO_PROPS) return null;
@@ -53734,7 +53752,7 @@ const ThreeRenderer = (function () {
         var isBox = room.kind === 'box';
         _hq.tabletops = [];
         var placeOne = function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
-            var cat = D.catalogue[p.key];
+            var cat = D.catalogue[p.key], Hrec = _hq;   // (the room record this prop stands in — a stage neighbour's own, whatever _hq is when its file lands)
             if (!cat || (!cat.file && !cat.proc && !(cat.pack && _carPackOn()))) return;   // THE CAR PACK: a pack-only row needs the pack
             var level = p.level || 0, y0 = _hqLevelY(S, level);
             /* THE CAVE (rev 11): a floor prop stands on its cell — a torch on the terrace, a cot in a sunken cell */
@@ -53818,7 +53836,9 @@ const ThreeRenderer = (function () {
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
-                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y });   // `rect` (2026-09-14): a rectangular footprint in room axes
+                var pblk = null;
+                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { pblk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(pblk); }   // `rect` (2026-09-14): a rectangular footprint in room axes
+                if (_hqMcWants(p, cat, pblk, onWall, onCeil, flip, kick, tabletop, mount)) _mcFor(grp, pg, pblk, { H: _hq, y: y, need: !pblk });   // THE REAL COLLISION: the proc's own meshes
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
             }
@@ -53864,6 +53884,8 @@ const ThreeRenderer = (function () {
                     /* the real top: the fitted height (a laid rug is thin-axis up, and has no disc anyway) */
                     if (blk && !cat.lay) blk.top = y + (bb.max.y - bb.min.y) * s / U;
                     if (_hq) { _hq.dirty = true; _hqSeatLater(); }
+                    /* THE REAL COLLISION (2026-10-06): the model's own triangles replace the footprint (or give a prop that had none its floors and walls) */
+                    if (Hrec && _hqMcWants(p, cat, blk, onWall, onCeil, flip, kick, tabletop, mount)) _mcFor(grp, g, blk, { H: Hrec, y: y, need: !blk });
                 }
             };
             /* THE CAR PACK (2026-10-04): a catalogue car with a `pack` pool draws mondo's car pack (a paint picked off the row's
@@ -54523,6 +54545,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < B.length; i++) {
             var b = B[i];
             if (!_hqBlkContains(b, x, z, 0.06)) continue;
+            if (b.mc) { if (_mcSolid(b, x, z, y + 0.05, y + HQ_MC.head, 0.06)) return true; continue; }
             if (b.y != null && b.y > y + 1.2) continue;
             if (y < _hqBlkTop(b) - 0.05) return true;
         }
@@ -56470,7 +56493,7 @@ const ThreeRenderer = (function () {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
         var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
-        var y = null;
+        var y = null, dropOff = null;
         if (room.kind === 'box') {
             /* a box: inside the four walls, one level */
             /* THE STAGE (OPEN_WORLD_PLAN Phase 1): past the edge through a joined span, or over a drawn neighbour */
@@ -56565,7 +56588,8 @@ const ThreeRenderer = (function () {
             var siteL = _hq.site ? (_hq.site.L || _hq.site.C) : 0;   // one Δ level (a site board: the tile; a cave: HQ_CAVE_LEVEL, half of it)
             var floorTol = (_hq.site && (_hqSiteCellAt(x, z) || curY < -0.5)) ? Math.max(HQ_STEP_TOL, siteL + 0.06) : HQ_STEP_TOL;   // out of a pit — or the moat — onto the walkway is one level too
             if (y - curY > floorTol) return null;
-            if (curY - y > Math.max(HQ_DROP_MAX, _hq.site ? siteL + 0.1 : 0, _hq.terrain ? _hq.terrain.rules.dropMax : 0)) return null;   // a terrain room: any drop (platforming)
+            var dropMax = Math.max(HQ_DROP_MAX, _hq.site ? siteL + 0.1 : 0, _hq.terrain ? _hq.terrain.rules.dropMax : 0);   // a terrain room: any drop (platforming)
+            if (curY - y > dropMax) { if (ignoreBlockers) return null; dropOff = dropMax; }   // THE REAL COLLISION: a mesh's floor under the feet (a roof, a deck) may still carry the body — decided after the furniture
         }
         if (!ignoreBlockers) {
             /* furniture: a footprint's TOP is a floor when you stand on it or
@@ -56574,6 +56598,7 @@ const ThreeRenderer = (function () {
             var hits = _hqBlockersUnder(x, z);
             for (var bi = 0; bi < hits.length; bi++) {
                 var b = hits[bi], top = _hqBlkTop(b);
+                if (b.mc) { var my = _mcFeet(b, x, z, y, curY); if (my === null) return null; y = my; continue; }   // THE REAL COLLISION: the model's own floors and walls
                 if (b.y != null && b.y > y + 1.2 && (curY == null || b.y > curY + 1.2)) continue;      // furniture on the level above (under the slab) — or a raised landing you are not on (Phase 8 stage 2: the stairwell)
                 if (top <= y + 0.02) continue;                    // buried under this floor
                 if (curY != null && top - curY <= (b.step || HQ_STEP_TOL)) {   // a site board's step climbs one level (plan 7.2)
@@ -56585,16 +56610,229 @@ const ThreeRenderer = (function () {
                 } else return null;
             }
         }
+        if (dropOff != null && curY - y > dropOff) return null;
         return y;
     }
     /* ── furniture queries (2026-09-05) ─────────────────────────────────
        Every blocker is a footprint (disc, or an axis-aligned rect) with a
        base level `y` and a TOP height `top` (metres; a missing top = a
        wall of unknown height, never a floor). */
+    /* ══ THE REAL COLLISION (2026-10-06) — mondo: "Why can you not do that automatically to any 3d object or meshy glb?? The
+       collisions seem to work fine for the cardboard boxes and traffic cones, so why can you not do the same for buildings? Or
+       stairs?" ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       Every floor prop used to block as ONE catalogue footprint (a disc or a rect) with ONE top: a building was a 9 m disc (stuck
+       on its invisible corners, never up on its roof), a stair prop a box as tall as its head, a footbridge nothing at all. A
+       placed model now carries a MESH COLLIDER built from its own triangles once its file is in: a grid of 0.25 m columns over
+       its footprint, each column the solid spans [y0, y1] its geometry fills (a floor, a deck, a tread, a roof as a thin span; a
+       wall as a tall one). The walker stands on the highest span top within a step of its feet whose column leaves it headroom;
+       a span inside the body's disc that rises past a step and starts under the head is a wall; a jump lands on a span top; the
+       airborne body never enters a span. Built a few ms a frame off a queue, cached per model + fit (every copy of a model shares
+       one), the catalogue footprint standing in until it lands. Catalogue `mesh: false` keeps a prop on its footprint. ═════════ */
+    var HQ_MC = { cell: 0.25, maxCells: 90000, step: 0.15, gap: 0.3, head: 1.75, budgetMs: 5, maxTris: 400000, minSpan: 0.8, minH: 0.3 };
+    var _mcCache = {}, _mcJobs = [], _mcTimer = 0, _mcL = { x: 0, z: 0 };
+    /* a material a body can stand on / bump into: never a glow, a beam, a see-through sheet, a sprite */
+    function _mcSolidMat(m) {
+        if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (_mcSolidMat(m[i])) return true; return false; }
+        if (!m || m.visible === false || m.isSpriteMaterial || m.isPointsMaterial || m.isLineBasicMaterial) return false;
+        if (m.blending === THREE.AdditiveBlending) return false;
+        if (m.transparent && (m.opacity < 0.35 || m.depthWrite === false)) return false;
+        return true;
+    }
+    /* the meshes under `root` with their matrices relative to root (its own transform is applied when the collider is built) */
+    function _mcSnap(root) {
+        var list = [], walk = function (o, M) {
+            for (var i = 0; i < o.children.length; i++) {
+                var c = o.children[i]; if (!c || c.visible === false) continue;
+                c.updateMatrix();
+                var m = new THREE.Matrix4().multiplyMatrices(M, c.matrix);
+                if (c.isMesh && !c.isSprite && c.geometry && c.geometry.attributes && c.geometry.attributes.position && _mcSolidMat(c.material)) list.push({ g: c.geometry, m: m, im: c.isInstancedMesh ? c : null });
+                walk(c, m);
+            }
+        };
+        walk(root, new THREE.Matrix4());
+        return list;
+    }
+    /* the cache key: the geometries and where they sit (root's matrix included — the fit, the turn, the lay) */
+    function _mcKey(snap, rootM) {
+        var k = [], r = function (v) { return Math.round(v * 1000) / 1000; }, e = rootM.elements;
+        for (var j = 0; j < 16; j++) k.push(r(e[j]));
+        for (var i = 0; i < snap.length; i++) { k.push(snap[i].g.uuid); var me = snap[i].m.elements; for (var q = 0; q < 16; q++) k.push(r(me[q])); }
+        return k.join(',');
+    }
+    /* the builder (a generator: it yields between batches). In: the snapshot, root's matrix, the units → the collider in metres
+       in the PLACED GROUP's own frame (x right, z forward, y up from the group's origin) */
+    function* _mcBuild(snap, rootM, U, out) {
+        var S = HQ_MC, inv = 1 / U, v = new THREE.Vector3(), M = new THREE.Matrix4(), MI = new THREE.Matrix4(), IM = new THREE.Matrix4(), bx = new THREE.Box3(), tBudget = performance.now();
+        /* the footprint first, off the geometries' own boxes (no triangle is kept: each is sampled as it is read) */
+        var mnx = Infinity, mxx = -Infinity, mnz = Infinity, mxz = -Infinity, n = 0, mats = [];
+        for (var si = 0; si < snap.length; si++) {
+            var E = snap[si]; if (!E.g.boundingBox) E.g.computeBoundingBox();
+            M.multiplyMatrices(rootM, E.m);
+            var reps = E.im ? Math.min(E.im.count, 256) : 1, ms = [];
+            for (var r = 0; r < reps; r++) {
+                var Mr = new THREE.Matrix4(); if (E.im) { E.im.getMatrixAt(r, IM); Mr.multiplyMatrices(M, IM); } else Mr.copy(M);
+                ms.push(Mr); bx.copy(E.g.boundingBox).applyMatrix4(Mr);
+                if (bx.min.x * inv < mnx) mnx = bx.min.x * inv; if (bx.max.x * inv > mxx) mxx = bx.max.x * inv; if (bx.min.z * inv < mnz) mnz = bx.min.z * inv; if (bx.max.z * inv > mxz) mxz = bx.max.z * inv;
+                n += (E.g.index ? E.g.index.count : E.g.attributes.position.count) / 3;
+            }
+            mats.push(ms);
+        }
+        if (!n || !isFinite(mnx)) { out.fail = 'no triangles'; return; }
+        if (n > S.maxTris) { out.fail = 'too many triangles (' + Math.round(n) + ')'; return; }
+        var c = S.cell, w = mxx - mnx, d = mxz - mnz;
+        if ((w / c + 2) * (d / c + 2) > S.maxCells) c = Math.sqrt((w + 2 * c) * (d + 2 * c) / S.maxCells) * 1.02;
+        var x0 = mnx - c * 0.5, z0 = mnz - c * 0.5, nx = Math.ceil((mxx - x0) / c) + 1, nz = Math.ceil((mxz - z0) / c) + 1, N = nx * nz;
+        var cells = new Array(N), step = Math.max(S.step, c * 0.6), T = [0, 0, 0, 0, 0, 0, 0, 0, 0], mny = Infinity, mxy = -Infinity, work = 0;
+        for (var sj = 0; sj < snap.length; sj++) {
+            var E2 = snap[sj], pos = E2.g.attributes.position, idx = E2.g.index, cnt = idx ? idx.count : pos.count;
+            for (var rr = 0; rr < mats[sj].length; rr++) {
+                MI.copy(mats[sj][rr]);
+                for (var t = 0; t + 2 < cnt; t += 3) {
+                    for (var q = 0; q < 3; q++) {
+                        var vi = idx ? idx.getX(t + q) : t + q;
+                        v.set(pos.getX(vi), pos.getY(vi), pos.getZ(vi)).applyMatrix4(MI);
+                        T[q * 3] = v.x * inv; T[q * 3 + 1] = v.y * inv; T[q * 3 + 2] = v.z * inv;
+                        if (T[q * 3 + 1] < mny) mny = T[q * 3 + 1]; if (T[q * 3 + 1] > mxy) mxy = T[q * 3 + 1];
+                    }
+                    var ax = T[0], ay = T[1], az = T[2], ex = T[3] - ax, ey = T[4] - ay, ez = T[5] - az, fx = T[6] - ax, fy = T[7] - ay, fz = T[8] - az;
+                    var Lm = Math.max(Math.sqrt(ex * ex + ey * ey + ez * ez), Math.sqrt(fx * fx + fy * fy + fz * fz), Math.sqrt((fx - ex) * (fx - ex) + (fy - ey) * (fy - ey) + (fz - ez) * (fz - ez)));
+                    var ns = Math.min(240, Math.max(1, Math.ceil(Lm / step)));
+                    for (var i = 0; i <= ns; i++) {
+                        var u = i / ns;
+                        work += ns - i + 1;
+                        if (work > 3000) { work = 0; if (performance.now() - tBudget > S.budgetMs) { yield; tBudget = performance.now(); } }
+                        for (var j = 0; j <= ns - i; j++) {
+                            var ww = j / ns, sx = ax + ex * u + fx * ww, sz = az + ez * u + fz * ww;
+                            var ci = Math.floor((sx - x0) / c), cj = Math.floor((sz - z0) / c);
+                            if (ci < 0 || cj < 0 || ci >= nx || cj >= nz) continue;
+                            var ki = cj * nx + ci, A = cells[ki], yq = Math.round((ay + ey * u + fy * ww) * 20) / 20;
+                            if (!A) cells[ki] = [yq]; else if (A[A.length - 1] !== yq) A.push(yq);
+                        }
+                    }
+                }
+            }
+        }
+        /* the spans: every column's heights sorted, merged where the gap is under `gap` */
+        var off = new Int32Array(N + 1), spans = [];
+        for (var kk = 0; kk < N; kk++) {
+            off[kk] = spans.length;
+            var B = cells[kk]; if (!B) continue;
+            if (B.length > 1) { if (B.length > 24) B = Float32Array.from(B).sort(); else B.sort(function (p, q2) { return p - q2; }); }
+            work += B.length + 8;
+            var lo = B[0], hi = B[0];
+            for (var m = 1; m < B.length; m++) { if (B[m] - hi > S.gap) { spans.push(lo - 0.02, hi); lo = B[m]; } hi = B[m]; }
+            spans.push(lo - 0.02, hi);
+            cells[kk] = null;
+            if (work > 6000) { work = 0; if (performance.now() - tBudget > S.budgetMs) { yield; tBudget = performance.now(); } }
+        }
+        off[N] = spans.length;
+        out.mc = { c: c, x0: x0, z0: z0, nx: nx, nz: nz, off: off, iv: new Float32Array(spans), ymin: mny, ymax: mxy, bx0: mnx, bx1: mxx, bz0: mnz, bz1: mxz, tris: Math.round(n) };
+    }
+    /* the queue: one job per model + fit; every blocker waiting on it gets the collider when it lands */
+    function _mcPump() {
+        _mcTimer = 0;
+        var t0 = performance.now();
+        while (_mcJobs.length && performance.now() - t0 < HQ_MC.budgetMs) {
+            var J = _mcJobs[0], r;
+            try { r = J.it.next(); } catch (e) { console.warn('[HQ] a mesh collider failed', J.key.slice(0, 40), e); r = { done: true }; J.out.fail = 'error'; }
+            if (!r.done) continue;
+            _mcJobs.shift();
+            _mcCache[J.key] = J.out.mc || null;
+            if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] mesh collider', J.out.mc ? (J.out.mc.tris + ' tris → ' + J.out.mc.nx + '×' + J.out.mc.nz + ' columns') : J.out.fail);
+            for (var w = 0; w < J.wait.length; w++) _mcAttach(J.wait[w], J.out.mc || null);
+        }
+        if (_mcJobs.length) _mcTimer = setTimeout(_mcPump, 16);
+    }
+    /* hand a placed group (`grp`, the prop; `root`, its model under it) a collider: `blk` = its catalogue blocker (null = none yet),
+       `o.H` the room record it stands in, `o.need` = it must reach minSpan × minH (a prop that never blocked: a sign is no wall) */
+    function _mcFor(grp, root, blk, o) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_MESH_COLLISION) return;
+        var snap, rootM, key;
+        try { root.updateMatrix(); rootM = root.matrix.clone(); snap = _mcSnap(root); if (!snap.length) return; key = _mcKey(snap, rootM); } catch (e) { return; }
+        var waiter = { grp: grp, blk: blk, H: o.H, y: o.y, need: !!o.need };
+        if (Object.prototype.hasOwnProperty.call(_mcCache, key)) { _mcAttach(waiter, _mcCache[key]); return; }
+        for (var i = 0; i < _mcJobs.length; i++) if (_mcJobs[i].key === key) { _mcJobs[i].wait.push(waiter); return; }
+        var out = {};
+        _mcJobs.push({ key: key, out: out, it: _mcBuild(snap, rootM, _hqUnits(), out), wait: [waiter] });
+        if (!_mcTimer) _mcTimer = setTimeout(_mcPump, 0);
+    }
+    function _mcAttach(W, mc) {
+        if (!mc || !W.H || !W.H.blockers) return;
+        if (W.need && (Math.max(mc.bx1 - mc.bx0, mc.bz1 - mc.bz0) < HQ_MC.minSpan || mc.ymax - Math.max(0, mc.ymin) < HQ_MC.minH)) return;
+        var U = _hqUnits(), b = W.blk;
+        if (!b) { b = { obj: W.grp, y: W.y, rad: Math.max(mc.bx1 - mc.bx0, mc.bz1 - mc.bz0) / 2 }; W.H.blockers.push(b); }
+        b.mc = mc; b.top = W.grp.position.y / U + mc.ymax;
+        W.H.dirty = true;
+        /* the people's lattice under the new shape is read again (THE NAV caches the floor per cell) */
+        try { if (W.H === _hq) _mcNavAgain(b); } catch (e) {}
+    }
+    function _mcNavAgain(b) {
+        var N = _hq && _hq.nav; if (!N || !N.y) return;
+        var U = _hqUnits(), M = b.mc, ox = b.obj.position.x / U, oz = b.obj.position.z / U, r = Math.hypot(Math.max(-M.bx0, M.bx1), Math.max(-M.bz0, M.bz1)) + HQ_BODY_R + N.cell;
+        var i0 = Math.max(0, Math.floor((ox - r - N.x0) / N.cell)), i1 = Math.min(N.nx - 1, Math.ceil((ox + r - N.x0) / N.cell)), j0 = Math.max(0, Math.floor((oz - r - N.z0) / N.cell)), j1 = Math.min(N.nz - 1, Math.ceil((oz + r - N.z0) / N.cell));
+        for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+            var k = j * N.nx + i; if (k >= N.i) continue;   // a cell the build has not reached reads the new shape anyway
+            var y = _hqNavQuery(N.x0 + i * N.cell, N.z0 + j * N.cell, null);
+            var was = isFinite(N.y[k]); N.y[k] = (y !== null && y !== undefined && isFinite(y)) ? y : NaN;
+            if (was && !isFinite(N.y[k])) N.walk--; else if (!was && isFinite(N.y[k])) N.walk++;
+        }
+    }
+    /* (x, z) in the blocker's own frame (metres) → _mcL */
+    function _mcLoc(b, x, z) {
+        var U = _hqUnits(), o = b.obj, dx = x - o.position.x / U, dz = z - o.position.z / U, yw = o.rotation.y;
+        if (yw) { var c = Math.cos(yw), s = Math.sin(yw); _mcL.x = dx * c - dz * s; _mcL.z = dx * s + dz * c; } else { _mcL.x = dx; _mcL.z = dz; }
+        return _mcL;
+    }
+    function _mcNear(b, x, z, pad) {
+        var M = b.mc, L = _mcLoc(b, x, z);
+        return L.x >= M.bx0 - pad && L.x <= M.bx1 + pad && L.z >= M.bz0 - pad && L.z <= M.bz1 + pad;
+    }
+    /* does any span in the columns within `pad` of (x, z) overlap the band [lo, hi] (room metres)? */
+    function _mcSolid(b, x, z, lo, hi, pad) {
+        var M = b.mc, L = _mcLoc(b, x, z), lx = L.x, lz = L.z;
+        if (lx < M.bx0 - pad || lx > M.bx1 + pad || lz < M.bz0 - pad || lz > M.bz1 + pad) return false;
+        var oy = b.obj.position.y / _hqUnits(), l = lo - oy, h = hi - oy, c = M.c, off = M.off, iv = M.iv, rr = Math.max(0, pad - 0.06);
+        var i0 = Math.max(0, Math.floor((lx - pad - M.x0) / c)), i1 = Math.min(M.nx - 1, Math.floor((lx + pad - M.x0) / c)), j0 = Math.max(0, Math.floor((lz - pad - M.z0) / c)), j1 = Math.min(M.nz - 1, Math.floor((lz + pad - M.z0) / c));
+        for (var j = j0; j <= j1; j++) {
+            var cz0 = M.z0 + j * c, qz = lz < cz0 ? cz0 : lz > cz0 + c ? cz0 + c : lz;
+            for (var i = i0; i <= i1; i++) {
+                var k = j * M.nx + i; if (off[k] === off[k + 1]) continue;
+                if (pad > 0) { var cx0 = M.x0 + i * c, qx = lx < cx0 ? cx0 : lx > cx0 + c ? cx0 + c : lx; if ((qx - lx) * (qx - lx) + (qz - lz) * (qz - lz) > rr * rr) continue; }
+                for (var q = off[k]; q < off[k + 1]; q += 2) if (iv[q + 1] > l && iv[q] < h) return true;
+            }
+        }
+        return false;
+    }
+    /* the highest span top under the body's centre at or under `under` (room metres) whose column leaves the head clear — null for none */
+    function _mcTopUnder(b, x, z, under, over) {
+        var M = b.mc, L = _mcLoc(b, x, z), lx = L.x, lz = L.z, P = HQ_BLK_STAND_PAD;
+        if (lx < M.bx0 - P || lx > M.bx1 + P || lz < M.bz0 - P || lz > M.bz1 + P) return null;
+        var oy = b.obj.position.y / _hqUnits(), u = under - oy, ov = (over == null ? -1e9 : over - oy), c = M.c, off = M.off, iv = M.iv, best = null, hd = HQ_MC.head;
+        var i0 = Math.max(0, Math.floor((lx - P - M.x0) / c)), i1 = Math.min(M.nx - 1, Math.floor((lx + P - M.x0) / c)), j0 = Math.max(0, Math.floor((lz - P - M.z0) / c)), j1 = Math.min(M.nz - 1, Math.floor((lz + P - M.z0) / c));
+        for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+            var k = j * M.nx + i, e = off[k + 1];
+            for (var q = off[k]; q < e; q += 2) {
+                var top = iv[q + 1]; if (top > u || top <= ov || (best !== null && top <= best)) continue;
+                if (q + 2 < e && iv[q + 2] < top + hd) continue;   // the next span over it is under the head: no standing here
+                best = top;
+            }
+        }
+        return best === null ? null : best + oy;
+    }
+    /* the walker's feet at (x, z) with this mesh: the ground `y` from the room, `curY` the feet before the move (null = a free
+       query: the feet at the ground) → the new feet, or null (a wall) */
+    function _mcFeet(b, x, z, y, curY) {
+        var M = b.mc, R = HQ_BODY_R; if (!_mcNear(b, x, z, R)) return y;
+        var ref = (curY != null) ? curY : y;
+        var t = _mcTopUnder(b, x, z, ref + HQ_STEP_TOL, y + 0.02), ny = (t !== null && t > y) ? t : y;
+        if (_mcSolid(b, x, z, Math.max(ny, ref) + HQ_STEP_TOL, ny + HQ_MC.head, R)) return null;   // (from up on it, what is under a step of the feet is walked off, never a wall)
+        return ny;
+    }
     function _hqBlkTop(b) { return (b.top != null) ? b.top : 1e9; }
     var HQ_BLK_STAND_PAD = 0.12;   // standing on / landing on a top: the body's centre, not its disc, must be over it
     /* does the blocker's footprint, grown by `pad`, contain (x, z)? */
     function _hqBlkContains(b, x, z, pad) {
+        if (b.mc) return _mcNear(b, x, z, pad);   // THE REAL COLLISION: a mesh's box — its readers ask the columns (_mcFeet, _mcSolid, _mcTopUnder)
         var U = _hqUnits();
         var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
         if (b.rect) {
@@ -56621,6 +56859,7 @@ const ThreeRenderer = (function () {
         var hits = _hqBlockersUnder(x, z);
         for (var i = 0; i < hits.length; i++) {
             var b = hits[i];
+            if (b.mc) { if (_mcSolid(b, x, z, y + 0.05, y + HQ_MC.head, HQ_BODY_R)) return false; continue; }   // THE REAL COLLISION: only the model's own spans
             if (b.y != null && b.y > y + 1.2) continue;
             if (y < _hqBlkTop(b) - 0.05) return false;
         }
@@ -56639,6 +56878,7 @@ const ThreeRenderer = (function () {
         }
         for (var i = 0; i < _hq.blockers.length; i++) {
             var b = _hq.blockers[i], top = _hqBlkTop(b);
+            if (b.mc) { var mt = _mcTopUnder(b, x, z, feetY + 0.05, null); if (mt !== null && (best === null || mt > best)) best = mt; continue; }   // THE REAL COLLISION: a jump lands on the model's own top under the feet
             if (b.y != null && b.y > feetY + 1.2) continue;
             if (top > feetY + 0.05 || (best !== null && top <= best)) continue;
             if (_hqBlkContains(b, x, z, HQ_BLK_STAND_PAD)) best = top;
@@ -56865,6 +57105,7 @@ const ThreeRenderer = (function () {
                 var bl = _hq.blockers[b];
                 if (bl.npc || bl.portal) continue;
                 if (!_hqBlkContains(bl, x, z, 0)) continue;
+                if (bl.mc) { if (_mcSolid(bl, x, z, y - 0.05, y + 0.05, 0)) return false; continue; }   // THE REAL COLLISION: an arch is seen through
                 if (bl.y != null && bl.y > y) continue;
                 if (y < _hqBlkTop(bl) - 0.05) return false;
             }
@@ -57966,7 +58207,7 @@ const ThreeRenderer = (function () {
         var hits = _hqBlockersUnder(ox + mx * dt, oz + mz * dt), U = _hqUnits();
         for (var i = 0; i < hits.length; i++) {
             var b = hits[i];
-            if (b.rect || b.portal || _hqBlkTop(b) <= pl.y + HQ_STEP_TOL || (b.y != null && b.y > pl.y + 1.2)) continue;
+            if (b.rect || b.mc || b.portal || _hqBlkTop(b) <= pl.y + HQ_STEP_TOL || (b.y != null && b.y > pl.y + 1.2)) continue;
             var nx = ox - b.obj.position.x / U, nz = oz - b.obj.position.z / U, len = Math.hypot(nx, nz);
             if (len < 0.001) continue;
             nx /= len; nz /= len;
@@ -65195,7 +65436,7 @@ const ThreeRenderer = (function () {
                 var lx = d.box.wx + d.box.nx * inM, lz = d.box.wz + d.box.nz * inM;
                 for (var dm = inM; dm >= 0.8; dm -= 0.2) {
                     var tx = d.box.wx + d.box.nx * dm, tz = d.box.wz + d.box.nz * dm, clear = true, under = _hqBlockersUnder(tx, tz);
-                    for (var ui = 0; ui < under.length; ui++) { var ub = under[ui]; if (ub.y != null && ub.y > (d.y0 || 0) + 1.2) continue; if (_hqBlkTop(ub) <= (d.y0 || 0) + 0.02) continue; clear = false; break; }
+                    for (var ui = 0; ui < under.length; ui++) { var ub = under[ui]; if (ub.mc) { if (_mcSolid(ub, tx, tz, (d.y0 || 0) + 0.05, (d.y0 || 0) + HQ_MC.head, HQ_BODY_R)) { clear = false; break; } continue; } if (ub.y != null && ub.y > (d.y0 || 0) + 1.2) continue; if (_hqBlkTop(ub) <= (d.y0 || 0) + 0.02) continue; clear = false; break; }
                     if (clear) { lx = tx; lz = tz; break; }
                 }
                 spot.set(lx * U, d.y0 * U, lz * U);
