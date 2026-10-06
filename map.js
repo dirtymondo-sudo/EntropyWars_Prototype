@@ -27,7 +27,7 @@
         function _showTitlePage(pageId) {
             if (pageId !== 'settingsPage') {
                 document.removeEventListener('focusin', _mmSettingsFocusGuard);
-                if (pageId !== 'spellLibraryPage') {
+                if (pageId !== 'spellLibraryPage' && pageId !== 'raceEditorPage') {
                     _mmSettingsSession = false;
                     _mmSettingsReturnFocus = null;
                 }
@@ -1028,7 +1028,7 @@
             _goToMapEditor: 'MAP EDITOR', _mountLeaderboard: 'LEADERBOARD', _mountCommunityMaps: 'COMMUNITY MAPS',
             _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
             /* ROOM 1337 · IT (2026-09-13): the dev surfaces' physical home */
-            _goToSpellLibrary: 'SPELL LIBRARY', _launchBalanceSim: 'BALANCE LAB', _launchAITraining: 'AI TRAINING LAB',
+            _goToSpellLibrary: 'SPELL LIBRARY', _goToRaceEditor: 'RACE EDITOR', _launchBalanceSim: 'BALANCE LAB', _launchAITraining: 'AI TRAINING LAB',
             /* THE FOURIER FOYER (2026-09-15): the front door's street side is the main menu (the strip's EXIT, as a door) */
             _hqExitToMenu: 'MAIN MENU · LEAVE THE BUILDING',
         };
@@ -7653,6 +7653,23 @@
             _showTitlePage('spellLibraryPage');
             if (typeof window._renderSpellLibrary === 'function') window._renderSpellLibrary();
         };
+        /* ── Race Editor (Settings → Developer, or RACES in the Spell Library, 2026-10-06): ui.js _renderRaceEditor over
+           data.js EWRaceMods. Back returns where it was opened from. ── */
+        let _rceFrom = 'settings';
+        window._goToRaceEditor = function(from) {
+            if (typeof isOnlineMatch === 'function' && isOnlineMatch()) {
+                if (typeof _hqToast === 'function') _hqToast('RACE EDITOR · closed during an online match', 2200);
+                return;
+            }
+            _rceFrom = from || 'settings';
+            playSfx('uiButtonConfirm');
+            _showTitlePage('raceEditorPage');
+            if (typeof window._renderRaceEditor === 'function') window._renderRaceEditor();
+        };
+        window._raceEditorBack = function() {
+            if (_rceFrom === 'library') { _showTitlePage('spellLibraryPage'); if (typeof window._renderSpellLibrary === 'function') window._renderSpellLibrary(); return; }
+            window._spellLibraryBack();
+        };
         window._spellLibraryBack = function() {
             state.gameState = GS.MAIN_MENU;
             /* ROOM 1337 · IT (2026-09-13): opened from THE LIBRARY console, Back
@@ -8694,6 +8711,10 @@
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Spell Library — browse, edit, add, delete and reassign every spell/ability, preview animations in the Spell Lab, then export your changes as JSON for Claude to make live.${(typeof window.EWSpellMods !== 'undefined' && (() => { const c = window.EWSpellMods.counts(); const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities; return n ? ` <span style="color:#ffd86a">●</span> ${n} pending change group${n === 1 ? '' : 's'}${window.EWSpellMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToSpellLibrary()">Open Spell Library</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Race Editor — every race's base stats, name, types, elements, terrain and range; rank a stat by dragging, set its floor and ceiling, edit the letter grades and the level curve, then export your changes as JSON for Claude to make live.${(typeof window.EWRaceMods !== 'undefined' && (() => { const n = window.EWRaceMods.total(); return n ? ` <span style="color:#ffd86a">●</span> ${n} pending edit${n === 1 ? '' : 's'}${window.EWRaceMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window._goToRaceEditor('settings')">Open Race Editor</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">

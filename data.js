@@ -3715,6 +3715,70 @@ const AVAILABLE_ZODIACS = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo'
 const AVAILABLE_SLEEP_PREFERENCES = ['none', 'nocturnal', 'daywalker'];
 const AVAILABLE_TERRAIN_PREFERENCES = ['grass', 'water', 'deep_water', 'mountain', 'desert'];
 const AVAILABLE_ITEM_TYPES = ['', 'healPotion', 'manaPotion', 'scanner'];
+/* THE TERRAIN PREFERENCE (moved from state.js getTerrainPreferenceForRace, 2026-10-06 — the race editor edits it): a race
+   standing on its preferred terrain pays 1 less to move through it and takes TERRAIN_PREFERENCE_BONUS for that terrain
+   (state.js getTerrainPreferenceModifier). A race not listed has none. */
+const RACE_TERRAIN_PREFERENCE = {
+    'siren': 'deep_water',
+    'reptilian': 'water',
+    'ghost': 'deep_water',
+    'demon': 'lava',
+    'djinn': 'lava',
+    'succubus': 'lava',
+    'anubis': 'desert',
+    'skeleton': 'wasteland',
+    'bigfoot': 'tree',
+    'fairy': 'tree',
+    'werewolf': 'tree',
+    'shadow entity': 'tree',
+    'skinwalker': 'tree',
+    'catgirl': 'tree',
+    'mothman': 'tree',
+    'scarecrow': 'tree',
+    'giant': 'mountain',
+    'cyclops': 'mountain',
+    'gargoyle': 'mountain',
+    'zombie': 'wasteland',
+    'robot': 'wasteland',
+    'mech': 'wasteland',
+    'android': 'wasteland',
+    'ai': 'wasteland',
+    'glitch': 'wasteland',
+    'cyborg': 'wasteland',
+    'cosmic wraith': 'wasteland',
+    'demon prince': 'lava',
+    'demon princess': 'lava',
+    'halfdemon': 'lava',
+    'goatman': 'lava',
+    'mermaid': 'deep_water',
+    'nephilim': 'mountain',
+    'vampire': 'tree',
+    'dreameater': 'tree',
+    'superhero': 'grass',
+    'fallen angel': 'desert',
+    'voidweaver': 'tree',
+    'atlantean': 'deep_water',
+    'dinosaur': 'tree',
+    'dragon': 'lava',
+    'ghoul': 'wasteland',
+    'gnome': 'mountain',
+    'kaiju': 'wasteland',
+    'kraken': 'deep_water',
+    'loch ness monster': 'deep_water',
+    'yeti': 'ice'
+};
+/* what standing on the preferred terrain adds (armor = flat soak points, awr on the 0–100 ruler, move = tiles);
+   lava / tree / wasteland only cut the move cost */
+const TERRAIN_PREFERENCE_BONUS = {
+    grass:      { atk: 8, armor: 0, int: 0, awr: 14, move: 1 },
+    water:      { atk: 0, armor: 5, int: 5, awr: 14, move: 0 },
+    deep_water: { atk: 0, armor: 5, int: 5, awr: 14, move: 1 },
+    desert:     { atk: 8, armor: 0, int: 5, awr: 0,  move: 0 },
+    mountain:   { atk: 0, armor: 5, int: 0, awr: 14, move: 1 },
+    ice:        { atk: 8, armor: 5, int: 0, awr: 0,  move: 1 },
+};
+const TERRAIN_PREFERENCE_OPTIONS = ['none', 'grass', 'water', 'deep_water', 'mountain', 'desert', 'ice', 'lava', 'tree', 'wasteland'];
+
 
 const ZODIAC_CYCLE = AVAILABLE_ZODIACS;
 const ZODIAC_ROTATION_ROUNDS = 5;
@@ -17801,11 +17865,18 @@ const EW_SCALE = 1;
 const EW_L1_FRAC = 0.05;
 // Curve exponent — keeps early levels gentle, late levels meaningful.
 const LEVEL_SCALE_EXP = 1.35;
+/* THE LEVEL CURVE (the race editor, 2026-10-06): the four curve knobs as ONE live object, so the race editor (ui.js RCE,
+   data.js EWRaceMods) can move them and every reader below follows. The consts above and below stay the shipped values.
+     hpL1    — the share of its level-100 HP (and of every flat damage / heal number) a level-1 unit has (EW_L1_FRAC)
+     mpL1    — the share of its level-100 MP pool a level-1 unit has (EW_MP_L1_FRAC)
+     hpExp   — the bend of the HP / MP / damage curve from level 1 to 100 (LEVEL_SCALE_EXP; 1 = a straight line)
+     statExp — the bend of the ATK / M ATK / DEF / M DEF growth (LEVEL_STAT_GAIN_EXP; 1 = the same points every level) */
+const LEVEL_CURVE = { hpL1: EW_L1_FRAC, mpL1: 0.35, hpExp: LEVEL_SCALE_EXP, statExp: 1.0 };   // mpL1 / statExp: EW_MP_L1_FRAC / LEVEL_STAT_GAIN_EXP below read these
 function levelScale(level) {
     if (LEVEL_CAP <= 1) return EW_SCALE;
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
-    const t = Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
-    return EW_SCALE * (EW_L1_FRAC + (1 - EW_L1_FRAC) * t);
+    const t = Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_CURVE.hpExp);
+    return EW_SCALE * (LEVEL_CURVE.hpL1 + (1 - LEVEL_CURVE.hpL1) * t);
 }
 
 // Stat growth. atk/def/mdef/int grow additively at classic scale (totals =
@@ -17823,7 +17894,7 @@ function levelScale(level) {
 // keeps the same classic JRPG budget: a fresh caster opens with ~4 casts of
 // its starter spell, a fresh martial gets ~2, and casts-per-pool grow with
 // level. Costs stay FLAT at every level — only the pool moves.
-const EW_MP_L1_FRAC = 0.35;   // THE SPELL AUDIT Q2 (2026-09-30): 0.30 → 0.35, so the lowest pools cast a T2 early in story; PvP builds at the cap, untouched
+const EW_MP_L1_FRAC = LEVEL_CURVE.mpL1;   // 0.35 — THE SPELL AUDIT Q2 (2026-09-30): 0.30 → 0.35, so the lowest pools cast a T2 early in story; PvP builds at the cap, untouched
 /* 2026-08-12 tree-cost redesign: MP pools rescaled ×1.8 across the board
    (base stats, job modifiers, class templates and this growth total) to
    match the 25/50/75/100 ring ladder — a full 4-node pillar now sums to
@@ -17837,11 +17908,11 @@ const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 100, atk: 58, def: 62, mdef: 69, i
    COSMETIC in combat by construction: every damage / armor formula reads levelPowerStat (the stat's level-cap equivalent
    — raw + the growth not yet earned), so how the 58 ATK are spread across the 99 levels never changes a hit; the level
    gap is levelGapMult's. HP / MP keep LEVEL_SCALE_EXP (that curve IS the combat magnitude). */
-const LEVEL_STAT_GAIN_EXP = 1.0;
+const LEVEL_STAT_GAIN_EXP = LEVEL_CURVE.statExp;   // 1.0
 function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
-    const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
-    const ta = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_STAT_GAIN_EXP);
+    const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_CURVE.hpExp);
+    const ta = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_CURVE.statExp);
     const out = {};
     for (const k in LEVEL_TOTAL_STAT_GAINS) out[k] = Math.round(LEVEL_TOTAL_STAT_GAINS[k] * ta);
     const b = Math.max(1, Number(baseHp) || 550);
@@ -17849,7 +17920,7 @@ function levelStatGains(level, baseHp, baseMp) {
     const bm = Number(baseMp);
     if (isFinite(bm)) {
         const m = Math.max(0, bm);
-        const mpScale = EW_SCALE * (EW_MP_L1_FRAC + (1 - EW_MP_L1_FRAC) * t);
+        const mpScale = EW_SCALE * (LEVEL_CURVE.mpL1 + (1 - LEVEL_CURVE.mpL1) * t);
         out.mp = Math.round((m + LEVEL_TOTAL_STAT_GAINS.mp) * mpScale) - m;
     }
     return out;
@@ -17952,7 +18023,7 @@ function ewUnitLevel(unit) {
 function levelGrowthDeficit(level) {
     if (LEVEL_CAP <= 1) return 0;
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
-    return 1 - Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_STAT_GAIN_EXP);   // the additive stats' own curve (levelStatGains)
+    return 1 - Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_CURVE.statExp);   // the additive stats' own curve (levelStatGains)
 }
 
 // A unit's stat as the DAMAGE/ARMOR formulas should see it: its level-cap
@@ -21751,7 +21822,7 @@ Object.assign(window, {
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
-  LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, levelScale,
+  LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, LEVEL_CURVE, levelScale,
   LEVEL_TOTAL_STAT_GAINS, levelStatGains, EW_MP_L1_FRAC, LEVEL_STAT_GAIN_EXP,
   EW_COMBAT_PACE, EW_LEVEL_GAP_STEP, EW_LEVEL_GAP_MAX, EW_LEVEL_GAP_MIN,
   ewUnitLevel, levelGrowthDeficit, levelPowerStat, statGradeValForUnit, levelGapMult,
@@ -22636,6 +22707,300 @@ window.EWSpellMods = (function () {
         LS_KEY: EW_SPELL_MODS_LS_KEY,
     };
 })();
+
+/* ═══ THE RACE EDITOR'S DIFF LAYER — EWRaceMods (2026-10-06, mondo: "a race editor similar to the spell editor") ═══════
+   The race tables as data.js ships them stay the truth; this layer keeps the race editor's edits in localStorage
+   (EW_RACE_MODS_LS_KEY) and writes them INTO the live tables in place (the tables are const objects, so every reader —
+   computeUnitStats, the party builder, the codex, the HUD, the battle — sees them with no new code). The editor (ui.js
+   RCE block, Settings → Developer → Race Editor) is the only writer; EXPORT hands the doc to a thread to bake.
+
+   THE ONE STATLINE RULE (mondo: "PvP is the same races as in the story mode just at level 100"): a race has ONE set of
+   BASE stats (RACE_BASE_STATS). Every mode builds a unit from it with the same level formula (levelStatGains): story at the
+   unit's level, PvP at 100. The letter grade reads the BASE stat and never moves with level (the Pokémon model: a base
+   stat, a fixed tier, the level only scales the number).
+
+   What a race row may carry (all sparse, absent = shipped):
+     hp mp atk int def mdef spd awr   → RACE_BASE_STATS[race]
+     label labelMale labelFemale faction types[] → RACE_PROFILES[race]
+     affinity {element: tier}         → RACE_ELEMENT_AFFINITY[race] (the whole row; {} = no affinities)
+     terrain                          → RACE_TERRAIN_PREFERENCE[race] ('none' = no preference)
+     role                             → RACE_CLASS[race]
+     range                            → RACE_KITS[race].range
+     biomes[]                         → EW_RACE_BIOMES[race] + RACE_PROFILES[race].biomes (where the race is native)
+   And three global groups: grades {stat: [S, A, B, C]} → STAT_GRADE_BANDS · curve {hpL1, mpL1, hpExp, statExp} →
+   LEVEL_CURVE · gains {hp, mp, atk, int, def, mdef} → LEVEL_TOTAL_STAT_GAINS.
+   THE ONLINE GUARD: like EWSpellMods, the edits are OFF in an online match (both peers run data.js as shipped). */
+const EW_RACE_MODS_LS_KEY = 'ew_race_mods_v1';
+const RACE_STAT_KEYS = ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'awr'];
+const RACE_PROFILE_KEYS = ['label', 'labelMale', 'labelFemale', 'faction', 'types'];
+/* the stat text in STAT_HELP carries the bands; rewritten when the grades move */
+function statHelpRefreshGrades() {
+    try {
+        ['hp', 'mp'].forEach(k => {
+            const b = STAT_GRADE_BANDS[k];
+            if (b && STAT_HELP[k]) STAT_HELP[k] = STAT_HELP[k].replace(/Grades: S ≥\d+ · A ≥\d+ · B ≥\d+ · C ≥\d+/, `Grades: S ≥${b[0]} · A ≥${b[1]} · B ≥${b[2]} · C ≥${b[3]}`);
+        });
+        ['atk', 'int', 'def', 'mdef', 'awr'].forEach(k => {
+            const b = STAT_GRADE_BANDS[k];
+            if (b && STAT_HELP[k]) STAT_HELP[k] = STAT_HELP[k].replace(/S \d+\+ · A \d+\+ · B \d+\+ · C \d+\+/, `S ${b[0]}+ · A ${b[1]}+ · B ${b[2]}+ · C ${b[3]}+`);
+        });
+    } catch (e) {}
+}
+/* A race's stat at a level, through the SAME formula the engine uses (levelStatGains, battle.js _recomputeStatsForLevel).
+   HP = round((base + gain) × levelScale(L)); MP the same on the MP curve; ATK / M ATK / DEF / M DEF = base + the growth
+   earned by L; SPD / AWR never move. */
+function raceStatAtLevel(key, base, level) {
+    const b = Number(base) || 0;
+    if (key === 'spd' || key === 'awr') return b;
+    const g = levelStatGains(level, key === 'hp' ? b : 550, key === 'mp' ? b : 0);
+    const gk = key === 'int' ? 'int' : key;
+    return Math.max(0, b + (g[gk] || 0));
+}
+/* the inverse: the base that gives `val` at `level` (the editor's "edit at level 100" frame) */
+function raceBaseForLevelValue(key, val, level) {
+    const v = Number(val) || 0;
+    if (key === 'spd' || key === 'awr') return Math.round(v);
+    const L = Math.max(1, Math.min(LEVEL_CAP, level | 0 || 1));
+    if (key === 'hp' || key === 'mp') {
+        const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_CURVE.hpExp);
+        const floor = key === 'hp' ? LEVEL_CURVE.hpL1 : LEVEL_CURVE.mpL1;
+        const sc = EW_SCALE * (floor + (1 - floor) * t);
+        return Math.max(0, Math.round(v / Math.max(1e-6, sc)) - (LEVEL_TOTAL_STAT_GAINS[key] || 0));
+    }
+    const ta = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_CURVE.statExp);
+    return Math.max(0, Math.round(v - Math.round((LEVEL_TOTAL_STAT_GAINS[key] || 0) * ta)));
+}
+/* THE POWER BUDGET (CHAMP REWORK 2026-09-07, the check-grades.js formula): one number per statline, target 262 ± 5 % */
+const RACE_POWER_TARGET = 262;
+function racePowerBudget(stats, range) {
+    const s = stats || {};
+    return Math.round((s.hp || 0) / 12.5 + (s.mp || 0) / 6.7 + (s.atk || 0) + (s.int || 0) + (s.def || 0) / 1.5
+        + (s.mdef || 0) / 2 + 0.8 * (s.spd || 0) + (s.awr || 0) / 14 + 8 * Math.max(0, (range || 1) - 1));
+}
+
+window.EWRaceMods = (function () {
+    const VERSION = 1;
+    let doc = null, pristine = null, suspended = false;
+    const _clone = v => { try { return JSON.parse(JSON.stringify(v === undefined ? null : v)); } catch (e) { return v; } };
+    const eq = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+    function emptyDoc() { return { version: VERSION, enabled: true, races: {}, grades: {}, curve: {}, gains: {}, notes: '' }; }
+    function normalize(d) {
+        if (!d || typeof d !== 'object' || (d.version != null && d.version !== VERSION)) d = emptyDoc();
+        ['races', 'grades', 'curve', 'gains'].forEach(k => { if (!d[k] || typeof d[k] !== 'object' || Array.isArray(d[k])) d[k] = {}; });
+        if (typeof d.enabled !== 'boolean') d.enabled = true;
+        if (typeof d.notes !== 'string') d.notes = '';
+        d.version = VERSION;
+        return d;
+    }
+    function load() { let d = null; try { d = JSON.parse(localStorage.getItem(EW_RACE_MODS_LS_KEY) || 'null'); } catch (e) {} doc = normalize(d); return doc; }
+    function save() { try { localStorage.setItem(EW_RACE_MODS_LS_KEY, JSON.stringify(doc)); } catch (e) { console.error('[RaceMods] save failed', e); } }
+    function races() { return Object.keys(RACE_BASE_STATS).filter(r => RACE_BASE_STATS[r] && typeof RACE_BASE_STATS[r].hp === 'number'); }
+
+    function capturePristine() {
+        if (pristine) return;
+        const p = { stats: {}, profiles: {}, affinity: {}, terrain: _clone(RACE_TERRAIN_PREFERENCE), role: _clone(RACE_CLASS),
+            kits: _clone(RACE_KITS), biomes: _clone(EW_RACE_BIOMES), grades: _clone(STAT_GRADE_BANDS), curve: _clone(LEVEL_CURVE),
+            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP) };
+        races().forEach(r => {
+            p.stats[r] = _clone(RACE_BASE_STATS[r]);
+            const pr = RACE_PROFILES[r] || {};
+            p.profiles[r] = {};
+            RACE_PROFILE_KEYS.forEach(k => { if (pr[k] !== undefined) p.profiles[r][k] = _clone(pr[k]); });
+        });
+        Object.keys(RACE_ELEMENT_AFFINITY).forEach(r => { p.affinity[r] = _clone(RACE_ELEMENT_AFFINITY[r]); });
+        pristine = p;
+    }
+    const _setKeys = (live, shipped) => {   // write `shipped`'s keys back onto `live`, dropping keys it never had
+        Object.keys(live).forEach(k => { if (!Object.prototype.hasOwnProperty.call(shipped, k)) delete live[k]; });
+        Object.keys(shipped).forEach(k => { live[k] = _clone(shipped[k]); });
+    };
+    function restoreAll() {
+        if (!pristine) return;
+        Object.keys(pristine.stats).forEach(r => { if (RACE_BASE_STATS[r]) _setKeys(RACE_BASE_STATS[r], pristine.stats[r]); });
+        Object.keys(pristine.profiles).forEach(r => {
+            const pr = RACE_PROFILES[r]; if (!pr) return;
+            RACE_PROFILE_KEYS.forEach(k => { if (Object.prototype.hasOwnProperty.call(pristine.profiles[r], k)) pr[k] = _clone(pristine.profiles[r][k]); else delete pr[k]; });
+        });
+        _setKeys(RACE_ELEMENT_AFFINITY, pristine.affinity);
+        _setKeys(RACE_TERRAIN_PREFERENCE, pristine.terrain);
+        _setKeys(RACE_CLASS, pristine.role);
+        _setKeys(RACE_KITS, pristine.kits);
+        _setKeys(EW_RACE_BIOMES, pristine.biomes);
+        Object.keys(EW_RACE_BIOMES).forEach(r => { if (RACE_PROFILES[r]) RACE_PROFILES[r].biomes = EW_RACE_BIOMES[r].slice(); });
+        Object.keys(pristine.grades).forEach(k => { STAT_GRADE_BANDS[k] = pristine.grades[k].slice(); });
+        Object.assign(LEVEL_CURVE, pristine.curve);
+        Object.assign(LEVEL_TOTAL_STAT_GAINS, pristine.gains);
+        Object.assign(STAT_HELP, pristine.help);
+    }
+    function applyDoc() {
+        Object.keys(doc.races).forEach(r => {
+            const m = doc.races[r];
+            if (!m || !RACE_BASE_STATS[r]) return;
+            RACE_STAT_KEYS.forEach(k => { if (Number.isFinite(m[k])) RACE_BASE_STATS[r][k] = Math.max(0, Math.round(m[k])); });
+            const pr = RACE_PROFILES[r];
+            if (pr) RACE_PROFILE_KEYS.forEach(k => {
+                if (m[k] === undefined) return;
+                if (m[k] === null || m[k] === '') delete pr[k];
+                else pr[k] = _clone(m[k]);
+            });
+            if (m.affinity && typeof m.affinity === 'object') {
+                const row = {};
+                Object.keys(m.affinity).forEach(e => { if (ELEMENT_AFFINITY_TIERS.includes(m.affinity[e])) row[e] = m.affinity[e]; });
+                if (Object.keys(row).length) RACE_ELEMENT_AFFINITY[r] = row; else delete RACE_ELEMENT_AFFINITY[r];
+            }
+            if (typeof m.terrain === 'string') { if (m.terrain === 'none') delete RACE_TERRAIN_PREFERENCE[r]; else RACE_TERRAIN_PREFERENCE[r] = m.terrain; }
+            if (typeof m.role === 'string' && m.role) RACE_CLASS[r] = m.role;
+            if (Number.isFinite(m.range)) {
+                const k = Object.assign({}, RACE_KITS[r] || {});
+                k.range = Math.max(1, Math.round(m.range));
+                if (k.range === 1 && !k.inspect) delete RACE_KITS[r]; else RACE_KITS[r] = k;
+            }
+            if (Array.isArray(m.biomes)) { EW_RACE_BIOMES[r] = m.biomes.slice(); if (pr) pr.biomes = m.biomes.slice(); }
+        });
+        Object.keys(doc.grades).forEach(k => {
+            const b = doc.grades[k];
+            if (Array.isArray(b) && b.length === 4 && b.every(Number.isFinite) && STAT_GRADE_BANDS[k]) STAT_GRADE_BANDS[k] = b.map(x => Math.round(x));
+        });
+        Object.keys(doc.curve).forEach(k => { if (Object.prototype.hasOwnProperty.call(LEVEL_CURVE, k) && Number.isFinite(doc.curve[k])) LEVEL_CURVE[k] = doc.curve[k]; });
+        Object.keys(doc.gains).forEach(k => { if (Object.prototype.hasOwnProperty.call(LEVEL_TOTAL_STAT_GAINS, k) && Number.isFinite(doc.gains[k])) LEVEL_TOTAL_STAT_GAINS[k] = Math.round(doc.gains[k]); });
+        statHelpRefreshGrades();
+    }
+    function _online() {
+        if (suspended) return true;
+        try { return typeof isOnlineMatch === 'function' && !!isOnlineMatch(); } catch (e) { return false; }
+    }
+    function apply() {
+        capturePristine();
+        restoreAll();
+        if (doc && doc.enabled && !_online()) applyDoc();
+    }
+    function setOnline(on) { const was = suspended; suspended = !!on; if (was !== suspended) apply(); return suspended; }
+
+    /* the shipped value of one field (the editor's "was" and the summary's left side) */
+    function shipped(race, field) {
+        capturePristine();
+        if (RACE_STAT_KEYS.includes(field)) return pristine.stats[race] ? pristine.stats[race][field] : undefined;
+        if (RACE_PROFILE_KEYS.includes(field)) return pristine.profiles[race] ? pristine.profiles[race][field] : undefined;
+        if (field === 'affinity') return pristine.affinity[race] || {};
+        if (field === 'terrain') return pristine.terrain[race] || 'none';
+        if (field === 'role') return pristine.role[race];
+        if (field === 'range') return (pristine.kits[race] && pristine.kits[race].range) || 1;
+        if (field === 'biomes') return pristine.biomes[race] || [];
+        return undefined;
+    }
+    function shippedGlobal(group, key) { capturePristine(); return _clone((pristine[group] || {})[key]); }
+
+    /* one write: a value equal to the shipped one drops the field (so a race dragged back to its old value is clean) */
+    function setRace(race, field, val) {
+        if (!doc.races[race]) doc.races[race] = {};
+        if (eq(val, shipped(race, field))) delete doc.races[race][field];
+        else doc.races[race][field] = _clone(val);
+        if (!Object.keys(doc.races[race]).length) delete doc.races[race];
+    }
+    function setGlobal(group, key, val) {
+        if (eq(val, shippedGlobal(group === 'grades' ? 'grades' : group, key))) delete doc[group][key];
+        else doc[group][key] = _clone(val);
+    }
+    function revertRace(race) { delete doc.races[race]; }
+
+    function counts() {
+        let fields = 0;
+        Object.keys(doc.races).forEach(r => { fields += Object.keys(doc.races[r]).length; });
+        return { races: Object.keys(doc.races).length, fields, grades: Object.keys(doc.grades).length, curve: Object.keys(doc.curve).length, gains: Object.keys(doc.gains).length };
+    }
+    function total() { const c = counts(); return c.fields + c.grades + c.curve + c.gains; }
+
+    const _fmt = v => Array.isArray(v) ? '[' + v.join(', ') + ']' : (v && typeof v === 'object') ? (Object.keys(v).map(k => k + ' ' + v[k]).join(', ') || '(none)') : (v === undefined || v === null || v === '' ? '(none)' : String(v));
+    function summary() {
+        capturePristine();
+        const lines = [];
+        Object.keys(doc.races).sort().forEach(r => {
+            const m = doc.races[r];
+            const parts = Object.keys(m).map(f => {
+                const was = shipped(r, f);
+                if (RACE_STAT_KEYS.includes(f) && Number.isFinite(m[f])) {
+                    const L100a = raceStatAtLevel(f, was, LEVEL_CAP), L100b = raceStatAtLevel(f, m[f], LEVEL_CAP);
+                    return `${f.toUpperCase()} base ${was} → ${m[f]} (level 100: ${L100a} → ${L100b}; grade ${statGrade(f, was) || '-'} → ${statGrade(f, m[f]) || '-'})`;
+                }
+                return `${f} ${_fmt(was)} → ${_fmt(m[f])}`;
+            });
+            lines.push(`RACE ${r}: ${parts.join('; ')}`);
+        });
+        Object.keys(doc.grades).forEach(k => lines.push(`GRADES ${k.toUpperCase()} [S, A, B, C] ${_fmt(pristine.grades[k])} → ${_fmt(doc.grades[k])}`));
+        Object.keys(doc.curve).forEach(k => lines.push(`LEVEL CURVE ${k} ${pristine.curve[k]} → ${doc.curve[k]}`));
+        Object.keys(doc.gains).forEach(k => lines.push(`LEVEL GROWTH ${k.toUpperCase()} (gained from level 1 to 100) +${pristine.gains[k]} → +${doc.gains[k]}`));
+        if (doc.notes) lines.push(`NOTES: ${doc.notes.split('\n')[0].slice(0, 160)}`);
+        return lines;
+    }
+    function exportDoc() {
+        capturePristine();
+        const baseline = { races: {}, grades: {}, curve: {}, gains: {} };
+        Object.keys(doc.races).forEach(r => { baseline.races[r] = {}; Object.keys(doc.races[r]).forEach(f => { baseline.races[r][f] = _clone(shipped(r, f)); }); });
+        ['grades', 'curve', 'gains'].forEach(g => Object.keys(doc[g]).forEach(k => { baseline[g][k] = _clone(pristine[g][k]); }));
+        return {
+            format: 'entropy-wars-race-mods',
+            exportedAt: new Date().toISOString(),
+            build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
+            instructions: 'Bake into data.js by hand (no script yet): races.<race>.{hp,mp,atk,int,def,mdef,spd,awr} → RACE_BASE_STATS '
+                + '(BASE stats: level 100 = base + LEVEL_TOTAL_STAT_GAINS, HP/MP through LEVEL_CURVE; the grade reads the base); '
+                + 'label/labelMale/labelFemale/faction/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
+                + 'terrain → RACE_TERRAIN_PREFERENCE; role → RACE_CLASS; range → RACE_KITS; biomes → EW_RACE_BIOMES; '
+                + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS. '
+                + 'baseline holds the shipped values the edits were made against.',
+            summary: summary(),
+            baseline,
+            ..._clone(doc),
+        };
+    }
+    function importDoc(obj, opts) {
+        if (!obj || typeof obj !== 'object') throw new Error('not an object');
+        if (obj.format && obj.format !== 'entropy-wars-race-mods') throw new Error('unrecognized format');
+        const inc = normalize(_clone(obj));
+        if ((opts && opts.mode) === 'replace') doc = inc;
+        else {
+            Object.keys(inc.races).forEach(r => { doc.races[r] = Object.assign(doc.races[r] || {}, inc.races[r]); });
+            ['grades', 'curve', 'gains'].forEach(g => Object.assign(doc[g], inc[g]));
+            if (inc.notes && inc.notes !== doc.notes) doc.notes = doc.notes ? doc.notes + '\n\n' + inc.notes : inc.notes;
+        }
+        prune(); save(); apply();
+        return doc;
+    }
+    function reset() { doc = emptyDoc(); save(); apply(); }
+    /* PRUNE: drop every stored field data.js now ships (an export that got baked stops reading as pending) */
+    function prune() {
+        capturePristine();
+        let n = 0;
+        Object.keys(doc.races).forEach(r => {
+            if (!pristine.stats[r]) { delete doc.races[r]; n++; return; }
+            Object.keys(doc.races[r]).forEach(f => { if (eq(doc.races[r][f], shipped(r, f))) { delete doc.races[r][f]; n++; } });
+            if (!Object.keys(doc.races[r]).length) delete doc.races[r];
+        });
+        ['grades', 'curve', 'gains'].forEach(g => Object.keys(doc[g]).forEach(k => { if (eq(doc[g][k], pristine[g][k])) { delete doc[g][k]; n++; } }));
+        if (n) save();
+        return n;
+    }
+    function snapshot() { return JSON.stringify(doc); }
+    function restoreSnapshot(json) { try { doc = normalize(JSON.parse(json)); save(); apply(); } catch (e) {} }
+
+    try {
+        load(); capturePristine();
+        const n = prune();
+        apply();
+        if (n) console.log(`[RaceMods] pruned ${n} field(s) already baked into data.js`);
+        if (total()) console.log(`[RaceMods] ${doc.enabled ? 'Applied' : 'Loaded (DISABLED)'} — ${counts().races} races, ${total()} edits`);
+    } catch (e) {
+        console.error('[RaceMods] failed to apply stored race mods — running vanilla', e);
+        try { doc = emptyDoc(); } catch (e2) {}
+    }
+    return {
+        get doc() { return doc; }, get suspended() { return suspended; }, get online() { return _online(); },
+        VERSION, LS_KEY: EW_RACE_MODS_LS_KEY,
+        load, save, apply, reset, prune, setOnline, races, shipped, shippedGlobal, setRace, setGlobal, revertRace,
+        counts, total, summary, export: exportDoc, import: importDoc, snapshot, restoreSnapshot,
+    };
+})();
+Object.assign(window, { EW_RACE_MODS_LS_KEY, RACE_STAT_KEYS, statHelpRefreshGrades, raceStatAtLevel, raceBaseForLevelValue, RACE_POWER_TARGET, racePowerBudget,
+    RACE_TERRAIN_PREFERENCE, TERRAIN_PREFERENCE_BONUS, TERRAIN_PREFERENCE_OPTIONS, RACE_CLASS });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // D.O.O.R. — Department of Orthogonal Realities (see DOOR_DESIGN.md)

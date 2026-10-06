@@ -2973,71 +2973,10 @@
             return JSON.parse(JSON.stringify(RACE_PROFILES[fallbackKey] || RACE_PROFILES.homosapien));
         }
 
+        /* THE RACE EDITOR (2026-10-06): the table lives in data.js RACE_TERRAIN_PREFERENCE (one row per race, editable) */
         function getTerrainPreferenceForRace(race) {
-
             const r = (race || '').toLowerCase();
-
-            if (r === 'siren') return 'deep_water';
-
-            if (r === 'reptilian') return 'water';
-            if (r === 'ghost') return 'deep_water';
-
-            if (r === 'demon') return 'lava';
-            if (r === 'djinn') return 'lava';
-            if (r === 'succubus') return 'lava';
-
-            if (r === 'anubis') return 'desert';
-
-            if (r === 'skeleton') return 'wasteland';
-
-            if (r === 'bigfoot') return 'tree';
-            if (r === 'fairy') return 'tree';
-            if (r === 'werewolf') return 'tree';
-            if (r === 'shadow entity') return 'tree';
-            if (r === 'skinwalker') return 'tree';
-            if (r === 'catgirl') return 'tree';
-            if (r === 'mothman') return 'tree';
-            if (r === 'scarecrow') return 'tree';
-
-            if (r === 'giant') return 'mountain';
-            if (r === 'cyclops') return 'mountain';
-            if (r === 'gargoyle') return 'mountain';
-
-            if (r === 'zombie') return 'wasteland';
-            if (r === 'robot') return 'wasteland';
-            if (r === 'mech') return 'wasteland';
-            if (r === 'android') return 'wasteland';
-            if (r === 'ai') return 'wasteland';
-            if (r === 'glitch') return 'wasteland';
-            if (r === 'cyborg') return 'wasteland';
-            if (r === 'cosmic wraith') return 'wasteland';
-
-            if (r === 'demon prince') return 'lava';
-            if (r === 'demon princess') return 'lava';
-            if (r === 'halfdemon') return 'lava';
-            if (r === 'goatman') return 'lava';
-
-            if (r === 'mermaid') return 'deep_water';
-
-            if (r === 'nephilim') return 'mountain';
-
-            if (r === 'vampire') return 'tree';
-            if (r === 'dreameater') return 'tree';
-            if (r === 'superhero') return 'grass';
-            if (r === 'fallen angel') return 'desert';
-            if (r === 'voidweaver') return 'tree';
-
-            if (r === 'atlantean') return 'deep_water';
-            if (r === 'dinosaur') return 'tree';
-            if (r === 'dragon') return 'lava';
-            if (r === 'ghoul') return 'wasteland';
-            if (r === 'gnome') return 'mountain';
-            if (r === 'kaiju') return 'wasteland';
-            if (r === 'kraken') return 'deep_water';
-            if (r === 'loch ness monster') return 'deep_water';
-            if (r === 'yeti') return 'ice';
-
-            return 'none';
+            return (typeof RACE_TERRAIN_PREFERENCE !== 'undefined' && RACE_TERRAIN_PREFERENCE[r]) || 'none';
         }
 
         function resolveIdentityForBuild(cls, identity = {}) {
@@ -3249,62 +3188,14 @@
                 };
             }
             const label = `${getTerrainRule(terrain).label} Affinity`;
-            if (terrain === 'grass') return {
-                atk: 8,
-                armor: 0,
-                int: 0,
-                awr: 14,
-                move: 1,
-                label
-            };
-            if (terrain === 'water') return {
-                atk: 0,
-                armor: 5,
-                int: 5,
-                awr: 14,
-                move: 0,
-                label
-            };
-            if (terrain === 'deep_water') return {
-                atk: 0,
-                armor: 5,
-                int: 5,
-                awr: 14,
-                move: 1,
-                label
-            };
-            if (terrain === 'desert') return {
-                atk: 8,
-                armor: 0,
-                int: 5,
-                awr: 0,
-                move: 0,
-                label
-            };
-            if (terrain === 'mountain') return {
-                atk: 0,
-                armor: 5,
-                int: 0,
-                awr: 14,
-                move: 1,
-                label
-            };
-            // ❄️ Ice affinity (yeti): at home on the frozen sheet — and
-            // sure-footed on it, so it never ice-slides (_resolveIceSlide).
-            if (terrain === 'ice') return {
-                atk: 8,
-                armor: 5,
-                int: 0,
-                awr: 0,
-                move: 1,
-                label
-            };
+            /* the bonuses live in data.js TERRAIN_PREFERENCE_BONUS (the race editor shows them) */
+            const _tb = (typeof TERRAIN_PREFERENCE_BONUS !== 'undefined' && TERRAIN_PREFERENCE_BONUS[terrain]) || null;
             return {
-                atk: 0,
-                armor: 0,
-                int: 0,
-                awr: 0,
-                move: 0,
+                atk: (_tb && _tb.atk) || 0,
+                armor: (_tb && _tb.armor) || 0,
+                int: (_tb && _tb.int) || 0,
+                awr: (_tb && _tb.awr) || 0,
+                move: (_tb && _tb.move) || 0,
                 label
             };
         }
@@ -4885,6 +4776,7 @@
                 case GS.LOBBY:
                     /* THE ONLINE GUARD (SPELL_LIBRARY_PLAN.md §6.6): an online match held the spell tables vanilla; back at the menu the local mods re-apply */
                     if (window.EWSpellMods && window.EWSpellMods.suspended && typeof window.EWSpellMods.setOnline === 'function') { try { window.EWSpellMods.setOnline(false); } catch (e) { console.warn('[SpellMods] online guard', e); } }
+                    if (window.EWRaceMods && window.EWRaceMods.suspended && typeof window.EWRaceMods.setOnline === 'function') { try { window.EWRaceMods.setOnline(false); } catch (e) { console.warn('[RaceMods] online guard', e); } }
                     state.titleScreenVisible = true;
                     state.phase = 'setup';
                     state.setupStep = 'builder';
