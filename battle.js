@@ -8787,6 +8787,9 @@
                                         casterUnitId: zone.casterUnitId, damageType: zone.tickDamageType,
                                         spellType: zone.tickSpellType, element: zone.tickElement });
                                     _zoneDamagedAny = true;
+                                    // Balance Lab (2026-10-06): the tick is the spell's damage (Heat Death / War of the
+                                    // Worlds read as 99% whiffs because only the cast moment was counted)
+                                    if (_ztDealt > 0 && zone.spellName && typeof _balAddSpellEffect === 'function') _balAddSpellEffect(zone.spellName, _ztDealt, enemy.dead ? 1 : 0);
                                 }
                                 if (!enemy.dead) for (const eff of (zone.statusEffects || [])) {
                                     applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `, _zoneCaster);
@@ -51328,6 +51331,9 @@
                 // How matches end (per state._winCondition): n + summed rounds.
                 winConds: {},
                 matchLog: [],
+                // Balance Lab (2026-10-06): matches per game build (index.html ?v= token), so an export that spans
+                // balance changes says so instead of silently mixing old and new numbers.
+                buildTokens: {},
                 updatedAt: 0,
             };
         }
@@ -51339,6 +51345,7 @@
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
             if (!_balanceStats.winConds) _balanceStats.winConds = {};
+            if (!_balanceStats.buildTokens) _balanceStats.buildTokens = {};
             if (!_balanceStats.buildUse) _balanceStats.buildUse = { tools: {} };
             if (!_balanceStats.buildUse.tools) _balanceStats.buildUse.tools = {};
             if (_balanceStats.noContests == null) _balanceStats.noContests = 0;
@@ -51527,6 +51534,8 @@
             }
 
             _balanceStats.totalMatches++;
+            const _bTok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown';
+            _balanceStats.buildTokens[_bTok] = (_balanceStats.buildTokens[_bTok] || 0) + 1;
             const wc = state._winCondition || 'unknown';
             _tallyWinCond(_balanceStats, wc, state.round || 0);
             const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode())
@@ -51552,6 +51561,9 @@
                 const died = u.dead ? 1 : 0;
 
                 if (u.race) _balAdd(_balanceStats.races, u.race, won, kills, dd, dt, died);
+                // Balance Lab (2026-10-06): Cube damage per race — 80% of arena matches end on the Cube, so a race's
+                // objective pressure is its own axis (kills alone missed why the range-4 shooters win).
+                if (u.race && _balanceStats.races[u.race]) _balanceStats.races[u.race].towerDmg = (_balanceStats.races[u.race].towerDmg || 0) + (u._matchTowerDmg || 0);
 
                 // Full-build bucket: the race, with the exact spell loadout
                 // tallied underneath. Interactions, not classes. (THE JOBS
@@ -51598,6 +51610,7 @@
             // first-kill/first-death/comeback story all reconstruct from this.
             _balanceStats.matchLog.push({
                 n: _balanceStats.totalMatches,
+                build: _bTok,
                 mode, rounds, winner, comeback,
                 wc,
                 firstKill: bm ? bm.firstKill : null,
@@ -51864,6 +51877,7 @@
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
                 <div class="train-subtitle">Equal AI · random tree-legal teams · ${modeLabel} · ${mapLabel}</div>
+                ${_balStaleHtml(s)}
 
                 <div class="train-cards" style="grid-template-columns:1fr 1fr 1fr 1fr">
                     <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${totalM}</span></div>
@@ -51927,6 +51941,16 @@
              residual went with the jobs.)
            • spellUse efficiency league: dmg/cast, dmg/MP, kills per 100 MP,
              whiff rate — judged per CAST, independent of who owns the spell. */
+        /* Balance Lab (2026-10-06): say when the data spans game builds — a balance pass changes the numbers, and an
+           export that mixes before and after reads the old balance. */
+        function _balStaleHtml(s) {
+            const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown';
+            const cur = ((s && s.buildTokens) || {})[tok] || 0;
+            const stale = ((s && s.totalMatches) || 0) - cur;
+            if (stale <= 0) return '';
+            return `<div class="train-subtitle" style="color:#ffb347">${stale} of ${s.totalMatches} matches are from an earlier build — Reset for a clean read of this one</div>`;
+        }
+
         function _balBuildAnalysis() {
             ensureBalanceStats();
             const s = _balanceStats;
@@ -51941,8 +51965,14 @@
                     wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
                     kpg: Number((b.kills / b.games).toFixed(2)),
                     survival: Number((1 - b.deaths / b.games).toFixed(3)),
+                    dmgPerGame: Math.round((b.dmgDealt || 0) / b.games),
+                    dmgTakenPerGame: Math.round((b.dmgTaken || 0) / b.games),
+                    towerDmgPerGame: b.towerDmg != null ? Math.round(b.towerDmg / b.games) : null,
                 };
             }
+            // Balance Lab (2026-10-06): name → row, so spell rows carry their tier + families and roll up by family
+            const _rowByName = {};
+            try { for (const r of Object.values(SPELL_BY_ID || {})) if (r && r.name && !_rowByName[r.name]) _rowByName[r.name] = r; } catch (e) {}
             const spellEff = {};
             for (const k of Object.keys(s.spellUse || {})) {
                 const u = s.spellUse[k];
@@ -51956,7 +51986,28 @@
                     avgTargetsHit: Number((u.targetsHit / u.casts).toFixed(2)),
                     whiffRate: Number((u.whiffs / u.casts).toFixed(3)),
                     mpPerCast: Number((u.mp / u.casts).toFixed(1)),
+                    tier: _rowByName[k] ? (_rowByName[k].tier || null) : null,
+                    families: _rowByName[k] ? (_rowByName[k].families || []) : [],
                 };
+            }
+            // Fielded on 20+ units and never cast once: a dead slot (the AI never picks it, or its cast is not counted)
+            const neverCast = Object.keys(s.spells || {}).filter(k => (s.spells[k].games || 0) >= 20 && !(s.spellUse || {})[k]
+                && !(_rowByName[k] && _rowByName[k].kind === 'passive')).sort();
+            // Family roll-up: fielded win rate (each unit counts once per family) + cast efficiency
+            const famAgg = {};
+            for (const k of Object.keys(s.spells || {})) {
+                const b = s.spells[k], u = (s.spellUse || {})[k], row = _rowByName[k];
+                for (const f of ((row && row.families) || ['?'])) {
+                    const a = famAgg[f] || (famAgg[f] = { slotGames: 0, wins: 0, casts: 0, dmg: 0, mp: 0, kills: 0 });
+                    a.slotGames += b.games || 0; a.wins += b.wins || 0;
+                    if (u) { a.casts += u.casts || 0; a.dmg += u.dmg || 0; a.mp += u.mp || 0; a.kills += u.kills || 0; }
+                }
+            }
+            const families = {};
+            for (const f of Object.keys(famAgg)) {
+                const a = famAgg[f]; if (!a.slotGames) continue;
+                families[f] = { slotGames: a.slotGames, wr: Number((a.wins / a.slotGames).toFixed(4)), casts: a.casts,
+                    dmgPerMp: a.mp > 0 ? Number((a.dmg / a.mp).toFixed(2)) : null, kills: a.kills };
             }
             const decisive = (s.totalMatches || 0) - (s.noContests || 0);
             const bu = s.buildUse || { tools: {} };
@@ -51983,11 +52034,12 @@
                     kpg: Number((b.kills / b.games).toFixed(2)),
                     survival: Number((1 - b.deaths / b.games).toFixed(3)),
                 };
-                const m = sig.match(/^R(\d)·P(\d)·S(\d)$/);
+                /* THE TIERS sig (2026-09-24) is R<race picks>·T<I><II><III><IV>; the old R·P·S regex matched nothing, so
+                   both roll-ups exported empty (fixed 2026-10-06): archetype = the tier spread, capstone = Tier IV count */
+                const m = sig.match(/^R(\d)·T(\d)(\d)(\d)(\d)$/);
                 if (!m) continue;
-                const d = [Number(m[1]), Number(m[2]), Number(m[3])];
-                bumpAgg(shapeArch, d.slice().sort((a, b2) => b2 - a).join('-'), b);
-                bumpAgg(shapeCap, d[0] === 4 ? 'race' : d[1] === 4 ? 'primary' : d[2] === 4 ? 'secondary' : 'none', b);
+                bumpAgg(shapeArch, `I${m[2]} II${m[3]} III${m[4]} IV${m[5]}`, b);
+                bumpAgg(shapeCap, Number(m[5]) > 0 ? 'IV x' + m[5] : 'no IV', b);
             }
             const finishAgg = (map) => {
                 const out = {};
@@ -52009,6 +52061,9 @@
                 firstKillWinRate: decisive > 0 ? Number(((s.firstKillWins || 0) / decisive).toFixed(3)) : null,
                 races: raceRows,
                 spellEfficiency: spellEff,
+                families,
+                neverCast,
+                buildTokens: s.buildTokens || {},
                 treeShapes: {
                     byShape: shapeSigs,
                     byArchetype: finishAgg(shapeArch),
@@ -52057,6 +52112,9 @@
                     // note an aggregate can still span AI versions; reset
                     // balance data after an AI change for clean reads.
                     aiVersion: (typeof window !== 'undefined' && window.EW_AI_VERSION) || 'pre-v4',
+                    build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
+                    // matches recorded under an earlier build (or before 2026-10-06, when builds were first stamped)
+                    staleMatches: (_balanceStats.totalMatches || 0) - ((_balanceStats.buildTokens || {})[(typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown'] || 0),
                     exportedAt: new Date().toISOString(),
                 },
                 analysis: _balBuildAnalysis(),

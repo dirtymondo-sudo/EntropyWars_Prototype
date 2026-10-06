@@ -1180,3 +1180,11 @@ battle.js constants (next to SOAK_FLOOR_SHARE, mirrored on window for ai.js / hu
   forecastBasicAttack (so every preview carries the floor through the one hit math). Spells never get it.
 - Examples at the cap (PvP): worst (ATK 66 vs DEF 156, resisted, 3 tiles out, 2 tiers uphill, Bulwark, Guarded,
   low roll) 6 → 25; typical (ATK 140 vs DEF 112) 119 → 144; best (crit + back + capped ×3) 1209 → 1398.
+
+## THE 2026-10-06 BALANCE PASS (Balance Lab export, 1,582 arena matches)
+Full analysis + before/after tables: `BALANCE_ANALYSIS_lab_20261006.md` (repo root). 16 race statlines and 9 spell
+rows moved (comments tagged `BALANCE PASS 2026-10-06` in data.js). Battle grades now read the base ruler
+(data.js `statGradeValForUnit`: level growth taken off before the letter; ui.js inspect, hud.js quick stats, map.js
+pause sheet). Lab (battle.js): build-token stamp + stale-match warning, Cube damage per race, zone ticks credited to
+their spell, spell tier/families + `analysis.families` + `analysis.neverCast`, tree-shape roll-ups fixed for the
+`R·T` sig. Open: Tier II damage rows hit like Tier I; 74 fielded spells never cast in the lab.

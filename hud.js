@@ -2867,7 +2867,7 @@ function _hrlgQuickStats(panelKey) {
       const cls = (typeof c.v === 'number' && c.base != null)
         ? (c.v > c.base ? ' up' : c.v < c.base ? ' dn' : '') : '';
       // THE GRADE NODE (2026-09-21): label · node · number (data.js statGradeNode)
-      const n = (c.g && typeof window !== 'undefined' && typeof window.statGradeNode === 'function' && typeof c.v === 'number') ? window.statGradeNode(c.g, c.v) : null;
+      const n = (c.g && typeof window !== 'undefined' && typeof window.statGradeNode === 'function' && typeof c.v === 'number') ? window.statGradeNode(c.g, typeof window.statGradeValForUnit === 'function' ? window.statGradeValForUnit(u, c.g, c.v) : c.v) : null;   // base ruler (BALANCE PASS 2026-10-06)
       return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined },
         h('span', { className: 'hrlg-qstat-lbl' }, c.k),
         n ? h('span', { className: n.cls + ' sm', style: { '--pct': n.pct } }, h('i', null, n.g)) : h('span', { className: 'ew-grade sm none' }),

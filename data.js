@@ -3815,7 +3815,7 @@ const RACE_BASE_STATS = {
     'skeleton':           { hp: 540, mp: 120, atk:  70, def:  36, mdef:  62, int:  42, awr: 28, spd: 46 },
     'demon':              { hp: 520, mp: 190, atk:  48, def:  28, mdef:  48, int:  76, awr: 28, spd: 30 },
     'bigfoot':            { hp: 700, mp:  80, atk:  80, def:  56, mdef:  50, int:  10, awr: 28, spd: 44 },
-    'antperson':          { hp: 710, mp: 100, atk:  94, def:  44, mdef:  51, int:  29, awr: 28, spd: 29 },
+    'antperson':          { hp: 710, mp: 100, atk:  94, def:  44, mdef:  51, int:  29, awr: 28, spd: 41 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3)
     'werewolf':           { hp: 560, mp:  80, atk:  50, def:  40, mdef:  30, int:  10, awr: 42, spd: 40 },
     'angel':              { hp: 450, mp: 220, atk:   8, def:  36, mdef:  90, int:  74, awr: 56, spd: 35 },
     'ghost':              { hp: 470, mp: 240, atk:   0, def:  10, mdef:  34, int:  88, awr: 70, spd: 52 },
@@ -3824,7 +3824,7 @@ const RACE_BASE_STATS = {
     'scarecrow':          { hp: 650, mp: 150, atk:  84, def:  58, mdef:  54, int:  30, awr: 28, spd: 23 },
     'grey':               { hp: 450, mp: 220, atk:   8, def:  21, mdef:  96, int:  99, awr: 98, spd: 27 },
     'succubus':           { hp: 495, mp: 220, atk:  16, def:  23, mdef:  86, int:  87, awr: 56, spd: 35 },
-    'orb of light':       { hp: 415, mp: 225, atk:   8, def:  20, mdef:  98, int: 104, awr: 98, spd: 21 },
+    'orb of light':       { hp: 455, mp: 225, atk:   8, def:  20, mdef:  98, int: 104, awr: 98, spd: 21 },   // BALANCE PASS 2026-10-06: HP 415→455 (lab WR 39%, among the lowest HP)
     'mothman':            { hp: 490, mp: 215, atk:   8, def:  25, mdef:  74, int:  84, awr: 98, spd: 38 },
     'siren':              { hp: 520, mp: 220, atk:   8, def:  24, mdef:  85, int:  88, awr: 56, spd: 38 },
     'android':            { hp: 470, mp: 140, atk:  75, def:  27, mdef:  57, int:  31, awr: 98, spd: 60 },
@@ -3846,17 +3846,17 @@ const RACE_BASE_STATS = {
     'swordfighter':       { hp: 575, mp:  95, atk:  88, def:  48, mdef:  43, int:  24, awr: 42, spd: 58 },
     'knight':             { hp: 635, mp:  95, atk:  76, def:  64, mdef:  46, int:  29, awr: 28, spd: 44 },
     'shaman':             { hp: 470, mp: 250, atk:  18, def:  26, mdef:  66, int:  84, awr: 56, spd: 28 },
-    'mad scientist':      { hp: 460, mp: 230, atk:  12, def:  22, mdef:  30, int:  84, awr: 84, spd: 42 },
+    'mad scientist':      { hp: 460, mp: 230, atk:  12, def:  22, mdef:  30, int:  78, awr: 84, spd: 42 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
     'cowboy':             { hp: 640, mp: 150, atk:  40, def:  36, mdef:  36, int:  22, awr: 84, spd: 72 },
     'men in black':       { hp: 440, mp: 145, atk:  40, def:  27, mdef:  61, int:  66, awr: 98, spd: 60 },
     'telepath':           { hp: 435, mp: 225, atk:   8, def:  21, mdef:  92, int:  96, awr: 84, spd: 21 },
-    'marksman':           { hp: 440, mp: 120, atk:  80, def:  20, mdef:  20, int:   8, awr: 98, spd: 18 },
+    'marksman':           { hp: 440, mp: 120, atk:  72, def:  20, mdef:  20, int:   8, awr: 98, spd: 18 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 470, mp: 230, atk:   8, def:  36, mdef:  88, int:  71, awr: 56, spd: 33 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 540, mp: 100, atk:  78, def:  44, mdef:  44, int:  10, awr: 56, spd: 64 },
     'nun':                { hp: 460, mp: 250, atk:   8, def:  26, mdef:  58, int:  90, awr: 70, spd: 30 },
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
-    'door agent':         { hp: 520, mp: 170, atk:  48, def:  40, mdef:  50, int:  40, awr: 84, spd: 46 },
+    'door agent':         { hp: 560, mp: 170, atk:  54, def:  40, mdef:  50, int:  46, awr: 84, spd: 46 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
     'police officer':     { hp: 560, mp: 110, atk:  72, def:  58, mdef:  46, int:  12, awr:  72, spd:  56 },
     'jellyfish':          { hp: 470, mp: 230, atk:  18, def:  30, mdef:  72, int:  72, awr:  52, spd:  46 },
@@ -3866,17 +3866,17 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'starfish': { hp: 560, mp: 220, atk: 26, def: 44, mdef: 60, int: 66, awr: 42, spd: 34 },
     'ringmaster': { hp: 520, mp: 180, atk: 54, def: 38, mdef: 54, int: 58, awr: 70, spd: 52 },
-    'bee queen': { hp: 500, mp: 210, atk: 30, def: 36, mdef: 58, int: 76, awr: 56, spd: 50 },
-    'professor': { hp: 470, mp: 240, atk: 18, def: 28, mdef: 64, int: 84, awr: 60, spd: 36 },
+    'bee queen': { hp: 535, mp: 210, atk: 30, def: 36, mdef: 58, int: 76, awr: 56, spd: 50 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%)
+    'professor': { hp: 505, mp: 240, atk: 18, def: 34, mdef: 64, int: 84, awr: 60, spd: 36 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%)
     'deep sea fish': { hp: 500, mp: 140, atk: 84, def: 34, mdef: 42, int: 40, awr: 56, spd: 58 },
     // 2026-09-30 — the new-race batch
     'clown': { hp: 490, mp: 130, atk: 82, def: 30, mdef: 44, int: 34, awr: 70, spd: 60 },
     'bunny girl': { hp: 470, mp: 200, atk: 40, def: 30, mdef: 58, int: 62, awr: 64, spd: 62 },
     'sharkman': { hp: 640, mp: 90, atk: 92, def: 46, mdef: 34, int: 16, awr: 42, spd: 56 },
-    'crystal guardian': { hp: 720, mp: 120, atk: 50, def: 84, mdef: 72, int: 40, awr: 42, spd: 30 },
+    'crystal guardian': { hp: 720, mp: 120, atk: 60, def: 84, mdef: 72, int: 40, awr: 42, spd: 30 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
     'jack o lantern': { hp: 520, mp: 200, atk: 30, def: 36, mdef: 56, int: 76, awr: 42, spd: 40 },
     'sidekick': { hp: 560, mp: 130, atk: 70, def: 50, mdef: 46, int: 36, awr: 64, spd: 58 },
-    'mushroom girl': { hp: 480, mp: 220, atk: 20, def: 32, mdef: 64, int: 70, awr: 56, spd: 40 },
+    'mushroom girl': { hp: 515, mp: 220, atk: 20, def: 32, mdef: 64, int: 70, awr: 56, spd: 40 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%)
     'tree person': { hp: 780, mp: 110, atk: 60, def: 80, mdef: 60, int: 30, awr: 28, spd: 22 },
     'sheriff': { hp: 560, mp: 110, atk: 76, def: 52, mdef: 44, int: 14, awr: 78, spd: 54 },
     // 2026-09-30 — the new-race batch
@@ -3884,7 +3884,7 @@ const RACE_BASE_STATS = {
     'krampus': { hp: 650, mp: 110, atk: 90, def: 44, mdef: 42, int: 36, awr: 42, spd: 48 },
     'rabbit': { hp: 470, mp: 130, atk: 80, def: 28, mdef: 44, int: 40, awr: 72, spd: 66 },
     'luchador': { hp: 620, mp: 90, atk: 88, def: 50, mdef: 36, int: 14, awr: 42, spd: 58 },
-    'firefighter': { hp: 700, mp: 100, atk: 58, def: 78, mdef: 50, int: 22, awr: 56, spd: 36 },
+    'firefighter': { hp: 700, mp: 100, atk: 66, def: 78, mdef: 50, int: 22, awr: 56, spd: 36 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 480, mp: 120, atk: 76, def: 34, mdef: 40, int: 30, awr: 70, spd: 64 },
     'hippie': { hp: 480, mp: 230, atk: 22, def: 30, mdef: 62, int: 70, awr: 56, spd: 44 },
     'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
@@ -3894,9 +3894,9 @@ const RACE_BASE_STATS = {
     'goatman':            { hp: 640, mp:  90, atk:  94, def:  40, mdef:  33, int:  29, awr: 28, spd: 51 },
     'mermaid':            { hp: 450, mp: 225, atk:   8, def:  34, mdef:  93, int:  77, awr: 56, spd: 35 },
     'demon princess':     { hp: 525, mp: 215, atk:   8, def:  25, mdef:  82, int:  84, awr: 56, spd: 35 },
-    'dreameater':         { hp: 495, mp: 225, atk:   8, def:  20, mdef:  93, int:  94, awr: 84, spd: 31 },
+    'dreameater':         { hp: 535, mp: 225, atk:   8, def:  26, mdef:  93, int:  94, awr: 84, spd: 31 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
     'halfdemon':          { hp: 485, mp: 135, atk:  77, def:  27, mdef:  56, int:  31, awr: 84, spd: 60 },
-    'vampire':            { hp: 440, mp: 155, atk:  61, def:  26, mdef:  50, int:  31, awr: 98, spd: 55 },
+    'vampire':            { hp: 440, mp: 155, atk:  55, def:  26, mdef:  50, int:  31, awr: 98, spd: 55 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%)
     'fallen angel':       { hp: 440, mp: 215, atk:   8, def:  21, mdef:  94, int: 102, awr: 28, spd: 30 },
     'voidweaver':         { hp: 445, mp: 195, atk:  40, def:  15, mdef:  69, int:  58, awr: 70, spd: 55 },
     'cosmic wraith':      { hp: 540, mp: 140, atk:  83, def:  22, mdef:  43, int:  31, awr: 98, spd: 18 },
@@ -3908,13 +3908,13 @@ const RACE_BASE_STATS = {
     'conspiracy theorist':{ hp: 550, mp: 195, atk:  18, def:  28, mdef:  71, int:  72, awr: 84, spd: 33 },
     'overlord':           { hp: 655, mp:  75, atk:  90, def:  47, mdef:  34, int:  37, awr: 28, spd: 42 },
     'chosen one':         { hp: 390, mp: 170, atk:  56, def:  22, mdef:  59, int:  56, awr: 98, spd: 46 },
-    'politician':         { hp: 570, mp: 165, atk:  22, def:  46, mdef:  64, int:  66, awr: 84, spd: 28 },
+    'politician':         { hp: 570, mp: 165, atk:  22, def:  46, mdef:  64, int:  72, awr: 84, spd: 28 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
     'atlantean':          { hp: 580, mp: 190, atk:  62, def:  26, mdef:  28, int:  64, awr: 42, spd: 28 },
     'dinosaur':           { hp: 720, mp:  60, atk:  74, def:  72, mdef:  34, int:   8, awr: 28, spd: 46 },
     'dragon':             { hp: 560, mp: 150, atk:  52, def:  30, mdef:  50, int:  54, awr: 28, spd: 44 },
     'ghoul':              { hp: 570, mp: 110, atk:  68, def:  48, mdef:  48, int:  20, awr: 56, spd: 42 },
     'gnome':              { hp: 580, mp: 205, atk:  34, def:  72, mdef:  90, int:  36, awr: 70, spd: 28 },
-    'kaiju':              { hp: 645, mp: 110, atk: 100, def:  42, mdef:  24, int:  25, awr: 14, spd: 46 },
+    'kaiju':              { hp: 645, mp: 110, atk: 92, def:  42, mdef:  24, int:  25, awr: 14, spd: 46 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game)
     'kraken':             { hp: 555, mp: 205, atk:  40, def:  37, mdef:  71, int:  69, awr: 56, spd: 21 },
     'loch ness monster':  { hp: 770, mp:  95, atk:  54, def:  92, mdef:  48, int:  31, awr: 14, spd: 21 },
     'yeti':               { hp: 600, mp: 120, atk:  60, def:  46, mdef:  52, int:  52, awr: 14, spd: 46 },
@@ -3922,7 +3922,7 @@ const RACE_BASE_STATS = {
     'black goo':          { hp: 600, mp: 160, atk:  40, def:  54, mdef:  54, int:  46, awr: 42, spd: 30 },
     'golem':              { hp: 820, mp:  70, atk:  60, def: 101, mdef:  52, int:   0, awr: 14, spd: 25 },
     'honda civic':        { hp: 520, mp:  90, atk:  78, def:  66, mdef:  26, int:  10, awr: 28, spd: 84 },
-    'ice queen':          { hp: 420, mp: 245, atk:   8, def:  22, mdef:  90, int:  82, awr: 56, spd: 33 },
+    'ice queen':          { hp: 470, mp: 245, atk:   8, def:  22, mdef:  90, int:  82, awr: 56, spd: 33 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP)
     'juggernaut':         { hp: 800, mp:  40, atk:  84, def:  79, mdef:  48, int:   0, awr: 14, spd: 23 },
     'ki fighter':         { hp: 570, mp: 120, atk:  82, def:  42, mdef:  42, int:  46, awr: 28, spd: 38 },
     'king arthur':        { hp: 635, mp:  80, atk:  70, def:  68, mdef:  44, int:  28, awr: 56, spd: 53 },
@@ -3930,7 +3930,7 @@ const RACE_BASE_STATS = {
     'minotaur':           { hp: 675, mp:  70, atk:  94, def:  42, mdef:  37, int:   7, awr: 28, spd: 53 },
     'necromancer':        { hp: 445, mp: 250, atk:   8, def:  20, mdef:  86, int:  82, awr: 56, spd: 33 },
     'occulus':            { hp: 485, mp: 200, atk:   8, def:  23, mdef:  80, int:  84, awr: 84, spd: 53 },
-    'quarterback':        { hp: 540, mp: 100, atk:  82, def:  26, mdef:  26, int:  12, awr: 84, spd: 62 },
+    'quarterback':        { hp: 540, mp: 100, atk:  74, def:  26, mdef:  26, int:  12, awr: 84, spd: 62 },   // BALANCE PASS 2026-10-06: ATK 82→74 (lab WR 67%; range-4 basic attacks + PR #138)
     'robinhood':          { hp: 500, mp: 110, atk:  88, def:  22, mdef:  30, int:  12, awr: 98, spd: 48 },
     'santa clause':       { hp: 580, mp: 200, atk:  34, def:  46, mdef:  60, int:  74, awr: 42, spd: 30 },
     'super sentai':       { hp: 670, mp: 120, atk:  58, def:  65, mdef:  46, int:  23, awr: 70, spd: 32 },
@@ -5231,7 +5231,7 @@ const SPELL_LIBRARY = [
         families: ['athleticism'],
         school: 'Raider',
         jobPreference: ['Raider'],
-        dashDamage: 64,
+        dashDamage: 96,   // BALANCE PASS 2026-10-06: PATH 64→96 (lab: 867 casts at 267 a cast, half the Tier IV median; the landing target is rarely hit)
         desc: 'Charges through the battlefield. Deals HEAVY physical damage to the target and hits every enemy on the path. Applies Stagger.'
     },
     {
@@ -5889,7 +5889,7 @@ const SPELL_LIBRARY = [
           statusEffects: [{ id: 'overclock', duration: 2 }],
           desc: 'Mount up. The caster is Overclocked for 2 rounds (+1 ATK stage, +1 MOV) and cleansed of up to 2 debuffs.' },
         { id: 'raceRideBy', name: 'Ride-By', tier: 3, families: ['horsebackriding'], cost: 75, apCost: 1, spellType: 'human',
-          type: 'damage', kind: 'dash', range: 4, dmg: 110, dashDamage: 55, damageType: 'physical',
+          type: 'damage', kind: 'dash', range: 4, dmg: 110, dashDamage: 75, damageType: 'physical',   // BALANCE PASS 2026-10-06: PATH 55→75 (lab: 183 damage a cast)
           desc: 'Don\'t stop. Ride up to 4 tiles in a line: MEDIUM physical damage to the enemy at the end of the ride, and WEAK physical damage to every enemy passed.' },
         { id: 'raceLance', name: 'Lance', tier: 4, families: ['horsebackriding'], cost: 100, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'tackle', range: 5, dmg: 170, damageType: 'physical', chargeToTarget: true,
@@ -6622,8 +6622,8 @@ const RACE_ABILITIES = {
           desc: 'Drags a Single Enemy into the Shadow Realm with the demon for 2 rounds: to everyone else the two of you are gone — invisible, untargetable, immune to everything not from each other, beyond any healer\'s reach. In there, it is just you and them.' },
         { id: 'raceInfernalHurl', tier: 2, families: ['demonicabilities'], spellType: 'unholy', element: 'fire', name: 'Infernal Hurl',
           type: 'damage', cost: 30, dmg: 90, range: 1, apCost: 1,
-          kind: 'skyThrow', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
-          throwRange: 3, collisionBonus: 50,
+          kind: 'skyThrow', damageType: 'physical', carryHeight: 4, dmgPerLevel: 15,   // BALANCE PASS 2026-10-06: DMG/LEVEL 25→15, CRASH 50→30 (lab: 1,037 damage a cast, 0.73 kills a cast, ~3× any other Tier II)
+          throwRange: 3, collisionBonus: 30,
           requiresFlight: true,
           desc: 'Grabs the target, carries it skyward and hurls it up to 3 tiles. Deals WEAK physical damage, more if they crash into another unit. Caster must be flying.' },
         SHARED_SUMMON_BLOOD_RAIN,
@@ -6815,7 +6815,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'blind', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in a 3×3 and Blinds them in a white-out of glitter.' },
         { id: 'raceGlitterburst', tier: 1, families: ['fae'], spellType: 'anomaly', element: 'light', name: 'Glitterburst',
-          type: 'damage', cost: 25, dmg: 80, range: 3,
+          type: 'damage', cost: 25, dmg: 70, range: 3,   // BALANCE PASS 2026-10-06: DMG 80→70 (lab: 412 a cast, 1.6 targets)
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statStageBoost: { def: -1 },
           desc: 'Deals WEAK magic damage to All Enemies in an AOE. Lowers the target\'s DEF by 1 stage.' },
@@ -7541,7 +7541,7 @@ const RACE_ABILITIES = {
     ],
     'jellyfish': [
         { id: 'raceJellySting', tier: 1, bonusVsStatus: { status: 'wet', mult: 1.5 }, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Sting',
-          type: 'damage', cost: 20, dmg: 90, range: 2, apCost: 1,
+          type: 'damage', cost: 20, dmg: 75, range: 2, apCost: 1,   // BALANCE PASS 2026-10-06: DMG 90→75 (lab: 425 a cast, the best Tier I in the game)
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'A tentacle brushes past. Deals WEAK water damage and Poisons the target. The venom runs faster through wet skin: bonus damage to Soaked targets and to anything standing in water.' },
@@ -8016,7 +8016,7 @@ const RACE_ABILITIES = {
         { id: 'raceGiantSmash', spellType: 'alien', name: 'Giant Smash',
           type: 'damage', tier: 4, apCost: 2, families: ['titan'], cost: 50, dmg: 170, range: 2,
           kind: 'dash', damageType: 'physical',
-          dashDamage: 56,
+          dashDamage: 84,   // BALANCE PASS 2026-10-06: PATH 56→84 (lab: 227 damage a cast for 100 MP + 2 AP)
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Enemies along the path also take damage. Applies Stun.' },
         { id: 'raceStoneThrow', tier: 1, families: ['titan'], element: 'earth', spellType: 'alien', name: 'Stone Throw',
@@ -8041,7 +8041,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'jammed', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
         { id: 'raceHydraulicPunch', tier: 1, families: ['machinery'], spellType: 'tech', name: 'Hydraulic Punch',
-          type: 'damage', cost: 25, dmg: 100, range: 1,
+          type: 'damage', cost: 25, dmg: 90, range: 1,   // BALANCE PASS 2026-10-06: DMG 100→90 (lab: 404 a cast, 1.8 targets with the push crash)
           kind: 'damage', damageType: 'physical',
           pushDistance: 2,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -8564,8 +8564,8 @@ const RACE_ABILITIES = {
           desc: 'Ancient terror, roared down from above. Every enemy in a 3×3 is Feared and set alight. They run, and they run burning.' },
         { id: 'raceDragonToss', tier: 3, families: ['dragonabilities'], spellType: 'anomaly', name: 'Dragon Toss',
           type: 'damage', cost: 30, dmg: 70, range: 1, apCost: 1,
-          kind: 'skyThrow', damageType: 'physical', carryHeight: 5, dmgPerLevel: 25,
-          throwRange: 3, collisionBonus: 60,
+          kind: 'skyThrow', damageType: 'physical', carryHeight: 5, dmgPerLevel: 15,   // BALANCE PASS 2026-10-06: DMG/LEVEL 25→15, CRASH 60→40 (lab: 954 damage a cast, ~2.5× the Tier III median)
+          throwRange: 3, collisionBonus: 40,
           requiresFlight: true,
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Grabs the target, carries it skyward and hurls it up to 3 tiles. The grab itself is light; the fall and any crash into another unit do the damage. Deals bonus damage to Burning targets.' },
@@ -8979,7 +8979,7 @@ const RACE_ABILITIES = {
 
     'minotaur': [
         _mkCharge({ id: 'raceBullRush', upgradesBlock: ['upBlast'], spellType: 'human', name: 'Bull Rush',
-          kind: 'dash', tier: 4, dashDamage: 60, families: ['horns'], cost: 45, dmg: 170, range: 4,
+          kind: 'dash', tier: 4, dashDamage: 90, families: ['horns'],   /* BALANCE PASS 2026-10-06: PATH 60→90 (lab: T4 dashes dealt ~267 a cast, about half the Tier IV median) */ cost: 45, dmg: 170, range: 4,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
           desc: 'Dashes through the battlefield. Deals bonus damage to targets with Discord. The caster charges into melee first.' }),
         { id: 'raceLabyrinthRoar', tier: 2, noDamage: true, families: ['horns'], spellType: 'unholy', name: 'Labyrinth Roar',
@@ -17972,6 +17972,17 @@ function levelPowerStat(unit, key) {
     return Math.max(0, raw + Math.max(0, total - earned));
 }
 
+/* THE GRADE RULER IN BATTLE (BALANCE PASS 2026-10-06, mondo: "why does the nun have S tier ..."): the letter grades sit on
+   the race BASE ruler (STAT_GRADE_BANDS), but a fielded unit carries its earned level growth on top (+58 ATK, +62 DEF,
+   +69 M DEF, +43 M ATK at the cap), so every level-100 unit read one or two letters high in the battle cards and the pause
+   sheet (the nun's 8 ATK showed A, her 58 M DEF showed S). Grade the shown value with that growth taken back off; buffs,
+   statuses and gear still move the letter. The number beside it stays the live one. */
+function statGradeValForUnit(unit, key, val) {
+    const v = Number(val) || 0;
+    if (!unit || !unit._lvlStatGains || key === 'hp' || key === 'mp' || !LEVEL_TOTAL_STAT_GAINS[key]) return v;
+    return Math.max(0, v - (unit._lvlStatGains[key] || 0));
+}
+
 // Classic-JRPG level gap multiplier on a hit. 1 when either side has no level
 // context (towers, hazards) or the levels match — so PvP is inert.
 function levelGapMult(attackerLevel, defenderLevel) {
@@ -21743,7 +21754,7 @@ Object.assign(window, {
   LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, levelScale,
   LEVEL_TOTAL_STAT_GAINS, levelStatGains, EW_MP_L1_FRAC, LEVEL_STAT_GAIN_EXP,
   EW_COMBAT_PACE, EW_LEVEL_GAP_STEP, EW_LEVEL_GAP_MAX, EW_LEVEL_GAP_MIN,
-  ewUnitLevel, levelGrowthDeficit, levelPowerStat, levelGapMult,
+  ewUnitLevel, levelGrowthDeficit, levelPowerStat, statGradeValForUnit, levelGapMult,
   XP_CURVE, KILL_XP, killXpFor, xpThreshold, xpLevelFor, xpToNext,
   offenseScale, offenseMagnitude, defenseScale, supportScale,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, AP_BONUS_LEVELS,
