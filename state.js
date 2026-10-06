@@ -251,7 +251,7 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the Cube, find all 5 hidden Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. After 20 rounds the higher Arena score wins (a bounty kill scores double); a tied score goes to the side holding more Keys, then Sudden Death.',
+                desc: 'Destroy the Cube, find all 5 hidden Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. After 20 rounds the higher Arena score wins (a bounty kill scores double, more the longer the streak it ends); a tied score goes to the side holding more Keys, then Sudden Death.',
                 /* 2026-09-07 Arena rules pass: matches end ONLY on a real win
                    condition. The round cap is a "never literally forever"
                    backstop (AI training / balance runs want every objective to
