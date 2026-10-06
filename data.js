@@ -4188,14 +4188,21 @@ const RACE_PHYSIQUE = {
    move a bunch of tiles"): the lumbering tail of the C band (SPD 21–25: Nessie, Kraken, King Kong, the golems
    and mechs) walked as far as a SPD-40 werewolf. The 1-tile band now runs to SPD 25; every other band is
    unchanged (26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81+ → 5). The ONE table every reader goes through. */
-/* ONE LETTER = ONE TILE again (race editor 2026-10-06, mondo's new SPD scale up to 200): the tile bands are the SPD
-   grade bands (STAT_GRADE_BANDS.spd [S, A, B, C]) — F walks 1 · C 2 · B 3 · A 4 · S 5 — re-read on every call so a
-   grade edit in the race editor moves the tiles with it. MOVE_SPD_BANDS holds the top SPD of each band (C−1 … S−1). */
+/* SPD → TILES (race editor 2026-10-06, mondo: "let me change the bands like everything else in the editor"). MOVE_SPD_RULE is
+   the one live rule: follow = true → the tiles follow the SPD letters (STAT_GRADE_BANDS.spd: F walks 1 · C 2 · B 3 · A 4 ·
+   S 5, so a grade edit moves the tiles); follow = false → `from` = the lowest SPD that walks 2 / 3 / 4 / 5 tiles. The race
+   editor's GRADES tab edits it (EWRaceMods doc.move). MOVE_SPD_BANDS keeps the top SPD of each band for the old readers. */
+const MOVE_SPD_RULE = { follow: true, from: [49, 88, 126, 163] };
 const MOVE_SPD_BANDS = [48, 87, 125, 162];
+function moveSpdFrom() {
+    const g = (typeof STAT_GRADE_BANDS !== 'undefined' && STAT_GRADE_BANDS.spd) || null;
+    const from = (MOVE_SPD_RULE.follow && g && g.length === 4) ? [g[3], g[2], g[1], g[0]] : MOVE_SPD_RULE.from;
+    for (let i = 0; i < 4; i++) MOVE_SPD_BANDS[i] = from[i] - 1;
+    return from;
+}
 function moveFromSpd(spd) {
     const s = Math.max(1, spd || 1);
-    const g = (typeof STAT_GRADE_BANDS !== 'undefined' && STAT_GRADE_BANDS.spd) || null;
-    if (g && g.length === 4) for (let i = 0; i < 4; i++) MOVE_SPD_BANDS[i] = g[3 - i] - 1;
+    moveSpdFrom();
     let tiles = 1;
     for (const top of MOVE_SPD_BANDS) if (s > top) tiles++;
     return Math.min(5, tiles);
@@ -21862,7 +21869,7 @@ Object.assign(window, {
   /* THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) */
   ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
   elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, elemPressTier,
-  AVAILABLE_ZODIACS, ZODIAC_ICONS, ZODIAC_EFFECTS, ZODIAC_SKY_KEYS, ZODIAC_NATAL_KEYS, zodiacSkyMult, zodiacNatalDelta, zodiacSkySummary, zodiacNatalSummary, ZODIAC_KEY_LABELS, CLASS_TEMPLATES,
+  AVAILABLE_ZODIACS, ZODIAC_ICONS, ZODIAC_EFFECTS, ZODIAC_SKY_KEYS, ZODIAC_NATAL_KEYS, zodiacSkyMult, zodiacNatalDelta, zodiacSkySummary, zodiacNatalSummary, ZODIAC_KEY_LABELS, MOVE_SPD_RULE, moveSpdFrom, CLASS_TEMPLATES,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
@@ -22828,10 +22835,10 @@ window.EWRaceMods = (function () {
     let doc = null, pristine = null, suspended = false;
     const _clone = v => { try { return JSON.parse(JSON.stringify(v === undefined ? null : v)); } catch (e) { return v; } };
     const eq = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
-    function emptyDoc() { return { version: VERSION, enabled: true, races: {}, grades: {}, curve: {}, gains: {}, zodiac: {}, notes: '' }; }
+    function emptyDoc() { return { version: VERSION, enabled: true, races: {}, grades: {}, curve: {}, gains: {}, zodiac: {}, move: {}, notes: '' }; }
     function normalize(d) {
         if (!d || typeof d !== 'object' || (d.version != null && d.version !== VERSION)) d = emptyDoc();
-        ['races', 'grades', 'curve', 'gains', 'zodiac'].forEach(k => { if (!d[k] || typeof d[k] !== 'object' || Array.isArray(d[k])) d[k] = {}; });
+        ['races', 'grades', 'curve', 'gains', 'zodiac', 'move'].forEach(k => { if (!d[k] || typeof d[k] !== 'object' || Array.isArray(d[k])) d[k] = {}; });
         if (typeof d.enabled !== 'boolean') d.enabled = true;
         if (typeof d.notes !== 'string') d.notes = '';
         d.version = VERSION;
@@ -22845,7 +22852,7 @@ window.EWRaceMods = (function () {
         if (pristine) return;
         const p = { stats: {}, profiles: {}, affinity: {}, terrain: _clone(RACE_TERRAIN_PREFERENCE), role: _clone(RACE_CLASS),
             kits: _clone(RACE_KITS), biomes: _clone(EW_RACE_BIOMES), grades: _clone(STAT_GRADE_BANDS), curve: _clone(LEVEL_CURVE),
-            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP), zodiac: _clone(ZODIAC_EFFECTS) };
+            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP), zodiac: _clone(ZODIAC_EFFECTS), move: _clone(MOVE_SPD_RULE) };
         races().forEach(r => {
             p.stats[r] = _clone(RACE_BASE_STATS[r]);
             const pr = RACE_PROFILES[r] || {};
@@ -22877,6 +22884,7 @@ window.EWRaceMods = (function () {
         Object.assign(LEVEL_TOTAL_STAT_GAINS, pristine.gains);
         Object.assign(STAT_HELP, pristine.help);
         Object.keys(pristine.zodiac).forEach(z => { ZODIAC_EFFECTS[z] = _clone(pristine.zodiac[z]); });
+        Object.assign(MOVE_SPD_RULE, _clone(pristine.move));
     }
     function applyDoc() {
         Object.keys(doc.races).forEach(r => {
@@ -22909,6 +22917,9 @@ window.EWRaceMods = (function () {
         });
         Object.keys(doc.curve).forEach(k => { if (Object.prototype.hasOwnProperty.call(LEVEL_CURVE, k) && Number.isFinite(doc.curve[k])) LEVEL_CURVE[k] = doc.curve[k]; });
         Object.keys(doc.gains).forEach(k => { if (Object.prototype.hasOwnProperty.call(LEVEL_TOTAL_STAT_GAINS, k) && Number.isFinite(doc.gains[k])) LEVEL_TOTAL_STAT_GAINS[k] = Math.round(doc.gains[k]); });
+        /* the SPD → tiles rule: doc.move.follow (bool) · doc.move.from [walk 2, 3, 4, 5 from SPD] */
+        if (typeof doc.move.follow === 'boolean') MOVE_SPD_RULE.follow = doc.move.follow;
+        if (Array.isArray(doc.move.from) && doc.move.from.length === 4 && doc.move.from.every(Number.isFinite)) MOVE_SPD_RULE.from = doc.move.from.map(x => Math.max(1, Math.round(x)));
         /* the ZODIAC tab: doc.zodiac[sign] = { sky: {key: percent}, natal: {stat: flat} }, sparse */
         Object.keys(doc.zodiac).forEach(z => {
             const m = doc.zodiac[z], live = ZODIAC_EFFECTS[z];
@@ -22975,9 +22986,9 @@ window.EWRaceMods = (function () {
     function counts() {
         let fields = 0;
         Object.keys(doc.races).forEach(r => { fields += Object.keys(doc.races[r]).length; });
-        return { races: Object.keys(doc.races).length, fields, grades: Object.keys(doc.grades).length, curve: Object.keys(doc.curve).length, gains: Object.keys(doc.gains).length, zodiac: zodiacFields() };
+        return { races: Object.keys(doc.races).length, fields, grades: Object.keys(doc.grades).length, curve: Object.keys(doc.curve).length, gains: Object.keys(doc.gains).length, zodiac: zodiacFields(), move: Object.keys(doc.move).length };
     }
-    function total() { const c = counts(); return c.fields + c.grades + c.curve + c.gains + c.zodiac; }
+    function total() { const c = counts(); return c.fields + c.grades + c.curve + c.gains + c.zodiac + c.move; }
 
     const _fmt = v => Array.isArray(v) ? '[' + v.join(', ') + ']' : (v && typeof v === 'object') ? (Object.keys(v).map(k => k + ' ' + v[k]).join(', ') || '(none)') : (v === undefined || v === null || v === '' ? '(none)' : String(v));
     function summary() {
@@ -22998,6 +23009,8 @@ window.EWRaceMods = (function () {
         Object.keys(doc.grades).forEach(k => lines.push(`GRADES ${k.toUpperCase()} [S, A, B, C] ${_fmt(pristine.grades[k])} → ${_fmt(doc.grades[k])}`));
         Object.keys(doc.curve).forEach(k => lines.push(`LEVEL CURVE ${k} ${pristine.curve[k]} → ${doc.curve[k]}`));
         Object.keys(doc.gains).forEach(k => lines.push(`LEVEL GROWTH ${k.toUpperCase()} (gained from level 1 to 100) +${pristine.gains[k]} → +${doc.gains[k]}`));
+        if (Object.prototype.hasOwnProperty.call(doc.move, 'follow')) lines.push(`MOVE TILES follow the SPD letters ${pristine.move.follow ? 'yes' : 'no'} → ${doc.move.follow ? 'yes' : 'no'}`);
+        if (doc.move.from) lines.push(`MOVE TILES walk 2 / 3 / 4 / 5 from SPD ${_fmt(pristine.move.from)} → ${_fmt(doc.move.from)}`);
         Object.keys(doc.zodiac).sort().forEach(z => {
             const row = doc.zodiac[z];
             Object.keys(row.sky || {}).forEach(k => lines.push(`ZODIAC ${z} while its sky rules: ${ZODIAC_KEY_LABELS[k] || k} ${shippedZodiac(z, 'sky', k)}% → ${row.sky[k]}%`));
@@ -23008,10 +23021,10 @@ window.EWRaceMods = (function () {
     }
     function exportDoc() {
         capturePristine();
-        const baseline = { races: {}, grades: {}, curve: {}, gains: {}, zodiac: {} };
+        const baseline = { races: {}, grades: {}, curve: {}, gains: {}, zodiac: {}, move: {} };
         Object.keys(doc.zodiac).forEach(z => { baseline.zodiac[z] = _clone(pristine.zodiac[z]); });
         Object.keys(doc.races).forEach(r => { baseline.races[r] = {}; Object.keys(doc.races[r]).forEach(f => { baseline.races[r][f] = _clone(shipped(r, f)); }); });
-        ['grades', 'curve', 'gains'].forEach(g => Object.keys(doc[g]).forEach(k => { baseline[g][k] = _clone(pristine[g][k]); }));
+        ['grades', 'curve', 'gains', 'move'].forEach(g => Object.keys(doc[g]).forEach(k => { baseline[g][k] = _clone(pristine[g][k]); }));
         return {
             format: 'entropy-wars-race-mods',
             exportedAt: new Date().toISOString(),
@@ -23021,7 +23034,8 @@ window.EWRaceMods = (function () {
                 + 'label/labelMale/labelFemale/faction/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
                 + 'terrain → RACE_TERRAIN_PREFERENCE; role → RACE_CLASS; range → RACE_KITS; biomes → EW_RACE_BIOMES; '
                 + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS; '
-                + 'zodiac.<sign>.sky (percent while the sign rules the sky) / .natal (flat stats for units born under it) → ZODIAC_EFFECTS. '
+                + 'zodiac.<sign>.sky (percent while the sign rules the sky) / .natal (flat stats for units born under it) → ZODIAC_EFFECTS; '
+                + 'move.{follow, from} → MOVE_SPD_RULE (from = the SPD that walks 2 / 3 / 4 / 5 tiles when follow is false). '
                 + 'baseline holds the shipped values the edits were made against.',
             summary: summary(),
             baseline,
@@ -23035,7 +23049,7 @@ window.EWRaceMods = (function () {
         if ((opts && opts.mode) === 'replace') doc = inc;
         else {
             Object.keys(inc.races).forEach(r => { doc.races[r] = Object.assign(doc.races[r] || {}, inc.races[r]); });
-            ['grades', 'curve', 'gains'].forEach(g => Object.assign(doc[g], inc[g]));
+            ['grades', 'curve', 'gains', 'move'].forEach(g => Object.assign(doc[g], inc[g]));
             Object.keys(inc.zodiac).forEach(z => ['sky', 'natal'].forEach(p => { const src = (inc.zodiac[z] || {})[p]; if (src && typeof src === 'object') Object.keys(src).forEach(k => setZodiac(z, p, k, src[k])); }));
             if (inc.notes && inc.notes !== doc.notes) doc.notes = doc.notes ? doc.notes + '\n\n' + inc.notes : inc.notes;
         }
@@ -23052,7 +23066,7 @@ window.EWRaceMods = (function () {
             Object.keys(doc.races[r]).forEach(f => { if (eq(doc.races[r][f], shipped(r, f))) { delete doc.races[r][f]; n++; } });
             if (!Object.keys(doc.races[r]).length) delete doc.races[r];
         });
-        ['grades', 'curve', 'gains'].forEach(g => Object.keys(doc[g]).forEach(k => { if (eq(doc[g][k], pristine[g][k])) { delete doc[g][k]; n++; } }));
+        ['grades', 'curve', 'gains', 'move'].forEach(g => Object.keys(doc[g]).forEach(k => { if (eq(doc[g][k], pristine[g][k])) { delete doc[g][k]; n++; } }));
         Object.keys(doc.zodiac).forEach(z => {
             if (!pristine.zodiac[z]) { delete doc.zodiac[z]; n++; return; }
             const row = _clone(doc.zodiac[z]) || {};
