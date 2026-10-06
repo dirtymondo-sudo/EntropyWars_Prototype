@@ -2588,7 +2588,7 @@
             // strike are deferred to start ON the cut so the rush begins the
             // moment the chase does. Plain top-down path pan if it declines.
             let _chargeCam = null;
-            if (!state.cameraDisabled && _fogCamTilesVisible({ x: fromX, y: fromY }, { x: landTile.x, y: landTile.y })) {
+            if (!state.cameraDisabled && _fogCamAllSeen(unit, { x: fromX, y: fromY }, { x: landTile.x, y: landTile.y })) {
                 stopBoardCameraAnimation();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                 _chargeCam = state.cinematicActionCam ? animateDashActionCamera(
@@ -5859,7 +5859,7 @@
                         focusBoardCameraOnTiles(
                             [{ x: first.x, y: first.y }, { x: second.x, y: second.y }],
                             { persist: true, transitionMs: bounceProjectileMs,
-                              _fogAllowed: _fogCamTilesVisible(
+                              _fogAllowed: _fogCamAllSeen(
                                   { x: first.x, y: first.y }, { x: second.x, y: second.y }) });
                     }
 
@@ -9280,8 +9280,11 @@
             // happened to be parked, often with the struck units off-screen.
             let _eqFocus = eq.blowback ? { x: eq.blowback.cx, y: eq.blowback.cy } : null;
             if (!_eqFocus && eq.hits.length) {
-                const _u0 = state.units.find(u => u.id === eq.hits[0].unitId);
-                if (_u0) _eqFocus = { x: _u0.x, y: _u0.y };
+                // First struck unit the viewer can actually see — never a hidden one.
+                for (const _h of eq.hits) {
+                    const _u0 = state.units.find(u => u.id === _h.unitId);
+                    if (_u0 && _shouldCameraFollowUnit(_u0)) { _eqFocus = { x: _u0.x, y: _u0.y }; break; }
+                }
             }
             let _eqCamLead = 0;
             if (_eqFocus && !state.cameraDisabled) {
@@ -10211,6 +10214,26 @@
                 if (p && _isTileVisibleToViewer(Math.round(p.x), Math.round(p.y))) return true;
             }
             return false;
+        }
+
+        /* Strict fog gate (2026-10-06, mondo: "the camera must not follow
+           enemy actions in the fog"): on a turn that is not the viewer's,
+           EVERY unit / tile a camera move will frame must be on screen —
+           units also pass concealment (Invisible / smoke). The old "any one
+           point visible" test (_fogCamTilesVisible) let a shot that frames
+           both ends (dash brace on a hidden origin, a support shot facing a
+           hidden caster, a midpoint pan) hand over the hidden end. Pass
+           units as units (with .id) and tiles as bare {x, y}. */
+        function _fogCamAllSeen(...items) {
+            if (state.activePlayer === getViewerPlayer()) return true;
+            for (const it of items) {
+                if (!it) continue;
+                if (it.id != null && it.player != null) {
+                    if (!_cineActorVisible(it)) return false;
+                } else if (state.fogOfWar && Number.isFinite(it.x) && Number.isFinite(it.y)
+                    && !_isTileVisibleToViewer(Math.round(it.x), Math.round(it.y))) return false;
+            }
+            return true;
         }
 
         function _tickAllStatusDurations() {
@@ -22104,8 +22127,21 @@
 
             _fogBlocked(fogAllowed) {
                 if (!state.fogOfWar) return false;
-                if (fogAllowed || state._fogCameraAllowed) return false;
-                return state.activePlayer !== getViewerPlayer();
+                if (state.activePlayer === getViewerPlayer()) return false;
+                // An explicit false (a _fogCamAllSeen verdict) is a hard no —
+                // the latch below must not wave a hidden end through.
+                if (fogAllowed === false) return true;
+                if (fogAllowed) return false;
+                /* _fogCameraAllowed is latched at activation / when a walk
+                   emerges into view. Re-check the acting unit LIVE: a
+                   teleport, dash, displacement or Invisible after the latch
+                   used to leave every later pan free to follow it into fog. */
+                if (state._fogCameraAllowed) {
+                    const _au = state._blitzActiveUnitId != null
+                        ? state.units.find(u => u.id === state._blitzActiveUnitId) : null;
+                    if (!_au || _shouldCameraFollowUnit(_au)) return false;
+                }
+                return true;
             },
 
             snap(opts) {
@@ -22668,11 +22704,13 @@
             },
 
             _getBestResetTarget() {
+                // Never re-centre on a unit the viewer can't see (online the
+                // host's selection mirrors the guest's acting unit, fogged or not).
                 const sel = getSelectedUnit();
-                if (sel) return { x: sel.x, y: sel.y };
+                if (sel && _shouldCameraFollowUnit(sel)) return { x: sel.x, y: sel.y };
                 if (state._blitzActiveUnitId) {
                     const bu = state.units.find(u => u.id === state._blitzActiveUnitId && !u.dead);
-                    if (bu) return { x: bu.x, y: bu.y };
+                    if (bu && _shouldCameraFollowUnit(bu)) return { x: bu.x, y: bu.y };
                 }
                 if (Number.isFinite(this.x) && Number.isFinite(this.y)) return { x: this.x, y: this.y };
                 return { x: Math.floor(bw() / 2), y: Math.floor(bh() / 2) };
@@ -22998,9 +23036,9 @@
             const unit = getSelectedUnit();
             const z = state.userZoomScale;
             if (isUserZoomEngaged()) {
-                const t = unit || { x: Math.floor(bw() / 2), y: Math.floor(bh() / 2) };
-
-                camera.snap({ x: t.x, y: t.y, zoom: z });
+                if (unit && _shouldCameraFollowUnit(unit)) camera.snap({ x: unit.x, y: unit.y, zoom: z });
+                else if (unit) camera.snap({ zoom: z });
+                else camera.snap({ x: Math.floor(bw() / 2), y: Math.floor(bh() / 2), zoom: z });
             } else {
                 camera.snap({ zoom: _getBattleZoom() });
             }
@@ -23110,8 +23148,9 @@
             camera._restTilt = Math.min(p.tilt, REST_TILT_MAX);
             state.userZoomScale = getPresetZoom();
             if (state.phase === 'battle' && !state.cameraDisabled) {
-                const unit = (typeof getSelectedUnit === 'function' && getSelectedUnit())
+                let unit = (typeof getSelectedUnit === 'function' && getSelectedUnit())
                     || state.units?.find(u => u.id === state._blitzActiveUnitId && !u.dead);
+                if (unit && !_shouldCameraFollowUnit(unit)) unit = null;
                 camera._tpsHold = false;
                 camera._preCineView = null;
                 camera._cineShotId = null;
@@ -26449,6 +26488,7 @@
         const TPS_SHOULDER_TILES = 0.55;
         function _tpsUnitShot(unit, opts = {}) {
             if (!unit || state.cameraDisabled || state.phase !== 'battle') return false;
+            if (!_fogCamAllSeen(unit)) return true;   // hidden opponent: no shot, no fallback pan
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
             // Between-action TPS retired: returning false hands every caller
             // to its tactical fallback (turn activation, soft-reset, …).
@@ -26473,6 +26513,7 @@
         }
         function _tpsTargetShot(unit, tgt) {
             if (!unit || !tgt || state.cameraDisabled || state.phase !== 'battle') return false;
+            if (!_fogCamAllSeen(unit, tgt)) return true;   // hidden opponent: no shot, no fallback pan
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return true;
             // Between-action TPS retired: browsing/cycling targets keeps the
             // TACTICAL view — just pan so both the caster and the candidate
@@ -27191,6 +27232,9 @@
                 if (_cineShotOwned(camera._cineShotId)) return true;   // the director owns this shot — a retarget would yank it
             }
             if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+            // A ricochet / fling / pull / throw into fog: swallow the retarget
+            // (true = handled) so neither it nor the caller's fallback pan follows.
+            if (!_fogCamAllSeen(unit && unit.id != null ? unit : null, { x: point.x, y: point.y })) return true;
             const ts = CONFIG.tileSize || BASE_TILE;
             camera._cineShotTarget = { x: Math.round(point.x), y: Math.round(point.y),
                 id: (unit && unit.id != null) ? unit.id : null };
@@ -33610,13 +33654,17 @@
                         ? `🧟 Zombie mauls ${unitDisplayName(s.target)}`
                         : `🔧 Turret fires at ${unitDisplayName(s.target)}`);
                 }
+                // A turret / summon hidden in fog never gets framed: the
+                // camera stays on the (visible) victim instead.
+                const _turretSeen = _turretCam && (!state.fogOfWar || _isTileVisibleToViewer(s.turret.x, s.turret.y));
                 if (_turretCam) {
-                    eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
+                    if (_turretSeen) eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
+                    else eorFocusCamera(s.target.x, s.target.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                     if (state.winner) { if (onDone) onDone(); return; }
-                    if (_turretCam) {
+                    if (_turretSeen) {
                         eorFocusCamera(
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
@@ -37261,6 +37309,10 @@
                 unit._pressFlashAt = Date.now();
                 result.apDelta = refund;
                 result.pressed = true;
+                // A press refund hands back a fresh action, so it hands back a
+                // full shot clock too. The host runs this for both players; the
+                // guest picks the reset up from the next state-sync snapshot.
+                if (typeof _resetShotClockForPress === 'function') _resetShotClockForPress(unit);
             }
             // The hit WOULD have pressed but an earlier fumble locked it out —
             // flag it so the feedback layer can tell the player why.
@@ -44904,7 +44956,7 @@
                 startedAt: Date.now(),
             };
             _resumeShotClock(); // Retire the previous match's cinematic owner.
-            state.shotClock = { startedAt: 0, limitSec: 30, active: false };
+            state.shotClock = { startedAt: 0, limitSec: 60, active: false };
 
             if (_aiTrainingMode && _trainMapSetting === 'rotate') {
                 const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
@@ -45526,7 +45578,7 @@
         const LS_HINTS = [
             { t: 'FIELD MANUAL', q: 'Turn order is decided by SPEED. The fastest vessels on the field always move first.' },
             { t: 'FIELD MANUAL', q: 'Keys grant permanent team-wide buffs. Every one you leave in the dirt is one the enemy secures.' },
-            { t: 'FIELD MANUAL', q: 'The shot clock gives each turn 30 seconds. Entropy waits for no one.' },
+            { t: 'FIELD MANUAL', q: 'The shot clock gives each turn 60 seconds, and a press refund resets it. Entropy waits for no one.' },
             { t: 'FIELD MANUAL', q: 'Every vessel carries a type — and every type has prey it hunts and a predator it fears. The Codex knows which.' },
             { t: 'FIELD MANUAL', q: 'Deep water drowns the unwary. Winged vessels are untroubled by such things.' },
             { t: 'FIELD MANUAL', q: 'Team Deathmatch is decided by total kills when the rounds run out. A full wipeout ends it on the spot.' },
@@ -47208,7 +47260,7 @@
             }
 
             _resumeShotClock(); // Keep reconnect suspension, discard old cinematic ownership.
-            state.shotClock = { startedAt: 0, limitSec: 30, active: false };
+            state.shotClock = { startedAt: 0, limitSec: 60, active: false };
 
             _startMatchClockInterval();
 
@@ -52831,7 +52883,7 @@
                     const spell = (unit.spells || []).find(s => s.name === toolName) || (unit._raceAbilities || []).find(s => s.name === toolName);
                     const _tileAim = spell && !isSpellSelfCast(spell)
                         && (isSpellTileTargeted(spell) || spell.orientable);
-                    if (_tileAim) {
+                    if (_tileAim && _fogCamAllSeen(unit)) {
                         // Free-aim tile picking is a BOARD read → tactical
                         // overhead, zoomed to fit the spell's range rings.
                         camera._tpsHold = false;
@@ -53951,6 +54003,7 @@
                the collision rig in ThreeCamera keeps the eye above the map
                even craned up at the sky. */
             if ((mode === 'move' || mode === 'jump' || mode === 'build') && !state.cameraDisabled
+                && _fogCamAllSeen(unit)
                 && typeof camera !== 'undefined' && camera && typeof camera.moveTo === 'function') {
                 // Tile picking is a BOARD read → always the tactical overhead,
                 // dropping any third-person hold (turn-start / targeting shot).
@@ -56737,7 +56790,7 @@
 
                         state._fogCameraAllowed = false;
                     }
-                } else if (destVisible) {
+                } else if (destVisible && !isUnitConcealedFrom(unit, getViewerPlayer())) {
 
                     const fullPath = [{ x: startX, y: startY }, ...path];
                     let firstVisibleIdx = -1;
@@ -57227,7 +57280,8 @@
                    follow pan (the viewer is watching someone else act), gated
                    on screen-true fog visibility like every enemy camera move. */
                 const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
-                if (!isHuman && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
+                if (!isHuman && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)
+                    && _isTileVisibleToViewer(x, y)) {
                     const _curZoom = typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
                         ? getUserZoomScale()
                         : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
@@ -59280,7 +59334,7 @@
                     return damage;
                 }
 
-                const _twFogAI = state.fogOfWar && state.activePlayer !== getViewerPlayer();
+                const _twFogAI = state.activePlayer !== getViewerPlayer();
                 const _twAttackerVisible = _twFogAI && _shouldCameraFollowUnit(unit);
 
                 const towerCamZoom = getCloseZoom ? getCloseZoom() : getDefaultZoom();
@@ -62386,7 +62440,7 @@
                         _hpHero = _playSelfCastHeroShot(unit, { spellName: 'Healing Potion', tallyKind: 'heal' });
                     }
                     if (!_hpHero) {
-                        if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                        if (!state.cameraDisabled && _shouldCameraFollowUnit(unit) && _fogCamAllSeen(target)) {
                             focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
                                 zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
                                 holdMs: 99999, persist: true, transitionMs: 350,
@@ -62492,7 +62546,7 @@
                         _mpHero = _playSelfCastHeroShot(unit, { spellName: 'Mana Potion', tallyKind: 'heal' });
                     }
                     if (!_mpHero) {
-                        if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                        if (!state.cameraDisabled && _shouldCameraFollowUnit(unit) && _fogCamAllSeen(target)) {
                             focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
                                 zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
                                 holdMs: 99999, persist: true, transitionMs: 350,
@@ -63046,7 +63100,7 @@
             if (!state.cinematicActionCam || state.cameraDisabled || _skipVisuals()) return false;
             if (state.phase !== 'battle') return false;
             if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false;
-            if (camera._fogBlocked(_fogCamTilesVisible({ x: unit.x, y: unit.y }))) return false;
+            if (!_fogCamAllSeen(unit)) return false;
             if (!_cineTpsAnchor(unit, unit)) return false;
 
             const sequenceId = ++boardCameraSequenceId;
@@ -63183,8 +63237,7 @@
             if (!state.cinematicActionCam || state.cameraDisabled || _skipVisuals()) return null;
             if (state.phase !== 'battle' || state.winner) return null;
             if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return null;
-            if (camera._fogBlocked(_fogCamTilesVisible(
-                { x: unit.x, y: unit.y }, { x: target.x, y: target.y }))) return null;
+            if (!_fogCamAllSeen(unit, target)) return null;
             if (!_cineTpsAnchor(unit, unit)) return null;
 
             const sequenceId = ++boardCameraSequenceId;
@@ -63358,22 +63411,26 @@
                 if (_shot) return { mode: 'support', ...(_shot) };
             }
 
+            // Frame only the ends the viewer can see: a midpoint between a
+            // visible target and a hidden caster points straight at the caster.
             const points = [];
-            if (casterUnit && !casterUnit.dead) {
+            if (casterUnit && !casterUnit.dead && _fogCamAllSeen(casterUnit)) {
                 points.push({ x: casterUnit.x, y: casterUnit.y });
             }
-            points.push({ x: tx, y: ty });
+            const _tgtU = typeof unitAt === 'function' ? unitAt(tx, ty) : null;
+            if (_fogCamAllSeen(_tgtU && !_tgtU.dead ? _tgtU : { x: tx, y: ty })) points.push({ x: tx, y: ty });
 
-            const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
-            const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
-
-            focusBoardCameraOnTiles([{ x: cx, y: cy }], {
-                zoom: _getBattleZoom(),
-                holdMs: 99999,
-                persist: true,
-                transitionMs: opts.transitionMs ?? 380,
-                _fogAllowed: _fogCamTilesVisible(...points)
-            });
+            if (points.length) {
+                const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
+                const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
+                focusBoardCameraOnTiles([{ x: cx, y: cy }], {
+                    zoom: _getBattleZoom(),
+                    holdMs: 99999,
+                    persist: true,
+                    transitionMs: opts.transitionMs ?? 380,
+                    _fogAllowed: true
+                });
+            }
             /* spellId / spellName ride the result so online.js's relay carries
                the RESOLVED id (a bare _spellFocusCamera(unit, x, y) call recovers
                it from _focusCamSpellCtx here — the relay used to send null and
@@ -65700,7 +65757,7 @@
                             animateBoardCameraPath(
                                 { x: _displaceFromX, y: _displaceFromY },
                                 { x: target.x, y: target.y },
-                                { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: _fogCamTilesVisible({ x: _displaceFromX, y: _displaceFromY }, { x: target.x, y: target.y }) }
+                                { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: _fogCamAllSeen({ x: _displaceFromX, y: _displaceFromY }, { x: target.x, y: target.y }) }
                             );
                         }
                     } else if (!state.cameraDisabled) {
@@ -66118,7 +66175,7 @@
                             animateBoardCameraPath(
                                 { x: _pullFromX, y: _pullFromY },
                                 { x: _pullEndX, y: _pullEndY },
-                                { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: _fogCamTilesVisible({ x: _pullFromX, y: _pullFromY }, { x: _pullEndX, y: _pullEndY }) }
+                                { duration: pullAnimMs, zoom: _pullZoom, _fogAllowed: _fogCamAllSeen({ x: _pullFromX, y: _pullFromY }, { x: _pullEndX, y: _pullEndY }) }
                             );
                         }
                     }, _yankDelayMs);
@@ -66194,7 +66251,7 @@
                         animateBoardCameraPath(
                             { x: ux, y: uy },
                             { x: tx, y: ty },
-                            { duration: 250, zoom: _swapZoom, _fogAllowed: _fogCamTilesVisible({ x: ux, y: uy }, { x: tx, y: ty }) }
+                            { duration: 250, zoom: _swapZoom, _fogAllowed: _fogCamAllSeen({ x: ux, y: uy }, { x: tx, y: ty }) }
                         );
                     }
 
@@ -66561,7 +66618,7 @@
                             animateBoardCameraPath(
                                 { x: _escFromX, y: _escFromY },
                                 { x: candidates[0].x, y: candidates[0].y },
-                                { duration: 220, zoom: _escZoom, _fogAllowed: _fogCamTilesVisible({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
+                                { duration: 220, zoom: _escZoom, _fogAllowed: _fogCamAllSeen({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
                             );
                         }
                     }
@@ -67969,7 +68026,7 @@
                                     animateBoardCameraPath(
                                         { x: _grFromX, y: _grFromY },
                                         { x: target.x, y: target.y },
-                                        { duration: _grAnimMs, zoom: _grZoom, _fogAllowed: _fogCamTilesVisible({ x: _grFromX, y: _grFromY }, { x: target.x, y: target.y }) }
+                                        { duration: _grAnimMs, zoom: _grZoom, _fogAllowed: _fogCamAllSeen({ x: _grFromX, y: _grFromY }, { x: target.x, y: target.y }) }
                                     );
                                 }
                             } else if (_grTether) {
@@ -68020,7 +68077,7 @@
                             animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
                             resolveTileArrival(unit, { via: 'self' });   // ⛓ reeled in onto whatever waits there
 
-                            if (!state.cameraDisabled && _fogCamTilesVisible({ x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
+                            if (!state.cameraDisabled && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
                                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                                 const _grSelfZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
@@ -69013,7 +69070,7 @@
                 // (VFX, breach, damage, the slide itself) is deferred to start
                 // ON that cut so the run begins the moment the chase cam does.
                 let _dashCam = null;
-                if (!state.cameraDisabled && _fogCamTilesVisible({ x: casterStartX, y: casterStartY }, { x, y })) {
+                if (!state.cameraDisabled && _fogCamAllSeen(unit, { x: casterStartX, y: casterStartY }, { x, y })) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                     _dashCam = state.cinematicActionCam ? animateDashActionCamera(
@@ -70304,6 +70361,19 @@
             state.shotClock.pausedAt = null;
             state.shotClock.active = true;
             _applyShotClockPause();
+        }
+
+        /* Press refund (weakness/crit) → the clock starts over at the full
+           limit. Same activation, so in-flight actions stay valid. If a
+           cinematic has it paused, re-anchor the pause so it resumes full. */
+        function _resetShotClockForPress(unit) {
+            const sc = state.shotClock;
+            if (!sc || !sc.active || state.winner) return;
+            if (unit && state._blitzActiveUnitId != null && unit.id !== state._blitzActiveUnitId) return;
+            const now = Date.now();
+            sc.startedAt = now;
+            if (sc.pausedAt != null) sc.pausedAt = now;
+            _renderShotClockPill(null, false);
         }
 
         function _stopShotClock() {

@@ -2680,8 +2680,12 @@
                 // (overview → DoT pans → storm follow → regen) stays at one
                 // consistent angle instead of swinging the camera each beat.
                 const _stormTilt = (_cam._restTilt != null) ? _cam._restTilt : 52;
+                // Fog: never follow the storm onto a tile the viewer can't see
+                // (it hunts the nearest unit — often a hidden enemy).
+                const _stormSees = (x, y) => !state.fogOfWar || typeof _isTileVisibleToViewer !== 'function'
+                    || _isTileVisibleToViewer(Math.round(x), Math.round(y));
                 // Swoop focus onto the storm's starting tile…
-                _cam.moveTo({
+                if (_stormSees(_focus.fromX, _focus.fromY)) _cam.moveTo({
                     x: _focus.fromX, y: _focus.fromY,
                     zoom: _stormZoom, tilt: _stormTilt,
                     duration: _followLeadMs, easing: 'easeInOut',
@@ -2691,6 +2695,7 @@
                 if (_focus.toX !== _focus.fromX || _focus.toY !== _focus.fromY) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || state.cameraDisabled) return;
+                        if (!_stormSees(_focus.toX, _focus.toY)) return;
                         _cam.moveTo({
                             x: _focus.toX, y: _focus.toY,
                             zoom: _stormZoom, tilt: _stormTilt,
