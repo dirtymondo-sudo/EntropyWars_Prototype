@@ -42225,9 +42225,8 @@
                         boss._isBoss = true;
                         boss._mdBoss = true;
                         boss.name = 'Dungeon Lord';
-                        boss.maxHp = Math.round(boss.maxHp * 1.6);
-                        boss.hp = boss.maxHp;
-                        boss.atk = Math.round(boss.atk * 1.2);
+                        /* ONE STATLINE EVERYWHERE (mondo 2026-10-06: "i absolutely do not want there to be different stats"):
+                           the boss used to take ×1.6 HP and ×1.2 ATK here; it is its race at its level, like every unit */
                     }
                 }
             }
