@@ -4835,6 +4835,19 @@
             pushUndoSnapshot(true);
 
             applyStatusEffects(unit, [{ id: 'guarding', duration: 1 }], 'Guard: ');
+            /* Guard's breather (data.js GUARD_RESTORE): a little HP + MP right
+               now, and the guardRegen status adds to this round's recovery. */
+            const _gr = (typeof GUARD_RESTORE !== 'undefined') ? GUARD_RESTORE : { hpPct: 0.05, mpPct: 0.05 };
+            const _grHp = Math.round((unit.maxHp || 0) * _gr.hpPct);
+            if (_grHp > 0) applyHealingToUnit(unit, _grHp, null, { preScaled: true, jitterY: 16 });
+            const _grMp = Math.min(Math.max(0, (unit.maxMp || 0) - (unit.mp || 0)),
+                Math.max(1, Math.round((unit.maxMp || 0) * _gr.mpPct)));
+            if ((unit.maxMp || 0) > 0 && _grMp > 0) {
+                unit.mp = (unit.mp || 0) + _grMp;
+                markDirty('teams', 'selectedUnit', 'hud');
+                window.setTimeout(() => showFloatingTextForUnit(unit, `+${_grMp} MP`, 'buff', { durationMs: 900, jitterY: 32 }), 300);
+            }
+            applyStatusEffects(unit, [{ id: 'guardRegen', duration: 1 }], 'Guard: ');
 
             unit._guardCounterBonus = 0.15;
             /* Overwatch rides the Guard stance: one reaction shot at the first
@@ -4842,7 +4855,7 @@
                (checkOverwatchTriggers, battle.js). Disarmed by the same round
                reset that clears _guardCounterBonus. */
             unit._overwatchArmed = true;
-            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
+            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter, a little HP/MP back and extra recovery this round — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 

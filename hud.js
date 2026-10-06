@@ -2708,7 +2708,8 @@ const _HRLG_SB_COLORS = {
   possessed:'#c060e0',infected:'#7fb84a',stoneform:'#8c8c98',soulBound:'#c050a0',
   voodoo:'#d49050',shadowRealm:'#40405c',tethered:'#d4a050',incendiary:'#ff8040',
   sparkling:'#e8d060',levitating:'#70b8e0',blessed:'#e8c850',monster:'#40c070',
-  extendedClips:'#a0a0a0',carForm:'#5090d0',mechaForm:'#8080d0',shield:'#63d0ff'
+  extendedClips:'#a0a0a0',carForm:'#5090d0',mechaForm:'#8080d0',shield:'#63d0ff',
+  guardRegen:'#5ad4a8'
 };
 function _hrlgStatusChips(unit) {
   const chips = [];

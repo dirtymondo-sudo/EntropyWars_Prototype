@@ -10446,6 +10446,13 @@ function _releaseControl(unit) {
     }
 }
 
+/* Guard's restore (2026-10-06, mondo: "restore a little bit of health and
+   mana and increase your health and mana regen a little for one round").
+   hpPct / mpPct land the moment Guard is taken (ui.js doGuard); regenHpPct /
+   regenMpPct ride the guardRegen status at that round's end, on top of the
+   baseline 5% HP / 3% MP recovery. */
+const GUARD_RESTORE = { hpPct: 0.05, mpPct: 0.05, regenHpPct: 0.05, regenMpPct: 0.03 };
+
 const STATUS_DEFS = {
 
     burn: {
@@ -11419,6 +11426,33 @@ const STATUS_DEFS = {
         stageMod: { def: 2, mdef: 2 },
         iconSrc: createStatusIconDataUri('🛡', '#1a2a3a', '#c8e8ff', '#5a9ad4')
     },
+    /* 🩹 Recovering (2026-10-06, mondo): the Guard stance's breather. Guard
+       restores GUARD_RESTORE.hpPct / mpPct of max HP / MP on the spot (ui.js
+       doGuard) and puts this on the unit for the round: at that round's end
+       it adds regenHpPct / regenMpPct on top of the baseline recovery tick
+       (battle.js REGEN_PERCENT 5% HP, MP_REGEN_PERCENT 3% MP), then wears off. */
+    guardRegen: {
+        icon: '🩹',
+        glyph: '🩹',
+        short: 'RCV',
+        label: 'Recovering',
+        colorText: 'recovering',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('🩹', '#173930', '#d6fff0', '#5ad4a8'),
+        onRoundEnd(unit) {
+            if (!unit || unit.dead) return;
+            const hpAmt = Math.round((unit.maxHp || 0) * GUARD_RESTORE.regenHpPct);
+            if (hpAmt > 0) applyHealingToUnit(unit, hpAmt, null, { preScaled: true });
+            const mpGain = Math.min(Math.max(0, (unit.maxMp || 0) - (unit.mp || 0)),
+                Math.max(1, Math.round((unit.maxMp || 0) * GUARD_RESTORE.regenMpPct)));
+            if ((unit.maxMp || 0) > 0 && mpGain > 0) {
+                unit.mp = (unit.mp || 0) + mpGain;
+                showFloatingTextForUnit(unit, `+${mpGain} MP`, 'buff', { durationMs: 900, jitterY: 32 });
+            }
+        }
+    },
 
     // Carrier statuses for stat-stage buffs/debuffs (statStageBoost). The actual
     // ATK/DEF/SPD/INT magnitude lives on the unit.statStageMods ledger (each
@@ -11711,6 +11745,7 @@ const STATUS_LIBRARY_DESCS = {
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
     guarding:  'Braced for impact — bonus defense until the next turn.',
+    guardRegen: 'Catching a breath from Guard: an extra 5% max HP and 3% max MP recover at the end of this round.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
     scanner:   'Scanned — this unit is revealed and tracked.',
@@ -23225,7 +23260,7 @@ const TUTORIAL_LESSONS = [
               say: 'When every vessel has acted the <b>round</b> ends: AP refills, statuses tick, and the clock starts over.',
               focus: { el: '#roundLabel' }, auto: 3400 },
             { id: 'guard', title: 'GUARD',
-              say: 'BLADE took a hit. <b>GUARD</b> raises DEF and M DEF and arms <b>OVERWATCH</b> — the first enemy to stop within reach eats a free shot. Guard ends the turn.',
+              say: 'BLADE took a hit. <b>GUARD</b> raises DEF and M DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to stop within reach eats a free shot. Guard ends the turn.',
               hint: 'GUARD',
               focus: { hud: 'guard' }, allow: ['guard', 'move'],
               goal: { type: 'guard', unit: 'p1-0' } },
@@ -23427,7 +23462,7 @@ const TUTORIAL_LESSONS = [
               allow: ['move', 'attack', 'end'],
               goal: { type: 'attack', unit: 'p1-0', target: 'p2-0', arc: 'back' } },
             { id: 'guard', title: 'OVERWATCH',
-              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, and arms <b>OVERWATCH</b> — the first enemy to finish a move inside SCOPE\'s range takes a reaction shot.',
+              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to finish a move inside SCOPE\'s range takes a reaction shot.',
               hint: 'GUARD',
               focus: { hud: 'guard' }, allow: ['guard', 'move', 'end'],
               goal: { type: 'guard', unit: 'p1-1' } },
