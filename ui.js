@@ -6961,15 +6961,31 @@
                 { title: 'Buffs & Blessings',  match: d => d.kind === 'buff' },
                 { title: 'Markers & Other',    match: d => d.kind !== 'debuff' && d.kind !== 'buff' }
             ];
+            // Stat-change carriers (Discord, Overclock, Pixie Dust...) are stat changes,
+            // not status effects, but spells put them on units too, so they list in their
+            // own group with the effect read straight off the def (2026-10-06).
+            groups.push({ title: 'Stat Changes', match: d => !!d.statChange, stat: true });
+            const _stName = { atk: 'ATK', def: 'DEF', int: 'INT', mdef: 'M.DEF', spd: 'SPD', matk: 'M.ATK' };
+            const _sgn = n => (n > 0 ? '+' : '−') + Math.abs(n);
+            // A def's real numbers, as a sentence (stage mods, MOV, RNG).
+            const _derive = (id, d) => {
+                const parts = [];
+                for (const [k, v] of Object.entries(d.stageMod || {})) if (v) parts.push(`${_sgn(v)} ${_stName[k] || k.toUpperCase()} stage${Math.abs(v) === 1 ? '' : 's'}`);
+                if (d.moveDelta) parts.push(`${_sgn(d.moveDelta)} MOV`);
+                if (d.rangeDelta) parts.push(`${_sgn(d.rangeDelta)} RNG`);
+                if (parts.length) return parts.join(', ') + '.';
+                if (id === 'statUp') return 'Stats raised by the spell that cast it, by the stages it lists.';
+                if (id === 'statDown') return 'Stats lowered by the spell that cast it, by the stages it lists.';
+                return d.colorText ? d.colorText.charAt(0).toUpperCase() + d.colorText.slice(1) + '.' : '';
+            };
             let html = '<div class="pause-status-lib" style="text-align:left;padding-right:6px;">';
             for (const g of groups) {
-                // statChange carriers are stat changes, not status effects —
-                // they never list here (belt and braces on top of the missing
-                // STATUS_LIBRARY_DESCS entry).
-                const rows = Object.entries(STATUS_DEFS).filter(([id, d]) => d && !d.statChange && g.match(d) && descs[id]);
+                // Every real status lists; display-only rows (Heal/Mana/Damage) never do.
+                const rows = Object.entries(STATUS_DEFS).filter(([id, d]) => d && d.category !== 'display' && (g.stat ? d.statChange : !d.statChange) && g.match(d))
+                    .map(([id, d]) => [id, d, (!g.stat && descs[id]) || _derive(id, d)]).filter(r => r[2]);
                 if (!rows.length) continue;
                 html += `<div style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px;opacity:.65;margin:10px 2px 6px;">${g.title}</div>`;
-                for (const [id, d] of rows) {
+                for (const [id, d, desc] of rows) {
                     const color = (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[id]) || '#8fa3b5';
                     const icon = d.iconSrc
                         ? `<img src="${d.iconSrc}" style="width:22px;height:22px;image-rendering:pixelated;flex:0 0 auto;margin-top:2px;" alt="">`
@@ -6982,7 +6998,7 @@
                                 <span style="font-weight:600;">${d.label || id}</span>
                                 <span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${color}33;color:${color};border:1px solid ${color}66;">${d.short || ''}</span>
                             </div>
-                            <div style="font-size:12px;opacity:.8;line-height:1.35;">${descs[id]}</div>
+                            <div style="font-size:12px;opacity:.8;line-height:1.35;">${desc}</div>
                         </div>
                     </div>`;
                 }
