@@ -1000,3 +1000,454 @@ const ThreeCamera = (function () {
         FAR
     };
 })();
+
+/* ══ THE CINEMATIC CAMERA (2026-10-06, mondo: "a cinematic cam mode where i can move the camera around the map and take
+   screenshots or screen record … a screenshot of each map or arena so in the map select it can show the location in the
+   background … a cinematic pan over the landscape or zoom … eventually … cutscenes or cinematics in the story mode").
+   A free eye over whatever the shared canvas is drawing: the building / a zone room (three-renderer.js _hqFrame) or a
+   fight (renderFrame). Opened from either pause menu (CAMERA) or F8; F8 / ESC with the mouse free / EXIT leave it.
+     THE FLY: the editor's creative controls — W A S D (or the arrows) level with the ground, SPACE up, SHIFT down, the
+       mouse turns the eye while it is captured (a click on the view or E; E or ESC frees it), the wheel sets the speed.
+       The eye and the lens ease, so a hand-flown move already reads as a camera move. Z / X narrow / widen the lens.
+     THE HUD: every page layer over the canvas is faded out while the mode is on (the walk's strip, the fight's docks,
+       the nameplates); the stills and the video read the canvas alone, so they never carry a panel either way.
+     PHOTO (P): the frame as a PNG at the canvas's own size. MAP SHOT (M): a 1600×900 JPEG named after the site
+       (<site>.jpg) — kept in this browser (IndexedDB `ew_mapshots`, so the map select shows it at once) and downloaded
+       for R2 Assets/MapShots/, where every player's map select finds it (match-select.js).
+     VIDEO (R): MediaRecorder on a 2D mirror of the canvas (copied right after each draw, so WebGL and WebGPU both
+       record, Firefox included), capped at 1920 px on the long side, silent; MP4 where the browser records it, else WebM.
+     THE PATH: + KEY (K) files the eye (position in metres, yaw, pitch, lens, the seconds to the next key); PLAY (ENTER)
+       flies it on one eased Catmull-Rom curve; PLAY + REC records the flight. Kept per room / board in localStorage;
+       COPY PATH puts its JSON on the clipboard — the same shape EWCine.play(path, opts) takes, for the story's cutscenes.
+   Viewer-local, nothing on `state`, nothing relayed (RULE #2): a still or a video is the viewer's own. ══ */
+var EWCine = (function () {
+    'use strict';
+    if (typeof window === 'undefined') return null;
+    var C = {
+        on: false, inited: false, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, tYaw: 0, tPitch: 0, fov: 45, tFov: 45, fov0: null,
+        speed: 8, vel: { x: 0, y: 0, z: 0 }, keys: {}, look: false, unit: 1, kind: '', key: '', site: '', cam: null,
+        ctxAt: 0, last: 0, path: [], play: null, rec: null, want: { photo: false, map: false }, mirror: null,
+        panel: null, hidden: [], freedAt: 0
+    };
+    var SEG_S = 3;   // a new key's seconds to the next one
+    var MOVE = { w: 1, a: 1, s: 1, d: 1, arrowup: 1, arrowdown: 1, arrowleft: 1, arrowright: 1, ' ': 1, shift: 1, z: 1, x: 1 };
+
+    function canvasEl() {
+        var c = document.getElementById('threeCanvas');
+        if (!c && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getCanvas) { try { c = ThreeRenderer.getCanvas(); } catch (e) {} }
+        return c || null;
+    }
+    function locked() { var c = canvasEl(); return !!c && document.pointerLockElement === c; }
+    function stamp() { var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+    function safeName(s) { return String(s || 'scene').replace(/[^a-z0-9_.-]+/gi, '_'); }
+    function download(blob, name) {
+        var a = document.createElement('a'), url = URL.createObjectURL(blob);
+        a.href = url; a.download = name; a.style.display = 'none';
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { try { URL.revokeObjectURL(url); a.remove(); } catch (e) {} }, 4000);
+    }
+
+    /* ── THE MAP SHOTS: IndexedDB `ew_mapshots` (store `shots`, key = site id, value = the JPEG blob) ── */
+    var _db = null, _urls = {};
+    function idb() {
+        if (_db) return _db;
+        _db = new Promise(function (ok, no) {
+            if (typeof indexedDB === 'undefined') { no(new Error('no IndexedDB')); return; }
+            var q = indexedDB.open('ew_mapshots', 1);
+            q.onupgradeneeded = function () { if (!q.result.objectStoreNames.contains('shots')) q.result.createObjectStore('shots'); };
+            q.onsuccess = function () { ok(q.result); };
+            q.onerror = function () { no(q.error); };
+        });
+        _db.catch(function () { _db = null; });
+        return _db;
+    }
+    function shotPut(site, blob) {
+        return idb().then(function (db) {
+            return new Promise(function (ok, no) { var t = db.transaction('shots', 'readwrite'); t.objectStore('shots').put(blob, site); t.oncomplete = function () { ok(true); }; t.onerror = function () { no(t.error); }; });
+        });
+    }
+    function shotGet(site) {
+        return idb().then(function (db) {
+            return new Promise(function (ok) { var q = db.transaction('shots', 'readonly').objectStore('shots').get(site); q.onsuccess = function () { ok(q.result || null); }; q.onerror = function () { ok(null); }; });
+        }).catch(function () { return null; });
+    }
+    /* the picture the map select shows for a site: this browser's own shot, else the one on R2; null when neither loads */
+    function mapShotUrl(site) {
+        if (!site) return Promise.resolve(null);
+        if (_urls[site] !== undefined) return Promise.resolve(_urls[site]);
+        return shotGet(site).then(function (blob) {
+            if (blob) return (_urls[site] = URL.createObjectURL(blob));
+            var tok = window._EW_BUILD_TOKEN ? '?v=' + window._EW_BUILD_TOKEN : '';
+            var url = 'https://cdn.entropywars.net/Assets/MapShots/' + encodeURIComponent(site) + '.jpg' + tok;
+            return new Promise(function (ok) {
+                var im = new Image();
+                im.onload = function () { ok(_urls[site] = url); };
+                im.onerror = function () { ok(_urls[site] = null); };
+                im.src = url;
+            });
+        });
+    }
+
+    /* ── THE PANEL (the mouse free) and the toast ── */
+    function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+    function toast(msg) {
+        var t = document.getElementById('ewCineToast');
+        if (!t) { t = el('div', 'ew-cine-toast'); t.id = 'ewCineToast'; document.body.appendChild(t); }
+        t.textContent = msg; t.classList.add('on');
+        clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2600);
+    }
+    function panelBuild() {
+        if (C.panel) return C.panel;
+        var p = el('div', 'ew-cine-panel'); p.id = 'ewCinePanel';
+        var rec = el('div', 'ew-cine-rec'); rec.id = 'ewCineRec'; document.body.appendChild(rec);
+        var row1 = el('div', 'ew-cine-row'), row2 = el('div', 'ew-cine-row');
+        function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
+        function slider(row, label, min, max, step, get, set) {
+            var w = el('label', 'ew-cine-sl'), s = el('input'), v = el('em');
+            s.type = 'range'; s.min = min; s.max = max; s.step = step;
+            w.appendChild(el('span', null, label)); w.appendChild(s); w.appendChild(v); row.appendChild(w);
+            s.addEventListener('input', function () { set(+s.value); });
+            return function () { s.value = get(); v.textContent = (+get()).toFixed(0); };
+        }
+        btn(row1, 'PHOTO', function () { C.want.photo = true; });
+        btn(row1, 'MAP SHOT', function () { C.want.map = true; });
+        btn(row1, 'RECORD', function () { recToggle(); }, 'ewCineRecBtn');
+        var syncSpeed = slider(row1, 'SPEED', 1, 80, 1, function () { return C.speed; }, function (v) { C.speed = v; });
+        var syncLens = slider(row1, 'LENS', 12, 90, 1, function () { return C.tFov; }, function (v) { C.tFov = v; });
+        btn(row1, 'EXIT', function () { exit(); });
+        btn(row2, '+ KEY', function () { keyAdd(); }, 'ewCineKeyBtn');
+        btn(row2, 'UNDO KEY', function () { keyUndo(); });
+        btn(row2, 'PLAY', function () { play(null, {}); });
+        btn(row2, 'PLAY + REC', function () { play(null, { record: true }); });
+        var segIn = el('input'); segIn.type = 'number'; segIn.min = 0.5; segIn.max = 60; segIn.step = 0.5; segIn.value = SEG_S;
+        segIn.addEventListener('input', function () { var v = +segIn.value; if (v > 0) SEG_S = v; });
+        var segW = el('label', 'ew-cine-sl'); segW.appendChild(el('span', null, 'SECONDS PER KEY')); segW.appendChild(segIn); row2.appendChild(segW);
+        btn(row2, 'COPY PATH', function () { pathCopy(); });
+        btn(row2, 'CLEAR PATH', function () { C.path = []; pathSave(); panelSync(); toast('PATH CLEARED'); });
+        p.appendChild(row1); p.appendChild(row2);
+        p._sync = function () { syncSpeed(); syncLens(); };
+        document.body.appendChild(p);
+        return (C.panel = p);
+    }
+    function panelSync() {
+        var p = C.panel; if (!p) return;
+        var show = C.on && !C.look && !C.play;
+        p.classList.toggle('on', show);
+        if (show && p._sync) p._sync();
+        var kb = document.getElementById('ewCineKeyBtn'); if (kb) kb.textContent = '+ KEY (' + C.path.length + ')';
+        var rb = document.getElementById('ewCineRecBtn'); if (rb) { rb.textContent = C.rec ? 'STOP REC' : 'RECORD'; rb.classList.toggle('hot', !!C.rec); }
+        var r = document.getElementById('ewCineRec'); if (r) r.classList.toggle('on', !!(C.on && C.rec));
+    }
+
+    /* ── THE HUD: every layer over the canvas fades out (opacity, never display: the canvas's box must not move) ── */
+    function hudHide() {
+        hudShow();
+        var c = canvasEl(); if (!c) return;
+        for (var e = c; e && e.parentElement && e !== document.body; e = e.parentElement) {
+            var sibs = e.parentElement.children;
+            for (var i = 0; i < sibs.length; i++) {
+                var s = sibs[i];
+                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
+                C.hidden.push([s, s.style.opacity, s.style.pointerEvents]);
+                s.style.opacity = '0'; s.style.pointerEvents = 'none';
+            }
+        }
+    }
+    function hudShow() {
+        C.hidden.forEach(function (r) { try { r[0].style.opacity = r[1]; r[0].style.pointerEvents = r[2]; } catch (e) {} });
+        C.hidden = [];
+    }
+
+    /* ── on / off ── */
+    function available() { return performance.now() - C.ctxAt < 800; }
+    function enter(opts) {
+        opts = opts || {};
+        if (C.on) return true;
+        if (!opts.force && !available()) return false;
+        C.on = true; C.inited = false; C.vel = { x: 0, y: 0, z: 0 }; C.keys = {}; C.play = null;
+        panelBuild(); hudHide();
+        document.body.classList.add('ew-cine');
+        lockSet(true);
+        panelSync();
+        return true;
+    }
+    function exit() {
+        if (!C.on) return;
+        if (C.rec) recStop();
+        C.on = false; C.play = null; C.keys = {};
+        lockSet(false);
+        hudShow();
+        document.body.classList.remove('ew-cine');
+        var cam = C.cam;
+        if (cam && C.fov0 != null) { cam.fov = C.fov0; cam.updateProjectionMatrix(); }
+        C.fov0 = null; C.cam = null;
+        panelSync();
+        /* the building takes its mouse back on the walker's next gesture; a fight never held it */
+    }
+    function lockSet(on) {
+        var c = canvasEl();
+        try {
+            if (on) { if (c && document.pointerLockElement !== c && c.requestPointerLock) { var p = c.requestPointerLock(); if (p && typeof p.catch === 'function') p.catch(function () {}); } }
+            else if (document.pointerLockElement) document.exitPointerLock();
+        } catch (e) {}
+    }
+
+    /* ── THE FRAME: the renderer hands over its camera just before it draws (ctx: kind, unit = world units a metre, key) ── */
+    var _eul = null, _q = null, _crv = null;
+    function frame(cam, ctx) {
+        C.ctxAt = performance.now();
+        if (!C.on || !cam) return;
+        ctx = ctx || {};
+        var now = performance.now(), dt = C.last ? Math.min(0.1, (now - C.last) / 1000) : 0.016;
+        C.last = now;
+        if (ctx.key !== C.key || ctx.kind !== C.kind) { C.kind = ctx.kind || ''; C.key = ctx.key || ''; C.site = ctx.site || C.key; pathLoad(); panelSync(); }
+        C.unit = ctx.unit > 0 ? ctx.unit : 1;
+        if (!C.inited || C.cam !== cam) {
+            if (!_eul) { _eul = new THREE.Euler(0, 0, 0, 'YXZ'); _q = new THREE.Quaternion(); }
+            cam.updateMatrixWorld(true); cam.getWorldQuaternion(_q); _eul.setFromQuaternion(_q, 'YXZ');
+            C.x = cam.position.x; C.y = cam.position.y; C.z = cam.position.z;
+            C.yaw = C.tYaw = _eul.y; C.pitch = C.tPitch = _eul.x;
+            C.fov = C.tFov = cam.fov; if (C.fov0 == null || C.cam !== cam) C.fov0 = cam.fov;
+            C.cam = cam; C.inited = true;
+            if (C.panel && C.panel._sync) C.panel._sync();
+        }
+        if (C.play) playTick(now);
+        else flyTick(dt);
+        cam.position.set(C.x, C.y, C.z);
+        cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0);
+        if (Math.abs(cam.fov - C.fov) > 1e-3) { cam.fov = C.fov; cam.updateProjectionMatrix(); }
+        cam.updateMatrixWorld(true);
+    }
+    function flyTick(dt) {
+        var k = C.keys, V = C.vel, u = C.unit;
+        var sp = C.speed * u;
+        var mf = (k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0), mr = (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0), mu = (k[' '] ? 1 : 0) - (k.shift ? 1 : 0);
+        var n = Math.hypot(mf, mr) || 1, ease = Math.min(1, dt * 5);
+        var fx = -Math.sin(C.yaw), fz = -Math.cos(C.yaw), rx = Math.cos(C.yaw), rz = -Math.sin(C.yaw);
+        V.x += ((fx * mf + rx * mr) / n * sp - V.x) * ease; V.z += ((fz * mf + rz * mr) / n * sp - V.z) * ease; V.y += (mu * sp - V.y) * ease;
+        C.x += V.x * dt; C.y += V.y * dt; C.z += V.z * dt;
+        if (k.z) C.tFov = Math.max(12, C.tFov - 22 * dt);
+        if (k.x) C.tFov = Math.min(90, C.tFov + 22 * dt);
+        var le = Math.min(1, dt * 12);
+        C.yaw += (C.tYaw - C.yaw) * le; C.pitch += (C.tPitch - C.pitch) * le;
+        C.fov += (C.tFov - C.fov) * Math.min(1, dt * 6);
+    }
+
+    /* ── THE PATH (positions in metres: the same path serves the building's units and the board's) ── */
+    function pathStoreKey() { return 'ew_cine_path:' + C.kind + ':' + C.key; }
+    function pathLoad() { C.path = []; try { var j = JSON.parse(localStorage.getItem(pathStoreKey()) || 'null'); if (j && Array.isArray(j.keys)) C.path = j.keys; } catch (e) {} }
+    function pathSave() { try { localStorage.setItem(pathStoreKey(), JSON.stringify(pathJson())); } catch (e) {} }
+    function pathJson() { return { kind: C.kind, key: C.key, keys: C.path }; }
+    function keyAdd() {
+        if (!C.inited) return;
+        var u = C.unit, r = function (v) { return Math.round(v * 1000) / 1000; };
+        C.path.push({ p: [r(C.x / u), r(C.y / u), r(C.z / u)], yaw: r(C.tYaw), pitch: r(C.tPitch), fov: r(C.tFov), s: SEG_S });
+        pathSave(); panelSync(); toast('KEY ' + C.path.length);
+    }
+    function keyUndo() { if (C.path.length) { C.path.pop(); pathSave(); panelSync(); toast(C.path.length + ' KEYS'); } }
+    function pathCopy() {
+        var txt = JSON.stringify(pathJson());
+        var done = function () { toast('PATH COPIED · ' + C.path.length + ' KEYS'); };
+        try { navigator.clipboard.writeText(txt).then(done, function () { download(new Blob([txt], { type: 'application/json' }), 'EW_PATH_' + safeName(C.key) + '.json'); }); }
+        catch (e) { download(new Blob([txt], { type: 'application/json' }), 'EW_PATH_' + safeName(C.key) + '.json'); }
+    }
+    function play(path, opts) {
+        opts = opts || {};
+        var keys = (path && Array.isArray(path.keys)) ? path.keys : (Array.isArray(path) ? path : C.path);
+        if (!C.on || keys.length < 2) { if (C.on) toast('ADD TWO KEYS OR MORE'); return false; }
+        var u = C.unit, P = [], A = [], cum = [0];
+        var yawPrev = keys[0].yaw || 0;
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i], y = k.yaw || 0;
+            while (y - yawPrev > Math.PI) y -= Math.PI * 2;
+            while (y - yawPrev < -Math.PI) y += Math.PI * 2;
+            yawPrev = y;
+            P.push(new THREE.Vector3(k.p[0] * u, k.p[1] * u, k.p[2] * u));
+            A.push(new THREE.Vector3(y, k.pitch || 0, k.fov || 45));
+            if (i > 0) cum.push(cum[i - 1] + Math.max(0.1, +(keys[i - 1].s) || SEG_S));
+        }
+        C.play = { pos: new THREE.CatmullRomCurve3(P, false, 'centripetal'), ang: new THREE.CatmullRomCurve3(A, false, 'catmullrom', 0.5), cum: cum, total: cum[cum.length - 1], t0: performance.now(), rec: !!opts.record, onEnd: opts.onEnd || null, n: keys.length };
+        C.keys = {}; C.vel = { x: 0, y: 0, z: 0 };
+        if (C.play.rec && !C.rec) recStart();
+        lockSet(false);
+        panelSync();
+        return true;
+    }
+    function playTick(now) {
+        var Pl = C.play, T = (now - Pl.t0) / 1000;
+        var x = Math.min(1, T / Pl.total), e = x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;   // one ease over the whole flight
+        var s = e * Pl.total, seg = 0;
+        while (seg < Pl.cum.length - 2 && s > Pl.cum[seg + 1]) seg++;
+        var segLen = (Pl.cum[seg + 1] - Pl.cum[seg]) || 1, t = (seg + Math.min(1, Math.max(0, (s - Pl.cum[seg]) / segLen))) / (Pl.n - 1);
+        var p = Pl.pos.getPoint(t), a = Pl.ang.getPoint(t);
+        C.x = p.x; C.y = p.y; C.z = p.z; C.yaw = C.tYaw = a.x; C.pitch = C.tPitch = a.y; C.fov = C.tFov = a.z;
+        if (T >= Pl.total + 0.4) {
+            C.play = null;
+            if (Pl.rec && C.rec) recStop();
+            if (Pl.onEnd) { try { Pl.onEnd(); } catch (er) {} }
+            panelSync();
+        }
+    }
+    function stop() { if (C.play) { var r = C.play.rec; C.play = null; if (r && C.rec) recStop(); panelSync(); } }
+
+    /* ── AFTER THE DRAW: the stills and the video's frame are read while the drawing buffer is still this frame's ── */
+    function mirrorDraw(src, w, h) {
+        var m = C.mirror || (C.mirror = document.createElement('canvas'));
+        if (m.width !== w || m.height !== h) { m.width = w; m.height = h; }
+        var g = m.getContext('2d');
+        g.drawImage(src, 0, 0, w, h);
+        return m;
+    }
+    function after(canvas) {
+        if (!C.on || !canvas) return;
+        if (C.rec) { try { var R = C.rec; mirrorDraw(canvas, R.w, R.h); } catch (e) { recFail(e); } }
+        if (C.want.photo) {
+            C.want.photo = false;
+            var name = 'EW_' + safeName(C.key) + '_' + stamp() + '.png';
+            try {
+                var tmp = document.createElement('canvas'); tmp.width = canvas.width; tmp.height = canvas.height;
+                tmp.getContext('2d').drawImage(canvas, 0, 0);
+                tmp.toBlob(function (b) { if (b) { download(b, name); toast('PHOTO · ' + name); } else toast('THE PHOTO CAME BACK EMPTY'); }, 'image/png');
+            } catch (e) { try { canvas.toBlob(function (b) { if (b) { download(b, name); toast('PHOTO · ' + name); } }, 'image/png'); } catch (e2) { toast('THE PHOTO FAILED'); } }
+        }
+        if (C.want.map) {
+            C.want.map = false;
+            var site = C.site || C.key;
+            try {
+                var W = 1600, H = 900, sw = canvas.width, sh = canvas.height, ar = W / H, cw = sw, ch = sw / ar;
+                if (ch > sh) { ch = sh; cw = sh * ar; }
+                var sh2 = document.createElement('canvas'); sh2.width = W; sh2.height = H;
+                sh2.getContext('2d').drawImage(canvas, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, W, H);
+                sh2.toBlob(function (b) {
+                    if (!b) { toast('THE MAP SHOT CAME BACK EMPTY'); return; }
+                    if (_urls[site]) { try { URL.revokeObjectURL(_urls[site]); } catch (e) {} }
+                    delete _urls[site];
+                    shotPut(site, b).catch(function () {});
+                    download(b, safeName(site) + '.jpg');
+                    toast('MAP SHOT · ' + safeName(site) + '.jpg · R2 Assets/MapShots/');
+                }, 'image/jpeg', 0.88);
+            } catch (e) { toast('THE MAP SHOT FAILED'); }
+        }
+    }
+
+    /* ── THE VIDEO ── */
+    function recMime() {
+        if (typeof MediaRecorder === 'undefined') return null;
+        var L = ['video/mp4;codecs=avc1.640028', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+        for (var i = 0; i < L.length; i++) { try { if (MediaRecorder.isTypeSupported(L[i])) return L[i]; } catch (e) {} }
+        return '';
+    }
+    function recStart() {
+        if (C.rec) return;
+        var cv = canvasEl(), mime = recMime();
+        if (!cv || mime == null) { toast('THIS BROWSER CANNOT RECORD THE CANVAS'); return; }
+        var sw = cv.width, sh = cv.height, k = Math.min(1, 1920 / Math.max(sw, sh));
+        var w = Math.max(2, Math.round(sw * k / 2) * 2), h = Math.max(2, Math.round(sh * k / 2) * 2);
+        try {
+            var m = mirrorDraw(cv, w, h);
+            var stream = m.captureStream(60);
+            var mr = mime ? new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 16000000 }) : new MediaRecorder(stream);
+            var R = { mr: mr, chunks: [], w: w, h: h, t0: performance.now(), mime: mr.mimeType || mime || 'video/webm', tick: 0 };
+            mr.ondataavailable = function (e) { if (e.data && e.data.size) R.chunks.push(e.data); };
+            mr.onstop = function () {
+                clearInterval(R.tick);
+                var type = R.mime.split(';')[0], ext = /mp4/.test(type) ? 'mp4' : 'webm';
+                var name = 'EW_' + safeName(C.key) + '_' + stamp() + '.' + ext;
+                if (R.chunks.length) { download(new Blob(R.chunks, { type: type }), name); toast('VIDEO · ' + name); }
+                else toast('THE VIDEO CAME BACK EMPTY');
+            };
+            mr.start(500);
+            var lab = document.getElementById('ewCineRec');
+            R.tick = setInterval(function () { if (lab) { var s = Math.floor((performance.now() - R.t0) / 1000); lab.textContent = '● REC ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); } }, 250);
+            if (lab) lab.textContent = '● REC 0:00';
+            C.rec = R;
+        } catch (e) { recFail(e); return; }
+        panelSync();
+    }
+    function recStop() {
+        var R = C.rec; if (!R) return;
+        C.rec = null;
+        try { if (R.mr.state !== 'inactive') R.mr.stop(); } catch (e) {}
+        panelSync();
+    }
+    function recFail(e) { try { console.warn('[EWCine] the recording failed', e); } catch (x) {} var R = C.rec; C.rec = null; if (R) { clearInterval(R.tick); try { R.mr.stop(); } catch (x) {} } toast('THE RECORDING FAILED'); panelSync(); }
+    function recToggle() { if (C.rec) recStop(); else recStart(); }
+
+    /* ── INPUT: window capture listeners registered before the walk's and the board's, so nothing under the mode sees a key
+       or a click while it is on ── */
+    function inPanel(t) { return !!(t && t.closest && t.closest('#ewCinePanel')); }
+    function typing(t) { return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)); }
+    function onKeyDown(e) {
+        if (e.key === 'F8' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            if (C.on) exit(); else if (!enter()) return;
+            e.preventDefault(); e.stopImmediatePropagation(); return;
+        }
+        if (!C.on) return;
+        if (e.ctrlKey || e.metaKey || /^F\d+$/.test(e.key)) return;
+        if (typing(e.target) && e.target.type !== 'range') { e.stopImmediatePropagation(); return; }   // the panel's number field types; the game under it never hears
+        var k = (e.key || '').toLowerCase();
+        e.stopImmediatePropagation();
+        if (k !== 'tab') e.preventDefault();
+        if (C.play) { if (k === 'escape' || k === 'enter') stop(); return; }
+        if (MOVE[k]) { C.keys[k] = true; return; }
+        if (e.repeat) return;
+        if (k === 'escape') { if (!locked() && performance.now() - C.freedAt > 400) exit(); return; }
+        if (k === 'e') { lockSet(!locked()); return; }
+        if (k === 'p') { C.want.photo = true; return; }
+        if (k === 'm') { C.want.map = true; return; }
+        if (k === 'r') { recToggle(); return; }
+        if (k === 'k') { keyAdd(); return; }
+        if (k === 'backspace') { keyUndo(); return; }
+        if (k === 'enter') { play(null, {}); return; }
+    }
+    function onKeyUp(e) {
+        if (!C.on) return;
+        var k = (e.key || '').toLowerCase();
+        C.keys[k] = false; if (k === 'shift') C.keys.shift = false;
+        if (!typing(e.target)) e.stopImmediatePropagation();
+    }
+    function onMouse(e) {
+        if (!C.on || inPanel(e.target)) return;
+        if (e.type === 'mousemove' || e.type === 'pointermove') {
+            if (e.type === 'mousemove' && locked() && !C.play) {
+                var s = 0.0022 * (C.fov / 50);
+                C.tYaw -= (e.movementX || 0) * s;
+                C.tPitch = Math.max(-1.55, Math.min(1.55, C.tPitch - (e.movementY || 0) * s));
+            }
+            e.stopImmediatePropagation();
+            return;
+        }
+        if (e.type === 'wheel') { C.speed = Math.max(1, Math.min(80, C.speed * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); if (C.panel && C.panel._sync) C.panel._sync(); }
+        if (e.type === 'mousedown' && e.button === 0 && !locked() && !C.play) lockSet(true);
+        e.stopImmediatePropagation();
+        if (e.cancelable) e.preventDefault();
+    }
+    function onLockChange() {
+        if (!C.on) return;
+        var was = C.look;
+        C.look = locked();
+        if (was && !C.look) { C.freedAt = performance.now(); C.keys = {}; }
+        panelSync();
+    }
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+    ['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'pointerdown', 'pointerup', 'mousemove', 'pointermove'].forEach(function (t) { window.addEventListener(t, onMouse, true); });
+    window.addEventListener('wheel', onMouse, { capture: true, passive: false });
+    document.addEventListener('pointerlockchange', onLockChange);
+    window.addEventListener('blur', function () { C.keys = {}; });
+
+    return {
+        get on() { return C.on; },
+        get playing() { return !!C.play; },
+        get recording() { return !!C.rec; },
+        available: available,
+        enter: enter, exit: exit,
+        frame: frame, after: after,
+        play: play, stop: stop,
+        photo: function () { C.want.photo = true; }, mapShot: function () { C.want.map = true; },
+        record: recToggle,
+        path: function () { return pathJson(); },
+        mapShotUrl: mapShotUrl
+    };
+})();
+if (typeof window !== 'undefined') window.EWCine = EWCine;
