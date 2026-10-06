@@ -4859,6 +4859,10 @@
                     /* two-click casts (wave B): the first pick is per-viewer
                        aiming UI — the guest's own pick must survive the sync */
                     _spellPick1: 1,
+                    /* per-viewer: which one-shot achievements THIS client
+                       already toasted this match — the host's list must not
+                       block or reset the guest's */
+                    _matchAchievements: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,
@@ -5091,7 +5095,21 @@
             }
             function _unpackClock(data) {
                 if (data && Number.isFinite(data._matchElapsedMs)) {
-                    data = Object.assign({}, data, { startTime: Date.now() - Math.max(0, data._matchElapsedMs) });
+                    /* startTime is half of the match IDENTITY key (matchNumber:
+                       startTime) that the achievement commit guard, the live
+                       tier popups, the records poll and the result screen all
+                       key on. Re-deriving it from elapsed time moved it a few ms
+                       on EVERY sync, so on the guest each 2s poll saw a "new
+                       match", forgot what it had already popped and re-toasted
+                       every crossed tier forever (worst on a fresh profile, where
+                       tier I falls at once). Keep the guest's own value while it
+                       is the same match and within a few seconds of the host's. */
+                    var _fresh = Date.now() - Math.max(0, data._matchElapsedMs);
+                    var _cur = window._gameState;
+                    var _keep = _cur && Number.isFinite(_cur.startTime) && _cur.startTime > 0
+                        && (data.matchNumber || 0) === (_cur.matchNumber || 0)
+                        && Math.abs(_fresh - _cur.startTime) < 5000;
+                    data = Object.assign({}, data, { startTime: _keep ? _cur.startTime : _fresh });
                     delete data._matchElapsedMs;
                 }
                 if (!data || !data.shotClock || !Number.isFinite(data.shotClock.remainingMs)) return data;
@@ -5208,6 +5226,8 @@
                 '_skyThrowDestKey',
                 // two-click casts (wave B): the first pick is per-viewer aiming UI
                 '_spellPick1',
+                // per-viewer one-shot achievement guard (see skip list)
+                '_matchAchievements',
                 // per-viewer audio mix — snapshots from older builds (and
                 // replays) still carry these; never let them stomp the sliders
                 'musicVolume', 'sfxVolume', 'ambienceVolume'
