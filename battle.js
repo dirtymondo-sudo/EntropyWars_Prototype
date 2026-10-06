@@ -18795,7 +18795,7 @@
                         const condMetric = {
                             wipeout: 'wins_wipeout', tower_destroyed: 'wins_tower',
                             hourglasses_collected: 'wins_hourglass', nexus_dominance: 'wins_nexus',
-                            arena_composite: 'wins_composite', most_points: 'wins_composite',
+                            arena_composite: 'wins_composite', arena_keys_tiebreak: 'wins_composite', most_points: 'wins_composite',
                             sudden_death: 'wins_suddenDeath', flag_captures: 'wins_flags',
                         }[state._winCondition];
                         if (condMetric) add(condMetric, 1);
@@ -35406,7 +35406,7 @@
              fixedPool — true when the mode pins both numbers: the pool never
                          restocks (the old round-10 spawnPeriodicHourglasses top-up
                          would hand out extra Keys against a fixed 3-of-5 target).
-           Arena: 5 spawned / 3 to win. Every other mode is unchanged. */
+           Arena: 5 spawned / all 5 to win. Every other mode is unchanged. */
         function getArenaKeyRules(mpModeArg) {
             const mp = mpModeArg || (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
             const spawnCfg = mp && (mp.keySpawnCount | 0) > 0 ? (mp.keySpawnCount | 0) : 0;
@@ -35442,10 +35442,35 @@
                 return;
             }
 
+            /* Keys only on tiles a team can WALK to (mondo 2026-10-06: all 5 must be
+               findable). Flood from every unit's start over passable, non-Cube
+               tiles; walled-off pockets of a site cut never get a Key. Empty
+               flood (no units yet) = no filter. */
+            const _keyReach = (() => {
+                const W = bw(), H = bh(), seen = new Set(), q = [];
+                const ok = (x, y) => x >= 0 && y >= 0 && x < W && y < H && isTerrainPassable(x, y)
+                    && !(typeof isTowerTile === 'function' && isTowerTile(x, y));
+                for (const u of (state.units || [])) {
+                    if (!u || u.dead || (u.player !== 1 && u.player !== 2)) continue;
+                    const k = u.x + ',' + u.y;
+                    if (!seen.has(k)) { seen.add(k); q.push([u.x, u.y]); }
+                }
+                while (q.length) {
+                    const [x, y] = q.shift();
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const nx = x + dx, ny = y + dy, k = nx + ',' + ny;
+                        if (seen.has(k) || !ok(nx, ny)) continue;
+                        seen.add(k); q.push([nx, ny]);
+                    }
+                }
+                return seen.size > 1 ? seen : null;
+            })();
+            const _keyTileOk = (x, y) => !_keyReach || _keyReach.has(x + ',' + y);
+
             const candidates = [];
             for (let y = 0; y < bh(); y++) {
                 for (let x = 0; x < bw(); x++) {
-                    if (!unitAt(x, y) && isTerrainPassable(x, y)) candidates.push({
+                    if (!unitAt(x, y) && isTerrainPassable(x, y) && _keyTileOk(x, y)) candidates.push({
                         x,
                         y
                     });
@@ -35464,7 +35489,7 @@
                     for (let x = 0; x < (terrain[y]?.length || 0); x++) {
                         if (x < centerMinX || x > centerMaxX) continue;
                         const t = terrain[y][x];
-                        if ((floorId === 'ground' || floorId === 'earth') && !unitAt(x, y) && isTerrainPassable(x, y)) {
+                        if ((floorId === 'ground' || floorId === 'earth') && !unitAt(x, y) && isTerrainPassable(x, y) && _keyTileOk(x, y)) {
                             floorCandidates.push({ x, y });
                         } else if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
                             floorCandidates.push({ x, y });
@@ -41433,6 +41458,7 @@
                 flag_captures: '🏳️ CAPTURE TARGET',
                 sudden_death: '⚡ SUDDEN DEATH',
                 arena_composite: '⏱ ARENA SCORE',
+                arena_keys_tiebreak: '⏱ ARENA SCORE · KEYS',
                 nexus_dominance: '⬡ NEXUS DOMINANCE',
                 draw: '🤝 DRAW',
                 no_contest: '⚖️ NO CONTEST',
@@ -50149,7 +50175,7 @@
         // lab dashboards' "How Matches End" breakdown and the exports.
         const _WIN_COND_LABELS = {
             tower_destroyed: 'Cube destroyed', wipeout: 'Wipeout', hourglasses_collected: 'Keys secured',
-            nexus_dominance: 'Nexus dominance', arena_composite: 'Arena score (time)', most_kills: 'Most kills (time)',
+            nexus_dominance: 'Nexus dominance', arena_composite: 'Arena score (time)', arena_keys_tiebreak: 'Arena score tie (Keys)', most_kills: 'Most kills (time)',
             most_points: 'Most points (time)', sudden_death: 'Sudden death', flag_captures: 'Flag captures',
             most_captures: 'Most captures (time)', no_contest: 'No contest', unknown: 'Unknown',
         };
@@ -70184,7 +70210,7 @@
             }
 
             if (!state.winner && wcs.includes('hourglasses_collected')) {
-                // Arena: carry keysToWin (3 of the 5-Key pool); legacy modes: carry
+                // Arena: carry keysToWin (all 5 of the 5-Key pool); legacy modes: carry
                 // every Key on the board. getKeysToWin folds both rules.
                 const needHG = getKeysToWin(mpMode);
                 if (needHG > 0) {
@@ -70229,6 +70255,7 @@
                     flag_captures: `Player ${state.winner} wins by reaching the capture target!`,
                     sudden_death: `Player ${state.winner} wins in Sudden Death!`,
                     arena_composite: `Player ${state.winner} wins on Arena score!`,
+                    arena_keys_tiebreak: `Arena score tied — Player ${state.winner} wins holding more Keys!`,
                     nexus_dominance: `⬡ NEXUS DOMINANCE! Player ${state.winner} wins by controlling every Nexus zone!`,
                 };
                 addLog(winMsgs[state._winCondition] || `Player ${state.winner} wins the match!`);
@@ -70354,6 +70381,19 @@
                 state.winner = 2;
                 state._winCondition = 'arena_composite';
             } else {
+                /* Tied score (mondo 2026-10-06): the side holding more Keys wins;
+                   still level → Sudden Death (a draw never ends an Arena match). */
+                const _keysHeld = p => (state.hourglasses || []).filter(h => {
+                    if (h.carriedBy === null || h.carriedBy === undefined) return false;
+                    const c = state.units.find(u => u.id === h.carriedBy);
+                    return c && !c.dead && c.player === p;
+                }).length;
+                const k1 = _keysHeld(1), k2 = _keysHeld(2);
+                if (k1 !== k2) {
+                    state.winner = k1 > k2 ? 1 : 2;
+                    state._winCondition = 'arena_keys_tiebreak';
+                    return;
+                }
 
                 state.suddenDeathActive = true;
                 state.matchClock.paused = true;

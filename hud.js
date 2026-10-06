@@ -877,7 +877,7 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
           textShadow: '0 1px 3px rgba(0,0,0,0.95)',
         }}, '🏰 ' + towerHp + '/' + towerMax),
         /* Keys carried / Keys needed — the win-condition readout for the
-           fixed Arena pool (3 of 5). Flares when one Key from the win. */
+           fixed Arena pool (all 5). Flares when one Key from the win. */
         (mode.keysToWin | 0) > 0 && h('span', { style: {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.08em',
           color: mode.keyAlertPlayer === player ? '#ffd76a' : EW_T.inkMute,

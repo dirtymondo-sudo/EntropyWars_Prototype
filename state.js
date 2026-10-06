@@ -251,7 +251,7 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the Cube, secure 3 of the 5 Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. A win condition MUST be met; the 100-round cap is only a safety net (composite score, then Sudden Death).',
+                desc: 'Destroy the Cube, find all 5 hidden Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. After 20 rounds the higher Arena score wins (a bounty kill scores double); a tied score goes to the side holding more Keys, then Sudden Death.',
                 /* 2026-09-07 Arena rules pass: matches end ONLY on a real win
                    condition. The round cap is a "never literally forever"
                    backstop (AI training / balance runs want every objective to
@@ -260,10 +260,13 @@
                    match start (no round-10 restock), keysToWin secures the
                    THRESHOLD STABILIZED win. Read through battle.js
                    getArenaKeyRules(); every mode without these two fields keeps
-                   the legacy "carry every Key on the board" rule. */
-                roundLimit: 100,
+                   the legacy "carry every Key on the board" rule.
+                   2026-10-06 (mondo): 5 hidden Keys, ALL 5 to win; a 20-round
+                   limit where the Arena score decides (battle.js
+                   _resolveArenaTimerExpiry); bounty kills score double. */
+                roundLimit: 20,
                 keySpawnCount: 5,
-                keysToWin: 3,
+                keysToWin: 5,
                 timeLimitSec: 0,
                 hasTowers: true,
                 hasNexus: true,
