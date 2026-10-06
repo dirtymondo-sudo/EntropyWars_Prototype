@@ -5606,7 +5606,15 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .rce-name { color: #e6e9f2; }
 .rce-foot { padding: 6px 12px; border-top: 1px solid rgba(160,140,200,0.12); flex-shrink: 0; }
 .rce-insp { padding: 12px 14px 30px; }
-.rce-insp-h { display: flex; align-items: baseline; gap: 8px; font-size: 18px; margin-bottom: 6px; }
+.rce-insp-h { display: flex; align-items: center; gap: 8px; font-size: 18px; margin-bottom: 6px; }
+/* the race's portrait (or its 2D sprite when it has no portrait) — 2026-10-06 */
+.rce-art { image-rendering: pixelated; flex: none; object-fit: cover; border-radius: 4px; background: rgba(0,0,0,0.35); }
+.rce-art.sprite { object-fit: contain; object-position: center bottom; }
+.rce-art.thumb { width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
+.rce-art.big { width: 72px; height: 72px; border: 1px solid rgba(255,216,106,0.35); }
+.rce-ztable .rce-zin { width: 54px; }
+.rce-ztable .rce-zsep { width: 10px; border: none; background: transparent; }
+.rce-ztable thead tr:first-child th { color: #ffd86a; letter-spacing: 1px; text-align: center; }
 .rce-insp-h b { font-family: 'Cormorant SC', serif; color: #ffd86a; letter-spacing: 1px; }
 .rce-insp-h .slb2-tiny { margin-left: auto; }
 .rce-sec { font-size: 10px; letter-spacing: 0.14em; color: #8d84a8; margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(160,140,200,0.14); }

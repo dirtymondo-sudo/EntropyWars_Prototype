@@ -15422,7 +15422,7 @@
             /* THE JOBS REMOVAL (the user 2026-09-27): one template (CLASS_TEMPLATES[UNIT_CLASS]); a stale job key falls back to it */
             if (!template || template.cls !== UNIT_CLASS) template = CLASS_TEMPLATES[UNIT_CLASS] || { cls: UNIT_CLASS };
             const identity = resolveIdentityForBuild(template.cls, identityOverride || {});
-            const stats = computeUnitStats(identity.race);   // RACE_KITS inside (range / inspect)
+            const stats = computeUnitStats(identity.race, null, identity.zodiac);   // RACE_KITS inside (range / inspect); + the birth sign's natal stats (ZODIAC_EFFECTS)
             const equip = (loadout.equipment && Object.values(loadout.equipment).some(v => v)) ? loadout.equipment : getDefaultEquipment(template.cls);
 
             equip.handL = null;

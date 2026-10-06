@@ -699,7 +699,7 @@ function computeStats(race, cls) {
 }
 /* `equipment` = the loadout's spell ids since THE GEAR MERGE (SPELL_LIBRARY_PLAN Phase 4): the equipped passive rows'
    `statBonus` hooks (data.js passiveIdsStatBonus); an old { accessory1, accessory2 } object still reads the retired table. */
-function computeFullStats(race, cls, secJob, equipment, ups) {
+function computeFullStats(race, cls, secJob, equipment, ups, zodiac) {
   const base = computeStats(race, cls);
   const secB = { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };   // THE JOBS REMOVAL (2026-09-27): no second job
   const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment, ups)   // ups: a passive row's +1 / +2 (2026-10-06)
@@ -708,7 +708,8 @@ function computeFullStats(race, cls, secJob, equipment, ups) {
   const final = {};
   for (const k of ['hp','mp','atk','def','mdef','awr','int','spd']) {
     const b = base[k] || 0;
-    const d = (secB[k]||0) + (eqB[k]||0);
+    // the birth sign's natal change (data.js ZODIAC_EFFECTS, the race editor's ZODIAC tab) shows as a ± like gear
+    const d = (secB[k]||0) + (eqB[k]||0) + (zodiac && typeof window.zodiacNatalDelta === 'function' ? window.zodiacNatalDelta(zodiac, k) : 0);
     delta[k] = d;
     final[k] = Math.max(k==='awr'||k==='spd'?1:0, b + d);
   }
@@ -2772,9 +2773,9 @@ function PartyBuilder(props) {
     customSpells = mig;
     unitEquipment.accessory1 = null; unitEquipment.accessory2 = null;
   }
-  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || [], pbEffUps(unitRace, clsName, customSpells || [], st.partyMeta?.[player]?.[slot]?.spellUpgrades));
+  const { final: fullStats, delta: statDeltas } = computeFullStats(unitRace, clsName, secJob, customSpells || [], pbEffUps(unitRace, clsName, customSpells || [], st.partyMeta?.[player]?.[slot]?.spellUpgrades), identity.zodiac || 'aries');
   const learnedSpells = getLearnedSpells(clsName, customSpells);
-  const zodiacNature = typeof window.ZODIAC_NATURES !== 'undefined' ? window.ZODIAC_NATURES[identity.zodiac || 'aries'] : null;
+  const zodiacNatal = (window.ZODIAC_EFFECTS?.[identity.zodiac || 'aries']?.natal) || null;   // the race editor's ZODIAC tab
   const unitItems = unitLoadout.items || {};
 
   const rosterEntries = React.useMemo(() => {
@@ -3651,7 +3652,8 @@ function PartyBuilder(props) {
                 onClick:()=>{ if (z !== cur) { handleZodiacChange(z); sfx('uiCursorMove'); } } }, window.ZODIAC_ICONS?.[z] || z.slice(0, 2).toUpperCase()))),
             h('div', { className: 'pb-zodiac-read' },
               h('b', null, (window.ZODIAC_ICONS?.[cur] || ''), ' ', cur.toUpperCase(), h('span', null, ' · ', read.icon, ' ', el.toUpperCase(), ' SIGN')),
-              h('span', null, 'WHEN ', cur.toUpperCase(), ' RULES THE SKY (', every, ' ROUNDS IN EVERY ', every * zodiacs.length, '): +10% MOVE & ARMOR'),
+              h('span', null, 'WHEN ', cur.toUpperCase(), ' RULES THE SKY (', every, ' ROUNDS IN EVERY ', every * zodiacs.length, '): ', ((typeof window.zodiacSkySummary === 'function' && window.zodiacSkySummary(cur)) || 'NO CHANGE').toUpperCase()),
+              (typeof window.zodiacNatalSummary === 'function' && window.zodiacNatalSummary(cur)) ? h('span', null, 'BORN UNDER ', cur.toUpperCase(), ': ', window.zodiacNatalSummary(cur).toUpperCase()) : null,
               h('span', null, read.line, ' · 50% HARDER UNDER ITS OWN SKY'))));
       })(),
       h('div', { style:{ marginTop:'auto', fontSize:8, color:EW.inkDim, letterSpacing:'0.1em', lineHeight:1.5, padding:'6px 2px 0' } },
@@ -3690,7 +3692,7 @@ function PartyBuilder(props) {
   const notePaper = PB_NOTE_PAPER[unitFaction] || 'yellow';
 
   // STATS column (every tab but ROSTER): identity, vitals, the sheet, footprints, the type chart, the elements
-  const zMod = (mapped) => zodiacNature ? (zodiacNature.buff===mapped ? 'up' : zodiacNature.debuff===mapped ? 'dn' : null) : null;
+  const zMod = (mapped) => zodiacNatal ? ((zodiacNatal[mapped]||0) > 0 ? 'up' : (zodiacNatal[mapped]||0) < 0 ? 'dn' : null) : null;
   const statsPanel = h(React.Fragment, null,
     h('div', { className: 'pb-ident' },
       h('b', null, unitName),

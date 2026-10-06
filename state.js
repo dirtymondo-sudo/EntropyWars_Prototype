@@ -1374,13 +1374,12 @@
                 mult: 1
             };
             const match = unit.zodiac === state.activeZodiac;
-            return match ? {
-                active: true,
-                mult: 1.10
-            } : {
-                active: false,
-                mult: 1
-            };
+            if (!match) return { active: false, mult: 1 };
+            /* ZODIAC_EFFECTS (data.js, the race editor's ZODIAC tab): one multiplier per key. `mult` stays the ATK one for the
+               old readers; `m(key)` gives any other. */
+            const z = unit.zodiac;
+            const m = (k) => (typeof zodiacSkyMult === 'function') ? zodiacSkyMult(z, k) : 1.10;
+            return { active: true, mult: m('atk'), m };
         }
 
         function getSkyEventBonus(unit) {
@@ -3326,7 +3325,7 @@
             armor += (unit._bossBuffDef || 0);
             const sky = getSkyEventBonus(unit);
             if (sky.defMult !== 1) armor = Math.max(0, Math.round(armor * sky.defMult));
-            armor = Math.max(0, Math.round(armor * getZodiacBonus(unit).mult));
+            { const _zb = getZodiacBonus(unit); if (_zb.active) armor = Math.max(0, Math.round(armor * _zb.m(dt === 'magic' ? 'mdef' : 'def'))); }
 
             // Fold the relevant defense stat into the flat damage soak.
             // levelPowerStat reads the stat at its LEVEL-CAP equivalent (data.js
@@ -3355,7 +3354,7 @@
             const terrainMult = target ? getTerrainHealMultiplier(target.x, target.y, target) : 1;
             const skyMult = getSkyEventBonus(unit).healMult || 1;
             const weatherHealMult = target ? getWeatherHealMult(target.x, target.y) : 1;
-            const zodiacMult = getZodiacBonus(unit).mult;
+            const _zbH = getZodiacBonus(unit), zodiacMult = _zbH.active ? _zbH.m('heal') : 1;
             return Math.round((baseBonus + synergy) * terrainMult * skyMult * weatherHealMult * zodiacMult);
         }
 
@@ -3384,7 +3383,7 @@
             let bonus = synergy + sleepMod + terrainMod + weatherMod + streakBonus + floorBonus + statusDelta;
             const sky = getSkyEventBonus(unit);
             if (sky.atkMult !== 1) bonus = Math.round(bonus * sky.atkMult);
-            bonus = Math.round(bonus * getZodiacBonus(unit).mult);
+            { const _zb = getZodiacBonus(unit); if (_zb.active) bonus = Math.round(bonus * _zb.m(axis === 'magic' ? 'int' : 'atk')); }
             return bonus;
         }
 
@@ -3396,7 +3395,8 @@
             // INT-axis statuses (intDelta) + INT stages, via the shared getter.
             const stageMod = (typeof getStatusIntDelta === 'function') ? getStatusIntDelta(unit)
                 : (typeof getStatStageDelta === 'function') ? getStatStageDelta(unit, 'int') : 0;
-            return Math.max(0, Math.round(((unit.intStat || 0) + sleepMod + terrainMod + weatherMod + stageMod) * getZodiacBonus(unit).mult));
+            const _zb = getZodiacBonus(unit);
+            return Math.max(0, Math.round(((unit.intStat || 0) + sleepMod + terrainMod + weatherMod + stageMod) * (_zb.active ? _zb.m('int') : 1)));
         }
 
         function getStatusAwrOverride(unit) {
@@ -3414,7 +3414,8 @@
             const sleepMod = getSleepAffinityModifier(unit).awr || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).awr || 0;
             const weatherMod = getWeatherStatMod(unit).awr || 0;
-            return Math.max(0, Math.round(((unit.awr || 0) + sleepMod + terrainMod + weatherMod) * getZodiacBonus(unit).mult));
+            const _zb = getZodiacBonus(unit);
+            return Math.max(0, Math.round(((unit.awr || 0) + sleepMod + terrainMod + weatherMod) * (_zb.active ? _zb.m('awr') : 1)));
         }
 
         function getEffectiveInspect(unit) {

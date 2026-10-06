@@ -545,7 +545,7 @@ const RACE_ELEMENT_AFFINITY = {
     'cyborg':            { poison: 'resist' },
     'super sentai':      { poison: 'resist' },
     // ── stone & earth ──
-    'golem':             { poison: 'immune', earth: 'resist', water: 'weak' },
+    'golem':             { earth: 'resist', water: 'weak' },   // race editor 2026-10-06: poison immunity dropped
     'giant':             { earth: 'resist' },
     'cyclops':           { earth: 'resist' },
     // ── beasts & wilds ──
@@ -562,6 +562,7 @@ const RACE_ELEMENT_AFFINITY = {
     'firefighter': { fire: 'resist' },   // 2026-09-30
     'king kong':         { earth: 'resist' },
     'bigfoot':           { earth: 'resist' },
+    'black goo':         { poison: 'absorb' },   // race editor 2026-10-06
     // everyone else: elementally neutral (deliberately no row)
 };
 
@@ -3797,6 +3798,42 @@ const ZODIAC_ICONS = {
     pisces: '♓'
 };
 
+/* THE ZODIAC EFFECTS (race editor ZODIAC tab, 2026-10-06, mondo: "let me also change what buffs/stat changes the zodiacs
+   give"). One row per sign, two parts:
+     sky   — PERCENT bonuses a unit gets while ITS OWN sign rules the sky (state.js getZodiacBonus; the sky turns every
+             ZODIAC_ROTATION_ROUNDS rounds). atk = the attack bonus on physical hits · int = M ATK · def = armour vs physical ·
+             mdef = armour vs magic · awr = AWR · move = MOV tiles · heal = healing given. Shipped: +10 % on every key
+             (the old flat ×1.10). Negative numbers are allowed (a penalty while the sign rules).
+     natal — FLAT base stat changes a unit born under the sign always carries (data.js computeUnitStats, so every mode:
+             story at the unit's level, PvP at 100). Shipped: none.
+   The race editor's edits write into this object in place (EWRaceMods doc.zodiac), OFF in an online match. */
+const ZODIAC_SKY_KEYS = ['atk', 'int', 'def', 'mdef', 'awr', 'move', 'heal'];
+const ZODIAC_NATAL_KEYS = ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'awr'];
+const ZODIAC_EFFECTS = {};
+AVAILABLE_ZODIACS.forEach(z => { ZODIAC_EFFECTS[z] = { sky: { atk: 10, int: 10, def: 10, mdef: 10, awr: 10, move: 10, heal: 10 }, natal: {} }; });
+/* the multiplier one sky key gives a unit whose sign rules the sky (1 = nothing) */
+function zodiacSkyMult(sign, key) {
+    const row = ZODIAC_EFFECTS[sign];
+    const pct = row && row.sky ? Number(row.sky[key]) : 0;
+    return 1 + (Number.isFinite(pct) ? pct : 0) / 100;
+}
+/* one line for banners and tooltips: "ATK +10% · M ATK +10% · …" (keys at 0 are left out) */
+const ZODIAC_KEY_LABELS = { hp: 'HP', mp: 'MP', atk: 'ATK', int: 'M ATK', def: 'DEF', mdef: 'M DEF', spd: 'SPD', awr: 'AWR', move: 'MOV', heal: 'HEALING' };
+function zodiacSkySummary(sign) {
+    const row = ZODIAC_EFFECTS[sign]; if (!row || !row.sky) return '';
+    return ZODIAC_SKY_KEYS.filter(k => Number(row.sky[k])).map(k => `${ZODIAC_KEY_LABELS[k]} ${row.sky[k] > 0 ? '+' : ''}${row.sky[k]}%`).join(' · ');
+}
+function zodiacNatalSummary(sign) {
+    const row = ZODIAC_EFFECTS[sign]; if (!row || !row.natal) return '';
+    return ZODIAC_NATAL_KEYS.filter(k => Number(row.natal[k])).map(k => `${ZODIAC_KEY_LABELS[k]} ${row.natal[k] > 0 ? '+' : ''}${row.natal[k]}`).join(' · ');
+}
+/* the flat natal change one stat gets from a birth sign */
+function zodiacNatalDelta(sign, key) {
+    const row = ZODIAC_EFFECTS[sign];
+    const v = row && row.natal ? Number(row.natal[key]) : 0;
+    return Number.isFinite(v) ? Math.round(v) : 0;
+}
+
 const SKY_EVENTS = {
     bloodMoon: {
         label: 'Blood Moon',
@@ -3870,137 +3907,137 @@ const SKY_EVENT_DURATION = 2;
 // is the map-crossing guard. Werewolf's stored line is the DAY form; the
 // planned Lycanthropy passive stages it up at night (budget = day/night avg).
 const RACE_BASE_STATS = {
-    'giant':              { hp: 815, mp:  60, atk:  62, def:  94, mdef:  56, int:   0, awr: 14, spd: 28 },
-    'robot':              { hp: 700, mp:  50, atk:  74, def:  83, mdef:  35, int:   3, awr: 42, spd: 43 },
-    'mech':               { hp: 645, mp: 110, atk:  54, def:  65, mdef:  28, int:  30, awr: 42, spd: 25 },
-    'gargoyle':           { hp: 620, mp:  90, atk:  50, def:  60, mdef:  58, int:  14, awr: 70, spd: 52 },
-    'zombie':             { hp: 660, mp:  70, atk:  68, def:  84, mdef:  26, int:   0, awr: 28, spd: 46 },
-    'cyclops':            { hp: 700, mp:  65, atk:  76, def:  69, mdef:  35, int:  25, awr: 42, spd: 51 },
-    'skeleton':           { hp: 540, mp: 120, atk:  70, def:  36, mdef:  62, int:  42, awr: 28, spd: 46 },
-    'demon':              { hp: 520, mp: 190, atk:  48, def:  28, mdef:  48, int:  76, awr: 28, spd: 30 },
-    'bigfoot':            { hp: 700, mp:  80, atk:  80, def:  56, mdef:  50, int:  10, awr: 28, spd: 44 },
-    'antperson':          { hp: 710, mp: 100, atk:  94, def:  44, mdef:  51, int:  29, awr: 28, spd: 41 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3)
-    'werewolf':           { hp: 560, mp:  80, atk:  50, def:  40, mdef:  30, int:  10, awr: 42, spd: 40 },
-    'angel':              { hp: 450, mp: 220, atk:   8, def:  36, mdef:  90, int:  74, awr: 56, spd: 35 },
-    'ghost':              { hp: 470, mp: 240, atk:   0, def:  10, mdef:  34, int:  88, awr: 70, spd: 52 },
-    'nordic':             { hp: 580, mp: 200, atk:  22, def:  29, mdef:  78, int:  88, awr: 42, spd: 31 },
-    'fairy':              { hp: 470, mp: 220, atk:   8, def:  22, mdef:  66, int:  68, awr: 70, spd: 64 },
-    'scarecrow':          { hp: 650, mp: 150, atk:  84, def:  58, mdef:  54, int:  30, awr: 28, spd: 23 },
-    'grey':               { hp: 450, mp: 220, atk:   8, def:  21, mdef:  96, int:  99, awr: 98, spd: 27 },
-    'succubus':           { hp: 495, mp: 220, atk:  16, def:  23, mdef:  86, int:  87, awr: 56, spd: 35 },
-    'orb of light':       { hp: 455, mp: 225, atk:   8, def:  20, mdef:  98, int: 104, awr: 98, spd: 21 },   // BALANCE PASS 2026-10-06: HP 415→455 (lab WR 39%, among the lowest HP)
-    'mothman':            { hp: 490, mp: 215, atk:   8, def:  25, mdef:  74, int:  84, awr: 98, spd: 38 },
-    'siren':              { hp: 520, mp: 220, atk:   8, def:  24, mdef:  85, int:  88, awr: 56, spd: 38 },
-    'android':            { hp: 470, mp: 140, atk:  75, def:  27, mdef:  57, int:  31, awr: 98, spd: 60 },
-    'shadow entity':      { hp: 425, mp: 130, atk:  40, def:  22, mdef:  62, int:  66, awr: 98, spd: 56 },
-    'reptilian':          { hp: 470, mp: 130, atk:  86, def:  31, mdef:  42, int:  31, awr: 84, spd: 55 },
-    'catgirl':            { hp: 485, mp: 110, atk:  88, def:  30, mdef:  42, int:  26, awr: 70, spd: 60 },
-    'mantid':             { hp: 440, mp: 190, atk:  22, def:  20, mdef:  50, int:  94, awr: 84, spd: 52 },
-    'skinwalker':         { hp: 440, mp: 160, atk:  28, def:  22, mdef:  56, int:  88, awr: 84, spd: 54 },
-    'seraphim':           { hp: 385, mp: 260, atk:   8, def:  15, mdef:  96, int:  89, awr: 56, spd: 35 },
-    'djinn':              { hp: 400, mp: 240, atk:   8, def:  22, mdef:  91, int:  83, awr: 42, spd: 35 },
-    'anubis':             { hp: 400, mp: 245, atk:   8, def:  22, mdef:  93, int:  86, awr: 56, spd: 31 },
-    'martian':            { hp: 515, mp: 140, atk:  88, def:  31, mdef:  48, int:  30, awr: 84, spd: 35 },
-    'annunaki':           { hp: 555, mp: 135, atk:  80, def:  29, mdef:  37, int:  31, awr: 84, spd: 11 },
-    'ai':                 { hp: 485, mp: 200, atk:  18, def:  32, mdef:  92, int:  86, awr: 84, spd: 22 },
-    'machine elves':      { hp: 560, mp: 220, atk:  18, def:  22, mdef:  86, int:  92, awr: 42, spd: 29 },
-    'glitch':             { hp: 480, mp: 170, atk:  22, def:  23, mdef:  66, int:  84, awr: 42, spd: 54 },
-    'homosapien':         { hp: 595, mp: 140, atk:  70, def:  50, mdef:  45, int:  28, awr: 70, spd: 33 },
-    'pirate':             { hp: 595, mp: 100, atk:  86, def:  46, mdef:  43, int:  24, awr: 56, spd: 58 },
-    'swordfighter':       { hp: 575, mp:  95, atk:  88, def:  48, mdef:  43, int:  24, awr: 42, spd: 58 },
-    'knight':             { hp: 635, mp:  95, atk:  76, def:  64, mdef:  46, int:  29, awr: 28, spd: 44 },
-    'shaman':             { hp: 470, mp: 250, atk:  18, def:  26, mdef:  66, int:  84, awr: 56, spd: 28 },
-    'mad scientist':      { hp: 460, mp: 230, atk:  12, def:  22, mdef:  30, int:  78, awr: 84, spd: 42 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
-    'cowboy':             { hp: 640, mp: 150, atk:  40, def:  36, mdef:  36, int:  22, awr: 84, spd: 72 },
-    'men in black':       { hp: 440, mp: 145, atk:  40, def:  27, mdef:  61, int:  66, awr: 98, spd: 60 },
-    'telepath':           { hp: 435, mp: 225, atk:   8, def:  21, mdef:  92, int:  96, awr: 84, spd: 21 },
-    'marksman':           { hp: 440, mp: 120, atk:  72, def:  20, mdef:  20, int:   8, awr: 98, spd: 18 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
-    'priest':             { hp: 470, mp: 230, atk:   8, def:  36, mdef:  88, int:  71, awr: 56, spd: 33 },
+    'giant':              { hp: 1788, mp:  60, atk:  114, def:  198, mdef:  117, int:   5, awr: 22, spd: 40 },
+    'robot':              { hp: 1654, mp:  50, atk:  141, def:  192, mdef:  36, int:   7, awr: 65, spd: 106 },
+    'mech':               { hp: 1544, mp: 110, atk:  98, def:  177, mdef:  19, int:  65, awr: 68, spd: 31 },
+    'gargoyle':           { hp: 1459, mp:  90, atk:  93, def:  169, mdef:  121, int:  28, awr: 144, spd: 145 },
+    'zombie':             { hp: 1605, mp:  70, atk:  124, def:  194, mdef:  15, int:   0, awr: 23, spd: 115 },
+    'cyclops':            { hp: 1678, mp:  65, atk:  154, def:  181, mdef:  38, int:  46, awr: 81, spd: 139 },
+    'skeleton':           { hp: 1044, mp: 120, atk:  130, def:  106, mdef:  137, int:  99, awr: 28, spd: 119 },
+    'demon':              { hp: 971, mp: 190, atk:  89, def:  73, mdef:  87, int:  148, awr: 49, spd: 51 },
+    'bigfoot':            { hp: 1690, mp:  80, atk:  164, def:  164, mdef:  98, int:  18, awr: 52, spd: 114 },
+    'antperson':          { hp: 1702, mp: 100, atk:  198, def:  135, mdef:  101, int:  59, awr: 53, spd: 100 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3)
+    'werewolf':           { hp: 1166, mp:  80, atk:  91, def:  121, mdef:  22, int:  13, awr: 56, spd: 94 },
+    'angel':              { hp: 507, mp: 220, atk:   36, def:  115, mdef:  181, int:  145, awr: 123, spd: 85 },
+    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, awr: 143, spd: 143 },
+    'nordic':             { hp: 1337, mp: 200, atk:  55, def:  76, mdef:  163, int:  179, awr: 67, spd: 57 },
+    'fairy':              { hp: 654, mp: 220, atk:   28, def:  38, mdef:  151, int:  124, awr: 146, spd: 195 },
+    'scarecrow':          { hp: 1568, mp: 150, atk:  172, def:  166, mdef:  106, int:  63, awr: 31, spd: 28 },
+    'grey':               { hp: 495, mp: 220, atk:   23, def:  25, mdef:  195, int:  197, awr: 194, spd: 34 },
+    'succubus':           { hp: 824, mp: 220, atk:  41, def:  46, mdef:  172, int:  174, awr: 90, spd: 76 },
+    'orb of light':       { hp: 520, mp: 225, atk:   11, def:  16, mdef:  200, int: 200, awr: 188, spd: 17 },   // BALANCE PASS 2026-10-06: HP 415→455 (lab WR 39%, among the lowest HP)
+    'mothman':            { hp: 800, mp: 215, atk:   18, def:  52, mdef:  161, int:  166, awr: 189, spd: 91 },
+    'siren':              { hp: 922, mp: 220, atk:   7, def:  50, mdef:  171, int:  177, awr: 91, spd: 89 },
+    'android':            { hp: 678, mp: 140, atk:  146, def:  69, mdef:  118, int:  83, awr: 152, spd: 185 },
+    'shadow entity':      { hp: 361, mp: 130, atk:  78, def:  30, mdef:  138, int:  120, awr: 185, spd: 165 },
+    'reptilian':          { hp: 580, mp: 130, atk:  177, def:  92, mdef:  49, int:  73, awr: 162, spd: 159 },
+    'catgirl':            { hp: 763, mp: 110, atk:  187, def:  87, mdef:  56, int:  49, awr: 149, spd: 183 },
+    'mantid':             { hp: 434, mp: 190, atk:  57, def:  21, mdef:  92, int:  192, awr: 170, spd: 142 },
+    'skinwalker':         { hp: 398, mp: 160, atk:  67, def:  29, mdef:  112, int:  176, awr: 161, spd: 151 },
+    'seraphim':           { hp: 300, mp: 260, atk:   8, def:  13, mdef:  194, int:  182, awr: 94, spd: 77 },
+    'djinn':              { hp: 324, mp: 240, atk:   31, def:  39, mdef:  183, int:  158, awr: 79, spd: 82 },
+    'anubis':             { hp: 337, mp: 245, atk:   34, def:  44, mdef:  191, int:  171, awr: 120, spd: 60 },
+    'martian':            { hp: 910, mp: 140, atk:  184, def:  93, mdef:  81, int:  67, awr: 168, spd: 80 },
+    'annunaki':           { hp: 1154, mp: 135, atk:  166, def:  78, mdef:  46, int:  81, awr: 180, spd: 11 },
+    'ai':                 { hp: 788, mp: 200, atk:  50, def:  97, mdef:  186, int:  172, awr: 182, spd: 26 },
+    'machine elves':      { hp: 760, mp: 220, atk:  46, def:  35, mdef:  175, int:  190, awr: 133, spd: 161 },
+    'glitch':             { hp: 727, mp: 170, atk:  60, def:  49, mdef:  149, int:  167, awr: 76, spd: 154 },
+    'homosapien':         { hp: 1410, mp: 140, atk:  135, def:  158, mdef:  70, int:  54, awr: 138, spd: 69 },
+    'pirate':             { hp: 1398, mp: 100, atk:  179, def:  143, mdef:  59, int:  42, awr: 97, spd: 172 },
+    'swordfighter':       { hp: 1312, mp:  95, atk:  180, def:  147, mdef:  58, int:  41, awr: 59, spd: 169 },
+    'knight':             { hp: 1483, mp:  95, atk:  151, def:  174, mdef:  80, int:  55, awr: 37, spd: 108 },
+    'shaman':             { hp: 568, mp: 250, atk:  42, def:  58, mdef:  147, int:  161, awr: 93, spd: 36 },
+    'mad scientist':      { hp: 556, mp: 230, atk:  37, def:  33, mdef:  25, int:  153, awr: 171, spd: 103 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
+    'cowboy':             { hp: 1532, mp: 150, atk:  83, def:  112, mdef:  42, int:  36, awr: 177, spd: 198 },
+    'men in black':       { hp: 410, mp: 145, atk:  80, def:  66, mdef:  135, int:  122, awr: 191, spd: 178 },
+    'telepath':           { hp: 373, mp: 225, atk:   5, def:  24, mdef:  185, int:  195, awr: 159, spd: 16 },
+    'marksman':           { hp: 422, mp: 120, atk:  138, def:  19, mdef:  12, int:   10, awr: 192, spd: 13 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
+    'priest':             { hp: 605, mp: 230, atk:   10, def:  107, mdef:  177, int:  130, awr: 96, spd: 65 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
-    'gangster':           { hp: 540, mp: 100, atk:  78, def:  44, mdef:  44, int:  10, awr: 56, spd: 64 },
-    'nun':                { hp: 460, mp: 250, atk:   8, def:  26, mdef:  58, int:  90, awr: 70, spd: 30 },
+    'gangster':           { hp: 1068, mp: 100, atk:  161, def:  134, mdef:  67, int:  16, awr: 111, spd: 194 },
+    'nun':                { hp: 544, mp: 250, atk:   15, def:  61, mdef:  120, int:  185, awr: 136, spd: 48 },
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
-    'door agent':         { hp: 560, mp: 170, atk:  54, def:  40, mdef:  50, int:  46, awr: 84, spd: 46 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
+    'door agent':         { hp: 1251, mp: 170, atk:  101, def:  124, mdef:  97, int:  102, awr: 176, spd: 123 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
-    'police officer':     { hp: 560, mp: 110, atk:  72, def:  58, mdef:  46, int:  12, awr:  72, spd:  56 },
-    'jellyfish':          { hp: 470, mp: 230, atk:  18, def:  30, mdef:  72, int:  72, awr:  52, spd:  46 },
-    'cult leader':        { hp: 500, mp: 220, atk:  26, def:  36, mdef:  66, int:  74, awr:  60, spd:  44 },
+    'police officer':     { hp: 1046, mp: 110, atk:  137, def:  168, mdef:  78, int:  23, awr:  155, spd:  166 },
+    'jellyfish':          { hp: 617, mp: 230, atk:  47, def:  81, mdef:  158, int:  133, awr:  88, spd:  122 },
+    'cult leader':        { hp: 861, mp: 220, atk:  65, def:  110, mdef:  152, int:  143, awr:  126, spd:  112 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
-    'popstar':            { hp: 460, mp: 230, atk:  24, def:  30, mdef:  62, int:  74, awr:  52, spd:  62 },
+    'popstar':            { hp: 532, mp: 230, atk:  62, def:  80, mdef:  140, int:  141, awr:  87, spd:  189 },
     // 2026-09-30 — the new-race batch
-    'starfish': { hp: 560, mp: 220, atk: 26, def: 44, mdef: 60, int: 66, awr: 42, spd: 34 },
-    'ringmaster': { hp: 520, mp: 180, atk: 54, def: 38, mdef: 54, int: 58, awr: 70, spd: 52 },
-    'bee queen': { hp: 535, mp: 210, atk: 30, def: 36, mdef: 58, int: 76, awr: 56, spd: 50 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%)
-    'professor': { hp: 505, mp: 240, atk: 18, def: 34, mdef: 64, int: 84, awr: 60, spd: 36 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%)
-    'deep sea fish': { hp: 500, mp: 140, atk: 84, def: 34, mdef: 42, int: 40, awr: 56, spd: 58 },
+    'starfish': { hp: 1178, mp: 220, atk: 63, def: 130, mdef: 132, int: 119, awr: 61, spd: 74 },
+    'ringmaster': { hp: 946, mp: 180, atk: 96, def: 118, mdef: 107, int: 114, awr: 135, spd: 140 },
+    'bee queen': { hp: 1020, mp: 210, atk: 72, def: 113, mdef: 124, int: 150, awr: 118, spd: 135 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%)
+    'professor': { hp: 873, mp: 240, atk: 44, def: 98, mdef: 143, int: 163, awr: 124, spd: 86 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%)
+    'deep sea fish': { hp: 849, mp: 140, atk: 176, def: 103, mdef: 53, int: 94, awr: 117, spd: 175 },
     // 2026-09-30 — the new-race batch
-    'clown': { hp: 490, mp: 130, atk: 82, def: 30, mdef: 44, int: 34, awr: 70, spd: 60 },
-    'bunny girl': { hp: 470, mp: 200, atk: 40, def: 30, mdef: 58, int: 62, awr: 64, spd: 62 },
-    'sharkman': { hp: 640, mp: 90, atk: 92, def: 46, mdef: 34, int: 16, awr: 42, spd: 56 },
-    'crystal guardian': { hp: 720, mp: 120, atk: 60, def: 84, mdef: 72, int: 40, awr: 42, spd: 30 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
-    'jack o lantern': { hp: 520, mp: 200, atk: 30, def: 36, mdef: 56, int: 76, awr: 42, spd: 40 },
-    'sidekick': { hp: 560, mp: 130, atk: 70, def: 50, mdef: 46, int: 36, awr: 64, spd: 58 },
-    'mushroom girl': { hp: 515, mp: 220, atk: 20, def: 32, mdef: 64, int: 70, awr: 56, spd: 40 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%)
-    'tree person': { hp: 780, mp: 110, atk: 60, def: 80, mdef: 60, int: 30, awr: 28, spd: 22 },
-    'sheriff': { hp: 560, mp: 110, atk: 76, def: 52, mdef: 44, int: 14, awr: 78, spd: 54 },
+    'clown': { hp: 812, mp: 130, atk: 169, def: 86, mdef: 69, int: 85, awr: 147, spd: 182 },
+    'bunny girl': { hp: 666, mp: 200, atk: 85, def: 89, mdef: 123, int: 115, awr: 129, spd: 191 },
+    'sharkman': { hp: 1507, mp: 90, atk: 192, def: 138, mdef: 30, int: 29, awr: 62, spd: 163 },
+    'crystal guardian': { hp: 1727, mp: 120, atk: 112, def: 195, mdef: 160, int: 96, awr: 82, spd: 52 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
+    'jack o lantern': { hp: 959, mp: 200, atk: 70, def: 109, mdef: 113, int: 146, awr: 74, spd: 97 },
+    'sidekick': { hp: 1190, mp: 130, atk: 132, def: 154, mdef: 76, int: 86, awr: 127, spd: 171 },
+    'mushroom girl': { hp: 898, mp: 220, atk: 52, def: 95, mdef: 146, int: 127, awr: 100, spd: 96 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%)
+    'tree person': { hp: 1763, mp: 110, atk: 109, def: 191, mdef: 130, int: 62, awr: 25, spd: 23 },
+    'sheriff': { hp: 1202, mp: 110, atk: 150, def: 160, mdef: 63, int: 24, awr: 156, spd: 152 },
     // 2026-09-30 — the new-race batch
-    'astronaut': { hp: 540, mp: 150, atk: 64, def: 54, mdef: 50, int: 46, awr: 70, spd: 48 },
-    'krampus': { hp: 650, mp: 110, atk: 90, def: 44, mdef: 42, int: 36, awr: 42, spd: 48 },
-    'rabbit': { hp: 470, mp: 130, atk: 80, def: 28, mdef: 44, int: 40, awr: 72, spd: 66 },
-    'luchador': { hp: 620, mp: 90, atk: 88, def: 50, mdef: 36, int: 14, awr: 42, spd: 58 },
-    'firefighter': { hp: 700, mp: 100, atk: 66, def: 78, mdef: 50, int: 22, awr: 56, spd: 36 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
-    'goblin': { hp: 480, mp: 120, atk: 76, def: 34, mdef: 40, int: 30, awr: 70, spd: 64 },
-    'hippie': { hp: 480, mp: 230, atk: 22, def: 30, mdef: 62, int: 70, awr: 56, spd: 44 },
-    'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
-    'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
-    'nephilim':           { hp: 680, mp:  90, atk:  68, def:  73, mdef:  36, int:  27, awr: 28, spd: 41 },
-    'demon prince':       { hp: 555, mp: 165, atk:  28, def:  20, mdef:  59, int:  72, awr: 56, spd: 29 },
-    'goatman':            { hp: 640, mp:  90, atk:  94, def:  40, mdef:  33, int:  29, awr: 28, spd: 51 },
-    'mermaid':            { hp: 450, mp: 225, atk:   8, def:  34, mdef:  93, int:  77, awr: 56, spd: 35 },
-    'demon princess':     { hp: 525, mp: 215, atk:   8, def:  25, mdef:  82, int:  84, awr: 56, spd: 35 },
-    'dreameater':         { hp: 535, mp: 225, atk:   8, def:  26, mdef:  93, int:  94, awr: 84, spd: 31 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
-    'halfdemon':          { hp: 485, mp: 135, atk:  77, def:  27, mdef:  56, int:  31, awr: 84, spd: 60 },
-    'vampire':            { hp: 440, mp: 155, atk:  55, def:  26, mdef:  50, int:  31, awr: 98, spd: 55 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%)
-    'fallen angel':       { hp: 440, mp: 215, atk:   8, def:  21, mdef:  94, int: 102, awr: 28, spd: 30 },
-    'voidweaver':         { hp: 445, mp: 195, atk:  40, def:  15, mdef:  69, int:  58, awr: 70, spd: 55 },
-    'cosmic wraith':      { hp: 540, mp: 140, atk:  83, def:  22, mdef:  43, int:  31, awr: 98, spd: 18 },
-    'cyborg':             { hp: 560, mp: 100, atk:  46, def:  46, mdef:  42, int:  72, awr: 28, spd: 46 },
-    'superhero':          { hp: 540, mp:  90, atk:  66, def:  62, mdef:  10, int:  42, awr: 28, spd: 62 },
-    'general':            { hp: 630, mp:  95, atk:  78, def:  61, mdef:  54, int:  23, awr: 28, spd: 49 },
-    'droid':              { hp: 525, mp: 220, atk:  15, def:  38, mdef:  96, int:  90, awr: 42, spd: 22 },
-    'antihero':           { hp: 580, mp: 115, atk:  66, def:  49, mdef:  45, int:  29, awr: 56, spd: 55 },
-    'conspiracy theorist':{ hp: 550, mp: 195, atk:  18, def:  28, mdef:  71, int:  72, awr: 84, spd: 33 },
-    'overlord':           { hp: 655, mp:  75, atk:  90, def:  47, mdef:  34, int:  37, awr: 28, spd: 42 },
-    'chosen one':         { hp: 390, mp: 170, atk:  56, def:  22, mdef:  59, int:  56, awr: 98, spd: 46 },
-    'politician':         { hp: 570, mp: 165, atk:  22, def:  46, mdef:  64, int:  72, awr: 84, spd: 28 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
-    'atlantean':          { hp: 580, mp: 190, atk:  62, def:  26, mdef:  28, int:  64, awr: 42, spd: 28 },
-    'dinosaur':           { hp: 720, mp:  60, atk:  74, def:  72, mdef:  34, int:   8, awr: 28, spd: 46 },
-    'dragon':             { hp: 560, mp: 150, atk:  52, def:  30, mdef:  50, int:  54, awr: 28, spd: 44 },
-    'ghoul':              { hp: 570, mp: 110, atk:  68, def:  48, mdef:  48, int:  20, awr: 56, spd: 42 },
-    'gnome':              { hp: 580, mp: 205, atk:  34, def:  72, mdef:  90, int:  36, awr: 70, spd: 28 },
-    'kaiju':              { hp: 645, mp: 110, atk: 92, def:  42, mdef:  24, int:  25, awr: 14, spd: 46 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game)
-    'kraken':             { hp: 555, mp: 205, atk:  40, def:  37, mdef:  71, int:  69, awr: 56, spd: 21 },
-    'loch ness monster':  { hp: 770, mp:  95, atk:  54, def:  92, mdef:  48, int:  31, awr: 14, spd: 21 },
-    'yeti':               { hp: 600, mp: 120, atk:  60, def:  46, mdef:  52, int:  52, awr: 14, spd: 46 },
-    'barbarella':         { hp: 485, mp: 145, atk:  72, def:  34, mdef:  59, int:  31, awr: 70, spd: 58 },
-    'black goo':          { hp: 600, mp: 160, atk:  40, def:  54, mdef:  54, int:  46, awr: 42, spd: 30 },
-    'golem':              { hp: 820, mp:  70, atk:  60, def: 101, mdef:  52, int:   0, awr: 14, spd: 25 },
-    'honda civic':        { hp: 520, mp:  90, atk:  78, def:  66, mdef:  26, int:  10, awr: 28, spd: 84 },
-    'ice queen':          { hp: 470, mp: 245, atk:   8, def:  22, mdef:  90, int:  82, awr: 56, spd: 33 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP)
-    'juggernaut':         { hp: 800, mp:  40, atk:  84, def:  79, mdef:  48, int:   0, awr: 14, spd: 23 },
-    'ki fighter':         { hp: 570, mp: 120, atk:  82, def:  42, mdef:  42, int:  46, awr: 28, spd: 38 },
-    'king arthur':        { hp: 635, mp:  80, atk:  70, def:  68, mdef:  44, int:  28, awr: 56, spd: 53 },
-    'king kong':          { hp: 755, mp:  75, atk: 100, def:  50, mdef:  32, int:  20, awr: 28, spd: 21 },
-    'minotaur':           { hp: 675, mp:  70, atk:  94, def:  42, mdef:  37, int:   7, awr: 28, spd: 53 },
-    'necromancer':        { hp: 445, mp: 250, atk:   8, def:  20, mdef:  86, int:  82, awr: 56, spd: 33 },
-    'occulus':            { hp: 485, mp: 200, atk:   8, def:  23, mdef:  80, int:  84, awr: 84, spd: 53 },
-    'quarterback':        { hp: 540, mp: 100, atk:  74, def:  26, mdef:  26, int:  12, awr: 84, spd: 62 },   // BALANCE PASS 2026-10-06: ATK 82→74 (lab WR 67%; range-4 basic attacks + PR #138)
-    'robinhood':          { hp: 500, mp: 110, atk:  88, def:  22, mdef:  30, int:  12, awr: 98, spd: 48 },
-    'santa clause':       { hp: 580, mp: 200, atk:  34, def:  46, mdef:  60, int:  74, awr: 42, spd: 30 },
-    'super sentai':       { hp: 670, mp: 120, atk:  58, def:  65, mdef:  46, int:  23, awr: 70, spd: 32 },
-    'symbiote':           { hp: 480, mp: 125, atk:  70, def:  31, mdef:  50, int:  31, awr: 70, spd: 58 },
-    'valkraye':           { hp: 585, mp:  80, atk:  76, def:  49, mdef:  46, int:  26, awr: 42, spd: 56 },
-    'watcher':            { hp: 510, mp: 210, atk:   8, def:  28, mdef:  82, int:  84, awr: 84, spd: 33 },
+    'astronaut': { hp: 1093, mp: 150, atk: 117, def: 163, mdef: 100, int: 106, awr: 152, spd: 132 },
+    'krampus': { hp: 1580, mp: 110, atk: 190, def: 132, mdef: 50, int: 88, awr: 73, spd: 131 },
+    'rabbit': { hp: 593, mp: 130, atk: 163, def: 72, mdef: 64, int: 93, awr: 153, spd: 197 },
+    'luchador': { hp: 1446, mp: 90, atk: 185, def: 155, mdef: 41, int: 26, awr: 71, spd: 174 },
+    'firefighter': { hp: 1666, mp: 100, atk: 120, def: 188, mdef: 93, int: 34, awr: 112, spd: 88 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
+    'goblin': { hp: 715, mp: 120, atk: 153, def: 101, mdef: 47, int: 68, awr: 140, spd: 192 },
+    'hippie': { hp: 702, mp: 230, atk: 59, def: 83, mdef: 141, int: 128, awr: 108, spd: 109 },
+    'wizard':             { hp: 349, mp: 255, atk:   2, def:  15, mdef:  198, int:  184, awr: 55, spd: 56 },
+    'fortune teller':     { hp: 1105, mp: 210, atk:   24, def:  53, mdef:  168, int:  187, awr: 195, spd: 71 },
+    'nephilim':           { hp: 1641, mp:  90, atk:  125, def:  186, mdef:  39, int:  50, awr: 34, spd: 99 },
+    'demon prince':       { hp: 1141, mp: 165, atk:  68, def:  22, mdef:  126, int:  135, awr: 115, spd: 45 },
+    'goatman':            { hp: 1520, mp:  90, atk:  197, def:  123, mdef:  29, int:  57, awr: 41, spd: 137 },
+    'mermaid':            { hp: 483, mp: 225, atk:   20, def:  100, mdef:  188, int:  151, awr: 102, spd: 79 },
+    'demon princess':     { hp: 995, mp: 215, atk:   33, def:  55, mdef:  169, int:  169, awr: 114, spd: 83 },
+    'dreameater':         { hp: 1007, mp: 225, atk:   29, def:  63, mdef:  189, int:  193, awr: 174, spd: 59 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
+    'halfdemon':          { hp: 751, mp: 135, atk:  156, def:  67, mdef:  115, int:  76, awr: 173, spd: 180 },
+    'vampire':            { hp: 385, mp: 155, atk:  102, def:  56, mdef:  89, int:  70, awr: 183, spd: 157 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%)
+    'fallen angel':       { hp: 446, mp: 215, atk:   26, def:  27, mdef:  192, int: 198, awr: 44, spd: 49 },
+    'voidweaver':         { hp: 459, mp: 195, atk:  76, def:  12, mdef:  154, int:  112, awr: 130, spd: 155 },
+    'cosmic wraith':      { hp: 1080, mp: 140, atk:  171, def:  41, mdef:  61, int:  78, awr: 197, spd: 14 },
+    'cyborg':             { hp: 1263, mp: 100, atk:  88, def:  144, mdef:  55, int:  137, awr: 50, spd: 126 },
+    'superhero':          { hp: 1032, mp:  90, atk:  119, def:  172, mdef:  10, int:  98, awr: 26, spd: 186 },
+    'general':            { hp: 1471, mp:  95, atk:  159, def:  171, mdef:  109, int:  39, awr: 43, spd: 134 },
+    'droid':              { hp: 983, mp: 220, atk:  39, def:  120, mdef:  197, int:  189, awr: 78, spd: 25 },
+    'antihero':           { hp: 1373, mp: 115, atk:  122, def:  152, mdef:  72, int:  60, awr: 121, spd: 160 },
+    'conspiracy theorist':{ hp: 1117, mp: 195, atk:  49, def:  75, mdef:  157, int:  138, awr: 162, spd: 72 },
+    'overlord':           { hp: 1593, mp:  75, atk:  189, def:  146, mdef:  32, int:  91, awr: 32, spd: 102 },
+    'chosen one':         { hp: 312, mp: 170, atk:  104, def:  42, mdef:  127, int:  111, awr: 198, spd: 128 },
+    'politician':         { hp: 1276, mp: 165, atk:  54, def:  141, mdef:  144, int:  132, awr: 165, spd: 37 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
+    'atlantean':          { hp: 1361, mp: 190, atk:  115, def:  64, mdef:  21, int:  117, awr: 85, spd: 42 },
+    'dinosaur':           { hp: 1715, mp:  60, atk:  145, def:  185, mdef:  35, int:   11, awr: 47, spd: 125 },
+    'dragon':             { hp: 1239, mp: 150, atk:  94, def:  84, mdef:  95, int:  109, awr: 46, spd: 111 },
+    'ghoul':              { hp: 1300, mp: 110, atk:  127, def:  149, mdef:  86, int:  33, awr: 109, spd: 105 },
+    'gnome':              { hp: 1349, mp: 205, atk:  75, def:  183, mdef:  180, int:  89, awr: 141, spd: 39 },
+    'kaiju':              { hp: 1556, mp: 110, atk: 193, def:  129, mdef:  13, int:  44, awr: 17, spd: 120 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game)
+    'kraken':             { hp: 1212, mp: 205, atk:  81, def:  117, mdef:  155, int:  125, awr: 103, spd: 20 },
+    'loch ness monster':  { hp: 1751, mp:  95, atk:  99, def:  197, mdef:  83, int:  75, awr: 16, spd: 19 },
+    'yeti':               { hp: 1422, mp: 120, atk:  107, def:  137, mdef:  103, int:  107, awr: 14, spd: 117 },
+    'barbarella':         { hp: 776, mp: 145, atk:  140, def:  104, mdef:  129, int:  80, awr: 150, spd: 177 },
+    'black goo':          { hp: 1434, mp: 160, atk:  86, def:  161, mdef:  110, int:  104, awr: 84, spd: 54 },
+    'golem':              { hp: 1800, mp:  70, atk:  111, def: 200, mdef:  104, int:   3, awr: 20, spd: 33 },
+    'honda civic':        { hp: 1151, mp:  90, atk:  158, def:  178, mdef:  16, int:  15, awr: 29, spd: 200 },
+    'ice queen':          { hp: 629, mp: 245, atk:   21, def:  36, mdef:  178, int:  156, awr: 106, spd: 68 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP)
+    'juggernaut':         { hp: 1776, mp:  40, atk:  174, def:  189, mdef:  84, int:   2, awr: 19, spd: 29 },
+    'ki fighter':         { hp: 1288, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, awr: 40, spd: 92 },
+    'king arthur':        { hp: 1495, mp:  80, atk:  133, def:  180, mdef:  66, int:  52, awr: 105, spd: 149 },
+    'king kong':          { hp: 1739, mp:  75, atk: 200, def:  157, mdef:  27, int:  31, awr: 38, spd: 22 },
+    'minotaur':           { hp: 1629, mp:  70, atk:  195, def:  126, mdef:  44, int:   8, awr: 35, spd: 148 },
+    'necromancer':        { hp: 471, mp: 250, atk:   16, def:  18, mdef:  174, int:  154, awr: 99, spd: 66 },
+    'occulus':            { hp: 739, mp: 200, atk:   13, def:  47, mdef:  164, int:  164, awr: 167, spd: 146 },
+    'quarterback':        { hp: 1056, mp: 100, atk:  143, def:  59, mdef:  18, int:  21, awr: 164, spd: 188 },   // BALANCE PASS 2026-10-06: ATK 82→74 (lab WR 67%; range-4 basic attacks + PR #138)
+    'robinhood':          { hp: 837, mp: 110, atk:  182, def:  32, mdef:  24, int:  20, awr: 186, spd: 129 },
+    'santa clause':       { hp: 1324, mp: 200, atk:  73, def:  140, mdef:  134, int:  140, awr: 64, spd: 46 },
+    'super sentai':       { hp: 1617, mp: 120, atk:  106, def:  175, mdef:  75, int:  37, awr: 133, spd: 62 },
+    'symbiote':           { hp: 690, mp: 125, atk:  128, def:  90, mdef:  90, int:  72, awr: 132, spd: 168 },
+    'valkraye':           { hp: 1385, mp:  80, atk:  148, def:  151, mdef:  73, int:  47, awr: 58, spd: 162 },
+    'watcher':            { hp: 885, mp: 210, atk:   3, def:  70, mdef:  166, int:  159, awr: 158, spd: 63 },
 };
 
 /* ── RACE_PHYSIQUE (2026-07-07 physique pass) ──────────────────────────────
@@ -4151,18 +4188,26 @@ const RACE_PHYSIQUE = {
    move a bunch of tiles"): the lumbering tail of the C band (SPD 21–25: Nessie, Kraken, King Kong, the golems
    and mechs) walked as far as a SPD-40 werewolf. The 1-tile band now runs to SPD 25; every other band is
    unchanged (26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81+ → 5). The ONE table every reader goes through. */
-const MOVE_SPD_BANDS = [25, 40, 60, 80];
+/* ONE LETTER = ONE TILE again (race editor 2026-10-06, mondo's new SPD scale up to 200): the tile bands are the SPD
+   grade bands (STAT_GRADE_BANDS.spd [S, A, B, C]) — F walks 1 · C 2 · B 3 · A 4 · S 5 — re-read on every call so a
+   grade edit in the race editor moves the tiles with it. MOVE_SPD_BANDS holds the top SPD of each band (C−1 … S−1). */
+const MOVE_SPD_BANDS = [48, 87, 125, 162];
 function moveFromSpd(spd) {
     const s = Math.max(1, spd || 1);
+    const g = (typeof STAT_GRADE_BANDS !== 'undefined' && STAT_GRADE_BANDS.spd) || null;
+    if (g && g.length === 4) for (let i = 0; i < 4; i++) MOVE_SPD_BANDS[i] = g[3 - i] - 1;
     let tiles = 1;
     for (const top of MOVE_SPD_BANDS) if (s > top) tiles++;
     return Math.min(5, tiles);
 }
 
-function computeUnitStats(race, cls) {
-    const base = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
+function computeUnitStats(race, cls, zodiac) {
+    const base0 = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
+    /* the birth sign's natal changes (ZODIAC_EFFECTS[sign].natal) ride on the base, so the level formula scales them too */
+    const base = zodiac && ZODIAC_EFFECTS[zodiac] ? Object.assign({}, base0) : base0;
+    if (base !== base0) ZODIAC_NATAL_KEYS.forEach(k => { const d = zodiacNatalDelta(zodiac, k); if (d) base[k] = Math.max(k === 'hp' ? 1 : 0, (base[k] || 0) + d); });
     const kit = raceKit(race);   // THE JOBS REMOVAL (2026-09-27): the reach is the race's (RACE_KITS); `cls` is ignored
-    const spd = Math.max(1, Math.min(100, base.spd || 50));
+    const spd = Math.max(1, base.spd || 50);   // no 0–100 cap since the 2026-10-06 race editor scale (SPD runs to 200)
     return {
         // Base stats are FINAL — RACE_BASE_STATS already carries what the old primary job baked in.
         hp: base.hp,
@@ -17864,7 +17909,7 @@ const EW_SCALE = 1;
 // level-100 statline is ~1000 HP starts Mystery Dungeon at ~50 HP.
 const EW_L1_FRAC = 0.05;
 // Curve exponent — keeps early levels gentle, late levels meaningful.
-const LEVEL_SCALE_EXP = 1.35;
+const LEVEL_SCALE_EXP = 1.2;   // race editor 2026-10-06 (mondo): was 1.35
 /* THE LEVEL CURVE (the race editor, 2026-10-06): the four curve knobs as ONE live object, so the race editor (ui.js RCE,
    data.js EWRaceMods) can move them and every reader below follows. The consts above and below stay the shipped values.
      hpL1    — the share of its level-100 HP (and of every flat damage / heal number) a level-1 unit has (EW_L1_FRAC)
@@ -21716,14 +21761,14 @@ function evasionChanceFromStats(move) {
 const STAT_GRADE_LETTERS = ['S', 'A', 'B', 'C'];   // high → low, else F
 const STAT_GRADE_BANDS = {
   //        S     A     B     C   (else F)
-  hp:    [700,  620,  540,  460],
-  mp:    [235,  190,  140,   80],
-  atk:   [ 81,   61,   41,   21],
-  int:   [ 81,   61,   41,   21],
-  def:   [ 81,   61,   41,   21],
-  mdef:  [ 81,   61,   41,   21],
-  spd:   [ 81,   61,   41,   21],
-  awr:   [ 81,   61,   41,   21],
+  hp:    [1507, 1190,  885,  593],   // race editor 2026-10-06 (mondo): every band re-cut to the new statlines
+  mp:    [ 220,  170,  130,   95],
+  atk:   [ 161,  120,   80,   39],
+  int:   [ 161,  120,   80,   39],
+  def:   [ 163,  124,   86,   47],
+  mdef:  [ 163,  124,   86,   47],
+  spd:   [ 163,  126,   88,   49],
+  awr:   [ 162,  127,   90,   50],
 };
 // One chip color per grade — the same visual language at every display site.
 const STAT_GRADE_COLORS = { S: '#f2c63c', A: '#3ddc84', B: '#4ecbe2', C: '#c8c8e4', F: '#ff5e5e' };
@@ -21785,16 +21830,16 @@ function statGradeChipHtml(key, val, opts) { return statGradeNodeHtml(key, val, 
    codex dossier, the in-battle INFO stat card and the quick-menu stat grid.
    Keep the numbers in sync with battle.js when formulas move. */
 const STAT_HELP = {
-  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round). Grades: S ≥700 · A ≥620 · B ≥540 · C ≥460 · F below.',
-  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry. Grades: S ≥235 · A ≥190 · B ≥140 · C ≥80 · F below.',
-  atk: 'ATK — physical power, on the 0–100 ruler (letter = each 20: S 81+ · A 61+ · B 41+ · C 21+ · F below). Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
-  int: 'M ATK — magic power, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
-  def: 'DEF — physical armor, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Soaks a flat share of every incoming basic attack and physical spell. Does nothing against magic damage.',
-  mdef: 'M DEF — magic armor, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
-  spd: 'SPD — quickness, on the 0–100 ruler. One letter = one movement tile: F (1–20) walks 1 · C (21–40) 2 · B (41–60) 3 · A (61–80) 4 · S (81–100) 5. Faster units also act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 90+) can leap 2-high walls instead of 1.',
+  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round). Grades: S ≥1507 · A ≥1190 · B ≥885 · C ≥593 · F below.',
+  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry. Grades: S ≥220 · A ≥170 · B ≥130 · C ≥95 · F below.',
+  atk: 'ATK — physical power (S 161+ · A 120+ · B 80+ · C 39+ · F below). Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
+  int: 'M ATK — magic power (S 161+ · A 120+ · B 80+ · C 39+ · F below). Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
+  def: 'DEF — physical armor (S 163+ · A 124+ · B 86+ · C 47+ · F below). Soaks a flat share of every incoming basic attack and physical spell. Does nothing against magic damage.',
+  mdef: 'M DEF — magic armor (S 163+ · A 124+ · B 86+ · C 47+ · F below). Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
+  spd: 'SPD — quickness. One letter = one movement tile: F (below 49) walks 1 · C (49+) 2 · B (88+) 3 · A (126+) 4 · S (163+) 5. Faster units also act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 90+) can leap 2-high walls instead of 1.',
   move: 'MOV — movement range in tiles, derived from SPD (SPD 1–25 → 1 · 26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81+ → 5), then modified by statuses, terrain and weather. The SECOND move of a turn covers only half the tiles (rounded up) and spends all remaining AP. Also feeds dodge chance (+1.8% EVA per MOV).',
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
-  awr: 'AWR — perception, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Drives critical chance (+2% per 14 AWR), lets keen units (AWR 84+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
+  awr: 'AWR — perception (S 162+ · A 127+ · B 90+ · C 50+ · F below). Drives critical chance (+2% per 14 AWR), lets keen units (AWR 84+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
   crt: 'CRT — critical hit chance on basic attacks. 8% base + 2% per 14 AWR (max +18%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
   eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
@@ -21817,7 +21862,7 @@ Object.assign(window, {
   /* THE ELEMENT BOX + THE ELEMENT KNOWLEDGE (2026-09-23) */
   ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
   elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, elemPressTier,
-  AVAILABLE_ZODIACS, ZODIAC_ICONS, CLASS_TEMPLATES,
+  AVAILABLE_ZODIACS, ZODIAC_ICONS, ZODIAC_EFFECTS, ZODIAC_SKY_KEYS, ZODIAC_NATAL_KEYS, zodiacSkyMult, zodiacNatalDelta, zodiacSkySummary, zodiacNatalSummary, ZODIAC_KEY_LABELS, CLASS_TEMPLATES,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
@@ -22783,10 +22828,10 @@ window.EWRaceMods = (function () {
     let doc = null, pristine = null, suspended = false;
     const _clone = v => { try { return JSON.parse(JSON.stringify(v === undefined ? null : v)); } catch (e) { return v; } };
     const eq = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
-    function emptyDoc() { return { version: VERSION, enabled: true, races: {}, grades: {}, curve: {}, gains: {}, notes: '' }; }
+    function emptyDoc() { return { version: VERSION, enabled: true, races: {}, grades: {}, curve: {}, gains: {}, zodiac: {}, notes: '' }; }
     function normalize(d) {
         if (!d || typeof d !== 'object' || (d.version != null && d.version !== VERSION)) d = emptyDoc();
-        ['races', 'grades', 'curve', 'gains'].forEach(k => { if (!d[k] || typeof d[k] !== 'object' || Array.isArray(d[k])) d[k] = {}; });
+        ['races', 'grades', 'curve', 'gains', 'zodiac'].forEach(k => { if (!d[k] || typeof d[k] !== 'object' || Array.isArray(d[k])) d[k] = {}; });
         if (typeof d.enabled !== 'boolean') d.enabled = true;
         if (typeof d.notes !== 'string') d.notes = '';
         d.version = VERSION;
@@ -22800,7 +22845,7 @@ window.EWRaceMods = (function () {
         if (pristine) return;
         const p = { stats: {}, profiles: {}, affinity: {}, terrain: _clone(RACE_TERRAIN_PREFERENCE), role: _clone(RACE_CLASS),
             kits: _clone(RACE_KITS), biomes: _clone(EW_RACE_BIOMES), grades: _clone(STAT_GRADE_BANDS), curve: _clone(LEVEL_CURVE),
-            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP) };
+            gains: _clone(LEVEL_TOTAL_STAT_GAINS), help: _clone(STAT_HELP), zodiac: _clone(ZODIAC_EFFECTS) };
         races().forEach(r => {
             p.stats[r] = _clone(RACE_BASE_STATS[r]);
             const pr = RACE_PROFILES[r] || {};
@@ -22831,6 +22876,7 @@ window.EWRaceMods = (function () {
         Object.assign(LEVEL_CURVE, pristine.curve);
         Object.assign(LEVEL_TOTAL_STAT_GAINS, pristine.gains);
         Object.assign(STAT_HELP, pristine.help);
+        Object.keys(pristine.zodiac).forEach(z => { ZODIAC_EFFECTS[z] = _clone(pristine.zodiac[z]); });
     }
     function applyDoc() {
         Object.keys(doc.races).forEach(r => {
@@ -22863,6 +22909,16 @@ window.EWRaceMods = (function () {
         });
         Object.keys(doc.curve).forEach(k => { if (Object.prototype.hasOwnProperty.call(LEVEL_CURVE, k) && Number.isFinite(doc.curve[k])) LEVEL_CURVE[k] = doc.curve[k]; });
         Object.keys(doc.gains).forEach(k => { if (Object.prototype.hasOwnProperty.call(LEVEL_TOTAL_STAT_GAINS, k) && Number.isFinite(doc.gains[k])) LEVEL_TOTAL_STAT_GAINS[k] = Math.round(doc.gains[k]); });
+        /* the ZODIAC tab: doc.zodiac[sign] = { sky: {key: percent}, natal: {stat: flat} }, sparse */
+        Object.keys(doc.zodiac).forEach(z => {
+            const m = doc.zodiac[z], live = ZODIAC_EFFECTS[z];
+            if (!m || !live) return;
+            [['sky', ZODIAC_SKY_KEYS], ['natal', ZODIAC_NATAL_KEYS]].forEach(([part, keys]) => {
+                if (!m[part]) return;
+                if (!live[part]) live[part] = {};
+                keys.forEach(k => { if (Number.isFinite(m[part][k])) { const v = Math.round(m[part][k]); if (v) live[part][k] = v; else delete live[part][k]; } });
+            });
+        });
         statHelpRefreshGrades();
     }
     function _online() {
@@ -22902,13 +22958,26 @@ window.EWRaceMods = (function () {
         else doc[group][key] = _clone(val);
     }
     function revertRace(race) { delete doc.races[race]; }
+    /* the shipped value of one zodiac key (0 when the sign ships without it) */
+    function shippedZodiac(sign, part, key) { capturePristine(); const row = pristine.zodiac[sign]; return (row && row[part] && Number(row[part][key])) || 0; }
+    function setZodiac(sign, part, key, val) {
+        if (!doc.zodiac[sign]) doc.zodiac[sign] = {};
+        const row = doc.zodiac[sign];
+        if (!row[part]) row[part] = {};
+        const v = Math.round(Number(val) || 0);
+        if (v === shippedZodiac(sign, part, key)) delete row[part][key]; else row[part][key] = v;
+        if (!Object.keys(row[part]).length) delete row[part];
+        if (!Object.keys(row).length) delete doc.zodiac[sign];
+    }
+    function revertZodiac(sign) { delete doc.zodiac[sign]; }
+    function zodiacFields() { let n = 0; Object.keys(doc.zodiac).forEach(z => ['sky', 'natal'].forEach(p => { n += Object.keys((doc.zodiac[z] || {})[p] || {}).length; })); return n; }
 
     function counts() {
         let fields = 0;
         Object.keys(doc.races).forEach(r => { fields += Object.keys(doc.races[r]).length; });
-        return { races: Object.keys(doc.races).length, fields, grades: Object.keys(doc.grades).length, curve: Object.keys(doc.curve).length, gains: Object.keys(doc.gains).length };
+        return { races: Object.keys(doc.races).length, fields, grades: Object.keys(doc.grades).length, curve: Object.keys(doc.curve).length, gains: Object.keys(doc.gains).length, zodiac: zodiacFields() };
     }
-    function total() { const c = counts(); return c.fields + c.grades + c.curve + c.gains; }
+    function total() { const c = counts(); return c.fields + c.grades + c.curve + c.gains + c.zodiac; }
 
     const _fmt = v => Array.isArray(v) ? '[' + v.join(', ') + ']' : (v && typeof v === 'object') ? (Object.keys(v).map(k => k + ' ' + v[k]).join(', ') || '(none)') : (v === undefined || v === null || v === '' ? '(none)' : String(v));
     function summary() {
@@ -22929,12 +22998,18 @@ window.EWRaceMods = (function () {
         Object.keys(doc.grades).forEach(k => lines.push(`GRADES ${k.toUpperCase()} [S, A, B, C] ${_fmt(pristine.grades[k])} → ${_fmt(doc.grades[k])}`));
         Object.keys(doc.curve).forEach(k => lines.push(`LEVEL CURVE ${k} ${pristine.curve[k]} → ${doc.curve[k]}`));
         Object.keys(doc.gains).forEach(k => lines.push(`LEVEL GROWTH ${k.toUpperCase()} (gained from level 1 to 100) +${pristine.gains[k]} → +${doc.gains[k]}`));
+        Object.keys(doc.zodiac).sort().forEach(z => {
+            const row = doc.zodiac[z];
+            Object.keys(row.sky || {}).forEach(k => lines.push(`ZODIAC ${z} while its sky rules: ${ZODIAC_KEY_LABELS[k] || k} ${shippedZodiac(z, 'sky', k)}% → ${row.sky[k]}%`));
+            Object.keys(row.natal || {}).forEach(k => lines.push(`ZODIAC ${z} born under it: ${ZODIAC_KEY_LABELS[k] || k} ${shippedZodiac(z, 'natal', k)} → ${row.natal[k]}`));
+        });
         if (doc.notes) lines.push(`NOTES: ${doc.notes.split('\n')[0].slice(0, 160)}`);
         return lines;
     }
     function exportDoc() {
         capturePristine();
-        const baseline = { races: {}, grades: {}, curve: {}, gains: {} };
+        const baseline = { races: {}, grades: {}, curve: {}, gains: {}, zodiac: {} };
+        Object.keys(doc.zodiac).forEach(z => { baseline.zodiac[z] = _clone(pristine.zodiac[z]); });
         Object.keys(doc.races).forEach(r => { baseline.races[r] = {}; Object.keys(doc.races[r]).forEach(f => { baseline.races[r][f] = _clone(shipped(r, f)); }); });
         ['grades', 'curve', 'gains'].forEach(g => Object.keys(doc[g]).forEach(k => { baseline[g][k] = _clone(pristine[g][k]); }));
         return {
@@ -22945,7 +23020,8 @@ window.EWRaceMods = (function () {
                 + '(BASE stats: level 100 = base + LEVEL_TOTAL_STAT_GAINS, HP/MP through LEVEL_CURVE; the grade reads the base); '
                 + 'label/labelMale/labelFemale/faction/types → RACE_PROFILES; affinity → RACE_ELEMENT_AFFINITY (whole row); '
                 + 'terrain → RACE_TERRAIN_PREFERENCE; role → RACE_CLASS; range → RACE_KITS; biomes → EW_RACE_BIOMES; '
-                + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS. '
+                + 'grades → STAT_GRADE_BANDS (+ the STAT_HELP band text); curve → LEVEL_CURVE; gains → LEVEL_TOTAL_STAT_GAINS; '
+                + 'zodiac.<sign>.sky (percent while the sign rules the sky) / .natal (flat stats for units born under it) → ZODIAC_EFFECTS. '
                 + 'baseline holds the shipped values the edits were made against.',
             summary: summary(),
             baseline,
@@ -22960,6 +23036,7 @@ window.EWRaceMods = (function () {
         else {
             Object.keys(inc.races).forEach(r => { doc.races[r] = Object.assign(doc.races[r] || {}, inc.races[r]); });
             ['grades', 'curve', 'gains'].forEach(g => Object.assign(doc[g], inc[g]));
+            Object.keys(inc.zodiac).forEach(z => ['sky', 'natal'].forEach(p => { const src = (inc.zodiac[z] || {})[p]; if (src && typeof src === 'object') Object.keys(src).forEach(k => setZodiac(z, p, k, src[k])); }));
             if (inc.notes && inc.notes !== doc.notes) doc.notes = doc.notes ? doc.notes + '\n\n' + inc.notes : inc.notes;
         }
         prune(); save(); apply();
@@ -22976,6 +23053,11 @@ window.EWRaceMods = (function () {
             if (!Object.keys(doc.races[r]).length) delete doc.races[r];
         });
         ['grades', 'curve', 'gains'].forEach(g => Object.keys(doc[g]).forEach(k => { if (eq(doc[g][k], pristine[g][k])) { delete doc[g][k]; n++; } }));
+        Object.keys(doc.zodiac).forEach(z => {
+            if (!pristine.zodiac[z]) { delete doc.zodiac[z]; n++; return; }
+            const row = _clone(doc.zodiac[z]) || {};
+            ['sky', 'natal'].forEach(p => Object.keys(row[p] || {}).forEach(k => { if (Math.round(row[p][k]) === shippedZodiac(z, p, k)) { setZodiac(z, p, k, row[p][k]); n++; } }));
+        });
         if (n) save();
         return n;
     }
@@ -22996,6 +23078,7 @@ window.EWRaceMods = (function () {
         get doc() { return doc; }, get suspended() { return suspended; }, get online() { return _online(); },
         VERSION, LS_KEY: EW_RACE_MODS_LS_KEY,
         load, save, apply, reset, prune, setOnline, races, shipped, shippedGlobal, setRace, setGlobal, revertRace,
+        shippedZodiac, setZodiac, revertZodiac,
         counts, total, summary, export: exportDoc, import: importDoc, snapshot, restoreSnapshot,
     };
 })();

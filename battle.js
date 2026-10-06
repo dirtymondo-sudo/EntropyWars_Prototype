@@ -625,7 +625,8 @@
                 ? moveFromSpd(getEffectiveSpd(unit))
                 : (getEffectiveSpd(unit) <= 25 ? 1 : Math.min(MOVE_TILE_CAP, Math.ceil(getEffectiveSpd(unit) / 20)));
             const base = Math.max(1, bandMove + (unit._equipMoveBonus || 0) + getHourglassMoveBonus(unit) + getStatusMoveDelta(unit) + (getTerrainPreferenceModifier(unit).move || 0) + weatherMod + floorMoveBonus);
-            let total = Math.max(1, Math.round(base * getZodiacBonus(unit).mult));
+            const _zb = getZodiacBonus(unit);
+            let total = Math.max(1, Math.round(base * (_zb.active ? _zb.m('move') : 1)));
             return Math.min(MOVE_TILE_CAP, total);
         }
 
@@ -25655,7 +25656,7 @@
                 if (state.activeZodiac !== zPrev) {
                     const icon = (typeof ZODIAC_ICONS !== 'undefined' && ZODIAC_ICONS[state.activeZodiac]) || '✦';
                     const _resDesc = (typeof getZodiacResonanceDesc === 'function') ? getZodiacResonanceDesc() : '';
-                    try { showCombatBanner(icon + ' ZODIAC: ' + String(state.activeZodiac).toUpperCase(), String(state.activeZodiac) + ' units deal +10% damage' + (_resDesc ? ' · ' + _resDesc : ''), 'neutral'); } catch (e) {}
+                    try { showCombatBanner(icon + ' ZODIAC: ' + String(state.activeZodiac).toUpperCase(), String(state.activeZodiac) + ' units: ' + ((typeof zodiacSkySummary === 'function' && zodiacSkySummary(state.activeZodiac)) || 'no change') + (_resDesc ? ' · ' + _resDesc : ''), 'neutral'); } catch (e) {}
                     try { playSfx('newRound', { volume: 0.6 }); } catch (e) {}
                 }
                 const sNow = state.skyEvent ? (state.skyEvent.id || state.skyEvent.type) : null;
@@ -31753,7 +31754,7 @@
                 // per unit, not on every single swing.
                 if (live && getZodiacBonus(sourceUnit).active && sourceUnit._zodiacCalloutRound !== state.round) {
                     sourceUnit._zodiacCalloutRound = state.round;
-                    _multCallout(sourceUnit, '★ ZODIAC +10%', 900);
+                    { const _zp = Math.round((getZodiacBonus(sourceUnit).m('atk') - 1) * 100); _multCallout(sourceUnit, '★ ZODIAC ' + (_zp >= 0 ? '+' : '') + _zp + '%', 900); }
                 }
 
                 if (!opts.ignoreArmor && typeof getUnitStandingHeight === 'function') {
@@ -36797,7 +36798,7 @@
             const weatherMod = getWeatherStatMod(unit);
             if (weatherMod.atk > 0 || weatherMod.int > 0) return true;
             const zodiac = getZodiacBonus(unit);
-            if (zodiac.mult > 1) return true;
+            if (zodiac.active && ['atk', 'int', 'awr'].some(k => zodiac.m(k) > 1)) return true;
             const sky = getSkyEventBonus(unit);
             if (sky.atkMult > 1) return true;
             const floor = getSectionBuffs(unit);
