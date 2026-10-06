@@ -4954,6 +4954,7 @@
                        already toasted this match — the host's list must not
                        block or reset the guest's */
                     _matchAchievements: 1,
+                    _matchAchievementsKey: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,
@@ -5319,6 +5320,7 @@
                 '_spellPick1',
                 // per-viewer one-shot achievement guard (see skip list)
                 '_matchAchievements',
+                '_matchAchievementsKey',
                 // per-viewer audio mix — snapshots from older builds (and
                 // replays) still carry these; never let them stomp the sliders
                 'musicVolume', 'sfxVolume', 'ambienceVolume'
