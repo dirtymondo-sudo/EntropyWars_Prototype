@@ -11958,7 +11958,7 @@ window.ARENA_PTS = {
     hourglass: 35,      // per hourglass carried at the buzzer
     nexusRound: 6,      // per nexus-control round accrued
     surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")
-    bounty: 10,         // per bounty claimed (killing an ON FIRE unit) — on top of the kill's 15
+    bounty: 15,         // per bounty claimed (killing an ON FIRE unit) — on top of the kill's 15, so a bounty kill scores double (mondo 2026-10-06: comebacks)
 };
 
 // ── ACCOUNT ECONOMY (PvP) ──────────────────────────────────────────────
@@ -24067,7 +24067,7 @@ const TUTORIAL_MECHANICS = {
                pins: [{ name: 'ENTROPY_GAUGE_MAX', file: 'battle.js', value: 100 }, { name: 'ENTROPY_STRIKE_AP_COST', file: 'battle.js', value: 1 }],
                watch: [{ file: 'battle.js', fn: 'canUseEntropyStrike', hash: 'b27f726ec3' }, { file: 'battle.js', fn: 'getEntropyStrikeTargets', hash: 'b9fe29157b' }] },
     arena:   { label: 'the arena win conditions', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'checkWinConditionOnly', hash: 'a870c50e40' }, { file: 'battle.js', fn: 'getTeamWipeoutCount', hash: '355238aa1d' }, { file: 'battle.js', fn: 'getArenaKeyRules', hash: 'ce10b994ec' }] },
-    keys:    { label: 'keys (hourglasses)', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'getKeysToWin', hash: 'aca1e13cb1' }], modePins: { keySpawnCount: 5, keysToWin: 3 } },
+    keys:    { label: 'keys (hourglasses)', lessons: ['three_ways'], pins: [], watch: [{ file: 'battle.js', fn: 'getKeysToWin', hash: 'aca1e13cb1' }], modePins: { keySpawnCount: 5, keysToWin: 5 } },
     nexus:   { label: 'the nexus zones', lessons: ['three_ways'],
                pins: [{ name: 'NEXUS_CAPTURE_THRESHOLD', file: 'data.js', value: 4 }, { name: 'NEXUS_HOLD_HEAL_PCT', file: 'data.js', value: 0.15 }, { name: 'NEXUS_HOSTILE_DMG_PCT', file: 'data.js', value: 0.25 }, { name: 'NEXUS_CHANNEL_COST_AP', file: 'data.js', value: 1 }],
                watch: [{ file: 'ui.js', fn: '_nexusApplyTicks', hash: '099ed0f47a' }, { file: 'ui.js', fn: 'nexusOnUnitArrive', hash: 'bc153a39e3' }, { file: 'map.js', fn: 'getRespawnZoneFor', hash: '4263f18a4d' }] },
@@ -41534,7 +41534,7 @@ function hqSiteChecklist(mapId, profile, opts) {
     const sm = hqSiteMastery(mapId, profile);
     const M = opts.modes || ((typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES : ((typeof window !== 'undefined' && window.MULTIPLAYER_MODES) || null));
     const labels = DOOR_HQ.masteryLabels || {};
-    let keysToWin = 3, pool = 5;
+    let keysToWin = 5, pool = 5;
     try { if (M && M.arena) { keysToWin = M.arena.keysToWin || keysToWin; pool = M.arena.keySpawnCount || pool; } } catch (e) {}
     const rows = DOOR_HQ.masteryConditions.map(c => {
         const h = HQ_MASTERY_HOW[c] || { name: labels[c] || c, how: '' };
