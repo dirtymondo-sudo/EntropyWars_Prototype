@@ -3965,7 +3965,9 @@
                 // computed from the FINAL effective value, so buffs/gear
                 // genuinely move a unit from B to A. Ungraded keys render ''.
                 // THE GRADE NODE (2026-09-21): label · node · number · the bar
-                const chip = (gradeKey && typeof statGradeNodeHtml === 'function') ? statGradeNodeHtml(gradeKey, val, { label }) : '<span class="ew-grade none"></span>';
+                // BALANCE PASS 2026-10-06: graded on the base ruler (level growth off, data.js statGradeValForUnit)
+                const _gv = (gradeKey && typeof statGradeValForUnit === 'function') ? statGradeValForUnit(unit, gradeKey, val) : val;
+                const chip = (gradeKey && typeof statGradeNodeHtml === 'function') ? statGradeNodeHtml(gradeKey, _gv, { label }) : '<span class="ew-grade none"></span>';
                 return `<div class="ins-stat"${tip ? ` title="${escapeHtml(tip)}"` : ''}>` +
                     `<span class="ins-stat-label">${label}</span>` +
                     chip +
