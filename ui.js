@@ -17249,6 +17249,23 @@
         const allBiomes = () => [...new Set([].concat(...Object.values(EW_RACE_BIOMES || {})))].sort();
         const opt = (v, cur, txt) => `<option value="${esc(v)}"${String(v) === String(cur) ? ' selected' : ''}>${esc(txt == null ? v : txt)}</option>`;
         const toast = (msg) => { try { if (typeof _hqToast === 'function') _hqToast(msg, 1800); } catch (e) {} };
+        /* THE RACE'S PICTURE (mondo 2026-10-06: "add the unit portraits or sprites if they dont have a portrait"): the 128×128
+           portrait (sprites.js RACE_PORTRAITS), else the race's 2D sprite (getR2RaceSpriteUrl); an image that fails to load
+           tries the sprite, then removes itself, so a race with neither shows nothing (never a stand-in). */
+        const artUrls = r => {
+            const out = [];
+            try {
+                if (typeof getUnitPortraitUrl === 'function') { const p = getUnitPortraitUrl({ race: r, gender: 'male' }) || getUnitPortraitUrl({ race: r, gender: 'female' }); if (p) out.push(p); }
+                if (typeof getR2RaceSpriteUrl === 'function') { const sp = getR2RaceSpriteUrl(r, 'male'); if (sp && !out.includes(sp)) out.push(sp); }
+            } catch (e) {}
+            return out;
+        };
+        const art = (r, cls) => {
+            const u = artUrls(r);
+            if (!u.length) return '';
+            return `<img class="rce-art ${cls || ''}${u.length > 1 ? '' : ' sprite'}" src="${esc(u[0])}" data-alt="${esc(u[1] || '')}" alt="" loading="lazy" draggable="false"
+                onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt='';this.classList.add('sprite');}else{this.remove();}">`;
+        };
 
         /* ── a write: snapshot for undo, change, save, re-apply to the live tables, redraw ── */
         function W(fn, keepRank) {
@@ -17294,7 +17311,7 @@
             body.querySelectorAll('[data-scroll]').forEach(el => { if (keepScroll[el.dataset.scroll] != null) el.scrollTop = keepScroll[el.dataset.scroll]; });
         }
         function top() {
-            const tabs = [['races', 'RACES'], ['rank', 'RANK A STAT'], ['grades', 'GRADES'], ['levels', 'LEVELS'], ['formulas', 'FORMULAS'], ['changes', 'CHANGES']];
+            const tabs = [['races', 'RACES'], ['rank', 'RANK A STAT'], ['grades', 'GRADES'], ['levels', 'LEVELS'], ['zodiac', 'ZODIAC'], ['formulas', 'FORMULAS'], ['changes', 'CHANGES']];
             const n = M().total(), c = M().counts();
             return `<div class="slb2-top">
                 <div class="slb2-tabs">${tabs.map(([k, l]) => `<button class="slb2-tab${R.tab === k ? ' on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>
@@ -17327,6 +17344,7 @@
             if (R.tab === 'grades') return tabGrades();
             if (R.tab === 'levels') return tabLevels();
             if (R.tab === 'formulas') return tabFormulas();
+            if (R.tab === 'zodiac') return tabZodiac();
             if (R.tab === 'changes') return tabChanges();
             return tabRaces();
         }
@@ -17345,7 +17363,7 @@
             const list = sorted(filtered());
             const th = (k, l, cls) => `<th class="${cls || ''}${R.sort.key === k ? ' on' : ''}" data-act="sort" data-v="${k}" title="sort">${l}${R.sort.key === k ? (R.sort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
             const rows = list.map(r => `<tr class="${r === R.sel ? 'sel' : ''}" data-act="pick" data-v="${esc(r)}">
-                <td class="rce-name">${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
+                <td class="rce-name">${art(r, 'thumb')}${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
                 ${STATS.map(([k]) => `<td class="rce-num${edited(r, k) ? ' ed' : ''}">${grade(k, base(r, k))}<span>${toFrame(k, base(r, k))}</span></td>`).join('')}
                 <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
             return `<div class="rce-split"><div class="rce-left">${filterBar()}
@@ -17372,7 +17390,7 @@
             }).join('');
             const spd = base(r, 'spd'), awr = base(r, 'awr');
             return `<div class="rce-insp">
-                <div class="rce-insp-h"><b>${esc(label(r))}</b> <span class="slb2-dim">${esc(r)}</span>${raceEdited(r) ? `<button class="slb2-tiny" data-act="revertRace" data-v="${esc(r)}">REVERT RACE</button>` : ''}</div>
+                <div class="rce-insp-h">${art(r, 'big')}<b>${esc(label(r))}</b> <span class="slb2-dim">${esc(r)}</span>${raceEdited(r) ? `<button class="slb2-tiny" data-act="revertRace" data-v="${esc(r)}">REVERT RACE</button>` : ''}</div>
                 <div class="rce-sec">IDENTITY</div>
                 <div class="rce-grid">
                     <label>NAME</label><div><input class="rce-txt" value="${esc(pr.label || '')}" data-f="label" data-r="${esc(r)}">${was('label')}</div>
@@ -17491,12 +17509,12 @@
                 <div class="rce-answer">
                     <h3>How the letter grade works</h3>
                     <p><b>The grade belongs to the race, not to the level.</b> It reads the race's BASE stat against the bands below. An S-tier HP race is S at level 1 and S at level ${cap()}; levelling never changes a letter. Buffs, statuses and gear still move the letter on the battle cards, because those change what the unit has right now.</p>
-                    <p><b>Why not grade the level 1 or level 100 number?</b> Every race gains the same points per level (level ${cap()} ATK = base + ${LEVEL_TOTAL_STAT_GAINS.atk}), so grading level 100 numbers would push the whole roster up one or two letters (the nun's 8 ATK read A). Grading the base keeps one ruler: F 1 to 20 up to S 81 to 100 for the 0 to 100 stats.</p>
+                    <p><b>Why not grade the level 1 or level 100 number?</b> Every race gains the same points per level (level ${cap()} ATK = base + ${LEVEL_TOTAL_STAT_GAINS.atk}), so grading level 100 numbers would push the whole roster up one or two letters (the nun's 8 ATK read A). Grading the base keeps one ruler for the whole roster.</p>
                     <p><b>Pokémon</b> does the same thing: each species has fixed base stats (Blissey's HP base is 255, the highest), and every level only scales the real number with one formula, about (2 × base + IV + EV/4) × level / 100 + 5. Fan tier lists rank the base stats, so a species' rank in a stat is the same at level 5 and level 100. <b>Shin Megami Tensei</b> gives each demon a fixed base level and a fixed statline (St, Ma, Vi, Ag, Lu); a levelling demon gains points in proportion to that profile, so a magic demon stays a magic demon. Neither game shows a letter, but both tie a creature's strengths to its species, never to its level. This editor follows that rule.</p>
                 </div>
                 <h3>The bands (BASE values)</h3>
                 <table class="rce-table rce-gtable"><thead><tr><th>STAT</th><th>S ≥</th><th>A ≥</th><th>B ≥</th><th>C ≥</th><th>F</th><th>THE ROSTER</th><th>AT LEVEL ${cap()}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it. SPD also sets movement: ${typeof MOVE_SPD_BANDS !== 'undefined' ? 'SPD up to ' + MOVE_SPD_BANDS[0] + ' walks 1 tile, up to ' + MOVE_SPD_BANDS[1] + ' walks 2, up to ' + MOVE_SPD_BANDS[2] + ' walks 3, up to ' + MOVE_SPD_BANDS[3] + ' walks 4, above walks 5' : ''} (those tile bands are separate from the letters).</div>
+                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it. SPD also sets movement: ${typeof MOVE_SPD_BANDS !== 'undefined' ? 'SPD up to ' + MOVE_SPD_BANDS[0] + ' walks 1 tile, up to ' + MOVE_SPD_BANDS[1] + ' walks 2, up to ' + MOVE_SPD_BANDS[2] + ' walks 3, up to ' + MOVE_SPD_BANDS[3] + ' walks 4, above walks 5' : ''} (one SPD letter = one tile, so moving the SPD bands moves the tiles).</div>
             </div>`;
         }
 
@@ -17613,14 +17631,38 @@
             </div>`;
         }
 
+        /* ── ZODIAC: what each sign gives (data.js ZODIAC_EFFECTS; mondo 2026-10-06: "let me also change what buffs/stat
+           changes the zodiacs give") — SKY = percent while the sign rules the sky, BORN UNDER = flat base stats always ── */
+        function tabZodiac() {
+            const signs = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : [];
+            const lab = k => (typeof ZODIAC_KEY_LABELS !== 'undefined' && ZODIAC_KEY_LABELS[k]) || k.toUpperCase();
+            const cell = (z, part, k) => {
+                const row = ZODIAC_EFFECTS[z] || {}, v = (row[part] && Number(row[part][k])) || 0;
+                const ed = !!(M().doc.zodiac[z] && M().doc.zodiac[z][part] && Object.prototype.hasOwnProperty.call(M().doc.zodiac[z][part], k));
+                const was = M().shippedZodiac(z, part, k);
+                return `<td class="rce-num${ed ? ' ed' : ''}"><input class="rce-in rce-zin" type="number" step="1" value="${v}" data-f="zodiac" data-z="${esc(z)}" data-p="${part}" data-k="${k}" title="${lab(k)}${part === 'sky' ? ' %' : ''} · shipped ${was}"></td>`;
+            };
+            const head = `<tr><th>SIGN</th>${ZODIAC_SKY_KEYS.map(k => `<th class="rce-num">${lab(k)} %</th>`).join('')}<th class="rce-zsep"></th>${ZODIAC_NATAL_KEYS.map(k => `<th class="rce-num">${lab(k)}</th>`).join('')}<th></th></tr>`;
+            const rows = signs.map(z => `<tr><td class="rce-name">${esc((ZODIAC_ICONS && ZODIAC_ICONS[z]) || '')} ${esc(z.toUpperCase())}</td>
+                ${ZODIAC_SKY_KEYS.map(k => cell(z, 'sky', k)).join('')}<td class="rce-zsep"></td>${ZODIAC_NATAL_KEYS.map(k => cell(z, 'natal', k)).join('')}
+                <td>${M().doc.zodiac[z] ? `<button class="slb2-tiny" data-act="revertZodiac" data-v="${esc(z)}">REVERT</button>` : ''}</td></tr>`).join('');
+            return `<div class="rce-pad">
+                <div class="slb2-hint"><b>WHILE ITS SKY RULES</b> (left): the percent a unit born under the sign gets while that sign rules the sky (the sky turns every ${typeof ZODIAC_ROTATION_ROUNDS !== 'undefined' ? ZODIAC_ROTATION_ROUNDS : 5} rounds). ATK = attack bonus on physical hits · M ATK = magic power · DEF / M DEF = armour against physical / magic · AWR · MOV = move tiles · HEALING = healing it gives. Negative numbers are penalties.
+                <b>BORN UNDER IT</b> (right): flat BASE stat changes every unit of that sign always carries, in story and PvP alike (the level formula scales them like the race's own base).</div>
+                <div class="rce-tablewrap" data-scroll="zodiac"><table class="rce-table rce-ztable"><thead><tr><th></th><th colspan="${ZODIAC_SKY_KEYS.length}">WHILE ITS SKY RULES</th><th class="rce-zsep"></th><th colspan="${ZODIAC_NATAL_KEYS.length}">BORN UNDER IT</th><th></th></tr>${head}</thead><tbody>${rows}</tbody></table></div>
+                <div class="slb2-hint">Saved with your race edits (EDITS ON, EXPORT, IMPORT, CHANGES). Online matches always play the shipped signs.</div>
+            </div>`;
+        }
+
         /* ── CHANGES ── */
         function tabChanges() {
             const lines = M().summary();
             const rs = Object.keys(M().doc.races).sort();
             return `<div class="rce-pad rce-prose">
                 <h3>${lines.length ? lines.length + ' change line' + (lines.length === 1 ? '' : 's') : 'No changes yet'}</h3>
-                <div class="rce-changes">${lines.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="slb2-dim">Edit a race, a grade band or the level curve and it shows up here.</div>'}</div>
+                <div class="rce-changes">${lines.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="slb2-dim">Edit a race, a grade band, the level curve or a zodiac sign and it shows up here.</div>'}</div>
                 ${rs.length ? `<div class="rce-row">${rs.map(r => `<button class="slb2-tiny" data-act="revertRace" data-v="${esc(r)}">REVERT ${esc(label(r))}</button>`).join(' ')}</div>` : ''}
+                ${Object.keys(M().doc.zodiac || {}).length ? `<div class="rce-row">${Object.keys(M().doc.zodiac).sort().map(z => `<button class="slb2-tiny" data-act="revertZodiac" data-v="${esc(z)}">REVERT ${esc(z.toUpperCase())}</button>`).join(' ')}</div>` : ''}
                 <h3>Notes for Claude</h3>
                 <textarea class="rce-notes" data-f="notes" placeholder="anything Claude should know when it bakes this">${esc(M().doc.notes)}</textarea>
                 <div class="rce-row"><button class="slb2-btn on" data-act="export">⇩ EXPORT</button><button class="slb2-btn" data-act="import">⇪ IMPORT</button><button class="slb2-btn slb2-btn-danger" data-act="discard">DISCARD ALL</button></div>
@@ -17692,6 +17734,7 @@
                 else if (a === 'sort') { if (R.sort.key === v) R.sort.dir = -R.sort.dir; else R.sort = { key: v, dir: (v === 'name' || v === 'role' || v === 'type') ? 1 : -1 }; render(); }
                 else if (a === 'pick') { if (ev.target.closest('input,select,button')) return; R.sel = v; render(); }
                 else if (a === 'revertRace') W(() => M().revertRace(v));
+                else if (a === 'revertZodiac') W(() => M().revertZodiac(v));
                 else if (a === 'type') W(() => { const t = types(r).slice(); const i = t.indexOf(v); if (i >= 0) t.splice(i, 1); else t.push(v); if (t.length) M().setRace(r, 'types', t); });
                 else if (a === 'biome') W(() => { const b = ((EW_RACE_BIOMES && EW_RACE_BIOMES[r]) || []).slice(); const i = b.indexOf(v); if (i >= 0) b.splice(i, 1); else b.push(v); M().setRace(r, 'biomes', b); });
                 else if (a === 'aff') W(() => { const row = Object.assign({}, RACE_ELEMENT_AFFINITY[r] || {}); if (v === 'none') delete row[el.dataset.e]; else row[el.dataset.e] = v; M().setRace(r, 'affinity', row); });
@@ -17744,6 +17787,7 @@
                 else if (f === 'band') W(() => { const b = STAT_GRADE_BANDS[k].slice(); b[+el.dataset.i] = Math.round(+val || 0); M().setGlobal('grades', k, b); });
                 else if (f === 'curve') W(() => M().setGlobal('curve', k, Math.max(0, +val || 0) / (+el.dataset.scale || 1)));
                 else if (f === 'gain') W(() => M().setGlobal('gains', k, Math.round(+val || 0)));
+                else if (f === 'zodiac') W(() => M().setZodiac(el.dataset.z, el.dataset.p, k, Math.round(+val || 0)));
                 else if (f === 'notes') { M().doc.notes = val; M().save(); }
             };
             body.addEventListener('input', onField);

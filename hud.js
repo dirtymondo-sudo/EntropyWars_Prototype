@@ -1519,7 +1519,7 @@ function MatchMeta({ st }) {
       ),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       h('span', { style: { display: 'flex', alignItems: 'center', gap: 4 },
-        title: zodiacBlessed ? zodiacLabel + ' reigns — matching units gain +10%' : zodiacLabel + ' reigns' },
+        title: zodiacBlessed ? zodiacLabel + ' reigns — matching units: ' + ((typeof window.zodiacSkySummary === 'function' && window.zodiacSkySummary(zodiac)) || 'no change') : zodiacLabel + ' reigns' },
         h('span', { className: zodiacBlessed ? 'ew-zodiac-blessed' : undefined, style: {
           fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
           fontSize: 15, color: zodiacBlessed ? '#f0d060' : EW.time,

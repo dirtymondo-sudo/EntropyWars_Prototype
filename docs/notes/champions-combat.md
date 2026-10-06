@@ -1211,3 +1211,17 @@ getTerrainPreferenceForRace), `TERRAIN_PREFERENCE_BONUS` (moved out of getTerrai
 ceiling (a drag swaps who holds which value); EVEN STEPS spaces them equally. The duel calculator re-states the
 calcDamageResolution chain for a neutral hit (no types / elements / statuses / passives) — keep it in step with battle.js
 when the damage math moves. UNSEEN LIVE (RULE #1c): Firefox drag and drop on the RANK list, the narrow layout.
+
+## RACE EDITOR BAKE 1 + ZODIAC EFFECTS (2026-10-06)
+- mondo's first race-editor export baked into data.js: all 124 RACE_BASE_STATS rows (new scale, stats up to ~200, HP up to
+  ~1800), black goo poison absorb, golem lost poison immunity, every STAT_GRADE_BANDS row re-cut, LEVEL_SCALE_EXP 1.35 → 1.2.
+  STAT_HELP text rewritten to the new bands (no more "0–100 ruler").
+- SPD → tiles follows the SPD letters again (moveFromSpd reads STAT_GRADE_BANDS.spd live; MOVE_SPD_BANDS = C−1 … S−1).
+  computeUnitStats no longer caps SPD at 100.
+- Still on the OLD 0–100 ruler (not touched, flag before balancing): AWR 84 cloak detection (battle.js), crit +2% per 14 AWR,
+  SPD 90 two-high leap, STAT_STAGE_STEP sizes, Bloodcraze's 100 SPD clamp.
+- ZODIAC_EFFECTS (data.js, beside ZODIAC_ICONS): per sign `sky` = percent while the sign rules the sky (atk int def mdef awr
+  move heal; shipped +10 each = the old ×1.10) read by state.js getZodiacBonus(unit).m(key); `natal` = flat base stats for
+  units born under the sign, added in computeUnitStats(race, cls, zodiac) (map.js createUnit) and shown in the party builder.
+  Race editor ZODIAC tab edits it through EWRaceMods doc.zodiac (export/import/prune/undo like race rows).
+- Race editor shows each race's portrait (RACE_PORTRAITS), else its 2D sprite; a failed image removes itself.
