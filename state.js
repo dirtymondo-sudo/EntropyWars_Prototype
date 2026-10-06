@@ -71,7 +71,9 @@
             'levitating','blessed','monster','extendedClips','carForm','mechaForm',
             // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
             // (attack accuracy loss from blizzards).
-            'frozen','blind']);
+            'frozen','blind',
+            // 2026-10-06: Guard's one-round recovery buff.
+            'guardRegen']);
 
         const GAME_MODES = {
             normal: {
