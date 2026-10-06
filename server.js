@@ -728,56 +728,56 @@ setInterval(() => {
 const queues = {};
 
 // ── THE ONLINE PVP POOL (2026-10-06, mondo: "why is online pvp using the old voxel maps and not the new arena maps? why are
-// they doing maps that are anything other than 8x8?"). Online PvP is 4v4 on the 8×8 ARENAS only: each site's `<site>_delta`
-// that became an 8×8 cut of its own room (data.js HQ_ARENA_RULES, bake-arenas.js) plus the kept sites' own 8×8 boards
+// they doing maps that are anything other than 8x8?"). Online PvP is 4v4 on the 12×12 ARENAS only (12 since 2026-10-06, mondo: "make all arena maps 12x12"): each site's `<site>_delta`
+// that became a 12×12 cut of its own room (data.js HQ_ARENA_RULES, bake-arenas.js) plus the kept sites' own 12×12 boards
 // (HQ_ARENA_RULES.keep). The full launch maps (16×16 and up) and the sites still on their old voxel Δ are OUT. At boot the
 // pool is read from data.js hqArenaPvpPool(); this literal is the boot-failure fallback — keep it synced by hand.
 let MAP_POOL = [
-    { modeId: 'prebuilt_shasta_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_stonehenge_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_giza_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_cyberpunk_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_camelot_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_stadium_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_atlantis_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_babel_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_olympus_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_mars_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_area51_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_antarctica_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_skinwalker_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_hollow_earth_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_fairy_forest_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_moon_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_technoticlan_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_agartha_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_vatican_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_bohemian_grove_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_gobekli_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_dumb_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_cern_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_northpole_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_derelict_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_lookingglass_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_haunted_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_lodge_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_singularity_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_saturn_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_strip_delta', w: 8, h: 8, team: 4 },
-    { modeId: 'prebuilt_downtown_delta', w: 8, h: 8, team: 4 },
+    { modeId: 'prebuilt_shasta_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_stonehenge_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_giza_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_cyberpunk_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_camelot_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_stadium_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_atlantis_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_babel_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_olympus_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_mars_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_area51_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_antarctica_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_skinwalker_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_hollow_earth_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_fairy_forest_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_moon_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_technoticlan_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_agartha_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_vatican_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_bohemian_grove_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_gobekli_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_dumb_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_cern_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_northpole_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_derelict_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_lookingglass_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_haunted_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_lodge_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_singularity_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_saturn_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_strip_delta', w: 12, h: 12, team: 4 },
+    { modeId: 'prebuilt_downtown_delta', w: 12, h: 12, team: 4 },
 ];
 (function derivePvpPoolFromDataJs() {
     if (!_dataJs) return;
     try {
         const ids = require('vm').runInContext('typeof hqArenaPvpPool === "function" ? hqArenaPvpPool() : null', _dataJs);
         if (Array.isArray(ids) && ids.length) {
-            MAP_POOL = ids.map(id => ({ modeId: String(id), w: 8, h: 8, team: 4 }));
+            MAP_POOL = ids.map(id => ({ modeId: String(id), w: 12, h: 12, team: 4 }));
             console.log(`[MM] online PvP pool derived from data.js (${MAP_POOL.length} arenas)`);
         } else console.error('[MM] data.js hqArenaPvpPool() gave nothing — the fallback arena list stands');
     } catch (e) { console.error('[MM] could not read the arena pool from data.js — the fallback arena list stands:', e.message); }
 })();
 
-// every online map is an 8×8 4v4 arena, whatever the queue's team size
+// every online map is a 12×12 4v4 arena, whatever the queue's team size
 function pickRandomMap(teamSize) {
     return MAP_POOL[Math.floor(Math.random() * MAP_POOL.length)];
 }
@@ -839,7 +839,7 @@ setInterval(() => {
 
                     const rankedMode = a.rankedMode || 'arena';
                     // Clash always plays 4v4 on its fixed JRPG stage.
-                    const actualTeamSize = 4;   // every online board is an 8×8 4v4 arena (MAP_POOL)
+                    const actualTeamSize = 4;   // every online board is an 12×12 4v4 arena (MAP_POOL)
                     const code = generateCode();
                     const map = rankedMode === 'clash' ? { modeId: 'clash_stage' } : pickRandomMap(actualTeamSize);
 
@@ -1900,7 +1900,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('queue-join', (data) => {
-        const teamSize = 4;   // online PvP is 4v4 on the 8×8 arenas (MAP_POOL), whatever the client asks
+        const teamSize = 4;   // online PvP is 4v4 on the 12×12 arenas (MAP_POOL), whatever the client asks
         const rankedMode = (data && data.rankedMode) || 'arena';
 
         const auth = authenticatedSockets.get(socket.id);

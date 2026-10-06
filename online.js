@@ -938,7 +938,7 @@
         };
 
         /* ── THE ARENAS ONLINE (2026-10-06, mondo: "why is online pvp using the old voxel maps and not the new arena maps?") ──
-           An arena is an 8×8 cut of its site's room, but the room is drawn round the board only once its floor plan is surveyed
+           An arena is a 12×12 cut of its site's room, but the room is drawn round the board only once its floor plan is surveyed
            (map.js _hqArenaWarm → data.js hqArenaUpgrade). VS CPU waits for that under _msConfirm's gate; online launched 600 ms after
            both locks, so the fight drew the bare baked board with the old Δ's scenery — the old voxel map. Now each seat surveys the
            match's arena as soon as it knows the map, re-reads the map's layout once the room is attached, and the host starts only
@@ -3093,7 +3093,7 @@
             function _friendlyGetCompatibleMaps(mode, size) {
                 var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null;
                 var compat = mpMode ? mpMode.compatibleMaps : [];
-                /* THE ONLINE PVP POOL (2026-10-06): an online room only ever deals the 8×8 arenas (data.js hqArenaPvpPool) — never
+                /* THE ONLINE PVP POOL (2026-10-06): an online room only ever deals the 12×12 arenas (data.js hqArenaPvpPool) — never
                    a full launch map, an area part's Δ, a facility or a site still on its old voxel Δ. Clash keeps its own stage. */
                 if (mode !== 'clash' && typeof window.hqArenaPvpPool === 'function') {
                     var pool = window.hqArenaPvpPool();

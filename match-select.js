@@ -676,8 +676,8 @@ function MatchSelect(props) {
   if (isSite) {
     const boards = [
       (deltaIdx >= 0 && mapList[deltaIdx].arena)
-        ? { id: 'delta', label: 'ARENA', sub: '8×8 · the site’s own room · 4v4', off: false, title: 'An 8×8 cut of the site’s own room, the CPU fielding the entities on file' }
-        : { id: 'delta', label: 'Δ BOARD', sub: '8×8 · hand-authored · 4v4', off: deltaIdx < 0, title: 'Arena-ready 8×8 cut of the site, the CPU fielding the entities on file' },
+        ? { id: 'delta', label: 'ARENA', sub: mapList[deltaIdx].size.replace(/ ARENA$/, '') + ' · the site’s own room · 4v4', off: false, title: 'A ' + mapList[deltaIdx].size.replace(/ ARENA$/, '') + ' cut of the site’s own room, the CPU fielding the entities on file' }
+        : { id: 'delta', label: 'Δ BOARD', sub: (deltaIdx >= 0 ? mapList[deltaIdx].size.replace(/ Δ$/, '') : '8×8') + ' · hand-authored · 4v4', off: deltaIdx < 0, title: 'Arena-ready hand-authored board of the site, the CPU fielding the entities on file' },
       { id: 'full', label: 'FULL SITE', sub: (mapList[fullIdx] ? mapList[fullIdx].size + ' · ' + (mapList[fullIdx].team || 4) + 'v' + (mapList[fullIdx].team || 4) : 'deep crossing'), off: fullIdx < 0, title: 'Deep crossing: the whole site at its own team size' },
     ];
     body = h('div', { className: 'ms-tty-body ms-tty-site' },
@@ -722,7 +722,7 @@ function MatchSelect(props) {
           h('div', { className: 'ms-tty-h' }, 'SITES', h('span', null, filteredMaps.length + '/' + compatibleMapIndices.length)),
           h('div', { className: 'ms-tty-input' }, h('span', null, '⌕'),
             h('input', { value: query, onChange: e => setQuery(e.target.value), placeholder: 'search sites', spellCheck: false })),
-          h(Chip, { on: deltaOnly, onClick: () => { setDeltaOnly(d => !d); playUi(); }, title: 'The 8×8 maps: the arenas cut from each site’s own room, the Δ boards of the sites with no room for one, the facility boards' }, '8×8 MAPS'),
+          h(Chip, { on: deltaOnly, onClick: () => { setDeltaOnly(d => !d); playUi(); }, title: 'The arena maps: the 12×12 arenas cut from each site’s own room, the Δ boards of the sites with no room for one, the facility boards' }, 'ARENA MAPS'),
           h('span', { className: 'ms-tty-note', style: { letterSpacing: '0.18em' } }, 'SIZE'),
           ...([['sm', '4–8'], ['md', '10–14'], ['lg', '16+']]).map(([k, l]) => h(Chip, { key: k, on: sizeFilter === k, onClick: () => setSizeFilter(sizeFilter === k ? null : k) }, l))
         ),
