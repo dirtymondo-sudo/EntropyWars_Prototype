@@ -47287,6 +47287,7 @@ const ThreeRenderer = (function () {
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var sl = hqTerrainSlope(info, px, pz);
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
+            var rockSl = rock;
             /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
             var sw = 0;
             if (info.maskD && info.gen && typeof hqTerrainMaskAt === 'function') {
@@ -47294,6 +47295,8 @@ const ThreeRenderer = (function () {
                 if (info.gen.solidSheet === 'cliff' && md < 0.1) { var mr = (0.1 - md) / 0.6; rock = Math.max(rock, mr > 1 ? 1 : mr); }
                 /* THE SIDEWALK (DISASTER CITY, 2026-09-17): the band along the solid wears the path sheet (concrete) over the asphalt */
                 if (info.gen.sidewalk > 0 && md > 0 && md < info.gen.sidewalk + 0.15) sw = 1 - Math.max(0, (md - info.gen.sidewalk) / 0.15);
+                /* THE YARDS OPEN (2026-10-06): the ground between and behind the buildings is walked now — paved like the sidewalk, never the dark mass sheet */
+                if (info.yard && info.yard[k]) { sw = 1; rock = rockSl; }
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion

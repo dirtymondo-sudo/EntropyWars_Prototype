@@ -48490,6 +48490,56 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             pass(pitch, pitch);
             info.gen.infill = nInfill;
         }
+        /* ── THE YARDS OPEN (2026-10-06 — the user: "a building is literally just a box, why are you making invisible walls?"):
+           a city's walker solid is the BUILDINGS now, never the block. Every bit of the mass no lot covers (the gaps between
+           buildings that read as alleys, the yards behind them) opens at street level and wears the sidewalk's pavement
+           (info.yard → the renderer's path sheet), so the darker "can't walk" ground is gone. Only the room's rim band stays,
+           and a pocket the walker could reach from no street (a yard closed in by buildings, seen only from a roof) is closed
+           again so nothing drops into a trap. `gen.yardsOpen: false` keeps the old mass. */
+        if (solidMass && gen.yardsOpen !== false) {
+            const covered = new Uint8Array(nx * nz);
+            info.lots.forEach((lot) => {
+                const R = rectOf(lot), reach = Math.hypot(R.hw, R.hd) + res;
+                const i0 = Math.max(0, Math.floor((lot.x - reach - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((lot.x + reach - x0) / res));
+                const j0 = Math.max(0, Math.floor((lot.z - reach - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((lot.z + reach - z0) / res));
+                for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+                    const px = x0 + i * res - lot.x, pz = z0 + j * res - lot.z;
+                    const lx = px * R.ax[0] + pz * R.ax[1], lz = px * R.az[0] + pz * R.az[1];
+                    if (Math.abs(lx) <= R.hw + 0.05 && Math.abs(lz) <= R.hd + 0.05) covered[j * nx + i] = 1;
+                }
+            });
+            const rimKeep = Math.max(rim, 0.6) + 0.6, wasOpen = mask.slice(), yard = new Uint8Array(nx * nz);
+            let nYard = 0;
+            each((k, px, pz) => { if (mask[k] || covered[k] || !inShell(px, pz, rimKeep)) return; mask[k] = 1; yard[k] = 1; nYard++; });
+            if (nYard) {
+                D = _hqTMaskDistance(mask, nx, nz, res);
+                /* THE REACH: from every walkable cell that was open before, a step at a time (never up or down a tier's cliff — a yard
+                   reached only by dropping off a roof is a trap), over the walkable cells now */
+                const walk = (k) => mask[k] && D[k] > solidPad, step = res * 0.9;
+                const seen = new Uint8Array(nx * nz), q = new Int32Array(nx * nz); let qh = 0, qt = 0;
+                for (let k = 0; k < nx * nz; k++) if (wasOpen[k] && walk(k)) { seen[k] = 1; q[qt++] = k; }
+                const go = (k, kk) => { if (!seen[kk] && walk(kk) && Math.abs(info.H[kk] - info.H[k]) < step) { seen[kk] = 1; q[qt++] = kk; } };
+                while (qh < qt) {
+                    const k = q[qh++], i = k % nx, j = (k - i) / nx;
+                    if (i > 0) go(k, k - 1);
+                    if (i < nx - 1) go(k, k + 1);
+                    if (j > 0) go(k, k - nx);
+                    if (j < nz - 1) go(k, k + nx);
+                }
+                /* a yard cell stays open when a reached cell lies within the body's band of it (the strip along a building's face) */
+                const band = Math.ceil((solidPad + res) / res) + 1;
+                let nShut = 0;
+                for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+                    const k = j * nx + i; if (!yard[k]) continue;
+                    let near = false;
+                    for (let dj = -band; dj <= band && !near; dj++) { const jj = j + dj; if (jj < 0 || jj >= nz) continue; for (let di = -band; di <= band; di++) { const ii = i + di; if (ii >= 0 && ii < nx && seen[jj * nx + ii]) { near = true; break; } } }
+                    if (!near) { mask[k] = 0; yard[k] = 0; nShut++; }
+                }
+                D = _hqTMaskDistance(mask, nx, nz, res); info.maskD = D;
+                open = 0; each((k) => { if (mask[k]) open++; }); info.gen.open = open / (nx * nz);
+                info.yard = yard; info.gen.yardOpen = nYard - nShut; info.gen.yardShut = nShut;
+            }
+        }
         districts.forEach(d => { d.lots = info.lots.filter(l => l.district === d.id).length; });
         info.districts = districts.map(d => ({ id: d.id, label: d.label || d.id, rect: d.rect.slice(), lots: d.lots, neon: d.neon != null ? !!d.neon : null, style: d.style || null, fronts: d.fronts || null }));
         info.gen.districts = info.districts.length;
