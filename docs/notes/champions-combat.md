@@ -1188,3 +1188,26 @@ rows moved (comments tagged `BALANCE PASS 2026-10-06` in data.js). Battle grades
 pause sheet). Lab (battle.js): build-token stamp + stale-match warning, Cube damage per race, zone ticks credited to
 their spell, spell tier/families + `analysis.families` + `analysis.neverCast`, tree-shape roll-ups fixed for the
 `R·T` sig. Open: Tier II damage rows hit like Tier I; 74 fielded spells never cast in the lab.
+
+## THE RACE EDITOR (2026-10-06, mondo: "a race editor similar to the spell editor")
+Settings → Developer → Open Race Editor, or RACES ↗ in the Spell Library top bar (index.html `#raceEditorPage`, map.js
+`_goToRaceEditor(from)` / `_raceEditorBack`, ui.js RCE block at the end of the file, styles-hud.css `.rce-*`).
+**The diff layer** = data.js `EWRaceMods` (after EWSpellMods; localStorage `ew_race_mods_v1`): sparse per-race rows
+(hp mp atk int def mdef spd awr · label labelMale labelFemale faction types · affinity · terrain · role · range · biomes)
+plus `grades` (STAT_GRADE_BANDS), `curve` (LEVEL_CURVE) and `gains` (LEVEL_TOTAL_STAT_GAINS), written IN PLACE into the
+live tables (restored from a pristine snapshot first), pruned at boot when data.js ships the value, OFF online (online.js /
+state.js call setOnline like EWSpellMods). EXPORT = `format: 'entropy-wars-race-mods'` with `summary`, `baseline` and
+the doc; no bake script — a thread writes it into data.js by hand (the export's `instructions` name every table).
+**THE ONE STATLINE RULE** (mondo: "PvP is the same races as in the story mode just at level 100"): a race has one BASE
+statline; every mode builds a unit with levelStatGains (story at its level, PvP at 100); the letter grade reads the BASE
+and never moves with level (the Pokémon model). The editor's EDIT AT switch (BASE · LEVEL 1 · LEVEL 100) only changes
+what the typed / shown numbers mean (data.js `raceStatAtLevel` / `raceBaseForLevelValue`); the stored number is the base.
+The Mystery Dungeon boss's ×1.6 HP / ×1.2 ATK (battle.js) was the one mode-specific stat change and is gone.
+**New data.js tables** the editor writes: `LEVEL_CURVE` {hpL1, mpL1, hpExp, statExp} (levelScale / levelStatGains /
+levelGrowthDeficit read it; the old consts are its shipped values), `RACE_TERRAIN_PREFERENCE` (moved out of state.js
+getTerrainPreferenceForRace), `TERRAIN_PREFERENCE_BONUS` (moved out of getTerrainPreferenceModifier),
+`TERRAIN_PREFERENCE_OPTIONS`, `statHelpRefreshGrades` (STAT_HELP band text follows the bands), `racePowerBudget`
+(the check-grades budget, target 262). RANK: KEEP SHAPE stretches the list's current ladder of values to the new floor /
+ceiling (a drag swaps who holds which value); EVEN STEPS spaces them equally. The duel calculator re-states the
+calcDamageResolution chain for a neutral hit (no types / elements / statuses / passives) — keep it in step with battle.js
+when the damage math moves. UNSEEN LIVE (RULE #1c): Firefox drag and drop on the RANK list, the narrow layout.

@@ -10324,6 +10324,7 @@
                     <button class="slb2-btn" data-act="import" title="import a JSON export — merge (default) or replace">⇪ IMPORT</button>
                     <input type="file" id="slbImportFile" accept="application/json,.json" style="display:none" data-input="importFile">
                     <button class="slb2-btn slb2-btn-lab" data-act="lab" title="open the Spell Lab on the inspected spell (⌘L)">▶ LAB</button>
+                    <button class="slb2-btn" onclick="window._goToRaceEditor && window._goToRaceEditor('library')" title="the race editor: base stats, grades, the level curve">RACES ↗</button>
                     <button class="slb2-btn slb2-btn-more" data-act="more" title="clear applied · discard all">⋯</button>
                 </div>`;
             _slb2RefreshChrome();
@@ -17201,4 +17202,578 @@
         document.body.appendChild(_fpsEl);
         requestAnimationFrame(_fpsLoop);
       };
+    })();
+
+    /* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       THE RACE EDITOR (2026-10-06, mondo: "a race editor similar to the spell editor") — Settings → Developer → Race
+       Editor, or RACES ↗ in the Spell Library. Page #raceEditorPage, body #raceEditorBody; the edits are data.js
+       EWRaceMods (localStorage, written into the live race tables, OFF online, EXPORT for a thread to bake).
+       Tabs: RACES (the table + the inspector) · RANK (one stat, drag to order, floor / ceiling) · GRADES (the letter
+       bands) · LEVELS (the curve + a race at any level) · FORMULAS (the damage math + a duel calculator) · CHANGES.
+       THE RULE ON SCREEN: the numbers are BASE stats; the grade reads the base and never moves with level; level 1 and
+       level 100 come out of the one level formula; story is the unit's level, PvP is level 100.
+       Events are delegated from #raceEditorBody (data-act / data-f); a write snapshots the doc for undo.
+       ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+    (function () {
+        const STATS = [['hp', 'HP'], ['mp', 'MP'], ['atk', 'ATK'], ['int', 'M ATK'], ['def', 'DEF'], ['mdef', 'M DEF'], ['spd', 'SPD'], ['awr', 'AWR']];
+        const SL = Object.fromEntries(STATS);
+        const FRAMES = [['base', 'BASE'], ['l1', 'LEVEL 1'], ['l100', 'LEVEL 100']];
+        const FACTIONS = ['space', 'time', 'chaos'];
+        const TIERS = ['none', 'weak', 'resist', 'immune', 'absorb'];
+        const R = {
+            tab: 'races', frame: 'base', view: 100, sel: null, search: '', role: '', type: '', faction: '',
+            sort: { key: 'name', dir: 1 }, rankStat: 'hp', rank: null, rankMode: 'shape', lvRace: null,
+            calc: { a: null, d: null, la: 100, ld: 100, dmg: 40, kind: 'physical' },
+            undo: [], redo: [], bound: false,
+        };
+        try { const f = localStorage.getItem('ew_rce_frame'); if (f && FRAMES.some(x => x[0] === f)) R.frame = f; } catch (e) {}
+        const M = () => window.EWRaceMods;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const cap = () => (typeof LEVEL_CAP !== 'undefined' ? LEVEL_CAP : 100);
+        const races = () => M().races();
+        const base = (r, k) => (RACE_BASE_STATS[r] && RACE_BASE_STATS[r][k]) || 0;
+        const label = r => (RACE_PROFILES[r] && RACE_PROFILES[r].label) || r;
+        const role = r => (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[r]) || '';
+        const types = r => (RACE_PROFILES[r] && RACE_PROFILES[r].types) || [];
+        const faction = r => (RACE_PROFILES[r] && RACE_PROFILES[r].faction) || '';
+        const range = r => (typeof raceKit === 'function' ? raceKit(r).range : 1);
+        const frameLevel = () => R.frame === 'l1' ? 1 : R.frame === 'l100' ? cap() : 0;
+        const toFrame = (k, b) => R.frame === 'base' ? b : raceStatAtLevel(k, b, frameLevel());
+        const fromFrame = (k, v) => R.frame === 'base' ? Math.max(0, Math.round(+v || 0)) : raceBaseForLevelValue(k, v, frameLevel());
+        const at = (k, b, L) => raceStatAtLevel(k, b, L);
+        const grade = (k, b, sz) => (typeof statGradeNodeHtml === 'function' ? statGradeNodeHtml(k, b, { size: sz || 'sm', label: SL[k] }) : '') || '<span class="ew-grade sm none"></span>';
+        const edited = (r, f) => { const m = M().doc.races[r]; return !!(m && Object.prototype.hasOwnProperty.call(m, f)); };
+        const raceEdited = r => !!M().doc.races[r];
+        const allRoles = () => [...new Set(Object.values(RACE_CLASS || {}))].sort();
+        const allTypes = () => Object.keys(TYPE_CHART || {});
+        const allBiomes = () => [...new Set([].concat(...Object.values(EW_RACE_BIOMES || {})))].sort();
+        const opt = (v, cur, txt) => `<option value="${esc(v)}"${String(v) === String(cur) ? ' selected' : ''}>${esc(txt == null ? v : txt)}</option>`;
+        const toast = (msg) => { try { if (typeof _hqToast === 'function') _hqToast(msg, 1800); } catch (e) {} };
+
+        /* ── a write: snapshot for undo, change, save, re-apply to the live tables, redraw ── */
+        function W(fn, keepRank) {
+            R.undo.push(M().snapshot()); if (R.undo.length > 60) R.undo.shift(); R.redo = [];
+            fn();
+            M().save(); M().apply();
+            if (!keepRank) R.rank = null;
+            render();
+        }
+        function undo() { if (!R.undo.length) return; R.redo.push(M().snapshot()); M().restoreSnapshot(R.undo.pop()); R.rank = null; render(); }
+        function redo() { if (!R.redo.length) return; R.undo.push(M().snapshot()); M().restoreSnapshot(R.redo.pop()); R.rank = null; render(); }
+
+        function filtered() {
+            const q = R.search.trim().toLowerCase();
+            return races().filter(r => (!q || r.includes(q) || label(r).toLowerCase().includes(q))
+                && (!R.role || role(r) === R.role) && (!R.type || types(r).includes(R.type)) && (!R.faction || faction(r) === R.faction));
+        }
+        function sorted(list) {
+            const k = R.sort.key, d = R.sort.dir;
+            const val = r => k === 'name' ? label(r).toLowerCase() : k === 'role' ? role(r) : k === 'type' ? types(r).join(',') : k === 'mov' ? moveFromSpd(base(r, 'spd'))
+                : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
+            return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
+        }
+
+        /* ── THE SCREEN ── */
+        window._renderRaceEditor = function () {
+            const body = document.getElementById('raceEditorBody');
+            if (!body) return;
+            if (!M()) { body.innerHTML = '<div class="slb2-empty">EWRaceMods layer missing (data.js out of date).</div>'; return; }
+            if (M().online) { body.innerHTML = '<div class="slb2-empty">EDITS OFF — online match. The race editor reopens when the match ends.</div>'; return; }
+            if (!R.sel || !RACE_BASE_STATS[R.sel]) R.sel = sorted(races())[0];
+            if (!R.bound) bind(body);
+            render();
+        };
+        function render() {
+            const body = document.getElementById('raceEditorBody');
+            if (!body) return;
+            const st = body.scrollTop;
+            const keepScroll = {};
+            body.querySelectorAll('[data-scroll]').forEach(el => { keepScroll[el.dataset.scroll] = el.scrollTop; });
+            body.innerHTML = `<div class="slb2-shell rce-shell">${top()}${banner()}<div class="rce-main">${tabBody()}</div></div>`;
+            body.scrollTop = st;
+            body.querySelectorAll('[data-scroll]').forEach(el => { if (keepScroll[el.dataset.scroll] != null) el.scrollTop = keepScroll[el.dataset.scroll]; });
+        }
+        function top() {
+            const tabs = [['races', 'RACES'], ['rank', 'RANK A STAT'], ['grades', 'GRADES'], ['levels', 'LEVELS'], ['formulas', 'FORMULAS'], ['changes', 'CHANGES']];
+            const n = M().total(), c = M().counts();
+            return `<div class="slb2-top">
+                <div class="slb2-tabs">${tabs.map(([k, l]) => `<button class="slb2-tab${R.tab === k ? ' on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>
+                <div class="rce-top-mid">
+                    <span class="rce-lbl" title="what the stat numbers you type and read mean">EDIT AT</span>
+                    <span class="slb2-seg">${FRAMES.map(([k, l]) => `<button class="slb2-segb${R.frame === k ? ' on' : ''}" data-act="frame" data-v="${k}">${l}</button>`).join('')}</span>
+                    <span class="rce-lbl" title="the third number on every stat: the race at this level">SEE AT LEVEL</span>
+                    <input class="rce-range" type="range" min="1" max="${cap()}" value="${R.view}" data-f="view"><b class="rce-viewnum">${R.view}</b>
+                </div>
+                <div class="slb2-top-right">
+                    <span class="slb2-modcount">${n ? `<span class="slb2-dot">●</span> ${c.races} race${c.races === 1 ? '' : 's'} · ${n} edit${n === 1 ? '' : 's'}` : 'no pending edits'}</span>
+                    <button class="slb2-btn${M().doc.enabled ? ' on' : ''}" data-act="toggle" title="play with your edits, or play the game as shipped">${M().doc.enabled ? 'EDITS ON' : 'EDITS OFF'}</button>
+                    <button class="slb2-btn" data-act="undo"${R.undo.length ? '' : ' disabled'} title="undo (⌘Z)">↶</button>
+                    <button class="slb2-btn" data-act="redo"${R.redo.length ? '' : ' disabled'} title="redo (⌘⇧Z)">↷</button>
+                    <button class="slb2-btn on" data-act="export" title="every change as JSON, to hand to Claude">⇩ EXPORT</button>
+                    <button class="slb2-btn" data-act="import" title="load an export back in">⇪ IMPORT</button>
+                    <input type="file" id="rceImportFile" accept="application/json,.json" style="display:none" data-f="importFile">
+                </div>
+            </div>`;
+        }
+        function banner() {
+            const g = LEVEL_TOTAL_STAT_GAINS;
+            const what = R.frame === 'base'
+                ? `You are editing <b>BASE</b> stats: the race's own numbers, the ones the letter grade reads.`
+                : `You are editing stats <b>AT LEVEL ${frameLevel()}</b>. What you type is converted to the race's BASE stat (the stored number); the grade still reads the base.`;
+            return `<div class="rce-banner">${what} <span class="rce-banner-rule">One statline for every mode: story builds the unit at its own level, PvP at level ${cap()}. The grade never changes with level. Level ${cap()} = base + ATK ${g.atk} · M ATK ${g.int} · DEF ${g.def} · M DEF ${g.mdef}; HP = base + ${g.hp}, MP = base + ${g.mp}; SPD and AWR never change. Level 1 HP is ${Math.round(LEVEL_CURVE.hpL1 * 100)}% of level ${cap()}, MP ${Math.round(LEVEL_CURVE.mpL1 * 100)}%.</span></div>`;
+        }
+        function tabBody() {
+            if (R.tab === 'rank') return tabRank();
+            if (R.tab === 'grades') return tabGrades();
+            if (R.tab === 'levels') return tabLevels();
+            if (R.tab === 'formulas') return tabFormulas();
+            if (R.tab === 'changes') return tabChanges();
+            return tabRaces();
+        }
+        function filterBar(extra) {
+            return `<div class="rce-filters">
+                <label class="slb2-searchwrap rce-search"><span>⌕</span><input class="slb2-search" type="text" placeholder="search a race" value="${esc(R.search)}" data-f="search" spellcheck="false"></label>
+                <select class="slb2-sel" data-f="role">${opt('', R.role, 'every role')}${allRoles().map(x => opt(x, R.role)).join('')}</select>
+                <select class="slb2-sel" data-f="type">${opt('', R.type, 'every type')}${allTypes().map(x => opt(x, R.type)).join('')}</select>
+                <select class="slb2-sel" data-f="faction">${opt('', R.faction, 'every faction')}${FACTIONS.map(x => opt(x, R.faction)).join('')}</select>
+                <span class="slb2-dim rce-count">${filtered().length} of ${races().length} races</span>${extra || ''}
+            </div>`;
+        }
+
+        /* ── RACES: the table + the inspector ── */
+        function tabRaces() {
+            const list = sorted(filtered());
+            const th = (k, l, cls) => `<th class="${cls || ''}${R.sort.key === k ? ' on' : ''}" data-act="sort" data-v="${k}" title="sort">${l}${R.sort.key === k ? (R.sort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+            const rows = list.map(r => `<tr class="${r === R.sel ? 'sel' : ''}" data-act="pick" data-v="${esc(r)}">
+                <td class="rce-name">${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
+                ${STATS.map(([k]) => `<td class="rce-num${edited(r, k) ? ' ed' : ''}">${grade(k, base(r, k))}<span>${toFrame(k, base(r, k))}</span></td>`).join('')}
+                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
+            return `<div class="rce-split"><div class="rce-left">${filterBar()}
+                <div class="rce-tablewrap" data-scroll="races"><table class="rce-table"><thead><tr>${th('name', 'RACE')}${th('role', 'ROLE')}${th('type', 'TYPE')}
+                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
+                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
+                <div class="rce-right" data-scroll="insp">${inspector(R.sel)}</div></div>`;
+        }
+        function powerCls(r) { const p = racePowerBudget(RACE_BASE_STATS[r], range(r)); return p > RACE_POWER_TARGET * 1.05 ? 'hi' : p < RACE_POWER_TARGET * 0.95 ? 'lo' : ''; }
+        function inspector(r) {
+            if (!r || !RACE_BASE_STATS[r]) return '<div class="slb2-empty">pick a race</div>';
+            const pr = RACE_PROFILES[r] || {};
+            const was = f => { const v = M().shipped(r, f); return edited(r, f) ? `<span class="rce-was">was ${esc(Array.isArray(v) ? v.join(', ') || 'none' : (v && typeof v === 'object') ? (Object.keys(v).map(e => e + ' ' + v[e]).join(', ') || 'none') : v)}</span>` : ''; };
+            const terr = (typeof RACE_TERRAIN_PREFERENCE !== 'undefined' && RACE_TERRAIN_PREFERENCE[r]) || 'none';
+            const tb = (typeof TERRAIN_PREFERENCE_BONUS !== 'undefined' && TERRAIN_PREFERENCE_BONUS[terr]) || null;
+            const tbTxt = terr === 'none' ? 'no terrain preference' : `on ${terr}: costs 1 less to walk${tb ? ', ' + Object.keys(tb).filter(k => tb[k]).map(k => '+' + tb[k] + ' ' + ({ atk: 'ATK', armor: 'armour', int: 'M ATK', awr: 'AWR', move: 'MOV' }[k] || k)).join(', ') : ''}`;
+            const aff = RACE_ELEMENT_AFFINITY[r] || {};
+            const bi = (EW_RACE_BIOMES && EW_RACE_BIOMES[r]) || [];
+            const statRows = STATS.map(([k, l]) => {
+                const b = base(r, k);
+                return `<div class="rce-stat${edited(r, k) ? ' ed' : ''}"><span class="rce-stat-l">${l}</span>${grade(k, b)}
+                    <input class="rce-in" type="number" min="0" value="${toFrame(k, b)}" data-f="stat" data-k="${k}" data-r="${esc(r)}" title="${R.frame === 'base' ? 'base stat' : 'stat at level ' + frameLevel()}">
+                    <span class="rce-lv"><i>L1</i> ${at(k, b, 1)} <i>L${R.view}</i> ${at(k, b, R.view)} <i>L${cap()}</i> ${at(k, b, cap())}</span>${edited(r, k) ? `<span class="rce-was">base was ${M().shipped(r, k)}</span>` : ''}</div>`;
+            }).join('');
+            const spd = base(r, 'spd'), awr = base(r, 'awr');
+            return `<div class="rce-insp">
+                <div class="rce-insp-h"><b>${esc(label(r))}</b> <span class="slb2-dim">${esc(r)}</span>${raceEdited(r) ? `<button class="slb2-tiny" data-act="revertRace" data-v="${esc(r)}">REVERT RACE</button>` : ''}</div>
+                <div class="rce-sec">IDENTITY</div>
+                <div class="rce-grid">
+                    <label>NAME</label><div><input class="rce-txt" value="${esc(pr.label || '')}" data-f="label" data-r="${esc(r)}">${was('label')}</div>
+                    <label>MALE NAME</label><div><input class="rce-txt" value="${esc(pr.labelMale || '')}" placeholder="same as name" data-f="labelMale" data-r="${esc(r)}">${was('labelMale')}</div>
+                    <label>FEMALE NAME</label><div><input class="rce-txt" value="${esc(pr.labelFemale || '')}" placeholder="same as name" data-f="labelFemale" data-r="${esc(r)}">${was('labelFemale')}</div>
+                    <label>FACTION</label><div><select class="slb2-sel" data-f="faction1" data-r="${esc(r)}">${FACTIONS.map(x => opt(x, pr.faction)).join('')}</select>${was('faction')}</div>
+                    <label>TYPE</label><div>${allTypes().map(t => `<button class="slb2-tiny${types(r).includes(t) ? ' on' : ''}" data-act="type" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join(' ')}${was('types')}</div>
+                    <label>ROLE</label><div><select class="slb2-sel" data-f="role1" data-r="${esc(r)}">${opt('', role(r), '—')}${allRoles().map(x => opt(x, role(r))).join('')}</select>${was('role')}</div>
+                    <label>ATTACK RANGE</label><div><input class="rce-in" type="number" min="1" max="8" value="${range(r)}" data-f="range" data-r="${esc(r)}"> <span class="slb2-dim">tiles (basic attack reach)</span>${was('range')}</div>
+                    <label>TERRAIN</label><div><select class="slb2-sel" data-f="terrain" data-r="${esc(r)}">${TERRAIN_PREFERENCE_OPTIONS.map(x => opt(x, terr)).join('')}</select> <span class="slb2-dim">${esc(tbTxt)}</span>${was('terrain')}</div>
+                    <label>NATIVE TO</label><div class="rce-chips">${allBiomes().map(b => `<button class="slb2-tiny${bi.includes(b) ? ' on' : ''}" data-act="biome" data-v="${esc(b)}" data-r="${esc(r)}">${esc(b.replace(/_/g, ' '))}</button>`).join(' ')}${was('biomes')}</div>
+                </div>
+                <div class="rce-sec">ELEMENTS <span class="slb2-dim">weak ×1.5 · resist ×0.5 · immune ×0 · absorb heals</span></div>
+                <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
+                <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
+                ${statRows}
+                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>CRT <b>${Math.round(critChanceFromStats(awr) * 100)}%</b> (from AWR)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
+                <div class="rce-sec">HP AND MP FROM LEVEL 1 TO ${cap()}</div>
+                ${chart(r, ['hp', 'mp'], 150)}
+                <div class="rce-sec">ATK · M ATK · DEF · M DEF FROM LEVEL 1 TO ${cap()}</div>
+                ${chart(r, ['atk', 'int', 'def', 'mdef'], 150)}
+                <div class="rce-row"><button class="slb2-btn" data-act="goLevels" data-v="${esc(r)}">SEE THIS RACE AT EVERY LEVEL ↗</button> <button class="slb2-btn" data-act="goCalc" data-v="${esc(r)}">TRY IT IN THE DUEL CALCULATOR ↗</button></div>
+            </div>`;
+        }
+        const CHART_C = { hp: '#2ed158', mp: '#2f9dff', atk: '#ff7a4a', int: '#c88cff', def: '#ffd86a', mdef: '#5be2f0' };
+        function chart(r, keys, h) {
+            const w = 420, padL = 34, padB = 16, padT = 6, padR = 8;
+            const N = cap();
+            let max = 1;
+            keys.forEach(k => { max = Math.max(max, at(k, base(r, k), N)); });
+            const x = L => padL + (L - 1) / (N - 1) * (w - padL - padR), y = v => padT + (1 - v / max) * (h - padT - padB);
+            const lines = keys.map(k => {
+                const b = base(r, k); let d = '';
+                for (let L = 1; L <= N; L += 3) d += (d ? 'L' : 'M') + x(L).toFixed(1) + ' ' + y(at(k, b, L)).toFixed(1);
+                d += 'L' + x(N).toFixed(1) + ' ' + y(at(k, b, N)).toFixed(1);
+                return `<path d="${d}" fill="none" stroke="${CHART_C[k]}" stroke-width="2"><title>${SL[k]}: L1 ${at(k, b, 1)} · L${N} ${at(k, b, N)}</title></path>`;
+            }).join('');
+            const vx = x(R.view);
+            const ticks = [1, 25, 50, 75, 100].filter(L => L <= N).map(L => `<text x="${x(L)}" y="${h - 3}" class="rce-ax" text-anchor="middle">${L}</text>`).join('');
+            const legend = keys.map((k, i) => `<text x="${padL + 6 + i * 70}" y="${padT + 10}" fill="${CHART_C[k]}" class="rce-ax">${SL[k]} ${at(k, base(r, k), R.view)}</text>`).join('');
+            return `<svg class="rce-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="height:${h}px">
+                <line x1="${padL}" y1="${y(0)}" x2="${w - padR}" y2="${y(0)}" class="rce-axl"/><text x="${padL - 4}" y="${y(max) + 8}" class="rce-ax" text-anchor="end">${max}</text><text x="${padL - 4}" y="${y(0)}" class="rce-ax" text-anchor="end">0</text>
+                ${lines}<line x1="${vx}" y1="${padT}" x2="${vx}" y2="${y(0)}" class="rce-axv"/>${ticks}${legend}</svg>`;
+        }
+
+        /* ── RANK: one stat, drag to order, floor and ceiling ── */
+        function rankInit(force) {
+            const k = R.rankStat;
+            const sig = k + '|' + R.search + '|' + R.role + '|' + R.type + '|' + R.faction;
+            if (R.rank && R.rank.sig === sig && !force) return R.rank;
+            const order = filtered().sort((a, b) => base(b, k) - base(a, k) || label(a).localeCompare(label(b)));
+            const ladder = order.map(r => base(r, k));
+            R.rank = { sig, order, ladder, floor: ladder.length ? ladder[ladder.length - 1] : 0, ceil: ladder.length ? ladder[0] : 0 };
+            return R.rank;
+        }
+        /* every race in the list takes its slot's value: KEEP SHAPE = the old ladder of values stretched to the new floor and
+           ceiling (dragging swaps who holds which value); EVEN STEPS = equal steps from the ceiling down to the floor */
+        function rankDistribute() {
+            const rk = R.rank, k = R.rankStat, n = rk.order.length;
+            if (!n) return;
+            const lo = rk.floor, hi = rk.ceil;   // BASE values
+            const lmax = rk.ladder[0], lmin = rk.ladder[n - 1];
+            rk.order.forEach((r, i) => {
+                let v;
+                if (n === 1) v = hi;
+                else if (R.rankMode === 'even' || lmax === lmin) v = hi - (hi - lo) * i / (n - 1);
+                else v = lo + (rk.ladder[i] - lmin) / (lmax - lmin) * (hi - lo);
+                M().setRace(r, k, Math.max(0, Math.round(v)));
+            });
+        }
+        function tabRank() {
+            const rk = rankInit();
+            const k = R.rankStat;
+            const fl = R.frame === 'base' ? '' : ` (at level ${frameLevel()})`;
+            const rows = rk.order.map((r, i) => {
+                const b = base(r, k);
+                return `<div class="rce-rrow${edited(r, k) ? ' ed' : ''}" draggable="true" data-i="${i}">
+                    <span class="rce-rank">${i + 1}</span><span class="rce-grip" title="drag">⠿</span>
+                    <span class="rce-rname">${esc(label(r))}</span><span class="slb2-dim rce-rrole">${esc(role(r))}</span>
+                    ${grade(k, b)}<input class="rce-in" type="number" min="0" value="${toFrame(k, b)}" data-f="rankVal" data-r="${esc(r)}">
+                    <span class="rce-lv"><i>L1</i> ${at(k, b, 1)} <i>L${cap()}</i> ${at(k, b, cap())}</span>
+                    <span class="rce-was">${edited(r, k) ? 'base was ' + M().shipped(r, k) : ''}</span>
+                    <span class="rce-mv"><button class="slb2-tiny" data-act="rankMove" data-i="${i}" data-v="-1" title="up">▲</button><button class="slb2-tiny" data-act="rankMove" data-i="${i}" data-v="1" title="down">▼</button></span>
+                </div>`;
+            }).join('');
+            return `<div class="rce-pad">${filterBar()}
+                <div class="rce-rankbar">
+                    <span class="rce-lbl">STAT</span><span class="slb2-seg">${STATS.map(([s, l]) => `<button class="slb2-segb${k === s ? ' on' : ''}" data-act="rankStat" data-v="${s}">${l}</button>`).join('')}</span>
+                    <span class="rce-lbl">CEILING${fl}</span><input class="rce-in" type="number" value="${toFrame(k, rk.ceil)}" data-f="rankCeil">
+                    <span class="rce-lbl">FLOOR${fl}</span><input class="rce-in" type="number" value="${toFrame(k, rk.floor)}" data-f="rankFloor">
+                    <span class="slb2-seg"><button class="slb2-segb${R.rankMode === 'shape' ? ' on' : ''}" data-act="rankMode" data-v="shape" title="keep the gaps between the races, stretched to the floor and ceiling">KEEP SHAPE</button><button class="slb2-segb${R.rankMode === 'even' ? ' on' : ''}" data-act="rankMode" data-v="even" title="equal steps from the ceiling down to the floor">EVEN STEPS</button></span>
+                    <button class="slb2-btn" data-act="rankApply" title="write the values now">APPLY</button>
+                    <button class="slb2-btn" data-act="rankReset" title="re-sort the list by the current values">RE-SORT</button>
+                </div>
+                <div class="slb2-hint">Top of the list = the CEILING, bottom = the FLOOR. Drag a race (or use ▲▼) and every race in the list takes the value of its new slot. Changing the floor or ceiling re-spreads the whole list. Only the races the filters show are ranked. ${R.rankMode === 'shape' ? 'KEEP SHAPE keeps the current gaps between the races.' : 'EVEN STEPS puts the same gap between every race.'} Grades follow the base, so they move with the values.</div>
+                <div class="rce-ranklist" data-scroll="rank">${rows || '<div class="slb2-empty">no race matches the filters</div>'}</div></div>`;
+        }
+
+        /* ── GRADES: the letter bands ── */
+        function tabGrades() {
+            const L = ['S', 'A', 'B', 'C'];
+            const rows = STATS.map(([k, l]) => {
+                const b = STAT_GRADE_BANDS[k]; if (!b) return '';
+                const cnt = { S: 0, A: 0, B: 0, C: 0, F: 0 };
+                races().forEach(r => { cnt[statGrade(k, base(r, k))]++; });
+                const tot = races().length || 1;
+                const bar = ['F', 'C', 'B', 'A', 'S'].map(g => `<span class="rce-gbar g-${g.toLowerCase()}" style="flex:${cnt[g] || 0.001}" title="${g}: ${cnt[g]} races">${cnt[g] ? g + ' ' + cnt[g] : ''}</span>`).join('');
+                const ed = Object.prototype.hasOwnProperty.call(M().doc.grades, k);
+                const l100 = b.map(v => at(k, v, cap()));
+                return `<tr class="${ed ? 'ed' : ''}"><td><b>${l}</b></td>${b.map((v, i) => `<td><input class="rce-in" type="number" value="${v}" data-f="band" data-k="${k}" data-i="${i}" title="${L[i]} from this base value up"></td>`).join('')}
+                    <td class="slb2-dim">below ${b[3]}</td><td style="min-width:240px"><div class="rce-gdist">${bar}</div></td>
+                    <td class="slb2-dim rce-small">${k === 'spd' || k === 'awr' ? 'same at every level' : 'S at L' + cap() + ' ≥ ' + l100[0] + ' · C ≥ ' + l100[3]}</td>
+                    <td><button class="slb2-tiny" data-act="bandSpread" data-v="${k}" title="S = the top fifth of the roster, A the next fifth, and so on">SPREAD EVENLY</button>${ed ? ` <button class="slb2-tiny" data-act="bandReset" data-v="${k}">RESET</button>` : ''}</td></tr>`;
+            }).join('');
+            return `<div class="rce-pad rce-prose">
+                <div class="rce-answer">
+                    <h3>How the letter grade works</h3>
+                    <p><b>The grade belongs to the race, not to the level.</b> It reads the race's BASE stat against the bands below. An S-tier HP race is S at level 1 and S at level ${cap()}; levelling never changes a letter. Buffs, statuses and gear still move the letter on the battle cards, because those change what the unit has right now.</p>
+                    <p><b>Why not grade the level 1 or level 100 number?</b> Every race gains the same points per level (level ${cap()} ATK = base + ${LEVEL_TOTAL_STAT_GAINS.atk}), so grading level 100 numbers would push the whole roster up one or two letters (the nun's 8 ATK read A). Grading the base keeps one ruler: F 1 to 20 up to S 81 to 100 for the 0 to 100 stats.</p>
+                    <p><b>Pokémon</b> does the same thing: each species has fixed base stats (Blissey's HP base is 255, the highest), and every level only scales the real number with one formula, about (2 × base + IV + EV/4) × level / 100 + 5. Fan tier lists rank the base stats, so a species' rank in a stat is the same at level 5 and level 100. <b>Shin Megami Tensei</b> gives each demon a fixed base level and a fixed statline (St, Ma, Vi, Ag, Lu); a levelling demon gains points in proportion to that profile, so a magic demon stays a magic demon. Neither game shows a letter, but both tie a creature's strengths to its species, never to its level. This editor follows that rule.</p>
+                </div>
+                <h3>The bands (BASE values)</h3>
+                <table class="rce-table rce-gtable"><thead><tr><th>STAT</th><th>S ≥</th><th>A ≥</th><th>B ≥</th><th>C ≥</th><th>F</th><th>THE ROSTER</th><th>AT LEVEL ${cap()}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it. SPD also sets movement: ${typeof MOVE_SPD_BANDS !== 'undefined' ? 'SPD up to ' + MOVE_SPD_BANDS[0] + ' walks 1 tile, up to ' + MOVE_SPD_BANDS[1] + ' walks 2, up to ' + MOVE_SPD_BANDS[2] + ' walks 3, up to ' + MOVE_SPD_BANDS[3] + ' walks 4, above walks 5' : ''} (those tile bands are separate from the letters).</div>
+            </div>`;
+        }
+
+        /* ── LEVELS: the curve + any race at any level ── */
+        function tabLevels() {
+            const r = (R.lvRace && RACE_BASE_STATS[R.lvRace]) ? R.lvRace : R.sel;
+            const C = LEVEL_CURVE, G = LEVEL_TOTAL_STAT_GAINS;
+            const ced = k => Object.prototype.hasOwnProperty.call(M().doc.curve, k) ? ' ed' : '';
+            const ged = k => Object.prototype.hasOwnProperty.call(M().doc.gains, k) ? ' ed' : '';
+            const cols = [1, 10, 25, 50, 75, cap()];
+            const tbl = STATS.map(([k, l]) => `<tr><td><b>${l}</b></td><td>${grade(k, base(r, k))}</td><td class="slb2-dim">${base(r, k)}</td>${cols.map(L => `<td class="rce-num">${at(k, base(r, k), L)}</td>`).join('')}<td class="rce-num rce-viewcol">${at(k, base(r, k), R.view)}</td></tr>`).join('');
+            const knob = (k, l, v, step, help, scale) => `<div class="rce-knob${ced(k)}"><label>${l}</label><input class="rce-in" type="number" step="${step}" value="${scale ? +(v * scale).toFixed(2) : v}" data-f="curve" data-k="${k}" data-scale="${scale || 1}"><span class="slb2-dim">${help}</span>${ced(k) ? `<span class="rce-was">was ${scale ? +(M().shippedGlobal('curve', k) * scale).toFixed(2) : M().shippedGlobal('curve', k)}</span>` : ''}</div>`;
+            const xpL = typeof xpThreshold === 'function' ? xpThreshold(R.view) : 0;
+            return `<div class="rce-pad rce-prose">
+                <h3>The level curve (every race, every mode)</h3>
+                <div class="rce-knobs">
+                    ${knob('hpL1', 'HP AT LEVEL 1', C.hpL1, 1, '% of the level ' + cap() + ' HP (also scales every flat damage, heal and shield number)', 100)}
+                    ${knob('mpL1', 'MP AT LEVEL 1', C.mpL1, 1, '% of the level ' + cap() + ' MP pool (spell costs never scale)', 100)}
+                    ${knob('hpExp', 'HP / MP CURVE BEND', C.hpExp, 0.05, '1 = a straight line; above 1 = slow early, fast late')}
+                    ${knob('statExp', 'STAT GROWTH BEND', C.statExp, 0.05, '1 = the same ATK / DEF points every level')}
+                </div>
+                <h3>Points every race gains from level 1 to ${cap()}</h3>
+                <div class="rce-knobs">${['hp', 'mp', 'atk', 'int', 'def', 'mdef'].map(k => `<div class="rce-knob${ged(k)}"><label>${SL[k]}</label><input class="rce-in" type="number" value="${G[k]}" data-f="gain" data-k="${k}"><span class="slb2-dim">${k === 'hp' || k === 'mp' ? 'level ' + cap() + ' = base + this' : 'level 1 = base, level ' + cap() + ' = base + this'}</span>${ged(k) ? `<span class="rce-was">was ${M().shippedGlobal('gains', k)}</span>` : ''}</div>`).join('')}</div>
+                <div class="slb2-hint">In combat, damage and armour read ATK / M ATK / DEF / M DEF at their level ${cap()} value at every level, so the growth you see on a level-up card does not change the share of an HP bar a hit takes. What changes with level is the size of every number (the HP curve) and the level gap: each level you are above the target hits ×${typeof EW_LEVEL_GAP_STEP !== 'undefined' ? EW_LEVEL_GAP_STEP : 1.08} harder (capped ×${typeof EW_LEVEL_GAP_MAX !== 'undefined' ? EW_LEVEL_GAP_MAX : 3.5}).</div>
+                <h3>A race at every level</h3>
+                <div class="rce-row"><select class="slb2-sel" data-f="lvRace">${sorted(races()).map(x => opt(x, r, label(x))).join('')}</select>
+                    <span class="rce-lbl">LEVEL</span><input class="rce-range" type="range" min="1" max="${cap()}" value="${R.view}" data-f="view"><b class="rce-viewnum">${R.view}</b>
+                    <span class="slb2-dim">level ${R.view} takes ${xpL.toLocaleString()} XP in total</span></div>
+                <table class="rce-table rce-lvtable"><thead><tr><th>STAT</th><th>GRADE</th><th>BASE</th>${cols.map(L => `<th class="rce-num">L${L}</th>`).join('')}<th class="rce-num rce-viewcol">L${R.view}</th></tr></thead><tbody>${tbl}</tbody></table>
+                <div class="rce-charts">${chart(r, ['hp', 'mp'], 170)}${chart(r, ['atk', 'int', 'def', 'mdef'], 170)}</div>
+            </div>`;
+        }
+
+        /* ── FORMULAS: the math, with the live constants, and a duel calculator ── */
+        function duel() {
+            const c = R.calc;
+            const a = (c.a && RACE_BASE_STATS[c.a]) ? c.a : R.sel, d = (c.d && RACE_BASE_STATS[c.d]) ? c.d : sorted(races()).find(x => x !== a);
+            const G = LEVEL_TOTAL_STAT_GAINS;
+            const coef = window.BASIC_ATTACK_COEF || 0.75, minRaw = window.BASIC_ATTACK_MIN_RAW || 30, flShare = window.BASIC_FLOOR_SHARE || 0.35, flMin = window.BASIC_FLOOR_MIN || 25, soakF = window.SOAK_FLOOR_SHARE || 0.35;
+            const pace = typeof EW_COMBAT_PACE !== 'undefined' ? EW_COMBAT_PACE : 1.75;
+            const pw = (r, k) => base(r, k) + (G[k] || 0);   // levelPowerStat: the stat's level-100 value, at every level
+            const mag = levelScale(c.ld) * pace, gap = levelGapMult(c.la, c.ld);
+            const hp = at('hp', base(d, 'hp'), c.ld);
+            const resolve = (raw, armorStat, fold, basic) => {
+                let dmg = Math.max(1, Math.round(raw * mag));
+                const pre = dmg;
+                const armor = Math.round(Math.floor(pw(d, armorStat) * fold) * mag);
+                dmg = Math.max(1, dmg - armor);
+                dmg = Math.max(dmg, Math.round(pre * soakF));
+                if (gap !== 1) dmg = Math.max(1, Math.round(dmg * gap));
+                if (basic) dmg = Math.max(dmg, Math.round(raw * mag * flShare), Math.round(flMin * levelScale(c.ld)));
+                return { dmg, pre, armor };
+            };
+            const bRaw = Math.max(minRaw, Math.floor(pw(a, 'atk') * coef));
+            const b = resolve(bRaw, 'def', 0.25 / 1.2, true);
+            const phys = c.kind === 'physical';
+            const sRaw = Math.max(0, (+c.dmg || 0) + Math.floor(pw(a, phys ? 'atk' : 'int') * 0.35));
+            const s = resolve(sRaw, phys ? 'def' : 'mdef', phys ? 0.25 / 1.2 : 0.25 / 1.6, false);
+            const ko = x => x > 0 ? Math.ceil(hp / x) : '∞';
+            return { a, d, hp, bRaw, b, sRaw, s, mag, gap, ko, pw };
+        }
+        function tabFormulas() {
+            const G = LEVEL_TOTAL_STAT_GAINS, C = LEVEL_CURVE;
+            const coef = window.BASIC_ATTACK_COEF || 0.75, minRaw = window.BASIC_ATTACK_MIN_RAW || 30, flShare = window.BASIC_FLOOR_SHARE || 0.35, flMin = window.BASIC_FLOOR_MIN || 25, soakF = window.SOAK_FLOOR_SHARE || 0.35;
+            const pace = typeof EW_COMBAT_PACE !== 'undefined' ? EW_COMBAT_PACE : 1.75;
+            const x = duel(), c = R.calc;
+            const rsel = (f, cur) => `<select class="slb2-sel" data-f="${f}">${sorted(races()).map(r => opt(r, cur, label(r))).join('')}</select>`;
+            return `<div class="rce-pad rce-prose">
+                <div class="rce-formulas">
+                <div class="rce-fbox"><h4>A stat at a level</h4>
+                    <code>ATK / M ATK / DEF / M DEF = base + gain × ((L − 1) / ${cap() - 1})<sup>${C.statExp}</sup></code>
+                    <code>levelScale(L) = ${C.hpL1} + ${(1 - C.hpL1).toFixed(2)} × ((L − 1) / ${cap() - 1})<sup>${C.hpExp}</sup></code>
+                    <code>HP = (base + ${G.hp}) × levelScale(L)</code>
+                    <code>MP = (base + ${G.mp}) × (${C.mpL1} + ${(1 - C.mpL1).toFixed(2)} × ((L − 1) / ${cap() - 1})<sup>${C.hpExp}</sup>)</code>
+                    <code>SPD, AWR = base at every level</code>
+                    <p>Gains: ATK +${G.atk}, M ATK +${G.int}, DEF +${G.def}, M DEF +${G.mdef}. Story builds a unit at its level; PvP builds it at level ${cap()}.</p></div>
+                <div class="rce-fbox"><h4>A basic attack</h4>
+                    <code>swing = max(${minRaw}, ⌊ATK₁₀₀ × ${coef}⌋) ± 8</code>
+                    <code>hit = swing × levelScale(target L) × ${pace} (the pace)</code>
+                    <code>− armour = ⌊DEF₁₀₀ × 0.25 / 1.2⌋ × levelScale(target L) × ${pace}</code>
+                    <code>never under ${Math.round(soakF * 100)}% of the hit before armour</code>
+                    <code>× level gap = ${typeof EW_LEVEL_GAP_STEP !== 'undefined' ? EW_LEVEL_GAP_STEP : 1.08}<sup>(attacker L − target L)</sup> (×${typeof EW_LEVEL_GAP_MIN !== 'undefined' ? EW_LEVEL_GAP_MIN : 0.3} to ×${typeof EW_LEVEL_GAP_MAX !== 'undefined' ? EW_LEVEL_GAP_MAX : 3.5})</code>
+                    <code>floor: at least ${Math.round(flShare * 100)}% of the hit, and ${flMin} × levelScale(target L)</code>
+                    <p>ATK₁₀₀ is ATK at its level ${cap()} value (base + ${G.atk}), at every level. A crit is ×1.8; a back attack can't be dodged.</p></div>
+                <div class="rce-fbox"><h4>A spell</h4>
+                    <code>power = spell damage + ⌊ATK₁₀₀ × 0.35⌋ (physical) or ⌊M ATK₁₀₀ × 0.35⌋ (magic)</code>
+                    <code>hit = power × levelScale(target L) × ${pace}</code>
+                    <code>− armour: DEF × 0.25 / 1.2 (physical) or M DEF × 0.25 / 1.6 (magic), same scale</code>
+                    <code>same ${Math.round(soakF * 100)}% soak floor and level gap; no basic attack floor</code>
+                    <p>Spells never crit and can't be dodged. MP costs are the same at every level.</p></div>
+                <div class="rce-fbox"><h4>Multipliers (before armour, product capped ×3)</h4>
+                    <code>type matchup (TYPE_CHART) · same-type spell ×${typeof STAB_MULTIPLIER !== 'undefined' ? STAB_MULTIPLIER : 1.25}</code>
+                    <code>element: weak ×1.5 · resist ×0.5 · immune ×0 · absorb heals</code>
+                    <code>range: full at 1 tile, −10% a tile, never under ×0.8</code>
+                    <code>high ground, facing, statuses, passives, terrain preference</code></div>
+                <div class="rce-fbox"><h4>Derived stats</h4>
+                    <code>MOV from SPD: ${typeof MOVE_SPD_BANDS !== 'undefined' ? '≤' + MOVE_SPD_BANDS.join(' / ≤') : ''} → 1 / 2 / 3 / 4, above → 5 tiles</code>
+                    <code>CRT = 8% + 2% per 14 AWR (max +18%), cap 30%</code>
+                    <code>EVA = 6% + 1.8% per MOV (max +10%), cap 25%</code>
+                    <code>armour per DEF point = 0.25 / 1.2 · per M DEF point = 0.25 / 1.6</code></div>
+                </div>
+                <h3>Duel calculator <span class="slb2-dim">(adjacent, front, flat ground, no types, elements, statuses or passives)</span></h3>
+                <div class="rce-calc">
+                    <div class="rce-row"><span class="rce-lbl">ATTACKER</span>${rsel('calcA', x.a)}<span class="rce-lbl">LEVEL</span><input class="rce-in" type="number" min="1" max="${cap()}" value="${c.la}" data-f="calcLa">
+                        <span class="rce-lbl">TARGET</span>${rsel('calcD', x.d)}<span class="rce-lbl">LEVEL</span><input class="rce-in" type="number" min="1" max="${cap()}" value="${c.ld}" data-f="calcLd"></div>
+                    <div class="rce-row"><span class="rce-lbl">SPELL DAMAGE</span><input class="rce-in" type="number" min="0" value="${c.dmg}" data-f="calcDmg">
+                        <span class="slb2-seg"><button class="slb2-segb${c.kind === 'physical' ? ' on' : ''}" data-act="calcKind" data-v="physical">PHYSICAL</button><button class="slb2-segb${c.kind === 'magic' ? ' on' : ''}" data-act="calcKind" data-v="magic">MAGIC</button></span></div>
+                    <div class="rce-calc-out">
+                        <div><b>${esc(label(x.d))}</b> at level ${c.ld} has <b>${x.hp} HP</b>. Level gap ×${x.gap.toFixed(2)} · size ×${x.mag.toFixed(3)}.</div>
+                        <div>BASIC ATTACK: swing ${x.bRaw} (ATK₁₀₀ ${x.pw(x.a, 'atk')}) → ${x.b.pre} − armour ${x.b.armor} (DEF₁₀₀ ${x.pw(x.d, 'def')}) → <b>${x.b.dmg}</b> damage · <b>${x.ko(x.b.dmg)}</b> hits to KO</div>
+                        <div>SPELL: power ${x.sRaw} → ${x.s.pre} − armour ${x.s.armor} → <b>${x.s.dmg}</b> damage · <b>${x.ko(x.s.dmg)}</b> casts to KO</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        /* ── CHANGES ── */
+        function tabChanges() {
+            const lines = M().summary();
+            const rs = Object.keys(M().doc.races).sort();
+            return `<div class="rce-pad rce-prose">
+                <h3>${lines.length ? lines.length + ' change line' + (lines.length === 1 ? '' : 's') : 'No changes yet'}</h3>
+                <div class="rce-changes">${lines.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="slb2-dim">Edit a race, a grade band or the level curve and it shows up here.</div>'}</div>
+                ${rs.length ? `<div class="rce-row">${rs.map(r => `<button class="slb2-tiny" data-act="revertRace" data-v="${esc(r)}">REVERT ${esc(label(r))}</button>`).join(' ')}</div>` : ''}
+                <h3>Notes for Claude</h3>
+                <textarea class="rce-notes" data-f="notes" placeholder="anything Claude should know when it bakes this">${esc(M().doc.notes)}</textarea>
+                <div class="rce-row"><button class="slb2-btn on" data-act="export">⇩ EXPORT</button><button class="slb2-btn" data-act="import">⇪ IMPORT</button><button class="slb2-btn slb2-btn-danger" data-act="discard">DISCARD ALL</button></div>
+                <div class="slb2-hint">Your edits are live in this browser while EDITS ON is lit (online matches always play the shipped tables). EXPORT gives a JSON file to hand to Claude, who writes it into data.js for everyone.</div>
+            </div>`;
+        }
+
+        /* ── export / import ── */
+        function exportModal() {
+            const ex = M().export();
+            const json = JSON.stringify(ex, null, 2);
+            const page = document.getElementById('raceEditorPage') || document.body;
+            let m = document.getElementById('rceModal');
+            if (m) m.remove();
+            m = document.createElement('div');
+            m.id = 'rceModal'; m.className = 'rce-modal';
+            m.innerHTML = `<div class="slb2-dialog"><div class="slb2-dialog-h">EXPORT · ${M().total()} edit${M().total() === 1 ? '' : 's'} <span class="slb2-dim">— hand the file to Claude</span></div>
+                <div class="rce-changes">${ex.summary.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="slb2-dim">no edits</div>'}</div>
+                <div class="slb2-dialog-b"><button class="slb2-btn" data-x="close">CLOSE</button><span style="flex:1"></span>
+                <button class="slb2-btn" data-x="copySum">⧉ COPY SUMMARY</button><button class="slb2-btn" data-x="copy">⧉ COPY JSON</button><button class="slb2-btn on" data-x="dl">⇩ DOWNLOAD JSON</button></div></div>`;
+            m.addEventListener('click', ev => {
+                const b = ev.target.closest('[data-x]');
+                if (ev.target === m || (b && b.dataset.x === 'close')) { m.remove(); return; }
+                if (!b) return;
+                const copy = t => { try { navigator.clipboard.writeText(t); toast('copied'); } catch (e) {} };
+                if (b.dataset.x === 'copy') copy(json);
+                if (b.dataset.x === 'copySum') copy(ex.summary.join('\n'));
+                if (b.dataset.x === 'dl') {
+                    try {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+                        a.download = `entropy-wars-race-mods-${new Date().toISOString().slice(0, 10)}.json`;
+                        document.body.appendChild(a); a.click();
+                        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+                    } catch (e) { console.error('[RCE] export', e); }
+                }
+            });
+            page.appendChild(m);
+        }
+        function importFile(inp) {
+            const file = inp && inp.files && inp.files[0];
+            if (!file) return;
+            const fr = new FileReader();
+            fr.onload = () => {
+                let obj;
+                try { obj = JSON.parse(fr.result); } catch (e) { toast('not JSON'); return; }
+                const mode = (!M().total() || confirm('OK = MERGE the file onto your edits. Cancel = REPLACE your edits with the file.')) ? 'merge' : 'replace';
+                try { W(() => M().import(obj, { mode })); toast('imported'); } catch (e) { toast('import failed: ' + e.message); }
+            };
+            fr.readAsText(file);
+            inp.value = '';
+        }
+
+        /* ── events ── */
+        function bind(body) {
+            R.bound = true;
+            body.addEventListener('click', ev => {
+                const el = ev.target.closest('[data-act]');
+                if (!el || !body.contains(el)) return;
+                const a = el.dataset.act, v = el.dataset.v, r = el.dataset.r;
+                if (a === 'tab') { R.tab = v; render(); }
+                else if (a === 'frame') { R.frame = v; try { localStorage.setItem('ew_rce_frame', v); } catch (e) {} render(); }
+                else if (a === 'toggle') W(() => { M().doc.enabled = !M().doc.enabled; });
+                else if (a === 'undo') undo();
+                else if (a === 'redo') redo();
+                else if (a === 'export') exportModal();
+                else if (a === 'import') { const f = document.getElementById('rceImportFile'); if (f) f.click(); }
+                else if (a === 'discard') { if (confirm('Discard every race edit?')) W(() => M().reset()); }
+                else if (a === 'sort') { if (R.sort.key === v) R.sort.dir = -R.sort.dir; else R.sort = { key: v, dir: (v === 'name' || v === 'role' || v === 'type') ? 1 : -1 }; render(); }
+                else if (a === 'pick') { if (ev.target.closest('input,select,button')) return; R.sel = v; render(); }
+                else if (a === 'revertRace') W(() => M().revertRace(v));
+                else if (a === 'type') W(() => { const t = types(r).slice(); const i = t.indexOf(v); if (i >= 0) t.splice(i, 1); else t.push(v); if (t.length) M().setRace(r, 'types', t); });
+                else if (a === 'biome') W(() => { const b = ((EW_RACE_BIOMES && EW_RACE_BIOMES[r]) || []).slice(); const i = b.indexOf(v); if (i >= 0) b.splice(i, 1); else b.push(v); M().setRace(r, 'biomes', b); });
+                else if (a === 'aff') W(() => { const row = Object.assign({}, RACE_ELEMENT_AFFINITY[r] || {}); if (v === 'none') delete row[el.dataset.e]; else row[el.dataset.e] = v; M().setRace(r, 'affinity', row); });
+                else if (a === 'goLevels') { R.lvRace = v; R.tab = 'levels'; render(); }
+                else if (a === 'goCalc') { R.calc.a = v; R.tab = 'formulas'; render(); }
+                else if (a === 'rankStat') { R.rankStat = v; R.rank = null; render(); }
+                else if (a === 'rankMode') { R.rankMode = v; W(() => rankDistribute(), true); }
+                else if (a === 'rankApply') W(() => rankDistribute(), true);
+                else if (a === 'rankReset') { rankInit(true); render(); }
+                else if (a === 'rankMove') {
+                    const i = +el.dataset.i, j = i + (+v), o = R.rank.order;
+                    if (j < 0 || j >= o.length) return;
+                    [o[i], o[j]] = [o[j], o[i]];
+                    W(() => rankDistribute(), true);
+                }
+                else if (a === 'bandSpread') W(() => {
+                    const vals = races().map(x => base(x, v)).sort((p, q) => q - p), n = vals.length;
+                    const q = f => vals[Math.min(n - 1, Math.max(0, Math.ceil(n * f) - 1))];
+                    let b = [q(0.2), q(0.4), q(0.6), q(0.8)];
+                    for (let i = 1; i < 4; i++) if (b[i] >= b[i - 1]) b[i] = b[i - 1] - 1;
+                    M().setGlobal('grades', v, b);
+                });
+                else if (a === 'bandReset') W(() => { delete M().doc.grades[v]; });
+                else if (a === 'calcKind') { R.calc.kind = v; render(); }
+            });
+            const onField = ev => {
+                const el = ev.target;
+                const f = el.dataset && el.dataset.f;
+                if (!f) return;
+                const live = ev.type === 'input';
+                const r = el.dataset.r, k = el.dataset.k, val = el.value;
+                if (f === 'search') { if (!live) return; R.search = val; const pos = el.selectionStart; render(); const s = document.querySelector('#raceEditorBody [data-f="search"]'); if (s) { s.focus(); try { s.setSelectionRange(pos, pos); } catch (e) {} } return; }
+                if (f === 'view') { R.view = Math.max(1, Math.min(cap(), +val || 1)); if (live) { document.querySelectorAll('#raceEditorBody .rce-viewnum').forEach(n => { n.textContent = R.view; }); return; } render(); return; }
+                if (live) return;   // everything below writes on change (blur / enter)
+                if (f === 'importFile') { importFile(el); return; }
+                if (f === 'role' || f === 'type' || f === 'faction') { R[f] = val; render(); return; }
+                if (f === 'lvRace') { R.lvRace = val; render(); return; }
+                if (f === 'calcA') { R.calc.a = val; render(); return; }
+                if (f === 'calcD') { R.calc.d = val; render(); return; }
+                if (f === 'calcLa' || f === 'calcLd') { R.calc[f === 'calcLa' ? 'la' : 'ld'] = Math.max(1, Math.min(cap(), +val || 1)); render(); return; }
+                if (f === 'calcDmg') { R.calc.dmg = Math.max(0, +val || 0); render(); return; }
+                if (f === 'stat') W(() => M().setRace(r, k, fromFrame(k, val)));
+                else if (f === 'rankVal') W(() => { M().setRace(r, R.rankStat, fromFrame(R.rankStat, val)); }, false);
+                else if (f === 'rankCeil' || f === 'rankFloor') { const rk = rankInit(); rk[f === 'rankCeil' ? 'ceil' : 'floor'] = fromFrame(R.rankStat, val); W(() => rankDistribute(), true); }
+                else if (f === 'label' || f === 'labelMale' || f === 'labelFemale') W(() => M().setRace(r, f, val.trim() || (f === 'label' ? M().shipped(r, 'label') : null)));
+                else if (f === 'faction1') W(() => M().setRace(r, 'faction', val));
+                else if (f === 'role1') W(() => M().setRace(r, 'role', val));
+                else if (f === 'range') W(() => M().setRace(r, 'range', Math.max(1, Math.min(8, Math.round(+val || 1)))));
+                else if (f === 'terrain') W(() => M().setRace(r, 'terrain', val));
+                else if (f === 'band') W(() => { const b = STAT_GRADE_BANDS[k].slice(); b[+el.dataset.i] = Math.round(+val || 0); M().setGlobal('grades', k, b); });
+                else if (f === 'curve') W(() => M().setGlobal('curve', k, Math.max(0, +val || 0) / (+el.dataset.scale || 1)));
+                else if (f === 'gain') W(() => M().setGlobal('gains', k, Math.round(+val || 0)));
+                else if (f === 'notes') { M().doc.notes = val; M().save(); }
+            };
+            body.addEventListener('input', onField);
+            body.addEventListener('change', onField);
+            body.addEventListener('keydown', ev => {
+                if (ev.key === 'Enter' && ev.target.matches('input.rce-in, input.rce-txt')) { ev.target.blur(); return; }
+                if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'z' && !ev.target.matches('input,textarea')) { ev.preventDefault(); if (ev.shiftKey) redo(); else undo(); }
+            });
+            /* RANK drag and drop: drop a row on another row to take its slot */
+            let dragI = -1;
+            body.addEventListener('dragstart', ev => { const row = ev.target.closest('.rce-rrow'); if (!row) return; dragI = +row.dataset.i; row.classList.add('drag'); try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', String(dragI)); } catch (e) {} });
+            body.addEventListener('dragover', ev => {
+                const row = ev.target.closest('.rce-rrow'); if (!row || dragI < 0) return;
+                ev.preventDefault();
+                body.querySelectorAll('.rce-rrow.over-a,.rce-rrow.over-b').forEach(x => x.classList.remove('over-a', 'over-b'));
+                const rect = row.getBoundingClientRect();
+                row.classList.add(ev.clientY < rect.top + rect.height / 2 ? 'over-a' : 'over-b');
+            });
+            body.addEventListener('dragend', () => { dragI = -1; body.querySelectorAll('.rce-rrow').forEach(x => x.classList.remove('drag', 'over-a', 'over-b')); });
+            body.addEventListener('drop', ev => {
+                const row = ev.target.closest('.rce-rrow'); if (!row || dragI < 0 || !R.rank) return;
+                ev.preventDefault();
+                const rect = row.getBoundingClientRect();
+                let to = +row.dataset.i + (ev.clientY < rect.top + rect.height / 2 ? 0 : 1);
+                const o = R.rank.order, from = dragI;
+                dragI = -1;
+                const [m] = o.splice(from, 1);
+                if (to > from) to--;
+                o.splice(to, 0, m);
+                W(() => rankDistribute(), true);
+            });
+        }
     })();

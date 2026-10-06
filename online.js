@@ -6,6 +6,7 @@
             state.controllers[otherP] = CTRL.REMOTE;
             /* THE ONLINE GUARD (SPELL_LIBRARY_PLAN.md §6.6): local spell mods restore to vanilla for the match (both peers run data.js as shipped) */
             if (window.EWSpellMods && typeof window.EWSpellMods.setOnline === 'function') { try { window.EWSpellMods.setOnline(true); } catch (e) { console.warn('[SpellMods] online guard', e); } }
+            if (window.EWRaceMods && typeof window.EWRaceMods.setOnline === 'function') { try { window.EWRaceMods.setOnline(true); } catch (e) { console.warn('[RaceMods] online guard', e); } }   // the race editor's edits, same guard
 
             transitionTo(GS.PARTY_BUILDER);
             state.audioUnlocked = true;
