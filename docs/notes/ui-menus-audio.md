@@ -923,3 +923,11 @@ open a menu. Empty tiles still hold the mode. online.js guest wrapper uses the s
   forecast badges (cleared in `_clearMoveArrowPreview`).
 - Tile quick menu spell rows: hover calls `updateAoePreview(tx, ty, {unit, spell})` (new `ov` arg, also on
   updateIntentPreview) = the armed cast's footprint + forecast; hover-out clears it.
+
+## ✦ THE VIEW CLICK (2026-10-06, token 20261006-spell-select-01-cors)
+mondo: clicking an equipped spell to see its upgrades unequipped it (and dropped its upgrades). Now, in the forge rack
+(party-builder.js SpellTierPanel): a click on an equipped card or loadout slot that is NOT the selected one only selects it
+(the technique panel + its ⚙ upgrades show); a second click on the selected one takes it off. The loadout slot's ✕ is a
+real button (styles-base.css .pb-ls-x lost pointer-events:none) that removes in one click. Passives / gear / training cards
+share the same card, so they follow it. The HQ pause rack (map.js) lists every equipped spell's upgrades at once, so it
+keeps its one-click toggle.

@@ -1710,10 +1710,12 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       key: id, role: 'button', tabIndex: -1,
       className: 'pb-sc is-' + st8 + (isPas ? ' pas' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + (prevCost != null && cost !== prevCost ? ' step' : '') + ' src-' + src,
       style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
-      onClick: () => { if (onSelect) onSelect(id); onSpellClick(id); },
+      /* an equipped card that isn't the selected one only selects it (its info + upgrades show, 2026-10-06 mondo);
+         a second click on the selected card takes it off */
+      onClick: () => { const wasSel = selKey === id; if (onSelect) onSelect(id); if (!on || wasSel) onSpellClick(id); },
       onMouseEnter: (e) => onNodeHoverIn(id, sp, e),
       onMouseLeave: () => onNodeHoverOut(id),
-      title: (sp ? sp.name : id) + ' · ' + cost + ' SP' + (on ? ' · equipped · click to remove' : why ? ' · ' + why.toLowerCase() : whyAll ? ' · ' + whyAll : ' · click to equip'),
+      title: (sp ? sp.name : id) + ' · ' + cost + ' SP' + (on ? (selKey === id ? ' · equipped · click again to remove' : ' · equipped · click to view') : why ? ' · ' + why.toLowerCase() : whyAll ? ' · ' + whyAll : ' · click to equip'),
     },
       h('span', { className: 'pb-sc-disc' }, st8 === 'sealed' ? '🔒' : isPas ? (sp.icon || '◈') : glyph),
       h('span', { className: 'pb-sc-text' },
@@ -1730,7 +1732,8 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
             ...meta.map(([tx, c], i) => h('em', { key: i, style: c ? { color: c } : undefined }, tx))]))));
   };
   /* THE LOADOUT — seven slot cards in pick order + ALWAYS READY in the eighth cell. A slot card shows the category disc, the
-     whole name, its family and its SP; its ✕ (or a click anywhere on it) takes it off; its ⚙ opens the upgrades. */
+     whole name, its family and its SP; its ✕ takes it off; a click on it selects it (its info + upgrades), a second click on
+     the selected one takes it off; its ⚙ opens the upgrades. */
   const loadout = h('div', { className: 'pb-loadout', 'aria-label': 'Equipped spells' },
     ...Array.from({ length: ctx.cap }).map((_, i) => {
       const id = eq[i];
@@ -1741,9 +1744,9 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
       const fl = famLook(id);
       const canUp = typeof window.spellAllowedUpgrades === 'function' && window.spellAllowedUpgrades(id).length;
       return h('div', { key: id, className: 'pb-ls' + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + ((sp && sp.kind === 'passive') ? ' pas' : ''), style: { '--nc': nc, '--fam': fl.color },
-        onClick: () => { if (onSelect) onSelect(id); onUnequipSlot(id); },
+        onClick: () => { if (selKey === id) onUnequipSlot(id); else if (onSelect) onSelect(id); },
         onMouseEnter: (e) => onNodeHoverIn(id, sp, e), onMouseLeave: () => onNodeHoverOut(id),
-        title: (sp ? sp.name : id) + ' · ' + fl.name + ' · ' + cost + ' SP · click to remove' },
+        title: (sp ? sp.name : id) + ' · ' + fl.name + ' · ' + cost + ' SP' + (selKey === id ? ' · click again to remove' : ' · click to view') },
         h('span', { className: 'pb-ls-disc' }, (sp && sp.kind === 'passive') ? (sp.icon || '◈') : glyph),
         h('span', { className: 'pb-ls-text' },
           h('span', { className: 'pb-ls-name' }, sp ? sp.name : id),
@@ -1754,7 +1757,8 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
               onClick: (e) => { e.stopPropagation(); if (onSelect) onSelect(id); if (onUpgradeOpen) onUpgradeOpen(id); } },
               '⚙' + (upN(id) || ''))
           : null,
-        h('span', { className: 'pb-ls-x', 'aria-hidden': 'true' }, '✕'));
+        h('span', { className: 'pb-ls-x', role: 'button', title: 'Remove',
+          onClick: (e) => { e.stopPropagation(); if (onSelect) onSelect(id); onUnequipSlot(id); } }, '✕'));
     }),
     h('div', { key: 'ready', className: 'pb-ls-ready', title: 'Always ready — no slot, no SP' },
       finisher ? (() => {

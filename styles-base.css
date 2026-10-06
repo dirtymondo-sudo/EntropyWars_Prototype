@@ -6623,7 +6623,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-ls-cost { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700; color: var(--ph-gold); margin-right: 5px; letter-spacing: 0; }
 .pb-rack-cols .pb-ls-up { right: 4px; top: auto; bottom: 4px; transform: none; font-size: 9px; }
 .pb-ls-x { position: absolute; right: 4px; top: 3px; width: 17px; height: 17px; border-radius: 50%; display: none; align-items: center; justify-content: center;
-  background: var(--ph-red); color: #0d0d13; font-size: 10px; font-weight: 700; line-height: 1; pointer-events: none; }
+  background: var(--ph-red); color: #0d0d13; font-size: 10px; font-weight: 700; line-height: 1; cursor: pointer; z-index: 2; }
 .pb-rack-cols .pb-ls:hover .pb-ls-x { display: flex; }
 .pb-rack-cols .pb-ls.empty { flex-direction: column; justify-content: center; gap: 1px; padding: 4px; border: 1px dashed rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); cursor: default; }
 .pb-rack-cols .pb-ls.empty:hover { border-color: rgba(255,255,255,0.16); background: rgba(0,0,0,0.18); }
