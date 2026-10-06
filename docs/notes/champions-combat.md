@@ -1157,3 +1157,12 @@ mondo: "Get rid of the limit on number of passives, gear, and training i can equ
   A row with nothing to raise (Martyr's Talisman, Adaptable, Umbral, Live Wire) gets +20 max HP a level.
 - createUnit writes unit.passiveLevels { rowId: L } (rides the snapshot); getUnitPassives / battle.js aura holders call
   passiveRowWrap(id, level). passiveLevelDiff / spellUpgradeDescFor print the "AWR 28 → 42" line on the toggle.
+
+## SPEED DRIVES MOVEMENT (2026-10-06)
+mondo: a slow Loch Ness monster (SPD 21, acts near last) still walked as far as a SPD-40 unit, because the C band
+(21–40) all got 2 tiles. data.js `moveFromSpd` now reads `MOVE_SPD_BANDS = [25, 40, 60, 80]`: SPD 1–25 → 1 tile,
+26–40 → 2, 41–60 → 3, 61–80 → 4, 81+ → 5. Only the slow tail changed (annunaki/marksman/cosmic wraith already 1;
+now also orb of light, telepath, kraken, loch ness monster, king kong, ai, tree person, droid, scarecrow,
+juggernaut, mech, golem). Every reader (getEffectiveMove → getMoveTiles / AI / HUD, createUnit's stored move,
+the party builder) goes through moveFromSpd, so story, VS-CPU and online (host builds, guest reads the same data.js)
+agree. The fallbacks in battle.js / party-builder.js mirror the table.
