@@ -394,6 +394,21 @@ replace the delta maps"; "dont delete the voxel editor yet". Replaces §5.10's m
 - NOT done: the voxel editor (kept, mondo's word); the Δ builders (still run for the sites without an arena and as the tints /
   layout source); the HQ panels' "CROSS ▸ Δ" wording.
 
+### E8 follow-up — online PvP deals only the 8×8 arenas (2026-10-06, token 20261006-pvp-arenas-01-cors)
+mondo: "why is online pvp using the old voxel maps and not the new arena maps? why are they doing maps that are anything other
+than 8x8?" Three causes, all fixed:
+- server.js MAP_POOL still listed the sites with no arena (heaven, hell, revenge, bermuda: old voxel Δ boards) AND every full
+  launch map (16×16 to 24×28), and `pickRandomMap` took every map with `team >= teamSize`, so a 4v4 queue drew full maps too.
+  The pool is now read at boot from data.js `hqArenaPvpPool()` (the `<site>_delta` rows that became arenas + the
+  HQ_ARENA_RULES.keep boards, all 8×8; the server literal is the fallback) and every queue is 4v4 on it.
+- The friendly room drew from every `isDelta` row with teamSize 4: the ~60 area parts' Δ boards, the facilities and the
+  voxel Δs. online.js `_friendlyGetCompatibleMaps` now filters to `hqArenaPvpPool()` (Clash keeps its stage).
+- Online launched 600 ms after both locks, before the arena's room was surveyed, so the fight drew the bare baked board with
+  the old Δ's scenery. online.js `_onlineArenaPrep` surveys on each seat as soon as the map is known, re-runs applyGameMode
+  once the room is attached, and the host's `_tryAutoStartRanked` waits for its own room and the guest's (relay
+  `arena-check` / `arena-ready`, skipped by the replay recorder), at most 45 s.
+Rerun bake-arenas.js after a site room changes; the pool follows the picks on the next server boot.
+
 ## THE CREATIVE CONTROLS + GAME ROOMS THAT PICK (2026-10-05, token 20261005-edcreative-01-cors)
 
 R2 files: editor.js, styles-editor.css. Repo: index.html (token), docs. mondo: "need to make the editor more intuative and simple controls

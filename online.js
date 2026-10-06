@@ -936,6 +936,74 @@
             }
         };
 
+        /* ── THE ARENAS ONLINE (2026-10-06, mondo: "why is online pvp using the old voxel maps and not the new arena maps?") ──
+           An arena is an 8×8 cut of its site's room, but the room is drawn round the board only once its floor plan is surveyed
+           (map.js _hqArenaWarm → data.js hqArenaUpgrade). VS CPU waits for that under _msConfirm's gate; online launched 600 ms after
+           both locks, so the fight drew the bare baked board with the old Δ's scenery — the old voxel map. Now each seat surveys the
+           match's arena as soon as it knows the map, re-reads the map's layout once the room is attached, and the host starts only
+           when its own room AND the guest's (relay `arena-ready`) are ready. A seat that never answers (no worker and a failed
+           compile) is waited for at most ARENA_WAIT_MS; then the match starts as before. Viewer-local work, nothing on `state`. */
+        var ARENA_WAIT_MS = 45000;
+        var _arenaPrep = { id: null, ready: false };
+        function _onlineMatchMapId() {
+            var NET = window._NET;
+            if (!NET) return null;
+            return NET.ranked ? (NET.matchMapModeId || null) : ((NET.friendlyConfig && NET.friendlyConfig.mapId) || null);
+        }
+        function _onlineArenaPrep(mapId) {
+            var id = String(mapId || '');
+            if (!id) return;
+            if (_arenaPrep.id === id) {
+                if (_arenaPrep.ready && _isGuest()) _emit('relay', { type: 'arena-ready', mapId: id });
+                return;
+            }
+            _arenaPrep = { id: id, ready: false };
+            var finish = function() {
+                if (_arenaPrep.id !== id || _arenaPrep.ready) return;
+                _arenaPrep.ready = true;
+                /* applyGameMode read the map's layout before the room was attached — read it again (the room's own layout) */
+                try {
+                    var a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(id) : null;
+                    if (!startReady && a && a.ready && typeof activeGameMode !== 'undefined' && activeGameMode === id
+                        && !(typeof state !== 'undefined' && state.gameState === GS.BATTLE) && typeof applyGameMode === 'function') applyGameMode(id, true);
+                } catch (e) { console.warn('[ARENA] online re-apply failed', id, e); }
+                if (_isGuest()) _emit('relay', { type: 'arena-ready', mapId: id });
+                else _tryAutoStartRanked();
+            };
+            var a0 = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(id) : null;
+            var startReady = !a0 || a0.ready || a0.failed;
+            if (startReady) { finish(); return; }
+            var p = null;
+            try { p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(id, true) : null; } catch (e) { p = null; }
+            if (p) { p.then(finish, finish); return; }
+            /* no worker (or the record landed in between): the sync compile, after this frame */
+            setTimeout(function() {
+                try { if (typeof window.hqArenaUpgrade === 'function') window.hqArenaUpgrade(id, { compile: true }); } catch (e) { console.warn('[ARENA] upgrade failed', id, e); }
+                finish();
+            }, 30);
+        }
+        window._ewOnlineArenaPrep = _onlineArenaPrep;
+        /* the host's launch gate: true = both rooms are ready (or the wait ran out) */
+        function _onlineArenaGo(NET) {
+            var id = _onlineMatchMapId();
+            if (!id || typeof window.hqArenaOf !== 'function' || !window.hqArenaOf(id)) return true;   // not an arena: nothing to survey
+            if (NET._arenaWaitOver === id) return true;
+            if (_arenaPrep.id !== id) _onlineArenaPrep(id);
+            var guestOk = NET._guestArenaReady === id;
+            if (_arenaPrep.ready && guestOk) return true;
+            if (!guestOk) _emit('relay', { type: 'arena-check', mapId: id });
+            if (NET._arenaWaitFor !== id) {
+                NET._arenaWaitFor = id;
+                setTimeout(function() {
+                    if (NET._arenaWaitFor !== id || NET._autoStartFired) return;
+                    console.warn('[ARENA] online: a seat did not finish surveying the arena in time — starting anyway', id);
+                    NET._arenaWaitOver = id;
+                    _tryAutoStartRanked();
+                }, ARENA_WAIT_MS);
+            }
+            return false;
+        }
+
         /* ── Auto-start helper for ranked matchmaking ──────────────── */
         function _tryAutoStartRanked() {
             var NET = window._NET;
@@ -946,6 +1014,8 @@
             if (NET.role !== 'host') return;
             /* Guard against double-fire */
             if (NET._autoStartFired) return;
+            /* THE ARENAS ONLINE: the arena's room is surveyed on both seats first */
+            if (!_onlineArenaGo(NET)) return;
             NET._autoStartFired = true;
             NET._waitingForOpponent = false;
 
@@ -2011,6 +2081,7 @@
                 }
 
                 activeMultiplayerMode = _net.matchRankedMode || _net.matchMultiplayerMode || 'arena';
+                if (typeof window._ewOnlineArenaPrep === 'function') window._ewOnlineArenaPrep(_net.matchMapModeId);   // THE ARENAS ONLINE: the room surveyed now
                 console.log('[NET] Applied ranked config: map=' + _net.matchMapModeId + ' team=' + _net.matchTeamSize + ' mode=' + activeMultiplayerMode);
             }
 
@@ -2082,6 +2153,7 @@
                 if (fc.rounds && window._gameState) {
                     window._gameState._customRoundLimit = fc.rounds;
                 }
+                if (fc.mapId && typeof window._ewOnlineArenaPrep === 'function') window._ewOnlineArenaPrep(fc.mapId);   // THE ARENAS ONLINE: the room surveyed now
                 console.log('[NET] Applied friendly config: mode=' + fc.mode + ' map=' + fc.mapId + ' team=' + fc.teamSize + ' rounds=' + fc.rounds);
             }
 
@@ -3020,6 +3092,15 @@
             function _friendlyGetCompatibleMaps(mode, size) {
                 var mpMode = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null;
                 var compat = mpMode ? mpMode.compatibleMaps : [];
+                /* THE ONLINE PVP POOL (2026-10-06): an online room only ever deals the 8×8 arenas (data.js hqArenaPvpPool) — never
+                   a full launch map, an area part's Δ, a facility or a site still on its old voxel Δ. Clash keeps its own stage. */
+                if (mode !== 'clash' && typeof window.hqArenaPvpPool === 'function') {
+                    var pool = window.hqArenaPvpPool();
+                    if (pool && pool.length) {
+                        var inMode = pool.filter(function (id) { return compat.indexOf(id) >= 0; });
+                        compat = inMode.length ? inMode : pool.slice();
+                    }
+                }
                 var results = [];
                 if (typeof GAME_MODES === 'undefined') return results;
                 for (var i = 0; i < compat.length; i++) {
@@ -3802,6 +3883,7 @@
                 NET.socket.on('friendly-config', function(data) {
                     if (NET.role !== 'guest') return;
                     NET.friendlyConfig = data;
+                    if (data && data.mapId && typeof window._ewOnlineArenaPrep === 'function') window._ewOnlineArenaPrep(data.mapId);   // THE ARENAS ONLINE
 
                     var hostStatus = document.getElementById('lobbyHostStatus');
                     if (hostStatus) {
@@ -3919,6 +4001,15 @@
                         }
 
                         if (typeof window.render === 'function') window.render();
+                    }
+
+                    /* THE ARENAS ONLINE: the guest surveys the match's arena when asked and says when its room is ready */
+                    if (data.type === 'arena-check' && NET.role === 'guest' && data.mapId) {
+                        _onlineArenaPrep(data.mapId);
+                    }
+                    if (data.type === 'arena-ready' && NET.role === 'host' && data.mapId) {
+                        NET._guestArenaReady = String(data.mapId);
+                        _tryAutoStartRanked();
                     }
 
                     if (data.type === 'host-locked') {
@@ -5596,7 +5687,7 @@
             var SKIP_RELAY = {
                 'intro-skip': 1, 'match-ready': 1, 'intro-done': 1,
                 'rematch-request': 1, 'rematch-accept': 1,
-                'guest-locked': 1, 'host-locked': 1,
+                'guest-locked': 1, 'host-locked': 1, 'arena-check': 1, 'arena-ready': 1,
                 'game-mode': 1, 'multiplayer-mode': 1,
                 'pickup-dialog': 1, 'pickup-response': 1
             };
