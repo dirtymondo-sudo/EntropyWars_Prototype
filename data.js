@@ -52498,10 +52498,22 @@ function hqPartyRecord(profile) {
     r.v = 1; if (!(r.seq >= 1)) r.seq = 1;
     r.members = r.members.filter(m => m && typeof m === 'object' && m.cls).slice(0, HQ_PARTY_RULES.roster).map(m => hqPartyNormMember(m, r));
     if (r.members.length && !r.members.some(m => m.you)) r.members[0].you = true;
+    hqPartyDownBack(r);   // THE FAINTED LEAD (2026-10-06): a DOWN member never walks while anyone is fit
     /* THE NAMES (mondo, 2026-09-30): the random names are gone — once per record, every member but the officer drops the
        name it was filed with (a rolled name or its race in capitals) and reads as its race until the player renames it */
     if (r.names !== 2) { r.members.forEach(m => { if (!m.you) m.name = ''; }); r.names = 2; }
     return r;
+}
+/* THE FAINTED LEAD (2026-10-06, mondo: "they are down with 0 HP. Why am i still playing as them?? It should automatically move
+   the next person to the first slot"): slot 1 is the walker, so a DOWN lead hands slot 1 to the first fit member — the fit keep
+   their order at the front, the down drop to the back in theirs. Runs on every record read (hqPartyRecord), so the commit, a
+   swap and an old save all agree; the whole party down changes nothing (the loss / ward flow owns that). true = the order moved */
+function hqPartyDownBack(r) {
+    const ms = r && Array.isArray(r.members) ? r.members : null;
+    if (!ms || !ms.length || ms[0].hp !== 0) return false;
+    const fit = ms.filter(m => m.hp !== 0); if (!fit.length) return false;
+    r.members = fit.concat(ms.filter(m => m.hp === 0));
+    return true;
 }
 function hqPartyNormMember(m, r) {
     if (!m.id) m.id = 'p' + (r.seq++);
@@ -52996,9 +53008,13 @@ function hqPartySwap(profile, a, b) {
     if (ia < 0 || ib < 0 || ib >= HQ_PARTY_RULES.roster) return { ok: false, reason: 'who' };
     if (ia === ib) return { ok: false, reason: 'same' };
     if (!HQ_PARTY_RULES.leadWalks && (ia === 0 || ib === 0)) return { ok: false, reason: 'you' };
+    /* THE FAINTED LEAD: a DOWN member cannot take slot 1 while anyone is fit (heal them first) */
+    const into0 = ib === 0 ? r.members[ia] : ia === 0 ? r.members[ib] : null;
+    if (into0 && hqPartyDown(into0) && r.members.some(m => !hqPartyDown(m))) return { ok: false, reason: 'down' };
     const leadBefore = r.members[0] ? r.members[0].id : null;
     if (ib >= r.members.length) { const [m] = r.members.splice(ia, 1); r.members.push(m); }
     else { const t = r.members[ia]; r.members[ia] = r.members[ib]; r.members[ib] = t; }
+    hqPartyDownBack(r);   // THE FAINTED LEAD: a DOWN member swapped into slot 1 does not walk
     r.at = Date.now();
     const leadAfter = r.members[0] ? r.members[0].id : null;
     return { ok: true, leadChanged: leadBefore !== leadAfter, lead: leadAfter };
@@ -53165,11 +53181,12 @@ function hqPartyAfterMatch(profile, ev) {
         const max = (typeof ENTROPY_GAUGE_MAX !== 'undefined') ? ENTROPY_GAUGE_MAX : ((typeof window !== 'undefined' && window.ENTROPY_GAUGE_MAX) || 100);
         r.gauge = Math.max(0, Math.min(max, Math.round(+ev.gauge)));
     }
+    const fainted = hqPartyDownBack(r);   // THE FAINTED LEAD: the fight dropped slot 1 — the first fit member walks home
     r.at = Date.now();
     const leveled = xp.filter(b => b.after.lvl > b.before.lvl).length;
     const lead = r.members[0] || null;
     return { seen, down, fit: r.members.length - down, restored, total: r.members.length, xp, pool, leveled, partyLevel: hqPartyLevel(profile), gauge: hqPartyGauge(profile), drops,
-             retreat, escLoss, escaped: escapedIds.length, leadChanged: !!(front && front.leadChanged), lead: lead ? (lead.name || lead.cls || '') : '' };
+             retreat, escLoss, escaped: escapedIds.length, leadChanged: !!((front && front.leadChanged) || fainted), lead: lead ? (lead.name || (() => { const rc = lead.meta && lead.meta.race; try { return (rc && typeof getRaceLabel === 'function') ? getRaceLabel(rc, lead.meta.gender) : (rc || lead.cls || ''); } catch (e) { return rc || lead.cls || ''; } })()) : '' };
 }
 /* ── FIELD MEDICINE — the party's own heal spells and potions outside a battle ── */
 function hqPartyIsFieldSpell(sp) { return !!(sp && HQ_PARTY_RULES.healKinds.indexOf(sp.kind) >= 0 && (sp.kind === 'revive' || sp.kind === 'selfHeal' || (sp.healAmt != null ? sp.healAmt : sp.heal) > 0)); }
