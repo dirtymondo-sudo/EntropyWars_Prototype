@@ -4077,14 +4077,22 @@ const RACE_PHYSIQUE = {
 
 /* ── SPD → MOVE (2026-08-29 stat rework, phase 3) ──────────────────────────
    Movement range is no longer a stored stat: one letter of SPD = one tile.
-     SPD 1–20 (F) → 1 · 21–40 (C) → 2 · 41–60 (B) → 3 · 61–80 (A) → 4 ·
-     81–100 (S) → 5.
+     SPD 1–25 → 1 · 26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81–100 → 5
+     (the 1-tile band reaches 5 points into C since 2026-10-06, below).
    The old move-3 hard cap (2026-07-13: move 4+ crossed an 8×8 map in one
    turn) is replaced by a move-5 ceiling plus a halved SECOND move
    (ceil(move/2) tiles — see getMoveTiles in battle.js), so baseline A/S
    speedsters are allowed without restoring the map-crossing double-move. */
+/* SPEED DRIVES MOVEMENT (mondo 2026-10-06: "a loch ness monster that is slow and moves close to last but can
+   move a bunch of tiles"): the lumbering tail of the C band (SPD 21–25: Nessie, Kraken, King Kong, the golems
+   and mechs) walked as far as a SPD-40 werewolf. The 1-tile band now runs to SPD 25; every other band is
+   unchanged (26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81+ → 5). The ONE table every reader goes through. */
+const MOVE_SPD_BANDS = [25, 40, 60, 80];
 function moveFromSpd(spd) {
-    return Math.max(1, Math.min(5, Math.ceil(Math.max(1, spd || 1) / 20)));
+    const s = Math.max(1, spd || 1);
+    let tiles = 1;
+    for (const top of MOVE_SPD_BANDS) if (s > top) tiles++;
+    return Math.min(5, tiles);
 }
 
 function computeUnitStats(race, cls) {
@@ -21702,7 +21710,7 @@ const STAT_HELP = {
   def: 'DEF — physical armor, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Soaks a flat share of every incoming basic attack and physical spell. Does nothing against magic damage.',
   mdef: 'M DEF — magic armor, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
   spd: 'SPD — quickness, on the 0–100 ruler. One letter = one movement tile: F (1–20) walks 1 · C (21–40) 2 · B (41–60) 3 · A (61–80) 4 · S (81–100) 5. Faster units also act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 90+) can leap 2-high walls instead of 1.',
-  move: 'MOV — movement range in tiles, derived from SPD (1 tile per 20 SPD: F 1 · C 2 · B 3 · A 4 · S 5), then modified by statuses, terrain and weather. The SECOND move of a turn covers only half the tiles (rounded up) and spends all remaining AP. Also feeds dodge chance (+1.8% EVA per MOV).',
+  move: 'MOV — movement range in tiles, derived from SPD (SPD 1–25 → 1 · 26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81+ → 5), then modified by statuses, terrain and weather. The SECOND move of a turn covers only half the tiles (rounded up) and spends all remaining AP. Also feeds dodge chance (+1.8% EVA per MOV).',
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
   awr: 'AWR — perception, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Drives critical chance (+2% per 14 AWR), lets keen units (AWR 84+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
   crt: 'CRT — critical hit chance on basic attacks. 8% base + 2% per 14 AWR (max +18%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
@@ -54083,6 +54091,22 @@ function hqArenaRun(mapId) {
         } catch (err) { console.error('[ARENA] the pick failed — the Δ stands', site, err); }
     });
 })();
+/* THE ONLINE PVP POOL (mondo 2026-10-06: "why is online pvp using the old voxel maps and not the new arena maps? why are they
+   doing maps that are anything other than 8x8?"): online PvP (Quick Play's server draw and the friendly room's draw) deals ONLY
+   these — every site whose `<site>_delta` became its arena, plus the kept sites' own 8×8 boards (HQ_ARENA_RULES.keep). Never a
+   full launch map, an area part's Δ, a facility, or a site that still wears its old voxel Δ. server.js reads this at boot. */
+function hqArenaPvpPool() {
+    if (typeof EW_MAP_META === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return [];
+    const S = HQ_ARENA_RULES.size, keep = HQ_ARENA_RULES.keep || [];
+    return EW_MAP_META.filter(m => {
+        if (!m || !m.isDelta || m.area || m.facility) return false;
+        const e = PREBUILT_MAPS[m.id];
+        if (!e || (e.w | 0) !== S || (e.h | 0) !== S) return false;
+        const site = String(m.id).replace(/_delta$/, '');
+        return !!m.arena || keep.includes(site);
+    }).map(m => m.id);
+}
+if (typeof window !== 'undefined') window.hqArenaPvpPool = hqArenaPvpPool;
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
    `state`, nothing relayed (RULE #2). This is the ONE table the rider reads
