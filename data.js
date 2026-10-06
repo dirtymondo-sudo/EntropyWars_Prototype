@@ -33916,7 +33916,7 @@ const DOOR_HQ = {
                     { k: 'rail', pts: [[45.2, 15.4, 0.17], [45.2, 25.7, 4.63]], model: 'pipe', block: false },                                     // its centre handrail
                     { k: 'rail', x0: 34.4, z0: 26.2, x1: 43.0, z1: 26.2 },                                                                          // the upper deck's edge, open at the stair
                     { k: 'rail', x0: 34.4, z0: 28.4, x1: 34.4, z1: 30.6 },                                                                          // over the valet deck
-                    { k: 'plateau', x: -30, z: 11.5, w: 7, d: 5, h: 4.5, edge: 0.3 },                                                              // THE MARQUEE ROOF (the tape's; the door gun's) — flush with the back lane's south sidewalk
+                    { k: 'plateau', x: -30, z: 11.5, w: 7, d: 5, h: 4.5, edge: 0.3, bld: { style: 'office' } },                                                              // THE MARQUEE ROOF (the tape's; the door gun's) — flush with the back lane's south sidewalk
                     { k: 'path', pts: [[0, -6], [0, 6]], w: 21 },                                                                                  // THE PLAZA is pavement
                     { k: 'path', pts: [[-10, -32], [-10, -20]], w: 6 },                                                                            // THE CHAPEL's forecourt (the north wall, x −10)
                     { k: 'path', pts: [[-22, 20], [-22, 32]], w: 6 },                                                                              // the bay door's street (the south wall, x −22 — Phase 5 gave x 0 to the highway)
@@ -33924,19 +33924,19 @@ const DOOR_HQ = {
                     /* the north roofs (2026-10-05): one run at 4.2 m from the west block to the east cross street — a stair up from the lane's
                        west corner, the fire escape, a walkway over the west cross street, a walkway over the chapel's forecourt ending at a
                        2.4 m gap to the centre roofs (a rail across it), a stair down into the east cross street */
-                    { k: 'plateau', x: -35.3, z: -29.6, w: 24.6, d: 4.2, h: 4.2, edge: 0.3 },                                                          // THE MOTEL ROOF (north)
+                    { k: 'plateau', x: -35.3, z: -29.6, w: 24.6, d: 4.2, h: 4.2, edge: 0.3, bld: { style: 'stucco' } },                                                          // THE MOTEL ROOF (north)
                     { k: 'climb', x: -28, z: -27.5, face: 0, look: 'fireescape' },                                                                     // its fire escape off the north lane's sidewalk
                     { k: 'ramp', x0: -46, z0: -18.6, x1: -46, z1: -28.2, w: 2.6, h0: 0, h1: 4.2, stairs: true, model: 'precast', edge: 0.2 },
                     { k: 'path', pts: [[-46, -17.4], [-41.5, -17.4]], w: 2.6 },                                                                     // the stair's foot to the lane's sidewalk
                     { k: 'rail', x0: -44.0, z0: -28.3, x1: -29.2, z1: -28.3 }, { k: 'rail', x0: -26.8, z0: -28.3, x1: -23.6, z1: -28.3 },                                                                          // the roof's edge (the grind)
                     { k: 'bridge', x0: -23.7, z0: -29.6, x1: -15.3, z1: -29.6, w: 2.6, y: 4.2 },                                                       // over the west cross street
-                    { k: 'plateau', x: -14.45, z: -29.6, w: 3.1, d: 4.2, h: 4.2, edge: 0.3 },
+                    { k: 'plateau', x: -14.45, z: -29.6, w: 3.1, d: 4.2, h: 4.2, edge: 0.3, bld: { style: 'stucco' } },
                     { k: 'bridge', x0: -13.6, z0: -29.6, x1: -9.0, z1: -29.6, w: 2.6, y: 4.2 },                                                        // over the chapel's forecourt, to the gap
                     { k: 'rail', x0: -9.3, z0: -29.6, x1: -6.3, z1: -29.6, y: 4.2, model: 'pipe', block: false },                                    // across the gap
-                    { k: 'plateau', x: 4.1, z: -29.6, w: 21.4, d: 4.2, h: 4.2, edge: 0.3 },                                                            // the centre roofs
+                    { k: 'plateau', x: 4.1, z: -29.6, w: 21.4, d: 4.2, h: 4.2, edge: 0.3, bld: { style: 'stucco' } },                                                            // the centre roofs
                     { k: 'rail', x0: -6.0, z0: -28.3, x1: 13.6, z1: -28.3 },
                     { k: 'ramp', x0: 23.6, z0: -29.6, x1: 14.1, z1: -29.6, w: 2.8, h0: 0, h1: 4.2, stairs: true, model: 'precast', edge: 0.2 },
-                    { k: 'plateau', x: -10, z: 29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3 },                                                              // THE LAUNDRY ROOF (south)
+                    { k: 'plateau', x: -10, z: 29.6, w: 10, d: 4.2, h: 4.2, edge: 0.3, bld: { style: 'stucco' } },                                                              // THE LAUNDRY ROOF (south)
                     { k: 'climb', x: -10, z: 27.5, face: 180, look: 'fireescape' },
                     { k: 'rail', x0: -14.2, z0: 28.3, x1: -11.2, z1: 28.3 }, { k: 'rail', x0: -8.8, z0: 28.3, x1: -5.8, z1: 28.3 },
                     /* curved skate rails round the back lane's outer corners */
@@ -35024,7 +35024,7 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: -27, z0: -19.2, x1: -16.7, z1: -19.2, w: 3, h0: 0, h1: 3.0, stairs: true },                    // THE OVERPASS STAIR up to the landing (its last 0.7 m inside the tier)
                     { k: 'rail', x0: -14.4, z0: -23.0, x1: -7.6, z1: -23.0 },                                                        // the landing's rail (the drop to the ring road side — 1.6 m inside the edge)   // the deck's edge rail (the grind)
                     { k: 'hill', x: -20, z: -14, r: 5.5, h: 1.5, open: true },                                                      // THE COLLAPSE — the rubble mound where the tower came down (inside the north-west block)
-                    { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3 },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
+                    { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3, bld: { style: 'office' } },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
                     { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the walker crosses it
                     { k: 'path', pts: [[-76, -8], [-92, -8], [-92, -17], [-106, -17], [-106, -8], [-114, -8]], w: 6 },              // the tower's side street: a DOGLEG off the tower's street (R3 — the AVENUE doors on the west wall, z −8, are not seen from the ring)
                     { k: 'path', pts: [[-40, 30], [-114, 30]], w: 6 },                                                               // THE MALL's street (Phase 7: west off the ring's south-west corner to the mall door on the west wall, z 30 — the south edge is the quay)
@@ -35035,14 +35035,14 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[40, -20], [76, -20], [76, -31], [100, -31], [100, -20], [114, -20]], w: 5 },                 // THE PUMPING STATION's alley (the east wall, z −20 — THE UNDERWORLD, 2026-09-18): a DOGLEG now (R3)
                     { k: 'path', pts: [[6, -15], [14.0, -15]], w: 4 },                                                               // the deck's side street off the avenue
                     /* THE EAST YARDS (D2): a 6.8 m roof behind the pumping alley's bend, up a fire escape — a landing at 3.4, two ladders */
-                    { k: 'plateau', x: 63, z: -35, w: 14, d: 10, h: 6.8, edge: 0.35 },                                              // THE EAST YARDS' roof
+                    { k: 'plateau', x: 63, z: -35, w: 14, d: 10, h: 6.8, edge: 0.35, bld: { style: 'factory' } },                                              // THE EAST YARDS' roof
                     { k: 'plateau', x: 70.9, z: -34, w: 1.6, d: 2.2, h: 3.4, edge: 0.15 },                                          // the fire escape's landing
                     { k: 'climb', x: 71.7, z: -33.4, face: 270, look: 'fireescape' },                                                // the alley → the landing
                     { k: 'climb', x: 70.0, z: -34.6, face: 270, look: 'fireescape' },                                                // the landing → the roof
                     { k: 'rail', x0: 57.8, z0: -38.4, x1: 68.2, z1: -38.4 },                                                          // the roof's rail (the grind — 1.6 m inside the edge: a rail's forced band never lies past a tier's edge on the mass)
                     /* THE OLD TOWN (D2): THE COURT off the high street, THE WAREHOUSE ROOF up its fire escape */
                     { k: 'path', pts: [[-20, -58], [-20, -46]], w: 4 },                                                              // THE COURT (a dead-end court south off the high street)
-                    { k: 'plateau', x: -28, z: -47, w: 12, d: 10, h: 6.0, edge: 0.35 },                                             // THE WAREHOUSE ROOF (west of the court)
+                    { k: 'plateau', x: -28, z: -47, w: 12, d: 10, h: 6.0, edge: 0.35, bld: { style: 'factory' } },                                             // THE WAREHOUSE ROOF (west of the court)
                     { k: 'plateau', x: -21.2, z: -47, w: 1.6, d: 2.2, h: 3.0, edge: 0.15 },                                         // its landing
                     { k: 'climb', x: -20.4, z: -46.4, face: 270, look: 'fireescape' },                                               // the court → the landing
                     { k: 'climb', x: -22.0, z: -47.6, face: 270, look: 'fireescape' },                                               // the landing → the roof
@@ -35550,7 +35550,7 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 10.5, z0: -13, x1: 16.7, z1: -13, w: 4.0, h0: 0, h1: 4.5 },                                       // the car ramp up to it (its last 0.7 m inside the deck's rect — THE RAMP RULE)
                     { k: 'rail', x0: 10.6, z0: -14.75, x1: 16.2, z1: -14.75, y0: 0.07, y1: 4.13, model: 'pipe', block: false }, { k: 'rail', x0: 10.6, z0: -11.25, x1: 16.2, z1: -11.25, y0: 0.07, y1: 4.13, model: 'pipe', block: false },   // pipe rails down the car ramp's sides
                     { k: 'rail', x0: 16.4, z0: -18.6, x1: 27.6, z1: -18.6 }, { k: 'rail', x0: 27.6, z0: -18.6, x1: 27.6, z1: -7.4 }, { k: 'rail', x0: 16.4, z0: -7.4, x1: 27.6, z1: -7.4 },   // the deck's rails (the grind)
-                    { k: 'plateau', x: -26, z: -13, w: 7, d: 7, h: 5.0, edge: 0.3 },                                                   // THE BILLBOARD ROOF (the tape's; the door gun's) — flush with the loop's west sidewalk
+                    { k: 'plateau', x: -26, z: -13, w: 7, d: 7, h: 5.0, edge: 0.3, bld: { style: 'office' } },                                                   // THE BILLBOARD ROOF (the tape's; the door gun's) — flush with the loop's west sidewalk
                     { k: 'pool', x: -22, z: 0, r: 3.4, y: 0, depth: 0.35 },                                                           // THE PUDDLE (the rain pooled on the cross street; waded)
                     { k: 'path', pts: [[-34, 12], [-80, 12], [-80, 4], [-96, 4], [-96, 12], [-104, 12]], w: 5 },                      // THE MARKET ALLEY: a DOGLEG to the noodle bar's back door on the west wall, z 12 (R3)
                     { k: 'path', pts: [[12, -70], [12, -75], [21, -75], [21, -80], [12, -80], [12, -84]], w: 5 },                     // THE STAIR's mouth: a DOGLEG off the back street to the north wall, x 12 (R3)
@@ -35558,13 +35558,13 @@ const DOOR_HQ = {
                     /* ── THE STACKS (D2): four tenement blocks between the loop's north leg and the back street; the alleys at x −52 and 44 ── */
                     { k: 'path', pts: [[-52, -31], [-52, -64]], w: 4.5 },                                                              // THE WEST ALLEY
                     { k: 'path', pts: [[44, -31], [44, -64]], w: 4.5 },                                                                // THE EAST ALLEY
-                    { k: 'plateau', x: -69, z: -47, w: 22, d: 10, h: 10.5, edge: 0.35 },                                              // STACK W's roof
-                    { k: 'plateau', x: -39, z: -47, w: 14, d: 10, h: 10.5, edge: 0.35 },                                              // STACK A1
-                    { k: 'plateau', x: -20, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35 },                                              // STACK A2
-                    { k: 'plateau', x: 19, z: -47, w: 14, d: 10, h: 10.5, edge: 0.35 },                                               // STACK B1
-                    { k: 'plateau', x: 35, z: -47, w: 10, d: 10, h: 10.5, edge: 0.35 },                                               // STACK B2
-                    { k: 'plateau', x: 56, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35 },                                               // STACK E1
-                    { k: 'plateau', x: 76, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35 },                                               // STACK E2
+                    { k: 'plateau', x: -69, z: -47, w: 22, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                              // STACK W's roof
+                    { k: 'plateau', x: -39, z: -47, w: 14, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                              // STACK A1
+                    { k: 'plateau', x: -20, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                              // STACK A2
+                    { k: 'plateau', x: 19, z: -47, w: 14, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                               // STACK B1
+                    { k: 'plateau', x: 35, z: -47, w: 10, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                               // STACK B2
+                    { k: 'plateau', x: 56, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                               // STACK E1
+                    { k: 'plateau', x: 76, z: -47, w: 16, d: 10, h: 10.5, edge: 0.35, bld: { style: 'residential' } },                                               // STACK E2
                     { k: 'deck', x0: -32.6, z0: -47, x1: -27.4, z1: -47, w: 1.8, y: 10.5, gangway: true },                                          // THE GANGWAY A1 ⇄ A2 (across the yard)
                     { k: 'deck', x0: 25.4, z0: -47, x1: 30.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY B1 ⇄ B2
                     { k: 'deck', x0: 63.4, z0: -47, x1: 68.6, z1: -47, w: 1.8, y: 10.5, gangway: true },                                            // THE GANGWAY E1 ⇄ E2
@@ -45989,6 +45989,7 @@ if (typeof window !== 'undefined') {
    `lift` (a hung wall: its bottom that high over the ground under it) and `glass`. Prefab docs live in the world file
    (Assets/World/prefabs/<id>.json) and in HQ_PREFABS here; the survey worker is handed them with each room. */
 const HQ_PREFABS = {};
+const HQ_BLD_INSET = 0.6;   // THE BUILDING TIERS (2026-10-06): a `bld` plateau's field rise starts this far inside its drawn walls (its blend never shows outside them)
 const HQ_SHAPE_RULES = { depth: 4, doorW: 1.2, doorH: 2.2, winW: 1.4, winH: 1.2, winSill: 0.9, glassT: 0.06, minPiece: 0.05, texStorey: 3.5, texParapet: 0.45, ghostT: 0.3 };
 /* THE KITS: the builders a `kit` row may call (the allow-list), each with its form's defaults (metres, degrees). `marks: true` =
    the builder makes paint (`terrain.marks` rows), not features */
@@ -46098,17 +46099,29 @@ function hqOpeningPieces(w, ops) {
     piece(s === 0 ? 0 : s + t / 2, L);
     return out.filter(p => abs ? p.y - p.y0 > 0.05 : (!(p.lift > 0) || (typeof p.y === 'number' ? p.y : p.h) - p.lift > 0.05));
 }
-/* a texbuilding row → what the compiler walks (four ghost walls on its faces, their tops the parapet's; a plateau for the roof,
-   set in from the faces so its blended edge never shows past the drawn building) */
+/* a texbuilding row → what the compiler walks: four ghost walls on its faces (their tops the parapet's) and THE ROOF, an unseen
+   bridge slab at the drawn roof's height (THE REAL COLLISION, 2026-10-06 — mondo: "when i add a building in the editor, it raises
+   the terrain underneath it and places the building on top"). It used to be a PLATEAU the building's height: the field rose inside
+   the walls, the renderer stood the building on the field under its middle (the plateau's top) and the roof's quads faced down,
+   so the raised ground showed through. The field under a building is never touched now. A row without `y` stands on the ground:
+   its rows carry `texbOf` and heights over 0, and hqTerrainCompile lifts them by the lowest ground under the footprint. */
 function hqTexBuildingRows(f) {
-    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), H = st * R.texStorey, y0 = +f.y || 0;
+    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), H = st * R.texStorey, rel = typeof f.y !== 'number', y0 = rel ? 0 : +f.y;
     const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), t = R.ghostT;
     const P = (lx, lz) => [_hqR4(f.x + lx * c - lz * s), _hqR4(f.z + lx * s + lz * c)];
-    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = y0 + H + R.texParapet;
+    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = y0 + H + R.texParapet, of = rel ? f : null;
     const C = [P(-hw, -hd), P(hw, -hd), P(hw, hd), P(-hw, hd)], out = [];
-    for (let i = 0; i < 4; i++) { const a = C[i], b = C[(i + 1) % 4]; out.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true }); }
-    if (w > 1.6 && d > 1.6) out.push({ k: 'plateau', x: f.x, z: f.z, w: w - 1.2, d: d - 1.2, rot: f.rot || 0, h: y0 + H, edge: 0.05, texb: f.id || true });
+    for (let i = 0; i < 4; i++) { const a = C[i], b = C[(i + 1) % 4]; out.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true, texbOf: of }); }
+    const r0 = P(-hw, 0), r1 = P(hw, 0);
+    out.push({ k: 'bridge', x0: r0[0], z0: r0[1], x1: r1[0], z1: r1[1], w: _hqR4(2 * hd), y: _hqR4(y0 + H + 0.02), thick: 0.3, plain: true, rails: false, hide: true, texb: f.id || true, texbOf: of, id: 'texroof:' + (f.id || (f.x + ',' + f.z)) });
     return out;
+}
+/* the lowest ground under a texbuilding's footprint (its corners, edge middles and middle) — `hAt` the field before the building */
+function hqTexBuildingGround(f, hAt) {
+    const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q);
+    let g = Infinity;
+    for (const u of [-0.5, 0, 0.5]) for (const v of [-0.5, 0, 0.5]) { const lx = u * (w - 0.4), lz = v * (d - 0.4), h = hAt(f.x + lx * c - lz * s, f.z + lx * s + lz * c); if (isFinite(h) && h < g) g = h; }
+    return isFinite(g) ? _hqR4(g) : 0;
 }
 /* THE EXPANSION: a room's features (and a prefab's props, a kit's paint) as the compiler reads them. A room with none of the four
    kinds gets its own arrays back untouched. → { features, props, marks, texb } */
@@ -48894,6 +48907,7 @@ function hqTerrainSlopeFn(T) {
 function _hqTSlopeFeatures(F, B) {
     const r2 = v => Math.round(v * 1000) / 1000;
     return F.map(f => {
+        if (f.texbOf) return f;   // THE REAL COLLISION: a grounded texbuilding is lifted by the ground under it (slope included) at the compile
         switch (f.k) {
             case 'plateau': return Object.assign({}, f, { h: r2(f.h + B(f.x, f.z)) });
             case 'ramp': return (f.x0 == null) ? f : Object.assign({}, f, { h0: r2(f.h0 + B(f.x0, f.z0)), h1: r2(f.h1 + B(f.x1, f.z1)) });
@@ -49120,7 +49134,7 @@ function hqTerrainCompile(room, roomId) {
             else if (f.k === 'hill' || f.k === 'dip') { const e = _hqTEllipse(px, pz, f); const sm = _hqTSmooth(1 - e); h += (f.k === 'dip' ? -f.h : f.h) * (f.dome ? sm * sm : sm); }
             else if (f.k === 'plateau') {
                 let din;
-                if (f.r) din = (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(px, pz, f);
+                if (f.r) din = (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(px, pz, f) - (f.bld ? HQ_BLD_INSET : 0);   // THE REAL COLLISION: a BUILDING tier's own rise starts inside its drawn walls (the walk reads its exact box)
                 if (din <= 0) continue;
                 const edge = (f.edge != null) ? f.edge : 0.35;
                 /* THE DEEP (2026-09-18): `blend: 'ground'` — the edge rises from the GROUND under it to h (an island out of the sea
@@ -49221,6 +49235,26 @@ function hqTerrainCompile(room, roomId) {
         if (closed) { const din = Math.min(S.w / 2 - Math.abs(px), S.d / 2 - Math.abs(pz)); if (din < R.rim && h < base && !inLane(px, pz, R.padEdge)) h = base; }   // THE SILL (2026-10-05): never over a door's sunk sill (the drain's mouth stood 0.85 m under the rim)
         return h;
     };
+    /* THE REAL COLLISION (2026-10-06): a texbuilding without `y` stands on the lowest ground under it — its walls and its roof slab lifted by it */
+    const texbGround = new Map();
+    walls.concat(bridges).forEach(r => {
+        const tf = r.texbOf; if (!tf) return;
+        if (!texbGround.has(tf)) texbGround.set(tf, hqTexBuildingGround(tf, hFinal));
+        r.y = _hqR4(r.y + texbGround.get(tf)); delete r.texbOf;
+    });
+    /* THE BUILDING TIERS (THE REAL COLLISION, 2026-10-06): a `plateau` wearing `bld: true | { style }` is a BUILDING — the rooftops the city
+       rooms stood as raised concrete blocks of the field are drawn as the urban pack's textured buildings (three-renderer.js _hqTexBuilding,
+       flat-roofed at the tier's own height), the walk reads its exact box (info.exact). Its ground: the lowest field just outside it. */
+    const bldTexb = [];
+    F.forEach((f, i) => {
+        if (f.k !== 'plateau' || !f.bld || f.r || f.sink || !(f.w > 0) || !(f.d > 0)) return;
+        const q = (f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q);
+        let g = Infinity;
+        for (const u of [-1, 0, 1]) for (const v of [-1, 0, 1]) { if (!u && !v) continue; const lx = u * (f.w / 2 + 0.8), lz = v * (f.d / 2 + 0.8), hh = hFinal(f.x + lx * c - lz * s, f.z + lx * s + lz * c); if (isFinite(hh) && hh < g) g = hh; }
+        if (!isFinite(g) || g > f.h - 1) g = Math.min(f.h - 1, isFinite(g) ? g : 0);
+        const B = (typeof f.bld === 'object') ? f.bld : {};
+        bldTexb.push({ k: 'texbuilding', id: f.id || ('bld:' + i), x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, base: _hqR4(g), h: _hqR4(f.h - g), storeys: Math.max(1, Math.min(12, Math.round((f.h - g) / HQ_SHAPE_RULES.texStorey))), flat: true, style: B.style || null, ruin: (B.ruin != null) ? B.ruin : 0, seed: (B.seed != null) ? B.seed : undefined });
+    });
     /* ── sample the grid ── */
     const H = new Float32Array(nx * nz);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
@@ -49249,6 +49283,7 @@ function hqTerrainCompile(room, roomId) {
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
+    info.exact = _hqTExactList(info.builts, decks, F.filter(f => f.k === 'plateau' && f.bld && !f.r && !f.sink && f.w > 0 && f.d > 0));   // THE EXACT SURFACES (2026-10-06): the flights and the field decks read edge to edge
     /* THE GROUND GRIDS (E3): the painted sheet per sample (0 = none) over the room's palette — the renderer blends it per vertex */
     if (T.paint && Array.isArray(T.paint.pal) && T.paint.pal.length) {
         const pd = hqGridDecode(T.paint), pal = T.paint.pal.slice(0, HQ_GROUND_RULES.paintMax).map(String), P = new Uint8Array(nx * nz);
@@ -49507,7 +49542,7 @@ function hqTerrainCompile(room, roomId) {
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
     info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
-    info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : hAt(f.x, f.z) }));
+    info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : texbGround.has(f) ? texbGround.get(f) : hqTexBuildingGround(f, hAt) })).concat(bldTexb);
     return info;
 }
 /* ── THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19) ─────────────────────────────────────────────────────────────
@@ -49571,7 +49606,7 @@ function hqTerrainBridges(info, rows) {
         const L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (L < 0.5) return;
         const b = { i, layer: out.length + 1, x0: f.x0, z0: f.z0, x1: f.x1, z1: f.z1, w: f.w || 3, y: f.y, thick: (typeof f.thick === 'number') ? f.thick : R.bridgeThick, rails: f.rails !== false, key: f.key || null, len: L, id: f.id || ('bridge:' + i) };
         /* THE STANDS (2026-09-26): a TIER bridge is a row of seating carried over a tunnel — no girder, no kerb, no piers (plain), seats drawn on it */
-        if (f.plain) b.plain = true; if (f.tier) b.tier = true; if (typeof f.drawW === 'number') b.drawW = f.drawW; if (f.glaze) b.glaze = f.glaze; if (f.seat) b.seat = f.seat; if (f.front) b.front = f.front.slice(); if (f.gaps) b.gaps = f.gaps.map(g => g.slice());
+        if (f.plain) b.plain = true; if (f.tier) b.tier = true; if (f.hide) b.hide = true;   // `hide` (THE REAL COLLISION): a roof the renderer draws itself (a texbuilding's) — walked, never drawn if (typeof f.drawW === 'number') b.drawW = f.drawW; if (f.glaze) b.glaze = f.glaze; if (f.seat) b.seat = f.seat; if (f.front) b.front = f.front.slice(); if (f.gaps) b.gaps = f.gaps.map(g => g.slice());
         /* the ground under the span (the piers' feet, the headroom check): sampled every metre */
         let gmax = -Infinity, low = 0;
         for (let k = 0; k <= Math.ceil(L); k++) { const t = Math.min(1, k / Math.max(1, L)); const g = hqTerrainHeight(info, f.x0 + (f.x1 - f.x0) * t, f.z0 + (f.z1 - f.z0) * t); if (g > gmax) gmax = g; if (b.y - b.thick - g < R.headroom && b.y - g > R.climb + 0.05) low++; }
@@ -49649,6 +49684,11 @@ function hqTerrainClimbEdges(info) {
 }
 /* the sampled height at (x, z), bilinear; the edge sample past the grid */
 function hqTerrainHeight(info, x, z) {
+    const h = _hqTFieldAt(info, x, z);
+    return info.exact ? _hqTExactTop(info, x, z, h).h : h;
+}
+/* the sampled field alone (bilinear) */
+function _hqTFieldAt(info, x, z) {
     const fx = (x - info.x0) / info.res, fz = (z - info.z0) / info.res;
     let i = Math.floor(fx), j = Math.floor(fz);
     if (i < 0) i = 0; if (j < 0) j = 0; if (i > info.nx - 2) i = info.nx - 2; if (j > info.nz - 2) j = info.nz - 2;
@@ -49656,8 +49696,47 @@ function hqTerrainHeight(info, x, z) {
     const a = H[j * nx + i], b = H[j * nx + i + 1], c = H[(j + 1) * nx + i], d = H[(j + 1) * nx + i + 1];
     return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
 }
-/* the slope (tan) at (x, z): a central difference one cell wide */
+/* ── THE EXACT SURFACES (THE REAL COLLISION, 2026-10-06 — mondo: "there are many stairs or bridges where it seems i fall right off
+   if i am not walking completely straight down the center of them") ──────────────────────────────────────────────────────────
+   The field is sampled every 0.5 m and a ramp's last 0.35 m each side blended down to the ground inside its own width, so a
+   3 m flight walked as ~1.7 m of tread: anywhere off the middle the feet read the blend (a drop, a slope over maxSlope) while the
+   drawn flight went on under them. A built stair flight (every pack flight) and a field deck (a causeway, a canal bridge) are
+   read EXACTLY now — the flight's own slope or the deck's top, edge to edge of what is drawn — over the sampled field. One list
+   per room (info.exact, bounding boxes first: a room has a handful). */
+function _hqTExactList(builts, decks, blds) {
+    const out = [];
+    (blds || []).forEach(f => {   // a BUILDING tier (a plateau wearing `bld`): its roof edge to edge of the drawn walls, the walls themselves a cliff
+        const hw = f.w / 2, hd = f.d / 2, q = (f.rot || 0) * Math.PI / 180, ex = Math.abs(Math.cos(q)) * hw + Math.abs(Math.sin(q)) * hd, ez = Math.abs(Math.sin(q)) * hw + Math.abs(Math.cos(q)) * hd;
+        out.push({ kind: 'box', x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, y: f.h, slope: 0, bx0: f.x - ex, bx1: f.x + ex, bz0: f.z - ez, bz1: f.z + ez });
+    });
+    const add = (f, kind) => {
+        if (!f || typeof f.x0 !== 'number' || typeof f.x1 !== 'number' || typeof f.z0 !== 'number' || typeof f.z1 !== 'number') return;
+        const dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz), hw = (f.w || 3) / 2; if (L < 0.3) return;
+        const ux = dx / L, uz = dz / L, ex = Math.abs(uz) * hw, ez = Math.abs(ux) * hw;
+        const e = { kind, x0: f.x0, z0: f.z0, ux, uz, L, hw, bx0: Math.min(f.x0, f.x1) - ex, bx1: Math.max(f.x0, f.x1) + ex, bz0: Math.min(f.z0, f.z1) - ez, bz1: Math.max(f.z0, f.z1) + ez };
+        if (kind === 'ramp') { e.h0 = +f.h0 || 0; e.h1 = +f.h1 || 0; e.slope = Math.abs(e.h1 - e.h0) / L; } else { e.y = +f.y || 0; e.slope = 0; }
+        out.push(e);
+    };
+    (builts || []).forEach(f => { if (!f.escalator) add(f, 'ramp'); });
+    (decks || []).forEach(f => add(f, 'deck'));
+    return out.length ? out : null;
+}
+/* the highest exact surface over (x, z) when it stands above the field's `h` → { h, e } (e = the piece, null = the field's own) */
+function _hqTExactTop(info, x, z, h) {
+    const E = info.exact; let best = null;
+    for (let k = 0; k < E.length; k++) {
+        const e = E[k]; if (x < e.bx0 || x > e.bx1 || z < e.bz0 || z > e.bz1) continue;
+        if (e.kind === 'box') { if (_hqTRectIn(x, z, e) > 0 && e.y > h - 0.02) { h = Math.max(h, e.y); best = e; } continue; }
+        const px = x - e.x0, pz = z - e.z0, t = px * e.ux + pz * e.uz;
+        if (t < 0 || t > e.L || Math.abs(px * e.uz - pz * e.ux) > e.hw) continue;
+        const v = e.kind === 'ramp' ? e.h0 + (e.h1 - e.h0) * (t / e.L) : e.y;
+        if (v > h - 0.02) { h = Math.max(h, v); best = e; }
+    }
+    return { h, e: best };
+}
+/* the slope (tan) at (x, z): a central difference one cell wide — on an exact piece, the piece's own (a flight's pitch, a deck's 0) */
 function hqTerrainSlope(info, x, z) {
+    if (info.exact) { const top = _hqTExactTop(info, x, z, _hqTFieldAt(info, x, z)); if (top.e) return top.e.slope; }
     const e = info.res;
     const dx = (hqTerrainHeight(info, x + e, z) - hqTerrainHeight(info, x - e, z)) / (2 * e);
     const dz = (hqTerrainHeight(info, x, z + e) - hqTerrainHeight(info, x, z - e)) / (2 * e);
