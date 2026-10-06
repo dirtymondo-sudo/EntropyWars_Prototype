@@ -12123,10 +12123,16 @@
             killer.gold = (killer.gold || 0) + bounty;
             killer._matchBounties = (killer._matchBounties || 0) + 1;
             const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
-            const bountyPts = (mpMode && mpMode.id === 'arena' && window.ARENA_PTS && window.ARENA_PTS.bounty) || 0;
+            /* Arena points grow with the victim's streak, like the gold (15 at 3, +5 a kill, cap 35). */
+            const _AP = window.ARENA_PTS || {};
+            const _streak = victim._killStreak || 0;
+            const bountyPts = (mpMode && mpMode.id === 'arena' && _AP.bounty)
+                ? Math.min(_AP.bounty + Math.max(0, _streak - BOUNTY_STREAK_MIN) * (_AP.bountyPerStreak || 0), _AP.bountyCap || Infinity) : 0;
             if (bountyPts) {
                 if (!state._arenaBountyPts) state._arenaBountyPts = { 1: 0, 2: 0 };
                 state._arenaBountyPts[killer.player] = (state._arenaBountyPts[killer.player] || 0) + bountyPts;
+                if (!state._arenaBountyCount) state._arenaBountyCount = { 1: 0, 2: 0 };
+                state._arenaBountyCount[killer.player] = (state._arenaBountyCount[killer.player] || 0) + 1;
             }
             addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} shatters ${unitDisplayName(victim)}'s flow (+${bounty} Hazard Pay${bountyPts ? `, +${bountyPts} pts` : ''})`);
             if (!_skipVisuals()) {
@@ -41799,7 +41805,7 @@
                     const bountyPts = state._arenaBountyPts?.[p] || 0;
                     if (bountyPts > 0) {
                         pts += bountyPts;
-                        details.push({ label: 'Bounties', raw: Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
+                        details.push({ label: 'Bounties', raw: state._arenaBountyCount?.[p] || Math.round(bountyPts / (ARENA_PTS.bounty || 10)), pts: bountyPts, icon: '💰' });
                     }
                     return { pts, details };
                 }
@@ -44994,6 +45000,7 @@
             state._simulPlans = null;
             state._simulAiLastUnit = null;
             state._arenaBountyPts = { 1: 0, 2: 0 };
+            state._arenaBountyCount = { 1: 0, 2: 0 };
             state._entropyStrikeCount = { 1: 0, 2: 0 };
             state._finisherCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
@@ -47294,6 +47301,7 @@
             state._simulPlans = null;
             state._simulAiLastUnit = null;
             state._arenaBountyPts = { 1: 0, 2: 0 };
+            state._arenaBountyCount = { 1: 0, 2: 0 };
             state._entropyStrikeCount = { 1: 0, 2: 0 };
             state._finisherCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
