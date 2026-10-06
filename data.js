@@ -11715,7 +11715,8 @@ const STATUS_LIBRARY_DESCS = {
     statLock:  'Stats are locked and cannot be raised or lowered.',
     hexed:     'Cursed — every action taken feeds the hex and hurts.',
     frozen:    'Encased in ice: cannot move or act. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
-    blind:     'Vision whited out — attacks miss 50% of the time.'
+    blind:     'Vision whited out — attacks miss 50% of the time.',
+    siegeMode: 'Anchored down: +1 ATK stage and +2 RNG, but −2 MOV. Cannot be stolen.'
 };
 
 const GOLD_PER_KILL = 10;
