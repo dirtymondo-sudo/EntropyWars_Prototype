@@ -49281,9 +49281,11 @@ function hqTerrainCompile(room, roomId) {
     };
     const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|spiral|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
     const hmap = T.hmap ? hqGridDecode(T.hmap) : null;   // THE GROUND GRIDS (E3): the brushes' height delta, added after the rows
+    let skipFlights = false;   // THE JOINED FLIGHTS (below): the ground a flight stands on — the field without the flights
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
         for (const f of ordered) {
+            if (skipFlights && f.k === 'ramp' && (f.escalator || (f.stairs && !f.float))) continue;
             if (f.k === 'ridge') { const r = _hqTPolyDist(px, pz, f.pts); h += f.h * _hqTSmooth(1 - r.d / (f.w / 2)); }
             else if (f.k === 'hill' || f.k === 'dip') { const e = _hqTEllipse(px, pz, f); const sm = _hqTSmooth(1 - e); h += (f.k === 'dip' ? -f.h : f.h) * (f.dome ? sm * sm : sm); }
             else if (f.k === 'plateau') {
@@ -49437,6 +49439,40 @@ function hqTerrainCompile(room, roomId) {
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
+    /* THE JOINED FLIGHTS (2026-10-06, mondo: "almost every stairs or ramp in the game has gaps on the sides / not connected at the edges"):
+       the renderer used to CUT the field away round every flight (and every escalator) — 0.8 m past each side and half a cell before
+       its foot, the floating steps' rule — while the wedge it stands on is only the flight's own width: a hole down to nothing along
+       both sides of every stair in every room and every battle room. Now nothing is cut: the field is DRAWN (info.drawH: node → height, the
+       renderer takes the lower of it and H; the walk still reads H) under each flight's footprint at the ground the flight stands on — the field without the flights, at this point or just
+       outside the flight's nearer side, whichever is higher — never above the wedge's sunk top, so it runs flat under an open-sided
+       stair and climbs inside the wedge where the flight runs along a tier. The nodes within 0.75 of a cell of a side are drawn ON that
+       side (info.drawXZ), so a tier's face meets the flight at its edge and never leans over the treads. */
+    const flights = F.filter(f => f.k === 'ramp' && f.x0 != null && f.w > 0 && (f.escalator || (f.stairs && !f.float)));
+    if (flights.length) {
+        const gw = (px, pz) => { skipFlights = true; try { return hFinal(px, pz); } finally { skipFlights = false; } };
+        const D = new Map(), XZ = new Map(), LO = new Map(), hits = new Uint8Array(nx * nz), SR = (typeof HQ_STAIR_RULES !== 'undefined') ? HQ_STAIR_RULES : { riser: 0.18, minSteps: 2, maxSteps: 90 };
+        for (const f of flights) {
+            const R0 = Math.abs(f.h1 - f.h0), steps = Math.max(SR.minSteps || 2, Math.min(SR.maxSteps || 90, Math.round(R0 / (SR.riser || 0.18))));
+            const margin = f.escalator ? 0.4 : 0.5 * R0 / steps + 0.08, hw = f.w / 2;
+            const ex = Math.abs(f.x1 - f.x0) / 2 + hw + res, ez = Math.abs(f.z1 - f.z0) / 2 + hw + res, cx = (f.x0 + f.x1) / 2, cz = (f.z0 + f.z1) / 2;
+            const i0 = Math.max(0, Math.floor((cx - ex - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((cx + ex - x0) / res));
+            const j0 = Math.max(0, Math.floor((cz - ez - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((cz + ez - z0) / res));
+            for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+                const px = x0 + i * res, pz = z0 + j * res, L = _hqTRamp(px, pz, f);
+                if (L.s < 0 || L.s > L.L || Math.abs(L.v) >= hw) continue;
+                const k = j * nx + i, sg = L.v >= 0 ? 1 : -1, top = f.h0 + (f.h1 - f.h0) * (L.s / L.L) - margin;
+                const fx = f.x0 + L.ux * L.s, fz = f.z0 + L.uz * L.s, ox = -L.uz * sg, oz = L.ux * sg;
+                const ground = Math.max(gw(px, pz), gw(fx + ox * (hw + 0.3), fz + oz * (hw + 0.3)));
+                D.set(k, Math.min(D.has(k) ? D.get(k) : H[k], H[k], top, ground));
+                const lo = Math.min(H[k], ground); if (!(LO.get(f) <= lo)) LO.set(f, lo);
+                hits[k]++;
+                if (hw - Math.abs(L.v) < res * 0.75) { const e = hw - 0.02; XZ.set(k, [_hqR4(fx + ox * e), _hqR4(fz + oz * e)]); }
+            }
+        }
+        XZ.forEach((v, k) => { if (hits[k] > 1) XZ.delete(k); });   // a node two flights share stays where it is
+        info.drawH = D; info.drawXZ = XZ;
+        info.flightLo = LO;   // a flight's lowest ground under it: its wedge stands down to it (three-renderer.js _hqBuildBuiltStairs) — no slit under a flank where the floor dips
+    }
     info.exact = _hqTExactList(info.builts, decks, F.filter(f => f.k === 'plateau' && f.bld && !f.r && !f.sink && f.w > 0 && f.d > 0));   // THE EXACT SURFACES (2026-10-06): the flights and the field decks read edge to edge
     /* THE GROUND GRIDS (E3): the painted sheet per sample (0 = none) over the room's palette — the renderer blends it per vertex */
     if (T.paint && Array.isArray(T.paint.pal) && T.paint.pal.length) {

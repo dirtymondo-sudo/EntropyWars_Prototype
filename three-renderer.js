@@ -46321,7 +46321,8 @@ const ThreeRenderer = (function () {
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(f.side || info.cliff) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
-            var base = Math.min(f.h0, f.h1, (typeof f.foot === 'number') ? f.foot : Infinity) - 0.05, Lt = L + 0.25;   // `foot` (the editor's MODULAR STAIRS on an upper floor): the mass drawn down to it
+            var lo0 = Math.min(f.h0, f.h1), gLo = (info.flightLo && info.flightLo.has(f)) ? Math.max(lo0 - 4, info.flightLo.get(f)) : Infinity;   // THE JOINED FLIGHTS (2026-10-06): down to the lowest ground under it (≤ 4 m)
+            var base = Math.min(lo0, gLo, (typeof f.foot === 'number') ? f.foot : Infinity) - 0.05, Lt = L + 0.25;   // `foot` (the editor's MODULAR STAIRS on an upper floor): the mass drawn down to it
             /* a frame at the flight's foot, turned down its run: every piece below is built in it */
             var F = new THREE.Group(); F.position.set(f.x0 * U, 0, f.z0 * U); F.rotation.y = yaw; G.add(F);
             /* THE STAIRS PACK (2026-10-05): a flight the pack draws (_spBuildFlights) keeps this wedge as its mass, its top sunk half a riser
@@ -47355,8 +47356,11 @@ const ThreeRenderer = (function () {
         };
         for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
-            pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
-            uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
+            /* THE JOINED FLIGHTS (2026-10-06): under a flight the field is drawn at the ground it stands on, its side nodes on its sides (data.js hqTerrainCompile) */
+            var dh = info.drawH ? info.drawH.get(k) : undefined, dxz = info.drawXZ ? info.drawXZ.get(k) : undefined;
+            var vx = dxz ? dxz[0] : px, vz = dxz ? dxz[1] : pz, vh = (dh !== undefined && dh < h) ? dh : h;
+            pos[k * 3] = vx * U; pos[k * 3 + 1] = vh * U; pos[k * 3 + 2] = vz * U;
+            uv[k * 2] = vx * U / TM; uv[k * 2 + 1] = vz * U / TM;
             var sl = hqTerrainSlope(info, px, pz);
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
             var rockSl = rock;
@@ -47373,12 +47377,12 @@ const ThreeRenderer = (function () {
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
         } if (_hqSliceDue()) yield; }
-        var idx = [], escalators = (room.terrain.features || []).filter(function (f) { return f.escalator; });
+        var idx = [], escalators = info.drawH ? [] : (room.terrain.features || []).filter(function (f) { return f.escalator; });   // THE JOINED FLIGHTS: the field runs on under an escalator, drawn at its ground
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
            cloud sheet, the pool carved into it, the path painted on it) and loses its FLANK — the ring of triangles round its edge
            blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
-        var floats = (info.floats || []).concat(info.builts || []);   // THE BUILT STAIR (2026-09-30): a built flight cuts the field away like a floating one
+        var floats = (info.floats || []).concat(info.drawH ? [] : (info.builts || []));   // THE JOINED FLIGHTS (2026-10-06): a flight no longer cuts the field away (that cut was the gap along both sides of every stair) — the field is drawn under it at its ground
         var underFloat = function (mx, mz) {
             if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return true;   // THE VOID: no ground drawn between the islands
             for (var fi = 0; fi < floats.length; fi++) {

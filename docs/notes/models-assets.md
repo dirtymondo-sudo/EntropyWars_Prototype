@@ -384,3 +384,15 @@ not have roofs?"
   stretched; no parapet), its field rise starting `HQ_BLD_INSET` (0.6 m) inside the walls, the walk on its exact box. Converted:
   Cyberpunk's seven STACKS + the billboard roof, Downtown's rooftop / east yards / warehouse roofs, the Strip's marquee, motel,
   centre, laundry roofs. Decks with car ramps (parking deck, valet deck, skyway) and fire-escape landings stay field tiers.
+
+## THE JOINED FLIGHTS (2026-10-06, mondo: "almost every stairs or ramp in the game has gaps on the sides / not connected at the edges. exploration and battle maps")
+- Cause: three-renderer.js `_hqBuildTerrain` cut the field away round every stair flight (the floating steps' rule: cell centres
+  within w/2 + 0.8 m, from half a cell before the foot) and round every escalator, but the wedge under a flight is only its own width
+  (0.96 w when the pack draws it). So every flight had a ~1 m hole down to nothing along both sides, in every room and every battle room
+  drawn round a board.
+- Fix: nothing is cut for flights or escalators any more (floats and the void still are). data.js hqTerrainCompile writes
+  `info.drawH` (node → drawn height) for every node under a flight: the lower of H, the wedge's sunk top less a margin, and the ground
+  the flight stands on (the field with every flight and escalator skipped — `skipFlights` in hBefore — at the node or just outside the
+  flight's nearer side, whichever is higher). `info.drawXZ` moves nodes within 0.75 of a cell of a side onto that side (2 cm in), so a
+  tier's face meets the flight at its edge. The walker still reads H / info.exact. `info.flightLo` (lowest ground under a flight) takes
+  the wedge and cheeks down to it (≤ 4 m under its low end), so no slit opens under a flank where the floor dips.
