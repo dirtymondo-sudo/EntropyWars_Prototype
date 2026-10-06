@@ -5669,7 +5669,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     let moveAtkPreview = atkPreview;
     if (atkMoveTile && !canAttack) {
 
+      /* THE BASIC ATTACK FLOOR (2026-10-06): the move-then-attack row reads the engine's own forecast from the tile
+         the unit would swing from (battle.js forecastBasicAttack, castFrom) — the floor, the coefficient and every
+         modifier included. The estimate below only answers when the forecast is missing. */
+      const _maFc = (typeof forecastOnUnit === 'function') ? forecastOnUnit(actingUnit, targetUnit, null, atkMoveTile) : null;
       const minRoll = -2, maxRoll = 2;
+      const _maCoef = (typeof BASIC_ATTACK_COEF !== 'undefined') ? BASIC_ATTACK_COEF : 0.75;
+      const _maMinRaw = (typeof BASIC_ATTACK_MIN_RAW !== 'undefined') ? BASIC_ATTACK_MIN_RAW : 30;
       // Same level math the engine resolves with (data.js "LEVEL COMBAT MATH"):
       // cap-equivalent ATK, damage × offenseScale, armour × defenseScale.
       const _maAtk = (typeof levelPowerStat === 'function') ? levelPowerStat(actingUnit, 'atk') : (actingUnit.atk || 0);
@@ -5677,12 +5683,14 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       const _maTL = (typeof getUnitLevel === 'function') ? getUnitLevel(targetUnit) : 0;
       const _maOff = (typeof offenseScale === 'function') ? offenseScale(_maAL, _maTL) : 1;
       const _maDef = (typeof defenseScale === 'function') ? defenseScale(_maTL) : 1;
-      let minDmg = Math.max(1, Math.round(Math.max(24, Math.floor(_maAtk * 0.65) + minRoll) * _maOff));
-      let maxDmg = Math.max(1, Math.round(Math.max(24, Math.floor(_maAtk * 0.65) + maxRoll) * _maOff));
+      let minDmg = Math.max(1, Math.round(Math.max(_maMinRaw, Math.floor(_maAtk * _maCoef) + minRoll) * _maOff));
+      let maxDmg = Math.max(1, Math.round(Math.max(_maMinRaw, Math.floor(_maAtk * _maCoef) + maxRoll) * _maOff));
       const effectiveArmor = Math.round((typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit) : 0) * _maDef);
       if (effectiveArmor) { minDmg = Math.max(1, minDmg - effectiveArmor); maxDmg = Math.max(1, maxDmg - effectiveArmor); }
       if (targetUnit.shield > 0) { minDmg = Math.max(0, minDmg - targetUnit.shield); maxDmg = Math.max(0, maxDmg - targetUnit.shield); }
-      moveAtkPreview = { type: 'damage', min: minDmg, max: maxDmg };
+      moveAtkPreview = _maFc
+        ? { type: 'damage', amount: _maFc.dmg, min: _maFc.min, max: _maFc.max, after: Math.max(0, targetUnit.hp - _maFc.dmg) }
+        : { type: 'damage', min: minDmg, max: maxDmg };
     }
     actions.push({
       id: 'attack',

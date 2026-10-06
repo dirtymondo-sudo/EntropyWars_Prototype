@@ -3367,8 +3367,10 @@
                 const minRoll = -2;
                 const maxRoll = 2;
                 const _pvAtk = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'atk') : (unit.atk || 0);
-                let minDamage = Math.max(24, Math.floor(_pvAtk * 0.65) + minRoll);
-                let maxDamage = Math.max(24, Math.floor(_pvAtk * 0.65) + maxRoll);
+                const _pvCoef = (typeof BASIC_ATTACK_COEF !== 'undefined') ? BASIC_ATTACK_COEF : 0.75;
+                const _pvMinRaw = (typeof BASIC_ATTACK_MIN_RAW !== 'undefined') ? BASIC_ATTACK_MIN_RAW : 30;
+                let minDamage = Math.max(_pvMinRaw, Math.floor(_pvAtk * _pvCoef) + minRoll);
+                let maxDamage = Math.max(_pvMinRaw, Math.floor(_pvAtk * _pvCoef) + maxRoll);
                 if (unitHasStatus(target, 'marked')) {
                     minDamage += 3;
                     maxDamage += 3;

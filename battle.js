@@ -157,6 +157,23 @@
         const SOAK_FLOOR_SHARE = 0.35;
         try { window.SOAK_FLOOR_SHARE = SOAK_FLOOR_SHARE; } catch (e) {}   // the damage preview (ui.js) reads the same floor
 
+        /* THE BASIC ATTACK FLOOR (mondo 2026-10-06: "there are times when a basic attack does like 1 damage and it is
+           basically useless ... raise the floor ... and then if we can raise the ceiling a bit too"). Two knobs:
+           - THE COEFFICIENT: the swing is floor(ATK × BASIC_ATTACK_COEF) ± variance, never under BASIC_ATTACK_MIN_RAW
+             (was 0.65 / 24). Every basic-attack roll (doAttack, the real-time swing, the Cube / turret swings, the
+             forecast, the AI's read, the HUD) reads these, so raising them raises the ceiling everywhere at once.
+           - THE FLOOR: after EVERY modifier (type resist, range, affinity, armour, high ground, Bulwark, the
+             hourglass, the level gap, Guard / status taken mults), a basic attack keeps at least
+             BASIC_FLOOR_SHARE of its own neutral hit (the swing × the level magnitude, before any modifier) and
+             never less than BASIC_FLOOR_MIN points at the cap (scaled to the victim's level curve, so it is the
+             same slice of an HP bar at every level). A shield still absorbs it, Indomitable still holds at 1 HP.
+           Flagged per hit by opts.basicAttack (the swing, its counter, the follow-up and the echo). */
+        const BASIC_ATTACK_COEF = 0.75;
+        const BASIC_ATTACK_MIN_RAW = 30;
+        const BASIC_FLOOR_SHARE = 0.35;
+        const BASIC_FLOOR_MIN = 25;
+        try { Object.assign(window, { BASIC_ATTACK_COEF, BASIC_ATTACK_MIN_RAW, BASIC_FLOOR_SHARE, BASIC_FLOOR_MIN }); } catch (e) {}
+
         // Symmetric flavor variance on spell/attack base damage. Was
         // randInt(40)−16 (−16…+23, ~±13% swing) — big enough to decide
         // exchanges. ±8 keeps numbers organic while positioning, matchups
@@ -262,7 +279,9 @@
         //      NOTE deliberate quirk kept for parity: when applicable this
         //      stage floors at 1 even for a 0-damage hit),
         //   6. × general damage-taken status mult,
-        //   7. shield absorption (shieldIgnore pierces, absorb is capped by
+        //   7. the basic attack floor (basicFloorShare of base × levelMult,
+        //      basicFloorMin points; both 0 / absent = not a basic attack),
+        //   8. shield absorption (shieldIgnore pierces, absorb is capped by
         //      what remains).
         // Returns { dmg, absorbed, shieldLeft }.
         function calcDamageResolution(p) {
@@ -290,6 +309,12 @@
             }
             if (p.statusTakenMult != null && p.statusTakenMult !== 1 && dmg > 0) {
                 dmg = Math.max(1, Math.round(dmg * p.statusTakenMult));
+            }
+            /* THE BASIC ATTACK FLOOR: after every modifier, before the shield — basicFloorShare of the neutral hit
+               (base × level magnitude), never under basicFloorMin points */
+            if ((p.basicFloorShare > 0 || p.basicFloorMin > 0) && (p.base || 0) > 0) {
+                const _neutral = (p.base || 0) * (p.levelMult != null ? p.levelMult : 1);
+                dmg = Math.max(dmg, Math.round(_neutral * (p.basicFloorShare || 0)), Math.round(p.basicFloorMin || 0));
             }
             let absorbed = 0, shieldLeft = p.shield || 0;
             if (shieldLeft > 0) {
@@ -25304,7 +25329,7 @@
                 }
             }
             function _hitBasic(att, tgt) {
-                let dmg = Math.max(24, Math.floor(pwrAtk(att) * 0.65) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                let dmg = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(pwrAtk(att) * BASIC_ATTACK_COEF) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                 // Brute Force ×1.2 / Warpath ×1.15 (passive rows, the `basicDmgMult` hook, they multiply — were the Raider /
                 // Warrior jobs; THE JOBS REMOVAL 2026-09-27): basic attacks land harder.
                 const _bdm = unitPassiveMult(att, 'basicDmgMult') || 1;
@@ -25319,7 +25344,7 @@
                         if (att._matchCrits >= 3) checkAchievement('critMaster', att);
                     }
                 } catch (e) {}
-                _dmg(tgt, dmg, 'Attack', { sourceUnit: att, damageType: 'physical', isCrit });
+                _dmg(tgt, dmg, 'Attack', { sourceUnit: att, damageType: 'physical', isCrit, basicAttack: true });
             }
 
             /* ═══ PLAYER INPUT RESOLUTION ═══ */
@@ -31948,6 +31973,9 @@
                     ? getStatusRangedDamageTakenMultiplier(target) : null,
                 statusTakenMult: getStatusDamageTakenMultiplier(target)
                     * (damageType === 'magic' ? getStatusMagicDamageTakenMultiplier(target) : 1),
+                basicFloorShare: (opts.basicAttack && !opts.preScaled) ? BASIC_FLOOR_SHARE : 0,
+                basicFloorMin: (opts.basicAttack && !opts.preScaled)
+                    ? BASIC_FLOOR_MIN * ((_tgtLvl >= 1 && typeof levelScale === 'function') ? levelScale(_tgtLvl) : 1) : 0,
                 shield: target.shield || 0,
                 shieldIgnore: Number(opts.shieldIgnore || 0),
             });
@@ -32857,20 +32885,20 @@
                 if (from) { unit.x = from.x; unit.y = from.y; if (from.z != null) unit.z = from.z; }
                 const rayGun = unitPassiveValue(unit, 'basicAttackMagic') === true;
                 const stat = rayGun ? pwrInt(unit) : pwrAtk(unit);
-                const base = Math.floor(stat * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit);
+                const base = Math.floor(stat * BASIC_ATTACK_COEF) + getPlantedTreeBonus(unit) + getHourglassPower(unit);
                 const bdm = unitPassiveMult(unit, 'basicDmgMult') || 1;
                 const pb = unitPassiveValue(unit, 'closeRangeBonus');
                 const d = (typeof distToTarget === 'function') ? distToTarget(unit.x, unit.y, target, unit.z) : (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y));
                 const pbOn = !!(pb && pb.mult && d <= (pb.within || 2));
                 const fm = getFacingDamageMult(unit._doorAttackOrigin ? 'back' : getAttackArc(unit, target));
                 const raw = (roll) => {
-                    let v = Math.max(24, base + roll);
+                    let v = Math.max(BASIC_ATTACK_MIN_RAW, base + roll);
                     if (bdm !== 1) v = Math.floor(v * bdm);
                     if (pbOn) v = Math.floor(v * pb.mult);
                     if (fm !== 1) v = Math.floor(v * fm);
                     return v;
                 };
-                const hopts = { sourceUnit: unit, damageType: rayGun ? 'magic' : 'physical', consumeMarked: true, fromInvisible: unitHasStatus(unit, 'invisible') };
+                const hopts = { sourceUnit: unit, damageType: rayGun ? 'magic' : 'physical', consumeMarked: true, fromInvisible: unitHasStatus(unit, 'invisible'), basicAttack: true };
                 const run = (roll) => { const f = forecastHitOnUnit(target, raw(roll), hopts); return f ? Math.min(f.dmg, Math.max(0, target.hp)) : 0; };
                 const f = forecastHitOnUnit(target, raw(0), hopts);
                 if (!f) return null;
@@ -59094,7 +59122,7 @@
         // forecast; only doAttack draws RNG. A private unit absorbs stat caches.
         function getCubeAttackDamage(unit, tw, variance = 0) {
             unit = { ...unit, status: { ...(unit.status || {}) } };
-            let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
+            let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(pwrAtk(unit) * BASIC_ATTACK_COEF) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
             if (typeof offenseScale === 'function') {
                 const lvl = getUnitLevel(unit);
                 damage = Math.round(damage * offenseScale(lvl, lvl));
@@ -59435,7 +59463,7 @@
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
-                    let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                    let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(pwrAtk(unit) * BASIC_ATTACK_COEF) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                     damageTurretAt(x, y, damage, unit, { damageType: 'physical' });
                     playSfx('damage');
                     spendAllAP(unit);   // attacking ends the turn
@@ -59673,7 +59701,7 @@
             // is a magic shot — M.ATK on the roll, M.DEF on the soak.
             const _rayGun = (typeof unitPassiveValue === 'function') && unitPassiveValue(unit, 'basicAttackMagic') === true;
             const _atkStat = _rayGun ? pwrInt(unit) : pwrAtk(unit);
-            let damage = Math.max(24, Math.floor(_atkStat * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+            let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(_atkStat * BASIC_ATTACK_COEF) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
             // Brute Force ×1.2 / Warpath ×1.15 (passive rows, the `basicDmgMult` hook, they multiply): basic attacks land
             // harder. THE JOBS REMOVAL (the user 2026-09-27): were the Raider / Warrior jobs (one or the other).
             const _bdm = unitPassiveMult(unit, 'basicDmgMult') || 1;
@@ -59831,7 +59859,8 @@
                         // bonuses); the mark is still consumed like a basic hit.
                         damageType: _rayGun ? 'magic' : 'physical',
                         consumeMarked: true,
-                        fromInvisible: _atkFromInvisible   // THE SPELL AUDIT Batch D: Ambush's invisibleStrikeBonus
+                        fromInvisible: _atkFromInvisible,   // THE SPELL AUDIT Batch D: Ambush's invisibleStrikeBonus
+                        basicAttack: true                   // THE BASIC ATTACK FLOOR
                     });
 
                     /* ⚡ Power Core (cyborg passive, plan §5.2): a landed basic
@@ -59911,7 +59940,8 @@
                             applyDamageToUnit(_echoTarget, _echoDmg, `${unitDisplayName(unit)}'s ${(getUnitPassives(unit).find(p => p && p.basicEcho) || {}).name || 'Echo Band'} strikes again: `, {
                                 sourceUnit: unit,
                                 allowMarkBonus: false,
-                                floatKind: 'combo'
+                                floatKind: 'combo',
+                                basicAttack: true
                             });
                             checkWin();
                         }, actionMs(420));
@@ -59974,7 +60004,8 @@
                         applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
                             sourceUnit: _counterTarget,
                             ignoreArmor: false,
-                            floatKind: 'combo'
+                            floatKind: 'combo',
+                            basicAttack: true
                         });
                         checkWin();
                     }, actionMs(500));
@@ -60018,7 +60049,8 @@
                                 showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
                                 applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
                                     sourceUnit: _fuAlly,
-                                    floatKind: 'combo'
+                                    floatKind: 'combo',
+                                    basicAttack: true
                                 });
                                 checkWin();
                             }, actionMs(280));

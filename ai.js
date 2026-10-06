@@ -238,6 +238,9 @@
     function _pwrInt(u) {
         return (typeof levelPowerStat === 'function') ? levelPowerStat(u, 'int') : ((u && u.intStat) || 0);
     }
+    // The basic-attack swing knobs (battle.js THE BASIC ATTACK FLOOR).
+    function _basicCoef() { return (typeof window !== 'undefined' && window.BASIC_ATTACK_COEF) || 0.75; }
+    function _basicMinRaw() { return (typeof window !== 'undefined' && window.BASIC_ATTACK_MIN_RAW) || 30; }
     function _offScale(attacker, target) {
         if (typeof offenseScale !== 'function') return 1;
         return offenseScale(_aiLevel(attacker), _aiLevel(target)) || 1;
@@ -486,8 +489,8 @@
             damageType = sp.damageType === 'magic' ? 'magic' : 'physical';
             ignoreArmor = !!sp.ignoreArmor;
         } else {
-            // doAttack: max(24, floor(pwrAtk×0.65) ± 8) + attackBonus + hourglass
-            raw = Math.max(24, Math.floor((basicMagic ? _pwrInt(unit) : _pwrAtk(unit)) * 0.65));
+            // doAttack: max(BASIC_ATTACK_MIN_RAW, floor(pwrAtk×BASIC_ATTACK_COEF) ± 8) + attackBonus + hourglass
+            raw = Math.max(_basicMinRaw(), Math.floor((basicMagic ? _pwrInt(unit) : _pwrAtk(unit)) * _basicCoef()));
             try { raw += g.getEffectiveAttackBonus(unit, basicMagic ? 'magic' : 'physical') || 0; } catch (e) {}
             try { raw += g.getHourglassPower(unit) || 0; } catch (e) {}
             damageType = basicMagic ? 'magic' : 'physical';
@@ -567,6 +570,16 @@
             } else if (damageType === 'physical' && typeof getStatusRangedDamageTakenMultiplier === 'function') {
                 est *= getStatusRangedDamageTakenMultiplier(tg) ?? 1;
             }
+        }
+
+        // THE BASIC ATTACK FLOOR (battle.js calcDamageResolution): a basic swing keeps BASIC_FLOOR_SHARE of its neutral
+        // hit and never less than BASIC_FLOOR_MIN points at the cap, after every modifier.
+        if (!sp) {
+            const _W = (typeof window !== 'undefined') ? window : {};
+            const _tl = _aiLevel(tg);
+            const _ls = (_tl >= 1 && typeof levelScale === 'function') ? levelScale(_tl) : 1;
+            const _mag = (typeof offenseMagnitude === 'function') ? (offenseMagnitude(_aiLevel(unit), _tl) || 1) : _offScale(unit, tg);
+            est = Math.max(est, raw * _mag * (_W.BASIC_FLOOR_SHARE ?? 0.35), (_W.BASIC_FLOOR_MIN ?? 25) * _ls);
         }
 
         return Math.max(1, Math.round(est));
@@ -2053,7 +2066,7 @@
             if (tDist < 1 || tDist > v.effRange) return;
             if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y, unit.z)) return;
         }
-        const estDmg = forecast ? forecast.typical : Math.max(24, Math.floor(_pwrAtk(unit) * 0.65) + (g.getEffectiveAttackBonus(unit) || 0) + (g.getHourglassPower(unit) || 0));
+        const estDmg = forecast ? forecast.typical : Math.max(_basicMinRaw(), Math.floor(_pwrAtk(unit) * _basicCoef()) + (g.getEffectiveAttackBonus(unit) || 0) + (g.getHourglassPower(unit) || 0));
 
         // Tower damage IS win-condition currency: the base bonus makes chip
         // damage on the objective competitive with chip damage on units.
