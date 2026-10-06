@@ -4227,6 +4227,9 @@
 
                     if (data.type === 'walk-anim' && _ewMirrorView()) {
                         var walkUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        // An Invisible / smoked enemy walks unseen: no anim, no camera.
+                        if (walkUnit && walkUnit.player !== NET.myPlayer && typeof isUnitConcealedFrom === 'function'
+                            && isUnitConcealedFrom(walkUnit, NET.myPlayer)) walkUnit = null;
                         if (walkUnit && data.path && data.path.length > 0) {
                             var _isEnemyWalk = walkUnit.player !== NET.myPlayer;
                             var _fogCheck = (st.fogOfWar && typeof window._isTileVisibleToViewer === 'function')
@@ -4302,6 +4305,8 @@
 
                     if (data.type === 'jump-anim' && _ewMirrorView()) {
                         var jumpUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (jumpUnit && jumpUnit.player !== NET.myPlayer && typeof isUnitConcealedFrom === 'function'
+                            && isUnitConcealedFrom(jumpUnit, NET.myPlayer)) jumpUnit = null;
                         if (jumpUnit) {
                             var _showJump = true;
                             var _jumpCamX = data.toX, _jumpCamY = data.toY;
