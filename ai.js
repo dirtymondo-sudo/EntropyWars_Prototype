@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.13-2026-09-25-door-lanes'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.14-2026-10-07-arena-rules'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -717,6 +717,55 @@
         return (u.spells || []).some(s => s && (s.kind === 'heal' || s.kind === 'healAll' || s.kind === 'revive'));
     }
 
+    /* ── THE ARENA RULES (v4.14, 2026-10-07): 20-round limit, the Arena score
+       decides (battle.js _resolveArenaTimerExpiry), all 5 Keys to win, bounty
+       points that grow with the streak a kill ends (battle.js processBountyClaim).
+       One Arena point is worth ARENA_PT_VALUE of the currency: a kill's 15 points
+       = the 60 the kill-scoring modes always added. */
+    const ARENA_PT_VALUE = 4;
+    function _arenaPts() {
+        return (typeof window !== 'undefined' && window.ARENA_PTS) || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6, surgeLastRounds: 5, bounty: 15, bountyPerStreak: 5, bountyCap: 35 };
+    }
+    function _isArenaMode() {
+        try { const m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null; return !!(m && m.id === 'arena'); } catch (e) { return false; }
+    }
+    // Arena points a kill on `u` pays as a bounty right now (0 = not ON FIRE).
+    function arenaBountyPts(u) {
+        const streak = (u && !u.dead) ? (u._killStreak || 0) : 0;
+        if (streak < 3) return 0;   // battle.js BOUNTY_STREAK_MIN
+        const P = _arenaPts();
+        if (!P.bounty) return 0;
+        return Math.min(P.bounty + (streak - 3) * (P.bountyPerStreak || 0), P.bountyCap || Infinity);
+    }
+    // The Arena composite score as the buzzer would count it now (mirror of
+    // battle.js _resolveArenaTimerExpiry), plus the nexus rounds the zones a
+    // side holds will still accrue before the limit (surge rounds count 2).
+    function arenaScoreOf(g, p, roundsLeft) {
+        const st = g.state, P = _arenaPts(), enemy = p === 1 ? 2 : 1;
+        let pts = (st.matchKills?.[p] || 0) * P.kill;
+        const eT = st.towers?.[enemy];
+        if (eT) {
+            const max = eT.maxHp || 1500;
+            let td = Math.floor(Math.max(0, max - eT.hp) / max * 250) * (P.towerDmgPer10 || 1);
+            if (P.towerDmgCap) td = Math.min(td, P.towerDmgCap);
+            pts += td;
+        }
+        pts += (st.hourglasses || []).filter(h => {
+            if (h.carriedBy == null) return false;
+            const c = st.units.find(u => u.id === h.carriedBy);
+            return c && !c.dead && c.player === p;
+        }).length * P.hourglass;
+        pts += (st._arenaNexusControl?.[p] || 0) * P.nexusRound;
+        pts += st._arenaBountyPts?.[p] || 0;
+        let proj = pts;
+        if (roundsLeft > 0 && st.nexusPoints) {
+            const held = Object.keys(st.nexusPoints).filter(k => st.nexusPoints[k]?.owner === p).length;
+            const surge = Math.min(roundsLeft, P.surgeLastRounds || 0);
+            proj += held * P.nexusRound * (roundsLeft + surge);
+        }
+        return { now: pts, proj };
+    }
+
     // Value of REMOVING tg from the board (the kill premium, added on top
     // of the damage that does it).
     function killValue(g, unit, tg, v) {
@@ -727,13 +776,19 @@
         // Kills are uncapped points in TDM/FFA/arena composite scoring.
         try {
             const mode = (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
-            if (mode && (mode.id === 'tdm' || mode.id === 'simul' || mode.id === 'ffa' || mode.id === 'arena')) val += 60;
+            if (mode && (mode.id === 'tdm' || mode.id === 'simul' || mode.id === 'ffa')) val += 60;
+            else if (mode && mode.id === 'arena') {
+                val += _arenaPts().kill * ARENA_PT_VALUE;
+                // A bounty kill (the victim is ON FIRE) pays 15..35 more Arena points.
+                val += arenaBountyPts(tg) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
+            }
         } catch (e) {}
         // Score pressure adds value to a kill, never to ordinary chip damage.
         // This is a bounded heuristic, not a promise of a hit or terminal win.
         const ws = v?.winState;
-        if (ws?.scorePolicy === 'seek_score') val += 40 * ws.roundUrgency;
-        else if (ws?.scorePolicy === 'break_tie') val += 20 * ws.roundUrgency;
+        const sp = ws?.scorePlay ?? 1;
+        if (ws?.scorePolicy === 'seek_score') val += 40 * ws.roundUrgency * sp;
+        else if (ws?.scorePolicy === 'break_tie') val += 20 * ws.roundUrgency * sp;
         else if (ws?.scorePolicy === 'sudden_death') val += 120;
         val += wght(g, 'killBonusScore_v1', 99);
         return val;
@@ -950,6 +1005,8 @@
 
         const _mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
         const _modeId = _mpMode ? _mpMode.id : 'arena';
+        // Arena bounty: an ON FIRE enemy is worth 15..35 extra points dead.
+        if (_modeId === 'arena') priority += arenaBountyPts(target) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE) * 0.5;
         if (_modeId === 'ctf' && g.state.flags) {
             const ownFlag = g.state.flags[unit.player];
             if (ownFlag && ownFlag.carriedBy === target.id) priority += 250;
@@ -1086,8 +1143,10 @@
         let cost = t.totalDmg * tuneW(g, 'threatCostFactor');
         const mine = effHp(unit);
         if (t.totalDmg >= mine && t.count >= 1 && mine > 0) {
-            cost += tuneW(g, 'deathRiskFactor') *
-                (tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, unit, v.closestEnemy || unit));
+            let gift = tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, unit, v.closestEnemy || unit);
+            // Arena: our death hands them a kill's points, and a bounty if we're ON FIRE.
+            if (_isArenaMode()) gift += _arenaPts().kill * ARENA_PT_VALUE + arenaBountyPts(unit) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
+            cost += tuneW(g, 'deathRiskFactor') * gift;
         }
         // Fragile units fear crowded pockets more.
         const hpFrac = unit.hp / (unit.maxHp || 1);
@@ -1095,7 +1154,7 @@
         // A donated kill can erase the deadline lead. Charge exposure in all
         // consumers (joint search, safety moves and final ranking), using only
         // the visible-enemy threat estimate already supplied by vision.
-        if (v.winState?.scorePolicy === 'protect_lead') cost *= 1 + 0.25 * v.winState.roundUrgency;
+        if (v.winState?.scorePolicy === 'protect_lead') cost *= 1 + 0.25 * v.winState.roundUrgency * (v.winState.scorePlay ?? 1);
         cost += aiHazardPenaltyAt(unit, x, y) * 2;
         return cost;
     }
@@ -1193,10 +1252,26 @@
         // TDM and Simul expire on matchKills, not alive counts, damage or
         // matchScores. FFA and Arena have different resolution contracts.
         const teamKillMode = !isFFA && (mode?.id === 'tdm' || mode?.id === 'simul');
-        const myScore = teamKillMode ? (g.state.matchKills?.[player] || 0) : null;
-        const enemyScore = teamKillMode ? (g.state.matchKills?.[enemy] || 0) : null;
-        const scoreLead = teamKillMode ? myScore - enemyScore : null;
-        const scorePolicy = !teamKillMode ? 'normal' : g.state.suddenDeathActive ? 'sudden_death'
+        // Arena (2026-10-06 rules): after roundLimit the composite Arena score
+        // decides (ties: more Keys held, then Sudden Death). Play the PROJECTED
+        // score: what the buzzer would count + the nexus rounds still to accrue.
+        const arenaClock = !isFFA && mode?.id === 'arena' && roundLimit > 0;
+        let myScore = null, enemyScore = null, scoreLead = null, scorePlay = 1;
+        if (teamKillMode) {
+            myScore = g.state.matchKills?.[player] || 0;
+            enemyScore = g.state.matchKills?.[enemy] || 0;
+            scoreLead = myScore - enemyScore;
+        } else if (arenaClock) {
+            const left = roundsRemaining || 0;
+            const a = arenaScoreOf(g, player, left), b = arenaScoreOf(g, enemy, left);
+            myScore = a.proj; enemyScore = b.proj;
+            // A lead inside one kill's points is a coin flip: treat it as a tie
+            // (the tie-break is Keys held, which the AI also plays for).
+            const d = a.proj - b.proj, band = _arenaPts().kill;
+            scoreLead = Math.abs(d) < band ? 0 : d;
+            scorePlay = wght(g, 'arenaScorePlay_v1', 1);
+        }
+        const scorePolicy = !(teamKillMode || arenaClock) ? 'normal' : g.state.suddenDeathActive ? 'sudden_death'
             : roundUrgency === 0 ? 'normal' : scoreLead > 0 ? 'protect_lead'
             : scoreLead < 0 ? 'seek_score' : 'break_tie';
 
@@ -1217,7 +1292,7 @@
             myAlive, enemyAlive,
             enemyDeadCount, enemyMinRespawn, enemyImminentRespawns,
             roundLimit, roundsRemaining, roundUrgency, phase,
-            myScore, enemyScore, scoreLead, scorePolicy,
+            myScore, enemyScore, scoreLead, scorePolicy, scorePlay, arenaClock,
         };
     }
 
@@ -4103,6 +4178,8 @@
                 let s = 230;
                 if (ws.phase === 'hg_losing') s += 80;
                 s += (unit.hourglasses || 0) * 15;
+                // Arena clock: a Key carried at the buzzer is 35 points and the tie-break.
+                if (ws.arenaClock) s += 20 * ws.roundUrgency * (ws.scorePlay ?? 1);
                 goals.push({ x: reachable[0].x, y: reachable[0].y, score: s, reason: 'grab_hg' });
             }
             // …or at least approach the nearest one.
@@ -4112,6 +4189,7 @@
             let s2 = 110 + wght(g, 'hgSeekPriority_v1', 19) * 6;
             if (Math.abs(nearest.x - unit.x) + Math.abs(nearest.y - unit.y) <= 4) s2 += 30;
             if (ws.phase === 'hg_losing') s2 += 50;
+            if (ws.arenaClock) s2 += 15 * ws.roundUrgency * (ws.scorePlay ?? 1);
             goals.push({ x: nearest.x, y: nearest.y, score: s2, reason: 'approach_hg' });
         }
 
@@ -4161,6 +4239,13 @@
                         u.player === unit.player && !u.dead && u.id !== unit.id &&
                         Math.abs(u.x - bestC.x) + Math.abs(u.y - bestC.y) <= 3).length;
                     if (alliesNear >= 2) s -= 80;
+                    // The 20-round clock: a held zone pays nexus rounds every round
+                    // (double in the Nexus Surge) — worth more the closer the buzzer
+                    // and the more we need points.
+                    if (ws.arenaClock && ws.roundUrgency > 0) {
+                        const need = (ws.scorePolicy === 'seek_score' || ws.scorePolicy === 'break_tie') ? 30 : 12;
+                        s += need * ws.roundUrgency * (ws.scorePlay ?? 1);
+                    }
                     if (s > 0) goals.push({ x: bestC.x, y: bestC.y, score: s, reason: 'arena_nexus' });
                 }
             }
@@ -4282,9 +4367,10 @@
         // 160-point approach_enemy silently overrides the TDM hunt policy.
         for (const goal of goals) {
             if (!['tdm_hunt', 'tdm_advance', 'approach_enemy', 'advance_to_mid', 'explore'].includes(goal.reason)) continue;
-            if (ws.scorePolicy === 'protect_lead') goal.score *= 0.4;
-            else if (ws.scorePolicy === 'seek_score') goal.score += 40 * ws.roundUrgency;
-            else if (ws.scorePolicy === 'break_tie') goal.score += 20 * ws.roundUrgency;
+            const sp = ws.scorePlay ?? 1;
+            if (ws.scorePolicy === 'protect_lead') goal.score *= Math.max(0.15, 1 - 0.6 * sp);
+            else if (ws.scorePolicy === 'seek_score') goal.score += 40 * ws.roundUrgency * sp;
+            else if (ws.scorePolicy === 'break_tie') goal.score += 20 * ws.roundUrgency * sp;
             else if (ws.scorePolicy === 'sudden_death') goal.score += 60;
         }
 
@@ -4567,7 +4653,8 @@
 
         let s = 8;
         if (unscanned.length > 0) s += 8;
-        s += unrevHG * 12;
+        // Blind Key search (Arena hides all 5 and needs all 5).
+        s += unrevHG * wght(g, 'keyHuntPriority_v1', 12);
         if (v.winState.phase === 'hg_losing') s += 25;
         if (v.visibleEnemies.length > 0) s *= 0.3;   // there's a fight on
         const ws = v.winState;

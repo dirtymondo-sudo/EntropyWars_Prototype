@@ -104,6 +104,11 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     if (WEIGHTS_FILE) {
         startWeights = JSON.parse(fs.readFileSync(path.resolve(String(WEIGHTS_FILE)), 'utf8'));
         console.log(`[runner] starting champion: ${WEIGHTS_FILE} (gen ${startWeights?._meta?.generation ?? '?'})`);
+        // Schema 14 (2026-10-07) = the Arena rules of 20 rounds / all 5 Keys / streak bounties.
+        // An older export's objective keys were learned on the old rules: the game drops them on import.
+        if ((startWeights?._meta?.schemaVersion | 0) > 0 && (startWeights._meta.schemaVersion | 0) < 14) {
+            console.log(`[runner] note: ${WEIGHTS_FILE} is schema ${startWeights._meta.schemaVersion} (${startWeights._meta.aiVersion || 'old AI'}) — trained on the old Arena rules; its tower/Key/nexus keys restart at their defaults`);
+        }
     }
 
     const serverChild = await ensureServer();
@@ -231,7 +236,9 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     if (LAB === 'train') {
         const base = finals.find(Boolean)?.t?.weights || {};
         const merged = {};
-        for (const k of Object.keys(base)) merged[k] = (startWeights?.weights?.[k]?.value ?? startWeights?.weights?.[k]) ?? base[k].default;
+        // The browser already applied the start weights (and dropped what an old-schema
+        // export can't carry), so a worker's own value for a key it never tested IS the start.
+        for (const k of Object.keys(base)) merged[k] = base[k].value ?? base[k].default;
         const experiments = [];
         const winConditions = {};
         let generation = 0;
@@ -256,6 +263,7 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
                 totalMatches: (startWeights?._meta?.totalMatches || 0) + totalMatches,
                 thisRunMatches: totalMatches, minutes: Number((elapsed / 60000).toFixed(1)), workers: WORKERS,
                 mode: MODE, map: MAP, virtualClock: !REAL_CLOCK, render: RENDER,
+                rules: finals.find(Boolean)?.t?.rules || null,
                 winConditions, exportedAt: new Date().toISOString(),
             },
             weights: {},

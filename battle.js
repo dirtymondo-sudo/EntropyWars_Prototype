@@ -45074,7 +45074,9 @@
             state.shotClock = { startedAt: 0, limitSec: 60, active: false };
 
             if (_aiTrainingMode && _trainMapSetting === 'rotate') {
-                const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
+                const _pool = (typeof window._ewTrainMapPool === 'function')
+                    ? window._ewTrainMapPool(getActiveMultiplayerMode()?.id) : _TRAIN_MAP_POOL;
+                const nextMap = _pool[_trainMapIndex++ % _pool.length];
                 applyGameMode(nextMap);
             }
             const _newArenaLabel = _rerollMapForNextMatch();
@@ -50158,7 +50160,19 @@
            thresholds/comparators/conversion-rates the campaign
            _challengeAiMult must NOT scale (multiplying a threshold or a
            cost-conversion changes behavior non-monotonically). */
-        const AI_WEIGHT_SCHEMA_VERSION = 13;
+        /* Schema 14 — the Arena rules of 2026-10-06 (ai.js v4.14): a 20-round
+           limit where the Arena score decides (was a 100-round safety cap), all 5
+           hidden Keys to win (was 3 of 5), bounty points that grow with the
+           streak, 12×12 arenas (training rotated the old 8×8 Δ boards). The
+           schema-13 champion (gen 40, 2,360 matches) was trained on the old
+           rules, so the bump starts fresh stats + experiment history; the
+           combat value-model keys carry over, the OBJECTIVE keys
+           (_AI_RULES_RESET_KEYS) restart at their defaults, and three new keys
+           train the new rules: arenaScorePlay_v1, bountyKillBonus_v1,
+           keyHuntPriority_v1. */
+        const AI_WEIGHT_SCHEMA_VERSION = 14;
+        const _AI_RULES_RESET_KEYS = ['towerBaseBonus_v1', 'towerDefendBonus_v1', 'towerLowHpPush_v4',
+            'hgSeekPriority_v1', 'scannerPriority_v1', 'nexusCapBonus_v1'];
 
         const AI_WEIGHT_DEFAULTS = {
             // NOTE: these defaults are also the BASELINE side of the
@@ -50215,6 +50229,11 @@
             healSafetyDiscount_v4:   { value: 0.45,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
             towerLowHpPush_v4:       { value: 120,   prev: 120,   min: 40,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
             moveHighGroundMelee_v4:  { value: 7,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
+
+            // ── NEW 2026-10-07 (schema 14): the Arena rules of PRs #150/#151 ──
+            arenaScorePlay_v1:       { value: 1,     prev: 1,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
+            bountyKillBonus_v1:      { value: 4,     prev: 4,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
+            keyHuntPriority_v1:      { value: 12,    prev: 12,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
         };
 
         // Human-readable labels for state._winCondition — shared by the three
@@ -50316,6 +50335,9 @@
                 if (def.probe === 'nexus') return !!(state.nexusPoints && Object.keys(state.nexusPoints).length);
                 if (def.probe === 'tower') return !!(state.towers && state.towers[1] && state.towers[2]);
                 if (def.probe === 'height') return _boardHasHeight();
+                const _m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                if (def.probe === 'arena') return !!(_m && _m.id === 'arena');
+                if (def.probe === 'arenaClock') return !!(_m && _m.id === 'arena' && ((state.matchClock && state.matchClock.roundLimit) || _m.roundLimit || 0) > 0);
             } catch (e) {}
             return true;
         }
@@ -50508,11 +50530,13 @@
         async function loadAIWeights() {
             try {
                 let raw = await _aiStorageGet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION);
-                // Schema 12 → 13 carry-over: surviving keys keep their trained
-                // values; pruned keys are dropped and the new _v4 knobs start
-                // at their defaults. Saves land on the v13 key from then on.
-                if (!raw) raw = await _aiStorageGet('ai-weights-v12');
+                // Schema 13 → 14 carry-over: the combat keys keep their trained
+                // values, the objective keys trained on the old Arena rules
+                // restart at their defaults (_AI_RULES_RESET_KEYS).
+                let _carried = false;
+                if (!raw) { raw = await _aiStorageGet('ai-weights-v13'); _carried = !!raw; }
                 if (raw) _aiTrainedWeights = JSON.parse(raw);
+                if (_carried && _aiTrainedWeights) for (const k of _AI_RULES_RESET_KEYS) delete _aiTrainedWeights[k];
                 if (_aiTrainedWeights) {
                     for (const k of Object.keys(_aiTrainedWeights)) {
                         if (!AI_WEIGHT_DEFAULTS[k]) delete _aiTrainedWeights[k];
@@ -50676,7 +50700,12 @@
             // SPRT-high in gen 4 and SPRT-low in gen 96; pressRefundValue
             // random-walked 33→21→51). Adopt only SPRT calls or a decisive
             // 60%+ full batch; everything else keeps the champion value.
-            const DECISIVE_THRESHOLD = 0.60;
+            // 2026-10-07: 0.60 → 0.65. The gen-40 export (2,360 matches) adopted
+            // 10 of 40 experiments; 6 were 36-24 / 38-22 full batches, and every
+            // one re-tested in pass 2 (killBonusScore 30-30, jointSearch 28-32)
+            // came back a coin flip. 36/60 is p≈0.08 per side — with two sides
+            // per experiment ~15% of experiments adopted noise. 39/60 is p≈0.01.
+            const DECISIVE_THRESHOLD = 0.65;
             let adopted = null;
             let newVal = exp.currentVal;
 
@@ -51014,6 +51043,21 @@
             };
         }
 
+        /* The rules a training run played under, stamped into every export so a
+           file can never again be read against the wrong game (the gen-40 export
+           ran the 100-round cap and 3-of-5 Keys a day before both changed). */
+        function _aiRulesSnapshot() {
+            try {
+                const m = (typeof MULTIPLAYER_MODES !== 'undefined' && MULTIPLAYER_MODES.arena) || {};
+                const pool = (typeof window._ewTrainMapPool === 'function') ? window._ewTrainMapPool('arena') : null;
+                return {
+                    arena: { roundLimit: m.roundLimit || 0, keySpawnCount: m.keySpawnCount || 0, keysToWin: m.keysToWin || 0,
+                             boardSize: (typeof HQ_ARENA_SIZE !== 'undefined') ? HQ_ARENA_SIZE : null, points: window.ARENA_PTS || null },
+                    trainMapPool: pool ? pool.length : null,
+                };
+            } catch (e) { return null; }
+        }
+
         function _exportTrainedWeights() {
             const w = _aiTrainedWeights || {};
             const stats = _aiTrainingStats || {};
@@ -51029,6 +51073,10 @@
                     generation: gen,
                     totalMatches: totalM,
                     championWinRate: champWR + '%',
+                    // (that figure is P1's share of decided matches — the A/B
+                    // sides swap seats every match, so it measures seat bias.)
+                    p1WinRate: champWR + '%',
+                    rules: _aiRulesSnapshot(),
                     pass: _abPassNumber || 0,
                     batchCap: _aiTrainingBatchSize,
                     aiVersion: window.EW_AI_VERSION || null,
@@ -51071,9 +51119,13 @@
             if (!_aiTrainedWeights) _aiTrainedWeights = {};
             let imported = 0, skipped = 0;
             const weights = (data && data.weights) || data || {};
+            // An export from before schema 14 learned its objective keys on the
+            // old Arena rules (100-round cap, 3 of 5 Keys): keep the defaults.
+            const _oldRules = !!(data && data._meta && (data._meta.schemaVersion | 0) > 0 && (data._meta.schemaVersion | 0) < 14);
             for (const key of Object.keys(weights)) {
                 const def = AI_WEIGHT_DEFAULTS[key];
                 if (!def) { skipped++; continue; }
+                if (_oldRules && _AI_RULES_RESET_KEYS.includes(key)) { skipped++; continue; }
                 const entry = weights[key];
                 const val = typeof entry === 'number' ? entry : (entry?.value ?? null);
                 if (val == null || typeof val !== 'number' || isNaN(val)) { skipped++; continue; }
@@ -51110,6 +51162,7 @@
                 pass: _abPassNumber || 0,
                 queueLeft: (_abWeightQueue || []).length,
                 keyFilter: Array.isArray(window.EW_TRAIN_KEYS) ? window.EW_TRAIN_KEYS.slice() : null,
+                rules: _aiRulesSnapshot(),
                 current: exp ? { key: exp.key, label: exp.label, matches: exp.maxWins + exp.minWins, maxWins: exp.maxWins, minWins: exp.minWins, highVal: exp.highVal, lowVal: exp.lowVal, currentVal: exp.currentVal } : null,
                 completed: (_abCompletedExperiments || []).slice(),
                 winConditions: stats.winConds || {},

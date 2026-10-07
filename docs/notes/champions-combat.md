@@ -1228,3 +1228,20 @@ when the damage math moves. UNSEEN LIVE (RULE #1c): Firefox drag and drop on the
 - Follow-up (same day, mondo: "let me change the bands like everything else in the editor"): MOVE_SPD_RULE {follow, from}
   in data.js; the GRADES tab has a MOVE TILES row (FOLLOW SPD LETTERS toggle, or type the SPD for 2/3/4/5 tiles), stored
   as EWRaceMods doc.move like the other global groups.
+
+## AI TRAINING ON THE NEW ARENA RULES (2026-10-07, ai.js v4.14, weight schema 14)
+mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules: a 100-round safety cap (every
+`arena_composite` win sat at round 101), 3 of 5 Keys, the old 8×8 Δ training boards. 81% of matches ended on the Cube at
+~22 rounds, so under the 20-round limit most of them now end on the Arena score, which the AI did not model at all.
+- ai.js: `arenaScoreOf` mirrors battle.js `_resolveArenaTimerExpiry` (+ the nexus rounds held zones still accrue, surge
+  ×2); `assessWinCondition` gives Arena the same protect_lead / seek_score / break_tie / sudden_death policy TDM has (a
+  lead under one kill's 15 points counts as a tie). Kills credit 15 pts × ARENA_PT_VALUE (4); `arenaBountyPts` mirrors
+  processBountyClaim (15 at a 3-streak, +5 a kill, cap 35) for hunting ON FIRE enemies and protecting our own. Late-clock
+  pulls on zones and Keys.
+- New trainable keys: `arenaScorePlay_v1` (probe arenaClock), `bountyKillBonus_v1` (probe arena), `keyHuntPriority_v1`.
+- Schema 14: fresh stats/history; v13 combat keys carry over, objective keys (`_AI_RULES_RESET_KEYS`: tower ×3, hgSeek,
+  scanner, nexusCap) restart at defaults, also when importing an older export.
+- Adoption: full-batch threshold 60% → 65% (36/60 adopted noise; every pass-2 retest of those was a coin flip). The old
+  export's adoptions were NOT baked into defaults (old rules).
+- Lab map rotation = `hqArenaPvpPool()` (map.js `_trainMapPoolFor`; gauntlet keeps full maps). Exports carry
+  `_meta.rules` (round limit, Keys, board size, points) and `p1WinRate` (what "championWinRate" always measured).
