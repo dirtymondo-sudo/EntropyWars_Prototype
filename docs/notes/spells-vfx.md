@@ -1298,3 +1298,10 @@ Covers map lava (tile boxes, HQ room sheets) and spell lava (the field skins).
   tile. doSpell now holds finishAction until that shot's `totalMs`.
 - Tree chop (doAttack's tree branch) costs 1 AP (`spendAP(unit, 1)`), no longer ends the turn. A choppable tree under
   the cursor glows (three-renderer.js THE TREE HOVER: emissive lift on that tree's own materials, restored on leave).
+- THE EARTHWORK (later 2026-10-07, mondo: "go back to it just raising the terrain like a cube"): Rampart drops its
+  `monument` (menhir) and raises the ground again (`terrainType: 'mountain'`, `terrainDeform` centerDelta 2). Units on
+  the line ride up (applyTerrainDeform), objective tiles raise too (only `fieldCellFixed` refuses), the line length is
+  still `_terrainSpellTileCount`. Field battles: `_fieldStrataBuild` faces a raised cell a spell repainted with its new
+  terrain's sheet (`paintedSide`: Rampart = mountain stone, Snow Fort = ice), not the room bed. Walls of Camelot and
+  Pyramid Protocol keep their brick / sandstone monument GLBs. The Rampart hit's rising spikes (`_capSpikes`) are now
+  textured (`o.tex`, default rocks_1; Rampart passes mountain).

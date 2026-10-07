@@ -61341,7 +61341,7 @@
                     const terrain = getTerrainAt(tx, ty);
                     if (terrain === 'wall') continue;
                     if (terrain === 'mountain' && (cDelta < 0 || _flatten)) continue;
-                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(tx, ty)) continue;
+                    /* (2026-10-07, mondo: "we can change the terrain on objectives" — the objective guard is gone) */
                     if (fieldCellFixed(tx, ty)) continue;   // THE NO-DEFORM FLAG: the ground under a prop / a doorway / water in a field
                     const obj = getObjectAt(tx, ty);
                     if (obj) {
@@ -61749,7 +61749,7 @@
                     const cDelta = deform.centerDelta || 0;
                     let blocked = false;
                     if (current === 'mountain' && cDelta < 0) blocked = true;
-                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) blocked = true;
+                    if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) blocked = true;   // the handler's field guard too
                     const obj = getObjectAt(x, y);
                     if (obj) {
                         const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
