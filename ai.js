@@ -720,11 +720,11 @@
     /* ── THE ARENA RULES (v4.14, 2026-10-07): 20-round limit, the Arena score
        decides (battle.js _resolveArenaTimerExpiry), all 5 Keys to win, bounty
        points that grow with the streak a kill ends (battle.js processBountyClaim).
-       One Arena point is worth ARENA_PT_VALUE of the currency: a kill's 15 points
-       = the 60 the kill-scoring modes always added. */
+       One Arena point is worth ARENA_PT_VALUE of the currency (a kill's 25 points
+       = 100 since 2026-10-07; it was 15 = the 60 the kill-scoring modes add). */
     const ARENA_PT_VALUE = 4;
     function _arenaPts() {
-        return (typeof window !== 'undefined' && window.ARENA_PTS) || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6, surgeLastRounds: 5, bounty: 15, bountyPerStreak: 5, bountyCap: 35 };
+        return (typeof window !== 'undefined' && window.ARENA_PTS) || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6, surgeLastRounds: 5, bounty: 15, bountyPerStreak: 5, bountyCap: 35 };
     }
     function _isArenaMode() {
         try { const m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null; return !!(m && m.id === 'arena'); } catch (e) { return false; }
@@ -781,6 +781,19 @@
                 val += _arenaPts().kill * ARENA_PT_VALUE;
                 // A bounty kill (the victim is ON FIRE) pays 15..35 more Arena points.
                 val += arenaBountyPts(tg) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
+            }
+            /* WIPEOUT (2026-10-07, mondo: the lab's AI won by wipeout 88 times in 5,356 matches).
+               The AI never knew that dropping the last body a side has standing ends the match:
+               Cube hits and Key pickups carried a win flag, the last kill did not, so after a kill
+               it walked off to the Cube instead of finishing the fight. The last standing body is
+               worth a win; the second-to-last carries a share of it. Same value when it is OUR
+               last body under threat (killValue is also the price of losing a unit). */
+            if (mode && Array.isArray(mode.winConditions) && mode.winConditions.includes('wipeout')
+                && typeof g.getTeamWipeoutCount === 'function' && tg && !tg.dead && tg.player != null) {
+                const left = g.getTeamWipeoutCount(tg.player);
+                const wipeW = wght(g, 'wipeoutKillBonus_v1', 3000);
+                if (left === 1) val += wipeW;
+                else if (left === 2) val += wipeW * 0.1;
             }
         } catch (e) {}
         // Score pressure adds value to a kill, never to ordinary chip damage.

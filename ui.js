@@ -4373,13 +4373,13 @@
 
                 let arenaP1Pts = 0, arenaP2Pts = 0;
                 if (isArena) {
-                    const _ARP = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+                    const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
                     function _liveArenaScore(p) {
                         const enemy = p === 1 ? 2 : 1;
                         let pts = 0;
                         pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                         const eTw = state.towers?.[enemy];
-                        if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
+                        if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
                         if (state.hourglasses) {
                             pts += state.hourglasses.filter(h => {
                                 if (!h.carriedBy) return false;
@@ -4388,6 +4388,7 @@
                             }).length * _ARP.hourglass;
                         }
                         pts += (state._arenaNexusControl?.[p] || 0) * _ARP.nexusRound;
+                        pts += state._arenaBountyPts?.[p] || 0;
                         return pts;
                     }
                     arenaP1Pts = _liveArenaScore(1);
@@ -7053,13 +7054,13 @@
 
             const isArena = !mpMode || mpMode.id === 'arena';
             if (isArena) {
-                const _ARP = { kill: 15, towerDmgPer10: 1, hourglass: 40, nexusRound: 3 };
+                const _ARP = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };   // 2026-10-07: was a stale literal (kill 15, hourglass 40, nexus 3, no cap)
                 function _pmArenaScore(p) {
                     const enemy = p === 1 ? 2 : 1;
                     let pts = 0;
                     pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                     const eTw = state.towers?.[enemy];
-                    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
+                    if (eTw) pts += Math.min(_ARP.towerDmgCap || Infinity, Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10);
                     if (state.hourglasses) {
                         pts += state.hourglasses.filter(h => {
                             if (!h.carriedBy) return false;
@@ -7068,6 +7069,7 @@
                         }).length * _ARP.hourglass;
                     }
                     pts += (state._arenaNexusControl?.[p] || 0) * _ARP.nexusRound;
+                    pts += state._arenaBountyPts?.[p] || 0;
                     return pts;
                 }
                 scoreLabel = 'Score';
