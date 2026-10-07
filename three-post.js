@@ -3597,7 +3597,8 @@ const ThreePost = (function () {
        Swaps the RenderPass scene for one frame and restores everything —
        the battle scene never notices. Falls back to a bare render when the
        composer isn't up. */
-    function renderScene(scene, cam) {
+    /* opts.noBloom (2026-10-07, THE TEAM ROOM — mondo: "turn the bloom off"): this scene draws with no bloom, whatever the slider says */
+    function renderScene(scene, cam, opts) {
         if (!scene || !cam || !_renderer) return;
         if (!_ready || !_composer) { _renderer.render(scene, cam); return; }
         var rp = _ng ? _ng.rp : _pp ? _pp.renderPass : _composer.passes[0];
@@ -3635,6 +3636,7 @@ const ThreePost = (function () {
                 _bloomPass.threshold = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
                 _bloomPass.threshold = _bloomThrFor(_bloomPass.threshold, HQ_BLOOM_THRESHOLD);   // THE HDR BLOOM: the look's bar as a share of the default
                 _bloomPass.radius = (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS;
+                if (opts && opts.noBloom) _bloomPass.strength = 0;
             }
             var _aeNow = performance.now(); _aeTick(_aeNow);
             _renderer.toneMappingExposure = _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);

@@ -5877,7 +5877,7 @@ body.diorama-3d .tile-underpass.jump::before {
    (the CSS2D "grey box" is gone): the name in the theme's ink over a
    shadow, a hairline of the function colour under it, the number small.
    ═══════════════════════════════════════════════════════════════════════ */
-#hqPage, #pauseOverlay {   /* #pauseOverlay: the battle's pause menu wears the same frame (2026-09-30) */
+#hqPage, #pauseOverlay, #squadDeskPage {   /* #pauseOverlay: the battle's pause menu wears the same frame (2026-09-30); #squadDeskPage: THE TEAM ROOM (2026-10-07) */
   --hq-plate-bg: var(--ew-plate-bg, linear-gradient(180deg, #16188e 0%, #0c0e64 42%, #050632 78%, #010214 100%));
   --hq-plate-edge: var(--ew-plate-edge, #e6e8f4);
   --hq-plate-seam: var(--ew-plate-seam, #061040);
@@ -6781,7 +6781,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .sq-room { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
 .sq-room canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 .sq-page.sq-room-on::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-    background: linear-gradient(180deg, rgba(6,4,10,0.82) 0%, rgba(6,4,10,0.25) 22%, transparent 38%, transparent 66%, rgba(6,4,10,0.55) 82%, rgba(6,4,10,0.88) 100%); }
+    background: linear-gradient(180deg, rgba(6,4,10,0.35) 0%, transparent 16%, transparent 70%, rgba(6,4,10,0.45) 86%, rgba(6,4,10,0.7) 100%); }
 .sq-page.sq-room-on .ls-motes, .sq-page.sq-room-on::before { display: none; }
 .sq-page.sq-room-on .sq-title, .sq-page.sq-room-on .sq-sub { text-shadow: 0 2px 12px rgba(0,0,0,0.85), 0 0 34px rgba(214,178,255,0.3); }
 .sq-body { display: flex; flex-direction: column; }
@@ -6856,6 +6856,75 @@ body.diorama-3d .tile-underpass.jump::before {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sq-drop-n { flex-shrink: 0; font-family: 'DotGothic16', monospace; font-size: 0.6rem; letter-spacing: 0.18em; color: var(--sq-mute); text-transform: uppercase; }
 .sq-drop-row.is-locked .sq-drop-n { color: #e0848c; }
+/* THE TEAM ROOM — THE HUD THEME (2026-10-07, mondo: "make the ui look more like the hud of the exploration mode, like classic
+   final fantasy dragon quest ... It should match the ui theme of whatever the player has selected in the settings"). The desk
+   wears the exploring HUD's material: the --hq-* tokens (THE HQ HUD PASS, fed by hud.js THE COLOUR PASS) so Settings → HUD
+   Theme (Classic Blue / Void / Onyx / Leather / Parchment / Glass) restyles it with the building and the battle. Windows are
+   bevelled plates, commands are rows, the cursor is the gold ▸. Restyle HERE. */
+#squadDeskPage { --sq-accent: var(--hq-sel); --sq-accent-dim: var(--hq-ink-mute); --sq-gold: var(--hq-sel); --sq-ink: var(--hq-ink); --sq-mute: var(--hq-ink-mute); }
+#squadDeskPage .sq-head { padding: 10px 18px 12px 12px; border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg);
+    border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); align-items: center; }
+#squadDeskPage .sq-rule { display: none; }
+#squadDeskPage .sq-body { margin-top: 12px; }
+#squadDeskPage .sq-kicker { font-family: 'IBM Plex Mono', monospace; color: var(--hq-head-ink); letter-spacing: 0.3em; font-size: 0.62rem; }
+#squadDeskPage .sq-title { color: var(--hq-ink); text-shadow: var(--hq-tshadow); font-size: clamp(1.7rem, 3.4vw, 2.6rem); margin-top: 4px; }
+#squadDeskPage .sq-sub { color: var(--hq-ink-mute); text-shadow: var(--hq-tshadow); margin-top: 5px; }
+#squadDeskPage .sq-count { align-self: center; padding: 5px 12px; border-radius: var(--hq-r-pill); background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge);
+    box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.4); font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--hq-ink-mute); }
+#squadDeskPage .sq-count b { color: var(--hq-sel); }
+#squadDeskPage .sq-back { align-self: center; border-radius: var(--hq-r-pill); background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); color: var(--hq-ink);
+    box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.4); text-shadow: var(--hq-tshadow); }
+#squadDeskPage .sq-back:hover { color: var(--hq-sel); border-color: var(--hq-sel); background: var(--hq-row-sel-bg); box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.4); }
+/* the plate = a window */
+#squadDeskPage .sq-plate { border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); }
+#squadDeskPage .sq-plate::before, #squadDeskPage .sq-plate::after { display: none; }
+#squadDeskPage .sq-plate:hover, #squadDeskPage .sq-plate:focus-visible, #squadDeskPage .sq-plate.is-open { border-color: var(--hq-sel); box-shadow: var(--hq-frame), 0 0 0 1px var(--hq-sel-faint); }
+#squadDeskPage .sq-plate-top { padding-bottom: 6px; border-bottom: 1px solid var(--hq-hair); }
+#squadDeskPage .sq-plate-name { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#squadDeskPage .sq-plate-n, #squadDeskPage .sq-plate-of, #squadDeskPage .sq-plate-foot { font-family: 'IBM Plex Mono', monospace; color: var(--hq-ink-mute); }
+#squadDeskPage .sq-plate-caret { color: var(--hq-sel); }
+#squadDeskPage .sq-plate-slot em { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#squadDeskPage .sq-face { border-color: var(--hq-row-edge); background: var(--hq-plate-seam); box-shadow: inset 0 0 10px rgba(0,0,0,0.6), 0 2px 0 rgba(0,0,0,0.4); }
+#squadDeskPage .sq-plate-slot .sq-face { border: 2px solid var(--hq-plate-edge); }
+#squadDeskPage .sq-plate.is-locked { border-color: #ff8a8a; }
+#squadDeskPage .sq-card-warn { color: #ff8a8a; }
+/* the arrows + the commands = rows; the one under the cursor turns the theme's SELECT colour and grows the ▸ */
+#squadDeskPage .sq-arrow, #squadDeskPage .sq-ghost, #squadDeskPage .sq-cta { position: relative; border-radius: 7px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); color: var(--hq-ink);
+    box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.45); text-shadow: var(--hq-tshadow); filter: none; }
+#squadDeskPage .sq-arrow:hover:not(:disabled), #squadDeskPage .sq-ghost:hover, #squadDeskPage .sq-ghost:focus-visible,
+#squadDeskPage .sq-cta:hover:not(:disabled), #squadDeskPage .sq-cta:focus-visible { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); color: var(--hq-sel);
+    box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45); transform: none; }
+#squadDeskPage .sq-ghost, #squadDeskPage .sq-cta { padding: 9px 24px 9px 28px; font-size: 1rem; }
+#squadDeskPage .sq-ghost::before, #squadDeskPage .sq-cta::before { content: '▸'; position: absolute; left: 10px; top: 50%; transform: translate(-4px, -52%); color: var(--hq-sel);
+    font-size: 0.8rem; opacity: 0; transition: opacity .14s, transform .14s; }
+#squadDeskPage .sq-ghost:hover::before, #squadDeskPage .sq-ghost:focus-visible::before, #squadDeskPage .sq-cta:hover:not(:disabled)::before, #squadDeskPage .sq-cta.is-ready::before { opacity: 1; transform: translate(0, -52%); }
+#squadDeskPage .sq-cta { border-color: var(--hq-sel-soft); }
+#squadDeskPage .sq-cta.is-ready { color: var(--hq-sel); border-color: var(--hq-sel); background: var(--hq-row-sel-bg); animation: sqHudPulse 1.6s ease-in-out infinite; }
+#squadDeskPage .sq-cta::after { display: none; }
+#squadDeskPage .sq-cta:disabled { opacity: 0.45; color: var(--hq-ink-dim); }
+#squadDeskPage .sq-cta-big { margin-top: 10px; }
+/* THE LIST = a window of rows */
+#squadDeskPage .sq-drop { border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame), 0 24px 60px rgba(0,0,0,0.6); padding: 8px; }
+#squadDeskPage .sq-drop-row { position: relative; margin-bottom: 4px; padding-left: 26px; border-radius: 7px 15px 15px 7px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge);
+    box-shadow: inset 0 1px 0 var(--hq-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35); }
+#squadDeskPage .sq-drop-row::before { content: '▸'; position: absolute; left: 9px; top: 50%; transform: translate(-4px, -52%); color: var(--hq-sel); font-size: 0.8rem; opacity: 0; transition: opacity .14s, transform .14s; }
+#squadDeskPage .sq-drop-row:hover, #squadDeskPage .sq-drop-row:focus-visible, #squadDeskPage .sq-drop-row.is-focus { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); }
+#squadDeskPage .sq-drop-row:hover::before, #squadDeskPage .sq-drop-row.is-focus::before { opacity: 1; transform: translate(0, -52%); }
+#squadDeskPage .sq-drop-row:hover .sq-drop-name, #squadDeskPage .sq-drop-row.is-focus .sq-drop-name { color: var(--hq-sel); }
+#squadDeskPage .sq-drop-name { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#squadDeskPage .sq-drop-n { font-family: 'IBM Plex Mono', monospace; color: var(--hq-ink-mute); }
+/* THE PICK + no team on file */
+#squadDeskPage .sq-pick-panel { border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame), 0 30px 80px rgba(0,0,0,0.7); }
+#squadDeskPage .sq-pick-panel.is-full { border-color: var(--hq-sel); }
+#squadDeskPage .sq-pick-title, #squadDeskPage .sq-pick-count b { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#squadDeskPage .sq-tile { border-radius: 8px; background: var(--hq-row-bg); border: 1px solid var(--hq-row-edge); box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45); }
+#squadDeskPage .sq-tile.is-on { background: var(--hq-row-sel-bg); border-color: var(--hq-sel); }
+#squadDeskPage .sq-tile-name { color: var(--hq-ink); }
+#squadDeskPage .sq-tile-race, #squadDeskPage .sq-tile-key { font-family: 'IBM Plex Mono', monospace; color: var(--hq-ink-mute); }
+#squadDeskPage .sq-empty { margin: auto; padding: 28px 32px; border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); }
+#squadDeskPage .sq-empty-title { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
+#squadDeskPage .sq-empty-text { color: var(--hq-ink-mute); }
+@keyframes sqHudPulse { 0%, 100% { box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45), 0 0 0 0 var(--hq-sel-faint); } 50% { box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45), 0 0 14px 2px var(--hq-sel-faint); } }
 
 /* the entrance: title, rule, then the cards fly in one after another */
 .sq-page.sq-enter .sq-titles > * { animation: sqRise .5s cubic-bezier(.2,1,.3,1) backwards; }

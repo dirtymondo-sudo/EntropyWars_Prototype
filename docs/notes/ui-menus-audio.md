@@ -852,6 +852,17 @@ different team that would have their portraits (sprites for fallback)".
   `activate()` each leave the room first. The room refuses while the HQ or a battle holds the canvas (the desk then shows on
   the void as before). `#menuBgCanvas` is hidden while the room is up. CSS: styles-base.css "THE TEAM ROOM".
 
+
+Follow-up (token 20261007-teamroom-03-cors, mondo: "turn the bloom off and add a ceiling ... make the ui look more like the hud of
+the exploration mode ... match the ui theme of whatever the player has selected in the settings"):
+- BLOOM: three-post.js `renderScene(scene, cam, opts)` takes `opts.noBloom`; the room passes it, so bloom strength is 0 for
+  that draw only (restored in the finally). The player's slider is untouched everywhere else.
+- CEILING: TR_ROOM.h 2.7 (was 3.1) so the lid sits in frame; hemisphere ground 0x8a7c6c / 0.7 and the ceiling point light at
+  (0, h-0.6, 1.0) light it; the top page gradient is lighter (0.35 -> clear by 16%) so it is not hidden.
+- HUD THEME: `#squadDeskPage` joins `#hqPage, #pauseOverlay` in the --hq-* token block (styles-base.css), and the block
+  "THE TEAM ROOM — THE HUD THEME" restyles the head, plate, arrows, action rows (gold cursor on the hot one), drop list and
+  pick panel as HUD windows, so they follow hud.js HUD_THEMES (data-hud-theme) like the exploration HUD.
+
 ## THE NAMES + THE ONE BATTLE PAUSE MENU — 2026-09-30 (token 20260930-pause-01-cors)
 mondo: no random names, a unit is its race until the player types a name, rename in the story pause menu, one battle
 pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the fight), no Strike Mode section.

@@ -66710,7 +66710,7 @@ const ThreeRenderer = (function () {
        rig AND its idle are in (no stand-in, no T-pose). No fog; bloom only if the player turned it on (setSceneLook null).
        Tunables: TR_ROOM (metres), TR_PROPS (catalogue keys + where they stand), TR_SPOTS (where the team stands). */
     var _tr = null, _trLive = false;
-    var TR_ROOM = { w: 8.4, d: 6.4, h: 3.1, back: -2.6, dado: 1.0, tile: 2.0, front: 7 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera
+    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera
     var TR_HUMAN_M = 1.75;   // heightRatio 1.0 (the fortune teller) in metres
     /* the props: catalogue key, x / z (metres), yaw (rad, the model's +Z front turned by it), `on` = stands on that prop's top */
     var TR_PROPS = [
@@ -66720,7 +66720,7 @@ const ThreeRenderer = (function () {
         { id: 'chair',  key: 'office_chair',  x: -2.05, z: -0.55, yaw: Math.PI + 0.95 },
         { id: 'plant',  key: 'potted_plant',  x: 3.35, z: -1.95, yaw: 0.4 },
         { id: 'cooler', key: 'water_cooler',  x: 2.15, z: -2.3, yaw: 0 },
-        { id: 'clock',  key: 'wall_clock',    x: 2.15, z: -2.58, yaw: 0, y: 2.2 }
+        { id: 'clock',  key: 'wall_clock',    x: 2.15, z: -2.58, yaw: 0, y: 1.9 }
     ];
     /* where the team stands, by team size: x / z (metres) and yaw (rad, + turns toward +x) */
     var TR_SPOTS = {
@@ -66766,9 +66766,9 @@ const ThreeRenderer = (function () {
         var sc = T.scene;
         sc.background = new THREE.Color(0x0b0911);
         /* light: a warm hemisphere, the ceiling lamp over the team, a key from the camera's right, a fill from the camera, a cool rim from behind */
-        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x3a2f2a, 0.85));
-        var ceil = new THREE.PointLight(0xfff1d6, 0.55, 9 * U, 1);
-        ceil.position.set(0, (R.h - 0.25) * U, 0.6 * U); sc.add(ceil);
+        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7));   // a light ground colour: the ceiling reads
+        var ceil = new THREE.PointLight(0xfff1d6, 0.42, 9 * U, 1);
+        ceil.position.set(0, (R.h - 0.6) * U, 1.0 * U); sc.add(ceil);
         var key = new THREE.DirectionalLight(0xfff0dc, 0.75);
         key.position.set(3 * U, 4 * U, 7 * U); sc.add(key);
         var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28);
@@ -67016,7 +67016,7 @@ const ThreeRenderer = (function () {
         T.camera.position.set((0.25 + sway) * U, C.y * U, (lookZ + C.dist) * U);
         T.camera.lookAt(sway * 0.4 * U, C.y * U, lookZ * U);
         var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST) || (_lens && !_lens.post);
-        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(T.scene, T.camera);
+        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(T.scene, T.camera, { noBloom: true });   // mondo 2026-10-07: no bloom in the room
         else renderer.render(T.scene, T.camera);
     }
     function _trEnter(opts) {
