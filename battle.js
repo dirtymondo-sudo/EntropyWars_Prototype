@@ -36961,8 +36961,16 @@
             if (!canUnitAct(unit)) return false;
             if ((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES) return false;
 
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove)) return false;
+            if (unitMoveBlockedByStatus(unit)) return false;
             return true;
+        }
+
+        /* Rooted / frozen / stunned … (any STATUS_DEFS blockMove): no walking
+           AND no jumping — a jump is movement. getJumpTiles + doJump gate on
+           this too, which also kills the jump-then-cast / jump-then-attack
+           approaches a click on an enemy used to offer a rooted unit. */
+        function unitMoveBlockedByStatus(unit) {
+            return !!(unit && unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove));
         }
 
         function unitFinished(unit) {
@@ -57182,6 +57190,7 @@
             // ledge should never force a 2-AP takeoff-and-hover).
             if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return [];
             if (unit._jumpedThisTurn) return [];  // one decisive leap per turn
+            if (unitMoveBlockedByStatus(unit)) return [];  // rooted: no leaping either
             // 🕳 Gravity Crush: jumping is impossible inside the field — knees
             // buckle under triple weight. 🌫 Low Gravity: +2 reach AND +2 climb.
             const _jumpGrav = getGravityFieldAt(unit.x, unit.y);
@@ -57526,6 +57535,13 @@
                 addLog('That unit has already jumped this turn.');
                 return false;
             }
+            if (unitMoveBlockedByStatus(unit)) {
+                if (!state.autoPlayers?.[unit.player]) {
+                    addLog(`${unitDisplayName(unit)} is rooted and cannot jump.`, unit.player);
+                    playErrorSfx();
+                }
+                return false;
+            }
             const jumpTiles = getJumpTiles(unit);
             if (z === undefined || z === null) {
                 const match = jumpTiles.find(t => t.x === x && t.y === y);
@@ -57612,21 +57628,16 @@
                 // Landing in a guardian's sights: jumping IS movement, so
                 // Overwatch reads it exactly like finishing a walk.
                 checkOverwatchTriggers(unit);
-                /* Jumping IS movement: stay in move mode when the unit can still
-                   walk (same re-arm cascade as finishMoveAt) instead of dumping
-                   the player back to the root menu after every hop. */
-                const _postJumpCanMove = canUnitMove(unit);
-                if (_postJumpCanMove) {
-                    state.actionMode = 'move';
-                    state.pendingTarget = null;
-                } else {
-                    state.actionMode = null;
-                    state.actionMenuView = 'root';
-                    state.selectedTool = null;
-                    state.pendingTarget = null;
-                    state._tileActionTarget = null;
-                    state._enemyActionTargetId = null;
-                }
+                /* Jumping IS movement, so it ends like finishMoveAt: back to
+                   the ROOT action menu. Staying armed in move mode after a hop
+                   made the next click a second, unwanted move (2026-10-07,
+                   mondo's online matches). */
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                state._tileActionTarget = null;
+                state._enemyActionTargetId = null;
                 if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
                 /* Jumping IS also arriving: landing on the Mystery Dungeon
                    stairs (or the hub gate) counts exactly like walking there. */

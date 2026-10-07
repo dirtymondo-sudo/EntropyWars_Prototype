@@ -2698,22 +2698,36 @@ function _HrlgRmbIcon() {
    the active unit's afflictions and buffs are visible without hunting the
    board. Recomputed on every HUD render (which 'unit:statusChanged' /
    'unit:damaged' RenderBus events force immediately). */
+/* ONE status-badge palette (2026-10-07, mondo: "bleeding bld badge needs to be
+   dark red, try to give colors to the other status effects other than just
+   grey"). The 3D nameplates (three-renderer _plateStatusBadgesHtml), the
+   Horologe chips, the unit panel and the pause-menu status glossary all read
+   this map — every STATUS_DEFS key has its own hue, none falls back to grey. */
 const _HRLG_SB_COLORS = {
-  burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
-  stagger:'#e67e22',marked:'#e74c6f',jammed:'#8e44ad',drowning:'#2980b9',
-  lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',
-  root:'#d4b45a',contract:'#d45a5a',
-  invisible:'#1a7a4a',regen:'#2ecc71',
-  taunt:'#ff8a50',minimize:'#5ab0d4',statLock:'#a88ae0',hexed:'#b06ad3',
-  frozen:'#7fd7ff',blind:'#9aa8b5',
-  bleed:'#e0455a',goo:'#4a4f5c',wolfForm:'#8a6ad4',
-  // CHAMP REWORK Phase 4 (2026-09-07)
-  haunted:'#7f8fd4',corroded:'#a4d43a',grievous:'#d46a6a',feared:'#a070d4',
-  possessed:'#c060e0',infected:'#7fb84a',stoneform:'#8c8c98',soulBound:'#c050a0',
-  voodoo:'#d49050',shadowRealm:'#40405c',tethered:'#d4a050',incendiary:'#ff8040',
-  sparkling:'#e8d060',levitating:'#70b8e0',blessed:'#e8c850',monster:'#40c070',
-  extendedClips:'#a0a0a0',carForm:'#5090d0',mechaForm:'#8080d0',shield:'#63d0ff',
-  guardRegen:'#5ad4a8'
+  // damage over time
+  burn:'#e8590c',lava_burn:'#b33c00',poison:'#9b59b6',bleed:'#7a0010',
+  corroded:'#a4d43a',infected:'#7fb84a',incendiary:'#ff8040',
+  // control
+  silence:'#5d6dbe',stun:'#f39c12',stagger:'#e67e22',root:'#8b5a2b',
+  frozen:'#7fd7ff',blind:'#4b6584',charm:'#e84393',taunt:'#ff8a50',
+  feared:'#a070d4',possessed:'#c060e0',slow:'#6a8caf',drowning:'#2980b9',
+  wet:'#3fa9f5',goo:'#6b8e23',tethered:'#d4a050',minimize:'#5ab0d4',
+  // marks & curses
+  marked:'#e74c6f',jammed:'#8e44ad',contract:'#d45a5a',hexed:'#b06ad3',
+  haunted:'#7f8fd4',grievous:'#d46a6a',soulBound:'#c050a0',voodoo:'#d49050',
+  discord:'#c04080',statDown:'#a04040',
+  // protection & recovery
+  protect:'#3498db',shield:'#63d0ff',regen:'#2ecc71',guardRegen:'#5ad4a8',
+  guarding:'#4a90e2',indomitable:'#c0a000',spawnGuard:'#d8c040',blessed:'#e8c850',
+  stoneform:'#a08060',statLock:'#a88ae0',invisible:'#1a7a4a',
+  // power & forms
+  quickened:'#40e0d0',overclock:'#ff6f3c',statUp:'#3cb371',jackOfAll:'#9c6ade',
+  pixieDust:'#f0a0e0',sparkling:'#e8d060',levitating:'#70b8e0',monster:'#40c070',
+  extendedClips:'#c8a040',carForm:'#5090d0',mechaForm:'#8080d0',wolfForm:'#8a6ad4',
+  siegeMode:'#a05a30',castFromDoors:'#e8c07a',
+  // markers & pickups
+  shadowRealm:'#4b2a6b',exited:'#3d8bfd',captured:'#e0a030',sealed:'#b03060',
+  hourglass:'#e0c060',scanner:'#40c0c0',heal:'#27ae60',mana:'#3a7bd5',damage:'#e74c3c'
 };
 function _hrlgStatusChips(unit) {
   const chips = [];
@@ -4664,6 +4678,7 @@ function ActionMenu({ st, hidden }) {
     // was the one-leap-per-turn rule (teal tiles vanish after the first hop).
     const jumpSub = jumpOk ? null
       : unit._jumpedThisTurn ? 'Jumped'
+      : (typeof unitMoveBlockedByStatus === 'function' && unitMoveBlockedByStatus(unit)) ? 'Rooted'
       : !(typeof canUnitAct === 'function' ? canUnitAct(unit) : (unit.ap || 0) > 0) ? 'No AP'
       : 'No landing';
     moveAction = { id: 'jump', label: 'Jump', icon: '↑', cost: 1, available: jumpOk, sub: jumpSub };

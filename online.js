@@ -603,6 +603,22 @@
             return 1200;
         };
 
+        /* A guest's move / jump is relayed, so the engine's own "back to the
+           root menu" (finishMoveAt / the jump landing) only runs on the host.
+           The quick-menu "Move here" path arms move mode first, so without
+           this the guest was left in move mode and the next click moved
+           again (2026-10-07). actionMode & co are guest-local UI keys. */
+        function _guestMenuToRoot() {
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            try { renderBattleSelectionUI({ includeBoard: false }); } catch (e) {}
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+        }
+
         const _origDoMove = doMove;
         doMove = function(unit, x, y, z) {
             if (!_isOnline() || state._remoteAction) return _origDoMove(unit, x, y, z);
@@ -610,6 +626,7 @@
             if (!_guestOwnsAction(unit)) return false;
             _guestActionFeedback('move', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doMove', unitId: unit.id, x: x, y: y, z: z });
+            _guestMenuToRoot();
             return true;
         };
 
@@ -620,6 +637,7 @@
             if (!_guestOwnsAction(unit)) return false;
             _guestActionFeedback('jump', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doJump', unitId: unit.id, x: x, y: y, z: z });
+            _guestMenuToRoot();
             return true;
         };
 

@@ -2984,7 +2984,12 @@
                   _hlCache.set(pk, 'move ally');
                 }
               }
-            } else if (spell.kind === 'teleport' && state._teleportingUnit) {
+            } else if (spell.kind === 'teleport' && (state._teleportingUnit || !spell.teleportAnyUnit)) {
+              /* Self blinks (Mirror Blink & co.) skip the pick-a-unit phase —
+                 the first click IS the landing — so they paint the same solid
+                 destination tiles as phase 2 from the moment they are armed,
+                 not the faint generic reach lattice. */
+              const _tpMover = state._teleportingUnit || _selectedForHl;
               const _tpEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {
@@ -2992,7 +2997,7 @@
                   if (d <= _tpEffRange) {
                     const pk2 = posKey(cx, cy);
                     const occupant = _liveUnitMap.get(pk2);
-                    if (cx === state._teleportingUnit.x && cy === state._teleportingUnit.y) {
+                    if (cx === _tpMover.x && cy === _tpMover.y) {
                       _hlCache.set(pk2, 'selected');
                     } else if (!occupant && isTerrainPassable(cx, cy)
                                && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)) {   // wave C: Icky Surprise → goo only
@@ -3288,18 +3293,10 @@
                 }
                 return;
             }
-            const unit = getSelectedUnit();
-            if (!unit || state.phase !== 'battle' || state.winner) return;
-            if (state.autoPlayers?.[state.activePlayer]) return;
-            if (unit.x === x && unit.y === y && canUnitMove(unit)) {
-
-                if (!state.actionMode || state.actionMode === 'move') {
-                    if (state.actionMode !== 'move') setActionMode('move');
-                    _dragMoveActive = true;
-                    _dragMoveOrigin = { x, y };
-                    _dragMoveTarget = null;
-                }
-            }
+            /* Battle drag-to-move is GONE (2026-10-07, mondo): pressing on the
+               active unit flipped it into move mode and a drag of a tile or
+               two on release moved it — accidental moves in online matches.
+               Moves are a deliberate Move menu pick + a click on a tile. */
         }
 
         function handleTileDragEnter(x, y) {
@@ -4158,7 +4155,7 @@
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
                 <div class="mini-vital"><span class="mini-lbl mp">MP</span><div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div><span class="mini-num">${u.mp}/${u.maxMp}</span></div>
                 ${u.hourglasses ? `<div class="roster-stats"><span>${(typeof keyIconHtml === 'function') ? keyIconHtml(10) : ''}${u.hourglasses}</span></div>` : ''}
-                ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; return (m && !m.statChange) ? `<span style="font-size:8px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;color:var(--muted)">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
+                ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; const c = (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[k]) || '#8fa3b5'; return (m && !m.statChange) ? `<span style="font-size:8px;background:${c}33;border:1px solid ${c}88;padding:1px 4px;border-radius:3px;color:${c}">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
                 ${rosterItemsHtml(u)}
               </div>
               ${actionHtml}
@@ -7924,7 +7921,6 @@
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Keyboard &amp; Mouse</div>
                     <div class="pm-keybinds-grid">
-                        <div class="pm-keybind"><span class="pm-keybind-action">Move / Cursor</span><kbd class="pm-kbd">WASD</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Confirm</span><kbd class="pm-kbd">ENTER</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Menu Drum</span><kbd class="pm-kbd">↑ ↓ · WHEEL</kbd></div>
                         <div class="pm-keybind"><span class="pm-keybind-action">Cancel / Back</span><kbd class="pm-kbd">ESC · R-CLICK</kbd></div>
@@ -14145,6 +14141,14 @@
             }
             clearAoePreview();
             clearIntentPreview();
+            /* THE REACH STAYS UP (2026-10-07, mondo: Mirror Blink's range
+               "only appears for a little bit"): the renderer dims every reach
+               lattice to ~28 % while an 'aoe' plate is on screen — right for a
+               damage footprint, wrong for a blink / dash / placement, whose
+               aim plate is just the destination. With the reach dimmed the
+               player could not see which tiles were legal. Those casts keep
+               the reach at full strength (three-renderer _updateHlFocusDim). */
+            window._ewAimKeepsReach = !ov && _aimKeepsReach(spell);
 
             // ── 🚪 SWING DOOR (the door wheel, DOOR_GUN_PLAN §3.5): hovering a HINGE paints the door's tile (gold,
             // the cursor), the victim it swings into (red) and the tiles the push is forecast to land on (amber) —
@@ -14268,8 +14272,15 @@
                     if (isHealKind) singleColor = 0x33ff33;
                     else if (isBuffKind) singleColor = 0x4488ff;
                     /* a cast that moves bodies and hurts nobody (teleport, swap, rally…) paints its aim as a move */
-                    else if (!spellHasDamage(spell) && ['teleport', 'swap', 'escape', 'rallyPull', 'dash'].includes(spell.kind)) singleColor = EW_PREVIEW.self;
-                    ThreeRenderer.setOverlay('aoe', [{ x: x, y: y, color: singleColor, opacity: singleColor === EW_PREVIEW.hit ? 0.9 : 0.5, cursor: true }], singleColor, 0.45);
+                    else if (!spellHasDamage(spell) && _BODY_MOVE_KINDS[spell.kind]) singleColor = EW_PREVIEW.self;
+                    /* …and an aim tile the cast can't land on reads as a dim grey
+                       "no" plate instead of the same blue as a legal one. */
+                    let _aimOpacity = singleColor === EW_PREVIEW.hit ? 0.9 : 0.5;
+                    if (singleColor === EW_PREVIEW.self && !ov && !_aimTileLegal(unit, spell, x, y)) {
+                        singleColor = 0x777777;
+                        _aimOpacity = 0.3;
+                    }
+                    ThreeRenderer.setOverlay('aoe', [{ x: x, y: y, color: singleColor, opacity: _aimOpacity, cursor: true }], singleColor, 0.45);
                     _aoePreview3dActive = true;
                 }
             }
@@ -14280,7 +14291,39 @@
         let _aoePreview3dActive = false;
         let _terrainGhost3dActive = false;
 
+        /* Casts whose aim plate is a DESTINATION, not a hit: the body movers
+           and the placements. Their reach lattice must stay readable. */
+        const _BODY_MOVE_KINDS = { teleport: 1, swap: 1, escape: 1, rallyPull: 1, dash: 1 };
+        const _PLACE_KINDS = { placeBlock: 1, buildStructure: 1, placeTrap: 1, placeMirror: 1, terrainCreate: 1,
+            warpRune: 1, deployTurret: 1, buildBridge: 1, remoteView: 1, summonWeather: 1, doorDeploy: 1, door: 1 };
+        function _aimKeepsReach(spell) {
+            if (!spell) return false;
+            if (_BODY_MOVE_KINDS[spell.kind]) return !spellHasDamage(spell);
+            return !!_PLACE_KINDS[spell.kind] && !(spell.dmg > 0);
+        }
+        /* Is (x, y) a tile this body-moving cast can actually land on? Mirrors
+           the doSpell teleport gates (range from the caster, unoccupied,
+           passable, onlyTerrain); other movers read the armed highlight set. */
+        function _aimTileLegal(unit, spell, x, y) {
+            try {
+                if (spell.kind === 'teleport' && !(spell.teleportAnyUnit && !state._teleportingUnit)) {
+                    const tp = state._teleportingUnit || unit;
+                    if (x === tp.x && y === tp.y) return true;   // clicking the mover cancels / re-picks
+                    const r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(unit, spell) : spell.range;
+                    if (Math.abs(unit.x - x) + Math.abs(unit.y - y) > r) return false;
+                    if (unitAt(x, y)) return false;
+                    if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
+                    if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return false;
+                    return true;
+                }
+                const hl = window._ewHlCache;
+                if (!hl || !hl.map || !hl.map.size) return true;
+                return hl.map.has(posKey(x, y));
+            } catch (e) { return true; }
+        }
+
         function clearAoePreview() {
+            window._ewAimKeepsReach = false;
             for (const entry of _aoePreviewTiles) entry.el.classList.remove(entry.cls);
             _aoePreviewTiles = [];
             if (_aoePreview3dActive && typeof ThreeRenderer !== 'undefined') {
@@ -16868,88 +16911,33 @@
                     return;
                 }
 
+                /* Battles take NO WASD / arrow movement (2026-10-07, mondo):
+                   the provisional key-walk (and its auto-flip into move mode)
+                   caused accidental moves online. A move is a Move menu pick +
+                   a click. Mystery Dungeon lockstep above and the shooter /
+                   free-roam walkers in battle.js keep their own keys.
+                   The gamepad's left stick still steers a board CURSOR (its
+                   synthetic, untrusted key events) — nothing moves until A
+                   confirms the tile through the normal clickTile path. */
+                if (event.isTrusted) return;
                 const unit = getSelectedUnit();
-                if (!unit || !canUnitAct(unit)) return;
+                if (!unit || !canUnitAct(unit) || !state.actionMode) return;
                 const bw = CONFIG.boardWidth || 16;
                 const bh = CONFIG.boardHeight || 8;
-
-                if (!_wasdOrigin) {
-                    if (!canUnitMove(unit)) return;
-
-                    if (!state.actionMode) {
-                        state.actionMode = 'move';
-                        state.actionMenuView = 'root';
-                        state.selectedTool = null;
-                        state.pendingTarget = null;
-                    }
-                    if (state.actionMode !== 'move') {
-
-                        if (typeof state._kbCursorX !== 'number') {
-                            state._kbCursorX = unit.x;
-                            state._kbCursorY = unit.y;
-                        }
-                        const nx = Math.max(0, Math.min(bw - 1, state._kbCursorX + dx));
-                        const ny = Math.max(0, Math.min(bh - 1, state._kbCursorY + dy));
-                        if (nx === state._kbCursorX && ny === state._kbCursorY) return;
-                        state._kbCursorX = nx;
-                        state._kbCursorY = ny;
-                        playSfx('uiCursorMove');
-                        // drive the same hover pipeline the mouse uses so the
-                        // move-path / AoE previews track the keyboard cursor too
-                        if (typeof updateHoveredTarget === 'function') updateHoveredTarget(nx, ny);
-                        const cursorUnit = unitAt(nx, ny);
-                        if (cursorUnit && !cursorUnit.dead) focusUnitPanel(cursorUnit.id, null, 'hover');
-                        else focusUnitPanel(unit.id, null, 'hover');
-                        if (!state.cameraDisabled && !(window._shooterCamOwns && window._shooterCamOwns())) {
-                            const userZoom = getUserZoomScale();
-                            const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? userZoom : getDefaultZoom();
-                            focusBoardCameraOnTiles([{ x: nx, y: ny }], { zoom, holdMs: 99999, persist: true, transitionMs: 150 });
-                        }
-                        scheduleBoardRender();
-                        return;
-                    }
-                    _initWasdState(unit);
-                    scheduleBoardRender();
+                if (typeof state._kbCursorX !== 'number') {
+                    state._kbCursorX = unit.x;
+                    state._kbCursorY = unit.y;
                 }
-
-                const nx = unit.x + dx;
-                const ny = unit.y + dy;
-                if (nx < 0 || nx >= bw || ny < 0 || ny >= bh) { playErrorSfx(); return; }
-
-                const destKey = posKey(nx, ny);
-                const inRing1 = _wasdMoveTiles1 && _wasdMoveTiles1.has(destKey);
-                if (!inRing1) { playErrorSfx(); return; }
-
-                const currentInRing1 = _wasdMoveTiles1 && _wasdMoveTiles1.has(posKey(unit.x, unit.y));
-                const originKey = posKey(_wasdOrigin.x, _wasdOrigin.y);
-                const atOrigin = unit.x === _wasdOrigin.x && unit.y === _wasdOrigin.y;
-
-                if (_wasdMovesUsed >= UNIT_MAX_MOVES) { playErrorSfx(); return; }
-
-                const occupant = unitAt(nx, ny);
-                if (occupant && occupant.id !== unit.id && occupant.player !== unit.player) {
-                    playErrorSfx(); return;
-                }
-
-                const fromX = unit.x, fromY = unit.y;
-                unit.x = nx;
-                unit.y = ny;
+                const nx = Math.max(0, Math.min(bw - 1, state._kbCursorX + dx));
+                const ny = Math.max(0, Math.min(bh - 1, state._kbCursorY + dy));
+                if (nx === state._kbCursorX && ny === state._kbCursorY) return;
                 state._kbCursorX = nx;
                 state._kbCursorY = ny;
-                playSfx('moveStep');
-
-                _animateWasdStep(unit, fromX, fromY, nx, ny, () => {
-
-                    const bombIdx = state.bombs ? state.bombs.findIndex(b => b.x === nx && b.y === ny && b.owner !== unit.player) : -1;
-                    const hasWarpRune = state.warpRunes ? state.warpRunes.some(r => r.x === nx && r.y === ny) : false;
-                    if (bombIdx >= 0 || hasWarpRune) {
-
-                        _commitWasdMove(unit);
-                    }
-                });
-
-                // the third-person shooter camera follows the unit itself —
-                // a competing focus pan here would stutter the follow shot
+                playSfx('uiCursorMove');
+                if (typeof updateHoveredTarget === 'function') updateHoveredTarget(nx, ny);
+                const cursorUnit = unitAt(nx, ny);
+                if (cursorUnit && !cursorUnit.dead) focusUnitPanel(cursorUnit.id, null, 'hover');
+                else focusUnitPanel(unit.id, null, 'hover');
                 if (!state.cameraDisabled && !(window._shooterCamOwns && window._shooterCamOwns())) {
                     const userZoom = getUserZoomScale();
                     const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? userZoom : getDefaultZoom();

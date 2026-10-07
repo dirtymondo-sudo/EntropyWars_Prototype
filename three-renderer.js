@@ -10825,15 +10825,11 @@ const ThreeRenderer = (function () {
        Returns the row's inner HTML ('' when the unit is clean) so the patch
        path can live-update badges the moment a status/stat change lands or
        wears off, instead of waiting for the next full plate rebuild. */
-    var _TP_SB_COLORS = {
-        burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
-        stagger:'#e67e22',marked:'#e74c6f',jammed:'#8e44ad',drowning:'#2980b9',
-        lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',
-        root:'#d4b45a',contract:'#d45a5a',
-        invisible:'#1a7a4a',regen:'#2ecc71',
-        taunt:'#ff8a50',minimize:'#5ab0d4',statLock:'#a88ae0',hexed:'#b06ad3',
-        frozen:'#7fd7ff',blind:'#9aa8b5'
-    };
+    /* badge colours: hud.js _HRLG_SB_COLORS is the one palette (every status
+       has its own hue — the old local copy left half of them grey) */
+    function _tpStatusColor(sk) {
+        return (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[sk]) || '#8fa3b5';
+    }
     function _plateStatusBadgesHtml(unit) {
         if (typeof getActiveStatusKeys !== 'function' || typeof _STATUS_EFFECT_IDS === 'undefined') return '';
         var badges = [];
@@ -10847,7 +10843,7 @@ const ThreeRenderer = (function () {
             if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
             var sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
             if (!sDef) continue;
-            badges.push('<span class="tp-sbadge" style="background:' + (_TP_SB_COLORS[sk] || '#555') + '">' + (sDef.short || sk) + '</span>');
+            badges.push('<span class="tp-sbadge" style="background:' + _tpStatusColor(sk) + '">' + (sDef.short || sk) + '</span>');
         }
 
         /* Stat modifiers read in STAGES (max ±5) — "+2 ATK" means two ATK
@@ -13944,7 +13940,7 @@ const ThreeRenderer = (function () {
                 '}',
                 '.tp-wrap .tp-sbadge {',
                 '  font-size: 9px; font-weight: 700; padding: 1px 4px;',
-                '  border-radius: 0; color: #fff; line-height: 1.4;',
+                '  border-radius: 0; color: #fff; line-height: 1.4; text-shadow: 0 1px 1px rgba(0,0,0,0.75);',
                 '}',
                 '.tp-wrap .tp-stat-up { background: rgba(50,200,100,0.3); color: #6ee2a8; }',
                 '.tp-wrap .tp-stat-dn { background: rgba(255,80,80,0.3); color: #ff7a8a; }',
@@ -15149,6 +15145,9 @@ const ThreeRenderer = (function () {
             var hm = _overlayMeshes[_HIT_OVERLAYS[hi]];
             if (hm && hm.length) { aoeUp = true; break; }
         }
+        /* a blink / dash / placement aim plate is a destination, not a hit:
+           its reach stays at full strength (ui.js updateAoePreview) */
+        if (aoeUp && window._ewAimKeepsReach) aoeUp = false;
         var target = aoeUp ? _HL_DIM_FOCUS : 1.0;
         _hlFocusDim += (target - _hlFocusDim) * 0.18;
         if (Math.abs(_hlFocusDim - target) < 0.01) _hlFocusDim = target;
