@@ -50164,15 +50164,12 @@
            limit where the Arena score decides (was a 100-round safety cap), all 5
            hidden Keys to win (was 3 of 5), bounty points that grow with the
            streak, 12×12 arenas (training rotated the old 8×8 Δ boards). The
-           schema-13 champion (gen 40, 2,360 matches) was trained on the old
-           rules, so the bump starts fresh stats + experiment history; the
-           combat value-model keys carry over, the OBJECTIVE keys
-           (_AI_RULES_RESET_KEYS) restart at their defaults, and three new keys
-           train the new rules: arenaScorePlay_v1, bountyKillBonus_v1,
-           keyHuntPriority_v1. */
+           schema-13 champion (gen 40, 2,360 matches) is baked into the
+           defaults below and carries over; the bump starts fresh stats +
+           experiment history so "how matches end" reads the new rules only.
+           Three new keys train the new rules: arenaScorePlay_v1,
+           bountyKillBonus_v1, keyHuntPriority_v1. */
         const AI_WEIGHT_SCHEMA_VERSION = 14;
-        const _AI_RULES_RESET_KEYS = ['towerBaseBonus_v1', 'towerDefendBonus_v1', 'towerLowHpPush_v4',
-            'hgSeekPriority_v1', 'scannerPriority_v1', 'nexusCapBonus_v1'];
 
         const AI_WEIGHT_DEFAULTS = {
             // NOTE: these defaults are also the BASELINE side of the
@@ -50191,16 +50188,19 @@
             // ceilings) — the ranges below were widened on that side so the
             // next run can keep exploring instead of saturating.
 
+            // 2026-10-07: the ten adoptions of mondo's gen-40 run (2,360 arena
+            // matches, ai v4.13) are the shipped values; `prev` = what they
+            // replaced. Ranges widened where a value sat on an edge.
             // ── kept schema-12 keys (live code paths in ai.js v4) ──
-            killBonusScore_v1:        { value: 99.375, prev: 97.188, min: 10,  max: 160,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
+            killBonusScore_v1:        { value: 151.875, prev: 99.375, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
             comboSynergyBonus_v1:     { value: 26.285, prev: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
             comboKillBonus_v1:        { value: 25,     prev: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
             pressRefundValue_v1:      { value: 112.899, prev: 96.379, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
             engageAdvantage_v1:       { value: -0.444, prev: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            towerBaseBonus_v1:       { value: 39.112, prev: 39.112, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerBaseBonus_v1:       { value: 21.612, prev: 39.112, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
             towerDefendBonus_v1:     { value: 47.899, prev: 47.899, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
             hgSeekPriority_v1:       { value: 18.75,  prev: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
-            scannerPriority_v1:      { value: 34.282, prev: 12.032, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            scannerPriority_v1:      { value: 42.141, prev: 34.282, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
             antiOscillationPen_v1:   { value: -3.615, prev: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
             nexusCapBonus_v1:        { value: 39.046, prev: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
@@ -50208,7 +50208,7 @@
             //    defaults MUST equal ai.js AI_TUNE or an untrained install
             //    changes behavior; ai-weights.test.js enforces it) ──
             mpValuePerPoint_v4:      { value: 0.529, prev: 0.5,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
-            threatCostFactor_v4:     { value: 0.082, prev: 0.25,  min: 0.02, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
+            threatCostFactor_v4:     { value: 0.02, prev: 0.082,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
             killBase_v4:             { value: 116.563, prev: 70, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
             supportKillPremium_v4:   { value: 128.125, prev: 130, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
             pressActionValue_v4:     { value: 181.563, prev: 150, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
@@ -50218,16 +50218,16 @@
             //    every-match call site in ai.js — see ai-weights.test.js). New
             //    keys need NO schema bump: loadAIWeights starts them at their
             //    default and the next pass tests untested keys first. ──
-            killOutputTurns_v4:      { value: 1.6,   prev: 1.6,   min: 0.6,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
+            killOutputTurns_v4:      { value: 0.645,   prev: 1.6,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
             woundedPileOn_v4:        { value: 0.35,  prev: 0.35,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
             reviveBase_v4:           { value: 320,   prev: 320,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
-            ccOutputFactor_v4:       { value: 0.8,   prev: 0.8,   min: 0.2,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
-            statusSetupFactor_v4:    { value: 0.5,   prev: 0.5,   min: 0.1,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
+            ccOutputFactor_v4:       { value: 0.31,   prev: 0.8,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
+            statusSetupFactor_v4:    { value: 0.115,   prev: 0.5,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
             buffStageFactor_v4:      { value: 0.14,  prev: 0.14,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
-            deathRiskFactor_v4:      { value: 0.9,   prev: 0.9,   min: 0.3,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
-            jointSearchDiscount_v4:  { value: 0.92,  prev: 0.92,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
+            deathRiskFactor_v4:      { value: 0.375,   prev: 0.9,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
+            jointSearchDiscount_v4:  { value: 1,  prev: 0.92,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
             healSafetyDiscount_v4:   { value: 0.45,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
-            towerLowHpPush_v4:       { value: 120,   prev: 120,   min: 40,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
+            towerLowHpPush_v4:       { value: 50,   prev: 120,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
             moveHighGroundMelee_v4:  { value: 7,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
 
             // ── NEW 2026-10-07 (schema 14): the Arena rules of PRs #150/#151 ──
@@ -50530,13 +50530,9 @@
         async function loadAIWeights() {
             try {
                 let raw = await _aiStorageGet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION);
-                // Schema 13 → 14 carry-over: the combat keys keep their trained
-                // values, the objective keys trained on the old Arena rules
-                // restart at their defaults (_AI_RULES_RESET_KEYS).
-                let _carried = false;
-                if (!raw) { raw = await _aiStorageGet('ai-weights-v13'); _carried = !!raw; }
+                // Schema 13 → 14 carry-over: every trained value keeps its value.
+                if (!raw) raw = await _aiStorageGet('ai-weights-v13');
                 if (raw) _aiTrainedWeights = JSON.parse(raw);
-                if (_carried && _aiTrainedWeights) for (const k of _AI_RULES_RESET_KEYS) delete _aiTrainedWeights[k];
                 if (_aiTrainedWeights) {
                     for (const k of Object.keys(_aiTrainedWeights)) {
                         if (!AI_WEIGHT_DEFAULTS[k]) delete _aiTrainedWeights[k];
@@ -51119,13 +51115,9 @@
             if (!_aiTrainedWeights) _aiTrainedWeights = {};
             let imported = 0, skipped = 0;
             const weights = (data && data.weights) || data || {};
-            // An export from before schema 14 learned its objective keys on the
-            // old Arena rules (100-round cap, 3 of 5 Keys): keep the defaults.
-            const _oldRules = !!(data && data._meta && (data._meta.schemaVersion | 0) > 0 && (data._meta.schemaVersion | 0) < 14);
             for (const key of Object.keys(weights)) {
                 const def = AI_WEIGHT_DEFAULTS[key];
                 if (!def) { skipped++; continue; }
-                if (_oldRules && _AI_RULES_RESET_KEYS.includes(key)) { skipped++; continue; }
                 const entry = weights[key];
                 const val = typeof entry === 'number' ? entry : (entry?.value ?? null);
                 if (val == null || typeof val !== 'number' || isNaN(val)) { skipped++; continue; }

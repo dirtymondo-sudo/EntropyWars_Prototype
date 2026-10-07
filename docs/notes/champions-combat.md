@@ -1239,9 +1239,9 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
   processBountyClaim (15 at a 3-streak, +5 a kill, cap 35) for hunting ON FIRE enemies and protecting our own. Late-clock
   pulls on zones and Keys.
 - New trainable keys: `arenaScorePlay_v1` (probe arenaClock), `bountyKillBonus_v1` (probe arena), `keyHuntPriority_v1`.
-- Schema 14: fresh stats/history; v13 combat keys carry over, objective keys (`_AI_RULES_RESET_KEYS`: tower ×3, hgSeek,
-  scanner, nexusCap) restart at defaults, also when importing an older export.
-- Adoption: full-batch threshold 60% → 65% (36/60 adopted noise; every pass-2 retest of those was a coin flip). The old
-  export's adoptions were NOT baked into defaults (old rules).
+- Schema 14: fresh stats/history; every v13 trained value carries over (mondo 2026-10-07: "a lot of stuff from this data
+  would still apply"). ai.js v4.15 ships the gen-40 champion's ten adoptions as the defaults (AI_TUNE + AI_WEIGHT_DEFAULTS,
+  `prev` = the replaced value; ranges widened where a value sat on an edge). Analysis: /mnt/project-files/ai-training/.
+- Adoption: full-batch threshold 60% → 65% (36/60 is p≈0.16 two-sided; the pass-2 retest of Kill Bonus went 30-30).
 - Lab map rotation = `hqArenaPvpPool()` (map.js `_trainMapPoolFor`; gauntlet keeps full maps). Exports carry
   `_meta.rules` (round limit, Keys, board size, points) and `p1WinRate` (what "championWinRate" always measured).
