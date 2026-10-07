@@ -3759,6 +3759,16 @@
             }
         };
 
+        /* The INFO card's TYPE badge(s): the canonical solid chip (hud.js typeBadgeStyleFor) as inline CSS. */
+        function _insTypeBadgesHtml(types) {
+            if (!Array.isArray(types) || !types.length) return '';
+            if (typeof typeBadgeStyleFor !== 'function') return renderTypeBadges(types);
+            const css = st => Object.keys(st).filter(k => st[k] != null && st[k] !== '').map(k => k.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + ':' + (typeof st[k] === 'number' && k !== 'fontWeight' && k !== 'lineHeight' ? st[k] + 'px' : st[k])).join(';');
+            return '<div class="ins-sub" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">'
+                + types.slice(0, 2).map(t => `<span style="${escapeHtml(css(typeBadgeStyleFor(t, { fontSize: 11, padding: '2px 9px' })))}">${escapeHtml(String(t).toUpperCase())}</span>`).join('')
+                + '</div>';
+        }
+
         function renderTypeBadges(types, wrapClass = 'type-badges') {
             if (!types || !types.length) return '';
             const badges = types.map(t => {
@@ -3909,7 +3919,7 @@
                 return;
             }
 
-            const _hpFp = unit.id + '|' + unit.hp + '|' + unit.mp + '|' + unit.ap + '|' + unit.x + ',' + unit.y + '|' + (unit.statuses||[]).length + '|' + (state.actionMode||'') + '|' + (state.selectedPanelFlash||'') + '|' + (state.pendingTarget?.x ?? '') + '|' + (state.selectedUnitId||'') + '|' + (state.showUnitInfo ? '1' : '0') + '|' + (unit.shield || 0);
+            const _hpFp = unit.id + '|' + unit.hp + '|' + unit.mp + '|' + unit.ap + '|' + unit.x + ',' + unit.y + '|' + Object.keys(unit.status || {}).filter(k => (unit.status[k] || 0) > 0).map(k => k + unit.status[k]).join(',') + '|' + (state.actionMode||'') + '|' + (state.selectedPanelFlash||'') + '|' + (state.pendingTarget?.x ?? '') + '|' + (state.selectedUnitId||'') + '|' + (state.showUnitInfo ? '1' : '0') + '|' + (unit.shield || 0);
             if (_hpFp === _lastHoverPanelFP) return;
             _lastHoverPanelFP = _hpFp;
             const actingUnit = getSelectedUnit();
@@ -3951,7 +3961,7 @@
             const _insViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : null;
             const _insOwn = _insViewer != null && (typeof unitHomePlayer === 'function' ? unitHomePlayer(unit) : unit.player) === _insViewer;
             const affinRow = (typeof elemAffinityBoxHtml === 'function')
-                ? '<div class="ins-affin">' + elemAffinityBoxHtml(unit.race, { own: _insOwn, seen: state._elemSeen, size: 'md', label: 'ELEMENTS' }) + '</div>'
+                ? '<div class="ins-affin">' + elemAffinityBoxHtml(unit.race, { own: _insOwn, seen: state._elemSeen, size: 'xl', label: 'ELEMENTS' }) + '</div>'
                 : '';
 
             // ONE BAR COLOUR (2026-10-01): every stat bar is EW_STAT_BAR_C; the grade node carries the colour.
@@ -4006,6 +4016,7 @@
               <div class="ins-name">${escapeHtml(unit.name || unit.race || '')}<span class="ins-lv">Lv.${getUnitLevel(unit)}</span></div>
               <div class="ins-sub">${escapeHtml(typeof getRaceLabel === 'function' ? getRaceLabel(unit.race, unit.gender || 'male') : (unit.race || ''))}</div>
               <div class="ins-sub"><span class="ins-side ${isAlly ? 'ally' : 'enemy'}">${isAlly ? 'ALLY' : 'ENEMY'}</span></div>
+              ${_insTypeBadgesHtml(unit.types)}
             </div>
           </div>
           <div class="ins-vital"><span class="ins-stat-label">HP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill hp${isAlly ? '' : ' enemy'}" style="width:${hpPct}%"></span>${unit.shield > 0 ? `<span class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></span>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</span><span class="ins-vital-num">${unit.hp}/${unit.maxHp}</span></div>
@@ -10844,7 +10855,7 @@
             const rows = arr.map((e, i) => `<div class="slb2-status-row">
                     <select data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="id" title="${_slbEsc(_slb2StatusDef(e.id).label || e.id)}">${sids.map(s => `<option value="${_slbEsc(s)}"${e.id === s ? ' selected' : ''}>${_slbEsc(_slb2StatusDef(s).icon || '')} ${_slbEsc(_slb2StatusDef(s).label || s)}</option>`).join('')}</select>
                     <input type="number" min="1" step="1" value="${e.duration != null ? _slbEsc(e.duration) : 1}" title="duration (rounds)" data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="duration"><span class="slb2-dim">rnd</span>
-                    <input type="number" step="1" value="${e.bonusDamage != null ? _slbEsc(e.bonusDamage) : ''}" placeholder="+dmg" title="bonusDamage rider — blank = none" data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="bonusDamage">
+                    <input type="number" step="1" value="${e.bonusDamage != null ? _slbEsc(e.bonusDamage) : ''}" placeholder="+dmg" title="bonusDamage rider — blank = none" data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="bonusDamage">${(_slb2StatusDef(e.id).blocks) ? `<input type="number" min="1" step="1" value="${e.blocks != null ? _slbEsc(e.blocks) : ''}" placeholder="${_slbEsc(_slb2StatusDef(e.id).blocks)}" title="attacks it blocks before it drops — blank = ${_slbEsc(_slb2StatusDef(e.id).blocks)}" data-act-change="statusMut" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" data-key="blocks"><span class="slb2-dim">blk</span>` : ''}
                     <button class="slb2-fx" data-act="statusRemove" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}" data-i="${i}" title="remove">✕</button>
                 </div>`).join('');
             return `<div class="slb2-status-ed">${rows}<select class="slb2-sel" data-input="statusAdd" data-id="${_slbEsc(id)}" data-field="${_slbEsc(f)}"><option value="">＋ add status…</option>${sids.map(s => `<option value="${_slbEsc(s)}">${_slbEsc(_slb2StatusDef(s).icon || '')} ${_slbEsc(_slb2StatusDef(s).label || s)} (${_slbEsc(s)})</option>`).join('')}</select></div>`;
@@ -11834,6 +11845,7 @@
             ['statusPayload', 'json', '{ "id", "set": {…} }'], ['weatherPatch', 'json', '{ "weather", "patch": {…} }'], ['chainWetHops', 'num', '+n hops if Soaked'],
             ['encoreAlly', 'json', 'true'], ['paintTerrain', 'json', '{ "terrain", "radius", "rounds" }'], ['jammedArc', 'json', '{ "mult": 0.5 }'],
             ['detonateOwn', 'json', 'true'], ['onKillRefundAp', 'num', 'AP back on a kill'],
+            ['protectBlocks', 'num', 'Protect blocks + n attacks'],
         ];
         function _slb2RenderUpgrades(main) {
             const reg = SPELL_UPGRADES;
@@ -14856,6 +14868,12 @@
             + 'width:14px;height:14px;border-radius:50%;background:#2ecc71;color:#06130a;'
             + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
             + 'box-shadow:0 0 6px rgba(46,204,113,0.8)">!</span>';
+        // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
+        const _IMM_CIRCLE_HTML = '<span style="display:inline-flex;align-items:center;justify-content:center;'
+            + 'width:14px;height:14px;border-radius:50%;background:#e8333f;color:#fff;'
+            + 'font-weight:900;font-size:11px;line-height:1;vertical-align:middle;margin-right:4px;'
+            + 'box-shadow:0 0 6px rgba(232,51,63,0.85)">!</span>';
+        const _immBadgeHtml = (word) => _IMM_CIRCLE_HTML + '<span style="color:#ff6b74">' + word + '</span>';
 
         function _getTypeEffLabel(caster, target, spell) {
             if (!caster || !target || !isEnemyUnit(caster, target)) return null;
@@ -14970,7 +14988,10 @@
                 const badgeStack = [];
                 let yOff = 0;
                 const push = (html, cls, step) => { badgeStack.push({ html, cls, yOff }); yOff += step; };
-                if (h.blocked && !(h.dmg > 0)) push(_FC_BLOCK_TEXT[h.blocked] || String(h.blocked).toUpperCase(), 'intent-type-eff not-effective', 14);
+                if (h.blocked && !(h.dmg > 0)) {
+                    const _bt = _FC_BLOCK_TEXT[h.blocked] || String(h.blocked).toUpperCase();
+                    push((h.blocked === 'immune' || h.blocked === 'absorb') ? _immBadgeHtml(_bt) : _bt, 'intent-type-eff not-effective', 14);
+                }
                 if (h.dmg > 0) {
                     const spread = (h.min !== h.max && h.min != null && h.max != null)
                         ? `<span style="opacity:.72;font-size:0.72em;margin-left:3px">${h.min}–${h.max}</span>` : '';
@@ -15043,7 +15064,7 @@
                         // (_estimateSpellDamage returns 0) — say WHY instead.
                         if (_iAff === 'immune' || _iAff === 'absorb') {
                             badgeStack.push({
-                                html: _iAff === 'immune' ? 'IMMUNE' : 'ABSORBS',
+                                html: _immBadgeHtml(_iAff === 'immune' ? 'IMMUNE' : 'ABSORBS'),
                                 cls: 'intent-type-eff not-effective', yOff
                             });
                             yOff += 14;

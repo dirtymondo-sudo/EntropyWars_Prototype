@@ -2504,6 +2504,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   if (b.superEff) right.unshift(h('span', {
     key: 'se', className: 'hrlg-supereff', title: 'Super effective against this target!',
   }, '!'));
+  // Red !-circle: the target is IMMUNE to (or ABSORBS) this action's element — the warning twin of the green one.
+  if (b.immWarn) right.unshift(h('span', {
+    key: 'iw', className: 'hrlg-immwarn', title: b.immWarn === 'absorb' ? 'This target ABSORBS the element — it heals instead!' : 'This target is IMMUNE to the element!',
+  }, '!'));
   // THE CONFIRM BUTTON rides the END of the pending (✓) row itself — a green
   // seal right where the player's eye already is, instead of floating on top
   // of the panel. stopPropagation: the row's own click ALSO confirms, and
@@ -2788,6 +2792,9 @@ function _hrlgQuickVitals(panelKey) {
   const dmgPct = dmg > 0 ? Math.max(0, Math.min(hpPct, (dmg / u.maxHp) * 100)) : 0;
   const healPct = heal > 0 ? Math.max(0, Math.min(100 - hpPct, (heal / u.maxHp) * 100)) : 0;
   return h('div', { key: 'qv', className: 'hrlg-qvitals' + (ally ? ' ally' : ' enemy') },
+    /* the clicked unit's TYPE badge(s) — the matchup intel, first thing under the name (the user 2026-10-07) */
+    (u.types && u.types.length) ? h('div', { className: 'hrlg-qtypes' },
+      u.types.slice(0, 2).map(t => h('span', { key: t, style: typeBadgeStyleFor(t, { fontSize: 11, padding: '2px 9px' }) }, String(t).toUpperCase()))) : null,
     h('div', { className: 'hrlg-qv-row' },
       h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
       h('span', { className: 'hrlg-thp' },
@@ -2888,7 +2895,7 @@ function _hrlgElemBox(u) {
   const own = viewer != null && (typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player) === viewer;
   const cells = window.elemAffinityBox(u.race, { own, seen: (typeof state !== 'undefined' && state) ? state._elemSeen : undefined });
   const iconHtml = typeof window.elementIconHtml === 'function' ? window.elementIconHtml : null;
-  return h('div', { className: 'ew-elem-box sm hrlg-qelem', title: 'ELEMENTS · how this unit takes each element' },
+  return h('div', { className: 'ew-elem-box xl hrlg-qelem', title: 'ELEMENTS · how this unit takes each element' },
     h('div', { className: 'ew-elem-row ew-elem-els' }, cells.map(c => iconHtml
       ? h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip, dangerouslySetInnerHTML: { __html: iconHtml(c.el, 'ew-elem-icon') } })
       : h('span', { key: c.el, className: 'ew-elem-cell ew-elem-el', title: c.tip }, c.icon))),
@@ -4331,7 +4338,8 @@ function _hrlgTargetBlades(unit, st, mode) {
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
       note: t._approach ? 'MOVE→CAST' : null,
-      superEff: superEff,
+      superEff: superEff && elemAff !== 'immune' && elemAff !== 'absorb',
+      immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
@@ -7216,6 +7224,14 @@ function _hrlgEnemyBlades(actingUnit, st) {
       if (_tn.includes('strong') || _tn.includes('super effective')) typeAdv = '▲';
       else if (_tn.includes('weak') || _tn.includes('not very')) typeAdv = '▼';
     }
+    // the spell's element vs THIS enemy: immune / absorb wears the red !-circle
+    let _eaImm = null;
+    if (a.spell && typeof unitElementAffinity === 'function' && typeof isEnemyUnit === 'function' && isEnemyUnit(actingUnit, targetUnit)
+        && (typeof hudSpellShowsDamage !== 'function' || hudSpellShowsDamage(a.spell))) {
+      const _eaEl = (typeof getSpellElement === 'function') ? getSpellElement(a.spell) : (a.spell.element || null);
+      const _eaAff = _eaEl ? unitElementAffinity(targetUnit, _eaEl) : null;
+      if (_eaAff === 'immune' || _eaAff === 'absorb') _eaImm = _eaAff;
+    }
 
     return {
       id: 'ea:' + a.id + ':' + i,
@@ -7228,7 +7244,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,
-      superEff: typeAdv === '▲',
+      superEff: typeAdv === '▲' && !_eaImm,
+      immWarn: _eaImm,
       meta: typeAdv === '▼' ? { text: '▼', color: EW.bad } : null,
       note: isMove
         ? (a.id === 'moveTowards'
@@ -9847,6 +9864,15 @@ function _injectHudHideStyles() {
     }
     .hrlg-qstat { display: flex; align-items: center; gap: 5px; min-width: 0; line-height: 1.7; }
     .hrlg-qelem { margin: 0 14px 6px 13px; pointer-events: auto; }
+    .hrlg-qtypes { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 4px; }
+    /* red !-circle = this target is IMMUNE to / ABSORBS the action's element (the green one's twin) */
+    .hrlg-immwarn {
+      flex: none; width: 16px; height: 16px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #e8333f; color: #fff;
+      font-family: Inter, system-ui, sans-serif; font-weight: 900; font-size: 12px; line-height: 1;
+      box-shadow: 0 0 8px rgba(232,51,63,0.8);
+    }
     .hrlg-qstat-lbl {
       flex: none; width: 34px; font-size: 9px; font-weight: 700;
       letter-spacing: 0.12em; color: #7a7490;

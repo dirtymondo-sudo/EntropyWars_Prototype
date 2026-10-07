@@ -1245,3 +1245,19 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
 - Adoption: full-batch threshold 60% → 65% (36/60 is p≈0.16 two-sided; the pass-2 retest of Kill Bonus went 30-30).
 - Lab map rotation = `hqArenaPvpPool()` (map.js `_trainMapPoolFor`; gauntlet keeps full maps). Exports carry
   `_meta.rules` (round limit, Keys, board size, points) and `p1WinRate` (what "championWinRate" always measured).
+
+## STAGGER ONE TURN · PROTECT CHARGES · INFO PANEL TYPES (2026-10-07, mondo)
+- Stagger is the -1 AP it takes. battle.js `_staggerSpendActivation` (called from maybeAdvanceTurn when the unit's turn
+  ends) clears it after the staggered unit's short turn; a stagger owed as `_staggerApDebt` (landed after the unit acted)
+  stays up through the round tick and clears after next round's turn. A longer stagger (Aftershock) spends a turn and
+  owes the next one's AP. A press refund (`applyPressTurn`) lifts it (`_staggerLiftByRefund`).
+- Protect: STATUS_DEFS.protect.blocks = 1 — it turns away that many ATTACKS then drops (rounds are the outer limit).
+  Payload `blocks` overrides (library status row "blk" box; upgrades upBulwark / upBulwark2 via patch `protectBlocks`).
+  One attack = one action (`_protectActionSeq`, bumped in doAttack/doSpell/doComboAttack/doEntropyStrike/doFinisher), so
+  every hit of a multi-hit swing rides one charge. Sourceless hits (DoT, hazards) are blocked without spending a charge.
+- Clicked-unit panel (hud.js `_hrlgQuickVitals`) and the INFO card show the unit's type badge(s); the element box uses the
+  new `.ew-elem-box.xl` size (styles-base.css). Immune/absorb targets wear a red !-circle (hud `immWarn`, ui
+  `_IMM_CIRCLE_HTML`) beside where the green super-effective one sits.
+- Status resist (state.js getStatusApplyChance): base stick chance per status (stagger/blind/slow 90%, burn/poison 84%…)
+  + 3% per point of caster-over-target effective INT (capped ±18%), clamped 60–95%, then halved if the target resists
+  the status's element (0 if immune/absorb). Passive immunities bounce it before the roll.
