@@ -520,7 +520,7 @@ function _getModeInfo(st) {
     };
   }
 
-  const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
   function _arenaScore(p) {
     const enemy = p === 1 ? 2 : 1;
     let pts = 0;

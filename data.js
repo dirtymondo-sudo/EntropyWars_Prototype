@@ -11955,13 +11955,13 @@ window.NEXUS_LABELS = {
 };
 
 window.ARENA_PTS = {
-    kill: 15,           // per kill
+    kill: 25,           // per kill (15 → 25 on 2026-10-07, mondo)
     towerDmgPer10: 1,   // per 10 HP of damage to the enemy Cube…
-    towerDmgCap: 150,   // …capped here (≈10 kills' worth)
+    towerDmgCap: 150,   // …capped here (6 kills' worth)
     hourglass: 35,      // per hourglass carried at the buzzer
     nexusRound: 6,      // per nexus-control round accrued
     surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")
-    bounty: 15,         // per bounty claimed (killing an ON FIRE unit) at a 3-kill streak — on top of the kill's 15, so a bounty kill scores double (mondo 2026-10-06: comebacks)
+    bounty: 15,         // per bounty claimed (killing an ON FIRE unit) at a 3-kill streak — on top of the kill's 25 (mondo 2026-10-06: comebacks)
     bountyPerStreak: 5, // …+5 for each streak kill past 3, like the gold bounty (mondo 2026-10-06: "the bounty keeps going up")
     bountyCap: 35,      // …up to here
 };

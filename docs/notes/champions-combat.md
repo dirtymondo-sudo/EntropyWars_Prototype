@@ -1285,3 +1285,11 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
   `_applyBaselineCooldowns` stamps a 2-round cooldown on that provisional cost >= 80. A dmg change can silently add or
   drop a cooldown. Railgun (cooldownRounds: 0) and EMP Burst (cooldownRounds: 2) are pinned for that reason. Diff
   SPELL_BY_ID through load-data.js before/after any dmg pass.
+
+## CUBE 2400 · KILLS 25 · AI WIPEOUT (2026-10-07, mondo)
+- map.js TOWER_MAX_HP 1800 → 2400 (also window.EW_CUBE_MAX_HP, stamped into AI training exports as rules.arena.cubeHp).
+- data.js ARENA_PTS.kill 15 → 25; every fallback literal (battle.js ×2, hud.js, ai.js) follows. ui.js's two arena
+  scoreboards had a stale literal (kill 15, hourglass 40, nexus 3, no Cube cap, no bounties); they read ARENA_PTS now.
+- AI: ai.js killValue adds `wipeoutKillBonus_v1` (3000, trainable, no schema bump) for the enemy's last standing body
+  and 10% of it for the second-to-last. Before this the AI had no idea a wipe wins: only Cube hits / Key pickups were
+  flagged as wins, and tower_push phase pulled it off the fight after its first kill (lab: 88 wipeouts in 5,356).

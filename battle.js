@@ -41893,7 +41893,7 @@
         function _vicBuildModeTally(_mpMode) {
             if (!_mpMode) return '';
             if (_mpMode.id === 'arena') {
-                const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+                const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
                 function _vicArenaScore(p) {
                     const enemy = p === 1 ? 2 : 1;
                     let pts = 0, details = [];
@@ -50327,6 +50327,8 @@
             arenaScorePlay_v1:       { value: 1,     prev: 1,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
             bountyKillBonus_v1:      { value: 4,     prev: 4,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
             keyHuntPriority_v1:      { value: 12,    prev: 12,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
+            // ── NEW 2026-10-07 (no schema bump, the gen-40 values carry over): the wipeout win ──
+            wipeoutKillBonus_v1:     { value: 3000,  prev: 3000,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
         };
 
         // Human-readable labels for state._winCondition — shared by the three
@@ -51141,7 +51143,8 @@
                 const pool = (typeof window._ewTrainMapPool === 'function') ? window._ewTrainMapPool('arena') : null;
                 return {
                     arena: { roundLimit: m.roundLimit || 0, keySpawnCount: m.keySpawnCount || 0, keysToWin: m.keysToWin || 0,
-                             boardSize: (typeof HQ_ARENA_SIZE !== 'undefined') ? HQ_ARENA_SIZE : null, points: window.ARENA_PTS || null },
+                             boardSize: (typeof HQ_ARENA_SIZE !== 'undefined') ? HQ_ARENA_SIZE : null, points: window.ARENA_PTS || null,
+                             cubeHp: window.EW_CUBE_MAX_HP || null },
                     trainMapPool: pool ? pool.length : null,
                 };
             } catch (e) { return null; }
@@ -70533,7 +70536,7 @@
         }
 
         function _resolveArenaTimerExpiry() {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 15, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
 
             function _arenaComposite(p) {
                 const enemy = p === 1 ? 2 : 1;
