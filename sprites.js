@@ -3729,7 +3729,9 @@ const TERRAIN_SPRITES = {
     cloud_gap:      [`${_T}/cloud_gap.png`],
     sky_ruin:       [`${_T}/sky_ruin.png`],
     barrier_passage:[`${_T}/barrier_passage.png`],
-    cliff:          [`${_T}/cliff.png`],
+    /* 2026-10-07 (mondo): "rampart has the cliff texture. I want that texture removed from everywhere in the game." The
+       `cliff` key wears the land rule's cliff sheet (rocks_5) now; cliff.png stays in the bucket, unreferenced. */
+    cliff:          [`${_T}/rocks_5.png`],
     chasm:          [`${_T}/chasm.png`],
     void:           [`${_T}/void.png`],
     road:           [`${_T}/road.png`],

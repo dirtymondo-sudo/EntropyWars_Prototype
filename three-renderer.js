@@ -7598,6 +7598,15 @@ const ThreeRenderer = (function () {
                 floorZ = getHeightAt(mon.x, mon.y) || 0;
             } else floorZ = 0;
             surfaceY = floorZ * ts * ELEV_STEP_RATIO;
+            /* THE STANDING STONES (2026-10-07): on a field battle the ground is the room's own top, not level × step — the
+               piece stands on the cell's real top at its recorded floor (the strata draw no block under it) */
+            var _fG = _fieldGroundLive() ? _fieldGround() : null;
+            if (_fG && _fG.levels && _fG.tops[mon.y] && _fG.tops[mon.y][mon.x] != null) {
+                var _flr = _fG.levels[mon.y], _fl0 = (_flr && _flr[mon.x] != null) ? _flr[mon.x] : floorZ;
+                surfaceY = _fG.floorY + _fG.tops[mon.y][mon.x] * _fG.s + ((floorZ - _fl0) || 0) * _fG.elev;
+            } else if (_fG && _fG.tops[mon.y] && _fG.tops[mon.y][mon.x] != null) {
+                surfaceY = _fG.floorY + _fG.tops[mon.y][mon.x] * _fG.s;
+            }
         } catch (e) { surfaceY = 0; }
         if (grid) {
             var gx = mon.x - Math.floor((grid.w - 1) / 2), gy = mon.y - Math.floor((grid.d - 1) / 2);
@@ -7731,6 +7740,8 @@ const ThreeRenderer = (function () {
         }
 
         _lastObjectSerial = _computeObjectSerial(); _objectsDirty = false;
+        _treeHoverMats = null; _treeHoverKey = null;   // THE TREE HOVER: the old meshes are gone; relight on the new one
+        if (_lastHoverX >= 0 && _lastHoverY >= 0) _treeHoverApply(_lastHoverX, _lastHoverY);
 
         _lastUnitSerial = '';
         _lastStructuralSerial = '';
@@ -16245,8 +16256,46 @@ const ThreeRenderer = (function () {
         }
         return false;
     }
+    /* THE TREE HOVER (2026-10-07, mondo): a choppable tree under the cursor glows, so it reads as something the unit can
+       act on. The tree's materials are its own (_buildFoliageObj makes them per clone), so the glow is an emissive lift on
+       exactly those, put back to the recorded value when the cursor leaves or the tree is felled/rebuilt. */
+    var _treeHoverMats = null, _treeHoverKey = null;
+    function _treeHoverClear() {
+        if (_treeHoverMats) {
+            for (var i = 0; i < _treeHoverMats.length; i++) {
+                var r = _treeHoverMats[i];
+                if (r.m && r.m.emissive) r.m.emissive.copy(r.e);
+                if (r.m) r.m.emissiveIntensity = r.ei;
+            }
+        }
+        _treeHoverMats = null; _treeHoverKey = null;
+    }
+    function _treeHoverApply(tx, ty) {
+        var key = tx + ',' + ty;
+        var om = (tx >= 0 && ty >= 0) ? objectMeshes.get(key) : null;
+        var ok = !!om && typeof state !== 'undefined' && state && state.phase === 'battle'
+            && typeof _tileHasTree === 'function' && _tileHasTree(tx, ty)
+            && !(typeof unitAt === 'function' && unitAt(tx, ty));
+        if (ok && _treeHoverKey === key && _treeHoverMats && _treeHoverMats._om === om) return;
+        _treeHoverClear();
+        if (!ok) return;
+        var recs = []; recs._om = om;
+        om.traverse(function (o) {
+            if (!o.isMesh || !o.material) return;
+            var mats = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < mats.length; i++) {
+                var m = mats[i];
+                if (!m || !m.emissive) continue;
+                recs.push({ m: m, e: m.emissive.clone(), ei: (m.emissiveIntensity != null ? m.emissiveIntensity : 1) });
+                m.emissive.setHex(0x6b5a14); m.emissiveIntensity = 1;
+            }
+        });
+        _treeHoverMats = recs; _treeHoverKey = key;
+    }
+
     function updateHoverHighlight(tx, ty, hz) {
         if ((tx >= 0 || ty >= 0) && _hoverCursorSuppressed()) { tx = -1; ty = -1; hz = undefined; }
+        _treeHoverApply(tx, ty);
         if (tx === _lastHoverX && ty === _lastHoverY && hz === _lastHoverZ) return;
         _lastHoverX = tx; _lastHoverY = ty; _lastHoverZ = hz;
         if (!highlightGroup) return;
@@ -63401,8 +63450,22 @@ const ThreeRenderer = (function () {
         var elev = G.elev;
         /* THE DEFORM: the room's floor takes every dig as a bowl; the columns below draw only what it did not take */
         var deformed = 0; try { deformed = _fieldDeformApply(ts); } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
-        var plan = _fieldStrataFaces(G.W, G.H, function (x, y) { return G.yAt(x, y); }, function (x, y) { return G.deltaAt(x, y); }, elev);
-        if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return G.deltaAt(f.x, f.y) > 0; }); }
+        /* THE STANDING STONES (2026-10-07, mondo: Rampart "has rock/stone pillars model but it also has cubes raised"): a
+           spell monument's tile carries invisible collision voxels (map.js placeSpellMonument), and the strata read them as
+           a raise and drew a block under the stone. The strata see a monument tile at its recorded floor — the GLB is the
+           wall — exactly like rebuildTerrain's column rule; units, picks and highlights keep G.yAt (the stone's top). */
+        var monM = _monumentMap();
+        var sDelta = function (x, y) {
+            if (monM && monM.has(x + ',' + y)) { var lr = G.levels && G.levels[y]; var fl = monM.get(x + ',' + y); return (lr && lr[x] != null && fl != null) ? ((fl - lr[x]) || 0) : 0; }
+            return G.deltaAt(x, y);
+        };
+        var sYAt = function (x, y) {
+            if (!(monM && monM.has(x + ',' + y))) return G.yAt(x, y);
+            var row = G.tops[y]; var t = row ? row[x] : null;
+            return (t === null || t === undefined) ? null : G.floorY + t * G.s + sDelta(x, y) * G.elev;
+        };
+        var plan = _fieldStrataFaces(G.W, G.H, sYAt, sDelta, elev);
+        if (deformed) { plan.tops = plan.tops.filter(function (c) { return c.delta > 0; }); plan.faces = plan.faces.filter(function (f) { return sDelta(f.x, f.y) > 0; }); }
         if (!plan.tops.length) return 0;
         var bed = (typeof hqFieldBedFor === 'function') ? hqFieldBedFor(G.R.roomId) : { side: 'cliff', floor: 'dirt_3' };
         var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
@@ -63416,7 +63479,7 @@ const ThreeRenderer = (function () {
         if (patchOn) {
             /* THE PATCH: the raised tops (the room's floor) and the dug ones (the bed) — one world-space sheet per run */
             var topOf = {}; plan.tops.forEach(function (c) { topOf[c.x + ',' + c.y] = c.top; });
-            var yTop = function (x, y) { var t = topOf[x + ',' + y]; return (t !== undefined) ? t : G.yAt(x, y); };
+            var yTop = function (x, y) { var t = topOf[x + ',' + y]; return (t !== undefined) ? t : sYAt(x, y); };
             [true, false].forEach(function (up) {
                 var cells = plan.tops.filter(function (c) { return up ? c.delta > 0 : !(c.delta > 0); });
                 if (!cells.length) return;

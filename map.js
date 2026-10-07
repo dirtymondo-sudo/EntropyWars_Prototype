@@ -10186,32 +10186,47 @@
            board, a `wall` tile, an objective tile, a non-walkable object, a
            tile already under a monument, or a tile with a living unit on it
            (the spell's damage still lands there; the stone does not). */
-        function placeSpellMonument(mon) {
-            if (!mon || !mon.kind || !_MON_GRID[mon.kind]) return false;
-            if (!state.boardVoxels?.length || !state.boardColumns?.length) return false;
+        /* The tile box a monument of `kind` at (x, y, rot) covers, or null when any covered tile refuses it. `liftUnits`
+           (2026-10-07, mondo: Rampart "doesn't raise the ground underneath units when it absolutely should"): a unit on
+           the tile no longer refuses the piece — placeSpellMonument stands it on top. The spell's terrain ghost reads
+           this too, so the preview shows exactly the pieces the cast will stand. */
+        function _spellMonumentCover(kind, x, y, rot, liftUnits) {
+            if (!kind || !_MON_GRID[kind]) return null;
+            if (!state.boardVoxels?.length || !state.boardColumns?.length) return null;
             const W = bw(), H = bh();
-            const grid = _MON_GRID[mon.kind];
-            const swap = (Math.round((mon.rot || 0) / 90) & 1) === 1;
-            const gw = swap ? grid[1] : grid[0], gd = swap ? grid[0] : grid[1], gh = grid[2];
-            const x0 = mon.x - Math.floor((gw - 1) / 2), y0 = mon.y - Math.floor((gd - 1) / 2);
+            const grid = _MON_GRID[kind];
+            const swap = (Math.round((rot || 0) / 90) & 1) === 1;
+            const gw = swap ? grid[1] : grid[0], gd = swap ? grid[0] : grid[1];
+            const x0 = x - Math.floor((gw - 1) / 2), y0 = y - Math.floor((gd - 1) / 2);
             const had = (state._monumentTiles instanceof Map) ? state._monumentTiles : null;
             const cover = [];
             for (let gy = y0; gy < y0 + gd; gy++) {
                 for (let gx = x0; gx < x0 + gw; gx++) {
-                    if (gx < 0 || gy < 0 || gx >= W || gy >= H) return false;
+                    if (gx < 0 || gy < 0 || gx >= W || gy >= H) return null;
                     const t = getTerrainAt(gx, gy);
-                    if (t === 'wall') return false;
-                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(gx, gy)) return false;
-                    if (had && had.has(gx + ',' + gy)) return false;
+                    if (t === 'wall') return null;
+                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(gx, gy)) return null;
+                    if (had && had.has(gx + ',' + gy)) return null;
                     const obj = getObjectAt(gx, gy);
                     if (obj) {
                         const rule = (typeof getObjectRule === 'function') ? getObjectRule(obj) : null;
-                        if (rule && !rule.walkable) return false;
+                        if (rule && !rule.walkable) return null;
                     }
-                    if (typeof unitsAtColumn === 'function' && unitsAtColumn(gx, gy).length) return false;
+                    if (!liftUnits && typeof unitsAtColumn === 'function' && unitsAtColumn(gx, gy).length) return null;
                     cover.push({ x: gx, y: gy });
                 }
             }
+            return cover;
+        }
+        function canPlaceSpellMonumentAt(kind, x, y, rot, liftUnits) { return !!_spellMonumentCover(kind, x, y, rot, liftUnits); }
+        if (typeof window !== 'undefined') window.canPlaceSpellMonumentAt = canPlaceSpellMonumentAt;
+        function placeSpellMonument(mon, opts) {
+            if (!mon || !mon.kind || !_MON_GRID[mon.kind]) return false;
+            const liftUnits = !!(opts && opts.liftUnits);
+            const cover = _spellMonumentCover(mon.kind, mon.x, mon.y, mon.rot, liftUnits);
+            if (!cover) return false;
+            const gh = _MON_GRID[mon.kind][2];
+            const had = (state._monumentTiles instanceof Map) ? state._monumentTiles : null;
             const tiles = had || new Map();
             const fill = mon.terrain || 'grass';
             for (const c of cover) {
@@ -10233,6 +10248,18 @@
             if (!Array.isArray(state.monuments)) state.monuments = [];
             state.monuments.push(mon);
             for (const c of cover) _syncColumnToLegacy(c.x, c.y);   // boardHeights / terrain tops + the three version bumps
+            /* liftUnits: whoever stood on a covered tile rides up onto the piece's top (the old +2 raise did the same). An
+               airborne flyer already above the new top keeps its hover. */
+            if (liftUnits && typeof unitsAtColumn === 'function') {
+                for (const c of cover) {
+                    const topZ = tiles.get(c.x + ',' + c.y) + gh;
+                    for (const u of unitsAtColumn(c.x, c.y)) {
+                        if ((u.z ?? 0) >= topZ) continue;
+                        u.z = topZ;
+                        if (typeof window !== 'undefined' && window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: c.x, fromY: c.y });
+                    }
+                }
+            }
             return true;
         }
         if (typeof window !== 'undefined') window.placeSpellMonument = placeSpellMonument;
