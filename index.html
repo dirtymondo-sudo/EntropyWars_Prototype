@@ -1221,11 +1221,11 @@
                                 <button class="ranked-size-btn" data-mode="clash" onclick="friendlySetMode('clash')">🎴 Clash</button>
                             </div>
                         </div>
-                        <!-- THE SQUAD DESK (2026-09-30): online is 4v4 with the squad picked before the lobby; the map is drawn at
-                             random when the room is made (online.js _friendlyDrawMap) — nobody picks it, so nobody games it -->
+                        <!-- THE MAP PICK (2026-10-07, mondo): the host picks the room's arena, or leaves it on Random
+                             (online.js _friendlyRefreshMaps fills the list from the room's arenas) -->
                         <div class="lobby-config-section">
                             <div class="lobby-config-label">MAP</div>
-                            <div class="sq-random-map">RANDOM · DRAWN FOR THE MATCH</div>
+                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="">Random</option></select>
                         </div>
                         <div class="lobby-config-section">
                             <div class="lobby-config-label">ROUNDS</div>

@@ -10734,6 +10734,14 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* the appearance's JSON, once per appearance object (this serial runs EVERY frame; an appearance never changes in place mid-fight) */
+    var _apSerialCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+    function _apSerial(ap) {
+        if (!_apSerialCache || typeof ap !== 'object') return JSON.stringify(ap);
+        var j = _apSerialCache.get(ap);
+        if (j === undefined) { j = JSON.stringify(ap); _apSerialCache.set(ap, j); }
+        return j;
+    }
     function _computeUnitSerial() {
         if (!state.units) return 0;
         var h = 13;
@@ -10743,7 +10751,7 @@ const ThreeRenderer = (function () {
             h = _hashInt(h, u.x); h = _hashInt(h, u.y); h = _hashInt(h, u.z || 0);
             h = _hashInt(h, u.hp); h = _hashInt(h, u.mp); h = _hashInt(h, u.ap);
             h = _hashInt(h, u.player);
-            if (u.appearance) h = _hashStr(h, JSON.stringify(u.appearance)); h = _hashInt(h, u.shield || 0);
+            if (u.appearance) h = _hashStr(h, _apSerial(u.appearance)); h = _hashInt(h, u.shield || 0);
             if (typeof getActiveStatusKeys === 'function' && u.status) {
                 var sk = getActiveStatusKeys(u);
                 for (var si = 0; si < sk.length; si++) h = _hashStr(h, sk[si]);
@@ -14942,6 +14950,11 @@ const ThreeRenderer = (function () {
         _lastHoverX = -1; _lastHoverY = -1;
 
         if (!state.selectedUnitId || !state.actionMode || state.phase !== 'battle' || state._actionExecuting) { _lastHlKey = ''; return; }
+        /* THE OPPONENT'S TILES (2026-10-07): online, never the other seat's unit's reach (ui.js gates its cache the same way) */
+        if (window._NET && window._NET.online && typeof getViewerPlayer === 'function') {
+            var _hlSelU = _unitById.get(state.selectedUnitId);
+            if (_hlSelU && _hlSelU.player !== getViewerPlayer()) { _lastHlKey = ''; return; }
+        }
 
         var ts = CONFIG.tileSize || BASE_TILE;
 
@@ -18510,19 +18523,80 @@ const ThreeRenderer = (function () {
 
     /* Ease each fog box toward its target, modulated by the global hologram pulse,
        and retire boxes that have fully faded out over a now-visible tile. */
+    /* THE FOG BATCH (2026-10-07, mondo: "my friend was having frame rate issues" online — fog of war is always on there):
+       every hidden tile was its own group of 2-4 LineSegments with its own material, a draw call each — a mostly
+       fogged 12×12 board drew a few hundred line meshes a frame. A box that has settled (fully shown, staying hidden)
+       now hides its own group and draws inside ONE merged LineSegments per kind (core / edge) whose material carries
+       the hologram pulse; only the few boxes mid-fade keep their own draw. The merge is rebuilt only when a box joins
+       or leaves (a move's vision change), never per frame. Same lines, same colours, same pulse. */
+    var _fogBatch = { core: null, edge: null, members: new Set(), dirty: true };
+    function _fogBatchKill(kind) {
+        var m = _fogBatch[kind];
+        if (!m) return;
+        if (m.parent) m.parent.remove(m);
+        if (m.geometry) m.geometry.dispose();
+        _fogBatch[kind] = null;
+    }
+    var _fogBatchV = null, _fogBatchM = null;
+    function _fogBatchRebuild() {
+        _fogBatch.dirty = false;
+        if (!fogGroup) return;
+        if (!_fogBatchV) { _fogBatchV = new THREE.Vector3(); _fogBatchM = new THREE.Matrix4(); }
+        var pts = { core: [], edge: [] };
+        _fogBatch.members.forEach(function (entry) {
+            var out = pts[entry.isEdge ? 'edge' : 'core'];
+            entry.group.updateMatrix();
+            var kids = entry.group.children;
+            for (var c = 0; c < kids.length; c++) {
+                var w = kids[c], pos = w.geometry && w.geometry.attributes && w.geometry.attributes.position;
+                if (!pos) continue;
+                w.updateMatrix();
+                _fogBatchM.multiplyMatrices(entry.group.matrix, w.matrix);
+                for (var i = 0; i < pos.count; i++) {
+                    _fogBatchV.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(_fogBatchM);
+                    out.push(_fogBatchV.x, _fogBatchV.y, _fogBatchV.z);
+                }
+            }
+        });
+        ['core', 'edge'].forEach(function (kind) {
+            var m = _fogBatch[kind];
+            if (!pts[kind].length) { _fogBatchKill(kind); return; }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pts[kind], 3));
+            geo.computeBoundingSphere();
+            if (m && m.parent === fogGroup) { m.geometry.dispose(); m.geometry = geo; return; }
+            _fogBatchKill(kind);
+            m = new THREE.LineSegments(geo, _newFogBoxMat(kind === 'edge'));
+            m.name = 'ewFogBatch_' + kind;
+            fogGroup.add(m);
+            _fogBatch[kind] = m;
+        });
+    }
     function _updateFogBoxFade(k) {
         var pulseVal = Math.sin(_fogPulseTime * FOG_PULSE_SPEED * Math.PI * 2) * FOG_PULSE_AMP;
         var remove = null;
+        var B = _fogBatch;
+        /* a cleared fog group (rebuildFog, the grid toggle, teardown) took the merged lines and the boxes with it */
+        if ((B.core && B.core.parent !== fogGroup) || (B.edge && B.edge.parent !== fogGroup)) { B.core = B.edge = null; B.members.clear(); B.dirty = true; }
+        B.members.forEach(function (entry) {
+            if (_fogMeshes.get(entry.tileX + ',' + entry.tileY) !== entry) { B.members.delete(entry); B.dirty = true; }
+        });
         _fogMeshes.forEach(function (entry, pk) {
             var tgt = (entry.fadeTarget != null) ? entry.fadeTarget : 1;
             entry.fade += (tgt - entry.fade) * k;
             if (Math.abs(entry.fade - tgt) < 0.02) entry.fade = tgt;
+            var settled = (tgt === 1 && entry.fade === 1);
+            if (settled !== !!entry.batched) {
+                entry.batched = settled;
+                if (settled) B.members.add(entry); else B.members.delete(entry);
+                B.dirty = true;
+            }
             if (tgt === 0 && entry.fade <= 0.02) {
                 (remove || (remove = [])).push(pk);
                 return;
             }
-            entry.group.visible = entry.fade > 0.01;
-            if (entry.lineMat) {
+            entry.group.visible = !entry.batched && entry.fade > 0.01;
+            if (entry.lineMat && !entry.batched) {
                 var base = (entry.lineMat._ew_fogBoxBase != null) ? entry.lineMat._ew_fogBoxBase : FOG_LINE_OPACITY;
                 entry.lineMat.opacity = Math.max(0, base + pulseVal) * entry.fade;
             }
@@ -18530,10 +18604,17 @@ const ThreeRenderer = (function () {
         if (remove) {
             for (var i = 0; i < remove.length; i++) {
                 var e = _fogMeshes.get(remove[i]);
-                if (e) { fogGroup.remove(e.group); _disposeR(e.group); }
+                if (e) { if (e.batched) { B.members.delete(e); B.dirty = true; } fogGroup.remove(e.group); _disposeR(e.group); }
                 _fogMeshes.delete(remove[i]);
             }
         }
+        if (B.dirty) _fogBatchRebuild();
+        ['core', 'edge'].forEach(function (kind) {
+            var m = B[kind];
+            if (!m || !m.material) return;
+            var base = (m.material._ew_fogBoxBase != null) ? m.material._ew_fogBoxBase : FOG_LINE_OPACITY;
+            m.material.opacity = Math.max(0, base + pulseVal);
+        });
     }
 
     var _fogNoGridLastKey = '';

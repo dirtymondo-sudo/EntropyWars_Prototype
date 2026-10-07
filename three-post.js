@@ -2226,6 +2226,7 @@ const ThreePost = (function () {
     }
 
     var _unitLights = [];
+    var _unitLightsSrc = null;   // the units array the lamps last resolved against
     var _unitLightGroup = null;
     var _unitLightSurfaceFn = null;
     var _unitLightTileSize = 128;
@@ -2263,16 +2264,20 @@ const ThreePost = (function () {
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
         var baseIntensity = (cycle === 'night') ? UNIT_LIGHT_INTENSITY_NIGHT : UNIT_LIGHT_INTENSITY_DAY;
 
+        /* THE STEADY LIGHT LIST (2026-10-07, the online frame-rate pass): a fallen unit keeps its lamp at intensity 0
+           (_updateUnitLights) instead of leaving the list — WebGL keys every lit program on the point-light COUNT, so each
+           death or respawn recompiled every lit material in the scene mid-fight (a hitch on every kill) */
         for (var i = 0; i < units.length; i++) {
             var u = units[i];
-            if (u.dead || u._dying) continue;
+            if (!u) continue;
 
-            var surfY = unitSurfaceYFn(u);
+            var surfY = (u.dead || u._dying) ? 0 : unitSurfaceYFn(u);
             var pl = new THREE.PointLight(UNIT_LIGHT_COLOR, baseIntensity, UNIT_LIGHT_DISTANCE, UNIT_LIGHT_DECAY);
             pl.position.set(u.x * ts + ts / 2, surfY + UNIT_LIGHT_HEIGHT, u.y * ts + ts / 2);
             _unitLightGroup.add(pl);
             _unitLights.push({ light: pl, unit: u, unitId: u.id });
         }
+        _unitLightsSrc = units;
     }
 
     function _updateUnitLights() {
@@ -2281,6 +2286,16 @@ const ThreePost = (function () {
         var baseIntensity = (cycle === 'night') ? UNIT_LIGHT_INTENSITY_NIGHT : UNIT_LIGHT_INTENSITY_DAY;
         var ts = _unitLightTileSize;
         var now = performance.now() * 0.001;
+        /* the online guest swaps every unit object on each snapshot: read the LIVE unit by id (the lamp held the first
+           object it saw and stayed on its old tile, lit, after the unit moved or fell) */
+        var liveUnits = (window._gameState && window._gameState.units) || null;
+        if (liveUnits && liveUnits !== _unitLightsSrc) {
+            _unitLightsSrc = liveUnits;
+            for (var li = 0; li < _unitLights.length; li++) {
+                var lid = _unitLights[li].unitId;
+                for (var lj = 0; lj < liveUnits.length; lj++) if (liveUnits[lj] && liveUnits[lj].id === lid) { _unitLights[li].unit = liveUnits[lj]; break; }
+            }
+        }
         for (var i = 0; i < _unitLights.length; i++) {
             var entry = _unitLights[i];
             var u = entry.unit;

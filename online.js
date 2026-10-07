@@ -896,6 +896,7 @@
                         N.rejoinToken = null;
                         N.socket = null;
                     }
+                    try { if (typeof window._ewResetOnlineMatchFlags === 'function') window._ewResetOnlineMatchFlags(true); } catch (e) {}   // THE NEXT ROOM
                     try {
                         sessionStorage.removeItem('ew_rejoinToken');
                         sessionStorage.removeItem('ew_rejoinRoom');
@@ -944,7 +945,7 @@
            match's arena as soon as it knows the map, re-reads the map's layout once the room is attached, and the host starts only
            when its own room AND the guest's (relay `arena-ready`) are ready. A seat that never answers (no worker and a failed
            compile) is waited for at most ARENA_WAIT_MS; then the match starts as before. Viewer-local work, nothing on `state`. */
-        var ARENA_WAIT_MS = 45000;
+        var ARENA_WAIT_MS = 45000, ARENA_POLL_MS = 4000, ARENA_CAP_MS = 180000;   // silence that gives up / the re-ask / the hard cap
         var _arenaPrep = { id: null, ready: false };
         function _onlineMatchMapId() {
             var NET = window._NET;
@@ -984,6 +985,7 @@
             }, 30);
         }
         window._ewOnlineArenaPrep = _onlineArenaPrep;
+        window._ewOnlineArenaBusy = function (id) { return _arenaPrep.id === String(id || '') && !_arenaPrep.ready; };
         /* the host's launch gate: true = both rooms are ready (or the wait ran out) */
         function _onlineArenaGo(NET) {
             var id = _onlineMatchMapId();
@@ -993,14 +995,29 @@
             var guestOk = NET._guestArenaReady === id;
             if (_arenaPrep.ready && guestOk) return true;
             if (!guestOk) _emit('relay', { type: 'arena-check', mapId: id });
+            /* THE SLOW SEAT (2026-10-07, mondo: friendly rooms "still using the voxel maps"): the biggest rooms take 25-40 s to
+               survey on a fast machine (downtown, cyberpunk, stadium), so a slower PC ran past the old flat 45 s wait and the match
+               started on the bare baked board. Now the wait only gives up on a seat that stopped answering: the host asks again
+               every ARENA_POLL_MS, a guest still surveying answers `arena-busy`, and only ARENA_WAIT_MS of silence (or the hard
+               ARENA_CAP_MS) starts the match without the room. */
             if (NET._arenaWaitFor !== id) {
                 NET._arenaWaitFor = id;
-                setTimeout(function() {
-                    if (NET._arenaWaitFor !== id || NET._autoStartFired) return;
-                    console.warn('[ARENA] online: a seat did not finish surveying the arena in time — starting anyway', id);
+                NET._arenaWaitT0 = Date.now();
+                NET._guestArenaBusyAt = Date.now();
+                var tick = function() {
+                    if (NET._arenaWaitFor !== id || NET._autoStartFired || NET._arenaWaitOver === id) return;
+                    var now = Date.now(), hostBusy = !(_arenaPrep.id === id && _arenaPrep.ready), guestOk = NET._guestArenaReady === id;
+                    var guestAlive = guestOk || (now - (NET._guestArenaBusyAt || 0)) < ARENA_WAIT_MS;
+                    if ((hostBusy || !guestOk) && guestAlive && now - NET._arenaWaitT0 < ARENA_CAP_MS) {
+                        if (!guestOk) _emit('relay', { type: 'arena-check', mapId: id });
+                        setTimeout(tick, ARENA_POLL_MS);
+                        return;
+                    }
+                    if (hostBusy || !guestOk) console.warn('[ARENA] online: a seat did not finish surveying the arena in time — starting anyway', id, { hostBusy: hostBusy, guestOk: guestOk });
                     NET._arenaWaitOver = id;
                     _tryAutoStartRanked();
-                }, ARENA_WAIT_MS);
+                };
+                setTimeout(tick, ARENA_POLL_MS);
             }
             return false;
         }
@@ -1008,7 +1025,7 @@
         /* ── Auto-start helper for ranked matchmaking ──────────────── */
         function _tryAutoStartRanked() {
             var NET = window._NET;
-            if (!NET || !(NET.ranked || NET._squad)) return;   // THE SQUAD DESK: a friendly room with squads starts itself too
+            if (!NET || !(NET.ranked || NET._squad || NET._friendlyStartPending)) return;   // THE SQUAD DESK: a friendly room with squads starts itself too (a host's Start held for the arena too)
             var lock = NET._lockState;
             if (!lock || !lock.host || !lock.guestPartyReceived) return;
             /* Host is the authority — only host calls origStartMatch */
@@ -1068,9 +1085,8 @@
                 addLog('Waiting for Player 2 to lock in their party…');
                 return;
             }
-            _origStartMatch();
-            if (window._broadcastState) window._broadcastState();
-            _emit('match-started');
+            /* THE ARENAS ONLINE: the host's Start waits for the arena's room on both seats like the squad start does */
+            if (!NET._autoStartFired) { NET._friendlyStartPending = true; _tryAutoStartRanked(); }
         };
 
         const _origApplyPartyBuild = applyPartyBuild;
@@ -1953,14 +1969,14 @@
                 state.comboPartner = _hostUI.comboPartner;
                 state._buildTool = _hostUI.buildTool;
             } else {
-
-                if (state.activePlayer !== remoteP) {
-
-                    state.actionMode = null;
-                    state.selectedTool = null;
-                    state.pendingTarget = null;
-                    state.comboPartner = null;
-                }
+                /* the active unit changed under the remote action: the guest's _ctx mode (move / attack / a spell) was
+                   seated on the host for the replay and must not outlive it — it painted the guest's next unit's tiles
+                   on the host's screen (THE OPPONENT'S TILES, 2026-10-07). The host's own unit re-arms through selectUnit. */
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                state.comboPartner = null;
             }
 
             /* While it's the REMOTE player's turn, keep the local top-left
@@ -1978,6 +1994,12 @@
                 if (_mirrorU) {
                     state.selectedUnitId = _mirrorU.id;
                     state.focusedUnitId = _mirrorU.id;
+                    /* a mirrored selection carries no mode: the host never sees the opponent's move/attack tiles */
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state.comboPartner = null;
                 }
             }
 
@@ -2847,6 +2869,37 @@
             };
             window._NET = NET;
 
+            /* THE NEXT ROOM (2026-10-07, mondo: "we are not able to play 2 games in a row without getting stuck at the vs screen
+               of the 2nd match"): the result screen's Main Menu (backToMainMenu's online wrapper) dropped the socket but kept the
+               last match's start flags — _autoStartFired stayed true, so the host of the next room returned from
+               _tryAutoStartRanked before it started and both seats sat in the ready room. Every way out of a room, and every new
+               room, clears the per-match flags here. `leaving` also drops the room's config and squad copy. */
+            window._ewResetOnlineMatchFlags = function (leaving) {
+                NET._autoStartFired = false;
+                NET._waitingForOpponent = false;
+                NET._friendlyStartPending = false;
+                NET._lockState = { host: false, guest: false, guestPartyReceived: false, hostLocked: false };
+                NET._guestArenaReady = null;
+                NET._arenaWaitFor = null;
+                NET._arenaWaitOver = null;
+                NET._rematchState = null;
+                NET._rankedResultEmitted = false;
+                NET.lastSyncJson = '';
+                NET._leanSent = null;
+                window._ewIntroRemoteSkip = false;
+                window._ewRemoteMatchReady = false;
+                window._ewRemoteIntroDone = false;
+                if (leaving) {
+                    NET.friendlyConfig = null;
+                    NET.matchMapModeId = null;
+                    NET.matchTeamSize = null;
+                    NET.matchRankedMode = null;
+                    NET._squad = null;
+                    NET._wasInMatch = false;
+                    try { if (window._ewReadyRoomClose) window._ewReadyRoomClose(true); } catch (e) {}
+                }
+            };
+
             (function() {
                 var _counterSocket = null;
                 function _updateCounterUI(count) {
@@ -3045,10 +3098,7 @@
                 NET.friendlyConfig = null;
                 NET._squad = null;   // THE SQUAD DESK: the lobby's copy (window._ewSquad stays for the next queue)
                 if (window._ewReadyRoomClose) window._ewReadyRoomClose(true);
-                NET._wasInMatch = false;
-                NET._waitingForOpponent = false;
-                NET._autoStartFired = false;
-                NET._lockState = { host: false, guest: false, guestPartyReceived: false, hostLocked: false };
+                window._ewResetOnlineMatchFlags(true);   // THE NEXT ROOM: every per-match flag, the arena waits included
                 try {
                     sessionStorage.removeItem('ew_rejoinToken');
                     sessionStorage.removeItem('ew_rejoinRoom');
@@ -3086,7 +3136,12 @@
 
             function _friendlyEmitConfig() {
                 if (NET.socket && NET.role === 'host') {
-                    NET.socket.emit('friendly-config', _friendlyGetConfig());
+                    var cfg = _friendlyGetConfig();
+                    NET.socket.emit('friendly-config', cfg);
+                    /* THE ARENAS ONLINE (2026-10-07, mondo: "the friendly matches with a room code are still using the voxel
+                       maps"): the host surveyed its room only once both squads were in, the guest as soon as the config came —
+                       a slow seat ran past the launch wait and fought on the bare baked board. The host starts with the draw. */
+                    if (cfg.mapId && typeof window._ewOnlineArenaPrep === 'function') { try { window._ewOnlineArenaPrep(cfg.mapId); } catch (e) {} }
                 }
             }
 
@@ -3132,24 +3187,33 @@
                 if (maps.length) _friendlyMapId = maps[Math.floor(Math.random() * maps.length)].id;
             }
 
+            /* THE MAP PICK (2026-10-07, mondo: "let me select the map for a friendly match"): the host's room card lists the
+               room's arenas under RANDOM. RANDOM (the default) still draws one; a picked arena rides friendly-config like the
+               draw did, so both seats build the same board. Quick Play stays random. */
+            var _friendlyMapChoice = '';
             function _friendlyRefreshMaps() {
                 var sel = document.getElementById('friendlyMapSelect');
-                if (!sel) { _friendlyDrawMap(); return; }
                 var maps = _friendlyGetCompatibleMaps(_friendlyMode, _friendlySize);
-                sel.innerHTML = '';
-                for (var i = 0; i < maps.length; i++) {
-                    var opt = document.createElement('option');
-                    opt.value = maps[i].id;
-                    opt.textContent = maps[i].label;
-                    sel.appendChild(opt);
-                }
-
                 var found = false;
                 for (var k = 0; k < maps.length; k++) {
-                    if (maps[k].id === _friendlyMapId) { found = true; break; }
+                    if (maps[k].id === _friendlyMapChoice) { found = true; break; }
                 }
-                if (!found && maps.length > 0) _friendlyMapId = maps[0].id;
-                sel.value = _friendlyMapId;
+                if (!found) _friendlyMapChoice = '';
+                if (_friendlyMapChoice) _friendlyMapId = _friendlyMapChoice;
+                else _friendlyDrawMap();
+                if (!sel) return;
+                sel.innerHTML = '';
+                var rnd = document.createElement('option');
+                rnd.value = '';
+                rnd.textContent = 'Random';
+                sel.appendChild(rnd);
+                maps.slice().sort(function (a, b) { return String(a.label).localeCompare(String(b.label)); }).forEach(function (m) {
+                    var opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.label;
+                    sel.appendChild(opt);
+                });
+                sel.value = _friendlyMapChoice;
             }
 
             function _friendlyConfigLabel() {
@@ -3199,7 +3263,8 @@
             };
 
             window.friendlySetMap = function(mapId) {
-                _friendlyMapId = mapId;
+                _friendlyMapChoice = mapId || '';   // '' = Random (THE MAP PICK)
+                _friendlyRefreshMaps();
                 _friendlyEmitConfig();
             };
 
@@ -3623,6 +3688,7 @@
                 NET.socket.on('room-full', function(data) {
                     NET.matchId = data.matchId;
                     NET._recoveryFailed = false;
+                    window._ewResetOnlineMatchFlags(false);   // THE NEXT ROOM: a fresh room starts from clean match flags
 
                     if (data.host === NET.socket.id) {
                         NET.role = 'host';
@@ -3679,6 +3745,7 @@
                             _friendlyEmitConfig();
                         } else if (data.friendlyConfig) {
                             NET.friendlyConfig = data.friendlyConfig;
+                            if (data.friendlyConfig.mapId && typeof window._ewOnlineArenaPrep === 'function') { try { window._ewOnlineArenaPrep(data.friendlyConfig.mapId); } catch (e) {} }   // THE ARENAS ONLINE: the guest surveys from the join
                         }
                     }
 
@@ -3810,7 +3877,7 @@
                     NET._completedRecovery = data.id;
                     _hideReconnectOverlay();
                     if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(true);
-                    if (NET.role === 'host') { NET.lastSyncJson = ''; window._broadcastState(); }
+                    if (NET.role === 'host') { NET.lastSyncJson = ''; NET._leanSent = null; window._broadcastState(); }
                     ewToast('Match restored — ready to continue.', 2500);
                 });
                 NET.socket.on('recovery-failed', function(data) {
@@ -3825,6 +3892,7 @@
                     _hideReconnectOverlay();
                     NET.matchId = data.matchId;
                     NET.lastSyncJson = '';
+                    NET._leanSent = null;   // THE LEAN SYNC: a new generation gets the full state
                     NET._appliedRecovery = null;
                     if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
                 });
@@ -4007,7 +4075,9 @@
                     /* THE ARENAS ONLINE: the guest surveys the match's arena when asked and says when its room is ready */
                     if (data.type === 'arena-check' && NET.role === 'guest' && data.mapId) {
                         _onlineArenaPrep(data.mapId);
+                        if (window._ewOnlineArenaBusy && window._ewOnlineArenaBusy(data.mapId)) _emit('relay', { type: 'arena-busy', mapId: data.mapId });   // THE SLOW SEAT: still surveying
                     }
+                    if (data.type === 'arena-busy' && NET.role === 'host' && data.mapId) NET._guestArenaBusyAt = Date.now();
                     if (data.type === 'arena-ready' && NET.role === 'host' && data.mapId) {
                         NET._guestArenaReady = String(data.mapId);
                         _tryAutoStartRanked();
@@ -4898,8 +4968,12 @@
                would choke on the same cycle) sees the object. */
             var _safeStringifyWarned = {};
             function _ewSafeStringify(obj) {
-                var stack = [];
                 _ewSafeStringify.dropped = 0;
+                /* THE FAST PATH (2026-10-07, online frame rate): the native stringify first — the replacer below runs a JS
+                   call and an ancestor-stack scan on EVERY value of a ~100 KB snapshot, up to 20 times a second on the host.
+                   Only a snapshot that really holds a cycle (the native call throws) pays for the guarded walk. */
+                try { return JSON.stringify(obj); } catch (e) { if (!(e instanceof TypeError)) throw e; }
+                var stack = [];
                 return JSON.stringify(obj, function(key, value) {
                     if (value && typeof value === 'object') {
                         while (stack.length && stack[stack.length - 1] !== this) stack.pop();
@@ -5216,6 +5290,33 @@
                 return Object.assign({}, data, { shotClock: local });
             }
 
+            /* ── THE LEAN SYNC (2026-10-07, mondo: "my friend was having frame rate issues when we played online … improve
+               the performance of the game especially online") ──
+               Every snapshot used to carry the WHOLE state (~115 KB on a 12×12 arena: the board grids, the voxel columns, the
+               battle log twice, every unit) up to 20 times a second — the host stringified it, socket.io walked and stringified
+               it again, and the guest parsed it, merged it and repainted the HUD for each one. Most of it never changes between
+               two snapshots. A big top-level key (≥ LEAN_MIN bytes of JSON) whose JSON is the same as the copy last SENT is left
+               out: the guest's merge (_deserializeInto) keeps every key a snapshot does not carry, so its copy simply stands.
+               The full state goes out again on a new phase, round, match or result, every LEAN_FULL_MS (a lost packet heals
+               itself), and after a match generation / recovery (NET._leanSent = null). Nothing changes on the guest side. */
+            var LEAN_MIN = 1024, LEAN_FULL_MS = 3000;
+            function _leanTrim(s) {
+                var st = window._gameState;
+                var gen = [NET.matchId, st && st.phase, st && st.matchNumber, st && st.round, st && st.winner].join('|');
+                var now = Date.now(), L = NET._leanSent;
+                if (!L || L.gen !== gen || now - L.at > LEAN_FULL_MS || (st && st.winner)) L = NET._leanSent = { gen: gen, at: now, j: {} };
+                for (var k in s) {
+                    if (!s.hasOwnProperty(k)) continue;
+                    var v = s[k];
+                    if (!v || typeof v !== 'object') continue;
+                    var j;
+                    try { j = JSON.stringify(v); } catch (e) { delete L.j[k]; continue; }   // a cycle: the guarded stringify handles the whole
+                    if (j.length < LEAN_MIN) continue;
+                    if (L.j[k] === j) delete s[k];
+                    else L.j[k] = j;
+                }
+            }
+
             window._broadcastState = function() {
                 /* REPLAY TAP: the recorder rides the exact same sync points the
                    online guest does — every _broadcastState call is a potential
@@ -5252,6 +5353,7 @@
                 try {
                     var s = _serializeState();
                     if (!s) return;
+                    _leanTrim(s);
                     var json = _ewSafeStringify(s);
                     if (json === NET.lastSyncJson) return;
                     NET.lastSyncJson = json;
@@ -5326,6 +5428,19 @@
                 // replays) still carry these; never let them stomp the sliders
                 'musicVolume', 'sfxVolume', 'ambienceVolume'
             ];
+
+            var _grsRaf = 0, _grsTo = 0;
+            function _guestRenderSoon() {
+                if (_grsRaf || _grsTo) return;
+                var run = function () {
+                    if (_grsRaf) cancelAnimationFrame(_grsRaf);
+                    if (_grsTo) clearTimeout(_grsTo);
+                    _grsRaf = 0; _grsTo = 0;
+                    if (typeof window.render === 'function') window.render();
+                };
+                _grsRaf = requestAnimationFrame(run);
+                _grsTo = setTimeout(run, 120);   // a hidden tab has no frames
+            }
 
             function _applyRemoteState(data) {
                 var st = window._gameState;
@@ -5506,7 +5621,10 @@
                         window._rebuildBlitzTurnOrderFromIds();
                     }
 
-                    if (typeof window.render === 'function') window.render();
+                    /* THE LEAN SYNC (2026-10-07): mid-fight a snapshot repaints the HUD once per frame at most (a burst of packets
+                       used to rebuild every panel per packet); a phase change, a result or a recovery still paints at once */
+                    if (prevPhase === 'battle' && st.phase === 'battle' && !st.winner && !NET._recovering) _guestRenderSoon();
+                    else if (typeof window.render === 'function') window.render();
 
                     if ((prevPhase === 'setup' || (NET._recovering && prevPhase !== 'battle')) && st.phase === 'battle') {
 
@@ -5710,7 +5828,7 @@
             var SKIP_RELAY = {
                 'intro-skip': 1, 'match-ready': 1, 'intro-done': 1,
                 'rematch-request': 1, 'rematch-accept': 1,
-                'guest-locked': 1, 'host-locked': 1, 'arena-check': 1, 'arena-ready': 1,
+                'guest-locked': 1, 'host-locked': 1, 'arena-check': 1, 'arena-ready': 1, 'arena-busy': 1,
                 'game-mode': 1, 'multiplayer-mode': 1,
                 'pickup-dialog': 1, 'pickup-response': 1
             };

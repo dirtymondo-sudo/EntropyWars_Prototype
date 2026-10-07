@@ -49975,6 +49975,15 @@
                     // actions on activePlayer === local player.
                     state.selectedUnitId = nextUnit.id;
                     state.focusedUnitId = nextUnit.id;
+                    /* THE OPPONENT'S TILES (2026-10-07, mondo: "sometimes I can see his unit's tile highlights on my
+                       screen"): the mirror is a selection only. A Move / Attack / spell mode left over from the host's own
+                       last unit painted the remote unit's reachable tiles here (ui.js + rebuildHighlights draw
+                       selectedUnitId × actionMode), so the host saw the guest's options — and, under fog, its reach. */
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    state.comboPartner = null;
                     if (!state.cameraDisabled && _shouldCameraFollowUnit(nextUnit)) {
                         invalidateLayoutCache();
                         renderBoard();
