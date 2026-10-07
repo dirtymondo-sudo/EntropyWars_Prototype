@@ -2007,7 +2007,7 @@ const ThreeRenderer = (function () {
                      exposed as a Video toggle purely as a kill-switch).
        fpsCap:       §4.7 0 = uncapped, otherwise 30/60.
        fpsCounter:   on-screen FPS readout (DotGothic16, retro).              */
-    var _perfSettings = { terrainBatch: true, fpsCap: 0, fpsCounter: false, fogGrid: true };
+    var _perfSettings = { terrainBatch: true, fpsCap: 0, fpsCounter: false, fogGrid: false };   // fogGrid OFF by default (2026-10-07, mondo: "fog of war grid should be off by default"); the Video toggle (ew_fogGrid) turns it on
     (function () {
         try {
             if (typeof localStorage === 'undefined') return;
