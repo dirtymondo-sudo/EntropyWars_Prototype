@@ -4637,18 +4637,16 @@ const SPELL_LIBRARY = [
         orientable: true,
         dmg: 60,
         damageType: 'physical',
+        /* 2026-10-07 (mondo): back to RAISING THE GROUND — the line of tiles
+           turns to mountain stone and climbs two levels (applyTerrainDeform:
+           units on it ride up). The standing-stone monument (2026-09-18) is
+           retired for Rampart; Walls of Camelot / Pyramid Protocol keep theirs. */
         terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-        /* THE SPELL-MADE MONUMENTS (2026-09-18): the wall is three STANDING
-           STONES — real GLB monuments (map.js placeSpellMonument, kind
-           `menhir` in _MON_GRID, two tiles high) instead of raised terrain
-           blocks. `terrainDeform` stays for the ghost preview's height read;
-           the handler never raises the ground when `monument` is set. */
-        monument: { kind: 'menhir' },
         /* Tank capstone (ring 4 = tier III, spell-tree redesign). */
         tier: 2,
         school: 'Tank',
         jobPreference: ['Tank'],
-        desc: 'Raise three standing stones in a line — a wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line.'
+        desc: 'Raise the ground in a line of three — a stone wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line.'
     },
     /* (mark1 / Suppressing Fire was CUT 2026-07-26 via the Spell Library.) */
     {
