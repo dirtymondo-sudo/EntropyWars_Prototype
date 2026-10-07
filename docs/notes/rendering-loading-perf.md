@@ -734,3 +734,29 @@ basic-attack props, the party builder warmed nothing), so `_wpnInstance` returne
   nr tree, canopy stand-in, vehicle proc). Modelled projectiles fly as an empty carrier until loaded.
 Cultist summon (follow-up): the procedural robed figure is deleted; it wears the cult1 cast rig (posed on idle frame 0), warmed by warmSpellLibrary via TR.warmSummonModels.
 Leftovers: PERF_LOW scenery kits, encounter fights have no loading card.
+
+## THE SPELL FREEZES (2026-10-07, mondo: "frame rate and frozen screen issues for spells that change the whole screen. combos and entropy strikes too")
+Root causes found and fixed (token 20261007-spellfreeze-01-cors):
+- **CSS grades over the canvas.** battle.js `cineGrade` (sepia / desat / invert / hue / terminal) was a full-screen
+  `backdrop-filter` element; cool / crimson / sepia / terminal tints were `mix-blend-mode` layers; the flashback, the trip and
+  the freeze-frame tell wrote CSS `filter` onto the canvas every frame (three-vfx-effects.js). Firefox re-composites the whole
+  canvas offscreen for each of those, every frame. Now THE SCREEN GRADE: three-post.js `screenGrade / screenGradeClear /
+  screenGradeFreeze / canScreenGrade`, uniforms uCssA/uCssB/uCssT1/uCssT2/uCssM in the cinematic pass (GLSL + the node TSL
+  twin, same maths, checked equal on one pixel). The DOM keeps only plain layers (dim, bone white, heat, whiteout, vignette,
+  scope, speed lines). CSS filter path stays only as the Post FX off fallback.
+- **The frame pass's first use.** A spell grade / drama dim / ripple switches the cinematic frame pass on: node chain = a new
+  RenderPipeline (key ends in F) built + compiled mid-cast; pmndrs = pass B's shader + pass A's to-target variant compiled on
+  first draw. THE FRAME TWIN: the first frame each set draws without the frame, its frame twin is drawn once first (both halves
+  off, identical picture) so the pipelines exist before any spell.
+- **Entropy Strike bloom.** `_ewsTweenBloom` tweened the PLAYER's bloom setting (localStorage write a frame): with bloom off
+  (default) it switched bloom on and off per strike, each switch rebuilding the post chain. Now `ThreePost.bloomSwell` rides
+  on top of the player's bloom like bloomPulse; bloom off stays off.
+- **The void stage** (Entropy Strikes, void spells): `scene.fog = null` re-keyed every lit material (fog is in the shader);
+  now the fog is thinned (density 0 / near-far pushed out) and restored. The 'toplight' key is `_voidKey`, a lamp in the scene
+  from init at intensity 0 (a new PointLight changed the light count = WebGL recompiles all). Sky textures cached per palette,
+  contact discs share one geometry + material.
+- **Split screen** (combos, strikes): pane cameras are kept (`_ss.cams`; the node renderer keys render objects on the camera, so
+  a new camera per show rebuilt every mesh's render object); panes draw into a target per pane size (`_paneTarget`; one shared
+  target was resized twice a frame when panes differ by 1 px); on WebGL the panes no longer draw straight to the canvas (that
+  compiled a canvas variant of every material in view on the first split screen), they draw into a target and blit with the
+  colour-space encode.

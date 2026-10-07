@@ -3884,6 +3884,9 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     opacity: 1;
     background: radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(0,0,0,.85) 100%);
 }
+/* THE SCREEN GRADE (2026-10-07): with the post chain up the filters run in its frame shader (battle.js cineGrade →
+   ThreePost.screenGrade); a backdrop-filter over the canvas made Firefox re-composite the whole canvas every frame */
+.cine-grade.post { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 .cine-grade.g-scope .cine-grade-vig {
     opacity: 1;
     background: radial-gradient(circle at center, rgba(0,0,0,0) 26%, rgba(0,0,0,.94) 46%);

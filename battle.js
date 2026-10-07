@@ -12431,18 +12431,16 @@
             try { fn(); } catch (err) { console.warn('[EntropyStrike VFX]', err); }
         }
 
+        /* The charge glow: a swell on top of the player's bloom (ThreePost.bloomSwell), up over `ms`, held, down over the
+           restore. It used to tween the player's bloom SETTING (a localStorage write a frame): with bloom off, the default,
+           that switched the bloom effect on for the strike and off after it, and each switch rebuilt and recompiled the post
+           chain mid-strike (2026-10-07, the Entropy Strike freezes). It never turns the effect on: bloom off stays off. */
         function _ewsTweenBloom(to, ms, thenRestore) {
-            if (typeof ThreePost === 'undefined' || !ThreePost.setBloomStrength || !ThreePost.getBloomStrength) return;
+            if (typeof ThreePost === 'undefined' || !ThreePost.bloomSwell || !ThreePost.getBloomStrength) return;
             const from = ThreePost.getBloomStrength();
-            const t0 = Date.now();
-            (function step() {
-                const k = Math.min(1, (Date.now() - t0) / ms);
-                ThreePost.setBloomStrength(from + (to - from) * k);
-                if (k < 1) requestAnimationFrame(step);
-                else if (thenRestore != null) {
-                    window.setTimeout(() => _ewsTweenBloom(thenRestore.value, thenRestore.ms, null), thenRestore.holdMs || 0);
-                }
-            })();
+            if (!(from > 0)) return;
+            const r = thenRestore || {};
+            ThreePost.bloomSwell(Math.max(0, to - from), ms, r.holdMs || 0, r.ms || ms);
         }
 
         /* Full-screen letterboxed banner (VS-splash pattern, `ews-*` classes in
@@ -27388,6 +27386,9 @@
             const d = Math.max(60, Number(ms) || 0);
             try { window.ThreeAnim?.hitstop?.(d); } catch (e) {}
             if (opts.grade) cineGrade(opts.grade, d + 120);
+            // the contrast tell runs in the post shader when it is up: a CSS filter switched onto the canvas made Firefox
+            // re-composite the whole canvas offscreen (THE SCREEN GRADE, three-post.js)
+            try { if (typeof ThreePost !== 'undefined' && ThreePost.screenGradeFreeze && ThreePost.screenGradeFreeze(d)) return; } catch (e) {}
             const el = document.getElementById('game-viewport') || document.body;
             el.classList.add('cine-frozen');
             window.setTimeout(() => el.classList.remove('cine-frozen'), d);
@@ -27415,12 +27416,48 @@
            in this codebase that flag owns the DUEL cinematic — the action-shot
            toggle every spell shot rides is state.cinematicActionCam, so that
            is what the cinematic FX layer honours. */
+        /* THE SCREEN GRADE (2026-10-07, mondo: "frame rate and frozen screen issues for spells that change the whole
+           screen"): the grades that FILTER or BLEND the picture (a backdrop-filter, a multiply / screen / overlay layer) made
+           Firefox read the whole canvas back and re-composite it offscreen every frame they were up. With the post chain up
+           they run in its frame shader (ThreePost.screenGrade, the same recipes); the DOM keeps only the plain layers (the
+           dim / bone / heat / whiteout tints, the vignette, the scope, the speed lines), which composite for free. */
+        const CINE_GRADE_POST = {
+            sepia:    { f: { sepia: 0.85, con: 1.08, sat: 0.7 }, t: [0xd8b483, 0.22, 'multiply'] },
+            bone:     { f: { gray: 0.55, bri: 1.35, con: 0.92 } },
+            desat:    { f: { gray: 0.9, con: 1.1 } },
+            invert:   { f: { invert: 1, hue: 180 } },
+            hue:      { f: { hue: 150, sat: 1.6 } },
+            cool:     { t: [0x2a4a8c, 0.28, 'screen'] },
+            crimson:  { t: [0x6d0410, 0.34, 'multiply'] },
+            terminal: { f: { hue: 75, sat: 1.4, con: 1.15 }, t: [0x06ff8a, 0.18, 'overlay'] }
+        };
+        const CINE_GRADE_DOM_ONLY = ['sepia', 'desat', 'invert', 'hue', 'cool', 'crimson', 'terminal'];   // nothing left for the DOM
+        function _cineGradePost(kinds) {
+            if (typeof ThreePost === 'undefined' || !ThreePost.canScreenGrade || !ThreePost.canScreenGrade()) return false;
+            const p = { gray: 0, sepia: 0, invert: 0, hue: 0, sat: 1, con: 1, bri: 1 }, ts = [];
+            let any = false;
+            kinds.forEach(k => {
+                const r = CINE_GRADE_POST[k];
+                if (!r) return;
+                any = true;
+                const f = r.f || {};
+                p.gray = Math.max(p.gray, f.gray || 0); p.sepia = Math.max(p.sepia, f.sepia || 0); p.invert = Math.max(p.invert, f.invert || 0);
+                p.hue += f.hue || 0; p.sat *= f.sat != null ? f.sat : 1; p.con *= f.con != null ? f.con : 1; p.bri *= f.bri != null ? f.bri : 1;
+                if (r.t && ts.length < 2) ts.push([((r.t[0] >> 16) & 255) / 255, ((r.t[0] >> 8) & 255) / 255, (r.t[0] & 255) / 255, r.t[1], r.t[2]]);
+            });
+            if (!any) { ThreePost.screenGradeClear(); return true; }
+            p.t1 = ts[0] || null; p.t2 = ts[1] || null;
+            return ThreePost.screenGrade(p);
+        }
         function cineGrade(kind, ms, opts = {}) {
             if (_skipVisuals() || state.phase !== 'battle') return;
             if (state.cinematicActionCam === false && !opts.force) return;
             const el = _ensureCineGrade();
-            const kinds = String(kind || '').split(/\s+/).filter(k => CINE_GRADES.includes(k));
+            let kinds = String(kind || '').split(/\s+/).filter(k => CINE_GRADES.includes(k));
             if (!kinds.length) return;
+            const post = _cineGradePost(kinds);
+            el.classList.toggle('post', !!post);   // .post drops the backdrop-filter (bone keeps its white layer)
+            if (post) kinds = kinds.filter(k => !CINE_GRADE_DOM_ONLY.includes(k));
             CINE_GRADES.forEach(k => el.classList.remove('g-' + k));
             kinds.forEach(k => el.classList.add('g-' + k));
             if (opts.strength != null) el.style.setProperty('--cine-grade-str', String(opts.strength));
@@ -27445,6 +27482,7 @@
 
         function cineGradeClear() {
             if (_cineGradeTimer) { clearTimeout(_cineGradeTimer); _cineGradeTimer = null; }
+            try { if (typeof ThreePost !== 'undefined' && ThreePost.screenGradeClear) ThreePost.screenGradeClear(); } catch (e) {}
             if (!_cineGradeEl) return;
             _cineGradeEl.classList.remove('on');
             CINE_GRADES.forEach(k => _cineGradeEl.classList.remove('g-' + k));

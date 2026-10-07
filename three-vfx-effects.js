@@ -55,11 +55,19 @@ const ThreeVFXEffects = (function () {
         _fxDomOwners.add(owner);
         return owner;
     }
+    /* THE SCREEN GRADE (2026-10-07): the flashback / trip grades run in the post chain's frame shader when it is up
+       (ThreePost.screenGrade) — a CSS filter rewritten on the canvas every frame made Firefox re-composite the whole canvas
+       through an offscreen filter each frame. The CSS filter is only the fallback with Post FX off. */
+    function _fxScreenGrade() {
+        var P = (typeof ThreePost !== 'undefined') ? ThreePost : null;
+        return (P && P.canScreenGrade && P.canScreenGrade()) ? P : null;
+    }
     function _fxCanvasTint(cv, overlay, release) {
         if (_fxTintOwner) _fxTintOwner.stop();
         var previous = cv.style.filter;
         var owner = _fxDomOwner(function () {
             cv.style.filter = previous;
+            if (owner.post) { try { owner.post.screenGradeClear({ instant: true }); } catch (e) {} }
             if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
             if (_fxTintOwner === owner) _fxTintOwner = null;
             release();
@@ -16337,6 +16345,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 + 'background:radial-gradient(ellipse at center, rgba(0,0,0,0) 52%, rgba(0,0,0,0.55) 100%);';
             document.body.appendChild(vig);
             owner = _fxCanvasTint(cv, vig, function () { _sigFlashbackActive = false; });
+            owner.post = _fxScreenGrade();
             var t0 = performance.now();
             function frame() {
                 var el = performance.now() - t0;
@@ -16350,7 +16359,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 else k = 1 - (el - inMs - holdMs) / outMs;
                 /* old-film brightness flicker while fully inside the memory */
                 var flick = (k >= 1) ? (0.94 + Math.random() * 0.06) : 1;
-                cv.style.filter = 'grayscale(' + k.toFixed(3) + ') sepia(' + (k * sepia).toFixed(3)
+                if (owner.post) owner.post.screenGrade({ gray: k, sepia: k * sepia, con: 1 + k * 0.08, bri: (1 - k * 0.08) * flick }, { instant: true });
+                else cv.style.filter = 'grayscale(' + k.toFixed(3) + ') sepia(' + (k * sepia).toFixed(3)
                     + ') contrast(' + (1 + k * 0.08).toFixed(3) + ') brightness(' + ((1 - k * 0.08) * flick).toFixed(3) + ')';
                 vig.style.opacity = (k * 0.9).toFixed(3);
                 owner.frame(frame);
@@ -16804,6 +16814,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 + ' rgba(0,255,220,0.16) 42%, rgba(255,220,0,0.22) 70%, rgba(120,0,255,0.30) 100%);';
             document.body.appendChild(wash);
             owner = _fxCanvasTint(cv, wash, function () { _sigTripActive = false; });
+            owner.post = _fxScreenGrade();
+            if (owner.post) wash.style.display = 'none';   // the colour-dodge wash is a screen layer in the shader instead
             var t0 = performance.now();
             function frame() {
                 var el = performance.now() - t0;
@@ -16812,7 +16824,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                       : (el < inMs + holdMs ? 1 : 1 - (el - inMs - holdMs) / outMs);
                 var hue = (el * spin) % 360;
                 var wob = 1 + Math.sin(el * 0.011) * 0.06 * k;
-                cv.style.filter = 'hue-rotate(' + hue.toFixed(1) + 'deg) saturate('
+                if (owner.post) owner.post.screenGrade({ hue: hue * k, sat: 1 + (sat - 1) * k, con: 1 + 0.22 * k, bri: wob,
+                    t1: [1.0, 0.25, 0.85, k * 0.22, 'screen'] }, { instant: true });
+                else cv.style.filter = 'hue-rotate(' + hue.toFixed(1) + 'deg) saturate('
                     + (1 + (sat - 1) * k).toFixed(2) + ') contrast('
                     + (1 + 0.22 * k).toFixed(2) + ') brightness(' + wob.toFixed(3) + ')';
                 wash.style.opacity = (k * 0.5).toFixed(3);
