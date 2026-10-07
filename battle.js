@@ -59763,7 +59763,7 @@
                 showFloatingTextAtTile(x, y, '🪓 TIMBER!', 'damage', { durationMs: 1100 });
                 playSfx('basicAttack');
                 grantXP(unit, 4, 'chop');
-                spendAllAP(unit);   // attacking ends the turn
+                spendAP(unit, 1);   // a chop is a 1-AP act, never a turn-ender (mondo 2026-10-07)
                 state.actionMode = null;
                 state._actionExecuting = false;
                 state.actionMenuView = 'root';
@@ -61643,10 +61643,15 @@
             const changes = [];
             const color = _terrainPreviewColor(spell.terrainType || spell.leaveTerrain);
 
+            /* A monument wall (Rampart's standing stones…) shows a piece only where the placer will really stand one —
+               the same check placeSpellMonument makes, units lifted onto the piece rather than skipped. */
+            const _monRot = (state._spellOrientation === 'vertical') ? 90 : 0;
             const pushChange = (x, y) => {
                 if (!isInside(x, y)) return;
                 const current = getTerrainAt(x, y);
                 if (current === 'wall') return;
+                if (spell.monument && typeof canPlaceSpellMonumentAt === 'function'
+                    && !canPlaceSpellMonumentAt(spell.monument.kind, x, y, _monRot, true)) return;
                 const deform = spell.terrainDeform;
                 if (deform && (deform.centerDelta || 0) !== 0) {
                     // terrainCreate applies the deform per affected tile with
@@ -63610,7 +63615,19 @@
             return { sequenceId, sourceHold, travelMs, targetHold, totalMs };
         }
 
+        /* THE SHOT CLOCK (2026-10-07, mondo: "after placing a prism mirror the camera doesnt reset"): the last hero /
+           support shot _spellFocusCamera played inside the current doSpell. A kind branch that only calls
+           _spellFocusCamera (Prism Mirror, a field bomb, a rune…) left completionDelay at the 600 ms floor, so
+           finishAction's soft reset landed MID-SHOT: the deploy director's beats were still moving the camera, the
+           pull-back settle it armed found the camera busy and gave up, and the view stayed parked low on the target
+           tile. doSpell now holds finishAction until the shot it played is over, like every branch that reads cam.totalMs. */
+        let _spellFocusLastShot = null;
         function _spellFocusCamera(casterUnit, tx, ty, opts = {}) {
+            const r = _spellFocusCameraRun(casterUnit, tx, ty, opts);
+            if (r && r.totalMs > 0) _spellFocusLastShot = r;
+            return r;
+        }
+        function _spellFocusCameraRun(casterUnit, tx, ty, opts = {}) {
             if (state.cameraDisabled) return null;
 
             // Recover the casting spell's name/id from doSpell's commit stash
@@ -64355,6 +64372,7 @@
             const spellPower = spellPowerOf(unit, spell);   // the forecast reads the same sum
             let panelFocusTarget = null;
             let completionDelay = 0;
+            _spellFocusLastShot = null;   // THE SHOT CLOCK: only a shot THIS cast plays holds its finish
             const spellApCost = getSpellApCost(spell);
             /* Contact placement: set by the bomb / deployObject branches when
                the deployable landed straight ON an enemy and activated
@@ -68121,9 +68139,10 @@
                     /* THE SPELL-MADE MONUMENTS (2026-09-18): one real piece per
                        affected tile through map.js placeSpellMonument (the ONE
                        live placer — it stamps the wall's collision and records
-                       the tile for the renderer). A tile the placer refuses (a
-                       unit standing there, an objective, another monument)
-                       keeps its damage and gets no stone. The row's `rot`
+                       the tile for the renderer). A tile the placer refuses (an
+                       objective, another monument, a solid prop) keeps its
+                       damage and gets no stone; a unit standing there rides
+                       up onto its piece. The row's `rot`
                        follows the cast line: a horizontal line of tiles is a
                        wall running along x. state.monuments SYNCS (RULE #2). */
                     if (spell.monument && affectedTiles.length > 0 && typeof placeSpellMonument === 'function') {
@@ -68135,7 +68154,7 @@
                                 kind: _monKind, x: at.x, y: at.y, rot: _monRot,
                                 seed: ((at.x + 1) * 977 + (at.y + 1) * 131 + (state.round || 0) * 7 + i) | 0,
                                 spell: spell.id, owner: unit.player, round: state.round || 0
-                            });
+                            }, { liftUnits: true });   // a unit on the tile rides up onto the piece (mondo 2026-10-07), never skips it
                             if (ok) _monPlaced++;
                         });
                         if (_monPlaced > 0) {
@@ -70200,6 +70219,10 @@
 
             if (panelFocusTarget) focusUnitPanel(panelFocusTarget.id);
 
+            if (_spellFocusLastShot) {   // THE SHOT CLOCK: the soft reset waits out the shot this cast played
+                completionDelay = Math.max(completionDelay, _spellFocusLastShot.totalMs + actionMs(120));
+                _spellFocusLastShot = null;
+            }
             if (completionDelay < actionMs(600)) completionDelay = actionMs(600);
             // 🕯 Hex of Toil: casting feeds the curse. Timed just before
             // finishAction so the flare lands after the spell's own visuals

@@ -1280,3 +1280,20 @@ render bundle never refreshes, so lava in a bundled room stood still. Fix: lava 
 (`_EW_LAVA_GLSL` + the `D.lava` branch of `_ewNodeFluid`: warped glowing channels, crust, pulse, emissive), and the node
 twin scrolls every liquid's sheets from `U.ftime` × `_FLUID_DRIFT_3D` instead of the per-object offset uniform.
 Covers map lava (tile boxes, HQ room sheets) and spell lava (the field skins).
+
+## THE STANDING STONES + THE SHOT CLOCK (2026-10-07, mondo)
+- Rampart (and every `monument` wall spell) lifts units: `placeSpellMonument(mon, { liftUnits: true })` (map.js) no
+  longer refuses a tile with a unit on it; the piece stands and the unit rides up to its top (`unit:moved` emitted).
+  Objectives, solid props, `wall` tiles and existing monuments still refuse. `canPlaceSpellMonumentAt(kind, x, y, rot,
+  liftUnits)` is the same check; battle.js `predictTerrainSpellChanges` uses it so the terrain ghost shows only the
+  pieces the cast will really stand (the "preview said 4, got 3" report: a unit on the 4th tile was skipped).
+- Field battles: `_fieldStrataBuild` reads a monument tile at its recorded floor (`state._monumentTiles`), so the
+  invisible collision voxels no longer draw a raised block with cliff-faced sides under the stone. `_buildMonumentObj`
+  stands the piece on the field cell's real top.
+- The `cliff` terrain key draws rocks_5.png (sprites.js); cliff.png is unreferenced. mondo: removed everywhere.
+- THE SHOT CLOCK (battle.js `_spellFocusLastShot`): a kind branch that only calls `_spellFocusCamera` (Prism Mirror,
+  field bombs, runes…) finished at the 600 ms floor while the support shot + deploy director were still moving the
+  camera; the soft reset's pull-back settle saw the camera busy and gave up, leaving the view parked low on the target
+  tile. doSpell now holds finishAction until that shot's `totalMs`.
+- Tree chop (doAttack's tree branch) costs 1 AP (`spendAP(unit, 1)`), no longer ends the turn. A choppable tree under
+  the cursor glows (three-renderer.js THE TREE HOVER: emissive lift on that tree's own materials, restored on leave).
