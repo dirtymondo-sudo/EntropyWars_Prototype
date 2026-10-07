@@ -37999,7 +37999,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty), ts = wp.ts;
         var g = new THREE.Group();
         g.position.set(wp.x, wp.y, wp.z);
-        var mat = new THREE.MeshStandardMaterial({ color: o.color != null ? o.color : 0x7d6e5e, roughness: 1, metalness: 0,
+        /* THE TEXTURED SPIKES (2026-10-07, mondo: "plain geometry spikes ... they need to be textured"): every spike
+           wears a terrain sheet off R2 — o.tex (a TERRAIN_SPRITES key), the stone sheet rocks_1 by default */
+        var _spTex = null;
+        try {
+            var _spKey = o.tex || 'rocks_1';
+            var _spUrl = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[_spKey]) ? (Array.isArray(TERRAIN_SPRITES[_spKey]) ? TERRAIN_SPRITES[_spKey][0] : TERRAIN_SPRITES[_spKey]) : null;
+            if (_spUrl) _spTex = _loadCachedTex(_spUrl);
+        } catch (e) { _spTex = null; }
+        var mat = new THREE.MeshStandardMaterial({ color: o.color != null ? o.color : (_spTex ? 0xffffff : 0x7d6e5e), map: _spTex, roughness: 1, metalness: 0,
             flatShading: true, transparent: true, opacity: 1,
             emissive: new THREE.Color(o.glow != null ? o.glow : 0x000000), emissiveIntensity: o.glow != null ? 0.6 : 0 });
         var spikes = [], pts = [];
@@ -38200,13 +38208,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        charge(P) on the windup · hit(P) on the burst · detonate(P) for the
        delayed three (the end-of-round blast, P.lead = ms to its impact). */
     var _CAP_SIGS = {
-        /* Rampart — THREE STANDING STONES: the earth heaves along the line
-           before the stones rise; stone spikes break the floor, dust rolls */
+        /* Rampart — THE EARTHWORK: the earth heaves along the line as the
+           ground rises; stone spikes (the mountain sheet) break the floor, dust rolls */
         rampart: {
             charge: function (P) { _capCharge(P, 0xc9a36a, { sprite: 'dust-puff', sigilR: 0.9 }); _capPuff(P.sx, P.sy, 'dust-puff', 8, { r: 0.6, out: 40, s0: 18, s1: 30, sEnd: 44, op: 0.5 }); },
             hit: function (P) {
                 var pts = (P.tiles && P.tiles.length) ? P.tiles : [{ x: P.tx, y: P.ty }];
-                _capSpikes(P.tx, P.ty, { pts: pts, per: 3, h: 1.1, w: 0.22, stagger: 90, holdMs: 700 });
+                _capSpikes(P.tx, P.ty, { pts: pts, per: 3, h: 1.1, w: 0.22, stagger: 90, holdMs: 700, tex: 'mountain' });
                 for (var i = 0; i < pts.length && i < 5; i++) {
                     (function (q, k) { _capAt(k * 90, function () {
                         _capShards(q.x, q.y, 'stone', { n: 6, scale: 1.1, lite: k > 0 });

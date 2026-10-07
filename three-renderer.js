@@ -63473,6 +63473,17 @@ const ThreeRenderer = (function () {
             if (!_fieldStrataMats[key]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[key] = m; }
             return _fieldStrataMats[key];
         };
+        /* THE EARTHWORK (2026-10-07, mondo: a raised wall "should use a texture that makes sense"): a RAISED cell a spell
+           repainted (Rampart's mountain, Snow Fort's snow wall) wears its new terrain's sheet on its faces, not the bed's */
+        var _pCur = (typeof state !== 'undefined' && state) ? state.boardTerrain : null, _pTiles = _pCur ? state.paintedTiles : null;
+        var _pIds = (typeof ME_TERRAIN_IDS !== 'undefined') ? ME_TERRAIN_IDS : null, _pGrid = G.R && G.R.grid;
+        var paintedSide = function (x, y) {
+            if (!_pTiles || !_pTiles[x + ',' + y] || !(sDelta(x, y) > 0)) return null;
+            var k = _pCur[y] && _pCur[y][x]; if (!k || _FLUID_TERRAIN_SET[k]) return null;
+            var gr = _pGrid && _pGrid[y], tid = gr ? (gr[x] | 0) : 0;
+            if (tid && _pIds && k === (_pIds[tid] || 'grass')) return null;
+            return (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? k : null;
+        };
         var grp = new THREE.Group(); grp.name = 'field_strata'; grp._ew_fieldStrata = true;
         var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), rep = patchOn ? _fieldPatchRep(G) : ts;
         if (patchOn) {
@@ -63509,7 +63520,7 @@ const ThreeRenderer = (function () {
                     }
                 } catch (e) {}
             } else try { var uv = geo.attributes.uv; for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / ts)); } catch (e) {}   // the sheet tiles by height
-            var m = new THREE.Mesh(geo, matOf(bed.side)); m.material.side = THREE.DoubleSide;
+            var m = new THREE.Mesh(geo, matOf(paintedSide(f.x, f.y) || bed.side)); m.material.side = THREE.DoubleSide;
             var cx = f.x * ts + ts / 2, cz = f.y * ts + ts / 2, cy = (f.y0 + f.y1) / 2;
             if (f.side === 'e') { m.position.set(cx + ts / 2, cy, cz); m.rotation.y = Math.PI / 2; }
             else if (f.side === 'w') { m.position.set(cx - ts / 2, cy, cz); m.rotation.y = -Math.PI / 2; }
