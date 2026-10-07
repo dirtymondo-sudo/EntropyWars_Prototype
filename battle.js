@@ -68218,8 +68218,8 @@
                     /* THE SPELL-MADE MONUMENTS (2026-09-18): one real piece per
                        affected tile through map.js placeSpellMonument (the ONE
                        live placer — it stamps the wall's collision and records
-                       the tile for the renderer). A tile the placer refuses (an
-                       objective, another monument, a solid prop) keeps its
+                       the tile for the renderer). A tile the placer refuses (another
+                       monument, a solid prop) keeps its
                        damage and gets no stone; a unit standing there rides
                        up onto its piece. The row's `rot`
                        follows the cast line: a horizontal line of tiles is a
