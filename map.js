@@ -32,6 +32,8 @@
                     _mmSettingsReturnFocus = null;
                 }
             }
+            /* THE TEAM ROOM (2026-10-07): the Squad Desk's office hands the shared canvas back on any other page */
+            if (pageId !== 'squadDeskPage' && typeof window._sqRoomLeave === 'function') window._sqRoomLeave();
             const pages = startOverlay?.querySelectorAll('.title-page');
             if (!pages) return;
             pages.forEach(p => {
@@ -274,11 +276,63 @@
             _sqPickClose(true);
             _sqRender();
             _showTitlePage('squadDeskPage');
+            _sqRoomEnter();   // THE TEAM ROOM (2026-10-07): the focused team stands in the office behind the page
             const page = document.getElementById('squadDeskPage');
             if (page) { page.classList.remove('sq-enter'); void page.offsetWidth; page.classList.add('sq-enter'); }
         }
         window._openSquadDesk = _openSquadDesk;
 
+        /* THE TEAM ROOM (2026-10-07, mondo: "instead of just a bunch of boxes with their portraits can we make it a room inside
+           the door facility and your team is just hanging out posing ... and there should be a drop down menu or a button or
+           arrows to choose a different team that would have their portraits (sprites for fallback)"). The desk is ONE team at
+           a time: the team stands in a small D.O.O.R. office behind the page (three-renderer.js ThreeRenderer.teamRoom, on
+           the shared canvas — the void with its motes stays when 3D cannot run), and the bar at the bottom holds that team's
+           plate (portraits, sprites as the fallback) between ‹ › arrows; the plate opens THE LIST of every team. ← → / the
+           arrows switch, ENTER deploys. The room shows the members who would cross: the remembered pick of a bigger team,
+           else its first four. */
+        function _sqShownIdx(t) {
+            const n = t.slots.length;
+            if (n <= SQ_DEPLOY) return t.slots.map((_, i) => i);
+            let pick = Array.isArray(t.lastPick) ? Array.from(new Set(t.lastPick.filter(i => Number.isInteger(i) && i >= 0 && i < n))) : [];
+            if (pick.length !== SQ_DEPLOY) pick = [0, 1, 2, 3];
+            return pick.sort((a, b) => a - b);
+        }
+        let _sqRoomOn = false;
+        function _sqRoomEnter() {
+            const host = document.getElementById('sqRoom'), page = document.getElementById('squadDeskPage');
+            let ok = false;
+            try {
+                if (host && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.teamRoom) {
+                    if (ThreeRenderer.teamRoom.active()) ok = true;
+                    else if (!(ThreeRenderer.hq && ThreeRenderer.hq.active())) {
+                        /* the battle renderer stays alive behind the menus after a match: park it (the next startMatch
+                           re-activates it — the menu scene's rule) */
+                        if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate();
+                        ok = !!ThreeRenderer.teamRoom.enter({ host });
+                    }
+                }
+            } catch (e) { console.warn('[SQUAD] team room', e); ok = false; }
+            _sqRoomOn = ok;
+            if (page) page.classList.toggle('sq-room-on', ok);
+            const bg = document.getElementById('menuBgCanvas');
+            if (ok && bg) { bg.style.display = 'none'; if (typeof window._menuBgSetActive === 'function') window._menuBgSetActive(false); }
+            _sqRoomTeam();
+        }
+        window._sqRoomLeave = function () {
+            if (!_sqRoomOn) return;
+            _sqRoomOn = false;
+            document.getElementById('squadDeskPage')?.classList.remove('sq-room-on');
+            try { if (ThreeRenderer.teamRoom && ThreeRenderer.teamRoom.active()) ThreeRenderer.teamRoom.leave(); } catch (e) {}
+        };
+        /* the focused team into the room */
+        function _sqRoomTeam() {
+            if (!_sqRoomOn) return;
+            const t = _sqPresets().find(p => p.id === _sqFocusId);
+            const slots = t ? _sqShownIdx(t).map(i => t.slots[i]).filter(Boolean) : [];
+            try { ThreeRenderer.teamRoom.setTeam(slots.map(s => ({ race: s.race, gender: s.gender, appearance: s.appearance || null }))); } catch (e) {}
+        }
+
+        let _sqDropOpen = false;
         function _sqRender() {
             const body = document.getElementById('sqBody');
             if (!body) return;
@@ -289,9 +343,8 @@
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             if (count) count.innerHTML = presets.length ? `<b>${presets.length}</b> / ${max} TEAMS` : '';
-            if (foot) foot.innerHTML = presets.length
-                ? '<span><kbd>←</kbd><kbd>→</kbd> Select</span><span><kbd>Enter</kbd> Deploy</span><span><kbd>Esc</kbd> Back</span>'
-                : '<span><kbd>Enter</kbd> Build a team</span><span><kbd>Esc</kbd> Back</span>';
+            if (foot) foot.innerHTML = '';
+            _sqDropOpen = false;
             if (!presets.length) {
                 _sqFocusId = null;
                 body.innerHTML = `<div class="sq-empty">`
@@ -300,41 +353,93 @@
                     + `<div class="sq-empty-text">Build your first team to play. It is saved to your profile, ready for every match after this one.</div>`
                     + `<button class="sq-cta sq-cta-big" data-sq-new>Build Your First Team</button>`
                     + `</div>`;
+                _sqRoomTeam();
                 return;
             }
             const need = _sqNeed();
             const ok = t => t.slots.length >= need;
             if (!_sqFocusId || !presets.some(t => t.id === _sqFocusId)) _sqFocusId = (_sqNewId && presets.some(t => t.id === _sqNewId)) ? _sqNewId : ((presets.find(ok) || presets[0]).id);
-            let html = '<div class="sq-grid">';
-            presets.forEach((t, k) => {
-                const n = t.slots.length, locked = !ok(t), over = n > SQ_DEPLOY;
-                const cls = ['sq-card', locked ? 'is-locked' : '', t.id === _sqFocusId ? 'is-focus' : '', t.id === _sqNewId ? 'is-new' : ''].filter(Boolean).join(' ');
-                const when = t.lastUsed ? new Date(t.lastUsed) : null;
-                html += `<div class="${cls}" role="button" tabindex="0" data-sq-team="${_sqEsc(t.id)}" style="--i:${k}">`
-                    + `<span class="sq-card-sheen"></span>`
-                    + (t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
-                    + `<div class="sq-card-top"><span class="sq-card-name">${_sqEsc(t.name || 'Team')}</span><span class="sq-card-n">${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}</span></div>`
-                    + `<div class="sq-card-faces">${t.slots.slice(0, 8).map((s, i) => `<span class="sq-card-slot${i >= SQ_DEPLOY && over ? ' is-bench' : ''}" style="--j:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">${_sqFace(s)}</span>`).join('')}</div>`
-                    + `<div class="sq-card-foot">`
-                    + (locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play online</span>`
-                        : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
-                        : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
-                    + `<span class="sq-card-edit" role="button" tabindex="0" data-sq-edit="${_sqEsc(t.id)}">Edit</span>`
-                    + `</div></div>`;
-            });
-            if (presets.length < max) html += `<div class="sq-card sq-card-new" role="button" tabindex="0" data-sq-new style="--i:${presets.length}"><span class="sq-card-plus">+</span><span class="sq-card-name">New Team</span></div>`;
-            html += '</div>';
-            body.innerHTML = html;
+            const many = presets.length > 1;
+            body.innerHTML = `<div class="sq-stage"></div>`
+                + `<div class="sq-dock">`
+                + `<div class="sq-drop" id="sqDrop" aria-hidden="true"></div>`
+                + `<div class="sq-bar">`
+                + `<button class="sq-arrow" data-sq-step="-1"${many ? '' : ' disabled'} aria-label="Previous team"><span>‹</span></button>`
+                + `<div class="sq-plate" id="sqPlate" role="button" tabindex="0" data-sq-drop-toggle></div>`
+                + `<button class="sq-arrow" data-sq-step="1"${many ? '' : ' disabled'} aria-label="Next team"><span>›</span></button>`
+                + `</div>`
+                + `<div class="sq-actions" id="sqActions"></div>`
+                + `</div>`;
+            _sqPaintTeam(false);
         }
-
-        function _sqFocusCard(id, scroll) {
+        /* the plate + the buttons for the focused team (and the room behind them) */
+        function _sqPaintTeam(bump) {
+            const t = _sqPresets().find(p => p.id === _sqFocusId);
+            const plate = document.getElementById('sqPlate'), acts = document.getElementById('sqActions');
+            if (!t || !plate) return;
+            const presets = _sqPresets(), max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
+            const n = t.slots.length, locked = n < _sqNeed(), over = n > SQ_DEPLOY, shown = _sqShownIdx(t);
+            const when = t.lastUsed ? new Date(t.lastUsed) : null;
+            const at = presets.findIndex(p => p.id === t.id);
+            plate.className = ['sq-plate', locked ? 'is-locked' : '', t.id === _sqNewId ? 'is-new' : ''].filter(Boolean).join(' ');
+            plate.innerHTML = `<span class="sq-plate-sheen"></span>`
+                + (t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
+                + `<div class="sq-plate-top"><span class="sq-plate-name">${_sqEsc(t.name || 'Team')}</span>`
+                + `<span class="sq-plate-n">${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}</span>`
+                + (presets.length > 1 ? `<span class="sq-plate-of">${at + 1} / ${presets.length}</span>` : '')
+                + `<span class="sq-plate-caret">▾</span></div>`
+                + `<div class="sq-plate-faces">${t.slots.slice(0, 8).map((s, i) => `<span class="sq-plate-slot${over && shown.indexOf(i) < 0 ? ' is-bench' : ''}" style="--j:${i}" title="${_sqEsc((s.unitName || '') + ' · ' + _sqRaceLabel(s))}">`
+                    + `${_sqFace(s)}<em>${_sqEsc(s.unitName || _sqRaceLabel(s))}</em></span>`).join('')}</div>`
+                + `<div class="sq-plate-foot">`
+                + (locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play online</span>`
+                    : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
+                    : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
+                + `</div>`;
+            if (acts) acts.innerHTML = `<button class="sq-ghost" data-sq-edit="${_sqEsc(t.id)}">Edit</button>`
+                + (presets.length < max ? `<button class="sq-ghost" data-sq-new>New Team</button>` : '')
+                + `<button class="sq-cta${locked ? '' : ' is-ready'}" data-sq-go${locked ? ' disabled' : ''}>Deploy</button>`;
+            if (bump) _sqBump(plate, 'sq-swap');
+            if (_sqDropOpen) _sqDropPaint();
+            _sqRoomTeam();
+        }
+        function _sqFocusCard(id) {
+            if (!id || id === _sqFocusId) return;
             _sqFocusId = id;
-            document.querySelectorAll('#sqBody .sq-card[data-sq-team]').forEach(c => c.classList.toggle('is-focus', c.getAttribute('data-sq-team') === id));
-            const el = document.querySelector(`#sqBody .sq-card[data-sq-team="${CSS.escape(id)}"]`);
-            if (el && scroll) { try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
+            _sqPaintTeam(true);
         }
-        function _sqCardEl(id) { return document.querySelector(`#sqBody .sq-card[data-sq-team="${CSS.escape(id)}"]`); }
+        function _sqCardEl() { return document.getElementById('sqPlate'); }
         function _sqBump(el, cls) { if (!el) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+        function _sqStep(d) {
+            const presets = _sqPresets();
+            if (presets.length < 2) return;
+            const at = Math.max(0, presets.findIndex(p => p.id === _sqFocusId));
+            _sqFocusCard(presets[(at + d + presets.length) % presets.length].id);
+            try { playSfx('uiCursorMove'); } catch (e) {}
+        }
+        /* THE LIST: every team on file, faces and all; a row puts that team in the room */
+        function _sqDropPaint() {
+            const drop = document.getElementById('sqDrop');
+            if (!drop) return;
+            const need = _sqNeed();
+            drop.innerHTML = _sqPresets().map((t, k) => {
+                const n = t.slots.length, locked = n < need;
+                return `<div class="sq-drop-row${t.id === _sqFocusId ? ' is-focus' : ''}${locked ? ' is-locked' : ''}" role="button" tabindex="0" data-sq-sel="${_sqEsc(t.id)}" style="--i:${k}">`
+                    + `<span class="sq-drop-faces">${t.slots.slice(0, 8).map(s => _sqFace(s)).join('')}</span>`
+                    + `<span class="sq-drop-name">${_sqEsc(t.name || 'Team')}</span>`
+                    + `<span class="sq-drop-n">${locked ? `Needs ${SQ_DEPLOY}` : `${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}`}</span></div>`;
+            }).join('');
+        }
+        function _sqDropSet(open) {
+            const drop = document.getElementById('sqDrop');
+            if (!drop) { _sqDropOpen = false; return; }
+            _sqDropOpen = !!open;
+            if (_sqDropOpen) _sqDropPaint();
+            drop.classList.toggle('is-open', _sqDropOpen);
+            drop.setAttribute('aria-hidden', _sqDropOpen ? 'false' : 'true');
+            document.getElementById('sqPlate')?.classList.toggle('is-open', _sqDropOpen);
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            if (_sqDropOpen) { const f = drop.querySelector('.sq-drop-row.is-focus'); if (f) { try { f.scrollIntoView({ block: 'nearest' }); } catch (e) {} } }
+        }
 
         function _sqChoose(id) {
             if (_sqBusy) return;
@@ -366,7 +471,7 @@
                     + `<div class="sq-tile-name">${_sqEsc(s.unitName || _sqRaceLabel(s))}</div>`
                     + `<div class="sq-tile-race">${_sqEsc(_sqRaceLabel(s))}</div>`
                     + `<span class="sq-tile-key">${i + 1}</span><span class="sq-tile-badge"></span></div>`).join('')}</div>`
-                + `<div class="sq-pick-foot"><span class="sq-pick-hint"><kbd>1</kbd>–<kbd>${Math.min(9, n)}</kbd> Toggle · <kbd>Enter</kbd> Deploy · <kbd>Esc</kbd> Cancel</span>`
+                + `<div class="sq-pick-foot"><span class="sq-pick-hint"></span>`
                 + `<button class="sq-ghost" data-sq-pick-close>Cancel</button><button class="sq-cta" data-sq-pick-go>Deploy</button></div>`
                 + `</div>`;
             host.classList.add('is-open');
@@ -482,6 +587,7 @@
         window._squadDeskBack = function () {
             if (_sqBusy) return;
             if (_sqPick) { _sqPickClose(false); return; }
+            if (_sqDropOpen) { _sqDropSet(false); return; }
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             window._ewSquad = null;
             window._ewRosterScope = 'owned';
@@ -524,18 +630,17 @@
             if (e.target.closest('[data-sq-pick-go]')) { _sqPickGo(); return; }
             const tile = e.target.closest('[data-sq-tile]');
             if (tile) { _sqPickToggle(parseInt(tile.getAttribute('data-sq-tile'), 10)); return; }
+            if (_sqBusy) return;
+            const sel = e.target.closest('[data-sq-sel]');
+            if (sel) { _sqFocusCard(sel.getAttribute('data-sq-sel')); _sqDropSet(false); return; }
+            if (e.target.closest('[data-sq-drop-toggle]')) { _sqDropSet(!_sqDropOpen); return; }
+            if (_sqDropOpen && !e.target.closest('#sqDrop')) _sqDropSet(false);
+            const step = e.target.closest('[data-sq-step]');
+            if (step) { _sqStep(parseInt(step.getAttribute('data-sq-step'), 10) || 1); return; }
             const ed = e.target.closest('[data-sq-edit]');
-            if (ed) { e.stopPropagation(); _sqForge(ed.getAttribute('data-sq-edit')); return; }
+            if (ed) { _sqForge(ed.getAttribute('data-sq-edit')); return; }
             if (e.target.closest('[data-sq-new]')) { _sqForge(null); return; }
-            const card = e.target.closest('[data-sq-team]');
-            if (card) _sqChoose(card.getAttribute('data-sq-team'));
-        });
-        document.addEventListener('mouseover', (e) => {
-            const card = e.target && e.target.closest ? e.target.closest('#sqBody .sq-card[data-sq-team]') : null;
-            if (card && card.getAttribute('data-sq-team') !== _sqFocusId && !_sqPick) {
-                _sqFocusCard(card.getAttribute('data-sq-team'));
-                try { playSfx('uiCursorMove'); } catch (err) {}
-            }
+            if (e.target.closest('[data-sq-go]')) { if (_sqFocusId) _sqChoose(_sqFocusId); return; }
         });
         document.addEventListener('keydown', (e) => {
             const page = document.getElementById('squadDeskPage');
@@ -551,25 +656,21 @@
                 if (d >= 1 && d <= 9) { e.preventDefault(); _sqPickToggle(d - 1); }
                 return;
             }
-            const cards = Array.from(document.querySelectorAll('#sqBody .sq-card[data-sq-team]'));
-            if (!cards.length) { if (e.key === 'Enter') { e.preventDefault(); _sqForge(null); } return; }
+            if (!_sqPresets().length) { if (e.key === 'Enter') { e.preventDefault(); _sqForge(null); } return; }
             if (e.key === 'Enter' || e.key === ' ') {
-                if (document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-sq-edit],[data-sq-new]')) return;
+                const ae = document.activeElement;
+                if (ae && ae.closest && ae.closest('#squadDeskPage button, [data-sq-sel]')) return;   // a focused button / row takes its own click
                 e.preventDefault();
+                if (_sqDropOpen) { _sqDropSet(false); return; }
                 if (_sqFocusId) _sqChoose(_sqFocusId);
                 return;
             }
-            const dirs = { ArrowRight: 1, ArrowDown: 'row', ArrowLeft: -1, ArrowUp: '-row' };
-            if (!(e.key in dirs)) return;
+            const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+            if (!d) return;
             e.preventDefault();
-            let at = Math.max(0, cards.findIndex(c => c.getAttribute('data-sq-team') === _sqFocusId));
-            let step = dirs[e.key];
-            if (step === 'row' || step === '-row') {
-                const top0 = cards[0].offsetTop; let perRow = cards.filter(c => c.offsetTop === top0).length || 1;
-                step = step === 'row' ? perRow : -perRow;
-            }
-            const next = Math.max(0, Math.min(cards.length - 1, at + step));
-            if (next !== at) { _sqFocusCard(cards[next].getAttribute('data-sq-team'), true); try { playSfx('uiCursorMove'); } catch (err) {} }
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !_sqDropOpen) return;
+            _sqStep(d);
+            if (_sqDropOpen) { const f = document.querySelector('#sqDrop .sq-drop-row.is-focus'); if (f) { try { f.scrollIntoView({ block: 'nearest' }); } catch (err) {} } }
         });
 
         /* NEW GAME / CONTINUE (2026-09-30, the user): the first door reads NEW GAME until a story is on file — an agent

@@ -34071,6 +34071,7 @@ const ThreeRenderer = (function () {
         if (!initialized) init();
         if (!canvas || !renderer) return;
         if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
+        if (_trLive) _trLeave();                 // so does the Squad Desk's team room
         active = true;
         /* the menu scene / HQ may have sized the shared renderer to THEIR host:
            forget the battle's record so the first frame re-applies camera
@@ -65269,6 +65270,7 @@ const ThreeRenderer = (function () {
         if (!initialized) init();
         if (!renderer || !canvas) return false;
         if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
+        if (_trLive) _trLeave();                 // so does the Squad Desk's team room
         /* room-to-room (a door): the lock is kept through the rebuild, but the
            browser may still drop it (a lock loss during the swap is never the
            walker's ESC — see _hqOnLockChange, 2026-09-14 rev 4) */
@@ -66618,6 +66620,7 @@ const ThreeRenderer = (function () {
         if (!renderer || !canvas) return false;
         if (active) { console.warn('[MENU] refusing to open over a live battle'); return false; }
         if (_hq) { console.warn('[MENU] the building owns the canvas'); return false; }
+        if (_trLive) _trLeave();                 // the Squad Desk's team room hands the canvas back first
         if (_menuLive) { if (_menu && _menu.host === host) return true; _menuLeave(); }
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}   // the menu wears the player's own settings
         if (!_menu) {
@@ -66694,6 +66697,383 @@ const ThreeRenderer = (function () {
         /* dev: the live scene graph + record (repo probes) */
         dev: { scene: function () { return _menu ? _menu.scene : null; }, rec: function () { return _menu; } },
     };
+
+    /* ══ THE TEAM ROOM (2026-10-07, mondo: "for the team select screen instead of just a bunch of boxes with their portraits
+       can we make it a room inside the door facility and your team is just hanging out posing ... just a desk and chair and
+       computer and a plant or something ... The point of this is literally just to look cool and add juice") ══════════════
+       The Squad Desk's backdrop (map.js _sqRoomEnter): a small D.O.O.R. office built from the building's own sheets (drywall
+       over an oxblood dado, teal trim, carpet, the acoustic ceiling) and catalogue props (the kidney desk, a CRT terminal, an
+       office chair, the desk lamp, a potted plant, the water cooler, the wall clock), with the picked team standing in it on
+       their idles; now and then one of them strikes a pose. It draws on the SHARED board renderer through the post chain like
+       the menu scene (no second WebGL context — mondo's friend plays on a weaker PC) and holds 30 fps on EW_PERF_LOW /
+       phones. Like the menu it stays HIDDEN (THE GATE) until the room's own files have landed; a member shows the moment its
+       rig AND its idle are in (no stand-in, no T-pose). No fog; bloom only if the player turned it on (setSceneLook null).
+       Tunables: TR_ROOM (metres), TR_PROPS (catalogue keys + where they stand), TR_SPOTS (where the team stands). */
+    var _tr = null, _trLive = false;
+    var TR_ROOM = { w: 8.4, d: 6.4, h: 3.1, back: -2.6, dado: 1.0, tile: 2.0, front: 7 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera
+    var TR_HUMAN_M = 1.75;   // heightRatio 1.0 (the fortune teller) in metres
+    /* the props: catalogue key, x / z (metres), yaw (rad, the model's +Z front turned by it), `on` = stands on that prop's top */
+    var TR_PROPS = [
+        { id: 'desk',   key: 'desk_wedge_a',  x: -2.75, z: -1.35, yaw: 0.55 },
+        { id: 'crt',    key: 'crt_terminal',  on: 'desk', dx: -0.05, dz: -0.12, yaw: 0 },
+        { id: 'lamp',   key: 'desk_lamp',     on: 'desk', dx: 0.48, dz: -0.08, yaw: -0.5, light: { y: 0.4, color: 0xffd9a0, i: 0.55, dist: 3.2 } },
+        { id: 'chair',  key: 'office_chair',  x: -2.05, z: -0.55, yaw: Math.PI + 0.95 },
+        { id: 'plant',  key: 'potted_plant',  x: 3.35, z: -1.95, yaw: 0.4 },
+        { id: 'cooler', key: 'water_cooler',  x: 2.15, z: -2.3, yaw: 0 },
+        { id: 'clock',  key: 'wall_clock',    x: 2.15, z: -2.58, yaw: 0, y: 2.2 }
+    ];
+    /* where the team stands, by team size: x / z (metres) and yaw (rad, + turns toward +x) */
+    var TR_SPOTS = {
+        1: [[0, 0.9, 0]],
+        2: [[-0.7, 0.95, 0.2], [0.7, 0.85, -0.2]],
+        3: [[0, 1.1, 0], [-1.3, 0.7, 0.32], [1.3, 0.65, -0.32]],
+        4: [[-0.62, 1.15, 0.14], [0.64, 1.1, -0.12], [-1.85, 0.55, 0.4], [1.9, 0.5, -0.42]]
+    };
+    var TR_POSES = ['castSupport', 'castHeal', 'castAOE'];   // the library slots a member may strike between idles
+    var TR_GATE_CAP_MS = 20000;
+
+    function _trLowPerf() { return typeof window !== 'undefined' && !!(window.EW_PERF_LOW || window.EW_MOBILE); }
+    function _trBlobTex() {
+        var c = document.createElement('canvas'); c.width = c.height = 128;
+        var g = c.getContext('2d'), grd = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+        grd.addColorStop(0, 'rgba(0,0,0,0.55)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+        return new THREE.CanvasTexture(c);
+    }
+    /* a wall: a dado band + the drywall above it + two teal trim strips, facing into the room (normal +Z before `yaw`) */
+    function _trWall(T, len, cx, cz, yaw) {
+        var U = T.U, R = TR_ROOM, g = new THREE.Group();
+        var upH = R.h - R.dado;
+        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4 }));
+        up.position.y = (R.dado + upH / 2) * U; g.add(up);
+        var lo = new THREE.Mesh(new THREE.PlaneGeometry(len * U, R.dado * U), _hqMat('oxblood', len / R.tile, R.dado / R.tile, { shininess: 6 }));
+        lo.position.y = (R.dado / 2) * U; g.add(lo);
+        var trimMat = _hqMat('teal', len / 1.0, 1, { shininess: 30, specular: 0x333333 });
+        var rail = new THREE.Mesh(new THREE.BoxGeometry(len * U, 0.07 * U, 0.04 * U), trimMat);
+        rail.position.set(0, R.dado * U, 0.02 * U); g.add(rail);
+        var base = new THREE.Mesh(new THREE.BoxGeometry(len * U, 0.12 * U, 0.03 * U), trimMat);
+        base.position.set(0, 0.06 * U, 0.015 * U); g.add(base);
+        g.position.set(cx * U, 0, cz * U); g.rotation.y = yaw;
+        T.scene.add(g);
+    }
+    function _trBuild(host) {
+        var U = _hqUnits(), R = TR_ROOM;
+        var T = {
+            host: host, U: U, scene: new THREE.Scene(), camera: null, gate: null, revealed: false, t0: performance.now(),
+            props: {}, unitGroup: new THREE.Group(), members: [], tok: 0, key: '', w: 0, h: 0, lastNow: 0, lastDraw: 0,
+            cam: { dist: 0, y: 0, x: 0 }, nextPose: 0, blobTex: null
+        };
+        var sc = T.scene;
+        sc.background = new THREE.Color(0x0b0911);
+        /* light: a warm hemisphere, the ceiling lamp over the team, a key from the camera's right, a fill from the camera, a cool rim from behind */
+        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x3a2f2a, 0.85));
+        var ceil = new THREE.PointLight(0xfff1d6, 0.55, 9 * U, 1);
+        ceil.position.set(0, (R.h - 0.25) * U, 0.6 * U); sc.add(ceil);
+        var key = new THREE.DirectionalLight(0xfff0dc, 0.75);
+        key.position.set(3 * U, 4 * U, 7 * U); sc.add(key);
+        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28);
+        rim.position.set(-3 * U, 3 * U, -4 * U); sc.add(rim);
+        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45);   // from the camera: the team's faces
+        fill.position.set(-1 * U, 1.6 * U, 8 * U); sc.add(fill);
+        /* the room: floor, ceiling, back + side walls (the open side is the camera's) */
+        /* the floor, the ceiling and the side walls run on past the camera (a tall team pulls it back) */
+        var L = R.d + R.front, cz = R.back + L / 2;
+        var floor = new THREE.Mesh(new THREE.PlaneGeometry(R.w * U, L * U), _hqMat('carpet', R.w / R.tile, L / R.tile, { shininess: 2, specular: 0x0a0a0a }));
+        floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, cz * U); sc.add(floor);
+        var ceilM = new THREE.Mesh(new THREE.PlaneGeometry(R.w * U, L * U), _hqMat('ceiling', R.w / 1.2, L / 1.2, { shininess: 2 }));
+        ceilM.rotation.x = Math.PI / 2; ceilM.position.set(0, R.h * U, cz * U); sc.add(ceilM);
+        _trWall(T, R.w, 0, R.back, 0);
+        _trWall(T, L, -R.w / 2, cz, Math.PI / 2);
+        _trWall(T, L, R.w / 2, cz, -Math.PI / 2);
+        /* the props, through the building's own loader + material pick (each one shows when its file lands) */
+        var D = _hqData(), cat = D && D.catalogue;
+        TR_PROPS.forEach(function (p) {
+            var row = cat && cat[p.key];
+            if (!row || !row.file) return;
+            var place = new THREE.Group();
+            place.rotation.y = p.yaw || 0;
+            if (p.on) { var host2 = T.props[p.on]; if (!host2) return; host2.slot.add(place); place.position.set((p.dx || 0) * U, 0, (p.dz || 0) * U); }
+            else { place.position.set(p.x * U, (p.y || 0) * U, p.z * U); sc.add(place); }
+            var slot = new THREE.Group();   // what stands ON this prop (lifted to its top once it lands)
+            place.add(slot);
+            var fit = row.span ? 'span' : 'height', size = row.span || row.h || 1;
+            var inst = _miscModelInstance(_hqModelUrl(row), true, size * U, {
+                fit: fit, matPick: _hqPropMatPick,
+                onDone: function (grp) {
+                    try { if (row.front) grp.rotation.y = _hqAutoFrontYaw(grp, row.front); } catch (e) {}
+                    try { var bb = _hqLocalBox(grp); slot.position.y = bb.max.y; } catch (e) {}
+                    if (p.light) {
+                        var pl = new THREE.PointLight(p.light.color, p.light.i, p.light.dist * U, 1);
+                        pl.position.set(0, p.light.y * U, 0.05 * U); place.add(pl);
+                    }
+                }
+            });
+            if (!inst) return;
+            place.add(inst);
+            T.props[p.id] = { place: place, slot: slot };
+        });
+        sc.add(T.unitGroup);
+        var w = host.clientWidth || 960, h = host.clientHeight || 540;
+        T.camera = new THREE.PerspectiveCamera(34, w / h, 0.1 * U, 60 * U);
+        T.blobTex = _trBlobTex();
+        return T;
+    }
+
+    /* ── the team: one wrap per member, shown when its rig + idle are in ── */
+    function _trClearTeam(T) {
+        T.tok++;
+        for (var i = 0; i < T.members.length; i++) {
+            var m = T.members[i];
+            try { if (m.mixer) m.mixer.stopAllAction(); } catch (e) {}
+            try { if (m.rig) m.rig.dispose(); } catch (e) {}
+            if (m.wrap.parent) m.wrap.parent.remove(m.wrap);
+            for (var k = 0; k < m.mats.length; k++) { try { m.mats[k].dispose(); } catch (e) {} }
+            if (m.blob) { m.blob.geometry.dispose(); m.blob.material.dispose(); }
+        }
+        T.members = [];
+    }
+    function _trAddMember(T, slot, spot, tok) {
+        var res = _cvResolveDef(slot.race || 'homosapien', slot.gender || 'male', slot.appearance);
+        if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
+        var def = res.def, U = T.U;
+        var mem = { def: def, wrap: new THREE.Group(), mixer: null, idle: null, clips: null, pose: null, rig: null, mats: [], blob: null,
+                    h: Math.max(0.2, Math.min(5, (def.heightRatio || 1) * TR_HUMAN_M)), shown: false };
+        mem.wrap.position.set(spot[0] * U, 0, spot[1] * U);
+        mem.wrap.rotation.y = spot[2] || 0;
+        mem.wrap.visible = false;
+        T.unitGroup.add(mem.wrap);
+        _loadUnitGLB(def.model, function (entry) {
+            if (_tr !== T || T.tok !== tok || !entry || !entry.root) return;
+            var m = _cloneUnitModel(entry.root);
+            var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1, s = mem.h * U / rawH;
+            m.scale.setScalar(s);
+            m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+            if (def.creatorBase) { try { mem.rig = _createAppearanceRig(m, slot.appearance, true); } catch (e) { mem.rig = null; } }
+            /* the board's look: the bake on a Lambert with its own self-glow (the game's linear pipeline) */
+            var diff = _modelDiffuseScale(), hasSkin = false;
+            m.traverse(function (n) {
+                if (!n.isMesh) return;
+                if (n.isSkinnedMesh) hasSkin = true;
+                n.frustumCulled = false;
+                var src = Array.isArray(n.material) ? n.material : [n.material];
+                var out = src.map(function (sm) {
+                    var tex = (sm && sm.map) ? sm.map : null;
+                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                    var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
+                    if (n.isSkinnedMesh) lm.skinning = true;
+                    lm.color.setRGB(diff, diff, diff);
+                    if (sm) {
+                        if (sm.side != null) lm.side = sm.side;
+                        if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
+                        if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
+                        if (sm.depthWrite === false) lm.depthWrite = false;
+                    }
+                    if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
+                    if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                    mem.mats.push(lm);
+                    return lm;
+                });
+                n.material = Array.isArray(n.material) ? out : out[0];
+            });
+            var inner = new THREE.Group();
+            inner.rotation.y = def.yawOffset || 0;
+            inner.add(m);
+            mem.wrap.add(inner);
+            var gr = Math.max(0.5, Math.min(2.2, mem.h * 0.45));
+            mem.blob = new THREE.Mesh(new THREE.PlaneGeometry(gr * U, gr * U), new THREE.MeshBasicMaterial({ map: T.blobTex, transparent: true, depthWrite: false }));
+            mem.blob.rotation.x = -Math.PI / 2; mem.blob.position.y = 0.006 * U;
+            mem.wrap.add(mem.blob);
+            mem.model = m;
+            function show() { if (_tr === T && T.tok === tok) { mem.shown = true; mem.wrap.visible = true; } }
+            if (!hasSkin) { show(); return; }
+            var mixer = mem.mixer = new THREE.AnimationMixer(m);
+            mixer.addEventListener('finished', function (ev) {
+                if (!mem.pose || ev.action !== mem.pose) return;
+                mem.pose.fadeOut(0.35);
+                if (mem.idle) mem.idle.reset().fadeIn(0.35).play();
+                mem.pose = null;
+            });
+            function playIdle(clip, ts) {
+                if (_tr !== T || T.tok !== tok || !clip) { show(); return; }
+                var act = mixer.clipAction(clip);
+                act.setLoop(THREE.LoopRepeat, Infinity);
+                act.timeScale = (ts || 1) * (0.92 + Math.random() * 0.16);   // no two of them breathe in step
+                act.play();
+                act.time = Math.random() * (clip.duration || 1);
+                mixer.update(0);
+                mem.idle = act;
+                show();
+            }
+            if (_animLibActive(def)) {
+                _animLibBakeForModel(def, entry, function (baked) {
+                    if (_tr !== T || T.tok !== tok) return;
+                    if (baked) mem.clips = baked;
+                    if (baked && baked.idle) playIdle(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
+                    else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce && ce.clips && ce.clips[0], def.idleTimeScale || 1); });
+                    else show();
+                });
+            } else if (def.clips && def.clips.idle) {
+                _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce && ce.clips && ce.clips[0], def.idleTimeScale || 1); });
+            } else show();
+        });
+        return mem;
+    }
+    function _trSetTeam(slots) {
+        var T = _tr; if (!T) return;
+        slots = Array.isArray(slots) ? slots.slice(0, 4) : [];
+        var key = JSON.stringify(slots.map(function (s) { return [s.race, s.gender, s.appearance || null]; }));
+        if (key === T.key && T.members.length) return;
+        T.key = key;
+        _trClearTeam(T);
+        var spots = TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4], tok = T.tok;
+        /* big vessels stand further apart */
+        var hMax = 0;
+        slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'homosapien', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });
+        var spread = Math.max(1, hMax / 1.9);
+        slots.forEach(function (s, i) {
+            var sp = spots[i]; if (!sp) return;
+            var mem = _trAddMember(T, s, [sp[0] * spread, sp[1], sp[2]], tok);
+            if (mem) T.members.push(mem);
+        });
+        T.nextPose = performance.now() + 3500 + Math.random() * 2500;
+    }
+
+    /* the camera: level at chest height, pulled back until the tallest member fits the band between the page's title and
+       its team bar (feet at 33 % of the height from the bottom, heads under 74 %) and every spot fits the width */
+    function _trCameraTarget(T) {
+        var hMax = 1.6, xMax = 0.8;
+        for (var i = 0; i < T.members.length; i++) {
+            var m = T.members[i]; if (!m.shown) continue;
+            hMax = Math.max(hMax, m.h); xMax = Math.max(xMax, Math.abs(m.wrap.position.x / T.U) + m.h * 0.3);
+        }
+        var t = Math.tan((T.camera.fov * Math.PI / 180) / 2), tH = t * (T.camera.aspect || 1.6);
+        var dist = Math.max((hMax * 1.06) / (0.82 * t), (xMax + 0.6) / Math.max(0.2, tH));
+        dist = Math.min(14, Math.max(4, dist));
+        return { dist: dist, y: 0.34 * dist * t };
+    }
+    function _trTickPoses(T, now) {
+        if (now < T.nextPose) return;
+        T.nextPose = now + 5000 + Math.random() * 4000;
+        if (T.members.some(function (m) { return m.pose; })) return;   // one pose at a time
+        var pool = T.members.filter(function (m) { return m.shown && m.mixer && m.idle && !m.pose && m.clips; });
+        if (!pool.length) return;
+        var m = pool[Math.floor(Math.random() * pool.length)];
+        var slots = TR_POSES.filter(function (k) { return m.clips[k]; });
+        if (!slots.length) return;
+        var k = slots[Math.floor(Math.random() * slots.length)];
+        var act = m.mixer.clipAction(m.clips[k]);
+        act.reset(); act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = false;
+        act.timeScale = (m.def.libTimeScales && m.def.libTimeScales[k]) || 1;
+        act.fadeIn(0.3).play();
+        m.idle.fadeOut(0.3);
+        m.pose = act;
+    }
+    function _trGateTick(T, now) {
+        var G = T.gate, capped = now - T.t0 > TR_GATE_CAP_MS;
+        if (!((G && G.idle()) || !G || capped)) return;
+        if (G) G.close();
+        T.revealed = true;
+        _trShowCanvas(T, true);
+    }
+    function _trShowCanvas(T, fade) {
+        if (!canvas) return;
+        try {
+            if (!T.revealed) { canvas.style.transition = ''; canvas.style.opacity = '0'; return; }
+            if (fade) { canvas.style.transition = 'opacity 0.8s ease'; void canvas.offsetWidth; } else canvas.style.transition = '';
+            canvas.style.opacity = '1';
+        } catch (e) {}
+    }
+    function _trFrame() {
+        if (_lens) return _lensRun(_trFrameBody);
+        return _trFrameBody();
+    }
+    function _trFrameBody() {
+        var T = _tr; if (!T || !_trLive || !renderer) return;
+        var host = T.host, w = host.clientWidth, h = host.clientHeight;
+        if (!(w > 0 && h > 0)) return;
+        var now = performance.now();
+        if (_trLowPerf() && T.lastDraw && now - T.lastDraw < 31) return;   // 30 fps on a weak machine
+        var dt = T.lastNow ? Math.min(0.1, (now - T.lastNow) / 1000) : 0;
+        T.lastNow = now; T.lastDraw = now;
+        if (T.w !== w || T.h !== h) {
+            T.w = w; T.h = h;
+            renderer.setSize(w, h);
+            T.camera.aspect = w / h; T.camera.updateProjectionMatrix();
+            if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
+        }
+        if (!T.revealed) _trGateTick(T, now);
+        for (var i = 0; i < T.members.length; i++) {
+            var m = T.members[i];
+            if (m.mixer) m.mixer.update(dt);
+            if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
+        }
+        _trTickPoses(T, now);
+        /* the camera eases to its framing and drifts a hand's width side to side */
+        var want = _trCameraTarget(T), C = T.cam, U = T.U, e = C.dist ? Math.min(1, dt * 2.5) : 1;
+        C.dist += (want.dist - C.dist) * e; C.y += (want.y - C.y) * e;
+        var sway = Math.sin(now * 0.00017) * 0.22;
+        var lookZ = 0.8;
+        T.camera.position.set((0.25 + sway) * U, C.y * U, (lookZ + C.dist) * U);
+        T.camera.lookAt(sway * 0.4 * U, C.y * U, lookZ * U);
+        var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST) || (_lens && !_lens.post);
+        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(T.scene, T.camera);
+        else renderer.render(T.scene, T.camera);
+    }
+    function _trEnter(opts) {
+        opts = opts || {};
+        var host = opts.host;
+        if (!host || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return false;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return false;
+        if (!initialized) init();
+        if (!renderer || !canvas) return false;
+        if (active) return false;     // a live battle owns the canvas
+        if (_hq) return false;        // so does the building
+        if (_menuLive) _menuLeave();
+        _ewHeightFogSet(0, 1, 0, 0);
+        /* the box room's AO (THE LIGHT PASS 2.3): corners and the floor's edge darken like a room of the building */
+        var U = _hqUnits(), R = TR_ROOM;
+        _HQ_AO.x = (R.w / 2) * U; _HQ_AO.y = (R.d / 2) * U; _HQ_AO.z = R.h * U; _HQ_AO.w = 0.35;
+        _HQ_AO2.x = 0.9 * U; _HQ_AO2.y = 0; _HQ_AO2.z = 0; _HQ_AO2.w = (R.back + R.d / 2) * U;
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(null); } catch (e) {}
+        if (!_tr) {
+            var G = _alGateOpen('teamroom', { own: true }), prev = _alOwner;
+            _alOwner = G;
+            try { _tr = _trBuild(host); _tr.gate = G; }
+            catch (e) { console.error('[TEAM ROOM] build failed', e); _tr = null; _alOwner = prev; G.close(); return false; }
+            _alOwner = prev;
+        }
+        _tr.host = host;
+        host.appendChild(canvas);
+        canvas.style.display = 'block';
+        canvas.style.pointerEvents = 'none';
+        _trShowCanvas(_tr, false);
+        _tr.w = 0; _tr.h = 0; _tr.lastNow = 0; _tr.lastDraw = 0;
+        _trLive = true;
+        renderer.setAnimationLoop(_trFrame);
+        return true;
+    }
+    function _trLeave() {
+        if (!_trLive) return;
+        _trLive = false;
+        _HQ_AO.w = 0;
+        try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
+        try {
+            canvas.style.pointerEvents = 'auto';
+            canvas.style.opacity = ''; canvas.style.transition = '';
+            if (_parentEl) _parentEl.appendChild(canvas);
+            if (!active) canvas.style.display = 'none';
+        } catch (e) {}
+    }
+    var _teamRoomApi = {
+        enter: _trEnter,
+        leave: _trLeave,
+        /* the members to stand in the room: [{ race, gender, appearance }] (the first four) */
+        setTeam: function (slots) { if (_tr) _trSetTeam(slots); },
+        active: function () { return _trLive; },
+        revealed: function () { return !!(_tr && _tr.revealed); },
+        dev: { rec: function () { return _tr; } }
+    };
+
 
     return {
         init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
@@ -66786,6 +67166,9 @@ const ThreeRenderer = (function () {
 
         /* The main menu's lone door in the open (own scene + loop; map.js _menuSceneEnter) */
         menu: _menuApi,
+
+        /* THE TEAM ROOM (2026-10-07): the Squad Desk's office with the picked team in it (map.js _sqRoomEnter) */
+        teamRoom: _teamRoomApi,
 
         /* Mystery Dungeon Guild Hub: real-time free-roam movement controller */
         hubFreeRoam: {
