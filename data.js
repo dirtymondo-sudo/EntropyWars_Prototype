@@ -11407,6 +11407,9 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'max',
         invulnerable: true,
+        // the user 2026-10-07: Protect turns away this many ATTACKS, then drops (its rounds are only the outer limit).
+        // The Bulwark upgrades raise it per spell (payload `blocks`). battle.js applyDamageToUnit spends the charges.
+        blocks: 1,
         spriteName: 'protect',
         spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/protect.png',
         iconSrc: createStatusIconDataUri('🛡', '#1b344d', '#ddf2ff', '#5fc7ff')
@@ -11856,7 +11859,7 @@ const STATUS_LIBRARY_DESCS = {
     jammed:    'Tech systems scrambled — abilities and targeting are disrupted.',
     drowning:  'Struggling in deep water: takes damage each round and can barely act.',
     wet:       'Soaked through. Immune to burn, but vulnerable to lightning and cold.',
-    protect:   'Shielded — incoming damage is greatly reduced.',
+    protect:   'Blocks the next attack completely, then wears off (Bulwark upgrades block more).',
     spawnGuard:'Fresh off a respawn: briefly protected from damage.',
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
@@ -20646,6 +20649,7 @@ const SPELL_UPGRADE_FITS = {
     tether:     { label: 'ropes (Tethered)',           test: d => Array.isArray(d.statusEffects) && d.statusEffects.some(e => e && e.id === 'tethered') },
     stepTrap:   { label: 'a trap that springs underfoot', test: d => d.kind === 'deployObject' && !!d.detonateOnStep },
     dashHit:    { label: 'a dash that hits',           test: d => (d.kind === 'dash' || d.kind === 'tackle') && spellHasDamage(d) },
+    protect:    { label: 'grants Protect',             test: d => [d.statusEffects, d.teamStatusEffects].some(l => Array.isArray(l) && l.some(e => e && e.id === 'protect')) },
     detonable:  { label: 'deploys something that can blow', test: d => (d.kind === 'deployTurret' && !d.auraDebuff && !d.hitsToKill) || d.kind === 'deployObject' },
 };
 /* The kinds whose cast path lands the row's statusEffects on the units it hits (the addStatus upgrades need one). */
@@ -20803,6 +20807,11 @@ const SPELL_UPGRADES = {
     upOverdrive:  { id: 'upOverdrive',  name: 'Overdrive',    glyph: '🏁', sp: 1, roles: [], families: ['athleticism', 'drivingskills', 'football', 'apexpredator'],
                     requires: 'dashHit', excl: null, auto: true,
                     desc: 'A kill on the dash refunds 1 AP.', patch: { onKillRefundAp: 1 } },
+    /* the user 2026-10-07: Protect blocks ONE attack; these make it block more (+1 each; Bulwark +2 needs Bulwark). */
+    upBulwark:    { id: 'upBulwark',    name: 'Bulwark',      glyph: '🛡', sp: 1, roles: [], families: [], requires: 'protect', excl: null, auto: true,
+                    desc: 'Protect blocks 1 more attack.', patch: { protectBlocks: 1 } },
+    upBulwark2:   { id: 'upBulwark2',   name: 'Bulwark +2',   glyph: '🛡🛡', sp: 1, roles: [], families: [], requires: 'protect', excl: null, auto: true, after: 'upBulwark',
+                    desc: 'Protect blocks 1 more attack again (needs Bulwark).', patch: { protectBlocks: 1 } },
     /* THE PASSIVE LEVELS (the user 2026-10-06): every passive / gear / training row takes +1 then +2 (passiveHooksAtLevel
        raises its numbers; the ⚙ toggle prints the row's own before → after via passiveLevelDiff). `after` = the upgrade
        that must already be on. No patch: createUnit reads the level into unit.passiveLevels. */
@@ -21032,6 +21041,14 @@ function _upgApplyPatch(d, patch) {
                 // { id, set: {…} } — merge payload keys into the row's entries of that status (Restless: { restless: true })
                 if (v && v.id && v.set && typeof v.set === 'object' && Array.isArray(d.statusEffects)) d.statusEffects = d.statusEffects.map(e => (e && e.id === v.id) ? Object.assign({}, e, v.set) : e);
                 break;
+            case 'protectBlocks': {
+                // Bulwark: the row's Protect turns away N more attacks (STATUS_DEFS.protect.blocks is the base)
+                const base = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS.protect && STATUS_DEFS.protect.blocks) || 1;
+                const bump = (l) => l.map(e => (e && e.id === 'protect') ? Object.assign({}, e, { blocks: Math.max(1, (e.blocks | 0) || base) + Math.round(num(v)) }) : e);
+                if (Array.isArray(d.statusEffects)) d.statusEffects = bump(d.statusEffects);
+                if (Array.isArray(d.teamStatusEffects)) d.teamStatusEffects = bump(d.teamStatusEffects);
+                break;
+            }
             case 'tetherDragDmg':
                 // Barbed Rope: the row's Tethered carries its own drag damage a tile (STATUS_DEFS.tethered.dragDamagePerTile is 20)
                 if (num(v) > 0) {

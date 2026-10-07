@@ -8379,6 +8379,13 @@
             } else {
                 status[payload.id] = Math.max(Number(status[payload.id] || 0), nextValue);
             }
+            /* 🛡 Protect's charges (STATUS_DEFS `blocks`: attacks it turns away; the payload's `blocks` — the Bulwark
+               upgrades — overrides). A refresh keeps whichever is more. */
+            if (meta.blocks) {
+                const _blk = Math.max(1, Math.round(Number(payload.blocks || meta.blocks) || 1));
+                target._protectBlocks = _hadBefore ? Math.max(target._protectBlocks | 0, _blk) : _blk;
+                target._protectSpentKey = null;
+            }
             if (payload.bonusDamage && payload.id === 'marked') {
                 target.markBonus = Math.max(Number(target.markBonus || 0), Number(payload.bonusDamage || 0));
             }
@@ -10275,6 +10282,8 @@
                 const tick = calcStatusDurationTick(
                     [...getActiveStatusKeys(u)]
                         .filter(key => STATUS_DEFS[key])
+                        // 💫 a stagger still owed (landed after the unit acted) stays up until its short turn
+                        .filter(key => !(key === 'stagger' && (u._staggerApDebt || 0) > 0))
                         .map(key => ({ key, value: getStatusValue(u, key) })));
                 for (const e of tick.next) u.status[e.key] = e.value;
                 for (const key of tick.expired) {
@@ -10515,6 +10524,33 @@
             if (!unitIsControlled(unit)) return;
             unit._possessLeft = Math.max(0, (unit._possessLeft | 0) - 1);
             if (unit._possessLeft <= 0) releasePossession(unit);
+        }
+        /* 💫 STAGGER LASTS ONE TURN (the user 2026-10-07): Stagger is the -1 AP
+           it took. Once the staggered unit has played the turn it was short on,
+           the badge goes — maybeAdvanceTurn calls this when that unit's turn is
+           over. A stagger that landed after the unit had already acted is still
+           owed (_staggerApDebt): it stays up through the round end and comes off
+           after the short turn next round. A longer stagger (Aftershock's +1)
+           spends one turn here and owes the next one's AP. */
+        function _staggerSpendActivation(unit) {
+            if (!unit || unit.dead || !unitHasStatus(unit, 'stagger')) return;
+            if ((unit._staggerApDebt || 0) > 0) return;   // the short turn is still to come
+            const left = getStatusValue(unit, 'stagger') - 1;
+            if (left > 0) {
+                unit.status.stagger = left;
+                unit._staggerApDebt = (unit._staggerApDebt || 0) + 1;
+            } else {
+                clearStatus(unit, 'stagger');
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
+        /* A press refund hands the AP back — the unit is no longer staggered. */
+        function _staggerLiftByRefund(unit) {
+            if (!unit || !unitHasStatus(unit, 'stagger')) return;
+            clearStatus(unit, 'stagger');
+            unit._staggerApDebt = 0;
+            addLog(`💫 ${unitDisplayName(unit)} shakes off the stagger.`);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
         }
         /* The stolen activation's beat (engine-side; online.js relays it so
            the guest sees it too): the victim's face under the `dream` void,
@@ -12601,6 +12637,7 @@
            player picked in the HUD). Omitted / unknown → the best matchup
            for the current targets (legacy callers, the CPU's default). */
         function doEntropyStrike(unit, strikeType) {
+            _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             const def = getEntropyStrikeType(isEntropyStrikeType(strikeType)
                 ? strikeType
                 : ((unit && getEntropyStrikeBestType(unit)) || {}).type);
@@ -13518,6 +13555,7 @@
         /* targetId: the victim (a visible enemy). Host-authoritative; the
            online.js wrapper ships it as the 'doFinisher' engine action. */
         function doFinisher(unit, targetId) {
+            _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             /* SIMUL plan phase: queue the execution instead of running it. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving
@@ -32035,6 +32073,15 @@
             };
         }
 
+        /* One attack's identity for Protect's charges: the attacker and the action it belongs to. Every action entry
+           (doAttack, doSpell, doComboAttack, doEntropyStrike, doFinisher) bumps the count, so every hit of one swing /
+           cast — the delayed ones included — shares the charge its first hit spent, and the next action does not.
+           Host-side only (the guest never resolves damage). */
+        let _protectActionSeq = 0;
+        function _protectAttackKey(src) {
+            return src.id + '|' + _protectActionSeq;
+        }
+
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
 
@@ -32088,7 +32135,31 @@
                 }
             }
 
-            const invulnStatus = getActiveStatusKeys(target).find(key => STATUS_DEFS[key]?.invulnerable);
+            let invulnStatus = getActiveStatusKeys(target).find(key => STATUS_DEFS[key]?.invulnerable);
+            /* 🛡 PROTECT BLOCKS ATTACKS, NOT ROUNDS (the user 2026-10-07): a status with `blocks` (Protect: 1, the
+               Bulwark upgrades +1 each) turns away that many attacks, then drops. One attack = one action of one
+               unit: every hit of a multi-hit swing or cast rides the charge its first hit spent (_protectAttackKey).
+               Hits with no unit behind them (burn/poison ticks, hazards, weather) are blocked without spending one. */
+            if (!invulnStatus && sourceUnit_pre && target._protectSpentKey && target._protectSpentKey === _protectAttackKey(sourceUnit_pre)) {
+                invulnStatus = 'protect';
+            } else if (invulnStatus && STATUS_DEFS[invulnStatus]?.blocks && sourceUnit_pre) {
+                const _pKey = _protectAttackKey(sourceUnit_pre);
+                if (target._protectSpentKey !== _pKey) {
+                    target._protectSpentKey = _pKey;
+                    const _pLeft = Math.max(1, target._protectBlocks | 0) - 1;
+                    target._protectBlocks = _pLeft;
+                    if (_pLeft <= 0) {
+                        const _pKeyHeld = invulnStatus;
+                        window.setTimeout(() => {
+                            if (target.dead || !unitHasStatus(target, _pKeyHeld) || (target._protectBlocks | 0) > 0) return;
+                            clearStatus(target, _pKeyHeld);
+                            addLog(`${STATUS_DEFS[_pKeyHeld]?.icon || '🛡️'} ${unitDisplayName(target)}'s ${STATUS_DEFS[_pKeyHeld]?.label || _pKeyHeld} is spent.`);
+                            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+                            scheduleBoardRender();
+                        }, 0);
+                    }
+                }
+            }
             if (invulnStatus) {
                 // Press Turn: a spell wasted on a Protected enemy cuts the turn
                 // short exactly like a whiff — record a MISS in the collector
@@ -32102,7 +32173,10 @@
                 flashUnit(target.id, 'heal');
                 showFloatingTextForUnit(target, '🛡 PROTECTED!', 'protect-block', { durationMs: 1400 });
 
-                showCombatBanner(`🛡️ ${unitDisplayName(target)} is Protected!`, 'Immune to all damage this turn', 'protect');
+                const _pLeftNow = unitHasStatus(target, invulnStatus) && STATUS_DEFS[invulnStatus]?.blocks ? (target._protectBlocks | 0) : null;
+                showCombatBanner(`🛡️ ${unitDisplayName(target)} is Protected!`,
+                    _pLeftNow == null ? 'Immune to all damage this turn'
+                        : _pLeftNow > 0 ? `Attack blocked · ${_pLeftNow} more` : 'Attack blocked', 'protect');
                 return false;
             }
             /* 🌑 Shadow Realm (plan §5.5): inside the realm only the partner
@@ -37422,6 +37496,7 @@
                 unit._pressGainedThisTurn = gained + refund;
                 unit._pressFlashAt = Date.now();
                 result.apDelta = refund;
+                _staggerLiftByRefund(unit);
                 result.pressed = true;
                 // A press refund hands back a fresh action, so it hands back a
                 // full shot clock too. The host runs this for both players; the
@@ -49128,6 +49203,7 @@
                 if (state._blitzActiveUnitId) {
                     const _ctlUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
                     if (_ctlUnit && !_ctlUnit.dead) _possessSpendActivation(_ctlUnit);
+                    if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                 }
                 clearSpellPick();
 
@@ -59344,6 +59420,7 @@
         }
 
         function doAttack(unit, x, y, z) {
+            _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             /* SIMUL plan phase: queue the order instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -62263,6 +62340,7 @@
         window._comboPlayPresentation = _comboPlayPresentation;
 
         function doComboAttack(initiator, partner, targetX, targetY, targetZ) {
+            _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             // Combo hits pass spellType but never run doSpell — drop any
             // elemental theme recorded from the initiator's LAST cast so the
             // combo impact doesn't inherit a stale ice/water/etc. clip.
@@ -63725,6 +63803,7 @@
         }
 
         function doSpell(unit, x, y, z) {
+            _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
             /* SIMUL plan phase: queue the cast instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
