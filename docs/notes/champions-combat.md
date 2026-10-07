@@ -1275,3 +1275,13 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
   three-renderer `_updateHlFocusDim`); an illegal blink tile shows a grey plate.
 - Status badge colours: hud.js `_HRLG_SB_COLORS` is the one palette for nameplates, Horologe chips, unit panel and the
   glossary. Bleed is dark red; no status falls back to grey.
+
+## BALANCE PASS 2026-10-07 (mondo's lab export, 5,356 arena matches; spells only, no race stats)
+- Full analysis: /mnt/project-files/balance/BALANCE_ANALYSIS_lab_20261007.md. 19 spell nerfs + 24 buffs in data.js
+  (dmg / dmgPerLevel / dashDamage / hitDamages / selfHealPct / collisionBonus on the rows themselves).
+- Cube damage a game correlates 0.85 with race win rate; only basic attacks hit the Cube (getCubeAttackDamage), so
+  ranged basic attackers top the table and casters sit at the bottom. Not changed here.
+- Gotcha: `_applyManaCostFormula` derives a provisional MP cost from dmg BEFORE tier costs overwrite it, and
+  `_applyBaselineCooldowns` stamps a 2-round cooldown on that provisional cost >= 80. A dmg change can silently add or
+  drop a cooldown. Railgun (cooldownRounds: 0) and EMP Burst (cooldownRounds: 2) are pinned for that reason. Diff
+  SPELL_BY_ID through load-data.js before/after any dmg pass.
