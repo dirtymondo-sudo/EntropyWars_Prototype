@@ -8743,7 +8743,7 @@
                         <div class="pm-set-row" style="margin-bottom:8px;align-items:center;gap:8px">
                             <span class="pm-vol-label">Map</span>
                             <select class="pm-nametag-select" id="mmTrainMap" style="flex:1">
-                                <option value="rotate" selected>Rotate (all sizes)</option>
+                                <option value="rotate" selected>Rotate (the PvP arenas, 12×12)</option>
                                 <option value="medium">Medium (8×8)</option>
                                 <option value="large">Siege (12×12)</option>
                                 <option value="xlarge">Conquest (18×20)</option>
@@ -8779,6 +8779,19 @@
         /* Gauntlet fields 8-unit rosters — official compatibleMaps exclude
            the cramped Δ boards, so its rotation only draws the full maps. */
         const _TRAIN_MAP_POOL_FULL = _TRAIN_MAP_POOL.filter(id => !/_delta$/.test(id));
+        /* The labs' map rotation (2026-10-07): train on the boards PvP actually
+           deals — the 12×12 arenas of data.js hqArenaPvpPool (the online pool) —
+           instead of the old 8×8 Δ list above (Hell's Δ isn't even an arena any
+           more). Gauntlet keeps its full maps; the old list is the fallback. */
+        function _trainMapPoolFor(modeId) {
+            if (modeId === 'gauntlet') return _TRAIN_MAP_POOL_FULL;
+            try {
+                const p = (typeof window.hqArenaPvpPool === 'function') ? window.hqArenaPvpPool() : null;
+                if (p && p.length) return p;
+            } catch (e) {}
+            return _TRAIN_MAP_POOL;
+        }
+        window._ewTrainMapPool = _trainMapPoolFor;
         /* Balance Lab "Rotate modes": cycles the AI-playable PvP modes so one
            export covers the whole game (Simul stays opt-in — experimental). */
         const _TRAIN_MODE_POOL = ['arena', 'tdm', 'clash', 'gauntlet'];
@@ -8800,7 +8813,7 @@
             if (modeId === 'clash') {
                 mapId = 'clash_stage';   // Clash always plays its fixed stage
             } else if (_trainMapSetting === 'rotate') {
-                const pool = modeId === 'gauntlet' ? _TRAIN_MAP_POOL_FULL : _TRAIN_MAP_POOL;
+                const pool = _trainMapPoolFor(modeId);
                 mapId = pool[_trainMapIndex++ % pool.length];
             } else {
                 mapId = _trainMapSetting;
