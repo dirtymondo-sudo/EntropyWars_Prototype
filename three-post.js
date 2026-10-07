@@ -490,6 +490,95 @@ const ThreePost = (function () {
         _grade.focus.length = 0;
         _gradeKick.amt = 0;
     }
+    /* ── THE SCREEN GRADE (2026-10-07, mondo: "frame rate and frozen screen issues for spells that change the whole screen") ──
+       The spell cinematics' full-screen grades were CSS: a `backdrop-filter` element over the canvas (battle.js cineGrade:
+       sepia / desat / invert / hue / terminal), tinted layers with `mix-blend-mode` (multiply / screen / overlay / the trip's
+       colour-dodge wash) and `filter` written onto the canvas itself every frame (the flashback, the trip, the freeze-frame
+       tell). Over a WebGL / WebGPU canvas Firefox cannot hand the canvas to the compositor as it is: every frame it reads the
+       whole canvas back into an offscreen surface, filters or blends it there and composites again, at DPR 2 a full 5 MP
+       round trip a frame, and a canvas filter that changes every frame re-builds the layer each time. Here the same maths
+       runs inside the cinematic pass (uCssA / uCssB / uCssT1 / uCssT2 / uCssM), which already draws the frame: no extra pass.
+         ThreePost.screenGrade({ gray, sepia, invert, hue (deg), sat, con, bri, t1: [r, g, b, a, mode], t2 }, { instant })
+         ThreePost.screenGradeClear({ instant })     ThreePost.screenGradeFreeze(ms)    ThreePost.canScreenGrade()
+       mode: 'normal' | 'multiply' | 'screen' | 'overlay'. A grade fades in / out over 180 ms (the CSS one's opacity
+       transition); `instant` sets it outright (a caller that animates it every frame). */
+    var _SG_MODES = { normal: 0, multiply: 1, screen: 2, overlay: 3 };
+    var _sg = { want: 0, k: 0, lastT: 0, fadeMs: 180, p: null, frozeUntil: 0 };
+    function _sgNorm(p) {
+        p = p || {};
+        var t = function (v) {
+            if (!v || !(v[3] > 0)) return [0, 0, 0, 0, 0];
+            var m = typeof v[4] === 'number' ? v[4] : (_SG_MODES[v[4]] || 0);
+            return [+v[0] || 0, +v[1] || 0, +v[2] || 0, Math.max(0, Math.min(1, +v[3])), m];
+        };
+        var n = function (v, d) { v = parseFloat(v); return isNaN(v) ? d : v; };
+        return { gray: Math.max(0, Math.min(1, n(p.gray, 0))), sepia: Math.max(0, Math.min(1, n(p.sepia, 0))),
+                 invert: Math.max(0, Math.min(1, n(p.invert, 0))), hue: n(p.hue, 0) * Math.PI / 180,
+                 sat: Math.max(0, n(p.sat, 1)), con: Math.max(0, n(p.con, 1)), bri: Math.max(0, n(p.bri, 1)),
+                 t1: t(p.t1), t2: t(p.t2) };
+    }
+    function canScreenGrade() { return !!(_ready && _composer && _cinematicPass && _cinematicPass.material && _cinematicPass.material.uniforms.uCssB); }
+    function screenGrade(p, opts) {
+        if (!canScreenGrade()) return false;
+        _sg.p = _sgNorm(p);
+        _sg.want = 1;
+        if (opts && opts.instant) _sg.k = 1;
+        _sg.lastT = performance.now();
+        return true;
+    }
+    function screenGradeClear(opts) {
+        _sg.want = 0;
+        if (opts && opts.instant) _sg.k = 0;
+    }
+    function screenGradeFreeze(ms) {
+        if (!canScreenGrade()) return false;
+        _sg.frozeUntil = performance.now() + Math.max(0, +ms || 0);
+        return true;
+    }
+    /* the frame's screen-grade uniforms (k = the eased amount); true while it draws anything */
+    function _sgTick(u, now) {
+        var dt = Math.max(0, Math.min(100, now - (_sg.lastT || now)));
+        _sg.lastT = now;
+        var step = dt / _sg.fadeMs;
+        _sg.k = _sg.want ? Math.min(1, _sg.k + step) : Math.max(0, _sg.k - step);
+        var fz = now < _sg.frozeUntil;   // the freeze-frame tell: a hair of extra contrast while the clock is stopped
+        var p = _sg.p, k = p ? _sg.k : 0;
+        if (k <= 0.001 && !fz) {
+            if (u.uCssB.value.w !== 0) u.uCssB.value.w = 0;
+            if (!_sg.want) _sg.p = null;
+            return false;
+        }
+        if (k <= 0.001) { p = _sgNorm(null); k = 1; }   // only the freeze tell: the bare chain at full amount
+        u.uCssA.value.set(p.gray, p.sepia, p.invert, p.hue);
+        u.uCssB.value.set(p.sat * (fz ? 1.06 : 1), p.con * (fz ? 1.12 : 1), p.bri, k);
+        u.uCssT1.value.set(p.t1[0], p.t1[1], p.t1[2], p.t1[3]);
+        u.uCssT2.value.set(p.t2[0], p.t2[1], p.t2[2], p.t2[3]);
+        u.uCssM.value.set(p.t1[4], p.t2[4]);
+        return true;
+    }
+    /* ── THE BLOOM SWELL (2026-10-07) — the Entropy Strike's charge glow. It used to tween the PLAYER's bloom setting
+       (setBloomStrength, a localStorage write every frame) from its value up to the max and back: with bloom off (the
+       default since PR #51) that switched the bloom effect ON for the strike and OFF after it, and each switch rebuilds the
+       post chain (pmndrs: a new pass A, its shader compiled; the node chain: a new pipeline with its own BloomNode) in the
+       middle of the cast. A swell rides on top of the player's bloom like bloomPulse: it never turns the effect on, never
+       touches the saved setting. */
+    var _swell = { amt: 0, t0: 0, inMs: 0, holdMs: 0, outMs: 0 };
+    function bloomSwell(amount, inMs, holdMs, outMs) {
+        var a = parseFloat(amount);
+        if (isNaN(a) || a <= 0) return;
+        _swell.amt = Math.min(BLOOM_MAX_STRENGTH, a); _swell.t0 = performance.now();
+        _swell.inMs = Math.max(1, +inMs || 1); _swell.holdMs = Math.max(0, +holdMs || 0); _swell.outMs = Math.max(1, +outMs || 1);
+    }
+    function _swellCurrent(now) {
+        if (_swell.amt <= 0) return 0;
+        var t = now - _swell.t0, S = _swell;
+        if (t < S.inMs) return S.amt * (t / S.inMs);
+        t -= S.inMs;
+        if (t < S.holdMs) return S.amt;
+        t -= S.holdMs;
+        if (t < S.outMs) return S.amt * (1 - t / S.outMs);
+        S.amt = 0; return 0;
+    }
     function isSpellGradeActive() {
         return _gradeCurrent(performance.now()) > 0.001 || _gradeKickCurrent(performance.now()) > 0.01;
     }
@@ -676,7 +765,17 @@ const ThreePost = (function () {
             'uMotionCenter':  { value: new THREE.Vector2(0.5, 0.5) },
             // THE IMPACT RIPPLE (SPELL_DIRECTOR_PLAN "THE FEVER, cut down" #1, 2026-09-24): centre uv, radius (screen
             // heights), strength — a heat-shimmer ring racing out of an ultimate's hit
-            'uRipple':        { value: new THREE.Vector4(0.5, 0.5, 0.0, 0.0) }
+            'uRipple':        { value: new THREE.Vector4(0.5, 0.5, 0.0, 0.0) },
+            // THE SCREEN GRADE (2026-10-07): the spell cinematics' full-screen colour grades (sepia / desat / invert / hue /
+            // terminal / the tinted washes, the trip and the flashback) — they were CSS filters and blend modes over the canvas,
+            // which Firefox re-composites every frame. A: grayscale, sepia, invert, hue (rad); B: saturate, contrast,
+            // brightness, amount (0 = untouched); T1 / T2: a colour layer (rgb, opacity); M: their blend (0 normal,
+            // 1 multiply, 2 screen, 3 overlay)
+            'uCssA':          { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) },
+            'uCssB':          { value: new THREE.Vector4(1.0, 1.0, 1.0, 0.0) },
+            'uCssT1':         { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) },
+            'uCssT2':         { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) },
+            'uCssM':          { value: new THREE.Vector2(0.0, 0.0) }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -721,7 +820,23 @@ const ThreePost = (function () {
             '}',
             'uniform vec3 uGradeTint;',
             'uniform float uGradeTintAmt;',
+            'uniform vec4 uCssA;',
+            'uniform vec4 uCssB;',
+            'uniform vec4 uCssT1;',
+            'uniform vec4 uCssT2;',
+            'uniform vec2 uCssM;',
             'varying vec2 vUv;',
+            '',
+            '// THE SCREEN GRADE: a CSS-style colour layer (0 normal, 1 multiply, 2 screen, 3 overlay) over an sRGB-ish colour',
+            'vec3 cssLayer(vec3 b, vec4 t, float m) {',
+            '  if (t.a < 0.001) return b;',
+            '  vec3 s = t.rgb;',
+            '  vec3 o = s;',
+            '  if (m > 2.5) o = mix(2.0 * b * s, 1.0 - 2.0 * (1.0 - b) * (1.0 - s), step(0.5, b));',
+            '  else if (m > 1.5) o = 1.0 - (1.0 - b) * (1.0 - s);',
+            '  else if (m > 0.5) o = b * s;',
+            '  return mix(b, o, t.a);',
+            '}',
             '',
             '// pool of light: 1 at the focus point, 0 past the feathered rim.',
             '// Distances are aspect-corrected so the pool stays round.',
@@ -811,6 +926,24 @@ const ThreePost = (function () {
             '  // ── archetype colour push (fire hot, ice cold, unholy violet) ──',
             '  if (uGradeTintAmt > 0.001) {',
             '    col.rgb = mix(col.rgb, col.rgb * uGradeTint, uGradeTintAmt);',
+            '  }',
+            '',
+            '  // ── the screen grade: the CSS filter chain + up to two colour layers, worked in display (gamma) space as',
+            '  // the CSS ones were, and faded in by uCssB.w ──',
+            '  if (uCssB.w > 0.001) {',
+            '    vec3 sg = pow(clamp(col.rgb, 0.0, 1.0), vec3(1.0 / 2.2));',
+            '    vec3 o = sg;',
+            '    o = mix(o, vec3(dot(o, vec3(0.2126, 0.7152, 0.0722))), uCssA.x);',
+            '    vec3 sep = vec3(dot(o, vec3(0.393, 0.769, 0.189)), dot(o, vec3(0.349, 0.686, 0.168)), dot(o, vec3(0.272, 0.534, 0.131)));',
+            '    o = mix(o, sep, uCssA.y);',
+            '    o = mix(o, 1.0 - o, uCssA.z);',
+            '    if (abs(uCssA.w) > 0.001) o = hueRotate(o, uCssA.w);',
+            '    o = mix(vec3(dot(o, vec3(0.2126, 0.7152, 0.0722))), o, uCssB.x);',
+            '    o = (o - 0.5) * uCssB.y + 0.5;',
+            '    o = clamp(o * uCssB.z, 0.0, 1.0);',
+            '    o = cssLayer(o, uCssT1, uCssM.x);',
+            '    o = cssLayer(o, uCssT2, uCssM.y);',
+            '    col.rgb = pow(mix(sg, clamp(o, 0.0, 1.0), clamp(uCssB.w, 0.0, 1.0)), vec3(2.2));',
             '  }',
             '',
             '  // pools of light around the caster and the target — computed',
@@ -1540,31 +1673,59 @@ const ThreePost = (function () {
        scene drawn straight to the screen (the splitscreen panes) would come out raw — it draws into a canvas-sized
        half-float scratch target with the caller's viewport / scissor and is blitted through the tone map shader into
        the same rect. Without HDR it is a plain renderer.render. rect = { x, y, w, h } in CSS px, y from the BOTTOM. */
+    /* THE PANES (2026-10-07, the combo / Entropy Strike splitscreen): each pane draws into a target of ITS OWN size (one per
+       size, kept: two panes of a 1 px different width used to share one and reallocate it twice a frame), then is blitted into
+       the caller's viewport / scissor. On the classic renderer a pane used to draw straight to the canvas whenever the chain
+       has no HDR (always, since R1): three keys a program on the target it draws to (colour space, tone map), so the first
+       split screen of a board compiled a canvas twin of every material in view, the freeze at a combo's / a strike's start.
+       Drawn into a target like the frame is, the panes use the frame's programs; the blit encodes to the screen. */
+    var _paneRTs = {}, _paneN = 0, _paneBlit = null;
+    function _paneTarget(w, h, mk) {
+        var key = w + 'x' + h, e = _paneRTs[key];
+        if (!e) {
+            for (var k in _paneRTs) if (_paneN >= 6) { try { _paneRTs[k].rt.dispose(); if (_paneRTs[k].mat) _paneRTs[k].mat.dispose(); } catch (x) {} delete _paneRTs[k]; _paneN--; }
+            e = _paneRTs[key] = mk(w, h); _paneN++;
+        }
+        return e;
+    }
+    function _paneDrop() {
+        for (var k in _paneRTs) { try { _paneRTs[k].rt.dispose(); if (_paneRTs[k].mat) _paneRTs[k].mat.dispose(); } catch (x) {} }
+        _paneRTs = {}; _paneN = 0;
+    }
     function renderDirect(scene, cam, rect) {
         if (!_renderer || !scene || !cam) return;
         if (_ng) { _ngDirect(scene, cam, rect); return; }   // WEBGPU_PLAN W3
-        if (!_hdr || !_toneMapPass) { _renderer.render(scene, cam); return; }
-        var size = _renderer.getDrawingBufferSize(new THREE.Vector2()), pr = _renderer.getPixelRatio();
-        if (!_directRT || _directRT.width !== size.x || _directRT.height !== size.y) {
-            if (_directRT) _directRT.dispose();
-            _directRT = new THREE.WebGLRenderTarget(size.x, size.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.HalfFloatType, stencilBuffer: false });
-            _directRT.scissorTest = true;
-        }
-        var r = rect || { x: 0, y: 0, w: size.x / pr, h: size.y / pr };
-        _directRT.viewport.set(r.x * pr, r.y * pr, r.w * pr, r.h * pr);
-        _directRT.scissor.set(r.x * pr, r.y * pr, r.w * pr, r.h * pr);
-        var prevRT = _renderer.getRenderTarget();
+        if (!_ready || !_composer) { _renderer.render(scene, cam); return; }   // no chain: the frame itself draws to the canvas
+        var pr = _renderer.getPixelRatio(), size = _renderer.getDrawingBufferSize(new THREE.Vector2());
+        var R2 = rect || { x: 0, y: 0, w: size.x / pr, h: size.y / pr };
+        var w = Math.max(1, Math.round(R2.w * pr)), h = Math.max(1, Math.round(R2.h * pr));
+        var e = _paneTarget(w, h, function (W, H) {
+            return { rt: new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.HalfFloatType, stencilBuffer: false }) };
+        });
+        var prevRT = _renderer.getRenderTarget(), prevAuto = _renderer.autoClear;
         try {
-            _renderer.setRenderTarget(_directRT);
-            _renderer.clear();
+            _renderer.setRenderTarget(e.rt);
+            _renderer.autoClear = true;
             _renderer.render(scene, cam);
-        } finally { _renderer.setRenderTarget(prevRT); }
-        _tmSync();
-        var q = _toneMapPass.fsQuad || (_toneMapPass._fsq = _toneMapPass._fsq || new THREE.Pass.FullScreenQuad(_toneMapPass.material));
-        _toneMapPass.material.uniforms.tDiffuse.value = _directRT.texture;
-        q.render(_renderer);   // the caller's viewport / scissor stand: the blit lands in the same rect
-        _toneMapPass.material.uniforms.tDiffuse.value = null;
+        } finally { _renderer.setRenderTarget(prevRT); _renderer.autoClear = prevAuto; }
+        var mat;
+        if (_hdr && _toneMapPass) { _tmSync(); mat = _toneMapPass.material; }
+        else {
+            if (!_paneBlit) _paneBlit = new THREE.ShaderMaterial({
+                uniforms: { tDiffuse: { value: null } },
+                vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+                fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv);\n#include <colorspace_fragment>\n}',
+                depthTest: false, depthWrite: false, toneMapped: false });
+            mat = _paneBlit;
+        }
+        if (!_paneQuad) { _paneQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); _paneQuad.frustumCulled = false; _paneScene = new THREE.Scene(); _paneScene.add(_paneQuad); _paneCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1); }
+        _paneQuad.material = mat;
+        mat.uniforms.tDiffuse.value = e.rt.texture;
+        var ac = _renderer.autoClear; _renderer.autoClear = false;
+        try { _renderer.render(_paneScene, _paneCam); }   // the caller's viewport / scissor stand: the blit lands in the same rect
+        finally { _renderer.autoClear = ac; mat.uniforms.tDiffuse.value = null; }
     }
+    var _paneQuad = null, _paneScene = null, _paneCam = null;
 
     function _initLighting(scene) {
 
@@ -2529,8 +2690,11 @@ const ThreePost = (function () {
         var cineOn = !!(_cinematicPass && _cinematicPass.enabled), retroOn = !!(_retroPass && _retroPass.enabled);
         P.frameU.uCineOn.value = cineOn ? 1 : 0; P.frameU.uRetroOn.value = retroOn ? 1 : 0;
         P.passB.enabled = cineOn || retroOn || _aeEnabled();
-        // the last live pass draws to the screen
-        var ps = P.composer.passes, last = null;
+        _ppScreenPass();
+    }
+    /* the last live pass draws to the screen */
+    function _ppScreenPass() {
+        var ps = _pp.composer.passes, last = null;
         for (var i = ps.length - 1; i >= 0; i--) if (ps[i].enabled) { last = ps[i]; break; }
         for (var j = 0; j < ps.length; j++) { var want = (ps[j] === last); if (ps[j].renderToScreen !== want) ps[j].renderToScreen = want; }
     }
@@ -2542,6 +2706,19 @@ const ThreePost = (function () {
         _ppSync();
         var now = performance.now(), dt = P.at ? Math.min(0.1, Math.max(0, (now - P.at) / 1000)) : 0.016; P.at = now;
         var ac = r.autoClear; r.autoClear = false;
+        /* THE FRAME TWIN (2026-10-07): pass B (the cinematic + retro frame) compiles on its first draw, and switching it on
+           moves the screen write off pass A / the DoF onto it (their to-target variant compiles then too) — mid-cast, the
+           first time a spell grades the screen. The first frame each pass-A set draws without pass B, it is drawn once with
+           pass B on (both halves off: the picture untouched), then the real frame over it. */
+        if (!P.passB.enabled) {
+            var wk = P.sigA + (P.dofH.enabled ? 'D' : '-');
+            if (!(P.warm || (P.warm = {}))[wk]) {
+                P.warm[wk] = 1;
+                P.passB.enabled = true; _ppScreenPass();
+                try { P.composer.render(0); } catch (x) { console.warn('[ThreePost] frame twin warm-up failed', x); }
+                finally { r.setRenderTarget(null); P.passB.enabled = false; _ppScreenPass(); }
+            }
+        }
         try { P.composer.render(dt); } finally { r.autoClear = ac; r.setRenderTarget(null); }
         var n = 0, ps = P.composer.passes; for (var i = 0; i < ps.length; i++) if (ps[i].enabled && ps[i].needsSwap !== false) n++;
         P.lastPasses = n;
@@ -2711,7 +2888,7 @@ const ThreePost = (function () {
             for (var k in P.pipes) { var e = P.pipes[k]; try { e.pipe.dispose(); } catch (x) {} (e.made || []).forEach(function (n) { try { if (n && n.dispose) n.dispose(); } catch (x) {} }); }
             try { P.sp.dispose(); } catch (x) {} try { P.aoTex.dispose(); } catch (x) {}
             if (P.ae) { try { P.ae.rt.dispose(); P.ae.mat.dispose(); } catch (x) {} }
-            if (P.direct) { try { P.direct.rt.dispose(); P.direct.mat.dispose(); } catch (x) {} }
+            P.direct = null; _paneDrop();
         }
         if (_composer === P) _composer = null;
         _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
@@ -2819,7 +2996,8 @@ const ThreePost = (function () {
             uVS = f(cu.uVignetteSize), uVSo = f(cu.uVignetteSoft), uVA = f(cu.uVignetteAmount), uCrt = f(cu.uCrtAmount), uCurv = f(cu.uCurvature),
             uNG = f(cu.uNightGrade), uNT = _ngR(P, cu.uNightTint, 'vec3'), uSD = f(cu.uSpotDim), uSA = _ngR(P, cu.uSpotA, 'vec3'), uSB = _ngR(P, cu.uSpotB, 'vec3'),
             uSSo = f(cu.uSpotSoft), uSL = f(cu.uSpotLift), uTrip = f(cu.uTrip), uHue = f(cu.uHue), uWarp = f(cu.uWarp), uChR = f(cu.uChromaRadial),
-            uGT = _ngR(P, cu.uGradeTint, 'vec3'), uGTA = f(cu.uGradeTintAmt), uMo = f(cu.uMotion), uMoC = _ngR(P, cu.uMotionCenter, 'vec2'), uRip = _ngR(P, cu.uRipple, 'vec4');
+            uGT = _ngR(P, cu.uGradeTint, 'vec3'), uGTA = f(cu.uGradeTintAmt), uMo = f(cu.uMotion), uMoC = _ngR(P, cu.uMotionCenter, 'vec2'), uRip = _ngR(P, cu.uRipple, 'vec4'),
+            uCA = _ngR(P, cu.uCssA, 'vec4'), uCB = _ngR(P, cu.uCssB, 'vec4'), uCT1 = _ngR(P, cu.uCssT1, 'vec4'), uCT2 = _ngR(P, cu.uCssT2, 'vec4'), uCM = _ngR(P, cu.uCssM, 'vec2');
         var uPx = f(ru.uPixelSize), uLv = f(ru.uLevels), uDS = f(ru.uDitherStrength), uDSc = f(ru.uDitherScale), uTi = _ngR(P, ru.uTint, 'vec3'),
             uTA = f(ru.uTintAmount), uSat = f(ru.uSaturation), uLIO = _ngR(P, ru.uLevelsInOut, 'vec2'), uGr = f(ru.uGrain), uMM = f(ru.uMaskMode);
         var LUM = V3(0.299, 0.587, 0.114);
@@ -2867,6 +3045,29 @@ const ThreePost = (function () {
             hc.assign(T.mix(hc, hc.mul(hc).mul(2), uTrip.mul(0.18)));
             col.assign(T.mix(col, hc, uTrip));
             col.assign(T.mix(col, col.mul(uGT), uGTA));   // the archetype colour push
+            // THE SCREEN GRADE (2026-10-07): the CSS filter chain + two colour layers, in display space (_CinematicShader's maths)
+            T.If(uCB.w.greaterThan(0.001), function () {
+                var W3 = V3(0.2126, 0.7152, 0.0722);
+                var sg = T.pow(T.clamp(col, 0, 1), V3(1 / 2.2)).toVar(), o = sg.toVar();
+                o.assign(T.mix(o, V3(T.dot(o, W3)), uCA.x));
+                o.assign(T.mix(o, V3(T.dot(o, V3(0.393, 0.769, 0.189)), T.dot(o, V3(0.349, 0.686, 0.168)), T.dot(o, V3(0.272, 0.534, 0.131))), uCA.y));
+                o.assign(T.mix(o, F(1).sub(o), uCA.z));
+                var hca = T.cos(uCA.w), hsa = T.sin(uCA.w);
+                o.assign(o.mul(hca).add(T.cross(k, o).mul(hsa)).add(k.mul(T.dot(k, o)).mul(F(1).sub(hca))));
+                o.assign(T.mix(V3(T.dot(o, W3)), o, uCB.x));
+                o.assign(o.sub(0.5).mul(uCB.y).add(0.5));
+                o.assign(T.clamp(o.mul(uCB.z), 0, 1));
+                var layer = function (t, m) {
+                    var sc = t.rgb;
+                    var ov = T.mix(o.mul(sc).mul(2), F(1).sub(F(1).sub(o).mul(F(1).sub(sc)).mul(2)), T.step(0.5, o));
+                    var scr = F(1).sub(F(1).sub(o).mul(F(1).sub(sc)));
+                    var r2 = T.select(m.greaterThan(2.5), ov, T.select(m.greaterThan(1.5), scr, T.select(m.greaterThan(0.5), o.mul(sc), sc)));
+                    o.assign(T.mix(o, r2, t.w));
+                };
+                layer(uCT1, uCM.x);
+                layer(uCT2, uCM.y);
+                col.assign(T.pow(T.mix(sg, T.clamp(o, 0, 1), T.clamp(uCB.w, 0, 1)), V3(2.2)));
+            });
             var asp = V2(uRes.x.div(T.max(uRes.y, 1)), 1);
             var spot = T.select(uSD.greaterThan(0.001), T.max(spotMask(uv, uSA, asp), spotMask(uv, uSB, asp)), F(0)).toVar();
             var sl = T.pow(T.sin(uv.y.mul(uRes.y).mul(uScS).mul(3.14159)).mul(0.5).add(0.5), 1.2);
@@ -2988,6 +3189,22 @@ const ThreePost = (function () {
         P.uARes.value.set(Math.max(1, Math.floor(ds.x * sc2)), Math.max(1, Math.floor(ds.y * sc2)));
         var o = _ngSig(cam), e = P.pipes[o.key];
         if (!e) { e = P.pipes[o.key] = _ngBuild(o); console.log('[ThreePost] node post chain: built [' + o.key + ']'); }
+        /* THE FRAME TWIN (2026-10-07): a spell grade, a drama dim, an impact ripple or a screen grade switches the frame pass
+           on, and that is a different pipeline (its own textures, the frame shader, every pass after the scene recompiled):
+           built and compiled in the middle of the cast, the frozen screen at a whole-screen spell. The first frame a set is
+           drawn without the frame, its twin with the frame (both halves off: the picture untouched) is drawn first, once, so
+           its pipelines exist before any spell asks for them; the real frame then draws over it. */
+        if (!o.frame && !(P.warm || (P.warm = {}))[o.key]) {
+            P.warm[o.key] = 1;
+            var tk = o.key.slice(0, -1) + 'F', te = P.pipes[tk];
+            if (!te) {
+                var to = { aa: o.aa, ao: o.ao, bloom: o.bloom, dof: o.dof, frame: true, cam: o.cam, key: tk };
+                te = P.pipes[tk] = _ngBuild(to); console.log('[ThreePost] node post chain: warmed [' + tk + ']');
+            }
+            P.cineOn.value = 0; P.retroOn.value = 0;
+            var ac0 = r.autoClear;
+            try { te.pipe.render(); } catch (x) { console.warn('[ThreePost] frame twin warm-up failed', x); } finally { r.autoClear = ac0; }
+        }
         P.sig = o.key; P.cur = e; P.frameIn = e.frameIn; P.lastPasses = e.passes;
         if (e.gtao) {   // GTAO: the AO radius in the context's own world units (setSsaoScale), as the classic one
             var au = P.U.ao; e.gtao.radius.value = au.uRadius.value; e.gtao.thickness.value = au.uRadius.value; e.gtao.samples.value = Math.max(4, Math.min(16, au.uSamples.value | 0));
@@ -3042,13 +3259,17 @@ const ThreePost = (function () {
         var P = _ng, r = _renderer, T = P.T, G = P.G, pr = r.getPixelRatio();
         var size = r.getDrawingBufferSize(new THREE.Vector2());
         var R2 = rect || { x: 0, y: 0, w: size.x / pr, h: size.y / pr };
-        var w = Math.max(1, Math.round(R2.w * pr)), h = Math.max(1, Math.round(R2.h * pr)), D = P.direct;
-        if (!D) {
-            D = P.direct = { rt: new G.RenderTarget(w, h, { type: THREE.HalfFloatType }), mat: new G.NodeMaterial() };
-            D.tex = T.texture(D.rt.texture);
-            D.mat.fragmentNode = _ngTone(P, D.tex);
-            D.quad = new G.QuadMesh(D.mat);
-        } else if (D.rt.width !== w || D.rt.height !== h) D.rt.setSize(w, h);
+        var w = Math.max(1, Math.round(R2.w * pr)), h = Math.max(1, Math.round(R2.h * pr));
+        /* THE PANES (2026-10-07): a target per pane size, kept (see renderDirect) — one shared target was resized back and
+           forth every frame when the panes differ by a pixel, each resize a new texture + depth on the GPU and new bindings */
+        var D = _paneTarget(w, h, function (W, H) {
+            var d = { rt: new G.RenderTarget(W, H, { type: THREE.HalfFloatType }), mat: new G.NodeMaterial() };
+            d.tex = T.texture(d.rt.texture);
+            d.mat.fragmentNode = _ngTone(P, d.tex);
+            d.quad = new G.QuadMesh(d.mat);
+            return d;
+        });
+        P.direct = D;
         var prevRT = r.getRenderTarget(), prevAuto = r.autoClear;
         try { r.setRenderTarget(D.rt); r.autoClear = true; r.render(scene, cam); } finally { r.setRenderTarget(prevRT); r.autoClear = prevAuto; }
         _tmSync();
@@ -3075,7 +3296,7 @@ const ThreePost = (function () {
         renderer.shadowMap.type = THREE.PCFShadowMap;
         renderer.setClearColor(0x000000, 0);
         renderer.toneMappingExposure = old ? old.toneMappingExposure : renderer.toneMappingExposure;
-        if (_ng) { _ng.pipes = {}; _ng.sig = null; _ng.cur = null; _ng.frameIn = null; _ng.ae = null; _ng.direct = null; renderer.toneMapping = THREE.NoToneMapping; }
+        if (_ng) { _ng.pipes = {}; _ng.warm = {}; _ng.sig = null; _ng.cur = null; _ng.frameIn = null; _ng.ae = null; _ng.direct = null; renderer.toneMapping = THREE.NoToneMapping; }
         else {
             renderer.toneMapping = old ? old.toneMapping : THREE.LinearToneMapping;
             if (renderer.isWebGPURenderer && _scene && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {   // the chain never came up on the old one
@@ -3297,8 +3518,9 @@ const ThreePost = (function () {
             if (_spotOn) _nGr = Math.max(_nGr, _grade.dim * _gk * 0.85);
             _cinematicPass.material.uniforms['uNightGrade'].value = _nGr;
             var _lc = _lkCin();
+            var _sgOn = _cinematicPass.material.uniforms.uCssB ? _sgTick(_cinematicPass.material.uniforms, _nowMs) : false;   // THE SCREEN GRADE
             _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _nGr > 0.001
-                || _gk > 0.001 || _kick > 0.01 || _mb > 0.001);
+                || _gk > 0.001 || _kick > 0.01 || _mb > 0.001 || _sgOn);
             if (_rip > 0.00001) _cinematicPass.enabled = true;   // a live impact ripple needs the pass too
         }
         // Exposure is pulled down for a plain dramaDim, but NOT while a
@@ -3314,7 +3536,7 @@ const ThreePost = (function () {
 
         // Impact flash — decaying bloom kick over the steady user strength.
         if (_bloomPass && _bloomPass.enabled) {
-            var _pulse = _bloomPulseCurrent(performance.now());
+            var _pulse = _bloomPulseCurrent(performance.now()) + _swellCurrent(performance.now());
             _bloomPass.strength = (_fieldLight ? Math.max(_bloomUser(), 0.42) : Math.max(_cur.bloomStr, _bloomUser())) + _pulse;
         }
 
@@ -3377,7 +3599,9 @@ const ThreePost = (function () {
             if (_dofPassH) _dofPassH.enabled = false;
             if (_dofPassV) _dofPassV.enabled = false;
             var _mb2 = _motionTick(performance.now());   // 6.4: the building feeds it (the deck, the fall)
+            var prevCss = (_cinematicPass && _cinematicPass.material.uniforms.uCssB) ? _cinematicPass.material.uniforms.uCssB.value.w : 0;
             if (_cinematicPass) {
+                if (_cinematicPass.material.uniforms.uCssB) _cinematicPass.material.uniforms.uCssB.value.w = 0;   // THE SCREEN GRADE is the board's
                 _cinematicPass.material.uniforms['uNightGrade'].value = 0;
                 _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
                 var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001);
@@ -3409,6 +3633,7 @@ const ThreePost = (function () {
             if (_cinematicPass) {
                 _cinematicPass.enabled = prevCine;
                 _cinematicPass.material.uniforms['uNightGrade'].value = prevNight;
+                if (_cinematicPass.material.uniforms.uCssB) _cinematicPass.material.uniforms.uCssB.value.w = prevCss;
             }
             if (_bloomPass) { _bloomPass.strength = prevBloom; _bloomPass.threshold = prevThr; _bloomPass.radius = prevRad; }
             _renderer.toneMappingExposure = prevExposure;
@@ -3594,7 +3819,7 @@ const ThreePost = (function () {
 
         _composer = null;
         _bloomPass = null; _cinematicPass = null; _retroPass = null; _smaaPass = null;
-        _toneMapPass = null; if (_directRT) { _directRT.dispose(); _directRT = null; } _hdr = false;
+        _toneMapPass = null; if (_directRT) { _directRT.dispose(); _directRT = null; } _paneDrop(); _hdr = false;
         _fxaaPass = null;
         _dofPassH = null;
         _dofPassV = null;
@@ -3774,6 +3999,11 @@ const ThreePost = (function () {
         spellGradeKick: spellGradeKick,
         spellGradeClear: spellGradeClear,
         isSpellGradeActive: isSpellGradeActive,
+        screenGrade: screenGrade,
+        screenGradeClear: screenGradeClear,
+        screenGradeFreeze: screenGradeFreeze,
+        canScreenGrade: canScreenGrade,
+        bloomSwell: bloomSwell,
         setImpactFx: setImpactFx,
         getImpactFx: getImpactFx,
         getImpactFxMax: getImpactFxMax,

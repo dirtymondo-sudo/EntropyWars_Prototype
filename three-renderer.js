@@ -19008,9 +19008,14 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
 
         _ss.panes = [];
+        /* THE PANE CAMERAS (2026-10-07): kept, one per pane slot. The node renderer keys its render state (render contexts,
+           render objects, their bindings) on the camera, so a new camera per split screen made every mesh in view a fresh
+           render object on the pane's first frame, at every combo and every Entropy Strike. */
+        if (!_ss.cams) _ss.cams = [];
         for (var i = 0; i < list.length; i++) {
             var uid = list[i].unitId != null ? list[i].unitId : list[i];
-            var cam = new THREE.PerspectiveCamera(opts.fov || 34, rects[i].w / Math.max(1, rects[i].h), 1, 20000);
+            var cam = _ss.cams[i] || (_ss.cams[i] = new THREE.PerspectiveCamera(34, 1, 1, 20000));
+            cam.fov = opts.fov || 34; cam.aspect = rects[i].w / Math.max(1, rects[i].h); cam.near = 1; cam.far = 20000; cam.updateProjectionMatrix();
             _ss.panes.push({
                 unitId: uid,
                 cam: cam,
@@ -33903,6 +33908,9 @@ const ThreeRenderer = (function () {
 
         _nexusBarGroup = new THREE.Group();
         scene.add(terrainGroup, highlightGroup, objectGroup, wallGroup, _nexusWallGroup, unitGroup, fogGroup, weatherGroup, projectileGroup, floatTextGroup, hitFxGroup, _nexusBarGroup);
+        /* the void stage's key light (cineVoidEnter 'toplight'): in the scene from the start, dark until a void lights it */
+        _voidKey = new THREE.PointLight(0xbfd8ff, 0, 1, 2); _voidKey.name = 'ew void key'; _voidKey.castShadow = false; _voidKey.position.set(0, -99999, 0);
+        scene.add(_voidKey);
 
         ThreeCamera.create(w, h);
         ThreeCamera.setBaseDist(Math.sqrt(w*w+h*h) * 1.2);
@@ -43098,7 +43106,7 @@ const ThreeRenderer = (function () {
        unit's model through material opacity), and the ANIM PAUSE (freeze one
        unit's mixer so it tips over like a mannequin — Blue Screen).
        ═══════════════════════════════════════════════════════════════════ */
-    var _voidStage = null;
+    var _voidStage = null, _voidSkyCache = {}, _voidDiscGeo = null, _voidDiscMat = null, _voidKey = null;
 
     function cineVoidEnter(opts) {
         if (!active || !scene) return false;
@@ -43123,23 +43131,36 @@ const ThreeRenderer = (function () {
             if (entry.group.visible) { hiddenUnits.push(entry.group); entry.group.visible = false; }
         });
 
-        var prevBg = scene.background, prevFog = scene.fog;
-        scene.fog = null;
+        var prevBg = scene.background, prevFog = scene.fog, fogWas = null;
+        /* THE VOID WITHOUT A RECOMPILE (2026-10-07, mondo: frozen screens on Entropy Strikes / whole-screen spells): the void
+           used to set scene.fog = null, and the fog is part of every lit material's shader (WebGL keys its program on it, the
+           node renderer its render objects): every model still in view compiled a fog-less twin on the way in and the world
+           was re-keyed on the way out. The fog object stays; it is only thinned to nothing (density 0 / pushed past the far
+           plane) and put back on exit. */
+        if (prevFog) {
+            if (prevFog.isFogExp2) { fogWas = { d: prevFog.density }; prevFog.density = 0; }
+            else { fogWas = { n: prevFog.near, f: prevFog.far }; prevFog.near = 1e9; prevFog.far = 2e9; }
+        }
         /* ATMOSPHERE, not a flat colour: the palette's `sky` stops paint a
            screen-space vertical gradient behind the actors (a CanvasTexture
-           background fills the viewport). Flat colour is only the fallback. */
+           background fills the viewport). Flat colour is only the fallback.
+           One texture per palette, kept (it was a new canvas + upload per cast). */
         if (opts.sky && opts.sky.length > 1) {
-            var _skyCvs = document.createElement('canvas');
-            _skyCvs.width = 4; _skyCvs.height = 256;
-            var _skyG = _skyCvs.getContext('2d');
-            var _skyGrad = _skyG.createLinearGradient(0, 0, 0, 256);
-            for (var _sgi = 0; _sgi < opts.sky.length; _sgi++) {
-                _skyGrad.addColorStop(_sgi / (opts.sky.length - 1), opts.sky[_sgi]);
+            var _skyKey = opts.sky.join('|'), _skyTex = _voidSkyCache[_skyKey];
+            if (!_skyTex) {
+                var _skyCvs = document.createElement('canvas');
+                _skyCvs.width = 4; _skyCvs.height = 256;
+                var _skyG = _skyCvs.getContext('2d');
+                var _skyGrad = _skyG.createLinearGradient(0, 0, 0, 256);
+                for (var _sgi = 0; _sgi < opts.sky.length; _sgi++) {
+                    _skyGrad.addColorStop(_sgi / (opts.sky.length - 1), opts.sky[_sgi]);
+                }
+                _skyG.fillStyle = _skyGrad;
+                _skyG.fillRect(0, 0, 4, 256);
+                _skyTex = _voidSkyCache[_skyKey] = new THREE.CanvasTexture(_skyCvs);
+                _skyTex._ew_shared = true;
+                if (THREE.SRGBColorSpace) _skyTex.colorSpace = THREE.SRGBColorSpace;
             }
-            _skyG.fillStyle = _skyGrad;
-            _skyG.fillRect(0, 0, 4, 256);
-            var _skyTex = new THREE.CanvasTexture(_skyCvs);
-            if (THREE.SRGBColorSpace) _skyTex.colorSpace = THREE.SRGBColorSpace;
             scene.background = _skyTex;
         } else {
             scene.background = new THREE.Color(opts.color != null ? opts.color : 0x000000);
@@ -43167,10 +43188,12 @@ const ThreeRenderer = (function () {
                 unitGroup.add(gl);
                 discs.push(gl);
             }
-            var g = new THREE.Mesh(
-                new THREE.CircleGeometry(ts * 0.42, 20),
-                new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true,
-                    opacity: 0.34, depthWrite: false }));
+            if (!_voidDiscGeo) {   // one disc shape + material for every void, kept
+                _voidDiscGeo = new THREE.CircleGeometry(1, 20); _voidDiscGeo._ew_shared = true;
+                _voidDiscMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.34, depthWrite: false }); _voidDiscMat._ew_shared = true;
+            }
+            var g = new THREE.Mesh(_voidDiscGeo, _voidDiscMat);
+            g.scale.set(ts * 0.42, ts * 0.42, 1); g._ew_voidDisc = true;
             g.rotation.x = -Math.PI / 2;
             g.position.set(e.group.position.x, e.group.position.y + 0.6, e.group.position.z);
             g.renderOrder = 2;
@@ -43192,17 +43215,17 @@ const ThreeRenderer = (function () {
                     scene.add(fill);
                     lights.push(fill);
                 }
-                if (opts.light === 'toplight') {
-                    var key = new THREE.PointLight(0xbfd8ff, 2.6, ts * 14, 2);
-                    key.position.set(eA.group.position.x, eA.group.position.y + ts * 4, eA.group.position.z);
-                    scene.add(key);
-                    lights.push(key);
+                if (opts.light === 'toplight' && _voidKey) {
+                    /* the key is a lamp that lives in the scene from init at intensity 0: adding a light per void changed
+                       the light count every shader is built for (WebGL recompiles every lit material on a count change) */
+                    _voidKey.color.setHex(0xbfd8ff); _voidKey.intensity = 2.6; _voidKey.distance = ts * 14; _voidKey.decay = 2;
+                    _voidKey.position.set(eA.group.position.x, eA.group.position.y + ts * 4, eA.group.position.z);
                 }
             }
         }
 
         _voidStage = { hidden: hidden, hiddenUnits: hiddenUnits, prevBg: prevBg,
-            prevFog: prevFog, discs: discs, lights: lights, bg: scene.background };
+            prevFog: prevFog, fogWas: fogWas, discs: discs, lights: lights, bg: scene.background };
         _shadowsDirty = true;
         return true;
     }
@@ -43233,18 +43256,23 @@ const ThreeRenderer = (function () {
         for (var j = 0; j < v.hiddenUnits.length; j++) v.hiddenUnits[j].visible = true;
         if (scene) {
             scene.background = v.prevBg;
-            scene.fog = v.prevFog;
+            if (v.prevFog && v.fogWas) {
+                if (v.fogWas.d != null) v.prevFog.density = v.fogWas.d;
+                else { v.prevFog.near = v.fogWas.n; v.prevFog.far = v.fogWas.f; }
+            }
+            if (scene.fog !== v.prevFog && !scene.fog) scene.fog = v.prevFog;
             for (var k = 0; k < v.discs.length; k++) {
                 var d = v.discs[k];
                 if (d.parent) d.parent.remove(d);
-                try { d.geometry.dispose(); d.material.dispose(); } catch (e) {}
+                if (!d._ew_voidDisc) { try { d.geometry.dispose(); d.material.dispose(); } catch (e) {} }
             }
             for (var l = 0; l < (v.lights || []).length; l++) {
                 var li = v.lights[l];
                 if (li && li.parent) li.parent.remove(li);
             }
         }
-        try { if (v.bg && v.bg.dispose) v.bg.dispose(); } catch (e) {}
+        if (_voidKey) { _voidKey.intensity = 0; _voidKey.position.set(0, -99999, 0); }
+        try { if (v.bg && v.bg.dispose && !v.bg._ew_shared) v.bg.dispose(); } catch (e) {}
         _shadowsDirty = true;
         return true;
     }
