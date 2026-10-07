@@ -1261,3 +1261,17 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
 - Status resist (state.js getStatusApplyChance): base stick chance per status (stagger/blind/slow 90%, burn/poison 84%…)
   + 3% per point of caster-over-target effective INT (capped ±18%), clamped 60–95%, then halved if the target resists
   the status's element (0 if immune/absorb). Passive immunities bounce it before the roll.
+
+## THE MOVE SAFETY PASS (2026-10-07, mondo: accidental moves in online matches)
+- Battles take no WASD / arrow movement and no drag-to-move. ui.js's battle key handler only keeps Mystery Dungeon
+  lockstep; the gamepad stick still drives the board cursor (untrusted synthetic keys) and A confirms through clickTile.
+  ShooterControls / hub free-roam keep their own walkers. handleTileDragStart is editor-only now.
+- Every move AND every jump ends on the ROOT action menu (finishMoveAt + doJump's landing). The online guest's
+  relayed doMove / doJump reset its local menu too (online.js `_guestMenuToRoot`).
+- Rooted (any STATUS_DEFS `blockMove`): `unitMoveBlockedByStatus` (battle.js) gates canUnitMove, getJumpTiles and
+  doJump, so no jump, no jump-then-cast / jump-then-attack approach. The Jump blade reads "Rooted".
+- Blink aim: self teleports paint solid 'move' destination tiles from the moment they are armed; body-moving and
+  placement casts keep their reach at full strength under the hover plate (`window._ewAimKeepsReach`, read by
+  three-renderer `_updateHlFocusDim`); an illegal blink tile shows a grey plate.
+- Status badge colours: hud.js `_HRLG_SB_COLORS` is the one palette for nameplates, Horologe chips, unit panel and the
+  glossary. Bleed is dark red; no status falls back to grey.
