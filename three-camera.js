@@ -1180,7 +1180,8 @@ var EWCine = (function () {
         document.body.classList.remove('ew-cine');
         var cam = C.cam;
         if (cam && C.fov0 != null) { cam.fov = C.fov0; cam.updateProjectionMatrix(); }
-        C.fov0 = null; C.cam = null;
+        if (cam && C.far0 != null) { cam.far = C.far0; cam.updateProjectionMatrix(); }
+        C.fov0 = null; C.far0 = null; C.cam = null;
         panelSync();
         /* the building takes its mouse back on the walker's next gesture; a fight never held it */
     }
@@ -1208,6 +1209,7 @@ var EWCine = (function () {
             C.x = cam.position.x; C.y = cam.position.y; C.z = cam.position.z;
             C.yaw = C.tYaw = _eul.y; C.pitch = C.tPitch = _eul.x;
             C.fov = C.tFov = cam.fov; if (C.fov0 == null || C.cam !== cam) C.fov0 = cam.fov;
+            if (C.far0 == null || C.cam !== cam) { C.far0 = cam.far; C.x0 = C.x; C.y0 = C.y; C.z0 = C.z; }
             C.cam = cam; C.inited = true;
             if (C.panel && C.panel._sync) C.panel._sync();
         }
@@ -1216,6 +1218,13 @@ var EWCine = (function () {
         cam.position.set(C.x, C.y, C.z);
         cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0);
         if (Math.abs(cam.fov - C.fov) > 1e-3) { cam.fov = C.fov; cam.updateProjectionMatrix(); }
+        /* THE FAR PLANE (2026-10-07, mondo's black hole in the sky): the scene's far plane was sized for the eye where the game
+           put it; flown out, the far side of the place and the sky's far bodies fell past it and were cut. The far plane grows by however far the eye has flown from where the free camera took over (never shrinks
+           while flying; exit() puts the scene's own back). */
+        if (C.far0 != null) {
+            var nf = C.far0 + Math.hypot(C.x - C.x0, C.y - C.y0, C.z - C.z0);
+            if (cam.far < nf) { cam.far = nf * 1.1; cam.updateProjectionMatrix(); }
+        }
         cam.updateMatrixWorld(true);
     }
     function flyTick(dt) {

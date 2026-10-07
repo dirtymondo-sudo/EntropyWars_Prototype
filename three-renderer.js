@@ -24083,7 +24083,7 @@ const ThreeRenderer = (function () {
             // climbing into the sky. A thicker fog gets a slightly deeper ramp.
             _envUni.uFogTop.value    = _retroFogHorizonY;
             _envUni.uFogBand.value   = 0.35 + 0.30 * _retroFogThickness;
-        } else if (_mapEnvFog) {
+        } else if (_mapEnvFog && _ewSceneFogOn()) {   // THE FOG SETTING: Scene Fog off clears the map's own band too
             // map-preset fog (state.mapEnv.fog) — the pause-menu retro fog,
             // when enabled, wins over the map's own preset
             if (!_retroFogScratch) _retroFogScratch = new THREE.Color();
@@ -31796,7 +31796,7 @@ const ThreeRenderer = (function () {
             // Default pale-sky atmospheric haze. Skipped when the retro mood fog is
             // on — there the per-fragment shader fog (see _injectHorizonFog) does
             // the dissolving, keyed on world altitude to match the dome exactly.
-            if (!_retroFogHorizon && m._ew_hzHaze) m.color.lerp(_hzHaze, m._ew_hzHaze);
+            if (!_retroFogHorizon && m._ew_hzHaze && _ewSceneFogOn()) m.color.lerp(_hzHaze, m._ew_hzHaze);   // THE FOG SETTING: Scene Fog off = no far haze either
         }
     }
     var _HZ_RED = null;
@@ -48993,6 +48993,27 @@ const ThreeRenderer = (function () {
         H.sky.landmarks = group;
         _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
     }
+    /* the open room's reach from its middle (metres): a box's half diagonal, a ring's outer radius */
+    function _hqRoomExtentM(room) {
+        var S = (room && room.shell) || {};
+        if (room && room.kind === 'box') return Math.hypot((S.w || 10) / 2, (S.d || 10) / 2);
+        return (S.ring3 && S.ring3.outer) || S.rOut || 26;
+    }
+    var HQ_SKY_CLEAR_M = 80;   // past the shell: the city backdrop (~15 m) and the outer ground (54 m), with room to spare
+    function _hqSkyRingScale(room) {
+        var inner = (_hqRoomExtentM(room) + HQ_SKY_CLEAR_M) * _hqUnits();   // the ring's nearest body sits at 0.55 × discR
+        return Math.max(1, inner / (0.55 * 6000));
+    }
+    /* THE FAR PLANE (2026-10-07): the building's camera was born with far = 20000 (274 m) — less than Downtown's own diagonal, so
+       with the fog off the far streets were cut, and the sky ring above sits farther still. The far plane covers the sky ring
+       and the room (H.sky.farBase) plus however far the eye is from the room's middle (the cinematic camera flies out); it
+       only ever grows within a visit, so the editor's own far (editor.js) is never cut back. */
+    function _hqFarTick(H) {
+        var cam = H && H.camera; if (!cam) return;
+        var base = Math.max(20000, (H.sky && H.sky.farBase) || 0, _hqRoomExtentM(H.room) * _hqUnits() * 2.2);
+        var need = base + cam.position.length();
+        if (cam.far < need * 0.95) { cam.far = need * 1.1; cam.updateProjectionMatrix(); }
+    }
     function _hqBuildSky(room, Hx) {
         /* Hx: the record to build into (the main menu scene, 2026-09-08); default the live visit */
         var S = room.shell, sky = S.sky, H = Hx || _hq;
@@ -49019,7 +49040,14 @@ const ThreeRenderer = (function () {
         if (theme === 'none') return;
         var roster = _hzThemeRoster(theme) || _hzCosmicRoster();
         var dens = (sky.density != null) ? sky.density : 1;
-        var discR = 6000, ts = 128;
+        /* THE SKY RING OUTSIDE THE ROOM (2026-10-07, mondo's "black hole in the sky or underneath the map"): the battle's ring
+           (discR 6000 = 82 m) hung the far bodies — the floating islands, the monoliths, the gateways — INSIDE any open room wider
+           than that (Downtown is 453 × 357 m), among the buildings and under the streets, where the walker and above all the
+           cinematic camera fly right up to them and see a black rock where the sky should be. The ring now starts past the room's
+           own extent + the backdrop and the outer ground (HQ_SKY_CLEAR_M), and every body is scaled by the same factor so it keeps
+           its look from the middle; _hqFarTick keeps the camera's far plane past the ring. */
+        var kSky = (H === _hq) ? _hqSkyRingScale(room) : 1, discR = 6000 * kSky, ts = 128 * kSky;
+        H.sky.farBase = discR * 1.6 + _hqRoomExtentM(room) * _hqUnits();
         var seed = 0x1945; for (var ci = 0; ci < (room.site || '').length; ci++) seed = (seed * 31 + room.site.charCodeAt(ci)) >>> 0;
         var rng = _mulberry32(seed);
         var group = new THREE.Group(); group.name = 'hqSky'; group.renderOrder = -40;
@@ -49027,6 +49055,7 @@ const ThreeRenderer = (function () {
         var hang = function (mesh, ang, rad, y, tumble, spinLo, spinHi) {
             var x = Math.cos(ang) * rad, z = Math.sin(ang) * rad;
             mesh.position.set(x, y, z);
+            if (kSky !== 1) mesh.scale.multiplyScalar(kSky);
             if (tumble) mesh.rotation.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
             else { mesh.rotation.y += rng() * Math.PI * 2; mesh.rotation.z += (rng() - 0.5) * 0.16; }
             _stampHorizonHaze(mesh, rad, y, discR);
@@ -49052,6 +49081,7 @@ const ThreeRenderer = (function () {
         for (var rgi = 0; rgi < ringWant; rgi++) { var rM = _hzSacredRings(rng); if (rM) hang(rM, (rgi / ringWant) * Math.PI * 2 + rng() * 0.8, discR * (0.7 + rng() * 0.6), (-0.4 + rng() * 1.0) * discR, true, 0.0012, 0.004); }
         for (var dgi = 0; dgi < (sky.doors === false ? 0 : 3); dgi++) {
             var dM = _hzLoneDoor(rng); if (!dM) continue;
+            if (kSky !== 1) dM.scale.multiplyScalar(kSky);
             var dAng = (dgi / 3) * Math.PI * 2 + rng() * 0.9 + 0.7, dRad = discR * (0.6 + rng() * 0.6), dY = (-0.2 + rng() * 0.7) * discR;
             dM.position.set(Math.cos(dAng) * dRad, dY, Math.sin(dAng) * dRad);
             dM.rotation.y += Math.atan2(-dM.position.x, -dM.position.z);          // face the room
@@ -49087,7 +49117,7 @@ const ThreeRenderer = (function () {
         H.scene.add(group);
         H.sky.group = group;
         /* the roster's glow accents breathe under the HQ loop; its materials take the sky's grade once (no per-frame regrade here) */
-        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
+        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) { if (kSky !== 1 && p.mesh && p.mesh.parent === group) p.baseScl *= kSky; H.fxPulse.push(p); } });   // a breathing body keeps the ring's scale
         try { _gradeHorizonScenery(H.sky.night, 0, 0); } catch (e) {}
         console.log('[HQ] sky:', theme, '—', group.children.length, 'bodies');
     }
@@ -62069,7 +62099,7 @@ const ThreeRenderer = (function () {
                 try { if (H.opts && H.opts.onFrameError && !rec) H.opts.onFrameError(msg); } catch (e4) {}
             }
             /* the frame that threw may have left the scene half-ticked: still draw it, so the eye is never black */
-            try { renderer.render(H.scene, H.camera); } catch (e5) {}
+            try { var fh5 = _hqFogHold(H); try { renderer.render(H.scene, H.camera); } finally { _hqFogBack(fh5); } } catch (e5) {}
         }
     }
     var _hqClockMsLast = 0;   // THE WORLD CLOCK: the real time since the last frame that ran it
@@ -62124,10 +62154,14 @@ const ThreeRenderer = (function () {
         if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
-        if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
-        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
-        else renderer.render(H.scene, H.camera);
+        _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
+        var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
+        try {
+            if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
+            var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
+            else renderer.render(H.scene, H.camera);
+        } finally { _hqFogBack(fogHold); }
         if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
         if (_hqCine()) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
     }
@@ -62858,11 +62892,11 @@ const ThreeRenderer = (function () {
             if (open) { fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / s : 0.00005 * U / s; if (S.sky.fog && S.sky.fog.color != null) fogC = S.sky.fog.color;
                 try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {} }   // THE WORLD CLOCK: the hour's fog
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
-            if (typeof scene !== 'undefined' && scene) scene.fog = new THREE.FogExp2(fogC, fogD);
+            if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD) : null;   // THE FOG SETTING: Scene Fog off = none
         } catch (e) {}
         try {
             var HF = LR.heightFog || {};
-            if (HF.on !== false && !_polishOff('heightFog', 'EW_HQ_NO_HEIGHT_FOG') && S.heightFog !== false) {
+            if (HF.on !== false && !_polishOff('heightFog', 'EW_HQ_NO_HEIGHT_FOG') && S.heightFog !== false && _ewSceneFogOn()) {
                 var row = Object.assign({}, HF[open ? 'open' : 'box'] || HF.box || { h: 1.7, amount: 0.34 });
                 if (S.sky && S.sky.fog && S.sky.fog.height > 0) row.h = S.sky.fog.height;
                 if (S.heightFog && typeof S.heightFog === 'object') Object.assign(row, S.heightFog);
@@ -65299,8 +65333,42 @@ const ThreeRenderer = (function () {
     function _hqDissolveFrame() { var r = _hqDissolveRec; if (!r) return; if (typeof _fieldDissolveReady === 'function' && !_fieldDissolveReady()) return; _hqDissolveRec = null; try { r.fade(); } catch (e) {} try { if (typeof _fieldSeedRelease === 'function') _fieldSeedRelease(); } catch (e) {} }
     function _hqRenderOnce(H) {
         var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
-        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
-        else renderer.render(H.scene, H.camera);
+        var fh = _hqFogHold(H);
+        try {
+            if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
+            else renderer.render(H.scene, H.camera);
+        } finally { _hqFogBack(fh); }
+    }
+    /* THE FOG SETTING (2026-10-07, mondo: "i have scene fog off in the settings and the game is still showing the fog"): the
+       pause menu's Scene Fog toggle (ThreePost.isRetroFogEnabled) is the player's word in the building too, like the bloom.
+       Every room, zone part and world-clock hour keeps writing its own fog (scene.fog, the height fog, the dome's horizon band
+       that the far scenery shares), so instead of chasing each writer the draw itself is fog-free while the toggle is off:
+       _hqFogHold zeroes the three terms just before the frame's renders and _hqFogBack puts the values back after, so the
+       crossings' blends and the clock keep easing from their real numbers and turning the toggle on shows the room's fog at
+       once. The fog OBJECT stays on the scene (density 0), so no material recompiles. Under water (The Deep's wet fog) is the
+       water's look, not the scene fog, and is kept. */
+    function _ewSceneFogOn() {
+        try { return !(typeof ThreePost !== 'undefined' && ThreePost && ThreePost.isRetroFogEnabled) || !!ThreePost.isRetroFogEnabled(); } catch (e) { return true; }
+    }
+    function _hqFogHold(H) {
+        if (!H || !H.scene || _ewSceneFogOn()) return null;
+        var f = H.scene.fog, wet = !!(f && H.seaFx && f === H.seaFx.wetFog);
+        var s = { f: null, d: 0, n: 0, fa: 0, hz: _EW_HFOG.z, amt: _envUni ? _envUni.uFogAmount.value : null };
+        if (f && !wet) {
+            s.f = f;
+            if (f.isFogExp2) { s.d = f.density; f.density = 0; }
+            else { s.n = f.near; s.fa = f.far; f.near = 1e9; f.far = 2e9; }
+        }
+        if (!wet) _EW_HFOG.z = 0;
+        if (_envUni) _envUni.uFogAmount.value = 0;
+        return s;
+    }
+    function _hqFogBack(s) {
+        if (!s) return;
+        var f = s.f;
+        if (f) { if (f.isFogExp2) f.density = s.d; else { f.near = s.n; f.far = s.fa; } }
+        _EW_HFOG.z = s.hz;
+        if (_envUni && s.amt != null) _envUni.uFogAmount.value = s.amt;
     }
     function _hqDissolveStart(H, o) {
         if (typeof document === 'undefined' || !canvas || !H || !H.scene || !H.camera) return null;

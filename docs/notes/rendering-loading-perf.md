@@ -760,3 +760,22 @@ Root causes found and fixed (token 20261007-spellfreeze-01-cors):
   target was resized twice a frame when panes differ by 1 px); on WebGL the panes no longer draw straight to the canvas (that
   compiled a canvas variant of every material in view on the first split screen), they draw into a target and blit with the
   colour-space encode.
+
+## THE FOG SETTING + THE SKY RING (2026-10-07, mondo: "scene fog off ... still showing the fog"; "black hole in the sky or underneath the map")
+- **Scene Fog off wins in the building.** Every room, zone part, crossing blend and world-clock hour writes its own fog, so the
+  draw is made fog-free instead of chasing writers: `_hqFogHold(H)` (three-renderer.js) zeroes `scene.fog` density (FogExp2) /
+  pushes near/far out (Fog), the height fog amount (`_EW_HFOG.z`) and the dome's horizon band (`_envUni.uFogAmount`, which the
+  far scenery's injected fog shares) right before the frame's renders (mirrors included), and `_hqFogBack` restores them after,
+  so blends keep their real numbers and turning the toggle on shows the fog at once. The fog object stays on the scene (density
+  0): no recompiles. The Deep's underwater fog is the water's look and is kept. The field fight in a room
+  (`_hqBuildRoomInBattle`) sets no fog / no height fog while the toggle is off; the battle's map-preset dome band
+  (`_mapEnvFog`) and the far bodies' pale haze (`_hzHaze`) also obey it. The gate is `_ewSceneFogOn()` =
+  `ThreePost.isRetroFogEnabled()`.
+- **The black hole was a floating island.** `_hqBuildSky` hung the theme's far bodies (floating islands, monoliths, gateways,
+  orbs) on the battle's ring (discR 6000 = 82 m) — inside any open room bigger than that (Downtown 453 × 357 m), among the
+  buildings and under the streets; flown near (the cinematic camera) an island's dark underside filled the sky. The ring now
+  starts past the room (`_hqSkyRingScale`: half diagonal + `HQ_SKY_CLEAR_M` 80 m, for the backdrop + outer ground) and every
+  body is scaled by the same factor (breathing glows too). The menu scene keeps the old ring.
+- **The far plane.** The building's camera had far = 20000 (274 m), less than Downtown's diagonal. `_hqFarTick` grows it (never
+  shrinks within a visit) to cover the sky ring + room (`H.sky.farBase`) plus the eye's distance from the middle. The cinematic
+  camera (three-camera.js `frame`) also grows the far plane by how far it has flown, in battle too, and restores it on exit.
