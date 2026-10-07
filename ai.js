@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.14-2026-10-07-arena-rules'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.15-2026-10-07-gen40-champion'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -119,7 +119,7 @@
     const AI_TUNE = {
         // ── value model ──
         killBase: 116.563,          // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
-        killOutputTurns: 1.6,       // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term)
+        killOutputTurns: 0.645,       // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
         supportKillPremium: 128.125,// extra for killing a healer/reviver kit — gen-305 (was 130)
         mpValuePerPoint: 0.529,     // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
         pressActionValue: 181.563,  // floor value of the free action a press refund grants — gen-305 (was 150)
@@ -129,21 +129,21 @@
         healSafetyDiscount: 0.45,   // heal value multiplier when the target is out of enemy reach
         healNoEnemyDiscount: 0.35,  // heal value multiplier when no enemy is even visible
         reviveBase: 320,            // reviving a unit ≈ a kill in reverse
-        ccOutputFactor: 0.8,        // fraction of a denied unit's per-turn output a hard CC is worth per denied turn
-        statusSetupFactor: 0.5,     // fraction of a teammate's bonusVsStatus payoff credited to the setup cast
+        ccOutputFactor: 0.31,        // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
+        statusSetupFactor: 0.115,     // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
         buffStageFactor: 0.14,      // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0.082,    // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes
-        deathRiskFactor: 0.9,       // × own kill-value charged when a tile's threat covers our whole HP bar
-        jointSearchDiscount: 0.92,  // move-then-act value discount vs acting right now
+        threatCostFactor: 0.02,    // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
+        deathRiskFactor: 0.375,       // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
+        jointSearchDiscount: 1,  // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
         // ── kept legacy knobs (movement / modes / items) ──
         markedTargetBonus: 12,
         hourglassTargetBonus: 45,
         hgCarrierFleeAdv: -0.23,
         safeAllyProximity: 4,
-        towerLowHpPush: 120,
+        towerLowHpPush: 50,          // gen-40 champion 2026-10-07 (was 120)
         towerMidHpPush: 90,
         towerClearBonus: 110,
         levelAggressionMod: 0.006,   // progression modes only (PvP is level-normalized)

@@ -104,10 +104,8 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     if (WEIGHTS_FILE) {
         startWeights = JSON.parse(fs.readFileSync(path.resolve(String(WEIGHTS_FILE)), 'utf8'));
         console.log(`[runner] starting champion: ${WEIGHTS_FILE} (gen ${startWeights?._meta?.generation ?? '?'})`);
-        // Schema 14 (2026-10-07) = the Arena rules of 20 rounds / all 5 Keys / streak bounties.
-        // An older export's objective keys were learned on the old rules: the game drops them on import.
         if ((startWeights?._meta?.schemaVersion | 0) > 0 && (startWeights._meta.schemaVersion | 0) < 14) {
-            console.log(`[runner] note: ${WEIGHTS_FILE} is schema ${startWeights._meta.schemaVersion} (${startWeights._meta.aiVersion || 'old AI'}) — trained on the old Arena rules; its tower/Key/nexus keys restart at their defaults`);
+            console.log(`[runner] note: ${WEIGHTS_FILE} is schema ${startWeights._meta.schemaVersion} (${startWeights._meta.aiVersion || 'old AI'}) — played the pre-2026-10-06 Arena rules`);
         }
     }
 
