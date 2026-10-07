@@ -827,6 +827,31 @@ mondo: "I dont want players to get into a lobby and then spend five minutes asse
 - Quick Play search is a radar (`.lq-radar`, "THE QUEUE" CSS); match found turns it gold.
 - CSS: styles-base.css "THE SQUAD DESK" + "THE QUEUE" (end of file).
 
+## THE TEAM ROOM (Squad Desk backdrop, 2026-10-07, token 20261007-teamroom-01-cors)
+mondo: "instead of just a bunch of boxes with their portraits can we make it a room inside the door facility and your team is
+just hanging out posing ... a desk and chair and computer and a plant ... a drop down menu or a button or arrows to choose a
+different team that would have their portraits (sprites for fallback)".
+- **The page** (map.js "THE TEAM ROOM" in the Squad Desk block): one team at a time. The card grid is gone; the bottom dock is
+  ‹ the team's plate › + EDIT / NEW TEAM / DEPLOY. The plate (portraits via `_sqFace`, the map sprite as the fallback; a
+  bigger team's bench faces dimmed) opens THE LIST (`#sqDrop`, every team with its faces). ← → / the arrows cycle teams,
+  ENTER deploys, ESC closes the list then goes back. No key-hint text (the foot is empty; THE PICK's hint line is gone).
+  The pick-4 sheet, the deploy beat, the forge round trip and the online / VS CPU hand-offs are unchanged.
+- **The room** (three-renderer.js `ThreeRenderer.teamRoom`, "THE TEAM ROOM" before the API return): a small D.O.O.R. office
+  drawn on the SHARED board renderer through the post chain (the menu scene's pattern: `enter({host})` / `leave()` /
+  `setTeam(slots)`; no second WebGL context). Drywall over an oxblood dado, teal trim, carpet, acoustic ceiling (`_hqMat`,
+  the building's sheets, 2 m tiles), catalogue props through `_miscModelInstance` + `_hqPropMatPick` (desk_wedge_a,
+  crt_terminal + desk_lamp on the desk top, office_chair, potted_plant, water_cooler, wall_clock), real lights only (a
+  hemisphere, the ceiling point light, key / fill / rim directionals, the desk lamp's point light), the box-room AO on, no
+  fog. THE GATE (`own: true`) holds the canvas at opacity 0 until the room's own files land (cap 20 s). Members (the
+  remembered pick of a bigger team, else the first four; `_sqShownIdx`) use the board's Lambert look and appear only once
+  their rig AND idle are in (no T-pose); idles start at random phases, and every 5–9 s one member strikes a library pose
+  (`TR_POSES`: castSupport / castHeal / castAOE). heightRatio 1.0 = 1.75 m. The camera frames the tallest member between the
+  title and the dock (feet 33 % from the bottom, heads under 74 %) and drifts slightly. 30 fps on EW_PERF_LOW / phones.
+  Tunables: `TR_ROOM`, `TR_PROPS`, `TR_SPOTS`, `TR_POSES`.
+- **Hand-over:** `_showTitlePage` calls `window._sqRoomLeave` for any other page; the menu scene, the HQ and a battle
+  `activate()` each leave the room first. The room refuses while the HQ or a battle holds the canvas (the desk then shows on
+  the void as before). `#menuBgCanvas` is hidden while the room is up. CSS: styles-base.css "THE TEAM ROOM".
+
 ## THE NAMES + THE ONE BATTLE PAUSE MENU — 2026-09-30 (token 20260930-pause-01-cors)
 mondo: no random names, a unit is its race until the player types a name, rename in the story pause menu, one battle
 pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the fight), no Strike Mode section.
