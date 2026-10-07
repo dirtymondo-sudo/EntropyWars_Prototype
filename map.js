@@ -10205,7 +10205,7 @@
                     if (gx < 0 || gy < 0 || gx >= W || gy >= H) return null;
                     const t = getTerrainAt(gx, gy);
                     if (t === 'wall') return null;
-                    if (typeof isObjectiveTile === 'function' && isObjectiveTile(gx, gy)) return null;
+                    if (!liftUnits && typeof isObjectiveTile === 'function' && isObjectiveTile(gx, gy)) return null;   // a wall spell may stand on an objective (mondo 2026-10-07: "we can change the terrain on objectives")
                     if (had && had.has(gx + ',' + gy)) return null;
                     const obj = getObjectAt(gx, gy);
                     if (obj) {

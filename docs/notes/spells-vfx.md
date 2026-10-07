@@ -1284,7 +1284,8 @@ Covers map lava (tile boxes, HQ room sheets) and spell lava (the field skins).
 ## THE STANDING STONES + THE SHOT CLOCK (2026-10-07, mondo)
 - Rampart (and every `monument` wall spell) lifts units: `placeSpellMonument(mon, { liftUnits: true })` (map.js) no
   longer refuses a tile with a unit on it; the piece stands and the unit rides up to its top (`unit:moved` emitted).
-  Objectives, solid props, `wall` tiles and existing monuments still refuse. `canPlaceSpellMonumentAt(kind, x, y, rot,
+  Objective tiles take a piece too (mondo: "we can change the terrain on objectives"); solid props, `wall` tiles and
+  existing monuments still refuse. `canPlaceSpellMonumentAt(kind, x, y, rot,
   liftUnits)` is the same check; battle.js `predictTerrainSpellChanges` uses it so the terrain ghost shows only the
   pieces the cast will really stand (the "preview said 4, got 3" report: a unit on the 4th tile was skipped).
 - Field battles: `_fieldStrataBuild` reads a monument tile at its recorded floor (`state._monumentTiles`), so the
