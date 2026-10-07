@@ -779,3 +779,27 @@ Root causes found and fixed (token 20261007-spellfreeze-01-cors):
 - **The far plane.** The building's camera had far = 20000 (274 m), less than Downtown's diagonal. `_hqFarTick` grows it (never
   shrinks within a visit) to cover the sky ring + room (`H.sky.farBase`) plus the eye's distance from the middle. The cinematic
   camera (three-camera.js `frame`) also grows the far plane by how far it has flown, in battle too, and restores it on exit.
+
+## ONLINE PVP PASS (2026-10-07, mondo: voxel maps in friendly rooms, friend's frame rate, stuck VS on the 2nd match, his unit's tiles on my screen, pick the friendly map)
+- **The opponent's tiles.** On the host, the REMOTE seat's activation (battle.js) mirrors the guest's unit as `selectedUnitId`
+  but kept a leftover `actionMode`, so ui.js `_hlCache` / three-renderer `rebuildHighlights` drew move/attack tiles for the
+  other player's unit. `_executeRemoteAction` also kept the guest's mode when the active unit changed. Both now clear
+  actionMode / actionMenuView / selectedTool / pendingTarget / comboPartner; ui.js and `rebuildHighlights` refuse an online
+  selection the viewer does not own.
+- **The stuck VS (next room).** The result screen's Main Menu (online.js backToMainMenu wrapper) dropped the socket but kept
+  `_autoStartFired` / `_waitingForOpponent` / `_lockState` / the arena waits, so in the next room the applyPartyBuild wrapper and
+  `_tryAutoStartRanked` returned early and both seats sat in the ready room. `window._ewResetOnlineMatchFlags(leaving)` clears
+  them on every way out (backToMainMenu, lobbyBackToPlayHub) and at every `room-full`.
+- **The voxel maps (slow seat).** The big rooms take 25-40 s to survey on a fast machine (downtown 41 s, cyberpunk 26 s,
+  stadium 18 s in node); the old flat 45 s launch wait ran out on a slower PC and the match started on the bare baked board.
+  The host now surveys from the room's creation (`_friendlyEmitConfig`), the guest from the join, and the launch wait only
+  gives up on a seat that stopped answering (`arena-check` every 4 s, guest answers `arena-busy`; 45 s silence or a 180 s cap).
+  The host's manual Start (friendly without a squad) waits the same way (`_friendlyStartPending`).
+- **The map pick.** The friendly room card has a MAP select: Random (default) plus the room's arenas (`_friendlyMapChoice`).
+- **The lean sync.** `_leanTrim` drops top-level keys ≥ 1 KB whose JSON matches the last send (boardColumns / boardVoxels /
+  loadouts … ~55 KB of a ~105 KB snapshot); a full snapshot every 3 s and on any match / phase / round / result change, and
+  after match-generation / recovery (`NET._leanSent = null`). The guest merges, so a missing key keeps its value.
+  `_ewSafeStringify` tries a plain JSON.stringify first. The guest repaints the HUD once per frame mid-fight (`_guestRenderSoon`).
+- **Renderer.** `_computeUnitSerial` caches the appearance string (`_apSerial`, WeakMap). Unit lamps exist for dead units too
+  (steady light count = no WebGL recompile on a kill) and re-resolve their unit by id when the guest's units array is replaced.
+  THE FOG BATCH: settled fog boxes draw in one merged LineSegments per kind (`_fogBatch`), only boxes mid-fade keep their own.

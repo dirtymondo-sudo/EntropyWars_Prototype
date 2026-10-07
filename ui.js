@@ -2377,7 +2377,10 @@
       const _scannedSet = (state.phase === 'battle' && state.scannedByPlayer) ? state.scannedByPlayer[mapPerspectivePlayer] : null;
       const _scannedFloor = 'earth';
 
-      const _selectedForHl = getSelectedUnit();
+      /* THE OPPONENT'S TILES (2026-10-07): online, a selection of the OTHER seat's unit (the host's turn mirror, a
+         leftover mode) never paints reach tiles — they are the opponent's options and, under fog, its position. */
+      const _selRaw = getSelectedUnit();
+      const _selectedForHl = (_selRaw && window._NET && window._NET.online && typeof getViewerPlayer === 'function' && _selRaw.player !== getViewerPlayer()) ? null : _selRaw;
 
       let _aliveCount = 0;
       let _unitPosFingerprint = '';
