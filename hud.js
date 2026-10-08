@@ -11035,6 +11035,13 @@ _watchPhaseForHud();
      relayed — online peers each see their own UI.
    · The editor: window.openUiMaker() — Settings → Display → HUD Theme → UI
      MAKER, the pause menu's same row, and the world editor's UI button.
+   Pass 2 (the user: "what would a veteran old school ui designer want"):
+   pixel corners + PIXEL SIZE (a skin drawn at 1/N and shown pixelated),
+   a PS1 ordered DITHER, the FOUR-CORNER gradient window, hard text shadows,
+   window OPEN animations + a menu CURSOR per theme (MOTION), the HUD LAYOUT
+   (UIM_PIECES: move / scale / fade / hide a HUD piece, sliders or ARRANGE ON
+   SCREEN with drag, wheel, arrow-key nudge, a grid and the TV safe area),
+   undo/redo, click the preview to edit, built-ins edit into a copy.
    ══════════════════════════════════════════════════════════════════════════ */
 (function () {
 'use strict';
@@ -11052,7 +11059,7 @@ const ROLES = [
 ];
 const SHAPES = [
   ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
-  ['tab', 'Tab'], ['scoop', 'Scoop'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
+  ['tab', 'Tab'], ['scoop', 'Scoop'], ['pixel', 'Pixel'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
 ];
 const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1 };   // drawn whole and scaled to the box
 const MATERIALS = [
@@ -11102,6 +11109,7 @@ try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof
 if (!Array.isArray(db.themes)) db.themes = [];
 if (!Array.isArray(db.slices)) db.slices = [];
 if (!db.assign || typeof db.assign !== 'object') db.assign = {};
+if (!db.layout || typeof db.layout !== 'object') db.layout = {};
 let _saveWarned = false;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
@@ -11149,8 +11157,14 @@ function newTheme(baseId, label) {
   return {
     id: uid('c_'), label: label || 'My Theme', v: 1, colors: c, scan: true,
     skins, text: { font: '', titleFont: '', caps: false, track: 0, effect: 'drop' }, drop: 0.5,
+    motion: { open: 'none', ms: 180, cursor: '', bob: true },
   };
 }
+
+const MOTION_DEF = { open: 'none', ms: 180, cursor: '', bob: true };
+function motionOf(t) { return Object.assign({}, MOTION_DEF, (t && !t.builtin && t.motion) || {}); }
+const OPENS = [['none', 'Instantly'], ['pop', 'Pop'], ['stretch', 'Stretch'], ['unroll', 'Unroll'], ['wipe', 'Wipe'], ['fade', 'Fade']];
+const CURSORS = [['', 'None'], ['▶', '▶'], ['☞', '☞'], ['◆', '◆'], ['●', '●'], ['➤', '➤'], ['»', '»'], ['>', '>']];
 
 /* ── THE PRESETS: themes made with the maker, shipped read-only (duplicate to edit) ── */
 function preset(id, label, hint, base, fn) {
@@ -11211,6 +11225,52 @@ const UIM_PRESETS = [
     skinOn(t, 'chip', { shape: 'diamond', size: 10, outline: { w: 1, c: '#5ab4d8' } });
     skinOn(t, 'chipOn', { shape: 'diamond', size: 10, outline: { w: 2, c: '#9ff3ff' }, glow: { r: 8, c: '#9ff3ff', a: 0.5 } });
   }),
+  preset('p_corner', 'Corner Blue', 'The classic blue window: a four-corner gradient, a white rounded frame, a pointing-hand cursor.', 'crystal', t => {
+    Object.assign(t.colors, {
+      plateTop: '#3b52c8', plateMid: '#1e2a8c', plateBot: '#060a30', edge: '#e8e8f0', rim: '#7a7a98', seam: '#000000', lip: 'rgba(255,255,255,0.06)',
+      headTop: '#2c3ea8', headBot: '#141c66', headInk: '#ffffff', rowTop: 'rgba(255,255,255,0)', rowBot: 'rgba(255,255,255,0)',
+      rowSelTop: 'rgba(255,255,255,0.16)', rowSelBot: 'rgba(255,255,255,0.08)', rowEdge: 'rgba(255,255,255,0)',
+      ink: '#ffffff', inkMute: '#c8cce0', inkDim: '#8c92b4', hair: 'rgba(255,255,255,0.22)', sel: '#fff2a8', accent: '#9fd8ff',
+    });
+    t.scan = false; t.text.effect = 'hard2'; t.motion = { open: 'stretch', ms: 220, cursor: '☞', bob: true };
+    const none = { y: 0, blur: 0, a: 0 }, flat = { w: 0, light: 0, dark: 0 };
+    skinOn(t, 'panel', { shape: 'round', size: 8, fill: { kind: 'corners', alpha: 1, c1: '#3b52c8', c2: '#1e2a8c', c3: '#16206e', c4: '#060a30' },
+      outline: { w: 2, c: '#e8e8f0' }, inner: { w: 1, c: '#6a6a88', gap: 0 }, bevel: flat, shadow: { y: 2, blur: 4, a: 0.5 } });
+    skinOn(t, 'head', { shape: 'round', size: 6, fill: { kind: 'corners', alpha: 1, c1: '#4a62d8', c2: '#2a3aa0', c3: '#1a2478', c4: '#0a1040' }, outline: { w: 1, c: '#c8c8d8' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: flat, shadow: none });
+    skinOn(t, 'button', { shape: 'round', size: 4, fill: { kind: 'none', alpha: 1 }, outline: { w: 0, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: flat, shadow: none, glow: { r: 0, c: '#ffffff', a: 0 } });
+    skinOn(t, 'buttonSel', { shape: 'round', size: 4, fill: { kind: 'solid', alpha: 0.14, c1: '#ffffff' }, outline: { w: 0, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: flat, shadow: none, glow: { r: 0, c: '#ffffff', a: 0 } });
+    skinOn(t, 'chip', { shape: 'round', size: 6, fill: { kind: 'corners', alpha: 1, c1: '#3b52c8', c2: '#1e2a8c', c3: '#16206e', c4: '#060a30' }, outline: { w: 1, c: '#c8c8d8' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: flat, shadow: none });
+    skinOn(t, 'chipOn', { shape: 'round', size: 6, fill: { kind: 'corners', alpha: 1, c1: '#6a82f0', c2: '#3a4ec0', c3: '#2a3896', c4: '#101a60' }, outline: { w: 2, c: '#fff2a8' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: flat, shadow: none });
+  }),
+  preset('p_pixel', 'Pixel Black', 'Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor.', 'onyx', t => {
+    Object.assign(t.colors, {
+      plateTop: '#000000', plateMid: '#000000', plateBot: '#000000', edge: '#ffffff', rim: '#000000', seam: '#000000', lip: 'rgba(0,0,0,0)',
+      headTop: '#000000', headBot: '#000000', headInk: '#ffffff', rowTop: 'rgba(0,0,0,0)', rowBot: 'rgba(0,0,0,0)', rowSelTop: 'rgba(255,255,255,0.18)', rowSelBot: 'rgba(255,255,255,0.18)',
+      rowEdge: 'rgba(255,255,255,0)', ink: '#ffffff', inkMute: '#bcbcbc', inkDim: '#7c7c7c', hair: 'rgba(255,255,255,0.3)', sel: '#ffffff', accent: '#3cbcfc', good: '#58f898', bad: '#f83800',
+    });
+    t.scan = false; t.drop = 0; t.text.font = "'DotGothic16', monospace"; t.text.caps = true; t.text.track = 0.04; t.text.effect = 'hard';
+    t.motion = { open: 'none', ms: 120, cursor: '▶', bob: true };
+    const none = { y: 0, blur: 0, a: 0 }, flat = { w: 0, light: 0, dark: 0 }, noGlow = { r: 0, c: '#ffffff', a: 0 }, noIn = { w: 0, c: '#000', gap: 0 };
+    skinOn(t, 'panel', { shape: 'pixel', size: 8, pixel: 2, fill: { kind: 'solid', alpha: 0.94, c1: '#000000' }, outline: { w: 2, c: '#ffffff' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+    skinOn(t, 'button', { shape: 'square', size: 2, pixel: 2, fill: { kind: 'none', alpha: 1 }, outline: { w: 0, c: '#ffffff' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+    skinOn(t, 'buttonSel', { shape: 'pixel', size: 4, pixel: 2, fill: { kind: 'solid', alpha: 0.16, c1: '#ffffff' }, outline: { w: 0, c: '#ffffff' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+    skinOn(t, 'chip', { shape: 'pixel', size: 4, pixel: 2, fill: { kind: 'solid', alpha: 1, c1: '#000000' }, outline: { w: 2, c: '#7c7c7c' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+    skinOn(t, 'chipOn', { shape: 'pixel', size: 4, pixel: 2, fill: { kind: 'solid', alpha: 1, c1: '#000000' }, outline: { w: 2, c: '#ffffff' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+  }),
+  preset('p_ps1', 'PS1 Grey', 'Dithered slate plates with a raised bevel and a dark frame; windows unroll top to bottom.', 'onyx', t => {
+    Object.assign(t.colors, {
+      plateTop: '#6c7486', plateMid: '#4a5162', plateBot: '#2a2f3c', edge: '#0a0c10', rim: '#9aa4b8', seam: '#000000', lip: 'rgba(255,255,255,0.08)',
+      headTop: '#7c8498', headBot: '#4c5466', headInk: '#ffffff', rowTop: '#545c70', rowBot: '#3a4152', rowSelTop: '#8a7a4a', rowSelBot: '#5a4c28', rowEdge: '#1a1d26',
+      ink: '#f4f4f8', inkMute: '#c4c8d4', inkDim: '#9096a6', hair: 'rgba(255,255,255,0.18)', sel: '#ffe070', accent: '#8ad0ff',
+    });
+    t.scan = false; t.text.effect = 'hard'; t.motion = { open: 'unroll', ms: 170, cursor: '▶', bob: true };
+    const bev = { w: 2, light: 0.32, dark: 0.5 };
+    skinOn(t, 'panel', { shape: 'square', size: 4, dither: 2, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#6c7486', c2: '', c3: '#2a2f3c' }, outline: { w: 1, c: '#0a0c10' }, inner: { w: 1, c: '#9aa4b8', gap: 0 }, bevel: bev, shadow: { y: 2, blur: 3, a: 0.5 } });
+    skinOn(t, 'head', { shape: 'square', size: 3, dither: 2, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#7c8498', c2: '', c3: '#4c5466' }, outline: { w: 1, c: '#0a0c10' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: bev, shadow: { y: 0, blur: 0, a: 0 } });
+    const row = { kind: 'gradient', angle: 180, alpha: 1, c1: '#5e6679', c2: '', c3: '#3a4152' };
+    skinOn(t, 'button', { shape: 'square', size: 3, dither: 2, fill: row, outline: { w: 1, c: '#1a1d26' }, bevel: { w: 1, light: 0.25, dark: 0.45 }, shadow: { y: 1, blur: 0, a: 0.5 } });
+    skinOn(t, 'chip', { shape: 'square', size: 3, dither: 2, fill: row, outline: { w: 1, c: '#1a1d26' }, bevel: { w: 1, light: 0.25, dark: 0.45 }, shadow: { y: 0, blur: 0, a: 0 } });
+  }),
 ];
 
 /* ── lookups ── */
@@ -11241,7 +11301,7 @@ function themeTokens(t) {
     'ink': c.ink, 'ink-mute': c.inkMute, 'ink-dim': c.inkDim, 'hair': c.hair,
     'dead-bg': c.deadBg, 'dead-edge': c.deadEdge, 'dead-ink': c.deadInk,
     'sel': c.sel, 'sel-soft': withAlpha(c.sel, 0.55), 'sel-faint': withAlpha(c.sel, 0.2),
-    'tshadow': ef === 'none' ? 'none' : ef === 'glow' ? `0 0 6px ${withAlpha(c.sel, 0.35)}` : ef === 'outline' ? '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' : '0 1px 2px rgba(0,0,0,0.7)',
+    'tshadow': ef === 'none' ? 'none' : ef === 'hard' ? '1px 1px 0 #000' : ef === 'hard2' ? '2px 2px 0 #000, 1px 1px 0 #000' : ef === 'glow' ? `0 0 6px ${withAlpha(c.sel, 0.35)}` : ef === 'outline' ? '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' : '0 1px 2px rgba(0,0,0,0.7)',
     'drop': d <= 0 ? 'none' : `0 3px 0 rgba(0,0,0,${(d * 1.1).toFixed(2)}), 0 8px 18px rgba(0,0,0,${(d * 0.9).toFixed(2)})`,
   };
 }
@@ -11291,6 +11351,27 @@ function shapePath(ctx, shape, x, y, w, h, s) {
     case 'hex': { const d = Math.min(h / 2, w / 4); ctx.moveTo(x + d, y); ctx.lineTo(x + w - d, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w - d, y + h); ctx.lineTo(x + d, y + h); ctx.lineTo(x, y + h / 2); break; }
     case 'diamond': ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2); break;
     case 'circle': ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); break;
+    case 'pixel': {   // the 8-bit window: each corner a quarter circle cut into square steps
+      const n = Math.max(2, Math.round(s / 3));
+      const arc = (cx, cy, a0) => {
+        let prev = null;
+        for (let i = 0; i <= n; i++) {
+          const a = (a0 + 90 * i / n) * Math.PI / 180, P = [Math.round(cx + Math.cos(a) * s), Math.round(cy + Math.sin(a) * s)];
+          if (prev) {   // the stair step: of the two elbows, the one further out
+            const A = [prev[0], P[1]], B = [P[0], prev[1]];
+            const E = Math.hypot(A[0] - cx, A[1] - cy) >= Math.hypot(B[0] - cx, B[1] - cy) ? A : B;
+            ctx.lineTo(E[0], E[1]);
+          }
+          ctx.lineTo(P[0], P[1]); prev = P;
+        }
+      };
+      ctx.moveTo(x + s, y); ctx.lineTo(x + w - s, y);
+      arc(x + w - s, y + s, 270); ctx.lineTo(x + w, y + h - s);
+      arc(x + w - s, y + h - s, 0); ctx.lineTo(x + s, y + h);
+      arc(x + s, y + h - s, 90); ctx.lineTo(x, y + s);
+      arc(x + s, y + s, 180);
+      break;
+    }
     default: ctx.rect(x, y, w, h);
   }
   ctx.closePath();
@@ -11298,16 +11379,20 @@ function shapePath(ctx, shape, x, y, w, h, s) {
 function insetSize(shape, s, d) { return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
 function skinGeom(s) {
   const full = !!FULL_SHAPES[s.shape];
-  const ow = Math.max(0, +s.outline.w || 0), iw = Math.max(0, +s.inner.w || 0), gap = Math.max(0, +s.inner.gap || 0);
+  const N0 = Math.max(1, Math.min(4, Math.round(+s.pixel || 1))), px = v => (N0 > 1 && v > 0 ? Math.max(N0, Math.round(v / N0) * N0) : v);
+  const ow = px(Math.max(0, +s.outline.w || 0)), iw = px(Math.max(0, +s.inner.w || 0)), gap = N0 > 1 ? Math.round(Math.max(0, +s.inner.gap || 0) / N0) * N0 : Math.max(0, +s.inner.gap || 0);
   const ring = ow + (iw ? gap + iw : 0);
   const C = full ? 0 : Math.ceil(Math.max(+s.size || 0, ring + 2, (s.bevel && s.bevel.w ? +s.bevel.w : 0) + ring, 3));
   const glowR = (s.glow && +s.glow.r && +s.glow.a) ? +s.glow.r : 0;
   const sh = (s.shadow && +s.shadow.a) ? (+s.shadow.blur || 0) + Math.abs(+s.shadow.y || 0) : 0;
-  const O = Math.ceil(Math.max(glowR, sh));
-  const W = full ? 2 * O + 200 : 2 * (O + C) + MID, H = full ? 2 * O + 120 : 2 * (O + C) + MID;
-  return { full, C, O, W, H, ow, iw, gap };
+  // PIXEL SIZE: the skin is drawn N times smaller and shown pixelated, so the slice must land on whole pixels
+  const N = N0;
+  const up = v => Math.ceil(v / N) * N;
+  const Cn = up(C), O = up(Math.ceil(Math.max(glowR, sh))), M = up(MID);
+  const W = full ? 2 * O + up(200) : 2 * (O + Cn) + M, H = full ? 2 * O + up(120) : 2 * (O + Cn) + M;
+  return { full, C: Cn, O, W, H, ow, iw, gap, N, k: N > 1 ? 1 / N : K };
 }
-const _skinCache = new Map();
+const _skinCache = new Map(), _pixelCss = new Set();
 function bakeSkin(s) {
   if (!s) return null;
   const key = JSON.stringify(s);
@@ -11315,7 +11400,7 @@ function bakeSkin(s) {
   const mat = s.fill && s.fill.kind === 'material' && s.material && s.material.src ? img(s.material.src)
     : (s.material && s.material.src && +s.material.mix > 0 ? img(s.material.src) : null);
   if (mat && !mat.done) return null;                     // re-applied when the texture lands
-  const g = skinGeom(s);
+  const g = skinGeom(s), K = g.k;
   const cv = document.createElement('canvas');
   cv.width = g.W * K; cv.height = g.H * K;
   const ctx = cv.getContext('2d');
@@ -11337,6 +11422,12 @@ function bakeSkin(s) {
     const gr = ctx.createRadialGradient(x + w / 2, y + h * 0.4, 0, x + w / 2, y + h * 0.4, Math.max(w, h) * 0.7);
     gr.addColorStop(0, f.c1 || '#000'); if (f.c2) gr.addColorStop(0.5, f.c2); gr.addColorStop(1, f.c3 || f.c1 || '#000');
     ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
+  } else if (f.kind === 'corners') {   // the four-corner window (each corner its own colour, blended across)
+    const t = document.createElement('canvas'); t.width = 2; t.height = 2;
+    const tc = t.getContext('2d');
+    [[f.c1, 0, 0], [f.c2 || f.c1, 1, 0], [f.c3 || f.c1, 0, 1], [f.c4 || f.c3 || f.c1, 1, 1]].forEach(([c, px, py]) => { tc.fillStyle = c || '#000'; tc.fillRect(px, py, 1, 1); });
+    ctx.imageSmoothingEnabled = true; try { ctx.imageSmoothingQuality = 'high'; } catch (e) {}
+    ctx.drawImage(t, 0.5, 0.5, 1, 1, x, y, w, h);
   } else if (f.kind !== 'none' && f.kind !== 'material') {
     const a = ((+f.angle || 180) - 90) * Math.PI / 180, cx = x + w / 2, cy = y + h / 2;
     const L = Math.abs(w * Math.cos(a)) / 2 + Math.abs(h * Math.sin(a)) / 2;
@@ -11382,20 +11473,38 @@ function bakeSkin(s) {
   // the outlines
   if (g.ow > 0) { const d = g.ow / 2; ctx.lineWidth = g.ow; ctx.strokeStyle = s.outline.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
   if (g.iw > 0) { const d = g.ow + g.gap + g.iw / 2; ctx.lineWidth = g.iw; ctx.strokeStyle = s.inner.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
+  if (+s.dither > 0) {   // PS1 colour: an ordered (Bayer 4x4) dither down to 15-bit (or 12-bit for the strong one)
+    try {
+      const id = ctx.getImageData(0, 0, cv.width, cv.height), d = id.data, W4 = cv.width;
+      const step = +s.dither > 1 ? 16 : 8, B = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+      for (let i = 0; i < d.length; i += 4) {
+        if (!d[i + 3]) continue;
+        const px = (i >> 2) % W4, py = ((i >> 2) / W4) | 0, o = (B[(py & 3) * 4 + (px & 3)] / 16 - 0.5) * step;
+        for (let c = 0; c < 3; c++) d[i + c] = Math.max(0, Math.min(255, Math.round((d[i + c] + o) / step) * step));
+      }
+      ctx.putImageData(id, 0, 0);
+    } catch (e) {}
+  }
   let src = '';
-  try { src = cv.toDataURL('image/webp', 0.92); if (src.indexOf('data:image/webp') !== 0) src = cv.toDataURL('image/png'); } catch (e) { src = ''; }   // a texture without CORS taints the canvas
+  try {
+    src = g.N > 1 || +s.dither > 0 ? cv.toDataURL('image/png') : cv.toDataURL('image/webp', 0.92);   // crisp pixels stay lossless
+    if (src.indexOf('data:image/') !== 0 || (g.N === 1 && !(+s.dither > 0) && src.indexOf('data:image/webp') !== 0)) src = cv.toDataURL('image/png');
+  } catch (e) { src = ''; }   // a texture without CORS taints the canvas
   if (!src) { const r = { css: 'none', src: '', g }; _skinCache.set(key, r); return r; }
   const css = g.full
     ? `url("${src}") 50% fill / 50% / ${g.O}px stretch`
     : `url("${src}") ${(g.O + g.C) * K} fill / ${g.O + g.C}px / ${g.O}px stretch`;
-  const r = { css, src, g, slice: g.full ? null : (g.O + g.C) * K };
+  const r = { css, src, g, k: K, pixel: g.N > 1, slice: g.full ? null : (g.O + g.C) * K };
+  if (r.pixel) _pixelCss.add(css);
   _skinCache.set(key, r);
   return r;
 }
 function sliceCss(sl) {
   if (!sl || !sl.src) return 'none';
   const sc = +sl.scale || 1, t = +sl.t || 0, r = +sl.r || 0, b = +sl.b || 0, l = +sl.l || 0, o = +sl.outset || 0;
-  return `url("${sl.src}") ${t} ${r} ${b} ${l}${sl.fill === false ? '' : ' fill'} / ${(t * sc).toFixed(1)}px ${(r * sc).toFixed(1)}px ${(b * sc).toFixed(1)}px ${(l * sc).toFixed(1)}px / ${o}px ${sl.repeat || 'stretch'}`;
+  const css = `url("${sl.src}") ${t} ${r} ${b} ${l}${sl.fill === false ? '' : ' fill'} / ${(t * sc).toFixed(1)}px ${(r * sc).toFixed(1)}px ${(b * sc).toFixed(1)}px ${(l * sc).toFixed(1)}px / ${o}px ${sl.repeat || 'stretch'}`;
+  if (sl.crisp) _pixelCss.add(css);   // a pixel-art 9-slice scales without smoothing
+  return css;
 }
 /* the border-image for one role of a theme ('' = the role keeps the token look) */
 function roleSkin(t, role) {
@@ -11431,7 +11540,7 @@ const UIM_SURFACES = [
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     keep: '.hrlg-blade .hrlg-body { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; }' },
-  { id: 'battlePop', label: 'Battle pop-ups', hint: 'The inspect card, the weather tip, the centre banner.', native: false, def: 'theme',
+  { id: 'battlePop', label: 'Battle pop-ups', hint: 'The inspect card, the weather tip, the centre banner.', native: false, def: 'theme', noAnim: true,
     scope: '#unitHoverHud, .ew-weather-tip, #announcementBanner',
     roles: {
       panel: '#unitHoverHud .ins-card, .ew-weather-tip, #announcementBanner',
@@ -11460,6 +11569,7 @@ const UIM_SURFACES = [
       chipOn: '#hqPage .hq-pp-bagtab.on, #hqPage .hq-map-tab.on',
     },
     titles: '#hqPage .hq-strip-l b, #hqPage .hq-pause-title b, #hqPage .hq-panel-hd b',
+    cursor: '#hqPage .hq-pause-cmd:hover::before, #hqPage .hq-pause-cmd.cur::before',
     keep: '#hqPage .hq-panel.hq-panel-say .hq-panel-card { border-image: none !important; }' },
   { id: 'pause', label: 'Battle pause menu', hint: 'ESC / P during a battle.', native: true, def: 'theme',
     scope: '#pauseOverlay',
@@ -11469,7 +11579,8 @@ const UIM_SURFACES = [
       button: '#pauseOverlay .hq-pause-cmd', buttonSel: '#pauseOverlay .hq-pause-cmd:hover, #pauseOverlay .hq-pause-cmd.cur',
       chip: '#pauseOverlay .bp-subtab', chipOn: '#pauseOverlay .bp-subtab.on',
     },
-    titles: '#pauseOverlay .hq-pause-title b, #pauseOverlay .bp-hd b' },
+    titles: '#pauseOverlay .hq-pause-title b, #pauseOverlay .bp-hd b',
+    cursor: '#pauseOverlay .hq-pause-cmd:hover::before, #pauseOverlay .hq-pause-cmd.cur::before' },
   { id: 'squad', label: 'Squad desk', hint: 'Pick a saved team before VS CPU / Online.', native: true, def: 'theme',
     scope: '#squadDeskPage',
     roles: {
@@ -11492,6 +11603,8 @@ const UIM_SURFACES = [
       mute: '.ms-crt:not(.ms-crt-forge) .ms-tty-kv, .ms-crt:not(.ms-crt-forge) .ms-tty-row p, .ms-crt:not(.ms-crt-forge) .ms-tty-kv b',
     },
     titles: '.ms-crt:not(.ms-crt-forge) .ms-tty-title h1, .ms-crt:not(.ms-crt-forge) .ms-tty-assign h2, .ms-crt:not(.ms-crt-forge) .ms-tty-foot .ms-tty-sum b',
+    cursor: '.ms-crt:not(.ms-crt-forge) .ms-tty-row.sel > em::before',
+    cursorPre: '.ms-crt:not(.ms-crt-forge) .ms-tty-row.sel > em { font-size: 0 !important; } .ms-crt:not(.ms-crt-forge) .ms-tty-row.sel > em::before { font-size: 12px; display: inline-block; }',
     extra: '.ms-crt:not(.ms-crt-forge) .ms-tty-row.sel { border-left: 3px solid var(--ew-sel) !important; } .ms-crt:not(.ms-crt-forge) .ms-tty-btn.primary { border-color: var(--uim-good) !important; color: var(--uim-good) !important; } .ms-crt:not(.ms-crt-forge) .ms-tty-btn.danger { color: var(--uim-bad) !important; }' },
   { id: 'forge', label: 'Party builder (forge)', hint: 'Roster, techniques, gear, the saved teams.', native: false, def: 'theme',
     scope: '.ms-crt-forge', crt: '.ms-crt-forge',
@@ -11562,7 +11675,7 @@ const UIM_SURFACES = [
       hide: '#uiDialogOverlay .ui-dialog-card::before',
     },
     titles: '#uiDialogOverlay .ui-dialog-title, #uiDialogOverlay .pickup-title' },
-  { id: 'loading', label: 'Loading screens', hint: 'The tip box and the bar while a battle or area loads.', native: false, def: 'original',
+  { id: 'loading', label: 'Loading screens', hint: 'The tip box and the bar while a battle or area loads.', native: false, def: 'original', noAnim: true,
     scope: '.ls-overlay, #hqLoad',
     roles: {
       panel: '.ls-overlay .ls-hint, #hqLoad .hq-load-hint',
@@ -11585,7 +11698,37 @@ const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
   roles: { panel: '#uimPreview .uimp-panel', head: '#uimPreview .uimp-head', well: '#uimPreview .uimp-well', button: '#uimPreview .uimp-btn',
     buttonSel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', chip: '#uimPreview .uimp-chip', chipOn: '#uimPreview .uimp-chip.on',
     input: '#uimPreview .uimp-input', ink: '#uimPreview .uimp-ink', mute: '#uimPreview .uimp-mute', dim: '#uimPreview .uimp-dim' },
-  titles: '#uimPreview .uimp-title' };
+  titles: '#uimPreview .uimp-title', cursor: '#uimPreview .uimp-btn.sel::before' };
+
+/* ── THE HUD LAYOUT: pieces the player can move, scale, fade or hide (db.layout[id] = { x, y, s, o, hide }) ── */
+const UIM_PIECES = [
+  { id: 'area', group: 'Exploration', label: 'Area name', sel: '#hqPage .hq-strip-l' },
+  { id: 'pay', group: 'Exploration', label: 'Hazard pay + wallet', sel: '#hqPage .hq-strip-r' },
+  { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock' },
+  { id: 'prompt', group: 'Exploration', label: 'Interact prompt', sel: '#hqPage .hq-prompt' },
+  { id: 'toast', group: 'Exploration', label: 'Pick-up toast', sel: '#hqPage .hq-toast' },
+  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true },
+  { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard' },
+  { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta' },
+  { id: 'party', group: 'Battle', label: 'Party dock', sel: '.ew-party-dock' },
+  { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar' },
+  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap' },
+  { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner' },
+];
+function layoutCss() {
+  let css = '';
+  UIM_PIECES.forEach(P => {
+    const L = db.layout[P.id]; if (!L) return;
+    const d = [];
+    if (+L.x || +L.y) d.push(`translate: ${+L.x || 0}px ${+L.y || 0}px !important;`);
+    if (L.s != null && +L.s !== 1) d.push(`scale: ${+L.s} !important;`);
+    const o = L.o == null ? 1 : +L.o;
+    if (L.hide && !P.noHide) d.push(UI.arr ? 'filter: opacity(0.3) grayscale(1) !important;' : 'display: none !important;');
+    else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
+    if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
+  });
+  return css;
+}
 
 /* ── the generator ── */
 function parts(list) { return String(list || '').split(',').map(s => s.trim()).filter(Boolean); }
@@ -11627,10 +11770,19 @@ function surfaceCss(S, T, tid, gid) {
     const bi = roleSkin(T, r);
     if (bi === null) { pending = true; return; }
     if (!bi) return;
-    css += `${pre(S.roles[r])} { border-image: ${skinVar(bi)} !important; background: none !important; box-shadow: none !important; }\n`;
+    css += `${pre(S.roles[r])} { border-image: ${skinVar(bi)} !important; background: none !important; box-shadow: none !important;${_pixelCss.has(bi) ? ' image-rendering: pixelated !important;' : ''} }\n`;
+    if (_pixelCss.has(bi)) css += `${pre(parts(S.roles[r]).map(x => x + ' > *').join(', '))} { image-rendering: auto !important; }\n`;
     if (r === 'buttonSel' || r === 'chipOn') css += `${pre(S.roles[r])} { color: var(--ew-sel) !important; }\n`;
   });
   if (S.keep && T && !T.builtin) css += preRules(S.keep) + '\n';
+  // the motion: windows open, the cursor points
+  const mo = T && !T.builtin ? motionOf(T) : null;
+  if (mo && mo.open !== 'none' && S.roles.panel && !S.noAnim)
+    css += `${pre(S.roles.panel)} { animation: uim-${mo.open} ${Math.max(40, +mo.ms || 180)}ms ${mo.open === 'stretch' ? 'linear' : 'ease-out'} backwards !important; }\n`;
+  if (mo && mo.cursor && S.cursor) {
+    if (S.cursorPre) css += preRules(S.cursorPre) + '\n';
+    css += `${pre(S.cursor)} { content: "${mo.cursor.replace(/["\\]/g, '')}" !important; color: var(--ew-sel) !important; opacity: 1 !important; font-family: inherit; text-shadow: var(--ew-tshadow); ${mo.bob ? 'animation: uim-bob 0.6s steps(2, jump-none) infinite !important;' : 'animation: none !important;'} }\n`;
+  }
   // the text
   const tx = (T && !T.builtin && T.text) || null;
   if (tx) {
@@ -11652,6 +11804,13 @@ function effectiveId(S) {
   return globalId();
 }
 let _applyT = 0, _previewTheme = null, _skinVars = new Map();
+const KEYFRAMES = `@keyframes uim-pop { from { scale: 0.1; opacity: 0; } 70% { opacity: 1; } to { scale: 1; opacity: 1; } }
+@keyframes uim-stretch { 0% { scale: 0.04 0.05; opacity: 0; } 8% { opacity: 1; } 50% { scale: 1 0.05; } 100% { scale: 1 1; opacity: 1; } }
+@keyframes uim-unroll { from { clip-path: inset(-80px -80px 100% -80px); } to { clip-path: inset(-80px); } }
+@keyframes uim-wipe { from { clip-path: inset(-80px 100% -80px -80px); } to { clip-path: inset(-80px); } }
+@keyframes uim-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes uim-bob { from { translate: 0 0; } to { translate: 3px 0; } }
+`;
 /* every baked image is written ONCE as a custom property on :root; the rules point at it */
 function skinVar(bi) { let n = _skinVars.get(bi); if (!n) { n = '--uim-sk' + _skinVars.size; _skinVars.set(bi, n); } return `var(${n})`; }
 function scheduleApply() { if (_applyT) return; _applyT = setTimeout(() => { _applyT = 0; apply(); }, 30); }
@@ -11668,7 +11827,7 @@ function apply() {
   });
   if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
   let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
-  css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n` + css;
+  css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css + layoutCss();
   let el = document.getElementById('ew-ui-maker');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-maker'; }
   if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
@@ -11677,62 +11836,87 @@ function apply() {
 }
 
 /* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
-const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '' };
+const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, arr: null };
 const UIM_CSS = `
 .uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
 .uim-root * { box-sizing: border-box; }
-.uim-top { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: #14161c; border-bottom: 1px solid #2a2e38; }
-.uim-top b { font-size: 14px; letter-spacing: 0.24em; color: #fff; }
-.uim-top span { color: #8a93a6; font-size: 11px; flex: 1; }
-.uim-body { display: grid; grid-template-columns: 230px minmax(0, 1fr) 380px; min-height: 0; }
+.uim-top { display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: #14161c; border-bottom: 1px solid #2a2e38; }
+.uim-top b { font-size: 13px; letter-spacing: 0.24em; color: #fff; white-space: nowrap; }
+.uim-top .uim-cur { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; color: #8a93a6; font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.uim-top .uim-cur i { width: 26px; height: 16px; flex: none; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); }
+.uim-top .uim-cur strong { color: #fff; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.uim-top .uim-cur em { font-style: normal; font-size: 9px; letter-spacing: 0.12em; color: #6fb4ff; border: 1px solid #2f4f7a; border-radius: 3px; padding: 1px 5px; }
+.uim-body { display: grid; grid-template-columns: 220px minmax(0, 1fr) 400px; min-height: 0; }
 .uim-col { min-height: 0; overflow: auto; padding: 10px; border-right: 1px solid #22252e; }
-.uim-col:last-child { border-right: none; border-left: 1px solid #22252e; background: #101217; }
+.uim-col:last-child { border-right: none; border-left: 1px solid #22252e; background: #101217; padding-top: 0; }
+.uim-mid { padding: 0; display: flex; flex-direction: column; }
 .uim-h { margin: 12px 0 6px; font-size: 10px; letter-spacing: 0.22em; color: #7d8699; text-transform: uppercase; }
 .uim-h:first-child { margin-top: 0; }
-.uim-trow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 3px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.uim-trow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 2px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
 .uim-trow:hover { background: #191c24; }
 .uim-trow.on { border-color: #6fb4ff; background: #16223a; }
 .uim-trow i { width: 26px; height: 16px; flex: none; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); }
-.uim-trow em { margin-left: auto; font-style: normal; font-size: 9px; color: #6fb4ff; letter-spacing: 0.1em; }
-.uim-btn { font: inherit; font-size: 11px; color: #dfe3ea; background: #1c2029; border: 1px solid #333949; border-radius: 6px; padding: 5px 9px; cursor: pointer; }
-.uim-btn:hover { border-color: #6fb4ff; color: #fff; }
+.uim-trow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uim-trow em { margin-left: auto; flex: none; white-space: nowrap; font-style: normal; font-size: 9px; color: #6fb4ff; letter-spacing: 0.1em; }
+.uim-btn { font: inherit; font-size: 11px; color: #dfe3ea; background: #1c2029; border: 1px solid #333949; border-radius: 6px; padding: 5px 9px; cursor: pointer; white-space: nowrap; }
+.uim-btn:hover:not(:disabled) { border-color: #6fb4ff; color: #fff; }
 .uim-btn.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
 .uim-btn.pri { background: #1d4f8a; border-color: #4b8fe0; color: #fff; }
 .uim-btn.bad { color: #ff9c8f; }
-.uim-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.uim-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .uim-btns { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-.uim-tabs { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 10px; }
+.uim-tabs { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 3px; margin: 0 -10px 8px; padding: 10px 10px 8px; background: #101217; border-bottom: 1px solid #22252e; }
+.uim-roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-bottom: 8px; }
+.uim-roles .uim-btn { text-align: center; }
 .uim-f { display: grid; grid-template-columns: 104px 1fr; align-items: center; gap: 4px 8px; margin: 5px 0; }
 .uim-f > label { color: #9aa3b5; font-size: 11px; }
 .uim-f > div { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .uim-f input[type=range] { flex: 1; min-width: 0; accent-color: #6fb4ff; }
-.uim-f input[type=color] { width: 34px; height: 22px; padding: 0; border: 1px solid #333949; background: none; cursor: pointer; }
-.uim-f output { min-width: 34px; text-align: right; color: #c8cfdc; font-size: 11px; }
+.uim-f input[type=color] { width: 30px; height: 22px; flex: none; padding: 0; border: 1px solid #333949; background: none; cursor: pointer; }
+.uim-num { width: 52px; flex: none; font: inherit; font-size: 11px; color: #c8cfdc; background: #0c0e13; border: 1px solid #2a2f3b; border-radius: 4px; padding: 2px 4px; text-align: right; }
+.uim-hex { width: 70px; flex: none; font: inherit; font-size: 11px; color: #c8cfdc; background: #0c0e13; border: 1px solid #2a2f3b; border-radius: 4px; padding: 2px 5px; text-transform: lowercase; }
 .uim-f select, .uim-in, .uim-io { font: inherit; font-size: 11px; color: #dfe3ea; background: #0c0e13; border: 1px solid #333949; border-radius: 5px; padding: 4px 6px; min-width: 0; width: 100%; }
 .uim-io { height: 120px; resize: vertical; }
-.uim-shapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.uim-sec { margin: 6px 0; border: 1px solid #22252e; border-radius: 7px; background: #13151b; }
+.uim-sec > summary { list-style: none; cursor: pointer; padding: 7px 10px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #9aa6bd; display: flex; align-items: center; gap: 8px; user-select: none; }
+.uim-sec > summary::-webkit-details-marker { display: none; }
+.uim-sec > summary::before { content: '▸'; color: #6fb4ff; transition: transform 0.12s; }
+.uim-sec[open] > summary::before { transform: rotate(90deg); }
+.uim-sec > summary small { margin-left: auto; letter-spacing: 0.04em; text-transform: none; color: #6fb4ff; font-size: 10px; }
+.uim-sec > div { padding: 2px 10px 8px; }
+.uim-shapes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 4px 0 6px; }
 .uim-shape { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px; font: inherit; font-size: 9px; color: #b9c1d0; background: #161920; border: 1px solid #2c313d; border-radius: 6px; cursor: pointer; }
 .uim-shape canvas { width: 40px; height: 24px; }
+.uim-shape:hover { border-color: #4b6f9e; }
 .uim-shape.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
 .uim-note { color: #7d8699; font-size: 10.5px; margin: 6px 0; }
-.uim-ro { padding: 8px; border: 1px dashed #4b8fe0; border-radius: 6px; color: #b9c9e8; margin-bottom: 10px; }
+.uim-ro { padding: 7px 9px; border: 1px dashed #4b8fe0; border-radius: 6px; color: #b9c9e8; margin-bottom: 8px; font-size: 11px; }
+.uim-warn { color: #ffc56b; }
 .uim-sl { display: flex; align-items: center; gap: 8px; padding: 5px; border: 1px solid #2c313d; border-radius: 6px; margin-bottom: 4px; cursor: pointer; }
 .uim-sl.on { border-color: #6fb4ff; background: #16223a; }
 .uim-sl img { width: 40px; height: 28px; object-fit: contain; background: #000; }
 .uim-slice-view { position: relative; margin: 8px 0; background: repeating-conic-gradient(#222 0 25%, #2c2c2c 0 50%) 0 0 / 14px 14px; text-align: center; }
 .uim-slice-view canvas { max-width: 100%; display: block; margin: 0 auto; }
 .uim-slice-try { margin: 8px 0; min-width: 80px; min-height: 40px; width: 220px; height: 90px; resize: both; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #fff; }
-.uim-stage { position: relative; min-height: 100%; padding: 26px; display: flex; flex-wrap: wrap; gap: 22px; align-content: flex-start; align-items: flex-start; justify-content: center; }
+.uim-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; padding: 7px 10px; border-bottom: 1px solid #22252e; background: #0f1116; }
+.uim-bar .sep { width: 1px; height: 18px; background: #2a2e38; margin: 0 4px; }
+.uim-bar small { color: #7d8699; font-size: 10px; margin-right: 2px; }
+.uim-stage { position: relative; flex: 1; min-height: 0; overflow: auto; }
 .uim-stage.bd-dark { background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 75%); }
 .uim-stage.bd-light { background: linear-gradient(#cfd6e2, #9aa6b8); }
 .uim-stage.bd-grass { background: #2a3a20 url(${TEX}grass_2.png) 0 0 / 256px; }
 .uim-stage.bd-stone { background: #333 url(${TEX}rocks_1.png) 0 0 / 192px; }
 .uim-stage.bd-wood { background: #3a2a1a url(${TEX}wood_planks.png) 0 0 / 192px; }
+.uim-zoom { padding: 26px 26px 40px; display: flex; flex-wrap: wrap; gap: 22px; align-content: flex-start; align-items: flex-start; justify-content: center; }
+.uim-hint { position: sticky; bottom: 0; text-align: center; font-size: 10px; color: #8a93a6; padding: 4px; background: rgba(8,9,12,0.7); }
+#uimPreview [data-r] { cursor: pointer; }
+#uimPreview .uim-hl { outline: 1px dashed #ff3df0; outline-offset: 4px; }
 #uimPreview .uimp-panel { width: 300px; display: flex; flex-direction: column; overflow: hidden; }
 #uimPreview .uimp-head { padding: 7px 14px; font-size: 13px; letter-spacing: 0.16em; display: flex; justify-content: space-between; }
-#uimPreview .uimp-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
-#uimPreview .uimp-btn { padding: 8px 12px; letter-spacing: 0.12em; cursor: pointer; display: flex; justify-content: space-between; }
-#uimPreview .uimp-btn.off { opacity: 0.45; cursor: default; }
+#uimPreview .uimp-body { padding: 12px 14px 14px 26px; display: flex; flex-direction: column; gap: 6px; }
+#uimPreview .uimp-btn { position: relative; padding: 8px 12px; letter-spacing: 0.12em; cursor: pointer; display: flex; justify-content: space-between; }
+#uimPreview .uimp-btn::before { position: absolute; right: 100%; top: 50%; margin: -0.65em 5px 0 0; line-height: 1.3; font-size: 13px; }
+#uimPreview .uimp-btn.off { opacity: 0.45; }
 #uimPreview .uimp-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
 #uimPreview .uimp-chip { padding: 4px 12px; font-size: 10px; letter-spacing: 0.14em; cursor: pointer; }
 #uimPreview .uimp-well { padding: 8px 10px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; }
@@ -11741,13 +11925,53 @@ const UIM_CSS = `
 #uimPreview .uimp-small { width: 240px; }
 #uimPreview .uimp-row2 { display: flex; gap: 8px; }
 #uimPreview .uimp-row2 > * { flex: 1; justify-content: center; }
+#uimPreview .uimp-msg { width: 560px; max-width: 100%; position: relative; margin-top: 12px; overflow: visible; }
+#uimPreview .uimp-msg .uimp-chip { position: absolute; left: 14px; top: -12px; }
+#uimPreview .uimp-msg .uimp-body { padding: 18px 18px 16px; min-height: 76px; font-size: 13px; line-height: 1.6; }
+#uimPreview .uimp-next { position: absolute; right: 14px; bottom: 8px; color: var(--ew-sel); animation: uim-bob-y 0.7s steps(2, jump-none) infinite; }
+@keyframes uim-bob-y { from { translate: 0 0; } to { translate: 0 3px; } }
 .uim-assign { display: grid; grid-template-columns: 1fr 150px; gap: 4px 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #1e2129; }
 .uim-assign b { color: #e4e8ef; font-weight: 500; }
 .uim-assign small { display: block; color: #7d8699; font-size: 10px; }
-@media (max-width: 1000px) { .uim-body { grid-template-columns: 1fr; grid-template-rows: auto 340px auto; overflow: auto; } .uim-col { border: none; overflow: visible; } }
+.uim-toast { position: absolute; left: 50%; bottom: 22px; translate: -50% 12px; padding: 8px 14px; background: #1d3456; border: 1px solid #6fb4ff; border-radius: 7px; color: #fff; font-size: 11.5px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.18s, translate 0.18s; z-index: 5; max-width: 80vw; text-align: center; }
+.uim-toast.show { opacity: 1; translate: -50% 0; }
+.uim-contrast { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 6px 0; border-radius: 6px; background: #161920; font-size: 11px; }
+.uim-contrast b { font-weight: 500; }
+html.uim-arranging #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hqPause, html.uim-arranging #settingsPage { visibility: hidden !important; }
+.uim-arr { position: fixed; inset: 0; z-index: 10060; pointer-events: none; font: 11px/1.3 'IBM Plex Mono', monospace; }
+.uim-arr-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 8px 8px; }
+.uim-arr-safe { position: fixed; inset: 5%; border: 1px dashed rgba(255,255,255,0.35); }
+.uim-arr-safe span { position: absolute; right: 4px; bottom: 2px; color: rgba(255,255,255,0.45); font-size: 9px; letter-spacing: 0.14em; }
+.uim-arr-box { position: fixed; pointer-events: auto; border: 1px dashed #ff3df0; background: rgba(255,61,240,0.06); cursor: move; touch-action: none; }
+.uim-arr-box:hover { background: rgba(255,61,240,0.14); }
+.uim-arr-box.on { border-style: solid; border-width: 2px; background: rgba(255,61,240,0.16); }
+.uim-arr-box.hid { border-color: #9aa3b5; background: rgba(160,160,170,0.12); }
+.uim-arr-box span { position: absolute; left: -1px; bottom: 100%; color: #fff; background: #ff3df0; padding: 1px 5px; white-space: nowrap; font-size: 10px; }
+.uim-arr-box.hid span { background: #6a7284; }
+.uim-arr-bar { position: fixed; left: 50%; top: 10px; translate: -50% 0; pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; max-width: 94vw; padding: 7px 10px; background: rgba(14,16,22,0.94); border: 1px solid #ff3df0; border-radius: 8px; color: #dfe3ea; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+.uim-arr-bar p { margin: 0 6px 0 0; color: #b9c1d0; font-size: 10.5px; }
+.uim-arr-bar b { color: #fff; }
+.uim-arr-bar .uim-btn { font: 11px 'IBM Plex Mono', monospace; }
+@media (max-width: 1100px) { .uim-body { grid-template-columns: 1fr; grid-template-rows: auto 380px auto; overflow: auto; } .uim-col { border: none; overflow: visible; } .uim-stage { min-height: 340px; } }
 `;
 function curTheme() { return themeById(UI.themeId) || themeById(globalId()); }
 function editable(t) { return !!(t && !t.builtin && !t.preset); }
+/* a built-in or a preset is edited through a DRAFT: the first change turns it into the user's own copy */
+function draftOf(t) {
+  if (editable(t)) return t;
+  if (!UI.draft || UI.draft.base !== t.id) UI.draft = { base: t.id, t: newTheme(t.id, t.label + ' copy') };
+  return UI.draft.t;
+}
+function materialize() {
+  const t = curTheme();
+  if (editable(t)) return t;
+  const d = draftOf(t), wasGlobal = globalId() === t.id;
+  db.themes.push(d); UI.themeId = d.id; UI.draft = null; syncPickerRows();
+  if (wasGlobal) window.setHudTheme(d.id);
+  toast(`Made your own copy, "${d.label}"${wasGlobal ? ', and the game now wears it' : ''}. The original stays as it was.`);
+  if (UI.el) { UI.el.querySelector('.uim-list').innerHTML = renderList(); renderTop(); }
+  return d;
+}
 function getPath(o, p) { return p.split('.').reduce((a, k) => (a == null ? a : a[k]), o); }
 function setPath(o, p, v) { const ks = p.split('.'); const last = ks.pop(); const tgt = ks.reduce((a, k) => (a[k] == null ? (a[k] = {}) : a[k]), o); tgt[last] = v; }
 function swatch(t) {
@@ -11761,138 +11985,227 @@ function shapeIcon(shape) {
   shapePath(ctx, shape, 3, 3, 34, 18, 7); ctx.fill(); ctx.stroke();
   return cv;
 }
-/* form fields */
-function fRange(label, path, min, max, step, val) {
-  return `<div class="uim-f"><label>${label}</label><div><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-path="${path}" data-num="1"><output>${(+val).toFixed(step < 1 ? 2 : 0)}</output></div></div>`;
+/* ── undo / redo (whole-theme snapshots; a slider drag is one step) ── */
+const HIST = { undo: [], redo: [], t: 0 };
+function snap(t, force) {
+  if (!editable(t)) return;
+  const now = Date.now();
+  if (force || now - HIST.t > 700) { HIST.undo.push({ id: t.id, j: JSON.stringify(t) }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
+  HIST.t = now;
+}
+function travel(from, to) {
+  for (;;) {
+    const e = from.pop(); if (!e) { toast(from === HIST.undo ? 'Nothing to undo.' : 'Nothing to redo.'); return; }
+    const i = db.themes.findIndex(x => x.id === e.id); if (i < 0) continue;
+    to.push({ id: e.id, j: JSON.stringify(db.themes[i]) });
+    db.themes[i] = JSON.parse(e.j); UI.themeId = e.id; HIST.t = 0;
+    touch(); render(); return;
+  }
+}
+/* ── form fields ── */
+const fmt = (v, step) => (+v).toFixed(+step < 1 ? (+step < 0.1 ? 2 : 1) : 0);
+function fRange(label, path, min, max, step, val, tip) {
+  return `<div class="uim-f"${tip ? ` title="${esc(tip)}"` : ''}><label>${label}</label><div><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-path="${path}" data-num="1"><input type="number" class="uim-num" min="${min}" max="${max}" step="${step}" value="${fmt(val, step)}" data-path="${path}" data-num="1"></div></div>`;
 }
 function fColor(label, path, val, withA) {
   const a = alphaOf(val);
-  return `<div class="uim-f"><label>${label}</label><div><input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity"><output>${(+a).toFixed(2)}</output>` : ''}</div></div>`;
+  return `<div class="uim-f"><label>${label}</label><div><input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb" title="Pick a colour"><input class="uim-hex" value="${toHex(val)}" data-path="${path}" data-kind="hex" maxlength="7" spellcheck="false" title="Type a hex colour">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity"><input type="number" class="uim-num" min="0" max="1" step="0.05" value="${a.toFixed(2)}" data-path="${path}" data-kind="alpha" title="Opacity">` : ''}</div></div>`;
 }
 function fSelect(label, path, opts, val) {
   return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>`;
 }
 function fSeg(label, path, opts, val) {
-  return `<div class="uim-f"><label>${label}</label><div style="flex-wrap:wrap">${opts.map(([v, l]) => `<button class="uim-btn${String(v) === String(val) ? ' on' : ''}" data-set="${path}" data-val="${esc(v)}">${esc(l)}</button>`).join('')}</div></div>`;
+  return `<div class="uim-f"><label>${label}</label><div style="flex-wrap:wrap">${opts.map(([v, l, tip]) => `<button class="uim-btn${String(v) === String(val) ? ' on' : ''}" data-set="${path}" data-val="${esc(v)}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(l)}</button>`).join('')}</div></div>`;
 }
 function fCheck(label, path, val) {
   return `<div class="uim-f"><label>${label}</label><div><input type="checkbox" data-path="${path}" data-bool="1"${val ? ' checked' : ''}></div></div>`;
 }
+function sec(key, title, body, badge) {
+  return `<details class="uim-sec" data-sec="${key}"${UI.shut[key] ? '' : ' open'}><summary>${title}${badge ? `<small>${badge}</small>` : ''}</summary><div>${body}</div></details>`;
+}
+function toast(msg) {
+  const el = UI.el && UI.el.querySelector('.uim-toast'); if (!el) return;
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 3200);
+}
 
+function renderTop() {
+  const t = curTheme(), el = UI.el && UI.el.querySelector('.uim-cur'); if (!el) return;
+  el.innerHTML = `<i style="${swatch(t)}"></i><strong>${esc(t.label)}</strong>${t.builtin ? '<em>BUILT-IN</em>' : t.preset ? '<em>PRESET</em>' : ''}${t.id === globalId() ? '<em>IN THE GAME</em>' : ''}`;
+  const u = UI.el.querySelector('[data-act="undo"]'), r = UI.el.querySelector('[data-act="redo"]'), g = UI.el.querySelector('.uim-top [data-act="global"]');
+  if (u) u.disabled = !HIST.undo.length; if (r) r.disabled = !HIST.redo.length;
+  if (g) g.disabled = t.id === globalId();
+}
 function renderList() {
-  const row = t => `<div class="uim-trow${t.id === UI.themeId ? ' on' : ''}" data-theme="${esc(t.id)}"><i style="${swatch(t)}"></i><span>${esc(t.label)}</span>${t.id === globalId() ? '<em>SETTINGS</em>' : ''}</div>`;
+  const row = t => `<div class="uim-trow${t.id === UI.themeId ? ' on' : ''}" data-theme="${esc(t.id)}" title="${esc(t.hint || '')}"><i style="${swatch(t)}"></i><span>${esc(t.label)}</span>${t.id === globalId() ? '<em>IN GAME</em>' : ''}</div>`;
   const all = allThemes();
-  return `<div class="uim-h">Built-in</div>${all.filter(t => t.builtin).map(row).join('')}
-    <div class="uim-h">Presets</div>${all.filter(t => t.preset).map(row).join('')}
-    <div class="uim-h">My themes</div>${db.themes.map(row).join('') || '<div class="uim-note">None yet. NEW makes one from the theme you have open.</div>'}
+  return `<div class="uim-h">My themes</div>${db.themes.map(row).join('') || '<div class="uim-note">None yet. Change anything on a theme and it becomes your own copy.</div>'}
     <div class="uim-btns">
-      <button class="uim-btn pri" data-act="new">New</button>
+      <button class="uim-btn pri" data-act="new" title="A new theme from the one you have open">New</button>
       <button class="uim-btn" data-act="dup">Duplicate</button>
       <button class="uim-btn bad" data-act="del"${editable(curTheme()) ? '' : ' disabled'}>Delete</button>
     </div>
+    <div class="uim-h">Presets</div>${all.filter(t => t.preset).map(row).join('')}
+    <div class="uim-h">Built-in</div>${all.filter(t => t.builtin).map(row).join('')}
+    <div class="uim-h">Share</div>
     <div class="uim-btns">
-      <button class="uim-btn" data-act="global">Use in Settings</button>
-      <button class="uim-btn" data-act="export">Export</button>
-      <button class="uim-btn" data-act="import">Import</button>
+      <button class="uim-btn" data-act="download" title="Save the open theme as a file">Save file</button>
+      <label class="uim-btn" title="Load a theme file">Load file<input type="file" accept=".json,application/json" id="uimThemeFile" style="display:none"></label>
+      <button class="uim-btn" data-act="export" title="The theme as text, to paste somewhere">Copy text</button>
+      <button class="uim-btn" data-act="import">Paste text</button>
     </div>
-    ${UI.io ? `<textarea class="uim-io" id="uimIo" placeholder="Paste a theme here, then IMPORT again.">${esc(UI.io === 'import' ? '' : UI.io)}</textarea>${UI.io === 'import' ? '<div class="uim-btns"><button class="uim-btn pri" data-act="doimport">Import this</button></div>' : '<div class="uim-note">Copy this text to keep or share the theme.</div>'}` : ''}`;
+    ${UI.io ? `<textarea class="uim-io" id="uimIo" placeholder="Paste a theme here, then IMPORT THIS.">${esc(UI.io === 'import' ? '' : UI.io)}</textarea>${UI.io === 'import' ? '<div class="uim-btns"><button class="uim-btn pri" data-act="doimport">Import this</button></div>' : '<div class="uim-note">Copy this text to keep or share the theme.</div>'}` : ''}`;
 }
 function renderPreview() {
   const bds = [['dark', 'Dark'], ['light', 'Light'], ['grass', 'Grass'], ['stone', 'Stone'], ['wood', 'Wood']];
-  return `<div class="uim-btns" style="justify-content:center;margin:0 0 8px">${bds.map(([v, l]) => `<button class="uim-btn${UI.backdrop === v ? ' on' : ''}" data-bd="${v}">${l}</button>`).join('')}</div>
-  <div id="uimPreview" class="uim-stage bd-${UI.backdrop}">
-    <div class="uimp-panel">
-      <div class="uimp-head"><span class="uimp-title">VESSEL</span><span>LV 12</span></div>
+  return `<div class="uim-bar"><small>BACKDROP</small>${bds.map(([v, l]) => `<button class="uim-btn${UI.backdrop === v ? ' on' : ''}" data-bd="${v}">${l}</button>`).join('')}
+    <span class="sep"></span><small>ZOOM</small>${[1, 2, 3].map(z => `<button class="uim-btn${UI.zoom === z ? ' on' : ''}" data-zoom="${z}">${z}×</button>`).join('')}
+    <span class="sep"></span><button class="uim-btn" data-act="replay" title="Play the window open animation again">Replay open</button></div>
+  <div id="uimPreview" class="uim-stage bd-${UI.backdrop}"><div class="uim-zoom" style="zoom:${UI.zoom}">
+    <div class="uimp-panel" data-r="panel">
+      <div class="uimp-head" data-r="head"><span class="uimp-title">VESSEL</span><span>LV 12</span></div>
       <div class="uimp-body">
-        <div class="uimp-ink">The ink: names and numbers</div>
-        <div class="uimp-mute">The muted ink: sub-lines</div>
-        <div class="uimp-dim">The dim ink: notes</div>
-        <div class="uimp-btn"><span>MOVE</span><span>⇢</span></div>
-        <div class="uimp-btn sel"><span>ATTACK</span><span>⚔</span></div>
-        <div class="uimp-btn"><span>ABILITIES</span><span>▲</span></div>
-        <div class="uimp-btn off"><span>ITEMS</span><span>✕</span></div>
-        <div class="uimp-chips"><span class="uimp-chip on">ON</span><span class="uimp-chip">OFF</span><span class="uimp-chip">AUTO</span></div>
-        <div class="uimp-well"><span class="uimp-mute">A well inside a window</span><input class="uimp-input" value="Text field"></div>
+        <div class="uimp-ink" data-r="ink">The ink: names and numbers</div>
+        <div class="uimp-mute" data-r="mute">The muted ink: sub-lines</div>
+        <div class="uimp-dim" data-r="dim">The dim ink: notes</div>
+        <div class="uimp-btn" data-r="button"><span>MOVE</span><span>⇢</span></div>
+        <div class="uimp-btn sel" data-r="buttonSel"><span>ATTACK</span><span>⚔</span></div>
+        <div class="uimp-btn" data-r="button"><span>ABILITIES</span><span>▲</span></div>
+        <div class="uimp-btn off" data-r="button"><span>ITEMS</span><span>✕</span></div>
+        <div class="uimp-chips"><span class="uimp-chip on" data-r="chipOn">ON</span><span class="uimp-chip" data-r="chip">OFF</span><span class="uimp-chip" data-r="chip">AUTO</span></div>
+        <div class="uimp-well" data-r="well"><span class="uimp-mute">A well inside a window</span><input class="uimp-input" data-r="input" value="Text field"></div>
       </div>
     </div>
-    <div class="uimp-panel uimp-small">
-      <div class="uimp-head"><span class="uimp-title">CONFIRM</span></div>
+    <div class="uimp-panel uimp-small" data-r="panel">
+      <div class="uimp-head" data-r="head"><span class="uimp-title">CONFIRM</span></div>
       <div class="uimp-body">
-        <div class="uimp-ink">Start the match?</div>
-        <div class="uimp-row2"><div class="uimp-btn sel">YES</div><div class="uimp-btn">NO</div></div>
+        <div class="uimp-ink" data-r="ink">Start the match?</div>
+        <div class="uimp-row2"><div class="uimp-btn sel" data-r="buttonSel">YES</div><div class="uimp-btn" data-r="button">NO</div></div>
       </div>
     </div>
-  </div>`;
+    <div class="uimp-panel uimp-msg" data-r="panel">
+      <span class="uimp-chip on" data-r="chipOn">NAME</span>
+      <div class="uimp-body"><div class="uimp-ink" data-r="ink">A message window: the words a character says.</div></div>
+      <span class="uimp-next">▼</span>
+    </div>
+  </div><div class="uim-hint">Click any part of the preview to edit it.</div></div>`;
+}
+function markPreview() {
+  const pv = UI.el && UI.el.querySelector('#uimPreview'); if (!pv) return;
+  pv.querySelectorAll('.uim-hl').forEach(e => e.classList.remove('uim-hl'));
+  if (UI.tab === 'skins') pv.querySelectorAll(`[data-r="${UI.role}"]`).forEach(e => e.classList.add('uim-hl'));
 }
 function skinForm(t, role) {
   const s = t.skins[role], P = `skins.${role}`;
   const sel = role === 'buttonSel' || role === 'chipOn';
   let h = `<div class="uim-f"><label>Custom skin</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
-  if (!s.on) return h;
+  if (!s.on) return h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
   h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
   if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
-  h += `<div class="uim-h">Shape</div><div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`;
-  h += fRange(FULL_SHAPES[s.shape] ? 'Size (n/a)' : 'Corner size', `${P}.size`, 0, 40, 1, s.size);
-  h += `<div class="uim-h">Fill</div>` + fSeg('Kind', `${P}.fill.kind`, [['solid', 'Solid'], ['gradient', 'Gradient'], ['radial', 'Radial'], ['material', 'Material'], ['none', 'None']], s.fill.kind);
-  if (s.fill.kind !== 'none') {
-    h += fColor(s.fill.kind === 'solid' || s.fill.kind === 'material' ? 'Colour' : 'Top / centre', `${P}.fill.c1`, s.fill.c1, true);
-    if (s.fill.kind === 'gradient' || s.fill.kind === 'radial') {
-      h += `<div class="uim-f"><label>Middle</label><div><input type="checkbox" data-path="${P}.fill.c2" data-mid="1" data-re="1"${s.fill.c2 ? ' checked' : ''}>${s.fill.c2 ? `<input type="color" value="${toHex(s.fill.c2)}" data-path="${P}.fill.c2" data-kind="rgb"><input type="range" min="0" max="1" step="0.01" value="${alphaOf(s.fill.c2)}" data-path="${P}.fill.c2" data-kind="alpha"><output>${alphaOf(s.fill.c2).toFixed(2)}</output>` : ''}</div></div>`;
-      h += fColor('Bottom / edge', `${P}.fill.c3`, s.fill.c3, true);
+  const full = FULL_SHAPES[s.shape];
+  h += sec('shape', 'Shape', `<div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`
+    + (full ? '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
+  const f = s.fill, k = f.kind;
+  let fb = fSeg('Kind', `${P}.fill.kind`, [['solid', 'Solid'], ['gradient', 'Gradient'], ['corners', '4 corners', 'Each corner its own colour, blended across the window'], ['radial', 'Radial'], ['material', 'Material'], ['none', 'None']], k);
+  if (k === 'corners') {
+    fb += fColor('Top left', `${P}.fill.c1`, f.c1, true) + fColor('Top right', `${P}.fill.c2`, f.c2 || f.c1, true) + fColor('Bottom left', `${P}.fill.c3`, f.c3, true) + fColor('Bottom right', `${P}.fill.c4`, f.c4 || f.c3, true);
+  } else if (k !== 'none') {
+    fb += fColor(k === 'solid' || k === 'material' ? 'Colour' : 'Top / centre', `${P}.fill.c1`, f.c1, true);
+    if (k === 'gradient' || k === 'radial') {
+      fb += `<div class="uim-f"><label>Middle</label><div><input type="checkbox" data-path="${P}.fill.c2" data-mid="1" data-re="1"${f.c2 ? ' checked' : ''} title="A third colour in the middle">${f.c2 ? `<input type="color" value="${toHex(f.c2)}" data-path="${P}.fill.c2" data-kind="rgb"><input class="uim-hex" value="${toHex(f.c2)}" data-path="${P}.fill.c2" data-kind="hex" maxlength="7"><input type="range" min="0" max="1" step="0.01" value="${alphaOf(f.c2)}" data-path="${P}.fill.c2" data-kind="alpha">` : ''}</div></div>`;
+      fb += fColor('Bottom / edge', `${P}.fill.c3`, f.c3, true);
     }
-    if (s.fill.kind === 'gradient') h += fRange('Angle', `${P}.fill.angle`, 0, 360, 5, s.fill.angle == null ? 180 : s.fill.angle);
-    h += fRange('Fill opacity', `${P}.fill.alpha`, 0, 1, 0.01, s.fill.alpha == null ? 1 : s.fill.alpha);
+    if (k === 'gradient') fb += fRange('Angle', `${P}.fill.angle`, 0, 360, 5, f.angle == null ? 180 : f.angle);
   }
-  h += `<div class="uim-h">Material (texture)</div>` + fSelect('Texture', `${P}.material.src`, [['', 'None']].concat(MATERIALS.map(([f, l]) => [TEX + f + '.png', l])).concat(db.slices.filter(x => x.src && x.src.startsWith('data:')).map(x => [x.src, 'Image: ' + x.name])), s.material.src || '');
+  if (k !== 'none') fb += fRange('Fill opacity', `${P}.fill.alpha`, 0, 1, 0.01, f.alpha == null ? 1 : f.alpha);
+  h += sec('fill', 'Fill', fb, k === 'corners' ? '4 corners' : k);
+  let mb = fSelect('Texture', `${P}.material.src`, [['', 'None']].concat(MATERIALS.map(([fl, l]) => [TEX + fl + '.png', l])).concat(db.slices.filter(x => x.src && x.src.startsWith('data:')).map(x => [x.src, 'Image: ' + x.name])), s.material.src || '');
   if (s.material.src) {
-    h += fRange('Scale', `${P}.material.scale`, 0.25, 4, 0.05, s.material.scale || 1);
-    h += fRange(s.fill.kind === 'material' ? 'Tint' : 'Strength', `${P}.material.mix`, 0, 1, 0.01, s.material.mix == null ? 0.35 : s.material.mix);
-    h += fSelect('Blend', `${P}.material.blend`, [['overlay', 'Overlay'], ['multiply', 'Multiply'], ['soft-light', 'Soft light'], ['screen', 'Screen'], ['color', 'Colour'], ['luminosity', 'Luminosity'], ['source-over', 'Normal']], s.material.blend || 'overlay');
+    mb += fRange('Scale', `${P}.material.scale`, 0.25, 4, 0.05, s.material.scale || 1);
+    mb += fRange(k === 'material' ? 'Tint' : 'Strength', `${P}.material.mix`, 0, 1, 0.01, s.material.mix == null ? 0.35 : s.material.mix);
+    mb += fSelect('Blend', `${P}.material.blend`, [['overlay', 'Overlay'], ['multiply', 'Multiply'], ['soft-light', 'Soft light'], ['screen', 'Screen'], ['color', 'Colour'], ['luminosity', 'Luminosity'], ['source-over', 'Normal']], s.material.blend || 'overlay');
   }
-  h += `<div class="uim-h">Outline</div>` + fRange('Width', `${P}.outline.w`, 0, 8, 0.5, s.outline.w) + fColor('Colour', `${P}.outline.c`, s.outline.c, true);
-  h += fRange('Inner rim', `${P}.inner.w`, 0, 6, 0.5, s.inner.w) + (+s.inner.w ? fColor('Rim colour', `${P}.inner.c`, s.inner.c, true) + fRange('Rim gap', `${P}.inner.gap`, 0, 8, 0.5, s.inner.gap) : '');
-  h += `<div class="uim-h">Light</div>` + fRange('Bevel width', `${P}.bevel.w`, 0, 8, 0.5, s.bevel.w) + fRange('Bevel light', `${P}.bevel.light`, 0, 0.6, 0.01, s.bevel.light) + fRange('Bevel shade', `${P}.bevel.dark`, 0, 0.8, 0.01, s.bevel.dark);
-  h += fRange('Gloss', `${P}.gloss`, 0, 0.6, 0.01, s.gloss || 0);
-  h += fRange('Glow', `${P}.glow.r`, 0, 24, 1, s.glow.r) + (+s.glow.r ? fColor('Glow colour', `${P}.glow.c`, s.glow.c, false) + fRange('Glow strength', `${P}.glow.a`, 0, 1, 0.01, s.glow.a) : '');
-  h += fRange('Drop shadow', `${P}.shadow.blur`, 0, 24, 1, s.shadow.blur) + fRange('Shadow drop', `${P}.shadow.y`, 0, 12, 1, s.shadow.y) + fRange('Shadow dark', `${P}.shadow.a`, 0, 1, 0.01, s.shadow.a);
-  h += fRange('Opacity', `${P}.opacity`, 0.1, 1, 0.01, s.opacity == null ? 1 : s.opacity);
-  h += `<div class="uim-btns"><button class="uim-btn" data-act="toslice">Save this skin as a 9-slice</button><button class="uim-btn" data-act="copyskin">Copy to every role</button></div>`;
+  h += sec('mat', 'Material (texture)', mb, s.material.src ? (MATERIALS.find(m => s.material.src === TEX + m[0] + '.png') || [0, 'image'])[1] : '');
+  h += sec('frame', 'Frame', fRange('Outline', `${P}.outline.w`, 0, 8, 0.5, s.outline.w) + fColor('Outline colour', `${P}.outline.c`, s.outline.c, true)
+    + fRange('Inner rim', `${P}.inner.w`, 0, 6, 0.5, s.inner.w) + (+s.inner.w ? fColor('Rim colour', `${P}.inner.c`, s.inner.c, true) + fRange('Rim gap', `${P}.inner.gap`, 0, 8, 0.5, s.inner.gap) : ''));
+  h += sec('light', 'Light + shadow', fRange('Bevel width', `${P}.bevel.w`, 0, 8, 0.5, s.bevel.w, 'A raised edge: light on top, shade below') + fRange('Bevel light', `${P}.bevel.light`, 0, 0.6, 0.01, s.bevel.light) + fRange('Bevel shade', `${P}.bevel.dark`, 0, 0.8, 0.01, s.bevel.dark)
+    + fRange('Gloss', `${P}.gloss`, 0, 0.6, 0.01, s.gloss || 0)
+    + fRange('Glow', `${P}.glow.r`, 0, 24, 1, s.glow.r) + (+s.glow.r ? fColor('Glow colour', `${P}.glow.c`, s.glow.c, false) + fRange('Glow strength', `${P}.glow.a`, 0, 1, 0.01, s.glow.a) : '')
+    + fRange('Shadow blur', `${P}.shadow.blur`, 0, 24, 1, s.shadow.blur) + fRange('Shadow drop', `${P}.shadow.y`, 0, 12, 1, s.shadow.y) + fRange('Shadow dark', `${P}.shadow.a`, 0, 1, 0.01, s.shadow.a)
+    + fRange('Opacity', `${P}.opacity`, 0.1, 1, 0.01, s.opacity == null ? 1 : s.opacity));
+  h += sec('retro', 'Retro', fSeg('Pixel size', `${P}.pixel`, [['1', 'Off'], ['2', '2×'], ['3', '3×'], ['4', '4×']], String(s.pixel || 1))
+    + fSeg('Dither', `${P}.dither`, [['0', 'Off'], ['1', 'Light', '15-bit colour, like the PS1'], ['2', 'Strong', '12-bit colour, visible dots']], String(s.dither || 0))
+    + '<div class="uim-note">Pixel size draws the skin with big square pixels (pair it with the Pixel shape). Dither breaks gradients into a fine dot pattern.</div>',
+    [(+s.pixel > 1 ? s.pixel + '× pixels' : ''), (+s.dither ? 'dither' : '')].filter(Boolean).join(', '));
+  h += `<div class="uim-btns"><button class="uim-btn" data-act="copyskin">Copy skin</button><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button><button class="uim-btn" data-act="skinall" title="Every other role gets this shape, frame and light (keeping its own colours)">Use on every role</button><button class="uim-btn" data-act="resetskin">Reset</button><button class="uim-btn" data-act="toslice">Save as a 9-slice</button></div>`;
   return h;
+}
+function contrast(a, b) {
+  const L = c => { const p = parseCss(c) || { r: 0, g: 0, b: 0 }; const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(p.r) + 0.7152 * f(p.g) + 0.0722 * f(p.b); };
+  const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 function colorsForm(t) {
   const C = (l, k, a) => fColor(l, 'colors.' + k, t.colors[k], a);
-  return `<div class="uim-h">Windows</div>${C('Plate top', 'plateTop', true)}${C('Plate middle', 'plateMid', true)}${C('Plate bottom', 'plateBot', true)}${C('Frame', 'edge', true)}${C('Frame seam', 'seam', true)}${C('Inner rim', 'rim', true)}${C('Top light', 'lip', true)}
-    ${fCheck('Scanlines', 'scan', t.scan)}${fRange('Drop shadow', 'drop', 0, 1, 0.01, t.drop == null ? 0.5 : t.drop)}
-    <div class="uim-h">Headers</div>${C('Header top', 'headTop', true)}${C('Header bottom', 'headBot', true)}${C('Header ink', 'headInk', false)}
-    <div class="uim-h">Rows + buttons</div>${C('Row top', 'rowTop', true)}${C('Row bottom', 'rowBot', true)}${C('Selected top', 'rowSelTop', true)}${C('Selected bottom', 'rowSelBot', true)}${C('Row frame', 'rowEdge', true)}
-    <div class="uim-h">Ink</div>${C('Ink', 'ink', false)}${C('Muted ink', 'inkMute', false)}${C('Dim ink', 'inkDim', false)}${C('Hairlines', 'hair', true)}${C('Select colour', 'sel', false)}${C('Accent', 'accent', false)}${C('Good', 'good', false)}${C('Bad', 'bad', false)}
-    <div class="uim-h">Disabled rows</div>${C('Fill', 'deadBg', true)}${C('Frame', 'deadEdge', true)}${C('Ink', 'deadInk', false)}`;
+  const over = (c, b) => { const p = parseCss(c), q = parseCss(b) || { r: 0, g: 0, b: 0 }; if (!p) return b; const a = p.a == null ? 1 : p.a; return `rgb(${p.r * a + q.r * (1 - a)},${p.g * a + q.g * (1 - a)},${p.b * a + q.b * (1 - a)})`; };
+  const plate = over(t.colors.plateMid, '#000'), cr = contrast(t.colors.ink, plate), crS = contrast(t.colors.sel, over(t.colors.rowSelBot || t.colors.plateMid, plate));
+  const tag = r => r >= 4.5 ? `<b style="color:#66ff8a">${r.toFixed(1)}:1 easy to read</b>` : r >= 3 ? `<b style="color:#ffc56b">${r.toFixed(1)}:1 readable</b>` : `<b style="color:#ff7a6c">${r.toFixed(1)}:1 hard to read</b>`;
+  return `<div class="uim-contrast">Ink on plate ${tag(cr)}</div><div class="uim-contrast">Selected ink ${tag(crS)}</div>`
+    + sec('cw', 'Windows', `${C('Plate top', 'plateTop', true)}${C('Plate middle', 'plateMid', true)}${C('Plate bottom', 'plateBot', true)}${C('Frame', 'edge', true)}${C('Frame seam', 'seam', true)}${C('Inner rim', 'rim', true)}${C('Top light', 'lip', true)}
+    ${fCheck('Scanlines', 'scan', t.scan)}${fRange('Drop shadow', 'drop', 0, 1, 0.01, t.drop == null ? 0.5 : t.drop)}`)
+    + sec('ch', 'Headers', `${C('Header top', 'headTop', true)}${C('Header bottom', 'headBot', true)}${C('Header ink', 'headInk', false)}`)
+    + sec('cr', 'Rows + buttons', `${C('Row top', 'rowTop', true)}${C('Row bottom', 'rowBot', true)}${C('Selected top', 'rowSelTop', true)}${C('Selected bottom', 'rowSelBot', true)}${C('Row frame', 'rowEdge', true)}`)
+    + sec('ci', 'Ink', `${C('Ink', 'ink', false)}${C('Muted ink', 'inkMute', false)}${C('Dim ink', 'inkDim', false)}${C('Hairlines', 'hair', true)}${C('Select colour', 'sel', false)}${C('Accent', 'accent', false)}${C('Good', 'good', false)}${C('Bad', 'bad', false)}`)
+    + sec('cd', 'Disabled rows', `${C('Fill', 'deadBg', true)}${C('Frame', 'deadEdge', true)}${C('Ink', 'deadInk', false)}`);
 }
 function textForm(t) {
   const tx = t.text;
   return `${fSelect('Body font', 'text.font', FONTS, tx.font)}${fSelect('Title font', 'text.titleFont', FONTS, tx.titleFont)}
     ${fCheck('ALL CAPS', 'text.caps', tx.caps)}${fRange('Letter spacing', 'text.track', 0, 0.4, 0.01, tx.track || 0)}
-    ${fSeg('Text effect', 'text.effect', [['drop', 'Shadow'], ['outline', 'Outline'], ['glow', 'Glow'], ['none', 'None']], tx.effect || 'drop')}
+    ${fSeg('Text effect', 'text.effect', [['drop', 'Soft shadow'], ['hard', 'Hard 1px', 'A solid 1 pixel shadow down and right'], ['hard2', 'Hard 2px'], ['outline', 'Outline'], ['glow', 'Glow'], ['none', 'None']], tx.effect || 'drop')}
     <div class="uim-note">Caps and spacing go on headers, buttons and chips; the body font goes on every text in a menu wearing this theme.</div>`;
+}
+function motionForm(t) {
+  const m = motionOf(t);
+  return sec('mo', 'Windows open', fSeg('Animation', 'motion.open', OPENS, m.open) + (m.open !== 'none' ? fRange('Speed (ms)', 'motion.ms', 60, 600, 10, m.ms) : '')
+      + '<div class="uim-note">Plays when a window appears. Pop grows from the centre, Stretch opens a line then the box, Unroll drops from the top, Wipe slides in from the left.</div>')
+    + sec('cu', 'Menu cursor', fSeg('Cursor', 'motion.cursor', CURSORS, m.cursor) + fCheck('Cursor bobs', 'motion.bob', m.bob)
+      + '<div class="uim-note">Points at the selected row in the pause menus, the match select and the preview.</div>');
+}
+function layoutForm() {
+  let h = `<div class="uim-btns"><button class="uim-btn pri" data-act="arrange">Arrange on screen</button><button class="uim-btn" data-act="layreset"${Object.keys(db.layout).length ? '' : ' disabled'}>Reset all</button></div>
+  <div class="uim-note">Move, resize, fade or hide each piece of the HUD. The layout is the same in every theme. ARRANGE ON SCREEN lets you drag the pieces that are on screen right now.</div>`;
+  let grp = '';
+  UIM_PIECES.forEach(P => {
+    const L = db.layout[P.id] || {}, moved = !!(+L.x || +L.y || (L.s != null && +L.s !== 1) || (L.o != null && +L.o < 1));
+    if (P.group !== grp) { grp = P.group; h += `<div class="uim-h">${esc(grp)}</div>`; }
+    const R = (l, k, mn, mx, st, v) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-lpath="${P.id}.${k}" data-num="1"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-lpath="${P.id}.${k}" data-num="1"></div></div>`;
+    const body = (P.noHide ? '' : `<div class="uim-f"><label>Hide</label><div><input type="checkbox" data-lpath="${P.id}.hide" data-bool="1"${L.hide ? ' checked' : ''}></div></div>`)
+      + R('Move X', 'x', -1200, 1200, 1, +L.x || 0) + R('Move Y', 'y', -800, 800, 1, +L.y || 0) + R('Scale', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
+      + `<div class="uim-btns"><button class="uim-btn" data-layreset="${P.id}">Reset</button></div>`;
+    if (UI.shut['l_' + P.id] === undefined) UI.shut['l_' + P.id] = true;
+    h += sec('l_' + P.id, esc(P.label), body, L.hide ? 'hidden' : moved ? 'moved' : '');
+  });
+  return h;
 }
 function slicesForm() {
   const sl = db.slices.find(x => x.id === UI.sliceId);
   let h = `<div class="uim-note">A 9-slice is an image cut into 9 parts: the corners stay their size, the edges and the middle stretch. Any skin can wear one, in any theme.</div>
   <div class="uim-btns"><label class="uim-btn pri" style="display:inline-block">Image file…<input type="file" accept="image/*" id="uimSliceFile" style="display:none"></label>
-  <button class="uim-btn" data-act="slicetex">From a game texture</button></div>
-  ${db.slices.map(x => `<div class="uim-sl${x.id === UI.sliceId ? ' on' : ''}" data-slice="${esc(x.id)}"><img src="${esc(x.src)}" alt=""><span>${esc(x.name)}</span></div>`).join('') || '<div class="uim-note">No 9-slices yet. Load an image, or SAVE THIS SKIN AS A 9-SLICE in the Skins tab.</div>'}`;
+  <select class="uim-in" style="width:auto" data-slicetex="1"><option value="">From a game texture…</option>${MATERIALS.map(([fl, l]) => `<option value="${fl}">${esc(l)}</option>`).join('')}</select></div>
+  ${db.slices.map(x => `<div class="uim-sl${x.id === UI.sliceId ? ' on' : ''}" data-slice="${esc(x.id)}"><img src="${esc(x.src)}" alt=""><span>${esc(x.name)}</span></div>`).join('') || '<div class="uim-note">No 9-slices yet. Load an image, or SAVE AS A 9-SLICE in the Skins tab.</div>'}`;
   if (!sl) return h;
-  const P = `slice:${sl.id}`;
   h += `<div class="uim-h">Edit</div>
   <div class="uim-f"><label>Name</label><div><input class="uim-in" data-spath="name" value="${esc(sl.name)}"></div></div>
   <div class="uim-slice-view"><canvas id="uimSliceCv"></canvas></div>
-  <div class="uim-note">Image ${sl.w || '?'} × ${sl.h || '?'} px. The cut lines are in image pixels.</div>`;
-  const R = (l, k, mx, st) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="0" max="${mx}" step="${st}" value="${+sl[k] || 0}" data-spath="${k}" data-num="1"><output>${+sl[k] || 0}</output></div></div>`;
+  <div class="uim-note">Image ${sl.w || '?'} × ${sl.h || '?'} px. The pink lines are the cuts, in image pixels.</div>`;
+  const R = (l, k, mx, st) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="0" max="${mx}" step="${st}" value="${+sl[k] || 0}" data-spath="${k}" data-num="1"><input type="number" class="uim-num" min="0" max="${mx}" step="${st}" value="${+sl[k] || 0}" data-spath="${k}" data-num="1"></div></div>`;
   const half = Math.max(1, Math.floor(Math.max(sl.w || 64, sl.h || 64) / 2));
+  h += `<div class="uim-f"><label>Link cuts</label><div><input type="checkbox" data-slink="1"${UI.slink ? ' checked' : ''}><span class="uim-note" style="margin:0">Move all four cuts together</span></div></div>`;
   h += R('Top cut', 't', half, 1) + R('Right cut', 'r', half, 1) + R('Bottom cut', 'b', half, 1) + R('Left cut', 'l', half, 1) + R('Display scale', 'scale', 4, 0.05) + R('Outset', 'outset', 40, 1);
   h += `<div class="uim-f"><label>Edges</label><div style="flex-wrap:wrap">${[['stretch', 'Stretch'], ['round', 'Tile (fit)'], ['repeat', 'Tile'], ['space', 'Space']].map(([v, l]) => `<button class="uim-btn${(sl.repeat || 'stretch') === v ? ' on' : ''}" data-sset="repeat" data-val="${v}">${l}</button>`).join('')}</div></div>
   <div class="uim-f"><label>Fill middle</label><div><input type="checkbox" data-spath="fill" data-bool="1"${sl.fill === false ? '' : ' checked'}></div></div>
-  <div class="uim-h">Try it (drag the corner)</div><div class="uim-slice-try" id="uimSliceTry" style="border-image:${esc(sliceCss(sl))}">Panel</div>
+  <div class="uim-f"><label>Crisp pixels</label><div><input type="checkbox" data-spath="crisp" data-bool="1"${sl.crisp ? ' checked' : ''}><span class="uim-note" style="margin:0">For pixel art: no smoothing when scaled</span></div></div>
+  <div class="uim-h">Try it (drag the corner)</div><div class="uim-slice-try" id="uimSliceTry" style="border-image:${esc(sliceCss(sl))};${sl.crisp ? 'image-rendering:pixelated' : ''}">Panel</div>
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
@@ -11904,17 +12217,19 @@ function menusForm() {
   <div class="uim-note">Every menu and HUD wears the Settings theme unless you give it its own here. Original look keeps a screen exactly as it was made.</div>
   ${UIM_SURFACES.map(S => `<div class="uim-assign"><div><b>${esc(S.label)}</b><small>${esc(S.hint)}</small></div><select data-assign="${S.id}">${opts(S).map(([v, l]) => `<option value="${esc(v)}"${(db.assign[S.id] || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`).join('')}`;
 }
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['layout', 'Layout'], ['slices', '9-Slices'], ['menus', 'Menus']];
 function renderInspector() {
-  const t = curTheme();
-  const tabs = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['slices', '9-Slices'], ['menus', 'Menus']];
-  let h = `<div class="uim-tabs">${tabs.map(([v, l]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}">${l}</button>`).join('')}</div>`;
+  const T = curTheme(), t = draftOf(T);
+  let h = `<div class="uim-tabs">${TABS.map(([v, l]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}">${l}</button>`).join('')}</div>`;
   if (UI.tab === 'slices') return h + slicesForm();
   if (UI.tab === 'menus') return h + menusForm();
-  if (!editable(t)) return h + `<div class="uim-ro"><b>${esc(t.label)}</b> is ${t.builtin ? 'a built-in theme' : 'a preset'}. Make a copy to change it.<div class="uim-btns"><button class="uim-btn pri" data-act="dup">Make an editable copy</button></div></div>`;
-  h += `<div class="uim-f"><label>Name</label><div><input class="uim-in" data-path="label" value="${esc(t.label)}"></div></div>`;
+  if (UI.tab === 'layout') return h + layoutForm();
+  if (!editable(T)) h += `<div class="uim-ro"><b>${esc(T.label)}</b> is ${T.builtin ? 'a built-in theme' : 'a preset'}. Change anything below and it becomes your own copy; the original stays.</div>`;
+  else h += `<div class="uim-f"><label>Name</label><div><input class="uim-in" data-path="label" value="${esc(t.label)}"></div></div>`;
   if (UI.tab === 'colors') return h + colorsForm(t);
   if (UI.tab === 'text') return h + textForm(t);
-  h += `<div class="uim-tabs">${ROLES.map(([v, l, d]) => `<button class="uim-btn${UI.role === v ? ' on' : ''}" data-role="${v}" title="${esc(d)}">${l}</button>`).join('')}</div>`;
+  if (UI.tab === 'motion') return h + motionForm(t);
+  h += `<div class="uim-roles">${ROLES.map(([v, l, d]) => `<button class="uim-btn${UI.role === v ? ' on' : ''}" data-role="${v}" title="${esc(d)}">${l}${t.skins[v] && t.skins[v].on ? ' ●' : ''}</button>`).join('')}</div>`;
   return h + skinForm(t, UI.role);
 }
 function render(part) {
@@ -11929,6 +12244,7 @@ function render(part) {
     col.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
     drawSliceView();
   }
+  renderTop(); markPreview();
   apply();
 }
 function drawSliceView() {
@@ -11948,32 +12264,68 @@ function drawSliceView() {
   im.src = sl.src;
 }
 let _saveT = 0;
-function touch(part) { clearTimeout(_saveT); _saveT = setTimeout(save, 250); syncPickerRows(); if (part) render(part); else apply(); }
+function touch(part) { if (UI.el) _previewTheme = curTheme(); clearTimeout(_saveT); _saveT = setTimeout(save, 250); syncPickerRows(); if (part) render(part); else { apply(); renderTop(); } }
+/* keep the twin fields of one value (slider + number, picker + hex + alpha) in step */
+function syncTwins(el, attr, val) {
+  UI.el.querySelectorAll(`[${attr}="${el.getAttribute(attr)}"]`).forEach(o => {
+    if (o === el) return;
+    const k = o.dataset.kind;
+    if (k === 'rgb' || k === 'hex') o.value = toHex(val);
+    else if (k === 'alpha') o.value = o.type === 'number' ? alphaOf(val).toFixed(2) : alphaOf(val);
+    else if (o.dataset.num) o.value = o.type === 'number' ? fmt(val, o.step) : val;
+  });
+}
 function onInput(e) {
-  const el = e.target, t = curTheme();
+  const el = e.target;
+  if (el.dataset.slink) { UI.slink = el.checked; return; }
+  if (el.dataset.slicetex) { if (e.type === 'change' && el.value) sliceFromTex(el.value); return; }
   if (el.dataset.spath) {
     const sl = db.slices.find(x => x.id === UI.sliceId); if (!sl) return;
-    sl[el.dataset.spath] = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
-    if (el.nextElementSibling && el.nextElementSibling.tagName === 'OUTPUT') el.nextElementSibling.textContent = el.value;
-    const tr = UI.el.querySelector('#uimSliceTry'); if (tr) tr.style.borderImage = sliceCss(sl);
+    const k = el.dataset.spath, v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
+    if (el.dataset.num && el.value === '') return;
+    const keys = UI.slink && 'trbl'.indexOf(k) >= 0 && k.length === 1 ? ['t', 'r', 'b', 'l'] : [k];
+    keys.forEach(kk => { sl[kk] = v; UI.el.querySelectorAll(`[data-spath="${kk}"]`).forEach(o => { if (o !== el && o.dataset.num) o.value = v; }); });
+    const tr = UI.el.querySelector('#uimSliceTry'); if (tr) { tr.style.borderImage = sliceCss(sl); tr.style.imageRendering = sl.crisp ? 'pixelated' : ''; }
     if (e.type === 'change') drawSliceView(); else drawSliceViewSoon();
+    if (k === 'crisp') _skinCache.clear();
     touch(); return;
+  }
+  if (el.dataset.lpath) {
+    if (el.dataset.num && el.value === '') return;
+    const [id, k] = el.dataset.lpath.split('.');
+    const L = db.layout[id] || (db.layout[id] = {});
+    L[k] = el.dataset.bool ? el.checked : +el.value;
+    syncTwins(el, 'data-lpath', L[k]);
+    tidyLayout(id); touch(); return;
   }
   if (el.dataset.global && e.type === 'change') { window.setHudTheme(el.value); render(); return; }
   if (el.dataset.assign && e.type === 'change') { if (el.value) db.assign[el.dataset.assign] = el.value; else delete db.assign[el.dataset.assign]; touch(); return; }
-  const p = el.dataset.path; if (!p || !editable(t)) return;
+  const p = el.dataset.path; if (!p) return;
+  if (el.dataset.kind === 'hex') {                     // only a whole hex colour counts
+    const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m) return;
+    if (e.type === 'input' && m[1].length === 3) return;
+  }
+  if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+  const wasDraft = !editable(curTheme());
+  const t = materialize(); snap(t);
   let v;
   if (el.dataset.mid) v = el.checked ? (t.skins[UI.role].fill.c1 || '#444444') : '';
   else if (el.dataset.bool) v = el.checked;
   else if (el.dataset.num) v = +el.value;
   else if (el.dataset.kind === 'rgb') v = withAlpha(el.value, alphaOf(getPath(t, p)));
+  else if (el.dataset.kind === 'hex') { let hx = el.value.trim().replace('#', ''); if (hx.length === 3) hx = hx.split('').map(c => c + c).join(''); v = withAlpha('#' + hx, alphaOf(getPath(t, p))); }
   else if (el.dataset.kind === 'alpha') v = withAlpha(getPath(t, p) || '#000', +el.value);
   else v = el.value;
   setPath(t, p, v);
-  if (el.nextElementSibling && el.nextElementSibling.tagName === 'OUTPUT') el.nextElementSibling.textContent = (+el.value).toFixed(+el.step < 1 ? 2 : 0);
+  syncTwins(el, 'data-path', v);
   if (p === 'label') { touch(); UI.el.querySelector('.uim-list').innerHTML = renderList(); return; }
+  if (wasDraft) { const ro = UI.el.querySelector('.uim-ro'); if (ro) ro.remove(); }
   touch((el.dataset.re && e.type === 'change') ? 'insp' : null);
   if (p.indexOf('colors.') === 0 || p === 'scan') UI.el.querySelector('.uim-list').innerHTML = renderList();
+}
+function tidyLayout(id) {
+  const L = db.layout[id]; if (!L) return;
+  if (!+L.x && !+L.y && (L.s == null || +L.s === 1) && (L.o == null || +L.o >= 1) && !L.hide) delete db.layout[id];
 }
 let _svT = 0;
 function drawSliceViewSoon() { clearTimeout(_svT); _svT = setTimeout(drawSliceView, 60); }
@@ -11983,70 +12335,96 @@ function addSlice(name, src, w, h, t, r, b, l) {
   if (!save()) { db.slices.pop(); UI.sliceId = ''; }
   render('insp');
 }
+function sliceFromTex(name) {
+  const m = MATERIALS.find(x => x[0] === name); if (!m) return;
+  const im = new Image(); im.crossOrigin = 'anonymous';
+  im.onload = () => { const q = Math.round(Math.min(im.naturalWidth, im.naturalHeight) / 4); addSlice(m[1], TEX + m[0] + '.png', im.naturalWidth, im.naturalHeight, q, q, q, q); };
+  im.src = TEX + m[0] + '.png';
+}
+function importText(txt) {
+  try {
+    const j = JSON.parse(txt || '');
+    if (!j || !j.theme || !j.theme.colors) throw new Error('not a theme');
+    (j.slices || []).forEach(sl => { if (sl && sl.id && sl.src && !db.slices.some(x => x.id === sl.id)) db.slices.push(sl); });
+    const n = Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') }); delete n.preset; delete n.builtin;
+    db.themes.push(n); UI.themeId = n.id; UI.io = ''; touch(); render();
+    toast(`Loaded "${n.label}".`);
+  } catch (err) { toast('That is not a UI Maker theme.'); }
+}
+function exportObj(t) {
+  const used = t.skins ? Object.values(t.skins).map(s => s && s.slice).filter(Boolean) : [];
+  return { ewTheme: 1, theme: t.builtin ? draftOf(t) : t, slices: db.slices.filter(x => used.includes(x.id)) };
+}
 function onClick(e) {
-  const b = e.target.closest('button, .uim-trow, .uim-sl'); if (!b || !UI.el.contains(b)) return;
-  const t = curTheme();
-  if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; render(); return; }
+  const pv = e.target.closest('#uimPreview [data-r]');
+  if (pv && UI.el.contains(pv)) {
+    const r = pv.dataset.r;
+    if (ROLES.some(x => x[0] === r)) { UI.role = r; UI.tab = 'skins'; }
+    else if (r === 'well' || r === 'input' || r === 'ink' || r === 'mute' || r === 'dim') UI.tab = 'colors';
+    render('insp'); return;
+  }
+  const b = e.target.closest('button, .uim-trow, .uim-sl'); if (!b || !UI.el.contains(b) || b.disabled) return;
+  const T = curTheme();
+  if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; UI.draft = null; render(); return; }
   if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
   if (b.dataset.tab) { UI.tab = b.dataset.tab; render('insp'); return; }
   if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
   if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
+  if (b.dataset.zoom) { UI.zoom = +b.dataset.zoom; render(); return; }
+  if (b.dataset.layreset) { delete db.layout[b.dataset.layreset]; touch('insp'); return; }
   if (b.dataset.sset) { const sl = db.slices.find(x => x.id === UI.sliceId); if (sl) { sl[b.dataset.sset] = b.dataset.val; touch('insp'); } return; }
   if (b.dataset.set) {
-    if (!editable(t)) return;
-    let v = b.dataset.val; setPath(t, b.dataset.set, v);
+    const t = materialize(); snap(t, true);
+    let v = b.dataset.val; const path = b.dataset.set;
+    if (/\.(pixel|dither)$/.test(path)) v = +v;
+    setPath(t, path, v);
     const s = t.skins[UI.role];
-    if (b.dataset.set.endsWith('.fill.kind') && v === 'material' && !s.material.src) { s.material.src = TEX + 'metal.png'; s.material.mix = 0.3; s.material.blend = 'multiply'; }
-    if (b.dataset.set.endsWith('.shape') && v === 'pill' && (+s.size || 0) < 10) s.size = 14;
+    if (path.endsWith('.fill.kind') && v === 'material' && !s.material.src) { s.material.src = TEX + 'metal.png'; s.material.mix = 0.3; s.material.blend = 'multiply'; }
+    if (path.endsWith('.fill.kind') && v === 'corners') { s.fill.c2 = s.fill.c2 || shade(s.fill.c1 || '#223', -0.3); s.fill.c4 = s.fill.c4 || shade(s.fill.c3 || '#000', -0.3); }
+    if (path.endsWith('.shape') && v === 'pill' && (+s.size || 0) < 10) s.size = 14;
+    if (path.endsWith('.shape') && v === 'pixel' && (+s.size || 0) < 6) s.size = 8;
     touch('insp'); return;
   }
   const act = b.dataset.act; if (!act) return;
-  if (act === 'new') { const n = newTheme(t.id, 'My Theme ' + (db.themes.length + 1)); db.themes.push(n); UI.themeId = n.id; UI.tab = 'skins'; touch(); render(); }
-  else if (act === 'dup') { const n = newTheme(t.id, t.label + ' copy'); db.themes.push(n); UI.themeId = n.id; touch(); render(); }
+  if (act === 'undo') travel(HIST.undo, HIST.redo);
+  else if (act === 'redo') travel(HIST.redo, HIST.undo);
+  else if (act === 'new') { const n = newTheme(T.id, 'My Theme ' + (db.themes.length + 1)); db.themes.push(n); UI.themeId = n.id; UI.tab = 'skins'; touch(); render(); toast(`Made "${n.label}" from ${T.label}.`); }
+  else if (act === 'dup') { const n = newTheme(T.id, T.label + ' copy'); db.themes.push(n); UI.themeId = n.id; touch(); render(); }
   else if (act === 'del') {
-    if (!editable(t) || !confirm(`Delete the theme "${t.label}"?`)) return;
-    db.themes = db.themes.filter(x => x.id !== t.id);
-    Object.keys(db.assign).forEach(k => { if (db.assign[k] === t.id) delete db.assign[k]; });
-    if (globalId() === t.id) window.setHudTheme('crystal');
+    if (!editable(T) || !confirm(`Delete the theme "${T.label}"?`)) return;
+    db.themes = db.themes.filter(x => x.id !== T.id);
+    Object.keys(db.assign).forEach(k => { if (db.assign[k] === T.id) delete db.assign[k]; });
+    if (globalId() === T.id) window.setHudTheme('crystal');
     UI.themeId = globalId(); touch(); render();
   }
-  else if (act === 'global') { window.setHudTheme(t.id); render(); }
-  else if (act === 'export') {
-    const used = t.skins ? Object.values(t.skins).map(s => s && s.slice).filter(Boolean) : [];
-    UI.io = JSON.stringify({ ewTheme: 1, theme: t.builtin ? null : t, slices: db.slices.filter(x => used.includes(x.id)), builtin: t.builtin ? t.id : undefined });
-    render('list');
-  }
+  else if (act === 'global') { window.setHudTheme(T.id); render(); toast(`The game now wears "${T.label}".`); }
+  else if (act === 'replay') { const z = UI.el.querySelector('#uimPreview .uim-zoom'); if (z) { const c = z.cloneNode(true); z.replaceWith(c); markPreview(); } }
+  else if (act === 'export') { UI.io = JSON.stringify(exportObj(T)); render('list'); }
   else if (act === 'import') { UI.io = UI.io === 'import' ? '' : 'import'; render('list'); }
-  else if (act === 'doimport') {
-    try {
-      const j = JSON.parse((UI.el.querySelector('#uimIo') || {}).value || '');
-      if (!j || !j.theme || !j.theme.colors) throw new Error('not a theme');
-      (j.slices || []).forEach(sl => { if (sl && sl.id && sl.src && !db.slices.some(x => x.id === sl.id)) db.slices.push(sl); });
-      const n = Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') }); delete n.preset;
-      db.themes.push(n); UI.themeId = n.id; UI.io = ''; touch(); render();
-    } catch (err) { alert('That text is not a UI Maker theme.'); }
+  else if (act === 'doimport') importText((UI.el.querySelector('#uimIo') || {}).value);
+  else if (act === 'download') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(exportObj(T), null, 1)], { type: 'application/json' }));
+    a.download = (T.label || 'theme').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') + '.ewtheme.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   else if (act === 'toslice') {
-    const s = t.skins[UI.role]; const r = bakeSkin(s);
-    if (!r || !r.src) { alert('The skin is still loading its texture. Try again in a moment.'); return; }
-    const c = r.slice ? r.slice / K : Math.round(r.g.W / 4);
-    addSlice((t.label + ' ' + UI.role).slice(0, 40), r.src, r.g.W * K, r.g.H * K, c * K, c * K, c * K, c * K);
-    const sl = db.slices[db.slices.length - 1]; if (sl) { sl.scale = 1 / K; sl.outset = r.g.O; save(); render('insp'); }
+    const t = draftOf(T), s = t.skins[UI.role]; const r = bakeSkin(s);
+    if (!r || !r.src) { toast('The skin is still loading its texture. Try again in a moment.'); return; }
+    const k = r.k || K, c = r.slice ? r.slice / k : Math.round(r.g.W / 4);
+    addSlice((t.label + ' ' + UI.role).slice(0, 40), r.src, Math.round(r.g.W * k), Math.round(r.g.H * k), Math.round(c * k), Math.round(c * k), Math.round(c * k), Math.round(c * k));
+    const sl = db.slices[db.slices.length - 1]; if (sl) { sl.scale = 1 / k; sl.outset = r.g.O; sl.crisp = !!r.pixel; save(); render('insp'); }
   }
-  else if (act === 'copyskin') {
-    const s = t.skins[UI.role];
-    ROLES.forEach(([r]) => { if (r !== UI.role) { const keep = t.skins[r]; t.skins[r] = Object.assign(clone(s), { fill: Object.assign(clone(s.fill), { c1: keep.fill.c1, c2: keep.fill.c2, c3: keep.fill.c3 }), outline: (r === 'buttonSel' || r === 'chipOn') ? keep.outline : clone(s.outline) }); } });
-    touch('insp');
-  }
-  else if (act === 'slicetex') {
-    const name = prompt('Texture name (' + MATERIALS.map(m => m[0]).join(', ') + ')', 'metal');
-    const m = MATERIALS.find(x => x[0] === String(name || '').trim()); if (!m) return;
-    const im = new Image(); im.crossOrigin = 'anonymous';
-    im.onload = () => { const q = Math.round(Math.min(im.naturalWidth, im.naturalHeight) / 4); addSlice(m[1], TEX + m[0] + '.png', im.naturalWidth, im.naturalHeight, q, q, q, q); };
-    im.src = TEX + m[0] + '.png';
+  else if (act === 'copyskin') { UI.clip = clone(draftOf(T).skins[UI.role]); toast('Skin copied. Open another role (or theme) and PASTE SKIN.'); render('insp'); }
+  else if (act === 'pasteskin') { if (!UI.clip) return; const t = materialize(); snap(t, true); t.skins[UI.role] = Object.assign(clone(UI.clip), { on: true }); touch('insp'); }
+  else if (act === 'resetskin') { const t = materialize(); snap(t, true); t.skins[UI.role] = blankSkin(t.colors, UI.role); t.skins[UI.role].on = true; touch('insp'); }
+  else if (act === 'skinall') {
+    const t = materialize(); snap(t, true); const s = t.skins[UI.role];
+    ROLES.forEach(([r]) => { if (r !== UI.role) { const keep = t.skins[r]; t.skins[r] = Object.assign(clone(s), { fill: Object.assign(clone(s.fill), { c1: keep.fill.c1, c2: keep.fill.c2, c3: keep.fill.c3, c4: keep.fill.c4 }), outline: (r === 'buttonSel' || r === 'chipOn') ? keep.outline : clone(s.outline) }); } });
+    touch('insp'); toast('Every role now has this shape, frame and light.');
   }
   else if (act === 'sliceuse') {
-    if (!editable(t)) { alert('Open one of your own themes first (built-ins and presets are read-only).'); return; }
+    const t = materialize(); snap(t, true);
     const s = t.skins[UI.role]; s.on = true; s.slice = UI.sliceId; UI.tab = 'skins'; touch('insp');
   }
   else if (act === 'slicedel') {
@@ -12055,10 +12433,13 @@ function onClick(e) {
     db.themes.forEach(th => Object.values(th.skins || {}).forEach(s => { if (s && s.slice === UI.sliceId) s.slice = ''; }));
     UI.sliceId = ''; touch('insp');
   }
+  else if (act === 'arrange') arrangeOn();
+  else if (act === 'layreset') { if (confirm('Put every HUD piece back where it was?')) { db.layout = {}; touch('insp'); } }
 }
 function onFile(e) {
   const f = e.target.files && e.target.files[0]; if (!f) return;
   const rd = new FileReader();
+  if (e.target.id === 'uimThemeFile') { rd.onload = () => importText(String(rd.result || '')); rd.readAsText(f); e.target.value = ''; return; }
   rd.onload = () => {
     const im = new Image();
     im.onload = () => {
@@ -12074,6 +12455,111 @@ function onFile(e) {
     im.src = rd.result;
   };
   rd.readAsDataURL(f);
+  e.target.value = '';
+}
+
+/* ── ARRANGE ON SCREEN: the maker steps aside, every HUD piece on screen gets a box to drag ── */
+function arrangeOn() {
+  if (UI.arr) return;
+  const ov = document.createElement('div'); ov.className = 'uim-arr';
+  ov.innerHTML = `<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div>
+    <div class="uim-arr-bar"><p><b>ARRANGE THE HUD</b> · drag to move · wheel to resize · arrows nudge 1px (Shift 8px) · right-click hides · double-click resets</p>
+    <label class="uim-btn"><input type="checkbox" data-arr="snap" checked style="vertical-align:-2px"> Snap 8px</label>
+    <label class="uim-btn"><input type="checkbox" data-arr="guides" checked style="vertical-align:-2px"> Grid + safe area</label>
+    <button class="uim-btn" data-arr="reset">Reset all</button><button class="uim-btn pri" data-arr="done">Done</button></div>`;
+  document.body.appendChild(ov);
+  UI.arr = { ov, sel: '', drag: null, snap: true, raf: 0, boxes: {} };
+  document.documentElement.classList.add('uim-arranging');
+  apply();
+  ov.addEventListener('pointerdown', arrDown); ov.addEventListener('wheel', arrWheel, { passive: false });
+  ov.addEventListener('contextmenu', arrContext); ov.addEventListener('dblclick', arrDbl);
+  ov.addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (!b || b.tagName !== 'BUTTON') return; if (b.dataset.arr === 'done') arrangeOff(); else if (b.dataset.arr === 'reset' && confirm('Put every HUD piece back where it was?')) { db.layout = {}; touch(); } });
+  ov.addEventListener('change', e => { const b = e.target.closest('[data-arr]'); if (!b) return; if (b.dataset.arr === 'snap') UI.arr.snap = b.checked; if (b.dataset.arr === 'guides') ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = b.checked ? '' : 'none'; }); });
+  const tick = () => { if (!UI.arr) return; arrBoxes(); UI.arr.raf = requestAnimationFrame(tick); };
+  tick();
+}
+function arrangeOff() {
+  const A = UI.arr; if (!A) return;
+  cancelAnimationFrame(A.raf); A.ov.remove(); UI.arr = null;
+  document.documentElement.classList.remove('uim-arranging');
+  save(); apply(); if (UI.el) render('insp');
+}
+function arrBoxes() {
+  const A = UI.arr, wrap = A.ov.querySelector('.uim-arr-boxes');
+  let any = false;
+  UIM_PIECES.forEach(P => {
+    const el = document.querySelector(P.sel);
+    let r = null;
+    if (el) { r = el.getBoundingClientRect(); const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden' || r.width < 2 || r.height < 2) r = null; }
+    let bx = A.boxes[P.id];
+    if (!r) { if (bx) bx.style.display = 'none'; return; }
+    any = true;
+    if (!bx) { bx = A.boxes[P.id] = document.createElement('div'); bx.className = 'uim-arr-box'; bx.dataset.piece = P.id; bx.innerHTML = `<span></span>`; wrap.appendChild(bx); }
+    const L = db.layout[P.id] || {};
+    bx.style.display = ''; bx.style.left = r.left + 'px'; bx.style.top = r.top + 'px'; bx.style.width = r.width + 'px'; bx.style.height = r.height + 'px';
+    bx.classList.toggle('on', A.sel === P.id); bx.classList.toggle('hid', !!L.hide);
+    const lab = `${P.label}${L.hide ? ' (hidden)' : ''}${L.s != null && +L.s !== 1 ? ' ' + Math.round(+L.s * 100) + '%' : ''}`;
+    if (bx.firstChild.textContent !== lab) bx.firstChild.textContent = lab;
+  });
+  const bar = A.ov.querySelector('.uim-arr-bar p');
+  if (!any && bar && !bar.dataset.none) { bar.dataset.none = '1'; bar.innerHTML = '<b>NO HUD ON SCREEN</b> · open the UI Maker from the pause menu in a battle or while exploring to drag those pieces; the LAYOUT tab sliders work anywhere'; }
+}
+function arrPiece(e) { const bx = e.target.closest('.uim-arr-box'); return bx ? UIM_PIECES.find(p => p.id === bx.dataset.piece) : null; }
+function arrDown(e) {
+  const P = arrPiece(e); if (!P || e.button !== 0) return;
+  e.preventDefault();
+  const L = db.layout[P.id] || (db.layout[P.id] = {});
+  UI.arr.sel = P.id;
+  UI.arr.drag = { id: P.id, x0: e.clientX, y0: e.clientY, lx: +L.x || 0, ly: +L.y || 0 };
+  const el = document.querySelector(P.sel);
+  const mv = ev => {
+    const d = UI.arr && UI.arr.drag; if (!d) return;
+    const g = UI.arr.snap && !ev.altKey ? 8 : 1;
+    L.x = Math.round((d.lx + ev.clientX - d.x0) / g) * g; L.y = Math.round((d.ly + ev.clientY - d.y0) / g) * g;
+    if (el) el.style.setProperty('translate', `${L.x}px ${L.y}px`, 'important');   // live, the stylesheet catches up on release
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+    if (el) el.style.removeProperty('translate');
+    if (UI.arr) UI.arr.drag = null;
+    tidyLayout(P.id); touch();
+  };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+}
+function arrWheel(e) {
+  const P = arrPiece(e); if (!P) return;
+  e.preventDefault();
+  const L = db.layout[P.id] || (db.layout[P.id] = {});
+  L.s = Math.max(0.4, Math.min(2.5, Math.round(((L.s == null ? 1 : +L.s) + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100));
+  UI.arr.sel = P.id; tidyLayout(P.id); touch();
+}
+function arrContext(e) {
+  const P = arrPiece(e); if (!P) return;
+  e.preventDefault();
+  if (P.noHide) return;
+  const L = db.layout[P.id] || (db.layout[P.id] = {});
+  L.hide = !L.hide; UI.arr.sel = P.id; tidyLayout(P.id); touch();
+}
+function arrDbl(e) { const P = arrPiece(e); if (!P) return; delete db.layout[P.id]; touch(); }
+function arrKey(e) {
+  if (e.key === 'Escape' || e.key === 'Enter') { arrangeOff(); return true; }
+  const id = UI.arr.sel, d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!id || !d) return false;
+  const L = db.layout[id] || (db.layout[id] = {}), n = e.shiftKey ? 8 : 1;
+  L.x = (+L.x || 0) + d[0] * n; L.y = (+L.y || 0) + d[1] * n; tidyLayout(id); touch();
+  return true;
+}
+/* the maker owns the keyboard while it is open (the game's hotkeys stay quiet) */
+function onKey(e) {
+  if (!UI.el) return;
+  if (UI.arr) { if (e.type === 'keydown' && arrKey(e)) e.preventDefault(); e.stopPropagation(); return; }
+  if (e.type === 'keydown') {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !/^(range|checkbox|color)$/.test(e.target.type || '');
+    const z = (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z'), y = (e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y');
+    if ((z || y) && !typing) { e.preventDefault(); if (y || e.shiftKey) travel(HIST.redo, HIST.undo); else travel(HIST.undo, HIST.redo); }
+    else if (e.key === 'Escape') window.closeUiMaker();
+  }
+  e.stopPropagation();
 }
 window.openUiMaker = function () {
   if (UI.el) return;
@@ -12081,25 +12567,32 @@ window.openUiMaker = function () {
   UI.themeId = UI.themeId && themeById(UI.themeId) ? UI.themeId : globalId();
   const el = document.createElement('div');
   el.className = 'uim-root'; el.id = 'uimRoot';
-  el.innerHTML = `<div class="uim-top"><b>UI MAKER</b><span>Make themes, shape every window, and give each menu or HUD its own look. Changes save as you go.</span><button class="uim-btn pri" data-close="1">Done</button></div>
-    <div class="uim-body"><div class="uim-col uim-list"></div><div class="uim-col uim-mid"></div><div class="uim-col uim-insp"></div></div>`;
+  el.innerHTML = `<div class="uim-top"><b>UI MAKER</b><span class="uim-cur"></span>
+      <button class="uim-btn" data-act="undo" title="Undo (Ctrl+Z)">↶ Undo</button><button class="uim-btn" data-act="redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+      <button class="uim-btn" data-act="global" title="Make the open theme the one the game wears">Use in the game</button>
+      <button class="uim-btn pri" data-close="1" title="Close (Esc). Everything is already saved.">Done</button></div>
+    <div class="uim-body"><div class="uim-col uim-list"></div><div class="uim-col uim-mid"></div><div class="uim-col uim-insp"></div></div><div class="uim-toast"></div>`;
   document.body.appendChild(el); UI.el = el;
-  el.addEventListener('input', onInput); el.addEventListener('change', e => { if (e.target.id === 'uimSliceFile') onFile(e); else onInput(e); });
+  el.addEventListener('input', onInput);
+  el.addEventListener('change', e => { if (e.target.type === 'file') onFile(e); else onInput(e); });
   el.addEventListener('click', e => { if (e.target.closest('[data-close]')) { window.closeUiMaker(); return; } onClick(e); });
-  el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') window.closeUiMaker(); });
-  el.addEventListener('keyup', e => e.stopPropagation());
+  el.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.sec) UI.shut[d.dataset.sec] = !d.open; }, true);
+  window.addEventListener('keydown', onKey, true); window.addEventListener('keyup', onKey, true);
   render();
 };
 window.closeUiMaker = function () {
   if (!UI.el) return;
-  save(); UI.el.remove(); UI.el = null; _previewTheme = null; apply();
+  arrangeOff();
+  window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true);
+  save(); UI.el.remove(); UI.el = null; _previewTheme = null; UI.draft = null; apply();
   try { if (typeof window._uimOnClose === 'function') window._uimOnClose(); } catch (e) {}
 };
 
 /* ── public ── */
 window.UIMaker = {
-  apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS,
+  apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS, pieces: UIM_PIECES,
   has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
+  arrange: () => { window.openUiMaker(); arrangeOn(); },
   get db() { return db; },
 };
 syncPickerRows();
