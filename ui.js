@@ -6730,6 +6730,8 @@
             }
         }
         function _pauseFocusGuard(e) {
+            // The UI Maker opens on top of the pause menu; its fields (selects above all) must keep focus or they close at once.
+            if (e.target && e.target.closest && e.target.closest('#uimRoot, .uim-arr')) return;
             if (_gamePaused && !state.uiDialog && _pauseOverlay && !_pauseOverlay.contains(e.target)) _pauseFocusRestore(null);
         }
 

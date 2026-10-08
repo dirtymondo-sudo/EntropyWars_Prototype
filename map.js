@@ -7639,6 +7639,8 @@
         }
         function _mmSettingsFocusGuard(e) {
             const page = document.getElementById('settingsPage');
+            // The UI Maker opens on top of Settings; its fields (selects above all) must keep focus or they close at once.
+            if (e.target && e.target.closest && e.target.closest('#uimRoot, .uim-arr')) return;
             if (_mmSettingsActive() && !state.uiDialog && !page.contains(e.target)) _mmSettingsFocus(null);
         }
         function _mmSettingsKeydown(e) {
