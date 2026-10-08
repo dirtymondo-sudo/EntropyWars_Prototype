@@ -1293,3 +1293,16 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
 - AI: ai.js killValue adds `wipeoutKillBonus_v1` (3000, trainable, no schema bump) for the enemy's last standing body
   and 10% of it for the second-to-last. Before this the AI had no idea a wipe wins: only Cube hits / Key pickups were
   flagged as wins, and tower_push phase pulled it off the fight after its first kill (lab: 88 wipeouts in 5,356).
+
+## IMITATION REPORT FIXES (2026-10-08)
+mondo's 5-match imitation run (248 decisions, 26% agreement) moved 14 weights; they are the shipped defaults now
+(battle.js AI_WEIGHT_DEFAULTS + ai.js AI_TUNE mirrors, `prev` = gen-40). Analysis: project file
+ai-training/AI_IMITATION_ANALYSIS_20261008.md. Code changes from the evidence:
+- ai.js scoreTowerAttack: the flat "window" bonuses (enemies dead / respawning / tower_push / Cube clear) are scaled
+  in the Arena by `_cubeWindowShare` (hits to wipe the standing enemies ÷ hits to drop the Cube, 0.25..1) and by the
+  new trainable `cubeWindowBonus_v1`. The CPU wanted the Cube by up to 1,170 while the human finished the team and won.
+- ai.js `_mpUnlockValue`: the Mana Potion's "casts it unlocks" value, now also credited per ally to manaRestoreAll
+  (Free Energy). New trainable `potionValue_v1` × Healing/Mana Potion scores.
+- Imitation scoring (ai.js aiScoreMargin): a human move off the CPU's list earns the CPU's intent value for its
+  share of the CPU tile's progress (`_intentCreditAt`); human Cube hits match attack_tower; item use (battle.js
+  doItem), Inspect (doInspect) and Channel (ui.js channelNexus) are observed; _candDesc names items and the Cube.
