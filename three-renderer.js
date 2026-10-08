@@ -14785,6 +14785,9 @@ const ThreeRenderer = (function () {
         var liftC = _tileSurfaceLift(hx, hy);
         var doLift = (!stair && BEVEL.amp > 0 && _tileIsBeveled(hx, hy));
         var stairRise = stair ? (stair.highH - stair.lowH) * elevStep : 0;
+        /* THE WADE LINE: no vertex of a highlight on a waded cell sinks under the liquid sheet (offsets are about tileTopY) */
+        var sheetW = (typeof _fieldSheetY === 'function') ? _fieldSheetY(hx, hy) : null;
+        var sheetMin = (sheetW !== null) ? (sheetW - tileTopY(hx, hy)) : null;
         var pos = [], uv = [], idx = [], grid = [];
         for (var gj = 0; gj <= segs; gj++) {
             grid[gj] = [];
@@ -14805,6 +14808,7 @@ const ThreeRenderer = (function () {
                 } else {
                     y = doLift ? (_surfaceLift(cx + lx, cz + lz) - liftC) : 0;
                 }
+                if (sheetMin !== null && y < sheetMin) y = sheetMin;
                 grid[gj][gi] = pos.length / 3;
                 pos.push(lx, y, lz);
                 uv.push(gi / segs, gj / segs);
@@ -62839,7 +62843,7 @@ const ThreeRenderer = (function () {
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
-        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: R.field.tops, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: R.field.tops, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -62859,6 +62863,17 @@ const ThreeRenderer = (function () {
         return G.yAt(x, y);
     }
     function _fieldGroundLive() { return _fieldGroundArmed && !!_fieldGround(); }
+    /* THE WADE LINE (2026-10-08, mondo: "when units are in water they are knee deep so the tile highlights are under the water"):
+       the battle-frame Y of the liquid sheet over a waded cell (data.js hqFieldBuild `sheets`), or null. The body stands on the
+       cell's top under it; every tile highlight (_buildDrapeGeo) rides on top of it instead. */
+    function _fieldSheetY(x, y) {
+        if (!_fieldGroundArmed) return null;
+        var G = _fieldGround(); if (!G || !G.sheets) return null;
+        if (x < 0 || y < 0 || x >= G.W || y >= G.H) return null;
+        var row = G.sheets[y]; var sh = row ? row[x] : null;
+        if (sh === null || sh === undefined || !isFinite(+sh)) return null;
+        return G.floorY + (+sh) * G.s;
+    }
     /* ══ THE HIGHLIGHTS CONFORM (THE SEAMLESS FIELD, 2026-09-22) ══
        The user: "the tile highlights need to conform to the shape of the terrain they are on." A field's cell top
        (G.yAt) is ONE number per cell — a highlight laid flat at it cut into a slope, floated off a bank and sliced
