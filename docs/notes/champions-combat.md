@@ -1319,3 +1319,6 @@ ai-training/AI_IMITATION_ANALYSIS_20261008.md. Code changes from the evidence:
 - Imitation scoring (ai.js aiScoreMargin): a human move off the CPU's list earns the CPU's intent value for its
   share of the CPU tile's progress (`_intentCreditAt`); human Cube hits match attack_tower; item use (battle.js
   doItem), Inspect (doInspect) and Channel (ui.js channelNexus) are observed; _candDesc names items and the Cube.
+- Pulse Lattice's TOTAL DMG counter (top left, rolls like a slot machine): the self-cast hero shot (_playSelfCastHeroShot) wore
+  the heavy chrome only for heals, and _actionCamTallyDamage only feeds a heavy shot. A self-cast that deals damage (the
+  lattice, self-origin novae) now wears the heavy chrome, so its hits roll into the counter.
