@@ -600,6 +600,9 @@
                 partnerId: _tcPick ? _tcPick.id : null,
                 pickX: _tcDoorPick ? _tcDoorPick.x : null, pickY: _tcDoorPick ? _tcDoorPick.y : null });
             if (_tcPick || _tcDoorPick) state._spellPick1 = null;
+            /* the host's finishAction resets ITS menu; the guest's menu is local UI, so a relayed cast or placement
+               lands the guest on the root action menu too (mondo 2026-10-08: no staying in place-prism mode) */
+            _guestMenuToRoot();
             return 1200;
         };
 

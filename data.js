@@ -54525,6 +54525,10 @@ function hqFieldBuild(roomId, ox, oz, opts) {
                     feet: !!R.feet, caveGround: !!(R.cave && R.feet),   // THE FIELD IS THE ROOM: the cave stands on its own ground (three-renderer.js _fieldGround)
                     /* THE TRUE GROUND (2026-09-22): every IN cell's REAL top in room metres (the floor 0, a table's top, a tread, the slab) */
                     tops: R.cells.map(row => row.map(c => (c.in && !c.rock) ? Math.round(((+c.top) || 0) * 1000) / 1000 : (R.terrain && c.hazard && c.sheet != null) ? Math.round(c.sheet * 1000) / 1000 : null)),
+                    /* THE WADE LINE (2026-10-08, mondo: "tile highlights need to show on top of water"): a waded IN cell's liquid sheet in
+                       room metres (a terrain / cave pool the body stands knee deep in), else null — the highlights ride over it
+                       (three-renderer.js _fieldSheetY); the body keeps standing on `tops` */
+                    sheets: R.cells.map(row => row.map(c => (c.in && !c.rock && c.fluid && c.src && c.src.sheet != null && isFinite(+c.src.sheet) && +c.src.sheet > ((+c.top) || 0)) ? Math.round(+c.src.sheet * 1000) / 1000 : null)),
                     /* THE STAND RULE (EXPLORATION_BATTLES_PLAN §2 rule 2): the raster's own seats — '1' a cell a body may start on (IN, not a
                        hazard, not a cover); map.js _encounterPlaceSeats reads only this (never the respawn rule) */
                     seats: R.cells.map(row => row.map(c => (c.in && !c.rock && !c.hazard && c.seat !== false) ? '1' : '0').join('')),

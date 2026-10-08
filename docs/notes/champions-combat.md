@@ -1293,3 +1293,16 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
 - AI: ai.js killValue adds `wipeoutKillBonus_v1` (3000, trainable, no schema bump) for the enemy's last standing body
   and 10% of it for the second-to-last. Before this the AI had no idea a wipe wins: only Cube hits / Key pickups were
   flagged as wins, and tower_push phase pulled it off the fight after its first kill (lab: 88 wipeouts in 5,356).
+
+## THE FOUR BATTLE FIXES (2026-10-08, mondo)
+- Mirror Blink range (third report): the real cause was ui.js `window._renderForecastBadges`. ui.js is a classic script, so
+  its top-level `function _renderForecastBadges` IS `window._renderForecastBadges`; the wrapper assigned over it called
+  itself until the stack overflowed. Every handled forecast preview threw, and setTool died inside updateAoePreview before
+  it drew the board, so the blink's destination tiles never appeared. The worker is `_fcRenderBadges` now. Never assign a
+  `window.X` wrapper that calls a same-named top-level function in ui.js / battle.js / hud.js.
+- Every cast and placement ends on the ROOT action menu (battle.js finishAction; the guest's relayed doSpell resets its
+  local menu too, online.js `_guestMenuToRoot`). No more staying armed on the same spell.
+- Pulse Lattice discharges on the god shot (the self shot's sourceHold + 120 ms), not at cast time: its beams and "-N"
+  pops used to finish while the camera was still on the caster.
+- Highlights over water: data.js hqFieldBuild files `field.sheets` (a waded IN cell's liquid sheet, room metres); three-
+  renderer `_fieldSheetY` + `_buildDrapeGeo` keep every highlight vertex on top of it. Bodies still stand knee deep on `tops`.

@@ -15022,8 +15022,12 @@
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
            why it takes nothing, what the movement does to it, the matchup and the statuses it will carry. */
-        window._renderForecastBadges = function (caster, spell, plan) { if (caster && spell && plan) _renderForecastBadges(caster, spell, plan); };
-        function _renderForecastBadges(caster, spell, plan) {
+        /* The worker keeps its own name: a top-level function declaration IS window.<name>, so the old wrapper
+           (window._renderForecastBadges calling _renderForecastBadges) replaced the worker and called itself until the
+           stack overflowed. Every forecast preview threw, and setTool died inside updateAoePreview before it drew
+           the board (Mirror Blink's destination tiles never appeared, 2026-10-08). */
+        window._renderForecastBadges = function (caster, spell, plan) { if (caster && spell && plan) _fcRenderBadges(caster, spell, plan); };
+        function _fcRenderBadges(caster, spell, plan) {
             const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
             const shown = new Set();
             for (const h of plan.hits) {
@@ -15081,7 +15085,7 @@
             /* THE FORECAST: the engine's own read of this cast — numbers, victims and landings in one */
             const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y) : null;
             if (_plan && _plan.handled) {
-                _renderForecastBadges(caster, spell, _plan);
+                _fcRenderBadges(caster, spell, _plan);
                 drawForecastMoves(_plan, caster, 'spellLanding');
                 drawForecastChain(_plan, caster, x, y, 'spellChain');
                 return;

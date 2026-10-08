@@ -64563,33 +64563,13 @@
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = null;
 
-                const _prevView = state.actionMenuView;
-                if (!unitFinished(unit) && !unit.dead && (_prevView === 'spells' || _prevView === 'spellTargets')) {
-                    // AP left and the SAME spell is still castable (no cooldown,
-                    // affordable) → stay ARMED on it: the spellbook stays open on
-                    // this spell and the very next click is already a target pick,
-                    // so re-casting costs zero re-navigation. Otherwise fall back
-                    // to the open spellbook.
-                    if (canAffordSpell(unit, spell) && !unitSpellsBlocked(unit)) {
-                        state.actionMode = 'spell';
-                        state.actionMenuView = 'spells';
-                        state.selectedTool = spell.name;
-                    } else if (anyCastableSpellNow(unit)) {
-                        state.actionMode = null;
-                        state.actionMenuView = 'spells';
-                        state.selectedTool = null;
-                    } else {
-                        // Nothing left to cast — a spellbook of grey rows is a
-                        // dead menu; drop back to the root verbs instead.
-                        state.actionMode = null;
-                        state.actionMenuView = 'root';
-                        state.selectedTool = null;
-                    }
-                } else {
-                    state.actionMode = null;
-                    state.actionMenuView = 'root';
-                    state.selectedTool = null;
-                }
+                /* THE MENU RESETS (mondo 2026-10-08: "after placing a prism mirror it should go back to the main action
+                   menu, not stay in the place mirror mode"): every cast and placement ends on the ROOT action menu, like
+                   every move and jump. The old rule stayed armed on the same spell while it was still castable, and a setup
+                   placement (prism, bomb, decoy) always is, so the next click placed another. */
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
                 state.pendingTarget = null;
 
                 // ×N repeat chain still queued: hold the action framing —
@@ -65318,10 +65298,17 @@
                     return 0;
                 }
                 playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
-                _spellFocusCamera(unit, unit.x, unit.y);
+                const _plCam = _spellFocusCamera(unit, unit.x, unit.y);
                 unit.mp -= effectiveSpellCost;
-                doPulseLattice(unit, _pNet, spellPower);
-                completionDelay = (typeof actionMs === 'function') ? actionMs(650) : 650;
+                /* THE BURST ON THE SHOT (mondo 2026-10-08: "pulse lattice doesnt have the damage number like every other
+                   damaging spell"): the lattice used to discharge the instant it was cast, so its beams and its "-N" pops
+                   played out while the camera was still on the caster's hero shot and were gone before the god shot over
+                   the board arrived. Every other damage spell lands on its impact beat; the lattice now fires when the
+                   shot hands over to the board (the self shot's sourceHold), so the numbers pop on screen. */
+                const _plAt = (!_skipVisuals() && _plCam && _plCam.sourceHold > 0) ? _plCam.sourceHold + actionMs(120) : 0;
+                if (_plAt > 0) window.setTimeout(() => { if (state.phase === 'battle' && !state.winner) doPulseLattice(unit, _pNet, spellPower); }, _plAt);
+                else doPulseLattice(unit, _pNet, spellPower);
+                completionDelay = Math.max(actionMs(650), _plAt + actionMs(1000));
             } else if (spell.kind === 'placeTrap') {
                 // ── Trap arsenal (2026-07-07): snare / frost / tremor / magnet.
                 // Hidden charge on an empty passable tile; first enemy to land
