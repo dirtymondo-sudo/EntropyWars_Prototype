@@ -63503,8 +63503,13 @@
             const _selfTotal = Math.max(actionMs(1900), _selfHold + actionMs(200));
             _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit, victimIds: [],
                 keepCaster: true, castUntilMs: _selfTotal, hitFromMs: _selfTotal, totalMs: _selfTotal });
+            /* THE SELF NOVA'S COUNTER (mondo 2026-10-08: Pulse Lattice had no slot-machine number top left): a self-cast that
+               DEALS damage (the lattice, self-origin novae) wears the heavy chrome too, so its hits roll into TOTAL DMG
+               (_actionCamTallyDamage only feeds a heavy shot); the light chrome stays for buffs and stances */
+            const _selfDef = (opts.spellId && typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[opts.spellId] : null;
+            const _selfDmg = !_selfHeal && !!_selfDef && (spellDealsDamage(_selfDef) || _selfDef.kind === 'pulseLattice');
             if (opts.spellName) {
-                showActionCamChrome({ name: opts.spellName, heavy: _selfHeal,
+                showActionCamChrome({ name: opts.spellName, heavy: _selfHeal || _selfDmg,
                     tallyKind: _selfHeal ? 'heal' : undefined,
                     totalMs: _selfHold + actionMs(600) });
             }
