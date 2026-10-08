@@ -5340,6 +5340,7 @@
                 return;
             }
 
+            if (typeof window._imitObserve === 'function') window._imitObserve(unit, { type: 'nexus_channel' });
             pushUndoSnapshot(true);
             spendAP(unit, NEXUS_CHANNEL_COST_AP);
 
