@@ -1025,3 +1025,25 @@ All of it lives at the END of hud.js (one IIFE, "THE UI MAKER"); `window.openUiM
   UIM_SURFACES row. Not themed yet: Profile / Leaderboard / Community Maps (React inline styles), the 3D nameplates,
   the party dock SVG, the campaign/challenge pages.
 - Next (phase 2 per the plan): more presets, per-element layout editing (move/resize/hide HUD pieces).
+
+## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
+
+R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
+10 (an item editor).
+
+- **The layer:** data.js `EWDataMods` (end of the file), localStorage `ew_data_mods_v1` = `{ set: { TABLE: { 'a.b.c': value } } }`. Edits
+  are written INTO the live tables (restore-all then re-apply on every change, pristine values captured before the first write). A path the
+  table lacked adds a key (new items, a shop row, a drop weight). A path under an edited ancestor folds into the ancestor's stored value.
+  OFF online (online.js `applyOnlineRules` → `setOnline(true)`, state.js menu states → `setOnline(false)`). `T` at the top lists the tables
+  (race and spell tables stay with their editors; rooms/maps with the map editor). Export / Import / Reset / ON-OFF like the race editor.
+- **The window:** ui.js "THE DATA PANEL", `window.openDataPanel(tab)` / `closeDataPanel` / `toggleDataPanel`; F9 anywhere (not while typing),
+  DATA in both pause menus, Settings → Developer (Open Data Panel / Open Item Editor), the editor's 🧮 DATA button. A floating, draggable,
+  resizable window (position + tab in localStorage `ew_data_panel`). TABLES = a lazy tree (numbers, words, on/off, lists of numbers or words;
+  functions read-only) with search; edited rows go orange with "was" + ↺.
+- **ITEMS:** every ITEM_RULES row (name, icon, ITEM_META short label, description, carry max, shop price, the behaviour's numbers, story only,
+  sold at the Dispensary = HQ_DISPENSARY.stock, drop weight / rarity = HQ_DROP_RULES). + NEW ITEM copies a template: heal / mana / revive /
+  elixir set `like` (data.js `ITEM_LIKE_KEYS`, `itemBase`, `itemKeysLike`); throws (baneType), stims (selfBoost) and capture doors (kind)
+  were data-driven already. Every heal/mana/revive/elixir key check now reads `itemBase` (battle.js `_ewItemLike` in canUse, targeting and
+  doItem; ui.js highlights + previews; hud.js item rows, target blades and the inspect potions; ai.js loops `itemKeysLike` for potions;
+  data.js `hqFieldItemOk` for the field; map.js pause item checks). Scanner, panacea and warp stone stay one of a kind. Equipment is the
+  GEAR passives (Spell Library), so the panel has no equipment tab.

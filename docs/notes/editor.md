@@ -509,3 +509,22 @@ mondo: "make sure those stairs and railings and anything else you added are inco
 - Core: a curved railing is picked by a box per ≤ 30° piece and anchored at its arc's middle; its radius scales; a pts / y / y0 / y1
   railing is boxed at its own heights; a vertical move lifts a rail's [x, z, y] points (data.js hqRowPlace too, for prefabs placed
   with `y`); a mirror swaps a one-sided flight's `rails` l ↔ r.
+
+## THE ENCOUNTER TABLE + THE TALK (2026-10-08, thread "dev tools")
+
+R2 files: editor.js, data.js, map.js, three-renderer.js. mondo picked tools 5 (NPCs and dialogue in the editor) and 6 (encounter
+tables) from the dev-tools list.
+
+- **ENCOUNTERS** (room inspector, his world only, under ZONE AND SITE; editor.js `encHtml` / `encWire` / `encSet`): `rooms[id].encounters =
+  { list: [{ race, w }], walkers: [min, max], levels: [min, max], group: [min, max] }`, one undo step per change. Ticking "own table" seeds
+  it with the room's natives. Blank ranges = the game's rule. data.js `hqRoomEncTable(roomId)` is the ONE read (only 3D-ready roster races,
+  weight > 0; an empty list = off). It replaces the site's people in `hqRoomPopulation` (pool + weighted draw `hqEncTablePick`; `walkers`
+  sets n, THE CROWD CAP still applies), `hqRoomNatives`, `hqEncounterLaunch` (companions drawn by weight via `hqEncTableDraw`, repeats
+  allowed; `group` sets a lone native's companions; `levels` clamps every enemy level) and `hqMarkerLaunch`. A fight still needs the room's
+  SITE. Spawn points are the existing PEOPLE / MARKERS spots (a spot with a race stands it; an empty roster spot is filled).
+- **TALK** (the inspector of a PEOPLE row, npcSpots; editor.js `talkHtml` / `talkWire`): `talk = { name, convos: [{ if, not, pages, choices:
+  [{ label, pages, set }], set }] }`. The generic field list hides `talk`. Runtime: three-renderer.js passes `talk.name` as the spawn label and
+  `talk` on the E target; map.js `_hqNpcPanelHtml` → `_hqTalkStart` picks data.js `hqTalkConvo(talk, hqStoryFlags(profile))` (first convo
+  whose `if` flag is set and `not` flag is not), shows a page at a time in the subtitle bar (NEXT / E / ENTER / SPACE; 1-4 pick a choice on
+  the last page; a 250 ms guard keeps the opening E from turning the first page). Finishing sets `set` and the choice's `set` via
+  `hqStoryFlagSet` on `profile.door.hq.flags` (viewer-local, never relayed). ESC abandons without setting flags. No talk = the old `say`.

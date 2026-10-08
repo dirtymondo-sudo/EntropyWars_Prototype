@@ -4781,6 +4781,7 @@
                     /* THE ONLINE GUARD (SPELL_LIBRARY_PLAN.md §6.6): an online match held the spell tables vanilla; back at the menu the local mods re-apply */
                     if (window.EWSpellMods && window.EWSpellMods.suspended && typeof window.EWSpellMods.setOnline === 'function') { try { window.EWSpellMods.setOnline(false); } catch (e) { console.warn('[SpellMods] online guard', e); } }
                     if (window.EWRaceMods && window.EWRaceMods.suspended && typeof window.EWRaceMods.setOnline === 'function') { try { window.EWRaceMods.setOnline(false); } catch (e) { console.warn('[RaceMods] online guard', e); } }
+                    if (window.EWDataMods && window.EWDataMods.suspended && typeof window.EWDataMods.setOnline === 'function') { try { window.EWDataMods.setOnline(false); } catch (e) { console.warn('[DataMods] online guard', e); } }
                     state.titleScreenVisible = true;
                     state.phase = 'setup';
                     state.setupStep = 'builder';

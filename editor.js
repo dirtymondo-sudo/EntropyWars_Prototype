@@ -2634,6 +2634,108 @@
         h += '<div class="ed-note">ZONE = which of your zones this room belongs to (the outliner groups them; the world map shows a zone as one place). SITE = the battle map, the people and the encounters this room uses' + (r.site ? ' (now ' + esc(siteLabel(r.site)) + ')' : '; with none, no fight can start here') + '.</div>';
         return h;
     }
+    /* ── THE ENCOUNTER TABLE (2026-10-08, mondo: "per-room creature lists with level ranges, rarity and spawn points you place in
+       the editor"): `rooms[id].encounters = { list: [{ race, w }], walkers, levels, group }` (data.js hqRoomEncTable). Off = the
+       site's own people. The spots are the PEOPLE / MARKERS rows: a spot with a race stands that race; an empty one is filled. ── */
+    function encRaces() {
+        var all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES.slice() : [];
+        return all.filter(function (r) { return r !== 'men in black' && (typeof isRace3DReady !== 'function' || isRace3DReady(r)); }).sort();
+    }
+    function encLabel(r) { return (typeof getRaceLabel === 'function') ? getRaceLabel(r) : r; }
+    function encHtml(r) {
+        var E = r.encounters || null;
+        var h = '<div class="ed-sub">ENCOUNTERS</div><div class="ed-form">' +
+            '<label class="ed-f"><span>own table</span><input type="checkbox" data-en="on"' + (E ? ' checked' : '') + '></label>';
+        if (E) {
+            var rs = encRaces(), tot = (E.list || []).reduce(function (a, x) { return a + (+x.w || 0); }, 0) || 1;
+            (E.list || []).forEach(function (x, i) {
+                h += '<label class="ed-f"><span>' + Math.round((+x.w || 0) * 100 / tot) + '%</span><select data-en-race="' + i + '">' + rs.map(function (k) { return '<option value="' + esc(k) + '"' + (k === x.race ? ' selected' : '') + '>' + esc(encLabel(k)) + '</option>'; }).join('') + '</select>' +
+                    '<input type="number" min="0" step="1" data-en-w="' + i + '" value="' + esc(+x.w || 0) + '" style="width:52px;flex:none" title="weight: how often it turns up next to the others"><button class="ed-btn" data-en-del="' + i + '" title="Take it off the table">✕</button></label>';
+            });
+            h += '<label class="ed-f"><span>add</span><select data-en-add="1"><option value="">a race…</option>' + rs.map(function (k) { return '<option value="' + esc(k) + '">' + esc(encLabel(k)) + '</option>'; }).join('') + '</select></label>';
+            [['walkers', 'walkers'], ['levels', 'levels'], ['group', 'companions']].forEach(function (f) {
+                var v = E[f[0]] || ['', ''];
+                h += '<label class="ed-f"><span>' + f[1] + '</span><input type="number" min="0" step="1" data-en-span="' + f[0] + '" data-en-i="0" value="' + esc(v[0]) + '" placeholder="min"><input type="number" min="0" step="1" data-en-span="' + f[0] + '" data-en-i="1" value="' + esc(v[1]) + '" placeholder="max"></label>';
+            });
+        }
+        h += '</div><div class="ed-note">' + (E ? 'Who walks this room, by weight. walkers = how many walk it (the crowd cap still applies) · levels = the enemy levels in a fight here · companions = how many join a lone native. Blank = the game\'s rule. A PEOPLE spot with a race still stands that race; an empty roster spot (MARKERS) is filled from this table.' : 'Off: the site\'s own people walk here. Tick it to choose who turns up, how often, how many and at what level.') +
+            (r.site ? '' : ' <b>This room has no SITE, so nobody can be fought here yet.</b>') + '</div>';
+        return h;
+    }
+    function encSet(after, label) {
+        var r = room(); if (!r || ED.mode !== 'world') return;
+        commit([{ path: ['rooms', ED.roomId, 'encounters'], before: Core.clone(r.encounters), after: after }], label);
+    }
+    function encWire(P) {
+        var r = room(); if (!r) return;
+        var E = r.encounters ? Core.clone(r.encounters) : null;
+        P.querySelectorAll('[data-en]').forEach(function (el) { el.onchange = function () {
+            if (el.checked) { var first = (W.hqRoomNatives ? W.hqRoomNatives(ED.roomId) : []).slice(0, 3); if (!first.length) first = encRaces().slice(0, 1); encSet({ list: first.map(function (k) { return { race: k, w: 1 }; }) }, 'own encounter table'); }
+            else encSet(undefined, 'encounters: the site\'s own');
+        }; });
+        if (!E) return;
+        P.querySelectorAll('[data-en-race]').forEach(function (el) { el.onchange = function () { E.list[+el.getAttribute('data-en-race')].race = el.value; encSet(E, 'encounter race'); }; });
+        P.querySelectorAll('[data-en-w]').forEach(function (el) { el.onchange = function () { var v = Math.max(0, Math.round(+el.value || 0)); E.list[+el.getAttribute('data-en-w')].w = v; encSet(E, 'encounter weight ' + v); }; });
+        P.querySelectorAll('[data-en-del]').forEach(function (el) { el.onclick = function () { E.list.splice(+el.getAttribute('data-en-del'), 1); encSet(E, 'encounter race off'); }; });
+        P.querySelectorAll('[data-en-add]').forEach(function (el) { el.onchange = function () { if (!el.value) return; E.list = E.list || []; E.list.push({ race: el.value, w: 1 }); encSet(E, 'encounter race ' + el.value); }; });
+        P.querySelectorAll('[data-en-span]').forEach(function (el) { el.onchange = function () {
+            var f = el.getAttribute('data-en-span'), i = +el.getAttribute('data-en-i');
+            var cur = (E[f] || ['', '']).slice(); cur[i] = el.value === '' ? '' : Math.max(0, Math.round(+el.value || 0));
+            if (cur[0] === '' && cur[1] === '') delete E[f];
+            else { if (cur[0] === '') cur[0] = cur[1]; if (cur[1] === '') cur[1] = cur[0]; E[f] = [Math.min(cur[0], cur[1]), Math.max(cur[0], cur[1])]; }
+            encSet(E, 'encounter ' + f);
+        }; });
+    }
+    /* ── THE TALK (2026-10-08, mondo: "place NPCs and type their lines, branches and conditions yourself"): a person's
+       `talk = { name, convos: [{ if, not, pages, choices: [{ label, pages, set }], set }] }` (data.js hqTalkConvo, map.js plays it).
+       Each line of a box is one page in the subtitle bar. ── */
+    function talkHtml(row) {
+        var T = row.talk || {}, cs = T.convos || [];
+        var lines = function (a) { return esc((a || []).join('\n')); };
+        var h = '<div class="ed-sub">TALK</div><div class="ed-form">' +
+            '<label class="ed-f"><span>name</span><input type="text" data-tk="name" value="' + esc(T.name || '') + '" placeholder="blank = the race\'s name"></label></div>';
+        cs.forEach(function (c, i) {
+            h += '<div class="ed-sub">CONVERSATION ' + (i + 1) + (i ? '' : ' (the first one whose flags pass plays)') + ' <button class="ed-btn" data-tk-del="' + i + '" title="Delete this conversation">✕</button></div><div class="ed-form">' +
+                '<label class="ed-f"><span>only if flag</span><input type="text" data-tk="c.' + i + '.if" value="' + esc(c.if || '') + '" placeholder="blank = always"></label>' +
+                '<label class="ed-f"><span>not if flag</span><input type="text" data-tk="c.' + i + '.not" value="' + esc(c.not || '') + '"></label>' +
+                '<label class="ed-f ed-fj"><span>lines</span><textarea data-tk="c.' + i + '.pages" rows="4" placeholder="one page per line">' + lines(c.pages) + '</textarea></label>' +
+                '<label class="ed-f"><span>then set flag</span><input type="text" data-tk="c.' + i + '.set" value="' + esc(c.set || '') + '"></label>';
+            (c.choices || []).forEach(function (ch, j) {
+                h += '<label class="ed-f"><span>choice ' + (j + 1) + '</span><input type="text" data-tk="c.' + i + '.ch.' + j + '.label" value="' + esc(ch.label || '') + '" placeholder="what you answer"><button class="ed-btn" data-tk-chdel="' + i + '.' + j + '" title="Delete this choice">✕</button></label>' +
+                    '<label class="ed-f ed-fj"><span>reply</span><textarea data-tk="c.' + i + '.ch.' + j + '.pages" rows="2" placeholder="their answer, one page per line (blank = it ends)">' + lines(ch.pages) + '</textarea></label>' +
+                    '<label class="ed-f"><span>set flag</span><input type="text" data-tk="c.' + i + '.ch.' + j + '.set" value="' + esc(ch.set || '') + '"></label>';
+            });
+            h += '</div>' + ((c.choices || []).length < 4 ? '<div class="ed-acts"><button class="ed-btn" data-tk-chadd="' + i + '">+ CHOICE</button></div>' : '');
+        });
+        h += '<div class="ed-acts"><button class="ed-btn ed-copy" data-tk-add="1">+ CONVERSATION</button></div>' +
+            '<div class="ed-note">E talks. Each line is a page; the choices show on the last page. A flag is any word you like: a conversation or a choice sets it when it ends, and another conversation can wait for it (only if) or stop after it (not if). With no conversation the person says their `say` line.</div>';
+        return h;
+    }
+    function talkWire(P, hit) {
+        var cur = function () { return Core.clone(hit.row.talk || { convos: [] }); };
+        var put = function (T, label) {
+            var after = Core.clone(hit.row);
+            T.convos = (T.convos || []).filter(Boolean);
+            if (!T.name && !T.convos.length) delete after.talk; else after.talk = T;
+            rowReplace(hit, after, label);
+        };
+        var split = function (v) { return String(v || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); };
+        P.querySelectorAll('[data-tk]').forEach(function (el) { el.onchange = function () {
+            var T = cur(), k = el.getAttribute('data-tk').split('.'), v = el.value;
+            if (k[0] === 'name') { if (v.trim()) T.name = v.trim(); else delete T.name; }
+            else {
+                var c = T.convos[+k[1]]; if (!c) return;
+                if (k[2] === 'ch') { var ch = (c.choices || [])[+k[3]]; if (!ch) return; if (k[4] === 'pages') ch.pages = split(v); else if (v.trim()) ch[k[4]] = v.trim(); else delete ch[k[4]]; }
+                else if (k[2] === 'pages') c.pages = split(v);
+                else if (v.trim()) c[k[2]] = v.trim(); else delete c[k[2]];
+            }
+            put(T, 'talk');
+        }; });
+        P.querySelectorAll('[data-tk-add]').forEach(function (el) { el.onclick = function () { var T = cur(); T.convos.push({ pages: [] }); put(T, 'talk: a conversation'); }; });
+        P.querySelectorAll('[data-tk-del]').forEach(function (el) { el.onclick = function () { var T = cur(); T.convos.splice(+el.getAttribute('data-tk-del'), 1); put(T, 'talk: conversation off'); }; });
+        P.querySelectorAll('[data-tk-chadd]').forEach(function (el) { el.onclick = function () { var T = cur(), c = T.convos[+el.getAttribute('data-tk-chadd')]; if (!c) return; c.choices = c.choices || []; c.choices.push({ label: '', pages: [] }); put(T, 'talk: a choice'); }; });
+        P.querySelectorAll('[data-tk-chdel]').forEach(function (el) { el.onclick = function () { var T = cur(), ij = el.getAttribute('data-tk-chdel').split('.'), c = T.convos[+ij[0]]; if (!c || !c.choices) return; c.choices.splice(+ij[1], 1); if (!c.choices.length) delete c.choices; put(T, 'talk: choice off'); }; });
+    }
     function zoneSiteWire(P) {
         if ($('edZone')) $('edZone').onchange = function () { zoneSet(ED.roomId, this.value); };
         if ($('edSite')) $('edSite').onchange = function () { siteSet(this.value); };
@@ -3492,6 +3594,7 @@
             '<div class="ed-top" id="edTop"><b class="ed-brand">EDITOR</b><span class="ed-menus" id="edMenus"></span>' +
             '<span class="ed-tools" id="edTools"></span><span class="ed-sp"></span>' +
             '<button class="ed-btn" id="edUi" title="UI MAKER: themes, window shapes, 9-slices, a look for every menu and HUD">🎨 UI</button>' +
+            '<button class="ed-btn" id="edData" title="DATA PANEL (F9): the rules tables and the item editor, live">🧮 DATA</button>' +
             '<button class="ed-btn ed-play" id="edPlay" title="PLAY HERE (P): the walker at the cursor, the real game; ESC comes back">▶ PLAY HERE</button>' +
             '<button class="ed-btn" id="edHelp" title="Keys (H)">?</button><button class="ed-btn" id="edClose" title="Close the editor">✕</button></div>' +
             '<div class="ed-banner" id="edBanner" style="display:none"></div>' +
@@ -3506,6 +3609,7 @@
             var b = document.createElement('button'); b.className = 'ed-btn ed-menubtn'; b.textContent = name; b.onclick = function (e) { e.stopPropagation(); menuOpen(name, b); }; menus.appendChild(b);
         });
         $('edUi').onclick = function () { if (typeof W.openUiMaker === 'function') W.openUiMaker(); };
+        $('edData').onclick = function () { if (typeof W.toggleDataPanel === 'function') W.toggleDataPanel(); };   // THE DATA PANEL (2026-10-08, ui.js)
         $('edPlay').onclick = playHere; $('edHelp').onclick = help; $('edClose').onclick = function () { close(); };
         document.addEventListener('mousedown', function (e) { var m = $('edMenu'); if (m && m.style.display !== 'none' && !m.contains(e.target)) m.style.display = 'none'; }, true);
     }
@@ -3651,7 +3755,7 @@
             var S = r.shell || {}, T = r.terrain || {};
             h += '<div class="ed-hd">' + (lib ? 'GAME ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (lib ? ' · the first change you make edits your own copy of it (the game\'s room is not touched)' : ro ? ' · read only' : '') + '</div>';
             h += '<div class="ed-form" data-scope="room">' + fieldHtml('label', String(r.label || '')) + fieldHtml('sub', String(r.sub || '')) + '</div>';
-            if (!ro && ED.mode === 'world') h += zoneSiteHtml(r);   // E7
+            if (!ro && ED.mode === 'world') h += zoneSiteHtml(r) + encHtml(r);   // E7 + THE ENCOUNTER TABLE (2026-10-08)
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             h += '<div class="ed-sub">THE SHELL</div><div class="ed-form" data-scope="shell">' + shellKeys.map(function (k) { return fieldHtml(k, S[k]); }).join('') + '</div>';
@@ -3684,7 +3788,7 @@
                     '<button class="ed-btn" data-turn="-45" title="SHIFT R">⟲ 45°</button><button class="ed-btn" data-turn="45" title="R">⟳ 45°</button></div>';
             }
             h += '<div class="ed-form" data-scope="row">';
-            var keys = Object.keys(row).filter(function (k) { return k !== 'id' && k.charAt(0) !== '_'; });
+            var keys = Object.keys(row).filter(function (k) { return k !== 'id' && k.charAt(0) !== '_' && !(k === 'talk' && x.list === 'npcSpots'); });   // THE TALK has its own form
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             keys.forEach(function (k) { h += fieldHtml(k, row[k], x.list, row); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
@@ -3712,6 +3816,7 @@
                 h += '<div class="ed-sub">LEADS TO</div><div class="ed-note' + (dbad ? ' ed-warnt' : '') + '">' + (far ? esc(far.label || da.room) + ' (' + esc(da.room) + ') · ' + (da.at ? 'you arrive at its door ' + esc(da.at) : 'you arrive at its spawn') : 'NOWHERE: that room is not in your world') + (dbad && dbad.why === 'no door' ? ' · THAT DOOR IS NOT THERE (LEADS TO… fixes it)' : '') + '</div>';
                 if (!ro && ED.mode === 'world') h += doorFlagsHtml(row);   // E7
             }
+            if (x.list === 'npcSpots' && !ro) h += talkHtml(row);   // THE TALK (2026-10-08)
             if (x.list === 'npcSpots') h += '<div class="ed-note">race = who stands here (a native of this room) · cast = one of the story\'s models · neither = one of your vessels (up to 3 a room) · say = what they say (a line, or a list: one a day).</div>';
             if (x.list === 'agents') h += '<div class="ed-note">pose = a building pose (sit, phone, arms folded …) · patrol = walks a loop · line = what the agent says.</div>';
             if (x.list === 'counters') h += '<div class="ed-note">A sign: label and sub are its plate, desc is what reading it shows; verb is the prompt (READ).</div>';
@@ -3735,6 +3840,8 @@
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
         groundWire(P);
         zoneSiteWire(P); if (hits.length === 1 && hits[0].list === 'doors') doorFlagsWire(P, hits[0]);   // E7
+        if (!hits.length && !ro && ED.mode === 'world') encWire(P);   // THE ENCOUNTER TABLE
+        if (hits.length === 1 && hits[0].list === 'npcSpots' && !ro) talkWire(P, hits[0]);   // THE TALK
         P.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { sizeSel(+b.getAttribute('data-sz')); }; });
         P.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { turnSel(+b.getAttribute('data-turn')); }; });
         if ($('edSizeV')) $('edSizeV').onchange = function () { var h0 = hits[0], z0 = h0 && sizeOf(h0), v = parseFloat(this.value); if (z0 && isFinite(v) && v > 0 && Math.abs(v - z0.v) > 1e-3) sizeSel(v / z0.v, 'size ' + v + ' m'); };

@@ -3492,7 +3492,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
             key: it.key,
             className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
             // healing potion slot reads green like every other heal control
-            style: (it.key === 'healPotion' && it.canUse)
+            style: ((typeof window._ewItemLike === 'function' ? window._ewItemLike(it.key, 'healPotion') : it.key === 'healPotion') && it.canUse)
               ? { borderColor: '#57d97ecc', boxShadow: '0 0 9px #57d97e44' } : undefined,
             title: it.name + ' ×' + it.count
               + (it.desc ? ' — ' + it.desc : '')
@@ -4068,8 +4068,8 @@ function _hrlgItemBlades(unit, st) {
     const canUse = typeof canUseItemNow === 'function' ? canUseItemNow(unit, itemKey) : true;
     let reason = '';
     if (!canUse) {
-      if (itemKey === 'healPotion') reason = 'HP full';
-      else if (itemKey === 'manaPotion') reason = 'No ally needs MP';
+      if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'healPotion') : itemKey === 'healPotion')) reason = 'HP full';
+      else if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'manaPotion') : itemKey === 'manaPotion')) reason = 'No ally needs MP';
       else if (rules && rules.kind === 'captureDoor') reason = _captureDoorWhy(unit, itemKey);
       else reason = 'Can\'t use';
     }
@@ -4561,8 +4561,8 @@ function _hrlgItemTargetBlades(unit, st) {
   const key = st.selectedTool;
   const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[key] : null;
   const isBane = !!(rule && rule.baneType);
-  const isHeal = key === 'healPotion';
-  const isMana = key === 'manaPotion';
+  const isHeal = (typeof window._ewItemLike === 'function' ? window._ewItemLike(key, 'healPotion') : key === 'healPotion');
+  const isMana = (typeof window._ewItemLike === 'function' ? window._ewItemLike(key, 'manaPotion') : key === 'manaPotion');
 
   let targets = [];
   const living = (st.units || []).filter(u => !u.dead);
@@ -4600,7 +4600,7 @@ function _hrlgItemTargetBlades(unit, st) {
     // Healing Potion rows: projected restore in green on the row's HP bar
     // (percent-of-max × terrain, clamped — mirrors doItem via ui.js).
     const previewHeal = (isHeal && available && typeof _estimateHealPotionHeal === 'function')
-      ? _estimateHealPotionHeal(u) : 0;
+      ? _estimateHealPotionHeal(u, key) : 0;
     const portrait = _hrlgPortraitData(u, unit);
     if (portrait && isMana) {
       portrait.showMp = true;
@@ -5277,7 +5277,7 @@ function ActionMenu({ st, hidden }) {
     const itRule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[st.selectedTool] : null;
     const itName = (itRule && itRule.name) || st.selectedTool;
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st)));
-    if (itRule && (st.selectedTool === 'healPotion' || st.selectedTool === 'manaPotion' || itRule.baneType)) {
+    if (itRule && ((typeof window._ewItemLike === 'function' ? window._ewItemLike(st.selectedTool, 'healPotion') : st.selectedTool === 'healPotion') || (typeof window._ewItemLike === 'function' ? window._ewItemLike(st.selectedTool, 'manaPotion') : st.selectedTool === 'manaPotion') || itRule.baneType)) {
       // unit-targeted item → the same portrait target list as attacks/spells,
       // cascading off the still-visible items panel
       inItemTargets = true; view = 'sub';
@@ -7587,10 +7587,12 @@ function _computeAllyActions(actingUnit, targetUnit) {
         _count: actingUnit.items[key] || 0,
       });
     };
-    _pushPotion('healPotion', (targetUnit.hp || 0) < (targetUnit.maxHp || 0), 'Full HP');
-    _pushPotion('manaPotion',
+    /* THE ITEM EDITOR (2026-10-08): new potions made like these two list here too (data.js itemKeysLike) */
+    const _likeKeys = b => (typeof itemKeysLike === 'function') ? itemKeysLike(b) : [b];
+    _likeKeys('healPotion').forEach(k => _pushPotion(k, (targetUnit.hp || 0) < (targetUnit.maxHp || 0), 'Full HP'));
+    _likeKeys('manaPotion').forEach(k => _pushPotion(k,
       (targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp,
-      (targetUnit.maxMp || 0) > 0 ? 'Full MP' : 'No MP pool');
+      (targetUnit.maxMp || 0) > 0 ? 'Full MP' : 'No MP pool'));
   }
 
   // Trade — hand items across when adjacent (opens the trade dialog, free).

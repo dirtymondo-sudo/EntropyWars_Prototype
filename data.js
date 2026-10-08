@@ -4568,6 +4568,18 @@ const ITEM_META = {
     captureDoorTuned: { icon: '🚪', short: 'TUNED' }
 };
 
+/* THE ITEM EDITOR (2026-10-08, the Data Panel's ITEMS tab): a NEW item copies a shipped item's behaviour with `like` (one of
+   ITEM_LIKE_KEYS) and carries its own numbers (healPct, mpPct, revivePct, max, price, …). Throws (baneType), stims (selfBoost)
+   and capture doors (kind) were data-driven already. Every check that used to name one of these shipped keys reads
+   itemBase(key) instead, so a new potion heals, targets, shows in the HUD and gets used by the CPU like the one it copies.
+   The scanner, panacea and warp stone stay one of a kind (their code runs on the item's own key). */
+const ITEM_LIKE_KEYS = ['healPotion', 'manaPotion', 'reviveTonic', 'elixir'];
+function itemBase(key) {
+    const r = ITEM_RULES[key];
+    return (r && typeof r.like === 'string' && ITEM_LIKE_KEYS.includes(r.like)) ? r.like : key;
+}
+function itemKeysLike(base) { return Object.keys(ITEM_RULES).filter(k => itemBase(k) === base); }
+
 function getRaceLabel(race, gender) {
     const p = RACE_PROFILES[race];
     if (!p) return race || '?';
@@ -21896,7 +21908,7 @@ Object.assign(window, {
   ELEM_KNOWLEDGE_KEY, ELEM_REACTION_UI, elemSeenRecord, elemSeenMark, elemSeenFold,
   elemAffinityKnown, elemAffinityBox, elemAffinityBoxHtml, elemPressTier,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, ZODIAC_EFFECTS, ZODIAC_SKY_KEYS, ZODIAC_NATAL_KEYS, zodiacSkyMult, zodiacNatalDelta, zodiacSkySummary, zodiacNatalSummary, ZODIAC_KEY_LABELS, MOVE_SPD_RULE, moveSpdFrom, CLASS_TEMPLATES,
-  DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
+  DEFAULT_BUILDS, ITEM_RULES, ITEM_META, ITEM_LIKE_KEYS, itemBase, itemKeysLike, SPELL_LIBRARY, SPELL_SLOT_MAX,
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
@@ -51389,6 +51401,8 @@ function hqRoomPopulation(roomId, profile, opts) {
     } else if (site) {
         const res = hqSiteResidents(site);
         pool = res.slice(); tiers = res.tiers || {};
+        const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE: the room's own people, every one a native
+        if (ET) { pool = ET.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
     } else {
         pool = hqRosterRaces(profile);
         pool.forEach(r => { tiers[r] = 'roster'; });
@@ -51411,6 +51425,11 @@ function hqRoomPopulation(roomId, profile, opts) {
     const seed = hqHash((opts.date || hqToday()) + '|' + roomId + '|population');
     let s = seed || 1;
     const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
+    const ET = (kind === 'wild') ? hqRoomEncTable(roomId) : null;   // THE ENCOUNTER TABLE: its walker count and its weights
+    if (ET && ET.walkers && pool.length && !(roomId === 'car' || room.kind === 'bay' && room.corridor === false)) {
+        n = Math.max(0, Math.min(8, Math.round(ET.walkers[0] + rnd() * (ET.walkers[1] - ET.walkers[0] + 1) - 0.5)));
+        if (opts.perfLow) n = Math.round(n * R.perfLowMul);
+    }
     const draw = [];
     const natives = pool.filter(r => tiers[r] === 'native' || tiers[r] === 'biome'), others = pool.filter(r => tiers[r] !== 'native' && tiers[r] !== 'biome');   // the tagged are as much the room's as the natives
     const people = pool.filter(r => tiers[r] === 'people'), cityFolk = pool.filter(r => tiers[r] === 'city');
@@ -51426,7 +51445,7 @@ function hqRoomPopulation(roomId, profile, opts) {
             const u = (i === 0) ? 0 : rnd(), W = R.wildWeights;
             from = (u < W[0] && trueN.length) ? trueN : (u < W[0] + W[1] && tagged.length) ? tagged : (others.length ? others : (natives.length ? natives : pool));
         }
-        for (let tries = 0; tries < 6 && (r === null || (draw.length && draw[draw.length - 1].race === r && from.length > 1)); tries++) r = from[Math.floor(rnd() * from.length)];
+        for (let tries = 0; tries < 6 && (r === null || (draw.length && draw[draw.length - 1].race === r && from.length > 1)); tries++) r = ET ? hqEncTablePick(ET, rnd) : from[Math.floor(rnd() * from.length)];
         if (r == null) break;
         draw.push({ id: 'hq-roam-' + i, race: r, tier: tiers[r] || 'native' });
     }
@@ -51459,9 +51478,68 @@ function hqSwarmRace(natives, rnd) {
     const from = (Array.isArray(natives) ? natives : []).filter(r => r && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(r) >= 0));
     return from.length ? from[Math.floor((typeof rnd === 'function' ? rnd() : 0) * from.length) % from.length] : null;
 }
+/* ══ THE ENCOUNTER TABLE (2026-10-08, mondo: "per-room creature lists with level ranges, rarity and spawn points you place
+   in the editor") ══ A room's own `encounters = { list: [{ race, w }], walkers: [min, max], levels: [min, max], group: [min, max] }`
+   (the editor's room inspector, ENCOUNTERS) replaces the site's people in that room: who walks it (weighted by w), how many walk
+   (walkers, still under THE CROWD CAP), the enemy levels (clamped into levels) and the companions a lone native brings (group).
+   The fight still needs the room's SITE (its battle map); a spot with a race (PEOPLE / MARKERS in the editor) stands where it is.
+   Blank ranges keep the game's own rules. Pure. */
+function hqRoomEncTable(roomId) {
+    const room = (DOOR_HQ.rooms || {})[roomId];
+    const E = room && room.encounters;
+    if (!E || typeof E !== 'object' || !Array.isArray(E.list)) return null;
+    const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
+    const list = E.list.filter(x => x && x.race && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(x.race) >= 0) && ready(x.race))
+        .map(x => ({ race: x.race, w: Math.max(0, Number.isFinite(+x.w) ? +x.w : 1) })).filter(x => x.w > 0);
+    if (!list.length) return null;
+    const span = (v) => (Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n))) ? [Math.min(+v[0], +v[1]), Math.max(+v[0], +v[1])] : null;
+    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group) };
+}
+/* one weighted race off the table (rnd: a 0..1 stream) */
+function hqEncTablePick(T, rnd) {
+    const tot = T.list.reduce((a, x) => a + x.w, 0);
+    let u = rnd() * tot;
+    for (const x of T.list) { u -= x.w; if (u < 0) return x.race; }
+    return T.list[T.list.length - 1].race;
+}
+/* ══ THE TALK (2026-10-08, mondo: "place NPCs and type their lines, branches and conditions yourself") ══ A person's row
+   (npcSpots) may carry `talk = { name, convos: [{ if, not, pages: [line], choices: [{ label, pages: [line], set }], set }] }`
+   written in the editor's TALK form. The first conversation whose `if` flag is set (blank = always) and whose `not` flag is
+   not set plays, a page at a time in the subtitle bar; the choices close it; `set` raises a STORY FLAG when it ends. The
+   flags live on the profile (`door.hq.flags`, viewer-local like the party). A row with no talk keeps its `say`. */
+function hqStoryFlags(profile) {
+    const hq = profile && profile.door && profile.door.hq;
+    return (hq && hq.flags && typeof hq.flags === 'object') ? hq.flags : {};
+}
+function hqStoryFlagSet(profile, name, on) {
+    name = String(name || '').trim(); if (!profile || !name) return false;
+    if (!profile.door || typeof profile.door !== 'object') profile.door = {};
+    if (!profile.door.hq || typeof profile.door.hq !== 'object') profile.door.hq = {};
+    if (!profile.door.hq.flags || typeof profile.door.hq.flags !== 'object') profile.door.hq.flags = {};
+    if (on === false) delete profile.door.hq.flags[name]; else profile.door.hq.flags[name] = Date.now();
+    return true;
+}
+function hqTalkConvo(talk, flags) {
+    const cs = (talk && Array.isArray(talk.convos)) ? talk.convos : [];
+    const f = flags || {};
+    for (const c of cs) {
+        if (!c || !Array.isArray(c.pages) || !c.pages.some(p => String(p || '').trim())) continue;
+        if (c.if && !f[c.if]) continue;
+        if (c.not && f[c.not]) continue;
+        return c;
+    }
+    return null;
+}
+/* n seeded weighted races off the table (a pool for the companions) */
+function hqEncTableDraw(T, n, seed) {
+    const rnd = hqLevelRng(seed), out = [];
+    for (let i = 0; i < Math.max(1, n | 0); i++) out.push(hqEncTablePick(T, rnd));
+    return out;
+}
 /* the races NATIVE to a wild room: its site's residents tagged native / biome (the population's own "the room's people") */
 function hqRoomNatives(roomId) {
     const site = hqRoomSite(roomId); if (!site) return [];
+    const T = hqRoomEncTable(roomId); if (T) return T.list.map(x => x.race);   // THE ENCOUNTER TABLE
     let res = [];
     try { res = hqSiteResidents(site) || []; } catch (e) { res = []; }
     const t = res.tiers || {};
@@ -51555,15 +51633,23 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
        the target + its roaming group's members (their own races) + the companions the rule draws — never the crossing's team size;
        `teamSize` stays the OFFICER's deploy (the party's shift). THE LEVELS: every body's level about the party's (hqEncounterLevels). */
     const grp = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group', { natives: hqRoomNatives(roomId) });
+    const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE (2026-10-08): its companions, its draw, its levels
+    if (ET && ET.group && grp.kind === 'solo') {
+        const gr = hqLevelRng((roomId || '') + '|' + (ch.id || ch.race) + '|tablegroup');
+        grp.extra = Math.max(0, Math.min(7, Math.round(ET.group[0] + gr() * (ET.group[1] - ET.group[0] + 1) - 0.5)));
+        grp.size = 1 + grp.extra;
+    }
     const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group + the companions the rule drew
-    const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
+    const pool = ET ? hqEncTableDraw(ET, Math.max(n, enemyTeam), (roomId || '') + '|' + (ch.id || ch.race) + '|tablepool')
+        : (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
     const withGroup = [ch.race].concat(grp.members.map(x => x.race));
     /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the target leads, every other seat is the swarm's native race; the grunts stand under the party level */
     const swarm = grp.kind === 'swarm' ? { n: enemyTeam, elite: Math.min(grp.elite | 0, enemyTeam), race: grp.race || ch.race } : null;
     const roster = swarm ? [ch.race].concat(Array.from({ length: enemyTeam - 1 }, () => swarm.race))
-        : withGroup.concat(pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));
+        : withGroup.concat(ET ? pool : pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));   // a table's draw may repeat a race
     const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels',
                                  swarm ? { grunts: { from: swarm.elite, offset: HQ_LEVEL_RULES.swarm.offset } } : null);
+    if (ET && ET.levels) lv.levels = lv.levels.map(l => Math.max(1, Math.min(LEVEL_CAP, Math.max(ET.levels[0], Math.min(ET.levels[1], l)))));
     /* THE SEAMLESS FIELD (2026-09-22 — the user: "encounters in the haunted house still go to a voxel grid map, not what I wanted at
        all"): a room the rasteriser takes (hqFieldRoomOk — a box part, a cave chamber, a TERRAIN area) fights ITS OWN WINDOW on its own
        ground, so it hands the launch NO area Δ (map.js gates the window on `launchId`); the part's Δ (THE AREA BOARDS, 2026-09-19 —
@@ -51596,10 +51682,13 @@ function hqMarkerLaunch(roomId, cfg, opts) {
     const c = hqEncounterConfig(cfg, { codeRed: !!opts.codeRed });
     const gm = (opts.gm === 'arena' || opts.gm === 'tdm') ? opts.gm : c.gm;
     const n = c.teamSize;
-    const pool = (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
+    const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE (2026-10-08)
+    const pool = ET ? hqEncTableDraw(ET, n, roomId + '|marker|' + ((typeof hqToday === 'function') ? hqToday() : ''))
+        : (typeof hqMissionPool === 'function') ? hqMissionPool(site, n) : [];
     const roster = pool.slice(0, Math.max(n, 1));
     const lead = roster[0] || null;
     const lv = hqEncounterLevels(opts.partyLevel, site, Math.max(n, 1), roomId + '|marker|' + ((typeof hqToday === 'function') ? hqToday() : ''));   // THE LEVELS (2026-09-21)
+    if (ET && ET.levels) lv.levels = lv.levels.map(l => Math.max(1, Math.min(LEVEL_CAP, Math.max(ET.levels[0], Math.min(ET.levels[1], l)))));
     const launchId = (typeof hqAreaDeltaId === 'function') ? hqAreaDeltaId(roomId) : null;
     let label = site;
     try { const M = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null; if (M && M.label) label = M.label; } catch (e) {}
@@ -53373,10 +53462,13 @@ function hqPartyCast(profile, units, casterId, spellId, targetId) {
     r.at = Date.now();
     return { ok: true, spell: sp, healed, mp: caster.mp, mpMax: caster.mpMax, cost };
 }
+/* a field-usable item: one of HQ_PARTY_RULES.itemKinds, or a new item made like one (THE ITEM EDITOR, data.js itemBase) */
+function hqFieldItemOk(key) { return HQ_PARTY_RULES.itemKinds.indexOf(itemBase(key)) >= 0; }
 /* a POTION from a member's pockets in the field (ITEM_RULES healPct / mpPct) — the caller saves */
 function hqPartyUseItem(profile, units, ownerId, key, targetId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noparty' };
-    if (HQ_PARTY_RULES.itemKinds.indexOf(key) < 0) return { ok: false, reason: 'item' };
+    if (!hqFieldItemOk(key)) return { ok: false, reason: 'item' };
+    const kb = itemBase(key);
     const fromBag = ownerId === 'bag';   // THE BAG (2026-09-20): the shared inventory is an owner too
     const owner = fromBag ? null : r.members.find(m => m.id === ownerId); if (!fromBag && !owner) return { ok: false, reason: 'who' };
     const have = fromBag ? hqBagCount(profile, key) : (owner.loadout.items[key] | 0);
@@ -53385,10 +53477,10 @@ function hqPartyUseItem(profile, units, ownerId, key, targetId) {
     const rule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || {};
     const tf = hqPartyFrame(target, units && units[target.id]);
     let amount = 0, stat = 'hp', revived = false;
-    if (key === 'reviveTonic') { if (!hqPartyDown(target)) return { ok: false, reason: 'notdown' }; target.hpMax = tf.hpMax; target.hp = Math.max(1, Math.round(tf.hpMax * (rule.revivePct || 0.5))); amount = target.hp; revived = true; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
-    else if (key === 'elixir') { if (!hqPartyDown(target) && tf.hp >= tf.hpMax && tf.mp >= tf.mpMax) return { ok: false, reason: 'full' }; revived = hqPartyDown(target); target.hpMax = tf.hpMax; target.mpMax = tf.mpMax; amount = tf.hpMax - (revived ? 0 : tf.hp); target.hp = tf.hpMax; target.mp = tf.mpMax; }
+    if (kb === 'reviveTonic') { if (!hqPartyDown(target)) return { ok: false, reason: 'notdown' }; target.hpMax = tf.hpMax; target.hp = Math.max(1, Math.round(tf.hpMax * (rule.revivePct || 0.5))); amount = target.hp; revived = true; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
+    else if (kb === 'elixir') { if (!hqPartyDown(target) && tf.hp >= tf.hpMax && tf.mp >= tf.mpMax) return { ok: false, reason: 'full' }; revived = hqPartyDown(target); target.hpMax = tf.hpMax; target.mpMax = tf.mpMax; amount = tf.hpMax - (revived ? 0 : tf.hp); target.hp = tf.hpMax; target.mp = tf.mpMax; }
     else if (hqPartyDown(target)) return { ok: false, reason: 'down' };
-    else if (key === 'healPotion') { if (tf.hp >= tf.hpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.hpMax * (rule.healPct || 0.3))); target.hpMax = tf.hpMax; target.hp = Math.min(tf.hpMax, tf.hp + amount); amount = target.hp - tf.hp; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
+    else if (kb === 'healPotion') { if (tf.hp >= tf.hpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.hpMax * (rule.healPct || 0.3))); target.hpMax = tf.hpMax; target.hp = Math.min(tf.hpMax, tf.hp + amount); amount = target.hp - tf.hp; if (target.mp == null) { target.mp = tf.mp; target.mpMax = tf.mpMax; } }
     else { stat = 'mp'; if (tf.mp >= tf.mpMax) return { ok: false, reason: 'full' }; amount = Math.max(1, Math.round(tf.mpMax * (rule.mpPct || 0.35))); target.mpMax = tf.mpMax; target.mp = Math.min(tf.mpMax, tf.mp + amount); amount = target.mp - tf.mp; if (target.hp == null) { target.hp = tf.hp; target.hpMax = tf.hpMax; } }
     let left;
     if (fromBag) { left = hqBagTake(profile, key, 1).n | 0; }
@@ -53397,7 +53489,7 @@ function hqPartyUseItem(profile, units, ownerId, key, targetId) {
     return { ok: true, key, stat, amount, target: target.id, left, name: rule.name || key, from: fromBag ? 'bag' : owner.id, revived };
 }
 /* the pockets a member may open in the field */
-function hqPartyFieldItems(m) { return HQ_PARTY_RULES.itemKinds.filter(k => (m && m.loadout && m.loadout.items && (m.loadout.items[k] | 0)) > 0).map(k => ({ key: k, n: m.loadout.items[k] | 0, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].name) || k, icon: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].icon) || '' })); }
+function hqPartyFieldItems(m) { return Object.keys(ITEM_RULES).filter(hqFieldItemOk).filter(k => (m && m.loadout && m.loadout.items && (m.loadout.items[k] | 0)) > 0).map(k => ({ key: k, n: m.loadout.items[k] | 0, name: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].name) || k, icon: (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[k] && ITEM_RULES[k].icon) || '' })); }
 /* ══ THE BAG + THE DISPENSARY + AUTO HEAL (2026-09-20) ══
    THE BAG is the party's shared inventory — `door.hq.bag = { items: { key: n }, at }`,
    LOCAL like the party (nothing on `state`, nothing relayed — RULE #2). Potions and
@@ -53459,7 +53551,7 @@ function hqBagTake(profile, key, n) {
 function hqBagItemRow(key, n) {
     const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[key]) || {};
     const price = r.shopPrice | 0;
-    return { key, n: n | 0, name: r.name || key, icon: r.icon || '', desc: r.desc || '', field: HQ_PARTY_RULES.itemKinds.indexOf(key) >= 0, battle: !r.fieldOnly, price, sell: Math.floor(price * HQ_PARTY_RULES.sellBack), max: hqBagCap() || Infinity };
+    return { key, n: n | 0, name: r.name || key, icon: r.icon || '', desc: r.desc || '', field: hqFieldItemOk(key), battle: !r.fieldOnly, price, sell: Math.floor(price * HQ_PARTY_RULES.sellBack), max: hqBagCap() || Infinity };
 }
 /* ── THE BAG'S TABS (2026-09-23, the user: "make the bag more organized or sortable by categories / tabs — healing
    (HP, MP, panacea, revive), banes, and battle items") ── ONE rule sorts every item into a category:
@@ -57448,3 +57540,223 @@ if (typeof window !== 'undefined') {
     window.hqWorksTally = hqWorksTally;
     window.hqDockDeliveries = hqDockDeliveries; window.hqBoilerGauge = hqBoilerGauge; window.hqRollCall = hqRollCall; window.hqOrderOfService = hqOrderOfService; window.hqOutTray = hqOutTray; window.hqStashRoomIds = hqStashRoomIds;   // D5 (2026-09-21): the six panels' reads
 }
+
+/* ═══ THE DATA PANEL'S DIFF LAYER — EWDataMods (2026-10-08, mondo: "a live data panel" + "an item editor") ═══════════════
+   One F9 window (ui.js "THE DATA PANEL") edits the rules tables below WHILE THE GAME RUNS. Same model as EWRaceMods: the
+   tables as data.js ships them stay the truth; the edits live in localStorage (EW_DATA_MODS_LS_KEY) as a sparse list of
+   paths and are written INTO the live objects in place, so every reader sees them with no new code. A value read once when
+   a mode starts (a cached copy) shows on the next match or a reload.
+   doc.set[TABLE]['a.b.c'] = value. A path that did not exist adds the key (the ITEMS tab's new items, a shop row, a drop
+   weight); reverting deletes it again. Functions are never edited. EXPORT hands the doc to a thread to bake into data.js.
+   THE ONLINE GUARD: like the race and spell editors, the edits are OFF in an online match (both peers run data.js as shipped). */
+const EW_DATA_MODS_LS_KEY = 'ew_data_mods_v1';
+window.EWDataMods = (function () {
+    const VERSION = 1;
+    /* the tables the panel lists. The race editor owns the race tables, the Spell Library the spells; the big content
+       tables (rooms, maps) belong to the map editor. g = the group in the list. */
+    const T = [
+        ['Battle', 'CONFIG', CONFIG], ['Battle', 'TYPE_CHART', TYPE_CHART], ['Battle', 'ELEMENT_AFFINITY_MULT', ELEMENT_AFFINITY_MULT],
+        ['Battle', 'FACTION_BONUSES', FACTION_BONUSES], ['Battle', 'STATUS_DEFS', STATUS_DEFS], ['Battle', 'PASSIVE_DEFS', PASSIVE_DEFS],
+        ['Battle', 'TERRAIN_RULES', TERRAIN_RULES], ['Battle', 'TERRAIN_PREFERENCE_BONUS', TERRAIN_PREFERENCE_BONUS], ['Battle', 'OBJECT_RULES', OBJECT_RULES],
+        ['Battle', 'COMBO_REGISTRY', COMBO_REGISTRY], ['Battle', 'FINISHER_RULES', FINISHER_RULES], ['Battle', 'ENTROPY_STRIKE_TYPES', ENTROPY_STRIKE_TYPES],
+        ['Battle', 'GUARD_RESTORE', GUARD_RESTORE], ['Battle', 'RESERVE_RULES', RESERVE_RULES], ['Battle', 'MANA_FORMULA', MANA_FORMULA],
+        ['Battle', 'SKY_EVENTS', SKY_EVENTS], ['Battle', 'BOSS_DEFS', BOSS_DEFS], ['Battle', 'BOSS_BUFF_DEFS', BOSS_BUFF_DEFS],
+        ['Battle', 'BUILD_ACTION_CONFIG', BUILD_ACTION_CONFIG], ['Battle', 'BUILD_MATERIALS', BUILD_MATERIALS], ['Battle', 'MAT_DROP_CONFIG', MAT_DROP_CONFIG],
+        ['Battle', 'TERRAIN_RESHAPE_CONFIG', TERRAIN_RESHAPE_CONFIG], ['Battle', 'BREACH_CONFIG', BREACH_CONFIG], ['Battle', 'COLLISION_CONFIG', COLLISION_CONFIG],
+        ['Battle', 'FLYING_ALTITUDE_CONFIG', FLYING_ALTITUDE_CONFIG],
+        ['Items & shops', 'ITEM_RULES', ITEM_RULES], ['Items & shops', 'ITEM_META', ITEM_META], ['Items & shops', 'HQ_DISPENSARY', HQ_DISPENSARY],
+        ['Items & shops', 'HQ_DROP_RULES', HQ_DROP_RULES], ['Items & shops', 'SPELL_SHOP_PRICES', SPELL_SHOP_PRICES], ['Items & shops', 'CAMPAIGN_RACE_PRICES', CAMPAIGN_RACE_PRICES],
+        ['Levels & XP', 'XP_CURVE', XP_CURVE], ['Levels & XP', 'KILL_XP', KILL_XP], ['Levels & XP', 'MODE_LEVEL_RULES', MODE_LEVEL_RULES],
+        ['Levels & XP', 'SPELL_TIER_RULE', SPELL_TIER_RULE], ['Levels & XP', 'HQ_LEVEL_RULES', HQ_LEVEL_RULES], ['Levels & XP', 'HQ_AREA_LEVELS', HQ_AREA_LEVELS],
+        ['Story & field', 'HQ_ENCOUNTER_RULES', HQ_ENCOUNTER_RULES], ['Story & field', 'CAPTURE_RULES', CAPTURE_RULES], ['Story & field', 'HQ_PARTY_RULES', HQ_PARTY_RULES],
+        ['Story & field', 'HQ_ESCAPE_RULES', HQ_ESCAPE_RULES], ['Story & field', 'HQ_FIELD_RULES', HQ_FIELD_RULES], ['Story & field', 'HQ_FIND_RULES', HQ_FIND_RULES],
+        ['Story & field', 'HQ_POPULATION_RULES', HQ_POPULATION_RULES], ['Story & field', 'HQ_CROWD_RULES', HQ_CROWD_RULES], ['Story & field', 'HQ_OFFICER_RULES', HQ_OFFICER_RULES],
+        ['Story & field', 'HQ_HEAL_ZONE', HQ_HEAL_ZONE], ['Story & field', 'HQ_WORLD_CLOCK', HQ_WORLD_CLOCK],
+        ['Arenas & modes', 'HQ_ARENA_RULES', HQ_ARENA_RULES], ['Arenas & modes', 'DOOR_GUN_RULES', DOOR_GUN_RULES], ['Arenas & modes', 'HQ_GUN_RULES', HQ_GUN_RULES],
+        ['Arenas & modes', 'HQ_SKATE_RULES', HQ_SKATE_RULES], ['Arenas & modes', 'HQ_SEA_RULES', HQ_SEA_RULES],
+        ['Engine', 'HQ_LIGHT_RULES', HQ_LIGHT_RULES], ['Engine', 'HQ_ENGINE_RULES', HQ_ENGINE_RULES], ['Engine', 'HQ_STAGE_RULES', HQ_STAGE_RULES],
+    ];
+    const TABLES = {};
+    T.forEach(([g, name, obj]) => { if (obj && typeof obj === 'object') TABLES[name] = { group: g, obj }; });
+    const ABSENT = '\u0000absent';
+    let doc = null, suspended = false;
+    const pristine = {};   // pristine[table][path] = the shipped value (a clone) or ABSENT, captured before the first write
+    const _clone = v => { if (v === undefined) return undefined; try { return JSON.parse(JSON.stringify(v)); } catch (e) { return v; } };
+    const eq = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+    const split = p => String(p).split('.');
+    function emptyDoc() { return { version: VERSION, enabled: true, set: {}, notes: '' }; }
+    function normalize(d) {
+        if (!d || typeof d !== 'object' || (d.version != null && d.version !== VERSION)) d = emptyDoc();
+        if (!d.set || typeof d.set !== 'object' || Array.isArray(d.set)) d.set = {};
+        Object.keys(d.set).forEach(t => { if (!TABLES[t] || !d.set[t] || typeof d.set[t] !== 'object') delete d.set[t]; });
+        if (typeof d.enabled !== 'boolean') d.enabled = true;
+        if (typeof d.notes !== 'string') d.notes = '';
+        d.version = VERSION;
+        return d;
+    }
+    function load() { let d = null; try { d = JSON.parse(localStorage.getItem(EW_DATA_MODS_LS_KEY) || 'null'); } catch (e) {} doc = normalize(d); return doc; }
+    function save() { try { localStorage.setItem(EW_DATA_MODS_LS_KEY, JSON.stringify(doc)); } catch (e) { console.error('[DataMods] save failed', e); } }
+
+    function getAt(obj, path) {
+        let o = obj;
+        for (const k of split(path)) { if (o == null || typeof o !== 'object' || !Object.prototype.hasOwnProperty.call(o, k)) return ABSENT; o = o[k]; }
+        return o;
+    }
+    function setAt(obj, path, val) {
+        const ks = split(path); let o = obj;
+        for (let i = 0; i < ks.length - 1; i++) {
+            if (o[ks[i]] == null || typeof o[ks[i]] !== 'object') o[ks[i]] = {};
+            o = o[ks[i]];
+        }
+        const last = ks[ks.length - 1];
+        if (val === ABSENT) { if (Array.isArray(o)) o.splice(+last, 1); else delete o[last]; }
+        else o[last] = _clone(val);
+    }
+    function capture(t, path) {
+        if (!pristine[t]) pristine[t] = {};
+        if (Object.prototype.hasOwnProperty.call(pristine[t], path)) return;
+        const v = getAt(TABLES[t].obj, path);
+        pristine[t][path] = v === ABSENT ? ABSENT : _clone(v);
+    }
+    /* the shipped value of a path (what the panel shows as "was") */
+    function shipped(t, path) {
+        if (pristine[t] && Object.prototype.hasOwnProperty.call(pristine[t], path)) return pristine[t][path] === ABSENT ? undefined : _clone(pristine[t][path]);
+        /* a path under a modded ancestor: read the ancestor's shipped value */
+        const ks = split(path);
+        for (let i = ks.length - 1; i > 0; i--) {
+            const a = ks.slice(0, i).join('.');
+            if (pristine[t] && Object.prototype.hasOwnProperty.call(pristine[t], a)) {
+                const base = pristine[t][a];
+                if (base === ABSENT) return undefined;
+                const v = getAt(base, ks.slice(i).join('.'));
+                return v === ABSENT ? undefined : _clone(v);
+            }
+        }
+        const v = getAt(TABLES[t] ? TABLES[t].obj : {}, path);
+        return v === ABSENT ? undefined : _clone(v);
+    }
+    function restoreAll() {
+        Object.keys(pristine).forEach(t => {
+            const ps = Object.keys(pristine[t]).sort((a, b) => split(b).length - split(a).length);   // deepest first
+            ps.forEach(p => setAt(TABLES[t].obj, p, pristine[t][p]));
+        });
+    }
+    function applyDoc() {
+        Object.keys(doc.set).forEach(t => {
+            const ps = Object.keys(doc.set[t]).sort((a, b) => split(a).length - split(b).length);   // shallowest first
+            ps.forEach(p => { capture(t, p); setAt(TABLES[t].obj, p, doc.set[t][p]); });
+        });
+    }
+    function _online() {
+        if (suspended) return true;
+        try { return typeof isOnlineMatch === 'function' && !!isOnlineMatch(); } catch (e) { return false; }
+    }
+    function apply() { restoreAll(); if (doc && doc.enabled && !_online()) applyDoc(); }
+    function setOnline(on) { const was = suspended; suspended = !!on; if (was !== suspended) apply(); return suspended; }
+
+    /* ONE WRITE. A path under an edited ancestor (a field of a new item) folds into that ancestor's stored value; a path
+       over edited descendants takes them back first. A value equal to the shipped one drops the edit. undefined = revert. */
+    function set(t, path, val) {
+        if (!TABLES[t]) return false;
+        path = String(path);
+        restoreAll();   // the shipped values are what the compare below reads; apply() writes every edit back
+        if (!doc.set[t]) doc.set[t] = {};
+        const rows = doc.set[t];
+        const ks = split(path);
+        for (let i = ks.length - 1; i > 0; i--) {
+            const a = ks.slice(0, i).join('.');
+            if (Object.prototype.hasOwnProperty.call(rows, a)) {
+                const host = rows[a] && typeof rows[a] === 'object' ? rows[a] : {};
+                setAt(host, ks.slice(i).join('.'), val === undefined ? ABSENT : val);
+                rows[a] = host;
+                if (eq(host, shipped(t, a))) delete rows[a];
+                save(); apply();
+                return true;
+            }
+        }
+        Object.keys(rows).forEach(p => { if (p.startsWith(path + '.')) delete rows[p]; });
+        if (val === undefined || eq(val, shipped(t, path))) delete rows[path];
+        else rows[path] = _clone(val);
+        if (!Object.keys(rows).length) delete doc.set[t];
+        save(); apply();
+        return true;
+    }
+    function revert(t, path) {
+        if (!doc.set[t]) return;
+        if (path == null) delete doc.set[t];
+        else Object.keys(doc.set[t]).forEach(p => { if (p === path || p.startsWith(path + '.')) delete doc.set[t][p]; });
+        if (doc.set[t] && !Object.keys(doc.set[t]).length) delete doc.set[t];
+        save(); apply();
+    }
+    /* is this path (or something under it) edited? */
+    function edited(t, path) {
+        const rows = doc.set[t]; if (!rows) return false;
+        if (path == null) return true;
+        return Object.keys(rows).some(p => p === path || p.startsWith(path + '.') || path.startsWith(p + '.'));
+    }
+    function reset() { doc = emptyDoc(); save(); apply(); }
+    function setEnabled(on) { doc.enabled = !!on; save(); apply(); }
+    function counts() { let n = 0; Object.keys(doc.set).forEach(t => { n += Object.keys(doc.set[t]).length; }); return { tables: Object.keys(doc.set).length, edits: n }; }
+    function total() { return counts().edits; }
+    const _fmt = v => v === undefined ? '(none)' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+    function summary() {
+        const lines = [];
+        Object.keys(doc.set).sort().forEach(t => Object.keys(doc.set[t]).sort().forEach(p => {
+            const was = shipped(t, p);
+            lines.push(`${t}.${p}: ${was === undefined ? '(new)' : _fmt(was)} → ${_fmt(doc.set[t][p])}`);
+        }));
+        if (doc.notes) lines.push(`NOTES: ${doc.notes.split('\n')[0].slice(0, 160)}`);
+        return lines;
+    }
+    function exportDoc() {
+        const baseline = {};
+        Object.keys(doc.set).forEach(t => { baseline[t] = {}; Object.keys(doc.set[t]).forEach(p => { const v = shipped(t, p); baseline[t][p] = v === undefined ? null : v; }); });
+        return {
+            format: 'entropy-wars-data-mods',
+            exportedAt: new Date().toISOString(),
+            build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
+            instructions: 'Bake into data.js by hand: set.<TABLE>["a.b.c"] = value means TABLE.a.b.c = value (a path the table did not '
+                + 'have is a new key, e.g. a new item row in ITEM_RULES + ITEM_META). baseline holds the shipped values the edits were made against (null = new).',
+            summary: summary(),
+            baseline,
+            ..._clone(doc),
+        };
+    }
+    function importDoc(obj, opts) {
+        if (!obj || typeof obj !== 'object') throw new Error('not an object');
+        if (obj.format && obj.format !== 'entropy-wars-data-mods') throw new Error('unrecognized format');
+        const inc = normalize(_clone(obj));
+        if ((opts && opts.mode) === 'replace') doc = inc;
+        else Object.keys(inc.set).forEach(t => { doc.set[t] = Object.assign(doc.set[t] || {}, inc.set[t]); });
+        save(); apply();
+        return doc;
+    }
+    /* PRUNE: drop every stored edit data.js now ships */
+    function prune() {
+        let n = 0;
+        Object.keys(doc.set).forEach(t => Object.keys(doc.set[t]).forEach(p => { if (eq(doc.set[t][p], getAt(TABLES[t].obj, p) === ABSENT ? undefined : getAt(TABLES[t].obj, p))) { delete doc.set[t][p]; n++; } }));
+        Object.keys(doc.set).forEach(t => { if (!Object.keys(doc.set[t]).length) delete doc.set[t]; });
+        if (n) save();
+        return n;
+    }
+    function tables() { return Object.keys(TABLES).map(name => ({ name, group: TABLES[name].group })); }
+    function table(name) { return TABLES[name] ? TABLES[name].obj : null; }
+
+    try {
+        load();
+        const n = prune();
+        apply();
+        if (n) console.log(`[DataMods] pruned ${n} edit(s) already baked into data.js`);
+        if (total()) console.log(`[DataMods] ${doc.enabled ? 'Applied' : 'Loaded (DISABLED)'} — ${total()} edits in ${counts().tables} tables`);
+    } catch (e) {
+        console.error('[DataMods] failed to apply stored data edits — running vanilla', e);
+        try { doc = emptyDoc(); } catch (e2) {}
+    }
+    return {
+        get doc() { return doc; }, get suspended() { return suspended; }, get online() { return _online(); },
+        VERSION, LS_KEY: EW_DATA_MODS_LS_KEY,
+        tables, table, get: (t, p) => { const v = getAt(TABLES[t] ? TABLES[t].obj : {}, p); return v === ABSENT ? undefined : v; },
+        load, save, apply, reset, prune, setOnline, setEnabled, set, revert, edited, shipped,
+        counts, total, summary, export: exportDoc, import: importDoc,
+    };
+})();

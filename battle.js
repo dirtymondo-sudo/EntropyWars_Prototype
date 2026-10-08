@@ -34843,13 +34843,16 @@
             return getTotalItemCount(unit) >= getUnitItemSlots();
         }
 
+        /* THE ITEM EDITOR (2026-10-08): is `key` the shipped item `base` or a new item made like it (data.js itemBase) */
+        function _ewItemLike(key, base) { return key === base || (!!key && typeof itemBase === 'function' && itemBase(key) === base); }
+        window._ewItemLike = _ewItemLike;
         function canUseItemNow(unit, itemKey) {
             if (!unit || unit.dead) return false;
             if ((unit.items?.[itemKey] || 0) <= 0) return false;
-            if (itemKey === 'healPotion') {
+            if (_ewItemLike(itemKey, 'healPotion')) {
                 return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
             }
-            if (itemKey === 'manaPotion') {
+            if (_ewItemLike(itemKey, 'manaPotion')) {
                 return state.units.some(t => !t.dead && t.player === unit.player && (t.maxMp || 0) > 0 && t.mp < t.maxMp);
             }
             if (itemKey === 'scanner') return true;
@@ -53646,14 +53649,14 @@
            bane strips only on living enemies. Other items keep free aim. */
         function _itemTargetTeamOk(unit, tool, x, y, z) {
             if (!unit || !tool) return true;
-            const _itSide = (tool === 'healPotion' || tool === 'manaPotion') ? 'ally'
+            const _itSide = (_ewItemLike(tool, 'healPotion') || _ewItemLike(tool, 'manaPotion')) ? 'ally'
                 : (ITEM_RULES[tool]?.baneType ? 'enemy' : 'any');
             const tu = resolveUnitInColumn(unit, x, y, z, { side: _itSide });
-            if (tool === 'healPotion' || tool === 'manaPotion') {
+            if (_ewItemLike(tool, 'healPotion') || _ewItemLike(tool, 'manaPotion')) {
                 if (!tu || tu.dead || isEnemyUnit(tu, unit)) return false;
                 // A full-up ally is not a potion target (doItem refuses it) —
                 // no confirm arms on it and its plate drops from the filter.
-                if (tool === 'healPotion') return tu.hp < tu.maxHp;
+                if (_ewItemLike(tool, 'healPotion')) return tu.hp < tu.maxHp;
                 return tu.maxMp > 0 && tu.mp < tu.maxMp;
             }
             if (ITEM_RULES[tool]?.baneType) {
@@ -54688,7 +54691,7 @@
                 state.actionMode === 'spell' ||
                 state.actionMode === 'trade' ||
                 state.actionMode === 'combo' ||
-                (state.actionMode === 'item' && (state.selectedTool === 'healPotion' || state.selectedTool === 'manaPotion' || ITEM_RULES[state.selectedTool]?.baneType));
+                (state.actionMode === 'item' && (_ewItemLike(state.selectedTool, 'healPotion') || _ewItemLike(state.selectedTool, 'manaPotion') || ITEM_RULES[state.selectedTool]?.baneType));
         }
 
         function updateHoveredTarget(x, y) {
@@ -62724,7 +62727,7 @@
             // stack, so a flyer using a potion on itself (or a bane aimed at
             // an airborne enemy) used to land on whoever stood beneath it.
             const _itemTool = state.selectedTool;
-            const _itemSide = (_itemTool === 'healPotion' || _itemTool === 'manaPotion') ? 'ally'
+            const _itemSide = (_ewItemLike(_itemTool, 'healPotion') || _ewItemLike(_itemTool, 'manaPotion')) ? 'ally'
                 : ((typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_itemTool]?.baneType) ? 'enemy' : 'any');
             const target = resolveUnitInColumn(unit, x, y, z, { side: _itemSide });
             if (target && target.z !== undefined && target.z !== null && target.x === x && target.y === y) z = target.z;
@@ -62745,14 +62748,19 @@
                 );
             }
 
-            if (state.selectedTool === 'healPotion') {
-                if (unit.items.healPotion <= 0) {
-                    addLog('No healing potions left.');
+            /* THE ITEM EDITOR (2026-10-08): a new potion made in the Data Panel copies healPotion / manaPotion through `like`
+               (data.js itemBase) and brings its own numbers and name */
+            const _itKey = state.selectedTool;
+            const _itBase = (typeof itemBase === 'function') ? itemBase(_itKey) : _itKey;
+            const _itRule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_itKey]) || {};
+            if (_itBase === 'healPotion') {
+                if ((unit.items[_itKey] || 0) <= 0) {
+                    addLog(`No ${_itRule.name || 'healing potions'} left.`);
                     playErrorSfx();
                     return;
                 }
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
-                    addLog('Choose a living friendly unit for Healing Potion.');
+                    addLog(`Choose a living friendly unit for ${_itRule.name || 'Healing Potion'}.`);
                     playErrorSfx();
                     return;
                 }
@@ -62794,7 +62802,7 @@
                     }
                 }
                 pushUndoSnapshot(true);
-                unit.items.healPotion -= 1;
+                unit.items[_itKey] -= 1;
                 const _hpLaunch = _hpCine ? _hpCine.sourceHold : actionMs(150);
                 const _hpTravel = _hpCine ? _hpCine.travelMs : actionMs(380);
                 // Self-swig on the hero shot's push-in peak, so the +HP and
@@ -62821,7 +62829,7 @@
                 // Level 100: potions restore a PERCENT of max HP (ITEM_RULES
                 // healPct), so they stay useful as HP scales. Passed preScaled —
                 // it's already a percent of the (scaled) max HP.
-                const _healPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.healPotion && ITEM_RULES.healPotion.healPct) || 0.30;
+                const _healPct = _itRule.healPct || 0.30;
                 const heal = Math.max(1, Math.round(target.maxHp * _healPct * getTerrainHealMultiplier(target.x, target.y)));
                 // The HP lands as the drink goes down — on camera.
                 window.setTimeout(() => {
@@ -62834,7 +62842,7 @@
                     }
                     const healed = applyHealingToUnit(target, heal, unit, { preScaled: true });
                     flashSelectedUnitPanel('heal');
-                    addLog(`${unitDisplayName(unit)} uses Healing Potion on ${unitDisplayName(target)}, restoring ${healed} HP.`);
+                    addLog(`${unitDisplayName(unit)} uses ${_itRule.name || 'Healing Potion'} on ${unitDisplayName(target)}, restoring ${healed} HP.`);
                     renderBattleUpdate();
                 }, _hpArrive);
                 if (_hpCine) {
@@ -62851,14 +62859,14 @@
                         if (camera._cineShotUnitId === unit.id && !unit.dead) _softResetCameraToUnit(unit);
                     }, actionMs(2500));
                 }
-            } else if (state.selectedTool === 'manaPotion') {
-                if (unit.items.manaPotion <= 0) {
-                    addLog('No mana potions left.');
+            } else if (_itBase === 'manaPotion') {
+                if ((unit.items[_itKey] || 0) <= 0) {
+                    addLog(`No ${_itRule.name || 'mana potions'} left.`);
                     playErrorSfx();
                     return;
                 }
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
-                    addLog('Choose a living friendly unit for Mana Potion.');
+                    addLog(`Choose a living friendly unit for ${_itRule.name || 'Mana Potion'}.`);
                     playErrorSfx();
                     return;
                 }
@@ -62900,7 +62908,7 @@
                     }
                 }
                 pushUndoSnapshot(true);
-                unit.items.manaPotion -= 1;
+                unit.items[_itKey] -= 1;
                 const _mpLaunch = _mpCine ? _mpCine.sourceHold : actionMs(150);
                 const _mpTravel = _mpCine ? _mpCine.travelMs : actionMs(380);
                 const _mpArrive = _mpSelf ? actionMs(_mpHero ? 680 : 250) : _mpLaunch + _mpTravel;
@@ -62921,7 +62929,7 @@
                     }, _mpArrive);
                 }
                 // Level 100: mana potion restores a PERCENT of max MP.
-                const _mpPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.manaPotion && ITEM_RULES.manaPotion.mpPct) || 0.35;
+                const _mpPct = _itRule.mpPct || 0.35;
                 const restore = Math.max(1, Math.round(target.maxMp * _mpPct));
                 window.setTimeout(() => {
                     if (target.dead) return;
@@ -62934,7 +62942,7 @@
                     target.mp = Math.min(target.maxMp, target.mp + restore);
                     flashSelectedUnitPanel('heal');
                     if (mpGain > 0) showFloatingTextForUnit(target, `+${mpGain} MP`, 'mp');
-                    addLog(`${unitDisplayName(unit)} uses Mana Potion on ${unitDisplayName(target)}, restoring ${mpGain} MP.`);
+                    addLog(`${unitDisplayName(unit)} uses ${_itRule.name || 'Mana Potion'} on ${unitDisplayName(target)}, restoring ${mpGain} MP.`);
                     renderBattleUpdate();
                 }, _mpArrive);
                 if (_mpCine) {

@@ -2881,8 +2881,8 @@
               // A full-up ally isn't a valid potion target (doItem refuses it):
               // don't paint it green, and let its plate drop from the filter so
               // only units that can actually drink stay on screen while aiming.
-              if (state.selectedTool === 'healPotion' && u.hp >= u.maxHp) continue;
-              if (state.selectedTool === 'manaPotion' && (u.maxMp <= 0 || u.mp >= u.maxMp)) continue;
+              if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(state.selectedTool, 'healPotion') : state.selectedTool === 'healPotion') && u.hp >= u.maxHp) continue;
+              if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(state.selectedTool, 'manaPotion') : state.selectedTool === 'manaPotion') && (u.maxMp <= 0 || u.mp >= u.maxMp)) continue;
               _hlCache.set(posKey(u.x, u.y), 'heal');
             }
           }
@@ -3398,12 +3398,13 @@
             }
 
             if (state.pendingTarget.mode === 'item') {
-                if (state.selectedTool === 'healPotion') {
+                const _pvRule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[state.selectedTool]) || {};
+                if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(state.selectedTool, 'healPotion') : state.selectedTool === 'healPotion')) {
                     if (target.dead || isEnemyUnit(target, unit)) return null;
                     // Potions are percent-of-max (battle.js doUseItem) — the
                     // old flat 96/40 previews were stale. No level scaling:
                     // percent amounts resolve preScaled.
-                    const _healPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.healPotion && ITEM_RULES.healPotion.healPct) || 0.30;
+                    const _healPct = _pvRule.healPct || 0.30;
                     const healBase = Math.max(1, Math.round(target.maxHp * _healPct * (typeof getTerrainHealMultiplier === 'function' ? getTerrainHealMultiplier(target.x, target.y) : 1)));
                     const amount = Math.min(healBase, target.maxHp - target.hp);
                     return amount > 0 ? {
@@ -3412,9 +3413,9 @@
                         after: Math.min(target.maxHp, target.hp + amount)
                     } : null;
                 }
-                if (state.selectedTool === 'manaPotion') {
+                if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(state.selectedTool, 'manaPotion') : state.selectedTool === 'manaPotion')) {
                     if (target.dead || isEnemyUnit(target, unit) || target.maxMp <= 0) return null;
-                    const _mpPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.manaPotion && ITEM_RULES.manaPotion.mpPct) || 0.35;
+                    const _mpPct = _pvRule.mpPct || 0.35;
                     const amount = Math.min(Math.max(1, Math.round(target.maxMp * _mpPct)), target.maxMp - target.mp);
                     return amount > 0 ? {
                         type: 'mp',
@@ -6805,6 +6806,7 @@
             }
             cmds.push({ id: 'library', label: 'STATUSES', sub: 'EVERY EFFECT IN THE GAME' });
             if (!inEditor && window.EWCine) cmds.push({ id: 'camera', label: 'CAMERA', sub: 'CINEMATIC · PHOTOS · VIDEO' });   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
+            if (window.openDataPanel && !(typeof isOnlineMatch === 'function' && isOnlineMatch())) cmds.push({ id: 'data', label: 'DATA', sub: 'LIVE TABLES · ITEMS (F9)' });   // THE DATA PANEL (2026-10-08)
             cmds.push({ id: 'settings', label: 'SETTINGS', sub: 'AUDIO · VIDEO · CONTROLS' });
             if (!inEditor) cmds.push({ id: 'forfeit', label: 'FORFEIT', sub: 'COUNTS AS A LOSS', danger: true });
             return cmds;
@@ -6922,6 +6924,7 @@
             if (id === 'resume') { closePauseMenu(); return; }
             if (id === 'forfeit') { closePauseMenu(); document.getElementById('forfeitBtn')?.click(); return; }
             if (id === 'camera') { closePauseMenu(); if (window.EWCine) window.EWCine.enter({ force: true }); return; }
+            if (id === 'data') { closePauseMenu(); if (window.openDataPanel) window.openDataPanel(); return; }
             _pauseTab = id;
             _pauseCursor = Math.max(0, _pauseCmds().findIndex(c => c.id === id));
             try { playSfx('uiButtonConfirm'); } catch (e) {}
@@ -14751,9 +14754,10 @@
         /* Projected Healing Potion restore on a target — mirrors doItem's
            formula (ITEM_RULES.healPotion.healPct of max HP × terrain heal
            multiplier), clamped to the missing HP so a full bar previews 0. */
-        function _estimateHealPotionHeal(target) {
+        function _estimateHealPotionHeal(target, itemKey) {
             if (!target || target.dead || !(target.maxHp > 0)) return 0;
-            const pct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.healPotion && ITEM_RULES.healPotion.healPct) || 0.30;
+            const _r = (typeof ITEM_RULES !== 'undefined' && (ITEM_RULES[itemKey || 'healPotion'] || ITEM_RULES.healPotion)) || null;
+            const pct = (_r && _r.healPct) || 0.30;
             const mult = (typeof getTerrainHealMultiplier === 'function')
                 ? getTerrainHealMultiplier(target.x, target.y) : 1;
             const raw = Math.max(1, Math.round(target.maxHp * pct * mult));
@@ -14822,11 +14826,11 @@
                         const _cbC = (_cbP && typeof getComboForUnits === 'function') ? getComboForUnits(attacker, _cbP) : null;
                         const dmg = _cbC ? predictComboDamageToUnit(attacker, _cbP, _cbC, target) : 0;
                         if (dmg > 0) val = { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) };
-                    } else if (hov.itemKey === 'healPotion' && !isEnemyUnit(attacker, target)) {
+                    } else if ((typeof window._ewItemLike === 'function' ? window._ewItemLike(hov.itemKey, 'healPotion') : hov.itemKey === 'healPotion') && !isEnemyUnit(attacker, target)) {
                         // Healing Potion row hover → projected potion heal on the
                         // ally's HP bar (percent-of-max × terrain, clamped to the
                         // missing HP — mirrors doItem's formula).
-                        const heal = _estimateHealPotionHeal(target);
+                        const heal = _estimateHealPotionHeal(target, hov.itemKey);
                         if (heal > 0) val = { unitId: target.id, heal: heal };
                     } else if (spell && !isEnemyUnit(attacker, target)) {
                         // Ally (or self) cast → projected heal, clamped to the
@@ -14862,7 +14866,7 @@
                 if (_pvKm) _pvSide = _pvKm.offensive ? 'enemy' : (_pvKm.allyOnly ? 'ally' : 'any');
             } else if (mode === 'item') {
                 const _pvItem = pt.tool || state.selectedTool;
-                _pvSide = (_pvItem === 'healPotion' || _pvItem === 'manaPotion') ? 'ally'
+                _pvSide = ((typeof window._ewItemLike === 'function' ? window._ewItemLike(_pvItem, 'healPotion') : _pvItem === 'healPotion') || (typeof window._ewItemLike === 'function' ? window._ewItemLike(_pvItem, 'manaPotion') : _pvItem === 'manaPotion')) ? 'ally'
                     : ((typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_pvItem]?.baneType) ? 'enemy' : 'any');
             }
             const target = (typeof resolveUnitInColumn === 'function')
@@ -14877,7 +14881,7 @@
             let spell = null, itemKey = null;
             if (mode === 'item') {
                 itemKey = pt.tool || state.selectedTool;
-                if (itemKey !== 'healPotion') return null;
+                if (!(typeof window._ewItemLike === 'function' ? window._ewItemLike(itemKey, 'healPotion') : itemKey === 'healPotion')) return null;
             } else if (mode === 'spell') {
                 const toolName = pt.tool || state.selectedTool;
                 spell = (attacker.spells || []).find(s => s.name === toolName)
@@ -14888,11 +14892,11 @@
                 target.hp, target.shield || 0, attacker.x, attacker.y, attacker.z ?? 0].join('|');
             if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
             let val = null;
-            if (itemKey === 'healPotion') {
+            if (itemKey) {
                 // Armed Healing Potion → projected restore grows green off the
                 // ally's fill, exactly like heal spells.
                 if (!isEnemyUnit(attacker, target)) {
-                    const heal = _estimateHealPotionHeal(target);
+                    const heal = _estimateHealPotionHeal(target, itemKey);
                     if (heal > 0) val = { unitId: target.id, heal: heal };
                 }
             } else if (spell && !isEnemyUnit(attacker, target)) {
@@ -17861,4 +17865,368 @@
                 W(() => rankDistribute(), true);
             });
         }
+    })();
+
+    /* ══ THE DATA PANEL (2026-10-08, mondo: "a live data panel" + "an item and equipment editor") ════════════════════════
+       F9 (or Settings → Developer → Open Data Panel, or the pause menus) opens a floating window over the game. TABLES edits
+       any rules table data.js EWDataMods lists (numbers, words, on/off, lists) while the game runs; ITEMS is the item editor:
+       every item's name, icon, numbers, shop and drops, and NEW items that copy a shipped item's behaviour. The edits ride
+       EWDataMods (localStorage, off in an online match); EXPORT hands them to a thread to bake. Equipment is the GEAR family
+       of passives now (the Spell Library), so it is not here. */
+    (function () {
+        const DP = { el: null, tab: 'tables', table: 'CONFIG', open: new Set(), q: '', item: 'healPotion', x: null, y: null };
+        try { const s = JSON.parse(localStorage.getItem('ew_data_panel') || 'null'); if (s) { DP.tab = s.tab || DP.tab; DP.table = s.table || DP.table; DP.item = s.item || DP.item; DP.x = s.x; DP.y = s.y; } } catch (e) {}
+        const M = () => window.EWDataMods;
+        const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const isPrim = v => v === null || ['number', 'string', 'boolean'].includes(typeof v);
+        const primArr = v => Array.isArray(v) && v.every(x => typeof x === 'number' || typeof x === 'string');
+        const fmt = v => v === undefined ? '(none)' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+        function savePrefs() { try { localStorage.setItem('ew_data_panel', JSON.stringify({ tab: DP.tab, table: DP.table, item: DP.item, x: DP.x, y: DP.y })); } catch (e) {} }
+        function toast(t) { if (typeof window._hqToast === 'function') window._hqToast(t, 2000); else if (typeof addLog === 'function') addLog(t); }
+
+        const CSS = `
+.dp-root { position: fixed; z-index: 10045; width: min(720px, calc(100vw - 32px)); height: min(78vh, 760px); min-width: 420px; min-height: 300px; resize: both; overflow: hidden;
+  display: grid; grid-template-rows: auto auto 1fr; background: #0b0c10f2; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; border: 1px solid #333949; border-radius: 8px; box-shadow: 0 12px 40px #000a; }
+.dp-root * { box-sizing: border-box; }
+.dp-top { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: #14161c; border-bottom: 1px solid #2a2e38; cursor: move; user-select: none; }
+.dp-top b { font-size: 13px; letter-spacing: 0.22em; color: #fff; }
+.dp-top .dp-n { color: #ffb15c; font-size: 11px; }
+.dp-top .dp-sp { flex: 1; }
+.dp-bar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px; border-bottom: 1px solid #22252e; align-items: center; }
+.dp-btn { font: inherit; font-size: 11px; color: #dfe3ea; background: #1c2029; border: 1px solid #333949; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+.dp-btn:hover { border-color: #6fb4ff; color: #fff; }
+.dp-btn.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
+.dp-btn.pri { background: #1d4f8a; border-color: #4b8fe0; color: #fff; }
+.dp-btn.bad { color: #ff9c8f; }
+.dp-btn.xs { padding: 1px 5px; font-size: 10px; }
+.dp-body { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 0; }
+.dp-col { min-height: 0; overflow: auto; padding: 8px; }
+.dp-col.l { border-right: 1px solid #22252e; background: #0e1015; }
+.dp-h { margin: 10px 0 4px; font-size: 10px; letter-spacing: 0.2em; color: #7d8699; text-transform: uppercase; }
+.dp-h:first-child { margin-top: 0; }
+.dp-li { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; border: 1px solid transparent; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-li:hover { background: #191c24; }
+.dp-li.on { border-color: #6fb4ff; background: #16223a; }
+.dp-li em { margin-left: auto; font-style: normal; font-size: 9px; color: #ffb15c; }
+.dp-in { font: inherit; font-size: 11px; color: #dfe3ea; background: #07080b; border: 1px solid #333949; border-radius: 5px; padding: 3px 6px; min-width: 0; width: 100%; }
+.dp-in:focus { border-color: #6fb4ff; outline: none; }
+textarea.dp-in { resize: vertical; min-height: 54px; }
+.dp-row { display: grid; grid-template-columns: minmax(110px, 38%) minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 2px 0; }
+.dp-row > label { color: #9aa3b5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-row.ed > label { color: #ffb15c; }
+.dp-row .dp-was { font-size: 10px; color: #7d8699; white-space: nowrap; }
+.dp-node { padding: 2px 0; cursor: pointer; color: #c8cfdc; white-space: nowrap; }
+.dp-node.ed { color: #ffb15c; }
+.dp-node span { color: #7d8699; font-size: 10px; }
+.dp-kids { padding-left: 14px; border-left: 1px dashed #262a34; margin-left: 4px; }
+.dp-note { color: #7d8699; font-size: 10.5px; margin: 6px 0; }
+.dp-ro { color: #6c7487; font-style: italic; }
+.dp-io { width: 100%; height: 140px; }
+.dp-new { display: inline-block; font-size: 9px; padding: 0 4px; border-radius: 3px; background: #2f5d34; color: #c9f5cf; margin-left: 4px; }
+@media (max-width: 560px) { .dp-root { min-width: 0; } .dp-body { grid-template-columns: 1fr; } .dp-col.l { max-height: 30vh; border-right: none; border-bottom: 1px solid #22252e; } }
+`;
+
+        /* ── TABLES ── */
+        function nodeHtml(t, obj, path, depth) {
+            const D = M();
+            const keys = Array.isArray(obj) ? obj.map((_, i) => String(i)) : Object.keys(obj);
+            let h = '';
+            keys.forEach(k => {
+                const v = obj[k], p = path ? path + '.' + k : k;
+                const ed = D.edited(t, p);
+                if (typeof v === 'function') { h += `<div class="dp-row"><label title="${esc(p)}">${esc(k)}</label><span class="dp-ro">(code)</span><span></span></div>`; return; }
+                if (k.indexOf('.') >= 0) { h += `<div class="dp-row"><label title="${esc(p)}">${esc(k)}</label><span class="dp-ro">${esc(fmt(v)).slice(0, 80)}</span><span></span></div>`; return; }
+                if (isPrim(v) || primArr(v)) { h += rowHtml(t, p, k, v, ed); return; }
+                const n = Array.isArray(v) ? v.length : Object.keys(v || {}).length;
+                const isOpen = DP.open.has(t + ':' + p);
+                h += `<div class="dp-node${ed ? ' ed' : ''}" data-tog="${esc(p)}">${isOpen ? '▾' : '▸'} ${esc(k)} <span>${Array.isArray(v) ? '[' + n + ']' : '{' + n + '}'}</span>${ed ? ' <button class="dp-btn xs" data-rev="' + esc(p) + '" title="Put back what the game ships">↺</button>' : ''}</div>`;
+                if (isOpen && depth < 12) h += `<div class="dp-kids">${nodeHtml(t, v, p, depth + 1)}</div>`;
+            });
+            return h;
+        }
+        function rowHtml(t, p, label, v, ed) {
+            const D = M();
+            let input;
+            if (typeof v === 'boolean') input = `<input type="checkbox" data-set="${esc(p)}" data-kind="bool"${v ? ' checked' : ''}>`;
+            else if (typeof v === 'number') input = `<input class="dp-in" type="number" step="any" data-set="${esc(p)}" data-kind="num" value="${esc(v)}">`;
+            else if (primArr(v)) input = `<input class="dp-in" data-set="${esc(p)}" data-kind="${v.length && v.every(x => typeof x === 'number') ? 'nums' : 'strs'}" value="${esc(v.join(', '))}" title="a list, separated by commas">`;
+            else if (typeof v === 'string' && v.length > 60) input = `<textarea class="dp-in" data-set="${esc(p)}" data-kind="str">${esc(v)}</textarea>`;
+            else input = `<input class="dp-in" data-set="${esc(p)}" data-kind="${v === null ? 'null' : 'str'}" value="${esc(v)}">`;
+            const was = ed ? D.shipped(t, p) : undefined;
+            const tail = ed ? `<span><span class="dp-was" title="what the game ships">was ${esc(fmt(was)).slice(0, 24)}</span> <button class="dp-btn xs" data-rev="${esc(p)}" title="Put back what the game ships">↺</button></span>` : '<span></span>';
+            return `<div class="dp-row${ed ? ' ed' : ''}"><label title="${esc(p)}">${esc(label)}</label>${input}${tail}</div>`;
+        }
+        /* a search: every editable path under the table whose path or value holds the words */
+        function searchHtml(t, obj) {
+            const q = DP.q.toLowerCase(); let h = '', n = 0;
+            (function walk(o, path, d) {
+                if (n > 300 || d > 12 || !o || typeof o !== 'object') return;
+                (Array.isArray(o) ? o.map((_, i) => String(i)) : Object.keys(o)).forEach(k => {
+                    if (n > 300) return;
+                    const v = o[k], p = path ? path + '.' + k : k;
+                    if (typeof v === 'function' || k.indexOf('.') >= 0) return;
+                    if (isPrim(v) || primArr(v)) {
+                        if (p.toLowerCase().includes(q) || String(Array.isArray(v) ? v.join(',') : v).toLowerCase().includes(q)) { h += rowHtml(t, p, p, v, M().edited(t, p)); n++; }
+                    } else walk(v, p, d + 1);
+                });
+            })(obj, '', 0);
+            return h || '<div class="dp-note">Nothing in this table matches.</div>';
+        }
+        function tablesHtml() {
+            const D = M(), list = D.tables();
+            if (!list.some(x => x.name === DP.table)) DP.table = list[0].name;
+            let l = '', g = '';
+            list.forEach(x => {
+                if (x.group !== g) { g = x.group; l += `<div class="dp-h">${esc(g)}</div>`; }
+                const n = Object.keys((D.doc.set || {})[x.name] || {}).length;
+                l += `<div class="dp-li${x.name === DP.table ? ' on' : ''}" data-table="${esc(x.name)}" title="${esc(x.name)}">${esc(x.name)}${n ? `<em>${n}</em>` : ''}</div>`;
+            });
+            const obj = D.table(DP.table);
+            const r = `<div class="dp-bar" style="padding:0 0 6px;border:none"><input class="dp-in" id="dpQ" placeholder="search ${esc(DP.table)} (a key or a value)" value="${esc(DP.q)}" style="flex:1">
+                ${D.edited(DP.table) ? `<button class="dp-btn bad" data-revtable="1">↺ Put back this table</button>` : ''}</div>
+                <div class="dp-note">Changes apply the moment you leave a box. A value the game reads when a match or room starts shows on the next one.</div>
+                ${DP.q ? searchHtml(DP.table, obj) : nodeHtml(DP.table, obj, '', 0)}`;
+            return `<div class="dp-col l">${l}</div><div class="dp-col r">${r}</div>`;
+        }
+
+        /* ── ITEMS ── */
+        const BEHAVIOURS = [
+            ['healPotion', 'Heal potion (restores a % of HP)'], ['manaPotion', 'Mana potion (restores a % of MP)'],
+            ['throw', 'Throw (damage, bonus against a type)'], ['stim', 'Stim (raises your own stat stages)'],
+            ['reviveTonic', 'Revive (field only)'], ['elixir', 'Full restore (field only)'], ['captureDoor', 'Capture door (story)'],
+        ];
+        function behaviourOf(key) {
+            const r = ITEM_RULES[key] || {};
+            if (r.kind === 'captureDoor') return 'captureDoor';
+            if (r.baneType) return 'throw';
+            if (r.selfBoost) return 'stim';
+            const b = (typeof itemBase === 'function') ? itemBase(key) : key;
+            if (['healPotion', 'manaPotion', 'reviveTonic', 'elixir'].includes(b)) return b;
+            return 'own';   // the scanner, panacea, warp stone: their own code
+        }
+        const isNew = key => M().shipped('ITEM_RULES', key) === undefined;
+        function ifield(key, f, label, kind, opts) {
+            const D = M(), r = ITEM_RULES[key] || {};
+            let v = f.indexOf('.') >= 0 ? f.split('.').reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, r) : r[f];
+            const ed = !isNew(key) && D.edited('ITEM_RULES', key + '.' + f);
+            let input;
+            if (kind === 'pct') input = `<input class="dp-in" type="number" step="1" min="0" max="1000" data-item="${esc(f)}" data-kind="pct" value="${v == null ? '' : Math.round(v * 100)}">`;
+            else if (kind === 'num') input = `<input class="dp-in" type="number" step="any" data-item="${esc(f)}" data-kind="num" value="${v == null ? '' : esc(v)}">`;
+            else if (kind === 'bool') input = `<input type="checkbox" data-item="${esc(f)}" data-kind="bool"${v ? ' checked' : ''}>`;
+            else if (kind === 'sel') input = `<select class="dp-in" data-item="${esc(f)}" data-kind="str">${opts.map(o => `<option value="${esc(o[0])}"${String(v) === String(o[0]) ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+            else if (kind === 'long') input = `<textarea class="dp-in" data-item="${esc(f)}" data-kind="str">${esc(v || '')}</textarea>`;
+            else input = `<input class="dp-in" data-item="${esc(f)}" data-kind="str" value="${esc(v == null ? '' : v)}">`;
+            const was = ed ? D.shipped('ITEM_RULES', key + '.' + f) : undefined;
+            const tail = ed ? `<span><span class="dp-was">was ${esc(kind === 'pct' && was != null ? Math.round(was * 100) + '%' : fmt(was)).slice(0, 24)}</span> <button class="dp-btn xs" data-irev="${esc(f)}">↺</button></span>` : '<span></span>';
+            return `<div class="dp-row${ed ? ' ed' : ''}"><label>${esc(label)}</label>${input}${tail}</div>`;
+        }
+        function itemsHtml() {
+            const D = M();
+            const keys = Object.keys(ITEM_RULES);
+            if (!ITEM_RULES[DP.item]) DP.item = keys[0];
+            let l = `<button class="dp-btn pri" data-newitem="1" style="width:100%;margin-bottom:6px">+ NEW ITEM</button>`;
+            keys.forEach(k => {
+                const r = ITEM_RULES[k];
+                const ed = D.edited('ITEM_RULES', k) || D.edited('ITEM_META', k);
+                l += `<div class="dp-li${k === DP.item ? ' on' : ''}" data-pick="${esc(k)}" title="${esc(k)}">${esc(r.icon || '❖')} ${esc(r.name || k)}${isNew(k) ? '<span class="dp-new">NEW</span>' : (ed ? '<em>●</em>' : '')}</div>`;
+            });
+            const k = DP.item, r = ITEM_RULES[k] || {}, meta = (typeof ITEM_META !== 'undefined' && ITEM_META[k]) || {};
+            const b = behaviourOf(k);
+            const bl = (BEHAVIOURS.find(x => x[0] === b) || [0, 'Its own effect (built into the game)'])[1];
+            const stock = (typeof HQ_DISPENSARY !== 'undefined' && HQ_DISPENSARY.stock) || [];
+            const dropW = (typeof HQ_DROP_RULES !== 'undefined' && HQ_DROP_RULES.weights[k]) || 0;
+            const dropR = (typeof HQ_DROP_RULES !== 'undefined' && HQ_DROP_RULES.rarity[k]) || 'common';
+            let f = `<div class="dp-h">${esc(r.icon || '')} ${esc(r.name || k)} <span style="letter-spacing:0;text-transform:none;color:#5d6577">· ${esc(k)}</span>${isNew(k) ? '<span class="dp-new">NEW</span>' : ''}</div>
+                <div class="dp-note">Works like: ${esc(bl)}</div>`;
+            f += ifield(k, 'name', 'Name', 'str') + ifield(k, 'icon', 'Icon', 'str')
+                + `<div class="dp-row${!isNew(k) && D.edited('ITEM_META', k + '.short') ? ' ed' : ''}"><label>Short label</label><input class="dp-in" data-meta="short" value="${esc(meta.short || '')}"><span></span></div>`
+                + ifield(k, 'desc', 'Description', 'long') + ifield(k, 'max', 'Carry max', 'num') + ifield(k, 'shopPrice', 'Shop price', 'num');
+            f += `<div class="dp-h">What it does</div>`;
+            if (b === 'healPotion') f += ifield(k, 'healPct', 'Heals % of max HP', 'pct');
+            else if (b === 'manaPotion') f += ifield(k, 'mpPct', 'Restores % of max MP', 'pct');
+            else if (b === 'reviveTonic') f += ifield(k, 'revivePct', 'Revives at % HP', 'pct');
+            else if (b === 'throw') {
+                const types = [['none', 'No type (always neutral)']].concat((typeof ENTROPY_STRIKE_TYPE_ORDER !== 'undefined' ? ENTROPY_STRIKE_TYPE_ORDER : []).map(t => [t, t[0].toUpperCase() + t.slice(1)]));
+                f += ifield(k, 'baneType', 'Bonus against', 'sel', types) + ifield(k, 'baneDmg', 'Bonus damage', 'num') + ifield(k, 'baseDmg', 'Base damage', 'num')
+                    + ifield(k, 'aoeDmg', 'Splash damage', 'num') + ifield(k, 'aoeRadius', 'Splash radius (tiles)', 'num');
+            } else if (b === 'stim') {
+                ['atk', 'def', 'mdef', 'int', 'spd'].forEach(s => { f += ifield(k, 'selfBoost.' + s, `${s === 'int' ? 'M ATK' : s === 'mdef' ? 'M DEF' : s.toUpperCase()} stages`, 'num'); });
+            } else if (b === 'captureDoor') f += ifield(k, 'tier', 'Door tier (1-3)', 'num') + ifield(k, 'tuned', 'Pick a type when placed', 'bool');
+            else if (b === 'elixir') f += `<div class="dp-note">Brings a member back to full HP and MP.</div>`;
+            else f += `<div class="dp-note">This item's effect is built into the game; its name, numbers, shop and drops edit here.</div>`;
+            f += `<div class="dp-h">Where it shows up</div>`
+                + (b === 'captureDoor' || b === 'reviveTonic' || b === 'elixir' ? '' : ifield(k, 'story', 'Story mode only', 'bool'))
+                + `<div class="dp-row"><label>Sold at the Dispensary</label><input type="checkbox" data-shop="1"${stock.includes(k) ? ' checked' : ''}><span></span></div>`
+                + `<div class="dp-row"><label>Drop weight (fallen foes)</label><input class="dp-in" type="number" step="1" min="0" data-drop="w" value="${dropW}"><span></span></div>`
+                + `<div class="dp-row"><label>Drop rarity</label><select class="dp-in" data-drop="r">${['common', 'uncommon', 'rare'].map(x => `<option${x === dropR ? ' selected' : ''}>${x}</option>`).join('')}</select><span></span></div>`
+                + `<div class="dp-note">Drop weights are shares of a fallen foe's drop. The shipped weights add up to ${Object.values((typeof HQ_DROP_RULES !== 'undefined' && HQ_DROP_RULES.weights) || {}).reduce((a, x) => a + (x | 0), 0)}.</div>`;
+            f += `<div class="dp-bar" style="padding:8px 0 0;border:none">`
+                + (isNew(k) ? `<button class="dp-btn bad" data-delitem="1">Delete this item</button>` : (D.edited('ITEM_RULES', k) || D.edited('ITEM_META', k) ? `<button class="dp-btn bad" data-revitem="1">↺ Put back this item</button>` : ''))
+                + `</div>`;
+            return `<div class="dp-col l">${l}</div><div class="dp-col r">${f}</div>`;
+        }
+        function newItemHtml() {
+            return `<div class="dp-col l"><div class="dp-note">Pick what the new item does. You set its name, icon and numbers next.</div></div><div class="dp-col r">
+                <div class="dp-h">New item</div>
+                <div class="dp-row"><label>Name</label><input class="dp-in" id="dpNewName" placeholder="the item's name"><span></span></div>
+                <div class="dp-row"><label>Works like</label><select class="dp-in" id="dpNewKind">${BEHAVIOURS.map(b => `<option value="${b[0]}">${esc(b[1])}</option>`).join('')}</select><span></span></div>
+                <div class="dp-bar" style="padding:8px 0 0;border:none"><button class="dp-btn pri" data-mkitem="1">Make it</button><button class="dp-btn" data-cancelnew="1">Cancel</button></div></div>`;
+        }
+        function makeItem(name, kind) {
+            const D = M();
+            name = String(name || '').trim();
+            if (!name) { toast('Give the item a name first'); return; }
+            const words = name.replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/).filter(Boolean);
+            let base = words.map((w, i) => i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()).join('') || 'item';
+            if (/^[0-9]/.test(base)) base = 'item' + base;
+            let key = base, n = 2;
+            while (ITEM_RULES[key] || (typeof ITEM_META !== 'undefined' && ITEM_META[key])) key = base + (n++);
+            const tmpl = { healPotion: 'healPotion', manaPotion: 'manaPotion', throw: 'humanBane', stim: 'adrenalStim', reviveTonic: 'reviveTonic', elixir: 'elixir', captureDoor: 'captureDoor' }[kind] || 'healPotion';
+            const src = JSON.parse(JSON.stringify(ITEM_RULES[tmpl] || {}));
+            delete src.sprite;
+            const row = Object.assign(src, { name, desc: '' });   // its own words: the template's text describes the template
+            if (['healPotion', 'manaPotion', 'reviveTonic', 'elixir'].includes(kind)) row.like = kind;
+            if (kind === 'throw') { row.baneType = 'none'; row.baneDmg = 0; }
+            D.set('ITEM_RULES', key, row);
+            const meta = (typeof ITEM_META !== 'undefined' && ITEM_META[tmpl]) || {};
+            D.set('ITEM_META', key, { icon: row.icon || meta.icon || '❖', short: name.slice(0, 6).toUpperCase() });
+            DP.item = key; DP.tab = 'items';
+            toast('NEW ITEM · ' + name);
+        }
+        function deleteItem(key) {
+            const D = M();
+            D.revert('ITEM_RULES', key); D.revert('ITEM_META', key);
+            if (typeof HQ_DISPENSARY !== 'undefined' && HQ_DISPENSARY.stock.includes(key)) D.set('HQ_DISPENSARY', 'stock', HQ_DISPENSARY.stock.filter(x => x !== key));
+            if (typeof HQ_DROP_RULES !== 'undefined') { D.revert('HQ_DROP_RULES', 'weights.' + key); D.revert('HQ_DROP_RULES', 'rarity.' + key); }
+            DP.item = 'healPotion';
+        }
+
+        /* ── the window ── */
+        function render() {
+            const el = DP.el; if (!el) return;
+            const D = M();
+            const scroll = {}; el.querySelectorAll('.dp-col').forEach((c, i) => { scroll[i] = c.scrollTop; });
+            const online = D.online;
+            const c = D.counts();
+            el.querySelector('.dp-n').textContent = c.edits ? `${c.edits} change${c.edits === 1 ? '' : 's'}${D.doc.enabled ? '' : ' (OFF)'}` : '';
+            el.querySelector('.dp-bar').innerHTML = `<button class="dp-btn${DP.tab === 'tables' ? ' on' : ''}" data-tab="tables">TABLES</button><button class="dp-btn${DP.tab === 'items' ? ' on' : ''}" data-tab="items">ITEMS</button>
+                <span style="flex:1"></span>
+                <button class="dp-btn${D.doc.enabled ? ' on' : ''}" data-enable="1" title="Turn every change off or on without losing them">${D.doc.enabled ? 'Changes ON' : 'Changes OFF'}</button>
+                <button class="dp-btn" data-export="1" title="Copy every change as JSON for a thread to bake into the game">Export</button>
+                <button class="dp-btn" data-import="1">Import</button>
+                <button class="dp-btn bad" data-resetall="1">Reset all</button>`;
+            const body = el.querySelector('.dp-body');
+            if (online) body.innerHTML = `<div class="dp-col" style="grid-column:1/-1"><div class="dp-note">Changes are off during an online match, so both players run the same game. The panel opens again when the match ends.</div></div>`;
+            else if (DP.io) body.innerHTML = `<div class="dp-col" style="grid-column:1/-1"><div class="dp-h">${DP.io === 'export' ? 'Export' : 'Import'}</div>
+                <div class="dp-note">${DP.io === 'export' ? 'Every change, as JSON. Copied to the clipboard too. Paste it to a thread to bake it into the game.' : 'Paste an export here. It adds to your changes.'}</div>
+                <textarea class="dp-in dp-io" id="dpIo">${DP.io === 'export' ? esc(JSON.stringify(D.export(), null, 2)) : ''}</textarea>
+                <div class="dp-bar" style="padding:6px 0 0;border:none">${DP.io === 'import' ? '<button class="dp-btn pri" data-doimport="1">Import</button>' : ''}<button class="dp-btn" data-closeio="1">Close</button></div></div>`;
+            else if (DP.tab === 'newitem') body.innerHTML = newItemHtml();
+            else body.innerHTML = DP.tab === 'items' ? itemsHtml() : tablesHtml();
+            el.querySelectorAll('.dp-col').forEach((c, i) => { if (scroll[i]) c.scrollTop = scroll[i]; });
+            savePrefs();
+        }
+        function parseVal(kind, el, was) {
+            if (kind === 'bool') return !!el.checked;
+            const raw = el.value;
+            if (kind === 'num') { if (raw.trim() === '') return undefined; const n = Number(raw); return Number.isFinite(n) ? n : null; }
+            if (kind === 'pct') { if (raw.trim() === '') return undefined; const n = Number(raw); return Number.isFinite(n) ? Math.round(n * 10) / 1000 : null; }
+            if (kind === 'nums') return raw.split(',').map(x => x.trim()).filter(x => x !== '').map(Number).filter(Number.isFinite);
+            if (kind === 'strs') return raw.split(',').map(x => x.trim()).filter(x => x !== '');
+            if (kind === 'null') return raw.trim() === '' ? null : raw;
+            return raw;
+        }
+        function onChange(e) {
+            const D = M(), t = e.target;
+            if (t.id === 'dpQ') return;
+            if (t.dataset.set != null) {
+                const v = parseVal(t.dataset.kind, t);
+                if (v === null && t.dataset.kind === 'num') { render(); return; }
+                D.set(DP.table, t.dataset.set, v);
+            } else if (t.dataset.item != null) {
+                const k = DP.item, f = t.dataset.item;
+                const v = parseVal(t.dataset.kind, t);
+                if (v === null) { render(); return; }
+                D.set('ITEM_RULES', k + '.' + f, v);
+                if (f === 'icon' && typeof ITEM_META !== 'undefined') D.set('ITEM_META', k + '.icon', v);
+            } else if (t.dataset.meta) {
+                D.set('ITEM_META', DP.item + '.' + t.dataset.meta, t.value);
+            } else if (t.dataset.shop) {
+                const stock = (HQ_DISPENSARY.stock || []).filter(x => x !== DP.item);
+                if (t.checked) stock.push(DP.item);
+                D.set('HQ_DISPENSARY', 'stock', stock);
+            } else if (t.dataset.drop === 'w') {
+                const n = Math.max(0, Math.round(Number(t.value) || 0));
+                D.set('HQ_DROP_RULES', 'weights.' + DP.item, n || undefined);
+            } else if (t.dataset.drop === 'r') {
+                D.set('HQ_DROP_RULES', 'rarity.' + DP.item, t.value);
+            } else return;
+            render();
+        }
+        function onClick(e) {
+            const D = M(), b = e.target.closest('[data-tab],[data-table],[data-tog],[data-rev],[data-revtable],[data-pick],[data-irev],[data-revitem],[data-delitem],[data-newitem],[data-mkitem],[data-cancelnew],[data-enable],[data-export],[data-import],[data-doimport],[data-closeio],[data-resetall],[data-close]');
+            if (!b) return;
+            const d = b.dataset;
+            if (d.close != null) { window.closeDataPanel(); return; }
+            if (d.tab) { DP.tab = d.tab; DP.io = null; }
+            else if (d.table) { DP.table = d.table; DP.q = ''; }
+            else if (d.tog != null) { const id = DP.table + ':' + d.tog; if (DP.open.has(id)) DP.open.delete(id); else DP.open.add(id); }
+            else if (d.rev != null) D.revert(DP.table, d.rev);
+            else if (d.revtable) { if (confirm('Put back every change in ' + DP.table + '?')) D.revert(DP.table); }
+            else if (d.pick) DP.item = d.pick;
+            else if (d.irev) { D.revert('ITEM_RULES', DP.item + '.' + d.irev); if (d.irev === 'icon') D.revert('ITEM_META', DP.item + '.icon'); }
+            else if (d.revitem) { D.revert('ITEM_RULES', DP.item); D.revert('ITEM_META', DP.item); }
+            else if (d.delitem) { if (confirm('Delete ' + ((ITEM_RULES[DP.item] || {}).name || DP.item) + '?')) deleteItem(DP.item); }
+            else if (d.newitem) DP.tab = 'newitem';
+            else if (d.cancelnew) DP.tab = 'items';
+            else if (d.mkitem) { makeItem((DP.el.querySelector('#dpNewName') || {}).value, (DP.el.querySelector('#dpNewKind') || {}).value); }
+            else if (d.enable) D.setEnabled(!D.doc.enabled);
+            else if (d.export) { DP.io = 'export'; render(); try { const ta = DP.el.querySelector('#dpIo'); if (navigator.clipboard) navigator.clipboard.writeText(ta.value).catch(() => {}); ta.select(); } catch (e2) {} return; }
+            else if (d.import) DP.io = 'import';
+            else if (d.doimport) { try { D.import(JSON.parse(DP.el.querySelector('#dpIo').value)); DP.io = null; toast('DATA PANEL · imported'); } catch (e2) { toast('That is not a Data Panel export'); return; } }
+            else if (d.closeio) DP.io = null;
+            else if (d.resetall) { if (confirm('Put back every Data Panel change (tables and items)?')) D.reset(); }
+            render();
+        }
+        function place() {
+            const el = DP.el, w = el.offsetWidth, h = el.offsetHeight;
+            let x = DP.x == null ? window.innerWidth - w - 16 : DP.x, y = DP.y == null ? 60 : DP.y;
+            x = Math.max(0, Math.min(window.innerWidth - Math.min(w, 120), x)); y = Math.max(0, Math.min(window.innerHeight - 40, y));
+            el.style.left = x + 'px'; el.style.top = y + 'px';
+        }
+        window.openDataPanel = function (tab) {
+            if (!window.EWDataMods) { toast('DATA PANEL · data.js is out of date'); return; }
+            if (tab) DP.tab = tab;
+            if (DP.el) { render(); return; }
+            if (!document.getElementById('dpStyles')) { const st = document.createElement('style'); st.id = 'dpStyles'; st.textContent = CSS; document.head.appendChild(st); }
+            const el = document.createElement('div');
+            el.className = 'dp-root'; el.id = 'dataPanel';
+            el.innerHTML = `<div class="dp-top"><b>DATA PANEL</b><span class="dp-n"></span><span class="dp-sp"></span><span style="color:#5d6577;font-size:10px">F9</span><button class="dp-btn" data-close="1">Close</button></div><div class="dp-bar"></div><div class="dp-body"></div>`;
+            document.body.appendChild(el); DP.el = el;
+            el.addEventListener('change', onChange);
+            el.addEventListener('click', onClick);
+            el.addEventListener('input', e => { if (e.target.id === 'dpQ') { DP.q = e.target.value; clearTimeout(DP._qt); DP._qt = setTimeout(() => { render(); const q = DP.el && DP.el.querySelector('#dpQ'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 220); } });
+            ['keydown', 'keyup', 'keypress'].forEach(ev => el.addEventListener(ev, e => {
+                if (ev === 'keydown' && e.key === 'Escape') { window.closeDataPanel(); }
+                if (ev === 'keydown' && e.key === 'F9') { e.preventDefault(); window.closeDataPanel(); }
+                e.stopPropagation();
+            }));
+            ['wheel', 'mousedown', 'pointerdown', 'contextmenu'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation()));
+            const top = el.querySelector('.dp-top');
+            top.addEventListener('pointerdown', e => {
+                if (e.target.closest('button')) return;
+                const r = el.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
+                const mv = ev => { DP.x = ev.clientX - ox; DP.y = ev.clientY - oy; place(); };
+                const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); savePrefs(); };
+                window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+            });
+            render(); place();
+        };
+        window.closeDataPanel = function () { if (!DP.el) return; DP.el.remove(); DP.el = null; DP.io = null; if (DP.tab === 'newitem') DP.tab = 'items'; savePrefs(); };
+        window.toggleDataPanel = function (tab) { if (DP.el && (!tab || tab === DP.tab)) window.closeDataPanel(); else window.openDataPanel(tab); };
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'F9' || e.repeat) return;
+            const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            e.preventDefault(); window.toggleDataPanel();
+        }, true);
     })();
