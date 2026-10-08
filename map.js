@@ -2192,6 +2192,7 @@
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
             { id: 'camera',    label: 'CAMERA',    sub: 'CINEMATIC · PHOTOS · VIDEO' },   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
+            { id: 'data',      label: 'DATA',      sub: 'LIVE TABLES · ITEMS (F9)' },   // THE DATA PANEL (2026-10-08, ui.js)
             { id: 'edit',      label: 'EDIT',      sub: 'THIS ROOM IN THE EDITOR' },   // THE EDITOR (EDITOR_PLAN §5.1, E0)
             { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
         ];
@@ -2402,12 +2403,14 @@
         }
         /* can THIS item land on a member at these vitals? (the same rule data.js hqPartyUseItem applies) */
         function _hqPauseItemOk(key, v) {
+            if (typeof itemBase === 'function') key = itemBase(key);   // THE ITEM EDITOR: a new potion acts like the one it copies
             if (key === 'reviveTonic') return !!v.down;
             if (key === 'elixir') return v.down || v.hp < v.hpMax || v.mp < v.mpMax;
             if (v.down) return false;
             return key === 'manaPotion' ? v.mp < v.mpMax : v.hp < v.hpMax;
         }
         function _hqPauseItemWhy(key, v) {
+            if (typeof itemBase === 'function') key = itemBase(key);   // THE ITEM EDITOR: a new potion acts like the one it copies
             if (key === 'reviveTonic') return v.down ? '' : 'THEY ARE NOT DOWN';
             if (key === 'elixir') return (v.down || v.hp < v.hpMax || v.mp < v.mpMax) ? '' : 'ALREADY FULL';
             if (v.down) return 'DOWN — A REVIVE FIRST';
@@ -3053,6 +3056,7 @@
                 window._hqClosePause();
                 return;
             }
+            if (id === 'data') { window._hqClosePause(); if (window.openDataPanel) window.openDataPanel(); return; }   // THE DATA PANEL: a window over the walk
             if (id === 'edit') {   /* THE EDITOR (E0): this room, from where the walker stands (a built-in room opens in the LIBRARY) */
                 let at = null; try { const ps = ThreeRenderer.hq.pos(); if (ps) at = { x: ps.x, z: ps.z, y: ps.y }; } catch (e) {}
                 _hqPauseDrop(); _hqSuspended = false;
@@ -6888,8 +6892,70 @@
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">${_hqEsc(c.verb ? (String(c.verb).toUpperCase() + ' AT THE ' + String(c.label || 'COUNTER').toUpperCase()) : 'READ THE BOARD')} ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
             return html;
         }
+        /* THE TALK (2026-10-08, the editor's TALK form → data.js hqTalkConvo): a person with a conversation speaks it a page at a
+           time in the subtitle bar — NEXT (E / ENTER / SPACE) turns the page, the choices (1-4) branch, and a conversation or a
+           choice may raise a story flag when it ends (profile door.hq.flags, viewer-local) */
+        let _hqTalk = null;   // { t, convo, pages, i, choices, set }
+        function _hqTalkStart(t) {
+            let flags = {};
+            try { flags = (typeof hqStoryFlags === 'function') ? hqStoryFlags(_hqProfile()) : {}; } catch (e) {}
+            const convo = (typeof hqTalkConvo === 'function') ? hqTalkConvo(t.talk, flags) : null;
+            if (!convo) { _hqTalk = null; return false; }
+            const pages = convo.pages.map(p => String(p || '').trim()).filter(Boolean);
+            const choices = (Array.isArray(convo.choices) ? convo.choices : []).filter(c => c && String(c.label || '').trim());
+            _hqTalk = { t, pages, i: 0, choices, set: convo.set || null, choiceSet: null, at: performance.now() };
+            return true;
+        }
+        function _hqTalkFlag(name) {
+            if (!name) return;
+            try {
+                const PS = window.ProfileSystem, idx = PS && PS.getActiveProfileIndex ? PS.getActiveProfileIndex() : null;
+                if (idx == null) return;
+                const p = PS.loadProfile(idx); if (!p) return;
+                if (typeof hqStoryFlagSet === 'function' && hqStoryFlagSet(p, name, true)) PS.saveProfile(idx, p);
+            } catch (e) { console.warn('[HQ] talk flag', e); }
+        }
+        function _hqTalkHtml() {
+            const T = _hqTalk, t = T.t;
+            const last = T.i >= T.pages.length - 1;
+            const showChoices = last && T.choices.length && !T.choiceSet;
+            let acts = '';
+            if (showChoices) acts = T.choices.map((c, i) => `<button class="hq-btn${i ? '' : ' hq-btn-primary'}" data-talk-choice="${i}">${i + 1} · ${_hqEsc(String(c.label))}</button>`).join('');
+            else acts = `<button class="hq-btn hq-btn-primary" data-talk="next">${last ? 'NOTED' : 'NEXT ▸'}</button>`;
+            return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(T.pages[T.i] || '…')}</p><div class="hq-panel-actions">${acts}</div>`;
+        }
+        function _hqTalkStep(choice) {
+            const T = _hqTalk; if (!T) return;
+            const body = _hqEl('hqPanelBody'); if (!body) return;
+            const last = T.i >= T.pages.length - 1;
+            if (choice != null) {
+                const c = T.choices[choice]; if (!c || !last || T.choiceSet) return;
+                T.choiceSet = c.set || '';
+                const reply = (Array.isArray(c.pages) ? c.pages : []).map(p => String(p || '').trim()).filter(Boolean);
+                if (!reply.length) { _hqTalkEnd(); return; }
+                T.pages = reply; T.i = 0;
+            } else if (last) {
+                if (T.choices.length && !T.choiceSet) return;
+                _hqTalkEnd(); return;
+            } else T.i++;
+            body.innerHTML = _hqTalkHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+        }
+        function _hqTalkEnd() {
+            const T = _hqTalk; _hqTalk = null;
+            if (T) { _hqTalkFlag(T.set); _hqTalkFlag(T.choiceSet); }
+            window._hqClosePanel();
+        }
+        document.addEventListener('keydown', (e) => {
+            if (!_hqTalk || !_hqPanelTarget || _hqTalk.t !== _hqPanelTarget || e.repeat) return;
+            if (performance.now() - _hqTalk.at < 250) return;   // the E that opened the talk is not its first NEXT
+            const T = _hqTalk, last = T.i >= T.pages.length - 1, picking = last && T.choices.length && !T.choiceSet;
+            if (picking && /^[1-4]$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(+e.key - 1); return; }
+            if (!picking && (e.key === 'Enter' || e.key === ' ' || e.key === 'e' || e.key === 'E')) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(null); }
+        }, true);
         function _hqNpcPanelHtml(t) {
             const room = _hqRoom();
+            if (t.talk && _hqTalkStart(t)) return _hqTalkHtml();
             if (t.kind === 'cast') {
                 /* a named cast member (data.js DOOR_CAST, 2026-09-06): their own
                    line when they have one (user-authored, A15 rule), the stage
@@ -7094,6 +7160,9 @@
         document.addEventListener('click', (e) => {
             const body = _hqEl('hqPanelBody');
             if (!body || !body.contains(e.target)) return;
+            /* THE TALK (2026-10-08): NEXT and the choices */
+            const tk = e.target.closest('[data-talk],[data-talk-choice]');
+            if (tk) { _hqTalkStep(tk.hasAttribute('data-talk-choice') ? +tk.getAttribute('data-talk-choice') : null); return; }
             /* THE CHAIR (Room 1287): a pick swaps the avatar in place */
             const avBtn = e.target.closest('[data-avatar]');
             if (avBtn && !avBtn.disabled) { window._hqPickAvatar(avBtn.getAttribute('data-avatar')); return; }
@@ -8828,6 +8897,11 @@
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Race Editor — every race's base stats, name, types, elements, terrain and range; rank a stat by dragging, set its floor and ceiling, edit the letter grades and the level curve, then export your changes as JSON for Claude to make live.${(typeof window.EWRaceMods !== 'undefined' && (() => { const n = window.EWRaceMods.total(); return n ? ` <span style="color:#ffd86a">●</span> ${n} pending edit${n === 1 ? '' : 's'}${window.EWRaceMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToRaceEditor('settings')">Open Race Editor</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Data Panel (F9, anywhere) — edit the game's rules tables while it runs, and the ITEMS editor: every item's name, icon, numbers, shop and drops, plus new items. Off in online matches; Export hands the changes to a thread to bake in.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('tables')">Open Data Panel</button>
+                            <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('items')">Open Item Editor</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">

@@ -56593,14 +56593,14 @@ const ThreeRenderer = (function () {
                     if (!crowd.take('cast:' + spot.cast)) return;
                     var cdef = getCastModel(spot.cast), cm = (typeof DOOR_CAST !== 'undefined' && DOOR_CAST[spot.cast]) || null;
                     _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: (cm && (cm.base || cm.race)) || 'men in black', gender: spot.gender || (cm && cm.gender) || 'male', def: cdef, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0,
-                                        line: sayOf(spot), label: spot.label || (cm && cm.name) || String(spot.cast).toUpperCase(), sub: spot.sub || (cm && cm.title) || null, pose: spot.pose || null, spot: spot, spotIndex: si });
+                                        line: sayOf(spot), label: (spot.talk && spot.talk.name) || spot.label || (cm && cm.name) || String(spot.cast).toUpperCase(), sub: spot.sub || (cm && cm.title) || null, pose: spot.pose || null, spot: spot, spotIndex: si });
                     return;
                 }
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
                     if (!crowd.take(rh)) return;   // THE CROWD CAP: full, or this race already stands here
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), spot: spot, spotIndex: si });
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
@@ -56614,7 +56614,7 @@ const ThreeRenderer = (function () {
                    (their own names, their own lines) turn up on break too */
                 var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
                 var g = (hasM && hasF) ? (Math.random() < 0.5 ? 'male' : 'female') : (hasM ? 'male' : 'female');
-                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: spots[k].x, z: spots[k].z, level: spots[k].level || 0, face: spots[k].face || 0, line: sayOf(spots[k]), spot: spots[k], spotIndex: (room.npcSpots || []).indexOf(spots[k]) });
+                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: spots[k].x, z: spots[k].z, level: spots[k].level || 0, face: spots[k].face || 0, line: sayOf(spots[k]), label: (spots[k].talk && spots[k].talk.name) || undefined, spot: spots[k], spotIndex: (room.npcSpots || []).indexOf(spots[k]) });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
         try { spawnAgents(); } catch (e) { console.warn('[HQ] agents skipped', e); }   // THE CROWD CAP: the men in black after the one-of-a-kind people
@@ -57336,7 +57336,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(ch.y - pl.y) > 1) return;
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > (ch.reach || 1.75)) return;
-            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || (ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK'), line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing }; }
+            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || (ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK'), line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing, talk: (ch.spot && ch.spot.talk) || null }; }   // THE TALK (2026-10-08): the spot's conversation
         });
         /* THE PROP PASS 5.2 (2026-09-21): seated, the seat is the target (E stands); else a seat within reach — a door / counter beside it still wins when nearer */
         if (pl.sit && pl.sit.seat) return { kind: 'seat', id: pl.sit.seat.id, label: pl.sit.seat.label, sub: 'SEATED', verb: 'STAND', sitting: true };

@@ -2279,8 +2279,11 @@
         const ap = unit.ap || 0;
         if (ap < g.AP_COST_ACTION) return;
 
+        /* THE ITEM EDITOR (2026-10-08): new potions made like these (data.js itemKeysLike) are weighed the same way, each
+           with its own numbers */
+        const _likeKeys = b => (typeof itemKeysLike === 'function') ? itemKeysLike(b) : [b];
         // Heal potion — valued exactly like a heal spell.
-        if (unit.items?.healPotion > 0) {
+        for (const _hk of _likeKeys('healPotion')) if (unit.items?.[_hk] > 0) {
             const allies = g.aliveUnitsFor(unit.player);
             let bestTarget = null, bestScore = 0;
             for (const ally of allies) {
@@ -2288,30 +2291,31 @@
                 const hpPct = ally.hp / ally.maxHp;
                 if (hpPct > 0.7) continue;
                 // ITEM_RULES.healPotion heals ~35% of maxHp
-                const rule = (g.ITEM_RULES || {}).healPotion || {};
+                const rule = (g.ITEM_RULES || {})[_hk] || {};
                 const amount = rule.healPct ? Math.floor(ally.maxHp * rule.healPct)
                     : (rule.heal || Math.floor(ally.maxHp * 0.35));
                 const score = healValue(g, unit, ally, amount, v) + (ally.id === unit.id ? 20 : 0);
                 if (score > bestScore) { bestScore = score; bestTarget = ally; }
             }
-            if (bestTarget) out.push({ type: 'item_targeted', item: 'healPotion', target: bestTarget, score: bestScore * wght(g, 'potionValue_v1', 1) });
+            if (bestTarget) out.push({ type: 'item_targeted', item: _hk, target: bestTarget, score: bestScore * wght(g, 'potionValue_v1', 1) });
         }
 
         // Mana potion — restored MP × the MP value constant, plus a bonus
         // when it unlocks casts the ally couldn't afford.
-        if (unit.items?.manaPotion > 0) {
+        for (const _mk of _likeKeys('manaPotion')) if (unit.items?.[_mk] > 0) {
             const allies = g.aliveUnitsFor(unit.player);
+            const _mpPct = (((g.ITEM_RULES || {})[_mk] || {}).mpPct) || 0.35;
             let bestTarget = null, bestScore = 0;
             for (const ally of allies) {
                 if (ally.dead || (ally.maxMp || 0) <= 0) continue;
                 if (ally.mp >= ally.maxMp * 0.55) continue;
-                const mpRestore = Math.max(1, Math.floor((ally.maxMp || 0) * 0.35));
+                const mpRestore = Math.max(1, Math.floor((ally.maxMp || 0) * _mpPct));
                 const mpAfter = Math.min(ally.maxMp, ally.mp + mpRestore);
                 let score = AI_TUNE.mpPotionBase + (mpAfter - ally.mp) * tuneW(g, 'mpValuePerPoint') * 0.6
                     + _mpUnlockValue(g, ally, mpAfter, v.closestEnemy || unit);
                 if (score > bestScore) { bestScore = score; bestTarget = ally; }
             }
-            if (bestTarget) out.push({ type: 'item_targeted', item: 'manaPotion', target: bestTarget, score: bestScore * wght(g, 'potionValue_v1', 1) });
+            if (bestTarget) out.push({ type: 'item_targeted', item: _mk, target: bestTarget, score: bestScore * wght(g, 'potionValue_v1', 1) });
         }
 
         // Scanner — information value while hourglasses are hidden.
