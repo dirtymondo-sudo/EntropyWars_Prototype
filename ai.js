@@ -118,26 +118,26 @@
     // baseline all apply. The values here stay the canonical defaults.
     const AI_TUNE = {
         // ── value model ──
-        killBase: 116.563,          // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
+        killBase: 114,          // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
         killOutputTurns: 0.645,       // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
-        supportKillPremium: 128.125,// extra for killing a healer/reviver kit — gen-305 (was 130)
-        mpValuePerPoint: 0.529,     // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
-        pressActionValue: 181.563,  // floor value of the free action a press refund grants — gen-305 (was 150)
+        supportKillPremium: 124,// imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
+        mpValuePerPoint: 0.49,     // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
+        pressActionValue: 202,  // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
         overkillWaste: 1.0,         // damage past the target's effective HP is worth 0 (cap factor)
-        focusCommitBonus: 117.5,    // bonus for hitting the team's shared focus target — gen-305 (was 90)
-        woundedPileOn: 0.35,        // × missing HP added to target priority (finish jobs)
+        focusCommitBonus: 127,    // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
+        woundedPileOn: 0.37,        // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
         healSafetyDiscount: 0.45,   // heal value multiplier when the target is out of enemy reach
         healNoEnemyDiscount: 0.35,  // heal value multiplier when no enemy is even visible
         reviveBase: 320,            // reviving a unit ≈ a kill in reverse
-        ccOutputFactor: 0.31,        // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
+        ccOutputFactor: 0.37,        // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
         statusSetupFactor: 0.115,     // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
         buffStageFactor: 0.14,      // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0.02,    // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
-        deathRiskFactor: 0.375,       // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
-        jointSearchDiscount: 1,  // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
+        threatCostFactor: 0,    // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
+        deathRiskFactor: 0.34,       // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
+        jointSearchDiscount: 0.97,  // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
         // ── kept legacy knobs (movement / modes / items) ──
         markedTargetBonus: 12,
         hourglassTargetBonus: 45,
@@ -1970,13 +1970,26 @@
         const g = G(); if (g && g.state) g.state._aiFocusId = s.focus;
     }
     function _candMatchesHuman(c, h) {
-        if (!c || !h || c.type !== h.type) return false;
+        if (!c || !h) return false;
+        // A human swing at the enemy Cube is the CPU's attack_tower (2026-10-08:
+        // those were all landing in "unscorable").
+        if (h.type === 'attack' && c.type === 'attack_tower') return c.towerX === h.x && c.towerY === h.y;
+        // Items: the human's one verb covers the CPU's per-item candidate types.
+        if (h.type === 'item') {
+            if (!(c.type === 'item' || c.type === 'item_targeted' || c.type === 'panacea' || c.type === 'warpStone')) return false;
+            if ((c.item || c.type) !== h.item) return false;
+            const tx = c.target && c.target.x != null ? c.target.x : null;
+            return tx == null || h.x == null || (tx === h.x && c.target.y === h.y);
+        }
+        if (c.type !== h.type) return false;
         if (h.type === 'move') return c.x === h.x && c.y === h.y;
         if (h.type === 'guard') return true;
         // Entropy Strike: same verb, and the same apocalypse when the human named one.
         if (h.type === 'entropyStrike') return !h.strikeType || !c.strikeType || c.strikeType === h.strikeType;
         if (h.type === 'finisher') return h.targetId == null || c.targetId === h.targetId;
         if (h.type === 'attack') return !!(c.target && c.target.x === h.x && c.target.y === h.y);
+        // The verb-level picks: which Key tile / which zone is a detail of the same choice.
+        if (h.type === 'inspect' || h.type === 'nexus_channel') return true;
         if (h.type === 'spell') {
             if (!c.spell) return false;
             const sameSpell = (h.spellId != null && c.spell.id === h.spellId) || (h.spellName && c.spell.name === h.spellName);
@@ -1995,7 +2008,31 @@
         if (c.type === 'spell') return (c.spell ? c.spell.name : 'spell') + '→' + tn(c.target);
         if (c.type === 'entropyStrike') return 'entropy:' + (c.strikeType || 'best');
         if (c.type === 'finisher') return 'finisher→' + tn(c.target);
+        if (c.type === 'attack_tower') return 'attack Cube';
+        if (c.type === 'item_targeted' || c.type === 'item') {
+            const nm = (g && g.ITEM_RULES && g.ITEM_RULES[c.item] && g.ITEM_RULES[c.item].name) || c.item || 'item';
+            return nm + (c.target ? '→' + tn(c.target) : '');
+        }
+        if (c.type === 'nexus_channel') return 'channel';
+        if (c.type === 'inspect') return 'inspect ' + (c.x != null ? c.x + ',' + c.y : '');
         return c.type;
+    }
+    // The macro-intent value (scoreMoves step 4) a tile earns: the intent's
+    // score × (this tile's progress toward the waypoint ÷ the CPU tile's).
+    function _intentCreditAt(g, unit, v, tile) {
+        const goal = pickMoveGoal(unit, v);
+        if (!goal || goal.retreat || goal.x === undefined || !(goal.score > 0)) return 0;
+        const best = pickBestMoveTile(unit, _aiMoveTiles(g, unit), goal, v);
+        if (!best) return 0;
+        let wx = goal.x, wy = goal.y;
+        const wp = findWaypoint(unit, goal.x, goal.y);
+        if (wp === false) { wx = Math.floor(g.bw() / 2); wy = Math.floor(g.bh() / 2); }
+        else if (wp) { wx = wp.x; wy = wp.y; }
+        const cur = Math.abs(unit.x - wx) + Math.abs(unit.y - wy);
+        const progC = cur - (Math.abs(best.x - wx) + Math.abs(best.y - wy));
+        const progH = cur - (Math.abs(tile.x - wx) + Math.abs(tile.y - wy));
+        if (progC <= 0) return progH >= progC ? goal.score : 0;
+        return goal.score * Math.max(0, Math.min(1, progH / progC));
     }
     window.aiScoreMargin = function (unit, human) {
         _aiActor = unit;
@@ -2019,6 +2056,11 @@
                 if (tiles.length) {
                     let s = 0;
                     try { const j = jointMoveActionSearch(unit, tiles, v); if (j && j.score > 0) s = j.score; } catch (e) {}
+                    // 2026-10-08: a repositioning move used to score only its follow-up
+                    // shot, so every human walk lost to the CPU's intent move by the
+                    // whole intent value even one tile off the CPU's pick. Credit the
+                    // same intent for the share of the CPU tile's progress it makes.
+                    try { s = Math.max(s, _intentCreditAt(g, unit, v, tiles[0])); } catch (e) {}
                     humanScore = s - tileDangerCost(g, unit, v, tiles[0].x, tiles[0].y, tiles[0].z);
                     matched = true; synthetic = true;
                 }
@@ -2141,6 +2183,23 @@
         _capDoorAttacks(g, unit, v, out);
     }
 
+    // Share of the Cube window bonus that applies: 1 when the Cube is the
+    // nearer finish; down to 0.25 when the wipeout is much nearer (hits to
+    // drop every standing enemy ÷ hits to drop the Cube). Arena only.
+    function _cubeWindowShare(g, unit, v, tower, cubeHit) {
+        try {
+            const mode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            if (!mode || mode.id !== 'arena' || !Array.isArray(mode.winConditions) || !mode.winConditions.includes('wipeout')) return 1;
+            const enemy = unit.player === 1 ? 2 : 1;
+            const alive = g.aliveUnitsFor(enemy);
+            if (!alive.length || !(cubeHit > 0)) return 1;
+            let wipeHits = 0;
+            for (const e of alive) wipeHits += effHp(e) / Math.max(1, unitThreatOutput(g, unit, e));
+            const cubeHits = tower.hp / cubeHit;
+            return Math.max(0.25, Math.min(1, wipeHits / Math.max(1, cubeHits)));
+        } catch (e) { return 1; }
+    }
+
     function scoreTowerAttack(unit, v, out) {
         const g = G();
         if ((unit.ap || 0) < g.AP_COST_ACTION || _skipTowerAttack) return;
@@ -2163,25 +2222,56 @@
         if (tower.hp <= estDmg * 3) score += tuneW(g, 'towerLowHpPush') * 3;
         else if (tower.hp <= tower.maxHp * 0.5) score += AI_TUNE.towerMidHpPush;
 
+        // The WINDOW: enemies down / away / respawning = free Cube hits. These
+        // flat bonuses (up to ~1,000) came from self-play, where the Cube ended
+        // 81% of matches. In the Arena a team that is down bodies is also close
+        // to a WIPEOUT, so the window is worth only as much as the Cube is the
+        // nearer finish (2026-10-08 imitation report: with two of the CPU's
+        // units dead it wanted the Cube by 580-1,170 while mondo finished the
+        // team and won). Trainable via cubeWindowBonus_v1.
+        let windowB = 0;
         const groundEnemies = v.visibleEnemies.filter(e =>
             Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
         );
-        if (groundEnemies.length === 0) score += AI_TUNE.towerClearBonus;
-        else if (groundEnemies.length === 1) score += 60;
+        if (groundEnemies.length === 0) windowB += AI_TUNE.towerClearBonus;
+        else if (groundEnemies.length === 1) windowB += 60;
 
         const ws = v.winState;
-        if (ws.enemyDeadCount >= 2) score += 300;
-        else if (ws.enemyDeadCount >= 1) score += 160;
-        if (ws.enemyMinRespawn >= 6) score += 300;
-        else if (ws.enemyMinRespawn >= 4) score += 200;
-        else if (ws.enemyMinRespawn >= 3) score += 130;
-        else if (ws.enemyMinRespawn >= 2) score += 60;
+        if (ws.enemyDeadCount >= 2) windowB += 300;
+        else if (ws.enemyDeadCount >= 1) windowB += 160;
+        if (ws.enemyMinRespawn >= 6) windowB += 300;
+        else if (ws.enemyMinRespawn >= 4) windowB += 200;
+        else if (ws.enemyMinRespawn >= 3) windowB += 130;
+        else if (ws.enemyMinRespawn >= 2) windowB += 60;
+        if (ws.phase === 'tower_push') windowB += 320;
+        if (ws.phase === 'numbers_advantage') windowB += 180;
+        score += windowB * _cubeWindowShare(g, unit, v, tower, estDmg) * wght(g, 'cubeWindowBonus_v1', 1);
         if (ws.enemyImminentRespawns > 0) score -= 40 * ws.enemyImminentRespawns;
-        if (ws.phase === 'tower_push') score += 320;
-        if (ws.phase === 'numbers_advantage') score += 180;
         score += ws.roundUrgency * 100;
 
         out.push({ type: 'attack_tower', towerX: tower.x, towerY: tower.y, score, _objectiveWin: !!forecast?.wins });
+    }
+
+    // MP that lets an ally cast what it could not afford: the best unlocked
+    // spell's value at half weight, +15 per unlocked spell, +60 off empty.
+    // Shared by the Mana Potion and the team MP spells (Free Energy) — the
+    // spells used to get only the raw MP, so the CPU rated a potion ~700
+    // above a Free Energy cast that refilled the whole team (2026-10-08).
+    function _mpUnlockValue(g, ally, mpAfter, ref) {
+        let unlocked = 0, bestUnlock = 0;
+        for (const spell of (ally.spells || [])) {
+            if (!spell || !spell.cost || spell.cost <= 0 || spell.kind === 'scan') continue;
+            const _mc = _mpCost(ally, spell);
+            if (ally.mp < _mc && mpAfter >= _mc) {
+                unlocked++;
+                const val = DMG_KINDS.has(spell.kind) ? estDamage(g, ally, ref, spell)
+                    : (HEAL_KINDS.has(spell.kind) ? 120 : 60);
+                if (val > bestUnlock) bestUnlock = val;
+            }
+        }
+        let s = unlocked > 0 ? bestUnlock * 0.5 + unlocked * 15 : 0;
+        if (ally.mp === 0 && mpAfter > 0 && (ally.spells || []).length) s += 60;
+        return s;
     }
 
     function scoreItems(unit, v, out) {
@@ -2204,7 +2294,7 @@
                 const score = healValue(g, unit, ally, amount, v) + (ally.id === unit.id ? 20 : 0);
                 if (score > bestScore) { bestScore = score; bestTarget = ally; }
             }
-            if (bestTarget) out.push({ type: 'item_targeted', item: 'healPotion', target: bestTarget, score: bestScore });
+            if (bestTarget) out.push({ type: 'item_targeted', item: 'healPotion', target: bestTarget, score: bestScore * wght(g, 'potionValue_v1', 1) });
         }
 
         // Mana potion — restored MP × the MP value constant, plus a bonus
@@ -2217,23 +2307,11 @@
                 if (ally.mp >= ally.maxMp * 0.55) continue;
                 const mpRestore = Math.max(1, Math.floor((ally.maxMp || 0) * 0.35));
                 const mpAfter = Math.min(ally.maxMp, ally.mp + mpRestore);
-                let unlocked = 0, bestUnlock = 0;
-                for (const spell of (ally.spells || [])) {
-                    if (!spell || !spell.cost || spell.cost <= 0 || spell.kind === 'scan') continue;
-                    const _mc = _mpCost(ally, spell);
-                    if (ally.mp < _mc && mpAfter >= _mc) {
-                        unlocked++;
-                        const val = DMG_KINDS.has(spell.kind) ? estDamage(g, ally, v.closestEnemy || unit, spell)
-                            : (HEAL_KINDS.has(spell.kind) ? 120 : 60);
-                        if (val > bestUnlock) bestUnlock = val;
-                    }
-                }
-                let score = AI_TUNE.mpPotionBase + (mpAfter - ally.mp) * tuneW(g, 'mpValuePerPoint') * 0.6;
-                if (unlocked > 0) score += bestUnlock * 0.5 + unlocked * 15;
-                if (ally.mp === 0 && (ally.spells || []).length) score += 60;
+                let score = AI_TUNE.mpPotionBase + (mpAfter - ally.mp) * tuneW(g, 'mpValuePerPoint') * 0.6
+                    + _mpUnlockValue(g, ally, mpAfter, v.closestEnemy || unit);
                 if (score > bestScore) { bestScore = score; bestTarget = ally; }
             }
-            if (bestTarget) out.push({ type: 'item_targeted', item: 'manaPotion', target: bestTarget, score: bestScore });
+            if (bestTarget) out.push({ type: 'item_targeted', item: 'manaPotion', target: bestTarget, score: bestScore * wght(g, 'potionValue_v1', 1) });
         }
 
         // Scanner — information value while hourglasses are hidden.
@@ -3665,6 +3743,11 @@
             let s = totalRestored * tuneW(g, 'mpValuePerPoint') * 0.7;
             if (lowMana.length >= 2) s *= 1.5;
             if (lowMana.length === 0) s *= 0.1;
+            // Casts it unlocks across the team, valued like the Mana Potion's.
+            for (const a of allies) {
+                if ((a.maxMp || 0) <= 0) continue;
+                s += _mpUnlockValue(g, a, Math.min(a.maxMp, a.mp + mpRestore), v.closestEnemy || unit);
+            }
             return s;
         }
 

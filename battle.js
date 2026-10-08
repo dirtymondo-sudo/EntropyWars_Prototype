@@ -50284,41 +50284,45 @@
             // 2026-10-07: the ten adoptions of mondo's gen-40 run (2,360 arena
             // matches, ai v4.13) are the shipped values; `prev` = what they
             // replaced. Ranges widened where a value sat on an edge.
+            // 2026-10-08: mondo's imitation training (5 human-vs-CPU arena
+            // matches, 248 scored decisions) moved 14 weights; those are the
+            // shipped values now, `prev` = the gen-40 values they replaced.
+            // Analysis: ai-training/AI_IMITATION_ANALYSIS_20261008.md.
             // ── kept schema-12 keys (live code paths in ai.js v4) ──
-            killBonusScore_v1:        { value: 151.875, prev: 99.375, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
+            killBonusScore_v1:        { value: 143, prev: 151.875, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
             comboSynergyBonus_v1:     { value: 26.285, prev: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
             comboKillBonus_v1:        { value: 25,     prev: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
             pressRefundValue_v1:      { value: 112.899, prev: 96.379, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
             engageAdvantage_v1:       { value: -0.444, prev: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            towerBaseBonus_v1:       { value: 21.612, prev: 39.112, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerDefendBonus_v1:     { value: 47.899, prev: 47.899, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+            towerBaseBonus_v1:       { value: 19, prev: 21.612, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 47, prev: 47.899, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
             hgSeekPriority_v1:       { value: 18.75,  prev: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
             scannerPriority_v1:      { value: 42.141, prev: 34.282, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-            antiOscillationPen_v1:   { value: -3.615, prev: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
+            antiOscillationPen_v1:   { value: -3.33, prev: -3.615, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
             nexusCapBonus_v1:        { value: 39.046, prev: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
             // ── v4 value-model knobs (AI_TUNE routed through the trainer —
             //    defaults MUST equal ai.js AI_TUNE or an untrained install
             //    changes behavior; ai-weights.test.js enforces it) ──
-            mpValuePerPoint_v4:      { value: 0.529, prev: 0.5,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
-            threatCostFactor_v4:     { value: 0.02, prev: 0.082,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
-            killBase_v4:             { value: 116.563, prev: 70, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
-            supportKillPremium_v4:   { value: 128.125, prev: 130, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
-            pressActionValue_v4:     { value: 181.563, prev: 150, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
-            focusCommitBonus_v4:     { value: 117.5, prev: 90,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
+            mpValuePerPoint_v4:      { value: 0.49, prev: 0.529,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
+            threatCostFactor_v4:     { value: 0, prev: 0.02,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
+            killBase_v4:             { value: 114, prev: 116.563, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
+            supportKillPremium_v4:   { value: 124, prev: 128.125, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
+            pressActionValue_v4:     { value: 202, prev: 181.563, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
+            focusCommitBonus_v4:     { value: 127, prev: 117.5,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
 
             // ── NEW 2026-09-06: second tier of v4 knobs (every one has a live,
             //    every-match call site in ai.js — see ai-weights.test.js). New
             //    keys need NO schema bump: loadAIWeights starts them at their
             //    default and the next pass tests untested keys first. ──
             killOutputTurns_v4:      { value: 0.645,   prev: 1.6,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
-            woundedPileOn_v4:        { value: 0.35,  prev: 0.35,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
+            woundedPileOn_v4:        { value: 0.37,  prev: 0.35,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
             reviveBase_v4:           { value: 320,   prev: 320,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
-            ccOutputFactor_v4:       { value: 0.31,   prev: 0.8,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
+            ccOutputFactor_v4:       { value: 0.37,   prev: 0.31,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
             statusSetupFactor_v4:    { value: 0.115,   prev: 0.5,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
             buffStageFactor_v4:      { value: 0.14,  prev: 0.14,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
-            deathRiskFactor_v4:      { value: 0.375,   prev: 0.9,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
-            jointSearchDiscount_v4:  { value: 1,  prev: 0.92,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
+            deathRiskFactor_v4:      { value: 0.34,   prev: 0.375,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
+            jointSearchDiscount_v4:  { value: 0.97,  prev: 1,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
             healSafetyDiscount_v4:   { value: 0.45,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
             towerLowHpPush_v4:       { value: 50,   prev: 120,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
             moveHighGroundMelee_v4:  { value: 7,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
@@ -50328,6 +50332,10 @@
             bountyKillBonus_v1:      { value: 4,     prev: 4,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
             keyHuntPriority_v1:      { value: 12,    prev: 12,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
             // ── NEW 2026-10-07 (no schema bump, the gen-40 values carry over): the wipeout win ──
+            // ── NEW 2026-10-08 (no schema bump): the two flat bonus blocks the
+            //    imitation report showed winning big but no trainable key reached ──
+            cubeWindowBonus_v1:      { value: 1,     prev: 1,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
+            potionValue_v1:          { value: 1,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
             wipeoutKillBonus_v1:     { value: 3000,  prev: 3000,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
         };
 
@@ -60423,6 +60431,7 @@
             }
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('inspect', unit)) return;
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('inspect', { uid: unit.id, x, y });
+            _imitObserve(unit, { type: 'inspect', x, y });
 
             pushUndoSnapshot(true);
 
@@ -62719,6 +62728,13 @@
                 : ((typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_itemTool]?.baneType) ? 'enemy' : 'any');
             const target = resolveUnitInColumn(unit, x, y, z, { side: _itemSide });
             if (target && target.z !== undefined && target.z !== null && target.x === x && target.y === y) z = target.z;
+            /* Imitation (2026-10-08): item use is a decision the trainer can score.
+               Only a click that will go through (stock, a fitting live target). */
+            if ((unit.items?.[_itemTool] || 0) > 0) {
+                const _itOk = _itemSide === 'ally' ? !!(target && !target.dead && !isEnemyUnit(target, unit))
+                    : _itemSide === 'enemy' ? !!(target && !target.dead && isEnemyUnit(target, unit)) : true;
+                if (_itOk) _imitObserve(unit, { type: 'item', item: _itemTool, x: target ? target.x : x, y: target ? target.y : y });
+            }
             let chebyshev = Math.max(Math.abs(unit.x - x), Math.abs(unit.y - y));
 
             if (target && target._isBoss && target._bossSize === 2) {
