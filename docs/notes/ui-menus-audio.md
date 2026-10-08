@@ -992,3 +992,36 @@ React-heavy; a keyframe path on three's own CatmullRomCurve3 does the pans and z
   IndexedDB `ew_mapshots` (this browser's map select shows it at once) and downloaded; mondo uploads it to R2
   `Assets/MapShots/<site>.jpg` so every player sees it. match-select.js `MapShot` = `.ms-crt-shot` inside the tube's
   glass at 0.42 opacity (styles-base.css), fetched with the ?v= token; none = nothing drawn.
+
+## THE UI MAKER — phase 1: the theme engine + the editor screen (2026-10-08, mondo, token 20261008-uimaker-01-cors)
+mondo: "a ui editor that lets me customize all uis and menus and follows the themes in the settings ... set different uis
+to different menus or huds ... shapes of panels like squares or beveled or round or circular or even diamond ... outlines
+or gradients or even material ... a 9 slice that can be reused ... the match select screen has a totally different feel".
+All of it lives at the END of hud.js (one IIFE, "THE UI MAKER"); `window.openUiMaker()` opens it (Settings → Display →
+🎨 UI MAKER under the HUD Theme row, the same row in both pause menus, the world editor's 🎨 UI top-bar button).
+- **Themes are data.** `HUD_THEME_TOKENS` (hud.js, next to HUD_THEMES) holds the six built-in token sets as JS (the CSS
+  blocks in THE COLOUR PASS stay). A custom theme = structured `colors` (→ the --ew-* tokens + `--uim-accent/-good/-bad/
+  -well`), `skins` per ROLE (panel, head, button, buttonSel, chip, chipOn), `text` (body font, title font, caps, spacing,
+  shadow/outline/glow). `UIM_PRESETS` ship five read-only ones made with it (Gilded, Steel, Oak & Brass, Phosphor =
+  the terminal as a theme, Crystal Glass). Store: localStorage `ew_ui_maker` {themes, slices, assign}; viewer-local,
+  nothing relayed (like HUD_THEMES). HUD_THEMES gets the presets + customs appended, so the Settings picker lists them.
+- **Skins = baked 9-slices.** `bakeSkin` draws a shape (square, round, pill, bevel, notch, tab, scoop + the whole-box
+  hex, diamond, circle) with fill (solid/gradient/radial/material/none), a terrain texture as MATERIAL (Assets/Sprites/
+  terrain/*.png, CORS-readable; blend + strength), outline + inner rim, bevel light/shade, gloss, glow, drop shadow on a
+  canvas (2× px), and applies it as `border-image: url(png) <slice> fill / <w> / <outset> stretch`. The box keeps its
+  size (border-image-width ≠ border-width); the shadow/glow ride the OUTSET. A skin can instead point at a saved
+  9-SLICE (`db.slices`: an uploaded image (≤512 px), a game texture, or "Save this skin as a 9-slice"; cuts t/r/b/l in
+  image px, display scale, outset, stretch/tile, fill middle) — reusable by any role of any theme.
+- **Surfaces.** `UIM_SURFACES` = every themed screen: scope + role selector lists. `native` ones already read the
+  tokens (Battle HUD, Victory/defeat, Exploration HUD, Battle pause, Squad desk) and only get skins + text. The rest get
+  a generated THEME PASS that paints their roles from the tokens (PAINT): Match select (the CRT's --ph-* mapped onto
+  the theme, bezel/scan/glare hidden, the glass = a plate), Party builder forge (same), Settings + every .pm-* settings
+  row, Codex/shop/library/tutorial, Online lobby, Dialogs, Battle pop-ups (inspect card, weather tip, banner) — all
+  default to the Settings theme; Main menu + play hub, Loading screens and the World editor default to ORIGINAL LOOK.
+  The MENUS tab assigns any theme (or Original) per surface (`db.assign`).
+- **One sheet.** `UIMaker.apply()` writes `<style id="ew-ui-maker">` last in <head>: `:root:root {global tokens}` (also
+  fixes the HQ falling back to Classic Blue after a battle unmounted the hud sheet), then per surface its scoped tokens
+  (when not the global theme), its pass, its skins (`:root:root` prefix + !important). Adding a screen = one
+  UIM_SURFACES row. Not themed yet: Profile / Leaderboard / Community Maps (React inline styles), the 3D nameplates,
+  the party dock SVG, the campaign/challenge pages.
+- Next (phase 2 per the plan): more presets, per-element layout editing (move/resize/hide HUD pieces).

@@ -8638,6 +8638,7 @@
         };
 
         /* HUD THEME picker (2026-09-12) — the battle HUD's material (hud.js
+           HUD_THEMES; since 2026-10-08 also the UI Maker's presets + the player's own themes, and a 🎨 UI MAKER button) —
            HUD_THEMES: Classic Blue / Void / Onyx / Leather / Parchment /
            Glass) as one segmented row, shared by the main-menu Settings and
            the pause menu. setHudTheme flips data-hud-theme on <html> live —
@@ -8656,8 +8657,11 @@
                     </div>
                 </div>
                 <div class="pm-set-row" style="margin-top:2px">
-                    <span class="pm-toggle-hint">${curRow.hint} The Horologe, its command rows and the scoreboard all follow it.</span>
-                </div>`;
+                    <span class="pm-toggle-hint">${curRow.hint} Every menu and HUD follows it unless the UI Maker gives that screen its own theme.</span>
+                </div>
+                ${typeof window.openUiMaker === 'function' ? `<div class="pm-set-row" style="margin-top:4px">
+                    <button class="pm-set-btn" onclick="window._uimOnClose=function(){${refreshJs.replace(/"/g, '&quot;')}};window.openUiMaker();" title="Make themes, shape every window, give each menu or HUD its own look">🎨 UI Maker</button>
+                </div>` : ''}`;
         };
 
         /* THE WORLD (2026-09-13): grounded ↔ floating — Entropy (the gauge takes the
