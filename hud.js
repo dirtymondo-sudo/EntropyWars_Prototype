@@ -43,6 +43,166 @@ const HUD_THEMES = [
   { id: 'parchment', label: 'Parchment',    hint: 'Cream paper and umber ink — a light HUD.' },
   { id: 'glass',     label: 'Glass',        hint: 'Barely there — a smoked hairline and the text over the board.' },
 ];
+/* THE UI MAKER (2026-10-08) reads the built-in token sets as DATA (the CSS blocks in THE COLOUR PASS stay as
+   they are); each row is complete (Classic Blue under the theme's own overrides). */
+const HUD_THEME_TOKENS = {
+  crystal: {
+    'plate-bg': 'linear-gradient(180deg, #16188e 0%, #0c0e64 42%, #050632 78%, #010214 100%)',
+    'plate-edge': '#d9dceb',
+    'plate-seam': '#03041c',
+    'plate-rim': '#4a55b4',
+    'plate-lip': 'rgba(255,255,255,0.07)',
+    'plate-scan': 'repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)',
+    'head-bg': 'linear-gradient(180deg, #1e2298 0%, #0f1170 100%)',
+    'head-ink': '#c7ccff',
+    'row-bg': 'linear-gradient(180deg, #1a1d90 0%, #10126a 55%, #08093e 100%)',
+    'row-sel-bg': 'linear-gradient(180deg, #2b31b8 0%, #1c2090 55%, #12156c 100%)',
+    'row-edge': '#5a64cc',
+    'row-lip': 'rgba(255,255,255,0.09)',
+    'ink': '#f6f6fa',
+    'ink-mute': '#b7bee8',
+    'ink-dim': '#7079b8',
+    'hair': 'rgba(255,255,255,0.13)',
+    'dead-bg': '#05061e',
+    'dead-edge': '#232866',
+    'dead-ink': '#7079b8',
+    'sel': '#f0d060',
+    'sel-soft': 'rgba(240,208,96,0.55)',
+    'sel-faint': 'rgba(240,208,96,0.2)',
+    'tshadow': '0 1px 2px rgba(0,0,0,0.7)',
+    'drop': '0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45)',
+  },
+  void: {
+    'plate-bg': 'linear-gradient(180deg, #1c1929 0%, #14111f 45%, #0d0b15 100%)',
+    'plate-edge': '#565070',
+    'plate-seam': '#080710',
+    'plate-rim': '#2c2840',
+    'plate-lip': 'rgba(255,255,255,0.05)',
+    'plate-scan': 'repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)',
+    'head-bg': 'linear-gradient(180deg, #272238 0%, #1a1728 100%)',
+    'head-ink': '#9a93b5',
+    'row-bg': 'linear-gradient(180deg, #1a1725 0%, #121020 55%, #0d0b16 100%)',
+    'row-sel-bg': 'linear-gradient(180deg, #272236 0%, #1a1729 55%, #141122 100%)',
+    'row-edge': '#403a55',
+    'row-lip': 'rgba(255,255,255,0.06)',
+    'ink': '#e8e4d8',
+    'ink-mute': '#7a7490',
+    'ink-dim': '#5e5875',
+    'hair': '#262233',
+    'dead-bg': '#0a0910',
+    'dead-edge': '#232030',
+    'dead-ink': '#5e5875',
+    'sel': '#f0d060',
+    'sel-soft': 'rgba(240,208,96,0.55)',
+    'sel-faint': 'rgba(240,208,96,0.2)',
+    'tshadow': '0 1px 2px rgba(0,0,0,0.7)',
+    'drop': '0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45)',
+  },
+  onyx: {
+    'plate-bg': 'linear-gradient(180deg, #1c1c1f 0%, #0f0f11 50%, #050506 100%)',
+    'plate-edge': '#8c8c96',
+    'plate-seam': '#000',
+    'plate-rim': '#3a3a42',
+    'plate-lip': 'rgba(255,255,255,0.06)',
+    'plate-scan': 'repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)',
+    'head-bg': 'linear-gradient(180deg, #28282c 0%, #161618 100%)',
+    'head-ink': '#a8a8b2',
+    'row-bg': 'linear-gradient(180deg, #212124 0%, #151517 55%, #0c0c0e 100%)',
+    'row-sel-bg': 'linear-gradient(180deg, #303034 0%, #222226 55%, #19191d 100%)',
+    'row-edge': '#46464e',
+    'row-lip': 'rgba(255,255,255,0.07)',
+    'ink': '#f2f2f2',
+    'ink-mute': '#9c9ca6',
+    'ink-dim': '#6c6c76',
+    'hair': 'rgba(255,255,255,0.1)',
+    'dead-bg': '#070708',
+    'dead-edge': '#202024',
+    'dead-ink': '#5e5e68',
+    'sel': '#f0d060',
+    'sel-soft': 'rgba(240,208,96,0.55)',
+    'sel-faint': 'rgba(240,208,96,0.2)',
+    'tshadow': '0 1px 2px rgba(0,0,0,0.7)',
+    'drop': '0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45)',
+  },
+  leather: {
+    'plate-bg': 'linear-gradient(180deg, #5c3621 0%, #3f2415 45%, #261409 100%)',
+    'plate-edge': '#dcb66c',
+    'plate-seam': '#1a0d05',
+    'plate-rim': '#8a683a',
+    'plate-lip': 'rgba(255,230,180,0.1)',
+    'plate-scan': 'repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)',
+    'head-bg': 'linear-gradient(180deg, #6d4024 0%, #4a2a16 100%)',
+    'head-ink': '#eacb8c',
+    'row-bg': 'linear-gradient(180deg, #5e3b22 0%, #452918 55%, #321c10 100%)',
+    'row-sel-bg': 'linear-gradient(180deg, #7c4e2d 0%, #5e3a21 55%, #4b2d18 100%)',
+    'row-edge': '#a0784a',
+    'row-lip': 'rgba(255,230,180,0.12)',
+    'ink': '#f7e9d0',
+    'ink-mute': '#d4b68e',
+    'ink-dim': '#9c7c58',
+    'hair': 'rgba(255,220,160,0.16)',
+    'dead-bg': '#1c1008',
+    'dead-edge': '#3a2818',
+    'dead-ink': '#7c624a',
+    'sel': '#ffd96c',
+    'sel-soft': 'rgba(255,217,108,0.55)',
+    'sel-faint': 'rgba(255,217,108,0.2)',
+    'tshadow': '0 1px 2px rgba(0,0,0,0.7)',
+    'drop': '0 3px 0 rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.45)',
+  },
+  parchment: {
+    'plate-bg': 'linear-gradient(180deg, #f6ecd4 0%, #eddebc 50%, #e3cfa6 100%)',
+    'plate-edge': '#5a3e22',
+    'plate-seam': '#cbb48c',
+    'plate-rim': '#aa8e5e',
+    'plate-lip': 'rgba(255,255,255,0.55)',
+    'plate-scan': 'none',
+    'head-bg': 'linear-gradient(180deg, #dbc59c 0%, #cab186 100%)',
+    'head-ink': '#4a3418',
+    'row-bg': 'linear-gradient(180deg, #f9f0da 0%, #f0e3c4 55%, #e7d6b2 100%)',
+    'row-sel-bg': 'linear-gradient(180deg, #fff8e4 0%, #f9ecca 55%, #f3e3ba 100%)',
+    'row-edge': '#a28c5e',
+    'row-lip': 'rgba(255,255,255,0.6)',
+    'ink': '#2c1e0e',
+    'ink-mute': '#6c5438',
+    'ink-dim': '#9c866a',
+    'hair': 'rgba(0,0,0,0.14)',
+    'dead-bg': '#d9ccb1',
+    'dead-edge': '#b9a989',
+    'dead-ink': '#9c8e76',
+    'sel': '#b07a08',
+    'sel-soft': 'rgba(176,122,8,0.5)',
+    'sel-faint': 'rgba(176,122,8,0.18)',
+    'tshadow': 'none',
+    'drop': '0 3px 0 rgba(90,62,34,0.35), 0 8px 18px rgba(0,0,0,0.3)',
+  },
+  glass: {
+    'plate-bg': 'rgba(4,4,10,0.3)',
+    'plate-edge': 'rgba(255,255,255,0.38)',
+    'plate-seam': 'transparent',
+    'plate-rim': 'transparent',
+    'plate-lip': 'transparent',
+    'plate-scan': 'none',
+    'head-bg': 'rgba(0,0,0,0.25)',
+    'head-ink': '#dcdce4',
+    'row-bg': 'rgba(0,0,0,0.3)',
+    'row-sel-bg': 'rgba(255,255,255,0.1)',
+    'row-edge': 'rgba(255,255,255,0.3)',
+    'row-lip': 'transparent',
+    'ink': '#fff',
+    'ink-mute': '#cacad2',
+    'ink-dim': '#8e8e9a',
+    'hair': 'rgba(255,255,255,0.22)',
+    'dead-bg': 'rgba(0,0,0,0.2)',
+    'dead-edge': 'rgba(255,255,255,0.12)',
+    'dead-ink': '#8c8c96',
+    'sel': '#f0d060',
+    'sel-soft': 'rgba(240,208,96,0.55)',
+    'sel-faint': 'rgba(240,208,96,0.2)',
+    'tshadow': '0 1px 2px #000, 0 0 6px rgba(0,0,0,0.85)',
+    'drop': '0 2px 8px rgba(0,0,0,0.35)',
+  },
+};
 const HUD_THEME_DEFAULT = 'crystal';
 const HUD_THEME_KEY = 'ew_hud_theme';
 window.HUD_THEMES = HUD_THEMES;
@@ -59,7 +219,9 @@ window.setHudTheme = function (id) {
 window.applyHudTheme = function (id) {
   const root = document.documentElement;
   if (!root) return;
-  if (id === HUD_THEME_DEFAULT) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
+  // a UI Maker theme (preset / custom) rides on the Classic Blue base; its tokens come from THE UI MAKER's sheet
+  if (id === HUD_THEME_DEFAULT || !HUD_THEME_TOKENS[id]) delete root.dataset.hudTheme; else root.dataset.hudTheme = id;
+  try { if (window.UIMaker) window.UIMaker.apply(); } catch (e) {}
 };
 window.applyHudTheme(window.getHudTheme());
 
@@ -10847,3 +11009,1100 @@ function _watchPhaseForHud() {
 }
 
 _watchPhaseForHud();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE UI MAKER (2026-10-08, the user: "a ui editor that lets me customize all
+   uis and menus and follows the themes in the settings ... make custom themes
+   and set different uis to different menus or huds ... change the shapes of
+   panels like squares or beveled or round or circular or even diamond ...
+   outlines or gradients or even material ... a 9 slice that can be reused").
+   Phase 1: the THEME ENGINE + the editor screen.
+   · A THEME is the token set THE COLOUR PASS already reads (--ew-plate-bg …
+     --ew-sel, HUD_THEME_TOKENS above) plus SKINS: one per ROLE (panel, head,
+     button, selected button, chip, chip on). A skin is a shape + fill +
+     outline + bevel + material + glow, baked on a canvas into a 9-SLICE and
+     applied as `border-image` (the box keeps its size; the shadow rides the
+     border-image outset). A skin can also point at a saved 9-SLICE (the
+     user's own image or a baked skin, slice insets editable) — reusable.
+   · A SURFACE is one menu / HUD (UIM_SURFACES): its scope selector, the
+     selectors that play each role, and for the screens that never read the
+     tokens (the match-select terminal, the forge, the main menu, Settings,
+     the codex shell, the lobby …) a THEME PASS that maps their own colours
+     onto the tokens. Each surface follows the Settings theme unless the
+     user assigns it its own; the non-native ones can keep their ORIGINAL look.
+   · Everything is generated into ONE <style id="ew-ui-maker"> at the end of
+     <head> (UIMaker.apply). Viewer-local (localStorage ew_ui_maker), nothing
+     relayed — online peers each see their own UI.
+   · The editor: window.openUiMaker() — Settings → Display → HUD Theme → UI
+     MAKER, the pause menu's same row, and the world editor's UI button.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function () {
+'use strict';
+const KEY = 'ew_ui_maker';
+const K = 2;                       // canvas px per CSS px (crisp on hi-dpi)
+const MID = 64;                    // the stretchable middle of a baked skin (CSS px)
+const TEX = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
+const ROLES = [
+  ['panel', 'Panel', 'Windows, plates, cards'],
+  ['head', 'Header', 'Title bars inside a window'],
+  ['button', 'Button', 'Rows, commands, buttons'],
+  ['buttonSel', 'Selected', 'The row under the cursor'],
+  ['chip', 'Chip', 'Pills, tags, toggles'],
+  ['chipOn', 'Chip On', 'A toggle that is on'],
+];
+const SHAPES = [
+  ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
+  ['tab', 'Tab'], ['scoop', 'Scoop'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
+];
+const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1 };   // drawn whole and scaled to the box
+const MATERIALS = [
+  ['aluminium', 'Aluminium'], ['gunmetal', 'Gunmetal'], ['metal', 'Steel'], ['copper', 'Copper'], ['gold', 'Gold'],
+  ['marble', 'Marble'], ['marble_light', 'Light marble'], ['enamel', 'Enamel'], ['crystal', 'Crystal'],
+  ['wood', 'Wood'], ['wood_planks', 'Planks'], ['rock', 'Rock'], ['rocks_1', 'Stone'], ['rocks_5', 'Cliff stone'],
+  ['ice', 'Ice'], ['desert', 'Sand'], ['leaves', 'Leaves'], ['water', 'Water'], ['scorched', 'Scorched'],
+];
+const FONTS = [
+  ['', 'Game default'], ["'IBM Plex Mono', monospace", 'IBM Plex Mono'], ["'JetBrains Mono', monospace", 'JetBrains Mono'],
+  ["'DotGothic16', monospace", 'DotGothic16 (pixel)'], ["'Cinzel', serif", 'Cinzel'], ["'Cinzel Decorative', serif", 'Cinzel Decorative'],
+  ["'Cormorant SC', serif", 'Cormorant SC'], ["'Cormorant Garamond', serif", 'Cormorant Garamond'], ["'Bangers', cursive", 'Bangers'],
+  ["'Caveat', cursive", 'Caveat'], ['Georgia, serif', 'Georgia'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier New'],
+];
+const SCAN = 'repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)';
+
+/* ── colour helpers ── */
+function parseCss(c) {
+  if (!c || typeof c !== 'string') return null;
+  c = c.trim();
+  let m = /^#([0-9a-f]{3,8})$/i.exec(c);
+  if (m) {
+    let h = m[1];
+    if (h.length === 3 || h.length === 4) h = h.split('').map(x => x + x).join('');
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1 };
+  }
+  m = /^rgba?\(\s*([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)(?:[ ,/]+([\d.]+%?))?\s*\)$/i.exec(c);
+  if (m) { let a = m[4] == null ? 1 : (m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4])); return { r: +m[1], g: +m[2], b: +m[3], a }; }
+  if (c === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  return null;
+}
+function hex2(n) { n = Math.max(0, Math.min(255, Math.round(n))); return (n < 16 ? '0' : '') + n.toString(16); }
+function toHex(c) { const p = parseCss(c); return p ? '#' + hex2(p.r) + hex2(p.g) + hex2(p.b) : '#000000'; }
+function alphaOf(c) { const p = parseCss(c); return p ? p.a : 1; }
+function withAlpha(c, a) { const p = parseCss(c) || { r: 0, g: 0, b: 0 }; a = Math.max(0, Math.min(1, +a)); return a >= 1 ? '#' + hex2(p.r) + hex2(p.g) + hex2(p.b) : `rgba(${p.r},${p.g},${p.b},${+a.toFixed(3)})`; }
+function shade(c, f) { const p = parseCss(c) || { r: 0, g: 0, b: 0, a: 1 }; const t = f < 0 ? 0 : 255, k = Math.abs(f); return withAlpha('#' + hex2(p.r + (t - p.r) * k) + hex2(p.g + (t - p.g) * k) + hex2(p.b + (t - p.b) * k), p.a); }
+function lum(c) { const p = parseCss(c); return p ? (0.2126 * p.r + 0.7152 * p.g + 0.0722 * p.b) / 255 : 0; }
+function colorsIn(s) { return String(s || '').match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/gi) || []; }
+function grad(a, b, c) { return b ? `linear-gradient(180deg, ${a} 0%, ${b} 50%, ${c} 100%)` : `linear-gradient(180deg, ${a} 0%, ${c} 100%)`; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+/* ── the store ── */
+let db = { themes: [], slices: [], assign: {} };
+try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') db = Object.assign(db, j); } catch (e) {}
+if (!Array.isArray(db.themes)) db.themes = [];
+if (!Array.isArray(db.slices)) db.slices = [];
+if (!db.assign || typeof db.assign !== 'object') db.assign = {};
+let _saveWarned = false;
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
+  catch (e) { if (!_saveWarned) { _saveWarned = true; try { alert('UI Maker: the browser storage is full, the last change was not saved. Delete an unused 9-slice image.'); } catch (_) {} } return false; }
+}
+
+/* ── a custom theme from a built-in token set ── */
+function colorsFromTokens(t) {
+  const pg = colorsIn(t['plate-bg']), hg = colorsIn(t['head-bg']), rg = colorsIn(t['row-bg']), sg = colorsIn(t['row-sel-bg']);
+  const first = (a, d) => a[0] || d, last = (a, d) => a[a.length - 1] || d, mid = (a, d) => a[Math.floor(a.length / 2)] || d;
+  return {
+    plateTop: first(pg, '#16188e'), plateMid: mid(pg, '#0c0e64'), plateBot: last(pg, '#010214'),
+    edge: t['plate-edge'], seam: t['plate-seam'], rim: t['plate-rim'], lip: t['plate-lip'],
+    headTop: first(hg, '#1e2298'), headBot: last(hg, '#0f1170'), headInk: t['head-ink'],
+    rowTop: first(rg, '#1a1d90'), rowBot: last(rg, '#08093e'), rowSelTop: first(sg, '#2b31b8'), rowSelBot: last(sg, '#12156c'),
+    rowEdge: t['row-edge'], ink: t['ink'], inkMute: t['ink-mute'], inkDim: t['ink-dim'], hair: t['hair'],
+    deadBg: t['dead-bg'], deadEdge: t['dead-edge'], deadInk: t['dead-ink'], sel: t['sel'],
+    accent: '#7fd9dd', good: '#66ff8a', bad: '#ff6a5c',
+  };
+}
+function blankSkin(c, role) {
+  const btn = role === 'button' || role === 'buttonSel', chip = role === 'chip' || role === 'chipOn', head = role === 'head';
+  const on = role === 'buttonSel' || role === 'chipOn';
+  return {
+    on: false, slice: '', shape: chip ? 'pill' : 'round', size: chip ? 12 : (btn ? 6 : 10),
+    fill: {
+      kind: 'gradient', angle: 180, alpha: 1,
+      c1: head ? c.headTop : btn ? (on ? c.rowSelTop : c.rowTop) : chip ? (on ? c.rowSelTop : c.rowTop) : c.plateTop,
+      c2: head || btn || chip ? '' : c.plateMid,
+      c3: head ? c.headBot : btn ? (on ? c.rowSelBot : c.rowBot) : chip ? (on ? c.rowSelBot : c.rowBot) : c.plateBot,
+    },
+    material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' },
+    outline: { w: on ? 2 : 1, c: on ? toHex(c.sel) : toHex(btn || chip ? c.rowEdge : c.edge) },
+    inner: { w: role === 'panel' ? 1 : 0, c: toHex(c.rim), gap: 1 },
+    bevel: { w: 2, light: 0.12, dark: 0.3 },
+    gloss: 0, glow: { r: on ? 8 : 0, c: toHex(c.sel), a: 0.5 }, shadow: { y: role === 'panel' ? 3 : 1, blur: role === 'panel' ? 8 : 2, a: 0.45 },
+    opacity: 1,
+  };
+}
+function newTheme(baseId, label) {
+  const b = themeById(baseId) || themeById('crystal');
+  if (b && !b.builtin) { const t = clone(b); t.id = uid('c_'); t.label = label || (b.label + ' copy'); delete t.preset; return t; }
+  const c = colorsFromTokens(b ? b.tokens : HUD_THEME_TOKENS.crystal);
+  const skins = {}; ROLES.forEach(([r]) => { skins[r] = blankSkin(c, r); });
+  return {
+    id: uid('c_'), label: label || 'My Theme', v: 1, colors: c, scan: true,
+    skins, text: { font: '', titleFont: '', caps: false, track: 0, effect: 'drop' }, drop: 0.5,
+  };
+}
+
+/* ── THE PRESETS: themes made with the maker, shipped read-only (duplicate to edit) ── */
+function preset(id, label, hint, base, fn) {
+  const t = newTheme(base, label); t.id = id; t.preset = true; t.hint = hint; fn(t); return t;
+}
+function skinOn(t, role, o) { const s = t.skins[role]; Object.assign(s, { on: true }, o || {}); if (o && o.fill) s.fill = Object.assign({}, blankSkin(t.colors, role).fill, o.fill); return s; }
+const UIM_PRESETS = [
+  preset('p_gilded', 'Gilded', 'Navy plates cut on the bevel under a double gold frame.', 'crystal', t => {
+    Object.assign(t.colors, { edge: '#e8c66a', rim: '#8a6a24', sel: '#ffe08a', headInk: '#f2dc9a', rowEdge: '#b8933e' });
+    skinOn(t, 'panel', { shape: 'bevel', size: 12, outline: { w: 2, c: '#e8c66a' }, inner: { w: 1, c: '#8a6a24', gap: 2 }, bevel: { w: 3, light: 0.18, dark: 0.35 } });
+    skinOn(t, 'head', { shape: 'bevel', size: 7, outline: { w: 1, c: '#b8933e' }, inner: { w: 0, c: '#000', gap: 1 } });
+    skinOn(t, 'button', { shape: 'bevel', size: 6, outline: { w: 1, c: '#b8933e' } });
+    skinOn(t, 'buttonSel', { shape: 'bevel', size: 6, outline: { w: 2, c: '#ffe08a' }, glow: { r: 8, c: '#ffe08a', a: 0.45 } });
+    skinOn(t, 'chip', { shape: 'bevel', size: 6, outline: { w: 1, c: '#b8933e' } });
+    skinOn(t, 'chipOn', { shape: 'bevel', size: 6, outline: { w: 2, c: '#ffe08a' } });
+    t.text.titleFont = "'Cinzel', serif";
+  }),
+  preset('p_steel', 'Steel', 'Brushed gunmetal plates, notched corners, a cold cyan select.', 'onyx', t => {
+    Object.assign(t.colors, { plateTop: '#3a3f46', plateMid: '#24282d', plateBot: '#121417', edge: '#aeb8c4', sel: '#6fe6ff', rowEdge: '#6c7784', accent: '#6fe6ff' });
+    const mat = { src: TEX + 'gunmetal.png', scale: 1, mix: 0.45, blend: 'overlay' };
+    skinOn(t, 'panel', { shape: 'notch', size: 14, material: mat, outline: { w: 1, c: '#aeb8c4' }, inner: { w: 1, c: '#4b535d', gap: 2 }, bevel: { w: 2, light: 0.2, dark: 0.4 } });
+    skinOn(t, 'head', { shape: 'notch', size: 8, material: mat, outline: { w: 1, c: '#6c7784' } });
+    skinOn(t, 'button', { shape: 'notch', size: 7, outline: { w: 1, c: '#6c7784' } });
+    skinOn(t, 'buttonSel', { shape: 'notch', size: 7, outline: { w: 2, c: '#6fe6ff' }, glow: { r: 8, c: '#6fe6ff', a: 0.4 } });
+    skinOn(t, 'chip', { shape: 'notch', size: 6, outline: { w: 1, c: '#6c7784' } });
+    skinOn(t, 'chipOn', { shape: 'notch', size: 6, outline: { w: 2, c: '#6fe6ff' } });
+    t.text.font = "'JetBrains Mono', monospace"; t.text.caps = true; t.text.track = 0.06;
+  }),
+  preset('p_oak', 'Oak & Brass', 'Wood-grain plates, rounded, under a brass rim.', 'leather', t => {
+    Object.assign(t.colors, { plateTop: '#6a4426', plateMid: '#4a2e18', plateBot: '#2c1a0c', edge: '#e0b860', rim: '#7a5a2a', sel: '#ffd86c' });
+    const mat = { src: TEX + 'wood.png', scale: 1.5, mix: 0.55, blend: 'multiply' };
+    skinOn(t, 'panel', { shape: 'round', size: 12, material: mat, outline: { w: 2, c: '#e0b860' }, inner: { w: 1, c: '#7a5a2a', gap: 2 }, bevel: { w: 3, light: 0.15, dark: 0.4 } });
+    skinOn(t, 'head', { shape: 'tab', size: 9, material: mat, outline: { w: 1, c: '#c09848' } });
+    skinOn(t, 'button', { shape: 'round', size: 7, material: mat, outline: { w: 1, c: '#a07c40' } });
+    skinOn(t, 'buttonSel', { shape: 'round', size: 7, material: mat, outline: { w: 2, c: '#ffd86c' }, glow: { r: 7, c: '#ffd86c', a: 0.4 } });
+    skinOn(t, 'chip', { shape: 'pill', size: 12, outline: { w: 1, c: '#a07c40' } });
+    skinOn(t, 'chipOn', { shape: 'pill', size: 12, outline: { w: 2, c: '#ffd86c' } });
+    t.text.titleFont = "'Cormorant SC', serif";
+  }),
+  preset('p_phosphor', 'Phosphor', 'The match-select terminal as a theme: warm black glass, amber ink, square hairlines.', 'onyx', t => {
+    Object.assign(t.colors, {
+      plateTop: '#0c0e0a', plateMid: '#070806', plateBot: '#040403', edge: '#57503f', seam: '#000000', rim: '#1c1a14', lip: 'rgba(255,255,255,0.02)',
+      headTop: '#14130e', headBot: '#0a0a07', headInk: '#ffcd6b', rowTop: '#0a0b08', rowBot: '#060605', rowSelTop: '#2a2414', rowSelBot: '#100e08',
+      rowEdge: '#3a3528', ink: '#e8dcb5', inkMute: '#9a8f6e', inkDim: '#57503f', hair: 'rgba(232,220,181,0.16)', sel: '#ffcd6b', accent: '#7fd9dd',
+    });
+    t.scan = true; t.text.font = "'IBM Plex Mono', monospace"; t.text.caps = true; t.text.track = 0.08; t.text.effect = 'glow';
+    skinOn(t, 'panel', { shape: 'square', size: 4, outline: { w: 1, c: '#57503f' }, inner: { w: 0, c: '#000', gap: 1 }, bevel: { w: 0, light: 0, dark: 0 }, shadow: { y: 0, blur: 0, a: 0 } });
+    skinOn(t, 'button', { shape: 'square', size: 3, outline: { w: 1, c: '#3a3528' }, bevel: { w: 0, light: 0, dark: 0 }, shadow: { y: 0, blur: 0, a: 0 } });
+    skinOn(t, 'buttonSel', { shape: 'square', size: 3, outline: { w: 1, c: '#ffcd6b' }, bevel: { w: 0, light: 0, dark: 0 }, glow: { r: 6, c: '#ffcd6b', a: 0.3 } });
+    skinOn(t, 'chip', { shape: 'square', size: 3, outline: { w: 1, c: '#3a3528' }, bevel: { w: 0, light: 0, dark: 0 }, shadow: { y: 0, blur: 0, a: 0 } });
+    skinOn(t, 'chipOn', { shape: 'square', size: 3, outline: { w: 1, c: '#ffcd6b' }, bevel: { w: 0, light: 0, dark: 0 }, shadow: { y: 0, blur: 0, a: 0 } });
+  }),
+  preset('p_crystal', 'Crystal Glass', 'Smoked glass diamonds-and-hex chips with a bright cyan rim and a gloss.', 'glass', t => {
+    Object.assign(t.colors, { plateTop: 'rgba(30,60,90,0.55)', plateMid: 'rgba(10,25,45,0.5)', plateBot: 'rgba(4,10,20,0.6)', edge: '#a8e8ff', sel: '#9ff3ff', rowTop: 'rgba(30,70,110,0.45)', rowBot: 'rgba(5,15,30,0.5)', rowEdge: '#5ab4d8' });
+    skinOn(t, 'panel', { shape: 'round', size: 14, outline: { w: 1, c: '#a8e8ff' }, inner: { w: 1, c: '#2a6a8a', gap: 2 }, gloss: 0.18, fill: { kind: 'gradient', angle: 160, alpha: 0.85, c1: '#1e3c5a', c2: '#0a192d', c3: '#040a14' } });
+    skinOn(t, 'button', { shape: 'hex', size: 10, outline: { w: 1, c: '#5ab4d8' }, gloss: 0.12 });
+    skinOn(t, 'buttonSel', { shape: 'hex', size: 10, outline: { w: 2, c: '#9ff3ff' }, glow: { r: 10, c: '#9ff3ff', a: 0.5 }, gloss: 0.15 });
+    skinOn(t, 'chip', { shape: 'diamond', size: 10, outline: { w: 1, c: '#5ab4d8' } });
+    skinOn(t, 'chipOn', { shape: 'diamond', size: 10, outline: { w: 2, c: '#9ff3ff' }, glow: { r: 8, c: '#9ff3ff', a: 0.5 } });
+  }),
+];
+
+/* ── lookups ── */
+function themeById(id) {
+  if (!id) return null;
+  if (HUD_THEME_TOKENS[id]) { const row = HUD_THEMES.find(t => t.id === id) || { id, label: id }; return { id, label: row.label, hint: row.hint, builtin: true, tokens: HUD_THEME_TOKENS[id] }; }
+  return UIM_PRESETS.find(t => t.id === id) || db.themes.find(t => t.id === id) || null;
+}
+function allThemes() {
+  return HUD_THEMES.filter(t => HUD_THEME_TOKENS[t.id]).map(t => themeById(t.id)).concat(UIM_PRESETS, db.themes);
+}
+/* the Settings picker reads window.HUD_THEMES: keep the presets + customs listed in it */
+function syncPickerRows() {
+  for (let i = HUD_THEMES.length - 1; i >= 0; i--) if (!HUD_THEME_TOKENS[HUD_THEMES[i].id]) HUD_THEMES.splice(i, 1);
+  UIM_PRESETS.concat(db.themes).forEach(t => HUD_THEMES.push({ id: t.id, label: t.label, hint: t.hint || 'Made in the UI Maker.', custom: !t.preset, preset: !!t.preset }));
+}
+
+/* ── tokens ── */
+function themeTokens(t) {
+  if (!t) return HUD_THEME_TOKENS.crystal;
+  if (t.builtin) return t.tokens;
+  const c = t.colors, ef = (t.text && t.text.effect) || 'drop', d = t.drop == null ? 0.5 : +t.drop;
+  return {
+    'plate-bg': grad(c.plateTop, c.plateMid, c.plateBot), 'plate-edge': c.edge, 'plate-seam': c.seam, 'plate-rim': c.rim, 'plate-lip': c.lip,
+    'plate-scan': t.scan ? SCAN : 'none',
+    'head-bg': grad(c.headTop, '', c.headBot), 'head-ink': c.headInk,
+    'row-bg': grad(c.rowTop, '', c.rowBot), 'row-sel-bg': grad(c.rowSelTop, '', c.rowSelBot), 'row-edge': c.rowEdge, 'row-lip': c.lip,
+    'ink': c.ink, 'ink-mute': c.inkMute, 'ink-dim': c.inkDim, 'hair': c.hair,
+    'dead-bg': c.deadBg, 'dead-edge': c.deadEdge, 'dead-ink': c.deadInk,
+    'sel': c.sel, 'sel-soft': withAlpha(c.sel, 0.55), 'sel-faint': withAlpha(c.sel, 0.2),
+    'tshadow': ef === 'none' ? 'none' : ef === 'glow' ? `0 0 6px ${withAlpha(c.sel, 0.35)}` : ef === 'outline' ? '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' : '0 1px 2px rgba(0,0,0,0.7)',
+    'drop': d <= 0 ? 'none' : `0 3px 0 rgba(0,0,0,${(d * 1.1).toFixed(2)}), 0 8px 18px rgba(0,0,0,${(d * 0.9).toFixed(2)})`,
+  };
+}
+function extraTokens(t) {
+  const c = (t && !t.builtin) ? t.colors : null;
+  const tx = (t && t.text) || {};
+  return {
+    '--uim-accent': c ? c.accent : 'var(--ew-head-ink)',
+    '--uim-good': c ? c.good : '#66ff8a',
+    '--uim-bad': c ? c.bad : '#ff6a5c',
+    '--uim-caps': tx.caps ? 'uppercase' : 'none',
+    // a well (a box inside a window) darkens a dark plate, barely tints a light one
+    '--uim-well': lum(c ? c.plateMid : colorsIn(themeTokens(t)['plate-bg'])[1]) > 0.5 ? 'rgba(60,40,20,0.07)' : 'rgba(0,0,0,0.22)',
+  };
+}
+function tokenBlock(t) {
+  const tk = themeTokens(t), ex = extraTokens(t);
+  return Object.keys(tk).map(k => `--ew-${k}: ${tk[k]};`).join(' ') + ' ' + Object.keys(ex).map(k => `${k}: ${ex[k]};`).join(' ');
+}
+
+/* ── THE SKIN BAKER: a skin spec → a 9-slice PNG + its border-image ── */
+const _img = {};
+let _pendingImg = 0;
+function img(src) {
+  if (_img[src]) return _img[src];
+  const e = { el: new Image(), ok: false, done: false };
+  e.el.crossOrigin = 'anonymous';
+  _pendingImg++;
+  e.el.onload = () => { e.ok = true; e.done = true; _pendingImg--; scheduleApply(); };
+  e.el.onerror = () => { e.done = true; _pendingImg--; scheduleApply(); };
+  e.el.src = src;
+  return (_img[src] = e);
+}
+function shapePath(ctx, shape, x, y, w, h, s) {
+  s = Math.max(0, Math.min(s, w / 2, h / 2));
+  ctx.beginPath();
+  switch (shape) {
+    case 'round': case 'pill': ctx.moveTo(x + s, y); ctx.arcTo(x + w, y, x + w, y + h, s); ctx.arcTo(x + w, y + h, x, y + h, s); ctx.arcTo(x, y + h, x, y, s); ctx.arcTo(x, y, x + w, y, s); break;
+    case 'tab': ctx.moveTo(x + s, y); ctx.arcTo(x + w, y, x + w, y + h, s); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.arcTo(x, y, x + w, y, s); break;
+    case 'bevel': ctx.moveTo(x + s, y); ctx.lineTo(x + w - s, y); ctx.lineTo(x + w, y + s); ctx.lineTo(x + w, y + h - s); ctx.lineTo(x + w - s, y + h); ctx.lineTo(x + s, y + h); ctx.lineTo(x, y + h - s); ctx.lineTo(x, y + s); break;
+    case 'notch': ctx.moveTo(x + s, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h - s); ctx.lineTo(x + w - s, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + s); break;
+    case 'scoop':
+      ctx.moveTo(x + s, y); ctx.lineTo(x + w - s, y); ctx.arc(x + w, y, s, Math.PI, Math.PI / 2, true);
+      ctx.lineTo(x + w, y + h - s); ctx.arc(x + w, y + h, s, Math.PI * 1.5, Math.PI, true);
+      ctx.lineTo(x + s, y + h); ctx.arc(x, y + h, s, 0, -Math.PI / 2, true);
+      ctx.lineTo(x, y + s); ctx.arc(x, y, s, Math.PI / 2, 0, true); break;
+    case 'hex': { const d = Math.min(h / 2, w / 4); ctx.moveTo(x + d, y); ctx.lineTo(x + w - d, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w - d, y + h); ctx.lineTo(x + d, y + h); ctx.lineTo(x, y + h / 2); break; }
+    case 'diamond': ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2); break;
+    case 'circle': ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); break;
+    default: ctx.rect(x, y, w, h);
+  }
+  ctx.closePath();
+}
+function insetSize(shape, s, d) { return (shape === 'bevel' || shape === 'notch') ? Math.max(0, s - d * 0.41) : (shape === 'scoop' ? s + d : Math.max(0, s - d)); }
+function skinGeom(s) {
+  const full = !!FULL_SHAPES[s.shape];
+  const ow = Math.max(0, +s.outline.w || 0), iw = Math.max(0, +s.inner.w || 0), gap = Math.max(0, +s.inner.gap || 0);
+  const ring = ow + (iw ? gap + iw : 0);
+  const C = full ? 0 : Math.ceil(Math.max(+s.size || 0, ring + 2, (s.bevel && s.bevel.w ? +s.bevel.w : 0) + ring, 3));
+  const glowR = (s.glow && +s.glow.r && +s.glow.a) ? +s.glow.r : 0;
+  const sh = (s.shadow && +s.shadow.a) ? (+s.shadow.blur || 0) + Math.abs(+s.shadow.y || 0) : 0;
+  const O = Math.ceil(Math.max(glowR, sh));
+  const W = full ? 2 * O + 200 : 2 * (O + C) + MID, H = full ? 2 * O + 120 : 2 * (O + C) + MID;
+  return { full, C, O, W, H, ow, iw, gap };
+}
+const _skinCache = new Map();
+function bakeSkin(s) {
+  if (!s) return null;
+  const key = JSON.stringify(s);
+  if (_skinCache.has(key)) return _skinCache.get(key);
+  const mat = s.fill && s.fill.kind === 'material' && s.material && s.material.src ? img(s.material.src)
+    : (s.material && s.material.src && +s.material.mix > 0 ? img(s.material.src) : null);
+  if (mat && !mat.done) return null;                     // re-applied when the texture lands
+  const g = skinGeom(s);
+  const cv = document.createElement('canvas');
+  cv.width = g.W * K; cv.height = g.H * K;
+  const ctx = cv.getContext('2d');
+  ctx.scale(K, K);
+  const x = g.O, y = g.O, w = g.W - 2 * g.O, h = g.H - 2 * g.O, sz = +s.size || 0;
+  ctx.globalAlpha = Math.max(0, Math.min(1, s.opacity == null ? 1 : +s.opacity));
+  // shadow + glow under the shape, then cut the shape out so a see-through fill stays see-through
+  const drawUnder = (col, blur, oy) => { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * K; ctx.shadowOffsetY = oy * K; ctx.fillStyle = '#000'; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.fill(); ctx.restore(); };
+  if (s.shadow && +s.shadow.a > 0 && (+s.shadow.blur || +s.shadow.y)) drawUnder(`rgba(0,0,0,${+s.shadow.a})`, +s.shadow.blur || 0, +s.shadow.y || 0);
+  if (s.glow && +s.glow.r > 0 && +s.glow.a > 0) { drawUnder(withAlpha(s.glow.c, +s.glow.a), +s.glow.r, 0); drawUnder(withAlpha(s.glow.c, +s.glow.a * 0.6), +s.glow.r * 0.5, 0); }
+  ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.globalAlpha = 1; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.fill(); ctx.restore();
+  // the fill
+  ctx.save(); shapePath(ctx, s.shape, x, y, w, h, sz); ctx.clip();
+  const f = s.fill || {};
+  const fa = f.alpha == null ? 1 : +f.alpha;
+  ctx.globalAlpha *= fa;
+  if (f.kind === 'solid') { ctx.fillStyle = f.c1 || '#000'; ctx.fillRect(x, y, w, h); }
+  else if (f.kind === 'radial') {
+    const gr = ctx.createRadialGradient(x + w / 2, y + h * 0.4, 0, x + w / 2, y + h * 0.4, Math.max(w, h) * 0.7);
+    gr.addColorStop(0, f.c1 || '#000'); if (f.c2) gr.addColorStop(0.5, f.c2); gr.addColorStop(1, f.c3 || f.c1 || '#000');
+    ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
+  } else if (f.kind !== 'none' && f.kind !== 'material') {
+    const a = ((+f.angle || 180) - 90) * Math.PI / 180, cx = x + w / 2, cy = y + h / 2;
+    const L = Math.abs(w * Math.cos(a)) / 2 + Math.abs(h * Math.sin(a)) / 2;
+    const gr = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
+    gr.addColorStop(0, f.c1 || '#000'); if (f.c2) gr.addColorStop(0.5, f.c2); gr.addColorStop(1, f.c3 || f.c1 || '#000');
+    ctx.fillStyle = gr; ctx.fillRect(x, y, w, h);
+  }
+  if (mat && mat.ok) {
+    try {
+      const p = ctx.createPattern(mat.el, 'repeat');
+      const sc = Math.max(0.1, +s.material.scale || 1) / K;
+      if (p && p.setTransform && typeof DOMMatrix === 'function') p.setTransform(new DOMMatrix().scale(sc * K, sc * K));
+      ctx.save();
+      ctx.globalAlpha = (s.opacity == null ? 1 : +s.opacity) * (f.kind === 'material' ? 1 : Math.max(0, Math.min(1, +s.material.mix)));
+      ctx.globalCompositeOperation = f.kind === 'material' ? 'source-over' : (s.material.blend || 'overlay');
+      ctx.fillStyle = p; ctx.fillRect(x, y, w, h);
+      ctx.restore();
+      if (f.kind === 'material' && f.c1 && +s.material.mix > 0) {   // a material tinted by the first colour
+        ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, +s.material.mix)); ctx.globalCompositeOperation = s.material.blend || 'multiply';
+        ctx.fillStyle = f.c1; ctx.fillRect(x, y, w, h); ctx.restore();
+      }
+    } catch (e) {}
+  }
+  if (+s.gloss > 0) {
+    const gl = ctx.createLinearGradient(0, y, 0, y + h * 0.55);
+    gl.addColorStop(0, `rgba(255,255,255,${+s.gloss})`); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gl; ctx.fillRect(x, y, w, h * 0.55);
+  }
+  if (s.bevel && +s.bevel.w > 0 && (+s.bevel.light > 0 || +s.bevel.dark > 0)) {
+    const bv = ctx.createLinearGradient(x, y, x + Math.min(w, h), y + Math.min(w, h));
+    bv.addColorStop(0, `rgba(255,255,255,${+s.bevel.light})`); bv.addColorStop(0.5, 'rgba(0,0,0,0)'); bv.addColorStop(1, `rgba(0,0,0,${+s.bevel.dark})`);
+    const bv2 = ctx.createLinearGradient(x, y, x + w, y + h);
+    bv2.addColorStop(0, `rgba(255,255,255,${+s.bevel.light})`); bv2.addColorStop(0.5, 'rgba(0,0,0,0)'); bv2.addColorStop(1, `rgba(0,0,0,${+s.bevel.dark})`);
+    ctx.lineWidth = +s.bevel.w * 2 + g.ow * 2;
+    ctx.strokeStyle = g.full ? bv2 : bv2; shapePath(ctx, s.shape, x, y, w, h, sz); ctx.stroke();
+    // the corner slices keep the light/dark split on the long edges too
+    ctx.lineWidth = +s.bevel.w; ctx.strokeStyle = `rgba(255,255,255,${+s.bevel.light})`;
+    ctx.beginPath(); ctx.moveTo(x, y + g.ow + +s.bevel.w / 2); ctx.lineTo(x + w, y + g.ow + +s.bevel.w / 2); ctx.stroke();
+    ctx.strokeStyle = `rgba(0,0,0,${+s.bevel.dark})`;
+    ctx.beginPath(); ctx.moveTo(x, y + h - g.ow - +s.bevel.w / 2); ctx.lineTo(x + w, y + h - g.ow - +s.bevel.w / 2); ctx.stroke();
+  }
+  ctx.restore();
+  // the outlines
+  if (g.ow > 0) { const d = g.ow / 2; ctx.lineWidth = g.ow; ctx.strokeStyle = s.outline.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
+  if (g.iw > 0) { const d = g.ow + g.gap + g.iw / 2; ctx.lineWidth = g.iw; ctx.strokeStyle = s.inner.c; shapePath(ctx, s.shape, x + d, y + d, w - 2 * d, h - 2 * d, insetSize(s.shape, sz, d)); ctx.stroke(); }
+  let src = '';
+  try { src = cv.toDataURL('image/webp', 0.92); if (src.indexOf('data:image/webp') !== 0) src = cv.toDataURL('image/png'); } catch (e) { src = ''; }   // a texture without CORS taints the canvas
+  if (!src) { const r = { css: 'none', src: '', g }; _skinCache.set(key, r); return r; }
+  const css = g.full
+    ? `url("${src}") 50% fill / 50% / ${g.O}px stretch`
+    : `url("${src}") ${(g.O + g.C) * K} fill / ${g.O + g.C}px / ${g.O}px stretch`;
+  const r = { css, src, g, slice: g.full ? null : (g.O + g.C) * K };
+  _skinCache.set(key, r);
+  return r;
+}
+function sliceCss(sl) {
+  if (!sl || !sl.src) return 'none';
+  const sc = +sl.scale || 1, t = +sl.t || 0, r = +sl.r || 0, b = +sl.b || 0, l = +sl.l || 0, o = +sl.outset || 0;
+  return `url("${sl.src}") ${t} ${r} ${b} ${l}${sl.fill === false ? '' : ' fill'} / ${(t * sc).toFixed(1)}px ${(r * sc).toFixed(1)}px ${(b * sc).toFixed(1)}px ${(l * sc).toFixed(1)}px / ${o}px ${sl.repeat || 'stretch'}`;
+}
+/* the border-image for one role of a theme ('' = the role keeps the token look) */
+function roleSkin(t, role) {
+  if (!t || t.builtin || !t.skins) return '';
+  let s = t.skins[role];
+  if ((!s || !s.on) && (role === 'buttonSel' || role === 'chipOn')) {        // derive the "on" look from the base one
+    const base = t.skins[role === 'buttonSel' ? 'button' : 'chip'];
+    if (!base || !base.on) return '';
+    if (base.slice) return sliceCss(db.slices.find(x => x.id === base.slice));
+    s = clone(base); s.outline = { w: Math.max(2, +base.outline.w || 0), c: toHex(t.colors.sel) };
+    s.fill = Object.assign({}, s.fill, { c1: t.colors.rowSelTop, c2: '', c3: t.colors.rowSelBot });
+    s.glow = { r: 8, c: toHex(t.colors.sel), a: 0.45 };
+  }
+  if (!s || !s.on) return '';
+  if (s.slice) return sliceCss(db.slices.find(x => x.id === s.slice));
+  const b = bakeSkin(s);
+  return b ? b.css : null;            // null = still loading
+}
+
+/* ── THE SURFACES: every menu / HUD the maker can theme ──
+   native: the screen already reads the tokens (THE COLOUR PASS / THE HQ HUD PASS), so only
+   skins + text are added. Otherwise the generated THEME PASS paints its roles from the tokens.
+   def: 'theme' = follows the Settings theme by default; 'original' = keeps its own look until assigned.
+   Role lists are plain comma lists (no commas inside :not()), so the generator can prefix them. */
+const UIM_SURFACES = [
+  { id: 'battle', label: 'Battle HUD', hint: 'The command rig, scoreboard, match pill.', native: true, def: 'theme',
+    scope: '#reactHudRoot',
+    roles: {
+      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .ew-score-plate, .ew-meta-plate',
+      button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
+      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
+      chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
+    },
+    titles: '.hrlg-name, .hrlg-view-tab-text',
+    keep: '.hrlg-blade .hrlg-body { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; }' },
+  { id: 'battlePop', label: 'Battle pop-ups', hint: 'The inspect card, the weather tip, the centre banner.', native: false, def: 'theme',
+    scope: '#unitHoverHud, .ew-weather-tip, #announcementBanner',
+    roles: {
+      panel: '#unitHoverHud .ins-card, .ew-weather-tip, #announcementBanner',
+      head: '#unitHoverHud .ins-head, .ew-weather-tip-head',
+      chip: '#unitHoverHud .ins-status-pill, #unitHoverHud .ins-affin-pill',
+      ink: '#unitHoverHud .ins-name, #announcementBanner .banner-title, .ew-weather-tip',
+      mute: '#unitHoverHud .ins-sub, #announcementBanner .banner-sub, .ew-weather-tip-desc',
+    },
+    titles: '#unitHoverHud .ins-name, #announcementBanner .banner-title' },
+  { id: 'results', label: 'Victory / defeat', hint: 'The debrief after a battle.', native: true, def: 'theme',
+    scope: '#resultOverlay',
+    roles: {
+      panel: '#resultOverlay .vic-debrief, #resultOverlay .vic-bottom, #resultOverlay .vic-mvp-tag',
+      button: '#resultOverlay .vic-bottom button', buttonSel: '#resultOverlay .vic-bottom button:hover:not(:disabled)',
+      chip: '#resultOverlay .vic-tab', chipOn: '#resultOverlay .vic-tab.on',
+    },
+    titles: '#resultOverlay .vic-debrief-title, #resultOverlay .vic-card-cap' },
+  { id: 'explore', label: 'Exploration HUD', hint: 'D.O.O.R. HQ and the zones: the strip, prompts, cards, map, bag.', native: true, def: 'theme',
+    scope: '#hqPage',
+    roles: {
+      panel: '#hqPage .hq-strip-l, #hqPage .hq-prompt, #hqPage .hq-toast, #hqPage .hq-trick, #hqPage .hq-panel-card, #hqPage .hq-map-card, #hqPage .hq-map-key, #hqPage .hq-pause-frame, .hq-dock-tag',
+      head: '#hqPage .hq-panel-hd, #hqPage .hq-pause-head, #hqPage .hq-map-bar',
+      button: '#hqPage .hq-btn, #hqPage .hq-pause-cmd, #hqPage .hq-loc, #hqPage .hq-map-result',
+      buttonSel: '#hqPage .hq-btn:hover:not(:disabled), #hqPage .hq-pause-cmd:hover, #hqPage .hq-pause-cmd.cur, #hqPage .hq-loc.sel, #hqPage .hq-loc:hover, #hqPage .hq-map-result:hover',
+      chip: '#hqPage .hq-strip-stat, #hqPage .hq-strip-r .door-officer, #hqPage .hq-strip-r .ew-wallet, #hqPage .hq-pp-bagtab, #hqPage .hq-map-tab',
+      chipOn: '#hqPage .hq-pp-bagtab.on, #hqPage .hq-map-tab.on',
+    },
+    titles: '#hqPage .hq-strip-l b, #hqPage .hq-pause-title b, #hqPage .hq-panel-hd b',
+    keep: '#hqPage .hq-panel.hq-panel-say .hq-panel-card { border-image: none !important; }' },
+  { id: 'pause', label: 'Battle pause menu', hint: 'ESC / P during a battle.', native: true, def: 'theme',
+    scope: '#pauseOverlay',
+    roles: {
+      panel: '#pauseOverlay .pause-card.bp-frame, #pauseOverlay .bp-unit',
+      head: '#pauseOverlay .hq-pause-head',
+      button: '#pauseOverlay .hq-pause-cmd', buttonSel: '#pauseOverlay .hq-pause-cmd:hover, #pauseOverlay .hq-pause-cmd.cur',
+      chip: '#pauseOverlay .bp-subtab', chipOn: '#pauseOverlay .bp-subtab.on',
+    },
+    titles: '#pauseOverlay .hq-pause-title b, #pauseOverlay .bp-hd b' },
+  { id: 'squad', label: 'Squad desk', hint: 'Pick a saved team before VS CPU / Online.', native: true, def: 'theme',
+    scope: '#squadDeskPage',
+    roles: {
+      panel: '#squadDeskPage .sq-head, #squadDeskPage .sq-plate, #squadDeskPage .sq-drop, #squadDeskPage .sq-pick-panel',
+      button: '#squadDeskPage .sq-ghost, #squadDeskPage .sq-cta, #squadDeskPage .sq-drop-row, #squadDeskPage .sq-back',
+      buttonSel: '#squadDeskPage .sq-ghost:hover:not(:disabled), #squadDeskPage .sq-cta:hover:not(:disabled), #squadDeskPage .sq-drop-row:hover, #squadDeskPage .sq-drop-row.is-focus, #squadDeskPage .sq-back:hover',
+      chip: '#squadDeskPage .sq-count, #squadDeskPage .sq-tile', chipOn: '#squadDeskPage .sq-tile.is-on',
+    },
+    titles: '#squadDeskPage .sq-title, #squadDeskPage .sq-plate-name, #squadDeskPage .sq-pick-title' },
+  { id: 'match', label: 'Match select', hint: 'The terminal: mode, site, rules, confirm.', native: false, def: 'theme',
+    scope: '.ms-crt:not(.ms-crt-forge)', crt: '.ms-crt:not(.ms-crt-forge)',
+    roles: {
+      head: '.ms-crt:not(.ms-crt-forge) .ms-tty-head',
+      well: '.ms-crt:not(.ms-crt-forge) .ms-tty-band, .ms-crt:not(.ms-crt-forge) .ms-tty-filebox, .ms-crt:not(.ms-crt-forge) .ms-tty-form, .ms-crt:not(.ms-crt-forge) .ms-tty-preview, .ms-crt:not(.ms-crt-forge) .ms-tty-ro, .ms-crt:not(.ms-crt-forge) .ms-tty-step, .ms-crt:not(.ms-crt-forge) .ms-tty-meta span, .ms-crt:not(.ms-crt-forge) .ms-tty-assign, .ms-crt:not(.ms-crt-forge) .ms-tty-input',
+      button: '.ms-crt:not(.ms-crt-forge) .ms-tty-row, .ms-crt:not(.ms-crt-forge) .ms-tty-card, .ms-crt:not(.ms-crt-forge) .ms-tty-btn',
+      buttonSel: '.ms-crt:not(.ms-crt-forge) .ms-tty-row.sel, .ms-crt:not(.ms-crt-forge) .ms-tty-row:hover, .ms-crt:not(.ms-crt-forge) .ms-tty-card.sel, .ms-crt:not(.ms-crt-forge) .ms-tty-card:hover, .ms-crt:not(.ms-crt-forge) .ms-tty-btn:hover:not(:disabled)',
+      chip: '.ms-crt:not(.ms-crt-forge) .ms-tty-chip, .ms-crt:not(.ms-crt-forge) .ms-tty-seg > div',
+      chipOn: '.ms-crt:not(.ms-crt-forge) .ms-tty-chip.on, .ms-crt:not(.ms-crt-forge) .ms-tty-seg > div.on, .ms-crt:not(.ms-crt-forge) .ms-tty-chip:hover:not(:disabled)',
+      ink: '.ms-crt:not(.ms-crt-forge) .ms-tty-title h1, .ms-crt:not(.ms-crt-forge) .ms-tty-assign h2, .ms-crt:not(.ms-crt-forge) .ms-tty-foot .ms-tty-sum b, .ms-crt:not(.ms-crt-forge) .ms-tty-p',
+      mute: '.ms-crt:not(.ms-crt-forge) .ms-tty-kv, .ms-crt:not(.ms-crt-forge) .ms-tty-row p, .ms-crt:not(.ms-crt-forge) .ms-tty-kv b',
+    },
+    titles: '.ms-crt:not(.ms-crt-forge) .ms-tty-title h1, .ms-crt:not(.ms-crt-forge) .ms-tty-assign h2, .ms-crt:not(.ms-crt-forge) .ms-tty-foot .ms-tty-sum b',
+    extra: '.ms-crt:not(.ms-crt-forge) .ms-tty-row.sel { border-left: 3px solid var(--ew-sel) !important; } .ms-crt:not(.ms-crt-forge) .ms-tty-btn.primary { border-color: var(--uim-good) !important; color: var(--uim-good) !important; } .ms-crt:not(.ms-crt-forge) .ms-tty-btn.danger { color: var(--uim-bad) !important; }' },
+  { id: 'forge', label: 'Party builder (forge)', hint: 'Roster, techniques, gear, the saved teams.', native: false, def: 'theme',
+    scope: '.ms-crt-forge', crt: '.ms-crt-forge',
+    roles: {
+      panel: '.ms-crt-forge .pb-window',
+      head: '.ms-crt-forge .pb-head, .ms-crt-forge .pb-zone-head, .ms-crt-forge .pb-window-head',
+      well: '.ms-crt-forge .pb-zone, .ms-crt-forge .pb-party, .ms-crt-forge .pb-technique, .ms-crt-forge .pb-upgrades',
+      button: '.ms-crt-forge .pb-menu-row, .ms-crt-forge .pb-verb, .ms-crt-forge .pb-foot .ms-tty-btn',
+      buttonSel: '.ms-crt-forge .pb-menu-row.on, .ms-crt-forge .pb-menu-row:hover, .ms-crt-forge .pb-verb:hover:not(:disabled), .ms-crt-forge .pb-foot .ms-tty-btn:hover:not(:disabled)',
+      chip: '.ms-crt-forge .pb-tab, .ms-crt-forge .pb-pill, .ms-crt-forge .pb-pill-btn',
+      chipOn: '.ms-crt-forge .pb-tab.on, .ms-crt-forge .pb-pill.on, .ms-crt-forge .pb-tab:hover',
+      input: '.ms-crt-forge .pb-pill-input, .ms-crt-forge .pb-gear-input, .ms-crt-forge .pb-gear-select, .ms-crt-forge .pb-foot-input',
+    },
+    titles: '.ms-crt-forge .pb-window-head' },
+  { id: 'menu', label: 'Main menu + play hub', hint: 'The title menu and the Online hub.', native: false, def: 'original',
+    scope: '#mainMenuPage, #playHubPage',
+    roles: {
+      button: '.void-menu .mm-btn', buttonSel: '.void-menu .mm-btn:hover',
+      ink: '.void-menu .mm-logo, .void-menu .mm-btn .mm-label', mute: '.void-menu .mm-sub, .void-menu .mm-btn .mm-desc-text',
+      hide: '.void-menu .mm-rule',
+    },
+    titles: '.void-menu .mm-logo',
+    extra: '.void-menu .mm-btn { padding: 8px 16px !important; margin: 3px 0 !important; } .void-menu .mm-btn:hover .mm-label { color: var(--ew-sel) !important; text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft) !important; }' },
+  { id: 'settings', label: 'Settings', hint: 'The Settings page and every settings row in the pause menus.', native: false, def: 'theme',
+    scope: '#settingsPage, #pauseOverlay .pm-settings-section, #hqPage .hq-pause-settings',
+    roles: {
+      head: '#settingsPage .ms-top-bar, .pm-set-group-title',
+      well: '.pm-set-group, .pm-keybind',
+      button: '.pm-set-btn, #settingsPage .ms-back-btn, .pm-collapse-header', buttonSel: '.pm-set-btn:hover, .pm-set-btn.active, #settingsPage .ms-back-btn:hover',
+      chip: '.pm-seg-group > .pm-seg-btn', chipOn: '.pm-seg-group > .pm-seg-btn.active, .pm-seg-group > .pm-seg-btn:hover',
+      input: '.pm-nametag-select',
+      ink: '#settingsPage .ms-title-text, .pm-setting-label, .pm-toggle-label, .pm-vol-label', mute: '.pm-toggle-hint, .pm-vol-val',
+    },
+    titles: '#settingsPage .ms-title-text, .pm-set-group-title',
+    extra: '.pm-set-group-title { padding: 5px 10px !important; margin-bottom: 8px !important; } .pm-vol-slider { accent-color: var(--ew-sel) !important; } .pm-toggle input { accent-color: var(--ew-sel) !important; }' },
+  { id: 'shell', label: 'Codex, shop, library, tutorial', hint: 'The dossier pages.', native: false, def: 'theme',
+    scope: '#codexPage, #shopPage, #spellLibraryPage, #raceEditorPage, #tutorialPage',
+    roles: {
+      head: '.codex-container .ms-top-bar, .cdx-section-header',
+      well: '.cdx-hero, .cdx-dossier, .cdx-section, .shop-featured, .shop-supplies, .tut-card',
+      button: '.codex-container .ms-back-btn, .cdx-list-item, .cdx-btn, .shop-card, .tut-tape',
+      buttonSel: '.codex-container .ms-back-btn:hover, .cdx-list-item.selected, .cdx-list-item:hover, .cdx-btn:hover, .shop-card.selected, .shop-card:hover, .tut-tape:hover',
+      chip: '.cdx-filter-btn, .shop-tab, .shop-filter-btn, .slb2-tab', chipOn: '.cdx-filter-btn.active, .shop-tab.active, .shop-filter-btn.active, .slb2-tab.on',
+      input: '.cdx-search, .slb2-search',
+      ink: '.codex-container .ms-title-text, .door-hdr-text',
+    },
+    titles: '.codex-container .ms-title-text, .door-hdr-text' },
+  { id: 'lobby', label: 'Online lobby', hint: 'Quick Play, Friendly Match, room codes.', native: false, def: 'theme',
+    scope: '#lobbyPage',
+    roles: {
+      panel: '#lobbyPage .mode-card.lobby-inner',
+      well: '#lobbyPage .lobby-code-display',
+      button: '#lobbyPage .lobby-actions button, #lobbyPage .lobby-back, #lobbyPage .lobby-join-row button',
+      buttonSel: '#lobbyPage .lobby-actions button:hover, #lobbyPage .lobby-back:hover, #lobbyPage .lobby-join-row button:hover',
+      chip: '#lobbyPage .ranked-size-btn', chipOn: '#lobbyPage .ranked-size-btn.active, #lobbyPage .ranked-size-btn:hover',
+      input: '#lobbyPage .lobby-join-row input, #friendlyMapSelect',
+      ink: '#lobbyPage .lobby-title', mute: '#lobbyPage .lobby-subtitle, #lobbyPage .lobby-kicker, #lobbyPage .lobby-config-label',
+    },
+    titles: '#lobbyPage .lobby-title' },
+  { id: 'dialog', label: 'Dialogs', hint: 'Pop-up questions, pickups, the party picker.', native: false, def: 'theme',
+    scope: '#uiDialogOverlay',
+    roles: {
+      panel: '#uiDialogOverlay .ui-dialog-card',
+      well: '#uiDialogOverlay .ui-dialog-panel',
+      button: '#uiDialogOverlay .ui-dialog-actions button, #uiDialogOverlay .pickup-btn, #uiDialogOverlay .md-party-row',
+      buttonSel: '#uiDialogOverlay .ui-dialog-actions button:hover, #uiDialogOverlay .pickup-btn:hover, #uiDialogOverlay .md-party-row.on, #uiDialogOverlay .md-party-row:hover',
+      ink: '#uiDialogOverlay .ui-dialog-title, #uiDialogOverlay .pickup-title', mute: '#uiDialogOverlay .ui-dialog-subtitle, #uiDialogOverlay .ui-dialog-kicker',
+      hide: '#uiDialogOverlay .ui-dialog-card::before',
+    },
+    titles: '#uiDialogOverlay .ui-dialog-title, #uiDialogOverlay .pickup-title' },
+  { id: 'loading', label: 'Loading screens', hint: 'The tip box and the bar while a battle or area loads.', native: false, def: 'original',
+    scope: '.ls-overlay, #hqLoad',
+    roles: {
+      panel: '.ls-overlay .ls-hint, #hqLoad .hq-load-hint',
+      ink: '.ls-overlay .ls-title, #hqLoad .hq-load-card b', mute: '.ls-overlay .ls-hint-text, .ls-overlay .ls-status',
+    },
+    titles: '.ls-overlay .ls-title, #hqLoad .hq-load-card b',
+    extra: '.ls-overlay .ls-bar-fill, #hqLoad .hq-load-fill { background: var(--ew-sel) !important; box-shadow: 0 0 10px var(--ew-sel-soft) !important; }' },
+  { id: 'editor', label: 'World editor', hint: 'The editor\'s own bars and panels.', native: false, def: 'original',
+    scope: '#edRoot',
+    roles: {
+      panel: '#edRoot .ed-top, #edRoot .ed-left, #edRoot .ed-right, #edRoot .ed-status, #edRoot .ed-menu, #edRoot .ed-card',
+      button: '#edRoot .ed-btn, #edRoot .ed-mi, #edRoot .ed-row', buttonSel: '#edRoot .ed-btn:hover, #edRoot .ed-btn.on, #edRoot .ed-mi:hover, #edRoot .ed-row:hover, #edRoot .ed-row.on',
+      chip: '#edRoot .ed-tab', chipOn: '#edRoot .ed-tab.on, #edRoot .ed-tab:hover',
+      input: '#edRoot select, #edRoot input:not([type=range]):not([type=checkbox]):not([type=color]), #edRoot textarea',
+      ink: '#edRoot .ed-brand, #edRoot .ed-hd',
+    },
+    titles: '#edRoot .ed-brand' },
+];
+const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
+  roles: { panel: '#uimPreview .uimp-panel', head: '#uimPreview .uimp-head', well: '#uimPreview .uimp-well', button: '#uimPreview .uimp-btn',
+    buttonSel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', chip: '#uimPreview .uimp-chip', chipOn: '#uimPreview .uimp-chip.on',
+    input: '#uimPreview .uimp-input', ink: '#uimPreview .uimp-ink', mute: '#uimPreview .uimp-mute', dim: '#uimPreview .uimp-dim' },
+  titles: '#uimPreview .uimp-title' };
+
+/* ── the generator ── */
+function parts(list) { return String(list || '').split(',').map(s => s.trim()).filter(Boolean); }
+function pre(list) { return parts(list).map(s => ':root:root ' + s).join(', '); }
+function preRules(txt) { return String(txt || '').replace(/(^|})\s*([^{}]+)\{/g, (m, a, sel) => `${a}\n${pre(sel)} {`); }
+const PAINT = {
+  panel: 'background: var(--ew-plate-scan), var(--ew-plate-bg) !important; border: 1px solid var(--ew-plate-edge) !important; border-radius: 10px !important; color: var(--ew-ink) !important; box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 var(--ew-plate-lip), var(--ew-drop) !important;',
+  head: 'background: var(--ew-head-bg) !important; color: var(--ew-head-ink) !important; border-color: var(--ew-plate-seam) !important; box-shadow: inset 0 1px 0 var(--ew-plate-lip) !important; text-shadow: var(--ew-tshadow) !important;',
+  well: 'background: var(--uim-well, rgba(0,0,0,0.22)) !important; border: 1px solid var(--ew-hair) !important; border-radius: 8px !important; color: var(--ew-ink) !important; box-shadow: inset 0 1px 0 var(--ew-plate-lip) !important;',
+  button: 'background: var(--ew-row-bg) !important; border: 1px solid var(--ew-row-edge) !important; border-radius: 7px !important; color: var(--ew-ink) !important; box-shadow: inset 0 1px 0 var(--ew-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.4) !important; text-shadow: var(--ew-tshadow) !important;',
+  buttonSel: 'background: var(--ew-row-sel-bg) !important; border-color: var(--ew-sel) !important; color: var(--ew-sel) !important; box-shadow: 0 0 14px var(--ew-sel-faint), inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.4) !important;',
+  chip: 'background: var(--ew-row-bg) !important; border: 1px solid var(--ew-row-edge) !important; border-radius: 999px !important; color: var(--ew-ink-mute) !important; box-shadow: inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.4) !important; text-shadow: var(--ew-tshadow) !important;',
+  chipOn: 'background: var(--ew-row-sel-bg) !important; border-color: var(--ew-sel) !important; color: var(--ew-sel) !important; box-shadow: 0 0 10px var(--ew-sel-faint), inset 0 1px 0 var(--ew-row-lip) !important;',
+  input: 'background: var(--uim-well, rgba(0,0,0,0.35)) !important; border: 1px solid var(--ew-row-edge) !important; border-radius: 6px !important; color: var(--ew-ink) !important;',
+  ink: 'color: var(--ew-ink) !important;', mute: 'color: var(--ew-ink-mute) !important;', dim: 'color: var(--ew-ink-dim) !important;',
+  hide: 'display: none !important;',
+};
+const ROLE_ORDER = ['panel', 'head', 'well', 'button', 'buttonSel', 'chip', 'chipOn', 'input', 'ink', 'mute', 'dim', 'hide'];
+function crtPass(c) {
+  return `${pre(c)} { --ph: var(--ew-ink); --ph-dim: var(--ew-ink-mute); --ph-faint: var(--ew-ink-dim); --ph-gold: var(--ew-sel); --ph-teal: var(--uim-accent); --ph-green: var(--uim-good); --ph-red: var(--uim-bad); --ph-line: var(--ew-hair); --ph-line-hi: var(--ew-sel-soft); --ph-glow: none; }
+${pre(c + ' .ms-crt-bezel')} { background: rgba(0,0,0,0.35) !important; box-shadow: none !important; }
+${pre([c + ' .ms-crt-bezel::before', c + ' .ms-crt-scan', c + ' .ms-crt-glare', c + ' .ms-crt-label', c + ' .ms-crt-brand', c + ' .ms-crt-led', c + ' .ms-tty-cursor'].join(', '))} { display: none !important; }
+${pre(c + ' .ms-crt-glass')} { ${PAINT.panel} }
+${pre(c + ' .ms-crt-screen')} { animation: none !important; text-shadow: var(--ew-tshadow) !important; }
+`;
+}
+function surfaceCss(S, T, tid, gid) {
+  let css = '';
+  if (tid !== gid) css += `${pre(S.scope)} { ${tokenBlock(T)} }\n`;
+  if (!S.native) {
+    if (S.crt) css += crtPass(S.crt);
+    ROLE_ORDER.forEach(r => { if (S.roles[r]) css += `${pre(S.roles[r])} { ${PAINT[r]} }\n`; });
+    if (S.extra) css += preRules(S.extra) + '\n';
+  }
+  // the skins
+  let pending = false;
+  ROLES.forEach(([r]) => {
+    if (!S.roles[r]) return;
+    const bi = roleSkin(T, r);
+    if (bi === null) { pending = true; return; }
+    if (!bi) return;
+    css += `${pre(S.roles[r])} { border-image: ${skinVar(bi)} !important; background: none !important; box-shadow: none !important; }\n`;
+    if (r === 'buttonSel' || r === 'chipOn') css += `${pre(S.roles[r])} { color: var(--ew-sel) !important; }\n`;
+  });
+  if (S.keep && T && !T.builtin) css += preRules(S.keep) + '\n';
+  // the text
+  const tx = (T && !T.builtin && T.text) || null;
+  if (tx) {
+    if (tx.font) css += `${pre(parts(S.scope).map(s => s + ', ' + s + ' *').join(', '))} { font-family: ${tx.font} !important; }\n`;
+    const heads = [S.roles.head, S.roles.button, S.roles.chip].filter(Boolean).join(', ');
+    if (tx.titleFont && (S.titles || S.roles.head)) css += `${pre([S.titles, S.roles.head].filter(Boolean).join(', '))} { font-family: ${tx.titleFont} !important; }\n`;
+    if ((tx.caps || +tx.track) && heads) css += `${pre(heads)} { ${tx.caps ? 'text-transform: uppercase !important;' : ''} ${+tx.track ? `letter-spacing: ${(+tx.track).toFixed(2)}em !important;` : ''} }\n`;
+  }
+  return { css, pending };
+}
+
+/* ── apply: one stylesheet for every surface ── */
+function globalId() { let v = ''; try { v = localStorage.getItem('ew_hud_theme') || ''; } catch (e) {} return themeById(v) ? v : 'crystal'; }
+function effectiveId(S) {
+  const a = db.assign[S.id];
+  if (a === 'original') return S.native ? globalId() : 'original';
+  if (a && a !== 'follow' && themeById(a)) return a;
+  if (!a && S.def === 'original') return 'original';
+  return globalId();
+}
+let _applyT = 0, _previewTheme = null, _skinVars = new Map();
+/* every baked image is written ONCE as a custom property on :root; the rules point at it */
+function skinVar(bi) { let n = _skinVars.get(bi); if (!n) { n = '--uim-sk' + _skinVars.size; _skinVars.set(bi, n); } return `var(${n})`; }
+function scheduleApply() { if (_applyT) return; _applyT = setTimeout(() => { _applyT = 0; apply(); }, 30); }
+function apply() {
+  const gid = globalId(), G = themeById(gid);
+  _skinVars = new Map();
+  let css = '';
+  let pending = false;
+  UIM_SURFACES.forEach(S => {
+    const tid = effectiveId(S);
+    if (tid === 'original') return;
+    const r = surfaceCss(S, themeById(tid), tid, gid);
+    css += r.css; pending = pending || r.pending;
+  });
+  if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
+  let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
+  css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n` + css;
+  let el = document.getElementById('ew-ui-maker');
+  if (!el) { el = document.createElement('style'); el.id = 'ew-ui-maker'; }
+  if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
+  if (el.textContent !== css) el.textContent = css;
+  return !pending;
+}
+
+/* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
+const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '' };
+const UIM_CSS = `
+.uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
+.uim-root * { box-sizing: border-box; }
+.uim-top { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: #14161c; border-bottom: 1px solid #2a2e38; }
+.uim-top b { font-size: 14px; letter-spacing: 0.24em; color: #fff; }
+.uim-top span { color: #8a93a6; font-size: 11px; flex: 1; }
+.uim-body { display: grid; grid-template-columns: 230px minmax(0, 1fr) 380px; min-height: 0; }
+.uim-col { min-height: 0; overflow: auto; padding: 10px; border-right: 1px solid #22252e; }
+.uim-col:last-child { border-right: none; border-left: 1px solid #22252e; background: #101217; }
+.uim-h { margin: 12px 0 6px; font-size: 10px; letter-spacing: 0.22em; color: #7d8699; text-transform: uppercase; }
+.uim-h:first-child { margin-top: 0; }
+.uim-trow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 3px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.uim-trow:hover { background: #191c24; }
+.uim-trow.on { border-color: #6fb4ff; background: #16223a; }
+.uim-trow i { width: 26px; height: 16px; flex: none; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); }
+.uim-trow em { margin-left: auto; font-style: normal; font-size: 9px; color: #6fb4ff; letter-spacing: 0.1em; }
+.uim-btn { font: inherit; font-size: 11px; color: #dfe3ea; background: #1c2029; border: 1px solid #333949; border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+.uim-btn:hover { border-color: #6fb4ff; color: #fff; }
+.uim-btn.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
+.uim-btn.pri { background: #1d4f8a; border-color: #4b8fe0; color: #fff; }
+.uim-btn.bad { color: #ff9c8f; }
+.uim-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.uim-btns { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.uim-tabs { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 10px; }
+.uim-f { display: grid; grid-template-columns: 104px 1fr; align-items: center; gap: 4px 8px; margin: 5px 0; }
+.uim-f > label { color: #9aa3b5; font-size: 11px; }
+.uim-f > div { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.uim-f input[type=range] { flex: 1; min-width: 0; accent-color: #6fb4ff; }
+.uim-f input[type=color] { width: 34px; height: 22px; padding: 0; border: 1px solid #333949; background: none; cursor: pointer; }
+.uim-f output { min-width: 34px; text-align: right; color: #c8cfdc; font-size: 11px; }
+.uim-f select, .uim-in, .uim-io { font: inherit; font-size: 11px; color: #dfe3ea; background: #0c0e13; border: 1px solid #333949; border-radius: 5px; padding: 4px 6px; min-width: 0; width: 100%; }
+.uim-io { height: 120px; resize: vertical; }
+.uim-shapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.uim-shape { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px; font: inherit; font-size: 9px; color: #b9c1d0; background: #161920; border: 1px solid #2c313d; border-radius: 6px; cursor: pointer; }
+.uim-shape canvas { width: 40px; height: 24px; }
+.uim-shape.on { border-color: #6fb4ff; background: #1d3456; color: #fff; }
+.uim-note { color: #7d8699; font-size: 10.5px; margin: 6px 0; }
+.uim-ro { padding: 8px; border: 1px dashed #4b8fe0; border-radius: 6px; color: #b9c9e8; margin-bottom: 10px; }
+.uim-sl { display: flex; align-items: center; gap: 8px; padding: 5px; border: 1px solid #2c313d; border-radius: 6px; margin-bottom: 4px; cursor: pointer; }
+.uim-sl.on { border-color: #6fb4ff; background: #16223a; }
+.uim-sl img { width: 40px; height: 28px; object-fit: contain; background: #000; }
+.uim-slice-view { position: relative; margin: 8px 0; background: repeating-conic-gradient(#222 0 25%, #2c2c2c 0 50%) 0 0 / 14px 14px; text-align: center; }
+.uim-slice-view canvas { max-width: 100%; display: block; margin: 0 auto; }
+.uim-slice-try { margin: 8px 0; min-width: 80px; min-height: 40px; width: 220px; height: 90px; resize: both; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #fff; }
+.uim-stage { position: relative; min-height: 100%; padding: 26px; display: flex; flex-wrap: wrap; gap: 22px; align-content: flex-start; align-items: flex-start; justify-content: center; }
+.uim-stage.bd-dark { background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 75%); }
+.uim-stage.bd-light { background: linear-gradient(#cfd6e2, #9aa6b8); }
+.uim-stage.bd-grass { background: #2a3a20 url(${TEX}grass_2.png) 0 0 / 256px; }
+.uim-stage.bd-stone { background: #333 url(${TEX}rocks_1.png) 0 0 / 192px; }
+.uim-stage.bd-wood { background: #3a2a1a url(${TEX}wood_planks.png) 0 0 / 192px; }
+#uimPreview .uimp-panel { width: 300px; display: flex; flex-direction: column; overflow: hidden; }
+#uimPreview .uimp-head { padding: 7px 14px; font-size: 13px; letter-spacing: 0.16em; display: flex; justify-content: space-between; }
+#uimPreview .uimp-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+#uimPreview .uimp-btn { padding: 8px 12px; letter-spacing: 0.12em; cursor: pointer; display: flex; justify-content: space-between; }
+#uimPreview .uimp-btn.off { opacity: 0.45; cursor: default; }
+#uimPreview .uimp-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+#uimPreview .uimp-chip { padding: 4px 12px; font-size: 10px; letter-spacing: 0.14em; cursor: pointer; }
+#uimPreview .uimp-well { padding: 8px 10px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; }
+#uimPreview .uimp-input { padding: 5px 8px; font: inherit; font-size: 11px; }
+#uimPreview .uimp-title { font-size: 15px; }
+#uimPreview .uimp-small { width: 240px; }
+#uimPreview .uimp-row2 { display: flex; gap: 8px; }
+#uimPreview .uimp-row2 > * { flex: 1; justify-content: center; }
+.uim-assign { display: grid; grid-template-columns: 1fr 150px; gap: 4px 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #1e2129; }
+.uim-assign b { color: #e4e8ef; font-weight: 500; }
+.uim-assign small { display: block; color: #7d8699; font-size: 10px; }
+@media (max-width: 1000px) { .uim-body { grid-template-columns: 1fr; grid-template-rows: auto 340px auto; overflow: auto; } .uim-col { border: none; overflow: visible; } }
+`;
+function curTheme() { return themeById(UI.themeId) || themeById(globalId()); }
+function editable(t) { return !!(t && !t.builtin && !t.preset); }
+function getPath(o, p) { return p.split('.').reduce((a, k) => (a == null ? a : a[k]), o); }
+function setPath(o, p, v) { const ks = p.split('.'); const last = ks.pop(); const tgt = ks.reduce((a, k) => (a[k] == null ? (a[k] = {}) : a[k]), o); tgt[last] = v; }
+function swatch(t) {
+  const tk = themeTokens(t);
+  return `background:${tk['plate-bg']};border-color:${tk['plate-edge']};box-shadow:inset 0 -4px 0 ${tk['sel']}`;
+}
+function shapeIcon(shape) {
+  const cv = document.createElement('canvas'); cv.width = 80; cv.height = 48;
+  const ctx = cv.getContext('2d'); ctx.scale(2, 2);
+  ctx.fillStyle = '#2a4f86'; ctx.strokeStyle = '#cfe2ff'; ctx.lineWidth = 1.5;
+  shapePath(ctx, shape, 3, 3, 34, 18, 7); ctx.fill(); ctx.stroke();
+  return cv;
+}
+/* form fields */
+function fRange(label, path, min, max, step, val) {
+  return `<div class="uim-f"><label>${label}</label><div><input type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-path="${path}" data-num="1"><output>${(+val).toFixed(step < 1 ? 2 : 0)}</output></div></div>`;
+}
+function fColor(label, path, val, withA) {
+  const a = alphaOf(val);
+  return `<div class="uim-f"><label>${label}</label><div><input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity"><output>${(+a).toFixed(2)}</output>` : ''}</div></div>`;
+}
+function fSelect(label, path, opts, val) {
+  return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>`;
+}
+function fSeg(label, path, opts, val) {
+  return `<div class="uim-f"><label>${label}</label><div style="flex-wrap:wrap">${opts.map(([v, l]) => `<button class="uim-btn${String(v) === String(val) ? ' on' : ''}" data-set="${path}" data-val="${esc(v)}">${esc(l)}</button>`).join('')}</div></div>`;
+}
+function fCheck(label, path, val) {
+  return `<div class="uim-f"><label>${label}</label><div><input type="checkbox" data-path="${path}" data-bool="1"${val ? ' checked' : ''}></div></div>`;
+}
+
+function renderList() {
+  const row = t => `<div class="uim-trow${t.id === UI.themeId ? ' on' : ''}" data-theme="${esc(t.id)}"><i style="${swatch(t)}"></i><span>${esc(t.label)}</span>${t.id === globalId() ? '<em>SETTINGS</em>' : ''}</div>`;
+  const all = allThemes();
+  return `<div class="uim-h">Built-in</div>${all.filter(t => t.builtin).map(row).join('')}
+    <div class="uim-h">Presets</div>${all.filter(t => t.preset).map(row).join('')}
+    <div class="uim-h">My themes</div>${db.themes.map(row).join('') || '<div class="uim-note">None yet. NEW makes one from the theme you have open.</div>'}
+    <div class="uim-btns">
+      <button class="uim-btn pri" data-act="new">New</button>
+      <button class="uim-btn" data-act="dup">Duplicate</button>
+      <button class="uim-btn bad" data-act="del"${editable(curTheme()) ? '' : ' disabled'}>Delete</button>
+    </div>
+    <div class="uim-btns">
+      <button class="uim-btn" data-act="global">Use in Settings</button>
+      <button class="uim-btn" data-act="export">Export</button>
+      <button class="uim-btn" data-act="import">Import</button>
+    </div>
+    ${UI.io ? `<textarea class="uim-io" id="uimIo" placeholder="Paste a theme here, then IMPORT again.">${esc(UI.io === 'import' ? '' : UI.io)}</textarea>${UI.io === 'import' ? '<div class="uim-btns"><button class="uim-btn pri" data-act="doimport">Import this</button></div>' : '<div class="uim-note">Copy this text to keep or share the theme.</div>'}` : ''}`;
+}
+function renderPreview() {
+  const bds = [['dark', 'Dark'], ['light', 'Light'], ['grass', 'Grass'], ['stone', 'Stone'], ['wood', 'Wood']];
+  return `<div class="uim-btns" style="justify-content:center;margin:0 0 8px">${bds.map(([v, l]) => `<button class="uim-btn${UI.backdrop === v ? ' on' : ''}" data-bd="${v}">${l}</button>`).join('')}</div>
+  <div id="uimPreview" class="uim-stage bd-${UI.backdrop}">
+    <div class="uimp-panel">
+      <div class="uimp-head"><span class="uimp-title">VESSEL</span><span>LV 12</span></div>
+      <div class="uimp-body">
+        <div class="uimp-ink">The ink: names and numbers</div>
+        <div class="uimp-mute">The muted ink: sub-lines</div>
+        <div class="uimp-dim">The dim ink: notes</div>
+        <div class="uimp-btn"><span>MOVE</span><span>⇢</span></div>
+        <div class="uimp-btn sel"><span>ATTACK</span><span>⚔</span></div>
+        <div class="uimp-btn"><span>ABILITIES</span><span>▲</span></div>
+        <div class="uimp-btn off"><span>ITEMS</span><span>✕</span></div>
+        <div class="uimp-chips"><span class="uimp-chip on">ON</span><span class="uimp-chip">OFF</span><span class="uimp-chip">AUTO</span></div>
+        <div class="uimp-well"><span class="uimp-mute">A well inside a window</span><input class="uimp-input" value="Text field"></div>
+      </div>
+    </div>
+    <div class="uimp-panel uimp-small">
+      <div class="uimp-head"><span class="uimp-title">CONFIRM</span></div>
+      <div class="uimp-body">
+        <div class="uimp-ink">Start the match?</div>
+        <div class="uimp-row2"><div class="uimp-btn sel">YES</div><div class="uimp-btn">NO</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+function skinForm(t, role) {
+  const s = t.skins[role], P = `skins.${role}`;
+  const sel = role === 'buttonSel' || role === 'chipOn';
+  let h = `<div class="uim-f"><label>Custom skin</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
+  if (!s.on) return h;
+  h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
+  if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
+  h += `<div class="uim-h">Shape</div><div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`;
+  h += fRange(FULL_SHAPES[s.shape] ? 'Size (n/a)' : 'Corner size', `${P}.size`, 0, 40, 1, s.size);
+  h += `<div class="uim-h">Fill</div>` + fSeg('Kind', `${P}.fill.kind`, [['solid', 'Solid'], ['gradient', 'Gradient'], ['radial', 'Radial'], ['material', 'Material'], ['none', 'None']], s.fill.kind);
+  if (s.fill.kind !== 'none') {
+    h += fColor(s.fill.kind === 'solid' || s.fill.kind === 'material' ? 'Colour' : 'Top / centre', `${P}.fill.c1`, s.fill.c1, true);
+    if (s.fill.kind === 'gradient' || s.fill.kind === 'radial') {
+      h += `<div class="uim-f"><label>Middle</label><div><input type="checkbox" data-path="${P}.fill.c2" data-mid="1" data-re="1"${s.fill.c2 ? ' checked' : ''}>${s.fill.c2 ? `<input type="color" value="${toHex(s.fill.c2)}" data-path="${P}.fill.c2" data-kind="rgb"><input type="range" min="0" max="1" step="0.01" value="${alphaOf(s.fill.c2)}" data-path="${P}.fill.c2" data-kind="alpha"><output>${alphaOf(s.fill.c2).toFixed(2)}</output>` : ''}</div></div>`;
+      h += fColor('Bottom / edge', `${P}.fill.c3`, s.fill.c3, true);
+    }
+    if (s.fill.kind === 'gradient') h += fRange('Angle', `${P}.fill.angle`, 0, 360, 5, s.fill.angle == null ? 180 : s.fill.angle);
+    h += fRange('Fill opacity', `${P}.fill.alpha`, 0, 1, 0.01, s.fill.alpha == null ? 1 : s.fill.alpha);
+  }
+  h += `<div class="uim-h">Material (texture)</div>` + fSelect('Texture', `${P}.material.src`, [['', 'None']].concat(MATERIALS.map(([f, l]) => [TEX + f + '.png', l])).concat(db.slices.filter(x => x.src && x.src.startsWith('data:')).map(x => [x.src, 'Image: ' + x.name])), s.material.src || '');
+  if (s.material.src) {
+    h += fRange('Scale', `${P}.material.scale`, 0.25, 4, 0.05, s.material.scale || 1);
+    h += fRange(s.fill.kind === 'material' ? 'Tint' : 'Strength', `${P}.material.mix`, 0, 1, 0.01, s.material.mix == null ? 0.35 : s.material.mix);
+    h += fSelect('Blend', `${P}.material.blend`, [['overlay', 'Overlay'], ['multiply', 'Multiply'], ['soft-light', 'Soft light'], ['screen', 'Screen'], ['color', 'Colour'], ['luminosity', 'Luminosity'], ['source-over', 'Normal']], s.material.blend || 'overlay');
+  }
+  h += `<div class="uim-h">Outline</div>` + fRange('Width', `${P}.outline.w`, 0, 8, 0.5, s.outline.w) + fColor('Colour', `${P}.outline.c`, s.outline.c, true);
+  h += fRange('Inner rim', `${P}.inner.w`, 0, 6, 0.5, s.inner.w) + (+s.inner.w ? fColor('Rim colour', `${P}.inner.c`, s.inner.c, true) + fRange('Rim gap', `${P}.inner.gap`, 0, 8, 0.5, s.inner.gap) : '');
+  h += `<div class="uim-h">Light</div>` + fRange('Bevel width', `${P}.bevel.w`, 0, 8, 0.5, s.bevel.w) + fRange('Bevel light', `${P}.bevel.light`, 0, 0.6, 0.01, s.bevel.light) + fRange('Bevel shade', `${P}.bevel.dark`, 0, 0.8, 0.01, s.bevel.dark);
+  h += fRange('Gloss', `${P}.gloss`, 0, 0.6, 0.01, s.gloss || 0);
+  h += fRange('Glow', `${P}.glow.r`, 0, 24, 1, s.glow.r) + (+s.glow.r ? fColor('Glow colour', `${P}.glow.c`, s.glow.c, false) + fRange('Glow strength', `${P}.glow.a`, 0, 1, 0.01, s.glow.a) : '');
+  h += fRange('Drop shadow', `${P}.shadow.blur`, 0, 24, 1, s.shadow.blur) + fRange('Shadow drop', `${P}.shadow.y`, 0, 12, 1, s.shadow.y) + fRange('Shadow dark', `${P}.shadow.a`, 0, 1, 0.01, s.shadow.a);
+  h += fRange('Opacity', `${P}.opacity`, 0.1, 1, 0.01, s.opacity == null ? 1 : s.opacity);
+  h += `<div class="uim-btns"><button class="uim-btn" data-act="toslice">Save this skin as a 9-slice</button><button class="uim-btn" data-act="copyskin">Copy to every role</button></div>`;
+  return h;
+}
+function colorsForm(t) {
+  const C = (l, k, a) => fColor(l, 'colors.' + k, t.colors[k], a);
+  return `<div class="uim-h">Windows</div>${C('Plate top', 'plateTop', true)}${C('Plate middle', 'plateMid', true)}${C('Plate bottom', 'plateBot', true)}${C('Frame', 'edge', true)}${C('Frame seam', 'seam', true)}${C('Inner rim', 'rim', true)}${C('Top light', 'lip', true)}
+    ${fCheck('Scanlines', 'scan', t.scan)}${fRange('Drop shadow', 'drop', 0, 1, 0.01, t.drop == null ? 0.5 : t.drop)}
+    <div class="uim-h">Headers</div>${C('Header top', 'headTop', true)}${C('Header bottom', 'headBot', true)}${C('Header ink', 'headInk', false)}
+    <div class="uim-h">Rows + buttons</div>${C('Row top', 'rowTop', true)}${C('Row bottom', 'rowBot', true)}${C('Selected top', 'rowSelTop', true)}${C('Selected bottom', 'rowSelBot', true)}${C('Row frame', 'rowEdge', true)}
+    <div class="uim-h">Ink</div>${C('Ink', 'ink', false)}${C('Muted ink', 'inkMute', false)}${C('Dim ink', 'inkDim', false)}${C('Hairlines', 'hair', true)}${C('Select colour', 'sel', false)}${C('Accent', 'accent', false)}${C('Good', 'good', false)}${C('Bad', 'bad', false)}
+    <div class="uim-h">Disabled rows</div>${C('Fill', 'deadBg', true)}${C('Frame', 'deadEdge', true)}${C('Ink', 'deadInk', false)}`;
+}
+function textForm(t) {
+  const tx = t.text;
+  return `${fSelect('Body font', 'text.font', FONTS, tx.font)}${fSelect('Title font', 'text.titleFont', FONTS, tx.titleFont)}
+    ${fCheck('ALL CAPS', 'text.caps', tx.caps)}${fRange('Letter spacing', 'text.track', 0, 0.4, 0.01, tx.track || 0)}
+    ${fSeg('Text effect', 'text.effect', [['drop', 'Shadow'], ['outline', 'Outline'], ['glow', 'Glow'], ['none', 'None']], tx.effect || 'drop')}
+    <div class="uim-note">Caps and spacing go on headers, buttons and chips; the body font goes on every text in a menu wearing this theme.</div>`;
+}
+function slicesForm() {
+  const sl = db.slices.find(x => x.id === UI.sliceId);
+  let h = `<div class="uim-note">A 9-slice is an image cut into 9 parts: the corners stay their size, the edges and the middle stretch. Any skin can wear one, in any theme.</div>
+  <div class="uim-btns"><label class="uim-btn pri" style="display:inline-block">Image file…<input type="file" accept="image/*" id="uimSliceFile" style="display:none"></label>
+  <button class="uim-btn" data-act="slicetex">From a game texture</button></div>
+  ${db.slices.map(x => `<div class="uim-sl${x.id === UI.sliceId ? ' on' : ''}" data-slice="${esc(x.id)}"><img src="${esc(x.src)}" alt=""><span>${esc(x.name)}</span></div>`).join('') || '<div class="uim-note">No 9-slices yet. Load an image, or SAVE THIS SKIN AS A 9-SLICE in the Skins tab.</div>'}`;
+  if (!sl) return h;
+  const P = `slice:${sl.id}`;
+  h += `<div class="uim-h">Edit</div>
+  <div class="uim-f"><label>Name</label><div><input class="uim-in" data-spath="name" value="${esc(sl.name)}"></div></div>
+  <div class="uim-slice-view"><canvas id="uimSliceCv"></canvas></div>
+  <div class="uim-note">Image ${sl.w || '?'} × ${sl.h || '?'} px. The cut lines are in image pixels.</div>`;
+  const R = (l, k, mx, st) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="0" max="${mx}" step="${st}" value="${+sl[k] || 0}" data-spath="${k}" data-num="1"><output>${+sl[k] || 0}</output></div></div>`;
+  const half = Math.max(1, Math.floor(Math.max(sl.w || 64, sl.h || 64) / 2));
+  h += R('Top cut', 't', half, 1) + R('Right cut', 'r', half, 1) + R('Bottom cut', 'b', half, 1) + R('Left cut', 'l', half, 1) + R('Display scale', 'scale', 4, 0.05) + R('Outset', 'outset', 40, 1);
+  h += `<div class="uim-f"><label>Edges</label><div style="flex-wrap:wrap">${[['stretch', 'Stretch'], ['round', 'Tile (fit)'], ['repeat', 'Tile'], ['space', 'Space']].map(([v, l]) => `<button class="uim-btn${(sl.repeat || 'stretch') === v ? ' on' : ''}" data-sset="repeat" data-val="${v}">${l}</button>`).join('')}</div></div>
+  <div class="uim-f"><label>Fill middle</label><div><input type="checkbox" data-spath="fill" data-bool="1"${sl.fill === false ? '' : ' checked'}></div></div>
+  <div class="uim-h">Try it (drag the corner)</div><div class="uim-slice-try" id="uimSliceTry" style="border-image:${esc(sliceCss(sl))}">Panel</div>
+  <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
+  return h;
+}
+function menusForm() {
+  const gid = globalId();
+  const opts = (S) => (S.def === 'original' && !S.native ? [['', 'Original look (default)'], ['follow', 'Settings theme']] : [['', 'Settings theme']].concat(S.native ? [] : [['original', 'Original look']]))
+    .concat(allThemes().map(t => [t.id, t.label]));
+  return `<div class="uim-f"><label>Settings theme</label><div><select data-global="1">${allThemes().map(t => `<option value="${esc(t.id)}"${t.id === gid ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}</select></div></div>
+  <div class="uim-note">Every menu and HUD wears the Settings theme unless you give it its own here. Original look keeps a screen exactly as it was made.</div>
+  ${UIM_SURFACES.map(S => `<div class="uim-assign"><div><b>${esc(S.label)}</b><small>${esc(S.hint)}</small></div><select data-assign="${S.id}">${opts(S).map(([v, l]) => `<option value="${esc(v)}"${(db.assign[S.id] || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`).join('')}`;
+}
+function renderInspector() {
+  const t = curTheme();
+  const tabs = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['slices', '9-Slices'], ['menus', 'Menus']];
+  let h = `<div class="uim-tabs">${tabs.map(([v, l]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}">${l}</button>`).join('')}</div>`;
+  if (UI.tab === 'slices') return h + slicesForm();
+  if (UI.tab === 'menus') return h + menusForm();
+  if (!editable(t)) return h + `<div class="uim-ro"><b>${esc(t.label)}</b> is ${t.builtin ? 'a built-in theme' : 'a preset'}. Make a copy to change it.<div class="uim-btns"><button class="uim-btn pri" data-act="dup">Make an editable copy</button></div></div>`;
+  h += `<div class="uim-f"><label>Name</label><div><input class="uim-in" data-path="label" value="${esc(t.label)}"></div></div>`;
+  if (UI.tab === 'colors') return h + colorsForm(t);
+  if (UI.tab === 'text') return h + textForm(t);
+  h += `<div class="uim-tabs">${ROLES.map(([v, l, d]) => `<button class="uim-btn${UI.role === v ? ' on' : ''}" data-role="${v}" title="${esc(d)}">${l}</button>`).join('')}</div>`;
+  return h + skinForm(t, UI.role);
+}
+function render(part) {
+  if (!UI.el) return;
+  const t = curTheme();
+  _previewTheme = t;
+  if (!part || part === 'list') UI.el.querySelector('.uim-list').innerHTML = renderList();
+  if (!part) UI.el.querySelector('.uim-mid').innerHTML = renderPreview();
+  if (!part || part === 'insp') {
+    const col = UI.el.querySelector('.uim-insp'), st = col.scrollTop;
+    col.innerHTML = renderInspector(); col.scrollTop = st;
+    col.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
+    drawSliceView();
+  }
+  apply();
+}
+function drawSliceView() {
+  const cv = UI.el && UI.el.querySelector('#uimSliceCv'), sl = db.slices.find(x => x.id === UI.sliceId);
+  if (!cv || !sl) return;
+  const im = new Image(); im.crossOrigin = 'anonymous';
+  im.onload = () => {
+    sl.w = im.naturalWidth; sl.h = im.naturalHeight;
+    const z = Math.max(1, Math.min(4, Math.floor(320 / Math.max(sl.w, sl.h)) || 1));
+    cv.width = sl.w * z; cv.height = sl.h * z;
+    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.drawImage(im, 0, 0, cv.width, cv.height);
+    ctx.strokeStyle = '#ff3df0'; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+    const L = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1 + 0.5, y1 + 0.5); ctx.lineTo(x2 + 0.5, y2 + 0.5); ctx.stroke(); };
+    L(0, sl.t * z, cv.width, sl.t * z); L(0, cv.height - sl.b * z, cv.width, cv.height - sl.b * z);
+    L(sl.l * z, 0, sl.l * z, cv.height); L(cv.width - sl.r * z, 0, cv.width - sl.r * z, cv.height);
+  };
+  im.src = sl.src;
+}
+let _saveT = 0;
+function touch(part) { clearTimeout(_saveT); _saveT = setTimeout(save, 250); syncPickerRows(); if (part) render(part); else apply(); }
+function onInput(e) {
+  const el = e.target, t = curTheme();
+  if (el.dataset.spath) {
+    const sl = db.slices.find(x => x.id === UI.sliceId); if (!sl) return;
+    sl[el.dataset.spath] = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.value;
+    if (el.nextElementSibling && el.nextElementSibling.tagName === 'OUTPUT') el.nextElementSibling.textContent = el.value;
+    const tr = UI.el.querySelector('#uimSliceTry'); if (tr) tr.style.borderImage = sliceCss(sl);
+    if (e.type === 'change') drawSliceView(); else drawSliceViewSoon();
+    touch(); return;
+  }
+  if (el.dataset.global && e.type === 'change') { window.setHudTheme(el.value); render(); return; }
+  if (el.dataset.assign && e.type === 'change') { if (el.value) db.assign[el.dataset.assign] = el.value; else delete db.assign[el.dataset.assign]; touch(); return; }
+  const p = el.dataset.path; if (!p || !editable(t)) return;
+  let v;
+  if (el.dataset.mid) v = el.checked ? (t.skins[UI.role].fill.c1 || '#444444') : '';
+  else if (el.dataset.bool) v = el.checked;
+  else if (el.dataset.num) v = +el.value;
+  else if (el.dataset.kind === 'rgb') v = withAlpha(el.value, alphaOf(getPath(t, p)));
+  else if (el.dataset.kind === 'alpha') v = withAlpha(getPath(t, p) || '#000', +el.value);
+  else v = el.value;
+  setPath(t, p, v);
+  if (el.nextElementSibling && el.nextElementSibling.tagName === 'OUTPUT') el.nextElementSibling.textContent = (+el.value).toFixed(+el.step < 1 ? 2 : 0);
+  if (p === 'label') { touch(); UI.el.querySelector('.uim-list').innerHTML = renderList(); return; }
+  touch((el.dataset.re && e.type === 'change') ? 'insp' : null);
+  if (p.indexOf('colors.') === 0 || p === 'scan') UI.el.querySelector('.uim-list').innerHTML = renderList();
+}
+let _svT = 0;
+function drawSliceViewSoon() { clearTimeout(_svT); _svT = setTimeout(drawSliceView, 60); }
+function addSlice(name, src, w, h, t, r, b, l) {
+  const sl = { id: uid('s_'), name, src, w, h, t, r, b, l, scale: 1, outset: 0, repeat: 'stretch', fill: true };
+  db.slices.push(sl); UI.sliceId = sl.id; UI.tab = 'slices';
+  if (!save()) { db.slices.pop(); UI.sliceId = ''; }
+  render('insp');
+}
+function onClick(e) {
+  const b = e.target.closest('button, .uim-trow, .uim-sl'); if (!b || !UI.el.contains(b)) return;
+  const t = curTheme();
+  if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; render(); return; }
+  if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
+  if (b.dataset.tab) { UI.tab = b.dataset.tab; render('insp'); return; }
+  if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
+  if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
+  if (b.dataset.sset) { const sl = db.slices.find(x => x.id === UI.sliceId); if (sl) { sl[b.dataset.sset] = b.dataset.val; touch('insp'); } return; }
+  if (b.dataset.set) {
+    if (!editable(t)) return;
+    let v = b.dataset.val; setPath(t, b.dataset.set, v);
+    const s = t.skins[UI.role];
+    if (b.dataset.set.endsWith('.fill.kind') && v === 'material' && !s.material.src) { s.material.src = TEX + 'metal.png'; s.material.mix = 0.3; s.material.blend = 'multiply'; }
+    if (b.dataset.set.endsWith('.shape') && v === 'pill' && (+s.size || 0) < 10) s.size = 14;
+    touch('insp'); return;
+  }
+  const act = b.dataset.act; if (!act) return;
+  if (act === 'new') { const n = newTheme(t.id, 'My Theme ' + (db.themes.length + 1)); db.themes.push(n); UI.themeId = n.id; UI.tab = 'skins'; touch(); render(); }
+  else if (act === 'dup') { const n = newTheme(t.id, t.label + ' copy'); db.themes.push(n); UI.themeId = n.id; touch(); render(); }
+  else if (act === 'del') {
+    if (!editable(t) || !confirm(`Delete the theme "${t.label}"?`)) return;
+    db.themes = db.themes.filter(x => x.id !== t.id);
+    Object.keys(db.assign).forEach(k => { if (db.assign[k] === t.id) delete db.assign[k]; });
+    if (globalId() === t.id) window.setHudTheme('crystal');
+    UI.themeId = globalId(); touch(); render();
+  }
+  else if (act === 'global') { window.setHudTheme(t.id); render(); }
+  else if (act === 'export') {
+    const used = t.skins ? Object.values(t.skins).map(s => s && s.slice).filter(Boolean) : [];
+    UI.io = JSON.stringify({ ewTheme: 1, theme: t.builtin ? null : t, slices: db.slices.filter(x => used.includes(x.id)), builtin: t.builtin ? t.id : undefined });
+    render('list');
+  }
+  else if (act === 'import') { UI.io = UI.io === 'import' ? '' : 'import'; render('list'); }
+  else if (act === 'doimport') {
+    try {
+      const j = JSON.parse((UI.el.querySelector('#uimIo') || {}).value || '');
+      if (!j || !j.theme || !j.theme.colors) throw new Error('not a theme');
+      (j.slices || []).forEach(sl => { if (sl && sl.id && sl.src && !db.slices.some(x => x.id === sl.id)) db.slices.push(sl); });
+      const n = Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') }); delete n.preset;
+      db.themes.push(n); UI.themeId = n.id; UI.io = ''; touch(); render();
+    } catch (err) { alert('That text is not a UI Maker theme.'); }
+  }
+  else if (act === 'toslice') {
+    const s = t.skins[UI.role]; const r = bakeSkin(s);
+    if (!r || !r.src) { alert('The skin is still loading its texture. Try again in a moment.'); return; }
+    const c = r.slice ? r.slice / K : Math.round(r.g.W / 4);
+    addSlice((t.label + ' ' + UI.role).slice(0, 40), r.src, r.g.W * K, r.g.H * K, c * K, c * K, c * K, c * K);
+    const sl = db.slices[db.slices.length - 1]; if (sl) { sl.scale = 1 / K; sl.outset = r.g.O; save(); render('insp'); }
+  }
+  else if (act === 'copyskin') {
+    const s = t.skins[UI.role];
+    ROLES.forEach(([r]) => { if (r !== UI.role) { const keep = t.skins[r]; t.skins[r] = Object.assign(clone(s), { fill: Object.assign(clone(s.fill), { c1: keep.fill.c1, c2: keep.fill.c2, c3: keep.fill.c3 }), outline: (r === 'buttonSel' || r === 'chipOn') ? keep.outline : clone(s.outline) }); } });
+    touch('insp');
+  }
+  else if (act === 'slicetex') {
+    const name = prompt('Texture name (' + MATERIALS.map(m => m[0]).join(', ') + ')', 'metal');
+    const m = MATERIALS.find(x => x[0] === String(name || '').trim()); if (!m) return;
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { const q = Math.round(Math.min(im.naturalWidth, im.naturalHeight) / 4); addSlice(m[1], TEX + m[0] + '.png', im.naturalWidth, im.naturalHeight, q, q, q, q); };
+    im.src = TEX + m[0] + '.png';
+  }
+  else if (act === 'sliceuse') {
+    if (!editable(t)) { alert('Open one of your own themes first (built-ins and presets are read-only).'); return; }
+    const s = t.skins[UI.role]; s.on = true; s.slice = UI.sliceId; UI.tab = 'skins'; touch('insp');
+  }
+  else if (act === 'slicedel') {
+    if (!confirm('Delete this 9-slice? Skins that use it go back to their drawn shape.')) return;
+    db.slices = db.slices.filter(x => x.id !== UI.sliceId);
+    db.themes.forEach(th => Object.values(th.skins || {}).forEach(s => { if (s && s.slice === UI.sliceId) s.slice = ''; }));
+    UI.sliceId = ''; touch('insp');
+  }
+}
+function onFile(e) {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      let w = im.naturalWidth, h = im.naturalHeight, src = rd.result;
+      if (Math.max(w, h) > 512) {            // keep the store small
+        const z = 512 / Math.max(w, h), cv = document.createElement('canvas');
+        cv.width = Math.round(w * z); cv.height = Math.round(h * z);
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); src = cv.toDataURL('image/png'); w = cv.width; h = cv.height;
+      }
+      const q = Math.round(Math.min(w, h) / 3);
+      addSlice(f.name.replace(/\.[^.]+$/, '').slice(0, 40), src, w, h, q, q, q, q);
+    };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(f);
+}
+window.openUiMaker = function () {
+  if (UI.el) return;
+  if (!document.getElementById('uimStyles')) { const st = document.createElement('style'); st.id = 'uimStyles'; st.textContent = UIM_CSS; document.head.appendChild(st); }
+  UI.themeId = UI.themeId && themeById(UI.themeId) ? UI.themeId : globalId();
+  const el = document.createElement('div');
+  el.className = 'uim-root'; el.id = 'uimRoot';
+  el.innerHTML = `<div class="uim-top"><b>UI MAKER</b><span>Make themes, shape every window, and give each menu or HUD its own look. Changes save as you go.</span><button class="uim-btn pri" data-close="1">Done</button></div>
+    <div class="uim-body"><div class="uim-col uim-list"></div><div class="uim-col uim-mid"></div><div class="uim-col uim-insp"></div></div>`;
+  document.body.appendChild(el); UI.el = el;
+  el.addEventListener('input', onInput); el.addEventListener('change', e => { if (e.target.id === 'uimSliceFile') onFile(e); else onInput(e); });
+  el.addEventListener('click', e => { if (e.target.closest('[data-close]')) { window.closeUiMaker(); return; } onClick(e); });
+  el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') window.closeUiMaker(); });
+  el.addEventListener('keyup', e => e.stopPropagation());
+  render();
+};
+window.closeUiMaker = function () {
+  if (!UI.el) return;
+  save(); UI.el.remove(); UI.el = null; _previewTheme = null; apply();
+  try { if (typeof window._uimOnClose === 'function') window._uimOnClose(); } catch (e) {}
+};
+
+/* ── public ── */
+window.UIMaker = {
+  apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS,
+  has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
+  get db() { return db; },
+};
+syncPickerRows();
+window.applyHudTheme(window.getHudTheme());
+apply();
+})();

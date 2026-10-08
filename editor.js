@@ -3491,6 +3491,7 @@
         root.innerHTML =
             '<div class="ed-top" id="edTop"><b class="ed-brand">EDITOR</b><span class="ed-menus" id="edMenus"></span>' +
             '<span class="ed-tools" id="edTools"></span><span class="ed-sp"></span>' +
+            '<button class="ed-btn" id="edUi" title="UI MAKER: themes, window shapes, 9-slices, a look for every menu and HUD">🎨 UI</button>' +
             '<button class="ed-btn ed-play" id="edPlay" title="PLAY HERE (P): the walker at the cursor, the real game; ESC comes back">▶ PLAY HERE</button>' +
             '<button class="ed-btn" id="edHelp" title="Keys (H)">?</button><button class="ed-btn" id="edClose" title="Close the editor">✕</button></div>' +
             '<div class="ed-banner" id="edBanner" style="display:none"></div>' +
@@ -3504,6 +3505,7 @@
         Object.keys(MENUS).forEach(function (name) {
             var b = document.createElement('button'); b.className = 'ed-btn ed-menubtn'; b.textContent = name; b.onclick = function (e) { e.stopPropagation(); menuOpen(name, b); }; menus.appendChild(b);
         });
+        $('edUi').onclick = function () { if (typeof W.openUiMaker === 'function') W.openUiMaker(); };
         $('edPlay').onclick = playHere; $('edHelp').onclick = help; $('edClose').onclick = function () { close(); };
         document.addEventListener('mousedown', function (e) { var m = $('edMenu'); if (m && m.style.display !== 'none' && !m.contains(e.target)) m.style.display = 'none'; }, true);
     }
