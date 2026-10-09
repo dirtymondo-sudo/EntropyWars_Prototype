@@ -1322,3 +1322,34 @@ ai-training/AI_IMITATION_ANALYSIS_20261008.md. Code changes from the evidence:
 - Pulse Lattice's TOTAL DMG counter (top left, rolls like a slot machine): the self-cast hero shot (_playSelfCastHeroShot) wore
   the heavy chrome only for heals, and _actionCamTallyDamage only feeds a heavy shot. A self-cast that deals damage (the
   lattice, self-origin novae) now wears the heavy chrome, so its hits roll into the counter.
+
+## VISION + BROKEN (2026-10-09, mondo: "implement a vision stat into the game, replacing awareness")
+- **AWR is gone.** Every race has `vision` (tiles, 2-6, data.js RACE_BASE_STATS) and its own `crt` (crit percent).
+  Conversion from the old AWR: vision = 6/5/4/3/2 at AWR ≥162/127/90/50/else (24-25 races per band); crt =
+  round(8 + min(18, awr/7)), capped 30, so no crit odds moved. critChanceFromStats(crt) = crt/100.
+  Gear/passive statBonus `awr` became `vision` (Binoculars +2 VISION +4 CRT, Telescope +2, the rest +1);
+  sandstorm −5 vision, zodiac sky key `vision`, terrain preference +1 vision. Grade bands: vision 6/5/4/3, crt 24/20/16/12.
+- **The rule (data.js VISION_RULES, editable in the Data Panel):** a unit sees a tile when it is within its vision
+  (Manhattan) AND line of sight is clear (isVisionBlockedByTerrain). A team sees what any of its living units, wards,
+  tower, flares or open-door twins see (map.js teamSeesTile). Attacks, spells, previews, highlights, the action menu,
+  move+cast probes (TargetQuery relocates the unit, so sight is from the probe tile) and the CPU all gate on
+  isInVision — fog of war ON or OFF, human or CPU (visionGatesTargeting). The caster's own LOS is still needed
+  unless the spell is LOS-free (`ignoresLineOfSight`, delayed, teleports, sky grabs); LOS-free spells still need the
+  TEAM to see the target (losFreeNeedVision). Heal/buff/self kinds (SPELL_KIND_META fogExempt) are exempt.
+  `VISION_RULES.enabled = false` restores the old LOS-only, fog-gated rule.
+- **Fog default:** state.fogOfWar stays ON (online enforces it); the fog GRID visual stays OFF. Fog now shows the
+  range-limited sight. With fog off, enemies are drawn but only targetable when the team sees them.
+- **Blind** = vision 1 and no shared sight (`visionSet: 1, noSharedVision`). **Jammed** = no shared sight + no
+  Scanner/Scan Pulse. Keen sense: vision ≥ 4 (keenSenseVision) senses cloaked/smoke-hidden enemies at 2 tiles.
+- **Broken / Break** (STATUS_DEFS.broken, 💔 BRK): getUnitPassives answers [] and unitHasGear false while it lasts
+  (every hook, immunity, aura off); canFly false unless Levitating (a status). battle.js breakUnitPassives strips the
+  flat stats the passives folded in at build (`unit._passiveStatBonus` → `unit._brokenStrip`) and drops an airborne
+  passive flyer with forceGroundUnit (forced fall damage); restoreUnitPassives hands them back on expiry, and the
+  respawn wipes + _applyRoundStartPassives reconcile a strip whose status vanished without onRemove.
+  On: Crash Loop (computerhacking), Needle Work (blackmagic), Sucker Punch (trickery), Demonic Claw
+  (demonicabilities), Divine Smite (angelic), 1 round each.
+- **AI:** isConcealed asks isInVision for the actor (team sight; Blind/Jammed = own eyes), buildVision's attack
+  targets too; a per-team last-seen memory (ai.js `_aiLastSeen`, never on state) adds a `hunt_last_seen` goal when
+  nothing is in sight. New trainable weights (no schema bump): lastSeenHunt_v1, breakValue_v1 (default 1).
+- **Race editor:** VISION (clamped 2-6) and CRT (0-100) are editable stats (RACE_STAT_RANGE, clamped in
+  EWRaceMods.setRace); both are flat across levels.

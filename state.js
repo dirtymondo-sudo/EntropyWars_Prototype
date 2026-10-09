@@ -73,7 +73,9 @@
             // (attack accuracy loss from blizzards).
             'frozen','blind',
             // 2026-10-06: Guard's one-round recovery buff.
-            'guardRegen']);
+            'guardRegen',
+            // 2026-10-09: Broken (every passive switched off while it lasts).
+            'broken']);
 
         const GAME_MODES = {
             normal: {
@@ -1844,9 +1846,9 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -70 AWR in the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 VISION in the eye.',
                 statMod: {
-                    awr: -70
+                    vision: -5
                 },
                 homingDamage(unit) {
                     const isHuman = (unit.types || []).includes('human');
@@ -2847,7 +2849,7 @@
                 atk: 0,
                 def: 0,
                 move: 0,
-                awr: 0,
+                vision: 0,
                 int: 0,
                 rng: 0
             };
@@ -3173,7 +3175,7 @@
                     atk: 0,
                     armor: 0,
                     int: 0,
-                    awr: 0,
+                    vision: 0,
                     move: 0,
                     label: ''
                 };
@@ -3184,7 +3186,7 @@
                     atk: 0,
                     armor: 0,
                     int: 0,
-                    awr: 0,
+                    vision: 0,
                     move: 0,
                     label: ''
                 };
@@ -3196,7 +3198,7 @@
                 atk: (_tb && _tb.atk) || 0,
                 armor: (_tb && _tb.armor) || 0,
                 int: (_tb && _tb.int) || 0,
-                awr: (_tb && _tb.awr) || 0,
+                vision: (_tb && _tb.vision) || 0,
                 move: (_tb && _tb.move) || 0,
                 label
             };
@@ -3402,23 +3404,54 @@
             return Math.max(0, Math.round(((unit.intStat || 0) + sleepMod + terrainMod + weatherMod + stageMod) * (_zb.active ? _zb.m('int') : 1)));
         }
 
-        function getStatusAwrOverride(unit) {
+        /* ── VISION (2026-10-09, mondo: "a vision stat ... replacing awareness") ──────────────────────
+           How many tiles (Manhattan) the unit sees: the race's base VISION (2-6) + passive/gear statBonus
+           (folded into unit.vision at build) + the day/night, terrain and weather nudges (±1 tile each) +
+           any status visionDelta, × the zodiac sky percent. A status with `visionSet` (Blind = 1) pins it.
+           Clamped to VISION_RULES.minVision..maxVision. map.js isInVision / computeVisibleTiles read it
+           through getUnitVisionRange. */
+        function getStatusVisionOverride(unit) {
             if (!unit) return null;
             return getActiveStatusKeys(unit).reduce((override, key) => {
-                const value = STATUS_DEFS[key]?.awrSet;
-                return value == null ? override : value;
+                const value = STATUS_DEFS[key]?.visionSet;
+                return value == null ? override : (override == null ? value : Math.min(override, value));
             }, null);
         }
 
-        function getEffectiveAwr(unit) {
+        function getEffectiveVision(unit) {
             if (!unit) return 0;
-            const override = getStatusAwrOverride(unit);
-            if (override != null) return Math.max(0, override);
-            const sleepMod = getSleepAffinityModifier(unit).awr || 0;
-            const terrainMod = getTerrainPreferenceModifier(unit).awr || 0;
-            const weatherMod = getWeatherStatMod(unit).awr || 0;
+            const _vr = (typeof VISION_RULES !== 'undefined' && VISION_RULES) || {};
+            const lo = Number.isFinite(_vr.minVision) ? _vr.minVision : 1;
+            const hi = Number.isFinite(_vr.maxVision) ? _vr.maxVision : 8;
+            const override = getStatusVisionOverride(unit);
+            if (override != null) return Math.max(lo, Math.min(hi, override));
+            const base = (unit.vision != null && Number.isFinite(+unit.vision)) ? +unit.vision : 3;
+            const sleepMod = getSleepAffinityModifier(unit).vision || 0;
+            const terrainMod = getTerrainPreferenceModifier(unit).vision || 0;
+            const weatherMod = getWeatherStatMod(unit).vision || 0;
+            const statusMod = getActiveStatusKeys(unit).reduce((n, key) => n + (STATUS_DEFS[key]?.visionDelta || 0), 0);
             const _zb = getZodiacBonus(unit);
-            return Math.max(0, Math.round(((unit.awr || 0) + sleepMod + terrainMod + weatherMod) * (_zb.active ? _zb.m('awr') : 1)));
+            const v = Math.round((base + sleepMod + terrainMod + weatherMod + statusMod) * (_zb.active ? _zb.m('vision') : 1));
+            return Math.max(lo, Math.min(hi, v));
+        }
+
+        /* Does a status cut this unit off from its team's shared sight (Blind, Jammed)? It still sees
+           its own tiles; it only loses the allies' eyes for targeting. */
+        function unitLosesSharedVision(unit) {
+            if (!unit || !unit.status) return false;
+            for (const key of Object.keys(unit.status)) {
+                if ((unit.status[key] | 0) > 0 && STATUS_DEFS[key]?.noSharedVision) return true;
+            }
+            return false;
+        }
+
+        /* ── CRT (its own stat since 2026-10-09): the unit's crit percent (race base + passive/gear
+           statBonus crt, folded into unit.crt at build) + any status crtDelta, 0..100. */
+        function getEffectiveCrit(unit) {
+            if (!unit) return 0;
+            const base = (unit.crt != null && Number.isFinite(+unit.crt)) ? +unit.crt : 8;
+            const statusMod = getActiveStatusKeys(unit).reduce((n, key) => n + (STATUS_DEFS[key]?.crtDelta || 0), 0);
+            return Math.max(0, Math.min(100, Math.round(base + statusMod)));
         }
 
         function getEffectiveInspect(unit) {
@@ -3429,9 +3462,8 @@
 
         function getInspectTileCount(unit) {
             if (!unit) return 1;
-            // AWR lives on the 0-100 ruler (x14 rescale); /14 recovers the
-            // old tile count exactly, so Inspect coverage is unchanged.
-            return Math.max(1, Math.round(getEffectiveAwr(unit) / 14));
+            // 2026-10-09: Inspect covers as many tiles as the unit's VISION (was AWR/14).
+            return Math.max(1, getEffectiveVision(unit));
         }
 
         function getDebuffIntModifier(sourceUnit, targetUnit) {
@@ -3453,6 +3485,7 @@
                 freeze: 0.84,
                 frozen: 0.84,
                 blind: 0.9,
+                broken: 0.8,
                 stagger: 0.9,
                 slow: 0.9,
                 root: 0.86,
@@ -3545,8 +3578,8 @@
             const _cpDist = (u) => (typeof combatDist === 'function')
                 ? combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0)
                 : Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y);
-            const _cpFogSees = (u) => !state.fogOfWar || !!state.autoPlayers?.[unit.player]
-                || typeof isInVision !== 'function' || isInVision(unit, u.x, u.y);
+            const _cpFogSees = (u) => typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(unit)
+                || typeof isInVision !== 'function' || isInVision(unit, u.x, u.y, u.z);
             return partners.filter(partner => {
                 const combo = getComboForUnits(unit, partner);
                 if (!combo) return false;
@@ -4586,11 +4619,11 @@
         let _fogVisCacheResult = null;
         function computeVisibleTilesCached(player) {
 
-            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '');
+            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '');
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
-                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y;
+                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0);
             }
 
             if (state.wards) {
@@ -4610,11 +4643,11 @@
         let _fogDistCacheResult = null;
         function computeFogDistancesCached(player) {
 
-            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '');
+            let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '');
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
-                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y;
+                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0);
             }
             if (state.wards) {
                 for (const w of state.wards) key += '|w' + w.x + ',' + w.y + ':' + w.owner;
@@ -4668,20 +4701,27 @@
 
         let _actionPanelCache = { key: '', canMove: false, hasAttack: false, hasSpells: false, hasCombo: false, hasInspect: false, canTrade: false, hasBombs: false, hasAnyItem: false };
         function getActionPanelCache(unit) {
-            let _apAlive = 0; for (let i = 0; i < state.units.length; i++) { if (!state.units[i].dead) _apAlive++; }
+            /* 👁 VISION (2026-10-09): what the team sees moves with EVERY unit, so the key carries every live unit's tile */
+            let _apAlive = 0, _apPos = 0;
+            for (let i = 0; i < state.units.length; i++) {
+                const _u = state.units[i];
+                if (_u.dead) continue;
+                _apAlive++;
+                _apPos = (_apPos * 31 + (_u.x | 0) * 977 + (_u.y | 0) * 61 + ((_u.z | 0) + 7)) | 0;
+            }
             const _apcItemCount = unit.items ? Object.keys(unit.items).reduce((s, k) => s + (unit.items[k] || 0), 0) : 0;
             const _apcStatusKeys = unit.status ? Object.keys(unit.status).filter(k => unit.status[k] > 0).sort().join(',') : '';
             // Include destructible-structure counts so the Attack button refreshes the
             // instant a turret / deployed object / seed is placed or destroyed nearby.
             const _apcBldgHp = state.buildings ? state.buildings.reduce((s, b) => s + b.hp, 0) : -1;
             const _apcStructs = (state.turrets?.length || 0) + ':' + (state._deployedObjects?.length || 0) + ':' + (state.plantedSeeds?.length || 0) + ':' + (state._treeTick || 0) + ':' + _apcBldgHp;
-            const key = unit.id + '|' + unit.x + ',' + unit.y + '|' + unit.ap + '|' + (unit.movesThisTurn || 0) + '|' + (unit.actionsThisTurn || 0) + '|' + state.round + '|' + _apAlive + '|' + _apcItemCount + '|' + _apcStatusKeys + '|' + _apcStructs;
+            const key = unit.id + '|' + unit.x + ',' + unit.y + '|' + unit.ap + '|' + (unit.movesThisTurn || 0) + '|' + (unit.actionsThisTurn || 0) + '|' + state.round + '|' + _apAlive + '|' + _apcItemCount + '|' + _apcStatusKeys + '|' + _apcStructs + '|' + _apPos;
             if (key === _actionPanelCache.key) return _actionPanelCache;
             const canMove = (unit.movesThisTurn || 0) < UNIT_MAX_MOVES && canUnitAct(unit) && getMoveTiles(unit).length > 0;
             const enemies = getHostileUnits(unit.player);
             const effRange = getEffectiveRange(unit);
             let hasAttack = enemies.some(e => {
-                if (state.fogOfWar && !isInVision(unit, e.x, e.y)) return false;
+                if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y, e.z)) return false;
                 const d = distToTarget(unit.x, unit.y, e);
                 return d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
             });
@@ -4740,7 +4780,7 @@
                         if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
                         if (!getBuildingAt(tx, ty)) continue;
                         if (typeof unitAt === 'function' && unitAt(tx, ty)) continue;
-                        if (state.fogOfWar && !isInVision(unit, tx, ty)) continue;
+                        if (visionGatesTargeting(unit) && !isInVision(unit, tx, ty)) continue;
                         if (!isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) { hasAttack = true; break bOuter; }
                     }
                 }
@@ -4922,7 +4962,8 @@
                 def: unit.def || 0,
                 range: unit.range,
                 move: unit.move,
-                awr: unit.awr || 0,
+                vision: unit.vision || 0,
+                crt: unit.crt || 0,
                 intStat: unit.intStat || 0,
                 dead: !!unit.dead,
                 ap: unit.ap || 0,

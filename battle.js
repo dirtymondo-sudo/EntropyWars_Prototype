@@ -658,12 +658,12 @@
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
 
-                // 2026-08-29 rescale compensators: SPD is ×10, AWR ×14 — the
-                // per-point weights divide by the same factors, so the odds
-                // math is unchanged.
+                // 2026-08-29 rescale compensator: SPD is ×10 — the per-point
+                // weight divides by the same factor. VISION (2026-10-09, was AWR)
+                // adds 3% per tile of difference.
                 const spdDiff = getEffectiveSpd(enemy) - getEffectiveSpd(unit);
-                const awrDiff = (getEffectiveAwr(enemy) || 0) - (getEffectiveAwr(unit) || 0);
-                let chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * (0.03 / 10) + awrDiff * (0.02 / 14)));
+                const visDiff = (getEffectiveVision(enemy) || 0) - (getEffectiveVision(unit) || 0);
+                let chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * (0.03 / 10) + visDiff * 0.03));
                 // 🔪 Shank (gangster passive, plan §5.2): the striker's
                 // opportunity attacks always land and hit ×1.5.
                 const _shankChance = (typeof unitPassiveValue === 'function') ? unitPassiveValue(enemy, 'oppAttackChance') : undefined;
@@ -2231,7 +2231,7 @@
                     && getSectionForUnit(u) === 'above'
                     && u.x === x && u.y === y);
                 if (skyTarget) {
-                    const svr = getUnitVisionRange(unit);
+                    const svr = getTelescopeRange(unit);
                     if ((Math.abs(unit.x - x) + Math.abs(unit.y - y)) <= svr) target = skyTarget;
                 }
             }
@@ -7568,7 +7568,7 @@
             // reach check) match doSpell, which also skips LOS for this kind.
             const skipLOS = (spell.kind === 'teleport' && !spell.needsLoS) || spell.kind === 'delayed' || spell.ignoresLineOfSight === true || _skyGrab;   // Batch D: a needsLoS teleport (Web Swing) is sight-checked
 
-            const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const fogLimit = skipLOS ? visionGatesLosFree(unit) : visionGatesTargeting(unit);   // VISION (2026-10-09): team sight, fog or no fog
             const _km = _kindMeta(spell);
 
             for (let cy = 0; cy < sizeH; cy++) {
@@ -9775,6 +9775,34 @@
             }
         }
 
+        /* ── VISION targeting helpers (2026-10-09) ─────────────────────────────
+           A spell is LINE-OF-SIGHT-FREE when it fires through cover: the
+           `ignoresLineOfSight` rows, artillery (`delayed`), plain teleports and
+           the sky grabs. Those skip the caster's own LOS check but — the spotter
+           rule, VISION_RULES.losFreeNeedVision — still need the TEAM to see the
+           target. spellVisionGate = does this cast need the target tile seen? */
+        function _spellIsLosFree(spell) {
+            if (!spell) return false;
+            return spell.ignoresLineOfSight === true || spell.kind === 'delayed'
+                || (spell.kind === 'teleport' && !spell.needsLoS)
+                || spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+        }
+        function spellVisionGate(unit, spell) {
+            if (!unit) return false;
+            return _spellIsLosFree(spell) ? visionGatesLosFree(unit) : visionGatesTargeting(unit);
+        }
+        /* an enemy UNIT this cast may aim at, sight-wise: not cloaked from the
+           caster's team, and (when the gate is on) on a tile the team sees */
+        function spellSeesEnemy(unit, spell, e) {
+            if (!unit || !e) return false;
+            if (isEnemyUnit(e, unit) && isUnitConcealedFrom(e, unit.player)) return false;
+            if (spell && _kindMeta(spell).fogExempt) return true;
+            if (!spellVisionGate(unit, spell)) return true;
+            return isInVision(unit, e.x, e.y, e.z ?? null);
+        }
+        window.spellVisionGate = spellVisionGate;
+        window.spellSeesEnemy = spellSeesEnemy;
+
         function _isUnitVisibleToViewer(unit, viewer) {
             if (!unit) return false;
             if (unit.player === viewer) return true;
@@ -9870,10 +9898,10 @@
                 for (const f of state.units) {
                     if (f.dead || f.player !== viewer) continue;
                     /* Keen senses pierce the haze: units with exceptional
-                       awareness (AWR 6+ — greys, telepaths, seers) spot
+                       VISION (4+, VISION_RULES.keenSenseVision) spot
                        smoke-hidden enemies from 2 tiles instead of 1. LIVE
-                       awareness — a jammed/blinded unit loses the edge. */
-                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 42)) >= 84) ? 2 : 1;
+                       vision — a blinded unit loses the edge. */
+                    const detectR = (getEffectiveVision(f) >= ((typeof VISION_RULES !== 'undefined' && VISION_RULES.keenSenseVision) || 4)) ? 2 : 1;
                     if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= detectR) return false;
                 }
             }
@@ -9899,6 +9927,8 @@
             if (typeof unitPassiveValue !== 'function' || !state.units) return;
             const cycle = (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'day';
             for (const u of state.units) {
+                // 💔 Broken: a status wipe that skipped onRemove (death, a cleanse that rebuilt the map) hands the passives' stats back here
+                if (u._brokenStrip && !(typeof unitIsBroken === 'function' && unitIsBroken(u))) restoreUnitPassives(u);
                 if (u.dead || u._dying) continue;
                 const forms = unitPassiveValue(u, 'dayNightForms');
                 if (forms && STATUS_DEFS.wolfForm) {
@@ -9951,6 +9981,18 @@
            closed = hidden) and gates Recall. */
         function isUnitSeenByAnyEnemy(unit) {
             if (!unit || unit.dead) return false;
+            /* VISION (2026-10-09): each enemy TEAM's shared sight (vision range + LOS),
+               fog or no fog — one enemy team seeing you is enough. */
+            if (typeof _visionOn === 'function' && _visionOn()) {
+                const _seen = new Set();
+                for (const f of state.units) {
+                    if (f.dead || f.player === unit.player || _seen.has(f.player)) continue;
+                    _seen.add(f.player);
+                    if (isUnitConcealedFrom(unit, f.player)) continue;
+                    if (teamSeesTile(f.player, unit.x, unit.y, unit.z ?? null)) return true;
+                }
+                return false;
+            }
             for (const f of state.units) {
                 if (f.dead || f.player === unit.player) continue;   // enemies only
                 if (isUnitConcealedFrom(unit, f.player)) continue;  // cloaked/smoked → this enemy can't see us
@@ -9974,6 +10016,8 @@
             if (!unit || unit.dead) return false;
             if (unit.player === teamPlayer) return true;
             if (isUnitConcealedFrom(unit, teamPlayer)) return false;
+            /* VISION (2026-10-09): the team's shared sight — vision range + LOS — fog or no fog */
+            if (typeof _visionOn === 'function' && _visionOn()) return teamSeesTile(teamPlayer, unit.x, unit.y, unit.z ?? null);
             for (const f of state.units) {
                 if (f.dead || f.player !== teamPlayer) continue;
                 if (state.fogOfWar && typeof isInVision === 'function') {
@@ -10126,10 +10170,10 @@
                 let revealer = null;
                 for (const f of candidates) {
                     if (f.dead || f.player === u.player) continue;
-                    /* High-awareness units (AWR 6+) sense cloaked enemies from
+                    /* Keen-eyed units (VISION 4+) sense cloaked enemies from
                        2 tiles away — the seer's answer to invisibility. LIVE
-                       awareness — a jammed/blinded unit loses the edge. */
-                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 42)) >= 84) ? 2 : 1;
+                       vision — a blinded unit loses the edge. */
+                    const detectR = (getEffectiveVision(f) >= ((typeof VISION_RULES !== 'undefined' && VISION_RULES.keenSenseVision) || 4)) ? 2 : 1;
                     if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= detectR) { revealer = f; break; }
                 }
                 if (!revealer) continue;
@@ -11899,7 +11943,7 @@
            effective stats (buffs, terrain, weather, zodiac) + status gates. */
         function getCritChance(unit) {
             if (!unit) return 0;
-            return critChanceFromStats(getEffectiveAwr(unit) || 0);
+            return critChanceFromStats(getEffectiveCrit(unit));   // CRT is its own stat (2026-10-09)
         }
 
         function getCritMultiplier(unit) {
@@ -25565,7 +25609,7 @@
                 /* basic attack between casts */
                 const rng = Math.max(1, (typeof getEffectiveRange === 'function') ? getEffectiveRange(u) : (u.range || 1));
                 if (now >= (u._rtAtkAt || 0) && dist <= rng + 0.6 && _los(u, tgt)) {
-                    const acc = 0.72 + Math.min(0.2, (u.awr || 0) * (0.008 / 14));
+                    const acc = 0.72 + Math.min(0.2, (u.vision || 0) * 0.02);
                     _basicAttack(u, tgt, Math.random() <= acc, null);
                 }
             }
@@ -25659,6 +25703,7 @@
                 u.dead = false; u._dying = false;
                 u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
                 u.status = { spawnGuard: 1 };
+                if (typeof restoreUnitPassives === 'function') restoreUnitPassives(u);   // 💔 a respawn wipe skips onRemove
                 delete u.statStageMods;   // fresh life — no carried stat stages
                 /* fresh life → drop Last Stand / kill-streak so the respawn
                    doesn't wear the crimson or golden aura (see map.js) */
@@ -36944,7 +36989,7 @@
             const weatherMod = getWeatherStatMod(unit);
             if (weatherMod.atk > 0 || weatherMod.int > 0) return true;
             const zodiac = getZodiacBonus(unit);
-            if (zodiac.active && ['atk', 'int', 'awr'].some(k => zodiac.m(k) > 1)) return true;
+            if (zodiac.active && ['atk', 'int', 'vision'].some(k => zodiac.m(k) > 1)) return true;
             const sky = getSkyEventBonus(unit);
             if (sky.atkMult > 1) return true;
             const floor = getSectionBuffs(unit);
@@ -38372,7 +38417,7 @@
                below). */
             if (kind === 'door' || kind === 'doorSlam' || kind === 'doorDeploy') return getSpellRangeTiles(unit, spell).length > 0;
             if (kind === 'doorDelivery' || kind === 'doorExit') {
-                const _dFog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+                const _dFog = visionGatesTargeting(unit);
                 return state.units.some(u => !u.dead && u.player !== unit.player
                     && (!_dFog || isInVision(unit, u.x, u.y))
                     && spellTargetUsableOn(unit, spell, u)
@@ -38391,6 +38436,7 @@
                     const d = distToTarget(unit.x, unit.y, e, unit.z);
                     if (d < 1 || d > range) return false;
                     if (!spell.ignoresLineOfSight && isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z)) return false;
+                    if (!spellSeesEnemy(unit, spell, e)) return false;   // VISION (2026-10-09)
                     const eZ = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(e) : (e.z ?? 0);
                     return casterZ > eZ;
                 });
@@ -38403,6 +38449,8 @@
                 const hasEnemy = enemies.some(e => {
                     const d = spellReachToTarget(unit, spell, e);
                     if (!(d >= 1 && d <= effectiveRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z)))) return false;
+                    // VISION (2026-10-09): the team must see it (and it must not be cloaked)
+                    if (!spellSeesEnemy(unit, spell, e)) return false;
                     // Pure-status spells need an enemy NOT already carrying the status.
                     return spellTargetUsableOn(unit, spell, e);
                 });
@@ -42588,8 +42636,8 @@
             for (const p of party) {
                 if (_mdRoomContains(unit._mdHomeRoom, p.x, p.y)) return 'room';
                 const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
-                const awr = (typeof getEffectiveAwr === 'function' ? getEffectiveAwr(unit) : unit.awr) || 42;
-                if (d <= Math.max(2, Math.round(awr / 14)) && typeof isInVision === 'function' && isInVision(unit, p.x, p.y)) return 'sight';
+                const _sight = (typeof getEffectiveVision === 'function' ? getEffectiveVision(unit) : unit.vision) || 3;
+                if (d <= Math.max(2, _sight) && typeof isInVision === 'function' && isInVision(unit, p.x, p.y)) return 'sight';
             }
             return null;
         }
@@ -45011,7 +45059,7 @@
                 if (mods.includes('fog_dense')) {
 
                     for (const u of state.units) {
-                        u.awr = Math.max(1, (u.awr || 42) - 14);
+                        u.vision = Math.max(1, (u.vision || 3) - 1);
                     }
                 }
                 if (mods.includes('weather_storm')) {
@@ -50340,6 +50388,9 @@
             cubeWindowBonus_v1:      { value: 1,     prev: 1,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
             potionValue_v1:          { value: 1,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
             wipeoutKillBonus_v1:     { value: 3000,  prev: 3000,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
+            // ── NEW 2026-10-09 (no schema bump, every trained value carries over): VISION + BROKEN ──
+            lastSeenHunt_v1:         { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
+            breakValue_v1:           { value: 1,     prev: 1,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
         };
 
         // Human-readable labels for state._winCondition — shared by the three
@@ -52576,7 +52627,11 @@
             canFlyToSky, canDescendUnderground, canReturnToGround,
             unitHasJetpack, unitHasSpelunkingGear,
             SKY_RACES, UNDERGROUND_RACES, unitFinished,
-            getEffectiveRange, getEffectiveSpellRange, getEffectiveMove, getEffectiveAwr,
+            getEffectiveRange, getEffectiveSpellRange, getEffectiveMove,
+            /* VISION (2026-10-09) — ai.js reads these through GAME */
+            getEffectiveVision, getEffectiveCrit, unitLosesSharedVision, getUnitVisionRange,
+            unitSeesTile, teamSeesTile, visionGatesTargeting, visionGatesLosFree, spellVisionGate, spellSeesEnemy,
+            breakUnitPassives, restoreUnitPassives,
             getRangeDamageMult, computeSpellBase,
             /* Seeded engine RNG (state.js) — ai.js and console tooling reach
                it through GAME; engine code calls the globals directly. */
@@ -53400,7 +53455,7 @@
             // on perfectly legal casts). Fog still hides suggestions so the
             // drum never leaks a hidden enemy's position.
             if (spell.kind === 'line' || spell.kind === 'linePush') {
-                const _lnFogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+                const _lnFogLimit = visionGatesTargeting(unit);
                 const _raySet = new Set(getLineSpellRayTiles(unit, spell).map(t => t.x + ',' + t.y));
                 for (const u of state.units) {
                     if (u.dead || u.player === unit.player) continue;
@@ -53423,7 +53478,7 @@
                shows the victim and its landing on hover) */
             if (spell.hinge) return targets;
             if (spell.kind === 'doorDelivery' || spell.kind === 'doorExit') {
-                const _dFog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+                const _dFog = visionGatesTargeting(unit);
                 for (const u of state.units) {
                     if (u.dead || u.player === unit.player) continue;
                     if (_dFog && !isInVision(unit, u.x, u.y)) continue;
@@ -53450,7 +53505,7 @@
             // sit in the target drum — picking it just bounced off doSpell's own
             // fog gate ("the list target does nothing"). Telescope casters keep
             // their doSpell privilege of hitting sky enemies through fog.
-            const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const fogLimit = skipLOS ? visionGatesLosFree(unit) : visionGatesTargeting(unit);   // VISION (2026-10-09)
             const _fogTelescope = fogLimit && typeof unitHasTelescope === 'function'
                 && unitHasTelescope(unit)
                 && typeof getSectionForUnit === 'function' && getSectionForUnit(unit) === 'earth';
@@ -53569,7 +53624,7 @@
             const apCost = getSpellApCost(spell);
             const _skm = _kindMeta(spell);
             const isOffensive = !!_skm.offensive;
-            const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const fogLimit = spellVisionGate(unit, spell);   // VISION (2026-10-09)
             const out = [];
             for (const u of state.units) {
                 // Dead-target rules mirror the drum: revive walks to its own
@@ -53966,7 +54021,7 @@
 
             const enemies = getHostileUnits(unit.player);
             for (const e of enemies) {
-                if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, e.x, e.y)) continue;
+                if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y)) continue;
                 const d = distToTarget(unit.x, unit.y, e, unit.z);
                 if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unitZ)) {
                     targets.push({ x: e.x, y: e.y, dist: d, unit: e, kind: 'unit' });
@@ -54015,7 +54070,7 @@
                         if (isOwn && !(obj.detonateOnAttack && obj.blastRadius > 0)) continue;
                         const d = Math.abs(obj.x - unit.x) + Math.abs(obj.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, obj.x, obj.y, unitZ)) {
-                            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, obj.x, obj.y)) continue;
+                            if (visionGatesTargeting(unit) && !isInVision(unit, obj.x, obj.y)) continue;
                             targets.push({ x: obj.x, y: obj.y, dist: d, deployedObj: obj, kind: 'deployedObj' });
                         }
                     }
@@ -54027,7 +54082,7 @@
                     if (s.owner !== unit.player) {
                         const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y, unitZ)) {
-                            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, s.x, s.y)) continue;
+                            if (visionGatesTargeting(unit) && !isInVision(unit, s.x, s.y)) continue;
                             const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
                             targets.push({ x: s.x, y: s.y, dist: d, seed: s, seedName, kind: 'seed' });
                         }
@@ -54048,7 +54103,7 @@
                     const d = combatDist(unit.x, unit.y, unitZ, tx, ty, _tileStandZ(tx, ty));
                     if (d < 1 || d > effRange) continue;
                     if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
-                    if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, tx, ty)) continue;
+                    if (visionGatesTargeting(unit) && !isInVision(unit, tx, ty)) continue;
                     targets.push({ x: tx, y: ty, dist: d, kind: 'tree' });
                 }
             }
@@ -54069,7 +54124,7 @@
                     const d = combatDist(unit.x, unit.y, unitZ, tx, ty, Math.min(getBaseHeightAt(tx, ty), unitZ));
                     if (d < 1 || d > effRange) continue;
                     if (isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
-                    if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, tx, ty)) continue;
+                    if (visionGatesTargeting(unit) && !isInVision(unit, tx, ty)) continue;
                     targets.push({ x: tx, y: ty, dist: d, kind: 'terrain' });
                 }
             }
@@ -57377,6 +57432,64 @@
         }
         window.isFlightCrippled = isFlightCrippled;
 
+        /* ── 💔 BROKEN (2026-10-09, mondo: "a new status effect, Break or Broken, that disables a unit's passives. So if
+           I break an enemy and one of their passives is flying then they should fall out of the ground and take fall
+           damage") — STATUS_DEFS.broken's onApply / onRemove. getUnitPassives answers [] while it lasts (every hook,
+           immunity and aura is off — data.js); this strips the flat stats the passives baked in at build
+           (unit._passiveStatBonus → unit._brokenStrip) and drops a unit that flew by passive out of the sky with the
+           forced fall damage. Levitating is a status, not a passive: it keeps its bearer up. Host-side like every status;
+           the stats, z and the status ride state-sync to the guest (RULE #2), the floating text rides its relay. */
+        function breakUnitPassives(unit, src, info) {
+            if (!unit || unit.dead) return;
+            if (!unit._brokenStrip) {
+                const b = unit._passiveStatBonus || {};
+                const strip = {};
+                for (const k of ['atk', 'def', 'mdef', 'int', 'spd', 'vision', 'crt', 'move']) if (b[k]) strip[k] = b[k];
+                if (strip.atk) unit.atk = (unit.atk || 0) - strip.atk;
+                if (strip.def) unit.def = (unit.def || 0) - strip.def;
+                if (strip.mdef) unit.mdef = (unit.mdef || 0) - strip.mdef;
+                if (strip.int) unit.intStat = (unit.intStat || 0) - strip.int;
+                if (strip.spd) unit.spd = Math.max(1, (unit.spd || 1) - strip.spd);
+                if (strip.vision) unit.vision = (unit.vision || 0) - strip.vision;
+                if (strip.crt) unit.crt = (unit.crt || 0) - strip.crt;
+                if (strip.move) unit._equipMoveBonus = (unit._equipMoveBonus || 0) - strip.move;
+                unit._brokenStrip = strip;
+            }
+            /* a flyer by passive (race wings, the telepath's lift, the jetpack row) falls — ask canFly with the status
+               lifted for a moment, so the grounding sees the flyer it was a breath ago */
+            const st = ensureUnitStatus(unit);
+            const had = st.broken;
+            let fell = false;
+            st.broken = 0;
+            try {
+                if (!unitHasStatus(unit, 'levitating') && canFly(unit) && isUnitAirborne(unit)) {
+                    fell = forceGroundUnit(unit, { byLabel: '— its passives are broken', byUnit: (src && !src.dead) ? src : null });
+                }
+            } catch (e) { console.warn('[broken] ground', e); }
+            finally { st.broken = had; }
+            if (!(info && info.refreshed) && !_skipVisuals() && typeof showFloatingTextForUnit === 'function') {
+                showFloatingTextForUnit(unit, fell ? '💔 BROKEN · FALLS' : '💔 BROKEN', 'debuff', { durationMs: 1200 });
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            if (typeof invalidateFogCache === 'function') invalidateFogCache();
+        }
+        function restoreUnitPassives(unit) {
+            if (!unit || !unit._brokenStrip) return;
+            const strip = unit._brokenStrip;
+            delete unit._brokenStrip;
+            if (strip.atk) unit.atk = (unit.atk || 0) + strip.atk;
+            if (strip.def) unit.def = (unit.def || 0) + strip.def;
+            if (strip.mdef) unit.mdef = (unit.mdef || 0) + strip.mdef;
+            if (strip.int) unit.intStat = (unit.intStat || 0) + strip.int;
+            if (strip.spd) unit.spd = (unit.spd || 0) + strip.spd;
+            if (strip.vision) unit.vision = (unit.vision || 0) + strip.vision;
+            if (strip.crt) unit.crt = (unit.crt || 0) + strip.crt;
+            if (strip.move) unit._equipMoveBonus = (unit._equipMoveBonus || 0) + strip.move;
+            if (typeof invalidateFogCache === 'function') invalidateFogCache();
+        }
+        window.breakUnitPassives = breakUnitPassives;
+        window.restoreUnitPassives = restoreUnitPassives;
+
         function forceGroundUnit(unit, opts = {}) {
             if (!unit || unit.dead || unit._dying) return false;
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
@@ -57822,7 +57935,7 @@
             if (k !== 'door' && k !== 'doorSlam' && k !== 'doorDelivery' && k !== 'doorExit') return null;
             const out = [], seen = new Set();
             const push = (x, y) => { const key = x + ',' + y; if (!seen.has(key) && isInside(x, y)) { seen.add(key); out.push({ x, y }); } };
-            const fog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const fog = visionGatesTargeting(unit);
             const sees = (x, y) => !fog || isInVision(unit, x, y);
             const mine = _doors().filter(d => d.owner === unit.player && !d.fixed);
             if (k === 'door') {
@@ -57875,7 +57988,7 @@
         function _swingHostileAt(unit, x, y, fogFree) {
             const v = unitAt(x, y);
             if (!v || v.dead || v._dying || !isEnemyUnit(v, unit)) return null;
-            if (!fogFree && state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, v.x, v.y)) return null;
+            if (!fogFree && visionGatesTargeting(unit) && !isInVision(unit, v.x, v.y)) return null;
             return v;
         }
         function _swingHingeFree(x, y) {
@@ -57918,7 +58031,7 @@
             const out = [];
             if (!unit || !spell) return out;
             const r = getEffectiveSpellRange(unit, spell) || spell.range || 3;
-            const fog = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const fog = visionGatesTargeting(unit);
             for (let dy = -r - 1; dy <= r + 1; dy++) for (let dx = -r - 1; dx <= r + 1; dx++) {
                 const x = unit.x + dx, y = unit.y + dy;
                 if (!_swingHingeFree(x, y)) continue;
@@ -58577,7 +58690,7 @@
                 const T = (typeof getTerrainRule === 'function') ? getTerrainRule(getTerrainAt(x, y)) : null;
                 if (T && (T.isLava || T.deepWater || T.lava || T.damagePerTurn > 0)) continue;
                 if (opts.los !== false && typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z)) continue;
-                if (state.fogOfWar && !state.autoPlayers?.[unit.player] && typeof isInVision === 'function' && !isInVision(unit, x, y)) continue;
+                if (visionGatesTargeting(unit) && typeof isInVision === 'function' && !isInVision(unit, x, y)) continue;
                 out.push({ x, y });
             }
             return out;
@@ -59432,7 +59545,7 @@
             const d = combatDist(probe.x, probe.y, probe.z ?? 0, tw.x, tw.y, z);
             if (d < 1 || d > getEffectiveRange(probe)) return null;
             if (isRangeBlockedByTerrain(probe.x, probe.y, tw.x, tw.y, probe.z)) return null;
-            if (state.fogOfWar && !state.autoPlayers?.[probe.player] && !isInVision(probe, tw.x, tw.y)) return null;
+            if (visionGatesTargeting(probe) && !isInVision(probe, tw.x, tw.y)) return null;
             const min = getCubeAttackDamage(probe, tw, -SPELL_DMG_VARIANCE).damage;
             const typical = getCubeAttackDamage(probe, tw, 0).damage;
             const max = getCubeAttackDamage(probe, tw, SPELL_DMG_VARIANCE).damage;
@@ -59552,8 +59665,8 @@
 
             const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
-            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, x, y) && !_isSkyTelescopeTarget) {
-                addLog('Target is hidden in the fog.');
+            if (visionGatesTargeting(unit) && !isInVision(unit, x, y, (_clickedTarget && _clickedTarget.z != null) ? _clickedTarget.z : undefined) && !_isSkyTelescopeTarget) {
+                addLog('Out of sight — no one on your team can see that tile.');
                 playErrorSfx();
                 return 0;
             }
@@ -59575,7 +59688,7 @@
             if (!target && unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true) {
                 const skyTarget = state.units.find(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
                 if (skyTarget) {
-                    const vr = getUnitVisionRange(unit);
+                    const vr = getTelescopeRange(unit);
                     if ((Math.abs(unit.x - x) + Math.abs(unit.y - y)) <= vr) {
                         target = skyTarget;
 
@@ -62967,8 +63080,7 @@
                     playErrorSfx();
                     return;
                 }
-                const effectiveAwr = getEffectiveAwr(unit);
-                if (effectiveAwr <= 0) {
+                if (unitHasStatus(unit, 'jammed')) {
                     addLog(`${unitDisplayName(unit)} cannot use Scanner while jammed.`);
                     playErrorSfx();
                     return;
@@ -64121,9 +64233,9 @@
 
             const _isSpellSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
-            if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
-                if (!isInVision(unit, x, y) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
-                    addLog('Target is hidden in the fog.');
+            if (spellVisionGate(unit, spell) && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
+                if (!isInVision(unit, x, y, (_spellClickTarget && _spellClickTarget.z != null) ? _spellClickTarget.z : undefined) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
+                    if (!_silentReject) addLog('Out of sight — no one on your team can see that tile.');
                     state._teleportingUnit = null;
                     playErrorSfx();
                     return 0;
@@ -64188,7 +64300,7 @@
                     && isEnemyUnit(unit, _spellClickTarget)) {
                     const _spTd = combatReach(unit.x, unit.y, unit.z ?? 0,
                         _spTaunter.x, _spTaunter.y, _spTaunter.z ?? 0, _spellLongRange);
-                    const _spTVisible = !state.fogOfWar || state.autoPlayers?.[unit.player]
+                    const _spTVisible = !spellVisionGate(unit, spell)
                         || isInVision(unit, _spTaunter.x, _spTaunter.y);
                     if (_spTd >= (_spMeta.minRange ?? 1) && _spTd <= getEffectiveSpellRange(unit, spell)
                         && _spTVisible
@@ -64207,7 +64319,7 @@
 
             if (_isSpellSkyTelescopeTarget && state.fogOfWar && !state.devAutoSim) {
                 if (!state._fogRevealTiles) state._fogRevealTiles = new Set();
-                const _teleVr = getUnitVisionRange(unit);
+                const _teleVr = getTelescopeRange(unit);
                 const _revR = Math.max(3, _teleVr);
                 for (let _dy = -_revR; _dy <= _revR; _dy++) {
                     for (let _dx = -_revR; _dx <= _revR; _dx++) {
@@ -65388,8 +65500,7 @@
                 }
                 addLog(`${unitDisplayName(unit)} hides a ${spell.name} at ${coordLabel(_tfp.x, _tfp.y)}${_tfp.tiles.length > 1 ? ' (' + _tfp.tiles.length + ' tiles)' : ''}.`, unit.player);
             } else if (spell.kind === 'scan') {
-                const effectiveAwr = getEffectiveAwr(unit);
-                if (effectiveAwr <= 0) {
+                if (unitHasStatus(unit, 'jammed')) {
                     addLog(`${unitDisplayName(unit)} cannot emit Scan Pulse while jammed.`);
                     playErrorSfx();
                     return 0;
@@ -71392,7 +71503,7 @@
                     const d = combatDist(unit.x, unit.y, unitZ, x, y, tz);
                     if (d >= 1 && d <= getEffectiveRange(unit) && !isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
 
-                        if (state.fogOfWar && !state.autoPlayers?.[unit.player] && !isInVision(unit, x, y)) continue;
+                        if (visionGatesTargeting(unit) && !isInVision(unit, x, y)) continue;
                         tiles.push({
                             x,
                             y

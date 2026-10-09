@@ -2584,8 +2584,8 @@
                 html += _hqPauseBar('DEF', u.def | 0, 100, _HQ_STAT_BAR_C, null, 'def', u);
                 html += _hqPauseBar('M DEF', u.mdef | 0, 100, _HQ_STAT_BAR_C, null, 'mdef', u);
                 html += _hqPauseBar('SPD', u.spd | 0, 100, _HQ_STAT_BAR_C, null, 'spd');
-                html += _hqPauseBar('AWR', u.awr | 0, 100, _HQ_STAT_BAR_C, null, 'awr');
-                html += `<div class="hq-pp-diamonds"><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
+                html += _hqPauseBar('CRT', u.crt | 0, 30, _HQ_STAT_BAR_C, `${u.crt | 0}%`, 'crt');
+                html += `<div class="hq-pp-diamonds"><span><b>${u.vision | 0}</b>VISION</span><span><b>${u.move | 0}</b>MOVE</span><span><b>${u.range | 0}</b>RANGE</span><span><b>${u.inspect | 0}</b>INSPECT</span></div>`;
             }
             html += '</div>';
             if (u) html += `<div class="hq-chips">${_hqPauseTypeChips(u.types)}<i class="hq-chip dim">${_hqEsc(String(u.faction || '').toUpperCase())}</i>${u.zodiac ? `<i class="hq-chip dim">${_hqEsc(String(u.zodiac).toUpperCase())}</i>` : ''}</div>`;
@@ -11591,11 +11591,14 @@
         const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish'];
         function unitHasJetpack(unit) { return unitHasAccessory(unit, 'jetpack'); }
         function canFly(unit) {
-            if (SKY_RACES.includes(unit.race)) return true;
             /* 🪽 Levitating (CHAMP REWORK Phase 4, STATUS_DEFS grantsFlight):
                temporary flight for the status' duration. Raw status read —
                this is a per-frame hot path. */
             if (unit.status && (unit.status.levitating | 0) > 0) return true;
+            /* 💔 Broken: flying is a passive (race wings, the telepath's lift,
+               the jetpack's gear row) — none of it holds while Broken. */
+            if (unit.status && (unit.status.broken | 0) > 0) return false;
+            if (SKY_RACES.includes(unit.race)) return true;
 
             /* (the jobs removal 2026-09-27: the homosapien Psychic's levitation went with the job) */
             if (unit.race === 'telepath') return true;
@@ -11857,13 +11860,15 @@
         function _towerHp() { return Math.round(TOWER_MAX_HP * _towerLevelScale()); }
         function _towerDef() { return Math.round(TOWER_DEF * _towerLevelScale()); }
 
-        /* LOS-ONLY VISION: a unit reveals any tile it has a clear line of sight
-           to, regardless of distance — the old per-unit "vision range" no longer
-           caps what a unit can see through the fog of war. Terrain/buildings still
-           block sight (3D raycast), so hills and structures create the fog now.
-           Structures (wards/towers) and the telescope keep their own fixed ranges.
-           Flip to false to restore the classic range-limited fog. */
-        const LOS_ONLY_VISION = true;
+        /* VISION (2026-10-09, mondo): a unit sees the tiles within its VISION stat
+           (2-6, Manhattan — getUnitVisionRange) that it has a clear line of sight
+           to; terrain/buildings still block sight (3D raycast). The whole team
+           shares what its units see (isInVision). Until 2026-10-09 sight was LOS
+           ONLY (no distance cap); VISION_RULES.enabled = false brings that back
+           (data.js, editable live in the Data Panel). Structures (wards/towers)
+           and the telescope keep their own fixed ranges. */
+        function _visionOn() { return !(typeof VISION_RULES !== 'undefined' && VISION_RULES && VISION_RULES.enabled === false); }
+        function _losOnlyVision() { return !_visionOn(); }
 
         function getTowerShieldLayers(towerOwner) { return 0; }
         function getTowerDamageMultiplier(towerOwner) { return 1.0; }
@@ -12953,13 +12958,93 @@
             buildColumnsFromLegacy();
         }
 
-        /* Fog vision is pure line of sight (LOS_ONLY_VISION) — no stat extends
-           or caps how far a unit sees, so this is NOT sight range anymore. It
-           survives only as the bounded reach of gear that explicitly needs one
-           (the telescope's earth→sky spotting) and legacy bounded callers.
-           Fixed — AWR does not feed it. */
+        /* A unit's sight range in tiles (Manhattan): its live VISION stat
+           (state.js getEffectiveVision — race 2-6, gear, terrain, day/night,
+           weather, Blind) + the floor buff of its section (heaven/hell). */
         function getUnitVisionRange(unit) {
-            return 5 + getSectionBuffs(unit).vision;
+            if (!unit) return 0;
+            const v = (typeof getEffectiveVision === 'function') ? getEffectiveVision(unit) : (unit.vision || 3);
+            return v + (getSectionBuffs(unit).vision || 0);
+        }
+        /* the Telescope's earth→sky spotting keeps its own fixed reach (its row says "range 5") */
+        const TELESCOPE_RANGE = 5;
+        function getTelescopeRange(unit) {
+            return TELESCOPE_RANGE + (getSectionBuffs(unit).vision || 0);
+        }
+
+        /* Does `u` itself see tile (tx, ty)? Within its vision range AND a clear
+           line of sight (wallVision sees through walls). tz = the height the
+           sight line aims at (null = the tile's standing height). */
+        function unitSeesTile(u, tx, ty, tz) {
+            if (!u || u.dead || u._dying) return false;
+            const d = Math.abs(u.x - tx) + Math.abs(u.y - ty);
+            if (d === 0) return true;
+            if (!_losOnlyVision() && d > getUnitVisionRange(u)) return false;
+            if (u.wallVision) return true;
+            return !isVisionBlockedByTerrain(u.x, u.y, tx, ty, u.z ?? null, (tz === undefined) ? null : tz);
+        }
+
+        /* Structure / reveal sight a team owns on (tx, ty): wards, the tower,
+           vision wards, flares, open doors' twins, fog reveal tiles. */
+        function _teamStructureSeesTile(player, tx, ty) {
+            if (state.wards) {
+                for (const w of state.wards) {
+                    if (w.owner !== player) continue;
+                    const wr = w.visionRange || 3;
+                    if ((Math.abs(w.x - tx) + Math.abs(w.y - ty)) <= wr && !isVisionBlockedByTerrain(w.x, w.y, tx, ty)) return true;
+                }
+            }
+            if (state.towers) {
+                const tower = state.towers[player];
+                if (tower && tower.hp > 0) {
+                    if ((Math.abs(tower.x - tx) + Math.abs(tower.y - ty)) <= TOWER_VISION_RANGE && !isVisionBlockedByTerrain(tower.x, tower.y, tx, ty)) return true;
+                }
+            }
+            const pk = posKey(tx, ty);
+            if (state._visionWards?.length) {
+                for (const ward of state._visionWards) {
+                    if (ward.player === player && ward.tiles && (ward.tiles.has ? ward.tiles.has(pk) : ward.tiles.includes(pk))) return true;
+                }
+            }
+            if (state._flairRevealTiles?.[player]?.has(pk)) return true;
+            if (state._fogRevealTiles?.has(pk)) return true;
+            if (state.doors && state.doors.length) {
+                const _dr = (typeof DOOR_RULES !== 'undefined' && DOOR_RULES.revealRadius != null) ? DOOR_RULES.revealRadius : 1;
+                for (const d of state.doors) {
+                    if (d.owner !== player || !d.open || d.hp <= 0) continue;
+                    const tw = state.doors.find(o => o.pairId === d.pairId && o.id !== d.id && o.hp > 0);
+                    if (tw && tw.open && Math.abs(tw.x - tx) <= _dr && Math.abs(tw.y - ty) <= _dr) return true;
+                }
+            }
+            return false;
+        }
+
+        /* Does team `player` see tile (tx, ty)? Any living unit's own sight, or
+           the team's structures / reveals. Blind / Jammed units still add their
+           own (shrunken) sight — the team just can't lend them its eyes. */
+        function teamSeesTile(player, tx, ty, tz) {
+            for (const u of state.units) {
+                if (u.dead || u._dying || u.player !== player) continue;
+                if (typeof unitHasStatus === 'function' && unitHasStatus(u, 'captured')) continue;
+                if (unitSeesTile(u, tx, ty, tz)) return true;
+            }
+            return _teamStructureSeesTile(player, tx, ty);
+        }
+
+        /* THE VISION GATE for targeting (2026-10-09): does `unit`'s action need the
+           tile seen? Always when the vision rules are on — fog or no fog, human or
+           CPU (the old gate only applied with the fog on and skipped the CPU). */
+        function visionGatesTargeting(unit) {
+            if (!unit) return false;
+            if (!_visionOn()) return !!(state.fogOfWar && !state.autoPlayers?.[unit.player]);
+            return !(typeof VISION_RULES !== 'undefined' && VISION_RULES && VISION_RULES.targetNeedsVision === false);
+        }
+        /* the line-of-sight-free rows (ignoresLineOfSight / delayed): do they still
+           need the team to see the target? (VISION_RULES.losFreeNeedVision) */
+        function visionGatesLosFree(unit) {
+            if (!visionGatesTargeting(unit)) return false;
+            if (!_visionOn()) return true;
+            return !(typeof VISION_RULES !== 'undefined' && VISION_RULES && VISION_RULES.losFreeNeedVision === false);
         }
 
         function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ) {
@@ -12981,8 +13066,17 @@
             return isRangeBlockedByTerrain(x1, y1, x2, y2, null, targetZ, true);
         }
 
-        function isInVision(unit, tx, ty) {
-            if (!unit || !state.fogOfWar) return true;
+        /* Can `unit` (or its team, for it) see tile (tx, ty)? THE truth for every
+           targeting gate (attacks, spells, previews, the action menu, the CPU).
+           VISION ON (default): the unit's own sight, then — unless it is Blind /
+           Jammed (noSharedVision) — any ally's sight and the team's structures
+           (shared vision, mondo: "unless an ally unit is close enough to see
+           them"). Holds with the fog of war ON or OFF. Enemy smoke hides its
+           tiles unless a friendly stands beside them.
+           VISION OFF: the pre-2026-10-09 rule (fog off = everything seen). */
+        function isInVision(unit, tx, ty, tz) {
+            if (!unit) return true;
+            if (!_visionOn() && !state.fogOfWar) return true;
 
             /* ── Smoke concealment: enemy smoke zones block vision unless adjacent ── */
             if (state._activeZones?.length) {
@@ -13002,47 +13096,26 @@
                 }
             }
 
-            const vr = getUnitVisionRange(unit);
-            const uz = unit.z ?? null;
-            if ((LOS_ONLY_VISION || (Math.abs(unit.x - tx) + Math.abs(unit.y - ty)) <= vr) && (unit.wallVision || !isVisionBlockedByTerrain(unit.x, unit.y, tx, ty, uz))) return true;
+            if (unitSeesTile(unit, tx, ty, tz)) return true;
+            const solo = typeof unitLosesSharedVision === 'function' && unitLosesSharedVision(unit);
+            if (solo) return false;
 
-            if (state.teamVision) {
-                const allies = state.units.filter(u => !u.dead && u.player === unit.player && u.id !== unit.id);
-                for (const ally of allies) {
-                    const avr = getUnitVisionRange(ally);
-                    if ((LOS_ONLY_VISION || (Math.abs(ally.x - tx) + Math.abs(ally.y - ty)) <= avr) && (ally.wallVision || !isVisionBlockedByTerrain(ally.x, ally.y, tx, ty, ally.z ?? null))) return true;
-                }
-            }
-
-            if (!state.teamVision && unitHasWalkieTalkie(unit)) {
-
-                const allies = state.units.filter(u => !u.dead && u.player === unit.player && u.id !== unit.id && unitHasWalkieTalkie(u));
-                for (const ally of allies) {
-                    const avr = getUnitVisionRange(ally);
-                    if ((LOS_ONLY_VISION || (Math.abs(ally.x - tx) + Math.abs(ally.y - ty)) <= avr) && (ally.wallVision || !isVisionBlockedByTerrain(ally.x, ally.y, tx, ty, ally.z ?? null))) return true;
-                }
-            }
-
-            if (state.wards) {
-                for (const w of state.wards) {
-                    if (w.owner === unit.player) {
-                        const wr = w.visionRange || 3;
-                        if ((Math.abs(w.x - tx) + Math.abs(w.y - ty)) <= wr && !isVisionBlockedByTerrain(w.x, w.y, tx, ty)) return true;
+            /* VISION OFF keeps the old toggles: allies only with team vision or walkie-talkies */
+            if (!_visionOn()) {
+                if (state.teamVision) {
+                    for (const ally of state.units) {
+                        if (ally.dead || ally.player !== unit.player || ally.id === unit.id) continue;
+                        if (unitSeesTile(ally, tx, ty, tz)) return true;
+                    }
+                } else if (unitHasWalkieTalkie(unit)) {
+                    for (const ally of state.units) {
+                        if (ally.dead || ally.player !== unit.player || ally.id === unit.id || !unitHasWalkieTalkie(ally)) continue;
+                        if (unitSeesTile(ally, tx, ty, tz)) return true;
                     }
                 }
+                return _teamStructureSeesTile(unit.player, tx, ty);
             }
-
-            if (state.towers) {
-                const tower = state.towers[unit.player];
-                if (tower && tower.hp > 0) {
-                    if ((Math.abs(tower.x - tx) + Math.abs(tower.y - ty)) <= TOWER_VISION_RANGE && !isVisionBlockedByTerrain(tower.x, tower.y, tx, ty)) return true;
-                }
-            }
-
-            if (state._flairRevealTiles?.[unit.player]?.has(posKey(tx, ty))) return true;
-
-            if (state._fogRevealTiles?.has(posKey(tx, ty))) return true;
-            return false;
+            return teamSeesTile(unit.player, tx, ty, tz);
         }
 
         function getTelescopeSkyTargets(player) {
@@ -13054,7 +13127,7 @@
             const skyEnemies = state.units.filter(u => !u.dead && u.player !== player && getSectionForUnit(u) === 'above');
             for (const enemy of skyEnemies) {
                 for (const tele of telescopers) {
-                    const vr = getUnitVisionRange(tele);
+                    const vr = getTelescopeRange(tele);
                     if ((Math.abs(tele.x - enemy.x) + Math.abs(tele.y - enemy.y)) <= vr) {
                         result.set(posKey(enemy.x, enemy.y), enemy);
                         break;
@@ -13103,14 +13176,14 @@
             if (state.squadLeaderMode && player === 1 && !state.teamVision) {
                 const leader = state.squadLeaderUnitId ? state.units.find(u => u.id === state.squadLeaderUnitId && isAlive(u)) : null;
                 if (leader) {
-                    addVisibleFrom(_vx(leader), _vy(leader), getUnitVisionRange(leader), _vz(leader), leader.wallVision, LOS_ONLY_VISION);
+                    addVisibleFrom(_vx(leader), _vy(leader), getUnitVisionRange(leader), _vz(leader), leader.wallVision, _losOnlyVision());
                     if (state._fogRevealTiles) {
                         for (const pk of state._fogRevealTiles) visible.add(pk);
                     }
                     if (unitHasWalkieTalkie(leader)) {
                         const allies = state.units.filter(u => isAlive(u) && u.id !== leader.id && unitHasWalkieTalkie(u));
                         for (const ally of allies) {
-                            addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, LOS_ONLY_VISION);
+                            addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, _losOnlyVision());
                         }
                     }
                     return visible;
@@ -13120,7 +13193,7 @@
             if (state.teamVision) {
                 const allies = state.units.filter(isAlive);
                 for (const ally of allies) {
-                    addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, LOS_ONLY_VISION);
+                    addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, _losOnlyVision());
                 }
             } else {
                 let unit;
@@ -13141,7 +13214,7 @@
                     }
                 }
                 if (!unit) return visible;
-                addVisibleFrom(_vx(unit), _vy(unit), getUnitVisionRange(unit), _vz(unit), unit.wallVision, LOS_ONLY_VISION);
+                addVisibleFrom(_vx(unit), _vy(unit), getUnitVisionRange(unit), _vz(unit), unit.wallVision, _losOnlyVision());
             }
 
             if (state._fogRevealTiles) {
@@ -13158,7 +13231,7 @@
                 if (selectedUnit && unitHasWalkieTalkie(selectedUnit)) {
                     const allies = state.units.filter(u => isAlive(u) && u.id !== selectedUnit.id && unitHasWalkieTalkie(u));
                     for (const ally of allies) {
-                        addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, LOS_ONLY_VISION);
+                        addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, _losOnlyVision());
                     }
                 }
             }
@@ -14395,14 +14468,14 @@
                 atk: 0,
                 armor: 0,
                 int: 0,
-                awr: 0,
+                vision: 0,
                 label: cycle
             };
             /* 🌕 Lycanthropy (plan §5.2): the day/night FORM (wolfForm stance
                carrier) replaces the ±nudge — a unit carrying dayNightForms
                takes no sleep-preference swing whatever its saved identity says. */
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'dayNightForms')) {
-                return { atk: 0, armor: 0, int: 0, awr: 0, label: cycle === 'night' ? 'The Beast' : 'Human by day' };
+                return { atk: 0, armor: 0, int: 0, vision: 0, label: cycle === 'night' ? 'The Beast' : 'Human by day' };
             }
             if (unit.sleepPreference === 'nocturnal') {
                 return cycle === 'night' ?
@@ -14410,14 +14483,14 @@
                         atk: 8,
                         armor: 5,
                         int: 5,
-                        awr: 14,
+                        vision: 1,
                         label: 'Nocturnal Favored'
                     } :
                     {
                         atk: -8,
                         armor: -5,
                         int: -5,
-                        awr: -14,
+                        vision: -1,
                         label: 'Nocturnal Penalty'
                     };
             }
@@ -14427,14 +14500,14 @@
                         atk: 8,
                         armor: 5,
                         int: 5,
-                        awr: 14,
+                        vision: 1,
                         label: 'Daywalker Favored'
                     } :
                     {
                         atk: -8,
                         armor: -5,
                         int: -5,
-                        awr: -14,
+                        vision: -1,
                         label: 'Daywalker Penalty'
                     };
             }
@@ -14442,7 +14515,7 @@
                 atk: 0,
                 armor: 0,
                 int: 0,
-                awr: 0,
+                vision: 0,
                 label: cycle
             };
         }
@@ -15371,6 +15444,7 @@
                         unit.shield = 0;
                         unit.ap = 0;
                         unit.status = { spawnGuard: 1 };
+                        if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);   // 💔 a respawn wipe skips onRemove
                         delete unit.statStageMods;   // fresh life — no carried stat stages
                         unit._respawnIn = null;
                         unit._justRespawned = true;
@@ -15420,6 +15494,7 @@
                             unit.shield = 0;
                             unit.ap = 0;
                             unit.status = { spawnGuard: 1 };
+                        if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);   // 💔 a respawn wipe skips onRemove
                             delete unit.statStageMods;   // fresh life — no carried stat stages
                             unit._respawnIn = null;
                             unit._justRespawned = true;
@@ -15515,6 +15590,7 @@
                     unit.shield = 0;
                     unit.ap = 0;
                     unit.status = { spawnGuard: 1 };
+                        if (typeof restoreUnitPassives === 'function') restoreUnitPassives(unit);   // 💔 a respawn wipe skips onRemove
                     delete unit.statStageMods;   // fresh life — no carried stat stages
                     unit._respawnIn = null;
                     unit._justRespawned = true;
@@ -15698,7 +15774,8 @@
                 // once every SPD bonus (gear / passive statBonus) has landed.
                 move: stats.move,
                 inspect: stats.inspect,
-                awr: stats.awr,
+                vision: stats.vision,   // 2026-10-09: VISION (tiles) replaced AWR
+                crt: stats.crt,         // CRT % is its own stat
                 intStat: stats.int,
                 spd: stats.spd,   // (the Gunslinger +10 is passiveDeadeye's statBonus now)
                 // armor / spellPower / healBonus come from the passive rows' hooks — set once passiveRows is known (below)
@@ -16032,7 +16109,11 @@
                 // MOV gear (jetpack) is a flat TILE bonus applied after the
                 // SPD band lookup (getEffectiveMove) - never folded into SPD.
                 newUnit._equipMoveBonus = (newUnit._equipMoveBonus || 0) + (_eqB.move || 0);
-                newUnit.awr = (newUnit.awr || 0) + (_eqB.awr || 0);
+                newUnit.vision = (newUnit.vision || 0) + (_eqB.vision || 0);
+                newUnit.crt = (newUnit.crt || 0) + (_eqB.crt || 0);
+                /* 💔 what Broken takes off while it lasts (battle.js breakUnitPassives) — the passives' flat stats */
+                newUnit._passiveStatBonus = { atk: _eqB.atk || 0, def: _eqB.def || 0, mdef: _eqB.mdef || 0, int: _eqB.int || 0,
+                    spd: _eqB.spd || 0, vision: _eqB.vision || 0, crt: _eqB.crt || 0, move: _eqB.move || 0 };
                 newUnit.intStat = (newUnit.intStat || 0) + (_eqB.int || 0);
                 newUnit.spd = (newUnit.spd || 0) + (_eqB.spd || 0);
             }
