@@ -477,7 +477,7 @@ const PB_STAT_LOOK = {
   INT:  { c: '#c77dff', g: '✦' },   // ✦  (M ATK)
   MDEF: { c: '#7fd9dd', g: '◈' },   // ◈  (M DEF)
   SPD:  { c: '#f2c468', g: '➶' },   // ➶
-  AWR:  { c: '#ffd75a', g: '◉' },   // ◉
+  VIS:  { c: '#ffd75a', g: '◉' },   // ◉  (VISION, tiles)
   CRT:  { c: '#ff4fa3', g: '✧' },   // ✧
   EVA:  { c: '#58d858', g: '↯' },   // ↯
 };
@@ -508,12 +508,11 @@ const PB_ZODIAC_READ = {
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
 /* CRT/EVA are official stats (canonical formula in data.js — the same one
-   the in-battle dice roll): CRT derives from AWR alone, EVA from MOV. They
-   show and sort like every other stat; hover them for the full math.
-   AWR is the perception stat (crit, stealth detection, opportunity attacks
-   — NOT sight range, which is pure line of sight); several accessories
-   grant it, so it shows on the sheet like everything else. */
-const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','AWR','RNG','MOV','CRT','EVA'];
+   the in-battle dice roll): CRT is its own stat (a percent, 2026-10-09),
+   EVA derives from MOV. They show and sort like every other stat; hover
+   them for the full math. VIS (VISION, 2-6 tiles, 2026-10-09 — replaced
+   AWR) is how far the unit sees; a unit can only hit what its team sees. */
+const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','VIS','RNG','MOV','CRT','EVA'];
 /* MP bar scale (2026-08-12): tuned to the tree-cost MP rebalance — the top
    caster combos (orb of light / seraphim / wizard + Psychic / Black Mage)
    land at 250–270 displayed MP, so 250 renders them pegged full/green
@@ -521,7 +520,7 @@ const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','AWR','RNG','MOV','C
    JOB_MODIFIERS whenever the MP economy moves again. */
 // 2026-08-29 stat rework: the six core stats share the 0-100 ruler (a bit
 // of headroom for gear/natures that push past it); MOV caps at 5 (+1 jetpack).
-const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:105, MDEF:105, INT:110, SPD:105, AWR:110, RNG:6, MOV:6, CRT:30, EVA:25 };
+const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:105, MDEF:105, INT:110, SPD:105, VIS:6, RNG:6, MOV:6, CRT:30, EVA:25 };
 /* Canonical vital-bar palette — MUST stay in sync with hud.js
    (HP_ALLY_FILL / MP_FILL / *_GLOW; party-builder.js loads BEFORE hud.js so
    the constants can't be referenced directly). The builder always shows YOUR
@@ -530,7 +529,7 @@ const PB_VITAL = {
   hp: { ink:'#2ed158', fill:'linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%)', glow:'0 0 6px rgba(46,209,88,0.45)' },
   mp: { ink:'#2f9dff', fill:'linear-gradient(90deg, #1f7fd6 0%, #2f9dff 60%, #8fd0ff 100%)', glow:'0 0 6px rgba(47,157,255,0.4)' },
 };
-const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', AWR:'awr', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
+const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', VIS:'vision', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
 const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
 // Display names — the int stat reads as Magic Attack everywhere in the UI.
 const STAT_LABELS = { INT:'M ATK', MDEF:'M DEF' };
@@ -540,10 +539,10 @@ const statLabel = k => STAT_LABELS[k] || k;
 // numeric stat is a plain StatBar row. MOV/RNG keep the diamond footprints,
 // so no bars for them.
 const VITAL_KEYS = ['HP','MP'];
-const BAR_KEYS  = ['ATK','INT','DEF','MDEF','SPD','AWR','CRT','EVA'];
+const BAR_KEYS  = ['ATK','INT','DEF','MDEF','SPD','VIS','CRT','EVA'];
 function _withCritEva(s) {
   if (!s) return s;
-  if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.awr || 0) * 100);
+  if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.crt || 0) * 100);   // CRT is its own stat (a percent) since 2026-10-09
   if (typeof window.evasionChanceFromStats === 'function') s.eva = Math.round(window.evasionChanceFromStats(s.move || 0) * 100);
   return s;
 }
@@ -701,17 +700,18 @@ function computeStats(race, cls) {
    `statBonus` hooks (data.js passiveIdsStatBonus); an old { accessory1, accessory2 } object still reads the retired table. */
 function computeFullStats(race, cls, secJob, equipment, ups, zodiac) {
   const base = computeStats(race, cls);
-  const secB = { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };   // THE JOBS REMOVAL (2026-09-27): no second job
+  const secB = { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,vision:0,crt:0,int:0,spd:0 };   // THE JOBS REMOVAL (2026-09-27): no second job
   const eqB = (Array.isArray(equipment) && typeof window.passiveIdsStatBonus === 'function') ? window.passiveIdsStatBonus(equipment, ups)   // ups: a passive row's +1 / +2 (2026-10-06)
-    : (equipment && !Array.isArray(equipment) && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
+    : (equipment && !Array.isArray(equipment) && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,vision:0,crt:0,int:0,spd:0 };
   const delta = {};
   const final = {};
-  for (const k of ['hp','mp','atk','def','mdef','awr','int','spd']) {
+  for (const k of ['hp','mp','atk','def','mdef','vision','crt','int','spd']) {
     const b = base[k] || 0;
     // the birth sign's natal change (data.js ZODIAC_EFFECTS, the race editor's ZODIAC tab) shows as a ± like gear
     const d = (secB[k]||0) + (eqB[k]||0) + (zodiac && typeof window.zodiacNatalDelta === 'function' ? window.zodiacNatalDelta(zodiac, k) : 0);
     delta[k] = d;
-    final[k] = Math.max(k==='awr'||k==='spd'?1:0, b + d);
+    final[k] = Math.max(k==='vision'||k==='spd'?1:0, b + d);
+    if (k === 'vision') final[k] = Math.min(8, final[k]);   // data.js VISION_RULES.maxVision
   }
   // MOV derives from SPD (2026-08-29 rework: SPD 1-25 → 1 tile, then 1 tile per 20 SPD, cap 5);
   // gear MOV (jetpack) is a flat tile bonus on top of the band.
@@ -723,7 +723,7 @@ function computeFullStats(race, cls, secJob, equipment, ups, zodiac) {
   final.inspect = (base.inspect || 1) + (Array.isArray(equipment) && equipment.includes('passiveFieldOperative') ? 1 : 0);
   delta.range = 0;
   delta.inspect = 0;
-  // CRT/EVA follow the stats they derive from, so gear/sub-job AWR/MOV
+  // CRT (own stat) / EVA (from MOV) follow gear and sign, so their
   // changes surface as a visible ± delta on the percent too.
   _withCritEva(final);
   delta.crt = (final.crt || 0) - (base.crt || 0);
@@ -1978,7 +1978,7 @@ const RACE_TRAITS = {
   ],
   'grey': [
     { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/M ATK at night; penalized in daylight.' },                         // CODED
-    { icon: '🧠', name: 'Telepathic Network', desc: 'Allies gain +1 AWR while a Grey is on the field.' },             // DESIGN
+    { icon: '🧠', name: 'Telepathic Network', desc: 'Allies gain +1 VISION while a Grey is on the field.' },             // DESIGN
   ],
   'telepath': [
     { icon: '🪽', name: 'Levitation', desc: 'Airborne — floats over hazards and rough ground. Grounded below 25% HP.' },  // CODED

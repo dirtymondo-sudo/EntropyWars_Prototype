@@ -366,10 +366,42 @@
                 if (g.isUnitConcealedFrom(tg, viewerPlayer)) return true;
             } else if (typeof g.isUnitConcealedFrom === 'function'
                 && g.isUnitConcealedFrom(tg, viewerPlayer)) return true;
-            if (g.state.fogOfWar && typeof g.isUnitSeenByTeam === 'function'
+            /* 👁 VISION (2026-10-09): the CPU plays by the same sight as a person — fog or no fog, it can only aim at
+               what its team sees (each unit's VISION tiles + a clear line), and a Blind / Jammed actor only at what
+               it sees itself (isInVision answers both). */
+            if (_aiVisionOn() && _aiActor && _aiActor.player === viewerPlayer && typeof g.isInVision === 'function') {
+                if (!g.isInVision(_aiActor, tg.x, tg.y, tg.z ?? null)) return true;
+            } else if ((_aiVisionOn() || g.state.fogOfWar) && typeof g.isUnitSeenByTeam === 'function'
                 && !g.isUnitSeenByTeam(tg, viewerPlayer)) return true;
         } catch (e) {}
         return false;
+    }
+    /* 👁 Last-seen memory (2026-10-09): per team, enemy id → the tile and round it was last in sight. AI-local (never on
+       state: the host runs the AI, nothing for the guest to mirror). A tile the team now sees empty is forgotten. */
+    const _aiLastSeen = { 1: new Map(), 2: new Map(), _round: -1, _units: null };
+    function _aiLastSeenFor(g, player) {
+        const r = g.state.round || 0;
+        if (r < _aiLastSeen._round || _aiLastSeen._units !== g.state.units) { _aiLastSeen[1].clear(); _aiLastSeen[2].clear(); }   // a new match
+        _aiLastSeen._round = r;
+        _aiLastSeen._units = g.state.units;
+        if (!_aiLastSeen[player]) _aiLastSeen[player] = new Map();
+        return _aiLastSeen[player];
+    }
+    function _aiNoteSightings(g, player, seen, visTiles) {
+        try {
+            const ls = _aiLastSeenFor(g, player);
+            const rnd = g.state.round || 0;
+            for (const e of seen) ls.set(e.id, { x: e.x, y: e.y, round: rnd });
+            for (const [id, rec] of ls) {
+                const e = g.state.units.find(u => u.id === id);
+                if (!e || e.dead) { ls.delete(id); continue; }
+                if (seen.some(s => s.id === id)) continue;
+                if (visTiles && visTiles.has(g.posKey(rec.x, rec.y))) ls.delete(id);   // we look there and it is gone
+            }
+        } catch (e) {}
+    }
+    function _aiVisionOn() {
+        return typeof VISION_RULES === 'undefined' || VISION_RULES.enabled !== false;
     }
     // Protected (invulnerable) targets block ALL damage and count as a
     // press MISS — never shoot into Protect.
@@ -871,7 +903,27 @@
         if (id === 'slow') return 40 + 12 * turns;
         if (id === 'minimize') return 0.35 * output * turns;
         if (id === 'hexed') return 90;
-        if (id === 'blind') return 0.4 * output * turns;
+        if (id === 'blind') {
+            // 👁 Blind takes the target down to 1 tile of sight and cuts it off from its team's eyes: a ranged
+            // threat loses its shots, a melee one barely notices
+            let ranged = false;
+            try { ranged = (g.getEffectiveRange(tg) || 1) >= 2; } catch (e) {}
+            return (ranged ? 0.55 : 0.3) * output * turns;
+        }
+        if (id === 'broken') {
+            /* 💔 Broken shuts the target's passives off (data.js getUnitPassives → []); a unit flying by passive falls
+               and eats the fall damage. Priced by what it loses; breakValue_v1 tunes it (trainer-tunable, default 1). */
+            let val = 0;
+            try {
+                const ps = (typeof getUnitPassives === 'function') ? getUnitPassives(tg) : [];
+                val += 28 * Math.min(4, ps.length) * turns;
+                const b = tg._passiveStatBonus || {};
+                val += 1.2 * ((b.atk || 0) + (b.int || 0) + (b.def || 0) + (b.mdef || 0));
+                if (typeof g.canFly === 'function' && g.canFly(tg) && !g.unitHasStatus(tg, 'levitating')
+                    && typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(tg)) val += 140;
+            } catch (e) {}
+            return val * wght(g, 'breakValue_v1', 1);
+        }
         if (id === 'burn' || id === 'poison') {
             let dot = 30;
             try {
@@ -1067,6 +1119,7 @@
             .filter(e => !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked')))
             .filter(e => !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, player)))
             .filter(e => visTiles.has(g.posKey(e.x, e.y)));
+        _aiNoteSightings(g, player, visibleEnemies, visTiles);
 
         const allies = g._isFFA()
             ? []
@@ -1087,6 +1140,7 @@
         const effRange = g.getEffectiveRange(unit);
         const attackTargets = visibleEnemies.filter(e => {
             const d = _dist(g, unit.x, unit.y, unit.z, e);
+            if (_aiVisionOn() && typeof g.isInVision === 'function' && !g.isInVision(unit, e.x, e.y, e.z ?? null)) return false;   // 👁 Blind / Jammed: its own eyes only
             return d >= 1 && d <= effRange && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
         });
 
@@ -2319,7 +2373,7 @@
         }
 
         // Scanner — information value while hourglasses are hidden.
-        if (unit.items?.scanner > 0 && g.getEffectiveAwr(unit) > 0) {
+        if (unit.items?.scanner > 0 && !g.unitHasStatus(unit, 'jammed')) {
             const unrevHG = (g.state.hourglasses || []).filter(h =>
                 h.carriedBy === null && !h.visibleTo[unit.player]
             ).length;
@@ -3395,7 +3449,7 @@
                 if (!e || !e.id) continue;
                 if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm'].includes(e.id)) {
                     s += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
-                } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse'].includes(e.id)) {
+                } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'broken'].includes(e.id)) {
                     s += 70;
                 } else if (['poison', 'burn', 'discord', 'marked', 'glare', 'hexed'].includes(e.id)) {
                     s += 50;
@@ -3517,7 +3571,7 @@
         }
 
         if (kind === 'scan') {
-            if (g.getEffectiveAwr(unit) <= 0) return 0;
+            if (g.unitHasStatus(unit, 'jammed')) return 0;
             const unrev = (g.state.hourglasses || []).filter(h => h.carriedBy === null && !h.visibleTo[unit.player]).length;
             if (unrev === 0) return 0;
             let s = 40 + unrev * 20;
@@ -3528,7 +3582,7 @@
 
         if (kind === 'remoteView') {
             // pure recon: mildly useful early under fog, useless otherwise
-            if (!g.state.fogOfWar) return 0;
+            if (!g.state.fogOfWar && !_aiVisionOn()) return 0;
             return (g.state.round || 0) <= 6 ? 45 : 20;
         }
 
@@ -3844,7 +3898,7 @@
                     if (!(a.status[key] > 0) || !defs[key] || defs[key].kind !== 'debuff') continue;
                     if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm', 'feared', 'possessed', 'infected'].includes(key)) {
                         s += 0.6 * unitThreatOutput(g, a, v.closestEnemy || unit);
-                    } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'tethered', 'grievous'].includes(key)) {
+                    } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'tethered', 'grievous', 'broken'].includes(key)) {
                         s += 70;
                     } else {
                         s += 45;
@@ -4457,6 +4511,22 @@
             goals.push({ x: h.door.x, y: h.door.y, score: CAP_TUNE.freeGoal + (seal <= 1 ? 60 : 0), reason: 'free_captive' });
         }
 
+        /* 👁 VISION (2026-10-09): sight is 2-6 tiles now, so an enemy that slips out of view is not forgotten — the
+           team walks to where it was last seen (fresh sightings pull hardest); lastSeenHunt_v1 tunes it */
+        if (v.visibleEnemies.length === 0 && g.canUnitMove(unit)) {
+            const ls = _aiLastSeenFor(g, unit.player);
+            const rnd = g.state.round || 0;
+            let best = null, bestS = 0;
+            for (const rec of ls.values()) {
+                const age = Math.max(0, rnd - rec.round);
+                if (age > 4) continue;
+                const d = Math.abs(unit.x - rec.x) + Math.abs(unit.y - rec.y);
+                const sc = (120 - age * 22 - Math.min(40, d * 3)) * wght(g, 'lastSeenHunt_v1', 1);
+                if (sc > bestS) { bestS = sc; best = rec; }
+            }
+            if (best) goals.push({ x: best.x, y: best.y, score: bestS, reason: 'hunt_last_seen' });
+        }
+
         goals.push({
             x: Math.floor(g.bw() / 2),
             y: Math.floor(g.bh() / 2),
@@ -4466,7 +4536,7 @@
         // Apply the mode policy after generic intents too: otherwise the
         // 160-point approach_enemy silently overrides the TDM hunt policy.
         for (const goal of goals) {
-            if (!['tdm_hunt', 'tdm_advance', 'approach_enemy', 'advance_to_mid', 'explore'].includes(goal.reason)) continue;
+            if (!['tdm_hunt', 'tdm_advance', 'approach_enemy', 'advance_to_mid', 'explore', 'hunt_last_seen'].includes(goal.reason)) continue;
             const sp = ws.scorePlay ?? 1;
             if (ws.scorePolicy === 'protect_lead') goal.score *= Math.max(0.15, 1 - 0.6 * sp);
             else if (ws.scorePolicy === 'seek_score') goal.score += 40 * ws.roundUrgency * sp;
@@ -5171,7 +5241,7 @@
         const enemies = g.getHostileUnits(unit.player).filter(e => !e.dead &&
             !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked'))
             && !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, unit.player))
-            && (!g.state.fogOfWar || typeof g.isUnitSeenByTeam !== 'function'
+            && (!(_aiVisionOn() || g.state.fogOfWar) || typeof g.isUnitSeenByTeam !== 'function'
                 || g.isUnitSeenByTeam(e, unit.player)));
         const best = _bestLineAimAI(unit, spell, { visibleEnemies: enemies }, preferredTargetId);
         return best ? { x: best.target.x, y: best.target.y, z: best.target.z, hits: best.hits, score: best.score } : null;

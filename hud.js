@@ -3026,7 +3026,7 @@ function _hrlgQuickStats(panelKey) {
   const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
   const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
   const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
-  const awr  = typeof getEffectiveAwr === 'function' ? getEffectiveAwr(u) : (u.awr || 0);
+  const vis  = typeof getUnitVisionRange === 'function' ? getUnitVisionRange(u) : (u.vision || 0);
   const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
   const eva  = Math.round((typeof getEvasionChance === 'function' ? getEvasionChance(u) : 0) * 100);
   const HELP = (typeof window !== 'undefined' && window.STAT_HELP) || {};
@@ -3038,7 +3038,7 @@ function _hrlgQuickStats(panelKey) {
     { k: 'MOV',  v: mov,        base: u.move || 0,    tip: HELP.move },
     // Longshot (marksman passive) reports 99 — read it as "any visible tile".
     { k: 'RNG',  v: rng >= 99 ? '∞' : rng, base: u.range || 0, tip: HELP.range },
-    { k: 'AWR',  v: awr,        base: u.awr || 0, tip: HELP.awr, g: 'awr' },
+    { k: 'VIS',  v: vis,        base: u.vision || 0, tip: HELP.vision, g: 'vision' },
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
     { k: 'EVA',  v: eva + '%',  tip: HELP.eva },
   ];
@@ -4703,8 +4703,8 @@ function _hrlgComboBlades(unit, st) {
     // Fog parity with getComboPartners / the engine's vision gates: an enemy
     // the initiator can't see must not be listed (it would leak positions and
     // the board-click path could never have picked it anyway).
-    .filter(t => !isOffensive || !state.fogOfWar || !!state.autoPlayers?.[unit.player]
-      || typeof isInVision !== 'function' || isInVision(unit, t.u.x, t.u.y))
+    .filter(t => !isOffensive || typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(unit)
+      || typeof isInVision !== 'function' || isInVision(unit, t.u.x, t.u.y, t.u.z))
     .sort((a, b) => a.d - b.d);
 
   const blades = targets.map(t => {
@@ -5801,8 +5801,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   // Fog parity with the engine gates (doAttack / doSpell / getSpellRangeTiles):
   // a target the caster can't see must not be offered — clicking it would just
   // bounce off the engine's own vision check after the move.
-  const _fogSees = !state.fogOfWar || !!state.autoPlayers?.[actingUnit.player]
-    || typeof isInVision !== 'function' || isInVision(actingUnit, tx, ty);
+  const _fogSees = typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(actingUnit)
+    || typeof isInVision !== 'function' || isInVision(actingUnit, tx, ty);   // 👁 VISION: team sight, fog or no fog
   const inAttackRange = dist >= 1 && dist <= effRange && !losBlocked && _fogSees;
   const canAttack = inAttackRange && unitAP >= (G.AP_COST_ACTION || 1);
 
@@ -6004,8 +6004,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             ? combatReach(actingUnit.x, actingUnit.y, actingUnit.z ?? 0,
                 _qTaunter.x, _qTaunter.y, _qTaunter.z ?? 0, _tLong)
             : Math.abs(actingUnit.x - _qTaunter.x) + Math.abs(actingUnit.y - _qTaunter.y);
-          const _tVis = !state.fogOfWar
-            || (typeof isInVision === 'function' && isInVision(actingUnit, _qTaunter.x, _qTaunter.y));
+          const _tVis = (typeof spellVisionGate === 'function' ? !spellVisionGate(actingUnit, sp) : !state.fogOfWar)
+            || (typeof isInVision === 'function' && isInVision(actingUnit, _qTaunter.x, _qTaunter.y, _qTaunter.z));
           if (_td >= (_tm.minRange ?? 1) && _td <= spRange && _tVis
               && (sp.ignoresLineOfSight
                 || !(typeof isRangeBlockedByTerrain === 'function'
@@ -8472,9 +8472,9 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const losBlocked = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
     // Fog parity with doAttack: a structure the unit can't see is never offered
     // (the swing would only bounce off the engine's own vision gate).
-    const _fogSees = !state.fogOfWar || !!state.autoPlayers?.[actingUnit.player]
+    const _fogSees = typeof visionGatesTargeting !== 'function' || !visionGatesTargeting(actingUnit)
       || typeof isInVision !== 'function' || isInVision(actingUnit, tx, ty);
-    const _atkReason = (ok) => ok ? '' : (!_fogSees ? 'Hidden in fog' : losBlocked ? 'No LOS' : 'Out of range');
+    const _atkReason = (ok) => ok ? '' : (!_fogSees ? 'Out of sight' : losBlocked ? 'No LOS' : 'Out of range');
     // Move + attack (2026-09-14): a structure out of reach from HERE is still
     // attackable this turn when one walk step brings it into range with the
     // AP for the swing in hand — the enemy-unit menu has offered that since

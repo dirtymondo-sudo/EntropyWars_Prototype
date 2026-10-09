@@ -23,7 +23,7 @@
                 ATK: 'atk',
                 RNG: 'range',
                 MOV: 'move',
-                AWR: 'scan'
+                VIS: 'scan'
             };
             const iconType = iconMap[label] || 'scan';
             return `
@@ -2607,8 +2607,8 @@
             for (const _u of (state.units || [])) {
               if (_u.dead || !isEnemyUnit(_u, _self)) continue;
               if (typeof unitHasStatus === 'function' && unitHasStatus(_u, 'invisible')) continue;
-              if (state.fogOfWar && !state.autoPlayers?.[_self.player]
-                  && typeof isInVision === 'function' && !isInVision(_self, _u.x, _u.y)) continue;
+              if (visionGatesTargeting(_self)   // 👁 VISION: the team's sight, fog or no fog
+                  && typeof isInVision === 'function' && !isInVision(_self, _u.x, _u.y, _u.z)) continue;
               _visEnemies.push(_u);
             }
 
@@ -2856,7 +2856,7 @@
 
             const _baneRule = ITEM_RULES[state.selectedTool];
             const _baneRange = getEffectiveRange(_selectedForHl, { item: true }) + 1;
-            const _fogLimitBane = state.fogOfWar && !state.autoPlayers?.[_selectedForHl.player];
+            const _fogLimitBane = visionGatesTargeting(_selectedForHl);   // 👁 VISION (2026-10-09)
             for (let cy = 0; cy < bh(); cy++) {
               for (let cx = 0; cx < bw(); cx++) {
                 const d = Math.max(Math.abs(_selectedForHl.x - cx), Math.abs(_selectedForHl.y - cy));
@@ -2898,7 +2898,7 @@
           }
         } else if (state.actionMode === 'flair' && canUnitAct(_selectedForHl)) {
           const flairRange = 8;
-          const _flairVis = state.fogOfWar ? computeVisibleTiles(_selectedForHl.player) : null;
+          const _flairVis = (state.fogOfWar || visionGatesTargeting(_selectedForHl)) ? computeVisibleTiles(_selectedForHl.player) : null;
           for (let cy = 0; cy < bh(); cy++) {
             for (let cx = 0; cx < bw(); cx++) {
               const d = Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy);
@@ -3032,7 +3032,7 @@
               }
             } else if (spell.kind === 'cross' && !spell.aoeOriginSelf) {
 
-              const _fogLimitCross = state.fogOfWar && !state.autoPlayers?.[_selectedForHl.player];
+              const _fogLimitCross = spellVisionGate(_selectedForHl, spell);   // 👁 VISION (2026-10-09)
               const _crossEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               const _crossSkipLOS = spell.ignoresLineOfSight === true;
               const _crossSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
@@ -3080,7 +3080,7 @@
               }
             } else if (spell.kind === 'utility') {
 
-              const _fogLimitUtil = state.fogOfWar && !state.autoPlayers?.[_selectedForHl.player];
+              const _fogLimitUtil = spellVisionGate(_selectedForHl, spell);
               const _utilEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               const _utilSkipLOS = spell.ignoresLineOfSight === true;
               const _utilSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
@@ -3106,7 +3106,7 @@
                 }
               }
             } else {
-              const _fogLimitSpells = state.fogOfWar && !state.autoPlayers?.[_selectedForHl.player];
+              const _fogLimitSpells = spellVisionGate(_selectedForHl, spell);
               const _genEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               const _genSkipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport' || _skyGrabHl;
               const _genSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
@@ -4257,7 +4257,7 @@
             let selectedText = 'No unit selected.';
             const unit = getSelectedUnit();
             if (unit) {
-                selectedText = `${unit.name || unit.race || 'Unit'} selected. Move ${getEffectiveMove(unit)}, Attack ${getEffectiveRange(unit)}, Inspect ${getEffectiveInspect(unit)} reach · ${getInspectTileCount(unit)} tiles, AWR ${getEffectiveAwr(unit)}, INT ${getEffectiveInt(unit)}. MP ${unit.mp}/${unit.maxMp}. ${getStatusLabels(unit).join(', ') || ''}`;
+                selectedText = `${unit.name || unit.race || 'Unit'} selected. Move ${getEffectiveMove(unit)}, Attack ${getEffectiveRange(unit)}, Inspect ${getEffectiveInspect(unit)} reach · ${getInspectTileCount(unit)} tiles, VISION ${getUnitVisionRange(unit)}, CRT ${getEffectiveCrit(unit)}%, INT ${getEffectiveInt(unit)}. MP ${unit.mp}/${unit.maxMp}. ${getStatusLabels(unit).join(', ') || ''}`;
             }
 
             let phaseText = state.phase;
@@ -5636,7 +5636,7 @@
                 return;
             }
 
-            if (state.fogOfWar && !state.autoPlayers?.[unit.player]) {
+            if (state.fogOfWar || visionGatesTargeting(unit)) {
                 const vis = computeVisibleTiles(unit.player);
                 if (vis.has(posKey(x, y))) {
                     addLog('Flair must be fired into the fog — that tile is already visible.');
@@ -8452,7 +8452,7 @@
             /* maxMp halved 2026-08-09 with the global MP-pool halving (data.js). */
             // 2026-08-29 stat rework: the six core stats share the 0-100 ruler.
             const maxHp = 820, maxMp = 265, maxAtk = 105, maxDef = 105, maxMDef = 105, maxInt = 105, maxSpd = 105;
-            const total = (stats.hp || 0) + (stats.mp || 0) + (stats.atk || 0) + (stats.def || 0) + (stats.mdef || 0) + (stats.int || 0) + (stats.spd || 0) + (stats.move || 0) + (stats.awr || 0);
+            const total = (stats.hp || 0) + (stats.mp || 0) + (stats.atk || 0) + (stats.def || 0) + (stats.mdef || 0) + (stats.int || 0) + (stats.spd || 0) + (stats.move || 0) + (stats.vision || 0) + (stats.crt || 0);
             // ⚖️ Official physique (RACE_PHYSIQUE): height/weight are real game
             // data — the weight class drives push/pull physics, fall damage and
             // crash-through, so the dossier states it like the stat it is.
@@ -8486,7 +8486,8 @@
                         ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', EW_STAT_BAR_C, window.STAT_HELP?.mdef, 'mdef')}
                         ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', EW_STAT_BAR_C, window.STAT_HELP?.spd, 'spd')}
                         ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', EW_STAT_BAR_C, window.STAT_HELP?.move)}
-                        ${_codexBuildStatBar(stats.awr || 0, 105, 'AWR', EW_STAT_BAR_C, window.STAT_HELP?.awr, 'awr')}
+                        ${_codexBuildStatBar(stats.vision || 0, 6, 'VISION', EW_STAT_BAR_C, window.STAT_HELP?.vision, 'vision')}
+                        ${_codexBuildStatBar(stats.crt || 0, 30, 'CRT', EW_STAT_BAR_C, window.STAT_HELP?.crt, 'crt')}
                     </div>
                     <div class="cdx-stat-total">TOTAL STAT POINTS: ${total}</div>
                 </div>
@@ -9471,7 +9472,7 @@
            field by field, and the next hooks object — ALWAYS a new object (data.js caches passive wraps by identity). */
         const _SLB2_STAGE_HOOKS = ['weatherBonus', 'terrainBonus', 'zodiacBonus'];
         const _SLB2_STAGE_FIELDS = ['atkStages', 'defStages', 'mdefStages', 'spdStages', 'intStages'];   // battle.js STAT_STAGE_KEYS + 'Stages'
-        const _SLB2_STAT_BONUS_KEYS = ['hp', 'mp', 'atk', 'def', 'mdef', 'move', 'awr', 'int', 'spd'];     // data.js _sumStatBonus
+        const _SLB2_STAT_BONUS_KEYS = ['hp', 'mp', 'atk', 'def', 'mdef', 'move', 'vision', 'crt', 'int', 'spd'];     // data.js _sumStatBonus
         function _slb2HookCatalogue() { return (typeof PASSIVE_HOOK_KEYS !== 'undefined' && PASSIVE_HOOK_KEYS) || {}; }
         function _slb2HookType(key, val) {
             const spec = _slb2HookCatalogue()[key];
@@ -17242,7 +17243,8 @@
        Events are delegated from #raceEditorBody (data-act / data-f); a write snapshots the doc for undo.
        ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
     (function () {
-        const STATS = [['hp', 'HP'], ['mp', 'MP'], ['atk', 'ATK'], ['int', 'M ATK'], ['def', 'DEF'], ['mdef', 'M DEF'], ['spd', 'SPD'], ['awr', 'AWR']];
+        const STATS = [['hp', 'HP'], ['mp', 'MP'], ['atk', 'ATK'], ['int', 'M ATK'], ['def', 'DEF'], ['mdef', 'M DEF'], ['spd', 'SPD'], ['vision', 'VISION'], ['crt', 'CRT']];   // 2026-10-09: VISION (2-6 tiles) + CRT (%) replaced AWR
+        const STAT_RANGE = (typeof RACE_STAT_RANGE !== 'undefined' && RACE_STAT_RANGE) || { vision: [2, 6], crt: [0, 100] };   // data.js
         const SL = Object.fromEntries(STATS);
         const FRAMES = [['base', 'BASE'], ['l1', 'LEVEL 1'], ['l100', 'LEVEL 100']];
         const FACTIONS = ['space', 'time', 'chaos'];
@@ -17364,7 +17366,7 @@
             const what = R.frame === 'base'
                 ? `You are editing <b>BASE</b> stats: the race's own numbers, the ones the letter grade reads.`
                 : `You are editing stats <b>AT LEVEL ${frameLevel()}</b>. What you type is converted to the race's BASE stat (the stored number); the grade still reads the base.`;
-            return `<div class="rce-banner">${what} <span class="rce-banner-rule">One statline for every mode: story builds the unit at its own level, PvP at level ${cap()}. The grade never changes with level. Level ${cap()} = base + ATK ${g.atk} · M ATK ${g.int} · DEF ${g.def} · M DEF ${g.mdef}; HP = base + ${g.hp}, MP = base + ${g.mp}; SPD and AWR never change. Level 1 HP is ${Math.round(LEVEL_CURVE.hpL1 * 100)}% of level ${cap()}, MP ${Math.round(LEVEL_CURVE.mpL1 * 100)}%.</span></div>`;
+            return `<div class="rce-banner">${what} <span class="rce-banner-rule">One statline for every mode: story builds the unit at its own level, PvP at level ${cap()}. The grade never changes with level. Level ${cap()} = base + ATK ${g.atk} · M ATK ${g.int} · DEF ${g.def} · M DEF ${g.mdef}; HP = base + ${g.hp}, MP = base + ${g.mp}; SPD, VISION and CRT never change. Level 1 HP is ${Math.round(LEVEL_CURVE.hpL1 * 100)}% of level ${cap()}, MP ${Math.round(LEVEL_CURVE.mpL1 * 100)}%.</span></div>`;
         }
         function tabBody() {
             if (R.tab === 'rank') return tabRank();
@@ -17406,16 +17408,16 @@
             const was = f => { const v = M().shipped(r, f); return edited(r, f) ? `<span class="rce-was">was ${esc(Array.isArray(v) ? v.join(', ') || 'none' : (v && typeof v === 'object') ? (Object.keys(v).map(e => e + ' ' + v[e]).join(', ') || 'none') : v)}</span>` : ''; };
             const terr = (typeof RACE_TERRAIN_PREFERENCE !== 'undefined' && RACE_TERRAIN_PREFERENCE[r]) || 'none';
             const tb = (typeof TERRAIN_PREFERENCE_BONUS !== 'undefined' && TERRAIN_PREFERENCE_BONUS[terr]) || null;
-            const tbTxt = terr === 'none' ? 'no terrain preference' : `on ${terr}: costs 1 less to walk${tb ? ', ' + Object.keys(tb).filter(k => tb[k]).map(k => '+' + tb[k] + ' ' + ({ atk: 'ATK', armor: 'armour', int: 'M ATK', awr: 'AWR', move: 'MOV' }[k] || k)).join(', ') : ''}`;
+            const tbTxt = terr === 'none' ? 'no terrain preference' : `on ${terr}: costs 1 less to walk${tb ? ', ' + Object.keys(tb).filter(k => tb[k]).map(k => '+' + tb[k] + ' ' + ({ atk: 'ATK', armor: 'armour', int: 'M ATK', vision: 'VISION', move: 'MOV' }[k] || k)).join(', ') : ''}`;
             const aff = RACE_ELEMENT_AFFINITY[r] || {};
             const bi = (EW_RACE_BIOMES && EW_RACE_BIOMES[r]) || [];
             const statRows = STATS.map(([k, l]) => {
                 const b = base(r, k);
                 return `<div class="rce-stat${edited(r, k) ? ' ed' : ''}"><span class="rce-stat-l">${l}</span>${grade(k, b)}
-                    <input class="rce-in" type="number" min="0" value="${toFrame(k, b)}" data-f="stat" data-k="${k}" data-r="${esc(r)}" title="${R.frame === 'base' ? 'base stat' : 'stat at level ' + frameLevel()}">
+                    <input class="rce-in" type="number" min="${STAT_RANGE[k] ? STAT_RANGE[k][0] : 0}"${STAT_RANGE[k] ? ` max="${STAT_RANGE[k][1]}"` : ''} value="${toFrame(k, b)}" data-f="stat" data-k="${k}" data-r="${esc(r)}" title="${R.frame === 'base' ? 'base stat' : 'stat at level ' + frameLevel()}">
                     <span class="rce-lv"><i>L1</i> ${at(k, b, 1)} <i>L${R.view}</i> ${at(k, b, R.view)} <i>L${cap()}</i> ${at(k, b, cap())}</span>${edited(r, k) ? `<span class="rce-was">base was ${M().shipped(r, k)}</span>` : ''}</div>`;
             }).join('');
-            const spd = base(r, 'spd'), awr = base(r, 'awr');
+            const spd = base(r, 'spd');
             return `<div class="rce-insp">
                 <div class="rce-insp-h">${art(r, 'big')}<b>${esc(label(r))}</b> <span class="slb2-dim">${esc(r)}</span>${raceEdited(r) ? `<button class="slb2-tiny" data-act="revertRace" data-v="${esc(r)}">REVERT RACE</button>` : ''}</div>
                 <div class="rce-sec">IDENTITY</div>
@@ -17434,7 +17436,7 @@
                 <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
                 <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
                 ${statRows}
-                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>CRT <b>${Math.round(critChanceFromStats(awr) * 100)}%</b> (from AWR)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
+                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
                 <div class="rce-sec">HP AND MP FROM LEVEL 1 TO ${cap()}</div>
                 ${chart(r, ['hp', 'mp'], 150)}
                 <div class="rce-sec">ATK · M ATK · DEF · M DEF FROM LEVEL 1 TO ${cap()}</div>
@@ -17529,7 +17531,7 @@
                 const l100 = b.map(v => at(k, v, cap()));
                 return `<tr class="${ed ? 'ed' : ''}"><td><b>${l}</b></td>${b.map((v, i) => `<td><input class="rce-in" type="number" value="${v}" data-f="band" data-k="${k}" data-i="${i}" title="${L[i]} from this base value up"></td>`).join('')}
                     <td class="slb2-dim">below ${b[3]}</td><td style="min-width:240px"><div class="rce-gdist">${bar}</div></td>
-                    <td class="slb2-dim rce-small">${k === 'spd' || k === 'awr' ? 'same at every level' : 'S at L' + cap() + ' ≥ ' + l100[0] + ' · C ≥ ' + l100[3]}</td>
+                    <td class="slb2-dim rce-small">${k === 'spd' || k === 'vision' || k === 'crt' ? 'same at every level' : 'S at L' + cap() + ' ≥ ' + l100[0] + ' · C ≥ ' + l100[3]}</td>
                     <td><button class="slb2-tiny" data-act="bandSpread" data-v="${k}" title="S = the top fifth of the roster, A the next fifth, and so on">SPREAD EVENLY</button>${ed ? ` <button class="slb2-tiny" data-act="bandReset" data-v="${k}">RESET</button>` : ''}</td></tr>`;
             }).join('');
             return `<div class="rce-pad rce-prose">
@@ -17633,7 +17635,7 @@
                     <code>levelScale(L) = ${C.hpL1} + ${(1 - C.hpL1).toFixed(2)} × ((L − 1) / ${cap() - 1})<sup>${C.hpExp}</sup></code>
                     <code>HP = (base + ${G.hp}) × levelScale(L)</code>
                     <code>MP = (base + ${G.mp}) × (${C.mpL1} + ${(1 - C.mpL1).toFixed(2)} × ((L − 1) / ${cap() - 1})<sup>${C.hpExp}</sup>)</code>
-                    <code>SPD, AWR = base at every level</code>
+                    <code>SPD, VISION, CRT = base at every level</code>
                     <p>Gains: ATK +${G.atk}, M ATK +${G.int}, DEF +${G.def}, M DEF +${G.mdef}. Story builds a unit at its level; PvP builds it at level ${cap()}.</p></div>
                 <div class="rce-fbox"><h4>A basic attack</h4>
                     <code>swing = max(${minRaw}, ⌊ATK₁₀₀ × ${coef}⌋) ± 8</code>
@@ -17656,7 +17658,7 @@
                     <code>high ground, facing, statuses, passives, terrain preference</code></div>
                 <div class="rce-fbox"><h4>Derived stats</h4>
                     <code>MOV from SPD: ${typeof MOVE_SPD_BANDS !== 'undefined' ? '≤' + MOVE_SPD_BANDS.join(' / ≤') : ''} → 1 / 2 / 3 / 4, above → 5 tiles</code>
-                    <code>CRT = 8% + 2% per 14 AWR (max +18%), cap 30%</code>
+                    <code>CRT = the CRT stat as a percent (0-100); VISION = tiles a unit sees (2-6)</code>
                     <code>EVA = 6% + 1.8% per MOV (max +10%), cap 25%</code>
                     <code>armour per DEF point = 0.25 / 1.2 · per M DEF point = 0.25 / 1.6</code></div>
                 </div>
@@ -17691,7 +17693,7 @@
                 ${ZODIAC_SKY_KEYS.map(k => cell(z, 'sky', k)).join('')}<td class="rce-zsep"></td>${ZODIAC_NATAL_KEYS.map(k => cell(z, 'natal', k)).join('')}
                 <td>${M().doc.zodiac[z] ? `<button class="slb2-tiny" data-act="revertZodiac" data-v="${esc(z)}">REVERT</button>` : ''}</td></tr>`).join('');
             return `<div class="rce-pad">
-                <div class="slb2-hint"><b>WHILE ITS SKY RULES</b> (left): the percent a unit born under the sign gets while that sign rules the sky (the sky turns every ${typeof ZODIAC_ROTATION_ROUNDS !== 'undefined' ? ZODIAC_ROTATION_ROUNDS : 5} rounds). ATK = attack bonus on physical hits · M ATK = magic power · DEF / M DEF = armour against physical / magic · AWR · MOV = move tiles · HEALING = healing it gives. Negative numbers are penalties.
+                <div class="slb2-hint"><b>WHILE ITS SKY RULES</b> (left): the percent a unit born under the sign gets while that sign rules the sky (the sky turns every ${typeof ZODIAC_ROTATION_ROUNDS !== 'undefined' ? ZODIAC_ROTATION_ROUNDS : 5} rounds). ATK = attack bonus on physical hits · M ATK = magic power · DEF / M DEF = armour against physical / magic · VISION = sight tiles · MOV = move tiles · HEALING = healing it gives. Negative numbers are penalties.
                 <b>BORN UNDER IT</b> (right): flat BASE stat changes every unit of that sign always carries, in story and PvP alike (the level formula scales them like the race's own base).</div>
                 <div class="rce-tablewrap" data-scroll="zodiac"><table class="rce-table rce-ztable"><thead><tr><th></th><th colspan="${ZODIAC_SKY_KEYS.length}">WHILE ITS SKY RULES</th><th class="rce-zsep"></th><th colspan="${ZODIAC_NATAL_KEYS.length}">BORN UNDER IT</th><th></th></tr>${head}</thead><tbody>${rows}</tbody></table></div>
                 <div class="slb2-hint">Saved with your race edits (EDITS ON, EXPORT, IMPORT, CHANGES). Online matches always play the shipped signs.</div>
