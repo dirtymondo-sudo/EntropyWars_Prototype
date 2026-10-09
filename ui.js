@@ -17334,10 +17334,19 @@
             if (!body) return;
             const st = body.scrollTop;
             const keepScroll = {};
-            body.querySelectorAll('[data-scroll]').forEach(el => { keepScroll[el.dataset.scroll] = el.scrollTop; });
+            /* every scrolling panel keeps its place across a redraw (mondo 2026-10-09: "when i change a race's stats/position it
+               doesnt take me back to the top of the list"): the [data-scroll] lists plus each tab's .rce-pad / .rce-split, which
+               are the scrollers on RANK A STAT, GRADES, LEVELS, ZODIAC, FORMULAS, CHANGES and the narrow-window RACES split */
+            const SCROLLERS = '[data-scroll], .rce-pad, .rce-split';
+            const sKey = el => el.dataset.scroll || (R.tab + ':' + el.className);
+            body.querySelectorAll(SCROLLERS).forEach(el => { keepScroll[sKey(el)] = el.scrollTop; });
             body.innerHTML = `<div class="slb2-shell rce-shell">${top()}${banner()}<div class="rce-main">${tabBody()}</div></div>`;
             body.scrollTop = st;
-            body.querySelectorAll('[data-scroll]').forEach(el => { if (keepScroll[el.dataset.scroll] != null) el.scrollTop = keepScroll[el.dataset.scroll]; });
+            body.querySelectorAll(SCROLLERS).forEach(el => { const v = keepScroll[sKey(el)]; if (v != null) el.scrollTop = v; });
+            /* a stat edit can re-sort the RACES table under the race being edited: keep that row on screen (no move if it already is) */
+            const wrap = body.querySelector('[data-scroll="races"]'), row = wrap && wrap.querySelector('tbody tr.sel');
+            if (row) { const a = wrap.getBoundingClientRect(), b = row.getBoundingClientRect(), head = (wrap.querySelector('thead') || row).offsetHeight;
+                if (b.top < a.top + head || b.bottom > a.bottom) wrap.scrollTop += b.top < a.top + head ? b.top - a.top - head : b.bottom - a.bottom; }
         }
         function top() {
             const tabs = [['races', 'RACES'], ['rank', 'RANK A STAT'], ['grades', 'GRADES'], ['levels', 'LEVELS'], ['zodiac', 'ZODIAC'], ['formulas', 'FORMULAS'], ['changes', 'CHANGES']];
