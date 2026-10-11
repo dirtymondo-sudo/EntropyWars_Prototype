@@ -11535,13 +11535,17 @@ const UIM_SURFACES = [
   { id: 'battle', label: 'Battle HUD', hint: 'The command rig, scoreboard, match pill.', native: true, def: 'theme',
     scope: '#reactHudRoot',
     roles: {
-      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .ew-score-plate, .ew-meta-plate',
+      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
       buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
-    keep: '.hrlg-blade .hrlg-body { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; }' },
+    /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
+       its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
+       window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
+       its plate tokens when the theme has no panel skin. Built-in themes keep their solid rows and no window. */
+    keep: '.hrlg-blade .hrlg-body { box-shadow: inset 3px 0 0 var(--bc, var(--hfc, transparent)) !important; } .hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
   { id: 'battlePop', label: 'Battle pop-ups', hint: 'The inspect card, the weather tip, the centre banner.', native: false, def: 'theme', noAnim: true,
     scope: '#unitHoverHud, .ew-weather-tip, #announcementBanner',
     roles: {
