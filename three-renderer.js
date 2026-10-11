@@ -14950,7 +14950,7 @@ const ThreeRenderer = (function () {
         var toRemove = [];
         for (var i = 0; i < highlightGroup.children.length; i++) {
             var ch = highlightGroup.children[i];
-            if (!ch._ew_overlay && ch !== hoverMesh && ch !== underfootMesh) toRemove.push(ch);
+            if (!ch._ew_overlay && ch !== hoverMesh && ch !== underfootMesh && ch !== selTileMesh) toRemove.push(ch);
         }
         for (var j = 0; j < toRemove.length; j++) {
             highlightGroup.remove(toRemove[j]);
@@ -16304,6 +16304,12 @@ const ThreeRenderer = (function () {
         if (!highlightGroup) return;
         if (hoverMesh) { highlightGroup.remove(hoverMesh); hoverMesh.geometry.dispose(); hoverMesh.material.dispose(); hoverMesh = null; }
         if (tx < 0 || ty < 0) return;
+        hoverMesh = _buildCursorMesh(tx, ty, hz);
+        highlightGroup.add(hoverMesh);
+        _syncSelectedTileMarker();
+    }
+
+    function _buildCursorMesh(tx, ty, hz) {
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
         /* Multi-floor: the cursor sits on the surface the POINTER is on (hz,
            resolved from the raycast hit height) — falling back to the tile's
@@ -16323,17 +16329,49 @@ const ThreeRenderer = (function () {
         var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
         /* Staircase tiles get the slanted drape (45° along the rise) so the
            cursor lies along the steps instead of clipping through them. */
-        var _hvStair = _hvSub ? null : _stairInfoAt(tx, ty);
+        var _hvStair = _hvSub ? null : _stairInfoAt(tx, ty), m;
         if (_hvStair) {
-            hoverMesh = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95), hMat);
-            hoverMesh.rotation.y = hoverMesh.geometry._ew_rotY || 0;
+            m = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95), hMat);
+            m.rotation.y = m.geometry._ew_rotY || 0;
         } else {
-            hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
-            hoverMesh.rotation.x = -Math.PI / 2;
+            m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
+            m.rotation.x = -Math.PI / 2;
         }
-        if (_hvSub) hoverMesh.renderOrder = 2;
-        hoverMesh.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
-        highlightGroup.add(hoverMesh);
+        if (_hvSub) m.renderOrder = 2;
+        m.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
+        return m;
+    }
+
+    /* THE SELECTED TILE (2026-10-11, mondo): a tile clicked open in battle keeps the yellow corner brackets while its
+       quick action panel shows (hud.js: _tileActionTarget / _enemyActionTargetId with no actionMode), after the mouse
+       moves off it. Same look as the cursor; skipped while the cursor itself sits on that tile so they don't stack.
+       Synced once per frame from renderFrame (and on every cursor repaint). */
+    var selTileMesh = null, _selTileKey = '';
+    function _selectedTileTarget() {
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || state.winner) return null;
+        if (state.actionMode || state._actionExecuting || (state.actionMenuView && state.actionMenuView !== 'root')) return null;
+        if (_hoverCursorSuppressed()) return null;
+        if (state._enemyActionTargetId) {
+            var u = _unitById.get(state._enemyActionTargetId);
+            return (u && !u.dead) ? { x: u.x, y: u.y, z: u.z } : null;
+        }
+        var t = state._tileActionTarget;
+        return (t && t.x >= 0 && t.y >= 0) ? t : null;
+    }
+    function _syncSelectedTileMarker() {
+        var t = highlightGroup ? _selectedTileTarget() : null;
+        if (t && t.x === _lastHoverX && t.y === _lastHoverY) t = null;
+        var key = t ? (t.x + ',' + t.y + ',' + (t.z == null ? '' : t.z)) : '';
+        var stale = selTileMesh && selTileMesh.parent !== highlightGroup;
+        if (!stale && key === _selTileKey) return;
+        _selTileKey = key;
+        if (selTileMesh) {
+            if (selTileMesh.parent) selTileMesh.parent.remove(selTileMesh);
+            selTileMesh.geometry.dispose(); selTileMesh.material.dispose(); selTileMesh = null;
+        }
+        if (!t) return;
+        selTileMesh = _buildCursorMesh(t.x, t.y, (typeof t.z === 'number') ? t.z : undefined);
+        highlightGroup.add(selTileMesh);
     }
 
     /* Persistent "standing on this tile" decal for the third-person shooter
@@ -36725,7 +36763,7 @@ const ThreeRenderer = (function () {
         if (hlKey === '' && _lastHlKey === '' && highlightGroup) {
             for (var _si = 0; _si < highlightGroup.children.length; _si++) {
                 var _sch = highlightGroup.children[_si];
-                if (!_sch._ew_overlay && _sch !== hoverMesh && _sch !== underfootMesh) { _hasStaleHl = true; break; }
+                if (!_sch._ew_overlay && _sch !== hoverMesh && _sch !== underfootMesh && _sch !== selTileMesh) { _hasStaleHl = true; break; }
             }
         }
         if (hlKey !== _lastHlKey || _hasStaleHl) { rebuildHighlights(); _lastHlKey = hlKey; }
@@ -36832,6 +36870,7 @@ const ThreeRenderer = (function () {
                 }
                 _refreshHoverOnCameraMove(cam);
             }
+            _syncSelectedTileMarker();
 
             /* §4.2 shadow-map dirty gating: skip the sun's depth pass when no
                shadow caster could have moved this frame. Camera motion never
