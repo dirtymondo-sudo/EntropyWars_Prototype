@@ -1056,3 +1056,12 @@ R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js,
   doItem; ui.js highlights + previews; hud.js item rows, target blades and the inspect potions; ai.js loops `itemKeysLike` for potions;
   data.js `hqFieldItemOk` for the field; map.js pause item checks). Scanner, panacea and warp stone stay one of a kind. Equipment is the
   GEAR passives (Spell Library), so the panel has no equipment tab.
+
+## THE SELECTED TILE MARKER (2026-10-11, mondo)
+"if i select a tile, it should have the corner markers displayed on it even when i move my mouse off of it."
+three-renderer.js `_syncSelectedTileMarker` (run every frame from renderFrame and on each cursor repaint) keeps a
+second yellow corner-bracket mesh (`selTileMesh`, built by the same `_buildCursorMesh` as the hover cursor) on the
+tile whose quick action panel is open: `state._tileActionTarget`, or the clicked unit's tile for
+`_enemyActionTargetId`, only while `actionMode` is empty and the menu view is root (exactly when hud.js shows the
+quick panel). Hidden while the cursor sits on the same tile, during busy states (`_hoverCursorSuppressed`), and
+kept out of rebuildHighlights' sweep. Guest-local (the target fields are guest UI keys), so online works as is.
