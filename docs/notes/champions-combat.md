@@ -1307,6 +1307,18 @@ mondo's gen-40 export (2,360 arena matches, v4.13) was trained on the old rules:
 - Highlights over water: data.js hqFieldBuild files `field.sheets` (a waded IN cell's liquid sheet, room metres); three-
   renderer `_fieldSheetY` + `_buildDrapeGeo` keep every highlight vertex on top of it. Bodies still stand knee deep on `tops`.
 
+## THE SKIN LINE (2026-10-12, mondo: highlights missing on top of a Rampart wall, and sometimes on water)
+- Cause: some ground is a SHEET laid over the column top, and highlights at tileTopY + a few px sat under it (depth test).
+  THE PATCH on a tile board (`_deltaPatchBuild`, every raised / dug cell since 2026-10-05) lies max(0.6, ts × 0.008) px
+  over the voxel top: the plates (+0.3), cursor / selected-tile brackets (+0.5), AoE (+0.6) and unit rings (+0.65 / +0.8)
+  were all under it. A dry cell beside water wears a liquid-spread flow slab up to 1.3 levels high: its highlight lay at
+  the bottom of the water. PR #172's wade line only covered waded FIELD cells (exploration rooms), not tile boards.
+- Fix (three-renderer.js): `_deltaPatchTops` / `_liquidFlowTops` are filled by the code that lays those sheets;
+  `_hlSkinTopY(x, y)` = the highest of them, the field wade sheet, and an open liquid tile's own surface. Everything that
+  draws on a tile keeps `HL_SKIN_CLEAR` (0.6 px) above it: `_buildDrapeGeo` (move / attack / spell / AoE / action glow),
+  `_buildCursorMesh` (hover + selected-tile brackets, which also get the field lift now), the underfoot ring, zone washes /
+  danger cells / web overlays, and the unit's reticle + white tile (tile boards at build; fields in `_fieldRingsTick`).
+
 ## IMITATION REPORT FIXES (2026-10-08)
 mondo's 5-match imitation run (248 decisions, 26% agreement) moved 14 weights; they are the shipped defaults now
 (battle.js AI_WEIGHT_DEFAULTS + ai.js AI_TUNE mirrors, `prev` = gen-40). Analysis: project file
