@@ -1065,3 +1065,12 @@ tile whose quick action panel is open: `state._tileActionTarget`, or the clicked
 `_enemyActionTargetId`, only while `actionMode` is empty and the menu view is root (exactly when hud.js shows the
 quick panel). Hidden while the cursor sits on the same tile, during busy states (`_hoverCursorSuppressed`), and
 kept out of rebuildHighlights' sweep. Guest-local (the target fields are guest UI keys), so online works as is.
+
+## THE WAY OUT STAYS (2026-10-12)
+mondo: an encounter "got stuck on the victory screen, the buttons to return back to the game didnt show up". Cause: a UI
+Maker theme with a window-open motion (Corner Blue ships `stretch`) wrote `animation: uim-<open> … backwards !important`
+on the results scope's panels (.vic-debrief, .vic-mvp-tag, .vic-bottom). Those three start at opacity 0 and rely on their
+own forwards entrance (vicFadeUp / vicPanelIn) to show; the theme's animation replaced it, so after the open they fell
+back to opacity 0 and BACK TO THE ROOM / WAKE UP was invisible. Fix: hud.js UI_SCOPES `results.openAt` lists each
+plate's entrance time; the motion rule opens each at that time with `both` fill and rests it at opacity 1. Any future
+scope whose panels start hidden for their own entrance needs an `openAt` too (or `noAnim`).
