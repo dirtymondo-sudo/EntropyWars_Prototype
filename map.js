@@ -768,7 +768,9 @@
             const url = _hqSurveyDataUrl();
             if (!url) { _hqSurveyDead = true; return null; }
             try {
-                const src = _HQ_SURVEY_PRELUDE + 'importScripts(' + JSON.stringify(url) + ');\nif (typeof hqTerrainWorkerServe !== "function") throw new Error("data.js has no hqTerrainWorkerServe");\nhqTerrainWorkerServe(self);\n';
+                /* data.js's load-time notes ([SimTurn], [ManaEconomy], ...) already print once on the page; the worker's own copy
+                   of data.js would print them all a second time, so its log/info/warn are muted for the import (errors still show) */
+                const src = _HQ_SURVEY_PRELUDE + 'var _ewC=[console.log,console.info,console.warn];console.log=console.info=console.warn=noop;try{importScripts(' + JSON.stringify(url) + ');}finally{console.log=_ewC[0];console.info=_ewC[1];console.warn=_ewC[2];}\nif (typeof hqTerrainWorkerServe !== "function") throw new Error("data.js has no hqTerrainWorkerServe");\nhqTerrainWorkerServe(self);\n';
                 const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
                 w.onmessage = _hqSurveyOnMessage;
                 w.onerror = (e) => { console.warn('[HQ] the survey worker failed — floor plans compile on the main thread', e && e.message); _hqSurveyKill(); };
