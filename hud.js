@@ -11563,7 +11563,14 @@ const UIM_SURFACES = [
       button: '#resultOverlay .vic-bottom button', buttonSel: '#resultOverlay .vic-bottom button:hover:not(:disabled)',
       chip: '#resultOverlay .vic-tab', chipOn: '#resultOverlay .vic-tab.on',
     },
-    titles: '#resultOverlay .vic-debrief-title, #resultOverlay .vic-card-cap' },
+    titles: '#resultOverlay .vic-debrief-title, #resultOverlay .vic-card-cap',
+    /* THE WAY OUT STAYS (2026-10-12, mondo: an encounter "got stuck on the victory screen, the buttons to return
+       back to the game didnt show up"): the debrief panel, the MVP plate and the command bar start hidden (opacity 0,
+       the panel slid aside) and their own entrance (vicFadeUp / vicPanelIn, held with forwards) shows them. A theme's
+       window-open motion (Corner Blue opens with 'stretch') REPLACED that entrance, so once the open played they
+       fell back to hidden and BACK TO THE ROOM never appeared. Each plate now opens at its own entrance time and
+       rests shown. */
+    openAt: { '#resultOverlay .vic-debrief': 1300, '#resultOverlay .vic-mvp-tag': 1900, '#resultOverlay .vic-bottom': 2000 } },
   { id: 'explore', label: 'Exploration HUD', hint: 'D.O.O.R. HQ and the zones: the strip, prompts, cards, map, bag.', native: true, def: 'theme',
     scope: '#hqPage',
     roles: {
@@ -11783,8 +11790,14 @@ function surfaceCss(S, T, tid, gid) {
   if (S.keep && T && !T.builtin) css += preRules(S.keep) + '\n';
   // the motion: windows open, the cursor points
   const mo = T && !T.builtin ? motionOf(T) : null;
-  if (mo && mo.open !== 'none' && S.roles.panel && !S.noAnim)
-    css += `${pre(S.roles.panel)} { animation: uim-${mo.open} ${Math.max(40, +mo.ms || 180)}ms ${mo.open === 'stretch' ? 'linear' : 'ease-out'} backwards !important; }\n`;
+  if (mo && mo.open !== 'none' && S.roles.panel && !S.noAnim) {
+    const anim = `uim-${mo.open} ${Math.max(40, +mo.ms || 180)}ms ${mo.open === 'stretch' ? 'linear' : 'ease-out'}`;
+    css += `${pre(S.roles.panel)} { animation: ${anim} backwards !important; }\n`;
+    /* a window that waits hidden for its own entrance opens at that time and rests shown */
+    if (S.openAt) Object.keys(S.openAt).forEach(sel => {
+      css += `${pre(sel)} { animation: ${anim} ${S.openAt[sel] | 0}ms both !important; opacity: 1; transform: none; }\n`;
+    });
+  }
   if (mo && mo.cursor && S.cursor) {
     if (S.cursorPre) css += preRules(S.cursorPre) + '\n';
     css += `${pre(S.cursor)} { content: "${mo.cursor.replace(/["\\]/g, '')}" !important; color: var(--ew-sel) !important; opacity: 1 !important; font-family: inherit; text-shadow: var(--ew-tshadow); ${mo.bob ? 'animation: uim-bob 0.6s steps(2, jump-none) infinite !important;' : 'animation: none !important;'} }\n`;
