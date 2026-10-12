@@ -3791,7 +3791,15 @@ const ThreeVFX = (function () {
                  quarks: { on: _qkWanted(), state: _qk.state, live: _qk.live.length, made: _qk.made } };
     }
 
-    return { init: init, spawn: spawn, tick: tick, isActive: isActive, clear: clear, dispose: dispose,
+    /* THE SHEET WARM (2026-10-12): the hi-res sheets this module keeps for the session, for ThreeRenderer to upload ahead of a
+       spell's first use. Not the atlas cells (_spriteTextures): dispose() frees and remakes those, and an upload of a freed
+       one would sit on the card with nothing to free it */
+    function sheetTextures() {
+        var out = [], k, t;
+        for (k in _hiResTextures) { t = _hiResTextures[k]; if (t && t.isTexture) out.push(t); }
+        return out;
+    }
+    return { sheetTextures: sheetTextures, init: init, spawn: spawn, tick: tick, isActive: isActive, clear: clear, dispose: dispose,
              attach: attach, detach: detach, isAttached: isAttached,
              startRain3D: startRain3D, stopRain3D: stopRain3D, isRain3DActive: isRain3DActive,
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,

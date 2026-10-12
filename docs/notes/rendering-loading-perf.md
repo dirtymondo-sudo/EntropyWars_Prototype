@@ -803,3 +803,10 @@ Root causes found and fixed (token 20261007-spellfreeze-01-cors):
 - **Renderer.** `_computeUnitSerial` caches the appearance string (`_apSerial`, WeakMap). Unit lamps exist for dead units too
   (steady light count = no WebGL recompile on a kill) and re-resolve their unit by id when the guest's units array is replaced.
   THE FOG BATCH: settled fog boxes draw in one merged LineSegments per kind (`_fogBatch`), only boxes mid-fade keep their own.
+
+## THE WEBGPU HITCHES PASS (2026-10-12, mondo: "freeze or dip in FPS at heavy moments like combo spell animations ... transitioning from the explorable area to the battle and then from the end screen")
+Full log: WEBGPU_PLAN.md §10 "THE HITCHES PASS". Node renderer only (`?ew_gpu=webgpu`); WebGL is still the default.
+One shared light rig + one shared fog (scene swaps no longer rebuild every shader), InstancedMesh shaders shared across
+meshes, bundle re-records only for the groups holding a freed resource, spell sheets uploaded one per frame ahead of
+use. Switches: `EW_NO_LIGHT_RIG` / `?ew_lightrig=0`, `EW_NO_FOG_SHARE`, `EW_NO_INST_SHARE` / `?ew_instshare=0`, `EW_NO_SHEET_WARM`.
+The sandbox runs real WebGPU (SwiftShader) when the page is served from localhost; compare counts, not ms.

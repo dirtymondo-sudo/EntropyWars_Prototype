@@ -822,3 +822,33 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   (map only with alphaTest > 0): the rest now share the plain depth material (`r._getShadowNodes` wrapper; off
   `?ew_shadowshare=0`). Sandbox after: 65 builds, 21 pipelines; the first battle frame still builds the fight's own
   ~45 materials (units, rings, post).
+- 2026-10-12: **THE HITCHES PASS** (thread "WebGPU hitches"; token 20261012-gpuhitch-01-cors; three-renderer.js,
+  three-vfx.js, three-vfx-effects.js). mondo: ~80 fps on WebGPU, but freezes at heavy spells / combos, at the walk to battle
+  cut and at the victory screen back to the room. Measured on REAL WebGPU in the sandbox (Chromium's SwiftShader adapter,
+  page served from localhost: see the sandbox-webgpu memory; count builds, not ms). Fairy clearing, strike a native, win,
+  BACK TO THE ROOM, twice. Before: battle start 204 node builds (94 of them InstancedMesh shaders, one per mesh because
+  three's key holds `object.uuid`), back to the room 179 builds in one frame, a spell's first cast ~20 canvas uploads +
+  mips, battle bundles re-recording 300-500 groups/s ("frees") with a 6.5 ms/frame check.
+  - **THE ONE RIG** (`_ewRigG`, `_ewRigTick`): the node light key holds each light's id, so a scene swap (walk / battle /
+    victory) changed every material's key and rebuilt it. Now one global rig of plain lamps (ambient, hemi, shadowed
+    directional, directional, point; seeded 1/1/1/2/8, grows only, points in steps of 4) moves into whichever scene draws
+    and copies the scene's real lights each frame (colour, intensity, world position, shadow camera/bias/mapSize; the
+    source lights are layer-masked). Spare shadowed lamps never draw a shadow pass. Off: `?ew_lightrig=0` / `window.EW_NO_LIGHT_RIG`.
+  - **THE ONE FOG**: `_ewNodeLayer`'s fog node now reads one shared FogExp2 whose colour/density copy `scene.fog` per
+    render, so a scene's own fog object no longer keys the shaders. Off: `window.EW_NO_FOG_SHARE`.
+  - **THE SHARED INSTANCING** (`_ewInstShareSetup`): an InstancedMesh's cache key swaps its uuid for usage + colour; each
+    mesh keeps its own instance attributes (`o._ew_ia` / `o._ew_ica`, synced per draw by `_ewInstSync`) substituted in
+    `getAttributes`. Fix during the pass: the node's instance attributes are found as "not a geometry attribute + stride 16
+    InstancedInterleavedBuffer / stride 3" (three's `isInstancedBufferAttribute` reads false there); the first try bound
+    one tree mesh's buffer for another (GPU "Instance range ... requires a larger buffer"). 57 of 67 meshes share in the
+    clearing. Off: `?ew_instshare=0` / `window.EW_NO_INST_SHARE`.
+  - **THE FREES BY GROUP** (`_ewBunFreed` / `_ewBunUse`): a freed buffer, texture, sampler or VERTEX ATTRIBUTE moved one
+    global epoch and every bundled group re-recorded (717 field pieces in a battle). Now each recording notes what it
+    holds (bindings, textures, attributes, index) per group, and a free re-records only the groups holding it.
+  - **THE SHEET WARM** (`_ewSheetWarm`): one spell sheet per frame (≤2 ms) is drawn + uploaded from the session start:
+    three-vfx-effects.js `warmNextSheet` (29 zero-argument cached canvases) then three-vfx.js `sheetTextures()` (the
+    hi-res sheets only; the atlas cells are freed and remade by dispose). Off: `window.EW_NO_SHEET_WARM`.
+  - `_EW_KEEP_CAP` raised to b 640 / p 384 / g 768. F3 "Shader builds" line adds shared instancing, the rig and sheets warmed.
+  Sandbox after: battle 1 start 103 builds (the fight's own materials), back to the room 11, battle 2 start 6, back 2;
+  battle bundles 2.3 re-records/s, check 2.0 ms/frame; render CPU per battle frame about 190 ms to 120 ms on SwiftShader;
+  no GPU errors over two full fights. Default stays WebGL (`?ew_gpu=webgpu` opts in).
