@@ -2273,6 +2273,7 @@ const ThreeRenderer = (function () {
 
     /* 🌊 Liquid-spread flow slabs (Minecraft-style) — rebuilt with the terrain */
     var _liquidFlowGroup = null;
+    var _liquidFlowTops = {};   // THE SKIN LINE: 'x,y' → the battle-frame Y of a liquid-spread slab's highest corner (_hlSkinTopY)
     /* 💦 Waterfall columns (2026-07-20): vertical falling-liquid boxes bridging
        2+-level ledges between fluid tiles. Each carries a CLONED base texture
        whose offset scrolls downward per-frame (_updateFluidWaves); entries are
@@ -3597,6 +3598,7 @@ const ThreeRenderer = (function () {
            column is built (the walls are the shell's, the slab the gallery's, a table its own top) */
         if (_fieldGround()) {
             _clearGroup(terrainGroup); tileMeshes.clear();
+            _deltaPatchTops = {}; _liquidFlowTops = {};   // THE SKIN LINE: no tile-board sheet survives into a field
             _fieldPickBuild(ts);   // THE CLICKS: an invisible quad per IN cell at its real top — screenToTile raycasts terrainGroup, and there was nothing in it
             try { _fieldStrataBuild(ts); } catch (e) { console.warn('[HQ→battle] the strata failed', e); }   // THE STRATA: a column only where the engine dug or built
             var _skinLava = [];
@@ -4022,6 +4024,7 @@ const ThreeRenderer = (function () {
             _clearGroup(_liquidFlowGroup);
             _liquidFlowGroup = null;
         }
+        _liquidFlowTops = {};   // THE SKIN LINE: rebuilt with the slabs below
         /* dispose per-waterfall texture clones (_disposeR skips .map textures) */
         for (var _wfd = 0; _wfd < _waterfallTexList.length; _wfd++) {
             if (_waterfallTexList[_wfd].tex) _waterfallTexList[_wfd].tex.dispose();
@@ -4110,6 +4113,7 @@ const ThreeRenderer = (function () {
                     _fMesh.raycast = _noRaycast;   // clicks land on the ground tile below
                     _fMesh._ew_liquidFlow = true;
                     _flowGroup.add(_fMesh);
+                    _liquidFlowTops[fx + ',' + fy] = _fTop + Math.max(_cH[0], _cH[1], _cH[2], _cH[3]);   // the slab's highest corner
                 }
             }
             /* ── 💦 WATERFALL COLUMNS (2026-07-20) ──────────────────────────
@@ -13596,6 +13600,12 @@ const ThreeRenderer = (function () {
 
         var _subSink = _getSubmersionDepth(unit) * _effectiveSprH;
         group.position.set(unit.x * ts + ts / 2, surfY - _subSink, unit.y * ts + ts / 2);
+        /* THE SKIN LINE (2026-10-12): the reticle + the white tile clear a sheet laid over the cell (Rampart's patch, a flow
+           slab, the water surface the body sinks into); on a true-ground field _fieldRingsTick lays them instead */
+        if (!_fieldGroundLive()) {
+            var _rkLift = _hlSkinLift(unit.x, unit.y, surfY - _subSink + SELECTED_RING_OFFSET - 0.15);
+            if (_rkLift > 0) { facingGroup.position.y += _rkLift; if (group._ew_selTile) group._ew_selTile.position.y += _rkLift; }
+        }
         group._ew_unitId = unit.id;
         group._ew_subSink = _subSink;
 
@@ -13696,16 +13706,16 @@ const ThreeRenderer = (function () {
         var top = G.yAt(ux, uy), feetY = g.position.y + (g._ew_subSink || 0);
         var airborne = (top === null || top === undefined) || Math.abs(feetY - top) > ts * 0.5;
         if (airborne) { if (g._ew_ringDraped) { _fieldRingsFlat(g); g._ew_ringDraped = false; } return; }
-        var lift = HL_FIELD_LIFT * ts * RING_FIELD_LIFT, cap = ts * 0.5;
-        if (ret) _fieldDrapeRing(ret, ts, top, lift, cap);
-        if (sel) _fieldDrapeRing(sel, ts, top, lift, cap);
+        var lift = HL_FIELD_LIFT * ts * RING_FIELD_LIFT, cap = ts * 0.5, skin = _hlSkinTopY(ux, uy);   // THE SKIN LINE: a waded sheet
+        if (ret) _fieldDrapeRing(ret, ts, top, lift, cap, skin);
+        if (sel) _fieldDrapeRing(sel, ts, top, lift, cap, skin);
         g._ew_ringDraped = true;
     }
     /* rev 2 (2026-09-23, the user: "the vital ring should stay parallel with the ground like the white one — only the
        tile highlights conform; but high enough that it is not cut off"): the ring is a FLAT PLANE at the HIGHEST ground
        under its footprint (the same sampler, every vertex read, capped half a tile off the unit's top) + the lift — it
        never bends with the slope and never sinks under a bulge beside the feet. The grid stays (a flat grid costs nothing). */
-    function _fieldDrapeRing(mesh, ts, top, lift, cap) {
+    function _fieldDrapeRing(mesh, ts, top, lift, cap, skin) {
         var geo = mesh.geometry, pos = geo && geo.attributes && geo.attributes.position; if (!pos || pos.count < 4 || typeof THREE === 'undefined') return;
         _frM = _frM || new THREE.Matrix4(); _frInv = _frInv || new THREE.Matrix4(); _frV = _frV || new THREE.Vector3();
         if (!mesh._ew_drapeOrig || mesh._ew_drapeOrig.length !== pos.array.length) mesh._ew_drapeOrig = new Float32Array(pos.array);
@@ -13721,6 +13731,7 @@ const ThreeRenderer = (function () {
             if (s > hi) hi = s;
         }
         if (hi > top + cap) hi = top + cap;
+        if (skin !== null && skin !== undefined && skin > hi) hi = skin;   // THE SKIN LINE: never under the liquid the body wades in
         var planeY = hi + lift;
         for (i = 0; i < n; i++) {
             v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
@@ -14756,6 +14767,45 @@ const ThreeRenderer = (function () {
         return _hlSharedGeo;
     }
 
+    /* ══ THE SKIN LINE (2026-10-12, mondo: "tile highlights not showing up on raised terrain. I used rampart to raise a wall,
+       but now the tile highlights don't show up on the top of the wall. Same for water sometimes") ══
+       Some ground is drawn as a SHEET laid over the cell's column top, and a highlight placed at tileTopY + its few-px offset
+       sat UNDER that sheet: the depth test hid it.
+       · THE PATCH on a tile board (_deltaPatchBuild): a raised / dug cell (Rampart's wall, a crater) wears a solid sheet
+         max(0.6, ts × 0.008) ≈ 1 px over the voxel top — the plates (+0.3), the cursor / the selected tile's brackets (+0.5),
+         the AoE (+0.6) and the unit's rings (+0.65 / +0.8) all lay beneath it.
+       · A liquid-spread flow slab (rebuildTerrain): a dry cell beside water wears a water slab up to 1.3 levels over its
+         top — the cell reads as water and its highlight lay at the bottom of it.
+       · A waded field cell's liquid sheet (_fieldSheetY, PR #172's wade line).
+       · An open water / liquid tile's own surface (the column top less WATER_TOP_INSET) — the plates sit over it already;
+         the unit's rings sink with the body (SUBMERSION_DEPTH) and went under it.
+       _hlSkinTopY → the highest such sheet over the cell (battle frame), or null. Every highlight builder keeps HL_SKIN_CLEAR
+       over it: _buildDrapeGeo's vertices (move / attack / spell / AoE washes, the action glow), the cursor and the selected
+       tile (_buildCursorMesh), the underfoot ring and the unit's reticle + white tile. The sheet maps are filled at build
+       time by the same code that lays the sheets, so they never disagree. */
+    var HL_SKIN_CLEAR = 0.6;
+    function _hlSkinTopY(x, y) {
+        var k = x + ',' + y, best = null, v;
+        v = (typeof _fieldSheetY === 'function') ? _fieldSheetY(x, y) : null;
+        if (v !== null && v !== undefined) best = v;
+        v = _deltaPatchTops[k];
+        if (v !== undefined && (best === null || v > best)) best = v;
+        v = _liquidFlowTops[k];
+        if (v !== undefined && (best === null || v > best)) best = v;
+        if (best === null && !_fieldGroundLive() && typeof getTerrainAt === 'function') {
+            var t = getTerrainAt(x, y);
+            if (t && _FLUID_TERRAIN_SET[t]) best = tileTopY(x, y) - (t === 'lava' ? 0 : (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO * WATER_TOP_INSET);
+        }
+        return best;
+    }
+    /* the lift (≥ 0) a plate whose own lowest point sits at baseY needs to clear the cell's skin */
+    function _hlSkinLift(x, y, baseY) {
+        var sk = _hlSkinTopY(x, y);
+        if (sk === null) return 0;
+        var need = sk + HL_SKIN_CLEAR - baseY;
+        return need > 0 ? need : 0;
+    }
+
     /* Draped highlight tile — a subdivided quad whose vertices follow the
        beveled terrain swell, so range/spell overlays hug the ground topology
        instead of hovering as flat decals. Falls back to a flat quad when
@@ -14786,9 +14836,10 @@ const ThreeRenderer = (function () {
         var liftC = _tileSurfaceLift(hx, hy);
         var doLift = (!stair && BEVEL.amp > 0 && _tileIsBeveled(hx, hy));
         var stairRise = stair ? (stair.highH - stair.lowH) * elevStep : 0;
-        /* THE WADE LINE: no vertex of a highlight on a waded cell sinks under the liquid sheet (offsets are about tileTopY) */
-        var sheetW = (typeof _fieldSheetY === 'function') ? _fieldSheetY(hx, hy) : null;
-        var sheetMin = (sheetW !== null) ? (sheetW - tileTopY(hx, hy)) : null;
+        /* THE WADE LINE / THE SKIN LINE: no vertex of a highlight sinks under a sheet laid over the cell — a waded cell's
+           liquid, a deformed cell's patch, a flow slab (offsets are about tileTopY; the caller's few-px yOff rides on top) */
+        var sheetW = _hlSkinTopY(hx, hy);
+        var sheetMin = (sheetW !== null) ? (sheetW + HL_SKIN_CLEAR - tileTopY(hx, hy)) : null;
         var pos = [], uv = [], idx = [], grid = [];
         for (var gj = 0; gj <= segs; gj++) {
             grid[gj] = [];
@@ -16324,6 +16375,11 @@ const ThreeRenderer = (function () {
                    : (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
         var _hvSub = (_hvZ !== undefined && _hvZ !== null && _hvZ < _hvTop);
         if (_hvSub) topY = _hvZ * ts * ELEV_STEP_RATIO + 0.5;
+        /* THE SKIN LINE: over a patch / a flow slab / a waded sheet, and over a field's floor by the plates' own lift */
+        else {
+            topY += (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, tx, ty) : 0;
+            topY += _hlSkinLift(tx, ty, topY);
+        }
         /* The cursor: yellow corner brackets + a whisper of fill. The ONLY
            tile on the board that wears brackets (plus the AoE impact tile),
            so "where am I pointing" is always a one-glance read. */
@@ -16392,6 +16448,7 @@ const ThreeRenderer = (function () {
         }
         if (tx < 0 || ty < 0) return;
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.7;
+        topY += _hlSkinLift(tx, ty, topY);   // THE SKIN LINE
         var uMat = _makeHlMaterial(0x37e0ff, 0.38, 0.9, 0, { fill: 0.10 });
         if (_stairInfoAt(tx, ty)) {
             /* stairs: slanted drape along the rise, not a flat mid-height quad */
@@ -34578,6 +34635,7 @@ const ThreeRenderer = (function () {
         for (var fi = 0; fi < info.tiles.length; fi++) {
             var ft = info.tiles[fi];
             var ftY = tileTopY(ft.x, ft.y) + 0.15;
+            ftY += _hlSkinLift(ft.x, ft.y, ftY);   // THE SKIN LINE
             var fillMat = new THREE.MeshBasicMaterial({
                 color: color, transparent: true, opacity: 0.12,
                 depthWrite: false, side: THREE.DoubleSide
@@ -34741,7 +34799,8 @@ const ThreeRenderer = (function () {
         });
         var icon = new THREE.Mesh(new THREE.PlaneGeometry(size, size), iconMat);
         icon.rotation.x = -Math.PI / 2;
-        icon.position.set(cx * ts + ts / 2, tileTopY(cx, cy) + 0.6, cy * ts + ts / 2);
+        var _icY = tileTopY(cx, cy) + 0.6;
+        icon.position.set(cx * ts + ts / 2, _icY + _hlSkinLift(cx, cy, _icY), cy * ts + ts / 2);   // THE SKIN LINE
         icon.renderOrder = 6;
         icon._ew_overlay = 'zone';
         icon._ew_zoneIcon = { phase: (cx * 3.1 + cy * 1.7) % 6.28 };
@@ -34769,7 +34828,8 @@ const ThreeRenderer = (function () {
             mat._pulseSpeed = pulseSpeed || 3.4;
             var cell = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
             cell.rotation.x = -Math.PI / 2;
-            cell.position.set(t.x * ts + ts / 2, tileTopY(t.x, t.y) + 0.55, t.y * ts + ts / 2);
+            var _dcY = tileTopY(t.x, t.y) + 0.55;
+            cell.position.set(t.x * ts + ts / 2, _dcY + _hlSkinLift(t.x, t.y, _dcY), t.y * ts + ts / 2);   // THE SKIN LINE
             cell.renderOrder = 6;
             cell._ew_overlay = 'zone';
             highlightGroup.add(cell);
@@ -34792,6 +34852,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < tiles.length; i++) {
             var t = tiles[i];
             var topY = tileTopY(t.x, t.y) + 0.25;
+            topY += _hlSkinLift(t.x, t.y, topY);   // THE SKIN LINE
             var webMat = new THREE.MeshBasicMaterial({
                 map: _spiderwebZoneTex,
                 color: 0xc8c8e0,
@@ -63551,8 +63612,10 @@ const ThreeRenderer = (function () {
        under it (picking, sides, the merge); a cell put back to its old height drops out. Not on natural-terrain maps
        (their tops are a rolling field, not flat). Plain state, so the guest's state-sync draws the same. */
     var _deltaPatchGroup = null;
+    var _deltaPatchTops = {};   // THE SKIN LINE: 'x,y' → the battle-frame Y of the solid sheet laid over that cell (_hlSkinTopY)
     function _deltaPatchBuild(ts, elevStep, bw, bh) {
         if (_deltaPatchGroup) { if (_deltaPatchGroup.parent) _deltaPatchGroup.parent.remove(_deltaPatchGroup); _clearGroup(_deltaPatchGroup); _deltaPatchGroup = null; }
+        _deltaPatchTops = {};
         if (typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH) return 0;
         var D = (typeof state !== 'undefined' && state) ? state.deformedTiles : null;
         if (!D || !terrainGroup || _naturalTerrainActive() || typeof getBaseHeightAt !== 'function' || typeof getTerrainAt !== 'function') return 0;
@@ -63576,8 +63639,10 @@ const ThreeRenderer = (function () {
             var fade = _fieldPatchFadeMat(core, 'delta|' + k) || core;
             _fieldPatchRuns(byKey[k]).forEach(function (run) {
                 var low = run.some(function (c) { return c.low; });
-                var geo = _fieldPatchGeo(G, run, yOf, { lift: Math.max(0.6, ts * 0.008), solid: true, origin: _fieldPatchOrigin(run, yOf, low), rep: 2 * ts });
+                var pLift = Math.max(0.6, ts * 0.008);
+                var geo = _fieldPatchGeo(G, run, yOf, { lift: pLift, solid: true, origin: _fieldPatchOrigin(run, yOf, low), rep: 2 * ts });
                 if (!geo) return;
+                run.forEach(function (c) { var cy = yOf(c.x, c.y); if (cy !== null && cy !== undefined) _deltaPatchTops[c.x + ',' + c.y] = cy + pLift; });
                 var m = new THREE.Mesh(geo, [core, fade]);
                 m.raycast = function () {}; m.name = 'delta_deform_patch'; m.receiveShadow = true; m.castShadow = false; m.renderOrder = 1;
                 if (!grp) { grp = new THREE.Group(); grp.name = 'delta_deform_patches'; }
