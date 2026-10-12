@@ -41,15 +41,15 @@ Entropy Wars is a browser tactical JRPG prototype with online PvP and VS-CPU pla
 
 Confirm the current implementation before relying on this map; functions often span several files.
 
-## Delivery — complete files for user upload
+## Delivery — merged PR plus cumulative sync zip
 
-- Read/download the needed files, edit working copies, and return COMPLETE updated files with their original names and paths. Do not return only patches, snippets, or instructions for the user to implement.
-- Do not require Git, Xcode, a clone, or a local server merely to read and edit files. Use connected GitHub tools when available. Use an available runtime for validation; state any checks that cannot be run.
-- Do not commit, push, merge, or deploy by default. The user uploads files to R2/Render and syncs the repository. Change that workflow only if the user requests it.
+- Edit the existing files in place and deliver complete files with their original names and paths. Do not return only patches, snippets, or instructions for the user to implement.
+- Use connected GitHub tools when available. Use an available runtime for validation; state any checks that cannot be run.
+- Commit, push the thread branch, open a PR and merge it to main in the same turn as the fix (standing authorization from the project owner, 2026-10-05). Merge main into the branch first and resolve any conflict keeping both sides; never force-push main. Then write the cumulative sync zip to `/mnt/project-files/r2-sync/` as `CLAUDE.md` RULE #1 describes. The user uploads only the newest zip to R2; Render deploys `index.html` from main.
 - Work within existing game files. Do not split game logic into new modules or add new runtime files to the fixed upload set. Repo-only development tools and documentation are allowed when needed.
-- When delivering ANY R2-hosted change, update the shared `?v=` token in `index.html` to a fresh unique value and deliver that complete file too. Preserve required suffixes such as `-cors`; inspect the current token rather than copying an old one from documentation.
+- When changing ANY R2-hosted file, update the shared `?v=` token in `index.html` to a fresh unique value in the same PR. Preserve required suffixes such as `-cors`; inspect the current token rather than copying an old one from documentation.
 - Embedded asset URLs may not carry that token. Inspect affected URLs and use a new asset filename or explain the additional cache-refresh step where necessary.
-- State where each delivered file goes: R2, Render, or repository only. Documentation-only changes need no game cache bump.
+- In the reply, list each zipped file with the first 8 characters of its sha256. Documentation-only changes need no game cache bump or zip.
 
 ## Validation
 
@@ -88,7 +88,7 @@ Use versioned `migrations/NNN_*.sql` for schema changes. Preserve token hashing 
 
 ## Keep the project knowledge useful
 
-After relevant work, update the existing subsystem build log: `DOOR_MASTER.md` Part D for DOOR work, the HQ plan's build log for HQ work, the party-builder plan for builder work, and `PLAYTEST_NOTES.md` for verified playtest findings. Include changed documentation in the full-file delivery.
+After relevant work, update the existing subsystem build log: `DOOR_MASTER.md` Part D for DOOR work, the HQ plan's build log for HQ work, the party-builder plan for builder work, and `PLAYTEST_NOTES.md` for verified playtest findings. Include changed documentation in the same PR.
 
 Keep this file concise and focused on stable rules. Keep detailed subsystem history in existing documents. Distinguish implemented changes, test results, unuploaded deliveries, and live deployment; never call a local edit shipped without evidence.
 
