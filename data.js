@@ -9966,6 +9966,24 @@ const SIM_DEFAULTS = {
     utility:      { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
     guard:        { simTargeting: 'unit',  simPhase: 'fast',     simFallback: 'fizzle' },
     trickRoom:    { simTargeting: 'self',  simPhase: 'fast',     simFallback: 'fizzle' },
+
+    /* 2026-10-12: the race kinds added since this table was written (each logged
+       "[SimTurn] No SIM_DEFAULTS" at load). Targeting follows how each one is cast:
+       a charge / body-steal / soul chain / ally trade picks a unit, a corpse or a
+       prism is a tile, a self-only toggle or rally is the caster. */
+    tackle:       { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'redirect' },
+    possess:      { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
+    link:         { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
+    shadowRealm:  { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
+    transfer:     { simTargeting: 'unit',  simPhase: 'standard', simFallback: 'fizzle' },
+    cannibalize:  { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    raiseDead:    { simTargeting: 'tile',  simPhase: 'slow',     simFallback: null },
+    placeMirror:  { simTargeting: 'tile',  simPhase: 'standard', simFallback: null },
+    pulseLattice: { simTargeting: 'self',  simPhase: 'standard', simFallback: null },
+    tuneFrequency:{ simTargeting: 'self',  simPhase: 'fast',     simFallback: null },
+    transform:    { simTargeting: 'self',  simPhase: 'fast',     simFallback: null },
+    rallyPull:    { simTargeting: 'self',  simPhase: 'standard', simFallback: null },
+    passive:      { simTargeting: 'self',  simPhase: 'fast',     simFallback: null },   // never cast; stamped so the table is complete
 };
 
 (function _applySimTurnDefaults() {

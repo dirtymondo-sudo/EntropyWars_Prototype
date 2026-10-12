@@ -1619,7 +1619,8 @@ const ThreeRenderer = (function () {
         ['WEBGL_compressed_texture_astc', 'WEBGL_compressed_texture_etc1', 'WEBGL_compressed_texture_etc', 'WEBGL_compressed_texture_s3tc',
          'WEBGL_compressed_texture_s3tc_srgb', 'EXT_texture_compression_bptc', 'WEBGL_compressed_texture_pvrtc', 'WEBKIT_WEBGL_compressed_texture_pvrtc'
         ].forEach(function (n) { has[n] = gl.getExtension(n); });
-        try { var lc = gl.getExtension('WEBGL_lose_context'); if (lc) lc.loseContext(); } catch (e) {}
+        /* no WEBGL_lose_context here: forcing the loss made Firefox print "WebGL context was lost." on every load; the 1×1
+           probe canvas is dropped with this function and its context freed with it */
         return { extensions: { has: function (n) { return !!has[n]; }, get: function (n) { return has[n] || null; } } };
     }
     function _ktxLoader() {
@@ -26257,17 +26258,6 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         var h = ts * (16 + rng() * 8), r = ts * (0.7 + rng() * 0.4);
         return g;   /* NO LIGHT BOX (mondo 2026-10-05): the pillar of light into the sky is gone (empty group) */
-        var beamMat = _hzGlowMat(0xfff6d6, 0.16);
-        var beam = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r, h, 16, 1, true), beamMat);
-        beam.position.y = h * 0.5; g.add(beam);
-        _hzPulse(beamMat, null, 0.06, 0, 0.2 + rng() * 0.3);
-        var coreMat = _hzGlowMat(0xffffff, 0.30);
-        var core = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.18, r * 0.32, h, 12, 1, true), coreMat);
-        core.position.y = h * 0.5; g.add(core);
-        _hzPulse(coreMat, null, 0.12, 0, 0.3 + rng() * 0.4);
-        var pool = _hzGlowCore(r * 1.6, 0xfff0c0, 0xffd870);
-        pool.position.y = ts * 0.2; g.add(pool);
-        return g;
     }
 
     // Hanging fluorescent — a buzzing light panel on a ceiling conduit.
@@ -32062,112 +32052,6 @@ const ThreeRenderer = (function () {
            pool) on the board; they are gone from every battle. */
         if (_rayGroup) { scene && scene.remove(_rayGroup); _disposeR(_rayGroup); _rayGroup = null; }
         _rayShafts.length = 0; _rayKey = '';
-        return;
-        if (!scene || typeof THREE === 'undefined') return;
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var _bw = (typeof bw === 'function') ? bw() : 16;
-        var _bh = (typeof bh === 'function') ? bh() : 8;
-        var key = _bw + 'x' + _bh + '@' + ts;
-        if (_rayGroup && _rayKey === key) return;
-        if (_rayGroup) { scene.remove(_rayGroup); _disposeR(_rayGroup); }
-        _rayShafts.length = 0;
-        _rayGroup = new THREE.Group();
-        _rayGroup.name = 'lightShafts';
-        _rayGroup.renderOrder = 2;
-        _rayKey = key;
-        _ensureRayShaders();
-
-        var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
-        var W = _bw * ts, H = _bh * ts;
-        var shaftH = Math.max(2200, _bh * ts * 1.1 + 1800);
-        var rng = _mulberry32(0xBEAC07 + _bw * 131 + _bh * 17 + ts);
-        var N = 8;   // 2 wide "hero" beams + 6 supporting ones
-        for (var i = 0; i < N; i++) {
-            var hero = (i < 2);
-            var cw = hero ? ts * (3.0 + rng() * 1.0) : ts * (1.4 + rng() * 1.1);
-            var geo = new THREE.BoxGeometry(cw, shaftH, cw);
-            var uni = {
-                uTime: { value: 0 },
-                uColor: { value: new THREE.Color(0xfff0d2) },
-                uIntensity: { value: hero ? (0.36 + rng() * 0.10) : (0.26 + rng() * 0.10) },
-                uSeed: { value: rng() * 6.2832 },
-                uH: { value: shaftH },
-                uW: { value: cw },
-                uBand: { value: shaftH * 0.42 }
-            };
-            var mat = new THREE.ShaderMaterial({
-                uniforms: uni, vertexShader: _RAY_VS, fragmentShader: _RAY_FS,
-                transparent: true, blending: THREE.AdditiveBlending,
-                depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false
-            });
-            var m = new THREE.Mesh(geo, mat);
-            m.frustumCulled = false;
-            _rayGroup.add(m);
-
-            // Landing points: stratified across the board width (one per column
-            // slot, jittered) and clamped ONTO the board so every beam visibly
-            // lands on the map. The pool is anchored to the landing tile's top.
-            var lx = ((i + 0.5) / N + (rng() - 0.5) * 0.10) * W;
-            var lz = cz + (rng() - 0.5) * H * 0.85;
-            var tx = Math.max(0, Math.min(_bw - 1, Math.floor(lx / ts)));
-            var tz = Math.max(0, Math.min(_bh - 1, Math.floor(lz / ts)));
-            var ly = 0;
-            try { ly = tileTopY(tx, tz) || 0; } catch (e) {}
-            var land = new THREE.Vector3(lx, ly + 2, lz);
-
-            // ground light-pool (flat additive ellipse, shares the shaft's uniforms)
-            var poolGeo = new THREE.CircleGeometry(1, 24);
-            var poolMat = new THREE.ShaderMaterial({
-                uniforms: uni, vertexShader: _RAY_POOL_VS, fragmentShader: _RAY_POOL_FS,
-                transparent: true, blending: THREE.AdditiveBlending,
-                depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false
-            });
-            var pool = new THREE.Mesh(poolGeo, poolMat);
-            pool.position.copy(land);
-            pool.scale.set(cw * 0.95, cw * 0.70, 1);   // x elongated along the beam azimuth
-            pool.renderOrder = 2;
-            pool.frustumCulled = false;
-            _rayGroup.add(pool);
-
-            // dust motes drifting down the lower part of the beam (local space,
-            // so they inherit the shaft's lean and sway)
-            var moteN = hero ? 26 : 14;
-            var mPos = new Float32Array(moteN * 3);
-            var mSpeed = new Float32Array(moteN);
-            var mSize = new Float32Array(moteN);
-            var mPhase = new Float32Array(moteN);
-            for (var j = 0; j < moteN; j++) {
-                var ang = rng() * 6.2832, rad = Math.sqrt(rng()) * cw * 0.34;
-                mPos[j * 3]     = Math.cos(ang) * rad;
-                mPos[j * 3 + 1] = rng() * shaftH * 0.42;   // [0, uBand] above the base
-                mPos[j * 3 + 2] = Math.sin(ang) * rad;
-                mSpeed[j] = 26 + rng() * 34;               // world px / s, downward
-                mSize[j]  = 4 + rng() * 6;
-                mPhase[j] = rng() * 6.2832;
-            }
-            var moteGeo = new THREE.BufferGeometry();
-            moteGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
-            moteGeo.setAttribute('aSpeed', new THREE.BufferAttribute(mSpeed, 1));
-            moteGeo.setAttribute('aSize', new THREE.BufferAttribute(mSize, 1));
-            moteGeo.setAttribute('aPhase', new THREE.BufferAttribute(mPhase, 1));
-            var moteMat = new THREE.ShaderMaterial({
-                uniforms: uni, vertexShader: _RAY_MOTE_VS, fragmentShader: _RAY_MOTE_FS,
-                transparent: true, blending: THREE.AdditiveBlending,
-                depthWrite: false, depthTest: true, fog: false
-            });
-            var motes = new THREE.Points(moteGeo, moteMat);
-            motes.frustumCulled = false;
-            m.add(motes);
-
-            _rayShafts.push({
-                mesh: m, pool: pool, uni: uni, baseInt: uni.uIntensity.value,
-                land: land, shaftH: shaftH,
-                jx: (rng() - 0.5) * 0.10, jz: (rng() - 0.5) * 0.10,
-                sway: 0.02 + rng() * 0.03,
-                phase: rng() * 6.2832
-            });
-        }
-        scene.add(_rayGroup);
     }
 
     function _updateLightRays(t, night, skyEvent, skyAmt) {
@@ -46656,18 +46540,6 @@ const ThreeRenderer = (function () {
        lower, so the fall has somewhere to look — never a floor (nothing stands on it, the walker returns before it) */
     function _hqBuildVoidGlow(room, info, G) {
         return;   /* NO LIGHT BOX (mondo 2026-10-05): the huge additive floor glow planes under the void islands are gone */
-        var U = _hqUnits(), V = info.void, S = room.shell || {};
-        var cv = document.createElement('canvas'); cv.width = cv.height = 256;
-        var cx = cv.getContext('2d'), gr = cx.createRadialGradient(128, 128, 4, 128, 128, 128);
-        var col = new THREE.Color(V.glow), css = function (a) { return 'rgba(' + Math.round(col.r * 255) + ',' + Math.round(col.g * 255) + ',' + Math.round(col.b * 255) + ',' + a + ')'; };
-        gr.addColorStop(0, css(0.85)); gr.addColorStop(0.35, css(0.45)); gr.addColorStop(0.75, css(0.12)); gr.addColorStop(1, css(0));
-        cx.fillStyle = gr; cx.fillRect(0, 0, 256, 256);
-        var tex = new THREE.CanvasTexture(cv);
-        var span = Math.max(S.w || 60, S.d || 60) * 1.6;
-        [[V.glowY, 1.0, 1.0], [V.glowY - 30, 1.8, 0.55]].forEach(function (L) {
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(span * L[1] * U, span * L[1] * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: L[2], depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
-            m.rotation.x = -Math.PI / 2; m.position.set(0, L[0] * U + 0.3, 0); m.renderOrder = 0; G.add(m);
-        });
     }
     /* THE FLOATING GROUND (EDITOR_PLAN §4.4 + §5.4, E3 — 2026-09-29): a room whose `terrain.float` is set ({ depth } or true), or a zone
        part wearing `float: true` (data.js hqWorldFrame), is an island hung in the sky: no outer ground runs on past its edge; under
@@ -61665,36 +61537,6 @@ const ThreeRenderer = (function () {
     var HQ_SHAFT_GAIN = 2.2;   /* a room's beam over a dark stand-in wall read as nothing at the battle's 0.3 — the board's rays land on a lit field */
     function _hqLightShaft(U, p) {
         return null;   /* NO LIGHT BOX (mondo 2026-10-04): the same box beam as the battle's shafts; room rows and light_shaft props draw nothing */
-        if (typeof _ensureRayShaders !== 'function') return null;
-        _ensureRayShaders();
-        var H = _hq, h = (p.h || 6) * U, w = (p.w || 2.2) * U, tilt = _hqRad(p.tilt || 0), dir = _hqRad(p.dir || 0);
-        var uni = { uTime: { value: 0 }, uColor: { value: new THREE.Color((p.color != null) ? p.color : 0xfff0d2) }, uIntensity: { value: ((p.intensity != null) ? p.intensity : 0.3) * HQ_SHAFT_GAIN },
-                    uSeed: { value: ((p.x || 0) * 7.3 + (p.z || 0) * 3.1) % 6.2832 }, uH: { value: h }, uW: { value: w * HQ_SHAFT_UW }, uBand: { value: h * 0.45 } };
-        var g = new THREE.Group(); g.name = 'light_shaft'; g._ew_hqPart = 'fx';
-        var mat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: _RAY_VS, fragmentShader: _RAY_FS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false });
-        var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat); m.position.y = -h / 2; m.frustumCulled = false; m.renderOrder = 3; m.castShadow = false; m.receiveShadow = false;
-        var tiltG = new THREE.Group(); tiltG.rotation.order = 'YXZ'; tiltG.rotation.y = -dir; tiltG.rotation.x = tilt; tiltG.add(m); g.add(tiltG);
-        /* the motes down the lower half of the beam (the battle's own kit, in the shaft's frame) */
-        var moteN = Math.max(8, Math.round(w / U * 7));
-        var mPos = new Float32Array(moteN * 3), mSpeed = new Float32Array(moteN), mSize = new Float32Array(moteN), mPhase = new Float32Array(moteN);
-        var rng = _mulberry32(0x5A47 + Math.round((p.x || 0) * 13 + (p.z || 0) * 29));
-        for (var j = 0; j < moteN; j++) { var ang = rng() * 6.2832, rad = Math.sqrt(rng()) * w * 0.34; mPos[j * 3] = Math.cos(ang) * rad; mPos[j * 3 + 1] = rng() * h * 0.45; mPos[j * 3 + 2] = Math.sin(ang) * rad; mSpeed[j] = (0.3 + rng() * 0.45) * U; mSize[j] = 3 + rng() * 5; mPhase[j] = rng() * 6.2832; }
-        var mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mPos, 3)); mg.setAttribute('aSpeed', new THREE.BufferAttribute(mSpeed, 1)); mg.setAttribute('aSize', new THREE.BufferAttribute(mSize, 1)); mg.setAttribute('aPhase', new THREE.BufferAttribute(mPhase, 1));
-        var motes = new THREE.Points(mg, new THREE.ShaderMaterial({ uniforms: uni, vertexShader: _RAY_MOTE_VS, fragmentShader: _RAY_MOTE_FS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, fog: false }));
-        motes.frustumCulled = false; motes.renderOrder = 3; m.add(motes);
-        /* the pool on the ground under the base (the beam's landing) */
-        var bx = (p.x || 0) + (h / U) * Math.sin(tilt) * Math.sin(dir), bz = (p.z || 0) - (h / U) * Math.sin(tilt) * Math.cos(dir);
-        var gy = 0; try { if (H && _hqHasGround()) { var gt = _hqCaveTop(bx, bz); if (gt != null && isFinite(gt)) gy = gt; } } catch (e) {}
-        if (p.pool !== false) {
-            var pool = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.ShaderMaterial({ uniforms: uni, vertexShader: _RAY_POOL_VS, fragmentShader: _RAY_POOL_FS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true, side: THREE.DoubleSide, fog: false }));
-            pool.rotation.x = -Math.PI / 2; pool.rotation.z = -dir;
-            pool.scale.set(w * 0.95, w * (0.7 + 0.5 * Math.sin(tilt)), 1);
-            pool.position.set((bx - (p.x || 0)) * U, (gy - (p.top || 0)) * U + 2, (bz - (p.z || 0)) * U);
-            pool.renderOrder = 3; pool.frustumCulled = false; g.add(pool);
-        }
-        var rec = { g: g, uni: uni };
-        if (H && H.tickers) H.tickers.push(function (dt, now) { uni.uTime.value = now * 0.001; });
-        return g;
     }
     function _hqPlaceLightShafts(room) {
         var H = _hq, D = _hqData(), W = (typeof window !== 'undefined') ? window : {};
