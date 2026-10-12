@@ -39121,7 +39121,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         finisherTiming: function (def, o) { return _finStageTiming(def, o); },
     };
 
+    /* THE SHEET WARM (2026-10-12, mondo: "it will still freeze or dip in FPS at heavy moments like combo spell animations"):
+       the spells' canvas sheets were drawn and uploaded in the very frame a spell first used them (sandbox, real WebGPU: ~20
+       uploads + their mipmaps inside a first cast; the second cast of the same spell had none). These are drawn once and
+       cached forever, so ThreeRenderer draws and uploads them a few a frame from the start of the session instead. Only the
+       sheets that take no argument (a named label, a photo caption, a terrain file are made per use). */
+    var _WARM_SHEETS = [_sigGlowTex, _sigRingTex, _sigBurstTex, _sigStreakTex, _sigCrescentTex, _sigNoiseTex, _sigMagicCircleTex,
+        _sigSlashSmearTex, _sigRuneStripTex, _sigCrestTex, _sigClawMarkTex, _sigSonicRingTex, _sigGlyphBandTex, _sigAuroraCurtainTex,
+        _sigKaleidoTex, _crStarTex, _crFlareTex, _crLineTex, _crGrooveTex, _nrvStripeTex, _nrvTapeTex,
+        _finEyeTex, _finMaskTex, _finDiscoTex, _finBrickTex, _finTargetTex, _finRulerTex, _finWindowsTex, _finVenomTex];
+    /* one sheet per call (each is a canvas drawn on the main thread): the next texture, or null when every sheet is made */
+    var _warmSheetAt = 0;
+    function _warmNextSheet() {
+        while (_warmSheetAt < _WARM_SHEETS.length) {
+            var fn = _WARM_SHEETS[_warmSheetAt++];
+            try { var t = fn(); if (t && t.isTexture) return t; } catch (e) {}
+        }
+        return null;
+    }
+
     return {
+
+        warmNextSheet: _warmNextSheet,   // THE SHEET WARM: ThreeRenderer makes + uploads the cached spell sheets ahead of the first cast
 
         /* WEBGPU_PLAN W2 (console, through ThreeRenderer.nodePrograms): one material of each GLSL program here */
         nodeSamples: function () {
