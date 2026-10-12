@@ -54525,11 +54525,11 @@ const ThreeRenderer = (function () {
             if (typeof HQ_VEHICLE_CLIPS !== 'undefined') [['boat', 'hqSit'], ['sub', 'hqDrive']].forEach(function (pr) { var C = HQ_VEHICLE_CLIPS[pr[0]]; if (!C) return; wlc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) wlt[pr[1]] = C.ts; });
             def = Object.assign({}, def, { libClips: wlc, libTimeScales: wlt });
         }
-        /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19): the walker's LADDER clips (sprites.js HQ_CLIMB_CLIPS — the swim
-           stroke stood up, the float as the hang, UAL2's ClimbUp_1m as the mantle over the head) */
+        /* THE CLIMB (AREA_CONTENT_PLAN D1, 2026-09-19; the real clips 2026-10-12): the walker's LADDER clips (sprites.js
+           HQ_CLIMB_CLIPS — MAL3's Fast_Ladder_Climb and Climb_Up_Rope baked pinHips, UAL2's ClimbUp_1m as the mantle) */
         if (spec.kind === 'player' && def.libClips && typeof HQ_CLIMB_CLIPS !== 'undefined' && !def.libClips.hqClimb) {
             var clc = Object.assign({}, def.libClips), clt = Object.assign({}, def.libTimeScales);
-            [['climb', 'hqClimb'], ['hang', 'hqClimbIdle'], ['mantle', 'hqMantle']].forEach(function (pr) { var C = HQ_CLIMB_CLIPS[pr[0]]; if (!C) return; clc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.ts) clt[pr[1]] = C.ts; });
+            [['climb', 'hqClimb'], ['rope', 'hqClimbRope'], ['hang', 'hqClimbIdle'], ['mantle', 'hqMantle']].forEach(function (pr) { var C = HQ_CLIMB_CLIPS[pr[0]]; if (!C || !C.clip) return; clc[pr[1]] = { clip: C.clip, lib: C.lib || 0 }; if (C.pinHips) clc[pr[1]].pinHips = true; if (C.ts) clt[pr[1]] = C.ts; });
             def = Object.assign({}, def, { libClips: clc, libTimeScales: clt });
         }
         /* THE DOOR GUN rev 4 (2026-09-16): the walker's GUN clips (sprites.js HQ_GUN_CLIPS — the
@@ -60722,8 +60722,9 @@ const ThreeRenderer = (function () {
        from the top. The rider steps off the deck at a foot; the swimmer never climbs (the pool ladder is a wade). The
        SOLVER already carries the line as an edge (data.js hqTerrainClimbEdges), so nothing here decides reachability.
        A walker mode, never a game mode: nothing on `state`, nothing relayed (RULE #2). Kill-switch EW_HQ_NO_CLIMB.
-       Clips: sprites.js HQ_CLIMB_CLIPS baked as hqClimb / hqClimbIdle / hqMantle (the swim stroke stood up — _hqTickChars
-       pitches the model nose-up on the line). Beats reach map.js through opts.onClimb ({ kind: 'near' | 'climb', … }). */
+       Clips: sprites.js HQ_CLIMB_CLIPS baked as hqClimb (ladder) / hqClimbRope (rope, vine, chain) / hqMantle — MAL3's
+       Meshy climbs since 2026-10-12, paced to the climb speed, backwards going down, frozen as the hang (_hqTickChars).
+       Without lib 4 the old chain plays: the swim stroke pitched nose-up on the line. Beats reach map.js through opts.onClimb ({ kind: 'near' | 'climb', … }). */
     var HQ_CLIMB_DEFAULT = { reach: 0.6, speed: 1.6, mount: 0.3, hang: 0.34, slow: { rope: 0.8, vine: 0.75, chain: 0.85, wall: 0.7, pipe: 0.9 } };
     function _hqClimbRules() {
         var R = (typeof HQ_TERRAIN_RULES !== 'undefined') ? HQ_TERRAIN_RULES : ((typeof window !== 'undefined' && window.HQ_TERRAIN_RULES) || {});
@@ -60869,7 +60870,7 @@ const ThreeRenderer = (function () {
         var c = cl.c, sy0 = pl.y;
         var dir = H.paused ? 0 : (((k.w || k.up) ? 1 : 0) - ((k.s || k.down) ? 1 : 0));
         var speed = R.speed * ((R.slow && R.slow[c.look]) || 1);
-        cl.moving = dir !== 0;
+        cl.moving = dir !== 0; cl.dir = dir; cl.speed = speed;
         if (!H.paused && k.space && !pl._jumpLatch) { pl._jumpLatch = true; _hqClimbStop(pl, 'drop'); return; }
         pl._jumpLatch = !!k.space;
         pl.y += dir * speed * dt;
@@ -61142,7 +61143,20 @@ const ThreeRenderer = (function () {
                 if (H.ride && H.ride.on) { var bph = _hqRideBailPhase(H.ride); want = bph ? (bph === 'fall' ? 'hqFall' : 'hqGetup') : (ch.jumpT >= 0) ? 'jump' : ((e.actions && e.actions.hqRide) ? 'hqRide' : 'idle'); }   // SKATEBOARDING (9.8): the air is the jump clip, everything else on the deck is THE RIDE stance (rev 2: Idle_10, sideways on the deck; rev 7: no push / kick clip at all — the user); a bail = the fall clip then the get-up (rev 3)
                 else if (H.vehicle && H.vehicle.on) want = (H.vehicle.kind === 'sub') ? 'hqDrive' : 'hqSit';   // THE DEEP (2026-09-18): at the helm — the library's driving loop in the bathyscaphe, the sitting idle in the skiff
                 else if (ch.swim) want = ch.moving ? 'hqSwim' : 'hqSwimIdle';   // THE DEEP: the swimmer — Swim_Fwd_Loop / Swim_Idle_Loop (sprites.js HQ_SWIM_CLIPS)
-                else if (ch.climb) want = ch.climb.moving ? 'hqClimb' : 'hqClimbIdle';   // THE CLIMB (2026-09-19): the stroke stood up on the line, the hang between rungs (sprites.js HQ_CLIMB_CLIPS)
+                else if (ch.climb) {
+                    /* THE CLIMB (2026-10-12): the Meshy climb (rope / vine / chain = the rope clip, the rest = the ladder clip),
+                       its hands paced to the climb's speed, backwards going down, frozen on its frame as the hang */
+                    var CC = (typeof HQ_CLIMB_CLIPS !== 'undefined') ? HQ_CLIMB_CLIPS : null, ccLook = ch.climb.c && ch.climb.c.look;
+                    var ccRope = !!(CC && CC.ropeLooks && CC.ropeLooks.indexOf(ccLook) >= 0 && e.actions && e.actions.hqClimbRope);
+                    var ccSlot = ccRope ? 'hqClimbRope' : 'hqClimb', ccAct = e.actions && e.actions[ccSlot];
+                    if (ccAct) {
+                        want = ccSlot;
+                        var ccRate = (CC && CC[ccRope ? 'rope' : 'climb'] && CC[ccRope ? 'rope' : 'climb'].rate) || 0.6;
+                        var ccTs = Math.max(0.5, Math.min(2.4, (ch.climb.speed || 1.6) / ccRate)) * (ccAct._ew_ts0 || 1);
+                        ccAct.timeScale = ch.climb.moving ? ((ch.climb.dir < 0) ? -ccTs : ccTs) : 0;
+                        ch._climbClip = true;
+                    } else { want = ch.climb.moving ? 'hqClimb' : 'hqClimbIdle'; ch._climbClip = false; }   // no lib 4: the swim stroke stood up (the old chain)
+                }
                 else if (want === 'idle' && H.portal && H.portal.drawn && e.actions && e.actions.hqAim) want = 'hqAim';   // THE DOOR GUN rev 4: drawn and standing, the officer HOLDS the gun up (the library's pistol aim)
                 /* THE ENCOUNTER (9.4): a thrown attack / cast clip owns the rig until its end */
                 if (ch.strike) { if (performance.now() < ch.strike.until && ch.jumpT < 0) want = ch.strike.name; else ch.strike = null; }
@@ -61151,7 +61165,7 @@ const ThreeRenderer = (function () {
                 /* THE DEEP (2026-09-18): a DIVER pitches with the way it swims — nose down going down, up coming up (the prone clip pivots about its own root); afloat it lies level */
                 if (ch.swim) { var shs = Math.hypot(ch.svx || 0, ch.svz || 0), svy = ch.svy || 0; leanT = ch.dive ? Math.max(-1.1, Math.min(1.1, -Math.atan2(svy, Math.max(0.35, shs)))) : 0; }
                 /* THE CLIMB (2026-09-19): the prone stroke pitched NOSE-UP on the line — the chest to the rungs, the head up (the mantle at the top plays level) */
-                if (ch.climb && !ch.strike) leanT = -1.3;
+                if (ch.climb && !ch.strike) leanT = ch._climbClip ? 0 : -1.3;   // the real climb clip stands upright on its own
                 lean += (leanT - lean) * Math.min(1, dt * (ch.swim ? 4 : ch.climb ? 7 : 10));
                 e.model._ew_lean = lean; e.model.rotation.x = lean;
                 if (e.actions && e.actions.walk) {
