@@ -30,24 +30,32 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
 The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
-local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
+local server, so a merged commit alone does not change the live game. The
+workflow (mondo's standing authorization, 2026-10-05: every thread commits,
+pushes, opens a PR, merges it to main and writes the sync zip itself, in the
+same turn as the fix, without asking first):
 1. Edit the ACTUAL existing files in the repo in place (never create new GAME
    .js files, never split game logic into a new module — work with what's
    already there; that rule protects the fixed R2 upload set. Repo-only dev
    tooling at the repo root (deploy.js, load-data.js, bake-*.js) is fine —
    see TOOLING).
-2. Hand the user the COMPLETE edited file(s) in the chat AS ONE ZIP
-   (SendUserFile). STANDARD since 2026-09-12 (the user's rule): every
-   delivery is a single `ENTROPY_WARS_<TOPIC>.zip` built with `zip -j`
-   (flat, no folders) in the scratchpad, holding every changed file —
-   the R2 scripts, the bumped index.html (RULE #1b), and any repo-only
-   files (docs, CLAUDE.md). Never a loose file list. The chat
-   caption says which files go to R2, which to Render, which to the repo.
-3. The user uploads them to the R2 bucket (and manually syncs the repo so future
-   sessions start from the latest) — or runs `npm run deploy` (see TOOLING),
-   which uploads + cache-busts in one command.
-DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
-diffs. The deliverable is always the full edited file, produced in chat.
+2. Commit on your thread branch, push it, open a PR and merge it to main.
+   Before merging, `git fetch origin main` and merge main into the branch; if
+   it conflicts, resolve by hand keeping BOTH sides, never one side wholesale.
+   Never force-push main. Render auto-deploys index.html from main.
+3. After the merge, write the CUMULATIVE SYNC ZIP: for every R2 file that
+   index.html on origin/main loads from cdn.entropywars.net, fetch the live
+   copy (`curl --compressed` with a random query string) and compare its
+   sha256 to origin/main. Zip EVERY differing file, taken from origin/main
+   (not only this PR's files), flat (`zip -j`), to
+   `/mnt/project-files/r2-sync/ENTROPY_WARS_SYNC_<UTC yyyymmdd-hhmm>.zip`.
+   Re-fetch origin/main right before replying and rebuild if anything
+   zipped changed. In the reply list each file with the first 8 chars of
+   its sha256 and say "upload only the newest sync zip". Expected
+   non-matches: ASSET_MANIFEST.json, react, react-dom, MeshLine (R2-only).
+4. The user uploads the newest zip to the R2 bucket — or runs `npm run
+   deploy` (see TOOLING), which uploads + cache-busts in one command.
+Never deliver patches, diffs or loose files in place of the merged PR + zip.
 
 ### TOOLING
 - **NO TESTS (2026-09-29, mondo):** the test suite, the check-* tools and the CI workflow were deleted. Never write
@@ -64,8 +72,8 @@ diffs. The deliverable is always the full edited file, produced in chat.
   them, bumps the `?v=` token in index.html, uploads via wrangler, and prints
   the Render-redeploy reminder. `--dry-run` previews. Without a bucket it
   still bumps the token and prints a manual upload checklist. Claude has no
-  wrangler creds — Claude's deliverable is still files in chat (RULE #1);
-  this script is how the USER ships them.
+  wrangler creds — Claude's deliverable is the merged PR + sync zip (RULE #1);
+  this script is how the USER ships the zip's files to R2.
 - `load-data.js` — loads data.js headlessly in a Node vm sandbox (real
   values, not a copy). Use it for any new data validation/tooling instead of
   regex-scraping data.js.
@@ -103,18 +111,21 @@ diffs. The deliverable is always the full edited file, produced in chat.
 ### RULE #1c — DO NOT PLAYTEST UNLESS EXPLICITLY ASKED
 Playtesting (Playwright runs, browser automation, driving the game) burns a LOT
 of the user's tokens and they are fully capable of testing themselves. After
-making changes: syntax-check the edited JS (`node --check <file>`) and hand the
-files over — that's it. Only run the playtest harness / any browser automation
+making changes: syntax-check the edited JS (`node --check <file>`), merge and
+write the sync zip — that's it. Only run the playtest harness / any browser automation
 when the user explicitly requests it (e.g. "playtest <mode>") or when a change
 is genuinely impossible to validate any other way AND the user has agreed.
 
 ### RULE #1b — CACHE-BUSTING (MANDATORY on EVERY R2 file delivery)
 Assets are served with immutable long-cache headers, so an uploaded file does
 NOTHING until `index.html`'s version token changes — players keep the cached old
-copy otherwise. Therefore: **whenever you deliver ANY R2-hosted file (.js/.css/
-asset) in chat, you MUST also bump the `?v=` token in `index.html` and deliver
-the updated `index.html` in the SAME message.** No exceptions — one R2 file
-changed ⇒ ship a fresh index.html too.
+copy otherwise. Therefore: **whenever you change ANY R2-hosted file (.js/.css/
+asset), you MUST also bump the `?v=` token in `index.html` in the SAME PR**,
+so the bumped index.html merges to main (Render deploys it) alongside the
+file. No exceptions — one R2 file changed ⇒ a fresh token too. If two
+parallel threads bumped the token, merge main and re-bump. If the token URL
+on the CDN still serves old content while a random query serves new, the
+CDN cached the old file: bump the token again in a new PR.
 - Bump = one global find/replace of the current token to a new unique one:
   `sed -i 's/?v=<OLD>/?v=<NEW>/g' index.html`  (e.g. `20260705a` → `20260705b`,
   or a fresh date). The token is shared across every URL, so one bump
@@ -206,7 +217,7 @@ arm bind angles are standardized), and per-character clip flavor is one
    entry → shows in HUD panels/turn clock instead of the map sprite.
 4. Verify a GLB before wiring (rigged? boneless?): parse its JSON chunk with a
    node script (see PLAYTEST_NOTES.md "Rigged 3D unit models").
-5. Deliverable: hand the edited sprites.js back via chat (RULE #1).
+5. Deliverable: commit sprites.js, merge, and write the sync zip (RULE #1).
 Legacy path: per-character Meshy `..._Animation_<Name>_withSkin.glb` clips
 (must be exported FROM that character — direct cross-character playback warps
 the mesh) still wire via `_mk3d(folder, prefix, {slot: Clip})` and are the
@@ -225,8 +236,7 @@ Kill-switches (console): `window.EW_DISABLE_3D_UNITS = true` (all 3D),
 ## Conventions
 - Don't run auto-sim/dev-sim for playtesting — play P1 manually.
 - `node_modules/`, `package-lock.json`, `shots/` are gitignored; commit code + docs.
-- Dev branch: `claude/great-cray-5OS8X`. NOTE: in this environment BOTH `git push`
-  and the GitHub API/MCP return 403 for the agent — Claude cannot write to the repo.
-  To persist new files, hand them to the user (SendUserFile) to upload via GitHub
-  manually. Don't waste time retrying pushes.
+- Each thread works on its own `claude/...` branch and commits, pushes, opens
+  a PR and merges it to main itself (RULE #1). If a tool refuses a commit,
+  push or merge, retry once, then say plainly what refused.
 
