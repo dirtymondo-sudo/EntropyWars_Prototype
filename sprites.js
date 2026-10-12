@@ -2978,11 +2978,14 @@ if (typeof window !== 'undefined') window.HQ_GUN_CLIPS = HQ_GUN_CLIPS;
 // the bathyscaphe (UAL1 has both).
 const HQ_SWIM_CLIPS = { swim: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 1.0 }, idle: { clip: 'Swim_Idle_Loop', lib: 0, ts: 1.0 } };
 if (typeof window !== 'undefined') window.HQ_SWIM_CLIPS = HQ_SWIM_CLIPS;
-/* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19): the walker's LADDER clips. Neither library carries a ladder loop (UAL2's
-   ClimbUp_1m is a one-shot mantle), so the climb is the breaststroke STOOD UP — Swim_Fwd_Loop pitched vertical with the
-   body facing the rungs reads as a hand-over-hand climb (three-renderer.js _hqTickChars pitches it; a rope / vine runs
-   it slower through `ts`), Swim_Idle_Loop is the hang, ClimbUp_1m the mantle over the head onto the tier. */
-const HQ_CLIMB_CLIPS = { climb: { clip: 'Swim_Fwd_Loop', lib: 0, ts: 0.85 }, hang: { clip: 'Swim_Idle_Loop', lib: 0, ts: 0.7 }, mantle: { clip: 'ClimbUp_1m', lib: 1, ts: 1.3 } };
+/* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19; the real clips 2026-10-12): the walker's LADDER clips. MAL3 (lib 4) carries
+   two Meshy climbs from mondo's third batch: Fast_Ladder_Climb (0.8 s, ~0.5 m of hips travel a cycle) for ladders, fire
+   escapes, pipes and walls, and Climb_Up_Rope (2.6 s, ~0.6 m) for ropes, vines and chains. Both bake pinHips (the walker's
+   own climb moves the body; the clip's rise would double it). `rate` = metres the clip climbs a second at ts 1, so
+   three-renderer.js _hqTickChars matches the hands to the walker's real speed; going down plays the clip backwards and the
+   hang is the climb frozen on its current frame. ClimbUp_1m (UAL2) stays the mantle over the head onto the tier. If lib 4
+   is missing the old swim-stroke-stood-up chain still covers the slot. */
+const HQ_CLIMB_CLIPS = { climb: { clip: 'Fast_Ladder_Climb', lib: 4, ts: 1.0, rate: 0.62, pinHips: true }, rope: { clip: 'Climb_Up_Rope', lib: 4, ts: 1.0, rate: 0.23, pinHips: true }, mantle: { clip: 'ClimbUp_1m', lib: 1, ts: 1.3 }, ropeLooks: ['rope', 'vine', 'chain'] };
 if (typeof window !== 'undefined') window.HQ_CLIMB_CLIPS = HQ_CLIMB_CLIPS;
 const HQ_VEHICLE_CLIPS = { boat: { clip: 'Sitting_Idle_Loop', lib: 0, ts: 1.0 }, sub: { clip: 'Driving_Loop', lib: 0, ts: 1.0 } };
 if (typeof window !== 'undefined') window.HQ_VEHICLE_CLIPS = HQ_VEHICLE_CLIPS;

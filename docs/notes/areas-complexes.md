@@ -1951,3 +1951,10 @@ cell open only if the walker reaches it from the old open ground by small steps 
 sets `info.yard`; three-renderer.js paints yard cells with the path (pavement) sheet instead of the dark cliff sheet.
 Walker solid = the lots (buildings) + the rim + real walls. `gen.yardsOpen: false` keeps the old mass. Applies to every
 non-podium city: Downtown, the Strip, Cyberpunk (the mall has `podium`).
+
+**THE CLIMB, REAL CLIPS (2026-10-12, mondo: "use the climbing meshy animations instead of the swimming animation")**:
+`HQ_CLIMB_CLIPS` now names MAL3 (lib 4) `Fast_Ladder_Climb` (ladder / fireescape / pipe / wall) and `Climb_Up_Rope`
+(rope / vine / chain, slot `hqClimbRope`), both baked `pinHips` (the walker's own climb moves the body). `_hqTickChars`
+paces the clip by `rate` (metres a second at ts 1: ladder 0.62, rope 0.23) against the climb speed, clamped 0.5-2.4,
+plays it backwards going down and freezes it (timeScale 0) as the hang; no nose-up pitch with a real clip. Without lib 4
+the old swim-stroke-stood-up chain still plays. `ClimbUp_1m` stays the mantle.
