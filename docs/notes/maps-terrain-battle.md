@@ -449,3 +449,9 @@ placed by `_drapedTileY` (tileTopY + yOff + roof lift + field lift; `_makeHlTile
 cursor + the selected tile (`_buildCursorMesh`; a sub-floor pick under a roof stays a flat plane at its own floor), the
 underfoot decal, spawn-zone washes, zone fills, standing-door lane decals, the terrain paint ghost (rim via
 `_drapeRimGeo`). New tile markers should use `_drapedTileMesh`, never a flat PlaneGeometry.
+Round 2 (same day, mondo: "and zones from spells too or anything else that paints a square on the map"): spell zone
+washes + rim lines/halos (`_drapeEdgeRibbonGeo`: a ribbon along one tile edge riding the drape's edge heights), zone
+icons, delayed-attack danger cells, spider webs, warp runes, trap sigils, and the nexus/spawn zone wash + rim + halo.
+Textured decals pass `{ tex: true }` (drape v is flipped vs a laid PlaneGeometry; `uvRot` turns it). The nexus pieces
+stay pooled: `_nxDrapeGeo` keeps one geometry per (tile, piece) and rewrites its vertices in place on a rebuild.
+Cliff skirts and curtains stay vertical planes.

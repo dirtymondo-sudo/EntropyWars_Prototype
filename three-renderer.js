@@ -9174,10 +9174,7 @@ const ThreeRenderer = (function () {
                     map: rtex, transparent: true, alphaTest: 0.01,
                     side: THREE.DoubleSide, depthWrite: false
                 });
-                var rmesh = new THREE.Mesh(new THREE.PlaneGeometry(_runeTs * 0.92, _runeTs * 0.92), rmat);
-                rmesh.rotation.x = -Math.PI / 2;
-                var rtopY = tileTopY(rr.x, rr.y);
-                rmesh.position.set(rr.x * _runeTs + _runeTs / 2, rtopY + 0.6, rr.y * _runeTs + _runeTs / 2);
+                var rmesh = _drapedTileMesh(rr.x, rr.y, 0.92, rmat, 0.6, { tex: true });   // THE DRAPED MARKERS
                 rmesh._ew_deployable = true;
                 rmesh._ew_groundDecal = true;
                 rmesh._ew_depX = rr.x; rmesh._ew_depY = rr.y;
@@ -9206,10 +9203,7 @@ const ThreeRenderer = (function () {
                     map: ttex, transparent: true, alphaTest: 0.01,
                     side: THREE.DoubleSide, depthWrite: false
                 });
-                var tmesh = new THREE.Mesh(new THREE.PlaneGeometry(_trapTs * 0.86, _trapTs * 0.86), tmat);
-                tmesh.rotation.x = -Math.PI / 2;
-                var ttopY = tileTopY(tpr.x, tpr.y);
-                tmesh.position.set(tpr.x * _trapTs + _trapTs / 2, ttopY + 0.6, tpr.y * _trapTs + _trapTs / 2);
+                var tmesh = _drapedTileMesh(tpr.x, tpr.y, 0.86, tmat, 0.6, { tex: true });   // THE DRAPED MARKERS
                 tmesh._ew_deployable = true;
                 tmesh._ew_groundDecal = true;
                 tmesh._ew_depX = tpr.x; tmesh._ew_depY = tpr.y;
@@ -9769,6 +9763,25 @@ const ThreeRenderer = (function () {
         if (!g) { g = new THREE.PlaneGeometry(w, h); g._ew_shared = true; _nxGeos[k] = g; }
         return g;
     }
+    /* THE DRAPED MARKERS (2026-10-13): a zone's floor wash and rim follow the ground like the move tiles. One geometry
+       per (tile, piece) kept across rebuilds; a rebuild rewrites its vertices in place, so its id (and the pool) holds. */
+    function _nxDrapeGeo(key, build) {
+        var g = build(), old = _nxGeos[key];
+        if (old && old.attributes.position.count === g.attributes.position.count) {
+            old.attributes.position.array.set(g.attributes.position.array);
+            old.attributes.position.needsUpdate = true;
+            old._ew_rotY = g._ew_rotY;
+            old.computeBoundingSphere();
+            g.dispose();
+            return old;
+        }
+        if (old) {   // the drape's shape changed (a stair, a field's finer grid): drop the old one and its parked meshes
+            for (var pk in _nxPool) if (pk.indexOf(old.id + '|') === 0) delete _nxPool[pk];
+            old.dispose();
+        }
+        g._ew_shared = true; _nxGeos[key] = g;
+        return g;
+    }
     /* the pieces themselves are pooled by (plane, material): a rebuild re-seats the same Mesh, so the node renderer keeps
        its render object (uniform buffer + bind groups) instead of making ~200 of each and dropping the old ones */
     var _nxPool = {};
@@ -9861,9 +9874,10 @@ const ThreeRenderer = (function () {
                     depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
                 });
-                var wash = _nxPiece(_nxGeo(ts * 0.96, ts * 0.96), washMat);
-                wash.rotation.x = -Math.PI / 2;
-                wash.position.set(ft.x * ts + ts / 2, tileTopY(ft.x, ft.y) + ts * 0.012, ft.y * ts + ts / 2);
+                var washGeo = _nxDrapeGeo('dw' + ft.x + ',' + ft.y, function () { return _buildDrapeGeo(ft.x, ft.y, ts, 0.96); });
+                var wash = _nxPiece(washGeo, washMat);
+                wash.rotation.y = washGeo._ew_rotY || 0;
+                wash.position.set(ft.x * ts + ts / 2, _drapedTileY(ft.x, ft.y, ts * 0.012), ft.y * ts + ts / 2);
                 _nexusWallGroup.add(wash);
             }
 
@@ -9893,9 +9907,8 @@ const ThreeRenderer = (function () {
                     color: color, transparent: true, opacity: 0.95,
                     depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true
                 });
-                var line = _nxPiece(_nxGeo(horiz ? ts + lineT : lineT, horiz ? lineT : ts + lineT), lineMat);
-                line.rotation.x = -Math.PI / 2;
-                line.position.set(posX, yIn + lineLift, posZ);
+                var line = _nxPiece(_nxDrapeGeo('dl' + e.x + ',' + e.y + e.dir, function () { return _drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineT, lineT); }), lineMat);
+                line.position.set(posX, _drapedTileY(e.x, e.y, lineLift), posZ);
                 _nexusWallGroup.add(line);
 
                 /* soft halo hugging the line */
@@ -9903,9 +9916,8 @@ const ThreeRenderer = (function () {
                     color: color, transparent: true, opacity: 0.22,
                     depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending
                 });
-                var halo = _nxPiece(_nxGeo(horiz ? ts * 1.05 : lineT * 4.5, horiz ? lineT * 4.5 : ts * 1.05), haloMat);
-                halo.rotation.x = -Math.PI / 2;
-                halo.position.set(posX, yIn + lineLift - 0.08, posZ);
+                var halo = _nxPiece(_nxDrapeGeo('dh' + e.x + ',' + e.y + e.dir, function () { return _drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineT * 4.5, ts * 0.05); }), haloMat);
+                halo.position.set(posX, _drapedTileY(e.x, e.y, lineLift - 0.08), posZ);
                 _nexusWallGroup.add(halo);
 
                 /* curtain — the short glowing wall standing on the edge */
@@ -14965,13 +14977,54 @@ const ThreeRenderer = (function () {
         var fieldLift = (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, hx, hy) : 0;   // THE LIFT: a plate over the field's own sheet
         return tileTopY(hx, hy) + (yOff || 0) + _hlRoofLift(hx, hy) + fieldLift;
     }
-    /* a draped marker mesh for one tile (frac of the tile wide), placed yOff above the surface */
-    function _drapedTileMesh(hx, hy, frac, mat, yOff) {
+    /* a draped marker mesh for one tile (frac of the tile wide), placed yOff above the surface. A textured decal passes
+       tex: true (the drape's v runs the other way from a laid-down PlaneGeometry) and optionally uvRot (radians). */
+    function _drapedTileMesh(hx, hy, frac, mat, yOff, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        var m = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
+        var geo = _buildDrapeGeo(hx, hy, ts, frac);
+        if (opts && opts.tex) _drapeTexUv(geo, opts.uvRot || 0);
+        var m = new THREE.Mesh(geo, mat);
         if (m.geometry._ew_rotY !== undefined) m.rotation.y = m.geometry._ew_rotY;
         m.position.set(hx * ts + ts / 2, _drapedTileY(hx, hy, yOff), hy * ts + ts / 2);
         return m;
+    }
+    function _drapeTexUv(geo, rot) {
+        var uv = geo.attributes.uv, c = Math.cos(rot), sn = Math.sin(rot);
+        for (var i = 0; i < uv.count; i++) {
+            var u = uv.getX(i) - 0.5, v = (1 - uv.getY(i)) - 0.5;
+            uv.setXY(i, 0.5 + u * c - v * sn, 0.5 + u * sn + v * c);
+        }
+        uv.needsUpdate = true;
+    }
+    /* a zone rim line along one tile edge (dir n/s/w/e), draped: a ribbon `width` across, the edge's length + `extend`,
+       riding the tile's drape heights along that edge. Built about the edge's midpoint at tileTopY (rotation baked in), so
+       the caller places it at (edge midpoint x, _drapedTileY(x, y, lift), edge midpoint z) with no rotation. */
+    function _drapeEdgeRibbonGeo(hx, hy, dir, width, extend) {
+        var ts = CONFIG.tileSize || BASE_TILE, half = ts / 2, eps = ts * 1e-3;
+        var dg = _buildDrapeGeo(hx, hy, ts, 1.0), p = dg.attributes.position.array, ry = dg._ew_rotY || 0;
+        var c = Math.cos(ry), sn = Math.sin(ry), horiz = (dir === 'n' || dir === 's');
+        var edge = (dir === 'n' || dir === 'w') ? -half : half, pts = [], i;
+        for (i = 0; i < p.length; i += 3) {
+            var wx = p[i] * c + p[i + 2] * sn, wz = -p[i] * sn + p[i + 2] * c;   // Object3D rotation.y
+            var acr = horiz ? wz : wx;
+            if (Math.abs(acr - edge) < eps) pts.push([horiz ? wx : wz, p[i + 1]]);
+        }
+        dg.dispose();
+        pts.sort(function (a, b) { return a[0] - b[0]; });
+        if (pts.length < 2) pts = [[-half, 0], [half, 0]];
+        var ex = (extend || 0) / 2;
+        pts.unshift([pts[0][0] - ex, pts[0][1]]);
+        pts.push([pts[pts.length - 1][0] + ex, pts[pts.length - 1][1]]);
+        var pos = [], idx = [], hw = width / 2;
+        for (i = 0; i < pts.length; i++) {
+            var a = pts[i][0], h = pts[i][1];
+            if (horiz) pos.push(a, h, -hw, a, h, hw); else pos.push(-hw, h, a, hw, h, a);
+            if (i > 0) { var b = (i - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+        }
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        g.setIndex(idx);
+        return g;
     }
     /* the drape's rim as a closed line (the paint ghost's crisp edge), same local frame as the drape mesh */
     function _drapeRimGeo(geo) {
@@ -34671,15 +34724,12 @@ const ThreeRenderer = (function () {
         for (var ei = 0; ei < info.edges.length; ei++) {
             var e = info.edges[ei];
             var yIn = tileTopY(e.x, e.y);
-            var eTopY = yIn + lineHeight;
             var bx = e.x * ts;
             var bz = e.y * ts;
 
             var horiz = (e.dir === 'n' || e.dir === 's');
-            /* extend each segment by one thickness so perpendicular lines
+            /* each segment is extended by one thickness so perpendicular lines
                overlap and corners read as clean joints (no dots needed) */
-            var segW = horiz ? ts + lineThickness : lineThickness;
-            var segH = horiz ? lineThickness : ts + lineThickness;
             var posX = (e.dir === 'w') ? bx : (e.dir === 'e') ? bx + ts : bx + ts / 2;
             var posZ = (e.dir === 'n') ? bz : (e.dir === 's') ? bz + ts : bz + ts / 2;
 
@@ -34687,11 +34737,9 @@ const ThreeRenderer = (function () {
                 color: color, transparent: true, opacity: 0.9,
                 depthWrite: false, side: THREE.DoubleSide
             });
-            var lineMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(segW, segH), lineMat
-            );
-            lineMesh.rotation.x = -Math.PI / 2;
-            lineMesh.position.set(posX, eTopY, posZ);
+            /* THE DRAPED MARKERS: the rim rides the tile's surface along its edge */
+            var lineMesh = new THREE.Mesh(_drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineThickness, lineThickness), lineMat);
+            lineMesh.position.set(posX, _drapedTileY(e.x, e.y, lineHeight), posZ);
             _zPush(lineMesh, lineMat);
 
             /* soft halo hugging the line (subtler than the old fat glow) */
@@ -34699,13 +34747,8 @@ const ThreeRenderer = (function () {
                 color: color, transparent: true, opacity: 0.15,
                 depthWrite: false, side: THREE.DoubleSide
             });
-            var glowMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(
-                    horiz ? ts * 1.04 : lineThickness * 4.5,
-                    horiz ? lineThickness * 4.5 : ts * 1.04), glowMat
-            );
-            glowMesh.rotation.x = -Math.PI / 2;
-            glowMesh.position.set(posX, eTopY - 0.08, posZ);
+            var glowMesh = new THREE.Mesh(_drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineThickness * 4.5, ts * 0.04), glowMat);
+            glowMesh.position.set(posX, _drapedTileY(e.x, e.y, lineHeight - 0.08), posZ);
             _zPush(glowMesh, glowMat);
 
             /* Terrain-following skirt: when the ground steps up or down across
@@ -34815,10 +34858,7 @@ const ThreeRenderer = (function () {
             map: _getZoneIconTex(kind), transparent: true, opacity: 0.92,
             depthWrite: false, side: THREE.DoubleSide
         });
-        var icon = new THREE.Mesh(new THREE.PlaneGeometry(size, size), iconMat);
-        icon.rotation.x = -Math.PI / 2;
-        var _icY = tileTopY(cx, cy) + 0.6;
-        icon.position.set(cx * ts + ts / 2, _icY + _hlSkinLift(cx, cy, _icY), cy * ts + ts / 2);   // THE SKIN LINE
+        var icon = _drapedTileMesh(cx, cy, size / ts, iconMat, 0.6, { tex: true });   // THE DRAPED MARKERS
         icon.renderOrder = 6;
         icon._ew_overlay = 'zone';
         icon._ew_zoneIcon = { phase: (cx * 3.1 + cy * 1.7) % 6.28 };
@@ -34844,10 +34884,7 @@ const ThreeRenderer = (function () {
                 depthWrite: false, side: THREE.DoubleSide
             });
             mat._pulseSpeed = pulseSpeed || 3.4;
-            var cell = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
-            cell.rotation.x = -Math.PI / 2;
-            var _dcY = tileTopY(t.x, t.y) + 0.55;
-            cell.position.set(t.x * ts + ts / 2, _dcY + _hlSkinLift(t.x, t.y, _dcY), t.y * ts + ts / 2);   // THE SKIN LINE
+            var cell = _drapedTileMesh(t.x, t.y, size / ts, mat, 0.55, { tex: true });   // THE DRAPED MARKERS
             cell.renderOrder = 6;
             cell._ew_overlay = 'zone';
             highlightGroup.add(cell);
@@ -34869,8 +34906,6 @@ const ThreeRenderer = (function () {
         }
         for (var i = 0; i < tiles.length; i++) {
             var t = tiles[i];
-            var topY = tileTopY(t.x, t.y) + 0.25;
-            topY += _hlSkinLift(t.x, t.y, topY);   // THE SKIN LINE
             var webMat = new THREE.MeshBasicMaterial({
                 map: _spiderwebZoneTex,
                 color: 0xc8c8e0,
@@ -34880,13 +34915,8 @@ const ThreeRenderer = (function () {
                 side: THREE.DoubleSide,
                 blending: THREE.NormalBlending,
             });
-            var webPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.94, ts * 0.94), webMat
-            );
-            webPlane.rotation.x = -Math.PI / 2;
-
-            webPlane.rotation.z = (t.x * 1.7 + t.y * 2.3) % (Math.PI * 2);
-            webPlane.position.set(t.x * ts + ts / 2, topY, t.y * ts + ts / 2);
+            var webPlane = _drapedTileMesh(t.x, t.y, 0.94, webMat, 0.25,
+                { tex: true, uvRot: ((t.x * 3 + t.y * 5) % 4) * Math.PI / 2 });   // THE DRAPED MARKERS (quarter turns: no clamped corners)
             webPlane.renderOrder = 5;
             webPlane._ew_overlay = 'zone';
             highlightGroup.add(webPlane);
