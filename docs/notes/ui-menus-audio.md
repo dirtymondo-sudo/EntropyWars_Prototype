@@ -1097,3 +1097,7 @@ left above the Horologe; the Horologe's portrait is the current unit; units that
 - UI Maker: piece `turns` (Turn order, `.ew-turn-col`) replaces `party`; `.ew-tc-plate` joined the battle panel
   role. Tutorial step `dock` (data.js) points at `.ew-turn-col`. state.js touch-on-HUD + styles-cinematic arrival
   fade list `.ew-turn-col`.
+- **Same day, mondo: "just circular icons not big old panels".** The plate, header, names and HP text are gone
+  (token 20261013-turncol-02-cors): bare ring portraits (`TurnIcon`, 46→26px) stacked on the clock face's centre line
+  (the column box is 216 wide, icons centred), NEXT = gold dotted halo, NOW (other turns) = 1.3× + glow, acted units
+  dimmed above a ↻ mark, "+N" pip when they don't fit, tooltip for name/HP. `.ew-tc-plate` left the panel role.
