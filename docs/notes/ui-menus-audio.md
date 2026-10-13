@@ -1101,3 +1101,6 @@ left above the Horologe; the Horologe's portrait is the current unit; units that
   (token 20261013-turncol-02-cors): bare ring portraits (`TurnIcon`, 46→26px) stacked on the clock face's centre line
   (the column box is 216 wide, icons centred), NEXT = gold dotted halo, NOW (other turns) = 1.3× + glow, acted units
   dimmed above a ↻ mark, "+N" pip when they don't fit, tooltip for name/HP. `.ew-tc-plate` left the panel role.
+- **Same day again, mondo: "put them on the edge of the screen like a normal turn clock".** Icons are left-aligned
+  flush on the screen edge (left 10px, the Horologe plate's edge), not centred over the clock face (token
+  20261013-turncol-03-cors).
