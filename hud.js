@@ -6592,8 +6592,11 @@ function _showTileMoveTowardsPreview(actingUnit, action) {
     const ghostTint = (typeof getFactionColor === 'function')
       ? (parseInt(String(getFactionColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
       : 0x66ddff;
+    // The hologram walks the route on a loop (three-renderer THE ACTION PREVIEW MOTION).
+    if (wps.length < 2) wps.push({ x: approach.x, y: approach.y, yOverride: ThreeRenderer.tileTopY(approach.x, approach.y) });
     ThreeRenderer.showGhostUnit(actingUnit, approach.x, approach.y,
-      ThreeRenderer.tileTopY(approach.x, approach.y), { tag: 'caster', color: ghostTint, opacity: 0.85 });
+      ThreeRenderer.tileTopY(approach.x, approach.y), { tag: 'caster', color: ghostTint, opacity: 0.85,
+        motion: { wps: wps, kind: 'walk' } });
   } catch (e) { /* preview is cosmetic — never let it break hover */ }
 }
 
@@ -6718,7 +6721,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     ThreeRenderer.setOverlay('movePreview',
       steps.map((s, i) => ({ x: s.x, y: s.y, color: routeColor, opacity: i === steps.length - 1 ? 0.6 : 0.25 })),
       routeColor, 0.45);
-    ThreeRenderer.showGhostUnit(actingUnit, dest.x, dest.y, _stepY(dest), { tag: 'caster', color: ghostTint, opacity: 0.85 });
+    ThreeRenderer.showGhostUnit(actingUnit, dest.x, dest.y, _stepY(dest), { tag: 'caster', color: ghostTint, opacity: 0.85,
+      motion: { wps: wps, kind: _isAir ? 'fly' : 'walk', faceTo: { x: tx, y: ty } } });
     ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
     return;
   }
@@ -6768,8 +6772,14 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       ThreeRenderer.setOverlay('movePreview', [{ x: mt.x, y: mt.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
     }
 
-    // Hologram of the caster standing where it will end up.
-    ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85 });
+    // Hologram of the caster walking there and striking / casting, on a loop.
+    const _mw = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    if (mt.via) _mw.push({ x: mt.via.x, y: mt.via.y, yOverride: ThreeRenderer.tileTopY(mt.via.x, mt.via.y) });
+    _mw.push({ x: mt.x, y: mt.y, yOverride: destY });
+    const _mAir = typeof canFly === 'function' && canFly(actingUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
+    ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85,
+      motion: { wps: _mw, kind: _mAir ? 'fly' : 'walk', faceTo: { x: ax, y: ay },
+        castSpell: (action && action.spell) || null, attack: !!(action && (action.id === 'attack' || action.id === 'combo')) } });
 
     // Arced strike arrow lobbing from the move destination onto the target.
     ThreeRenderer.drawArrow3D(mt.x, mt.y, ax, ay, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
@@ -6828,7 +6838,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       // Arrow palette: purple = target being force-moved (push AND pull).
       const shoveColor = 0xbb66ff;
       const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
-      ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.8 });
+      ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.8,
+        motion: { wps: [{ x: tx, y: ty, yOverride: targetY }, { x: shove.x, y: shove.y, yOverride: shY }], kind: 'shove', afterTag: 'caster' } });
       ThreeRenderer.drawArrow3D(tx, ty, shove.x, shove.y, shoveColor, false, targetY, shY,
         { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
       ThreeRenderer.setOverlay('actionPlanShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);

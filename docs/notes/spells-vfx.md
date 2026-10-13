@@ -1305,3 +1305,20 @@ Covers map lava (tile boxes, HQ room sheets) and spell lava (the field skins).
   terrain's sheet (`paintedSide`: Rampart = mountain stone, Snow Fort = ice), not the room bed. Walls of Camelot and
   Pyramid Protocol keep their brick / sandstone monument GLBs. The Rampart hit's rising spikes (`_capSpikes`) are now
   textured (`o.tex`, default rocks_1; Rampart passes mountain).
+
+## THE ACTION PREVIEW MOTION (2026-10-13, token 20261013-actprev-01-cors)
+mondo: "when i hover over jump towards or move towards, i wanna see the character preview actually walking to that
+tile, it can be on a loop ... for a dash spell i wanna see the preview be an actual dash".
+- three-renderer.js `showGhostUnit(..., { motion })`: the hologram PERFORMS the action on a loop instead of standing
+  on the landing tile. `motion = { wps, kind, apexY, castSpell, attack, faceTo, afterTag }`; `wps` are the route
+  arrow's tile waypoints (an `apex: true` waypoint makes `[a, apex, b]` one jump; a walk leg that climbs/drops more
+  than 0.6 tile hops). Kinds: walk / fly / dash (runCharge) / leap (jump arc) / blink (cast, vanish, appear) /
+  shove (hit clip, no turn). `castSpell` / `attack` play the board's own cast / attack chain on arrival.
+- Model ghosts get their own AnimationMixer on the clone, fed the live unit's wired slot clips (`_ghostSlotClip`);
+  the old bone-sync to the live idle is off for a motion ghost. Sprite ghosts slide on the same timeline.
+- One shared loop clock (`_ghostMotionT0`, period = the longest ghost) keeps a cast's bodies in step; `afterTag`
+  starts a body once that ghost has arrived (shoves wait on the caster). The ring + warning badge stay on the landing.
+- Wired: battle.js move/jump/takeoff/move-towards hover, spell approach (walks then casts), approach shove, sky-throw
+  landing; hud.js tile-menu Move Towards, chained Move Towards, move-then-cast/attack, shove guess; ui.js
+  `drawForecastMoves` (plan.spell picks dash / leap / blink / shove) and `_showDisplaceGhost`. Viewer-local hover UI,
+  nothing relayed (guest runs its own hover).
