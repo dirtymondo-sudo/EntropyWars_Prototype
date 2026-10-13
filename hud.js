@@ -1680,7 +1680,7 @@ function CombatLog({ st }) {
    stats.") It replaces BOTH the bottom-right party dock and the portrait flanks that rode the scoreboard.
 
    Bare circular ring portraits (HP outer / MP inner, PartyPortrait), no panel and no names (mondo, same day: "just
-   circular icons not big old panels"), stacked on the Horologe clock face's centre line. Every living unit of BOTH
+   circular icons not big old panels"), stacked flush on the left screen edge above the Horologe. Every living unit of BOTH
    teams, in blitz queue order (_scoreboardTurnData), read BOTTOM-UP: the icon touching the Horologe acts next (gold
    dotted halo), the ones above it after that, and the units that already acted sit at the TOP, dimmed, above a ↻
    mark (they act again next round — the queue loops). On your turn the Horologe's portrait IS the NOW slot, so the
@@ -1820,9 +1820,6 @@ function _tcInspect(unitId) {
   else if (typeof markDirty === 'function') { markDirty('hud'); if (typeof renderIfDirty === 'function') renderIfDirty(); }
 }
 
-/* centre of the Horologe's clock face over the identity plate (.hrlg-side is 216 wide at left 10) — the icons stack
-   on that line so the queue reads as feeding straight into the clock */
-const TC_AXIS = 108;
 const TC_MAX = 46, TC_MIN = 26, TC_GAP = 6;
 
 function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
@@ -10753,19 +10750,19 @@ function _injectHudHideStyles() {
     }
 
     /* ══════════ THE TURN ORDER COLUMN — left, docked on the Horologe (hud.js TurnColumn, 2026-10-13) ══════════
-       Bare circular ring portraits, no panel (mondo: "just circular icons not big old panels"), stacked on the
-       clock face's centre line (the box is .hrlg-side's width, icons centred in it), scaled with --ew-ui-scale from
+       Bare circular ring portraits, no panel (mondo: "just circular icons not big old panels"), stacked flush on the
+       left screen edge like a turn clock (mondo: "put them on the edge of the screen"), scaled with --ew-ui-scale from
        the bottom-left like the rig. TurnColumn sets bottom in px from the measured Horologe plate; the transition
        slides it when the rig comes and goes. */
     .ew-turn-col {
-      position: absolute; left: 10px; width: 216px;
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      position: absolute; left: 10px;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
       z-index: 12; pointer-events: none;
       transform: scale(var(--ew-ui-scale, 1)); transform-origin: 0 100%;
       font-family: 'IBM Plex Mono', monospace;
       transition: bottom 0.32s cubic-bezier(0.22,1,0.36,1);
     }
-    .ew-tc-list { display: flex; flex-direction: column; align-items: center; }
+    .ew-tc-list { display: flex; flex-direction: column; align-items: flex-start; }
     .ew-tc-icon {
       position: relative; flex: none; cursor: pointer; pointer-events: auto; border-radius: 50%;
       transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease, filter 0.3s ease;
@@ -10788,7 +10785,7 @@ function _injectHudHideStyles() {
     .ew-tc-icon.next .ew-pp-halo { opacity: 0.85; stroke: var(--ew-sel); stroke-dasharray: 2 3; }
     /* the loop mark: units above it already acted — they go again next round */
     .ew-tc-loop {
-      flex: none; font-size: 12px; line-height: 1; height: 8px; display: flex; align-items: center;
+      flex: none; font-size: 12px; line-height: 1; height: 8px; display: flex; align-items: center; padding-left: 15px;
       color: var(--ew-ink-mute); text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8);
     }
     .ew-tc-fold {
@@ -10796,7 +10793,7 @@ function _injectHudHideStyles() {
       font-size: 10px; letter-spacing: 0.04em; color: var(--ew-ink); background: rgba(0,0,0,0.55);
       border: 1px dashed rgba(255,255,255,0.35); text-shadow: 0 1px 2px #000;
     }
-    .ew-tc-fallen { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; max-width: 150px; pointer-events: auto; }
+    .ew-tc-fallen { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 3px; max-width: 150px; pointer-events: auto; }
     .ew-tc-ko {
       position: relative; width: 20px; height: 20px; flex: none; overflow: hidden;
       display: flex; align-items: center; justify-content: center;
