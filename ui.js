@@ -14977,7 +14977,18 @@
                 else per.set(m.unit.id, { unit: m.unit, fromX: m.fromX, fromY: m.fromY, x: m.x, y: m.y, mode: m.mode, slam: !!m.slam, blink: !!(m.blink || m.escape) });
             }
             const plates = [];
-            per.forEach(m => {
+            /* THE ACTION PREVIEW MOTION (2026-10-13): each hologram performs its move on a loop — the caster's dash
+               is a real sprint (a leap strike a jump, a blink a vanish) ending in the spell's clip, and every body
+               the cast moves slides / flies once the caster has arrived. The caster's own move goes first so the
+               others can wait on it. */
+            const sp = plan.spell || null;
+            const spKind = sp ? sp.kind : null;
+            const ownTag = caster ? 'fc:' + caster.id : null;
+            const list = [];
+            per.forEach(m => list.push(m));
+            list.sort((a, b) => ((caster && b.unit.id === caster.id) ? 1 : 0) - ((caster && a.unit.id === caster.id) ? 1 : 0));
+            const ownMoves = !!(caster && list.some(m => m.unit.id === caster.id && !(m.x === m.fromX && m.y === m.fromY)));
+            list.forEach(m => {
                 if (m.x === m.fromX && m.y === m.fromY) return;
                 const own = !!(caster && m.unit.id === caster.id);
                 const col = own ? EW_PREVIEW.self : EW_PREVIEW.forced;
@@ -14985,7 +14996,23 @@
                 try { fromY = ThreeRenderer.tileTopY(m.fromX, m.fromY); toY = ThreeRenderer.tileTopY(m.x, m.y); } catch (e) {}
                 const arc = m.blink ? 0 : (m.mode === 'pull' || m.mode === 'rescue' ? 0.18 : (own ? 0.24 : 0.3));
                 ThreeRenderer.drawArrow3D(m.fromX, m.fromY, m.x, m.y, col, !!m.blink, fromY, toY, { arc: arc, flow: !m.blink });
-                if (toY != null) ThreeRenderer.showGhostUnit(m.unit, m.x, m.y, toY, { tag: 'fc:' + m.unit.id, color: col, opacity: 0.82 });
+                let motion = null;
+                if (fromY != null && toY != null) {
+                    const wps = [{ x: m.fromX, y: m.fromY, yOverride: fromY }, { x: m.x, y: m.y, yOverride: toY }];
+                    const kind = (m.blink || m.mode === 'swap') ? 'blink'
+                        : own ? ((spKind === 'leapStrike' || spKind === 'skySlam' || spKind === 'skyDrop') ? 'leap' : 'dash')
+                        : (m.mode === 'thrown') ? 'leap'
+                        : (m.mode === 'rally') ? 'dash'
+                        : 'shove';
+                    motion = { wps: wps, kind: kind };
+                    if (own) {
+                        motion.castSpell = sp;
+                        motion.afterTag = 'caster';   // a move-then-cast: the walk to the cast tile comes first
+                    } else {
+                        motion.afterTag = ownMoves ? ownTag : 'caster';
+                    }
+                }
+                if (toY != null) ThreeRenderer.showGhostUnit(m.unit, m.x, m.y, toY, { tag: 'fc:' + m.unit.id, color: col, opacity: 0.82, motion: motion });
                 plates.push({ x: m.x, y: m.y, color: col, opacity: 0.62 });
             });
             if (plates.length && overlayName) ThreeRenderer.setOverlay(overlayName, plates, plates[0].color, 0.62);
@@ -15310,7 +15337,7 @@
                     }
                     if (endX !== caster.x || endY !== caster.y) {
                         _drawArrowBetweenTiles(caster.x, caster.y, endX, endY, DASH, false, false, { arc: 0.24, flow: true });
-                        _showDisplaceGhost(caster, endX, endY, DASH_H);
+                        _showDisplaceGhost(caster, endX, endY, DASH_H, 'dash');
                     }
                 }
             }
@@ -15385,8 +15412,8 @@
                     // Both bodies trade places — hologram each at the other's tile.
                     _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, SWAP, false, false, { arc: 0.28, flow: true });
                     _drawArrowBetweenTiles(tx, ty, caster.x, caster.y, SWAP, false, false, { arc: 0.28, flow: true });
-                    _showDisplaceGhost(caster, tx, ty, SWAP_H);
-                    _showDisplaceGhost(target, caster.x, caster.y, SWAP_H);
+                    _showDisplaceGhost(caster, tx, ty, SWAP_H, 'blink');
+                    _showDisplaceGhost(target, caster.x, caster.y, SWAP_H, 'blink');
                 }
             }
 
@@ -15403,7 +15430,7 @@
                 const landTile = adj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
                 if (landTile) {
                     _drawArrowBetweenTiles(caster.x, caster.y, landTile.x, landTile.y, DASH, false, false, { arc: 0.24, flow: true });
-                    _showDisplaceGhost(caster, landTile.x, landTile.y, DASH_H);
+                    _showDisplaceGhost(caster, landTile.x, landTile.y, DASH_H, 'dash');
                 }
             }
 
@@ -15411,7 +15438,7 @@
                 // Teleport is instantaneous — a dotted straight line + a hologram
                 // of the caster at the destination reads better than an arc.
                 _drawArrowBetweenTiles(caster.x, caster.y, tx, ty, TELE, false, true, { arc: 0, flow: false });
-                _showDisplaceGhost(caster, tx, ty, TELE_H);
+                _showDisplaceGhost(caster, tx, ty, TELE_H, 'blink');
             }
 
             if (kind === 'displacement') {
@@ -15441,12 +15468,17 @@
         // Hologram of a unit at the tile a spell will move it to (or the caster's
         // landing tile for dash/teleport/swap). Mirrors the quick-action menu so
         // the main spell menu previews WHAT the spell does, not just its aim.
-        function _showDisplaceGhost(unit, x, y, hexColor) {
+        function _showDisplaceGhost(unit, x, y, hexColor, kind) {
             if (!unit) return;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
             var surfY = ThreeRenderer.tileTopY(x, y);
             var tag = 'disp:' + (unit.id != null ? unit.id : (x + ',' + y));
-            ThreeRenderer.showGhostUnit(unit, x, y, surfY, { tag: tag, color: hexColor, opacity: 0.8 });
+            /* THE ACTION PREVIEW MOTION: the body performs the move from where it stands (shoved by default) */
+            var motion = (unit.x != null && unit.y != null && !(unit.x === x && unit.y === y)) ? {
+                wps: [{ x: unit.x, y: unit.y, yOverride: ThreeRenderer.unitSurfaceY(unit) }, { x: x, y: y, yOverride: surfY }],
+                kind: kind || 'shove'
+            } : null;
+            ThreeRenderer.showGhostUnit(unit, x, y, surfY, { tag: tag, color: hexColor, opacity: 0.8, motion: motion });
         }
 
         function _drawArrowBetweenTiles(fromX, fromY, toX, toY, color, dashed, dotted, opts) {

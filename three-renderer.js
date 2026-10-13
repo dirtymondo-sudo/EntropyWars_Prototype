@@ -15855,6 +15855,234 @@ const ThreeRenderer = (function () {
         return spr;
     }
 
+    /* ── THE ACTION PREVIEW MOTION (2026-10-13) ─────────────────────────────
+       mondo: "when i hover over jump towards or move towards, i wanna see the
+       character preview actually walking to that tile, it can be on a loop
+       ... for a dash spell i wanna see the preview be an actual dash".
+       showGhostUnit opts.motion makes the hologram PERFORM the action on a
+       loop instead of standing on the landing tile:
+         { wps: [{ x, y, yOverride, apex }], kind, apexY, castSpell, attack,
+           faceTo: { x, y }, afterTag }
+       wps   = tile waypoints from where the unit stands to the ghost's tile
+               (the same list the route arrow draws; an `apex` waypoint is a
+               jump leg's arc top, so [a, apex, b] plays as one jump).
+       kind  = 'walk' (default) | 'fly' | 'dash' | 'leap' | 'blink' | 'shove'.
+       castSpell / attack = after arriving, play that spell's / the basic
+               attack's clip (the board's own cast / attack chains).
+       afterTag = start once the ghost with that tag has arrived (a body a
+               cast shoves moves after the caster gets there and swings).
+       Model units play their own clips on a mixer of the ghost clone; sprite
+       units slide the hologram along the same timeline. Every motion ghost
+       shares one loop clock so a cast's bodies stay in step. The ring and the
+       warning badge stay on the landing tile. Viewer-local, nothing relayed. */
+    var _ghostMotionT0 = 0;
+    var _ghostMotionLast = 0;
+
+    function _ghostSlotClip(srcEntry, names) {
+        var acts = srcEntry && srcEntry.actions;
+        if (!acts || !names) return null;
+        for (var i = 0; i < names.length; i++) {
+            var a = acts[names[i]];
+            if (a && typeof a.getClip === 'function' && a.getClip()) {
+                return { clip: a.getClip(), ts: a._ew_ts0 || a.timeScale || 1, once: a.loop === THREE.LoopOnce };
+            }
+        }
+        return null;
+    }
+
+    function _ghostBuildMotion(motion, group, ts, srcEntry, mover, moverBaseY, isModel) {
+        var wps = (motion && motion.wps) || [];
+        if (wps.length < 2) return null;
+        var kind = motion.kind || 'walk';
+        var gp = group.position;
+        var P = function (w) {
+            var wy = (w.yOverride !== undefined && w.yOverride !== null) ? w.yOverride
+                : tileTopY(Math.round(w.x), Math.round(w.y));
+            return { x: w.x * ts + ts / 2 - gp.x, y: wy + 1.0 - gp.y, z: w.y * ts + ts / 2 - gp.z };
+        };
+        var legs = [];
+        var prev = P(wps[0]);
+        for (var i = 1; i < wps.length; i++) {
+            if (wps[i].apex && i + 1 < wps.length) {
+                var top = P(wps[i]);
+                var nx = P(wps[i + 1]);
+                legs.push({ a: prev, b: nx, type: 'jump', apex: top.y });
+                prev = nx; i++;
+                continue;
+            }
+            var nb = P(wps[i]);
+            var lt = kind === 'leap' ? 'jump' : (kind === 'blink' ? 'blink' : kind);
+            // a walk leg that climbs / drops a lot is the hop the board plays there
+            var hop = (lt === 'walk' && Math.abs(nb.y - prev.y) > ts * 0.6);
+            if (hop) lt = 'jump';
+            var leg = { a: prev, b: nb, type: lt };
+            if (lt === 'jump') {
+                var fl = Math.sqrt((nb.x - prev.x) * (nb.x - prev.x) + (nb.z - prev.z) * (nb.z - prev.z));
+                var ap = Math.max(prev.y, nb.y) + (hop ? ts * 0.35 : Math.max(ts * 0.9, fl * 0.32));
+                if (motion.apexY !== undefined && motion.apexY !== null) ap = Math.max(ap, motion.apexY + ts * 0.35 + 1.0 - gp.y);
+                leg.apex = ap;
+            }
+            legs.push(leg);
+            prev = nb;
+        }
+        var travel = 0;
+        for (var li = 0; li < legs.length; li++) {
+            var L = legs[li];
+            var dx = L.b.x - L.a.x, dz = L.b.z - L.a.z;
+            var d = Math.sqrt(dx * dx + dz * dz) / ts;
+            var dv = Math.abs(L.b.y - L.a.y) / ts;
+            L.dur = (L.type === 'jump') ? 0.5 + d * 0.07
+                : (L.type === 'dash') ? Math.max(0.2, d * 0.085)
+                : (L.type === 'shove') ? Math.max(0.2, d * 0.11)
+                : (L.type === 'blink') ? 0.0001
+                : (L.type === 'fly') ? Math.max(0.3, d * 0.32 + dv * 0.2)
+                : Math.max(0.2, d * 0.3 + dv * 0.15);
+            L.yaw = (Math.abs(dx) + Math.abs(dz) > ts * 0.05) ? Math.atan2(dx, dz) : null;
+            L.t0 = travel;
+            travel += L.dur;
+        }
+        var delay = 0;
+        if (motion.afterTag) {
+            for (var gi = 0; gi < _ghostGroups.length; gi++) {
+                var o = _ghostGroups[gi];
+                if (o.tag === motion.afterTag && o.motion) { delay = o.motion.arrive + (o.motion.castLen ? Math.min(0.5, o.motion.castLen * 0.45) : 0.1); break; }
+            }
+            if (!delay) delay = 0.35;
+        }
+        var m = {
+            legs: legs, kind: kind, mover: mover, baseY: moverBaseY, isModel: isModel,
+            hold: 0.35 + delay, travel: travel, mixer: null, acts: {}, cur: null, curLeg: -1,
+            yaw: null, castLen: 0, noYaw: kind === 'shove'
+        };
+        var face = motion.faceTo;
+        m.endYaw = face ? Math.atan2(face.x * ts + ts / 2 - gp.x - legs[legs.length - 1].b.x, face.y * ts + ts / 2 - gp.z - legs[legs.length - 1].b.z) : null;
+        for (var fy = legs.length - 1; fy >= 0 && m.endYaw === null; fy--) if (legs[fy].yaw !== null) m.endYaw = legs[fy].yaw;
+        m.startYaw = null;
+        for (var sy = 0; sy < legs.length && m.startYaw === null; sy++) if (legs[sy].yaw !== null) m.startYaw = legs[sy].yaw;
+        if (m.startYaw === null) m.startYaw = m.endYaw;
+
+        // The clips: the unit's own slots, resolved with the board's chains.
+        if (isModel && srcEntry && srcEntry.actions) {
+            try {
+                var mixer = new THREE.AnimationMixer(mover);
+                m.mixer = mixer;
+                var want = {
+                    idle: ['idle'],
+                    walk: ['walk', 'run', 'idle'],
+                    fly: ['walk', 'idle'],
+                    dash: ['runCharge', 'run', 'walk', 'idle'],
+                    jump: ['jump', 'walk', 'idle'],
+                    shove: ['hitHeavy', 'hit', 'idle'],
+                    blink: ['idle']
+                };
+                if (motion.castSpell && typeof classifySpellAnimKind === 'function') {
+                    want.cast = _castChainFor(classifySpellAnimKind(motion.castSpell));
+                } else if (motion.attack) {
+                    var _bk = (typeof window.basicAttackKindOf === 'function' && motion.unit) ? window.basicAttackKindOf(motion.unit) : null;
+                    want.cast = _attackChainFor(_bk);
+                }
+                for (var k in want) {
+                    var c = _ghostSlotClip(srcEntry, want[k]);
+                    if (!c) continue;
+                    var act = mixer.clipAction(c.clip);
+                    if (c.once || k === 'cast' || k === 'shove') { act.setLoop(THREE.LoopOnce, 0); act.clampWhenFinished = true; }
+                    else act.setLoop(THREE.LoopRepeat, Infinity);
+                    act.timeScale = c.ts;
+                    m.acts[k] = act;
+                    if (k === 'cast') m.castLen = Math.min(2.4, c.clip.duration / Math.max(0.1, c.ts));
+                }
+            } catch (e) { m.mixer = null; m.acts = {}; }
+        }
+        if (kind === 'blink') {
+            // A blink casts where it stands, vanishes, and is simply THERE.
+            if (m.castLen) { m.blinkCast = true; m.blinkCastAt = m.hold; m.hold += m.castLen * 0.7; m.castLen = 0; }
+            m.arrive = m.hold + 0.25;
+        } else {
+            m.arrive = m.hold + travel;
+        }
+        m.len = m.arrive + m.castLen + (m.castLen ? 0.45 : 0.8);
+        return m;
+    }
+
+    function _ghostMotionPlay(m, slot) {
+        var next = m.acts[slot] || m.acts.idle || null;
+        if (!next) return;
+        var prev = m.cur;
+        m.cur = next;
+        next.enabled = true;
+        next.reset();
+        next.play();
+        if (prev && prev !== next) next.crossFadeFrom(prev, 0.12, false);
+        else if (prev === next) { /* restarted in place (a new jump leg) */ }
+    }
+
+    function _lerpYaw(a, b, k) {
+        var d = b - a;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        return a + d * k;
+    }
+
+    /* One frame of a motion ghost at loop time t (s). Returns the seam fade. */
+    function _ghostMotionStep(m, t, dt, T) {
+        var legs = m.legs, last = legs[legs.length - 1];
+        var p, slot, legIdx = -1, yawWant = null, jumpLeg = null;
+        if (t < m.hold) {
+            p = legs[0].a; yawWant = m.startYaw;
+            slot = (m.blinkCast && t >= m.blinkCastAt) ? 'cast' : 'idle';
+        } else if (t < m.arrive && m.kind !== 'blink') {
+            var lt = t - m.hold;
+            var L = last, li;
+            for (li = 0; li < legs.length; li++) { if (lt < legs[li].t0 + legs[li].dur) { L = legs[li]; break; } }
+            if (li >= legs.length) li = legs.length - 1;
+            legIdx = li;
+            var u = Math.max(0, Math.min(1, (lt - L.t0) / L.dur));
+            p = { x: L.a.x + (L.b.x - L.a.x) * u, z: L.a.z + (L.b.z - L.a.z) * u, y: 0 };
+            if (L.type === 'jump') {
+                // Parabola through the apex: y(u) = a + (b-a)u + h·4u(1-u), h lifts the mid point to the apex.
+                var mid = (L.a.y + L.b.y) / 2;
+                var h = Math.max(0, L.apex - mid);
+                p.y = L.a.y + (L.b.y - L.a.y) * u + h * 4 * u * (1 - u);
+                jumpLeg = L;
+            } else {
+                p.y = L.a.y + (L.b.y - L.a.y) * u;
+            }
+            slot = L.type === 'blink' ? 'idle' : L.type;
+            yawWant = L.yaw;
+        } else {
+            p = last.b;
+            slot = (m.castLen && t < m.arrive + m.castLen + 0.05) ? 'cast' : 'idle';
+            yawWant = m.endYaw;
+        }
+        if (m.kind === 'blink' && t >= m.hold) { p = last.b; }
+        // Clip switching: a new slot, or a new jump leg (each jump restarts its clip).
+        if (m.mixer) {
+            var key = slot + (jumpLeg ? ':' + legIdx : '');
+            if (key !== m.curKey) {
+                m.curKey = key;
+                _ghostMotionPlay(m, slot);
+            }
+            m.mixer.update(dt);
+        }
+        var mv = m.mover;
+        if (mv) {
+            mv.position.set(p.x, m.baseY + p.y, p.z);
+            if (m.isModel && !m.noYaw && yawWant !== null && yawWant !== undefined) {
+                if (m.yaw === null || dt <= 0) m.yaw = yawWant;
+                else m.yaw = _lerpYaw(m.yaw, yawWant, Math.min(1, dt * 14));
+                mv.rotation.set(0, m.yaw, 0);
+            }
+        }
+        // Seam fade (the loop restart) and the blink's vanish / reappear.
+        var fade = Math.min(1, t / 0.15, Math.max(0, T - t) / 0.18);
+        if (m.kind === 'blink') {
+            var tb = t - m.hold;
+            if (tb > -0.15 && tb < 0) fade = Math.min(fade, -tb / 0.15);
+            else if (tb >= 0 && tb < 0.25) fade = Math.min(fade, tb / 0.25);
+        }
+        return Math.max(0, fade);
+    }
+
     function showGhostUnit(unit, tileX, tileY, surfaceYOverride, opts) {
         opts = opts || {};
         var tag = opts.tag || 'caster';
@@ -16006,11 +16234,29 @@ const ThreeRenderer = (function () {
             } catch (e) { /* badge is cosmetic — never let it break the ghost */ }
         }
 
+        // THE ACTION PREVIEW MOTION: the hologram performs the move / cast on a loop.
+        var motionRec = null;
+        if (opts.motion && opts.motion.wps && opts.motion.wps.length >= 2) {
+            try {
+                var _mvObj = _builtFromModel ? syncDst : (typeof spriteMesh !== 'undefined' ? spriteMesh : null);
+                if (_mvObj) {
+                    if (!_ghostGroups.some(function (o) { return !!o.motion; })) _ghostMotionT0 = performance.now();
+                    var _mo = Object.assign({ unit: unit }, opts.motion);
+                    motionRec = _ghostBuildMotion(_mo, group, ts, _builtFromModel ? _uEntry : null, _mvObj, _mvObj.position.y, _builtFromModel);
+                    if (motionRec) {
+                        if (_builtFromModel) { syncSrc = null; bonePairs = null; }
+                        _ghostMotionStep(motionRec, 0, 0, motionRec.len);
+                        for (var _fm = 0; _fm < mats.length; _fm++) mats[_fm].opacity = 0;
+                    }
+                }
+            } catch (e) { motionRec = null; }
+        }
+
         highlightGroup.add(group);
         _ghostGroups.push({
             group: group, mat: mat, mats: mats, ringMat: ringInfo.mat, ring: ringInfo.mesh,
             tag: tag, baseOpacity: baseOpacity,
-            syncSrc: syncSrc, syncDst: syncDst, bonePairs: bonePairs
+            syncSrc: syncSrc, syncDst: syncDst, bonePairs: bonePairs, motion: motionRec
         });
         if (tag === 'caster') { _ghostGroup = group; _ghostMat = mat; }
 
@@ -16023,6 +16269,10 @@ const ThreeRenderer = (function () {
         for (var i = _ghostGroups.length - 1; i >= 0; i--) {
             var e = _ghostGroups[i];
             if (tag && e.tag !== tag) continue;
+            if (e.motion && e.motion.mixer) {
+                try { e.motion.mixer.stopAllAction(); e.motion.mixer.uncacheRoot(e.motion.mover); } catch (_me) {}
+                e.motion.mixer = null;
+            }
             if (highlightGroup) highlightGroup.remove(e.group);
             e.group.traverse(function(child) {
                 // Model-ghost geometry is the GLB's shared geometry (_ew_shared,
@@ -16046,11 +16296,27 @@ const ThreeRenderer = (function () {
         // they were near-invisible half the time.
         var flicker = 0.94 + 0.06 * Math.sin(t * 11.0);
 
+        // THE ACTION PREVIEW MOTION: one loop clock for every performing ghost.
+        var _mNow = performance.now(), _mT = 0;
+        for (var mg = 0; mg < _ghostGroups.length; mg++) {
+            if (_ghostGroups[mg].motion) _mT = Math.max(_mT, _ghostGroups[mg].motion.len);
+        }
+        var _mDt = Math.min(0.05, Math.max(0, (_mNow - (_ghostMotionLast || _mNow)) / 1000));
+        _ghostMotionLast = _mNow;
+        var _mt = _mT > 0 ? ((_mNow - _ghostMotionT0) / 1000) % _mT : 0;
+
         // Holographic ghosts: breathe the hologram opacity and pulse the footprint ring.
         for (var gi = 0; gi < _ghostGroups.length; gi++) {
             var e = _ghostGroups[gi];
             var breathe = 0.88 + 0.12 * Math.abs(Math.sin(t * 2.5));
             var op = (e.baseOpacity || 0.8) * breathe * flicker;
+            if (e.motion) {
+                try {
+                    if (_mt < (e.motion.lastT || 0)) { e.motion.curKey = null; e.motion.yaw = null; }   // the loop restarted
+                    e.motion.lastT = _mt;
+                    op *= _ghostMotionStep(e.motion, _mt, _mDt, _mT);
+                } catch (_mse) { e.motion = null; }
+            }
             if (e.mat) e.mat.opacity = op;
             if (e.mats) {
                 for (var mi = 0; mi < e.mats.length; mi++) e.mats[mi].opacity = op;

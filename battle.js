@@ -33083,7 +33083,7 @@
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
             'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed']);
         function forecastSpellPlan(caster, spell, x, y, z, opts = {}) {
-            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false };
+            const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null };
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
             plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'));
             if (!plan.handled) return plan;
@@ -39405,7 +39405,8 @@
                 // Arrow palette: purple = target being force-moved (push AND pull).
                 const shoveColor = 0xbb66ff;
                 const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
-                ThreeRenderer.showGhostUnit(target, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.8 });
+                ThreeRenderer.showGhostUnit(target, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.8,
+                    motion: { wps: [{ x: target.x, y: target.y, yOverride: targetY }, { x: shove.x, y: shove.y, yOverride: shY }], kind: 'shove', afterTag: 'caster' } });
                 ThreeRenderer.drawArrow3D(target.x, target.y, shove.x, shove.y, shoveColor, false, targetY, shY,
                     { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
                 ThreeRenderer.setOverlay('spellApproachShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
@@ -39457,7 +39458,8 @@
                 const airY = ThreeRenderer.tileTopY(hl.cx, hl.cy) + _skyThrowLiftPx(spell);
                 const destY = ThreeRenderer.tileTopY(x, y);
                 ThreeRenderer.clearArrows3D();
-                ThreeRenderer.showGhostUnit(victim, x, y, destY, { tag: 'skyThrowDest', color: col, opacity: 0.8 });
+                ThreeRenderer.showGhostUnit(victim, x, y, destY, { tag: 'skyThrowDest', color: col, opacity: 0.8,
+                    motion: { wps: [{ x: hl.cx, y: hl.cy, yOverride: airY - 1.0 }, { x: x, y: y, yOverride: destY }], kind: 'leap' } });
                 ThreeRenderer.drawArrow3D(hl.cx, hl.cy, x, y, col, false, airY, destY, { arc: 0.3, flow: true });
                 state._skyThrowDestKey = key;
             } catch (e) { /* cosmetic */ }
@@ -39732,7 +39734,15 @@
                     ], routeColor);
                     ThreeRenderer.setOverlay('spellApproachMove', [{ x: approach.x, y: approach.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
                 }
-                ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85 });
+                {
+                    /* the hologram walks the route and casts on arrival, on a loop */
+                    const _mw = [{ x: unit.x, y: unit.y, yOverride: actingY }];
+                    if (approach.via) _mw.push({ x: approach.via.x, y: approach.via.y, yOverride: ThreeRenderer.tileTopY(approach.via.x, approach.via.y) });
+                    _mw.push({ x: approach.x, y: approach.y, yOverride: destY });
+                    const _air = typeof canFly === 'function' && canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+                    ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85,
+                        motion: { wps: _mw, kind: _air ? 'fly' : 'walk', castSpell: _spell || null, faceTo: { x: tx, y: ty } } });
+                }
                 ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff3333, false, destY, targetY, { arc: 0.35, flow: true });
                 ThreeRenderer.setOverlay('spellApproachTarget', _spellApproachAoeTiles(_spell, unit, approach.x, approach.y, tx, ty), 0xff3333, 0.5);
                 _drawSpellApproachShove(_spell, _target, approach.x, approach.y, targetY);
@@ -39835,7 +39845,7 @@
                         ? window._getElevationPx(gnd + clearance) : (gnd + clearance) * ts;
                     return Math.max(ts * 0.04, elev);
                 };
-                const _showDest = (routeColor, viaTile, destZ) => {
+                const _showDest = (routeColor, viaTile, destZ, motion) => {
                     const marks = [];
                     if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3, z: viaTile.z });
                     /* carry the landing SURFACE so a sub-roof destination
@@ -39843,7 +39853,7 @@
                     marks.push({ x: x, y: y, color: routeColor, opacity: 0.45, z: destZ });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
                     ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.85,
-                        badges: _moveGhostBadges(unit, x, y, destZ) });
+                        badges: _moveGhostBadges(unit, x, y, destZ), motion: motion || null });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
                 };
@@ -39892,7 +39902,8 @@
                         const H = window.jumpArcApex(a.x, a.y, az0, b.x, b.y, bz0, 99);
                         if (H !== null && H !== undefined) apexY = Math.max(apexY, ThreeRenderer.elevY(H));
                     }
-                    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, yOverride: apexY + ts0 * 0.4 };
+                    /* apex: the preview hologram plays [a, apex, b] as ONE jump (three-renderer THE ACTION PREVIEW MOTION) */
+                    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, yOverride: apexY + ts0 * 0.4, apex: true };
                 };
                 /* Append a path's waypoints (arc apexes spliced into jump
                    legs) and return the last node for chaining. */
@@ -39941,7 +39952,7 @@
                                 ThreeRenderer.setOverlay('moveHoverDest',
                                     [{ x: x, y: y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
                                 ThreeRenderer.showGhostUnit(unit, x, y, _flyY(dest.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
-                                    badges: _moveGhostBadges(unit, x, y, dest.z) });
+                                    badges: _moveGhostBadges(unit, x, y, dest.z), motion: { wps: wps, kind: 'fly' } });
                                 state._moveHoverActive = true;
                                 scheduleBoardRender();
                                 return;
@@ -39953,7 +39964,8 @@
                         _pushPathWps(wps, { x: unit.x, y: unit.y, z: unit.z ?? 0 }, path);
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
                         else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y, dest.z), { flow: true });
-                        _showDest(routeColor, null, dest.z);
+                        if (wps.length < 2) wps.push({ x: x, y: y, yOverride: _wpY(x, y, dest.z) });
+                        _showDest(routeColor, null, dest.z, { wps: wps, kind: _isAir ? 'fly' : 'walk' });
                         return;
                     }
                 }
@@ -39973,7 +39985,9 @@
                         }
                         ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0x3399ff, false, actingY,
                             _wpY(x, y, jDest.z), { arc: 0.45, flow: true, apexY: _jApexY });
-                        _showDest(0x3399ff, null, jDest.z);
+                        _showDest(0x3399ff, null, jDest.z, {
+                            wps: [{ x: unit.x, y: unit.y, yOverride: actingY }, { x: x, y: y, yOverride: _wpY(x, y, jDest.z) }],
+                            kind: 'leap', apexY: _jApexY });
                         return;
                     }
                 }
@@ -40016,9 +40030,11 @@
                             marks.push({ x: x, y: y, color: towardsColor, opacity: 0.18 });
                         }
                         ThreeRenderer.setOverlay('moveHoverDest', marks, towardsColor, 0.45);
+                        if (wps.length < 2) wps.push({ x: approach.x, y: approach.y, yOverride: _wpY(approach.x, approach.y, approach.z) });
                         ThreeRenderer.showGhostUnit(unit, approach.x, approach.y,
                             _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
-                                badges: _moveGhostBadges(unit, approach.x, approach.y, approach.z) });
+                                badges: _moveGhostBadges(unit, approach.x, approach.y, approach.z),
+                                motion: { wps: wps, kind: _isAir ? 'fly' : 'walk' } });
                         state._moveHoverActive = true;
                         scheduleBoardRender();
                         return;
