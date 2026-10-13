@@ -1679,21 +1679,16 @@ function CombatLog({ st }) {
    Units that already acted would loop around to the top. I should be able to click on these icons and see a unit's
    stats.") It replaces BOTH the bottom-right party dock and the portrait flanks that rode the scoreboard.
 
-   ONE plate the width of the Horologe's identity column (.hrlg-side, 216px), docked right on top of it, so the two
-   read as one tower: TURN ORDER over VESSEL DATA. Every living unit of BOTH teams, in blitz queue order
-   (_scoreboardTurnData), read BOTTOM-UP: the row touching the Horologe acts next, the ones above it after that, and
-   the units that already acted this round sit at the TOP under a "ROUND n+1" hairline (they act again next round —
-   the queue loops). On your turn the Horologe's portrait IS the NOW slot, so the acting unit is not repeated in the
-   column; on any other turn (the CPU, the opponent online, an AI ally) the bottom row is the acting unit, drawn
-   bigger with the turning halo and a NOW tag, and the plate sits where the Horologe would.
-
-   Each row: the ring portrait (HP outer / MP inner, the old dock's rings — PartyPortrait), the name, HP / MP
-   numbers, an alliance-coloured spine on the left. Spent units dim, the fallen collapse into a skull strip at the
-   very top, Gauntlet reserves / the escaped ride pill strips at the top of the plate. Rows shrink to fit the height
-   left above the Horologe; past the minimum the latest-acting rows fold into a "+N" row at the top.
-
-   CLICK a row = the unit's full stat card (#unitHoverHud, the ⓘ / I card — the same toggle the Horologe's ⓘ uses);
-   click it again to close. The card docks to the right of the column (the hud sheet). Viewer-local, nothing
+   Bare circular ring portraits (HP outer / MP inner, PartyPortrait), no panel and no names (mondo, same day: "just
+   circular icons not big old panels"), stacked on the Horologe clock face's centre line. Every living unit of BOTH
+   teams, in blitz queue order (_scoreboardTurnData), read BOTTOM-UP: the icon touching the Horologe acts next (gold
+   dotted halo), the ones above it after that, and the units that already acted sit at the TOP, dimmed, above a ↻
+   mark (they act again next round — the queue loops). On your turn the Horologe's portrait IS the NOW slot, so the
+   acting unit is not repeated; on any other turn the bottom icon is the acting unit, bigger, glowing, with the
+   turning halo. The fallen are small skull pips at the very top; Gauntlet reserves / the escaped ride pill strips.
+   Icons shrink 46→26px to fit the height above the Horologe, then the latest-acting fold into a "+N" pip.
+   Hover = name + HP/MP tooltip. CLICK = the unit's full stat card (#unitHoverHud, the ⓘ / I card — the same toggle
+   the Horologe's ⓘ uses); click again to close. The card docks right of the Horologe column. Viewer-local, nothing
    relayed (RULE #2): both online seats read their own synced state, and the card's range overlay is fog-gated
    (battle.js previewUnitInfoRange). Off on Mystery Dungeon floors (the scoreboard's tactic chips own the party). */
 const PP_HP = HP_ALLY;
@@ -1825,39 +1820,29 @@ function _tcInspect(unitId) {
   else if (typeof markDirty === 'function') { markDirty('hud'); if (typeof renderIfDirty === 'function') renderIfDirty(); }
 }
 
-const TC_W = 216;          // = .hrlg-side width, so the two plates stack flush
-const TC_ROW_MAX = 42, TC_ROW_MIN = 24, TC_GAP = 3;
+/* centre of the Horologe's clock face over the identity plate (.hrlg-side is 216 wide at left 10) — the icons stack
+   on that line so the queue reads as feeding straight into the clock */
+const TC_AXIS = 108;
+const TC_MAX = 46, TC_MIN = 26, TC_GAP = 6;
 
-function TurnRow({ e, rowH, now, next, foe, viewer, forecast, inspecting }) {
+function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
   const u = e.unit;
-  const compact = rowH < 32;
-  const ring = now ? Math.round(rowH * 1.0) : Math.max(18, rowH - (compact ? 3 : 4));
   const ac = getAllianceColor(u);
   const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
   const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
   const hp = Math.max(0, Math.round(u.hp || 0)), mp = Math.max(0, Math.round(u.mp || 0));
-  const lvl = typeof getUnitLevel === 'function' ? getUnitLevel(u) : null;
   return h('div', {
-    className: 'ew-tc-row' + (now ? ' now' : '') + (next ? ' next' : '') + (e.finished ? ' spent' : '')
-      + (foe ? ' foe' : ' ally') + (inspecting ? ' inspecting' : '') + (compact ? ' compact' : ''),
-    style: { height: now ? Math.round(rowH * 1.25) : rowH, '--tc-ac': ac },
-    title: name + '  HP ' + hp + '/' + (u.maxHp || 0) + (u.maxMp > 0 ? '  ·  MP ' + mp + '/' + u.maxMp : '')
-      + (u.shield > 0 ? '  ·  🛡 ' + Math.round(u.shield) : ''),
+    className: 'ew-tc-icon' + (now ? ' now' : '') + (next ? ' next' : '') + (e.finished ? ' spent' : '')
+      + (foe ? ' foe' : ' ally') + (inspecting ? ' inspecting' : ''),
+    style: { '--tc-ac': ac },
+    title: (now ? 'NOW · ' : next ? 'NEXT · ' : '') + name + '  HP ' + hp + '/' + (u.maxHp || 0)
+      + (u.maxMp > 0 ? '  ·  MP ' + mp + '/' + u.maxMp : '') + (u.shield > 0 ? '  ·  🛡 ' + Math.round(u.shield) : ''),
     onClick: (ev) => { ev.stopPropagation(); _tcInspect(u.id); },
   },
     h(PartyPortrait, {
-      unit: u, size: ring, active: now, finished: e.finished, next, forecast,
+      unit: u, size, active: now, finished: e.finished, next, forecast,
       possessed: home !== u.player, foe, ringColor: ac,
     }),
-    h('div', { className: 'ew-tc-info' },
-      h('div', { className: 'ew-tc-name' }, name),
-      !compact && h('div', { className: 'ew-tc-sub' },
-        h('span', { className: 'ew-tc-hp' }, hp + '/' + (u.maxHp || 0)),
-        u.maxMp > 0 && h('span', { className: 'ew-tc-mp' }, mp),
-        lvl != null && !now && !next && h('span', { className: 'ew-tc-lv' }, 'Lv' + lvl),
-      ),
-    ),
-    (now || next) && h('span', { className: 'ew-tc-tag' + (now ? ' now' : '') }, now ? 'NOW' : 'NEXT'),
   );
 }
 
@@ -1869,7 +1854,7 @@ function TurnColumn({ st }) {
   cmdRef.current = _tcViewerCommands(st);
 
   /* Dock onto the Horologe: measure its identity plate (UI Maker moves / scales included — getBoundingClientRect
-     sees them) and sit 6px above it; with no Horologe up, sit where it would. Re-measured every render and on a
+     sees them) and sit just above it; with no Horologe up, sit where it would. Re-measured every render and on a
      slow poll (the plate changes height as chips / items come and go). */
   const measure = useCallback(() => {
     const el = ref.current; if (!el) return;
@@ -1879,7 +1864,7 @@ function TurnColumn({ st }) {
     const side = layer.querySelector('.hrlg-side');
     const sr = side ? side.getBoundingClientRect() : null;
     let bottom, docked = false;
-    if (sr && sr.height > 0) { bottom = lr.bottom - sr.top + 6 * s; docked = true; }
+    if (sr && sr.height > 0) { bottom = lr.bottom - sr.top + 8 * s; docked = true; }
     else if (cmdRef.current && geoRef.current.docked && geoRef.current.bottom != null) { bottom = geoRef.current.bottom; docked = true; }
     else bottom = 14 + 66 * s;
     const avail = Math.max(120, (lr.height - bottom - 12) / s);
@@ -1912,97 +1897,88 @@ function TurnColumn({ st }) {
   const forecast = (typeof getPendingDamagePreview === 'function') ? getPendingDamagePreview() : null;
   const inspectId = st.showUnitInfo ? (st.focusedUnitId || st.selectedUnitId) : null;
 
-  const home = (u) => (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
   const isGaunt = typeof _benchOn === 'function' && _benchOn();
   const reserves = isGaunt && typeof _gauntletReserves === 'function' ? (_gauntletReserves(viewer) || []) : [];
   const escaped = (st.escaped && st.escaped[viewer]) || [];
   if (!queue.length && !dead.length && !reserves.length && !escaped.length) return null;
 
-  /* ── fit the rows into the height left above the Horologe ── */
+  /* ── fit the icons into the height left above the Horologe ── */
   const nowRow = !commands && queue.length && queue[0].active;
   const hasSpent = queue.some(e => e.finished) && queue.some(e => !e.finished);
-  const fixed = 30 + 12 + (dead.length ? 26 : 0) + (hasSpent ? 18 : 0) + (isGaunt ? 30 : 0) + (escaped.length ? 30 : 0);
-  const rowsAvail = Math.max(TC_ROW_MIN, geo.avail - fixed);
-  const units = queue.length + (nowRow ? 0.25 : 0);
-  let rowH = Math.floor(rowsAvail / Math.max(1, units) - TC_GAP);
-  rowH = Math.max(TC_ROW_MIN, Math.min(TC_ROW_MAX, rowH));
+  const fixed = (dead.length ? 24 : 0) + (hasSpent ? 14 : 0) + (isGaunt ? 34 : 0) + (escaped.length ? 34 : 0);
+  const iconsAvail = Math.max(TC_MIN, geo.avail - fixed);
+  const units = queue.length + (nowRow ? 0.3 : 0);
+  let size = Math.floor(iconsAvail / Math.max(1, units) - TC_GAP);
+  size = Math.max(TC_MIN, Math.min(TC_MAX, size));
   let shown = queue, folded = 0;
-  const fit = Math.floor((rowsAvail - (nowRow ? rowH * 0.25 : 0)) / (rowH + TC_GAP));
+  const fit = Math.floor((iconsAvail - (nowRow ? size * 0.3 : 0)) / (size + TC_GAP));
   if (queue.length > fit) {
-    const keep = Math.max(1, fit - 1);                 // one slot goes to the "+N" row
+    const keep = Math.max(1, fit - 1);                 // one slot goes to the "+N" pip
     shown = queue.slice(0, keep);
     folded = queue.length - keep;
   }
 
   /* bottom-up: build soonest-first, then reverse so the soonest touches the Horologe */
-  const rows = [];
+  const items = [];
   let lastFinished = null;
   shown.forEach((e) => {
-    if (hasSpent && e.finished && lastFinished === false) {
-      rows.push(h('div', { key: 'loop', className: 'ew-tc-loop' },
-        h('span', { className: 'ew-tc-loop-lbl' }, '↻ ROUND ' + ((st.round || 1) + 1))));
-    }
+    /* the loop: units that already acted sit above this mark — they go again next round */
+    if (hasSpent && e.finished && lastFinished === false) items.push(h('div', { key: 'loop', className: 'ew-tc-loop', title: 'Already acted — next round' }, '↻'));
     lastFinished = !!e.finished;
-    rows.push(h(TurnRow, {
-      key: e.id, e, rowH, now: !!(nowRow && e.active), next: e.id === nextId,
-      foe: e.unit.player !== viewer, viewer, forecast, inspecting: inspectId === e.id,
+    const now = !!(nowRow && e.active);
+    items.push(h(TurnIcon, {
+      key: e.id, e, size: now ? Math.round(size * 1.3) : size, now, next: e.id === nextId,
+      foe: e.unit.player !== viewer, forecast, inspecting: inspectId === e.id,
     }));
   });
-  if (folded > 0) rows.push(h('div', { key: 'fold', className: 'ew-tc-fold' }, '+' + folded));
-  rows.reverse();
+  if (folded > 0) items.push(h('div', { key: 'fold', className: 'ew-tc-fold', style: { width: size * 0.8, height: size * 0.8 }, title: folded + ' more' }, '+' + folded));
+  items.reverse();
 
   return h('div', {
     ref,
     className: 'ew-turn-col' + (geo.docked ? ' docked' : ''),
-    style: { bottom: (geo.bottom == null ? 'calc(14px + 66px * var(--ew-ui-scale, 1))' : geo.bottom + 'px'), width: TC_W },
+    style: { bottom: (geo.bottom == null ? 'calc(14px + 66px * var(--ew-ui-scale, 1))' : geo.bottom + 'px') },
   },
-    h('div', { className: 'ew-tc-plate' },
-      h('div', { className: 'ew-tc-head' },
-        h('span', null, 'TURN ORDER'),
-        h('span', { className: 'ew-tc-round' }, 'R' + (st.round || 1)),
-      ),
-
-      /* the fallen, collapsed to a skull strip at the very top */
-      dead.length > 0 && h('div', { className: 'ew-tc-fallen' },
-        dead.map(e => h('span', {
-          key: e.id, className: 'ew-tc-ko' + (e.unit.player !== viewer ? ' foe' : ''),
-          title: ((typeof unitDisplayName === 'function' ? unitDisplayName(e.unit) : e.unit.name) || '')
-            + (e.unit._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
-          style: { '--tc-ac': getAllianceColor(e.unit) },
-        }, h(UnitSprite, { unit: e.unit, size: 16 }), h('i', null, '☠'))),
-      ),
-
-      isGaunt && h('div', { className: 'ew-party-reserves' },
-        h('span', { className: 'ew-party-reserves-lbl' }, 'RESERVES'),
-        reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
-        reserves.map(r => {
-          const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
-          const seatOf = r._seatFor ? (st.units || []).find(u => u.id === r._seatFor) : null;
-          return h('div', {
-            key: r.id, className: 'ew-party-reserve' + (r._seatFor ? ' seated' : ''),
-            title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP'
-              + (seatOf ? ' · takes ' + (typeof unitDisplayName === 'function' ? unitDisplayName(seatOf) : seatOf.name) + "'s seat" : ''),
-          },
-            r._seatFor && h('span', { className: 'ew-party-reserve-seat' }, '🪑'),
-            h(UnitSprite, { unit: r, size: 20 }),
-            h('div', { className: 'ew-party-reserve-bar' },
-              h('div', { style: { width: hpPct + '%', height: '100%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW, borderRadius: 2 }}),
-            ),
-          );
-        }),
-      ),
-
-      /* ESCAPE (EXPLORATION_BATTLES §6): the escaped, greyed — out of the fight, never switchable */
-      escaped.length > 0 && h('div', { className: 'ew-party-reserves', style: { opacity: 0.6 } },
-        h('span', { className: 'ew-party-reserves-lbl' }, 'ESCAPED'),
-        escaped.map(r => h('div', {
-          key: 'esc-' + r.id, className: 'ew-party-reserve',
-          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · escaped — out of the fight, safe',
-        }, h(UnitSprite, { unit: r, size: 20 }))),
-      ),
-
-      h('div', { className: 'ew-tc-list', style: { gap: TC_GAP } }, rows),
+    /* the fallen: small grey skull pips at the very top */
+    dead.length > 0 && h('div', { className: 'ew-tc-fallen' },
+      dead.map(e => h('span', {
+        key: e.id, className: 'ew-tc-ko',
+        title: ((typeof unitDisplayName === 'function' ? unitDisplayName(e.unit) : e.unit.name) || '')
+          + (e.unit._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
+        style: { '--tc-ac': getAllianceColor(e.unit) },
+      }, h(UnitSprite, { unit: e.unit, size: 16 }), h('i', null, '☠'))),
     ),
+
+    isGaunt && h('div', { className: 'ew-party-reserves' },
+      h('span', { className: 'ew-party-reserves-lbl' }, 'RESERVES'),
+      reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
+      reserves.map(r => {
+        const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
+        const seatOf = r._seatFor ? (st.units || []).find(u => u.id === r._seatFor) : null;
+        return h('div', {
+          key: r.id, className: 'ew-party-reserve' + (r._seatFor ? ' seated' : ''),
+          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP'
+            + (seatOf ? ' · takes ' + (typeof unitDisplayName === 'function' ? unitDisplayName(seatOf) : seatOf.name) + "'s seat" : ''),
+        },
+          r._seatFor && h('span', { className: 'ew-party-reserve-seat' }, '🪑'),
+          h(UnitSprite, { unit: r, size: 20 }),
+          h('div', { className: 'ew-party-reserve-bar' },
+            h('div', { style: { width: hpPct + '%', height: '100%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW, borderRadius: 2 }}),
+          ),
+        );
+      }),
+    ),
+
+    /* ESCAPE (EXPLORATION_BATTLES §6): the escaped, greyed — out of the fight, never switchable */
+    escaped.length > 0 && h('div', { className: 'ew-party-reserves', style: { opacity: 0.6 } },
+      h('span', { className: 'ew-party-reserves-lbl' }, 'ESCAPED'),
+      escaped.map(r => h('div', {
+        key: 'esc-' + r.id, className: 'ew-party-reserve',
+        title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · escaped — out of the fight, safe',
+      }, h(UnitSprite, { unit: r, size: 20 }))),
+    ),
+
+    h('div', { className: 'ew-tc-list', style: { gap: TC_GAP } }, items),
   );
 }
 
@@ -10777,112 +10753,50 @@ function _injectHudHideStyles() {
     }
 
     /* ══════════ THE TURN ORDER COLUMN — left, docked on the Horologe (hud.js TurnColumn, 2026-10-13) ══════════
-       One plate the width of .hrlg-side, wearing the same token material (themes + the UI Maker's battle panel role
-       skin it), scaled with --ew-ui-scale from its bottom-left like the rig. TurnColumn sets bottom in px from the
-       measured Horologe plate; the transition slides it when the rig comes and goes. */
+       Bare circular ring portraits, no panel (mondo: "just circular icons not big old panels"), stacked on the
+       clock face's centre line (the box is .hrlg-side's width, icons centred in it), scaled with --ew-ui-scale from
+       the bottom-left like the rig. TurnColumn sets bottom in px from the measured Horologe plate; the transition
+       slides it when the rig comes and goes. */
     .ew-turn-col {
-      position: absolute; left: 10px;
+      position: absolute; left: 10px; width: 216px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
       z-index: 12; pointer-events: none;
       transform: scale(var(--ew-ui-scale, 1)); transform-origin: 0 100%;
       font-family: 'IBM Plex Mono', monospace;
       transition: bottom 0.32s cubic-bezier(0.22,1,0.36,1);
     }
-    .ew-tc-plate {
-      position: relative; pointer-events: auto;
-      display: flex; flex-direction: column; gap: 6px;
-      padding: 26px 7px 7px;
-      background: var(--ew-plate-scan), var(--ew-plate-bg);
-      border: 1px solid var(--ew-plate-edge);
-      border-radius: 16px 16px 12px 12px;
-      color: var(--ew-ink);
-      box-shadow:
-        inset 0 0 0 1px var(--ew-plate-seam),
-        inset 0 0 0 2px var(--ew-plate-rim),
-        inset 0 3px 0 var(--ew-plate-lip),
-        var(--ew-drop);
-    }
-    /* docked: a notch points down into the Horologe — its portrait is the NOW slot */
-    .ew-turn-col.docked .ew-tc-plate { border-radius: 16px 16px 8px 8px; }
-    .ew-turn-col.docked .ew-tc-plate::after {
-      content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 7px;
-      transform: translateX(-50%); background: var(--ew-plate-edge);
-      clip-path: polygon(0 0, 100% 0, 50% 100%); pointer-events: none;
-    }
-    .ew-tc-head {
-      position: absolute; top: 0; left: 0; right: 0; height: 19px;
-      display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
-      font-size: 9px; letter-spacing: 0.38em; color: var(--ew-head-ink);
-      background: var(--ew-head-bg); border-bottom: 1px solid var(--ew-plate-seam);
-      box-shadow: inset 0 1px 0 var(--ew-plate-lip);
-      border-radius: 15px 15px 0 0; pointer-events: none;
-    }
-    .ew-tc-round { letter-spacing: 0.14em; color: var(--ew-ink-mute); }
-    .ew-tc-list { display: flex; flex-direction: column; }
-    .ew-tc-row {
-      position: relative; flex: none; display: flex; align-items: center; gap: 7px;
-      padding: 0 8px 0 3px; cursor: pointer; min-width: 0;
-      background: var(--ew-row-bg);
-      border: 1px solid var(--ew-row-edge); border-left: 3px solid var(--tc-ac);
-      border-radius: 7px 14px 14px 7px;
-      box-shadow: inset 0 1px 0 var(--ew-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.35);
-      transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease,
-                  opacity 0.3s ease, filter 0.3s ease, transform 0.18s cubic-bezier(0.22,1,0.36,1);
+    .ew-tc-list { display: flex; flex-direction: column; align-items: center; }
+    .ew-tc-icon {
+      position: relative; flex: none; cursor: pointer; pointer-events: auto; border-radius: 50%;
+      transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease, filter 0.3s ease;
       animation: ewTcIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
     }
-    @keyframes ewTcIn { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: none; } }
-    .ew-tc-row:hover {
-      background: var(--ew-row-sel-bg); border-color: var(--ew-sel); border-left-color: var(--tc-ac);
-      transform: translateX(3px);
+    @keyframes ewTcIn { 0% { opacity: 0; transform: translateY(-6px) scale(0.8); } 100% { opacity: 1; transform: none; } }
+    .ew-tc-icon:hover { transform: scale(1.12); }
+    .ew-tc-icon:active { transform: scale(0.96); }
+    .ew-tc-icon.spent { opacity: 0.5; filter: saturate(0.4); }
+    .ew-tc-icon.spent:hover { opacity: 0.9; filter: none; }
+    .ew-tc-icon .ew-pp, .ew-tc-icon .ew-pp.active, .ew-tc-icon .ew-pp:hover { pointer-events: none; transform: none; }
+    .ew-tc-icon .ew-pp.spent { opacity: 1; filter: none; }
+    .ew-tc-icon .ew-pp-svg { animation: none; }
+    .ew-tc-icon.inspecting .ew-pp-svg {
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.75)) drop-shadow(0 0 4px var(--ew-sel)) drop-shadow(0 0 8px var(--ew-sel-soft));
     }
-    .ew-tc-row:active { transform: translateX(1px) scale(0.985); }
-    .ew-tc-row.inspecting {
-      border-color: var(--ew-sel); border-left-color: var(--tc-ac);
-      box-shadow: 0 0 10px var(--ew-sel-soft), inset 0 0 8px var(--ew-sel-faint);
+    .ew-tc-icon.now .ew-pp-svg {
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.75)) drop-shadow(0 0 9px var(--tc-ac));
     }
-    .ew-tc-row.spent { opacity: 0.5; filter: saturate(0.4); }
-    .ew-tc-row.spent:hover { opacity: 0.9; filter: none; }
-    .ew-tc-row.now {
-      border-color: var(--tc-ac);
-      box-shadow: inset 0 0 16px rgba(0,0,0,0.3), 0 0 12px var(--tc-ac);
-    }
-    .ew-tc-row.next { border-color: var(--ew-sel-soft); border-left-color: var(--tc-ac); }
-    .ew-tc-row .ew-pp, .ew-tc-row .ew-pp.active, .ew-tc-row .ew-pp:hover { pointer-events: none; transform: none; }
-    .ew-tc-row .ew-pp.spent { opacity: 1; filter: none; }
-    .ew-tc-row .ew-pp-svg { animation: none; }
-    .ew-tc-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; line-height: 1; }
-    .ew-tc-name {
-      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ew-ink);
-      text-shadow: var(--ew-tshadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .ew-tc-row.now .ew-tc-name { font-size: 12px; letter-spacing: 0.1em; }
-    .ew-tc-row.compact .ew-tc-name { font-size: 9px; }
-    .ew-tc-sub { display: flex; align-items: baseline; gap: 7px; font-size: 8px; letter-spacing: 0.06em; color: var(--ew-ink-mute); }
-    .ew-tc-hp { color: #6fe08c; }
-    .ew-tc-row.foe .ew-tc-hp { color: #ff8a92; }
-    .ew-tc-mp { color: #7cc4ff; }
-    .ew-tc-lv { margin-left: auto; color: var(--ew-ink-dim); }
-    .ew-tc-tag {
-      flex: none; font-size: 7px; font-weight: 700; letter-spacing: 0.22em; line-height: 1;
-      padding: 3px 4px 3px 6px; border-radius: 999px;
-      color: var(--ew-sel); border: 1px solid var(--ew-sel-soft); background: var(--ew-sel-faint);
-    }
-    .ew-tc-tag.now {
-      color: #fff; background: var(--tc-ac); border-color: var(--tc-ac);
-      text-shadow: 0 1px 2px rgba(0,0,0,0.6); animation: ewTcNow 1.6s ease-in-out infinite;
-    }
-    @keyframes ewTcNow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
-    /* the loop: units that already acted sit above this hairline — they go again next round */
+    .ew-tc-icon.next .ew-pp-halo { opacity: 0.85; stroke: var(--ew-sel); stroke-dasharray: 2 3; }
+    /* the loop mark: units above it already acted — they go again next round */
     .ew-tc-loop {
-      display: flex; align-items: center; gap: 6px; height: 12px; flex: none;
-      font-size: 7px; letter-spacing: 0.24em; color: var(--ew-ink-dim);
+      flex: none; font-size: 12px; line-height: 1; height: 8px; display: flex; align-items: center;
+      color: var(--ew-ink-mute); text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8);
     }
-    .ew-tc-loop::before, .ew-tc-loop::after { content: ''; flex: 1; height: 1px; background: var(--ew-hair); }
     .ew-tc-fold {
-      height: 18px; flex: none; display: flex; align-items: center; justify-content: center;
-      font-size: 9px; letter-spacing: 0.14em; color: var(--ew-ink-mute);
-      border: 1px dashed var(--ew-row-edge); border-radius: 7px;
+      flex: none; pointer-events: auto; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; letter-spacing: 0.04em; color: var(--ew-ink); background: rgba(0,0,0,0.55);
+      border: 1px dashed rgba(255,255,255,0.35); text-shadow: 0 1px 2px #000;
     }
-    .ew-tc-fallen { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 2px; }
+    .ew-tc-fallen { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; max-width: 150px; pointer-events: auto; }
     .ew-tc-ko {
       position: relative; width: 20px; height: 20px; flex: none; overflow: hidden;
       display: flex; align-items: center; justify-content: center;
@@ -10893,6 +10807,7 @@ function _injectHudHideStyles() {
       position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
       font-style: normal; font-size: 12px; color: #e8e4d8; background: rgba(0,0,0,0.45); text-shadow: 0 0 3px #000;
     }
+    .ew-turn-col .ew-party-reserves { pointer-events: auto; }
     /* the ⓘ stat card docks beside the column (styles-base.css put it top-left, where the column lives now) */
     .unit-hover-hud { left: calc(22px + 216px * var(--ew-ui-scale, 1)) !important; }
     .ew-pp {
@@ -11581,7 +11496,7 @@ const UIM_SURFACES = [
   { id: 'battle', label: 'Battle HUD', hint: 'The command rig, turn order, scoreboard, match pill.', native: true, def: 'theme',
     scope: '#reactHudRoot',
     roles: {
-      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate, .ew-tc-plate',
+      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
       buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
