@@ -440,3 +440,12 @@ past the parapet as outer ground to the fog, and its own 8×8 Δ played on the s
   parapet round the 8×8 and runs `_vrRoofCity` under it (u = ts / 1.75).
 - The Vatican's PvP arena is cut from the basilica (HQ_ARENA_RULES.picks), so no re-bake was needed. Visual only: the guest
   builds the same scenery from data (no relay).
+
+## THE DRAPED MARKERS (2026-10-13, mondo)
+"All tile highlights need to work the same as move highlights for following the surface of the map, not perfectly
+straight squares that the terrain clips through." three-renderer.js `_drapedTileMesh(x, y, frac, mat, yOff)` builds any
+tile marker from the move tiles' own `_buildDrapeGeo` (natural landform, bevel swell, stairs, field ground, skin line)
+placed by `_drapedTileY` (tileTopY + yOff + roof lift + field lift; `_makeHlTile` uses the same). Now draped: the hover
+cursor + the selected tile (`_buildCursorMesh`; a sub-floor pick under a roof stays a flat plane at its own floor), the
+underfoot decal, spawn-zone washes, zone fills, standing-door lane decals, the terrain paint ghost (rim via
+`_drapeRimGeo`). New tile markers should use `_drapedTileMesh`, never a flat PlaneGeometry.

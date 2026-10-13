@@ -8788,11 +8788,8 @@ const ThreeRenderer = (function () {
             }
             var mine = _isAllyPlayer(d.owner);
             var mat = _deployGlowMat(gd.color || 0xe8c07a, mine ? 0.2 : 0.1);
-            var geo = new THREE.PlaneGeometry(ts * (gd.radius ? 0.5 : 0.82), ts * (gd.radius ? 0.5 : 0.82));
             for (var i = 0; i < tiles.length; i++) {
-                var m = new THREE.Mesh(geo, mat);
-                m.rotation.x = -Math.PI / 2;
-                m.position.set(tiles[i].x * ts + ts / 2, tileTopY(tiles[i].x, tiles[i].y) + ts * 0.02, tiles[i].y * ts + ts / 2);
+                var m = _drapedTileMesh(tiles[i].x, tiles[i].y, gd.radius ? 0.5 : 0.82, mat, ts * 0.02);   // THE DRAPED MARKERS
                 m.renderOrder = 3;
                 m._ew_deployable = true; m._ew_depX = tiles[i].x; m._ew_depY = tiles[i].y; m._ew_depOwner = d.owner;
                 out.push(m);
@@ -10025,7 +10022,6 @@ const ThreeRenderer = (function () {
                 var tile = zone[i];
                 if (tile.x < 0 || tile.y < 0 || tile.x >= _bw || tile.y >= _bh) continue;
 
-                var geo = new THREE.PlaneGeometry(ts * 0.95, ts * 0.95);
                 var mat = new THREE.MeshBasicMaterial({
                     color: color,
                     transparent: true,
@@ -10042,22 +10038,8 @@ const ThreeRenderer = (function () {
                     side: THREE.DoubleSide
                 });
                 _spawnZoneMats.push(mat);
-                var mesh = new THREE.Mesh(geo, mat);
-
-                // Anchor to the REAL terrain top (tileTopY adds surface smoothing /
-                // stand-lift) rather than raw boardHeights*elevStep — the latter can
-                // place the plane below the rendered surface and bury/flicker it.
-                var topY = (typeof tileTopY === 'function')
-                    ? tileTopY(tile.x, tile.y)
-                    : (((state.boardHeights && state.boardHeights[tile.y])
-                        ? (state.boardHeights[tile.y][tile.x] || 0) : 0) * elevStep);
-
-                mesh.rotation.x = -Math.PI / 2;
-                mesh.position.set(
-                    tile.x * ts + ts / 2,
-                    topY + ts * 0.012,
-                    tile.y * ts + ts / 2
-                );
+                // Anchored to the REAL terrain top and draped over it like the move tiles (THE DRAPED MARKERS)
+                var mesh = _drapedTileMesh(tile.x, tile.y, 0.95, mat, ts * 0.012);
                 _spawnZoneGroup.add(mesh);
             }
         }
@@ -14960,17 +14942,48 @@ const ThreeRenderer = (function () {
            mesh itself is drawn a hair above it, so lift the highlight clear of
            the roof plane — otherwise the (depth-tested) overlay is occluded by
            the roof and the tile looks un-highlighted. */
-        var roofLift = 0;
-        if (typeof getObjectAt === 'function') {
-            var hobj = getObjectAt(hx, hy);
-            if (hobj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[hobj] && OBJECT_RULES[hobj].roofWalkable) {
-                var hoSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[hobj] : null;
-                if (hoSpr && hoSpr._roofZPx > 0) roofLift = 1.5;
-            }
-        }
-        var fieldLift = (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, hx, hy) : 0;   // THE LIFT: a plate over the field's own sheet
-        mesh.position.set(hx * ts + ts / 2, tileTopY(hx, hy) + yOff + roofLift + fieldLift, hy * ts + ts / 2);
+        mesh.position.set(hx * ts + ts / 2, _drapedTileY(hx, hy, yOff), hy * ts + ts / 2);
         return mesh;
+    }
+    /* THE DRAPED MARKERS (2026-10-13, mondo: "All tile highlights need to work the same as move highlights for following
+       the surface of the map, not perfectly straight squares that the terrain clips through"). Every tile marker (the
+       cursor, the selected tile, the underfoot decal, spawn / zone washes, door lanes, the paint ghost) takes the move
+       tiles' own drape (_buildDrapeGeo: smooth landform, bevel swell, stairs, the field's ground, the skin line) and
+       their own placement (_drapedTileY), so nothing draws as a flat square the ground pokes through. */
+    function _hlRoofLift(hx, hy) {
+        /* on a walkable roof the roof mesh sits a hair above tileTopY: lift clear of it */
+        if (typeof getObjectAt !== 'function') return 0;
+        var hobj = getObjectAt(hx, hy);
+        if (hobj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[hobj] && OBJECT_RULES[hobj].roofWalkable) {
+            var hoSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[hobj] : null;
+            if (hoSpr && hoSpr._roofZPx > 0) return 1.5;
+        }
+        return 0;
+    }
+    function _drapedTileY(hx, hy, yOff) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var fieldLift = (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, hx, hy) : 0;   // THE LIFT: a plate over the field's own sheet
+        return tileTopY(hx, hy) + (yOff || 0) + _hlRoofLift(hx, hy) + fieldLift;
+    }
+    /* a draped marker mesh for one tile (frac of the tile wide), placed yOff above the surface */
+    function _drapedTileMesh(hx, hy, frac, mat, yOff) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var m = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
+        if (m.geometry._ew_rotY !== undefined) m.rotation.y = m.geometry._ew_rotY;
+        m.position.set(hx * ts + ts / 2, _drapedTileY(hx, hy, yOff), hy * ts + ts / 2);
+        return m;
+    }
+    /* the drape's rim as a closed line (the paint ghost's crisp edge), same local frame as the drape mesh */
+    function _drapeRimGeo(geo) {
+        var p = geo.attributes.position.array, n = Math.round(Math.sqrt(geo.attributes.position.count)) - 1, out = [], i;
+        function at(gi, gj) { var k = (gj * (n + 1) + gi) * 3; out.push(p[k], p[k + 1], p[k + 2]); }
+        for (i = 0; i < n; i++) at(i, 0);
+        for (i = 0; i < n; i++) at(n, i);
+        for (i = n; i > 0; i--) at(i, n);
+        for (i = n; i > 0; i--) at(0, i);
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+        return g;
     }
 
     function _getSharedHlMat(hlType) {
@@ -15628,22 +15641,19 @@ const ThreeRenderer = (function () {
                 }
             } else {
                 // paint: flat decal riding just above the surface
-                var pGeo = new THREE.PlaneGeometry(ts * 0.88, ts * 0.88);
                 var pMat = new THREE.MeshBasicMaterial({
                     color: color, transparent: true, opacity: 0.30,
                     depthWrite: false, side: THREE.DoubleSide
                 });
-                var plane = new THREE.Mesh(pGeo, pMat);
-                plane.rotation.x = -Math.PI / 2;
-                plane.position.set(cx, topY + 0.9, cz);
+                var plane = _drapedTileMesh(ch.x, ch.y, 0.88, pMat, 0.9);   // THE DRAPED MARKERS
                 plane.renderOrder = 5;
                 g.add(plane);
                 var pEdgeMat = new THREE.LineBasicMaterial({
                     color: color, transparent: true, opacity: 0.8, depthWrite: false
                 });
-                var pEdges = new THREE.LineSegments(new THREE.EdgesGeometry(pGeo), pEdgeMat);
-                pEdges.rotation.x = -Math.PI / 2;
-                pEdges.position.set(cx, topY + 1.0, cz);
+                var pEdges = new THREE.LineLoop(_drapeRimGeo(plane.geometry), pEdgeMat);
+                pEdges.rotation.y = plane.rotation.y;
+                pEdges.position.copy(plane.position); pEdges.position.y += 0.1;
                 pEdges.renderOrder = 6;
                 g.add(pEdges);
                 _terrainGhostFillMats.push(pMat);
@@ -16394,7 +16404,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildCursorMesh(tx, ty, hz) {
-        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
+        var ts = CONFIG.tileSize || BASE_TILE;
         /* Multi-floor: the cursor sits on the surface the POINTER is on (hz,
            resolved from the raycast hit height) — falling back to the tile's
            primary highlighted surface. Depth-tested like the range highlights
@@ -16406,28 +16416,17 @@ const ThreeRenderer = (function () {
         var _hvTop = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(tx, ty)
                    : (state.boardHeights && state.boardHeights[ty]) ? (state.boardHeights[ty][tx] || 0) : 0;
         var _hvSub = (_hvZ !== undefined && _hvZ !== null && _hvZ < _hvTop);
-        if (_hvSub) topY = _hvZ * ts * ELEV_STEP_RATIO + 0.5;
-        /* THE SKIN LINE: over a patch / a flow slab / a waded sheet, and over a field's floor by the plates' own lift */
-        else {
-            topY += (typeof _fieldGroundLiftPx === 'function') ? _fieldGroundLiftPx(ts, tx, ty) : 0;
-            topY += _hlSkinLift(tx, ty, topY);
-        }
         /* The cursor: yellow corner brackets + a whisper of fill. The ONLY
            tile on the board that wears brackets (plus the AoE impact tile),
            so "where am I pointing" is always a one-glance read. */
         var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
-        /* Staircase tiles get the slanted drape (45° along the rise) so the
-           cursor lies along the steps instead of clipping through them. */
-        var _hvStair = _hvSub ? null : _stairInfoAt(tx, ty), m;
-        if (_hvStair) {
-            m = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95), hMat);
-            m.rotation.y = m.geometry._ew_rotY || 0;
-        } else {
-            m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
-            m.rotation.x = -Math.PI / 2;
-        }
-        if (_hvSub) m.renderOrder = 2;
-        m.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
+        /* THE DRAPED MARKERS: on the column top the cursor is the move tiles' drape (slopes, swells, stairs, the field's
+           ground, the skin line), so its corners ride the surface instead of sinking into it */
+        if (!_hvSub) return _drapedTileMesh(tx, ty, 0.95, hMat, 0.5);
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
+        m.rotation.x = -Math.PI / 2;
+        m.renderOrder = 2;
+        m.position.set(tx*ts+ts/2, _hvZ * ts * ELEV_STEP_RATIO + 0.5, ty*ts+ts/2);
         return m;
     }
 
@@ -16479,18 +16478,8 @@ const ThreeRenderer = (function () {
             underfootMesh.geometry.dispose(); underfootMesh.material.dispose(); underfootMesh = null;
         }
         if (tx < 0 || ty < 0) return;
-        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.7;
-        topY += _hlSkinLift(tx, ty, topY);   // THE SKIN LINE
         var uMat = _makeHlMaterial(0x37e0ff, 0.38, 0.9, 0, { fill: 0.10 });
-        if (_stairInfoAt(tx, ty)) {
-            /* stairs: slanted drape along the rise, not a flat mid-height quad */
-            underfootMesh = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.98), uMat);
-            underfootMesh.rotation.y = underfootMesh.geometry._ew_rotY || 0;
-        } else {
-            underfootMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), uMat);
-            underfootMesh.rotation.x = -Math.PI / 2;
-        }
-        underfootMesh.position.set(tx * ts + ts / 2, topY, ty * ts + ts / 2);
+        underfootMesh = _drapedTileMesh(tx, ty, 0.98, uMat, 0.7);   // THE DRAPED MARKERS
         highlightGroup.add(underfootMesh);
     }
 
@@ -34669,17 +34658,11 @@ const ThreeRenderer = (function () {
         /* soft per-tile floor wash — each tile sits on its OWN surface height */
         for (var fi = 0; fi < info.tiles.length; fi++) {
             var ft = info.tiles[fi];
-            var ftY = tileTopY(ft.x, ft.y) + 0.15;
-            ftY += _hlSkinLift(ft.x, ft.y, ftY);   // THE SKIN LINE
             var fillMat = new THREE.MeshBasicMaterial({
                 color: color, transparent: true, opacity: 0.12,
                 depthWrite: false, side: THREE.DoubleSide
             });
-            var fillPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), fillMat
-            );
-            fillPlane.rotation.x = -Math.PI / 2;
-            fillPlane.position.set(ft.x * ts + ts / 2, ftY, ft.y * ts + ts / 2);
+            var fillPlane = _drapedTileMesh(ft.x, ft.y, 0.98, fillMat, 0.15);   // THE DRAPED MARKERS (the skin line rides in the drape)
             _zPush(fillPlane, fillMat);
         }
 
