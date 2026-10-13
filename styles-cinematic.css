@@ -4742,13 +4742,14 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 body.enc-arrival #sidebarPanel,
 body.enc-arrival #scorePanel,
 body.enc-arrival .battle-top-scoreboard,
-body.enc-arrival .ew-party-dock,
+body.enc-arrival .ew-turn-col,
 body.enc-arrival #css2dOverlay { opacity: 0 !important; pointer-events: none !important; }
 body.enc-arrived #sidebarPanel,
 body.enc-arrived #scorePanel,
 body.enc-arrived .battle-top-scoreboard,
-body.enc-arrived .ew-party-dock,
+body.enc-arrived .ew-turn-col,
 body.enc-arrived #css2dOverlay { transition: opacity .62s cubic-bezier(.22, .61, .36, 1); }
+body.enc-arrived .ew-turn-col { transition: opacity .62s cubic-bezier(.22, .61, .36, 1), bottom .32s cubic-bezier(.22, 1, .36, 1); }
 .enc-arrival-bars { position: fixed; inset: 0; z-index: 100040; pointer-events: none; --enc-bars: 7vh; }
 .enc-arrival-bar { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .5s cubic-bezier(.22, .61, .36, 1); }
 .enc-arrival-bar.top { top: 0; }
@@ -4756,7 +4757,7 @@ body.enc-arrived #css2dOverlay { transition: opacity .62s cubic-bezier(.22, .61,
 .enc-arrival-bars.in .enc-arrival-bar { height: var(--enc-bars); transition-duration: .32s; }
 .enc-arrival-bars.out .enc-arrival-bar { height: 0; transition-duration: .55s; }
 @media (prefers-reduced-motion: reduce) {
-  .enc-arrival-bar, body.enc-arrived #sidebarPanel, body.enc-arrived #scorePanel, body.enc-arrived .battle-top-scoreboard, body.enc-arrived .ew-party-dock, body.enc-arrived #css2dOverlay { transition: none; }
+  .enc-arrival-bar, body.enc-arrived #sidebarPanel, body.enc-arrived #scorePanel, body.enc-arrived .battle-top-scoreboard, body.enc-arrived .ew-turn-col, body.enc-arrived #css2dOverlay { transition: none; }
 }
 
 /* ═══ THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine): the panel while the mouse is free, the REC light, the toast.

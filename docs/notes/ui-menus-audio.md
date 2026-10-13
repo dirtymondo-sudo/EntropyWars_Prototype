@@ -1074,3 +1074,26 @@ own forwards entrance (vicFadeUp / vicPanelIn) to show; the theme's animation re
 back to opacity 0 and BACK TO THE ROOM / WAKE UP was invisible. Fix: hud.js UI_SCOPES `results.openAt` lists each
 plate's entrance time; the motion rule opens each at that time with `both` fill and rests it at opacity 1. Any future
 scope whose panels start hidden for their own entrance needs an `openAt` too (or `noAnim`).
+
+## THE TURN ORDER COLUMN + THE SCORE SIDES (2026-10-13, mondo, token 20261013-turncol-01-cors)
+Ask: combine the party dock (bottom right) and the scoreboard's turn-order portraits into one clickable column on the
+left above the Horologe; the Horologe's portrait is the current unit; units that already acted loop to the top; click
+= the unit's stats. Tower bar as long as the entropy gauge. All in hud.js unless named.
+- **TurnColumn** (replaces PartyRoster and the scoreboard's TurnChip/TurnFlank, all deleted): one `.ew-tc-plate` the
+  width of `.hrlg-side` (216), same token material, header TURN ORDER + R<round>. Rows from `_scoreboardTurnData`,
+  both teams, read BOTTOM-UP: bottom row acts next, already-acted units sit at the top under a "↻ ROUND n+1" hairline.
+  On the viewer's turn (`_tcViewerCommands`, ActionMenu's gate) the acting unit is NOT in the column (the Horologe is
+  the NOW slot) and a notch points down into the rig; on other turns the bottom row is the acting unit (bigger, NOW
+  tag). Position: `bottom` in px, measured from `.hrlg-side`'s rect every render + a 160 ms poll (UI Maker moves
+  included); kept while the rig blinks out for animations; else the rig's own bottom. Rows shrink 42→24px to fit,
+  then the latest-acting fold into "+N". Fallen = skull strip at the top; Gauntlet reserves / escaped pills inside.
+- **Row** = `PartyPortrait` ring (HP outer, MP inner; `foe` = red HP ring; no name tag any more) + name + HP/MP/Lv.
+  Click = `_tcInspect` (the Horologe ⓘ toggle aimed at any unit: focusUnitPanel + toggleUnitInfo). The ⓘ card
+  (`.unit-hover-hud`) now docks right of the column (hud sheet override of `left`). battle.js `previewUnitInfoRange`
+  skips the reach overlay for units `_shouldCameraFollowUnit` says the viewer can't see (fog/concealment leak).
+- **ScoreSide** (replaces ScoreSideColumn): per team one block `SCORE_SIDE_W` wide = name row (keys / kills at the
+  outer end) → `TowerBar` (11px skewed groove, chip-damage lag fill, ticks, low-HP pulse) → `EntropyWing` (now
+  width 100%). Both meters use `SCORE_TAIL_MASK` (fade only the last ~12%) so they read the same length.
+- UI Maker: piece `turns` (Turn order, `.ew-turn-col`) replaces `party`; `.ew-tc-plate` joined the battle panel
+  role. Tutorial step `dock` (data.js) points at `.ew-turn-col`. state.js touch-on-HUD + styles-cinematic arrival
+  fade list `.ew-turn-col`.
