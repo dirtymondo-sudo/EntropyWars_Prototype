@@ -828,230 +828,68 @@ function _scoreboardTurnData(st) {
   }).concat(deadChips);
 }
 
-/* One unit in a flank: sprite + tiny HP/MP bars. The unit acting soonest on
-   each side sits closest to centre and is drawn biggest; the active unit also
-   gets the glowing NOW frame. `size` is decided by the flank so a team of 8
-   packs tighter than a team of 2. Friendly chips are clickable to select
-   (replaces the old roster click target). */
-function TurnChip({ entry, size }) {
-  const u = entry.unit;
-  const ac = getAllianceColor(u);
-  const active = entry.active;
+/* ── THE SCORE SIDES (2026-10-13, mondo: "the tower health bar and the entropy gauge need to be the same length;
+   the tower health bar is way too tiny") ─────────────────────────────────────────────────────────────────────────
+   One block per team beside the centre plate, all ONE width (--ew-ss-w): the team name row, then the tower / Cube
+   HP bar, then the ENTROPY gauge under it. Both meters are the same skewed groove, fill from the inner edge (the
+   centre plate) outward and fade only at the very tip, so their lengths read as equal. The turn-order portraits
+   that used to flank the plate moved to the TURN ORDER column on the left (TurnColumn below). */
+const SCORE_SIDE_W = 'clamp(180px, 22vw, 320px)';
+const SCORE_TAIL_MASK = (left) => 'linear-gradient(' + (left ? 'to left' : 'to right') + ', black 88%, rgba(0,0,0,0.55) 96%, transparent 100%)';
+
+function TowerBar({ hp, max, player, left }) {
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const friendly = u.player === viewer;
-  const hpPct = u.maxHp > 0 ? Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100)) : 0;
-  const mpPct = u.maxMp > 0 ? Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) : 0;
-  const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
-
-  /* Dead: greyed portrait with a skull stamped over it — the flank's silent
-     alive-counter. No bars, no click, no labels. */
-  if (entry.dead) {
-    return h('div', {
-      className: 'ew-turn-chip ew-turn-chip-dead',
-      title: name + (u._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
-      style: {
-        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-        opacity: 0.5, filter: 'saturate(0.08) brightness(0.8)', padding: '0 1px',
-      },
-    },
-      h('div', { style: { width: size, height: 2, background: ac, opacity: 0.3, borderRadius: 2 }}),
-      h('div', { style: { position: 'relative' }},
-        h(UnitSprite, { unit: u, size }),
-        h('div', { style: {
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: Math.max(11, Math.round(size * 0.62)), lineHeight: 1, color: '#e8e4d8',
-          textShadow: '0 0 4px #000, 0 1px 2px #000', background: 'rgba(0,0,0,0.45)',
-          pointerEvents: 'none',
-        }}, '☠'),
-      ),
-      h('div', { style: { height: 6 }}),
-    );
-  }
-
-  return h('div', {
-    className: active ? 'ew-turn-chip ew-turn-chip-active' : 'ew-turn-chip',
-    title: name + '  ' + Math.max(0, Math.round(u.hp || 0)) + '/' + (u.maxHp || 0) +
-      (u.maxMp > 0 ? '  ·  MP ' + Math.max(0, Math.round(u.mp || 0)) + '/' + u.maxMp : ''),
-    onClick: () => { if (friendly && typeof selectUnit === 'function') selectUnit(u.id); },
-    style: {
-      position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-      cursor: friendly ? 'pointer' : 'default',
-      opacity: entry.finished ? 0.42 : 1,
-      filter: entry.finished ? 'saturate(0.45)' : 'none',
-      padding: '0 1px',
-    },
-  },
-
-    h('div', { style: {
-      width: size, height: 2, background: ac, opacity: active ? 1 : 0.6,
-      boxShadow: active ? '0 0 7px ' + ac : 'none', borderRadius: 2,
-    }}),
-
-    h('div', { style: { position: 'relative' }},
-      h(UnitSprite, { unit: u, size, glow: active }),
-      active && h('div', { style: {
-        position: 'absolute', inset: -2, border: '1px solid ' + ac,
-        borderRadius: Math.max(6, Math.round(size * 0.22) + 2),
-        boxShadow: '0 0 10px ' + ac + ', inset 0 0 7px ' + ac + '55', pointerEvents: 'none',
+  const ally = player === viewer;
+  const pct = max > 0 ? Math.max(0, Math.min(100, (hp / max) * 100)) : 0;
+  const low = pct <= 25;
+  const team = player === 1 ? EW.space : EW.chaos;
+  const innerEdge = left ? 'right' : 'left';
+  const skew = left ? 'skewX(20deg)' : 'skewX(-20deg)';
+  const mask = SCORE_TAIL_MASK(left);
+  const fill = ally ? HP_ALLY_FILL : HP_ENEMY_FILL;
+  const glow = ally ? HP_ALLY : HP_ENEMY;
+  return h('div', { className: 'ew-tower' + (low ? ' low' : ''), title: 'TOWER — ' + Math.round(hp) + '/' + max },
+    h('div', { className: 'ew-meter-lbl', style: { flexDirection: left ? 'row' : 'row-reverse' }},
+      h('span', { className: 'ew-meter-glyph' }, '🏰'),
+      h('span', { className: 'ew-meter-cap' }, 'TOWER'),
+      h('span', { className: 'ew-meter-num' + (low ? ' low' : '') }, Math.max(0, Math.round(hp)) + '/' + max),
+    ),
+    h('div', { className: 'ew-tower-vessel', style: { transform: skew, WebkitMaskImage: mask, maskImage: mask }},
+      /* the chip-damage ghost: lags behind the fill so a hit reads as a pale slice draining away */
+      h('div', { className: 'ew-tower-lag', style: { [innerEdge]: 0, width: pct + '%' }}),
+      h('div', { className: 'ew-tower-fill', style: {
+        [innerEdge]: 0, width: pct + '%', background: fill, boxShadow: '0 0 8px ' + glow + '88',
       }}),
-    ),
-
-    h('div', { style: { width: size, display: 'flex', flexDirection: 'column', gap: 1, marginTop: 1 }},
-      h('div', { style: {
-        height: 3, background: 'rgba(255,255,255,0.07)', position: 'relative', overflow: 'hidden',
-      }},
-        h('div', { style: {
-          position: 'absolute', top: 0, left: 0, bottom: 0, width: hpPct + '%',
-          background: friendly ? HP_ALLY_FILL : HP_ENEMY_FILL,
-          boxShadow: friendly ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
-          transition: 'width 0.35s ease-out',
-        }}),
-      ),
-      u.maxMp > 0 && h('div', { style: {
-        height: 2, background: 'rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden',
-      }},
-        h('div', { style: {
-          position: 'absolute', top: 0, left: 0, bottom: 0, width: mpPct + '%',
-          background: MP_FILL, boxShadow: MP_GLOW, transition: 'width 0.35s ease-out',
-        }}),
-      ),
-    ),
-
-    h('div', { style: { height: 9, display: 'flex', alignItems: 'center' }},
-      active
-        ? h('span', { style: {
-            fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, lineHeight: 1,
-            color: ac, letterSpacing: '0.22em', textShadow: '0 0 6px ' + ac + '88',
-          }}, 'NOW')
-        : entry.next
-          ? h('span', { style: {
-              fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, lineHeight: 1,
-              color: EW.inkMute, letterSpacing: '0.22em', opacity: 0.9,
-              textShadow: '0 0 5px rgba(232,228,216,0.35)',
-            }}, 'NEXT')
-          : null,
+      [25, 50, 75].map(t => h('div', { key: t, className: 'ew-tower-tick', style: { [innerEdge]: t + '%' }})),
+      h('div', { className: 'ew-tower-socket', style: { [innerEdge]: 0, background: team, boxShadow: '0 0 8px ' + team }}),
     ),
   );
 }
 
-function TurnFlank({ st, player, side, nextId }) {
-  const data = _scoreboardTurnData(st).filter(e => e.unit.player === player);
-  data.sort((a, b) => (a.sortKey - b.sortKey) || ((b.unit.spd || 0) - (a.unit.spd || 0)));
-  if (data.length === 0) return null;
-  data.forEach(e => { e.next = !!nextId && e.id === nextId; });
-
-  // Show every unit up to a hard cap; beyond that, summarise the tail (acting
-  // last) as a "+N" tile so the bar never grows unbounded.
-  const CAP = 10;
-  let visible = data, overflow = 0;
-  if (data.length > CAP) { overflow = data.length - (CAP - 1); visible = data.slice(0, CAP - 1); }
-
-  // Scale sizes down as the team grows so the flank stays a sane width.
-  const n = visible.length;
-  const small = n >= 7 ? 18 : (n >= 5 ? 21 : 24);
-  const inner = small + 6;
-  const active = small + 10;
-
-  // `visible` runs inner→outer (soonest first). chips carry their size.
-  const chips = visible.map((e, i) => ({
-    e, size: e.active ? active : (i === 0 && !e.dead ? inner : small),
-  }));
-
-  let nodes = chips.map(({ e, size }) => h(TurnChip, { key: e.id, entry: e, size }));
-  if (overflow > 0) {
-    nodes.push(h('div', {
-      key: 'overflow',
-      title: overflow + ' more',
-      style: {
-        alignSelf: 'center', fontFamily: '"IBM Plex Mono", monospace', fontSize: 9,
-        color: EW.inkMute, letterSpacing: '0.04em', padding: '0 3px',
-        border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)', borderRadius: 6,
-        minWidth: small, height: small, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      },
-    }, '+' + overflow));
-  }
-
-  // Left flank mirrors so "soonest" stays adjacent to the centre score.
-  const display = side === 'left' ? nodes.slice().reverse() : nodes;
-  return h('div', { style: {
-    display: 'flex', alignItems: 'flex-start', gap: 3,
-    justifyContent: side === 'left' ? 'flex-end' : 'flex-start',
-  }}, display);
-}
-
-/* One team's side of the strip: a slim stacked name block (dot + name, plus
-   tower HP / kills sub when the mode has one) sitting BESIDE the turn-ordered
-   portrait flank — everything vertically centred in one thin row. */
-function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
-  const isRight = side === 'right';
-  const mono = '"IBM Plex Mono", monospace';
+function ScoreSide({ st, mode, player, side, color }) {
+  const left = side === 'left';
   const name = (st._teamNames && st._teamNames[player]) || ('P' + player);
   const sub = player === 1 ? mode.p1Sub : mode.p2Sub;
   const showTower = mode.showTowerHp;
   const towerHp = player === 1 ? mode.p1TowerHp : mode.p2TowerHp;
   const towerMax = player === 1 ? mode.p1TowerMax : mode.p2TowerMax;
-  const towerPct = towerMax > 0 ? (towerHp / towerMax) * 100 : 0;
-  const _towerViewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const towerColor = player === _towerViewer ? HP_ALLY : HP_ENEMY;
+  const keyAlert = mode.keyAlertPlayer === player;
 
-  return h('div', { style: {
-    display: 'flex', alignItems: 'center', gap: 9,
-    flexDirection: isRight ? 'row' : 'row-reverse',
-    padding: '5px 10px', minWidth: 92, justifyContent: 'flex-end',
-  }},
-
-    h('div', { style: {
-      display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 118,
-      alignItems: isRight ? 'flex-start' : 'flex-end',
-    }},
-      h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 5,
-        flexDirection: isRight ? 'row' : 'row-reverse',
-      }},
-        h('span', { style: {
-          width: 5, height: 5, background: color, borderRadius: '50%',
-          boxShadow: '0 0 7px ' + color, flexShrink: 0,
-        }}),
-        h('span', { style: {
-          fontFamily: mono, fontSize: 12, letterSpacing: '0.12em',
-          color: EW_T.ink, fontWeight: 600, whiteSpace: 'nowrap',
-          textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6)',
-        }}, name),
+  return h('div', { className: 'ew-score-side ' + side, style: { width: SCORE_SIDE_W }},
+    /* name hugs the inner edge (beside the score); keys / the kill count sit at the outer end */
+    h('div', { className: 'ew-ss-head', style: { flexDirection: left ? 'row-reverse' : 'row' }},
+      h('span', { className: 'ew-ss-name', style: { flexDirection: left ? 'row-reverse' : 'row' }},
+        h('span', { className: 'ew-ss-dot', style: { background: color, boxShadow: '0 0 7px ' + color }}),
+        h('span', { className: 'ew-ss-text' }, name),
       ),
-      sub != null && !showTower && h('span', { style: {
-        fontFamily: mono, fontSize: 9, color: EW_T.inkMute, letterSpacing: '0.08em', whiteSpace: 'nowrap',
-        textShadow: '0 1px 3px rgba(0,0,0,0.95)',
-      }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
-      showTower && towerMax > 0 && h('div', { style: {
-        width: 74, display: 'flex', flexDirection: 'column', gap: 2,
-        alignItems: isRight ? 'flex-start' : 'flex-end',
-      }},
-        h('div', { style: { width: '100%', height: 3, background: 'rgba(255,255,255,0.06)', position: 'relative' }},
-          h('div', { style: {
-            position: 'absolute', top: 0, bottom: 0, [isRight ? 'left' : 'right']: 0,
-            width: towerPct + '%',
-            background: player === _towerViewer ? HP_ALLY_FILL : HP_ENEMY_FILL,
-            boxShadow: '0 0 6px ' + towerColor + '55',
-          }}),
-        ),
-        h('span', { style: {
-          fontFamily: mono, fontSize: 8, color: EW_T.inkMute, letterSpacing: '0.08em',
-          textShadow: '0 1px 3px rgba(0,0,0,0.95)',
-        }}, '🏰 ' + towerHp + '/' + towerMax),
-        /* Keys carried / Keys needed — the win-condition readout for the
-           fixed Arena pool (all 5). Flares when one Key from the win. */
-        (mode.keysToWin | 0) > 0 && h('span', { style: {
-          fontFamily: mono, fontSize: 8, letterSpacing: '0.08em',
-          color: mode.keyAlertPlayer === player ? '#ffd76a' : EW_T.inkMute,
-          fontWeight: mode.keyAlertPlayer === player ? 700 : 400,
-          textShadow: mode.keyAlertPlayer === player
-            ? '0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(255,215,106,0.7)'
-            : '0 1px 3px rgba(0,0,0,0.95)',
-        }}, '🗝 ' + (player === 1 ? mode.p1Keys : mode.p2Keys) + '/' + mode.keysToWin),
-      ),
+      h('span', { className: 'ew-ss-fill' }),
+      sub != null && !showTower && h('span', { className: 'ew-ss-sub' }, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
+      /* Keys carried / Keys needed — the Arena win condition (all 5). Flares one Key from the win. */
+      (mode.keysToWin | 0) > 0 && h('span', { className: 'ew-ss-keys' + (keyAlert ? ' alert' : '') },
+        '🗝 ' + (player === 1 ? mode.p1Keys : mode.p2Keys) + '/' + mode.keysToWin),
     ),
-
-    h(TurnFlank, { st, player, side, nextId }),
+    showTower && towerMax > 0 && h(TowerBar, { hp: towerHp, max: towerMax, player, left }),
+    h(EntropyWing, { st, player, side }),
   );
 }
 
@@ -1209,9 +1047,10 @@ function EntropyWing({ st, player, side }) {
      the outer tip (mask fade — no hard cut), growing out of a bright
      team-colored socket at the inner end, ⚛ + tiny caps label riding above. */
   const innerEdge = left ? 'right' : 'left';
-  const fadeDir = left ? 'to left' : 'to right';
   const skew = left ? 'skewX(20deg)' : 'skewX(-20deg)';
-  const tailMask = 'linear-gradient(' + fadeDir + ', black 58%, rgba(0,0,0,0.5) 84%, transparent 99%)';
+  /* the tail fade is only the last ~12% now (it used to dissolve from 58%), so the gauge reads the same length as
+     the tower bar above it (ScoreSide) */
+  const tailMask = SCORE_TAIL_MASK(left);
   const fillGrad = full
     ? 'linear-gradient(' + (left ? 270 : 90) + 'deg, #5c33a8, #a36cff 45%, #e8dcff 80%, #ffffff)'
     : 'linear-gradient(' + (left ? 270 : 90) + 'deg, ' + team + '59, #6a3fd0 40%, #a36cff 78%, #d9c2ff)';
@@ -1222,7 +1061,7 @@ function EntropyWing({ st, player, side }) {
     title: 'ENTROPY GAUGE — P' + player + ': ' + Math.round(val) + '/' + max +
       (full ? '  ⚛ TEAM ATTACK READY!' : '  (press-turn overflow, kills, bounties and destruction charge it)'),
     style: {
-      position: 'relative', width: 'clamp(180px, 22vw, 320px)', flexShrink: 0,
+      position: 'relative', width: '100%', flexShrink: 0,
       display: 'flex', flexDirection: 'column', justifyContent: 'center',
       alignItems: left ? 'flex-end' : 'flex-start',
     },
@@ -1497,17 +1336,6 @@ function Scoreboard({ st }) {
   const mono = '"IBM Plex Mono", monospace';
   const serif = '"Cormorant SC", serif';
 
-  /* Global NEXT unit — the pending (not active, not spent, not dead) entry
-     with the lowest queue key across BOTH teams; its chip gets the NEXT tag. */
-  let nextId = null, _bestKey = Infinity, _bestSpd = -1;
-  for (const e of _scoreboardTurnData(st)) {
-    if (e.active || e.finished || e.dead) continue;
-    const spd = e.unit.spd || 0;
-    if (e.sortKey < _bestKey || (e.sortKey === _bestKey && spd > _bestSpd)) {
-      _bestKey = e.sortKey; _bestSpd = spd; nextId = e.id;
-    }
-  }
-
   return h('div', {
     className: 'ew-scoreboard',
     style: {
@@ -1516,18 +1344,15 @@ function Scoreboard({ st }) {
     },
   },
 
-    /* ⚛ ENTROPY WINGS — long sleek energy lines flanking the strip */
-    h(EntropyWing, { st, player: 1, side: 'left' }),
-
     /* No panel box — the strip floats straight over the battlefield; each
        element carries its own contrast (chip frames, text shadows, a soft
        scrim behind the centre score only). */
     h('div', { style: {
-      position: 'relative', display: 'flex', alignItems: 'center',
+      position: 'relative', display: 'flex', alignItems: 'center', gap: 12,
       filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.65))',
     }},
 
-      h(ScoreSideColumn, { st, mode, player: 1, side: 'left', color: EW.space, nextId }),
+      h(ScoreSide, { st, mode, player: 1, side: 'left', color: EW.space }),
 
       /* centre cluster — the mockup's score box: a bordered PS1 data-plate
          with the mode name over a hairline divider, the big serif score,
@@ -1608,10 +1433,8 @@ function Scoreboard({ st }) {
         ),
       ),
 
-      h(ScoreSideColumn, { st, mode, player: 2, side: 'right', color: EW.chaos, nextId }),
+      h(ScoreSide, { st, mode, player: 2, side: 'right', color: EW.chaos }),
     ),
-
-    h(EntropyWing, { st, player: 2, side: 'right' }),
   );
 }
 
@@ -1704,8 +1527,8 @@ function MatchMeta({ st }) {
   );
 }
 
-/* The old right-side TURN ORDER clock is gone — its turn-queue is now folded
-   into the scoreboard flanks (see ScoreSideColumn / TurnFlank above). */
+/* The old right-side TURN ORDER clock is gone — the turn queue is the TURN ORDER column above the Horologe
+   (TurnColumn below). */
 
 function CombatLog({ st }) {
   if (!st) return null;
@@ -1850,29 +1673,30 @@ function CombatLog({ st }) {
   );
 }
 
-/* The viewer's party is now shown in the scoreboard turn-order flank, so the
-   old bottom-right roster is gone. This panel survives only to surface Gauntlet
-   RESERVES (units not yet deployed), which the scoreboard can't represent. */
-/* ═══════════════ THE PARTY DOCK — bottom-right portrait row ═══════════════
-   One circular portrait per unit of the VIEWER's party, in slot order, each
-   wearing its vitals as two concentric rings — HP on the outside, MP inside —
-   exactly like the ring vitals on the reticle at a unit's feet
-   (three-renderer.js _reticleFragmentShader). Both meters FILL FROM THE
-   BOTTOM, CLOCKWISE (2026-09-21 — the grade node's gauge, the user's rule):
-   the fill starts at the screen's 6 o'clock and grows clockwise, a full
-   ring closing at 6 again; the spent track is what is left before 6 on the
-   left. Shield rides the HP fill's leading edge in pale blue;
-   the confirm-step forecast (getPendingDamagePreview) blinks the slice about
-   to be lost (or healed) on the same ring the target row / nameplate blink.
-   A hit blinks the face white (RenderBus 'unit:damaged'), the acting unit
-   wears a slow-turning halo, spent units dim, the fallen go grey under a
-   skull. Click = selectUnit — the same camera pan / menu a scoreboard chip
-   gives you. The party is read by HOME seat (unitHomePlayer) so a possessed
-   body stays in its owner's row, chained. Viewer-local, nothing relayed
-   (RULE #2 — both online seats read their own synced hp/mp). Gauntlet
-   reserves ride a small strip above the row. Off on Mystery Dungeon floors,
-   where the vector SCANNER owns that corner. */
-const PP_HP = HP_ALLY;            // the dock is always YOUR party → ally green
+/* ═══════════════ THE TURN ORDER COLUMN — left side, above the Horologe ═══════════════
+   (2026-10-13, mondo: "combine [the party icons and the scoreboard turn order] and put them in a column on the left
+   side of the screen, above the horologe ... the horologe's unit icon acts as the current unit in the turn order.
+   Units that already acted would loop around to the top. I should be able to click on these icons and see a unit's
+   stats.") It replaces BOTH the bottom-right party dock and the portrait flanks that rode the scoreboard.
+
+   ONE plate the width of the Horologe's identity column (.hrlg-side, 216px), docked right on top of it, so the two
+   read as one tower: TURN ORDER over VESSEL DATA. Every living unit of BOTH teams, in blitz queue order
+   (_scoreboardTurnData), read BOTTOM-UP: the row touching the Horologe acts next, the ones above it after that, and
+   the units that already acted this round sit at the TOP under a "ROUND n+1" hairline (they act again next round —
+   the queue loops). On your turn the Horologe's portrait IS the NOW slot, so the acting unit is not repeated in the
+   column; on any other turn (the CPU, the opponent online, an AI ally) the bottom row is the acting unit, drawn
+   bigger with the turning halo and a NOW tag, and the plate sits where the Horologe would.
+
+   Each row: the ring portrait (HP outer / MP inner, the old dock's rings — PartyPortrait), the name, HP / MP
+   numbers, an alliance-coloured spine on the left. Spent units dim, the fallen collapse into a skull strip at the
+   very top, Gauntlet reserves / the escaped ride pill strips at the top of the plate. Rows shrink to fit the height
+   left above the Horologe; past the minimum the latest-acting rows fold into a "+N" row at the top.
+
+   CLICK a row = the unit's full stat card (#unitHoverHud, the ⓘ / I card — the same toggle the Horologe's ⓘ uses);
+   click it again to close. The card docks to the right of the column (the hud sheet). Viewer-local, nothing
+   relayed (RULE #2): both online seats read their own synced state, and the card's range overlay is fog-gated
+   (battle.js previewUnitInfoRange). Off on Mystery Dungeon floors (the scoreboard's tactic chips own the party). */
+const PP_HP = HP_ALLY;
 const PP_MP = MP_BLUE;
 const PP_SHIELD = '#8fd0ff';
 const PP_HEAL = '#9ef5b8';
@@ -1896,10 +1720,12 @@ function _ppArc(r, len, start, cls, extra) {
   });
 }
 
-function PartyPortrait({ unit, size, active, finished, next, possessed, forecast }) {
+/* The ring portrait: HP on the outside, MP just inside, the face disc in the middle — the same nesting as the 3D
+   reticle. Both meters fill from 6 o'clock clockwise; shield leads the HP fill in pale blue; the confirm-step
+   forecast (getPendingDamagePreview) blinks the slice about to be lost or healed; a hit blinks the face white
+   (RenderBus 'unit:damaged'); the acting unit wears a slow-turning halo. `foe` paints the HP ring enemy red. */
+function PartyPortrait({ unit, size, active, finished, next, possessed, forecast, foe, ringColor }) {
   const hitRef = useRef(null);
-  // one-shot white blink when THIS unit takes hit damage (same bus event
-  // the Horologe face listens to)
   useEffect(() => {
     if (!window.RenderBus || !unit) return;
     const onHit = (ev) => {
@@ -1935,20 +1761,7 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
     else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
   }
-  const name = (typeof unitDisplayName === 'function' ? unitDisplayName(unit) : (unit.name || unit.cls)) || '';
-  const slot = _ppSlot(unit) + 1;
-  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][slot - 1] || String(slot);
-  const fc = getFactionColor(unit);
-  const title = roman + ' · ' + name
-    + (dead ? ' — DOWN' + (unit._spawnLocked ? ' · NO SPAWN POINT' : '')
-      : ('  HP ' + Math.max(0, Math.round(unit.hp || 0)) + '/' + maxHp
-        + (maxMp > 0 ? '  ·  MP ' + Math.max(0, Math.round(unit.mp || 0)) + '/' + maxMp : '')
-        + (unit.shield > 0 ? '  ·  🛡 ' + Math.round(unit.shield) : '')
-        + (possessed ? '  ·  ⛓ POSSESSED' : '')));
   const clipId = 'ppclip-' + String(unit.id).replace(/[^a-z0-9_-]/gi, '_');
-
-  // geometry (viewBox 0 0 100): HP ring on the outside, MP just inside it,
-  // the face disc in the middle — the same nesting as the 3D reticle
   const R_HP = 43, R_MP = 36.5, R_FACE = 30.5, R_HALO = 48;
 
   return h('div', {
@@ -1957,28 +1770,22 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       + (finished ? ' spent' : '')
       + (next ? ' next' : '')
       + (dead ? ' dead' : '')
+      + (foe ? ' foe' : '')
       + (possessed ? ' possessed' : ''),
-    style: { '--pp': size + 'px', '--pp-fc': fc },
-    title: title,
-    onClick: () => { if (!dead && typeof selectUnit === 'function') selectUnit(unit.id); },
+    style: { '--pp': size + 'px', '--pp-fc': ringColor || getFactionColor(unit) },
   },
     h('svg', { viewBox: '0 0 100 100', className: 'ew-pp-svg' },
       h('defs', null,
         h('clipPath', { id: clipId }, h('circle', { cx: 50, cy: 50, r: R_FACE })),
       ),
-      /* the acting unit's halo — a slow-turning dashed ring outside the meters */
       h('circle', { cx: 50, cy: 50, r: R_HALO, className: 'ew-pp-halo', pathLength: 100 }),
-      /* dark tracks */
       h('circle', { cx: 50, cy: 50, r: R_HP, className: 'ew-pp-track hp' }),
       h('circle', { cx: 50, cy: 50, r: R_MP, className: 'ew-pp-track mp' }),
-      /* HP meter: shield leads the fill, then the fill, then the forecast slices */
       shPct > 0 && _ppArc(R_HP, shPct, hpPct, 'hp shield', { stroke: PP_SHIELD }),
-      _ppArc(R_HP, hpPct, 0, 'hp fill', { stroke: PP_HP }),
+      _ppArc(R_HP, hpPct, 0, 'hp fill', { stroke: foe ? HP_ENEMY : PP_HP }),
       dmgPct > 0 && _ppArc(R_HP, dmgPct, hpPct - dmgPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
       healPct > 0 && _ppArc(R_HP, healPct, hpPct, 'hp prev heal', { stroke: PP_HEAL }),
-      /* MP meter */
       maxMp > 0 && _ppArc(R_MP, mpPct, 0, 'mp fill', { stroke: PP_MP }),
-      /* the face disc */
       h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
       h('g', { clipPath: 'url(#' + clipId + ')' },
         h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-disc' }),
@@ -1994,96 +1801,207 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       dead && h('text', { x: 50, y: 60, textAnchor: 'middle', className: 'ew-pp-skull' }, '☠'),
       possessed && !dead && h('text', { x: 50, y: 22, textAnchor: 'middle', className: 'ew-pp-chain' }, '⛓'),
     ),
-    h('div', { className: 'ew-pp-tag' },
-      h('span', { className: 'ew-pp-roman' }, roman),
-      h('span', { className: 'ew-pp-name' }, name),
-    ),
   );
 }
 
-function PartyRoster({ st }) {
+/* Is the Horologe up for the viewer right now? The same gate ActionMenu uses (minus the per-frame ones), so the
+   column docks on the viewer's turns even while the rig blinks out for an animation. */
+function _tcViewerCommands(st) {
+  if (!st || st.winner) return false;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const u = (st.units || []).find(x => x.id === (st._blitzActiveUnitId || st.selectedUnitId));
+  if (!u || u.dead) return false;
+  if (typeof _mdUnitAuto === 'function' && _mdUnitAuto(u)) return false;
+  return !st.autoPlayers?.[st.activePlayer] && u.player === st.activePlayer && st.activePlayer === viewer;
+}
+
+/* the ⓘ toggle, aimed at any unit: closed → open on it; open on it → close; open on another → retarget */
+function _tcInspect(unitId) {
+  if (typeof state === 'undefined' || !state) return;
+  const wasOpenHere = !!state.showUnitInfo && ((state.focusedUnitId || state.selectedUnitId) === unitId);
+  if (typeof playSfx === 'function') playSfx('uiCursorMove');
+  if (typeof focusUnitPanel === 'function') focusUnitPanel(unitId);
+  if (wasOpenHere || !state.showUnitInfo) { if (typeof toggleUnitInfo === 'function') toggleUnitInfo(); }
+  else if (typeof markDirty === 'function') { markDirty('hud'); if (typeof renderIfDirty === 'function') renderIfDirty(); }
+}
+
+const TC_W = 216;          // = .hrlg-side width, so the two plates stack flush
+const TC_ROW_MAX = 42, TC_ROW_MIN = 24, TC_GAP = 3;
+
+function TurnRow({ e, rowH, now, next, foe, viewer, forecast, inspecting }) {
+  const u = e.unit;
+  const compact = rowH < 32;
+  const ring = now ? Math.round(rowH * 1.0) : Math.max(18, rowH - (compact ? 3 : 4));
+  const ac = getAllianceColor(u);
+  const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
+  const hp = Math.max(0, Math.round(u.hp || 0)), mp = Math.max(0, Math.round(u.mp || 0));
+  const lvl = typeof getUnitLevel === 'function' ? getUnitLevel(u) : null;
+  return h('div', {
+    className: 'ew-tc-row' + (now ? ' now' : '') + (next ? ' next' : '') + (e.finished ? ' spent' : '')
+      + (foe ? ' foe' : ' ally') + (inspecting ? ' inspecting' : '') + (compact ? ' compact' : ''),
+    style: { height: now ? Math.round(rowH * 1.25) : rowH, '--tc-ac': ac },
+    title: name + '  HP ' + hp + '/' + (u.maxHp || 0) + (u.maxMp > 0 ? '  ·  MP ' + mp + '/' + u.maxMp : '')
+      + (u.shield > 0 ? '  ·  🛡 ' + Math.round(u.shield) : ''),
+    onClick: (ev) => { ev.stopPropagation(); _tcInspect(u.id); },
+  },
+    h(PartyPortrait, {
+      unit: u, size: ring, active: now, finished: e.finished, next, forecast,
+      possessed: home !== u.player, foe, ringColor: ac,
+    }),
+    h('div', { className: 'ew-tc-info' },
+      h('div', { className: 'ew-tc-name' }, name),
+      !compact && h('div', { className: 'ew-tc-sub' },
+        h('span', { className: 'ew-tc-hp' }, hp + '/' + (u.maxHp || 0)),
+        u.maxMp > 0 && h('span', { className: 'ew-tc-mp' }, mp),
+        lvl != null && !now && !next && h('span', { className: 'ew-tc-lv' }, 'Lv' + lvl),
+      ),
+    ),
+    (now || next) && h('span', { className: 'ew-tc-tag' + (now ? ' now' : '') }, now ? 'NOW' : 'NEXT'),
+  );
+}
+
+function TurnColumn({ st }) {
+  const ref = useRef(null);
+  const geoRef = useRef({ bottom: null, avail: 480, docked: false });
+  const [geo, setGeo] = useState(geoRef.current);
+  const cmdRef = useRef(false);
+  cmdRef.current = _tcViewerCommands(st);
+
+  /* Dock onto the Horologe: measure its identity plate (UI Maker moves / scales included — getBoundingClientRect
+     sees them) and sit 6px above it; with no Horologe up, sit where it would. Re-measured every render and on a
+     slow poll (the plate changes height as chips / items come and go). */
+  const measure = useCallback(() => {
+    const el = ref.current; if (!el) return;
+    const layer = el.offsetParent || el.parentElement; if (!layer) return;
+    const lr = layer.getBoundingClientRect(); if (!lr.height) return;
+    const s = parseFloat(getComputedStyle(el).getPropertyValue('--ew-ui-scale')) || 1;
+    const side = layer.querySelector('.hrlg-side');
+    const sr = side ? side.getBoundingClientRect() : null;
+    let bottom, docked = false;
+    if (sr && sr.height > 0) { bottom = lr.bottom - sr.top + 6 * s; docked = true; }
+    else if (cmdRef.current && geoRef.current.docked && geoRef.current.bottom != null) { bottom = geoRef.current.bottom; docked = true; }
+    else bottom = 14 + 66 * s;
+    const avail = Math.max(120, (lr.height - bottom - 12) / s);
+    const g = geoRef.current;
+    if (g.bottom == null || Math.abs(g.bottom - bottom) > 0.5 || Math.abs(g.avail - avail) > 0.5 || g.docked !== docked) {
+      geoRef.current = { bottom, avail, docked };
+      setGeo(geoRef.current);
+    }
+  }, []);
+  useEffect(() => { measure(); });
+  useEffect(() => {
+    const t = setInterval(measure, 160);
+    window.addEventListener('resize', measure);
+    return () => { clearInterval(t); window.removeEventListener('resize', measure); };
+  }, [measure]);
+
   if (!st) return null;
-  // Mystery Dungeon: the vector SCANNER (#battleMinimap.md-scanner) owns the
-  // bottom-right corner, and the party rides the scoreboard's tactic chips.
   if (typeof window._isDungeonMode === 'function' && window._isDungeonMode()) return null;
 
   const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
-  const home = (u) => (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
-  const party = (st.units || [])
-    .filter(u => u && !u._mdNpc && home(u) === viewer)
-    .sort((a, b) => _ppSlot(a) - _ppSlot(b));
+  const commands = cmdRef.current;
+  const data = _scoreboardTurnData(st);
+  const alive = data.filter(e => !e.dead)
+    .sort((a, b) => (a.sortKey - b.sortKey) || ((b.unit.spd || 0) - (a.unit.spd || 0)));
+  const dead = data.filter(e => e.dead);
+  /* on the viewer's turn the Horologe's portrait is the NOW slot */
+  const queue = commands ? alive.filter(e => !e.active) : alive;
+  const nextE = queue.find(e => !e.active && !e.finished);
+  const nextId = nextE ? nextE.id : null;
+  const forecast = (typeof getPendingDamagePreview === 'function') ? getPendingDamagePreview() : null;
+  const inspectId = st.showUnitInfo ? (st.focusedUnitId || st.selectedUnitId) : null;
 
+  const home = (u) => (typeof unitHomePlayer === 'function') ? unitHomePlayer(u) : u.player;
   const isGaunt = typeof _benchOn === 'function' && _benchOn();
   const reserves = isGaunt && typeof _gauntletReserves === 'function' ? (_gauntletReserves(viewer) || []) : [];
-  if (!party.length && !reserves.length) return null;
+  const escaped = (st.escaped && st.escaped[viewer]) || [];
+  if (!queue.length && !dead.length && !reserves.length && !escaped.length) return null;
 
-  const n = party.length;
-  const size = n >= 7 ? 54 : (n >= 5 ? 60 : 68);
-  const forecast = (typeof getPendingDamagePreview === 'function') ? getPendingDamagePreview() : null;
-
-  /* who's acting / spent / next — the same read as the scoreboard flanks */
-  const turn = {};
-  let nextId = null, _bestKey = Infinity, _bestSpd = -1;
-  for (const e of _scoreboardTurnData(st)) {
-    turn[e.id] = e;
-    if (e.active || e.finished || e.dead) continue;
-    const spd = e.unit.spd || 0;
-    if (e.sortKey < _bestKey || (e.sortKey === _bestKey && spd > _bestSpd)) {
-      _bestKey = e.sortKey; _bestSpd = spd; nextId = e.id;
-    }
+  /* ── fit the rows into the height left above the Horologe ── */
+  const nowRow = !commands && queue.length && queue[0].active;
+  const hasSpent = queue.some(e => e.finished) && queue.some(e => !e.finished);
+  const fixed = 30 + 12 + (dead.length ? 26 : 0) + (hasSpent ? 18 : 0) + (isGaunt ? 30 : 0) + (escaped.length ? 30 : 0);
+  const rowsAvail = Math.max(TC_ROW_MIN, geo.avail - fixed);
+  const units = queue.length + (nowRow ? 0.25 : 0);
+  let rowH = Math.floor(rowsAvail / Math.max(1, units) - TC_GAP);
+  rowH = Math.max(TC_ROW_MIN, Math.min(TC_ROW_MAX, rowH));
+  let shown = queue, folded = 0;
+  const fit = Math.floor((rowsAvail - (nowRow ? rowH * 0.25 : 0)) / (rowH + TC_GAP));
+  if (queue.length > fit) {
+    const keep = Math.max(1, fit - 1);                 // one slot goes to the "+N" row
+    shown = queue.slice(0, keep);
+    folded = queue.length - keep;
   }
 
-  return h('div', { className: 'ew-party-dock' },
-    /* one shared radial vignette for every portrait disc */
-    h('svg', { width: 0, height: 0, style: { position: 'absolute', width: 0, height: 0 }, 'aria-hidden': true },
-      h('defs', null,
-        h('radialGradient', { id: 'ewPpVig', cx: '50%', cy: '50%', r: '50%' },
-          h('stop', { offset: '0%', stopColor: '#08070f', stopOpacity: 0 }),
-          h('stop', { offset: '72%', stopColor: '#08070f', stopOpacity: 0.05 }),
-          h('stop', { offset: '100%', stopColor: '#08070f', stopOpacity: 0.75 }),
-        ),
+  /* bottom-up: build soonest-first, then reverse so the soonest touches the Horologe */
+  const rows = [];
+  let lastFinished = null;
+  shown.forEach((e) => {
+    if (hasSpent && e.finished && lastFinished === false) {
+      rows.push(h('div', { key: 'loop', className: 'ew-tc-loop' },
+        h('span', { className: 'ew-tc-loop-lbl' }, '↻ ROUND ' + ((st.round || 1) + 1))));
+    }
+    lastFinished = !!e.finished;
+    rows.push(h(TurnRow, {
+      key: e.id, e, rowH, now: !!(nowRow && e.active), next: e.id === nextId,
+      foe: e.unit.player !== viewer, viewer, forecast, inspecting: inspectId === e.id,
+    }));
+  });
+  if (folded > 0) rows.push(h('div', { key: 'fold', className: 'ew-tc-fold' }, '+' + folded));
+  rows.reverse();
+
+  return h('div', {
+    ref,
+    className: 'ew-turn-col' + (geo.docked ? ' docked' : ''),
+    style: { bottom: (geo.bottom == null ? 'calc(14px + 66px * var(--ew-ui-scale, 1))' : geo.bottom + 'px'), width: TC_W },
+  },
+    h('div', { className: 'ew-tc-plate' },
+      h('div', { className: 'ew-tc-head' },
+        h('span', null, 'TURN ORDER'),
+        h('span', { className: 'ew-tc-round' }, 'R' + (st.round || 1)),
       ),
-    ),
 
-    isGaunt && h('div', { className: 'ew-party-reserves' },
-      h('span', { className: 'ew-party-reserves-lbl' }, 'RESERVES'),
-      reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
-      reserves.map(r => {
-        const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
-        const seatOf = r._seatFor ? (st.units || []).find(u => u.id === r._seatFor) : null;
-        return h('div', {
-          key: r.id, className: 'ew-party-reserve' + (r._seatFor ? ' seated' : ''),
-          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP'
-            + (seatOf ? ' · takes ' + (typeof unitDisplayName === 'function' ? unitDisplayName(seatOf) : seatOf.name) + "'s seat" : ''),
-        },
-          r._seatFor && h('span', { className: 'ew-party-reserve-seat' }, '🪑'),
-          h(UnitSprite, { unit: r, size: 20 }),
-          h('div', { className: 'ew-party-reserve-bar' },
-            h('div', { style: { width: hpPct + '%', height: '100%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW, borderRadius: 2 }}),
-          ),
-        );
-      }),
-    ),
+      /* the fallen, collapsed to a skull strip at the very top */
+      dead.length > 0 && h('div', { className: 'ew-tc-fallen' },
+        dead.map(e => h('span', {
+          key: e.id, className: 'ew-tc-ko' + (e.unit.player !== viewer ? ' foe' : ''),
+          title: ((typeof unitDisplayName === 'function' ? unitDisplayName(e.unit) : e.unit.name) || '')
+            + (e.unit._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
+          style: { '--tc-ac': getAllianceColor(e.unit) },
+        }, h(UnitSprite, { unit: e.unit, size: 16 }), h('i', null, '☠'))),
+      ),
 
-    /* ESCAPE (EXPLORATION_BATTLES §6): the escaped sit under their own heading, greyed — never switchable */
-    (st.escaped && st.escaped[viewer] && st.escaped[viewer].length > 0) && h('div', { className: 'ew-party-reserves', style: { opacity: 0.6 } },
-      h('span', { className: 'ew-party-reserves-lbl' }, 'ESCAPED'),
-      st.escaped[viewer].map(r => h('div', {
-        key: 'esc-' + r.id, className: 'ew-party-reserve',
-        title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · escaped — out of the fight, safe',
-      }, h(UnitSprite, { unit: r, size: 20 }))),
-    ),
+      isGaunt && h('div', { className: 'ew-party-reserves' },
+        h('span', { className: 'ew-party-reserves-lbl' }, 'RESERVES'),
+        reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
+        reserves.map(r => {
+          const hpPct = r.maxHp > 0 ? (r.hp / r.maxHp) * 100 : 0;
+          const seatOf = r._seatFor ? (st.units || []).find(u => u.id === r._seatFor) : null;
+          return h('div', {
+            key: r.id, className: 'ew-party-reserve' + (r._seatFor ? ' seated' : ''),
+            title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · ' + Math.round(hpPct) + '% HP'
+              + (seatOf ? ' · takes ' + (typeof unitDisplayName === 'function' ? unitDisplayName(seatOf) : seatOf.name) + "'s seat" : ''),
+          },
+            r._seatFor && h('span', { className: 'ew-party-reserve-seat' }, '🪑'),
+            h(UnitSprite, { unit: r, size: 20 }),
+            h('div', { className: 'ew-party-reserve-bar' },
+              h('div', { style: { width: hpPct + '%', height: '100%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW, borderRadius: 2 }}),
+            ),
+          );
+        }),
+      ),
 
-    party.length > 0 && h('div', { className: 'ew-party-row' },
-      party.map(u => {
-        const e = turn[u.id] || {};
-        return h(PartyPortrait, {
-          key: u.id, unit: u, size: size,
-          active: !!e.active, finished: !!e.finished, next: !!nextId && u.id === nextId,
-          possessed: u.player !== viewer,
-          forecast: forecast,
-        });
-      }),
+      /* ESCAPE (EXPLORATION_BATTLES §6): the escaped, greyed — out of the fight, never switchable */
+      escaped.length > 0 && h('div', { className: 'ew-party-reserves', style: { opacity: 0.6 } },
+        h('span', { className: 'ew-party-reserves-lbl' }, 'ESCAPED'),
+        escaped.map(r => h('div', {
+          key: 'esc-' + r.id, className: 'ew-party-reserve',
+          title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · escaped — out of the fight, safe',
+        }, h(UnitSprite, { unit: r, size: 20 }))),
+      ),
+
+      h('div', { className: 'ew-tc-list', style: { gap: TC_GAP } }, rows),
     ),
   );
 }
@@ -8985,7 +8903,7 @@ function ReactHUD() {
       h(ActionMenu, { st, hidden: menusHidden }),
     ),
     h('div', { style: { pointerEvents: 'auto' }},
-      h(PartyRoster, { st }),
+      h(TurnColumn, { st }),
     ),
     h(GauntletReplaceModal, { st }),
     h(FrameCorners),
@@ -9386,17 +9304,7 @@ function _injectHudHideStyles() {
     .hud-juice-ripple { animation: hudJuiceRipple 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
     .hud-juice-ring { animation: hudJuiceRing 0.32s ease-out forwards; }
 
-    /* ── Unified scoreboard: turn-order flank chips + polish ── */
-    .ew-turn-chip {
-      transition: opacity .3s ease, filter .3s ease, transform .18s cubic-bezier(.22,1,.36,1);
-    }
-    .ew-turn-chip:hover { transform: translateY(-2px); filter: brightness(1.18) !important; }
-    .ew-turn-chip-dead:hover { transform: none; filter: saturate(0.08) brightness(0.8) !important; }
-    .ew-turn-chip-active { animation: ewTurnActive 1.7s ease-in-out infinite; }
-    @keyframes ewTurnActive {
-      0%, 100% { filter: brightness(1.0); }
-      50%      { filter: brightness(1.15); }
-    }
+    /* ── scoreboard polish ── */
     .ew-sudden-death { animation: ewSuddenBlink 1s steps(1, end) infinite; }
     @keyframes ewSuddenBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .ew-zodiac-blessed { animation: ewZodiacGlow 1.8s ease-in-out infinite; display: inline-block; }
@@ -10868,19 +10776,125 @@ function _injectHudHideStyles() {
       box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 1px 0 var(--ew-plate-lip), 0 2px 0 rgba(0,0,0,0.45) !important;
     }
 
-    /* ══════════ THE PARTY DOCK — bottom-right portrait row ══════════
-       (hud.js PartyRoster / PartyPortrait). Sized by --pp per portrait;
-       the whole dock scales with --ew-ui-scale like the Horologe rig and
-       sits above the bottom-centre spell description bar. */
-    .ew-party-dock {
-      position: absolute; right: 12px;
-      bottom: calc(14px + 66px * var(--ew-ui-scale, 1));
-      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    /* ══════════ THE TURN ORDER COLUMN — left, docked on the Horologe (hud.js TurnColumn, 2026-10-13) ══════════
+       One plate the width of .hrlg-side, wearing the same token material (themes + the UI Maker's battle panel role
+       skin it), scaled with --ew-ui-scale from its bottom-left like the rig. TurnColumn sets bottom in px from the
+       measured Horologe plate; the transition slides it when the rig comes and goes. */
+    .ew-turn-col {
+      position: absolute; left: 10px;
       z-index: 12; pointer-events: none;
-      transform: scale(var(--ew-ui-scale, 1)); transform-origin: 100% 100%;
+      transform: scale(var(--ew-ui-scale, 1)); transform-origin: 0 100%;
       font-family: 'IBM Plex Mono', monospace;
+      transition: bottom 0.32s cubic-bezier(0.22,1,0.36,1);
     }
-    .ew-party-row { display: flex; align-items: flex-end; gap: 6px; pointer-events: none; }
+    .ew-tc-plate {
+      position: relative; pointer-events: auto;
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 26px 7px 7px;
+      background: var(--ew-plate-scan), var(--ew-plate-bg);
+      border: 1px solid var(--ew-plate-edge);
+      border-radius: 16px 16px 12px 12px;
+      color: var(--ew-ink);
+      box-shadow:
+        inset 0 0 0 1px var(--ew-plate-seam),
+        inset 0 0 0 2px var(--ew-plate-rim),
+        inset 0 3px 0 var(--ew-plate-lip),
+        var(--ew-drop);
+    }
+    /* docked: a notch points down into the Horologe — its portrait is the NOW slot */
+    .ew-turn-col.docked .ew-tc-plate { border-radius: 16px 16px 8px 8px; }
+    .ew-turn-col.docked .ew-tc-plate::after {
+      content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 7px;
+      transform: translateX(-50%); background: var(--ew-plate-edge);
+      clip-path: polygon(0 0, 100% 0, 50% 100%); pointer-events: none;
+    }
+    .ew-tc-head {
+      position: absolute; top: 0; left: 0; right: 0; height: 19px;
+      display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+      font-size: 9px; letter-spacing: 0.38em; color: var(--ew-head-ink);
+      background: var(--ew-head-bg); border-bottom: 1px solid var(--ew-plate-seam);
+      box-shadow: inset 0 1px 0 var(--ew-plate-lip);
+      border-radius: 15px 15px 0 0; pointer-events: none;
+    }
+    .ew-tc-round { letter-spacing: 0.14em; color: var(--ew-ink-mute); }
+    .ew-tc-list { display: flex; flex-direction: column; }
+    .ew-tc-row {
+      position: relative; flex: none; display: flex; align-items: center; gap: 7px;
+      padding: 0 8px 0 3px; cursor: pointer; min-width: 0;
+      background: var(--ew-row-bg);
+      border: 1px solid var(--ew-row-edge); border-left: 3px solid var(--tc-ac);
+      border-radius: 7px 14px 14px 7px;
+      box-shadow: inset 0 1px 0 var(--ew-row-lip), inset 0 -1px 0 rgba(0,0,0,0.35), 0 2px 0 rgba(0,0,0,0.35);
+      transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease,
+                  opacity 0.3s ease, filter 0.3s ease, transform 0.18s cubic-bezier(0.22,1,0.36,1);
+      animation: ewTcIn 0.32s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes ewTcIn { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: none; } }
+    .ew-tc-row:hover {
+      background: var(--ew-row-sel-bg); border-color: var(--ew-sel); border-left-color: var(--tc-ac);
+      transform: translateX(3px);
+    }
+    .ew-tc-row:active { transform: translateX(1px) scale(0.985); }
+    .ew-tc-row.inspecting {
+      border-color: var(--ew-sel); border-left-color: var(--tc-ac);
+      box-shadow: 0 0 10px var(--ew-sel-soft), inset 0 0 8px var(--ew-sel-faint);
+    }
+    .ew-tc-row.spent { opacity: 0.5; filter: saturate(0.4); }
+    .ew-tc-row.spent:hover { opacity: 0.9; filter: none; }
+    .ew-tc-row.now {
+      border-color: var(--tc-ac);
+      box-shadow: inset 0 0 16px rgba(0,0,0,0.3), 0 0 12px var(--tc-ac);
+    }
+    .ew-tc-row.next { border-color: var(--ew-sel-soft); border-left-color: var(--tc-ac); }
+    .ew-tc-row .ew-pp, .ew-tc-row .ew-pp.active, .ew-tc-row .ew-pp:hover { pointer-events: none; transform: none; }
+    .ew-tc-row .ew-pp.spent { opacity: 1; filter: none; }
+    .ew-tc-row .ew-pp-svg { animation: none; }
+    .ew-tc-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; line-height: 1; }
+    .ew-tc-name {
+      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ew-ink);
+      text-shadow: var(--ew-tshadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ew-tc-row.now .ew-tc-name { font-size: 12px; letter-spacing: 0.1em; }
+    .ew-tc-row.compact .ew-tc-name { font-size: 9px; }
+    .ew-tc-sub { display: flex; align-items: baseline; gap: 7px; font-size: 8px; letter-spacing: 0.06em; color: var(--ew-ink-mute); }
+    .ew-tc-hp { color: #6fe08c; }
+    .ew-tc-row.foe .ew-tc-hp { color: #ff8a92; }
+    .ew-tc-mp { color: #7cc4ff; }
+    .ew-tc-lv { margin-left: auto; color: var(--ew-ink-dim); }
+    .ew-tc-tag {
+      flex: none; font-size: 7px; font-weight: 700; letter-spacing: 0.22em; line-height: 1;
+      padding: 3px 4px 3px 6px; border-radius: 999px;
+      color: var(--ew-sel); border: 1px solid var(--ew-sel-soft); background: var(--ew-sel-faint);
+    }
+    .ew-tc-tag.now {
+      color: #fff; background: var(--tc-ac); border-color: var(--tc-ac);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6); animation: ewTcNow 1.6s ease-in-out infinite;
+    }
+    @keyframes ewTcNow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
+    /* the loop: units that already acted sit above this hairline — they go again next round */
+    .ew-tc-loop {
+      display: flex; align-items: center; gap: 6px; height: 12px; flex: none;
+      font-size: 7px; letter-spacing: 0.24em; color: var(--ew-ink-dim);
+    }
+    .ew-tc-loop::before, .ew-tc-loop::after { content: ''; flex: 1; height: 1px; background: var(--ew-hair); }
+    .ew-tc-fold {
+      height: 18px; flex: none; display: flex; align-items: center; justify-content: center;
+      font-size: 9px; letter-spacing: 0.14em; color: var(--ew-ink-mute);
+      border: 1px dashed var(--ew-row-edge); border-radius: 7px;
+    }
+    .ew-tc-fallen { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 2px; }
+    .ew-tc-ko {
+      position: relative; width: 20px; height: 20px; flex: none; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; border: 1px solid var(--tc-ac);
+      opacity: 0.6; filter: saturate(0.1) brightness(0.85);
+    }
+    .ew-tc-ko i {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-style: normal; font-size: 12px; color: #e8e4d8; background: rgba(0,0,0,0.45); text-shadow: 0 0 3px #000;
+    }
+    /* the ⓘ stat card docks beside the column (styles-base.css put it top-left, where the column lives now) */
+    .unit-hover-hud { left: calc(22px + 216px * var(--ew-ui-scale, 1)) !important; }
     .ew-pp {
       position: relative; width: var(--pp); flex: none;
       display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -10947,18 +10961,8 @@ function _injectHudHideStyles() {
       animation: ewPpHalo 4s linear infinite reverse;
     }
     .ew-pp-chain { font-size: 13px; fill: #c9a5ff; paint-order: stroke; stroke: #000; stroke-width: 2px; pointer-events: none; }
-    .ew-pp-tag {
-      display: flex; align-items: baseline; justify-content: center; gap: 4px;
-      max-width: calc(var(--pp) + 12px); line-height: 1; margin-top: 2px;
-    }
-    .ew-pp-roman { flex: none; font-family: 'Cormorant SC', serif; font-style: italic; font-size: 10px; color: var(--pp-fc, #4fd8ff); text-shadow: 0 1px 2px #000; }
-    .ew-pp-name {
-      min-width: 0; font-size: 8px; letter-spacing: 0.1em; color: #a8a295; text-transform: uppercase;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px #000;
-    }
-    .ew-pp.active .ew-pp-name { color: #fff; }
-    .ew-pp.dead .ew-pp-name { text-decoration: line-through; }
-    /* Gauntlet reserves — a small pill strip riding above the row */
+    .ew-pp.foe .ew-pp-arc.hp.fill { filter: drop-shadow(0 0 3px rgba(255,80,92,0.75)); }
+    /* Gauntlet reserves / the escaped — pill strips at the top of the TURN ORDER plate */
     .ew-party-reserves {
       display: flex; align-items: center; gap: 5px; pointer-events: auto;
       background: rgba(8,7,12,0.88); border: 1px solid #3a3548; border-radius: 999px;
@@ -10974,6 +10978,48 @@ function _injectHudHideStyles() {
     .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
     .ew-party-reserve.seated { opacity: 0.72; }
     .ew-party-reserve-seat { position: absolute; top: -5px; right: -4px; font-size: 9px; line-height: 1; }
+    /* ══════════ THE SCORE SIDES (hud.js ScoreSide, 2026-10-13) ══════════
+       name row · tower bar · entropy gauge, one width per team; both meters fill from the centre plate outward */
+    .ew-score-side { display: flex; flex-direction: column; gap: 5px; flex: none; }
+    .ew-score-side.left { align-items: flex-end; }
+    .ew-score-side.right { align-items: flex-start; }
+    .ew-ss-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 8px; line-height: 1; }
+    .ew-ss-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .ew-ss-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+    .ew-ss-text {
+      font-size: 12px; letter-spacing: 0.12em; font-weight: 600; color: var(--ew-ink); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6);
+    }
+    .ew-ss-fill { flex: 1; }
+    .ew-ss-sub, .ew-ss-keys {
+      font-size: 9px; letter-spacing: 0.08em; color: var(--ew-ink-mute); white-space: nowrap;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+    }
+    .ew-ss-keys.alert { color: #ffd76a; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(255,215,106,0.7); }
+    .ew-tower { width: 100%; display: flex; flex-direction: column; }
+    .ew-meter-lbl { display: flex; align-items: center; justify-content: flex-end; gap: 5px; line-height: 1; margin-bottom: 3px; padding: 0 8px; }
+    .ew-meter-glyph { font-size: 11px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.9)); }
+    .ew-meter-cap {
+      font-size: 7px; font-weight: 700; letter-spacing: 0.34em; color: rgba(214,232,218,0.85);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    }
+    .ew-meter-num { font-size: 9px; font-weight: 600; letter-spacing: 0.06em; color: var(--ew-ink); text-shadow: 0 1px 3px rgba(0,0,0,0.95); }
+    .ew-meter-num.low { color: #ff7a84; }
+    .ew-tower-vessel {
+      position: relative; width: 100%; height: 11px; overflow: hidden;
+      background: linear-gradient(180deg, rgba(6,12,9,0.82), rgba(18,28,22,0.74) 55%, rgba(4,8,6,0.85));
+      border-top: 1px solid rgba(214,232,218,0.5); border-bottom: 1px solid rgba(214,232,218,0.5);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.7);
+    }
+    .ew-tower-lag { position: absolute; top: 0; bottom: 0; background: rgba(255,236,236,0.85); transition: width 0.7s cubic-bezier(0.4,0,0.2,1) 0.35s; }
+    .ew-tower-fill { position: absolute; top: 0; bottom: 0; transition: width 0.3s ease-out; }
+    .ew-tower-tick { position: absolute; top: 1px; bottom: 1px; width: 1px; background: rgba(0,0,0,0.55); }
+    .ew-tower-socket { position: absolute; top: 0; bottom: 0; width: 2px; }
+    .ew-tower.low .ew-tower-vessel { animation: ewTowerLow 1.1s ease-in-out infinite; }
+    @keyframes ewTowerLow {
+      0%, 100% { border-color: rgba(214,232,218,0.5); }
+      50% { border-color: rgba(255,90,100,0.95); box-shadow: inset 0 1px 3px rgba(0,0,0,0.7), 0 0 8px rgba(255,70,80,0.6); }
+    }
     /* THE TUTORIAL (ui.js): the coach's pointer on a blade (b.tut) and the LATER rows */
     .hrlg-blade.tut .hrlg-body { outline: 2px solid #ffcd6b; outline-offset: 1px; box-shadow: 0 0 14px rgba(255,205,107,0.55); animation: hrlgTutGlow 1.1s ease-in-out infinite; }
     @keyframes hrlgTutGlow { 0%, 100% { outline-color: #ffcd6b; } 50% { outline-color: rgba(255,205,107,0.25); } }
@@ -11532,10 +11578,10 @@ function roleSkin(t, role) {
    def: 'theme' = follows the Settings theme by default; 'original' = keeps its own look until assigned.
    Role lists are plain comma lists (no commas inside :not()), so the generator can prefix them. */
 const UIM_SURFACES = [
-  { id: 'battle', label: 'Battle HUD', hint: 'The command rig, scoreboard, match pill.', native: true, def: 'theme',
+  { id: 'battle', label: 'Battle HUD', hint: 'The command rig, turn order, scoreboard, match pill.', native: true, def: 'theme',
     scope: '#reactHudRoot',
     roles: {
-      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
+      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate, .ew-tc-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
       buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
@@ -11723,7 +11769,7 @@ const UIM_PIECES = [
   { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard' },
   { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta' },
-  { id: 'party', group: 'Battle', label: 'Party dock', sel: '.ew-party-dock' },
+  { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col' },
   { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar' },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap' },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner' },

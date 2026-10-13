@@ -5742,7 +5742,7 @@
             const _touchOnHud = (e) => {
                 const t = e.target;
                 return !!(t && t.closest && t !== boardStageEl && t.tagName !== 'CANVAS'
-                    && t.closest('.hrlg-rig, .hrlg-panel, .hrlg-hub, .hrlg-crown, button, a, input, select, textarea, [role="button"], .ew-unitpanel, .ew-combatlog, .ew-scoreboard, .ew-matchmeta, .ew-party-dock, #ew-spell-descbar, #battleMinimap'));
+                    && t.closest('.hrlg-rig, .hrlg-panel, .hrlg-hub, .hrlg-crown, button, a, input, select, textarea, [role="button"], .ew-unitpanel, .ew-combatlog, .ew-scoreboard, .ew-matchmeta, .ew-turn-col, #ew-spell-descbar, #battleMinimap'));
             };
             _boardWheelParent.addEventListener('touchstart', (e) => {
                 if (state.phase !== 'battle' && state.phase !== 'editor') return;

@@ -54645,6 +54645,10 @@
 
         function previewUnitInfoRange(unit) {
             if (!unit) { clearUnitInfoRangePreview(); return; }
+            /* The card opens on ANY unit from the TURN ORDER column (hud.js TurnColumn), fogged ones included; their
+               reach painted on the board would hand over their position, so a unit the viewer can't see gets the
+               card without the overlay (RULE #2 fog). */
+            if (!_shouldCameraFollowUnit(unit)) { clearUnitInfoRangePreview(); return; }
             const fp = unit.id + '|' + unit.x + ',' + unit.y + '|' + getEffectiveRange(unit);
             if (_infoRangePreviewFP === fp) return;
             clearUnitInfoRangePreview();
