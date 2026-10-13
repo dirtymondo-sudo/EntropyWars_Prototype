@@ -9446,20 +9446,34 @@ const ThreeRenderer = (function () {
         }
     }
 
+    var _nexusTopsKey = null, _nexusTopsVal = 0;
+    function _nexusTopsHash(zh) {
+        var vk = zh + ':' + (state._terrainVersion || 0) + ':' + (state._heightVersion || 0) + ':' + (state._voxelVersion || 0) + ':' + (CONFIG.tileSize || BASE_TILE);
+        if (vk === _nexusTopsKey) return _nexusTopsVal;
+        var h = 31, zs = [];
+        if (state.nexusPoints) for (var k in state.nexusPoints) { var n = state.nexusPoints[k]; if (n && (n.zoneSize || (n.tiles && n.tiles.length))) zs.push(n); }
+        if (state.roamingNexus) zs.push(state.roamingNexus);
+        var W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        var top = function (x, y) { return (x < 0 || y < 0 || x >= W || y >= H) ? 0 : Math.round(tileTopY(x, y) * 4); };
+        for (var i = 0; i < zs.length; i++) {
+            var tl = _nexusZoneTiles(zs[i]);
+            for (var j = 0; j < tl.length; j++) {
+                var x = tl[j].x, y = tl[j].y;
+                h = _hashInt(h, top(x, y)); h = _hashInt(h, top(x - 1, y)); h = _hashInt(h, top(x + 1, y)); h = _hashInt(h, top(x, y - 1)); h = _hashInt(h, top(x, y + 1));
+            }
+        }
+        _nexusTopsKey = vk; _nexusTopsVal = h;
+        return h;
+    }
     function _computeNexusSerial() {
         var h = 29;
-        /* The outline hugs the terrain cubes (2026-09-12) — any reshape /
-           dig / flood under a zone must rebuild it. */
-        h = _hashInt(h, state._terrainVersion || 0);
-        h = _hashInt(h, state._heightVersion || 0);
-        h = _hashInt(h, state._voxelVersion || 0);
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
                 if (n) {
                     h = _hashStr(h, key);
                     h = _hashInt(h, n.zoneX); h = _hashInt(h, n.zoneY); h = _hashInt(h, n.zoneSize || 2);
-                    h = _hashInt(h, n.owner || 0); h = _hashVal(h, n.progress || 0);
+                    h = _hashInt(h, n.owner || 0);
                     h = _hashInt(h, n.isSpawn ? 1 : 0);
                     if (n.tiles) for (var ti = 0; ti < n.tiles.length; ti++) { h = _hashInt(h, n.tiles[ti].x); h = _hashInt(h, n.tiles[ti].y); }
                 }
@@ -9469,9 +9483,15 @@ const ThreeRenderer = (function () {
             var rn = state.roamingNexus;
             h = _hashInt(h, 6);
             h = _hashInt(h, rn.zoneX); h = _hashInt(h, rn.zoneY); h = _hashInt(h, rn.zoneSize || 2);
-            h = _hashInt(h, rn.owner || 0); h = _hashVal(h, rn.progress || 0);
+            h = _hashInt(h, rn.owner || 0);
         }
-        return h;
+        /* The outline hugs the terrain cubes (2026-09-12): a reshape / dig / flood UNDER a zone must rebuild it. THE
+           TERRAIN SPELL HITCH (2026-10-13, mondo: "frame drops and freezing when a spell like rampart or meteor changes
+           terrain" on WebGPU): the global terrain versions used to sit in this hash, so EVERY Rampart / Meteor anywhere on
+           the board tore down and re-made every zone piece (~100 meshes, materials and canvases a cast). Now only the
+           tops of the zone tiles and the tiles beside them count (the rim, skirts and seams read nothing else); the
+           versions only say when to re-read them. The capture `progress` left the hash too: the outline never drew it. */
+        return _hashInt(h, _nexusTopsHash(h));
     }
 
     var _nexusWallMats = [];
@@ -9734,6 +9754,59 @@ const ThreeRenderer = (function () {
     }
 
     var _nexusLineMats = [];   /* the bright rim — pulses gently, never fades out */
+    /* THE TERRAIN SPELL HITCH (2026-10-13): the zone pieces used to be made new on every rebuild — a material and a
+       geometry per piece and a fresh gradient canvas per zone. On WebGPU each new material is a new render object +
+       bind groups, each freed geometry re-records the bundles holding it, and each new canvas is a
+       copyExternalImageToTexture + mip chain (Firefox reads the canvas back to do it). Now one material per
+       (piece, colour), one plane per size and one gradient canvas per colour live for the session (_ew_shared, so
+       _clearGroup keeps them); the pulse lists hold each shared material once. */
+    var _nxMats = {}, _nxGeos = {}, _nxGrads = {};
+    function _nxMat(kind, color, list, opts) {
+        var k = kind + '|' + color, m = _nxMats[k];
+        if (!m) { m = new THREE.MeshBasicMaterial(opts); m._ew_shared = true; _nxMats[k] = m; }
+        if (list.indexOf(m) < 0) list.push(m);
+        return m;
+    }
+    function _nxGeo(w, h) {
+        var k = w.toFixed(2) + 'x' + h.toFixed(2), g = _nxGeos[k];
+        if (!g) { g = new THREE.PlaneGeometry(w, h); g._ew_shared = true; _nxGeos[k] = g; }
+        return g;
+    }
+    /* the pieces themselves are pooled by (plane, material): a rebuild re-seats the same Mesh, so the node renderer keeps
+       its render object (uniform buffer + bind groups) instead of making ~200 of each and dropping the old ones */
+    var _nxPool = {};
+    function _nxPark() {
+        var ch = _nexusWallGroup.children.slice();
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i]; _nexusWallGroup.remove(c);
+            if (c._ew_nxKey) (_nxPool[c._ew_nxKey] || (_nxPool[c._ew_nxKey] = [])).push(c); else _disposeR(c);
+        }
+    }
+    function _nxPiece(geo, mat) {
+        var k = geo.id + '|' + mat.id, p = _nxPool[k], m = (p && p.length) ? p.pop() : null;
+        if (!m) { m = new THREE.Mesh(geo, mat); m._ew_nxKey = k; }
+        m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1); m.visible = true;
+        return m;
+    }
+    /* a 4×64 vertical gradient of `color`, alpha by stops [[at, alpha], …] — one per colour + stops, never redrawn */
+    function _nxGradTex(color, kind, stops) {
+        var k = kind + '|' + color, t = _nxGrads[k];
+        if (t) return t;
+        var r = (color >> 16) & 0xff, g_c = (color >> 8) & 0xff, b = color & 0xff;
+        var canvas = document.createElement('canvas');
+        canvas.width = 4; canvas.height = 64;
+        var ctx = canvas.getContext('2d');
+        var grad = ctx.createLinearGradient(0, 0, 0, 64);
+        for (var i = 0; i < stops.length; i++) grad.addColorStop(stops[i][0], 'rgba(' + r + ',' + g_c + ',' + b + ',' + stops[i][1] + ')');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 4, 64);
+        t = new THREE.CanvasTexture(canvas);
+        t.magFilter = THREE.LinearFilter;
+        t.minFilter = THREE.LinearFilter;
+        t.generateMipmaps = false;   // linear min filter: a mip chain is never sampled, so never built
+        _nxGrads[k] = t;
+        return t;
+    }
 
     /* ══ THE ZONE PERIMETER (NEXUS REWORK 2026-09-12) ══════════════════════
        "It's really hard to even see the nexus / spawn zones any more." Every
@@ -9750,10 +9823,7 @@ const ThreeRenderer = (function () {
     function rebuildNexusWalls() {
         if (!_nexusWallGroup) return;
 
-        for (var ci = 0; ci < _nexusWallMats.length; ci++) {
-            if (_nexusWallMats[ci].map && _nexusWallMats[ci]._ew_ownMap) _nexusWallMats[ci].map.dispose();
-        }
-        _clearGroup(_nexusWallGroup);
+        _nxPark();   // the pieces' materials, geometries and curtain canvases are shared (_nxMat), the meshes pooled
         _nexusWallMats.length = 0;
         _nexusLineMats.length = 0;
 
@@ -9789,13 +9859,12 @@ const ThreeRenderer = (function () {
             for (ti = 0; ti < tiles.length; ti++) {
                 var ft = tiles[ti];
                 if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
-                var washMat = new THREE.MeshBasicMaterial({
+                var washMat = _nxMat('wash', color, _nexusLineMats, {
                     color: color, transparent: true, opacity: 0.16,
                     depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
                 });
-                _nexusLineMats.push(washMat);
-                var wash = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.96, ts * 0.96), washMat);
+                var wash = _nxPiece(_nxGeo(ts * 0.96, ts * 0.96), washMat);
                 wash.rotation.x = -Math.PI / 2;
                 wash.position.set(ft.x * ts + ts / 2, tileTopY(ft.x, ft.y) + ts * 0.012, ft.y * ts + ts / 2);
                 _nexusWallGroup.add(wash);
@@ -9811,19 +9880,7 @@ const ThreeRenderer = (function () {
                 if (!tileSet[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'e' });
             }
 
-            var r = (color >> 16) & 0xff, g_c = (color >> 8) & 0xff, b = color & 0xff;
-            var canvas = document.createElement('canvas');
-            canvas.width = 4; canvas.height = 64;
-            var ctx = canvas.getContext('2d');
-            var grad = ctx.createLinearGradient(0, 0, 0, 64);
-            grad.addColorStop(0, 'rgba(' + r + ',' + g_c + ',' + b + ',0)');
-            grad.addColorStop(0.35, 'rgba(' + r + ',' + g_c + ',' + b + ',0.2)');
-            grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.6)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 4, 64);
-            var curtainTex = new THREE.CanvasTexture(canvas);
-            curtainTex.magFilter = THREE.LinearFilter;
-            curtainTex.minFilter = THREE.LinearFilter;
+            var curtainTex = _nxGradTex(color, 'curtain', [[0, 0], [0.35, 0.2], [1, 0.6]]);
 
             for (var ei = 0; ei < edges.length; ei++) {
                 var e = edges[ei];
@@ -9835,37 +9892,33 @@ const ThreeRenderer = (function () {
                 var posZ = (e.dir === 'n') ? bz : (e.dir === 's') ? bz + ts : bz + ts / 2;
 
                 /* rim line — extended one thickness so corners join cleanly */
-                var lineMat = new THREE.MeshBasicMaterial({
+                var lineMat = _nxMat('line', color, _nexusLineMats, {
                     color: color, transparent: true, opacity: 0.95,
                     depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true
                 });
-                _nexusLineMats.push(lineMat);
-                var line = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? ts + lineT : lineT, horiz ? lineT : ts + lineT), lineMat);
+                var line = _nxPiece(_nxGeo(horiz ? ts + lineT : lineT, horiz ? lineT : ts + lineT), lineMat);
                 line.rotation.x = -Math.PI / 2;
                 line.position.set(posX, yIn + lineLift, posZ);
                 _nexusWallGroup.add(line);
 
                 /* soft halo hugging the line */
-                var haloMat = new THREE.MeshBasicMaterial({
+                var haloMat = _nxMat('halo', color, _nexusLineMats, {
                     color: color, transparent: true, opacity: 0.22,
                     depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending
                 });
-                _nexusLineMats.push(haloMat);
-                var halo = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? ts * 1.05 : lineT * 4.5, horiz ? lineT * 4.5 : ts * 1.05), haloMat);
+                var halo = _nxPiece(_nxGeo(horiz ? ts * 1.05 : lineT * 4.5, horiz ? lineT * 4.5 : ts * 1.05), haloMat);
                 halo.rotation.x = -Math.PI / 2;
                 halo.position.set(posX, yIn + lineLift - 0.08, posZ);
                 _nexusWallGroup.add(halo);
 
                 /* curtain — the short glowing wall standing on the edge */
-                var curMat = new THREE.MeshBasicMaterial({
+                var curMat = _nxMat('curtain', color, _nexusWallMats, {
                     map: curtainTex, transparent: true, depthWrite: false,
                     side: THREE.DoubleSide, forceSinglePass: true, blending: THREE.AdditiveBlending,
                     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
                 });
                 curMat._ew_nexusBaseColor = color;
-                curMat._ew_ownMap = (ei === 0);   /* one shared canvas per zone, disposed once */
-                _nexusWallMats.push(curMat);
-                var cur = new THREE.Mesh(new THREE.PlaneGeometry(ts, curtainH), curMat);
+                var cur = _nxPiece(_nxGeo(ts, curtainH), curMat);
                 cur.position.set(posX, yIn + curtainH / 2, posZ);
                 cur.rotation.y = (e.dir === 'n') ? 0 : (e.dir === 's') ? Math.PI : (e.dir === 'w') ? Math.PI / 2 : -Math.PI / 2;
                 _nexusWallGroup.add(cur);
@@ -9879,13 +9932,12 @@ const ThreeRenderer = (function () {
                     if (Math.abs(yIn - yOut) > 1.5) {
                         var skTop = Math.max(yIn, yOut) + lineLift * 0.5;
                         var skBot = Math.min(yIn, yOut) + 0.1;
-                        var skirtMat = new THREE.MeshBasicMaterial({
+                        var skirtMat = _nxMat('skirt', color, _nexusLineMats, {
                             color: color, transparent: true, opacity: 0.6,
                             map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                             polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
                         });
-                        _nexusLineMats.push(skirtMat);
-                        var skirt = new THREE.Mesh(new THREE.PlaneGeometry(ts, skTop - skBot), skirtMat);
+                        var skirt = _nxPiece(_nxGeo(ts, skTop - skBot), skirtMat);
                         if (!horiz) skirt.rotation.y = Math.PI / 2;
                         if (yIn < yOut) skirt.scale.y = -1;
                         skirt.position.set(posX, (skTop + skBot) / 2, posZ);
@@ -9907,13 +9959,12 @@ const ThreeRenderer = (function () {
                     var ya = tileTopY(a.x, a.y), yb = tileTopY(nb.x, nb.y);
                     if (Math.abs(ya - yb) <= 1.5) continue;
                     var sTop = Math.max(ya, yb) + 0.2, sBot = Math.min(ya, yb) + 0.1;
-                    var seamMat = new THREE.MeshBasicMaterial({
+                    var seamMat = _nxMat('seam', color, _nexusLineMats, {
                         color: color, transparent: true, opacity: 0.35,
                         map: _getZoneSkirtTex(), depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
                         polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
                     });
-                    _nexusLineMats.push(seamMat);
-                    var seam = new THREE.Mesh(new THREE.PlaneGeometry(ts, sTop - sBot), seamMat);
+                    var seam = _nxPiece(_nxGeo(ts, sTop - sBot), seamMat);
                     if (!nb.horiz) seam.rotation.y = Math.PI / 2;
                     seam.position.set(nb.horiz ? a.x * ts + ts / 2 : a.x * ts + ts,
                                       (sTop + sBot) / 2,
@@ -10048,10 +10099,7 @@ const ThreeRenderer = (function () {
         var ser = _computeSanctuaryWallSerial();
         if (ser === _lastSanctuaryWallSerial) return;
 
-        for (var ci = 0; ci < _sanctuaryWallMats.length; ci++) {
-            if (_sanctuaryWallMats[ci].map) _sanctuaryWallMats[ci].map.dispose();
-        }
-        _clearGroup(_sanctuaryWallGroup);
+        _clearGroup(_sanctuaryWallGroup);   // the gradient canvas is one per colour (_nxGradTex), kept
         _sanctuaryWallMats.length = 0;
 
         /* THE FIELD (Phase 9 Delivery 7): the seats are zones for the respawn only — no curtain round them */
@@ -10100,23 +10148,7 @@ const ThreeRenderer = (function () {
                    nexus). Peak alpha kept low: additive + DoubleSide stacks the
                    near and far perimeter walls along the view ray, and higher
                    alphas summed to blown-out white over bright terrain. */
-                var canvas = document.createElement('canvas');
-                canvas.width = 4; canvas.height = 64;
-                var ctx = canvas.getContext('2d');
-                var r = (color >> 16) & 0xff;
-                var g_c = (color >> 8) & 0xff;
-                var b = color & 0xff;
-                var grad = ctx.createLinearGradient(0, 0, 0, 64);
-                grad.addColorStop(0, 'rgba(' + r + ',' + g_c + ',' + b + ',0)');
-                grad.addColorStop(0.3, 'rgba(' + r + ',' + g_c + ',' + b + ',0.16)');
-                grad.addColorStop(0.7, 'rgba(' + r + ',' + g_c + ',' + b + ',0.34)');
-                grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.5)');
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, 4, 64);
-
-                var tex = new THREE.CanvasTexture(canvas);
-                tex.magFilter = THREE.LinearFilter;
-                tex.minFilter = THREE.LinearFilter;
+                var tex = _nxGradTex(color, 'sanctuary', [[0, 0], [0.3, 0.16], [0.7, 0.34], [1, 0.5]]);
 
                 var mat = new THREE.MeshBasicMaterial({
                     map: tex,
@@ -34615,6 +34647,9 @@ const ThreeRenderer = (function () {
         g.fillStyle = gr;
         g.fillRect(0, 0, 8, 64);
         _zoneSkirtTex = new THREE.CanvasTexture(c);
+        /* THE TERRAIN SPELL HITCH (2026-10-13): a smooth 8×64 ramp needs no mip chain — on WebGPU building one is a
+           render pass (and on first use a pipeline) in the frame a zone first steps */
+        _zoneSkirtTex.minFilter = THREE.LinearFilter; _zoneSkirtTex.generateMipmaps = false;
         return _zoneSkirtTex;
     }
 
@@ -63666,6 +63701,33 @@ const ThreeRenderer = (function () {
         if (grp) { terrainGroup.add(grp); _deltaPatchGroup = grp; }
         return n;
     }
+    /* bake strata face meshes (one material) into one indexed geometry: position / normal / uv through each face's matrix */
+    function _fieldStrataMergeFaces(list) {
+        var nV = 0, nI = 0, i;
+        for (i = 0; i < list.length; i++) { var g0 = list[i].geometry; nV += g0.attributes.position.count; nI += g0.index ? g0.index.count : g0.attributes.position.count; }
+        if (!nV) return null;
+        var P = new Float32Array(nV * 3), N = new Float32Array(nV * 3), U = new Float32Array(nV * 2), I = (nV > 65535) ? new Uint32Array(nI) : new Uint16Array(nI);
+        var v = new THREE.Vector3(), nm = new THREE.Matrix3(), vo = 0, io = 0;
+        for (i = 0; i < list.length; i++) {
+            var m = list[i], g = m.geometry, p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
+            m.updateMatrix(); nm.getNormalMatrix(m.matrix);
+            for (var k = 0; k < p.count; k++) {
+                v.set(p.getX(k), p.getY(k), p.getZ(k)).applyMatrix4(m.matrix); P[(vo + k) * 3] = v.x; P[(vo + k) * 3 + 1] = v.y; P[(vo + k) * 3 + 2] = v.z;
+                if (n) { v.set(n.getX(k), n.getY(k), n.getZ(k)).applyMatrix3(nm).normalize(); N[(vo + k) * 3] = v.x; N[(vo + k) * 3 + 1] = v.y; N[(vo + k) * 3 + 2] = v.z; }
+                if (uv) { U[(vo + k) * 2] = uv.getX(k); U[(vo + k) * 2 + 1] = uv.getY(k); }
+            }
+            if (g.index) { for (var j = 0; j < g.index.count; j++) I[io++] = g.index.getX(j) + vo; }
+            else { for (var j2 = 0; j2 < p.count; j2++) I[io++] = j2 + vo; }
+            vo += p.count;
+        }
+        var out = new THREE.BufferGeometry();
+        out.setAttribute('position', new THREE.BufferAttribute(P, 3));
+        out.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+        out.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+        out.setIndex(new THREE.BufferAttribute(I, 1));
+        out.computeBoundingSphere(); out.computeBoundingBox();
+        return out;
+    }
     function _fieldStrataBuild(ts) {
         var G = _fieldGround(); if (!G || !G.levels || !terrainGroup || typeof THREE === 'undefined') return 0;
         var elev = G.elev;
@@ -63728,6 +63790,7 @@ const ThreeRenderer = (function () {
             var m = new THREE.Mesh(quadGeo, matOf(c.delta > 0 ? floorKey : bed.floor));
             m.position.set(c.x * ts + ts / 2, c.top + 0.4, c.y * ts + ts / 2); m.receiveShadow = true; m._ew_fieldStrata = true; grp.add(m);
         });
+        var mergeFaces = !(typeof window !== 'undefined' && window.EW_NO_STRATA_MERGE), faceBins = {};
         plan.faces.forEach(function (f) {
             var h = f.y1 - f.y0; if (!(h > 0.5)) return;
             var geo = new THREE.PlaneGeometry(ts, h);
@@ -63748,7 +63811,21 @@ const ThreeRenderer = (function () {
             else if (f.side === 'w') { m.position.set(cx - ts / 2, cy, cz); m.rotation.y = -Math.PI / 2; }
             else if (f.side === 's') { m.position.set(cx, cy, cz + ts / 2); }
             else { m.position.set(cx, cy, cz - ts / 2); m.rotation.y = Math.PI; }
-            m.castShadow = f.out; m.receiveShadow = true; m._ew_fieldStrata = true; grp.add(m);
+            m.castShadow = f.out; m.receiveShadow = true; m._ew_fieldStrata = true;
+            if (mergeFaces) { var fk = m.material.id + '|' + (f.out ? 1 : 0); (faceBins[fk] || (faceBins[fk] = [])).push(m); }
+            else grp.add(m);
+        });
+        /* THE TERRAIN SPELL HITCH (2026-10-13): every face was its own mesh (a raised wall of a few cells = dozens), all made
+           anew on each height change — on WebGPU each one a render object, its buffers and bind groups. The faces now bake
+           into one mesh per (side sheet, casts shadow); the look is the same (world-space UVs, the same transforms).
+           Off: window.EW_NO_STRATA_MERGE. */
+        Object.keys(faceBins).forEach(function (fk) {
+            var list = faceBins[fk], mg = _fieldStrataMergeFaces(list);
+            list.forEach(function (fm) { fm.geometry.dispose(); });
+            if (!mg) return;
+            var mm = new THREE.Mesh(mg, list[0].material);
+            mm.castShadow = list[0].castShadow; mm.receiveShadow = true; mm._ew_fieldStrata = true; mm.name = 'field_strata_faces';
+            grp.add(mm);
         });
         terrainGroup.add(grp);
         _shadowsDirty = true;
