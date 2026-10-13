@@ -810,3 +810,12 @@ One shared light rig + one shared fog (scene swaps no longer rebuild every shade
 meshes, bundle re-records only for the groups holding a freed resource, spell sheets uploaded one per frame ahead of
 use. Switches: `EW_NO_LIGHT_RIG` / `?ew_lightrig=0`, `EW_NO_FOG_SHARE`, `EW_NO_INST_SHARE` / `?ew_instshare=0`, `EW_NO_SHEET_WARM`.
 The sandbox runs real WebGPU (SwiftShader) when the page is served from localhost; compare counts, not ms.
+
+## THE TERRAIN SPELL HITCH (2026-10-13, mondo: "for webgpu, there is still some performance and frame rate and freezing issues when a spell like rampart or meteor changes terrain")
+Full log: WEBGPU_PLAN.md §10 "THE TERRAIN SPELL HITCH". Any terrain change rebuilt the whole zone outline (~100 new
+meshes + materials + gradient canvases) and a field's strata faces one mesh each. Now the outline serial reads only the
+zone tiles' tops, its materials / planes / canvases are shared and its meshes pooled (`_nxMat`, `_nxGeo`, `_nxGradTex`,
+`_nxPiece`), and strata faces bake into one mesh per sheet (`_fieldStrataMergeFaces`, off `EW_NO_STRATA_MERGE`).
+Rule: anything rebuilt on a terrain / height version must reuse shared materials, planes and canvases (`_ew_shared`) —
+on WebGPU a new material or canvas per piece is a render object, bind groups and an upload each.
+

@@ -852,3 +852,24 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   Sandbox after: battle 1 start 103 builds (the fight's own materials), back to the room 11, battle 2 start 6, back 2;
   battle bundles 2.3 re-records/s, check 2.0 ms/frame; render CPU per battle frame about 190 ms to 120 ms on SwiftShader;
   no GPU errors over two full fights. Default stays WebGL (`?ew_gpu=webgpu` opts in).
+- 2026-10-13: **THE TERRAIN SPELL HITCH** (thread "WebGPU terrain change"; token 20261013-terrainhitch-01-cors;
+  three-renderer.js). mondo: on WebGPU, Rampart / Meteor changing the ground still drops frames and freezes. Measured on
+  real WebGPU in the sandbox (SwiftShader; jsdelivr is blocked there, so the probe served three + the add-ons from
+  `npm pack` copies; a GPUDevice wrapper counted pipelines, buffers, bind groups, bundle encoders, textures per change).
+  Cause: every terrain version bump rebuilt the WHOLE zone outline (rebuildNexusWalls: `_computeNexusSerial` hashed the
+  global terrain / height / voxel versions) — ~100 meshes, each with its own new material and PlaneGeometry, plus a new
+  4×64 gradient canvas per zone (copyExternalImageToTexture + mips; on Firefox a canvas read-back). On a field arena the
+  raised cells' strata faces were one mesh each too. Per change before: 520-650 GPU buffers, 220-600 bind groups, 60-200
+  bundle re-records, 2-16 texture uploads; the change frame ran about twice a normal frame.
+  - **THE ZONE OUTLINE**: `_nexusTopsHash` — the serial now holds the tops of the zone tiles and the tiles beside them
+    (re-read only when a version moves), not the versions; capture `progress` left the hash (the outline never drew it).
+    `_nxMat` one material per (piece, colour), `_nxGeo` one plane per size, `_nxGradTex` one gradient canvas per colour
+    (no mips; the sanctuary walls use it too), `_nxPiece` / `_nxPark` pool the meshes by (plane, material) so a rebuild
+    re-seats the same Mesh and the node renderer keeps its render object. `_getZoneSkirtTex` lost its mip chain.
+  - **THE STRATA FACES** (`_fieldStrataMergeFaces`): a field's raised / dug cell faces bake into one mesh per (side
+    sheet, casts shadow). Off: `window.EW_NO_STRATA_MERGE`.
+  Sandbox after, Fairy Forest arena (12×12 field), 3rd change of each: raise 650 → 79 buffers, 268 → 53 bind groups,
+  60 → 43 bundle re-records, 2 → 0 textures; Meteor-style dig 606 → 85 / 259 → 39 / 96 → 44 / 6 → 0; Rampart stones
+  394 → 101 / 154 → 100. The change frame is now about a normal frame. WebGL path checked (dig on the same arena, no
+  errors). Left: the field pick quads (hidden, JS only) and the highlights still rebuild per change; first cast of a
+  session still builds the menhir GLB's pipelines.
