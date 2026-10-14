@@ -1424,3 +1424,7 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   HIGHER of ATK and M.ATK (battle.js `getCubeAttackDamage`, which feeds doAttack, the forecast, the HUD and the AI read).
   Spells still can't touch the Cube; no heals, no statuses (no PvE). At L100: avg hit 121 → 177; casters went 38 → ~230.
 - Paired with Cube HP 2400 → 3600 (map.js `TOWER_MAX_HP`) so time-to-kill stays ~20 average hits; bruisers 10 → ~15.
+- Same day, THE CUBE ARMOUR (mondo: "it's still really easy to have some buffs or passives that raise your attack
+  stat"): Cube DEF 15 → 100 and new M.DEF 100 (map.js TOWER_DEF / TOWER_MDEF, `mdef` on every tower object). An ATK
+  swing loses DEF, an M.ATK swing loses M.DEF. The basic-attack floor applies (35% of the swing, min BASIC_FLOOR_MIN)
+  so weak hitters chip 25 instead of 1. At L100: avg hit 177 → ~96, ~38 average hits to kill 3600 HP.
