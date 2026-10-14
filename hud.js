@@ -2970,6 +2970,17 @@ function _hrlgElemBox(u) {
       h('span', { key: c.el, className: 'ew-elem-cell ew-elem-rx ' + (c.tier || 'unknown'), style: { color: c.color }, title: c.tip }, c.sym))));
 }
 
+/* THE MENU CAMERA: how long a MOUSE must rest on a target row before the camera
+   frames it (keyboard / wheel / D-pad steps frame at once; see HorologeMenu). The
+   last pointer type tells a real mouse hover from the emulated one a tap sends. */
+const MENU_CAM_HOVER_MS = 320;
+if (typeof window !== 'undefined' && !window._ewPointerTypeHooked) {
+  window._ewPointerTypeHooked = true;
+  const _ptNote = (e) => { if (e && e.pointerType) window._ewLastPointer = e.pointerType; };
+  window.addEventListener('pointerdown', _ptNote, { capture: true, passive: true });
+  window.addEventListener('pointermove', _ptNote, { capture: true, passive: true });
+}
+
 function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
@@ -2999,8 +3010,43 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
   }
   const selBlade = blades[selIdx] || null;
 
+  const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
   // a fresh unit or a different menu view takes the wheel → reset the cursor
-  useEffect(() => { setSelId(null); }, [unitKey, viewKey]);
+  useEffect(() => { setSelId(null); camSrc.current = null; }, [unitKey, viewKey]);
+
+  // THE MENU CAMERA (battle.js _menuTargetShot) — WHEN the camera moves, per input:
+  //  · ↑/↓, the wheel and the controller D-pad step the cursor deliberately → the
+  //    camera follows the cursor row at once (the Persona read);
+  //  · a MOUSE only frames a row it RESTS on (MENU_CAM_HOVER_MS) — sweeping across
+  //    the list on the way to CONFIRM never swings the camera;
+  //  · TOUCH has no hover: the emulated hover a tap sends is ignored;
+  //  · a click / tap / ENTER / A on a target row is the PICK (the ✓ step every
+  //    target list has before its confirm) and frames at once in the engine
+  //    (selectTargetFromMenu), as does clicking a unit on the board. Rows that act
+  //    at once (the finisher list) frame on the cursor before the click.
+  // The list's default row is framed by the engine when it opens (the finisher and
+  // item target lists are not: their first row frames here), and an aim list keeps
+  // the range fit until the player moves the cursor.
+  const _camT = (selId != null || viewKey === 'finTargets' || viewKey.indexOf('itemTargets|') === 0) && selBlade && selBlade.camTarget ? selBlade.camTarget : null;
+  const _camKey = _camT ? _camT.x + ',' + _camT.y + ',' + (_camT.z == null ? '' : _camT.z) + ',' + (_camT.uid == null ? '' : _camT.uid) : '';
+  useEffect(() => {
+    if (!_camT) return;
+    const src = camSrc.current;
+    if (src === 'touch' || src === 'click') return;
+    const tm = setTimeout(() => {
+      if (camSrc.current !== src) return;   // clicked meanwhile: the pick framed it
+      if (typeof window._ewMenuCamTarget === 'function') window._ewMenuCamTarget(_camT);
+    }, src === 'hover' ? MENU_CAM_HOVER_MS : 90);
+    return () => clearTimeout(tm);
+  }, [_camKey, viewKey]);
+  // leaving every target view with no camera move of its own (a quick menu
+  // closed, ESC) → back to the tactical view the two-shot left
+  const _camCtx = /^(enemy|ally|atkTargets|spTargets|aim\||itemTargets|finTargets|combo)/.test(viewKey);
+  useEffect(() => {
+    if (_camCtx) return;
+    const tm = setTimeout(() => { if (typeof window._ewMenuCamHome === 'function') window._ewMenuCamHome(); }, 160);
+    return () => clearTimeout(tm);
+  }, [_camCtx]);
 
   // keep the cursor row in view when the keyboard/wheel drives a long list
   useEffect(() => {
@@ -3023,7 +3069,10 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     const dead = !b.available && !b.forceLive;
     if (on) {
       // the cursor FOLLOWS the mouse — hover IS selection (one mental model)
-      if (b.id !== (selBlade && selBlade.id)) setSelId(b.id);
+      if (b.id !== (selBlade && selBlade.id)) {
+        camSrc.current = window._ewLastPointer === 'touch' ? 'touch' : 'hover';
+        setSelId(b.id);
+      }
       if (!dead && clockApi.aim) clockApi.aim(90);
       setHoverCost(!dead && typeof b.cost === 'number' ? b.cost : 0);
       if (b.hoverIn) b.hoverIn(e && e.nativeEvent || e);
@@ -3040,7 +3089,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     if (!b.available && !b.forceLive) return;
     // firing a row also moves the cursor there, so ENTER / the desc bar
     // keep tracking the row the player actually used
-    if (b.id !== 'end' && b.id !== 'cancel') setSelId(b.id);
+    if (b.id !== 'end' && b.id !== 'cancel') { camSrc.current = 'click'; setSelId(b.id); }
     if (clockApi.strike) clockApi.strike(90);
     if (typeof playSfx === 'function') playSfx(b.id === 'end' ? 'uiConfirm' : b.id === 'cancel' ? 'uiCursorMove' : 'uiButtonConfirm');
     setFireId(b.id); setTimeout(() => setFireId(null), 240);
@@ -3081,6 +3130,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       return;
     }
     const b = blades[next];
+    camSrc.current = 'step';
     setSelId(b.id);
     if (typeof playSfx === 'function') playSfx('uiCursorMove');
     if (clockApi.wind) clockApi.wind(30);   // the minute hand ticks with the cursor
@@ -4180,6 +4230,7 @@ function _hrlgFinisherTargetBlades(unit, st) {
       power: fc ? { v: '≈−' + fc.dmg, color: fc.kill ? '#7dff9a' : EW.bad } : undefined,
       note: fc && fc.kill ? 'KILL' : null,
       portrait: portrait,
+      camTarget: { x: t.x, y: t.y, z: t.z, uid: t.id },
       meta: { text: dist + 't' },
       fire: () => {
         hideSpellTooltip();
@@ -4416,6 +4467,8 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       portrait: portrait,
+      // THE MENU CAMERA: the cursor landing on this row frames caster + target
+      camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
       meta: portrait
         ? { text: t.dist + 't' }
         : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't' },
@@ -4508,6 +4561,7 @@ function _hrlgItemTargetBlades(unit, st) {
       sub: sub,
       check: !!isPending,
       portrait: portrait,
+      camTarget: { x: u.x, y: u.y, z: u.z, uid: u.id },
       previewHeal: previewHeal,
       power: previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       meta: { text: t.dist + 't' },

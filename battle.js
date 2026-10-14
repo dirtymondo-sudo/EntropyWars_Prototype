@@ -11421,6 +11421,38 @@
                 return Math.max(0, tileElevationZ(tx, ty));
             } catch (e) { return 0; }
         };
+        /* THE SIGHT LINE (2026-10-14) — the SOLID ground of a tile (px) for
+           ThreeCamera's spell-shot clearance: the top of the column's first
+           solid run from the base (plus a walkable roof object when the
+           column is solid to its top). A bridge, a ceiling or an upper storey
+           floating over an air gap is NOT ground here: the canopy cutaway
+           already opens those, and craning the lens over them would lift a
+           shot inside a building onto its roof. Off-board → the edge tile,
+           like _camGroundPx. */
+        window._camSolidGroundPx = function (tx, ty) {
+            try {
+                const _bwc = bw(), _bhc = bh();
+                if (_bwc > 0 && _bhc > 0) {
+                    tx = Math.max(0, Math.min(_bwc - 1, Math.round(tx)));
+                    ty = Math.max(0, Math.min(_bhc - 1, Math.round(ty)));
+                }
+                const full = Math.max(0, tileElevationZ(tx, ty));
+                const col = state.boardColumns?.[ty]?.[tx];
+                if (!col || !col.length) return full;
+                let i = 0;
+                while (i < col.length && (col[i].terrain === 'void' || col[i].roof)) i++;
+                if (i >= col.length) return full;
+                let top = col[i].z;
+                for (let j = i + 1; j < col.length; j++) {
+                    const b = col[j];
+                    if (b.z !== top + 1 || b.terrain === 'void' || b.roof) break;
+                    top = b.z;
+                }
+                if (top >= (state.boardHeights?.[ty]?.[tx] ?? 0)) return full;
+                return (top > 0 && typeof window._getElevationPx === 'function')
+                    ? Math.max(0, window._getElevationPx(top)) : 0;
+            } catch (e) { return 0; }
+        };
 
         function dioramaUnitZBoost() {
             const tiltDeg = state.dioramaTiltDeg ?? 50;
@@ -21765,6 +21797,7 @@
             _busyTimer: null,
             _savedState: null,
             _preCineView: null,
+            _menuShot: null,      // THE MENU CAMERA: { home: {tilt, yaw, zoom}, key, side } while a menu two-shot is up
             _cineShotId: null,
             _seqId: 0,
             _isP2: null,
@@ -22287,6 +22320,7 @@
                 if (opts.tilt !== undefined || opts.yaw !== undefined) {
                     this._preCineView = null;
                     this._cineShotId = null; this._cineKeepSubject = false;
+                    this._menuShot = null;   // a hand orbit / hard reset owns the angle now
                 }
                 // A snap() that sets tilt/yaw is the player's deliberate
                 // orientation (manual tilt/yaw drag, or a hard reset to a known
@@ -22337,6 +22371,18 @@
                 if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
 
                 this._stop();
+                /* THE MENU CAMERA: the first camera move after a menu two-shot that
+                   is not itself a menu shot leaves it — whatever it doesn't name
+                   (tilt, yaw, zoom) comes back from the tactical view the shot left,
+                   so a cancel, a pan or the next turn never inherits the low angle. */
+                if (this._menuShot && !opts._menuShot) {
+                    const _mh = this._menuShot.home;
+                    this._menuShot = null;
+                    opts = { ...opts };
+                    if (opts.tilt === undefined) opts.tilt = _mh.tilt;
+                    if (opts.yaw === undefined) opts.yaw = _mh.yaw;
+                    if (!opts._allowZoomChange) { opts._allowZoomChange = true; opts._bypassCap = true; opts.zoom = _mh.zoom; }
+                }
                 // A real camera move takes over from any PENDING auto-settle:
                 // the debounced "come home" must never fire on top of a newer
                 // motion (it used to re-centre/re-zoom mid-target-browse when
@@ -22421,6 +22467,11 @@
                 this._savedState = { x: this._tx, y: this._ty, zoom: this._tz,
                     tilt: this._tt, yaw: this._tyaw,
                     camZ: this._tcz, elevZ: this._tElev };
+                // a menu two-shot is never the view to come back to: the tactical one it left is
+                if (this._menuShot) {
+                    const h = this._menuShot.home;
+                    Object.assign(this._savedState, { zoom: h.zoom, tilt: h.tilt, yaw: h.yaw, elevZ: -1 });
+                }
             },
             restore(opts = {}) {
                 const s = this._savedState;
@@ -23122,7 +23173,9 @@
                 const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
                 const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
                 const t = TILE_PICK_TILT * Math.PI / 180;
-                const yawDeg = Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0);
+                // leaving a menu two-shot: the move lands on the tactical yaw (camera.moveTo)
+                const yawDeg = camera._menuShot ? camera._menuShot.home.yaw
+                    : (Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0));
                 const yw = yawDeg * Math.PI / 180;
                 const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
                 // the rig's basis (three-camera.js sync): gaze, screen-up, screen-right (level)
@@ -26541,6 +26594,14 @@
         // view every return lands on (the "camera gets stuck looking up after
         // a spell" bug).
         function _captureCineReturnView() {
+            // cast from a menu two-shot → the return lands on the tactical view it left
+            if (camera._menuShot) {
+                const h = camera._menuShot.home;
+                camera._menuShot = null;
+                if (!camera._preCineView && camera._cineShotId == null)
+                    camera._preCineView = { tilt: Math.min(h.tilt, REST_TILT_MAX), yaw: h.yaw, zoom: h.zoom };
+                return;
+            }
             if (camera._preCineView || camera._cineShotId != null) return;
             camera._preCineView = {
                 tilt: Math.min(camera._tt, REST_TILT_MAX),
@@ -26645,7 +26706,7 @@
                 CINE_TPS_DIST_TILES + Math.max(0, (lenTiles || 0) - 1) * CINE_TPS_DIST_GROW);
             return _tpsZoomForBoomTiles(distTiles);
         }
-        function _tpsShoulderLift(unit) {
+        function _tpsUnitHeight(unit) {
             const ts = CONFIG.tileSize || BASE_TILE;
             let h = ts * 0.95;
             try {
@@ -26654,7 +26715,24 @@
                     h = ThreeRenderer.getUnitVisualHeight(unit.id) || h;
                 }
             } catch (e) {}
-            return h * 0.8;
+            return h;
+        }
+        function _tpsShoulderLift(unit) { return _tpsUnitHeight(unit) * 0.8; }
+        /* THE BODY FRAME (2026-10-14) — mondo: "units just not being centered
+           framed for their spell animations, especially tall and short
+           units". The rig pivoted every unit at its SHOULDER (0.8 × height)
+           on a boom measured in tiles, so a tall unit was cropped at the
+           knees with its waist under the frame's centre and a short one was
+           a small figure at the bottom of an empty frame. A unit-anchored
+           shot now pivots at the body's centre (CINE_BODY_LIFT × height —
+           a touch above the middle so the head reads) and ThreeCamera
+           scales the boom by the unit's height against a standard humanoid
+           (camera._tpsSizeK), so every body fills its shot the same way. */
+        const CINE_BODY_LIFT = 0.58;
+        function _cineSizeK(unit) {
+            if (!unit || unit.id == null) return 1;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            return Math.max(0.7, Math.min(2.4, _tpsUnitHeight(unit) / ts));
         }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
@@ -26675,15 +26753,19 @@
                 /* Explicit pivot height (an altitude shot: the fly-by, the
                    fall follow) — measured from the subject's ground. */
                 camera._tpsHeadLift = Math.max(0, opts.liftPx);
+                camera._tpsSizeK = 1;
                 return true;
             }
-            /* Shoulder lift = the model's real shoulder height PLUS the gap
+            /* Pivot lift = the body's centre (THE BODY FRAME; a bare tile
+               keeps a generic shoulder) PLUS the gap
                between where the subject ACTUALLY is (airborne altitude, or
                standing on a walkable roof) and the ground surface the rig
                anchors to. Without this a flyer's shot framed the empty
                ground beneath it — the camera sat at ground level while the
                character hovered above frame. */
-            let _lift = _tpsShoulderLift(unit);
+            const _isUnit = !!(unit && unit.id != null);
+            let _lift = _isUnit ? _tpsUnitHeight(unit) * (opts.liftFrac ?? CINE_BODY_LIFT) : _tpsShoulderLift(null);
+            camera._tpsSizeK = _cineSizeK(unit);
             const _gpx = (typeof window._camGroundPx === 'function')
                 ? window._camGroundPx(Math.round(pos.x), Math.round(pos.y)) : 0;
             const _upx = unit ? unitElevationZ(unit) : _gpx;
@@ -26745,6 +26827,9 @@
             // target sit in frame (zoom/tilt untouched, no over-the-shoulder).
             if (!TPS_BETWEEN_ACTIONS) {
                 camera._tpsHold = false;
+                // THE MENU CAMERA: a composed two-shot of the caster and this
+                // target (3D only); the plain midpoint pan is the 2D fallback.
+                if (_menuTargetShot(unit, tgt)) return true;
                 focusBoardCameraOnTiles(
                     [{ x: unit.x, y: unit.y }, { x: tgt.x, y: tgt.y }],
                     { persist: true, transitionMs: 420, _fogAllowed: true });
@@ -26783,6 +26868,238 @@
             });
             return true;
         }
+        /* ══ THE MENU CAMERA (2026-10-14) ══
+           mondo: "if it is my turn and i click on an enemy, the camera needs to
+           switch to a view that focuses on my unit and that enemy with good
+           cinematic framing. If i am in the spell menu and select a spell to use
+           on enemy, as im switching between units in the target list the camera
+           should change to frame my unit and each target" (Persona 5: the menu
+           and the camera work as one continuous shot).
+           Every between-action target pick (clicking a unit on your turn, the
+           attack / spell / item target lists, the cursor moving down those lists,
+           Tab cycling) lands here through _tpsTargetShot. The shot is a composed
+           TWO-SHOT on the ordinary board rig (no TPS pivot, no occlusion tricks):
+             · the camera stands behind the caster, swung MENU_CAM_SWING degrees off
+               the caster→target line (more side-on for an adjacent pair so the two
+               bodies never stack), pitched down 24-40° (lower pitch as the gap
+               grows so the ground between them reads);
+             · both REAL bodies (feet to HP bar, flight height included) are fitted
+               on the true perspective lens, centred a little right of and above
+               the screen centre: the command menu owns the bottom-left;
+             · of the two sides (and three pitches), the pose whose lines of sight to
+               both units clear the terrain wins, then the one closest to the current
+               yaw and on the same side as the last target — so cycling targets swings
+               one continuous camera move instead of flipping across the pair.
+           camera._menuShot remembers the TACTICAL view it left (resting tilt/yaw,
+           the player's zoom). Any later camera move that does not name its own
+           tilt/yaw/zoom (cancel → soft reset, a basic attack's pan, the next turn,
+           Move's range fit) gets those back (camera.moveTo), and an action shot's
+           return view is the tactical one, not this pose (_captureCineReturnView).
+           A hand orbit adopts the player's own angle (camera.snap). */
+        const MENU_CAM_MS = 560;
+        const MENU_CAM_SWING = 36;          // degrees off the caster→target line
+        const MENU_CAM_SWING_CLOSE = 56;    // adjacent pair: more side-on
+        const MENU_CAM_TILT = 66;           // pitch at melee range (90 = level, lower = more top-down)
+        const MENU_CAM_TILT_FAR = 50;       // floor as the gap grows
+        const MENU_CAM_MARGIN_H = 0.58;     // half-frame share the pair may fill sideways
+        const MENU_CAM_MARGIN_V = 0.56;     // and up/down
+        const MENU_CAM_SHIFT_H = 0.14;      // pair rides right of centre (menu bottom-left)
+        const MENU_CAM_SHIFT_V = 0.08;      // and a touch high (description bar at the bottom)
+        const MENU_CAM_MIN_DIST = 3.0;      // tiles — never closer than this to the frame centre
+        function _menuCamBody(o) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const isUnit = o && o.id != null && o.player != null;
+            let foot = 0;
+            if (isUnit && typeof unitElevationZ === 'function') foot = unitElevationZ(o) || 0;
+            else if (typeof window._camGroundPx === 'function') foot = window._camGroundPx(Math.round(o.x), Math.round(o.y)) || 0;
+            let hgt = isUnit ? ts * 0.95 : ts * 0.6;
+            if (isUnit) {
+                try {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitVisualHeight)
+                        hgt = ThreeRenderer.getUnitVisualHeight(o.id) || hgt;
+                } catch (e) {}
+                hgt += ts * 0.4;   // the floating HP bar / nameplate
+            }
+            return { x: o.x * ts + ts / 2, z: o.y * ts + ts / 2, foot, top: foot + hgt };
+        }
+        /* Solve one candidate pose: focal + eye distance that fit both bodies at
+           this yaw/pitch. Returns world focal, distance and the occlusion count. */
+        function _menuCamSolve(A, B, yawDeg, tiltDeg) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+            const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+            const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
+            const t = tiltDeg * Math.PI / 180, yw = yawDeg * Math.PI / 180;
+            const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
+            // the rig's basis (three-camera.js sync): gaze, screen-up, screen-right
+            const g = [-sT * sY, -cT, -sT * cY];
+            const up = [-cT * sY, sT, -cT * cY];
+            const rt = [cY, 0, -sY];
+            const half = ts * 0.38;
+            const pts = [];
+            for (const b of [A, B]) {
+                for (const s of [-1, 1]) {
+                    const px = b.x + rt[0] * half * s, pz = b.z + rt[2] * half * s;
+                    pts.push([px, b.foot, pz], [px, b.top, pz]);
+                }
+            }
+            const F = [0, 0, 0];
+            for (const p of pts) { F[0] += p[0]; F[1] += p[1]; F[2] += p[2]; }
+            F[0] /= pts.length; F[1] /= pts.length; F[2] /= pts.length;
+            const gap = Math.hypot(A.x - B.x, A.z - B.z, A.foot - B.foot);
+            let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
+            // fixed-point: centre the projected box on the offset point, then
+            // scale the boom so the box fills the margins (perspective-true)
+            for (let it = 0; it < 8; it++) {
+                const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
+                let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, tooNear = false;
+                for (const p of pts) {
+                    const rx = p[0] - E[0], ry = p[1] - E[1], rz = p[2] - E[2];
+                    const depth = rx * g[0] + ry * g[1] + rz * g[2];
+                    if (depth < ts * 0.6) { tooNear = true; break; }
+                    const sx = (rx * rt[0] + rz * rt[2]) / (depth * tanH);
+                    const sy = (rx * up[0] + ry * up[1] + rz * up[2]) / (depth * tanV);
+                    if (sx < xMin) xMin = sx; if (sx > xMax) xMax = sx;
+                    if (sy < yMin) yMin = sy; if (sy > yMax) yMax = sy;
+                }
+                if (tooNear) { dist *= 1.35; continue; }
+                const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
+                const k = Math.max((xMax - xMin) / 2 / MENU_CAM_MARGIN_H, (yMax - yMin) / 2 / MENU_CAM_MARGIN_V);
+                // slide the focal so the box centre lands on (SHIFT_H, SHIFT_V)
+                const ox = (cx - MENU_CAM_SHIFT_H) * dist * tanH, oy = (cy - MENU_CAM_SHIFT_V) * dist * tanV;
+                F[0] += rt[0] * ox + up[0] * oy; F[1] += up[1] * oy; F[2] += rt[2] * ox + up[2] * oy;
+                dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
+            }
+            if (F[1] < 0) F[1] = 0;
+            const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
+            // lines of sight: the eye to each body's chest must clear the terrain
+            let occl = 0;
+            const W = bw(), H = bh();
+            const groundAt = (wx, wz) => {
+                const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts);
+                if (tx < 0 || ty < 0 || tx >= W || ty >= H) return null;
+                return (typeof window._camGroundPx === 'function') ? (window._camGroundPx(tx, ty) || 0) : 0;
+            };
+            const eg = groundAt(E[0], E[2]);
+            if (eg != null && E[1] < eg + ts * 0.5) occl += 3;   // the eye itself inside a hill / wall
+            for (const b of [A, B]) {
+                const chest = b.foot + (b.top - b.foot) * 0.5;
+                for (let i = 1; i <= 12; i++) {
+                    const u = i / 13;
+                    const sx = E[0] + (b.x - E[0]) * u, sy = E[1] + (chest - E[1]) * u, sz = E[2] + (b.z - E[2]) * u;
+                    // the subject's own tile and its neighbour stand under it — skip the last stretch
+                    if (Math.hypot(sx - b.x, sz - b.z) < ts * 0.9) break;
+                    const gy = groundAt(sx, sz);
+                    if (gy != null && gy > sy) occl++;
+                }
+            }
+            return { F, dist, occl, yaw: yawDeg, tilt: tiltDeg };
+        }
+        function _menuShotPose(unit, tgt) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                    || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
+                const bd = ThreeCamera.getBaseDist();
+                if (!(bd > 0)) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const A = _menuCamBody(unit), B = _menuCamBody(tgt);
+                const dx = (B.x - A.x) / ts, dy = (B.z - A.z) / ts;
+                const L = Math.hypot(dx, dy);
+                const ms = camera._menuShot;
+                const curYaw = Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0);
+                // looking down the caster→target line (gaze = (dx, dy)); a self/same-tile
+                // pick keeps the player's resting yaw
+                const lineYaw = L > 0.01 ? Math.atan2(-dx, -dy) * 180 / Math.PI
+                    : (ms ? ms.home.yaw : (camera._restYaw ?? curYaw));
+                const swing = L <= 0.01 ? 0 : (L <= 1.5 ? MENU_CAM_SWING_CLOSE : MENU_CAM_SWING);
+                const tilt0 = Math.max(MENU_CAM_TILT_FAR, Math.min(MENU_CAM_TILT, MENU_CAM_TILT - Math.max(0, L - 1) * 2.4));
+                const sides = swing ? [1, -1] : [0];
+                const yawGap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+                let best = null;
+                for (const side of sides) {
+                    for (const drop of [0, 8, 16]) {
+                        const c = _menuCamSolve(A, B, lineYaw + side * swing, Math.max(36, tilt0 - drop));
+                        c.side = side;
+                        c.score = c.occl * 4 + drop / 8 * 0.6
+                            + yawGap(c.yaw, curYaw) / 180
+                            + (ms && ms.side && side && side !== ms.side ? 0.4 : 0);
+                        if (!best || c.score < best.score) best = c;
+                    }
+                }
+                if (!best) return null;
+                return {
+                    x: (best.F[0] - ts / 2) / ts, y: (best.F[2] - ts / 2) / ts, elevZ: best.F[1],
+                    zoom: Math.max(0.15, Math.min(10.0, bd / best.dist)),
+                    tilt: best.tilt, yaw: (((best.yaw % 360) + 360) % 360), side: best.side
+                };
+            } catch (e) { return null; }
+        }
+        /* The on/off switch (Settings → Controls → Camera, mondo 2026-10-14): off =
+           target picks keep the old tactical midpoint pan. */
+        window._ewMenuCamOn = function () {
+            try { return localStorage.getItem('ew_menu_cam') !== 'off'; } catch (e) { return true; }
+        };
+        function _menuTargetShot(unit, tgt) {
+            if (!unit || !tgt || !window._ewMenuCamOn()) return false;
+            const pose = _menuShotPose(unit, tgt);
+            if (!pose) return false;
+            const key = unit.id + '@' + unit.x + ',' + unit.y + '>' + (tgt.id != null ? tgt.id : '') + '@' + tgt.x + ',' + tgt.y;
+            const ms = camera._menuShot;
+            // the same pair re-picked (the row's confirm click, the drum's default
+            // row) keeps the shot running instead of restarting the tween
+            if (ms && ms.key === key) return true;
+            if (!ms) {
+                // the TACTICAL view this shot leaves: resting orientation, and the
+                // zoom the player was on (a held action shot's remembered one wins)
+                const pre = camera._preCineView;
+                const restT = Number.isFinite(camera._restTilt) ? camera._restTilt : DEFAULT_BOARD_TILT;
+                const restY = Number.isFinite(camera._restYaw) ? camera._restYaw : DEFAULT_BOARD_YAW;
+                const tactical = pre == null && camera._cineShotId == null && Math.abs((camera._tt ?? restT) - restT) < 4;
+                camera._menuShot = {
+                    home: {
+                        tilt: pre ? pre.tilt : restT,
+                        yaw: pre ? pre.yaw : restY,
+                        zoom: pre ? pre.zoom
+                            : (tactical ? camera._tz : (isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom()))
+                    }
+                };
+            }
+            camera._menuShot.key = key;
+            camera._menuShot.side = pose.side || camera._menuShot.side || 0;
+            // a held action shot (press-turn) or a Move overhead hands over to the menu shot
+            camera._preCineView = null;
+            camera._cineShotId = null;
+            camera._releaseCineSubject(420);
+            if (typeof _cineGuardEnd === 'function') _cineGuardEnd();
+            camera.moveTo({
+                x: pose.x, y: pose.y, zoom: pose.zoom, tilt: pose.tilt, yaw: pose.yaw, elevZ: pose.elevZ,
+                duration: MENU_CAM_MS, easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true
+            });
+            return true;
+        }
+        /* hud.js: the target-list cursor moved onto a row (hover, ↑/↓, wheel) */
+        window._ewMenuCamTarget = function (t) {
+            if (!t || state.phase !== 'battle' || state._actionExecuting) return;
+            const u = getSelectedUnit();
+            if (!u || u.dead) return;
+            if (state.controllers?.[u.player] !== CTRL.LOCAL || state.autoPlayers?.[u.player]) return;
+            if (typeof getViewerPlayer === 'function' && u.player !== getViewerPlayer()) return;
+            const tu = t.uid != null ? (state.units || []).find(x => x.id === t.uid && !x.dead) : null;
+            _tpsTargetShot(u, tu || { x: t.x, y: t.y });
+        };
+        /* hud.js: the menu left every target view without a camera move of its own
+           (the quick menu closed, ESC) → back to the tactical view it came from */
+        window._ewMenuCamHome = function (force) {
+            if (!camera._menuShot || state.phase !== 'battle' || state._actionExecuting || camera._cineShotId != null) return;
+            if (!force && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) return;
+            const uid = state._blitzActiveUnitId;
+            const u = uid != null ? (state.units || []).find(un => un.id === uid && !un.dead) : getSelectedUnit();
+            // no tilt/yaw/zoom named → moveTo restores the remembered tactical view
+            camera.moveTo({ x: u ? u.x : camera._tx, y: u ? u.y : camera._ty,
+                duration: MENU_CAM_MS, easing: 'easeInOut', _fogAllowed: true });
+        };
+
         /* ui.js (cancelActionSelection) calls this when the player backs out
            to the root menu: return to the third-person turn shot. */
         window._tpsTurnShot = function () {
@@ -27753,9 +28070,9 @@
            shoulder keeps negative space for whatever arrives in it. */
         const CINE_FACE_CAM_DIST = 2.2;
         function cineFaceCam(unit, opts = {}) {
-            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null))) return false;
+            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null), { liftFrac: 0.92 })) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
-            camera._tpsHeadLift = (camera._tpsHeadLift || ts * 0.8) * 1.18;   // head, not shoulder
+            if (unit.id == null) camera._tpsHeadLift = (camera._tpsHeadLift || ts * 0.8) * 1.18;   // head, not shoulder
             let px = 0;
             if (typeof window._getElevationPx === 'function') {
                 const z = _unitElevZ(unit);

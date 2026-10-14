@@ -1380,3 +1380,30 @@ damn map. Zooming out just enough to see the movement range or spell range of th
   the old square fit. Viewer-local camera, nothing relayed.
 - Same 12×12 / 1080p maths: move 3 at the centre 11.7 → 8.4 tiles of eye distance (about half the area); a corner unit
   frames its clipped range, not the void past the edge.
+
+## THE MENU CAMERA (2026-10-14, between-action target framing)
+mondo: on his turn, clicking an enemy must frame his unit and that enemy with cinematic framing; in a target list, each
+row the cursor lands on reframes the caster + that target, one continuous camera move (Persona 5's menu + camera).
+- battle.js `_menuTargetShot` (called from `_tpsTargetShot`, which every between-action pick already used: board click
+  on a unit, quick menu open, attack/spell/item target lists, Tab cycling, row confirm). 3D only; 2D keeps the old
+  midpoint pan.
+- Pose (`_menuShotPose` / `_menuCamSolve`): board rig (no TPS pivot), camera behind the caster swung 36° off the
+  caster→target line (56° when adjacent), pitch 66 at melee down to 50 far. Both real bodies (feet to HP bar, flight
+  height included) fitted on the true perspective lens, centred right of / above screen centre (menu is bottom-left).
+  Two sides × three pitches are tried; terrain-blocked lines of sight lose, then the nearest yaw / same side as the
+  last target wins. Tunables: the MENU_CAM_* consts.
+- `camera._menuShot = { home, key, side }`: home = resting tilt/yaw + the zoom it left. camera.moveTo without
+  `_menuShot` leaves the shot and fills unnamed tilt/yaw/zoom from home (cancel, basic attack pan, next turn, Move's
+  range fit — `_tilePickFrame` solves for the home yaw). `_captureCineReturnView` and `camera.save()` take home, so a
+  spell's return lands on the tactical view. A hand orbit (snap with tilt/yaw) drops it.
+- hud.js: target blades carry `camTarget`; HorologeMenu frames the cursor row (90 ms debounce) only once the PLAYER
+  moved the cursor (the engine already framed the default row; aim lists keep the range fit until a row is hovered),
+  and calls `_ewMenuCamHome` when the menu leaves every target view with no camera move of its own.
+- WHEN it moves, per input (mondo 2026-10-14: mouse+keyboard, controller and touch; some rows need a confirm, some act
+  at once): ↑/↓, wheel and D-pad cursor steps frame at once; a MOUSE frames only a row it rests on (MENU_CAM_HOVER_MS
+  320, hud.js) so sweeping to CONFIRM never swings it; touch's emulated hover is ignored (window._ewLastPointer); the
+  pick (click/tap/ENTER/A = the ✓ step before confirm, or a board click on a unit) frames at once in the engine.
+  Immediate rows (finisher) frame on the cursor before the click. Board hover never moves the camera.
+- Toggle: Settings → Controls → Camera "Target Camera: ON/OFF" (localStorage ew_menu_cam = 'off'); off = the old
+  midpoint pan; switching it off mid-shot returns home (_ewMenuCamHome(true)).
+- Local only (menu browsing is never relayed). Only syntax-checked plus a node check of the fit maths.
