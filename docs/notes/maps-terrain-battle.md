@@ -468,3 +468,15 @@ it does nothing, so it just needs to not show up. Happens on walls and stuff".
   every rock top unpickable and every other on-screen surface pickable.
 - Fix: battle.js `fieldCellRock(x, y)` (beside fieldCellFixed, same field lookup: the encounter's field, else the arena's) and
   map.js `unitCanTraverse` refuses it, so move / jump ranges, paths, the AI and previews all agree. Map geometry untouched.
+
+## THE SKY SEAM (2026-10-14)
+mondo: "there is a seam in the sky that has been there since the very beginning ... right down the middle of the sky
+from the view of when the camera looks up at the zodiac signs." ROOT CAUSE: `_envDomeFS` (and its TSL twin, 'sky dome')
+reads every fbm layer (nebula n1/n2/n3, colour mix mxA/mxB, milky-way bandTex, storm cloud, day clouds) and the star grid
+by `az = atan(rd.x, rd.z)`, which jumps from +PI to -PI at -Z. -Z is exactly the zodiac prime slot (`getSkyShot('zodiac')`,
+yaw 0), so the zodiac shot looked straight at a hard vertical line. FIX: `fbmW(p, per, nd.x)` cross-fades the last 18 deg
+before the wrap (nd.x -0.8..-1) into the noise one full turn on (p + per), so -PI meets +PI with the same value (C1, and
+variance-normalised about the fbm mean 0.484 so the band keeps its contrast); the star grid uses floor(sc*1.9) cells per
+half turn so the wrap lands on a cell edge. The rest of the sky is unchanged. Checked with a standalone render of the
+shader (before/after) on WebGL and a WebGPU battle shot at the zodiac view. The zenith pinch (all azimuths meet at
+straight up) is untouched.

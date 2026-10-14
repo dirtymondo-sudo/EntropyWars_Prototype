@@ -23453,6 +23453,12 @@ const ThreeRenderer = (function () {
         // shader's painted moon DISC out while keeping its soft glow halo, so
         // the glow wraps the mesh and the disc never double-exposes behind it.
         'uniform float uMoonMesh;\n' + _ENV_COMMON + '\n' +
+        // THE SKY SEAM (2026-10-14): az=atan(rd.x,rd.z) jumps from +PI to -PI straight behind the board (-Z, the zodiac prime
+        // slot), so every fbm fed az cut off in a hard vertical line there. fbmW cross-fades the last 18 deg before the wrap
+        // (nd.x -0.8..-1) into the noise continued past +PI (p+per = one full turn on), so -PI meets +PI with the same value.
+        // The blend keeps the noise's spread (variance-normalised about its 0.484 mean) so the band reads like the rest.
+        'float fbmW(vec2 p,float per,float x){ float a=fbm(p); float w=1.0-smoothstep(-1.0,-0.8,x);\n' +
+        '  if(w>0.001){ float b=fbm(p+vec2(per,0.0)); float u=1.0-w; a=0.484+((a-0.484)*u+(b-0.484)*w)/sqrt(u*u+w*w); } return a; }\n' +
         'void main(){\n' +
         '  vec3 rd=normalize(vDir); float night=uDayNight; float t=uTime;\n' +
         // MOVING MAPS rev 2 (2026-09-12): a `wheel` map turns the whole dome about the board (uSkyYaw)
@@ -23473,19 +23479,19 @@ const ThreeRenderer = (function () {
         '  vec3 deepHi=mix(vec3(0.014,0.024,0.060),vec3(0.004,0.006,0.020),night);\n' +
         '  vec3 col=mix(deepLo,deepMd,smoothstep(0.0,0.55,v)); col=mix(col,deepHi,smoothstep(0.45,1.0,v));\n' +
         // ── volumetric nebula clouds, slowly drifting, multi-hue ──
-        '  float n1=fbm(nd*vec2(2.4,3.0)+vec2(t*0.004+uSkyFlow,uSkyLift));\n' +
-        '  float n2=fbm(nd*vec2(5.5,6.5)-vec2(t*0.006+uSkyFlow*1.35,0.4+uSkyLift*1.35));\n' +
-        '  float n3=fbm(nd*vec2(11.0,13.0)+vec2(0.0,t*0.003));\n' +
+        '  float n1=fbmW(nd*vec2(2.4,3.0)+vec2(t*0.004+uSkyFlow,uSkyLift),4.8,nd.x);\n' +
+        '  float n2=fbmW(nd*vec2(5.5,6.5)-vec2(t*0.006+uSkyFlow*1.35,0.4+uSkyLift*1.35),11.0,nd.x);\n' +
+        '  float n3=fbmW(nd*vec2(11.0,13.0)+vec2(0.0,t*0.003),22.0,nd.x);\n' +
         '  float neb=clamp(n1*0.65+n2*0.45+n3*0.20-0.34,0.0,1.0); neb=pow(neb,1.6);\n' +
         '  vec3 nebMag =mix(vec3(0.46,0.12,0.52),vec3(0.22,0.05,0.34),night);\n' +
         '  vec3 nebTeal=mix(vec3(0.06,0.30,0.44),vec3(0.03,0.14,0.26),night);\n' +
         '  vec3 nebGold=mix(vec3(0.55,0.30,0.18),vec3(0.30,0.16,0.10),night);\n' +
-        '  float mxA=fbm(nd*1.6+7.0); float mxB=fbm(nd*2.3-3.0);\n' +
+        '  float mxA=fbmW(nd*1.6+7.0,3.2,nd.x); float mxB=fbmW(nd*2.3-3.0,4.6,nd.x);\n' +
         '  vec3 nebCol=mix(nebTeal,nebMag,smoothstep(0.30,0.70,mxA)); nebCol=mix(nebCol,nebGold,smoothstep(0.55,0.85,mxB)*0.6);\n' +
         '  col+=neb*nebCol*(0.95+0.5*night)*uMapNebula;\n' +
         // ── galactic band: a great-circle milky way, dust + denser stars ──
         '  vec3 gaxis=normalize(vec3(0.36,0.52,-0.77)); float gb=dot(rd,gaxis); float band=exp(-gb*gb*9.0);\n' +
-        '  float bandTex=fbm(nd*vec2(7.0,3.0)+vec2(5.0,0.0));\n' +
+        '  float bandTex=fbmW(nd*vec2(7.0,3.0)+vec2(5.0,0.0),14.0,nd.x);\n' +
         '  col+=band*(0.30+0.55*bandTex)*mix(vec3(0.30,0.26,0.40),vec3(0.18,0.16,0.30),night);\n' +
         // ── sky-event mood applied to the backdrop (stars stay crisp on top) ──
         '  col=mix(col,col*vec3(1.5,0.42,0.38)+vec3(0.04,0.0,0.0),bloodM*0.55);\n' +
@@ -23494,7 +23500,7 @@ const ThreeRenderer = (function () {
         // ── layered starfield: size / brightness / colour variation + twinkle ──
         '  vec3 starAcc=vec3(0.0);\n' +
         '  for(int li=0;li<4;li++){ float fl=float(li); float sc=34.0+fl*46.0;\n' +
-        '    vec2 uv=vec2(sph.x*sc*1.9, lat*sc); vec2 g=floor(uv), f=fract(uv); float h=hash21(g+fl*23.1);\n' +
+        '    vec2 uv=vec2(sph.x*floor(sc*1.9), lat*sc); vec2 g=floor(uv), f=fract(uv); float h=hash21(g+fl*23.1);\n' +
         '    float thr=0.92 - band*0.10 - fl*0.012;\n' +
         '    if(h>thr){ vec2 c=hash22(g+fl*4.3); float d=length(f-c);\n' +
         '      float sz=0.05+0.13*hash11(h*13.7); float core=smoothstep(sz,0.0,d); float halo=exp(-d*d*55.0)*0.35;\n' +
@@ -23527,7 +23533,7 @@ const ThreeRenderer = (function () {
         '  col+=mix(moonC*moonVis,moonEv,max(bloodM,lun));\n' +
         '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.10,0.08,0.18),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
         // ── storm overcast: seamless, weighted to the lower sky, no hard edge ──
-        '  if(wStorm>0.01){ float cl=fbm(vec2(az*2.2+t*0.05+uSkyFlow*5.0, v*3.0 - t*0.02));\n' +
+        '  if(wStorm>0.01){ float cl=fbmW(vec2(az*2.2+t*0.05+uSkyFlow*5.0, v*3.0 - t*0.02),TAU*2.2,nd.x);\n' +
         '    float cover=smoothstep(0.70,0.12,v);\n' +
         '    vec3 cloud=mix(vec3(0.16,0.17,0.22),vec3(0.03,0.035,0.06),night);\n' +
         '    col=mix(col,cloud,cover*smoothstep(0.40,0.70,cl)*wStorm*0.85); }\n' +
@@ -23555,7 +23561,7 @@ const ThreeRenderer = (function () {
         '    vec3 dsky=mix(hor,zen,pow(smoothstep(0.0,1.0,h),0.55)); dsky=mix(below,dsky,smoothstep(-0.22,0.02,h));\n' +
         '    dsky+=vec3(1.0,0.97,0.88)*smoothstep(0.045,0.030,sa)*2.4*(1.0-dcl*0.8);\n' +
         '    dsky+=vec3(1.0,0.90,0.70)*exp(-sa*4.0)*0.55*(1.0-dcl*0.6)+vec3(1.0,0.95,0.85)*exp(-sa*1.4)*0.12;\n' +
-        '    float cl=fbm(nd*vec2(3.2,5.0)+vec2(t*0.006+uSkyFlow,0.0))+0.5*fbm(nd*vec2(7.0,11.0)-vec2(t*0.004,0.3));\n' +
+        '    float cl=fbmW(nd*vec2(3.2,5.0)+vec2(t*0.006+uSkyFlow,0.0),6.4,nd.x)+0.5*fbmW(nd*vec2(7.0,11.0)-vec2(t*0.004,0.3),14.0,nd.x);\n' +
         '    float cover=smoothstep(0.66-0.40*dcl,0.96-0.34*dcl,cl)*smoothstep(-0.02,0.12,h)*step(0.001,dcl);\n' +
         '    vec3 cloudC=mix(vec3(0.80,0.82,0.88),vec3(1.0),smoothstep(0.55,1.0,cl)); cloudC=mix(cloudC,cloudC*0.70,dcl*0.55*(1.0-smoothstep(0.7,1.0,cl)));\n' +
         '    dsky=mix(dsky,cloudC,cover*0.92);\n' +
@@ -34103,6 +34109,15 @@ const ThreeRenderer = (function () {
                 Flow = R('uSkyFlow', 'float'), SunN = R('uSunNear', 'float'), MoonN = R('uMoonNear', 'float'), Yaw = R('uSkyYaw', 'float'), Lift = R('uSkyLift', 'float'),
                 Day = R('uSkyDay', 'float'), Clouds = R('uSkyClouds', 'float'), SunD = R('uSunDir', 'vec3'), MoonD = R('uMoonDir', 'vec3'), Clock = R('uSunClock', 'float'),
                 Dusk = R('uDusk', 'float'), MMesh = _ewPU(m.uniforms.uMoonMesh, 'float');
+            /* THE SKY SEAM: the GLSL fbmW (see _envDomeFS): cross-fade the 18 deg before az's -PI wrap into the noise one turn on */
+            var fbmW = function (p, per, x) {
+                var pp = V2(p).toVar(), a = fbm(pp).toVar(), w = one.sub(ss(-1, -0.8, x)).toVar();
+                T.If(w.greaterThan(0.001), function () {
+                    var b = fbm(pp.add(V2(per, 0))), u = one.sub(w);
+                    a.assign(a.sub(0.484).mul(u).add(b.sub(0.484).mul(w)).div(T.sqrt(u.mul(u).add(w.mul(w)))).add(0.484));
+                });
+                return a;
+            };
             s.fragmentNode = T.Fn(function () {
                 var t = Tm, rd0 = T.normalize(T.positionWorld.sub(T.cameraPosition)), cy = T.cos(Yaw), sy = T.sin(Yaw);
                 var rd = V3(rd0.x.mul(cy).sub(rd0.z.mul(sy)), rd0.y, rd0.x.mul(sy).add(rd0.z.mul(cy))).toVar();
@@ -34116,17 +34131,17 @@ const ThreeRenderer = (function () {
                 var deepLo = T.mix(V3(0.060, 0.040, 0.092), V3(0.022, 0.014, 0.048), night), deepMd = T.mix(V3(0.034, 0.034, 0.078), V3(0.012, 0.011, 0.030), night),
                     deepHi = T.mix(V3(0.014, 0.024, 0.060), V3(0.004, 0.006, 0.020), night);
                 var col = T.mix(deepLo, deepMd, ss(0, 0.55, v)).toVar(); col.assign(T.mix(col, deepHi, ss(0.45, 1, v)));
-                var n1 = fbm(nd.mul(V2(2.4, 3)).add(V2(t.mul(0.004).add(Flow), Lift)));
-                var n2 = fbm(nd.mul(V2(5.5, 6.5)).sub(V2(t.mul(0.006).add(Flow.mul(1.35)), Lift.mul(1.35).add(0.4))));
-                var n3 = fbm(nd.mul(V2(11, 13)).add(V2(0, t.mul(0.003))));
+                var n1 = fbmW(nd.mul(V2(2.4, 3)).add(V2(t.mul(0.004).add(Flow), Lift)), 4.8, nd.x);
+                var n2 = fbmW(nd.mul(V2(5.5, 6.5)).sub(V2(t.mul(0.006).add(Flow.mul(1.35)), Lift.mul(1.35).add(0.4))), 11, nd.x);
+                var n3 = fbmW(nd.mul(V2(11, 13)).add(V2(0, t.mul(0.003))), 22, nd.x);
                 var neb = T.pow(T.clamp(n1.mul(0.65).add(n2.mul(0.45)).add(n3.mul(0.2)).sub(0.34), 0, 1), 1.6);
                 var nebMag = T.mix(V3(0.46, 0.12, 0.52), V3(0.22, 0.05, 0.34), night), nebTeal = T.mix(V3(0.06, 0.30, 0.44), V3(0.03, 0.14, 0.26), night),
                     nebGold = T.mix(V3(0.55, 0.30, 0.18), V3(0.30, 0.16, 0.10), night);
-                var mxA = fbm(nd.mul(1.6).add(7)), mxB = fbm(nd.mul(2.3).sub(3));
+                var mxA = fbmW(nd.mul(1.6).add(7), 3.2, nd.x), mxB = fbmW(nd.mul(2.3).sub(3), 4.6, nd.x);
                 var nebCol = T.mix(T.mix(nebTeal, nebMag, ss(0.3, 0.7, mxA)), nebGold, ss(0.55, 0.85, mxB).mul(0.6));
                 col.addAssign(nebCol.mul(neb).mul(night.mul(0.5).add(0.95)).mul(MNeb));
                 var gb = T.dot(rd, T.normalize(V3(0.36, 0.52, -0.77))), band = T.exp(gb.mul(gb).mul(-9)).toVar();
-                var bandTex = fbm(nd.mul(V2(7, 3)).add(V2(5, 0)));
+                var bandTex = fbmW(nd.mul(V2(7, 3)).add(V2(5, 0)), 14, nd.x);
                 col.addAssign(T.mix(V3(0.30, 0.26, 0.40), V3(0.18, 0.16, 0.30), night).mul(band.mul(bandTex.mul(0.55).add(0.3))));
                 col.assign(T.mix(col, col.mul(V3(1.5, 0.42, 0.38)).add(V3(0.04, 0, 0)), bloodM.mul(0.55)));
                 col.assign(T.mix(col, col.mul(V3(0.45, 0.45, 0.6)), bsun.mul(0.5)));
@@ -34134,7 +34149,7 @@ const ThreeRenderer = (function () {
                 var starAcc = V3(0).toVar();
                 T.Loop(4, function (o) {
                     var fl = F(o.i), sc = fl.mul(46).add(34);
-                    var uv = V2(sph.x.mul(sc).mul(1.9), lat.mul(sc)), g = T.floor(uv).toVar(), f = T.fract(uv).toVar();
+                    var uv = V2(sph.x.mul(T.floor(sc.mul(1.9))), lat.mul(sc)), g = T.floor(uv).toVar(), f = T.fract(uv).toVar();
                     var h = h21(g.add(fl.mul(23.1))).toVar();
                     T.If(h.greaterThan(F(0.92).sub(band.mul(0.1)).sub(fl.mul(0.012))), function () {
                         var c = h22(g.add(fl.mul(4.3))), d = T.length(f.sub(c)).toVar();
@@ -34164,7 +34179,7 @@ const ThreeRenderer = (function () {
                 col.addAssign(T.mix(moonC.mul(moonVis), moonEv, T.max(bloodM, lun)));
                 col.addAssign(T.mix(V3(0.1, 0.08, 0.18), V3(0.3, 0.25, 0.45), night).mul(ss(0.85, 1, el)).mul(0.14).mul(Oc));
                 T.If(wStorm.greaterThan(0.01), function () {
-                    var cl = fbm(V2(az.mul(2.2).add(t.mul(0.05)).add(Flow.mul(5)), v.mul(3).sub(t.mul(0.02))));
+                    var cl = fbmW(V2(az.mul(2.2).add(t.mul(0.05)).add(Flow.mul(5)), v.mul(3).sub(t.mul(0.02))), PI * 2 * 2.2, nd.x);
                     var cloud = T.mix(V3(0.16, 0.17, 0.22), V3(0.03, 0.035, 0.06), night);
                     col.assign(T.mix(col, cloud, ss(0.7, 0.12, v).mul(ss(0.4, 0.7, cl)).mul(wStorm).mul(0.85)));
                 });
@@ -34182,7 +34197,7 @@ const ThreeRenderer = (function () {
                     dsky.assign(T.mix(V3(0.48, 0.56, 0.68), dsky, ss(-0.22, 0.02, h)));
                     dsky.addAssign(V3(1, 0.97, 0.88).mul(ss(0.045, 0.03, sa)).mul(2.4).mul(one.sub(dcl.mul(0.8))));
                     dsky.addAssign(V3(1, 0.9, 0.7).mul(T.exp(sa.mul(-4))).mul(0.55).mul(one.sub(dcl.mul(0.6))).add(V3(1, 0.95, 0.85).mul(T.exp(sa.mul(-1.4))).mul(0.12)));
-                    var cl = fbm(nd.mul(V2(3.2, 5)).add(V2(t.mul(0.006).add(Flow), 0))).add(fbm(nd.mul(V2(7, 11)).sub(V2(t.mul(0.004), 0.3))).mul(0.5)).toVar();
+                    var cl = fbmW(nd.mul(V2(3.2, 5)).add(V2(t.mul(0.006).add(Flow), 0)), 6.4, nd.x).add(fbmW(nd.mul(V2(7, 11)).sub(V2(t.mul(0.004), 0.3)), 14, nd.x).mul(0.5)).toVar();
                     var cover = ss(F(0.66).sub(dcl.mul(0.4)), F(0.96).sub(dcl.mul(0.34)), cl).mul(ss(-0.02, 0.12, h)).mul(T.step(0.001, dcl));
                     var cloudC = T.mix(V3(0.8, 0.82, 0.88), V3(1), ss(0.55, 1, cl)).toVar();
                     cloudC.assign(T.mix(cloudC, cloudC.mul(0.7), dcl.mul(0.55).mul(one.sub(ss(0.7, 1, cl)))));
