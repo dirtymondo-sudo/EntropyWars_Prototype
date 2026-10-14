@@ -126,6 +126,49 @@ const ThreeCamera = (function () {
         return (Number.isFinite(h) && h > 0 ? h : 0) * tileSize * ELEV_STEP_RATIO;
     }
 
+    /* ══ THE SIGHT LINE (2026-10-14) ══
+       mondo: the spell shots sat "just low enough that i can see through the
+       ground". The TPS rig's only floor is a flat plane at the subject's own
+       footing, so a low lens behind a caster put the sight line THROUGH any
+       raised column between them (a step, a ledge, the platform at its back)
+       or parked the eye inside one; the occlusion fade then ghosted the whole
+       column down to the board's base and the shot looked through the ground
+       into the empty space under the stage. Now the cinematic eye cranes UP
+       until (a) it sits `clear` above the solid ground under it and (b) the
+       straight line from it to the subject's body clears the solid ground on
+       the way (sampled every ⅓ tile from a quarter of the way out — the
+       subject's own tile and its edge are the fade's business). The lift is
+       capped so a cliff right at a unit's back can't fling the lens into the
+       sky; that rare case keeps the old fade. */
+    const SIGHT_MAX_LIFT_TILES = 3.5;
+    function _solidGroundYWorld(wx, wz) {
+        if (typeof window !== 'undefined' && typeof window._camSolidGroundPx === 'function') {
+            try {
+                const g = window._camSolidGroundPx(Math.floor(wx / tileSize), Math.floor(wz / tileSize));
+                if (Number.isFinite(g)) return Math.max(0, g);
+            } catch (e) {}
+        }
+        return _groundYWorld(wx, wz);
+    }
+    function _sightLineFloor(sx, sy, sz, ex, ey, ez, clear) {
+        let need = _solidGroundYWorld(ex, ez) + clear;
+        const hx = ex - sx, hz = ez - sz;
+        const horiz = Math.hypot(hx, hz);
+        if (horiz > tileSize * 0.6) {
+            const n = Math.min(32, Math.max(4, Math.ceil(horiz / (tileSize / 3))));
+            const m = tileSize * 0.12;
+            for (let i = 1; i < n; i++) {
+                const t = i / n;
+                if (t < 0.25) continue;
+                const g = _solidGroundYWorld(sx + hx * t, sz + hz * t) + m;
+                if (g <= sy) continue;
+                const req = sy + (g - sy) / t;
+                if (req > need) need = req;
+            }
+        }
+        return Math.min(need, ey + tileSize * SIGHT_MAX_LIFT_TILES);
+    }
+
     /* ══ THE FRAME GUARD (2026-10-05) — see sync() ══
        cam._frameGuard.points() → [[x, y, z], …] in world units: the bodies
        that must be on screen this frame (null = nothing to guard). The
@@ -302,7 +345,11 @@ const ThreeCamera = (function () {
             _panFocalY = null;
         }
 
-        const dist = baseDist / Math.max(cam.zoom, 0.05);
+        /* THE BODY FRAME (2026-10-14, battle.js _cineSizeK): a cinematic
+           shot's boom grows / shrinks with the anchored unit's height, so a
+           tall or a short body fills the frame like a standard one. */
+        const sizeK = (cam._cineTps && !cam._tpsCollide && cam._tpsSizeK > 0) ? cam._tpsSizeK : 1;
+        const dist = baseDist / Math.max(cam.zoom, 0.05) * sizeK;
         const tiltRad = cam.tilt * DEG2RAD;
         const yawRad  = cam.yaw  * DEG2RAD;
 
@@ -527,8 +574,21 @@ const ThreeCamera = (function () {
                at from ground level, and a hand-pan height latch never bobs
                the floor as the focal crosses hills. */
         const floorBase = isTps ? pivGroundY : Math.min(focalY, focalGroundY);
-        const floorY = floorBase + clear;
+        let floorY = floorBase + clear;
         if (eyeY < floorY) eyeY = floorY;
+        /* THE SIGHT LINE (2026-10-14, see _sightLineFloor): cinematic TPS
+           shots only — Strike Mode keeps its boom collision, the first-person
+           eye returned above. The aim then runs THROUGH the pivot (below),
+           so a craned lens keeps the subject where the shot put it. The
+           frame guard inherits the raised floor, so its slide can't sink
+           the eye back into the ground. */
+        let sightRaised = false;
+        if (cam._cineTps && !cam._tpsCollide) {
+            const sightY = pivGroundY + Math.max(ts * 0.3, (pivY - pivGroundY) * 0.6);
+            const need = _sightLineFloor(pivX, sightY, pivZ, eyeX, eyeY, eyeZ, clear);
+            if (need > eyeY + 0.5) { eyeY = need; sightRaised = true; }
+            if (need > floorY) floorY = Math.min(need, eyeY);
+        }
         /* ── SKY-GAZE LIFT (cinematic board shots only) ──
            The flat floor parks a sky-gazing eye a mere ⅓ tile over the
            ground, so a programmatic look UP at the sky (the zodiac/celestial
@@ -569,6 +629,14 @@ const ThreeCamera = (function () {
                 targetLookX = eyeX + dirX * ahead;
                 targetLookY = eyeY + dirY * ahead;
                 targetLookZ = eyeZ + dirZ * ahead;
+            } else if (sightRaised) {
+                /* craned over the ground by THE SIGHT LINE: aim through the
+                   pivot so the subject holds its place in the frame */
+                const ax = pivX - eyeX, ay = pivY - eyeY, az = pivZ - eyeZ;
+                const al = Math.hypot(ax, ay, az) || 1;
+                targetLookX = pivX + (ax / al) * ahead;
+                targetLookY = pivY + (ay / al) * ahead;
+                targetLookZ = pivZ + (az / al) * ahead;
             } else {
                 targetLookX = pivX + dirX * ahead;
                 targetLookY = pivY + dirY * ahead;
@@ -635,6 +703,12 @@ const ThreeCamera = (function () {
             if (g) {
                 targetPosX = g[0]; targetPosY = g[1]; targetPosZ = g[2];
                 targetLookX = g[3]; targetLookY = g[4]; targetLookZ = g[5];
+                /* the guard's slide / dolly-back moved the eye sideways or
+                   back: never let it land inside the ground there */
+                if (cam._cineTps && !cam._tpsCollide) {
+                    const gy = _solidGroundYWorld(targetPosX, targetPosZ) + clear;
+                    if (targetPosY < gy) { targetLookY += gy - targetPosY; targetPosY = gy; }
+                }
             }
         } else _frameGuardLast = null;
 

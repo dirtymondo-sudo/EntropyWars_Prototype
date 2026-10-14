@@ -1322,3 +1322,23 @@ tile, it can be on a loop ... for a dash spell i wanna see the preview be an act
   landing; hud.js tile-menu Move Towards, chained Move Towards, move-then-cast/attack, shove guess; ui.js
   `drawForecastMoves` (plan.spell picks dash / leap / blink / shove) and `_showDisplaceGhost`. Viewer-local hover UI,
   nothing relayed (guest runs its own hover).
+
+## THE SIGHT LINE + THE BODY FRAME (2026-10-14, token 20261014-sightline-01-cors)
+mondo: spell shots sat "just low enough that i can see through the ground" (not underground) into the empty space under
+the stage; and "units just not being centered framed for their spell animations, especially tall and short units".
+- Cause 1: the TPS cine rig's only floor is a flat plane at the subject's footing. A low lens behind a caster put its
+  sight line through raised columns (a step, a ledge, the platform at its back) or parked the eye inside one; the
+  occlusion fade then ghosted the WHOLE column down to the board's base, so the frame looked through the ground.
+- Fix (three-camera.js `_sightLineFloor`, cinematic TPS only, not Strike Mode): the eye cranes up until it sits
+  `clear` over the solid ground under it AND the line to the subject's body (pivot ground + 0.6 × lift) clears the solid
+  ground on the way (samples every ⅓ tile from 25 % out). Capped at 3.5 tiles of lift. A craned eye aims through the
+  pivot; the frame guard inherits the raised floor and its slide is re-checked against the ground. Ground = battle.js
+  `window._camSolidGroundPx` (first solid run from the base; bridges/ceilings/upper storeys over an air gap are not
+  ground — the canopy cutaway owns those).
+- three-renderer.js `_occHitFadeable`: a terrain column fades only when it rises past the subject's BODY CENTRE, not
+  just its feet (a shin-high step stays solid ground instead of opening a hole to the void).
+- Cause 2: every unit pivoted at its SHOULDER (0.8 × height) on a boom in tiles. Now `_cineTpsAnchor` pivots a unit at
+  `CINE_BODY_LIFT` (0.58) × its height (faceCam passes `liftFrac` 0.92 for the head) and sets `camera._tpsSizeK`
+  (`_cineSizeK` = height / tile, clamped 0.7–2.4); ThreeCamera multiplies the cine boom by it. Bare-tile and
+  `liftPx` anchors keep K = 1.
+- Only syntax-checked; not seen in game. Tunables: CINE_BODY_LIFT, the K clamp, SIGHT_MAX_LIFT_TILES.
