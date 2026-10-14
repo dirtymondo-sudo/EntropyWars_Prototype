@@ -17936,7 +17936,40 @@ const ThreeRenderer = (function () {
        fades — not every grass tuft on the board). */
     function _occIsContainer(o) {
         return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup || o === wallGroup
-            || (_facilityNearGroup !== null && o === _facilityNearGroup);
+            || (_facilityNearGroup !== null && o === _facilityNearGroup)
+            || (_nearOccGroup !== null && o === _nearOccGroup);
+    }
+
+    /* ── THE FADE RULES (mondo, 2026-10-14) ──
+       "the objects on the map are the objects on the map and shouldnt fade transparent": outside a spell's cinematic
+       shot, ONLY scenery standing OFF the battle grid may fade (a room wall, a tree ring, the buildings round a field
+       fight), so the surroundings never cover the battlefield. Anything on the grid (a tile column, a tree on a tile,
+       an edge wall, a building the board stands among) stays solid, and a unit behind it shows as its hologram.
+       A root is off the grid when the centre of its world box lies outside the board's footprint and its top rises
+       above the subject's feet (an apron / moat / ground ring round the board is never "in the way"). A room shell
+       wall is always off the grid. A piece spanning far past the board (an ocean, a backdrop) is not an object and
+       never fades. Measured once per root and re-measured every 2 s (a streaming GLB lands late). */
+    var _occGridBox = null, _occGridV = null;
+    function _occRootOffGrid(root, sub) {
+        if (root._ew_occWall) return true;
+        if (root._ew_wallKey != null) return false;   // authored edge walls stand on the board's own tile edges
+        var W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        if (!(W > 0 && H > 0)) return false;
+        if (root._ew_tileX != null) return root._ew_tileX < 0 || root._ew_tileY < 0 || root._ew_tileX >= W || root._ew_tileY >= H;
+        var ts = CONFIG.tileSize || BASE_TILE, key = W + 'x' + H + '@' + ts, now = performance.now();
+        var g = root._ew_occGrid;
+        if (!g || g.key !== key || (now - g.at) > 2000) {
+            if (!_occGridBox) { _occGridBox = new THREE.Box3(); _occGridV = new THREE.Vector3(); }
+            try { root.updateMatrixWorld(true); _occGridBox.setFromObject(root); } catch (e) { _occGridBox.makeEmpty(); }
+            g = root._ew_occGrid = { key: key, at: now, off: false, top: -Infinity };
+            if (!_occGridBox.isEmpty()) {
+                var b = _occGridBox, cx = (b.min.x + b.max.x) * 0.5, cz = (b.min.z + b.max.z) * 0.5, eps = ts * 0.05;
+                var span = Math.max(b.max.x - b.min.x, b.max.z - b.min.z), huge = span > Math.max(W, H) * ts * 2;
+                g.off = !huge && (cx < -eps || cz < -eps || cx > W * ts + eps || cz > H * ts + eps);
+                g.top = b.max.y;
+            } else g.at = now - 1800;   // nothing drawn yet: look again soon
+        }
+        return g.off && g.top > sub.feetY + ts * 0.1;
     }
     function _occRootOf(obj) {
         var o = obj;
@@ -18167,13 +18200,16 @@ const ThreeRenderer = (function () {
     }
 
     /* Roots that block the line of sight to the caster or target this frame. */
-    function _occComputeBlockers(cam, cineActive, selUnit, focalTile) {
+    function _occComputeBlockers(cam, cineActive, selUnit, focalTile, anyFade) {
         var roots = new Set();
         _occUnitWant = null;
         var groups = [];
-        if (terrainGroup) groups.push(terrainGroup);
+        /* THE FADE RULES: outside a shot only off-grid scenery may fade, and the terrain columns + edge walls are all
+           on the grid — they are not raycast at all then */
+        if (terrainGroup && anyFade) groups.push(terrainGroup);
         if (objectGroup) groups.push(objectGroup);
-        if (wallGroup) groups.push(wallGroup);
+        if (wallGroup && anyFade) groups.push(wallGroup);
+        if (_nearOccGroup && _nearOccGroup.parent) groups.push(_nearOccGroup);
         /* D.O.O.R. facility enclosure (2026-09-04): the Training Room's
            walls, barriers, booths and corner machinery stand right at the
            board edge and swallow the whole grid from any outside camera
@@ -18214,7 +18250,7 @@ const ThreeRenderer = (function () {
                 }
             }
         } else {
-            // Normal play: keep the selected/active unit clear.
+            // Normal play: off-grid scenery between the camera and the active unit fades (THE FADE RULES).
             if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) subs.push(sp); }
             /* Hand-held camera (2026-09-02): the player is orbiting/panning
                by hand, so ALSO keep whatever the camera is pointed AT clear —
@@ -18229,18 +18265,26 @@ const ThreeRenderer = (function () {
                 var fp = _occTilePoint(focalTile.x, focalTile.y);
                 if (fp) subs.push(fp);
             }
-            /* Inside a facility enclosure the BOARD itself is a subject:
-               the centre tile plus the four inner corners, so a room wall
-               between the camera and any part of the grid fades out
-               (rather than only the one in front of the active unit) and
-               the board stays readable from every angle. */
-            if (facOcc) {
+            /* THE FADE RULES (2026-10-14): wherever off-grid scenery stands round the board (a facility enclosure, a
+               near setting, the room round a field fight), the BOARD itself is a subject — a 4 × 4 lattice of tiles,
+               one sight line each — and so is every unit the viewer can see (one line each; a hidden enemy never
+               drives a fade, it would leak its position), so a wall, a tree ring or a building off the grid never
+               covers any part of the battlefield from any angle. */
+            if (facOcc || fieldSet || (_nearOccGroup && _nearOccGroup.parent)) {
                 var fbw = (typeof bw === 'function') ? bw() : 0, fbh = (typeof bh === 'function') ? bh() : 0;
                 if (fbw > 2 && fbh > 2) {
-                    var fpts = [[(fbw - 1) / 2, (fbh - 1) / 2], [1, 1], [fbw - 2, 1], [1, fbh - 2], [fbw - 2, fbh - 2]];
-                    for (var fi = 0; fi < fpts.length; fi++) {
-                        var fq = _occTilePoint(fpts[fi][0], fpts[fi][1]);
-                        if (fq) subs.push(fq);
+                    var lx = [1, (fbw - 1) / 3, (fbw - 1) * 2 / 3, fbw - 2], lz = [1, (fbh - 1) / 3, (fbh - 1) * 2 / 3, fbh - 2];
+                    for (var fi = 0; fi < 4; fi++) for (var fj = 0; fj < 4; fj++) {
+                        var fq = _occTilePoint(Math.round(lx[fi]), Math.round(lz[fj]));
+                        if (fq) { fq.one = true; subs.push(fq); }
+                    }
+                }
+                if (state && state.units) {
+                    for (var ui = 0; ui < state.units.length; ui++) {
+                        var vu = state.units[ui];
+                        if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
+                        var vq = _occUnitPoint(vu);
+                        if (vq) { vq.one = true; subs.push(vq); }
                     }
                 }
             }
@@ -18263,7 +18307,7 @@ const ThreeRenderer = (function () {
         for (var s = 0; s < subs.length; s++) {
             var sub = subs[s];
             var P = sub.P;
-            for (var q = 0; q < 5; q++) {
+            for (var q = 0, nq = sub.one ? 1 : 5; q < nq; q++) {
                 // centre ray + four spread around the subject in screen space
                 _occVecA.copy(P);
                 if (q === 1) _occVecA.addScaledVector(_occRight, jit);
@@ -18285,7 +18329,8 @@ const ThreeRenderer = (function () {
                        jittered rays below a subject's feet hit it from any angle */
                     if (hits[hi].object._ew_occSkip) continue;
                     var r = _occRootOf(hits[hi].object);
-                    if (r && _occHitFadeable(r, sub)) roots.add(r);
+                    /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
+                    if (r && _occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
                 }
             }
         }
@@ -18449,9 +18494,13 @@ const ThreeRenderer = (function () {
            pure noise on top of it. Gated on there actually being live fades, so
            a unit hidden by something the fade genuinely can't reach still falls
            back to its hologram instead of vanishing. */
+        /* THE FADE RULES (2026-10-14): outside a shot only off-grid scenery fades, so an on-grid tree / wall in front
+           of the active unit stays solid and the unit MUST keep its hologram — the gate only hides it in a shot (and
+           in Strike Mode's shoulder rig, which still fades whatever is in the way). */
+        var strikeRig = !!(inBattle && !cineActive && state.thirdPersonCamera && typeof camera !== 'undefined' && camera && camera._tpsCollide);
         _updateCineSilhouetteGate(
             cineActive ? camera._cineShotUnitId
-                       : ((selUnit && _occFaded.size > 0) ? selUnit.id : null),
+                       : ((strikeRig && selUnit && _occFaded.size > 0) ? selUnit.id : null),
             (cineActive && camera._cineShotTarget && camera._cineShotTarget.id != null)
                 ? camera._cineShotTarget.id : null
         );
@@ -18483,7 +18532,8 @@ const ThreeRenderer = (function () {
         }
 
         var active = cineActive || !!selUnit || !!focalTile
-            || !!(inBattle && _facilityNearGroup && _facilityNearGroup.parent);   // facility boards: the grid is always a subject
+            || !!(inBattle && _facilityNearGroup && _facilityNearGroup.parent)   // facility boards: the grid is always a subject
+            || !!(inBattle && _nearOccGroup && _nearOccGroup.parent);            // near settings too (THE FADE RULES)
 
         if (!active && _occFaded.size === 0 && _occUnitFaded.size === 0) return;   // nothing to do
         _occInit();
@@ -18498,7 +18548,7 @@ const ThreeRenderer = (function () {
         var want;
         if (active) {
             if (cineActive || _occWant === null || (now - _occWantTime) >= OCC_RECOMPUTE_DT) {
-                want = _occComputeBlockers(cam, cineActive, selUnit, focalTile);
+                want = _occComputeBlockers(cam, cineActive, selUnit, focalTile, cineActive || strikeRig);
                 _occWant = want;
                 _occWantTime = now;
             } else {
@@ -24528,6 +24578,11 @@ const ThreeRenderer = (function () {
        child (a whole wall, one barrier, one drum) being a single occluder.
        Null on every other board. See _occComputeBlockers. */
     var _facilityNearGroup = null;
+    /* THE FADE RULES (2026-10-14): a near builder that did NOT opt in (the open settings: rocks, monoliths, mounds,
+       a fairy ring) is still scenery OFF the board, and off-board scenery may never hide the battlefield — so its
+       group is a fade container too, read only by the off-grid test (_occRootOffGrid). Nothing else (instancing,
+       bundles, the field) treats it as the facility group. */
+    var _nearOccGroup = null;
     // per-map environment plumbing (state.mapEnv)
     var _hzTheme = 'cosmic', _hzThemeDensity = 1;
     var _hzNear = null;     // env.near → a MAP SETTINGS builder key (_NR_BUILDERS), or null
@@ -30384,6 +30439,9 @@ const ThreeRenderer = (function () {
         if (g._ew_occNear) {
             for (var ci = 0; ci < g.children.length; ci++) g.children[ci]._ew_occNear = true;
             _facilityNearGroup = g;
+        } else {
+            for (var cj = 0; cj < g.children.length; cj++) g.children[cj]._ew_occNear = true;   // glows fade with their piece
+            _nearOccGroup = g;
         }
         g.traverse(function (o) {
             if (!o.material) return;
@@ -31880,7 +31938,7 @@ const ThreeRenderer = (function () {
         if (_horizonGroup && _horizonKey === key) return;
         _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
-        _facilityNearGroup = null; _occFieldDrop();   // THE BLOCKER SET: the list dies with the group
+        _facilityNearGroup = null; _nearOccGroup = null; _occFieldDrop();   // THE BLOCKER SET: the list dies with the group
         _horizonMats.length = 0;
         _horizonFloaters.length = 0;
         _hzGlowPulse.length = 0;
@@ -37819,7 +37877,7 @@ const ThreeRenderer = (function () {
         _floatDomOverlay = null;
         _fieldInstDrop();   // THE PERF PASS: the fight's batches go before their room
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
-        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null; _occFieldDrop();
+        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null; _nearOccGroup = null; _occFieldDrop();
         try { _hqHandoverDrop(); } catch (e) {}   // THE HAND-OVER: a stash nobody took
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
