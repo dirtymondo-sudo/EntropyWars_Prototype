@@ -18035,7 +18035,15 @@ const ThreeRenderer = (function () {
             if (root._ew_occCanopyTopY > topY) topY = root._ew_occCanopyTopY;
         }
         var eps = (CONFIG.tileSize || BASE_TILE) * 0.1;
-        return topY > sub.feetY + eps;
+        /* THE SIGHT LINE (2026-10-14): a column must rise past the subject's
+           BODY CENTRE to fade, not just past its feet. A step that only
+           crosses the low spread ray at the shins used to fade whole — down
+           to the board's base — and a low spell shot looked through the
+           ground into the empty space under the stage. Such a step now stays
+           solid ground (it hides a pair of shins, the way ground does);
+           ThreeCamera's sight line cranes the lens over anything taller. */
+        var bodyY = (sub.P && isFinite(sub.P.y)) ? sub.P.y : sub.feetY + eps;
+        return topY > Math.max(sub.feetY + eps, bodyY);
     }
 
     function _occCloneMat(m) {
