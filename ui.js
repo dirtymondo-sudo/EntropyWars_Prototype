@@ -7901,10 +7901,15 @@
                 }
             }
             const opts = pad ? pad.getOpts() : { invertY: false, sensitivity: 1, vibration: true };
+            // THE MENU CAMERA switch (battle.js _menuTargetShot reads ew_menu_cam)
+            const menuCamOn = (function () { try { return localStorage.getItem('ew_menu_cam') !== 'off'; } catch (e) { return true; } })();
             return `
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Camera</div>
-                    <div style="font-size:10px;color:var(--muted);line-height:1.5">The camera is automatic: your turn opens over your unit's shoulder, picking Move/tiles switches to the overhead tactical view, choosing a target (Tab cycles them) looks at that enemy from your unit's shoulder, and actions play out with the third-person action camera. Press C to cycle the Standard / Close / Far view presets. Left-drag to pan or right-drag to orbit any time (a plain left click still selects, a plain right click backs out) — the camera never dips below the map, so craning past the horizon shows the sky.</div>
+                    <div style="font-size:10px;color:var(--muted);line-height:1.5">The camera is automatic: picking Move/tiles switches to the overhead view of the range, and actions play out with the action camera. With Target Camera on, picking a target (clicking or tapping a unit, a target row, ENTER / the confirm button) frames your unit and that target; stepping the target list with ↑/↓, the wheel or the D-pad follows each row, and a mouse frames a row it rests on. Backing out returns to the tactical view. Press C to cycle the Standard / Close / Far view presets. Left-drag to pan or right-drag to orbit any time (a plain left click still selects, a plain right click backs out).</div>
+                    <div class="pm-set-row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+                        <button class="pm-set-btn${menuCamOn ? ' active' : ''}" onclick="try{localStorage.setItem('ew_menu_cam','${menuCamOn ? 'off' : 'on'}')}catch(e){};if(window._ewMenuCamHome)window._ewMenuCamHome(true);window._ewControlsRerender();">Target Camera: ${menuCamOn ? 'ON' : 'OFF'}</button>
+                    </div>
                 </div>
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Gamepad</div>
