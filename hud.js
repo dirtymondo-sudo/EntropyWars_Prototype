@@ -3024,10 +3024,10 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
   //    target list has before its confirm) and frames at once in the engine
   //    (selectTargetFromMenu), as does clicking a unit on the board. Rows that act
   //    at once (the finisher list) frame on the cursor before the click.
-  // The list's default row is framed by the engine when it opens (the finisher
-  // list is not: its first row frames here), and an aim list keeps the range fit
-  // until the player moves the cursor.
-  const _camT = (selId != null || viewKey === 'finTargets') && selBlade && selBlade.camTarget ? selBlade.camTarget : null;
+  // The list's default row is framed by the engine when it opens (the finisher and
+  // item target lists are not: their first row frames here), and an aim list keeps
+  // the range fit until the player moves the cursor.
+  const _camT = (selId != null || viewKey === 'finTargets' || viewKey.indexOf('itemTargets|') === 0) && selBlade && selBlade.camTarget ? selBlade.camTarget : null;
   const _camKey = _camT ? _camT.x + ',' + _camT.y + ',' + (_camT.z == null ? '' : _camT.z) + ',' + (_camT.uid == null ? '' : _camT.uid) : '';
   useEffect(() => {
     if (!_camT) return;
