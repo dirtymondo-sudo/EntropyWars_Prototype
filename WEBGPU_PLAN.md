@@ -873,3 +873,11 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   394 → 101 / 154 → 100. The change frame is now about a normal frame. WebGL path checked (dig on the same arena, no
   errors). Left: the field pick quads (hidden, JS only) and the highlights still rebuild per change; first cast of a
   session still builds the menhir GLB's pipelines.
+- 2026-10-14: **THE TEAM OUTLINES** (mondo: the red / blue unit outlines on WebGPU "dont perfectly follow the perimeter of the
+  model like they were before"). Two causes. (1) The model hull's twin pushed along `normalView`, which three negates on a
+  BackSide material (`negateOnBackSide`), and the hull is BackSide, so it shrank INTO the body: no rim, only patches where
+  the body is thin. It now pushes along `normalViewGeometry`. (2) Since W3 the node chain's scene pass had no stencil, so
+  the per-unit stencil mask passed everywhere (interior contours). The scene pass (and the pane targets, and the canvas)
+  now carry depth24plus-stencil8; three samples a depth-stencil texture through an aspect "all" view, which WebGPU
+  refuses, so `_ewGpuDepthOnlyViews` asks for the depth aspect when three builds a bind group (AO / DoF keep reading
+  depth). Sandbox, Mount Shasta arena: the WebGPU rim now matches `?ew_gpu=webgl` side by side; webgl2 backend loads clean.
