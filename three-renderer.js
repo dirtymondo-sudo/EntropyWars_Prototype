@@ -18321,7 +18321,8 @@ const ThreeRenderer = (function () {
                        jittered rays below a subject's feet hit it from any angle */
                     if (hits[hi].object._ew_occSkip) continue;
                     var r = _occRootOf(hits[hi].object);
-                    if (r && _occHitFadeable(r, sub) && (anyFade || _occRootOffGrid(r, sub))) roots.add(r);
+                    /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
+                    if (r && _occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
                 }
             }
         }
