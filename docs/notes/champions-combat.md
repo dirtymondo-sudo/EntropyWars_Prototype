@@ -1365,3 +1365,18 @@ ai-training/AI_IMITATION_ANALYSIS_20261008.md. Code changes from the evidence:
   nothing is in sight. New trainable weights (no schema bump): lastSeenHunt_v1, breakValue_v1 (default 1).
 - **Race editor:** VISION (clamped 2-6) and CRT (0-100) are editable stats (RACE_STAT_RANGE, clamped in
   EWRaceMods.setRace); both are flat across levels.
+
+## THE RANGE FIT (2026-10-14, Move / Jump / spell-aim camera)
+mondo: "the camera still zooms out to much when i select the move button. It doesnt need to zoom out to view the whole
+damn map. Zooming out just enough to see the movement range or spell range of the character or spell is enough."
+- Cause: `_tilePickFitZoom(reach + 1.5)` fitted a square of reach+1.5 tiles on the TIGHTEST screen axis round the unit.
+  At the 45° board yaw a Manhattan range is a screen square only (reach+1)/√2 tall, and the screen is 16:9, so the frame
+  held ~2-3× the range's area (a 12×12 arena whole for move 3+). It also kept any WIDER current view
+  (`Math.min(camera.zoom, fit)`), so an overview stayed an overview.
+- Now battle.js `_tilePickFrame(unit, tiles)` projects every lit tile's corners (`_tilePickTiles`: getMoveTiles /
+  getJumpTiles / getSpellRangeTiles, a radius-2 diamond for Build) through the destination pose (TILE_PICK_TILT, target
+  yaw, real FOV + aspect), centres the focal on the set, and solves the eye distance exactly. Margins
+  TILE_PICK_MARGIN_H 0.80 / _V 0.86, floor ±TILE_PICK_MIN_HALF (3) tiles. It zooms in OR out to that fit. No 3D lens →
+  the old square fit. Viewer-local camera, nothing relayed.
+- Same 12×12 / 1080p maths: move 3 at the centre 11.7 → 8.4 tiles of eye distance (about half the area); a corner unit
+  frames its clipped range, not the void past the edge.
