@@ -23098,6 +23098,102 @@
             } catch (e) {}
             return _zoomForVisibleTilesAtTilt(Math.max(7, 2 * half / ts), TILE_PICK_TILT);
         }
+        /* THE RANGE FIT (2026-10-14, mondo: "the camera still zooms out to much when i select the move button. It doesnt
+           need to zoom out to view the whole damn map. Zooming out just enough to see the movement range or spell range
+           ... is enough"). _tilePickFitZoom sizes a square of `reach + 1.5` tiles on the TIGHTEST screen axis around the
+           unit, but at the 45° board yaw a Manhattan range is a screen-aligned square only reach/√2 tall, and the screen
+           is far wider than tall, so the frame showed ~3× the range's area — on a 12×12 arena, the whole board. This
+           fits the ACTUAL lit tiles instead: every tile's corners projected through the destination pose (TILE_PICK_TILT,
+           the target yaw, the real lens and aspect), the focal centred on the set (a unit at the board edge no longer
+           frames half a screen of void), and the eye distance solved exactly so the outermost tile sits inside the
+           margin. Returns { x, y, zoom } in camera units, or null when there is no 3D lens to solve on. */
+        const TILE_PICK_MARGIN_H = 0.80;   // fraction of the half-frame the range may fill sideways (turn column, menus)
+        const TILE_PICK_MARGIN_V = 0.86;   // and up/down (HUD strips top and bottom)
+        const TILE_PICK_MIN_HALF = 3;      // never frame tighter than ±3 tiles round the centre
+        function _tilePickFrame(unit, tiles) {
+            if (!unit) return null;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                    || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
+                const bd = ThreeCamera.getBaseDist();
+                const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+                if (!(bd > 0)) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+                const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
+                const t = TILE_PICK_TILT * Math.PI / 180;
+                const yawDeg = Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0);
+                const yw = yawDeg * Math.PI / 180;
+                const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
+                // the rig's basis (three-camera.js sync): gaze, screen-up, screen-right (level)
+                const dX = -sT * sY, dY = -cT, dZ = -sT * cY;
+                const uX = -cT * sY, uY = sT, uZ = -cT * cY;
+                const rX = cY, rZ = -sY;
+                const hAt = (x, y) => (typeof getHeightAt === 'function') ? (getHeightAt(x, y) || 0) : 0;
+                const set = (tiles && tiles.length) ? tiles.slice() : [];
+                set.push({ x: unit.x, y: unit.y, z: unit.z });
+                // tile corners in world space (y up; one height level = one tile)
+                const pts = [];
+                for (const tl of set) {
+                    if (!tl || !Number.isFinite(tl.x) || !Number.isFinite(tl.y)) continue;
+                    const lv = Number.isFinite(tl.z) ? tl.z : hAt(tl.x, tl.y);
+                    const wy = Math.max(0, lv) * ts;
+                    const cx = tl.x * ts + ts / 2, cz = tl.y * ts + ts / 2;
+                    pts.push([cx - ts / 2, wy, cz - ts / 2], [cx + ts / 2, wy, cz - ts / 2],
+                             [cx - ts / 2, wy, cz + ts / 2], [cx + ts / 2, wy, cz + ts / 2]);
+                }
+                if (!pts.length) return null;
+                // centre the focal on the set as the screen sees it (level right axis + ground-forward)
+                let fx = 0, fz = 0;
+                for (const p of pts) { fx += p[0]; fz += p[2]; }
+                fx /= pts.length; fz /= pts.length;
+                let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+                for (const p of pts) {
+                    const ax = p[0] - fx, az = p[2] - fz;
+                    const sx = ax * rX + az * rZ;
+                    const sy = ax * uX + az * uZ;        // ground part of screen-up (heights ride along below)
+                    if (sx < xMin) xMin = sx; if (sx > xMax) xMax = sx;
+                    if (sy < yMin) yMin = sy; if (sy > yMax) yMax = sy;
+                }
+                const mx = (xMin + xMax) / 2, my = (yMin + yMax) / 2;
+                // shift along right by mx, along ground-forward (-sY, -cY) by my / cT
+                fx += mx * rX + (-sY) * (my / cT);
+                fz += mx * rZ + (-cY) * (my / cT);
+                const camX = (fx - ts / 2) / ts, camY = (fz - ts / 2) / ts;
+                const fy = (typeof camera._naturalElevAt === 'function') ? (camera._naturalElevAt(camX, camY) || 0) : 0;
+                // minimum frame: ±TILE_PICK_MIN_HALF tiles round the focal
+                const mh = TILE_PICK_MIN_HALF * ts;
+                pts.push([fx - mh, fy, fz], [fx + mh, fy, fz], [fx, fy, fz - mh], [fx, fy, fz + mh]);
+                // eye = focal − dist·gaze; a point at r = P − F sits at depth dist + r·gaze and must keep
+                // |r·right| ≤ depth·tanH·mH and |r·up| ≤ depth·tanV·mV
+                let dist = 0;
+                for (const p of pts) {
+                    const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
+                    const along = ax * dX + ay * dY + az * dZ;
+                    const sx = Math.abs(ax * rX + az * rZ);
+                    const sy = Math.abs(ax * uX + ay * uY + az * uZ);
+                    dist = Math.max(dist, sx / (tanH * TILE_PICK_MARGIN_H) - along, sy / (tanV * TILE_PICK_MARGIN_V) - along);
+                }
+                if (!(dist > 0)) return null;
+                return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)) };
+            } catch (e) { return null; }
+        }
+        /* the reach of a tile-pick mode as tiles (what the board lights) */
+        function _tilePickTiles(unit, mode, spell) {
+            let tiles = [];
+            try {
+                if (mode === 'move') tiles = getMoveTiles(unit) || [];
+                else if (mode === 'jump') tiles = (typeof getJumpTiles === 'function' ? getJumpTiles(unit) : []) || [];
+                else if (mode === 'spell' && spell) tiles = getSpellRangeTiles(unit, spell) || [];
+            } catch (e) { tiles = []; }
+            if (!tiles.length) {
+                const r = mode === 'spell' ? (spell?.range || 3) : 2;
+                for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) <= r && isInside(unit.x + dx, unit.y + dy)) tiles.push({ x: unit.x + dx, y: unit.y + dy });
+                }
+            }
+            return tiles;
+        }
         function getDefaultZoomAtTilt(tiltDeg) {
             const targetTiles = _framingBoardTiles() + 4;
             const z = Math.max(_zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, tiltDeg),
@@ -53299,18 +53395,16 @@
                         camera._cineShotId = null;
                         camera._releaseCineSubject(420);
                         const range = spell?.range || 3;
-                        // Fit the spell's range rings and nothing more; only
-                        // zoom OUT if the current view doesn't already show
-                        // them — same rule as the Move framing. Computed for
-                        // the DESTINATION pitch (this same move pitches to
-                        // TILE_PICK_TILT): the live-tilt version resolved a
-                        // craned action-shot pitch into a much tighter "fit",
-                        // so arming a spell right after a cast kept close-up
-                        // magnification on the overhead view.
-                        const _fitZ = _tilePickFitZoom(range + 1.5);
-                        const zoom = Math.min(camera.zoom || _fitZ, _fitZ);
+                        // Fit the spell's lit range tiles and nothing more
+                        // (THE RANGE FIT, _tilePickFrame): centred on the
+                        // range, zoomed in OR out to it, computed for the
+                        // DESTINATION pitch (this same move pitches to
+                        // TILE_PICK_TILT). No 3D lens → the old square fit.
+                        const _fr = _tilePickFrame(unit, _tilePickTiles(unit, 'spell', spell));
+                        const _fitZ = _fr ? _fr.zoom : _tilePickFitZoom(range + 1.5);
+                        const zoom = _fr ? _fitZ : Math.min(camera.zoom || _fitZ, _fitZ);
                         camera.moveTo({
-                            x: unit.x, y: unit.y, zoom,
+                            x: _fr ? _fr.x : unit.x, y: _fr ? _fr.y : unit.y, zoom,
                             // Same over-the-map overhead as the Move framing.
                             tilt: TILE_PICK_TILT,
                             duration: 380, easing: 'easeInOut',
@@ -54433,10 +54527,15 @@
                 // Sized on the real 3D lens (_tilePickFitZoom): the reach plus
                 // a tile and a half of margin. A closer view zooms out to it,
                 // a view already showing it is kept.
-                const _mvFitZ = _tilePickFitZoom(_mvRange + 1.5);
-                const _mvZoom = Math.min(camera.zoom || _mvFitZ, _mvFitZ);
+                // THE RANGE FIT (2026-10-14): the frame now fits the lit
+                // tiles themselves (_tilePickFrame), centred on them, and
+                // zooms in OR out to that — keeping a wider current view
+                // left the whole map on screen.
+                const _mvFr = _tilePickFrame(unit, _tilePickTiles(unit, mode));
+                const _mvFitZ = _mvFr ? _mvFr.zoom : _tilePickFitZoom(_mvRange + 1.5);
+                const _mvZoom = _mvFr ? _mvFitZ : Math.min(camera.zoom || _mvFitZ, _mvFitZ);
                 camera.moveTo({
-                    x: unit.x, y: unit.y,
+                    x: _mvFr ? _mvFr.x : unit.x, y: _mvFr ? _mvFr.y : unit.y,
                     // Over-the-map overhead. The old getTacticalTilt() was the
                     // PRESET tilt (40) — identical to the default resting view,
                     // so "entering Move" changed nothing but zoom and the
