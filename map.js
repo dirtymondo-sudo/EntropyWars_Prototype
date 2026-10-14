@@ -11841,7 +11841,8 @@
 
         const TOWER_MAX_HP = 3600;   // level-1 base magnitude (2500 → 1800 on 2026-09-07: Arena matches ran ~35 rounds; 1800 → 2400 on 2026-10-07, mondo: the Cube ended 66% of lab matches; 2400 → 3600 on 2026-10-14, mondo: Cube hits now roll off max(ATK, M.ATK), avg hit 121 → 177)
         if (typeof window !== 'undefined') window.EW_CUBE_MAX_HP = TOWER_MAX_HP;   // read by the AI rules snapshot
-        const TOWER_DEF = 15;        // level-1 base magnitude
+        const TOWER_DEF = 100;       // level-1 base magnitude (15 → 100 on 2026-10-14, mondo: buffs made the Cube too easy; an ATK swing loses this)
+        const TOWER_MDEF = 100;      // level-1 base magnitude (2026-10-14, mondo: an M.ATK swing loses this — battle.js getCubeAttackDamage)
         const TOWER_VISION_RANGE = 4;
 
         /* Level 100: towers live in the same magnitude space as unit HP, so
@@ -11861,6 +11862,7 @@
         }
         function _towerHp() { return Math.round(TOWER_MAX_HP * _towerLevelScale()); }
         function _towerDef() { return Math.round(TOWER_DEF * _towerLevelScale()); }
+        function _towerMdef() { return Math.round(TOWER_MDEF * _towerLevelScale()); }
 
         /* VISION (2026-10-09, mondo): a unit sees the tiles within its VISION stat
            (2-6, Manhattan — getUnitVisionRange) that it has a clear line of sight
@@ -11944,12 +11946,12 @@
             const t1 = {
                 x: p1Pos.x, y: p1Pos.y,
                 homeBox: p1Box,
-                hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0]
+                hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0]
             };
             const t2 = {
                 x: p2Pos.x, y: p2Pos.y,
                 homeBox: p2Box,
-                hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1]
+                hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1]
             };
             for (const t of [t1, t2]) {
                 for (let dy = 0; dy <= (boxBotY - boxTopY); dy++) {
@@ -12258,9 +12260,9 @@
                     const p1 = owners[1], p2 = owners[2];
                     const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                 } else if (dragons.length === 1) {
@@ -12271,9 +12273,9 @@
                     const p1 = owners[1], p2 = owners[2];
                     const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                 } else {
@@ -12482,9 +12484,9 @@
                 if (t1Pos && t2Pos) {
                     const p1 = t1Pos, p2 = t2Pos;
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                     console.log('[Tower auto-place] P1 tower:', t1Pos, ' P2 tower:', t2Pos);
@@ -12784,12 +12786,12 @@
                     1: {
                         x: t1x, y: eMidY,
                         homeBox: { x1: t1x, y1: eMidY - 1, x2: t1x + 1, y2: eMidY },
-                        hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0]
+                        hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0]
                     },
                     2: {
                         x: t2x, y: eMidY,
                         homeBox: { x1: t2x - 1, y1: eMidY - 1, x2: t2x, y2: eMidY },
-                        hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 2, gender: genders[1]
+                        hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1]
                     }
                 };
 

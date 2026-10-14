@@ -59972,16 +59972,26 @@
         // THE CUBE SWING (mondo 2026-10-14): a strike on the Cube rolls off the
         // HIGHER of ATK and M.ATK, so casters siege as well as bruisers (spells
         // still can't touch it). Paired with TOWER_MAX_HP 2400 → 3600 (map.js).
+        // THE CUBE ARMOUR (mondo 2026-10-14, "it's still really easy to have some
+        // buffs or passives that raise your attack stat"): the Cube has DEF 100 /
+        // M.DEF 100 (map.js TOWER_DEF / TOWER_MDEF); an ATK swing loses DEF, an
+        // M.ATK swing loses M.DEF. The basic-attack floor still holds (35% of the
+        // swing, never under BASIC_FLOOR_MIN), so a weak hitter never chips for 1.
         function getCubeAttackDamage(unit, tw, variance = 0) {
             unit = { ...unit, status: { ...(unit.status || {}) } };
-            let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(Math.max(pwrAtk(unit), pwrInt(unit)) * BASIC_ATTACK_COEF) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
+            const _atk = pwrAtk(unit), _int = pwrInt(unit), _magic = _int > _atk;
+            let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(Math.max(_atk, _int) * BASIC_ATTACK_COEF) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
+            let _mag = 1;
             if (typeof offenseScale === 'function') {
                 const lvl = getUnitLevel(unit);
                 damage = Math.round(damage * offenseScale(lvl, lvl));
+                _mag = (typeof levelScale === 'function') ? levelScale(lvl) : 1;
             } else if (typeof levelScale === 'function') {
-                damage = Math.round(damage * levelScale(getUnitLevel(unit)));
+                _mag = levelScale(getUnitLevel(unit));
+                damage = Math.round(damage * _mag);
             }
-            damage = Math.max(1, damage - (tw.def || 0));
+            const _floor = Math.max(1, Math.round(damage * BASIC_FLOOR_SHARE), Math.round(BASIC_FLOOR_MIN * _mag));
+            damage = Math.max(_floor, damage - ((_magic ? tw.mdef : tw.def) || 0));
             const _nxSiege = (typeof getCubeDamageMult === 'function') ? getCubeDamageMult(unit.player) : 1;
             if (_nxSiege > 1) damage = Math.round(damage * _nxSiege);
             return { damage, siege: _nxSiege };
