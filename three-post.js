@@ -2884,7 +2884,14 @@ const ThreePost = (function () {
         P.uOrtho = T.uniform(0).onRenderUpdate(function () { return (P.cam && P.cam.isOrthographicCamera) ? 1 : 0; });
         P.uDRes = T.uniform(new THREE.Vector2(1, 1)); P.uARes = T.uniform(new THREE.Vector2(1, 1));
         // the scene pass: colour (half float, as the pmndrs frame buffer) + depth; scene / camera are set per frame
-        P.sp = T.pass(scene, new THREE.PerspectiveCamera());
+        /* THE TEAM OUTLINES (2026-10-14): depth WITH stencil, as the classic chain's frame buffer. The unit bodies stamp a
+           per-unit stencil ref and the inverted-hull rim draws only where its own body did not; with no stencil attachment
+           the test passed everywhere and the rim also traced every interior contour (arm over chest, cape over legs), so it
+           stopped following the model's perimeter on WebGPU. The AO / DoF still sample this texture: three-renderer.js
+           _ewGpuDepthOnlyViews hands them its depth-only view (WebGPU cannot sample a depth-stencil texture as a whole) */
+        var spDepth = new THREE.DepthTexture(1, 1);
+        spDepth.format = THREE.DepthStencilFormat; spDepth.type = THREE.UnsignedInt248Type;
+        P.sp = T.pass(scene, new THREE.PerspectiveCamera(), { stencilBuffer: true, depthTexture: spDepth });
         P.sp.name = 'ew scene';
         P.sceneTex = P.sp.getTextureNode('output'); P.depthTex = P.sp.getTextureNode('depth');
         // the classic AO (THE BANDS fix kept: every depth read lands on a texel centre), into its own target
@@ -3278,7 +3285,7 @@ const ThreePost = (function () {
         /* THE PANES (2026-10-07): a target per pane size, kept (see renderDirect) — one shared target was resized back and
            forth every frame when the panes differ by a pixel, each resize a new texture + depth on the GPU and new bindings */
         var D = _paneTarget(w, h, function (W, H) {
-            var d = { rt: new G.RenderTarget(W, H, { type: THREE.HalfFloatType }), mat: new G.NodeMaterial() };
+            var d = { rt: new G.RenderTarget(W, H, { type: THREE.HalfFloatType, stencilBuffer: true }), mat: new G.NodeMaterial() };   // stencil: the team outlines' mask
             d.tex = T.texture(d.rt.texture);
             d.mat.fragmentNode = _ngTone(P, d.tex);
             d.quad = new G.QuadMesh(d.mat);

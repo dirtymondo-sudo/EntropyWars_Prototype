@@ -1407,3 +1407,14 @@ row the cursor lands on reframes the caster + that target, one continuous camera
 - Toggle: Settings → Controls → Camera "Target Camera: ON/OFF" (localStorage ew_menu_cam = 'off'); off = the old
   midpoint pan; switching it off mid-shot returns home (_ewMenuCamHome(true)).
 - Local only (menu browsing is never relayed). Only syntax-checked plus a node check of the fit maths.
+
+## THE JUMP FOLLOW (2026-10-14, camera rides your own jumps)
+mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
+- Cause: battle.js `doJump` skipped the follow pan for the LOCAL player's jumps on purpose ("parity with walking": the
+  old 400 ms pan on teal Move-overlay tiles read as a lurch). Only AI / replayed remote jumps panned, so your own jump
+  left the camera parked on the takeoff tile while the unit leapt to the edge of the frame or out of it.
+- Now every jump pans (`animateBoardCameraPath`) from takeoff to landing over the arc's own 480 ms, ease in/out, so the
+  camera travels with the body. Pan only: zoom/tilt/yaw stay (no `_allowZoomChange`), so the Jump range fit, the
+  player's zoom and the Target Camera's home view (moveTo restores it) are kept. AI + remote jumps keep the fog gate
+  (`_shouldCameraFollowUnit` + `_isTileVisibleToViewer`). Online guests already follow via the `jump-anim` relay
+  (online.js `focusBoardCameraOnTiles`). Walking is unchanged (still no pan for your own walk).

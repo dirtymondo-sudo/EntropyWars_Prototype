@@ -32637,6 +32637,37 @@ const ThreeRenderer = (function () {
             B.delete(attribute);
         };
     }
+    /* THE TEAM OUTLINES (2026-10-14, mondo: the red / blue outlines "dont perfectly follow the perimeter of the model like
+       they were before" on WebGPU). The model rim is an inverted hull masked by a per-unit stencil ref (see
+       _makeModelOutlineMaterial), and since W3 the node chain's scene pass had no stencil attachment (three samples a
+       depth-stencil texture through an aspect "all" view, which WebGPU refuses, and the AO / DoF sample the scene depth), so
+       the mask passed everywhere and the rim traced every interior contour too. three-post.js now gives the scene pass a
+       depth24plus-stencil8 texture, and a view three makes while building a BIND GROUP (a texture a shader samples, never a
+       render attachment) of a depth-stencil texture asks for the depth aspect only. The WebGL 2 backend samples the depth
+       of a DEPTH24_STENCIL8 texture as it is and needs nothing here. */
+    var _ewBindViews = 0;
+    function _ewGpuDepthOnlyViews(r) {
+        var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
+        if (!bu || bu._ewDepthOnly || typeof GPUTexture === 'undefined' || typeof bu.createBindGroup !== 'function') return;
+        bu._ewDepthOnly = true;
+        var rawCB = bu.createBindGroup;
+        bu.createBindGroup = function () { _ewBindViews++; try { return rawCB.apply(this, arguments); } finally { _ewBindViews--; } };
+        /* with a stencil attachment three sets each stamping material's ref on the pass; a bundle encoder has no such call
+           (the units are never bundled, but a stamping mesh inside a bundled holder must not throw the frame away) */
+        try { var BP = (typeof GPURenderBundleEncoder !== 'undefined') ? GPURenderBundleEncoder.prototype : null; if (BP && !BP.setStencilReference) BP.setStencilReference = function () {}; } catch (e) {}
+        var TP = GPUTexture.prototype;
+        if (TP._ewDepthOnly) return;
+        var rawCV = TP.createView;
+        Object.defineProperty(TP, '_ewDepthOnly', { value: true });
+        TP.createView = function (d) {
+            if (_ewBindViews > 0 && d && (d.aspect == null || d.aspect === 'all') && /^depth.*stencil8$/.test(this.format || '')) {
+                var o = {}; for (var k in d) if (d[k] !== undefined && typeof d[k] !== 'function') o[k] = d[k];
+                o.aspect = 'depth-only';
+                return rawCV.call(this, o);
+            }
+            return rawCV.apply(this, arguments);
+        };
+    }
     /* WEBGPU_PLAN W3 (2026-10-04): three 0.186.1 loses an interleaved geometry's attributes after a dispose. Geometries
        .updateAttribute skips an interleaved attribute whose buffer was already touched this call, and its attributeCall map
        outlives the dispose, so after one only the FIRST attribute is uploaded again; the rest are left with no buffer and
@@ -33907,7 +33938,10 @@ const ThreeRenderer = (function () {
         reg(_modelOutlineFragmentShader, 'outline model', function (m) {
             var u = m.uniforms, s = _ewProgMat(m);
             var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Ow = _ewPU(u.uOutline, 'float');
-            s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(T.normalize(T.normalView).mul(Ow)), 1));
+            /* THE TEAM OUTLINES (2026-10-14): normalViewGeometry, the mesh's own (skinned) normal in view space. normalView is
+               flipped on a BackSide material (three's negateOnBackSide), and this hull IS BackSide, so the push went INWARD:
+               the rim shrank inside the body and only leaked through as patches where the body is thin, never a clean edge */
+            s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(T.normalize(T.normalViewGeometry || T.normalView.negate()).mul(Ow)), 1));
             s.fragmentNode = V4(C, Op);
             return s;
         });
@@ -34375,7 +34409,7 @@ const ThreeRenderer = (function () {
         if (mode === 'webgpu' || mode === 'webgl2') {
             if (G && typeof G.WebGPURenderer === 'function') {
                 try {
-                    var opts = { canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance', forceWebGL: mode === 'webgl2' };
+                    var opts = { canvas: cnv, antialias: false, alpha: true, stencil: true, powerPreference: 'high-performance', forceWebGL: mode === 'webgl2' };   // stencil: the team outlines' mask when a frame draws straight to the canvas
                     var ff = /Firefox\//.test(navigator.userAgent || '');
                     var lensUser = false;
                     try { lensUser = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) {}
@@ -34476,6 +34510,7 @@ const ThreeRenderer = (function () {
         var rawClear = r.clear;
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
         _ewGpuSafeBuffers(r);
+        _ewGpuDepthOnlyViews(r);   // THE TEAM OUTLINES: the scene pass's depth-stencil texture, sampled by its depth only
         /* THE SHARED SHADOW DEPTH (W5a, 2026-10-04, mondo: "the transition from exploration to battle is still really laggy"):
            three's node shadow pass gives every material that has a map its own depth colour node (the map's alpha, a
            reference node per material), so every textured caster built its own shadow shader the first time the key light

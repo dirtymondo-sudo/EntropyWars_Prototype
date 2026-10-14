@@ -58167,25 +58167,26 @@
             }
 
             if (!state.cameraDisabled) {
-                /* Camera parity with walking: a local human's walk never pans,
-                   so their jump doesn't either — jump tiles live inside the
-                   Move overlay, and the 400 ms lurch ONLY on teal tiles read
-                   as the camera glitching. AI + replayed remote jumps keep the
-                   follow pan (the viewer is watching someone else act), gated
-                   on screen-true fog visibility like every enemy camera move. */
+                /* THE JUMP FOLLOW (2026-10-14, mondo: "the camera doesnt follow
+                   my unit when i jump to a tile"). The camera rides EVERY jump
+                   from takeoff to landing, timed to the arc (480 ms, ease in/out)
+                   so it travels with the body instead of lurching after it. The
+                   old rule skipped the local player's own jumps ("parity with
+                   walking"), which left the camera parked on the takeoff tile
+                   while the unit leapt to the edge of the frame or out of it.
+                   A pan only: zoom, tilt and yaw stay as the player had them.
+                   AI + replayed remote jumps stay gated on screen-true fog
+                   visibility like every enemy camera move (RULE #2). */
                 const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
-                if (!isHuman && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)
-                    && _isTileVisibleToViewer(x, y)) {
-                    const _curZoom = typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
-                        ? getUserZoomScale()
-                        : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
-                    if (typeof animateBoardCameraPath === 'function') {
-                        animateBoardCameraPath(
-                            { x: fromX, y: fromY },
-                            { x: x, y: y },
-                            { duration: 400, zoom: _curZoom, _fogAllowed: true }
-                        );
-                    }
+                const _seeIt = isHuman
+                    || (typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)
+                        && _isTileVisibleToViewer(x, y));
+                if (_seeIt && typeof animateBoardCameraPath === 'function') {
+                    animateBoardCameraPath(
+                        { x: fromX, y: fromY },
+                        { x: x, y: y },
+                        { duration: _hasArc ? 480 : 400, _fogAllowed: true }
+                    );
                 }
             }
 
