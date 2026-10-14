@@ -819,3 +819,17 @@ zone tiles' tops, its materials / planes / canvases are shared and its meshes po
 Rule: anything rebuilt on a terrain / height version must reuse shared materials, planes and canvases (`_ew_shared`) —
 on WebGPU a new material or canvas per piece is a render object, bind groups and an upload each.
 
+
+## THE FADE RULES (2026-10-14, mondo)
+"the objects on the map are the objects on the map and shouldnt fade transparent". three-renderer.js
+`_updateActionCamOcclusion` / `_occComputeBlockers`:
+- In a cinematic shot (`camera._cineShotId` + `state.cinematicActionCam`, incl. the intro) anything between the camera and
+  the caster/target still fades (terrain, props, walls, bystander units). Strike Mode's shoulder rig keeps that too.
+- Outside a shot ONLY off-grid scenery fades (`_occRootOffGrid`): room shell walls (`_ew_occWall`), and roots whose world
+  box centre is outside the board footprint and whose top rises above the subject's feet (aprons/moats never; pieces
+  spanning >2× the board never). Terrain columns and edge walls are not raycast at all then. On-grid things stay solid and
+  the unit behind them shows its hologram (the silhouette gate no longer hides it outside a shot).
+- Subjects outside a shot: the active unit, the hand-pan focal, and wherever off-grid scenery exists (facility group, field
+  set, or `_nearOccGroup` = a near builder that did not opt into `_ew_occNear`) a 4×4 board lattice + every unit the viewer
+  can see, one ray each (hidden enemies never drive a fade).
+- The roof/canopy cutaway is unchanged (mondo: "ignore roofs for this").
