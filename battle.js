@@ -11421,6 +11421,38 @@
                 return Math.max(0, tileElevationZ(tx, ty));
             } catch (e) { return 0; }
         };
+        /* THE SIGHT LINE (2026-10-14) — the SOLID ground of a tile (px) for
+           ThreeCamera's spell-shot clearance: the top of the column's first
+           solid run from the base (plus a walkable roof object when the
+           column is solid to its top). A bridge, a ceiling or an upper storey
+           floating over an air gap is NOT ground here: the canopy cutaway
+           already opens those, and craning the lens over them would lift a
+           shot inside a building onto its roof. Off-board → the edge tile,
+           like _camGroundPx. */
+        window._camSolidGroundPx = function (tx, ty) {
+            try {
+                const _bwc = bw(), _bhc = bh();
+                if (_bwc > 0 && _bhc > 0) {
+                    tx = Math.max(0, Math.min(_bwc - 1, Math.round(tx)));
+                    ty = Math.max(0, Math.min(_bhc - 1, Math.round(ty)));
+                }
+                const full = Math.max(0, tileElevationZ(tx, ty));
+                const col = state.boardColumns?.[ty]?.[tx];
+                if (!col || !col.length) return full;
+                let i = 0;
+                while (i < col.length && (col[i].terrain === 'void' || col[i].roof)) i++;
+                if (i >= col.length) return full;
+                let top = col[i].z;
+                for (let j = i + 1; j < col.length; j++) {
+                    const b = col[j];
+                    if (b.z !== top + 1 || b.terrain === 'void' || b.roof) break;
+                    top = b.z;
+                }
+                if (top >= (state.boardHeights?.[ty]?.[tx] ?? 0)) return full;
+                return (top > 0 && typeof window._getElevationPx === 'function')
+                    ? Math.max(0, window._getElevationPx(top)) : 0;
+            } catch (e) { return 0; }
+        };
 
         function dioramaUnitZBoost() {
             const tiltDeg = state.dioramaTiltDeg ?? 50;
@@ -26674,7 +26706,7 @@
                 CINE_TPS_DIST_TILES + Math.max(0, (lenTiles || 0) - 1) * CINE_TPS_DIST_GROW);
             return _tpsZoomForBoomTiles(distTiles);
         }
-        function _tpsShoulderLift(unit) {
+        function _tpsUnitHeight(unit) {
             const ts = CONFIG.tileSize || BASE_TILE;
             let h = ts * 0.95;
             try {
@@ -26683,7 +26715,24 @@
                     h = ThreeRenderer.getUnitVisualHeight(unit.id) || h;
                 }
             } catch (e) {}
-            return h * 0.8;
+            return h;
+        }
+        function _tpsShoulderLift(unit) { return _tpsUnitHeight(unit) * 0.8; }
+        /* THE BODY FRAME (2026-10-14) — mondo: "units just not being centered
+           framed for their spell animations, especially tall and short
+           units". The rig pivoted every unit at its SHOULDER (0.8 × height)
+           on a boom measured in tiles, so a tall unit was cropped at the
+           knees with its waist under the frame's centre and a short one was
+           a small figure at the bottom of an empty frame. A unit-anchored
+           shot now pivots at the body's centre (CINE_BODY_LIFT × height —
+           a touch above the middle so the head reads) and ThreeCamera
+           scales the boom by the unit's height against a standard humanoid
+           (camera._tpsSizeK), so every body fills its shot the same way. */
+        const CINE_BODY_LIFT = 0.58;
+        function _cineSizeK(unit) {
+            if (!unit || unit.id == null) return 1;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            return Math.max(0.7, Math.min(2.4, _tpsUnitHeight(unit) / ts));
         }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
@@ -26704,15 +26753,19 @@
                 /* Explicit pivot height (an altitude shot: the fly-by, the
                    fall follow) — measured from the subject's ground. */
                 camera._tpsHeadLift = Math.max(0, opts.liftPx);
+                camera._tpsSizeK = 1;
                 return true;
             }
-            /* Shoulder lift = the model's real shoulder height PLUS the gap
+            /* Pivot lift = the body's centre (THE BODY FRAME; a bare tile
+               keeps a generic shoulder) PLUS the gap
                between where the subject ACTUALLY is (airborne altitude, or
                standing on a walkable roof) and the ground surface the rig
                anchors to. Without this a flyer's shot framed the empty
                ground beneath it — the camera sat at ground level while the
                character hovered above frame. */
-            let _lift = _tpsShoulderLift(unit);
+            const _isUnit = !!(unit && unit.id != null);
+            let _lift = _isUnit ? _tpsUnitHeight(unit) * (opts.liftFrac ?? CINE_BODY_LIFT) : _tpsShoulderLift(null);
+            camera._tpsSizeK = _cineSizeK(unit);
             const _gpx = (typeof window._camGroundPx === 'function')
                 ? window._camGroundPx(Math.round(pos.x), Math.round(pos.y)) : 0;
             const _upx = unit ? unitElevationZ(unit) : _gpx;
@@ -28012,9 +28065,9 @@
            shoulder keeps negative space for whatever arrives in it. */
         const CINE_FACE_CAM_DIST = 2.2;
         function cineFaceCam(unit, opts = {}) {
-            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null))) return false;
+            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null), { liftFrac: 0.92 })) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
-            camera._tpsHeadLift = (camera._tpsHeadLift || ts * 0.8) * 1.18;   // head, not shoulder
+            if (unit.id == null) camera._tpsHeadLift = (camera._tpsHeadLift || ts * 0.8) * 1.18;   // head, not shoulder
             let px = 0;
             if (typeof window._getElevationPx === 'function') {
                 const z = _unitElevZ(unit);
