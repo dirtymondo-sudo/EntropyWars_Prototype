@@ -1399,4 +1399,11 @@ row the cursor lands on reframes the caster + that target, one continuous camera
 - hud.js: target blades carry `camTarget`; HorologeMenu frames the cursor row (90 ms debounce) only once the PLAYER
   moved the cursor (the engine already framed the default row; aim lists keep the range fit until a row is hovered),
   and calls `_ewMenuCamHome` when the menu leaves every target view with no camera move of its own.
+- WHEN it moves, per input (mondo 2026-10-14: mouse+keyboard, controller and touch; some rows need a confirm, some act
+  at once): ↑/↓, wheel and D-pad cursor steps frame at once; a MOUSE frames only a row it rests on (MENU_CAM_HOVER_MS
+  320, hud.js) so sweeping to CONFIRM never swings it; touch's emulated hover is ignored (window._ewLastPointer); the
+  pick (click/tap/ENTER/A = the ✓ step before confirm, or a board click on a unit) frames at once in the engine.
+  Immediate rows (finisher) frame on the cursor before the click. Board hover never moves the camera.
+- Toggle: Settings → Controls → Camera "Target Camera: ON/OFF" (localStorage ew_menu_cam = 'off'); off = the old
+  midpoint pan; switching it off mid-shot returns home (_ewMenuCamHome(true)).
 - Local only (menu browsing is never relayed). Only syntax-checked plus a node check of the fit maths.

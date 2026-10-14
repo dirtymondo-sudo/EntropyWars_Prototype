@@ -27034,8 +27034,13 @@
                 };
             } catch (e) { return null; }
         }
+        /* The on/off switch (Settings → Controls → Camera, mondo 2026-10-14): off =
+           target picks keep the old tactical midpoint pan. */
+        window._ewMenuCamOn = function () {
+            try { return localStorage.getItem('ew_menu_cam') !== 'off'; } catch (e) { return true; }
+        };
         function _menuTargetShot(unit, tgt) {
-            if (!unit || !tgt) return false;
+            if (!unit || !tgt || !window._ewMenuCamOn()) return false;
             const pose = _menuShotPose(unit, tgt);
             if (!pose) return false;
             const key = unit.id + '@' + unit.x + ',' + unit.y + '>' + (tgt.id != null ? tgt.id : '') + '@' + tgt.x + ',' + tgt.y;
@@ -27085,9 +27090,9 @@
         };
         /* hud.js: the menu left every target view without a camera move of its own
            (the quick menu closed, ESC) → back to the tactical view it came from */
-        window._ewMenuCamHome = function () {
+        window._ewMenuCamHome = function (force) {
             if (!camera._menuShot || state.phase !== 'battle' || state._actionExecuting || camera._cineShotId != null) return;
-            if (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item') return;
+            if (!force && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) return;
             const uid = state._blitzActiveUnitId;
             const u = uid != null ? (state.units || []).find(un => un.id === uid && !un.dead) : getSelectedUnit();
             // no tilt/yaw/zoom named → moveTo restores the remembered tactical view
