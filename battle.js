@@ -47441,6 +47441,20 @@
             return hqFieldFixedAt(e.field, x, y);
         }
         window.fieldCellFixed = fieldCellFixed;
+        /* THE SOLID WALL (2026-10-14, mondo: "move highlights will show up over stuff but it wont let me actually move there
+           and clicking it does nothing ... Happens on walls"): a field cell the room's wall / rock fills ('#' in field.cells)
+           stands on the board as a column rockTile levels tall so "no rock is ever climbed" — but a jump-3 body (the Mech) or a
+           flyer still reached its top, the move range lit it, and the room draws no floor up there for a click to land on.
+           true = no unit stands, walks or lands there (map.js unitCanTraverse), so the range never lights it. */
+        function fieldCellRock(x, y) {
+            const m = _encMatch || _encRoomLast;
+            const fid = (m && m.fieldId) ? m.fieldId : (!m && typeof hqArenaRun === 'function' && typeof activeGameMode !== 'undefined' && hqArenaRun(activeGameMode)) ? activeGameMode : null;
+            if (!fid) return false;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
+            const row = e && e.field && e.field.cells ? e.field.cells[y] : null;
+            return typeof row === 'string' && row[x] === '#';
+        }
+        window.fieldCellRock = fieldCellRock;
 
         function startMatch() {
             state.startTime = Date.now();

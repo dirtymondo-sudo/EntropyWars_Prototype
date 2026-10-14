@@ -13425,6 +13425,9 @@
                refuses the whole column). Same rule as a unit-occupied tile. */
             if (isTowerTile(x, y)) return false;
 
+            /* a field's solid wall / rock cell: no floor on top to stand on (battle.js fieldCellRock, THE SOLID WALL) */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
+
             if (terrain === 'tower_base') {
                 return false;
             }

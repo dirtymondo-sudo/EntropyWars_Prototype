@@ -455,3 +455,16 @@ icons, delayed-attack danger cells, spider webs, warp runes, trap sigils, and th
 Textured decals pass `{ tex: true }` (drape v is flipped vs a laid PlaneGeometry; `uvRot` turns it). The nexus pieces
 stay pooled: `_nxDrapeGeo` keeps one geometry per (tile, piece) and rewrites its vertices in place on a rebuild.
 Cliff skirts and curtains stay vertical planes.
+
+## THE SOLID WALL — no move tiles on a field's wall tops (2026-10-14, mondo, token 20261014-wallmove-01-cors)
+mondo (Technoticlan Arena, Mech): "move highlights will show up over stuff but it wont let me actually move there and clicking
+it does nothing, so it just needs to not show up. Happens on walls and stuff".
+- Cause: a field / arena cell the room's wall or rock fills ('#' in `field.cells`, `tops` null) goes onto the board as a column
+  `rockTile` levels tall (HQ_FIELD_RULES rockMin 3 / rockPad 2, "so no rock is ever climbed"). The engine still listed its top as
+  a walkable surface, so any route that reached it (a raised neighbour, a jump, a flyer) lit a move tile up there. The room draws
+  no floor on a wall top, so the pick ray passes through to another cell and the click does nothing.
+- Measured in the sandbox on Technoticlan Arena (every walkable start, jump 1-4): 2,498 move tiles landed on rock cells before,
+  0 after; every remaining tile still has a path (findMovePath) and passes unitCanTraverse. A screen sweep of that arena found
+  every rock top unpickable and every other on-screen surface pickable.
+- Fix: battle.js `fieldCellRock(x, y)` (beside fieldCellFixed, same field lookup: the encounter's field, else the arena's) and
+  map.js `unitCanTraverse` refuses it, so move / jump ranges, paths, the AI and previews all agree. Map geometry untouched.
