@@ -1418,3 +1418,9 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   player's zoom and the Target Camera's home view (moveTo restores it) are kept. AI + remote jumps keep the fog gate
   (`_shouldCameraFollowUnit` + `_isTileVisibleToViewer`). Online guests already follow via the `jump-anim` relay
   (online.js `focusBoardCameraOnTiles`). Walking is unchanged (still no pan for your own walk).
+
+### THE CUBE SWING (2026-10-14, mondo)
+- mondo: attack-heavy units had the edge on the Cube since only basic attacks hurt it. A Cube strike now rolls off the
+  HIGHER of ATK and M.ATK (battle.js `getCubeAttackDamage`, which feeds doAttack, the forecast, the HUD and the AI read).
+  Spells still can't touch the Cube; no heals, no statuses (no PvE). At L100: avg hit 121 → 177; casters went 38 → ~230.
+- Paired with Cube HP 2400 → 3600 (map.js `TOWER_MAX_HP`) so time-to-kill stays ~20 average hits; bruisers 10 → ~15.

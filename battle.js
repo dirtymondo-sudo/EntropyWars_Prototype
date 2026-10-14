@@ -59969,9 +59969,12 @@
 
         // Shared exact Cube arithmetic. Call with a specified variance for a
         // forecast; only doAttack draws RNG. A private unit absorbs stat caches.
+        // THE CUBE SWING (mondo 2026-10-14): a strike on the Cube rolls off the
+        // HIGHER of ATK and M.ATK, so casters siege as well as bruisers (spells
+        // still can't touch it). Paired with TOWER_MAX_HP 2400 → 3600 (map.js).
         function getCubeAttackDamage(unit, tw, variance = 0) {
             unit = { ...unit, status: { ...(unit.status || {}) } };
-            let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(pwrAtk(unit) * BASIC_ATTACK_COEF) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
+            let damage = Math.max(BASIC_ATTACK_MIN_RAW, Math.floor(Math.max(pwrAtk(unit), pwrInt(unit)) * BASIC_ATTACK_COEF) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + variance);
             if (typeof offenseScale === 'function') {
                 const lvl = getUnitLevel(unit);
                 damage = Math.round(damage * offenseScale(lvl, lvl));

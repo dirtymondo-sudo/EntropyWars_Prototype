@@ -11839,7 +11839,7 @@
             return noBuff;
         }
 
-        const TOWER_MAX_HP = 2400;   // level-1 base magnitude (2500 → 1800 on 2026-09-07: Arena matches ran ~35 rounds; 1800 → 2400 on 2026-10-07, mondo: the Cube ended 66% of lab matches)
+        const TOWER_MAX_HP = 3600;   // level-1 base magnitude (2500 → 1800 on 2026-09-07: Arena matches ran ~35 rounds; 1800 → 2400 on 2026-10-07, mondo: the Cube ended 66% of lab matches; 2400 → 3600 on 2026-10-14, mondo: Cube hits now roll off max(ATK, M.ATK), avg hit 121 → 177)
         if (typeof window !== 'undefined') window.EW_CUBE_MAX_HP = TOWER_MAX_HP;   // read by the AI rules snapshot
         const TOWER_DEF = 15;        // level-1 base magnitude
         const TOWER_VISION_RANGE = 4;
