@@ -3002,6 +3002,27 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
   // a fresh unit or a different menu view takes the wheel → reset the cursor
   useEffect(() => { setSelId(null); }, [unitKey, viewKey]);
 
+  // THE MENU CAMERA (battle.js _menuTargetShot): the cursor moving down a target
+  // list (hover, ↑/↓, wheel) reframes the caster + that target, one continuous
+  // move. Only a cursor the PLAYER moved (selId set): the list's default row is
+  // already framed by the engine (the finisher list is not: its first row
+  // frames on open), and an aim list must keep the range fit.
+  const _camT = (selId != null || viewKey === 'finTargets') && selBlade && selBlade.camTarget ? selBlade.camTarget : null;
+  const _camKey = _camT ? _camT.x + ',' + _camT.y + ',' + (_camT.z == null ? '' : _camT.z) + ',' + (_camT.uid == null ? '' : _camT.uid) : '';
+  useEffect(() => {
+    if (!_camT) return;
+    const tm = setTimeout(() => { if (typeof window._ewMenuCamTarget === 'function') window._ewMenuCamTarget(_camT); }, 90);
+    return () => clearTimeout(tm);
+  }, [_camKey, viewKey]);
+  // leaving every target view with no camera move of its own (a quick menu
+  // closed, ESC) → back to the tactical view the two-shot left
+  const _camCtx = /^(enemy|ally|atkTargets|spTargets|aim\||itemTargets|finTargets|combo)/.test(viewKey);
+  useEffect(() => {
+    if (_camCtx) return;
+    const tm = setTimeout(() => { if (typeof window._ewMenuCamHome === 'function') window._ewMenuCamHome(); }, 160);
+    return () => clearTimeout(tm);
+  }, [_camCtx]);
+
   // keep the cursor row in view when the keyboard/wheel drives a long list
   useEffect(() => {
     const root = listRef.current;
@@ -4180,6 +4201,7 @@ function _hrlgFinisherTargetBlades(unit, st) {
       power: fc ? { v: '≈−' + fc.dmg, color: fc.kill ? '#7dff9a' : EW.bad } : undefined,
       note: fc && fc.kill ? 'KILL' : null,
       portrait: portrait,
+      camTarget: { x: t.x, y: t.y, z: t.z, uid: t.id },
       meta: { text: dist + 't' },
       fire: () => {
         hideSpellTooltip();
@@ -4416,6 +4438,8 @@ function _hrlgTargetBlades(unit, st, mode) {
         : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       portrait: portrait,
+      // THE MENU CAMERA: the cursor landing on this row frames caster + target
+      camTarget: { x: t.x, y: t.y, z: tz, uid: tUnit ? tUnit.id : null },
       meta: portrait
         ? { text: t.dist + 't' }
         : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't' },
@@ -4508,6 +4532,7 @@ function _hrlgItemTargetBlades(unit, st) {
       sub: sub,
       check: !!isPending,
       portrait: portrait,
+      camTarget: { x: u.x, y: u.y, z: u.z, uid: u.id },
       previewHeal: previewHeal,
       power: previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       meta: { text: t.dist + 't' },
