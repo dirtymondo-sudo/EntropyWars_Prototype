@@ -1560,6 +1560,16 @@ const ThreeVFX = (function () {
 
     var _RAIN_MAX_DROPS = 50;
     var _RAIN_MAX_SPLASHES = 15;
+    /* MAP-WIDE WEATHER (mondo 2026-10-15): a global storm (zone.global) rains over the whole board, so it may use
+       a bigger share of the pool. Drops are one tiny quad each; low-spec (EW_PERF_LOW) keeps the old 50. */
+    var _RAIN_WIDE_DROPS = 90;
+    var _RAIN_POOL_DROPS = 90;
+    var _RAIN_POOL_SPLASHES = 24;
+    function _rainDropCap() {
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW) return _RAIN_MAX_DROPS;
+        for (var i = 0; i < _rainZones.length; i++) if (_rainZones[i] && _rainZones[i].global) return _RAIN_WIDE_DROPS;
+        return _RAIN_MAX_DROPS;
+    }
 
     var _RAIN_CFG = {
         thunderstorm: {
@@ -3008,6 +3018,10 @@ const ThreeVFX = (function () {
     var _ambMotes = null, _ambFlies = null;   // { points, geo, mat }
     var _ambKey = '';
     var _ambNight = 0;                        // lerped: 0 = day, 1 = night
+    /* MAP-WIDE WEATHER (mondo 2026-10-15): a Drought bakes the whole board, so the board's own dust motes (one
+       draw call, already up) turn hot amber and thicken while it lasts — no new particles. */
+    var _ambDrought = 0;                      // lerped: 0 = none, 1 = drought
+    var _AMB_MOTE_A = null, _AMB_MOTE_B = null, _AMB_DRY_A = null, _AMB_DRY_B = null;
     var _ambTime = 0;
     var _ambCanvasEl = null;
 
@@ -3204,10 +3218,23 @@ const ThreeVFX = (function () {
         if (!_ambCanvasEl) _ambCanvasEl = document.getElementById('threeCanvas');
         var scale = (_ambCanvasEl && _ambCanvasEl.height) ? _ambCanvasEl.height : 800;
 
+        var aw = state.activeWeather;
+        var dry = 0;
+        if (aw && aw.length) for (var wi = 0; wi < aw.length; wi++) if (aw[wi] && aw[wi].type === 'drought') { dry = 1; break; }
+        _ambDrought += (dry - _ambDrought) * Math.min(1, dt * 1.2);
+        if (_ambDrought < 0.002) _ambDrought = dry ? _ambDrought : 0;
+
         var moteOp = 0.5 * (1 - _ambNight * 0.75);   // faint dust lingers at night
+        moteOp += (0.95 - moteOp) * _ambDrought;     // the drought's hot dust hangs thick day and night
         var flyOp = 0.95 * _ambNight;                // fireflies are night-only
         if (_ambMotes) {
             var mu = _ambMotes.mat.uniforms;
+            if (!_AMB_MOTE_A) {
+                _AMB_MOTE_A = new THREE.Color(0xfff6dd); _AMB_MOTE_B = new THREE.Color(0xd8e2f0);
+                _AMB_DRY_A = new THREE.Color(0xffb347);  _AMB_DRY_B = new THREE.Color(0xe0803a);
+            }
+            mu.uColorA.value.copy(_AMB_MOTE_A).lerp(_AMB_DRY_A, _ambDrought);
+            mu.uColorB.value.copy(_AMB_MOTE_B).lerp(_AMB_DRY_B, _ambDrought);
             mu.uTime.value = _ambTime; mu.uScale.value = scale;
             mu.uOpacity.value = moteOp; mu.uDensity.value = _ambDensity;
             _ambMotes.points.visible = moteOp > 0.02;
@@ -3238,7 +3265,7 @@ const ThreeVFX = (function () {
     function _rainInitPools() {
         if (_rainDropMeshes.length > 0) return;
 
-        for (var i = 0; i < _RAIN_MAX_DROPS; i++) {
+        for (var i = 0; i < _RAIN_POOL_DROPS; i++) {
             var dMat = new THREE.MeshBasicMaterial({
                 map: null,
                 color: 0xffffff,
@@ -3258,7 +3285,7 @@ const ThreeVFX = (function () {
             _rainDropMeshes.push({ mesh: dMesh, material: dMat, inUse: false });
         }
 
-        for (var j = 0; j < _RAIN_MAX_SPLASHES; j++) {
+        for (var j = 0; j < _RAIN_POOL_SPLASHES; j++) {
             var sMat = new THREE.MeshBasicMaterial({
                 map: null,
                 color: 0xffffff,
@@ -3278,7 +3305,7 @@ const ThreeVFX = (function () {
             _rainSplashMeshes.push({ mesh: sMesh, material: sMat, inUse: false });
         }
 
-        for (var ii = 0; ii < _RAIN_MAX_DROPS; ii++) {
+        for (var ii = 0; ii < _RAIN_POOL_DROPS; ii++) {
             _rainDrops.push({
                 alive: false, x: 0, y: 0, z: 0,
                 vx: 0, vy: 0, vz: 0, groundY: 0,
@@ -3287,7 +3314,7 @@ const ThreeVFX = (function () {
                 w: 1, h: 20, spriteKey: 'rain-drop', slotIdx: ii,
             });
         }
-        for (var jj = 0; jj < _RAIN_MAX_SPLASHES; jj++) {
+        for (var jj = 0; jj < _RAIN_POOL_SPLASHES; jj++) {
             _rainSplashes.push({
                 alive: false, x: 0, y: 0, z: 0,
                 life: 0, ml: 250, size0: 4, size1: 20,
@@ -3451,14 +3478,15 @@ const ThreeVFX = (function () {
         }
         var budgets = [];
         var budgetSum = 0;
+        var dropCap = _rainDropCap();
         for (var z2 = 0; z2 < zoneCfgs.length; z2++) {
             var share = totalDesired > 0
-                ? Math.max(1, Math.round((zoneCfgs[z2].dropCount / totalDesired) * _RAIN_MAX_DROPS))
+                ? Math.max(1, Math.round((zoneCfgs[z2].dropCount / totalDesired) * dropCap))
                 : 0;
             budgets.push(share);
             budgetSum += share;
         }
-        while (budgetSum > _RAIN_MAX_DROPS && budgets.length > 0) {
+        while (budgetSum > dropCap && budgets.length > 0) {
             var maxIdx = 0;
             for (var z3 = 1; z3 < budgets.length; z3++) if (budgets[z3] > budgets[maxIdx]) maxIdx = z3;
             budgets[maxIdx]--;
@@ -3479,6 +3507,7 @@ const ThreeVFX = (function () {
                 if (!_rainDrops[poolIdx].alive) {
                     _rainDrops[poolIdx].zoneIdx = z4;
                     _rainSpawnDrop(_rainDrops[poolIdx], zoneCfgs[z4]);
+                    alivePerZone[z4]++;
                     need--;
                 }
                 poolIdx++;
@@ -3502,6 +3531,12 @@ const ThreeVFX = (function () {
             if (d.y <= d.groundY) {
                 if (rcfg.splashChance > 0 && Math.random() < rcfg.splashChance) {
                     _rainClaimSplash(rcfg, d.x, d.groundY, d.z);
+                }
+                // over budget (a map-wide storm just ended, or its zone is gone): this drop retires on landing
+                if (zi2 >= zoneCfgs.length || alivePerZone[zi2] > budgets[zi2]) {
+                    if (zi2 < alivePerZone.length) alivePerZone[zi2]--;
+                    _rainReleaseDrop(d);
+                    continue;
                 }
                 _rainSpawnDrop(d, rcfg);
             } else if (b && (d.x < b.minX - 20 || d.x > b.maxX + 20 ||

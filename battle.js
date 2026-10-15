@@ -2801,7 +2801,9 @@
             for (const w of state.activeWeather) {
                 const def = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[w.type] : null;
                 if (!def || !def.soaks) continue;
-                if ((w.tiles || []).some(t => t.x === u.x && t.y === u.y)) return true;
+                // MAP-WIDE WEATHER: a global storm's rain falls on every tile (state.js weatherRainsOnTile).
+                if (typeof weatherRainsOnTile === 'function' ? weatherRainsOnTile(w, u.x, u.y)
+                    : (w.tiles || []).some(t => t.x === u.x && t.y === u.y)) return true;
             }
             return false;
         }
@@ -7771,7 +7773,8 @@
                     const here = posKey(unit.x, unit.y);
                     for (const w of state.activeWeather) {
                         const b = p.weatherBonus[w.type];
-                        if (b && typeof b[key] === 'number' && (w.tiles || []).some(t => posKey(t.x, t.y) === here)) n += b[key];
+                        if (b && typeof b[key] === 'number' && (typeof weatherOnTile === 'function' ? weatherOnTile(w, unit.x, unit.y)
+                            : (w.tiles || []).some(t => posKey(t.x, t.y) === here))) n += b[key];
                     }
                 }
                 if (p.terrainBonus) {
@@ -9382,7 +9385,8 @@
             /* Check every weather system covering the tile — not just the first
                one found (overlapping systems used to hide rain). */
             return (state.activeWeather || []).some(aw => {
-                if (!aw.tiles.some(t => t.x === x && t.y === y)) return false;
+                if (!(typeof weatherRainsOnTile === 'function' ? weatherRainsOnTile(aw, x, y)
+                    : aw.tiles.some(t => t.x === x && t.y === y))) return false;
                 const wDef = WEATHER_REGISTRY[aw.type];
                 return !!(wDef && (wDef.seedTerrain === 'water'
                     || aw.type === 'thunderstorm' || aw.type === 'hurricane'));
@@ -44300,7 +44304,9 @@
                     if (_wKeys.length) {
                         const _wType = _wKeys[randInt(_wKeys.length)];
                         const _wDef = WEATHER_REGISTRY[_wType];
-                        const _wTiles = rollWeatherTiles(_wDef.tiles, _wDef.preferredTerrain || null, _wDef.ignoresTerrain);
+                        const _wTiles = (_wDef.global && typeof allWeatherBoardTiles === 'function')
+                            ? allWeatherBoardTiles()   // MAP-WIDE WEATHER: covers the whole floor
+                            : rollWeatherTiles(_wDef.tiles, _wDef.preferredTerrain || null, _wDef.ignoresTerrain);
                         if (_wTiles && _wTiles.length) {
                             if (!state.activeWeather) state.activeWeather = [];
                             state.activeWeather.push({
@@ -44308,6 +44314,7 @@
                                 remaining: 999,   // frozen — cleared by the next floor's startMatch
                                 id: 'w_md_' + state._mdRun.floor + '_' + randInt(9999),
                                 _casterUnitId: null,
+                                global: !!_wDef.global || undefined,
                             });
                             addLog(`${_wDef.icon} ${_wDef.label} hangs over this floor. ${_wDef.desc}`);
                             if (typeof showCombatBanner === 'function') {
@@ -66058,9 +66065,11 @@
                     seen.add(k);
                     return true;
                 });
-                const direction = wDef.roaming ? rollWeatherDirection() : null;
+                const direction = (wDef.roaming && !wDef.global) ? rollWeatherDirection() : null;
                 // Homing storms are a single roaming vortex centered on the target tile.
-                const weatherTiles = wDef.homing ? [{ x, y }] : deduped;
+                // MAP-WIDE WEATHER (mondo 2026-10-15): a global weather covers the whole board.
+                const weatherTiles = wDef.homing ? [{ x, y }]
+                    : (wDef.global && typeof allWeatherBoardTiles === 'function') ? allWeatherBoardTiles() : deduped;
                 const weather = {
                     type: wType,
                     tiles: weatherTiles,
@@ -66068,11 +66077,14 @@
                     remaining: dur,
                     id: `w_${Date.now()}_${randInt(9999)}`
                 };
+                if (wDef.global) weather.global = true;
                 if (!state.activeWeather) state.activeWeather = [];
                 weather._casterUnitId = unit?.id ?? null;
                 if (unit) unit._matchStorms = (unit._matchStorms || 0) + 1;
                 state.activeWeather.push(weather);
-                addLog(`${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
+                addLog(wDef.global && !wDef.homing
+                    ? `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} covers the whole map. ${wDef.desc}`
+                    : `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
                 queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
 
                 if (!_skipVisuals() && window.ThreeVFXEffects) {
