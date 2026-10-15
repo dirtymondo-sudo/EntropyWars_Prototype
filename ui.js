@@ -6905,6 +6905,11 @@
                     + `<div class="bp-settings">${_pauseSet === 'audio' ? _buildPauseMusic() : _pauseSet === 'video' ? _buildPauseVideo() : _pauseSet === 'game' ? _buildPauseGame() : _buildPauseControls()}</div>`;
             }
 
+            /* a re-render of the same page (a settings toggle) keeps its scroll and folds; a new page opens at the top */
+            const placeKey = _pauseTab + '/' + (_pauseTab === 'settings' ? _pauseSet : '');
+            const place = _pauseOverlay._ewPlaceKey === placeKey && window._ewMenuPlaceSnap ? window._ewMenuPlaceSnap(_pauseOverlay) : null;
+            _pauseOverlay._ewPlaceKey = placeKey;
+
             const nav = cmds.map((c, i) => `<button class="hq-pause-cmd${_pauseTab === c.id ? ' sel' : ''}${i === _pauseCursor ? ' cur' : ''}${c.danger ? ' danger' : ''}" data-pause-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
 
             _pauseOverlay.innerHTML = `
@@ -6920,6 +6925,7 @@
                 <div class="hq-pause-foot bp-foot"><span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${_pauseTab === 'settings' ? '<span>← → PAGE</span>' : ''}<span>ESC / P RESUME</span></div>
             </div>
             `;
+            if (place) window._ewMenuPlaceRestore(_pauseOverlay, place);
             _pauseFocusRestore(focusSnapshot);
         }
 
@@ -7462,6 +7468,35 @@
             const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
             audioTracks[key].currentTime = pct * audioTracks[key].duration;
             _renderPauseMenu();
+        };
+
+        /* ── THE SETTINGS KEEP THEIR PLACE (2026-10-15) ──────────────────────
+           Every settings toggle re-renders its sheet through innerHTML, which threw the
+           player back to the top (the battle pause menu rebuilds its scrolling body) and
+           shut the CRT / Retro / Particles folds. Snap before the re-render, restore after:
+           the scrolling ancestors of root keep their element, scrolling descendants are
+           found again by their child-index path, folds by their order on the sheet. */
+        window._ewMenuPlaceSnap = function (root) {
+            if (!root) return null;
+            const scroll = [], path = el => { const p = []; while (el && el !== root) { p.unshift(Array.prototype.indexOf.call(el.parentNode.children, el)); el = el.parentNode; } return p; };
+            for (let el = root; el && el !== document.documentElement; el = el.parentElement) if (el.scrollTop > 0) scroll.push({ el, top: el.scrollTop });
+            root.querySelectorAll('*').forEach(el => { if (el.scrollTop > 0) scroll.push({ path: path(el), top: el.scrollTop }); });
+            const folds = Array.from(root.querySelectorAll('.pm-collapse-body')).map(b => b.style.display !== 'none');
+            return { scroll, folds };
+        };
+        window._ewMenuPlaceRestore = function (root, snap) {
+            if (!root || !snap) return;
+            const bodies = root.querySelectorAll('.pm-collapse-body');
+            if (bodies.length === snap.folds.length) bodies.forEach((b, i) => {
+                b.style.display = snap.folds[i] ? 'block' : 'none';
+                const chev = b.previousElementSibling && b.previousElementSibling.querySelector('.pm-collapse-chev');
+                if (chev) chev.style.transform = snap.folds[i] ? 'rotate(180deg)' : 'rotate(0)';
+            });
+            snap.scroll.forEach(s => {
+                let el = s.el;
+                if (!el) { el = root; for (const i of s.path) { el = el && el.children[i]; } }
+                if (el && el.isConnected) el.scrollTop = s.top;
+            });
         };
 
         /* ── THE VIDEO SETTINGS, EVERYWHERE (2026-09-17) ──────────────────────
