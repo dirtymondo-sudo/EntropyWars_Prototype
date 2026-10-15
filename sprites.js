@@ -4089,17 +4089,6 @@ const WEATHER_SPRITES = {
     bloodRain: typeof ICON_BLOOD_RAIN !== 'undefined' ? ICON_BLOOD_RAIN : 'https://cdn.entropywars.net/Assets/Sprites/weather_bloodrain.png'
 };
 
-const TORNADO_FRAME_COUNT = 99;
-const TORNADO_FRAME_BASE = 'https://cdn.entropywars.net/Assets/Sprites/Effects/tornado/f.';
-const TORNADO_FRAMES = [];
-const TORNADO_IMAGES = [];
-for (let i = 0; i < TORNADO_FRAME_COUNT; i++) {
-    const idx = String(i).padStart(2, '0');
-    const url = `${TORNADO_FRAME_BASE}${idx}.png`;
-    TORNADO_FRAMES.push(url);
-    // The renderer requests frames on demand; do not decode 99 images at boot.
-}
-
 function _terrainSvg(inner) {
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">' + inner + '</svg>'
