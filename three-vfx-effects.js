@@ -7505,6 +7505,188 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    // Tornado (2026-10-15, mondo: "get rid of the sprite sheet tornado and make
+    // it look more like the other cyclones"): the same funnel/wire/mouth/churn
+    // rig as the hurricane, but a tall, narrow grey rope that sways, with dust
+    // churning at its foot and junk corkscrewing up the wall.
+    function _buildTornadoVortex3D(worldX, worldY, worldZ, ts) {
+        var scene = _getVFXScene();
+        if (!scene) return null;
+
+        var vortexH  = ts * 4.2;
+        var botR     = ts * 0.12;
+        var topR     = ts * 1.05;
+
+        var group = new THREE.Group();
+        group.position.set(worldX, worldY, worldZ);
+
+        // The funnel parts ride a pivot at the base so the whole rope can sway.
+        var sway = new THREE.Group();
+        group.add(sway);
+
+        var funnelGeo = new THREE.CylinderGeometry(topR, botR, vortexH, 24, 8, true);
+        var matFunnel = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x8c8c8c),
+            transparent: true, opacity: 0.34,
+            side: THREE.DoubleSide,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var funnel = new THREE.Mesh(funnelGeo, matFunnel);
+        funnel.position.y = vortexH / 2;
+        funnel.renderOrder = 145;
+        sway.add(funnel);
+
+        var innerGeo = new THREE.CylinderGeometry(topR * 0.7, botR * 0.5, vortexH * 0.95, 20, 6, true);
+        var matInner = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xc8c8c8),
+            transparent: true, opacity: 0.18,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        var inner = new THREE.Mesh(innerGeo, matInner);
+        inner.position.y = vortexH / 2;
+        inner.renderOrder = 146;
+        sway.add(inner);
+
+        var wireGeo = new THREE.CylinderGeometry(topR * 1.05, botR * 1.1, vortexH * 1.02, 12, 6, true);
+        var matWire = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xd8d8d8),
+            transparent: true, opacity: 0.26,
+            wireframe: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        var wire = new THREE.Mesh(wireGeo, matWire);
+        wire.position.y = vortexH / 2;
+        wire.renderOrder = 147;
+        sway.add(wire);
+
+        var mouthGeo = new THREE.TorusGeometry(topR, topR * 0.07, 8, 24);
+        var matMouth = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x9a9a9a),
+            transparent: true, opacity: 0.32,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var mouth = new THREE.Mesh(mouthGeo, matMouth);
+        mouth.rotation.x = Math.PI / 2;
+        mouth.position.y = vortexH;
+        mouth.renderOrder = 148;
+        sway.add(mouth);
+
+        var dustGeo = new THREE.TorusGeometry(ts * 0.55, ts * 0.1, 6, 16);
+        var matDust = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x9a8f78),
+            transparent: true, opacity: 0.32,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var dust = new THREE.Mesh(dustGeo, matDust);
+        dust.rotation.x = Math.PI / 2;
+        dust.position.y = 5;
+        dust.renderOrder = 144;
+        group.add(dust);
+
+        var dust2Geo = new THREE.TorusGeometry(ts * 0.95, ts * 0.07, 6, 18);
+        var matDust2 = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x878072),
+            transparent: true, opacity: 0.2,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var dust2 = new THREE.Mesh(dust2Geo, matDust2);
+        dust2.rotation.x = Math.PI / 2;
+        dust2.position.y = 9;
+        dust2.renderOrder = 144;
+        group.add(dust2);
+
+        var debris = [];
+        var debrisCount = 8;
+        for (var i = 0; i < debrisCount; i++) {
+            var dbGeo = new THREE.BoxGeometry(ts * 0.07, ts * 0.05, ts * 0.06);
+            var dbMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(i % 2 ? 0x8a7f66 : 0x6f6a5e),
+                transparent: true, opacity: 0.85,
+                depthWrite: false,
+            });
+            var db = new THREE.Mesh(dbGeo, dbMat);
+            db.renderOrder = 149;
+            sway.add(db);
+            debris.push({ mesh: db, angle: (i / debrisCount) * Math.PI * 2, yOff: Math.random(), orbitR: 0.6 + Math.random() * 0.4 });
+        }
+
+        scene.add(group);
+
+        return {
+            group: group, sway: sway,
+            funnel: funnel, matFunnel: matFunnel,
+            inner: inner, matInner: matInner,
+            wire: wire, matWire: matWire,
+            mouth: mouth, matMouth: matMouth,
+            dust: dust, matDust: matDust,
+            dust2: dust2, matDust2: matDust2,
+            debris: debris,
+            vortexH: vortexH, topR: topR, botR: botR, ts: ts,
+            birthTime: performance.now(),
+        };
+    }
+
+    function _tickTornadoVortex(vortex, now) {
+        var elapsed = now - vortex.birthTime;
+        var spin = elapsed * 0.0042;
+
+        vortex.sway.rotation.z = Math.sin(elapsed * 0.0011) * 0.07;
+        vortex.sway.rotation.x = Math.sin(elapsed * 0.0008 + 1.3) * 0.05;
+
+        vortex.funnel.rotation.y = spin;
+        var pulse = 1 + 0.04 * Math.sin(elapsed * 0.003);
+        vortex.matFunnel.opacity = 0.34 * pulse;
+
+        vortex.inner.rotation.y = -spin * 1.9;
+        vortex.matInner.opacity = 0.18 * (1 + 0.06 * Math.sin(elapsed * 0.005));
+
+        vortex.wire.rotation.y = spin * 2.8;
+        vortex.matWire.opacity = 0.26 + 0.1 * Math.sin(elapsed * 0.004);
+
+        vortex.mouth.rotation.z = spin * 0.8;
+        var mouthPulse = 1 + 0.06 * Math.sin(elapsed * 0.006);
+        vortex.mouth.scale.set(mouthPulse, mouthPulse, 1);
+
+        vortex.dust.rotation.z = -spin * 3.4;
+        var dustPulse = 1 + 0.1 * Math.sin(elapsed * 0.008);
+        vortex.dust.scale.set(dustPulse, dustPulse, 1);
+        vortex.matDust.opacity = 0.32 * dustPulse;
+
+        vortex.dust2.rotation.z = spin * 2.2;
+        var d2Pulse = 1 + 0.12 * Math.sin(elapsed * 0.006 + 1.7);
+        vortex.dust2.scale.set(d2Pulse, d2Pulse, 1);
+        vortex.matDust2.opacity = 0.2 * d2Pulse;
+
+        // junk corkscrews up the funnel wall and wraps back to the base
+        var h = vortex.vortexH;
+        for (var i = 0; i < vortex.debris.length; i++) {
+            var db = vortex.debris[i];
+            var t = ((elapsed * 0.0032) + db.angle) % (Math.PI * 2);
+            var yNorm = ((elapsed * 0.00045) + db.yOff) % 1;
+            var dbY = h * 0.05 + h * 0.85 * yNorm;
+            var orbitR = (vortex.botR + (vortex.topR - vortex.botR) * yNorm) * db.orbitR;
+            db.mesh.position.set(Math.cos(t) * orbitR, dbY, Math.sin(t) * orbitR);
+            db.mesh.rotation.x = elapsed * 0.005 + i;
+            db.mesh.rotation.z = elapsed * 0.004 + i * 0.7;
+        }
+    }
+
+    function _disposeTornadoVortex(vortex) {
+        var scene = _getVFXScene();
+        if (scene) scene.remove(vortex.group);
+        vortex.group.traverse(function(child) {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        });
+    }
+
     function _buildBlizzardVortex3D(worldX, worldY, worldZ, ts) {
         var scene = _getVFXScene();
         if (!scene) return null;
@@ -39411,6 +39593,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         buildHurricaneVortex3D: _buildHurricaneVortex3D,
         tickHurricaneVortex: _tickHurricaneVortex,
         disposeHurricaneVortex: _disposeHurricaneVortex,
+
+        buildTornadoVortex3D: _buildTornadoVortex3D,
+        tickTornadoVortex: _tickTornadoVortex,
+        disposeTornadoVortex: _disposeTornadoVortex,
 
         buildBlizzardVortex3D: _buildBlizzardVortex3D,
         tickBlizzardVortex: _tickBlizzardVortex,
