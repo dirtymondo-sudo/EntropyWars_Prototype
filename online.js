@@ -5169,7 +5169,7 @@
                merge below only adds/overwrites keys — it never removes ones
                absent from the snapshot — so these must be replaced wholesale
                or the guest keeps phantom walls forever. */
-            var _REPLACE_WHOLESALE = { edgeWalls: 1, burningTiles: 1 };
+            var _REPLACE_WHOLESALE = { edgeWalls: 1, burningTiles: 1, liquidSprings: 1 };   // liquidSprings: a spring that dries (or is raised dry) is deleted host-side; a stale guest copy drew a halo the host's rules never had
 
             /* state keys that MUST end up as real Maps. A recording made by an
                older build (or any snapshot that lost the boxing) carries them as

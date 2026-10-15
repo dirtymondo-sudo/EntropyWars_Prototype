@@ -6074,8 +6074,7 @@
                     && Math.max(Math.abs(tile.x - opts.deformCenter.x), Math.abs(tile.y - opts.deformCenter.y)) > spell.leaveTerrainRadius)) {
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
-                        setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
-                        trackTilesChanged(unit, 1);
+                        if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                     }
                 }
             }
@@ -6620,8 +6619,7 @@
                     }
                 }
                 if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
-                    setTerrainAt(cx, cy, spell.leaveTerrain);
-                    trackTilesChanged(unit, 1);
+                    if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                 }
                 cx += dx; cy += dy;
             }
@@ -6646,8 +6644,7 @@
                         _groundCells.push({ x: lx, y: ly });
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                         if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
-                            setTerrainAt(lx, ly, spell.leaveTerrain);
-                            trackTilesChanged(unit, 1);
+                            if (setTerrainSpringAt(lx, ly, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                         }
                     }
                 }
@@ -35027,13 +35024,13 @@
                 const ex = state._timedTerrain.find(e => e.x === t.x && e.y === t.y);
                 if (ex) {
                     ex.expiresRound = Math.max(ex.expiresRound, expires);
-                    if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainAt(t.x, t.y, cfg.terrain); }
+                    if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainSpringAt(t.x, t.y, cfg.terrain); }
                     n++;
                     continue;
                 }
                 if (cur === cfg.terrain) continue;
+                if (setTerrainSpringAt(t.x, t.y, cfg.terrain) === false) continue;   // a liquid never goes into a solid monument
                 state._timedTerrain.push({ x: t.x, y: t.y, prev: cur, terrain: cfg.terrain, expiresRound: expires, owner: unit ? unit.player : 0 });
-                setTerrainAt(t.x, t.y, cfg.terrain);
                 if (unit && typeof trackTilesChanged === 'function') trackTilesChanged(unit, 1);
                 n++;
             }
@@ -35056,7 +35053,8 @@
                 const _to = e.meltTo || e.prev;
                 if (getTerrainAt(e.x, e.y) === e.terrain && _to && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[_to]) {
                     if (e.deform) { applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid(); }
-                    setTerrainAt(e.x, e.y, _to);
+                    if (e.meltTo) setTerrainSpringAt(e.x, e.y, _to);   // the snow wall's puddle is fresh water: it spreads
+                    else setTerrainAt(e.x, e.y, _to);
                     if (e.meltTo) { melted++; continue; }
                     reverted++;
                     if (e.terrain === 'ice') thawed++;
@@ -61966,11 +61964,17 @@
                     const newH = Math.max(minH, Math.min(maxH, oldH + delta));
                     if (newH === oldH) continue;
 
+                    /* 🌊 (2026-10-15) Liquid is a SURFACE, never a stack of blocks: ground raised under a pool comes up as
+                       the pool's bed (dry — the water runs off it), and ground dug out under a pool keeps the pool on its
+                       new, lower top (Tidal Slam's "leaves deep water" used to dig its own water away). */
+                    const _liqTop = (typeof liquidFamilyOf === 'function') && !!liquidFamilyOf(terrain);
                     if (newH > oldH) {
-
+                        const _raiseT = _liqTop && typeof liquidBedTerrainAt === 'function' ? liquidBedTerrainAt(tx, ty) : (terrain || 'grass');
+                        if (_liqTop) setBlockAt(tx, ty, oldH, _raiseT);   // the old pool surface is buried ground now, not a water stripe in the wall
                         for (let z = oldH + 1; z <= newH; z++) {
-                            setBlockAt(tx, ty, z, terrain || 'grass');
+                            setBlockAt(tx, ty, z, _raiseT);
                         }
+                        if (_liqTop && state.liquidSprings) delete state.liquidSprings[tx + ',' + ty];
                     } else {
 
                         for (let z = oldH; z > newH; z--) {
@@ -61982,6 +61986,7 @@
                             }
                             removeBlockAt(tx, ty, z);
                         }
+                        if (_liqTop && getBaseHeightAt(tx, ty) === newH && getTerrainAt(tx, ty) !== terrain) setTerrainAt(tx, ty, terrain);
                     }
 
                     modified.push({ x: tx, y: ty, oldH, newH });
@@ -67683,8 +67688,7 @@
                         for (const tile of area) {
                             const current = getTerrainAt(tile.x, tile.y);
                             if (current !== 'wall' && current !== spell.leaveTerrain) {
-                                setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
-                                trackTilesChanged(unit, 1);
+                                if (setTerrainSpringAt(tile.x, tile.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                             }
                         }
                     }
@@ -68575,7 +68579,7 @@
                             addLog(`♨️ Water crashes onto the lava at ${coordLabel(tx, ty)} — it hardens into obsidian!`);
                         }
                         if (current === t) return false;
-                        setTerrainAt(tx, ty, t, pz);
+                        if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
                         /* 🌊 Spell-conjured liquid is a SPRING (map.js liquid
                            spread): overfull, so it overflows one tile onto
                            level ground and runs downhill — a lone poison cube
@@ -70170,7 +70174,7 @@
                             if (!isInside(dp.x, dp.y) || !isTerrainPassable(dp.x, dp.y)) continue;
                             const _dlCur = getTerrainAt(dp.x, dp.y);
                             if (_dlCur === 'wall' || _dlCur === spell.leaveTerrain) continue;
-                            setTerrainAt(dp.x, dp.y, spell.leaveTerrain);
+                            if (setTerrainSpringAt(dp.x, dp.y, spell.leaveTerrain) === false) continue;
                             _dlPainted++;
                         }
                         if (_dlPainted) {

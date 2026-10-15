@@ -480,3 +480,20 @@ variance-normalised about the fbm mean 0.484 so the band keeps its contrast); th
 half turn so the wrap lands on a cell edge. The rest of the sky is unchanged. Checked with a standalone render of the
 shader (before/after) on WebGL and a WebGPU battle shot at the zodiac view. The zenith pinch (all azimuths meet at
 straight up) is untouched.
+
+## THE LIQUIDS LIKE MINECRAFT (2026-10-15, mondo: "How is there a cube of poison and its not spreading ... make sure spells
+are changing the terrain of the block on the ground, not placing a liquid block on top")
+Causes: (1) a liquid repainted the TOP VOXEL of a raised column (a crate, a cliff top) and the column renderer drew that voxel
+as a liquid cube with liquid walls; (2) only terrainCreate registered its liquid as a SPRING — leaveTerrain (Miasma, Tidal
+Slam, lines, dashes), the timed paints (Tidewater, Goo) and the snow-wall melt were settled pools, which never spread on level
+ground; (3) a monument's hidden collision voxels (the Dutchman's mainmast) took the paint, so a source hung at the mast top
+with waterfalls down every side; (4) applyTerrainDeform raised a liquid tile by stacking LIQUID blocks, and dug one by removing
+the liquid block (Tidal Slam's "leaves deep water" dug its own water away); (5) the level overflow slab stood ~0.7 of a block
+over the floor, higher than its source; (6) the true ground (field battles) drew no runoff at all.
+Fixes: map.js `setTerrainSpringAt` (every mid-fight liquid paint is a spring), `setTerrainAt` refuses a liquid on a
+`_monumentTiles` cell (returns false), `liquidBedTerrainAt`; flow entries carry `s` (the level poured from) and `sp` (began at a
+spring). battle.js deform: raise under a pool = its bed terrain (dry, spring dropped), dig under a pool keeps the pool on the new
+top. three-renderer.js: a liquid run on solid ground keeps the ground's faces and wears the liquid on top only; flow surface =
+source surface − drop per tile (a level halo is a 0.05 film, a ledge landing ~0.6 thick); `_fieldSkinBuild` sheets spring
+runoff cells (kill: EW_NO_FIELD_RUNOFF). online.js: liquidSprings replaced wholesale in the state-sync.
+Spread numbers unchanged: springs overflow 1 tile on level ground, 3 per terrace downhill (lava 2), reset per ledge.

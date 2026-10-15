@@ -10641,6 +10641,13 @@
            block to repaint; omitted, the topmost solid (non-void) block — the
            visible surface — is painted, which matches the legacy 2D meaning. */
         function setTerrainAt(x, y, terrain, z) {
+            /* 🌊 A liquid never goes INTO a solid monument (the mast, a pillar): its column carries hidden collision
+               voxels, and painting the top one made a source block hang in the air with waterfalls down every side.
+               The ground round it takes the paint; the monument stays dry. */
+            if ((z === undefined || z === null) && liquidFamilyOf(terrain)) {
+                const _mt = state._monumentTiles;
+                if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
+            }
             const col = state.boardColumns?.[y]?.[x];
             if (col && col.length) {
                 let blk = null;
@@ -10686,6 +10693,35 @@
             }
 
             state._terrainVersion = (state._terrainVersion || 0) + 1;
+            return true;
+        }
+
+        /* 🌊 LIQUID PAINTED MID-FIGHT = A SPRING (2026-10-15, mondo: "ITs supposed to be similar to minecraft with how it
+           can fall and spread. How is there a cube of poison and its not spreading"). Every spell / passive that leaves a
+           liquid (leaveTerrain, the timed paints, a melt) repaints the GROUND block's own terrain and registers it as a
+           spring, the way terrainCreate always did — so it overflows onto level ground and runs off ledges instead of
+           sitting as a settled pool that never moves. A paint on a lower floor (z given) stays a settled pool. */
+        function setTerrainSpringAt(x, y, terrain, z) {
+            if (setTerrainAt(x, y, terrain, z) === false) return false;
+            if ((z === undefined || z === null) && liquidFamilyOf(terrain)) {
+                state.liquidSprings = state.liquidSprings || {};
+                state.liquidSprings[x + ',' + y] = 1;
+            }
+            return true;
+        }
+
+        /* The solid ground under a liquid tile: the first non-liquid, non-air block down its column (what the basin is
+           cut into). Raised ground under a pool comes up as this, never as a stack of liquid blocks. */
+        function liquidBedTerrainAt(x, y) {
+            const col = state.boardColumns?.[y]?.[x];
+            if (col && col.length) {
+                for (let i = col.length - 1; i >= 0; i--) {
+                    const t = col[i].terrain;
+                    if (!t || t.indexOf('void') === 0 || liquidFamilyOf(t)) continue;
+                    return t;
+                }
+            }
+            return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES.dirt) ? 'dirt' : 'grass';
         }
 
         function getHeightAt(x, y) {
@@ -10839,8 +10875,9 @@
                     const fam = liquidFamilyOf(getTerrainAt(x, y));
                     if (fam && _LIQUID_SPREADS[fam]) {
                         const sh = getBaseHeightAt(x, y);
+                        const _sp = !!springs[x + ',' + y];
                         queue.push({ x, y, d: 0, fam, srcH: sh, h: sh,
-                                     spring: !!springs[x + ',' + y] });
+                                     spring: _sp, fromSpring: _sp });
                     }
                 }
             }
@@ -10865,7 +10902,10 @@
                     const k = nx + ',' + ny;
                     const prev = _liquidFlowMap[k];
                     if (prev && prev.d <= c.d + 1) continue;
-                    _liquidFlowMap[k] = { t: c.fam, d: c.d + 1 };
+                    /* s: the level of the surface this run pours from (the renderer drops the sheet from there, so
+                       a level overflow is a thin film BELOW its source, never a slab standing over it); sp: the run
+                       began at a spring (spell liquid), not a map's own settled pool */
+                    _liquidFlowMap[k] = { t: c.fam, d: c.d + 1, s: c.srcH, sp: !!c.fromSpring };
                     if (nh < c.h) {
                         // 🌊 WATERFALL LANDING (2026-07-20): pouring off a ledge
                         // RESETS the spread — like Minecraft, fallen liquid
@@ -10876,18 +10916,18 @@
                         // and fans out there instead of dying on the cliff.
                         // Terminates: every reset is strictly lower than the
                         // last, and flat steps still burn the d budget.
-                        queue.push({ x: nx, y: ny, d: 0, fam: c.fam, srcH: nh, h: nh, spring: true });
+                        queue.push({ x: nx, y: ny, d: 0, fam: c.fam, srcH: nh, h: nh, spring: true, fromSpring: c.fromSpring });
                     } else {
                         // level step (spring halo): carry the source level so
                         // the runoff can never creep back up a ledge
                         queue.push({ x: nx, y: ny, d: c.d + 1, fam: c.fam, srcH: c.srcH,
-                                     h: Math.min(c.h, nh), spring: false });
+                                     h: Math.min(c.h, nh), spring: false, fromSpring: c.fromSpring });
                     }
                 }
             }
         }
 
-        // {t: 'water'|'poison'|'oil'|'lava', d: 1..family range} or null.
+        // {t: 'water'|'poison'|'oil'|'lava', d: 1..family range, s: source level, sp: from a spring} or null.
         function getLiquidFlowAt(x, y) {
             const vKey = (state._terrainVersion || 0) + '|' + (state._heightVersion || 0) + '|' +
                 (state.boardTerrain ? bw() + 'x' + bh() : 'none');
