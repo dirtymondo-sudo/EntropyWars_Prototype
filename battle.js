@@ -44308,13 +44308,15 @@
                             : rollWeatherTiles(_wDef.tiles, _wDef.preferredTerrain || null, _wDef.ignoresTerrain);
                         if (_wTiles && _wTiles.length) {
                             if (!state.activeWeather) state.activeWeather = [];
-                            state.activeWeather.push({
+                            const _mdW = {
                                 type: _wType, tiles: _wTiles, direction: null,
                                 remaining: 999,   // frozen — cleared by the next floor's startMatch
                                 id: 'w_md_' + state._mdRun.floor + '_' + randInt(9999),
                                 _casterUnitId: null,
                                 global: !!_wDef.global || undefined,
-                            });
+                            };
+                            state.activeWeather.push(_mdW);
+                            if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(_mdW);   // THE WEATHER'S TERRAIN
                             addLog(`${_wDef.icon} ${_wDef.label} hangs over this floor. ${_wDef.desc}`);
                             if (typeof showCombatBanner === 'function') {
                                 showCombatBanner(_wDef.icon + ' ' + String(_wDef.label).toUpperCase(), 'This floor has its own sky — it holds until the stairs.', 'neutral');
@@ -66084,10 +66086,12 @@
                     id: `w_${Date.now()}_${randInt(9999)}`
                 };
                 if (wDef.global) weather.global = true;
+                weather.patch = tiles.length;   // THE WEATHER'S TERRAIN: a map-wide one seeds by its patch
                 if (!state.activeWeather) state.activeWeather = [];
                 weather._casterUnitId = unit?.id ?? null;
                 if (unit) unit._matchStorms = (unit._matchStorms || 0) + 1;
                 state.activeWeather.push(weather);
+                if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(weather);   // a Drought dries the water, a static one reshapes its tiles
                 addLog(wDef.global && !wDef.homing
                     ? `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} covers the whole map. ${wDef.desc}`
                     : `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);

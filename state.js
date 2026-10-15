@@ -1653,7 +1653,8 @@
                 displaceTiles: 2,
                 duration: [3, 5],
                 ignoresTerrain: true,
-                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches.',
+                seedTerrain: 'grass',
+                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches. Leaves grass in its wake.',
                 homingDamage(unit) {
                     return {
                         amount: engineRandInt(40) + 32,
@@ -1668,7 +1669,8 @@
                 roaming: false,
                 duration: [1, 1],
                 instant: true,
-                desc: 'Hits immediately with seismic force, then ends.',
+                seedTerrain: 'mountain',
+                desc: 'Hits immediately with seismic force, cracks the ground into mountains, then ends.',
                 onSpawnEffect(unit) {
                     return {
                         type: 'damage',
@@ -1687,8 +1689,9 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and hurls whoever it catches. -10 DEF in the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and hurls whoever it catches. -10 DEF in the eye. Floods tiles with water.',
                 soaks: true,
+                seedTerrain: 'water',
                 statMod: {
                     def: -10
                 },
@@ -1706,8 +1709,9 @@
                 roaming: true,
                 global: true,
                 duration: [3, 5],
-                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Soaks everyone in the downpour.',
+                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Soaks everyone in the downpour. Leaves pools of water.',
                 soaks: true,
+                seedTerrain: 'water',
                 onTurnEffect(unit) {
                     const isDivine = (unit.types || []).includes('divine');
                     const isUnholy = (unit.types || []).includes('unholy');
@@ -1732,8 +1736,10 @@
                 roaming: true,
                 global: true,
                 duration: [4, 6],
-                desc: 'Bakes the whole map. Healing 50% effective. Scorches planted seeds.',
-                healMult: 0.5
+                desc: 'Bakes the whole map: dries up the water spells and storms left behind and bakes the land into desert. Healing 50% effective. Scorches planted seeds.',
+                healMult: 0.5,
+                seedTerrain: 'desert',
+                evaporates: true
             },
 
             solarFlare: {
@@ -1742,7 +1748,8 @@
                 tiles: [4, 7],
                 roaming: false,
                 duration: [3, 5],
-                desc: 'Damages Tech, +8 ATK to Divine.',
+                seedTerrain: 'desert',
+                desc: 'Damages Tech, +8 ATK to Divine. Scorches the earth.',
                 onTurnEffect(unit) {
                     const isTech = (unit.types || []).includes('tech');
                     if (isTech) return {
@@ -1767,9 +1774,10 @@
                 homingSpeed: 2,
                 global: true,
                 duration: [3, 4],
-                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the wet. -5 DEF in the eye.',
+                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the wet. -5 DEF in the eye. Leaves puddles.',
                 element: 'lightning',
                 soaks: true,
+                seedTerrain: 'water',
                 statMod: {
                     def: -5
                 },
@@ -2438,6 +2446,162 @@
         window.weatherRainsOnTile = weatherRainsOnTile;
         window.allWeatherBoardTiles = allWeatherBoardTiles;
 
+        /* ══ THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then
+           it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate
+           all that water") ══
+           Restored from the old build (cut 2026-04-01): every weather with a `seedTerrain` reshapes the ground it covers —
+           the rain storms (Hurricane, Blood Rain, Thunderstorm) leave water, Drought and Solar Flare desert, the Tornado grass,
+           the Earthquake mountains. Same moments as before: a static weather on forming (~30% of its tiles), a moving one on
+           the tiles it leaves (~60%), every one as it dissipates (~75%). A map-wide weather has no tiles to leave, so it drops
+           a patch's worth on random tiles instead (a quarter of its patch each round, half on dissipating).
+           Adapted to the liquids (maps-terrain-battle.md "THE LIQUIDS LIKE MINECRAFT"): weather water is a spring like any
+           spell's, so a puddle overflows and runs downhill. The old priority still holds (grass < desert < water < deep water
+           < mountain: a weather only paints over its own rank or lower) and the mountain cap (a quarter of the board).
+           NEW: the Drought (`evaporates`) dries every water tile the fight put down — a spell's, a storm's, Great Flood's
+           stack — the moment it forms and again every round it lasts; each tile goes back to what it was before
+           (map.js notePaintOrigin), the flood's stacked blocks come off and whoever stood on them settles to the ground.
+           The map's own lakes and rivers stay. Host-side engine work; the terrain rides the state-sync to the guest. */
+        const WEATHER_SEED_PRIORITY = { grass: 0, desert: 1, water: 2, deep_water: 3, mountain: 4 };
+        const WEATHER_SEED_KEEP = new Set(['lava', 'chasm', 'ice', 'snow_wall', 'castle_wall', 'bridge', 'home_base',
+            'tower_base', 'well', 'cave_entrance', 'cave_wall', 'descent_point', 'fog_wall', 'storm', 'sky_open',
+            'healing_spring', 'cloud_gap']);
+        const WEATHER_SEED_ROUND_FRAC = 0.25, WEATHER_SEED_END_FRAC = 0.5;
+        function _weatherSeedOk(x, y, newTerrain) {
+            if (!_weatherInBoard(x, y)) return false;
+            const cur = getTerrainAt(x, y);
+            if (!cur || cur === newTerrain || cur.indexOf('void') === 0) return false;
+            if (WEATHER_SEED_KEEP.has(cur) || /^(barrier|cloud|nexus|sanctuary|beanstalk|mountain|tree)/.test(cur)) return false;
+            const fam = liquidFamilyOf(cur);
+            if (fam && fam !== 'water') return false;   // lava, the bogs and oil keep their own rules
+            const rule = getTerrainRule(cur);
+            if (rule && rule.passable === false) return false;
+            if ((WEATHER_SEED_PRIORITY[newTerrain] ?? 0) < (WEATHER_SEED_PRIORITY[cur] ?? 0)) return false;
+            const o = getObjectAt(x, y);
+            if (o) { const orule = getObjectRule(o); if (orule && !orule.cosmetic) return false; }
+            const col = state.boardColumns?.[y]?.[x];
+            if (col && col.some(b => b && b.roof)) return false;   // under a roof: no weather reaches it
+            const _mt = state._monumentTiles;
+            if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
+            if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) return false;   // a room's doorway, water, deck, wall row
+            return true;
+        }
+        function _weatherSeedMountainRoom() {
+            const W = bw(), H = bh();
+            let n = 0;
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (getTerrainAt(x, y) === 'mountain') n++;
+            return n < Math.floor(W * H * 0.25);
+        }
+        function _weatherSeedTile(x, y, terrain) {
+            if (!_weatherSeedOk(x, y, terrain)) return false;
+            if (terrain === 'mountain' && !_weatherSeedMountainRoom()) return false;
+            const ok = liquidFamilyOf(terrain) ? setTerrainSpringAt(x, y, terrain) : setTerrainAt(x, y, terrain);
+            if (ok === false) return false;
+            if (liquidFamilyOf(terrain) === 'water' && typeof extinguishTile === 'function') extinguishTile(x, y);
+            return true;
+        }
+        // Each tile at `chance`; returns how many changed.
+        function seedWeatherTerrain(def, tiles, chance) {
+            if (!def || !def.seedTerrain || !tiles || !tiles.length) return 0;
+            let n = 0;
+            for (const t of tiles) {
+                if (engineRng() > chance) continue;
+                if (_weatherSeedTile(t.x, t.y, def.seedTerrain)) n++;
+            }
+            if (n > 0 && typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            return n;
+        }
+        // A map-wide weather: `count` random tiles of the board that can take its terrain.
+        function seedWeatherTerrainRandom(def, count) {
+            if (!def || !def.seedTerrain || !(count > 0)) return 0;
+            const open = [];
+            const W = bw(), H = bh();
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (_weatherSeedOk(x, y, def.seedTerrain)) open.push({ x, y });
+            let n = 0;
+            while (n < count && open.length) {
+                const t = open.splice(engineRandInt(open.length), 1)[0];
+                if (_weatherSeedTile(t.x, t.y, def.seedTerrain)) n++;
+            }
+            if (n > 0 && typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            return n;
+        }
+        // The size of the patch a weather used to cover (map-wide weather seeds by it).
+        function _weatherPatchSize(w, def) {
+            if (w && w.patch > 0) return w.patch;
+            const r = (def && def.tiles) || [5, 8];
+            return Math.round((r[0] + r[1]) / 2);
+        }
+        function _seedTerrainLabel(t) {
+            const r = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[t] : null;
+            return (r && r.label) ? r.label.toLowerCase() : t;
+        }
+
+        // One tile of water the fight put down goes back to what it was; false for the map's own water.
+        function _evaporateTile(x, y) {
+            const top = getTerrainAt(x, y);
+            if (liquidFamilyOf(top) !== 'water') return false;
+            const rec = state.paintedFrom && state.paintedFrom[x + ',' + y];
+            if (!rec || liquidFamilyOf(rec.t) === 'water') return false;
+            const col = state.boardColumns?.[y]?.[x];
+            const h0 = getBaseHeightAt(x, y);
+            // Great Flood's stack: the water blocks above where the ground stood come off
+            if (col && col.length && rec.z !== null && rec.z !== undefined) {
+                while (col.length > 1) {
+                    const b = col[col.length - 1];
+                    if (liquidFamilyOf(b.terrain) !== 'water' || !(b.z > rec.z)) break;
+                    removeBlockAt(x, y, b.z);
+                }
+            }
+            if (liquidFamilyOf(getTerrainAt(x, y)) === 'water') {
+                const zNow = getBaseHeightAt(x, y);
+                const back = (zNow === rec.z && !liquidFamilyOf(rec.t) && rec.t !== 'ice') ? rec.t : liquidBedTerrainAt(x, y);
+                setTerrainAt(x, y, back);
+            }
+            if (state.liquidSprings) delete state.liquidSprings[x + ',' + y];
+            const h1 = getBaseHeightAt(x, y);
+            if (h1 < h0) {
+                // whoever stood on the flood settles to the ground under it
+                for (const u of state.units) {
+                    if (!u || u.dead || u.x !== x || u.y !== y) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    if ((u.z ?? h0) > h1) {
+                        u.z = h1;
+                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: x, fromY: y });
+                    }
+                }
+            }
+            return true;
+        }
+        function evaporateBattleWater(def) {
+            const W = bw(), H = bh();
+            let n = 0, lowered = false;
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                const h0 = getBaseHeightAt(x, y);
+                if (_evaporateTile(x, y)) { n++; if (getBaseHeightAt(x, y) !== h0) lowered = true; }
+            }
+            if (n > 0) {
+                if (lowered) {
+                    if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                    if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                }
+                if (def) addLog(`${def.icon} The ${def.label} evaporates ${n} water tile${n !== 1 ? 's' : ''}.`);
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+            return n;
+        }
+        // A weather just formed (natural or cast): a static one reshapes ~30% of its tiles; a Drought dries the water.
+        function weatherTerrainOnForm(weather) {
+            const def = weather && WEATHER_REGISTRY[weather.type];
+            if (!def) return;
+            if (def.evaporates) evaporateBattleWater(def);
+            if (def.seedTerrain && !def.roaming && !weatherDefIsGlobal(weather)) {
+                const n = seedWeatherTerrain(def, weather.tiles, 0.3);
+                if (n > 0) addLog(`The ${def.label} reshapes ${n} tile${n !== 1 ? 's' : ''} into ${_seedTerrainLabel(def.seedTerrain)}.`);
+            }
+        }
+        window.weatherTerrainOnForm = weatherTerrainOnForm;
+        window.evaporateBattleWater = evaporateBattleWater;
+
         function spawnWeather() {
             if (state.round < WEATHER_SPAWN_ROUND) return;
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
@@ -2461,6 +2625,7 @@
                 id: `w_${Date.now()}_${randInt(9999)}`
             };
             if (def.global) weather.global = true;
+            weather.patch = def.tiles[0] + engineRandInt(def.tiles[1] - def.tiles[0] + 1);   // THE WEATHER'S TERRAIN: a map-wide one seeds by it
             addLog(`${def.icon} ${def.label} forms on the battlefield! ${def.desc}`);
 
             // Remember WHERE the weather formed so the announcement banner can
@@ -2493,12 +2658,14 @@
                     };
                 }
                 state._pendingEarthquake = { hits: pendingHits, blowback: blowbackCenter, def };
+                weatherTerrainOnForm(weather);   // THE WEATHER'S TERRAIN: the quake cracks the ground into mountains
                 addLog(`The ${def.label} ${def.icon} is over as quickly as it began.`);
             } else {
                 queueAnnouncement(`${def.icon} ${def.label}`, def.desc, 'weather');
                 if (!state.activeWeather) state.activeWeather = [];
                 weather._casterUnitId = null;
                 state.activeWeather.push(weather);
+                weatherTerrainOnForm(weather);
             }
         }
 
@@ -2541,6 +2708,12 @@
                 seen.add(k);
                 return true;
             });
+
+            // THE WEATHER'S TERRAIN: ~60% of the tiles it moved off take its terrain
+            if (def.seedTerrain) {
+                const vacated = oldTiles.filter(t => !seen.has(posKey(t.x, t.y)));
+                if (vacated.length) seedWeatherTerrain(def, vacated, 0.6);
+            }
         }
 
         function applyWeatherTurnEffects(player) {
@@ -2707,6 +2880,12 @@
                             setTerrainAt(t.x, t.y, def.convertTerrain);
                         }
                     }
+                }
+                // THE WEATHER'S TERRAIN: ~60% of the tiles the eye leaves behind take its terrain (a map-wide
+                // storm's rain seeds the whole board in tickWeather instead)
+                if (def.seedTerrain && !weatherDefIsGlobal(weather)) {
+                    const left = sweptTiles.filter(t => t.x !== nx || t.y !== ny);
+                    if (left.length) seedWeatherTerrain(def, left, 0.6);
                 }
 
                 // Only units the vortex actually touches (lands on / sweeps over) get hit.
@@ -2882,11 +3061,26 @@
             for (const weather of state.activeWeather) {
                 driftWeather(weather);
                 weather.remaining -= 1;
+                /* THE WEATHER'S TERRAIN: a map-wide weather drops a quarter of its patch on random tiles each round
+                   (the last round's share comes as it dissipates); a Drought dries what was poured since */
+                const def = WEATHER_REGISTRY[weather.type];
+                if (!def) continue;
+                if (def.evaporates) evaporateBattleWater(def);
+                if (def.seedTerrain && weatherDefIsGlobal(weather) && weather.remaining > 0) {
+                    seedWeatherTerrainRandom(def, Math.max(1, Math.round(_weatherPatchSize(weather, def) * WEATHER_SEED_ROUND_FRAC)));
+                }
             }
             const expiring = state.activeWeather.filter(w => w.remaining <= 0);
             for (const w of expiring) {
                 const def = WEATHER_REGISTRY[w.type];
                 addLog(`The ${def.label} ${def.icon} dissipates.`);
+                // THE WEATHER'S TERRAIN: what it leaves behind (~75% of its tiles; a map-wide one half a patch)
+                if (def.seedTerrain) {
+                    const n = weatherDefIsGlobal(w)
+                        ? seedWeatherTerrainRandom(def, Math.max(1, Math.round(_weatherPatchSize(w, def) * WEATHER_SEED_END_FRAC)))
+                        : seedWeatherTerrain(def, w.tiles || [], 0.75);
+                    if (n > 0) addLog(`The ${def.label} leaves behind ${n} ${_seedTerrainLabel(def.seedTerrain)} tile${n !== 1 ? 's' : ''}.`);
+                }
             }
             state.activeWeather = state.activeWeather.filter(w => w.remaining > 0);
         }
