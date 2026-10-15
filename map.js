@@ -8814,6 +8814,7 @@
             const body = window._hqPauseSettingsBody || document.getElementById('mmSettingsBody');
             if (!body) return;
             const focusSnapshot = _mmSettingsSnapshot();
+            const place = body.childElementCount && window._ewMenuPlaceSnap ? window._ewMenuPlaceSnap(body) : null;   // a toggle keeps the sheet where it stood (ui.js)
             const musicVol = document.getElementById('musicVolumeSlider')?.value || 68;
             const sfxVol = document.getElementById('sfxVolumeSlider')?.value || 90;
             const ambVol = document.getElementById('ambienceVolumeSlider')?.value || 80;
@@ -8945,6 +8946,7 @@
                         </div>
                     </div>
                 </div>`;
+            if (place) window._ewMenuPlaceRestore(body, place);
             _mmSettingsFocus(focusSnapshot);
         }
 
