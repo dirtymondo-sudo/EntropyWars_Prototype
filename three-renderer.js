@@ -35299,8 +35299,14 @@ const ThreeRenderer = (function () {
 
     // Serialize a weather zone's tile coordinates so cache keys change when a
     // homing storm slides (its tile count stays 1, only the position moves).
+    /* MAP-WIDE WEATHER (mondo 2026-10-15): a global weather (state.js weatherDefIsGlobal) carries every board
+       tile — keyed by its count, not a per-frame walk of the whole board. */
+    function _weatherIsMapWide(w) {
+        return !!(w && (w.global || (typeof window.weatherDefIsGlobal === 'function' && window.weatherDefIsGlobal(w))));
+    }
     function _weatherTilesKey(w) {
         if (!w.tiles) return '0';
+        if (_weatherIsMapWide(w) && w.tiles.length > 1) return 'G' + w.tiles.length;
         var s = w.tiles.length + '#';
         for (var i = 0; i < w.tiles.length; i++) s += w.tiles[i].x + ',' + w.tiles[i].y + ';';
         return s;
@@ -35339,6 +35345,9 @@ const ThreeRenderer = (function () {
             for (var wi = 0; wi < aw.length; wi++) {
                 var ww = aw[wi];
                 if (!ww.tiles) continue;
+                // map-wide weather wears the sky + its rain/dust, not a board-sized tint (one mesh per tile);
+                // a global homing storm still marks its single eye
+                if (_weatherIsMapWide(ww) && ww.tiles.length > 1) continue;
                 var col = _WEATHER_OVERLAY_COLORS[ww.type] || 0xffffff;
                 var op = _WEATHER_OVERLAY_OPACITY[ww.type] || 0.20;
                 for (var ti = 0; ti < ww.tiles.length; ti++) {
@@ -35456,7 +35465,15 @@ const ThreeRenderer = (function () {
             return ['thunderstorm', 'hurricane', 'bloodRain', 'tesseractStorm', 'blizzard'].indexOf(w.type) >= 0 && w.tiles && w.tiles.length > 0;
         });
         if (rainZones.length > 0 && window.ThreeVFX && window.ThreeVFX.startRain3D) {
-            window.ThreeVFX.startRain3D(rainZones.map(function(w) { return { type: w.type, tiles: w.tiles }; }));
+            // a map-wide storm rains on every tile (a global thunderstorm's w.tiles is only its eye)
+            var _allT = null;
+            window.ThreeVFX.startRain3D(rainZones.map(function(w) {
+                if (_weatherIsMapWide(w)) {
+                    if (!_allT) _allT = (typeof window.allWeatherBoardTiles === 'function') ? window.allWeatherBoardTiles() : w.tiles;
+                    return { type: w.type, tiles: _allT, global: true };
+                }
+                return { type: w.type, tiles: w.tiles };
+            }));
         } else if (window.ThreeVFX && window.ThreeVFX.isRain3DActive && window.ThreeVFX.isRain3DActive()) {
             window.ThreeVFX.stopRain3D();
         }
@@ -35567,8 +35584,13 @@ const ThreeRenderer = (function () {
                 continue;
             }
             if (now < _stormAmbienceNext[zid]) continue;
-            _stormAmbienceNext[zid] = now + 2200 + Math.random() * 3400;
+            var _wide = _weatherIsMapWide(w);
+            // a map-wide storm flickers anywhere over the board, a little more often
+            _stormAmbienceNext[zid] = now + (_wide ? 1400 + Math.random() * 2400 : 2200 + Math.random() * 3400);
             var t = w.tiles[Math.floor(Math.random() * w.tiles.length)];
+            if (_wide && typeof bw === 'function' && typeof bh === 'function' && bw() > 0 && bh() > 0) {
+                t = { x: Math.floor(Math.random() * bw()), y: Math.floor(Math.random() * bh()) };
+            }
             try {
                 ThreeLightning.strikeFromSky(t.x, t.y, {
                     durationMs: 180, segments: 10, jitter: 0.35,

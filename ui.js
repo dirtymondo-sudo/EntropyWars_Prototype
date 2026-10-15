@@ -969,6 +969,7 @@
 
         for (const weather of (state.activeWeather || [])) {
           if (!weather.tiles?.length) continue;
+          if (weather.global && weather.tiles.length > 1) continue;   // map-wide weather: no board-sized zone outline
           const color = WEATHER_OUTLINE_COLORS[weather.type] || 'rgba(255,255,255,0.6)';
           _zoneGroups.push({ tiles: weather.tiles, color, dashed: false });
         }
@@ -1096,6 +1097,7 @@
 
       for (const weather of (state.activeWeather || [])) {
         if (!weather.tiles?.length) continue;
+        if (weather.global && weather.tiles.length > 1) continue;   // map-wide weather: no board-sized zone outline
         const color = WEATHER_OUTLINE_COLORS[weather.type] || 'rgba(255,255,255,0.6)';
         _drawOutline(weather.tiles, color);
       }
@@ -14043,6 +14045,10 @@
                 return getSquareArea(tx, ty, 1);   // the blast is the mask or radius 1 (battle.js bomb branch) — blastRadius is the deployed object's
             }
             if (spell.kind === 'summonWeather') {
+                // MAP-WIDE WEATHER (2026-10-15): a global weather falls on the whole map, so the pick is just
+                // where it is called down (a global homing storm's eye starts there) — no board-sized preview.
+                const _wd = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[spell.weatherType] : null;
+                if (_wd && _wd.global) return [{ x: tx, y: ty }];
                 const r = spell.weatherTiles ? Math.floor(spell.weatherTiles[1] / 2) : 1;
                 return getSquareArea(tx, ty, r);
             }

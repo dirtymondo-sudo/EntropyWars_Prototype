@@ -1428,3 +1428,18 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   stat"): Cube DEF 15 → 100 and new M.DEF 100 (map.js TOWER_DEF / TOWER_MDEF, `mdef` on every tower object). An ATK
   swing loses DEF, an M.ATK swing loses M.DEF. The basic-attack floor applies (35% of the swing, min BASIC_FLOOR_MIN)
   so weak hitters chip 25 instead of 1. At L100: avg hit 177 → ~96, ~38 average hits to kill 3600 HP.
+
+## MAP-WIDE WEATHER (2026-10-15, mondo: "fractal rain and blood rain and drought and maybe even thunderstorm should be over the whole map")
+- WEATHER_REGISTRY rows with `global: true`: bloodRain, drought, tesseractStorm (the "fractal rain"), thunderstorm. A
+  weather object made from one also carries `global: true` (spawnWeather, summonWeather cast, MD floor roll).
+- Plain global weather: `w.tiles` = every board tile (state.js `allWeatherBoardTiles`), never drifts, no direction.
+  Tile checks go through state.js `weatherOnTile(w,x,y)` (fast path, no tile walk); `weatherRainsOnTile` = where the
+  rain falls (whole board for any global). Both on window for battle.js / renderer.
+- Thunderstorm stays a homing storm: `w.tiles` is still its single hunting eye (lightning + -5 DEF there), but its
+  rain soaks every grounded unit each turn (applyWeatherTurnEffects homing branch) and counts as rain for
+  `_unitInRain` / seeds everywhere.
+- Visuals: no board-sized tile tint for a global footprint (one mesh per tile; skipped in three-renderer
+  _syncWeatherOverlays + ui.js outlines). Rain zones flagged `global` rain over the whole board with a 90-drop budget
+  (50 on EW_PERF_LOW; three-vfx `_rainDropCap`). Global thunderstorm idle bolts land anywhere on the board. Drought
+  turns the existing ambient dust motes amber and thick (three-vfx `_ambDrought`). Sky grade already map-wide.
+- Summon targeting preview for a global weather is just the picked tile (ui.js summonWeather area).

@@ -4862,7 +4862,7 @@ const SPELL_LIBRARY = [
         weatherType: 'thunderstorm',
         weatherDuration: [3, 5],
         weatherTiles: [3, 5],
-        desc: 'Summons a thunderstorm for 3 to 5 rounds. Each round it chases the nearest grounded enemy up to 2 tiles. Every enemy it passes over is Soaked for 2 rounds, then struck for WEAK lightning damage (Soaked targets take half again). Flyers are skipped. −5 DEF in the eye.'
+        desc: 'Summons a thunderstorm over the whole map for 3 to 5 rounds. Every turn its rain Soaks every grounded unit for 2 rounds. Each round its eye chases the nearest grounded enemy up to 2 tiles. Every enemy it passes over is struck for WEAK lightning damage (Soaked targets take half again). Flyers are skipped. −5 DEF in the eye.'
     },
     {
         id: 'wallOfFire',
@@ -6478,7 +6478,7 @@ const SHARED_SUMMON_BLOOD_RAIN = {
     weatherType: 'bloodRain',
     weatherDuration: [3, 5],
     weatherTiles: [5, 8],
-    desc: 'Summons Blood Rain over 5 to 8 tiles for 3 to 5 rounds; it drifts. Each turn everyone under it is Soaked for 2 rounds and any Burn is put out. Divine units take WEAK damage each turn; Unholy units heal a little HP and MP.'
+    desc: 'Summons Blood Rain over the whole map for 3 to 5 rounds. Each turn everyone on the map is Soaked for 2 rounds and any Burn is put out. Divine units take WEAK damage each turn; Unholy units heal a little HP and MP.'
 };
 
 /* (SHARED_CALL_LIGHTNING / Summon Storm was CUT 2026-07-26 via the Spell

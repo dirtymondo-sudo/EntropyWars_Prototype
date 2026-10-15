@@ -1704,8 +1704,9 @@
                 icon: '🩸',
                 tiles: [5, 8],
                 roaming: true,
+                global: true,
                 duration: [3, 5],
-                desc: 'Damages Divine, heals Unholy. Soaks everyone in the downpour.',
+                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Soaks everyone in the downpour.',
                 soaks: true,
                 onTurnEffect(unit) {
                     const isDivine = (unit.types || []).includes('divine');
@@ -1729,8 +1730,9 @@
                 icon: '☀',
                 tiles: [7, 10],
                 roaming: true,
+                global: true,
                 duration: [4, 6],
-                desc: 'Healing 50% effective inside. Scorches planted seeds.',
+                desc: 'Bakes the whole map. Healing 50% effective. Scorches planted seeds.',
                 healMult: 0.5
             },
 
@@ -1763,8 +1765,9 @@
                 roaming: true,
                 homing: true,
                 homingSpeed: 2,
+                global: true,
                 duration: [3, 4],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and strikes with lightning — deadly to the wet. -5 DEF in the eye.',
+                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the wet. -5 DEF in the eye.',
                 element: 'lightning',
                 soaks: true,
                 statMod: {
@@ -1782,8 +1785,9 @@
                 icon: '🔷',
                 tiles: [5, 8],
                 roaming: true,
+                global: true,
                 duration: [3, 5],
-                desc: 'Raining geometry shreds non-Anomaly units. +10 M ATK to Anomaly, -8 DEF to Tech.',
+                desc: 'Geometry rains over the whole map, shredding non-Anomaly units. +10 M ATK to Anomaly, -8 DEF to Tech.',
                 conditionalStatMod(unit) {
                     const types = unit.types || [];
                     const mods = {};
@@ -2399,6 +2403,41 @@
             return dirs[engineRandInt(dirs.length)];
         }
 
+        /* MAP-WIDE WEATHER (mondo 2026-10-15): a def with `global: true` (Blood Rain, Drought, Tesseract Storm,
+           Thunderstorm) covers the whole board instead of a drifting patch. A plain global weather carries every
+           board tile in w.tiles (so every tile reader still works) and never drifts; a global HOMING storm
+           (Thunderstorm) keeps its single hunting eye in w.tiles while its rain falls on every tile. */
+        function weatherDefIsGlobal(w) {
+            const def = w && WEATHER_REGISTRY[w.type];
+            return !!(def && (def.global || w.global));
+        }
+        function allWeatherBoardTiles() {
+            const out = [];
+            const size = bw(), sizeH = bh();
+            for (let y = 0; y < sizeH; y++) for (let x = 0; x < size; x++) out.push({ x, y });
+            return out;
+        }
+        function _weatherInBoard(x, y) {
+            return x >= 0 && y >= 0 && x < bw() && y < bh();
+        }
+        // The weather's own footprint: the whole board for a plain global weather, the eye for a homing storm.
+        function weatherOnTile(w, x, y) {
+            if (!w) return false;
+            const def = WEATHER_REGISTRY[w.type];
+            if (def && weatherDefIsGlobal(w) && !def.homing) return _weatherInBoard(x, y);
+            return !!(w.tiles && w.tiles.some(t => t.x === x && t.y === y));
+        }
+        // Where its rain falls: the whole board for any global weather (a global homing storm's eye included).
+        function weatherRainsOnTile(w, x, y) {
+            if (!w) return false;
+            if (weatherDefIsGlobal(w)) return _weatherInBoard(x, y);
+            return !!(w.tiles && w.tiles.some(t => t.x === x && t.y === y));
+        }
+        window.weatherDefIsGlobal = weatherDefIsGlobal;
+        window.weatherOnTile = weatherOnTile;
+        window.weatherRainsOnTile = weatherRainsOnTile;
+        window.allWeatherBoardTiles = allWeatherBoardTiles;
+
         function spawnWeather() {
             if (state.round < WEATHER_SPAWN_ROUND) return;
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
@@ -2408,10 +2447,12 @@
             const type = availableKeys[engineRandInt(availableKeys.length)];
             const def = WEATHER_REGISTRY[type];
             const dur = def.duration[0] + engineRandInt(def.duration[1] - def.duration[0] + 1);
-            const tiles = rollWeatherTiles(def.tiles, def.preferredTerrain || null, def.ignoresTerrain);
+            let tiles = rollWeatherTiles(def.tiles, def.preferredTerrain || null, def.ignoresTerrain);
             // Homing storms are a single roaming vortex tile that hunts the nearest units.
             if (def.homing && tiles.length > 1) tiles.splice(1);
-            const direction = def.roaming ? rollWeatherDirection() : null;
+            // Map-wide weather covers every tile (a global homing storm keeps its eye).
+            if (def.global && !def.homing) tiles = allWeatherBoardTiles();
+            const direction = (def.roaming && !def.global) ? rollWeatherDirection() : null;
             const weather = {
                 type,
                 tiles,
@@ -2419,6 +2460,7 @@
                 remaining: dur,
                 id: `w_${Date.now()}_${randInt(9999)}`
             };
+            if (def.global) weather.global = true;
             addLog(`${def.icon} ${def.label} forms on the battlefield! ${def.desc}`);
 
             // Remember WHERE the weather formed so the announcement banner can
@@ -2464,6 +2506,8 @@
             const def = WEATHER_REGISTRY[weather.type];
             // Homing storms move toward the nearest units in processHomingWeather, not by random drift.
             if (def.homing) return;
+            // Map-wide weather already covers the board — nothing to drift.
+            if (weatherDefIsGlobal(weather)) return;
             if (!def.roaming || !weather.direction) return;
             const size = bw(),
                 sizeH = bh();
@@ -2504,12 +2548,23 @@
             const units = player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead);
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
-                // Homing storms resolve all of their effects at end of round (processHomingWeather).
-                if (def.homing) continue;
+                // Homing storms resolve all of their effects at end of round (processHomingWeather) —
+                // except a map-wide one's rain, which soaks every grounded unit each turn.
+                if (def.homing) {
+                    if (!def.soaks || !weatherDefIsGlobal(weather)) continue;
+                    for (const unit of units) {
+                        if (unit.dead || unit._dying) continue;
+                        if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                        if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
+                        const _wPrevG = Number((unit.status && unit.status.wet) || 0);
+                        if (_wPrevG > 0) unit.status.wet = Math.max(_wPrevG, 2);
+                        else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
+                    }
+                    continue;
+                }
                 if (!def.onTurnEffect && !def.soaks) continue;
-                const tileSet = new Set(weather.tiles.map(t => posKey(t.x, t.y)));
                 for (const unit of units) {
-                    if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
+                    if (unit.dead || !weatherOnTile(weather, unit.x, unit.y)) continue;
                     // 🌧️ Rain-type weather soaks whoever stands in it (wet =
                     // conducts lightning, resists fire, flash-freezable) —
                     // and the downpour puts out any fire on them on the spot.
@@ -2838,9 +2893,8 @@
 
         function getWeatherAtTile(x, y) {
             if (!state.activeWeather) return [];
-            const key = posKey(x, y);
             return state.activeWeather
-                .filter(w => w.tiles.some(t => posKey(t.x, t.y) === key))
+                .filter(w => weatherOnTile(w, x, y))
                 .map(w => WEATHER_REGISTRY[w.type]);
         }
 
@@ -2854,9 +2908,8 @@
                 rng: 0
             };
             if (!unit || unit.dead || !state.activeWeather) return mods;
-            const key = posKey(unit.x, unit.y);
             for (const w of state.activeWeather) {
-                if (!w.tiles.some(t => posKey(t.x, t.y) === key)) continue;
+                if (!weatherOnTile(w, unit.x, unit.y)) continue;
                 const def = WEATHER_REGISTRY[w.type];
                 if (def.statMod) {
                     for (const k in def.statMod) mods[k] = (mods[k] || 0) + def.statMod[k];
@@ -2872,9 +2925,8 @@
         function getWeatherHealMult(x, y) {
             if (!state.activeWeather) return 1;
             let mult = 1;
-            const key = posKey(x, y);
             for (const w of state.activeWeather) {
-                if (!w.tiles.some(t => posKey(t.x, t.y) === key)) continue;
+                if (!weatherOnTile(w, x, y)) continue;
                 const def = WEATHER_REGISTRY[w.type];
                 if (def.healMult != null) mult *= def.healMult;
             }
