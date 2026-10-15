@@ -4301,6 +4301,7 @@
             }
             let waterline = startH + 1;
             let region = regionBelow(waterline);
+            const contained = !!region;   // a basin holds this pour: the cast stacks water up to the brim (on top of the ground)
             if (region) {
                 for (let line = startH + 2; line <= startH + FLOOD_MAX_POUR; line++) {
                     const higher = regionBelow(line);
@@ -4325,7 +4326,7 @@
                                { x: c.x, y: c.y + 1 }, { x: c.x, y: c.y - 1 });
                 }
             }
-            return { waterline, tiles: region };
+            return { waterline, tiles: region, contained };
         }
 
         // ── RACE_PHYSIQUE accessors (2026-07-07 physique pass) ───────────────
@@ -68627,12 +68628,35 @@
                         for (const tile of fill.tiles) {
                             const current = getTerrainAt(tile.x, tile.y);
                             _pushAffected(tile.x, tile.y);
-                            if (current === 'water' || current === 'deep_water') continue;
                             const isHole = current === 'chasm';
-                            const wet = (isHole || fill.waterline - getBaseHeightAt(tile.x, tile.y) >= 2) ? 'deep_water' : 'water';
+                            const _floor = getBaseHeightAt(tile.x, tile.y);
+                            const wet = (isHole || fill.waterline - _floor >= 2) ? 'deep_water' : 'water';
+                            /* 🌊 FILL TO THE BRIM (2026-10-15, mondo: "i want to be able to fill a meteor crater with a flood
+                               spell"): the one liquid that goes ON TOP of the ground. In a basin that holds the pour, water
+                               blocks stack from each tile's floor up to the waterline, so the crater becomes a lake with one
+                               level surface at its rim, deep in the bowl and shallow at the edge. The floor stays ground under
+                               it. A chasm takes deep water as before; open ground (nothing holds the pour) only wets the floor. */
+                            if (fill.contained && !isHole && state.boardColumns?.[tile.y]?.[tile.x] && _floor < fill.waterline
+                                && !(typeof fieldCellFixed === 'function' && fieldCellFixed(tile.x, tile.y))) {
+                                for (let z = _floor + 1; z <= fill.waterline; z++) setBlockAt(tile.x, tile.y, z, wet);
+                                setTerrainAt(tile.x, tile.y, wet);   // the top block again: notes the cell repainted (the true ground's skins) and gives a puddle in the bowl the lake's depth
+                                const _flU = unitAt(tile.x, tile.y);
+                                if (_flU && !_flU.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_flU)) && (_flU.z ?? _floor) < fill.waterline) {
+                                    _flU.z = fill.waterline;   // the water lifts whoever stood in the bowl to its surface
+                                    if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _flU, fromX: tile.x, fromY: tile.y });
+                                }
+                                if (typeof extinguishTile === 'function') extinguishTile(tile.x, tile.y);
+                                convertedTiles.push({ x: tile.x, y: tile.y });
+                                continue;
+                            }
+                            if (current === 'water' || current === 'deep_water') continue;
                             if (_paintTile(tile.x, tile.y, current, wet)) {
                                 convertedTiles.push({ x: tile.x, y: tile.y });
                             }
+                        }
+                        if (fill.contained) {
+                            _invalidateBoardGrid();
+                            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                         }
                         // Fresh water claims its victims: drowning/hazard check for
                         // anyone standing where the water just rose.

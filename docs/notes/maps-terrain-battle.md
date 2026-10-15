@@ -497,3 +497,7 @@ top. three-renderer.js: a liquid run on solid ground keeps the ground's faces an
 source surface − drop per tile (a level halo is a 0.05 film, a ledge landing ~0.6 thick); `_fieldSkinBuild` sheets spring
 runoff cells (kill: EW_NO_FIELD_RUNOFF). online.js: liquidSprings replaced wholesale in the state-sync.
 Spread numbers unchanged: springs overflow 1 tile on level ground, 3 per terrace downhill (lava 2), reset per ledge.
+Follow-up (same day, mondo: "i want to be able to fill a meteor crater with a flood spell"): Great Flood (`elevationFlood`) is
+the one liquid that goes ON TOP. `computeElevationFloodTiles` returns `contained`; when a basin holds the pour, each tile gets
+water blocks stacked from its floor up to the waterline (deep where 2+ deep), units in the bowl lift to the surface. Open ground
+and chasms keep the old paint. Every other liquid spell changes the ground tile's surface and then flows.
