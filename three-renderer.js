@@ -4237,6 +4237,7 @@ const ThreeRenderer = (function () {
         }
 
         try { _deltaPatchBuild(ts, elevStep, _bw, _bh); } catch (e) { console.warn('[terrain] the deform patch failed', e); }   // THE PATCH on a tile board
+        try { _liqBoardBlendBuild(ts, elevStep, _bw, _bh); } catch (e) { console.warn('[terrain] the shore blend failed', e); }   // THE SHORE BLEND: deep water runs into shallow
 
         _lastBoardW = _bw; _lastBoardH = _bh;
         _lastBuiltTileSize = ts;
@@ -47942,13 +47943,15 @@ const ThreeRenderer = (function () {
        A liquid that stands proud of its ground (a lava sheet over a floor) keeps the old outline + 0.25 m. Returns null, or
        { own: Int16Array (the fluid index per node, −1 dry) }. */
     var HQ_WATER_REACH = 3.0;
+    /* how far (m) a point lies inside a liquid's own outline (− outside): the pool's ellipse, the stream's ribbon */
+    function _hqWaterDin(f, px, pz) { return f.kind === 'pool' ? (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r) : f.w / 2 - _hqTPolyDist(px, pz, f.pts).d; }
     function _hqWaterOwners(info) {
         var F = info.fluids || [], H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
         if (!F.length || !H) return null;
         var own = new Int16Array(nx * nz), q = [], eps = 0.002, S = info.S || {}, sea = info.sea;
         for (var o = 0; o < own.length; o++) own[o] = -1;
         var limX = info.closed ? S.w / 2 : Infinity, limZ = info.closed ? S.d / 2 : Infinity;   // a closed box: never past its walls (the passages' mouths)
-        var din = function (f, px, pz) { return f.kind === 'pool' ? (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r) : f.w / 2 - _hqTPolyDist(px, pz, f.pts).d; };
+        var din = _hqWaterDin;
         var inAny = function (px, pz) { for (var a = 0; a < F.length; a++) if (din(F[a], px, pz) > -0.05) return true; return false; };
         var grid = function (px, pz) { return px > x0 && pz > z0 && px < x0 + (nx - 1) * res && pz < z0 + (nz - 1) * res && Math.abs(px) < limX && Math.abs(pz) < limZ; };
         var mode = F.map(function (f) {
@@ -47995,10 +47998,39 @@ const ThreeRenderer = (function () {
         return { own: own, mode: mode };
     }
     /* the surface's geometry per liquid key: a quad per cell any of whose corners the liquid owns (the corner most of them name),
-       at that liquid's height, uv in world tiles (the field's own rule, so the sheet's waves never seam between cells) */
-    function _hqWaterGeoms(info, own, U, TM) {
-        var F = info.fluids, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, out = {};
+       at that liquid's height, uv in world tiles (the field's own rule, so the sheet's waves never seam between cells).
+       THE SMOOTH SHORE (2026-10-15, mondo: "water spots ... have like jagged right edges instead of smooth round edges"): where the
+       sheet stops over ground LOWER than its surface (the flood's reach ends past the carved bank, the ground's noise dips under
+       the water line) the whole-cell quads printed the grid's stair-steps. Each node now carries a signed reach: + where the sheet
+       goes (a node the liquid owns, or ground standing over the surface, which hides the sheet anyway), − on dry ground under the
+       surface, by how far it lies past the liquid's own bank (its outline + the bank: a smooth ribbon / ellipse). A cell whose
+       corners disagree is clipped on that line (marching squares), so the sheet ends on the liquid's own curve, never a cell edge. */
+    var HQ_WATER_SMOOTH = true;   // off: window.EW_HQ_WATER_STEPS (the old whole-cell quads)
+    function _hqWaterGeoms(info, own, U, TM, mode) {
+        var F = info.fluids, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, out = {}, H = info.H;
         var seen = new Uint8Array(nx * nz);   // a cell by its low corner
+        var smooth = HQ_WATER_SMOOTH && !!H && !(typeof window !== 'undefined' && window.EW_HQ_WATER_STEPS);
+        /* the signed reach of a node for liquid fi (see above) */
+        var reach = function (node, fi) {
+            var f = F[fi], o = own[node];
+            if (o >= 0 && o !== fi) return 1;   // another liquid's: the two sheets meet as before
+            var px = x0 + (node % nx) * res, pz = z0 + Math.floor(node / nx) * res;
+            var bank = (mode && mode[fi] === 'flood') ? ((f.bank != null) ? f.bank : 0.9) : 0.25;
+            var s = _hqWaterDin(f, px, pz) + bank;
+            if (o === fi) return s > 0 ? Math.max(s, 0.1) : 1;   // (≤ 0: flooded on past the bank to a sill laid at the bed — the sheet runs on to its neighbours, as the cells did)
+            if (H[node] >= f.y) return 1;       // ground over the surface: it hides the sheet
+            return Math.max(Math.min(s, -0.1), -0.4);
+        };
+        var vert = function (B, node, best, f) {
+            var vk = node * 1024 + best, v = B.vmap.get(vk);
+            if (v === undefined) {
+                v = B.p.length / 3; B.vmap.set(vk, v);
+                var px = x0 + (node % nx) * res, pz = z0 + Math.floor(node / nx) * res;
+                B.p.push(px * U, f.y * U + 0.4, pz * U); B.u.push(px * U / TM, pz * U / TM);
+            }
+            return v;
+        };
+        var vertAt = function (B, px, pz, f) { var v = B.p.length / 3; B.p.push(px * U, f.y * U + 0.4, pz * U); B.u.push(px * U / TM, pz * U / TM); return v; };
         for (var k = 0; k < own.length; k++) {
             if (own[k] < 0) continue;
             var i = k % nx, j = (k - i) / nx;
@@ -48009,16 +48041,29 @@ const ThreeRenderer = (function () {
                 for (var a = 0; a < 4; a++) { var oa = own[cs[a]]; if (oa < 0) continue; var na = 0; for (var b = 0; b < 4; b++) if (own[cs[b]] === oa) na++; if (na > bestN || (na === bestN && oa > best)) { best = oa; bestN = na; } }
                 if (best < 0) continue;
                 var f = F[best], B = out[f.key] || (out[f.key] = { p: [], u: [], i: [], vmap: new Map() });
-                var vid = [];
-                for (var vy = 0; vy < 2; vy++) for (var vx = 0; vx < 2; vx++) {
-                    var node = (cj + vy) * nx + ci + vx, vk = node * 1024 + best, v = B.vmap.get(vk);
-                    if (v === undefined) {
-                        v = B.p.length / 3; B.vmap.set(vk, v);
-                        var px = x0 + (ci + vx) * res, pz = z0 + (cj + vy) * res;
-                        B.p.push(px * U, f.y * U + 0.4, pz * U); B.u.push(px * U / TM, pz * U / TM);
+                if (smooth) {
+                    /* the corners round the cell (nw, ne, se, sw) and their reach */
+                    var ring = [c, c + 1, c + nx + 1, c + nx], sv = [], pos = 0;
+                    for (var r = 0; r < 4; r++) { sv.push(reach(ring[r], best)); if (sv[r] > 0) pos++; }
+                    if (pos < 4) {
+                        if (pos === 0) continue;
+                        var poly = [];
+                        for (var e = 0; e < 4; e++) {
+                            var n0 = ring[e], n1 = ring[(e + 1) & 3], s0 = sv[e], s1 = sv[(e + 1) & 3];
+                            if (s0 > 0) poly.push(vert(B, n0, best, f));
+                            if ((s0 > 0) !== (s1 > 0)) {
+                                var t = s0 / (s0 - s1);
+                                var ax = x0 + (n0 % nx) * res, az = z0 + Math.floor(n0 / nx) * res, bx = x0 + (n1 % nx) * res, bz = z0 + Math.floor(n1 / nx) * res;
+                                poly.push(vertAt(B, ax + (bx - ax) * t, az + (bz - az) * t, f));
+                            }
+                        }
+                        /* a fan (the clipped cell is convex: one corner, two, three, or the saddle's two opposite) — wound like the quads */
+                        for (var q = 1; q + 1 < poly.length; q++) B.i.push(poly[0], poly[q + 1], poly[q]);
+                        continue;
                     }
-                    vid.push(v);
                 }
+                var vid = [];
+                for (var vy = 0; vy < 2; vy++) for (var vx = 0; vx < 2; vx++) vid.push(vert(B, (cj + vy) * nx + ci + vx, best, f));
                 B.i.push(vid[0], vid[2], vid[1], vid[1], vid[2], vid[3]);
             }
         }
@@ -48161,7 +48206,7 @@ const ThreeRenderer = (function () {
             else { lavaN++; lavaCx += f.pts[0][0]; lavaCz += f.pts[0][1]; lavaY = f.y; }
         });
         try {
-            var wOwn = _hqWaterOwners(info), wGeo = wOwn ? _hqWaterGeoms(info, wOwn.own, U, TM) : {};
+            var wOwn = _hqWaterOwners(info), wGeo = wOwn ? _hqWaterGeoms(info, wOwn.own, U, TM, wOwn.mode) : {};
             Object.keys(wGeo).forEach(function (key) {
                 var B = wGeo[key]; if (!B.i.length) return;
                 var nrm = new Float32Array(B.p.length); for (var ni = 1; ni < nrm.length; ni += 3) nrm[ni] = 1;
@@ -63876,6 +63921,162 @@ const ThreeRenderer = (function () {
         geo.computeBoundingSphere(); geo.computeBoundingBox();
         return geo;
     }
+    /* ══ THE SHORE BLEND (2026-10-15, mondo: "some sort of sprite blending between deep water and water so it looks more natural?
+       Same with the edges of a body of water and bevel the corners of the perimeter/shore") ══
+       A liquid laid on cells (a spell's water on the field, the tile board's pools) was one square per cell: a hard square shore and
+       a hard line where deep water met shallow. Now each body of one liquid is ONE mesh whose vertex alpha is the body's COVERAGE —
+       the share of a small window round the vertex (LIQ_SHORE_H tiles each way) that the body's cells fill, eased: full inside, half
+       on a straight shore, fading over the neighbouring ground by about a fifth of a tile, so the shore is soft and every corner is
+       bevelled (an outer corner rounds off, an inner one fills in). Deep water is a second sheet over the shallow one, its alpha the
+       deep cells' coverage over a wider window (LIQ_DEEP_H), so the colour runs from shallow to deep across half a tile. Vertex alpha,
+       no shader hook: the node renderer (WebGPU) draws the same. Which cells are liquid is unchanged — this is only the picture.
+       Off: window.EW_NO_SHORE_BLEND. */
+    var LIQ_SHORE_H = 0.4, LIQ_DEEP_H = 0.55, LIQ_SEGS = 6;
+    function _liqEase(e0, e1, x) { var t = (x - e0) / (e1 - e0); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+    /* the share of the square window [u ± h] × [v ± h] (tiles) that `has` cells cover; off the board a cell reads as its edge cell */
+    function _liqCover(has, u, v, h, W, H) {
+        var x0 = Math.floor(u - h), x1 = Math.floor(u + h - 1e-6), y0 = Math.floor(v - h), y1 = Math.floor(v + h - 1e-6), a = 0;
+        for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+            var cx = x < 0 ? 0 : x >= W ? W - 1 : x, cy = y < 0 ? 0 : y >= H ? H - 1 : y;
+            if (!has(cx, cy)) continue;
+            var ox = Math.min(x + 1, u + h) - Math.max(x, u - h), oy = Math.min(y + 1, v + h) - Math.max(y, v - h);
+            if (ox > 0 && oy > 0) a += ox * oy;
+        }
+        return a / (4 * h * h);
+    }
+    /* G: { W, H, ts, elev }; cells: [{x, y}] the body (one liquid surface); yOf(x, y) → a cell's surface (battle px) or null;
+       o: { lift, deep: [{x, y}] (→ alpha × the deep cells' coverage: the deep sheet over the body), near: [{x, y}] (only the body cells
+       beside these are drawn), noFringe (no fade onto the ground: the shore stays whole) }.
+       → a BufferGeometry (position / normal / uv per cell / color rgba) or null */
+    function _liqBlendGeo(G, cells, yOf, o) {
+        if (!cells || !cells.length) return null;
+        var W = G.W, H = G.H, S = LIQ_SEGS, near = 0.3 * G.elev, ts = G.ts, lift = o.lift || 0, i, c;
+        var inB = {}; for (i = 0; i < cells.length; i++) inB[cells[i].x + ',' + cells[i].y] = true;
+        var body = function (x, y) { return !!inB[x + ',' + y]; };
+        var inD = null; if (o.deep) { inD = {}; for (i = 0; i < o.deep.length; i++) inD[o.deep[i].x + ',' + o.deep[i].y] = true; }
+        var deep = function (x, y) { return !!inD[x + ',' + y]; };
+        var inN = null; if (o.near) { inN = {}; for (i = 0; i < o.near.length; i++) inN[o.near[i].x + ',' + o.near[i].y] = true; }
+        /* a ground cell beside the body at the body's own level wears the fade (the fringe); any other neighbour (a wall up, a drop
+           down, a hole) is a hard edge the water runs up to, so it counts as covered and the water stays whole to it */
+        var lvl = {}, fringeOk = function (x, y) {
+            var k = x + ',' + y; if (lvl[k] !== undefined) return lvl[k];
+            var ok = false, ty = (x >= 0 && y >= 0 && x < W && y < H) ? yOf(x, y) : null;
+            if (ty !== null && ty !== undefined && !o.noFringe) {
+                for (var dy = -1; dy <= 1 && !ok; dy++) for (var dx = -1; dx <= 1 && !ok; dx++) {
+                    if (!body(x + dx, y + dy)) continue;
+                    var by = yOf(x + dx, y + dy); if (by !== null && by !== undefined && Math.abs(by - ty) <= near) ok = true;
+                }
+            }
+            return (lvl[k] = ok);
+        };
+        var nextTo = function (x, y) { for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) if ((dx || dy) && body(x + dx, y + dy)) return true; return false; };
+        var shore = function (x, y) { return body(x, y) || (!fringeOk(x, y) && nextTo(x, y)); };
+        /* the cells drawn: the body (or, for the deep sheet, the deep cells and the body round them) + the fringe */
+        var draw = [], seen = {};
+        var add = function (x, y, top) { var k = x + ',' + y; if (seen[k] || x < 0 || y < 0 || x >= W || y >= H) return; seen[k] = true; draw.push({ x: x, y: y, top: top }); };
+        for (i = 0; i < cells.length; i++) {
+            c = cells[i]; var t0 = yOf(c.x, c.y); if (t0 === null || t0 === undefined) continue;
+            if (inN) {
+                var nearN = false;
+                for (var ny = -1; ny <= 1 && !nearN; ny++) for (var nx = -1; nx <= 1 && !nearN; nx++) if (inN[(c.x + nx) + ',' + (c.y + ny)]) nearN = true;
+                if (!nearN) continue;
+            }
+            add(c.x, c.y, t0);
+        }
+        var bodyN = draw.length;
+        for (i = 0; i < bodyN; i++) {
+            c = draw[i];
+            for (var fy = -1; fy <= 1; fy++) for (var fx = -1; fx <= 1; fx++) {
+                var gx = c.x + fx, gy = c.y + fy;
+                if (body(gx, gy) || !fringeOk(gx, gy)) continue;
+                add(gx, gy, yOf(gx, gy));
+            }
+        }
+        var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+        for (i = 0; i < draw.length; i++) {
+            c = draw[i];
+            var v0 = nV, a = [], any = false;
+            for (var j = 0; j <= S; j++) for (var k = 0; k <= S; k++) {
+                var u = c.x + k / S, v = c.y + j / S;
+                var al = _liqEase(0.22, 0.78, _liqCover(shore, u, v, LIQ_SHORE_H, W, H));
+                if (inD && al > 0) al *= _liqEase(0.12, 0.88, _liqCover(deep, u, v, LIQ_DEEP_H, W, H));
+                a.push(al); if (al > 0.01) any = true;
+                pos.push(u * ts, c.top + lift, v * ts); nrm.push(0, 1, 0); uv.push(k / S, 1 - j / S); col.push(1, 1, 1, al);
+                nV++;
+            }
+            if (!any) { pos.length = v0 * 3; nrm.length = v0 * 3; uv.length = v0 * 2; col.length = v0 * 4; nV = v0; continue; }
+            for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
+                var p = j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
+                if (a[p] < 0.01 && a[q] < 0.01 && a[r] < 0.01 && a[s2] < 0.01) continue;
+                idx.push(v0 + p, v0 + r, v0 + q, v0 + q, v0 + r, v0 + s2);
+            }
+        }
+        if (!idx.length) return null;
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+        geo.setIndex(idx);
+        geo.computeBoundingSphere(); geo.computeBoundingBox();
+        return geo;
+    }
+    /* the blend's liquid surface: the battle's animated fluid top, alpha from the vertices, drawn after the ground without writing
+       depth; `over` (the deep sheet) is pulled a little further toward the eye so it never fights the shallow sheet under it */
+    var _liqBlendMats = {};
+    function _liqBlendMat(key, over) {
+        var mk = key + (over ? '|over' : '');
+        if (_liqBlendMats[mk] !== undefined) return _liqBlendMats[mk];
+        var m = null;
+        try { m = _buildFluidTopMat(key); } catch (e) { m = null; }
+        if (m) {
+            m.vertexColors = true; m.transparent = true; m.depthWrite = false;
+            m.polygonOffset = true; m.polygonOffsetFactor = over ? -3 : -2; m.polygonOffsetUnits = over ? -8 : -4;
+            m._ew_shared = true;
+        }
+        _liqBlendMats[mk] = m;
+        return m;
+    }
+    /* THE SHORE BLEND on a tile board (the voxel maps): every water tile is its own box, the top inset under the ground round it
+       (the shoreline ridge), so the shore keeps its box; where deep water meets shallow, a shallow sheet over the tiles along the
+       line and the deep sheet over that, alpha by the deep tiles' coverage, run the one colour into the other. Rebuilt with the
+       terrain (rebuildTerrain is incremental: the old sheets go first). */
+    var _liqBoardGroup = null;
+    function _liqBoardBlendBuild(ts, elevStep, bw, bh) {
+        if (_liqBoardGroup) { if (_liqBoardGroup.parent) _liqBoardGroup.parent.remove(_liqBoardGroup); _clearGroup(_liqBoardGroup); _liqBoardGroup = null; }
+        if (!_liqBlendOn() || !terrainGroup || typeof getTerrainAt !== 'function' || typeof THREE === 'undefined') return 0;
+        var body = [], deep = [];
+        for (var y = 0; y < bh; y++) for (var x = 0; x < bw; x++) {
+            var k = getTerrainAt(x, y);
+            if (k === 'deep_water') { deep.push({ x: x, y: y }); body.push({ x: x, y: y }); }
+            else if (k === 'water') body.push({ x: x, y: y });
+        }
+        if (!deep.length || deep.length === body.length) return 0;
+        /* only along the line: the deep tiles with shallow beside them */
+        var isW = function (x, y) { return x >= 0 && y >= 0 && x < bw && y < bh && getTerrainAt(x, y) === 'water'; };
+        var edge = deep.filter(function (c) { for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) if (isW(c.x + dx, c.y + dy)) return true; return false; });
+        if (!edge.length) return 0;
+        var yOf = function (x, y) {
+            if (x < 0 || y < 0 || x >= bw || y >= bh) return null;
+            var k = getTerrainAt(x, y); if (k !== 'water' && k !== 'deep_water') return null;
+            return tileTopY(x, y) - elevStep * WATER_TOP_INSET;
+        };
+        var G = { W: bw, H: bh, ts: ts, elev: elevStep }, grp = null;
+        [{ key: 'water', o: { lift: 0.3, near: edge, noFringe: true }, order: 2 },
+         { key: 'deep_water', over: true, o: { lift: 0.45, near: edge, deep: deep, noFringe: true }, order: 3 }].forEach(function (pt) {
+            var geo = _liqBlendGeo(G, body, yOf, pt.o), mat = geo && _liqBlendMat(pt.key, pt.over);
+            if (!mat) { if (geo) geo.dispose(); return; }
+            var m = new THREE.Mesh(geo, mat);
+            m.raycast = function () {}; m.name = 'liquid_shore_blend'; m.castShadow = false; m.receiveShadow = false; m.renderOrder = pt.order;
+            if (!grp) { grp = new THREE.Group(); grp.name = 'liquid_shore_blend'; }
+            grp.add(m);
+        });
+        if (grp) { terrainGroup.add(grp); _liqBoardGroup = grp; }
+        return grp ? grp.children.length : 0;
+    }
+    /* the liquid a body of cells is drawn as: deep water is the shallow sheet with the deep one over it */
+    function _liqBodyKey(k) { return k === 'deep_water' ? 'water' : k; }
+    function _liqBlendOn() { return !(typeof window !== 'undefined' && window.EW_NO_SHORE_BLEND); }
     /* a dry skin's sheet: the terrain's top texture as a REPEATING sheet (_hzTex; the tile cache's copy clamps at 0–1), self-lit like the strata */
     var _fieldPatchSheetMats = {};
     function _fieldPatchSheetMat(key) {
@@ -64191,6 +64392,29 @@ const ThreeRenderer = (function () {
            keeps its shore (one continuous surface, no fade: water and lava stand in their own pool) */
         if (byKey) {
             var rep = _fieldPatchRep(G), yOf = function (x, y) { return G.yAt(x, y); };
+            /* THE SHORE BLEND: the liquids, one body per liquid (deep water joins the shallow body, its own sheet over it) —
+               a soft, bevelled shore and deep running into shallow (_liqBlendGeo); the dry skins below as before */
+            if (_liqBlendOn()) {
+                var bodies = {}, deeps = {}, bG = { W: G.W, H: G.H, ts: ts, elev: G.elev }, bY = function (x, y) { var t = G.yAt(x, y); return (t === null || t === undefined) ? null : t; };
+                Object.keys(byKey).forEach(function (k) {
+                    if (!_FLUID_TERRAIN_SET[k]) return;
+                    var bk = _liqBodyKey(k);
+                    bodies[bk] = (bodies[bk] || []).concat(byKey[k]);
+                    if (k !== bk) deeps[bk] = (deeps[bk] || []).concat(byKey[k]);
+                    delete byKey[k];
+                });
+                Object.keys(bodies).forEach(function (bk) {
+                    var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 }), order: 2 }];
+                    if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05, deep: deeps[bk], near: deeps[bk] }), order: 3 });
+                    parts.forEach(function (pt) {
+                        var bm = pt.geo && _liqBlendMat(pt.key, pt.over); if (!bm) { if (pt.geo) pt.geo.dispose(); return; }
+                        var mesh = new THREE.Mesh(pt.geo, bm);
+                        mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = pt.key; mesh.name = 'field_skin_liquid';
+                        mesh.castShadow = false; mesh.receiveShadow = false; mesh.renderOrder = pt.order;
+                        grp.add(mesh);
+                    });
+                });
+            }
             Object.keys(byKey).forEach(function (k) {
                 var fluid = !!_FLUID_TERRAIN_SET[k], mat = fluid ? matOf(k) : _fieldPatchSheetMat(k); if (!mat) return;
                 var fade = fluid ? mat : _fieldPatchFadeMat(mat, 'skin|' + k);
