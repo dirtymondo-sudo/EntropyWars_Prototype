@@ -4055,6 +4055,12 @@ const ThreeRenderer = (function () {
                                  swamp: 'oil', oil: 'oil', lava: 'lava' };
             var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2 };
             var _noRaycast = function() {};
+            /* THE FILM FLOOR (2026-10-15, mondo: "there is flickering with the water tiles from spells now"): a level overflow is
+               a thin film, and the bevelled tile top under it is not flat — its organic swell (BEVEL.amp × tile, ~7 px) poked
+               through a 0.05-level film in shimmering patches as the camera moved. The film now always clears the swell (and
+               the rolling landform on natural-terrain maps). */
+            var _flowFilmMin = Math.max(elevStep * 0.05, BEVEL.enabled ? ts * (BEVEL.amp + 0.045) : 0,
+                                        _naturalTerrainActive() ? elevStep * 0.3 : 0);
             /* Nominal ABSOLUTE surface Y of this family's liquid at a tile's
                centre, or null if the tile holds none. A source sits at its own
                water line (block top, minus the shoreline inset for non-lava);
@@ -4100,7 +4106,7 @@ const ThreeRenderer = (function () {
                     var _fl = getLiquidFlowAt(fx, fy);
                     if (!_fl) continue;
                     var _fTop = tileTopY(fx, fy);
-                    var _hMin = elevStep * 0.05, _hMax = elevStep * 1.3;
+                    var _hMin = _flowFilmMin, _hMax = elevStep * 1.3;
                     /* per-corner slab thickness above THIS tile's top —
                        index (z+ ? 2 : 0) + (x+ ? 1 : 0) */
                     var _cH = [];
@@ -4160,7 +4166,7 @@ const ThreeRenderer = (function () {
                 if (!fam) { var fl2 = getLiquidFlowAt(x, y); fam = fl2 ? fl2.t : null; _isFlow = !!fam; }
                 if (!fam) return null;
                 var _fTopY = tileTopY(x, y), _fSurf = _flowSurfY(x, y, fam);
-                if (_isFlow) _fSurf = Math.max(_fSurf, _fTopY + elevStep * 0.05);   // a film's fall starts at the film, not under the floor
+                if (_isFlow) _fSurf = Math.max(_fSurf, _fTopY + _flowFilmMin);   // a film's fall starts at the film, not under the floor
                 return { fam: fam, surf: _fSurf, top: _fTopY };
             };
             var _mkFallMat = function(fam) {
@@ -64126,7 +64132,12 @@ const ThreeRenderer = (function () {
             var mk = key + '|' + ts;
             if (_fieldSkinMats[mk]) return _fieldSkinMats[mk];
             var m = null;
-            if (_FLUID_TERRAIN_SET[key]) { try { m = _buildFluidTopMat(key); } catch (e) { m = null; } }
+            if (_FLUID_TERRAIN_SET[key]) {
+                try { m = _buildFluidTopMat(key); } catch (e) { m = null; }
+                /* the sheet lies ~1 px over the room's floor: pulled toward the eye so the floor never shows through it at a
+                   distance (the spell water and its runoff shimmered) */
+                if (m) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -4; }
+            }
             if (!m) { var bm = buildBoxMaterials(key, null); m = bm && bm[2]; }
             if (m) m._ew_shared = true;
             _fieldSkinMats[mk] = m;
