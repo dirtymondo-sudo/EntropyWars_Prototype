@@ -1443,3 +1443,21 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   (50 on EW_PERF_LOW; three-vfx `_rainDropCap`). Global thunderstorm idle bolts land anywhere on the board. Drought
   turns the existing ambient dust motes amber and thick (three-vfx `_ambDrought`). Sky grade already map-wide.
 - Summon targeting preview for a global weather is just the picked tile (ui.js summonWeather area).
+
+## THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate all that water")
+- History: the old build (index.html era) had `seedTerrain` on WEATHER_REGISTRY rows + `seedTerrainAt` / `seedWeatherTerrain`;
+  cut 2026-04-01 (commit ce37c0a vs 78b5c97). Restored in state.js: tornado grass, earthquake mountain, hurricane / blood
+  rain / thunderstorm water, drought / solar flare desert (blizzard's `convertTerrain: 'ice'` was never cut). Old moments
+  kept: static weather on forming ~30% of its tiles, a moving one on the tiles it leaves ~60% (drifting patch in
+  driftWeather, a homing eye's swept tiles in processHomingWeather), every one on dissipating ~75% (tickWeather).
+- Map-wide weathers have no tiles to leave: each round they seed `round(patch × 0.25)` random tiles and `round(patch × 0.5)`
+  on dissipating (`weather.patch` = the rolled def.tiles count; summonWeather uses its rolled tiles).
+- Liquid adaptation: weather water is a spring (`setTerrainSpringAt`), so it spreads like a spell's. Old priority kept
+  (grass 0 < desert 1 < water 2 < deep 3 < mountain 4, only paints its own rank or lower), mountain cap 25% of the board.
+  Never paints: lava/bogs/oil, chasm, void, ice, walls, bridges, nexus/home/tower bases, roofed cells, objects, monuments,
+  field rock + fixed cells (`_weatherSeedOk`).
+- NEW Drought `evaporates: true` (state.js `evaporateBattleWater`): on forming (`weatherTerrainOnForm`, also summonWeather
+  + the MD floor roll) and every round it lasts, every water tile the FIGHT put down goes back to what it was. map.js
+  `notePaintOrigin` records each cell's top block {t, z} the first time setTerrainAt / setBlockAt / removeBlockAt touches it
+  (`state.paintedFrom`, cleared in initMap). Water whose origin was water (the map's own lakes and rivers, a melted natural
+  pool) stays. Great Flood's stacked blocks above the origin level come off and grounded units on them settle (u.z).

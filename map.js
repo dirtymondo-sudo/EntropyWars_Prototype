@@ -9989,6 +9989,7 @@
 
         function setBlockAt(x, y, z, terrain) {
             if (!state.boardColumns?.[y]?.[x]) return;
+            if (typeof notePaintOrigin === 'function') notePaintOrigin(x, y);
             const col = state.boardColumns[y][x];
             const idx = col.findIndex(b => b.z === z);
             if (idx >= 0) {
@@ -10003,6 +10004,7 @@
         function removeBlockAt(x, y, z) {
             const col = state.boardColumns?.[y]?.[x];
             if (!col) return;
+            if (typeof notePaintOrigin === 'function') notePaintOrigin(x, y);
             const idx = col.findIndex(b => b.z === z);
             if (idx >= 0) col.splice(idx, 1);
             _syncColumnToLegacy(x, y);
@@ -10640,6 +10642,25 @@
            (the old loop recolored every z in the column). `z` picks the exact
            block to repaint; omitted, the topmost solid (non-void) block — the
            visible surface — is painted, which matches the legacy 2D meaning. */
+        /* THE WEATHER'S TERRAIN (2026-10-15): what a cell was before the fight first changed it — its top block's terrain and
+           level, noted once per cell by setTerrainAt / setBlockAt / removeBlockAt (all mid-fight). A Drought reads it to tell
+           water a spell or a storm put down (dried back to this) from the map's own lakes and rivers. initMap clears it. */
+        function notePaintOrigin(x, y) {
+            const k = x + ',' + y;
+            const pf = state.paintedFrom || (state.paintedFrom = {});
+            if (pf[k]) return;
+            const col = state.boardColumns?.[y]?.[x];
+            let t = null, z = null;
+            if (col && col.length) {
+                for (let i = col.length - 1; i >= 0; i--) {
+                    const bt = col[i].terrain;
+                    if (!bt || bt.indexOf('void') !== 0) { t = bt || 'grass'; z = col[i].z; break; }
+                }
+            }
+            if (t === null) { t = getTerrainAt(x, y); z = state.boardHeights?.[y]?.[x] ?? 0; }
+            pf[k] = { t, z };
+        }
+
         function setTerrainAt(x, y, terrain, z) {
             /* 🌊 A liquid never goes INTO a solid monument (the mast, a pillar): its column carries hidden collision
                voxels, and painting the top one made a source block hang in the air with waterfalls down every side.
@@ -10648,6 +10669,7 @@
                 const _mt = state._monumentTiles;
                 if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
             }
+            notePaintOrigin(x, y);
             const col = state.boardColumns?.[y]?.[x];
             if (col && col.length) {
                 let blk = null;
@@ -12210,6 +12232,7 @@
             const w = bw(), h = bh();
             const board = fullBoard;
             state.paintedTiles = {};   // THE SKINS: a fresh board has no painted surfaces (setTerrainAt notes them)
+            state.paintedFrom = {};   // THE WEATHER'S TERRAIN: nor what a painted cell was before (notePaintOrigin)
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
             /* Authored edge walls exist only on custom/community maps (the
