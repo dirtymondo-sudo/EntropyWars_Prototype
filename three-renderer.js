@@ -3917,7 +3917,23 @@ const ThreeRenderer = (function () {
                             var rIsLava = (rTopTerrain === 'lava');
 
                             var rMats;
-                            if (rIsFluid) {
+                            /* 🌊 A LIQUID IS THE GROUND'S SURFACE, NOT A BLOCK (2026-10-15, mondo: "make sure spells are
+                               changing the terrain of the block on the ground, not placing a liquid block on top"): a
+                               liquid run sitting on solid ground in its column (a spell's poison on a crate, a cliff top,
+                               a raised deck) keeps that ground's own faces on its sides and wears the liquid only on
+                               top; the runoff slabs and waterfalls carry it over the edge. Whole-liquid columns (a lake,
+                               a hatch into the hold) are unchanged. */
+                            var _rBed = null;
+                            if (rIsFluid && ri > 0) {
+                                var _rBelow = runs[ri - 1];
+                                if (_rBelow && _rBelow.toZ + 1 === run.fromZ && _rBelow.terrain && _rBelow.terrain.indexOf('void') !== 0
+                                    && !_FLUID_TERRAIN_SET[_rBelow.terrain]) _rBed = _rBelow.terrain;
+                            }
+                            if (_rBed) {
+                                var _bedSKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? (TERRAIN_SIDE_SPRITES[_rBed] ?? null) : null;
+                                rMats = buildBoxMaterials(_rBed, _bedSKey).slice();   // the cached shared array: copy before swapping the top
+                                rMats[2] = _buildFluidTopMat(rTopTerrain);
+                            } else if (rIsFluid) {
                                 rMats = buildFluidBoxMaterials(rTopTerrain, rSKey);
                             } else if (rIsLava) {
                                 rMats = buildLavaBoxMaterials(rTopTerrain, rSKey);
@@ -4053,6 +4069,15 @@ const ThreeRenderer = (function () {
                 if (fl && fl.t === fam) {
                     var R = _FLOW_RANGE[fam] || 3;
                     var topFrac = (fam === 'lava') ? 1.0 : (1 - WATER_TOP_INSET);
+                    /* 🌊 (2026-10-15) The sheet drops from the SURFACE it pours from (fl.s, the source's level), not from
+                       this tile's own top: a level overflow is a thin film just under its source's waterline and a
+                       runoff off a ledge lands thick, the way Minecraft's flowing water sits lower than its source.
+                       The old tile-relative ramp stood a level halo ~0.7 of a block over the ground — a liquid slab
+                       ON TOP of the floor, higher than the pool it came from. */
+                    if (typeof fl.s === 'number' && typeof getBaseHeightAt === 'function') {
+                        var srcTop = tileTopY(x, y) + (fl.s - getBaseHeightAt(x, y)) * elevStep;
+                        return srcTop - elevStep * (1 - topFrac) - elevStep * topFrac * fl.d / (R + 1);
+                    }
                     return tileTopY(x, y) + elevStep * topFrac * (R - fl.d + 0.5) / R;
                 }
                 return null;
@@ -4131,9 +4156,12 @@ const ThreeRenderer = (function () {
             var _fallFluidAt = function(x, y) {
                 if (x < 0 || y < 0 || x >= _bw || y >= _bh) return null;
                 var fam = _FLOW_FAM_OF[getTerrainAt(x, y)] || null;
-                if (!fam) { var fl2 = getLiquidFlowAt(x, y); fam = fl2 ? fl2.t : null; }
+                var _isFlow = false;
+                if (!fam) { var fl2 = getLiquidFlowAt(x, y); fam = fl2 ? fl2.t : null; _isFlow = !!fam; }
                 if (!fam) return null;
-                return { fam: fam, surf: _flowSurfY(x, y, fam), top: tileTopY(x, y) };
+                var _fTopY = tileTopY(x, y), _fSurf = _flowSurfY(x, y, fam);
+                if (_isFlow) _fSurf = Math.max(_fSurf, _fTopY + elevStep * 0.05);   // a film's fall starts at the film, not under the floor
+                return { fam: fam, surf: _fSurf, top: _fTopY };
             };
             var _mkFallMat = function(fam) {
                 var terr = _FLOW_TERRAIN_FOR[fam] || 'water';
@@ -64126,6 +64154,26 @@ const ThreeRenderer = (function () {
             if (fluid) mesh.renderOrder = 2;
             grp.add(mesh); n++;
             if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y });
+        }
+        /* 🌊 THE RUNOFF (2026-10-15, mondo: liquids should "fall and spread" like Minecraft): on the true ground no flow
+           slab was ever drawn, so a spell's poison / water sat as a lone sheet while the rules already soaked, poisoned
+           and burned the tiles it ran onto (map.js getLiquidFlowAt). The cells a SPELL's liquid (a spring) spreads onto
+           now wear the same liquid sheet; a room's own settled pools add nothing. Off: window.EW_NO_FIELD_RUNOFF. */
+        if (typeof getLiquidFlowAt === 'function' && !(typeof window !== 'undefined' && window.EW_NO_FIELD_RUNOFF)) {
+            var _rfKey = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            for (var ry = 0; ry < G.H; ry++) for (var rx = 0; rx < G.W; rx++) {
+                var rfl = getLiquidFlowAt(rx, ry); if (!rfl || !rfl.sp) continue;
+                var rk = _rfKey[rfl.t]; if (!rk) continue;
+                var rTop = G.yAt(rx, ry); if (rTop === null || rTop === undefined) continue;
+                var rMat = matOf(rk); if (!rMat) continue;
+                if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
+                if (byKey) { (byKey[rk] || (byKey[rk] = [])).push({ x: rx, y: ry }); n++; continue; }
+                var rMesh = new THREE.Mesh(_fieldSkinGeo.geo, rMat);
+                rMesh.position.set(rx * ts + ts / 2, rTop + 0.9, ry * ts + ts / 2);
+                rMesh.raycast = function () {}; rMesh._ew_fieldStrata = true; rMesh._ew_fieldSkin = rk;
+                rMesh.castShadow = false; rMesh.receiveShadow = false; rMesh.renderOrder = 2;
+                grp.add(rMesh); n++;
+            }
         }
         /* THE PATCH: each run of one new surface is one sheet in world space, spreading from the run's centre (from its lowest
            cell when the ground there was dug); a dry one fades into the room's floor round its edge like a dirt path, a liquid
