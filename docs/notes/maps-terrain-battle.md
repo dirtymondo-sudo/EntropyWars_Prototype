@@ -505,3 +505,19 @@ Flicker fix (same day, mondo: "there is flickering with the water tiles from spe
 level, under the bevelled tile top's organic swell (BEVEL.amp × tile ≈ ±7 px), so the ground poked through it in shimmering
 patches. `_flowFilmMin` = max(0.05 level, (BEVEL.amp + 0.045) × tile, 0.3 level on natural-terrain maps) floors every flow-slab
 corner and a film's waterfall start. The true ground's fluid skin materials get polygonOffset (−2/−4).
+
+## THE SHORE BLEND + THE SMOOTH SHORE (2026-10-15, mondo: blend deep water into water, soften + bevel shorelines, no jagged water edges)
+- **Spell liquids on the true ground** (`_fieldSkinBuild`, the arenas + exploration battles): every liquid body is ONE mesh
+  (`_liqBlendGeo`, 6×6 verts per cell) whose vertex alpha is the body's coverage of a ±`LIQ_SHORE_H` (0.4 tile) window, eased:
+  soft shore that spills ~0.2 tile onto ground at the same level, outer corners round off, inner corners fill. A neighbour that
+  is a wall / drop counts as covered (the water runs whole to it). Deep water joins the shallow body (`_liqBodyKey`) and draws a
+  second sheet over it (`_liqBlendMat(key, over)`, renderOrder 3, polygonOffset −3/−8), alpha × the deep cells' coverage over
+  ±`LIQ_DEEP_H` (0.55). Materials: `_buildFluidTopMat` + vertexColors/transparent/depthWrite false (WebGPU reads the vertex alpha
+  through NodeMaterial's own vertexColor path). Which cells are liquid never changes.
+- **Tile boards** (voxel maps): `_liqBoardBlendBuild` lays the same two sheets only along deep↔shallow lines (`noFringe`: the
+  box shores stay as they are), rebuilt with the terrain.
+- **Room water** (`_hqWaterGeoms`, the walk + the field round a battle): where the sheet stopped over ground LOWER than its
+  surface (past the carved bank) the whole-cell quads printed 0.5 m stair-steps. Each node now has a signed reach (owned → +,
+  ground over the surface → +, dry low ground → `din + bank` clamped −0.1…−0.4) and mixed cells are clipped by marching squares.
+  Off: `window.EW_HQ_WATER_STEPS`. Cave grid rooms (`_hqBuildCave`) keep their square pits.
+- Kill-switch for both blends: `window.EW_NO_SHORE_BLEND`.
