@@ -34848,19 +34848,6 @@ const ThreeRenderer = (function () {
         _terrainDecoGroup = null;
         _lastTerrainDecoSerial = '';
 
-        for (var i = 0; i < _tornadoBillboards.length; i++) {
-            if (weatherGroup) weatherGroup.remove(_tornadoBillboards[i].mesh);
-            _tornadoBillboards[i].mat.dispose();
-            var _tdFx = _tornadoBillboards[i].fx;
-            if (_tdFx) {
-                if (weatherGroup) weatherGroup.remove(_tdFx.group);
-                _tdFx.group.traverse(function(child) {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) child.material.dispose();
-                });
-            }
-        }
-        _tornadoBillboards.length = 0;
         _lastWeatherOverlayKey = '';
         _lastZoneOverlayKey = '';
 
@@ -35458,7 +35445,7 @@ const ThreeRenderer = (function () {
 
         if (state.devAutoSim) {
             if (window.ThreeVFX && window.ThreeVFX.isRain3DActive && window.ThreeVFX.isRain3DActive()) window.ThreeVFX.stopRain3D();
-            _syncTornadoBillboards([]);
+            _syncTornadoVortices([]);
             _syncHurricaneVortices([]);
             _syncBlizzardVortices([]);
             _syncSandstormVortices([]);
@@ -35475,7 +35462,7 @@ const ThreeRenderer = (function () {
         }
 
         var tornadoZones = aw.filter(function(w) { return w.type === 'tornado' && w.tiles && w.tiles.length > 0; });
-        _syncTornadoBillboards(tornadoZones);
+        _syncTornadoVortices(tornadoZones);
 
         var hurricaneZones = aw.filter(function(w) { return w.type === 'hurricane' && w.tiles && w.tiles.length > 0; });
         _syncHurricaneVortices(hurricaneZones);
@@ -35487,111 +35474,14 @@ const ThreeRenderer = (function () {
         _syncSandstormVortices(sandstormZones);
     }
 
-    var _tornadoBillboards = [];
-    var _tornadoFrameTextures = [];
-    var _tornadoNativeAspect = 0;
-    var _TORNADO_FPS = 30;
-    var _TORNADO_FRAME_MS = 1000 / _TORNADO_FPS;
+    // Tornado (2026-10-15): the 99-frame sprite-sheet billboard is gone; the
+    // tornado is a 3D funnel like the hurricane/blizzard/sandstorm vortices
+    // (ThreeVFXEffects.buildTornadoVortex3D).
+    var _tornadoVortices = [];
 
-    function _getTornadoFrameTex(idx) {
-        // Keep the original 3.3-second cycle, but retain only 25 frames on phones.
-        if (typeof window !== 'undefined' && window.EW_PERF_LOW) idx -= idx % 4;
-        if (_tornadoFrameTextures[idx]) return _tornadoFrameTextures[idx];
-        if (typeof TORNADO_FRAMES === 'undefined' || !TORNADO_FRAMES[idx]) return null;
-        var tex = getTexture(TORNADO_FRAMES[idx]);
-        _tornadoFrameTextures[idx] = tex;
-
-        if (!_tornadoNativeAspect && tex.image && tex.image.width && tex.image.height) {
-            _tornadoNativeAspect = tex.image.width / tex.image.height;
-        }
-        return tex;
-    }
-
-    function _tornadoPlaneSize(ts) {
-
-        var aspect = _tornadoNativeAspect || 0.57;
-        var spriteH = ts * 4.2;
-        var spriteW = spriteH * aspect;
-        return { w: spriteW, h: spriteH };
-    }
-
-    // Debris + ground-dust companion rig for the tornado flipbook: the sprite
-    // alone read as a flat decal — a spinning dust ring at the base and junk
-    // chunks corkscrewing up the funnel ground it in the scene. Kept as a
-    // SEPARATE group (not a child of the billboard) because the billboard
-    // yaw-tracks the camera every frame.
-    function _buildTornadoFxGroup(ts, spriteH) {
-        var group = new THREE.Group();
-
-        var dustGeo = new THREE.TorusGeometry(ts * 0.55, ts * 0.1, 6, 16);
-        var dustMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x9a8f78),
-            transparent: true, opacity: 0.32,
-            depthWrite: false,
-        });
-        var dust = new THREE.Mesh(dustGeo, dustMat);
-        dust.rotation.x = Math.PI / 2;
-        dust.position.y = 5;
-        dust.renderOrder = 144;
-        group.add(dust);
-
-        var dust2Geo = new THREE.TorusGeometry(ts * 0.95, ts * 0.07, 6, 18);
-        var dust2Mat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x878072),
-            transparent: true, opacity: 0.2,
-            depthWrite: false,
-        });
-        var dust2 = new THREE.Mesh(dust2Geo, dust2Mat);
-        dust2.rotation.x = Math.PI / 2;
-        dust2.position.y = 9;
-        dust2.renderOrder = 144;
-        group.add(dust2);
-
-        var debris = [];
-        for (var i = 0; i < 7; i++) {
-            var dbGeo = new THREE.BoxGeometry(ts * 0.07, ts * 0.05, ts * 0.06);
-            var dbMat = new THREE.MeshBasicMaterial({
-                color: new THREE.Color(i % 2 ? 0x8a7f66 : 0x6f6a5e),
-                transparent: true, opacity: 0.85,
-                depthWrite: false,
-            });
-            var db = new THREE.Mesh(dbGeo, dbMat);
-            db.renderOrder = 149;
-            group.add(db);
-            debris.push({
-                mesh: db,
-                angle: (i / 7) * Math.PI * 2,
-                yOff: Math.random(),
-                orbitR: 0.6 + Math.random() * 0.4
-            });
-        }
-
-        return { group: group, dust: dust, dust2: dust2, debris: debris, spriteH: spriteH, ts: ts };
-    }
-
-    function _tickTornadoFxGroup(fx, now) {
-        var spin = now * 0.004;
-        fx.dust.rotation.z = -spin;
-        var dustPulse = 1 + 0.1 * Math.sin(now * 0.008);
-        fx.dust.scale.set(dustPulse, dustPulse, 1);
-        fx.dust2.rotation.z = spin * 0.6;
-
-        var h = fx.spriteH * 0.8;
-        for (var i = 0; i < fx.debris.length; i++) {
-            var db = fx.debris[i];
-            var t = ((now * 0.0032) + db.angle) % (Math.PI * 2);
-            // corkscrew upward, wrap back to the base
-            var yNorm = ((now * 0.00045) + db.yOff) % 1;
-            var dbY = h * 0.05 + h * 0.85 * yNorm;
-            var orbitR = (fx.ts * 0.12 + fx.ts * 0.75 * yNorm) * db.orbitR;
-            db.mesh.position.set(Math.cos(t) * orbitR, dbY, Math.sin(t) * orbitR);
-            db.mesh.rotation.x = now * 0.005 + i;
-            db.mesh.rotation.z = now * 0.004 + i * 0.7;
-        }
-    }
-
-    function _syncTornadoBillboards(zones) {
-        if (!weatherGroup) return;
+    function _syncTornadoVortices(zones) {
+        var Effects = window.ThreeVFXEffects;
+        if (!Effects || !Effects.buildTornadoVortex3D) return;
         var ts = CONFIG.tileSize || BASE_TILE;
 
         var needed = {};
@@ -35601,26 +35491,17 @@ const ThreeRenderer = (function () {
             needed[zid] = z;
         }
 
-        for (var j = _tornadoBillboards.length - 1; j >= 0; j--) {
-            if (!needed[_tornadoBillboards[j].zoneId]) {
-                weatherGroup.remove(_tornadoBillboards[j].mesh);
-                _tornadoBillboards[j].mat.dispose();
-                var _oldFx = _tornadoBillboards[j].fx;
-                if (_oldFx) {
-                    weatherGroup.remove(_oldFx.group);
-                    _oldFx.group.traverse(function(child) {
-                        if (child.geometry) child.geometry.dispose();
-                        if (child.material) child.material.dispose();
-                    });
-                }
-                _tornadoBillboards.splice(j, 1);
+        for (var j = _tornadoVortices.length - 1; j >= 0; j--) {
+            if (!needed[_tornadoVortices[j].zoneId]) {
+                Effects.disposeTornadoVortex(_tornadoVortices[j].vortex);
+                _tornadoVortices.splice(j, 1);
             }
         }
 
         var existing = {};
-        for (var k = 0; k < _tornadoBillboards.length; k++) existing[_tornadoBillboards[k].zoneId] = _tornadoBillboards[k];
-
-        var sz = _tornadoPlaneSize(ts);
+        for (var k = 0; k < _tornadoVortices.length; k++) {
+            existing[_tornadoVortices[k].zoneId] = _tornadoVortices[k];
+        }
 
         for (var zid2 in needed) {
             var zone = needed[zid2];
@@ -35638,81 +35519,25 @@ const ThreeRenderer = (function () {
             var cy = sumY / zone.tiles.length;
 
             if (existing[zid2]) {
-                var eb = existing[zid2];
-                _vortexSlideTo(eb, eb.mesh, cx, cy + sz.h / 2, cz);
+                _vortexSlideTo(existing[zid2], existing[zid2].vortex.group, cx, cy, cz);
                 continue;
             }
 
-            var mat = new THREE.MeshBasicMaterial({
-                transparent: true, alphaTest: 0.05, side: THREE.DoubleSide, depthWrite: false,
-                opacity: 0.85,
-            });
-            var tex0 = _getTornadoFrameTex(0);
-            if (tex0) mat.map = tex0;
-
-            var geo = new THREE.PlaneGeometry(sz.w, sz.h);
-            var mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(cx, cy + sz.h / 2, cz);
-            weatherGroup.add(mesh);
-
-            var fx = _buildTornadoFxGroup(ts, sz.h);
-            fx.group.position.set(cx, cy, cz);
-            weatherGroup.add(fx.group);
-
-            _tornadoBillboards.push({
-                mesh: mesh, mat: mat, fx: fx,
-                zoneId: zid2, frameIdx: 0, lastFrameTime: performance.now(),
-                lastAspect: _tornadoNativeAspect
-            });
+            var vortex = Effects.buildTornadoVortex3D(cx, cy, cz, ts);
+            if (vortex) {
+                _tornadoVortices.push({ zoneId: zid2, vortex: vortex });
+            }
         }
     }
 
-    function _updateTornadoBillboards() {
-        if (_tornadoBillboards.length === 0) return;
+    function _updateTornadoVortices() {
+        if (_tornadoVortices.length === 0) return;
+        var Effects = window.ThreeVFXEffects;
+        if (!Effects || !Effects.tickTornadoVortex) return;
         var now = performance.now();
-        var frameCount = (typeof TORNADO_FRAME_COUNT !== 'undefined') ? TORNADO_FRAME_COUNT : 99;
-        var cam = ThreeCamera.getCamera();
-        var ts = CONFIG.tileSize || BASE_TILE;
-        for (var i = 0; i < _tornadoBillboards.length; i++) {
-            var tb = _tornadoBillboards[i];
-
-            _vortexSlideTick(tb, tb.mesh);
-            // debris rig shadows the billboard's ground point
-            if (tb.fx) {
-                var _sz = _tornadoPlaneSize(ts);
-                tb.fx.group.position.set(
-                    tb.mesh.position.x,
-                    tb.mesh.position.y - _sz.h / 2,
-                    tb.mesh.position.z
-                );
-                _tickTornadoFxGroup(tb.fx, now);
-            }
-
-            if (now - tb.lastFrameTime >= _TORNADO_FRAME_MS) {
-                var elapsed = now - tb.lastFrameTime;
-                var steps = Math.floor(elapsed / _TORNADO_FRAME_MS);
-                tb.frameIdx = (tb.frameIdx + steps) % frameCount;
-                tb.lastFrameTime = now - (elapsed % _TORNADO_FRAME_MS);
-                var tex = _getTornadoFrameTex(tb.frameIdx);
-                if (tex && tb.mat.map !== tex) {
-                    tb.mat.map = tex;
-                    tb.mat.needsUpdate = true;
-                }
-            }
-
-            if (cam) {
-                tb.mesh.rotation.y = Math.atan2(
-                    cam.position.x - tb.mesh.position.x,
-                    cam.position.z - tb.mesh.position.z
-                );
-            }
-
-            if (_tornadoNativeAspect && tb.lastAspect !== _tornadoNativeAspect) {
-                tb.lastAspect = _tornadoNativeAspect;
-                var sz = _tornadoPlaneSize(ts);
-                tb.mesh.geometry.dispose();
-                tb.mesh.geometry = new THREE.PlaneGeometry(sz.w, sz.h);
-            }
+        for (var i = 0; i < _tornadoVortices.length; i++) {
+            _vortexSlideTick(_tornadoVortices[i], _tornadoVortices[i].vortex.group);
+            Effects.tickTornadoVortex(_tornadoVortices[i].vortex, now);
         }
     }
 
@@ -37454,7 +37279,7 @@ const ThreeRenderer = (function () {
         _syncWeatherVFX();
         _updateTurretAim();
         _updateLaserSightBeams();
-        _updateTornadoBillboards();
+        _updateTornadoVortices();
         _updateHurricaneVortices();
         _updateBlizzardVortices();
         _updateSandstormVortices();
