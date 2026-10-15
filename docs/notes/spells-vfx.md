@@ -1342,3 +1342,13 @@ the stage; and "units just not being centered framed for their spell animations,
   (`_cineSizeK` = height / tile, clamped 0.7–2.4); ThreeCamera multiplies the cine boom by it. Bare-tile and
   `liftPx` anchors keep K = 1.
 - Only syntax-checked; not seen in game. Tunables: CINE_BODY_LIFT, the K clamp, SIGHT_MAX_LIFT_TILES.
+
+## THE LOWEST LENS (2026-10-15, token 20261015-lowlens-01-cors)
+mondo: Call of the Deep "goes low and i can see under the map, it does it at the very end". Measured with
+playtest_spellcam.js (stadium, caster 6,7 → target 8,7): the capstone's pay beat (`cineLowTile` at the flooded tile,
+pivot 0.4 tile, tilt 88) held the eye 0.5 tile over the floor looking level, half a tile UNDER the board's raised tops
+(lowest eye vs board top −0.50 tiles), for the beat and the ~1 s hold after it. three-camera.js: a cine TPS eye never
+sits lower than `CINE_MIN_EYE_TILES` (1.15) over its subject's ground, and THE SIGHT LINE also runs to every body the
+frame guard holds (each pair's middle), not only the pivot. After: eye 1.15 tiles up, gaze 15° down, lowest eye +0.15
+over the board top. (The probe needs today's three/addons served from npm copies: jsdelivr is blocked in the sandbox,
+and its menu steps reach battle through window.applyPartyBuild + window.startMatch once ThreeRenderer loads.)
