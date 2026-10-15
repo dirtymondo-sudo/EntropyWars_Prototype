@@ -501,3 +501,7 @@ Follow-up (same day, mondo: "i want to be able to fill a meteor crater with a fl
 the one liquid that goes ON TOP. `computeElevationFloodTiles` returns `contained`; when a basin holds the pour, each tile gets
 water blocks stacked from its floor up to the waterline (deep where 2+ deep), units in the bowl lift to the surface. Open ground
 and chasms keep the old paint. Every other liquid spell changes the ground tile's surface and then flows.
+Flicker fix (same day, mondo: "there is flickering with the water tiles from spells now"): the level-overflow film was 0.05 of a
+level, under the bevelled tile top's organic swell (BEVEL.amp × tile ≈ ±7 px), so the ground poked through it in shimmering
+patches. `_flowFilmMin` = max(0.05 level, (BEVEL.amp + 0.045) × tile, 0.3 level on natural-terrain maps) floors every flow-slab
+corner and a film's waterfall start. The true ground's fluid skin materials get polygonOffset (−2/−4).
