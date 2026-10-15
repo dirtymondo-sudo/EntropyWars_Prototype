@@ -141,6 +141,7 @@ const ThreeCamera = (function () {
        capped so a cliff right at a unit's back can't fling the lens into the
        sky; that rare case keeps the old fade. */
     const SIGHT_MAX_LIFT_TILES = 3.5;
+    const CINE_MIN_EYE_TILES = 1.15;   // THE LOWEST LENS (2026-10-15): see sync()
     function _solidGroundYWorld(wx, wz) {
         if (typeof window !== 'undefined' && typeof window._camSolidGroundPx === 'function') {
             try {
@@ -582,10 +583,32 @@ const ThreeCamera = (function () {
            so a craned lens keeps the subject where the shot put it. The
            frame guard inherits the raised floor, so its slide can't sink
            the eye back into the ground. */
+        /* THE LOWEST LENS (2026-10-15) — mondo: Call of the Deep "goes low
+           and i can see under the map, it does it at the very end". Its last
+           beat (cineLowTile at the flooded tile: pivot 0.4 tile up, tilt 88)
+           held the eye HALF A TILE over the floor looking level, under the
+           tops of the raised tiles around it; the fade ghosted those columns
+           down to the base and the frame showed the void under the stage.
+           A spell shot's eye now never sits lower than CINE_MIN_EYE_TILES over
+           the ground its subject stands on, and the sight line runs to every
+           body the frame guard holds (the caster, each victim), not only the
+           pivot's. */
         let sightRaised = false;
         if (cam._cineTps && !cam._tpsCollide) {
             const sightY = pivGroundY + Math.max(ts * 0.3, (pivY - pivGroundY) * 0.6);
-            const need = _sightLineFloor(pivX, sightY, pivZ, eyeX, eyeY, eyeZ, clear);
+            let need = Math.max(pivGroundY + ts * CINE_MIN_EYE_TILES,
+                _sightLineFloor(pivX, sightY, pivZ, eyeX, eyeY, eyeZ, clear));
+            let gp = null;
+            try { gp = (cam._frameGuard && typeof cam._frameGuard.points === 'function') ? cam._frameGuard.points() : null; } catch (e) { gp = null; }
+            if (gp && gp.length) {
+                /* the guard lists each body as a pair (low, high) — aim at its middle */
+                for (let i = 0; i + 1 < gp.length && i < 16; i += 2) {
+                    const a = gp[i], b = gp[i + 1];
+                    if (!a || !b) continue;
+                    const n2 = _sightLineFloor((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, eyeX, eyeY, eyeZ, clear);
+                    if (n2 > need) need = n2;
+                }
+            }
             if (need > eyeY + 0.5) { eyeY = need; sightRaised = true; }
             if (need > floorY) floorY = Math.min(need, eyeY);
         }
