@@ -1461,3 +1461,13 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   `notePaintOrigin` records each cell's top block {t, z} the first time setTerrainAt / setBlockAt / removeBlockAt touches it
   (`state.paintedFrom`, cleared in initMap). Water whose origin was water (the map's own lakes and rivers, a melted natural
   pool) stays. Great Flood's stacked blocks above the origin level come off and grounded units on them settle (u.z).
+
+## THE BLINK LANDING (2026-10-16, mondo: "im trying to use mirror blink and when i click on the tile i want to go to it tells me the target is no longer in my line of sight")
+- Cause: the board lights a teleport's landing tiles on the flat Manhattan disc (ui.js `spell.kind === 'teleport'` highlight,
+  doSpell's landing branch, the forecast), but the click gate (battle.js getSpellRangeTiles) and doSpell's generic cast gates
+  measured a self blink's one click with 3D combatReach + the team-vision gate, so a lit tile up a slope (height gap > range)
+  or one no teammate could see answered "Target is no longer in range or line of sight."
+- Fix: battle.js `_teleportLandingPhase(spell)` (a self blink, or a pick-a-unit teleport once its unit is picked) and
+  `getTeleportLandingReach(unit, spell)` (Manhattan ≤ effective range from the caster, LOS only for `needsLoS` rows such as
+  Web Swing). getSpellRangeTiles returns that reach for the landing phase, and doSpell's `isTeleportPhase2` uses the same
+  test, so the teleport branch alone judges the landing (range, needsLoS, free passable tile, onlyTerrain).
