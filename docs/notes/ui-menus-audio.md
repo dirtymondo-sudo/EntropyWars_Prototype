@@ -1078,7 +1078,7 @@ corners and colors ... i want to have the hero portion outside of the panel but 
   HP r109 / MP r102.5, inline display:none) + .hrlg-vnums (the numbers when the bars give way to the ring);
   PartyPortrait .ew-pp-bars; map.js _hqFillDock .hq-dock-bars. Low HP (≤30%) = .low on .hrlg-vrow.hp,
   .hrlg-thp-fill, .ew-pp, .hrlg-hring (the dock already had it); enemy target fills carry .foe; the XP row is
-  .hrlg-vrow.mp.xp. Target rows + the quick look are bars only. The 3D nameplates (renderer canvas) are not covered.
+  .hrlg-vrow.mp.xp. Target rows + the quick look are bars only. (Name plates: see pass 5.)
 - THE HOROLOGE'S LOOK: picking the hero section, the command panels or the command menu in the Layout view shows the
   full skin editor (shape, corners, fill, frame, light, retro, 9-slice) for the theme the battle HUD wears, by role
   (Hero section / Windows / Command rows / Selected row), plus that theme's colours. A built-in or preset turns into
@@ -1087,6 +1087,22 @@ corners and colors ... i want to have the hero portion outside of the panel but 
   renders the column as .hrlg-side.split > .hrlg-side-top + .hrlg-side-low (HorologeMenu re-renders on the
   'ew-uim-hero' event); heroCss strips the column's plate and the low part wears the Hero skin (else Windows; both
   roles list .hrlg-side-low), else the plate tokens. The title bar is off while split.
+
+## THE UI MAKER — pass 5: the hero's parts move freely, flat hero bars, name plates in Health bars (2026-10-16, mondo, token 20261016-heroparts-01-cors)
+mondo: "i want to rearrange the elements like i want to have the health bars right under the portrait and clock or a
+little on it ... move that stuff around and move it all in and out of the panel. also that health bar is a pill
+looking thing when it should be like the other health bars or let it be a preset as well".
+- HERO PARTS: db.hero.order (ids watch, chips, name, sub, types, vitals, ap, items, mats, tools), db.hero.where
+  { id: 'out' }, db.hero.nudge { id: { x, y, s } }. Untouched = the plain column. Once customised, hud.js _hrlgSide
+  wraps each part in .hrlg-part-<id> in that order; runs outside float as .hrlg-side-top, runs inside become
+  .hrlg-side-low panels (several if the order alternates). nudge: x = translate, y = margin-top (parts below follow;
+  negative pulls a part onto the one above, e.g. bars over the watch), s = zoom. Layout view: the hero's Parts list
+  (▲▼, In panel / Outside, show) + green boxes on screen per part (drag, wheel = size, arrows after a part click).
+  PR #229's split/out flags convert to where on load (heroLegacy).
+- HERO BARS: the rounding pass no longer rounds .hrlg-vbar/.hrlg-vfill/.hrlg-vspend (flat like the name plates);
+  Health bars > Shape > "Hero bars" picks their ends on their own (Pill = the old capsule).
+- NAME PLATES: three-renderer.js .tp-bar plates are DOM, not canvas (pass 4's note was wrong); the Health bars look now
+  reaches them (colours, ends, track + frame; not thickness). Place row "Name plates" (bars only).
 
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
