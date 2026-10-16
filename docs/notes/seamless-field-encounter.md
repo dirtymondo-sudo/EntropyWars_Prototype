@@ -991,3 +991,18 @@ the free ground query, so a deck over walked ground was never a battle square an
   same deck level is never railed (a diagonal bridge runs on). Rooms with bridges whose fights now have decks: 40 of 41 (the
   odd one, The Derelict's deck, is a 0.3 m plate — one floor). Arena 12 × 12 cuts: only CERN, Giza, Downtown, Antarctica,
   Mars and Haunted contain a bridge; the other 17 arenas' bridges lie outside their cut.
+
+## THE CRYSTAL FIGHTS AN ARENA (2026-10-16)
+mondo: "the maps used for the floating crystal battle icon ... are those the voxel maps? If they are, replace them with the arena maps for now."
+- The crystal (`proc: 'battle_marker'`) launches data.js `hqMarkerLaunch`, whose board is now `hqMarkerArenaId(site)`: the site's own
+  12×12 arena (`<site>_delta`, made the arena by hqArenaRegisterAll, or a kept board in HQ_ARENA_RULES.keep). The room's own 8×8
+  area Δ is no longer used by the crystal (Camelot's ward had one).
+- Sites with no arena (bake-arenas.js finds no 12×12 window): HQ_ARENA_RULES.standIn — Hell → Mars, Bermuda → Atlantis,
+  Flying Dutchman → Haunted House. The natives / checklist stay the crystal's own site.
+- Before, an arena crystal fight drew the bare baked board with no room round it (the run carried no field, so battle.js
+  `_ewEncounterRoom` hid the arena's record). battle.js `_encArenaFallback` / `_encFieldId`: a marker run with no field reads
+  `hqArenaRun(activeGameMode)` — the room is drawn, the arena's wall / no-deform cells hold.
+- map.js return: the debrief eye is used only when it is in the return room's metres (`eye.room`); else the load card.
+- Browser-checked: Stonehenge (handed over), Hell → Mars (rebuilt), Camelot Arena mode, Hell win → back to the pit.
+- Hitting a native still uses an area Δ in the 4 rooms the field rasteriser refuses (Bermuda sea, Downtown harbour,
+  Atlantis abyss, Dutchman deck).

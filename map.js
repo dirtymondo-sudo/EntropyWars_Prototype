@@ -2136,7 +2136,11 @@
             if (enabled && _hqHome) {
                 if (alive && _hqSuspended && window._hqResume()) { arriveDrop(); return true; }
                 if (alive) window._hqLeave();
-                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: (arrive && arrive.eye) ? arrive : null })) {
+                /* the debrief's eye is in ITS room's metres: a fight drawn round another room (a crystal on its site's arena cut from
+                   another part, a stand-in arena — data.js hqMarkerArenaId) comes home under the load card instead */
+                const eyeHere = !!(arrive && arrive.eye && (!arrive.eye.room || arrive.eye.room === _hqLastRoom));
+                if (arrive && !eyeHere) arriveDrop();
+                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: eyeHere ? arrive : null })) {
                     if (encRes) setTimeout(() => { try {
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
@@ -6229,6 +6233,11 @@
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
             return html;
         }
+        /* the board the crystal fights on, by name: the arena's own label (data.js hqMarkerArenaId — the site's 12×12 arena, or the stand-in's) */
+        function _hqMarkerBoardLabel(L) {
+            const row = (L && L.launchId && typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === L.launchId) : null;
+            return String((row && row.label) || 'THE ARENA').toUpperCase();
+        }
         /* THE MARKER'S PANEL (2026-09-20, the user: "it should just send me into battle with my party"): who is fit, what is
            still to file, and ONE click per mode — WIPEOUT (TDM) or THE CUBE + THE KEYS (Arena) — straight into the fight with
            the officer's party seated (the encounter's own launch: no terminal, no builder, no roster wall). */
@@ -6244,7 +6253,7 @@
             const S = (typeof window.hqPartyShifts === 'function') ? window.hqPartyShifts(profile) : { first: [], second: [], members: [] };
             const L = (typeof window.hqMarkerLaunch === 'function') ? window.hqMarkerLaunch(_hqCurRoom, _hqEncounterCfgRaw(), {}) : null;
             const ready = !!(pf && pf.total > 0 && pf.ready) && !!L;
-            let html = `<div class="hq-panel-hd">${_hqNoTag(th.roomNo != null ? String(th.roomNo) : '', th.why)}<b>${_hqEsc((meta && meta.label) || c.sub || id)}</b><span>${_hqEsc(L && L.launchId ? 'THIS ROOM\u2019S OWN BOARD' : 'THE SITE\u2019S \u0394 BOARD')} · YOUR PARTY TAKES THE FIELD</span></div>`;
+            let html = `<div class="hq-panel-hd">${_hqNoTag(th.roomNo != null ? String(th.roomNo) : '', th.why)}<b>${_hqEsc((meta && meta.label) || c.sub || id)}</b><span>${_hqEsc(_hqMarkerBoardLabel(L))} · YOUR PARTY TAKES THE FIELD</span></div>`;
             html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The crystal. Touch it and the room is the board: your party as it stands, the site\u2019s own natives across from it.') + '</p>';
             if (S.members.length) {
                 html += '<div class="hq-rows">';

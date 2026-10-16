@@ -44432,7 +44432,7 @@ function hqAreaRoom(mapId, A) {
         shell: shell, terrain: terrain,
         doors: (A.doors || []).map(x => Object.assign({}, x, { action: Object.assign({}, x.action) })),
         counters: [Object.assign({ id: 'battle', x: marker.x, z: marker.z, face: 180, plateY: HQ_AREA_RULES.plateY, radius: HQ_AREA_RULES.markerR, verb: 'BATTLE', site: id, proc: 'battle_marker',
-            label: 'BATTLE', sub: label + ' · THE Δ BOARD', action: { overlay: 'crossing' } }, A.markerY != null ? { y: A.markerY } : {})].concat(A.counters || []),
+            label: 'BATTLE', sub: label + ' · THE ARENA', action: { overlay: 'crossing' } }, A.markerY != null ? { y: A.markerY } : {})].concat(A.counters || []),
         props: (A.props || []).map(p => Object.assign({}, p)),
         npcSpots: (A.npcSpots || []).map(p => Object.assign({}, p)),
         onlineSpots: [], lines: (A.lines || []).slice(),
@@ -44464,7 +44464,7 @@ function hqBuildAreas() {
         const meta = META.find(m => m.id === hqSiteId(mapId)) || {};
         const label = String(meta.label || mapId).toUpperCase();
         room.counters = (room.counters || []).concat([Object.assign({ id: 'battle', x: at.x, z: at.z, face: at.face != null ? at.face : 180, plateY: HQ_AREA_RULES.plateY, radius: HQ_AREA_RULES.markerR, verb: 'BATTLE',
-            site: hqSiteId(mapId), proc: 'battle_marker', label: 'BATTLE', sub: label + ' · THE Δ BOARD', action: { overlay: 'crossing' } }, at.y != null ? { y: at.y } : {})]);
+            site: hqSiteId(mapId), proc: 'battle_marker', label: 'BATTLE', sub: label + ' · THE ARENA', action: { overlay: 'crossing' } }, at.y != null ? { y: at.y } : {})]);
     });
 }
 /* ── THE SPECS (Claude's DRAFT layouts — the user rules the names, A15) ── */
@@ -51764,7 +51764,7 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
    battle with my party; I'm talking about the floating crystal icons in the areas"): the BATTLE marker launches the
    party-seated fight the encounter launches — no terminal, no builder — on the mode the officer picked at the marker
    (TDM for the wipeout, ARENA for the Cube and the Keys — the three win conditions the checklist wants), the site's own
-   natives as the enemy (the first native leads), the Δ of the room it stands in. Pure. */
+   natives as the enemy (the first native leads), on the site's arena (hqMarkerArenaId). Pure. */
 function hqMarkerLaunch(roomId, cfg, opts) {
     opts = opts || {};
     const site = hqRoomSite(roomId);
@@ -51779,7 +51779,9 @@ function hqMarkerLaunch(roomId, cfg, opts) {
     const lead = roster[0] || null;
     const lv = hqEncounterLevels(opts.partyLevel, site, Math.max(n, 1), roomId + '|marker|' + ((typeof hqToday === 'function') ? hqToday() : ''));   // THE LEVELS (2026-09-21)
     if (ET && ET.levels) lv.levels = lv.levels.map(l => Math.max(1, Math.min(LEVEL_CAP, Math.max(ET.levels[0], Math.min(ET.levels[1], l)))));
-    const launchId = (typeof hqAreaDeltaId === 'function') ? hqAreaDeltaId(roomId) : null;
+    /* THE CRYSTAL FIGHTS AN ARENA (mondo 2026-10-16: "are those the voxel maps? ... replace them with the arena maps for now"):
+       the board is the site's 12×12 arena (hqMarkerArenaId), never the room's own 8×8 area Δ */
+    const launchId = hqMarkerArenaId(site);
     let label = site;
     try { const M = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null; if (M && M.label) label = M.label; } catch (e) {}
     return {
@@ -51789,6 +51791,15 @@ function hqMarkerLaunch(roomId, cfg, opts) {
         doorId: 'battle', counterId: 'battle', marker: true,
         encounter: { race: lead, gender: 'male', id: null, room: roomId, x: 0, z: 0, gesture: 'marker', label: label, name: null },
     };
+}
+/* the arena a crystal fights on: the site's own arena (its `<site>_delta` that hqArenaRegisterAll made the arena, or a kept
+   board, HQ_ARENA_RULES.keep); a site with no arena (no 12×12 window fits its rooms) borrows HQ_ARENA_RULES.standIn's. null = none */
+function hqMarkerArenaId(site) {
+    if (!site || typeof PREBUILT_MAPS === 'undefined' || !PREBUILT_MAPS) return null;
+    const isArena = (s) => { const e = PREBUILT_MAPS[s + '_delta']; return !!(e && (e.arena || (HQ_ARENA_RULES.keep || []).includes(s))); };
+    if (isArena(site)) return site + '_delta';
+    const sub = (HQ_ARENA_RULES.standIn || {})[site];
+    return (sub && isArena(sub)) ? sub + '_delta' : null;
 }
 /* D2 · THE NATIVE'S IDENTITY (PHASE9_QUALITY_PLAN §6, 2026-09-16): the character you
    hit IS the enemy's lead — state.js optimizeRandomizeParty pins P2's seat 1 to this
@@ -54916,6 +54927,9 @@ const HQ_ARENA_RULES = {
     /* the sites that keep their Δ board whatever fits (mondo 2026-09-30: "keep the looking glass delta map, for that one there needs
        to be a chessboard in the looking glass explorable area" — the garden's own chessboard, THE BOARD below) */
     keep: ['prebuilt_lookingglass', 'prebuilt_gobekli'],   // mondo 2026-10-05: Göbekli Tepe's arena is its own Δ board (THE TELL), never the ley lines
+    /* the crystal's board on a site with no arena of its own (mondo 2026-10-16, "replace them with the arena maps for now": no 12×12
+       window fits Hell, the Bermuda sea or the Dutchman's decks — bake-arenas.js) — hqMarkerArenaId */
+    standIn: { prebuilt_hell: 'prebuilt_mars', prebuilt_bermuda: 'prebuilt_atlantis', prebuilt_revenge: 'prebuilt_haunted' },
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
@@ -57650,7 +57664,7 @@ if (typeof window !== 'undefined') {
     /* THE ENCOUNTER (HQ plan 9.4 stage 1, 2026-09-15 rev 16) */
     window.HQ_CROWD_RULES = HQ_CROWD_RULES; window.hqRoomCrowdCap = hqRoomCrowdCap; window.hqRosterHomeOf = hqRosterHomeOf; window.hqRosterHomeRooms = hqRosterHomeRooms; window.HQ_POPULATION_RULES = HQ_POPULATION_RULES; window.hqSiteResidents = hqSiteResidents; window.hqRosterRaces = hqRosterRaces; window.hqRoomFloorM2 = hqRoomFloorM2; window.hqRoomPopulation = hqRoomPopulation; window.hqSpotRoams = hqSpotRoams;   // THE POPULATION (2026-09-19)
     window.HQ_ENCOUNTER_RULES = HQ_ENCOUNTER_RULES; window.hqEncounterRoomOk = hqEncounterRoomOk; window.hqEncounterCharOk = hqEncounterCharOk; window.hqEncounterGesture = hqEncounterGesture;
-    window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqMarkerLaunch = hqMarkerLaunch; window.hqDefeatedRecord = hqDefeatedRecord; window.hqUnitDefeated = hqUnitDefeated; window.hqDefeatedMark = hqDefeatedMark; window.hqUnitBuyable = hqUnitBuyable; window.HQ_HEAL_ZONE = HQ_HEAL_ZONE; window.hqHealZoneRooms = hqHealZoneRooms; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
+    window.hqEncounterConfig = hqEncounterConfig; window.hqEncounterLaunch = hqEncounterLaunch; window.hqMarkerLaunch = hqMarkerLaunch; window.hqMarkerArenaId = hqMarkerArenaId; window.hqDefeatedRecord = hqDefeatedRecord; window.hqUnitDefeated = hqUnitDefeated; window.hqDefeatedMark = hqDefeatedMark; window.hqUnitBuyable = hqUnitBuyable; window.HQ_HEAL_ZONE = HQ_HEAL_ZONE; window.hqHealZoneRooms = hqHealZoneRooms; window.hqEncounterRecord = hqEncounterRecord; window.hqEncounterLog = hqEncounterLog;
     window.hqSyncedHq = hqSyncedHq; window.hqClearedUnion = hqClearedUnion; window.hqEncountersUnion = hqEncountersUnion; window.hqSkateUnion = hqSkateUnion; window.hqDoorSyncFold = hqDoorSyncFold; window.hqClearedRecord = hqClearedRecord;   // THE SYNCED BUILDING (D5)
     window.hqEncounterCleared = hqEncounterCleared; window.hqRoomGuarded = hqRoomGuarded; window.hqEncounterEye = hqEncounterEye;
     window.hqEncounterLead = hqEncounterLead; window.hqEncounterReturnSpot = hqEncounterReturnSpot;
