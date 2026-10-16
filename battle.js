@@ -48020,7 +48020,24 @@
         /* rev 2 (2026-09-22): the record OUTLIVES the commit (_encMatch is spent there, before the debrief) — the podium stands
            on the true ground and THE RETURN reads the room's frame from it; the next startMatch / a rematch drops it */
         let _encRoomLast = null;
-        window._ewEncounterRoom = function () { const m = _encMatch || _encRoomLast; return m ? { room: m.room || null, field: m.field || null, fieldId: m.fieldId || null, site: m.site || null } : null; };
+        /* THE CRYSTAL ON AN ARENA (2026-10-16): a marker fight carries no field of its own — the board is its site's arena (data.js
+           hqMarkerArenaId), so the arena's own record stands in (its room, its window, its field id): the room is drawn round the
+           board and the arena's wall / no-deform cells hold, as in a PvP arena. The id of the field the encounter's board reads, else null */
+        function _encArenaFallback(m) {
+            if (!m || m.field || m.fieldId || typeof hqArenaRun !== 'function' || typeof activeGameMode === 'undefined') return null;
+            try { return hqArenaRun(activeGameMode); } catch (e) { return null; }
+        }
+        function _encFieldId(m) {
+            if (m && m.fieldId) return m.fieldId;
+            if (m) { const a = _encArenaFallback(m); return a ? a.fieldId : null; }
+            return (typeof hqArenaRun === 'function' && typeof activeGameMode !== 'undefined' && hqArenaRun(activeGameMode)) ? activeGameMode : null;
+        }
+        window._ewEncounterRoom = function () {
+            const m = _encMatch || _encRoomLast; if (!m) return null;
+            const a = _encArenaFallback(m);
+            if (a) return { room: a.room, field: a.field, fieldId: a.fieldId, site: m.site || a.site || null };
+            return { room: m.room || null, field: m.field || null, fieldId: m.fieldId || null, site: m.site || null };
+        };
         /* THE NO-DEFORM FLAG (THE SEAMLESS FIELD, delivery 9, 2026-09-23): a field cell under a multi-cell prop, a cover, a
            doorway, water, a wall row, a bridge, the gallery or a counter is never dug or raised (data.js hqFieldFixedCells
            filed it on the entry at the build) — the room's floor is the only thing the deform moves, and a fountain with
@@ -48028,7 +48045,7 @@
         function fieldCellFixed(x, y) {
             const m = _encMatch || _encRoomLast;
             /* THE ARENAS (E8, 2026-09-30): a PvP arena is a cut of its site's room — the same flags (data.js hqArenaRun: the full field is attached) */
-            const fid = (m && m.fieldId) ? m.fieldId : (!m && typeof hqArenaRun === 'function' && typeof activeGameMode !== 'undefined' && hqArenaRun(activeGameMode)) ? activeGameMode : null;
+            const fid = _encFieldId(m);
             if (!fid) return null;
             const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
             if (!e || !e.field || !e.field.fixed || typeof hqFieldFixedAt !== 'function') return null;
@@ -48042,7 +48059,7 @@
            true = no unit stands, walks or lands there (map.js unitCanTraverse), so the range never lights it. */
         function fieldCellRock(x, y) {
             const m = _encMatch || _encRoomLast;
-            const fid = (m && m.fieldId) ? m.fieldId : (!m && typeof hqArenaRun === 'function' && typeof activeGameMode !== 'undefined' && hqArenaRun(activeGameMode)) ? activeGameMode : null;
+            const fid = _encFieldId(m);
             if (!fid) return false;
             const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
             const row = e && e.field && e.field.cells ? e.field.cells[y] : null;
