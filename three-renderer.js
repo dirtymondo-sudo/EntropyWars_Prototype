@@ -35694,11 +35694,13 @@ const ThreeRenderer = (function () {
                     _renderSpiderwebZoneOverlay(zInfo.tiles);
                 }
 
-                /* intent icon on the center tile: green cross for heal zones,
-                   warning triangle for hostile fields (smoke stays unmarked —
-                   it's an ally cloak, not a hazard) */
+                /* intent icon: green cross on EVERY tile of a heal zone (mondo 2026-10-16: like the
+                   Nuke's danger cells), warning triangle on the center of hostile fields (smoke stays
+                   unmarked — it's an ally cloak, not a hazard) */
                 if (zz.type === 'heal') {
-                    _renderZoneIcon(zz.x, zz.y, 'heal');
+                    for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
+                        _renderZoneIcon(zInfo.tiles[_hzi].x, zInfo.tiles[_hzi].y, 'heal');
+                    }
                 } else if (!zz.smokeConcealment
                         && ((zz.statusEffects && zz.statusEffects.length) || zz.gravityField === 'super')) {
                     _renderZoneIcon(zz.x, zz.y, 'danger');
