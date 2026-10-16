@@ -1066,6 +1066,28 @@ editor better and more robust". All in hud.js (the UI Maker IIFE).
   steps (`snapLayout`, one step per drag, none for a plain click). The store is sanitised on load (bad layout numbers
   dropped, broken themes skipped, missing skin parts filled).
 
+## THE UI MAKER — pass 4: health bars, the Horologe's look, the hero outside its panel (2026-10-16, mondo, token 20261016-uimbars-01-cors)
+mondo: "let me change how the health bars look and what gets a normal health bar and what gets a circular one. also i
+dont see the same options for the horologe menu as all the other stuff, like why cant i change its panel's shape and
+corners and colors ... i want to have the hero portion outside of the panel but still have the panel for below."
+- HEALTH BARS: a third live-view mode ("Bars" in the panel bar, "Health bars ⧉" tab in the full editor). db.bars =
+  { place: { hero | turns | dock: 'bar' | 'ring' | 'both' }, look: { shape, h, fill, seg, hp, foe, lowOn, low, mp,
+  track, frame, frameW, glow, wave, nums, labels, ring, caps } }, same in every theme, undoes with the layout. The CSS
+  is hud.js barsCss() in the #ew-ui-layout sheet; an untouched setting writes nothing, so the defaults leave every bar
+  exactly as it was. Every place draws BOTH shapes and the sheet swaps them: the watch ring (HorologeHub g.hrlg-hring,
+  HP r109 / MP r102.5, inline display:none) + .hrlg-vnums (the numbers when the bars give way to the ring);
+  PartyPortrait .ew-pp-bars; map.js _hqFillDock .hq-dock-bars. Low HP (≤30%) = .low on .hrlg-vrow.hp,
+  .hrlg-thp-fill, .ew-pp, .hrlg-hring (the dock already had it); enemy target fills carry .foe; the XP row is
+  .hrlg-vrow.mp.xp. Target rows + the quick look are bars only. The 3D nameplates (renderer canvas) are not covered.
+- THE HOROLOGE'S LOOK: picking the hero section, the command panels or the command menu in the Layout view shows the
+  full skin editor (shape, corners, fill, frame, light, retro, 9-slice) for the theme the battle HUD wears, by role
+  (Hero section / Windows / Command rows / Selected row), plus that theme's colours. A built-in or preset turns into
+  the player's copy on the first change; materialize() now also re-points db.assign entries to the copy.
+- HERO OUTSIDE THE PANEL: db.hero.split + out ('watch' | 'name' | 'vitals') + splitGap + pad. hud.js _hrlgSide
+  renders the column as .hrlg-side.split > .hrlg-side-top + .hrlg-side-low (HorologeMenu re-renders on the
+  'ew-uim-hero' event); heroCss strips the column's plate and the low part wears the Hero skin (else Windows; both
+  roles list .hrlg-side-low), else the plate tokens. The title bar is off while split.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
