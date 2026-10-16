@@ -11922,6 +11922,11 @@ const UIM_SURFACES = [
     },
     titles: '#edRoot .ed-brand' },
 ];
+/* THE STAND-INS (pass 7): each screen's markup with sample rows, see mountStage. Built from the real screens (their
+   class names and nesting, the game's own labels); no scripts, no handlers. */
+const UIM_SPECIMENS = {
+/*SPECIMENS*/
+};
 const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
   roles: { panel: '#uimPreview .uimp-panel', head: '#uimPreview .uimp-head', well: '#uimPreview .uimp-well', button: '#uimPreview .uimp-btn',
     buttonSel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', chip: '#uimPreview .uimp-chip', chipOn: '#uimPreview .uimp-chip.on',
@@ -12342,6 +12347,7 @@ function apply() {
   if (!okPos) document.head.appendChild(el);
   if (el.textContent !== css) el.textContent = css;
   applyLayout();
+  if (_stages.size) stagesRefresh();
   return !pending;
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
@@ -12354,8 +12360,77 @@ function applyLayout() {
   if (el.textContent !== css) el.textContent = css;
 }
 
+/* ── THE SCREEN STAND-INS (pass 7, 2026-10-16, mondo: "i cant see the screen i am editing unless i am on that screen in
+   the actual game ... ideally it would just show me the screen i am editing") ──
+   UIM_SPECIMENS[surface id] is that screen's own markup (its real class names, a few sample rows). A stage draws it in an
+   iframe that carries a copy of the game's stylesheets, so the game's CSS draws it like the real screen, plus one small
+   UI Maker sheet for ONE theme, so the stand-in wears the theme being edited without touching the real page (and the
+   game's scripts never find it: it lives in its own document). Used by the editor's preview (SCREEN picker) and by the
+   Menus live view for a menu that is not on screen. */
+const STAGE_W = 1280, STAGE_H = 720;
+const _stages = new Set();
+function stageSheets() {
+  let h = '';
+  document.querySelectorAll('link[rel~="stylesheet"], style').forEach(el => {
+    if (el.id === 'ew-ui-maker' || el.id === 'ew-ui-layout' || el.id === 'uimStyles') return;
+    h += el.outerHTML;
+  });
+  return h;
+}
+/* one surface in one theme (null = the screen's own look over the Settings theme tokens) */
+function stageCss(S, T) {
+  const keep = _skinVars; _skinVars = new Map();
+  const gid = globalId();
+  let css = '', pending = false;
+  try { if (T) { const r = surfaceCss(S, T, '#stage', gid); css = r.css; pending = r.pending; } } catch (e) { css = ''; }
+  let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
+  _skinVars = keep;
+  return { css: `:root:root { ${tokenBlock(T || themeById(gid))} ${vars}}\n${KEYFRAMES}${css}`, pending };
+}
+/* host: the element the frame fills; theme(): the theme to wear now; onPick(el, doc): a click inside */
+function mountStage(host, sid, theme, onPick) {
+  const S = UIM_SURFACES.find(x => x.id === sid), html = UIM_SPECIMENS[sid];
+  if (!host || !S || !html) return null;
+  const fr = document.createElement('iframe');
+  fr.className = 'uim-stage-fr'; fr.setAttribute('tabindex', '-1'); fr.setAttribute('aria-hidden', 'true');
+  fr.width = STAGE_W; fr.height = STAGE_H;
+  host.appendChild(fr);
+  const d = fr.contentDocument; if (!d) { fr.remove(); return null; }
+  const de = document.documentElement, at = [];
+  for (const a of de.attributes) if (a.name !== 'class' && a.name !== 'style') at.push(`${a.name}="${esc(a.value)}"`);
+  const cls = Array.from(de.classList).filter(c => c.indexOf('uim-') !== 0).join(' ');
+  const bat = []; for (const a of document.body.attributes) if (a.name.indexOf('data-') === 0) bat.push(`${a.name}="${esc(a.value)}"`);
+  d.open();
+  d.write(`<!doctype html><html ${at.join(' ')} class="${esc(cls)}"><head><meta charset="utf-8"><base href="${esc(location.href)}">${stageSheets()}<style id="uim-stage-css"></style>`
+    + `<style>html, body { margin: 0; width: ${STAGE_W}px; height: ${STAGE_H}px; overflow: hidden; background: #05060a; } a { pointer-events: none; }</style></head>`
+    + `<body ${bat.join(' ')}>${html}</body></html>`);
+  d.close();
+  const st = { fr, S, theme, host };
+  if (onPick) d.addEventListener('click', e => { e.preventDefault(); onPick(e.target, d); }, true);
+  d.addEventListener('submit', e => e.preventDefault(), true);
+  _stages.add(st);
+  stageRefresh(st);
+  return st;
+}
+function stageRefresh(st) {
+  const d = st.fr.contentDocument, el = d && d.getElementById('uim-stage-css'); if (!el) return;
+  const T = st.theme(), css = stageCss(st.S, T && T !== 'original' ? T : null).css;
+  if (el.textContent !== css) el.textContent = css;
+}
+function stagesRefresh() { _stages.forEach(st => { if (!st.fr.isConnected) { _stages.delete(st); return; } stageRefresh(st); }); }
+function unmountStage(st) { if (!st) return; _stages.delete(st); st.fr.remove(); }
+/* the role a click in a stand-in lands on (the most specific first), for the Skins tab */
+const PICK_ORDER = ['buttonSel', 'chipOn', 'button', 'chip', 'head', 'hero', 'panel'];
+function stagePick(S, el) {
+  for (const r of PICK_ORDER) {
+    const sel = S.roles[r]; if (!sel) continue;
+    try { if (el.closest(sel)) return r; } catch (e) {}
+  }
+  return '';
+}
+
 /* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
-const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', hpart: '', ghost: 'auto', snap: true, guides: true, fold: false };
+const UI = { screen: '', el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', hpart: '', ghost: 'auto', snap: true, guides: true, fold: false };
 const UIM_CSS = `
 .uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
 .uim-root * { box-sizing: border-box; }
@@ -12421,6 +12496,10 @@ const UIM_CSS = `
 .uim-bar .sep { width: 1px; height: 18px; background: #2a2e38; margin: 0 4px; }
 .uim-bar small { color: #7d8699; font-size: 10px; margin-right: 2px; }
 .uim-stage { position: relative; flex: 1; min-height: 0; overflow: auto; }
+.uim-stagebox, .uim-stand { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #000; }
+.uim-stand { position: fixed; inset: 0; z-index: 10059; }
+.uim-stage-fr { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #05060a; }
+.uim-scr-pick { width: auto; max-width: 220px; }
 .uim-stage.bd-dark { background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 75%); }
 .uim-stage.bd-light { background: linear-gradient(#cfd6e2, #9aa6b8); }
 .uim-stage.bd-grass { background: #2a3a20 url(${TEX}grass_2.png) 0 0 / 256px; }
@@ -12707,9 +12786,17 @@ const HERO_MOCK = `<div class="uimp-panel uimp-hero" data-r="hero">
         <div class="uimp-pips uimp-mute"><span>AP</span><i></i><i></i><i class="x"></i></div>
       </div>
     </div>`;
+/* the SCREEN picker: the sample windows, or a stand-in of one real screen in the theme being edited */
+function screenBar() {
+  return `<small>SCREEN</small><select class="uim-in uim-scr-pick" data-screen="1" title="See the theme on one of the game's screens">${[['', 'Sample windows']].concat(UIM_SURFACES.filter(S => UIM_SPECIMENS[S.id]).map(S => [S.id, S.label])).map(([v, l]) => `<option value="${v}"${(UI.screen || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+}
 function renderPreview() {
+  if (UI.screen && UIM_SPECIMENS[UI.screen]) {
+    return `<div class="uim-bar">${screenBar()}<span class="sep"></span><button class="uim-btn" data-act="replay" title="Play the window open animation again">Replay open</button></div>
+  <div class="uim-stagebox" id="uimStageBox"></div><div class="uim-hint">A stand-in of this screen with sample rows, in the theme you are editing. Click a part of it to edit that part's skin.</div>`;
+  }
   const bds = [['dark', 'Dark'], ['light', 'Light'], ['grass', 'Grass'], ['stone', 'Stone'], ['wood', 'Wood']];
-  return `<div class="uim-bar"><small>BACKDROP</small>${bds.map(([v, l]) => `<button class="uim-btn${UI.backdrop === v ? ' on' : ''}" data-bd="${v}">${l}</button>`).join('')}
+  return `<div class="uim-bar">${screenBar()}<span class="sep"></span><small>BACKDROP</small>${bds.map(([v, l]) => `<button class="uim-btn${UI.backdrop === v ? ' on' : ''}" data-bd="${v}">${l}</button>`).join('')}
     <span class="sep"></span><small>ZOOM</small>${[1, 2, 3].map(z => `<button class="uim-btn${UI.zoom === z ? ' on' : ''}" data-zoom="${z}">${z}×</button>`).join('')}
     <span class="sep"></span><button class="uim-btn" data-act="replay" title="Play the window open animation again">Replay open</button></div>
   <div id="uimPreview" class="uim-stage bd-${UI.backdrop}"><div class="uim-zoom" style="zoom:${UI.zoom}">
@@ -12895,7 +12982,7 @@ function render(part) {
   const t = curTheme();
   _previewTheme = t;
   if (!part || part === 'list') UI.el.querySelector('.uim-list').innerHTML = renderList();
-  if (!part) UI.el.querySelector('.uim-mid').innerHTML = renderPreview();
+  if (!part) { UI.el.querySelector('.uim-mid').innerHTML = renderPreview(); mountEditorStage(); }
   if (!part || part === 'insp') {
     const col = UI.el.querySelector('.uim-insp'), st = col.scrollTop;
     col.innerHTML = renderInspector(); col.scrollTop = st;
@@ -12905,6 +12992,38 @@ function render(part) {
   renderTop(); markPreview();
   apply();
 }
+function mountEditorStage() {
+  const host = UI.el && UI.el.querySelector('#uimStageBox'); if (!host) return;
+  const S = UIM_SURFACES.find(x => x.id === UI.screen);
+  const st = mountStage(host, UI.screen, () => _previewTheme || curTheme(), el => {
+    const r = stagePick(S, el);
+    if (!r) { toast('That part takes its look from the COLOURS and TEXT tabs.'); return; }
+    UI.tab = 'skins'; UI.role = r; render('insp');
+    toast('Editing ' + ((ROLES.find(x => x[0] === r) || [0, r])[1]));
+  });
+  if (st) fitStage(st);
+}
+/* a stage keeps 16:9 and fits its box (letterboxed, centred) */
+function fitStage(st) {
+  const b = st.host.getBoundingClientRect(), W = b.width || innerWidth, H = b.height || innerHeight;
+  const k = Math.min(W / STAGE_W, H / STAGE_H), ox = Math.round((W - STAGE_W * k) / 2), oy = Math.round((H - STAGE_H * k) / 2);
+  st.k = k; st.ox = ox; st.oy = oy;
+  st.fr.style.transform = `translate(${ox}px, ${oy}px) scale(${k})`;
+}
+/* the stand-in's windows in screen pixels (the live panel keeps off them) */
+function stageRects(st) {
+  const d = st.fr.contentDocument, S = st.S, out = []; if (!d || !st.k) return out;
+  const hb = st.host.getBoundingClientRect();
+  let els = [];
+  try { els = d.querySelectorAll([S.roles.panel, S.roles.head].filter(Boolean).join(', ') || S.scope); } catch (e) {}
+  for (let i = 0; i < els.length && out.length < 12; i++) {
+    const r = els[i].getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.width * r.height > STAGE_W * STAGE_H * 0.6) continue;
+    const l = hb.left + st.ox + r.left * st.k, t = hb.top + st.oy + r.top * st.k;
+    out.push({ left: l, top: t, right: l + r.width * st.k, bottom: t + r.height * st.k });
+  }
+  return out;
+}
+window.addEventListener('resize', () => { _stages.forEach(st => { if (st.fr.isConnected) fitStage(st); }); });
 function drawSliceView() {
   const cv = UI.el && UI.el.querySelector('#uimSliceCv'), sl = db.slices.find(x => x.id === UI.sliceId);
   if (!cv || !sl) return;
@@ -12935,6 +13054,7 @@ function syncTwins(el, attr, val) {
 }
 function onInput(e) {
   const el = e.target;
+  if (el.dataset.screen) { if (e.type === 'change') { UI.screen = el.value; render(); } return; }
   if (el.dataset.slink) { UI.slink = el.checked; return; }
   if (el.dataset.slicetex) { if (e.type === 'change' && el.value) sliceFromTex(el.value); return; }
   if (el.dataset.spath) {
@@ -13046,6 +13166,7 @@ function onClick(e, root) {
     UI.themeId = globalId(); touch(); render();
   }
   else if (act === 'global') { window.setHudTheme(T.id); render(); toast(`The game now wears "${T.label}".`); }
+  else if (act === 'replay' && UI.screen && UI.el.querySelector('#uimStageBox')) { UI.el.querySelector('#uimStageBox').innerHTML = ''; mountEditorStage(); }
   else if (act === 'replay') { const z = UI.el.querySelector('#uimPreview .uim-zoom'); if (z) { const c = z.cloneNode(true); z.replaceWith(c); markPreview(); } }
   else if (act === 'export') { UI.io = JSON.stringify(exportObj(T)); render('list'); }
   else if (act === 'import') { UI.io = UI.io === 'import' ? '' : 'import'; render('list'); }
@@ -13259,6 +13380,7 @@ function menuBoxes() {
     });
   });
   Object.keys(A.boxes).forEach(k => { if (!used.has(k)) A.boxes[k].style.display = 'none'; });
+  if (A.stand) rects[A.stand.S.id] = stageRects(A.stand);
   A.rects = rects;
   const key = Object.keys(live).join(',');
   if (key !== A.liveKey) {
@@ -13373,6 +13495,7 @@ function surfDetail() {
   const tid = effectiveId(S), T = tid === 'original' ? null : themeById(tid), on = !!A.liveSet[S.id];
   let h = `<div class="uim-dk-sel"><b>${esc(S.label)}</b>`;
   if (on) h += `<div class="uim-note">On screen now (the cyan boxes): a change shows there at once.</div>`;
+  else if (UIM_SPECIMENS[S.id]) h += `<div class="uim-note">Not on screen right now, so a stand-in of it (sample rows) fills the screen behind this panel${T ? ', in ' + esc(T.label) : ', in its original look'}. Hold <span class="uim-kbd">Space</span> to see all of it.</div>`;
   else if (!T) h += `<div class="uim-note">Not on screen right now. It keeps its original look.</div>`;
   else { _previewTheme = T; h += `<div class="uim-note">Not on screen right now. Its windows in ${esc(T.label)}:</div>${MINI_PREVIEW}`; }
   if (T) h += `<div class="uim-btns"><button class="uim-btn" data-dk="edittheme" data-val="${esc(T.id)}">Edit ${esc(T.label)} in the full editor</button></div>`;
@@ -13477,6 +13600,7 @@ function dockDetail() {
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
   else if (A.mode === 'bars') { d.innerHTML = barsDetail(); barsMockRefresh(); }
   else { d.innerHTML = surfDetail(); apply(); }
+  liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
   dockUndo();
 }
@@ -13605,8 +13729,24 @@ function liveMode(mode) {
   dockBody(); apply();
   requestAnimationFrame(() => dodge(true));
 }
+/* the Menus view: a menu that is not on screen shows as a stand-in behind the panel, in the theme it wears */
+function liveStand() {
+  const A = UI.live; if (!A) return;
+  const want = A.mode === 'menus' && UI.surf && !A.liveSet[UI.surf] && UIM_SPECIMENS[UI.surf] ? UI.surf : '';
+  if (A.stand && A.stand.S.id === want) return;
+  if (A.stand) { unmountStage(A.stand); A.stand = null; }
+  if (A.standHost) { A.standHost.remove(); A.standHost = null; }
+  if (!want) return;
+  const host = document.createElement('div'); host.className = 'uim-stand';
+  document.body.insertBefore(host, A.ov);
+  const S = UIM_SURFACES.find(x => x.id === want);
+  A.standHost = host;
+  A.stand = mountStage(host, want, () => { const tid = effectiveId(S); return tid === 'original' ? null : themeById(tid); });
+  if (A.stand) fitStage(A.stand);
+}
 function liveOff(quiet) {
   const A = UI.live; if (!A) return;
+  if (A.stand) unmountStage(A.stand); if (A.standHost) A.standHost.remove();
   cancelAnimationFrame(A.raf); A.ov.remove(); A.dock.remove(); UI.live = null;
   window.removeEventListener('resize', A.onResize);
   document.documentElement.classList.remove('uim-live', 'uim-arranging');
