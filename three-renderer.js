@@ -3300,13 +3300,14 @@ const ThreeRenderer = (function () {
             var h = unit.z || 0;
             var gH = _flyGroundZ(ux, uy, h);
             var _fvY = _flyVisualY(h, gH, ts);
-            /* THE UNITS STAND ON THE GROUND (2026-09-23): a flyer hovers its clearance over the cell's REAL top */
-            var _fgAir = _fieldSurfaceY(ux, uy, null);
+            /* THE UNITS STAND ON THE GROUND (2026-09-23): a flyer hovers its clearance over the cell's REAL top
+               (THE TWO FLOORS: over the floor of ITS pocket — the ground under a deck when it threads beneath) */
+            var _fgAir = _fieldSurfaceY(ux, uy, _fieldTwoFloorAt(ux, uy) ? gH : null);
             if (_fgAir !== null) return _fgAir + (_fvY - gH * ts * ELEV_STEP_RATIO);
             return _fvY;
         }
         /* THE UNITS STAND ON THE GROUND (2026-09-23): a body on a true-ground field stands on the room's own surface */
-        var _fgStand = _fieldSurfaceY(ux, uy, null);
+        var _fgStand = _fieldSurfaceY(ux, uy, _fieldTwoFloorAt(ux, uy) ? unit.z : null);   // THE TWO FLOORS: the ground under a deck
         if (_fgStand !== null) return _fgStand;
 
         /* Roof-walkable building tiles only expose the ROOF as a standing surface
@@ -3355,7 +3356,11 @@ const ThreeRenderer = (function () {
         if (z !== undefined && z !== null && state.boardColumns && state.boardColumns.length) {
             var topH = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y)
                      : (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
-            if (z < topH) return z * ts * ELEV_STEP_RATIO;
+            if (z < topH) {
+                var _fgLow = _fieldSurfaceY(x, y, z);   // THE TWO FLOORS: the ground under a field's deck stands at its real top
+                if (_fgLow !== null) return _fgLow;
+                return z * ts * ELEV_STEP_RATIO;
+            }
         }
         return tileTopY(x, y);
     }
@@ -6635,7 +6640,7 @@ const ThreeRenderer = (function () {
             try {
                 var _ewRec = (typeof getEdgeWall === 'function')
                     ? getEdgeWall(x, y, ['N', 'E', 'S', 'W'][d4]) : null;
-                if (_ewRec) {
+                if (_ewRec && !_ewRec.hide) {
                     var _ewStep = ts * ELEV_STEP_RATIO;
                     var _ewTop = (((_ewRec.z0 || 1) - 1) + Math.max(1, _ewRec.h || 1)) * _ewStep;
                     if (_ewTop - topY > 0) { wallH = _ewTop - topY; _onEdgeWall = true; }
@@ -9663,7 +9668,7 @@ const ThreeRenderer = (function () {
         for (var ki = 0; ki < keys.length; ki++) {
             var key = keys[ki];
             var w = walls[key];
-            if (!w) continue;
+            if (!w || w.hide) continue;   // THE TWO FLOORS: a deck's rail is the room's own drawn rail — the engine wall is never drawn
             var parts = key.split(',');
             var wx = +parts[0], wy = +parts[1];
             var side = parts[2];
@@ -13815,10 +13820,12 @@ const ThreeRenderer = (function () {
         var key = Math.round(g.position.x) + '|' + Math.round(g.position.y) + '|' + Math.round(g.position.z) + '|' + Math.round(yaw * 50) + '|' + ((typeof state !== 'undefined' && state) ? (state._heightVersion || 0) : 0) + '|' + _fieldGroundCache.key;
         if (g._ew_ringKey === key) return;
         g._ew_ringKey = key;
-        var top = G.yAt(ux, uy), feetY = g.position.y + (g._ew_subSink || 0);
+        var feetY = g.position.y + (g._ew_subSink || 0);
+        var _rfl = G.floorNear(ux, uy, feetY), top = _rfl ? _rfl.y : null;   // THE TWO FLOORS: the floor the body stands on (the ground under a deck)
         var airborne = (top === null || top === undefined) || Math.abs(feetY - top) > ts * 0.5;
         if (airborne) { if (g._ew_ringDraped) { _fieldRingsFlat(g); g._ew_ringDraped = false; } return; }
         var lift = HL_FIELD_LIFT * ts * RING_FIELD_LIFT, cap = ts * 0.5, skin = _hlSkinTopY(ux, uy);   // THE SKIN LINE: a waded sheet
+        if (_rfl && _rfl.low) skin = null;   // a skin on the deck never lifts the ring under it
         if (ret) _fieldDrapeRing(ret, ts, top, lift, cap, skin);
         if (sel) _fieldDrapeRing(sel, ts, top, lift, cap, skin);
         g._ew_ringDraped = true;
@@ -13838,7 +13845,7 @@ const ThreeRenderer = (function () {
         var hi = top;
         for (i = 0; i < n; i++) {
             v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
-            var s = _fieldGroundSampleAt(v.x, v.z, Math.floor(v.x / ts), Math.floor(v.z / ts));
+            var s = _fieldGroundSampleAt(v.x, v.z, Math.floor(v.x / ts), Math.floor(v.z / ts), top);   // THE TWO FLOORS: each sample on the floor nearest the body's
             if (s === null || s === undefined) continue;
             if (s > hi) hi = s;
         }
@@ -14922,7 +14929,7 @@ const ThreeRenderer = (function () {
        beveled terrain swell, so range/spell overlays hug the ground topology
        instead of hovering as flat decals. Falls back to a flat quad when
        BEVEL is disabled (identical to the old PlaneGeometry decal). */
-    function _buildDrapeGeo(hx, hy, ts, frac) {
+    function _buildDrapeGeo(hx, hy, ts, frac, refY) {
         var s = ts * frac, half = s / 2, segs = 4;
         var cx = hx * ts + ts / 2, cz = hy * ts + ts / 2;
         /* natural tiles: drape over the smooth sloped landform; beveled tiles:
@@ -14937,7 +14944,11 @@ const ThreeRenderer = (function () {
         var stair = _stairInfoAt(hx, hy);
         /* THE HIGHLIGHTS CONFORM (2026-09-22): under a true-ground field the drape samples the ROOM's own ground at
            every vertex (a slope, a bank, a ramp's incline), about the cell's centre top the mesh is placed at */
-        var fieldC = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt(hx * ts + ts / 2, hy * ts + ts / 2, hx, hy) : null;
+        /* THE TWO FLOORS (2026-10-16): refY = the battle-frame Y of the floor this plate lies on (the ground under a deck); offsets
+           are about it instead of the column's top */
+        var _hasRef = (refY !== undefined && refY !== null);
+        var fieldC = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt(hx * ts + ts / 2, hy * ts + ts / 2, hx, hy, _hasRef ? refY : undefined) : null;
+        var _baseY = _hasRef ? refY : tileTopY(hx, hy);
         var field = (fieldC !== null && fieldC !== undefined) ? fieldC : null;
         if (field !== null) { stair = null; segs = HL_FIELD_SEGS; }
         var nat = !stair && field === null && _isNaturalRenderTile(hx, hy);
@@ -14951,7 +14962,8 @@ const ThreeRenderer = (function () {
         /* THE WADE LINE / THE SKIN LINE: no vertex of a highlight sinks under a sheet laid over the cell — a waded cell's
            liquid, a deformed cell's patch, a flow slab (offsets are about tileTopY; the caller's few-px yOff rides on top) */
         var sheetW = _hlSkinTopY(hx, hy);
-        var sheetMin = (sheetW !== null) ? (sheetW + HL_SKIN_CLEAR - tileTopY(hx, hy)) : null;
+        var sheetMin = (sheetW !== null) ? (sheetW + HL_SKIN_CLEAR - _baseY) : null;
+        if (sheetMin !== null && _hasRef && sheetW > tileTopY(hx, hy) - 1e-3 && refY < tileTopY(hx, hy) - 1e-3) sheetMin = null;   // a skin laid on the deck never lifts the plate under it
         var pos = [], uv = [], idx = [], grid = [];
         for (var gj = 0; gj <= segs; gj++) {
             grid[gj] = [];
@@ -14960,8 +14972,8 @@ const ThreeRenderer = (function () {
                 var lz = -half + (gj / segs) * s;
                 var y;
                 if (field !== null) {
-                    var fy = _fieldGroundSampleAt(cx + lx, cz + lz, hx, hy);
-                    y = (fy === null || fy === undefined) ? 0 : (fy - tileTopY(hx, hy));
+                    var fy = _fieldGroundSampleAt(cx + lx, cz + lz, hx, hy, _hasRef ? refY : undefined);
+                    y = (fy === null || fy === undefined) ? 0 : (fy - _baseY);
                 } else if (stair) {
                     /* mesh origin sits mid-slope (tileTopY includes the +0.5
                        _stairStandLift), so offsets run ±rise/2 around it */
@@ -15025,6 +15037,15 @@ const ThreeRenderer = (function () {
                         mat._ew_subFloorVariant = v;
                     }
                     subMat = mat._ew_subFloorVariant;
+                }
+                /* THE TWO FLOORS (2026-10-16): the ground under a field's deck — the plate drapes that ground at its real top */
+                var _lowY = _fieldTwoFloorAt(hx, hy) ? _fieldSurfaceY(hx, hy, z) : null;
+                if (_lowY !== null) {
+                    var lowMesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac, _lowY), subMat);
+                    lowMesh.renderOrder = 2;
+                    lowMesh.position.set(hx * ts + ts / 2, _lowY + (yOff || 0) + HL_FIELD_LIFT * ts, hy * ts + ts / 2);
+                    lowMesh._ew_lowFloor = true;
+                    return lowMesh;
                 }
                 var subGeo = (frac === 0.92) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * frac, ts * frac);
                 var sub = new THREE.Mesh(subGeo, subMat);
@@ -16890,6 +16911,14 @@ const ThreeRenderer = (function () {
         /* THE DRAPED MARKERS: on the column top the cursor is the move tiles' drape (slopes, swells, stairs, the field's
            ground, the skin line), so its corners ride the surface instead of sinking into it */
         if (!_hvSub) return _drapedTileMesh(tx, ty, 0.95, hMat, 0.5);
+        /* THE TWO FLOORS (2026-10-16): the cursor on the ground under a field's deck lies on that ground */
+        var _hvLow = _fieldTwoFloorAt(tx, ty) ? _fieldSurfaceY(tx, ty, _hvZ) : null;
+        if (_hvLow !== null) {
+            var lm = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95, _hvLow), hMat);
+            lm.renderOrder = 2;
+            lm.position.set(tx * ts + ts / 2, _hvLow + 0.5 + HL_FIELD_LIFT * ts, ty * ts + ts / 2);
+            return lm;
+        }
         var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
         m.rotation.x = -Math.PI / 2;
         m.renderOrder = 2;
@@ -18143,10 +18172,13 @@ const ThreeRenderer = (function () {
         }
         return _occTilePoint(unit.x, unit.y);
     }
-    function _occTilePoint(tx, ty) {
+    function _occTilePoint(tx, ty, tz) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var y = ts * 0.6, feetY = 0;
-        if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
+        /* THE TWO FLOORS (2026-10-16): the cursor on the ground under a field's deck — the subject is THAT floor, so the deck over it opens */
+        var _ocLow = (tz !== undefined && tz !== null && _fieldTwoFloorAt(Math.round(tx), Math.round(ty))) ? _fieldSurfaceY(Math.round(tx), Math.round(ty), tz) : null;
+        if (_ocLow !== null) { feetY = _ocLow; y = feetY + ts * 0.6; }
+        else if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
             var h = getHeightAt(Math.round(tx), Math.round(ty));
             if (h > 0) { feetY = window._getElevationPx(h); y = feetY + ts * 0.6; }
         }
@@ -18472,7 +18504,7 @@ const ThreeRenderer = (function () {
             /* THE OVERHEAD FADE: the tile under the cursor (one ray) — a crown or a deck over it opens while it is pointed at */
             if (ovOn && _lastHoverX >= 0 && _lastHoverY >= 0 && !(focalTile && focalTile.x === _lastHoverX && focalTile.y === _lastHoverY)
                     && !(selUnit && Math.round(selUnit.x) === _lastHoverX && Math.round(selUnit.y) === _lastHoverY)) {
-                var hp = _occTilePoint(_lastHoverX, _lastHoverY);
+                var hp = _occTilePoint(_lastHoverX, _lastHoverY, _lastHoverZ);
                 if (hp) { hp.one = true; hp.ov = true; subs.push(hp); }
             }
             /* THE FADE RULES (2026-10-14): wherever off-grid scenery stands round the board (a facility enclosure, a
@@ -20317,7 +20349,7 @@ const ThreeRenderer = (function () {
                field does not own (rock, off the window) keeps the straight lerp */
             if (!tw.isFlying && _fieldGroundArmed && !(tw.segArcs && tw.segArcs[stepIdx])) {
                 var _wkCx = Math.floor(wx / ts), _wkCy = Math.floor(wz / ts);
-                var _wkS = _fieldSurfaceY(_wkCx, _wkCy, null, wx, wz);
+                var _wkS = _fieldSurfaceY(_wkCx, _wkCy, null, wx, wz, wy);   // THE TWO FLOORS: the floor the leg is on (the lerp's height picks it)
                 if (_wkS !== null) wy = _wkS;
             }
 
@@ -37750,6 +37782,62 @@ const ThreeRenderer = (function () {
         return _nearest(surf);
     }
 
+    /* ══ THE TWO FLOORS — THE POINTER (2026-10-16) ══
+       mondo: "what if I am standing at a spot where I can walk under a bridge and on top of it? how are we going to show that
+       and not make it a UI mess?" On a field with a deck over walked ground both floors carry a pick quad (_fieldPickBuild);
+       the pointer's ray is walked front to back and lands on the FIRST floor that is LIT for the action in hand (a move /
+       jump tile in the highlight cache, a spell's own aim check) — a floor the unit cannot use never swallows the pointer, so
+       an unlit deck lets the lit ground under it through and the other way round; with nothing lit (no action, or nothing
+       under the ray) the floor in front wins, the WYSIWYG rule. Null = no two-floor cell under the ray (the old pick stands). */
+    var _ffpRay = null, _ffpNdc = null;
+    function _fieldFloorLit(x, y, z) {
+        if (typeof state === 'undefined' || !state || !state.actionMode || !state.selectedUnitId) return null;
+        var mode = state.actionMode;
+        if (mode === 'move' || mode === 'jump') {
+            var cache = window._ewHlCache, pk = x + ',' + y;
+            if (!cache || !cache.map || !cache.key || String(cache.key).indexOf(state.selectedUnitId + '|' + mode) !== 0) return null;
+            var cls = cache.map.get(pk);
+            if (!cls || String(cls).indexOf('move-edge') === 0) return false;
+            if (!cache.zMap || !cache.zMap.has(pk)) return true;
+            if (cache.zMap.get(pk) === z) return true;
+            var ex = (cache.zExtra && cache.zExtra.get) ? cache.zExtra.get(pk) : null;
+            if (ex) for (var i = 0; i < ex.length; i++) if (ex[i].z === z && String(ex[i].cls || cls).indexOf('move-edge') !== 0) return true;
+            return false;
+        }
+        if (mode === 'spell' && typeof spellAimProblem === 'function') {
+            var u = _unitById.get(state.selectedUnitId); if (!u) return null;
+            var sp = (u.spells || []).find(function (q) { return q && q.name === state.selectedTool; })
+                  || (u._raceAbilities || []).find(function (q) { return q && q.name === state.selectedTool; });
+            if (!sp) return null;
+            try { return spellAimProblem(u, sp, x, y, z) === null; } catch (e) { return null; }
+        }
+        return null;
+    }
+    function _fieldFloorPick(clientX, clientY) {
+        if (!_fieldGroundArmed || !_fieldPickGroup || !_fieldPickGroup.parent || !canvas || typeof THREE === 'undefined') return null;
+        var G = _fieldGround(); if (!G || !G.twoFloors) return null;
+        var cam = (ThreeCamera && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return null;
+        var rect = canvas.getBoundingClientRect(); if (!rect.width || !rect.height) return null;
+        _ffpNdc = _ffpNdc || new THREE.Vector2(); _ffpRay = _ffpRay || new THREE.Raycaster();
+        _ffpNdc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+        _ffpRay.setFromCamera(_ffpNdc, cam);
+        var hits = _ffpRay.intersectObjects(_fieldPickGroup.children, false);
+        if (!hits.length) return null;
+        var cands = [], two = false;
+        for (var i = 0; i < hits.length; i++) {
+            var pc = hits[i].object && hits[i].object._ew_pickCell; if (!pc) continue;
+            var low = !!pc.low;
+            if (low || _fieldTwoFloorAt(pc.x, pc.y)) two = true;
+            var z = low ? G.lowLevelAt(pc.x, pc.y)
+                  : ((typeof getBaseHeightAt === 'function') ? getBaseHeightAt(pc.x, pc.y) : 0);
+            cands.push({ x: pc.x, y: pc.y, z: z, hitY: hits[i].point.y });
+        }
+        if (!two || !cands.length) return null;
+        var pick = cands[0];
+        for (var j = 0; j < cands.length; j++) { if (_fieldFloorLit(cands[j].x, cands[j].y, cands[j].z) === true) { pick = cands[j]; break; } }
+        return { tileX: pick.x, tileY: pick.y, fracX: 0.5, fracY: 0.5, faceNX: 0, faceNY: 1, faceNZ: 0, hitY: pick.hitY, isTerrainHit: true, isSideFace: false, _floorZ: pick.z };
+    }
+
     /* Resolve what the pointer at (clientX, clientY) is over and update all
        hover state (highlight, unit hover, pending target). Called from the
        canvas mousemove handler AND from renderFrame whenever the camera pose
@@ -37759,6 +37847,8 @@ const ThreeRenderer = (function () {
         _updateUnitHover(unitHit ? unitHit.unitId : null);
 
         var hit = _editorResolveTile(clientX, clientY);
+        var _ffpH = _fieldFloorPick(clientX, clientY);   // THE TWO FLOORS: the lit floor under the pointer
+        if (_ffpH) hit = _ffpH;
         /* Hovering the floating cube resolves to the tower's own tile. */
         var tcHover = _pickTowerCube(clientX, clientY);
         if (tcHover) {
@@ -37767,7 +37857,7 @@ const ThreeRenderer = (function () {
         }
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
-            var hz = _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
+            var hz = (hit._floorZ !== undefined && hit._floorZ !== null) ? hit._floorZ : _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
             /* Publish WHICH floor of the column the pointer is on, so the move
                preview / click resolution in battle.js target the same surface
                the highlight shows (multi-floor maps: cave floor vs the roof). */
@@ -37856,6 +37946,8 @@ const ThreeRenderer = (function () {
         }
         if (tx === undefined) {
             var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
+            var _ffpC = _fieldFloorPick(clientX, clientY);   // THE TWO FLOORS: the lit floor under the pointer (the hover's own rule)
+            if (_ffpC) hit = _ffpC;
             if (!hit) return;
             _stashPick(hit);
             tx = hit.tileX; ty = hit.tileY;
@@ -37875,6 +37967,7 @@ const ThreeRenderer = (function () {
         /* Multi-floor: resolve WHICH surface of the column was clicked from the
            raycast hit's world height — the cloud-platform top face targets the
            platform, the ground seen under/next to it targets the ground. */
+        if (clickZ === undefined && hit && hit._floorZ !== undefined && hit._floorZ !== null) clickZ = hit._floorZ;
         if (clickZ === undefined && hit) {
             clickZ = _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
         }
@@ -63617,7 +63710,22 @@ const ThreeRenderer = (function () {
                       var eh = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(x, y) : ((typeof state !== 'undefined' && state && state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : lr[x]);
                       return (eh - lr[x]) || 0;
                   },
-                  yAt: function (x, y) { var row = this.tops[y]; var t = row ? row[x] : null; return (t === null || t === undefined) ? null : this.floorY + t * this.s + this.deltaAt(x, y) * this.elev; } };
+                  yAt: function (x, y) { var row = this.tops[y]; var t = row ? row[x] : null; return (t === null || t === undefined) ? null : this.floorY + t * this.s + this.deltaAt(x, y) * this.elev; },
+                  /* THE TWO FLOORS (2026-10-16): a cell with a bridge deck over walked ground — `tops` is the deck (the column's top),
+                     `lows` the ground under it (room metres) at engine level `lowLevels`; one floor = null */
+                  lows: Array.isArray(R.field.lows) ? R.field.lows : null, lowLevels: Array.isArray(R.field.lowLevels) ? R.field.lowLevels : null,
+                  decks: Array.isArray(R.field.decks) ? R.field.decks : null,
+                  lowAt: function (x, y) { if (!this.lows) return null; var row = this.lows[y]; var t = row ? row[x] : null; return (t === null || t === undefined) ? null : this.floorY + t * this.s; },
+                  lowLevelAt: function (x, y) { if (!this.lowLevels) return null; var row = this.lowLevels[y]; var l = row ? row[x] : null; return (l === null || l === undefined) ? null : l; },
+                  /* the floor of cell (x, y) nearest a battle-frame Y (refY): { y, low, m } — m = its room-metre top; null = an OUT cell */
+                  floorNear: function (x, y, refY) {
+                      var tY = this.yAt(x, y); if (tY === null) return null;
+                      var lY = this.lowAt(x, y);
+                      if (lY !== null && refY !== null && refY !== undefined && Math.abs(refY - lY) < Math.abs(refY - tY)) return { y: lY, low: true, m: this.lows[y][x] };
+                      return { y: tY, low: false, m: this.tops[y][x] };
+                  } };
+        G.twoFloors = false;
+        if (G.lows) { for (var _ly = 0; _ly < G.lows.length && !G.twoFloors; _ly++) { var _lr = G.lows[_ly]; if (_lr) for (var _lx = 0; _lx < _lr.length; _lx++) if (_lr[_lx] !== null && _lr[_lx] !== undefined) { G.twoFloors = true; break; } } }
         _fieldGroundCache.key = key; _fieldGroundCache.G = G;
         return G;
     }
@@ -63675,12 +63783,18 @@ const ThreeRenderer = (function () {
         var T = G.R.T, ts = G.ts;
         /* THE DEFORM (2026-09-23): a box room's cells are flat (null — the plate stays a plane) until a dig bowls one;
            a dug cell's shape is the bowl's (_fieldDeformDyAt), a raise is a block (the cell's delta, flat) */
-        var fn = function (wx, wz, x, y) {
+        var fn = function (wx, wz, x, y, refY) {
             var row = G.tops[y]; var top = row ? row[x] : null;
             if (top === null || top === undefined) return null;
+            /* THE TWO FLOORS: a two-floor cell answers for the floor nearest refY (a plate / a ring / a walk under the deck reads the ground) */
+            var onLow = false;
+            if (refY !== undefined && refY !== null && G.lows) { var fl = G.floorNear(x, y, refY); if (fl && fl.low) { top = fl.m; onLow = true; } }
             var dug = (typeof _fieldDeformDug === 'function') && _fieldDeformDug();   // typeof: the highlights-conform test evals the block alone
-            if (!feet && !dug) return null;
+            if (!feet && !dug && !onLow) return null;
             var base = G.floorY + top * G.s;
+            if (onLow && !feet) return base;
+            /* a DECK top is level by rule (data.js hqTerrainBridges): the plate lies flat on it — sampled, its edge past the slab drooped to the ground */
+            if (!onLow && G.decks && G.decks[y] && String(G.decks[y]).charAt(x) === '1') return base;
             if (feet) {
                 var rx = wx * T.C / ts + T.x0, rz = wz * T.C / ts + T.z0;   // battle px → room metres (the matrix's rule, inverted)
                 var m = null;
@@ -63690,16 +63804,17 @@ const ThreeRenderer = (function () {
                 if (dy > cap) dy = cap; else if (dy < -cap) dy = -cap;
                 base += dy;
             }
+            if (onLow) return base;   // a deck cell is never dug or raised (THE NO-DEFORM FLAG 'B')
             var d = G.deltaAt(x, y);
             return base + (d > 0 ? d * G.elev : 0) + (dug ? _fieldDeformDyAt(wx, wz) : 0);
         };
         _fieldGroundSamplerCache.key = key; _fieldGroundSamplerCache.fn = fn;
         return fn;
     }
-    function _fieldGroundSampleAt(wx, wz, x, y) {
+    function _fieldGroundSampleAt(wx, wz, x, y, refY) {
         if (!_fieldGroundArmed) return null;
         var fn = _fieldGroundSampler(); if (!fn) return null;
-        return fn(wx, wz, x, y);
+        return fn(wx, wz, x, y, refY);
     }
     /* ══ THE UNITS STAND ON THE GROUND (THE SEAMLESS FIELD, 2026-09-23) ══
        The user: "my character is on this raised circle but floating in the air, yet the vital ring is on the ground;
@@ -63712,7 +63827,7 @@ const ThreeRenderer = (function () {
        ABOVE the cell's engine height (a flyer, a jump node) that clearance in level steps over the real top. The engine
        keeps its integer level (the high-ground bonus, the LOS step); the drawn height is the room's decimal one. Null =
        no field / an OUT cell = the columns' rule. */
-    function _fieldSurfaceY(tx, ty, tz, wx, wz) {
+    function _fieldSurfaceY(tx, ty, tz, wx, wz, refY) {
         if (!_fieldGroundArmed) return null;
         var G = _fieldGround(); if (!G) return null;
         if (tx === undefined || ty === undefined || tx === null || ty === null) return null;
@@ -63720,16 +63835,31 @@ const ThreeRenderer = (function () {
         if (cx < 0 || cy < 0 || cx >= G.W || cy >= G.H) return null;
         var top = G.yAt(cx, cy);
         if (top === null || top === undefined) return null;
+        var eh = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(cx, cy)
+               : (state.boardHeights && state.boardHeights[cy]) ? (state.boardHeights[cy][cx] || 0) : 0;
+        /* THE TWO FLOORS (2026-10-16): on a cell with a deck over walked ground, a z under the deck (a body on the ground, a flyer
+           threading under it) stands on the GROUND's real top; with no z, the floor nearest refY (a walk's lerp) */
+        var lowY = G.twoFloors ? G.lowAt(cx, cy) : null;
+        if (lowY !== null) {
+            var useLow = (tz !== undefined && tz !== null) ? (tz < eh - 1e-6)
+                       : (refY !== undefined && refY !== null) ? (Math.abs(refY - lowY) < Math.abs(refY - top)) : false;
+            if (useLow) { top = lowY; var ll = G.lowLevelAt(cx, cy); if (ll !== null) eh = ll; }
+        }
+        var ref = top;
         if (wx !== undefined && wz !== undefined && wx !== null && wz !== null) {
-            var sm = _fieldGroundSampleAt(wx, wz, cx, cy);
+            var sm = _fieldGroundSampleAt(wx, wz, cx, cy, ref);
             if (sm !== null && sm !== undefined && isFinite(sm)) top = sm;
         }
         if (tz !== undefined && tz !== null) {
-            var eh = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(cx, cy)
-                   : (state.boardHeights && state.boardHeights[cy]) ? (state.boardHeights[cy][cx] || 0) : 0;
             if (tz > eh + 1e-6) top += (tz - eh) * G.elev;   // in the air over the cell: the clearance rides the real top
         }
         return top;
+    }
+    /* THE TWO FLOORS: does cell (x, y) carry a deck over walked ground (two floors in one column)? */
+    function _fieldTwoFloorAt(x, y) {
+        if (!_fieldGroundArmed) return false;
+        var G = _fieldGround(); if (!G || !G.twoFloors) return false;
+        return G.lowAt(x, y) !== null;
     }
     /* ══ THE SEAMLESS FIELD rev 3 — THE LIGHT HOLDS (2026-09-22) ══
        The user: "I don't want the lighting to change, it makes the transition really abrupt". On the cut the battle used to
@@ -63854,7 +63984,7 @@ const ThreeRenderer = (function () {
     }
     /* THE CLICKS: screenToTile raycasts terrainGroup — with no columns built there was nothing to hit and every click on a
        tile died. One quad per IN cell at its real top, drawn to nothing (colorWrite off), never an occluder. */
-    var _fieldPickGeo = null;
+    var _fieldPickGeo = null, _fieldPickGroup = null;
     function _fieldPickBuild(ts) {
         var G = _fieldGround(); if (!G || !terrainGroup || typeof THREE === 'undefined') return;
         if (!_fieldPickGeo || _fieldPickGeo.ts !== ts) {
@@ -63871,8 +64001,19 @@ const ThreeRenderer = (function () {
             var m = new THREE.Mesh(_fieldPickGeo.geo, _fieldPickGeo.mat);
             m.position.set(x * ts + ts / 2, top + 0.5, y * ts + ts / 2);
             m._ew_occSkip = true; m._ew_fieldPick = true; m.renderOrder = -900; m.frustumCulled = false; m.castShadow = false; m.receiveShadow = false;
+            m._ew_pickCell = { x: x, y: y, low: false };
             grp.add(m);
+            /* THE TWO FLOORS (2026-10-16): a second quad on the ground under a deck — the pointer reaches the lower floor */
+            var low = G.twoFloors ? G.lowAt(x, y) : null;
+            if (low !== null) {
+                var lq = new THREE.Mesh(_fieldPickGeo.geo, _fieldPickGeo.mat);
+                lq.position.set(x * ts + ts / 2, low + 0.5, y * ts + ts / 2);
+                lq._ew_occSkip = true; lq._ew_fieldPick = true; lq.renderOrder = -900; lq.frustumCulled = false; lq.castShadow = false; lq.receiveShadow = false;
+                lq._ew_pickCell = { x: x, y: y, low: true };
+                grp.add(lq);
+            }
         }
+        _fieldPickGroup = grp;
         terrainGroup.add(grp);
     }
     /* ══ THE STRATA (SEAMLESS_FIELD_PLAN §8.3 step 8, 2026-09-22) ══

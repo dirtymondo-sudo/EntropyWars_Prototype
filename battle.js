@@ -4529,7 +4529,7 @@
             const ddx = nx - x, ddy = ny - y;
             if (ddx && ddy) return false;
             const w = _ewWallBetween(x, y, nx, ny);
-            if (!w) return false;
+            if (!w || w.hide) return false;                   // a bridge deck's rail (THE TWO FLOORS) is the room's drawn steel — it holds
             if ((w.h || 1) > 3) return false;                 // a fortress face — too much wall
             const tex = w.tex || 'cobblestone';
             const power = opts.power ?? unitBreachPower(mover);
@@ -55713,7 +55713,14 @@
                 const _directClicked = state.units.find(u => u.id === state._clickedUnitId && !u.dead && !u._dying);
                 if (_directClicked && _directClicked.x === x && _directClicked.y === y) clickedUnit = _directClicked;
             }
-            if (!clickedUnit) clickedUnit = unitAt(x, y);
+            if (!clickedUnit) {
+                /* THE TWO FLOORS (2026-10-16): on a spot with two floors (a bridge deck over walked ground) the click names a
+                   floor — the unit on THAT floor (or flying in its pocket), never the one on the other floor */
+                const _cSurfs = (z !== undefined && z !== null && typeof getWalkableSurfaces === 'function' && state.boardColumns?.length) ? getWalkableSurfaces(x, y) : null;
+                if (_cSurfs && _cSurfs.length > 1 && _cSurfs.indexOf(z) >= 0) {
+                    clickedUnit = unitAt(x, y, z) || ((typeof airborneOccupantInPocket === 'function') ? airborneOccupantInPocket(x, y, z, null) : null);
+                } else clickedUnit = unitAt(x, y);
+            }
 
             if (!actingUnit) {
                 if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) selectUnit(clickedUnit.id);
@@ -62269,7 +62276,7 @@
                         const col = (typeof getColumn === 'function') ? getColumn(x, y) : null;
                         if (!col || !col.length) continue;
                         for (const b of col.slice()) {
-                            if (!b.roof) continue;
+                            if (!b.roof || b.deck) continue;   // THE TWO FLOORS: a field's bridge deck stands on the room's own piers
                             const z = b.z;
                             /* propped from below? */
                             let held = false;
@@ -69363,7 +69370,11 @@
                         renderIfDirty();
                         return 0;
                     }
-                    if (unitAt(x, y)) {
+                    /* THE TWO FLOORS (2026-10-16): on a spot with two floors (a bridge deck over walked ground) the landing is the
+                       floor that was clicked, and only that floor has to be free */
+                    const _tpSurfs = (typeof getWalkableSurfaces === 'function' && state.boardColumns?.length) ? getWalkableSurfaces(x, y) : [];
+                    const _tpLandZ = (_tpSurfs.length > 1 && z !== undefined && z !== null && _tpSurfs.indexOf(z) >= 0) ? z : null;
+                    if (_tpLandZ !== null ? unitAt(x, y, _tpLandZ) : unitAt(x, y)) {
                         addLog('Destination tile must be unoccupied.');
                         playErrorSfx();
                         return 0;
@@ -69405,7 +69416,7 @@
                         /* THE SPELL AUDIT Batch D: `leap` (Land on Your Feet) — the caster jumps the arc to the landing,
                            any height up or down, and lands on its feet (a teleport never pays fall damage). The arc is
                            relayed (online.js wraps animateJumpArc). */
-                        const _lpToZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
+                        const _lpToZ = (_tpLandZ !== null) ? _tpLandZ : (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
                         if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, Math.max(actionMs(420), destDist * actionMs(140)));
                     } else if (spell.doorGun) {
                         /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
@@ -69440,7 +69451,8 @@
                     tUnit.y = y;
                     // A grounded body lands on the destination's surface (its z used
                     // to stay the ORIGIN's — a plateau-to-floor blink read as airborne).
-                    if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
+                    if (!_tpWasAir && _tpLandZ !== null) tUnit.z = _tpLandZ;   // THE TWO FLOORS: the clicked floor
+                    else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
                         : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);

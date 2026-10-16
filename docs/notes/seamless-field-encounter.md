@@ -952,3 +952,35 @@ world-space UVs too. Δ boards are untouched (voxel tiles by design). Kill-switc
 pre-deform height in `state.deformedTiles` (cleared by map.js `initMap`, rides the state-sync); three-renderer.js
 `_deltaPatchBuild` (end of `rebuildTerrain`'s tile path) lays one patch per run of moved cells on the column tops
 (`_fieldPatchSheetMat` of the top terrain, 2-tile repeat, fringe onto same-level tiles). Skipped on natural-terrain maps.
+
+## THE TWO FLOORS — units under a bridge and on it at once (2026-10-16, mondo)
+mondo: "on these maps with bridges that span gaps, like cern … units can be underneath the bridge on the ground and on top
+of the bridge at the same time … think of the tile highlights and the user experience". Before: the field raster read only
+the free ground query, so a deck over walked ground was never a battle square and a deck over a gap fell out of the board.
+- data.js `hqFieldTerrainInfo` `deckAt`: a bridge slab at least `ground.tierMin` over the cell's feet, standing at the centre
+  and on `cover` samples, is the cell's `deck` ({ top, layer, rails }); over a gap / wall / pool it IS the cell (`span`).
+  `railSides`: the sides a railing runs along (a railed bridge's own rail, or a `railing` wall piece standing on the deck,
+  within half a cell of the edge midpoint and parallel to it; gaps between pieces stay open).
+- `hqFieldRasterTerrain`: deck tier = max(tier of its top, ground tile + 2) so the engine's headroom rule holds.
+  `hqFieldStampDecks` (field build + `hqArenaEntry`): the deck is a roof slab `rf + dk` at B + deck tile over the air gap;
+  each railed side gets a HIDDEN low edge wall (`hide: true`, z0 deck+1, h 1) — the drawn rail is the room's own, the engine
+  wall is never drawn (`rebuildWalls`, the sconce probe skip it), never breached (`_tryBreachThinWall`), and a deck roof never
+  collapses in `_settleArchitectureAfterDeform` (the room's piers carry it). Deck cells are fixed 'B' (no deform).
+- The field record: `tops` = the deck top on deck cells, `lows` / `lowLevels` = the ground under, `decks` rows ('1' where
+  the top floor is a deck). map.js keeps a deck column's air gap (`buildColumnsFromVoxels`, `fillVoxelsDown` skip),
+  `_pocketCeilingIsRoof` ignores decks (flyers thread under). The engine's multi-floor code does the rest: two walkable
+  surfaces, posKey3 paths, one unit per floor, z-aware sight lines and spellAimProblem.
+- three-renderer.js: `_fieldGround` `lowAt` / `lowLevelAt` / `floorNear` / `twoFloors`; `_fieldSurfaceY(.., z)` puts a
+  unit / plate / cursor / ring on its own floor (z under the column top = the ground); the low plates and cursor are drapes
+  on the ground (`_makeHlTile` / `_buildCursorMesh` sub-floor branch), the deck plate stays flat (decks rows). Picking:
+  `_fieldPickBuild` adds a quad on the ground under each deck; `_fieldFloorPick` (hover + click) takes the FIRST LIT floor
+  along the pointer ray (move/jump: the highlight cache incl. zExtra; spell: spellAimProblem), else the front one. Both lit
+  = the front one: turn the camera, or point at the ground where it shows past the deck's edge. The #227 overhead fade +
+  ghost highlights show the ground plate through the deck.
+- battle.js: a blink lands on the clicked floor (`_tpLandZ`); `clickTile` with no sprite hit takes the unit on the clicked
+  floor (unitAt x,y,z).
+- Browser-tested on the CERN arena (WebGL + WebGPU in the sandbox): a ghoul moved onto the catwalk over the halfdemon on the
+  ground under it; deck and ground clicks resolved to their floors; the railing walls stop deck → ground steps (jump 1),
+  the ground under stays clear. Arenas with decks now: CERN 24, Giza 15, Downtown 13, Antarctica 11, Mars 10, Haunted 3.
+- Test-harness note: the Target Camera reframes on hover, so a probe must re-project and hover again until the tile stops
+  moving before it clicks (else it lands a row off).
