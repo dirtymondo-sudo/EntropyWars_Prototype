@@ -7540,6 +7540,12 @@
             // Beams use the capped 8-ray footprint, not the Manhattan disc.
             // (Before the range guard: a rangeless line def still beams 4 tiles.)
             if (unit && spell && (spell.kind === 'line' || spell.kind === 'linePush')) return getLineSpellRayTiles(unit, spell);
+            /* THE BLINK LANDING (2026-10-16, mondo: clicking a lit Mirror Blink tile said "Target is no longer in
+               range or line of sight"): a teleport's LANDING click (a self blink's only click, or the second click
+               of a pick-a-unit teleport) is judged on the flat Manhattan disc doSpell's landing gate measures — no
+               height gap, no team sight — the same tiles the board lights (ui.js) and the forecast plays. The 3D
+               reach + vision gate below threw out lit tiles up a slope or round a corner. */
+            if (unit && spell && _teleportLandingPhase(spell)) return getTeleportLandingReach(unit, spell);
             if (!unit || !spell || !spell.range) return [];
             const tiles = [];
             const effRange = getEffectiveSpellRange(unit, spell);
@@ -7598,6 +7604,29 @@
                 }
             }
             return tiles;
+        }
+
+        /* the click lands a teleport: a self blink's first click, or a pick-a-unit teleport once the unit is picked */
+        function _teleportLandingPhase(spell) {
+            return !!spell && spell.kind === 'teleport' && (!!state._teleportingUnit || !spell.teleportAnyUnit);
+        }
+        /* every tile a teleport's landing click may name, measured from the caster: Manhattan ≤ the effective range,
+           sight-checked only for a needsLoS row (Web Swing). Occupancy / terrain stay doSpell's own messages. */
+        function getTeleportLandingReach(unit, spell) {
+            const R = getEffectiveSpellRange(unit, spell);
+            const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            const out = [];
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (!isInside(tx, ty)) continue;
+                    if (spell.needsLoS && d >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
+                    out.push({ x: tx, y: ty });
+                }
+            }
+            return out;
         }
 
         function renderStatusIcon(key, size = 'sm', altText = '') {
@@ -64634,7 +64663,10 @@
             const dEff = d;
             const minRange = _kindMeta(spell).minRange ?? 1;
 
-            const isTeleportPhase2 = spell.kind === 'teleport' && state._teleportingUnit;
+            /* THE BLINK LANDING (2026-10-16): a self blink's one click IS the landing, so it skips the cast gates
+               (3D reach, sight, fog) like a second-click landing; the teleport branch judges it (flat range,
+               needsLoS, free tile) — the rules the board lights. */
+            const isTeleportPhase2 = _teleportLandingPhase(spell);
             // Sky-throw "phase 2": a target is already grabbed and this click is the
             // THROW destination. The destination can be farther than the caster's
             // own spell range (grab range + throw range) and may sit behind terrain
