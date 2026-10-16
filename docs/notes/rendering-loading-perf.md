@@ -834,7 +834,7 @@ on WebGPU a new material or canvas per piece is a render object, bind groups and
   can see, one ray each (hidden enemies never drive a fade).
 - The roof/canopy cutaway is unchanged (mondo: "ignore roofs for this").
 
-## THE OVERHEAD FADE + THE HIGHLIGHT GHOSTS (2026-10-16, token 20261016-overhead-01-cors)
+## THE OVERHEAD FADE + THE HIGHLIGHT GHOSTS (2026-10-16, token 20261016-overhead-02-cors)
 mondo: "things ABOVE the units should still [fade], like there are these bridges on maps that go across a gap ... really big
 trees whose leaves cover the map below ... or at least maybe tile highlights need to always be shown through stuff too like
 the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
