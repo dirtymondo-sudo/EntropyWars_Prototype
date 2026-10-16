@@ -11067,6 +11067,9 @@ _watchPhaseForHud();
    (UIM_PIECES: move / scale / fade / hide a HUD piece, sliders or ARRANGE ON
    SCREEN with drag, wheel, arrow-key nudge, a grid and the TV safe area),
    undo/redo, click the preview to edit, built-ins edit into a copy.
+   Pass 3 (2026-10-16): LAYOUT + MENUS open on the real screen (THE LIVE VIEW) with a controls panel that keeps
+   out of the way of the piece being adjusted; the Horologe HERO SECTION is shaped (db.hero) and skinned (role
+   hero); layout / menu picks undo; the store is sanitised on load.
    ══════════════════════════════════════════════════════════════════════════ */
 (function () {
 'use strict';
@@ -11081,6 +11084,7 @@ const ROLES = [
   ['buttonSel', 'Selected', 'The row under the cursor'],
   ['chip', 'Chip', 'Pills, tags, toggles'],
   ['chipOn', 'Chip On', 'A toggle that is on'],
+  ['hero', 'Hero', 'The Horologe hero section (battle): watch, name, vitals'],
 ];
 const SHAPES = [
   ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
@@ -11135,6 +11139,32 @@ if (!Array.isArray(db.themes)) db.themes = [];
 if (!Array.isArray(db.slices)) db.slices = [];
 if (!db.assign || typeof db.assign !== 'object') db.assign = {};
 if (!db.layout || typeof db.layout !== 'object') db.layout = {};
+if (!db.hero || typeof db.hero !== 'object') db.hero = {};
+/* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
+   every role (a theme saved before a role existed, the Hero one, gets it off) */
+Object.keys(db.layout).forEach(k => {
+  const L = db.layout[k];
+  if (!L || typeof L !== 'object') { delete db.layout[k]; return; }
+  ['x', 'y'].forEach(q => { if (L[q] != null && !isFinite(+L[q])) delete L[q]; });
+  if (L.s != null && !(+L.s > 0 && +L.s < 10)) delete L.s;
+  if (L.o != null && !(+L.o >= 0 && +L.o <= 1)) delete L.o;
+});
+db.themes = db.themes.filter(t => t && typeof t === 'object' && t.id && t.colors && typeof t.colors === 'object');
+db.themes.forEach(fixTheme);
+function fixTheme(t) {
+  if (!t.skins || typeof t.skins !== 'object') t.skins = {};
+  ROLES.forEach(([r]) => {
+    const b = blankSkin(t.colors, r), s = t.skins[r];
+    if (!s || typeof s !== 'object') { t.skins[r] = b; return; }
+    ['fill', 'material', 'outline', 'inner', 'bevel', 'glow', 'shadow'].forEach(k => { if (!s[k] || typeof s[k] !== 'object') s[k] = b[k]; });
+  });
+  if (!t.text || typeof t.text !== 'object') t.text = { font: '', titleFont: '', caps: false, track: 0, effect: 'drop' };
+  return t;
+}
+/* where each HUD piece last sat on screen (viewer-local), so the live view can show a piece that is not up right now */
+let seen = {};
+try { const j = JSON.parse(localStorage.getItem(KEY + '_seen') || 'null'); if (j && typeof j === 'object') seen = j; } catch (e) {}
+function saveSeen() { try { localStorage.setItem(KEY + '_seen', JSON.stringify(seen)); } catch (e) {} }
 let _saveWarned = false;
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
@@ -11156,7 +11186,7 @@ function colorsFromTokens(t) {
   };
 }
 function blankSkin(c, role) {
-  const btn = role === 'button' || role === 'buttonSel', chip = role === 'chip' || role === 'chipOn', head = role === 'head';
+  const btn = role === 'button' || role === 'buttonSel', chip = role === 'chip' || role === 'chipOn', head = role === 'head', pan = role === 'panel' || role === 'hero';
   const on = role === 'buttonSel' || role === 'chipOn';
   return {
     on: false, slice: '', shape: chip ? 'pill' : 'round', size: chip ? 12 : (btn ? 6 : 10),
@@ -11168,9 +11198,9 @@ function blankSkin(c, role) {
     },
     material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' },
     outline: { w: on ? 2 : 1, c: on ? toHex(c.sel) : toHex(btn || chip ? c.rowEdge : c.edge) },
-    inner: { w: role === 'panel' ? 1 : 0, c: toHex(c.rim), gap: 1 },
+    inner: { w: pan ? 1 : 0, c: toHex(c.rim), gap: 1 },
     bevel: { w: 2, light: 0.12, dark: 0.3 },
-    gloss: 0, glow: { r: on ? 8 : 0, c: toHex(c.sel), a: 0.5 }, shadow: { y: role === 'panel' ? 3 : 1, blur: role === 'panel' ? 8 : 2, a: 0.45 },
+    gloss: 0, glow: { r: on ? 8 : 0, c: toHex(c.sel), a: 0.5 }, shadow: { y: pan ? 3 : 1, blur: pan ? 8 : 2, a: 0.45 },
     opacity: 1,
   };
 }
@@ -11562,6 +11592,7 @@ const UIM_SURFACES = [
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
       buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
+      hero: '.hrlg-side',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
@@ -11733,37 +11764,81 @@ const UIM_SURFACES = [
 const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
   roles: { panel: '#uimPreview .uimp-panel', head: '#uimPreview .uimp-head', well: '#uimPreview .uimp-well', button: '#uimPreview .uimp-btn',
     buttonSel: '#uimPreview .uimp-btn.sel, #uimPreview .uimp-btn:hover:not(.off)', chip: '#uimPreview .uimp-chip', chipOn: '#uimPreview .uimp-chip.on',
-    input: '#uimPreview .uimp-input', ink: '#uimPreview .uimp-ink', mute: '#uimPreview .uimp-mute', dim: '#uimPreview .uimp-dim' },
+    input: '#uimPreview .uimp-input', ink: '#uimPreview .uimp-ink', mute: '#uimPreview .uimp-mute', dim: '#uimPreview .uimp-dim',
+    hero: '#uimPreview .uimp-hero' },
   titles: '#uimPreview .uimp-title', cursor: '#uimPreview .uimp-btn.sel::before' };
 
-/* ── THE HUD LAYOUT: pieces the player can move, scale, fade or hide (db.layout[id] = { x, y, s, o, hide }) ── */
+/* ── THE HUD LAYOUT: pieces the player can move, scale, fade or hide (db.layout[id] = { x, y, s, o, hide }) ──
+   def = where the piece sits on a 16:9 screen before it has been seen (l/r/t/b px from that edge, cx/cy px from the
+   centre, w/h px or wf = a share of the screen width); the live view shows a piece that is not up right now there,
+   or where it was last seen. origin = the corner a piece grows from when scaled. */
 const UIM_PIECES = [
-  { id: 'area', group: 'Exploration', label: 'Area name', sel: '#hqPage .hq-strip-l' },
-  { id: 'pay', group: 'Exploration', label: 'Hazard pay + wallet', sel: '#hqPage .hq-strip-r' },
-  { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock' },
-  { id: 'prompt', group: 'Exploration', label: 'Interact prompt', sel: '#hqPage .hq-prompt' },
-  { id: 'toast', group: 'Exploration', label: 'Pick-up toast', sel: '#hqPage .hq-toast' },
-  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true },
-  { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard' },
-  { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta' },
-  { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col' },
-  { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar' },
-  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap' },
-  { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner' },
+  { id: 'area', group: 'Exploration', label: 'Area name', sel: '#hqPage .hq-strip-l', def: { l: 16, t: 10, w: 260, h: 46 } },
+  { id: 'pay', group: 'Exploration', label: 'Hazard pay + wallet', sel: '#hqPage .hq-strip-r', def: { r: 16, t: 12, w: 320, h: 30 } },
+  { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock', def: { l: 18, b: 12, w: 280, h: 80 } },
+  { id: 'prompt', group: 'Exploration', label: 'Interact prompt', sel: '#hqPage .hq-prompt', def: { cx: 0, b: 72, w: 320, h: 44 } },
+  { id: 'toast', group: 'Exploration', label: 'Pick-up toast', sel: '#hqPage .hq-toast', def: { cx: 0, b: 136, w: 280, h: 52 } },
+  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
+  { id: 'hero', group: 'Battle', label: 'Horologe hero section', sel: '.hrlg-side', noHide: true, hero: true, origin: '0 100%', def: { l: 10, b: 80, w: 216, h: 400 } },
+  { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
+  { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', def: { cx: 0, t: 10, w: 440, h: 64 } },
+  { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta', def: { r: 12, t: 12, w: 220, h: 40 } },
+  { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', def: { l: 10, b: 490, w: 56, h: 240 } },
+  { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar', def: { cx: 0, b: 10, wf: 0.92, wmax: 1100, h: 62 } },
+  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
+  { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
+const GROUPS = [['explore', 'Exploration'], ['battle', 'Battle']];
+const groupOf = P => (P.group === 'Battle' ? 'battle' : 'explore');
 function layoutCss() {
   let css = '';
+  const arranging = !!(UI.live && UI.live.mode === 'layout');
   UIM_PIECES.forEach(P => {
     const L = db.layout[P.id]; if (!L) return;
     const d = [];
     if (+L.x || +L.y) d.push(`translate: ${+L.x || 0}px ${+L.y || 0}px !important;`);
-    if (L.s != null && +L.s !== 1) d.push(`scale: ${+L.s} !important;`);
+    if (L.s != null && +L.s !== 1) { d.push(`scale: ${+L.s} !important;`); if (P.origin) d.push(`transform-origin: ${P.origin} !important;`); }
     const o = L.o == null ? 1 : +L.o;
-    if (L.hide && !P.noHide) d.push(UI.arr ? 'filter: opacity(0.3) grayscale(1) !important;' : 'display: none !important;');
+    if (L.hide && !P.noHide) d.push(arranging ? 'filter: opacity(0.3) grayscale(1) !important;' : 'display: none !important;');
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
+  return css + heroCss();
+}
+
+/* ── THE HOROLOGE HERO SECTION (mondo 2026-10-16: "i want to be able to adjust and change the horologe hero
+   section"): the identity column of the battle command rig (.hrlg-side: the watch with the unit's portrait, the
+   name, the vitals, AP, item slots). db.hero = { w, watch, gap, face, glow, header, hide: { part: true } }; like the
+   layout it is the same in every theme. Its LOOK is the theme's Hero skin role (Skins tab). */
+const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true };
+const HERO_PARTS = [
+  ['watch', 'Watch', '.hrlg-hubwrap'], ['chips', 'Status chips', '.hrlg-status-row'], ['name', 'Name line', '.hrlg-core'],
+  ['sub', 'Level + race line', '.hrlg-core-sub'], ['types', 'Type badges', '.hrlg-typerow'], ['vitals', 'HP / MP bars', '.hrlg-vitals'],
+  ['ap', 'AP pips', '.hrlg-ap'], ['items', 'Item slots', '.hrlg-items'], ['mats', 'Materials', '.hrlg-mats'],
+];
+const FACES = [['clock', 'Clock + portrait'], ['portrait', 'Portrait only', 'The dial, hands and numerals go; the portrait fills the watch'], ['dial', 'Clock only', 'The clock without the portrait']];
+function heroOf() { return Object.assign({}, HERO_DEF, db.hero || {}, { hide: Object.assign({}, (db.hero && db.hero.hide) || {}) }); }
+function heroCss() {
+  const H = heroOf(), S = ':root:root .hrlg-side';
+  let css = '';
+  const side = [];
+  if (+H.w !== HERO_DEF.w) side.push(`width: ${Math.max(140, Math.min(420, +H.w || HERO_DEF.w))}px !important;`);
+  if (+H.gap !== HERO_DEF.gap) side.push(`gap: ${Math.max(0, Math.min(24, +H.gap || 0))}px !important;`);
+  if (!H.header) side.push('padding-top: 10px !important;');
+  if (side.length) css += `${S} { ${side.join(' ')} }\n`;
+  if (!H.header) css += `${S}::before, ${S}::after { display: none !important; }\n`;
+  if (+H.watch !== HERO_DEF.watch) { const w = Math.max(48, Math.min(260, +H.watch || HERO_DEF.watch)); css += `${S} .hrlg-hub { width: ${w}px !important; height: ${w}px !important; }\n`; }
+  if (!H.glow) css += `${S} .hrlg-hub { filter: none !important; }\n`;
+  if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]), ${S} .hrlg-hub svg > circle:nth-of-type(n+3) { display: none !important; }\n${S} .hrlg-hub svg > g[clip-path] { transform: scale(1.7); transform-origin: 100px 100px; }\n`;
+  else if (H.face === 'dial') css += `${S} .hrlg-hub svg image, ${S} .hrlg-hub svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
+  const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([, , sel]) => `${S} ${sel}`);
+  if (hid.length) css += `${hid.join(', ')} { display: none !important; }\n`;
   return css;
+}
+function heroTidy() {
+  const H = db.hero || (db.hero = {});
+  Object.keys(HERO_DEF).forEach(k => { if (H[k] != null && String(H[k]) === String(HERO_DEF[k])) delete H[k]; });
+  if (H.hide) { Object.keys(H.hide).forEach(k => { if (!H.hide[k]) delete H.hide[k]; }); if (!Object.keys(H.hide).length) delete H.hide; }
 }
 
 /* ── the generator ── */
@@ -11869,16 +11944,27 @@ function apply() {
   });
   if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
   let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
-  css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css + layoutCss();
+  css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css;
   let el = document.getElementById('ew-ui-maker');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-maker'; }
+  const lay = document.getElementById('ew-ui-layout');
+  const okPos = el.parentNode === document.head && (el === document.head.lastElementChild || (lay && el.nextElementSibling === lay && lay === document.head.lastElementChild));
+  if (!okPos) document.head.appendChild(el);
+  if (el.textContent !== css) el.textContent = css;
+  applyLayout();
+  return !pending;
+}
+/* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
+function applyLayout() {
+  const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
+  let el = document.getElementById('ew-ui-layout');
+  if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
   if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
   if (el.textContent !== css) el.textContent = css;
-  return !pending;
 }
 
 /* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
-const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, arr: null };
+const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', ghost: 'auto', snap: true, guides: true, fold: false };
 const UIM_CSS = `
 .uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
 .uim-root * { box-sizing: border-box; }
@@ -11979,21 +12065,81 @@ const UIM_CSS = `
 .uim-toast.show { opacity: 1; translate: -50% 0; }
 .uim-contrast { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 6px 0; border-radius: 6px; background: #161920; font-size: 11px; }
 .uim-contrast b { font-weight: 500; }
-html.uim-arranging #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hqPause, html.uim-arranging #settingsPage { visibility: hidden !important; }
+/* ── THE LIVE VIEW (Layout + Menus): the maker steps aside, the real screen shows, a box marks each piece ── */
+html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hqPause, html.uim-arranging #settingsPage { visibility: hidden !important; }
 .uim-arr { position: fixed; inset: 0; z-index: 10060; pointer-events: none; font: 11px/1.3 'IBM Plex Mono', monospace; }
+.uim-arr.peek .uim-arr-boxes, .uim-arr.peek .uim-arr-grid, .uim-arr.peek .uim-arr-safe, .uim-arr.peek ~ .uim-dock { visibility: hidden; }
 .uim-arr-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 8px 8px; }
 .uim-arr-safe { position: fixed; inset: 5%; border: 1px dashed rgba(255,255,255,0.35); }
 .uim-arr-safe span { position: absolute; right: 4px; bottom: 2px; color: rgba(255,255,255,0.45); font-size: 9px; letter-spacing: 0.14em; }
-.uim-arr-box { position: fixed; pointer-events: auto; border: 1px dashed #ff3df0; background: rgba(255,61,240,0.06); cursor: move; touch-action: none; }
+.uim-arr-box { position: fixed; pointer-events: auto; border: 1px dashed #ff3df0; background: rgba(255,61,240,0.06); cursor: move; touch-action: none; box-sizing: border-box; }
 .uim-arr-box:hover { background: rgba(255,61,240,0.14); }
-.uim-arr-box.on { border-style: solid; border-width: 2px; background: rgba(255,61,240,0.16); }
+.uim-arr-box.on { border-style: solid; border-width: 2px; background: rgba(255,61,240,0.16); box-shadow: 0 0 0 1px rgba(0,0,0,0.6); }
 .uim-arr-box.hid { border-color: #9aa3b5; background: rgba(160,160,170,0.12); }
-.uim-arr-box span { position: absolute; left: -1px; bottom: 100%; color: #fff; background: #ff3df0; padding: 1px 5px; white-space: nowrap; font-size: 10px; }
-.uim-arr-box.hid span { background: #6a7284; }
-.uim-arr-bar { position: fixed; left: 50%; top: 10px; translate: -50% 0; pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; max-width: 94vw; padding: 7px 10px; background: rgba(14,16,22,0.94); border: 1px solid #ff3df0; border-radius: 8px; color: #dfe3ea; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
-.uim-arr-bar p { margin: 0 6px 0 0; color: #b9c1d0; font-size: 10.5px; }
-.uim-arr-bar b { color: #fff; }
-.uim-arr-bar .uim-btn { font: 11px 'IBM Plex Mono', monospace; }
+.uim-arr-box.ghost { border-color: #7d8cff; background: rgba(20,24,48,0.55); }
+.uim-arr-box.ghost.on { background: rgba(40,48,110,0.6); }
+.uim-arr-box > b { display: none; }
+.uim-arr-box.ghost b { display: flex; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2px 6px; color: rgba(220,226,255,0.75); font-weight: 400; font-size: 10px; letter-spacing: 0.12em; overflow: hidden; pointer-events: none; }
+.uim-arr-box.off { border-color: #ffb03d; border-style: dotted; }
+.uim-arr-box > span { position: absolute; left: -1px; bottom: 100%; color: #fff; background: #ff3df0; padding: 1px 5px; white-space: nowrap; font-size: 10px; pointer-events: auto; }
+.uim-arr-box.tagr > span { left: auto; right: -1px; }
+.uim-arr-box.low > span { bottom: auto; top: 100%; }
+.uim-arr-box.hid > span { background: #6a7284; }
+.uim-arr-box.ghost > span { background: #4a56c8; }
+.uim-arr-box.off > span { background: #b8761a; }
+.uim-arr-box.surf { border-color: #3de0ff; background: rgba(61,224,255,0.05); cursor: pointer; }
+.uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
+.uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
+.uim-arr-box.surf > span { background: #138aa3; }
+.uim-dock { position: fixed; z-index: 10061; width: 340px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
+.uim-dock * { box-sizing: border-box; }
+.uim-dock.moving { transition: opacity 0.15s; }
+.uim-dock.busy { opacity: 0.35; pointer-events: none; }
+.uim-dock-hd { display: flex; align-items: center; gap: 4px; padding: 6px 7px; background: #14161c; border-bottom: 1px solid #2a2e38; border-radius: 9px 9px 0 0; cursor: grab; user-select: none; touch-action: none; }
+.uim-dock.fold .uim-dock-hd { border-bottom: none; border-radius: 9px; }
+.uim-dock-hd .grip { color: #4b5568; letter-spacing: -2px; margin-right: 2px; }
+.uim-dock-hd .uim-btn { padding: 3px 7px; }
+.uim-dock-hd .sp { flex: 1; }
+.uim-dock-bd { overflow: auto; padding: 8px 10px 10px; min-height: 0; }
+.uim-dock.fold .uim-dock-bd { display: none; }
+.uim-dock .uim-h { margin: 10px 0 4px; }
+.uim-dock .uim-f { grid-template-columns: 92px 1fr; }
+.uim-dock-tools { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 2px 0 6px; font-size: 11px; color: #b9c1d0; }
+.uim-dock-tools label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.uim-dk-list { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 4px; }
+.uim-dk-list .uim-h { grid-column: 1 / -1; }
+.uim-dk-row { display: flex; align-items: center; gap: 7px; padding: 4px 7px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-dk-row:hover { background: #191c24; }
+.uim-dk-row.on { border-color: #ff3df0; background: #2a1630; }
+.uim-dk-row i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #3a4050; }
+.uim-dk-row i.live { background: #66ff8a; box-shadow: 0 0 6px #66ff8a; }
+.uim-dk-row i.ghost { background: #7d8cff; }
+.uim-dk-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uim-dk-row em { font-style: normal; font-size: 9.5px; color: #ffb3f6; }
+.uim-dk-sel { margin: 4px 0 8px; padding: 8px; border: 1px solid #3a2a44; border-radius: 7px; background: #15121b; }
+.uim-dk-sel > b { display: block; color: #fff; font-weight: 500; margin-bottom: 4px; }
+.uim-dk-surf { display: grid; grid-template-columns: 10px 1fr 128px; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-dk-surf:hover { background: #191c24; }
+.uim-dk-surf.on { border-color: #3de0ff; background: #102630; }
+.uim-dk-surf i { width: 8px; height: 8px; border-radius: 50%; background: #3a4050; }
+.uim-dk-surf i.live { background: #3de0ff; box-shadow: 0 0 6px #3de0ff; }
+.uim-dk-surf b { color: #e4e8ef; font-weight: 500; }
+.uim-dk-surf small { display: block; color: #7d8699; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uim-dk-surf > div { min-width: 0; }
+.uim-dk-surf select { font: inherit; font-size: 10.5px; color: #dfe3ea; background: #0c0e13; border: 1px solid #333949; border-radius: 5px; padding: 3px 4px; min-width: 0; width: 100%; }
+.uim-dock #uimPreview { position: relative; margin: 6px 0; border-radius: 6px; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 75%); }
+.uim-dock #uimPreview .uim-zoom { zoom: 0.62; padding: 18px; gap: 14px; }
+.uim-kbd { display: inline-block; padding: 0 4px; border: 1px solid #3a4050; border-radius: 3px; color: #c8cfdc; font-size: 10px; }
+#uimPreview .uimp-hero { width: 216px; position: relative; }
+#uimPreview .uimp-hero .uimp-hero-hd { padding: 3px 10px; font-size: 9px; letter-spacing: 0.38em; color: var(--ew-ink-mute); border-bottom: 1px solid var(--ew-plate-seam); }
+#uimPreview .uimp-hero .uimp-body { padding: 10px 10px 12px; align-items: stretch; gap: 7px; }
+#uimPreview .uimp-watch { align-self: center; width: 96px; height: 96px; border-radius: 50%; border: 1px solid var(--ew-sel); background: radial-gradient(circle at 42% 36%, rgba(255,255,255,0.08), rgba(0,0,0,0.5) 70%); box-shadow: 0 0 12px var(--ew-sel-faint), inset 0 0 0 26px rgba(0,0,0,0.25); }
+#uimPreview .uimp-bar { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+#uimPreview .uimp-bar i { flex: 1; height: 7px; background: rgba(0,0,0,0.5); border: 1px solid var(--ew-hair); position: relative; }
+#uimPreview .uimp-bar i::after { content: ''; position: absolute; inset: 0 30% 0 0; background: var(--bc, #58d858); }
+#uimPreview .uimp-pips { display: flex; gap: 4px; font-size: 10px; align-items: center; }
+#uimPreview .uimp-pips i { width: 9px; height: 9px; transform: rotate(45deg); background: var(--ew-sel); border: 1px solid rgba(0,0,0,0.6); }
+#uimPreview .uimp-pips i.x { background: rgba(0,0,0,0.45); }
 @media (max-width: 1100px) { .uim-body { grid-template-columns: 1fr; grid-template-rows: auto 380px auto; overflow: auto; } .uim-col { border: none; overflow: visible; } .uim-stage { min-height: 340px; } }
 `;
 function curTheme() { return themeById(UI.themeId) || themeById(globalId()); }
@@ -12035,13 +12181,27 @@ function snap(t, force) {
   if (force || now - HIST.t > 700) { HIST.undo.push({ id: t.id, j: JSON.stringify(t) }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
   HIST.t = now;
 }
+/* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, assign: db.assign, g: globalId() }); }
+function snapLayout(force) {
+  const now = Date.now();
+  if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
+  HIST.t = now;
+}
 function travel(from, to) {
   for (;;) {
     const e = from.pop(); if (!e) { toast(from === HIST.undo ? 'Nothing to undo.' : 'Nothing to redo.'); return; }
+    if (e.lay) {
+      to.push({ lay: 1, j: layState() });
+      const j = JSON.parse(e.j);
+      db.layout = j.layout || {}; db.hero = j.hero || {}; db.assign = j.assign || {}; HIST.t = 0;
+      if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
+      touch(); if (UI.live) liveRefresh(); else render(); return;
+    }
     const i = db.themes.findIndex(x => x.id === e.id); if (i < 0) continue;
     to.push({ id: e.id, j: JSON.stringify(db.themes[i]) });
     db.themes[i] = JSON.parse(e.j); UI.themeId = e.id; HIST.t = 0;
-    touch(); render(); return;
+    touch(); if (UI.live) liveRefresh(); else render(); return;
   }
 }
 /* ── form fields ── */
@@ -12066,7 +12226,7 @@ function sec(key, title, body, badge) {
   return `<details class="uim-sec" data-sec="${key}"${UI.shut[key] ? '' : ' open'}><summary>${title}${badge ? `<small>${badge}</small>` : ''}</summary><div>${body}</div></details>`;
 }
 function toast(msg) {
-  const el = UI.el && UI.el.querySelector('.uim-toast'); if (!el) return;
+  const el = (UI.live && UI.live.dock.querySelector('.uim-toast')) || (UI.el && UI.el.querySelector('.uim-toast')); if (!el) return;
   el.textContent = msg; el.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 3200);
 }
@@ -12098,6 +12258,17 @@ function renderList() {
     </div>
     ${UI.io ? `<textarea class="uim-io" id="uimIo" placeholder="Paste a theme here, then IMPORT THIS.">${esc(UI.io === 'import' ? '' : UI.io)}</textarea>${UI.io === 'import' ? '<div class="uim-btns"><button class="uim-btn pri" data-act="doimport">Import this</button></div>' : '<div class="uim-note">Copy this text to keep or share the theme.</div>'}` : ''}`;
 }
+/* the Horologe hero section, in miniature: the Hero role (falls back to the Panel look when the Hero skin is off) */
+const HERO_MOCK = `<div class="uimp-panel uimp-hero" data-r="hero">
+      <div class="uimp-hero-hd">VESSEL DATA</div>
+      <div class="uimp-body">
+        <div class="uimp-watch"></div>
+        <div class="uimp-ink" data-r="ink" style="text-align:center">VESSEL</div>
+        <div class="uimp-bar uimp-ink"><span>HP</span><i></i></div>
+        <div class="uimp-bar uimp-ink" style="--bc:#5cb2ff"><span>MP</span><i></i></div>
+        <div class="uimp-pips uimp-mute"><span>AP</span><i></i><i></i><i class="x"></i></div>
+      </div>
+    </div>`;
 function renderPreview() {
   const bds = [['dark', 'Dark'], ['light', 'Light'], ['grass', 'Grass'], ['stone', 'Stone'], ['wood', 'Wood']];
   return `<div class="uim-bar"><small>BACKDROP</small>${bds.map(([v, l]) => `<button class="uim-btn${UI.backdrop === v ? ' on' : ''}" data-bd="${v}">${l}</button>`).join('')}
@@ -12125,6 +12296,7 @@ function renderPreview() {
         <div class="uimp-row2"><div class="uimp-btn sel" data-r="buttonSel">YES</div><div class="uimp-btn" data-r="button">NO</div></div>
       </div>
     </div>
+    ${HERO_MOCK}
     <div class="uimp-panel uimp-msg" data-r="panel">
       <span class="uimp-chip on" data-r="chipOn">NAME</span>
       <div class="uimp-body"><div class="uimp-ink" data-r="ink">A message window: the words a character says.</div></div>
@@ -12135,12 +12307,16 @@ function renderPreview() {
 function markPreview() {
   const pv = UI.el && UI.el.querySelector('#uimPreview'); if (!pv) return;
   pv.querySelectorAll('.uim-hl').forEach(e => e.classList.remove('uim-hl'));
-  if (UI.tab === 'skins') pv.querySelectorAll(`[data-r="${UI.role}"]`).forEach(e => e.classList.add('uim-hl'));
+  if (UI.tab !== 'skins') return;
+  pv.querySelectorAll(`[data-r="${UI.role}"]`).forEach(e => e.classList.add('uim-hl'));
+  const t = draftOf(curTheme());   // with no Hero skin the hero section wears the Panel one
+  if (UI.role === 'panel' && !(t.skins && t.skins.hero && t.skins.hero.on)) pv.querySelectorAll('[data-r="hero"]').forEach(e => e.classList.add('uim-hl'));
 }
 function skinForm(t, role) {
   const s = t.skins[role], P = `skins.${role}`;
   const sel = role === 'buttonSel' || role === 'chipOn';
-  let h = `<div class="uim-f"><label>Custom skin</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
+  let h = `<div class="uim-f"><label>Custom skin</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : role === 'hero' ? 'Off: the hero section wears the Panel skin.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
+  if (role === 'hero') h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
   if (!s.on) return h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
   h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
   if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
@@ -12213,22 +12389,6 @@ function motionForm(t) {
     + sec('cu', 'Menu cursor', fSeg('Cursor', 'motion.cursor', CURSORS, m.cursor) + fCheck('Cursor bobs', 'motion.bob', m.bob)
       + '<div class="uim-note">Points at the selected row in the pause menus, the match select and the preview.</div>');
 }
-function layoutForm() {
-  let h = `<div class="uim-btns"><button class="uim-btn pri" data-act="arrange">Arrange on screen</button><button class="uim-btn" data-act="layreset"${Object.keys(db.layout).length ? '' : ' disabled'}>Reset all</button></div>
-  <div class="uim-note">Move, resize, fade or hide each piece of the HUD. The layout is the same in every theme. ARRANGE ON SCREEN lets you drag the pieces that are on screen right now.</div>`;
-  let grp = '';
-  UIM_PIECES.forEach(P => {
-    const L = db.layout[P.id] || {}, moved = !!(+L.x || +L.y || (L.s != null && +L.s !== 1) || (L.o != null && +L.o < 1));
-    if (P.group !== grp) { grp = P.group; h += `<div class="uim-h">${esc(grp)}</div>`; }
-    const R = (l, k, mn, mx, st, v) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-lpath="${P.id}.${k}" data-num="1"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-lpath="${P.id}.${k}" data-num="1"></div></div>`;
-    const body = (P.noHide ? '' : `<div class="uim-f"><label>Hide</label><div><input type="checkbox" data-lpath="${P.id}.hide" data-bool="1"${L.hide ? ' checked' : ''}></div></div>`)
-      + R('Move X', 'x', -1200, 1200, 1, +L.x || 0) + R('Move Y', 'y', -800, 800, 1, +L.y || 0) + R('Scale', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
-      + `<div class="uim-btns"><button class="uim-btn" data-layreset="${P.id}">Reset</button></div>`;
-    if (UI.shut['l_' + P.id] === undefined) UI.shut['l_' + P.id] = true;
-    h += sec('l_' + P.id, esc(P.label), body, L.hide ? 'hidden' : moved ? 'moved' : '');
-  });
-  return h;
-}
 function slicesForm() {
   const sl = db.slices.find(x => x.id === UI.sliceId);
   let h = `<div class="uim-note">A 9-slice is an image cut into 9 parts: the corners stay their size, the edges and the middle stretch. Any skin can wear one, in any theme.</div>
@@ -12251,21 +12411,12 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-function menusForm() {
-  const gid = globalId();
-  const opts = (S) => (S.def === 'original' && !S.native ? [['', 'Original look (default)'], ['follow', 'Settings theme']] : [['', 'Settings theme']].concat(S.native ? [] : [['original', 'Original look']]))
-    .concat(allThemes().map(t => [t.id, t.label]));
-  return `<div class="uim-f"><label>Settings theme</label><div><select data-global="1">${allThemes().map(t => `<option value="${esc(t.id)}"${t.id === gid ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}</select></div></div>
-  <div class="uim-note">Every menu and HUD wears the Settings theme unless you give it its own here. Original look keeps a screen exactly as it was made.</div>
-  ${UIM_SURFACES.map(S => `<div class="uim-assign"><div><b>${esc(S.label)}</b><small>${esc(S.hint)}</small></div><select data-assign="${S.id}">${opts(S).map(([v, l]) => `<option value="${esc(v)}"${(db.assign[S.id] || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`).join('')}`;
-}
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['layout', 'Layout'], ['slices', '9-Slices'], ['menus', 'Menus']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen: move, size, fade or hide each HUD piece and shape the Horologe hero section'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there']];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
-  let h = `<div class="uim-tabs">${TABS.map(([v, l]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}">${l}</button>`).join('')}</div>`;
+  if (UI.tab === 'layout' || UI.tab === 'menus') UI.tab = UI.back || 'skins';
+  let h = `<div class="uim-tabs">${TABS.map(([v, l, tip]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div>`;
   if (UI.tab === 'slices') return h + slicesForm();
-  if (UI.tab === 'menus') return h + menusForm();
-  if (UI.tab === 'layout') return h + layoutForm();
   if (!editable(T)) h += `<div class="uim-ro"><b>${esc(T.label)}</b> is ${T.builtin ? 'a built-in theme' : 'a preset'}. Change anything below and it becomes your own copy; the original stays.</div>`;
   else h += `<div class="uim-f"><label>Name</label><div><input class="uim-in" data-path="label" value="${esc(t.label)}"></div></div>`;
   if (UI.tab === 'colors') return h + colorsForm(t);
@@ -12309,7 +12460,7 @@ let _saveT = 0;
 function touch(part) { if (UI.el) _previewTheme = curTheme(); clearTimeout(_saveT); _saveT = setTimeout(save, 250); syncPickerRows(); if (part) render(part); else { apply(); renderTop(); } }
 /* keep the twin fields of one value (slider + number, picker + hex + alpha) in step */
 function syncTwins(el, attr, val) {
-  UI.el.querySelectorAll(`[${attr}="${el.getAttribute(attr)}"]`).forEach(o => {
+  (el.closest('.uim-dock') || UI.el).querySelectorAll(`[${attr}="${el.getAttribute(attr)}"]`).forEach(o => {
     if (o === el) return;
     const k = o.dataset.kind;
     if (k === 'rgb' || k === 'hex') o.value = toHex(val);
@@ -12332,16 +12483,6 @@ function onInput(e) {
     if (k === 'crisp') _skinCache.clear();
     touch(); return;
   }
-  if (el.dataset.lpath) {
-    if (el.dataset.num && el.value === '') return;
-    const [id, k] = el.dataset.lpath.split('.');
-    const L = db.layout[id] || (db.layout[id] = {});
-    L[k] = el.dataset.bool ? el.checked : +el.value;
-    syncTwins(el, 'data-lpath', L[k]);
-    tidyLayout(id); touch(); return;
-  }
-  if (el.dataset.global && e.type === 'change') { window.setHudTheme(el.value); render(); return; }
-  if (el.dataset.assign && e.type === 'change') { if (el.value) db.assign[el.dataset.assign] = el.value; else delete db.assign[el.dataset.assign]; touch(); return; }
   const p = el.dataset.path; if (!p) return;
   if (el.dataset.kind === 'hex') {                     // only a whole hex colour counts
     const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m) return;
@@ -12388,7 +12529,7 @@ function importText(txt) {
     const j = JSON.parse(txt || '');
     if (!j || !j.theme || !j.theme.colors) throw new Error('not a theme');
     (j.slices || []).forEach(sl => { if (sl && sl.id && sl.src && !db.slices.some(x => x.id === sl.id)) db.slices.push(sl); });
-    const n = Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') }); delete n.preset; delete n.builtin;
+    const n = fixTheme(Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') })); delete n.preset; delete n.builtin;
     db.themes.push(n); UI.themeId = n.id; UI.io = ''; touch(); render();
     toast(`Loaded "${n.label}".`);
   } catch (err) { toast('That is not a UI Maker theme.'); }
@@ -12409,11 +12550,10 @@ function onClick(e) {
   const T = curTheme();
   if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; UI.draft = null; render(); return; }
   if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
-  if (b.dataset.tab) { UI.tab = b.dataset.tab; render('insp'); return; }
+  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
   if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
   if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
   if (b.dataset.zoom) { UI.zoom = +b.dataset.zoom; render(); return; }
-  if (b.dataset.layreset) { delete db.layout[b.dataset.layreset]; touch('insp'); return; }
   if (b.dataset.sset) { const sl = db.slices.find(x => x.id === UI.sliceId); if (sl) { sl[b.dataset.sset] = b.dataset.val; touch('insp'); } return; }
   if (b.dataset.set) {
     const t = materialize(); snap(t, true);
@@ -12475,8 +12615,8 @@ function onClick(e) {
     db.themes.forEach(th => Object.values(th.skins || {}).forEach(s => { if (s && s.slice === UI.sliceId) s.slice = ''; }));
     UI.sliceId = ''; touch('insp');
   }
-  else if (act === 'arrange') arrangeOn();
-  else if (act === 'layreset') { if (confirm('Put every HUD piece back where it was?')) { db.layout = {}; touch('insp'); } }
+  else if (act === 'arrange') liveOn('layout');
+  else if (act === 'heroLayout') { UI.piece = 'hero'; liveOn('layout'); }
 }
 function onFile(e) {
   const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -12500,101 +12640,532 @@ function onFile(e) {
   e.target.value = '';
 }
 
-/* ── ARRANGE ON SCREEN: the maker steps aside, every HUD piece on screen gets a box to drag ── */
-function arrangeOn() {
-  if (UI.arr) return;
+/* ══ THE LIVE VIEW: LAYOUT + MENUS ON THE REAL SCREEN ══
+   mondo (2026-10-16): "in the ui editor with the layout and menus sections it would be nice to [see] what i am
+   editing like with arrange on the screen. but arrange on screen has a box that has the controls but it doesnt go
+   away and its on top of the very hud element i want to adjust."
+   The Layout and Menus tabs open HERE instead of in the editor's columns: the maker steps aside (html.uim-live)
+   and the game screen shows.
+   · LAYOUT (also html.uim-arranging, which hides the pause menus / Settings over the HUD): a pink box on every
+     HUD piece that is up, a blue stand-in for each one that is not (where it was last seen, else where it sits by
+     default), an orange one for a piece pushed off the screen. Drag (8px snap, Alt = free), wheel = size, arrows
+     nudge (Shift 8), Tab = next piece, +/- size, H hides, R resets, right-click hides, double-click resets.
+   · MENUS: a cyan box on every themed menu / HUD that is up, its name + the theme it wears; give it a theme in
+     the panel and it changes there at once. A menu that is not up shows a small preview in its theme.
+   · THE PANEL (dock) holds the controls. It moves itself out of the way of the selected piece (and fades while a
+     piece is dragged), drags by its bar, folds to the bar (F); hold Space (or Peek) to see the bare screen.
+   Esc / Enter = back to the full editor. Every change undoes (Ctrl+Z), layout and menu picks included. */
+const LIVE_SKIP = '.uim-arr, .uim-dock, #uimRoot';
+function visEl(el) {
+  if (!el || !el.getBoundingClientRect || el.closest(LIVE_SKIP)) return null;
+  const r = el.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return null;
+  try { if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return null; } catch (e) {}
+  const cs = getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return null;
+  return { el, r, cs };
+}
+function allVis(sel, max) {
+  const out = []; let els = [];
+  try { els = document.querySelectorAll(sel); } catch (e) { return out; }
+  for (let i = 0; i < els.length && out.length < (max || 1); i++) { const v = visEl(els[i]); if (v) out.push(v); }
+  return out;
+}
+function noteSeen(P, v) {
+  const W = innerWidth, H = innerHeight, r = v.r, L = db.layout[P.id] || {};
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const e = { w: Math.round(r.width), h: Math.round(r.height), x: +L.x || 0, y: +L.y || 0, s: L.s == null ? 1 : +L.s };
+  if (cx < W / 3) e.l = Math.round(r.left); else if (cx > W * 2 / 3) e.r = Math.round(W - r.right); else e.cx = Math.round(cx - W / 2);
+  if (cy < H / 3) e.t = Math.round(r.top); else if (cy > H * 2 / 3) e.b = Math.round(H - r.bottom); else e.cy = Math.round(cy - H / 2);
+  let fx = 0.5, fy = 0.5;
+  try { const o = String(v.cs.transformOrigin).split(' ').map(parseFloat); if (v.el.offsetWidth) fx = o[0] / v.el.offsetWidth; if (v.el.offsetHeight) fy = o[1] / v.el.offsetHeight; } catch (er) {}
+  e.fx = isFinite(fx) ? +fx.toFixed(3) : 0.5; e.fy = isFinite(fy) ? +fy.toFixed(3) : 0.5;
+  seen[P.id] = e;
+}
+/* a piece that is not on screen: its last-seen (or default) box, re-dressed in today's move + size */
+function ghostRect(P) {
+  const W = innerWidth, H = innerHeight, sn = seen[P.id], B = sn || P.def || { cx: 0, cy: 0, w: 200, h: 60 };
+  let w = B.wf ? Math.min(B.wmax || 1e9, W * B.wf) : +B.w || 200, h = +B.h || 60;
+  let l = B.l != null ? +B.l : B.r != null ? W - B.r - w : W / 2 + (+B.cx || 0) - w / 2;
+  let t = B.t != null ? +B.t : B.b != null ? H - B.b - h : H / 2 + (+B.cy || 0) - h / 2;
+  const L = db.layout[P.id] || {}, s1 = L.s == null ? 1 : +L.s, s0 = sn ? (+sn.s || 1) : 1, k = s1 / s0;
+  const base = P.origin || P.id === 'rig' ? [0, 1] : [0.5, 0.5], fx = sn ? sn.fx : base[0], fy = sn ? sn.fy : base[1];
+  const ox = l + fx * w, oy = t + fy * h;
+  w *= k; h *= k;
+  l = ox - fx * w + (+L.x || 0) - (sn ? +sn.x || 0 : 0);
+  t = oy - fy * h + (+L.y || 0) - (sn ? +sn.y || 0 : 0);
+  return { left: l, top: t, width: w, height: h, right: l + w, bottom: t + h };
+}
+function ghostGroup() {
+  const A = UI.live;
+  if (UI.ghost === 'off') return '';
+  if (UI.ghost !== 'auto') return UI.ghost;
+  if (UIM_PIECES.some(P => A.liveSet[P.id] && groupOf(P) === 'battle')) return 'battle';
+  if (UIM_PIECES.some(P => A.liveSet[P.id] && groupOf(P) === 'explore')) return 'explore';
+  return 'battle';
+}
+function boxEl(key) {
+  const A = UI.live;
+  let bx = A.boxes[key];
+  if (!bx) { bx = A.boxes[key] = document.createElement('div'); bx.className = 'uim-arr-box'; bx.innerHTML = '<span></span><b></b>'; A.wrap.appendChild(bx); }
+  return bx;
+}
+function placeBox(bx, l, t, w, h) {
+  const st = bx.style;
+  st.display = ''; st.left = l + 'px'; st.top = t + 'px'; st.width = w + 'px'; st.height = h + 'px';
+  st.zIndex = String(Math.max(1, 20000 - Math.round(Math.sqrt(w * h) * 4)));   // the smaller box sits on top, so a piece inside a piece stays clickable
+  bx.classList.toggle('low', t < 18);
+}
+function setText(el, txt) { if (el && el.textContent !== txt) el.textContent = txt; }
+function layoutBoxes() {
+  const A = UI.live, W = innerWidth, H = innerHeight, gg = ghostGroup(), rects = {}, live = {};
+  UIM_PIECES.forEach(P => {
+    const v = allVis(P.sel, 1)[0];
+    let r = null, ghost = false;
+    if (v) { live[P.id] = 1; r = v.r; if (!A.drag) noteSeen(P, v); }
+    else if (gg === groupOf(P) || UI.piece === P.id) { r = ghostRect(P); ghost = true; }
+    const bx = boxEl(P.id); bx.dataset.piece = P.id;
+    if (!r) { bx.style.display = 'none'; return; }
+    let l = r.left, t = r.top, w = r.width, h = r.height;
+    const off = r.right < 8 || r.bottom < 8 || r.left > W - 8 || r.top > H - 8;
+    if (off) { w = Math.min(w, 180); h = Math.min(h, 60); l = Math.max(0, Math.min(W - w, l)); t = Math.max(0, Math.min(H - h, t)); }
+    placeBox(bx, l, t, w, h);
+    rects[P.id] = { left: l, top: t, right: l + w, bottom: t + h };
+    const L = db.layout[P.id] || {};
+    bx.classList.toggle('on', UI.piece === P.id); bx.classList.toggle('hid', !!L.hide && !P.noHide);
+    bx.classList.toggle('ghost', ghost); bx.classList.toggle('off', off && !ghost); bx.classList.toggle('tagr', !!P.tagRight);
+    setText(bx.firstChild, `${P.label}${L.hide && !P.noHide ? ' (hidden)' : ''}${L.s != null && +L.s !== 1 ? ' ' + Math.round(+L.s * 100) + '%' : ''}${off && !ghost ? ' (off screen)' : ''}${ghost ? ' (not up now)' : ''}`);
+    setText(bx.lastChild, ghost ? P.label : '');
+  });
+  A.rects = rects;
+  const key = Object.keys(live).join(',');
+  if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
+}
+function menuBoxes() {
+  const A = UI.live, W = innerWidth, H = innerHeight, rects = {}, live = {}, used = new Set();
+  UIM_SURFACES.forEach(S => {
+    const list = [];
+    allVis(S.scope, 8).forEach(v => {
+      if (v.r.width * v.r.height < W * H * 0.6) { list.push(v.r); return; }
+      // a whole-screen layer (the battle HUD root, a page): box its windows, else the layer itself
+      const sub = allVis([S.roles.panel, S.roles.head].filter(Boolean).join(', ') || '#__none', 12).map(x => x.r);
+      if (sub.length) sub.forEach(x => list.push(x)); else list.push({ left: v.r.left + 3, top: v.r.top + 3, width: v.r.width - 6, height: v.r.height - 6 });
+    });
+    if (!list.length) return;
+    live[S.id] = 1;
+    const tid = effectiveId(S), tl = tid === 'original' ? 'original look' : ((themeById(tid) || {}).label || '');
+    let big = 0; list.forEach((r, i) => { if (r.width * r.height > list[big].width * list[big].height) big = i; });
+    rects[S.id] = [];
+    list.forEach((r, i) => {
+      const k = S.id + ':' + i; used.add(k);
+      const bx = boxEl(k); bx.dataset.surf = S.id; bx.classList.add('surf');
+      const l = Math.max(0, r.left), t = Math.max(0, r.top), w = Math.min(W - l, r.left + r.width - l), h = Math.min(H - t, r.top + r.height - t);
+      if (w < 2 || h < 2) { bx.style.display = 'none'; return; }
+      placeBox(bx, l, t, w, h);
+      bx.classList.toggle('on', UI.surf === S.id);
+      bx.firstChild.style.display = i === big ? '' : 'none';
+      setText(bx.firstChild, `${S.label} · ${tl}`);
+      rects[S.id].push({ left: l, top: t, right: l + w, bottom: t + h });
+    });
+  });
+  Object.keys(A.boxes).forEach(k => { if (!used.has(k)) A.boxes[k].style.display = 'none'; });
+  A.rects = rects;
+  const key = Object.keys(live).join(',');
+  if (key !== A.liveKey) {
+    A.liveSet = live; A.liveKey = key;
+    if (!UI.surf) { const f = UIM_SURFACES.find(S => live[S.id]); if (f) UI.surf = f.id; }
+    liveBadges(); dockDetail();
+  }
+}
+
+/* ── the panel (dock) ── */
+function dockHead() {
+  const lay = UI.live.mode === 'layout';
+  return `<div class="uim-dock-hd" title="Drag to move this panel"><span class="grip">⋮⋮</span>
+    <button class="uim-btn${lay ? ' on' : ''}" data-dk="layout" title="Move, size, fade or hide the HUD pieces">Layout</button>
+    <button class="uim-btn${lay ? '' : ' on'}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
+    <span class="sp"></span>
+    <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
+    <button class="uim-btn" data-dk="fold" title="Fold this panel to its bar (F)">${UI.fold ? '▸' : '▾'}</button>
+  </div><div class="uim-dock-bd"></div><div class="uim-toast"></div>`;
+}
+function dockTop() {
+  return `<div class="uim-btns"><button class="uim-btn" data-dk="full" title="Back to the full editor (Esc)">◀ Full editor</button><button class="uim-btn pri" data-dk="done" title="Close the UI Maker. Everything is already saved.">Done</button></div>`;
+}
+function dockLayoutBody() {
+  let h = dockTop() + `<div class="uim-dock-tools">
+    <label><input type="checkbox" data-dk="snap"${UI.snap ? ' checked' : ''}> Snap 8px</label>
+    <label><input type="checkbox" data-dk="guides"${UI.guides ? ' checked' : ''}> Grid + safe area</label></div>
+  <div class="uim-f"><label>Not up now</label><div style="flex-wrap:wrap">${[['auto', 'Auto', 'The group that is on screen'], ['battle', 'Battle'], ['explore', 'Exploration'], ['off', 'Hide']].map(([v, l, tip]) => `<button class="uim-btn${UI.ghost === v ? ' on' : ''}" data-dk="ghost" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>
+  <div class="uim-note uim-dk-status"></div><div class="uim-dk-detail"></div><div class="uim-dk-list">`;
+  let grp = '';
+  UIM_PIECES.forEach(P => {
+    if (P.group !== grp) { grp = P.group; h += `<div class="uim-h">${esc(grp)}</div>`; }
+    h += `<div class="uim-dk-row${UI.piece === P.id ? ' on' : ''}" data-piece="${P.id}"><i></i><span>${esc(P.label)}</span><em></em></div>`;
+  });
+  h += `</div>
+  <div class="uim-note">Drag a box · wheel sizes · arrows nudge (Shift 8px) · <span class="uim-kbd">Tab</span> next piece · <span class="uim-kbd">+</span> <span class="uim-kbd">−</span> size · <span class="uim-kbd">H</span> hide · <span class="uim-kbd">R</span> reset · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>
+  <div class="uim-btns"><button class="uim-btn bad" data-dk="layreset"${Object.keys(db.layout).length || Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the whole layout</button></div>`;
+  return h;
+}
+function pieceDetail() {
+  const P = UIM_PIECES.find(x => x.id === UI.piece);
+  if (!P) return '<div class="uim-note">Click a box on the screen, or a piece above, to adjust it.</div>';
+  const L = db.layout[P.id] || {};
+  const R = (l, k, mn, mx, st, v) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-lpath="${P.id}.${k}" data-num="1"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-lpath="${P.id}.${k}" data-num="1"></div></div>`;
+  let h = `<div class="uim-dk-sel"><b>${esc(P.label)}</b>`
+    + (P.noHide ? '' : `<div class="uim-f"><label>Hide</label><div><input type="checkbox" data-lpath="${P.id}.hide" data-bool="1"${L.hide ? ' checked' : ''}></div></div>`)
+    + R('Move X', 'x', -1600, 1600, 1, +L.x || 0) + R('Move Y', 'y', -1000, 1000, 1, +L.y || 0) + R('Size', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
+    + `<div class="uim-btns"><button class="uim-btn" data-dk="piecereset">Reset this piece</button></div>`;
+  if (P.hero) h += heroForm();
+  return h + '</div>';
+}
+function heroForm() {
+  const H = heroOf();
+  const R = (l, k, mn, mx, st, v) => `<div class="uim-f"><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-hpath="${k}" data-num="1"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-hpath="${k}" data-num="1"></div></div>`;
+  const C = (l, k, on, tip) => `<label class="uim-btn"${tip ? ` title="${esc(tip)}"` : ''}><input type="checkbox" data-hpath="${k}" data-bool="1"${on ? ' checked' : ''} style="vertical-align:-2px"> ${l}</label>`;
+  return `<div class="uim-h">The hero section</div>`
+    + R('Width', 'w', 140, 420, 2, +H.w) + R('Watch size', 'watch', 48, 260, 2, +H.watch) + R('Spacing', 'gap', 0, 24, 1, +H.gap)
+    + `<div class="uim-f"><label>Watch face</label><div style="flex-wrap:wrap">${FACES.map(([v, l, tip]) => `<button class="uim-btn${H.face === v ? ' on' : ''}" data-dk="heroface" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>`
+    + `<div class="uim-btns">${C('Watch glow', 'glow', H.glow)}${C('Title bar', 'header', H.header, 'The strip across the top of the hero section')}</div>`
+    + `<div class="uim-h">Show</div><div class="uim-btns">${HERO_PARTS.map(([k, l]) => C(l, 'hide.' + k, !H.hide[k])).join('')}</div>`
+    + `<div class="uim-note">The hero section's colours and frame are the theme's Hero skin.</div>`
+    + `<div class="uim-btns"><button class="uim-btn" data-dk="heroskin">Edit the Hero skin</button><button class="uim-btn" data-dk="heroreset"${Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the hero section</button></div>`;
+}
+function surfOptions(S) {
+  return (S.def === 'original' && !S.native ? [['', 'Original look (default)'], ['follow', 'Settings theme']] : [['', 'Settings theme']].concat(S.native ? [] : [['original', 'Original look']]))
+    .concat(allThemes().map(t => [t.id, t.label]));
+}
+function dockMenusBody() {
+  const gid = globalId();
+  return dockTop() + `<div class="uim-f"><label>Settings theme</label><div><select data-global="1">${allThemes().map(t => `<option value="${esc(t.id)}"${t.id === gid ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}</select></div></div>
+  <div class="uim-note">Every menu and HUD wears the Settings theme unless you give it its own. Click a cyan box on the screen or a menu below.</div>
+  <div class="uim-dk-detail"></div>
+  ${UIM_SURFACES.map(S => `<div class="uim-dk-surf${UI.surf === S.id ? ' on' : ''}" data-surf="${S.id}" title="${esc(S.hint)}"><i></i><div><b>${esc(S.label)}</b><small>${esc(S.hint)}</small></div><select data-assign="${S.id}">${surfOptions(S).map(([v, l]) => `<option value="${esc(v)}"${(db.assign[S.id] || '') === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`).join('')}
+  <div class="uim-note"><span class="uim-kbd">Tab</span> next menu on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
+}
+const MINI_PREVIEW = `<div id="uimPreview"><div class="uim-zoom">
+  <div class="uimp-panel uimp-small"><div class="uimp-head"><span class="uimp-title">CONFIRM</span></div>
+    <div class="uimp-body"><div class="uimp-ink">Start the match?</div><div class="uimp-row2"><div class="uimp-btn sel">YES</div><div class="uimp-btn">NO</div></div>
+    <div class="uimp-chips"><span class="uimp-chip on">ON</span><span class="uimp-chip">OFF</span></div></div></div></div></div>`;
+function surfDetail() {
+  const A = UI.live, S = UIM_SURFACES.find(x => x.id === UI.surf);
+  _previewTheme = null;
+  if (!S) return '<div class="uim-note">Pick a menu to see it.</div>';
+  const tid = effectiveId(S), T = tid === 'original' ? null : themeById(tid), on = !!A.liveSet[S.id];
+  let h = `<div class="uim-dk-sel"><b>${esc(S.label)}</b>`;
+  if (on) h += `<div class="uim-note">On screen now (the cyan boxes): a change shows there at once.</div>`;
+  else if (!T) h += `<div class="uim-note">Not on screen right now. It keeps its original look.</div>`;
+  else { _previewTheme = T; h += `<div class="uim-note">Not on screen right now. Its windows in ${esc(T.label)}:</div>${MINI_PREVIEW}`; }
+  if (T) h += `<div class="uim-btns"><button class="uim-btn" data-dk="edittheme" data-val="${esc(T.id)}">Edit ${esc(T.label)} in the full editor</button></div>`;
+  return h + '</div>';
+}
+function dockBody() {
+  const A = UI.live; if (!A) return;
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : dockMenusBody();
+  dockDetail(); liveBadges(); dockUndo();
+}
+function dockDetail() {
+  const A = UI.live; if (!A) return;
+  const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
+  if (A.mode === 'layout') d.innerHTML = pieceDetail();
+  else { d.innerHTML = surfDetail(); apply(); }
+  dockUndo();
+}
+function dockUndo() {
+  const A = UI.live; if (!A) return;
+  const u = A.dock.querySelector('[data-dk="undo"]'), r = A.dock.querySelector('[data-dk="redo"]');
+  if (u) u.disabled = !HIST.undo.length; if (r) r.disabled = !HIST.redo.length;
+}
+function markRows() {
+  const A = UI.live; if (!A) return;
+  A.dock.querySelectorAll('[data-piece]').forEach(r => r.classList.toggle('on', r.dataset.piece === UI.piece));
+  A.dock.querySelectorAll('[data-surf]').forEach(r => r.classList.toggle('on', r.dataset.surf === UI.surf));
+}
+function liveBadges() {
+  const A = UI.live; if (!A) return;
+  A.dock.querySelectorAll('.uim-dk-row[data-piece]').forEach(row => {
+    const P = UIM_PIECES.find(x => x.id === row.dataset.piece), L = db.layout[P.id] || {};
+    const moved = !!(+L.x || +L.y || (L.s != null && +L.s !== 1) || (L.o != null && +L.o < 1));
+    row.firstChild.className = A.liveSet[P.id] ? 'live' : 'ghost';
+    setText(row.lastChild, (L.hide && !P.noHide ? 'hidden' : moved ? 'moved' : '') + (P.hero && Object.keys(db.hero || {}).length ? (moved || L.hide ? ' · ' : '') + 'shaped' : ''));
+    row.title = P.label + (A.liveSet[P.id] ? ': on screen now' : ': not up right now, the blue box stands in for it');
+  });
+  A.dock.querySelectorAll('.uim-dk-surf[data-surf]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.surf] ? 'live' : ''; row.title = A.liveSet[row.dataset.surf] ? 'On screen now' : 'Not on screen right now'; });
+  const st = A.dock.querySelector('.uim-dk-status');
+  if (st) setText(st, Object.keys(A.liveSet).length ? '' : 'No HUD is up right now. The blue boxes stand in for the pieces, where they were last seen; open the UI Maker from the pause menu in a battle or while exploring to see the real ones.');
+}
+function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); applyLayout(); liveBadges(); dockUndo(); }
+function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
+function liveSelect(id) {
+  const A = UI.live; if (!A) return;
+  if (A.mode === 'layout') UI.piece = id; else UI.surf = id;
+  markRows(); dockDetail(); dodge(true);
+  const det = A.dock.querySelector('.uim-dk-detail');   // the controls for the pick sit above the list
+  if (det && det.scrollIntoView) try { det.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+}
+
+/* the panel keeps out of the way: when it would cover the selected piece it moves to the free spot that covers
+   the fewest other pieces, furthest from the selection; otherwise it stays where it is (or where it was dragged) */
+function placeDock(x, y) {
+  const A = UI.live, W = innerWidth, H = innerHeight, dw = A.dock.offsetWidth, dh = A.dock.offsetHeight;
+  x = Math.round(Math.max(4, Math.min(W - dw - 4, x))); y = Math.round(Math.max(4, Math.min(H - dh - 4, y)));
+  A.dockX = x; A.dockY = y; A.dock.style.left = x + 'px'; A.dock.style.top = y + 'px';
+}
+function selRects() {
+  const A = UI.live;
+  if (A.mode === 'layout') return A.rects[UI.piece] ? [A.rects[UI.piece]] : [];
+  return A.rects[UI.surf] || [];
+}
+function dodge(force) {
+  const A = UI.live; if (!A || !A.dock) return;
+  const now = performance.now();
+  if (!force && now - (A.dodgeT || 0) < 150) return;
+  A.dodgeT = now;
+  const W = innerWidth, H = innerHeight, dw = A.dock.offsetWidth, dh = A.dock.offsetHeight, m = 12;
+  const tgt = selRects();
+  const hits = (x, y) => tgt.some(r => x < r.right + 14 && x + dw > r.left - 14 && y < r.bottom + 14 && y + dh > r.top - 14);
+  const fits = (x, y) => x >= 0 && y >= 0 && x + dw <= W && y + dh <= H;
+  if (A.dockX != null && fits(A.dockX, A.dockY) && !hits(A.dockX, A.dockY)) return;
+  const all = [];
+  Object.keys(A.rects).forEach(k => { const v = A.rects[k]; (Array.isArray(v) ? v : [v]).forEach(r => all.push(r)); });
+  const over = (x, y) => all.reduce((s, r) => s + Math.max(0, Math.min(x + dw, r.right) - Math.max(x, r.left)) * Math.max(0, Math.min(y + dh, r.bottom) - Math.max(y, r.top)), 0);
+  const tc = tgt.length ? { x: (tgt[0].left + tgt[0].right) / 2, y: (tgt[0].top + tgt[0].bottom) / 2 } : null;
+  const xs = [m, (W - dw) / 2, W - dw - m], ys = [m, (H - dh) / 2, H - dh - m];
+  let best = null, bs = -Infinity;
+  xs.forEach(x => ys.forEach(y => {
+    if (x === xs[1] && y === ys[1]) return;           // never the middle of the screen
+    let sc = -over(x, y);
+    if (hits(x, y)) sc -= 1e9;
+    if (tc) sc += Math.hypot(x + dw / 2 - tc.x, y + dh / 2 - tc.y) * 2;
+    if (x === xs[2] && y === ys[0]) sc += 50;           // a tie goes to the top right
+    if (sc > bs) { bs = sc; best = [x, y]; }
+  }));
+  if (best) { placeDock(best[0], best[1]); A.user = false; }
+}
+function peek(on) { const A = UI.live; if (A) A.ov.classList.toggle('peek', !!on); }
+function foldDock() {
+  const A = UI.live; if (!A) return;
+  UI.fold = !UI.fold; A.dock.classList.toggle('fold', UI.fold);
+  const b = A.dock.querySelector('[data-dk="fold"]'); if (b) b.textContent = UI.fold ? '▸' : '▾';
+  requestAnimationFrame(() => { if (UI.live) { placeDock(A.dockX, A.dockY); dodge(true); } });
+}
+
+/* ── on / off ── */
+function liveOn(mode) {
+  if (!UI.el) { window.openUiMaker(); if (!UI.el) return; }
+  if (UI.tab !== 'layout' && UI.tab !== 'menus') UI.back = UI.tab;
+  if (UI.live) { if (UI.live.mode !== mode) liveMode(mode); return; }
   const ov = document.createElement('div'); ov.className = 'uim-arr';
-  ov.innerHTML = `<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div>
-    <div class="uim-arr-bar"><p><b>ARRANGE THE HUD</b> · drag to move · wheel to resize · arrows nudge 1px (Shift 8px) · right-click hides · double-click resets</p>
-    <label class="uim-btn"><input type="checkbox" data-arr="snap" checked style="vertical-align:-2px"> Snap 8px</label>
-    <label class="uim-btn"><input type="checkbox" data-arr="guides" checked style="vertical-align:-2px"> Grid + safe area</label>
-    <button class="uim-btn" data-arr="reset">Reset all</button><button class="uim-btn pri" data-arr="done">Done</button></div>`;
-  document.body.appendChild(ov);
-  UI.arr = { ov, sel: '', drag: null, snap: true, raf: 0, boxes: {} };
-  document.documentElement.classList.add('uim-arranging');
-  apply();
-  ov.addEventListener('pointerdown', arrDown); ov.addEventListener('wheel', arrWheel, { passive: false });
-  ov.addEventListener('contextmenu', arrContext); ov.addEventListener('dblclick', arrDbl);
-  ov.addEventListener('click', e => { const b = e.target.closest('[data-arr]'); if (!b || b.tagName !== 'BUTTON') return; if (b.dataset.arr === 'done') arrangeOff(); else if (b.dataset.arr === 'reset' && confirm('Put every HUD piece back where it was?')) { db.layout = {}; touch(); } });
-  ov.addEventListener('change', e => { const b = e.target.closest('[data-arr]'); if (!b) return; if (b.dataset.arr === 'snap') UI.arr.snap = b.checked; if (b.dataset.arr === 'guides') ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = b.checked ? '' : 'none'; }); });
-  const tick = () => { if (!UI.arr) return; arrBoxes(); UI.arr.raf = requestAnimationFrame(tick); };
+  ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div>';
+  const dock = document.createElement('div'); dock.className = 'uim-dock' + (UI.fold ? ' fold' : '');
+  dock.style.left = Math.max(4, innerWidth - 352) + 'px'; dock.style.top = '12px';
+  document.body.appendChild(ov); document.body.appendChild(dock);   // the dock after the overlay: peek hides both
+  const A = UI.live = { mode, ov, dock, wrap: ov.querySelector('.uim-arr-boxes'), boxes: {}, rects: {}, liveSet: {}, liveKey: null, drag: null, raf: 0, dockX: null, dockY: null, frame: 0 };
+  const mid = UI.el.querySelector('.uim-mid'); if (mid) mid.innerHTML = '';   // one #uimPreview at a time: the panel may show its own
+  document.documentElement.classList.add('uim-live');
+  ov.addEventListener('pointerdown', liveDown); ov.addEventListener('wheel', liveWheel, { passive: false });
+  ov.addEventListener('contextmenu', liveContext); ov.addEventListener('dblclick', liveDbl);
+  dock.addEventListener('click', dockClick); dock.addEventListener('input', dockInput); dock.addEventListener('change', dockInput);
+  dock.addEventListener('pointerdown', dockDown);
+  dock.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.sec) UI.shut[d.dataset.sec] = !d.open; }, true);
+  A.onResize = () => { if (UI.live) { placeDock(A.dockX || 0, A.dockY || 0); dodge(true); } };
+  window.addEventListener('resize', A.onResize);
+  liveMode(mode);
+  const tick = () => {
+    if (UI.live !== A) return;
+    A.frame++;
+    try {
+      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) menuBoxes();
+      if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
+    } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
+    A.raf = requestAnimationFrame(tick);
+  };
   tick();
 }
-function arrangeOff() {
-  const A = UI.arr; if (!A) return;
-  cancelAnimationFrame(A.raf); A.ov.remove(); UI.arr = null;
-  document.documentElement.classList.remove('uim-arranging');
-  save(); apply(); if (UI.el) render('insp');
+function liveMode(mode) {
+  const A = UI.live;
+  A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null;
+  document.documentElement.classList.toggle('uim-arranging', mode === 'layout');
+  A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = mode === 'layout' && UI.guides ? '' : 'none'; });
+  A.dock.innerHTML = dockHead(); A.dock.dataset.mode = mode;
+  dockBody(); apply();
+  requestAnimationFrame(() => dodge(true));
 }
-function arrBoxes() {
-  const A = UI.arr, wrap = A.ov.querySelector('.uim-arr-boxes');
-  let any = false;
-  UIM_PIECES.forEach(P => {
-    const el = document.querySelector(P.sel);
-    let r = null;
-    if (el) { r = el.getBoundingClientRect(); const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden' || r.width < 2 || r.height < 2) r = null; }
-    let bx = A.boxes[P.id];
-    if (!r) { if (bx) bx.style.display = 'none'; return; }
-    any = true;
-    if (!bx) { bx = A.boxes[P.id] = document.createElement('div'); bx.className = 'uim-arr-box'; bx.dataset.piece = P.id; bx.innerHTML = `<span></span>`; wrap.appendChild(bx); }
-    const L = db.layout[P.id] || {};
-    bx.style.display = ''; bx.style.left = r.left + 'px'; bx.style.top = r.top + 'px'; bx.style.width = r.width + 'px'; bx.style.height = r.height + 'px';
-    bx.classList.toggle('on', A.sel === P.id); bx.classList.toggle('hid', !!L.hide);
-    const lab = `${P.label}${L.hide ? ' (hidden)' : ''}${L.s != null && +L.s !== 1 ? ' ' + Math.round(+L.s * 100) + '%' : ''}`;
-    if (bx.firstChild.textContent !== lab) bx.firstChild.textContent = lab;
-  });
-  const bar = A.ov.querySelector('.uim-arr-bar p');
-  if (!any && bar && !bar.dataset.none) { bar.dataset.none = '1'; bar.innerHTML = '<b>NO HUD ON SCREEN</b> · open the UI Maker from the pause menu in a battle or while exploring to drag those pieces; the LAYOUT tab sliders work anywhere'; }
+function liveOff(quiet) {
+  const A = UI.live; if (!A) return;
+  cancelAnimationFrame(A.raf); A.ov.remove(); A.dock.remove(); UI.live = null;
+  window.removeEventListener('resize', A.onResize);
+  document.documentElement.classList.remove('uim-live', 'uim-arranging');
+  saveSeen(); save();
+  if (quiet || !UI.el) { _previewTheme = null; apply(); return; }
+  UI.tab = UI.back || 'skins'; render();
 }
-function arrPiece(e) { const bx = e.target.closest('.uim-arr-box'); return bx ? UIM_PIECES.find(p => p.id === bx.dataset.piece) : null; }
-function arrDown(e) {
-  const P = arrPiece(e); if (!P || e.button !== 0) return;
+
+/* ── the boxes ── */
+function livePiece(e) { const bx = e.target.closest('.uim-arr-box'); return bx && bx.dataset.piece ? UIM_PIECES.find(p => p.id === bx.dataset.piece) : null; }
+function liveDown(e) {
+  const A = UI.live; if (!A) return;
+  const bx = e.target.closest('.uim-arr-box'); if (!bx || e.button !== 0) return;
   e.preventDefault();
-  const L = db.layout[P.id] || (db.layout[P.id] = {});
-  UI.arr.sel = P.id;
-  UI.arr.drag = { id: P.id, x0: e.clientX, y0: e.clientY, lx: +L.x || 0, ly: +L.y || 0 };
-  const el = document.querySelector(P.sel);
+  if (document.activeElement && A.dock.contains(document.activeElement)) document.activeElement.blur();   // the arrows go to the piece now
+  if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
+  const P = livePiece(e); if (!P) return;
+  const before = layState();   // one undo step per drag, none for a plain click
+  if (UI.piece !== P.id) liveSelect(P.id);
+  const L0 = db.layout[P.id] || {};
+  const d = { x0: e.clientX, y0: e.clientY, lx: +L0.x || 0, ly: +L0.y || 0, r0: A.rects[P.id] || bx.getBoundingClientRect() };
+  A.drag = d; A.dock.classList.add('busy');
   const mv = ev => {
-    const d = UI.arr && UI.arr.drag; if (!d) return;
-    const g = UI.arr.snap && !ev.altKey ? 8 : 1;
-    L.x = Math.round((d.lx + ev.clientX - d.x0) / g) * g; L.y = Math.round((d.ly + ev.clientY - d.y0) / g) * g;
-    if (el) el.style.setProperty('translate', `${L.x}px ${L.y}px`, 'important');   // live, the stylesheet catches up on release
+    if (!UI.live || UI.live.drag !== d) return;
+    const g = UI.snap && !ev.altKey ? 8 : 1, W = innerWidth, H = innerHeight;
+    let dx = ev.clientX - d.x0, dy = ev.clientY - d.y0;
+    dx = Math.max(24 - d.r0.right, Math.min(W - 24 - d.r0.left, dx));   // at least 24px of the piece stays on the screen
+    dy = Math.max(24 - d.r0.bottom, Math.min(H - 24 - d.r0.top, dy));
+    const L = db.layout[P.id] || (db.layout[P.id] = {});
+    L.x = Math.round((d.lx + dx) / g) * g; L.y = Math.round((d.ly + dy) / g) * g;
+    applyLayout(); dodge(false);
   };
   const up = () => {
-    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
-    if (el) el.style.removeProperty('translate');
-    if (UI.arr) UI.arr.drag = null;
-    tidyLayout(P.id); touch();
+    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (UI.live) { UI.live.drag = null; UI.live.dock.classList.remove('busy'); }
+    tidyLayout(P.id);
+    if (layState() !== before) { HIST.undo.push({ lay: 1, j: before }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; HIST.t = Date.now(); }
+    touchLayout(); dockDetail();
   };
-  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
-function arrWheel(e) {
-  const P = arrPiece(e); if (!P) return;
-  e.preventDefault();
+function sizePiece(P, step) {
+  snapLayout();
   const L = db.layout[P.id] || (db.layout[P.id] = {});
-  L.s = Math.max(0.4, Math.min(2.5, Math.round(((L.s == null ? 1 : +L.s) + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100));
-  UI.arr.sel = P.id; tidyLayout(P.id); touch();
+  L.s = Math.max(0.4, Math.min(2.5, Math.round(((L.s == null ? 1 : +L.s) + step) * 100) / 100));
+  tidyLayout(P.id); touchLayout(); dockDetail();
 }
-function arrContext(e) {
-  const P = arrPiece(e); if (!P) return;
-  e.preventDefault();
-  if (P.noHide) return;
+function hidePiece(P) {
+  if (P.noHide) { toast(`${P.label} can't be hidden (the battle needs it); make it smaller or fade it instead.`); return; }
+  snapLayout(true);
   const L = db.layout[P.id] || (db.layout[P.id] = {});
-  L.hide = !L.hide; UI.arr.sel = P.id; tidyLayout(P.id); touch();
+  L.hide = !L.hide; tidyLayout(P.id); touchLayout(); dockDetail();
 }
-function arrDbl(e) { const P = arrPiece(e); if (!P) return; delete db.layout[P.id]; touch(); }
-function arrKey(e) {
-  if (e.key === 'Escape' || e.key === 'Enter') { arrangeOff(); return true; }
-  const id = UI.arr.sel, d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-  if (!id || !d) return false;
-  const L = db.layout[id] || (db.layout[id] = {}), n = e.shiftKey ? 8 : 1;
-  L.x = (+L.x || 0) + d[0] * n; L.y = (+L.y || 0) + d[1] * n; tidyLayout(id); touch();
-  return true;
+function resetPiece(P) { snapLayout(true); delete db.layout[P.id]; touchLayout(); dockDetail(); }
+function liveWheel(e) {
+  const P = livePiece(e); if (!P) return;
+  e.preventDefault();
+  if (UI.piece !== P.id) liveSelect(P.id);
+  sizePiece(P, e.deltaY < 0 ? 0.05 : -0.05);
+}
+function liveContext(e) { const bx = e.target.closest('.uim-arr-box'); if (bx) e.preventDefault(); const P = livePiece(e); if (!P) return; if (UI.piece !== P.id) liveSelect(P.id); hidePiece(P); }
+function liveDbl(e) { const P = livePiece(e); if (P) resetPiece(P); }
+
+/* ── the panel's own input ── */
+function dockDown(e) {
+  const A = UI.live; if (!A) return;
+  const pk = e.target.closest('[data-dk="peek"]');
+  if (pk) { e.preventDefault(); peek(true); const off = () => { peek(false); window.removeEventListener('pointerup', off); window.removeEventListener('pointercancel', off); }; window.addEventListener('pointerup', off); window.addEventListener('pointercancel', off); return; }
+  if (!e.target.closest('.uim-dock-hd') || e.target.closest('button, input, select, label') || e.button !== 0) return;
+  e.preventDefault();
+  const x0 = e.clientX - (A.dockX || 0), y0 = e.clientY - (A.dockY || 0);
+  A.dock.classList.add('moving');
+  const mv = ev => { if (UI.live === A) placeDock(ev.clientX - x0, ev.clientY - y0); };
+  const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); A.dock.classList.remove('moving'); A.user = true; };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+function dockClick(e) {
+  const A = UI.live; if (!A) return;
+  const b = e.target.closest('button[data-dk]');
+  if (b) {
+    if (b.disabled) return;
+    try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
+    const k = b.dataset.dk, v = b.dataset.val, P = UIM_PIECES.find(x => x.id === UI.piece);
+    if (k === 'layout' || k === 'menus') liveOn(k);
+    else if (k === 'undo') travel(HIST.undo, HIST.redo);
+    else if (k === 'redo') travel(HIST.redo, HIST.undo);
+    else if (k === 'fold') foldDock();
+    else if (k === 'full') liveOff();
+    else if (k === 'done') window.closeUiMaker();
+    else if (k === 'ghost') { UI.ghost = v; A.dock.querySelectorAll('[data-dk="ghost"]').forEach(x => x.classList.toggle('on', x.dataset.val === v)); }
+    else if (k === 'layreset') { if (confirm('Put every HUD piece back where it was, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; touchLayout(); dockBody(); } }
+    else if (k === 'piecereset' && P) resetPiece(P);
+    else if (k === 'heroface') { snapLayout(true); db.hero = db.hero || {}; db.hero.face = v; heroTidy(); touchLayout(); dockDetail(); }
+    else if (k === 'heroreset') { snapLayout(true); db.hero = {}; touchLayout(); dockDetail(); }
+    else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
+    else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
+    return;
+  }
+  const row = e.target.closest('[data-piece], [data-surf]');
+  if (!row || !A.dock.contains(row)) return;
+  const id = row.dataset.piece || row.dataset.surf;
+  if ((A.mode === 'layout' ? UI.piece : UI.surf) !== id) liveSelect(id);
+}
+function dockInput(e) {
+  const el = e.target, A = UI.live; if (!A) return;
+  const dk = el.dataset.dk;
+  if (dk === 'snap') { UI.snap = el.checked; return; }
+  if (dk === 'guides') { UI.guides = el.checked; A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = el.checked ? '' : 'none'; }); return; }
+  if (el.dataset.lpath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    snapLayout();
+    const [id, k] = el.dataset.lpath.split('.');
+    const L = db.layout[id] || (db.layout[id] = {});
+    L[k] = el.dataset.bool ? el.checked : +el.value;
+    syncTwins(el, 'data-lpath', L[k]);
+    tidyLayout(id); touchLayout(); return;
+  }
+  if (el.dataset.hpath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    snapLayout();
+    const H = db.hero || (db.hero = {}), k = el.dataset.hpath;
+    if (k.indexOf('hide.') === 0) { H.hide = H.hide || {}; H.hide[k.slice(5)] = !el.checked; }
+    else { H[k] = el.dataset.bool ? el.checked : +el.value; if (el.dataset.num) syncTwins(el, 'data-hpath', H[k]); }
+    heroTidy(); touchLayout();
+    const rs = A.dock.querySelector('[data-dk="heroreset"]'); if (rs) rs.disabled = !Object.keys(db.hero || {}).length;
+    return;
+  }
+  if (e.type !== 'change') return;
+  if (el.dataset.global) { snapLayout(true); window.setHudTheme(el.value); touch(); dockDetail(); return; }
+  if (el.dataset.assign) {
+    snapLayout(true);
+    if (el.value) db.assign[el.dataset.assign] = el.value; else delete db.assign[el.dataset.assign];
+    UI.surf = el.dataset.assign; touch(); markRows(); dockDetail(); return;
+  }
+}
+/* the keys while the live view is up (the game's own hotkeys stay quiet) */
+function liveKey(e) {
+  const A = UI.live;
+  if (e.type === 'keyup') { if (e.code === 'Space' || e.key === ' ') { peek(false); return true; } return false; }
+  const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && A.dock.contains(e.target);
+  const z = (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z'), y = (e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y');
+  if ((z || y) && !(inField && /^(text|number)$/.test(e.target.type || ''))) { if (y || e.shiftKey) travel(HIST.redo, HIST.undo); else travel(HIST.undo, HIST.redo); return true; }
+  if (inField) { if (e.key === 'Escape') { e.target.blur(); return true; } return false; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.key === 'Escape' || e.key === 'Enter') { liveOff(); return true; }
+  if (e.code === 'Space' || e.key === ' ') { if (!e.repeat) peek(true); return true; }
+  if (e.key === 'f' || e.key === 'F') { foldDock(); return true; }
+  if (e.key === 'Tab') {
+    const ids = A.mode === 'layout' ? UIM_PIECES.filter(P => A.rects[P.id]).map(P => P.id) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
+    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
+    return true;
+  }
+  if (A.mode !== 'layout') return false;
+  const P = UIM_PIECES.find(x => x.id === UI.piece); if (!P) return false;
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (d) {
+    snapLayout();
+    const L = db.layout[P.id] || (db.layout[P.id] = {}), n = e.shiftKey ? 8 : 1;
+    L.x = (+L.x || 0) + d[0] * n; L.y = (+L.y || 0) + d[1] * n; tidyLayout(P.id); touchLayout(); dockDetail();
+    return true;
+  }
+  if (e.key === '+' || e.key === '=') { sizePiece(P, 0.05); return true; }
+  if (e.key === '-' || e.key === '_') { sizePiece(P, -0.05); return true; }
+  if (e.key === 'h' || e.key === 'H') { hidePiece(P); return true; }
+  if (e.key === 'r' || e.key === 'R') { resetPiece(P); return true; }
+  return false;
 }
 /* the maker owns the keyboard while it is open (the game's hotkeys stay quiet) */
 function onKey(e) {
   if (!UI.el) return;
-  if (UI.arr) { if (e.type === 'keydown' && arrKey(e)) e.preventDefault(); e.stopPropagation(); return; }
+  if (UI.live) { if (liveKey(e)) e.preventDefault(); e.stopPropagation(); return; }
   if (e.type === 'keydown') {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !/^(range|checkbox|color)$/.test(e.target.type || '');
     const z = (e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z'), y = (e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y');
@@ -12624,7 +13195,7 @@ window.openUiMaker = function () {
 };
 window.closeUiMaker = function () {
   if (!UI.el) return;
-  arrangeOff();
+  liveOff(true);
   window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true);
   save(); UI.el.remove(); UI.el = null; _previewTheme = null; UI.draft = null; apply();
   try { if (typeof window._uimOnClose === 'function') window._uimOnClose(); } catch (e) {}
@@ -12634,7 +13205,9 @@ window.closeUiMaker = function () {
 window.UIMaker = {
   apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS, pieces: UIM_PIECES,
   has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
-  arrange: () => { window.openUiMaker(); arrangeOn(); },
+  arrange: () => { window.openUiMaker(); liveOn('layout'); },
+  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' ? 'menus' : 'layout'); },
+  hero: () => heroOf(),
   get db() { return db; },
 };
 syncPickerRows();
