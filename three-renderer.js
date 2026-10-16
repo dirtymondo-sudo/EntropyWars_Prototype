@@ -48093,8 +48093,8 @@ const ThreeRenderer = (function () {
             var px = x0 + (node % nx) * res, pz = z0 + Math.floor(node / nx) * res;
             var bank = (mode && mode[fi] === 'flood') ? ((f.bank != null) ? f.bank : 0.9) : 0.25;
             var s = _hqWaterDin(f, px, pz) + bank;
-            if (o === fi) return s > 0 ? Math.max(s, 0.1) : 1;   // (≤ 0: flooded on past the bank to a sill laid at the bed — the sheet runs on to its neighbours, as the cells did)
-            if (H[node] >= f.y) return 1;       // ground over the surface: it hides the sheet
+            if (o === fi) return s > 0 ? Math.max(s, 0.1) : (H[node] < f.y - 0.05 ? 1 : 0.1);   // (≤ 0: flooded on past the bank to a sill laid at the bed — the sheet runs on to its neighbours, as the cells did)
+            if (H[node] > f.y + 0.05) return 1;   // ground over the surface: it hides the sheet (ground AT the water line does not: the sheet lies over it — THE HAUNTED POND, 2026-10-16)
             return Math.max(Math.min(s, -0.1), -0.4);
         };
         var vert = function (B, node, best, f) {
