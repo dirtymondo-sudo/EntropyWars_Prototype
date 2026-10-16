@@ -5965,6 +5965,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     const dist = _spellDistFromTo(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, spLongRange);
 
     let inSpellRange = false;
+    let _aimWhy = null;   // the cast's own reason when the generic aim gate says no (THE ONE AIM RULE)
     const isBarrage = sp.kind === 'barrage';
     const isAoeOriginSelf = sp.aoeOriginSelf;
     // splitBeam is a unit-target spell in the engine (generic range+LOS rules),
@@ -6063,6 +6064,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       const _dashD = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
       inSpellRange = _dashD >= 1 && _dashD <= spRange
         && (typeof isTerrainPassable !== 'function' || isTerrainPassable(tx, ty));
+      // THE ONE AIM RULE: the shared cast gate runs before the dash branch in doSpell too.
+      if (inSpellRange && typeof spellAimProblem === 'function') {
+        _aimWhy = spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z);
+        inSpellRange = !_aimWhy;
+      }
     } else if (isLeap) {
       // Leap-strikes can only hit a target the caster stands ABOVE. From here that
       // needs an in-range enemy standing lower than us; if we're level/below it's not
@@ -6076,6 +6082,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         ? (targetUnit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0))
         : 0;
       inSpellRange = !!targetUnit && dist >= 1 && dist <= spRange && !spLos && _csh > _tsh;
+      // THE ONE AIM RULE: the leap's own cast gate (reach, sight, fog, above-the-target) has the last word.
+      if (typeof spellAimProblem === 'function' && targetUnit) {
+        _aimWhy = spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z);
+        inSpellRange = !_aimWhy;
+      }
     } else if ((sp.aoeShape === 'ring' || _hudMaskIsHollow(sp)) && typeof findAoeCastCenterForTarget === 'function') {
 
       // Ring-shaped AOEs (Fae Ring) spare their center: "castable on this
@@ -6085,16 +6096,18 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       inSpellRange = _fogSees && !!findAoeCastCenterForTarget(actingUnit, sp, tx, ty);
     } else {
 
-      const minRange = ['aoe', 'cross', 'aoePull'].includes(sp.kind) ? 0 : 1;
-      // _fogSees: the engine's cast gate rejects fogged targets — mirror it in
-      // the primary check so the menu never offers a cast that will bounce.
-      inSpellRange = dist >= minRange && dist <= spRange && !spLos && _fogSees;
-      // Authoritative fallback: trust the engine's own range set (the same one the
-      // board highlight + doSpell use — fog-aware) so a spell is never greyed here
-      // when it's actually castable from where the unit stands.
-      if (!inSpellRange && typeof getSpellRangeTiles === 'function'
-          && getSpellRangeTiles(actingUnit, sp).some(t => t.x === tx && t.y === ty)) {
-        inSpellRange = true;
+      /* THE ONE AIM RULE (2026-10-16, mondo: Dragon Slash offered here, then "Spell target is out of range"):
+         ask the cast itself. spellAimProblem is doSpell's own aim gate (this body's height and column, the sight
+         line, team sight, doors, cloaks) — the Abilities button and the target drum ask the same question. The
+         old copy here measured the body, then fell back to the lit tiles (which read the column's lowest body)
+         and said yes where the cast said no. */
+      if (typeof spellAimProblem === 'function') {
+        _aimWhy = spellAimProblem(actingUnit, sp, tx, ty, targetUnit.z)
+          || ((typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(targetUnit, actingUnit.player)) ? 'sight' : null);
+        inSpellRange = !_aimWhy;
+      } else {
+        const minRange = ['aoe', 'cross', 'aoePull'].includes(sp.kind) ? 0 : 1;
+        inSpellRange = dist >= minRange && dist <= spRange && !spLos && _fogSees;
       }
     }
 
@@ -6286,6 +6299,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         available: false,
         reason: (sp.hitsWetOnly && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty)))
           ? 'Not in water'
+          : (_aimWhy && typeof spellAimProblemLabel === 'function') ? spellAimProblemLabel(_aimWhy)
           : spLos ? 'No line of sight' : 'Out of range',
         spell: sp,
       });
@@ -8273,8 +8287,16 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           || Math.abs(actingUnit.x - tx) === Math.abs(actingUnit.y - ty));
     const _beamAligned = _beamOnAxis
       && Math.max(Math.abs(actingUnit.x - tx), Math.abs(actingUnit.y - ty)) <= (sp.range || 4);
-    const inRange = _isDirBeam ? _beamAligned : spDist <= spRange;
-    const losBlocked = !_isDirBeam && typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+    let inRange = _isDirBeam ? _beamAligned : spDist <= spRange;
+    let losBlocked = !_isDirBeam && typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+    /* THE ONE AIM RULE (2026-10-16): the cast's own aim gate (doSpell's reach, sight line, fog, beam heading)
+       decides — the copy above measured the spell's printed range, not its effective one. */
+    let _tileAimWhy = null;
+    if (typeof spellAimProblem === 'function') {
+      _tileAimWhy = spellAimProblem(actingUnit, sp, tx, ty, (tz !== undefined && tz !== null) ? tz : undefined);
+      inRange = (!_isDirBeam || _beamOnAxis) && _tileAimWhy !== 'range' && _tileAimWhy !== 'above';
+      losBlocked = _tileAimWhy === 'los';
+    }
     // Placement kinds: validate THIS tile so the row is greyed with the real
     // reason ("Needs an empty tile", "Max height", "No room here"…).
     let placeReason = '';
@@ -8300,6 +8322,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     else if (needMats) reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
     else if (!inRange) reason = _isDirBeam ? (_beamOnAxis ? 'Out of range' : 'Not in line with caster') : 'Out of range';
     else if (losBlocked) reason = 'No line of sight';
+    else if (_tileAimWhy && typeof spellAimProblemLabel === 'function') reason = spellAimProblemLabel(_tileAimWhy);
     else if (placeReason) reason = placeReason;
     // Wet-only novae (Poseidon's Wrath): no enemy standing in water = the
     // cast can't touch anyone — grey with the real condition.
@@ -8307,7 +8330,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       && !hasSpellTargetInRange(actingUnit, sp);
     if (!reason && _needsWet) reason = 'No enemies in water';
 
-    const canCast = canAfford && tierOk && inRange && !losBlocked && !placeReason && !_needsWet;
+    const canCast = canAfford && tierOk && inRange && !losBlocked && !_tileAimWhy && !placeReason && !_needsWet;
 
     actions.push({
       id: 'spell:' + sp.name, label: sp.name, icon: '✦', category: 'spells',
