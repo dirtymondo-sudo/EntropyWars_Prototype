@@ -26182,7 +26182,7 @@
                             /* zombies are mindless — the NEAREST unit of EITHER side */
                             if (!_alive(x) || (!t.zombie && x.player === t.owner)) continue;
                             const dd = Math.hypot(x.x - t.x, x.y - t.y);
-                            if (dd < bestD && (t.zombie || t.summon || dd <= (t.range || 4))) { bestD = dd; best = x; }
+                            if (dd < bestD && (t.zombie || t.summon || (dd <= (t.range || 4) && turretHasShotAt(t, x)))) { bestD = dd; best = x; }
                         }
                         if (!best) continue;
                         if (t.zombie || t.summon) {
@@ -34124,6 +34124,20 @@
         // sequence, the shot actually lands — camera to the sight line, a
         // laser blast down it, then the impact animation + damage.
         // ═══════════════════════════════════════════════════════════════════
+        /* Does `turret` have a clear shot at unit `u`? The same terrain sight line a spell's cast asks
+           (isRangeBlockedByTerrain, as spellAimProblem's 'los' gate): a Rampart wall, a cliff, a shut door,
+           a building or any solid block between the gun and the target stops the shot. Range is the
+           caller's (turrets measure their own flat steps). The renderer's targeting laser asks this too,
+           so the laser never paints a unit the gun cannot hit. */
+        function turretHasShotAt(turret, u) {
+            if (!turret || !u) return false;
+            if (typeof isRangeBlockedByTerrain !== 'function') return true;
+            const ux = Math.round(u.x), uy = Math.round(u.y);
+            if (ux === turret.x && uy === turret.y) return true;
+            return !isRangeBlockedByTerrain(turret.x, turret.y, ux, uy, undefined, (u.z != null) ? u.z : undefined);
+        }
+        window.turretHasShotAt = turretHasShotAt;
+
         function processTurretVolleys(onDone) {
             const shots = [];
             if (state.turrets && state.turrets.length) {
@@ -34188,7 +34202,8 @@
                                 : `🧟 The flesh abomination shambles toward ${unitDisplayName(prey)}...`);
                             scheduleBoardRender();
                         }
-                        if (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y) <= (turret.range || 1)) {
+                        if (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y) <= (turret.range || 1)
+                            && turretHasShotAt(turret, prey)) {
                             turret.facingAngle = Math.atan2(prey.y - turret.y, prey.x - turret.x);
                             shots.push({ turret, target: prey, zombie: !turret.summon, summon: !!turret.summon, dmg: Math.max(24, turret.dmg + engineRandInt(24) - 8) });
                         }
@@ -34196,7 +34211,8 @@
                     }
                     const inRange = getHostileUnits(turret.owner)
                         .filter(u => (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
-                            && Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y) <= turret.range)
+                            && Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y) <= turret.range
+                            && turretHasShotAt(turret, u))   // a wall between them (Rampart) blocks the shot
                         .sort((a, b) => {
                             const da = Math.abs(a.x - turret.x) + Math.abs(a.y - turret.y);
                             const db = Math.abs(b.x - turret.x) + Math.abs(b.y - turret.y);
