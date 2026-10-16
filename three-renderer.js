@@ -64100,6 +64100,12 @@ const ThreeRenderer = (function () {
     /* the blend's liquid surface: the battle's animated fluid top, alpha from the vertices, drawn after the ground without writing
        depth; `over` (the deep sheet) is pulled a little further toward the eye so it never fights the shallow sheet under it */
     var _liqBlendMats = {};
+    /* THE PLATES OVER THE WATER (2026-10-16, mondo: "the water coming from rain or hurricanes is not allowing tile highlights
+       to show up on top of them"): the blended liquid sheets are see-through and write no depth, and drew at renderOrder 2/3 —
+       AFTER every tile plate, cursor and zone wash (renderOrder 0, also see-through, no depth), so the water was painted over
+       them. The sheets now draw first among the see-through things (shallow -2, the deep sheet over it -1): every plate drawn
+       after lands on top, the deep sheet still lands over the shallow one. Opaque water (the room's own) is unchanged. */
+    var LIQ_BLEND_ORDER = -2;
     function _liqBlendMat(key, over) {
         var mk = key + (over ? '|over' : '');
         if (_liqBlendMats[mk] !== undefined) return _liqBlendMats[mk];
@@ -64138,8 +64144,8 @@ const ThreeRenderer = (function () {
             return tileTopY(x, y) - elevStep * WATER_TOP_INSET;
         };
         var G = { W: bw, H: bh, ts: ts, elev: elevStep }, grp = null;
-        [{ key: 'water', o: { lift: 0.3, near: edge, noFringe: true }, order: 2 },
-         { key: 'deep_water', over: true, o: { lift: 0.45, near: edge, deep: deep, noFringe: true }, order: 3 }].forEach(function (pt) {
+        [{ key: 'water', o: { lift: 0.3, near: edge, noFringe: true }, order: LIQ_BLEND_ORDER },
+         { key: 'deep_water', over: true, o: { lift: 0.45, near: edge, deep: deep, noFringe: true }, order: LIQ_BLEND_ORDER + 1 }].forEach(function (pt) {
             var geo = _liqBlendGeo(G, body, yOf, pt.o), mat = geo && _liqBlendMat(pt.key, pt.over);
             if (!mat) { if (geo) geo.dispose(); return; }
             var m = new THREE.Mesh(geo, mat);
@@ -64480,8 +64486,8 @@ const ThreeRenderer = (function () {
                     delete byKey[k];
                 });
                 Object.keys(bodies).forEach(function (bk) {
-                    var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 }), order: 2 }];
-                    if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05, deep: deeps[bk], near: deeps[bk] }), order: 3 });
+                    var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 }), order: LIQ_BLEND_ORDER }];
+                    if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05, deep: deeps[bk], near: deeps[bk] }), order: LIQ_BLEND_ORDER + 1 });
                     parts.forEach(function (pt) {
                         var bm = pt.geo && _liqBlendMat(pt.key, pt.over); if (!bm) { if (pt.geo) pt.geo.dispose(); return; }
                         var mesh = new THREE.Mesh(pt.geo, bm);

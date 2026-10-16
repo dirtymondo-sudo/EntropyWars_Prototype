@@ -525,3 +525,10 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
   hides the sheet now. A sweep of every room (axis-aligned sheet edges over lower/level ground) went 72 → 0 on the Haunted
   grounds, and to 0 or to straight-channel edges only on the rest.
 - Kill-switch for both blends: `window.EW_NO_SHORE_BLEND`.
+
+## THE PLATES OVER THE WATER (2026-10-16, mondo: "the water coming from rain or hurricanes is not allowing tile highlights to show up on top of them")
+- Cause: PR #216's blended liquid sheets (`_liqBlendMat`: transparent, depthWrite false) drew at renderOrder 2 / 3, after every
+  tile plate / cursor / zone wash (renderOrder 0, also transparent, no depth write), so the water was painted over them on
+  every spell or weather liquid on the true ground (the arenas, exploration fights) and along deep↔shallow lines on boards.
+- Fix: three-renderer.js `LIQ_BLEND_ORDER = -2` (shallow; the deep sheet over it -1) for the field skins' liquid bodies and
+  `_liqBoardBlendBuild`. Opaque water (the room's own, flow slabs, EW_NO_SHORE_BLEND skins) is unchanged.
