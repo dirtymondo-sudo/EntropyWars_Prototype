@@ -532,3 +532,7 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
   every spell or weather liquid on the true ground (the arenas, exploration fights) and along deep↔shallow lines on boards.
 - Fix: three-renderer.js `LIQ_BLEND_ORDER = -2` (shallow; the deep sheet over it -1) for the field skins' liquid bodies and
   `_liqBoardBlendBuild`. Opaque water (the room's own, flow slabs, EW_NO_SHORE_BLEND skins) is unchanged.
+- Follow-up (same day, mondo: "ice is covering up tile highlights"): every DRY ground sheet with a see-through fringe
+  (`_fieldPatchFadeMat`: the field skins a spell or storm lays — ice, desert, grass, scorch, rubble —, the field's raised /
+  dug strata patch, a tile board's `_deltaPatchBuild`) drew at renderOrder 1 (strata 0), after or among the plates. Now
+  `GROUND_SHEET_ORDER = -3`: dry sheets, then liquids (-2 / -1), then every tile plate (0).
