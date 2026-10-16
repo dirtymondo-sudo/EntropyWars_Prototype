@@ -1471,3 +1471,19 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
   `getTeleportLandingReach(unit, spell)` (Manhattan ≤ effective range from the caster, LOS only for `needsLoS` rows such as
   Web Swing). getSpellRangeTiles returns that reach for the landing phase, and doSpell's `isTeleportPhase2` uses the same
   test, so the teleport branch alone judges the landing (range, needsLoS, free passable tile, onlyTerrain).
+
+## THE ONE AIM RULE (2026-10-16, mondo: Dragon Slash greyed under Abilities as "No target", offered on the enemy's quick menu, then "Spell target is out of range" — "so is it out of range or not??")
+- Cause: four copies of "can this spell reach that body". doSpell (3D combatReach to the click's body after the shared-column
+  resolve, sight line, team vision), hasSpellTargetInRange / hasReachableTarget (the Abilities button: its own reach per kind,
+  flat Manhattan for heals/buffs/revive), _getSpellValidTargets (the drum: its own corners + LOS + fog), and hud.js
+  _computeEnemyActions (the enemy quick menu: measured the clicked body, then FELL BACK to getSpellRangeTiles, whose height for
+  a tile is unitAt(x, y) = the column's ground body, so a flyer over a reachable body read "in range"). findSpellApproachTile
+  probed with the lit tiles too. They disagreed on heights, shared columns, 2×2 bosses, sight lines and fog.
+- Fix: battle.js `_spellAimTarget` (who in the column the click is for) + `_spellAimReach` (d, range verdict, sky grabs flat,
+  `losBlocked()`, `directForDoors()`) are doSpell's own aim numbers now, and `spellAimProblem(unit, spell, x, y, z)` returns
+  null or 'range' | 'los' | 'sight' | 'hidden' | 'above' with exactly doSpell's aim gates (self-cast → null, beams → the heading,
+  blink landing → getTeleportLandingReach, doors / castFromDoors, telescope, Cryptid / Shadow Realm, the leap's flat range and
+  above rule, Purify's flat range). `spellCastableOnUnit` = no aim problem + not cloaked + spellTargetUsableOn.
+- Every menu asks it: hasSpellTargetInRange (enemy kinds, leap, heal/cleanse, buff/shield/transfer, revive, corpses), the drum,
+  findSpellApproachTile (aimed at a body), the Simul plan check, hud.js enemy quick menu (generic, leap and dash rows; the
+  greyed reason reads `spellAimProblemLabel`) and the tile quick menu. getSpellRangeTiles (the lit tiles) is unchanged.

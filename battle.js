@@ -38826,6 +38826,148 @@
         window.isTileAoeSpell = isTileAoeSpell;
         window.findBestAoeAimForTarget = findBestAoeAimForTarget;
 
+        /* ═══ THE ONE AIM RULE (2026-10-16, mondo: Dragon Slash greyed under Abilities as "No target", offered on the
+           enemy's quick menu, then refused with "Spell target is out of range" — "so is it out of range or not??").
+           Four places each kept their own copy of "can this spell reach that body": doSpell, the Abilities button
+           (hasSpellTargetInRange / hasReachableTarget), the target drum (_getSpellValidTargets) and the enemy quick
+           menu (hud.js, which measured the clicked unit itself and then fell back to the lit tiles, whose height is
+           whoever stands lowest in that column). They disagreed on heights, shared columns, 2×2 bosses, sight lines
+           and fog. Now doSpell reads its aim numbers from _spellAimTarget / _spellAimReach, and spellAimProblem
+           answers with exactly doSpell's aim gates (who in the column, 3D reach, sight line, team sight, the
+           doors, Cryptid / Shadow Realm, above-the-target) for every menu: null = the cast goes through. ═══ */
+        function _spellAimTarget(unit, spell, x, y, z) {
+            const _skmC = _kindMeta(spell);
+            const _phase2 = (spell.kind === 'teleport' && state._teleportingUnit)
+                || (spell.kind === 'skyThrow' && unit._skyThrowGrab);
+            if (!_skmC.tileTargeted && !_skmC.directional && !_phase2 && !isSpellSelfCast(spell)
+                && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1) {
+                const _sideC = _skmC.twoClick ? 'any'
+                    : (_skmC.offensive ? 'enemy' : (_skmC.allyOnly ? 'ally' : 'any'));
+                const _effRC = getEffectiveSpellRange(unit, spell);
+                const _minRC = _skmC.minRange ?? 1;
+                const _lrC = isLongRangeSpell(spell);
+                const u = resolveUnitInColumn(unit, x, y, z, {
+                    side: _sideC,
+                    inRange: c => {
+                        const dd = (c._isBoss && c._bossSize === 2)
+                            ? spellReachToTarget(unit, spell, c)
+                            : combatReach(unit.x, unit.y, unit.z ?? 0, c.x, c.y, c.z ?? 0, _lrC);
+                        return dd >= _minRC && dd <= _effRC;
+                    }
+                });
+                return { unit: u || null, column: true };
+            }
+            return { unit: unitAt(x, y, z) || null, column: false };
+        }
+        /* reach from where the caster stands to the click: d (3D combatReach to the click's body, 2×2 bosses by their
+           nearest corner), the range verdict (sky grabs measure flat), and the sight-line checks run on demand */
+        function _spellAimReach(unit, spell, x, y, z, clickTarget) {
+            const longRange = isLongRangeSpell(spell);
+            const rawDxy = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+            let d;
+            if (clickTarget && clickTarget._isBoss && clickTarget._bossSize === 2) {
+                d = spellReachToTarget(unit, spell, clickTarget);
+            } else {
+                const tz = clickTarget ? (clickTarget.z ?? 0) : (z ?? 0);
+                d = combatReach(unit.x, unit.y, unit.z ?? 0, x, y, tz, longRange);
+            }
+            const skyGrab = spell.kind === 'skyDrop' || spell.kind === 'skySlam'
+                || (spell.kind === 'skyThrow' && !unit._skyThrowGrab);
+            const minRange = _kindMeta(spell).minRange ?? 1;
+            const effRange = getEffectiveSpellRange(unit, spell);
+            const gateD = skyGrab ? rawDxy : d;
+            return {
+                d, rawDxy, gateD, minRange, effRange, skyGrab, longRange,
+                inRange: gateD >= minRange && gateD <= effRange,
+                losBlocked() {
+                    const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+                    return (spell.kind !== 'teleport' || !!spell.needsLoS) && spell.kind !== 'delayed' && !spell.ignoresLineOfSight
+                        && !skyGrab && rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ);
+                },
+                /* The Long Way Round: would the cast go straight, without a door? */
+                directForDoors() {
+                    return d >= minRange && d <= effRange
+                        && !(spell.kind !== 'delayed' && !spell.ignoresLineOfSight && rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? 0));
+                },
+            };
+        }
+        function _spellSkyTelescopeTarget(unit, x, y) {
+            return unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth'
+                && state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+        }
+        /* null when doSpell(unit, x, y, z) gets past every aim gate from where the caster stands now, else
+           'range' | 'los' | 'sight' | 'hidden' | 'above'. Costs, cooldowns and per-target effect (spellTargetUsableOn)
+           are asked separately, as before. */
+        function spellAimProblem(unit, spell, x, y, z) {
+            if (!unit || !spell) return 'range';
+            if (isSpellSelfCast(spell)) return null;
+            if (spell.kind === 'line' || spell.kind === 'linePush') {
+                return lineSpellHeadingTo(spell, unit.x, unit.y, unit.z ?? null, x, y, (z === undefined) ? null : z) ? null : 'range';
+            }
+            if (_teleportLandingPhase(spell)) {
+                return getTeleportLandingReach(unit, spell).some(t => t.x === x && t.y === y) ? null : 'range';
+            }
+            if (spell.kind === 'skyThrow' && unit._skyThrowGrab) return null;   // the throw judges its own reach
+            if (spell.kind === 'doorDeploy') return null;                       // the door's aim resolver judges
+            if (z === undefined || z === null) {
+                z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, unit.z ?? 0)
+                    : (state.boardHeights?.[y]?.[x] ?? 0);
+            }
+            const aimT = _spellAimTarget(unit, spell, x, y, z);
+            const tgt = aimT.unit;
+            if (aimT.column && tgt && tgt.z != null && tgt.x === x && tgt.y === y) z = tgt.z;
+            const r = _spellAimReach(unit, spell, x, y, z, tgt);
+            const km = _kindMeta(spell);
+            let viaDoor = false;
+            if (km.doorOrigin) {
+                if (!_doorOriginForSpell(unit, spell, x, y)) return 'range';
+                viaDoor = true;
+            }
+            if (!viaDoor && unitHasStatus(unit, 'castFromDoors') && !km.selfCast
+                && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam'
+                && !r.directForDoors()) {
+                viaDoor = !!doorCastOriginFor(unit, x, y, r.effRange, { minRange: r.minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
+            }
+            if (!viaDoor) {
+                if (!r.inRange) return 'range';
+                if (r.losBlocked()) return 'los';
+            }
+            if (spellVisionGate(unit, spell) && r.d > 0 && !km.fogExempt
+                && !isInVision(unit, x, y, (tgt && tgt.z != null) ? tgt.z : undefined)
+                && !_spellSkyTelescopeTarget(unit, x, y)) return 'sight';
+            if (r.d > 0 && km.offensive && !km.tileTargeted) {
+                const c = unitAt(x, y);
+                if (c && isEnemyUnit(c, unit) && unitCryptidHiddenFrom(c, unit.player)) return 'hidden';
+                if (c && isUnitRealmShieldedFrom(c, unit)) return 'hidden';
+            }
+            // Kind branches that measure flat steps again after the shared gate (a diagonal neighbour is 1 in
+            // combatReach, 2 here): the leap strike, Purify's 3×3.
+            if ((spell.kind === 'leapStrike' && r.rawDxy > (r.effRange || 2))
+                || (spell.kind === 'cleanseArea' && r.rawDxy > r.effRange)) return 'range';
+            // Leap strikes land only on a body BELOW the caster (doSpell's leapStrike branch).
+            if (spellRequiresAboveTarget(spell)) {
+                const body = tgt || unitAt(x, y);
+                if (body && getUnitStandingHeight(unit) <= getUnitStandingHeight(body)) return 'above';
+            }
+            return null;
+        }
+        /* the menus' word for an aim problem */
+        function spellAimProblemLabel(why) {
+            return why === 'los' ? 'No line of sight' : why === 'sight' ? 'Out of sight'
+                : why === 'hidden' ? 'Hidden' : why === 'above' ? 'Must be above' : 'Out of range';
+        }
+        /* can `spell` be cast on the unit `u` right now, from where the caster stands: the cast's own aim gates, the
+           target not cloaked from the caster's side, and the spell actually doing something to it */
+        function spellCastableOnUnit(unit, spell, u) {
+            if (!unit || !spell || !u) return false;
+            if (spellAimProblem(unit, spell, u.x, u.y, u.z)) return false;
+            if (!u.dead && isEnemyUnit(u, unit) && isUnitConcealedFrom(u, unit.player)) return false;
+            return spellTargetUsableOn(unit, spell, u);
+        }
+        window.spellAimProblem = spellAimProblem;
+        window.spellAimProblemLabel = spellAimProblemLabel;
+        window.spellCastableOnUnit = spellCastableOnUnit;
+
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
             const kind = spell.kind;
@@ -38875,30 +39017,15 @@
             // menu greys it out instead of letting the player click a spell that will
             // immediately fail with "Must be above the target".
             if (kind === 'leapStrike') {
-                const casterZ = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(unit) : (unit.z ?? 0);
-                const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
-                return enemies.some(e => {
-                    const d = distToTarget(unit.x, unit.y, e, unit.z);
-                    if (d < 1 || d > range) return false;
-                    if (!spell.ignoresLineOfSight && isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z)) return false;
-                    if (!spellSeesEnemy(unit, spell, e)) return false;   // VISION (2026-10-09)
-                    const eZ = typeof getUnitStandingHeight === 'function' ? getUnitStandingHeight(e) : (e.z ?? 0);
-                    return casterZ > eZ;
-                });
+                // THE ONE AIM RULE: spellAimProblem holds the above-the-target gate too.
+                return state.units.some(e => !e.dead && e.player !== unit.player && spellCastableOnUnit(unit, spell, e));
             }
 
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle', 'possess', 'shadowRealm', 'link', 'doorBreach', 'doorTrap'].includes(kind)) {
-                const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
-                const _longRange = isLongRangeSpell(spell);
+                // THE ONE AIM RULE: an enemy counts exactly when doSpell would take the cast on it from here
+                // (reach, sight line, team sight, cloaks — spellCastableOnUnit), and the cast does something to it.
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
-                const hasEnemy = enemies.some(e => {
-                    const d = spellReachToTarget(unit, spell, e);
-                    if (!(d >= 1 && d <= effectiveRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unit.z)))) return false;
-                    // VISION (2026-10-09): the team must see it (and it must not be cloaked)
-                    if (!spellSeesEnemy(unit, spell, e)) return false;
-                    // Pure-status spells need an enemy NOT already carrying the status.
-                    return spellTargetUsableOn(unit, spell, e);
-                });
+                const hasEnemy = enemies.some(e => spellCastableOnUnit(unit, spell, e));
                 // (Towers don't count — Cubes are immune to spells by design.)
                 return hasEnemy;
             }
@@ -38908,21 +39035,14 @@
             // ally actually carrying a debuff — otherwise the drum greys them.
             if (kind === 'heal' || kind === 'cleanse') {
                 const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
-                return allies.some(a => {
-                    if (!spellTargetUsableOn(unit, spell, a)) return false;
-                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
-                    return d <= range;
-                });
+                return allies.some(a => spellCastableOnUnit(unit, spell, a));   // THE ONE AIM RULE
             }
 
             if (['buff', 'shield', 'transfer'].includes(kind)) {
                 const allies = [unit, ...aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id)];
-                return allies.some(a => {
-                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
-                    // Pure-status buffs (Protect, Camouflage…) need an ally who
-                    // doesn't already carry the status — statuses don't stack.
-                    return d <= range && spellTargetUsableOn(unit, spell, a);
-                });
+                // Pure-status buffs (Protect, Camouflage…) need an ally who doesn't already carry the status —
+                // statuses don't stack (spellTargetUsableOn); reach is the cast's own (THE ONE AIM RULE).
+                return allies.some(a => spellCastableOnUnit(unit, spell, a));
             }
 
             if (['delayed', 'deployObject', 'deployPair', 'aoeShield', 'zoneDebuff', 'zoneHeal', 'terrainCreate', 'dash'].includes(kind)) {
@@ -38966,13 +39086,13 @@
                 // (this used to return true if any dead ally existed anywhere on the
                 // map, lighting the spell up with nothing to click).
                 return state.units.some(u => u.player === unit.player && u.dead && !u.reviveLocked &&
-                    Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
+                    !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
             if (spellTargetsCorpses(spell)) {
                 // Any corpse (either side) whose remains haven't been consumed yet.
                 return state.units.some(u => u.dead && !u._corpseConsumed &&
-                    Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) <= range);
+                    !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
             if (kind === 'rallyPull') {
@@ -39103,7 +39223,15 @@
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
             const steps = _spellMoveBudget(unit, spell);
             const sx = unit.x, sy = unit.y, sz = unit.z;
-            const _hitsTarget = () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
+            /* THE ONE AIM RULE (2026-10-16): aimed at a BODY, "in reach from the probe tile" is the cast's own
+               answer (spellAimProblem: that body's height, its column, the sight line, fog) — the lit-tile set reads
+               the column's lowest body, so a step could be offered that the cast then refused. A bare tile keeps
+               the lit tiles. */
+            const _aimBody = ((tz !== undefined && tz !== null) ? unitAt(tx, ty, tz) : null) || unitAt(tx, ty);
+            const _aimZ = (tz !== undefined && tz !== null) ? tz : (_aimBody ? _aimBody.z : undefined);
+            const _hitsTarget = _aimBody
+                ? () => !spellAimProblem(unit, spell, tx, ty, _aimZ)
+                : () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
             let best = null, bestScore = -1;
             try {
                 // Walk approach (ONE step). Jump / take-off tiles that getMoveTiles folds
@@ -49026,8 +49154,8 @@
                 if (isSpellSelfCast(spell)) { x = unit.x; y = unit.y; z = unit.z; }
                 const isLineDir = spell.kind === 'line' || spell.kind === 'linePush';
                 if (!isSpellSelfCast(spell) && !isLineDir) {
-                    const tiles = getSpellRangeTiles(unit, spell) || [];
-                    if (!tiles.some(t => t.x === x && t.y === y)) {
+                    // THE ONE AIM RULE: the plan takes what the cast takes (spellAimProblem = doSpell's aim gates).
+                    if (spellAimProblem(unit, spell, x, y, z)) {
                         addLog('Spell target is out of range.');
                         playErrorSfx();
                         return 0;
@@ -53968,25 +54096,8 @@
                 return targets;
             }
             const _skm = _kindMeta(spell);
-            const minRange = _skm.minRange ?? 1;
             const isOffensive = !!_skm.offensive;
-            const effRange = getEffectiveSpellRange(unit, spell);
-            // Sky grabs dive from the air — terrain LOS never blocks them (matches
-            // doSpell, which does no LOS check for these kinds). 'delayed'
-            // (artillery) is indirect fire that arcs over terrain — doSpell and
-            // getSpellRangeTiles both LOS-exempt it; omitting it here made
-            // artillery castable from the map but missing from the target drum.
-            const skipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport'
-                || spell.kind === 'delayed'
-                || spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
-            // Fog parity with doSpell/getSpellRangeTiles: a fogged unit must not
-            // sit in the target drum — picking it just bounced off doSpell's own
-            // fog gate ("the list target does nothing"). Telescope casters keep
-            // their doSpell privilege of hitting sky enemies through fog.
-            const fogLimit = skipLOS ? visionGatesLosFree(unit) : visionGatesTargeting(unit);   // VISION (2026-10-09)
-            const _fogTelescope = fogLimit && typeof unitHasTelescope === 'function'
-                && unitHasTelescope(unit)
-                && typeof getSectionForUnit === 'function' && getSectionForUnit(unit) === 'earth';
+            // Reach, sight line and fog: spellAimProblem below (THE ONE AIM RULE) — doSpell's own gates.
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             const _needsAbove = spellRequiresAboveTarget(spell);
             const _casterStandH = _needsAbove
@@ -54012,30 +54123,6 @@
                     if (_casterStandH <= _uH) continue;
                 }
 
-                // Engine parity (getSpellRangeTiles/doSpell): range is 3D
-                // combatReach — vertical gaps count, long-range casts drop
-                // downward for free, and an enemy in the caster's OWN column
-                // (directly beneath a flyer) measures ≥1, not 0 — the flat
-                // Manhattan distance used before both over-offered casts on
-                // far-above flyers and hid same-column targets entirely.
-                // Sky grabs stay horizontal-only, matching doSpell.
-                const _skyGrabT = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
-                const _longRangeT = typeof isLongRangeSpell === 'function' && isLongRangeSpell(spell);
-                const _tCorners = (u._isBoss && u._bossSize === 2)
-                    ? [[u.x, u.y], [u.x + 1, u.y], [u.x, u.y + 1], [u.x + 1, u.y + 1]]
-                    : [[u.x, u.y]];
-                let d = Infinity, dxy = Infinity;
-                for (const [ucx, ucy] of _tCorners) {
-                    const _dxy = Math.abs(ucx - unit.x) + Math.abs(ucy - unit.y);
-                    if (_dxy < dxy) dxy = _dxy;
-                    const _dd = _skyGrabT ? _dxy
-                        : combatReach(unit.x, unit.y, unitZ, ucx, ucy, u.z ?? 0, _longRangeT);
-                    if (_dd < d) d = _dd;
-                }
-                if (d < minRange || d > effRange) continue;
-                if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
-                if (fogLimit && dxy >= 1 && !_skm.fogExempt && !isInVision(unit, u.x, u.y)
-                    && !(_fogTelescope && !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above')) continue;
                 if (_skm.twoClick) {
                     // Two-click kinds (wave B): before the first pick the drum
                     // lists the FIRST team of the pair; after it, the second —
@@ -54064,7 +54151,12 @@
                 // a pure-status target when they already carry the status —
                 // they must not appear in the target drum at all.
                 if (!spellTargetUsableOn(unit, spell, u)) continue;
-                targets.push({ x: u.x, y: u.y, dist: d, unit: u });
+                /* THE ONE AIM RULE (2026-10-16): a body sits in the drum exactly when doSpell would take the
+                   cast on it from here — 3D reach (2×2 bosses by their nearest corner, sky grabs flat), the
+                   sight line, team sight (the telescope's sky shots included), the doors, Cryptid / Shadow
+                   Realm. The drum's own copy of those numbers is what drifted from the cast. */
+                if (spellAimProblem(unit, spell, u.x, u.y, u.z)) continue;
+                targets.push({ x: u.x, y: u.y, dist: spellReachToTarget(unit, spell, u), unit: u });
             }
             _orderTargetsByNeed(spell, targets);
             // 🗯 Provoke: when the caster is taunted and the challenger sits in
@@ -64616,52 +64708,23 @@
                 return 0;
             }
 
-            const _rawDxy = Math.abs(unit.x - x) + Math.abs(unit.y - y);
-
             /* Shared tile (flyer over a ground unit): a UNIT-targeted cast
                resolves which body of the column it is for — the spell's own
                side, in reach — and carries that z into every lookup below
                (range, the kind branches' unitAt(x, y, z), the offensive
                resolver). Tile / directional / self / second-phase casts keep
                the click as it came. */
-            let _spellClickTarget;
-            {
-                const _skmC = _kindMeta(spell);
-                const _phase2 = (spell.kind === 'teleport' && state._teleportingUnit)
-                    || (spell.kind === 'skyThrow' && unit._skyThrowGrab);
-                if (!_skmC.tileTargeted && !_skmC.directional && !_phase2 && !isSpellSelfCast(spell)
-                    && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1) {
-                    const _sideC = _skmC.twoClick ? 'any'
-                        : (_skmC.offensive ? 'enemy' : (_skmC.allyOnly ? 'ally' : 'any'));
-                    const _effRC = getEffectiveSpellRange(unit, spell);
-                    const _minRC = _skmC.minRange ?? 1;
-                    const _lrC = isLongRangeSpell(spell);
-                    _spellClickTarget = resolveUnitInColumn(unit, x, y, z, {
-                        side: _sideC,
-                        inRange: u => {
-                            const dd = (u._isBoss && u._bossSize === 2)
-                                ? spellReachToTarget(unit, spell, u)
-                                : combatReach(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0, _lrC);
-                            return dd >= _minRC && dd <= _effRC;
-                        }
-                    });
-                    if (_spellClickTarget && _spellClickTarget.z !== undefined && _spellClickTarget.z !== null
-                        && _spellClickTarget.x === x && _spellClickTarget.y === y) z = _spellClickTarget.z;
-                } else {
-                    _spellClickTarget = unitAt(x, y, z);
-                }
-            }
+            /* THE ONE AIM RULE (2026-10-16): who the click is for and how far it is come from _spellAimTarget /
+               _spellAimReach — the same two calls every menu makes through spellAimProblem. */
+            const _aimT = _spellAimTarget(unit, spell, x, y, z);
+            let _spellClickTarget = _aimT.unit;
+            if (_aimT.column && _spellClickTarget && _spellClickTarget.z !== undefined && _spellClickTarget.z !== null
+                && _spellClickTarget.x === x && _spellClickTarget.y === y) z = _spellClickTarget.z;
 
             const _spellLongRange = isLongRangeSpell(spell);
-            let d;
-            if (_spellClickTarget && _spellClickTarget._isBoss && _spellClickTarget._bossSize === 2) {
-                d = spellReachToTarget(unit, spell, _spellClickTarget);
-            } else {
-                const _tz = _spellClickTarget ? (_spellClickTarget.z ?? 0) : (z ?? 0);
-                d = combatReach(unit.x, unit.y, unit.z ?? 0, x, y, _tz, _spellLongRange);
-            }
-            const dEff = d;
-            const minRange = _kindMeta(spell).minRange ?? 1;
+            const _aimReach = _spellAimReach(unit, spell, x, y, z, _spellClickTarget);
+            let d = _aimReach.d;
+            const minRange = _aimReach.minRange;
 
             /* THE BLINK LANDING (2026-10-16): a self blink's one click IS the landing, so it skips the cast gates
                (3D reach, sight, fog) like a second-click landing; the teleport branch judges it (flat range,
@@ -64680,9 +64743,8 @@
                _getSpellValidTargets (2D Manhattan, no LOS) — the 3D combatReach
                gate below counted an AIRBORNE caster's own altitude against the
                range-1 grab, so Predator Drop only worked from the ground and
-               rejected every airborne cast with "out of range". */
-            const _isSkyGrabCast = spell.kind === 'skyDrop' || spell.kind === 'skySlam'
-                || (spell.kind === 'skyThrow' && !unit._skyThrowGrab);
+               rejected every airborne cast with "out of range". (The rule lives in
+               _spellAimReach: skyGrab.) */
 
             const isLineDirection = spell.kind === 'line' || spell.kind === 'linePush';
             /* AI probe rejections stay OUT of the player's log: the CPU
@@ -64710,15 +64772,11 @@
             }
             if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && unitHasStatus(unit, 'castFromDoors')
                 && !_kindMeta(spell).selfCast && spell.kind !== 'teleport' && spell.kind !== 'door' && spell.kind !== 'doorSlam') {
-                const _effR = getEffectiveSpellRange(unit, spell);
-                const _direct = dEff >= minRange && dEff <= _effR
-                    && !(spell.kind !== 'delayed' && !spell.ignoresLineOfSight && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? 0));
-                if (!_direct) _doorOrg = doorCastOriginFor(unit, x, y, _effR, { minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
+                const _effR = _aimReach.effRange;
+                if (!_aimReach.directForDoors()) _doorOrg = doorCastOriginFor(unit, x, y, _effR, { minRange, noLos: spell.kind === 'delayed' || !!spell.ignoresLineOfSight });
             }
             if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim) {   // 🚪 a standing door's aim already judged reach, sight and fog
-                const effSpellRange = getEffectiveSpellRange(unit, spell);
-                const gateD = _isSkyGrabCast ? _rawDxy : dEff;
-                if (gateD < minRange || gateD > effSpellRange) {
+                if (!_aimReach.inRange) {
                     if (!_silentReject) {
                         addLog('Spell target is out of range.');
                         playErrorSfx();
@@ -64727,13 +64785,10 @@
                     return 0;
                 }
 
-                const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
                 // 'delayed' = artillery / called-in strikes: indirect fire that marks a
                 // ground tile and arcs over terrain, so it's exempt from the line-of-sight
-                // gate (like teleport). The AI's spell targeter already treats it this way;
-                // gating it here is what produced "Terrain blocks the spell path" on tiles
-                // the AI legitimately picked, wasting the unit's turn.
-                if ((spell.kind !== 'teleport' || spell.needsLoS) && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && !_isSkyGrabCast && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
+                // gate (like teleport) — _spellAimReach.losBlocked holds the rule.
+                if (_aimReach.losBlocked()) {
                     if (!_silentReject) {
                         addLog('Terrain blocks the spell path.');
                         playErrorSfx();
@@ -64742,8 +64797,7 @@
                 }
             }
 
-            const _isSpellSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
-                state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
+            const _isSpellSkyTelescopeTarget = _spellSkyTelescopeTarget(unit, x, y);
             if (spellVisionGate(unit, spell) && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
                 if (!isInVision(unit, x, y, (_spellClickTarget && _spellClickTarget.z != null) ? _spellClickTarget.z : undefined) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
                     if (!_silentReject) addLog('Out of sight — no one on your team can see that tile.');
