@@ -10205,6 +10205,7 @@
                         var entry = { z: v.z, terrain: v.terrain || 'grass' };
                         if (v.stairDir) entry.stairDir = v.stairDir;
                         if (v.roof) entry.roof = true;   // thin roof slab (renderer + cutaway)
+                        if (v.deck) entry.deck = true;   // THE TWO FLOORS: a field's bridge deck — a slab over an air gap
                         return entry;
                     }).sort((a, b) => a.z - b.z);
 
@@ -10212,7 +10213,8 @@
                        over open ground) keep gaps so units can pass underneath
                        and the renderer leaves the underside open. Solid maps fill
                        every z from 0..top as before. */
-                    if (state._hollowVoxels) {
+                    /* THE TWO FLOORS (2026-10-16): a column carrying a field's bridge deck keeps the air under it on any map */
+                    if (state._hollowVoxels || sorted.some(b => b.deck)) {
                         row.push(sorted);
                     } else {
                         const topZ = sorted[sorted.length - 1].z;
@@ -10267,6 +10269,7 @@
                     const col = row[x];
                     if (!col || col.length === 0) continue;
                     col.sort((a, b) => a.z - b.z);
+                    if (col.some(b => b.deck)) continue;   // THE TWO FLOORS: the air under a field's bridge deck stays air
                     const topZ = col[col.length - 1].z;
                     if (topZ <= 0) continue;
                     const existingZ = new Set(col.map(b => b.z));
@@ -11757,7 +11760,7 @@
         function _pocketCeilingIsRoof(x, y, ceilZ) {
             if (ceilZ === Infinity) return false;
             for (const b of getColumn(x, y)) {
-                if (b.z === ceilZ && b.roof) return true;
+                if (b.z === ceilZ && b.roof && !b.deck) return true;   // a field's bridge deck is a bridge, not a room's roof: flyers thread under it
             }
             return false;
         }
@@ -12789,6 +12792,7 @@
                                 };
                                 if (_b.sd) entry.stairDir = _b.sd;
                                 if (_b.rf) entry.roof = true;   // thin roof slab
+                                if (_b.dk) entry.deck = true;   // THE TWO FLOORS (2026-10-16): a field's bridge deck (data.js hqFieldStampDecks)
                                 return entry;
                             }));
                         }

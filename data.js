@@ -13282,7 +13282,7 @@ function _mfNew(cfg) {
         M.lintels.forEach(L => { if (M.in(L.x, L.y)) voxels[L.y][L.x].push({ z: L.z, tid: L.t }); });
         /* thin roof slabs ride in the voxel column with the editor's rf flag
            (map.js prebuilt loader maps rf → roof, same as community maps) */
-        M.roofs.forEach(R => { if (M.in(R.x, R.y)) voxels[R.y][R.x].push({ z: R.z, tid: R.t, rf: 1 }); });
+        M.roofs.forEach(R => { if (M.in(R.x, R.y)) voxels[R.y][R.x].push(R.dk ? { z: R.z, tid: R.t, rf: 1, dk: 1 } : { z: R.z, tid: R.t, rf: 1 }); });   // dk: THE TWO FLOORS' deck (data.js hqFieldStampDecks)
         const entry = {
             name: M.cfg.name, w: W, h: H,
             grid: M.ter.map(r => r.slice()),
@@ -54273,6 +54273,58 @@ function hqFieldTerrainInfo(roomId) {
         if (!wl && !onDeck && hqTerrainSlope(info, sx, sz) > R.maxSlope) return null;
         return y;
     };
+    /* THE TWO FLOORS (2026-10-16, mondo: "units underneath the bridge on the ground and on top of the bridge at the same time"):
+       a bridge deck over a cell is a battle floor of its own. `deck` = { top, layer } when the walker stands on the slab (feet
+       arriving at its top) at the cell's centre and on `cover` of its samples, at least tierMin over the ground's feet (a slab
+       nearer the ground is its mouth on a tier, already the ground). Over walked ground the cell keeps BOTH floors (one column,
+       two surfaces: hqFieldBuild stamps the deck as a slab over an air gap); over a gap, a wall or a pool the deck IS the cell. */
+    const GT = HQ_FIELD_RULES.ground;
+    /* the cell's sides a railed bridge's rail runs along (its posts stand within half a cell of that edge, parallel to it): the
+       battle board walls those edges with a hidden low rail (hqFieldStampDecks), so a body never steps through the drawn rail */
+    const railWalls = (info.walls || []).filter(w => w && w.railing && typeof w.base === 'number' && (w.h || 0) < 1.6);
+    const railSides = (b, cx, cz) => {
+        const segs = railWalls.filter(w => Math.abs(w.base - b.y) < 0.4);   // the railings standing on this deck
+        let s = '';
+        [['N', 0, -1], ['S', 0, 1], ['W', -1, 0], ['E', 1, 0]].forEach(([k, dx, dz]) => {
+            const ex = cx + dx * C / 2, ez = cz + dz * C / 2;
+            let near = false;
+            if (b.rails && !b.plain && !b.hide) {
+                if (b.arc) {
+                    const A = b.arc, L = _hqTArc(A, ex, ez);
+                    const q = (A.a0 + L.da) * Math.PI / 180;   // the rail's tangent (cos q, sin q) must run along the edge
+                    if ((L.span >= 359.99 || L.da <= L.span) && Math.abs(dx ? Math.sin(q) : Math.cos(q)) >= 0.6) {
+                        const rr = b.rails === true ? [A.r0 + 0.12, A.r1 - 0.12] : b.rails === 'inner' ? [A.r0 + 0.12] : b.rails === 'outer' ? [A.r1 - 0.12] : [];
+                        near = rr.some(r => Math.abs(L.r - r) < C / 2);
+                    }
+                } else {
+                    const L = _hqTRamp(ex, ez, b);
+                    if (L.t >= -0.05 && L.t <= 1.05 && Math.abs(dx ? L.uz : L.ux) >= 0.6) near = Math.abs(Math.abs(L.v) - (b.w / 2 - 0.1)) < C / 2;
+                }
+            }
+            /* a railing hung on the deck's lip (a catwalk's glass, a gallery's balustrade): a piece running along the edge within half a
+               cell of its midpoint — the gaps between pieces (a stair's mouth) stay open */
+            if (!near) near = segs.some(w => {
+                const sx = w.x1 - w.x0, sz = w.z1 - w.z0, L2 = sx * sx + sz * sz; if (L2 < 1e-6) return false;
+                if (Math.abs(dx ? sz : sx) / Math.sqrt(L2) < 0.6) return false;
+                const t = Math.max(0, Math.min(1, ((ex - w.x0) * sx + (ez - w.z0) * sz) / L2));
+                return Math.hypot(w.x0 + sx * t - ex, w.z0 + sz * t - ez) < C / 2;
+            });
+            if (near) s += k;
+        });
+        return s;
+    };
+    const deckAt = (cx, cz, groundY) => {
+        if (!info.bridges || !info.bridges.length) return null;
+        const bs = hqTerrainBridgesAt(info, cx, cz, -R.bridgeEdge).filter(b => groundY == null || b.y - groundY >= GT.tierMin).sort((a, b) => a.y - b.y);
+        for (const b of bs) {
+            const onB = (sx, sz) => { if (treeAt(sx, sz)) return false; const y = hqTerrainFeet(info, sx, sz, b.y); return y != null && Math.abs(y - b.y) < 0.05; };
+            if (!onB(cx, cz)) continue;
+            let n = 0;
+            for (let sj = 0; sj < sub; sj++) for (let si = 0; si < sub; si++) if (onB(cx + ((si + 0.5) / sub - 0.5) * C, cz + ((sj + 0.5) / sub - 0.5) * C)) n++;
+            if (n >= cover) return { top: b.y, layer: b.layer, rails: railSides(b, cx, cz) };
+        }
+        return null;
+    };
     const cells = [];
     for (let gy = 0; gy < h; gy++) {
         const row = [];
@@ -54307,6 +54359,10 @@ function hqFieldTerrainInfo(roomId) {
                 /* a liquid the walker never enters (deep water, lava, a pool too deep to wade): a HAZARD cell in its own sheet */
                 cell.hazard = true; cell.fluid = fl.key || 'water'; cell.key = known(cell.fluid) ? cell.fluid : 'deep_water'; cell.sheet = fl.y; cell.seat = false;
             }
+            /* THE TWO FLOORS: the deck over the cell — a second floor over walked ground, the only floor over a gap */
+            const dk = centreTree ? null : deckAt(cx, cz, cell.in ? cell.top : null);
+            if (dk && cell.in) cell.deck = dk;
+            else if (dk) Object.assign(cell, { in: true, top: dk.top, key: floorKey, hazard: false, fluid: null, sheet: null, tree: false, wall: false, seat: true, bridge: dk.layer, span: true, rails: dk.rails });
             row.push(cell);
         }
         cells.push(row);
@@ -54330,7 +54386,8 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
             let cell;
             if (!src || (!src.in && !src.hazard)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null };
             else if (src.hazard) cell = { x, y, gx, gy, in: false, rock: false, hazard: true, tile: null, key: src.key, fluid: src.fluid, under: null, src, seat: false, top: null, sheet: src.sheet };
-            else { cell = { x, y, gx, gy, in: true, rock: false, hazard: false, tile: 0, key: src.key, fluid: src.fluid, under: null, src, seat: src.seat !== false, top: src.top, wall: !!src.wall, bridge: src.bridge | 0 }; ref = Math.min(ref, src.top); insTop.push(src.top); }
+            else { cell = { x, y, gx, gy, in: true, rock: false, hazard: false, tile: 0, key: src.key, fluid: src.fluid, under: null, src, seat: src.seat !== false, top: src.top, wall: !!src.wall, bridge: src.bridge | 0,
+                            deck: src.deck ? { top: src.deck.top, layer: src.deck.layer, tile: 0, rails: src.deck.rails || '' } : null, span: !!src.span, rails: (src.span && src.rails) || '' }; ref = Math.min(ref, src.top); if (!src.span) insTop.push(src.top); }
             row.push(cell);
         }
         cells.push(row);
@@ -54342,7 +54399,12 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
     let maxIn = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const c = cells[y][x];
-        if (c.in) { c.tile = hqFieldTierOf(c.top, ref, null, feet); maxIn = Math.max(maxIn, c.tile); }
+        if (c.in) {
+            c.tile = hqFieldTierOf(c.top, ref, null, feet); maxIn = Math.max(maxIn, c.tile);
+            /* THE TWO FLOORS: the deck's level — its own tier, and never under two levels over the ground (the engine's headroom:
+               the body under a slab fills the two cells over its floor; the slab hugs the top of its cell) */
+            if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, null, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
+        }
         else if (c.hazard) c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref) : HQ_FIELD_RULES.fluidMin;
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
@@ -54626,7 +54688,7 @@ function hqFieldFixedCells(R) {
     for (let y = 0; y < RH; y++) for (let x = 0; x < RW; x++) {
         const c = R.cells[y][x]; if (!c) continue;
         if (R.box) { if (c.in && c.prop) mark(x, y, 'C'); if (c.in && (c.flight || c.slab)) mark(x, y, 'G'); }
-        else { if (c.hazard || c.fluid) mark(x, y, 'W'); if (c.in && c.wall) mark(x, y, 'L'); if (c.in && c.bridge) mark(x, y, 'B'); }
+        else { if (c.hazard || c.fluid) mark(x, y, 'W'); if (c.in && c.wall) mark(x, y, 'L'); if (c.in && (c.bridge || c.deck)) mark(x, y, 'B'); }
     }
     /* a box footprint in room metres → the cells it covers by ≥ ov of their area */
     const cellsUnder = (px, pz, hw, hd) => {
@@ -54674,6 +54736,25 @@ function hqFieldFixedAt(field, x, y) {
     const L = (HQ_FIELD_RULES.strata && HQ_FIELD_RULES.strata.fixedLabels) || {};
     return L[k] || 'fixed ground';
 }
+/* THE TWO FLOORS (2026-10-16): every two-floor cell's deck rides its column as a thin slab (`rf` + `dk`) over an air gap — the
+   ground stays the column's lower surface (map.js keeps a deck column's gap; getWalkableSurfaces gives both floors) */
+function hqFieldStampDecks(M, cells, B) {
+    const tid = (typeof MF_TID !== 'undefined') ? MF_TID : {};
+    for (let y = 0; y < cells.length; y++) for (let x = 0; x < cells[y].length; x++) {
+        const c = cells[y][x]; if (!c) continue;
+        const two = !!(c.deck && c.deck.tile > (c.tile | 0) + 1);
+        if (two) M.roofs.push({ x, y, z: B + c.deck.tile, t: tid[c.key] || tid.concrete_floor || tid.grass_2, dk: 1 });
+        /* the deck's rails: a hidden low wall on each railed side, standing on the deck (the ground under walks clear of it) */
+        const rails = two ? c.deck.rails : (c.span ? c.rails : '');
+        if (!rails) continue;
+        const lv = B + (two ? c.deck.tile : (c.tile | 0));
+        for (const k of rails) {
+            const key = M.wallKey(x, y, k); if (M.walls[key]) continue;
+            M.wall(x, y, k, { z0: lv + 1, h: 1, low: true, tex: 'metal' });
+            M.walls[key].hide = true;
+        }
+    }
+}
 function hqFieldBuild(roomId, ox, oz, opts) {
     opts = opts || {};
     /* THE FIELD IS THE ROOM (§3): opts.W / opts.H / opts.feet = the frame hqFieldFrame chose; without them the 8 × 8 window (the arenas) */
@@ -54693,6 +54774,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
         M.t(x, y, c.key); M.h(x, y, B + c.tile);
         if (c.under && B + c.tile - 1 >= 0) M.under(x, y, B + c.tile - 1, c.under);
     }
+    hqFieldStampDecks(M, R.cells, B);
     /* the seats: the two leads on their cells (the window's own frame), the parties on the free cells about them (rule §7: explicit per seat) */
     const free = (x, y) => { const c = R.cells[y] && R.cells[y][x]; return !!(c && c.in && !c.hazard && c.seat !== false); };
     const n = HQ_FIELD_RULES.teamSize;
@@ -54706,16 +54788,22 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     entry.field = { id, room: roomId, site, ox: R.ox, oz: R.oz, S, W: RW, H: RH, C: R.C, x0: R.x0, z0: R.z0, rockTile: R.rockTile, box: !!R.box, cave: !!R.cave, terrain: !!R.terrain, open: !!R.open, ref: (R.ref != null) ? R.ref : 0,
                     feet: !!R.feet, caveGround: !!(R.cave && R.feet),   // THE FIELD IS THE ROOM: the cave stands on its own ground (three-renderer.js _fieldGround)
                     /* THE TRUE GROUND (2026-09-22): every IN cell's REAL top in room metres (the floor 0, a table's top, a tread, the slab) */
-                    tops: R.cells.map(row => row.map(c => (c.in && !c.rock) ? Math.round(((+c.top) || 0) * 1000) / 1000 : (R.terrain && c.hazard && c.sheet != null) ? Math.round(c.sheet * 1000) / 1000 : null)),
+                    tops: R.cells.map(row => row.map(c => (c.in && !c.rock) ? Math.round(((+(c.deck ? c.deck.top : c.top)) || 0) * 1000) / 1000 : (R.terrain && c.hazard && c.sheet != null) ? Math.round(c.sheet * 1000) / 1000 : null)),
+                    /* THE TWO FLOORS (2026-10-16): a two-floor cell's `tops` is its DECK (the column's top, the voxel rule); `lows` is the
+                       ground under it in room metres and `lowLevels` that floor's engine level (null = one floor) — three-renderer.js
+                       _fieldStandY reads a body / a plate / a pick quad on the lower floor through them */
+                    lows: R.cells.map(row => row.map(c => (c.in && !c.rock && c.deck) ? Math.round(((+c.top) || 0) * 1000) / 1000 : null)),
+                    lowLevels: R.cells.map(row => row.map(c => (c.in && !c.rock && c.deck) ? B + c.tile : null)),
+                    decks: R.cells.map(row => row.map(c => (c.in && !c.rock && (c.deck || (c.src && c.src.span))) ? '1' : '0').join('')),   // '1' = the cell's top floor is a bridge deck (level by rule: the plates lie flat on it)
                     /* THE WADE LINE (2026-10-08, mondo: "tile highlights need to show on top of water"): a waded IN cell's liquid sheet in
                        room metres (a terrain / cave pool the body stands knee deep in), else null — the highlights ride over it
                        (three-renderer.js _fieldSheetY); the body keeps standing on `tops` */
                     sheets: R.cells.map(row => row.map(c => (c.in && !c.rock && c.fluid && c.src && c.src.sheet != null && isFinite(+c.src.sheet) && +c.src.sheet > ((+c.top) || 0)) ? Math.round(+c.src.sheet * 1000) / 1000 : null)),
                     /* THE STAND RULE (EXPLORATION_BATTLES_PLAN §2 rule 2): the raster's own seats — '1' a cell a body may start on (IN, not a
                        hazard, not a cover); map.js _encounterPlaceSeats reads only this (never the respawn rule) */
-                    seats: R.cells.map(row => row.map(c => (c.in && !c.rock && !c.hazard && c.seat !== false) ? '1' : '0').join('')),
+                    seats: R.cells.map(row => row.map(c => (c.in && !c.rock && !c.hazard && c.seat !== false && !c.deck) ? '1' : '0').join('')),
                     /* THE STRATA (delivery 6): every cell's engine LEVEL at the build (= M.h above) — the renderer draws a column only where state.boardHeights has moved off it */
-                    levels: R.cells.map(row => row.map(c => B + c.tile)),
+                    levels: R.cells.map(row => row.map(c => B + (c.deck ? c.deck.tile : c.tile))),
                     cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')),
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
@@ -54879,6 +54967,7 @@ function hqArenaEntry(site, pick, cells, tints) {
         strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: tints ? Object.assign({}, tints) : null,
     });
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
+    hqFieldStampDecks(M, cells, B);   // THE TWO FLOORS: the live raster's decks (the baked cells carry none)
     const sp = hqArenaSpawns();
     M.spawns(sp[1], sp[2]);
     M.obj(hqArenaHouse(S).n, hqArenaHouse(S).n, 'nexus');   // the centre nexus: Arena stamps the 2×2 zone from it (map.js _initNexusFromObjects), every other mode strips it
@@ -54923,7 +55012,7 @@ function hqArenaUpgrade(mapId, opts) {
     const fits = !!(R && built && out <= Math.max(HQ_ARENA_RULES.obstacles, HQ_ARENA_RULES.wallMax)   // the walled cut's cap (the bake judged the window)
         && sp[1].concat(sp[2], [{ x: HX.n, y: HX.n }, { x: HX.n + 1, y: HX.n }, { x: HX.n, y: HX.n + 1 }, { x: HX.n + 1, y: HX.n + 1 }]).every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0; }));
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
-    const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0 })));
+    const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '' })));
     const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
