@@ -55676,15 +55676,26 @@
 
                     const isMoving = state.actionMode === 'move';
 
-                    const spell = getSelectedUnit()?.spells?.find(s => s.name === state.selectedTool);
+                    const _actUnit = getSelectedUnit();
+                    /* race abilities too (Mirror Blink lives in _raceAbilities, not spells) */
+                    const spell = state.actionMode === 'spell' && _actUnit
+                        ? ((_actUnit.spells || []).find(s => s.name === state.selectedTool) || (_actUnit._raceAbilities || []).find(s => s.name === state.selectedTool))
+                        : null;
 
                     const isFlairing = state.actionMode === 'flair';
 
-                    const _actUnit = getSelectedUnit();
                     const _isTelescopeAction = (state.actionMode === 'attack' || state.actionMode === 'spell') && _actUnit && unitHasTelescope(_actUnit) &&
                         true &&
                         state.units.some(u => !u.dead && u.player !== _actUnit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
-                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell?.kind === 'teleport' && state._teleportingUnit)) {
+                    /* THE BLINK LANDING, the fog click (2026-10-16, mondo: "im clicking on a tile it tells me i can teleport
+                       to but its not letting me move there ... its not even telling me an error"): a teleport's landing
+                       click (a self blink's only click included) passes the fogged tile on to the cast — the board lights
+                       those tiles and the landing never needed sight. Any other aimed click on a fogged tile says why. */
+                    if (!isMoving && !isFlairing && !_isTelescopeAction && !(spell && _teleportLandingPhase(spell))) {
+                        if (_actUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item')) {
+                            addLog('Out of sight — no one on your team can see that tile.', _actUnit.player);
+                            playErrorSfx();
+                        }
                         return;
                     }
                 }
