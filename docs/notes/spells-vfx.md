@@ -1352,3 +1352,13 @@ sits lower than `CINE_MIN_EYE_TILES` (1.15) over its subject's ground, and THE S
 frame guard holds (each pair's middle), not only the pivot. After: eye 1.15 tiles up, gaze 15° down, lowest eye +0.15
 over the board top. (The probe needs today's three/addons served from npm copies: jsdelivr is blocked in the sandbox,
 and its menu steps reach battle through window.applyPartyBuild + window.startMatch once ThreeRenderer loads.)
+
+## THE SPLIT PANES (2026-10-16, token 20261016-splitpanes-01-cors)
+mondo: "the entropy strike will show the same unit in the split screen instead of the different units on my team ... check
+the combo attacks for the same bug". WebGPU only (`?ew_gpu=webgpu`); WebGL drew every pane right. Cause: THE RENDER
+BUNDLES (W6). The battle room's holders are bundle groups, and a bundle replayed inside a split-screen pane drew another
+pane's camera view: the strike's top quarters repeated the bottom ones, the combo's two halves showed the same caster.
+Fix (three-renderer.js): `_ssRenderFrame` sets `renderer._ew_paneRender` while its panes draw, and `_ewBunSetup`'s
+`_projectObject` draws bundle groups the classic way under it (as it already did for `_ew_sideRender`). Checked on real
+WebGPU in the sandbox (stadium, krampus / nephilim / zombie / annunaki): before, combo = nephilim twice, strike = top
+row copies bottom row; after, every pane frames its own unit; WebGL unchanged. Off (`?ew_bundles=0`) also fixes it.

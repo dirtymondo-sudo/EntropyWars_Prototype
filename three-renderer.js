@@ -19976,6 +19976,7 @@ const ThreeRenderer = (function () {
             if (prevBg) renderer.setClearColor(pcc, pca);
             renderer.autoClear = false;
         }
+        renderer._ew_paneRender = true;   // THE SPLIT PANES: no render bundles in a pane (_ewBunSetup's _projectObject)
         try {
         renderer.setScissorTest(true);
         for (var i = 0; i < _ss.panes.length; i++) {
@@ -20014,6 +20015,7 @@ const ThreeRenderer = (function () {
             else renderer.render(scene, p.cam);
         }
         } finally {
+            renderer._ew_paneRender = false;
             if (node) { renderer.autoClear = prevAuto; if (prevBg) scene.background = prevBg; }
         }
         renderer.setScissorTest(false);
@@ -33775,7 +33777,11 @@ const ThreeRenderer = (function () {
             if (object.isBundleGroup === true) {
                 /* a side render (the post's model mask: two layer passes into one target, one camera) would replay the first
                    pass's recording in the second — it draws the group the classic way */
-                if (this._ew_sideRender) { object.isBundleGroup = false; try { return po.apply(this, arguments); } finally { object.isBundleGroup = true; } }
+                /* THE SPLIT PANES (2026-10-16, mondo: "the entropy strike will show the same unit in the split screen instead of the
+                   different units on my team", the combo page too): a combo / Entropy Strike pane (_ssRenderFrame) draws one
+                   camera of two to four in the same frame, and a replayed recording drew another pane's view (the top quarters
+                   repeated the bottom ones) — the panes draw the groups the classic way too */
+                if (this._ew_sideRender || this._ew_paneRender) { object.isBundleGroup = false; try { return po.apply(this, arguments); } finally { object.isBundleGroup = true; } }
                 /* THE FIELD BUNDLES: a piece of the battle's room off the main camera is not drawn (a recording is unculled) */
                 if (object._ew_bunSph && camera && camera === _ewBun.cullCam && !_ewBunSeen(object._ew_bunSph, camera)) return;
                 _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; }
