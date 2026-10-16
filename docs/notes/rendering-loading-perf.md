@@ -834,6 +834,26 @@ on WebGPU a new material or canvas per piece is a render object, bind groups and
   can see, one ray each (hidden enemies never drive a fade).
 - The roof/canopy cutaway is unchanged (mondo: "ignore roofs for this").
 
+## THE OVERHEAD FADE + THE HIGHLIGHT GHOSTS (2026-10-16, token 20261016-overhead-02-cors)
+mondo: "things ABOVE the units should still [fade], like there are these bridges on maps that go across a gap ... really big
+trees whose leaves cover the map below ... or at least maybe tile highlights need to always be shown through stuff too like
+the holograms". Both done, three-renderer.js only, WebGL + WebGPU.
+- THE OVERHEAD FADE (`_occOverheadHit`, in `_occComputeBlockers`' hit loop): outside a shot an ON-GRID root still fades when
+  the sight line to an `.ov` subject crosses it ABOVE the subject's head and either (1) a ray straight up from the subject's
+  body meets the root (it stands under the deck / crown) or (2) the tile under the crossing is inside + `isTerrainPassable`
+  and a ray up from its solid ground (`window._camSolidGroundPx`) meets the root's underside >= `OCC_OVER_CLEAR` (0.6) tiles
+  up. Walls, rocks, trunks and buildings reach the ground (or stand on closed tiles) and stay solid + hologram (PR #200 rule).
+- `.ov` subjects: the active unit, every unit the viewer can see (now on every map, one ray each; fog-gated as before,
+  `_insideBuildingId` units excluded), the hand-pan focal tile, the hovered tile (`_lastHoverX/Y`). The 4x4 board lattice
+  stays off-grid only. Terrain columns are still not raycast outside a shot (voxel decks keep the canopy cutaway).
+  Room ceiling / sky holders never count. Switch: `window.EW_NO_OVERHEAD_FADE = true`.
+- THE HIGHLIGHT GHOSTS (`_syncHlGhosts`, each frame after the overlay pulse): every highlightGroup mesh drawn with
+  `_hlFragmentShader` (move/jump/attack/spell reach, AoE, cursor, selected tile) gets a child twin on the same geometry with a
+  GreaterDepth copy of its material (polygonOffset -4 like the hologram, raycast off), uniforms shared except uOpacity =
+  source x `HL_GHOST_K` (0.42). It paints only where something covers the tile. Note: the 2026-07-21 rule ("highlights
+  depth-tested, no x-ray through roofs") is relaxed by mondo's ask; the ghost is the faint copy, the real highlight is still
+  depth-tested. Switch: `window.EW_NO_HL_GHOST = true`.
+
 ## THE UNIT POP (2026-10-16, mondo: "make the units/characters pop a little more compared to the ground and objects ... more saturated or brighter ... and fade the ground a little bit")
 - One colour grade on every LIT material's final colour, at the point the light sum becomes the fragment (after
   `opaque_fragment`, before tone mapping / colour space / fog): `mix(luma, c, x) * y`. World (every Lambert / Phong /

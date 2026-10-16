@@ -15409,6 +15409,68 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ── THE HIGHLIGHT GHOSTS (2026-10-16, mondo: "tile highlights need to always be shown through stuff too like the
+       holograms") ──
+       Every tile highlight (move / jump / attack / spell reach, the AoE, the cursor, the selected tile) wears an x-ray twin:
+       the same geometry and shader under a GreaterDepth test (it paints only where something stands in front of the tile,
+       like a unit's hologram) at HL_GHOST_K of the highlight's own opacity, so a lit tile under a bridge, a crown or behind a
+       wall reads as a fainter copy of itself; where the tile is in plain view only the highlight itself draws. The twin
+       shares every uniform but its opacity (the pulse, the colour, the focus dim carry over — synced here each frame) and
+       never takes a pick (raycast off). WebGL + WebGPU (the node build reads the same shader and the depth test).
+       Switch: window.EW_NO_HL_GHOST = true. */
+    var HL_GHOST_K = 0.42;
+    function _hlGhostMatFor(src) {
+        var g = src._ew_hlGhostMat;
+        if (g) return g;
+        var u = {};
+        for (var k in src.uniforms) u[k] = src.uniforms[k];
+        u.uOpacity = { value: 0 };
+        g = new THREE.ShaderMaterial({
+            uniforms: u, vertexShader: src.vertexShader, fragmentShader: src.fragmentShader,
+            transparent: true, depthWrite: false, depthTest: true,
+            depthFunc: THREE.GreaterDepth,   // paint only where occluded
+            /* the drape rides a hair over its own ground: pulled toward the eye, those near-coplanar fragments FAIL the test
+               (no shimmer on a bare tile, the hologram's rule); a real occluder still leaves the twin far enough behind */
+            polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+            side: src.side
+        });
+        g.name = 'ew_hl_ghost'; g._ew_hlGhost = true;
+        src._ew_hlGhostMat = g;
+        src.addEventListener('dispose', function () { try { g.dispose(); } catch (e) {} src._ew_hlGhostMat = null; });
+        return g;
+    }
+    function _hlGhostNoPick() {}
+    function _hlGhostOne(o, off, depth) {
+        if (o._ew_hlGhostTwin) return;
+        if (o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh) {
+            var m = o.material;
+            if (m && !Array.isArray(m) && m.fragmentShader === _hlFragmentShader && m.uniforms && m.uniforms.uOpacity
+                    && m.depthTest !== false && m.depthFunc !== THREE.GreaterDepth) {
+                var tw = o._ew_hlTwin;
+                if (off) { if (tw) tw.visible = false; }
+                else {
+                    var gm = _hlGhostMatFor(m);
+                    if (!tw || tw.parent !== o) {
+                        tw = new THREE.Mesh(o.geometry, gm);
+                        tw.name = 'hl_ghost'; tw._ew_hlGhostTwin = true; tw.raycast = _hlGhostNoPick;
+                        o.add(tw); o._ew_hlTwin = tw;
+                    }
+                    if (tw.material !== gm) tw.material = gm;
+                    if (tw.geometry !== o.geometry) tw.geometry = o.geometry;
+                    tw.renderOrder = o.renderOrder; tw.frustumCulled = o.frustumCulled; tw.visible = true;
+                    gm.uniforms.uOpacity.value = m.uniforms.uOpacity.value * HL_GHOST_K;
+                }
+            }
+        }
+        if (depth < 3) { var ch = o.children; for (var i = 0; i < ch.length; i++) _hlGhostOne(ch[i], off, depth + 1); }
+    }
+    function _syncHlGhosts() {
+        if (!highlightGroup) return;
+        var off = typeof window !== 'undefined' && !!window.EW_NO_HL_GHOST;
+        var ch = highlightGroup.children;
+        for (var i = 0; i < ch.length; i++) _hlGhostOne(ch[i], off, 0);
+    }
+
     function _updatePreviewOverlayPulse() {
         var t = performance.now() / 1000.0;
         _updateHlFocusDim();
@@ -18165,6 +18227,61 @@ const ThreeRenderer = (function () {
         return topY > Math.max(sub.feetY + eps, bodyY);
     }
 
+    /* ── THE OVERHEAD FADE (2026-10-16, mondo: "things ABOVE the units should still [fade], like there are these bridges on
+       maps that go across a gap and i need to be able to see through them if there are units underneath them. Or ... really
+       big trees whose leaves cover the map below") ──
+       THE FADE RULES keep every on-grid object solid outside a spell shot; a piece that HANGS over the board is the exception.
+       A sight line to a unit the viewer can see (or to the hovered / hand-panned tile) that crosses a piece ABOVE the subject's
+       head fades that piece when (1) the piece is straight over the subject (a ray up from its body meets it: the deck over
+       its tile) or (2) the piece hangs over OPEN board where the sight line crosses it: the tile under the crossing is one a
+       unit could stand on, and a ray cast straight up from that tile's solid ground meets the piece's own underside at least
+       OCC_OVER_CLEAR tiles up (a bridge deck, a tree crown, a roof overhang, a stand over a tunnel). A wall, a rock or a
+       trunk reaches the ground under the crossing (and a building's tiles are not open), so the up ray meets nothing of it
+       and it stays solid, the unit behind it keeping its hologram, as before. A unit inside a building is no subject (the
+       roof cutaway's rule). Switch: window.EW_NO_OVERHEAD_FADE = true. */
+    var OCC_OVER_CLEAR = 0.6;   // tiles of open air under the piece (a unit stands ~0.85 tile tall)
+    var _occUpRay = null, _occUpO = null, _occUpD = null;
+    function _occOverheadOff() { return typeof window !== 'undefined' && !!window.EW_NO_OVERHEAD_FADE; }
+    function _occUpHit(root, x, y, z, far) {
+        if (!_occUpRay) { _occUpRay = new THREE.Raycaster(); _occUpO = new THREE.Vector3(); _occUpD = new THREE.Vector3(0, 1, 0); }
+        _occUpRay.camera = _occRaycaster ? _occRaycaster.camera : null;
+        _occUpRay.set(_occUpO.set(x, y, z), _occUpD);
+        _occUpRay.near = 0; _occUpRay.far = Math.max(1, far);
+        var ups = _occUpRay.intersectObject(root, true);
+        for (var i = 0; i < ups.length; i++) {
+            var u = ups[i];
+            if (u.object && u.object.isMesh && !u.object._ew_occSkip) return u;
+        }
+        return null;
+    }
+    function _occOverheadHit(root, hit, sub, dir) {
+        if (!root || !hit || !hit.object || !hit.object.isMesh || hit.object._ew_occSkip) return false;
+        if (root._ew_occWall || root._ew_wallKey != null || root.name === 'hq_ceil' || root.name === 'hq_sky') return false;
+        var ts = CONFIG.tileSize || BASE_TILE, Q = hit.point;
+        var bodyY = (sub.P && isFinite(sub.P.y)) ? sub.P.y : sub.feetY + ts * 0.5;
+        var headY = bodyY * 2 - sub.feetY;
+        if (!(Q.y > headY)) return false;   // a crossing below the head is a thing IN FRONT of the subject, not over it
+        /* (1) the subject stands UNDER the piece: straight up from its body the piece is there (a deck over its tile) */
+        if (sub.P && _occUpHit(root, sub.P.x, bodyY, sub.P.z, (Q.y - bodyY) + ts)) return true;
+        /* (2) the piece hangs over OPEN board where the sight line crosses it: the tile under the crossing is one a unit
+           could stand on (a building's own tiles, a trunk's tile, a wall's tile are not), and straight up from its solid
+           ground the piece's underside is at least OCC_OVER_CLEAR tiles up. A hair into the piece along the sight line,
+           so the up ray runs under its body and not along a side face. */
+        var qx = Q.x + dir.x * ts * 0.03, qz = Q.z + dir.z * ts * 0.03;
+        var tx = Math.floor(qx / ts), ty = Math.floor(qz / ts);
+        try {
+            if (typeof isInside === 'function' && !isInside(tx, ty)) return false;
+            if (typeof isTerrainPassable === 'function' && !isTerrainPassable(tx, ty)) return false;
+        } catch (e) { return false; }
+        var gy = sub.feetY;
+        try { if (typeof window._camSolidGroundPx === 'function') gy = window._camSolidGroundPx(tx, ty); } catch (e) {}
+        if (!isFinite(gy)) gy = sub.feetY;
+        var clear = OCC_OVER_CLEAR * ts, y0 = gy + ts * 0.04;
+        if (Q.y - y0 < clear) return false;
+        var u = _occUpHit(root, qx, y0, qz, (Q.y - y0) + ts * 0.05);
+        return !!u && (u.point.y - gy) >= clear;   // the first underside straight over the ground decides
+    }
+
     function _occCloneMat(m) {
         var c = m.clone();
         c.transparent = true;
@@ -18337,7 +18454,8 @@ const ThreeRenderer = (function () {
             }
         } else {
             // Normal play: off-grid scenery between the camera and the active unit fades (THE FADE RULES).
-            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) subs.push(sp); }
+            var ovOn = !_occOverheadOff();   // THE OVERHEAD FADE: the units, the hovered and the panned tile see past pieces over them
+            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) { sp.ov = ovOn && !selUnit._insideBuildingId; subs.push(sp); } }
             /* Hand-held camera (2026-09-02): the player is orbiting/panning
                by hand, so ALSO keep whatever the camera is pointed AT clear —
                the focal tile. The camera rig no longer dodges terrain (it
@@ -18349,29 +18467,37 @@ const ThreeRenderer = (function () {
             if (focalTile && (!selUnit
                     || Math.round(selUnit.x) !== focalTile.x || Math.round(selUnit.y) !== focalTile.y)) {
                 var fp = _occTilePoint(focalTile.x, focalTile.y);
-                if (fp) subs.push(fp);
+                if (fp) { fp.ov = ovOn; subs.push(fp); }
+            }
+            /* THE OVERHEAD FADE: the tile under the cursor (one ray) — a crown or a deck over it opens while it is pointed at */
+            if (ovOn && _lastHoverX >= 0 && _lastHoverY >= 0 && !(focalTile && focalTile.x === _lastHoverX && focalTile.y === _lastHoverY)
+                    && !(selUnit && Math.round(selUnit.x) === _lastHoverX && Math.round(selUnit.y) === _lastHoverY)) {
+                var hp = _occTilePoint(_lastHoverX, _lastHoverY);
+                if (hp) { hp.one = true; hp.ov = true; subs.push(hp); }
             }
             /* THE FADE RULES (2026-10-14): wherever off-grid scenery stands round the board (a facility enclosure, a
                near setting, the room round a field fight), the BOARD itself is a subject — a 4 × 4 lattice of tiles,
                one sight line each — and so is every unit the viewer can see (one line each; a hidden enemy never
                drives a fade, it would leak its position), so a wall, a tree ring or a building off the grid never
                covers any part of the battlefield from any angle. */
-            if (facOcc || fieldSet || (_nearOccGroup && _nearOccGroup.parent)) {
+            var offGridSet = facOcc || fieldSet || (_nearOccGroup && _nearOccGroup.parent);
+            if (offGridSet) {
                 var fbw = (typeof bw === 'function') ? bw() : 0, fbh = (typeof bh === 'function') ? bh() : 0;
                 if (fbw > 2 && fbh > 2) {
                     var lx = [1, (fbw - 1) / 3, (fbw - 1) * 2 / 3, fbw - 2], lz = [1, (fbh - 1) / 3, (fbh - 1) * 2 / 3, fbh - 2];
                     for (var fi = 0; fi < 4; fi++) for (var fj = 0; fj < 4; fj++) {
                         var fq = _occTilePoint(Math.round(lx[fi]), Math.round(lz[fj]));
-                        if (fq) { fq.one = true; subs.push(fq); }
+                        if (fq) { fq.one = true; subs.push(fq); }   // the lattice drives the off-grid fade only (no .ov)
                     }
                 }
-                if (state && state.units) {
-                    for (var ui = 0; ui < state.units.length; ui++) {
-                        var vu = state.units[ui];
-                        if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
-                        var vq = _occUnitPoint(vu);
-                        if (vq) { vq.one = true; subs.push(vq); }
-                    }
+            }
+            /* every unit the viewer can see: off-grid scenery (above) and, on any map, a piece hanging over it (THE OVERHEAD FADE) */
+            if ((offGridSet || ovOn) && state && state.units) {
+                for (var ui = 0; ui < state.units.length; ui++) {
+                    var vu = state.units[ui];
+                    if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
+                    var vq = _occUnitPoint(vu);
+                    if (vq) { vq.one = true; vq.ov = ovOn && !vu._insideBuildingId; subs.push(vq); }
                 }
             }
         }
@@ -18415,8 +18541,10 @@ const ThreeRenderer = (function () {
                        jittered rays below a subject's feet hit it from any angle */
                     if (hits[hi].object._ew_occSkip) continue;
                     var r = _occRootOf(hits[hi].object);
+                    if (!r || roots.has(r)) continue;
                     /* a near setting's piece always takes the off-grid test (its oceans / backdrops / aprons never fade, shot or not) */
-                    if (r && _occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
+                    if (_occHitFadeable(r, sub) && ((anyFade && r.parent !== _nearOccGroup) || _occRootOffGrid(r, sub))) roots.add(r);
+                    else if (sub.ov && _occOverheadHit(r, hits[hi], sub, _occDir)) roots.add(r);   // THE OVERHEAD FADE
                 }
             }
         }
@@ -18619,7 +18747,8 @@ const ThreeRenderer = (function () {
 
         var active = cineActive || !!selUnit || !!focalTile
             || !!(inBattle && _facilityNearGroup && _facilityNearGroup.parent)   // facility boards: the grid is always a subject
-            || !!(inBattle && _nearOccGroup && _nearOccGroup.parent);            // near settings too (THE FADE RULES)
+            || !!(inBattle && _nearOccGroup && _nearOccGroup.parent)             // near settings too (THE FADE RULES)
+            || !!(inBattle && !_occOverheadOff() && state.units && state.units.length);   // THE OVERHEAD FADE: every seen unit is a subject
 
         if (!active && _occFaded.size === 0 && _occUnitFaded.size === 0) return;   // nothing to do
         _occInit();
@@ -37388,6 +37517,7 @@ const ThreeRenderer = (function () {
         _updateZoneBorderPulse();
 
         _updatePreviewOverlayPulse();
+        _syncHlGhosts();   // THE HIGHLIGHT GHOSTS: after every opacity write of the frame
         _updateActionGlow();
         _updateTerrainGhostPulse();
 
