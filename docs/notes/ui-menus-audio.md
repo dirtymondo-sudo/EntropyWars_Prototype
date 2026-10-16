@@ -1161,6 +1161,18 @@ pause/settings menu from the party builder or match select ... ideally it would 
 - Halo distance uses the CSS `scale` property (not the CSS `r` property, kept off for browser safety) with stroke-width divided back.
 - The battle stand-in specimen predates this pass (no halo there); recapture it if it matters.
 
+### UI Maker pass 9: icon rows, reserves, party portraits (2026-10-16, mondo: "let me change the vertical spacing between the turn clock icons ... Take the reserves out of the turn clock and let me place them separately ... what if i want them stacked vertical? ... i want the health bars to be underneath just like everywhere else and i dont need a panel for it")
+- db.icons (ICONS_DEF, iconsOf/iconsTidy/iconsCss, part of the layout undo + "Reset the whole layout"): tcGap (px between turn
+  order icons, -20..40; the sheet writes --tc-gap on .ew-turn-col, TurnColumn reads it in measure() and uses it for the gap
+  and the fit maths; below 0 = negative margins via --tc-neg); dockDir row | col | colup; dockGap; dockTag none | under | panel.
+- The reserves + the escaped left the turn column: TurnColumn returns a Fragment, the column plus .ew-reserves-box (absolute,
+  right 12 bottom 12, scaled from its bottom-right). New UIM_PIECES row 'bench' ("Reserves"). The column's fit no longer
+  reserves height for them.
+- Exploration party portraits (map.js #hqDock markup untouched): iconsCss lays each .hq-dock-pp out as a grid (ring, then the
+  bars under it, then the name + HP under them or beside them). Bars-mode place 'dock' now defaults to 'both' with the bars in
+  the flow under the ring (position static); the lead's name + HP plate is hidden by default (dockTag none).
+- Layout > Turn order / Party portraits show "The icons" (iconsForm; data-ipath sliders, data-dk iconset key:value buttons).
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
