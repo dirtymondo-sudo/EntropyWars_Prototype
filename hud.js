@@ -2391,7 +2391,7 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
       if (ROM[hr]) {
         const [x, y] = _hrlgPol(76, hr * 30);
         numerals.push(h('text', {
-          key: hr, x, y: y + 5, textAnchor: 'middle',
+          key: hr, x, y: y + 5, textAnchor: 'middle', className: 'hrlg-rom',
           fontFamily: '"Cormorant SC", serif', fontWeight: 700, fontSize: 13.5,
           fill: EW.ink, opacity: 0.92,
         }, ROM[hr]));
@@ -2400,7 +2400,7 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
         numerals.push(h('path', {
           key: hr,
           d: 'M' + x + ',' + (y - 2.6) + ' L' + (x + 2) + ',' + y + ' L' + x + ',' + (y + 2.6) + ' L' + (x - 2) + ',' + y + ' Z',
-          fill: 'var(--hfc)', opacity: 0.7,
+          fill: 'var(--hfc)', opacity: 0.7, className: 'hrlg-dia',
         }));
       }
     }
@@ -2427,10 +2427,14 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
           h('stop', { offset: '100%', stopColor: '#08070f', stopOpacity: 0.8 }),
         ),
         h('clipPath', { id: 'hrlgMapClip' }, h('circle', { cx: 100, cy: 100, r: 56 })),
+        /* the portrait's other shapes (UI Maker hero section "Portrait shape" points the disc's clip-path at one) */
+        h('clipPath', { id: 'hrlgClipSquare' }, h('rect', { x: 46, y: 46, width: 108, height: 108, rx: 6 })),
+        h('clipPath', { id: 'hrlgClipDiamond' }, h('path', { d: 'M100,38 L162,100 L100,162 L38,100 Z' })),
+        h('clipPath', { id: 'hrlgClipHex' }, h('path', { d: 'M100,42 L150.2,71 L150.2,129 L100,158 L49.8,129 L49.8,71 Z' })),
       ),
-      h('circle', { cx: 100, cy: 100, r: 96, fill: 'url(#hrlgFaceG)', stroke: 'var(--hfc-soft)', strokeWidth: 1 }),
-      h('circle', { cx: 100, cy: 100, r: 98, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.8, opacity: 0.5 }),
-      h('circle', { cx: 100, cy: 100, r: 57, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.6, opacity: 0.22 }),
+      h('circle', { cx: 100, cy: 100, r: 96, fill: 'url(#hrlgFaceG)', stroke: 'var(--hfc-soft)', strokeWidth: 1, className: 'hrlg-face' }),
+      h('circle', { cx: 100, cy: 100, r: 98, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.8, opacity: 0.5, className: 'hrlg-rim' }),
+      h('circle', { cx: 100, cy: 100, r: 57, fill: 'none', stroke: 'var(--hfc)', strokeWidth: 0.6, opacity: 0.22, className: 'hrlg-inrim' }),
       // The inner disc: the etched flat-earth chart when the unit has no
       // face art. (The portrait itself is rendered OVER the hands — see
       // the svg composition in the return below.)
@@ -2442,8 +2446,8 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
           stroke: 'var(--hfc)', strokeWidth: 1.2, strokeOpacity: 0.35, strokeLinejoin: 'round',
         }),
       ),
-      h('g', { ref: ticksRef }, ticks),
-      h('g', null, numerals),
+      h('g', { ref: ticksRef, className: 'hrlg-ticks' }, ticks),
+      h('g', { className: 'hrlg-nums' }, numerals),
     );
   }, [portraitUrl]);
 
@@ -2462,8 +2466,8 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
         h('line', { x1: 100, y1: 118, x2: 100, y2: 18, stroke: EW.bad, strokeWidth: 1.1 }),
         h('circle', { cx: 100, cy: 113, r: 3.2, fill: 'none', stroke: EW.bad, strokeWidth: 1.1 }),
       ),
-      h('circle', { cx: 100, cy: 100, r: 4.6, fill: '#0d0b15', stroke: 'var(--hfc)', strokeWidth: 1.3 }),
-      h('circle', { cx: 100, cy: 100, r: 1.7, fill: 'var(--hfc)' }),
+      h('circle', { cx: 100, cy: 100, r: 4.6, fill: '#0d0b15', stroke: 'var(--hfc)', strokeWidth: 1.3, className: 'hrlg-cap' }),
+      h('circle', { cx: 100, cy: 100, r: 1.7, fill: 'var(--hfc)', className: 'hrlg-cap' }),
       // The ACTIVE UNIT'S PORTRAIT rides ON TOP of the hands (this menu only
       // renders on the local player's turn, so the face on the clock is
       // always YOUR unit — never the enemy's). Status flashes tint the disc:
@@ -2501,6 +2505,10 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
         h('circle', { cx: 100, cy: 100, r: 109, pathLength: 100, className: 'hrlg-harc hp', style: { strokeDasharray: Math.max(0, Math.min(100, hpPct)) + ' 100' } }),
         mpPct != null && h('circle', { cx: 100, cy: 100, r: 102.5, pathLength: 100, className: 'hrlg-harc mp', style: { strokeDasharray: Math.max(0, Math.min(100, mpPct)) + ' 100' } }),
       ),
+      /* THE TURN HALO (mondo 2026-10-16: "the little rotating dashed lines around the enemy turn clock icon during
+         their turn"): the turn order's slow-turning dashed ring, round the watch; this menu is up only on your
+         unit's turn. The UI Maker hero section styles it (or turns it off). */
+      h('circle', { cx: 100, cy: 100, r: 105, pathLength: 100, className: 'hrlg-halo' }),
     ),
     h('div', { ref: chimeARef, className: 'hrlg-chime' }),
     h('div', { ref: chimeBRef, className: 'hrlg-chime' }),
@@ -9665,6 +9673,10 @@ function _hudHideCss() {
       animation: hrlgStamp 0.35s cubic-bezier(0.16,1.4,0.3,1) both;
     }
     .hrlg-hub svg { width: 100%; height: 100%; overflow: visible; display: block; }
+    .hrlg-halo {
+      fill: none; stroke: var(--hfc, #4fd8ff); stroke-width: 1.7; stroke-dasharray: 3 4; opacity: 0.95; pointer-events: none;
+      transform-box: view-box; transform-origin: 50% 50%; animation: ewPpHalo 9s linear infinite;
+    }
     /* face-disc status tints: red pulse while burning, purple while
        poisoned; a one-shot white blink when the unit takes hit damage */
     .hrlg-flash, .hrlg-hitflash { pointer-events: none; }
@@ -11995,7 +12007,22 @@ function layoutCss() {
    section"): the identity column of the battle command rig (.hrlg-side: the watch with the unit's portrait, the
    name, the vitals, AP, item slots). db.hero = { w, watch, gap, face, glow, header, hide: { part: true } }; like the
    layout it is the same in every theme. Its LOOK is the theme's Hero skin role (Skins tab). */
-const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true, splitGap: 10, pad: 10 };
+const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true, splitGap: 10, pad: 10,
+  /* THE CLOCK (mondo 2026-10-16: "let me restyle the clock diffferent ways and resize how big the portrait is inside of
+     it", plus the turn halo): '' colours = the faction colour / the dark dial */
+  halo: true, haloStyle: 'dash', haloSpeed: 9, haloDir: 'cw', haloGap: 105, haloW: 1.7, haloColor: '',
+  pShape: 'circle', pSize: 1, pZoom: 1, pRing: false, nums: 'all', ticks: true, hands: true, rim: true, faceColor: '', clockColor: '' };
+/* one-click clock looks: each sets the dial fields below it */
+const CLOCK_LOOKS = [
+  ['classic', 'Classic', { nums: 'all', ticks: true, hands: true, rim: true, pRing: false }],
+  ['clean', 'Clean', { nums: 'none', ticks: false, hands: true, rim: true, pRing: true }],
+  ['ticks', 'Ticks only', { nums: 'none', ticks: true, hands: true, rim: true, pRing: false }],
+  ['numerals', 'Numerals only', { nums: 'roman', ticks: false, hands: true, rim: true, pRing: false }],
+  ['bare', 'Bare', { nums: 'none', ticks: false, hands: false, rim: false, pRing: true }],
+];
+const HALO_DASH = { dash: '3 4', dot: '0.6 2.4', long: '9 4', solid: '' };
+const PSHAPES = [['circle', 'Circle'], ['square', 'Square'], ['diamond', 'Diamond'], ['hex', 'Hex']];
+const PCLIP = { square: 'hrlgClipSquare', diamond: 'hrlgClipDiamond', hex: 'hrlgClipHex' };
 const HERO_PARTS = [
   ['watch', 'Watch', '.hrlg-hubwrap'], ['chips', 'Status chips', '.hrlg-status-row'], ['name', 'Name line', '.hrlg-core'],
   ['sub', 'Level + race line', '.hrlg-core-sub'], ['types', 'Type badges', '.hrlg-typerow'], ['vitals', 'HP / MP bars', '.hrlg-vitals'],
@@ -12024,6 +12051,46 @@ function heroOf() {
   const custom = anyOut || Object.keys(nudge).length > 0 || order.join() !== HERO_IDS.join();
   return Object.assign({}, HERO_DEF, D, { hide: Object.assign({}, D.hide || {}), where, nudge, order, anyOut, custom });
 }
+/* THE CLOCK: halo, dial and portrait of the hero watch (classes from HorologeHub) */
+function clockCss(H, HB) {
+  let css = '';
+  const n = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+  if (H.clockColor) css += `${HB} { --hfc: ${H.clockColor} !important; --hfc-soft: ${withAlpha(H.clockColor, 0.45)} !important; }\n`;
+  if (H.faceColor) css += `${HB} .hrlg-face { fill: ${H.faceColor} !important; }\n`;
+  if (!H.rim) css += `${HB} .hrlg-rim { display: none !important; } ${HB} .hrlg-face { stroke: none !important; }\n`;
+  if (!H.ticks) css += `${HB} .hrlg-ticks { display: none !important; }\n`;
+  if (H.nums === 'none') css += `${HB} .hrlg-nums { display: none !important; }\n`;
+  else if (H.nums === 'roman') css += `${HB} .hrlg-dia { display: none !important; }\n`;
+  else if (H.nums === 'dots') css += `${HB} .hrlg-rom { display: none !important; }\n`;
+  if (!H.hands) css += `${HB} .hrlg-hour, ${HB} .hrlg-min, ${HB} .hrlg-sec, ${HB} .hrlg-cap { display: none !important; }\n`;
+  // the portrait: its shape, how big its disc is on the watch, how far the art is zoomed in it
+  const k = (H.face === 'portrait' ? 1.7 : 1) * n(H.pSize, 0.4, 1.8, 1), z = n(H.pZoom, 0.5, 3, 1);
+  const D = `${HB} svg > g[clip-path]`;
+  if (k !== 1) css += `${D}, ${HB} .hrlg-inrim { transform: scale(${+k.toFixed(3)}); transform-origin: 100px 100px; }\n`;
+  if (PCLIP[H.pShape]) css += `${D} { clip-path: url(#${PCLIP[H.pShape]}) !important; } ${HB} .hrlg-inrim { display: none !important; }\n`;
+  if (z !== 1) css += `${D} image { transform: scale(${z}); transform-origin: 100px 100px; }\n`;
+  if (H.pRing && !PCLIP[H.pShape]) css += `${HB} .hrlg-inrim { opacity: 0.95 !important; stroke-width: 2.2 !important; }\n`;
+  // the turn halo
+  if (!H.halo) css += `${HB} .hrlg-halo { display: none !important; }\n`;
+  else {
+    const d = [];
+    if (H.haloStyle !== 'dash' && HALO_DASH[H.haloStyle] != null) d.push(`stroke-dasharray: ${HALO_DASH[H.haloStyle] || 'none'};`);
+    if (H.haloStyle === 'dot') d.push('stroke-linecap: round;');
+    /* the distance is a scale of the r 105 ring (the scale property rides on top of the turning transform); with the
+       health ring round the watch the halo starts outside it */
+    let gap = n(H.haloGap, 96, 140, 105);
+    try { if (+H.haloGap === HERO_DEF.haloGap && barsOf().place.hero !== 'bar') gap = 116; } catch (e) {}
+    const sc = gap / 105;
+    if (sc !== 1) d.push(`scale: ${+sc.toFixed(4)};`);
+    if (+H.haloW !== HERO_DEF.haloW || sc !== 1) d.push(`stroke-width: ${+(n(H.haloW, 0.5, 6, 1.7) / sc).toFixed(3)};`);
+    if (H.haloColor) d.push(`stroke: ${H.haloColor};`);
+    const sp = n(H.haloSpeed, 0, 60, 9);
+    if (sp === 0) d.push('animation: none;');
+    else if (sp !== 9 || H.haloDir === 'ccw') d.push(`animation: ewPpHalo ${sp}s linear infinite${H.haloDir === 'ccw' ? ' reverse' : ''};`);
+    if (d.length) css += `${HB} .hrlg-halo { ${d.join(' ')} }\n`;
+  }
+  return css;
+}
 function heroCss() {
   const H = heroOf(), S = ':root:root .hrlg-side';
   let css = '';
@@ -12035,8 +12102,9 @@ function heroCss() {
   if (!H.header) css += `${S}::before, ${S}::after { display: none !important; }\n`;
   if (+H.watch !== HERO_DEF.watch) { const w = Math.max(48, Math.min(260, +H.watch || HERO_DEF.watch)); css += `${S} .hrlg-hub { width: ${w}px !important; height: ${w}px !important; }\n`; }
   if (!H.glow) css += `${S} .hrlg-hub { filter: none !important; }\n`;
-  if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]):not(.hrlg-hring), ${S} .hrlg-hub svg > circle:nth-of-type(n+3) { display: none !important; }\n${S} .hrlg-hub svg > g[clip-path] { transform: scale(1.7); transform-origin: 100px 100px; }\n`;
+  if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]):not(.hrlg-hring), ${S} .hrlg-hub svg > circle:nth-of-type(n+3):not(.hrlg-halo) { display: none !important; }\n`;
   else if (H.face === 'dial') css += `${S} .hrlg-hub svg image, ${S} .hrlg-hub svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
+  css += clockCss(H, S + ' .hrlg-hub');
   const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([k, , sel]) => `${S} ${sel}, ${S} .hrlg-part-${k}`);
   if (hid.length) css += `${hid.join(', ')} { display: none !important; }\n`;
   /* THE PARTS: each part is its own box (see hud.js _hrlgSide), so it can slide, size and overlap its neighbour
@@ -13464,8 +13532,33 @@ function heroForm() {
     + R('Width', 'w', 140, 420, 2, +H.w) + R('Watch size', 'watch', 48, 260, 2, +H.watch) + R('Spacing', 'gap', 0, 24, 1, +H.gap)
     + `<div class="uim-f"><label>Watch face</label><div style="flex-wrap:wrap">${FACES.map(([v, l, tip]) => `<button class="uim-btn${H.face === v ? ' on' : ''}" data-dk="heroface" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>`
     + `<div class="uim-btns">${C('Watch glow', 'glow', H.glow)}${H.anyOut ? '' : C('Title bar', 'header', H.header, 'The strip across the top of the hero section')}</div>`
+    + clockForm(H, R, C)
     + heroPartsForm(H, R)
     + `<div class="uim-btns"><button class="uim-btn" data-dk="heroreset"${Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the hero section</button></div>`;
+}
+/* the clock: a look in one click, then each piece of the dial, the portrait, the turn halo */
+function clockForm(H, R, C) {
+  const seg = (l, key, opts, v) => `<div class="uim-f"><label>${l}</label><div style="flex-wrap:wrap">${opts.map(([o, ol, tip]) => `<button class="uim-btn${String(v) === String(o) ? ' on' : ''}" data-dk="heroset" data-val="${key}:${o}"${tip ? ` title="${esc(tip)}"` : ''}>${ol}</button>`).join('')}</div></div>`;
+  const col = (l, key, v, def) => `<div class="uim-f"><label>${l}</label><div><input type="checkbox" data-hpath="${key}" data-optc="${def}" data-re="1"${v ? ' checked' : ''} title="Its own colour">${v ? `<input type="color" value="${toHex(v)}" data-hpath="${key}" data-kind="rgb"><input class="uim-hex" value="${toHex(v)}" data-hpath="${key}" data-kind="hex" maxlength="7" spellcheck="false">` : '<span class="uim-note" style="margin:0">Faction colour</span>'}</div></div>`;
+  const look = (CLOCK_LOOKS.find(([, , f]) => Object.keys(f).every(x => String(H[x]) === String(f[x]))) || [''])[0];
+  let h = `<div class="uim-h">The clock</div>`
+    + `<div class="uim-f"><label>Look</label><div style="flex-wrap:wrap">${CLOCK_LOOKS.map(([v, l]) => `<button class="uim-btn${look === v ? ' on' : ''}" data-dk="clocklook" data-val="${v}">${l}</button>`).join('')}</div></div>`
+    + seg('Numerals', 'nums', [['all', 'All'], ['roman', 'Roman'], ['dots', 'Dots'], ['none', 'None']], H.nums)
+    + `<div class="uim-btns">${C('Ticks', 'ticks', H.ticks)}${C('Hands', 'hands', H.hands)}${C('Rim', 'rim', H.rim)}</div>`
+    + col('Clock colour', 'clockColor', H.clockColor, '#ffcd6b')
+    + col('Dial colour', 'faceColor', H.faceColor, '#0c0a14').replace('Faction colour', 'The dark dial');
+  h += `<div class="uim-h">The portrait</div>`
+    + seg('Shape', 'pShape', PSHAPES, H.pShape)
+    + R('Size on the watch', 'pSize', 0.4, 1.8, 0.05, +H.pSize) + R('Zoom in the frame', 'pZoom', 0.5, 3, 0.05, +H.pZoom)
+    + `<div class="uim-btns">${C('Bold frame', 'pRing', H.pRing, 'A bright ring round a round portrait')}</div>`;
+  h += `<div class="uim-h">Turn halo</div>`
+    + `<div class="uim-btns">${C('Show it', 'halo', H.halo, 'The slow-turning ring the turn order icon wears on its turn')}</div>`;
+  if (H.halo) h += seg('Line', 'haloStyle', [['dash', 'Dashes'], ['dot', 'Dots'], ['long', 'Long dashes'], ['solid', 'Solid']], H.haloStyle)
+    + R('Distance', 'haloGap', 96, 140, 1, +H.haloGap) + R('Thickness', 'haloW', 0.5, 6, 0.1, +H.haloW) + R('Turn time (s)', 'haloSpeed', 0, 60, 1, +H.haloSpeed)
+    + seg('Direction', 'haloDir', [['cw', 'Clockwise'], ['ccw', 'Anticlockwise']], H.haloDir)
+    + col('Halo colour', 'haloColor', H.haloColor, '#ffffff')
+    + `<div class="uim-note">Turn time 0 stops it. Distance 105 sits just outside the rim; while it is left at 105 it moves out past a health ring by itself.</div>`;
+  return h;
 }
 /* THE PARTS (mondo 2026-10-16: "i want to rearrange the elements ... move that stuff around and move it all in and
    out of the panel"): top-to-bottom order, in or outside the panel, shown or hidden, and for the picked part a slide,
@@ -13912,6 +14005,8 @@ function dockClick(e) {
     else if (k === 'ghost') { UI.ghost = v; A.dock.querySelectorAll('[data-dk="ghost"]').forEach(x => x.classList.toggle('on', x.dataset.val === v)); }
     else if (k === 'layreset') { if (confirm('Put every HUD piece back where it was, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; touchLayout(); dockBody(); } }
     else if (k === 'piecereset' && P) resetPiece(P);
+    else if (k === 'heroset') { const i = v.indexOf(':'); snapLayout(true); db.hero = db.hero || {}; db.hero[v.slice(0, i)] = v.slice(i + 1); heroTidy(); touchLayout(); dockDetail(); }
+    else if (k === 'clocklook') { const L = CLOCK_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.hero = Object.assign(db.hero || {}, L[2]); heroTidy(); touchLayout(); dockDetail(); } }
     else if (k === 'heroface') { snapLayout(true); db.hero = db.hero || {}; db.hero.face = v; heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroreset') { snapLayout(true); db.hero = {}; touchLayout(); dockDetail(); }
     else if (k === 'hpart') { UI.hpart = v || ''; dockDetail(); }
@@ -13972,6 +14067,11 @@ function dockInput(e) {
       const [, id, f] = k.split('.'); H.nudge = H.nudge || {}; const n = H.nudge[id] || (H.nudge[id] = {});
       n[f] = +el.value; syncTwins(el, 'data-hpath', n[f]);
       const rs = A.dock.querySelector('[data-dk="hpartreset"]'); if (rs) rs.disabled = false;
+    }
+    else if (el.dataset.optc != null) H[k] = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
+      H[k] = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase(); syncTwins(el, 'data-hpath', H[k]);
     }
     else { H[k] = el.dataset.bool ? el.checked : +el.value; if (el.dataset.num) syncTwins(el, 'data-hpath', H[k]); }
     heroTidy(); touchLayout();
