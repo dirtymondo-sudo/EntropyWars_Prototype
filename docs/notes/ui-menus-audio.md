@@ -1104,6 +1104,29 @@ looking thing when it should be like the other health bars or let it be a preset
 - NAME PLATES: three-renderer.js .tp-bar plates are DOM, not canvas (pass 4's note was wrong); the Health bars look now
   reaches them (colours, ends, track + frame; not thickness). Place row "Name plates" (bars only).
 
+## THE UI MAKER — pass 6: text, font, colour and tilt options for a Persona 5 look (2026-10-16, mondo, token 20261016-textstyle-01-cors)
+mondo (with a Persona 5 command-menu shot): "more customization options in the ui editor to allow similar stuff. more
+text and font and color options ... lets make it as robust as we can with the stuff we have available." No fonts or
+art downloaded.
+- FONTS: 12 system stacks added after the Google ones (Impact, Arial Black, Arial Narrow, Helvetica, Futura, Trebuchet,
+  Verdana, Times, Didot, Palatino, Copperplate, Lucida Console), each with fallbacks.
+- TEXT (theme.text, defaults in TEXT_DEF / textOf; '' / 0 / 1 = the old look): weight + titleWeight, italic +
+  titleItalic, titleSize + rowSize (zoom; rows zoom their children so the padding stays), tcase ('' / upper / cap /
+  lower / none; old caps:true still reads as upper via caseOf), effect gains 'offset' (offX/offY), effectColor,
+  outlineW (outline ring of 16 shadows above 1px), glowR, shadow2 + s2x/s2y (a second solid copy under the effect:
+  outline + red offset = the P5 letters). Colours: titleInk, rowInk, selInk (words only; the frame keeps sel),
+  firstInk. Lettering: bigFirst (::first-letter em on titles, header first child, and rows when bigRows), titlePlate
+  (a colour box behind the title words), titleSlant (skewX), titleTilt (rotate). Text tab is now 5 sections.
+- Title / header / row text rules use preHi() (:not(#uim-hi) x2) so they beat the body-font rule; before, a scope
+  with an id (#reactHudRoot *) beat the class titles and the title font never showed in the battle HUD with a body font.
+- Battle surface gained labels / selLabels (.hrlg-blabel) because the row words sit below the row's first child.
+- MOTION > Tilt + slant (theme.motion): rowTilt (rotate) + rowAlt (every other row the other way: x:nth-child(even),
+  or :nth-child(even) > x:only-child for the battle blade body), rowSlant (transform skewX) + rowUpright, selTilt +
+  selGrow (rotate/scale on buttonSel), panelTilt. Uses the rotate/scale properties so layout translate/scale stay.
+- SHAPES: Shard (a torn card, size = skew) and Jagged (a burst, size = spike depth), both whole shapes.
+- PRESET "Red & Black" (p_redblack) shows them together. Checked in headless Chromium: preview, the real Horologe
+  command rows, editing a preset into a copy.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and

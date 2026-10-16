@@ -11167,8 +11167,10 @@ const ROLES = [
 const SHAPES = [
   ['square', 'Square'], ['round', 'Round'], ['pill', 'Pill'], ['bevel', 'Bevel'], ['notch', 'Notch'],
   ['tab', 'Tab'], ['scoop', 'Scoop'], ['pixel', 'Pixel'], ['hex', 'Hex'], ['diamond', 'Diamond'], ['circle', 'Circle'],
+  ['shard', 'Shard'], ['jagged', 'Jagged'],
 ];
-const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1 };   // drawn whole and scaled to the box
+const FULL_SHAPES = { hex: 1, diamond: 1, circle: 1, shard: 1, jagged: 1 };   // drawn whole and scaled to the box
+const SIZED_FULL = { shard: 'Skew', jagged: 'Spikes' };                       // whole shapes the size slider still shapes
 const MATERIALS = [
   ['aluminium', 'Aluminium'], ['gunmetal', 'Gunmetal'], ['metal', 'Steel'], ['copper', 'Copper'], ['gold', 'Gold'],
   ['marble', 'Marble'], ['marble_light', 'Light marble'], ['enamel', 'Enamel'], ['crystal', 'Crystal'],
@@ -11180,7 +11182,43 @@ const FONTS = [
   ["'DotGothic16', monospace", 'DotGothic16 (pixel)'], ["'Cinzel', serif", 'Cinzel'], ["'Cinzel Decorative', serif", 'Cinzel Decorative'],
   ["'Cormorant SC', serif", 'Cormorant SC'], ["'Cormorant Garamond', serif", 'Cormorant Garamond'], ["'Bangers', cursive", 'Bangers'],
   ["'Caveat', cursive", 'Caveat'], ['Georgia, serif', 'Georgia'], ['Arial, sans-serif', 'Arial'], ["'Courier New', monospace", 'Courier New'],
+  /* the computer's own fonts (nothing downloaded): where one is missing the next in its line stands in */
+  ["Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif", 'Impact'], ["'Arial Black', 'Arial Bold', Gadget, sans-serif", 'Arial Black'],
+  ["'Arial Narrow', 'Helvetica Neue Condensed', 'Roboto Condensed', sans-serif", 'Arial Narrow'], ["'Helvetica Neue', Helvetica, Arial, sans-serif", 'Helvetica'],
+  ["Futura, 'Century Gothic', 'Trebuchet MS', sans-serif", 'Futura'], ["'Trebuchet MS', 'Lucida Grande', sans-serif", 'Trebuchet MS'],
+  ['Verdana, Geneva, sans-serif', 'Verdana'], ["'Times New Roman', Times, serif", 'Times New Roman'],
+  ["Didot, 'Bodoni 72', 'Bodoni MT', 'Times New Roman', serif", 'Didot'], ["'Palatino Linotype', Palatino, 'Book Antiqua', serif", 'Palatino'],
+  ["Copperplate, 'Copperplate Gothic Light', 'Cinzel', serif", 'Copperplate'], ["'Lucida Console', Monaco, 'Courier New', monospace", 'Lucida Console'],
 ];
+/* THE TEXT (pass 6, 2026-10-16, mondo's Persona 5 shot): every text option of a theme. '' / 0 / 1 leave the game's own look,
+   so a theme saved before these existed looks the same. */
+const TEXT_DEF = {
+  font: '', titleFont: '', caps: false, track: 0, effect: 'drop',
+  weight: '', titleWeight: '', italic: false, titleItalic: false, titleSize: 1, rowSize: 1,
+  effectColor: '', outlineW: 1, offX: 2, offY: 2, glowR: 6, shadow2: '', s2x: 3, s2y: 3,
+  titleInk: '', rowInk: '', selInk: '', firstInk: '', bigFirst: 1, bigRows: false,
+  titlePlate: '', titleSlant: 0, titleTilt: 0,
+};
+function textOf(t) { return Object.assign({}, TEXT_DEF, (t && !t.builtin && t.text) || {}); }
+/* the case: '' as the game, upper, lower, cap (Capitalised), none (as typed); a theme from before keeps its ALL CAPS box */
+function caseOf(tx) { return tx.tcase != null ? tx.tcase : (tx.caps ? 'upper' : ''); }
+const CASE_CSS = { upper: 'uppercase', lower: 'lowercase', cap: 'capitalize', none: 'none' };
+function ringShadow(r, c) {
+  if (r <= 1) return `-1px -1px 0 ${c}, 1px -1px 0 ${c}, -1px 1px 0 ${c}, 1px 1px 0 ${c}`;
+  const out = [];
+  for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; out.push(`${+(Math.cos(a) * r).toFixed(2)}px ${+(Math.sin(a) * r).toFixed(2)}px 0 ${c}`); }
+  return out.join(', ');
+}
+function textShadow(t) {
+  const c = t.colors, tx = textOf(t), ef = tx.effect || 'drop', ec = tx.effectColor, k = ec || '#000';
+  let s = ef === 'none' ? '' : ef === 'hard' ? `1px 1px 0 ${k}` : ef === 'hard2' ? `2px 2px 0 ${k}, 1px 1px 0 ${k}`
+    : ef === 'glow' ? `0 0 ${Math.max(1, +tx.glowR || 6)}px ${ec || withAlpha(c.sel, 0.35)}`
+    : ef === 'outline' ? ringShadow(Math.max(1, Math.min(4, +tx.outlineW || 1)), k)
+    : ef === 'offset' ? `${+tx.offX || 0}px ${+tx.offY || 0}px 0 ${k}`
+    : `0 1px 2px ${ec ? withAlpha(ec, 0.7) : 'rgba(0,0,0,0.7)'}`;
+  if (tx.shadow2) s = (s ? s + ', ' : '') + `${+tx.s2x || 0}px ${+tx.s2y || 0}px 0 ${tx.shadow2}`;
+  return s || 'none';
+}
 const SCAN = 'repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px)';
 
 /* ── colour helpers ── */
@@ -11297,7 +11335,7 @@ function newTheme(baseId, label) {
   };
 }
 
-const MOTION_DEF = { open: 'none', ms: 180, cursor: '', bob: true };
+const MOTION_DEF = { open: 'none', ms: 180, cursor: '', bob: true, rowTilt: 0, rowAlt: false, rowSlant: 0, rowUpright: false, selTilt: 0, selGrow: 1, panelTilt: 0 };
 function motionOf(t) { return Object.assign({}, MOTION_DEF, (t && !t.builtin && t.motion) || {}); }
 const OPENS = [['none', 'Instantly'], ['pop', 'Pop'], ['stretch', 'Stretch'], ['unroll', 'Unroll'], ['wipe', 'Wipe'], ['fade', 'Fade']];
 const CURSORS = [['', 'None'], ['▶', '▶'], ['☞', '☞'], ['◆', '◆'], ['●', '●'], ['➤', '➤'], ['»', '»'], ['>', '>']];
@@ -11407,6 +11445,28 @@ const UIM_PRESETS = [
     skinOn(t, 'button', { shape: 'square', size: 3, dither: 2, fill: row, outline: { w: 1, c: '#1a1d26' }, bevel: { w: 1, light: 0.25, dark: 0.45 }, shadow: { y: 1, blur: 0, a: 0.5 } });
     skinOn(t, 'chip', { shape: 'square', size: 3, dither: 2, fill: row, outline: { w: 1, c: '#1a1d26' }, bevel: { w: 1, light: 0.25, dark: 0.45 }, shadow: { y: 0, blur: 0, a: 0 } });
   }),
+  /* pass 6 (2026-10-16, mondo's Persona 5 shot): the new text + tilt options in one theme; duplicate it to start from it */
+  preset('p_redblack', 'Red & Black', 'Black slanted rows, heavy white type with a black outline and a red offset, a white selected row, rows tilted every other way.', 'onyx', t => {
+    Object.assign(t.colors, {
+      plateTop: '#0c0c0c', plateMid: '#060606', plateBot: '#000000', edge: '#ffffff', seam: '#000000', rim: '#d4001a', lip: 'rgba(255,255,255,0)',
+      headTop: '#d4001a', headBot: '#9c0012', headInk: '#ffffff', rowTop: '#000000', rowBot: '#000000', rowSelTop: '#ffffff', rowSelBot: '#ffffff',
+      rowEdge: '#ffffff', ink: '#ffffff', inkMute: '#e6e6e6', inkDim: '#9a9a9a', hair: 'rgba(255,255,255,0.3)', sel: '#ff2038', accent: '#ff2038', good: '#ffffff', bad: '#ff2038',
+    });
+    t.scan = false; t.drop = 0.6;
+    Object.assign(t.text, {
+      font: "'Arial Black', 'Arial Bold', Gadget, sans-serif", titleFont: "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif",
+      tcase: 'upper', track: 0.03, effect: 'outline', effectColor: '#000000', outlineW: 1, shadow2: '#d4001a', s2x: 3, s2y: 3,
+      selInk: '#000000', bigFirst: 1.45, bigRows: true, titlePlate: '#000000', titleSlant: 8, titleTilt: -3,
+    });
+    t.motion = Object.assign({}, MOTION_DEF, { open: 'pop', ms: 160, cursor: '', bob: false, rowTilt: 1.5, rowAlt: true, rowSlant: 12, selTilt: -3, selGrow: 1.08, panelTilt: -1 });
+    const none = { y: 0, blur: 0, a: 0 }, flat = { w: 0, light: 0, dark: 0 }, noGlow = { r: 0, c: '#ffffff', a: 0 }, noIn = { w: 0, c: '#000', gap: 0 };
+    skinOn(t, 'panel', { shape: 'shard', size: 14, fill: { kind: 'solid', alpha: 0.94, c1: '#000000' }, outline: { w: 3, c: '#ffffff' }, inner: { w: 2, c: '#d4001a', gap: 2 }, bevel: flat, shadow: { y: 4, blur: 0, a: 0.6 }, glow: noGlow });
+    skinOn(t, 'head', { shape: 'square', size: 3, fill: { kind: 'solid', alpha: 1, c1: '#d4001a' }, outline: { w: 2, c: '#000000' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+    skinOn(t, 'button', { shape: 'square', size: 3, fill: { kind: 'solid', alpha: 1, c1: '#000000' }, outline: { w: 2, c: '#ffffff' }, inner: noIn, bevel: flat, shadow: { y: 3, blur: 0, a: 0.5 }, glow: noGlow });
+    skinOn(t, 'buttonSel', { shape: 'square', size: 3, fill: { kind: 'solid', alpha: 1, c1: '#ffffff' }, outline: { w: 3, c: '#ff2038' }, inner: noIn, bevel: flat, shadow: { y: 3, blur: 0, a: 0.6 }, glow: { r: 10, c: '#ff2038', a: 0.55 } });
+    skinOn(t, 'chip', { shape: 'square', size: 3, fill: { kind: 'solid', alpha: 1, c1: '#000000' }, outline: { w: 2, c: '#ffffff' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+    skinOn(t, 'chipOn', { shape: 'jagged', size: 6, fill: { kind: 'solid', alpha: 1, c1: '#ffffff' }, outline: { w: 2, c: '#ff2038' }, inner: noIn, bevel: flat, shadow: none, glow: noGlow });
+  }),
 ];
 
 /* ── lookups ── */
@@ -11428,7 +11488,7 @@ function syncPickerRows() {
 function themeTokens(t) {
   if (!t) return HUD_THEME_TOKENS.crystal;
   if (t.builtin) return t.tokens;
-  const c = t.colors, ef = (t.text && t.text.effect) || 'drop', d = t.drop == null ? 0.5 : +t.drop;
+  const c = t.colors, d = t.drop == null ? 0.5 : +t.drop;
   return {
     'plate-bg': grad(c.plateTop, c.plateMid, c.plateBot), 'plate-edge': c.edge, 'plate-seam': c.seam, 'plate-rim': c.rim, 'plate-lip': c.lip,
     'plate-scan': t.scan ? SCAN : 'none',
@@ -11437,7 +11497,7 @@ function themeTokens(t) {
     'ink': c.ink, 'ink-mute': c.inkMute, 'ink-dim': c.inkDim, 'hair': c.hair,
     'dead-bg': c.deadBg, 'dead-edge': c.deadEdge, 'dead-ink': c.deadInk,
     'sel': c.sel, 'sel-soft': withAlpha(c.sel, 0.55), 'sel-faint': withAlpha(c.sel, 0.2),
-    'tshadow': ef === 'none' ? 'none' : ef === 'hard' ? '1px 1px 0 #000' : ef === 'hard2' ? '2px 2px 0 #000, 1px 1px 0 #000' : ef === 'glow' ? `0 0 6px ${withAlpha(c.sel, 0.35)}` : ef === 'outline' ? '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' : '0 1px 2px rgba(0,0,0,0.7)',
+    'tshadow': textShadow(t),
     'drop': d <= 0 ? 'none' : `0 3px 0 rgba(0,0,0,${(d * 1.1).toFixed(2)}), 0 8px 18px rgba(0,0,0,${(d * 0.9).toFixed(2)})`,
   };
 }
@@ -11448,7 +11508,7 @@ function extraTokens(t) {
     '--uim-accent': c ? c.accent : 'var(--ew-head-ink)',
     '--uim-good': c ? c.good : '#66ff8a',
     '--uim-bad': c ? c.bad : '#ff6a5c',
-    '--uim-caps': tx.caps ? 'uppercase' : 'none',
+    '--uim-caps': CASE_CSS[caseOf(tx)] || 'none',
     // a well (a box inside a window) darkens a dark plate, barely tints a light one
     '--uim-well': lum(c ? c.plateMid : colorsIn(themeTokens(t)['plate-bg'])[1]) > 0.5 ? 'rgba(60,40,20,0.07)' : 'rgba(0,0,0,0.22)',
   };
@@ -11487,6 +11547,24 @@ function shapePath(ctx, shape, x, y, w, h, s) {
     case 'hex': { const d = Math.min(h / 2, w / 4); ctx.moveTo(x + d, y); ctx.lineTo(x + w - d, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w - d, y + h); ctx.lineTo(x + d, y + h); ctx.lineTo(x, y + h / 2); break; }
     case 'diamond': ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h / 2); ctx.lineTo(x + w / 2, y + h); ctx.lineTo(x, y + h / 2); break;
     case 'circle': ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); break;
+    case 'shard': {   // a torn card: four corners pulled off square by the size
+      const k = Math.min(1, Math.max(0, s) / 20);
+      ctx.moveTo(x + w * 0.08 * k, y + h * 0.16 * k); ctx.lineTo(x + w, y); ctx.lineTo(x + w * (1 - 0.05 * k), y + h * (1 - 0.1 * k)); ctx.lineTo(x, y + h); break;
+    }
+    case 'jagged': {  // a burst: the edge broken into spikes of a fixed pattern, the size sets how deep
+      const d = Math.min(Math.max(s, 2), w / 4, h / 4), J = [0.2, 0.9, 0.45, 1, 0.3, 0.75, 0.55, 0.95, 0.15, 0.8, 0.4, 1, 0.6, 0.85];
+      let j = 0;
+      const edge = (x0, y0, x1, y1, nx, ny, n) => {
+        for (let i = 0; i < n; i++) {
+          const a = (i + 0.5) / n, b = (i + 1) / n, q = d * J[j++ % J.length];
+          ctx.lineTo(x0 + (x1 - x0) * a - nx * q + nx * d, y0 + (y1 - y0) * a - ny * q + ny * d);
+          ctx.lineTo(x0 + (x1 - x0) * b + nx * d, y0 + (y1 - y0) * b + ny * d);
+        }
+      };
+      ctx.moveTo(x + d, y + d);
+      edge(x, y, x + w, y, 0, 1, 9); edge(x + w, y, x + w, y + h, -1, 0, 5); edge(x + w, y + h, x, y + h, 0, -1, 9); edge(x, y + h, x, y, 1, 0, 5);
+      break;
+    }
     case 'pixel': {   // the 8-bit window: each corner a quarter circle cut into square steps
       const n = Math.max(2, Math.round(s / 3));
       const arc = (cx, cy, a0) => {
@@ -11676,6 +11754,8 @@ const UIM_SURFACES = [
       hero: '.hrlg-side, .hrlg-side-low',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
+    /* the words of a command row (sits deeper than a row's first child), for the text colours + big first letter */
+    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
@@ -12111,6 +12191,7 @@ ${R}.hrlg-side .hrlg-vnums b { color: var(--ew-ink, #fff); font-weight: 600; }\n
 /* ── the generator ── */
 function parts(list) { return String(list || '').split(',').map(s => s.trim()).filter(Boolean); }
 function pre(list) { return parts(list).map(s => ':root:root ' + s).join(', '); }
+function preHi(list) { return parts(list).map(s => ':root:root:not(#uim-hi):not(#uim-hi) ' + s).join(', '); }
 function preRules(txt) { return String(txt || '').replace(/(^|})\s*([^{}]+)\{/g, (m, a, sel) => `${a}\n${pre(sel)} {`); }
 const PAINT = {
   panel: 'background: var(--ew-plate-scan), var(--ew-plate-bg) !important; border: 1px solid var(--ew-plate-edge) !important; border-radius: 10px !important; color: var(--ew-ink) !important; box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 var(--ew-plate-lip), var(--ew-drop) !important;',
@@ -12167,13 +12248,55 @@ function surfaceCss(S, T, tid, gid) {
     if (S.cursorPre) css += preRules(S.cursorPre) + '\n';
     css += `${pre(S.cursor)} { content: "${mo.cursor.replace(/["\\]/g, '')}" !important; color: var(--ew-sel) !important; opacity: 1 !important; font-family: inherit; text-shadow: var(--ew-tshadow); ${mo.bob ? 'animation: uim-bob 0.6s steps(2, jump-none) infinite !important;' : 'animation: none !important;'} }\n`;
   }
+  // the tilt: rows lean (every other one the other way), the selected row leans and grows, windows lean
+  if (mo && S.roles.button && (+mo.rowTilt || +mo.selTilt || +mo.selGrow !== 1 || +mo.rowSlant)) {
+    const bt = parts(S.roles.button), sl = +mo.rowSlant || 0;
+    css += `${pre(S.roles.button)} { ${+mo.rowTilt ? `rotate: ${+mo.rowTilt}deg !important;` : ''} ${sl ? `transform: skewX(${-sl}deg) !important;` : ''} transition: rotate 0.12s ease-out, scale 0.12s ease-out; }\n`;
+    /* every other row: the row itself, or a row that is the only child of an even item (the battle blade's body) */
+    if (+mo.rowTilt && mo.rowAlt) css += `${pre(bt.map(x => x + ':nth-child(even), :nth-child(even) > ' + x.trim().split(/\s+/).pop() + ':only-child').join(', '))} { rotate: ${-mo.rowTilt}deg !important; }\n`;
+    if (sl && mo.rowUpright) css += `${pre(bt.map(x => x + ' > *').join(', '))} { transform: skewX(${sl}deg); }\n`;
+    if (S.roles.buttonSel && (+mo.selTilt || +mo.selGrow !== 1)) css += `${preHi(S.roles.buttonSel)} { ${+mo.selTilt ? `rotate: ${+mo.selTilt}deg !important;` : ''} ${+mo.selGrow !== 1 ? `scale: ${+mo.selGrow} !important;` : ''} z-index: 2; }\n`;
+  }
+  if (mo && S.roles.panel && +mo.panelTilt) css += `${pre(S.roles.panel)} { rotate: ${+mo.panelTilt}deg !important; }\n`;
   // the text
-  const tx = (T && !T.builtin && T.text) || null;
+  const tx = (T && !T.builtin && T.text) ? textOf(T) : null;
   if (tx) {
-    if (tx.font) css += `${pre(parts(S.scope).map(s => s + ', ' + s + ' *').join(', '))} { font-family: ${tx.font} !important; }\n`;
+    const all = parts(S.scope).map(s => s + ', ' + s + ' *').join(', ');
+    if (tx.font) css += `${pre(all)} { font-family: ${tx.font} !important; }\n`;
+    if (tx.weight || tx.italic) css += `${pre(all)} { ${tx.weight ? `font-weight: ${tx.weight} !important;` : ''} ${tx.italic ? 'font-style: italic !important;' : ''} }\n`;
+    /* the title / header / row rules beat the body ones above (a scope with an id outranks a class title otherwise) */
     const heads = [S.roles.head, S.roles.button, S.roles.chip].filter(Boolean).join(', ');
-    if (tx.titleFont && (S.titles || S.roles.head)) css += `${pre([S.titles, S.roles.head].filter(Boolean).join(', '))} { font-family: ${tx.titleFont} !important; }\n`;
-    if ((tx.caps || +tx.track) && heads) css += `${pre(heads)} { ${tx.caps ? 'text-transform: uppercase !important;' : ''} ${+tx.track ? `letter-spacing: ${(+tx.track).toFixed(2)}em !important;` : ''} }\n`;
+    const titles = [S.titles, S.roles.head].filter(Boolean).join(', ');
+    const kids = list => parts(list).map(x => x + ', ' + x + ' > *').join(', ');
+    if (titles && (tx.titleFont || tx.titleWeight || tx.titleItalic)) css += `${preHi(titles)} { ${tx.titleFont ? `font-family: ${tx.titleFont} !important;` : ''} ${tx.titleWeight ? `font-weight: ${tx.titleWeight} !important;` : ''} ${tx.titleItalic ? 'font-style: italic !important;' : ''} }\n`;
+    const cs = CASE_CSS[caseOf(tx)];
+    if ((cs || +tx.track) && heads) css += `${preHi(heads)} { ${cs ? `text-transform: ${cs} !important;` : ''} ${+tx.track ? `letter-spacing: ${(+tx.track).toFixed(2)}em !important;` : ''} }\n`;
+    if (+tx.titleSize !== 1 && (S.titles || S.roles.head)) css += `${preHi(S.titles || S.roles.head)} { zoom: ${+tx.titleSize} !important; }\n`;
+    if (+tx.rowSize !== 1 && S.roles.button) {   // the words grow, the row keeps its padding
+      css += `${preHi(parts(S.roles.button).map(x => x + ' > *').join(', '))} { zoom: ${+tx.rowSize} !important; }\n`;
+      css += `${preHi(parts(S.roles.button).map(x => x + ':not(:has(> *))').join(', '))} { zoom: ${+tx.rowSize} !important; }\n`;
+    }
+    // the text colours (off = the theme's ink)
+    if (tx.titleInk && titles) css += `${preHi(kids(titles))} { color: ${tx.titleInk} !important; }\n`;
+    if (tx.rowInk && S.roles.button) css += `${preHi([kids(S.roles.button), S.labels].filter(Boolean).join(', '))} { color: ${tx.rowInk} !important; }\n`;
+    const sels = [S.roles.buttonSel, S.roles.chipOn].filter(Boolean).join(', ');
+    if (tx.selInk && sels) css += `${preHi([kids(sels), S.selLabels].filter(Boolean).join(', '))} { color: ${tx.selInk} !important; }\n`;
+    // the lettering: a title on its own plate, slanted, tilted; a big first letter
+    if (S.titles && (tx.titlePlate || +tx.titleSlant || +tx.titleTilt || +tx.bigFirst !== 1)) {
+      css += `${preHi(S.titles)} { display: inline-block; ${tx.titlePlate ? `background: ${tx.titlePlate} !important; padding: 0.04em 0.4em !important;` : ''} ${+tx.titleSlant ? `transform: skewX(${-tx.titleSlant}deg) !important;` : ''} ${+tx.titleTilt ? `rotate: ${+tx.titleTilt}deg !important;` : ''} }\n`;
+    }
+    if (+tx.bigFirst !== 1 || tx.firstInk) {
+      /* ::first-letter needs a block: a title (made inline-block above), the first child of a flex header or row (a flex
+         item is a block), or a header / row holding bare text. The :has() ones sit in their own rule so a browser
+         without :has() still gets the rest. */
+      const fl = [], fh = [], rows = [S.roles.head, tx.bigRows && !S.labels ? S.roles.button : ''].filter(Boolean).join(', ');
+      if (S.titles) parts(S.titles).forEach(x => fl.push(x));
+      parts(rows).forEach(x => { fl.push(x + ' > :first-child'); fh.push(x + ':not(:has(> *))'); });
+      if (tx.bigRows && S.labels) parts(S.labels).forEach(x => fl.push(x));
+      const body = `{ ${+tx.bigFirst !== 1 ? `font-size: ${+tx.bigFirst}em;` : ''} ${tx.firstInk ? `color: ${tx.firstInk};` : ''} }`;
+      if (fl.length) css += `${preHi(fl.map(x => x + '::first-letter').join(', '))} ${body}\n`;
+      if (fh.length) css += `${preHi(fh.map(x => x + '::first-letter').join(', '))} ${body}\n`;
+    }
   }
   return { css, pending };
 }
@@ -12523,6 +12646,11 @@ function fColor(label, path, val, withA) {
   const a = alphaOf(val);
   return `<div class="uim-f"><label>${label}</label><div><input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb" title="Pick a colour"><input class="uim-hex" value="${toHex(val)}" data-path="${path}" data-kind="hex" maxlength="7" spellcheck="false" title="Type a hex colour">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity"><input type="number" class="uim-num" min="0" max="1" step="0.05" value="${a.toFixed(2)}" data-path="${path}" data-kind="alpha" title="Opacity">` : ''}</div></div>`;
 }
+/* a colour that can be off ('' = the theme's own): the box turns it on with def */
+function fColorOpt(label, path, val, def, withA, tip) {
+  const a = alphaOf(val);
+  return `<div class="uim-f"${tip ? ` title="${esc(tip)}"` : ''}><label>${label}</label><div><input type="checkbox" data-path="${path}" data-optc="${esc(def)}" data-re="1"${val ? ' checked' : ''} title="Its own colour">${val ? `<input type="color" value="${toHex(val)}" data-path="${path}" data-kind="rgb" title="Pick a colour"><input class="uim-hex" value="${toHex(val)}" data-path="${path}" data-kind="hex" maxlength="7" spellcheck="false" title="Type a hex colour">${withA ? `<input type="range" min="0" max="1" step="0.01" value="${a}" data-path="${path}" data-kind="alpha" title="Opacity">` : ''}` : '<span class="uim-note" style="margin:0">Off</span>'}</div></div>`;
+}
 function fSelect(label, path, opts, val) {
   return `<div class="uim-f"><label>${label}</label><div><select data-path="${path}" data-re="1">${opts.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(val) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>`;
 }
@@ -12632,7 +12760,7 @@ function skinForm(t, role, inDock) {
   if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
   const full = FULL_SHAPES[s.shape];
   h += sec('shape', 'Shape', `<div class="uim-shapes">${SHAPES.map(([v, l]) => `<button class="uim-shape${s.shape === v ? ' on' : ''}" data-set="${P}.shape" data-val="${v}" data-icon="${v}">${l}</button>`).join('')}</div>`
-    + (full ? '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
+    + (full ? (SIZED_FULL[s.shape] ? fRange(SIZED_FULL[s.shape], `${P}.size`, 0, 40, 1, s.size) : '') + '<div class="uim-note">This shape is drawn whole and stretched to the box.</div>' : fRange('Corner size', `${P}.size`, 0, 40, 1, s.size)), (SHAPES.find(x => x[0] === s.shape) || [0, ''])[1]);
   const f = s.fill, k = f.kind;
   let fb = fSeg('Kind', `${P}.fill.kind`, [['solid', 'Solid'], ['gradient', 'Gradient'], ['corners', '4 corners', 'Each corner its own colour, blended across the window'], ['radial', 'Radial'], ['material', 'Material'], ['none', 'None']], k);
   if (k === 'corners') {
@@ -12685,19 +12813,46 @@ function colorsForm(t) {
     + sec('ci', 'Ink', `${C('Ink', 'ink', false)}${C('Muted ink', 'inkMute', false)}${C('Dim ink', 'inkDim', false)}${C('Hairlines', 'hair', true)}${C('Select colour', 'sel', false)}${C('Accent', 'accent', false)}${C('Good', 'good', false)}${C('Bad', 'bad', false)}`)
     + sec('cd', 'Disabled rows', `${C('Fill', 'deadBg', true)}${C('Frame', 'deadEdge', true)}${C('Ink', 'deadInk', false)}`);
 }
+const WEIGHTS = [['', 'As the font'], ['400', 'Normal'], ['600', 'Semi-bold'], ['700', 'Bold'], ['900', 'Black']];
 function textForm(t) {
-  const tx = t.text;
-  return `${fSelect('Body font', 'text.font', FONTS, tx.font)}${fSelect('Title font', 'text.titleFont', FONTS, tx.titleFont)}
-    ${fCheck('ALL CAPS', 'text.caps', tx.caps)}${fRange('Letter spacing', 'text.track', 0, 0.4, 0.01, tx.track || 0)}
-    ${fSeg('Text effect', 'text.effect', [['drop', 'Soft shadow'], ['hard', 'Hard 1px', 'A solid 1 pixel shadow down and right'], ['hard2', 'Hard 2px'], ['outline', 'Outline'], ['glow', 'Glow'], ['none', 'None']], tx.effect || 'drop')}
-    <div class="uim-note">Caps and spacing go on headers, buttons and chips; the body font goes on every text in a menu wearing this theme.</div>`;
+  const tx = textOf(t), ef = tx.effect || 'drop', cs = caseOf(tx);
+  const fonts = sec('tf', 'Fonts', `${fSelect('Body font', 'text.font', FONTS, tx.font)}${fSeg('Body weight', 'text.weight', WEIGHTS, tx.weight)}${fCheck('Body italic', 'text.italic', tx.italic)}
+    ${fSelect('Title font', 'text.titleFont', FONTS, tx.titleFont)}${fSeg('Title weight', 'text.titleWeight', WEIGHTS, tx.titleWeight)}${fCheck('Title italic', 'text.titleItalic', tx.titleItalic)}
+    ${fRange('Title size', 'text.titleSize', 0.6, 2.5, 0.05, tx.titleSize)}${fRange('Button text size', 'text.rowSize', 0.6, 2, 0.05, tx.rowSize)}
+    <div class="uim-note">The body font goes on every text in a menu wearing this theme; titles are window names and headers. Fonts from Impact down are the computer's own: where one is missing, the next font in its line stands in.</div>`,
+    (FONTS.find(f => f[0] === (tx.titleFont || tx.font)) || ['', ''])[1]);
+  const kase = sec('tc', 'Case + spacing', `${fSeg('Case', 'text.tcase', [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed', 'Takes off the caps the game puts on']], cs)}
+    ${fRange('Letter spacing', 'text.track', 0, 0.4, 0.01, tx.track || 0)}
+    <div class="uim-note">Case and spacing go on headers, buttons and chips.</div>`, cs ? { upper: 'ALL CAPS', cap: 'Capitalised', lower: 'lower case', none: 'as typed' }[cs] : '');
+  let eb = fSeg('Effect', 'text.effect', [['drop', 'Soft shadow'], ['hard', 'Hard 1px', 'A solid 1 pixel shadow down and right'], ['hard2', 'Hard 2px'], ['offset', 'Offset', 'A solid copy of the letters, moved by X and Y'], ['outline', 'Outline'], ['glow', 'Glow'], ['none', 'None']], ef);
+  if (ef !== 'none') eb += fColorOpt('Effect colour', 'text.effectColor', tx.effectColor, ef === 'glow' ? toHex(t.colors.sel) : '#000000', ef === 'glow' || ef === 'drop');
+  if (ef === 'outline') eb += fRange('Outline width', 'text.outlineW', 1, 4, 0.5, tx.outlineW);
+  if (ef === 'offset') eb += fRange('Offset X', 'text.offX', -8, 8, 1, tx.offX) + fRange('Offset Y', 'text.offY', -8, 8, 1, tx.offY);
+  if (ef === 'glow') eb += fRange('Glow size', 'text.glowR', 1, 24, 1, tx.glowR);
+  eb += fColorOpt('Second shadow', 'text.shadow2', tx.shadow2, '#d4001a', false, 'A solid copy behind the effect: an outline with a coloured offset under it');
+  if (tx.shadow2) eb += fRange('Second X', 'text.s2x', -10, 10, 1, tx.s2x) + fRange('Second Y', 'text.s2y', -10, 10, 1, tx.s2y);
+  const effect = sec('te', 'Effect', eb + '<div class="uim-note">The effect goes on headers, buttons, chips and the HUD names.</div>', ef);
+  const inks = sec('ti', 'Text colours', `${fColorOpt('Title ink', 'text.titleInk', tx.titleInk, toHex(t.colors.headInk), false)}${fColorOpt('Button ink', 'text.rowInk', tx.rowInk, toHex(t.colors.ink), false)}
+    ${fColorOpt('Selected ink', 'text.selInk', tx.selInk, toHex(t.colors.sel), false, 'The selected row and chip words; the frame keeps the select colour')}${fColorOpt('First letter', 'text.firstInk', tx.firstInk, toHex(t.colors.sel), false)}
+    <div class="uim-note">Off: the colours from the COLOURS tab.</div>`);
+  const letters = sec('tl', 'Lettering', `${fRange('Big first letter', 'text.bigFirst', 1, 2.5, 0.05, tx.bigFirst)}${fCheck('On buttons too', 'text.bigRows', tx.bigRows)}
+    ${fColorOpt('Title plate', 'text.titlePlate', tx.titlePlate, '#000000', true, 'A box of colour behind the title words')}
+    ${fRange('Title slant', 'text.titleSlant', -25, 25, 1, tx.titleSlant)}${fRange('Title tilt', 'text.titleTilt', -15, 15, 0.5, tx.titleTilt)}
+    <div class="uim-note">The first letter of each title and header grows (and buttons, when ticked). Rows and windows tilt in the MOTION tab.</div>`);
+  return fonts + kase + effect + inks + letters;
 }
 function motionForm(t) {
   const m = motionOf(t);
   return sec('mo', 'Windows open', fSeg('Animation', 'motion.open', OPENS, m.open) + (m.open !== 'none' ? fRange('Speed (ms)', 'motion.ms', 60, 600, 10, m.ms) : '')
       + '<div class="uim-note">Plays when a window appears. Pop grows from the centre, Stretch opens a line then the box, Unroll drops from the top, Wipe slides in from the left.</div>')
     + sec('cu', 'Menu cursor', fSeg('Cursor', 'motion.cursor', CURSORS, m.cursor) + fCheck('Cursor bobs', 'motion.bob', m.bob)
-      + '<div class="uim-note">Points at the selected row in the pause menus, the match select and the preview.</div>');
+      + '<div class="uim-note">Points at the selected row in the pause menus, the match select and the preview.</div>')
+    + sec('tilt', 'Tilt + slant', fRange('Row tilt', 'motion.rowTilt', -12, 12, 0.5, m.rowTilt) + fCheck('Every other row the other way', 'motion.rowAlt', m.rowAlt)
+      + fRange('Row slant', 'motion.rowSlant', -25, 25, 1, m.rowSlant, 'Leans each row box like a parallelogram') + fCheck('Keep row words upright', 'motion.rowUpright', m.rowUpright)
+      + fRange('Selected tilt', 'motion.selTilt', -12, 12, 0.5, m.selTilt) + fRange('Selected grows', 'motion.selGrow', 1, 1.4, 0.01, m.selGrow)
+      + fRange('Window tilt', 'motion.panelTilt', -8, 8, 0.5, m.panelTilt)
+      + '<div class="uim-note">Tilt turns, slant leans. The selected row can turn and grow on its own. Window tilt turns every window of the theme.</div>',
+      [+m.rowTilt ? 'rows' : '', +m.rowSlant ? 'slant' : '', (+m.selTilt || +m.selGrow !== 1) ? 'selected' : '', +m.panelTilt ? 'windows' : ''].filter(Boolean).join(', '));
 }
 function slicesForm() {
   const sl = db.slices.find(x => x.id === UI.sliceId);
@@ -12802,7 +12957,8 @@ function onInput(e) {
   const wasDraft = !editable(curTheme());
   const t = materialize(); snap(t);
   let v;
-  if (el.dataset.mid) v = el.checked ? (t.skins[UI.role].fill.c1 || '#444444') : '';
+  if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+  else if (el.dataset.mid) v = el.checked ? (t.skins[UI.role].fill.c1 || '#444444') : '';
   else if (el.dataset.bool) v = el.checked;
   else if (el.dataset.num) v = +el.value;
   else if (el.dataset.kind === 'rgb') v = withAlpha(el.value, alphaOf(getPath(t, p)));
