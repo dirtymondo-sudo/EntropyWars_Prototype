@@ -49994,6 +49994,9 @@
                     state.round += 1;
                     _checkComebackArmed();
                     tickMatchClock();
+                    /* The round limit just ended the match (round 20 done → TIME): stop here, so no
+                       "Round 21 — Fight!", ROUND 21 card, respawns or new turn order follow the result. */
+                    if (state.winner) return;
                     checkZodiacRotation();
                     checkNewSkyEvent();
 

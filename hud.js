@@ -1316,8 +1316,9 @@ function Scoreboard({ st }) {
   const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const secs = String(elapsed % 60).padStart(2, '0');
 
-  const round = st.round || 1;
   const roundLimit = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
+  /* the round counter steps past the limit to end the match: never show R21/20 once time is up */
+  const round = (roundLimit > 0 && !st.suddenDeathActive) ? Math.min(st.round || 1, roundLimit) : (st.round || 1);
 
   const isSuddenDeath = !!st.suddenDeathActive;
   /* THE FIELD (Phase 9 Delivery 12, stage E): an encounter's fight wears THE FIELD before the mode — the latched

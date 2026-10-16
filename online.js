@@ -6063,6 +6063,9 @@
                 if (REC.trailTimer) { clearTimeout(REC.trailTimer); REC.trailTimer = null; }
                 REC.meta.winner = st.winner;
                 REC.meta.rounds = st.round || null;
+                /* a match ended by the round limit has stepped one past it: the replay says Round 20, not 21 */
+                { const _rl = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
+                  if (_rl > 0 && !st.suddenDeathActive && REC.meta.rounds > _rl) REC.meta.rounds = _rl; }
                 REC.meta.durationMs = Math.round(performance.now() - REC.t0);
                 REC.meta.endedAt = Date.now();
                 REC.meta.eventCount = REC.events.length;
