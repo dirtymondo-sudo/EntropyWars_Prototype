@@ -997,12 +997,13 @@ mondo: "the maps used for the floating crystal battle icon ... are those the vox
 - The crystal (`proc: 'battle_marker'`) launches data.js `hqMarkerLaunch`, whose board is now `hqMarkerArenaId(site)`: the site's own
   12×12 arena (`<site>_delta`, made the arena by hqArenaRegisterAll, or a kept board in HQ_ARENA_RULES.keep). The room's own 8×8
   area Δ is no longer used by the crystal (Camelot's ward had one).
-- Sites with no arena (bake-arenas.js finds no 12×12 window): HQ_ARENA_RULES.standIn — Hell → Mars, Bermuda → Atlantis,
-  Flying Dutchman → Haunted House. The natives / checklist stay the crystal's own site.
+- Sites with no arena (bake-arenas.js finds no 12×12 window): Hell, Bermuda, the Flying Dutchman keep their OWN moving Δ boards
+  (the Dutchman sails, Bermuda sails, Hell descends). A stand-in table (Hell → Mars etc.) shipped in PR #239 and was REMOVED the same
+  day — mondo: "flying dutchman has the pvp map where its moving on the water, why would you replace it". Never swap a moving board.
 - Before, an arena crystal fight drew the bare baked board with no room round it (the run carried no field, so battle.js
   `_ewEncounterRoom` hid the arena's record). battle.js `_encArenaFallback` / `_encFieldId`: a marker run with no field reads
   `hqArenaRun(activeGameMode)` — the room is drawn, the arena's wall / no-deform cells hold.
 - map.js return: the debrief eye is used only when it is in the return room's metres (`eye.room`); else the load card.
-- Browser-checked: Stonehenge (handed over), Hell → Mars (rebuilt), Camelot Arena mode, Hell win → back to the pit.
+- Browser-checked: Stonehenge (handed over), Camelot Arena mode, the Dutchman on its own sailing deck.
 - Hitting a native still uses an area Δ in the 4 rooms the field rasteriser refuses (Bermuda sea, Downtown harbour,
   Atlantis abyss, Dutchman deck).
