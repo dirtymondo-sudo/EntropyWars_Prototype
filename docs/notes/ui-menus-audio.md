@@ -1127,6 +1127,25 @@ art downloaded.
 - PRESET "Red & Black" (p_redblack) shows them together. Checked in headless Chromium: preview, the real Horologe
   command rows, editing a preset into a copy.
 
+## THE UI MAKER — pass 7: screen stand-ins (2026-10-16, mondo, token 20261016-standins-01-cors)
+mondo: "i cant see the screen i am editing unless i am on that screen in the actual game. but i cant access the
+pause/settings menu from the party builder or match select ... ideally it would just show me the screen i am editing".
+- UIM_SPECIMENS (hud.js, before UIM_PREVIEW): one markup string per UIM_SURFACES id (all 15), captured from the real
+  screens in headless Chromium (real classes, real labels, sample rows), stripped of scripts/handlers/inner ids
+  (battle keeps its SVG defs ids renamed uims-*; results keeps #mainMenuBtn; lobby keeps #friendlyMapSelect).
+- mountStage(host, surfaceId, themeFn, onPick): an iframe (1280x720, scaled by fitStage) holding a copy of every page
+  stylesheet (stageSheets; the UI Maker's own sheets left out) plus #uim-stage-css = stageCss(S, T): tokens +
+  surfaceCss for that ONE surface and theme, with its own skin vars. apply() refreshes every mounted stage. Lives in
+  its own document, so game scripts (getElementById, _watchPhaseForHud) never see it and ids never clash.
+- The battle HUD's sheet (#reactHudHideStyles) is removed outside a battle, so its text moved into _hudHideCss() and
+  stageSheets adds it when missing.
+- Full editor: SCREEN picker in the preview bar (Sample windows or any screen); the stand-in wears the theme being
+  edited; clicking a part opens that role in Skins (stagePick, :hover parts ignored).
+- Menus live view: a picked menu that is not on screen gets a full-screen stand-in behind the dock (.uim-stand,
+  z 10059) in the theme it wears (liveStand); its windows feed A.rects so the dock dodges them; Space peeks.
+- To refresh a specimen after a screen's markup changes: capture the real screen's outerHTML headless (strip
+  handlers, ids, canvases; trim lists) and replace its string.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
