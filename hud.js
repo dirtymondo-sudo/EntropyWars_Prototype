@@ -9199,11 +9199,10 @@ function _teardownHudJuice() {
   if (_hudJuiceLayer) { _hudJuiceLayer.remove(); _hudJuiceLayer = null; }
 }
 
-function _injectHudHideStyles() {
-  if (document.getElementById('reactHudHideStyles')) return;
-  const style = document.createElement('style');
-  style.id = 'reactHudHideStyles';
-  style.textContent = `
+/* the battle HUD's stylesheet text, also copied into the UI Maker's screen stand-ins (which draw the battle HUD
+   outside a battle, after _removeHudHideStyles took the live copy away) */
+function _hudHideCss() {
+  return `
     /* Hide old HUD elements replaced by React HUD */
     .battle-hud-scoreboard { display: none !important; }
     .battle-hud-roster { display: none !important; }
@@ -11079,6 +11078,12 @@ function _injectHudHideStyles() {
     .hrlg-blade.tut .hrlg-body { outline: 2px solid #ffcd6b; outline-offset: 1px; box-shadow: 0 0 14px rgba(255,205,107,0.55); animation: hrlgTutGlow 1.1s ease-in-out infinite; }
     @keyframes hrlgTutGlow { 0%, 100% { outline-color: #ffcd6b; } 50% { outline-color: rgba(255,205,107,0.25); } }
   `;
+}
+function _injectHudHideStyles() {
+  if (document.getElementById('reactHudHideStyles')) return;
+  const style = document.createElement('style');
+  style.id = 'reactHudHideStyles';
+  style.textContent = _hudHideCss();
   document.head.appendChild(style);
   // CRT veil kill switch (console: window.EW_DISABLE_CRT = true, then re-enter battle)
   document.body.classList.toggle('ew-no-crt', !!window.EW_DISABLE_CRT);
@@ -12375,6 +12380,8 @@ function stageSheets() {
     if (el.id === 'ew-ui-maker' || el.id === 'ew-ui-layout' || el.id === 'uimStyles') return;
     h += el.outerHTML;
   });
+  /* outside a battle the battle HUD's own sheet is gone from the page: the stand-ins still need it */
+  if (!document.getElementById('reactHudHideStyles') && typeof _hudHideCss === 'function') h += `<style id="reactHudHideStyles">${_hudHideCss()}</style>`;
   return h;
 }
 /* one surface in one theme (null = the screen's own look over the Settings theme tokens) */
