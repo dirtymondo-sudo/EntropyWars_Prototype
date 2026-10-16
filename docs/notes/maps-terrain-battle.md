@@ -520,4 +520,8 @@ corner and a film's waterfall start. The true ground's fluid skin materials get 
   surface (past the carved bank) the whole-cell quads printed 0.5 m stair-steps. Each node now has a signed reach (owned → +,
   ground over the surface → +, dry low ground → `din + bank` clamped −0.1…−0.4) and mixed cells are clipped by marching squares.
   Off: `window.EW_HQ_WATER_STEPS`. Cave grid rooms (`_hqBuildCave`) keep their square pits.
+  2026-10-16 (mondo: the Haunted House pond was still jagged): ground AT the water line (a flat lawn with the pool's `y` 0)
+  counted as "ground over the surface" and kept whole cells, but the sheet lies 0.4 px over it — only ground > y + 0.05 m
+  hides the sheet now. A sweep of every room (axis-aligned sheet edges over lower/level ground) went 72 → 0 on the Haunted
+  grounds, and to 0 or to straight-channel edges only on the rest.
 - Kill-switch for both blends: `window.EW_NO_SHORE_BLEND`.
