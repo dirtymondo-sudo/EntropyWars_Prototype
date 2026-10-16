@@ -1146,6 +1146,21 @@ pause/settings menu from the party builder or match select ... ideally it would 
 - To refresh a specimen after a screen's markup changes: capture the real screen's outerHTML headless (strip
   handlers, ids, canvases; trim lists) and replace its string.
 
+### UI Maker pass 8: the hero clock (2026-10-16, mondo: "add the little rotating dashed lines around the enemy turn clock icon ... to my current unit's clock+portrait ... restyle the clock ... resize how big the portrait is")
+- The Horologe hub SVG now ends with circle.hrlg-halo (r105, dasharray 3 4, the turn icon's ewPpHalo 9s spin, stroke
+  var(--hfc)). Default on. When the health ring shows (bars place ring/both) and Distance is left at 105 it moves to 116.
+- Hub parts got classes for styling: hrlg-face / hrlg-rim / hrlg-inrim circles, hrlg-ticks, hrlg-nums (hrlg-rom
+  numerals, hrlg-dia diamonds), hrlg-cap. Extra clipPaths hrlgClipSquare / hrlgClipDiamond / hrlgClipHex.
+- db.hero keys (HERO_DEF): halo, haloStyle dash|dot|long|solid, haloSpeed (s, 0 = still), haloDir cw|ccw, haloGap
+  96-140, haloW, haloColor; pShape circle|square|diamond|hex, pSize 0.4-1.8 (portrait group scale, x1.7 in Portrait
+  face), pZoom (image inside the frame), pRing (bold inner frame); nums all|roman|dots|none, ticks, hands, rim,
+  faceColor, clockColor (sets --hfc for the hub). clockCss(H, hub) writes them; CLOCK_LOOKS = the Look buttons
+  (Classic, Clean, Ticks only, Numerals only, Bare).
+- Dock: Layout > hero piece > "The clock", "The portrait", "Turn halo" (clockForm). data-dk heroset (key:value) and
+  clocklook; colour rows use data-optc so unticked = the old look.
+- Halo distance uses the CSS `scale` property (not the CSS `r` property, kept off for browser safety) with stroke-width divided back.
+- The battle stand-in specimen predates this pass (no halo there); recapture it if it matters.
+
 ## THE DATA PANEL + THE ITEM EDITOR (2026-10-08, thread "dev tools")
 
 R2 files: data.js, ui.js, map.js, battle.js, hud.js, ai.js, online.js, state.js, editor.js. mondo picked tools 2 (a live data panel) and
