@@ -1767,6 +1767,7 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       + (next ? ' next' : '')
       + (dead ? ' dead' : '')
       + (foe ? ' foe' : '')
+      + (!dead && maxHp > 0 && hpPct <= 30 ? ' low' : '')
       + (possessed ? ' possessed' : ''),
     style: { '--pp': size + 'px', '--pp-fc': ringColor || getFactionColor(unit) },
   },
@@ -1796,6 +1797,12 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       ),
       dead && h('text', { x: 50, y: 60, textAnchor: 'middle', className: 'ew-pp-skull' }, '☠'),
       possessed && !dead && h('text', { x: 50, y: 22, textAnchor: 'middle', className: 'ew-pp-chain' }, '⛓'),
+    ),
+    /* straight HP / MP bars under the face, for when the UI Maker's "Health bars" gives the turn order bars
+       instead of (or as well as) the rings; hidden otherwise (the layout sheet shows them) */
+    h('span', { className: 'ew-pp-bars', style: { display: 'none' } },
+      h('span', { className: 'ew-pp-bar hp' }, h('i', { style: { width: hpPct + '%' } })),
+      maxMp > 0 && h('span', { className: 'ew-pp-bar mp' }, h('i', { style: { width: mpPct + '%' } })),
     ),
   );
 }
@@ -2272,7 +2279,7 @@ function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned }) {
+function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low }) {
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
   const hitRef = useRef(null);
@@ -2485,6 +2492,15 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
         poisoned && h('circle', { cx: 100, cy: 100, r: 56.5, className: 'hrlg-flash hrlg-flash-poison' }),
         h('circle', { ref: hitRef, cx: 100, cy: 100, r: 56.5, className: 'hrlg-hitflash' }),
       ),
+      /* THE WATCH RING (UI Maker "Health bars", mondo 2026-10-16: "what gets a normal health bar and what gets a
+         circular one"): HP outside, MP inside, round the watch, filling from 6 o'clock clockwise like the turn
+         order icons. Hidden unless the maker gives the hero section a ring (the layout sheet shows it). */
+      hpPct != null && h('g', { className: 'hrlg-hring' + (low ? ' low' : ''), style: { display: 'none' } },
+        h('circle', { cx: 100, cy: 100, r: 109, className: 'hrlg-htrack hp' }),
+        h('circle', { cx: 100, cy: 100, r: 102.5, className: 'hrlg-htrack mp' }),
+        h('circle', { cx: 100, cy: 100, r: 109, pathLength: 100, className: 'hrlg-harc hp', style: { strokeDasharray: Math.max(0, Math.min(100, hpPct)) + ' 100' } }),
+        mpPct != null && h('circle', { cx: 100, cy: 100, r: 102.5, pathLength: 100, className: 'hrlg-harc mp', style: { strokeDasharray: Math.max(0, Math.min(100, mpPct)) + ' 100' } }),
+      ),
     ),
     h('div', { ref: chimeARef, className: 'hrlg-chime' }),
     h('div', { ref: chimeBRef, className: 'hrlg-chime' }),
@@ -2618,7 +2634,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       ),
       h('span', { className: 'hrlg-trow' },
       h('span', { className: 'hrlg-thp' },
-        h('span', { className: 'hrlg-thp-fill', style: {
+        h('span', { className: 'hrlg-thp-fill' + (port.ally ? (hpPct <= 30 ? ' low' : '') : ' foe'), style: {
           // canonical fill — ally green / enemy red, same as the nameplates
           width: hpPct + '%',
           background: port.ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
@@ -2866,7 +2882,7 @@ function _hrlgQuickVitals(panelKey) {
     h('div', { className: 'hrlg-qv-row' },
       h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
       h('span', { className: 'hrlg-thp' },
-        h('span', { className: 'hrlg-thp-fill', style: {
+        h('span', { className: 'hrlg-thp-fill' + (ally ? (hpPct <= 30 ? ' low' : '') : ' foe'), style: {
           width: hpPct + '%',
           background: ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
           boxShadow: ally ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
@@ -2982,6 +2998,23 @@ if (typeof window !== 'undefined' && !window._ewPointerTypeHooked) {
   window.addEventListener('pointermove', _ptNote, { capture: true, passive: true });
 }
 
+/* The identity column. Its children always come in one order: watch, status chips, name, level line, type badges,
+   vitals, AP, items, materials, tool rows (absent ones are null). THE HERO SPLIT (UI Maker, mondo 2026-10-16: "i want
+   to have the hero portion outside of the panel but still have the panel for below"): the top part floats bare over
+   the board and only the rest sits in the panel. db.hero.split = true, db.hero.out = 'watch' | 'name' | 'vitals' =
+   how far down the floating part reaches. */
+const _HRLG_SPLIT_AT = { watch: 2, name: 5, vitals: 6 };
+function _hrlgSide(...kids) {
+  let H = null;
+  try { H = window.UIMaker && window.UIMaker.hero ? window.UIMaker.hero() : null; } catch (e) { H = null; }
+  if (!H || !H.split) return h('div', { className: 'hrlg-side' }, ...kids);
+  const cut = _HRLG_SPLIT_AT[H.out] || _HRLG_SPLIT_AT.name;
+  return h('div', { className: 'hrlg-side split' },
+    h('div', { className: 'hrlg-side-top' }, ...kids.slice(0, cut)),
+    h('div', { className: 'hrlg-side-low' }, ...kids.slice(cut)),
+  );
+}
+
 function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
@@ -2989,6 +3022,13 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
   const [fireId, setFireId] = useState(null);
   const [hoverCost, setHoverCost] = useState(0);
   const inputDev = useInputDevice();
+  // the UI Maker's hero split (the watch outside the panel) changes the column's markup: re-render on its word
+  const [, setHeroTick] = useState(0);
+  useEffect(() => {
+    const f = () => setHeroTick(n => n + 1);
+    window.addEventListener('ew-uim-hero', f);
+    return () => window.removeEventListener('ew-uim-hero', f);
+  }, []);
 
   // the ACTIVE panel is the last one in the cascade — it owns the cursor,
   // the keyboard, the wheel and the description bar
@@ -3307,7 +3347,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     /* ── the IDENTITY COLUMN: end turn/back, the watch, name, vitals,
        AP, item slots, materials, tool rows — one straight stack, nothing
        absolute, nothing overlapping. */
-    h('div', { className: 'hrlg-side' },
+    _hrlgSide(
       /* (the old END TURN crown bar lived here — retired: the root panel's
          END TURN blade + SPACE / pad B cover it, the bar was redundant) */
       h('div', { className: 'hrlg-hubwrap' },
@@ -3317,6 +3357,8 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
           portraitTitle: 'Center the camera on ' + unitName,
           onPortraitClick: onPortraitClick,
           unitKey: unitKey, burning: burning, poisoned: poisoned,
+          hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
+          low: maxHp > 0 && hp / maxHp <= 0.3,
         }),
       ),
       /* status / stat-change chips — right under the watch portrait, the
@@ -3354,7 +3396,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         (() => {
           const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
           // canonical ally green — the Horologe always shows YOUR unit
-          return h('div', { className: 'hrlg-vrow hp' },
+          return h('div', { className: 'hrlg-vrow hp' + (hpPct <= 30 ? ' low' : '') },
             h('span', { className: 'hrlg-vlbl' }, 'HP'),
             h('span', { className: 'hrlg-vbar' },
               h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
@@ -3400,7 +3442,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
            Challenge / campaign); PvP passes xp:null and shows nothing */
         xp && (() => {
           const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
-          return h('div', { className: 'hrlg-vrow mp' },
+          return h('div', { className: 'hrlg-vrow mp xp' },
             h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
             h('span', { className: 'hrlg-vbar mp', style: { height: 7 } },
               h('span', { className: 'hrlg-vfill', style: {
@@ -3413,6 +3455,11 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
           );
         })(),
+        /* the numbers alone, for when the UI Maker swaps the bars for the watch ring (hidden otherwise) */
+        h('div', { className: 'hrlg-vnums', style: { display: 'none' } },
+          h('span', { className: 'hp' }, 'HP ', h('b', null, Math.max(0, Math.round(hp)) + '/' + maxHp)),
+          maxMp > 0 && h('span', { className: 'mp' }, 'MP ', h('b', null, Math.max(0, Math.round(mp)) + '/' + maxMp)),
+        ),
       ),
       /* Mystery Dungeon lockstep: NO AP economy on screen — one beat is one
          action, so the pip row would only ever read "spent". Hidden. */
@@ -11164,6 +11211,9 @@ if (!Array.isArray(db.slices)) db.slices = [];
 if (!db.assign || typeof db.assign !== 'object') db.assign = {};
 if (!db.layout || typeof db.layout !== 'object') db.layout = {};
 if (!db.hero || typeof db.hero !== 'object') db.hero = {};
+if (!db.bars || typeof db.bars !== 'object') db.bars = {};
+if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
+if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
    every role (a theme saved before a role existed, the Hero one, gets it off) */
 Object.keys(db.layout).forEach(k => {
@@ -11612,11 +11662,11 @@ const UIM_SURFACES = [
   { id: 'battle', label: 'Battle HUD', hint: 'The command rig, turn order, scoreboard, match pill.', native: true, def: 'theme',
     scope: '#reactHudRoot',
     roles: {
-      panel: '.hrlg-side, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
+      panel: '.hrlg-side, .hrlg-side-low, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
       buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
-      hero: '.hrlg-side',
+      hero: '.hrlg-side, .hrlg-side-low',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
@@ -11827,14 +11877,15 @@ function layoutCss() {
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
-  return css + heroCss();
+  return css + heroCss() + barsCss();
 }
 
 /* ── THE HOROLOGE HERO SECTION (mondo 2026-10-16: "i want to be able to adjust and change the horologe hero
    section"): the identity column of the battle command rig (.hrlg-side: the watch with the unit's portrait, the
    name, the vitals, AP, item slots). db.hero = { w, watch, gap, face, glow, header, hide: { part: true } }; like the
    layout it is the same in every theme. Its LOOK is the theme's Hero skin role (Skins tab). */
-const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true };
+const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true, split: false, out: 'name', splitGap: 10, pad: 10 };
+const HERO_OUT = [['watch', 'Watch', 'Only the watch (and the status chips) sit outside'], ['name', 'Watch + name', 'The watch, name, level line and type badges sit outside'], ['vitals', 'Watch + name + HP', 'The HP / MP bars sit outside too']];
 const HERO_PARTS = [
   ['watch', 'Watch', '.hrlg-hubwrap'], ['chips', 'Status chips', '.hrlg-status-row'], ['name', 'Name line', '.hrlg-core'],
   ['sub', 'Level + race line', '.hrlg-core-sub'], ['types', 'Type badges', '.hrlg-typerow'], ['vitals', 'HP / MP bars', '.hrlg-vitals'],
@@ -11853,16 +11904,152 @@ function heroCss() {
   if (!H.header) css += `${S}::before, ${S}::after { display: none !important; }\n`;
   if (+H.watch !== HERO_DEF.watch) { const w = Math.max(48, Math.min(260, +H.watch || HERO_DEF.watch)); css += `${S} .hrlg-hub { width: ${w}px !important; height: ${w}px !important; }\n`; }
   if (!H.glow) css += `${S} .hrlg-hub { filter: none !important; }\n`;
-  if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]), ${S} .hrlg-hub svg > circle:nth-of-type(n+3) { display: none !important; }\n${S} .hrlg-hub svg > g[clip-path] { transform: scale(1.7); transform-origin: 100px 100px; }\n`;
+  if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]):not(.hrlg-hring), ${S} .hrlg-hub svg > circle:nth-of-type(n+3) { display: none !important; }\n${S} .hrlg-hub svg > g[clip-path] { transform: scale(1.7); transform-origin: 100px 100px; }\n`;
   else if (H.face === 'dial') css += `${S} .hrlg-hub svg image, ${S} .hrlg-hub svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
   const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([, , sel]) => `${S} ${sel}`);
   if (hid.length) css += `${hid.join(', ')} { display: none !important; }\n`;
+  /* THE SPLIT: the column itself goes bare (no plate, no frame, no title bar) and only its lower part
+     (.hrlg-side-low, see hud.js _hrlgSide) wears the panel: the theme's Hero skin, else its Panel skin (the theme
+     sheet paints .hrlg-side-low with those roles), else the plate colours below */
+  if (H.split) {
+    const X = S + '.split', g = Math.max(0, Math.min(24, +H.gap || 0)), pd = Math.max(0, Math.min(30, +H.pad || 0));
+    css += `${X} { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; padding: 0 !important; animation: none !important; }
+${X}::before, ${X}::after { display: none !important; }
+${X} > .hrlg-side-top, ${X} > .hrlg-side-low { display: flex; flex-direction: column; gap: ${g}px; min-width: 0; }
+${X} > .hrlg-side-low { position: relative; margin-top: ${Math.max(0, Math.min(60, +H.splitGap || 0))}px; padding: ${pd}px; color: var(--ew-ink); border: 1px solid var(--ew-plate-edge); border-radius: 10px; background: var(--ew-plate-scan), var(--ew-plate-bg); box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 var(--ew-plate-lip), var(--ew-drop); }
+${X} > .hrlg-side-low:empty { display: none; }
+`;
+  }
   return css;
+}
+/* the column's markup follows db.hero.split: tell the Horologe to re-render when it changes */
+let _heroSplitKey = '';
+function heroSignal() {
+  const H = heroOf(), k = H.split ? 'split:' + H.out : '';
+  if (k === _heroSplitKey) return;
+  _heroSplitKey = k;
+  try { window.dispatchEvent(new Event('ew-uim-hero')); } catch (e) {}
 }
 function heroTidy() {
   const H = db.hero || (db.hero = {});
   Object.keys(HERO_DEF).forEach(k => { if (H[k] != null && String(H[k]) === String(HERO_DEF[k])) delete H[k]; });
   if (H.hide) { Object.keys(H.hide).forEach(k => { if (!H.hide[k]) delete H.hide[k]; }); if (!Object.keys(H.hide).length) delete H.hide; }
+}
+
+/* ── THE HEALTH BARS (mondo 2026-10-16: "let me change how the health bars look and what gets a normal health bar
+   and what gets a circular one"). db.bars = { place: { id: 'bar' | 'ring' | 'both' }, look: { … } }; like the
+   layout it is the same in every theme. Every place draws both shapes (the one it does not wear is hidden), and this
+   sheet only swaps which one shows and restyles them, so the defaults leave the HUD exactly as it was.
+   Not covered: the 3D nameplates over the units (drawn on canvas by the renderer). */
+const BAR_PLACES = [
+  { id: 'hero', label: 'Horologe hero section', sel: '.hrlg-vitals, .hrlg-hub', def: 'bar', ring: 'A ring round the watch', hint: 'Your acting unit, in a battle' },
+  { id: 'turns', label: 'Turn order icons', sel: '.ew-turn-col', def: 'ring', hint: 'The round portraits above the Horologe' },
+  { id: 'dock', label: 'Party portraits (exploring)', sel: '#hqPage .hq-dock', def: 'ring', hint: 'Bottom left while exploring' },
+  { id: 'rows', label: 'Target rows + quick look', sel: '.hrlg-qvitals, .hrlg-trow', def: 'bar', barOnly: true, hint: 'The target list and the clicked unit\'s card in a battle' },
+];
+const BAR_SHAPES = [['game', 'As made'], ['square', 'Square'], ['round', 'Rounded'], ['pill', 'Pill'], ['slant', 'Slanted']];
+const BAR_FILLS = [['game', 'Sheen', 'Dark to bright along the bar, the game\'s own look'], ['solid', 'Solid'], ['shine', 'Glossy', 'Light on top, shade below'], ['segments', 'Segments', 'Cut into blocks']];
+const BARS_DEF = { shape: 'game', h: 12, fill: 'game', seg: 10, hp: '#2ed158', foe: '#ff4a56', lowOn: true, low: '#ff4a4a', mp: '#2f9dff', track: '#07060b', frame: '#3a3448', frameW: 1, glow: true, wave: true, nums: true, labels: true, ring: 1, caps: false };
+function barsOf() {
+  const B = db.bars || {}, place = {};
+  BAR_PLACES.forEach(P => { const v = B.place && B.place[P.id]; place[P.id] = !P.barOnly && (v === 'bar' || v === 'ring' || v === 'both') ? v : P.def; });
+  return { place, look: Object.assign({}, BARS_DEF, B.look || {}) };
+}
+function barsTidy() {
+  const B = db.bars || (db.bars = {});
+  if (B.place) { BAR_PLACES.forEach(P => { if (B.place[P.id] === P.def || P.barOnly) delete B.place[P.id]; }); if (!Object.keys(B.place).length) delete B.place; }
+  if (B.look) { Object.keys(B.look).forEach(k => { if (!(k in BARS_DEF) || String(B.look[k]) === String(BARS_DEF[k])) delete B.look[k]; }); if (!Object.keys(B.look).length) delete B.look; }
+}
+function barFill(L, c) {
+  const seg = Math.max(4, Math.min(40, +L.seg || 10));
+  if (L.fill === 'solid') return c;
+  if (L.fill === 'shine') return `linear-gradient(180deg, ${shade(c, 0.4)} 0%, ${c} 45%, ${shade(c, -0.35)} 100%)`;
+  const sheen = `linear-gradient(90deg, ${shade(c, -0.3)} 0%, ${c} 60%, ${shade(c, 0.45)} 100%)`;
+  if (L.fill === 'segments') return `repeating-linear-gradient(90deg, transparent 0 ${seg - 2}px, rgba(0,0,0,0.6) ${seg - 2}px ${seg}px), ${sheen}`;
+  return sheen;
+}
+function barsCss() {
+  const { place, look: L } = barsOf(), R = ':root:root ';
+  const D = BARS_DEF, chg = k => String(L[k]) !== String(D[k]);
+  let css = '';
+  const fillOf = c => barFill(L, c);
+  const glowOf = c => (L.glow ? `0 0 6px ${withAlpha(c, 0.45)}` : 'none');
+  const dropOf = c => (L.glow ? `drop-shadow(0 0 3px ${withAlpha(c, 0.75)})` : 'none');
+  const hpH = Math.max(3, Math.min(30, +L.h || 12)), sc = v => Math.max(2, Math.round(hpH * v / 12));
+  const colours = ['hp', 'foe', 'lowOn', 'low', 'mp', 'fill', 'seg', 'glow'].some(chg);
+  const anyBar = place.turns !== 'ring' || place.dock !== 'ring';
+  // the straight bars
+  const BAR = '.hrlg-vbar, .hrlg-thp, .ew-pp-bar, .hq-dock-bar';
+  const FILL = '.hrlg-vfill, .hrlg-thp-fill, .ew-pp-bar > i, .hq-dock-bar > i';
+  const fillSel = {
+    hp: '.hrlg-vrow.hp .hrlg-vfill, .hrlg-thp:not(.mp) > .hrlg-thp-fill, .ew-pp-bar.hp > i, .hq-dock-bar.hp > i',
+    foe: '.hrlg-thp-fill.foe, .ew-pp.foe .ew-pp-bar.hp > i',
+    low: '.hrlg-vrow.hp.low .hrlg-vfill, .hrlg-thp-fill.low, .ew-pp.low:not(.foe) .ew-pp-bar.hp > i, .hq-dock-pp.low .hq-dock-bar.hp > i',
+    mp: '.hrlg-vrow.mp:not(.xp) .hrlg-vfill, .hrlg-thp.mp > .hrlg-thp-fill, .ew-pp-bar.mp > i, .hq-dock-bar.mp > i',
+  };
+  /* a rule the player has not touched only reaches the portraits' own new bars (when they are on), so the
+     HUD's existing bars keep their exact look until a setting changes */
+  const MINI = /ew-pp-bar|hq-dock-bar/;
+  const pick = (sel, all) => parts(sel).filter(x => all !== false || MINI.test(x)).map(x => R + x).join(', ');
+  const rule = (sel, all, body) => { const p = pick(sel, all); if (p && (all !== false || anyBar)) css += `${p} { ${body} }\n`; };
+  rule(fillSel.hp, colours, `background: ${fillOf(L.hp)} !important; box-shadow: ${glowOf(L.hp)} !important;`);
+  rule(fillSel.foe, colours, `background: ${fillOf(L.foe)} !important; box-shadow: ${glowOf(L.foe)} !important;`);
+  if (L.lowOn) rule(fillSel.low, colours, `background: ${fillOf(L.low)} !important; box-shadow: ${glowOf(L.low)} !important;`);
+  rule(fillSel.mp, colours, `background: ${fillOf(L.mp)} !important; box-shadow: ${glowOf(L.mp)} !important;`);
+  rule(BAR, chg('track') || chg('frame') || chg('frameW'), `background: ${L.track} !important; border: ${Math.max(0, Math.min(4, +L.frameW || 0))}px solid ${L.frame} !important;`);
+  if (chg('h')) {
+    css += `${pick('.hrlg-vrow.hp .hrlg-vbar')} { height: ${hpH}px !important; }\n${pick('.hrlg-vrow.mp:not(.xp) .hrlg-vbar')} { height: ${sc(10)}px !important; }\n`;
+    css += `${pick('.hrlg-thp:not(.mp)')} { height: ${sc(10)}px !important; }\n${pick('.hrlg-thp.mp')} { height: ${sc(8)}px !important; }\n`;
+  }
+  rule('.ew-pp-bar.hp, .hq-dock-bar.hp', false, `height: ${Math.max(3, Math.round(hpH / 2.4))}px !important;`);
+  rule('.ew-pp-bar.mp, .hq-dock-bar.mp', false, `height: ${Math.max(2, Math.round(hpH / 3.4))}px !important;`);
+  if (L.shape !== 'game') {
+    const r = { square: '0', round: '3px', pill: '999px', slant: '0' }[L.shape] || '0';
+    css += `${pick(BAR + ', ' + FILL + ', .hrlg-vspend, .hrlg-thp-preview, .hrlg-thp-shield')} { border-radius: ${r} !important; }\n`;
+    if (L.shape === 'slant') css += `${pick(BAR)} { transform: skewX(-18deg); }\n${pick('.hrlg-vbar .hrlg-wave')} { transform: translateY(-50%) skewX(18deg) !important; }\n`;
+  }
+  if (!L.wave) css += `${pick('.hrlg-wave')} { display: none !important; }\n`;
+  if (!L.nums) css += `${pick('.hrlg-vnum, .hrlg-thp-num, .hrlg-qv-num, .hrlg-vnums')} { display: none !important; }\n`;
+  if (!L.labels) css += `${pick('.hrlg-vlbl, .hrlg-qv-lbl')} { display: none !important; }\n`;
+  // the rings
+  const rw = Math.max(0.4, Math.min(1.8, +L.ring || 1)), rings = chg('ring') || place.hero !== 'bar';
+  if (rings) {
+    css += `${pick('.ew-pp-track.hp, .hq-dock-track')} { stroke-width: ${6 * rw} !important; }\n${pick('.ew-pp-track.mp, .hq-dock-track.mp')} { stroke-width: ${4 * rw} !important; }\n`;
+    css += `${pick('.ew-pp-arc.hp, .hq-dock-arc.hp')} { stroke-width: ${5 * rw} !important; }\n${pick('.ew-pp-arc.mp, .hq-dock-arc.mp')} { stroke-width: ${3.2 * rw} !important; }\n`;
+  }
+  if (L.caps) css += `${pick('.ew-pp-arc, .hq-dock-arc, .hrlg-harc')} { stroke-linecap: round !important; }\n`;
+  if (chg('track')) css += `${pick('.ew-pp-track, .hq-dock-track, .hrlg-htrack')} { stroke: ${L.track} !important; }\n`;
+  if (colours) {
+    css += `${pick('.ew-pp-arc.hp.fill, .hq-dock-arc.hp, .hrlg-harc.hp')} { stroke: ${L.hp} !important; filter: ${dropOf(L.hp)} !important; }\n`;
+    css += `${pick('.ew-pp.foe .ew-pp-arc.hp.fill')} { stroke: ${L.foe} !important; filter: ${dropOf(L.foe)} !important; }\n`;
+    if (L.lowOn) css += `${pick('.ew-pp.low:not(.foe) .ew-pp-arc.hp.fill, .hq-dock-pp.low .hq-dock-arc.hp, .hrlg-hring.low .hrlg-harc.hp')} { stroke: ${L.low} !important; filter: ${dropOf(L.low)} !important; }\n`;
+    else css += `${pick('.hq-dock-pp.low .hq-dock-arc.hp')} { stroke: ${L.hp} !important; animation: none !important; }\n`;
+    css += `${pick('.ew-pp-arc.mp.fill, .hq-dock-arc.mp, .hrlg-harc.mp')} { stroke: ${L.mp} !important; filter: ${dropOf(L.mp)} !important; }\n`;
+  }
+  // the watch ring (hero)
+  if (place.hero !== 'bar') {
+    css += `${R}.hrlg-side .hrlg-hring { display: inline !important; }
+${R}.hrlg-side .hrlg-hubwrap { padding: 9px 0 7px !important; }
+${R}.hrlg-htrack { fill: none; stroke: #0b0a12; stroke-width: ${9 * rw}; }
+${R}.hrlg-htrack.mp { stroke-width: ${6 * rw}; }
+${R}.hrlg-harc { fill: none; stroke-linecap: butt; transform: rotate(90deg); transform-box: view-box; transform-origin: 50% 50%; transition: stroke-dasharray 0.45s cubic-bezier(0.22,1,0.36,1); }
+${R}.hrlg-harc.hp { stroke: ${L.hp}; stroke-width: ${7.5 * rw}; filter: ${dropOf(L.hp)}; }
+${R}.hrlg-harc.mp { stroke: ${L.mp}; stroke-width: ${4.8 * rw}; filter: ${dropOf(L.mp)}; }
+`;
+    if (L.lowOn) css += `${R}.hrlg-hring.low .hrlg-harc.hp { stroke: ${L.low}; filter: ${dropOf(L.low)}; }\n`;
+    if (place.hero === 'ring') css += `${R}.hrlg-side .hrlg-vrow:not(.xp) { display: none !important; }\n${R}.hrlg-side .hrlg-vnums { display: flex !important; justify-content: center; gap: 12px; font-size: 12px; letter-spacing: 0.08em; color: var(--ew-ink-mute, #9a93b5); text-shadow: 0 1px 1px #000; }
+${R}.hrlg-side .hrlg-vnums b { color: var(--ew-ink, #fff); font-weight: 600; }\n`;
+  }
+  // bars for the round portraits
+  const miniBars = (root, bars, ring, track, arc, bottom, w) => {
+    let c = `${R}${bars} { display: flex !important; flex-direction: column; gap: 1px; position: absolute; ${w}; bottom: ${bottom}; pointer-events: none; z-index: 3; }\n`;
+    c += `${R}${bars} > span { position: relative; display: block; overflow: hidden; }\n${R}${bars} > span > i { position: absolute; left: 0; top: 0; bottom: 0; display: block; transition: width 0.4s ease-out; }\n`;
+    if (ring === 'bar') c += `${pick(root + ' ' + track + ', ' + root + ' ' + arc)} { display: none !important; }\n`;
+    return c;
+  };
+  if (place.turns !== 'ring') css += miniBars('.ew-pp', '.ew-pp-bars', place.turns, '.ew-pp-track', '.ew-pp-arc', place.turns === 'bar' ? '8%' : '-2px', 'left: 14%; right: 14%');
+  if (place.dock !== 'ring') css += `${R}.hq-dock-pp { --dk: 52px; } ${R}.hq-dock-pp.lead { --dk: 76px; }\n` + miniBars('.hq-dock-pp', '.hq-dock-bars', place.dock, '.hq-dock-track', '.hq-dock-arc', place.dock === 'bar' ? '6px' : '-2px', 'left: calc(var(--dk) * 0.12); width: calc(var(--dk) * 0.76)');
+  return css;
 }
 
 /* ── the generator ── */
@@ -11980,6 +12167,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
+  heroSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -11988,7 +12176,7 @@ function applyLayout() {
 }
 
 /* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
-const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', ghost: 'auto', snap: true, guides: true, fold: false };
+const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', ghost: 'auto', snap: true, guides: true, fold: false };
 const UIM_CSS = `
 .uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
 .uim-root * { box-sizing: border-box; }
@@ -12115,7 +12303,7 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-arr-box.surf:hover { background: rgba(61,224,255,0.12); }
 .uim-arr-box.surf.on { border-style: solid; border-width: 2px; background: rgba(61,224,255,0.14); }
 .uim-arr-box.surf > span { background: #138aa3; }
-.uim-dock { position: fixed; z-index: 10061; width: 340px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
+.uim-dock { position: fixed; z-index: 10061; width: 364px; max-width: calc(100vw - 24px); max-height: min(calc(100vh - 24px), 720px); display: flex; flex-direction: column; background: rgba(14,16,22,0.97); border: 1px solid #6fb4ff; border-radius: 9px; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; box-shadow: 0 10px 34px rgba(0,0,0,0.65); transition: left 0.22s ease, top 0.22s ease, opacity 0.15s; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
 .uim-dock.busy { opacity: 0.35; pointer-events: none; }
@@ -12154,6 +12342,33 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-dock #uimPreview { position: relative; margin: 6px 0; border-radius: 6px; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 75%); }
 .uim-dock #uimPreview .uim-zoom { zoom: 0.62; padding: 18px; gap: 14px; }
 .uim-kbd { display: inline-block; padding: 0 4px; border: 1px solid #3a4050; border-radius: 3px; color: #c8cfdc; font-size: 10px; }
+.uim-arr-box.bar { border-color: #ffd23d; background: rgba(255,210,61,0.05); cursor: pointer; }
+.uim-arr-box.bar:hover { background: rgba(255,210,61,0.12); }
+.uim-arr-box.bar.on { border-style: solid; border-width: 2px; background: rgba(255,210,61,0.14); }
+.uim-arr-box.bar > span { background: #a3820f; }
+.uim-dk-bar { display: grid; grid-template-columns: 10px 1fr; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-dk-bar:hover { background: #191c24; }
+.uim-dk-bar.on { border-color: #ffd23d; background: #2a2410; }
+.uim-dk-bar i { width: 8px; height: 8px; border-radius: 50%; background: #3a4050; }
+.uim-dk-bar i.live { background: #ffd23d; box-shadow: 0 0 6px #ffd23d; }
+.uim-dk-bar b { color: #e4e8ef; font-weight: 500; }
+.uim-dk-bar small { display: block; color: #7d8699; font-size: 10px; }
+.uim-dk-bar > div { min-width: 0; }
+.uim-dk-bar .uimb-seg { grid-column: 2; display: flex; gap: 3px; flex-wrap: wrap; }
+.uim-dk-bar .uimb-seg .uim-btn { padding: 2px 8px; }
+.uim-dk-mock { position: sticky; top: -8px; z-index: 2; background: rgba(14,16,22,0.97); padding-top: 2px; }
+.uimb-mock { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; margin: 6px 0 8px; padding: 10px; border-radius: 6px; background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 80%); }
+.uimb-rows { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.uimb-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.uimb-lbl { flex: none; width: 20px; font-size: 10px; letter-spacing: 0.14em; color: #7a7490; }
+.uimb-bar { position: relative; flex: 1 1 auto; min-width: 0; display: block; overflow: hidden; }
+.uimb-bar > i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+.uimb-num { flex: none; min-width: 46px; text-align: right; font-size: 11px; color: #fff; text-shadow: 0 1px 1px #000; }
+.uimb-rings { display: flex; gap: 6px; }
+.uimb-ring { position: relative; width: 46px; text-align: center; font-size: 9px; color: #7d8699; }
+.uimb-ring svg { width: 46px; height: 46px; display: block; overflow: visible; }
+.uimb-ring .uimb-mini { position: absolute; left: 14%; right: 14%; display: flex; flex-direction: column; gap: 1px; }
+.uim-dock .uim-dk-look .uim-roles { display: flex; flex-wrap: wrap; gap: 3px; margin: 4px 0 6px; }
 #uimPreview .uimp-hero { width: 216px; position: relative; }
 #uimPreview .uimp-hero .uimp-hero-hd { padding: 3px 10px; font-size: 9px; letter-spacing: 0.38em; color: var(--ew-ink-mute); border-bottom: 1px solid var(--ew-plate-seam); }
 #uimPreview .uimp-hero .uimp-body { padding: 10px 10px 12px; align-items: stretch; gap: 7px; }
@@ -12180,6 +12395,7 @@ function materialize() {
   const d = draftOf(t), wasGlobal = globalId() === t.id;
   db.themes.push(d); UI.themeId = d.id; UI.draft = null; syncPickerRows();
   if (wasGlobal) window.setHudTheme(d.id);
+  Object.keys(db.assign).forEach(k => { if (db.assign[k] === t.id) db.assign[k] = d.id; });   // a menu that wore the original wears the copy
   toast(`Made your own copy, "${d.label}"${wasGlobal ? ', and the game now wears it' : ''}. The original stays as it was.`);
   if (UI.el) { UI.el.querySelector('.uim-list').innerHTML = renderList(); renderTop(); }
   return d;
@@ -12206,7 +12422,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, assign: db.assign, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, assign: db.assign, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -12218,7 +12434,7 @@ function travel(from, to) {
     if (e.lay) {
       to.push({ lay: 1, j: layState() });
       const j = JSON.parse(e.j);
-      db.layout = j.layout || {}; db.hero = j.hero || {}; db.assign = j.assign || {}; HIST.t = 0;
+      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.assign = j.assign || {}; HIST.t = 0;
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -12336,11 +12552,11 @@ function markPreview() {
   const t = draftOf(curTheme());   // with no Hero skin the hero section wears the Panel one
   if (UI.role === 'panel' && !(t.skins && t.skins.hero && t.skins.hero.on)) pv.querySelectorAll('[data-r="hero"]').forEach(e => e.classList.add('uim-hl'));
 }
-function skinForm(t, role) {
+function skinForm(t, role, inDock) {
   const s = t.skins[role], P = `skins.${role}`;
   const sel = role === 'buttonSel' || role === 'chipOn';
   let h = `<div class="uim-f"><label>Custom skin</label><div><input type="checkbox" data-path="${P}.on" data-bool="1" data-re="1"${s.on ? ' checked' : ''}><span class="uim-note" style="margin:0">${s.on ? 'This role wears the skin below.' : (sel ? 'Off: made from the base role with the select colour.' : role === 'hero' ? 'Off: the hero section wears the Panel skin.' : 'Off: the theme colours with the standard rounded look.')}</span></div></div>`;
-  if (role === 'hero') h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
+  if (role === 'hero' && !inDock) h += `<div class="uim-note">The hero section is the Horologe's unit column in a battle. Its size, watch face and parts are in the LAYOUT tab: pick "Horologe hero section". <button class="uim-btn" data-act="heroLayout">Open it</button></div>`;
   if (!s.on) return h + `<div class="uim-btns"><button class="uim-btn" data-act="pasteskin"${UI.clip ? '' : ' disabled'}>Paste skin</button></div>`;
   h += fSelect('9-slice', `${P}.slice`, [['', 'None: draw the shape below']].concat(db.slices.map(x => [x.id, x.name])), s.slice || '');
   if (s.slice) return h + `<div class="uim-note">This role uses the saved 9-slice. Edit it in the 9-SLICES tab.</div>`;
@@ -12435,10 +12651,10 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen: move, size, fade or hide each HUD piece and shape the Horologe hero section'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen: move, size, fade or hide each HUD piece and shape the Horologe hero section'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring']];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
-  if (UI.tab === 'layout' || UI.tab === 'menus') UI.tab = UI.back || 'skins';
+  if (UI.tab === 'layout' || UI.tab === 'menus' || UI.tab === 'bars') UI.tab = UI.back || 'skins';
   let h = `<div class="uim-tabs">${TABS.map(([v, l, tip]) => `<button class="uim-btn${UI.tab === v ? ' on' : ''}" data-tab="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div>`;
   if (UI.tab === 'slices') return h + slicesForm();
   if (!editable(T)) h += `<div class="uim-ro"><b>${esc(T.label)}</b> is ${T.builtin ? 'a built-in theme' : 'a preset'}. Change anything below and it becomes your own copy; the original stays.</div>`;
@@ -12562,7 +12778,7 @@ function exportObj(t) {
   const used = t.skins ? Object.values(t.skins).map(s => s && s.slice).filter(Boolean) : [];
   return { ewTheme: 1, theme: t.builtin ? draftOf(t) : t, slices: db.slices.filter(x => used.includes(x.id)) };
 }
-function onClick(e) {
+function onClick(e, root) {
   const pv = e.target.closest('#uimPreview [data-r]');
   if (pv && UI.el.contains(pv)) {
     const r = pv.dataset.r;
@@ -12570,11 +12786,11 @@ function onClick(e) {
     else if (r === 'well' || r === 'input' || r === 'ink' || r === 'mute' || r === 'dim') UI.tab = 'colors';
     render('insp'); return;
   }
-  const b = e.target.closest('button, .uim-trow, .uim-sl'); if (!b || !UI.el.contains(b) || b.disabled) return;
+  const b = e.target.closest('button, .uim-trow, .uim-sl'); if (!b || !(root || UI.el).contains(b) || b.disabled) return;
   const T = curTheme();
   if (b.dataset.theme) { UI.themeId = b.dataset.theme; UI.io = ''; UI.draft = null; render(); return; }
   if (b.dataset.slice) { UI.sliceId = b.dataset.slice; render('insp'); return; }
-  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
+  if (b.dataset.tab) { if (b.dataset.tab === 'layout' || b.dataset.tab === 'menus' || b.dataset.tab === 'bars') { liveOn(b.dataset.tab); return; } UI.tab = UI.back = b.dataset.tab; render('insp'); return; }
   if (b.dataset.role) { UI.role = b.dataset.role; render('insp'); return; }
   if (b.dataset.bd) { UI.backdrop = b.dataset.bd; render(); return; }
   if (b.dataset.zoom) { UI.zoom = +b.dataset.zoom; render(); return; }
@@ -12807,7 +13023,8 @@ function dockHead() {
   const lay = UI.live.mode === 'layout';
   return `<div class="uim-dock-hd" title="Drag to move this panel"><span class="grip">⋮⋮</span>
     <button class="uim-btn${lay ? ' on' : ''}" data-dk="layout" title="Move, size, fade or hide the HUD pieces">Layout</button>
-    <button class="uim-btn${lay ? '' : ' on'}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
+    <button class="uim-btn${UI.live.mode === 'menus' ? ' on' : ''}" data-dk="menus" title="A theme for each menu or HUD">Menus</button>
+    <button class="uim-btn${UI.live.mode === 'bars' ? ' on' : ''}" data-dk="bars" title="How the health bars look, and which places get a bar or a ring">Bars</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -12843,6 +13060,7 @@ function pieceDetail() {
     + R('Move X', 'x', -1600, 1600, 1, +L.x || 0) + R('Move Y', 'y', -1000, 1000, 1, +L.y || 0) + R('Size', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
     + `<div class="uim-btns"><button class="uim-btn" data-dk="piecereset">Reset this piece</button></div>`;
   if (P.hero) h += heroForm();
+  if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   return h + '</div>';
 }
 function heroForm() {
@@ -12852,10 +13070,13 @@ function heroForm() {
   return `<div class="uim-h">The hero section</div>`
     + R('Width', 'w', 140, 420, 2, +H.w) + R('Watch size', 'watch', 48, 260, 2, +H.watch) + R('Spacing', 'gap', 0, 24, 1, +H.gap)
     + `<div class="uim-f"><label>Watch face</label><div style="flex-wrap:wrap">${FACES.map(([v, l, tip]) => `<button class="uim-btn${H.face === v ? ' on' : ''}" data-dk="heroface" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>`
-    + `<div class="uim-btns">${C('Watch glow', 'glow', H.glow)}${C('Title bar', 'header', H.header, 'The strip across the top of the hero section')}</div>`
+    + `<div class="uim-btns">${C('Watch glow', 'glow', H.glow)}${H.split ? '' : C('Title bar', 'header', H.header, 'The strip across the top of the hero section')}</div>`
+    + `<div class="uim-h">Outside the panel</div><div class="uim-btns"><label class="uim-btn" title="The watch (and as much below it as you pick) floats over the board on its own; the rest stays in the panel"><input type="checkbox" data-hpath="split" data-bool="1" data-re="1"${H.split ? ' checked' : ''} style="vertical-align:-2px"> Hero outside the panel</label></div>`
+    + (H.split ? `<div class="uim-f"><label>Outside</label><div style="flex-wrap:wrap">${HERO_OUT.map(([v, l, tip]) => `<button class="uim-btn${H.out === v ? ' on' : ''}" data-dk="heroout" data-val="${v}" title="${esc(tip)}">${l}</button>`).join('')}</div></div>`
+      + R('Gap to panel', 'splitGap', 0, 60, 1, +H.splitGap) + R('Panel padding', 'pad', 0, 30, 1, +H.pad)
+      + `<div class="uim-note">The panel below wears the Hero skin (else the Windows one). The title bar is off while the hero sits outside.</div>` : '')
     + `<div class="uim-h">Show</div><div class="uim-btns">${HERO_PARTS.map(([k, l]) => C(l, 'hide.' + k, !H.hide[k])).join('')}</div>`
-    + `<div class="uim-note">The hero section's colours and frame are the theme's Hero skin.</div>`
-    + `<div class="uim-btns"><button class="uim-btn" data-dk="heroskin">Edit the Hero skin</button><button class="uim-btn" data-dk="heroreset"${Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the hero section</button></div>`;
+    + `<div class="uim-btns"><button class="uim-btn" data-dk="heroreset"${Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the hero section</button></div>`;
 }
 function surfOptions(S) {
   return (S.def === 'original' && !S.native ? [['', 'Original look (default)'], ['follow', 'Settings theme']] : [['', 'Settings theme']].concat(S.native ? [] : [['original', 'Original look']]))
@@ -12885,16 +13106,105 @@ function surfDetail() {
   if (T) h += `<div class="uim-btns"><button class="uim-btn" data-dk="edittheme" data-val="${esc(T.id)}">Edit ${esc(T.label)} in the full editor</button></div>`;
   return h + '</div>';
 }
+/* ── THE HOROLOGE'S LOOK, right in the panel (mondo 2026-10-16: "i dont see the same options for the horologe menu as
+   all the other stuff, like why cant i change its panel's shape and corners and colors"): the hero section, the
+   command panels and the whole command menu open the full skin editor (shape, corners, fill, frame, light, retro,
+   9-slice) for the theme the battle HUD wears, role by role, plus that theme's colours. A built-in theme turns into
+   the player's own copy on the first change and the battle HUD keeps wearing it. */
+const HORO_ROLES = [['hero', 'Hero section', 'The unit column: watch, name, vitals (with no Hero skin it wears the Windows one)'], ['panel', 'Windows', 'The command lists, their title strips, the scoreboard and match info plates'], ['button', 'Command rows', 'Every row in the command lists, the tool rows and the item slots'], ['buttonSel', 'Selected row', 'The row under the cursor']];
+function battleTheme() { const S = UIM_SURFACES.find(x => x.id === 'battle'); return S ? themeById(effectiveId(S)) : null; }
+function horoLook(P) {
+  const T = battleTheme(); if (!T) return '';
+  if (!UI.hrole || !HORO_ROLES.some(r => r[0] === UI.hrole)) UI.hrole = P.id === 'hero' ? 'hero' : 'panel';
+  UI.themeId = T.id; UI.role = UI.hrole;
+  const t = draftOf(T);
+  if (UI.shut.hcol == null) UI.shut.hcol = true;
+  return `<div class="uim-dk-look"><div class="uim-h">Look (theme: ${esc(T.label)})</div>`
+    + (editable(T) ? '' : `<div class="uim-note">${esc(T.label)} is ${T.builtin ? 'a built-in theme' : 'a preset'}: your first change makes your own copy, and the battle HUD wears it.</div>`)
+    + `<div class="uim-roles">${HORO_ROLES.map(([v, l, d]) => `<button class="uim-btn${UI.hrole === v ? ' on' : ''}" data-dk="hrole" data-val="${v}" title="${esc(d)}">${l}${t.skins[v] && t.skins[v].on ? ' ●' : ''}</button>`).join('')}</div>`
+    + `<div class="uim-note">${esc((HORO_ROLES.find(r => r[0] === UI.hrole) || ['', '', ''])[2])}.</div>`
+    + skinForm(t, UI.hrole, true)
+    + sec('hcol', 'Theme colours', colorsForm(t))
+    + '</div>';
+}
+
+/* ── THE HEALTH BARS panel ── */
+const bp = html => html.replace(/data-path=/g, 'data-bpath=').replace(/data-set=/g, 'data-bset=');
+function barMock() {
+  const { place, look: L } = barsOf();
+  const fw = Math.max(0, Math.min(4, +L.frameW || 0)), hpH = Math.max(3, Math.min(30, +L.h || 12));
+  const rad = { square: '0', round: '3px', pill: '999px' }[L.shape] || '0';
+  const skew = L.shape === 'slant' ? 'transform:skewX(-18deg);' : '';
+  const glow = c => (L.glow ? `box-shadow:0 0 6px ${withAlpha(c, 0.45)};` : '');
+  const bar = (lbl, pct, c, hgt, num) => `<div class="uimb-row">${L.labels ? `<span class="uimb-lbl">${lbl}</span>` : ''}<span class="uimb-bar" style="height:${hgt}px;background:${L.track};border:${fw}px solid ${L.frame};border-radius:${rad};${skew}"><i style="width:${pct}%;background:${barFill(L, c)};border-radius:${rad};${glow(c)}"></i></span>${L.nums ? `<span class="uimb-num">${num}</span>` : ''}</div>`;
+  const rw = Math.max(0.4, Math.min(1.8, +L.ring || 1)), cap = L.caps ? 'round' : 'butt';
+  const drop = c => (L.glow ? `filter:drop-shadow(0 0 3px ${withAlpha(c, 0.75)})` : '');
+  const arc = (r, pct, c, w) => `<circle cx="50" cy="50" r="${r}" pathLength="100" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="${cap}" style="stroke-dasharray:${pct} 100;transform:rotate(90deg);transform-origin:50% 50%;${drop(c)}"/>`;
+  const mini = (hp, c) => `<span class="uimb-mini" style="bottom:${place.turns === 'bar' ? '8%' : '-2px'}"><span class="uimb-bar" style="height:${Math.max(3, Math.round(hpH / 2.4))}px;background:${L.track};border:${fw}px solid ${L.frame};border-radius:${rad};${skew}"><i style="width:${hp}%;background:${barFill(L, c)}"></i></span><span class="uimb-bar" style="height:${Math.max(2, Math.round(hpH / 3.4))}px;background:${L.track};border:${fw}px solid ${L.frame};border-radius:${rad};${skew}"><i style="width:55%;background:${barFill(L, L.mp)}"></i></span></span>`;
+  const ring = (hp, c, lbl) => `<div class="uimb-ring"><svg viewBox="0 0 100 100">${place.turns !== 'bar' ? `<circle cx="50" cy="50" r="43" fill="none" stroke="${L.track}" stroke-width="${6 * rw}"/><circle cx="50" cy="50" r="36.5" fill="none" stroke="${L.track}" stroke-width="${4 * rw}"/>${arc(43, hp, c, 5 * rw)}${arc(36.5, 55, L.mp, 3.2 * rw)}` : ''}<circle cx="50" cy="50" r="31" fill="#22202c" stroke="#55506a" stroke-width="1"/></svg>${place.turns !== 'ring' ? mini(hp, c) : ''}<div>${lbl}</div></div>`;
+  const low = L.lowOn ? L.low : L.hp;
+  return `<div class="uimb-mock"><div class="uimb-rows">${bar('HP', 72, L.hp, hpH, '108/150')}${bar('MP', 45, L.mp, Math.max(2, Math.round(hpH * 10 / 12)), '18/40')}${bar('HP', 22, low, hpH, '33/150')}${bar('HP', 60, L.foe, Math.max(2, Math.round(hpH * 10 / 12)), '90/150')}</div>`
+    + `<div class="uimb-rings">${ring(72, L.hp, 'Ally')}${ring(22, low, 'Low')}${ring(60, L.foe, 'Enemy')}</div></div>`;
+}
+function dockBarsBody() {
+  const { place } = barsOf();
+  let h = dockTop() + `<div class="uim-note">Which places get a straight bar, a ring, or both, and how every bar and ring looks. The yellow boxes are the places on screen now; click one to pick it.</div><div class="uim-dk-mock"></div>`;
+  h += BAR_PLACES.map(P => `<div class="uim-dk-bar${UI.bar === P.id ? ' on' : ''}" data-bar="${P.id}" title="${esc(P.hint)}"><i></i><div><b>${esc(P.label)}</b><small>${esc(P.hint)}</small></div>`
+    + `<div class="uimb-seg">${P.barOnly ? '<span class="uim-note" style="margin:0">Bars only</span>' : [['bar', 'Bar'], ['ring', 'Ring'], ['both', 'Both']].map(([v, l]) => `<button class="uim-btn${place[P.id] === v ? ' on' : ''}" data-dk="bplace" data-place="${P.id}" data-val="${v}"${v === 'ring' && P.ring ? ` title="${esc(P.ring)}"` : ''}>${l}${P.def === v ? ' ·' : ''}</button>`).join('')}</div></div>`).join('');
+  h += `<div class="uim-note">· marks how the game draws it. The 3D name plates over the units are drawn by the renderer, not the HUD, so they keep their look.</div><div class="uim-dk-detail"></div>
+  <div class="uim-note"><span class="uim-kbd">Tab</span> next place on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
+  return h;
+}
+function barsDetail() {
+  const { look: L } = barsOf(), P = 'look.';
+  let h = sec('bshape', 'Shape', bp(fSeg('Ends', P + 'shape', BAR_SHAPES, L.shape) + fRange('Thickness', P + 'h', 4, 24, 1, +L.h)), (BAR_SHAPES.find(x => x[0] === L.shape) || ['', ''])[1]);
+  h += sec('bfill', 'Fill', bp(fSeg('Kind', P + 'fill', BAR_FILLS, L.fill) + (L.fill === 'segments' ? fRange('Block size', P + 'seg', 4, 40, 1, +L.seg) : '')
+    + fColor('HP', P + 'hp', L.hp, false) + fColor('Enemy HP', P + 'foe', L.foe, false)
+    + `<div class="uim-f"><label>Low HP</label><div><input type="checkbox" data-bpath="${P}lowOn" data-bool="1" data-re="1"${L.lowOn ? ' checked' : ''} title="Under 30% the HP turns this colour">${L.lowOn ? `<input type="color" value="${toHex(L.low)}" data-bpath="${P}low" data-kind="rgb"><input class="uim-hex" value="${toHex(L.low)}" data-bpath="${P}low" data-kind="hex" maxlength="7" spellcheck="false">` : ''}</div></div>`
+    + fColor('MP', P + 'mp', L.mp, false) + fCheck('Glow', P + 'glow', L.glow)));
+  h += sec('bframe', 'Track + frame', bp(fColor('Empty part', P + 'track', L.track, false) + fColor('Frame', P + 'frame', L.frame, false) + fRange('Frame width', P + 'frameW', 0, 4, 1, +L.frameW)));
+  h += sec('bring', 'Rings', bp(fRange('Thickness', P + 'ring', 0.4, 1.8, 0.05, +L.ring) + fCheck('Round ends', P + 'caps', L.caps)));
+  h += sec('bshow', 'Show', bp(fCheck('HP / MP tags', P + 'labels', L.labels) + fCheck('Numbers', P + 'nums', L.nums) + fCheck('Heartbeat line', P + 'wave', L.wave)) + '<div class="uim-note">The heartbeat line rides the hero section\'s HP bar.</div>');
+  h += `<div class="uim-btns"><button class="uim-btn bad" data-dk="barsreset"${Object.keys(db.bars || {}).length ? '' : ' disabled'}>Reset the health bars</button></div>`;
+  return h;
+}
+function barsMockRefresh() { const A = UI.live; const m = A && A.dock.querySelector('.uim-dk-mock'); if (m) m.innerHTML = barMock(); }
+function barBoxes() {
+  const A = UI.live, W = innerWidth, H = innerHeight, rects = {}, live = {}, used = new Set();
+  BAR_PLACES.forEach(P => {
+    const list = allVis(P.sel, 6).map(v => v.r);
+    if (!list.length) return;
+    live[P.id] = 1; rects[P.id] = [];
+    list.forEach((r, i) => {
+      const k = 'bar:' + P.id + ':' + i; used.add(k);
+      const bx = boxEl(k); bx.dataset.bar = P.id; bx.classList.add('bar');
+      const l = Math.max(0, r.left), t = Math.max(0, r.top), w = Math.min(W - l, r.left + r.width - l), h = Math.min(H - t, r.top + r.height - t);
+      if (w < 2 || h < 2) { bx.style.display = 'none'; return; }
+      placeBox(bx, l, t, w, h);
+      bx.classList.toggle('on', UI.bar === P.id);
+      bx.firstChild.style.display = i === 0 ? '' : 'none';
+      setText(bx.firstChild, P.label);
+      rects[P.id].push({ left: l, top: t, right: l + w, bottom: t + h });
+    });
+  });
+  Object.keys(A.boxes).forEach(k => { if (!used.has(k)) A.boxes[k].style.display = 'none'; });
+  A.rects = rects;
+  const key = Object.keys(live).join(',');
+  if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
+}
+
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
 }
 function dockDetail() {
   const A = UI.live; if (!A) return;
   const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
+  else if (A.mode === 'bars') { d.innerHTML = barsDetail(); barsMockRefresh(); }
   else { d.innerHTML = surfDetail(); apply(); }
+  d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
   dockUndo();
 }
 function dockUndo() {
@@ -12906,6 +13216,7 @@ function markRows() {
   const A = UI.live; if (!A) return;
   A.dock.querySelectorAll('[data-piece]').forEach(r => r.classList.toggle('on', r.dataset.piece === UI.piece));
   A.dock.querySelectorAll('[data-surf]').forEach(r => r.classList.toggle('on', r.dataset.surf === UI.surf));
+  A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(r => r.classList.toggle('on', r.dataset.bar === UI.bar));
 }
 function liveBadges() {
   const A = UI.live; if (!A) return;
@@ -12917,6 +13228,7 @@ function liveBadges() {
     row.title = P.label + (A.liveSet[P.id] ? ': on screen now' : ': not up right now, the blue box stands in for it');
   });
   A.dock.querySelectorAll('.uim-dk-surf[data-surf]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.surf] ? 'live' : ''; row.title = A.liveSet[row.dataset.surf] ? 'On screen now' : 'Not on screen right now'; });
+  A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.bar] ? 'live' : ''; });
   const st = A.dock.querySelector('.uim-dk-status');
   if (st) setText(st, Object.keys(A.liveSet).length ? '' : 'No HUD is up right now. The blue boxes stand in for the pieces, where they were last seen; open the UI Maker from the pause menu in a battle or while exploring to see the real ones.');
 }
@@ -12924,10 +13236,13 @@ function touchLayout() { clearTimeout(_saveT); _saveT = setTimeout(save, 250); a
 function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
-  if (A.mode === 'layout') UI.piece = id; else UI.surf = id;
+  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
-  const det = A.dock.querySelector('.uim-dk-detail');   // the controls for the pick sit above the list
-  if (det && det.scrollIntoView) try { det.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+  const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
+  if (det && bd) {   // the controls for the pick (above the list) come into view from their top
+    if (A.mode === 'bars') { try { det.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    else bd.scrollTop = Math.max(0, det.offsetTop - bd.offsetTop - 6);
+  }
 }
 
 /* the panel keeps out of the way: when it would cover the selected piece it moves to the free spot that covers
@@ -12940,7 +13255,7 @@ function placeDock(x, y) {
 function selRects() {
   const A = UI.live;
   if (A.mode === 'layout') return A.rects[UI.piece] ? [A.rects[UI.piece]] : [];
-  return A.rects[UI.surf] || [];
+  return A.rects[A.mode === 'bars' ? UI.bar : UI.surf] || [];
 }
 function dodge(force) {
   const A = UI.live; if (!A || !A.dock) return;
@@ -12979,7 +13294,7 @@ function foldDock() {
 /* ── on / off ── */
 function liveOn(mode) {
   if (!UI.el) { window.openUiMaker(); if (!UI.el) return; }
-  if (UI.tab !== 'layout' && UI.tab !== 'menus') UI.back = UI.tab;
+  if (UI.tab !== 'layout' && UI.tab !== 'menus' && UI.tab !== 'bars') UI.back = UI.tab;
   if (UI.live) { if (UI.live.mode !== mode) liveMode(mode); return; }
   const ov = document.createElement('div'); ov.className = 'uim-arr';
   ov.innerHTML = '<div class="uim-arr-grid"></div><div class="uim-arr-safe"><span>TV SAFE AREA</span></div><div class="uim-arr-boxes"></div>';
@@ -13001,7 +13316,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) menuBoxes();
+      if (A.mode === 'layout') layoutBoxes(); else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -13011,7 +13326,7 @@ function liveOn(mode) {
 function liveMode(mode) {
   const A = UI.live;
   A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null;
-  document.documentElement.classList.toggle('uim-arranging', mode === 'layout');
+  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus');   // the pause menus step aside so the HUD shows
   A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = mode === 'layout' && UI.guides ? '' : 'none'; });
   A.dock.innerHTML = dockHead(); A.dock.dataset.mode = mode;
   dockBody(); apply();
@@ -13035,6 +13350,7 @@ function liveDown(e) {
   e.preventDefault();
   if (document.activeElement && A.dock.contains(document.activeElement)) document.activeElement.blur();   // the arrows go to the piece now
   if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
+  if (A.mode === 'bars') { if (bx.dataset.bar) liveSelect(bx.dataset.bar); return; }
   const P = livePiece(e); if (!P) return;
   const before = layState();   // one undo step per drag, none for a plain click
   if (UI.piece !== P.id) liveSelect(P.id);
@@ -13097,12 +13413,22 @@ function dockDown(e) {
 }
 function dockClick(e) {
   const A = UI.live; if (!A) return;
+  const bs = e.target.closest('button[data-bset]');
+  if (bs) {
+    try { bs.blur(); } catch (er) {}
+    snapLayout(true);
+    const B = db.bars || (db.bars = {}); B.look = B.look || {};
+    const k = bs.dataset.bset.replace(/^look\./, ''); B.look[k] = bs.dataset.val;
+    barsTidy(); touchLayout(); dockDetail(); return;
+  }
+  const lk = e.target.closest('.uim-dk-look button:not([data-dk])');
+  if (lk) { try { lk.blur(); } catch (er) {} const T = battleTheme(); if (T) { UI.themeId = T.id; UI.role = UI.hrole; } onClick(e, A.dock); dockDetail(); return; }
   const b = e.target.closest('button[data-dk]');
   if (b) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
     const k = b.dataset.dk, v = b.dataset.val, P = UIM_PIECES.find(x => x.id === UI.piece);
-    if (k === 'layout' || k === 'menus') liveOn(k);
+    if (k === 'layout' || k === 'menus' || k === 'bars') liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
     else if (k === 'fold') foldDock();
@@ -13113,14 +13439,26 @@ function dockClick(e) {
     else if (k === 'piecereset' && P) resetPiece(P);
     else if (k === 'heroface') { snapLayout(true); db.hero = db.hero || {}; db.hero.face = v; heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroreset') { snapLayout(true); db.hero = {}; touchLayout(); dockDetail(); }
+    else if (k === 'heroout') { snapLayout(true); db.hero = db.hero || {}; db.hero.out = v; heroTidy(); touchLayout(); dockDetail(); }
+    else if (k === 'hrole') { UI.hrole = v; dockDetail(); }
+    else if (k === 'bplace') {
+      snapLayout(true);
+      const B = db.bars || (db.bars = {}); B.place = B.place || {}; B.place[b.dataset.place] = v;
+      barsTidy(); touchLayout();
+      const row = b.closest('.uim-dk-bar');
+      if (row) row.querySelectorAll('[data-dk="bplace"]').forEach(x => x.classList.toggle('on', x.dataset.val === v));
+      if (UI.bar !== b.dataset.place) liveSelect(b.dataset.place); else { barsMockRefresh(); dockUndo(); }
+      const rs = A.dock.querySelector('[data-dk="barsreset"]'); if (rs) rs.disabled = !Object.keys(db.bars || {}).length;
+    }
+    else if (k === 'barsreset') { if (confirm('Put every health bar and ring back to how the game draws them?')) { snapLayout(true); db.bars = {}; touchLayout(); dockBody(); } }
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
     return;
   }
-  const row = e.target.closest('[data-piece], [data-surf]');
+  const row = e.target.closest('[data-piece], [data-surf], [data-bar]');
   if (!row || !A.dock.contains(row)) return;
-  const id = row.dataset.piece || row.dataset.surf;
-  if ((A.mode === 'layout' ? UI.piece : UI.surf) !== id) liveSelect(id);
+  const id = row.dataset.piece || row.dataset.surf || row.dataset.bar;
+  if ((A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : UI.surf) !== id) liveSelect(id);
 }
 function dockInput(e) {
   const el = e.target, A = UI.live; if (!A) return;
@@ -13143,7 +13481,34 @@ function dockInput(e) {
     if (k.indexOf('hide.') === 0) { H.hide = H.hide || {}; H.hide[k.slice(5)] = !el.checked; }
     else { H[k] = el.dataset.bool ? el.checked : +el.value; if (el.dataset.num) syncTwins(el, 'data-hpath', H[k]); }
     heroTidy(); touchLayout();
+    if (el.dataset.re && e.type === 'change') { dockDetail(); return; }
     const rs = A.dock.querySelector('[data-dk="heroreset"]'); if (rs) rs.disabled = !Object.keys(db.hero || {}).length;
+    return;
+  }
+  if (el.dataset.bpath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    let hx = '';
+    if (el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m) return;
+      if (e.type === 'input' && m[1].length === 3) return;
+      hx = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+    }
+    snapLayout();
+    const B = db.bars || (db.bars = {}), k = el.dataset.bpath.replace(/^look\./, '');
+    B.look = B.look || {};
+    const v = el.dataset.bool ? el.checked : el.dataset.num ? +el.value : el.dataset.kind === 'hex' ? '#' + hx.toLowerCase() : el.dataset.kind === 'rgb' ? el.value.toLowerCase() : el.value;
+    B.look[k] = v; syncTwins(el, 'data-bpath', v);
+    barsTidy(); touchLayout();
+    if (el.dataset.re && e.type === 'change') { dockDetail(); return; }
+    barsMockRefresh();
+    const rs = A.dock.querySelector('[data-dk="barsreset"]'); if (rs) rs.disabled = !Object.keys(db.bars || {}).length;
+    return;
+  }
+  if (el.dataset.path && el.closest('.uim-dk-look')) {
+    const T = battleTheme(); if (!T) return;
+    UI.themeId = T.id; UI.role = UI.hrole;
+    onInput(e);
+    if (el.dataset.re && e.type === 'change') dockDetail();
     return;
   }
   if (e.type !== 'change') return;
@@ -13167,8 +13532,8 @@ function liveKey(e) {
   if (e.code === 'Space' || e.key === ' ') { if (!e.repeat) peek(true); return true; }
   if (e.key === 'f' || e.key === 'F') { foldDock(); return true; }
   if (e.key === 'Tab') {
-    const ids = A.mode === 'layout' ? UIM_PIECES.filter(P => A.rects[P.id]).map(P => P.id) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
-    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
+    const ids = A.mode === 'layout' ? UIM_PIECES.filter(P => A.rects[P.id]).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
+    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
     return true;
   }
   if (A.mode !== 'layout') return false;
@@ -13230,8 +13595,9 @@ window.UIMaker = {
   apply, themeById, allThemes, surfaces: UIM_SURFACES, presets: UIM_PRESETS, pieces: UIM_PIECES,
   has: id => !!themeById(id), bakeSkin, sliceCss, open: () => window.openUiMaker(),
   arrange: () => { window.openUiMaker(); liveOn('layout'); },
-  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' ? 'menus' : 'layout'); },
+  live: mode => { window.openUiMaker(); liveOn(mode === 'menus' || mode === 'bars' ? mode : 'layout'); },
   hero: () => heroOf(),
+  bars: () => barsOf(),
   get db() { return db; },
 };
 syncPickerRows();

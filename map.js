@@ -1450,6 +1450,10 @@
                     + `<g clip-path="url(#${cid})"><circle class="hq-dock-disc" cx="50" cy="50" r="30.5"/>`
                     + (po ? `<image href="${_hqEsc(po.url)}" x="19.5" y="19.5" width="61" height="61" preserveAspectRatio="${po.kind === 'sprite' ? 'xMidYMax meet' : 'xMidYMid slice'}"/>` : '')
                     + `</g>${v.down ? '<text x="50" y="60" text-anchor="middle" class="hq-dock-skull">☠</text>' : ''}</svg>`
+                    /* straight HP / MP bars under the portrait: hidden unless the UI Maker's "Health bars" gives the party
+                       portraits bars instead of (or as well as) the rings (hud.js barsCss shows them) */
+                    + `<span class="hq-dock-bars" style="display:none"><span class="hq-dock-bar hp"><i style="width:${hpPct.toFixed(1)}%"></i></span>`
+                    + (v.mpMax > 0 ? `<span class="hq-dock-bar mp"><i style="width:${mpPct.toFixed(1)}%"></i></span>` : '') + `</span>`
                     + (i === 0 ? `<span class="hq-dock-tag"><b>${_hqEsc(name)}</b><em>${v.down ? 'DOWN' : full ? 'HP FULL' : `HP ${v.hp} / ${v.hpMax}`}</em></span>` : '')
                     + `</div>`;
             }).join('');
