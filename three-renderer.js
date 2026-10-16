@@ -64382,6 +64382,11 @@ const ThreeRenderer = (function () {
        them. The sheets now draw first among the see-through things (shallow -2, the deep sheet over it -1): every plate drawn
        after lands on top, the deep sheet still lands over the shallow one. Opaque water (the room's own) is unchanged. */
     var LIQ_BLEND_ORDER = -2;
+    /* THE PLATES OVER THE ICE (2026-10-16, mondo: "ice is covering up tile highlights"): the same for every DRY ground sheet
+       with a see-through fringe (_fieldPatchFadeMat: ice, desert, grass, scorch, rubble a spell or storm laid on the true
+       ground; a raised / dug cell's patch on the field and on a tile board) — they drew at renderOrder 1 (0 for the field's
+       strata), after or among the plates. They now draw before the liquids, which draw before the plates. */
+    var GROUND_SHEET_ORDER = -3;
     function _liqBlendMat(key, over) {
         var mk = key + (over ? '|over' : '');
         if (_liqBlendMats[mk] !== undefined) return _liqBlendMats[mk];
@@ -64528,7 +64533,7 @@ const ThreeRenderer = (function () {
                 if (!geo) return;
                 run.forEach(function (c) { var cy = yOf(c.x, c.y); if (cy !== null && cy !== undefined) _deltaPatchTops[c.x + ',' + c.y] = cy + pLift; });
                 var m = new THREE.Mesh(geo, [core, fade]);
-                m.raycast = function () {}; m.name = 'delta_deform_patch'; m.receiveShadow = true; m.castShadow = false; m.renderOrder = 1;
+                m.raycast = function () {}; m.name = 'delta_deform_patch'; m.receiveShadow = true; m.castShadow = false; m.renderOrder = GROUND_SHEET_ORDER;
                 if (!grp) { grp = new THREE.Group(); grp.name = 'delta_deform_patches'; }
                 grp.add(m); n++;
             });
@@ -64617,7 +64622,7 @@ const ThreeRenderer = (function () {
                     var geo = _fieldPatchGeo(G, run, yTop, { lift: 0.4, solid: true, origin: _fieldPatchOrigin(run, yTop, !up), rep: rep });
                     if (!geo) return;
                     var m = new THREE.Mesh(geo, [core, fade || core]);
-                    m.receiveShadow = true; m._ew_fieldStrata = true; m.name = 'field_strata_patch'; grp.add(m);
+                    m.receiveShadow = true; m._ew_fieldStrata = true; m.name = 'field_strata_patch'; m.renderOrder = GROUND_SHEET_ORDER; grp.add(m);
                 });
             });
         } else plan.tops.forEach(function (c) {
@@ -64784,7 +64789,7 @@ const ThreeRenderer = (function () {
                     var mesh = new THREE.Mesh(geo, [fade, fade]);
                     mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = k; mesh.name = 'field_skin_patch';
                     mesh.castShadow = false; mesh.receiveShadow = !fluid;
-                    mesh.renderOrder = fluid ? 2 : 1;
+                    mesh.renderOrder = fluid ? LIQ_BLEND_ORDER : GROUND_SHEET_ORDER;   // under every tile plate (THE PLATES OVER THE ICE)
                     grp.add(mesh);
                 });
             });
