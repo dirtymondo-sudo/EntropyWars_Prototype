@@ -2164,6 +2164,55 @@ const ThreeRenderer = (function () {
         } catch (e) { console.warn('[ThreeRenderer] the legacy light patch failed', e); return false; }
     }
     _ewLegacyLightPatch();
+    /* ══ THE UNIT POP (2026-10-16, mondo: "make the units/characters pop a little more compared to the ground and objects
+       ... more saturated or brighter ... and fade the ground a little bit") ══
+       One grade on every LIT material's final colour (Lambert, Phong, Standard / Physical: the board, the rooms, the props,
+       the trees, the units), right where the light sum becomes the fragment (after opaque_fragment, before tone mapping,
+       colour space and fog, so a player-enabled fog still lands on the graded colour): mix toward the pixel's luminance by
+       `x` (saturation, 1 = untouched), then × `y` (brightness). The world gets a gentle fade, the units a lift, so the
+       units read off the ground without any added light. Unlit materials (MeshBasic: the move tiles, the previews, the
+       VFX) and ShaderMaterials (the sky, the holograms, the team outlines) are never touched.
+         · WebGL: patched into three's ShaderLib once at load. The values are two shared plain objects: three's
+           cloneUniforms copies a plain object by REFERENCE (see the height fog above), so every material reads the live
+           value. A unit's materials carry the EW_UNIT_POP define (own program) and read the unit's object.
+         · WebGPU: _ewNodePop (the node layer) grades the same point (setupOutput's input, before fog) off node uniforms that
+           read the same objects every render. A unit's material carries the string property ewPop = 'unit', so three's
+           node cache key gives it its own build.
+       Live-tune from the console: EW_POP.unit / EW_POP.world = { x: saturation, y: brightness, w: 1 on / 0 off }.
+       Off at load: ?ew_pop=0 or window.EW_NO_UNIT_POP = true. */
+    var _EW_POP_ON = (function () { try { return !window.EW_NO_UNIT_POP && !/[?&]ew_pop=0\b/.test(location.search); } catch (e) { return true; } })();
+    var _EW_POP_W = { x: 0.86, y: 0.95, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the ground + objects: a little faded
+    var _EW_POP_U = { x: 1.22, y: 1.10, z: 0, w: _EW_POP_ON ? 1 : 0 };   // the units: richer, a touch brighter
+    try { window.EW_POP = { world: _EW_POP_W, unit: _EW_POP_U }; } catch (e) {}
+    var _ewPopPatched = false;
+    function _ewPopPatch() {
+        if (_ewPopPatched || typeof THREE === 'undefined' || !THREE.ShaderLib) return false;
+        _ewPopPatched = true;
+        try {
+            var lib = THREE.ShaderLib, keys = ['lambert', 'phong', 'standard', 'physical'], n = 0;
+            var code = '#include <opaque_fragment>\n\t{\n\t#ifdef EW_UNIT_POP\n\t\tvec4 ewPop = uEwPopU;\n\t#else\n\t\tvec4 ewPop = uEwPop;\n\t#endif\n' +
+                '\t\tif ( ewPop.w > 0.5 ) {\n\t\t\tfloat ewPopL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );\n' +
+                '\t\t\tgl_FragColor.rgb = max( mix( vec3( ewPopL ), gl_FragColor.rgb, ewPop.x ), 0.0 ) * ewPop.y;\n\t\t}\n\t}';
+            for (var i = 0; i < keys.length; i++) {
+                var S = lib[keys[i]];
+                if (!S || !S.fragmentShader || S.fragmentShader.indexOf('uEwPop') >= 0 || S.fragmentShader.indexOf('#include <opaque_fragment>') < 0) continue;
+                S.fragmentShader = 'uniform vec4 uEwPop;\nuniform vec4 uEwPopU;\n' + S.fragmentShader.replace('#include <opaque_fragment>', code);
+                S.uniforms.uEwPop = { value: _EW_POP_W }; S.uniforms.uEwPopU = { value: _EW_POP_U };
+                n++;
+            }
+            if (!n) console.warn('[ThreeRenderer] the unit pop patch found no anchor in three.js ' + THREE.REVISION);
+            return n > 0;
+        } catch (e) { console.warn('[ThreeRenderer] the unit pop patch failed', e); return false; }
+    }
+    _ewPopPatch();
+    /* marks a unit's lit material for the unit lift (both renderers); returns it */
+    function _ewPopUnitMat(m) {
+        if (!m) return m;
+        m.defines = Object.assign({}, m.defines || {}, { EW_UNIT_POP: '' });
+        m.ewPop = 'unit';
+        m.needsUpdate = true;
+        return m;
+    }
     /* the ONE write: floor (world units), the fall-off height (world units), the share at the floor, the distance density (per unit) */
     function _ewHeightFogSet(floorY, h, amount, den) { _EW_HFOG.x = floorY || 0; _EW_HFOG.y = (h > 0) ? 1 / h : 1; _EW_HFOG.z = amount || 0; _EW_HFOG.w = den || 0; }
     /* ══ THE LIGHT PASS 2.3: THE ROOM-BOX AO (analytic ambient occlusion for a box room's shell + props) ══
@@ -12851,6 +12900,7 @@ const ThreeRenderer = (function () {
                     }
                     // the creator's vertex-coloured layers: the glow wears the garment's colour (see the hook)
                     if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                    _ewPopUnitMat(lm);   // THE UNIT POP: the unit lift, not the world fade
                     lm._ew_shared = true;   // owned by the rig cache, not _disposeR
                     entry.modelMats.push(lm);
                     return lm;
@@ -13481,6 +13531,7 @@ const ThreeRenderer = (function () {
                 spriteMat.emissiveIntensity = _unitSelfGlowIntensity(unit);
             }
             if (unit.ap <= 0) spriteMat.color = new THREE.Color(0.5, 0.5, 0.5);
+            _ewPopUnitMat(spriteMat);   // THE UNIT POP
 
             var nw = 128, nh = 128;
             var scanData = (spriteUrl && window._spriteGroundOffsets)
@@ -33361,8 +33412,33 @@ const ThreeRenderer = (function () {
             };
         }
     }
+    /* THE UNIT POP (see _ewPopPatch): the node renderer's half — the same grade on the lit colour before fog, the unit's
+       object for a material marked ewPop = 'unit', the world's for every other Lambert / Phong / Standard */
+    function _ewNodePop(nm, m) {
+        if (!(m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isMeshStandardMaterial)) return;
+        var U = _ewNodeU, T = U.T, unit = m.ewPop === 'unit', key = unit ? 'popU' : 'popW';
+        if (!U[key]) (function (o) {
+            var v = new THREE.Vector4(o.x, o.y, o.z, o.w);
+            U[key] = T.uniform(v).setGroup(T.renderGroup).onRenderUpdate(function () { return v.set(o.x, o.y, o.z, o.w); });
+        })(unit ? _EW_POP_U : _EW_POP_W);
+        var P = U[key], base = nm.setupOutput;
+        U.dressed[key] = (U.dressed[key] || 0) + 1;
+        nm.setupOutput = function (builder, out) {
+            if (!out || out.isOutputStructNode) return base.call(this, builder, out);
+            var g = T.Fn(function () {
+                var c = T.vec4(out).toVar();
+                T.If(P.w.greaterThan(0.5), function () {
+                    var l = T.dot(c.rgb, T.vec3(0.2126, 0.7152, 0.0722));
+                    c.rgb.assign(T.max(T.mix(T.vec3(l), c.rgb, P.x), 0).mul(P.y));
+                });
+                return c;
+            })();
+            return base.call(this, builder, g);
+        };
+    }
     /* the classic hook stack → the node material: the base hook (by identity or its _ewNode tag), then each layer over it */
     function _ewNodeDress(nm, m) {
+        _ewNodePop(nm, m);   // first, so it grades setupOutput's input and every layer below wraps it
         var h = m.onBeforeCompile, layers = [], C = _ewNodeU.dressed;
         while (h && h._ew_layer) { layers.push(h._ew_layer); C[h._ew_layer.k] = (C[h._ew_layer.k] || 0) + 1; h = h._ew_base; }
         var D = m._ewNode, kk = h === _hqAoHook ? 'ao' : h === _ewVColorEmissiveHook ? 'vcolor' : D ? D.k : null;
@@ -67694,6 +67770,7 @@ const ThreeRenderer = (function () {
                     }
                     if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
                     if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                    _ewPopUnitMat(lm);   // THE UNIT POP
                     mem.mats.push(lm);
                     return lm;
                 });

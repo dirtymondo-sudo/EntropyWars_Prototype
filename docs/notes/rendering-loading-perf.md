@@ -833,3 +833,18 @@ on WebGPU a new material or canvas per piece is a render object, bind groups and
   set, or `_nearOccGroup` = a near builder that did not opt into `_ew_occNear`) a 4×4 board lattice + every unit the viewer
   can see, one ray each (hidden enemies never drive a fade).
 - The roof/canopy cutaway is unchanged (mondo: "ignore roofs for this").
+
+## THE UNIT POP (2026-10-16, mondo: "make the units/characters pop a little more compared to the ground and objects ... more saturated or brighter ... and fade the ground a little bit")
+- One colour grade on every LIT material's final colour, at the point the light sum becomes the fragment (after
+  `opaque_fragment`, before tone mapping / colour space / fog): `mix(luma, c, x) * y`. World (every Lambert / Phong /
+  Standard / Physical that is not a unit: the board, HQ rooms, props, trees, water) x 0.86 saturation, y 0.95 brightness;
+  units (3D models in battle + exploration, sprite-slab units, the bar's party) x 1.22, y 1.10. Unlit MeshBasic (move
+  tiles, previews, VFX) and ShaderMaterials (sky, holograms, team outlines) are untouched. No light added.
+- WebGL: three-renderer.js `_ewPopPatch` patches ShaderLib lambert/phong/standard/physical once at load; uniforms
+  `uEwPop` / `uEwPopU` hold the plain objects `_EW_POP_W` / `_EW_POP_U` (cloneUniforms keeps a plain object by
+  reference, like the height fog), so the values are live. A unit material is marked by `_ewPopUnitMat` (define
+  `EW_UNIT_POP` + string property `ewPop = 'unit'`, which also splits three's node cache key).
+- WebGPU: `_ewNodePop` (called first in `_ewNodeDress`) grades setupOutput's input with node uniforms reading the same
+  objects. Checked in a standalone probe: classic WebGL and the node renderer (WebGL2 backend) give identical pixels.
+- Tune live: `EW_POP.world` / `EW_POP.unit` = { x: saturation, y: brightness, w: 1 on / 0 off }. Off at load: `?ew_pop=0`
+  or `window.EW_NO_UNIT_POP = true`. A new unit material path must call `_ewPopUnitMat`, or that unit fades with the world.
