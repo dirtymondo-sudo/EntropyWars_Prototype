@@ -2999,20 +2999,29 @@ if (typeof window !== 'undefined' && !window._ewPointerTypeHooked) {
 }
 
 /* The identity column. Its children always come in one order: watch, status chips, name, level line, type badges,
-   vitals, AP, items, materials, tool rows (absent ones are null). THE HERO SPLIT (UI Maker, mondo 2026-10-16: "i want
-   to have the hero portion outside of the panel but still have the panel for below"): the top part floats bare over
-   the board and only the rest sits in the panel. db.hero.split = true, db.hero.out = 'watch' | 'name' | 'vitals' =
-   how far down the floating part reaches. */
-const _HRLG_SPLIT_AT = { watch: 2, name: 5, vitals: 6 };
+   vitals, AP, items, materials, tool rows (absent ones are null). THE HERO PARTS (UI Maker, mondo 2026-10-16: "i want
+   to rearrange the elements ... move it all in and out of the panel"): when the maker has reordered the parts, moved
+   one, or put one outside the panel (UIMaker.hero().custom), each part gets its own box (.hrlg-part-<id>) in the
+   player's order; runs of parts outside the panel float bare (.hrlg-side-top), runs inside sit in panels
+   (.hrlg-side-low). Untouched, the column is the plain one. */
+const _HRLG_PART_IDS = ['watch', 'chips', 'name', 'sub', 'types', 'vitals', 'ap', 'items', 'mats', 'tools'];
 function _hrlgSide(...kids) {
   let H = null;
   try { H = window.UIMaker && window.UIMaker.hero ? window.UIMaker.hero() : null; } catch (e) { H = null; }
-  if (!H || !H.split) return h('div', { className: 'hrlg-side' }, ...kids);
-  const cut = _HRLG_SPLIT_AT[H.out] || _HRLG_SPLIT_AT.name;
+  if (!H || !H.custom) return h('div', { className: 'hrlg-side' }, ...kids);
+  const by = {};
+  _HRLG_PART_IDS.forEach((k, i) => { by[k] = kids[i]; });
+  const has = n => n != null && n !== false && !(Array.isArray(n) && !n.length);
+  const part = k => h('div', { key: k, className: 'hrlg-part hrlg-part-' + k, 'data-part': k }, by[k]);
+  const ids = (H.order || _HRLG_PART_IDS).filter(k => has(by[k]));
+  if (!H.anyOut) return h('div', { className: 'hrlg-side custom' }, ids.map(part));
+  const segs = [];
+  ids.forEach(k => {
+    const out = (H.where || {})[k] === 'out', last = segs[segs.length - 1];
+    if (last && last.out === out) last.ids.push(k); else segs.push({ out, ids: [k] });
+  });
   return h('div', { className: 'hrlg-side split' },
-    h('div', { className: 'hrlg-side-top' }, ...kids.slice(0, cut)),
-    h('div', { className: 'hrlg-side-low' }, ...kids.slice(cut)),
-  );
+    segs.map((g, i) => h('div', { key: i, className: g.out ? 'hrlg-side-top' : 'hrlg-side-low' }, g.ids.map(part))));
 }
 
 function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
@@ -10527,11 +10536,9 @@ function _injectHudHideStyles() {
     .hrlg-push { border-radius: 7px 15px 15px 7px; }
     .hrlg-push.entropy { border-radius: 9px 19px 19px 9px; }
     .hrlg-schip { border-radius: 999px; padding: 3px 7px; }
-    .hrlg-vbar { border-radius: 7px; }
-    /* the HP bar can't clip (the heartbeat trace escapes it) — the fill
-       wears the capsule itself */
-    .hrlg-vfill { border-radius: 7px; }
-    .hrlg-vspend { border-radius: 0 7px 7px 0; }
+    /* the hero's HP / MP bars stay flat rectangles like the name plates' bars (mondo 2026-10-16: "that health bar
+       is a pill looking thing when it should be like the other health bars"); the pill is a pick in the UI Maker's
+       Health bars (Ends / Hero bars) */
     .hrlg-pip, .hrlg-cpip { border-radius: 2px; }
     .hrlg-item-slot { border-radius: 13px; }
     .hrlg-list::-webkit-scrollbar-thumb { border-radius: 3px; }
@@ -11884,15 +11891,35 @@ function layoutCss() {
    section"): the identity column of the battle command rig (.hrlg-side: the watch with the unit's portrait, the
    name, the vitals, AP, item slots). db.hero = { w, watch, gap, face, glow, header, hide: { part: true } }; like the
    layout it is the same in every theme. Its LOOK is the theme's Hero skin role (Skins tab). */
-const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true, split: false, out: 'name', splitGap: 10, pad: 10 };
-const HERO_OUT = [['watch', 'Watch', 'Only the watch (and the status chips) sit outside'], ['name', 'Watch + name', 'The watch, name, level line and type badges sit outside'], ['vitals', 'Watch + name + HP', 'The HP / MP bars sit outside too']];
+const HERO_DEF = { w: 216, watch: 126, gap: 7, face: 'clock', glow: true, header: true, splitGap: 10, pad: 10 };
 const HERO_PARTS = [
   ['watch', 'Watch', '.hrlg-hubwrap'], ['chips', 'Status chips', '.hrlg-status-row'], ['name', 'Name line', '.hrlg-core'],
   ['sub', 'Level + race line', '.hrlg-core-sub'], ['types', 'Type badges', '.hrlg-typerow'], ['vitals', 'HP / MP bars', '.hrlg-vitals'],
   ['ap', 'AP pips', '.hrlg-ap'], ['items', 'Item slots', '.hrlg-items'], ['mats', 'Materials', '.hrlg-mats'],
 ];
+/* every part in its game order (the tool rows can move but never hide: BUILD and the one-shots live there).
+   db.hero.order = [ids], db.hero.where = { id: 'out' } (outside the panel), db.hero.nudge = { id: { x, y, s } }
+   (x slides it, y pulls it up or pushes it down with everything under it following, s sizes it) */
+const HERO_ALL = HERO_PARTS.concat([['tools', 'Tool rows', '.hrlg-push']]);
+const HERO_IDS = HERO_ALL.map(p => p[0]);
+function heroOrderOf(o) {
+  const out = Array.isArray(o) ? o.filter((k, i, a) => HERO_IDS.includes(k) && a.indexOf(k) === i) : [];
+  HERO_IDS.forEach(k => { if (!out.includes(k)) out.push(k); });
+  return out;
+}
 const FACES = [['clock', 'Clock + portrait'], ['portrait', 'Portrait only', 'The dial, hands and numerals go; the portrait fills the watch'], ['dial', 'Clock only', 'The clock without the portrait']];
-function heroOf() { return Object.assign({}, HERO_DEF, db.hero || {}, { hide: Object.assign({}, (db.hero && db.hero.hide) || {}) }); }
+function heroOf() {
+  const D = db.hero || {}, where = {}, nudge = {};
+  HERO_IDS.forEach(k => {
+    if (D.where && D.where[k] === 'out') where[k] = 'out';
+    const n = D.nudge && D.nudge[k];
+    if (n && (+n.x || +n.y || (n.s != null && +n.s !== 1))) nudge[k] = { x: +n.x || 0, y: +n.y || 0, s: n.s == null ? 1 : +n.s };
+  });
+  const order = heroOrderOf(D.order);
+  const anyOut = Object.keys(where).length > 0;
+  const custom = anyOut || Object.keys(nudge).length > 0 || order.join() !== HERO_IDS.join();
+  return Object.assign({}, HERO_DEF, D, { hide: Object.assign({}, D.hide || {}), where, nudge, order, anyOut, custom });
+}
 function heroCss() {
   const H = heroOf(), S = ':root:root .hrlg-side';
   let css = '';
@@ -11906,26 +11933,35 @@ function heroCss() {
   if (!H.glow) css += `${S} .hrlg-hub { filter: none !important; }\n`;
   if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]):not(.hrlg-hring), ${S} .hrlg-hub svg > circle:nth-of-type(n+3) { display: none !important; }\n${S} .hrlg-hub svg > g[clip-path] { transform: scale(1.7); transform-origin: 100px 100px; }\n`;
   else if (H.face === 'dial') css += `${S} .hrlg-hub svg image, ${S} .hrlg-hub svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
-  const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([, , sel]) => `${S} ${sel}`);
+  const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([k, , sel]) => `${S} ${sel}, ${S} .hrlg-part-${k}`);
   if (hid.length) css += `${hid.join(', ')} { display: none !important; }\n`;
-  /* THE SPLIT: the column itself goes bare (no plate, no frame, no title bar) and only its lower part
-     (.hrlg-side-low, see hud.js _hrlgSide) wears the panel: the theme's Hero skin, else its Panel skin (the theme
-     sheet paints .hrlg-side-low with those roles), else the plate colours below */
-  if (H.split) {
+  /* THE PARTS: each part is its own box (see hud.js _hrlgSide), so it can slide, size and overlap its neighbour
+     (a later part draws over an earlier one: HP bars pulled up onto the watch sit on top of it) */
+  if (H.custom) {
+    css += `${S} .hrlg-part { display: flex; flex-direction: column; gap: inherit; min-width: 0; position: relative; }\n`;
+    Object.keys(H.nudge).forEach(k => {
+      const n = H.nudge[k], sz = Math.max(0.4, Math.min(2.5, n.s || 1));
+      css += `${S} .hrlg-part-${k} { ${n.x ? `translate: ${n.x}px 0;` : ''} ${n.y ? `margin-top: ${(n.y / sz).toFixed(1)}px;` : ''} ${sz !== 1 ? `zoom: ${sz};` : ''} z-index: 2; }\n`;
+    });
+  }
+  /* OUTSIDE THE PANEL: the column itself goes bare (no plate, no frame, no title bar); the parts inside the panel
+     sit in .hrlg-side-low boxes that wear the panel: the theme's Hero skin, else its Panel skin (the theme sheet
+     paints .hrlg-side-low with those roles), else the plate colours below */
+  if (H.anyOut) {
     const X = S + '.split', g = Math.max(0, Math.min(24, +H.gap || 0)), pd = Math.max(0, Math.min(30, +H.pad || 0));
-    css += `${X} { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; padding: 0 !important; animation: none !important; }
+    css += `${X} { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; padding: 0 !important; animation: none !important; gap: 0 !important; }
 ${X}::before, ${X}::after { display: none !important; }
-${X} > .hrlg-side-top, ${X} > .hrlg-side-low { display: flex; flex-direction: column; gap: ${g}px; min-width: 0; }
-${X} > .hrlg-side-low { position: relative; margin-top: ${Math.max(0, Math.min(60, +H.splitGap || 0))}px; padding: ${pd}px; color: var(--ew-ink); border: 1px solid var(--ew-plate-edge); border-radius: 10px; background: var(--ew-plate-scan), var(--ew-plate-bg); box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 var(--ew-plate-lip), var(--ew-drop); }
-${X} > .hrlg-side-low:empty { display: none; }
+${X} > .hrlg-side-top, ${X} > .hrlg-side-low { display: flex; flex-direction: column; gap: ${g}px; min-width: 0; position: relative; }
+${X} > * + * { margin-top: ${Math.max(0, Math.min(60, +H.splitGap || 0))}px; }
+${X} > .hrlg-side-low { padding: ${pd}px; color: var(--ew-ink); border: 1px solid var(--ew-plate-edge); border-radius: 10px; background: var(--ew-plate-scan), var(--ew-plate-bg); box-shadow: inset 0 0 0 1px var(--ew-plate-seam), inset 0 0 0 2px var(--ew-plate-rim), inset 0 3px 0 var(--ew-plate-lip), var(--ew-drop); }
 `;
   }
   return css;
 }
-/* the column's markup follows db.hero.split: tell the Horologe to re-render when it changes */
+/* the column's markup follows the part order and what sits outside: tell the Horologe to re-render when they change */
 let _heroSplitKey = '';
 function heroSignal() {
-  const H = heroOf(), k = H.split ? 'split:' + H.out : '';
+  const H = heroOf(), k = H.custom ? JSON.stringify([H.order, H.where]) : '';
   if (k === _heroSplitKey) return;
   _heroSplitKey = k;
   try { window.dispatchEvent(new Event('ew-uim-hero')); } catch (e) {}
@@ -11934,22 +11970,37 @@ function heroTidy() {
   const H = db.hero || (db.hero = {});
   Object.keys(HERO_DEF).forEach(k => { if (H[k] != null && String(H[k]) === String(HERO_DEF[k])) delete H[k]; });
   if (H.hide) { Object.keys(H.hide).forEach(k => { if (!H.hide[k]) delete H.hide[k]; }); if (!Object.keys(H.hide).length) delete H.hide; }
+  if (H.order && heroOrderOf(H.order).join() === HERO_IDS.join()) delete H.order;
+  if (H.where) { Object.keys(H.where).forEach(k => { if (H.where[k] !== 'out') delete H.where[k]; }); if (!Object.keys(H.where).length) delete H.where; }
+  if (H.nudge) {
+    Object.keys(H.nudge).forEach(k => { const n = H.nudge[k]; if (!n || (!+n.x && !+n.y && (n.s == null || +n.s === 1))) delete H.nudge[k]; });
+    if (!Object.keys(H.nudge).length) delete H.nudge;
+  }
 }
+/* PR #229's one switch ("hero outside the panel" + how far down) becomes per-part outside flags */
+(function heroLegacy() {
+  const H = db.hero; if (!H || !H.split) { if (H) { delete H.split; delete H.out; } return; }
+  const cut = { watch: 2, name: 5, vitals: 6 }[H.out] || 5;
+  H.where = H.where || {};
+  HERO_IDS.slice(0, cut).forEach(k => { H.where[k] = 'out'; });
+  delete H.split; delete H.out;
+})();
 
 /* ── THE HEALTH BARS (mondo 2026-10-16: "let me change how the health bars look and what gets a normal health bar
    and what gets a circular one"). db.bars = { place: { id: 'bar' | 'ring' | 'both' }, look: { … } }; like the
    layout it is the same in every theme. Every place draws both shapes (the one it does not wear is hidden), and this
    sheet only swaps which one shows and restyles them, so the defaults leave the HUD exactly as it was.
-   Not covered: the 3D nameplates over the units (drawn on canvas by the renderer). */
+   The name plates over the units (three-renderer.js .tp-bar) take the colours, ends and track, not the thickness. */
 const BAR_PLACES = [
   { id: 'hero', label: 'Horologe hero section', sel: '.hrlg-vitals, .hrlg-hub', def: 'bar', ring: 'A ring round the watch', hint: 'Your acting unit, in a battle' },
   { id: 'turns', label: 'Turn order icons', sel: '.ew-turn-col', def: 'ring', hint: 'The round portraits above the Horologe' },
   { id: 'dock', label: 'Party portraits (exploring)', sel: '#hqPage .hq-dock', def: 'ring', hint: 'Bottom left while exploring' },
   { id: 'rows', label: 'Target rows + quick look', sel: '.hrlg-qvitals, .hrlg-trow', def: 'bar', barOnly: true, hint: 'The target list and the clicked unit\'s card in a battle' },
+  { id: 'plates', label: 'Name plates', sel: '.tp-wrap .tp-bars', def: 'bar', barOnly: true, hint: 'Over every unit on the board (colours, ends, track + frame; their thickness stays)' },
 ];
 const BAR_SHAPES = [['game', 'As made'], ['square', 'Square'], ['round', 'Rounded'], ['pill', 'Pill'], ['slant', 'Slanted']];
 const BAR_FILLS = [['game', 'Sheen', 'Dark to bright along the bar, the game\'s own look'], ['solid', 'Solid'], ['shine', 'Glossy', 'Light on top, shade below'], ['segments', 'Segments', 'Cut into blocks']];
-const BARS_DEF = { shape: 'game', h: 12, fill: 'game', seg: 10, hp: '#2ed158', foe: '#ff4a56', lowOn: true, low: '#ff4a4a', mp: '#2f9dff', track: '#07060b', frame: '#3a3448', frameW: 1, glow: true, wave: true, nums: true, labels: true, ring: 1, caps: false };
+const BARS_DEF = { heroShape: '', shape: 'game', h: 12, fill: 'game', seg: 10, hp: '#2ed158', foe: '#ff4a56', lowOn: true, low: '#ff4a4a', mp: '#2f9dff', track: '#07060b', frame: '#3a3448', frameW: 1, glow: true, wave: true, nums: true, labels: true, ring: 1, caps: false };
 function barsOf() {
   const B = db.bars || {}, place = {};
   BAR_PLACES.forEach(P => { const v = B.place && B.place[P.id]; place[P.id] = !P.barOnly && (v === 'bar' || v === 'ring' || v === 'both') ? v : P.def; });
@@ -11979,13 +12030,13 @@ function barsCss() {
   const colours = ['hp', 'foe', 'lowOn', 'low', 'mp', 'fill', 'seg', 'glow'].some(chg);
   const anyBar = place.turns !== 'ring' || place.dock !== 'ring';
   // the straight bars
-  const BAR = '.hrlg-vbar, .hrlg-thp, .ew-pp-bar, .hq-dock-bar';
-  const FILL = '.hrlg-vfill, .hrlg-thp-fill, .ew-pp-bar > i, .hq-dock-bar > i';
+  const BAR = '.hrlg-vbar, .hrlg-thp, .ew-pp-bar, .hq-dock-bar, .tp-wrap .tp-bar';
+  const FILL = '.hrlg-vfill, .hrlg-thp-fill, .ew-pp-bar > i, .hq-dock-bar > i, .tp-wrap .tp-hp-fill, .tp-wrap .tp-mp-fill';
   const fillSel = {
-    hp: '.hrlg-vrow.hp .hrlg-vfill, .hrlg-thp:not(.mp) > .hrlg-thp-fill, .ew-pp-bar.hp > i, .hq-dock-bar.hp > i',
-    foe: '.hrlg-thp-fill.foe, .ew-pp.foe .ew-pp-bar.hp > i',
+    hp: '.hrlg-vrow.hp .hrlg-vfill, .hrlg-thp:not(.mp) > .hrlg-thp-fill, .ew-pp-bar.hp > i, .hq-dock-bar.hp > i, .tp-wrap .tp-hp-ally .tp-hp-fill',
+    foe: '.hrlg-thp-fill.foe, .ew-pp.foe .ew-pp-bar.hp > i, .tp-wrap .tp-hp-enemy .tp-hp-fill',
     low: '.hrlg-vrow.hp.low .hrlg-vfill, .hrlg-thp-fill.low, .ew-pp.low:not(.foe) .ew-pp-bar.hp > i, .hq-dock-pp.low .hq-dock-bar.hp > i',
-    mp: '.hrlg-vrow.mp:not(.xp) .hrlg-vfill, .hrlg-thp.mp > .hrlg-thp-fill, .ew-pp-bar.mp > i, .hq-dock-bar.mp > i',
+    mp: '.hrlg-vrow.mp:not(.xp) .hrlg-vfill, .hrlg-thp.mp > .hrlg-thp-fill, .ew-pp-bar.mp > i, .hq-dock-bar.mp > i, .tp-wrap .tp-mp-fill',
   };
   /* a rule the player has not touched only reaches the portraits' own new bars (when they are on), so the
      HUD's existing bars keep their exact look until a setting changes */
@@ -12007,6 +12058,11 @@ function barsCss() {
     const r = { square: '0', round: '3px', pill: '999px', slant: '0' }[L.shape] || '0';
     css += `${pick(BAR + ', ' + FILL + ', .hrlg-vspend, .hrlg-thp-preview, .hrlg-thp-shield')} { border-radius: ${r} !important; }\n`;
     if (L.shape === 'slant') css += `${pick(BAR)} { transform: skewX(-18deg); }\n${pick('.hrlg-vbar .hrlg-wave')} { transform: translateY(-50%) skewX(18deg) !important; }\n`;
+  }
+  if (L.heroShape && L.heroShape !== L.shape) {   // the hero section's own bars, over the shape every bar wears
+    const r = { square: '0', round: '3px', pill: '999px', slant: '0' }[L.heroShape] || '0';
+    css += `${pick('.hrlg-vbar, .hrlg-vfill, .hrlg-vspend')} { border-radius: ${r} !important; }\n${pick('.hrlg-vbar')} { transform: ${L.heroShape === 'slant' ? 'skewX(-18deg)' : 'none'} !important; }\n`;
+    css += `${pick('.hrlg-vbar .hrlg-wave')} { transform: translateY(-50%)${L.heroShape === 'slant' ? ' skewX(18deg)' : ''} !important; }\n`;
   }
   if (!L.wave) css += `${pick('.hrlg-wave')} { display: none !important; }\n`;
   if (!L.nums) css += `${pick('.hrlg-vnum, .hrlg-thp-num, .hrlg-qv-num, .hrlg-vnums')} { display: none !important; }\n`;
@@ -12176,7 +12232,7 @@ function applyLayout() {
 }
 
 /* ══ THE UI MAKER SCREEN (window.openUiMaker) ══ */
-const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', ghost: 'auto', snap: true, guides: true, fold: false };
+const UI = { el: null, themeId: '', tab: 'skins', role: 'panel', sliceId: '', backdrop: 'dark', io: '', zoom: 1, shut: {}, draft: null, clip: null, live: null, back: 'skins', piece: '', surf: '', bar: '', hrole: '', hpart: '', ghost: 'auto', snap: true, guides: true, fold: false };
 const UIM_CSS = `
 .uim-root { position: fixed; inset: 0; z-index: 10050; display: grid; grid-template-rows: auto 1fr; background: #0b0c10; color: #dfe3ea; font: 12px/1.4 'IBM Plex Mono', monospace; }
 .uim-root * { box-sizing: border-box; }
@@ -12312,15 +12368,15 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-dock-hd .grip { color: #4b5568; letter-spacing: -2px; margin-right: 2px; }
 .uim-dock-hd .uim-btn { padding: 3px 7px; }
 .uim-dock-hd .sp { flex: 1; }
-.uim-dock-bd { overflow: auto; padding: 8px 10px 10px; min-height: 0; }
+.uim-dock-bd { overflow-x: hidden; overflow-y: auto; padding: 8px 10px 10px; min-height: 0; }
 .uim-dock.fold .uim-dock-bd { display: none; }
 .uim-dock .uim-h { margin: 10px 0 4px; }
 .uim-dock .uim-f { grid-template-columns: 92px 1fr; }
 .uim-dock-tools { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 2px 0 6px; font-size: 11px; color: #b9c1d0; }
 .uim-dock-tools label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
-.uim-dk-list { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 4px; }
+.uim-dk-list { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1px 4px; }
 .uim-dk-list .uim-h { grid-column: 1 / -1; }
-.uim-dk-row { display: flex; align-items: center; gap: 7px; padding: 4px 7px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-dk-row { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 4px 7px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
 .uim-dk-row:hover { background: #191c24; }
 .uim-dk-row.on { border-color: #ff3df0; background: #2a1630; }
 .uim-dk-row i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #3a4050; }
@@ -12356,6 +12412,20 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-dk-bar > div { min-width: 0; }
 .uim-dk-bar .uimb-seg { grid-column: 2; display: flex; gap: 3px; flex-wrap: wrap; }
 .uim-dk-bar .uimb-seg .uim-btn { padding: 2px 8px; }
+.uim-hparts { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 6px; }
+.uim-hp-row { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto auto 66px; min-width: 0; gap: 3px; align-items: center; padding: 2px 4px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-hp-row:hover { background: #191c24; }
+.uim-hp-row.on { border-color: #66ff8a; background: #12261a; }
+.uim-hp-row.hid .nm { opacity: 0.45; text-decoration: line-through; }
+.uim-hp-row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uim-hp-row .nm em { font-style: normal; font-size: 9.5px; color: #66ff8a; }
+.uim-hp-row .uim-btn { padding: 1px 6px; }
+.uim-hp-row .wh { font-size: 10px; }
+.uim-hp-row .wh.on { border-color: #ffb13d; color: #ffd08a; background: #2a1d08; }
+.uim-hp-sel { border-color: #2c5a38; background: #0f1a13; }
+.uim-arr-box.part { border-color: #66ff8a; background: rgba(102,255,138,0.05); }
+.uim-arr-box.part.on { border-style: solid; border-width: 2px; background: rgba(102,255,138,0.12); }
+.uim-arr-box.part > span { background: #1f8a3c; }
 .uim-dk-mock { position: sticky; top: -8px; z-index: 2; background: rgba(14,16,22,0.97); padding-top: 2px; }
 .uimb-mock { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; margin: 6px 0 8px; padding: 10px; border-radius: 6px; background: radial-gradient(ellipse at 50% 30%, #23283a, #07080c 80%); }
 .uimb-rows { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
@@ -12978,8 +13048,32 @@ function layoutBoxes() {
     setText(bx.lastChild, ghost ? P.label : '');
   });
   A.rects = rects;
+  partBoxes();
   const key = Object.keys(live).join(',');
   if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
+}
+/* the hero section's parts: a green box on each while the hero section is picked (drag = slide / pull up, wheel = size) */
+function partBoxes() {
+  const A = UI.live, on = UI.piece === 'hero' && !!visEl(document.querySelector('.hrlg-side'));
+  const H = on ? heroOf() : null;
+  HERO_ALL.forEach(([k, label, sel]) => {
+    const key = 'hp:' + k;
+    let bx = A.boxes[key];
+    if (!on) { if (bx) bx.style.display = 'none'; return; }
+    let r = null;
+    const els = document.querySelectorAll(H.custom ? '.hrlg-side .hrlg-part-' + k : '.hrlg-side ' + sel);
+    els.forEach(el => {
+      const v = visEl(el); if (!v) return;
+      r = r ? { left: Math.min(r.left, v.r.left), top: Math.min(r.top, v.r.top), right: Math.max(r.right, v.r.right), bottom: Math.max(r.bottom, v.r.bottom) } : { left: v.r.left, top: v.r.top, right: v.r.right, bottom: v.r.bottom };
+    });
+    if (!r) { if (bx) bx.style.display = 'none'; return; }
+    bx = boxEl(key); bx.dataset.hpart = k; bx.classList.add('part');
+    placeBox(bx, r.left, r.top, r.right - r.left, r.bottom - r.top);
+    bx.style.zIndex = String(20001 + HERO_IDS.indexOf(k));   // over the hero section's own box
+    bx.classList.toggle('on', UI.hpart === k);
+    bx.firstChild.style.display = UI.hpart === k ? '' : 'none';
+    setText(bx.firstChild, label + (H.where[k] === 'out' ? ' (outside)' : ''));
+  });
 }
 function menuBoxes() {
   const A = UI.live, W = innerWidth, H = innerHeight, rects = {}, live = {}, used = new Set();
@@ -13070,13 +13164,35 @@ function heroForm() {
   return `<div class="uim-h">The hero section</div>`
     + R('Width', 'w', 140, 420, 2, +H.w) + R('Watch size', 'watch', 48, 260, 2, +H.watch) + R('Spacing', 'gap', 0, 24, 1, +H.gap)
     + `<div class="uim-f"><label>Watch face</label><div style="flex-wrap:wrap">${FACES.map(([v, l, tip]) => `<button class="uim-btn${H.face === v ? ' on' : ''}" data-dk="heroface" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>`
-    + `<div class="uim-btns">${C('Watch glow', 'glow', H.glow)}${H.split ? '' : C('Title bar', 'header', H.header, 'The strip across the top of the hero section')}</div>`
-    + `<div class="uim-h">Outside the panel</div><div class="uim-btns"><label class="uim-btn" title="The watch (and as much below it as you pick) floats over the board on its own; the rest stays in the panel"><input type="checkbox" data-hpath="split" data-bool="1" data-re="1"${H.split ? ' checked' : ''} style="vertical-align:-2px"> Hero outside the panel</label></div>`
-    + (H.split ? `<div class="uim-f"><label>Outside</label><div style="flex-wrap:wrap">${HERO_OUT.map(([v, l, tip]) => `<button class="uim-btn${H.out === v ? ' on' : ''}" data-dk="heroout" data-val="${v}" title="${esc(tip)}">${l}</button>`).join('')}</div></div>`
-      + R('Gap to panel', 'splitGap', 0, 60, 1, +H.splitGap) + R('Panel padding', 'pad', 0, 30, 1, +H.pad)
-      + `<div class="uim-note">The panel below wears the Hero skin (else the Windows one). The title bar is off while the hero sits outside.</div>` : '')
-    + `<div class="uim-h">Show</div><div class="uim-btns">${HERO_PARTS.map(([k, l]) => C(l, 'hide.' + k, !H.hide[k])).join('')}</div>`
+    + `<div class="uim-btns">${C('Watch glow', 'glow', H.glow)}${H.anyOut ? '' : C('Title bar', 'header', H.header, 'The strip across the top of the hero section')}</div>`
+    + heroPartsForm(H, R)
     + `<div class="uim-btns"><button class="uim-btn" data-dk="heroreset"${Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the hero section</button></div>`;
+}
+/* THE PARTS (mondo 2026-10-16: "i want to rearrange the elements ... move that stuff around and move it all in and
+   out of the panel"): top-to-bottom order, in or outside the panel, shown or hidden, and for the picked part a slide,
+   a pull up / push down (the parts under it follow) and a size. On screen each part has a green box to drag. */
+function heroPartsForm(H, R) {
+  const k0 = HERO_IDS.includes(UI.hpart) ? UI.hpart : '';
+  let h = `<div class="uim-h">Parts, top to bottom</div><div class="uim-hparts">`;
+  H.order.forEach((k, i) => {
+    const P = HERO_ALL.find(x => x[0] === k), out = H.where[k] === 'out', moved = !!H.nudge[k];
+    h += `<div class="uim-hp-row${k === k0 ? ' on' : ''}${H.hide[k] ? ' hid' : ''}" data-hpart="${k}" title="Click to slide or size it">`
+      + (k === 'tools' ? '<span class="sh"></span>' : `<input type="checkbox" class="sh" data-hpath="hide.${k}" data-bool="1"${H.hide[k] ? '' : ' checked'} title="Show it">`)
+      + `<span class="nm">${esc(P[1])}${moved ? ' <em>moved</em>' : ''}</span>`
+      + `<button class="uim-btn" data-dk="hup" data-val="${k}"${i ? '' : ' disabled'} title="Up">▲</button><button class="uim-btn" data-dk="hdown" data-val="${k}"${i < H.order.length - 1 ? '' : ' disabled'} title="Down">▼</button>`
+      + `<button class="uim-btn wh${out ? ' on' : ''}" data-dk="hwhere" data-val="${k}" title="${out ? 'Floats over the board on its own: click to put it back in the panel' : 'In the panel: click to take it out'}">${out ? 'Outside' : 'In panel'}</button></div>`;
+  });
+  h += '</div>';
+  if (k0) {
+    const n = H.nudge[k0] || { x: 0, y: 0, s: 1 }, P = HERO_ALL.find(x => x[0] === k0);
+    h += `<div class="uim-dk-sel uim-hp-sel"><b>${esc(P[1])}</b>`
+      + R('Slide', `nudge.${k0}.x`, -240, 240, 1, n.x) + R('Up / down', `nudge.${k0}.y`, -240, 240, 1, n.y) + R('Size', `nudge.${k0}.s`, 0.4, 2.5, 0.05, n.s)
+      + `<div class="uim-note">Up pulls it onto the part above (the parts under it follow), like HP bars over the bottom of the watch.</div>`
+      + `<div class="uim-btns"><button class="uim-btn" data-dk="hpartreset" data-val="${k0}"${H.nudge[k0] ? '' : ' disabled'}>Reset this part</button><button class="uim-btn" data-dk="hpart" data-val="">Close</button></div></div>`;
+  } else h += `<div class="uim-note">Pick a part (here or its green box on the screen) to slide, pull up or size it. Drag a green box to move the part.</div>`;
+  if (H.anyOut) h += R('Gap to panel', 'splitGap', 0, 60, 1, +H.splitGap) + R('Panel padding', 'pad', 0, 30, 1, +H.pad)
+    + `<div class="uim-note">Parts in the panel wear the Hero skin (else the Windows one); parts outside float bare. The title bar is off while any part is outside.</div>`;
+  return h;
 }
 function surfOptions(S) {
   return (S.def === 'original' && !S.native ? [['', 'Original look (default)'], ['follow', 'Settings theme']] : [['', 'Settings theme']].concat(S.native ? [] : [['original', 'Original look']]))
@@ -13151,13 +13267,14 @@ function dockBarsBody() {
   let h = dockTop() + `<div class="uim-note">Which places get a straight bar, a ring, or both, and how every bar and ring looks. The yellow boxes are the places on screen now; click one to pick it.</div><div class="uim-dk-mock"></div>`;
   h += BAR_PLACES.map(P => `<div class="uim-dk-bar${UI.bar === P.id ? ' on' : ''}" data-bar="${P.id}" title="${esc(P.hint)}"><i></i><div><b>${esc(P.label)}</b><small>${esc(P.hint)}</small></div>`
     + `<div class="uimb-seg">${P.barOnly ? '<span class="uim-note" style="margin:0">Bars only</span>' : [['bar', 'Bar'], ['ring', 'Ring'], ['both', 'Both']].map(([v, l]) => `<button class="uim-btn${place[P.id] === v ? ' on' : ''}" data-dk="bplace" data-place="${P.id}" data-val="${v}"${v === 'ring' && P.ring ? ` title="${esc(P.ring)}"` : ''}>${l}${P.def === v ? ' ·' : ''}</button>`).join('')}</div></div>`).join('');
-  h += `<div class="uim-note">· marks how the game draws it. The 3D name plates over the units are drawn by the renderer, not the HUD, so they keep their look.</div><div class="uim-dk-detail"></div>
+  h += `<div class="uim-note">· marks how the game draws it.</div><div class="uim-dk-detail"></div>
   <div class="uim-note"><span class="uim-kbd">Tab</span> next place on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
   return h;
 }
 function barsDetail() {
   const { look: L } = barsOf(), P = 'look.';
-  let h = sec('bshape', 'Shape', bp(fSeg('Ends', P + 'shape', BAR_SHAPES, L.shape) + fRange('Thickness', P + 'h', 4, 24, 1, +L.h)), (BAR_SHAPES.find(x => x[0] === L.shape) || ['', ''])[1]);
+  let h = sec('bshape', 'Shape', bp(fSeg('Ends', P + 'shape', BAR_SHAPES, L.shape) + fSeg('Hero bars', P + 'heroShape', [['', 'Same as all']].concat(BAR_SHAPES.slice(1)), L.heroShape) + fRange('Thickness', P + 'h', 4, 24, 1, +L.h))
+    + '<div class="uim-note">"As made" is how the game draws each bar. Hero bars sets the Horologe hero section\'s HP / MP bars on their own (Pill for the capsule look).</div>', (BAR_SHAPES.find(x => x[0] === L.shape) || ['', ''])[1]);
   h += sec('bfill', 'Fill', bp(fSeg('Kind', P + 'fill', BAR_FILLS, L.fill) + (L.fill === 'segments' ? fRange('Block size', P + 'seg', 4, 40, 1, +L.seg) : '')
     + fColor('HP', P + 'hp', L.hp, false) + fColor('Enemy HP', P + 'foe', L.foe, false)
     + `<div class="uim-f"><label>Low HP</label><div><input type="checkbox" data-bpath="${P}lowOn" data-bool="1" data-re="1"${L.lowOn ? ' checked' : ''} title="Under 30% the HP turns this colour">${L.lowOn ? `<input type="color" value="${toHex(L.low)}" data-bpath="${P}low" data-kind="rgb"><input class="uim-hex" value="${toHex(L.low)}" data-bpath="${P}low" data-kind="hex" maxlength="7" spellcheck="false">` : ''}</div></div>`
@@ -13351,6 +13468,8 @@ function liveDown(e) {
   if (document.activeElement && A.dock.contains(document.activeElement)) document.activeElement.blur();   // the arrows go to the piece now
   if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
   if (A.mode === 'bars') { if (bx.dataset.bar) liveSelect(bx.dataset.bar); return; }
+  if (bx.dataset.hpart) { partDown(e, bx.dataset.hpart); return; }
+  A.partKeys = false;
   const P = livePiece(e); if (!P) return;
   const before = layState();   // one undo step per drag, none for a plain click
   if (UI.piece !== P.id) liveSelect(P.id);
@@ -13376,6 +13495,38 @@ function liveDown(e) {
   };
   window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
+function partDown(e, k) {
+  const A = UI.live;
+  const before = layState();
+  A.partKeys = true;
+  if (UI.hpart !== k) { UI.hpart = k; dockDetail(); }
+  const n0 = (heroOf().nudge[k]) || { x: 0, y: 0, s: 1 };
+  const d = { x0: e.clientX, y0: e.clientY };
+  A.drag = d; A.dock.classList.add('busy');
+  const mv = ev => {
+    if (!UI.live || UI.live.drag !== d) return;
+    const g = UI.snap && !ev.altKey ? 2 : 1;
+    const H = db.hero || (db.hero = {}); H.nudge = H.nudge || {};
+    const n = H.nudge[k] || (H.nudge[k] = { s: n0.s });
+    n.x = Math.max(-240, Math.min(240, Math.round((n0.x + ev.clientX - d.x0) / g) * g));
+    n.y = Math.max(-240, Math.min(240, Math.round((n0.y + ev.clientY - d.y0) / g) * g));
+    applyLayout();
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (UI.live) { UI.live.drag = null; UI.live.dock.classList.remove('busy'); }
+    heroTidy();
+    if (layState() !== before) { HIST.undo.push({ lay: 1, j: before }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; HIST.t = Date.now(); }
+    touchLayout(); dockDetail();
+  };
+  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+function nudgePart(k, f, v) {
+  snapLayout();
+  const H = db.hero || (db.hero = {}); H.nudge = H.nudge || {};
+  const n = H.nudge[k] || (H.nudge[k] = {});
+  n[f] = v; heroTidy(); touchLayout(); dockDetail();
+}
 function sizePiece(P, step) {
   snapLayout();
   const L = db.layout[P.id] || (db.layout[P.id] = {});
@@ -13390,6 +13541,13 @@ function hidePiece(P) {
 }
 function resetPiece(P) { snapLayout(true); delete db.layout[P.id]; touchLayout(); dockDetail(); }
 function liveWheel(e) {
+  const pb = e.target.closest('.uim-arr-box[data-hpart]');
+  if (pb) {
+    e.preventDefault();
+    const k = pb.dataset.hpart, n = heroOf().nudge[k] || { s: 1 };
+    UI.hpart = k; nudgePart(k, 's', Math.max(0.4, Math.min(2.5, Math.round(((n.s || 1) + (e.deltaY < 0 ? 0.05 : -0.05)) * 100) / 100)));
+    return;
+  }
   const P = livePiece(e); if (!P) return;
   e.preventDefault();
   if (UI.piece !== P.id) liveSelect(P.id);
@@ -13439,7 +13597,19 @@ function dockClick(e) {
     else if (k === 'piecereset' && P) resetPiece(P);
     else if (k === 'heroface') { snapLayout(true); db.hero = db.hero || {}; db.hero.face = v; heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroreset') { snapLayout(true); db.hero = {}; touchLayout(); dockDetail(); }
-    else if (k === 'heroout') { snapLayout(true); db.hero = db.hero || {}; db.hero.out = v; heroTidy(); touchLayout(); dockDetail(); }
+    else if (k === 'hpart') { UI.hpart = v || ''; dockDetail(); }
+    else if (k === 'hup' || k === 'hdown') {
+      snapLayout(true); db.hero = db.hero || {};
+      const o = heroOrderOf(db.hero.order), i = o.indexOf(v), j = i + (k === 'hup' ? -1 : 1);
+      if (i >= 0 && j >= 0 && j < o.length) { o[i] = o[j]; o[j] = v; db.hero.order = o; }
+      UI.hpart = v; heroTidy(); touchLayout(); dockDetail();
+    }
+    else if (k === 'hwhere') {
+      snapLayout(true); db.hero = db.hero || {}; db.hero.where = db.hero.where || {};
+      if (db.hero.where[v] === 'out') delete db.hero.where[v]; else db.hero.where[v] = 'out';
+      heroTidy(); touchLayout(); dockDetail();
+    }
+    else if (k === 'hpartreset') { snapLayout(true); if (db.hero && db.hero.nudge) delete db.hero.nudge[v]; heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'hrole') { UI.hrole = v; dockDetail(); }
     else if (k === 'bplace') {
       snapLayout(true);
@@ -13455,6 +13625,8 @@ function dockClick(e) {
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
     return;
   }
+  const hp = e.target.closest('.uim-hp-row[data-hpart]');
+  if (hp && !e.target.closest('input, label')) { UI.hpart = UI.hpart === hp.dataset.hpart ? '' : hp.dataset.hpart; dockDetail(); return; }
   const row = e.target.closest('[data-piece], [data-surf], [data-bar]');
   if (!row || !A.dock.contains(row)) return;
   const id = row.dataset.piece || row.dataset.surf || row.dataset.bar;
@@ -13478,7 +13650,12 @@ function dockInput(e) {
     if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
     snapLayout();
     const H = db.hero || (db.hero = {}), k = el.dataset.hpath;
-    if (k.indexOf('hide.') === 0) { H.hide = H.hide || {}; H.hide[k.slice(5)] = !el.checked; }
+    if (k.indexOf('hide.') === 0) { H.hide = H.hide || {}; H.hide[k.slice(5)] = !el.checked; const r = el.closest('.uim-hp-row'); if (r) r.classList.toggle('hid', !el.checked); }
+    else if (k.indexOf('nudge.') === 0) {
+      const [, id, f] = k.split('.'); H.nudge = H.nudge || {}; const n = H.nudge[id] || (H.nudge[id] = {});
+      n[f] = +el.value; syncTwins(el, 'data-hpath', n[f]);
+      const rs = A.dock.querySelector('[data-dk="hpartreset"]'); if (rs) rs.disabled = false;
+    }
     else { H[k] = el.dataset.bool ? el.checked : +el.value; if (el.dataset.num) syncTwins(el, 'data-hpath', H[k]); }
     heroTidy(); touchLayout();
     if (el.dataset.re && e.type === 'change') { dockDetail(); return; }
@@ -13539,6 +13716,12 @@ function liveKey(e) {
   if (A.mode !== 'layout') return false;
   const P = UIM_PIECES.find(x => x.id === UI.piece); if (!P) return false;
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (d && P.id === 'hero' && A.partKeys && UI.hpart) {
+    const n = heroOf().nudge[UI.hpart] || { x: 0, y: 0 }, st = e.shiftKey ? 8 : 1;
+    if (d[0]) nudgePart(UI.hpart, 'x', Math.max(-240, Math.min(240, n.x + d[0] * st)));
+    else nudgePart(UI.hpart, 'y', Math.max(-240, Math.min(240, n.y + d[1] * st)));
+    return true;
+  }
   if (d) {
     snapLayout();
     const L = db.layout[P.id] || (db.layout[P.id] = {}), n = e.shiftKey ? 8 : 1;
