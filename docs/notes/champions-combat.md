@@ -1495,3 +1495,9 @@ targeting laser or the real-time turret clock). Fix: battle.js `turretHasShotAt(
 terrain sight line, `isRangeBlockedByTerrain(turret → unit, target z)`. Asked by the end-of-round volley (turrets and
 ranged summons), the real-time turret scan, and three-renderer.js `_updateTurretAim`, so the laser only paints a unit
 the gun can actually hit; a walled-off unit is skipped and the turret takes the next one in range it can see.
+- Fog click (2026-10-16, mondo: "im clicking on a tile it tells me i can teleport to but its not letting me move there ...
+  its not even telling me an error"): clickTile's fog gate returned SILENTLY on any tile the team can't see unless a
+  pick-a-unit teleport was mid-landing, and it looked the armed spell up in `spells` only (Mirror Blink is a race
+  ability). Now it finds the spell in `_raceAbilities` too, lets every `_teleportLandingPhase` click through to doSpell,
+  and an attack / spell / item click on a fogged tile logs "Out of sight — no one on your team can see that tile."
+  Checked in a headless browser: P1 blinked onto a fogged lit tile and onto a seen one.
