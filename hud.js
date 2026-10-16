@@ -1853,7 +1853,7 @@ function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
 
 function TurnColumn({ st }) {
   const ref = useRef(null);
-  const geoRef = useRef({ bottom: null, avail: 480, docked: false });
+  const geoRef = useRef({ bottom: null, avail: 480, docked: false, gap: TC_GAP });
   const [geo, setGeo] = useState(geoRef.current);
   const cmdRef = useRef(false);
   cmdRef.current = _tcViewerCommands(st);
@@ -1873,9 +1873,13 @@ function TurnColumn({ st }) {
     else if (cmdRef.current && geoRef.current.docked && geoRef.current.bottom != null) { bottom = geoRef.current.bottom; docked = true; }
     else bottom = 14 + 66 * s;
     const avail = Math.max(120, (lr.height - bottom - 12) / s);
+    /* the space between the icons: the UI Maker's Layout > Turn order > Icon spacing writes --tc-gap (mondo 2026-10-16:
+       "let me change the vertical spacing between the turn clock icons ... without also changing their size") */
+    const gv = parseFloat(getComputedStyle(el).getPropertyValue('--tc-gap'));
+    const gap = isFinite(gv) ? Math.max(-30, Math.min(60, gv)) : TC_GAP;
     const g = geoRef.current;
-    if (g.bottom == null || Math.abs(g.bottom - bottom) > 0.5 || Math.abs(g.avail - avail) > 0.5 || g.docked !== docked) {
-      geoRef.current = { bottom, avail, docked };
+    if (g.bottom == null || Math.abs(g.bottom - bottom) > 0.5 || Math.abs(g.avail - avail) > 0.5 || g.docked !== docked || g.gap !== gap) {
+      geoRef.current = { bottom, avail, docked, gap };
       setGeo(geoRef.current);
     }
   }, []);
@@ -1910,13 +1914,14 @@ function TurnColumn({ st }) {
   /* ── fit the icons into the height left above the Horologe ── */
   const nowRow = !commands && queue.length && queue[0].active;
   const hasSpent = queue.some(e => e.finished) && queue.some(e => !e.finished);
-  const fixed = (dead.length ? 24 : 0) + (hasSpent ? 14 : 0) + (isGaunt ? 34 : 0) + (escaped.length ? 34 : 0);
+  const fixed = (dead.length ? 24 : 0) + (hasSpent ? 14 : 0);
   const iconsAvail = Math.max(TC_MIN, geo.avail - fixed);
   const units = queue.length + (nowRow ? 0.3 : 0);
-  let size = Math.floor(iconsAvail / Math.max(1, units) - TC_GAP);
+  const gap = geo.gap == null ? TC_GAP : geo.gap;
+  let size = Math.floor(iconsAvail / Math.max(1, units) - Math.max(0, gap));
   size = Math.max(TC_MIN, Math.min(TC_MAX, size));
   let shown = queue, folded = 0;
-  const fit = Math.floor((iconsAvail - (nowRow ? size * 0.3 : 0)) / (size + TC_GAP));
+  const fit = Math.floor((iconsAvail - (nowRow ? size * 0.3 : 0)) / Math.max(8, size + gap));
   if (queue.length > fit) {
     const keep = Math.max(1, fit - 1);                 // one slot goes to the "+N" pip
     shown = queue.slice(0, keep);
@@ -1939,21 +1944,10 @@ function TurnColumn({ st }) {
   if (folded > 0) items.push(h('div', { key: 'fold', className: 'ew-tc-fold', style: { width: size * 0.8, height: size * 0.8 }, title: folded + ' more' }, '+' + folded));
   items.reverse();
 
-  return h('div', {
-    ref,
-    className: 'ew-turn-col' + (geo.docked ? ' docked' : ''),
-    style: { bottom: (geo.bottom == null ? 'calc(14px + 66px * var(--ew-ui-scale, 1))' : geo.bottom + 'px') },
-  },
-    /* the fallen: small grey skull pips at the very top */
-    dead.length > 0 && h('div', { className: 'ew-tc-fallen' },
-      dead.map(e => h('span', {
-        key: e.id, className: 'ew-tc-ko',
-        title: ((typeof unitDisplayName === 'function' ? unitDisplayName(e.unit) : e.unit.name) || '')
-          + (e.unit._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
-        style: { '--tc-ac': getAllianceColor(e.unit) },
-      }, h(UnitSprite, { unit: e.unit, size: 16 }), h('i', null, '☠'))),
-    ),
-
+  /* the reserves (Gauntlet) and the escaped ride their own box, bottom right, that the UI Maker places on its own
+     (mondo 2026-10-16: "Take the reserves out of the turn clock and let me place them separately like in the bottom
+     right corner") */
+  const bench = (isGaunt || escaped.length > 0) && h('div', { key: 'bench', className: 'ew-reserves-box' },
     isGaunt && h('div', { className: 'ew-party-reserves' },
       h('span', { className: 'ew-party-reserves-lbl' }, 'RESERVES'),
       reserves.length === 0 && h('span', { className: 'ew-party-reserves-none' }, '—'),
@@ -1982,9 +1976,25 @@ function TurnColumn({ st }) {
         title: (typeof unitDisplayName === 'function' ? unitDisplayName(r) : r.name) + ' · escaped — out of the fight, safe',
       }, h(UnitSprite, { unit: r, size: 20 }))),
     ),
-
-    h('div', { className: 'ew-tc-list', style: { gap: TC_GAP } }, items),
   );
+
+  return h(React.Fragment, null, h('div', {
+    key: 'col', ref,
+    className: 'ew-turn-col' + (geo.docked ? ' docked' : ''),
+    style: { bottom: (geo.bottom == null ? 'calc(14px + 66px * var(--ew-ui-scale, 1))' : geo.bottom + 'px') },
+  },
+    /* the fallen: small grey skull pips at the very top */
+    dead.length > 0 && h('div', { className: 'ew-tc-fallen' },
+      dead.map(e => h('span', {
+        key: e.id, className: 'ew-tc-ko',
+        title: ((typeof unitDisplayName === 'function' ? unitDisplayName(e.unit) : e.unit.name) || '')
+          + (e.unit._spawnLocked ? ' — DOWN · NO SPAWN POINT (hold a Nexus to respawn)' : ' — DOWN'),
+        style: { '--tc-ac': getAllianceColor(e.unit) },
+      }, h(UnitSprite, { unit: e.unit, size: 16 }), h('i', null, '☠'))),
+    ),
+
+    h('div', { className: 'ew-tc-list', style: { gap: Math.max(0, gap), '--tc-neg': Math.min(0, gap) + 'px' } }, items),
+  ), bench);
 }
 
 /* Gauntlet: when one of YOUR deployed units falls (no respawns), pick which
@@ -10917,6 +10927,7 @@ function _hudHideCss() {
       transition: bottom 0.32s cubic-bezier(0.22,1,0.36,1);
     }
     .ew-tc-list { display: flex; flex-direction: column; align-items: flex-start; }
+    .ew-tc-list > * + * { margin-top: var(--tc-neg, 0px); }   /* Icon spacing below 0 overlaps them */
     .ew-tc-icon {
       position: relative; flex: none; cursor: pointer; pointer-events: auto; border-radius: 50%;
       transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease, filter 0.3s ease;
@@ -10958,7 +10969,14 @@ function _hudHideCss() {
       position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
       font-style: normal; font-size: 12px; color: #e8e4d8; background: rgba(0,0,0,0.45); text-shadow: 0 0 3px #000;
     }
-    .ew-turn-col .ew-party-reserves { pointer-events: auto; }
+    /* the reserves / the escaped: their own box, bottom right (UI Maker piece "Reserves") */
+    .ew-reserves-box {
+      position: absolute; right: 12px; bottom: 12px; z-index: 12; pointer-events: none;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+      transform: scale(var(--ew-ui-scale, 1)); transform-origin: 100% 100%;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .ew-reserves-box .ew-party-reserves { pointer-events: auto; }
     /* the ⓘ stat card docks beside the column (styles-base.css put it top-left, where the column lives now) */
     .unit-hover-hud { left: calc(22px + 216px * var(--ew-ui-scale, 1)) !important; }
     .ew-pp {
@@ -11274,6 +11292,7 @@ if (!db.assign || typeof db.assign !== 'object') db.assign = {};
 if (!db.layout || typeof db.layout !== 'object') db.layout = {};
 if (!db.hero || typeof db.hero !== 'object') db.hero = {};
 if (!db.bars || typeof db.bars !== 'object') db.bars = {};
+if (!db.icons || typeof db.icons !== 'object') db.icons = {};
 if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
 if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
@@ -11972,7 +11991,7 @@ const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
 const UIM_PIECES = [
   { id: 'area', group: 'Exploration', label: 'Area name', sel: '#hqPage .hq-strip-l', def: { l: 16, t: 10, w: 260, h: 46 } },
   { id: 'pay', group: 'Exploration', label: 'Hazard pay + wallet', sel: '#hqPage .hq-strip-r', def: { r: 16, t: 12, w: 320, h: 30 } },
-  { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock', def: { l: 18, b: 12, w: 280, h: 80 } },
+  { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock', icons: 'dock', def: { l: 18, b: 12, w: 280, h: 100 } },
   { id: 'prompt', group: 'Exploration', label: 'Interact prompt', sel: '#hqPage .hq-prompt', def: { cx: 0, b: 72, w: 320, h: 44 } },
   { id: 'toast', group: 'Exploration', label: 'Pick-up toast', sel: '#hqPage .hq-toast', def: { cx: 0, b: 136, w: 280, h: 52 } },
   { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
@@ -11980,7 +11999,8 @@ const UIM_PIECES = [
   { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', def: { cx: 0, t: 10, w: 440, h: 64 } },
   { id: 'meta', group: 'Battle', label: 'Match info', sel: '.ew-matchmeta', def: { r: 12, t: 12, w: 220, h: 40 } },
-  { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', def: { l: 10, b: 490, w: 56, h: 240 } },
+  { id: 'turns', group: 'Battle', label: 'Turn order', sel: '.ew-turn-col', icons: 'turns', def: { l: 10, b: 490, w: 56, h: 240 } },
+  { id: 'bench', group: 'Battle', label: 'Reserves', sel: '.ew-reserves-box', origin: '100% 100%', def: { r: 12, b: 12, w: 220, h: 40 } },
   { id: 'desc', group: 'Battle', label: 'Spell description bar', sel: '#ew-spell-descbar', def: { cx: 0, b: 10, wf: 0.92, wmax: 1100, h: 62 } },
   { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
@@ -12000,7 +12020,38 @@ function layoutCss() {
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
-  return css + heroCss() + barsCss();
+  return css + heroCss() + barsCss() + iconsCss();
+}
+
+/* ── THE ICON ROWS (mondo 2026-10-16: "let me change the vertical spacing between the turn clock icons ... without also
+   changing their size", "Let me change the party icons in exploration mode (like right now they are horizontal, what
+   if i want them stacked vertical?)", "i want the health bars to be underneath just like everywhere else and i dont
+   need a panel for it"). db.icons, the same in every theme. tcGap = px between the turn order icons (TurnColumn reads
+   --tc-gap); dockDir row | col (lead on top) | colup (lead at the bottom); dockGap = px between the party portraits;
+   dockTag = the lead's name + HP: none | under (plain text under its bars) | panel (the old plate beside it). The party
+   portraits' bars themselves are the Bars mode's "Party portraits" place (rings + bars under them by default). */
+const ICONS_DEF = { tcGap: 6, dockDir: 'row', dockGap: 6, dockTag: 'none' };
+function iconsOf() { return Object.assign({}, ICONS_DEF, db.icons || {}); }
+function iconsTidy() {
+  const I = db.icons || (db.icons = {});
+  Object.keys(I).forEach(k => { if (!(k in ICONS_DEF) || String(I[k]) === String(ICONS_DEF[k])) delete I[k]; });
+}
+function iconsCss() {
+  const I = iconsOf(), R = ':root:root ', n = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
+  let css = '';
+  if (+I.tcGap !== ICONS_DEF.tcGap) css += `${R}.ew-turn-col { --tc-gap: ${n(I.tcGap, -30, 60, 6)}; }\n`;
+  const D = R + '#hqPage .hq-dock', gap = n(I.dockGap, -20, 60, 6);
+  if (I.dockDir === 'col' || I.dockDir === 'colup') css += `${D} { flex-direction: ${I.dockDir === 'col' ? 'column' : 'column-reverse'} !important; align-items: flex-start !important; }\n${D} .hq-dock-pp.lead { margin-right: 0 !important; }\n`;
+  if (gap !== ICONS_DEF.dockGap) css += gap >= 0 ? `${D} { gap: ${gap}px !important; }\n` : `${D} { gap: 0 !important; }\n${D} > .hq-dock-pp + .hq-dock-pp { margin-${I.dockDir === 'col' ? 'top' : I.dockDir === 'colup' ? 'bottom' : 'left'}: ${gap}px !important; }\n`;
+  /* each portrait is a small grid: the ring on top, its bars under it, the name + HP under them or beside them */
+  css += `${D} .hq-dock-pp { display: grid !important; grid-template-columns: auto auto; column-gap: 8px; row-gap: 3px; justify-items: center; align-items: center; }
+${D} .hq-dock-pp > svg { grid-column: 1; grid-row: 1; }
+${D} .hq-dock-pp > .hq-dock-bars { grid-column: 1; grid-row: 2; }
+${D} .hq-dock-pp > .hq-dock-tag { grid-column: 2; grid-row: 1 / span 2; justify-self: start; }
+`;
+  if (I.dockTag === 'none') css += `${D} .hq-dock-tag { display: none !important; }\n`;
+  else if (I.dockTag === 'under') css += `${D} .hq-dock-pp > .hq-dock-tag { grid-column: 1; grid-row: 3; justify-self: center; align-items: center; padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,0.8); }\n`;
+  return css;
 }
 
 /* ── THE HOROLOGE HERO SECTION (mondo 2026-10-16: "i want to be able to adjust and change the horologe hero
@@ -12166,7 +12217,7 @@ function heroTidy() {
 const BAR_PLACES = [
   { id: 'hero', label: 'Horologe hero section', sel: '.hrlg-vitals, .hrlg-hub', def: 'bar', ring: 'A ring round the watch', hint: 'Your acting unit, in a battle' },
   { id: 'turns', label: 'Turn order icons', sel: '.ew-turn-col', def: 'ring', hint: 'The round portraits above the Horologe' },
-  { id: 'dock', label: 'Party portraits (exploring)', sel: '#hqPage .hq-dock', def: 'ring', hint: 'Bottom left while exploring' },
+  { id: 'dock', label: 'Party portraits (exploring)', sel: '#hqPage .hq-dock', def: 'both', under: true, hint: 'Bottom left while exploring; the bars sit under each portrait' },
   { id: 'rows', label: 'Target rows + quick look', sel: '.hrlg-qvitals, .hrlg-trow', def: 'bar', barOnly: true, hint: 'The target list and the clicked unit\'s card in a battle' },
   { id: 'plates', label: 'Name plates', sel: '.tp-wrap .tp-bars', def: 'bar', barOnly: true, hint: 'Over every unit on the board (colours, ends, track + frame; their thickness stays)' },
 ];
@@ -12276,7 +12327,10 @@ ${R}.hrlg-side .hrlg-vnums b { color: var(--ew-ink, #fff); font-weight: 600; }\n
     return c;
   };
   if (place.turns !== 'ring') css += miniBars('.ew-pp', '.ew-pp-bars', place.turns, '.ew-pp-track', '.ew-pp-arc', place.turns === 'bar' ? '8%' : '-2px', 'left: 14%; right: 14%');
-  if (place.dock !== 'ring') css += `${R}.hq-dock-pp { --dk: 52px; } ${R}.hq-dock-pp.lead { --dk: 76px; }\n` + miniBars('.hq-dock-pp', '.hq-dock-bars', place.dock, '.hq-dock-track', '.hq-dock-arc', place.dock === 'bar' ? '6px' : '-2px', 'left: calc(var(--dk) * 0.12); width: calc(var(--dk) * 0.76)');
+  /* the party portraits' bars sit UNDER each portrait, in the flow (mondo 2026-10-16: "i want the health bars to be
+     underneath just like everywhere else"); iconsCss lays the portrait out as ring / bars / name */
+  if (place.dock !== 'ring') css += `${R}.hq-dock-pp { --dk: 52px; } ${R}.hq-dock-pp.lead { --dk: 76px; }\n` + miniBars('.hq-dock-pp', '.hq-dock-bars', place.dock, '.hq-dock-track', '.hq-dock-arc', 'auto', 'width: calc(var(--dk) * 0.76)')
+    + `${R}#hqPage .hq-dock-pp > .hq-dock-bars { position: static !important; }\n`;
   return css;
 }
 
@@ -12783,7 +12837,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, assign: db.assign, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, assign: db.assign, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -12795,7 +12849,7 @@ function travel(from, to) {
     if (e.lay) {
       to.push({ lay: 1, j: layState() });
       const j = JSON.parse(e.j);
-      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.assign = j.assign || {}; HIST.t = 0;
+      db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.assign = j.assign || {}; HIST.t = 0;
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -13508,7 +13562,7 @@ function dockLayoutBody() {
   });
   h += `</div>
   <div class="uim-note">Drag a box · wheel sizes · arrows nudge (Shift 8px) · <span class="uim-kbd">Tab</span> next piece · <span class="uim-kbd">+</span> <span class="uim-kbd">−</span> size · <span class="uim-kbd">H</span> hide · <span class="uim-kbd">R</span> reset · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>
-  <div class="uim-btns"><button class="uim-btn bad" data-dk="layreset"${Object.keys(db.layout).length || Object.keys(db.hero || {}).length ? '' : ' disabled'}>Reset the whole layout</button></div>`;
+  <div class="uim-btns"><button class="uim-btn bad" data-dk="layreset"${Object.keys(db.layout).length || Object.keys(db.hero || {}).length || Object.keys(db.icons || {}).length ? '' : ' disabled'}>Reset the whole layout</button></div>`;
   return h;
 }
 function pieceDetail() {
@@ -13521,8 +13575,25 @@ function pieceDetail() {
     + R('Move X', 'x', -1600, 1600, 1, +L.x || 0) + R('Move Y', 'y', -1000, 1000, 1, +L.y || 0) + R('Size', 's', 0.4, 2.5, 0.05, L.s == null ? 1 : +L.s) + R('Opacity', 'o', 0.1, 1, 0.05, L.o == null ? 1 : +L.o)
     + `<div class="uim-btns"><button class="uim-btn" data-dk="piecereset">Reset this piece</button></div>`;
   if (P.hero) h += heroForm();
+  if (P.icons) h += iconsForm(P.icons);
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   return h + '</div>';
+}
+function iconsForm(which) {
+  const I = iconsOf();
+  const R = (l, k, mn, mx, st, v, tip) => `<div class="uim-f"${tip ? ` title="${esc(tip)}"` : ''}><label>${l}</label><div><input type="range" min="${mn}" max="${mx}" step="${st}" value="${v}" data-ipath="${k}" data-num="1"><input type="number" class="uim-num" min="${mn}" max="${mx}" step="${st}" value="${fmt(v, st)}" data-ipath="${k}" data-num="1"></div></div>`;
+  const seg = (l, k, opts, cur) => `<div class="uim-f"><label>${l}</label><div style="flex-wrap:wrap">${opts.map(([v, t, tip]) => `<button class="uim-btn${String(cur) === v ? ' on' : ''}" data-dk="iconset" data-val="${k}:${v}"${tip ? ` title="${esc(tip)}"` : ''}>${t}</button>`).join('')}</div></div>`;
+  let h = `<div class="uim-h">The icons</div>`;
+  if (which === 'turns') {
+    h += R('Icon spacing', 'tcGap', -20, 40, 1, +I.tcGap, 'The space between the turn order icons; their size stays (Size above sizes the whole column)')
+      + `<div class="uim-note">Below 0 the icons overlap. The reserves are their own piece now (Reserves).</div>`;
+  } else {
+    h += seg('Stack', 'dockDir', [['row', 'In a row'], ['col', 'Column, lead on top'], ['colup', 'Column, lead at the bottom']], I.dockDir)
+      + R('Spacing', 'dockGap', -20, 40, 1, +I.dockGap)
+      + seg('Name + HP', 'dockTag', [['none', 'Hidden'], ['under', 'Under the bars', 'Plain text, no panel'], ['panel', 'Panel beside', 'The old plate next to the lead']], I.dockTag)
+      + `<div class="uim-note">The health bars sit under each portrait. Rings, bars or both, and their look: the Bars mode.</div>`;
+  }
+  return h;
 }
 function heroForm() {
   const H = heroOf();
@@ -14003,8 +14074,9 @@ function dockClick(e) {
     else if (k === 'full') liveOff();
     else if (k === 'done') window.closeUiMaker();
     else if (k === 'ghost') { UI.ghost = v; A.dock.querySelectorAll('[data-dk="ghost"]').forEach(x => x.classList.toggle('on', x.dataset.val === v)); }
-    else if (k === 'layreset') { if (confirm('Put every HUD piece back where it was, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; touchLayout(); dockBody(); } }
+    else if (k === 'layreset') { if (confirm('Put every HUD piece back where it was, and the hero section back to how it was?')) { snapLayout(true); db.layout = {}; db.hero = {}; db.icons = {}; touchLayout(); dockBody(); } }
     else if (k === 'piecereset' && P) resetPiece(P);
+    else if (k === 'iconset') { const i = v.indexOf(':'); snapLayout(true); db.icons = db.icons || {}; db.icons[v.slice(0, i)] = v.slice(i + 1); iconsTidy(); touchLayout(); dockDetail(); }
     else if (k === 'heroset') { const i = v.indexOf(':'); snapLayout(true); db.hero = db.hero || {}; db.hero[v.slice(0, i)] = v.slice(i + 1); heroTidy(); touchLayout(); dockDetail(); }
     else if (k === 'clocklook') { const L = CLOCK_LOOKS.find(x => x[0] === v); if (L) { snapLayout(true); db.hero = Object.assign(db.hero || {}, L[2]); heroTidy(); touchLayout(); dockDetail(); } }
     else if (k === 'heroface') { snapLayout(true); db.hero = db.hero || {}; db.hero.face = v; heroTidy(); touchLayout(); dockDetail(); }
@@ -14057,6 +14129,13 @@ function dockInput(e) {
     L[k] = el.dataset.bool ? el.checked : +el.value;
     syncTwins(el, 'data-lpath', L[k]);
     tidyLayout(id); touchLayout(); return;
+  }
+  if (el.dataset.ipath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    snapLayout();
+    const I = db.icons || (db.icons = {}), k = el.dataset.ipath;
+    I[k] = +el.value; syncTwins(el, 'data-ipath', I[k]);
+    iconsTidy(); touchLayout(); return;
   }
   if (el.dataset.hpath) {
     if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
