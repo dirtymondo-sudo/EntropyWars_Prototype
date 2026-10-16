@@ -19418,6 +19418,9 @@ const ThreeRenderer = (function () {
                     /* Fog/concealment: never track (and so never reveal) a
                        unit the local viewer can't currently see. */
                     if (!ue || !ue.group || ue.group.visible === false) continue;
+                    /* A wall between gun and unit (Rampart, cliff, shut door) — no
+                       shot, so no laser: the same rule the volley fires by. */
+                    if (typeof window.turretHasShotAt === 'function' && !window.turretHasShotAt(turret, u)) continue;
                     best = u; bestD = d; bestEntry = ue;
                 }
             }

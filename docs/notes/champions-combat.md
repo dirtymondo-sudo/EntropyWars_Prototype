@@ -1487,3 +1487,11 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
 - Every menu asks it: hasSpellTargetInRange (enemy kinds, leap, heal/cleanse, buff/shield/transfer, revive, corpses), the drum,
   findSpellApproachTile (aimed at a body), the Simul plan check, hud.js enemy quick menu (generic, leap and dash rows; the
   greyed reason reads `spellAimProblemLabel`) and the tile quick menu. getSpellRangeTiles (the lit tiles) is unchanged.
+
+## THE TURRET SIGHT LINE (2026-10-16)
+mondo: "i raised a wall with rampart, and there was a turret on the other side, but it was still able to shoot me."
+Cause: processTurretVolleys picked its target by flat steps only, never asking line of sight (nor did the renderer's
+targeting laser or the real-time turret clock). Fix: battle.js `turretHasShotAt(turret, u)` (window too) = the spells'
+terrain sight line, `isRangeBlockedByTerrain(turret → unit, target z)`. Asked by the end-of-round volley (turrets and
+ranged summons), the real-time turret scan, and three-renderer.js `_updateTurretAim`, so the laser only paints a unit
+the gun can actually hit; a walled-off unit is skipped and the turret takes the next one in range it can see.
